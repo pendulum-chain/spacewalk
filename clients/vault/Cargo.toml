@@ -1,0 +1,41 @@
+[package]
+authors = ["Pendulum Chain <https://github.com/pendulum-chain>"]
+description = "The Vault client intermediates between Stellar and the Spacewalk Parachain."
+edition = "2021"
+name = "vault"
+version = "0.0.1"
+
+[dependencies]
+async-trait = "0.1.40"
+clap = "3.1"
+futures = "0.3.5"
+git-version = "0.3.4"
+hex = "0.4.2"
+parity-scale-codec = "2.0.0"
+serde = "1.0.136"
+sha2 = "0.8.2"
+thiserror = "1.0"
+tokio = {version = "1.0", features = ["full"]}
+
+tracing = {version = "0.1", features = ["log"]}
+tracing-futures = {version = "0.2.5"}
+tracing-subscriber = {version = "0.2.12", features = ["registry", "env-filter", "fmt"]}
+
+jsonrpc-core = "18.0.0"
+jsonrpc-core-client = {version = "18.0.0", features = ["http", "tls"]}
+
+# Substrate dependencies
+sp-arithmetic = {git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.17"}
+sp-core = {git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.17"}
+sp-keyring = {git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.17"}
+
+[dev-dependencies]
+mockall = "0.8.1"
+
+# Substrate dependencies
+frame-support = {git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.17"}
+
+# 'service' dependencies
+hyper = { version = "0.14.11" }
+hyper-tls = "0.5.0"
+serde_json = "1.0.71"
