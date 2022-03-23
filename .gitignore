@@ -1,0 +1,8 @@
+*/**/target
+*/target/*
+clients/target/
+**.tgz
+.vscode
+event-logs
+keyfile.json
+.DS_STORE
