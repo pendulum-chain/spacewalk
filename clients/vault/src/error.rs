@@ -1,3 +1,4 @@
+use bitcoin::Error as BitcoinError;
 use hex::FromHexError;
 use jsonrpc_core_client::RpcError;
 use parity_scale_codec::Error as CodecError;
@@ -38,4 +39,7 @@ pub enum Error {
     SubxtError(#[from] SubxtError),
     #[error("CodecError: {0}")]
     CodecError(#[from] CodecError),
+
+    #[error("Error returned when fetching remote info")]
+    HttpFetchingError,
 }

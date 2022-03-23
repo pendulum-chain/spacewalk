@@ -5,6 +5,7 @@ mod collateral;
 mod error;
 mod execution;
 mod faucet;
+mod horizon;
 mod issue;
 mod redeem;
 mod refund;
