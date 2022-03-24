@@ -156,7 +156,7 @@ pub enum AddressConversionError {
 pub async fn fetch_latest_txs() -> Result<HorizonTransactionsResponse, Error> {
     // TODO replace with key that is supplied by CLI config
     let escrow_keypair: SecretKey =
-        SecretKey::from_encoding("SACLCZW75A7QASXCEPSD4ZZII7THVHDUGCOKUBOINZLSVA3VKTGLOV33").unwrap();
+        SecretKey::from_encoding("SA4OOLVVZV2W7XAKFXUEKLMQ6Y2W5JBENHO5LP6W6BCPBU3WUZ5EBT7K").unwrap();
     let escrow_address = escrow_keypair.get_public();
 
     let request_url = String::from("https://horizon-testnet.stellar.org/accounts/")
@@ -173,9 +173,58 @@ pub async fn fetch_latest_txs() -> Result<HorizonTransactionsResponse, Error> {
     Ok(horizon_response)
 }
 
+static mut LAST_TX_ID: Option<Vec<u8>> = None;
+
+pub fn handle_new_transaction(tx: &Transaction) {
+    const UP_TO_DATE: () = ();
+    let latest_tx_id_utf8 = &tx.id;
+
+    unsafe {
+        let prev_tx_id = &LAST_TX_ID;
+        let initial = !matches!(prev_tx_id, Some(_));
+
+        let result = match prev_tx_id {
+            Some(prev_tx_id) => {
+                if prev_tx_id == latest_tx_id_utf8 {
+                    Err(UP_TO_DATE)
+                } else {
+                    Ok(latest_tx_id_utf8.clone())
+                }
+            }
+            None => Ok(latest_tx_id_utf8.clone()),
+        };
+
+        match result {
+            Ok(latest_tx_id) => {
+                LAST_TX_ID = Some(latest_tx_id.clone());
+                if !initial {
+                    tracing::info!(
+                        "✴️  New transaction from Horizon (id {:#?}). Starting to replicate transaction in Pendulum.",
+                        str::from_utf8(&latest_tx_id).unwrap()
+                    );
+
+                    // Decode transaction to Base64 and then to Stellar XDR to get transaction details
+                    let tx_xdr = base64::decode(&tx.envelope_xdr).unwrap();
+                    let tx_envelope = stellar::TransactionEnvelope::from_xdr(&tx_xdr).unwrap();
+
+                    if let stellar::TransactionEnvelope::EnvelopeTypeTx(env) = tx_envelope {
+                        process_new_transaction(env.tx);
+                    }
+                } else {
+                    tracing::info!("Initial transaction handled");
+                }
+            }
+            Err(UP_TO_DATE) => {
+                tracing::info!("Already up to date");
+            }
+        }
+    }
+}
+
 pub fn process_new_transaction(transaction: stellar::types::Transaction) {
     // The destination of a mirrored Pendulum transaction, is always derived of the source account that initiated
     // the Stellar transaction.
+    tracing::info!("Processing transaction");
     let destination = if let stellar::MuxedAccount::KeyTypeEd25519(key) = transaction.source_account {
         AddressConversion::unlookup(stellar::PublicKey::from_binary(key))
     } else {

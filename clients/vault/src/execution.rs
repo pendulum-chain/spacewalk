@@ -1,6 +1,6 @@
 use crate::{
     error::Error,
-    horizon::{fetch_latest_txs, process_new_transaction, HorizonTransactionsResponse},
+    horizon::{fetch_latest_txs, handle_new_transaction, process_new_transaction, HorizonTransactionsResponse},
     VaultIdManager,
 };
 use bitcoin::{
@@ -378,6 +378,11 @@ pub async fn execute_open_requests(
             return Ok(());
         }
     };
+    tracing::info!("Found {} transactions", transactions.len());
+
+    if transactions.len() > 0 {
+        handle_new_transaction(&transactions[0]);
+    }
 
     Ok(())
 }

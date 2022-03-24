@@ -9745,6 +9745,7 @@ name = "vault"
 version = "0.0.1"
 dependencies = [
  "async-trait",
+ "base64 0.13.0",
  "bitcoin 1.1.0",
  "clap",
  "frame-support",
