@@ -1,8 +1,4 @@
-use crate::{
-    error::Error,
-    horizon::{fetch_latest_txs, handle_new_transaction, process_new_transaction, HorizonTransactionsResponse},
-    VaultIdManager,
-};
+use crate::{error::Error, VaultIdManager};
 use bitcoin::{
     BitcoinCoreApi, PartialAddress, Transaction, TransactionExt, TransactionMetadata,
     BLOCK_INTERVAL as BITCOIN_BLOCK_INTERVAL,
@@ -341,8 +337,6 @@ pub async fn execute_open_requests(
     payment_margin: Duration,
     process_refunds: bool,
 ) -> Result<(), Error> {
-    tracing::info!("In execute_open_requests");
-
     let parachain_rpc = &parachain_rpc;
     let vault_id = parachain_rpc.get_account_id().clone();
 
@@ -369,20 +363,6 @@ pub async fn execute_open_requests(
             }
         },
     )?;
-
-    let res = fetch_latest_txs().await;
-    let transactions = match res {
-        Ok(txs) => txs._embedded.records,
-        Err(e) => {
-            tracing::warn!("Failed to fetch transactions: {:?}", e);
-            return Ok(());
-        }
-    };
-    tracing::info!("Found {} transactions", transactions.len());
-
-    if transactions.len() > 0 {
-        handle_new_transaction(&transactions[0]);
-    }
 
     Ok(())
 }

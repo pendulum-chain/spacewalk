@@ -1,5 +1,6 @@
 use crate::{
-    collateral::lock_required_collateral, error::Error, faucet, issue, relay::run_relayer, service::*, vaults::Vaults,
+    collateral::lock_required_collateral, error::Error, faucet,
+    horizon::fetch_horizon_txs_and_process_new_transactions, issue, relay::run_relayer, service::*, vaults::Vaults,
     Event, IssueRequests, CHAIN_HEIGHT_POLLING_INTERVAL,
 };
 use async_trait::async_trait;
@@ -355,6 +356,15 @@ impl VaultService {
             // replace & issue cancellation helpers
             tokio::spawn(async move { parachain_block_listener.await }),
         );
+
+        // Start polling horizon every 5 seconds
+        let mut interval_timer = tokio::time::interval(Duration::from_secs(5));
+        loop {
+            interval_timer.tick().await;
+            tokio::spawn(async {
+                fetch_horizon_txs_and_process_new_transactions().await;
+            });
+        }
 
         Ok(())
     }

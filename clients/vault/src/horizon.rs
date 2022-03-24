@@ -153,7 +153,8 @@ pub enum AddressConversionError {
 // Network functions
 
 /// Fetch recent transactions from remote and deserialize to HorizonResponse
-pub async fn fetch_latest_txs() -> Result<HorizonTransactionsResponse, Error> {
+/// Since the limit in the request url is set to one it will always fetch just one
+async fn fetch_latest_txs() -> Result<HorizonTransactionsResponse, Error> {
     // TODO replace with key that is supplied by CLI config
     let escrow_keypair: SecretKey =
         SecretKey::from_encoding("SA4OOLVVZV2W7XAKFXUEKLMQ6Y2W5JBENHO5LP6W6BCPBU3WUZ5EBT7K").unwrap();
@@ -175,7 +176,7 @@ pub async fn fetch_latest_txs() -> Result<HorizonTransactionsResponse, Error> {
 
 static mut LAST_TX_ID: Option<Vec<u8>> = None;
 
-pub fn handle_new_transaction(tx: &Transaction) {
+fn handle_new_transaction(tx: &Transaction) {
     const UP_TO_DATE: () = ();
     let latest_tx_id_utf8 = &tx.id;
 
@@ -221,7 +222,7 @@ pub fn handle_new_transaction(tx: &Transaction) {
     }
 }
 
-pub fn process_new_transaction(transaction: stellar::types::Transaction) {
+fn process_new_transaction(transaction: stellar::types::Transaction) {
     // The destination of a mirrored Pendulum transaction, is always derived of the source account that initiated
     // the Stellar transaction.
     tracing::info!("Processing transaction");
@@ -260,5 +261,21 @@ pub fn process_new_transaction(transaction: stellar::types::Transaction) {
         //         return;
         //     }
         // }
+    }
+}
+
+pub async fn fetch_horizon_txs_and_process_new_transactions() {
+    let res = fetch_latest_txs().await;
+    let transactions = match res {
+        Ok(txs) => txs._embedded.records,
+        Err(e) => {
+            tracing::warn!("Failed to fetch transactions: {:?}", e);
+            return;
+        }
+    };
+    tracing::info!("Found {} transactions", transactions.len());
+
+    if transactions.len() > 0 {
+        handle_new_transaction(&transactions[0]);
     }
 }
