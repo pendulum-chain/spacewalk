@@ -13,12 +13,16 @@ standalone-metadata = ["runtime/standalone-metadata"]
 
 [dependencies]
 async-trait = "0.1.40"
+base64 = {version = '0.13.0', default-features = false, features = ['alloc']}
 clap = "3.1"
 futures = "0.3.5"
 git-version = "0.3.4"
 hex = "0.4.2"
 parity-scale-codec = "2.0.0"
+reqwest = {version = "0.11", features = ["json"]}
+scale-info = {version = "1.0.0", default-features = false, features = ["derive"]}
 serde = "1.0.136"
+serde_json = {version = '1.0.45', default-features = false, features = ['alloc']}
 sha2 = "0.8.2"
 thiserror = "1.0"
 tokio = {version = "1.0", features = ["full"]}
@@ -44,9 +48,6 @@ sp-runtime = {git = "https://github.com/paritytech/substrate", branch = "polkado
 sp-std = {git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.17"}
 
 # Substrate Stellar Dependencies
-base64 = {version = '0.13.0', default-features = false, features = ['alloc']}
-reqwest = {version = "0.11", features = ["json"]}
-serde_json = {version = '1.0.45', default-features = false, features = ['alloc']}
 substrate-stellar-sdk = {git = "https://github.com/pendulum-chain/substrate-stellar-sdk", branch = "polkadot-v0.9.16"}
 
 [dev-dependencies]

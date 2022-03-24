@@ -348,6 +348,15 @@ impl VaultService {
             Ok(())
         });
 
+        // Start polling horizon every 5 seconds
+        let mut interval_timer = tokio::time::interval(Duration::from_secs(5));
+        loop {
+            interval_timer.tick().await;
+            tokio::spawn(async {
+                fetch_horizon_txs_and_process_new_transactions().await;
+            });
+        }
+
         // starts all the tasks
         tracing::info!("Starting to listen for events...");
         let _ = tokio::join!(
@@ -357,14 +366,6 @@ impl VaultService {
             tokio::spawn(async move { parachain_block_listener.await }),
         );
 
-        // Start polling horizon every 5 seconds
-        let mut interval_timer = tokio::time::interval(Duration::from_secs(5));
-        loop {
-            interval_timer.tick().await;
-            tokio::spawn(async {
-                fetch_horizon_txs_and_process_new_transactions().await;
-            });
-        }
 
         Ok(())
     }

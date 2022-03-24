@@ -1,17 +1,25 @@
 use crate::error::Error;
-use parity_scale_codec::{Decode, Encode};
+use parity_scale_codec::{Decode, Encode, MaxEncodedLen};
+use runtime::{AccountId, Balance};
 use serde::{Deserialize, Deserializer};
-
 use sp_core::ed25519;
 use sp_runtime::{
-    traits::{IdentifyAccount, LookupError, StaticLookup},
+    scale_info::TypeInfo,
+    traits::{Convert, IdentifyAccount, LookupError, StaticLookup},
     AccountId32, MultiSigner,
 };
-use sp_std::{convert::From, prelude::*, str};
+use sp_std::{
+    convert::{From, TryInto},
+    fmt,
+    prelude::*,
+    str,
+    str::from_utf8,
+    vec::Vec,
+};
 use stellar::{
     network::TEST_NETWORK,
-    types::{OperationBody, PaymentOp},
-    IntoAmount, SecretKey, StellarSdkError, XdrCodec,
+    types::{AssetAlphaNum12, AssetAlphaNum4, OperationBody, PaymentOp},
+    Asset, IntoAmount, PublicKey, SecretKey, StellarSdkError, XdrCodec,
 };
 use substrate_stellar_sdk as stellar;
 
@@ -144,20 +152,175 @@ impl StaticLookup for AddressConversion {
     }
 }
 
-/// Error type for key decoding errors
-#[derive(Debug)]
-pub enum AddressConversionError {
-    //     UnexpectedKeyType
+pub struct BalanceConversion;
+
+impl StaticLookup for BalanceConversion {
+    type Source = u128;
+    type Target = i64;
+
+    fn lookup(pendulum_balance: Self::Source) -> Result<Self::Target, LookupError> {
+        let stroops128: u128 = pendulum_balance / 100000;
+
+        if stroops128 > i64::MAX as u128 {
+            Err(LookupError)
+        } else {
+            Ok(stroops128 as i64)
+        }
+    }
+
+    fn unlookup(stellar_stroops: Self::Target) -> Self::Source {
+        (stellar_stroops * 100000) as u128
+    }
+}
+
+pub type Bytes4 = [u8; 4];
+pub type Bytes12 = [u8; 12];
+pub type AssetIssuer = [u8; 32];
+
+#[derive(Encode, Decode, Eq, PartialEq, Copy, Clone, PartialOrd, Ord, MaxEncodedLen, TypeInfo)]
+#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
+pub enum CurrencyId {
+    Native,
+    StellarNative,
+    AlphaNum4 { code: Bytes4, issuer: AssetIssuer },
+    AlphaNum12 { code: Bytes12, issuer: AssetIssuer },
+}
+
+impl Default for CurrencyId {
+    fn default() -> Self {
+        CurrencyId::Native
+    }
+}
+
+impl TryFrom<(&str, AssetIssuer)> for CurrencyId {
+    type Error = &'static str;
+
+    fn try_from(value: (&str, AssetIssuer)) -> Result<Self, Self::Error> {
+        let slice = value.0;
+        let issuer = value.1;
+        if slice.len() <= 4 {
+            let mut code: Bytes4 = [0; 4];
+            code[..slice.len()].copy_from_slice(slice.as_bytes());
+            Ok(CurrencyId::AlphaNum4 { code, issuer })
+        } else if slice.len() > 4 && slice.len() <= 12 {
+            let mut code: Bytes12 = [0; 12];
+            code[..slice.len()].copy_from_slice(slice.as_bytes());
+            Ok(CurrencyId::AlphaNum12 { code, issuer })
+        } else {
+            Err("More than 12 bytes not supported")
+        }
+    }
+}
+
+impl From<stellar::Asset> for CurrencyId {
+    fn from(asset: stellar::Asset) -> Self {
+        match asset {
+            stellar::Asset::AssetTypeNative => CurrencyId::StellarNative,
+            stellar::Asset::AssetTypeCreditAlphanum4(asset_alpha_num4) => CurrencyId::AlphaNum4 {
+                code: asset_alpha_num4.asset_code,
+                issuer: asset_alpha_num4.issuer.into_binary(),
+            },
+            stellar::Asset::AssetTypeCreditAlphanum12(asset_alpha_num12) => CurrencyId::AlphaNum12 {
+                code: asset_alpha_num12.asset_code,
+                issuer: asset_alpha_num12.issuer.into_binary(),
+            },
+        }
+    }
+}
+
+impl TryInto<stellar::Asset> for CurrencyId {
+    type Error = &'static str;
+
+    fn try_into(self) -> Result<stellar::Asset, Self::Error> {
+        match self {
+            Self::Native => Err("PEN token not defined in the Stellar world."),
+            Self::StellarNative => Ok(stellar::Asset::native()),
+            Self::AlphaNum4 { code, issuer } => Ok(stellar::Asset::AssetTypeCreditAlphanum4(AssetAlphaNum4 {
+                asset_code: code,
+                issuer: PublicKey::PublicKeyTypeEd25519(issuer),
+            })),
+            Self::AlphaNum12 { code, issuer } => Ok(stellar::Asset::AssetTypeCreditAlphanum12(AssetAlphaNum12 {
+                asset_code: code,
+                issuer: PublicKey::PublicKeyTypeEd25519(issuer),
+            })),
+        }
+    }
+}
+
+impl fmt::Debug for CurrencyId {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::Native => write!(f, "PEN"),
+            Self::StellarNative => write!(f, "XLM"),
+            Self::AlphaNum4 { code, issuer } => {
+                write!(
+                    f,
+                    "{{ code: {}, issuer: {} }}",
+                    str::from_utf8(code).unwrap(),
+                    str::from_utf8(stellar::PublicKey::from_binary(*issuer).to_encoding().as_slice()).unwrap()
+                )
+            }
+            Self::AlphaNum12 { code, issuer } => {
+                write!(
+                    f,
+                    "{{ code: {}, issuer: {} }}",
+                    str::from_utf8(code).unwrap(),
+                    str::from_utf8(stellar::PublicKey::from_binary(*issuer).to_encoding().as_slice()).unwrap()
+                )
+            }
+        }
+    }
+}
+
+pub struct CurrencyConversion;
+
+fn to_look_up_error(_: &'static str) -> LookupError {
+    LookupError
+}
+
+impl StaticLookup for CurrencyConversion {
+    type Source = CurrencyId;
+    type Target = Asset;
+
+    fn lookup(currency_id: <Self as StaticLookup>::Source) -> Result<<Self as StaticLookup>::Target, LookupError> {
+        let asset_conversion_result: Result<Asset, &str> = currency_id.try_into();
+        asset_conversion_result.map_err(to_look_up_error)
+    }
+
+    fn unlookup(stellar_asset: <Self as StaticLookup>::Target) -> <Self as StaticLookup>::Source {
+        CurrencyId::from(stellar_asset)
+    }
+}
+
+pub struct StringCurrencyConversion;
+
+impl Convert<(Vec<u8>, Vec<u8>), Result<CurrencyId, ()>> for StringCurrencyConversion {
+    fn convert(a: (Vec<u8>, Vec<u8>)) -> Result<CurrencyId, ()> {
+        let public_key = PublicKey::from_encoding(a.1).map_err(|_| ())?;
+        let asset_code = from_utf8(a.0.as_slice()).map_err(|_| ())?;
+        (asset_code, public_key.into_binary()).try_into().map_err(|_| ())
+    }
 }
 
 // Network functions
 
+// TODO replace with key that is supplied by CLI config
+const ESCROW_SECRET_KEY: &str = "SA4OOLVVZV2W7XAKFXUEKLMQ6Y2W5JBENHO5LP6W6BCPBU3WUZ5EBT7K";
+
+fn is_escrow(public_key: [u8; 32]) -> bool {
+    let escrow_keypair: SecretKey = SecretKey::from_encoding(ESCROW_SECRET_KEY).unwrap();
+    return public_key == *escrow_keypair.get_public().as_binary();
+}
+
+fn execute_deposit_transaction(currency_id: CurrencyId, deposit: Balance, destination: AccountId) -> Result<(), Error> {
+    // TODO
+    Ok(())
+}
+
 /// Fetch recent transactions from remote and deserialize to HorizonResponse
 /// Since the limit in the request url is set to one it will always fetch just one
 async fn fetch_latest_txs() -> Result<HorizonTransactionsResponse, Error> {
-    // TODO replace with key that is supplied by CLI config
-    let escrow_keypair: SecretKey =
-        SecretKey::from_encoding("SA4OOLVVZV2W7XAKFXUEKLMQ6Y2W5JBENHO5LP6W6BCPBU3WUZ5EBT7K").unwrap();
+    let escrow_keypair: SecretKey = SecretKey::from_encoding(ESCROW_SECRET_KEY).unwrap();
     let escrow_address = escrow_keypair.get_public();
 
     let request_url = String::from("https://horizon-testnet.stellar.org/accounts/")
@@ -200,7 +363,7 @@ fn handle_new_transaction(tx: &Transaction) {
                 LAST_TX_ID = Some(latest_tx_id.clone());
                 if !initial {
                     tracing::info!(
-                        "✴️  New transaction from Horizon (id {:#?}). Starting to replicate transaction in Pendulum.",
+                        "✴️  New transaction from Horizon (id {:#?}). Starting to process new transaction",
                         str::from_utf8(&latest_tx_id).unwrap()
                     );
 
@@ -246,21 +409,21 @@ fn process_new_transaction(transaction: stellar::types::Transaction) {
     for payment_op in payment_ops {
         let _dest_account = stellar::MuxedAccount::from(payment_op.destination.clone());
 
-        // if let stellar::MuxedAccount::KeyTypeEd25519(payment_dest_public_key) = payment_op.destination {
-        //     if Self::is_escrow(payment_dest_public_key) {
-        //         let amount = T::BalanceConversion::unlookup(payment_op.amount);
-        //         let currency = T::CurrencyConversion::unlookup(payment_op.asset.clone());
+        if let stellar::MuxedAccount::KeyTypeEd25519(payment_dest_public_key) = payment_op.destination {
+            if is_escrow(payment_dest_public_key) {
+                let amount = BalanceConversion::unlookup(payment_op.amount);
+                let currency = CurrencyConversion::unlookup(payment_op.asset.clone());
 
-        //         match Self::offchain_unsigned_tx_signed_payload(currency, amount, destination) {
-        //             Err(_) => tracing::warn!("Sending the tx failed."),
-        //             Ok(_) => {
-        //                 tracing::info!("✅ Deposit successfully Executed");
-        //                 ()
-        //             }
-        //         }
-        //         return;
-        //     }
-        // }
+                match execute_deposit_transaction(currency, amount, destination) {
+                    Err(_) => tracing::warn!("Sending the tx failed."),
+                    Ok(_) => {
+                        tracing::info!("✅ Deposit successfully Executed");
+                        ()
+                    }
+                }
+                return;
+            }
+        }
     }
 }
 
@@ -273,7 +436,6 @@ pub async fn fetch_horizon_txs_and_process_new_transactions() {
             return;
         }
     };
-    tracing::info!("Found {} transactions", transactions.len());
 
     if transactions.len() > 0 {
         handle_new_transaction(&transactions[0]);

@@ -9758,6 +9758,7 @@ dependencies = [
  "parity-scale-codec",
  "reqwest",
  "runtime",
+ "scale-info",
  "serde",
  "serde_json",
  "service",
