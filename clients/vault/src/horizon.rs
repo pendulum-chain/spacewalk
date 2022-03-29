@@ -1,7 +1,8 @@
 use crate::error::Error;
 use parity_scale_codec::{Decode, Encode, MaxEncodedLen};
-use runtime::{AccountId, Balance};
+use runtime::{AccountId, Balance, InterBtcParachain, SpacewalkPallet};
 use serde::{Deserialize, Deserializer};
+use service::Error as ServiceError;
 use sp_core::ed25519;
 use sp_runtime::{
     scale_info::TypeInfo,
@@ -16,12 +17,14 @@ use sp_std::{
     str::from_utf8,
     vec::Vec,
 };
+use std::time::Duration;
 use stellar::{
     network::TEST_NETWORK,
     types::{AssetAlphaNum12, AssetAlphaNum4, OperationBody, PaymentOp},
     Asset, IntoAmount, PublicKey, SecretKey, StellarSdkError, XdrCodec,
 };
 use substrate_stellar_sdk as stellar;
+use tokio::time::sleep;
 
 // This represents each record for a transaction in the Horizon API response
 #[derive(Deserialize, Encode, Decode, Default, Debug)]
@@ -312,11 +315,6 @@ fn is_escrow(public_key: [u8; 32]) -> bool {
     return public_key == *escrow_keypair.get_public().as_binary();
 }
 
-fn execute_deposit_transaction(currency_id: CurrencyId, deposit: Balance, destination: AccountId) -> Result<(), Error> {
-    // TODO
-    Ok(())
-}
-
 /// Fetch recent transactions from remote and deserialize to HorizonResponse
 /// Since the limit in the request url is set to one it will always fetch just one
 async fn fetch_latest_txs() -> Result<HorizonTransactionsResponse, Error> {
@@ -339,7 +337,7 @@ async fn fetch_latest_txs() -> Result<HorizonTransactionsResponse, Error> {
 
 static mut LAST_TX_ID: Option<Vec<u8>> = None;
 
-fn handle_new_transaction(tx: &Transaction) {
+fn is_unhandled_transaction(tx: &Transaction) -> bool {
     const UP_TO_DATE: () = ();
     let latest_tx_id_utf8 = &tx.id;
 
@@ -358,76 +356,42 @@ fn handle_new_transaction(tx: &Transaction) {
             None => Ok(latest_tx_id_utf8.clone()),
         };
 
+        let mut is_unhandled = false;
         match result {
             Ok(latest_tx_id) => {
                 LAST_TX_ID = Some(latest_tx_id.clone());
                 if !initial {
                     tracing::info!(
-                        "✴️  New transaction from Horizon (id {:#?}). Starting to process new transaction",
+                        "Found new transaction from Horizon (id {:#?}). Starting to process new transaction",
                         str::from_utf8(&latest_tx_id).unwrap()
                     );
 
-                    // Decode transaction to Base64 and then to Stellar XDR to get transaction details
-                    let tx_xdr = base64::decode(&tx.envelope_xdr).unwrap();
-                    let tx_envelope = stellar::TransactionEnvelope::from_xdr(&tx_xdr).unwrap();
-
-                    if let stellar::TransactionEnvelope::EnvelopeTypeTx(env) = tx_envelope {
-                        process_new_transaction(env.tx);
-                    }
+                    is_unhandled = true;
                 } else {
                     tracing::info!("Initial transaction handled");
+                    is_unhandled = false;
                 }
             }
             Err(UP_TO_DATE) => {
                 tracing::info!("Already up to date");
+                is_unhandled = false;
             }
         }
+        is_unhandled
     }
 }
 
-fn process_new_transaction(transaction: stellar::types::Transaction) {
-    // The destination of a mirrored Pendulum transaction, is always derived of the source account that initiated
-    // the Stellar transaction.
-    tracing::info!("Processing transaction");
-    let destination = if let stellar::MuxedAccount::KeyTypeEd25519(key) = transaction.source_account {
-        AddressConversion::unlookup(stellar::PublicKey::from_binary(key))
-    } else {
-        tracing::error!("❌  Source account format not supported.");
-        return;
-    };
+fn report_transaction(parachain_rpc: &InterBtcParachain, tx: &Transaction) -> Result<(), Error> {
+    // Decode transaction to Base64 and then to Stellar XDR
+    let tx_xdr = base64::decode(&tx.envelope_xdr).unwrap();
+    let tx_envelope = stellar::TransactionEnvelope::from_xdr(&tx_xdr).unwrap();
 
-    let payment_ops: Vec<&PaymentOp> = transaction
-        .operations
-        .get_vec()
-        .into_iter()
-        .filter_map(|op| match &op.body {
-            OperationBody::Payment(p) => Some(p),
-            _ => None,
-        })
-        .collect();
-
-    for payment_op in payment_ops {
-        let _dest_account = stellar::MuxedAccount::from(payment_op.destination.clone());
-
-        if let stellar::MuxedAccount::KeyTypeEd25519(payment_dest_public_key) = payment_op.destination {
-            if is_escrow(payment_dest_public_key) {
-                let amount = BalanceConversion::unlookup(payment_op.amount);
-                let currency = CurrencyConversion::unlookup(payment_op.asset.clone());
-
-                match execute_deposit_transaction(currency, amount, destination) {
-                    Err(_) => tracing::warn!("Sending the tx failed."),
-                    Ok(_) => {
-                        tracing::info!("✅ Deposit successfully Executed");
-                        ()
-                    }
-                }
-                return;
-            }
-        }
-    }
+    // Send new transaction to spacewalk bridge pallet
+    parachain_rpc.report_stellar_transaction(tx_envelope);
+    Ok(())
 }
 
-pub async fn fetch_horizon_txs_and_process_new_transactions() {
+async fn fetch_horizon_and_process_new_transactions(parachain_rpc: &InterBtcParachain) {
     let res = fetch_latest_txs().await;
     let transactions = match res {
         Ok(txs) => txs._embedded.records,
@@ -438,6 +402,28 @@ pub async fn fetch_horizon_txs_and_process_new_transactions() {
     };
 
     if transactions.len() > 0 {
-        handle_new_transaction(&transactions[0]);
+        let tx = &transactions[0];
+        if is_unhandled_transaction(tx) {
+            let result = report_transaction(parachain_rpc, tx);
+            match result {
+                Ok(_) => {
+                    tracing::info!("Reported Stellar transaction to spacewalk pallet");
+                }
+                Err(e) => {
+                    tracing::warn!("Failed to process transaction: {:?}", e);
+                }
+            }
+        }
+    }
+}
+
+const POLL_INTERVAL_SECONDS: u64 = 5;
+
+pub async fn poll_horizon_for_new_transactions(parachain_rpc: InterBtcParachain) -> Result<(), ServiceError> {
+    // Start polling horizon every 5 seconds
+    loop {
+        fetch_horizon_and_process_new_transactions(&parachain_rpc).await;
+
+        sleep(Duration::from_secs(POLL_INTERVAL_SECONDS)).await;
     }
 }

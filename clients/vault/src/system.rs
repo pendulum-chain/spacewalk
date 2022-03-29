@@ -1,7 +1,6 @@
 use crate::{
-    collateral::lock_required_collateral, error::Error, faucet,
-    horizon::fetch_horizon_txs_and_process_new_transactions, issue, relay::run_relayer, service::*, vaults::Vaults,
-    Event, IssueRequests, CHAIN_HEIGHT_POLLING_INTERVAL,
+    collateral::lock_required_collateral, error::Error, faucet, horizon::poll_horizon_for_new_transactions, issue,
+    relay::run_relayer, service::*, vaults::Vaults, Event, IssueRequests, CHAIN_HEIGHT_POLLING_INTERVAL,
 };
 use async_trait::async_trait;
 use bitcoin::{BitcoinCore, BitcoinCoreApi, Error as BitcoinError};
@@ -348,14 +347,10 @@ impl VaultService {
             Ok(())
         });
 
-        // Start polling horizon every 5 seconds
-        let mut interval_timer = tokio::time::interval(Duration::from_secs(5));
-        loop {
-            interval_timer.tick().await;
-            tokio::spawn(async {
-                fetch_horizon_txs_and_process_new_transactions().await;
-            });
-        }
+        let horizon_poller = wait_or_shutdown(
+            self.shutdown.clone(),
+            poll_horizon_for_new_transactions(self.btc_parachain.clone()),
+        );
 
         // starts all the tasks
         tracing::info!("Starting to listen for events...");
@@ -364,8 +359,9 @@ impl VaultService {
             tokio::spawn(async move { err_listener.await }),
             // replace & issue cancellation helpers
             tokio::spawn(async move { parachain_block_listener.await }),
+            // listen for deposits
+            tokio::task::spawn(async move { horizon_poller.await }),
         );
-
 
         Ok(())
     }
