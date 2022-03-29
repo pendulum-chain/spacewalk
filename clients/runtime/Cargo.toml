@@ -57,6 +57,9 @@ interbtc = {package = "interbtc-standalone", git = "https://github.com/interlay/
 rand = {version = "0.7", optional = true}
 tempdir = {version = "0.3.7", optional = true}
 
+# Substrate Stellar Dependencies
+substrate-stellar-sdk = {git = "https://github.com/pendulum-chain/substrate-stellar-sdk", branch = "polkadot-v0.9.16"}
+
 [dependencies.primitives]
 git = "https://github.com/interlay/interbtc"
 package = "interbtc-primitives"

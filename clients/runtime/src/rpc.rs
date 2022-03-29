@@ -21,6 +21,8 @@ use subxt::{
 };
 use tokio::{sync::RwLock, time::sleep};
 
+use substrate_stellar_sdk as stellar;
+
 cfg_if::cfg_if! {
     if #[cfg(feature = "standalone-metadata")] {
         const DEFAULT_SPEC_VERSION: u32 = 1;
@@ -1767,5 +1769,28 @@ impl SudoPallet for InterBtcParachain {
                 metadata::runtime_types::replace::pallet::Call::set_replace_period { period },
             ))
             .await?)
+    }
+}
+
+#[async_trait]
+pub trait SpacewalkPallet {
+    async fn report_stellar_transaction(&self, tx_envelope: stellar::TransactionEnvelope) -> Result<(), Error>;
+}
+
+#[async_trait]
+impl SpacewalkPallet for InterBtcParachain {
+    async fn report_stellar_transaction(&self, tx_envelope: stellar::TransactionEnvelope) -> Result<(), Error> {
+        // TODO uncomment once we have metadata of chain that implements spacewalk pallet
+        // let tx = &tx_envelope;
+        // self.with_unique_signer(|signer| async move {
+        //     self.api
+        //         .tx()
+        //         .spacewalk() // assume that spacewalk pallet is registered in connected chain
+        //         .report_stellar_transaction(tx.clone()) // spacewalk pallet offers extrinsic `report_stellar_transaction`
+        //         .sign_and_submit_then_watch(&signer)
+        //         .await
+        // })
+        // .await?;
+        Ok(())
     }
 }
