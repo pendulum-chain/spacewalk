@@ -1,4 +1,4 @@
-use crate::{error::Error, execution::*};
+use crate::error::Error;
 use parity_scale_codec::{Decode, Encode, MaxEncodedLen};
 use runtime::{AccountId, Balance, InterBtcParachain, RedeemPallet, RequestRedeemEvent, SpacewalkPallet};
 use serde::{Deserialize, Deserializer};
@@ -305,7 +305,8 @@ impl Convert<(Vec<u8>, Vec<u8>), Result<CurrencyId, ()>> for StringCurrencyConve
     }
 }
 
-// Network functions
+/////////////////
+/// Deposit
 
 // TODO replace with key that is supplied by CLI config
 const ESCROW_SECRET_KEY: &str = "SA4OOLVVZV2W7XAKFXUEKLMQ6Y2W5JBENHO5LP6W6BCPBU3WUZ5EBT7K";
@@ -430,7 +431,8 @@ pub async fn poll_horizon_for_new_transactions(parachain_rpc: InterBtcParachain)
     }
 }
 
-// Withdrawal
+/////////////////
+/// Withdrawal
 
 async fn fetch_from_remote(request_url: &str) -> Result<HorizonAccountResponse, Error> {
     tracing::info!("Sending request to: {}", request_url);
@@ -581,11 +583,11 @@ pub async fn listen_for_redeem_requests(
                 // Spawn a new task so that we handle these events concurrently
                 spawn_cancelable(shutdown_tx.subscribe(), async move {
                     tracing::info!("Executing redeem #{:?}", event.redeem_id);
-                    // FIXME
                     let currency_id: CurrencyId = CurrencyId::Native;
                     let destination = AccountId::new([1u8; 32]);
                     let amount = 1000;
 
+                    // FIXME
                     // let destination = AccountId::from(event.destination_account_id);
                     // let currency_id = event.currenncy_id;
                     // let amount = event.amount;

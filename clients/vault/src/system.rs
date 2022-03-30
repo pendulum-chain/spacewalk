@@ -5,7 +5,6 @@ use crate::{
     Event, IssueRequests, CHAIN_HEIGHT_POLLING_INTERVAL,
 };
 use async_trait::async_trait;
-use bitcoin::{BitcoinCore, BitcoinCoreApi, Error as BitcoinError};
 use clap::Parser;
 use futures::{
     channel::{mpsc, mpsc::Sender},
@@ -192,29 +191,6 @@ impl VaultService {
         tracing::info!("Using {} bitcoin confirmations", num_confirmations);
 
         self.maybe_register_vault().await?;
-
-        // purposefully _after_ maybe_register_vault
-        // self.vault_id_manager.fetch_vault_ids(false).await?;
-
-        let startup_height = self.await_parachain_block().await?;
-
-        let open_request_executor = execute_open_requests(
-            self.shutdown.clone(),
-            self.btc_parachain.clone(),
-            num_confirmations,
-            self.config.payment_margin_minutes,
-            !self.config.no_auto_refund,
-        );
-        tokio::spawn(async move {
-            tracing::info!("Checking for open requests...");
-            match open_request_executor.await {
-                Ok(_) => tracing::info!("Done processing open requests"),
-                Err(e) => tracing::error!("Failed to process open requests: {}", e),
-            }
-        });
-
-        // get the relay chain tip but don't error because the relay may not be initialized
-        let initial_btc_height = self.btc_parachain.get_best_block_height().await.unwrap_or_default();
 
         // issue handling
         let (issue_event_tx, issue_event_rx) = mpsc::channel::<Event>(32);

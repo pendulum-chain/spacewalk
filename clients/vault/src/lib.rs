@@ -2,16 +2,12 @@
 
 mod cancellation;
 mod error;
-mod execution;
 mod horizon;
 mod system;
 mod types;
 
 pub mod service {
-    pub use crate::{
-        cancellation::{CancellationScheduler, IssueCanceller, ReplaceCanceller},
-        execution::execute_open_requests,
-    };
+    pub use crate::cancellation::CancellationScheduler;
 }
 use std::time::Duration;
 pub use system::{VaultService, VaultServiceConfig, ABOUT, AUTHORS, NAME, VERSION};
