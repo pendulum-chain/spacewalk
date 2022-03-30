@@ -1,12 +1,7 @@
 use crate::{
-    collateral::lock_required_collateral,
     error::Error,
-    faucet,
     horizon::{listen_for_redeem_requests, poll_horizon_for_new_transactions},
-    issue,
-    relay::run_relayer,
     service::*,
-    vaults::Vaults,
     Event, IssueRequests, CHAIN_HEIGHT_POLLING_INTERVAL,
 };
 use async_trait::async_trait;
@@ -145,116 +140,6 @@ async fn relay_block_listener(
         )
         .await?;
     Ok(())
-}
-
-#[derive(Clone)]
-pub struct VaultIdManager<BCA: BitcoinCoreApi + Clone + Send + Sync + 'static> {
-    bitcoin_rpcs: Arc<RwLock<HashMap<VaultId, BCA>>>,
-    btc_parachain: InterBtcParachain,
-    // TODO: refactor this
-    #[allow(clippy::type_complexity)]
-    constructor: Arc<Box<dyn Fn(VaultId) -> Result<BCA, BitcoinError> + Send + Sync>>,
-}
-
-impl<BCA: BitcoinCoreApi + Clone + Send + Sync + 'static> VaultIdManager<BCA> {
-    pub fn new(
-        btc_parachain: InterBtcParachain,
-        constructor: impl Fn(VaultId) -> Result<BCA, BitcoinError> + Send + Sync + 'static,
-    ) -> Self {
-        Self {
-            bitcoin_rpcs: Arc::new(RwLock::new(HashMap::new())),
-            constructor: Arc::new(Box::new(constructor)),
-            btc_parachain,
-        }
-    }
-
-    // used for testing only
-    pub fn from_map(btc_parachain: InterBtcParachain, map: HashMap<VaultId, BCA>) -> Self {
-        Self {
-            bitcoin_rpcs: Arc::new(RwLock::new(map)),
-            constructor: Arc::new(Box::new(|_| unimplemented!())),
-            btc_parachain,
-        }
-    }
-
-    async fn add_vault_id(&self, vault_id: VaultId) -> Result<BCA, Error> {
-        let btc_rpc = (*self.constructor)(vault_id.clone())?;
-
-        // load wallet. Exit on failure, since without wallet we can't do a lot
-        btc_rpc
-            .create_or_load_wallet()
-            .await
-            .map_err(Error::WalletInitializationFailure)?;
-
-        if let Ok(vault) = self.btc_parachain.get_vault(&vault_id).await {
-            if !btc_rpc.wallet_has_public_key(vault.wallet.public_key.0).await? {
-                return Err(bitcoin::Error::MissingPublicKey.into());
-            }
-        }
-        issue::add_keys_from_past_issue_request(&btc_rpc, &self.btc_parachain).await?;
-
-        self.bitcoin_rpcs.write().await.insert(vault_id, btc_rpc.clone());
-
-        Ok(btc_rpc)
-    }
-
-    pub async fn fetch_vault_ids(&self, startup_collateral_increase: bool) -> Result<(), Error> {
-        for vault_id in self
-            .btc_parachain
-            .get_vaults_by_account_id(self.btc_parachain.get_account_id())
-            .await?
-        {
-            self.add_vault_id(vault_id.clone()).await?;
-
-            if startup_collateral_increase {
-                // check if the vault is registered
-                match lock_required_collateral(self.btc_parachain.clone(), vault_id).await {
-                    Err(Error::RuntimeError(runtime::Error::VaultNotFound)) => {} // not registered
-                    Err(e) => tracing::error!("Failed to lock required additional collateral: {}", e),
-                    _ => {} // collateral level now OK
-                };
-            }
-        }
-        Ok(())
-    }
-
-    pub async fn listen_for_vault_id_registrations(self) -> Result<(), ServiceError> {
-        Ok(self
-            .btc_parachain
-            .on_event::<RegisterVaultEvent, _, _, _>(
-                |event| async {
-                    let vault_id = event.vault_id;
-                    if self.btc_parachain.is_this_vault(&vault_id) {
-                        tracing::info!("New vault registered: {}", vault_id.pretty_printed());
-                        let _ = self.add_vault_id(vault_id).await;
-                    }
-                },
-                |err| tracing::error!("Error (RegisterVaultEvent): {}", err.to_string()),
-            )
-            .await?)
-    }
-
-    pub async fn get_bitcoin_rpc(&self, vault_id: &VaultId) -> Option<BCA> {
-        self.bitcoin_rpcs.read().await.get(vault_id).cloned()
-    }
-
-    pub async fn get_vault_ids(&self) -> Vec<VaultId> {
-        self.bitcoin_rpcs
-            .read()
-            .await
-            .iter()
-            .map(|(vault_id, _)| vault_id.clone())
-            .collect()
-    }
-
-    pub async fn get_vault_btc_rpcs(&self) -> Vec<(VaultId, BCA)> {
-        self.bitcoin_rpcs
-            .read()
-            .await
-            .iter()
-            .map(|(vault_id, btc_rpc)| (vault_id.clone(), btc_rpc.clone()))
-            .collect()
-    }
 }
 
 pub struct VaultService {

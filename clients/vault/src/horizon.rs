@@ -1,4 +1,4 @@
-use crate::{error::Error, execution::*, system::VaultIdManager};
+use crate::{error::Error, execution::*};
 use parity_scale_codec::{Decode, Encode, MaxEncodedLen};
 use runtime::{AccountId, Balance, InterBtcParachain, RedeemPallet, RequestRedeemEvent, SpacewalkPallet};
 use serde::{Deserialize, Deserializer};

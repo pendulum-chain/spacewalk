@@ -1,4 +1,4 @@
-use crate::{error::Error, VaultIdManager};
+use crate::error::Error;
 use bitcoin::{
     BitcoinCoreApi, PartialAddress, Transaction, TransactionExt, TransactionMetadata,
     BLOCK_INTERVAL as BITCOIN_BLOCK_INTERVAL,
