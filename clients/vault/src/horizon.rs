@@ -26,6 +26,10 @@ use stellar::{
 use substrate_stellar_sdk as stellar;
 use tokio::time::sleep;
 
+const POLL_INTERVAL: u64 = 5000;
+const FETCH_TIMEOUT_PERIOD: u64 = 3000;
+const SUBMISSION_TIMEOUT_PERIOD: u64 = 10000;
+
 // This represents each record for a transaction in the Horizon API response
 #[derive(Deserialize, Encode, Decode, Default, Debug)]
 pub struct Transaction {
@@ -418,10 +422,6 @@ async fn fetch_horizon_and_process_new_transactions(parachain_rpc: &InterBtcPara
     }
 }
 
-const POLL_INTERVAL: u64 = 5000;
-const FETCH_TIMEOUT_PERIOD: u64 = 3000;
-const SUBMISSION_TIMEOUT_PERIOD: u64 = 10000;
-
 pub async fn poll_horizon_for_new_transactions(parachain_rpc: InterBtcParachain) -> Result<(), ServiceError> {
     // Start polling horizon every 5 seconds
     loop {
@@ -502,7 +502,7 @@ fn try_once_submit_stellar_tx(tx: &stellar::TransactionEnvelope) -> Result<(), E
             match error {
                 stellar::horizon::FetchError::UnexpectedResponseStatus { status, body } => {
                     tracing::error!("Unexpected HTTP request status code: {}", status);
-                    tracing::error!("  Response body: {}", str::from_utf8(&body).unwrap());
+                    tracing::error!("Response body: {}", str::from_utf8(&body).unwrap());
                 }
                 _ => (),
             }
@@ -561,12 +561,6 @@ async fn execute_withdrawal(amount: Balance, currency_id: CurrencyId, destinatio
     result
 }
 
-/// Listen for RequestRedeemEvent directed at this vault; upon reception, transfer
-/// bitcoin and call execute_redeem
-///
-/// # Arguments
-///
-/// * `parachain_rpc` - the parachain RPC handle
 pub async fn listen_for_redeem_requests(
     shutdown_tx: ShutdownSender,
     parachain_rpc: InterBtcParachain,
@@ -586,6 +580,9 @@ pub async fn listen_for_redeem_requests(
                     let currency_id: CurrencyId = CurrencyId::Native;
                     let destination = AccountId::new([1u8; 32]);
                     let amount = 1000;
+
+                    // TODO check if transaction paid funds to escrow account of vault and only then create the
+                    // appropriate withdrawal transaction
 
                     // FIXME
                     // let destination = AccountId::from(event.destination_account_id);
