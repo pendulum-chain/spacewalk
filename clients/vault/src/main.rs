@@ -15,10 +15,6 @@ pub struct Opts {
     #[clap(flatten)]
     pub parachain: runtime::cli::ConnectionOpts,
 
-    /// Connection settings for Bitcoin Core.
-    #[clap(flatten)]
-    pub bitcoin: bitcoin::cli::BitcoinOpts,
-
     /// Settings specific to the vault client.
     #[clap(flatten)]
     pub vault: VaultServiceConfig,
@@ -38,7 +34,6 @@ async fn start() -> Result<(), Error> {
     ConnectionManager::<_, VaultService>::new(
         signer.clone(),
         Some(wallet_name.to_string()),
-        opts.bitcoin,
         opts.parachain,
         opts.service,
         opts.vault,

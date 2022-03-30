@@ -30,7 +30,6 @@ pub trait Service<Config> {
 pub struct ConnectionManager<Config: Clone, S: Service<Config>> {
     signer: InterBtcSigner,
     wallet_name: Option<String>,
-    bitcoin_config: BitcoinConfig,
     parachain_config: ParachainConfig,
     service_config: ServiceConfig,
     config: Config,
@@ -41,7 +40,6 @@ impl<Config: Clone + Send + 'static, S: Service<Config>> ConnectionManager<Confi
     pub fn new(
         signer: InterBtcSigner,
         wallet_name: Option<String>,
-        bitcoin_config: BitcoinConfig,
         parachain_config: ParachainConfig,
         service_config: ServiceConfig,
         config: Config,
@@ -49,7 +47,6 @@ impl<Config: Clone + Send + 'static, S: Service<Config>> ConnectionManager<Confi
         Self {
             signer,
             wallet_name,
-            bitcoin_config,
             parachain_config,
             service_config,
             config,
