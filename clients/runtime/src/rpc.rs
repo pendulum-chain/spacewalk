@@ -357,23 +357,21 @@ impl UtilFuncs for InterBtcParachain {
 }
 #[async_trait]
 pub trait SpacewalkPallet {
-    async fn report_stellar_transaction(&self, tx_envelope: stellar::TransactionEnvelope) -> Result<(), Error>;
+    async fn report_stellar_transaction(&self, tx_envelope_xdr: &Vec<u8>) -> Result<(), Error>;
 }
 
 #[async_trait]
 impl SpacewalkPallet for InterBtcParachain {
-    async fn report_stellar_transaction(&self, tx_envelope: stellar::TransactionEnvelope) -> Result<(), Error> {
-        // TODO uncomment once we have metadata of chain that implements spacewalk pallet
-        // let tx = &tx_envelope;
-        // self.with_unique_signer(|signer| async move {
-        //     self.api
-        //         .tx()
-        //         .spacewalk() // assume that spacewalk pallet is registered in connected chain
-        //         .report_stellar_transaction(tx.clone()) // spacewalk pallet offers extrinsic
-        // `report_stellar_transaction`         .sign_and_submit_then_watch(&signer)
-        //         .await
-        // })
-        // .await?;
+    async fn report_stellar_transaction(&self, tx_envelope_xdr: &Vec<u8>) -> Result<(), Error> {
+        self.with_unique_signer(|signer| async move {
+            self.api
+                .tx()
+                .spacewalk() // assume that spacewalk pallet is registered in connected chain
+                .report_stellar_transaction(tx_envelope_xdr.to_vec()) // spacewalk pallet offers extrinsic `report_stellar_transaction`
+                .sign_and_submit_then_watch(&signer)
+                .await
+        })
+        .await?;
         Ok(())
     }
 }

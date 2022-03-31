@@ -1,6 +1,6 @@
 use crate::error::Error;
 use parity_scale_codec::{Decode, Encode, MaxEncodedLen};
-use runtime::{AccountId, Balance, InterBtcParachain, RedeemPallet, RequestRedeemEvent, SpacewalkPallet};
+use runtime::{AccountId, Balance, InterBtcParachain, RedeemEvent, SpacewalkPallet};
 use serde::{Deserialize, Deserializer};
 use service::{spawn_cancelable, Error as ServiceError, ShutdownSender};
 use sp_core::ed25519;
@@ -384,12 +384,11 @@ fn is_unhandled_transaction(tx: &Transaction) -> bool {
 }
 
 fn report_transaction(parachain_rpc: &InterBtcParachain, tx: &Transaction) -> Result<(), Error> {
-    // Decode transaction to Base64 and then to Stellar XDR
+    // Decode transaction to Base64 
     let tx_xdr = base64::decode(&tx.envelope_xdr).unwrap();
-    let tx_envelope = stellar::TransactionEnvelope::from_xdr(&tx_xdr).unwrap();
 
     // Send new transaction to spacewalk bridge pallet
-    parachain_rpc.report_stellar_transaction(tx_envelope);
+    parachain_rpc.report_stellar_transaction(&tx_xdr);
     Ok(())
 }
 
@@ -540,28 +539,30 @@ async fn execute_withdrawal(
     escrow_secret_key: &String,
     amount: Balance,
     currency_id: CurrencyId,
-    destination: AccountId,
+    destination_stellar_address: PublicKey,
 ) -> Result<(), Error> {
-    let pendulum_account_id = destination;
-
     let asset = CurrencyConversion::lookup(currency_id)?;
 
     let escrow_keypair: SecretKey = SecretKey::from_encoding(escrow_secret_key).unwrap();
     let escrow_encoded = escrow_keypair.get_public().to_encoding().clone();
     let escrow_address = str::from_utf8(escrow_encoded.as_slice())?;
 
-    let stellar_address = AddressConversion::lookup(pendulum_account_id.clone())?;
-
     tracing::info!("Execute withdrawal: ({:?}, {:?})", currency_id, amount,);
 
     let seq_no = fetch_latest_seq_no(escrow_address).await.map(|seq_no| seq_no + 1)?;
-    let transaction = create_withdrawal_tx(escrow_secret_key, &stellar_address, seq_no as i64, asset, amount)?;
+    let transaction = create_withdrawal_tx(
+        escrow_secret_key,
+        &destination_stellar_address,
+        seq_no as i64,
+        asset,
+        amount,
+    )?;
     let signed_envelope = sign_stellar_tx(transaction, escrow_keypair)?;
 
     let result = submit_stellar_tx(signed_envelope);
     tracing::info!(
         "✔️  Successfully submitted withdrawal transaction to Stellar, crediting {}",
-        str::from_utf8(stellar_address.to_encoding().as_slice()).unwrap()
+        str::from_utf8(destination_stellar_address.to_encoding().as_slice()).unwrap()
     );
 
     result
@@ -574,40 +575,44 @@ pub async fn listen_for_redeem_requests(
 ) -> Result<(), ServiceError> {
     tracing::info!("Starting to listen for redeem requests…");
     parachain_rpc
-        .on_event::<RequestRedeemEvent, _, _, _>(
+        .on_event::<RedeemEvent, _, _, _>(
             |event| async {
                 tracing::info!("Received redeem request: {:?}", event);
-
-                let secret_key = escrow_secret_key.clone();
 
                 // within this event callback, we captured the arguments of listen_for_redeem_requests
                 // by reference. Since spawn requires static lifetimes, we will need to capture the
                 // arguments by value rather than by reference, so clone these:
+                let secret_key = escrow_secret_key.clone();
+                let asset_code = event.asset_code.clone();
+                let asset_issuer = event.asset_issuer.clone();
+                let stellar_user_id = event.stellar_user_id.clone();
+                let stellar_vault_id = event.stellar_vault_id.clone();
+                let amount = event.amount.clone();
+
+                if !is_escrow(&escrow_secret_key, stellar_user_id.clone().try_into().unwrap()) {
+                    tracing::info!("Rejecting redeem request: not an escrow");
+                    return;
+                }
+
                 // Spawn a new task so that we handle these events concurrently
                 spawn_cancelable(shutdown_tx.subscribe(), async move {
-                    tracing::info!("Executing redeem #{:?}", event.redeem_id);
-                    let currency_id: CurrencyId = CurrencyId::Native;
-                    let destination = AccountId::new([1u8; 32]);
-                    let amount = 1000;
+                    tracing::info!("Executing redeem #{:?}", event);
 
-                    // TODO check if transaction paid funds to escrow account of vault and only then create the
-                    // appropriate withdrawal transaction
+                    let currency_id = StringCurrencyConversion::convert((asset_code, asset_issuer)).unwrap();
+                    let destination_stellar_address = stellar::PublicKey::from_encoding(stellar_user_id).unwrap();
 
-                    // FIXME
-                    // let destination = AccountId::from(event.destination_account_id);
-                    // let currency_id = event.currenncy_id;
-                    // let amount = event.amount;
-                    let result = execute_withdrawal(&secret_key, amount, currency_id, destination).await;
+                    let result =
+                        execute_withdrawal(&secret_key, amount, currency_id, destination_stellar_address).await;
 
                     match result {
                         Ok(_) => tracing::info!(
-                            "Completed redeem request #{} with amount {}",
-                            event.redeem_id,
+                            "Completed redeem request with amount {}",
+                            // event.redeem_id,
                             event.amount
                         ),
                         Err(e) => tracing::error!(
-                            "Failed to process redeem request #{}: {}",
-                            event.redeem_id,
+                            "Failed to process redeem request: {}",
+                            // event.redeem_id,
                             e.to_string()
                         ),
                     }
