@@ -312,18 +312,15 @@ impl Convert<(Vec<u8>, Vec<u8>), Result<CurrencyId, ()>> for StringCurrencyConve
 /////////////////
 /// Deposit
 
-// TODO replace with key that is supplied by CLI config
-const ESCROW_SECRET_KEY: &str = "SA4OOLVVZV2W7XAKFXUEKLMQ6Y2W5JBENHO5LP6W6BCPBU3WUZ5EBT7K";
-
-fn is_escrow(public_key: [u8; 32]) -> bool {
-    let escrow_keypair: SecretKey = SecretKey::from_encoding(ESCROW_SECRET_KEY).unwrap();
+fn is_escrow(escrow_key: &String, public_key: [u8; 32]) -> bool {
+    let escrow_keypair: SecretKey = SecretKey::from_encoding(escrow_key).unwrap();
     return public_key == *escrow_keypair.get_public().as_binary();
 }
 
 /// Fetch recent transactions from remote and deserialize to HorizonResponse
 /// Since the limit in the request url is set to one it will always fetch just one
-async fn fetch_latest_txs() -> Result<HorizonTransactionsResponse, Error> {
-    let escrow_keypair: SecretKey = SecretKey::from_encoding(ESCROW_SECRET_KEY).unwrap();
+async fn fetch_latest_txs(escrow_secret_key: &String) -> Result<HorizonTransactionsResponse, Error> {
+    let escrow_keypair: SecretKey = SecretKey::from_encoding(escrow_secret_key).unwrap();
     let escrow_address = escrow_keypair.get_public();
 
     let request_url = String::from("https://horizon-testnet.stellar.org/accounts/")
@@ -396,8 +393,8 @@ fn report_transaction(parachain_rpc: &InterBtcParachain, tx: &Transaction) -> Re
     Ok(())
 }
 
-async fn fetch_horizon_and_process_new_transactions(parachain_rpc: &InterBtcParachain) {
-    let res = fetch_latest_txs().await;
+async fn fetch_horizon_and_process_new_transactions(parachain_rpc: &InterBtcParachain, escrow_secret_key: &String) {
+    let res = fetch_latest_txs(escrow_secret_key).await;
     let transactions = match res {
         Ok(txs) => txs._embedded.records,
         Err(e) => {
@@ -422,10 +419,13 @@ async fn fetch_horizon_and_process_new_transactions(parachain_rpc: &InterBtcPara
     }
 }
 
-pub async fn poll_horizon_for_new_transactions(parachain_rpc: InterBtcParachain) -> Result<(), ServiceError> {
+pub async fn poll_horizon_for_new_transactions(
+    parachain_rpc: InterBtcParachain,
+    escrow_secret_key: String,
+) -> Result<(), ServiceError> {
     // Start polling horizon every 5 seconds
     loop {
-        fetch_horizon_and_process_new_transactions(&parachain_rpc).await;
+        fetch_horizon_and_process_new_transactions(&parachain_rpc, &escrow_secret_key).await;
 
         sleep(Duration::from_millis(POLL_INTERVAL)).await;
     }
@@ -513,6 +513,7 @@ fn try_once_submit_stellar_tx(tx: &stellar::TransactionEnvelope) -> Result<(), E
 }
 
 fn create_withdrawal_tx(
+    escrow_secret_key: &String,
     stellar_addr: &stellar::PublicKey,
     seq_num: i64,
     asset: stellar::Asset,
@@ -520,7 +521,7 @@ fn create_withdrawal_tx(
 ) -> Result<stellar::Transaction, Error> {
     let destination_addr = stellar_addr.as_binary();
 
-    let source_keypair: SecretKey = SecretKey::from_encoding(ESCROW_SECRET_KEY).unwrap();
+    let source_keypair: SecretKey = SecretKey::from_encoding(escrow_secret_key).unwrap();
 
     let source_pubkey = source_keypair.get_public().clone();
 
@@ -535,12 +536,17 @@ fn create_withdrawal_tx(
     Ok(tx)
 }
 
-async fn execute_withdrawal(amount: Balance, currency_id: CurrencyId, destination: AccountId) -> Result<(), Error> {
+async fn execute_withdrawal(
+    escrow_secret_key: &String,
+    amount: Balance,
+    currency_id: CurrencyId,
+    destination: AccountId,
+) -> Result<(), Error> {
     let pendulum_account_id = destination;
 
     let asset = CurrencyConversion::lookup(currency_id)?;
 
-    let escrow_keypair: SecretKey = SecretKey::from_encoding(ESCROW_SECRET_KEY).unwrap();
+    let escrow_keypair: SecretKey = SecretKey::from_encoding(escrow_secret_key).unwrap();
     let escrow_encoded = escrow_keypair.get_public().to_encoding().clone();
     let escrow_address = str::from_utf8(escrow_encoded.as_slice())?;
 
@@ -549,7 +555,7 @@ async fn execute_withdrawal(amount: Balance, currency_id: CurrencyId, destinatio
     tracing::info!("Execute withdrawal: ({:?}, {:?})", currency_id, amount,);
 
     let seq_no = fetch_latest_seq_no(escrow_address).await.map(|seq_no| seq_no + 1)?;
-    let transaction = create_withdrawal_tx(&stellar_address, seq_no as i64, asset, amount)?;
+    let transaction = create_withdrawal_tx(escrow_secret_key, &stellar_address, seq_no as i64, asset, amount)?;
     let signed_envelope = sign_stellar_tx(transaction, escrow_keypair)?;
 
     let result = submit_stellar_tx(signed_envelope);
@@ -564,12 +570,15 @@ async fn execute_withdrawal(amount: Balance, currency_id: CurrencyId, destinatio
 pub async fn listen_for_redeem_requests(
     shutdown_tx: ShutdownSender,
     parachain_rpc: InterBtcParachain,
+    escrow_secret_key: String,
 ) -> Result<(), ServiceError> {
     tracing::info!("Starting to listen for redeem requests…");
     parachain_rpc
         .on_event::<RequestRedeemEvent, _, _, _>(
             |event| async {
                 tracing::info!("Received redeem request: {:?}", event);
+
+                let secret_key = escrow_secret_key.clone();
 
                 // within this event callback, we captured the arguments of listen_for_redeem_requests
                 // by reference. Since spawn requires static lifetimes, we will need to capture the
@@ -588,7 +597,7 @@ pub async fn listen_for_redeem_requests(
                     // let destination = AccountId::from(event.destination_account_id);
                     // let currency_id = event.currenncy_id;
                     // let amount = event.amount;
-                    let result = execute_withdrawal(amount, currency_id, destination).await;
+                    let result = execute_withdrawal(&secret_key, amount, currency_id, destination).await;
 
                     match result {
                         Ok(_) => tracing::info!(

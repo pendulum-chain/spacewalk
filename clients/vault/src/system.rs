@@ -29,78 +29,8 @@ pub const ABOUT: &str = env!("CARGO_PKG_DESCRIPTION");
 
 #[derive(Parser, Clone, Debug)]
 pub struct VaultServiceConfig {
-    /// Automatically register the vault with the given amount of collateral and a newly generated address.
-    #[clap(long)]
-    pub auto_register_with_collateral: Option<u128>,
-
-    /// Automatically register the vault with the collateral received from the faucet and a newly generated address.
-    /// The parameter is the URL of the faucet
-    #[clap(long, conflicts_with("auto-register-with-collateral"))]
-    pub auto_register_with_faucet_url: Option<String>,
-
-    /// Opt out of participation in replace requests.
-    #[clap(long)]
-    pub no_auto_replace: bool,
-
-    /// Don't try to execute issues.
-    #[clap(long)]
-    pub no_issue_execution: bool,
-
-    /// Don't run the RPC API.
-    #[clap(long)]
-    pub no_api: bool,
-
-    /// Timeout in milliseconds to repeat collateralization checks.
-    #[clap(long, parse(try_from_str = parse_duration_ms), default_value = "5000")]
-    pub collateral_timeout_ms: Duration,
-
-    /// How many bitcoin confirmations to wait for. If not specified, the
-    /// parachain settings will be used (recommended).
-    #[clap(long)]
-    pub btc_confirmations: Option<u32>,
-
-    /// Minimum time to the the redeem/replace execution deadline to make the bitcoin payment.
-    #[clap(long, parse(try_from_str = parse_duration_minutes), default_value = "120")]
-    pub payment_margin_minutes: Duration,
-
-    /// Starting height for vault theft checks, if not defined
-    /// automatically start from the chain tip.
-    #[clap(long)]
-    pub bitcoin_theft_start_height: Option<u32>,
-
-    /// Timeout in milliseconds to poll Bitcoin.
-    #[clap(long, parse(try_from_str = parse_duration_ms), default_value = "6000")]
-    pub bitcoin_poll_interval_ms: Duration,
-
-    /// Starting height to relay block headers, if not defined
-    /// use the best height as reported by the relay module.
-    #[clap(long)]
-    pub bitcoin_relay_start_height: Option<u32>,
-
-    /// Max batch size for combined block header submission.
-    #[clap(long, default_value = "16")]
-    pub max_batch_size: u32,
-
-    /// Number of confirmations a block needs to have before it is submitted.
-    #[clap(long, default_value = "0")]
-    pub bitcoin_relay_confirmations: u32,
-
-    /// Don't relay bitcoin block headers.
-    #[clap(long)]
-    pub no_bitcoin_block_relay: bool,
-
-    /// Don't monitor vault thefts.
-    #[clap(long)]
-    pub no_vault_theft_report: bool,
-
-    /// Don't refund overpayments.
-    #[clap(long)]
-    pub no_auto_refund: bool,
-
-    /// The currency to use for the collateral, e.g. "DOT" or "KSM".
-    /// Defaults to the relay chain currency if not set.
-    #[clap(long, parse(try_from_str = parse_collateral_currency))]
-    pub collateral_currency_id: Option<CurrencyId>,
+    #[clap(long, help = "The Stellar secret key that is used to sign transactions.")]
+    pub stellar_escrow_secret_key: String,
 }
 
 async fn active_block_listener(
@@ -184,12 +114,6 @@ impl VaultService {
     async fn run_service(&self) -> Result<(), Error> {
         let account_id = self.btc_parachain.get_account_id().clone();
 
-        let num_confirmations = match self.config.btc_confirmations {
-            Some(x) => x,
-            None => self.btc_parachain.get_bitcoin_confirmations().await?,
-        };
-        tracing::info!("Using {} bitcoin confirmations", num_confirmations);
-
         self.maybe_register_vault().await?;
 
         // issue handling
@@ -217,13 +141,17 @@ impl VaultService {
 
         let horizon_poller = wait_or_shutdown(
             self.shutdown.clone(),
-            poll_horizon_for_new_transactions(self.btc_parachain.clone()),
+            poll_horizon_for_new_transactions(self.btc_parachain.clone(), self.config.stellar_escrow_secret_key.clone()),
         );
 
         // redeem handling
         let redeem_listener = wait_or_shutdown(
             self.shutdown.clone(),
-            listen_for_redeem_requests(self.shutdown.clone(), self.btc_parachain.clone()),
+            listen_for_redeem_requests(
+                self.shutdown.clone(),
+                self.btc_parachain.clone(),
+                self.config.stellar_escrow_secret_key.clone(),
+            ),
         );
 
         // starts all the tasks
