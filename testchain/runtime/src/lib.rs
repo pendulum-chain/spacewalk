@@ -335,7 +335,7 @@ construct_runtime!(
 		TransactionPayment: pallet_transaction_payment,
 		Sudo: pallet_sudo,
 		// Include the custom logic from the spacewalk-pallet in the runtime.
-		SpacewalkModule: pallet_spacewalk,
+		Spacewalk: pallet_spacewalk,
 		Currencies: orml_currencies,
 		Tokens: orml_tokens,
 		
@@ -381,7 +381,7 @@ mod benches {
 		[frame_system, SystemBench::<Runtime>]
 		[pallet_balances, Balances]
 		[pallet_timestamp, Timestamp]
-		[pallet_spacewalk, SpacewalkModule]
+		[pallet_spacewalk, Spacewalk]
 	);
 }
 
