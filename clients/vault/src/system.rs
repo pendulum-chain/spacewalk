@@ -14,9 +14,7 @@ use futures::{
 use git_version::git_version;
 use runtime::{
     cli::{parse_duration_minutes, parse_duration_ms},
-    parse_collateral_currency, BtcRelayPallet, CollateralBalancesPallet, CurrencyId, Error as RuntimeError,
-    InterBtcParachain, RegisterVaultEvent, StoreMainChainHeaderEvent, UpdateActiveBlockEvent, UtilFuncs,
-    VaultCurrencyPair, VaultId, VaultRegistryPallet,
+    parse_collateral_currency, CurrencyId, Error as RuntimeError, InterBtcParachain, UtilFuncs,
 };
 use service::{wait_or_shutdown, Error as ServiceError, Service, ShutdownSender};
 use std::{collections::HashMap, sync::Arc, time::Duration};
@@ -31,44 +29,6 @@ pub const ABOUT: &str = env!("CARGO_PKG_DESCRIPTION");
 pub struct VaultServiceConfig {
     #[clap(long, help = "The Stellar secret key that is used to sign transactions.")]
     pub stellar_escrow_secret_key: String,
-}
-
-async fn active_block_listener(
-    parachain_rpc: InterBtcParachain,
-    issue_tx: Sender<Event>,
-    replace_tx: Sender<Event>,
-) -> Result<(), ServiceError> {
-    let issue_tx = &issue_tx;
-    let replace_tx = &replace_tx;
-    parachain_rpc
-        .on_event::<UpdateActiveBlockEvent, _, _, _>(
-            |event| async move {
-                let _ = issue_tx.clone().send(Event::ParachainBlock(event.block_number)).await;
-                let _ = replace_tx.clone().send(Event::ParachainBlock(event.block_number)).await;
-            },
-            |err| tracing::error!("Error (UpdateActiveBlockEvent): {}", err.to_string()),
-        )
-        .await?;
-    Ok(())
-}
-
-async fn relay_block_listener(
-    parachain_rpc: InterBtcParachain,
-    issue_tx: Sender<Event>,
-    replace_tx: Sender<Event>,
-) -> Result<(), ServiceError> {
-    let issue_tx = &issue_tx;
-    let replace_tx = &replace_tx;
-    parachain_rpc
-        .on_event::<StoreMainChainHeaderEvent, _, _, _>(
-            |event| async move {
-                let _ = issue_tx.clone().send(Event::BitcoinBlock(event.block_height)).await;
-                let _ = replace_tx.clone().send(Event::BitcoinBlock(event.block_height)).await;
-            },
-            |err| tracing::error!("Error (StoreMainChainHeaderEvent): {}", err.to_string()),
-        )
-        .await?;
-    Ok(())
 }
 
 pub struct VaultService {
@@ -114,23 +74,6 @@ impl VaultService {
     async fn run_service(&self) -> Result<(), Error> {
         let account_id = self.btc_parachain.get_account_id().clone();
 
-        self.maybe_register_vault().await?;
-
-        // issue handling
-        let (issue_event_tx, issue_event_rx) = mpsc::channel::<Event>(32);
-        // replace handling
-        let (replace_event_tx, replace_event_rx) = mpsc::channel::<Event>(16);
-
-        // listen for parachain blocks, used for cancellation
-        let parachain_block_listener = wait_or_shutdown(
-            self.shutdown.clone(),
-            active_block_listener(
-                self.btc_parachain.clone(),
-                issue_event_tx.clone(),
-                replace_event_tx.clone(),
-            ),
-        );
-
         let err_provider = self.btc_parachain.clone();
         let err_listener = wait_or_shutdown(self.shutdown.clone(), async move {
             err_provider
@@ -141,7 +84,10 @@ impl VaultService {
 
         let horizon_poller = wait_or_shutdown(
             self.shutdown.clone(),
-            poll_horizon_for_new_transactions(self.btc_parachain.clone(), self.config.stellar_escrow_secret_key.clone()),
+            poll_horizon_for_new_transactions(
+                self.btc_parachain.clone(),
+                self.config.stellar_escrow_secret_key.clone(),
+            ),
         );
 
         // redeem handling
@@ -159,18 +105,12 @@ impl VaultService {
         let _ = tokio::join!(
             // runs error listener to log errors
             tokio::spawn(async move { err_listener.await }),
-            // replace & issue cancellation helpers
-            tokio::spawn(async move { parachain_block_listener.await }),
             // listen for deposits
             tokio::task::spawn(async move { horizon_poller.await }),
             // listen for redeem events
             tokio::spawn(async move { redeem_listener.await }),
         );
 
-        Ok(())
-    }
-
-    async fn maybe_register_vault(&self) -> Result<(), Error> {
         Ok(())
     }
 
@@ -184,13 +124,5 @@ impl VaultService {
         }
         tracing::info!("Got new block...");
         Ok(startup_height)
-    }
-}
-
-pub(crate) async fn is_vault_registered(parachain_rpc: &InterBtcParachain, vault_id: &VaultId) -> Result<bool, Error> {
-    match parachain_rpc.get_vault(vault_id).await {
-        Ok(_) => Ok(true),
-        Err(RuntimeError::VaultNotFound) => Ok(false),
-        Err(err) => Err(err.into()),
     }
 }

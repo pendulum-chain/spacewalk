@@ -7,12 +7,6 @@ mod rpc;
 
 pub mod types;
 
-#[cfg(test)]
-mod tests;
-
-#[cfg(all(feature = "testing-utils", feature = "standalone-metadata"))]
-pub mod integration;
-
 use codec::{Decode, Encode};
 use sp_std::marker::PhantomData;
 use subxt::{
@@ -23,15 +17,7 @@ use subxt::{
 pub use error::{Error, SubxtError};
 pub use primitives::CurrencyInfo;
 pub use retry::{notify_retry, RetryPolicy};
-#[cfg(all(
-    feature = "testing-utils",
-    any(feature = "standalone-metadata", feature = "parachain-metadata-testnet")
-))]
-pub use rpc::SudoPallet;
-pub use rpc::{
-    BtcRelayPallet, CollateralBalancesPallet, FeePallet, InterBtcParachain, IssuePallet, OraclePallet, RedeemPallet, 
-    RefundPallet, RelayPallet, ReplacePallet, SecurityPallet, SpacewalkPallet, TimestampPallet, UtilFuncs, VaultRegistryPallet,
-};
+pub use rpc::{InterBtcParachain, SpacewalkPallet, UtilFuncs};
 pub use sp_arithmetic::{traits as FixedPointTraits, FixedI128, FixedPointNumber, FixedU128};
 pub use subxt::{
     sp_core::{crypto::Ss58Codec, sr25519::Pair},
@@ -71,7 +57,7 @@ pub const STABLE_PARACHAIN_CONFIRMATIONS: &str = "StableParachainConfirmations";
     feature = "standalone-metadata",
     subxt(
         runtime_metadata_path = "metadata-standalone.scale",
-        generated_type_derives = "Eq, PartialEq, Ord, PartialOrd, Clone"
+        generated_type_derives = "Clone"
     )
 )]
 pub mod metadata {

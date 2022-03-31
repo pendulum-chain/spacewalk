@@ -1,10 +1,7 @@
 use super::Error;
 use async_trait::async_trait;
 use futures::{channel::mpsc::Receiver, *};
-use runtime::{
-    AccountId, BlockNumber, Error as RuntimeError, IssuePallet, IssueRequestStatus, ReplacePallet,
-    ReplaceRequestStatus, SecurityPallet, UtilFuncs,
-};
+use runtime::{AccountId, BlockNumber, Error as RuntimeError, UtilFuncs};
 use std::marker::{Send, Sync};
 
 use runtime::H256;
@@ -20,7 +17,7 @@ pub enum Event {
     BitcoinBlock(u32),
 }
 
-pub struct CancellationScheduler<P: IssuePallet + ReplacePallet + UtilFuncs + Clone> {
+pub struct CancellationScheduler<P: UtilFuncs + Clone> {
     parachain_rpc: P,
     vault_id: AccountId,
     period: Option<u32>,

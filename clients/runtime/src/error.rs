@@ -139,22 +139,6 @@ impl Error {
         )
     }
 
-    pub fn is_duplicate_block(&self) -> bool {
-        self.is_runtime_err(BTC_RELAY_MODULE, &format!("{:?}", BtcRelayPalletError::DuplicateBlock))
-    }
-
-    pub fn is_invalid_chain_id(&self) -> bool {
-        self.is_runtime_err(BTC_RELAY_MODULE, &format!("{:?}", BtcRelayPalletError::InvalidChainID))
-    }
-
-    pub fn is_issue_completed(&self) -> bool {
-        self.is_runtime_err(ISSUE_MODULE, &format!("{:?}", IssuePalletError::IssueCompleted))
-    }
-
-    pub fn is_valid_refund(&self) -> bool {
-        self.is_runtime_err(RELAY_MODULE, &format!("{:?}", RelayPalletError::ValidRefundTransaction))
-    }
-
     fn map_call_error<T>(
         &self,
         call: impl Fn(&CallError) -> Option<T>,
@@ -224,10 +208,6 @@ impl Error {
         )
     }
 
-    pub fn is_commit_period_expired(&self) -> bool {
-        self.is_runtime_err(REDEEM_MODULE, &format!("{:?}", RedeemPalletError::CommitPeriodExpired))
-    }
-
     pub fn is_rpc_disconnect_error(&self) -> bool {
         matches!(
             self,
@@ -258,10 +238,6 @@ impl Error {
             Error::JsonRpseeError(JsonRpseeError::Transport(err))
             if matches!(err.downcast_ref::<WsHandshakeError>(), Some(WsHandshakeError::Url(_)))
         )
-    }
-
-    pub fn is_parachain_shutdown_error(&self) -> bool {
-        self.is_runtime_err(SYSTEM_MODULE, &format!("{:?}", SystemPalletError::CallFiltered))
     }
 }
 
