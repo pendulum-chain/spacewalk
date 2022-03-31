@@ -49,6 +49,15 @@ hex-literal = { version = "0.3.4", optional = true }
 
 # Local Dependencies
 pallet-spacewalk = { version = "4.0.0-dev", default-features = false, path = "../../pallets/spacewalk" }
+pallet-stellar-transactions = { version = "4.0.0-dev", default-features = false, path = "../../pallets/stellar-transactions" }
+substrate-stellar-sdk = {default-features = false, git = "https://github.com/pendulum-chain/substrate-stellar-sdk.git", features = ['offchain'], branch = "polkadot-v0.9.17" }
+
+# ORML dependencies - commit aac79b3b31953381669a2ffa9b3e9bfe48e87f38 is where polkadot-v0.9.17 dependencies are used (branch does not exist for it)
+orml-currencies = { default-features = false, git = "https://github.com/open-web3-stack/open-runtime-module-library", rev = "aac79b3b31953381669a2ffa9b3e9bfe48e87f38"}
+orml-tokens = { default-features = false, git = "https://github.com/open-web3-stack/open-runtime-module-library", rev = "aac79b3b31953381669a2ffa9b3e9bfe48e87f38"}
+orml-traits = { default-features = false, git = "https://github.com/open-web3-stack/open-runtime-module-library", rev = "aac79b3b31953381669a2ffa9b3e9bfe48e87f38"}
+
+serde = { version = "1.0.119", optional = true, features = ["derive"] }
 
 [build-dependencies]
 substrate-wasm-builder = { version = "5.0.0-dev", git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.17" }
@@ -57,6 +66,7 @@ substrate-wasm-builder = { version = "5.0.0-dev", git = "https://github.com/pari
 default = ["std"]
 std = [
 	"codec/std",
+    'serde',
 	"scale-info/std",
 	"frame-executive/std",
 	"frame-support/std",
@@ -68,7 +78,10 @@ std = [
 	"pallet-randomness-collective-flip/std",
 	"pallet-sudo/std",
 	"pallet-spacewalk/std",
-	"pallet-timestamp/std",
+	"pallet-stellar-transactions/std",
+	"orml-currencies/std",
+	"orml-tokens/std",
+	"orml-traits/std",
 	"pallet-transaction-payment-rpc-runtime-api/std",
 	"pallet-transaction-payment/std",
 	"sp-api/std",

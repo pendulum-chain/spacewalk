@@ -1118,6 +1118,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "derivative"
+version = "2.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "fcc3dd5e9e9c0b295d6e1e4d811fb6f157d5ffd784b8d202fc62eac8035a770b"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn",
+]
+
+[[package]]
 name = "derive_more"
 version = "0.99.17"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2224,6 +2235,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "index-fixed"
+version = "0.3.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "4161ceaf2f41b6cd3f6502f5da085d4ad4393a51e0c70ed2fce1d5698d798fae"
+
+[[package]]
 name = "indexmap"
 version = "1.8.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2534,6 +2551,9 @@ name = "lazy_static"
 version = "1.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e2abad23fbc42b3700f2f279844dc832adb2b2eb069b2df918f455c4e18cc646"
+dependencies = [
+ "spin",
+]
 
 [[package]]
 name = "lazycell"
@@ -3598,17 +3618,22 @@ dependencies = [
  "frame-system-benchmarking",
  "frame-system-rpc-runtime-api",
  "hex-literal",
+ "orml-currencies",
+ "orml-tokens",
+ "orml-traits",
  "pallet-aura",
  "pallet-balances",
  "pallet-grandpa",
  "pallet-randomness-collective-flip",
  "pallet-spacewalk",
+ "pallet-stellar-transactions",
  "pallet-sudo",
  "pallet-timestamp",
  "pallet-transaction-payment",
  "pallet-transaction-payment-rpc-runtime-api",
  "parity-scale-codec",
  "scale-info",
+ "serde",
  "sp-api",
  "sp-block-builder",
  "sp-consensus-aura",
@@ -3620,6 +3645,7 @@ dependencies = [
  "sp-std",
  "sp-transaction-pool",
  "sp-version",
+ "substrate-stellar-sdk",
  "substrate-wasm-builder",
 ]
 
@@ -3787,6 +3813,70 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ff011a302c396a5197692431fc1948019154afc178baf7d8e37367442a4601cf"
 
 [[package]]
+name = "orml-currencies"
+version = "0.4.1-dev"
+source = "git+https://github.com/open-web3-stack/open-runtime-module-library?rev=aac79b3b31953381669a2ffa9b3e9bfe48e87f38#aac79b3b31953381669a2ffa9b3e9bfe48e87f38"
+dependencies = [
+ "frame-support",
+ "frame-system",
+ "orml-traits",
+ "orml-utilities",
+ "parity-scale-codec",
+ "scale-info",
+ "serde",
+ "sp-io",
+ "sp-runtime",
+ "sp-std",
+]
+
+[[package]]
+name = "orml-tokens"
+version = "0.4.1-dev"
+source = "git+https://github.com/open-web3-stack/open-runtime-module-library?rev=aac79b3b31953381669a2ffa9b3e9bfe48e87f38#aac79b3b31953381669a2ffa9b3e9bfe48e87f38"
+dependencies = [
+ "frame-support",
+ "frame-system",
+ "orml-traits",
+ "parity-scale-codec",
+ "scale-info",
+ "serde",
+ "sp-runtime",
+ "sp-std",
+]
+
+[[package]]
+name = "orml-traits"
+version = "0.4.1-dev"
+source = "git+https://github.com/open-web3-stack/open-runtime-module-library?rev=aac79b3b31953381669a2ffa9b3e9bfe48e87f38#aac79b3b31953381669a2ffa9b3e9bfe48e87f38"
+dependencies = [
+ "frame-support",
+ "impl-trait-for-tuples",
+ "num-traits",
+ "orml-utilities",
+ "parity-scale-codec",
+ "scale-info",
+ "serde",
+ "sp-io",
+ "sp-runtime",
+ "sp-std",
+ "xcm",
+]
+
+[[package]]
+name = "orml-utilities"
+version = "0.4.1-dev"
+source = "git+https://github.com/open-web3-stack/open-runtime-module-library?rev=aac79b3b31953381669a2ffa9b3e9bfe48e87f38#aac79b3b31953381669a2ffa9b3e9bfe48e87f38"
+dependencies = [
+ "frame-support",
+ "parity-scale-codec",
+ "scale-info",
+ "serde",
+ "sp-io",
+ "sp-runtime",
+ "sp-std",
+]
+
+[[package]]
 name = "os_str_bytes"
 version = "6.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3915,8 +4005,38 @@ dependencies = [
  "frame-benchmarking",
  "frame-support",
  "frame-system",
+ "orml-traits",
  "parity-scale-codec",
  "scale-info",
+ "substrate-stellar-sdk",
+]
+
+[[package]]
+name = "pallet-stellar-transactions"
+version = "4.0.0-dev"
+dependencies = [
+ "base64",
+ "frame-benchmarking",
+ "frame-support",
+ "frame-system",
+ "hex",
+ "log",
+ "orml-currencies",
+ "orml-tokens",
+ "orml-traits",
+ "orml-utilities",
+ "pallet-transaction-payment",
+ "parity-scale-codec",
+ "scale-info",
+ "serde",
+ "serde_json",
+ "sp-arithmetic",
+ "sp-core",
+ "sp-io",
+ "sp-keystore",
+ "sp-runtime",
+ "sp-std",
+ "substrate-stellar-sdk",
 ]
 
 [[package]]
@@ -6090,6 +6210,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "sodalite"
+version = "0.4.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "41784a359d15c58bba298cccb7f30a847a1a42d0620c9bdaa0aa42fdb3c280e0"
+dependencies = [
+ "index-fixed",
+]
+
+[[package]]
 name = "soketto"
 version = "0.7.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -6854,6 +6983,24 @@ dependencies = [
  "prometheus",
  "thiserror",
  "tokio",
+]
+
+[[package]]
+name = "substrate-stellar-sdk"
+version = "0.2.2"
+source = "git+https://github.com/pendulum-chain/substrate-stellar-sdk.git?branch=polkadot-v0.9.17#f863d2bb67c7ca8ec6f8895f612e8f425aef6ed8"
+dependencies = [
+ "base64",
+ "hex",
+ "lazy_static",
+ "num-rational 0.4.0",
+ "serde",
+ "serde_json",
+ "sha2 0.9.9",
+ "sodalite",
+ "sp-io",
+ "sp-runtime",
+ "sp-std",
 ]
 
 [[package]]
@@ -7896,6 +8043,30 @@ dependencies = [
  "curve25519-dalek 3.2.0",
  "rand_core 0.5.1",
  "zeroize",
+]
+
+[[package]]
+name = "xcm"
+version = "0.9.17"
+source = "git+https://github.com/paritytech/polkadot?branch=release-v0.9.17#de0ecd4760b146ecf33f5e867d707d789e21e060"
+dependencies = [
+ "derivative",
+ "impl-trait-for-tuples",
+ "log",
+ "parity-scale-codec",
+ "scale-info",
+ "xcm-procedural",
+]
+
+[[package]]
+name = "xcm-procedural"
+version = "0.1.0"
+source = "git+https://github.com/paritytech/polkadot?branch=release-v0.9.17#de0ecd4760b146ecf33f5e867d707d789e21e060"
+dependencies = [
+ "Inflector",
+ "proc-macro2",
+ "quote",
+ "syn",
 ]
 
 [[package]]

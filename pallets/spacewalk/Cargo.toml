@@ -21,6 +21,12 @@ frame-support = {default-features = false, version = "4.0.0-dev", git = "https:/
 frame-system = {default-features = false, version = "4.0.0-dev", git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.17"}
 scale-info = {version = "1.0", default-features = false, features = ["derive"]}
 
+# ORML dependencies - commit aac79b3b31953381669a2ffa9b3e9bfe48e87f38 is where polkadot-v0.9.17 dependencies are used (branch does not exist for it)
+orml-traits = { default-features = false, git = "https://github.com/open-web3-stack/open-runtime-module-library", rev = "aac79b3b31953381669a2ffa9b3e9bfe48e87f38"}
+
+# We'll want to remove this dependency so as to fully separate the bridge and stellar portions
+substrate-stellar-sdk = {default-features = false, git = "https://github.com/pendulum-chain/substrate-stellar-sdk.git", features = ['offchain'], branch = "polkadot-v0.9.17" }
+
 [dev-dependencies]
 sp-core = {default-features = false, version = "5.0.0", git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.17"}
 sp-io = {default-features = false, version = "5.0.0", git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.17"}
