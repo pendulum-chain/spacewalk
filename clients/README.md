@@ -18,3 +18,13 @@ cargo build --features=standalone-metadata
 ```
 cargo run --bin vault --features standalone-metadata  -- --keyring alice --stellar-escrow-secret-key SA4OOLVVZV2W7XAKFXUEKLMQ6Y2W5JBENHO5LP6W6BCPBU3WUZ5EBT7K
 ```
+
+## Updating the metadata
+
+```
+cargo install subxt-cli
+
+subxt metadata -f bytes > runtime/metadata-standalone.scale
+```
+
+If there are errors with spec versions not matching you might have to change the `DEFAULT_SPEC_VERSION` in runtime/src/rpc.rs.
