@@ -13,8 +13,8 @@ mod benchmarking;
 
 pub mod address_conv;
 pub mod balance_conv;
-pub mod currency_conv;
 pub mod currency;
+pub mod currency_conv;
 mod horizon;
 
 use codec::{Decode, Encode};
@@ -70,7 +70,7 @@ pub mod pallet {
     };
     use stellar::{
         types::{OperationBody, PaymentOp},
-        SecretKey, XdrCodec,
+        XdrCodec,
     };
 
     #[pallet::config]
@@ -100,9 +100,6 @@ pub mod pallet {
             Source = CurrencyIdOf<Self>,
             Target = substrate_stellar_sdk::Asset,
         >;
-
-        /// The escrow account
-        type GatewayEscrowKeypair: Get<SecretKey>;
     }
 
     #[pallet::pallet]
@@ -112,7 +109,7 @@ pub mod pallet {
     #[pallet::event]
     #[pallet::generate_deposit(pub(super) fn deposit_event)]
     pub enum Event<T: Config> {
-        /// Event generated when a new deposit is made on Stellar Escrow Account.
+        /// Event generated when a new deposit is made on a Stellar Account.
         Deposit(
             CurrencyIdOf<T>,
             <T as frame_system::Config>::AccountId,

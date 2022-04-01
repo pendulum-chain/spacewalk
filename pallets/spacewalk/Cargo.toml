@@ -13,33 +13,57 @@ version = "4.0.0-dev"
 targets = ["x86_64-unknown-linux-gnu"]
 
 [dependencies]
-codec = {package = "parity-scale-codec", version = "2.0.0", default-features = false, features = [
-  "derive",
-]}
+base64 = {version = '0.13.0', default-features = false, features = ['alloc']}
+codec = {package = "parity-scale-codec", version = "2.0.0", default-features = false}
+hex = {version = "0.4", default-features = false}
+log = {version = "0.4.14", default-features = false}
+scale-info = {version = "1.0.0", default-features = false, features = ["derive"]}
+serde = {version = '1.0.100', default-features = false, features = ['derive']}
+serde_json = {version = '1.0.45', default-features = false, features = ['alloc']}
+
+# Substrate packages
 frame-benchmarking = {default-features = false, version = "4.0.0-dev", git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.17", optional = true}
-frame-support = {default-features = false, version = "4.0.0-dev", git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.17"}
-frame-system = {default-features = false, version = "4.0.0-dev", git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.17"}
-scale-info = {version = "1.0", default-features = false, features = ["derive"]}
+frame-support = {git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.17"}
+frame-system = {git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.17"}
+sp-arithmetic = {git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.17"}
+sp-core = {git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.17"}
+sp-io = {git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.17"}
+sp-keystore = {git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.17", optional = true}
+sp-runtime = {git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.17"}
+sp-std = {git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.17"}
 
 # ORML dependencies - commit aac79b3b31953381669a2ffa9b3e9bfe48e87f38 is where polkadot-v0.9.17 dependencies are used (branch does not exist for it)
-orml-traits = { default-features = false, git = "https://github.com/open-web3-stack/open-runtime-module-library", rev = "aac79b3b31953381669a2ffa9b3e9bfe48e87f38"}
+orml-currencies = {default-features = false, git = "https://github.com/open-web3-stack/open-runtime-module-library", rev = "aac79b3b31953381669a2ffa9b3e9bfe48e87f38"}
+orml-tokens = {default-features = false, git = "https://github.com/open-web3-stack/open-runtime-module-library", rev = "aac79b3b31953381669a2ffa9b3e9bfe48e87f38"}
+orml-traits = {default-features = false, git = "https://github.com/open-web3-stack/open-runtime-module-library", rev = "aac79b3b31953381669a2ffa9b3e9bfe48e87f38"}
+orml-utilities = {default-features = false, git = "https://github.com/open-web3-stack/open-runtime-module-library", rev = "aac79b3b31953381669a2ffa9b3e9bfe48e87f38"}
 
-# We'll want to remove this dependency so as to fully separate the bridge and stellar portions
-substrate-stellar-sdk = {default-features = false, git = "https://github.com/pendulum-chain/substrate-stellar-sdk.git", features = ['offchain'], branch = "polkadot-v0.9.17" }
-
-[dev-dependencies]
-sp-core = {default-features = false, version = "5.0.0", git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.17"}
-sp-io = {default-features = false, version = "5.0.0", git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.17"}
-sp-runtime = {default-features = false, version = "5.0.0", git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.17"}
+pallet-transaction-payment = {git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.17"}
+substrate-stellar-sdk = {git = "https://github.com/pendulum-chain/substrate-stellar-sdk", branch = "polkadot-v0.9.17", default-features = false, features = ['offchain']}
 
 [features]
 default = ["std"]
 std = [
-  "codec/std",
-  "scale-info/std",
+  "frame-benchmarking/std",
   "frame-support/std",
   "frame-system/std",
-  "frame-benchmarking/std",
+  "codec/std",
+  "scale-info/std",
+  "substrate-stellar-sdk/std",
+  "pallet-transaction-payment/std",
+  "log/std",
+  "sp-arithmetic/std",
+  "sp-io/std",
+  "sp-core/std",
+  "sp-keystore/std",
+  "sp-runtime/std",
+  "sp-std/std",
+  'orml-currencies/std',
+  'orml-tokens/std',
+  'orml-traits/std',
+  'orml-utilities/std',
+  'base64/std',
+  'substrate-stellar-sdk/std',
 ]
 
 runtime-benchmarks = ["frame-benchmarking/runtime-benchmarks"]
