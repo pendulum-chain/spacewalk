@@ -8,14 +8,14 @@ include!(concat!(env!("OUT_DIR"), "/wasm_binary.rs"));
 
 use pallet_stellar_transactions::currency::CurrencyId;
 
-#[cfg(feature = "std")]
+//#[cfg(feature = "std")]
 use codec::Encode;
 
 use pallet_grandpa::{
     fg_primitives, AuthorityId as GrandpaId, AuthorityList as GrandpaAuthorityList,
 };
 use sp_api::impl_runtime_apis;
-use sp_consensus_aura::sr25519::AuthorityId as AuraId;
+use sp_consensus_aura::ed25519::AuthorityId as AuraId;
 use sp_core::{crypto::KeyTypeId, OpaqueMetadata};
 use sp_runtime::{
     create_runtime_str, generic, impl_opaque_keys,
@@ -25,6 +25,7 @@ use sp_runtime::{
     ApplyExtrinsicResult, MultiAddress, MultiSignature, SaturatedConversion,
 };
 use sp_std::prelude::*;
+#[cfg(feature = "std")]
 use sp_version::NativeVersion;
 use sp_version::RuntimeVersion;
 
@@ -300,6 +301,7 @@ impl pallet_spacewalk::Config for Runtime {
 
 pub type SignedPayload = generic::SignedPayload<Call, SignedExtra>;
 
+
 impl<LocalCall> frame_system::offchain::CreateSignedTransaction<LocalCall> for Runtime
 where
     Call: From<LocalCall>,
@@ -329,6 +331,8 @@ where
             pallet_transaction_payment::ChargeTransactionPayment::<Runtime>::from(tip),
         );
 
+
+
         #[cfg_attr(not(feature = "std"), allow(unused_variables))]
         let raw_payload = SignedPayload::new(call, extra)
             .map_err(|e| {
@@ -340,6 +344,8 @@ where
 
         let address = MultiAddress::Id(account);
         let (call, extra, _) = raw_payload.deconstruct();
+
+
         Some((call, (address, signature, extra)))
     }
 }

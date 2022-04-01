@@ -171,11 +171,17 @@ pub mod pallet {
         ) -> DispatchResult {
             let _who = ensure_signed(origin)?;
 
+            let xdr = transaction_envelope_xdr.clone();
+            log::info!("envelope:{:?}", str::from_utf8(&xdr));
+
             let tx_xdr = base64::decode(&transaction_envelope_xdr).unwrap();
             let tx_envelope =
                 substrate_stellar_sdk::TransactionEnvelope::from_xdr(&tx_xdr).unwrap();
 
+            log::info!("envelope:{:?}", tx_envelope);
+
             if let substrate_stellar_sdk::TransactionEnvelope::EnvelopeTypeTx(env) = tx_envelope {
+                log::info!("process_new_transaction:{:?}", env.tx);
                 Self::process_new_transaction(env.tx);
             }
             Ok(())
