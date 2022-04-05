@@ -8,7 +8,7 @@ use futures::{
     Future, FutureExt, SinkExt, TryStreamExt,
 };
 use runtime::{
-    integration::*, types::*, BtcAddress, CurrencyId, FixedPointNumber, FixedU128, InterBtcParachain,
+    integration::*, types::*, BtcAddress, CurrencyId, FixedPointNumber, FixedU128, SpacewalkParachain,
     InterBtcRedeemRequest, IssuePallet, RedeemPallet, RelayPallet, ReplacePallet, SudoPallet, UtilFuncs, VaultId,
     VaultRegistryPallet,
 };

@@ -1,6 +1,6 @@
 use crate::{
     error::{Error, KeyLoadingError},
-    InterBtcParachain, InterBtcSigner,
+    SpacewalkParachain, InterBtcSigner,
 };
 use clap::Parser;
 use sp_keyring::AccountKeyring;
@@ -73,11 +73,11 @@ pub fn parse_duration_minutes(src: &str) -> Result<Duration, ParseIntError> {
 pub struct ConnectionOpts {
     /// Parachain websocket URL.
     #[clap(long, default_value = "ws://127.0.0.1:9944")]
-    pub btc_parachain_url: String,
+    pub spacewalk_parachain_url: String,
 
     /// Timeout in milliseconds to wait for connection to btc-parachain.
     #[clap(long, parse(try_from_str = parse_duration_ms), default_value = "60000")]
-    pub btc_parachain_connection_timeout_ms: Duration,
+    pub spacewalk_parachain_connection_timeout_ms: Duration,
 
     /// Maximum number of concurrent requests
     #[clap(long)]
@@ -89,13 +89,13 @@ pub struct ConnectionOpts {
 }
 
 impl ConnectionOpts {
-    pub async fn try_connect(&self, signer: InterBtcSigner) -> Result<InterBtcParachain, Error> {
-        InterBtcParachain::from_url_and_config_with_retry(
-            &self.btc_parachain_url,
+    pub async fn try_connect(&self, signer: InterBtcSigner) -> Result<SpacewalkParachain, Error> {
+        SpacewalkParachain::from_url_and_config_with_retry(
+            &self.spacewalk_parachain_url,
             signer,
             self.max_concurrent_requests,
             self.max_notifs_per_subscription,
-            self.btc_parachain_connection_timeout_ms,
+            self.spacewalk_parachain_connection_timeout_ms,
         )
         .await
     }

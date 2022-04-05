@@ -2,7 +2,7 @@ use async_trait::async_trait;
 use futures::{future::Either, Future, FutureExt};
 use runtime::{
     cli::ConnectionOpts as ParachainConfig, Error as RuntimeError,
-    InterBtcParachain as BtcParachain, InterBtcSigner, Signer, Ss58Codec,
+    SpacewalkParachain as BtcParachain, InterBtcSigner, Signer, Ss58Codec,
 };
 use std::marker::PhantomData;
 
@@ -66,11 +66,11 @@ impl<Config: Clone + Send + 'static, S: Service<Config>> ConnectionManager<Confi
             // only open connection to parachain after bitcoind sync to prevent timeout
             let signer = self.signer.clone();
             let btc_parachain = BtcParachain::from_url_and_config_with_retry(
-                &self.parachain_config.btc_parachain_url,
+                &self.parachain_config.spacewalk_parachain_url,
                 signer,
                 self.parachain_config.max_concurrent_requests,
                 self.parachain_config.max_notifs_per_subscription,
-                self.parachain_config.btc_parachain_connection_timeout_ms,
+                self.parachain_config.spacewalk_parachain_connection_timeout_ms,
             )
             .await?;
 

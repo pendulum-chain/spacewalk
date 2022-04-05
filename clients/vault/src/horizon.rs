@@ -1,6 +1,6 @@
 use crate::error::Error;
 use parity_scale_codec::{Decode, Encode, MaxEncodedLen};
-use runtime::{Balance, InterBtcParachain, RedeemEvent, SpacewalkPallet};
+use runtime::{Balance, SpacewalkParachain, RedeemEvent, SpacewalkPallet};
 use serde::{Deserialize, Deserializer};
 use service::{spawn_cancelable, Error as ServiceError, ShutdownSender};
 use sp_core::ed25519;
@@ -380,7 +380,7 @@ fn is_unhandled_transaction(tx: &Transaction) -> bool {
     }
 }
 
-async fn report_transaction(parachain_rpc: &InterBtcParachain, tx: &Transaction) -> Result<(), Error> {
+async fn report_transaction(parachain_rpc: &SpacewalkParachain, tx: &Transaction) -> Result<(), Error> {
     // Decode transaction to Base64
     let tx_xdr = base64::decode(&tx.envelope_xdr).unwrap();
 
@@ -392,7 +392,7 @@ async fn report_transaction(parachain_rpc: &InterBtcParachain, tx: &Transaction)
     }
 }
 
-async fn fetch_horizon_and_process_new_transactions(parachain_rpc: &InterBtcParachain, escrow_secret_key: &String) {
+async fn fetch_horizon_and_process_new_transactions(parachain_rpc: &SpacewalkParachain, escrow_secret_key: &String) {
     let res = fetch_latest_txs(escrow_secret_key).await;
     let transactions = match res {
         Ok(txs) => txs._embedded.records,
@@ -419,7 +419,7 @@ async fn fetch_horizon_and_process_new_transactions(parachain_rpc: &InterBtcPara
 }
 
 pub async fn poll_horizon_for_new_transactions(
-    parachain_rpc: InterBtcParachain,
+    parachain_rpc: SpacewalkParachain,
     escrow_secret_key: String,
 ) -> Result<(), ServiceError> {
     // Start polling horizon every 5 seconds
@@ -570,7 +570,7 @@ async fn execute_withdrawal(
 
 pub async fn listen_for_redeem_requests(
     shutdown_tx: ShutdownSender,
-    parachain_rpc: InterBtcParachain,
+    parachain_rpc: SpacewalkParachain,
     escrow_secret_key: String,
 ) -> Result<(), ServiceError> {
     tracing::info!("Starting to listen for redeem requests…");

@@ -30,7 +30,7 @@ cfg_if::cfg_if! {
 type RuntimeApi = metadata::RuntimeApi<InterBtcRuntime, DefaultExtra<InterBtcRuntime>>;
 
 #[derive(Clone)]
-pub struct InterBtcParachain {
+pub struct SpacewalkParachain {
     rpc_client: RpcClient,
     ext_client: SubxtClient<InterBtcRuntime>,
     signer: Arc<RwLock<InterBtcSigner>>,
@@ -42,7 +42,7 @@ pub struct InterBtcParachain {
     pub wrapped_currency_id: CurrencyId,
 }
 
-impl InterBtcParachain {
+impl SpacewalkParachain {
     pub async fn new<P: Into<RpcClient>>(rpc_client: P, signer: InterBtcSigner) -> Result<Self, Error> {
         let account_id = signer.account_id().clone();
         let rpc_client = rpc_client.into();
@@ -337,7 +337,7 @@ pub trait UtilFuncs {
 }
 
 #[async_trait]
-impl UtilFuncs for InterBtcParachain {
+impl UtilFuncs for SpacewalkParachain {
     async fn get_current_chain_height(&self) -> Result<u32, Error> {
         let head = self.get_latest_block_hash().await?;
         Ok(self.api.storage().system().number(head).await?)
@@ -353,7 +353,7 @@ pub trait SpacewalkPallet {
 }
 
 #[async_trait]
-impl SpacewalkPallet for InterBtcParachain {
+impl SpacewalkPallet for SpacewalkParachain {
     async fn report_stellar_transaction(&self, tx_envelope_xdr: &Vec<u8>) -> Result<(), Error> {
         self.with_unique_signer(|signer| async move {
             self.api

@@ -6,7 +6,7 @@ use crate::{
 use async_trait::async_trait;
 use clap::Parser;
 use git_version::git_version;
-use runtime::{InterBtcParachain, UtilFuncs};
+use runtime::{SpacewalkParachain, UtilFuncs};
 use service::{wait_or_shutdown, Error as ServiceError, Service, ShutdownSender};
 use tokio::time::sleep;
 
@@ -22,7 +22,7 @@ pub struct VaultServiceConfig {
 }
 
 pub struct VaultService {
-    btc_parachain: InterBtcParachain,
+    spacewalk_parachain: SpacewalkParachain,
     config: VaultServiceConfig,
     shutdown: ShutdownSender,
 }
@@ -32,8 +32,8 @@ impl Service<VaultServiceConfig> for VaultService {
     const NAME: &'static str = NAME;
     const VERSION: &'static str = VERSION;
 
-    fn new_service(btc_parachain: InterBtcParachain, config: VaultServiceConfig, shutdown: ShutdownSender) -> Self {
-        VaultService::new(btc_parachain, config, shutdown)
+    fn new_service(spacewalk_parachain: SpacewalkParachain, config: VaultServiceConfig, shutdown: ShutdownSender) -> Self {
+        VaultService::new(spacewalk_parachain, config, shutdown)
     }
 
     async fn start(&self) -> Result<(), ServiceError> {
@@ -46,9 +46,9 @@ impl Service<VaultServiceConfig> for VaultService {
 }
 
 impl VaultService {
-    fn new(btc_parachain: InterBtcParachain, config: VaultServiceConfig, shutdown: ShutdownSender) -> Self {
+    fn new(spacewalk_parachain: SpacewalkParachain, config: VaultServiceConfig, shutdown: ShutdownSender) -> Self {
         Self {
-            btc_parachain: btc_parachain.clone(),
+            spacewalk_parachain: spacewalk_parachain.clone(),
             config,
             shutdown,
         }
@@ -57,7 +57,7 @@ impl VaultService {
     async fn run_service(&self) -> Result<(), Error> {
         self.await_parachain_block().await?;
 
-        let err_provider = self.btc_parachain.clone();
+        let err_provider = self.spacewalk_parachain.clone();
         let err_listener = wait_or_shutdown(self.shutdown.clone(), async move {
             err_provider
                 .on_event_error(|e| tracing::debug!("Received error event: {}", e))
@@ -68,7 +68,7 @@ impl VaultService {
         let deposit_listener = wait_or_shutdown(
             self.shutdown.clone(),
             poll_horizon_for_new_transactions(
-                self.btc_parachain.clone(),
+                self.spacewalk_parachain.clone(),
                 self.config.stellar_escrow_secret_key.clone(),
             ),
         );
@@ -78,7 +78,7 @@ impl VaultService {
             self.shutdown.clone(),
             listen_for_redeem_requests(
                 self.shutdown.clone(),
-                self.btc_parachain.clone(),
+                self.spacewalk_parachain.clone(),
                 self.config.stellar_escrow_secret_key.clone(),
             ),
         );
@@ -101,8 +101,8 @@ impl VaultService {
         // wait for a new block to arrive, to prevent processing an event that potentially
         // has been processed already prior to restarting
         tracing::info!("Waiting for new block...");
-        let startup_height = self.btc_parachain.get_current_chain_height().await?;
-        while startup_height == self.btc_parachain.get_current_chain_height().await? {
+        let startup_height = self.spacewalk_parachain.get_current_chain_height().await?;
+        while startup_height == self.spacewalk_parachain.get_current_chain_height().await? {
             sleep(CHAIN_HEIGHT_POLLING_INTERVAL).await;
         }
         tracing::info!("Got new block...");
