@@ -28,3 +28,11 @@ subxt metadata -f bytes > runtime/metadata-standalone.scale
 ```
 
 If there are errors with spec versions not matching you might have to change the `DEFAULT_SPEC_VERSION` in runtime/src/rpc.rs.
+
+## Tests
+
+To run the tests for the spacewalk client run
+
+```
+cargo test --package vault --features standalone-metadata
+```

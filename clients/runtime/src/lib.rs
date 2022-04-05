@@ -7,6 +7,9 @@ mod rpc;
 
 pub mod types;
 
+#[cfg(all(feature = "testing-utils", feature = "standalone-metadata"))]
+pub mod integration;
+
 use codec::{Decode, Encode};
 use sp_std::marker::PhantomData;
 use subxt::{
@@ -17,7 +20,7 @@ use subxt::{
 pub use error::{Error, SubxtError};
 pub use primitives::CurrencyInfo;
 pub use retry::{notify_retry, RetryPolicy};
-pub use rpc::{SpacewalkParachain, SpacewalkPallet, UtilFuncs};
+pub use rpc::{SpacewalkPallet, SpacewalkParachain, UtilFuncs};
 pub use sp_arithmetic::{traits as FixedPointTraits, FixedI128, FixedPointNumber, FixedU128};
 pub use subxt::{
     sp_core::{crypto::Ss58Codec, sr25519::Pair},
