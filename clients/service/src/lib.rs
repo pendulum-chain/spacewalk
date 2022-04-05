@@ -1,7 +1,7 @@
 use async_trait::async_trait;
 use futures::{future::Either, Future, FutureExt};
 use runtime::{
-    cli::ConnectionOpts as ParachainConfig, CurrencyId, CurrencyIdExt, CurrencyInfo, Error as RuntimeError,
+    cli::ConnectionOpts as ParachainConfig, Error as RuntimeError,
     InterBtcParachain as BtcParachain, InterBtcSigner, Signer, Ss58Codec,
 };
 use std::marker::PhantomData;

@@ -1,24 +1,14 @@
 use crate::{
     error::Error,
     horizon::{listen_for_redeem_requests, poll_horizon_for_new_transactions},
-    service::*,
-    Event, IssueRequests, CHAIN_HEIGHT_POLLING_INTERVAL,
+    CHAIN_HEIGHT_POLLING_INTERVAL,
 };
 use async_trait::async_trait;
 use clap::Parser;
-use futures::{
-    channel::{mpsc, mpsc::Sender},
-    executor::block_on,
-    Future, SinkExt,
-};
 use git_version::git_version;
-use runtime::{
-    cli::{parse_duration_minutes, parse_duration_ms},
-    parse_collateral_currency, CurrencyId, Error as RuntimeError, InterBtcParachain, UtilFuncs,
-};
+use runtime::{InterBtcParachain, UtilFuncs};
 use service::{wait_or_shutdown, Error as ServiceError, Service, ShutdownSender};
-use std::{collections::HashMap, sync::Arc, time::Duration};
-use tokio::{sync::RwLock, time::sleep};
+use tokio::time::sleep;
 
 pub const VERSION: &str = git_version!(args = ["--tags"]);
 pub const AUTHORS: &str = env!("CARGO_PKG_AUTHORS");
@@ -55,12 +45,6 @@ impl Service<VaultServiceConfig> for VaultService {
     }
 }
 
-async fn maybe_run_task(should_run: bool, task: impl Future) {
-    if should_run {
-        task.await;
-    }
-}
-
 impl VaultService {
     fn new(btc_parachain: InterBtcParachain, config: VaultServiceConfig, shutdown: ShutdownSender) -> Self {
         Self {
@@ -71,7 +55,7 @@ impl VaultService {
     }
 
     async fn run_service(&self) -> Result<(), Error> {
-        let account_id = self.btc_parachain.get_account_id().clone();
+        self.await_parachain_block().await?;
 
         let err_provider = self.btc_parachain.clone();
         let err_listener = wait_or_shutdown(self.shutdown.clone(), async move {
@@ -81,7 +65,7 @@ impl VaultService {
             Ok(())
         });
 
-        let horizon_poller = wait_or_shutdown(
+        let deposit_listener = wait_or_shutdown(
             self.shutdown.clone(),
             poll_horizon_for_new_transactions(
                 self.btc_parachain.clone(),
@@ -105,7 +89,7 @@ impl VaultService {
             // runs error listener to log errors
             tokio::spawn(async move { err_listener.await }),
             // listen for deposits
-            tokio::task::spawn(async move { horizon_poller.await }),
+            tokio::task::spawn(async move { deposit_listener.await }),
             // listen for redeem events
             tokio::spawn(async move { redeem_listener.await }),
         );

@@ -1,6 +1,5 @@
 use crate::{
     conn::{new_websocket_client, new_websocket_client_with_retry},
-    error::OuterSubxtError,
     metadata,
     metadata::DispatchError,
     notify_retry,
@@ -8,22 +7,15 @@ use crate::{
     AccountId, CurrencyId, Error, InterBtcRuntime, InterBtcSigner, RetryPolicy, SubxtError,
 };
 
-#[cfg(any(feature = "standalone-metadata", feature = "parachain-metadata-testnet"))]
-use crate::{BTC_RELAY_MODULE, STABLE_BITCOIN_CONFIRMATIONS, STABLE_PARACHAIN_CONFIRMATIONS};
 use async_trait::async_trait;
-use codec::Encode;
-use futures::{future::join_all, stream::StreamExt, FutureExt, SinkExt};
-use jsonrpsee::core::to_json_value;
-use module_oracle_rpc_runtime_api::BalanceWrapper;
-use primitives::TokenSymbol::{DOT, INTERBTC, INTR, KBTC, KINT, KSM};
-use std::{collections::BTreeSet, future::Future, sync::Arc, time::Duration};
+use futures::{stream::StreamExt, FutureExt, SinkExt};
+use primitives::TokenSymbol::DOT;
+use std::{future::Future, sync::Arc, time::Duration};
 use subxt::{
     BasicError, Client as SubxtClient, ClientBuilder as SubxtClientBuilder, DefaultExtra, Event, EventSubscription,
     EventsDecoder, Metadata, RpcClient, Signer, TransactionEvents, TransactionProgress,
 };
-use tokio::{sync::RwLock, time::sleep};
-
-use substrate_stellar_sdk as stellar;
+use tokio::sync::RwLock;
 
 cfg_if::cfg_if! {
     if #[cfg(feature = "standalone-metadata")] {

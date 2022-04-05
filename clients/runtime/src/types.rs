@@ -1,6 +1,6 @@
 use crate::{metadata, Config, InterBtcRuntime};
 pub use metadata_aliases::*;
-use subxt::sp_core::{crypto::Ss58Codec, sr25519::Pair as KeyPair};
+use subxt::sp_core::sr25519::Pair as KeyPair;
 
 pub use primitives::{
     CurrencyId,

@@ -1,6 +1,6 @@
 use crate::error::Error;
 use parity_scale_codec::{Decode, Encode, MaxEncodedLen};
-use runtime::{AccountId, Balance, InterBtcParachain, RedeemEvent, SpacewalkPallet};
+use runtime::{Balance, InterBtcParachain, RedeemEvent, SpacewalkPallet};
 use serde::{Deserialize, Deserializer};
 use service::{spawn_cancelable, Error as ServiceError, ShutdownSender};
 use sp_core::ed25519;
@@ -20,14 +20,13 @@ use sp_std::{
 use std::time::Duration;
 use stellar::{
     network::TEST_NETWORK,
-    types::{AssetAlphaNum12, AssetAlphaNum4, OperationBody, PaymentOp},
-    Asset, IntoAmount, PublicKey, SecretKey, StellarSdkError, XdrCodec,
+    types::{AssetAlphaNum12, AssetAlphaNum4},
+    Asset, PublicKey, SecretKey,
 };
 use substrate_stellar_sdk as stellar;
 use tokio::time::sleep;
 
 const POLL_INTERVAL: u64 = 5000;
-const FETCH_TIMEOUT_PERIOD: u64 = 3000;
 const SUBMISSION_TIMEOUT_PERIOD: u64 = 10000;
 
 // This represents each record for a transaction in the Horizon API response
@@ -324,15 +323,15 @@ async fn fetch_latest_txs(escrow_secret_key: &String) -> Result<HorizonTransacti
     let escrow_address = escrow_keypair.get_public();
 
     let request_url = String::from("https://horizon-testnet.stellar.org/accounts/")
-        + str::from_utf8(escrow_address.to_encoding().as_slice()).map_err(|e| Error::HttpFetchingError)?
+        + str::from_utf8(escrow_address.to_encoding().as_slice()).map_err(|_| Error::HttpFetchingError)?
         + "/transactions?order=desc&limit=1";
 
     let horizon_response = reqwest::get(request_url.as_str())
         .await
-        .map_err(|e| Error::HttpFetchingError)?
+        .map_err(|_| Error::HttpFetchingError)?
         .json::<HorizonTransactionsResponse>()
         .await
-        .map_err(|e| Error::HttpFetchingError)?;
+        .map_err(|_| Error::HttpFetchingError)?;
 
     Ok(horizon_response)
 }
@@ -358,7 +357,6 @@ fn is_unhandled_transaction(tx: &Transaction) -> bool {
             None => Ok(latest_tx_id_utf8.clone()),
         };
 
-        let mut is_unhandled = false;
         match result {
             Ok(latest_tx_id) => {
                 LAST_TX_ID = Some(latest_tx_id.clone());
@@ -368,28 +366,30 @@ fn is_unhandled_transaction(tx: &Transaction) -> bool {
                         str::from_utf8(&latest_tx_id).unwrap()
                     );
 
-                    is_unhandled = true;
+                    true
                 } else {
                     tracing::info!("Initial transaction handled");
-                    is_unhandled = false;
+                    false
                 }
             }
             Err(UP_TO_DATE) => {
                 tracing::info!("Already up to date");
-                is_unhandled = false;
+                false
             }
         }
-        is_unhandled
     }
 }
 
-fn report_transaction(parachain_rpc: &InterBtcParachain, tx: &Transaction) -> Result<(), Error> {
-    // Decode transaction to Base64 
+async fn report_transaction(parachain_rpc: &InterBtcParachain, tx: &Transaction) -> Result<(), Error> {
+    // Decode transaction to Base64
     let tx_xdr = base64::decode(&tx.envelope_xdr).unwrap();
 
     // Send new transaction to spacewalk bridge pallet
-    parachain_rpc.report_stellar_transaction(&tx_xdr);
-    Ok(())
+    let result = parachain_rpc.report_stellar_transaction(&tx_xdr).await;
+    match result {
+        Ok(_) => Ok(()),
+        Err(e) => Err(Error::RuntimeError(e)),
+    }
 }
 
 async fn fetch_horizon_and_process_new_transactions(parachain_rpc: &InterBtcParachain, escrow_secret_key: &String) {
@@ -405,7 +405,7 @@ async fn fetch_horizon_and_process_new_transactions(parachain_rpc: &InterBtcPara
     if transactions.len() > 0 {
         let tx = &transactions[0];
         if is_unhandled_transaction(tx) {
-            let result = report_transaction(parachain_rpc, tx);
+            let result = report_transaction(parachain_rpc, tx).await;
             match result {
                 Ok(_) => {
                     tracing::info!("Reported Stellar transaction to spacewalk pallet");
@@ -438,10 +438,10 @@ async fn fetch_from_remote(request_url: &str) -> Result<HorizonAccountResponse, 
 
     let response = reqwest::get(request_url)
         .await
-        .map_err(|e| Error::HttpFetchingError)?
+        .map_err(|_| Error::HttpFetchingError)?
         .json::<HorizonAccountResponse>()
         .await
-        .map_err(|e| Error::HttpFetchingError)?;
+        .map_err(|_| Error::HttpFetchingError)?;
 
     Ok(response)
 }
@@ -589,7 +589,7 @@ pub async fn listen_for_redeem_requests(
                 let stellar_vault_id = event.stellar_vault_id.clone();
                 let amount = event.amount.clone();
 
-                if !is_escrow(&escrow_secret_key, stellar_user_id.clone().try_into().unwrap()) {
+                if !is_escrow(&escrow_secret_key, stellar_vault_id.try_into().unwrap()) {
                     tracing::info!("Rejecting redeem request: not an escrow");
                     return;
                 }
