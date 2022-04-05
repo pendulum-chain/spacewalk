@@ -1,5 +1,4 @@
 use async_trait::async_trait;
-use bitcoin::{cli::BitcoinOpts as BitcoinConfig, BitcoinCore, BitcoinCoreApi, Error as BitcoinError};
 use futures::{future::Either, Future, FutureExt};
 use runtime::{
     cli::ConnectionOpts as ParachainConfig, CurrencyId, CurrencyIdExt, CurrencyInfo, Error as RuntimeError,
@@ -78,7 +77,6 @@ impl<Config: Clone + Send + 'static, S: Service<Config>> ConnectionManager<Confi
             let service = S::new_service(btc_parachain, config, shutdown_tx);
             if let Err(outer) = service.start().await {
                 match outer {
-                    Error::BitcoinError(ref inner) if inner.is_transport_error() || inner.is_json_decode_error() => {}
                     Error::RuntimeError(RuntimeError::ChannelClosed) => (),
                     Error::RuntimeError(ref inner) if inner.is_rpc_error() => (),
                     other => return Err(other),

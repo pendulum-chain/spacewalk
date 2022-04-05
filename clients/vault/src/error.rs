@@ -1,4 +1,3 @@
-use bitcoin::Error as BitcoinError;
 use hex::FromHexError;
 use jsonrpc_core_client::RpcError;
 use parity_scale_codec::Error as CodecError;
@@ -15,8 +14,6 @@ pub enum Error {
     InsufficientFunds,
     #[error("Value below dust amount")]
     BelowDustAmount,
-    #[error("Failed to load or create bitcoin wallet: {0}")]
-    WalletInitializationFailure(BitcoinError),
     #[error("Transaction contains more than one return-to-self uxto")]
     TooManyReturnToSelfAddresses,
     #[error("Mathematical operation caused an overflow")]
@@ -34,8 +31,6 @@ pub enum Error {
     RpcError(#[from] RpcError),
     #[error("Hex conversion error: {0}")]
     FromHexError(#[from] FromHexError),
-    #[error("BitcoinError: {0}")]
-    BitcoinError(#[from] BitcoinError),
     #[error("RuntimeError: {0}")]
     RuntimeError(#[from] RuntimeError),
     #[error("SubxtError: {0}")]

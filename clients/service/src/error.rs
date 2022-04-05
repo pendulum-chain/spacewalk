@@ -1,4 +1,3 @@
-use bitcoin::Error as BitcoinError;
 use hyper::{http::Error as HyperHttpError, Error as HyperError};
 use runtime::Error as RuntimeError;
 use serde_json::Error as SerdeJsonError;
@@ -20,8 +19,6 @@ pub enum Error {
 
     #[error("RuntimeError: {0}")]
     RuntimeError(#[from] RuntimeError),
-    #[error("BitcoinError: {0}")]
-    BitcoinError(#[from] BitcoinError),
 
     /// Other error
     #[error("Other: {0}")]

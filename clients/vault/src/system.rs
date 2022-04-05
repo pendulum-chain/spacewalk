@@ -50,7 +50,6 @@ impl Service<VaultServiceConfig> for VaultService {
         match self.run_service().await {
             Ok(_) => Ok(()),
             Err(Error::RuntimeError(err)) => Err(ServiceError::RuntimeError(err)),
-            Err(Error::BitcoinError(err)) => Err(ServiceError::BitcoinError(err)),
             Err(err) => Err(ServiceError::Other(err.to_string())),
         }
     }
