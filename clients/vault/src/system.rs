@@ -1,6 +1,5 @@
 use crate::{
-    error::Error,
-    horizon::{listen_for_redeem_requests, poll_horizon_for_new_transactions},
+    deposit::poll_horizon_for_new_transactions, error::Error, redeem::listen_for_redeem_requests,
     CHAIN_HEIGHT_POLLING_INTERVAL,
 };
 use async_trait::async_trait;
@@ -32,7 +31,11 @@ impl Service<VaultServiceConfig> for VaultService {
     const NAME: &'static str = NAME;
     const VERSION: &'static str = VERSION;
 
-    fn new_service(spacewalk_parachain: SpacewalkParachain, config: VaultServiceConfig, shutdown: ShutdownSender) -> Self {
+    fn new_service(
+        spacewalk_parachain: SpacewalkParachain,
+        config: VaultServiceConfig,
+        shutdown: ShutdownSender,
+    ) -> Self {
         VaultService::new(spacewalk_parachain, config, shutdown)
     }
 

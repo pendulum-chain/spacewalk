@@ -2,6 +2,8 @@
 
 mod error;
 mod horizon;
+mod deposit;
+mod redeem;
 mod system;
 
 pub mod service {}
