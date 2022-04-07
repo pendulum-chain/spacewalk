@@ -3,8 +3,8 @@ use node_template_runtime::{
 	SystemConfig, WASM_BINARY, TokensConfig,
 };
 use sc_service::ChainType;
-use sp_consensus_aura::sr25519::AuthorityId as AuraId;
-use sp_core::{sr25519, Pair, Public};
+use sp_consensus_aura::ed25519::AuthorityId as AuraId;
+use sp_core::{ed25519, Pair, Public};
 use sp_finality_grandpa::AuthorityId as GrandpaId;
 use sp_runtime::traits::{IdentifyAccount, Verify};
 
@@ -51,13 +51,13 @@ pub fn development_config() -> Result<ChainSpec, String> {
 				// Initial PoA authorities
 				vec![authority_keys_from_seed("Alice")],
 				// Sudo account
-				get_account_id_from_seed::<sr25519::Public>("Alice"),
+				get_account_id_from_seed::<ed25519::Public>("Alice"),
 				// Pre-funded accounts
 				vec![
-					get_account_id_from_seed::<sr25519::Public>("Alice"),
-					get_account_id_from_seed::<sr25519::Public>("Bob"),
-					get_account_id_from_seed::<sr25519::Public>("Alice//stash"),
-					get_account_id_from_seed::<sr25519::Public>("Bob//stash"),
+					get_account_id_from_seed::<ed25519::Public>("Alice"),
+					get_account_id_from_seed::<ed25519::Public>("Bob"),
+					get_account_id_from_seed::<ed25519::Public>("Alice//stash"),
+					get_account_id_from_seed::<ed25519::Public>("Bob//stash"),
 				],
 				true,
 			)
@@ -91,21 +91,21 @@ pub fn local_testnet_config() -> Result<ChainSpec, String> {
 				// Initial PoA authorities
 				vec![authority_keys_from_seed("Alice"), authority_keys_from_seed("Bob")],
 				// Sudo account
-				get_account_id_from_seed::<sr25519::Public>("Alice"),
+				get_account_id_from_seed::<ed25519::Public>("Alice"),
 				// Pre-funded accounts
 				vec![
-					get_account_id_from_seed::<sr25519::Public>("Alice"),
-					get_account_id_from_seed::<sr25519::Public>("Bob"),
-					get_account_id_from_seed::<sr25519::Public>("Charlie"),
-					get_account_id_from_seed::<sr25519::Public>("Dave"),
-					get_account_id_from_seed::<sr25519::Public>("Eve"),
-					get_account_id_from_seed::<sr25519::Public>("Ferdie"),
-					get_account_id_from_seed::<sr25519::Public>("Alice//stash"),
-					get_account_id_from_seed::<sr25519::Public>("Bob//stash"),
-					get_account_id_from_seed::<sr25519::Public>("Charlie//stash"),
-					get_account_id_from_seed::<sr25519::Public>("Dave//stash"),
-					get_account_id_from_seed::<sr25519::Public>("Eve//stash"),
-					get_account_id_from_seed::<sr25519::Public>("Ferdie//stash"),
+					get_account_id_from_seed::<ed25519::Public>("Alice"),
+					get_account_id_from_seed::<ed25519::Public>("Bob"),
+					get_account_id_from_seed::<ed25519::Public>("Charlie"),
+					get_account_id_from_seed::<ed25519::Public>("Dave"),
+					get_account_id_from_seed::<ed25519::Public>("Eve"),
+					get_account_id_from_seed::<ed25519::Public>("Ferdie"),
+					get_account_id_from_seed::<ed25519::Public>("Alice//stash"),
+					get_account_id_from_seed::<ed25519::Public>("Bob//stash"),
+					get_account_id_from_seed::<ed25519::Public>("Charlie//stash"),
+					get_account_id_from_seed::<ed25519::Public>("Dave//stash"),
+					get_account_id_from_seed::<ed25519::Public>("Eve//stash"),
+					get_account_id_from_seed::<ed25519::Public>("Ferdie//stash"),
 				],
 				true,
 			)
