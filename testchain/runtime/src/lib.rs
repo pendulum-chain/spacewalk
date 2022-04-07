@@ -6,7 +6,7 @@
 #[cfg(feature = "std")]
 include!(concat!(env!("OUT_DIR"), "/wasm_binary.rs"));
 
-use pallet_stellar_transactions::currency::CurrencyId;
+use pallet_spacewalk::currency::CurrencyId;
 
 //#[cfg(feature = "std")]
 use codec::Encode;
@@ -33,10 +33,10 @@ use orml_currencies::BasicCurrencyAdapter;
 use orml_traits::parameter_type_with_key;
 
 use frame_support::log;
-use pallet_stellar_transactions::address_conv::AddressConversion as StellarAddressConversion;
-use pallet_stellar_transactions::balance_conv::BalanceConversion as StellarBalanceConversion;
-use pallet_stellar_transactions::currency_conv::CurrencyConversion as StellarCurrencyConversion;
-use pallet_stellar_transactions::currency_conv::StringCurrencyConversion as StellarStringCurrencyConversion;
+use pallet_spacewalk::address_conv::AddressConversion as StellarAddressConversion;
+use pallet_spacewalk::balance_conv::BalanceConversion as StellarBalanceConversion;
+use pallet_spacewalk::currency_conv::CurrencyConversion as StellarCurrencyConversion;
+use pallet_spacewalk::currency_conv::StringCurrencyConversion as StellarStringCurrencyConversion;
 
 // A few exports that help ease life for downstream crates.
 pub use frame_support::{

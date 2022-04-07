@@ -12,6 +12,10 @@ mod tests;
 #[cfg(feature = "runtime-benchmarks")]
 mod benchmarking;
 
+pub mod address_conv;
+pub mod balance_conv;
+pub mod currency;
+pub mod currency_conv;
 mod horizon;
 
 use codec::{Decode, Encode};
