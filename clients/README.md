@@ -7,6 +7,14 @@ export AR=/usr/local/opt/llvm/bin/llvm-ar
 export CC=/usr/local/opt/llvm/bin/clang
 ```
 
+macos:
+```
+brew install llvm
+cargo install wasm-pack
+AR=/opt/homebrew/opt/llvm/bin/llvm-ar
+CC=/opt/homebrew/opt/llvm/bin/clang
+```
+
 From the spacewalk/client directory run
 
 ```
