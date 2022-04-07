@@ -19,7 +19,6 @@ pub mod currency_conv;
 mod horizon;
 
 use codec::{Decode, Encode};
-use frame_system::offchain::{SignedPayload, SigningTypes};
 use orml_traits::MultiCurrency;
 pub use pallet::*;
 use pallet_transaction_payment::Config as PaymentConfig;
@@ -47,31 +46,9 @@ pub const KEY_TYPE: KeyTypeId = KeyTypeId(*b"abcd");
 /// them with the pallet-specific identifier.
 pub mod crypto {
     use super::KEY_TYPE;
-    use sp_core::ed25519::Signature as Ed25519Signature;
-    use sp_runtime::{
-        app_crypto::{app_crypto, ed25519},
-        traits::Verify,
-        MultiSignature, MultiSigner,
-    };
+    use sp_runtime::app_crypto::{app_crypto, ed25519};
 
     app_crypto!(ed25519, KEY_TYPE);
-
-    pub struct TestAuthId;
-    // implemented for ocw-runtime
-    impl frame_system::offchain::AppCrypto<MultiSigner, MultiSignature> for TestAuthId {
-        type RuntimeAppPublic = Public;
-        type GenericSignature = sp_core::ed25519::Signature;
-        type GenericPublic = sp_core::ed25519::Public;
-    }
-
-    // implemented for mock runtime in test
-    impl frame_system::offchain::AppCrypto<<Ed25519Signature as Verify>::Signer, Ed25519Signature>
-        for TestAuthId
-    {
-        type RuntimeAppPublic = Public;
-        type GenericSignature = sp_core::ed25519::Signature;
-        type GenericPublic = sp_core::ed25519::Public;
-    }
 }
 
 #[derive(Encode, Decode, Clone, PartialEq, Eq, RuntimeDebug, scale_info::TypeInfo)]
@@ -82,41 +59,17 @@ pub struct DepositPayload<Currency, AccountId, Public, Balance> {
     signed_by: Public,
 }
 
-impl<T: SigningTypes> SignedPayload<T>
-    for DepositPayload<
-        CurrencyIdOf<T>,
-        <T as frame_system::Config>::AccountId,
-        T::Public,
-        BalanceOf<T>,
-    >
-where
-    T: pallet::Config,
-{
-    fn public(&self) -> T::Public {
-        self.signed_by.clone()
-    }
-}
-
 #[frame_support::pallet]
 pub mod pallet {
     use super::*;
-    use frame_support::{dispatch::DispatchResultWithPostInfo, error::LookupError};
-    use frame_system::offchain::{
-        AppCrypto, CreateSignedTransaction, SendUnsignedTransaction, Signer,
-    };
+    use frame_support::error::LookupError;
     use stellar::{
         types::{OperationBody, PaymentOp},
         XdrCodec,
     };
 
     #[pallet::config]
-    pub trait Config:
-        frame_system::Config
-        + CreateSignedTransaction<Call<Self>>
-        + PaymentConfig
-        + orml_tokens::Config
-    {
-        type AuthorityId: AppCrypto<Self::Public, Self::Signature>;
+    pub trait Config: frame_system::Config + PaymentConfig + orml_tokens::Config {
         /// The overarching dispatch call type.
         type Call: From<Call<Self>>;
         /// The overarching event type.
@@ -160,9 +113,6 @@ pub mod pallet {
         // Error returned when making signed transactions in off-chain worker
         NoLocalAcctForSigning,
 
-        // Error returned when making unsigned transactions with signed payloads in off-chain worker
-        OffchainUnsignedTxSignedPayloadError,
-
         // XDR encoding/decoding error
         XdrCodecError,
 
@@ -188,42 +138,7 @@ pub mod pallet {
             }
             Ok(())
         }
-
-        // TODO Benchmark weight
-        #[pallet::weight(10_000)]
-        pub fn submit_deposit_unsigned_signed_payload(
-            origin: OriginFor<T>,
-            payload: DepositPayload<
-                CurrencyIdOf<T>,
-                <T as frame_system::Config>::AccountId,
-                T::Public,
-                BalanceOf<T>,
-            >,
-            _signature: T::Signature,
-        ) -> DispatchResultWithPostInfo {
-            let _ = ensure_none(origin)?;
-
-            let DepositPayload {
-                currency_id,
-                amount,
-                destination,
-                signed_by,
-            } = payload;
-
-            log::info!(
-                "Submit deposit: ({:?}, {:?}, {:?})",
-                amount,
-                destination,
-                signed_by
-            );
-
-            let result = T::Currency::deposit(currency_id, &destination, amount);
-            log::info!("{:?}", result);
-
-            Self::deposit_event(Event::Deposit(currency_id, destination, amount));
-            Ok(().into())
-        }
-
+ 
         #[pallet::weight(100000)]
         pub fn initate_redeem(
             origin: OriginFor<T>,
@@ -266,7 +181,6 @@ pub mod pallet {
                     _ => None,
                 })
                 .collect();
-            
             for payment_op in payment_ops {
                 let amount = T::BalanceConversion::unlookup(payment_op.amount);
                 let currency = T::CurrencyConversion::unlookup(payment_op.asset.clone());
@@ -283,32 +197,14 @@ pub mod pallet {
 
         fn send_payment_tx(
             currency_id: CurrencyIdOf<T>,
-            deposit: BalanceOf<T>,
+            amount: BalanceOf<T>,
             destination: <T as frame_system::Config>::AccountId,
         ) -> Result<(), Error<T>> {
-            let signer = Signer::<T, T::AuthorityId>::any_account();
+            let result = T::Currency::deposit(currency_id, &destination, amount);
+            log::info!("{:?}", result);
 
-            if let Some((_, res)) = signer.send_unsigned_transaction(
-                |acct| DepositPayload {
-                    currency_id,
-                    amount: deposit,
-                    destination: destination.clone(),
-                    signed_by: acct.public.clone(),
-                },
-                |payload, signature| Call::submit_deposit_unsigned_signed_payload {
-                    payload,
-                    signature,
-                },
-            ) {
-                return res.map_err(|_| {
-                    log::error!("Failed in send_unsigned_tx_signed_payload");
-                    Error::OffchainUnsignedTxSignedPayloadError
-                });
-            } else {
-                // The case of `None`: no account is available for sending
-                log::error!("No local account available");
-                Err(Error::NoLocalAcctForSigning)
-            }
+            Self::deposit_event(Event::Deposit(currency_id, destination, amount));
+            Ok(())
         }
     }
 }
