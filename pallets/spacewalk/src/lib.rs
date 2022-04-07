@@ -1,9 +1,7 @@
 #![cfg_attr(not(feature = "std"), no_std)]
+#![feature(result_flattening)]
 
-/// Edit this file to define custom logic or remove it if it is not needed.
-/// Learn more about FRAME and the core library of Substrate FRAME pallets:
-/// <https://docs.substrate.io/v3/runtime/frame>
-pub use pallet::*;
+extern crate alloc;
 
 #[cfg(test)]
 mod mock;
@@ -14,89 +12,182 @@ mod tests;
 #[cfg(feature = "runtime-benchmarks")]
 mod benchmarking;
 
+pub mod address_conv;
+pub mod balance_conv;
+pub mod currency;
+pub mod currency_conv;
+mod horizon;
+
+use codec::{Decode, Encode};
+use orml_traits::MultiCurrency;
+pub use pallet::*;
+use pallet_transaction_payment::Config as PaymentConfig;
+use sp_core::crypto::KeyTypeId;
+use sp_runtime::traits::{Convert, StaticLookup};
+use sp_runtime::RuntimeDebug;
+use sp_std::{convert::From, prelude::*, str};
+
+use substrate_stellar_sdk as stellar;
+
+use frame_support::pallet_prelude::*;
+use frame_system::pallet_prelude::*;
+
+type BalanceOf<T> = <<T as Config>::Currency as orml_traits::MultiCurrency<
+    <T as frame_system::Config>::AccountId,
+>>::Balance;
+
+type CurrencyIdOf<T> =
+    <<T as Config>::Currency as MultiCurrency<<T as frame_system::Config>::AccountId>>::CurrencyId;
+
+pub const KEY_TYPE: KeyTypeId = KeyTypeId(*b"abcd");
+
+/// Based on the above `KeyTypeId` we need to generate a pallet-specific crypto type wrapper.
+/// We can utilize the supported crypto kinds (`ed25519`, `ed25519` and `ecdsa`) and augment
+/// them with the pallet-specific identifier.
+pub mod crypto {
+    use super::KEY_TYPE;
+    use sp_runtime::app_crypto::{app_crypto, ed25519};
+
+    app_crypto!(ed25519, KEY_TYPE);
+}
+
+#[derive(Encode, Decode, Clone, PartialEq, Eq, RuntimeDebug, scale_info::TypeInfo)]
+pub struct DepositPayload<Currency, AccountId, Public, Balance> {
+    currency_id: Currency,
+    amount: Balance,
+    destination: AccountId,
+    signed_by: Public,
+}
+
 #[frame_support::pallet]
 pub mod pallet {
-	use frame_support::pallet_prelude::*;
-	use frame_system::pallet_prelude::*;
+    use super::*;
+    use stellar::{
+        types::{OperationBody, PaymentOp},
+        XdrCodec,
+    };
 
-	/// Configure the pallet by specifying the parameters and types on which it depends.
-	#[pallet::config]
-	pub trait Config: frame_system::Config {
-		/// Because this pallet emits events, it depends on the runtime's definition of an event.
-		type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
-	}
+    #[pallet::config]
+    pub trait Config: frame_system::Config + PaymentConfig + orml_tokens::Config {
+        /// The overarching dispatch call type.
+        type Call: From<Call<Self>>;
+        /// The overarching event type.
+        type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
 
-	#[pallet::pallet]
-	#[pallet::generate_store(pub(super) trait Store)]
-	pub struct Pallet<T>(_);
+        /// The mechanics of the ORML tokens
+        type Currency: MultiCurrency<<Self as frame_system::Config>::AccountId>;
+        type AddressConversion: StaticLookup<
+            Source = <Self as frame_system::Config>::AccountId,
+            Target = substrate_stellar_sdk::PublicKey,
+        >;
+        type BalanceConversion: StaticLookup<Source = BalanceOf<Self>, Target = i64>;
+        type StringCurrencyConversion: Convert<(Vec<u8>, Vec<u8>), Result<CurrencyIdOf<Self>, ()>>;
 
-	// The pallet's runtime storage items.
-	// https://docs.substrate.io/v3/runtime/storage
-	#[pallet::storage]
-	#[pallet::getter(fn something)]
-	// Learn more about declaring storage items:
-	// https://docs.substrate.io/v3/runtime/storage#declaring-storage-items
-	pub type Something<T> = StorageValue<_, u32>;
+        /// Conversion between Stellar asset type and this pallet trait for Currency
+        type CurrencyConversion: StaticLookup<
+            Source = CurrencyIdOf<Self>,
+            Target = substrate_stellar_sdk::Asset,
+        >;
+    }
 
-	// Pallets use events to inform users when important changes are made.
-	// https://docs.substrate.io/v3/runtime/events-and-errors
-	#[pallet::event]
-	#[pallet::generate_deposit(pub(super) fn deposit_event)]
-	pub enum Event<T: Config> {
-		/// Event documentation should end with an array that provides descriptive names for event
-		/// parameters. [something, who]
-		SomethingStored(u32, T::AccountId),
-	}
+    #[pallet::pallet]
+    #[pallet::generate_store(pub(super) trait Store)]
+    pub struct Pallet<T>(_);
 
-	// Errors inform users that something went wrong.
-	#[pallet::error]
-	pub enum Error<T> {
-		/// Error names should be descriptive.
-		NoneValue,
-		/// Errors should have helpful documentation associated with them.
-		StorageOverflow,
-	}
+    #[pallet::event]
+    #[pallet::generate_deposit(pub(super) fn deposit_event)]
+    pub enum Event<T: Config> {
+        /// Event generated when a new deposit is made on a Stellar Account.
+        Deposit(
+            CurrencyIdOf<T>,
+            <T as frame_system::Config>::AccountId,
+            BalanceOf<T>,
+        ),
+    }
 
-	// Dispatchable functions allows users to interact with the pallet and invoke state changes.
-	// These functions materialize as "extrinsics", which are often compared to transactions.
-	// Dispatchable functions must be annotated with a weight and must return a DispatchResult.
-	#[pallet::call]
-	impl<T: Config> Pallet<T> {
-		/// An example dispatchable that takes a singles value as a parameter, writes the value to
-		/// storage and emits an event. This function must be dispatched by a signed extrinsic.
-		#[pallet::weight(10_000 + T::DbWeight::get().writes(1))]
-		pub fn do_something(origin: OriginFor<T>, something: u32) -> DispatchResult {
-			// Check that the extrinsic was signed and get the signer.
-			// This function will return an error if the extrinsic is not signed.
-			// https://docs.substrate.io/v3/runtime/origins
-			let who = ensure_signed(origin)?;
+    #[pallet::error]
+    pub enum Error<T> {
+        // Error returned when making signed transactions in off-chain worker
+        NoLocalAcctForSigning,
 
-			// Update storage.
-			<Something<T>>::put(something);
+        // XDR encoding/decoding error
+        XdrCodecError,
+    }
 
-			// Emit an event.
-			Self::deposit_event(Event::SomethingStored(something, who));
-			// Return a successful DispatchResultWithPostInfo
-			Ok(())
-		}
+    #[pallet::call]
+    impl<T: Config> Pallet<T> {
+        // TODO Benchmakr weights
+        #[pallet::weight(10_000)]
+        pub fn report_stellar_transaction(
+            origin: OriginFor<T>,
+            transaction_envelope_xdr: Vec<u8>,
+        ) -> DispatchResult {
+            let _who = ensure_signed(origin)?;
 
-		/// An example dispatchable that may throw a custom error.
-		#[pallet::weight(10_000 + T::DbWeight::get().reads_writes(1,1))]
-		pub fn cause_error(origin: OriginFor<T>) -> DispatchResult {
-			let _who = ensure_signed(origin)?;
+            let xdr = transaction_envelope_xdr.clone();
+            log::info!("envelope:{:?}", str::from_utf8(&xdr));
 
-			// Read a value from storage.
-			match <Something<T>>::get() {
-				// Return an error if the value has not been set.
-				None => Err(Error::<T>::NoneValue)?,
-				Some(old) => {
-					// Increment the value read from storage; will error in the event of overflow.
-					let new = old.checked_add(1).ok_or(Error::<T>::StorageOverflow)?;
-					// Update the value in storage with the incremented result.
-					<Something<T>>::put(new);
-					Ok(())
-				},
-			}
-		}
-	}
+            let tx_xdr = base64::decode(&transaction_envelope_xdr).unwrap();
+            let tx_envelope =
+                substrate_stellar_sdk::TransactionEnvelope::from_xdr(&tx_xdr).unwrap();
+
+            log::info!("envelope:{:?}", tx_envelope);
+
+            if let substrate_stellar_sdk::TransactionEnvelope::EnvelopeTypeTx(env) = tx_envelope {
+                log::info!("process_new_transaction:{:?}", env.tx);
+                Self::process_new_transaction(env.tx);
+            }
+            Ok(())
+        }
+    }
+
+    impl<T: Config> Pallet<T> {
+        fn process_new_transaction(transaction: stellar::types::Transaction) {
+            // The destination of a mirrored Pendulum transaction, is always derived of the source
+            // account that initiated the Stellar transaction.
+            let destination = if let substrate_stellar_sdk::MuxedAccount::KeyTypeEd25519(key) =
+                transaction.source_account
+            {
+                T::AddressConversion::unlookup(substrate_stellar_sdk::PublicKey::from_binary(key))
+            } else {
+                log::error!("❌  Source account format not supported.");
+                return;
+            };
+
+            let payment_ops: Vec<&PaymentOp> = transaction
+                .operations
+                .get_vec()
+                .into_iter()
+                .filter_map(|op| match &op.body {
+                    OperationBody::Payment(p) => Some(p),
+                    _ => None,
+                })
+                .collect();
+
+            for payment_op in payment_ops {
+                let amount = T::BalanceConversion::unlookup(payment_op.amount);
+                let currency = T::CurrencyConversion::unlookup(payment_op.asset.clone());
+
+                match Self::send_payment_tx(currency, amount, destination.clone()) {
+                    Err(_) => log::warn!("Sending the tx failed."),
+                    Ok(_) => {
+                        log::info!("✅ Deposit successfully Executed");
+                        ()
+                    }
+                }
+            }
+        }
+
+        fn send_payment_tx(
+            currency_id: CurrencyIdOf<T>,
+            amount: BalanceOf<T>,
+            destination: <T as frame_system::Config>::AccountId,
+        ) -> Result<(), Error<T>> {
+            let result = T::Currency::deposit(currency_id, &destination, amount);
+            log::info!("{:?}", result);
+
+            Self::deposit_event(Event::Deposit(currency_id, destination, amount));
+            Ok(())
+        }
+    }
 }
