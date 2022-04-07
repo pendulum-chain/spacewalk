@@ -105,7 +105,13 @@ pub mod pallet {
             BalanceOf<T>,
         ),
         /// User initiated a redeem. [CurrencyIdOf<T>, T::AccountId, BalanceOf<T>]
-		Redeem(CurrencyIdOf<T>, T::AccountId, BalanceOf<T>),
+		Redeem{
+            asset_code: Vec<u8>,
+            asset_issuer: Vec<u8>,
+            stellar_user_id: [u8; 32],
+            stellar_vault_id: [u8; 32],
+            amount: BalanceOf<T>,
+        },
     }
 
     #[pallet::error]
@@ -145,16 +151,23 @@ pub mod pallet {
             asset_code: Vec<u8>,
             asset_issuer: Vec<u8>,
             amount: BalanceOf<T>,
+            stellar_vault_pubkey: [u8; 32],
         ) -> DispatchResultWithPostInfo {
-			let currency_id = T::StringCurrencyConversion::convert((asset_code, asset_issuer))
+			let currency_id = T::StringCurrencyConversion::convert((asset_code.clone(), asset_issuer.clone()))
                 .map_err(|_| LookupError)?;
             let pendulum_account_id = ensure_signed(origin)?;
-            //let stellar_address = T::AddressConversion::lookup(pendulum_account_id.clone())?;
+            let stellar_user_address = T::AddressConversion::lookup(pendulum_account_id.clone())?;
 
             T::Currency::withdraw(currency_id.clone(), &pendulum_account_id, amount)
                 .map_err(|_| <Error<T>>::BalanceChangeError)?;
 
-            Self::deposit_event(Event::Redeem(currency_id, pendulum_account_id, amount));
+            Self::deposit_event(Event::Redeem{
+                asset_code: asset_code,
+                asset_issuer: asset_issuer,
+                stellar_user_id: stellar_user_address.into_binary(),
+                stellar_vault_id: stellar_vault_pubkey,
+                amount: amount,
+            });
             Ok(().into())
         }
     }
