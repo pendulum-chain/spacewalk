@@ -105,7 +105,7 @@ pub mod pallet {
             BalanceOf<T>,
         ),
         /// User initiated a redeem. [CurrencyIdOf<T>, T::AccountId, BalanceOf<T>]
-		InitiateRedeem(CurrencyIdOf<T>, T::AccountId, BalanceOf<T>),
+		Redeem(CurrencyIdOf<T>, T::AccountId, BalanceOf<T>),
     }
 
     #[pallet::error]
@@ -140,7 +140,7 @@ pub mod pallet {
         }
  
         #[pallet::weight(100000)]
-        pub fn initate_redeem(
+        pub fn redeem(
             origin: OriginFor<T>,
             asset_code: Vec<u8>,
             asset_issuer: Vec<u8>,
@@ -154,7 +154,7 @@ pub mod pallet {
             T::Currency::withdraw(currency_id.clone(), &pendulum_account_id, amount)
                 .map_err(|_| <Error<T>>::BalanceChangeError)?;
 
-            Self::deposit_event(Event::InitiateRedeem(currency_id, pendulum_account_id, amount));
+            Self::deposit_event(Event::Redeem(currency_id, pendulum_account_id, amount));
             Ok(().into())
         }
     }
