@@ -1,12 +1,14 @@
 #![recursion_limit = "256"]
 
+mod deposit;
 mod error;
 mod horizon;
-mod deposit;
 mod redeem;
 mod system;
 
-pub mod service {}
+pub mod service {
+    pub use crate::{deposit::poll_horizon_for_new_transactions, redeem::listen_for_redeem_requests};
+}
 use std::time::Duration;
 pub use system::{VaultService, VaultServiceConfig, ABOUT, AUTHORS, NAME, VERSION};
 
