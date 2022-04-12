@@ -62,7 +62,6 @@ pub struct DepositPayload<Currency, AccountId, Public, Balance> {
 #[frame_support::pallet]
 pub mod pallet {
     use super::*;
-    use frame_support::error::LookupError;
     use stellar::{
         types::{OperationBody, PaymentOp},
         XdrCodec,
@@ -119,6 +118,9 @@ pub mod pallet {
         // XDR encoding/decoding error
         XdrDecodingError,
 
+        // Currency conversion error
+        CurrencyConversionError,
+
         // Failed to change a balance
         BalanceChangeError,
     }
@@ -158,7 +160,7 @@ pub mod pallet {
             stellar_vault_pubkey: [u8; 32],
         ) -> DispatchResultWithPostInfo {
 			let currency_id = T::StringCurrencyConversion::convert((asset_code.clone(), asset_issuer.clone()))
-                .map_err(|_| LookupError)?;
+                .map_err(|_| <Error<T>>::CurrencyConversionError)?;
             let pendulum_account_id = ensure_signed(origin)?;
             let stellar_user_address = T::AddressConversion::lookup(pendulum_account_id.clone())?;
 
