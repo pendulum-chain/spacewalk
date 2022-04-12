@@ -109,9 +109,8 @@ pub mod pallet {
     pub enum Error<T> {
         // Error returned when making signed transactions in off-chain worker
         NoLocalAcctForSigning,
-
         // XDR encoding/decoding error
-        XdrCodecError,
+        XdrDecodingError,
     }
 
     #[pallet::call]
@@ -127,9 +126,12 @@ pub mod pallet {
             let xdr = transaction_envelope_xdr.clone();
             log::info!("envelope:{:?}", str::from_utf8(&xdr));
 
-            let tx_xdr = base64::decode(&transaction_envelope_xdr).unwrap();
-            let tx_envelope =
-                substrate_stellar_sdk::TransactionEnvelope::from_xdr(&tx_xdr).unwrap();
+            let tx_xdr = base64::decode(&transaction_envelope_xdr)
+                .ok()
+                .ok_or(Error::<T>::XdrDecodingError)?;
+            let tx_envelope = substrate_stellar_sdk::TransactionEnvelope::from_xdr(&tx_xdr)
+                .ok()
+                .ok_or(Error::<T>::XdrDecodingError)?;
 
             log::info!("envelope:{:?}", tx_envelope);
 
