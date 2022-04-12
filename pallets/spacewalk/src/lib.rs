@@ -107,8 +107,6 @@ pub mod pallet {
 
     #[pallet::error]
     pub enum Error<T> {
-        // Error returned when making signed transactions in off-chain worker
-        NoLocalAcctForSigning,
         // XDR encoding/decoding error
         XdrDecodingError,
     }
