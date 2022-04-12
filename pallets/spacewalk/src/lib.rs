@@ -116,11 +116,8 @@ pub mod pallet {
 
     #[pallet::error]
     pub enum Error<T> {
-        // Error returned when making signed transactions in off-chain worker
-        NoLocalAcctForSigning,
-
         // XDR encoding/decoding error
-        XdrCodecError,
+        XdrDecodingError,
 
         // Failed to change a balance
         BalanceChangeError,
@@ -135,9 +132,16 @@ pub mod pallet {
             transaction_envelope_xdr: Vec<u8>,
         ) -> DispatchResult {
             let _who = ensure_signed(origin)?;
-            let tx_xdr = base64::decode(&transaction_envelope_xdr).unwrap();
-            let tx_envelope =
-                substrate_stellar_sdk::TransactionEnvelope::from_xdr(&tx_xdr).unwrap();
+
+            let xdr = transaction_envelope_xdr.clone();
+            log::info!("envelope:{:?}", str::from_utf8(&xdr));
+
+            let tx_xdr = base64::decode(&transaction_envelope_xdr)
+                .ok()
+                .ok_or(Error::<T>::XdrDecodingError)?;
+            let tx_envelope = substrate_stellar_sdk::TransactionEnvelope::from_xdr(&tx_xdr)
+                .ok()
+                .ok_or(Error::<T>::XdrDecodingError)?;
 
             if let substrate_stellar_sdk::TransactionEnvelope::EnvelopeTypeTx(env) = tx_envelope {
                 Self::process_new_transaction(env.tx);
