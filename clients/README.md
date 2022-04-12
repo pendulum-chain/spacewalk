@@ -1,11 +1,5 @@
 # Building
 
-Set clang variables
-
-```
-export AR=/usr/local/opt/llvm/bin/llvm-ar
-export CC=/usr/local/opt/llvm/bin/clang
-```
 
 From the spacewalk/client directory run
 
@@ -43,4 +37,23 @@ subxt metadata -f bytes > runtime/metadata-standalone.scale
 
 ## Troubleshooting
 
+### Invalid spec version
 If there are errors with spec versions not matching you might have to change the `DEFAULT_SPEC_VERSION` in runtime/src/rpc.rs.
+
+### Building on macOS
+If you are encountering build errors on macOS try the following steps:
+
+1. Install llvm with brew (`brew install llvm`).
+
+1. Install wasm-pack for cargo (`cargo install wasm-pack`).
+
+1. Set clang variables
+
+```
+# on intel CPU
+export AR=/usr/local/opt/llvm/bin/llvm-ar
+export CC=/usr/local/opt/llvm/bin/clang
+# on M1 CPU
+export AR=/opt/homebrew/opt/llvm/bin/llvm-ar 
+export CC=/opt/homebrew/opt/llvm/bin/clang 
+```
