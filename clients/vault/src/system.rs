@@ -9,7 +9,7 @@ use runtime::{SpacewalkParachain, UtilFuncs};
 use service::{wait_or_shutdown, Error as ServiceError, Service, ShutdownSender};
 use tokio::time::sleep;
 
-pub const VERSION: &str = git_version!(args = ["--tags"]);
+pub const VERSION: &str = git_version!(args = ["--tags"], fallback = "unknown");
 pub const AUTHORS: &str = env!("CARGO_PKG_AUTHORS");
 pub const NAME: &str = env!("CARGO_PKG_NAME");
 pub const ABOUT: &str = env!("CARGO_PKG_DESCRIPTION");
