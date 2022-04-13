@@ -47,7 +47,7 @@ sp-runtime = {git = "https://github.com/paritytech/substrate", branch = "polkado
 sp-std = {git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.17"}
 
 # Substrate Stellar Dependencies
-substrate-stellar-sdk = {git = "https://github.com/pendulum-chain/substrate-stellar-sdk", branch = "polkadot-v0.9.16"}
+substrate-stellar-sdk = {git = "https://github.com/pendulum-chain/substrate-stellar-sdk", branch = "polkadot-v0.9.17"}
 
 [dev-dependencies]
 mockall = "0.8.1"

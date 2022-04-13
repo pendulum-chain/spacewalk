@@ -12,7 +12,6 @@ use sp_std::{
 };
 use stellar::{network::TEST_NETWORK, PublicKey, SecretKey};
 use substrate_stellar_sdk as stellar;
-use tokio::time::sleep;
 
 const SUBMISSION_TIMEOUT_PERIOD: u64 = 10000;
 

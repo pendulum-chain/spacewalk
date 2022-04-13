@@ -149,8 +149,8 @@ pub async fn poll_horizon_for_new_transactions<P: SpacewalkPallet>(
     parachain_rpc: P,
     escrow_secret_key: String,
 ) -> Result<(), ServiceError> {
-    let horizonClient = reqwest::Client::new();
-    let mut fetcher = HorizonFetcher::new(parachain_rpc, horizonClient, escrow_secret_key);
+    let horizon_client = reqwest::Client::new();
+    let mut fetcher = HorizonFetcher::new(parachain_rpc, horizon_client, escrow_secret_key);
     // Start polling horizon every 5 seconds
     loop {
         fetcher.fetch_horizon_and_process_new_transactions().await;
@@ -243,6 +243,13 @@ mod tests {
     #[async_trait]
     pub trait SpacewalkPallet {
     async fn report_stellar_transaction(&self, tx_envelope_xdr: &Vec<u8>) -> Result<(), runtime::Error>;
+    async fn redeem(
+        &self,
+        asset_code: &Vec<u8>,
+        asset_issuer: &Vec<u8>,
+        amount: u128,
+        stellar_vault_pubkey: [u8; 32],
+    ) -> Result<(), runtime::Error>;
     }
 
     }
