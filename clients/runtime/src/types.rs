@@ -2,26 +2,13 @@ use crate::{metadata, Config, InterBtcRuntime};
 pub use metadata_aliases::*;
 use subxt::sp_core::sr25519::Pair as KeyPair;
 
-pub use primitives::{
-    CurrencyId,
-    CurrencyId::Token,
-    TokenSymbol::{DOT, INTERBTC, INTR, KBTC, KINT, KSM},
-};
-
-pub use currency_id::CurrencyIdExt;
-pub use module_btc_relay::{RichBlockHeader, MAIN_CHAIN_ID};
-
-pub type AccountId = subxt::sp_runtime::AccountId32;
-pub type Balance = primitives::Balance;
+pub type AccountId = spacewalk_runtime::AccountId;
+pub type Balance = spacewalk_runtime::Balance;
 pub type Index = u32;
 pub type BlockNumber = u32;
-pub type H160 = subxt::sp_core::H160;
 pub type H256 = subxt::sp_core::H256;
-pub type U256 = subxt::sp_core::U256;
 
 pub type InterBtcSigner = subxt::PairSigner<InterBtcRuntime, subxt::DefaultExtra<InterBtcRuntime>, KeyPair>;
-
-pub type BtcAddress = module_btc_relay::BtcAddress;
 
 pub type FixedU128 = sp_arithmetic::FixedU128;
 
@@ -32,22 +19,6 @@ mod metadata_aliases {
     pub type RedeemEvent = metadata::spacewalk::events::Redeem;
 
     pub type InterBtcHeader = <InterBtcRuntime as Config>::Header;
-}
-
-mod currency_id {
-    use super::*;
-
-    pub trait CurrencyIdExt {
-        fn inner(&self) -> primitives::TokenSymbol;
-    }
-
-    impl CurrencyIdExt for CurrencyId {
-        fn inner(&self) -> primitives::TokenSymbol {
-            match self {
-                Token(x) => *x,
-            }
-        }
-    }
 }
 
 mod dispatch_error {

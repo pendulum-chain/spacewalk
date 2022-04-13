@@ -9,7 +9,6 @@ use crate::{
 
 use async_trait::async_trait;
 use futures::{stream::StreamExt, FutureExt, SinkExt};
-use primitives::TokenSymbol::DOT;
 use std::{future::Future, sync::Arc, time::Duration};
 use subxt::{
     BasicError, Client as SubxtClient, ClientBuilder as SubxtClientBuilder, DefaultExtra, Event, EventSubscription,
@@ -61,7 +60,7 @@ impl SpacewalkParachain {
             ));
         }
 
-        let placeholder = CurrencyId::Token(DOT);
+        let placeholder = CurrencyId::Native;
         let native_currency_id = placeholder.clone();
         let relay_chain_currency_id = placeholder.clone();
         let wrapped_currency_id = placeholder.clone();
@@ -386,12 +385,7 @@ impl SpacewalkPallet for SpacewalkParachain {
             self.api
                 .tx()
                 .spacewalk() // assume that spacewalk pallet is registered in connected chain
-                .redeem(
-                    asset_code.to_vec(),
-                    asset_issuer.to_vec(),
-                    amount,
-                    stellar_vault_pubkey,
-                ) // spacewalk pallet offers extrinsic `redeem`
+                .redeem(asset_code.to_vec(), asset_issuer.to_vec(), amount, stellar_vault_pubkey) // spacewalk pallet offers extrinsic `redeem`
                 .sign_and_submit_then_watch(&signer)
                 .await
         })

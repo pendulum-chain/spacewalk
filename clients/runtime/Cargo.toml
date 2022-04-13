@@ -46,9 +46,8 @@ subxt-client = {package = "subxt-client", git = "https://github.com/interlay/sub
 
 jsonrpsee = {version = "0.8.0", features = ["macros", "jsonrpsee-types", "client", "jsonrpsee-ws-client", "jsonrpsee-client-transport"]}
 
-# Polkadot dependencies
-polkadot-parachain = {git = "https://github.com/paritytech/polkadot", branch = "release-v0.9.17"}
-xcm = {git = "https://github.com/paritytech/polkadot", branch = "release-v0.9.17"}
+# Runtime primitives
+spacewalk-runtime = {package = "node-template-runtime", path = "../../testchain/runtime"}
 
 # Dependencies for the testing utils for integration tests
 rand = {version = "0.7", optional = true}
@@ -57,26 +56,6 @@ testchain = {package = "node-template", path = "../../testchain/node", optional 
 
 # Substrate Stellar Dependencies
 substrate-stellar-sdk = {git = "https://github.com/pendulum-chain/substrate-stellar-sdk", branch = "polkadot-v0.9.17"}
-
-[dependencies.primitives]
-git = "https://github.com/interlay/interbtc"
-package = "interbtc-primitives"
-rev = "22b7490625b34de6b04f5750eda5966083d98567"
-
-[dependencies.module-bitcoin]
-git = "https://github.com/interlay/interbtc"
-package = "bitcoin"
-rev = "22b7490625b34de6b04f5750eda5966083d98567"
-
-[dependencies.module-btc-relay]
-git = "https://github.com/interlay/interbtc"
-package = "btc-relay"
-rev = "22b7490625b34de6b04f5750eda5966083d98567"
-
-[dependencies.module-oracle-rpc-runtime-api]
-git = "https://github.com/interlay/interbtc"
-package = "module-oracle-rpc-runtime-api"
-rev = "22b7490625b34de6b04f5750eda5966083d98567"
 
 [dev-dependencies]
 env_logger = "0.8.3"

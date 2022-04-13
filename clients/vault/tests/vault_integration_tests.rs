@@ -1,14 +1,10 @@
 use frame_support::assert_ok;
 use futures::{future::join, Future, FutureExt};
-use runtime::{integration::*, types::*, CurrencyId, SpacewalkPallet, SpacewalkParachain, UtilFuncs};
+use runtime::{integration::*, types::*, SpacewalkPallet, SpacewalkParachain, UtilFuncs};
 use sp_keyring::AccountKeyring;
 use std::time::Duration;
 
 const TIMEOUT: Duration = Duration::from_secs(90);
-
-const DEFAULT_NATIVE_CURRENCY: CurrencyId = Token(INTR);
-const DEFAULT_TESTING_CURRENCY: CurrencyId = Token(DOT);
-const DEFAULT_WRAPPED_CURRENCY: CurrencyId = Token(INTERBTC);
 
 const STELLAR_ESCROW_SECRET_KEY: &str = "SA4OOLVVZV2W7XAKFXUEKLMQ6Y2W5JBENHO5LP6W6BCPBU3WUZ5EBT7K";
 

@@ -18,10 +18,10 @@ use subxt::{
 };
 
 pub use error::{Error, SubxtError};
-pub use primitives::CurrencyInfo;
 pub use retry::{notify_retry, RetryPolicy};
 pub use rpc::{SpacewalkPallet, SpacewalkParachain, UtilFuncs};
 pub use sp_arithmetic::{traits as FixedPointTraits, FixedI128, FixedPointNumber, FixedU128};
+use spacewalk_runtime::{AccountId, CurrencyId};
 pub use subxt::{
     sp_core::{crypto::Ss58Codec, sr25519::Pair},
     Signer,
@@ -63,34 +63,7 @@ pub const STABLE_PARACHAIN_CONFIRMATIONS: &str = "StableParachainConfirmations";
         generated_type_derives = "Clone"
     )
 )]
-pub mod metadata {
-    #[subxt(substitute_type = "BTreeSet")]
-    use sp_std::collections::btree_set::BTreeSet;
-
-    #[subxt(substitute_type = "primitive_types::H256")]
-    use crate::H256;
-
-    #[subxt(substitute_type = "primitive_types::U256")]
-    use crate::U256;
-
-    #[subxt(substitute_type = "primitive_types::H160")]
-    use crate::H160;
-
-    #[subxt(substitute_type = "sp_core::crypto::AccountId32")]
-    use crate::AccountId;
-
-    #[subxt(substitute_type = "sp_arithmetic::fixed_point::FixedU128")]
-    use crate::FixedU128;
-
-    #[subxt(substitute_type = "bitcoin::address::Address")]
-    use crate::BtcAddress;
-
-    #[subxt(substitute_type = "interbtc_primitives::CurrencyId")]
-    use crate::CurrencyId;
-
-    #[subxt(substitute_type = "frame_support::traits::misc::WrapperKeepOpaque")]
-    use crate::WrapperKeepOpaque;
-}
+pub mod metadata {}
 
 #[derive(Debug, Eq, PartialEq, Ord, PartialOrd, Default, Clone, Decode, Encode)]
 pub struct WrapperKeepOpaque<T> {
@@ -113,32 +86,3 @@ impl Config for InterBtcRuntime {
     type Signature = MultiSignature;
 }
 
-impl From<<InterBtcRuntime as Config>::AccountId> for metadata::system::storage::Account {
-    fn from(account_id: <InterBtcRuntime as Config>::AccountId) -> Self {
-        Self(account_id)
-    }
-}
-
-pub fn parse_collateral_currency(src: &str) -> Result<CurrencyId, Error> {
-    match src.to_uppercase().as_str() {
-        id if id == KSM.symbol() => Ok(Token(KSM)),
-        id if id == DOT.symbol() => Ok(Token(DOT)),
-        x => parse_native_currency(x),
-    }
-}
-
-pub fn parse_native_currency(src: &str) -> Result<CurrencyId, Error> {
-    match src.to_uppercase().as_str() {
-        id if id == KINT.symbol() => Ok(Token(KINT)),
-        id if id == INTR.symbol() => Ok(Token(INTR)),
-        _ => Err(Error::InvalidCurrency),
-    }
-}
-
-pub fn parse_wrapped_currency(src: &str) -> Result<CurrencyId, Error> {
-    match src.to_uppercase().as_str() {
-        id if id == KBTC.symbol() => Ok(Token(KBTC)),
-        id if id == INTERBTC.symbol() => Ok(Token(INTERBTC)),
-        _ => Err(Error::InvalidCurrency),
-    }
-}

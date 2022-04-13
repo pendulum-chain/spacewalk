@@ -442,31 +442,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "bitcoin"
-version = "1.2.0"
-source = "git+https://github.com/interlay/interbtc?rev=22b7490625b34de6b04f5750eda5966083d98567#22b7490625b34de6b04f5750eda5966083d98567"
-dependencies = [
- "bitcoin_hashes",
- "frame-support",
- "hex",
- "impl-serde",
- "parity-scale-codec",
- "scale-info",
- "secp256k1",
- "serde",
- "sha2 0.8.2",
- "sp-core",
- "sp-std",
- "spin 0.7.1",
-]
-
-[[package]]
-name = "bitcoin_hashes"
-version = "0.7.6"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b375d62f341cef9cd9e77793ec8f1db3fc9ce2e4d57e982c8fe697a2c16af3b6"
-
-[[package]]
 name = "bitflags"
 version = "1.3.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -615,32 +590,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ba3569f383e8f1598449f1a423e72e99569137b47740b1da11ef19af3d5c3223"
 dependencies = [
  "memchr",
-]
-
-[[package]]
-name = "bstringify"
-version = "0.1.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "bd769563b4ea2953e2825c9e6b7470a5f55f67e0be00030bf3e390a2a6071f64"
-
-[[package]]
-name = "btc-relay"
-version = "1.2.0"
-source = "git+https://github.com/interlay/interbtc?rev=22b7490625b34de6b04f5750eda5966083d98567#22b7490625b34de6b04f5750eda5966083d98567"
-dependencies = [
- "bitcoin",
- "frame-benchmarking",
- "frame-support",
- "frame-system",
- "pallet-timestamp",
- "parity-scale-codec",
- "scale-info",
- "security",
- "sp-arithmetic",
- "sp-core",
- "sp-io",
- "sp-runtime",
- "sp-std",
 ]
 
 [[package]]
@@ -2492,21 +2441,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "interbtc-primitives"
-version = "1.2.0"
-source = "git+https://github.com/interlay/interbtc?rev=22b7490625b34de6b04f5750eda5966083d98567#22b7490625b34de6b04f5750eda5966083d98567"
-dependencies = [
- "bitcoin",
- "bstringify",
- "parity-scale-codec",
- "scale-info",
- "serde",
- "sp-core",
- "sp-runtime",
- "sp-std",
-]
-
-[[package]]
 name = "io-lifetimes"
 version = "0.4.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2906,7 +2840,7 @@ version = "1.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e2abad23fbc42b3700f2f279844dc832adb2b2eb069b2df918f455c4e18cc646"
 dependencies = [
- "spin 0.5.2",
+ "spin",
 ]
 
 [[package]]
@@ -3808,18 +3742,6 @@ dependencies = [
  "proc-macro2",
  "quote",
  "syn",
-]
-
-[[package]]
-name = "module-oracle-rpc-runtime-api"
-version = "1.2.0"
-source = "git+https://github.com/interlay/interbtc?rev=22b7490625b34de6b04f5750eda5966083d98567#22b7490625b34de6b04f5750eda5966083d98567"
-dependencies = [
- "frame-support",
- "parity-scale-codec",
- "serde",
- "sp-api",
- "sp-std",
 ]
 
 [[package]]
@@ -4903,36 +4825,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e8d0eef3571242013a0d5dc84861c3ae4a652e56e12adf8bdc26ff5f8cb34c94"
 
 [[package]]
-name = "polkadot-core-primitives"
-version = "0.9.17"
-source = "git+https://github.com/paritytech/polkadot?branch=release-v0.9.17#de0ecd4760b146ecf33f5e867d707d789e21e060"
-dependencies = [
- "parity-scale-codec",
- "parity-util-mem",
- "scale-info",
- "sp-core",
- "sp-runtime",
- "sp-std",
-]
-
-[[package]]
-name = "polkadot-parachain"
-version = "0.9.17"
-source = "git+https://github.com/paritytech/polkadot?branch=release-v0.9.17#de0ecd4760b146ecf33f5e867d707d789e21e060"
-dependencies = [
- "derive_more",
- "frame-support",
- "parity-scale-codec",
- "parity-util-mem",
- "polkadot-core-primitives",
- "scale-info",
- "serde",
- "sp-core",
- "sp-runtime",
- "sp-std",
-]
-
-[[package]]
 name = "polling"
 version = "2.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -5506,7 +5398,7 @@ dependencies = [
  "cc",
  "libc",
  "once_cell",
- "spin 0.5.2",
+ "spin",
  "untrusted",
  "web-sys",
  "winapi 0.3.9",
@@ -5538,20 +5430,16 @@ version = "1.1.0"
 dependencies = [
  "async-trait",
  "backoff",
- "bitcoin",
- "btc-relay",
  "cfg-if 1.0.0",
  "clap",
  "env_logger 0.8.4",
  "frame-support",
  "futures 0.3.21",
- "interbtc-primitives",
  "jsonrpsee",
  "log",
- "module-oracle-rpc-runtime-api",
  "node-template",
+ "node-template-runtime",
  "parity-scale-codec",
- "polkadot-parachain",
  "rand 0.7.3",
  "runtime",
  "serde",
@@ -5568,7 +5456,6 @@ dependencies = [
  "thiserror",
  "tokio",
  "url 2.2.2",
- "xcm",
 ]
 
 [[package]]
@@ -6600,44 +6487,12 @@ dependencies = [
 ]
 
 [[package]]
-name = "secp256k1"
-version = "0.20.1"
-source = "git+https://github.com/rust-bitcoin/rust-secp256k1?rev=8e61874#8e61874d7706143f90a303e8077f69cb8873edff"
-dependencies = [
- "secp256k1-sys",
-]
-
-[[package]]
-name = "secp256k1-sys"
-version = "0.4.0"
-source = "git+https://github.com/rust-bitcoin/rust-secp256k1?rev=8e61874#8e61874d7706143f90a303e8077f69cb8873edff"
-dependencies = [
- "cc",
-]
-
-[[package]]
 name = "secrecy"
 version = "0.8.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "9bd1c54ea06cfd2f6b63219704de0b9b4f72dcc2b8fdef820be6cd799780e91e"
 dependencies = [
  "zeroize",
-]
-
-[[package]]
-name = "security"
-version = "1.2.0"
-source = "git+https://github.com/interlay/interbtc?rev=22b7490625b34de6b04f5750eda5966083d98567#22b7490625b34de6b04f5750eda5966083d98567"
-dependencies = [
- "frame-support",
- "frame-system",
- "parity-scale-codec",
- "scale-info",
- "serde",
- "sha2 0.8.2",
- "sp-core",
- "sp-runtime",
- "sp-std",
 ]
 
 [[package]]
@@ -7609,12 +7464,6 @@ name = "spin"
 version = "0.5.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "6e63cff320ae2c57904679ba7cb63280a3dc4613885beafb148ee7bf9aa9042d"
-
-[[package]]
-name = "spin"
-version = "0.7.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "13287b4da9d1207a4f4929ac390916d64eacfe236a487e9a9f5b3be392be5162"
 
 [[package]]
 name = "ss58-registry"
