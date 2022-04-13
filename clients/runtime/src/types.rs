@@ -28,6 +28,7 @@ pub type FixedU128 = sp_arithmetic::FixedU128;
 mod metadata_aliases {
     use super::*;
 
+    pub type DepositEvent = metadata::spacewalk::events::Deposit;
     pub type RedeemEvent = metadata::spacewalk::events::Redeem;
 
     pub type InterBtcHeader = <InterBtcRuntime as Config>::Header;

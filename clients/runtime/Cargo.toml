@@ -13,8 +13,8 @@ testing-utils = [
   # "substrate-subxt/client",
   # "substrate-subxt-client",
   "tempdir",
-  "interbtc",
   "rand",
+  "testchain",
 ]
 
 [dependencies]
@@ -51,13 +51,12 @@ polkadot-parachain = {git = "https://github.com/paritytech/polkadot", branch = "
 xcm = {git = "https://github.com/paritytech/polkadot", branch = "release-v0.9.17"}
 
 # Dependencies for the testing utils for integration tests
-interbtc = {package = "interbtc-standalone", git = "https://github.com/interlay/interbtc", rev = "22b7490625b34de6b04f5750eda5966083d98567", optional = true}
 rand = {version = "0.7", optional = true}
 tempdir = {version = "0.3.7", optional = true}
-testchain = {package = "node-template", path = "../../testchain/node"}
+testchain = {package = "node-template", path = "../../testchain/node", optional = true}
 
 # Substrate Stellar Dependencies
-substrate-stellar-sdk = {git = "https://github.com/pendulum-chain/substrate-stellar-sdk", branch = "polkadot-v0.9.16"}
+substrate-stellar-sdk = {git = "https://github.com/pendulum-chain/substrate-stellar-sdk", branch = "polkadot-v0.9.17"}
 
 [dependencies.primitives]
 git = "https://github.com/interlay/interbtc"

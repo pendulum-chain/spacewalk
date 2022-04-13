@@ -19,7 +19,7 @@ use tokio::sync::RwLock;
 
 cfg_if::cfg_if! {
     if #[cfg(feature = "standalone-metadata")] {
-        const DEFAULT_SPEC_VERSION: u32 = 100;
+        const DEFAULT_SPEC_VERSION: u32 = 1;
     } else if #[cfg(feature = "parachain-metadata-kintsugi")] {
         const DEFAULT_SPEC_VERSION: u32 = 11;
     } else if #[cfg(feature = "parachain-metadata-testnet")] {
@@ -350,6 +350,14 @@ impl UtilFuncs for SpacewalkParachain {
 #[async_trait]
 pub trait SpacewalkPallet {
     async fn report_stellar_transaction(&self, tx_envelope_xdr: &Vec<u8>) -> Result<(), Error>;
+
+    async fn redeem(
+        &self,
+        asset_code: &Vec<u8>,
+        asset_issuer: &Vec<u8>,
+        amount: u128,
+        stellar_vault_pubkey: [u8; 32],
+    ) -> Result<(), Error>;
 }
 
 #[async_trait]
@@ -360,6 +368,30 @@ impl SpacewalkPallet for SpacewalkParachain {
                 .tx()
                 .spacewalk() // assume that spacewalk pallet is registered in connected chain
                 .report_stellar_transaction(tx_envelope_xdr.to_vec()) // spacewalk pallet offers extrinsic `report_stellar_transaction`
+                .sign_and_submit_then_watch(&signer)
+                .await
+        })
+        .await?;
+        Ok(())
+    }
+
+    async fn redeem(
+        &self,
+        asset_code: &Vec<u8>,
+        asset_issuer: &Vec<u8>,
+        amount: u128,
+        stellar_vault_pubkey: [u8; 32],
+    ) -> Result<(), Error> {
+        self.with_unique_signer(|signer| async move {
+            self.api
+                .tx()
+                .spacewalk() // assume that spacewalk pallet is registered in connected chain
+                .redeem(
+                    asset_code.to_vec(),
+                    asset_issuer.to_vec(),
+                    amount,
+                    stellar_vault_pubkey,
+                ) // spacewalk pallet offers extrinsic `redeem`
                 .sign_and_submit_then_watch(&signer)
                 .await
         })
