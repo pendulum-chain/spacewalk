@@ -7,7 +7,10 @@ mod redeem;
 mod system;
 
 pub mod service {
-    pub use crate::{deposit::poll_horizon_for_new_transactions, redeem::listen_for_redeem_requests};
+    pub use crate::{
+        deposit::poll_horizon_for_new_transactions, horizon::HorizonTransactionsResponse,
+        redeem::listen_for_redeem_requests,
+    };
 }
 use std::time::Duration;
 pub use system::{VaultService, VaultServiceConfig, ABOUT, AUTHORS, NAME, VERSION};
