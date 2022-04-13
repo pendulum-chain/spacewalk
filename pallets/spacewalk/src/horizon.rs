@@ -47,7 +47,8 @@ pub struct EmbeddedTransactions {
 
 #[derive(Deserialize, Debug)]
 pub struct HorizonAccountResponse {
-	// We don't care about specifics of pagination, so we just tell serde that this will be a generic json value
+	// We don't care about specifics of pagination, so we just tell serde that this will be a
+	// generic json value
 	pub _links: serde_json::Value,
 
 	#[serde(deserialize_with = "de_string_to_bytes")]
@@ -61,7 +62,8 @@ pub struct HorizonAccountResponse {
 
 #[derive(Deserialize, Debug)]
 pub struct HorizonTransactionsResponse {
-	// We don't care about specifics of pagination, so we just tell serde that this will be a generic json value
+	// We don't care about specifics of pagination, so we just tell serde that this will be a
+	// generic json value
 	pub _links: serde_json::Value,
 	pub _embedded: EmbeddedTransactions,
 }
@@ -78,7 +80,8 @@ where
 
 #[derive(Deserialize, Debug)]
 pub struct HorizonClaimableBalanceResponse {
-	// We don't care about specifics of pagination, so we just tell serde that this will be a generic json value
+	// We don't care about specifics of pagination, so we just tell serde that this will be a
+	// generic json value
 	pub _links: serde_json::Value,
 	pub _embedded: EmbeddedClaimableBalance,
 }

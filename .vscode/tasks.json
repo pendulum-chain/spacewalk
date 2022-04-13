@@ -1,9 +1,0 @@
-{
-    "version": "2.0.0",
-    "tasks": [{
-        "label": "build",
-        "command": "cd testchain && cargo build ", // Could be any other shell command
-        "args": [],
-        "type": "shell"
-    }]
-}

@@ -23,8 +23,10 @@ use orml_traits::MultiCurrency;
 pub use pallet::*;
 use pallet_transaction_payment::Config as PaymentConfig;
 use sp_core::crypto::KeyTypeId;
-use sp_runtime::traits::{Convert, StaticLookup};
-use sp_runtime::RuntimeDebug;
+use sp_runtime::{
+	traits::{Convert, StaticLookup},
+	RuntimeDebug,
+};
 use sp_std::{convert::From, prelude::*, str};
 
 use substrate_stellar_sdk as stellar;
@@ -33,11 +35,11 @@ use frame_support::pallet_prelude::*;
 use frame_system::pallet_prelude::*;
 
 type BalanceOf<T> = <<T as Config>::Currency as orml_traits::MultiCurrency<
-    <T as frame_system::Config>::AccountId,
+	<T as frame_system::Config>::AccountId,
 >>::Balance;
 
 type CurrencyIdOf<T> =
-    <<T as Config>::Currency as MultiCurrency<<T as frame_system::Config>::AccountId>>::CurrencyId;
+	<<T as Config>::Currency as MultiCurrency<<T as frame_system::Config>::AccountId>>::CurrencyId;
 
 pub const KEY_TYPE: KeyTypeId = KeyTypeId(*b"abcd");
 
@@ -45,185 +47,182 @@ pub const KEY_TYPE: KeyTypeId = KeyTypeId(*b"abcd");
 /// We can utilize the supported crypto kinds (`ed25519`, `ed25519` and `ecdsa`) and augment
 /// them with the pallet-specific identifier.
 pub mod crypto {
-    use super::KEY_TYPE;
-    use sp_runtime::app_crypto::{app_crypto, ed25519};
+	use super::KEY_TYPE;
+	use sp_runtime::app_crypto::{app_crypto, ed25519};
 
-    app_crypto!(ed25519, KEY_TYPE);
+	app_crypto!(ed25519, KEY_TYPE);
 }
 
 #[derive(Encode, Decode, Clone, PartialEq, Eq, RuntimeDebug, scale_info::TypeInfo)]
 pub struct DepositPayload<Currency, AccountId, Public, Balance> {
-    currency_id: Currency,
-    amount: Balance,
-    destination: AccountId,
-    signed_by: Public,
+	currency_id: Currency,
+	amount: Balance,
+	destination: AccountId,
+	signed_by: Public,
 }
 
 #[frame_support::pallet]
 pub mod pallet {
-    use super::*;
-    use stellar::{
-        types::{OperationBody, PaymentOp},
-        XdrCodec,
-    };
+	use super::*;
+	use stellar::{
+		types::{OperationBody, PaymentOp},
+		XdrCodec,
+	};
 
-    #[pallet::config]
-    pub trait Config: frame_system::Config + PaymentConfig + orml_tokens::Config {
-        /// The overarching dispatch call type.
-        type Call: From<Call<Self>>;
-        /// The overarching event type.
-        type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
+	#[pallet::config]
+	pub trait Config: frame_system::Config + PaymentConfig + orml_tokens::Config {
+		/// The overarching dispatch call type.
+		type Call: From<Call<Self>>;
+		/// The overarching event type.
+		type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
 
-        /// The mechanics of the ORML tokens
-        type Currency: MultiCurrency<<Self as frame_system::Config>::AccountId>;
-        type AddressConversion: StaticLookup<
-            Source = <Self as frame_system::Config>::AccountId,
-            Target = substrate_stellar_sdk::PublicKey,
-        >;
-        type BalanceConversion: StaticLookup<Source = BalanceOf<Self>, Target = i64>;
-        type StringCurrencyConversion: Convert<(Vec<u8>, Vec<u8>), Result<CurrencyIdOf<Self>, ()>>;
+		/// The mechanics of the ORML tokens
+		type Currency: MultiCurrency<<Self as frame_system::Config>::AccountId>;
+		type AddressConversion: StaticLookup<
+			Source = <Self as frame_system::Config>::AccountId,
+			Target = substrate_stellar_sdk::PublicKey,
+		>;
+		type BalanceConversion: StaticLookup<Source = BalanceOf<Self>, Target = i64>;
+		type StringCurrencyConversion: Convert<(Vec<u8>, Vec<u8>), Result<CurrencyIdOf<Self>, ()>>;
 
-        /// Conversion between Stellar asset type and this pallet trait for Currency
-        type CurrencyConversion: StaticLookup<
-            Source = CurrencyIdOf<Self>,
-            Target = substrate_stellar_sdk::Asset,
-        >;
-    }
+		/// Conversion between Stellar asset type and this pallet trait for Currency
+		type CurrencyConversion: StaticLookup<
+			Source = CurrencyIdOf<Self>,
+			Target = substrate_stellar_sdk::Asset,
+		>;
+	}
 
-    #[pallet::pallet]
-    #[pallet::generate_store(pub(super) trait Store)]
-    pub struct Pallet<T>(_);
+	#[pallet::pallet]
+	#[pallet::generate_store(pub(super) trait Store)]
+	pub struct Pallet<T>(_);
 
-    #[pallet::event]
-    #[pallet::generate_deposit(pub(super) fn deposit_event)]
-    pub enum Event<T: Config> {
-        /// Event generated when a new deposit is made on a Stellar Account.
-        Deposit(
-            CurrencyIdOf<T>,
-            <T as frame_system::Config>::AccountId,
-            BalanceOf<T>,
-        ),
-        /// User initiated a redeem. [CurrencyIdOf<T>, T::AccountId, BalanceOf<T>]
-		Redeem{
-            asset_code: Vec<u8>,
-            asset_issuer: Vec<u8>,
-            stellar_user_id: [u8; 32],
-            stellar_vault_id: [u8; 32],
-            amount: BalanceOf<T>,
-        },
-    }
+	#[pallet::event]
+	#[pallet::generate_deposit(pub(super) fn deposit_event)]
+	pub enum Event<T: Config> {
+		/// Event generated when a new deposit is made on a Stellar Account.
+		Deposit(CurrencyIdOf<T>, <T as frame_system::Config>::AccountId, BalanceOf<T>),
+		/// User initiated a redeem.
+		Redeem {
+			asset_code: Vec<u8>,
+			asset_issuer: Vec<u8>,
+			stellar_user_id: [u8; 32],
+			stellar_vault_id: [u8; 32],
+			amount: BalanceOf<T>,
+		},
+	}
 
-    #[pallet::error]
-    pub enum Error<T> {
-        // XDR encoding/decoding error
-        XdrDecodingError,
+	#[pallet::error]
+	pub enum Error<T> {
+		// XDR encoding/decoding error
+		XdrDecodingError,
 
-        // Currency conversion error
-        CurrencyConversionError,
+		// Currency conversion error
+		CurrencyConversionError,
 
-        // Failed to change a balance
-        BalanceChangeError,
-    }
+		// Failed to change a balance
+		BalanceChangeError,
+	}
 
-    #[pallet::call]
-    impl<T: Config> Pallet<T> {
-        // TODO Benchmakr weights
-        #[pallet::weight(10_000)]
-        pub fn report_stellar_transaction(
-            origin: OriginFor<T>,
-            transaction_envelope_xdr: Vec<u8>,
-        ) -> DispatchResult {
-            let _who = ensure_signed(origin)?;
+	#[pallet::call]
+	impl<T: Config> Pallet<T> {
+		// TODO Benchmakr weights
+		#[pallet::weight(10_000)]
+		pub fn report_stellar_transaction(
+			origin: OriginFor<T>,
+			transaction_envelope_xdr: Vec<u8>,
+		) -> DispatchResult {
+			let _who = ensure_signed(origin)?;
 
-            let xdr = transaction_envelope_xdr.clone();
-            log::info!("envelope:{:?}", str::from_utf8(&xdr));
+			let xdr = transaction_envelope_xdr.clone();
+			log::info!("envelope:{:?}", str::from_utf8(&xdr));
 
-            let tx_xdr = base64::decode(&transaction_envelope_xdr)
-                .ok()
-                .ok_or(Error::<T>::XdrDecodingError)?;
-            let tx_envelope = substrate_stellar_sdk::TransactionEnvelope::from_xdr(&tx_xdr)
-                .ok()
-                .ok_or(Error::<T>::XdrDecodingError)?;
+			let tx_xdr = base64::decode(&transaction_envelope_xdr)
+				.ok()
+				.ok_or(Error::<T>::XdrDecodingError)?;
+			let tx_envelope = substrate_stellar_sdk::TransactionEnvelope::from_xdr(&tx_xdr)
+				.ok()
+				.ok_or(Error::<T>::XdrDecodingError)?;
 
-            if let substrate_stellar_sdk::TransactionEnvelope::EnvelopeTypeTx(env) = tx_envelope {
-                Self::process_new_transaction(env.tx);
-            }
-            Ok(())
-        }
- 
-        #[pallet::weight(100000)]
-        pub fn redeem(
-            origin: OriginFor<T>,
-            asset_code: Vec<u8>,
-            asset_issuer: Vec<u8>,
-            amount: BalanceOf<T>,
-            stellar_vault_pubkey: [u8; 32],
-        ) -> DispatchResultWithPostInfo {
-			let currency_id = T::StringCurrencyConversion::convert((asset_code.clone(), asset_issuer.clone()))
-                .map_err(|_| <Error<T>>::CurrencyConversionError)?;
-            let pendulum_account_id = ensure_signed(origin)?;
-            let stellar_user_address = T::AddressConversion::lookup(pendulum_account_id.clone())?;
+			if let substrate_stellar_sdk::TransactionEnvelope::EnvelopeTypeTx(env) = tx_envelope {
+				Self::process_new_transaction(env.tx);
+			}
+			Ok(())
+		}
 
-            T::Currency::withdraw(currency_id.clone(), &pendulum_account_id, amount)
-                .map_err(|_| <Error<T>>::BalanceChangeError)?;
+		#[pallet::weight(100000)]
+		pub fn redeem(
+			origin: OriginFor<T>,
+			asset_code: Vec<u8>,
+			asset_issuer: Vec<u8>,
+			amount: BalanceOf<T>,
+			stellar_vault_pubkey: [u8; 32],
+		) -> DispatchResultWithPostInfo {
+			let currency_id =
+				T::StringCurrencyConversion::convert((asset_code.clone(), asset_issuer.clone()))
+					.map_err(|_| <Error<T>>::CurrencyConversionError)?;
+			let pendulum_account_id = ensure_signed(origin)?;
+			let stellar_user_address = T::AddressConversion::lookup(pendulum_account_id.clone())?;
 
-            Self::deposit_event(Event::Redeem{
-                asset_code: asset_code,
-                asset_issuer: asset_issuer,
-                stellar_user_id: stellar_user_address.into_binary(),
-                stellar_vault_id: stellar_vault_pubkey,
-                amount: amount,
-            });
-            Ok(().into())
-        }
-    }
+			T::Currency::withdraw(currency_id.clone(), &pendulum_account_id, amount)
+				.map_err(|_| <Error<T>>::BalanceChangeError)?;
 
-    impl<T: Config> Pallet<T> {
-        fn process_new_transaction(transaction: stellar::types::Transaction) {
-            // The destination of a mirrored Pendulum transaction, is always derived of the source
-            // account that initiated the Stellar transaction.
-            let destination = if let substrate_stellar_sdk::MuxedAccount::KeyTypeEd25519(key) =
-                transaction.source_account
-            {
-                T::AddressConversion::unlookup(substrate_stellar_sdk::PublicKey::from_binary(key))
-            } else {
-                log::error!("❌  Source account format not supported.");
-                return;
-            };
+			Self::deposit_event(Event::Redeem {
+				asset_code,
+				asset_issuer,
+				stellar_user_id: stellar_user_address.into_binary(),
+				stellar_vault_id: stellar_vault_pubkey,
+				amount,
+			});
+			Ok(().into())
+		}
+	}
 
-            let payment_ops: Vec<&PaymentOp> = transaction
-                .operations
-                .get_vec()
-                .into_iter()
-                .filter_map(|op| match &op.body {
-                    OperationBody::Payment(p) => Some(p),
-                    _ => None,
-                })
-                .collect();
-            for payment_op in payment_ops {
-                let amount = T::BalanceConversion::unlookup(payment_op.amount);
-                let currency = T::CurrencyConversion::unlookup(payment_op.asset.clone());
+	impl<T: Config> Pallet<T> {
+		fn process_new_transaction(transaction: stellar::types::Transaction) {
+			// The destination of a mirrored Pendulum transaction, is always derived of the source
+			// account that initiated the Stellar transaction.
+			let destination = if let substrate_stellar_sdk::MuxedAccount::KeyTypeEd25519(key) =
+				transaction.source_account
+			{
+				T::AddressConversion::unlookup(substrate_stellar_sdk::PublicKey::from_binary(key))
+			} else {
+				log::error!("❌  Source account format not supported.");
+				return
+			};
 
-                match Self::send_payment_tx(currency, amount, destination.clone()) {
-                    Err(_) => log::warn!("Sending the tx failed."),
-                    Ok(_) => {
-                        log::info!("✅ Deposit successfully Executed");
-                        ()
-                    }
-                }
-            }
-        }
+			let payment_ops: Vec<&PaymentOp> = transaction
+				.operations
+				.get_vec()
+				.into_iter()
+				.filter_map(|op| match &op.body {
+					OperationBody::Payment(p) => Some(p),
+					_ => None,
+				})
+				.collect();
+			for payment_op in payment_ops {
+				let amount = T::BalanceConversion::unlookup(payment_op.amount);
+				let currency = T::CurrencyConversion::unlookup(payment_op.asset.clone());
 
-        fn send_payment_tx(
-            currency_id: CurrencyIdOf<T>,
-            amount: BalanceOf<T>,
-            destination: <T as frame_system::Config>::AccountId,
-        ) -> Result<(), Error<T>> {
-            let result = T::Currency::deposit(currency_id, &destination, amount);
-            log::info!("{:?}", result);
+				match Self::send_payment_tx(currency, amount, destination.clone()) {
+					Err(_) => log::warn!("Sending the tx failed."),
+					Ok(_) => {
+						log::info!("✅ Deposit successfully Executed");
+						()
+					},
+				}
+			}
+		}
 
-            Self::deposit_event(Event::Deposit(currency_id, destination, amount));
-            Ok(())
-        }
-    }
+		fn send_payment_tx(
+			currency_id: CurrencyIdOf<T>,
+			amount: BalanceOf<T>,
+			destination: <T as frame_system::Config>::AccountId,
+		) -> Result<(), Error<T>> {
+			let result = T::Currency::deposit(currency_id, &destination, amount);
+			log::info!("{:?}", result);
+
+			Self::deposit_event(Event::Deposit(currency_id, destination, amount));
+			Ok(())
+		}
+	}
 }
