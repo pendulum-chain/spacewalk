@@ -23,6 +23,8 @@ use pallet_grandpa::{
 	fg_primitives, AuthorityId as GrandpaId, AuthorityList as GrandpaAuthorityList,
 };
 
+use pallet_timestamp;
+
 pub use frame_support::{
 	construct_runtime, match_type, parameter_types,
 	traits::{ConstU128, ConstU32, ConstU8, KeyOwnerProofSystem, Nothing, Randomness, StorageInfo},
@@ -67,6 +69,13 @@ pub type Index = u32;
 pub type Hash = sp_core::H256;
 
 const NORMAL_DISPATCH_RATIO: Perbill = Perbill::from_percent(75);
+
+/// Change this to adjust the block time.
+pub const MILLISECS_PER_BLOCK: u64 = 6000;
+
+// NOTE: Currently it is not possible to change the slot duration after the chain has started.
+//       Attempting to do so will brick block production.
+pub const SLOT_DURATION: u64 = MILLISECS_PER_BLOCK;
 
 pub type AccountId = <<Signature as Verify>::Signer as IdentifyAccount>::AccountId;
 
@@ -167,6 +176,11 @@ parameter_types! {
 		::max_with_normal_ratio(5 * 1024 * 1024, NORMAL_DISPATCH_RATIO);
 	pub const SS58Prefix: u8 = 42;
 }
+
+parameter_types! {
+	pub const MinimumPeriod: u64 = SLOT_DURATION / 2;
+}
+
 impl frame_system::Config for Test {
 	/// The basic call filter to use in dispatchable.
 	type BaseCallFilter = frame_support::traits::Everything;
@@ -219,13 +233,13 @@ impl frame_system::Config for Test {
 	type MaxConsumers = frame_support::traits::ConstU32<16>;
 }
 
-impl pallet_aura::Config for Runtime {
+impl pallet_aura::Config for Test {
 	type AuthorityId = AuraId;
 	type DisabledValidators = ();
 	type MaxAuthorities = ConstU32<32>;
 }
 
-impl pallet_grandpa::Config for Runtime {
+impl pallet_grandpa::Config for Test {
 	type Event = Event;
 	type Call = Call;
 
@@ -243,6 +257,14 @@ impl pallet_grandpa::Config for Runtime {
 
 	type WeightInfo = ();
 	type MaxAuthorities = ConstU32<32>;
+}
+
+impl pallet_timestamp::Config for Test {
+	/// A timestamp: milliseconds since the unix epoch.
+	type Moment = u64;
+	type OnTimestampSet = Aura;
+	type MinimumPeriod = MinimumPeriod;
+	type WeightInfo = ();
 }
 
 /// Configure the spacewalk pallet
