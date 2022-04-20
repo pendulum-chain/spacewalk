@@ -1,5 +1,5 @@
 use clap::Parser;
-use runtime::InterBtcSigner;
+use runtime::SpacewalkSigner;
 use service::{ConnectionManager, ServiceConfig};
 
 use vault::{Error, VaultService, VaultServiceConfig, ABOUT, AUTHORS, NAME, VERSION};
@@ -29,7 +29,7 @@ async fn start() -> Result<(), Error> {
     opts.service.logging_format.init_subscriber();
 
     let (pair, wallet_name) = opts.account_info.get_key_pair()?;
-    let signer = InterBtcSigner::new(pair);
+    let signer = SpacewalkSigner::new(pair);
 
     ConnectionManager::<_, VaultService>::new(
         signer.clone(),

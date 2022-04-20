@@ -1,4 +1,4 @@
-use crate::{metadata, Config, InterBtcRuntime};
+use crate::{metadata, Config, SpacewalkRuntime};
 pub use metadata_aliases::*;
 use subxt::sp_core::sr25519::Pair as KeyPair;
 
@@ -8,7 +8,7 @@ pub type Index = u32;
 pub type BlockNumber = u32;
 pub type H256 = subxt::sp_core::H256;
 
-pub type InterBtcSigner = subxt::PairSigner<InterBtcRuntime, subxt::DefaultExtra<InterBtcRuntime>, KeyPair>;
+pub type SpacewalkSigner = subxt::PairSigner<SpacewalkRuntime, subxt::DefaultExtra<SpacewalkRuntime>, KeyPair>;
 
 pub type FixedU128 = sp_arithmetic::FixedU128;
 
@@ -18,7 +18,7 @@ mod metadata_aliases {
     pub type DepositEvent = metadata::spacewalk::events::Deposit;
     pub type RedeemEvent = metadata::spacewalk::events::Redeem;
 
-    pub type InterBtcHeader = <InterBtcRuntime as Config>::Header;
+    pub type SpacewalkHeader = <SpacewalkRuntime as Config>::Header;
 }
 
 mod dispatch_error {

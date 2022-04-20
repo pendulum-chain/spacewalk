@@ -4,7 +4,7 @@ use crate::{
     metadata::DispatchError,
     notify_retry,
     types::*,
-    AccountId, CurrencyId, Error, InterBtcRuntime, InterBtcSigner, RetryPolicy, SubxtError,
+    AccountId, Error, SpacewalkRuntime, SpacewalkSigner, RetryPolicy, SubxtError,
 };
 
 use async_trait::async_trait;
@@ -26,23 +26,20 @@ cfg_if::cfg_if! {
     }
 }
 
-type RuntimeApi = metadata::RuntimeApi<InterBtcRuntime, DefaultExtra<InterBtcRuntime>>;
+type RuntimeApi = metadata::RuntimeApi<SpacewalkRuntime, DefaultExtra<SpacewalkRuntime>>;
 
 #[derive(Clone)]
 pub struct SpacewalkParachain {
     rpc_client: RpcClient,
-    ext_client: SubxtClient<InterBtcRuntime>,
-    signer: Arc<RwLock<InterBtcSigner>>,
+    ext_client: SubxtClient<SpacewalkRuntime>,
+    signer: Arc<RwLock<SpacewalkSigner>>,
     account_id: AccountId,
     api: Arc<RuntimeApi>,
     metadata: Arc<Metadata>,
-    pub native_currency_id: CurrencyId,
-    pub relay_chain_currency_id: CurrencyId,
-    pub wrapped_currency_id: CurrencyId,
 }
 
 impl SpacewalkParachain {
-    pub async fn new<P: Into<RpcClient>>(rpc_client: P, signer: InterBtcSigner) -> Result<Self, Error> {
+    pub async fn new<P: Into<RpcClient>>(rpc_client: P, signer: SpacewalkSigner) -> Result<Self, Error> {
         let account_id = signer.account_id().clone();
         let rpc_client = rpc_client.into();
         let ext_client = SubxtClientBuilder::new().set_client(rpc_client.clone()).build().await?;
@@ -60,11 +57,6 @@ impl SpacewalkParachain {
             ));
         }
 
-        let placeholder = CurrencyId::Native;
-        let native_currency_id = placeholder.clone();
-        let relay_chain_currency_id = placeholder.clone();
-        let wrapped_currency_id = placeholder.clone();
-
         let parachain_rpc = Self {
             rpc_client,
             ext_client,
@@ -72,22 +64,19 @@ impl SpacewalkParachain {
             metadata,
             signer: Arc::new(RwLock::new(signer)),
             account_id,
-            native_currency_id,
-            relay_chain_currency_id,
-            wrapped_currency_id,
         };
         parachain_rpc.refresh_nonce().await;
         Ok(parachain_rpc)
     }
 
-    pub async fn from_url(url: &str, signer: InterBtcSigner) -> Result<Self, Error> {
+    pub async fn from_url(url: &str, signer: SpacewalkSigner) -> Result<Self, Error> {
         let ws_client = new_websocket_client(url, None, None).await?;
         Self::new(ws_client, signer).await
     }
 
     pub async fn from_url_with_retry(
         url: &str,
-        signer: InterBtcSigner,
+        signer: SpacewalkSigner,
         connection_timeout: Duration,
     ) -> Result<Self, Error> {
         Self::from_url_and_config_with_retry(url, signer, None, None, connection_timeout).await
@@ -95,7 +84,7 @@ impl SpacewalkParachain {
 
     pub async fn from_url_and_config_with_retry(
         url: &str,
-        signer: InterBtcSigner,
+        signer: SpacewalkSigner,
         max_concurrent_requests: Option<usize>,
         max_notifs_per_subscription: Option<usize>,
         connection_timeout: Duration,
@@ -129,10 +118,10 @@ impl SpacewalkParachain {
     }
 
     /// Gets a copy of the signer with a unique nonce
-    async fn with_unique_signer<'client, F, R>(&self, call: F) -> Result<TransactionEvents<InterBtcRuntime>, Error>
+    async fn with_unique_signer<'client, F, R>(&self, call: F) -> Result<TransactionEvents<SpacewalkRuntime>, Error>
     where
-        F: Fn(InterBtcSigner) -> R,
-        R: Future<Output = Result<TransactionProgress<'client, InterBtcRuntime, DispatchError>, BasicError>>,
+        F: Fn(SpacewalkSigner) -> R,
+        R: Future<Output = Result<TransactionProgress<'client, SpacewalkRuntime, DispatchError>, BasicError>>,
     {
         notify_retry::<Error, _, _, _, _, _>(
             || async {
@@ -176,7 +165,7 @@ impl SpacewalkParachain {
     /// Subscribe to new parachain blocks.
     pub async fn on_block<F, R>(&self, on_block: F) -> Result<(), Error>
     where
-        F: Fn(InterBtcHeader) -> R,
+        F: Fn(SpacewalkHeader) -> R,
         R: Future<Output = Result<(), Error>>,
     {
         let mut sub = self.ext_client.rpc().subscribe_finalized_blocks().await?;
@@ -193,9 +182,9 @@ impl SpacewalkParachain {
     /// * `on_error` - callback for decoding errors, is not allowed to take too long
     pub async fn on_event_error<E: Fn(BasicError)>(&self, on_error: E) -> Result<(), Error> {
         let sub = self.ext_client.rpc().subscribe_finalized_events().await?;
-        let decoder = EventsDecoder::<InterBtcRuntime>::new((*self.metadata).clone());
+        let decoder = EventsDecoder::<SpacewalkRuntime>::new((*self.metadata).clone());
 
-        let mut sub = EventSubscription::<InterBtcRuntime>::new(sub, &decoder);
+        let mut sub = EventSubscription::<SpacewalkRuntime>::new(sub, &decoder);
         loop {
             match sub.next().await {
                 Some(Err(err)) => on_error(err), // report error
@@ -224,9 +213,9 @@ impl SpacewalkParachain {
         E: Fn(SubxtError),
     {
         let sub = self.ext_client.rpc().subscribe_finalized_events().await?;
-        let decoder = EventsDecoder::<InterBtcRuntime>::new((*self.metadata).clone());
+        let decoder = EventsDecoder::<SpacewalkRuntime>::new((*self.metadata).clone());
 
-        let mut sub = EventSubscription::<InterBtcRuntime>::new(sub, &decoder);
+        let mut sub = EventSubscription::<SpacewalkRuntime>::new(sub, &decoder);
         sub.filter_event::<T>();
 
         let (tx, mut rx) = futures::channel::mpsc::channel::<T>(32);
@@ -385,7 +374,12 @@ impl SpacewalkPallet for SpacewalkParachain {
             self.api
                 .tx()
                 .spacewalk() // assume that spacewalk pallet is registered in connected chain
-                .redeem(asset_code.to_vec(), asset_issuer.to_vec(), amount, stellar_vault_pubkey) // spacewalk pallet offers extrinsic `redeem`
+                .redeem(
+                    asset_code.to_vec(),
+                    asset_issuer.to_vec(),
+                    amount,
+                    stellar_vault_pubkey.clone(),
+                ) // spacewalk pallet offers extrinsic `redeem`
                 .sign_and_submit_then_watch(&signer)
                 .await
         })

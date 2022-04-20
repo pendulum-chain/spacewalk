@@ -1,5 +1,5 @@
 [package]
-authors = ["Interlay <contact@interlay.io>"]
+authors = ["SatoshiPay"]
 edition = "2018"
 name = "runtime"
 version = "1.1.0"
@@ -47,12 +47,12 @@ subxt-client = {package = "subxt-client", git = "https://github.com/interlay/sub
 jsonrpsee = {version = "0.8.0", features = ["macros", "jsonrpsee-types", "client", "jsonrpsee-ws-client", "jsonrpsee-client-transport"]}
 
 # Runtime primitives
-spacewalk-runtime = {package = "node-template-runtime", path = "../../testchain/runtime"}
+spacewalk-runtime = {package = "spacewalk-runtime-standalone", path = "../../testchain/runtime"}
 
 # Dependencies for the testing utils for integration tests
 rand = {version = "0.7", optional = true}
 tempdir = {version = "0.3.7", optional = true}
-testchain = {package = "node-template", path = "../../testchain/node", optional = true}
+testchain = {package = "spacewalk-standalone", path = "../../testchain/node", optional = true}
 
 # Substrate Stellar Dependencies
 substrate-stellar-sdk = {git = "https://github.com/pendulum-chain/substrate-stellar-sdk", branch = "polkadot-v0.9.17"}

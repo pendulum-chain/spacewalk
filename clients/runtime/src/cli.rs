@@ -1,6 +1,6 @@
 use crate::{
     error::{Error, KeyLoadingError},
-    SpacewalkParachain, InterBtcSigner,
+    SpacewalkParachain, SpacewalkSigner,
 };
 use clap::Parser;
 use sp_keyring::AccountKeyring;
@@ -89,7 +89,7 @@ pub struct ConnectionOpts {
 }
 
 impl ConnectionOpts {
-    pub async fn try_connect(&self, signer: InterBtcSigner) -> Result<SpacewalkParachain, Error> {
+    pub async fn try_connect(&self, signer: SpacewalkSigner) -> Result<SpacewalkParachain, Error> {
         SpacewalkParachain::from_url_and_config_with_retry(
             &self.spacewalk_parachain_url,
             signer,

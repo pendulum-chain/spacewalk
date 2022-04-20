@@ -2,7 +2,7 @@ use async_trait::async_trait;
 use futures::{future::Either, Future, FutureExt};
 use runtime::{
     cli::ConnectionOpts as ParachainConfig, Error as RuntimeError,
-    SpacewalkParachain as BtcParachain, InterBtcSigner, Signer, Ss58Codec,
+    SpacewalkParachain as BtcParachain, SpacewalkSigner, Signer, Ss58Codec,
 };
 use std::marker::PhantomData;
 
@@ -27,7 +27,7 @@ pub trait Service<Config> {
 }
 
 pub struct ConnectionManager<Config: Clone, S: Service<Config>> {
-    signer: InterBtcSigner,
+    signer: SpacewalkSigner,
     wallet_name: Option<String>,
     parachain_config: ParachainConfig,
     service_config: ServiceConfig,
@@ -37,7 +37,7 @@ pub struct ConnectionManager<Config: Clone, S: Service<Config>> {
 
 impl<Config: Clone + Send + 'static, S: Service<Config>> ConnectionManager<Config, S> {
     pub fn new(
-        signer: InterBtcSigner,
+        signer: SpacewalkSigner,
         wallet_name: Option<String>,
         parachain_config: ParachainConfig,
         service_config: ServiceConfig,

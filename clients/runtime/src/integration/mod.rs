@@ -1,6 +1,6 @@
 #![cfg(all(feature = "testing-utils", feature = "standalone-metadata"))]
 
-use crate::{InterBtcSigner, SpacewalkParachain};
+use crate::{SpacewalkSigner, SpacewalkParachain};
 use futures::{future::Either, pin_mut, Future, FutureExt, SinkExt, StreamExt};
 use std::time::Duration;
 use subxt::Event;
@@ -16,9 +16,9 @@ pub use subxt_client::SubxtClient;
 pub async fn default_provider_client(key: AccountKeyring) -> (SubxtClient, TempDir) {
     let tmp = TempDir::new("btc-parachain-").expect("failed to create tempdir");
     let config = SubxtClientConfig {
-        impl_name: "btc-parachain-full-client",
-        impl_version: "0.0.1",
-        author: "Interlay Ltd",
+        impl_name: "spacewalk-chain-full-client",
+        impl_version: "1",
+        author: "SatoshiPay",
         copyright_start_year: 2020,
         db: DatabaseSource::ParityDb {
             path: tmp.path().join("db"),
@@ -27,7 +27,7 @@ pub async fn default_provider_client(key: AccountKeyring) -> (SubxtClient, TempD
             path: tmp.path().join("keystore"),
             password: None,
         },
-        chain_spec: testchain::chain_spec::development_config().unwrap(),
+        chain_spec: testchain::chain_spec::development_config(),
         role: Role::Authority(key),
         telemetry: None,
         wasm_method: WasmExecutionMethod::Compiled,
@@ -49,7 +49,7 @@ pub async fn default_provider_client(key: AccountKeyring) -> (SubxtClient, TempD
 
 /// Create a new parachain_rpc with the given keyring
 pub async fn setup_provider(client: SubxtClient, key: AccountKeyring) -> SpacewalkParachain {
-    let signer = InterBtcSigner::new(key.pair());
+    let signer = SpacewalkSigner::new(key.pair());
     let (shutdown_tx, _) = tokio::sync::broadcast::channel::<u128>(16);
 
     SpacewalkParachain::new(client, signer)
