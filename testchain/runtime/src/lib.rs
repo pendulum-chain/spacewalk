@@ -54,7 +54,7 @@ pub use sp_runtime::{Perbill, Permill};
 pub use pallet_grandpa::{
 	fg_primitives, AuthorityId as GrandpaId, AuthorityList as GrandpaAuthorityList,
 };
-pub use sp_consensus_aura::sr25519::AuthorityId as AuraId;
+pub use sp_consensus_aura::ed25519::AuthorityId as AuraId;
 
 pub use pallet_spacewalk::currency::CurrencyId;
 use pallet_spacewalk::{

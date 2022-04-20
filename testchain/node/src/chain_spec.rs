@@ -1,13 +1,13 @@
 use hex_literal::hex;
 use sc_service::ChainType;
-use sp_consensus_aura::sr25519::AuthorityId as AuraId;
-use sp_core::{crypto::UncheckedInto, sr25519, Pair, Public};
+use sp_consensus_aura::ed25519::AuthorityId as AuraId;
+use sp_core::{crypto::UncheckedInto, ed25519, sr25519, Pair, Public};
 use sp_finality_grandpa::AuthorityId as GrandpaId;
 use sp_runtime::traits::{IdentifyAccount, Verify};
 use spacewalk_rpc::jsonrpc_core::serde_json::{map::Map, Value};
 use spacewalk_runtime::{
-	AccountId, AuraConfig, BalancesConfig, CurrencyId, GenesisConfig, GrandpaConfig,
-	Signature, SudoConfig, SystemConfig, TokensConfig, WASM_BINARY,
+	AccountId, AuraConfig, BalancesConfig, CurrencyId, GenesisConfig, GrandpaConfig, Signature,
+	SudoConfig, SystemConfig, TokensConfig, WASM_BINARY,
 };
 use std::{convert::TryFrom, str::FromStr};
 
@@ -55,24 +55,25 @@ pub fn local_config() -> ChainSpec {
 		ChainType::Local,
 		move || {
 			testnet_genesis(
-				get_account_id_from_seed::<sr25519::Public>("Alice"),
+				get_account_id_from_seed::<ed25519::Public>("Alice"),
 				vec![],
 				vec![
 					get_account_id_from_seed::<sr25519::Public>("Alice"),
-					get_account_id_from_seed::<sr25519::Public>("Bob"),
-					get_account_id_from_seed::<sr25519::Public>("Charlie"),
-					get_account_id_from_seed::<sr25519::Public>("Dave"),
-					get_account_id_from_seed::<sr25519::Public>("Eve"),
-					get_account_id_from_seed::<sr25519::Public>("Ferdie"),
-					get_account_id_from_seed::<sr25519::Public>("Alice//stash"),
-					get_account_id_from_seed::<sr25519::Public>("Bob//stash"),
-					get_account_id_from_seed::<sr25519::Public>("Charlie//stash"),
-					get_account_id_from_seed::<sr25519::Public>("Dave//stash"),
-					get_account_id_from_seed::<sr25519::Public>("Eve//stash"),
-					get_account_id_from_seed::<sr25519::Public>("Ferdie//stash"),
+					get_account_id_from_seed::<ed25519::Public>("Alice"),
+					get_account_id_from_seed::<ed25519::Public>("Bob"),
+					get_account_id_from_seed::<ed25519::Public>("Charlie"),
+					get_account_id_from_seed::<ed25519::Public>("Dave"),
+					get_account_id_from_seed::<ed25519::Public>("Eve"),
+					get_account_id_from_seed::<ed25519::Public>("Ferdie"),
+					get_account_id_from_seed::<ed25519::Public>("Alice//stash"),
+					get_account_id_from_seed::<ed25519::Public>("Bob//stash"),
+					get_account_id_from_seed::<ed25519::Public>("Charlie//stash"),
+					get_account_id_from_seed::<ed25519::Public>("Dave//stash"),
+					get_account_id_from_seed::<ed25519::Public>("Eve//stash"),
+					get_account_id_from_seed::<ed25519::Public>("Ferdie//stash"),
 				],
 				vec![(
-					get_account_id_from_seed::<sr25519::Public>("Bob"),
+					get_account_id_from_seed::<ed25519::Public>("Bob"),
 					"Bob".as_bytes().to_vec(),
 				)],
 				0,
@@ -160,30 +161,31 @@ pub fn development_config() -> ChainSpec {
 		ChainType::Development,
 		move || {
 			testnet_genesis(
-				get_account_id_from_seed::<sr25519::Public>("Alice"),
+				get_account_id_from_seed::<ed25519::Public>("Alice"),
 				vec![authority_keys_from_seed("Alice")],
 				vec![
 					get_account_id_from_seed::<sr25519::Public>("Alice"),
-					get_account_id_from_seed::<sr25519::Public>("Bob"),
-					get_account_id_from_seed::<sr25519::Public>("Charlie"),
-					get_account_id_from_seed::<sr25519::Public>("Dave"),
-					get_account_id_from_seed::<sr25519::Public>("Eve"),
-					get_account_id_from_seed::<sr25519::Public>("Ferdie"),
-					get_account_id_from_seed::<sr25519::Public>("Alice//stash"),
-					get_account_id_from_seed::<sr25519::Public>("Bob//stash"),
-					get_account_id_from_seed::<sr25519::Public>("Charlie//stash"),
-					get_account_id_from_seed::<sr25519::Public>("Dave//stash"),
-					get_account_id_from_seed::<sr25519::Public>("Eve//stash"),
-					get_account_id_from_seed::<sr25519::Public>("Ferdie//stash"),
+					get_account_id_from_seed::<ed25519::Public>("Alice"),
+					get_account_id_from_seed::<ed25519::Public>("Bob"),
+					get_account_id_from_seed::<ed25519::Public>("Charlie"),
+					get_account_id_from_seed::<ed25519::Public>("Dave"),
+					get_account_id_from_seed::<ed25519::Public>("Eve"),
+					get_account_id_from_seed::<ed25519::Public>("Ferdie"),
+					get_account_id_from_seed::<ed25519::Public>("Alice//stash"),
+					get_account_id_from_seed::<ed25519::Public>("Bob//stash"),
+					get_account_id_from_seed::<ed25519::Public>("Charlie//stash"),
+					get_account_id_from_seed::<ed25519::Public>("Dave//stash"),
+					get_account_id_from_seed::<ed25519::Public>("Eve//stash"),
+					get_account_id_from_seed::<ed25519::Public>("Ferdie//stash"),
 				],
 				vec![
 					(
-						get_account_id_from_seed::<sr25519::Public>("Alice"),
+						get_account_id_from_seed::<ed25519::Public>("Alice"),
 						"Alice".as_bytes().to_vec(),
 					),
-					(get_account_id_from_seed::<sr25519::Public>("Bob"), "Bob".as_bytes().to_vec()),
+					(get_account_id_from_seed::<ed25519::Public>("Bob"), "Bob".as_bytes().to_vec()),
 					(
-						get_account_id_from_seed::<sr25519::Public>("Charlie"),
+						get_account_id_from_seed::<ed25519::Public>("Charlie"),
 						"Charlie".as_bytes().to_vec(),
 					),
 				],
