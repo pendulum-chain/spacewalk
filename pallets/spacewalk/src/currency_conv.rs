@@ -35,3 +35,24 @@ impl Convert<(Vec<u8>, Vec<u8>), Result<CurrencyId, ()>> for StringCurrencyConve
 		(asset_code, public_key.into_binary()).try_into().map_err(|_| ())
 	}
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+
+	#[test]
+	fn test_currency_conversion() {
+
+		let currency_id = CurrencyId::Native;
+
+		let currency_lookup = CurrencyConversion::lookup(currency_id);
+		assert!(currency_lookup.is_ok());
+
+		let currency_lookup = currency_lookup?;
+		assert_eq!(currency_id, Asset::AssetTypeNative);
+
+		let lookup_orig = BalanceConversion::unlookup(currency_lookup);
+		assert_eq!(lookup_orig, currency_id);
+	}
+}
