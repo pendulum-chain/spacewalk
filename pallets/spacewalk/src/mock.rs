@@ -1,17 +1,11 @@
-use crate as pallet_template;
-use frame_support::traits::{ConstU16, ConstU64};
 use frame_system as system;
-use sp_core::H256;
 use sp_runtime::{
-	impl_opaque_keys,
-	MultiSignature,
-	create_runtime_str,
-	Perbill,
-	generic,
-	testing::Header,
-	traits::{BlakeTwo256, IdentityLookup, Verify, Zero, AccountIdLookup, IdentifyAccount, NumberFor, Block as BlockT},
+	create_runtime_str, generic, impl_opaque_keys,
+	traits::{
+		AccountIdLookup, BlakeTwo256, Block as BlockT, IdentifyAccount, NumberFor, Verify, Zero,
+	},
 	transaction_validity::{TransactionSource, TransactionValidity},
-	ApplyExtrinsicResult,
+	ApplyExtrinsicResult, MultiSignature, Perbill,
 };
 
 use sp_core::{crypto::KeyTypeId, OpaqueMetadata};
@@ -46,8 +40,6 @@ use crate::{
 	},
 };
 
-#[cfg(feature = "std")]
-use sp_version::NativeVersion;
 use sp_version::RuntimeVersion;
 
 use crate::currency::CurrencyId;
@@ -68,6 +60,34 @@ pub type Index = u32;
 
 pub type Hash = sp_core::H256;
 
+/// The address format for describing accounts.
+pub type Address = sp_runtime::MultiAddress<AccountId, ()>;
+/// Block header type as expected by this runtime.
+pub type Header = generic::Header<BlockNumber, BlakeTwo256>;
+/// Block type as expected by this runtime.
+pub type Block = generic::Block<Header, UncheckedExtrinsic>;
+/// The SignedExtension to the basic transaction logic.
+pub type SignedExtra = (
+	frame_system::CheckNonZeroSender<Test>,
+	frame_system::CheckSpecVersion<Test>,
+	frame_system::CheckTxVersion<Test>,
+	frame_system::CheckGenesis<Test>,
+	frame_system::CheckEra<Test>,
+	frame_system::CheckNonce<Test>,
+	frame_system::CheckWeight<Test>,
+	pallet_transaction_payment::ChargeTransactionPayment<Test>,
+);
+/// Unchecked extrinsic type as expected by this runtime.
+pub type UncheckedExtrinsic = generic::UncheckedExtrinsic<Address, Call, Signature, SignedExtra>;
+/// Executive: handles dispatch to the various modules.
+pub type Executive = frame_executive::Executive<
+	Test,
+	Block,
+	frame_system::ChainContext<Test>,
+	Test,
+	AllPalletsWithSystem,
+>;
+
 const NORMAL_DISPATCH_RATIO: Perbill = Perbill::from_percent(75);
 
 /// Change this to adjust the block time.
@@ -79,28 +99,21 @@ pub const SLOT_DURATION: u64 = MILLISECS_PER_BLOCK;
 
 pub type AccountId = <<Signature as Verify>::Signer as IdentifyAccount>::AccountId;
 
-type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Test>;
-type Block = frame_system::mocking::MockBlock<Test>;
+// type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Test>;
+// type Block = frame_system::mocking::MockBlock<Test>;
 
-pub type Executive = frame_executive::Executive<
-	Test,
-	Block,
-	frame_system::ChainContext<Test>,
-	Test,
-	AllPalletsWithSystem,
->;
+// pub type Executive = frame_executive::Executive<
+// 	Test,
+// 	Block,
+// 	frame_system::ChainContext<Test>,
+// 	Test,
+// 	AllPalletsWithSystem,
+// >;
 
 pub mod opaque {
 	use super::*;
 
 	pub use sp_runtime::OpaqueExtrinsic as UncheckedExtrinsic;
-
-	/// Opaque block header type.
-	pub type Header = generic::Header<BlockNumber, BlakeTwo256>;
-	/// Opaque block type.
-	pub type Block = generic::Block<Header, UncheckedExtrinsic>;
-	/// Opaque block identifier type.
-	pub type BlockId = generic::BlockId<Block>;
 
 	impl_opaque_keys! {
 		pub struct SessionKeys {
@@ -319,8 +332,6 @@ impl pallet_balances::Config for Test {
 pub fn new_test_ext() -> sp_io::TestExternalities {
 	system::GenesisConfig::default().build_storage::<Test>().unwrap().into()
 }
-
-
 
 impl_runtime_apis! {
 	impl sp_api::Core<Block> for Test {
