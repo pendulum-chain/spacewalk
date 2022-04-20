@@ -40,6 +40,8 @@ pub enum Error {
 
     #[error("Error returned when fetching remote info")]
     HttpFetchingError,
+    #[error("Failed to post http request")]
+    HttpPostError,
     #[error("Lookup Error")]
     LookupError,
     #[error("Stellar SDK Error")]

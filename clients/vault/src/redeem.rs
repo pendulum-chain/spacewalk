@@ -10,7 +10,7 @@ use sp_std::{
     prelude::*,
     str,
 };
-use stellar::{network::TEST_NETWORK, PublicKey, SecretKey};
+use stellar::{network::TEST_NETWORK, PublicKey, SecretKey, XdrCodec};
 use substrate_stellar_sdk as stellar;
 
 const SUBMISSION_TIMEOUT_PERIOD: u64 = 10000;
@@ -31,6 +31,52 @@ async fn fetch_from_remote(request_url: &str) -> Result<HorizonAccountResponse, 
         .map_err(|_| Error::HttpFetchingError)?;
 
     Ok(response)
+}
+
+async fn submit_transaction_to_horizon(
+    transaction_envelope: &stellar::TransactionEnvelope,
+    timeout_milliseconds: u64,
+    testnet: bool,
+) -> Result<(), Error> {
+    let horizon_url = if testnet {
+        "https://horizon-testnet.stellar.org/transactions"
+    } else {
+        "https://horizon.stellar.org/transactions"
+    };
+
+    let envelope_base64 = transaction_envelope.to_base64_xdr();
+    let xdr_string = str::from_utf8(&envelope_base64)?;
+    tracing::info!(
+        "Submitting transaction to Stellar network: {}, tx_xdr: {:?}",
+        horizon_url,
+        &xdr_string
+    );
+    let params = [("tx", xdr_string)];
+
+    let builder = reqwest::ClientBuilder::new();
+    let client = builder
+        .timeout(std::time::Duration::from_millis(timeout_milliseconds))
+        .build()
+        .unwrap();
+
+    let response = client.post(horizon_url).form(&params).send().await;
+
+    match response {
+        Ok(response) => {
+            tracing::info!("Transaction submitted to Stellar network: {:?}", response);
+            let status = response.status();
+            let response_text = &response.text().await.map_err(|_| Error::HttpPostError)?;
+            if status != reqwest::StatusCode::OK {
+                tracing::error!("Transaction submission failed: {:?}", response_text);
+                return Err(Error::HttpPostError);
+            }
+            Ok(())
+        }
+        Err(e) => {
+            tracing::error!("Error submitting transaction to Stellar network: {}", e);
+            Err(Error::HttpPostError)
+        }
+    }
 }
 
 async fn fetch_latest_seq_no(stellar_addr: &str) -> Result<u64, Error> {
@@ -56,15 +102,17 @@ fn sign_stellar_tx(
     Ok(envelope)
 }
 
-fn submit_stellar_tx(tx: stellar::TransactionEnvelope) -> Result<(), Error> {
+async fn submit_stellar_tx(tx: stellar::TransactionEnvelope) -> Result<(), Error> {
     let mut last_error: Option<Error> = None;
 
     for attempt in 1..=3 {
         tracing::debug!("Attempt #{} to submit Stellar transaction…", attempt);
 
-        match try_once_submit_stellar_tx(&tx) {
-            Ok(result) => {
-                return Ok(result);
+        let response = submit_transaction_to_horizon(&tx, SUBMISSION_TIMEOUT_PERIOD, true).await;
+
+        match response {
+            Ok(()) => {
+                return Ok(());
             }
             Err(error) => {
                 last_error = Some(error);
@@ -74,28 +122,6 @@ fn submit_stellar_tx(tx: stellar::TransactionEnvelope) -> Result<(), Error> {
 
     // Can only panic if no submission was ever attempted
     Err(last_error.unwrap())
-}
-
-fn try_once_submit_stellar_tx(tx: &stellar::TransactionEnvelope) -> Result<(), Error> {
-    let horizon_base_url = "https://horizon-testnet.stellar.org";
-    let horizon = stellar::horizon::Horizon::new(horizon_base_url);
-
-    tracing::info!("Submitting transaction to Stellar network: {}", horizon_base_url);
-
-    let _response = horizon
-        .submit_transaction(&tx, SUBMISSION_TIMEOUT_PERIOD, true)
-        .map_err(|error| {
-            match error {
-                stellar::horizon::FetchError::UnexpectedResponseStatus { status, body } => {
-                    tracing::error!("Unexpected HTTP request status code: {}", status);
-                    tracing::error!("Response body: {}", str::from_utf8(&body).unwrap());
-                }
-                _ => (),
-            }
-            Error::HttpFetchingError
-        })?;
-
-    Ok(())
 }
 
 fn create_withdrawal_tx(
@@ -110,14 +136,14 @@ fn create_withdrawal_tx(
     let source_keypair: SecretKey = SecretKey::from_encoding(escrow_secret_key).unwrap();
 
     let source_pubkey = source_keypair.get_public().clone();
-
     let mut tx = stellar::Transaction::new(source_pubkey, seq_num, Some(10_000), None, None)?;
 
-    tx.append_operation(stellar::Operation::new_payment(
-        stellar::MuxedAccount::KeyTypeEd25519(*destination_addr),
-        asset,
-        stellar::StroopAmount(BalanceConversion::lookup(amount).map_err(|_| Error::BalanceConversionError)?),
-    )?)?;
+    let destination = stellar::MuxedAccount::KeyTypeEd25519(*destination_addr);
+    let amount = stellar::StroopAmount(BalanceConversion::lookup(amount).map_err(|_| Error::BalanceConversionError)?);
+
+    let operation = stellar::Operation::new_payment(destination, asset, amount)?;
+
+    tx.append_operation(operation)?;
 
     Ok(tx)
 }
@@ -134,8 +160,6 @@ async fn execute_withdrawal(
     let escrow_encoded = escrow_keypair.get_public().to_encoding().clone();
     let escrow_address = str::from_utf8(escrow_encoded.as_slice())?;
 
-    tracing::info!("Execute withdrawal: ({:?}, {:?})", currency_id, amount,);
-
     let seq_no = fetch_latest_seq_no(escrow_address).await.map(|seq_no| seq_no + 1)?;
     let transaction = create_withdrawal_tx(
         escrow_secret_key,
@@ -146,13 +170,21 @@ async fn execute_withdrawal(
     )?;
     let signed_envelope = sign_stellar_tx(transaction, escrow_keypair)?;
 
-    let result = submit_stellar_tx(signed_envelope);
-    tracing::info!(
-        "✔️  Successfully submitted withdrawal transaction to Stellar, crediting {}",
-        str::from_utf8(destination_stellar_address.to_encoding().as_slice()).unwrap()
-    );
+    let result = submit_stellar_tx(signed_envelope).await;
 
-    result
+    match result {
+        Ok(()) => {
+            tracing::info!(
+                "✔️  Successfully submitted withdrawal transaction to Stellar, crediting {}",
+                str::from_utf8(destination_stellar_address.to_encoding().as_slice()).unwrap()
+            );
+            Ok(())
+        }
+        Err(error) => {
+            tracing::error!("Withdrawal transaction submission failed: {:?}", error);
+            Err(error)
+        }
+    }
 }
 
 pub async fn listen_for_redeem_requests(
@@ -177,16 +209,24 @@ pub async fn listen_for_redeem_requests(
                 let amount = event.amount.clone();
 
                 if !is_escrow(&escrow_secret_key, stellar_vault_id.try_into().unwrap()) {
-                    tracing::info!("Rejecting redeem request: not an escrow");
+                    tracing::info!(
+                        "Rejecting redeem request: not an escrow. Redeem was for {}",
+                        str::from_utf8(
+                            stellar::PublicKey::from_binary(stellar_vault_id)
+                                .to_encoding()
+                                .as_slice()
+                        )
+                        .unwrap()
+                    );
                     return;
                 }
 
                 // Spawn a new task so that we handle these events concurrently
                 spawn_cancelable(shutdown_tx.subscribe(), async move {
-                    tracing::info!("Executing redeem #{:?}", event);
+                    tracing::info!("Executing redeem {:?}", event);
 
                     let currency_id = StringCurrencyConversion::convert((asset_code, asset_issuer)).unwrap();
-                    let destination_stellar_address = stellar::PublicKey::from_encoding(stellar_user_id).unwrap();
+                    let destination_stellar_address = stellar::PublicKey::from_binary(stellar_user_id);
 
                     let result =
                         execute_withdrawal(&secret_key, amount, currency_id, destination_stellar_address).await;
@@ -209,4 +249,36 @@ pub async fn listen_for_redeem_requests(
         )
         .await?;
     Ok(())
+}
+
+#[cfg(all(test, feature = "standalone-metadata"))]
+mod tests {
+    use super::*;
+    use frame_support::assert_ok;
+
+    const STELLAR_ESCROW_SECRET_KEY: &str = "SB6WHKIU2HGVBRNKNOEOQUY4GFC4ZLG5XPGWLEAHTIZXBXXYACC76VSQ";
+    const DESTINATION_PUBLIC_KEY: &str = "GA6ZDMRVBTHIISPVD7ZRCVX6TWDXBOH2TE5FAADJXZ52YL4GCFI4HOHU";
+
+    #[tokio::test(flavor = "multi_thread")]
+    async fn test_execute_withdrawal() {
+        let amount = 100000000;
+        let currency_id = StringCurrencyConversion::convert((
+            "USDC".as_bytes().to_vec(),
+            "GAKNDFRRWA3RPWNLTI3G4EBSD3RGNZZOY5WKWYMQ6CQTG3KIEKPYWAYC"
+                .as_bytes()
+                .to_vec(),
+        ))
+        .unwrap();
+        let destination_stellar_address =
+            substrate_stellar_sdk::PublicKey::from_encoding(DESTINATION_PUBLIC_KEY).unwrap();
+
+        let result = execute_withdrawal(
+            &STELLAR_ESCROW_SECRET_KEY.to_string(),
+            amount,
+            currency_id,
+            destination_stellar_address,
+        )
+        .await;
+        assert_ok!(result);
+    }
 }
