@@ -6,7 +6,7 @@ use std::time::Duration;
 
 const TIMEOUT: Duration = Duration::from_secs(90);
 
-const STELLAR_ESCROW_SECRET_KEY: &str = "SA4OOLVVZV2W7XAKFXUEKLMQ6Y2W5JBENHO5LP6W6BCPBU3WUZ5EBT7K";
+const STELLAR_ESCROW_SECRET_KEY: &str = "SB6WHKIU2HGVBRNKNOEOQUY4GFC4ZLG5XPGWLEAHTIZXBXXYACC76VSQ";
 
 async fn test_with<F, R>(execute: impl FnOnce(SubxtClient) -> F) -> R
 where
@@ -72,7 +72,7 @@ async fn test_deposit() {
 }"#;
 
     let transaction: vault::service::HorizonTransactionsResponse = serde_json::from_str(tx_string).unwrap();
-    let tx_xdr = base64::decode(&transaction._embedded.records[0].envelope_xdr).unwrap();
+    let tx_xdr = &transaction._embedded.records[0].envelope_xdr;
 
     test_with_vault(|client, vault_provider| async move {
         let deposit_listener = vault::service::poll_horizon_for_new_transactions(
@@ -80,7 +80,7 @@ async fn test_deposit() {
             STELLAR_ESCROW_SECRET_KEY.to_string(),
         );
 
-        assert_ok!(vault_provider.report_stellar_transaction(&tx_xdr).await);
+        assert_ok!(vault_provider.report_stellar_transaction(tx_xdr).await);
 
         test_service(deposit_listener.map(Result::unwrap), async {}).await;
     })
@@ -100,17 +100,33 @@ async fn test_redeem() {
         );
 
         test_service(redeem_listener.map(Result::unwrap), async {
-            let asset_code: Vec<u8> = Vec::from([0; 12]);
-            let asset_issuer: Vec<u8> = Vec::from([0; 32]);
-            let amount: u128 = 1;
-            let stellar_vault_pubkey: [u8; 32] = [0; 32];
+            let asset_code = "USDC".as_bytes();
+            let asset_issuer = "GAKNDFRRWA3RPWNLTI3G4EBSD3RGNZZOY5WKWYMQ6CQTG3KIEKPYWAYC".as_bytes();
+            let amount: u128 = 100000000;
+
+            let escrow_keypair = substrate_stellar_sdk::SecretKey::from_encoding(STELLAR_ESCROW_SECRET_KEY).unwrap();
+            let stellar_vault_pubkey = *escrow_keypair.get_public().as_binary();
+
+            tracing::info!("hex key 0x{}", hex::encode(stellar_vault_pubkey));
+
+            // Execute a redeem
             assert_ok!(
                 vault_provider
-                    .redeem(&asset_code, &asset_issuer, amount, stellar_vault_pubkey)
+                    .redeem(
+                        &asset_code.to_vec(),
+                        &asset_issuer.to_vec(),
+                        amount,
+                        stellar_vault_pubkey.clone()
+                    )
                     .await,
             );
 
-            assert_event::<RedeemEvent, _>(TIMEOUT, vault_provider, |_| true).await;
+            // Expect that a RedeemEvent is registered by the vault provider
+            let event = assert_event::<RedeemEvent, _>(TIMEOUT, vault_provider, |_| true).await;
+            assert_eq!(event.asset_code, asset_code);
+            assert_eq!(event.asset_issuer, asset_issuer);
+            assert_eq!(event.stellar_vault_id, stellar_vault_pubkey);
+            assert_eq!(event.amount, amount);
         })
         .await;
     })
