@@ -1,0 +1,24 @@
+[package]
+authors = ["SatoshiPay"]
+edition = "2018"
+name = "spacewalk-rpc"
+version = "1.2.0"
+
+[dependencies]
+jsonrpc-core = "18.0.0"
+
+# Parachain dependencies
+primitives = {package = "spacewalk-primitives", path = "../primitives"}
+
+# Substrate dependencies
+sc-rpc = {git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.17"}
+sc-rpc-api = {git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.17"}
+sc-transaction-pool-api = {git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.17"}
+sp-api = {git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.17"}
+sp-arithmetic = {git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.17"}
+sp-block-builder = {git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.17"}
+sp-blockchain = {git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.17"}
+sp-core = {git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.17"}
+
+pallet-transaction-payment-rpc = {git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.17"}
+substrate-frame-rpc-system = {git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.17"}
