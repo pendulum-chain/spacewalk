@@ -41,6 +41,24 @@ orml-utilities = {default-features = false, git = "https://github.com/open-web3-
 pallet-transaction-payment = {git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.17"}
 substrate-stellar-sdk = {git = "https://github.com/pendulum-chain/substrate-stellar-sdk", branch = "polkadot-v0.9.17", default-features = false, features = ['offchain']}
 
+# for mock runtime
+pallet-balances = {version = "4.0.0-dev", default-features = false, git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.17"}
+sp-version = {version = "4.0.0-dev", default-features = false, git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.17"}
+sp-api = {version = "4.0.0-dev", default-features = false, git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.17"}
+frame-system-rpc-runtime-api = {version = "4.0.0-dev", default-features = false, git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.17"}
+pallet-transaction-payment-rpc-runtime-api = {version = "4.0.0-dev", default-features = false, git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.17"}
+frame-executive = {version = "4.0.0-dev", default-features = false, git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.17"}
+sp-block-builder = {version = "4.0.0-dev", default-features = false, git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.17"}
+sp-inherents = {version = "4.0.0-dev", default-features = false, git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.17"}
+sp-transaction-pool = {version = "4.0.0-dev", default-features = false, git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.17"}
+pallet-grandpa = {version = "4.0.0-dev", default-features = false, git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.17"}
+pallet-aura = {version = "4.0.0-dev", default-features = false, git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.17"}
+sp-consensus-aura = {version = "0.10.0-dev", default-features = false, git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.17"}
+sp-offchain = {version = "4.0.0-dev", default-features = false, git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.17"}
+sp-session = {version = "4.0.0-dev", default-features = false, git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.17"}
+
+
+
 [features]
 default = ["std"]
 std = [
@@ -64,6 +82,21 @@ std = [
   'orml-utilities/std',
   'base64/std',
   'substrate-stellar-sdk/std',
+  # for mock runtime
+  "pallet-balances/std",
+  "sp-version/std",
+  "sp-api/std",
+  "frame-system-rpc-runtime-api/std",
+  "pallet-transaction-payment-rpc-runtime-api/std",
+  "frame-executive/std",
+  "sp-block-builder/std",
+  "sp-inherents/std",
+  "sp-transaction-pool/std",
+  "pallet-aura/std",
+  "pallet-grandpa/std",
+  "sp-consensus-aura/std",
+  "sp-offchain/std",
+  "sp-session/std",
 ]
 
 runtime-benchmarks = ["frame-benchmarking/runtime-benchmarks"]
