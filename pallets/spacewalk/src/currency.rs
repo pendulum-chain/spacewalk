@@ -1,6 +1,4 @@
-use sp_runtime::{
-	scale_info::TypeInfo
-};
+use sp_runtime::scale_info::TypeInfo;
 use sp_std::{
 	convert::{From, TryFrom, TryInto},
 	fmt, str,
