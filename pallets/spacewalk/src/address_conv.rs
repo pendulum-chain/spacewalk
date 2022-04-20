@@ -27,3 +27,27 @@ impl StaticLookup for AddressConversion {
 pub enum AddressConversionError {
 	//     UnexpectedKeyType
 }
+
+#[cfg(test)]
+mod tests {
+    use std::str::FromStr;
+
+    use super::*;
+
+
+	#[test]
+	fn test_addr_conversion() {
+
+		let account_id = AccountId32::from_str("5G9VdMwXvzza9pS8qE8ZHJk3CheHW9uucBn9ngW4C1gmmzpv")?;
+
+		let lookup_pk = AddressConversion::lookup(account_id);
+
+		assert!(lookup_pk.is_ok());
+
+		let lookup_pk = lookup_pk?;
+
+		let lookup_acc = AddressConversion::unlookup(lookup_pk);
+
+		assert_eq!(lookup_acc, account_id);
+	}
+}
