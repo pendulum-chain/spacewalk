@@ -107,11 +107,8 @@ impl<P: SpacewalkPallet, C: HorizonClient> HorizonFetcher<P, C> {
     }
 
     async fn report_transaction(&self, tx: &Transaction) -> Result<(), Error> {
-        // Decode transaction to Base64
-        let tx_xdr = base64::decode(&tx.envelope_xdr).unwrap();
-
         // Send new transaction to spacewalk bridge pallet
-        let result = self.parachain_rpc.report_stellar_transaction(&tx_xdr).await;
+        let result = self.parachain_rpc.report_stellar_transaction(&tx.envelope_xdr).await;
         match result {
             Ok(_) => Ok(()),
             Err(e) => Err(Error::RuntimeError(e)),
@@ -165,7 +162,7 @@ mod tests {
     use crate::horizon;
     use async_trait::async_trait;
 
-    const STELLAR_ESCROW_SECRET_KEY: &str = "SA4OOLVVZV2W7XAKFXUEKLMQ6Y2W5JBENHO5LP6W6BCPBU3WUZ5EBT7K";
+    const STELLAR_ESCROW_SECRET_KEY: &str = "SB6WHKIU2HGVBRNKNOEOQUY4GFC4ZLG5XPGWLEAHTIZXBXXYACC76VSQ";
 
     const TX_STRING_1: &str = r#" {
   "_links": { },
