@@ -1,6 +1,5 @@
 # Building
 
-
 From the spacewalk/client directory run
 
 ```
@@ -38,9 +37,11 @@ subxt metadata -f bytes > runtime/metadata-standalone.scale
 ## Troubleshooting
 
 ### Invalid spec version
+
 If there are errors with spec versions not matching you might have to change the `DEFAULT_SPEC_VERSION` in runtime/src/rpc.rs.
 
 ### Building on macOS
+
 If you are encountering build errors on macOS try the following steps:
 
 1. Install llvm with brew (`brew install llvm`).
@@ -54,6 +55,11 @@ If you are encountering build errors on macOS try the following steps:
 export AR=/usr/local/opt/llvm/bin/llvm-ar
 export CC=/usr/local/opt/llvm/bin/clang
 # on M1 CPU
-export AR=/opt/homebrew/opt/llvm/bin/llvm-ar 
-export CC=/opt/homebrew/opt/llvm/bin/clang 
+export AR=/opt/homebrew/opt/llvm/bin/llvm-ar
+export CC=/opt/homebrew/opt/llvm/bin/clang
 ```
+
+### Transaction submission failed
+
+If the transaction submission fails giving a `tx_failed` in the `result_codes` object of the response, this is likely due to the converted destination account not having trustlines set up for the redeemed asset.
+The destination account is derived automatically from the account that called the extrinsic on-chain.
