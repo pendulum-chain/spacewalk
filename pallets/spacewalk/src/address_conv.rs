@@ -38,13 +38,13 @@ mod tests {
 	#[test]
 	fn test_addr_conversion() {
 
-		let account_id = AccountId32::from_str("5G9VdMwXvzza9pS8qE8ZHJk3CheHW9uucBn9ngW4C1gmmzpv")?;
+		let account_id = AccountId32::from_str("5G9VdMwXvzza9pS8qE8ZHJk3CheHW9uucBn9ngW4C1gmmzpv").unwrap();
 
-		let lookup_pk = AddressConversion::lookup(account_id);
+		let lookup_pk = AddressConversion::lookup(account_id.clone());
 
 		assert!(lookup_pk.is_ok());
 
-		let lookup_pk = lookup_pk?;
+		let lookup_pk = lookup_pk.unwrap();
 
 		let lookup_acc = AddressConversion::unlookup(lookup_pk);
 

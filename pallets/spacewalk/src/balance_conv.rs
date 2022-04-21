@@ -34,7 +34,7 @@ mod tests {
 		let balance_lookup = BalanceConversion::lookup(balance);
 		assert!(balance_lookup.is_ok());
 
-		let balance_lookup = balance_lookup?;
+		let balance_lookup = balance_lookup.unwrap();
 		assert_eq!(balance_lookup, 1000);
 
 		let lookup_orig = BalanceConversion::unlookup(balance_lookup);
