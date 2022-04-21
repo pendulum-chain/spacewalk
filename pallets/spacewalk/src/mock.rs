@@ -1,17 +1,11 @@
-use crate as pallet_template;
-use frame_support::traits::{ConstU16, ConstU64};
 use frame_system as system;
-use sp_core::H256;
 use sp_runtime::{
-	impl_opaque_keys,
-	MultiSignature,
-	create_runtime_str,
-	Perbill,
-	generic,
-	testing::Header,
-	traits::{BlakeTwo256, IdentityLookup, Verify, Zero, AccountIdLookup, IdentifyAccount, NumberFor, Block as BlockT},
+	create_runtime_str, generic, impl_opaque_keys,
+	traits::{
+		AccountIdLookup, BlakeTwo256, Block as BlockT, IdentifyAccount, NumberFor, Verify, Zero,
+	},
 	transaction_validity::{TransactionSource, TransactionValidity},
-	ApplyExtrinsicResult,
+	ApplyExtrinsicResult, MultiSignature, Perbill,
 };
 
 use sp_core::{crypto::KeyTypeId, OpaqueMetadata};
@@ -22,6 +16,8 @@ use sp_consensus_aura::ed25519::AuthorityId as AuraId;
 use pallet_grandpa::{
 	fg_primitives, AuthorityId as GrandpaId, AuthorityList as GrandpaAuthorityList,
 };
+
+use pallet_timestamp;
 
 pub use frame_support::{
 	construct_runtime, match_type, parameter_types,
@@ -44,8 +40,6 @@ use crate::{
 	},
 };
 
-#[cfg(feature = "std")]
-use sp_version::NativeVersion;
 use sp_version::RuntimeVersion;
 
 use crate::currency::CurrencyId;
@@ -66,13 +60,26 @@ pub type Index = u32;
 
 pub type Hash = sp_core::H256;
 
-const NORMAL_DISPATCH_RATIO: Perbill = Perbill::from_percent(75);
-
-pub type AccountId = <<Signature as Verify>::Signer as IdentifyAccount>::AccountId;
-
-type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Test>;
-type Block = frame_system::mocking::MockBlock<Test>;
-
+/// The address format for describing accounts.
+pub type Address = sp_runtime::MultiAddress<AccountId, ()>;
+/// Block header type as expected by this runtime.
+pub type Header = generic::Header<BlockNumber, BlakeTwo256>;
+/// Block type as expected by this runtime.
+pub type Block = generic::Block<Header, UncheckedExtrinsic>;
+/// The SignedExtension to the basic transaction logic.
+pub type SignedExtra = (
+	frame_system::CheckNonZeroSender<Test>,
+	frame_system::CheckSpecVersion<Test>,
+	frame_system::CheckTxVersion<Test>,
+	frame_system::CheckGenesis<Test>,
+	frame_system::CheckEra<Test>,
+	frame_system::CheckNonce<Test>,
+	frame_system::CheckWeight<Test>,
+	pallet_transaction_payment::ChargeTransactionPayment<Test>,
+);
+/// Unchecked extrinsic type as expected by this runtime.
+pub type UncheckedExtrinsic = generic::UncheckedExtrinsic<Address, Call, Signature, SignedExtra>;
+/// Executive: handles dispatch to the various modules.
 pub type Executive = frame_executive::Executive<
 	Test,
 	Block,
@@ -81,17 +88,32 @@ pub type Executive = frame_executive::Executive<
 	AllPalletsWithSystem,
 >;
 
+const NORMAL_DISPATCH_RATIO: Perbill = Perbill::from_percent(75);
+
+/// Change this to adjust the block time.
+pub const MILLISECS_PER_BLOCK: u64 = 6000;
+
+// NOTE: Currently it is not possible to change the slot duration after the chain has started.
+//       Attempting to do so will brick block production.
+pub const SLOT_DURATION: u64 = MILLISECS_PER_BLOCK;
+
+pub type AccountId = <<Signature as Verify>::Signer as IdentifyAccount>::AccountId;
+
+// type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Test>;
+// type Block = frame_system::mocking::MockBlock<Test>;
+
+// pub type Executive = frame_executive::Executive<
+// 	Test,
+// 	Block,
+// 	frame_system::ChainContext<Test>,
+// 	Test,
+// 	AllPalletsWithSystem,
+// >;
+
 pub mod opaque {
 	use super::*;
 
 	pub use sp_runtime::OpaqueExtrinsic as UncheckedExtrinsic;
-
-	/// Opaque block header type.
-	pub type Header = generic::Header<BlockNumber, BlakeTwo256>;
-	/// Opaque block type.
-	pub type Block = generic::Block<Header, UncheckedExtrinsic>;
-	/// Opaque block identifier type.
-	pub type BlockId = generic::BlockId<Block>;
 
 	impl_opaque_keys! {
 		pub struct SessionKeys {
@@ -167,6 +189,11 @@ parameter_types! {
 		::max_with_normal_ratio(5 * 1024 * 1024, NORMAL_DISPATCH_RATIO);
 	pub const SS58Prefix: u8 = 42;
 }
+
+parameter_types! {
+	pub const MinimumPeriod: u64 = SLOT_DURATION / 2;
+}
+
 impl frame_system::Config for Test {
 	/// The basic call filter to use in dispatchable.
 	type BaseCallFilter = frame_support::traits::Everything;
@@ -219,13 +246,13 @@ impl frame_system::Config for Test {
 	type MaxConsumers = frame_support::traits::ConstU32<16>;
 }
 
-impl pallet_aura::Config for Runtime {
+impl pallet_aura::Config for Test {
 	type AuthorityId = AuraId;
 	type DisabledValidators = ();
 	type MaxAuthorities = ConstU32<32>;
 }
 
-impl pallet_grandpa::Config for Runtime {
+impl pallet_grandpa::Config for Test {
 	type Event = Event;
 	type Call = Call;
 
@@ -243,6 +270,14 @@ impl pallet_grandpa::Config for Runtime {
 
 	type WeightInfo = ();
 	type MaxAuthorities = ConstU32<32>;
+}
+
+impl pallet_timestamp::Config for Test {
+	/// A timestamp: milliseconds since the unix epoch.
+	type Moment = u64;
+	type OnTimestampSet = Aura;
+	type MinimumPeriod = MinimumPeriod;
+	type WeightInfo = ();
 }
 
 /// Configure the spacewalk pallet
@@ -297,8 +332,6 @@ impl pallet_balances::Config for Test {
 pub fn new_test_ext() -> sp_io::TestExternalities {
 	system::GenesisConfig::default().build_storage::<Test>().unwrap().into()
 }
-
-
 
 impl_runtime_apis! {
 	impl sp_api::Core<Block> for Test {
