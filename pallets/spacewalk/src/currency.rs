@@ -122,3 +122,73 @@ impl fmt::Debug for CurrencyId {
 		}
 	}
 }
+
+#[cfg(test)]
+mod tests {
+    use substrate_stellar_sdk::{Asset, types::{AssetAlphaNum4, AssetAlphaNum12}, PublicKey};
+
+    use crate::currency::AssetIssuer;
+
+    use super::CurrencyId;
+
+
+	#[test]
+	fn test_from() {
+
+		let account = PublicKey::from_encoding("GAKNDFRRWA3RPWNLTI3G4EBSD3RGNZZOY5WKWYMQ6CQTG3KIEKPYWAYC").expect("invalid key encoding");
+		let mut code_a4: [u8; 4] = [0; 4];
+		code_a4.copy_from_slice("EURO".as_bytes());
+
+		let currency_native = CurrencyId::from(Asset::AssetTypeNative);
+		assert_eq!(currency_native, CurrencyId::StellarNative);
+
+		let currency_a4 = CurrencyId::from(Asset::AssetTypeCreditAlphanum4(AssetAlphaNum4 {
+			asset_code: code_a4,
+			issuer: account.clone()
+		}));
+		assert_eq!(currency_a4, CurrencyId::AlphaNum4 { code: code_a4, issuer: *account.as_binary() });
+
+		let mut code_a12: [u8; 12] = [0; 12];
+		code_a12.copy_from_slice("AmericaDolar".as_bytes());
+
+		let currency_12 = CurrencyId::from(Asset::AssetTypeCreditAlphanum12(AssetAlphaNum12 {
+			asset_code: code_a12,
+			issuer: account.clone()
+		}));
+		assert_eq!(currency_12, CurrencyId::AlphaNum12 { code: code_a12, issuer: *account.as_binary() });
+
+	}
+
+	#[test]
+	fn test_try_from() {
+
+		let account = PublicKey::from_encoding("GAKNDFRRWA3RPWNLTI3G4EBSD3RGNZZOY5WKWYMQ6CQTG3KIEKPYWAYC").expect("invalid key encoding");
+		let mut code_a4: [u8; 4] = [0; 4];
+		code_a4.copy_from_slice("EURO".as_bytes());
+		let mut code_a12: [u8; 12] = [0; 12];
+		code_a12.copy_from_slice("AmericaDolar".as_bytes());
+
+		let currency_a4 = CurrencyId::try_from(("EURO", AssetIssuer::from(*account.as_binary()))).unwrap();
+		assert_eq!(currency_a4, CurrencyId::AlphaNum4 { code: code_a4, issuer: *account.as_binary() });
+
+		let currency_a12 = CurrencyId::try_from(("AmericaDolar", AssetIssuer::from(*account.as_binary()))).unwrap();
+		assert_eq!(currency_a12, CurrencyId::AlphaNum12 { code: code_a12, issuer: *account.as_binary() });
+	}
+
+
+	#[test]
+	fn test_try_into() {
+
+		let account = PublicKey::from_encoding("GAKNDFRRWA3RPWNLTI3G4EBSD3RGNZZOY5WKWYMQ6CQTG3KIEKPYWAYC").expect("invalid key encoding");
+		let mut code_a4: [u8; 4] = [0; 4];
+		code_a4.copy_from_slice("EURO".as_bytes());
+		let mut code_a12: [u8; 12] = [0; 12];
+		code_a12.copy_from_slice("AmericaDolar".as_bytes());
+
+		let currency_a4: CurrencyId =  Asset::AssetTypeCreditAlphanum4(AssetAlphaNum4{ asset_code: code_a4, issuer: account.clone()}).try_into().unwrap();
+		assert_eq!(currency_a4, CurrencyId::AlphaNum4 { code: code_a4, issuer: *account.as_binary() });
+
+		let currency_a12: CurrencyId =  Asset::AssetTypeCreditAlphanum12(AssetAlphaNum12{ asset_code: code_a12, issuer: account.clone()}).try_into().unwrap();
+		assert_eq!(currency_a12, CurrencyId::AlphaNum12 { code: code_a12, issuer: *account.as_binary() });
+	}
+}
