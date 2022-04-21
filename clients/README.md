@@ -14,17 +14,27 @@ cargo run --bin vault --features standalone-metadata  -- --keyring alice --stell
 
 ## Tests
 
-To run the tests for the spacewalk client run
+To run the tests (unit and integration tests) for the spacewalk vault client run
 
 ```
 cargo test --package vault --features standalone-metadata
 ```
 
-to run only the unit tests use
+To run only the unit tests use
 
 ```
 cargo test --package vault --lib --features standalone-metadata -- --nocapture
 ```
+
+**Note** that when running the integration test the console might show errors like
+```
+ERROR vault::redeem: Error while sending request: error sending request for url (https://horizon-testnet.stellar.org/accounts/GA6ZDMRVBTHIISPVD7ZRCVX6TWDXBOH2TE5FAADJXZ52YL4GCFI4HOHU): error trying to connect: dns error: cancelled
+```
+but this does not mean that the test fails. 
+The `test_redeem` integration test only checks if a `RedeemEvent` was emitted and terminates afterwards. 
+This stops the on-going withdrawal execution the vault client started leading to that error. 
+The withdrawal execution is tested in the `test_execute_withdrawal` unit test instead.
+
 
 ## Updating the metadata
 
