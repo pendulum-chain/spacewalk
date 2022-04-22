@@ -1,6 +1,6 @@
 use crate::{currency::CurrencyId, mock::*};
-use frame_support::{assert_ok, assert_err, traits::fungibles::Inspect};
-use sp_runtime::{ModuleError, DispatchError};
+use frame_support::{assert_err, assert_ok, traits::fungibles::Inspect};
+use sp_runtime::{DispatchError, ModuleError};
 
 //stellar transaction that:
 //sent 1 USDC (1_000_000_000_000)
@@ -54,7 +54,6 @@ fn report_stellar_transaction_mints_usdc_asset() {
 	});
 }
 
-
 #[test]
 fn report_stellar_transaction_mints_eur_asset() {
 	new_test_ext().execute_with(|| {
@@ -78,10 +77,17 @@ fn report_stellar_transaction_mints_eur_asset() {
 fn report_stellar_transaction_invalid_envelope() {
 	new_test_ext().execute_with(|| {
 		//mint tokens for User
-		assert_err!(Spacewalk::report_stellar_transaction(
-			Origin::signed([0; 32].into()),
-			"INVALID_STELLAR_TRANSACTION_ENVELOPE".into()
-		), DispatchError::Module(ModuleError{index: 3, error: 0, message: Some(&"XdrDecodingError") }));
+		assert_err!(
+			Spacewalk::report_stellar_transaction(
+				Origin::signed([0; 32].into()),
+				"INVALID_STELLAR_TRANSACTION_ENVELOPE".into()
+			),
+			DispatchError::Module(ModuleError {
+				index: 3,
+				error: 0,
+				message: Some(&"XdrDecodingError")
+			})
+		);
 	});
 }
 
@@ -139,7 +145,6 @@ fn redeem_burns_asset_eur() {
 	});
 }
 
-
 #[test]
 fn redeem_with_incorrect_caller() {
 	new_test_ext().execute_with(|| {
@@ -149,13 +154,20 @@ fn redeem_with_incorrect_caller() {
 			STELLAR_TRANSACTION_ENVELOPE_USDC.into()
 		));
 		//burn tokens
-		assert_err!(Spacewalk::redeem(
-			Origin::signed([0; 32].into()),
-			USDC_CODE.into(),
-			ISSUER_STELLAR_ADDRESS.into(),
-			USDC_AMOUNT,
-			VAULT
-		), DispatchError::Module(ModuleError{index: 3, error: 2, message: Some(&"BalanceChangeError") }));
+		assert_err!(
+			Spacewalk::redeem(
+				Origin::signed([0; 32].into()),
+				USDC_CODE.into(),
+				ISSUER_STELLAR_ADDRESS.into(),
+				USDC_AMOUNT,
+				VAULT
+			),
+			DispatchError::Module(ModuleError {
+				index: 3,
+				error: 2,
+				message: Some(&"BalanceChangeError")
+			})
+		);
 	});
 }
 
@@ -168,13 +180,20 @@ fn redeem_with_wrong_asset() {
 			STELLAR_TRANSACTION_ENVELOPE_USDC.into()
 		));
 		//burn tokens
-		assert_err!(Spacewalk::redeem(
-			Origin::signed(USER.into()),
-			EUR_CODE.into(),
-			ISSUER_STELLAR_ADDRESS.into(),
-			USDC_AMOUNT,
-			VAULT
-		), DispatchError::Module(ModuleError{index: 3, error: 2, message: Some(&"BalanceChangeError") }));
+		assert_err!(
+			Spacewalk::redeem(
+				Origin::signed(USER.into()),
+				EUR_CODE.into(),
+				ISSUER_STELLAR_ADDRESS.into(),
+				USDC_AMOUNT,
+				VAULT
+			),
+			DispatchError::Module(ModuleError {
+				index: 3,
+				error: 2,
+				message: Some(&"BalanceChangeError")
+			})
+		);
 	});
 }
 
@@ -187,16 +206,22 @@ fn redeem_with_wrong_issuer() {
 			STELLAR_TRANSACTION_ENVELOPE_USDC.into()
 		));
 		//burn tokens
-		assert_err!(Spacewalk::redeem(
-			Origin::signed(USER.into()),
-			EUR_CODE.into(),
-			[0; 32].into(),
-			USDC_AMOUNT,
-			VAULT
-		), DispatchError::Module(ModuleError{index: 3, error: 1, message: Some(&"BalanceChangeError") }));
+		assert_err!(
+			Spacewalk::redeem(
+				Origin::signed(USER.into()),
+				EUR_CODE.into(),
+				[0; 32].into(),
+				USDC_AMOUNT,
+				VAULT
+			),
+			DispatchError::Module(ModuleError {
+				index: 3,
+				error: 1,
+				message: Some(&"BalanceChangeError")
+			})
+		);
 	});
 }
-
 
 #[test]
 fn redeem_with_amount_too_high() {
@@ -207,12 +232,19 @@ fn redeem_with_amount_too_high() {
 			STELLAR_TRANSACTION_ENVELOPE_USDC.into()
 		));
 		//burn tokens
-		assert_err!(Spacewalk::redeem(
-			Origin::signed(USER.into()),
-			USDC_CODE.into(),
-			ISSUER_STELLAR_ADDRESS.into(),
-			USDC_AMOUNT * 2,
-			VAULT
-		), DispatchError::Module(ModuleError{index: 3, error: 2, message: Some(&"BalanceChangeError") }));
+		assert_err!(
+			Spacewalk::redeem(
+				Origin::signed(USER.into()),
+				USDC_CODE.into(),
+				ISSUER_STELLAR_ADDRESS.into(),
+				USDC_AMOUNT * 2,
+				VAULT
+			),
+			DispatchError::Module(ModuleError {
+				index: 3,
+				error: 2,
+				message: Some(&"BalanceChangeError")
+			})
+		);
 	});
 }
