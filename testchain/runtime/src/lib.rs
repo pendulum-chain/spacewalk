@@ -314,8 +314,8 @@ type NativeCurrency = orml_tokens::CurrencyAdapter<Runtime, GetNativeCurrencyId>
 
 impl pallet_transaction_payment::Config for Runtime {
 	type OnChargeTransaction = pallet_transaction_payment::CurrencyAdapter<
-		NativeCurrency,
-		DealWithFees<Runtime, GetNativeCurrencyId>,
+		Balances,
+		(),
 	>;
 	type TransactionByteFee = TransactionByteFee;
 	type WeightToFee = IdentityFee<Balance>;
