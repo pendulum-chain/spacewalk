@@ -23,12 +23,22 @@ fn is_escrow(escrow_key: &String, public_key: [u8; 32]) -> bool {
 async fn fetch_from_remote(request_url: &str) -> Result<HorizonAccountResponse, Error> {
     tracing::info!("Sending request to: {}", request_url);
 
-    let response = reqwest::get(request_url)
+    let client = reqwest::Client::new();
+
+    let response = client
+        .get(request_url)
+        .send()
         .await
-        .map_err(|_| Error::HttpFetchingError)?
+        .map_err(|e| {
+            tracing::error!("Error while sending request: {}", e);
+            Error::HttpFetchingError
+        })?
         .json::<HorizonAccountResponse>()
         .await
-        .map_err(|_| Error::HttpFetchingError)?;
+        .map_err(|e| {
+            tracing::error!("Error while sending request: {}", e);
+            Error::HttpFetchingError
+        })?;
 
     Ok(response)
 }
@@ -232,16 +242,8 @@ pub async fn listen_for_redeem_requests(
                         execute_withdrawal(&secret_key, amount, currency_id, destination_stellar_address).await;
 
                     match result {
-                        Ok(_) => tracing::info!(
-                            "Completed redeem request with amount {}",
-                            // event.redeem_id,
-                            event.amount
-                        ),
-                        Err(e) => tracing::error!(
-                            "Failed to process redeem request: {}",
-                            // event.redeem_id,
-                            e.to_string()
-                        ),
+                        Ok(_) => tracing::info!("Completed redeem request with amount {}", event.amount),
+                        Err(e) => tracing::error!("Failed to process redeem request: {}", e.to_string()),
                     }
                 });
             },
