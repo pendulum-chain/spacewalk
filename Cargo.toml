@@ -1,0 +1,8 @@
+[workspace]
+members = [
+  "testchain/node",
+  "testchain/runtime",
+  "pallets/spacewalk"
+]
+[profile.release]
+panic = "unwind"
