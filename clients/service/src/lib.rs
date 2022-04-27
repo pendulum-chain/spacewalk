@@ -1,8 +1,8 @@
 use async_trait::async_trait;
 use futures::{future::Either, Future, FutureExt};
 use runtime::{
-    cli::ConnectionOpts as ParachainConfig, Error as RuntimeError,
-    SpacewalkParachain as BtcParachain, SpacewalkSigner, Signer, Ss58Codec,
+    cli::ConnectionOpts as ParachainConfig, Error as RuntimeError, Signer, SpacewalkParachain as BtcParachain,
+    SpacewalkSigner, Ss58Codec,
 };
 use std::marker::PhantomData;
 

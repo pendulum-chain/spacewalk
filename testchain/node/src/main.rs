@@ -8,5 +8,5 @@ mod command;
 mod service;
 
 fn main() -> sc_cli::Result<()> {
-    command::run()
+	command::run()
 }

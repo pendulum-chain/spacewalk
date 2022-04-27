@@ -313,10 +313,7 @@ parameter_types! {
 type NativeCurrency = orml_tokens::CurrencyAdapter<Runtime, GetNativeCurrencyId>;
 
 impl pallet_transaction_payment::Config for Runtime {
-	type OnChargeTransaction = pallet_transaction_payment::CurrencyAdapter<
-		Balances,
-		(),
-	>;
+	type OnChargeTransaction = pallet_transaction_payment::CurrencyAdapter<Balances, ()>;
 	type TransactionByteFee = TransactionByteFee;
 	type WeightToFee = IdentityFee<Balance>;
 	type FeeMultiplierUpdate = SlowAdjustingFeeUpdate<Self>;

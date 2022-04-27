@@ -4,7 +4,7 @@ use crate::{
     metadata::DispatchError,
     notify_retry,
     types::*,
-    AccountId, Error, SpacewalkRuntime, SpacewalkSigner, RetryPolicy, SubxtError,
+    AccountId, Error, RetryPolicy, SpacewalkRuntime, SpacewalkSigner, SubxtError,
 };
 
 use async_trait::async_trait;

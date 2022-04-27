@@ -21,7 +21,7 @@ pub use error::{Error, SubxtError};
 pub use retry::{notify_retry, RetryPolicy};
 pub use rpc::{SpacewalkPallet, SpacewalkParachain, UtilFuncs};
 pub use sp_arithmetic::{traits as FixedPointTraits, FixedI128, FixedPointNumber, FixedU128};
-use spacewalk_runtime::{AccountId};
+use spacewalk_runtime::AccountId;
 pub use subxt::{
     sp_core::{crypto::Ss58Codec, sr25519::Pair},
     Signer,
@@ -85,4 +85,3 @@ impl Config for SpacewalkRuntime {
     type Extrinsic = OpaqueExtrinsic;
     type Signature = MultiSignature;
 }
-

@@ -1,6 +1,6 @@
 #![cfg(all(feature = "testing-utils", feature = "standalone-metadata"))]
 
-use crate::{SpacewalkSigner, SpacewalkParachain};
+use crate::{SpacewalkParachain, SpacewalkSigner};
 use futures::{future::Either, pin_mut, Future, FutureExt, SinkExt, StreamExt};
 use std::time::Duration;
 use subxt::Event;
