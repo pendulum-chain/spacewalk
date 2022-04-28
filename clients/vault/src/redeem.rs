@@ -166,7 +166,13 @@ async fn execute_withdrawal(
 ) -> Result<(), Error> {
     let asset = CurrencyConversion::lookup(currency_id)?;
 
-    let vault_keypair: SecretKey = SecretKey::from_encoding(vault_secret_key).unwrap();
+    let vault_keypair: SecretKey = match SecretKey::from_encoding(vault_secret_key) {
+        Ok(keypair) => keypair,
+        Err(e) => {
+            tracing::error!("Error while creating keypair from secret key: {:?}", e);
+            return Err(Error::StellarSdkError);
+        }
+    };
     let vault_encoded = vault_keypair.get_public().to_encoding().clone();
     let vault_address = str::from_utf8(vault_encoded.as_slice())?;
 
@@ -235,7 +241,14 @@ pub async fn listen_for_redeem_requests(
                 spawn_cancelable(shutdown_tx.subscribe(), async move {
                     tracing::info!("Executing redeem {:?}", event);
 
-                    let currency_id = StringCurrencyConversion::convert((asset_code, asset_issuer)).unwrap();
+                    let currency_id =
+                        match StringCurrencyConversion::convert((asset_code.clone(), asset_issuer.clone())) {
+                            Ok(currency_id) => currency_id,
+                            Err(_) => {
+                                tracing::error!("Error while converting currency: {:?}", (asset_code, asset_issuer));
+                                return;
+                            }
+                        };
                     let destination_stellar_address = stellar::PublicKey::from_binary(stellar_user_id);
 
                     let result =
