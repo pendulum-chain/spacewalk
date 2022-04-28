@@ -1,0 +1,12 @@
+name: spacewalk-on-pull-request
+on: [pull_request]
+jobs:
+  test-spacewalk-pallet:
+    runs-on: 	ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: favalos/paritytech-action@v0.2.0-alpha
+        with:
+          command: 'test'
+          path: pallets/spacewalk
+
