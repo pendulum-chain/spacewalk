@@ -9,7 +9,7 @@ cargo build --features=standalone-metadata
 ## Running the vault
 
 ```
-cargo run --bin vault --features standalone-metadata  -- --keyring alice --stellar-escrow-secret-key SB6WHKIU2HGVBRNKNOEOQUY4GFC4ZLG5XPGWLEAHTIZXBXXYACC76VSQ
+cargo run --bin vault --features standalone-metadata  -- --keyring alice --stellar-vault-secret-key SB6WHKIU2HGVBRNKNOEOQUY4GFC4ZLG5XPGWLEAHTIZXBXXYACC76VSQ
 ```
 
 ## Tests

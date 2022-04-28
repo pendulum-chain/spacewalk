@@ -6,7 +6,7 @@ use std::time::Duration;
 
 const TIMEOUT: Duration = Duration::from_secs(90);
 
-const STELLAR_ESCROW_SECRET_KEY: &str = "SB6WHKIU2HGVBRNKNOEOQUY4GFC4ZLG5XPGWLEAHTIZXBXXYACC76VSQ";
+const STELLAR_VAULT_SECRET_KEY: &str = "SB6WHKIU2HGVBRNKNOEOQUY4GFC4ZLG5XPGWLEAHTIZXBXXYACC76VSQ";
 
 async fn test_with<F, R>(execute: impl FnOnce(SubxtClient) -> F) -> R
 where
@@ -77,7 +77,7 @@ async fn test_deposit() {
     test_with_vault(|client, vault_provider| async move {
         let deposit_listener = vault::service::poll_horizon_for_new_transactions(
             vault_provider.clone(),
-            STELLAR_ESCROW_SECRET_KEY.to_string(),
+            STELLAR_VAULT_SECRET_KEY.to_string(),
         );
 
         assert_ok!(vault_provider.report_stellar_transaction(tx_xdr).await);
@@ -96,7 +96,7 @@ async fn test_redeem() {
         let redeem_listener = vault::service::listen_for_redeem_requests(
             shutdown_tx,
             vault_provider.clone(),
-            STELLAR_ESCROW_SECRET_KEY.to_string(),
+            STELLAR_VAULT_SECRET_KEY.to_string(),
         );
 
         test_service(redeem_listener.map(Result::unwrap), async {
@@ -104,8 +104,8 @@ async fn test_redeem() {
             let asset_issuer = "GAKNDFRRWA3RPWNLTI3G4EBSD3RGNZZOY5WKWYMQ6CQTG3KIEKPYWAYC".as_bytes();
             let amount: u128 = 100000000;
 
-            let escrow_keypair = substrate_stellar_sdk::SecretKey::from_encoding(STELLAR_ESCROW_SECRET_KEY).unwrap();
-            let stellar_vault_pubkey = *escrow_keypair.get_public().as_binary();
+            let vault_keypair = substrate_stellar_sdk::SecretKey::from_encoding(STELLAR_VAULT_SECRET_KEY).unwrap();
+            let stellar_vault_pubkey = *vault_keypair.get_public().as_binary();
 
             tracing::info!("hex key 0x{}", hex::encode(stellar_vault_pubkey));
 

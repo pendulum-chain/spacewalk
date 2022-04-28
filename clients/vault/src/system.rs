@@ -17,7 +17,7 @@ pub const ABOUT: &str = env!("CARGO_PKG_DESCRIPTION");
 #[derive(Parser, Clone, Debug)]
 pub struct VaultServiceConfig {
     #[clap(long, help = "The Stellar secret key that is used to sign transactions.")]
-    pub stellar_escrow_secret_key: String,
+    pub stellar_vault_secret_key: String,
 }
 
 pub struct VaultService {
@@ -72,7 +72,7 @@ impl VaultService {
             self.shutdown.clone(),
             poll_horizon_for_new_transactions(
                 self.spacewalk_parachain.clone(),
-                self.config.stellar_escrow_secret_key.clone(),
+                self.config.stellar_vault_secret_key.clone(),
             ),
         );
 
@@ -82,7 +82,7 @@ impl VaultService {
             listen_for_redeem_requests(
                 self.shutdown.clone(),
                 self.spacewalk_parachain.clone(),
-                self.config.stellar_escrow_secret_key.clone(),
+                self.config.stellar_vault_secret_key.clone(),
             ),
         );
 

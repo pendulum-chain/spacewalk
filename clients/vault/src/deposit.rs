@@ -37,16 +37,16 @@ impl HorizonClient for reqwest::Client {
 struct HorizonFetcher<P: SpacewalkPallet, C: HorizonClient> {
     parachain_rpc: P,
     client: C,
-    escrow_secret_key: String,
+    vault_secret_key: String,
     last_tx_id: Option<Vec<u8>>,
 }
 
 impl<P: SpacewalkPallet, C: HorizonClient> HorizonFetcher<P, C> {
-    pub fn new(parachain_rpc: P, client: C, escrow_secret_key: String) -> Self {
+    pub fn new(parachain_rpc: P, client: C, vault_secret_key: String) -> Self {
         Self {
             parachain_rpc,
             client,
-            escrow_secret_key,
+            vault_secret_key,
             last_tx_id: None,
         }
     }
@@ -54,11 +54,11 @@ impl<P: SpacewalkPallet, C: HorizonClient> HorizonFetcher<P, C> {
     /// Fetch recent transactions from remote and deserialize to HorizonResponse
     /// Since the limit in the request url is set to one it will always fetch just one
     async fn fetch_latest_txs(&self) -> Result<HorizonTransactionsResponse, Error> {
-        let escrow_keypair: SecretKey = SecretKey::from_encoding(&self.escrow_secret_key).unwrap();
-        let escrow_address = escrow_keypair.get_public();
+        let vault_keypair: SecretKey = SecretKey::from_encoding(&self.vault_secret_key).unwrap();
+        let vault_address = vault_keypair.get_public();
 
         let request_url = String::from("https://horizon-testnet.stellar.org/accounts/")
-            + str::from_utf8(escrow_address.to_encoding().as_slice()).map_err(|_| Error::HttpFetchingError)?
+            + str::from_utf8(vault_address.to_encoding().as_slice()).map_err(|_| Error::HttpFetchingError)?
             + "/transactions?order=desc&limit=1";
 
         let horizon_response = self.client.get_transactions(request_url.as_str()).await;
@@ -144,10 +144,10 @@ impl<P: SpacewalkPallet, C: HorizonClient> HorizonFetcher<P, C> {
 
 pub async fn poll_horizon_for_new_transactions<P: SpacewalkPallet>(
     parachain_rpc: P,
-    escrow_secret_key: String,
+    vault_secret_key: String,
 ) -> Result<(), ServiceError> {
     let horizon_client = reqwest::Client::new();
-    let mut fetcher = HorizonFetcher::new(parachain_rpc, horizon_client, escrow_secret_key);
+    let mut fetcher = HorizonFetcher::new(parachain_rpc, horizon_client, vault_secret_key);
     // Start polling horizon every 5 seconds
     loop {
         fetcher.fetch_horizon_and_process_new_transactions().await;
@@ -162,7 +162,7 @@ mod tests {
     use crate::horizon;
     use async_trait::async_trait;
 
-    const STELLAR_ESCROW_SECRET_KEY: &str = "SB6WHKIU2HGVBRNKNOEOQUY4GFC4ZLG5XPGWLEAHTIZXBXXYACC76VSQ";
+    const STELLAR_VAULT_SECRET_KEY: &str = "SB6WHKIU2HGVBRNKNOEOQUY4GFC4ZLG5XPGWLEAHTIZXBXXYACC76VSQ";
 
     const TX_STRING_1: &str = r#" {
   "_links": { },
@@ -287,7 +287,7 @@ mod tests {
         // expect that the first transaction will not be reported
         parachain_rpc.expect_report_stellar_transaction().times(0);
 
-        let mut fetcher = HorizonFetcher::new(parachain_rpc, client, STELLAR_ESCROW_SECRET_KEY.to_string());
+        let mut fetcher = HorizonFetcher::new(parachain_rpc, client, STELLAR_VAULT_SECRET_KEY.to_string());
 
         fetcher.fetch_horizon_and_process_new_transactions().await;
 

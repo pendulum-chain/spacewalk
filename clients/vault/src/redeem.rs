@@ -15,9 +15,9 @@ use substrate_stellar_sdk as stellar;
 
 const SUBMISSION_TIMEOUT_PERIOD: u64 = 10000;
 
-fn is_escrow(escrow_key: &String, public_key: [u8; 32]) -> bool {
-    let escrow_keypair: SecretKey = SecretKey::from_encoding(escrow_key).unwrap();
-    return public_key == *escrow_keypair.get_public().as_binary();
+fn is_vault(vault_key: &String, public_key: [u8; 32]) -> bool {
+    let vault_keypair: SecretKey = SecretKey::from_encoding(vault_key).unwrap();
+    return public_key == *vault_keypair.get_public().as_binary();
 }
 
 async fn fetch_from_remote(request_url: &str) -> Result<HorizonAccountResponse, Error> {
@@ -135,7 +135,7 @@ async fn submit_stellar_tx(tx: stellar::TransactionEnvelope) -> Result<(), Error
 }
 
 fn create_withdrawal_tx(
-    escrow_secret_key: &String,
+    vault_secret_key: &String,
     stellar_addr: &stellar::PublicKey,
     seq_num: i64,
     asset: stellar::Asset,
@@ -143,7 +143,7 @@ fn create_withdrawal_tx(
 ) -> Result<stellar::Transaction, Error> {
     let destination_addr = stellar_addr.as_binary();
 
-    let source_keypair: SecretKey = SecretKey::from_encoding(escrow_secret_key).unwrap();
+    let source_keypair: SecretKey = SecretKey::from_encoding(vault_secret_key).unwrap();
 
     let source_pubkey = source_keypair.get_public().clone();
     let mut tx = stellar::Transaction::new(source_pubkey, seq_num, Some(10_000), None, None)?;
@@ -159,26 +159,26 @@ fn create_withdrawal_tx(
 }
 
 async fn execute_withdrawal(
-    escrow_secret_key: &String,
+    vault_secret_key: &String,
     amount: Balance,
     currency_id: CurrencyId,
     destination_stellar_address: PublicKey,
 ) -> Result<(), Error> {
     let asset = CurrencyConversion::lookup(currency_id)?;
 
-    let escrow_keypair: SecretKey = SecretKey::from_encoding(escrow_secret_key).unwrap();
-    let escrow_encoded = escrow_keypair.get_public().to_encoding().clone();
-    let escrow_address = str::from_utf8(escrow_encoded.as_slice())?;
+    let vault_keypair: SecretKey = SecretKey::from_encoding(vault_secret_key).unwrap();
+    let vault_encoded = vault_keypair.get_public().to_encoding().clone();
+    let vault_address = str::from_utf8(vault_encoded.as_slice())?;
 
-    let seq_no = fetch_latest_seq_no(escrow_address).await.map(|seq_no| seq_no + 1)?;
+    let seq_no = fetch_latest_seq_no(vault_address).await.map(|seq_no| seq_no + 1)?;
     let transaction = create_withdrawal_tx(
-        escrow_secret_key,
+        vault_secret_key,
         &destination_stellar_address,
         seq_no as i64,
         asset,
         amount,
     )?;
-    let signed_envelope = sign_stellar_tx(transaction, escrow_keypair)?;
+    let signed_envelope = sign_stellar_tx(transaction, vault_keypair)?;
 
     let result = submit_stellar_tx(signed_envelope).await;
 
@@ -200,7 +200,7 @@ async fn execute_withdrawal(
 pub async fn listen_for_redeem_requests(
     shutdown_tx: ShutdownSender,
     parachain_rpc: SpacewalkParachain,
-    escrow_secret_key: String,
+    vault_secret_key: String,
 ) -> Result<(), ServiceError> {
     tracing::info!("Starting to listen for redeem requests…");
     parachain_rpc
@@ -211,16 +211,16 @@ pub async fn listen_for_redeem_requests(
                 // within this event callback, we captured the arguments of listen_for_redeem_requests
                 // by reference. Since spawn requires static lifetimes, we will need to capture the
                 // arguments by value rather than by reference, so clone these:
-                let secret_key = escrow_secret_key.clone();
+                let secret_key = vault_secret_key.clone();
                 let asset_code = event.asset_code.clone();
                 let asset_issuer = event.asset_issuer.clone();
                 let stellar_user_id = event.stellar_user_id.clone();
                 let stellar_vault_id = event.stellar_vault_id.clone();
                 let amount = event.amount.clone();
 
-                if !is_escrow(&escrow_secret_key, stellar_vault_id.try_into().unwrap()) {
+                if !is_vault(&vault_secret_key, stellar_vault_id.try_into().unwrap()) {
                     tracing::info!(
-                        "Rejecting redeem request: not an escrow. Redeem was for {}",
+                        "Rejecting redeem request: not an vault. Redeem was for {}",
                         str::from_utf8(
                             stellar::PublicKey::from_binary(stellar_vault_id)
                                 .to_encoding()
@@ -258,7 +258,7 @@ mod tests {
     use super::*;
     use frame_support::assert_ok;
 
-    const STELLAR_ESCROW_SECRET_KEY: &str = "SB6WHKIU2HGVBRNKNOEOQUY4GFC4ZLG5XPGWLEAHTIZXBXXYACC76VSQ";
+    const STELLAR_VAULT_SECRET_KEY: &str = "SB6WHKIU2HGVBRNKNOEOQUY4GFC4ZLG5XPGWLEAHTIZXBXXYACC76VSQ";
     const DESTINATION_PUBLIC_KEY: &str = "GA6ZDMRVBTHIISPVD7ZRCVX6TWDXBOH2TE5FAADJXZ52YL4GCFI4HOHU";
 
     #[tokio::test(flavor = "multi_thread")]
@@ -275,7 +275,7 @@ mod tests {
             substrate_stellar_sdk::PublicKey::from_encoding(DESTINATION_PUBLIC_KEY).unwrap();
 
         let result = execute_withdrawal(
-            &STELLAR_ESCROW_SECRET_KEY.to_string(),
+            &STELLAR_VAULT_SECRET_KEY.to_string(),
             amount,
             currency_id,
             destination_stellar_address,
