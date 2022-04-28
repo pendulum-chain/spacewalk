@@ -74,12 +74,6 @@ pub fn local_config() -> ChainSpec {
 					get_account_id_from_seed::<ed25519::Public>("Eve//stash"),
 					get_account_id_from_seed::<ed25519::Public>("Ferdie//stash"),
 				],
-				vec![(
-					get_account_id_from_seed::<ed25519::Public>("Bob"),
-					"Bob".as_bytes().to_vec(),
-				)],
-				0,
-				false,
 			)
 		},
 		vec![],
@@ -139,12 +133,6 @@ pub fn beta_testnet_config() -> ChainSpec {
 					get_account_id_from_string("5H8zjSWfzMn86d1meeNrZJDj3QZSvRjKxpTfuVaZ46QJZ4qs"),
 					get_account_id_from_string("5FPBT2BVVaLveuvznZ9A1TUtDcbxK5yvvGcMTJxgFmhcWGwj"),
 				],
-				vec![(
-					get_account_id_from_string("5H8zjSWfzMn86d1meeNrZJDj3QZSvRjKxpTfuVaZ46QJZ4qs"),
-					"Interlay".as_bytes().to_vec(),
-				)],
-				1,
-				false,
 			)
 		},
 		Vec::new(),
@@ -182,19 +170,6 @@ pub fn development_config() -> ChainSpec {
 					get_account_id_from_seed::<ed25519::Public>("Eve//stash"),
 					get_account_id_from_seed::<ed25519::Public>("Ferdie//stash"),
 				],
-				vec![
-					(
-						get_account_id_from_seed::<ed25519::Public>("Alice"),
-						"Alice".as_bytes().to_vec(),
-					),
-					(get_account_id_from_seed::<ed25519::Public>("Bob"), "Bob".as_bytes().to_vec()),
-					(
-						get_account_id_from_seed::<ed25519::Public>("Charlie"),
-						"Charlie".as_bytes().to_vec(),
-					),
-				],
-				1,
-				false,
 			)
 		},
 		Vec::new(),
@@ -210,9 +185,6 @@ fn testnet_genesis(
 	root_key: AccountId,
 	initial_authorities: Vec<(AuraId, GrandpaId)>,
 	endowed_accounts: Vec<AccountId>,
-	authorized_oracles: Vec<(AccountId, Vec<u8>)>,
-	bitcoin_confirmations: u32,
-	start_shutdown: bool,
 ) -> GenesisConfig {
 	let stellar_usdc_asset: CurrencyId = CurrencyId::try_from((
 		"USDC",

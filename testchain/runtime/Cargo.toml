@@ -9,13 +9,11 @@ targets = ['x86_64-unknown-linux-gnu']
 
 [dependencies]
 codec = {package = "parity-scale-codec", version = "2.2.0", default-features = false, features = ["derive", "max-encoded-len"]}
-hex-literal = {version = "0.3.1", optional = true}
 scale-info = {version = "1.0.0", default-features = false, features = ["derive"]}
 serde = {version = "1.0.130", default-features = false, features = ["derive"], optional = true}
 
 # Substrate dependencies
 sp-api = {git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.17", default-features = false}
-sp-arithmetic = {git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.17", default-features = false}
 sp-block-builder = {git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.17", default-features = false}
 sp-core = {git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.17", default-features = false}
 sp-inherents = {git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.17", default-features = false}
@@ -32,32 +30,26 @@ frame-executive = {git = "https://github.com/paritytech/substrate", branch = "po
 frame-support = {git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.17", default-features = false}
 frame-system = {git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.17", default-features = false}
 pallet-balances = {git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.17", default-features = false}
-pallet-multisig = {git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.17", default-features = false}
-pallet-preimage = {git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.17", default-features = false}
-pallet-scheduler = {git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.17", default-features = false}
 pallet-sudo = {git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.17", default-features = false}
 pallet-timestamp = {git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.17", default-features = false}
 pallet-transaction-payment = {git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.17", default-features = false}
-pallet-treasury = {git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.17", default-features = false}
-pallet-utility = {git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.17", default-features = false}
 
 frame-system-rpc-runtime-api = {git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.17", default-features = false}
 pallet-transaction-payment-rpc-runtime-api = {git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.17", default-features = false}
 
 # Aura & GRANDPA dependencies
 pallet-aura = {git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.17", default-features = false}
-pallet-authorship = {git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.17", default-features = false}
 pallet-grandpa = {git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.17", default-features = false}
 sp-consensus-aura = {git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.17", default-features = false}
-
-pallet-spacewalk = {path = "../../pallets/spacewalk", default-features = false}
-
-primitives = {package = "spacewalk-primitives", path = "../primitives", default-features = false}
 
 # Orml dependencies
 orml-currencies = {git = "https://github.com/open-web3-stack/open-runtime-module-library", rev = "aac79b3b31953381669a2ffa9b3e9bfe48e87f38", default-features = false}
 orml-tokens = {git = "https://github.com/open-web3-stack/open-runtime-module-library", rev = "aac79b3b31953381669a2ffa9b3e9bfe48e87f38", default-features = false}
 orml-traits = {git = "https://github.com/open-web3-stack/open-runtime-module-library", rev = "aac79b3b31953381669a2ffa9b3e9bfe48e87f38", default-features = false}
+
+pallet-spacewalk = {path = "../../pallets/spacewalk", default-features = false}
+
+primitives = {package = "spacewalk-primitives", path = "../primitives", default-features = false}
 
 [dev-dependencies]
 flate2 = "1.0"
@@ -73,7 +65,6 @@ substrate-wasm-builder = {git = "https://github.com/paritytech/substrate", branc
 default = ["std"]
 disable-runtime-api = []
 runtime-benchmarks = [
-  "hex-literal",
   "frame-benchmarking",
   "frame-support/runtime-benchmarks",
   "frame-system/runtime-benchmarks",
@@ -92,7 +83,6 @@ std = [
   "sp-block-builder/std",
   "sp-transaction-pool/std",
   "sp-inherents/std",
-  "sp-arithmetic/std",
   "frame-support/std",
   "frame-executive/std",
   "frame-system/std",
@@ -100,18 +90,12 @@ std = [
   "pallet-balances/std",
   "pallet-timestamp/std",
   "pallet-sudo/std",
-  "pallet-utility/std",
   "pallet-transaction-payment/std",
-  "pallet-treasury/std",
-  "pallet-scheduler/std",
-  "pallet-multisig/std",
-  "pallet-preimage/std",
   "frame-system-rpc-runtime-api/std",
   "pallet-transaction-payment-rpc-runtime-api/std",
   "pallet-grandpa/std",
   "pallet-aura/std",
   "sp-consensus-aura/std",
-  "pallet-authorship/std",
   "pallet-spacewalk/std",
   "primitives/std",
   "orml-tokens/std",
