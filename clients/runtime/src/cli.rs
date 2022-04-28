@@ -75,7 +75,7 @@ pub struct ConnectionOpts {
     #[clap(long, default_value = "ws://127.0.0.1:9944")]
     pub spacewalk_parachain_url: String,
 
-    /// Timeout in milliseconds to wait for connection to btc-parachain.
+    /// Timeout in milliseconds to wait for connection to spacewalk-parachain.
     #[clap(long, parse(try_from_str = parse_duration_ms), default_value = "60000")]
     pub spacewalk_parachain_connection_timeout_ms: Duration,
 

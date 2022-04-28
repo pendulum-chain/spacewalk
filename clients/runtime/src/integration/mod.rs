@@ -14,7 +14,7 @@ pub use subxt_client::SubxtClient;
 /// scope as long as the parachain is active, since dropping it will remove the temporary directory
 /// that the parachain uses
 pub async fn default_provider_client(key: AccountKeyring) -> (SubxtClient, TempDir) {
-    let tmp = TempDir::new("btc-parachain-").expect("failed to create tempdir");
+    let tmp = TempDir::new("spacewalk-parachain-").expect("failed to create tempdir");
     let config = SubxtClientConfig {
         impl_name: "spacewalk-chain-full-client",
         impl_version: "1",

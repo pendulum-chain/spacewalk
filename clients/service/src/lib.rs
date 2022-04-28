@@ -1,8 +1,8 @@
 use async_trait::async_trait;
 use futures::{future::Either, Future, FutureExt};
 use runtime::{
-    cli::ConnectionOpts as ParachainConfig, Error as RuntimeError, Signer, SpacewalkParachain as BtcParachain,
-    SpacewalkSigner, Ss58Codec,
+    cli::ConnectionOpts as ParachainConfig, Error as RuntimeError, Signer, SpacewalkParachain, SpacewalkSigner,
+    Ss58Codec,
 };
 use std::marker::PhantomData;
 
@@ -22,7 +22,7 @@ pub trait Service<Config> {
     const NAME: &'static str;
     const VERSION: &'static str;
 
-    fn new_service(btc_parachain: BtcParachain, config: Config, shutdown: ShutdownSender) -> Self;
+    fn new_service(spacewalk_parachain: SpacewalkParachain, config: Config, shutdown: ShutdownSender) -> Self;
     async fn start(&self) -> Result<(), Error>;
 }
 
@@ -65,7 +65,7 @@ impl<Config: Clone + Send + 'static, S: Service<Config>> ConnectionManager<Confi
 
             // only open connection to parachain after bitcoind sync to prevent timeout
             let signer = self.signer.clone();
-            let btc_parachain = BtcParachain::from_url_and_config_with_retry(
+            let spacewalk_parachain = SpacewalkParachain::from_url_and_config_with_retry(
                 &self.parachain_config.spacewalk_parachain_url,
                 signer,
                 self.parachain_config.max_concurrent_requests,
@@ -74,7 +74,7 @@ impl<Config: Clone + Send + 'static, S: Service<Config>> ConnectionManager<Confi
             )
             .await?;
 
-            let service = S::new_service(btc_parachain, config, shutdown_tx);
+            let service = S::new_service(spacewalk_parachain, config, shutdown_tx);
             if let Err(outer) = service.start().await {
                 match outer {
                     Error::RuntimeError(RuntimeError::ChannelClosed) => (),
