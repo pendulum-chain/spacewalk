@@ -1,40 +1,36 @@
-//! Service and ServiceFactory implementation. Specialized wrapper over substrate service.
-
-use node_template_runtime::{self, opaque::Block, RuntimeApi};
 use sc_client_api::{BlockBackend, ExecutorProvider};
 use sc_consensus_aura::{ImportQueueParams, SlotProportion, StartAuraParams};
-pub use sc_executor::NativeElseWasmExecutor;
+use sc_executor::NativeElseWasmExecutor;
 use sc_finality_grandpa::SharedVoterState;
 use sc_keystore::LocalKeystore;
-use sc_service::{error::Error as ServiceError, Configuration, TaskManager};
+use sc_service::{
+	error::Error as ServiceError, Configuration, RpcHandlers, TFullBackend, TFullClient,
+	TaskManager,
+};
 use sc_telemetry::{Telemetry, TelemetryWorker};
 use sp_consensus::SlotData;
 use sp_consensus_aura::ed25519::AuthorityPair as AuraPair;
+use spacewalk_runtime::{primitives::Block, RuntimeApi};
 use std::{sync::Arc, time::Duration};
 
-// Our native executor instance.
-pub struct ExecutorDispatch;
+// Native executor instance.
+pub struct Executor;
 
-impl sc_executor::NativeExecutionDispatch for ExecutorDispatch {
-	/// Only enable the benchmarking host functions when we actually want to benchmark.
-	#[cfg(feature = "runtime-benchmarks")]
+impl sc_executor::NativeExecutionDispatch for Executor {
 	type ExtendHostFunctions = frame_benchmarking::benchmarking::HostFunctions;
-	/// Otherwise we only use the default Substrate host functions.
-	#[cfg(not(feature = "runtime-benchmarks"))]
-	type ExtendHostFunctions = ();
 
 	fn dispatch(method: &str, data: &[u8]) -> Option<Vec<u8>> {
-		node_template_runtime::api::dispatch(method, data)
+		spacewalk_runtime::api::dispatch(method, data)
 	}
 
 	fn native_version() -> sc_executor::NativeVersion {
-		node_template_runtime::native_version()
+		spacewalk_runtime::native_version()
 	}
 }
 
-type FullClient =
-	sc_service::TFullClient<Block, RuntimeApi, NativeElseWasmExecutor<ExecutorDispatch>>;
-type FullBackend = sc_service::TFullBackend<Block>;
+pub type FullClient = TFullClient<Block, RuntimeApi, NativeElseWasmExecutor<Executor>>;
+pub type FullBackend = TFullBackend<Block>;
+
 type FullSelectChain = sc_consensus::LongestChain<FullBackend, Block>;
 
 pub fn new_partial(
@@ -60,7 +56,7 @@ pub fn new_partial(
 	ServiceError,
 > {
 	if config.keystore_remote.is_some() {
-		return Err(ServiceError::Other("Remote Keystores are not supported.".into()))
+		return Err(ServiceError::Other(format!("Remote Keystores are not supported.")))
 	}
 
 	let telemetry = config
@@ -74,7 +70,7 @@ pub fn new_partial(
 		})
 		.transpose()?;
 
-	let executor = NativeElseWasmExecutor::<ExecutorDispatch>::new(
+	let executor = NativeElseWasmExecutor::<Executor>::new(
 		config.wasm_method,
 		config.default_heap_pages,
 		config.max_runtime_instances,
@@ -158,7 +154,7 @@ fn remote_keystore(_url: &String) -> Result<Arc<LocalKeystore>, &'static str> {
 }
 
 /// Builds a new service for a full client.
-pub fn new_full(mut config: Configuration) -> Result<TaskManager, ServiceError> {
+pub fn new_full(mut config: Configuration) -> Result<(TaskManager, RpcHandlers), ServiceError> {
 	let sc_service::PartialComponents {
 		client,
 		backend,
@@ -180,6 +176,7 @@ pub fn new_full(mut config: Configuration) -> Result<TaskManager, ServiceError> 
 				))),
 		};
 	}
+
 	let grandpa_protocol_name = sc_finality_grandpa::protocol_standard_name(
 		&client.block_hash(0).ok().flatten().expect("Genesis block exists; qed"),
 		&config.chain_spec,
@@ -189,11 +186,6 @@ pub fn new_full(mut config: Configuration) -> Result<TaskManager, ServiceError> 
 		.network
 		.extra_sets
 		.push(sc_finality_grandpa::grandpa_peers_set_config(grandpa_protocol_name.clone()));
-	let warp_sync = Arc::new(sc_finality_grandpa::warp_proof::NetworkProvider::new(
-		backend.clone(),
-		grandpa_link.shared_authority_set().clone(),
-		Vec::default(),
-	));
 
 	let (network, system_rpc_tx, network_starter) =
 		sc_service::build_network(sc_service::BuildNetworkParams {
@@ -203,7 +195,7 @@ pub fn new_full(mut config: Configuration) -> Result<TaskManager, ServiceError> 
 			spawn_handle: task_manager.spawn_handle(),
 			import_queue,
 			block_announce_validator_builder: None,
-			warp_sync: Some(warp_sync),
+			warp_sync: None,
 		})?;
 
 	if config.offchain_worker.enabled {
@@ -228,13 +220,13 @@ pub fn new_full(mut config: Configuration) -> Result<TaskManager, ServiceError> 
 
 		Box::new(move |deny_unsafe, _| {
 			let deps =
-				crate::rpc::FullDeps { client: client.clone(), pool: pool.clone(), deny_unsafe };
+				spacewalk_rpc::FullDeps { client: client.clone(), pool: pool.clone(), deny_unsafe };
 
-			Ok(crate::rpc::create_full(deps))
+			Ok(spacewalk_rpc::create_full(deps))
 		})
 	};
 
-	let _rpc_handlers = sc_service::spawn_tasks(sc_service::SpawnTasksParams {
+	let rpc_handlers = sc_service::spawn_tasks(sc_service::SpawnTasksParams {
 		network: network.clone(),
 		client: client.clone(),
 		keystore: keystore_container.sync_keystore(),
@@ -272,11 +264,10 @@ pub fn new_full(mut config: Configuration) -> Result<TaskManager, ServiceError> 
 				create_inherent_data_providers: move |_, ()| async move {
 					let timestamp = sp_timestamp::InherentDataProvider::from_system_time();
 
-					let slot =
-						sp_consensus_aura::inherents::InherentDataProvider::from_timestamp_and_duration(
-							*timestamp,
-							raw_slot_duration,
-						);
+					let slot = sp_consensus_aura::inherents::InherentDataProvider::from_timestamp_and_duration(
+                    *timestamp,
+                    raw_slot_duration,
+                );
 
 					Ok((timestamp, slot))
 				},
@@ -287,16 +278,14 @@ pub fn new_full(mut config: Configuration) -> Result<TaskManager, ServiceError> 
 				sync_oracle: network.clone(),
 				justification_sync_link: network.clone(),
 				block_proposal_slot_portion: SlotProportion::new(2f32 / 3f32),
-				max_block_proposal_slot_portion: None,
 				telemetry: telemetry.as_ref().map(|x| x.handle()),
+				max_block_proposal_slot_portion: None,
 			},
 		)?;
 
 		// the AURA authoring task is considered essential, i.e. if it
 		// fails we take down the service with it.
-		task_manager
-			.spawn_essential_handle()
-			.spawn_blocking("aura", Some("block-authoring"), aura);
+		task_manager.spawn_essential_handle().spawn_blocking("aura", None, aura);
 	}
 
 	// if the node isn't actively participating in consensus then it doesn't
@@ -343,5 +332,5 @@ pub fn new_full(mut config: Configuration) -> Result<TaskManager, ServiceError> 
 	}
 
 	network_starter.start_network();
-	Ok(task_manager)
+	Ok((task_manager, rpc_handlers))
 }
