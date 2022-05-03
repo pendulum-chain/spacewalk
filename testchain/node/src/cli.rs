@@ -1,19 +1,12 @@
-use sc_cli::RunCmd;
+use clap::Parser;
+use std::path::PathBuf;
 
-#[derive(Debug, clap::Parser)]
-pub struct Cli {
-	#[clap(subcommand)]
-	pub subcommand: Option<Subcommand>,
-
-	#[clap(flatten)]
-	pub run: RunCmd,
-}
-
-#[derive(Debug, clap::Subcommand)]
+/// Sub-commands supported by the collator.
+#[derive(Debug, Parser)]
 pub enum Subcommand {
-	/// Key management cli utilities
-	#[clap(subcommand)]
-	Key(sc_cli::KeySubcommand),
+	/// Export the metadata.
+	#[clap(name = "export-metadata")]
+	ExportMetadata(ExportMetadataCommand),
 
 	/// Build a chain specification.
 	BuildSpec(sc_cli::BuildSpecCmd),
@@ -36,7 +29,47 @@ pub enum Subcommand {
 	/// Revert the chain to a previous state.
 	Revert(sc_cli::RevertCmd),
 
-	/// The custom benchmark subcommand benchmarking runtime pallets.
+	/// The custom benchmark subcommmand benchmarking runtime pallets.
 	#[clap(name = "benchmark", about = "Benchmark runtime pallets.")]
 	Benchmark(frame_benchmarking_cli::BenchmarkCmd),
+}
+
+/// Command for exporting the metadata.
+#[derive(Debug, Parser)]
+pub struct ExportMetadataCommand {
+	/// Output file name or stdout if unspecified.
+	#[clap(parse(from_os_str))]
+	pub output: Option<PathBuf>,
+
+	/// Write output in binary. Default is to write in hex.
+	#[clap(short, long)]
+	pub raw: bool,
+}
+
+#[derive(Debug, Parser)]
+pub struct RunCmd {
+	#[clap(flatten)]
+	pub base: sc_cli::RunCmd,
+}
+
+impl std::ops::Deref for RunCmd {
+	type Target = sc_cli::RunCmd;
+
+	fn deref(&self) -> &Self::Target {
+		&self.base
+	}
+}
+
+#[derive(Debug, Parser)]
+#[clap(
+	propagate_version = true,
+	args_conflicts_with_subcommands = true,
+	subcommand_negates_reqs = true
+)]
+pub struct Cli {
+	#[clap(subcommand)]
+	pub subcommand: Option<Subcommand>,
+
+	#[clap(flatten)]
+	pub run: RunCmd,
 }

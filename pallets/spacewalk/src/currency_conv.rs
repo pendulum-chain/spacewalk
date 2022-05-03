@@ -38,14 +38,12 @@ impl Convert<(Vec<u8>, Vec<u8>), Result<CurrencyId, ()>> for StringCurrencyConve
 
 #[cfg(test)]
 mod tests {
-    use substrate_stellar_sdk::types::{AssetAlphaNum4, AssetAlphaNum12};
+	use substrate_stellar_sdk::types::{AssetAlphaNum12, AssetAlphaNum4};
 
-    use super::*;
-
+	use super::*;
 
 	#[test]
 	fn test_currency_conversion_native() {
-
 		let currency_id = CurrencyId::StellarNative;
 
 		let currency_lookup = CurrencyConversion::lookup(currency_id);
@@ -60,19 +58,23 @@ mod tests {
 
 	#[test]
 	fn test_currency_conversion_anum4() {
-
-		let account = PublicKey::from_encoding("GAKNDFRRWA3RPWNLTI3G4EBSD3RGNZZOY5WKWYMQ6CQTG3KIEKPYWAYC").unwrap();
+		let account =
+			PublicKey::from_encoding("GAKNDFRRWA3RPWNLTI3G4EBSD3RGNZZOY5WKWYMQ6CQTG3KIEKPYWAYC")
+				.unwrap();
 
 		let mut code: [u8; 4] = [0; 4];
 		code.copy_from_slice("EURO".as_bytes());
 
-		let currency_id = CurrencyId::AlphaNum4 { code: code, issuer: account.clone().into_binary() };
+		let currency_id = CurrencyId::AlphaNum4 { code, issuer: account.clone().into_binary() };
 
 		let currency_lookup = CurrencyConversion::lookup(currency_id);
 		assert!(currency_lookup.is_ok());
 
 		let currency_lookup = currency_lookup.unwrap();
-		assert_eq!(currency_lookup, Asset::AssetTypeCreditAlphanum4(AssetAlphaNum4{asset_code: code, issuer: account}));
+		assert_eq!(
+			currency_lookup,
+			Asset::AssetTypeCreditAlphanum4(AssetAlphaNum4 { asset_code: code, issuer: account })
+		);
 
 		let lookup_orig = CurrencyConversion::unlookup(currency_lookup);
 		assert_eq!(lookup_orig, currency_id);
@@ -80,19 +82,23 @@ mod tests {
 
 	#[test]
 	fn test_currency_conversion_anum12() {
-
-		let account = PublicKey::from_encoding("GAKNDFRRWA3RPWNLTI3G4EBSD3RGNZZOY5WKWYMQ6CQTG3KIEKPYWAYC").expect("invalid key encoding");
+		let account =
+			PublicKey::from_encoding("GAKNDFRRWA3RPWNLTI3G4EBSD3RGNZZOY5WKWYMQ6CQTG3KIEKPYWAYC")
+				.expect("invalid key encoding");
 
 		let mut code: [u8; 12] = [0; 12];
 		code.copy_from_slice("AmericaDolar".as_bytes());
 
-		let currency_id = CurrencyId::AlphaNum12 { code: code, issuer: account.clone().into_binary() };
+		let currency_id = CurrencyId::AlphaNum12 { code, issuer: account.clone().into_binary() };
 
 		let currency_lookup = CurrencyConversion::lookup(currency_id);
 		assert!(currency_lookup.is_ok());
 
 		let currency_lookup = currency_lookup.unwrap();
-		assert_eq!(currency_lookup, Asset::AssetTypeCreditAlphanum12(AssetAlphaNum12{asset_code: code, issuer: account}));
+		assert_eq!(
+			currency_lookup,
+			Asset::AssetTypeCreditAlphanum12(AssetAlphaNum12 { asset_code: code, issuer: account })
+		);
 
 		let lookup_orig = CurrencyConversion::unlookup(currency_lookup);
 		assert_eq!(lookup_orig, currency_id);

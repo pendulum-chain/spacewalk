@@ -23,12 +23,10 @@ impl StaticLookup for BalanceConversion {
 }
 #[cfg(test)]
 mod tests {
-    use super::*;
-
+	use super::*;
 
 	#[test]
 	fn test_balance_convr() {
-
 		let balance: u128 = 100_000_000;
 
 		let balance_lookup = BalanceConversion::lookup(balance);

@@ -32,13 +32,6 @@ const VAULT: [u8; 32] = [
 	102, 78, 11, 2, 53, 135, 217, 14, 19, 204, 166, 232, 115, 151, 132, 5, 222, 65, 16, 180, 11,
 	100, 184, 124, 145, 235, 247, 247, 92, 133, 186, 199,
 ];
-<<<<<<< HEAD
-const USDC: [u8; 4] = [b'U', b'S', b'D', b'C'];
-const AMOUNT: u128 = 1_000_000_000_000;
-
-#[test]
-fn report_stellar_transaction_mints_asset() {
-=======
 const USDC_CODE: [u8; 4] = [b'U', b'S', b'D', b'C'];
 const EUR_CODE: [u8; 4] = [b'E', b'U', b'R', b'\0'];
 
@@ -206,22 +199,11 @@ fn redeem_with_wrong_asset() {
 
 #[test]
 fn redeem_with_wrong_issuer() {
->>>>>>> main
 	new_test_ext().execute_with(|| {
 		//mint tokens for User
 		assert_ok!(Spacewalk::report_stellar_transaction(
 			Origin::signed([0; 32].into()),
-<<<<<<< HEAD
-			STELLAR_TRANSACTION_ENVELOPE.into()
-		));
-		//check user balance
-		assert_eq!(
-			Tokens::balance(
-				CurrencyId::AlphaNum4 { code: USDC.into(), issuer: ISSUER },
-				&USER.into()
-			),
-			AMOUNT
-=======
+
 			STELLAR_TRANSACTION_ENVELOPE_USDC.into()
 		));
 		//burn tokens
@@ -238,40 +220,17 @@ fn redeem_with_wrong_issuer() {
 				error: 1,
 				message: Some(&"BalanceChangeError")
 			})
->>>>>>> main
 		);
 	});
 }
 
 #[test]
-<<<<<<< HEAD
-fn redeem_burns_asset() {
-=======
 fn redeem_with_amount_too_high() {
->>>>>>> main
 	new_test_ext().execute_with(|| {
 		//mint tokens for User
 		assert_ok!(Spacewalk::report_stellar_transaction(
 			Origin::signed([0; 32].into()),
-<<<<<<< HEAD
-			STELLAR_TRANSACTION_ENVELOPE.into()
-		));
-		//burn tokens
-		assert_ok!(Spacewalk::redeem(
-			Origin::signed(USER.into()),
-			USDC.into(),
-			ISSUER_STELLAR_ADDRESS.into(),
-			AMOUNT,
-			VAULT
-		));
-		//check user balance
-		assert_eq!(
-			Tokens::balance(
-				CurrencyId::AlphaNum4 { code: USDC.into(), issuer: ISSUER },
-				&USER.into()
-			),
-			0
-=======
+
 			STELLAR_TRANSACTION_ENVELOPE_USDC.into()
 		));
 		//burn tokens
@@ -288,7 +247,6 @@ fn redeem_with_amount_too_high() {
 				error: 2,
 				message: Some(&"BalanceChangeError")
 			})
->>>>>>> main
 		);
 	});
 }
