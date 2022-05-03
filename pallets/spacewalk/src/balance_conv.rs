@@ -21,3 +21,21 @@ impl StaticLookup for BalanceConversion {
 		(stellar_stroops * 100000) as u128
 	}
 }
+#[cfg(test)]
+mod tests {
+	use super::*;
+
+	#[test]
+	fn test_balance_convr() {
+		let balance: u128 = 100_000_000;
+
+		let balance_lookup = BalanceConversion::lookup(balance);
+		assert!(balance_lookup.is_ok());
+
+		let balance_lookup = balance_lookup.unwrap();
+		assert_eq!(balance_lookup, 1000);
+
+		let lookup_orig = BalanceConversion::unlookup(balance_lookup);
+		assert_eq!(lookup_orig, balance);
+	}
+}

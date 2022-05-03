@@ -204,6 +204,7 @@ fn redeem_with_wrong_issuer() {
 		//mint tokens for User
 		assert_ok!(Spacewalk::report_stellar_transaction(
 			Origin::signed([0; 32].into()),
+
 			STELLAR_TRANSACTION_ENVELOPE_USDC.into()
 		));
 		//burn tokens
@@ -230,6 +231,7 @@ fn redeem_with_amount_too_high() {
 		//mint tokens for User
 		assert_ok!(Spacewalk::report_stellar_transaction(
 			Origin::signed([0; 32].into()),
+
 			STELLAR_TRANSACTION_ENVELOPE_USDC.into()
 		));
 		//burn tokens
