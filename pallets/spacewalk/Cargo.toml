@@ -33,10 +33,7 @@ sp-runtime = {git = "https://github.com/paritytech/substrate", default-features 
 sp-std = {git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.17"}
 
 # ORML dependencies - commit aac79b3b31953381669a2ffa9b3e9bfe48e87f38 is where polkadot-v0.9.17 dependencies are used (branch does not exist for it)
-orml-currencies = {default-features = false, git = "https://github.com/open-web3-stack/open-runtime-module-library", rev = "aac79b3b31953381669a2ffa9b3e9bfe48e87f38"}
-orml-tokens = {default-features = false, git = "https://github.com/open-web3-stack/open-runtime-module-library", rev = "aac79b3b31953381669a2ffa9b3e9bfe48e87f38"}
 orml-traits = {default-features = false, git = "https://github.com/open-web3-stack/open-runtime-module-library", rev = "aac79b3b31953381669a2ffa9b3e9bfe48e87f38"}
-orml-utilities = {default-features = false, git = "https://github.com/open-web3-stack/open-runtime-module-library", rev = "aac79b3b31953381669a2ffa9b3e9bfe48e87f38"}
 
 pallet-transaction-payment = {git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.17"}
 substrate-stellar-sdk = {git = "https://github.com/pendulum-chain/substrate-stellar-sdk", branch = "polkadot-v0.9.17", default-features = false, features = ['offchain']}
@@ -61,10 +58,7 @@ std = [
   "sp-keystore/std",
   "sp-runtime/std",
   "sp-std/std",
-  'orml-currencies/std',
-  'orml-tokens/std',
   'orml-traits/std',
-  'orml-utilities/std',
   'base64/std',
   'substrate-stellar-sdk/std',
 ]

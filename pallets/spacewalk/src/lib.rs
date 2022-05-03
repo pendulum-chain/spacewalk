@@ -34,7 +34,7 @@ use substrate_stellar_sdk as stellar;
 use frame_support::pallet_prelude::*;
 use frame_system::pallet_prelude::*;
 
-type BalanceOf<T> = <<T as Config>::Currency as orml_traits::MultiCurrency<
+type BalanceOf<T> = <<T as Config>::Currency as MultiCurrency<
 	<T as frame_system::Config>::AccountId,
 >>::Balance;
 
@@ -70,14 +70,15 @@ pub mod pallet {
 	};
 
 	#[pallet::config]
-	pub trait Config: frame_system::Config + PaymentConfig + orml_tokens::Config {
+	pub trait Config: frame_system::Config + PaymentConfig {
 		/// The overarching dispatch call type.
 		type Call: From<Call<Self>>;
 		/// The overarching event type.
 		type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
 
-		/// The mechanics of the ORML tokens
+		/// The mechanics of the tokens
 		type Currency: MultiCurrency<<Self as frame_system::Config>::AccountId>;
+
 		type AddressConversion: StaticLookup<
 			Source = <Self as frame_system::Config>::AccountId,
 			Target = substrate_stellar_sdk::PublicKey,
