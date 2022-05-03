@@ -1,4 +1,5 @@
-use crate::{currency::CurrencyId, mock::*};
+use crate::mock::*;
+
 use frame_support::{assert_err, assert_ok, traits::fungibles::Inspect};
 use sp_runtime::{DispatchError, ModuleError};
 
@@ -83,7 +84,7 @@ fn report_stellar_transaction_invalid_envelope() {
 				"INVALID_STELLAR_TRANSACTION_ENVELOPE".into()
 			),
 			DispatchError::Module(ModuleError {
-				index: 3,
+				index: 6,
 				error: 0,
 				message: Some(&"XdrDecodingError")
 			})
@@ -163,7 +164,7 @@ fn redeem_with_incorrect_caller() {
 				VAULT
 			),
 			DispatchError::Module(ModuleError {
-				index: 3,
+				index: 6,
 				error: 2,
 				message: Some(&"BalanceChangeError")
 			})
@@ -189,7 +190,7 @@ fn redeem_with_wrong_asset() {
 				VAULT
 			),
 			DispatchError::Module(ModuleError {
-				index: 3,
+				index: 6,
 				error: 2,
 				message: Some(&"BalanceChangeError")
 			})
@@ -215,7 +216,7 @@ fn redeem_with_wrong_issuer() {
 				VAULT
 			),
 			DispatchError::Module(ModuleError {
-				index: 3,
+				index: 6,
 				error: 1,
 				message: Some(&"BalanceChangeError")
 			})
@@ -241,7 +242,7 @@ fn redeem_with_amount_too_high() {
 				VAULT
 			),
 			DispatchError::Module(ModuleError {
-				index: 3,
+				index: 6,
 				error: 2,
 				message: Some(&"BalanceChangeError")
 			})

@@ -246,16 +246,16 @@ construct_runtime! {
 		NodeBlock = primitives::Block,
 		UncheckedExtrinsic = UncheckedExtrinsic
 	{
-		System: frame_system::{Pallet, Call, Storage, Config, Event<T>},
-		Timestamp: pallet_timestamp::{Pallet, Call, Storage, Inherent},
-		Aura: pallet_aura::{Pallet, Config<T>},
-		Grandpa: pallet_grandpa::{Pallet, Call, Storage, Config, Event},
-		Sudo: pallet_sudo::{Pallet, Call, Storage, Config<T>, Event<T>},
-		Tokens: orml_tokens::{Pallet, Call, Storage, Config<T>, Event<T>},
-		Spacewalk: pallet_spacewalk::{Pallet, Call, Storage, Event<T>},
-		Currencies: orml_currencies::{Pallet, Call, Storage, Event<T>},
-		Balances: pallet_balances::{Pallet, Call, Storage, Config<T>, Event<T>},
-		TransactionPayment: pallet_transaction_payment::{Pallet, Storage},
+		System: frame_system::{Pallet, Call, Storage, Config, Event<T>} = 0,
+		Timestamp: pallet_timestamp::{Pallet, Call, Storage, Inherent} = 1,
+		Aura: pallet_aura::{Pallet, Config<T>} = 2,
+		Grandpa: pallet_grandpa::{Pallet, Call, Storage, Config, Event} = 3,
+		Sudo: pallet_sudo::{Pallet, Call, Storage, Config<T>, Event<T>} = 4,
+		Tokens: orml_tokens::{Pallet, Call, Storage, Config<T>, Event<T>} = 5,
+		Spacewalk: pallet_spacewalk::{Pallet, Call, Storage, Event<T>} = 6,
+		Currencies: orml_currencies::{Pallet, Call, Storage, Event<T>} = 7,
+		Balances: pallet_balances::{Pallet, Call, Storage, Config<T>, Event<T>} = 8,
+		TransactionPayment: pallet_transaction_payment::{Pallet, Storage} = 9,
 	}
 }
 
