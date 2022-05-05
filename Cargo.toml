@@ -14,6 +14,7 @@ members = [
   "pallets/refund",
   "pallets/replace",
   "pallets/reward",
+  "pallets/security",
   "pallets/staking",
   "pallets/vault-registry",
 #  "pallets/stellar" # TODO: need to create this pallet. It will mock the bitcoin pallet from interbtc
