@@ -16,8 +16,9 @@ members = [
   "crates/reward",
   "crates/security",
   "crates/staking",
+  "crates/stellar",
+  "crates/stellar-relay",
   "crates/vault-registry",
-  "crates/stellar"
 ]
 [profile.release]
 panic = "unwind"
