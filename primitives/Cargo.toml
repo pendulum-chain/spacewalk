@@ -15,7 +15,7 @@ sp-std = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v
 sp-runtime = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.18", default-features = false }
 
 # Parachain dependencies
-bitcoin = { path = "../crates/bitcoin", default-features = false }
+stellar = { path = "../crates/stellar", default-features = false }
 
 [features]
 default = ["std"]
@@ -27,5 +27,5 @@ std = [
     "sp-std/std",
     "sp-runtime/std",
 
-    "bitcoin/std",
+    "stellar/std",
 ]
