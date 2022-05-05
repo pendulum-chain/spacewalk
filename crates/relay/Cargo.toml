@@ -1,12 +1,11 @@
 [package]
-authors = ["Interlay Ltd"]
-description = "Redeem module"
-edition = "2018"
-name = "redeem"
+name = "relay"
 version = "1.2.0"
+authors = ["Interlay Ltd"]
+edition = "2018"
 
 [dependencies]
-serde = { version = "1.0.130", default-features = false, features = ['derive'], optional = true }
+serde = { version = "1.0.130", default-features = false, features = ["derive"], optional = true }
 codec = { package = "parity-scale-codec", version = "3.0.0", default-features = false, features = ["derive", "max-encoded-len"] }
 scale-info = { version = "2.0.0", default-features = false, features = ["derive"] }
 
@@ -20,16 +19,19 @@ sp-runtime = { git = "https://github.com/paritytech/substrate", branch = "polkad
 frame-support = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.18", default-features = false }
 frame-system = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.18", default-features = false }
 frame-benchmarking = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.18", default-features = false, optional = true }
-pallet-timestamp = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.18", default-features = false }
 
 # Parachain dependencies
 stellar = { path = "../stellar", default-features = false }
 stellar-relay = { path = "../stellar-relay", default-features = false }
-currency = { path = "../currency", default-features = false }
 oracle = { path = "../oracle", default-features = false }
 fee = { path = "../fee", default-features = false }
+redeem = { path = "../redeem", default-features = false }
+replace = { path = "../replace", default-features = false }
 security = { path = "../security", default-features = false }
+currency = { path = "../currency", default-features = false }
 vault-registry = { path = "../vault-registry", default-features = false }
+refund = { path = "../refund", default-features = false }
+nomination = { path = "../../crates/nomination", default-features = false }
 primitives = { package = "spacewalk-primitives", path = "../../primitives", default-features = false }
 
 # Orml dependencies
@@ -38,12 +40,14 @@ orml-traits = { git = "https://github.com/open-web3-stack/open-runtime-module-li
 
 [dev-dependencies]
 mocktopus = "0.7.0"
+hex = "0.4.2"
 frame-benchmarking = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.18" }
+pallet-timestamp = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.18" }
 
 # Parachain dependencies
+primitives = { package = "interbtc-primitives", path = "../../primitives" }
 reward = { path = "../reward" }
 staking = { path = "../staking" }
-currency = { path = "../currency", features = ["testing-utils"] }
 
 # Orml dependencies
 orml-tokens = { git = "https://github.com/open-web3-stack/open-runtime-module-library", rev = "2b5d4ce1d08fb54c0007c2055653892d2c93a92e" }
@@ -52,28 +56,31 @@ orml-traits = { git = "https://github.com/open-web3-stack/open-runtime-module-li
 [features]
 default = ["std"]
 std = [
-	"serde",
-	"codec/std",
+  "serde",
+  "codec/std",
 
-	"sp-io/std",
-	"sp-core/std",
-	"sp-std/std",
-	"sp-arithmetic/std",
-	"sp-runtime/std",
+  "sp-io/std",
+  "sp-core/std",
+  "sp-std/std",
+  "sp-arithmetic/std",
+  "sp-runtime/std",
 
-	"frame-support/std",
-	"frame-system/std",
-	"frame-benchmarking/std",
-	"pallet-timestamp/std",
+  "frame-support/std",
+  "frame-system/std",
+  "frame-benchmarking/std",
 
-	"stellar/std",
-	"stellar-relay/std",
-	"currency/std",
-	"oracle/std",
-	"fee/std",
-	"security/std",
-	"vault-registry/std",
-    "primitives/std",
+  "stellar/std",
+  "stellar-relay/std",
+  "oracle/std",
+  "fee/std",
+  "redeem/std",
+  "replace/std",
+  "security/std",
+  "currency/std",
+  "vault-registry/std",
+  "refund/std",
+  "nomination/std",
+  "primitives/std",
 
 	"orml-tokens/std",
 	"orml-traits/std",

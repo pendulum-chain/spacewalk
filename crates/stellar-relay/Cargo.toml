@@ -21,7 +21,7 @@ frame-benchmarking = { git = "https://github.com/paritytech/substrate", branch =
 pallet-timestamp = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.18", default-features = false }
 
 # Parachain dependencies
-bitcoin = { path = "../bitcoin", default-features = false }
+stellar = { path = "../stellar", default-features = false }
 security = { path = "../security", default-features = false }
 
 [dev-dependencies]
@@ -47,7 +47,7 @@ std = [
     "frame-benchmarking/std",
     "pallet-timestamp/std",
 
-    "bitcoin/std",
+    "stellar/std",
     "security/std",
 ]
 runtime-benchmarks = [

@@ -22,9 +22,9 @@ log = "0.4.8"
 serde = {version = "1.0.130", features = ["derive"]}
 
 # Parachain dependencies
-spacewalk-rpc = {path = "../rpc"}
+spacewalk-rpc = {path = "../../rpc"}
 spacewalk-runtime = {package = "spacewalk-runtime-standalone", path = "../runtime"}
-primitives = {package = "spacewalk-primitives", path = "../primitives"}
+primitives = {package = "spacewalk-primitives", path = "../../primitives"}
 
 # Substrate dependencies
 sc-basic-authorship = {git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.17"}

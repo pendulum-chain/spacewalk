@@ -49,7 +49,7 @@ orml-traits = {git = "https://github.com/open-web3-stack/open-runtime-module-lib
 
 pallet-spacewalk = {path = "../../crates/spacewalk", default-features = false}
 
-primitives = {package = "spacewalk-primitives", path = "../primitives", default-features = false}
+primitives = {package = "spacewalk-primitives", path = "../../primitives", default-features = false}
 
 [dev-dependencies]
 flate2 = "1.0"
