@@ -2,7 +2,21 @@
 members = [
   "testchain/node",
   "testchain/runtime",
-  "pallets/spacewalk"
+  "pallets/spacewalk", # TODO: the stuff in this pallet will eventually be moved into the relevant pallets copied from interbtc
+
+  "pallets/annuity",
+  "pallets/currency",
+  "pallets/fee",
+  "pallets/issue",
+  "pallets/nomination",
+  "pallets/oracle",
+  "pallets/redeem",
+  "pallets/refund",
+  "pallets/replace",
+  "pallets/reward",
+  "pallets/staking",
+  "pallets/vault-registry",
+#  "pallets/stellar" # TODO: need to create this pallet. It will mock the bitcoin pallet from interbtc
 ]
 [profile.release]
 panic = "unwind"
