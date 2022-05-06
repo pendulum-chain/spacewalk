@@ -20,7 +20,7 @@ git-version = "0.3.4"
 hex = "0.4.2"
 parity-scale-codec = "2.0.0"
 reqwest = {version = "0.11", features = ["json"]}
-scale-info = {version = "1.0.0", default-features = false, features = ["derive"]}
+scale-info = {version = "2.1.1", default-features = false, features = ["derive"]}
 serde = "1.0.136"
 serde_json = {version = '1.0.45', default-features = false, features = ['alloc']}
 sha2 = "0.8.2"
@@ -39,15 +39,15 @@ runtime = {path = "../runtime"}
 service = {path = "../service"}
 
 # Substrate dependencies
-sp-arithmetic = {git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.17"}
-sp-core = {git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.17"}
-sp-io = {git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.17"}
-sp-keyring = {git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.17"}
-sp-runtime = {git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.17"}
-sp-std = {git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.17"}
+sp-arithmetic = {git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.18"}
+sp-core = {git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.18"}
+sp-io = {git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.18"}
+sp-keyring = {git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.18"}
+sp-runtime = {git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.18"}
+sp-std = {git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.18"}
 
 # Substrate Stellar Dependencies
-substrate-stellar-sdk = {git = "https://github.com/pendulum-chain/substrate-stellar-sdk", branch = "polkadot-v0.9.17"}
+substrate-stellar-sdk = {git = "https://github.com/pendulum-chain/substrate-stellar-sdk", branch = "polkadot-v0.9.18"}
 
 [dev-dependencies]
 mockall = "0.8.1"
@@ -56,4 +56,4 @@ mockall = "0.8.1"
 runtime = {path = "../runtime", features = ["testing-utils"]}
 
 # Substrate dependencies
-frame-support = {git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.17"}
+frame-support = {git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.18"}
