@@ -1,4 +1,4 @@
-# Bitcoin library
+# Stellar library
 
 Library handling BTC-Relay and Bitcoin specific data types and provides parsing and verification functionality.
 

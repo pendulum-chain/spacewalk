@@ -1,4 +1,4 @@
-# BTC Relay
+# Stellar Relay
 
 Based on the BTC Relay [specification](https://spec.interlay.io/spec/btc-relay/index.html).
 
