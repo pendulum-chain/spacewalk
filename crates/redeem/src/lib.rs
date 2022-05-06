@@ -30,7 +30,7 @@ pub mod types;
 pub use crate::types::{DefaultRedeemRequest, RedeemRequest, RedeemRequestStatus};
 
 use crate::types::{BalanceOf, RedeemRequestExt, Version};
-use stellar_relay::BtcAddress;
+use btc_relay::BtcAddress;
 use currency::Amount;
 use frame_support::{
     dispatch::{DispatchError, DispatchResult},
@@ -61,7 +61,7 @@ pub mod pallet {
     /// The pallet's configuration trait.
     #[pallet::config]
     pub trait Config:
-        frame_system::Config + vault_registry::Config + stellar_relay::Config + fee::Config<UnsignedInner = BalanceOf<Self>>
+        frame_system::Config + vault_registry::Config + btc_relay::Config + fee::Config<UnsignedInner = BalanceOf<Self>>
     {
         /// The overarching event type.
         type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
@@ -422,7 +422,7 @@ impl<T: Config> Pallet<T> {
                 period: Self::redeem_period(),
                 redeemer: redeemer.clone(),
                 btc_address,
-                btc_height: ext::stellar_relay::get_best_block_height::<T>(),
+                btc_height: ext::btc_relay::get_best_block_height::<T>(),
                 status: RedeemRequestStatus::Pending,
             },
         );
@@ -471,9 +471,9 @@ impl<T: Config> Pallet<T> {
         let redeem = Self::get_open_redeem_request_from_id(&redeem_id)?;
 
         // check the transaction inclusion and validity
-        let transaction = ext::stellar_relay::parse_transaction::<T>(&raw_tx)?;
-        let merkle_proof = ext::stellar_relay::parse_merkle_proof::<T>(&raw_merkle_proof)?;
-        ext::stellar_relay::verify_and_validate_op_return_transaction::<T, _>(
+        let transaction = ext::btc_relay::parse_transaction::<T>(&raw_tx)?;
+        let merkle_proof = ext::btc_relay::parse_merkle_proof::<T>(&raw_merkle_proof)?;
+        ext::btc_relay::verify_and_validate_op_return_transaction::<T, _>(
             merkle_proof,
             transaction,
             redeem.btc_address,
@@ -513,7 +513,7 @@ impl<T: Config> Pallet<T> {
 
         // only cancellable after the request has expired
         ensure!(
-            ext::stellar_relay::has_request_expired::<T>(
+            ext::btc_relay::has_request_expired::<T>(
                 redeem.opentime,
                 redeem.btc_height,
                 Self::redeem_period().max(redeem.period)

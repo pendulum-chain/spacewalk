@@ -1,6 +1,6 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
-use stellar::{Address as BtcAddress, PublicKey as BtcPublicKey};
+use bitcoin::{Address as BtcAddress, PublicKey as BtcPublicKey};
 use bstringify::bstringify;
 use codec::{Decode, Encode, MaxEncodedLen};
 use scale_info::TypeInfo;
@@ -18,7 +18,7 @@ use sp_std::{
     prelude::*,
 };
 
-pub use stellar::types::H256Le;
+pub use bitcoin::types::H256Le;
 
 pub trait BalanceToFixedPoint<FixedPoint> {
     fn to_fixed(self) -> Option<FixedPoint>;
@@ -137,7 +137,7 @@ pub mod issue {
         pub btc_address: BtcAddress,
         /// the vault's Bitcoin public key (when this request was made)
         pub btc_public_key: BtcPublicKey,
-        /// the highest recorded height in the Stellar-Relay (at time of opening)
+        /// the highest recorded height in the BTC-Relay (at time of opening)
         pub btc_height: u32,
         /// the status of this issue request
         pub status: IssueRequestStatus,
@@ -217,7 +217,7 @@ pub mod redeem {
         pub redeemer: AccountId,
         /// the user's Bitcoin address for payment verification
         pub btc_address: BtcAddress,
-        /// the highest recorded height in the Stellar-Relay (at time of opening)
+        /// the highest recorded height in the BTC-Relay (at time of opening)
         pub btc_height: u32,
         /// the status of this redeem request
         pub status: RedeemRequestStatus,
@@ -313,7 +313,7 @@ pub mod replace {
         pub period: BlockNumber,
         /// the Bitcoin address of the new vault
         pub btc_address: BtcAddress,
-        /// the highest recorded height in the Stellar-Relay (at time of opening)
+        /// the highest recorded height in the BTC-Relay (at time of opening)
         pub btc_height: u32,
         /// the status of this replace request
         pub status: ReplaceRequestStatus,

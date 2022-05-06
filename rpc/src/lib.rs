@@ -38,7 +38,7 @@ where
     C: Send + Sync + 'static,
     C::Api: substrate_frame_rpc_system::AccountNonceApi<Block, AccountId, Nonce>,
     C::Api: pallet_transaction_payment_rpc::TransactionPaymentRuntimeApi<Block, Balance>,
-    C::Api: module_stellar_relay_rpc::BtcRelayRuntimeApi<Block, H256Le>,
+    C::Api: module_btc_relay_rpc::BtcRelayRuntimeApi<Block, H256Le>,
     C::Api: module_oracle_rpc::OracleRuntimeApi<Block, Balance, CurrencyId>,
     C::Api: module_relay_rpc::RelayRuntimeApi<Block, VaultId<AccountId, CurrencyId>>,
     C::Api: module_vault_registry_rpc::VaultRegistryRuntimeApi<
@@ -71,7 +71,7 @@ where
     C::Api: BlockBuilder<Block>,
     P: TransactionPool + 'static,
 {
-    use module_stellar_relay_rpc::{BtcRelay, BtcRelayApi};
+    use module_btc_relay_rpc::{BtcRelay, BtcRelayApi};
     use module_issue_rpc::{Issue, IssueApi};
     use module_oracle_rpc::{Oracle, OracleApi};
     use module_redeem_rpc::{Redeem, RedeemApi};

@@ -37,7 +37,7 @@ frame_support::construct_runtime!(
         Rewards: reward::{Pallet, Call, Storage, Event<T>},
 
         // Operational
-        BTCRelay: stellar_relay::{Pallet, Call, Config<T>, Storage, Event<T>},
+        BTCRelay: btc_relay::{Pallet, Call, Config<T>, Storage, Event<T>},
         Security: security::{Pallet, Call, Storage, Event<T>},
         Relay: relay::{Pallet, Call, Storage, Event<T>},
         VaultRegistry: vault_registry::{Pallet, Call, Config<T>, Storage, Event<T>},
@@ -238,7 +238,7 @@ parameter_types! {
     pub const ParachainBlocksPerBitcoinBlock: BlockNumber = 100;
 }
 
-impl stellar_relay::Config for Test {
+impl btc_relay::Config for Test {
     type Event = TestEvent;
     type ParachainBlocksPerBitcoinBlock = ParachainBlocksPerBitcoinBlock;
     type WeightInfo = ();

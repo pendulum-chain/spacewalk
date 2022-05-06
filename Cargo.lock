@@ -89,6 +89,7 @@ dependencies = [
  "frame-benchmarking",
  "frame-support",
  "frame-system",
+ "interbtc-primitives",
  "mocktopus",
  "pallet-balances",
  "parity-scale-codec",
@@ -100,7 +101,6 @@ dependencies = [
  "sp-io",
  "sp-runtime",
  "sp-std",
- "spacewalk-primitives",
 ]
 
 [[package]]
@@ -431,6 +431,25 @@ dependencies = [
 ]
 
 [[package]]
+name = "bitcoin"
+version = "1.2.0"
+dependencies = [
+ "bitcoin_hashes",
+ "frame-support",
+ "hex",
+ "impl-serde",
+ "mocktopus",
+ "parity-scale-codec",
+ "scale-info",
+ "secp256k1 0.20.1",
+ "serde",
+ "sha2 0.8.2",
+ "sp-core",
+ "sp-std",
+ "spin 0.7.1",
+]
+
+[[package]]
 name = "bitcoin_hashes"
 version = "0.7.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -601,6 +620,28 @@ name = "bstringify"
 version = "0.1.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "bd769563b4ea2953e2825c9e6b7470a5f55f67e0be00030bf3e390a2a6071f64"
+
+[[package]]
+name = "btc-relay"
+version = "1.2.0"
+dependencies = [
+ "bitcoin",
+ "frame-benchmarking",
+ "frame-support",
+ "frame-system",
+ "hex",
+ "itertools",
+ "mocktopus",
+ "pallet-timestamp",
+ "parity-scale-codec",
+ "scale-info",
+ "security",
+ "sp-arithmetic",
+ "sp-core",
+ "sp-io",
+ "sp-runtime",
+ "sp-std",
+]
 
 [[package]]
 name = "build-helper"
@@ -1134,6 +1175,7 @@ version = "1.2.0"
 dependencies = [
  "frame-support",
  "frame-system",
+ "interbtc-primitives",
  "mocktopus",
  "orml-tokens",
  "orml-traits",
@@ -1146,7 +1188,6 @@ dependencies = [
  "sp-io",
  "sp-runtime",
  "sp-std",
- "spacewalk-primitives",
 ]
 
 [[package]]
@@ -1392,6 +1433,26 @@ dependencies = [
 ]
 
 [[package]]
+name = "enumflags2"
+version = "0.6.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "83c8d82922337cd23a15f88b70d8e4ef5f11da38dd7cdb55e84dd5de99695da0"
+dependencies = [
+ "enumflags2_derive",
+]
+
+[[package]]
+name = "enumflags2_derive"
+version = "0.6.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "946ee94e3dbf58fdd324f9ce245c7b238d46a66f00e86a020b71996349e46cce"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn",
+]
+
+[[package]]
 name = "env_logger"
 version = "0.9.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1484,6 +1545,7 @@ dependencies = [
  "frame-benchmarking",
  "frame-support",
  "frame-system",
+ "interbtc-primitives",
  "mocktopus",
  "orml-tokens",
  "orml-traits",
@@ -1498,7 +1560,6 @@ dependencies = [
  "sp-io",
  "sp-runtime",
  "sp-std",
- "spacewalk-primitives",
  "staking",
 ]
 
@@ -2150,6 +2211,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "hex-literal"
+version = "0.3.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7ebdb29d2ea9ed0083cd8cece49bbd968021bd99b0849edb4a9a7ee0fdf6a4e0"
+
+[[package]]
 name = "hex-literal-impl"
 version = "0.2.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2376,12 +2443,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "index-fixed"
-version = "0.3.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4161ceaf2f41b6cd3f6502f5da085d4ad4393a51e0c70ed2fce1d5698d798fae"
-
-[[package]]
 name = "indexmap"
 version = "1.8.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2408,6 +2469,170 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "276ec31bcb4a9ee45f58bec6f9ec700ae4cf4f4f8f2fa7e06cb406bd5ffdd770"
 dependencies = [
  "num-traits",
+]
+
+[[package]]
+name = "interbtc-primitives"
+version = "1.2.0"
+dependencies = [
+ "bitcoin",
+ "bstringify",
+ "parity-scale-codec",
+ "scale-info",
+ "serde",
+ "sp-core",
+ "sp-runtime",
+ "sp-std",
+]
+
+[[package]]
+name = "interbtc-rpc"
+version = "1.2.0"
+dependencies = [
+ "interbtc-primitives",
+ "jsonrpc-core",
+ "module-btc-relay-rpc",
+ "module-issue-rpc",
+ "module-oracle-rpc",
+ "module-redeem-rpc",
+ "module-refund-rpc",
+ "module-relay-rpc",
+ "module-replace-rpc",
+ "module-vault-registry-rpc",
+ "pallet-transaction-payment-rpc",
+ "sc-rpc",
+ "sc-rpc-api",
+ "sc-transaction-pool-api",
+ "sp-api",
+ "sp-arithmetic",
+ "sp-block-builder",
+ "sp-blockchain",
+ "sp-core",
+ "substrate-frame-rpc-system",
+ "vault-registry",
+]
+
+[[package]]
+name = "interbtc-runtime-standalone"
+version = "1.2.0"
+dependencies = [
+ "annuity",
+ "bitcoin",
+ "btc-relay",
+ "currency",
+ "fee",
+ "flate2",
+ "frame-benchmarking",
+ "frame-executive",
+ "frame-support",
+ "frame-system",
+ "frame-system-rpc-runtime-api",
+ "hex",
+ "hex-literal 0.3.4",
+ "interbtc-primitives",
+ "issue",
+ "mocktopus",
+ "module-btc-relay-rpc-runtime-api",
+ "module-issue-rpc-runtime-api",
+ "module-oracle-rpc-runtime-api",
+ "module-redeem-rpc-runtime-api",
+ "module-refund-rpc-runtime-api",
+ "module-relay-rpc-runtime-api",
+ "module-replace-rpc-runtime-api",
+ "module-vault-registry-rpc-runtime-api",
+ "nomination",
+ "oracle",
+ "orml-tokens",
+ "orml-traits",
+ "orml-vesting",
+ "pallet-aura",
+ "pallet-authorship",
+ "pallet-balances",
+ "pallet-collective",
+ "pallet-grandpa",
+ "pallet-identity",
+ "pallet-membership",
+ "pallet-multisig",
+ "pallet-preimage",
+ "pallet-scheduler",
+ "pallet-society",
+ "pallet-sudo",
+ "pallet-timestamp",
+ "pallet-transaction-payment",
+ "pallet-transaction-payment-rpc-runtime-api",
+ "pallet-treasury",
+ "pallet-utility",
+ "parity-scale-codec",
+ "pretty_assertions",
+ "redeem",
+ "refund",
+ "relay",
+ "replace",
+ "reward",
+ "scale-info",
+ "security",
+ "serde",
+ "serde_json",
+ "sp-api",
+ "sp-arithmetic",
+ "sp-block-builder",
+ "sp-consensus-aura",
+ "sp-core",
+ "sp-inherents",
+ "sp-io",
+ "sp-offchain",
+ "sp-runtime",
+ "sp-session",
+ "sp-std",
+ "sp-transaction-pool",
+ "sp-version",
+ "staking",
+ "substrate-wasm-builder",
+ "vault-registry",
+]
+
+[[package]]
+name = "interbtc-standalone"
+version = "1.2.0"
+dependencies = [
+ "bitcoin",
+ "clap",
+ "frame-benchmarking",
+ "frame-benchmarking-cli",
+ "frame-support",
+ "hex-literal 0.2.2",
+ "interbtc-primitives",
+ "interbtc-rpc",
+ "interbtc-runtime-standalone",
+ "log",
+ "parity-scale-codec",
+ "sc-basic-authorship",
+ "sc-cli",
+ "sc-client-api",
+ "sc-consensus",
+ "sc-consensus-aura",
+ "sc-executor",
+ "sc-finality-grandpa",
+ "sc-keystore",
+ "sc-service",
+ "sc-telemetry",
+ "sc-transaction-pool",
+ "serde",
+ "sp-api",
+ "sp-arithmetic",
+ "sp-block-builder",
+ "sp-consensus",
+ "sp-consensus-aura",
+ "sp-core",
+ "sp-finality-grandpa",
+ "sp-inherents",
+ "sp-io",
+ "sp-offchain",
+ "sp-runtime",
+ "sp-session",
+ "sp-timestamp",
+ "sp-transaction-pool",
+ "substrate-build-script-utils",
 ]
 
 [[package]]
@@ -2456,11 +2681,14 @@ checksum = "879d54834c8c76457ef4293a689b2a8c59b076067ad77b15efafbb05f92a592b"
 name = "issue"
 version = "1.2.0"
 dependencies = [
+ "bitcoin",
+ "btc-relay",
  "currency",
  "fee",
  "frame-benchmarking",
  "frame-support",
  "frame-system",
+ "interbtc-primitives",
  "mocktopus",
  "oracle",
  "orml-tokens",
@@ -2477,10 +2705,7 @@ dependencies = [
  "sp-io",
  "sp-runtime",
  "sp-std",
- "spacewalk-primitives",
  "staking",
- "stellar",
- "stellar-relay",
  "vault-registry",
 ]
 
@@ -2724,9 +2949,6 @@ name = "lazy_static"
 version = "1.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e2abad23fbc42b3700f2f279844dc832adb2b2eb069b2df918f455c4e18cc646"
-dependencies = [
- "spin 0.5.2",
-]
 
 [[package]]
 name = "lazycell"
@@ -3620,6 +3842,30 @@ dependencies = [
 ]
 
 [[package]]
+name = "module-btc-relay-rpc"
+version = "1.2.0"
+dependencies = [
+ "jsonrpc-core",
+ "jsonrpc-core-client",
+ "jsonrpc-derive",
+ "module-btc-relay-rpc-runtime-api",
+ "parity-scale-codec",
+ "sp-api",
+ "sp-blockchain",
+ "sp-runtime",
+]
+
+[[package]]
+name = "module-btc-relay-rpc-runtime-api"
+version = "1.2.0"
+dependencies = [
+ "frame-support",
+ "parity-scale-codec",
+ "sp-api",
+ "sp-std",
+]
+
+[[package]]
 name = "module-issue-rpc"
 version = "1.2.0"
 dependencies = [
@@ -3756,30 +4002,6 @@ dependencies = [
 
 [[package]]
 name = "module-replace-rpc-runtime-api"
-version = "1.2.0"
-dependencies = [
- "frame-support",
- "parity-scale-codec",
- "sp-api",
- "sp-std",
-]
-
-[[package]]
-name = "module-stellar-relay-rpc"
-version = "1.2.0"
-dependencies = [
- "jsonrpc-core",
- "jsonrpc-core-client",
- "jsonrpc-derive",
- "module-stellar-relay-rpc-runtime-api",
- "parity-scale-codec",
- "sp-api",
- "sp-blockchain",
- "sp-runtime",
-]
-
-[[package]]
-name = "module-stellar-relay-rpc-runtime-api"
 version = "1.2.0"
 dependencies = [
  "frame-support",
@@ -3993,6 +4215,7 @@ dependencies = [
  "frame-benchmarking",
  "frame-support",
  "frame-system",
+ "interbtc-primitives",
  "mocktopus",
  "oracle",
  "orml-tokens",
@@ -4008,7 +4231,6 @@ dependencies = [
  "sp-io",
  "sp-runtime",
  "sp-std",
- "spacewalk-primitives",
  "staking",
  "vault-registry",
 ]
@@ -4180,6 +4402,7 @@ dependencies = [
  "frame-benchmarking",
  "frame-support",
  "frame-system",
+ "interbtc-primitives",
  "mocktopus",
  "orml-tokens",
  "orml-traits",
@@ -4192,25 +4415,7 @@ dependencies = [
  "sp-io",
  "sp-runtime",
  "sp-std",
- "spacewalk-primitives",
  "staking",
-]
-
-[[package]]
-name = "orml-currencies"
-version = "0.4.1-dev"
-source = "git+https://github.com/open-web3-stack/open-runtime-module-library?rev=2b5d4ce1d08fb54c0007c2055653892d2c93a92e#2b5d4ce1d08fb54c0007c2055653892d2c93a92e"
-dependencies = [
- "frame-support",
- "frame-system",
- "orml-traits",
- "orml-utilities",
- "parity-scale-codec",
- "scale-info",
- "serde",
- "sp-io",
- "sp-runtime",
- "sp-std",
 ]
 
 [[package]]
@@ -4252,6 +4457,21 @@ version = "0.4.1-dev"
 source = "git+https://github.com/open-web3-stack/open-runtime-module-library?rev=2b5d4ce1d08fb54c0007c2055653892d2c93a92e#2b5d4ce1d08fb54c0007c2055653892d2c93a92e"
 dependencies = [
  "frame-support",
+ "parity-scale-codec",
+ "scale-info",
+ "serde",
+ "sp-io",
+ "sp-runtime",
+ "sp-std",
+]
+
+[[package]]
+name = "orml-vesting"
+version = "0.4.1-dev"
+source = "git+https://github.com/open-web3-stack/open-runtime-module-library?rev=2b5d4ce1d08fb54c0007c2055653892d2c93a92e#2b5d4ce1d08fb54c0007c2055653892d2c93a92e"
+dependencies = [
+ "frame-support",
+ "frame-system",
  "parity-scale-codec",
  "scale-info",
  "serde",
@@ -4331,6 +4551,23 @@ dependencies = [
 ]
 
 [[package]]
+name = "pallet-collective"
+version = "4.0.0-dev"
+source = "git+https://github.com/paritytech/substrate?branch=polkadot-v0.9.18#fc3fd073d3a0acf9933c3994b660ebd7b5833f65"
+dependencies = [
+ "frame-benchmarking",
+ "frame-support",
+ "frame-system",
+ "log",
+ "parity-scale-codec",
+ "scale-info",
+ "sp-core",
+ "sp-io",
+ "sp-runtime",
+ "sp-std",
+]
+
+[[package]]
 name = "pallet-grandpa"
 version = "4.0.0-dev"
 source = "git+https://github.com/paritytech/substrate?branch=polkadot-v0.9.18#fc3fd073d3a0acf9933c3994b660ebd7b5833f65"
@@ -4350,6 +4587,85 @@ dependencies = [
  "sp-runtime",
  "sp-session",
  "sp-staking",
+ "sp-std",
+]
+
+[[package]]
+name = "pallet-identity"
+version = "4.0.0-dev"
+source = "git+https://github.com/paritytech/substrate?branch=polkadot-v0.9.18#fc3fd073d3a0acf9933c3994b660ebd7b5833f65"
+dependencies = [
+ "enumflags2",
+ "frame-benchmarking",
+ "frame-support",
+ "frame-system",
+ "parity-scale-codec",
+ "scale-info",
+ "sp-io",
+ "sp-runtime",
+ "sp-std",
+]
+
+[[package]]
+name = "pallet-membership"
+version = "4.0.0-dev"
+source = "git+https://github.com/paritytech/substrate?branch=polkadot-v0.9.18#fc3fd073d3a0acf9933c3994b660ebd7b5833f65"
+dependencies = [
+ "frame-benchmarking",
+ "frame-support",
+ "frame-system",
+ "log",
+ "parity-scale-codec",
+ "scale-info",
+ "sp-core",
+ "sp-io",
+ "sp-runtime",
+ "sp-std",
+]
+
+[[package]]
+name = "pallet-multisig"
+version = "4.0.0-dev"
+source = "git+https://github.com/paritytech/substrate?branch=polkadot-v0.9.18#fc3fd073d3a0acf9933c3994b660ebd7b5833f65"
+dependencies = [
+ "frame-support",
+ "frame-system",
+ "parity-scale-codec",
+ "scale-info",
+ "sp-io",
+ "sp-runtime",
+ "sp-std",
+]
+
+[[package]]
+name = "pallet-preimage"
+version = "4.0.0-dev"
+source = "git+https://github.com/paritytech/substrate?branch=polkadot-v0.9.18#fc3fd073d3a0acf9933c3994b660ebd7b5833f65"
+dependencies = [
+ "frame-benchmarking",
+ "frame-support",
+ "frame-system",
+ "parity-scale-codec",
+ "scale-info",
+ "sp-core",
+ "sp-io",
+ "sp-runtime",
+ "sp-std",
+]
+
+[[package]]
+name = "pallet-scheduler"
+version = "4.0.0-dev"
+source = "git+https://github.com/paritytech/substrate?branch=polkadot-v0.9.18#fc3fd073d3a0acf9933c3994b660ebd7b5833f65"
+dependencies = [
+ "frame-benchmarking",
+ "frame-support",
+ "frame-system",
+ "log",
+ "parity-scale-codec",
+ "scale-info",
+ "sp-io",
+ "sp-runtime",
  "sp-std",
 ]
 
@@ -4375,29 +4691,17 @@ dependencies = [
 ]
 
 [[package]]
-name = "pallet-spacewalk"
+name = "pallet-society"
 version = "4.0.0-dev"
+source = "git+https://github.com/paritytech/substrate?branch=polkadot-v0.9.18#fc3fd073d3a0acf9933c3994b660ebd7b5833f65"
 dependencies = [
- "base64",
- "frame-benchmarking",
  "frame-support",
  "frame-system",
- "hex",
- "log",
- "orml-traits",
- "pallet-transaction-payment",
  "parity-scale-codec",
+ "rand_chacha 0.2.2",
  "scale-info",
- "serde",
- "serde_json",
- "sp-arithmetic",
- "sp-core",
- "sp-io",
- "sp-keystore",
  "sp-runtime",
  "sp-std",
- "spacewalk-runtime-standalone",
- "substrate-stellar-sdk",
 ]
 
 [[package]]
@@ -4475,6 +4779,37 @@ dependencies = [
  "parity-scale-codec",
  "sp-api",
  "sp-runtime",
+]
+
+[[package]]
+name = "pallet-treasury"
+version = "4.0.0-dev"
+source = "git+https://github.com/paritytech/substrate?branch=polkadot-v0.9.18#fc3fd073d3a0acf9933c3994b660ebd7b5833f65"
+dependencies = [
+ "frame-support",
+ "frame-system",
+ "impl-trait-for-tuples",
+ "pallet-balances",
+ "parity-scale-codec",
+ "scale-info",
+ "serde",
+ "sp-runtime",
+ "sp-std",
+]
+
+[[package]]
+name = "pallet-utility"
+version = "4.0.0-dev"
+source = "git+https://github.com/paritytech/substrate?branch=polkadot-v0.9.18#fc3fd073d3a0acf9933c3994b660ebd7b5833f65"
+dependencies = [
+ "frame-support",
+ "frame-system",
+ "parity-scale-codec",
+ "scale-info",
+ "sp-core",
+ "sp-io",
+ "sp-runtime",
+ "sp-std",
 ]
 
 [[package]]
@@ -5300,11 +5635,14 @@ dependencies = [
 name = "redeem"
 version = "1.2.0"
 dependencies = [
+ "bitcoin",
+ "btc-relay",
  "currency",
  "fee",
  "frame-benchmarking",
  "frame-support",
  "frame-system",
+ "interbtc-primitives",
  "mocktopus",
  "oracle",
  "orml-tokens",
@@ -5320,10 +5658,7 @@ dependencies = [
  "sp-io",
  "sp-runtime",
  "sp-std",
- "spacewalk-primitives",
  "staking",
- "stellar",
- "stellar-relay",
  "vault-registry",
 ]
 
@@ -5371,11 +5706,14 @@ dependencies = [
 name = "refund"
 version = "1.2.0"
 dependencies = [
+ "bitcoin",
+ "btc-relay",
  "currency",
  "fee",
  "frame-benchmarking",
  "frame-support",
  "frame-system",
+ "interbtc-primitives",
  "mocktopus",
  "oracle",
  "orml-tokens",
@@ -5391,10 +5729,7 @@ dependencies = [
  "sp-io",
  "sp-runtime",
  "sp-std",
- "spacewalk-primitives",
  "staking",
- "stellar",
- "stellar-relay",
  "vault-registry",
 ]
 
@@ -5448,6 +5783,42 @@ dependencies = [
 ]
 
 [[package]]
+name = "relay"
+version = "1.2.0"
+dependencies = [
+ "bitcoin",
+ "btc-relay",
+ "currency",
+ "fee",
+ "frame-benchmarking",
+ "frame-support",
+ "frame-system",
+ "hex",
+ "interbtc-primitives",
+ "mocktopus",
+ "nomination",
+ "oracle",
+ "orml-tokens",
+ "orml-traits",
+ "pallet-timestamp",
+ "parity-scale-codec",
+ "redeem",
+ "refund",
+ "replace",
+ "reward",
+ "scale-info",
+ "security",
+ "serde",
+ "sp-arithmetic",
+ "sp-core",
+ "sp-io",
+ "sp-runtime",
+ "sp-std",
+ "staking",
+ "vault-registry",
+]
+
+[[package]]
 name = "remove_dir_all"
 version = "0.5.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -5460,11 +5831,14 @@ dependencies = [
 name = "replace"
 version = "1.2.0"
 dependencies = [
+ "bitcoin",
+ "btc-relay",
  "currency",
  "fee",
  "frame-benchmarking",
  "frame-support",
  "frame-system",
+ "interbtc-primitives",
  "mocktopus",
  "nomination",
  "oracle",
@@ -5481,10 +5855,7 @@ dependencies = [
  "sp-io",
  "sp-runtime",
  "sp-std",
- "spacewalk-primitives",
  "staking",
- "stellar",
- "stellar-relay",
  "vault-registry",
 ]
 
@@ -5511,6 +5882,7 @@ dependencies = [
  "frame-benchmarking",
  "frame-support",
  "frame-system",
+ "interbtc-primitives",
  "mocktopus",
  "pallet-timestamp",
  "parity-scale-codec",
@@ -5522,7 +5894,6 @@ dependencies = [
  "sp-io",
  "sp-runtime",
  "sp-std",
- "spacewalk-primitives",
 ]
 
 [[package]]
@@ -6878,15 +7249,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "sodalite"
-version = "0.4.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "41784a359d15c58bba298cccb7f30a847a1a42d0620c9bdaa0aa42fdb3c280e0"
-dependencies = [
- "index-fixed",
-]
-
-[[package]]
 name = "soketto"
 version = "0.7.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -7527,136 +7889,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "spacewalk-primitives"
-version = "1.2.0"
-dependencies = [
- "bstringify",
- "parity-scale-codec",
- "scale-info",
- "serde",
- "sp-core",
- "sp-runtime",
- "sp-std",
- "stellar",
-]
-
-[[package]]
-name = "spacewalk-rpc"
-version = "1.2.0"
-dependencies = [
- "jsonrpc-core",
- "module-issue-rpc",
- "module-oracle-rpc",
- "module-redeem-rpc",
- "module-refund-rpc",
- "module-relay-rpc",
- "module-replace-rpc",
- "module-stellar-relay-rpc",
- "module-vault-registry-rpc",
- "pallet-transaction-payment-rpc",
- "sc-rpc",
- "sc-rpc-api",
- "sc-transaction-pool-api",
- "sp-api",
- "sp-arithmetic",
- "sp-block-builder",
- "sp-blockchain",
- "sp-core",
- "spacewalk-primitives",
- "substrate-frame-rpc-system",
- "vault-registry",
-]
-
-[[package]]
-name = "spacewalk-runtime-standalone"
-version = "1.2.0"
-dependencies = [
- "flate2",
- "frame-benchmarking",
- "frame-executive",
- "frame-support",
- "frame-system",
- "frame-system-rpc-runtime-api",
- "hex",
- "mocktopus",
- "orml-currencies",
- "orml-tokens",
- "orml-traits",
- "pallet-aura",
- "pallet-balances",
- "pallet-grandpa",
- "pallet-spacewalk",
- "pallet-sudo",
- "pallet-timestamp",
- "pallet-transaction-payment",
- "pallet-transaction-payment-rpc-runtime-api",
- "parity-scale-codec",
- "pretty_assertions",
- "scale-info",
- "serde",
- "serde_json",
- "sp-api",
- "sp-block-builder",
- "sp-consensus-aura",
- "sp-core",
- "sp-inherents",
- "sp-io",
- "sp-offchain",
- "sp-runtime",
- "sp-session",
- "sp-std",
- "sp-transaction-pool",
- "sp-version",
- "spacewalk-primitives",
- "substrate-wasm-builder",
-]
-
-[[package]]
-name = "spacewalk-standalone"
-version = "1.2.0"
-dependencies = [
- "clap",
- "frame-benchmarking",
- "frame-benchmarking-cli",
- "frame-support",
- "frame-system",
- "hex-literal",
- "log",
- "parity-scale-codec",
- "sc-basic-authorship",
- "sc-cli",
- "sc-client-api",
- "sc-consensus",
- "sc-consensus-aura",
- "sc-executor",
- "sc-finality-grandpa",
- "sc-keystore",
- "sc-service",
- "sc-telemetry",
- "sc-transaction-pool",
- "serde",
- "sp-api",
- "sp-arithmetic",
- "sp-block-builder",
- "sp-consensus",
- "sp-consensus-aura",
- "sp-core",
- "sp-finality-grandpa",
- "sp-inherents",
- "sp-io",
- "sp-offchain",
- "sp-runtime",
- "sp-session",
- "sp-timestamp",
- "sp-transaction-pool",
- "spacewalk-primitives",
- "spacewalk-rpc",
- "spacewalk-runtime-standalone",
- "substrate-build-script-utils",
- "substrate-stellar-sdk",
-]
-
-[[package]]
 name = "spin"
 version = "0.5.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -7696,6 +7928,7 @@ dependencies = [
  "frame-benchmarking",
  "frame-support",
  "frame-system",
+ "interbtc-primitives",
  "mocktopus",
  "pallet-timestamp",
  "parity-scale-codec",
@@ -7707,7 +7940,6 @@ dependencies = [
  "sp-io",
  "sp-runtime",
  "sp-std",
- "spacewalk-primitives",
 ]
 
 [[package]]
@@ -7727,47 +7959,6 @@ dependencies = [
  "nalgebra",
  "num-traits",
  "rand 0.8.5",
-]
-
-[[package]]
-name = "stellar"
-version = "1.2.0"
-dependencies = [
- "bitcoin_hashes",
- "frame-support",
- "hex",
- "impl-serde",
- "mocktopus",
- "parity-scale-codec",
- "scale-info",
- "secp256k1 0.20.1",
- "serde",
- "sha2 0.8.2",
- "sp-core",
- "sp-std",
- "spin 0.7.1",
-]
-
-[[package]]
-name = "stellar-relay"
-version = "1.2.0"
-dependencies = [
- "frame-benchmarking",
- "frame-support",
- "frame-system",
- "hex",
- "itertools",
- "mocktopus",
- "pallet-timestamp",
- "parity-scale-codec",
- "scale-info",
- "security",
- "sp-arithmetic",
- "sp-core",
- "sp-io",
- "sp-runtime",
- "sp-std",
- "stellar",
 ]
 
 [[package]]
@@ -7852,24 +8043,6 @@ dependencies = [
  "prometheus",
  "thiserror",
  "tokio",
-]
-
-[[package]]
-name = "substrate-stellar-sdk"
-version = "0.2.2"
-source = "git+https://github.com/pendulum-chain/substrate-stellar-sdk?branch=polkadot-v0.9.18#17ac7552467bd64b89523429d2092aeaa64b5854"
-dependencies = [
- "base64",
- "hex",
- "lazy_static",
- "num-rational 0.4.0",
- "serde",
- "serde_json",
- "sha2 0.9.9",
- "sodalite",
- "sp-io",
- "sp-runtime",
- "sp-std",
 ]
 
 [[package]]
@@ -8461,12 +8634,14 @@ dependencies = [
 name = "vault-registry"
 version = "1.2.0"
 dependencies = [
+ "bitcoin",
  "currency",
  "fee",
  "fixed-hash",
  "frame-benchmarking",
  "frame-support",
  "frame-system",
+ "interbtc-primitives",
  "log",
  "mocktopus",
  "oracle",
@@ -8484,9 +8659,7 @@ dependencies = [
  "sp-io",
  "sp-runtime",
  "sp-std",
- "spacewalk-primitives",
  "staking",
- "stellar",
  "visibility",
 ]
 

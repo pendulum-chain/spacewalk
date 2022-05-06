@@ -29,8 +29,8 @@ use mocktopus::macros::mockable;
 pub use security;
 
 use crate::types::BalanceOf;
-use stellar::{parser::parse_transaction, types::*};
-use stellar_relay::{types::OpReturnPaymentData, BtcAddress};
+use bitcoin::{parser::parse_transaction, types::*};
+use btc_relay::{types::OpReturnPaymentData, BtcAddress};
 use frame_support::{dispatch::DispatchResult, ensure, transactional, weights::Pays};
 use frame_system::ensure_signed;
 use sp_std::{
@@ -55,7 +55,7 @@ pub mod pallet {
         frame_system::Config
         + security::Config
         + vault_registry::Config
-        + stellar_relay::Config
+        + btc_relay::Config
         + redeem::Config
         + replace::Config
         + refund::Config
@@ -122,7 +122,7 @@ pub mod pallet {
     // The pallet's dispatchable functions.
     #[pallet::call]
     impl<T: Config> Pallet<T> {
-        /// One time function to initialize the Stellar-Relay with the first block
+        /// One time function to initialize the BTC-Relay with the first block
         ///
         /// # Arguments
         ///
@@ -154,8 +154,8 @@ pub mod pallet {
         ) -> DispatchResultWithPostInfo {
             let relayer = ensure_signed(origin)?;
 
-            let block_header = ext::stellar_relay::parse_raw_block_header::<T>(&raw_block_header)?;
-            ext::stellar_relay::initialize::<T>(relayer, block_header, block_height)?;
+            let block_header = ext::btc_relay::parse_raw_block_header::<T>(&raw_block_header)?;
+            ext::btc_relay::initialize::<T>(relayer, block_header, block_height)?;
 
             // don't take tx fees on success
             Ok(Pays::No.into())
@@ -199,8 +199,8 @@ pub mod pallet {
         ) -> DispatchResultWithPostInfo {
             let relayer = ensure_signed(origin)?;
 
-            let block_header = ext::stellar_relay::parse_raw_block_header::<T>(&raw_block_header)?;
-            ext::stellar_relay::store_block_header::<T>(&relayer, block_header)?;
+            let block_header = ext::btc_relay::parse_raw_block_header::<T>(&raw_block_header)?;
+            ext::btc_relay::store_block_header::<T>(&relayer, block_header)?;
 
             // don't take tx fees on success
             Ok(Pays::No.into())
@@ -225,7 +225,7 @@ pub mod pallet {
         ) -> DispatchResultWithPostInfo {
             let reporter_id = ensure_signed(origin)?;
 
-            let merkle_proof = ext::stellar_relay::parse_merkle_proof::<T>(&raw_merkle_proof)?;
+            let merkle_proof = ext::btc_relay::parse_merkle_proof::<T>(&raw_merkle_proof)?;
             let transaction = parse_transaction(raw_tx.as_slice()).map_err(|_| Error::<T>::InvalidTransaction)?;
             let tx_id = transaction.tx_id();
 
@@ -235,7 +235,7 @@ pub mod pallet {
                 Error::<T>::VaultAlreadyReported,
             );
 
-            ext::stellar_relay::verify_transaction_inclusion::<T>(tx_id, merkle_proof)?;
+            ext::btc_relay::verify_transaction_inclusion::<T>(tx_id, merkle_proof)?;
             Self::_is_parsed_transaction_invalid(&vault_id, transaction)?;
 
             ext::vault_registry::liquidate_theft_vault::<T>(&vault_id, reporter_id)?;
@@ -276,10 +276,10 @@ pub mod pallet {
             ensure!(raw_txs.0 != raw_txs.1, Error::<T>::DuplicateTransaction);
 
             let parse_and_verify = |raw_tx, raw_proof| -> Result<Transaction, DispatchError> {
-                let merkle_proof = ext::stellar_relay::parse_merkle_proof::<T>(raw_proof)?;
+                let merkle_proof = ext::btc_relay::parse_merkle_proof::<T>(raw_proof)?;
                 let transaction = parse_transaction(raw_tx).map_err(|_| Error::<T>::InvalidTransaction)?;
                 // ensure transaction is included
-                ext::stellar_relay::verify_transaction_inclusion::<T>(transaction.tx_id(), merkle_proof)?;
+                ext::btc_relay::verify_transaction_inclusion::<T>(transaction.tx_id(), merkle_proof)?;
                 Ok(transaction)
             };
 

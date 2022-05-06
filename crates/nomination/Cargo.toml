@@ -30,7 +30,7 @@ oracle = { path = "../oracle", default-features = false }
 reward = { path = "../reward", default-features = false }
 staking = { path = "../staking", default-features = false }
 
-primitives = { package = "spacewalk-primitives", path = "../../primitives", default-features = false }
+primitives = { package = "interbtc-primitives", path = "../../primitives", default-features = false }
 
 # Orml dependencies
 orml-tokens = { git = "https://github.com/open-web3-stack/open-runtime-module-library", rev = "2b5d4ce1d08fb54c0007c2055653892d2c93a92e", default-features = false, optional = true }

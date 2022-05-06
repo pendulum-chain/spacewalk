@@ -1,13 +1,13 @@
 extern crate hex;
 use crate::{ext, mock::*};
-use stellar::{
+use bitcoin::{
     formatter::Formattable,
     types::{
         H256Le, MerkleProof, Transaction, TransactionBuilder, TransactionInputBuilder, TransactionInputSource,
         TransactionOutput,
     },
 };
-use stellar_relay::{BtcAddress, BtcPublicKey, OpReturnPaymentData};
+use btc_relay::{BtcAddress, BtcPublicKey, OpReturnPaymentData};
 use frame_support::{assert_err, assert_ok};
 use mocktopus::mocking::*;
 use redeem::types::{RedeemRequest, RedeemRequestStatus};
@@ -60,8 +60,8 @@ fn test_report_vault_passes_with_vault_transaction() {
         ]));
         ext::vault_registry::get_active_vault_from_id::<Test>
             .mock_safe(move |_| MockResult::Return(Ok(init_zero_vault(vault.clone(), vec![btc_address]))));
-        ext::stellar_relay::parse_merkle_proof::<Test>.mock_safe(|_| MockResult::Return(Ok(dummy_merkle_proof())));
-        ext::stellar_relay::verify_transaction_inclusion::<Test>.mock_safe(move |_, _| MockResult::Return(Ok(())));
+        ext::btc_relay::parse_merkle_proof::<Test>.mock_safe(|_| MockResult::Return(Ok(dummy_merkle_proof())));
+        ext::btc_relay::verify_transaction_inclusion::<Test>.mock_safe(move |_, _| MockResult::Return(Ok(())));
         ext::vault_registry::liquidate_theft_vault::<Test>.mock_safe(|_, _| MockResult::Return(Ok(())));
 
         assert_ok!(Relay::report_vault_theft(
@@ -86,8 +86,8 @@ fn test_report_vault_fails_with_non_vault_transaction() {
 
         ext::vault_registry::get_active_vault_from_id::<Test>
             .mock_safe(move |_| MockResult::Return(Ok(init_zero_vault(vault.clone(), vec![btc_address]))));
-        ext::stellar_relay::parse_merkle_proof::<Test>.mock_safe(|_| MockResult::Return(Ok(dummy_merkle_proof())));
-        ext::stellar_relay::verify_transaction_inclusion::<Test>.mock_safe(move |_, _| MockResult::Return(Ok(())));
+        ext::btc_relay::parse_merkle_proof::<Test>.mock_safe(|_| MockResult::Return(Ok(dummy_merkle_proof())));
+        ext::btc_relay::verify_transaction_inclusion::<Test>.mock_safe(move |_, _| MockResult::Return(Ok(())));
 
         assert_err!(
             Relay::report_vault_theft(
@@ -111,8 +111,8 @@ fn test_report_vault_succeeds_with_segwit_transaction() {
         let btc_address = BtcAddress::P2SH(H160::from_str(&"2928f43af18d2d60e8a843540d8086b305341339").unwrap());
         ext::vault_registry::get_active_vault_from_id::<Test>
             .mock_safe(move |_| MockResult::Return(Ok(init_zero_vault(vault.clone(), vec![btc_address]))));
-        ext::stellar_relay::parse_merkle_proof::<Test>.mock_safe(|_| MockResult::Return(Ok(dummy_merkle_proof())));
-        ext::stellar_relay::verify_transaction_inclusion::<Test>.mock_safe(move |_, _| MockResult::Return(Ok(())));
+        ext::btc_relay::parse_merkle_proof::<Test>.mock_safe(|_| MockResult::Return(Ok(dummy_merkle_proof())));
+        ext::btc_relay::verify_transaction_inclusion::<Test>.mock_safe(move |_, _| MockResult::Return(Ok(())));
         ext::vault_registry::liquidate_theft_vault::<Test>.mock_safe(|_, _| MockResult::Return(Ok(())));
 
         assert_ok!(Relay::report_vault_theft(
@@ -135,8 +135,8 @@ fn test_report_vault_succeeds_with_p2sh_segwit_transaction() {
         let btc_address = BtcAddress::P2SH(H160::from_str(&"288873634ae24a3c9b6792cc7e2a084ec79ef68b").unwrap());
         ext::vault_registry::get_active_vault_from_id::<Test>
             .mock_safe(move |_| MockResult::Return(Ok(init_zero_vault(vault.clone(), vec![btc_address]))));
-        ext::stellar_relay::parse_merkle_proof::<Test>.mock_safe(|_| MockResult::Return(Ok(dummy_merkle_proof())));
-        ext::stellar_relay::verify_transaction_inclusion::<Test>.mock_safe(move |_, _| MockResult::Return(Ok(())));
+        ext::btc_relay::parse_merkle_proof::<Test>.mock_safe(|_| MockResult::Return(Ok(dummy_merkle_proof())));
+        ext::btc_relay::verify_transaction_inclusion::<Test>.mock_safe(move |_, _| MockResult::Return(Ok(())));
         ext::vault_registry::liquidate_theft_vault::<Test>.mock_safe(|_, _| MockResult::Return(Ok(())));
 
         assert_ok!(Relay::report_vault_theft(
@@ -153,7 +153,7 @@ fn test_report_vault_theft_succeeds() {
     run_test(|| {
         let relayer = Origin::signed(ALICE);
 
-        ext::stellar_relay::verify_transaction_inclusion::<Test>.mock_safe(move |_, _| MockResult::Return(Ok(())));
+        ext::btc_relay::verify_transaction_inclusion::<Test>.mock_safe(move |_, _| MockResult::Return(Ok(())));
         Relay::_is_parsed_transaction_invalid.mock_safe(move |_, _| MockResult::Return(Ok(())));
         ext::vault_registry::liquidate_theft_vault::<Test>.mock_safe(move |_, _| MockResult::Return(Ok(())));
 
@@ -654,8 +654,8 @@ fn should_report_double_payment() {
 
         ext::vault_registry::get_active_vault_from_id::<Test>
             .mock_safe(move |_| MockResult::Return(Ok(init_zero_vault(CAROL.clone(), vec![input_address]))));
-        ext::stellar_relay::parse_merkle_proof::<Test>.mock_safe(|_| MockResult::Return(Ok(dummy_merkle_proof())));
-        ext::stellar_relay::verify_transaction_inclusion::<Test>.mock_safe(move |_, _| MockResult::Return(Ok(())));
+        ext::btc_relay::parse_merkle_proof::<Test>.mock_safe(|_| MockResult::Return(Ok(dummy_merkle_proof())));
+        ext::btc_relay::verify_transaction_inclusion::<Test>.mock_safe(move |_, _| MockResult::Return(Ok(())));
         ext::vault_registry::liquidate_theft_vault::<Test>.mock_safe(|_, _| MockResult::Return(Ok(())));
 
         assert_ok!(Relay::report_vault_double_payment(
@@ -688,8 +688,8 @@ fn should_not_report_double_payment_with_vault_no_input() {
 
         ext::vault_registry::get_active_vault_from_id::<Test>
             .mock_safe(move |_| MockResult::Return(Ok(init_zero_vault(CAROL.clone(), vec![input_address]))));
-        ext::stellar_relay::parse_merkle_proof::<Test>.mock_safe(|_| MockResult::Return(Ok(dummy_merkle_proof())));
-        ext::stellar_relay::verify_transaction_inclusion::<Test>.mock_safe(move |_, _| MockResult::Return(Ok(())));
+        ext::btc_relay::parse_merkle_proof::<Test>.mock_safe(|_| MockResult::Return(Ok(dummy_merkle_proof())));
+        ext::btc_relay::verify_transaction_inclusion::<Test>.mock_safe(move |_, _| MockResult::Return(Ok(())));
         ext::vault_registry::liquidate_theft_vault::<Test>.mock_safe(|_, _| MockResult::Return(Ok(())));
 
         assert_err!(

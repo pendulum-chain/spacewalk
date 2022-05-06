@@ -1,8 +1,8 @@
 use crate::{ext, mock::*};
 
 use crate::types::{RedeemRequest, RedeemRequestStatus};
-use stellar::types::{MerkleProof, Transaction};
-use stellar_relay::BtcAddress;
+use bitcoin::types::{MerkleProof, Transaction};
+use btc_relay::BtcAddress;
 use currency::Amount;
 use frame_support::{assert_err, assert_noop, assert_ok, dispatch::DispatchError};
 use mocktopus::mocking::*;
@@ -383,9 +383,9 @@ fn test_execute_redeem_succeeds_with_another_account() {
                 liquidated_collateral: 0,
             },
         );
-        ext::stellar_relay::parse_merkle_proof::<Test>.mock_safe(|_| MockResult::Return(Ok(dummy_merkle_proof())));
-        ext::stellar_relay::parse_transaction::<Test>.mock_safe(|_| MockResult::Return(Ok(Transaction::default())));
-        ext::stellar_relay::verify_and_validate_op_return_transaction::<Test, Balance>
+        ext::btc_relay::parse_merkle_proof::<Test>.mock_safe(|_| MockResult::Return(Ok(dummy_merkle_proof())));
+        ext::btc_relay::parse_transaction::<Test>.mock_safe(|_| MockResult::Return(Ok(Transaction::default())));
+        ext::btc_relay::verify_and_validate_op_return_transaction::<Test, Balance>
             .mock_safe(|_, _, _, _, _| MockResult::Return(Ok(())));
 
         let btc_fee = Redeem::get_current_inclusion_fee(DEFAULT_WRAPPED_CURRENCY).unwrap();
@@ -464,9 +464,9 @@ fn test_execute_redeem_succeeds() {
                 liquidated_collateral: 0,
             },
         );
-        ext::stellar_relay::parse_merkle_proof::<Test>.mock_safe(|_| MockResult::Return(Ok(dummy_merkle_proof())));
-        ext::stellar_relay::parse_transaction::<Test>.mock_safe(|_| MockResult::Return(Ok(Transaction::default())));
-        ext::stellar_relay::verify_and_validate_op_return_transaction::<Test, Balance>
+        ext::btc_relay::parse_merkle_proof::<Test>.mock_safe(|_| MockResult::Return(Ok(dummy_merkle_proof())));
+        ext::btc_relay::parse_transaction::<Test>.mock_safe(|_| MockResult::Return(Ok(Transaction::default())));
+        ext::btc_relay::verify_and_validate_op_return_transaction::<Test, Balance>
             .mock_safe(|_, _, _, _, _| MockResult::Return(Ok(())));
 
         let btc_fee = Redeem::get_current_inclusion_fee(DEFAULT_WRAPPED_CURRENCY).unwrap();
@@ -616,7 +616,7 @@ fn test_cancel_redeem_succeeds() {
             },
         );
 
-        ext::stellar_relay::has_request_expired::<Test>.mock_safe(|_, _, _| MockResult::Return(Ok(true)));
+        ext::btc_relay::has_request_expired::<Test>.mock_safe(|_, _, _| MockResult::Return(Ok(true)));
 
         ext::vault_registry::ban_vault::<Test>.mock_safe(move |vault| {
             assert_eq!(vault, &VAULT);
@@ -822,9 +822,9 @@ mod spec_based_tests {
                     ..default_vault()
                 },
             );
-            ext::stellar_relay::parse_merkle_proof::<Test>.mock_safe(|_| MockResult::Return(Ok(dummy_merkle_proof())));
-            ext::stellar_relay::parse_transaction::<Test>.mock_safe(|_| MockResult::Return(Ok(Transaction::default())));
-            ext::stellar_relay::verify_and_validate_op_return_transaction::<Test, Balance>
+            ext::btc_relay::parse_merkle_proof::<Test>.mock_safe(|_| MockResult::Return(Ok(dummy_merkle_proof())));
+            ext::btc_relay::parse_transaction::<Test>.mock_safe(|_| MockResult::Return(Ok(Transaction::default())));
+            ext::btc_relay::verify_and_validate_op_return_transaction::<Test, Balance>
                 .mock_safe(|_, _, _, _, _| MockResult::Return(Ok(())));
 
             let btc_fee = Redeem::get_current_inclusion_fee(DEFAULT_WRAPPED_CURRENCY).unwrap();
@@ -903,7 +903,7 @@ mod spec_based_tests {
             };
             inject_redeem_request(H256([0u8; 32]), redeem_request.clone());
 
-            ext::stellar_relay::has_request_expired::<Test>.mock_safe(|_, _, _| MockResult::Return(Ok(true)));
+            ext::btc_relay::has_request_expired::<Test>.mock_safe(|_, _, _| MockResult::Return(Ok(true)));
             ext::vault_registry::is_vault_below_secure_threshold::<Test>.mock_safe(|_| MockResult::Return(Ok(false)));
             ext::vault_registry::ban_vault::<Test>.mock_safe(move |vault| {
                 assert_eq!(vault, &VAULT);
@@ -967,7 +967,7 @@ mod spec_based_tests {
             };
             inject_redeem_request(H256([0u8; 32]), redeem_request.clone());
 
-            ext::stellar_relay::has_request_expired::<Test>.mock_safe(|_, _, _| MockResult::Return(Ok(true)));
+            ext::btc_relay::has_request_expired::<Test>.mock_safe(|_, _, _| MockResult::Return(Ok(true)));
             ext::vault_registry::is_vault_below_secure_threshold::<Test>.mock_safe(|_| MockResult::Return(Ok(true)));
             ext::vault_registry::ban_vault::<Test>.mock_safe(move |vault| {
                 assert_eq!(vault, &VAULT);

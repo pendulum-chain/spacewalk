@@ -2,9 +2,9 @@
 use mocktopus::macros::mockable;
 
 #[cfg_attr(test, mockable)]
-pub(crate) mod stellar_relay {
-    use stellar::types::{MerkleProof, Transaction, Value};
-    use stellar_relay::BtcAddress;
+pub(crate) mod btc_relay {
+    use bitcoin::types::{MerkleProof, Transaction, Value};
+    use btc_relay::BtcAddress;
     use frame_support::dispatch::DispatchError;
     use sp_std::convert::TryFrom;
 
@@ -13,23 +13,23 @@ pub(crate) mod stellar_relay {
         transaction: Transaction,
         recipient_btc_address: BtcAddress,
     ) -> Result<(BtcAddress, V), DispatchError> {
-        <stellar_relay::Pallet<T>>::get_and_verify_issue_payment(merkle_proof, transaction, recipient_btc_address)
+        <btc_relay::Pallet<T>>::get_and_verify_issue_payment(merkle_proof, transaction, recipient_btc_address)
     }
 
     pub fn get_best_block_height<T: crate::Config>() -> u32 {
-        <stellar_relay::Pallet<T>>::get_best_block_height()
+        <btc_relay::Pallet<T>>::get_best_block_height()
     }
 
     pub fn is_fully_initialized<T: crate::Config>() -> Result<bool, DispatchError> {
-        <stellar_relay::Pallet<T>>::is_fully_initialized()
+        <btc_relay::Pallet<T>>::is_fully_initialized()
     }
 
-    pub fn parse_transaction<T: stellar_relay::Config>(raw_tx: &[u8]) -> Result<Transaction, DispatchError> {
-        <stellar_relay::Pallet<T>>::parse_transaction(raw_tx)
+    pub fn parse_transaction<T: btc_relay::Config>(raw_tx: &[u8]) -> Result<Transaction, DispatchError> {
+        <btc_relay::Pallet<T>>::parse_transaction(raw_tx)
     }
 
-    pub fn parse_merkle_proof<T: stellar_relay::Config>(raw_merkle_proof: &[u8]) -> Result<MerkleProof, DispatchError> {
-        <stellar_relay::Pallet<T>>::parse_merkle_proof(raw_merkle_proof)
+    pub fn parse_merkle_proof<T: btc_relay::Config>(raw_merkle_proof: &[u8]) -> Result<MerkleProof, DispatchError> {
+        <btc_relay::Pallet<T>>::parse_merkle_proof(raw_merkle_proof)
     }
 
     pub fn has_request_expired<T: crate::Config>(
@@ -37,14 +37,14 @@ pub(crate) mod stellar_relay {
         btc_open_height: u32,
         period: T::BlockNumber,
     ) -> Result<bool, DispatchError> {
-        <stellar_relay::Pallet<T>>::has_request_expired(opentime, btc_open_height, period)
+        <btc_relay::Pallet<T>>::has_request_expired(opentime, btc_open_height, period)
     }
 }
 
 #[cfg_attr(test, mockable)]
 pub(crate) mod vault_registry {
     use crate::DefaultVaultId;
-    use stellar_relay::BtcAddress;
+    use btc_relay::BtcAddress;
     use frame_support::dispatch::{DispatchError, DispatchResult};
     use sp_core::H256;
     use vault_registry::{
@@ -150,7 +150,7 @@ pub(crate) mod fee {
 #[cfg_attr(test, mockable)]
 pub(crate) mod refund {
     use crate::DefaultVaultId;
-    use stellar_relay::BtcAddress;
+    use btc_relay::BtcAddress;
     use currency::Amount;
     use frame_support::dispatch::DispatchError;
     use sp_core::H256;

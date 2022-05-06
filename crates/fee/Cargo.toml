@@ -26,7 +26,7 @@ currency = { path = "../currency", default-features = false }
 security = { path = "../security", default-features = false }
 reward = { path = "../reward", default-features = false }
 staking = { path = "../staking", default-features = false }
-primitives = { package = "spacewalk-primitives", path = "../../primitives", default-features = false }
+primitives = { package = "interbtc-primitives", path = "../../primitives", default-features = false }
 
 [dev-dependencies]
 mocktopus = "0.7.0"
@@ -39,7 +39,7 @@ orml-tokens = { git = "https://github.com/open-web3-stack/open-runtime-module-li
 orml-traits = { git = "https://github.com/open-web3-stack/open-runtime-module-library", rev = "2b5d4ce1d08fb54c0007c2055653892d2c93a92e", default-features = false }
 
 # Parachain dependencies
-primitives = { package = "spacewalk-primitives", path = "../../primitives"}
+primitives = { package = "interbtc-primitives", path = "../../primitives"}
 
 [features]
 default = ["std"]

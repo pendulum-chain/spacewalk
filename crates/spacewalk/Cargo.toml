@@ -39,7 +39,7 @@ pallet-transaction-payment = {git = "https://github.com/paritytech/substrate", d
 substrate-stellar-sdk = {git = "https://github.com/pendulum-chain/substrate-stellar-sdk", branch = "polkadot-v0.9.18", default-features = false, features = ['offchain']}
 
 [dev-dependencies]
-spacewalk-runtime-standalone = {path = "../../testchain/runtime", default-features = false}
+spacewalk-runtime-standalone = {package = "interbtc-runtime-standalone", path = "../../standalone/runtime", default-features = false}
 
 [features]
 default = ["std"]

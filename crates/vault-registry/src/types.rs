@@ -16,7 +16,7 @@ use sp_std::collections::btree_set::BTreeSet;
 #[cfg(test)]
 use mocktopus::macros::mockable;
 
-pub use stellar::{Address as BtcAddress, PublicKey as BtcPublicKey};
+pub use bitcoin::{Address as BtcAddress, PublicKey as BtcPublicKey};
 
 /// Storage version.
 #[derive(Encode, Decode, Eq, PartialEq, TypeInfo, MaxEncodedLen)]
@@ -199,7 +199,7 @@ pub mod v2 {
     #[test]
     fn test_migration() {
         use crate::mock::Test;
-        use stellar::types::H160;
+        use bitcoin::types::H160;
         use frame_support::{storage::migration, Blake2_128Concat, StorageHasher};
         use primitives::{CurrencyId::Token, KBTC, KSM};
         use sp_runtime::traits::TrailingZeroInput;

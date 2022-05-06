@@ -1,13 +1,13 @@
 use super::*;
 use crate::types::BalanceOf;
-use stellar::{
+use bitcoin::{
     formatter::{Formattable, TryFormattable},
     types::{
         BlockBuilder, H256Le, RawBlockHeader, TransactionBuilder, TransactionInputBuilder, TransactionInputSource,
         TransactionOutput,
     },
 };
-use stellar_relay::{BtcAddress, BtcPublicKey, Pallet as BtcRelay};
+use btc_relay::{BtcAddress, BtcPublicKey, Pallet as BtcRelay};
 use currency::{
     getters::{get_relay_chain_currency_id as get_collateral_currency_id, *},
     Amount,

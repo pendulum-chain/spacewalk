@@ -23,14 +23,14 @@ frame-benchmarking = { git = "https://github.com/paritytech/substrate", branch =
 pallet-timestamp = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.18", default-features = false }
 
 # Parachain dependencies
-stellar = { path = "../stellar", default-features = false }
-stellar-relay = { path = "../stellar-relay", default-features = false }
+bitcoin = { path = "../bitcoin", default-features = false }
+btc-relay = { path = "../btc-relay", default-features = false }
 currency = { path = "../currency", default-features = false }
 oracle = { path = "../oracle", default-features = false }
 fee = { path = "../fee", default-features = false }
 security = { path = "../security", default-features = false }
 vault-registry = { path = "../vault-registry", default-features = false }
-primitives = { package = "spacewalk-primitives", path = "../../primitives", default-features = false }
+primitives = { package = "interbtc-primitives", path = "../../primitives", default-features = false }
 
 # Orml dependencies
 orml-tokens = { git = "https://github.com/open-web3-stack/open-runtime-module-library", rev = "2b5d4ce1d08fb54c0007c2055653892d2c93a92e", default-features = false, optional = true }
@@ -66,8 +66,8 @@ std = [
 	"frame-benchmarking/std",
 	"pallet-timestamp/std",
 
-	"stellar/std",
-	"stellar-relay/std",
+	"bitcoin/std",
+	"btc-relay/std",
 	"currency/std",
 	"oracle/std",
 	"fee/std",
