@@ -8,7 +8,7 @@ version = "1.2.0"
 jsonrpc-core = "18.0.0"
 
 # Parachain dependencies
-module-btc-relay-rpc = { path = "../crates/stellar-relay/rpc" }
+module-stellar-relay-rpc = { path = "../crates/stellar-relay/rpc" }
 module-oracle-rpc = { path = "../crates/oracle/rpc" }
 module-relay-rpc = { path = "../crates/relay/rpc" }
 module-vault-registry-rpc = { path = "../crates/vault-registry/rpc" }

@@ -38,7 +38,7 @@ use crate::types::DefaultVaultCurrencyPair;
 pub use crate::types::{
     BtcPublicKey, CurrencySource, DefaultVault, DefaultVaultId, SystemVault, Vault, VaultId, VaultStatus, Wallet,
 };
-use bitcoin::types::Value;
+use stellar::types::Value;
 use codec::FullCodec;
 pub use currency::Amount;
 use frame_support::{

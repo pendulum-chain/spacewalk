@@ -1,4 +1,4 @@
-/// Tests for BTC-Relay
+/// Tests for Stellar-Relay
 use sp_core::U256;
 
 use crate::{ext, mock::*, types::*, BtcAddress, Error, DIFFICULTY_ADJUSTMENT_INTERVAL};
@@ -6,7 +6,7 @@ use crate::{ext, mock::*, types::*, BtcAddress, Error, DIFFICULTY_ADJUSTMENT_INT
 type Event = crate::Event<Test>;
 
 use crate::{Chains, ChainsIndex};
-use bitcoin::{formatter::TryFormattable, merkle::*, parser::*, types::*};
+use stellar::{formatter::TryFormattable, merkle::*, parser::*, types::*};
 use frame_support::{assert_err, assert_ok};
 use mocktopus::mocking::*;
 use sp_std::{
@@ -1933,7 +1933,7 @@ mod op_return_payment_data_tests {
 #[test]
 fn test_check_and_do_reorg() {
     use crate::{Chains, ChainsIndex};
-    use bitcoin::types::BlockChain;
+    use stellar::types::BlockChain;
 
     // data taken from testnet fork
     run_test(|| {

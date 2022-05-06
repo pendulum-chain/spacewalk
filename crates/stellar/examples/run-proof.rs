@@ -1,6 +1,6 @@
 extern crate bitcoin;
 
-use bitcoin::merkle::MerkleProof;
+use stellar::merkle::MerkleProof;
 
 // Proving that the transaction
 // 8d30eb0f3e65b8d8a9f26f6f73fc5aafa5c0372f9bb38aa38dd4c9dd1933e090

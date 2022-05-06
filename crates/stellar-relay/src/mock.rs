@@ -1,4 +1,4 @@
-use crate as btc_relay;
+use crate as stellar_relay;
 use crate::{Config, Error};
 use frame_support::{
     parameter_types,
@@ -28,7 +28,7 @@ frame_support::construct_runtime!(
         Timestamp: pallet_timestamp::{Pallet, Call, Storage, Inherent},
 
         // Operational
-        BTCRelay: btc_relay::{Pallet, Call, Config<T>, Storage, Event<T>},
+        BTCRelay: stellar_relay::{Pallet, Call, Config<T>, Storage, Event<T>},
         Security: security::{Pallet, Call, Storage, Event<T>},
     }
 );
@@ -104,7 +104,7 @@ impl ExtBuilder {
     pub fn build() -> sp_io::TestExternalities {
         let mut storage = frame_system::GenesisConfig::default().build_storage::<Test>().unwrap();
 
-        btc_relay::GenesisConfig::<Test> {
+        stellar_relay::GenesisConfig::<Test> {
             bitcoin_confirmations: BITCOIN_CONFIRMATIONS,
             parachain_confirmations: PARACHAIN_CONFIRMATIONS,
             disable_difficulty_check: false,

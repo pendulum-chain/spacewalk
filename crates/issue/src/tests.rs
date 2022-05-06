@@ -1,7 +1,7 @@
 use crate::{ext, mock::*, Event};
 
-use bitcoin::types::{MerkleProof, Transaction};
-use btc_relay::{BtcAddress, BtcPublicKey};
+use stellar::types::{MerkleProof, Transaction};
+use stellar_relay::{BtcAddress, BtcPublicKey};
 use currency::Amount;
 use frame_support::{assert_noop, assert_ok, dispatch::DispatchError};
 use mocktopus::mocking::*;
@@ -149,9 +149,9 @@ fn test_execute_issue_succeeds() {
         let issue_id = request_issue_ok(USER, 3, VAULT);
         <security::Pallet<Test>>::set_active_block_number(5);
 
-        ext::btc_relay::parse_merkle_proof::<Test>.mock_safe(|_| MockResult::Return(Ok(dummy_merkle_proof())));
-        ext::btc_relay::parse_transaction::<Test>.mock_safe(|_| MockResult::Return(Ok(Transaction::default())));
-        ext::btc_relay::get_and_verify_issue_payment::<Test, Balance>
+        ext::stellar_relay::parse_merkle_proof::<Test>.mock_safe(|_| MockResult::Return(Ok(dummy_merkle_proof())));
+        ext::stellar_relay::parse_transaction::<Test>.mock_safe(|_| MockResult::Return(Ok(Transaction::default())));
+        ext::stellar_relay::get_and_verify_issue_payment::<Test, Balance>
             .mock_safe(|_, _, _| MockResult::Return(Ok((BtcAddress::P2SH(H160::zero()), 3))));
 
         assert_ok!(execute_issue(USER, &issue_id));
@@ -179,9 +179,9 @@ fn test_execute_issue_overpayment_succeeds() {
         let issue_id = request_issue_ok(USER, 3, VAULT);
         <security::Pallet<Test>>::set_active_block_number(5);
 
-        ext::btc_relay::parse_merkle_proof::<Test>.mock_safe(|_| MockResult::Return(Ok(dummy_merkle_proof())));
-        ext::btc_relay::parse_transaction::<Test>.mock_safe(|_| MockResult::Return(Ok(Transaction::default())));
-        ext::btc_relay::get_and_verify_issue_payment::<Test, Balance>
+        ext::stellar_relay::parse_merkle_proof::<Test>.mock_safe(|_| MockResult::Return(Ok(dummy_merkle_proof())));
+        ext::stellar_relay::parse_transaction::<Test>.mock_safe(|_| MockResult::Return(Ok(Transaction::default())));
+        ext::stellar_relay::get_and_verify_issue_payment::<Test, Balance>
             .mock_safe(|_, _, _| MockResult::Return(Ok((BtcAddress::P2SH(H160::zero()), 5))));
 
         ext::vault_registry::is_vault_liquidated::<Test>.mock_safe(|_| MockResult::Return(Ok(false)));
@@ -220,9 +220,9 @@ fn test_execute_issue_refund_succeeds() {
         <security::Pallet<Test>>::set_active_block_number(5);
 
         // pay 103 instead of the expected 3
-        ext::btc_relay::parse_merkle_proof::<Test>.mock_safe(|_| MockResult::Return(Ok(dummy_merkle_proof())));
-        ext::btc_relay::parse_transaction::<Test>.mock_safe(|_| MockResult::Return(Ok(Transaction::default())));
-        ext::btc_relay::get_and_verify_issue_payment::<Test, Balance>
+        ext::stellar_relay::parse_merkle_proof::<Test>.mock_safe(|_| MockResult::Return(Ok(dummy_merkle_proof())));
+        ext::stellar_relay::parse_transaction::<Test>.mock_safe(|_| MockResult::Return(Ok(Transaction::default())));
+        ext::stellar_relay::get_and_verify_issue_payment::<Test, Balance>
             .mock_safe(|_, _, _| MockResult::Return(Ok((BtcAddress::P2SH(H160::zero()), 103))));
 
         // return some arbitrary error

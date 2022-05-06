@@ -1,6 +1,6 @@
 use super::*;
 use crate::Pallet as BtcRelay;
-use bitcoin::{
+use stellar::{
     formatter::{Formattable, TryFormattable},
     types::{
         Block, BlockBuilder, RawBlockHeader, Transaction, TransactionBuilder, TransactionInputBuilder,

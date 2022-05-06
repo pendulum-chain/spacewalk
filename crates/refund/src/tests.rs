@@ -1,6 +1,6 @@
 use crate::{ext, mock::*, DefaultRefundRequest, Event};
-use bitcoin::types::{MerkleProof, Transaction};
-use btc_relay::BtcAddress;
+use stellar::types::{MerkleProof, Transaction};
+use stellar_relay::BtcAddress;
 use currency::Amount;
 use frame_support::{assert_err, assert_ok};
 use mocktopus::mocking::*;
@@ -26,9 +26,9 @@ fn test_refund_succeeds() {
         ext::fee::get_refund_fee_from_total::<Test>.mock_safe(|_| MockResult::Return(Ok(wrapped(5))));
         ext::vault_registry::try_increase_to_be_issued_tokens::<Test>.mock_safe(|_, _| MockResult::Return(Ok(())));
         ext::vault_registry::issue_tokens::<Test>.mock_safe(|_, _| MockResult::Return(Ok(())));
-        ext::btc_relay::parse_merkle_proof::<Test>.mock_safe(|_| MockResult::Return(Ok(dummy_merkle_proof())));
-        ext::btc_relay::parse_transaction::<Test>.mock_safe(|_| MockResult::Return(Ok(Transaction::default())));
-        ext::btc_relay::verify_and_validate_op_return_transaction::<Test, Balance>
+        ext::stellar_relay::parse_merkle_proof::<Test>.mock_safe(|_| MockResult::Return(Ok(dummy_merkle_proof())));
+        ext::stellar_relay::parse_transaction::<Test>.mock_safe(|_| MockResult::Return(Ok(Transaction::default())));
+        ext::stellar_relay::verify_and_validate_op_return_transaction::<Test, Balance>
             .mock_safe(|_, _, _, _, _| MockResult::Return(Ok(())));
         Refund::get_current_inclusion_fee.mock_safe(|_| MockResult::Return(Ok(wrapped(1))));
         let issue_id = H256::zero();
@@ -115,9 +115,9 @@ mod spec_based_tests {
     #[test]
     fn postcondition_refund_must_be_completed() {
         run_test(|| {
-            ext::btc_relay::parse_merkle_proof::<Test>.mock_safe(|_| MockResult::Return(Ok(dummy_merkle_proof())));
-            ext::btc_relay::parse_transaction::<Test>.mock_safe(|_| MockResult::Return(Ok(Transaction::default())));
-            ext::btc_relay::verify_and_validate_op_return_transaction::<Test, Balance>
+            ext::stellar_relay::parse_merkle_proof::<Test>.mock_safe(|_| MockResult::Return(Ok(dummy_merkle_proof())));
+            ext::stellar_relay::parse_transaction::<Test>.mock_safe(|_| MockResult::Return(Ok(Transaction::default())));
+            ext::stellar_relay::verify_and_validate_op_return_transaction::<Test, Balance>
                 .mock_safe(|_, _, _, _, _| MockResult::Return(Ok(())));
             ext::vault_registry::try_increase_to_be_issued_tokens::<Test>.mock_safe(|_, _| MockResult::Return(Ok(())));
             ext::vault_registry::issue_tokens::<Test>.mock_safe(|_, _| MockResult::Return(Ok(())));

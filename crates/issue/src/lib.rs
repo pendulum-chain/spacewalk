@@ -30,7 +30,7 @@ pub mod types;
 pub use crate::types::{DefaultIssueRequest, IssueRequest, IssueRequestStatus};
 
 use crate::types::{BalanceOf, DefaultVaultId, Version};
-use btc_relay::{BtcAddress, BtcPublicKey};
+use stellar_relay::{BtcAddress, BtcPublicKey};
 use currency::Amount;
 use frame_support::{dispatch::DispatchError, ensure, traits::Get, transactional};
 use frame_system::{ensure_root, ensure_signed};
@@ -52,7 +52,7 @@ pub mod pallet {
     pub trait Config:
         frame_system::Config
         + vault_registry::Config
-        + btc_relay::Config
+        + stellar_relay::Config
         + oracle::Config
         + fee::Config<UnsignedInner = BalanceOf<Self>>
         + refund::Config
@@ -268,7 +268,7 @@ impl<T: Config> Pallet<T> {
         let amount_requested = Amount::new(amount_requested, vault_id.wrapped_currency());
 
         ensure!(
-            ext::btc_relay::is_fully_initialized::<T>()?,
+            ext::stellar_relay::is_fully_initialized::<T>()?,
             Error::<T>::WaitingForRelayerInitialization
         );
 
@@ -317,7 +317,7 @@ impl<T: Config> Pallet<T> {
             fee: fee.amount(),
             griefing_collateral: griefing_collateral.amount(),
             period: Self::issue_period(),
-            btc_height: ext::btc_relay::get_best_block_height::<T>(),
+            btc_height: ext::stellar_relay::get_best_block_height::<T>(),
             status: IssueRequestStatus::Pending,
         };
         Self::insert_issue_request(&issue_id, &request);
@@ -349,7 +349,7 @@ impl<T: Config> Pallet<T> {
 
         // only executable before the request has expired
         ensure!(
-            !ext::btc_relay::has_request_expired::<T>(
+            !ext::stellar_relay::has_request_expired::<T>(
                 issue.opentime,
                 issue.btc_height,
                 Self::issue_period().max(issue.period)
@@ -357,9 +357,9 @@ impl<T: Config> Pallet<T> {
             Error::<T>::CommitPeriodExpired
         );
 
-        let transaction = ext::btc_relay::parse_transaction::<T>(&raw_tx)?;
-        let merkle_proof = ext::btc_relay::parse_merkle_proof::<T>(&raw_merkle_proof)?;
-        let (refund_address, amount_transferred) = ext::btc_relay::get_and_verify_issue_payment::<T, BalanceOf<T>>(
+        let transaction = ext::stellar_relay::parse_transaction::<T>(&raw_tx)?;
+        let merkle_proof = ext::stellar_relay::parse_merkle_proof::<T>(&raw_merkle_proof)?;
+        let (refund_address, amount_transferred) = ext::stellar_relay::get_and_verify_issue_payment::<T, BalanceOf<T>>(
             merkle_proof,
             transaction,
             issue.btc_address,
@@ -459,7 +459,7 @@ impl<T: Config> Pallet<T> {
 
         // only cancellable after the request has expired
         ensure!(
-            ext::btc_relay::has_request_expired::<T>(
+            ext::stellar_relay::has_request_expired::<T>(
                 issue.opentime,
                 issue.btc_height,
                 Self::issue_period().max(issue.period)

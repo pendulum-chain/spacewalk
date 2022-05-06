@@ -26,7 +26,7 @@ mod ext;
 pub mod types;
 
 pub use crate::types::{DefaultRefundRequest, RefundRequest};
-use btc_relay::BtcAddress;
+use stellar_relay::BtcAddress;
 use currency::Amount;
 #[doc(inline)]
 use default_weights::WeightInfo;
@@ -48,7 +48,7 @@ pub mod pallet {
     /// The pallet's configuration trait.
     #[pallet::config]
     pub trait Config:
-        frame_system::Config + btc_relay::Config + fee::Config<UnsignedInner = BalanceOf<Self>> + vault_registry::Config
+        frame_system::Config + stellar_relay::Config + fee::Config<UnsignedInner = BalanceOf<Self>> + vault_registry::Config
     {
         /// The overarching event type.
         type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
@@ -236,9 +236,9 @@ impl<T: Config> Pallet<T> {
         let request = Self::get_open_refund_request_from_id(&refund_id)?;
 
         // check the transaction inclusion and validity
-        let transaction = ext::btc_relay::parse_transaction::<T>(&raw_tx)?;
-        let merkle_proof = ext::btc_relay::parse_merkle_proof::<T>(&raw_merkle_proof)?;
-        ext::btc_relay::verify_and_validate_op_return_transaction::<T, _>(
+        let transaction = ext::stellar_relay::parse_transaction::<T>(&raw_tx)?;
+        let merkle_proof = ext::stellar_relay::parse_merkle_proof::<T>(&raw_merkle_proof)?;
+        ext::stellar_relay::verify_and_validate_op_return_transaction::<T, _>(
             merkle_proof,
             transaction,
             request.btc_address,

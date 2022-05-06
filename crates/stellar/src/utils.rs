@@ -53,7 +53,7 @@ pub fn hash256_merkle_step(a: &[u8], b: &[u8]) -> H256Le {
 
 /// Reverses endianness of the value
 /// ```
-/// let bytes = bitcoin::utils::reverse_endianness(&[1, 2, 3]);
+/// let bytes = stellar::utils::reverse_endianness(&[1, 2, 3]);
 /// assert_eq!(&bytes, &[3, 2, 1])
 /// ```
 pub fn reverse_endianness(bytes: &[u8]) -> Vec<u8> {
@@ -64,13 +64,13 @@ pub fn reverse_endianness(bytes: &[u8]) -> Vec<u8> {
 
 /// Returns the (ceiled) log base 2 of the value
 /// ```
-/// assert_eq!(bitcoin::utils::log2(4), 2);
-/// assert_eq!(bitcoin::utils::log2(5), 3);
-/// assert_eq!(bitcoin::utils::log2(8), 3);
-/// assert_eq!(bitcoin::utils::log2(256), 8);
-/// assert_eq!(bitcoin::utils::log2(257), 9);
-/// assert_eq!(bitcoin::utils::log2(65536), 16);
-/// assert_eq!(bitcoin::utils::log2(65537), 17);
+/// assert_eq!(stellar::utils::log2(4), 2);
+/// assert_eq!(stellar::utils::log2(5), 3);
+/// assert_eq!(stellar::utils::log2(8), 3);
+/// assert_eq!(stellar::utils::log2(256), 8);
+/// assert_eq!(stellar::utils::log2(257), 9);
+/// assert_eq!(stellar::utils::log2(65536), 16);
+/// assert_eq!(stellar::utils::log2(65537), 17);
 /// ```
 pub fn log2(value: u64) -> u32 {
     let mut current = value - 1;
@@ -84,10 +84,10 @@ pub fn log2(value: u64) -> u32 {
 
 /// Returns the (ceiled) log base 256 of the value
 /// ```
-/// assert_eq!(bitcoin::utils::log256(&256u32.into()), 1);
-/// assert_eq!(bitcoin::utils::log256(&257u32.into()), 2);
-/// assert_eq!(bitcoin::utils::log256(&65536u32.into()), 2);
-/// assert_eq!(bitcoin::utils::log256(&65537u32.into()), 3);
+/// assert_eq!(stellar::utils::log256(&256u32.into()), 1);
+/// assert_eq!(stellar::utils::log256(&257u32.into()), 2);
+/// assert_eq!(stellar::utils::log256(&65536u32.into()), 2);
+/// assert_eq!(stellar::utils::log256(&65537u32.into()), 3);
 /// ```
 pub fn log256(value: &U256) -> u8 {
     let mut current = value - 1;

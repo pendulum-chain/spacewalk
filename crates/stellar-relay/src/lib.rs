@@ -1,6 +1,6 @@
-//! # BTC-Relay Pallet
+//! # Stellar-Relay Pallet
 //!
-//! Based on the [specification](https://spec.interlay.io/spec/btc-relay/index.html).
+//! Based on the [specification](https://spec.interlay.io/spec/stellar-relay/index.html).
 //!
 //! This pallet implements a Bitcoin light client to store and verify block headers in accordance
 //! with SPV assumptions - i.e. longest chain.
@@ -11,7 +11,7 @@
 //!
 //! ## Overview
 //!
-//! The BTC-Relay pallet provides functions for:
+//! The Stellar-Relay pallet provides functions for:
 //!
 //! - Initializing and updating the relay.
 //! - Transaction inclusion verification.
@@ -66,8 +66,8 @@ use sp_std::{
 };
 
 // Crates
-pub use bitcoin::{self, Address as BtcAddress, PublicKey as BtcPublicKey};
-use bitcoin::{
+pub use stellar::{self, Address as BtcAddress, PublicKey as BtcPublicKey};
+use stellar::{
     merkle::{MerkleProof, ProofResult},
     parser::{parse_block_header, parse_transaction},
     types::{BlockChain, BlockHeader, H256Le, RawBlockHeader, Transaction, Value},
@@ -454,7 +454,7 @@ pub const MAIN_CHAIN_ID: u32 = 0;
 #[cfg_attr(test, mockable)]
 impl<T: Config> Pallet<T> {
     pub fn initialize(relayer: T::AccountId, basic_block_header: BlockHeader, block_height: u32) -> DispatchResult {
-        // Check if BTC-Relay was already initialized
+        // Check if Stellar-Relay was already initialized
         ensure!(!Self::best_block_exists(), Error::<T>::AlreadyInitialized);
 
         // header must be the start of a difficulty period
@@ -971,7 +971,7 @@ impl<T: Config> Pallet<T> {
         block_height: u32,
         prev_block_header: RichBlockHeader<T::BlockNumber>,
     ) -> Result<(), DispatchError> {
-        // Check that the block header is not yet stored in BTC-Relay
+        // Check that the block header is not yet stored in Stellar-Relay
         ensure!(
             !Self::block_header_exists(block_header.hash),
             Error::<T>::DuplicateBlock
@@ -1013,7 +1013,7 @@ impl<T: Config> Pallet<T> {
 
         // compute new target
         Ok(U256::set_compact(
-            bitcoin::pow::calculate_next_work_required(previous_target, first_block_time, last_block_time)
+            stellar::pow::calculate_next_work_required(previous_target, first_block_time, last_block_time)
                 .map_err(Error::<T>::from)?,
         )
         .ok_or(Error::<T>::InvalidCompact)?)

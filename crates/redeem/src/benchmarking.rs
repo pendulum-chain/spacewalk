@@ -1,12 +1,12 @@
 use super::*;
-use bitcoin::{
+use stellar::{
     formatter::{Formattable, TryFormattable},
     types::{
         BlockBuilder, RawBlockHeader, TransactionBuilder, TransactionInputBuilder, TransactionInputSource,
         TransactionOutput,
     },
 };
-use btc_relay::{BtcAddress, BtcPublicKey};
+use stellar_relay::{BtcAddress, BtcPublicKey};
 use currency::getters::{get_relay_chain_currency_id as get_collateral_currency_id, *};
 use frame_benchmarking::{account, benchmarks, impl_benchmark_test_suite};
 use frame_support::assert_ok;
@@ -20,7 +20,7 @@ use vault_registry::types::{Vault, Wallet};
 
 // Pallets
 use crate::Pallet as Redeem;
-use btc_relay::Pallet as BtcRelay;
+use stellar_relay::Pallet as BtcRelay;
 use oracle::Pallet as Oracle;
 use security::Pallet as Security;
 use vault_registry::Pallet as VaultRegistry;

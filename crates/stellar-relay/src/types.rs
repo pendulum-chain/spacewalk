@@ -1,6 +1,6 @@
 use crate::{Error, ACCEPTED_MAX_TRANSACTION_OUTPUTS};
-use bitcoin::types::{BlockHeader, H256Le, Transaction, Value};
-pub use bitcoin::Address as BtcAddress;
+use stellar::types::{BlockHeader, H256Le, Transaction, Value};
+pub use stellar::Address as BtcAddress;
 use codec::{Decode, Encode, MaxEncodedLen};
 use frame_support::{dispatch::DispatchError, ensure};
 use scale_info::TypeInfo;

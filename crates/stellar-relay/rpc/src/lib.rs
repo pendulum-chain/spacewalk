@@ -9,7 +9,7 @@ use sp_runtime::{generic::BlockId, traits::Block as BlockT, DispatchError};
 use std::sync::Arc;
 
 pub use self::gen_client::Client as RefundClient;
-pub use module_btc_relay_rpc_runtime_api::BtcRelayApi as BtcRelayRuntimeApi;
+pub use module_stellar_relay_rpc_runtime_api::BtcRelayApi as BtcRelayRuntimeApi;
 
 #[rpc]
 pub trait BtcRelayApi<BlockHash, H256Le> {

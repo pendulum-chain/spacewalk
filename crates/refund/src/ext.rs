@@ -12,9 +12,9 @@ pub(crate) mod fee {
 }
 
 #[cfg_attr(test, mockable)]
-pub(crate) mod btc_relay {
-    use bitcoin::types::{MerkleProof, Transaction, Value};
-    use btc_relay::BtcAddress;
+pub(crate) mod stellar_relay {
+    use stellar::types::{MerkleProof, Transaction, Value};
+    use stellar_relay::BtcAddress;
     use frame_support::dispatch::DispatchError;
     use sp_core::H256;
     use sp_std::convert::TryInto;
@@ -26,7 +26,7 @@ pub(crate) mod btc_relay {
         expected_btc: V,
         op_return_id: H256,
     ) -> Result<(), DispatchError> {
-        <btc_relay::Pallet<T>>::verify_and_validate_op_return_transaction(
+        <stellar_relay::Pallet<T>>::verify_and_validate_op_return_transaction(
             merkle_proof,
             transaction,
             recipient_btc_address,
@@ -35,12 +35,12 @@ pub(crate) mod btc_relay {
         )
     }
 
-    pub fn parse_transaction<T: btc_relay::Config>(raw_tx: &[u8]) -> Result<Transaction, DispatchError> {
-        <btc_relay::Pallet<T>>::parse_transaction(raw_tx)
+    pub fn parse_transaction<T: stellar_relay::Config>(raw_tx: &[u8]) -> Result<Transaction, DispatchError> {
+        <stellar_relay::Pallet<T>>::parse_transaction(raw_tx)
     }
 
-    pub fn parse_merkle_proof<T: btc_relay::Config>(raw_merkle_proof: &[u8]) -> Result<MerkleProof, DispatchError> {
-        <btc_relay::Pallet<T>>::parse_merkle_proof(raw_merkle_proof)
+    pub fn parse_merkle_proof<T: stellar_relay::Config>(raw_merkle_proof: &[u8]) -> Result<MerkleProof, DispatchError> {
+        <stellar_relay::Pallet<T>>::parse_merkle_proof(raw_merkle_proof)
     }
 }
 

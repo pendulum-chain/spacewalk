@@ -27,7 +27,7 @@ use mocktopus::macros::mockable;
 
 use crate::types::{BalanceOf, ReplaceRequestExt, Version};
 pub use crate::types::{DefaultReplaceRequest, ReplaceRequest, ReplaceRequestStatus};
-use btc_relay::BtcAddress;
+use stellar_relay::BtcAddress;
 use currency::Amount;
 pub use default_weights::WeightInfo;
 use frame_support::{
@@ -58,7 +58,7 @@ pub mod pallet {
     pub trait Config:
         frame_system::Config
         + vault_registry::Config
-        + btc_relay::Config
+        + stellar_relay::Config
         + oracle::Config
         + fee::Config
         + nomination::Config
@@ -457,7 +457,7 @@ impl<T: Config> Pallet<T> {
             griefing_collateral: griefing_collateral.amount(),
             amount: redeemable_tokens.amount(),
             period: Self::replace_period(),
-            btc_height: ext::btc_relay::get_best_block_height::<T>(),
+            btc_height: ext::stellar_relay::get_best_block_height::<T>(),
             status: ReplaceRequestStatus::Pending,
         };
 
@@ -490,9 +490,9 @@ impl<T: Config> Pallet<T> {
         let old_vault_id = replace.old_vault;
 
         // check the transaction inclusion and validity
-        let transaction = ext::btc_relay::parse_transaction::<T>(&raw_tx)?;
-        let merkle_proof = ext::btc_relay::parse_merkle_proof::<T>(&raw_merkle_proof)?;
-        ext::btc_relay::verify_and_validate_op_return_transaction::<T, _>(
+        let transaction = ext::stellar_relay::parse_transaction::<T>(&raw_tx)?;
+        let merkle_proof = ext::stellar_relay::parse_merkle_proof::<T>(&raw_merkle_proof)?;
+        ext::stellar_relay::verify_and_validate_op_return_transaction::<T, _>(
             merkle_proof,
             transaction,
             replace.btc_address,
@@ -551,7 +551,7 @@ impl<T: Config> Pallet<T> {
 
         // only cancellable after the request has expired
         ensure!(
-            ext::btc_relay::has_request_expired::<T>(
+            ext::stellar_relay::has_request_expired::<T>(
                 replace.accept_time,
                 replace.btc_height,
                 Self::replace_period().max(replace.period)
