@@ -1,8 +1,28 @@
 [workspace]
 members = [
-  "testchain/node",
-  "testchain/runtime",
-  "pallets/spacewalk"
+  "primitives",
+  "standalone",
+  "standalone/runtime",
+  "rpc",
+  
+  #"crates/spacewalk", # TODO: the stuff in this pallet will eventually be moved into the relevant pallets copied from interbtc
+
+  "crates/annuity",
+  "crates/bitcoin",
+  "crates/btc-relay",
+  "crates/currency",
+  "crates/fee",
+  "crates/issue",
+  "crates/nomination",
+  "crates/oracle",
+  "crates/redeem",
+  "crates/refund",
+  "crates/relay",
+  "crates/replace",
+  "crates/reward",
+  "crates/security",
+  "crates/staking",
+  "crates/vault-registry",
 ]
 [profile.release]
 panic = "unwind"
