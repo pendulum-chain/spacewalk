@@ -53,21 +53,6 @@ Once it detects a new redeem has taken place, the vault compares its public key 
 If it was, it creates and submits a payment transaction transferring the previously locked funds to the Stellar user specified in the redeem event.
 The handling of redeem events is implemented in `clients/vault/src/redeem.rs`.
 
-### Spacewalk Pallet
-
-The spacewalk pallet offers the `redeem(asset_code, asset_issuer, amount, stellar_vault_pubkey)` extrinsic.
-The asset code and issuer specify the asset that is to be withdrawn, and the `stellar_vault_pubkey` is an encoding of the public key of the vault/locking account that holds the users funds on Stellar, i.e. that was previously used for issuing the assets on the Substrate chain.
-After checking if the user has sufficient funds, the spacewalk pallet will burn the specified tokens and emit a `RedeemEvent`.
-The `RedeemEvent` contains details about the redeemed asset, as well as the public keys of the Stellar user account and locking account/vault responsible for releasing the funds on Stellar.
-The `redeem()` extrinsic is implemented in `pallets/spacewalk/src/lib.rs`.
-
-### Vault Client
-
-The vault client listens to the `RedeemEvents` emitted by the spacewalk pallet.
-Once it detects a new redeem has taken place, the vault compares its public key to the `stellar_vault_id` that is contained in the event to detect if is expected to act on this event.
-If it was, it creates and submits a payment transaction transferring the previously locked funds to the Stellar user specified in the redeem event.
-The handling of redeem events is implemented in `clients/vault/src/redeem.rs`.
-
 # Build and Run
 
 ## Run all tests
