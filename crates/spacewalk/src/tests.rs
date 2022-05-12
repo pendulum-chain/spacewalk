@@ -29,10 +29,8 @@ const USER: [u8; 32] = [
 	243, 99, 159, 29, 107, 105, 162, 131, 139, 88, 105, 153, 239, 200, 240, 112, 58, 12, 243, 34,
 	171, 1, 99, 201, 165, 184, 243, 64, 189, 52, 22, 211,
 ];
-const VAULT: [u8; 32] = [
-	102, 78, 11, 2, 53, 135, 217, 14, 19, 204, 166, 232, 115, 151, 132, 5, 222, 65, 16, 180, 11,
-	100, 184, 124, 145, 235, 247, 247, 92, 133, 186, 199,
-];
+const STELLAR_VAULT_ADDRESS:&str = "GBTE4CYCGWD5SDQTZSTOQ44XQQC54QIQWQFWJOD4SHV7P524QW5MPRTZ";
+
 const USDC_CODE: [u8; 4] = [b'U', b'S', b'D', b'C'];
 const EUR_CODE: [u8; 4] = [b'E', b'U', b'R', b'\0'];
 
@@ -106,7 +104,7 @@ fn redeem_burns_asset_usdc() {
 			USDC_CODE.into(),
 			ISSUER_STELLAR_ADDRESS.into(),
 			USDC_AMOUNT,
-			VAULT
+			VAULT_STELLAR_ADDRESS.into()
 		));
 		//check user balance
 		assert_eq!(
@@ -133,7 +131,7 @@ fn redeem_burns_asset_eur() {
 			EUR_CODE.into(),
 			ISSUER_STELLAR_ADDRESS.into(),
 			EUR_AMOUNT,
-			VAULT
+			VAULT_STELLAR_ADDRESS.into()
 		));
 		//check user balance
 		assert_eq!(
@@ -161,7 +159,7 @@ fn redeem_with_incorrect_caller() {
 				USDC_CODE.into(),
 				ISSUER_STELLAR_ADDRESS.into(),
 				USDC_AMOUNT,
-				VAULT
+				VAULT_STELLAR_ADDRESS.into()
 			),
 			DispatchError::Module(ModuleError {
 				index: 6,
@@ -187,7 +185,7 @@ fn redeem_with_wrong_asset() {
 				EUR_CODE.into(),
 				ISSUER_STELLAR_ADDRESS.into(),
 				USDC_AMOUNT,
-				VAULT
+				VAULT_STELLAR_ADDRESS.into()
 			),
 			DispatchError::Module(ModuleError {
 				index: 6,
@@ -214,7 +212,7 @@ fn redeem_with_wrong_issuer() {
 				EUR_CODE.into(),
 				[0; 32].into(),
 				USDC_AMOUNT,
-				VAULT
+				VAULT_STELLAR_ADDRESS.into()
 			),
 			DispatchError::Module(ModuleError {
 				index: 6,
@@ -241,7 +239,7 @@ fn redeem_with_amount_too_high() {
 				USDC_CODE.into(),
 				ISSUER_STELLAR_ADDRESS.into(),
 				USDC_AMOUNT * 2,
-				VAULT
+				VAULT_STELLAR_ADDRESS.into()
 			),
 			DispatchError::Module(ModuleError {
 				index: 6,
