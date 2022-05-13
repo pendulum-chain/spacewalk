@@ -122,6 +122,9 @@ pub mod pallet {
 
 		// Failed to change a balance
 		BalanceChangeError,
+
+		// The provided public key is not a valid for Stellar
+		InvalidStellarPublicKey,
 	}
 
 	#[pallet::call]
@@ -156,7 +159,7 @@ pub mod pallet {
 			asset_code: Vec<u8>,
 			asset_issuer: Vec<u8>,
 			amount: BalanceOf<T>,
-			stellar_vault_pubkey: [u8; 32],
+			stellar_vault_pubkey: Vec<u8>,
 		) -> DispatchResultWithPostInfo {
 			let currency_id =
 				T::StringCurrencyConversion::convert((asset_code.clone(), asset_issuer.clone()))
@@ -167,11 +170,15 @@ pub mod pallet {
 			T::Currency::withdraw(currency_id.clone(), &pendulum_account_id, amount)
 				.map_err(|_| <Error<T>>::BalanceChangeError)?;
 
+			let stellar_vault_pubkey = 
+				substrate_stellar_sdk::PublicKey::from_encoding(stellar_vault_pubkey)
+					.map_err(|_| <Error<T>>::InvalidStellarPublicKey)?;
+
 			Self::deposit_event(Event::Redeem {
 				asset_code,
 				asset_issuer,
 				stellar_user_id: stellar_user_address.into_binary(),
-				stellar_vault_id: stellar_vault_pubkey,
+				stellar_vault_id: stellar_vault_pubkey.into_binary(),
 				amount,
 			});
 			Ok(().into())
