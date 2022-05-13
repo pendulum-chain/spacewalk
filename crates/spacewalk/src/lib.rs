@@ -172,7 +172,7 @@ pub mod pallet {
 
 			let stellar_vault_pubkey = 
 				substrate_stellar_sdk::PublicKey::from_encoding(stellar_vault_pubkey)
-					.map_err(|e| <Error<T>>::InvalidStellarPublicKey)?;
+					.map_err(|_| <Error<T>>::InvalidStellarPublicKey)?;
 
 			Self::deposit_event(Event::Redeem {
 				asset_code,

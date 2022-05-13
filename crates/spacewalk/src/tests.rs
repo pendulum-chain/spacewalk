@@ -224,6 +224,32 @@ fn redeem_with_wrong_issuer() {
 }
 
 #[test]
+fn redeem_with_invalid_vault_pubkey() {
+	new_test_ext().execute_with(|| {
+		//mint tokens for User
+		assert_ok!(Spacewalk::report_stellar_transaction(
+			Origin::signed([0; 32].into()),
+			STELLAR_TRANSACTION_ENVELOPE_EUR.into()
+		));
+		//burn tokens
+		assert_err!(
+			Spacewalk::redeem(
+				Origin::signed(USER.into()),
+				EUR_CODE.into(),
+				ISSUER_STELLAR_ADDRESS.into(),
+				EUR_AMOUNT,
+				"INVALID_VAULT_STELLAR_ADDRESS".into()
+			),
+			DispatchError::Module(ModuleError {
+				index: 6,
+				error: 3,
+				message: Some(&"InvalidStellarPublicKey")
+			})
+		);
+	});
+}
+
+#[test]
 fn redeem_with_amount_too_high() {
 	new_test_ext().execute_with(|| {
 		//mint tokens for User
