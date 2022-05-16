@@ -12,12 +12,6 @@ mod tests;
 #[cfg(feature = "runtime-benchmarks")]
 mod benchmarking;
 
-pub mod address_conv;
-pub mod balance_conv;
-pub mod currency;
-pub mod currency_conv;
-mod horizon;
-
 use codec::{Decode, Encode};
 use orml_traits::MultiCurrency;
 pub use pallet::*;
@@ -29,7 +23,12 @@ use sp_runtime::{
 };
 use sp_std::{convert::From, prelude::*, str};
 
-use substrate_stellar_sdk as stellar;
+use stellar_support as stellar;
+
+use stellar::substrate_sdk::{ 
+	Asset as StellarAsset, 
+	MuxedAccount,
+	PublicKey as StellarPublicKey, XdrCodec};
 
 use frame_support::pallet_prelude::*;
 use frame_system::pallet_prelude::*;
@@ -64,10 +63,7 @@ pub struct DepositPayload<Currency, AccountId, Public, Balance> {
 #[frame_support::pallet]
 pub mod pallet {
 	use super::*;
-	use stellar::{
-		types::{OperationBody, PaymentOp},
-		XdrCodec,
-	};
+	use stellar::substrate_sdk::types::{OperationBody, PaymentOp, Transaction as StellarTransaction,TransactionEnvelope};
 
 	#[pallet::config]
 	pub trait Config: frame_system::Config + PaymentConfig {
@@ -81,7 +77,7 @@ pub mod pallet {
 
 		type AddressConversion: StaticLookup<
 			Source = <Self as frame_system::Config>::AccountId,
-			Target = substrate_stellar_sdk::PublicKey,
+			Target = StellarPublicKey,
 		>;
 		type BalanceConversion: StaticLookup<Source = BalanceOf<Self>, Target = i64>;
 		type StringCurrencyConversion: Convert<(Vec<u8>, Vec<u8>), Result<CurrencyIdOf<Self>, ()>>;
@@ -89,7 +85,7 @@ pub mod pallet {
 		/// Conversion between Stellar asset type and this pallet trait for Currency
 		type CurrencyConversion: StaticLookup<
 			Source = CurrencyIdOf<Self>,
-			Target = substrate_stellar_sdk::Asset,
+			Target = StellarAsset,
 		>;
 	}
 
@@ -143,11 +139,11 @@ pub mod pallet {
 			let tx_xdr = base64::decode(&transaction_envelope_xdr)
 				.ok()
 				.ok_or(Error::<T>::XdrDecodingError)?;
-			let tx_envelope = substrate_stellar_sdk::TransactionEnvelope::from_xdr(&tx_xdr)
+			let tx_envelope = TransactionEnvelope::from_xdr(&tx_xdr)
 				.ok()
 				.ok_or(Error::<T>::XdrDecodingError)?;
 
-			if let substrate_stellar_sdk::TransactionEnvelope::EnvelopeTypeTx(env) = tx_envelope {
+			if let TransactionEnvelope::EnvelopeTypeTx(env) = tx_envelope {
 				Self::process_new_transaction(env.tx);
 			}
 			Ok(())
@@ -167,12 +163,13 @@ pub mod pallet {
 			let pendulum_account_id = ensure_signed(origin)?;
 			let stellar_user_address = T::AddressConversion::lookup(pendulum_account_id.clone())?;
 
+			let stellar_vault_pubkey =
+				StellarPublicKey::from_encoding(stellar_vault_pubkey)
+					.map_err(|_| <Error<T>>::InvalidStellarPublicKey)?;
+
 			T::Currency::withdraw(currency_id.clone(), &pendulum_account_id, amount)
 				.map_err(|_| <Error<T>>::BalanceChangeError)?;
 
-			let stellar_vault_pubkey = 
-				substrate_stellar_sdk::PublicKey::from_encoding(stellar_vault_pubkey)
-					.map_err(|_| <Error<T>>::InvalidStellarPublicKey)?;
 
 			Self::deposit_event(Event::Redeem {
 				asset_code,
@@ -186,13 +183,13 @@ pub mod pallet {
 	}
 
 	impl<T: Config> Pallet<T> {
-		fn process_new_transaction(transaction: stellar::types::Transaction) {
+		fn process_new_transaction(transaction: StellarTransaction) {
 			// The destination of a mirrored Pendulum transaction, is always derived of the source
 			// account that initiated the Stellar transaction.
-			let destination = if let substrate_stellar_sdk::MuxedAccount::KeyTypeEd25519(key) =
+			let destination = if let MuxedAccount::KeyTypeEd25519(key) =
 				transaction.source_account
 			{
-				T::AddressConversion::unlookup(substrate_stellar_sdk::PublicKey::from_binary(key))
+				T::AddressConversion::unlookup(StellarPublicKey::from_binary(key))
 			} else {
 				log::error!("❌  Source account format not supported.");
 				return
