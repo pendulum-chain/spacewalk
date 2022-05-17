@@ -1,3 +1,5 @@
+#![cfg_attr(not(feature = "std"), no_std)]
+
 pub mod address_conv;
 pub mod balance_conv;
 pub mod currency;
