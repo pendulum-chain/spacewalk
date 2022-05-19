@@ -23,7 +23,7 @@ use sp_runtime::{
 };
 use sp_std::{convert::From, prelude::*, str};
 
-use stellar_support as stellar;
+use stellar;
 
 use substrate_stellar_sdk::{
 	Asset as StellarAsset, 

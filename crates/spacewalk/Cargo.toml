@@ -37,7 +37,7 @@ orml-traits = {git = "https://github.com/open-web3-stack/open-runtime-module-lib
 
 pallet-transaction-payment = {git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.18"}
 substrate-stellar-sdk = {git = "https://github.com/pendulum-chain/substrate-stellar-sdk", branch = "polkadot-v0.9.18", default-features = false, features = ['offchain']}
-stellar-support = { path = "../stellar", default-features = false}
+stellar = { path = "../stellar", default-features = false}
 
 [dev-dependencies]
 spacewalk-runtime-standalone = {package = "interbtc-runtime-standalone", path = "../../standalone/runtime", default-features = false}
@@ -61,7 +61,7 @@ std = [
   "sp-std/std",
   'orml-traits/std',
   'base64/std',
-  'stellar-support/std',
+  'stellar/std',
 ]
 
 runtime-benchmarks = ["frame-benchmarking/runtime-benchmarks"]
