@@ -6,4 +6,4 @@ pub mod currency;
 pub mod currency_conv;
 pub mod horizon;
 
-pub use substrate_stellar_sdk as substrate_sdk;
+use substrate_stellar_sdk as substrate_sdk;

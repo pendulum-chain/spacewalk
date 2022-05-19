@@ -36,6 +36,7 @@ sp-std = {git = "https://github.com/paritytech/substrate", default-features = fa
 orml-traits = {git = "https://github.com/open-web3-stack/open-runtime-module-library", rev = "2b5d4ce1d08fb54c0007c2055653892d2c93a92e", default-features = false}
 
 pallet-transaction-payment = {git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.18"}
+substrate-stellar-sdk = {git = "https://github.com/pendulum-chain/substrate-stellar-sdk", branch = "polkadot-v0.9.18", default-features = false, features = ['offchain']}
 stellar-support = { path = "../stellar", default-features = false}
 
 [dev-dependencies]
@@ -49,6 +50,7 @@ std = [
   "frame-system/std",
   "codec/std",
   "scale-info/std",
+  "substrate-stellar-sdk/std",
   "pallet-transaction-payment/std",
   "log/std",
   "sp-arithmetic/std",

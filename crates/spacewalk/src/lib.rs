@@ -25,10 +25,10 @@ use sp_std::{convert::From, prelude::*, str};
 
 use stellar_support as stellar;
 
-use stellar::substrate_sdk::{ 
+use substrate_stellar_sdk::{
 	Asset as StellarAsset, 
 	MuxedAccount,
-	PublicKey as StellarPublicKey, XdrCodec};
+	PublicKey as StellarPublicKey };
 
 use frame_support::pallet_prelude::*;
 use frame_system::pallet_prelude::*;
@@ -63,7 +63,10 @@ pub struct DepositPayload<Currency, AccountId, Public, Balance> {
 #[frame_support::pallet]
 pub mod pallet {
 	use super::*;
-	use stellar::substrate_sdk::types::{OperationBody, PaymentOp, Transaction as StellarTransaction,TransactionEnvelope};
+	use substrate_stellar_sdk::{
+		types::{OperationBody, PaymentOp, Transaction as StellarTransaction,TransactionEnvelope },
+		XdrCodec,
+	};
 
 	#[pallet::config]
 	pub trait Config: frame_system::Config + PaymentConfig {
