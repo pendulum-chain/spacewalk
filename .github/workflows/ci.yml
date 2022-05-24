@@ -5,7 +5,6 @@ name: continuous-integration
 jobs:
   ci:
     strategy:
-      fail-test: false
       matrix:
         platform: [ubuntu-latest, macos-latest]
         rust:
@@ -24,6 +23,16 @@ jobs:
           override: true
           components: rustfmt, clippy
 
+      - name: Build
+        uses: actions-rs/cargo@v1
+        with:
+          command: build
+
+      - name: Test
+        uses: actions-rs/cargo@v1
+        with:
+          command: test
+          args: --all
       
       - name: Rustfmt
         uses: actions-rs/cargo@v1
@@ -36,14 +45,3 @@ jobs:
         with:
           command: clippy
           args: --all -- -W warnings -W clippy::unwrap_used -W clippy::needless_collect
-
-      - name: Build
-        uses: actions-rs/cargo@v1
-        with:
-          command: build
-
-      - name: Test
-        uses: actions-rs/cargo@v1
-        with:
-          command: test
-          args: --all
