@@ -1,7 +1,7 @@
 use crate::{
     conn::{new_websocket_client, new_websocket_client_with_retry},
     metadata,
-    metadata::DispatchError,
+    metadata::{ DispatchError, Event as SpacewalkEvent },
     notify_retry,
     types::*,
     AccountId, Error, RetryPolicy, SpacewalkRuntime, SpacewalkSigner, SubxtError,
@@ -11,10 +11,13 @@ use async_trait::async_trait;
 use futures::{stream::StreamExt, FutureExt, SinkExt};
 use std::{future::Future, sync::Arc, time::Duration};
 use subxt::{
-    BasicError, Client as SubxtClient, ClientBuilder as SubxtClientBuilder, DefaultExtra, Event, EventSubscription,
-    EventsDecoder, Metadata, RpcClient, Signer, TransactionEvents, TransactionProgress,
+    BasicError, Client as SubxtClient, ClientBuilder as SubxtClientBuilder, SubstrateExtrinsicParams, Event,
+    Metadata, RpcClient, TransactionEvents, TransactionProgress,
 };
-use tokio::sync::RwLock;
+use tokio::{
+    sync::RwLock,
+    time::{timeout},
+};
 
 cfg_if::cfg_if! {
     if #[cfg(feature = "standalone-metadata")] {
@@ -26,23 +29,26 @@ cfg_if::cfg_if! {
     }
 }
 
-type RuntimeApi = metadata::RuntimeApi<SpacewalkRuntime, DefaultExtra<SpacewalkRuntime>>;
+const TRANSACTION_TIMEOUT: Duration = Duration::from_secs(300); // 5 minutes
 
-#[derive(Clone)]
+type RuntimeApi = metadata::RuntimeApi<SpacewalkRuntime, SubstrateExtrinsicParams<SpacewalkRuntime>>;
+pub(crate) type ShutdownSender = tokio::sync::broadcast::Sender<Option<()>>;
+
 pub struct SpacewalkParachain {
     rpc_client: RpcClient,
     ext_client: SubxtClient<SpacewalkRuntime>,
     signer: Arc<RwLock<SpacewalkSigner>>,
     account_id: AccountId,
     api: Arc<RuntimeApi>,
+    shutdown_tx: ShutdownSender,
     metadata: Arc<Metadata>,
 }
 
 impl SpacewalkParachain {
-    pub async fn new<P: Into<RpcClient>>(rpc_client: P, signer: SpacewalkSigner) -> Result<Self, Error> {
+    pub async fn new<P: Into<RpcClient>>(rpc_client: P, signer: SpacewalkSigner, shutdown_tx: ShutdownSender) -> Result<Self, Error> {
         let account_id = signer.account_id().clone();
         let rpc_client = rpc_client.into();
-        let ext_client = SubxtClientBuilder::new().set_client(rpc_client.clone()).build().await?;
+        let ext_client = SubxtClientBuilder::new().set_client(rpc_client).build().await?;
         let api: RuntimeApi = ext_client.clone().to_runtime_api();
         let metadata = Arc::new(ext_client.rpc().metadata().await?);
 
@@ -61,6 +67,7 @@ impl SpacewalkParachain {
             rpc_client,
             ext_client,
             api: Arc::new(api),
+            shutdown_tx,
             metadata,
             signer: Arc::new(RwLock::new(signer)),
             account_id,
@@ -69,17 +76,18 @@ impl SpacewalkParachain {
         Ok(parachain_rpc)
     }
 
-    pub async fn from_url(url: &str, signer: SpacewalkSigner) -> Result<Self, Error> {
+    pub async fn from_url(url: &str, signer: SpacewalkSigner, shutdown_tx: ShutdownSender) -> Result<Self, Error> {
         let ws_client = new_websocket_client(url, None, None).await?;
-        Self::new(ws_client, signer).await
+        Self::new(ws_client, signer, shutdown_tx).await
     }
 
     pub async fn from_url_with_retry(
         url: &str,
         signer: SpacewalkSigner,
         connection_timeout: Duration,
+        shutdown_tx: ShutdownSender
     ) -> Result<Self, Error> {
-        Self::from_url_and_config_with_retry(url, signer, None, None, connection_timeout).await
+        Self::from_url_and_config_with_retry(url, signer, None, None, connection_timeout, shutdown_tx).await
     }
 
     pub async fn from_url_and_config_with_retry(
@@ -88,6 +96,7 @@ impl SpacewalkParachain {
         max_concurrent_requests: Option<usize>,
         max_notifs_per_subscription: Option<usize>,
         connection_timeout: Duration,
+        shutdown_tx: ShutdownSender
     ) -> Result<Self, Error> {
         let ws_client = new_websocket_client_with_retry(
             url,
@@ -96,7 +105,7 @@ impl SpacewalkParachain {
             connection_timeout,
         )
         .await?;
-        Self::new(ws_client, signer).await
+        Self::new(ws_client, signer, shutdown_tx).await
     }
 
     async fn refresh_nonce(&self) {
@@ -108,7 +117,7 @@ impl SpacewalkParachain {
             .api
             .storage()
             .system()
-            .account(self.account_id.clone(), None)
+            .account(&self.account_id, None)
             .await
             .map(|x| x.nonce)
             .unwrap_or(0);
@@ -118,10 +127,15 @@ impl SpacewalkParachain {
     }
 
     /// Gets a copy of the signer with a unique nonce
-    async fn with_unique_signer<'client, F, R>(&self, call: F) -> Result<TransactionEvents<SpacewalkRuntime>, Error>
+    async fn with_unique_signer<'client, F, R>(
+        &self,
+        call: F,
+    ) -> Result<TransactionEvents<'client, SpacewalkRuntime, SpacewalkEvent>, Error>
     where
         F: Fn(SpacewalkSigner) -> R,
-        R: Future<Output = Result<TransactionProgress<'client, SpacewalkRuntime, DispatchError>, BasicError>>,
+        R: Future<
+            Output = Result<TransactionProgress<'client, SpacewalkRuntime, DispatchError, SpacewalkEvent>, BasicError>,
+        >,
     {
         notify_retry::<Error, _, _, _, _, _>(
             || async {
@@ -132,7 +146,18 @@ impl SpacewalkParachain {
                     signer.increment_nonce();
                     cloned_signer
                 };
-                Ok(call(signer).await?.wait_for_finalized_success().await?)
+                match timeout(TRANSACTION_TIMEOUT, async {
+                    call(signer).await?.wait_for_finalized_success().await
+                })
+                .await
+                {
+                    Err(_) => {
+                        log::warn!("Timeout on transaction submission - restart required");
+                        let _ = self.shutdown_tx.send(Some(()));
+                        Err(Error::Timeout)
+                    }
+                    Ok(x) => Ok(x?),
+                }
             },
             |result| async {
                 match result.map_err(Into::<Error>::into) {
@@ -181,10 +206,8 @@ impl SpacewalkParachain {
     /// # Arguments
     /// * `on_error` - callback for decoding errors, is not allowed to take too long
     pub async fn on_event_error<E: Fn(BasicError)>(&self, on_error: E) -> Result<(), Error> {
-        let sub = self.ext_client.rpc().subscribe_finalized_events().await?;
-        let decoder = EventsDecoder::<SpacewalkRuntime>::new((*self.metadata).clone());
+        let sub = self.api.events().subscribe_finalize().await?;
 
-        let mut sub = EventSubscription::<SpacewalkRuntime>::new(sub, &decoder);
         loop {
             match sub.next().await {
                 Some(Err(err)) => on_error(err), // report error
@@ -212,12 +235,7 @@ impl SpacewalkParachain {
         R: Future<Output = ()>,
         E: Fn(SubxtError),
     {
-        let sub = self.ext_client.rpc().subscribe_finalized_events().await?;
-        let decoder = EventsDecoder::<SpacewalkRuntime>::new((*self.metadata).clone());
-
-        let mut sub = EventSubscription::<SpacewalkRuntime>::new(sub, &decoder);
-        sub.filter_event::<T>();
-
+        let mut sub = self.api.events().subscribe_finalized().await?.filter_events::<(T,)>();
         let (tx, mut rx) = futures::channel::mpsc::channel::<T>(32);
 
         // two tasks: one for event listening and one for callback calling

@@ -14,7 +14,7 @@ use codec::{Decode, Encode};
 use sp_std::marker::PhantomData;
 use subxt::{
     sp_runtime::{generic::Header, traits::BlakeTwo256, MultiSignature, OpaqueExtrinsic},
-    subxt, Config,
+    Config, subxt
 };
 
 pub use error::{Error, SubxtError};
@@ -24,7 +24,6 @@ pub use sp_arithmetic::{traits as FixedPointTraits, FixedI128, FixedPointNumber,
 use spacewalk_runtime::AccountId;
 pub use subxt::{
     sp_core::{crypto::Ss58Codec, sr25519::Pair},
-    Signer,
 };
 pub use types::*;
 

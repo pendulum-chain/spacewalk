@@ -5,7 +5,7 @@ use codec::Error as CodecError;
 use jsonrpsee::{
     client_transport::ws::WsHandshakeError,
     core::error::Error as RequestError,
-    types::error::{CallError, ErrorResponse},
+    types::error::{CallError},
 };
 use serde_json::Error as SerdeJsonError;
 use std::{
@@ -141,18 +141,7 @@ impl Error {
         other: impl Fn(&String) -> Option<T>,
     ) -> Option<T> {
         match self {
-            Error::SubxtRuntimeError(OuterSubxtError(SubxtError::Rpc(RequestError::Call(err)))) => call(err),
-            Error::SubxtBasicError(BasicError::Rpc(RequestError::Request(message))) => {
-                if let Ok(error_response) = serde_json::from_str::<ErrorResponse>(message) {
-                    call(&CallError::Custom {
-                        code: error_response.error.code.code(),
-                        message: error_response.error.message.to_string(),
-                        data: error_response.error.data.map(ToOwned::to_owned),
-                    })
-                } else {
-                    other(message)
-                }
-            }
+            Error::SubxtRuntimeError(SubxtError::Rpc(RequestError::Call(err))) => call(err),
             _ => None,
         }
     }

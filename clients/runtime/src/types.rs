@@ -8,7 +8,7 @@ pub type Index = u32;
 pub type BlockNumber = u32;
 pub type H256 = subxt::sp_core::H256;
 
-pub type SpacewalkSigner = subxt::PairSigner<SpacewalkRuntime, subxt::DefaultExtra<SpacewalkRuntime>, KeyPair>;
+pub type SpacewalkSigner = subxt::PairSigner<SpacewalkRuntime, KeyPair>;
 
 pub type FixedU128 = sp_arithmetic::FixedU128;
 
