@@ -1,6 +1,6 @@
 pub use jsonrpsee::core::Error as JsonRpseeError;
 
-use crate::metadata::{DispatchError, ErrorDetails};
+use crate::metadata::{DispatchError};
 use codec::Error as CodecError;
 use jsonrpsee::{
     client_transport::ws::WsHandshakeError,

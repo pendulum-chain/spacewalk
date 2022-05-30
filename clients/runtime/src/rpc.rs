@@ -35,7 +35,6 @@ type RuntimeApi = metadata::RuntimeApi<SpacewalkRuntime, SubstrateExtrinsicParam
 pub(crate) type ShutdownSender = tokio::sync::broadcast::Sender<Option<()>>;
 
 pub struct SpacewalkParachain {
-    rpc_client: RpcClient,
     ext_client: SubxtClient<SpacewalkRuntime>,
     signer: Arc<RwLock<SpacewalkSigner>>,
     account_id: AccountId,
@@ -64,7 +63,6 @@ impl SpacewalkParachain {
         }
 
         let parachain_rpc = Self {
-            rpc_client,
             ext_client,
             api: Arc::new(api),
             shutdown_tx,
@@ -206,7 +204,7 @@ impl SpacewalkParachain {
     /// # Arguments
     /// * `on_error` - callback for decoding errors, is not allowed to take too long
     pub async fn on_event_error<E: Fn(BasicError)>(&self, on_error: E) -> Result<(), Error> {
-        let sub = self.api.events().subscribe_finalize().await?;
+        let sub = self.api.events().subscribe_finalized().await?;
 
         loop {
             match sub.next().await {
@@ -243,21 +241,15 @@ impl SpacewalkParachain {
             async move {
                 let tx = &tx;
                 while let Some(result) = sub.next().fuse().await {
-                    if let Ok(raw_event) = result {
-                        log::trace!("raw event: {:?}", raw_event);
-                        let decoded = T::decode(&mut &raw_event.data[..]);
-                        match decoded {
-                            Ok(event) => {
-                                log::trace!("decoded event: {:?}", event);
-                                // send the event to the other task
-                                if tx.clone().send(event).await.is_err() {
-                                    break;
-                                }
+                    match result {
+                        Ok(event_details) => {
+                            let event = event_details.event;
+                            log::trace!("event: {:?}", event);
+                            if tx.clone().send(event).await.is_err() {
+                                break;
                             }
-                            Err(err) => {
-                                on_error(err.into());
-                            }
-                        };
+                        }
+                        Err(err) => on_error(err.into()),
                     }
                 }
                 Result::<(), _>::Err(Error::ChannelClosed)
@@ -374,7 +366,7 @@ impl SpacewalkPallet for SpacewalkParachain {
                 .tx()
                 .spacewalk() // assume that spacewalk pallet is registered in connected chain
                 .report_stellar_transaction(tx_envelope_xdr.to_vec()) // spacewalk pallet offers extrinsic `report_stellar_transaction`
-                .sign_and_submit_then_watch(&signer)
+                .sign_and_submit_then_watch_default(&signer)
                 .await
         })
         .await?;
@@ -398,7 +390,7 @@ impl SpacewalkPallet for SpacewalkParachain {
                     amount,
                     stellar_vault_pubkey.clone(),
                 ) // spacewalk pallet offers extrinsic `redeem`
-                .sign_and_submit_then_watch(&signer)
+                .sign_and_submit_then_watch_default(&signer)
                 .await
         })
         .await?;
