@@ -204,7 +204,7 @@ impl SpacewalkParachain {
     /// # Arguments
     /// * `on_error` - callback for decoding errors, is not allowed to take too long
     pub async fn on_event_error<E: Fn(BasicError)>(&self, on_error: E) -> Result<(), Error> {
-        let sub = self.api.events().subscribe_finalized().await?;
+        let mut sub = self.api.events().subscribe_finalized().await?;
 
         loop {
             match sub.next().await {
