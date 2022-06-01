@@ -308,7 +308,7 @@ impl SpacewalkParachain {
 			.tx()
 			.tokens()
 			.transfer(recipient.clone(), Token(DOT), 100)
-			.sign_and_submit_then_watch(&signer.clone())
+			.sign_and_submit_then_watch_default(&signer.clone())
 			.await
 			.unwrap();
 
@@ -319,7 +319,7 @@ impl SpacewalkParachain {
 			.tx()
 			.tokens()
 			.transfer(recipient.clone(), Token(DOT), 100)
-			.sign_and_submit_then_watch(&signer.clone())
+			.sign_and_submit_then_watch_default(&signer.clone())
 			.await
 			.unwrap_err()
 			.into()
@@ -335,7 +335,7 @@ impl SpacewalkParachain {
 			.tx()
 			.tokens()
 			.transfer(recipient.clone(), Token(DOT), 100)
-			.sign_and_submit(&signer.clone())
+			.sign_and_submit_default(&signer.clone())
 			.await
 			.unwrap();
 
@@ -344,7 +344,7 @@ impl SpacewalkParachain {
 			.tx()
 			.tokens()
 			.transfer(recipient, Token(DOT), 100)
-			.sign_and_submit_then_watch(&signer.clone())
+			.sign_and_submit_then_watch_default(&signer.clone())
 			.await
 			.unwrap_err()
 			.into()
