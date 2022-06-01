@@ -81,7 +81,7 @@ pub enum Error {
 
 impl From<BasicError> for Error {
 	fn from(err: BasicError) -> Self {
-		Self::SubxtRuntimeError(err.into())
+		Self::SubxtRuntimeError(SubxtError::from(err))
 	}
 }
 
