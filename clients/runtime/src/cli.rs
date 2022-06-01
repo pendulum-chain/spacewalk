@@ -1,6 +1,6 @@
 use crate::{
     error::{Error, KeyLoadingError},
-    SpacewalkParachain, SpacewalkSigner,
+    SpacewalkParachain, SpacewalkSigner, rpc::ShutdownSender,
 };
 use clap::Parser;
 use sp_keyring::AccountKeyring;
@@ -89,13 +89,14 @@ pub struct ConnectionOpts {
 }
 
 impl ConnectionOpts {
-    pub async fn try_connect(&self, signer: SpacewalkSigner) -> Result<SpacewalkParachain, Error> {
+    pub async fn try_connect(&self, signer: SpacewalkSigner, shutdown_tx: ShutdownSender) -> Result<SpacewalkParachain, Error> {
         SpacewalkParachain::from_url_and_config_with_retry(
             &self.spacewalk_parachain_url,
             signer,
             self.max_concurrent_requests,
             self.max_notifs_per_subscription,
             self.spacewalk_parachain_connection_timeout_ms,
+            shutdown_tx,
         )
         .await
     }
