@@ -1,4 +1,4 @@
-use parity_scale_codec::{Decode, Encode, MaxEncodedLen};
+use parity_scale_codec::{Decode, Encode};
 use serde::{Deserialize, Deserializer};
 use sp_core::ed25519;
 use sp_runtime::{
@@ -174,7 +174,7 @@ pub type Bytes4 = [u8; 4];
 pub type Bytes12 = [u8; 12];
 pub type AssetIssuer = [u8; 32];
 
-#[derive(Encode, Decode, Eq, PartialEq, Copy, Clone, PartialOrd, Ord, MaxEncodedLen, TypeInfo)]
+#[derive(Encode, Decode, Eq, PartialEq, Copy, Clone, PartialOrd, Ord, TypeInfo)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 pub enum CurrencyId {
     Native,
