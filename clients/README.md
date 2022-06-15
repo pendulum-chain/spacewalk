@@ -8,8 +8,16 @@ cargo build --features=standalone-metadata
 
 ## Running the vault
 
+To run the vault with the provided standalone chain use:
+
 ```
 cargo run --bin vault --features standalone-metadata  -- --keyring alice --stellar-vault-secret-key SB6WHKIU2HGVBRNKNOEOQUY4GFC4ZLG5XPGWLEAHTIZXBXXYACC76VSQ
+```
+
+To run the vault with a parachain (e.g. Pendulum) use:
+
+```
+cargo run --bin vault --features parachain-metadata -- --keyring alice --spacewalk-parachain-url ws://localhost:8844 --stellar-vault-secret-key SB6WHKIU2HGVBRNKNOEOQUY4GFC4ZLG5XPGWLEAHTIZXBXXYACC76VSQ
 ```
 
 ## Tests
@@ -27,14 +35,15 @@ cargo test --package vault --lib --features standalone-metadata -- --nocapture
 ```
 
 **Note** that when running the integration test the console might show errors like
+
 ```
 ERROR vault::redeem: Error while sending request: error sending request for url (https://horizon-testnet.stellar.org/accounts/GA6ZDMRVBTHIISPVD7ZRCVX6TWDXBOH2TE5FAADJXZ52YL4GCFI4HOHU): error trying to connect: dns error: cancelled
 ```
-but this does not mean that the test fails. 
-The `test_redeem` integration test only checks if a `RedeemEvent` was emitted and terminates afterwards. 
-This stops the on-going withdrawal execution the vault client started leading to that error. 
-The withdrawal execution is tested in the `test_execute_withdrawal` unit test instead.
 
+but this does not mean that the test fails.
+The `test_redeem` integration test only checks if a `RedeemEvent` was emitted and terminates afterwards.
+This stops the on-going withdrawal execution the vault client started leading to that error.
+The withdrawal execution is tested in the `test_execute_withdrawal` unit test instead.
 
 ## Updating the metadata
 
