@@ -3,7 +3,11 @@
 From the spacewalk/client directory run
 
 ```
+// standalone version
 cargo build --features=standalone-metadata
+
+// parachain version
+cargo build --features=parachain-metadata
 ```
 
 ## Running the vault
