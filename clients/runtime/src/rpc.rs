@@ -21,9 +21,8 @@ cfg_if::cfg_if! {
         const DEFAULT_SPEC_VERSION: RangeInclusive<u32> = 1..=1;
         const DEFAULT_SPEC_NAME: &str = "spacewalk-standalone";
     } else if #[cfg(feature = "parachain-metadata")] {
-        const DEFAULT_SPEC_VERSION: RangeInclusive<u32> = 3..=3;
+        const DEFAULT_SPEC_VERSION: RangeInclusive<u32> = 1..=1;
         const DEFAULT_SPEC_NAME: &str = "pendulum-parachain";
-        pub const SS58_PREFIX: u16 = 2032;
     }
 }
 const TRANSACTION_TIMEOUT: Duration = Duration::from_secs(300); // 5 minutes
