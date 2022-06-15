@@ -1,6 +1,6 @@
 use crate::{metadata, Config, SpacewalkRuntime};
 pub use metadata_aliases::*;
-use subxt::sp_core::sr25519::Pair as KeyPair;
+use subxt::sp_core::ed25519::Pair as KeyPair;
 
 pub type AccountId = spacewalk_runtime::AccountId;
 pub type Balance = spacewalk_runtime::Balance;

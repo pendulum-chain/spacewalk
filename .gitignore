@@ -1,5 +1,5 @@
 # Binaries and executables
-**/target/
+target/
 **/dist/
 **/build/
 **/bin

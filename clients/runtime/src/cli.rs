@@ -1,17 +1,18 @@
 use crate::{
     error::{Error, KeyLoadingError},
-    SpacewalkParachain, SpacewalkSigner, rpc::ShutdownSender,
+    rpc::ShutdownSender,
+    SpacewalkParachain, SpacewalkSigner,
 };
 use clap::Parser;
-use sp_keyring::AccountKeyring;
-use std::{collections::HashMap, num::ParseIntError, str::FromStr, time::Duration};
-use subxt::sp_core::{sr25519::Pair, Pair as _};
+use sp_keyring::Ed25519Keyring;
+use std::{collections::HashMap, num::ParseIntError, time::Duration};
+use subxt::sp_core::{ed25519::Pair, Pair as _};
 
 #[derive(Parser, Debug, Clone)]
 pub struct ProviderUserOpts {
     /// Keyring to use, mutually exclusive with keyfile.
     #[clap(long, required_unless_present = "keyfile", parse(try_from_str = parse_account_keyring))]
-    pub keyring: Option<AccountKeyring>,
+    pub keyring: Option<Ed25519Keyring>,
 
     /// Path to the json file containing key pairs in a map.
     /// Valid content of this file is e.g.
@@ -57,8 +58,18 @@ fn get_credentials_from_file(file_path: &str, keyname: &str) -> Result<Pair, Key
     Ok(pair)
 }
 
-pub fn parse_account_keyring(src: &str) -> Result<AccountKeyring, Error> {
-    AccountKeyring::from_str(src).map_err(|_| Error::KeyringAccountParsingError)
+pub fn parse_account_keyring(src: &str) -> Result<Ed25519Keyring, Error> {
+    match src {
+        "alice" => Ok(Ed25519Keyring::Alice),
+        "bob" => Ok(Ed25519Keyring::Bob),
+        "charlie" => Ok(Ed25519Keyring::Charlie),
+        "dave" => Ok(Ed25519Keyring::Dave),
+        "eve" => Ok(Ed25519Keyring::Eve),
+        "ferdie" => Ok(Ed25519Keyring::Ferdie),
+        "one" => Ok(Ed25519Keyring::One),
+        "two" => Ok(Ed25519Keyring::Two),
+        _ => Err(Error::KeyringAccountParsingError),
+    }
 }
 
 pub fn parse_duration_ms(src: &str) -> Result<Duration, ParseIntError> {
@@ -89,7 +100,11 @@ pub struct ConnectionOpts {
 }
 
 impl ConnectionOpts {
-    pub async fn try_connect(&self, signer: SpacewalkSigner, shutdown_tx: ShutdownSender) -> Result<SpacewalkParachain, Error> {
+    pub async fn try_connect(
+        &self,
+        signer: SpacewalkSigner,
+        shutdown_tx: ShutdownSender,
+    ) -> Result<SpacewalkParachain, Error> {
         SpacewalkParachain::from_url_and_config_with_retry(
             &self.spacewalk_parachain_url,
             signer,

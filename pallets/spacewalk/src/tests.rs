@@ -29,7 +29,7 @@ const USER: [u8; 32] = [
 	243, 99, 159, 29, 107, 105, 162, 131, 139, 88, 105, 153, 239, 200, 240, 112, 58, 12, 243, 34,
 	171, 1, 99, 201, 165, 184, 243, 64, 189, 52, 22, 211,
 ];
-const VAULT_STELLAR_ADDRESS:&str = "GBTE4CYCGWD5SDQTZSTOQ44XQQC54QIQWQFWJOD4SHV7P524QW5MPRTZ";
+const VAULT_STELLAR_ADDRESS: &str = "GBTE4CYCGWD5SDQTZSTOQ44XQQC54QIQWQFWJOD4SHV7P524QW5MPRTZ";
 
 const USDC_CODE: [u8; 4] = [b'U', b'S', b'D', b'C'];
 const EUR_CODE: [u8; 4] = [b'E', b'U', b'R', b'\0'];
@@ -202,7 +202,6 @@ fn redeem_with_wrong_issuer() {
 		//mint tokens for User
 		assert_ok!(Spacewalk::report_stellar_transaction(
 			Origin::signed([0; 32].into()),
-
 			STELLAR_TRANSACTION_ENVELOPE_USDC.into()
 		));
 		//burn tokens
@@ -255,7 +254,6 @@ fn redeem_with_amount_too_high() {
 		//mint tokens for User
 		assert_ok!(Spacewalk::report_stellar_transaction(
 			Origin::signed([0; 32].into()),
-
 			STELLAR_TRANSACTION_ENVELOPE_USDC.into()
 		));
 		//burn tokens
