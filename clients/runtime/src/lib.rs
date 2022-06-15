@@ -38,20 +38,9 @@ pub const SYSTEM_MODULE: &str = "System";
 pub const STABLE_BITCOIN_CONFIRMATIONS: &str = "StableBitcoinConfirmations";
 pub const STABLE_PARACHAIN_CONFIRMATIONS: &str = "StableParachainConfirmations";
 
-// TODO: possibly substitute CurrencyId, VaultId, H256Le
 #[cfg_attr(
-    feature = "parachain-metadata-kintsugi",
-    subxt(
-        runtime_metadata_path = "metadata-parachain-kintsugi.scale",
-        generated_type_derives = "Eq, PartialEq, Ord, PartialOrd, Clone"
-    )
-)]
-#[cfg_attr(
-    feature = "parachain-metadata-testnet",
-    subxt(
-        runtime_metadata_path = "metadata-parachain-testnet.scale",
-        generated_type_derives = "Eq, PartialEq, Ord, PartialOrd, Clone"
-    )
+    feature = "parachain-metadata",
+    subxt(runtime_metadata_path = "metadata-parachain.scale", generated_type_derives = "Clone")
 )]
 #[cfg_attr(
     feature = "standalone-metadata",
