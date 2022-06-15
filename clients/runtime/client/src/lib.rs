@@ -17,7 +17,7 @@ use sc_service::{
     config::{NetworkConfiguration, TelemetryEndpoints},
     ChainSpec, Configuration, KeepBlocks, RpcHandlers, RpcSession, TaskManager,
 };
-pub use sp_keyring::AccountKeyring;
+pub use sp_keyring::Ed25519Keyring;
 use thiserror::Error;
 use tokio::task;
 
@@ -150,7 +150,7 @@ pub enum Role {
     /// Light client.
     Light,
     /// A full node (mainly used for testing purposes).
-    Authority(AccountKeyring),
+    Authority(Ed25519Keyring),
 }
 
 impl From<Role> for sc_service::Role {
