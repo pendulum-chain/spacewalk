@@ -18,7 +18,7 @@ To run the vault with the provided standalone chain use:
 cargo run --bin vault --features standalone-metadata  -- --keyring alice --stellar-vault-secret-key SB6WHKIU2HGVBRNKNOEOQUY4GFC4ZLG5XPGWLEAHTIZXBXXYACC76VSQ
 ```
 
-To run the vault with a parachain (e.g. Pendulum) use:
+To run the vault with a parachain (e.g. Pendulum) you need to specify the URL, so use:
 
 ```
 cargo run --bin vault --features parachain-metadata -- --keyring alice --spacewalk-parachain-url ws://localhost:8844 --stellar-vault-secret-key SB6WHKIU2HGVBRNKNOEOQUY4GFC4ZLG5XPGWLEAHTIZXBXXYACC76VSQ
@@ -54,7 +54,11 @@ The withdrawal execution is tested in the `test_execute_withdrawal` unit test in
 ```
 cargo install subxt-cli
 
-subxt metadata -f bytes > runtime/metadata-standalone.scale
+// fetching from an automatically detected local chain
+subxt metadata -f bytes > runtime/metadata-{your-chain-name}.scale
+
+// fetching from a specific chain
+subxt metadata -f bytes --url http://{chain-url} > runtime/metadata-{your-chain-name}.scale
 ```
 
 ## Troubleshooting
