@@ -6,8 +6,7 @@ version = "1.1.0"
 
 [features]
 default = []
-parachain-metadata-kintsugi = []
-parachain-metadata-testnet = []
+parachain-metadata = []
 standalone-metadata = []
 testing-utils = [
   # "substrate-subxt/client",
