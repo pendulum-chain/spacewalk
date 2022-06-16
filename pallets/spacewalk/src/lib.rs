@@ -34,9 +34,8 @@ use substrate_stellar_sdk as stellar;
 use frame_support::pallet_prelude::*;
 use frame_system::pallet_prelude::*;
 
-type BalanceOf<T> = <<T as Config>::Currency as MultiCurrency<
-	<T as frame_system::Config>::AccountId,
->>::Balance;
+type BalanceOf<T> =
+	<<T as Config>::Currency as MultiCurrency<<T as frame_system::Config>::AccountId>>::Balance;
 
 type CurrencyIdOf<T> =
 	<<T as Config>::Currency as MultiCurrency<<T as frame_system::Config>::AccountId>>::CurrencyId;
