@@ -9,6 +9,7 @@ version = "0.0.1"
 integration = []
 parachain-metadata= ["runtime/parachain-metadata"]
 standalone-metadata = ["runtime/standalone-metadata"]
+multi-address = ["runtime/multi-address"]
 
 [dependencies]
 async-trait = "0.1.40"

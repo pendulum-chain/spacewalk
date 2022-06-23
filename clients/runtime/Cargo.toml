@@ -8,6 +8,7 @@ version = "1.1.0"
 default = []
 parachain-metadata = []
 standalone-metadata = []
+multi-address = []
 testing-utils = [
   # "substrate-subxt/client",
   # "substrate-subxt-client",
