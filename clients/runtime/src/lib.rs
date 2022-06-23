@@ -21,9 +21,10 @@ pub use error::{Error, SubxtError};
 pub use retry::{notify_retry, RetryPolicy};
 pub use rpc::{SpacewalkPallet, SpacewalkParachain, UtilFuncs};
 pub use sp_arithmetic::{traits as FixedPointTraits, FixedI128, FixedPointNumber, FixedU128};
-use spacewalk_runtime::{AccountId, Address};
 pub use subxt::sp_core::{crypto::Ss58Codec, sr25519::Pair};
 pub use types::*;
+// explicitly import some types for making it clearer which ones we use in the runtime
+use types::{AccountId, Address, BlockNumber, Index, H256};
 
 pub const TX_FEES: u128 = 2000000000;
 pub const MILLISECS_PER_BLOCK: u64 = 6000;

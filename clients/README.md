@@ -24,6 +24,14 @@ To run the vault with a parachain (e.g. Pendulum) you need to specify the URL, s
 cargo run --bin vault --features parachain-metadata -- --keyring alice --spacewalk-parachain-url ws://localhost:8844 --stellar-vault-secret-key SB6WHKIU2HGVBRNKNOEOQUY4GFC4ZLG5XPGWLEAHTIZXBXXYACC76VSQ
 ```
 
+If you encounter subxt errors when doing RPC api calls, you can change the address types used when compiling the client by passing the `multi-address` feature:
+
+```
+cargo run --bin vault --features "parachain-metadata multi-address" -- --keyring alice --spacewalk-parachain-url ws://localhost:8844 --stellar-vault-secret-key SB6WHKIU2HGVBRNKNOEOQUY4GFC4ZLG5XPGWLEAHTIZXBXXYACC76VSQ
+```
+
+If this still does not fix your issue, try changing the types in `runtime/src/types.rs` manually.
+
 ## Tests
 
 To run the tests (unit and integration tests) for the spacewalk vault client run
