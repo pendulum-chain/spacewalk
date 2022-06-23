@@ -5406,7 +5406,6 @@ dependencies = [
  "sp-runtime",
  "sp-std",
  "sp-version",
- "spacewalk-runtime-standalone",
  "spacewalk-standalone",
  "substrate-stellar-sdk",
  "subxt",
