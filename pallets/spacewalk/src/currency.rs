@@ -5,7 +5,7 @@ use sp_std::{
 };
 
 use stellar::{
-	types::{AssetAlphaNum12, AssetAlphaNum4},
+	types::{AlphaNum12, AlphaNum4},
 	PublicKey,
 };
 use substrate_stellar_sdk as stellar;
@@ -57,6 +57,7 @@ impl TryFrom<(&str, AssetIssuer)> for CurrencyId {
 impl From<stellar::Asset> for CurrencyId {
 	fn from(asset: stellar::Asset) -> Self {
 		match asset {
+			stellar::Asset::Default(_) => CurrencyId::StellarNative,
 			stellar::Asset::AssetTypeNative => CurrencyId::StellarNative,
 			stellar::Asset::AssetTypeCreditAlphanum4(asset_alpha_num4) => CurrencyId::AlphaNum4 {
 				code: asset_alpha_num4.asset_code,
@@ -79,12 +80,12 @@ impl TryInto<stellar::Asset> for CurrencyId {
 			Self::Native => Err("PEN token not defined in the Stellar world."),
 			Self::StellarNative => Ok(stellar::Asset::native()),
 			Self::AlphaNum4 { code, issuer } =>
-				Ok(stellar::Asset::AssetTypeCreditAlphanum4(AssetAlphaNum4 {
+				Ok(stellar::Asset::AssetTypeCreditAlphanum4(AlphaNum4 {
 					asset_code: code,
 					issuer: PublicKey::PublicKeyTypeEd25519(issuer),
 				})),
 			Self::AlphaNum12 { code, issuer } =>
-				Ok(stellar::Asset::AssetTypeCreditAlphanum12(AssetAlphaNum12 {
+				Ok(stellar::Asset::AssetTypeCreditAlphanum12(AlphaNum12 {
 					asset_code: code,
 					issuer: PublicKey::PublicKeyTypeEd25519(issuer),
 				})),
@@ -126,7 +127,7 @@ impl fmt::Debug for CurrencyId {
 #[cfg(test)]
 mod tests {
 	use substrate_stellar_sdk::{
-		types::{AssetAlphaNum12, AssetAlphaNum4},
+		types::{AlphaNum12, AlphaNum4},
 		Asset, PublicKey,
 	};
 
@@ -145,7 +146,7 @@ mod tests {
 		let currency_native = CurrencyId::from(Asset::AssetTypeNative);
 		assert_eq!(currency_native, CurrencyId::StellarNative);
 
-		let currency_a4 = CurrencyId::from(Asset::AssetTypeCreditAlphanum4(AssetAlphaNum4 {
+		let currency_a4 = CurrencyId::from(Asset::AssetTypeCreditAlphanum4(AlphaNum4 {
 			asset_code: code_a4,
 			issuer: account.clone(),
 		}));
@@ -157,7 +158,7 @@ mod tests {
 		let mut code_a12: [u8; 12] = [0; 12];
 		code_a12.copy_from_slice("AmericaDolar".as_bytes());
 
-		let currency_12 = CurrencyId::from(Asset::AssetTypeCreditAlphanum12(AssetAlphaNum12 {
+		let currency_12 = CurrencyId::from(Asset::AssetTypeCreditAlphanum12(AlphaNum12 {
 			asset_code: code_a12,
 			issuer: account.clone(),
 		}));
@@ -203,7 +204,7 @@ mod tests {
 		let mut code_a12: [u8; 12] = [0; 12];
 		code_a12.copy_from_slice("AmericaDolar".as_bytes());
 
-		let currency_a4: CurrencyId = Asset::AssetTypeCreditAlphanum4(AssetAlphaNum4 {
+		let currency_a4: CurrencyId = Asset::AssetTypeCreditAlphanum4(AlphaNum4 {
 			asset_code: code_a4,
 			issuer: account.clone(),
 		})
@@ -214,7 +215,7 @@ mod tests {
 			CurrencyId::AlphaNum4 { code: code_a4, issuer: *account.as_binary() }
 		);
 
-		let currency_a12: CurrencyId = Asset::AssetTypeCreditAlphanum12(AssetAlphaNum12 {
+		let currency_a12: CurrencyId = Asset::AssetTypeCreditAlphanum12(AlphaNum12 {
 			asset_code: code_a12,
 			issuer: account.clone(),
 		})
