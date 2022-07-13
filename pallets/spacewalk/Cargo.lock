@@ -2583,24 +2583,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 version = "0.4.4"
 
 [[package]]
-dependencies = [
-  "base64",
-  "hex",
-  "lazy_static",
-  "num-rational 0.4.0",
-  "serde",
-  "serde_json",
-  "sha2 0.9.9",
-  "sodalite",
-  "sp-io",
-  "sp-runtime",
-  "sp-std",
-]
-name = "substrate-stellar-sdk"
-source = "git+https://github.com/pendulum-chain/substrate-stellar-sdk?branch=polkadot-v0.9.17#f863d2bb67c7ca8ec6f8895f612e8f425aef6ed8"
-version = "0.2.2"
-
-[[package]]
 checksum = "6bdef32e8150c2a081110b42772ffe7d7c9032b606bc226c8260fd97e0976601"
 name = "subtle"
 source = "registry+https://github.com/rust-lang/crates.io-index"
