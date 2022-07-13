@@ -253,7 +253,7 @@ construct_runtime! {
 		Sudo: pallet_sudo::{Pallet, Call, Storage, Config<T>, Event<T>} = 4,
 		Tokens: orml_tokens::{Pallet, Call, Storage, Config<T>, Event<T>} = 5,
 		Spacewalk: pallet_spacewalk::{Pallet, Call, Storage, Event<T>} = 6,
-		Currencies: orml_currencies::{Pallet, Call, Storage, Event<T>} = 7,
+		Currencies: orml_currencies::{Pallet, Call, Storage} = 7,
 		Balances: pallet_balances::{Pallet, Call, Storage, Config<T>, Event<T>} = 8,
 		TransactionPayment: pallet_transaction_payment::{Pallet, Storage} = 9,
 	}

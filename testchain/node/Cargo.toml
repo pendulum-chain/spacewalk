@@ -58,10 +58,13 @@ frame-benchmarking-cli = {git = "https://github.com/paritytech/substrate", branc
 frame-support = {git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.24"}
 frame-system = {git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.24"}
 
-substrate-stellar-sdk = {git = "https://github.com/pendulum-chain/substrate-stellar-sdk"}
+substrate-stellar-sdk = {git = "https://github.com/pendulum-chain/substrate-stellar-sdk", default-features = false, features = ['offchain']}
 
 [features]
-default = []
+default = ["std"]
 runtime-benchmarks = [
   "spacewalk-runtime/runtime-benchmarks",
+]
+std = [
+  "substrate-stellar-sdk/std",
 ]
