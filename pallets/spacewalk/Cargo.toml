@@ -60,7 +60,6 @@ std = [
   "sp-std/std",
   'orml-traits/std',
   'base64/std',
-  'substrate-stellar-sdk/std',
 ]
 
 runtime-benchmarks = ["frame-benchmarking/runtime-benchmarks"]
