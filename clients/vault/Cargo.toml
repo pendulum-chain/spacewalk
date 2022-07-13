@@ -5,11 +5,6 @@ edition = "2018"
 name = "vault"
 version = "0.0.1"
 
-[features]
-integration = []
-parachain-metadata = ["runtime/parachain-metadata"]
-standalone-metadata = ["runtime/standalone-metadata"]
-
 [dependencies]
 async-trait = "0.1.40"
 base64 = {version = '0.13.0', default-features = false, features = ['alloc']}
@@ -46,7 +41,7 @@ sp-runtime = {git = "https://github.com/paritytech/substrate", branch = "polkado
 sp-std = {git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.24"}
 
 # Substrate Stellar Dependencies
-substrate-stellar-sdk = {git = "https://github.com/pendulum-chain/substrate-stellar-sdk"}
+substrate-stellar-sdk = {git = "https://github.com/pendulum-chain/substrate-stellar-sdk", default-features = false, features = ['offchain']}
 
 [dev-dependencies]
 mockall = "0.8.1"
@@ -56,3 +51,12 @@ runtime = {path = "../runtime", features = ["testing-utils"]}
 
 # Substrate dependencies
 frame-support = {git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.24"}
+
+[features]
+default = ["std"]
+integration = []
+parachain-metadata = ["runtime/parachain-metadata"]
+standalone-metadata = ["runtime/standalone-metadata"]
+std = [
+  "substrate-stellar-sdk/std",
+]

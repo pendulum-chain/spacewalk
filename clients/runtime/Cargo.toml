@@ -4,19 +4,6 @@ edition = "2018"
 name = "runtime"
 version = "1.1.0"
 
-[features]
-default = []
-parachain-metadata = []
-standalone-metadata = []
-testing-utils = [
-  # "substrate-subxt/client",
-  # "substrate-subxt-client",
-  "tempdir",
-  "rand",
-  "testchain",
-  "subxt-client",
-]
-
 [dependencies]
 async-trait = "0.1.40"
 backoff = {version = "0.3.0", features = ["tokio"]}
@@ -55,9 +42,23 @@ tempdir = {version = "0.3.7", optional = true}
 testchain = {package = "spacewalk-standalone", path = "../../testchain/node", optional = true}
 
 # Substrate Stellar Dependencies
-substrate-stellar-sdk = {git = "https://github.com/pendulum-chain/substrate-stellar-sdk"}
+substrate-stellar-sdk = {git = "https://github.com/pendulum-chain/substrate-stellar-sdk", default-features = false, features = ['offchain']}
 
 [dev-dependencies]
 env_logger = "0.8.3"
 runtime = {path = ".", features = ["testing-utils"]}
 tempdir = "0.3.7"
+
+[features]
+default = ["std"]
+parachain-metadata = []
+standalone-metadata = []
+std = [
+  "substrate-stellar-sdk/std",
+]
+testing-utils = [
+  "tempdir",
+  "rand",
+  "testchain",
+  "subxt-client",
+]
