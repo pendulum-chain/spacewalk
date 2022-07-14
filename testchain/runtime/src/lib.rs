@@ -34,6 +34,7 @@ use sp_runtime::{
 	ApplyExtrinsicResult, Perbill,
 };
 use sp_std::prelude::*;
+use sp_std::convert::{TryFrom,TryInto};
 #[cfg(feature = "std")]
 use sp_version::NativeVersion;
 use sp_version::RuntimeVersion;
@@ -170,10 +171,11 @@ parameter_types! {
 
 impl pallet_transaction_payment::Config for Runtime {
 	type OnChargeTransaction = pallet_transaction_payment::CurrencyAdapter<Balances, ()>;
-	type TransactionByteFee = ConstU128<100_000>;
+	//type TransactionByteFee = ConstU128<100_000>;
 	type WeightToFee = IdentityFee<Balance>;
 	type FeeMultiplierUpdate = ();
 	type OperationalFeeMultiplier = ConstU8<5>;
+	type LengthToFee = IdentityFee<Balance>;
 }
 
 impl pallet_sudo::Config for Runtime {
@@ -199,7 +201,11 @@ impl orml_tokens::Config for Runtime {
 	type WeightInfo = ();
 	type ExistentialDeposits = ExistentialDeposits;
 	type OnDust = orml_tokens::BurnDust<Runtime>;
+	type OnNewTokenAccount = ();
+	type OnKilledTokenAccount = ();
 	type MaxLocks = MaxLocks;
+	type MaxReserves = MaxLocks;
+	type ReserveIdentifier = [u8; 8];
 	type DustRemovalWhitelist = DustRemovalWhitelist;
 }
 
@@ -221,7 +227,7 @@ impl pallet_spacewalk::Config for Runtime {
 }
 
 impl orml_currencies::Config for Runtime {
-	type Event = Event;
+	// type Event = Event;
 	type MultiCurrency = Tokens;
 	type NativeCurrency = BasicCurrencyAdapter<Runtime, Balances, primitives::Amount, BlockNumber>;
 	type GetNativeCurrencyId = GetNativeCurrencyId;
@@ -253,7 +259,7 @@ construct_runtime! {
 		Sudo: pallet_sudo::{Pallet, Call, Storage, Config<T>, Event<T>} = 4,
 		Tokens: orml_tokens::{Pallet, Call, Storage, Config<T>, Event<T>} = 5,
 		Spacewalk: pallet_spacewalk::{Pallet, Call, Storage, Event<T>} = 6,
-		Currencies: orml_currencies::{Pallet, Call, Storage, Event<T>} = 7,
+		Currencies: orml_currencies::{Pallet, Call, Storage} = 7,
 		Balances: pallet_balances::{Pallet, Call, Storage, Config<T>, Event<T>} = 8,
 		TransactionPayment: pallet_transaction_payment::{Pallet, Storage} = 9,
 	}

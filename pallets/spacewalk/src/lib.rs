@@ -16,6 +16,8 @@ pub mod address_conv;
 pub mod balance_conv;
 pub mod currency;
 pub mod currency_conv;
+
+#[cfg(feature = "std")]
 mod horizon;
 
 use codec::{Decode, Encode};
@@ -193,7 +195,7 @@ pub mod pallet {
 			{
 				T::AddressConversion::unlookup(substrate_stellar_sdk::PublicKey::from_binary(key))
 			} else {
-				log::error!("❌  Source account format not supported.");
+				// log::error!("❌  Source account format not supported.");
 				return
 			};
 
