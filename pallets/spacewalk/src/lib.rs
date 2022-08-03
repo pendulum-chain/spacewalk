@@ -160,10 +160,12 @@ pub mod pallet {
 			amount: BalanceOf<T>,
 			stellar_vault_pubkey: Vec<u8>,
 		) -> DispatchResultWithPostInfo {
+			let pendulum_account_id = ensure_signed(origin)?;
+
 			let currency_id =
 				T::StringCurrencyConversion::convert((asset_code.clone(), asset_issuer.clone()))
 					.map_err(|_| <Error<T>>::CurrencyConversionError)?;
-			let pendulum_account_id = ensure_signed(origin)?;
+
 			let stellar_user_address = T::AddressConversion::lookup(pendulum_account_id.clone())?;
 
 			T::Currency::withdraw(currency_id.clone(), &pendulum_account_id, amount)
