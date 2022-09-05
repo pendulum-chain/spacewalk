@@ -7137,6 +7137,7 @@ dependencies = [
  "frame-support",
  "frame-system",
  "frame-system-rpc-runtime-api",
+ "getrandom 0.2.7",
  "hex",
  "mocktopus",
  "orml-currencies",
