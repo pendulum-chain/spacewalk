@@ -8,6 +8,7 @@ version = "1.1.0"
 default = []
 parachain-metadata = []
 standalone-metadata = []
+multi-address = []
 testing-utils = [
   # "substrate-subxt/client",
   # "substrate-subxt-client",
@@ -45,9 +46,6 @@ subxt = {package = "subxt", git = "https://github.com/interlay/subxt", rev = "34
 subxt-client = {package = "subxt-client", path = "./client", optional = true}
 
 jsonrpsee = {version = "0.10.1", features = ["macros", "jsonrpsee-types", "client", "jsonrpsee-ws-client", "jsonrpsee-client-transport"]}
-
-# Runtime primitives
-spacewalk-runtime = {package = "spacewalk-runtime-standalone", path = "../../testchain/runtime"}
 
 # Dependencies for the testing utils for integration tests
 rand = {version = "0.7", optional = true}
