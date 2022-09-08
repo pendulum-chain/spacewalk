@@ -4069,7 +4069,7 @@ dependencies = [
  "sp-runtime",
  "sp-std",
  "spacewalk-runtime-standalone",
- "substrate-stellar-sdk",
+ "substrate-stellar-sdk 0.2.3 (git+https://github.com/pendulum-chain/substrate-stellar-sdk)",
 ]
 
 [[package]]
@@ -7153,7 +7153,6 @@ dependencies = [
  "parity-scale-codec",
  "pretty_assertions",
  "scale-info",
- "serde",
  "serde_json",
  "sp-api",
  "sp-block-builder",
@@ -7213,7 +7212,7 @@ dependencies = [
  "spacewalk-rpc",
  "spacewalk-runtime-standalone",
  "substrate-build-script-utils",
- "substrate-stellar-sdk",
+ "substrate-stellar-sdk 0.2.3 (git+https://github.com/pendulum-chain/substrate-stellar-sdk?branch=polkadot-v0.9.24)",
 ]
 
 [[package]]
@@ -7343,6 +7342,24 @@ dependencies = [
  "prometheus",
  "thiserror",
  "tokio",
+]
+
+[[package]]
+name = "substrate-stellar-sdk"
+version = "0.2.3"
+source = "git+https://github.com/pendulum-chain/substrate-stellar-sdk?branch=polkadot-v0.9.24#2195db7ae227a3a9ef88433309872bbde1110d1b"
+dependencies = [
+ "base64",
+ "hex",
+ "lazy_static",
+ "num-rational 0.4.1",
+ "serde",
+ "serde_json",
+ "sha2 0.9.9",
+ "sodalite",
+ "sp-io",
+ "sp-runtime",
+ "sp-std",
 ]
 
 [[package]]
