@@ -2,15 +2,25 @@ use crate::{metadata, Config, SpacewalkRuntime};
 pub use metadata_aliases::*;
 use subxt::sp_core::ed25519::Pair as KeyPair;
 
-pub type AccountId = spacewalk_primitives::AccountId;
-pub type Balance = spacewalk_primitives::Balance;
-pub type Index = u32;
+pub type Balance = u128;
 pub type BlockNumber = u32;
+pub type Index = u32;
 pub type H256 = subxt::sp_core::H256;
-
 pub type SpacewalkSigner = subxt::PairSigner<SpacewalkRuntime, KeyPair>;
-
 pub type FixedU128 = sp_arithmetic::FixedU128;
+
+cfg_if::cfg_if! {
+    if #[cfg(feature = "multi-address")] {
+        use sp_runtime::{traits::{IdentifyAccount, Verify}, MultiAddress, MultiSignature};
+
+        type Signature = MultiSignature;
+        pub type AccountId = <<Signature as Verify>::Signer as IdentifyAccount>::AccountId;
+        pub type Address = MultiAddress<AccountId, ()>;
+    } else {
+        pub type AccountId = subxt::sp_runtime::AccountId32;
+        pub type Address = AccountId;
+    }
+}
 
 mod metadata_aliases {
 	use super::*;
