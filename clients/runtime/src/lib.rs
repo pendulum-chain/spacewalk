@@ -21,7 +21,7 @@ pub use error::{Error, SubxtError};
 pub use retry::{notify_retry, RetryPolicy};
 pub use rpc::{SpacewalkPallet, SpacewalkParachain, UtilFuncs};
 pub use sp_arithmetic::{traits as FixedPointTraits, FixedI128, FixedPointNumber, FixedU128};
-pub use spacewalk_primivites::{AccountId, Address};
+pub use spacewalk_primitives::{AccountId};
 pub use subxt::sp_core::{crypto::Ss58Codec, sr25519::Pair};
 pub use types::*;
 
@@ -63,7 +63,7 @@ impl Config for SpacewalkRuntime {
 	type Hash = H256;
 	type Hashing = BlakeTwo256;
 	type AccountId = AccountId;
-	type Address = Address;
+	type Address = AccountId;
 	type Header = Header<Self::BlockNumber, BlakeTwo256>;
 	type Extrinsic = OpaqueExtrinsic;
 	type Signature = MultiSignature;

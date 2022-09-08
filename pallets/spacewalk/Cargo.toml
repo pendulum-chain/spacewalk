@@ -28,7 +28,6 @@ frame-system = {git = "https://github.com/paritytech/substrate", default-feature
 sp-arithmetic = {git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.24"}
 sp-core = {git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.24"}
 sp-io = {git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.24"}
-sp-keystore = {git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.24", optional = true}
 sp-runtime = {git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.24"}
 sp-std = {git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.24"}
 
@@ -44,22 +43,24 @@ spacewalk-runtime-standalone = {path = "../../testchain/runtime", default-featur
 [features]
 default = ["std"]
 std = [
+  "base64/std",
+  "codec/std",
+  "hex/std",
+  "log/std",
+  "scale-info/std",
+  "serde/std",
+  "serde_json/std",
   "frame-benchmarking/std",
   "frame-support/std",
   "frame-system/std",
-  "codec/std",
-  "scale-info/std",
-  "substrate-stellar-sdk/std",
   "pallet-transaction-payment/std",
-  "log/std",
   "sp-arithmetic/std",
-  "sp-io/std",
   "sp-core/std",
-  "sp-keystore/std",
+  "sp-io/std",
   "sp-runtime/std",
   "sp-std/std",
+  "substrate-stellar-sdk/std",
   'orml-traits/std',
-  'base64/std',
   'substrate-stellar-sdk/std',
 ]
 
