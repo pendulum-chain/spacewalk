@@ -34,7 +34,7 @@ sp-std = { git = "https://github.com/paritytech/substrate", default-features = f
 orml-traits = { git = "https://github.com/open-web3-stack/open-runtime-module-library", branch = "polkadot-v0.9.24", default-features = false }
 
 pallet-transaction-payment = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.24" }
-substrate-stellar-sdk = { git = "https://github.com/pendulum-chain/substrate-stellar-sdk", default-features = false, features = ['offchain'] }
+substrate-stellar-sdk = { git = "https://github.com/pendulum-chain/substrate-stellar-sdk", branch = "polkadot-v0.9.24", default-features = false, features = ['offchain'] }
 
 [dev-dependencies]
 spacewalk-runtime-standalone = { path = "../../testchain/runtime", default-features = false }
@@ -42,13 +42,14 @@ spacewalk-runtime-standalone = { path = "../../testchain/runtime", default-featu
 [features]
 default = ["std"]
 std = [
+    # don't add these to std as this causes the 'vec![] macro not found' error
+    # "serde/std",
+    # "serde_json/std",
     "base64/std",
     "codec/std",
     "hex/std",
     "log/std",
     "scale-info/std",
-    "serde/std",
-    "serde_json/std",
     "frame-benchmarking/std",
     "frame-support/std",
     "frame-system/std",
