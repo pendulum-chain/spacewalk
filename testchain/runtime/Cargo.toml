@@ -1,6 +1,6 @@
 [package]
 authors = ["SatoshiPay"]
-edition = "2018"
+edition = "2021"
 name = 'spacewalk-runtime-standalone'
 version = "1.2.0"
 
