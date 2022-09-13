@@ -64,7 +64,7 @@ impl Config for SpacewalkRuntime {
 	type Hash = H256;
 	type Hashing = BlakeTwo256;
 	type AccountId = AccountId;
-	type Address = AccountId;
+	type Address = Address;
 	type Header = Header<Self::BlockNumber, BlakeTwo256>;
 	type Extrinsic = OpaqueExtrinsic;
 	type Signature = MultiSignature;
