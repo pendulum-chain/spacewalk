@@ -12,6 +12,7 @@ use sp_std::{
 };
 use stellar::{network::TEST_NETWORK, PublicKey, SecretKey, XdrCodec};
 use substrate_stellar_sdk as stellar;
+use substrate_stellar_sdk::types::Preconditions;
 
 const SUBMISSION_TIMEOUT_PERIOD: u64 = 10000;
 
@@ -146,7 +147,7 @@ fn create_withdrawal_tx(
     let source_keypair: SecretKey = SecretKey::from_encoding(vault_secret_key).unwrap();
 
     let source_pubkey = source_keypair.get_public().clone();
-    let mut tx = stellar::Transaction::new(source_pubkey, seq_num, Some(10_000), None, None)?;
+    let mut tx = stellar::Transaction::new(source_pubkey, seq_num, Some(10_000), Preconditions::PrecondNone, None)?;
 
     let destination = stellar::MuxedAccount::KeyTypeEd25519(*destination_addr);
     let amount = stellar::StroopAmount(BalanceConversion::lookup(amount).map_err(|_| Error::BalanceConversionError)?);

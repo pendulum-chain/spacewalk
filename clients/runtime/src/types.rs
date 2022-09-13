@@ -32,15 +32,16 @@ mod metadata_aliases {
 }
 
 mod dispatch_error {
-	use crate::metadata::{
-		runtime_types::sp_runtime::{ArithmeticError, ModuleError, TokenError},
-		DispatchError,
-	};
+    use crate::metadata::{
+        runtime_types::sp_runtime::{ArithmeticError, ModuleError, TokenError, TransactionalError},
+        DispatchError,
+    };
 
-	type RichTokenError = sp_runtime::TokenError;
-	type RichArithmeticError = sp_runtime::ArithmeticError;
-	type RichDispatchError = sp_runtime::DispatchError;
-	type RichModuleError = sp_runtime::ModuleError;
+    type RichTokenError = sp_runtime::TokenError;
+    type RichArithmeticError = sp_runtime::ArithmeticError;
+    type RichDispatchError = sp_runtime::DispatchError;
+    type RichModuleError = sp_runtime::ModuleError;
+    type RichTransactionalError = sp_runtime::TransactionalError;
 
 	macro_rules! convert_enum{($src: ident, $dst: ident, $($variant: ident,)*)=> {
         impl From<$src> for $dst {
@@ -66,23 +67,27 @@ mod dispatch_error {
 
 	convert_enum!(RichArithmeticError, ArithmeticError, Underflow, Overflow, DivisionByZero,);
 
-	impl From<RichDispatchError> for DispatchError {
-		fn from(value: RichDispatchError) -> Self {
-			match value {
-				RichDispatchError::Other(_) => DispatchError::Other,
-				RichDispatchError::CannotLookup => DispatchError::CannotLookup,
-				RichDispatchError::BadOrigin => DispatchError::BadOrigin,
-				RichDispatchError::Module(RichModuleError { index, error, .. }) =>
-					DispatchError::Module(ModuleError { index, error }),
-				RichDispatchError::ConsumerRemaining => DispatchError::ConsumerRemaining,
-				RichDispatchError::NoProviders => DispatchError::NoProviders,
-				RichDispatchError::TooManyConsumers => DispatchError::TooManyConsumers,
-				RichDispatchError::Token(token_error) => DispatchError::Token(token_error.into()),
-				RichDispatchError::Arithmetic(arithmetic_error) =>
-					DispatchError::Arithmetic(arithmetic_error.into()),
-			}
-		}
-	}
+    convert_enum!(RichTransactionalError, TransactionalError, LimitReached, NoLayer,);
+
+
+    impl From<RichDispatchError> for DispatchError {
+        fn from(value: RichDispatchError) -> Self {
+            match value {
+                RichDispatchError::Other(_) => DispatchError::Other,
+                RichDispatchError::CannotLookup => DispatchError::CannotLookup,
+                RichDispatchError::BadOrigin => DispatchError::BadOrigin,
+                RichDispatchError::Module(RichModuleError { index, error, .. }) => {
+                    DispatchError::Module(ModuleError { index, error })
+                }
+                RichDispatchError::ConsumerRemaining => DispatchError::ConsumerRemaining,
+                RichDispatchError::NoProviders => DispatchError::NoProviders,
+                RichDispatchError::TooManyConsumers => DispatchError::TooManyConsumers,
+                RichDispatchError::Token(token_error) => DispatchError::Token(token_error.into()),
+                RichDispatchError::Arithmetic(arithmetic_error) => DispatchError::Arithmetic(arithmetic_error.into()),
+                RichDispatchError::Transactional(transactional_error) => DispatchError::Transactional(transactional_error.into()),
+            }
+        }
+    }
 
 	impl<'de> serde::Deserialize<'de> for DispatchError {
 		fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>

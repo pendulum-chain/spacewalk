@@ -4469,10 +4469,9 @@ dependencies = [
  "sp-arithmetic",
  "sp-core",
  "sp-io",
- "sp-keystore",
  "sp-runtime",
  "sp-std",
- "substrate-stellar-sdk",
+ "substrate-stellar-sdk 0.2.3 (git+https://github.com/pendulum-chain/substrate-stellar-sdk?branch=polkadot-v0.9.24)",
 ]
 
 [[package]]
@@ -5605,7 +5604,7 @@ dependencies = [
  "sp-std",
  "sp-version",
  "spacewalk-standalone",
- "substrate-stellar-sdk",
+ "substrate-stellar-sdk 0.2.3 (git+https://github.com/pendulum-chain/substrate-stellar-sdk?branch=polkadot-v0.9.24)",
  "subxt",
  "subxt-client",
  "tempdir",
@@ -6773,9 +6772,9 @@ dependencies = [
 
 [[package]]
 name = "serde_json"
-version = "1.0.82"
+version = "1.0.85"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "82c2c1fdcd807d1098552c5b9a36e425e42e9fbd7c6a37a8425f390f781f7fa7"
+checksum = "e55a28e3aaef9d5ce0506d0a14dbba8054ddc7e499ef522dd8b26859ec9d4a44"
 dependencies = [
  "itoa 1.0.2",
  "ryu",
@@ -7703,7 +7702,6 @@ dependencies = [
 name = "spacewalk-runtime-standalone"
 version = "1.2.0"
 dependencies = [
- "frame-benchmarking",
  "frame-executive",
  "frame-support",
  "frame-system",
@@ -7722,7 +7720,6 @@ dependencies = [
  "pallet-transaction-payment-rpc-runtime-api",
  "parity-scale-codec",
  "scale-info",
- "serde",
  "sp-api",
  "sp-block-builder",
  "sp-consensus-aura",
@@ -7763,6 +7760,7 @@ dependencies = [
  "sc-telemetry",
  "sc-transaction-pool",
  "serde",
+ "serde_json",
  "sp-api",
  "sp-arithmetic",
  "sp-block-builder",
@@ -7781,7 +7779,7 @@ dependencies = [
  "spacewalk-rpc",
  "spacewalk-runtime-standalone",
  "substrate-build-script-utils",
- "substrate-stellar-sdk",
+ "substrate-stellar-sdk 0.2.3 (git+https://github.com/pendulum-chain/substrate-stellar-sdk?branch=polkadot-v0.9.24)",
 ]
 
 [[package]]
@@ -7916,6 +7914,24 @@ dependencies = [
 [[package]]
 name = "substrate-stellar-sdk"
 version = "0.2.3"
+source = "git+https://github.com/pendulum-chain/substrate-stellar-sdk?branch=polkadot-v0.9.24#2195db7ae227a3a9ef88433309872bbde1110d1b"
+dependencies = [
+ "base64",
+ "hex",
+ "lazy_static",
+ "num-rational 0.4.1",
+ "serde",
+ "serde_json",
+ "sha2 0.9.9",
+ "sodalite",
+ "sp-io",
+ "sp-runtime",
+ "sp-std",
+]
+
+[[package]]
+name = "substrate-stellar-sdk"
+version = "0.2.3"
 source = "git+https://github.com/pendulum-chain/substrate-stellar-sdk#0e452f7d5ebb57557e70a50ab7ce1110be3721ba"
 dependencies = [
  "base64",
@@ -7956,7 +7972,7 @@ checksum = "6bdef32e8150c2a081110b42772ffe7d7c9032b606bc226c8260fd97e0976601"
 [[package]]
 name = "subxt"
 version = "0.20.0"
-source = "git+https://github.com/interlay/subxt?rev=344e44c3729adcb945b937d6703212e7ae41da50#344e44c3729adcb945b937d6703212e7ae41da50"
+source = "git+https://github.com/interlay/subxt?rev=cad1564b487f59c53840894607debf1aaae7a2f7#cad1564b487f59c53840894607debf1aaae7a2f7"
 dependencies = [
  "async-trait",
  "bitvec",
@@ -7999,7 +8015,7 @@ dependencies = [
 [[package]]
 name = "subxt-codegen"
 version = "0.20.0"
-source = "git+https://github.com/interlay/subxt?rev=344e44c3729adcb945b937d6703212e7ae41da50#344e44c3729adcb945b937d6703212e7ae41da50"
+source = "git+https://github.com/interlay/subxt?rev=cad1564b487f59c53840894607debf1aaae7a2f7#cad1564b487f59c53840894607debf1aaae7a2f7"
 dependencies = [
  "async-trait",
  "darling",
@@ -8017,7 +8033,7 @@ dependencies = [
 [[package]]
 name = "subxt-macro"
 version = "0.20.0"
-source = "git+https://github.com/interlay/subxt?rev=344e44c3729adcb945b937d6703212e7ae41da50#344e44c3729adcb945b937d6703212e7ae41da50"
+source = "git+https://github.com/interlay/subxt?rev=cad1564b487f59c53840894607debf1aaae7a2f7#cad1564b487f59c53840894607debf1aaae7a2f7"
 dependencies = [
  "async-trait",
  "darling",
@@ -8662,7 +8678,7 @@ dependencies = [
  "sp-keyring",
  "sp-runtime",
  "sp-std",
- "substrate-stellar-sdk",
+ "substrate-stellar-sdk 0.2.3 (git+https://github.com/pendulum-chain/substrate-stellar-sdk)",
  "thiserror",
  "tokio",
  "tracing",
@@ -9332,6 +9348,11 @@ dependencies = [
 ]
 
 [[patch.unused]]
+name = "cumulus-primitives-core"
+version = "0.1.0"
+source = "git+https://github.com/paritytech//cumulus?branch=polkadot-v0.9.24#95ca5a085727c1494ddeeae4a2b2e69c4ee1933b"
+
+[[patch.unused]]
 name = "pallet-collective"
 version = "4.0.0-dev"
 source = "git+https://github.com/paritytech//substrate?branch=polkadot-v0.9.24#814752f60ab8cce7e2ece3ce0c1b10799b4eab28"
@@ -9415,8 +9436,3 @@ source = "git+https://github.com/paritytech//polkadot?branch=release-v0.9.24#228
 name = "xcm-executor"
 version = "0.9.24"
 source = "git+https://github.com/paritytech//polkadot?branch=release-v0.9.24#22836e55d41eef24ed5917fd654ee82a683a7cfe"
-
-[[patch.unused]]
-name = "cumulus-primitives-core"
-version = "0.1.0"
-source = "git+https://github.com/paritytech//cumulus?branch=polkadot-v0.9.24#95ca5a085727c1494ddeeae4a2b2e69c4ee1933b"
