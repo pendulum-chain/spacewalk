@@ -22,12 +22,12 @@ const USDC_AMOUNT: u128 = 1_000_000_000_000;
 const EUR_AMOUNT: u128 = 2_000_000_000_000;
 const ISSUER_STELLAR_ADDRESS: &str = "GAKNDFRRWA3RPWNLTI3G4EBSD3RGNZZOY5WKWYMQ6CQTG3KIEKPYWAYC";
 const ISSUER: [u8; 32] = [
-    20, 209, 150, 49, 176, 55, 23, 217, 171, 154, 54, 110, 16, 50, 30, 226, 102, 231, 46, 199, 108,
-    171, 97, 144, 240, 161, 51, 109, 72, 34, 159, 139,
+	20, 209, 150, 49, 176, 55, 23, 217, 171, 154, 54, 110, 16, 50, 30, 226, 102, 231, 46, 199, 108,
+	171, 97, 144, 240, 161, 51, 109, 72, 34, 159, 139,
 ];
 const USER: [u8; 32] = [
-    243, 99, 159, 29, 107, 105, 162, 131, 139, 88, 105, 153, 239, 200, 240, 112, 58, 12, 243, 34,
-    171, 1, 99, 201, 165, 184, 243, 64, 189, 52, 22, 211,
+	243, 99, 159, 29, 107, 105, 162, 131, 139, 88, 105, 153, 239, 200, 240, 112, 58, 12, 243, 34,
+	171, 1, 99, 201, 165, 184, 243, 64, 189, 52, 22, 211,
 ];
 const VAULT_STELLAR_ADDRESS: &str = "GBTE4CYCGWD5SDQTZSTOQ44XQQC54QIQWQFWJOD4SHV7P524QW5MPRTZ";
 
@@ -36,47 +36,47 @@ const EUR_CODE: [u8; 4] = [b'E', b'U', b'R', b'\0'];
 
 #[test]
 fn report_stellar_transaction_mints_usdc_asset() {
-    new_test_ext().execute_with(|| {
-        //mint tokens for User
-        assert_ok!(Spacewalk::report_stellar_transaction(
+	new_test_ext().execute_with(|| {
+		//mint tokens for User
+		assert_ok!(Spacewalk::report_stellar_transaction(
 			Origin::signed([0; 32].into()),
 			STELLAR_TRANSACTION_ENVELOPE_USDC.into()
 		));
-        //check user balance
-        assert_eq!(
-            Tokens::balance(
-                CurrencyId::AlphaNum4 { code: USDC_CODE.into(), issuer: ISSUER },
-                &USER.into(),
-            ),
-            USDC_AMOUNT
-        );
-    });
+		//check user balance
+		assert_eq!(
+			Tokens::balance(
+				CurrencyId::AlphaNum4 { code: USDC_CODE.into(), issuer: ISSUER },
+				&USER.into(),
+			),
+			USDC_AMOUNT
+		);
+	});
 }
 
 #[test]
 fn report_stellar_transaction_mints_eur_asset() {
-    new_test_ext().execute_with(|| {
-        //mint tokens for User
-        assert_ok!(Spacewalk::report_stellar_transaction(
+	new_test_ext().execute_with(|| {
+		//mint tokens for User
+		assert_ok!(Spacewalk::report_stellar_transaction(
 			Origin::signed([0; 32].into()),
 			STELLAR_TRANSACTION_ENVELOPE_EUR.into()
 		));
-        //check user balance
-        assert_eq!(
-            Tokens::balance(
-                CurrencyId::AlphaNum4 { code: EUR_CODE.into(), issuer: ISSUER },
-                &USER.into(),
-            ),
-            EUR_AMOUNT
-        );
-    });
+		//check user balance
+		assert_eq!(
+			Tokens::balance(
+				CurrencyId::AlphaNum4 { code: EUR_CODE.into(), issuer: ISSUER },
+				&USER.into(),
+			),
+			EUR_AMOUNT
+		);
+	});
 }
 
 #[test]
 fn report_stellar_transaction_invalid_envelope() {
-    new_test_ext().execute_with(|| {
-        //mint tokens for User
-        assert_err!(
+	new_test_ext().execute_with(|| {
+		//mint tokens for User
+		assert_err!(
 			Spacewalk::report_stellar_transaction(
 				Origin::signed([0; 32].into()),
 				"INVALID_STELLAR_TRANSACTION_ENVELOPE".into()
@@ -87,73 +87,73 @@ fn report_stellar_transaction_invalid_envelope() {
 				message: Some(&"XdrDecodingError")
 			})
 		);
-    });
+	});
 }
 
 #[test]
 fn redeem_burns_asset_usdc() {
-    new_test_ext().execute_with(|| {
-        //mint tokens for User
-        assert_ok!(Spacewalk::report_stellar_transaction(
+	new_test_ext().execute_with(|| {
+		//mint tokens for User
+		assert_ok!(Spacewalk::report_stellar_transaction(
 			Origin::signed([0; 32].into()),
 			STELLAR_TRANSACTION_ENVELOPE_USDC.into()
 		));
-        //burn tokens
-        assert_ok!(Spacewalk::redeem(
+		//burn tokens
+		assert_ok!(Spacewalk::redeem(
 			Origin::signed(USER.into()),
 			USDC_CODE.into(),
 			ISSUER_STELLAR_ADDRESS.into(),
 			USDC_AMOUNT,
 			VAULT_STELLAR_ADDRESS.into()
 		));
-        //check user balance
-        assert_eq!(
-            Tokens::balance(
-                CurrencyId::AlphaNum4 { code: USDC_CODE.into(), issuer: ISSUER },
-                &USER.into(),
-            ),
-            0
-        );
-    });
+		//check user balance
+		assert_eq!(
+			Tokens::balance(
+				CurrencyId::AlphaNum4 { code: USDC_CODE.into(), issuer: ISSUER },
+				&USER.into(),
+			),
+			0
+		);
+	});
 }
 
 #[test]
 fn redeem_burns_asset_eur() {
-    new_test_ext().execute_with(|| {
-        //mint tokens for User
-        assert_ok!(Spacewalk::report_stellar_transaction(
+	new_test_ext().execute_with(|| {
+		//mint tokens for User
+		assert_ok!(Spacewalk::report_stellar_transaction(
 			Origin::signed([0; 32].into()),
 			STELLAR_TRANSACTION_ENVELOPE_EUR.into()
 		));
-        //burn tokens
-        assert_ok!(Spacewalk::redeem(
+		//burn tokens
+		assert_ok!(Spacewalk::redeem(
 			Origin::signed(USER.into()),
 			EUR_CODE.into(),
 			ISSUER_STELLAR_ADDRESS.into(),
 			EUR_AMOUNT,
 			VAULT_STELLAR_ADDRESS.into()
 		));
-        //check user balance
-        assert_eq!(
-            Tokens::balance(
-                CurrencyId::AlphaNum4 { code: EUR_CODE.into(), issuer: ISSUER },
-                &USER.into(),
-            ),
-            0
-        );
-    });
+		//check user balance
+		assert_eq!(
+			Tokens::balance(
+				CurrencyId::AlphaNum4 { code: EUR_CODE.into(), issuer: ISSUER },
+				&USER.into(),
+			),
+			0
+		);
+	});
 }
 
 #[test]
 fn redeem_with_incorrect_caller() {
-    new_test_ext().execute_with(|| {
-        //mint tokens for User
-        assert_ok!(Spacewalk::report_stellar_transaction(
+	new_test_ext().execute_with(|| {
+		//mint tokens for User
+		assert_ok!(Spacewalk::report_stellar_transaction(
 			Origin::signed([0; 32].into()),
 			STELLAR_TRANSACTION_ENVELOPE_USDC.into()
 		));
-        //burn tokens
-        assert_err!(
+		//burn tokens
+		assert_err!(
 			Spacewalk::redeem(
 				Origin::signed([0; 32].into()),
 				USDC_CODE.into(),
@@ -167,19 +167,19 @@ fn redeem_with_incorrect_caller() {
 				message: Some(&"BalanceChangeError")
 			})
 		);
-    });
+	});
 }
 
 #[test]
 fn redeem_with_wrong_asset() {
-    new_test_ext().execute_with(|| {
-        //mint tokens for User
-        assert_ok!(Spacewalk::report_stellar_transaction(
+	new_test_ext().execute_with(|| {
+		//mint tokens for User
+		assert_ok!(Spacewalk::report_stellar_transaction(
 			Origin::signed([0; 32].into()),
 			STELLAR_TRANSACTION_ENVELOPE_USDC.into()
 		));
-        //burn tokens
-        assert_err!(
+		//burn tokens
+		assert_err!(
 			Spacewalk::redeem(
 				Origin::signed(USER.into()),
 				EUR_CODE.into(),
@@ -193,19 +193,19 @@ fn redeem_with_wrong_asset() {
 				message: Some(&"BalanceChangeError")
 			})
 		);
-    });
+	});
 }
 
 #[test]
 fn redeem_with_wrong_issuer() {
-    new_test_ext().execute_with(|| {
-        //mint tokens for User
-        assert_ok!(Spacewalk::report_stellar_transaction(
+	new_test_ext().execute_with(|| {
+		//mint tokens for User
+		assert_ok!(Spacewalk::report_stellar_transaction(
 			Origin::signed([0; 32].into()),
 			STELLAR_TRANSACTION_ENVELOPE_USDC.into()
 		));
-        //burn tokens
-        assert_err!(
+		//burn tokens
+		assert_err!(
 			Spacewalk::redeem(
 				Origin::signed(USER.into()),
 				EUR_CODE.into(),
@@ -219,19 +219,19 @@ fn redeem_with_wrong_issuer() {
 				message: Some(&"BalanceChangeError")
 			})
 		);
-    });
+	});
 }
 
 #[test]
 fn redeem_with_invalid_vault_pubkey() {
-    new_test_ext().execute_with(|| {
-        //mint tokens for User
-        assert_ok!(Spacewalk::report_stellar_transaction(
+	new_test_ext().execute_with(|| {
+		//mint tokens for User
+		assert_ok!(Spacewalk::report_stellar_transaction(
 			Origin::signed([0; 32].into()),
 			STELLAR_TRANSACTION_ENVELOPE_EUR.into()
 		));
-        //burn tokens
-        assert_err!(
+		//burn tokens
+		assert_err!(
 			Spacewalk::redeem(
 				Origin::signed(USER.into()),
 				EUR_CODE.into(),
@@ -245,19 +245,19 @@ fn redeem_with_invalid_vault_pubkey() {
 				message: Some(&"InvalidStellarPublicKey")
 			})
 		);
-    });
+	});
 }
 
 #[test]
 fn redeem_with_amount_too_high() {
-    new_test_ext().execute_with(|| {
-        //mint tokens for User
-        assert_ok!(Spacewalk::report_stellar_transaction(
+	new_test_ext().execute_with(|| {
+		//mint tokens for User
+		assert_ok!(Spacewalk::report_stellar_transaction(
 			Origin::signed([0; 32].into()),
 			STELLAR_TRANSACTION_ENVELOPE_USDC.into()
 		));
-        //burn tokens
-        assert_err!(
+		//burn tokens
+		assert_err!(
 			Spacewalk::redeem(
 				Origin::signed(USER.into()),
 				USDC_CODE.into(),
@@ -271,5 +271,5 @@ fn redeem_with_amount_too_high() {
 				message: Some(&"BalanceChangeError")
 			})
 		);
-    });
+	});
 }

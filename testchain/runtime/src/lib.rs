@@ -9,9 +9,8 @@ include!(concat!(env!("OUT_DIR"), "/wasm_binary.rs"));
 use frame_support::{
 	construct_runtime, parameter_types,
 	traits::{ConstU128, ConstU8, Contains, KeyOwnerProofSystem},
-	weights::{constants::WEIGHT_PER_SECOND, IdentityFee},
+	weights::{constants::WEIGHT_PER_SECOND, ConstantMultiplier, IdentityFee},
 };
-use frame_support::weights::ConstantMultiplier;
 use orml_currencies::BasicCurrencyAdapter;
 use orml_traits::parameter_type_with_key;
 use pallet_grandpa::{

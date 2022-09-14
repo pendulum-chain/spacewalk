@@ -1,3 +1,4 @@
+use primitives::Block;
 use sc_client_api::{BlockBackend, ExecutorProvider};
 use sc_consensus_aura::{ImportQueueParams, SlotProportion, StartAuraParams};
 use sc_executor::NativeElseWasmExecutor;
@@ -9,8 +10,7 @@ use sc_service::{
 };
 use sc_telemetry::{Telemetry, TelemetryWorker};
 use sp_consensus_aura::ed25519::AuthorityPair as AuraPair;
-use spacewalk_runtime::{RuntimeApi};
-use primitives::Block;
+use spacewalk_runtime::RuntimeApi;
 use std::{sync::Arc, time::Duration};
 
 // Native executor instance.
