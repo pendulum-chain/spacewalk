@@ -9,7 +9,7 @@ include!(concat!(env!("OUT_DIR"), "/wasm_binary.rs"));
 use frame_support::{
 	construct_runtime, parameter_types,
 	traits::{ConstU128, ConstU8, Contains, KeyOwnerProofSystem},
-	weights::{constants::WEIGHT_PER_SECOND, IdentityFee},
+	weights::{constants::WEIGHT_PER_SECOND, ConstantMultiplier, IdentityFee},
 };
 use orml_currencies::BasicCurrencyAdapter;
 use orml_traits::parameter_type_with_key;
@@ -51,6 +51,10 @@ impl_opaque_keys! {
 		pub grandpa: Grandpa,
 	}
 }
+
+pub const UNITS: Balance = 10_000_000_000;
+pub const CENTS: Balance = UNITS / 100; // 100_000_000
+pub const MILLICENTS: Balance = CENTS / 1_000; // 100_000
 
 /// This runtime version.
 #[sp_version::runtime_version]
@@ -166,19 +170,20 @@ impl pallet_timestamp::Config for Runtime {
 
 parameter_types! {
 	pub const GetNativeCurrencyId: CurrencyId = CurrencyId::Native;
+	pub const TransactionByteFee: Balance = MILLICENTS;
 }
 
 impl pallet_transaction_payment::Config for Runtime {
 	type OnChargeTransaction = pallet_transaction_payment::CurrencyAdapter<Balances, ()>;
-	type TransactionByteFee = ConstU128<100_000>;
-	type WeightToFee = IdentityFee<Balance>;
-	type FeeMultiplierUpdate = ();
 	type OperationalFeeMultiplier = ConstU8<5>;
+	type WeightToFee = IdentityFee<Balance>;
+	type LengthToFee = ConstantMultiplier<Balance, TransactionByteFee>;
+	type FeeMultiplierUpdate = ();
 }
 
 impl pallet_sudo::Config for Runtime {
-	type Call = Call;
 	type Event = Event;
+	type Call = Call;
 }
 
 parameter_types! {
@@ -199,7 +204,11 @@ impl orml_tokens::Config for Runtime {
 	type WeightInfo = ();
 	type ExistentialDeposits = ExistentialDeposits;
 	type OnDust = orml_tokens::BurnDust<Runtime>;
+	type OnNewTokenAccount = ();
+	type OnKilledTokenAccount = ();
 	type MaxLocks = MaxLocks;
+	type MaxReserves = ();
+	type ReserveIdentifier = [u8; 8];
 	type DustRemovalWhitelist = DustRemovalWhitelist;
 }
 
@@ -211,17 +220,16 @@ impl Contains<AccountId> for DustRemovalWhitelist {
 }
 
 impl pallet_spacewalk::Config for Runtime {
-	type Event = Event;
 	type Call = Call;
+	type Event = Event;
 	type Currency = Currencies;
 	type AddressConversion = StellarAddressConversion;
-	type StringCurrencyConversion = StellarStringCurrencyConversion;
 	type BalanceConversion = StellarBalanceConversion;
+	type StringCurrencyConversion = StellarStringCurrencyConversion;
 	type CurrencyConversion = StellarCurrencyConversion;
 }
 
 impl orml_currencies::Config for Runtime {
-	type Event = Event;
 	type MultiCurrency = Tokens;
 	type NativeCurrency = BasicCurrencyAdapter<Runtime, Balances, primitives::Amount, BlockNumber>;
 	type GetNativeCurrencyId = GetNativeCurrencyId;
@@ -229,15 +237,15 @@ impl orml_currencies::Config for Runtime {
 }
 
 impl pallet_balances::Config for Runtime {
-	type MaxLocks = MaxLocks;
-	type MaxReserves = ();
-	type ReserveIdentifier = [u8; 8];
 	type Balance = Balance;
-	type Event = Event;
 	type DustRemoval = ();
+	type Event = Event;
 	type ExistentialDeposit = ConstU128<500>;
 	type AccountStore = System;
 	type WeightInfo = pallet_balances::weights::SubstrateWeight<Runtime>;
+	type MaxLocks = MaxLocks;
+	type MaxReserves = ();
+	type ReserveIdentifier = [u8; 8];
 }
 
 construct_runtime! {
@@ -253,7 +261,7 @@ construct_runtime! {
 		Sudo: pallet_sudo::{Pallet, Call, Storage, Config<T>, Event<T>} = 4,
 		Tokens: orml_tokens::{Pallet, Call, Storage, Config<T>, Event<T>} = 5,
 		Spacewalk: pallet_spacewalk::{Pallet, Call, Storage, Event<T>} = 6,
-		Currencies: orml_currencies::{Pallet, Call, Storage, Event<T>} = 7,
+		Currencies: orml_currencies::{Pallet, Call, Storage} = 7,
 		Balances: pallet_balances::{Pallet, Call, Storage, Config<T>, Event<T>} = 8,
 		TransactionPayment: pallet_transaction_payment::{Pallet, Storage} = 9,
 	}

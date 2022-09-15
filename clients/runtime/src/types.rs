@@ -23,17 +23,17 @@ cfg_if::cfg_if! {
 }
 
 mod metadata_aliases {
-    use super::*;
+	use super::*;
 
-    pub type DepositEvent = metadata::spacewalk::events::Deposit;
-    pub type RedeemEvent = metadata::spacewalk::events::Redeem;
+	pub type DepositEvent = metadata::spacewalk::events::Deposit;
+	pub type RedeemEvent = metadata::spacewalk::events::Redeem;
 
-    pub type SpacewalkHeader = <SpacewalkRuntime as Config>::Header;
+	pub type SpacewalkHeader = <SpacewalkRuntime as Config>::Header;
 }
 
 mod dispatch_error {
     use crate::metadata::{
-        runtime_types::sp_runtime::{ArithmeticError, ModuleError, TokenError},
+        runtime_types::sp_runtime::{ArithmeticError, ModuleError, TokenError, TransactionalError},
         DispatchError,
     };
 
@@ -41,8 +41,9 @@ mod dispatch_error {
     type RichArithmeticError = sp_runtime::ArithmeticError;
     type RichDispatchError = sp_runtime::DispatchError;
     type RichModuleError = sp_runtime::ModuleError;
+    type RichTransactionalError = sp_runtime::TransactionalError;
 
-    macro_rules! convert_enum{($src: ident, $dst: ident, $($variant: ident,)*)=> {
+	macro_rules! convert_enum{($src: ident, $dst: ident, $($variant: ident,)*)=> {
         impl From<$src> for $dst {
             fn from(src: $src) -> Self {
                 match src {
@@ -52,25 +53,22 @@ mod dispatch_error {
         }
     }}
 
-    convert_enum!(
-        RichTokenError,
-        TokenError,
-        NoFunds,
-        WouldDie,
-        BelowMinimum,
-        CannotCreate,
-        UnknownAsset,
-        Frozen,
-        Unsupported,
-    );
+	convert_enum!(
+		RichTokenError,
+		TokenError,
+		NoFunds,
+		WouldDie,
+		BelowMinimum,
+		CannotCreate,
+		UnknownAsset,
+		Frozen,
+		Unsupported,
+	);
 
-    convert_enum!(
-        RichArithmeticError,
-        ArithmeticError,
-        Underflow,
-        Overflow,
-        DivisionByZero,
-    );
+	convert_enum!(RichArithmeticError, ArithmeticError, Underflow, Overflow, DivisionByZero,);
+
+    convert_enum!(RichTransactionalError, TransactionalError, LimitReached, NoLayer,);
+
 
     impl From<RichDispatchError> for DispatchError {
         fn from(value: RichDispatchError) -> Self {
@@ -86,17 +84,18 @@ mod dispatch_error {
                 RichDispatchError::TooManyConsumers => DispatchError::TooManyConsumers,
                 RichDispatchError::Token(token_error) => DispatchError::Token(token_error.into()),
                 RichDispatchError::Arithmetic(arithmetic_error) => DispatchError::Arithmetic(arithmetic_error.into()),
+                RichDispatchError::Transactional(transactional_error) => DispatchError::Transactional(transactional_error.into()),
             }
         }
     }
 
-    impl<'de> serde::Deserialize<'de> for DispatchError {
-        fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
-        where
-            D: serde::Deserializer<'de>,
-        {
-            let value = RichDispatchError::deserialize(deserializer)?;
-            Ok(value.into())
-        }
-    }
+	impl<'de> serde::Deserialize<'de> for DispatchError {
+		fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+		where
+			D: serde::Deserializer<'de>,
+		{
+			let value = RichDispatchError::deserialize(deserializer)?;
+			Ok(value.into())
+		}
+	}
 }

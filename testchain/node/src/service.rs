@@ -1,3 +1,4 @@
+use primitives::Block;
 use sc_client_api::{BlockBackend, ExecutorProvider};
 use sc_consensus_aura::{ImportQueueParams, SlotProportion, StartAuraParams};
 use sc_executor::NativeElseWasmExecutor;
@@ -9,7 +10,7 @@ use sc_service::{
 };
 use sc_telemetry::{Telemetry, TelemetryWorker};
 use sp_consensus_aura::ed25519::AuthorityPair as AuraPair;
-use spacewalk_runtime::{primitives::Block, RuntimeApi};
+use spacewalk_runtime::RuntimeApi;
 use std::{sync::Arc, time::Duration};
 
 // Native executor instance.
@@ -213,7 +214,7 @@ pub fn new_full(mut config: Configuration) -> Result<(TaskManager, RpcHandlers),
 	let enable_grandpa = !config.disable_grandpa;
 	let prometheus_registry = config.prometheus_registry().cloned();
 
-	let rpc_extensions_builder = {
+	let rpc_builder = {
 		let client = client.clone();
 		let pool = transaction_pool.clone();
 
@@ -221,7 +222,7 @@ pub fn new_full(mut config: Configuration) -> Result<(TaskManager, RpcHandlers),
 			let deps =
 				spacewalk_rpc::FullDeps { client: client.clone(), pool: pool.clone(), deny_unsafe };
 
-			Ok(spacewalk_rpc::create_full(deps))
+			spacewalk_rpc::create_full(deps).map_err(Into::into)
 		})
 	};
 
@@ -231,7 +232,7 @@ pub fn new_full(mut config: Configuration) -> Result<(TaskManager, RpcHandlers),
 		keystore: keystore_container.sync_keystore(),
 		task_manager: &mut task_manager,
 		transaction_pool: transaction_pool.clone(),
-		rpc_extensions_builder,
+		rpc_builder,
 		backend,
 		system_rpc_tx,
 		config,

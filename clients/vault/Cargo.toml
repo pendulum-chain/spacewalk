@@ -7,7 +7,7 @@ version = "0.0.1"
 
 [features]
 integration = []
-parachain-metadata= ["runtime/parachain-metadata"]
+parachain-metadata = ["runtime/parachain-metadata"]
 standalone-metadata = ["runtime/standalone-metadata"]
 multi-address = ["runtime/multi-address"]
 
@@ -39,15 +39,15 @@ runtime = {path = "../runtime"}
 service = {path = "../service"}
 
 # Substrate dependencies
-sp-arithmetic = {git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.18"}
-sp-core = {git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.18"}
-sp-io = {git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.18"}
-sp-keyring = {git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.18"}
-sp-runtime = {git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.18"}
-sp-std = {git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.18"}
+sp-arithmetic = {git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.24"}
+sp-core = {git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.24"}
+sp-io = {git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.24"}
+sp-keyring = {git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.24"}
+sp-runtime = {git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.24"}
+sp-std = {git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.24"}
 
 # Substrate Stellar Dependencies
-substrate-stellar-sdk = {git = "https://github.com/pendulum-chain/substrate-stellar-sdk", branch = "polkadot-v0.9.18"}
+substrate-stellar-sdk = {git = "https://github.com/pendulum-chain/substrate-stellar-sdk"}
 
 [dev-dependencies]
 mockall = "0.8.1"
@@ -56,4 +56,4 @@ mockall = "0.8.1"
 runtime = {path = "../runtime", features = ["testing-utils"]}
 
 # Substrate dependencies
-frame-support = {git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.18"}
+frame-support = {git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.24"}

@@ -2,12 +2,12 @@ use parity_scale_codec::{Decode, Encode};
 use serde::{Deserialize, Deserializer};
 use sp_core::ed25519;
 use sp_runtime::{
-    scale_info::TypeInfo,
-    traits::{Convert, IdentifyAccount, LookupError, StaticLookup},
-    AccountId32, MultiSigner,
+    AccountId32,
+    MultiSigner,
+    scale_info::TypeInfo, traits::{Convert, IdentifyAccount, LookupError, StaticLookup},
 };
 use sp_std::{
-    convert::{From, TryInto},
+    convert::{From, TryFrom, TryInto},
     fmt,
     prelude::*,
     str,
@@ -15,10 +15,11 @@ use sp_std::{
     vec::Vec,
 };
 use stellar::{
-    types::{AssetAlphaNum12, AssetAlphaNum4},
-    Asset, PublicKey,
+    Asset,
+    PublicKey, types::{AlphaNum12, AlphaNum4},
 };
 use substrate_stellar_sdk as stellar;
+use substrate_stellar_sdk::types::AssetType;
 
 // This represents each record for a transaction in the Horizon API response
 #[derive(Deserialize, Encode, Decode, Default, Debug)]
@@ -86,8 +87,8 @@ pub struct HorizonTransactionsResponse {
 }
 
 pub fn de_string_to_bytes<'de, D>(de: D) -> Result<Vec<u8>, D::Error>
-where
-    D: Deserializer<'de>,
+    where
+        D: Deserializer<'de>,
 {
     let s: &str = Deserialize::deserialize(de)?;
     Ok(s.as_bytes().to_vec())
@@ -220,10 +221,26 @@ impl From<stellar::Asset> for CurrencyId {
                 code: asset_alpha_num4.asset_code,
                 issuer: asset_alpha_num4.issuer.into_binary(),
             },
-            stellar::Asset::AssetTypeCreditAlphanum12(asset_alpha_num12) => CurrencyId::AlphaNum12 {
-                code: asset_alpha_num12.asset_code,
-                issuer: asset_alpha_num12.issuer.into_binary(),
-            },
+            stellar::Asset::AssetTypeCreditAlphanum12(asset_alpha_num12) =>
+                CurrencyId::AlphaNum12 {
+                    code: asset_alpha_num12.asset_code,
+                    issuer: asset_alpha_num12.issuer.into_binary(),
+                },
+            stellar::Asset::Default(asset_type) => {
+                match asset_type {
+                    AssetType::AssetTypeNative => CurrencyId::StellarNative,
+                    AssetType::AssetTypeCreditAlphanum4 => {
+                        CurrencyId::AlphaNum4 { code: [0; 4], issuer: [0; 32] }
+                    }
+                    AssetType::AssetTypeCreditAlphanum12 => {
+                        CurrencyId::AlphaNum12 { code: [0; 12], issuer: [0; 32] }
+                    }
+                    AssetType::AssetTypePoolShare => {
+                        // TODO - implement this
+                        CurrencyId::AlphaNum4 { code: [0; 4], issuer: [0; 32] }
+                    }
+                }
+            }
         }
     }
 }
@@ -235,14 +252,16 @@ impl TryInto<stellar::Asset> for CurrencyId {
         match self {
             Self::Native => Err("PEN token not defined in the Stellar world."),
             Self::StellarNative => Ok(stellar::Asset::native()),
-            Self::AlphaNum4 { code, issuer } => Ok(stellar::Asset::AssetTypeCreditAlphanum4(AssetAlphaNum4 {
-                asset_code: code,
-                issuer: PublicKey::PublicKeyTypeEd25519(issuer),
-            })),
-            Self::AlphaNum12 { code, issuer } => Ok(stellar::Asset::AssetTypeCreditAlphanum12(AssetAlphaNum12 {
-                asset_code: code,
-                issuer: PublicKey::PublicKeyTypeEd25519(issuer),
-            })),
+            Self::AlphaNum4 { code, issuer } =>
+                Ok(stellar::Asset::AssetTypeCreditAlphanum4(AlphaNum4 {
+                    asset_code: code,
+                    issuer: PublicKey::PublicKeyTypeEd25519(issuer),
+                })),
+            Self::AlphaNum12 { code, issuer } =>
+                Ok(stellar::Asset::AssetTypeCreditAlphanum12(AlphaNum12 {
+                    asset_code: code,
+                    issuer: PublicKey::PublicKeyTypeEd25519(issuer),
+                })),
         }
     }
 }
@@ -257,7 +276,10 @@ impl fmt::Debug for CurrencyId {
                     f,
                     "{{ code: {}, issuer: {} }}",
                     str::from_utf8(code).unwrap(),
-                    str::from_utf8(stellar::PublicKey::from_binary(*issuer).to_encoding().as_slice()).unwrap()
+                    str::from_utf8(
+                        stellar::PublicKey::from_binary(*issuer).to_encoding().as_slice()
+                    )
+                        .unwrap()
                 )
             }
             Self::AlphaNum12 { code, issuer } => {
@@ -265,7 +287,10 @@ impl fmt::Debug for CurrencyId {
                     f,
                     "{{ code: {}, issuer: {} }}",
                     str::from_utf8(code).unwrap(),
-                    str::from_utf8(stellar::PublicKey::from_binary(*issuer).to_encoding().as_slice()).unwrap()
+                    str::from_utf8(
+                        stellar::PublicKey::from_binary(*issuer).to_encoding().as_slice()
+                    )
+                        .unwrap()
                 )
             }
         }
@@ -282,7 +307,9 @@ impl StaticLookup for CurrencyConversion {
     type Source = CurrencyId;
     type Target = Asset;
 
-    fn lookup(currency_id: <Self as StaticLookup>::Source) -> Result<<Self as StaticLookup>::Target, LookupError> {
+    fn lookup(
+        currency_id: <Self as StaticLookup>::Source,
+    ) -> Result<<Self as StaticLookup>::Target, LookupError> {
         let asset_conversion_result: Result<Asset, &str> = currency_id.try_into();
         asset_conversion_result.map_err(to_look_up_error)
     }

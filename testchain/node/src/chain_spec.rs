@@ -1,10 +1,10 @@
 use hex_literal::hex;
 use sc_service::ChainType;
+use serde_json::{map::Map, Value};
 use sp_consensus_aura::ed25519::AuthorityId as AuraId;
 use sp_core::{crypto::UncheckedInto, ed25519, sr25519, Pair, Public};
 use sp_finality_grandpa::AuthorityId as GrandpaId;
 use sp_runtime::traits::{IdentifyAccount, Verify};
-use spacewalk_rpc::jsonrpc_core::serde_json::{map::Map, Value};
 use spacewalk_runtime::{
 	AccountId, AuraConfig, BalancesConfig, CurrencyId, GenesisConfig, GrandpaConfig, Signature,
 	SudoConfig, SystemConfig, TokensConfig, WASM_BINARY,

@@ -1,6 +1,6 @@
 use futures::{
     channel::mpsc,
-    future::{select, FutureExt},
+    future::{FutureExt, select},
     sink::SinkExt,
     stream::StreamExt,
 };
@@ -10,12 +10,12 @@ use jsonrpsee_core::{
 };
 use sc_network::config::TransportConfig;
 pub use sc_service::{
-    config::{DatabaseSource, KeystoreConfig, WasmExecutionMethod},
+    config::{DatabaseSource, KeystoreConfig, WasmExecutionMethod, WasmtimeInstantiationStrategy},
     Error as ServiceError,
 };
 use sc_service::{
-    config::{NetworkConfiguration, TelemetryEndpoints},
-    ChainSpec, Configuration, KeepBlocks, RpcHandlers, RpcSession, TaskManager,
+    ChainSpec,
+    config::{NetworkConfiguration, TelemetryEndpoints}, Configuration, KeepBlocks, RpcHandlers, TaskManager,
 };
 pub use sp_keyring::Ed25519Keyring;
 use thiserror::Error;
@@ -72,32 +72,29 @@ impl SubxtClient {
         let (to_front, from_back) = mpsc::unbounded();
 
         let rpc_copy = rpc.clone();
-        let session = RpcSession::new(to_front.clone());
         task::spawn(
             select(
                 Box::pin(from_front.for_each(move |message: String| {
                     let rpc = rpc.clone();
-                    let session = session.clone();
                     let mut to_front = to_front.clone();
                     async move {
-                        let response = rpc.rpc_query(&session, &message).await;
-                        if let Some(response) = response {
-                            to_front.send(response).await.ok();
-                        }
+                        let (resp, mut stream) = rpc.rpc_query(&message).await.unwrap();
+                        to_front.send(resp).await.ok();
+                        task::spawn(async move {
+                            while let Some(resp) = stream.next().await {
+                                to_front.send(resp).await.ok();
+                            }
+                        });
                     }
                 })),
                 Box::pin(async move {
                     task_manager.future().await.ok();
                 }),
             )
-            .map(drop),
+                .map(drop),
         );
 
-        Self {
-            rpc: rpc_copy,
-            sender: Sender(to_back),
-            receiver: Receiver(from_back),
-        }
+        Self { rpc: rpc_copy, sender: Sender(to_back), receiver: Receiver(from_back) }
     }
 
     /// Creates a new client from a config.
@@ -117,24 +114,21 @@ impl Clone for SubxtClient {
         let (to_front, from_back) = mpsc::unbounded();
 
         let rpc = self.rpc.clone();
-        let session = RpcSession::new(to_front.clone());
         task::spawn(Box::pin(from_front.for_each(move |message: String| {
             let rpc = rpc.clone();
-            let session = session.clone();
             let mut to_front = to_front.clone();
             async move {
-                let response = rpc.rpc_query(&session, &message).await;
-                if let Some(response) = response {
-                    to_front.send(response).await.ok();
-                }
+                let (resp, mut stream) = rpc.rpc_query(&message).await.unwrap();
+                to_front.send(resp).await.ok();
+                task::spawn(async move {
+                    while let Some(resp) = stream.next().await {
+                        to_front.send(resp).await.ok();
+                    }
+                });
             }
         })));
 
-        Self {
-            rpc: self.rpc.clone(),
-            sender: Sender(to_back),
-            receiver: Receiver(from_back),
-        }
+        Self { rpc: self.rpc.clone(), sender: Sender(to_back), receiver: Receiver(from_back) }
     }
 }
 
@@ -214,8 +208,9 @@ impl<C: ChainSpec + 'static> SubxtClientConfig<C> {
             // wasm_external_transport: None,
         };
         let telemetry_endpoints = if let Some(port) = self.telemetry {
-            let endpoints = TelemetryEndpoints::new(vec![(format!("/ip4/127.0.0.1/tcp/{}/ws", port), 0)])
-                .expect("valid config; qed");
+            let endpoints =
+                TelemetryEndpoints::new(vec![(format!("/ip4/127.0.0.1/tcp/{}/ws", port), 0)])
+                    .expect("valid config; qed");
             Some(endpoints)
         } else {
             None
@@ -261,6 +256,10 @@ impl<C: ChainSpec + 'static> SubxtClientConfig<C> {
             rpc_max_payload: Default::default(),
             ws_max_out_buffer_capacity: Default::default(),
             runtime_cache_size: 2,
+            rpc_max_request_size: None,
+            rpc_max_response_size: None,
+            rpc_id_provider: None,
+            rpc_max_subs_per_conn: None,
         };
 
         log::info!("{}", service_config.impl_name);

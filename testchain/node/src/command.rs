@@ -14,16 +14,20 @@
 // You should have received a copy of the GNU General Public License
 // along with Substrate.  If not, see <http://www.gnu.org/licenses/>.
 
+use std::io::Write;
+
+use frame_benchmarking_cli::{BenchmarkCmd, SUBSTRATE_REFERENCE_HARDWARE};
+use sc_cli::{ChainSpec, Result, RuntimeVersion, SubstrateCli};
+use sc_service::{Configuration, PartialComponents, TaskManager};
+use sp_core::hexdisplay::HexDisplay;
+
+use spacewalk_runtime::Block;
+
 use crate::{
 	chain_spec,
 	cli::{Cli, Subcommand},
 	service as spacewalk_service,
 };
-use sc_cli::{ChainSpec, Result, RuntimeVersion, SubstrateCli};
-use sc_service::{Configuration, PartialComponents, TaskManager};
-use sp_core::hexdisplay::HexDisplay;
-use spacewalk_runtime::Block;
-use std::io::Write;
 
 fn load_spec(id: &str) -> std::result::Result<Box<dyn sc_service::ChainSpec>, String> {
 	match id {
@@ -121,19 +125,47 @@ pub fn run() -> Result<()> {
 			runner.async_run(|config| {
 				let PartialComponents { client, task_manager, backend, .. } =
 					spacewalk_service::new_partial(&config)?;
-				Ok((cmd.run(client, backend), task_manager))
+				let aux_revert = Box::new(|client, _, blocks| {
+					sc_finality_grandpa::revert(client, blocks)?;
+					Ok(())
+				});
+				Ok((cmd.run(client, backend, Some(aux_revert)), task_manager))
 			})
 		},
-		Some(Subcommand::Benchmark(cmd)) =>
-			if cfg!(feature = "runtime-benchmarks") {
-				let runner = cli.create_runner(cmd)?;
+		Some(Subcommand::Benchmark(cmd)) => {
+			let runner = cli.create_runner(cmd)?;
 
-				runner.sync_run(|config| cmd.run::<Block, spacewalk_service::Executor>(config))
-			} else {
-				Err("Benchmarking wasn't enabled when building the node. \
-				You can enable it with `--features runtime-benchmarks`."
-					.into())
-			},
+			runner.sync_run(|config| {
+				// This switch needs to be in the client, since the client decides
+				// which sub-commands it wants to support.
+				match cmd {
+					BenchmarkCmd::Pallet(cmd) =>
+						if cfg!(feature = "runtime-benchmarks") {
+							cmd.run::<Block, spacewalk_service::Executor>(config)
+						} else {
+							Err("Benchmarking wasn't enabled when building the node. \
+                You can enable it with `--features runtime-benchmarks`."
+								.into())
+						},
+					BenchmarkCmd::Block(cmd) => {
+						let PartialComponents { client, .. } =
+							spacewalk_service::new_partial(&config)?;
+						cmd.run(client)
+					},
+					BenchmarkCmd::Storage(cmd) => {
+						let PartialComponents { client, backend, .. } =
+							spacewalk_service::new_partial(&config)?;
+						let db = backend.expose_db();
+						let storage = backend.expose_storage();
+
+						cmd.run(config, client, db, storage)
+					},
+					BenchmarkCmd::Overhead(_) => Err("Unsupported benchmarking command".into()),
+					BenchmarkCmd::Machine(cmd) =>
+						cmd.run(&config, SUBSTRATE_REFERENCE_HARDWARE.clone()),
+				}
+			})
+		},
 		Some(Subcommand::ExportMetadata(params)) => {
 			let mut ext = frame_support::BasicExternalities::default();
 			sc_executor::with_externalities_safe(&mut ext, move || {

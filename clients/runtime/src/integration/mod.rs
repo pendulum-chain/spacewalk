@@ -4,7 +4,7 @@ use crate::{SpacewalkParachain, SpacewalkSigner};
 use futures::{future::Either, pin_mut, Future, FutureExt, SinkExt, StreamExt};
 use std::time::Duration;
 use subxt::Event;
-use subxt_client::{DatabaseSource, Ed25519Keyring, KeystoreConfig, Role, SubxtClientConfig, WasmExecutionMethod};
+use subxt_client::{DatabaseSource, Ed25519Keyring, KeystoreConfig, Role, SubxtClientConfig, WasmExecutionMethod, WasmtimeInstantiationStrategy};
 use tempdir::TempDir;
 use tokio::time::timeout;
 
@@ -30,7 +30,9 @@ pub async fn default_provider_client(key: Ed25519Keyring) -> (SubxtClient, TempD
         chain_spec: testchain::chain_spec::development_config(),
         role: Role::Authority(key),
         telemetry: None,
-        wasm_method: WasmExecutionMethod::Compiled,
+        wasm_method: WasmExecutionMethod::Compiled {
+            instantiation_strategy: WasmtimeInstantiationStrategy::LegacyInstanceReuse,
+        },
         tokio_handle: tokio::runtime::Handle::current(),
     };
 

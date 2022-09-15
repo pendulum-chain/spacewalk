@@ -1,7 +1,7 @@
-use crate::mock::*;
-
 use frame_support::{assert_err, assert_ok, traits::fungibles::Inspect};
 use sp_runtime::{DispatchError, ModuleError};
+
+use crate::mock::*;
 
 //stellar transaction that:
 //sent 1 USDC (1_000_000_000_000)
@@ -46,7 +46,7 @@ fn report_stellar_transaction_mints_usdc_asset() {
 		assert_eq!(
 			Tokens::balance(
 				CurrencyId::AlphaNum4 { code: USDC_CODE.into(), issuer: ISSUER },
-				&USER.into()
+				&USER.into(),
 			),
 			USDC_AMOUNT
 		);
@@ -65,7 +65,7 @@ fn report_stellar_transaction_mints_eur_asset() {
 		assert_eq!(
 			Tokens::balance(
 				CurrencyId::AlphaNum4 { code: EUR_CODE.into(), issuer: ISSUER },
-				&USER.into()
+				&USER.into(),
 			),
 			EUR_AMOUNT
 		);
@@ -83,7 +83,7 @@ fn report_stellar_transaction_invalid_envelope() {
 			),
 			DispatchError::Module(ModuleError {
 				index: 6,
-				error: 0,
+				error: [0, 0, 0, 0],
 				message: Some(&"XdrDecodingError")
 			})
 		);
@@ -110,7 +110,7 @@ fn redeem_burns_asset_usdc() {
 		assert_eq!(
 			Tokens::balance(
 				CurrencyId::AlphaNum4 { code: USDC_CODE.into(), issuer: ISSUER },
-				&USER.into()
+				&USER.into(),
 			),
 			0
 		);
@@ -137,7 +137,7 @@ fn redeem_burns_asset_eur() {
 		assert_eq!(
 			Tokens::balance(
 				CurrencyId::AlphaNum4 { code: EUR_CODE.into(), issuer: ISSUER },
-				&USER.into()
+				&USER.into(),
 			),
 			0
 		);
@@ -163,7 +163,7 @@ fn redeem_with_incorrect_caller() {
 			),
 			DispatchError::Module(ModuleError {
 				index: 6,
-				error: 2,
+				error: [2, 0, 0, 0],
 				message: Some(&"BalanceChangeError")
 			})
 		);
@@ -189,7 +189,7 @@ fn redeem_with_wrong_asset() {
 			),
 			DispatchError::Module(ModuleError {
 				index: 6,
-				error: 2,
+				error: [2, 0, 0, 0],
 				message: Some(&"BalanceChangeError")
 			})
 		);
@@ -215,7 +215,7 @@ fn redeem_with_wrong_issuer() {
 			),
 			DispatchError::Module(ModuleError {
 				index: 6,
-				error: 1,
+				error: [1, 0, 0, 0],
 				message: Some(&"BalanceChangeError")
 			})
 		);
@@ -241,7 +241,7 @@ fn redeem_with_invalid_vault_pubkey() {
 			),
 			DispatchError::Module(ModuleError {
 				index: 6,
-				error: 3,
+				error: [3, 0, 0, 0],
 				message: Some(&"InvalidStellarPublicKey")
 			})
 		);
@@ -267,7 +267,7 @@ fn redeem_with_amount_too_high() {
 			),
 			DispatchError::Module(ModuleError {
 				index: 6,
-				error: 2,
+				error: [2, 0, 0, 0],
 				message: Some(&"BalanceChangeError")
 			})
 		);

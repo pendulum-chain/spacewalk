@@ -38,7 +38,7 @@ impl Convert<(Vec<u8>, Vec<u8>), Result<CurrencyId, ()>> for StringCurrencyConve
 
 #[cfg(test)]
 mod tests {
-	use substrate_stellar_sdk::types::{AssetAlphaNum12, AssetAlphaNum4};
+	use substrate_stellar_sdk::types::{AlphaNum12, AlphaNum4};
 
 	use super::*;
 
@@ -73,7 +73,7 @@ mod tests {
 		let currency_lookup = currency_lookup.unwrap();
 		assert_eq!(
 			currency_lookup,
-			Asset::AssetTypeCreditAlphanum4(AssetAlphaNum4 { asset_code: code, issuer: account })
+			Asset::AssetTypeCreditAlphanum4(AlphaNum4 { asset_code: code, issuer: account })
 		);
 
 		let lookup_orig = CurrencyConversion::unlookup(currency_lookup);
@@ -97,7 +97,7 @@ mod tests {
 		let currency_lookup = currency_lookup.unwrap();
 		assert_eq!(
 			currency_lookup,
-			Asset::AssetTypeCreditAlphanum12(AssetAlphaNum12 { asset_code: code, issuer: account })
+			Asset::AssetTypeCreditAlphanum12(AlphaNum12 { asset_code: code, issuer: account })
 		);
 
 		let lookup_orig = CurrencyConversion::unlookup(currency_lookup);

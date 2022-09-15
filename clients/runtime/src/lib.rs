@@ -13,8 +13,8 @@ pub mod integration;
 use codec::{Decode, Encode};
 use sp_std::marker::PhantomData;
 use subxt::{
-    sp_runtime::{generic::Header, traits::BlakeTwo256, MultiSignature, OpaqueExtrinsic},
-    subxt, Config,
+	sp_runtime::{generic::Header, traits::BlakeTwo256, MultiSignature, OpaqueExtrinsic},
+	subxt, Config,
 };
 
 pub use error::{Error, SubxtError};
@@ -40,35 +40,32 @@ pub const STABLE_BITCOIN_CONFIRMATIONS: &str = "StableBitcoinConfirmations";
 pub const STABLE_PARACHAIN_CONFIRMATIONS: &str = "StableParachainConfirmations";
 
 #[cfg_attr(
-    feature = "parachain-metadata",
-    subxt(runtime_metadata_path = "metadata-parachain.scale", generated_type_derives = "Clone")
+	feature = "parachain-metadata",
+	subxt(runtime_metadata_path = "metadata-parachain.scale", generated_type_derives = "Clone")
 )]
 #[cfg_attr(
-    feature = "standalone-metadata",
-    subxt(
-        runtime_metadata_path = "metadata-standalone.scale",
-        generated_type_derives = "Clone"
-    )
+	feature = "standalone-metadata",
+	subxt(runtime_metadata_path = "metadata-standalone.scale", generated_type_derives = "Clone")
 )]
 pub mod metadata {}
 
 #[derive(Debug, Eq, PartialEq, Ord, PartialOrd, Default, Clone, Decode, Encode)]
 pub struct WrapperKeepOpaque<T> {
-    data: Vec<u8>,
-    _phantom: PhantomData<T>,
+	data: Vec<u8>,
+	_phantom: PhantomData<T>,
 }
 
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub struct SpacewalkRuntime;
 
 impl Config for SpacewalkRuntime {
-    type Index = Index;
-    type BlockNumber = BlockNumber;
-    type Hash = H256;
-    type Hashing = BlakeTwo256;
-    type AccountId = AccountId;
-    type Address = Address;
-    type Header = Header<Self::BlockNumber, BlakeTwo256>;
-    type Extrinsic = OpaqueExtrinsic;
-    type Signature = MultiSignature;
+	type Index = Index;
+	type BlockNumber = BlockNumber;
+	type Hash = H256;
+	type Hashing = BlakeTwo256;
+	type AccountId = AccountId;
+	type Address = Address;
+	type Header = Header<Self::BlockNumber, BlakeTwo256>;
+	type Extrinsic = OpaqueExtrinsic;
+	type Signature = MultiSignature;
 }
