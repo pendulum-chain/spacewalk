@@ -22,10 +22,7 @@ pub mod pallet {
 	use frame_support::pallet_prelude::*;
 	use frame_system::pallet_prelude::*;
 
-	use crate::{
-		traits::{ExternalizedMessage, Validator},
-		types::TransactionEnvelopeXdr,
-	};
+	use crate::traits::{ExternalizedMessage, ExternalizedMessages, TransactionSet, Validator};
 
 	use super::*;
 
@@ -53,6 +50,10 @@ pub mod pallet {
 	// Errors inform users that something went wrong.
 	#[pallet::error]
 	pub enum Error<T> {
+		Base64DecodeError,
+		InvalidExternalizedMessages,
+		InvalidTransactionSet,
+		InvalidTransactionXDR,
 		ValidatorLimitExceeded,
 	}
 
@@ -108,10 +109,25 @@ pub mod pallet {
 		/// This function is used to verify if a give transaction was executed on the Stellar
 		/// network.
 		pub fn validate_stellar_transaction(
-			transaction_envelope_xdr: TransactionEnvelopeXdr,
-			externalized_messages: Vec<ExternalizedMessage>,
-			transaction_set: Vec<Vec<TransactionEnvelopeXdr>>,
+			transaction_envelope_xdr_encoded: Vec<u8>,
+			externalized_messages_raw_encoded: Vec<u8>,
+			transaction_set_raw_encoded: Vec<u8>,
 		) -> DispatchResult {
+			let tx_xdr = base64::decode(&transaction_envelope_xdr_encoded)
+				.map_err(|_| Error::<T>::Base64DecodeError)?;
+			let transaction_envelope = TransactionEnvelopeXdr::from_xdr(tx_xdr)
+				.map_err(|_| Error::<T>::InvalidTransactionXDR)?;
+
+			let externalized_messages_raw = base64::decode(&externalized_messages_raw_encoded)
+				.map_err(|_| Error::<T>::Base64DecodeError)?;
+			let externalized_messages = ExternalizedMessages::try_from(externalized_messages_raw)
+				.map_err(|_| Error::<T>::InvalidExternalizedMessages)?;
+
+			let transaction_set_raw = base64::decode(&transaction_set_raw_encoded)
+				.map_err(|_| Error::<T>::Base64DecodeError)?;
+			let transaction_set = TransactionSet::try_from(transaction_set_raw)
+				.map_err(|_| Error::<T>::InvalidTransactionSet)?;
+
 			Ok(())
 		}
 	}

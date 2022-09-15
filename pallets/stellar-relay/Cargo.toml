@@ -13,6 +13,7 @@ repository = "https://github.com/pendulum-chain/spacewalk"
 targets = ["x86_64-unknown-linux-gnu"]
 
 [dependencies]
+base64 = { version = '0.13.0', default-features = false, features = ['alloc'] }
 codec = { package = "parity-scale-codec", version = "3.0.0", default-features = false, features = [
     "derive",
 ] }
@@ -33,6 +34,7 @@ substrate-stellar-sdk = { git = "https://github.com/pendulum-chain/substrate-ste
 [features]
 default = ["std"]
 std = [
+    "base64/std",
     "codec/std",
     "scale-info/std",
     "frame-support/std",
