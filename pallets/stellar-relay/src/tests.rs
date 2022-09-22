@@ -49,6 +49,20 @@ fn update_tier_1_validator_set_fails_for_non_root_origin() {
 }
 
 #[test]
+fn update_tier_1_validator_set_works() {
+	new_test_ext().execute_with(|| {
+		let validator = Validator {
+			name: Default::default(),
+			public_key: Default::default(),
+			organization: Default::default(),
+			total_org_nodes: 0,
+		};
+		let validator_set = vec![validator; 3];
+		assert_ok!(SpacewalkRelay::update_tier_1_validator_set(Origin::root(), validator_set));
+	});
+}
+
+#[test]
 fn update_tier_1_validator_set_fails_when_validator_set_too_large() {
 	new_test_ext().execute_with(|| {
 		let validator = Validator {

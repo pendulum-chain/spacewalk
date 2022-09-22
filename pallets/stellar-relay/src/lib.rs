@@ -23,6 +23,7 @@ pub mod pallet {
 	use frame_system::pallet_prelude::*;
 
 	use crate::traits::{ExternalizedMessage, ExternalizedMessages, TransactionSet, Validator};
+	use substrate_stellar_sdk::{TransactionEnvelope, XdrCodec};
 
 	use super::*;
 
@@ -54,6 +55,7 @@ pub mod pallet {
 		InvalidExternalizedMessages,
 		InvalidTransactionSet,
 		InvalidTransactionXDR,
+		BoundedVecCreationFailed,
 		ValidatorLimitExceeded,
 	}
 
@@ -96,8 +98,14 @@ pub mod pallet {
 			// Limit this call to root
 			let _ = ensure_root(origin)?;
 
+			// Ensure that the number of validators does not exceed the limit
+			ensure!(
+				validators.len() as u32 <= T::ValidatorLimit::get(),
+				Error::<T>::ValidatorLimitExceeded
+			);
+
 			let vec = BoundedVec::<Validator, T::ValidatorLimit>::try_from(validators)
-				.map_err(|_| Error::<T>::ValidatorLimitExceeded)?;
+				.map_err(|_| Error::<T>::BoundedVecCreationFailed)?;
 			Validators::<T>::put(vec);
 
 			Ok(())
@@ -115,7 +123,7 @@ pub mod pallet {
 		) -> DispatchResult {
 			let tx_xdr = base64::decode(&transaction_envelope_xdr_encoded)
 				.map_err(|_| Error::<T>::Base64DecodeError)?;
-			let transaction_envelope = TransactionEnvelopeXdr::from_xdr(tx_xdr)
+			let transaction_envelope = TransactionEnvelope::from_xdr(tx_xdr)
 				.map_err(|_| Error::<T>::InvalidTransactionXDR)?;
 
 			let externalized_messages_raw = base64::decode(&externalized_messages_raw_encoded)
