@@ -21,9 +21,13 @@ mod types;
 pub mod pallet {
 	use frame_support::pallet_prelude::*;
 	use frame_system::pallet_prelude::*;
+	use substrate_stellar_sdk::{
+		compound_types::UnlimitedVarArray,
+		types::{ScpEnvelope, TransactionSet},
+		TransactionEnvelope, XdrCodec,
+	};
 
-	use crate::traits::{ExternalizedMessage, ExternalizedMessages, TransactionSet, Validator};
-	use substrate_stellar_sdk::{TransactionEnvelope, XdrCodec};
+	use crate::traits::{ExternalizedMessage, ExternalizedMessages, Validator};
 
 	use super::*;
 
@@ -116,25 +120,36 @@ pub mod pallet {
 	impl<T: Config> Pallet<T> {
 		/// This function is used to verify if a give transaction was executed on the Stellar
 		/// network.
+		/// Parameters:
+		/// - `transaction_envelope_xdr_encoded`: The XDR of the base64-encoded transaction envelope
+		///   to verify
+		/// - `externalized_envelopes_encoded`: The XDR of the base64-encoded externalized
+		///   ScpEnvelopes
+		/// - `transaction_set_encoded`: The XDR of the base64-encoded transaction set to use for
+		///   verification
 		pub fn validate_stellar_transaction(
 			transaction_envelope_xdr_encoded: Vec<u8>,
-			externalized_messages_raw_encoded: Vec<u8>,
-			transaction_set_raw_encoded: Vec<u8>,
+			externalized_envelopes_encoded: Vec<u8>,
+			transaction_set_encoded: Vec<u8>,
 		) -> DispatchResult {
 			let tx_xdr = base64::decode(&transaction_envelope_xdr_encoded)
 				.map_err(|_| Error::<T>::Base64DecodeError)?;
 			let transaction_envelope = TransactionEnvelope::from_xdr(tx_xdr)
 				.map_err(|_| Error::<T>::InvalidTransactionXDR)?;
+			println!("transaction_envelope: {:?}", transaction_envelope);
 
-			let externalized_messages_raw = base64::decode(&externalized_messages_raw_encoded)
+			let envelopes_xdr = base64::decode(&externalized_envelopes_encoded)
 				.map_err(|_| Error::<T>::Base64DecodeError)?;
-			let externalized_messages = ExternalizedMessages::try_from(externalized_messages_raw)
+			let envelopes = UnlimitedVarArray::<ScpEnvelope>::from_xdr(envelopes_xdr)
 				.map_err(|_| Error::<T>::InvalidExternalizedMessages)?;
+			println!("envelopes: {:?}", envelopes);
 
-			let transaction_set_raw = base64::decode(&transaction_set_raw_encoded)
+			let transaction_set_xdr = base64::decode(&transaction_set_encoded)
 				.map_err(|_| Error::<T>::Base64DecodeError)?;
-			let transaction_set = TransactionSet::try_from(transaction_set_raw)
+			let transaction_set = TransactionSet::from_xdr(transaction_set_xdr)
 				.map_err(|_| Error::<T>::InvalidTransactionSet)?;
+
+			println!("transaction_set: {:?}", transaction_set);
 
 			Ok(())
 		}

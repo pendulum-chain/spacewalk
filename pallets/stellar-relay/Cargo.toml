@@ -29,7 +29,7 @@ sp-io = { default-features = false, version = "6.0.0", git = "https://github.com
 sp-runtime = { default-features = false, version = "6.0.0", git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.24" }
 
 # For testing
-substrate-stellar-sdk = { git = "https://github.com/pendulum-chain/substrate-stellar-sdk", branch = "polkadot-v0.9.24", default-features = false }
+substrate-stellar-sdk = { git = "https://github.com/pendulum-chain/substrate-stellar-sdk", branch = "polkadot-v0.9.24", default-features = false, features=["all-types"]}
 
 [features]
 default = ["std"]

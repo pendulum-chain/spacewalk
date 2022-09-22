@@ -1,21 +1,56 @@
 use frame_support::{assert_noop, assert_ok};
 use sp_runtime::DispatchError::BadOrigin;
-use substrate_stellar_sdk::{types::EnvelopeType, TransactionEnvelope, XdrCodec};
+use substrate_stellar_sdk::{
+	compound_types::{LimitedVarArray, UnlimitedVarArray},
+	types::{
+		EnvelopeType, Preconditions, ScpEnvelope, TransactionExt, TransactionSet,
+		TransactionV1Envelope,
+	},
+	AccountId, Hash, Memo, MuxedAccount, PublicKey, Transaction, TransactionEnvelope, XdrCodec,
+};
 
 use crate::{mock::*, traits::Validator, Error};
 
 #[test]
 fn validate_stellar_transaction_works_for_correct_values() {
 	new_test_ext().execute_with(|| {
-		let transaction_envelope = TransactionEnvelope::Default(EnvelopeType::EnvelopeTypeTx);
-		let transaction_envelope_xdr = transaction_envelope.to_xdr();
+		let source_account =
+			MuxedAccount::from(AccountId::from(PublicKey::PublicKeyTypeEd25519([0; 32])));
 
-		let externalized_messages = vec![];
-		let transaction_set = vec![];
+		let operations = LimitedVarArray::new(vec![]).unwrap();
+
+		let transaction = Transaction {
+			source_account,
+			fee: 0,
+			seq_num: 0,
+			cond: Preconditions::PrecondNone,
+			memo: Memo::MemoNone,
+			operations,
+			ext: TransactionExt::V0,
+		};
+
+		let transaction_envelope: TransactionEnvelope =
+			TransactionEnvelope::EnvelopeTypeTx(TransactionV1Envelope {
+				tx: transaction,
+				signatures: LimitedVarArray::new(vec![]).unwrap(),
+			});
+
+		let transaction_envelope_xdr = transaction_envelope.to_xdr();
+		let transaction_envelope_xdr_base64 = base64::encode(&transaction_envelope_xdr);
+
+		let envelopes = UnlimitedVarArray::<ScpEnvelope>::new_empty();
+		let envelopes_xdr = envelopes.to_xdr();
+		let envelopes_xdr_base64 = base64::encode(&envelopes_xdr);
+
+		let txes = UnlimitedVarArray::<TransactionEnvelope>::new_empty();
+		let transaction_set = TransactionSet { previous_ledger_hash: Hash::default(), txes };
+		let transaction_set_xdr = transaction_set.to_xdr();
+		let transaction_set_xdr_base64 = base64::encode(&transaction_set_xdr);
+
 		assert_ok!(SpacewalkRelay::validate_stellar_transaction(
-			transaction_envelope_xdr,
-			externalized_messages,
-			transaction_set
+			transaction_envelope_xdr_base64.as_bytes().to_vec(),
+			envelopes_xdr_base64.as_bytes().to_vec(),
+			transaction_set_xdr_base64.as_bytes().to_vec()
 		));
 	});
 }
