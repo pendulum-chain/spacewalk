@@ -1,5 +1,7 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
+extern crate core;
+
 /// Edit this file to define custom logic or remove it if it is not needed.
 /// Learn more about FRAME and the core library of Substrate FRAME pallets:
 /// <https://docs.substrate.io/v3/runtime/frame>
@@ -23,7 +25,7 @@ pub mod pallet {
 	use frame_system::pallet_prelude::*;
 	use sha2::{Digest, Sha256};
 	use substrate_stellar_sdk::{
-		compound_types::UnlimitedVarArray,
+		compound_types::{LimitedVarArray, UnlimitedVarArray},
 		network::Network,
 		types::{
 			ScpEnvelope, ScpStatementExternalize, ScpStatementPledges, StellarValue, TransactionSet,
@@ -130,40 +132,16 @@ pub mod pallet {
 		/// This function is used to verify if a give transaction was executed on the Stellar
 		/// network.
 		/// Parameters:
-		/// - `transaction_envelope_xdr_encoded`: The XDR of the base64-encoded transaction envelope
-		///   to verify
-		/// - `externalized_envelopes_encoded`: The XDR of the base64-encoded externalized
-		///   ScpEnvelopes
-		/// - `transaction_set_encoded`: The XDR of the base64-encoded transaction set to use for
-		///   verification
+		/// - `transaction_envelope`: The transaction envelope of the tx to be verified
+		/// - `envelopes`: The set of SCP envelopes that were externalized on the Stellar network
+		/// - `transaction_set`: The set of transactions that belong to the envelopes
 		pub fn validate_stellar_transaction(
-			transaction_envelope_xdr_encoded: Vec<u8>,
-			externalized_envelopes_encoded: Vec<u8>,
-			transaction_set_encoded: Vec<u8>,
+			transaction_envelope: TransactionEnvelope,
+			envelopes: UnlimitedVarArray<ScpEnvelope>,
+			transaction_set: TransactionSet,
+			network: Network,
 		) -> DispatchResult {
-			let tx_xdr = base64::decode(&transaction_envelope_xdr_encoded)
-				.map_err(|_| Error::<T>::Base64DecodeError)?;
-			let transaction_envelope = TransactionEnvelope::from_xdr(tx_xdr)
-				.map_err(|_| Error::<T>::InvalidTransactionXDR)?;
-			println!("transaction_envelope: {:?}", transaction_envelope);
-
-			let envelopes_xdr = base64::decode(&externalized_envelopes_encoded)
-				.map_err(|_| Error::<T>::Base64DecodeError)?;
-			let envelopes = UnlimitedVarArray::<ScpEnvelope>::from_xdr(envelopes_xdr)
-				.map_err(|_| Error::<T>::InvalidExternalizedMessages)?;
-			println!("envelopes: {:?}", envelopes);
-
-			let transaction_set_xdr = base64::decode(&transaction_set_encoded)
-				.map_err(|_| Error::<T>::Base64DecodeError)?;
-			let transaction_set = TransactionSet::from_xdr(transaction_set_xdr)
-				.map_err(|_| Error::<T>::InvalidTransactionSet)?;
-
-			println!("transaction_set: {:?}", transaction_set);
-
 			// Check if tx is included in the transaction set
-			// TODO - make network configurable
-			let network = Network::new(b"Public Global Stellar Network ; September 2015");
-
 			let tx_hash = transaction_envelope.get_hash(&network);
 			let tx_included =
 				transaction_set.txes.get_vec().iter().any(|tx| tx.get_hash(&network) == tx_hash);
