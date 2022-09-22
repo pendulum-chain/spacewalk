@@ -47,6 +47,7 @@ sp-runtime = {git = "https://github.com/paritytech/substrate", branch = "polkado
 sp-std = {git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.24"}
 
 # Substrate Stellar Dependencies
+stellar-relay = {git = "https://github.com/pendulum-chain/stellar-experiments.git", branch = "85-collect-and-store-scp-messages-in-vault-client" }
 substrate-stellar-sdk = {git = "https://github.com/pendulum-chain/substrate-stellar-sdk"}
 
 [dev-dependencies]

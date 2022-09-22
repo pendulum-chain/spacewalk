@@ -5,6 +5,7 @@ mod error;
 mod horizon;
 mod redeem;
 mod system;
+mod stellar_oracle;
 
 pub mod service {
 	pub use crate::{
