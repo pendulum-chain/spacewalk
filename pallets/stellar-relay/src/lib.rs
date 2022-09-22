@@ -58,6 +58,7 @@ pub mod pallet {
 	pub enum Error<T> {
 		Base64DecodeError,
 		BoundedVecCreationFailed,
+		EnvelopeSignedByUnknownValidator,
 		InvalidExternalizedMessages,
 		InvalidTransactionSet,
 		InvalidTransactionXDR,
@@ -161,6 +162,15 @@ pub mod pallet {
 			let tx_included =
 				transaction_set.txes.get_vec().iter().any(|tx| tx.get_hash(&network) == tx_hash);
 			ensure!(tx_included, Error::<T>::TransactionNotInTransactionSet);
+
+			// Check if all externalized ScpEnvelopes were signed by a tier 1 validator
+			let validators = Validators::<T>::get();
+			envelopes.get_vec().iter().for_each(|envelope| {
+				let node_id = envelope.statement.node_id.clone();
+				let node_id_found =
+					validators.iter().any(|validator| validator.public_key == node_id);
+				ensure!(node_id_found, Error::<T>::EnvelopeSignedByUnknownValidator);
+			});
 
 			Ok(())
 		}
