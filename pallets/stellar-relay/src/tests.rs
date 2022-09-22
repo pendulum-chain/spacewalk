@@ -42,7 +42,10 @@ fn validate_stellar_transaction_works_for_correct_values() {
 		let envelopes_xdr = envelopes.to_xdr();
 		let envelopes_xdr_base64 = base64::encode(&envelopes_xdr);
 
-		let txes = UnlimitedVarArray::<TransactionEnvelope>::new_empty();
+		let mut txes = UnlimitedVarArray::<TransactionEnvelope>::new_empty();
+		// Add the transaction that is to be verified to the transaction set
+		txes.push(transaction_envelope).unwrap();
+
 		let transaction_set = TransactionSet { previous_ledger_hash: Hash::default(), txes };
 		let transaction_set_xdr = transaction_set.to_xdr();
 		let transaction_set_xdr_base64 = base64::encode(&transaction_set_xdr);

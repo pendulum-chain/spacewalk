@@ -23,11 +23,12 @@ pub mod pallet {
 	use frame_system::pallet_prelude::*;
 	use substrate_stellar_sdk::{
 		compound_types::UnlimitedVarArray,
+		network::Network,
 		types::{ScpEnvelope, TransactionSet},
 		TransactionEnvelope, XdrCodec,
 	};
 
-	use crate::traits::{ExternalizedMessage, ExternalizedMessages, Validator};
+	use crate::traits::Validator;
 
 	use super::*;
 
@@ -56,10 +57,11 @@ pub mod pallet {
 	#[pallet::error]
 	pub enum Error<T> {
 		Base64DecodeError,
+		BoundedVecCreationFailed,
 		InvalidExternalizedMessages,
 		InvalidTransactionSet,
 		InvalidTransactionXDR,
-		BoundedVecCreationFailed,
+		TransactionNotInTransactionSet,
 		ValidatorLimitExceeded,
 	}
 
@@ -150,6 +152,15 @@ pub mod pallet {
 				.map_err(|_| Error::<T>::InvalidTransactionSet)?;
 
 			println!("transaction_set: {:?}", transaction_set);
+
+			// Check if tx is included in the transaction set
+			// TODO - make network configurable
+			let network = Network::new(b"Public Global Stellar Network ; September 2015");
+
+			let tx_hash = transaction_envelope.get_hash(&network);
+			let tx_included =
+				transaction_set.txes.get_vec().iter().any(|tx| tx.get_hash(&network) == tx_hash);
+			ensure!(tx_included, Error::<T>::TransactionNotInTransactionSet);
 
 			Ok(())
 		}
