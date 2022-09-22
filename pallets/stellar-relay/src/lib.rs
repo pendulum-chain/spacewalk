@@ -21,11 +21,14 @@ mod types;
 pub mod pallet {
 	use frame_support::pallet_prelude::*;
 	use frame_system::pallet_prelude::*;
+	use sha2::{Digest, Sha256};
 	use substrate_stellar_sdk::{
 		compound_types::UnlimitedVarArray,
 		network::Network,
-		types::{ScpEnvelope, TransactionSet},
-		TransactionEnvelope, XdrCodec,
+		types::{
+			ScpEnvelope, ScpStatementExternalize, ScpStatementPledges, StellarValue, TransactionSet,
+		},
+		Hash, TransactionEnvelope, XdrCodec,
 	};
 
 	use crate::traits::Validator;
@@ -60,9 +63,12 @@ pub mod pallet {
 		BoundedVecCreationFailed,
 		EnvelopeSignedByUnknownValidator,
 		InvalidExternalizedMessages,
+		InvalidScpPledge,
 		InvalidTransactionSet,
 		InvalidTransactionXDR,
 		TransactionNotInTransactionSet,
+		TransactionSetHashMismatch,
+		TransactionSetHashCreationFailed,
 		ValidatorLimitExceeded,
 	}
 
@@ -165,14 +171,56 @@ pub mod pallet {
 
 			// Check if all externalized ScpEnvelopes were signed by a tier 1 validator
 			let validators = Validators::<T>::get();
-			envelopes.get_vec().iter().for_each(|envelope| {
+			for envelope in envelopes.get_vec() {
 				let node_id = envelope.statement.node_id.clone();
-				let node_id_found =
-					validators.iter().any(|validator| validator.public_key == node_id);
+				let node_id_found = validators
+					.iter()
+					.any(|validator| validator.public_key.to_vec() == node_id.to_encoding());
+
 				ensure!(node_id_found, Error::<T>::EnvelopeSignedByUnknownValidator);
-			});
+				// TODO - Check if signature is valid
+			}
+
+			// Check if transaction set matches tx_set_hash included in the ScpEnvelopes
+			let expected_tx_set_hash =
+				Self::compute_non_generic_tx_set_content_hash(&transaction_set);
+
+			println!("expected_tx_set_hash: {:?}", expected_tx_set_hash);
+
+			for envelope in envelopes.get_vec() {
+				match envelope.clone().statement.pledges {
+					ScpStatementPledges::ScpStExternalize(externalized_statement) => {
+						let tx_set_hash = Self::get_tx_set_hash(&externalized_statement)?;
+						println!("tx_set_hash: {:?}", tx_set_hash);
+						ensure!(
+							tx_set_hash == expected_tx_set_hash,
+							Error::<T>::TransactionSetHashMismatch
+						);
+					},
+					_ => return Err(Error::<T>::InvalidScpPledge.into()),
+				}
+			}
 
 			Ok(())
+		}
+
+		fn get_tx_set_hash(x: &ScpStatementExternalize) -> Result<Hash, DispatchError> {
+			let scp_value = x.commit.value.get_vec();
+			let tx_set_hash = StellarValue::from_xdr(scp_value)
+				.map(|stellar_value| stellar_value.tx_set_hash)
+				.map_err(|_| Error::<T>::TransactionSetHashCreationFailed)?;
+			Ok(tx_set_hash)
+		}
+
+		fn compute_non_generic_tx_set_content_hash(tx_set: &TransactionSet) -> [u8; 32] {
+			let mut hasher = Sha256::new();
+			hasher.update(tx_set.previous_ledger_hash);
+
+			tx_set.txes.get_vec().iter().for_each(|envlp| {
+				hasher.update(envlp.to_xdr());
+			});
+
+			hasher.finalize().as_slice().try_into().unwrap()
 		}
 	}
 }
