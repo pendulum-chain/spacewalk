@@ -33,11 +33,11 @@ sp-std = {git = "https://github.com/paritytech/substrate", default-features = fa
 
 orml-traits = {git = "https://github.com/open-web3-stack/open-runtime-module-library", branch = "polkadot-v0.9.24", default-features = false}
 
+pallet-security = {path = "../security", default-features = false}
 pallet-transaction-payment = {git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.24"}
 substrate-stellar-sdk = {git = "https://github.com/pendulum-chain/substrate-stellar-sdk", branch = "polkadot-v0.9.24", default-features = false, features = ['offchain']}
 
 [dev-dependencies]
-pallet-security = {path = "../security", default-features = false}
 spacewalk-runtime-standalone = {path = "../../testchain/runtime", default-features = false}
 
 [features]
