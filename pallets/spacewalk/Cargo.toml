@@ -13,54 +13,56 @@ version = "4.0.0-dev"
 targets = ["x86_64-unknown-linux-gnu"]
 
 [dependencies]
-base64 = { version = '0.13.0', default-features = false, features = ['alloc'] }
-codec = { package = "parity-scale-codec", version = "3.0.0", default-features = false, features = ['derive'] }
-hex = { version = "0.4", default-features = false }
-log = { version = "0.4.14", default-features = false }
-scale-info = { version = "2.1.1", default-features = false, features = ["derive"] }
-serde = { version = '1.0.100', default-features = false, features = ['derive'] }
-serde_json = { version = '1.0.45', default-features = false, features = ['alloc'] }
+base64 = {version = '0.13.0', default-features = false, features = ['alloc']}
+codec = {package = "parity-scale-codec", version = "3.0.0", default-features = false, features = ['derive']}
+hex = {version = "0.4", default-features = false}
+log = {version = "0.4.14", default-features = false}
+scale-info = {version = "2.1.1", default-features = false, features = ["derive"]}
+serde = {version = '1.0.100', default-features = false, features = ['derive']}
+serde_json = {version = '1.0.45', default-features = false, features = ['alloc']}
 
 # Substrate packages
-frame-benchmarking = { git = "https://github.com/paritytech/substrate.git", default-features = false, branch = "polkadot-v0.9.24", optional = true }
-frame-support = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.24" }
-frame-system = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.24" }
-sp-arithmetic = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.24" }
-sp-core = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.24" }
-sp-io = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.24" }
-sp-runtime = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.24" }
-sp-std = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.24" }
+frame-benchmarking = {git = "https://github.com/paritytech/substrate.git", default-features = false, branch = "polkadot-v0.9.24", optional = true}
+frame-support = {git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.24"}
+frame-system = {git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.24"}
+sp-arithmetic = {git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.24"}
+sp-core = {git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.24"}
+sp-io = {git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.24"}
+sp-runtime = {git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.24"}
+sp-std = {git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.24"}
 
-orml-traits = { git = "https://github.com/open-web3-stack/open-runtime-module-library", branch = "polkadot-v0.9.24", default-features = false }
+orml-traits = {git = "https://github.com/open-web3-stack/open-runtime-module-library", branch = "polkadot-v0.9.24", default-features = false}
 
-pallet-transaction-payment = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.24" }
-substrate-stellar-sdk = { git = "https://github.com/pendulum-chain/substrate-stellar-sdk", branch = "polkadot-v0.9.24", default-features = false, features = ['offchain'] }
+pallet-transaction-payment = {git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.24"}
+substrate-stellar-sdk = {git = "https://github.com/pendulum-chain/substrate-stellar-sdk", branch = "polkadot-v0.9.24", default-features = false, features = ['offchain']}
 
 [dev-dependencies]
-spacewalk-runtime-standalone = { path = "../../testchain/runtime", default-features = false }
+pallet-security = {path = "../security", default-features = false}
+spacewalk-runtime-standalone = {path = "../../testchain/runtime", default-features = false}
 
 [features]
 default = ["std"]
 std = [
-    # don't add these to std as this causes the 'vec![] macro not found' error
-    # "serde/std",
-    # "serde_json/std",
-    "base64/std",
-    "codec/std",
-    "hex/std",
-    "log/std",
-    "scale-info/std",
-    "frame-benchmarking/std",
-    "frame-support/std",
-    "frame-system/std",
-    "pallet-transaction-payment/std",
-    "sp-arithmetic/std",
-    "sp-core/std",
-    "sp-io/std",
-    "sp-runtime/std",
-    "sp-std/std",
-    "substrate-stellar-sdk/std",
-    'orml-traits/std',
+  # don't add these to std as this causes the 'vec![] macro not found' error
+  # "serde/std",
+  # "serde_json/std",
+  "base64/std",
+  "codec/std",
+  "hex/std",
+  "log/std",
+  "scale-info/std",
+  "frame-benchmarking/std",
+  "frame-support/std",
+  "frame-system/std",
+  "pallet-transaction-payment/std",
+  "sp-arithmetic/std",
+  "sp-core/std",
+  "sp-io/std",
+  "sp-runtime/std",
+  "sp-std/std",
+  "substrate-stellar-sdk/std",
+  'orml-traits/std',
+  "pallet-security/std",
 ]
 
 runtime-benchmarks = ["frame-benchmarking/runtime-benchmarks"]
