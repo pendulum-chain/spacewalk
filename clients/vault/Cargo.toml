@@ -48,7 +48,7 @@ sp-std = {git = "https://github.com/paritytech/substrate", branch = "polkadot-v0
 
 # Substrate Stellar Dependencies
 stellar-relay = {git = "https://github.com/pendulum-chain/stellar-experiments.git", branch = "85-collect-and-store-scp-messages-in-vault-client" }
-substrate-stellar-sdk = {git = "https://github.com/pendulum-chain/substrate-stellar-sdk"}
+#substrate-stellar-sdk = {git = "https://github.com/pendulum-chain/substrate-stellar-sdk"}
 
 [dev-dependencies]
 mockall = "0.8.1"

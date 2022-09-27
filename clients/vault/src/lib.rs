@@ -4,8 +4,8 @@ mod deposit;
 mod error;
 mod horizon;
 mod redeem;
-mod system;
 mod stellar_oracle;
+mod system;
 
 pub mod service {
 	pub use crate::{
