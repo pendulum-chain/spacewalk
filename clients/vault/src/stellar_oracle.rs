@@ -158,7 +158,7 @@ pub trait FileHandler<T: Default> {
 
     /// helper function for the impl of `write_to_file`
     fn _write_to_file<S: ?Sized + Serialize>(filename: &str, data: &S) -> Result<(), Error> {
-        let res = serde_json::to_vec(data)?;
+        let res = bincode::serialize(data)?;
 
         let path = Self::get_path(filename);
         let mut file = File::create(path)?;
@@ -203,7 +203,7 @@ impl FileHandler<Self> for EnvelopesMap {
     }
 
     fn deserialize_bytes(bytes: Vec<u8>) -> Result<Self, Error> {
-        let inside: SlotEncodedMap = serde_json::from_slice(&bytes)?;
+        let inside: SlotEncodedMap = bincode::deserialize(&bytes)?;
 
         let mut m: EnvelopesMap = EnvelopesMap::new();
         for (key, value) in inside.into_iter() {
@@ -260,7 +260,7 @@ impl FileHandler<Self> for TxSetMap {
     }
 
     fn deserialize_bytes(bytes: Vec<u8>) -> Result<TxSetMap, Error> {
-        let inside: SlotEncodedMap = serde_json::from_slice(&bytes)?;
+        let inside: SlotEncodedMap = bincode::deserialize(&bytes)?;
 
         let mut m: TxSetMap = TxSetMap::new();
 
@@ -297,7 +297,7 @@ impl FileHandler<HashMap<Hash, Slot>> for TxHashMap {
     }
 
     fn deserialize_bytes(bytes: Vec<u8>) -> Result<HashMap<Hash, Slot>, Error> {
-        serde_json::from_slice(&bytes).map_err(Error::from)
+        bincode::deserialize(&bytes).map_err(Error::from)
     }
 
     fn check_slot_in_splitted_filename(slot_param: Slot, splits: &mut Split<&str>) -> bool {
