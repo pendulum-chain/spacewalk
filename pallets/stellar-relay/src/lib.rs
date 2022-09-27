@@ -25,15 +25,16 @@ pub mod pallet {
 	use frame_system::pallet_prelude::*;
 	use sha2::{Digest, Sha256};
 	use substrate_stellar_sdk::{
-		compound_types::{LimitedVarArray, UnlimitedVarArray},
+		compound_types::UnlimitedVarArray,
 		network::Network,
 		types::{
-			ScpEnvelope, ScpStatementExternalize, ScpStatementPledges, StellarValue, TransactionSet,
+			NodeId, ScpEnvelope, ScpStatementExternalize, ScpStatementPledges, StellarValue,
+			TransactionSet,
 		},
 		Hash, TransactionEnvelope, XdrCodec,
 	};
 
-	use crate::traits::Validator;
+	use crate::traits::{Organization, Validator};
 
 	use super::*;
 
@@ -65,9 +66,11 @@ pub mod pallet {
 		BoundedVecCreationFailed,
 		EnvelopeSignedByUnknownValidator,
 		InvalidExternalizedMessages,
+		InvalidEnvelopeSignature,
 		InvalidScpPledge,
 		InvalidTransactionSet,
 		InvalidTransactionXDR,
+		InvalidQuorumSet,
 		TransactionNotInTransactionSet,
 		TransactionSetHashMismatch,
 		TransactionSetHashCreationFailed,
@@ -139,7 +142,7 @@ pub mod pallet {
 			transaction_envelope: TransactionEnvelope,
 			envelopes: UnlimitedVarArray<ScpEnvelope>,
 			transaction_set: TransactionSet,
-			network: Network,
+			network: &Network,
 		) -> DispatchResult {
 			// Check if tx is included in the transaction set
 			let tx_hash = transaction_envelope.get_hash(&network);
@@ -156,7 +159,9 @@ pub mod pallet {
 					.any(|validator| validator.public_key.to_vec() == node_id.to_encoding());
 
 				ensure!(node_id_found, Error::<T>::EnvelopeSignedByUnknownValidator);
-				// TODO - Check if signature is valid
+
+				let signature_valid = verify_signature(envelope, &node_id, network);
+				ensure!(signature_valid, Error::<T>::InvalidEnvelopeSignature);
 			}
 
 			// Check if transaction set matches tx_set_hash included in the ScpEnvelopes
@@ -179,6 +184,60 @@ pub mod pallet {
 				}
 			}
 
+			// ---- Check that externalized messages build valid quorum set ----
+			let targeted_validators = validators
+				.iter()
+				.filter(|validator| {
+					envelopes.get_vec().iter().any(|envelope| {
+						envelope.statement.node_id.to_encoding() == validator.public_key.to_vec()
+					})
+				})
+				.collect::<Vec<&Validator>>();
+
+			let total_organizations = targeted_validators
+				.iter()
+				.map(|validator| validator.organization.clone())
+				.collect::<Vec<Organization>>();
+
+			// Build the distinct organizations
+			let mut total_distinct_organizations = total_organizations.clone();
+			total_distinct_organizations.sort_by(|a, b| a.name.cmp(&b.name));
+			total_distinct_organizations.dedup_by(|a, b| a.name == b.name);
+
+			// The organizations occurring related to the targeted validators
+			let targeted_organizations = targeted_validators
+				.iter()
+				.map(|validator| validator.organization.clone())
+				.collect::<Vec<Organization>>();
+
+			// Build the distinct set of targeted organizations
+			let mut targeted_distinct_organizations = targeted_organizations.clone();
+			targeted_distinct_organizations.sort_by(|a, b| a.name.cmp(&b.name));
+			targeted_distinct_organizations.dedup_by(|a, b| a.name == b.name);
+
+			// Check that the distinct organizations occurring in the validator structs related to
+			// the externalized messages are more than 2/3 of the total amount of organizations in
+			// the tier 1 validator set.
+			// Use multiplication to avoid floating point numbers.
+			ensure!(
+				targeted_distinct_organizations.len() * 3 > total_distinct_organizations.len() * 2,
+				Error::<T>::InvalidQuorumSet
+			);
+
+			for organization in &targeted_distinct_organizations {
+				let total = organization.total_org_nodes;
+				let mut count = 0;
+
+				// check if all organizations are higher than the threshold of 1/2
+				for o in &targeted_organizations {
+					if o.name == organization.name {
+						count = count + 1;
+					}
+				}
+				// More than half of each distinct organization has to be in the quorum set
+				ensure!(count * 2 > total, Error::<T>::InvalidQuorumSet)
+			}
+
 			Ok(())
 		}
 
@@ -194,11 +253,31 @@ pub mod pallet {
 			let mut hasher = Sha256::new();
 			hasher.update(tx_set.previous_ledger_hash);
 
-			tx_set.txes.get_vec().iter().for_each(|envlp| {
-				hasher.update(envlp.to_xdr());
+			tx_set.txes.get_vec().iter().for_each(|envelope| {
+				hasher.update(envelope.to_xdr());
 			});
 
 			hasher.finalize().as_slice().try_into().unwrap()
 		}
+	}
+
+	pub(crate) fn verify_signature(
+		envelope: &ScpEnvelope,
+		node_id: &NodeId,
+		network: &Network,
+	) -> bool {
+		let mut vec: [u8; 64] = [0; 64];
+		vec.copy_from_slice(envelope.signature.get_vec());
+		let signature: &substrate_stellar_sdk::Signature = &vec;
+
+		// Envelope_Type_SCP = 1, see https://github.dev/stellar/stellar-core/blob/d3b80614cb92f44b789ac79f3dee29ca09de6fdb/src/protocol-curr/xdr/Stellar-ledger-entries.x#L586
+		let envelope_type_scp: Vec<u8> = [0, 0, 0, 1].to_vec(); // xdr representation
+		let network = network.get_id();
+
+		// Signature is created by signing concatenation of network id, SCP type and SCP statement
+		let body: Vec<u8> =
+			[network.to_vec(), envelope_type_scp, envelope.statement.to_xdr()].concat();
+
+		node_id.verify_signature(body, signature)
 	}
 }
