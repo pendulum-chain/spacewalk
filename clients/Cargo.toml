@@ -1,10 +1,8 @@
-[workspace]
-resolver = "2"
-members = [
-  "runtime",
-  "vault",
-  "service",
-]
+[package]
+authors = ["SatoshiPay"]
+edition = "2021"
+name = 'clients'
+version = "0.1.0"
 
 [patch."https://github.com/paritytech/substrate"]
 frame-benchmarking = { git = "https://github.com/paritytech//substrate", branch = "polkadot-v0.9.24" }
