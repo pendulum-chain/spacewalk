@@ -1,6 +1,5 @@
 #![allow(dead_code)]
 
-use serde::Serialize;
 use std::{
     collections::{btree_map::Keys, BTreeMap, HashMap},
     convert::{TryFrom, TryInto},
@@ -31,6 +30,7 @@ pub type Slot = Uint64;
 pub type TxSetHash = Hash;
 pub type TxHash = Hash;
 pub type SerializedData = Vec<u8>;
+pub type Filename = String;
 
 /// For easy writing to file. BTreeMap to preserve order of the slots.
 pub type SlotEncodedMap = BTreeMap<Slot, SerializedData>;
@@ -49,18 +49,18 @@ pub struct EnvelopesMap(BTreeMap<Slot, Vec<ScpEnvelope>>);
 #[derive(Clone, Debug)]
 pub struct TxSetMap(BTreeMap<Slot, TransactionSet>);
 
-pub type TxHashMap = (String, HashMap<TxHash, Slot>);
+pub type TxHashMap<'a> = (String, &'a HashMap<TxHash, Slot>);
 
 /// This is for `EnvelopesMap`; how many slots is accommodated per file.
-pub const MAX_SLOTS_PER_FILE: Uint64 = 5;
+pub const MAX_SLOTS_PER_FILE: Uint64 = 15;
 
 /// This is for `EnvelopesMap`. Make sure that we have a minimum set of envelopes per slot,
 /// before writing to file.
-pub const MIN_EXTERNALIZED_MESSAGES: usize = 10;
+pub const MIN_EXTERNALIZED_MESSAGES: usize = 15;
 
 /// This is both for `TxSetMap` and `TxHashMap`.
 /// When the map reaches the MAX or more, then we write to file.
-pub const MAX_TXS_PER_FILE: Uint64 = 3000;
+pub const MAX_TXS_PER_FILE: Uint64 = 5000;
 
 impl EnvelopesMap {
     fn new() -> Self {
@@ -130,7 +130,9 @@ impl Default for TxSetMap {
 pub trait FileHandler<T: Default> {
     // path to where the file should be saved
     const PATH: &'static str;
-    fn write_to_file(value: Self) -> Result<String, Error>;
+
+    fn create_filename_and_data(&self) -> Result<(Filename, SerializedData), Error>;
+
     fn deserialize_bytes(bytes: Vec<u8>) -> Result<T, Error>;
 
     fn check_slot_in_splitted_filename(slot_param: Slot, splits: &mut Split<&str>) -> bool;
@@ -142,8 +144,18 @@ pub trait FileHandler<T: Default> {
         path
     }
 
-    fn read_file(filename: String) -> Result<T, Error> {
+    fn write_to_file(&self) -> Result<Filename, Error> {
+        let (filename, data) = self.create_filename_and_data()?;
+
         let path = Self::get_path(&filename);
+        let mut file = File::create(path)?;
+        file.write_all(&data)?;
+
+        Ok(filename)
+    }
+
+    fn read_file(filename: &str) -> Result<T, Error> {
+        let path = Self::get_path(filename);
         let mut file = File::open(path)?;
 
         let mut bytes: Vec<u8> = vec![];
@@ -156,25 +168,16 @@ pub trait FileHandler<T: Default> {
         Ok(T::default())
     }
 
-    /// helper function for the impl of `write_to_file`
-    fn _write_to_file<S: ?Sized + Serialize>(filename: &str, data: &S) -> Result<(), Error> {
-        let res = bincode::serialize(data)?;
-
-        let path = Self::get_path(filename);
-        let mut file = File::create(path)?;
-
-        file.write_all(&res).map_err(|e| Error::StdIoError(e))
-    }
-
-    fn find_file_by_slot(slot_param: Slot) -> Result<String, Error> {
+    fn find_file_by_slot(slot_param: Slot) -> Result<Filename, Error> {
         let paths = fs::read_dir(Self::PATH)?;
 
         for path in paths {
-            let filename = path?.file_name().into_string().unwrap();
+            let mut filename_with_ext = path?.file_name().into_string().unwrap();
+            let filename = filename_with_ext.replace(".json", "");
             let mut splits = filename.split("_");
 
             if Self::check_slot_in_splitted_filename(slot_param, &mut splits) {
-                return Ok(filename);
+                return Ok(filename_with_ext);
             }
         }
 
@@ -185,21 +188,27 @@ pub trait FileHandler<T: Default> {
 impl FileHandler<Self> for EnvelopesMap {
     const PATH: &'static str = "./scp_envelopes";
 
-    fn write_to_file(value: Self) -> Result<String, Error> {
-        let mut filename: String = "".to_string();
+    fn create_filename_and_data(&self) -> Result<(Filename, SerializedData), Error> {
+        let mut filename: Filename = "".to_string();
         let mut m: SlotEncodedMap = SlotEncodedMap::new();
+        let len = self.0.len();
 
-        for (idx, (key, value)) in value.0.into_iter().enumerate() {
+        for (idx, (key, value)) in self.0.iter().enumerate() {
             if idx == 0 {
-                filename.push_str(&format!("{}_{}.json", key, time_now()));
+                filename.push_str(&format!("{}_", key));
             }
 
-            let stellar_array = UnlimitedVarArray::new(value)?; //.map_err(Error::from)?;
-            m.insert(key, stellar_array.to_xdr());
+            if idx == (len - 1) {
+                filename.push_str(&format!("{}.json", key));
+            }
+
+            let stellar_array = UnlimitedVarArray::new(value.clone())?; //.map_err(Error::from)?;
+            m.insert(*key, stellar_array.to_xdr());
         }
 
-        Self::_write_to_file(&filename, &m)?;
-        Ok(filename)
+        let res = bincode::serialize(&m)?;
+
+        Ok((filename, res))
     }
 
     fn deserialize_bytes(bytes: Vec<u8>) -> Result<Self, Error> {
@@ -209,64 +218,6 @@ impl FileHandler<Self> for EnvelopesMap {
         for (key, value) in inside.into_iter() {
             if let Ok(envelopes) = UnlimitedVarArray::<ScpEnvelope>::from_xdr(value) {
                 m.insert(key, envelopes.get_vec().to_vec());
-            }
-        }
-
-        Ok(m)
-    }
-
-    fn check_slot_in_splitted_filename(slot_param: Slot, splits: &mut Split<&str>) -> bool {
-        if let Some(slot) = splits.next() {
-            println!("THE SLOT? {}", slot);
-
-            match slot.parse::<Uint64>() {
-                Ok(slot_num) if slot_param >= slot_num && slot_param <= slot_num + MAX_SLOTS_PER_FILE => {
-                    // we found it! return this one
-                    return true;
-                }
-                Ok(_) => {}
-                Err(_) => {
-                    println!("unconventional named file.");
-                }
-            }
-        }
-
-        false
-    }
-}
-
-impl FileHandler<Self> for TxSetMap {
-    const PATH: &'static str = "./tx_sets";
-
-    fn write_to_file(value: Self) -> Result<String, Error> {
-        let mut filename: String = "".to_string();
-        let mut m: SlotEncodedMap = SlotEncodedMap::new();
-        let len = value.len();
-
-        for (idx, (key, set)) in value.0.into_iter().enumerate() {
-            if idx == 0 {
-                filename.push_str(&format!("{}_", key));
-            }
-
-            if idx == (len - 1) {
-                filename.push_str(&format!("{}_{}.json", key, time_now()));
-            }
-
-            m.insert(key, set.to_xdr());
-        }
-
-        Self::_write_to_file(&filename, &m)?;
-        Ok(filename)
-    }
-
-    fn deserialize_bytes(bytes: Vec<u8>) -> Result<TxSetMap, Error> {
-        let inside: SlotEncodedMap = bincode::deserialize(&bytes)?;
-
-        let mut m: TxSetMap = TxSetMap::new();
-
-        for (key, value) in inside.into_iter() {
-            if let Ok(set) = TransactionSet::from_xdr(value) {
-                m.insert(key, set);
             }
         }
 
@@ -288,12 +239,53 @@ impl FileHandler<Self> for TxSetMap {
     }
 }
 
-impl FileHandler<HashMap<Hash, Slot>> for TxHashMap {
+impl FileHandler<Self> for TxSetMap {
+    const PATH: &'static str = "./tx_sets";
+
+    fn create_filename_and_data(&self) -> Result<(Filename, SerializedData), Error> {
+        let mut filename: Filename = "".to_string();
+        let mut m: SlotEncodedMap = SlotEncodedMap::new();
+        let len = self.0.len();
+
+        for (idx, (key, set)) in self.0.iter().enumerate() {
+            if idx == 0 {
+                filename.push_str(&format!("{}_", key));
+            }
+
+            if idx == (len - 1) {
+                filename.push_str(&format!("{}.json", key));
+            }
+
+            m.insert(*key, set.to_xdr());
+        }
+
+        Ok((filename, bincode::serialize(&m)?))
+    }
+
+    fn deserialize_bytes(bytes: Vec<u8>) -> Result<TxSetMap, Error> {
+        let inside: SlotEncodedMap = bincode::deserialize(&bytes)?;
+
+        let mut m: TxSetMap = TxSetMap::new();
+
+        for (key, value) in inside.into_iter() {
+            if let Ok(set) = TransactionSet::from_xdr(value) {
+                m.insert(key, set);
+            }
+        }
+
+        Ok(m)
+    }
+
+    fn check_slot_in_splitted_filename(slot_param: Slot, splits: &mut Split<&str>) -> bool {
+        EnvelopesMap::check_slot_in_splitted_filename(slot_param, splits)
+    }
+}
+
+impl<'a> FileHandler<HashMap<Hash, Slot>> for TxHashMap<'a> {
     const PATH: &'static str = "./tx_hashes";
 
-    fn write_to_file(value: Self) -> Result<String, Error> {
-        Self::_write_to_file(&value.0, &value.1)?;
-        Ok(value.0)
+    fn create_filename_and_data(&self) -> Result<(Filename, SerializedData), Error> {
+        Ok((self.0.clone(), bincode::serialize(&self.1)?))
     }
 
     fn deserialize_bytes(bytes: Vec<u8>) -> Result<HashMap<Hash, Slot>, Error> {
@@ -364,7 +356,6 @@ impl ScpMessageCollector {
                     self.envelopes_map.insert(slot, vec![env]);
                 }
                 Some(value) => {
-                    println!("slot: {} insert to envelopes map", slot);
                     value.push(env);
                 }
             }
@@ -412,7 +403,7 @@ impl ScpMessageCollector {
 
     fn write_envelopes_to_file(&mut self, last_slot: Slot) -> Result<(), Error> {
         let new_slot_map = self.envelopes_map.split_off(&last_slot);
-        EnvelopesMap::write_to_file(self.envelopes_map.clone())?;
+        self.envelopes_map.write_to_file()?;
         self.envelopes_map = new_slot_map;
         println!("start slot is now: {:?}", last_slot);
 
@@ -425,7 +416,11 @@ impl ScpMessageCollector {
     ///
     /// * `set` - the TransactionSet
     /// * `txset_hash_map` - provides the slot number of the given Transaction Set Hash
-    fn handle_tx_set(&mut self, set: &TransactionSet, txset_hash_map: &mut TxSetCheckerMap) -> Result<(), Error> {
+    fn handle_tx_set(
+        &mut self,
+        set: &TransactionSet,
+        txset_hash_map: &mut TxSetCheckerMap,
+    ) -> Result<(), Error> {
         self.check_write_tx_set_to_file()?;
 
         // compute the tx_set_hash, to check what slot this set belongs too.
@@ -450,8 +445,9 @@ impl ScpMessageCollector {
 
         println!("saving old transactions to file: {:?}", self.txset_map.keys());
 
-        let file_name = TxSetMap::write_to_file(self.txset_map.clone())?;
-        TxHashMap::write_to_file((file_name, self.tx_hash_map.clone()))?;
+        let filename = self.txset_map.write_to_file()?;
+
+        (filename, &self.tx_hash_map).write_to_file()?;
 
         self.txset_map = TxSetMap::new();
         self.tx_hash_map = HashMap::new();
@@ -480,7 +476,6 @@ pub async fn collect_scp_messages(collector:&mut ScpMessageCollector, node_info:
 
     // connecting to Stellar Node
     let mut user: UserControls = connect(node_info, connection_cfg).await?;
-
 
     // just a temporary holder
     let mut tx_set_hash_map: HashMap<Hash, Slot> = HashMap::new();
