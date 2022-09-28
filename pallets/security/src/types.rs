@@ -7,11 +7,11 @@ use sp_std::{cmp::Ord, fmt::Debug};
 #[derive(Encode, Decode, Clone, Copy, PartialEq, MaxEncodedLen, Eq, Debug, TypeInfo)]
 pub enum StatusCode {
 	/// BTC Parachain is fully operational.
-	Running = 0,
+	Running,
 	/// An error has occurred. See Errors for more details.
-	Error = 1,
+	Error,
 	/// BTC Parachain operation has been fully suspended.
-	Shutdown = 2,
+	Shutdown,
 }
 
 impl Default for StatusCode {
@@ -24,8 +24,8 @@ impl Default for StatusCode {
 #[derive(Encode, Decode, Clone, PartialEq, Eq, Debug, Ord, MaxEncodedLen, PartialOrd, TypeInfo)]
 pub enum ErrorCode {
 	/// No error. Used as default value
-	None = 0,
-	OracleOffline = 1,
+	None,
+	OracleOffline,
 }
 
 impl Default for ErrorCode {
