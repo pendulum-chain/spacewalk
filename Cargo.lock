@@ -4027,6 +4027,23 @@ dependencies = [
 ]
 
 [[package]]
+name = "pallet-security"
+version = "1.2.0"
+dependencies = [
+ "frame-support",
+ "frame-system",
+ "mocktopus",
+ "parity-scale-codec",
+ "scale-info",
+ "serde",
+ "sha2 0.8.2",
+ "sp-core",
+ "sp-io",
+ "sp-runtime",
+ "sp-std",
+]
+
+[[package]]
 name = "pallet-session"
 version = "4.0.0-dev"
 source = "git+https://github.com/paritytech/substrate?branch=polkadot-v0.9.24#814752f60ab8cce7e2ece3ce0c1b10799b4eab28"
@@ -4058,6 +4075,7 @@ dependencies = [
  "hex",
  "log",
  "orml-traits",
+ "pallet-security",
  "pallet-transaction-payment",
  "parity-scale-codec",
  "scale-info",
