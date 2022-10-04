@@ -165,16 +165,12 @@ pub mod pallet {
 			}
 
 			// Check if transaction set matches tx_set_hash included in the ScpEnvelopes
-			let expected_tx_set_hash =
-				Self::compute_non_generic_tx_set_content_hash(&transaction_set);
-
-			println!("expected_tx_set_hash: {:?}", expected_tx_set_hash);
+			let expected_tx_set_hash = compute_non_generic_tx_set_content_hash(&transaction_set);
 
 			for envelope in envelopes.get_vec() {
 				match envelope.clone().statement.pledges {
 					ScpStatementPledges::ScpStExternalize(externalized_statement) => {
 						let tx_set_hash = Self::get_tx_set_hash(&externalized_statement)?;
-						println!("tx_set_hash: {:?}", tx_set_hash);
 						ensure!(
 							tx_set_hash == expected_tx_set_hash,
 							Error::<T>::TransactionSetHashMismatch
@@ -248,17 +244,17 @@ pub mod pallet {
 				.map_err(|_| Error::<T>::TransactionSetHashCreationFailed)?;
 			Ok(tx_set_hash)
 		}
+	}
 
-		fn compute_non_generic_tx_set_content_hash(tx_set: &TransactionSet) -> [u8; 32] {
-			let mut hasher = Sha256::new();
-			hasher.update(tx_set.previous_ledger_hash);
+	pub(crate) fn compute_non_generic_tx_set_content_hash(tx_set: &TransactionSet) -> [u8; 32] {
+		let mut hasher = Sha256::new();
+		hasher.update(tx_set.previous_ledger_hash);
 
-			tx_set.txes.get_vec().iter().for_each(|envelope| {
-				hasher.update(envelope.to_xdr());
-			});
+		tx_set.txes.get_vec().iter().for_each(|envelope| {
+			hasher.update(envelope.to_xdr());
+		});
 
-			hasher.finalize().as_slice().try_into().unwrap()
-		}
+		hasher.finalize().as_slice().try_into().unwrap()
 	}
 
 	pub(crate) fn verify_signature(

@@ -32,6 +32,7 @@ sp-runtime = { default-features = false, version = "6.0.0", git = "https://githu
 
 # For testing
 substrate-stellar-sdk = { git = "https://github.com/pendulum-chain/substrate-stellar-sdk", branch = "polkadot-v0.9.24", default-features = false, features = ["all-types"] }
+rand = "0.8.5"
 
 [features]
 default = ["std"]
