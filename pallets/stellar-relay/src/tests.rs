@@ -190,6 +190,37 @@ fn create_valid_dummy_scp_envelopes(
 }
 
 #[test]
+fn validate_stellar_transaction_fails_for_invalid_quorum() {
+	new_test_ext().execute_with(|| {
+		let network = &TEST_NETWORK;
+
+		// Set the validators used to create the scp messages
+		let (mut validators, mut validator_secret_keys) = create_dummy_validators();
+		assert_ok!(SpacewalkRelay::update_tier_1_validator_set(Origin::root(), validators.clone()));
+
+		// Remove validators from the quorum set to make it invalid
+		// Remove the first two satoshipay validators
+		validators.remove(0);
+		validator_secret_keys.remove(0);
+		validators.remove(1);
+		validator_secret_keys.remove(1);
+
+		let (tx_envelope, tx_set, scp_envelopes) =
+			create_valid_dummy_scp_envelopes(validators, validator_secret_keys, network);
+
+		assert_noop!(
+			SpacewalkRelay::validate_stellar_transaction(
+				tx_envelope,
+				scp_envelopes,
+				tx_set,
+				network
+			),
+			Error::<Test>::InvalidQuorumSet
+		);
+	});
+}
+
+#[test]
 fn validate_stellar_transaction_works_for_correct_values() {
 	new_test_ext().execute_with(|| {
 		let network = &TEST_NETWORK;
@@ -207,30 +238,6 @@ fn validate_stellar_transaction_works_for_correct_values() {
 			tx_set,
 			network
 		));
-	});
-}
-
-#[test]
-fn validate_stellar_transaction_fails_for_bad_values() {
-	new_test_ext().execute_with(|| {
-		let transaction_envelope = TransactionEnvelope::Default(EnvelopeType::EnvelopeTypeTx);
-
-		let externalized_messages = UnlimitedVarArray::<ScpEnvelope>::new_empty();
-
-		let transaction_set = TransactionSet {
-			previous_ledger_hash: Hash::default(),
-			txes: UnlimitedVarArray::<TransactionEnvelope>::new_empty(),
-		};
-
-		let network = &TEST_NETWORK;
-
-		let result = SpacewalkRelay::validate_stellar_transaction(
-			transaction_envelope,
-			externalized_messages,
-			transaction_set,
-			network,
-		);
-		assert!(result.is_err());
 	});
 }
 
