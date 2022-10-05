@@ -33,5 +33,6 @@ Run the benchmarking for the `pallet-stellar_relay` pallet:
 --extrinsic '*' \
 --steps 20 \
 --repeat 10 \
---output pallets/stellar-relay/src/weights.rs
+--output pallets/stellar-relay/src/weights.rs \
+--template=./.maintain/frame-weight-template.hbs
 ```
