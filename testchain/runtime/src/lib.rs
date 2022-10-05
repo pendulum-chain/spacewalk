@@ -261,6 +261,7 @@ impl pallet_stellar_relay::Config for Runtime {
 	type Event = Event;
 	type OrganizationLimit = OrganizationLimit;
 	type ValidatorLimit = ValidatorLimit;
+	type WeightInfo = ();
 }
 
 construct_runtime! {

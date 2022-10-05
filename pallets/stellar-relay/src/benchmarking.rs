@@ -12,7 +12,7 @@ use crate::Pallet as StellarRelay;
 use super::*;
 
 benchmarks! {
-	update_tier_1_validator_set_benchmark {
+	update_tier_1_validator_set {
 		let caller: T::AccountId = whitelisted_caller();
 
 		let bounded_vec = BoundedVec::<u8, FieldLength>::default();

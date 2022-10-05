@@ -19,6 +19,8 @@ mod benchmarking;
 mod traits;
 mod types;
 
+mod weights;
+
 #[frame_support::pallet]
 pub mod pallet {
 	use frame_support::pallet_prelude::*;
@@ -34,6 +36,8 @@ pub mod pallet {
 		},
 		Hash, TransactionEnvelope, XdrCodec,
 	};
+
+	use weights::WeightInfo;
 
 	use crate::traits::{Organization, OrganizationID, Validator};
 
@@ -52,6 +56,8 @@ pub mod pallet {
 		// The maximum amount of validators stored on-chain
 		#[pallet::constant]
 		type ValidatorLimit: Get<u32>;
+
+		type WeightInfo: WeightInfo;
 	}
 
 	#[pallet::pallet]
@@ -128,7 +134,7 @@ pub mod pallet {
 	#[pallet::call]
 	impl<T: Config> Pallet<T> {
 		/// This extrinsic is used to update/replace the current set of validators.
-		#[pallet::weight(10_000)]
+		#[pallet::weight(<T as Config>::WeightInfo::update_tier_1_validator_set())]
 		pub fn update_tier_1_validator_set(
 			origin: OriginFor<T>,
 			validators: Vec<Validator>,

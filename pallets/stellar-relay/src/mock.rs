@@ -62,6 +62,7 @@ impl pallet_spacewalk_relay::Config for Test {
 	type Event = Event;
 	type OrganizationLimit = OrganizationLimit;
 	type ValidatorLimit = ValidatorLimit;
+	type WeightInfo = ();
 }
 
 // Build genesis storage according to the mock runtime.
