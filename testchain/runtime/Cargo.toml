@@ -38,6 +38,7 @@ pallet-transaction-payment-rpc-runtime-api = {git = "https://github.com/parityte
 
 # Used for runtime benchmarking
 frame-benchmarking = {git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.24", default-features = false, optional = true}
+frame-system-benchmarking = {git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.24", default-features = false, optional = true}
 hex-literal = { version = "0.3.4", optional = true, default-features = false }
 
 # Aura & GRANDPA dependencies
@@ -69,9 +70,10 @@ substrate-wasm-builder = {git = "https://github.com/paritytech/substrate", branc
 default = ["std"]
 disable-runtime-api = []
 runtime-benchmarks = [
-  "frame-benchmarking",
+  "frame-benchmarking/runtime-benchmarks",
   "frame-support/runtime-benchmarks",
   "frame-system/runtime-benchmarks",
+  "frame-system-benchmarking",
   "hex-literal",
   "pallet-stellar-relay/runtime-benchmarks",
 ]
