@@ -225,11 +225,10 @@ pub mod pallet {
 
 			let organizations = Organizations::<T>::get();
 
-			// Map organizationID to the number of occurrences (ie calculate total amount of
-			// validator nodes that belong to each organization)
-			let mut total_organization_node_count = BTreeMap::<OrganizationID, i32>::new();
+			// Map organizationID to the number of validators that belongs to it
+			let mut validator_count_per_organization_map = BTreeMap::<OrganizationID, u32>::new();
 			for validator in validators.iter() {
-				total_organization_node_count
+				validator_count_per_organization_map
 					.entry(validator.organization_id)
 					.and_modify(|e| {
 						*e += 1;
@@ -238,9 +237,9 @@ pub mod pallet {
 			}
 
 			// Build a map used to identify the targeted organizations
-			let mut targeted_organization_vec = BTreeMap::<OrganizationID, i32>::new();
+			let mut targeted_organization_map = BTreeMap::<OrganizationID, u32>::new();
 			for validator in targeted_validators {
-				targeted_organization_vec
+				targeted_organization_map
 					.entry(validator.organization_id)
 					.and_modify(|e| {
 						*e += 1;
@@ -248,10 +247,9 @@ pub mod pallet {
 					.or_insert(1);
 			}
 
-			// Count the number of distinct organizations that are targeted. (If the count in the
-			// vector is greater than 0, we know that the organization is targeted)
+			// Count the number of distinct organizations that are targeted by the SCP messages
 			let targeted_organization_count =
-				targeted_organization_vec.iter().filter(|(_id, count)| **count > 0).count();
+				targeted_organization_map.iter().filter(|(_id, count)| **count > 0).count();
 
 			// Check that the distinct organizations occurring in the validator structs related to
 			// the externalized messages are more than 2/3 of the total amount of organizations in
@@ -262,12 +260,15 @@ pub mod pallet {
 				Error::<T>::InvalidQuorumSetNotEnoughOrganizations
 			);
 
-			for (organization_id, count) in targeted_organization_vec.iter() {
-				if count == &0i32 {
+			for (organization_id, count) in targeted_organization_map.iter() {
+				if count == &0u32 {
 					// We're only interested in targeted organizations
 					continue
 				}
-				let total: &i32 = total_organization_node_count.get(organization_id).unwrap();
+				let total: &u32 =
+					validator_count_per_organization_map.get(organization_id).unwrap();
+				// Check that for each of the targeted organizations more than 1/2 of their total
+				// validators were used in the SCP messages
 				ensure!(count * 2 > *total, Error::<T>::InvalidQuorumSetNotEnoughValidators);
 			}
 

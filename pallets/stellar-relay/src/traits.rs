@@ -14,15 +14,17 @@ impl Get<u32> for FieldLength {
 pub type OrganizationID = u128;
 
 #[derive(
-	RuntimeDebug,
-	Encode,
-	Decode,
-	MaxEncodedLen,
 	Clone,
-	Eq,
-	PartialEq,
-	Serialize,
+	Decode,
 	Deserialize,
+	Encode,
+	Eq,
+	MaxEncodedLen,
+	Ord,
+	PartialEq,
+	PartialOrd,
+	RuntimeDebug,
+	Serialize,
 	TypeInfo,
 )]
 pub struct Validator {
@@ -32,15 +34,15 @@ pub struct Validator {
 }
 
 #[derive(
-	RuntimeDebug,
-	Encode,
-	Decode,
-	MaxEncodedLen,
 	Clone,
-	Eq,
-	PartialEq,
-	Serialize,
+	Decode,
 	Deserialize,
+	Encode,
+	Eq,
+	MaxEncodedLen,
+	PartialEq,
+	RuntimeDebug,
+	Serialize,
 	TypeInfo,
 )]
 pub struct Organization {

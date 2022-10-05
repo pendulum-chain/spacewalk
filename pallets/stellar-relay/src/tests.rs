@@ -206,7 +206,6 @@ fn create_valid_dummy_scp_envelopes(
 
 	// Build the scp messages that externalize the transaction set
 	// The scp messages have to be externalized by nodes that build a valid quorum set
-
 	let mut envelopes = UnlimitedVarArray::<ScpEnvelope>::new_empty();
 	for (i, validator_secret_key) in validator_secret_keys.iter().enumerate() {
 		let validator = validators.get(i).unwrap();
@@ -218,6 +217,196 @@ fn create_valid_dummy_scp_envelopes(
 	(transaction_envelope, transaction_set, envelopes)
 }
 
+#[test]
+fn validate_stellar_transaction_fails_for_wrong_signature() {
+	new_test_ext().execute_with(|| {
+		let network = &TEST_NETWORK;
+
+		// Set the validators used to create the scp messages
+		let (organizations, validators, mut validator_secret_keys) = create_dummy_validators();
+		assert_ok!(SpacewalkRelay::update_tier_1_validator_set(
+			Origin::root(),
+			validators.clone(),
+			organizations.clone()
+		));
+
+		// Change one of the secret keys, so that the signature is invalid
+		validator_secret_keys[0] = SecretKey::from_binary([1; 32]);
+
+		let (tx_envelope, tx_set, scp_envelopes) =
+			create_valid_dummy_scp_envelopes(validators, validator_secret_keys, network);
+
+		assert_noop!(
+			SpacewalkRelay::validate_stellar_transaction(
+				tx_envelope.clone(),
+				scp_envelopes.clone(),
+				tx_set.clone(),
+				network
+			),
+			Error::<Test>::InvalidEnvelopeSignature
+		);
+
+		// Change something in the envelope
+		let changed_envs = scp_envelopes
+			.get_vec()
+			.iter()
+			.map(|env| {
+				let mut changed_env = env.clone();
+				changed_env.statement.slot_index = u64::MAX;
+				changed_env
+			})
+			.collect::<Vec<ScpEnvelope>>();
+
+		let changed_env_array: UnlimitedVarArray<ScpEnvelope> =
+			LimitedVarArray::new(changed_envs.clone()).unwrap();
+
+		assert_noop!(
+			SpacewalkRelay::validate_stellar_transaction(
+				tx_envelope.clone(),
+				changed_env_array.clone(),
+				tx_set.clone(),
+				network
+			),
+			Error::<Test>::InvalidEnvelopeSignature
+		);
+	});
+}
+
+#[test]
+fn validate_stellar_transaction_fails_for_unknown_validator() {
+	new_test_ext().execute_with(|| {
+		let network = &TEST_NETWORK;
+
+		// Set the validators used to create the scp messages
+		let (organizations, mut validators, mut validator_secret_keys) = create_dummy_validators();
+		assert_ok!(SpacewalkRelay::update_tier_1_validator_set(
+			Origin::root(),
+			validators.clone(),
+			organizations.clone()
+		));
+
+		// Add other validator that is not part of the 'known' validator set
+		let (validator, validator_secret) = create_dummy_validator("$unknown", &organizations[0]);
+		validators.push(validator);
+		validator_secret_keys.push(validator_secret);
+
+		let (tx_envelope, tx_set, scp_envelopes) =
+			create_valid_dummy_scp_envelopes(validators, validator_secret_keys, network);
+
+		assert_noop!(
+			SpacewalkRelay::validate_stellar_transaction(
+				tx_envelope,
+				scp_envelopes,
+				tx_set,
+				network
+			),
+			Error::<Test>::EnvelopeSignedByUnknownValidator
+		);
+	});
+}
+
+#[test]
+fn validate_stellar_transaction_fails_for_wrong_transaction() {
+	new_test_ext().execute_with(|| {
+		let network = &TEST_NETWORK;
+
+		// Set the validators used to create the scp messages
+		let (organizations, validators, validator_secret_keys) = create_dummy_validators();
+		assert_ok!(SpacewalkRelay::update_tier_1_validator_set(
+			Origin::root(),
+			validators.clone(),
+			organizations.clone()
+		));
+
+		let (_tx_envelope, mut tx_set, scp_envelopes) =
+			create_valid_dummy_scp_envelopes(validators, validator_secret_keys, network);
+
+		// Change tx_envelope that was used to create scp_envelopes
+		let changed_tx_envelope = TransactionEnvelope::EnvelopeTypeTx(TransactionV1Envelope {
+			tx: Transaction {
+				source_account: MuxedAccount::from(AccountId::from(
+					PublicKey::PublicKeyTypeEd25519([1; 32]),
+				)),
+				fee: 1,
+				seq_num: 1,
+				cond: Preconditions::PrecondNone,
+				memo: Memo::MemoNone,
+				operations: LimitedVarArray::new_empty(),
+				ext: TransactionExt::V0,
+			},
+			signatures: LimitedVarArray::new(vec![]).unwrap(),
+		});
+
+		assert_noop!(
+			SpacewalkRelay::validate_stellar_transaction(
+				changed_tx_envelope.clone(),
+				scp_envelopes.clone(),
+				tx_set.clone(),
+				network
+			),
+			Error::<Test>::TransactionNotInTransactionSet
+		);
+
+		// Add transaction to transaction set
+		tx_set.txes.push(changed_tx_envelope.clone()).unwrap();
+		assert_noop!(
+			SpacewalkRelay::validate_stellar_transaction(
+				changed_tx_envelope,
+				scp_envelopes,
+				tx_set,
+				network
+			),
+			Error::<Test>::TransactionSetHashMismatch
+		);
+	});
+}
+
+#[test]
+fn validate_stellar_transaction_fails_when_using_the_same_validator_multiple_times() {
+	new_test_ext().execute_with(|| {
+		let network = &TEST_NETWORK;
+
+		// Set the validators used to create the scp messages
+		let (organizations, mut validators, mut validator_secret_keys) = create_dummy_validators();
+		assert_ok!(SpacewalkRelay::update_tier_1_validator_set(
+			Origin::root(),
+			validators.clone(),
+			organizations.clone()
+		));
+
+		// Modify validator list to use the same validator multiple times
+		// Remove all sdf validators
+		let sdf_validators = validators.drain(0..3).collect::<Vec<Validator>>();
+		let sdf_validator_secret_keys =
+			validator_secret_keys.drain(0..3).collect::<Vec<SecretKey>>();
+		// Pick first removed sdf validator to be re-used
+		let reused_validator = sdf_validators.get(0).unwrap();
+		let reused_validator_secret_key = sdf_validator_secret_keys.get(0).unwrap();
+
+		// Add the same sdf validator back to the list three times
+		// -> the same sdf validator is used 3 times to sign the scp messages
+		validators.push(reused_validator.clone());
+		validator_secret_keys.push(reused_validator_secret_key.clone());
+		validators.push(reused_validator.clone());
+		validator_secret_keys.push(reused_validator_secret_key.clone());
+		validators.push(reused_validator.clone());
+		validator_secret_keys.push(reused_validator_secret_key.clone());
+
+		let (tx_envelope, tx_set, scp_envelopes) =
+			create_valid_dummy_scp_envelopes(validators, validator_secret_keys, network);
+
+		// This should be invalid because the quorum thresholds are based on distinct validators
+		assert_noop!(
+			SpacewalkRelay::validate_stellar_transaction(
+				tx_envelope,
+				scp_envelopes,
+				tx_set,
+				network
+			),
+			Error::<Test>::InvalidQuorumSetNotEnoughValidators
+		);
+	});
+}
 #[test]
 fn validate_stellar_transaction_fails_for_invalid_quorum() {
 	new_test_ext().execute_with(|| {
@@ -238,12 +427,12 @@ fn validate_stellar_transaction_fails_for_invalid_quorum() {
 		// Remove all keybase validators
 		validators.drain(0..3);
 		validator_secret_keys.drain(0..3);
-		// This should be an invalid quorum set because only 50% of the total organizations are in
-		// the quorum set but it has to be >66%
 
 		let (tx_envelope, tx_set, scp_envelopes) =
 			create_valid_dummy_scp_envelopes(validators, validator_secret_keys, network);
 
+		// This should be an invalid quorum set because only 50% of the total organizations are in
+		// the quorum set but it has to be >66%
 		assert_noop!(
 			SpacewalkRelay::validate_stellar_transaction(
 				tx_envelope,
@@ -268,13 +457,13 @@ fn validate_stellar_transaction_fails_for_invalid_quorum() {
 		// Remove two sdf validators
 		validators.drain(0..2);
 		validator_secret_keys.drain(0..2);
-		// This should be an invalid quorum set because 1/2 of the organizations only have 1/3 of
-		// their validator nodes in the quorum set. This is not enough because >2/3 of the
-		// organizations have to have >1/2 of their validator nodes to build a valid quorum set.
 
 		let (tx_envelope, tx_set, scp_envelopes) =
 			create_valid_dummy_scp_envelopes(validators, validator_secret_keys, network);
 
+		// This should be an invalid quorum set because 1/2 of the organizations only have 1/3 of
+		// their validator nodes in the quorum set. This is not enough because >2/3 of the
+		// organizations have to have >1/2 of their validator nodes to build a valid quorum set.
 		assert_noop!(
 			SpacewalkRelay::validate_stellar_transaction(
 				tx_envelope,
