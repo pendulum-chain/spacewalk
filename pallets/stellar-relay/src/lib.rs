@@ -34,7 +34,7 @@ pub mod pallet {
 		Hash, TransactionEnvelope, XdrCodec,
 	};
 
-	use crate::traits::{Organization, Validator};
+	use crate::traits::{FieldLength, Organization, Validator};
 
 	use super::*;
 
@@ -197,7 +197,8 @@ pub mod pallet {
 
 			// Build the distinct organizations
 			let mut total_distinct_organizations = total_organizations.clone();
-			total_distinct_organizations.sort_by(|a, b| a.name.cmp(&b.name));
+			total_distinct_organizations
+				.sort_by(|a, b| Self::compare_bounded_vec(&a.name, &b.name));
 			total_distinct_organizations.dedup_by(|a, b| a.name == b.name);
 
 			// The organizations occurring related to the targeted validators
@@ -208,7 +209,8 @@ pub mod pallet {
 
 			// Build the distinct set of targeted organizations
 			let mut targeted_distinct_organizations = targeted_organizations.clone();
-			targeted_distinct_organizations.sort_by(|a, b| a.name.cmp(&b.name));
+			targeted_distinct_organizations
+				.sort_by(|a, b| Self::compare_bounded_vec(&a.name, &b.name));
 			targeted_distinct_organizations.dedup_by(|a, b| a.name == b.name);
 
 			// Check that the distinct organizations occurring in the validator structs related to
@@ -235,6 +237,23 @@ pub mod pallet {
 			}
 
 			Ok(())
+		}
+
+		// Compares the content of two bounded vec of bytes
+		// This is necessary for the deduplication of organizations
+		fn compare_bounded_vec<K: sp_std::cmp::PartialOrd>(
+			vec_1: &BoundedVec<K, FieldLength>,
+			vec_2: &BoundedVec<K, FieldLength>,
+		) -> sp_std::cmp::Ordering {
+			for (a, b) in vec_1.iter().zip(vec_2.iter()) {
+				if a < b {
+					return sp_std::cmp::Ordering::Less
+				} else if a > b {
+					return sp_std::cmp::Ordering::Greater
+				}
+			}
+
+			return sp_std::cmp::Ordering::Equal
 		}
 
 		fn get_tx_set_hash(x: &ScpStatementExternalize) -> Result<Hash, DispatchError> {
