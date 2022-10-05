@@ -1,4 +1,3 @@
-use crate as pallet_spacewalk_relay;
 use frame_support::{
 	parameter_types,
 	traits::{ConstU16, ConstU64},
@@ -9,6 +8,8 @@ use sp_runtime::{
 	testing::Header,
 	traits::{BlakeTwo256, IdentityLookup},
 };
+
+use crate as pallet_spacewalk_relay;
 
 type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Test>;
 type Block = frame_system::mocking::MockBlock<Test>;
@@ -53,11 +54,13 @@ impl system::Config for Test {
 }
 
 parameter_types! {
+	pub const OrganizationLimit: u32 = 255;
 	pub const ValidatorLimit: u32 = 255;
 }
 
 impl pallet_spacewalk_relay::Config for Test {
 	type Event = Event;
+	type OrganizationLimit = OrganizationLimit;
 	type ValidatorLimit = ValidatorLimit;
 }
 

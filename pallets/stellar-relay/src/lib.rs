@@ -46,6 +46,10 @@ pub mod pallet {
 
 		// The maximum amount of validators stored on-chain
 		#[pallet::constant]
+		type OrganizationLimit: Get<u32>;
+
+		// The maximum amount of validators stored on-chain
+		#[pallet::constant]
 		type ValidatorLimit: Get<u32>;
 	}
 
@@ -75,7 +79,13 @@ pub mod pallet {
 		TransactionSetHashMismatch,
 		TransactionSetHashCreationFailed,
 		ValidatorLimitExceeded,
+		OrganizationLimitExceeded,
 	}
+
+	#[pallet::storage]
+	#[pallet::getter(fn organizations)]
+	pub type Organizations<T: Config> =
+		StorageValue<_, BoundedVec<Organization, T::OrganizationLimit>, ValueQuery>;
 
 	#[pallet::storage]
 	#[pallet::getter(fn validators)]
@@ -85,22 +95,30 @@ pub mod pallet {
 	#[pallet::genesis_config]
 	pub struct GenesisConfig<T: Config> {
 		pub validators: Vec<Validator>,
+		pub organizations: Vec<Organization>,
 		phantom: PhantomData<T>,
 	}
 
 	#[cfg(feature = "std")]
 	impl<T: Config> Default for GenesisConfig<T> {
 		fn default() -> Self {
-			Self { validators: vec![], phantom: Default::default() }
+			Self { validators: vec![], organizations: vec![], phantom: Default::default() }
 		}
 	}
 
 	#[pallet::genesis_build]
 	impl<T: Config> GenesisBuild<T> for GenesisConfig<T> {
 		fn build(&self) {
-			let vec = BoundedVec::<Validator, T::ValidatorLimit>::try_from(self.validators.clone());
-			assert!(vec.is_ok());
-			Validators::<T>::put(vec.unwrap());
+			let validator_vec =
+				BoundedVec::<Validator, T::ValidatorLimit>::try_from(self.validators.clone());
+			assert!(validator_vec.is_ok());
+			Validators::<T>::put(validator_vec.unwrap());
+
+			let organization_vec = BoundedVec::<Organization, T::OrganizationLimit>::try_from(
+				self.organizations.clone(),
+			);
+			assert!(organization_vec.is_ok());
+			Organizations::<T>::put(organization_vec.unwrap());
 		}
 	}
 
@@ -112,6 +130,7 @@ pub mod pallet {
 		pub fn update_tier_1_validator_set(
 			origin: OriginFor<T>,
 			validators: Vec<Validator>,
+			organizations: Vec<Organization>,
 		) -> DispatchResult {
 			// Limit this call to root
 			let _ = ensure_root(origin)?;
@@ -121,10 +140,20 @@ pub mod pallet {
 				validators.len() as u32 <= T::ValidatorLimit::get(),
 				Error::<T>::ValidatorLimitExceeded
 			);
+			// Ensure that the number of organizations does not exceed the limit
+			ensure!(
+				organizations.len() as u32 <= T::OrganizationLimit::get(),
+				Error::<T>::OrganizationLimitExceeded
+			);
 
-			let vec = BoundedVec::<Validator, T::ValidatorLimit>::try_from(validators)
+			let validator_vec = BoundedVec::<Validator, T::ValidatorLimit>::try_from(validators)
 				.map_err(|_| Error::<T>::BoundedVecCreationFailed)?;
-			Validators::<T>::put(vec);
+			Validators::<T>::put(validator_vec);
+
+			let organization_vec =
+				BoundedVec::<Organization, T::OrganizationLimit>::try_from(organizations)
+					.map_err(|_| Error::<T>::BoundedVecCreationFailed)?;
+			Organizations::<T>::put(organization_vec);
 
 			Ok(())
 		}
@@ -181,6 +210,7 @@ pub mod pallet {
 			}
 
 			// ---- Check that externalized messages build valid quorum set ----
+			// Find the validators that are targeted by the SCP messages
 			let targeted_validators = validators
 				.iter()
 				.filter(|validator| {
@@ -190,70 +220,46 @@ pub mod pallet {
 				})
 				.collect::<Vec<&Validator>>();
 
-			let total_organizations = targeted_validators
-				.iter()
-				.map(|validator| validator.organization.clone())
-				.collect::<Vec<Organization>>();
+			let organizations = Organizations::<T>::get();
 
-			// Build the distinct organizations
-			let mut total_distinct_organizations = total_organizations.clone();
-			total_distinct_organizations
-				.sort_by(|a, b| Self::compare_bounded_vec(&a.name, &b.name));
-			total_distinct_organizations.dedup_by(|a, b| a.name == b.name);
+			// Map organizationID to the number of occurrences (ie calculate total amount of nodes
+			// that belong to a specific organization)
+			let mut total_organization_node_count = vec![0i32; organizations.len()];
+			for organization in organizations.iter() {
+				total_organization_node_count[organization.id as usize] += 1;
+			}
 
-			// The organizations occurring related to the targeted validators
-			let targeted_organizations = targeted_validators
-				.iter()
-				.map(|validator| validator.organization.clone())
-				.collect::<Vec<Organization>>();
+			// Build a vector used to identify the targeted organizations
+			let mut targeted_organization_vec = vec![0i32; organizations.len()];
+			for validator in targeted_validators {
+				targeted_organization_vec[validator.organization_id as usize] += 1;
+			}
 
-			// Build the distinct set of targeted organizations
-			let mut targeted_distinct_organizations = targeted_organizations.clone();
-			targeted_distinct_organizations
-				.sort_by(|a, b| Self::compare_bounded_vec(&a.name, &b.name));
-			targeted_distinct_organizations.dedup_by(|a, b| a.name == b.name);
+			// Count the number of distinct organizations that are targeted
+			// (If the count in the vector is greater than 0, we know that the organization is
+			// targeted)
+			let targeted_organization_count =
+				targeted_organization_vec.iter().filter(|count| **count > 0).count();
 
 			// Check that the distinct organizations occurring in the validator structs related to
 			// the externalized messages are more than 2/3 of the total amount of organizations in
 			// the tier 1 validator set.
 			// Use multiplication to avoid floating point numbers.
 			ensure!(
-				targeted_distinct_organizations.len() * 3 > total_distinct_organizations.len() * 2,
+				targeted_organization_count * 3 > organizations.len() * 2,
 				Error::<T>::InvalidQuorumSet
 			);
 
-			for organization in &targeted_distinct_organizations {
-				let total = organization.total_org_nodes;
-				let mut count = 0;
-
-				// check if all organizations are higher than the threshold of 1/2
-				for o in &targeted_organizations {
-					if o.name == organization.name {
-						count = count + 1;
-					}
+			for (index, count) in targeted_organization_vec.iter().enumerate() {
+				if count == &0i32 {
+					// We're only interested in targeted organizations
+					continue
 				}
-				// More than half of each distinct organization has to be in the quorum set
-				ensure!(count * 2 > total, Error::<T>::InvalidQuorumSet)
+				let total: &i32 = total_organization_node_count.get(index).unwrap();
+				ensure!(count * 2 > *total, Error::<T>::InvalidQuorumSet);
 			}
 
 			Ok(())
-		}
-
-		// Compares the content of two bounded vec of bytes
-		// This is necessary for the deduplication of organizations
-		fn compare_bounded_vec<K: sp_std::cmp::PartialOrd>(
-			vec_1: &BoundedVec<K, FieldLength>,
-			vec_2: &BoundedVec<K, FieldLength>,
-		) -> sp_std::cmp::Ordering {
-			for (a, b) in vec_1.iter().zip(vec_2.iter()) {
-				if a < b {
-					return sp_std::cmp::Ordering::Less
-				} else if a > b {
-					return sp_std::cmp::Ordering::Greater
-				}
-			}
-
-			return sp_std::cmp::Ordering::Equal
 		}
 
 		fn get_tx_set_hash(x: &ScpStatementExternalize) -> Result<Hash, DispatchError> {

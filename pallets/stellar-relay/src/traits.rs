@@ -11,6 +11,8 @@ impl Get<u32> for FieldLength {
 	}
 }
 
+pub type OrganizationID = u128;
+
 #[derive(
 	RuntimeDebug,
 	Encode,
@@ -26,7 +28,7 @@ impl Get<u32> for FieldLength {
 pub struct Validator {
 	pub name: BoundedVec<u8, FieldLength>,
 	pub public_key: BoundedVec<u8, FieldLength>,
-	pub organization: Organization,
+	pub organization_id: OrganizationID,
 }
 
 #[derive(
@@ -42,6 +44,6 @@ pub struct Validator {
 	TypeInfo,
 )]
 pub struct Organization {
+	pub id: OrganizationID,
 	pub name: BoundedVec<u8, FieldLength>,
-	pub total_org_nodes: u32,
 }
