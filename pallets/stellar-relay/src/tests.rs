@@ -68,6 +68,34 @@ fn create_dummy_validators() -> (Vec<Validator>, Vec<SecretKey>) {
 	// They are later used to sign the scp messages
 	let mut validator_secret_keys: Vec<SecretKey> = vec![];
 
+	let organization_sdf =
+		Organization { name: create_bounded_vec("sdf".as_bytes()).unwrap(), total_org_nodes: 3 };
+
+	let (validator, validator_secret) = create_dummy_validator("$sdf1", &organization_sdf);
+	validators.push(validator);
+	validator_secret_keys.push(validator_secret);
+	let (validator, validator_secret) = create_dummy_validator("$sdf2", &organization_sdf);
+	validators.push(validator);
+	validator_secret_keys.push(validator_secret);
+	let (validator, validator_secret) = create_dummy_validator("$sdf3", &organization_sdf);
+	validators.push(validator);
+	validator_secret_keys.push(validator_secret);
+
+	let organization_keybase = Organization {
+		name: create_bounded_vec("keybase".as_bytes()).unwrap(),
+		total_org_nodes: 3,
+	};
+
+	let (validator, validator_secret) = create_dummy_validator("$keybase1", &organization_keybase);
+	validators.push(validator);
+	validator_secret_keys.push(validator_secret);
+	let (validator, validator_secret) = create_dummy_validator("$keybase2", &organization_keybase);
+	validators.push(validator);
+	validator_secret_keys.push(validator_secret);
+	let (validator, validator_secret) = create_dummy_validator("$keybase3", &organization_keybase);
+	validators.push(validator);
+	validator_secret_keys.push(validator_secret);
+
 	let organization_satoshipay = Organization {
 		name: create_bounded_vec("satoshipay".as_bytes()).unwrap(),
 		total_org_nodes: 3,
@@ -199,11 +227,15 @@ fn validate_stellar_transaction_fails_for_invalid_quorum() {
 		assert_ok!(SpacewalkRelay::update_tier_1_validator_set(Origin::root(), validators.clone()));
 
 		// Remove validators from the quorum set to make it invalid
-		// Remove the first two satoshipay validators
-		validators.remove(0);
-		validator_secret_keys.remove(0);
-		validators.remove(1);
-		validator_secret_keys.remove(1);
+		// Remove all sdf validators
+		validators.drain(0..3);
+		validator_secret_keys.drain(0..3);
+		// Remove all keybase validators
+		validators.drain(0..3);
+		validator_secret_keys.drain(0..3);
+
+		// This should be an invalid quorum set because only 50% of the total organizations are in
+		// the quorum set but it has to be >50%
 
 		let (tx_envelope, tx_set, scp_envelopes) =
 			create_valid_dummy_scp_envelopes(validators, validator_secret_keys, network);
@@ -221,7 +253,42 @@ fn validate_stellar_transaction_fails_for_invalid_quorum() {
 }
 
 #[test]
-fn validate_stellar_transaction_works_for_correct_values() {
+fn validate_stellar_transaction_works_with_barely_enough_validators() {
+	new_test_ext().execute_with(|| {
+		let network = &TEST_NETWORK;
+
+		// Set the validators used to create the scp messages
+		let (mut validators, mut validator_secret_keys) = create_dummy_validators();
+		assert_ok!(SpacewalkRelay::update_tier_1_validator_set(Origin::root(), validators.clone()));
+
+		// Remove some validators but leave enough to build a valid quorum set
+		// Remove all sdf validators
+		validators.drain(0..3);
+		validator_secret_keys.drain(0..3);
+		// Remove one keybase validator
+		validators.remove(0);
+		validator_secret_keys.remove(0);
+		// Remove one satoshipay validator
+		validators.remove(3);
+		validator_secret_keys.remove(3);
+
+		// This should still be valid because 3 out of 4 organizations are still present
+		// and all organizations still have more than 1/2 of its validators in the quorum set
+
+		let (tx_envelope, tx_set, scp_envelopes) =
+			create_valid_dummy_scp_envelopes(validators, validator_secret_keys, network);
+
+		assert_ok!(SpacewalkRelay::validate_stellar_transaction(
+			tx_envelope,
+			scp_envelopes,
+			tx_set,
+			network
+		));
+	});
+}
+
+#[test]
+fn validate_stellar_transaction_works_with_all_validators() {
 	new_test_ext().execute_with(|| {
 		let network = &TEST_NETWORK;
 
