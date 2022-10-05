@@ -49,7 +49,7 @@ pub mod pallet {
 		/// Because this pallet emits events, it depends on the runtime's definition of an event.
 		type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
 
-		// The maximum amount of validators stored on-chain
+		// The maximum amount of organizations stored on-chain
 		#[pallet::constant]
 		type OrganizationLimit: Get<u32>;
 
@@ -133,7 +133,8 @@ pub mod pallet {
 	// Extrinsics
 	#[pallet::call]
 	impl<T: Config> Pallet<T> {
-		/// This extrinsic is used to update/replace the current set of validators.
+		/// This extrinsic is used to update/replace the current sets of validators and
+		/// organizations
 		#[pallet::weight(<T as Config>::WeightInfo::update_tier_1_validator_set())]
 		pub fn update_tier_1_validator_set(
 			origin: OriginFor<T>,
@@ -242,6 +243,8 @@ pub mod pallet {
 			}
 
 			// Build a map used to identify the targeted organizations
+			// A map is used to avoid duplicates and simultaneously track the number of validators
+			// that were targeted
 			let mut targeted_organization_map = BTreeMap::<OrganizationID, u32>::new();
 			for validator in targeted_validators {
 				targeted_organization_map
@@ -253,8 +256,7 @@ pub mod pallet {
 			}
 
 			// Count the number of distinct organizations that are targeted by the SCP messages
-			let targeted_organization_count =
-				targeted_organization_map.iter().filter(|(_id, count)| **count > 0).count();
+			let targeted_organization_count = targeted_organization_map.len();
 
 			// Check that the distinct organizations occurring in the validator structs related to
 			// the externalized messages are more than 2/3 of the total amount of organizations in
@@ -266,10 +268,6 @@ pub mod pallet {
 			);
 
 			for (organization_id, count) in targeted_organization_map.iter() {
-				if count == &0u32 {
-					// We're only interested in targeted organizations
-					continue
-				}
 				let total: &u32 =
 					validator_count_per_organization_map.get(organization_id).unwrap();
 				// Check that for each of the targeted organizations more than 1/2 of their total
