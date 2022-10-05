@@ -25,6 +25,8 @@ frame-benchmarking = { default-features = false, version = "4.0.0-dev", git = "h
 
 sp-std = { default-features = false, version = "4.0.0-dev", git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.24" }
 
+substrate-stellar-sdk = { git = "https://github.com/pendulum-chain/substrate-stellar-sdk", branch = "polkadot-v0.9.24", default-features = false, features = ["all-types"] }
+
 sha2 = "0.10.6"
 
 [dev-dependencies]
@@ -33,7 +35,6 @@ sp-io = { default-features = false, version = "6.0.0", git = "https://github.com
 sp-runtime = { default-features = false, version = "6.0.0", git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.24" }
 
 # For testing
-substrate-stellar-sdk = { git = "https://github.com/pendulum-chain/substrate-stellar-sdk", branch = "polkadot-v0.9.24", default-features = false, features = ["all-types"] }
 rand = "0.8.5"
 
 [features]
@@ -46,6 +47,7 @@ std = [
     "frame-system/std",
     "frame-benchmarking/std",
     "sp-std/std",
+    "substrate-stellar-sdk/std"
 ]
 
 runtime-benchmarks = ["frame-benchmarking/runtime-benchmarks"]
