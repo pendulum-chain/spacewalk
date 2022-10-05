@@ -5,9 +5,9 @@ use substrate_stellar_sdk::{
 	compound_types::{LimitedVarArray, LimitedVarOpaque, UnlimitedVarArray, UnlimitedVarOpaque},
 	network::{Network, PUBLIC_NETWORK, TEST_NETWORK},
 	types::{
-		EnvelopeType, NodeId, Preconditions, ScpBallot, ScpEnvelope, ScpStatement,
-		ScpStatementExternalize, ScpStatementPledges, Signature, StellarValue, StellarValueExt,
-		TransactionExt, TransactionSet, TransactionV1Envelope, Value,
+		NodeId, Preconditions, ScpBallot, ScpEnvelope, ScpStatement, ScpStatementExternalize,
+		ScpStatementPledges, Signature, StellarValue, StellarValueExt, TransactionExt,
+		TransactionSet, TransactionV1Envelope, Value,
 	},
 	AccountId, Hash, Memo, MuxedAccount, PublicKey, SecretKey, Transaction, TransactionEnvelope,
 	XdrCodec,
@@ -37,7 +37,7 @@ fn create_dummy_externalize_message(keypair: &SecretKey, network: &Network) -> S
 	let statement = ScpStatement { node_id, slot_index: 1u64, pledges };
 
 	let network = network.get_id();
-	let envelope_type_scp = [0, 0, 0, 1].to_vec(); // xdr representation
+	let envelope_type_scp = [0, 0, 0, 1].to_vec(); // xdr representation of SCP envelope type
 	let body: Vec<u8> = [network.to_vec(), envelope_type_scp, statement.to_xdr()].concat();
 
 	let signature_result = keypair.create_signature(body);
@@ -66,7 +66,7 @@ fn create_dummy_validators() -> (Vec<Organization>, Vec<Validator>, Vec<SecretKe
 	let mut organizations: Vec<Organization> = vec![];
 	let mut validators: Vec<Validator> = vec![];
 	// These secret keys are required to be in the same order as the validators in this test
-	// They are later used to sign the scp messages
+	// They are later used to sign the dummy scp messages
 	let mut validator_secret_keys: Vec<SecretKey> = vec![];
 
 	let organization_sdf =
@@ -238,9 +238,8 @@ fn validate_stellar_transaction_fails_for_invalid_quorum() {
 		// Remove all keybase validators
 		validators.drain(0..3);
 		validator_secret_keys.drain(0..3);
-
 		// This should be an invalid quorum set because only 50% of the total organizations are in
-		// the quorum set but it has to be >50%
+		// the quorum set but it has to be >66%
 
 		let (tx_envelope, tx_set, scp_envelopes) =
 			create_valid_dummy_scp_envelopes(validators, validator_secret_keys, network);
@@ -252,7 +251,69 @@ fn validate_stellar_transaction_fails_for_invalid_quorum() {
 				tx_set,
 				network
 			),
-			Error::<Test>::InvalidQuorumSet
+			Error::<Test>::InvalidQuorumSetNotEnoughOrganizations
+		);
+
+		let (organizations, mut validators, mut validator_secret_keys) = create_dummy_validators();
+		assert_ok!(SpacewalkRelay::update_tier_1_validator_set(
+			Origin::root(),
+			validators.clone(),
+			organizations.clone()
+		));
+
+		// Remove validators from the quorum set to make it invalid
+		// Remove two keybase validators
+		validators.drain(3..5);
+		validator_secret_keys.drain(3..5);
+		// Remove two sdf validators
+		validators.drain(0..2);
+		validator_secret_keys.drain(0..2);
+		// This should be an invalid quorum set because 1/2 of the organizations only have 1/3 of
+		// their validator nodes in the quorum set. This is not enough because >2/3 of the
+		// organizations have to have >1/2 of their validator nodes to build a valid quorum set.
+
+		let (tx_envelope, tx_set, scp_envelopes) =
+			create_valid_dummy_scp_envelopes(validators, validator_secret_keys, network);
+
+		assert_noop!(
+			SpacewalkRelay::validate_stellar_transaction(
+				tx_envelope,
+				scp_envelopes,
+				tx_set,
+				network
+			),
+			Error::<Test>::InvalidQuorumSetNotEnoughValidators
+		);
+	});
+}
+
+#[test]
+fn validate_stellar_transaction_fails_for_differing_networks() {
+	new_test_ext().execute_with(|| {
+		let network = &TEST_NETWORK;
+
+		// Set the validators used to create the scp messages
+		let (organizations, validators, validator_secret_keys) = create_dummy_validators();
+		assert_ok!(SpacewalkRelay::update_tier_1_validator_set(
+			Origin::root(),
+			validators.clone(),
+			organizations.clone()
+		));
+
+		let (tx_envelope, tx_set, scp_envelopes) =
+			create_valid_dummy_scp_envelopes(validators, validator_secret_keys, network);
+
+		// Choose a different network
+		let network = &PUBLIC_NETWORK;
+
+		assert_noop!(
+			SpacewalkRelay::validate_stellar_transaction(
+				tx_envelope,
+				scp_envelopes,
+				tx_set,
+				network
+			),
+			Error::<Test>::InvalidEnvelopeSignature
 		);
 	});
 }
@@ -352,7 +413,7 @@ fn update_tier_1_validator_set_works() {
 }
 
 #[test]
-fn update_tier_1_validator_set_fails_when_validator_set_too_large() {
+fn update_tier_1_validator_set_fails_when_set_too_large() {
 	new_test_ext().execute_with(|| {
 		let organization = Organization { id: 0, name: Default::default() };
 		let validator = Validator {
@@ -400,7 +461,7 @@ fn verify_signature_works_for_xdr_message() {
 
 #[test]
 fn verify_signature_works_for_mock_message() {
-	let secret = substrate_stellar_sdk::SecretKey::from_binary([0; 32]);
+	let secret = SecretKey::from_binary([0; 32]);
 	let network = &TEST_NETWORK;
 	let envelope: ScpEnvelope = create_dummy_externalize_message(&secret, network);
 	let node_id: &PublicKey = secret.get_public();

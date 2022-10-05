@@ -34,7 +34,7 @@ pub mod pallet {
 		Hash, TransactionEnvelope, XdrCodec,
 	};
 
-	use crate::traits::{FieldLength, Organization, Validator};
+	use crate::traits::{Organization, Validator};
 
 	use super::*;
 
@@ -74,7 +74,8 @@ pub mod pallet {
 		InvalidScpPledge,
 		InvalidTransactionSet,
 		InvalidTransactionXDR,
-		InvalidQuorumSet,
+		InvalidQuorumSetNotEnoughOrganizations,
+		InvalidQuorumSetNotEnoughValidators,
 		TransactionNotInTransactionSet,
 		TransactionSetHashMismatch,
 		TransactionSetHashCreationFailed,
@@ -225,8 +226,8 @@ pub mod pallet {
 			// Map organizationID to the number of occurrences (ie calculate total amount of nodes
 			// that belong to a specific organization)
 			let mut total_organization_node_count = vec![0i32; organizations.len()];
-			for organization in organizations.iter() {
-				total_organization_node_count[organization.id as usize] += 1;
+			for validator in validators.iter() {
+				total_organization_node_count[validator.organization_id as usize] += 1;
 			}
 
 			// Build a vector used to identify the targeted organizations
@@ -247,7 +248,7 @@ pub mod pallet {
 			// Use multiplication to avoid floating point numbers.
 			ensure!(
 				targeted_organization_count * 3 > organizations.len() * 2,
-				Error::<T>::InvalidQuorumSet
+				Error::<T>::InvalidQuorumSetNotEnoughOrganizations
 			);
 
 			for (index, count) in targeted_organization_vec.iter().enumerate() {
@@ -256,7 +257,7 @@ pub mod pallet {
 					continue
 				}
 				let total: &i32 = total_organization_node_count.get(index).unwrap();
-				ensure!(count * 2 > *total, Error::<T>::InvalidQuorumSet);
+				ensure!(count * 2 > *total, Error::<T>::InvalidQuorumSetNotEnoughValidators);
 			}
 
 			Ok(())
