@@ -1,8 +1,9 @@
 //! Benchmarking setup for pallet-template
 
-use frame_benchmarking::{benchmarks, impl_benchmark_test_suite, whitelisted_caller};
+use frame_benchmarking::{benchmarks, whitelisted_caller};
 use frame_support::BoundedVec;
 use frame_system::RawOrigin;
+use sp_std::vec;
 
 use crate::traits::{FieldLength, Organization, Validator};
 #[allow(unused)]
@@ -36,6 +37,6 @@ benchmarks! {
 		assert_eq!(Organizations::<T>::get(), BoundedVec::<Organization, T::OrganizationLimit>::try_from(organizations).unwrap());
 		assert_eq!(Validators::<T>::get(), BoundedVec::<Validator, T::ValidatorLimit>::try_from(validators).unwrap());
 	}
-}
 
-impl_benchmark_test_suite!(StellarRelay, crate::mock::new_test_ext(), crate::mock::Test);
+	impl_benchmark_test_suite!(StellarRelay, crate::mock::new_test_ext(), crate::mock::Test);
+}

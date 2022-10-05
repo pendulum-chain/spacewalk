@@ -24,7 +24,7 @@ pub mod pallet {
 	use frame_support::pallet_prelude::*;
 	use frame_system::pallet_prelude::*;
 	use sha2::{Digest, Sha256};
-	use sp_std::collections::btree_map::BTreeMap;
+	use sp_std::{collections::btree_map::BTreeMap, vec::Vec};
 	use substrate_stellar_sdk::{
 		compound_types::UnlimitedVarArray,
 		network::Network,

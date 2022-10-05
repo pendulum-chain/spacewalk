@@ -248,6 +248,17 @@ impl pallet_balances::Config for Runtime {
 	type ReserveIdentifier = [u8; 8];
 }
 
+parameter_types! {
+	pub const OrganizationLimit: u32 = 255;
+	pub const ValidatorLimit: u32 = 255;
+}
+
+impl pallet_stellar_relay::Config for Runtime {
+	type Event = Event;
+	type OrganizationLimit = OrganizationLimit;
+	type ValidatorLimit = ValidatorLimit;
+}
+
 construct_runtime! {
 	pub enum Runtime where
 		Block = Block,
@@ -264,6 +275,8 @@ construct_runtime! {
 		Currencies: orml_currencies::{Pallet, Call, Storage} = 7,
 		Balances: pallet_balances::{Pallet, Call, Storage, Config<T>, Event<T>} = 8,
 		TransactionPayment: pallet_transaction_payment::{Pallet, Storage} = 9,
+
+		SpacewalkRelay: pallet_stellar_relay::{Pallet, Call, Storage, Event<T>} = 10,
 	}
 }
 
