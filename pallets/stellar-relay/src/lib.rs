@@ -24,13 +24,13 @@ mod weights;
 #[frame_support::pallet]
 pub mod pallet {
 	use codec::FullCodec;
-	use frame_support::pallet_prelude::*;
+	use frame_support::{debug, log, pallet_prelude::*, sp_runtime::print};
 	use frame_system::pallet_prelude::*;
 	use sha2::{Digest, Sha256};
 	use sp_std::{collections::btree_map::BTreeMap, fmt::Debug, vec::Vec};
 	use substrate_stellar_sdk::{
 		compound_types::UnlimitedVarArray,
-		network::Network,
+		network::{Network, PUBLIC_NETWORK, TEST_NETWORK},
 		types::{
 			NodeId, ScpEnvelope, ScpStatementExternalize, ScpStatementPledges, StellarValue,
 			TransactionSet,
@@ -149,6 +149,64 @@ pub mod pallet {
 		/// This extrinsic is used to update/replace the current sets of validators and
 		/// organizations
 		#[pallet::weight(<T as Config>::WeightInfo::update_tier_1_validator_set())]
+		pub fn validate_stellar_transaction_ext(
+			origin: OriginFor<T>,
+			transaction_envelope_xdr_encoded: Vec<u8>,
+			externalized_envelopes_encoded: Vec<u8>,
+			transaction_set_encoded: Vec<u8>,
+			public_network: bool,
+		) -> DispatchResult {
+			let _ = ensure_signed(origin)?;
+
+			print("Validating Stellar transaction");
+
+			let tx_xdr = base64::decode(&transaction_envelope_xdr_encoded)
+				.map_err(|_| Error::<T>::Base64DecodeError)?;
+			let transaction_envelope = TransactionEnvelope::from_xdr(tx_xdr)
+				.map_err(|_| Error::<T>::InvalidTransactionXDR)?;
+
+			let envelopes_xdr = base64::decode(&externalized_envelopes_encoded)
+				.map_err(|_| Error::<T>::Base64DecodeError)?;
+			let envelopes = UnlimitedVarArray::<ScpEnvelope>::from_xdr(envelopes_xdr)
+				.map_err(|_| Error::<T>::InvalidExternalizedMessages)?;
+
+			let transaction_set_xdr = base64::decode(&transaction_set_encoded)
+				.map_err(|_| Error::<T>::Base64DecodeError)?;
+			let transaction_set = TransactionSet::from_xdr(transaction_set_xdr)
+				.map_err(|_| Error::<T>::InvalidTransactionSet)?;
+
+			let network: &Network = if public_network { &PUBLIC_NETWORK } else { &TEST_NETWORK };
+
+			print("Successfully constructed structs from XDR");
+
+			let tx_is_valid = Self::validate_stellar_transaction(
+				transaction_envelope,
+				envelopes,
+				transaction_set,
+				network,
+			);
+
+			print("After validating the transaction");
+
+			match tx_is_valid {
+				Ok(()) => {
+					// TODO log
+					log::debug!("Transaction is valid");
+					print("Transaction is valid (from print)");
+				},
+				Err(e) => {
+					// TODO log
+					log::debug!("Transaction is not valid");
+					print("Transaction is not valid (from print)");
+				},
+			};
+
+			Ok(())
+		}
+
+		/// This extrinsic is used to update/replace the current sets of validators and
+		/// organizations
+		#[pallet::weight(<T as Config>::WeightInfo::update_tier_1_validator_set())]
 		pub fn update_tier_1_validator_set(
 			origin: OriginFor<T>,
 			validators: Vec<ValidatorOf<T>>,
@@ -195,7 +253,7 @@ pub mod pallet {
 			envelopes: UnlimitedVarArray<ScpEnvelope>,
 			transaction_set: TransactionSet,
 			network: &Network,
-		) -> DispatchResult {
+		) -> Result<(), Error<T>> {
 			// Check if tx is included in the transaction set
 			let tx_hash = transaction_envelope.get_hash(&network);
 			let tx_included =
@@ -293,7 +351,7 @@ pub mod pallet {
 			Ok(())
 		}
 
-		fn get_tx_set_hash(x: &ScpStatementExternalize) -> Result<Hash, DispatchError> {
+		fn get_tx_set_hash(x: &ScpStatementExternalize) -> Result<Hash, Error<T>> {
 			let scp_value = x.commit.value.get_vec();
 			let tx_set_hash = StellarValue::from_xdr(scp_value)
 				.map(|stellar_value| stellar_value.tx_set_hash)
