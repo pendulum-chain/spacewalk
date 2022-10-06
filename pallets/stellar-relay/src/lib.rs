@@ -19,6 +19,7 @@ mod benchmarking;
 pub mod traits;
 pub mod types;
 
+mod default_genesis;
 mod weights;
 
 #[frame_support::pallet]
@@ -40,7 +41,10 @@ pub mod pallet {
 
 	use weights::WeightInfo;
 
-	use crate::types::{OrganizationOf, ValidatorOf};
+	use crate::{
+		default_genesis::build_default_genesis,
+		types::{OrganizationOf, ValidatorOf},
+	};
 
 	use super::*;
 
@@ -123,7 +127,8 @@ pub mod pallet {
 	#[cfg(feature = "std")]
 	impl<T: Config> Default for GenesisConfig<T> {
 		fn default() -> Self {
-			Self { validators: vec![], organizations: vec![], phantom: Default::default() }
+			let default_genesis = build_default_genesis();
+			default_genesis
 		}
 	}
 
