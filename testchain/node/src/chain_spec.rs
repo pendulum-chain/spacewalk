@@ -1,3 +1,6 @@
+use std::{convert::TryFrom, str::FromStr};
+
+use frame_support::BoundedVec;
 use hex_literal::hex;
 use sc_service::ChainType;
 use serde_json::{map::Map, Value};
@@ -5,11 +8,12 @@ use sp_consensus_aura::ed25519::AuthorityId as AuraId;
 use sp_core::{crypto::UncheckedInto, ed25519, sr25519, Pair, Public};
 use sp_finality_grandpa::AuthorityId as GrandpaId;
 use sp_runtime::traits::{IdentifyAccount, Verify};
+
 use spacewalk_runtime::{
-	AccountId, AuraConfig, BalancesConfig, CurrencyId, GenesisConfig, GrandpaConfig, Signature,
-	SudoConfig, SystemConfig, TokensConfig, WASM_BINARY,
+	AccountId, AuraConfig, BalancesConfig, CurrencyId, FieldLength, GenesisConfig, GrandpaConfig,
+	Organization, OrganizationOf, Runtime, Signature, StellarRelayConfig, SudoConfig, SystemConfig,
+	TokensConfig, Validator, ValidatorOf, WASM_BINARY,
 };
-use std::{convert::TryFrom, str::FromStr};
 
 // The URL for the telemetry server.
 // const STAGING_TELEMETRY_URL: &str = "wss://telemetry.polkadot.io/submit/";
@@ -181,6 +185,11 @@ pub fn development_config() -> ChainSpec {
 	)
 }
 
+fn create_bounded_vec<T: Clone>(input: &[T]) -> Result<BoundedVec<T, FieldLength>, ()> {
+	let bounded_vec = BoundedVec::try_from(input.to_vec()).map_err(|_| ())?;
+	Ok(bounded_vec)
+}
+
 fn testnet_genesis(
 	root_key: AccountId,
 	initial_authorities: Vec<(AuraId, GrandpaId)>,
@@ -196,6 +205,17 @@ fn testnet_genesis(
 		.clone(),
 	))
 	.unwrap();
+
+	// Build the initial tier 1 validator set
+	let organizations: Vec<OrganizationOf<Runtime>> = vec![Organization {
+		id: 0,
+		name: create_bounded_vec("sdf".as_bytes()).expect("Couldn't create vec"),
+	}];
+	let validators: Vec<ValidatorOf<Runtime>> = vec![Validator {
+		name: create_bounded_vec("$sdf1".as_bytes()).expect("Couldn't create vec"),
+		public_key: create_bounded_vec("GASDF".as_bytes()).expect("Couldn't create vec"),
+		organization_id: 0,
+	}];
 
 	GenesisConfig {
 		system: SystemConfig {
@@ -226,6 +246,11 @@ fn testnet_genesis(
 					]
 				})
 				.collect(),
+		},
+		stellar_relay: StellarRelayConfig {
+			validators,
+			organizations,
+			phantom: Default::default(),
 		},
 	}
 }
