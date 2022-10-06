@@ -3,6 +3,6 @@ use crate::{
 	Config,
 };
 
-pub(crate) type OrganizationIdOf<T> = <T as Config>::OrganizationId;
-pub(crate) type ValidatorOf<T> = Validator<OrganizationIdOf<T>>;
-pub(crate) type OrganizationOf<T> = Organization<OrganizationIdOf<T>>;
+pub type OrganizationIdOf<T> = <T as Config>::OrganizationId;
+pub type ValidatorOf<T> = Validator<OrganizationIdOf<T>>;
+pub type OrganizationOf<T> = Organization<OrganizationIdOf<T>>;
