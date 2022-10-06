@@ -16,8 +16,8 @@ mod tests;
 #[cfg(feature = "runtime-benchmarks")]
 mod benchmarking;
 
-mod traits;
-mod types;
+pub mod traits;
+pub mod types;
 
 mod weights;
 
@@ -117,7 +117,7 @@ pub mod pallet {
 	pub struct GenesisConfig<T: Config> {
 		pub validators: Vec<ValidatorOf<T>>,
 		pub organizations: Vec<OrganizationOf<T>>,
-		phantom: PhantomData<T>,
+		pub phantom: PhantomData<T>,
 	}
 
 	#[cfg(feature = "std")]
