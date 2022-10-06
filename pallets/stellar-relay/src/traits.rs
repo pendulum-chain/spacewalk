@@ -11,21 +11,19 @@ impl Get<u32> for FieldLength {
 	}
 }
 
-pub type OrganizationID = u128;
-
 #[derive(
 	Clone, Decode, Encode, Eq, MaxEncodedLen, Ord, PartialEq, PartialOrd, RuntimeDebug, TypeInfo,
 )]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
-pub struct Validator {
+pub struct Validator<OrganizationId> {
 	pub name: BoundedVec<u8, FieldLength>,
 	pub public_key: BoundedVec<u8, FieldLength>,
-	pub organization_id: OrganizationID,
+	pub organization_id: OrganizationId,
 }
 
 #[derive(Clone, Decode, Encode, Eq, MaxEncodedLen, PartialEq, RuntimeDebug, TypeInfo)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
-pub struct Organization {
-	pub id: OrganizationID,
+pub struct Organization<OrganizationId> {
+	pub id: OrganizationId,
 	pub name: BoundedVec<u8, FieldLength>,
 }

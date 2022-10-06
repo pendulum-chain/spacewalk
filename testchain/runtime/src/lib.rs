@@ -257,8 +257,11 @@ parameter_types! {
 	pub const ValidatorLimit: u32 = 255;
 }
 
+pub type OrganizationId = u128;
+
 impl pallet_stellar_relay::Config for Runtime {
 	type Event = Event;
+	type OrganizationId = OrganizationId;
 	type OrganizationLimit = OrganizationLimit;
 	type ValidatorLimit = ValidatorLimit;
 	type WeightInfo = ();

@@ -58,8 +58,11 @@ parameter_types! {
 	pub const ValidatorLimit: u32 = 255;
 }
 
+pub type OrganizationId = u128;
+
 impl pallet_spacewalk_relay::Config for Test {
 	type Event = Event;
+	type OrganizationId = OrganizationId;
 	type OrganizationLimit = OrganizationLimit;
 	type ValidatorLimit = ValidatorLimit;
 	type WeightInfo = ();

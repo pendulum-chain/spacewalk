@@ -23,10 +23,11 @@ mod weights;
 
 #[frame_support::pallet]
 pub mod pallet {
+	use codec::FullCodec;
 	use frame_support::pallet_prelude::*;
 	use frame_system::pallet_prelude::*;
 	use sha2::{Digest, Sha256};
-	use sp_std::{collections::btree_map::BTreeMap, vec::Vec};
+	use sp_std::{collections::btree_map::BTreeMap, fmt::Debug, vec::Vec};
 	use substrate_stellar_sdk::{
 		compound_types::UnlimitedVarArray,
 		network::Network,
@@ -39,7 +40,7 @@ pub mod pallet {
 
 	use weights::WeightInfo;
 
-	use crate::traits::{Organization, OrganizationID, Validator};
+	use crate::types::{OrganizationOf, ValidatorOf};
 
 	use super::*;
 
@@ -48,6 +49,18 @@ pub mod pallet {
 	pub trait Config: frame_system::Config {
 		/// Because this pallet emits events, it depends on the runtime's definition of an event.
 		type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
+
+		type OrganizationId: FullCodec
+			+ MaxEncodedLen
+			+ Eq
+			+ PartialEq
+			+ Copy
+			+ Clone
+			+ MaybeSerializeDeserialize
+			+ Debug
+			+ Default
+			+ TypeInfo
+			+ Ord;
 
 		// The maximum amount of organizations stored on-chain
 		#[pallet::constant]
@@ -93,17 +106,17 @@ pub mod pallet {
 	#[pallet::storage]
 	#[pallet::getter(fn organizations)]
 	pub type Organizations<T: Config> =
-		StorageValue<_, BoundedVec<Organization, T::OrganizationLimit>, ValueQuery>;
+		StorageValue<_, BoundedVec<OrganizationOf<T>, T::OrganizationLimit>, ValueQuery>;
 
 	#[pallet::storage]
 	#[pallet::getter(fn validators)]
 	pub type Validators<T: Config> =
-		StorageValue<_, BoundedVec<Validator, T::ValidatorLimit>, ValueQuery>;
+		StorageValue<_, BoundedVec<ValidatorOf<T>, T::ValidatorLimit>, ValueQuery>;
 
 	#[pallet::genesis_config]
 	pub struct GenesisConfig<T: Config> {
-		pub validators: Vec<Validator>,
-		pub organizations: Vec<Organization>,
+		pub validators: Vec<ValidatorOf<T>>,
+		pub organizations: Vec<OrganizationOf<T>>,
 		phantom: PhantomData<T>,
 	}
 
@@ -118,11 +131,11 @@ pub mod pallet {
 	impl<T: Config> GenesisBuild<T> for GenesisConfig<T> {
 		fn build(&self) {
 			let validator_vec =
-				BoundedVec::<Validator, T::ValidatorLimit>::try_from(self.validators.clone());
+				BoundedVec::<ValidatorOf<T>, T::ValidatorLimit>::try_from(self.validators.clone());
 			assert!(validator_vec.is_ok());
 			Validators::<T>::put(validator_vec.unwrap());
 
-			let organization_vec = BoundedVec::<Organization, T::OrganizationLimit>::try_from(
+			let organization_vec = BoundedVec::<OrganizationOf<T>, T::OrganizationLimit>::try_from(
 				self.organizations.clone(),
 			);
 			assert!(organization_vec.is_ok());
@@ -138,8 +151,8 @@ pub mod pallet {
 		#[pallet::weight(<T as Config>::WeightInfo::update_tier_1_validator_set())]
 		pub fn update_tier_1_validator_set(
 			origin: OriginFor<T>,
-			validators: Vec<Validator>,
-			organizations: Vec<Organization>,
+			validators: Vec<ValidatorOf<T>>,
+			organizations: Vec<OrganizationOf<T>>,
 		) -> DispatchResult {
 			// Limit this call to root
 			let _ = ensure_root(origin)?;
@@ -155,12 +168,13 @@ pub mod pallet {
 				Error::<T>::OrganizationLimitExceeded
 			);
 
-			let validator_vec = BoundedVec::<Validator, T::ValidatorLimit>::try_from(validators)
-				.map_err(|_| Error::<T>::BoundedVecCreationFailed)?;
+			let validator_vec =
+				BoundedVec::<ValidatorOf<T>, T::ValidatorLimit>::try_from(validators)
+					.map_err(|_| Error::<T>::BoundedVecCreationFailed)?;
 			Validators::<T>::put(validator_vec);
 
 			let organization_vec =
-				BoundedVec::<Organization, T::OrganizationLimit>::try_from(organizations)
+				BoundedVec::<OrganizationOf<T>, T::OrganizationLimit>::try_from(organizations)
 					.map_err(|_| Error::<T>::BoundedVecCreationFailed)?;
 			Organizations::<T>::put(organization_vec);
 
@@ -227,12 +241,13 @@ pub mod pallet {
 						envelope.statement.node_id.to_encoding() == validator.public_key.to_vec()
 					})
 				})
-				.collect::<Vec<&Validator>>();
+				.collect::<Vec<&ValidatorOf<T>>>();
 
 			let organizations = Organizations::<T>::get();
 
 			// Map organizationID to the number of validators that belongs to it
-			let mut validator_count_per_organization_map = BTreeMap::<OrganizationID, u32>::new();
+			let mut validator_count_per_organization_map =
+				BTreeMap::<T::OrganizationId, u32>::new();
 			for validator in validators.iter() {
 				validator_count_per_organization_map
 					.entry(validator.organization_id)
@@ -245,7 +260,7 @@ pub mod pallet {
 			// Build a map used to identify the targeted organizations
 			// A map is used to avoid duplicates and simultaneously track the number of validators
 			// that were targeted
-			let mut targeted_organization_map = BTreeMap::<OrganizationID, u32>::new();
+			let mut targeted_organization_map = BTreeMap::<T::OrganizationId, u32>::new();
 			for validator in targeted_validators {
 				targeted_organization_map
 					.entry(validator.organization_id)

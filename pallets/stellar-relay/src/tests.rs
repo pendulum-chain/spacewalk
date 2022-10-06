@@ -16,6 +16,7 @@ use substrate_stellar_sdk::{
 use crate::{
 	mock::*,
 	traits::{FieldLength, Organization, Validator},
+	types::{OrganizationOf, ValidatorOf},
 	Error,
 };
 
@@ -48,7 +49,10 @@ fn create_dummy_externalize_message(keypair: &SecretKey, network: &Network) -> S
 	envelope
 }
 
-fn create_dummy_validator(name: &str, organization: &Organization) -> (Validator, SecretKey) {
+fn create_dummy_validator(
+	name: &str,
+	organization: &OrganizationOf<Test>,
+) -> (ValidatorOf<Test>, SecretKey) {
 	let rand = &mut rand::thread_rng();
 	let validator_secret = SecretKey::from_binary(rand.gen());
 
@@ -62,9 +66,10 @@ fn create_dummy_validator(name: &str, organization: &Organization) -> (Validator
 	(validator, validator_secret)
 }
 
-fn create_dummy_validators() -> (Vec<Organization>, Vec<Validator>, Vec<SecretKey>) {
-	let mut organizations: Vec<Organization> = vec![];
-	let mut validators: Vec<Validator> = vec![];
+fn create_dummy_validators() -> (Vec<OrganizationOf<Test>>, Vec<ValidatorOf<Test>>, Vec<SecretKey>)
+{
+	let mut organizations: Vec<OrganizationOf<Test>> = vec![];
+	let mut validators: Vec<ValidatorOf<Test>> = vec![];
 	// These secret keys are required to be in the same order as the validators in this test
 	// They are later used to sign the dummy scp messages
 	let mut validator_secret_keys: Vec<SecretKey> = vec![];
@@ -136,7 +141,7 @@ fn create_dummy_validators() -> (Vec<Organization>, Vec<Validator>, Vec<SecretKe
 
 fn create_scp_envelope(
 	tx_set_hash: Hash,
-	validator: &Validator,
+	validator: &ValidatorOf<Test>,
 	validator_secret_key: &SecretKey,
 	network: &Network,
 ) -> ScpEnvelope {
@@ -172,7 +177,7 @@ fn create_scp_envelope(
 }
 
 fn create_valid_dummy_scp_envelopes(
-	validators: Vec<Validator>,
+	validators: Vec<ValidatorOf<Test>>,
 	validator_secret_keys: Vec<SecretKey>,
 	network: &Network,
 ) -> (TransactionEnvelope, TransactionSet, LimitedVarArray<ScpEnvelope, { i32::MAX }>) {
@@ -376,7 +381,7 @@ fn validate_stellar_transaction_fails_when_using_the_same_validator_multiple_tim
 
 		// Modify validator list to use the same validator multiple times
 		// Remove all sdf validators
-		let sdf_validators = validators.drain(0..3).collect::<Vec<Validator>>();
+		let sdf_validators = validators.drain(0..3).collect::<Vec<ValidatorOf<Test>>>();
 		let sdf_validator_secret_keys =
 			validator_secret_keys.drain(0..3).collect::<Vec<SecretKey>>();
 		// Pick first removed sdf validator to be re-used
@@ -600,10 +605,13 @@ fn update_tier_1_validator_set_works() {
 		));
 
 		let validator_bounded_vec =
-			BoundedVec::<Validator, ValidatorLimit>::try_from(validator_set.clone()).unwrap();
-		let organization_bounded_vec =
-			BoundedVec::<Organization, OrganizationLimit>::try_from(organization_set.clone())
+			BoundedVec::<ValidatorOf<Test>, ValidatorLimit>::try_from(validator_set.clone())
 				.unwrap();
+		let organization_bounded_vec =
+			BoundedVec::<OrganizationOf<Test>, OrganizationLimit>::try_from(
+				organization_set.clone(),
+			)
+			.unwrap();
 		assert_eq!(SpacewalkRelay::validators(), validator_bounded_vec);
 		assert_eq!(SpacewalkRelay::organizations(), organization_bounded_vec);
 
@@ -616,6 +624,8 @@ fn update_tier_1_validator_set_works() {
 		};
 		let new_validator_set = vec![validator; 2];
 		let new_organization_set = vec![organization; 2];
+		// let new_validator_set: Vec<ValidatorOf<Test>> = vec![validator; 2];
+		// let new_organization_set: Vec<OrganizationOf<Test>> = vec![organization; 2];
 		assert_ne!(validator_set, new_validator_set);
 		assert_ne!(organization_set, new_organization_set);
 
@@ -625,10 +635,13 @@ fn update_tier_1_validator_set_works() {
 			new_organization_set.clone()
 		));
 		let validator_bounded_vec =
-			BoundedVec::<Validator, ValidatorLimit>::try_from(new_validator_set.clone()).unwrap();
-		let organization_bounded_vec =
-			BoundedVec::<Organization, OrganizationLimit>::try_from(new_organization_set.clone())
+			BoundedVec::<ValidatorOf<Test>, ValidatorLimit>::try_from(new_validator_set.clone())
 				.unwrap();
+		let organization_bounded_vec =
+			BoundedVec::<OrganizationOf<Test>, OrganizationLimit>::try_from(
+				new_organization_set.clone(),
+			)
+			.unwrap();
 		assert_eq!(SpacewalkRelay::validators(), validator_bounded_vec);
 		assert_eq!(SpacewalkRelay::organizations(), organization_bounded_vec);
 	});
