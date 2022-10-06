@@ -40,6 +40,10 @@ use pallet_spacewalk::{
 };
 // A few exports that help ease life for downstream crates.
 pub use pallet_spacewalk::{self, currency::CurrencyId};
+pub use pallet_stellar_relay::{
+	traits::{FieldLength, Organization, Validator},
+	types::{OrganizationIdOf, OrganizationOf, ValidatorOf},
+};
 pub use primitives::{
 	self, AccountId, Balance, BlockNumber, Hash, Moment, Nonce, Signature, SignedFixedPoint,
 	SignedInner, UnsignedFixedPoint, UnsignedInner,
@@ -284,7 +288,7 @@ construct_runtime! {
 		Balances: pallet_balances::{Pallet, Call, Storage, Config<T>, Event<T>} = 8,
 		TransactionPayment: pallet_transaction_payment::{Pallet, Storage} = 9,
 
-		StellarRelay: pallet_stellar_relay::{Pallet, Call, Storage, Event<T>} = 10,
+		StellarRelay: pallet_stellar_relay::{Pallet, Call, Storage, Config<T>, Event<T>} = 10,
 	}
 }
 
