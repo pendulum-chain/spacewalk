@@ -1,6 +1,6 @@
 use frame_support::{assert_noop, assert_ok, BoundedVec};
 use rand::Rng;
-use sp_runtime::DispatchError::BadOrigin;
+use sp_runtime::{DispatchError, DispatchError::BadOrigin};
 use substrate_stellar_sdk::{
 	compound_types::{LimitedVarArray, LimitedVarOpaque, UnlimitedVarArray, UnlimitedVarOpaque},
 	network::{Network, PUBLIC_NETWORK, TEST_NETWORK},
@@ -241,15 +241,13 @@ fn validate_stellar_transaction_fails_for_wrong_signature() {
 		let (tx_envelope, tx_set, scp_envelopes) =
 			create_valid_dummy_scp_envelopes(validators, validator_secret_keys, network);
 
-		assert_noop!(
-			SpacewalkRelay::validate_stellar_transaction(
-				tx_envelope.clone(),
-				scp_envelopes.clone(),
-				tx_set.clone(),
-				network
-			),
-			Error::<Test>::InvalidEnvelopeSignature
+		let result = SpacewalkRelay::validate_stellar_transaction(
+			tx_envelope.clone(),
+			scp_envelopes.clone(),
+			tx_set.clone(),
+			network,
 		);
+		assert!(matches!(result, Err(Error::<Test>::InvalidEnvelopeSignature)));
 
 		// Change something in the envelope
 		let changed_envs = scp_envelopes
@@ -265,15 +263,13 @@ fn validate_stellar_transaction_fails_for_wrong_signature() {
 		let changed_env_array: UnlimitedVarArray<ScpEnvelope> =
 			LimitedVarArray::new(changed_envs.clone()).unwrap();
 
-		assert_noop!(
-			SpacewalkRelay::validate_stellar_transaction(
-				tx_envelope.clone(),
-				changed_env_array.clone(),
-				tx_set.clone(),
-				network
-			),
-			Error::<Test>::InvalidEnvelopeSignature
+		let result = SpacewalkRelay::validate_stellar_transaction(
+			tx_envelope.clone(),
+			changed_env_array.clone(),
+			tx_set.clone(),
+			network,
 		);
+		assert!(matches!(result, Err(Error::<Test>::InvalidEnvelopeSignature)));
 	});
 }
 
@@ -298,15 +294,13 @@ fn validate_stellar_transaction_fails_for_unknown_validator() {
 		let (tx_envelope, tx_set, scp_envelopes) =
 			create_valid_dummy_scp_envelopes(validators, validator_secret_keys, network);
 
-		assert_noop!(
-			SpacewalkRelay::validate_stellar_transaction(
-				tx_envelope,
-				scp_envelopes,
-				tx_set,
-				network
-			),
-			Error::<Test>::EnvelopeSignedByUnknownValidator
+		let result = SpacewalkRelay::validate_stellar_transaction(
+			tx_envelope,
+			scp_envelopes,
+			tx_set,
+			network,
 		);
+		assert!(matches!(result, Err(Error::<Test>::EnvelopeSignedByUnknownValidator)));
 	});
 }
 
@@ -342,27 +336,23 @@ fn validate_stellar_transaction_fails_for_wrong_transaction() {
 			signatures: LimitedVarArray::new(vec![]).unwrap(),
 		});
 
-		assert_noop!(
-			SpacewalkRelay::validate_stellar_transaction(
-				changed_tx_envelope.clone(),
-				scp_envelopes.clone(),
-				tx_set.clone(),
-				network
-			),
-			Error::<Test>::TransactionNotInTransactionSet
+		let result = SpacewalkRelay::validate_stellar_transaction(
+			changed_tx_envelope.clone(),
+			scp_envelopes.clone(),
+			tx_set.clone(),
+			network,
 		);
+		assert!(matches!(result, Err(Error::<Test>::TransactionNotInTransactionSet)));
 
 		// Add transaction to transaction set
 		tx_set.txes.push(changed_tx_envelope.clone()).unwrap();
-		assert_noop!(
-			SpacewalkRelay::validate_stellar_transaction(
-				changed_tx_envelope,
-				scp_envelopes,
-				tx_set,
-				network
-			),
-			Error::<Test>::TransactionSetHashMismatch
+		let result = SpacewalkRelay::validate_stellar_transaction(
+			changed_tx_envelope,
+			scp_envelopes,
+			tx_set,
+			network,
 		);
+		assert!(matches!(result, Err(Error::<Test>::TransactionSetHashMismatch)));
 	});
 }
 
@@ -401,15 +391,13 @@ fn validate_stellar_transaction_fails_when_using_the_same_validator_multiple_tim
 			create_valid_dummy_scp_envelopes(validators, validator_secret_keys, network);
 
 		// This should be invalid because the quorum thresholds are based on distinct validators
-		assert_noop!(
-			SpacewalkRelay::validate_stellar_transaction(
-				tx_envelope,
-				scp_envelopes,
-				tx_set,
-				network
-			),
-			Error::<Test>::InvalidQuorumSetNotEnoughValidators
+		let result = SpacewalkRelay::validate_stellar_transaction(
+			tx_envelope,
+			scp_envelopes,
+			tx_set,
+			network,
 		);
+		assert!(matches!(result, Err(Error::<Test>::InvalidQuorumSetNotEnoughValidators)));
 	});
 }
 #[test]
@@ -438,15 +426,13 @@ fn validate_stellar_transaction_fails_for_invalid_quorum() {
 
 		// This should be an invalid quorum set because only 50% of the total organizations are in
 		// the quorum set but it has to be >66%
-		assert_noop!(
-			SpacewalkRelay::validate_stellar_transaction(
-				tx_envelope,
-				scp_envelopes,
-				tx_set,
-				network
-			),
-			Error::<Test>::InvalidQuorumSetNotEnoughOrganizations
+		let result = SpacewalkRelay::validate_stellar_transaction(
+			tx_envelope,
+			scp_envelopes,
+			tx_set,
+			network,
 		);
+		assert!(matches!(result, Err(Error::<Test>::InvalidQuorumSetNotEnoughOrganizations)));
 
 		let (organizations, mut validators, mut validator_secret_keys) = create_dummy_validators();
 		assert_ok!(SpacewalkRelay::update_tier_1_validator_set(
@@ -469,15 +455,13 @@ fn validate_stellar_transaction_fails_for_invalid_quorum() {
 		// This should be an invalid quorum set because 1/2 of the organizations only have 1/3 of
 		// their validator nodes in the quorum set. This is not enough because >2/3 of the
 		// organizations have to have >1/2 of their validator nodes to build a valid quorum set.
-		assert_noop!(
-			SpacewalkRelay::validate_stellar_transaction(
-				tx_envelope,
-				scp_envelopes,
-				tx_set,
-				network
-			),
-			Error::<Test>::InvalidQuorumSetNotEnoughValidators
+		let result = SpacewalkRelay::validate_stellar_transaction(
+			tx_envelope,
+			scp_envelopes,
+			tx_set,
+			network,
 		);
+		assert!(matches!(result, Err(Error::<Test>::InvalidQuorumSetNotEnoughValidators)));
 	});
 }
 
@@ -500,15 +484,13 @@ fn validate_stellar_transaction_fails_for_differing_networks() {
 		// Choose a different network
 		let network = &PUBLIC_NETWORK;
 
-		assert_noop!(
-			SpacewalkRelay::validate_stellar_transaction(
-				tx_envelope,
-				scp_envelopes,
-				tx_set,
-				network
-			),
-			Error::<Test>::InvalidEnvelopeSignature
+		let result = SpacewalkRelay::validate_stellar_transaction(
+			tx_envelope,
+			scp_envelopes,
+			tx_set,
+			network,
 		);
+		assert!(matches!(result, Err(Error::<Test>::InvalidEnvelopeSignature)));
 	});
 }
 
@@ -572,6 +554,46 @@ fn validate_stellar_transaction_works_with_all_validators() {
 			scp_envelopes,
 			tx_set,
 			network
+		));
+	});
+}
+
+#[test]
+fn validate_stellar_transaction_extrinsic_works_with_all_validators() {
+	new_test_ext().execute_with(|| {
+		let network = &TEST_NETWORK;
+
+		// Set the validators used to create the scp messages
+		let (organizations, validators, validator_secret_keys) = create_dummy_validators();
+		assert_ok!(SpacewalkRelay::update_tier_1_validator_set(
+			Origin::root(),
+			validators.clone(),
+			organizations.clone()
+		));
+
+		let (tx_envelope, tx_set, scp_envelopes) =
+			create_valid_dummy_scp_envelopes(validators, validator_secret_keys, network);
+
+		let tx_envelope_xdr = tx_envelope.to_xdr();
+		let tx_envelope_xdr_base64 = base64::encode(&tx_envelope_xdr);
+		let tx_envelope_xdr_base64_bytes_vec = tx_envelope_xdr_base64.as_bytes().to_vec();
+
+		let tx_set_xdr = tx_set.to_xdr();
+		let tx_set_xdr_base64 = base64::encode(&tx_set_xdr);
+		let tx_set_xdr_base64_bytes_vec = tx_set_xdr_base64.as_bytes().to_vec();
+
+		let scp_envelopes_xdr = scp_envelopes.to_xdr();
+		let scp_envelopes_xdr_base64 = base64::encode(&scp_envelopes_xdr);
+		let scp_envelopes_xdr_base64_bytes_vec = scp_envelopes_xdr_base64.as_bytes().to_vec();
+
+		let public_network = false;
+
+		assert_ok!(SpacewalkRelay::validate_stellar_transaction_ext(
+			Origin::signed(0),
+			tx_envelope_xdr_base64_bytes_vec,
+			scp_envelopes_xdr_base64_bytes_vec,
+			tx_set_xdr_base64_bytes_vec,
+			public_network,
 		));
 	});
 }
