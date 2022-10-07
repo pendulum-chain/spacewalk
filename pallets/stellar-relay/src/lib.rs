@@ -25,7 +25,7 @@ mod weights;
 #[frame_support::pallet]
 pub mod pallet {
 	use codec::FullCodec;
-	use frame_support::{debug, log, pallet_prelude::*, sp_runtime::print};
+	use frame_support::{log, pallet_prelude::*, sp_runtime::print};
 	use frame_system::pallet_prelude::*;
 	use sha2::{Digest, Sha256};
 	use sp_std::{collections::btree_map::BTreeMap, fmt::Debug, vec::Vec};
@@ -41,10 +41,7 @@ pub mod pallet {
 
 	use weights::WeightInfo;
 
-	use crate::{
-		default_genesis::build_default_genesis,
-		types::{OrganizationOf, ValidatorOf},
-	};
+	use crate::types::{OrganizationOf, ValidatorOf};
 
 	use super::*;
 
@@ -54,17 +51,18 @@ pub mod pallet {
 		/// Because this pallet emits events, it depends on the runtime's definition of an event.
 		type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
 
-		type OrganizationId: FullCodec
-			+ MaxEncodedLen
-			+ Eq
-			+ PartialEq
+		type OrganizationId: Clone
 			+ Copy
-			+ Clone
-			+ MaybeSerializeDeserialize
 			+ Debug
 			+ Default
-			+ TypeInfo
-			+ Ord;
+			+ Eq
+			+ From<u32>
+			+ FullCodec
+			+ MaxEncodedLen
+			+ MaybeSerializeDeserialize
+			+ Ord
+			+ PartialEq
+			+ TypeInfo;
 
 		// The maximum amount of organizations stored on-chain
 		#[pallet::constant]
@@ -127,8 +125,9 @@ pub mod pallet {
 	#[cfg(feature = "std")]
 	impl<T: Config> Default for GenesisConfig<T> {
 		fn default() -> Self {
-			let default_genesis = build_default_genesis();
-			default_genesis
+			let default_genesis = crate::default_genesis::build_default_genesis();
+			assert!(default_genesis.is_ok());
+			default_genesis.unwrap()
 		}
 	}
 
