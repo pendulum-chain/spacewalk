@@ -24,7 +24,7 @@ mod weights;
 #[frame_support::pallet]
 pub mod pallet {
 	use codec::FullCodec;
-	use frame_support::{log, pallet_prelude::*, sp_runtime::print};
+	use frame_support::{log, pallet_prelude::*};
 	use frame_system::pallet_prelude::*;
 	use sha2::{Digest, Sha256};
 	use sp_std::{collections::btree_map::BTreeMap, fmt::Debug, vec::Vec};
@@ -360,7 +360,7 @@ pub mod pallet {
 		) -> DispatchResult {
 			let _ = ensure_signed(origin)?;
 
-			print("Validating Stellar transaction");
+			log::warn!("🚀 Validating Stellar transaction...");
 
 			let tx_xdr = base64::decode(&transaction_envelope_xdr_encoded)
 				.map_err(|_| Error::<T>::Base64DecodeError)?;
@@ -379,7 +379,7 @@ pub mod pallet {
 
 			let network: &Network = if public_network { &PUBLIC_NETWORK } else { &TEST_NETWORK };
 
-			print("Successfully constructed structs from XDR");
+			log::warn!("🚀 Successfully constructed structs from XDR encodings.");
 
 			let tx_is_valid = Self::validate_stellar_transaction(
 				transaction_envelope,
@@ -388,18 +388,12 @@ pub mod pallet {
 				network,
 			);
 
-			print("After validating the transaction");
-
 			match tx_is_valid {
 				Ok(()) => {
-					// TODO log
-					log::debug!("Transaction is valid");
-					print("Transaction is valid (from print)");
+					log::warn!("✅ Stellar transaction is valid!");
 				},
 				Err(e) => {
-					// TODO log
-					log::debug!("Transaction is not valid");
-					print("Transaction is not valid (from print)");
+					log::warn!("❌ Stellar transaction is _not_ valid!");
 				},
 			};
 
