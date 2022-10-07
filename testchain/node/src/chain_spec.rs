@@ -10,8 +10,8 @@ use sp_finality_grandpa::AuthorityId as GrandpaId;
 use sp_runtime::traits::{IdentifyAccount, Verify};
 
 use spacewalk_runtime::{
-	AccountId, AuraConfig, BalancesConfig, CurrencyId, FieldLength, GenesisConfig, GrandpaConfig,
-	Signature, SudoConfig, SystemConfig, TokensConfig, WASM_BINARY,
+	AccountId, AuraConfig, BalancesConfig, CurrencyId, GenesisConfig, GrandpaConfig, Signature,
+	StellarRelayConfig, SudoConfig, SystemConfig, TokensConfig, WASM_BINARY,
 };
 
 // The URL for the telemetry server.
@@ -230,5 +230,6 @@ fn testnet_genesis(
 				})
 				.collect(),
 		},
+		stellar_relay: StellarRelayConfig::default(),
 	}
 }
