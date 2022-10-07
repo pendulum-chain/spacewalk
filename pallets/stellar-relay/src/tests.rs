@@ -1,6 +1,6 @@
 use frame_support::{assert_noop, assert_ok, BoundedVec};
 use rand::Rng;
-use sp_runtime::{DispatchError, DispatchError::BadOrigin};
+use sp_runtime::DispatchError::BadOrigin;
 use substrate_stellar_sdk::{
 	compound_types::{LimitedVarArray, LimitedVarOpaque, UnlimitedVarArray, UnlimitedVarOpaque},
 	network::{Network, PUBLIC_NETWORK, TEST_NETWORK},
