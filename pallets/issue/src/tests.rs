@@ -5,13 +5,12 @@ use sp_arithmetic::FixedU128;
 use sp_core::H256;
 use sp_runtime::traits::One;
 
-use bitcoin::types::{MerkleProof, Transaction};
-use btc_relay::{BtcAddress, BtcPublicKey};
 use currency::Amount;
-use primitives::issue::IssueRequestStatus;
-use vault_registry::{DefaultVault, DefaultVaultId, Vault, VaultStatus};
 
-use crate::{ext, mock::*, Event, IssueRequest};
+use crate::{ext, mock::*, Amount, DefaultVaultId, Event, IssueRequest, IssueRequestStatus};
+
+// use primitives::issue::IssueRequestStatus;
+// use vault_registry::{DefaultVault, DefaultVaultId, Vault, VaultStatus};
 
 fn dummy_merkle_proof() -> MerkleProof {
 	MerkleProof {
@@ -141,11 +140,10 @@ fn test_request_issue_succeeds() {
 			issue_id,
 			requester: origin,
 			amount: amount - issue_fee,
-			fee: issue_fee,
-			griefing_collateral: issue_griefing_collateral,
 			vault_id: vault,
-			vault_address: address,
-			vault_public_key: BtcPublicKey::default(),
+			vault_stellar_public_key: (),
+			asset: (),
+			public_network: false,
 		});
 		assert!(System::events().iter().any(|a| a.event == request_issue_event));
 	})
@@ -199,7 +197,8 @@ fn test_execute_issue_succeeds() {
 			requester: USER,
 			vault_id: VAULT,
 			amount: 3,
-			fee: 1,
+			asset: (),
+			public_network: false,
 		});
 		assert!(System::events().iter().any(|a| a.event == execute_issue_event));
 		assert!(matches!(
