@@ -2,9 +2,9 @@
 // `construct_runtime!` does a lot of recursion and requires us to increase the limit to 256.
 #![recursion_limit = "256"]
 
-// Make the WASM binary available.
-#[cfg(feature = "std")]
-include!(concat!(env!("OUT_DIR"), "/wasm_binary.rs"));
+#[cfg(feature = "runtime-benchmarks")]
+#[macro_use]
+extern crate frame_benchmarking;
 
 use frame_support::{
 	construct_runtime, parameter_types,
@@ -15,14 +15,6 @@ use orml_currencies::BasicCurrencyAdapter;
 use orml_traits::parameter_type_with_key;
 use pallet_grandpa::{
 	fg_primitives, AuthorityId as GrandpaId, AuthorityList as GrandpaAuthorityList,
-};
-use pallet_spacewalk::{
-	address_conv::AddressConversion as StellarAddressConversion,
-	balance_conv::BalanceConversion as StellarBalanceConversion,
-	currency_conv::{
-		CurrencyConversion as StellarCurrencyConversion,
-		StringCurrencyConversion as StellarStringCurrencyConversion,
-	},
 };
 use sp_api::impl_runtime_apis;
 use sp_consensus_aura::ed25519::AuthorityId as AuraId;
@@ -38,12 +30,24 @@ use sp_std::prelude::*;
 use sp_version::NativeVersion;
 use sp_version::RuntimeVersion;
 
+use pallet_spacewalk::{
+	address_conv::AddressConversion as StellarAddressConversion,
+	balance_conv::BalanceConversion as StellarBalanceConversion,
+	currency_conv::{
+		CurrencyConversion as StellarCurrencyConversion,
+		StringCurrencyConversion as StellarStringCurrencyConversion,
+	},
+};
 // A few exports that help ease life for downstream crates.
 pub use pallet_spacewalk::{self, currency::CurrencyId};
 pub use primitives::{
 	self, AccountId, Balance, BlockNumber, Hash, Moment, Nonce, Signature, SignedFixedPoint,
 	SignedInner, UnsignedFixedPoint, UnsignedInner,
 };
+
+// Make the WASM binary available.
+#[cfg(feature = "std")]
+include!(concat!(env!("OUT_DIR"), "/wasm_binary.rs"));
 
 impl_opaque_keys! {
 	pub struct SessionKeys {
@@ -248,6 +252,21 @@ impl pallet_balances::Config for Runtime {
 	type ReserveIdentifier = [u8; 8];
 }
 
+parameter_types! {
+	pub const OrganizationLimit: u32 = 255;
+	pub const ValidatorLimit: u32 = 255;
+}
+
+pub type OrganizationId = u128;
+
+impl pallet_stellar_relay::Config for Runtime {
+	type Event = Event;
+	type OrganizationId = OrganizationId;
+	type OrganizationLimit = OrganizationLimit;
+	type ValidatorLimit = ValidatorLimit;
+	type WeightInfo = ();
+}
+
 construct_runtime! {
 	pub enum Runtime where
 		Block = Block,
@@ -264,6 +283,8 @@ construct_runtime! {
 		Currencies: orml_currencies::{Pallet, Call, Storage} = 7,
 		Balances: pallet_balances::{Pallet, Call, Storage, Config<T>, Event<T>} = 8,
 		TransactionPayment: pallet_transaction_payment::{Pallet, Storage} = 9,
+
+		StellarRelay: pallet_stellar_relay::{Pallet, Call, Storage, Event<T>} = 10,
 	}
 }
 
@@ -299,6 +320,15 @@ pub type Executive = frame_executive::Executive<
 	Runtime,
 	AllPalletsWithSystem,
 >;
+
+#[cfg(feature = "runtime-benchmarks")]
+mod benches {
+	define_benchmarks!(
+		[frame_benchmarking, BaselineBench::<Runtime>]
+		[frame_system, SystemBench::<Runtime>]
+		[pallet_stellar_relay, StellarRelay]
+	);
+}
 
 impl_runtime_apis! {
 	impl sp_api::Core<Block> for Runtime {
@@ -438,9 +468,14 @@ impl_runtime_apis! {
 			Vec<frame_benchmarking::BenchmarkList>,
 			Vec<frame_support::traits::StorageInfo>,
 		) {
-			use frame_benchmarking::{list_benchmark, Benchmarking, BenchmarkList};
+			use frame_benchmarking::{list_benchmark, baseline, Benchmarking, BenchmarkList};
 			use frame_support::traits::StorageInfoTrait;
+			use frame_system_benchmarking::Pallet as SystemBench;
+			use baseline::Pallet as BaselineBench;
+
 			let mut list = Vec::<BenchmarkList>::new();
+			list_benchmarks!(list, extra);
+
 			let storage_info = AllPalletsWithSystem::storage_info();
 			return (list, storage_info)
 		}
@@ -448,7 +483,14 @@ impl_runtime_apis! {
 		fn dispatch_benchmark(
 			config: frame_benchmarking::BenchmarkConfig
 		) -> Result<Vec<frame_benchmarking::BenchmarkBatch>, sp_runtime::RuntimeString> {
-			use frame_benchmarking::{Benchmarking, BenchmarkBatch, add_benchmark, TrackedStorageKey};
+			use frame_benchmarking::{baseline, Benchmarking, BenchmarkBatch, add_benchmark, TrackedStorageKey};
+
+			use frame_system_benchmarking::Pallet as SystemBench;
+			use baseline::Pallet as BaselineBench;
+
+			impl frame_system_benchmarking::Config for Runtime {}
+			impl baseline::Config for Runtime {}
+
 			let whitelist: Vec<TrackedStorageKey> = vec![
 				// Block Number
 				hex_literal::hex!("26aa394eea5630e07c48ae0c9558cef702a5c1b19ab7a04f536c519aca4983ac").to_vec().into(),
@@ -463,6 +505,7 @@ impl_runtime_apis! {
 			];
 			let mut batches = Vec::<BenchmarkBatch>::new();
 			let params = (&config, &whitelist);
+			add_benchmarks!(params, batches);
 			if batches.is_empty() { return Err("Benchmark not found for this pallet.".into()) }
 			Ok(batches)
 		}

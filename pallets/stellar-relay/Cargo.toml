@@ -1,0 +1,55 @@
+[package]
+name = "pallet-stellar-relay"
+version = "1.0.0"
+description = "Spacewalk pallet for handling relayer functions"
+authors = ["Pendulum Chain <https://github.com/pendulum-chain>"]
+homepage = "https://pendulumchain.org/"
+edition = "2021"
+license = "Unlicense"
+publish = false
+repository = "https://github.com/pendulum-chain/spacewalk"
+
+[package.metadata.docs.rs]
+targets = ["x86_64-unknown-linux-gnu"]
+
+[dependencies]
+base64 = { version = '0.13.0', default-features = false, features = ['alloc'] }
+codec = { package = "parity-scale-codec", version = "3.0.0", default-features = false, features = [
+    "derive",
+] }
+serde = { version = '1.0.100', default-features = false, features = ['derive'] }
+scale-info = { version = "2.1.1", default-features = false, features = ["derive"] }
+frame-support = { default-features = false, version = "4.0.0-dev", git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.24" }
+frame-system = { default-features = false, version = "4.0.0-dev", git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.24" }
+frame-benchmarking = { default-features = false, version = "4.0.0-dev", git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.24", optional = true }
+
+sp-std = { default-features = false, version = "4.0.0-dev", git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.24" }
+
+substrate-stellar-sdk = { git = "https://github.com/pendulum-chain/substrate-stellar-sdk", branch = "polkadot-v0.9.24", default-features = false, features = ["all-types"] }
+
+sha2 = { version = "0.10.6", default-features = false }
+
+[dev-dependencies]
+sp-core = { default-features = false, version = "6.0.0", git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.24" }
+sp-io = { default-features = false, version = "6.0.0", git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.24" }
+sp-runtime = { default-features = false, version = "6.0.0", git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.24" }
+
+# For testing
+rand = "0.8.5"
+
+[features]
+default = ["std"]
+std = [
+    "base64/std",
+    "codec/std",
+    "scale-info/std",
+    "frame-support/std",
+    "frame-system/std",
+    "frame-benchmarking/std",
+    "sp-std/std",
+    "substrate-stellar-sdk/std",
+    "sha2/std"
+]
+
+runtime-benchmarks = ["frame-benchmarking/runtime-benchmarks"]
+try-runtime = ["frame-support/try-runtime"]

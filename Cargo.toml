@@ -4,7 +4,8 @@ members = [
   "testchain/runtime",
   "primitives",
   "rpc",
-  "pallets/spacewalk"
+  "pallets/spacewalk",
+  "pallets/stellar-relay"
 ]
 [profile.release]
 panic = "unwind"
