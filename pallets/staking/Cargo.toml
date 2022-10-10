@@ -1,9 +1,9 @@
 [package]
-authors = ["Interlay Ltd"]
-description = "Reward module"
+authors = ["Pendulum Chain <https://github.com/pendulum-chain>"]
+description = "Staking module"
 edition = "2021"
-name = "reward"
-version = "1.2.0"
+name = "staking"
+version = "1.0.0"
 
 [dependencies]
 serde = { version = "1.0.130", default-features = false, features = ["derive"], optional = true }
@@ -23,6 +23,10 @@ sp-std = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v
 frame-support = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.24", default-features = false }
 frame-system = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.24", default-features = false }
 frame-benchmarking = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.24", default-features = false, optional = true }
+
+# note: can be remove after removal of migration
+orml-tokens = { git = "https://github.com/open-web3-stack/open-runtime-module-library", rev = "8c625a5ab43c1c56cdeed5f8d814a891566d4cf8", default-features = false }
+orml-traits = { git = "https://github.com/open-web3-stack/open-runtime-module-library", rev = "8c625a5ab43c1c56cdeed5f8d814a891566d4cf8", default-features = false }
 
 [dev-dependencies]
 mocktopus = "0.7.0"
