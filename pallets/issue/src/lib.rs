@@ -15,20 +15,25 @@ use mocktopus::macros::mockable;
 use sp_core::H256;
 use sp_runtime::traits::{Convert, Saturating};
 use sp_std::vec::Vec;
-use substrate_stellar_sdk::{compound_types::UnlimitedVarArray, TransactionEnvelope, XdrCodec};
-use substrate_stellar_sdk::types::{ScpEnvelope, TransactionSet};
+use substrate_stellar_sdk::{
+	compound_types::UnlimitedVarArray,
+	types::{OperationBody, ScpEnvelope, TransactionSet},
+	Asset, TransactionEnvelope, XdrCodec,
+};
 
 use btc_relay::{BtcAddress, BtcPublicKey};
 use currency::Amount;
 pub use default_weights::WeightInfo;
 pub use pallet::*;
 use types::IssueRequestExt;
-use vault_registry::{CurrencySource, types::CurrencyId, VaultStatus};
-use crate::amount::Amount;
+use vault_registry::{types::CurrencyId, CurrencySource, VaultStatus};
 
-use crate::types::{BalanceOf, DefaultVaultId, Version};
 #[doc(inline)]
 pub use crate::types::{DefaultIssueRequest, IssueRequest, IssueRequestStatus};
+use crate::{
+	amount::Amount,
+	types::{BalanceOf, CurrencyId, DefaultVaultId, Version},
+};
 
 #[cfg(feature = "runtime-benchmarks")]
 mod benchmarking;
@@ -42,12 +47,13 @@ mod tests;
 
 mod ext;
 pub mod types;
-mod amount;
 
 #[frame_support::pallet]
 pub mod pallet {
 	use frame_support::pallet_prelude::*;
 	use frame_system::pallet_prelude::*;
+
+	use crate::types::{CurrencyId, StellarPublicKeyRaw};
 
 	use super::*;
 
@@ -55,7 +61,7 @@ pub mod pallet {
 	/// The pallet's configuration trait.
 	#[pallet::config]
 	pub trait Config:
-		frame_system::Config + stellar_relay::Config
+		frame_system::Config + vault_registry::Config + stellar_relay::Config
 	{
 		/// The overarching event type.
 		type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
@@ -63,7 +69,7 @@ pub mod pallet {
 		/// Convert the block number into a balance.
 		type BlockNumberToBalance: Convert<Self::BlockNumber, BalanceOf<Self>>;
 
-		/// Weight information for the extrinsics in this module.
+		// Weight information for the extrinsics in this module.
 		// type WeightInfo: WeightInfo;
 	}
 
@@ -74,22 +80,30 @@ pub mod pallet {
 			issue_id: H256,
 			requester: T::AccountId,
 			amount: BalanceOf<T>,
-			asset: CurrencyId<T>,
+			fee: BalanceOf<T>,
+			griefing_collateral: BalanceOf<T>,
 			vault_id: DefaultVaultId<T>,
-			vault_stellar_public_key: substrate_stellar_sdk::PublicKey,
-			public_network: bool
+			vault_stellar_public_key: StellarPublicKeyRaw,
+			public_network: bool,
+		},
+		IssueAmountChange {
+			issue_id: H256,
+			amount: BalanceOf<T>,
+			fee: BalanceOf<T>,
+			confiscated_griefing_collateral: BalanceOf<T>,
 		},
 		ExecuteIssue {
 			issue_id: H256,
 			requester: T::AccountId,
 			vault_id: DefaultVaultId<T>,
 			amount: BalanceOf<T>,
-			asset: CurrencyId<T>,
-			public_network: bool
+			fee: BalanceOf<T>,
+			public_network: bool,
 		},
 		CancelIssue {
 			issue_id: H256,
 			requester: T::AccountId,
+			griefing_collateral: BalanceOf<T>,
 		},
 		IssuePeriodChange {
 			period: T::BlockNumber,
@@ -132,21 +146,15 @@ pub mod pallet {
 	#[pallet::getter(fn issue_period)]
 	pub(super) type IssuePeriod<T: Config> = StorageValue<_, T::BlockNumber, ValueQuery>;
 
-	/// The minimum amount of btc that is required for issue requests; lower values would
-	/// risk the rejection of payment on Bitcoin.
-	#[pallet::storage]
-	pub(super) type IssueBtcDustValue<T: Config> = StorageValue<_, BalanceOf<T>, ValueQuery>;
-
 	#[pallet::genesis_config]
 	pub struct GenesisConfig<T: Config> {
 		pub issue_period: T::BlockNumber,
-		pub issue_btc_dust_value: BalanceOf<T>,
 	}
 
 	#[cfg(feature = "std")]
 	impl<T: Config> Default for GenesisConfig<T> {
 		fn default() -> Self {
-			Self { issue_period: Default::default(), issue_btc_dust_value: Default::default() }
+			Self { issue_period: Default::default() }
 		}
 	}
 
@@ -154,7 +162,6 @@ pub mod pallet {
 	impl<T: Config> GenesisBuild<T> for GenesisConfig<T> {
 		fn build(&self) {
 			IssuePeriod::<T>::put(self.issue_period);
-			IssueBtcDustValue::<T>::put(self.issue_btc_dust_value);
 		}
 	}
 
@@ -178,12 +185,11 @@ pub mod pallet {
 		pub fn request_issue(
 			origin: OriginFor<T>,
 			#[pallet::compact] amount: BalanceOf<T>,
-			asset: CurrencyId<T>,
 			vault_id: DefaultVaultId<T>,
-			public_network: bool
+			public_network: bool,
 		) -> DispatchResultWithPostInfo {
 			let requester = ensure_signed(origin)?;
-			Self::_request_issue(requester, amount, asset, vault_id, public_network)?;
+			Self::_request_issue(requester, amount, vault_id, public_network)?;
 			Ok(().into())
 		}
 
@@ -259,16 +265,10 @@ impl<T: Config> Pallet<T> {
 	fn _request_issue(
 		requester: T::AccountId,
 		amount_requested: BalanceOf<T>,
-		asset_requested: CurrencyId<T>,
 		vault_id: DefaultVaultId<T>,
-		public_network: bool
+		public_network: bool,
 	) -> Result<H256, DispatchError> {
 		let amount_requested = Amount::new(amount_requested, vault_id.wrapped_currency());
-
-		ensure!(
-			ext::btc_relay::is_fully_initialized::<T>()?,
-			Error::<T>::WaitingForRelayerInitialization
-		);
 
 		let vault = ext::vault_registry::get_active_vault_from_id::<T>(&vault_id)?;
 
@@ -287,12 +287,6 @@ impl<T: Config> Pallet<T> {
 		);
 		griefing_collateral.lock_on(&requester)?;
 
-		// only continue if the payment is above the dust value
-		ensure!(
-			amount_requested.ge(&Self::issue_btc_dust_value(vault_id.wrapped_currency()))?,
-			Error::<T>::AmountBelowDustAmount
-		);
-
 		ext::vault_registry::try_increase_to_be_issued_tokens::<T>(&vault_id, &amount_requested)?;
 
 		let fee = ext::fee::get_issue_fee::<T>(&amount_requested)?;
@@ -300,20 +294,20 @@ impl<T: Config> Pallet<T> {
 		let amount_user = amount_requested.checked_sub(&fee)?;
 
 		let issue_id = ext::security::get_secure_id::<T>(&requester);
-		let btc_address = ext::vault_registry::register_deposit_address::<T>(&vault_id, issue_id)?;
-		let btc_public_key =
-			ext::vault_registry::get_bitcoin_public_key::<T>(&vault_id.account_id)?;
+		let stellar_public_key =
+			ext::vault_registry::get_stellar_public_key::<T>(&vault_id.account_id)?;
 
 		let request = IssueRequest {
 			vault: vault_id,
 			opentime: ext::security::active_block_number::<T>(),
 			requester,
 			amount: amount_user.amount(),
+			fee: fee.amount(),
+			griefing_collateral: griefing_collateral.amount(),
 			period: Self::issue_period(),
 			status: IssueRequestStatus::Pending,
-			asset: asset_requested,
-			stellar_public_key: (),
-			public_network
+			stellar_public_key,
+			public_network,
 		};
 		Self::insert_issue_request(&issue_id, &request);
 
@@ -321,10 +315,11 @@ impl<T: Config> Pallet<T> {
 			issue_id,
 			requester: request.requester,
 			amount: request.amount,
+			fee: request.fee,
+			griefing_collateral: request.griefing_collateral,
 			vault_id: request.vault,
-			asset: (),
-			vault_stellar_public_key: (),
-			public_network
+			vault_stellar_public_key: stellar_public_key,
+			public_network,
 		});
 		Ok(issue_id)
 	}
@@ -339,16 +334,16 @@ impl<T: Config> Pallet<T> {
 	) -> Result<(), DispatchError> {
 		let tx_xdr = base64::decode(&transaction_envelope_xdr_encoded)
 			.map_err(|_| stellar_relay::Error::Base64DecodeError)?;
-		let transaction_envelope =
-			TransactionEnvelope::from_xdr(tx_xdr).map_err(|_| stellar_relay::Error::InvalidTransactionXDR)?;
+		let transaction_envelope = TransactionEnvelope::from_xdr(tx_xdr)
+			.map_err(|_| stellar_relay::Error::InvalidTransactionXDR)?;
 
 		let envelopes_xdr = base64::decode(&externalized_envelopes_encoded)
 			.map_err(|_| stellar_relay::Error::Base64DecodeError)?;
 		let envelopes = UnlimitedVarArray::<ScpEnvelope>::from_xdr(envelopes_xdr)
 			.map_err(|_| stellar_relay::Error::InvalidExternalizedMessages)?;
 
-		let transaction_set_xdr =
-			base64::decode(&transaction_set_encoded).map_err(|_| stellar_relay::Error::Base64DecodeError)?;
+		let transaction_set_xdr = base64::decode(&transaction_set_encoded)
+			.map_err(|_| stellar_relay::Error::Base64DecodeError)?;
 		let transaction_set = TransactionSet::from_xdr(transaction_set_xdr)
 			.map_err(|_| stellar_relay::Error::InvalidTransactionSet)?;
 
@@ -356,13 +351,17 @@ impl<T: Config> Pallet<T> {
 		// allow anyone to complete issue request
 		let requester = issue.requester.clone();
 
-		let transaction = ext::btc_relay::parse_transaction::<T>(&raw_tx)?;
-		let merkle_proof = ext::btc_relay::parse_merkle_proof::<T>(&raw_merkle_proof)?;
-		let amount_transferred = ext::btc_relay::get_and_verify_issue_payment::<T, BalanceOf<T>>(
-			merkle_proof,
-			transaction,
-			issue.btc_address,
+		// Verify that the transaction is valid
+		ext::stellar_relay::validate_stellar_transaction(
+			transaction_envelope,
+			envelopes,
+			transaction_set,
+			issue.public_network,
 		)?;
+
+		let amount_transferred = Self::get_amount_from_transaction_envelope(&transaction_envelope)?;
+		ensure!(amount_transferred == issue.amount, Error::<T>::AmountTransferredDoesNotMatch);
+
 		let amount_transferred = Amount::new(amount_transferred, issue.vault.wrapped_currency());
 
 		let expected_total_amount = issue.amount().checked_add(&issue.fee())?;
@@ -442,8 +441,8 @@ impl<T: Config> Pallet<T> {
 			requester,
 			vault_id: issue.vault,
 			amount: total.amount(),
-			asset: (),
-			public_network: issue.public_network
+			fee: issue.fee,
+			public_network: issue.public_network,
 		});
 		Ok(())
 	}
@@ -510,7 +509,11 @@ impl<T: Config> Pallet<T> {
 
 		Self::set_issue_status(issue_id, IssueRequestStatus::Cancelled);
 
-		Self::deposit_event(Event::CancelIssue { issue_id, requester });
+		Self::deposit_event(Event::CancelIssue {
+			issue_id,
+			requester,
+			griefing_collateral: to_be_slashed_collateral.amount(),
+		});
 		Ok(())
 	}
 
@@ -657,5 +660,44 @@ impl<T: Config> Pallet<T> {
 
 	fn issue_btc_dust_value(currency_id: CurrencyId<T>) -> Amount<T> {
 		Amount::new(IssueBtcDustValue::<T>::get(), currency_id)
+	}
+
+	/// Accumulate the amounts of the specified currency that happened in the operations of a
+	/// Stellar transaction
+	fn get_amount_from_transaction_envelope(
+		tx_env: &TransactionEnvelope,
+		currency: CurrencyId<T>,
+	) -> Amount<T> {
+		// TODO derive asset from currency
+		let asset = Asset::AssetTypeNative;
+
+		let amount = match transaction_envelope {
+			TransactionEnvelope::EnvelopeTypeTxV0(envelope) => {
+				let mut sum = 0;
+				for x in envelope.tx.operations.get_vec().iter() {
+					if let OperationBody::Payment(payment) = x.body.clone() {
+						if payment.asset == asset {
+							sum += payment.amount;
+						}
+					}
+				}
+				sum
+			},
+			TransactionEnvelope::EnvelopeTypeTx(envelope) => {
+				let mut sum = 0;
+				for x in envelope.tx.operations.get_vec().iter() {
+					if let OperationBody::Payment(payment) = x.body.clone() {
+						if payment.asset == asset {
+							sum += payment.amount;
+						}
+					}
+				}
+				sum
+			},
+			TransactionEnvelope::EnvelopeTypeTxFeeBump(_) => 0,
+			TransactionEnvelope::Default(_) => 0,
+		};
+
+		Amount::new(amount, currency)
 	}
 }
