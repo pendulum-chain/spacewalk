@@ -30,7 +30,7 @@ pub mod pallet {
 	use sp_std::{collections::btree_map::BTreeMap, fmt::Debug, vec::Vec};
 	use substrate_stellar_sdk::{
 		compound_types::UnlimitedVarArray,
-		network::Network,
+		network::{Network, PUBLIC_NETWORK, TEST_NETWORK},
 		types::{
 			NodeId, ScpEnvelope, ScpStatementExternalize, ScpStatementPledges, StellarValue,
 			TransactionSet,
@@ -40,7 +40,10 @@ pub mod pallet {
 
 	use weights::WeightInfo;
 
-	use crate::types::{OrganizationOf, ValidatorOf};
+	use crate::{
+		traits::FieldLength,
+		types::{OrganizationOf, ValidatorOf},
+	};
 
 	use super::*;
 
@@ -50,17 +53,18 @@ pub mod pallet {
 		/// Because this pallet emits events, it depends on the runtime's definition of an event.
 		type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
 
-		type OrganizationId: FullCodec
-			+ MaxEncodedLen
-			+ Eq
-			+ PartialEq
+		type OrganizationId: Clone
 			+ Copy
-			+ Clone
-			+ MaybeSerializeDeserialize
 			+ Debug
 			+ Default
-			+ TypeInfo
-			+ Ord;
+			+ Eq
+			+ From<u32>
+			+ FullCodec
+			+ MaxEncodedLen
+			+ MaybeSerializeDeserialize
+			+ Ord
+			+ PartialEq
+			+ TypeInfo;
 
 		// The maximum amount of organizations stored on-chain
 		#[pallet::constant]
@@ -91,16 +95,18 @@ pub mod pallet {
 		EnvelopeSignedByUnknownValidator,
 		InvalidExternalizedMessages,
 		InvalidEnvelopeSignature,
+		InvalidQuorumSetNotEnoughOrganizations,
+		InvalidQuorumSetNotEnoughValidators,
 		InvalidScpPledge,
 		InvalidTransactionSet,
 		InvalidTransactionXDR,
-		InvalidQuorumSetNotEnoughOrganizations,
-		InvalidQuorumSetNotEnoughValidators,
-		TransactionNotInTransactionSet,
-		TransactionSetHashMismatch,
-		TransactionSetHashCreationFailed,
-		ValidatorLimitExceeded,
+		NoOrganizationsRegisteredForNetwork,
+		NoValidatorsRegisteredForNetwork,
 		OrganizationLimitExceeded,
+		TransactionNotInTransactionSet,
+		TransactionSetHashCreationFailed,
+		TransactionSetHashMismatch,
+		ValidatorLimitExceeded,
 	}
 
 	#[pallet::storage]
@@ -468,8 +474,10 @@ pub mod pallet {
 			transaction_envelope: TransactionEnvelope,
 			envelopes: UnlimitedVarArray<ScpEnvelope>,
 			transaction_set: TransactionSet,
-			network: &Network,
+			public_network: bool,
 		) -> Result<(), Error<T>> {
+			let network: &Network = if public_network { &PUBLIC_NETWORK } else { &TEST_NETWORK };
+
 			// Check if tx is included in the transaction set
 			let tx_hash = transaction_envelope.get_hash(&network);
 			let tx_included =
@@ -478,6 +486,15 @@ pub mod pallet {
 
 			// Check if all externalized ScpEnvelopes were signed by a tier 1 validator
 			let validators = Validators::<T>::get();
+			// Filter validators for selected network type
+			let validators = validators
+				.into_iter()
+				.filter(|validator| validator.public_network == public_network)
+				.collect::<Vec<_>>();
+
+			// Make sure that at least one validator is registered for the selected network type
+			ensure!(!validators.is_empty(), Error::<T>::NoValidatorsRegisteredForNetwork);
+
 			for envelope in envelopes.get_vec() {
 				let node_id = envelope.statement.node_id.clone();
 				let node_id_found = validators
@@ -518,6 +535,14 @@ pub mod pallet {
 				.collect::<Vec<&ValidatorOf<T>>>();
 
 			let organizations = Organizations::<T>::get();
+			// Filter organizations for selected network type
+			let organizations = organizations
+				.into_iter()
+				.filter(|organization| organization.public_network == public_network)
+				.collect::<Vec<_>>();
+
+			// Make sure that at least one organization is registered for the selected network type
+			ensure!(!organizations.is_empty(), Error::<T>::NoOrganizationsRegisteredForNetwork);
 
 			// Map organizationID to the number of validators that belongs to it
 			let mut validator_count_per_organization_map =
@@ -567,7 +592,7 @@ pub mod pallet {
 			Ok(())
 		}
 
-		fn get_tx_set_hash(x: &ScpStatementExternalize) -> Result<Hash, DispatchError> {
+		fn get_tx_set_hash(x: &ScpStatementExternalize) -> Result<Hash, Error<T>> {
 			let scp_value = x.commit.value.get_vec();
 			let tx_set_hash = StellarValue::from_xdr(scp_value)
 				.map(|stellar_value| stellar_value.tx_set_hash)
@@ -605,5 +630,14 @@ pub mod pallet {
 			[network.to_vec(), envelope_type_scp, envelope.statement.to_xdr()].concat();
 
 		node_id.verify_signature(body, signature)
+	}
+
+	// Used to create bounded vecs for genesis config
+	// Does not return a result but panics because the genesis config is hardcoded
+	fn create_bounded_vec(input: &str) -> BoundedVec<u8, FieldLength> {
+		let bounded_vec =
+			BoundedVec::try_from(input.as_bytes().to_vec()).expect("Failed to create bounded vec");
+
+		bounded_vec
 	}
 }
