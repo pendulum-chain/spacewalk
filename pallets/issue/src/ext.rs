@@ -5,22 +5,39 @@ use mocktopus::macros::mockable;
 pub(crate) mod stellar_relay {
 	use frame_support::dispatch::DispatchError;
 	use sp_std::convert::TryFrom;
+	use substrate_stellar_sdk::{
+		compound_types::UnlimitedVarArray,
+		types::{ScpEnvelope, TransactionSet},
+		TransactionEnvelope,
+	};
+
 	use stellar_relay::Error;
 
-	pub fn get_and_verify_issue_payment<T: crate::Config, V: TryFrom<Value>>(
-		merkle_proof: MerkleProof,
-		transaction: Transaction,
-		recipient_btc_address: BtcAddress,
-	) -> Result<V, DispatchError> {
-		<btc_relay::Pallet<T>>::get_and_verify_issue_payment(
-			merkle_proof,
-			transaction,
-			recipient_btc_address,
+	pub fn validate_stellar_transaction<T: crate::Config>(
+		transaction_envelope: TransactionEnvelope,
+		envelopes: UnlimitedVarArray<ScpEnvelope>,
+		transaction_set: TransactionSet,
+		public_network: bool,
+	) -> Result<(), Error<T>> {
+		<stellar_relay::Pallet<T>>::validate_stellar_transaction(
+			transaction_envelope,
+			envelopes,
+			transaction_set,
+			public_network,
 		)
 	}
+}
 
-	pub fn validate_stellar_transaction<T: crate::Config>() -> Result<(), Error<T>> {
-		<stellar_relay::Pallet<T>>::validate_stellar_transaction()
+#[cfg_attr(test, mockable)]
+pub(crate) mod security {
+	use sp_core::H256;
+
+	pub fn get_secure_id<T: crate::Config>(id: &T::AccountId) -> H256 {
+		<security::Pallet<T>>::get_secure_id(id)
+	}
+
+	pub fn active_block_number<T: crate::Config>() -> T::BlockNumber {
+		<security::Pallet<T>>::active_block_number()
 	}
 }
 
@@ -28,6 +45,7 @@ pub(crate) mod stellar_relay {
 pub(crate) mod vault_registry {
 	use frame_support::dispatch::{DispatchError, DispatchResult};
 	use sp_core::H256;
+	use substrate_stellar_sdk::PublicKey;
 
 	use btc_relay::BtcAddress;
 	use vault_registry::{
@@ -35,7 +53,7 @@ pub(crate) mod vault_registry {
 		Amount, BtcPublicKey,
 	};
 
-	use crate::DefaultVaultId;
+	use crate::{types::StellarPublicKeyRaw, DefaultVaultId};
 
 	pub fn transfer_funds<T: crate::Config>(
 		from: CurrencySource<T>,
@@ -83,10 +101,11 @@ pub(crate) mod vault_registry {
 		<vault_registry::Pallet<T>>::register_deposit_address(vault_id, secure_id)
 	}
 
-	pub fn get_bitcoin_public_key<T: crate::Config>(
+	pub fn get_stellar_public_key<T: crate::Config>(
 		account_id: &T::AccountId,
-	) -> Result<BtcPublicKey, DispatchError> {
-		<vault_registry::Pallet<T>>::get_bitcoin_public_key(account_id)
+	) -> Result<StellarPublicKeyRaw, DispatchError> {
+		let binary: StellarPublicKeyRaw = [0u8; 32];
+		Ok(binary)
 	}
 
 	pub fn issue_tokens<T: crate::Config>(
@@ -113,19 +132,6 @@ pub(crate) mod vault_registry {
 		denominator: &Amount<T>,
 	) -> Result<Amount<T>, DispatchError> {
 		<vault_registry::Pallet<T>>::calculate_collateral(collateral, numerator, denominator)
-	}
-}
-
-#[cfg_attr(test, mockable)]
-pub(crate) mod security {
-	use sp_core::H256;
-
-	pub fn get_secure_id<T: crate::Config>(id: &T::AccountId) -> H256 {
-		<security::Pallet<T>>::get_secure_id(id)
-	}
-
-	pub fn active_block_number<T: crate::Config>() -> T::BlockNumber {
-		<security::Pallet<T>>::active_block_number()
 	}
 }
 
