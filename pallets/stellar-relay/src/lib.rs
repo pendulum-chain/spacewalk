@@ -437,7 +437,11 @@ pub mod pallet {
 		) -> DispatchResult {
 			let _ = ensure_signed(origin)?;
 
-			log::warn!("🚀 Validating Stellar transaction...");
+			if public_network {
+				log::warn!("🚀 Validating Stellar transaction for public network...");
+			} else {
+				log::warn!("🚀 Validating Stellar transaction for test network...");
+			}
 
 			let tx_xdr = base64::decode(&transaction_envelope_xdr_encoded)
 				.map_err(|_| Error::<T>::Base64DecodeError)?;
@@ -454,7 +458,7 @@ pub mod pallet {
 			let transaction_set = TransactionSet::from_xdr(transaction_set_xdr)
 				.map_err(|_| Error::<T>::InvalidTransactionSet)?;
 
-			log::warn!("🚀 Successfully constructed structs from XDR encodings.");
+			log::warn!("🚀 Successfully constructed structs from received XDR encodings. Checking validity...");
 
 			let tx_is_valid = Self::validate_stellar_transaction(
 				transaction_envelope,
@@ -467,8 +471,8 @@ pub mod pallet {
 				Ok(()) => {
 					log::warn!("✅ Stellar transaction is valid!");
 				},
-				Err(_) => {
-					log::warn!("❌ Stellar transaction is _not_ valid!");
+				Err(e) => {
+					log::warn!("❌ Stellar transaction is _not_ valid! Cause: {:?}", e);
 				},
 			};
 
