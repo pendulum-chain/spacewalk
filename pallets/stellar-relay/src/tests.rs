@@ -1,6 +1,6 @@
 use frame_support::{assert_noop, assert_ok, BoundedVec};
 use rand::Rng;
-use sp_runtime::{DispatchError, DispatchError::BadOrigin};
+use sp_runtime::DispatchError::BadOrigin;
 use substrate_stellar_sdk::{
 	compound_types::{LimitedVarArray, LimitedVarOpaque, UnlimitedVarArray, UnlimitedVarOpaque},
 	network::{Network, PUBLIC_NETWORK, TEST_NETWORK},
@@ -650,48 +650,6 @@ fn validate_stellar_transaction_works_with_all_validators() {
 			scp_envelopes,
 			tx_set,
 			public_network
-		));
-	});
-}
-
-#[test]
-fn validate_stellar_transaction_extrinsic_works_with_all_validators() {
-	new_test_ext().execute_with(|| {
-		let network = &TEST_NETWORK;
-		let public_network = false;
-
-		// Set the validators used to create the scp messages
-		let (organizations, validators, validator_secret_keys) =
-			create_dummy_validators(public_network);
-		assert_ok!(SpacewalkRelay::update_tier_1_validator_set(
-			Origin::root(),
-			validators.clone(),
-			organizations.clone()
-		));
-
-		let (tx_envelope, tx_set, scp_envelopes) =
-			create_valid_dummy_scp_envelopes(validators, validator_secret_keys, network);
-
-		let tx_envelope_xdr = tx_envelope.to_xdr();
-		let tx_envelope_xdr_base64 = base64::encode(&tx_envelope_xdr);
-		let tx_envelope_xdr_base64_bytes_vec = tx_envelope_xdr_base64.as_bytes().to_vec();
-
-		let tx_set_xdr = tx_set.to_xdr();
-		let tx_set_xdr_base64 = base64::encode(&tx_set_xdr);
-		let tx_set_xdr_base64_bytes_vec = tx_set_xdr_base64.as_bytes().to_vec();
-
-		let scp_envelopes_xdr = scp_envelopes.to_xdr();
-		let scp_envelopes_xdr_base64 = base64::encode(&scp_envelopes_xdr);
-		let scp_envelopes_xdr_base64_bytes_vec = scp_envelopes_xdr_base64.as_bytes().to_vec();
-
-		let public_network = false;
-
-		assert_ok!(SpacewalkRelay::validate_stellar_transaction_ext(
-			Origin::signed(0),
-			tx_envelope_xdr_base64_bytes_vec,
-			scp_envelopes_xdr_base64_bytes_vec,
-			tx_set_xdr_base64_bytes_vec,
-			public_network,
 		));
 	});
 }
