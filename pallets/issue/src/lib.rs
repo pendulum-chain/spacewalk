@@ -15,13 +15,16 @@ use mocktopus::macros::mockable;
 use sp_core::H256;
 use sp_runtime::traits::{Convert, Saturating};
 use sp_std::vec::Vec;
+use substrate_stellar_sdk::{compound_types::UnlimitedVarArray, TransactionEnvelope, XdrCodec};
+use substrate_stellar_sdk::types::{ScpEnvelope, TransactionSet};
 
 use btc_relay::{BtcAddress, BtcPublicKey};
 use currency::Amount;
 pub use default_weights::WeightInfo;
 pub use pallet::*;
 use types::IssueRequestExt;
-use vault_registry::{types::CurrencyId, CurrencySource, VaultStatus};
+use vault_registry::{CurrencySource, types::CurrencyId, VaultStatus};
+use crate::amount::Amount;
 
 use crate::types::{BalanceOf, DefaultVaultId, Version};
 #[doc(inline)]
@@ -30,7 +33,7 @@ pub use crate::types::{DefaultIssueRequest, IssueRequest, IssueRequestStatus};
 #[cfg(feature = "runtime-benchmarks")]
 mod benchmarking;
 
-mod default_weights;
+// mod default_weights;
 #[cfg(test)]
 mod mock;
 
@@ -39,6 +42,7 @@ mod tests;
 
 mod ext;
 pub mod types;
+mod amount;
 
 #[frame_support::pallet]
 pub mod pallet {
@@ -51,11 +55,7 @@ pub mod pallet {
 	/// The pallet's configuration trait.
 	#[pallet::config]
 	pub trait Config:
-		frame_system::Config
-		+ vault_registry::Config
-		+ btc_relay::Config
-		+ oracle::Config
-		+ fee::Config<UnsignedInner = BalanceOf<Self>>
+		frame_system::Config + stellar_relay::Config
 	{
 		/// The overarching event type.
 		type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
@@ -64,7 +64,7 @@ pub mod pallet {
 		type BlockNumberToBalance: Convert<Self::BlockNumber, BalanceOf<Self>>;
 
 		/// Weight information for the extrinsics in this module.
-		type WeightInfo: WeightInfo;
+		// type WeightInfo: WeightInfo;
 	}
 
 	#[pallet::event]
@@ -74,29 +74,22 @@ pub mod pallet {
 			issue_id: H256,
 			requester: T::AccountId,
 			amount: BalanceOf<T>,
-			fee: BalanceOf<T>,
-			griefing_collateral: BalanceOf<T>,
+			asset: CurrencyId<T>,
 			vault_id: DefaultVaultId<T>,
-			vault_address: BtcAddress,
-			vault_public_key: BtcPublicKey,
-		},
-		IssueAmountChange {
-			issue_id: H256,
-			amount: BalanceOf<T>,
-			fee: BalanceOf<T>,
-			confiscated_griefing_collateral: BalanceOf<T>,
+			vault_stellar_public_key: substrate_stellar_sdk::PublicKey,
+			public_network: bool
 		},
 		ExecuteIssue {
 			issue_id: H256,
 			requester: T::AccountId,
 			vault_id: DefaultVaultId<T>,
 			amount: BalanceOf<T>,
-			fee: BalanceOf<T>,
+			asset: CurrencyId<T>,
+			public_network: bool
 		},
 		CancelIssue {
 			issue_id: H256,
 			requester: T::AccountId,
-			griefing_collateral: BalanceOf<T>,
 		},
 		IssuePeriodChange {
 			period: T::BlockNumber,
@@ -125,33 +118,6 @@ pub mod pallet {
 		AmountBelowDustAmount,
 	}
 
-	#[pallet::hooks]
-	impl<T: Config> Hooks<T::BlockNumber> for Pallet<T> {
-		#[cfg(feature = "try-runtime")]
-		fn pre_upgrade() -> Result<(), &'static str> {
-			ensure!(Self::storage_version() == Version::V0, "Wrong storage version.");
-			let issue_count_before = crate::IssueRequests::<T>::iter().count() as u32;
-			log::info!("issue count before: {:?}", issue_count_before);
-			crate::types::v4::IssueCountBefore::<T>::put(issue_count_before);
-
-			Ok(())
-		}
-
-		fn on_runtime_upgrade() -> frame_support::weights::Weight {
-			crate::types::v4::migrate_v0_to_v4::<T>()
-		}
-
-		#[cfg(feature = "try-runtime")]
-		fn post_upgrade() -> Result<(), &'static str> {
-			ensure!(Self::storage_version() == Version::V4, "Wrong storage version.");
-			let issue_count_before = crate::types::v4::IssueCountBefore::<T>::take();
-			let issue_count_after = crate::IssueRequests::<T>::iter().count() as u32;
-			log::info!("issue count after: {:?}", issue_count_after,);
-			ensure!(issue_count_before == issue_count_after, "Not all issues were migrated.");
-			Ok(())
-		}
-	}
-
 	/// Users create issue requests to issue tokens. This mapping provides access
 	/// from a unique hash `IssueId` to an `IssueRequest` struct.
 	#[pallet::storage]
@@ -170,17 +136,6 @@ pub mod pallet {
 	/// risk the rejection of payment on Bitcoin.
 	#[pallet::storage]
 	pub(super) type IssueBtcDustValue<T: Config> = StorageValue<_, BalanceOf<T>, ValueQuery>;
-
-	#[pallet::type_value]
-	pub(super) fn DefaultForStorageVersion() -> Version {
-		Version::V0
-	}
-
-	/// Build storage at V1 (requires default 0).
-	#[pallet::storage]
-	#[pallet::getter(fn storage_version)]
-	pub(super) type StorageVersion<T: Config> =
-		StorageValue<_, Version, ValueQuery, DefaultForStorageVersion>;
 
 	#[pallet::genesis_config]
 	pub struct GenesisConfig<T: Config> {
@@ -218,15 +173,17 @@ pub mod pallet {
 		/// amount of issued tokens received will be less, because a fee is subtracted.
 		/// * `vault` - address of the vault
 		/// * `griefing_collateral` - amount of collateral
-		#[pallet::weight(<T as Config>::WeightInfo::request_issue())]
+		#[pallet::weight(10_000)]
 		#[transactional]
 		pub fn request_issue(
 			origin: OriginFor<T>,
 			#[pallet::compact] amount: BalanceOf<T>,
+			asset: CurrencyId<T>,
 			vault_id: DefaultVaultId<T>,
+			public_network: bool
 		) -> DispatchResultWithPostInfo {
 			let requester = ensure_signed(origin)?;
-			Self::_request_issue(requester, amount, vault_id)?;
+			Self::_request_issue(requester, amount, asset, vault_id, public_network)?;
 			Ok(().into())
 		}
 
@@ -239,16 +196,23 @@ pub mod pallet {
 		/// * `tx_block_height` - block number of collateral chain
 		/// * `merkle_proof` - raw bytes
 		/// * `raw_tx` - raw bytes
-		#[pallet::weight(<T as Config>::WeightInfo::execute_issue())]
+		#[pallet::weight(10_000)]
 		#[transactional]
 		pub fn execute_issue(
 			origin: OriginFor<T>,
 			issue_id: H256,
-			merkle_proof: Vec<u8>,
-			raw_tx: Vec<u8>,
+			transaction_envelope_xdr_encoded: Vec<u8>,
+			externalized_envelopes_encoded: Vec<u8>,
+			transaction_set_encoded: Vec<u8>,
 		) -> DispatchResultWithPostInfo {
 			let executor = ensure_signed(origin)?;
-			Self::_execute_issue(executor, issue_id, merkle_proof, raw_tx)?;
+			Self::_execute_issue(
+				executor,
+				issue_id,
+				transaction_envelope_xdr_encoded,
+				externalized_envelopes_encoded,
+				transaction_set_encoded,
+			)?;
 			Ok(().into())
 		}
 
@@ -258,7 +222,7 @@ pub mod pallet {
 		///
 		/// * `origin` - sender of the transaction
 		/// * `issue_id` - identifier of issue request as output from request_issue
-		#[pallet::weight(<T as Config>::WeightInfo::cancel_issue())]
+		#[pallet::weight(10_000)]
 		#[transactional]
 		pub fn cancel_issue(origin: OriginFor<T>, issue_id: H256) -> DispatchResultWithPostInfo {
 			let requester = ensure_signed(origin)?;
@@ -274,7 +238,7 @@ pub mod pallet {
 		/// * `period` - default period for new requests
 		///
 		/// # Weight: `O(1)`
-		#[pallet::weight(<T as Config>::WeightInfo::set_issue_period())]
+		#[pallet::weight(10_000)]
 		#[transactional]
 		pub fn set_issue_period(
 			origin: OriginFor<T>,
@@ -295,7 +259,9 @@ impl<T: Config> Pallet<T> {
 	fn _request_issue(
 		requester: T::AccountId,
 		amount_requested: BalanceOf<T>,
+		asset_requested: CurrencyId<T>,
 		vault_id: DefaultVaultId<T>,
+		public_network: bool
 	) -> Result<H256, DispatchError> {
 		let amount_requested = Amount::new(amount_requested, vault_id.wrapped_currency());
 
@@ -342,14 +308,12 @@ impl<T: Config> Pallet<T> {
 			vault: vault_id,
 			opentime: ext::security::active_block_number::<T>(),
 			requester,
-			btc_address,
-			btc_public_key,
 			amount: amount_user.amount(),
-			fee: fee.amount(),
-			griefing_collateral: griefing_collateral.amount(),
 			period: Self::issue_period(),
-			btc_height: ext::btc_relay::get_best_block_height::<T>(),
 			status: IssueRequestStatus::Pending,
+			asset: asset_requested,
+			stellar_public_key: (),
+			public_network
 		};
 		Self::insert_issue_request(&issue_id, &request);
 
@@ -357,11 +321,10 @@ impl<T: Config> Pallet<T> {
 			issue_id,
 			requester: request.requester,
 			amount: request.amount,
-			fee: request.fee,
-			griefing_collateral: request.griefing_collateral,
 			vault_id: request.vault,
-			vault_address: request.btc_address,
-			vault_public_key: request.btc_public_key,
+			asset: (),
+			vault_stellar_public_key: (),
+			public_network
 		});
 		Ok(issue_id)
 	}
@@ -370,9 +333,25 @@ impl<T: Config> Pallet<T> {
 	fn _execute_issue(
 		executor: T::AccountId,
 		issue_id: H256,
-		raw_merkle_proof: Vec<u8>,
-		raw_tx: Vec<u8>,
+		transaction_envelope_xdr_encoded: Vec<u8>,
+		externalized_envelopes_encoded: Vec<u8>,
+		transaction_set_encoded: Vec<u8>,
 	) -> Result<(), DispatchError> {
+		let tx_xdr = base64::decode(&transaction_envelope_xdr_encoded)
+			.map_err(|_| stellar_relay::Error::Base64DecodeError)?;
+		let transaction_envelope =
+			TransactionEnvelope::from_xdr(tx_xdr).map_err(|_| stellar_relay::Error::InvalidTransactionXDR)?;
+
+		let envelopes_xdr = base64::decode(&externalized_envelopes_encoded)
+			.map_err(|_| stellar_relay::Error::Base64DecodeError)?;
+		let envelopes = UnlimitedVarArray::<ScpEnvelope>::from_xdr(envelopes_xdr)
+			.map_err(|_| stellar_relay::Error::InvalidExternalizedMessages)?;
+
+		let transaction_set_xdr =
+			base64::decode(&transaction_set_encoded).map_err(|_| stellar_relay::Error::Base64DecodeError)?;
+		let transaction_set = TransactionSet::from_xdr(transaction_set_xdr)
+			.map_err(|_| stellar_relay::Error::InvalidTransactionSet)?;
+
 		let mut issue = Self::get_issue_request_from_id(&issue_id)?;
 		// allow anyone to complete issue request
 		let requester = issue.requester.clone();
@@ -463,7 +442,8 @@ impl<T: Config> Pallet<T> {
 			requester,
 			vault_id: issue.vault,
 			amount: total.amount(),
-			fee: issue.fee,
+			asset: (),
+			public_network: issue.public_network
 		});
 		Ok(())
 	}
@@ -530,11 +510,7 @@ impl<T: Config> Pallet<T> {
 
 		Self::set_issue_status(issue_id, IssueRequestStatus::Cancelled);
 
-		Self::deposit_event(Event::CancelIssue {
-			issue_id,
-			requester,
-			griefing_collateral: to_be_slashed_collateral.amount(),
-		});
+		Self::deposit_event(Event::CancelIssue { issue_id, requester });
 		Ok(())
 	}
 
@@ -652,7 +628,6 @@ impl<T: Config> Pallet<T> {
 		// update storage
 		<IssueRequests<T>>::mutate_exists(issue_id, |request| {
 			*request = request.clone().map(|request| DefaultIssueRequest::<T> {
-				fee: issue.fee,
 				amount: issue.amount,
 				// TODO: update griefing collateral
 				..request
