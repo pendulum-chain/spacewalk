@@ -2,17 +2,35 @@ use codec::{Decode, Encode, MaxEncodedLen};
 use frame_support::traits::Get;
 use scale_info::TypeInfo;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
+use substrate_stellar_sdk::types::Uint256;
 
 use currency::Amount;
 pub use primitives::issue::{IssueRequest, IssueRequestStatus};
 use primitives::VaultId;
 use vault_registry::types::CurrencyId;
 
-use crate::Config;
+use crate::{Amount, Config};
 
-pub(crate) type BalanceOf<T> = <T as vault_registry::Config>::Balance;
-
+// pub(crate) type BalanceOf<T> = <T as vault_registry::Config>::Balance;
+// TODO change me
+pub(crate) type BalanceOf<T> = u128;
+pub(crate) type CurrencyId<T> = <T as orml_tokens::Config>::CurrencyId;
 pub(crate) type DefaultVaultId<T> = VaultId<<T as frame_system::Config>::AccountId, CurrencyId<T>>;
+pub type StellarPublicKeyRaw = Uint256;
+
+#[derive(Encode, Decode, Clone, PartialEq, Eq, Debug, PartialOrd, Ord, TypeInfo, MaxEncodedLen)]
+#[cfg_attr(feature = "std", derive(Serialize, Deserialize, std::hash::Hash))]
+pub struct VaultCurrencyPair<CurrencyId: Copy> {
+	pub collateral: CurrencyId,
+	pub wrapped: CurrencyId,
+}
+
+#[derive(Encode, Decode, Clone, PartialEq, Eq, Debug, PartialOrd, Ord, TypeInfo, MaxEncodedLen)]
+#[cfg_attr(feature = "std", derive(Serialize, Deserialize, std::hash::Hash))]
+pub struct VaultId<AccountId, CurrencyId: Copy> {
+	pub account_id: AccountId,
+	pub currencies: VaultCurrencyPair<CurrencyId>,
+}
 
 #[derive(Encode, Decode, Clone, PartialEq, TypeInfo, MaxEncodedLen)]
 #[cfg_attr(feature = "std", derive(Debug, Serialize, Deserialize))]
@@ -61,14 +79,12 @@ pub struct IssueRequest<AccountId, BlockNumber, Balance, CurrencyId: Copy> {
 	pub fee: Balance,
 	/// the account issuing tokens
 	pub requester: AccountId,
-	/// the vault's Bitcoin deposit address
-	pub btc_address: BtcAddress,
-	/// the vault's Bitcoin public key (when this request was made)
-	pub btc_public_key: BtcPublicKey,
-	/// the highest recorded height in the BTC-Relay (at time of opening)
-	pub btc_height: u32,
+	/// the vault's Stellar public key (when this request was made)
+	pub stellar_public_key: StellarPublicKeyRaw,
 	/// the status of this issue request
 	pub status: IssueRequestStatus,
+	/// indicates whether this issue is for the Stellar public or test network
+	pub public_network: bool,
 }
 
 #[cfg(feature = "std")]
