@@ -23,9 +23,11 @@ frame-system = { git = "https://github.com/paritytech/substrate", branch = "polk
 frame-benchmarking = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.24", default-features = false, optional = true }
 pallet-timestamp = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.24", default-features = false }
 
+substrate-stellar-sdk = {git = "https://github.com/pendulum-chain/substrate-stellar-sdk", branch = "polkadot-v0.9.24", default-features = false, features = ['offchain']}
+
 # Parachain dependencies
 security = { package = "pallet-security", path = "../security", default-features = false }
-#stellar-relay = { package = "pallet-stellar-relay", path = "../stellar-relay", default-features = false }
+stellar-relay = { package = "pallet-stellar-relay", path = "../stellar-relay", default-features = false }
 #currency = { path = "../currency", default-features = false }
 #vault-registry = { path = "../vault-registry", default-features = false }
 
@@ -58,8 +60,9 @@ std = [
     "frame-benchmarking/std",
     "pallet-timestamp/std",
     "security/std",
+    "substrate-stellar-sdk/std",
     #    "currency/std",
-    #    "stellar-relay/std",
+        "stellar-relay/std",
     #    "vault-registry/std",
     #    "primitives/std",
     "orml-tokens/std",
