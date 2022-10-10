@@ -5,7 +5,8 @@ members = [
   "primitives",
   "rpc",
   "pallets/spacewalk",
-  "pallets/stellar-relay"
+  "pallets/stellar-relay",
+  "pallets/fee"
 ]
 [profile.release]
 panic = "unwind"
