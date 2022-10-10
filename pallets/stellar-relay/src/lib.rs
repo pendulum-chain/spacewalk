@@ -195,7 +195,7 @@ pub mod pallet {
 			envelopes: UnlimitedVarArray<ScpEnvelope>,
 			transaction_set: TransactionSet,
 			network: &Network,
-		) -> DispatchResult {
+		) -> Result<(), Error<T>> {
 			// Check if tx is included in the transaction set
 			let tx_hash = transaction_envelope.get_hash(&network);
 			let tx_included =
