@@ -7,16 +7,14 @@
 #[cfg(test)]
 extern crate mocktopus;
 
-use codec::{Decode, Encode, EncodeLike};
+use codec::EncodeLike;
 use frame_support::{
 	dispatch::{DispatchError, DispatchResult},
 	traits::Get,
 	transactional, PalletId,
 };
-use frame_system::ensure_signed;
 #[cfg(test)]
 use mocktopus::macros::mockable;
-use scale_info::TypeInfo;
 use sp_arithmetic::{traits::*, FixedPointNumber, FixedPointOperand};
 use sp_runtime::traits::{AccountIdConversion, AtLeast32BitUnsigned};
 use sp_std::{
@@ -28,7 +26,7 @@ use currency::{Amount, CurrencyId, OnSweep};
 pub use default_weights::WeightInfo;
 pub use pallet::*;
 use reward::Rewards;
-use types::{BalanceOf, DefaultVaultId, SignedFixedPoint, UnsignedFixedPoint, Version};
+use types::{BalanceOf, DefaultVaultId, SignedFixedPoint, UnsignedFixedPoint};
 
 #[cfg(feature = "runtime-benchmarks")]
 mod benchmarking;

@@ -1,6 +1,3 @@
-use codec::{Decode, Encode, MaxEncodedLen};
-use scale_info::TypeInfo;
-
 use currency::CurrencyId;
 use primitives::VaultId;
 
