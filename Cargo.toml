@@ -9,7 +9,7 @@ members = [
     "pallets/fee",
     "pallets/reward",
     "pallets/staking",
-    "pallets/reward"
+    "pallets/currency"
 ]
 [profile.release]
 panic = "unwind"
