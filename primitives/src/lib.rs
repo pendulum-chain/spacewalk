@@ -1,13 +1,18 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
+use bstringify::bstringify;
+use codec::{Decode, Encode, MaxEncodedLen};
+use scale_info::TypeInfo;
+#[cfg(feature = "std")]
+use serde::{Deserialize, Deserializer, Serialize, Serializer};
 pub use sp_core::H256;
 pub use sp_runtime::OpaqueExtrinsic as UncheckedExtrinsic;
 use sp_runtime::{
 	generic,
 	traits::{BlakeTwo256, IdentifyAccount, Verify},
-	FixedI128, FixedPointNumber, FixedU128, MultiSignature,
+	FixedI128, FixedPointNumber, FixedU128, MultiSignature, RuntimeDebug,
 };
-use sp_std::convert::TryInto;
+use sp_std::convert::{TryFrom, TryInto};
 
 pub trait BalanceToFixedPoint<FixedPoint> {
 	fn to_fixed(self) -> Option<FixedPoint>;
@@ -91,3 +96,162 @@ pub type UnsignedFixedPoint = FixedU128;
 
 /// The `Inner` type of the `UnsignedFixedPoint`.
 pub type UnsignedInner = u128;
+
+#[derive(Encode, Decode, Clone, PartialEq, Eq, Debug, PartialOrd, Ord, TypeInfo, MaxEncodedLen)]
+#[cfg_attr(feature = "std", derive(Serialize, Deserialize, std::hash::Hash))]
+pub struct VaultCurrencyPair<CurrencyId: Copy> {
+	pub collateral: CurrencyId,
+	pub wrapped: CurrencyId,
+}
+
+#[derive(Encode, Decode, Clone, PartialEq, Eq, Debug, PartialOrd, Ord, TypeInfo, MaxEncodedLen)]
+#[cfg_attr(feature = "std", derive(Serialize, Deserialize, std::hash::Hash))]
+pub struct VaultId<AccountId, CurrencyId: Copy> {
+	pub account_id: AccountId,
+	pub currencies: VaultCurrencyPair<CurrencyId>,
+}
+
+impl<AccountId, CurrencyId: Copy> VaultId<AccountId, CurrencyId> {
+	pub fn new(
+		account_id: AccountId,
+		collateral_currency: CurrencyId,
+		wrapped_currency: CurrencyId,
+	) -> Self {
+		Self {
+			account_id,
+			currencies: VaultCurrencyPair::<CurrencyId> {
+				collateral: collateral_currency,
+				wrapped: wrapped_currency,
+			},
+		}
+	}
+
+	pub fn collateral_currency(&self) -> CurrencyId {
+		self.currencies.collateral
+	}
+
+	pub fn wrapped_currency(&self) -> CurrencyId {
+		self.currencies.wrapped
+	}
+}
+
+pub trait CurrencyInfo {
+	fn name(&self) -> &str;
+	fn symbol(&self) -> &str;
+	fn decimals(&self) -> u8;
+}
+
+macro_rules! create_currency_id {
+    ($(#[$meta:meta])*
+	$vis:vis enum TokenSymbol {
+        $($(#[$vmeta:meta])* $symbol:ident($name:expr, $deci:literal) = $val:literal,)*
+    }) => {
+		$(#[$meta])*
+		$vis enum TokenSymbol {
+			$($(#[$vmeta])* $symbol = $val,)*
+		}
+
+        $(pub const $symbol: TokenSymbol = TokenSymbol::$symbol;)*
+
+        impl TryFrom<u8> for TokenSymbol {
+			type Error = ();
+
+			fn try_from(v: u8) -> Result<Self, Self::Error> {
+				match v {
+					$($val => Ok(TokenSymbol::$symbol),)*
+					_ => Err(()),
+				}
+			}
+		}
+
+		impl Into<u8> for TokenSymbol {
+			fn into(self) -> u8 {
+				match self {
+					$(TokenSymbol::$symbol => ($val),)*
+				}
+			}
+		}
+
+        impl TokenSymbol {
+			pub fn get_info() -> Vec<(&'static str, u32)> {
+				vec![
+					$((stringify!($symbol), $deci),)*
+				]
+			}
+
+            pub const fn one(&self) -> Balance {
+                10u128.pow(self.decimals() as u32)
+            }
+
+            const fn decimals(&self) -> u8 {
+				match self {
+					$(TokenSymbol::$symbol => $deci,)*
+				}
+			}
+		}
+
+		impl CurrencyInfo for TokenSymbol {
+			fn name(&self) -> &str {
+				match self {
+					$(TokenSymbol::$symbol => $name,)*
+				}
+			}
+			fn symbol(&self) -> &str {
+				match self {
+					$(TokenSymbol::$symbol => stringify!($symbol),)*
+				}
+			}
+			fn decimals(&self) -> u8 {
+				self.decimals()
+			}
+		}
+
+		impl TryFrom<Vec<u8>> for TokenSymbol {
+			type Error = ();
+			fn try_from(v: Vec<u8>) -> Result<TokenSymbol, ()> {
+				match v.as_slice() {
+					$(bstringify!($symbol) => Ok(TokenSymbol::$symbol),)*
+					_ => Err(()),
+				}
+			}
+		}
+    }
+}
+
+create_currency_id! {
+	#[derive(Encode, Decode, Eq, Hash, PartialEq, Copy, Clone, RuntimeDebug, PartialOrd, Ord, TypeInfo, MaxEncodedLen)]
+	#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
+	#[repr(u8)]
+	pub enum TokenSymbol {
+		DOT("Polkadot", 10) = 0,
+		IBTC("interBTC", 8) = 1,
+		INTR("Interlay", 10) = 2,
+
+		KSM("Kusama", 12) = 10,
+		KBTC("kBTC", 8) = 11,
+		KINT("Kintsugi", 12) = 12,
+	}
+}
+
+#[derive(
+	Encode,
+	Decode,
+	Eq,
+	Hash,
+	PartialEq,
+	Copy,
+	Clone,
+	RuntimeDebug,
+	PartialOrd,
+	Ord,
+	TypeInfo,
+	MaxEncodedLen,
+)]
+#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
+#[cfg_attr(feature = "std", serde(rename_all = "camelCase"))]
+pub enum CurrencyId {
+	Token(TokenSymbol),
+	ForeignAsset(ForeignAssetId),
+}
+
+pub type ForeignAssetId = u32;
