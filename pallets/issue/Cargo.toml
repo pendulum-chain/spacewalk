@@ -1,0 +1,78 @@
+[package]
+authors = ["Pendulum Chain <https://github.com/pendulum-chain>"]
+description = "Issue module"
+edition = "2021"
+name = "issue"
+version = "1.0.0"
+
+[dependencies]
+serde = { version = "1.0.130", default-features = false, features = ['derive'], optional = true }
+codec = { package = "parity-scale-codec", version = "3.0.0", default-features = false, features = ["derive", "max-encoded-len"] }
+scale-info = { version = "2.0.0", default-features = false, features = ["derive"] }
+log = { version = "0.4.14", default-features = false }
+
+# Substrate dependencies
+sp-io = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.24", default-features = false }
+sp-core = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.24", default-features = false }
+sp-std = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.24", default-features = false }
+sp-arithmetic = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.24", default-features = false }
+sp-runtime = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.24", default-features = false }
+
+frame-support = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.24", default-features = false }
+frame-system = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.24", default-features = false }
+frame-benchmarking = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.24", default-features = false, optional = true }
+pallet-timestamp = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.24", default-features = false }
+
+substrate-stellar-sdk = {git = "https://github.com/pendulum-chain/substrate-stellar-sdk", branch = "polkadot-v0.9.24", default-features = false, features = ['offchain']}
+
+# Parachain dependencies
+security = { package = "pallet-security", path = "../security", default-features = false }
+stellar-relay = { package = "pallet-stellar-relay", path = "../stellar-relay", default-features = false }
+#currency = { path = "../currency", default-features = false }
+#vault-registry = { path = "../vault-registry", default-features = false }
+
+primitives = { package = "spacewalk-primitives", path = "../../primitives", default-features = false }
+
+# Orml dependencies
+orml-tokens = { git = "https://github.com/open-web3-stack/open-runtime-module-library", branch = "polkadot-v0.9.24", default-features = false, optional = true }
+orml-traits = { git = "https://github.com/open-web3-stack/open-runtime-module-library", branch = "polkadot-v0.9.24", default-features = false, optional = true }
+
+[dev-dependencies]
+mocktopus = "0.7.0"
+frame-benchmarking = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.24" }
+
+# Orml dependencies
+orml-tokens = { git = "https://github.com/open-web3-stack/open-runtime-module-library", branch = "polkadot-v0.9.24" }
+orml-traits = { git = "https://github.com/open-web3-stack/open-runtime-module-library", branch = "polkadot-v0.9.24" }
+
+[features]
+default = ["std"]
+std = [
+    "serde",
+    "codec/std",
+    "sp-io/std",
+    "sp-core/std",
+    "sp-std/std",
+    "sp-arithmetic/std",
+    "sp-runtime/std",
+    "frame-support/std",
+    "frame-system/std",
+    "frame-benchmarking/std",
+    "pallet-timestamp/std",
+    "security/std",
+    "substrate-stellar-sdk/std",
+    #    "currency/std",
+        "stellar-relay/std",
+    #    "vault-registry/std",
+    #    "primitives/std",
+    "orml-tokens/std",
+    "orml-traits/std",
+]
+runtime-benchmarks = [
+    "frame-benchmarking",
+    "frame-support/runtime-benchmarks",
+    "frame-system/runtime-benchmarks",
+    "orml-tokens",
+    "orml-traits",
+]
+try-runtime = ["frame-support/try-runtime"]
