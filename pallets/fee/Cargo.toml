@@ -23,7 +23,7 @@ frame-benchmarking = { git = "https://github.com/paritytech/substrate", branch =
 
 # Parachain dependencies
 currency = { path = "../currency", default-features = false }
-security = { package = "pallet-security", path = "../security", default-features = false }
+security = { path = "../security", default-features = false }
 reward = { path = "../reward", default-features = false }
 staking = { path = "../staking", default-features = false }
 primitives = { package = "spacewalk-primitives", path = "../../primitives", default-features = false }
