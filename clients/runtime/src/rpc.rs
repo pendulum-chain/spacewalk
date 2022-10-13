@@ -11,9 +11,8 @@ use async_trait::async_trait;
 use futures::{stream::StreamExt, FutureExt, SinkExt};
 use std::{future::Future, ops::RangeInclusive, sync::Arc, time::Duration};
 use subxt::{
-	extrinsic::Signer, rpc::JsonValue, BasicError, Client as SubxtClient,
-	ClientBuilder as SubxtClientBuilder, Event, Metadata, PolkadotExtrinsicParams, RpcClient,
-	TransactionEvents, TransactionProgress,
+	rpc::JsonValue, BasicError, Client as SubxtClient, ClientBuilder as SubxtClientBuilder, Event,
+	Metadata, PolkadotExtrinsicParams, RpcClient, TransactionEvents, TransactionProgress,
 };
 use tokio::{sync::RwLock, time::timeout};
 

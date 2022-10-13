@@ -125,9 +125,7 @@ async fn submit_stellar_tx(tx: stellar::TransactionEnvelope) -> Result<(), Error
 		let response = submit_transaction_to_horizon(&tx, SUBMISSION_TIMEOUT_PERIOD, true).await;
 
 		match response {
-			Ok(()) => {
-				return Ok(())
-			},
+			Ok(()) => return Ok(()),
 			Err(error) => {
 				last_error = Some(error);
 			},
