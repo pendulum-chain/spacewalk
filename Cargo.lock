@@ -1554,11 +1554,11 @@ dependencies = [
  "mocktopus",
  "orml-tokens",
  "orml-traits",
- "pallet-security",
  "pallet-timestamp",
  "parity-scale-codec",
  "reward",
  "scale-info",
+ "security",
  "serde",
  "sp-arithmetic",
  "sp-core",
@@ -3887,6 +3887,35 @@ dependencies = [
 ]
 
 [[package]]
+name = "nomination"
+version = "0.5.0"
+dependencies = [
+ "currency",
+ "fee",
+ "frame-benchmarking",
+ "frame-support",
+ "frame-system",
+ "mocktopus",
+ "oracle",
+ "orml-tokens",
+ "orml-traits",
+ "pallet-timestamp",
+ "parity-scale-codec",
+ "reward",
+ "scale-info",
+ "security",
+ "serde",
+ "sp-arithmetic",
+ "sp-core",
+ "sp-io",
+ "sp-runtime",
+ "sp-std",
+ "spacewalk-primitives",
+ "staking",
+ "vault-registry",
+]
+
+[[package]]
 name = "num-bigint"
 version = "0.2.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4012,6 +4041,30 @@ name = "openssl-probe"
 version = "0.1.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ff011a302c396a5197692431fc1948019154afc178baf7d8e37367442a4601cf"
+
+[[package]]
+name = "oracle"
+version = "1.2.0"
+dependencies = [
+ "currency",
+ "frame-benchmarking",
+ "frame-support",
+ "frame-system",
+ "mocktopus",
+ "orml-tokens",
+ "orml-traits",
+ "pallet-timestamp",
+ "parity-scale-codec",
+ "scale-info",
+ "security",
+ "sp-arithmetic",
+ "sp-core",
+ "sp-io",
+ "sp-runtime",
+ "sp-std",
+ "spacewalk-primitives",
+ "staking",
+]
 
 [[package]]
 name = "orml-currencies"
@@ -4171,23 +4224,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "pallet-security"
-version = "1.2.0"
-dependencies = [
- "frame-support",
- "frame-system",
- "mocktopus",
- "parity-scale-codec",
- "scale-info",
- "serde",
- "sha2 0.8.2",
- "sp-core",
- "sp-io",
- "sp-runtime",
- "sp-std",
-]
-
-[[package]]
 name = "pallet-session"
 version = "4.0.0-dev"
 source = "git+https://github.com/paritytech/substrate?branch=polkadot-v0.9.24#6a5b522116ae208d1cf02c6da09ce49aa40225be"
@@ -4219,10 +4255,10 @@ dependencies = [
  "hex",
  "log",
  "orml-traits",
- "pallet-security",
  "pallet-transaction-payment",
  "parity-scale-codec",
  "scale-info",
+ "security",
  "serde",
  "serde_json",
  "sp-arithmetic",
@@ -4280,6 +4316,7 @@ dependencies = [
  "parity-scale-codec",
  "scale-info",
  "sp-inherents",
+ "sp-io",
  "sp-runtime",
  "sp-std",
  "sp-timestamp",
@@ -6374,6 +6411,23 @@ dependencies = [
 ]
 
 [[package]]
+name = "security"
+version = "1.2.0"
+dependencies = [
+ "frame-support",
+ "frame-system",
+ "mocktopus",
+ "parity-scale-codec",
+ "scale-info",
+ "serde",
+ "sha2 0.8.2",
+ "sp-core",
+ "sp-io",
+ "sp-runtime",
+ "sp-std",
+]
+
+[[package]]
 name = "security-framework"
 version = "2.7.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -8188,6 +8242,38 @@ dependencies = [
 ]
 
 [[package]]
+name = "vault-registry"
+version = "1.2.0"
+dependencies = [
+ "currency",
+ "fee",
+ "fixed-hash",
+ "frame-benchmarking",
+ "frame-support",
+ "frame-system",
+ "log",
+ "mocktopus",
+ "oracle",
+ "orml-tokens",
+ "orml-traits",
+ "pallet-timestamp",
+ "parity-scale-codec",
+ "pretty_assertions",
+ "reward",
+ "scale-info",
+ "security",
+ "serde",
+ "sp-arithmetic",
+ "sp-core",
+ "sp-io",
+ "sp-runtime",
+ "sp-std",
+ "spacewalk-primitives",
+ "staking",
+ "visibility",
+]
+
+[[package]]
 name = "vcpkg"
 version = "0.2.15"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -8198,6 +8284,17 @@ name = "version_check"
 version = "0.9.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "49874b5167b65d7193b8aba1567f5c7d93d001cafc34600cee003eda787e483f"
+
+[[package]]
+name = "visibility"
+version = "0.0.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "8881d5cc0ae34e3db2f1de5af81e5117a420d2f937506c2dc20d6f4cfb069051"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn",
+]
 
 [[package]]
 name = "void"
