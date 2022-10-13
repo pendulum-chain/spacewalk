@@ -12,7 +12,10 @@ use sp_runtime::{
 	traits::{BlakeTwo256, IdentifyAccount, Verify},
 	FixedI128, FixedPointNumber, FixedU128, MultiSignature, RuntimeDebug,
 };
-use sp_std::convert::{TryFrom, TryInto};
+use sp_std::{
+	convert::{TryFrom, TryInto},
+	prelude::*,
+};
 
 pub trait BalanceToFixedPoint<FixedPoint> {
 	fn to_fixed(self) -> Option<FixedPoint>;
@@ -41,6 +44,74 @@ impl TruncateFixedPointToInt for SignedFixedPoint {
 impl TruncateFixedPointToInt for UnsignedFixedPoint {
 	fn truncate_to_inner(&self) -> Option<<Self as FixedPointNumber>::Inner> {
 		self.into_inner().checked_div(UnsignedFixedPoint::accuracy())
+	}
+}
+
+#[derive(Encode, Decode, Clone, PartialEq, Eq, Debug, PartialOrd, Ord, TypeInfo, MaxEncodedLen)]
+#[cfg_attr(feature = "std", derive(Serialize, Deserialize, std::hash::Hash))]
+pub struct VaultCurrencyPair<CurrencyId: Copy> {
+	pub collateral: CurrencyId,
+	pub wrapped: CurrencyId,
+}
+
+#[derive(Encode, Decode, Clone, PartialEq, Eq, Debug, PartialOrd, Ord, TypeInfo, MaxEncodedLen)]
+#[cfg_attr(feature = "std", derive(Serialize, Deserialize, std::hash::Hash))]
+pub struct VaultId<AccountId, CurrencyId: Copy> {
+	pub account_id: AccountId,
+	pub currencies: VaultCurrencyPair<CurrencyId>,
+}
+
+impl<AccountId, CurrencyId: Copy> VaultId<AccountId, CurrencyId> {
+	pub fn new(
+		account_id: AccountId,
+		collateral_currency: CurrencyId,
+		wrapped_currency: CurrencyId,
+	) -> Self {
+		Self {
+			account_id,
+			currencies: VaultCurrencyPair::<CurrencyId> {
+				collateral: collateral_currency,
+				wrapped: wrapped_currency,
+			},
+		}
+	}
+
+	pub fn collateral_currency(&self) -> CurrencyId {
+		self.currencies.collateral
+	}
+
+	pub fn wrapped_currency(&self) -> CurrencyId {
+		self.currencies.wrapped
+	}
+}
+
+pub type StellarPublicKeyRaw = [u8; 32];
+
+#[cfg(feature = "std")]
+fn serialize_as_string<S: Serializer, T: std::fmt::Display>(
+	t: &T,
+	serializer: S,
+) -> Result<S::Ok, S::Error> {
+	serializer.serialize_str(&t.to_string())
+}
+
+#[cfg(feature = "std")]
+fn deserialize_from_string<'de, D: Deserializer<'de>, T: std::str::FromStr>(
+	deserializer: D,
+) -> Result<T, D::Error> {
+	let s = String::deserialize(deserializer)?;
+	s.parse::<T>().map_err(|_| serde::de::Error::custom("Parse from string failed"))
+}
+
+pub mod oracle {
+	use super::*;
+
+	#[derive(Encode, Decode, Clone, Eq, PartialEq, Debug, TypeInfo, MaxEncodedLen)]
+	#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
+	#[cfg_attr(feature = "std", serde(rename_all = "camelCase"))]
+	pub enum Key {
+		ExchangeRate(CurrencyId),
+		FeeEstimation,
 	}
 }
 
@@ -96,44 +167,6 @@ pub type UnsignedFixedPoint = FixedU128;
 
 /// The `Inner` type of the `UnsignedFixedPoint`.
 pub type UnsignedInner = u128;
-
-#[derive(Encode, Decode, Clone, PartialEq, Eq, Debug, PartialOrd, Ord, TypeInfo, MaxEncodedLen)]
-#[cfg_attr(feature = "std", derive(Serialize, Deserialize, std::hash::Hash))]
-pub struct VaultCurrencyPair<CurrencyId: Copy> {
-	pub collateral: CurrencyId,
-	pub wrapped: CurrencyId,
-}
-
-#[derive(Encode, Decode, Clone, PartialEq, Eq, Debug, PartialOrd, Ord, TypeInfo, MaxEncodedLen)]
-#[cfg_attr(feature = "std", derive(Serialize, Deserialize, std::hash::Hash))]
-pub struct VaultId<AccountId, CurrencyId: Copy> {
-	pub account_id: AccountId,
-	pub currencies: VaultCurrencyPair<CurrencyId>,
-}
-
-impl<AccountId, CurrencyId: Copy> VaultId<AccountId, CurrencyId> {
-	pub fn new(
-		account_id: AccountId,
-		collateral_currency: CurrencyId,
-		wrapped_currency: CurrencyId,
-	) -> Self {
-		Self {
-			account_id,
-			currencies: VaultCurrencyPair::<CurrencyId> {
-				collateral: collateral_currency,
-				wrapped: wrapped_currency,
-			},
-		}
-	}
-
-	pub fn collateral_currency(&self) -> CurrencyId {
-		self.currencies.collateral
-	}
-
-	pub fn wrapped_currency(&self) -> CurrencyId {
-		self.currencies.wrapped
-	}
-}
 
 pub trait CurrencyInfo {
 	fn name(&self) -> &str;
@@ -255,3 +288,9 @@ pub enum CurrencyId {
 }
 
 pub type ForeignAssetId = u32;
+
+#[derive(scale_info::TypeInfo, Encode, Decode, Clone, Eq, PartialEq, Debug)]
+pub struct CustomMetadata {
+	pub fee_per_second: u128,
+	pub coingecko_id: Vec<u8>,
+}
