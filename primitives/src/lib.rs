@@ -15,6 +15,7 @@ use sp_runtime::{
 use sp_std::{
 	convert::{TryFrom, TryInto},
 	prelude::*,
+	vec,
 };
 
 pub trait BalanceToFixedPoint<FixedPoint> {
@@ -101,6 +102,68 @@ fn deserialize_from_string<'de, D: Deserializer<'de>, T: std::str::FromStr>(
 ) -> Result<T, D::Error> {
 	let s = String::deserialize(deserializer)?;
 	s.parse::<T>().map_err(|_| serde::de::Error::custom("Parse from string failed"))
+}
+
+pub mod issue {
+	use super::*;
+
+	#[derive(Encode, Decode, Clone, PartialEq, TypeInfo, MaxEncodedLen)]
+	#[cfg_attr(feature = "std", derive(Debug, Serialize, Deserialize))]
+	#[cfg_attr(feature = "std", serde(rename_all = "camelCase"))]
+	pub enum IssueRequestStatus {
+		/// opened, but not yet executed or cancelled
+		Pending,
+		/// payment was received
+		Completed,
+		/// payment was not received, vault may receive griefing collateral
+		Cancelled,
+	}
+
+	impl Default for IssueRequestStatus {
+		fn default() -> Self {
+			IssueRequestStatus::Pending
+		}
+	}
+
+	// Due to a known bug in serde we need to specify how u128 is (de)serialized.
+	// See https://github.com/paritytech/substrate/issues/4641
+	#[derive(Encode, Decode, Clone, PartialEq, TypeInfo, MaxEncodedLen)]
+	#[cfg_attr(feature = "std", derive(Debug, Serialize, Deserialize))]
+	pub struct IssueRequest<AccountId, BlockNumber, Balance, CurrencyId: Copy> {
+		/// the vault associated with this issue request
+		pub vault: VaultId<AccountId, CurrencyId>,
+		/// the *active* block height when this request was opened
+		pub opentime: BlockNumber,
+		/// the issue period when this request was opened
+		pub period: BlockNumber,
+		#[cfg_attr(feature = "std", serde(bound(deserialize = "Balance: std::str::FromStr")))]
+		#[cfg_attr(feature = "std", serde(deserialize_with = "deserialize_from_string"))]
+		#[cfg_attr(feature = "std", serde(bound(serialize = "Balance: std::fmt::Display")))]
+		#[cfg_attr(feature = "std", serde(serialize_with = "serialize_as_string"))]
+		/// the collateral held for spam prevention
+		pub griefing_collateral: Balance,
+		#[cfg_attr(feature = "std", serde(bound(deserialize = "Balance: std::str::FromStr")))]
+		#[cfg_attr(feature = "std", serde(deserialize_with = "deserialize_from_string"))]
+		#[cfg_attr(feature = "std", serde(bound(serialize = "Balance: std::fmt::Display")))]
+		#[cfg_attr(feature = "std", serde(serialize_with = "serialize_as_string"))]
+		/// the number of tokens that will be transferred to the user (as such, this does not
+		/// include the fee)
+		pub amount: Balance,
+		#[cfg_attr(feature = "std", serde(bound(deserialize = "Balance: std::str::FromStr")))]
+		#[cfg_attr(feature = "std", serde(deserialize_with = "deserialize_from_string"))]
+		#[cfg_attr(feature = "std", serde(bound(serialize = "Balance: std::fmt::Display")))]
+		#[cfg_attr(feature = "std", serde(serialize_with = "serialize_as_string"))]
+		/// the number of tokens that will be transferred to the fee pool
+		pub fee: Balance,
+		/// the account issuing tokens
+		pub requester: AccountId,
+		/// the vault's Stellar public key
+		pub stellar_address: StellarPublicKeyRaw,
+		/// the status of this issue request
+		pub status: IssueRequestStatus,
+		/// indicates whether this issue is for the Stellar public or test network
+		pub public_network: bool,
+	}
 }
 
 pub mod oracle {

@@ -6,6 +6,7 @@ name = "issue"
 version = "1.0.0"
 
 [dependencies]
+base64 = { version = '0.13.0', default-features = false, features = ['alloc'] }
 serde = { version = "1.0.130", default-features = false, features = ['derive'], optional = true }
 codec = { package = "parity-scale-codec", version = "3.0.0", default-features = false, features = ["derive", "max-encoded-len"] }
 scale-info = { version = "2.0.0", default-features = false, features = ["derive"] }
@@ -23,13 +24,15 @@ frame-system = { git = "https://github.com/paritytech/substrate", branch = "polk
 frame-benchmarking = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.24", default-features = false, optional = true }
 pallet-timestamp = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.24", default-features = false }
 
-substrate-stellar-sdk = {git = "https://github.com/pendulum-chain/substrate-stellar-sdk", branch = "polkadot-v0.9.24", default-features = false, features = ['offchain']}
+substrate-stellar-sdk = { git = "https://github.com/pendulum-chain/substrate-stellar-sdk", branch = "polkadot-v0.9.24", default-features = false, features = ['offchain'] }
 
 # Parachain dependencies
-security = { package = "pallet-security", path = "../security", default-features = false }
+currency = { path = "../currency", default-features = false }
+fee = { path = "../fee", default-features = false }
+oracle = { path = "../oracle", default-features = false }
+security = { path = "../security", default-features = false }
 stellar-relay = { package = "pallet-stellar-relay", path = "../stellar-relay", default-features = false }
-#currency = { path = "../currency", default-features = false }
-#vault-registry = { path = "../vault-registry", default-features = false }
+vault-registry = { path = "../vault-registry", default-features = false }
 
 primitives = { package = "spacewalk-primitives", path = "../../primitives", default-features = false }
 
@@ -41,6 +44,9 @@ orml-traits = { git = "https://github.com/open-web3-stack/open-runtime-module-li
 mocktopus = "0.7.0"
 frame-benchmarking = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.24" }
 
+reward = { path = "../reward" }
+staking = { path = "../staking" }
+
 # Orml dependencies
 orml-tokens = { git = "https://github.com/open-web3-stack/open-runtime-module-library", branch = "polkadot-v0.9.24" }
 orml-traits = { git = "https://github.com/open-web3-stack/open-runtime-module-library", branch = "polkadot-v0.9.24" }
@@ -48,6 +54,7 @@ orml-traits = { git = "https://github.com/open-web3-stack/open-runtime-module-li
 [features]
 default = ["std"]
 std = [
+    "base64/std",
     "serde",
     "codec/std",
     "sp-io/std",
@@ -59,12 +66,14 @@ std = [
     "frame-system/std",
     "frame-benchmarking/std",
     "pallet-timestamp/std",
+    "currency/std",
+    "fee/std",
+    "oracle/std",
+    "primitives/std",
     "security/std",
+    "stellar-relay/std",
     "substrate-stellar-sdk/std",
-    #    "currency/std",
-        "stellar-relay/std",
-    #    "vault-registry/std",
-    #    "primitives/std",
+    "vault-registry/std",
     "orml-tokens/std",
     "orml-traits/std",
 ]

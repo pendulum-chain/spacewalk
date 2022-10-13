@@ -1,7 +1,7 @@
 //! # Issue Pallet
 //! Based on the [specification](https://spec.interlay.io/spec/issue.html).
 
-#![deny(warnings)]
+// #![deny(warnings)]
 #![cfg_attr(test, feature(proc_macro_hygiene))]
 #![cfg_attr(not(feature = "std"), no_std)]
 
@@ -21,22 +21,19 @@ use substrate_stellar_sdk::{
 	Asset, TransactionEnvelope, XdrCodec,
 };
 
-use btc_relay::{BtcAddress, BtcPublicKey};
 use currency::Amount;
 pub use default_weights::WeightInfo;
 pub use pallet::*;
 use types::IssueRequestExt;
-use vault_registry::{types::CurrencyId, CurrencySource, VaultStatus};
+use vault_registry::{CurrencyId, CurrencySource, VaultStatus};
 
+use crate::types::{BalanceOf, DefaultVaultId};
 #[doc(inline)]
 pub use crate::types::{DefaultIssueRequest, IssueRequest, IssueRequestStatus};
-use crate::{
-	amount::Amount,
-	types::{BalanceOf, CurrencyId, DefaultVaultId, Version},
-};
 
 #[cfg(feature = "runtime-benchmarks")]
 mod benchmarking;
+mod default_weights;
 
 // mod default_weights;
 #[cfg(test)]
@@ -53,7 +50,9 @@ pub mod pallet {
 	use frame_support::pallet_prelude::*;
 	use frame_system::pallet_prelude::*;
 
-	use crate::types::{CurrencyId, StellarPublicKeyRaw};
+	use primitives::StellarPublicKeyRaw;
+
+	use crate::types::CurrencyId;
 
 	use super::*;
 
@@ -306,8 +305,8 @@ impl<T: Config> Pallet<T> {
 			griefing_collateral: griefing_collateral.amount(),
 			period: Self::issue_period(),
 			status: IssueRequestStatus::Pending,
-			stellar_public_key,
 			public_network,
+			stellar_address: stellar_public_key,
 		};
 		Self::insert_issue_request(&issue_id, &request);
 
@@ -359,7 +358,9 @@ impl<T: Config> Pallet<T> {
 			issue.public_network,
 		)?;
 
-		let amount_transferred = Self::get_amount_from_transaction_envelope(&transaction_envelope)?;
+		let currency_id = issue.vault.wrapped_currency();
+		let amount_transferred =
+			Self::get_amount_from_transaction_envelope(&transaction_envelope, currency_id)?;
 		ensure!(amount_transferred == issue.amount, Error::<T>::AmountTransferredDoesNotMatch);
 
 		let amount_transferred = Amount::new(amount_transferred, issue.vault.wrapped_currency());

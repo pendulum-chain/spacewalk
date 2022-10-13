@@ -47,13 +47,13 @@ pub(crate) mod vault_registry {
 	use sp_core::H256;
 	use substrate_stellar_sdk::PublicKey;
 
-	use btc_relay::BtcAddress;
+	use primitives::StellarPublicKeyRaw;
 	use vault_registry::{
 		types::{CurrencySource, DefaultVault},
-		Amount, BtcPublicKey,
+		Amount,
 	};
 
-	use crate::{types::StellarPublicKeyRaw, DefaultVaultId};
+	use crate::DefaultVaultId;
 
 	pub fn transfer_funds<T: crate::Config>(
 		from: CurrencySource<T>,
@@ -97,15 +97,14 @@ pub(crate) mod vault_registry {
 	pub fn register_deposit_address<T: crate::Config>(
 		vault_id: &DefaultVaultId<T>,
 		secure_id: H256,
-	) -> Result<BtcAddress, DispatchError> {
+	) -> Result<StellarPublicKeyRaw, DispatchError> {
 		<vault_registry::Pallet<T>>::register_deposit_address(vault_id, secure_id)
 	}
 
 	pub fn get_stellar_public_key<T: crate::Config>(
 		account_id: &T::AccountId,
 	) -> Result<StellarPublicKeyRaw, DispatchError> {
-		let binary: StellarPublicKeyRaw = [0u8; 32];
-		Ok(binary)
+		<vault_registry::Pallet<T>>::get_bitcoin_public_key(account_id)
 	}
 
 	pub fn issue_tokens<T: crate::Config>(

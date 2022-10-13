@@ -41,6 +41,10 @@ frame_support::construct_runtime!(
 		StellarRelay: stellar_relay::{Pallet, Call, Config<T>, Storage, Event<T>},
 		Security: security::{Pallet, Call, Storage, Event<T>},
 		Issue: issue::{Pallet, Call, Config<T>, Storage, Event<T>},
+		Oracle: oracle::{Pallet, Call, Config<T>, Storage, Event<T>},
+		Fee: fee::{Pallet, Call, Config<T>, Storage},
+		Staking: staking::{Pallet, Storage, Event<T>},
+		Rewards: reward::{Pallet, Call, Storage, Event<T>},
 		VaultRegistry: vault_registry::{Pallet, Call, Config<T>, Storage, Event<T>},
 	}
 );
@@ -172,14 +176,63 @@ parameter_types! {
 	pub const ParachainBlocksPerBitcoinBlock: BlockNumber = 100;
 }
 
+parameter_types! {
+	pub const OrganizationLimit: u32 = 255;
+	pub const ValidatorLimit: u32 = 255;
+}
+
+pub type OrganizationId = u128;
+
 impl stellar_relay::Config for Test {
-	type Event = TestEvent;
-	type ParachainBlocksPerBitcoinBlock = ParachainBlocksPerBitcoinBlock;
+	type Event = Event;
+	type OrganizationId = OrganizationId;
+	type OrganizationLimit = OrganizationLimit;
+	type ValidatorLimit = ValidatorLimit;
 	type WeightInfo = ();
 }
 
 impl security::Config for Test {
 	type Event = TestEvent;
+}
+
+impl reward::Config for Test {
+	type Event = TestEvent;
+	type SignedFixedPoint = SignedFixedPoint;
+	type RewardId = VaultId<AccountId, CurrencyId>;
+	type CurrencyId = CurrencyId;
+	type GetNativeCurrencyId = GetNativeCurrencyId;
+	type GetWrappedCurrencyId = GetWrappedCurrencyId;
+}
+
+impl staking::Config for Test {
+	type Event = TestEvent;
+	type SignedFixedPoint = SignedFixedPoint;
+	type SignedInner = SignedInner;
+	type CurrencyId = CurrencyId;
+	type GetNativeCurrencyId = GetNativeCurrencyId;
+}
+
+impl oracle::Config for Test {
+	type Event = TestEvent;
+	type WeightInfo = ();
+}
+
+parameter_types! {
+	pub const FeePalletId: PalletId = PalletId(*b"mod/fees");
+	pub const MaxExpectedValue: UnsignedFixedPoint = UnsignedFixedPoint::from_inner(<UnsignedFixedPoint as FixedPointNumber>::DIV);
+}
+
+impl fee::Config for Test {
+	type FeePalletId = FeePalletId;
+	type WeightInfo = ();
+	type SignedFixedPoint = SignedFixedPoint;
+	type SignedInner = SignedInner;
+	type UnsignedFixedPoint = UnsignedFixedPoint;
+	type UnsignedInner = UnsignedInner;
+	type VaultRewards = Rewards;
+	type VaultStaking = Staking;
+	type OnSweep = ();
+	type MaxExpectedValue = MaxExpectedValue;
 }
 
 parameter_types! {
@@ -191,11 +244,6 @@ impl pallet_timestamp::Config for Test {
 	type OnTimestampSet = ();
 	type MinimumPeriod = MinimumPeriod;
 	type WeightInfo = ();
-}
-
-parameter_types! {
-	pub const FeePalletId: PalletId = PalletId(*b"mod/fees");
-	pub const MaxExpectedValue: UnsignedFixedPoint = UnsignedFixedPoint::from_inner(<UnsignedFixedPoint as FixedPointNumber>::DIV);
 }
 
 pub struct BlockNumberToBalance;
@@ -236,7 +284,19 @@ impl ExtBuilder {
 
 		balances.assimilate_storage(&mut storage).unwrap();
 
-		issue::GenesisConfig::<Test> { issue_period: 10, issue_btc_dust_value: 0 }
+		fee::GenesisConfig::<Test> {
+			issue_fee: UnsignedFixedPoint::checked_from_rational(5, 1000).unwrap(), // 0.5%
+			issue_griefing_collateral: UnsignedFixedPoint::checked_from_rational(5, 100000)
+				.unwrap(), // 0.005%
+			redeem_fee: UnsignedFixedPoint::checked_from_rational(5, 1000).unwrap(), // 0.5%
+			premium_redeem_fee: UnsignedFixedPoint::checked_from_rational(5, 100).unwrap(), // 5%
+			punishment_fee: UnsignedFixedPoint::checked_from_rational(1, 10).unwrap(), // 10%
+			replace_griefing_collateral: UnsignedFixedPoint::checked_from_rational(1, 10).unwrap(), // 10%
+		}
+		.assimilate_storage(&mut storage)
+		.unwrap();
+
+		issue::GenesisConfig::<Test> { issue_period: 10 }
 			.assimilate_storage(&mut storage)
 			.unwrap();
 
@@ -295,7 +355,6 @@ where
 		Security::set_active_block_number(1);
 		System::set_block_number(1);
 
-		ext::btc_relay::is_fully_initialized::<Test>.mock_safe(|| MockResult::Return(Ok(true)));
 		test();
 	});
 }

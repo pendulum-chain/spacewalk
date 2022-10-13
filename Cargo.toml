@@ -2,6 +2,7 @@
 members = [
     "pallets/currency",
     "pallets/fee",
+    "pallets/issue",
     "pallets/nomination",
     "pallets/oracle",
     "pallets/reward",

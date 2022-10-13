@@ -6,20 +6,13 @@ use sp_core::H256;
 use sp_runtime::traits::One;
 
 use currency::Amount;
+use primitives::{issue::IssueRequestStatus, StellarPublicKeyRaw};
+use vault_registry::{DefaultVault, DefaultVaultId, Vault, VaultStatus};
 
-use crate::{ext, mock::*, Amount, DefaultVaultId, Event, IssueRequest, IssueRequestStatus};
+use crate::{ext, mock::*, Event, IssueRequest};
 
-// use primitives::issue::IssueRequestStatus;
-// use vault_registry::{DefaultVault, DefaultVaultId, Vault, VaultStatus};
-
-fn dummy_merkle_proof() -> MerkleProof {
-	MerkleProof {
-		block_header: Default::default(),
-		transactions_count: 0,
-		flag_bits: vec![],
-		hashes: vec![],
-	}
-}
+const RANDOM_STELLAR_PUBLIC_KEY: StellarPublicKeyRaw = [0u8; 32];
+const DEFAULT_STELLAR_PUBLIC_KEY: StellarPublicKeyRaw = [1u8; 32];
 
 fn griefing(amount: u128) -> Amount<Test> {
 	Amount::new(amount, DEFAULT_NATIVE_CURRENCY)
@@ -39,20 +32,20 @@ fn request_issue(
 	ext::vault_registry::try_increase_to_be_issued_tokens::<Test>
 		.mock_safe(|_, _| MockResult::Return(Ok(())));
 	ext::vault_registry::register_deposit_address::<Test>
-		.mock_safe(|_, _| MockResult::Return(Ok(BtcAddress::random())));
+		.mock_safe(|_, _| MockResult::Return(Ok(RANDOM_STELLAR_PUBLIC_KEY)));
 
 	Issue::_request_issue(origin, amount, vault)
 }
 
 fn request_issue_ok(origin: AccountId, amount: Balance, vault: DefaultVaultId<Test>) -> H256 {
-	request_issue_ok_with_address(origin, amount, vault, BtcAddress::random())
+	request_issue_ok_with_address(origin, amount, vault, RANDOM_STELLAR_PUBLIC_KEY)
 }
 
 fn request_issue_ok_with_address(
 	origin: AccountId,
 	amount: Balance,
 	vault: DefaultVaultId<Test>,
-	address: BtcAddress,
+	address: StellarPublicKeyRaw,
 ) -> H256 {
 	ext::vault_registry::ensure_not_banned::<Test>.mock_safe(|_| MockResult::Return(Ok(())));
 
@@ -60,8 +53,8 @@ fn request_issue_ok_with_address(
 
 	ext::vault_registry::try_increase_to_be_issued_tokens::<Test>
 		.mock_safe(|_, _| MockResult::Return(Ok(())));
-	ext::vault_registry::get_bitcoin_public_key::<Test>
-		.mock_safe(|_| MockResult::Return(Ok(BtcPublicKey::default())));
+	ext::vault_registry::get_stellar_public_key::<Test>
+		.mock_safe(|_| MockResult::Return(Ok(DEFAULT_STELLAR_PUBLIC_KEY)));
 
 	unsafe {
 		ext::vault_registry::register_deposit_address::<Test>
@@ -122,7 +115,7 @@ fn test_request_issue_succeeds() {
 		let amount: Balance = 3;
 		let issue_fee = 1;
 		let issue_griefing_collateral = 20;
-		let address = BtcAddress::random();
+		let address = DEFAULT_STELLAR_PUBLIC_KEY;
 
 		ext::vault_registry::get_active_vault_from_id::<Test>
 			.mock_safe(|_| MockResult::Return(Ok(init_zero_vault(VAULT))));
@@ -140,9 +133,10 @@ fn test_request_issue_succeeds() {
 			issue_id,
 			requester: origin,
 			amount: amount - issue_fee,
+			fee: (),
+			griefing_collateral: (),
 			vault_id: vault,
 			vault_stellar_public_key: (),
-			asset: (),
 			public_network: false,
 		});
 		assert!(System::events().iter().any(|a| a.event == request_issue_event));
@@ -176,13 +170,6 @@ fn setup_execute(
 	let issue_id = request_issue_ok(USER, issue_amount, VAULT);
 	<security::Pallet<Test>>::set_active_block_number(5);
 
-	ext::btc_relay::parse_merkle_proof::<Test>
-		.mock_safe(|_| MockResult::Return(Ok(dummy_merkle_proof())));
-	ext::btc_relay::parse_transaction::<Test>
-		.mock_safe(|_| MockResult::Return(Ok(Transaction::default())));
-	ext::btc_relay::get_and_verify_issue_payment::<Test, Balance>
-		.mock_safe(move |_, _, _| MockResult::Return(Ok(btc_transferred)));
-
 	issue_id
 }
 
@@ -199,6 +186,7 @@ fn test_execute_issue_succeeds() {
 			amount: 3,
 			asset: (),
 			public_network: false,
+			fee: (),
 		});
 		assert!(System::events().iter().any(|a| a.event == execute_issue_event));
 		assert!(matches!(
@@ -382,8 +370,6 @@ fn test_cancel_issue_expired_succeeds() {
 			.mock_safe(move |_| MockResult::Return(Ok(false)));
 		ext::fee::get_issue_griefing_collateral::<Test>
 			.mock_safe(move |_| MockResult::Return(Ok(griefing(100))));
-		ext::btc_relay::has_request_expired::<Test>
-			.mock_safe(move |_, _, _| MockResult::Return(Ok(true)));
 
 		let issue_id = request_issue_ok(USER, 300, VAULT);
 
