@@ -37,7 +37,6 @@ pub mod pallet {
 		},
 		Hash, TransactionEnvelope, XdrCodec,
 	};
-
 	use weights::WeightInfo;
 
 	use crate::{
@@ -163,6 +162,26 @@ pub mod pallet {
 			let organization_public_node = OrganizationOf::<T> {
 				name: create_bounded_vec("Public Node"),
 				id: 6.into(),
+				public_network: true,
+			};
+			let organization_lumenswap = OrganizationOf::<T> {
+				name: create_bounded_vec("Lumenswap"),
+				id: 7.into(),
+				public_network: true,
+			};
+			let organization_stellar_expert = OrganizationOf::<T> {
+				name: create_bounded_vec("StellarExpert"),
+				id: 8.into(),
+				public_network: true,
+			};
+			let organization_franklin_templeton = OrganizationOf::<T> {
+				name: create_bounded_vec("Franklin Templeton"),
+				id: 9.into(),
+				public_network: true,
+			};
+			let organization_schunk_edv = OrganizationOf::<T> {
+				name: create_bounded_vec("Schunk EDV"),
+				id: 10.into(),
 				public_network: true,
 			};
 
@@ -365,6 +384,106 @@ pub mod pallet {
 					organization_id: organization_public_node.id,
 					public_network: organization_public_node.public_network,
 				},
+				// Lumenswap validators
+				ValidatorOf::<T> {
+					name: create_bounded_vec("$lumenswap1"),
+					public_key: create_bounded_vec(
+						"GAMVN353NCFX2XOXBAVNISNLE7XXRM53DFMRXY3VAT5TCB66DBZP6VT2",
+					),
+					organization_id: organization_lumenswap.id,
+					public_network: organization_lumenswap.public_network,
+				},
+				ValidatorOf::<T> {
+					name: create_bounded_vec("$lumenswap2"),
+					public_key: create_bounded_vec(
+						"GCEG6AU3ZSCYAHTDX553VZEUG5WH2OTKL5NIZ72JJC7EDBHZ5WOBC2MT",
+					),
+					organization_id: organization_lumenswap.id,
+					public_network: organization_lumenswap.public_network,
+				},
+				ValidatorOf::<T> {
+					name: create_bounded_vec("$lumenswap3"),
+					public_key: create_bounded_vec(
+						"GB35WD5W53T4EL3H2A4MPXMZSKCEOV6WE76XQBQHHKFGR4WRA7TOYVIJ",
+					),
+					organization_id: organization_lumenswap.id,
+					public_network: organization_lumenswap.public_network,
+				},
+				// StellarExpert validators
+				ValidatorOf::<T> {
+					name: create_bounded_vec("$stellar_expert1"),
+					public_key: create_bounded_vec(
+						"GDQ75AS5VSH3ZHZI3P4TAVAOOSNHN346KXJOPZVQMMS27KNCC5TOQEXP",
+					),
+					organization_id: organization_stellar_expert.id,
+					public_network: organization_stellar_expert.public_network,
+				},
+				ValidatorOf::<T> {
+					name: create_bounded_vec("$stellar_expert2"),
+					public_key: create_bounded_vec(
+						"GCR64G344LXYVUD7523XGMMM2OEB4E6SPLIBHXNME5P6QYWAUF2QUTO3",
+					),
+					organization_id: organization_stellar_expert.id,
+					public_network: organization_stellar_expert.public_network,
+				},
+				ValidatorOf::<T> {
+					name: create_bounded_vec("$stellar_expert3"),
+					public_key: create_bounded_vec(
+						"GA23K4HUQMGXC46BGOSWY4AGRBB6ZWEOIF6N2ZUXS3X5A6FOMQPMIPEG",
+					),
+					organization_id: organization_stellar_expert.id,
+					public_network: organization_stellar_expert.public_network,
+				},
+				// Franklin Templeton validators
+				ValidatorOf::<T> {
+					name: create_bounded_vec("$ft_scv_1"),
+					public_key: create_bounded_vec(
+						"GARYGQ5F2IJEBCZJCBNPWNWVDOFK7IBOHLJKKSG2TMHDQKEEC6P4PE4V",
+					),
+					organization_id: organization_franklin_templeton.id,
+					public_network: organization_franklin_templeton.public_network,
+				},
+				ValidatorOf::<T> {
+					name: create_bounded_vec("$ft_scv_2"),
+					public_key: create_bounded_vec(
+						"GCMSM2VFZGRPTZKPH5OABHGH4F3AVS6XTNJXDGCZ3MKCOSUBH3FL6DOB",
+					),
+					organization_id: organization_franklin_templeton.id,
+					public_network: organization_franklin_templeton.public_network,
+				},
+				ValidatorOf::<T> {
+					name: create_bounded_vec("$ft_scv_3"),
+					public_key: create_bounded_vec(
+						"GA7DV63PBUUWNUFAF4GAZVXU2OZMYRATDLKTC7VTCG7AU4XUPN5VRX4A",
+					),
+					organization_id: organization_franklin_templeton.id,
+					public_network: organization_franklin_templeton.public_network,
+				},
+				// Schunk EDV validators
+				ValidatorOf::<T> {
+					name: create_bounded_vec("$schunk_1"),
+					public_key: create_bounded_vec(
+						"GAFBSNT7TTRU3GN3BFXCQMJCDGEBE7LGBUHBYR576CXY7NTW6BC3272J",
+					),
+					organization_id: organization_schunk_edv.id,
+					public_network: organization_schunk_edv.public_network,
+				},
+				ValidatorOf::<T> {
+					name: create_bounded_vec("$schunk_2"),
+					public_key: create_bounded_vec(
+						"GDSGO56VH4QO533E65FKXLVYOFFZ2ABH2K7WJKMD7CJL5YPY2VRBZ3FD",
+					),
+					organization_id: organization_schunk_edv.id,
+					public_network: organization_schunk_edv.public_network,
+				},
+				ValidatorOf::<T> {
+					name: create_bounded_vec("$schunk_3"),
+					public_key: create_bounded_vec(
+						"GAVRW5OFZBL5HRXYAHCMRRTR7ZLIPBR6OUM5CK4VONFGBTEUKEQRPIPT",
+					),
+					organization_id: organization_schunk_edv.id,
+					public_network: organization_schunk_edv.public_network,
+				},
 				// Testnet validators
 				ValidatorOf::<T> {
 					name: create_bounded_vec("$sdftest1"),
@@ -400,6 +519,10 @@ pub mod pallet {
 				organization_blockdaemon,
 				organization_lobstr,
 				organization_public_node,
+				organization_franklin_templeton,
+				organization_schunk_edv,
+				organization_stellar_expert,
+				organization_lumenswap,
 				organization_testnet_sdf,
 			];
 
