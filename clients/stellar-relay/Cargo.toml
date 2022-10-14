@@ -5,6 +5,16 @@ edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
+[lib]
+name = "stellar_relay"
+path = "src/lib.rs"
+
+[[examples]]
+name = "connect"
+
+[dev-dependencies]
+env_logger = "0.9.0"
+
 [dependencies]
 log = {version = "0.4.14"}
 
@@ -20,6 +30,7 @@ substrate-stellar-sdk = {git = "https://github.com/pendulum-chain/substrate-stel
 err-derive = "0.3.1"
 
 tokio = { version = "1.0", features = [
+    "macros",           # allows main function to be async
     "rt-multi-thread",  # for multi-thread runtime
     "net",              # contains the TcpStream
     "sync",             # to make channels available

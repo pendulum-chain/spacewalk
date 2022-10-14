@@ -2,9 +2,11 @@
 
 A rust implementation of the [js-stellar-node-connector](https://github.com/stellarbeat/js-stellar-node-connector).
 
+The Stellar Relay acts as a mediator between the user(you) and the Stellar Node.
+
 ## Usage
 ### Provide the `NodeInfo` and `ConnConfig`
- The `NodeInfo` contains the information of the Stellar Node to connect to.
+ The `NodeInfo` contains the information of the Stellar Node to connect to. Except the address and the port.
 ```rust
 pub struct NodeInfo {
     pub ledger_version: u32,
@@ -34,3 +36,49 @@ pub struct ConnConfig {
     retries:u8
 }
 ```
+
+
+### Create the `UserControl`
+Given the `NodeInfo` and `ConnConfig`, connect to the Stellar Node using the `UserControl`.
+```rust
+    let mut user = UserControls::connect(node_info, cfg).await?;
+```
+The `UserControls` has 2 async methods to interact with the Stellar Node:
+* _` send(&self, message: StellarMessage)`_ -> for sending `StellarMessage`s to Stellar Node
+* _`recv(&mut self)`_ -> for receiving `StellarRelayMessage`s from the Stellar Relay.
+
+### Interpreting the `StellarRelayMessage`
+The `StellarRelayMessage` is an enum with the following variants:
+* _`Connect`_ -> interprets a successful connection to Stellar Node. It contains the `PublicKey` and the `NodeInfo`
+* _`Data`_ -> a wrapper of a `StellarMessage` and additional fields: the _message type_ and the unique `p_id`(process id) 
+* _`Timeout`_ -> Depends on the `timeout_in_secs` and `retries` defined in the `ConnConfig` (**10** and **3** by default). This message is returned after multiple retries have been done.
+For example, Stellar Relay will wait for 10 seconds to read from the existing tcp stream before retrying again. After the 3rd retry, StellarRelay will create a new stream in 3 attempts, with an interval of 3 seconds.
+* _`Error`_ -> a todo
+
+## Example
+In the `stellar-relay` directory, run this command:
+```
+ RUST_LOG=info cargo run --example connect mainnet
+```
+and you should be able to see in the terminal:
+```
+[2022-10-14T13:16:00Z INFO  connect] Connected to "Public Global Stellar Network ; September 2015" through "135.181.16.110"
+[2022-10-14T13:16:00Z INFO  stellar_relay::connection::services] Starting Handshake with Hello.
+[2022-10-14T13:16:01Z INFO  stellar_relay::connection::connector::message_handler] Hello message processed successfully
+[2022-10-14T13:16:01Z INFO  stellar_relay::connection::connector::message_handler] Handshake completed
+[2022-10-14T13:16:01Z INFO  connect] Connected to Stellar Node: "AAAAAAaweClXqq3sjNIHBm/r6o1RY6yR5HqkHJCaZtEEdMUf"
+[2022-10-14T13:16:01Z INFO  connect] NodeInfo { ledger_version: 19, overlay_version: 24, overlay_min_version: 21, version_str: [118, 49, 57, 46, 52, 46, 48], network_id: [122, 195, 57, 151, 84, 78, 49, 117, 210, 102, 189, 2, 36, 57, 178, 44, 219, 22, 80, 140, 1, 22, 63, 38, 229, 203, 42, 62, 16, 69, 169, 121] }
+[2022-10-14T13:16:01Z INFO  connect] rcv StellarMessage of type: Peers
+[2022-10-14T13:16:01Z INFO  connect] rcv StellarMessage of type: GetScpState
+[2022-10-14T13:16:02Z INFO  connect] R0JCUVFUM0VJVVNYUkpDNlRHVUNHVkEzRlZQWFZaTEdHM09KWUFDV0JFV1lCSFU0NldKTFdYRVU= sent StellarMessage of type ScpStNominate  for ledger 43109751
+[2022-10-14T13:16:02Z INFO  connect] R0RYUUIzT01NUTZNR0c0M1BXRkJaV0JGS0JCRFVaSVZTVURBWlpUUkFXUVpLRVMyQ0RTRTVIS0o= sent StellarMessage of type ScpStNominate  for ledger 43109751
+...
+[2022-10-14T13:16:02Z INFO  connect] rcv StellarMessage of type: Transaction
+[2022-10-14T13:16:02Z INFO  connect] rcv StellarMessage of type: Transaction
+[2022-10-14T13:16:02Z INFO  connect] rcv StellarMessage of type: Transaction
+...
+[2022-10-14T13:16:02Z INFO  connect] R0E1U1RCTVY2UURYRkRHRDYyTUVITExIWlRQREk3N1UzUEZPRDJTRUxVNVJKREhRV0JSNU5OSzc= sent StellarMessage of type ScpStNominate  for ledger 43109751
+[2022-10-14T13:16:02Z INFO  connect] R0NHQjJTMktHWUFSUFZJQTM3SFlaWFZSTTJZWlVFWEE2UzMzWlU1QlVEQzZUSFNCNjJMWlNUWUg= sent StellarMessage of type ScpStPrepare for ledger 43109751
+```
+
+todo: add multiple tests
