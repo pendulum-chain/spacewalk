@@ -4308,6 +4308,7 @@ name = "pallet-stellar-relay"
 version = "1.0.0"
 dependencies = [
  "base64",
+ "currency",
  "frame-benchmarking",
  "frame-support",
  "frame-system",
