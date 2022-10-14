@@ -7,12 +7,11 @@ use substrate_stellar_sdk::types::Uint256;
 use currency::Amount;
 pub use primitives::issue::{IssueRequest, IssueRequestStatus};
 use primitives::VaultId;
-use vault_registry::types::CurrencyId;
+pub use vault_registry::types::CurrencyId;
 
 use crate::Config;
 
 pub(crate) type BalanceOf<T> = <T as vault_registry::Config>::Balance;
-
 pub(crate) type DefaultVaultId<T> = VaultId<<T as frame_system::Config>::AccountId, CurrencyId<T>>;
 
 pub type DefaultIssueRequest<T> = IssueRequest<

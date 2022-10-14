@@ -25,9 +25,9 @@ use currency::Amount;
 pub use default_weights::WeightInfo;
 pub use pallet::*;
 use types::IssueRequestExt;
-use vault_registry::{CurrencyId, CurrencySource, VaultStatus};
+use vault_registry::{CurrencySource, VaultStatus};
 
-use crate::types::{BalanceOf, DefaultVaultId};
+use crate::types::{BalanceOf, CurrencyId, DefaultVaultId};
 #[doc(inline)]
 pub use crate::types::{DefaultIssueRequest, IssueRequest, IssueRequestStatus};
 
@@ -51,8 +51,6 @@ pub mod pallet {
 	use frame_system::pallet_prelude::*;
 
 	use primitives::StellarPublicKeyRaw;
-
-	use crate::types::CurrencyId;
 
 	use super::*;
 
@@ -129,6 +127,8 @@ pub mod pallet {
 		InvalidExecutor,
 		/// Issue amount is too small.
 		AmountBelowDustAmount,
+		AmountTransferredDoesNotMatch,
+		TryFromIntError,
 	}
 
 	/// Users create issue requests to issue tokens. This mapping provides access
@@ -332,38 +332,41 @@ impl<T: Config> Pallet<T> {
 		transaction_set_encoded: Vec<u8>,
 	) -> Result<(), DispatchError> {
 		let tx_xdr = base64::decode(&transaction_envelope_xdr_encoded)
-			.map_err(|_| stellar_relay::Error::Base64DecodeError)?;
+			.map_err(|_| stellar_relay::Error::<T>::Base64DecodeError)?;
 		let transaction_envelope = TransactionEnvelope::from_xdr(tx_xdr)
-			.map_err(|_| stellar_relay::Error::InvalidTransactionXDR)?;
+			.map_err(|_| stellar_relay::Error::<T>::InvalidTransactionXDR)?;
 
 		let envelopes_xdr = base64::decode(&externalized_envelopes_encoded)
-			.map_err(|_| stellar_relay::Error::Base64DecodeError)?;
+			.map_err(|_| stellar_relay::Error::<T>::Base64DecodeError)?;
 		let envelopes = UnlimitedVarArray::<ScpEnvelope>::from_xdr(envelopes_xdr)
-			.map_err(|_| stellar_relay::Error::InvalidExternalizedMessages)?;
+			.map_err(|_| stellar_relay::Error::<T>::InvalidExternalizedMessages)?;
 
 		let transaction_set_xdr = base64::decode(&transaction_set_encoded)
-			.map_err(|_| stellar_relay::Error::Base64DecodeError)?;
+			.map_err(|_| stellar_relay::Error::<T>::Base64DecodeError)?;
 		let transaction_set = TransactionSet::from_xdr(transaction_set_xdr)
-			.map_err(|_| stellar_relay::Error::InvalidTransactionSet)?;
+			.map_err(|_| stellar_relay::Error::<T>::InvalidTransactionSet)?;
 
 		let mut issue = Self::get_issue_request_from_id(&issue_id)?;
 		// allow anyone to complete issue request
 		let requester = issue.requester.clone();
 
 		// Verify that the transaction is valid
-		ext::stellar_relay::validate_stellar_transaction(
-			transaction_envelope,
-			envelopes,
-			transaction_set,
+		ext::stellar_relay::validate_stellar_transaction::<T>(
+			&transaction_envelope,
+			&envelopes,
+			&transaction_set,
 			issue.public_network,
 		)?;
 
 		let currency_id = issue.vault.wrapped_currency();
 		let amount_transferred =
-			Self::get_amount_from_transaction_envelope(&transaction_envelope, currency_id)?;
-		ensure!(amount_transferred == issue.amount, Error::<T>::AmountTransferredDoesNotMatch);
+			Self::get_amount_from_transaction_envelope(&transaction_envelope, currency_id);
+		ensure!(
+			amount_transferred.amount() == issue.amount,
+			Error::<T>::AmountTransferredDoesNotMatch
+		);
 
-		let amount_transferred = Amount::new(amount_transferred, issue.vault.wrapped_currency());
+		// let amount_transferred = Amount::new(amount_transferred, issue.vault.wrapped_currency());
 
 		let expected_total_amount = issue.amount().checked_add(&issue.fee())?;
 
@@ -453,44 +456,45 @@ impl<T: Config> Pallet<T> {
 		let issue = Self::get_pending_issue(&issue_id)?;
 
 		let issue_period = Self::issue_period().max(issue.period);
-		let to_be_slashed_collateral = if ext::btc_relay::has_request_expired::<T>(
-			issue.opentime,
-			issue.btc_height,
-			issue_period,
-		)? {
-			// anyone can cancel the issue request once expired
-			issue.griefing_collateral()
-		} else if issue.requester == requester {
-			// slash/release griefing collateral proportionally to the time elapsed
-			// NOTE: if global issue period increases requester will get more griefing collateral
-			let blocks_elapsed =
-				ext::security::active_block_number::<T>().saturating_sub(issue.opentime);
-
-			let griefing_collateral = issue.griefing_collateral();
-			let slashed_collateral = ext::vault_registry::calculate_collateral::<T>(
-				&griefing_collateral,
-				// NOTE: workaround since BlockNumber doesn't inherit Into<U256>
-				&Amount::new(
-					T::BlockNumberToBalance::convert(blocks_elapsed),
-					griefing_collateral.currency(),
-				),
-				&Amount::new(
-					T::BlockNumberToBalance::convert(issue_period),
-					griefing_collateral.currency(),
-				),
-			)?
-			// we can never slash more than the griefing collateral
-			.min(&griefing_collateral)?;
-
-			// refund anything not slashed
-			let released_collateral = griefing_collateral.saturating_sub(&slashed_collateral)?;
-			released_collateral.unlock_on(&requester)?;
-
-			// TODO: update `issue.griefing_collateral`?
-			slashed_collateral
-		} else {
-			return Err(Error::<T>::TimeNotExpired.into())
-		};
+		// let to_be_slashed_collateral = if ext::btc_relay::has_request_expired::<T>(
+		// 	issue.opentime,
+		// 	issue.btc_height,
+		// 	issue_period,
+		// )? {
+		// 	// anyone can cancel the issue request once expired
+		// 	issue.griefing_collateral()
+		// } else if issue.requester == requester {
+		// 	// slash/release griefing collateral proportionally to the time elapsed
+		// 	// NOTE: if global issue period increases requester will get more griefing collateral
+		// 	let blocks_elapsed =
+		// 		ext::security::active_block_number::<T>().saturating_sub(issue.opentime);
+		//
+		// 	let griefing_collateral = issue.griefing_collateral();
+		// 	let slashed_collateral = ext::vault_registry::calculate_collateral::<T>(
+		// 		&griefing_collateral,
+		// 		// NOTE: workaround since BlockNumber doesn't inherit Into<U256>
+		// 		&Amount::new(
+		// 			T::BlockNumberToBalance::convert(blocks_elapsed),
+		// 			griefing_collateral.currency(),
+		// 		),
+		// 		&Amount::new(
+		// 			T::BlockNumberToBalance::convert(issue_period),
+		// 			griefing_collateral.currency(),
+		// 		),
+		// 	)?
+		// 	// we can never slash more than the griefing collateral
+		// 	.min(&griefing_collateral)?;
+		//
+		// 	// refund anything not slashed
+		// 	let released_collateral = griefing_collateral.saturating_sub(&slashed_collateral)?;
+		// 	released_collateral.unlock_on(&requester)?;
+		//
+		// 	// TODO: update `issue.griefing_collateral`?
+		// 	slashed_collateral
+		// } else {
+		// 	return Err(Error::<T>::TimeNotExpired.into())
+		// };
+		let to_be_slashed_collateral = issue.griefing_collateral();
 
 		if ext::vault_registry::is_vault_liquidated::<T>(&issue.vault)? {
 			// return slashed griefing collateral if the vault is liquidated
@@ -659,37 +663,33 @@ impl<T: Config> Pallet<T> {
 		});
 	}
 
-	fn issue_btc_dust_value(currency_id: CurrencyId<T>) -> Amount<T> {
-		Amount::new(IssueBtcDustValue::<T>::get(), currency_id)
-	}
-
 	/// Accumulate the amounts of the specified currency that happened in the operations of a
 	/// Stellar transaction
 	fn get_amount_from_transaction_envelope(
-		tx_env: &TransactionEnvelope,
+		transaction_envelope: &TransactionEnvelope,
 		currency: CurrencyId<T>,
 	) -> Amount<T> {
 		// TODO derive asset from currency
 		let asset = Asset::AssetTypeNative;
 
-		let amount = match transaction_envelope {
+		let amount: i64 = match transaction_envelope {
 			TransactionEnvelope::EnvelopeTypeTxV0(envelope) => {
-				let mut sum = 0;
+				let mut sum: i64 = 0;
 				for x in envelope.tx.operations.get_vec().iter() {
 					if let OperationBody::Payment(payment) = x.body.clone() {
 						if payment.asset == asset {
-							sum += payment.amount;
+							sum = sum.saturating_add(payment.amount);
 						}
 					}
 				}
 				sum
 			},
 			TransactionEnvelope::EnvelopeTypeTx(envelope) => {
-				let mut sum = 0;
+				let mut sum: i64 = 0;
 				for x in envelope.tx.operations.get_vec().iter() {
 					if let OperationBody::Payment(payment) = x.body.clone() {
 						if payment.asset == asset {
-							sum += payment.amount;
+							sum = sum.saturating_add(payment.amount);
 						}
 					}
 				}
@@ -699,6 +699,11 @@ impl<T: Config> Pallet<T> {
 			TransactionEnvelope::Default(_) => 0,
 		};
 
-		Amount::new(amount, currency)
+		let amount: u128 = u128::try_from(amount).map_err(|_| Error::<T>::TryFromIntError).unwrap();
+		let amount_balance = <T as vault_registry::Config>::Balance::try_from(amount)
+			.map_err(|_| Error::<T>::TryFromIntError)
+			.unwrap();
+
+		Amount::new(amount_balance, currency)
 	}
 }

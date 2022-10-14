@@ -14,9 +14,9 @@ pub(crate) mod stellar_relay {
 	use stellar_relay::Error;
 
 	pub fn validate_stellar_transaction<T: crate::Config>(
-		transaction_envelope: TransactionEnvelope,
-		envelopes: UnlimitedVarArray<ScpEnvelope>,
-		transaction_set: TransactionSet,
+		transaction_envelope: &TransactionEnvelope,
+		envelopes: &UnlimitedVarArray<ScpEnvelope>,
+		transaction_set: &TransactionSet,
 		public_network: bool,
 	) -> Result<(), Error<T>> {
 		<stellar_relay::Pallet<T>>::validate_stellar_transaction(
