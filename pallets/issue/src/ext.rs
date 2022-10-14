@@ -7,11 +7,15 @@ pub(crate) mod stellar_relay {
 	use sp_std::convert::TryFrom;
 	use substrate_stellar_sdk::{
 		compound_types::UnlimitedVarArray,
-		types::{ScpEnvelope, TransactionSet},
+		types::{ScpEnvelope, TransactionSet, Uint256},
 		TransactionEnvelope, XdrCodec,
 	};
 
+	use currency::Amount;
+	use primitives::StellarPublicKeyRaw;
 	use stellar_relay::Error;
+
+	use crate::types::CurrencyId;
 
 	pub fn validate_stellar_transaction<T: crate::Config>(
 		transaction_envelope: &TransactionEnvelope,
@@ -31,6 +35,18 @@ pub(crate) mod stellar_relay {
 		raw_encoded_xdr: &[u8],
 	) -> Result<V, Error<T>> {
 		<stellar_relay::Pallet<T>>::construct_from_raw_encoded_xdr(raw_encoded_xdr)
+	}
+
+	pub fn get_amount_from_transaction_envelope<T: crate::Config, V: TryFrom<i64>>(
+		transaction_envelope: &TransactionEnvelope,
+		recipient_stellar_address: StellarPublicKeyRaw,
+		currency: &CurrencyId<T>,
+	) -> Result<V, Error<T>> {
+		<stellar_relay::Pallet<T>>::get_amount_from_transaction_envelope(
+			transaction_envelope,
+			recipient_stellar_address,
+			currency,
+		)
 	}
 }
 

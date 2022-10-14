@@ -369,8 +369,11 @@ impl<T: Config> Pallet<T> {
 			issue.public_network,
 		)?;
 
-		let amount_transferred =
-			Self::get_amount_from_transaction_envelope(&transaction_envelope, issue.asset);
+		let amount_transferred = ext::stellar_relay::get_amount_from_transaction_envelope::<
+			T,
+			BalanceOf<T>,
+		>(&transaction_envelope, issue.stellar_address, &issue.asset)?;
+		let amount_transferred = Amount::new(amount_transferred, issue.asset);
 		ensure!(
 			amount_transferred.amount() == issue.amount,
 			Error::<T>::AmountTransferredDoesNotMatch
@@ -673,49 +676,5 @@ impl<T: Config> Pallet<T> {
 			*request =
 				request.clone().map(|request| DefaultIssueRequest::<T> { status, ..request });
 		});
-	}
-
-	/// Accumulate the amounts of the specified currency that happened in the operations of a
-	/// Stellar transaction
-	fn get_amount_from_transaction_envelope(
-		transaction_envelope: &TransactionEnvelope,
-		currency: CurrencyId<T>,
-	) -> Amount<T> {
-		// TODO derive asset from currency and back
-		let asset = Asset::AssetTypeNative;
-
-		let amount: i64 = match transaction_envelope {
-			TransactionEnvelope::EnvelopeTypeTxV0(envelope) => {
-				let mut sum: i64 = 0;
-				for x in envelope.tx.operations.get_vec().iter() {
-					if let OperationBody::Payment(payment) = x.body.clone() {
-						if payment.asset == asset {
-							sum = sum.saturating_add(payment.amount);
-						}
-					}
-				}
-				sum
-			},
-			TransactionEnvelope::EnvelopeTypeTx(envelope) => {
-				let mut sum: i64 = 0;
-				for x in envelope.tx.operations.get_vec().iter() {
-					if let OperationBody::Payment(payment) = x.body.clone() {
-						if payment.asset == asset {
-							sum = sum.saturating_add(payment.amount);
-						}
-					}
-				}
-				sum
-			},
-			TransactionEnvelope::EnvelopeTypeTxFeeBump(_) => 0,
-			TransactionEnvelope::Default(_) => 0,
-		};
-
-		let amount: u128 = u128::try_from(amount).map_err(|_| Error::<T>::TryFromIntError).unwrap();
-		let amount_balance = <T as vault_registry::Config>::Balance::try_from(amount)
-			.map_err(|_| Error::<T>::TryFromIntError)
-			.unwrap();
-
-		Amount::new(amount_balance, currency)
 	}
 }
