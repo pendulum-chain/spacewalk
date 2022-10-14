@@ -257,7 +257,7 @@ impl Convert<BlockNumber, Balance> for BlockNumberToBalance {
 impl Config for Test {
 	type Event = TestEvent;
 	type BlockNumberToBalance = BlockNumberToBalance;
-	// type WeightInfo = ();
+	type WeightInfo = ();
 }
 
 pub type TestEvent = Event;
