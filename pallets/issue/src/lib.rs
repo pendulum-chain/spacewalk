@@ -88,6 +88,7 @@ pub mod pallet {
 			amount: BalanceOf<T>,
 			fee: BalanceOf<T>,
 			confiscated_griefing_collateral: BalanceOf<T>,
+			public_network: bool,
 		},
 		ExecuteIssue {
 			issue_id: H256,
@@ -101,6 +102,7 @@ pub mod pallet {
 			issue_id: H256,
 			requester: T::AccountId,
 			griefing_collateral: BalanceOf<T>,
+			public_network: bool,
 		},
 		IssuePeriodChange {
 			period: T::BlockNumber,
@@ -518,6 +520,7 @@ impl<T: Config> Pallet<T> {
 			issue_id,
 			requester,
 			griefing_collateral: to_be_slashed_collateral.amount(),
+			public_network: issue.public_network,
 		});
 		Ok(())
 	}
@@ -647,6 +650,7 @@ impl<T: Config> Pallet<T> {
 			amount: issue.amount,
 			fee: issue.fee,
 			confiscated_griefing_collateral: confiscated_griefing_collateral.amount(),
+			public_network: issue.public_network,
 		});
 
 		Ok(())
