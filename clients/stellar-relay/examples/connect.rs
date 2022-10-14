@@ -1,4 +1,4 @@
-use stellar_relay::{ConnConfig, StellarRelayMessage, UserControls};
+use stellar_relay::{ConnConfig, StellarRelayMessage, StellarOverlayConnection};
 use stellar_relay::node::NodeInfo;
 use stellar_relay::sdk::{SecretKey, XdrCodec};
 use stellar_relay::sdk::network::{Network, PUBLIC_NETWORK, TEST_NETWORK};
@@ -38,9 +38,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let node_info = NodeInfo::new(19, 21, 19, "v19.1.0".to_string(), network);
     let cfg = ConnConfig::new(tier1_node_ip, 11625, secret, 0, false, true, false);
-    let mut user = UserControls::connect(node_info, cfg).await?;
+    let mut overlay_connection = StellarOverlayConnection::connect(node_info, cfg).await?;
 
-    while let Some(relay_message) = user.recv().await {
+    while let Some(relay_message) = overlay_connection.listen().await {
         match relay_message {
             StellarRelayMessage::Connect { pub_key, node_info } => {
                 let pub_key_xdr = pub_key.to_xdr();

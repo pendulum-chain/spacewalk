@@ -9,7 +9,7 @@ use crate::{
 use substrate_stellar_sdk::types::StellarMessage;
 use tokio::{sync::mpsc, time::Duration};
 
-pub struct UserControls {
+pub struct StellarOverlayConnection {
 	/// This is when we want to send stellar messages
 	tx: mpsc::Sender<ConnectorActions>,
 	/// For receiving stellar messages
@@ -19,7 +19,7 @@ pub struct UserControls {
 	max_retries: u8,
 }
 
-impl UserControls {
+impl StellarOverlayConnection {
 	fn new(
 		tx: mpsc::Sender<ConnectorActions>,
 		rx: mpsc::Receiver<StellarRelayMessage>,
@@ -27,7 +27,7 @@ impl UserControls {
 		local_node: NodeInfo,
 		cfg: ConnConfig,
 	) -> Self {
-		UserControls { tx, rx, local_node, cfg, max_retries }
+		StellarOverlayConnection { tx, rx, local_node, cfg, max_retries }
 	}
 
 	pub async fn send(&self, message: StellarMessage) -> Result<(), Error> {
@@ -36,13 +36,13 @@ impl UserControls {
 
 	/// Receives Stellar messages from the connection.
 	/// Restarts the connection when lost.
-	pub async fn recv(&mut self) -> Option<StellarRelayMessage> {
+	pub async fn listen(&mut self) -> Option<StellarRelayMessage> {
 		let res = self.rx.recv().await;
 		if let Some(StellarRelayMessage::Timeout) = &res {
 			while self.max_retries > 0 {
 				log::info!("reconnecting to {:?}.", &self.cfg.address);
 				if let Ok(new_user) =
-					UserControls::connect(self.local_node.clone(), self.cfg.clone()).await
+					StellarOverlayConnection::connect(self.local_node.clone(), self.cfg.clone()).await
 				{
 					self.max_retries = new_user.max_retries;
 					self.tx = new_user.tx;
@@ -63,7 +63,7 @@ impl UserControls {
 
 	/// Triggers connection to the Stellar Node.
 	/// Returns the UserControls for the user to send and receive Stellar messages.
-	pub async fn connect(local_node: NodeInfo, cfg: ConnConfig) -> Result<UserControls, Error> {
+	pub async fn connect(local_node: NodeInfo, cfg: ConnConfig) -> Result<StellarOverlayConnection, Error> {
 		let retries = cfg.retries;
 		let timeout_in_secs = cfg.timeout_in_secs;
 		// split the stream for easy handling of read and write
@@ -73,7 +73,7 @@ impl UserControls {
 		let (actions_sender, actions_receiver) = mpsc::channel::<ConnectorActions>(1024);
 		// this is a channel to communicate with the user/caller.
 		let (message_writer, message_receiver) = mpsc::channel::<StellarRelayMessage>(1024);
-		let user = UserControls::new(
+		let overlay_connection = StellarOverlayConnection::new(
 			actions_sender.clone(),
 			message_receiver,
 			cfg.retries,
@@ -81,8 +81,8 @@ impl UserControls {
 			cfg,
 		);
 		let conn = Connector::new(
-			user.local_node.clone(),
-			user.cfg.clone(),
+			overlay_connection.local_node.clone(),
+			overlay_connection.cfg.clone(),
 			actions_sender.clone(),
 			message_writer,
 		);
@@ -92,6 +92,6 @@ impl UserControls {
 		tokio::spawn(connection_handler(conn, actions_receiver, wr));
 		// start the handshake
 		actions_sender.send(ConnectorActions::SendHello).await?;
-		Ok(user)
+		Ok(overlay_connection)
 	}
 }

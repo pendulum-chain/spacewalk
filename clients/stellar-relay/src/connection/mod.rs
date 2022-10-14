@@ -7,12 +7,12 @@ mod authentication;
 mod connector;
 pub mod helper;
 mod services;
-mod user_controls;
+mod overlay_connection;
 pub mod xdr_converter;
 
 pub(crate) use connector::*;
 pub use errors::Error;
-pub use user_controls::*;
+pub use overlay_connection::*;
 
 type Xdr = (u32, Vec<u8>);
 
