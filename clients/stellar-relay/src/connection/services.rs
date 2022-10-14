@@ -172,17 +172,17 @@ pub(crate) async fn receiving_service(
 				// if there are no more bytes lacking from the previous message,
 				// then check the size of next stellar message.
 				// If it's not enough, skip it.
-				let xpect_msg_len = next_message_length(&mut r_stream).await;
-				log::trace!("proc_id: {} The next message length: {}", proc_id, xpect_msg_len);
+				let expect_msg_len = next_message_length(&mut r_stream).await;
+				log::trace!("proc_id: {} The next message length: {}", proc_id, expect_msg_len);
 
-				if xpect_msg_len == 0 {
+				if expect_msg_len == 0 {
 					// there's nothing to read; wait for the next iteration
 					log::info!("WARNING!!! NOTHING TO READ!!!!");
 					continue
 				}
 
 				// let's start reading the actual stellar message.
-				readbuf = vec![0; xpect_msg_len];
+				readbuf = vec![0; expect_msg_len];
 
 				read_message(
 					&mut r_stream,
@@ -190,7 +190,7 @@ pub(crate) async fn receiving_service(
 					&mut lack_bytes_from_prev,
 					&mut proc_id,
 					&mut readbuf,
-					xpect_msg_len,
+					expect_msg_len,
 				)
 				.await?;
 			},
