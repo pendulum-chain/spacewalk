@@ -1,9 +1,8 @@
-use stellar_relay::sdk::network::{Network, PUBLIC_NETWORK, TEST_NETWORK};
-use stellar_relay::sdk::{SecretKey, XdrCodec};
-use stellar_relay::sdk::types::{MessageType, ScpStatementPledges, StellarMessage};
 use stellar_relay::{ConnConfig, StellarRelayMessage, UserControls};
 use stellar_relay::node::NodeInfo;
-
+use stellar_relay::sdk::{SecretKey, XdrCodec};
+use stellar_relay::sdk::network::{Network, PUBLIC_NETWORK, TEST_NETWORK};
+use stellar_relay::sdk::types::{MessageType, ScpStatementPledges, StellarMessage};
 
 const TIER_1_VALIDATOR_IP_TESTNET: &str = "34.235.168.98";
 const TIER_1_VALIDATOR_IP_PUBLIC: &str = "135.181.16.110";
@@ -38,16 +37,15 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             .unwrap();
 
     let node_info = NodeInfo::new(19, 21, 19, "v19.1.0".to_string(), network);
-    let cfg = ConnConfig::new(tier1_node_ip, 11625, secret,0, false, true, false);
+    let cfg = ConnConfig::new(tier1_node_ip, 11625, secret, 0, false, true, false);
     let mut user = UserControls::connect(node_info, cfg).await?;
 
-    while let Some(conn_state) = user.recv().await {
-        match conn_state {
+    while let Some(relay_message) = user.recv().await {
+        match relay_message {
             StellarRelayMessage::Connect { pub_key, node_info } => {
                 let pub_key_xdr = pub_key.to_xdr();
                 log::info!("Connected to Stellar Node: {:?}", base64::encode(pub_key_xdr));
                 log::info!("{:?}",node_info);
-
             }
             StellarRelayMessage::Data { p_id, msg_type, msg } => {
                 match msg {
@@ -56,19 +54,19 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                         let node_id = base64::encode(&node_id);
                         let slot = msg.statement.slot_index;
 
-                        let stmt_type= match msg.statement.pledges {
+                        let stmt_type = match msg.statement.pledges {
                             ScpStatementPledges::ScpStPrepare(_) => { "ScpStPrepare" }
                             ScpStatementPledges::ScpStConfirm(_) => { "ScpStConfirm" }
                             ScpStatementPledges::ScpStExternalize(_) => { "ScpStExternalize" }
-                            ScpStatementPledges::ScpStNominate(_) => { "ScpStNominate "}
+                            ScpStatementPledges::ScpStNominate(_) => { "ScpStNominate " }
                         };
                         log::info!("{} sent StellarMessage of type {} for ledger {}",
                             node_id,stmt_type,slot
                         );
                     }
-                   _ => {
-                       log::info!("rcv StellarMessage of type: {:?}", msg_type);
-                   }
+                    _ => {
+                        log::info!("rcv StellarMessage of type: {:?}", msg_type);
+                    }
                 }
             }
             StellarRelayMessage::Error(e) => {
@@ -81,6 +79,4 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     }
 
     Ok(())
-
-
 }
