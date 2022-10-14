@@ -471,9 +471,9 @@ pub mod pallet {
 		/// - `envelopes`: The set of SCP envelopes that were externalized on the Stellar network
 		/// - `transaction_set`: The set of transactions that belong to the envelopes
 		pub fn validate_stellar_transaction(
-			transaction_envelope: TransactionEnvelope,
-			envelopes: UnlimitedVarArray<ScpEnvelope>,
-			transaction_set: TransactionSet,
+			transaction_envelope: &TransactionEnvelope,
+			envelopes: &UnlimitedVarArray<ScpEnvelope>,
+			transaction_set: &TransactionSet,
 			public_network: bool,
 		) -> Result<(), Error<T>> {
 			let network: &Network = if public_network { &PUBLIC_NETWORK } else { &TEST_NETWORK };
