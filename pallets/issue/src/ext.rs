@@ -8,7 +8,7 @@ pub(crate) mod stellar_relay {
 	use substrate_stellar_sdk::{
 		compound_types::UnlimitedVarArray,
 		types::{ScpEnvelope, TransactionSet},
-		TransactionEnvelope,
+		TransactionEnvelope, XdrCodec,
 	};
 
 	use stellar_relay::Error;
@@ -25,6 +25,12 @@ pub(crate) mod stellar_relay {
 			transaction_set,
 			public_network,
 		)
+	}
+
+	pub fn construct_from_raw_encoded_xdr<T: crate::Config, V: XdrCodec>(
+		raw_encoded_xdr: &[u8],
+	) -> Result<V, Error<T>> {
+		<stellar_relay::Pallet<T>>::construct_from_raw_encoded_xdr(raw_encoded_xdr)
 	}
 }
 

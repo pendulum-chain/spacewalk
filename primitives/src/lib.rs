@@ -149,6 +149,7 @@ pub mod issue {
 		/// the number of tokens that will be transferred to the user (as such, this does not
 		/// include the fee)
 		pub amount: Balance,
+		pub asset: CurrencyId,
 		#[cfg_attr(feature = "std", serde(bound(deserialize = "Balance: std::str::FromStr")))]
 		#[cfg_attr(feature = "std", serde(deserialize_with = "deserialize_from_string"))]
 		#[cfg_attr(feature = "std", serde(bound(serialize = "Balance: std::fmt::Display")))]

@@ -77,6 +77,7 @@ pub mod pallet {
 			issue_id: H256,
 			requester: T::AccountId,
 			amount: BalanceOf<T>,
+			asset: CurrencyId<T>,
 			fee: BalanceOf<T>,
 			griefing_collateral: BalanceOf<T>,
 			vault_id: DefaultVaultId<T>,
@@ -86,6 +87,7 @@ pub mod pallet {
 		IssueAmountChange {
 			issue_id: H256,
 			amount: BalanceOf<T>,
+			asset: CurrencyId<T>,
 			fee: BalanceOf<T>,
 			confiscated_griefing_collateral: BalanceOf<T>,
 			public_network: bool,
@@ -95,6 +97,7 @@ pub mod pallet {
 			requester: T::AccountId,
 			vault_id: DefaultVaultId<T>,
 			amount: BalanceOf<T>,
+			asset: CurrencyId<T>,
 			fee: BalanceOf<T>,
 			public_network: bool,
 		},
@@ -186,11 +189,12 @@ pub mod pallet {
 		pub fn request_issue(
 			origin: OriginFor<T>,
 			#[pallet::compact] amount: BalanceOf<T>,
+			asset: CurrencyId<T>,
 			vault_id: DefaultVaultId<T>,
 			public_network: bool,
 		) -> DispatchResultWithPostInfo {
 			let requester = ensure_signed(origin)?;
-			Self::_request_issue(requester, amount, vault_id, public_network)?;
+			Self::_request_issue(requester, amount, asset, vault_id, public_network)?;
 			Ok(().into())
 		}
 
@@ -266,9 +270,12 @@ impl<T: Config> Pallet<T> {
 	fn _request_issue(
 		requester: T::AccountId,
 		amount_requested: BalanceOf<T>,
+		asset: CurrencyId<T>,
 		vault_id: DefaultVaultId<T>,
 		public_network: bool,
 	) -> Result<H256, DispatchError> {
+		// TODO change this to use the provided asset once multi-collateral is implemented
+		// let amount_requested = Amount::new(amount_requested, asset);
 		let amount_requested = Amount::new(amount_requested, vault_id.wrapped_currency());
 
 		let vault = ext::vault_registry::get_active_vault_from_id::<T>(&vault_id)?;
@@ -303,6 +310,7 @@ impl<T: Config> Pallet<T> {
 			opentime: ext::security::active_block_number::<T>(),
 			requester,
 			amount: amount_user.amount(),
+			asset: amount_user.currency(),
 			fee: fee.amount(),
 			griefing_collateral: griefing_collateral.amount(),
 			period: Self::issue_period(),
@@ -316,6 +324,7 @@ impl<T: Config> Pallet<T> {
 			issue_id,
 			requester: request.requester,
 			amount: request.amount,
+			asset: amount_user.currency(),
 			fee: request.fee,
 			griefing_collateral: request.griefing_collateral,
 			vault_id: request.vault,
@@ -333,20 +342,20 @@ impl<T: Config> Pallet<T> {
 		externalized_envelopes_encoded: Vec<u8>,
 		transaction_set_encoded: Vec<u8>,
 	) -> Result<(), DispatchError> {
-		let tx_xdr = base64::decode(&transaction_envelope_xdr_encoded)
-			.map_err(|_| stellar_relay::Error::<T>::Base64DecodeError)?;
-		let transaction_envelope = TransactionEnvelope::from_xdr(tx_xdr)
-			.map_err(|_| stellar_relay::Error::<T>::InvalidTransactionXDR)?;
+		let transaction_envelope = ext::stellar_relay::construct_from_raw_encoded_xdr::<
+			T,
+			TransactionEnvelope,
+		>(&transaction_envelope_xdr_encoded)?;
 
-		let envelopes_xdr = base64::decode(&externalized_envelopes_encoded)
-			.map_err(|_| stellar_relay::Error::<T>::Base64DecodeError)?;
-		let envelopes = UnlimitedVarArray::<ScpEnvelope>::from_xdr(envelopes_xdr)
-			.map_err(|_| stellar_relay::Error::<T>::InvalidExternalizedMessages)?;
+		let envelopes = ext::stellar_relay::construct_from_raw_encoded_xdr::<
+			T,
+			UnlimitedVarArray<ScpEnvelope>,
+		>(&externalized_envelopes_encoded)?;
 
-		let transaction_set_xdr = base64::decode(&transaction_set_encoded)
-			.map_err(|_| stellar_relay::Error::<T>::Base64DecodeError)?;
-		let transaction_set = TransactionSet::from_xdr(transaction_set_xdr)
-			.map_err(|_| stellar_relay::Error::<T>::InvalidTransactionSet)?;
+		let transaction_set = ext::stellar_relay::construct_from_raw_encoded_xdr::<
+			T,
+			TransactionSet,
+		>(&transaction_set_encoded)?;
 
 		let mut issue = Self::get_issue_request_from_id(&issue_id)?;
 		// allow anyone to complete issue request
@@ -360,15 +369,12 @@ impl<T: Config> Pallet<T> {
 			issue.public_network,
 		)?;
 
-		let currency_id = issue.vault.wrapped_currency();
 		let amount_transferred =
-			Self::get_amount_from_transaction_envelope(&transaction_envelope, currency_id);
+			Self::get_amount_from_transaction_envelope(&transaction_envelope, issue.asset);
 		ensure!(
 			amount_transferred.amount() == issue.amount,
 			Error::<T>::AmountTransferredDoesNotMatch
 		);
-
-		// let amount_transferred = Amount::new(amount_transferred, issue.vault.wrapped_currency());
 
 		let expected_total_amount = issue.amount().checked_add(&issue.fee())?;
 
@@ -447,6 +453,7 @@ impl<T: Config> Pallet<T> {
 			requester,
 			vault_id: issue.vault,
 			amount: total.amount(),
+			asset: total.currency(),
 			fee: issue.fee,
 			public_network: issue.public_network,
 		});
@@ -648,6 +655,7 @@ impl<T: Config> Pallet<T> {
 		Self::deposit_event(Event::IssueAmountChange {
 			issue_id: *issue_id,
 			amount: issue.amount,
+			asset: issue.asset,
 			fee: issue.fee,
 			confiscated_griefing_collateral: confiscated_griefing_collateral.amount(),
 			public_network: issue.public_network,
@@ -673,7 +681,7 @@ impl<T: Config> Pallet<T> {
 		transaction_envelope: &TransactionEnvelope,
 		currency: CurrencyId<T>,
 	) -> Amount<T> {
-		// TODO derive asset from currency
+		// TODO derive asset from currency and back
 		let asset = Asset::AssetTypeNative;
 
 		let amount: i64 = match transaction_envelope {

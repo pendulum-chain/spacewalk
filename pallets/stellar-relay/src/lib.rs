@@ -93,13 +93,10 @@ pub mod pallet {
 		Base64DecodeError,
 		BoundedVecCreationFailed,
 		EnvelopeSignedByUnknownValidator,
-		InvalidExternalizedMessages,
-		InvalidEnvelopeSignature,
 		InvalidQuorumSetNotEnoughOrganizations,
 		InvalidQuorumSetNotEnoughValidators,
 		InvalidScpPledge,
-		InvalidTransactionSet,
-		InvalidTransactionXDR,
+		InvalidXDR,
 		NoOrganizationsRegisteredForNetwork,
 		NoValidatorsRegisteredForNetwork,
 		OrganizationLimitExceeded,
@@ -598,6 +595,15 @@ pub mod pallet {
 				.map(|stellar_value| stellar_value.tx_set_hash)
 				.map_err(|_| Error::<T>::TransactionSetHashCreationFailed)?;
 			Ok(tx_set_hash)
+		}
+
+		pub fn construct_from_raw_encoded_xdr<V: XdrCodec>(
+			raw_encoded_xdr: &[u8],
+		) -> Result<V, Error<T>> {
+			let value_xdr =
+				base64::decode(raw_encoded_xdr).map_err(|_| Error::<T>::Base64DecodeError)?;
+			let decoded = V::from_xdr(value_xdr).map_err(|_| Error::<T>::InvalidXDR)?;
+			Ok(decoded)
 		}
 	}
 
