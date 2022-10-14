@@ -20,7 +20,7 @@ pub struct UserControls {
 }
 
 impl UserControls {
-	pub(crate) fn new(
+	fn new(
 		tx: mpsc::Sender<ConnectorActions>,
 		rx: mpsc::Receiver<StellarRelayMessage>,
 		max_retries: u8,
@@ -71,7 +71,7 @@ impl UserControls {
 		// ------------------ prepare the channels
 		// this is a channel to communicate with the connection/config (this needs renaming)
 		let (actions_sender, actions_receiver) = mpsc::channel::<ConnectorActions>(1024);
-		// this is a chanel to communicate with the user/caller.
+		// this is a channel to communicate with the user/caller.
 		let (message_writer, message_receiver) = mpsc::channel::<StellarRelayMessage>(1024);
 		let user = UserControls::new(
 			actions_sender.clone(),
