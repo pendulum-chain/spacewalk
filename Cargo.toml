@@ -6,7 +6,6 @@ members = [
   "rpc",
   "pallets/spacewalk",
   "pallets/stellar-relay",
-  "stellar-relay"
 ]
 [profile.release]
 panic = "unwind"

@@ -4,6 +4,7 @@ members = [
   "runtime",
   "vault",
   "service",
+  "stellar-relay"
 ]
 
 [patch."https://github.com/paritytech/substrate"]
