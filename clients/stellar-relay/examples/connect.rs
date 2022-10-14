@@ -1,4 +1,4 @@
-use stellar_relay::{ConnConfig, StellarRelayMessage, StellarOverlayConnection};
+use stellar_relay::{ConnConfig, StellarOverlayConnection, StellarRelayMessage};
 use stellar_relay::node::NodeInfo;
 use stellar_relay::sdk::{SecretKey, XdrCodec};
 use stellar_relay::sdk::network::{Network, PUBLIC_NETWORK, TEST_NETWORK};
@@ -12,7 +12,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     env_logger::init();
 
     let args: Vec<String> = std::env::args().collect();
-    let arg_network = &args[1];
+    let arg_network = if args.len() > 1 { &args[1] } else { "testnet" };
     let mut public_network = false;
     let mut tier1_node_ip = TIER_1_VALIDATOR_IP_TESTNET;
 
