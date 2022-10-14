@@ -40,18 +40,19 @@ impl StellarOverlayConnection {
 		let res = self.rx.recv().await;
 		if let Some(StellarRelayMessage::Timeout) = &res {
 			while self.max_retries > 0 {
-				log::info!("reconnecting to {:?}.", &self.cfg.address);
+				log::info!("Connection timed out. Reconnecting to {:?}...", &self.cfg.address);
 				if let Ok(new_user) =
 					StellarOverlayConnection::connect(self.local_node.clone(), self.cfg.clone()).await
 				{
 					self.max_retries = new_user.max_retries;
 					self.tx = new_user.tx;
 					self.rx = new_user.rx;
+					log::info!("Reconnected to {:?}!", &self.cfg.address);
 					return self.rx.recv().await
 				} else {
 					self.max_retries -= 1;
 					log::error!(
-						"failed to reconnect! # of retries left: {}. Retrying in 3 seconds...",
+						"Failed to reconnect! # of retries left: {}. Retrying in 3 seconds...",
 						self.max_retries
 					);
 					tokio::time::sleep(Duration::from_secs(3)).await;
