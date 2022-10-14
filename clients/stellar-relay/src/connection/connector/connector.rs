@@ -18,7 +18,7 @@ use crate::node::{LocalInfo, NodeInfo, RemoteInfo};
 pub struct Connector {
 	local: LocalInfo,
 
-	remote: Option<RemoteInfo>,
+	remote_info: Option<RemoteInfo>,
 	hmac_keys: Option<HMacKeys>,
 
 	pub(crate) connection_auth: ConnectionAuth,
@@ -32,10 +32,10 @@ pub struct Connector {
 	handshake_state: HandshakeState,
 	flow_controller: FlowController,
 
-	/// a channel to writing xdr messages to stream.
+	/// a channel for writing xdr messages to stream.
 	stream_writer: mpsc::Sender<ConnectorActions>,
 
-	/// a channel to communicate back to the caller
+	/// a channel for communicating back to the caller
 	stellar_message_writer: mpsc::Sender<StellarRelayMessage>,
 }
 
@@ -46,14 +46,14 @@ impl Connector {
 		auth_msg: &AuthenticatedMessageV0,
 		body: &[u8],
 	) -> Result<(), Error> {
-		let remote = self.remote.as_ref().ok_or(Error::NoRemoteInfo)?;
+		let remote_info = self.remote_info.as_ref().ok_or(Error::NoRemoteInfo)?;
 		log::debug!(
 			"remote sequence: {}, auth message sequence: {}",
-			remote.sequence(),
+			remote_info.sequence(),
 			auth_msg.sequence
 		);
-		if remote.sequence() != auth_msg.sequence {
-			//must be handled on main thread because workers could mix up order of messages.
+		if remote_info.sequence() != auth_msg.sequence {
+			// must be handled on main thread because workers could mix up order of messages.
 			return Err(Error::InvalidSequenceNumber)
 		}
 
@@ -98,7 +98,7 @@ impl Connector {
 
 		Connector {
 			local: LocalInfo::new(local_node),
-			remote: None,
+			remote_info: None,
 			hmac_keys: None,
 			connection_auth,
 			timeout_in_secs: cfg.timeout_in_secs,
@@ -126,15 +126,15 @@ impl Connector {
 	}
 
 	pub fn remote(&self) -> Option<&RemoteInfo> {
-		self.remote.as_ref()
+		self.remote_info.as_ref()
 	}
 
 	pub fn set_remote(&mut self, value: RemoteInfo) {
-		self.remote = Some(value);
+		self.remote_info = Some(value);
 	}
 
 	pub fn increment_remote_sequence(&mut self) -> Result<(), Error> {
-		self.remote
+		self.remote_info
 			.as_mut()
 			.map(|remote| remote.increment_sequence())
 			.ok_or(Error::NoRemoteInfo)
