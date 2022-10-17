@@ -136,7 +136,9 @@ fn test_request_issue_succeeds() {
 		let origin = USER;
 		let vault = VAULT;
 		let amount: Balance = 3;
-		let issue_asset = CurrencyId::Token(TokenSymbol::DOT);
+		// TODO change this to a custom asset
+		// let issue_asset = CurrencyId::Token(TokenSymbol::DOT);
+		let issue_asset = vault.wrapped_currency();
 		let issue_fee = 1;
 		let issue_griefing_collateral = 20;
 		let address = DEFAULT_STELLAR_PUBLIC_KEY;
@@ -169,7 +171,7 @@ fn test_request_issue_succeeds() {
 			griefing_collateral: issue_griefing_collateral,
 			vault_id: vault,
 			vault_stellar_public_key: address,
-			public_network: false,
+			public_network,
 		});
 		assert!(System::events().iter().any(|a| a.event == request_issue_event));
 	})

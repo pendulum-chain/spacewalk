@@ -324,7 +324,7 @@ impl<T: Config> Pallet<T> {
 			issue_id,
 			requester: request.requester,
 			amount: request.amount,
-			asset: amount_user.currency(),
+			asset: request.asset,
 			fee: request.fee,
 			griefing_collateral: request.griefing_collateral,
 			vault_id: request.vault,
@@ -342,6 +342,10 @@ impl<T: Config> Pallet<T> {
 		externalized_envelopes_encoded: Vec<u8>,
 		transaction_set_encoded: Vec<u8>,
 	) -> Result<(), DispatchError> {
+		let mut issue = Self::get_issue_request_from_id(&issue_id)?;
+		// allow anyone to complete issue request
+		let requester = issue.requester.clone();
+
 		let transaction_envelope = ext::stellar_relay::construct_from_raw_encoded_xdr::<
 			T,
 			TransactionEnvelope,
@@ -356,10 +360,6 @@ impl<T: Config> Pallet<T> {
 			T,
 			TransactionSet,
 		>(&transaction_set_encoded)?;
-
-		let mut issue = Self::get_issue_request_from_id(&issue_id)?;
-		// allow anyone to complete issue request
-		let requester = issue.requester.clone();
 
 		// Verify that the transaction is valid
 		ext::stellar_relay::validate_stellar_transaction::<T>(
