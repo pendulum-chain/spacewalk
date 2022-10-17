@@ -53,6 +53,14 @@ pub(crate) mod stellar_relay {
 #[cfg_attr(test, mockable)]
 pub(crate) mod security {
 	use sp_core::H256;
+	use sp_runtime::DispatchError;
+
+	pub fn parachain_block_expired<T: crate::Config>(
+		opentime: T::BlockNumber,
+		period: T::BlockNumber,
+	) -> Result<bool, DispatchError> {
+		<security::Pallet<T>>::parachain_block_expired(opentime, period)
+	}
 
 	pub fn get_secure_id<T: crate::Config>(id: &T::AccountId) -> H256 {
 		<security::Pallet<T>>::get_secure_id(id)

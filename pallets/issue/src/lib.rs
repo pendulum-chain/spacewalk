@@ -462,45 +462,43 @@ impl<T: Config> Pallet<T> {
 		let issue = Self::get_pending_issue(&issue_id)?;
 
 		let issue_period = Self::issue_period().max(issue.period);
-		// let to_be_slashed_collateral = if ext::btc_relay::has_request_expired::<T>(
-		// 	issue.opentime,
-		// 	issue.btc_height,
-		// 	issue_period,
-		// )? {
-		// 	// anyone can cancel the issue request once expired
-		// 	issue.griefing_collateral()
-		// } else if issue.requester == requester {
-		// 	// slash/release griefing collateral proportionally to the time elapsed
-		// 	// NOTE: if global issue period increases requester will get more griefing collateral
-		// 	let blocks_elapsed =
-		// 		ext::security::active_block_number::<T>().saturating_sub(issue.opentime);
-		//
-		// 	let griefing_collateral = issue.griefing_collateral();
-		// 	let slashed_collateral = ext::vault_registry::calculate_collateral::<T>(
-		// 		&griefing_collateral,
-		// 		// NOTE: workaround since BlockNumber doesn't inherit Into<U256>
-		// 		&Amount::new(
-		// 			T::BlockNumberToBalance::convert(blocks_elapsed),
-		// 			griefing_collateral.currency(),
-		// 		),
-		// 		&Amount::new(
-		// 			T::BlockNumberToBalance::convert(issue_period),
-		// 			griefing_collateral.currency(),
-		// 		),
-		// 	)?
-		// 	// we can never slash more than the griefing collateral
-		// 	.min(&griefing_collateral)?;
-		//
-		// 	// refund anything not slashed
-		// 	let released_collateral = griefing_collateral.saturating_sub(&slashed_collateral)?;
-		// 	released_collateral.unlock_on(&requester)?;
-		//
-		// 	// TODO: update `issue.griefing_collateral`?
-		// 	slashed_collateral
-		// } else {
-		// 	return Err(Error::<T>::TimeNotExpired.into())
-		// };
-		let to_be_slashed_collateral = issue.griefing_collateral();
+		let to_be_slashed_collateral =
+			if ext::security::parachain_block_expired::<T>(issue.opentime, issue_period)? {
+				// anyone can cancel the issue request once expired
+				issue.griefing_collateral()
+			} else if issue.requester == requester {
+				// slash/release griefing collateral proportionally to the time elapsed
+				// NOTE: if global issue period increases requester will get more griefing
+				// collateral
+				let blocks_elapsed =
+					ext::security::active_block_number::<T>().saturating_sub(issue.opentime);
+
+				let griefing_collateral = issue.griefing_collateral();
+				let slashed_collateral = ext::vault_registry::calculate_collateral::<T>(
+					&griefing_collateral,
+					// NOTE: workaround since BlockNumber doesn't inherit Into<U256>
+					&Amount::new(
+						T::BlockNumberToBalance::convert(blocks_elapsed),
+						griefing_collateral.currency(),
+					),
+					&Amount::new(
+						T::BlockNumberToBalance::convert(issue_period),
+						griefing_collateral.currency(),
+					),
+				)?
+				// we can never slash more than the griefing collateral
+				.min(&griefing_collateral)?;
+
+				// refund anything not slashed
+				let released_collateral =
+					griefing_collateral.saturating_sub(&slashed_collateral)?;
+				released_collateral.unlock_on(&requester)?;
+
+				// TODO: update `issue.griefing_collateral`?
+				slashed_collateral
+			} else {
+				return Err(Error::<T>::TimeNotExpired.into())
+			};
 
 		if ext::vault_registry::is_vault_liquidated::<T>(&issue.vault)? {
 			// return slashed griefing collateral if the vault is liquidated

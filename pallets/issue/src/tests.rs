@@ -141,7 +141,7 @@ fn get_dummy_request_id() -> H256 {
 fn test_request_issue_banned_fails() {
 	run_test(|| {
 		let public_network = false;
-		let issue_asset = CurrencyId::Token(TokenSymbol::DOT);
+		let issue_asset = VAULT.wrapped_currency();
 
 		assert_ok!(<oracle::Pallet<Test>>::_set_exchange_rate(
 			DEFAULT_COLLATERAL_CURRENCY,
@@ -445,7 +445,7 @@ fn test_cancel_issue_not_found_fails() {
 fn test_cancel_issue_not_expired_and_not_requester_fails() {
 	run_test(|| {
 		let public_network = false;
-		let issue_asset = CurrencyId::Token(TokenSymbol::DOT);
+		let issue_asset = VAULT.wrapped_currency();
 		ext::vault_registry::get_active_vault_from_id::<Test>
 			.mock_safe(|_| MockResult::Return(Ok(init_zero_vault(VAULT))));
 
@@ -469,7 +469,7 @@ fn test_cancel_issue_not_expired_and_requester_succeeds() {
 			.mock_safe(move |_| MockResult::Return(Ok(griefing(100))));
 
 		let public_network = false;
-		let issue_asset = CurrencyId::Token(TokenSymbol::DOT);
+		let issue_asset = VAULT.wrapped_currency();
 		let issue_id = request_issue_ok(USER, 300, issue_asset, VAULT, public_network);
 
 		unsafe {
@@ -511,7 +511,7 @@ fn test_cancel_issue_expired_succeeds() {
 			.mock_safe(move |_| MockResult::Return(Ok(griefing(100))));
 
 		let public_network = false;
-		let issue_asset = CurrencyId::Token(TokenSymbol::DOT);
+		let issue_asset = VAULT.wrapped_currency();
 		let issue_id = request_issue_ok(USER, 300, issue_asset, VAULT, public_network);
 
 		unsafe {
