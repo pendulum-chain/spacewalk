@@ -16,6 +16,7 @@ pub struct StellarOverlayConnection {
     relay_message_receiver: mpsc::Receiver<StellarRelayMessage>,
     local_node: NodeInfo,
     cfg: ConnConfig,
+    /// Maximum retries for reconnection
     max_retries: u8,
 }
 
@@ -47,6 +48,8 @@ impl StellarOverlayConnection {
     /// Restarts the connection when lost.
     pub async fn listen(&mut self) -> Option<StellarRelayMessage> {
         let res = self.relay_message_receiver.recv().await;
+
+        // Reconnection only when the maximum number of retries has not been reached.
         if let Some(StellarRelayMessage::Timeout) = &res {
             while self.max_retries > 0 {
                 log::info!("Connection timed out. Reconnecting to {:?}...", &self.cfg.address);

@@ -5,7 +5,7 @@ A rust implementation of the [js-stellar-node-connector](https://github.com/stel
 The Stellar Relay acts as a mediator between the user(you) and the Stellar Node.
 
 ## Usage
-### Provide the `NodeInfo` and `ConnConfig`
+### Provide the `NodeInfo` and `ConnConfig` with `fn new(...)`
  The `NodeInfo` contains the information of the Stellar Node to connect to. Except the address and the port.
 ```rust
 pub struct NodeInfo {
@@ -36,16 +36,16 @@ pub struct ConnConfig {
     retries:u8
 }
 ```
+To specify the _timeout_ and the _# of retries_, use the function `new_with_timeout_and_retries(...)`.
 
-
-### Create the `UserControl`
-Given the `NodeInfo` and `ConnConfig`, connect to the Stellar Node using the `UserControl`.
+### Create the `StellarOverlayConnection`
+Given the `NodeInfo` and `ConnConfig`, connect to the Stellar Node using the `StellarOverlayConnection`.
 ```rust
-    let mut user = UserControls::connect(node_info, cfg).await?;
+     let mut overlay_connection = StellarOverlayConnection::connect(node_info, cfg).await?;
 ```
-The `UserControls` has 2 async methods to interact with the Stellar Node:
-* _` send(&self, message: StellarMessage)`_ -> for sending `StellarMessage`s to Stellar Node
-* _`recv(&mut self)`_ -> for receiving `StellarRelayMessage`s from the Stellar Relay.
+The `StellarOverlayConnection` has 2 async methods to interact with the Stellar Node:
+* _`send(&self, message: StellarMessage)`_ -> for sending `StellarMessage`s to Stellar Node
+* _`listen(&mut self)`_ -> for receiving `StellarRelayMessage`s from the Stellar Relay.
 
 ### Interpreting the `StellarRelayMessage`
 The `StellarRelayMessage` is an enum with the following variants:
@@ -58,11 +58,11 @@ For example, Stellar Relay will wait for 10 seconds to read from the existing tc
 ## Example
 In the `stellar-relay` directory, run this command:
 ```
- RUST_LOG=info cargo run --example connect mainnet
+ RUST_LOG=info cargo run --example connect
 ```
 and you should be able to see in the terminal:
 ```
-[2022-10-14T13:16:00Z INFO  connect] Connected to "Public Global Stellar Network ; September 2015" through "135.181.16.110"
+[2022-10-14T13:16:00Z INFO  connect] Connected to "Test SDF Network ; September 2015" through "135.181.16.110"
 [2022-10-14T13:16:00Z INFO  stellar_relay::connection::services] Starting Handshake with Hello.
 [2022-10-14T13:16:01Z INFO  stellar_relay::connection::connector::message_handler] Hello message processed successfully
 [2022-10-14T13:16:01Z INFO  stellar_relay::connection::connector::message_handler] Handshake completed
@@ -80,5 +80,24 @@ and you should be able to see in the terminal:
 [2022-10-14T13:16:02Z INFO  connect] R0E1U1RCTVY2UURYRkRHRDYyTUVITExIWlRQREk3N1UzUEZPRDJTRUxVNVJKREhRV0JSNU5OSzc= sent StellarMessage of type ScpStNominate  for ledger 43109751
 [2022-10-14T13:16:02Z INFO  connect] R0NHQjJTMktHWUFSUFZJQTM3SFlaWFZSTTJZWlVFWEE2UzMzWlU1QlVEQzZUSFNCNjJMWlNUWUg= sent StellarMessage of type ScpStPrepare for ledger 43109751
 ```
+
+Here is an example in the terminal when disconnection/reconnection happens:
+```
+[2022-10-17T05:56:47Z ERROR stellar_relay::connection::services] deadline has elapsed for reading messages from Stellar Node. Retry: 0
+[2022-10-17T05:56:47Z ERROR stellar_relay::connection::services] deadline has elapsed for receiving messages. Retry: 0
+[2022-10-17T05:56:57Z ERROR stellar_relay::connection::services] deadline has elapsed for reading messages from Stellar Node. Retry: 1
+[2022-10-17T05:56:57Z ERROR stellar_relay::connection::services] deadline has elapsed for receiving messages. Retry: 1
+[2022-10-17T05:57:07Z ERROR stellar_relay::connection::services] deadline has elapsed for reading messages from Stellar Node. Retry: 2
+[2022-10-17T05:57:07Z ERROR stellar_relay::connection::services] deadline has elapsed for receiving messages. Retry: 2
+[2022-10-17T05:57:17Z ERROR stellar_relay::connection::services] deadline has elapsed for reading messages from Stellar Node. Retry: 3
+[2022-10-17T05:57:17Z ERROR stellar_relay::connection::services] deadline has elapsed for receiving messages. Retry: 3
+[2022-10-17T05:57:17Z INFO  stellar_relay::connection::user_controls] reconnecting to "135.181.16.110".
+[2022-10-17T05:57:17Z ERROR stellar_relay::connection::user_controls] failed to reconnect! # of retries left: 2. Retrying in 3 seconds...
+[2022-10-17T05:57:20Z INFO  stellar_relay::connection::user_controls] reconnecting to "135.181.16.110".
+[2022-10-17T05:57:20Z INFO  stellar_relay::connection::services] Starting Handshake with Hello.
+[2022-10-17T05:57:21Z INFO  stellar_relay::connection::connector::message_handler] Hello message processed successfully
+[2022-10-17T05:57:21Z INFO  stellar_relay::connection::connector::message_handler] Handshake completed
+```
+
 
 todo: add multiple tests
