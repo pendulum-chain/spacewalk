@@ -64,7 +64,7 @@ cargo test
 ## Compile and run the testchain
 
 ```
-cargo run --release -- --dev
+cargo run --bin spacewalk-standalone --release -- --dev
 ```
 
 ## Run testchain without recompiling
