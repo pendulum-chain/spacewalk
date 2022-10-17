@@ -4,6 +4,11 @@ use orml_traits::MultiCurrency;
 use sp_arithmetic::FixedU128;
 use sp_core::H256;
 use sp_runtime::traits::One;
+use substrate_stellar_sdk::{
+	compound_types::LimitedVarArray,
+	types::{ScpEnvelope, TransactionSet, TransactionV1Envelope},
+	MuxedAccount, TransactionEnvelope, XdrCodec,
+};
 
 use currency::Amount;
 use primitives::{issue::IssueRequestStatus, StellarPublicKeyRaw, TokenSymbol};
@@ -81,8 +86,43 @@ fn request_issue_ok_with_address(
 	Issue::_request_issue(origin, amount, asset, vault, public_network).unwrap()
 }
 
+fn create_dummy_scp_structs(
+) -> (TransactionV1Envelope, LimitedVarArray<ScpEnvelope, 20>, TransactionSet) {
+	let tx = substrate_stellar_sdk::Transaction {
+		source_account: MuxedAccount::KeyTypeEd25519(RANDOM_STELLAR_PUBLIC_KEY),
+		fee: 100,
+		seq_num: 1,
+		operations: LimitedVarArray::new(vec![]).unwrap(),
+		cond: substrate_stellar_sdk::types::Preconditions::PrecondNone,
+		memo: substrate_stellar_sdk::Memo::MemoNone,
+		ext: substrate_stellar_sdk::types::TransactionExt::V0,
+	};
+	let tx_env = TransactionV1Envelope { tx, signatures: LimitedVarArray::new_empty() };
+
+	let scp_envelopes: LimitedVarArray<ScpEnvelope, 20> = LimitedVarArray::new_empty();
+
+	let transaction_set = TransactionSet {
+		previous_ledger_hash: Default::default(),
+		txes: LimitedVarArray::new_empty(),
+	};
+
+	(tx_env, scp_envelopes, transaction_set)
+}
+
 fn execute_issue(origin: AccountId, issue_id: &H256) -> Result<(), DispatchError> {
-	Issue::_execute_issue(origin, *issue_id, vec![0u8; 100], vec![0u8; 100], vec![0u8; 100])
+	let (tx_env, scp_envelopes, transaction_set) = create_dummy_scp_structs();
+
+	let transaction_envelope_xdr_encoded = base64::encode(&tx_env.to_xdr());
+	let scp_envelopes_xdr_encoded = base64::encode(&scp_envelopes.to_xdr());
+	let transaction_set_xdr_encoded = base64::encode(&transaction_set.to_xdr());
+
+	Issue::_execute_issue(
+		origin,
+		*issue_id,
+		transaction_envelope_xdr_encoded.as_bytes().to_vec(),
+		scp_envelopes_xdr_encoded.as_bytes().to_vec(),
+		transaction_set_xdr_encoded.as_bytes().to_vec(),
+	)
 }
 
 fn cancel_issue(origin: AccountId, issue_id: &H256) -> Result<(), DispatchError> {
@@ -191,7 +231,7 @@ fn setup_execute(
 	issue_asset: CurrencyId,
 	issue_fee: Balance,
 	griefing_collateral: Balance,
-	btc_transferred: Balance,
+	amount_transferred: Balance,
 	public_network: bool,
 ) -> H256 {
 	ext::vault_registry::get_active_vault_from_id::<Test>
@@ -206,6 +246,11 @@ fn setup_execute(
 	let issue_id = request_issue_ok(USER, issue_amount, issue_asset, VAULT, public_network);
 	<security::Pallet<Test>>::set_active_block_number(5);
 
+	ext::stellar_relay::validate_stellar_transaction::<Test>
+		.mock_safe(move |_, _, _, _| MockResult::Return(Ok(())));
+	ext::stellar_relay::get_amount_from_transaction_envelope::<Test, Balance>
+		.mock_safe(move |_, _, _| MockResult::Return(Ok(amount_transferred)));
+
 	issue_id
 }
 
@@ -213,23 +258,36 @@ fn setup_execute(
 fn test_execute_issue_succeeds() {
 	run_test(|| {
 		let public_network = false;
-		let issue_asset = CurrencyId::Token(TokenSymbol::DOT);
-		let issue_id = setup_execute(3, issue_asset, 1, 1, 3, public_network);
+		// TODO change this to a custom asset
+		let issue_asset = VAULT.wrapped_currency();
+		let issue_amount = 3;
+		let issue_fee = 1;
+		let griefing_collateral = 1;
+		let amount_transferred = 3;
+		let issue_id = setup_execute(
+			issue_amount,
+			issue_asset,
+			issue_fee,
+			griefing_collateral,
+			amount_transferred,
+			public_network,
+		);
+
 		assert_ok!(execute_issue(USER, &issue_id));
 
 		let execute_issue_event = TestEvent::Issue(Event::ExecuteIssue {
 			issue_id,
 			requester: USER,
 			vault_id: VAULT,
-			amount: 3,
+			amount: issue_amount,
 			asset: issue_asset,
 			public_network: false,
-			fee: 1,
+			fee: issue_fee,
 		});
 		assert!(System::events().iter().any(|a| a.event == execute_issue_event));
 		assert!(matches!(
 			Issue::issue_requests(&issue_id),
-			Some(IssueRequest { griefing_collateral: 1, amount: 2, fee: 1, .. })
+			Some(IssueRequest { griefing_collateral, amount: issue_amount, fee: issue_fee, .. })
 		));
 
 		assert_noop!(cancel_issue(USER, &issue_id), TestError::IssueCompleted);
@@ -240,8 +298,19 @@ fn test_execute_issue_succeeds() {
 fn test_execute_issue_overpayment_succeeds() {
 	run_test(|| {
 		let public_network = false;
-		let issue_asset = CurrencyId::Token(TokenSymbol::DOT);
-		let issue_id = setup_execute(3, issue_asset, 0, 0, 5, public_network);
+		let issue_asset = VAULT.wrapped_currency();
+		let issue_amount = 3;
+		let amount_transferred = 5;
+		let issue_fee = 0;
+		let griefing_collateral = 0;
+		let issue_id = setup_execute(
+			issue_amount,
+			issue_asset,
+			issue_fee,
+			griefing_collateral,
+			amount_transferred,
+			public_network,
+		);
 		unsafe {
 			let mut increase_tokens_called = false;
 
@@ -272,8 +341,19 @@ fn test_execute_issue_overpayment_succeeds() {
 fn test_execute_issue_overpayment_up_to_max_succeeds() {
 	run_test(|| {
 		let public_network = false;
-		let issue_asset = CurrencyId::Token(TokenSymbol::DOT);
-		let issue_id = setup_execute(3, issue_asset, 0, 0, 10, public_network);
+		let issue_asset = VAULT.wrapped_currency();
+		let issue_amount = 3;
+		let amount_transferred = 10;
+		let issue_fee = 0;
+		let griefing_collateral = 0;
+		let issue_id = setup_execute(
+			issue_amount,
+			issue_asset,
+			issue_fee,
+			griefing_collateral,
+			amount_transferred,
+			public_network,
+		);
 		unsafe {
 			let mut increase_tokens_called = false;
 
@@ -304,8 +384,19 @@ fn test_execute_issue_overpayment_up_to_max_succeeds() {
 fn test_execute_issue_underpayment_succeeds() {
 	run_test(|| {
 		let public_network = false;
-		let issue_asset = CurrencyId::Token(TokenSymbol::DOT);
-		let issue_id = setup_execute(10, issue_asset, 0, 20, 1, public_network);
+		let issue_asset = VAULT.wrapped_currency();
+		let issue_amount = 10;
+		let amount_transferred = 1;
+		let issue_fee = 0;
+		let griefing_collateral = 20;
+		let issue_id = setup_execute(
+			issue_amount,
+			issue_asset,
+			issue_fee,
+			griefing_collateral,
+			amount_transferred,
+			public_network,
+		);
 		unsafe {
 			let mut transfer_funds_called = false;
 			ext::vault_registry::transfer_funds::<Test>.mock_raw(|from, to, amount| {

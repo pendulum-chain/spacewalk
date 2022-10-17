@@ -132,8 +132,6 @@ pub mod pallet {
 		InvalidExecutor,
 		/// Issue amount is too small.
 		AmountBelowDustAmount,
-		AmountTransferredDoesNotMatch,
-		TryFromIntError,
 	}
 
 	/// Users create issue requests to issue tokens. This mapping provides access
@@ -374,10 +372,6 @@ impl<T: Config> Pallet<T> {
 			BalanceOf<T>,
 		>(&transaction_envelope, issue.stellar_address, &issue.asset)?;
 		let amount_transferred = Amount::new(amount_transferred, issue.asset);
-		ensure!(
-			amount_transferred.amount() == issue.amount,
-			Error::<T>::AmountTransferredDoesNotMatch
-		);
 
 		let expected_total_amount = issue.amount().checked_add(&issue.fee())?;
 
