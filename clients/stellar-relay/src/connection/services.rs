@@ -280,11 +280,11 @@ pub(crate) async fn connection_handler(
     mut actions_receiver: mpsc::Receiver<ConnectorActions>,
     mut w_stream: tcp::OwnedWriteHalf,
 ) -> Result<(), Error> {
-    let mut retry = 0;
+    let mut timeout_counter = 0;
     loop {
         match timeout(Duration::from_secs(connector.timeout_in_secs), actions_receiver.recv()).await {
             Ok(Some(action)) => {
-                retry = 0;
+                timeout_counter = 0;
                 _connection_handler(action, &mut connector, &mut w_stream).await?;
             }
 
@@ -292,14 +292,14 @@ pub(crate) async fn connection_handler(
 
             Err(elapsed) => {
                 log::error!("{} for receiving messages. Retry: {}", elapsed.to_string(), retry);
-                if retry >= connector.retries {
+                if timeout_counter >= connector.retries {
                     connector.send_to_user(StellarRelayMessage::Timeout).await?;
                     return Err(Error::ConnectionFailed(format!(
                         "TIMED OUT! elapsed time: {:?}",
                         elapsed.to_string()
                     )));
                 }
-                retry += 1;
+                timeout_counter += 1;
             }
         }
     }
