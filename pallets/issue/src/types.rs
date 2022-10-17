@@ -1,10 +1,5 @@
-use codec::{Decode, Encode, MaxEncodedLen};
-use frame_support::traits::Get;
-use scale_info::TypeInfo;
-use serde::{Deserialize, Deserializer, Serialize, Serializer};
-use substrate_stellar_sdk::types::Uint256;
-
 use currency::Amount;
+use frame_support::traits::Get;
 pub use primitives::issue::{IssueRequest, IssueRequestStatus};
 use primitives::VaultId;
 pub use vault_registry::types::CurrencyId;

@@ -9,7 +9,6 @@
 extern crate mocktopus;
 
 use frame_support::{dispatch::DispatchError, ensure, traits::Get, transactional};
-use frame_system::{ensure_root, ensure_signed};
 #[cfg(test)]
 use mocktopus::macros::mockable;
 use sp_core::H256;
@@ -17,8 +16,8 @@ use sp_runtime::traits::{Convert, Saturating};
 use sp_std::vec::Vec;
 use substrate_stellar_sdk::{
 	compound_types::UnlimitedVarArray,
-	types::{OperationBody, ScpEnvelope, TransactionSet},
-	Asset, TransactionEnvelope, XdrCodec,
+	types::{ScpEnvelope, TransactionSet},
+	TransactionEnvelope,
 };
 
 use currency::Amount;

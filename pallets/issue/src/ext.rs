@@ -3,15 +3,13 @@ use mocktopus::macros::mockable;
 
 #[cfg_attr(test, mockable)]
 pub(crate) mod stellar_relay {
-	use frame_support::dispatch::DispatchError;
 	use sp_std::convert::TryFrom;
 	use substrate_stellar_sdk::{
 		compound_types::UnlimitedVarArray,
-		types::{ScpEnvelope, TransactionSet, Uint256},
+		types::{ScpEnvelope, TransactionSet},
 		TransactionEnvelope, XdrCodec,
 	};
 
-	use currency::Amount;
 	use primitives::StellarPublicKeyRaw;
 	use stellar_relay::Error;
 
@@ -75,7 +73,6 @@ pub(crate) mod security {
 pub(crate) mod vault_registry {
 	use frame_support::dispatch::{DispatchError, DispatchResult};
 	use sp_core::H256;
-	use substrate_stellar_sdk::PublicKey;
 
 	use primitives::StellarPublicKeyRaw;
 	use vault_registry::{

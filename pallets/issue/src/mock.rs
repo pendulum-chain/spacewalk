@@ -17,7 +17,7 @@ pub use primitives::{CurrencyId, CurrencyId::Token, TokenSymbol::*};
 use primitives::{VaultCurrencyPair, VaultId};
 
 use crate as issue;
-use crate::{ext, Config, Error};
+use crate::{Config, Error};
 
 type TestExtrinsic = TestXt<Call, ()>;
 type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Test>;

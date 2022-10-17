@@ -7,11 +7,11 @@ use sp_runtime::traits::One;
 use substrate_stellar_sdk::{
 	compound_types::LimitedVarArray,
 	types::{ScpEnvelope, TransactionSet, TransactionV1Envelope},
-	MuxedAccount, TransactionEnvelope, XdrCodec,
+	MuxedAccount, XdrCodec,
 };
 
 use currency::Amount;
-use primitives::{issue::IssueRequestStatus, StellarPublicKeyRaw, TokenSymbol};
+use primitives::{issue::IssueRequestStatus, StellarPublicKeyRaw};
 use vault_registry::{DefaultVault, DefaultVaultId, Vault, VaultStatus};
 
 use crate::{ext, mock::*, Event, IssueRequest};
