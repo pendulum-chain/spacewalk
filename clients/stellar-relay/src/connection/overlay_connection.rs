@@ -51,7 +51,8 @@ impl StellarOverlayConnection {
 
         // Reconnection only when the maximum number of retries has not been reached.
         if let Some(StellarRelayMessage::Timeout) = &res {
-            while self.max_retries > 0 {
+            let mut retries = 0;
+            while retries < self.max_retries {
                 log::info!("Connection timed out. Reconnecting to {:?}...", &self.cfg.address);
                 if let Ok(new_user) = StellarOverlayConnection::connect(self.local_node.clone(), self.cfg.clone()).await
                 {
@@ -61,7 +62,7 @@ impl StellarOverlayConnection {
                     log::info!("Reconnected to {:?}!", &self.cfg.address);
                     return self.relay_message_receiver.recv().await;
                 } else {
-                    self.max_retries -= 1;
+                    retries += 1;
                     log::error!(
                         "Failed to reconnect! # of retries left: {}. Retrying in 3 seconds...",
                         self.max_retries
