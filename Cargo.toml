@@ -8,6 +8,7 @@ members = [
   "primitives",
   "rpc",
   "pallets/spacewalk",
+  "pallets/stellar-relay",
 ]
 
 [profile.release]
