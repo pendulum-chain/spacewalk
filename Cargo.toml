@@ -5,6 +5,7 @@ members = [
   "clients/runtime",
   "clients/vault",
   "clients/service",
+  "clients/stellar-relay",
   "primitives",
   "rpc",
   "pallets/spacewalk",
