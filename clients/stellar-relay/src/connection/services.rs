@@ -291,7 +291,7 @@ pub(crate) async fn connection_handler(
             Ok(None) => {}
 
             Err(elapsed) => {
-                log::error!("{} for receiving messages. Retry: {}", elapsed.to_string(), retry);
+                log::error!("{} for receiving messages.", elapsed.to_string());
                 if timeout_counter >= connector.retries {
                     connector.send_to_user(StellarRelayMessage::Timeout).await?;
                     return Err(Error::ConnectionFailed(format!(
