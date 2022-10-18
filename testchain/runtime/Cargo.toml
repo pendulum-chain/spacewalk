@@ -51,7 +51,15 @@ orml-currencies = {git = "https://github.com/open-web3-stack/open-runtime-module
 orml-tokens = {git = "https://github.com/open-web3-stack/open-runtime-module-library", branch = "polkadot-v0.9.24", default-features = false}
 orml-traits = {git = "https://github.com/open-web3-stack/open-runtime-module-library", branch = "polkadot-v0.9.24", default-features = false}
 
-pallet-spacewalk = {path = "../../pallets/spacewalk", default-features = false}
+currency = { path = "../../pallets/currency", default-features = false }
+security = { path = "../../pallets/security", default-features = false }
+vault-registry = { path = "../../pallets/vault-registry", default-features = false }
+oracle = { path = "../../pallets/oracle", default-features = false }
+fee = { path = "../../pallets/fee", default-features = false }
+nomination = { path = "../../pallets/nomination", default-features = false }
+reward = { path = "../../pallets/reward", default-features = false }
+staking = { path = "../../pallets/staking", default-features = false }
+
 pallet-stellar-relay = {path = "../../pallets/stellar-relay", default-features = false}
 
 primitives = {package = "spacewalk-primitives", path = "../../primitives", default-features = false}
@@ -91,13 +99,20 @@ std = [
   "pallet-aura/std",
   "pallet-balances/std",
   "pallet-grandpa/std",
-  "pallet-spacewalk/std",
   "pallet-stellar-relay/std",
   "pallet-sudo/std",
   "pallet-timestamp/std",
   "pallet-transaction-payment-rpc-runtime-api/std",
   "pallet-transaction-payment/std",
   "primitives/std",
+  "currency/std",
+  "security/std",
+  "vault-registry/std",
+  "oracle/std",
+  "fee/std",
+  "nomination/std",
+  "reward/std",
+  "staking/std",
   "sp-api/std",
   "sp-block-builder/std",
   "sp-consensus-aura/std",

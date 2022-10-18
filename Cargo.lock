@@ -7398,6 +7398,8 @@ dependencies = [
 name = "spacewalk-runtime-standalone"
 version = "1.2.0"
 dependencies = [
+ "currency",
+ "fee",
  "flate2",
  "frame-benchmarking",
  "frame-executive",
@@ -7409,13 +7411,14 @@ dependencies = [
  "hex",
  "hex-literal 0.3.4",
  "mocktopus",
+ "nomination",
+ "oracle",
  "orml-currencies",
  "orml-tokens",
  "orml-traits",
  "pallet-aura",
  "pallet-balances",
  "pallet-grandpa",
- "pallet-spacewalk",
  "pallet-stellar-relay",
  "pallet-sudo",
  "pallet-timestamp",
@@ -7423,7 +7426,9 @@ dependencies = [
  "pallet-transaction-payment-rpc-runtime-api",
  "parity-scale-codec",
  "pretty_assertions",
+ "reward",
  "scale-info",
+ "security",
  "serde_json",
  "sp-api",
  "sp-block-builder",
@@ -7438,7 +7443,9 @@ dependencies = [
  "sp-transaction-pool",
  "sp-version",
  "spacewalk-primitives",
+ "staking",
  "substrate-wasm-builder",
+ "vault-registry",
 ]
 
 [[package]]
