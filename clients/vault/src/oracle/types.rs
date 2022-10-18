@@ -15,11 +15,11 @@ pub(crate) type SlotEncodedMap = BTreeMap<Slot, SerializedData>;
 /// Sometimes not enough `StellarMessage::ScpMessage(...)` are sent per slot;
 /// or that the `Stellar:message::TxSet(...)` took too long to arrive (may not even arrive at all)
 /// So I've kept both of them separate: the `EnvelopesMap` and the `TxSetMap`
-pub type EnvelopesMap = BTreeMap<Slot, Vec<ScpEnvelope>>;
-pub type TxSetMap = BTreeMap<Slot, TransactionSet>;
+pub(crate) type EnvelopesMap = BTreeMap<Slot, Vec<ScpEnvelope>>;
+pub(crate) type TxSetMap = BTreeMap<Slot, TransactionSet>;
 
-pub type TxHashMap = HashMap<TxHash, Slot>;
+pub(crate) type TxHashMap = HashMap<TxHash, Slot>;
 
 /// The slot is not found in the `StellarMessage::TxSet(...)`, therefore this map
 /// serves as a holder of the slot when we hash the txset.
-pub type TxSetCheckerMap = HashMap<TxSetHash, Slot>;
+pub(crate) type TxSetCheckerMap = HashMap<TxSetHash, Slot>;

@@ -6,7 +6,7 @@ mod horizon;
 mod redeem;
 mod system;
 
-pub mod stellar_oracle;
+pub mod oracle;
 
 pub mod service {
 	pub use crate::{
