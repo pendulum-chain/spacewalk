@@ -18,6 +18,7 @@ use std::time::Duration;
 pub use system::{VaultService, VaultServiceConfig, ABOUT, AUTHORS, NAME, VERSION};
 
 pub use crate::error::Error;
+use crate::oracle::ScpMessageHandler;
 
 /// At startup we wait until a new block has arrived before we start event listeners.
 /// This constant defines the rate at which we check whether the chain height has increased.

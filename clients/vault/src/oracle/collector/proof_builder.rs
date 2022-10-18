@@ -1,8 +1,8 @@
 use crate::oracle::{
-	traits::FileHandler, EnvelopesFileHandler, ScpEnvelope, ScpMessageCollector, Slot,
-	TransactionEnvelope, TransactionSet, TxHash, TxSetsFileHandler,
+	traits::FileHandler, EnvelopesFileHandler, ScpMessageCollector, Slot, TxHash, TxSetsFileHandler,
 };
-use stellar_relay::sdk::{compound_types::UnlimitedVarArray, XdrCodec};
+use stellar_relay::sdk::{compound_types::UnlimitedVarArray, TransactionEnvelope, XdrCodec};
+use stellar_relay::sdk::types::{ScpEnvelope, TransactionSet};
 
 /// Determines whether the data retrieved is from the current map or from a file.
 type DataFromFile<T> = (T, bool);
@@ -35,11 +35,11 @@ impl ScpMessageCollector {
 		if self.is_public() {
 			// if the list does not come from a file, meaning there's still a chance to get more envelopes.
 			if envelopes.len() < 20 && !is_from_file {
-				log::warn!("Not yet enough envelopes to build proof, current amount {:?}. Retrying in next loop...", envelopes.len());
+				tracing::warn!("Not yet enough envelopes to build proof, current amount {:?}. Retrying in next loop...", envelopes.len());
 				return Err(ProofStatus::LackingEnvelopes)
 			}
 		} else if envelopes.len() < 2 && !is_from_file {
-			log::warn!("Not yet enough envelopes to build proof, current amount {:?}. Retrying in next loop...", envelopes.len());
+			tracing::warn!("Not yet enough envelopes to build proof, current amount {:?}. Retrying in next loop...", envelopes.len());
 			return Err(ProofStatus::LackingEnvelopes)
 		}
 
@@ -53,7 +53,7 @@ impl ScpMessageCollector {
 			match EnvelopesFileHandler::get_map_from_archives(slot) {
 				Ok(env_map) => env_map.get(&slot).map(|envs| (envs.clone(), true)),
 				Err(e) => {
-					log::warn!("Failed to read envelopes map from a file: {:?}", e);
+					tracing::warn!("Failed to read envelopes map from a file: {:?}", e);
 					None
 				},
 			}

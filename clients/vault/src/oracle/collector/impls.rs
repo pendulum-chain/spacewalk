@@ -1,6 +1,5 @@
 use parking_lot::RwLock;
 use std::sync::Arc;
-use tracing::log;
 use stellar_relay::{
 	helper::compute_non_generic_tx_set_content_hash,
 	sdk::{
@@ -13,6 +12,7 @@ use crate::oracle::collector::{check_memo, EncodedProof, get_tx_set_hash, ProofS
 use crate::oracle::constants::{MAX_SLOTS_PER_FILE, MAX_TXSETS_PER_FILE, MIN_EXTERNALIZED_MESSAGES};
 use crate::oracle::errors::Error;
 use crate::oracle::storage::{EnvelopesFileHandler, TxSetsFileHandler};
+use crate::oracle::storage::traits::FileHandlerExt;
 use crate::oracle::TxHandler;
 use crate::oracle::types::{Slot, TxSetCheckerMap, TxSetMap};
 
@@ -61,7 +61,7 @@ impl ScpMessageCollector {
 			if let Some(value) = envelopes_map.get_mut(&slot) {
 				value.push(env);
 			} else {
-				log::info!("Adding received SCP envelopes for slot {}", slot);
+				tracing::info!("Adding received SCP envelopes for slot {}", slot);
 				envelopes_map.insert(slot, vec![env]);
 			}
 		}
@@ -81,7 +81,7 @@ impl ScpMessageCollector {
 			return Ok(())
 		}
 
-		log::debug!("Size of envelopes map exceeds limit. Writing it to file...");
+		tracing::debug!("Size of envelopes map exceeds limit. Writing it to file...");
 
 		let mut counter = 0;
 		while let Some(slot) = slots.next() {
@@ -98,11 +98,11 @@ impl ScpMessageCollector {
                     // then we don't need to wait for more messages.
                     && (current_slot - *slot) < MAX_DISTANCE_FROM_CURRENT_SLOT
 				{
-					log::warn!("slot: {} not enough messages. Let's wait for more.", slot);
+					tracing::warn!("slot: {} not enough messages. Let's wait for more.", slot);
 					break
 				}
 			} else {
-				log::error!("something wrong??? race condition?");
+				tracing::error!("something wrong??? race condition?");
 				// something wrong??? race condition?
 				break
 			}
@@ -118,9 +118,9 @@ impl ScpMessageCollector {
 	fn write_envelopes_to_file(&mut self, last_slot: Slot) -> Result<(), Error> {
 		let new_slot_map = self.envelopes_map_mut().split_off(&last_slot);
 		let res = EnvelopesFileHandler::write_to_file(&self.envelopes_map())?;
-		log::info!("writing old envelopes map to file: {}",res);
+		tracing::info!("writing old envelopes map to file: {}",res);
 		self.envelopes_map = Arc::new(RwLock::new(new_slot_map));
-		log::debug!("Oldest slot # is: {:?}", last_slot);
+		tracing::debug!("Oldest slot # is: {:?}", last_slot);
 
 		Ok(())
 	}
@@ -154,7 +154,7 @@ impl ScpMessageCollector {
 			// save the txs if the txset with the tx's hash as the key.
 			self.update_tx_hash_map(slot, set, filter).await?;
 		} else {
-			log::warn!("WARNING! tx_set_hash: {:?} has no slot.", tx_set_hash);
+			tracing::warn!("WARNING! tx_set_hash: {:?} has no slot.", tx_set_hash);
 		}
 
 		Ok(())
@@ -167,10 +167,10 @@ impl ScpMessageCollector {
 			return Ok(())
 		}
 
-		log::info!("saving old transactions to file: {:?}", self.txset_map().keys());
+		tracing::info!("saving old transactions to file: {:?}", self.txset_map().keys());
 
 		let filename = TxSetsFileHandler::write_to_file(&self.txset_map())?;
-		log::info!("new file created: {:?}", filename);
+		tracing::info!("new file created: {:?}", filename);
 
 		// todo: how to appropriately store the tx_hash_map that would make lookup easier?
 		// see Marcel's comment:
@@ -200,7 +200,7 @@ impl ScpMessageCollector {
 		tx_set: &TransactionSet,
 		filter: &(dyn TxHandler<TransactionEnvelope> + Send + Sync),
 	) -> Result<(), Error> {
-		log::info!("Inserting received transaction set for slot {}", slot);
+		tracing::info!("Inserting received transaction set for slot {}", slot);
 
 		// Collect tx hashes to save to file.
 		tx_set.txes.get_vec().iter().for_each(|tx_env| {
@@ -292,19 +292,19 @@ impl ScpMessageCollector {
 			// include a payment to our vault address
 			return false
 		} else {
-			log::info!("Transaction to our vault address received.");
+			tracing::info!("Transaction to our vault address received.");
 			let source = transaction.source_account.clone();
 			for payment_op in payment_ops_to_vault_address {
 				let destination = payment_op.destination.clone();
 				// let amount = payment_op.amount;
 				// let asset = payment_op.asset.clone();
-				// log::info!("Deposit amount {:?} stroops", amount);
+				// tracing::info!("Deposit amount {:?} stroops", amount);
 				// print_asset(asset);
-				log::info!(
+				tracing::info!(
 					"From {:#?}",
 					std::str::from_utf8(source.to_encoding().as_slice()).unwrap()
 				);
-				log::info!(
+				tracing::info!(
 					"To {:?}",
 					std::str::from_utf8(destination.to_encoding().as_slice()).unwrap()
 				);

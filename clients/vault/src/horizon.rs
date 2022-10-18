@@ -18,8 +18,8 @@ use stellar::{
 	types::{AlphaNum12, AlphaNum4},
 	Asset, PublicKey,
 };
-use substrate_stellar_sdk as stellar;
-use substrate_stellar_sdk::types::AssetType;
+use stellar_relay::sdk as stellar;
+use stellar_relay::sdk::types::AssetType;
 
 // This represents each record for a transaction in the Horizon API response
 #[derive(Deserialize, Encode, Decode, Default, Debug)]
