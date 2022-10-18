@@ -1,14 +1,22 @@
+use frame_support::error::LookupError;
+use sp_core::ed25519;
+use sp_runtime::{
+	traits::{IdentifyAccount, StaticLookup, Convert},
+	AccountId32, MultiSigner,
+};
+use sp_std::{str::from_utf8, vec::Vec};
 use sp_runtime::scale_info::TypeInfo;
 use sp_std::{
 	convert::{From, TryFrom, TryInto},
 	fmt, str,
 };
 
+use substrate_stellar_sdk as stellar;
 use stellar::{
 	types::{AlphaNum12, AlphaNum4},
+	Asset,
 	PublicKey,
 };
-use substrate_stellar_sdk as stellar;
 
 use codec::{Decode, Encode, MaxEncodedLen};
 
@@ -124,106 +132,78 @@ impl fmt::Debug for CurrencyId {
 	}
 }
 
-#[cfg(test)]
-mod tests {
-	use substrate_stellar_sdk::{
-		types::{AlphaNum12, AlphaNum4},
-		Asset, PublicKey,
-	};
+pub struct CurrencyConversion;
 
-	use crate::currency::AssetIssuer;
+fn to_look_up_error(_: &'static str) -> LookupError {
+	LookupError
+}
 
-	use super::CurrencyId;
+impl StaticLookup for CurrencyConversion {
+	type Source = CurrencyId;
+	type Target = Asset;
 
-	#[test]
-	fn test_from() {
-		let account =
-			PublicKey::from_encoding("GAKNDFRRWA3RPWNLTI3G4EBSD3RGNZZOY5WKWYMQ6CQTG3KIEKPYWAYC")
-				.expect("invalid key encoding");
-		let mut code_a4: [u8; 4] = [0; 4];
-		code_a4.copy_from_slice("EURO".as_bytes());
-
-		let currency_native = CurrencyId::from(Asset::AssetTypeNative);
-		assert_eq!(currency_native, CurrencyId::StellarNative);
-
-		let currency_a4 = CurrencyId::from(Asset::AssetTypeCreditAlphanum4(AlphaNum4 {
-			asset_code: code_a4,
-			issuer: account.clone(),
-		}));
-		assert_eq!(
-			currency_a4,
-			CurrencyId::AlphaNum4 { code: code_a4, issuer: *account.as_binary() }
-		);
-
-		let mut code_a12: [u8; 12] = [0; 12];
-		code_a12.copy_from_slice("AmericaDolar".as_bytes());
-
-		let currency_12 = CurrencyId::from(Asset::AssetTypeCreditAlphanum12(AlphaNum12 {
-			asset_code: code_a12,
-			issuer: account.clone(),
-		}));
-		assert_eq!(
-			currency_12,
-			CurrencyId::AlphaNum12 { code: code_a12, issuer: *account.as_binary() }
-		);
+	fn lookup(
+		currency_id: <Self as StaticLookup>::Source,
+	) -> Result<<Self as StaticLookup>::Target, LookupError> {
+		let asset_conversion_result: Result<Asset, &str> = currency_id.try_into();
+		asset_conversion_result.map_err(to_look_up_error)
 	}
 
-	#[test]
-	fn test_try_from() {
-		let account =
-			PublicKey::from_encoding("GAKNDFRRWA3RPWNLTI3G4EBSD3RGNZZOY5WKWYMQ6CQTG3KIEKPYWAYC")
-				.expect("invalid key encoding");
-		let mut code_a4: [u8; 4] = [0; 4];
-		code_a4.copy_from_slice("EURO".as_bytes());
-		let mut code_a12: [u8; 12] = [0; 12];
-		code_a12.copy_from_slice("AmericaDolar".as_bytes());
+	fn unlookup(stellar_asset: <Self as StaticLookup>::Target) -> <Self as StaticLookup>::Source {
+		CurrencyId::from(stellar_asset)
+	}
+}
 
-		let currency_a4 =
-			CurrencyId::try_from(("EURO", AssetIssuer::from(*account.as_binary()))).unwrap();
-		assert_eq!(
-			currency_a4,
-			CurrencyId::AlphaNum4 { code: code_a4, issuer: *account.as_binary() }
-		);
+pub struct StringCurrencyConversion;
 
-		let currency_a12 =
-			CurrencyId::try_from(("AmericaDolar", AssetIssuer::from(*account.as_binary())))
-				.unwrap();
-		assert_eq!(
-			currency_a12,
-			CurrencyId::AlphaNum12 { code: code_a12, issuer: *account.as_binary() }
-		);
+impl Convert<(Vec<u8>, Vec<u8>), Result<CurrencyId, ()>> for StringCurrencyConversion {
+	fn convert(a: (Vec<u8>, Vec<u8>)) -> Result<CurrencyId, ()> {
+		let public_key = PublicKey::from_encoding(a.1).map_err(|_| ())?;
+		let asset_code = from_utf8(a.0.as_slice()).map_err(|_| ())?;
+		(asset_code, public_key.into_binary()).try_into().map_err(|_| ())
+	}
+}
+
+
+pub struct BalanceConversion;
+
+impl StaticLookup for BalanceConversion {
+	type Source = u128;
+	type Target = i64;
+
+	fn lookup(pendulum_balance: Self::Source) -> Result<Self::Target, LookupError> {
+		let stroops128: u128 = pendulum_balance / 100000;
+
+		if stroops128 > i64::MAX as u128 {
+			Err(LookupError)
+		} else {
+			Ok(stroops128 as i64)
+		}
 	}
 
-	#[test]
-	fn test_try_into() {
-		let account =
-			PublicKey::from_encoding("GAKNDFRRWA3RPWNLTI3G4EBSD3RGNZZOY5WKWYMQ6CQTG3KIEKPYWAYC")
-				.expect("invalid key encoding");
-		let mut code_a4: [u8; 4] = [0; 4];
-		code_a4.copy_from_slice("EURO".as_bytes());
-		let mut code_a12: [u8; 12] = [0; 12];
-		code_a12.copy_from_slice("AmericaDolar".as_bytes());
-
-		let currency_a4: CurrencyId = Asset::AssetTypeCreditAlphanum4(AlphaNum4 {
-			asset_code: code_a4,
-			issuer: account.clone(),
-		})
-		.try_into()
-		.unwrap();
-		assert_eq!(
-			currency_a4,
-			CurrencyId::AlphaNum4 { code: code_a4, issuer: *account.as_binary() }
-		);
-
-		let currency_a12: CurrencyId = Asset::AssetTypeCreditAlphanum12(AlphaNum12 {
-			asset_code: code_a12,
-			issuer: account.clone(),
-		})
-		.try_into()
-		.unwrap();
-		assert_eq!(
-			currency_a12,
-			CurrencyId::AlphaNum12 { code: code_a12, issuer: *account.as_binary() }
-		);
+	fn unlookup(stellar_stroops: Self::Target) -> Self::Source {
+		(stellar_stroops * 100000) as u128
 	}
+}
+
+pub struct AddressConversion;
+
+impl StaticLookup for AddressConversion {
+	type Source = AccountId32;
+	type Target = stellar::PublicKey;
+
+	fn lookup(key: Self::Source) -> Result<Self::Target, LookupError> {
+		// We just assume (!) an Ed25519 key has been passed to us
+		Ok(stellar::PublicKey::from_binary(key.into()) as stellar::PublicKey)
+	}
+
+	fn unlookup(stellar_addr: stellar::PublicKey) -> Self::Source {
+		MultiSigner::Ed25519(ed25519::Public::from_raw(*stellar_addr.as_binary())).into_account()
+	}
+}
+
+/// Error type for key decoding errors
+#[derive(Debug)]
+pub enum AddressConversionError {
+	//     UnexpectedKeyType
 }

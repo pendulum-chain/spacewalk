@@ -1,5 +1,7 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
+pub mod currency;
+
 pub use sp_core::H256;
 pub use sp_runtime::OpaqueExtrinsic as UncheckedExtrinsic;
 use sp_runtime::{

@@ -16,6 +16,12 @@ use orml_traits::parameter_type_with_key;
 use pallet_grandpa::{
 	fg_primitives, AuthorityId as GrandpaId, AuthorityList as GrandpaAuthorityList,
 };
+use primitives::currency::{
+	AddressConversion as StellarAddressConversion,
+	BalanceConversion as StellarBalanceConversion,
+	CurrencyConversion as StellarCurrencyConversion,
+	StringCurrencyConversion as StellarStringCurrencyConversion,
+};
 use sp_api::impl_runtime_apis;
 use sp_consensus_aura::ed25519::AuthorityId as AuraId;
 use sp_core::{crypto::KeyTypeId, OpaqueMetadata};
@@ -30,19 +36,10 @@ use sp_std::prelude::*;
 use sp_version::NativeVersion;
 use sp_version::RuntimeVersion;
 
-use pallet_spacewalk::{
-	address_conv::AddressConversion as StellarAddressConversion,
-	balance_conv::BalanceConversion as StellarBalanceConversion,
-	currency_conv::{
-		CurrencyConversion as StellarCurrencyConversion,
-		StringCurrencyConversion as StellarStringCurrencyConversion,
-	},
-};
 // A few exports that help ease life for downstream crates.
-pub use pallet_spacewalk::{self, currency::CurrencyId};
 pub use primitives::{
 	self, AccountId, Balance, BlockNumber, Hash, Moment, Nonce, Signature, SignedFixedPoint,
-	SignedInner, UnsignedFixedPoint, UnsignedInner,
+	SignedInner, UnsignedFixedPoint, UnsignedInner, currency::CurrencyId
 };
 
 // Make the WASM binary available.
