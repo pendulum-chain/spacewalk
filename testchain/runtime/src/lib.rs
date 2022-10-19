@@ -34,10 +34,11 @@ use sp_version::RuntimeVersion;
 pub use nomination::Event as NominationEvent;
 // A few exports that help ease life for downstream crates.
 pub use primitives::{
-	self, AccountId, Balance, BlockNumber, Hash, Moment, Nonce, Signature, SignedFixedPoint,
-	SignedInner, UnsignedFixedPoint, UnsignedInner,
+	self, AccountId, Balance, BlockNumber, CurrencyId, Hash, Moment, Nonce, Signature,
+	SignedFixedPoint, SignedInner, UnsignedFixedPoint, UnsignedInner,
 };
-use primitives::{CurrencyId, CurrencyId::Token, TokenSymbol};
+use primitives::{CurrencyId::Token, TokenSymbol};
+pub use security::StatusCode;
 
 type VaultId = primitives::VaultId<AccountId, CurrencyId>;
 
@@ -55,6 +56,13 @@ impl_opaque_keys! {
 pub const UNITS: Balance = 10_000_000_000;
 pub const CENTS: Balance = UNITS / 100; // 100_000_000
 pub const MILLICENTS: Balance = CENTS / 1_000; // 100_000
+
+// These time units are defined in number of blocks.
+pub const MINUTES: BlockNumber = 60_000 / (MILLISECS_PER_BLOCK as BlockNumber);
+pub const HOURS: BlockNumber = MINUTES * 60;
+pub const DAYS: BlockNumber = HOURS * 24;
+pub const WEEKS: BlockNumber = DAYS * 7;
+pub const YEARS: BlockNumber = DAYS * 365;
 
 /// This runtime version.
 #[sp_version::runtime_version]
@@ -383,6 +391,7 @@ construct_runtime! {
 		VaultRewards: reward::{Pallet, Storage, Event<T>} = 15,
 		VaultStaking: staking::{Pallet, Storage, Event<T>} = 16,
 
+		Currency: currency::{Pallet} = 17,
 		Security: security::{Pallet, Call, Config, Storage, Event<T>} = 19,
 		VaultRegistry: vault_registry::{Pallet, Call, Config<T>, Storage, Event<T>, ValidateUnsigned} = 21,
 		Oracle: oracle::{Pallet, Call, Config<T>, Storage, Event<T>} = 22,
@@ -431,6 +440,10 @@ mod benches {
 		[frame_benchmarking, BaselineBench::<Runtime>]
 		[frame_system, SystemBench::<Runtime>]
 		[pallet_stellar_relay, StellarRelay]
+		[fee, Fee]
+		[oracle, Oracle]
+		[vault_registry, VaultRegistry]
+		[nomination, Nomination]
 	);
 }
 
