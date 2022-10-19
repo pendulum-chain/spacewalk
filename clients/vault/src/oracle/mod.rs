@@ -10,21 +10,19 @@ mod types;
 #[cfg(test)]
 mod tests;
 
-
 pub use handler::*;
 pub use storage::prepare_directories;
 
 use collector::*;
-use constants::*;
 use errors::Error;
-use stellar_relay::{node::NodeInfo, ConnConfig};
 use storage::*;
 use types::*;
 
-// a filter trait to get only the ones that makes sense to the structure.
-pub trait TxHandler<T> {
-    fn process_tx(&self, param: &T) -> bool;
-}
+/// A filter trait to check whether `T` should be processed.
+pub trait FilterWith<T> {
+    /// unique identifier of this filter
+    fn id(&self) -> u32;
 
-#[derive(Copy, Clone)]
-pub struct FilterTx;
+    /// logic to check whether a given param should be processed.
+    fn check_for_processing(&self, param: &T) -> bool;
+}

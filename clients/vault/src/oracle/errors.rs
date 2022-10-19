@@ -1,5 +1,5 @@
 use std::array::TryFromSliceError;
-use tokio::sync::mpsc::error::SendError;
+use tokio::sync::{mpsc, oneshot};
 
 use stellar_relay::sdk::StellarSdkError;
 
@@ -54,8 +54,14 @@ impl From<stellar_relay::Error> for Error {
 	}
 }
 
-impl<T> From<SendError<T>> for Error {
-	fn from(e: SendError<T>) -> Self {
+impl<T> From<mpsc::error::SendError<T>> for Error {
+	fn from(e: mpsc::error::SendError<T>) -> Self {
+		Error::ConnError(stellar_relay::Error::SendFailed(e.to_string()))
+	}
+}
+
+impl From<oneshot::error::RecvError> for Error {
+	fn from(e: oneshot::error::RecvError) -> Self {
 		Error::ConnError(stellar_relay::Error::SendFailed(e.to_string()))
 	}
 }

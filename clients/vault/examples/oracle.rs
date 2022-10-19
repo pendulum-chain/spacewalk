@@ -1,8 +1,5 @@
 
-use stellar_relay::sdk::{
-    network::{Network, PUBLIC_NETWORK, TEST_NETWORK},
-    SecretKey,
-};
+use stellar_relay::sdk::{network::{Network, PUBLIC_NETWORK, TEST_NETWORK}, SecretKey};
 
 use stellar_relay::{ConnConfig, node::NodeInfo};
 
@@ -54,12 +51,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     loop {
         tokio::time::sleep(Duration::from_secs(8)).await;
         // let's try to send a message?
-        let (sender, receiver) = tokio::sync::oneshot::channel();
-        handler.get_size(sender).await?;
-
-        if let Ok(res) = receiver.await {
-            tracing::info!("envelope size: {:?}", res);
-        }
-
+        let slot_size = handler.get_size().await?;
+        tracing::info!("Slots in the map: {:?}", slot_size);
     }
 }

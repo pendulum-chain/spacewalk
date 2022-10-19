@@ -7,6 +7,7 @@ use stellar_relay::sdk::types::{ScpEnvelope, TransactionSet};
 /// Determines whether the data retrieved is from the current map or from a file.
 type DataFromFile<T> = (T, bool);
 
+/// The Proof of Transactions that needed to be processed
 pub struct EncodedProof {
 	tx_env: String,
 	envelopes: String,

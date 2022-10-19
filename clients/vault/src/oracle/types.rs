@@ -1,6 +1,8 @@
 use std::collections::{BTreeMap, HashMap};
+use stellar_relay::sdk::TransactionEnvelope;
 
 use stellar_relay::sdk::types::{Hash, ScpEnvelope, TransactionSet, Uint64};
+use crate::oracle::FilterWith;
 
 pub type Slot = Uint64;
 pub type TxHash = Hash;
@@ -23,3 +25,9 @@ pub(crate) type TxHashMap = HashMap<TxHash, Slot>;
 /// The slot is not found in the `StellarMessage::TxSet(...)`, therefore this map
 /// serves as a holder of the slot when we hash the txset.
 pub(crate) type TxSetCheckerMap = HashMap<TxSetHash, Slot>;
+
+/// The FilterWith has to be Send and Sync, as it is sent between channels.
+pub(crate) type TxEnvelopeFilter = dyn FilterWith<TransactionEnvelope> + Send + Sync;
+
+/// A map that contains any type that implements FilterWith, explicitly for TransactionEnvelope
+pub(crate) type TxFilterMap = HashMap<u32, Box<TxEnvelopeFilter>>;

@@ -1,5 +1,7 @@
-mod impls;
+mod tx_handler;
 mod proof_builder;
+mod envelopes_handler;
+mod txsets_handler;
 
 use std::convert::TryInto;
 use parking_lot::{
@@ -88,6 +90,7 @@ pub fn get_tx_set_hash(x: &ScpStatementExternalize) -> Result<TxSetHash, Error> 
 	scp_value[0..32].try_into().map_err(Error::from)
 }
 
+/// We only save transactions that has Memohash.
 fn check_memo(memo: &Memo) -> bool {
 	match memo {
 		Memo::MemoHash(_) => true,
