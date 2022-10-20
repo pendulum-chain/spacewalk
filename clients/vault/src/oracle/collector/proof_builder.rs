@@ -1,10 +1,12 @@
-use crate::oracle::{
-	traits::FileHandler, EnvelopesFileHandler, ScpMessageCollector, Slot, TxHash, TxSetsFileHandler,
-};
 use stellar_relay::sdk::{
 	compound_types::UnlimitedVarArray,
 	types::{ScpEnvelope, TransactionSet},
 	TransactionEnvelope, XdrCodec,
+};
+
+use crate::oracle::{
+	constants::get_min_externalized_messages, traits::FileHandler, EnvelopesFileHandler,
+	ScpMessageCollector, Slot, TxHash, TxSetsFileHandler,
 };
 
 /// Determines whether the data retrieved is from the current map or from a file.
@@ -31,19 +33,14 @@ impl ScpMessageCollector {
 		self.tx_hash_map().get(tx_hash).map(|slot| *slot)
 	}
 
-	/// Returns Either a list of ScpEnvelopes or a ProofStatus saying it failed to retrieve a list.
+	/// Returns either a list of ScpEnvelopes or a ProofStatus saying it failed to retrieve a list.
 	fn get_envelopes(&self, slot: Slot) -> Result<UnlimitedVarArray<ScpEnvelope>, ProofStatus> {
 		let (envelopes, is_from_file) =
 			self._get_envelopes(slot).ok_or(ProofStatus::NoEnvelopesFound(slot))?;
 
-		if self.is_public() {
-			// if the list does not come from a file, meaning there's still a chance to get more
-			// envelopes.
-			if envelopes.len() < 20 && !is_from_file {
-				tracing::warn!("Not yet enough envelopes to build proof, current amount {:?}. Retrying in next loop...", envelopes.len());
-				return Err(ProofStatus::LackingEnvelopes)
-			}
-		} else if envelopes.len() < 2 && !is_from_file {
+		// if the list does not come from a file, meaning there's still a chance to get more
+		// envelopes.
+		if envelopes.len() < get_min_externalized_messages(self.is_public()) && !is_from_file {
 			tracing::warn!("Not yet enough envelopes to build proof, current amount {:?}. Retrying in next loop...", envelopes.len());
 			return Err(ProofStatus::LackingEnvelopes)
 		}
@@ -65,7 +62,7 @@ impl ScpMessageCollector {
 		})
 	}
 
-	/// Returns Either a list of ScpEnvelopes or a ProofStatus saying it failed to retrieve a list.
+	/// Returns either a TransactionSet or a ProofStatus saying it failed to retrieve the set.
 	fn get_txset(&self, slot: Slot) -> Result<DataFromFile<TransactionSet>, ProofStatus> {
 		self.txset_map()
 			.get(&slot)
