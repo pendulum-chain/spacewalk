@@ -1,6 +1,8 @@
 use crate::oracle::{
 	collector::{get_tx_set_hash, ScpMessageCollector},
-	constants::{MAX_SLOTS_PER_FILE, MIN_EXTERNALIZED_MESSAGES},
+	constants::{
+		get_min_externalized_messages, MAX_DISTANCE_FROM_CURRENT_SLOT, MAX_SLOTS_PER_FILE,
+	},
 	errors::Error,
 	storage::{traits::FileHandlerExt, EnvelopesFileHandler},
 	types::{Slot, TxSetCheckerMap},
@@ -11,10 +13,6 @@ use stellar_relay::{
 	sdk::types::{ScpEnvelope, ScpStatementPledges, StellarMessage},
 	StellarOverlayConnection,
 };
-
-// the maximum distance of the selected slot from the current slot.
-// this is primarily used when deciding to move maps to a file.
-const MAX_DISTANCE_FROM_CURRENT_SLOT: Slot = 3;
 
 // Handling SCPEnvelopes
 impl ScpMessageCollector {
@@ -88,7 +86,7 @@ impl ScpMessageCollector {
 
 			if let Some(value) = env_map.get(slot) {
 				// check if we have enough externalized messages for the corresponding key
-				if value.len() < MIN_EXTERNALIZED_MESSAGES
+				if value.len() < get_min_externalized_messages(self.public_network)
                     // if the key is too far back from the current slot,
                     // then we don't need to wait for more messages.
                     && (current_slot - *slot) < MAX_DISTANCE_FROM_CURRENT_SLOT

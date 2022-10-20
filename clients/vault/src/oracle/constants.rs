@@ -1,3 +1,4 @@
+use crate::oracle::types::Slot;
 use stellar_relay::sdk::types::Uint64;
 
 /// This is for `EnvelopesMap`; how many slots is accommodated per file.
@@ -11,6 +12,10 @@ pub const MAX_TXS_PER_FILE: Uint64 = 10_000_000;
 
 /// This is for `TxSetMap`.
 pub const MAX_TXSETS_PER_FILE: usize = 20000;
+
+// the maximum distance of the selected slot from the current slot.
+// this is primarily used when deciding to move maps to a file.
+pub const MAX_DISTANCE_FROM_CURRENT_SLOT: Slot = 3;
 
 pub const VALIDATOR_COUNT_TEST_NETWORK: usize = 3;
 pub const VALIDATOR_COUNT_PUBLIC_NETWORK: usize = 23;
