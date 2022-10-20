@@ -4,7 +4,7 @@ use stellar_relay::sdk::{
 };
 
 use crate::oracle::{
-	collector::{is_hash_memo, EncodedProof, ProofStatus, ScpMessageCollector},
+	collector::{is_hash_memo, Proof, ProofStatus, ScpMessageCollector},
 	errors::Error,
 	types::Slot,
 	TxFilterMap,
@@ -12,18 +12,18 @@ use crate::oracle::{
 
 impl ScpMessageCollector {
 	/// Returns a list of transactions (only those with proofs) to be processed.
-	pub fn get_pending_txs_with_proof(&mut self) -> Vec<(TransactionEnvelope, EncodedProof)> {
+	pub fn get_pending_proofs(&mut self) -> Vec<Proof> {
 		// Store the handled transaction indices in a vec to be able to remove them later
 		let mut handled_tx_indices = Vec::new();
 
-		let mut proofs_for_handled_txs = Vec::<(TransactionEnvelope, EncodedProof)>::new();
+		let mut proofs_for_handled_txs = Vec::<Proof>::new();
 
 		for (index, (tx_env, slot)) in self.pending_transactions.iter().enumerate() {
 			// Try to build proofs
 			match self.build_proof(tx_env.clone(), *slot) {
 				ProofStatus::Proof(proof) => {
 					handled_tx_indices.push(index);
-					proofs_for_handled_txs.push((tx_env.clone(), proof));
+					proofs_for_handled_txs.push(proof);
 				},
 				_ => {},
 			}

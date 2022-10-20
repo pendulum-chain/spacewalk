@@ -13,14 +13,30 @@ use crate::oracle::{
 type DataFromFile<T> = (T, bool);
 
 /// The Proof of Transactions that needed to be processed
-pub struct EncodedProof {
-	tx_env: String,
-	envelopes: String,
-	tx_set: String,
+pub struct Proof {
+	tx_env: TransactionEnvelope,
+	envelopes: UnlimitedVarArray<ScpEnvelope>,
+	tx_set: TransactionSet,
+}
+
+impl Proof {
+	/// Encodes these Stellar structures to make it easier to send as extrinsic.
+	pub fn encode(&self) -> (String, String, String) {
+		let tx_env_xdr = tx_env.to_xdr();
+		let tx_env_encoded = base64::encode(tx_env_xdr);
+
+		let envelopes_xdr = envelopes.to_xdr();
+		let envelopes_encoded = base64::encode(envelopes_xdr);
+
+		let tx_set_xdr = tx_set.to_xdr();
+		let tx_set_encoded = base64::encode(tx_set_xdr);
+
+		(tx_env_encoded, envelopes_encoded, tx_set_encoded)
+	}
 }
 
 pub enum ProofStatus {
-	Proof(EncodedProof),
+	Proof(Proof),
 	LackingEnvelopes,
 	NoEnvelopesFound(Slot),
 	NoTxSetFound(Slot),
@@ -91,26 +107,6 @@ impl ScpMessageCollector {
 			Err(neg_status) => return neg_status,
 		};
 
-		let (tx_env, envelopes, tx_set) = encode(tx_env, envelopes, tx_set);
-
-		ProofStatus::Proof(EncodedProof { tx_env, envelopes, tx_set })
+		ProofStatus::Proof(Proof { tx_env, envelopes, tx_set })
 	}
-}
-
-/// Encodes these Stellar structures to make it easier to send as extrinsic.
-fn encode(
-	tx_env: TransactionEnvelope,
-	envelopes: UnlimitedVarArray<ScpEnvelope>,
-	tx_set: TransactionSet,
-) -> (String, String, String) {
-	let tx_env_xdr = tx_env.to_xdr();
-	let tx_env_encoded = base64::encode(tx_env_xdr);
-
-	let envelopes_xdr = envelopes.to_xdr();
-	let envelopes_encoded = base64::encode(envelopes_xdr);
-
-	let tx_set_xdr = tx_set.to_xdr();
-	let tx_set_encoded = base64::encode(tx_set_xdr);
-
-	(tx_env_encoded, envelopes_encoded, tx_set_encoded)
 }

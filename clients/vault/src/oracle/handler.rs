@@ -9,7 +9,7 @@ use stellar_relay::{
 };
 
 use crate::oracle::{
-	collector::{EncodedProof, ScpMessageCollector},
+	collector::{Proof, ScpMessageCollector},
 	errors::Error,
 	storage::prepare_directories,
 	types::{TxEnvelopeFilter, TxSetToSlotMap},
@@ -41,9 +41,9 @@ pub enum ActorMessage {
 	},
 
 	RemoveFilter(u32),
-	/// Gets all Pending Transactions with Proofs
-	GetPendingTxsWithProof {
-		sender: oneshot::Sender<Vec<(TransactionEnvelope, EncodedProof)>>,
+	/// Gets all proofs
+	GetPendingProofs {
+		sender: oneshot::Sender<Vec<Proof>>,
 	},
 }
 
@@ -76,8 +76,8 @@ impl ScpMessageActor {
 				let _ = self.tx_env_filters.remove(&idx);
 			},
 
-			ActorMessage::GetPendingTxsWithProof { sender } => {
-				let _ = sender.send(self.collector.get_pending_txs_with_proof());
+			ActorMessage::GetPendingProofs { sender } => {
+				let _ = sender.send(self.collector.get_pending_proofs());
 			},
 		};
 	}
@@ -171,12 +171,10 @@ impl ScpMessageHandler {
 	}
 
 	/// Returns a list of transactions with each of their corresponding proofs
-	pub async fn get_pending_txs_with_proof(
-		&self,
-	) -> Result<Vec<(TransactionEnvelope, EncodedProof)>, Error> {
+	pub async fn get_pending_proofs(&self) -> Result<Vec<Proof>, Error> {
 		let (sender, receiver) = oneshot::channel();
 
-		self.action_sender.send(ActorMessage::GetPendingTxsWithProof { sender }).await?;
+		self.action_sender.send(ActorMessage::GetPendingProofs { sender }).await?;
 
 		receiver.await.map_err(Error::from)
 	}
