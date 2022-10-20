@@ -7,9 +7,6 @@ mod handler;
 mod storage;
 mod types;
 
-#[cfg(test)]
-mod tests;
-
 pub use handler::*;
 pub use storage::prepare_directories;
 

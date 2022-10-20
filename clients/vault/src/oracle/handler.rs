@@ -99,7 +99,7 @@ impl ScpMessageActor {
 									.await?;
 							}
 							StellarMessage::TxSet(set) => {
-								self.collector.handle_tx_set(&set, &mut tx_set_hash_map, &self.tx_env_filters).await?;
+								self.collector.handle_tx_set(&set, &mut tx_set_hash_map, &self.tx_env_filters)?;
 							}
 							_ => {}
 						},
@@ -181,6 +181,7 @@ impl ScpMessageHandler {
 	pub fn handle_redeem_event(&self) {
 		todo!();
 	}
+
 }
 
 /// Creates the ScpMessageHandler and contains the thread that connects and listens to the Stellar Node

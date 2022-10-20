@@ -63,14 +63,14 @@ impl ScpMessageCollector {
 
     /// Checks whether the envelopes map requires saving to file.
     /// One of the factors would be "how old" the slot is, against the current slot.
-    fn check_write_envelopes_to_file(&mut self, current_slot: Slot) -> Result<(), Error> {
+    fn check_write_envelopes_to_file(&mut self, current_slot: Slot) -> Result<bool, Error> {
         let env_map = self.envelopes_map().clone();
         let mut slots = env_map.keys();
         let slots_len = slots.len();
 
         // map is too small; we don't have to write it to file just yet.
         if slots_len < MAX_SLOTS_PER_FILE {
-            return Ok(())
+            return Ok(false);
         }
 
         tracing::debug!("Size of envelopes map exceeds limit. Writing it to file...");
@@ -80,7 +80,7 @@ impl ScpMessageCollector {
             // ends the loop and saves the map to a file.
             if counter == MAX_SLOTS_PER_FILE {
                 self.write_envelopes_to_file(*slot)?;
-                break
+                return Ok(true);
             }
 
             if let Some(value) = env_map.get(slot) {
@@ -103,7 +103,7 @@ impl ScpMessageCollector {
 
         }
 
-        Ok(())
+        Ok(false)
     }
 
     /// saves a portion/or everything of the `envelopes_map` to a file.
@@ -117,3 +117,7 @@ impl ScpMessageCollector {
         Ok(())
     }
 }
+
+#[cfg(test)]
+#[path = "envelopes_handler_tests.rs"]
+mod envelopes_handler_tests;

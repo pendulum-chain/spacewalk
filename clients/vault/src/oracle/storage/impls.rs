@@ -15,8 +15,11 @@ use crate::oracle::{
 
 use stellar_relay::sdk::XdrCodec;
 
-
 impl FileHandler<EnvelopesMap> for EnvelopesFileHandler {
+	#[cfg(test)]
+	const PATH: &'static str = "./resources/test/scp_envelopes";
+
+	#[cfg(not(test))]
 	const PATH: &'static str = "./scp_envelopes";
 
 	fn deserialize_bytes(bytes: Vec<u8>) -> Result<EnvelopesMap, Error> {
@@ -62,7 +65,7 @@ impl FileHandlerExt<EnvelopesMap> for EnvelopesFileHandler {
 				filename.push_str(&format!("{}", key));
 			}
 
-			let stellar_array = UnlimitedVarArray::new(value.clone())?; //.map_err(Error::from)?;
+			let stellar_array = UnlimitedVarArray::new(value.clone())?;
 			m.insert(*key, stellar_array.to_xdr());
 		}
 
@@ -73,6 +76,10 @@ impl FileHandlerExt<EnvelopesMap> for EnvelopesFileHandler {
 }
 
 impl FileHandler<TxSetMap> for TxSetsFileHandler {
+	#[cfg(test)]
+	const PATH: &'static str = "./resources/test/tx_sets";
+
+	#[cfg(not(test))]
 	const PATH: &'static str = "./tx_sets";
 
 	fn deserialize_bytes(bytes: Vec<u8>) -> Result<TxSetMap, Error> {
@@ -131,6 +138,10 @@ impl TxHashesFileHandler {
 }
 
 impl FileHandler<TxHashMap> for TxHashesFileHandler {
+	#[cfg(test)]
+	const PATH: &'static str = "./resources/test/tx_hashes";
+
+	#[cfg(not(test))]
 	const PATH: &'static str = "./tx_hashes";
 
 	fn deserialize_bytes(bytes: Vec<u8>) -> Result<TxHashMap, Error> {
@@ -142,9 +153,23 @@ impl FileHandler<TxHashMap> for TxHashesFileHandler {
 	}
 }
 
+#[cfg(not(test))]
 pub fn prepare_directories() -> Result<(), Error> {
 	create_dir_all("./scp_envelopes")?;
 	create_dir_all("./tx_sets")?;
 
 	create_dir_all("./tx_hashes").map_err(Error::from)
 }
+
+#[cfg(test)]
+pub fn prepare_directories() -> Result<(), Error> {
+	create_dir_all("./resources/test/scp_envelopes")?;
+	create_dir_all("./resources/test/tx_sets")?;
+
+	create_dir_all("./resources/test/tx_hashes").map_err(Error::from)
+}
+
+
+#[cfg(test)]
+#[path = "impls_tests.rs"]
+mod impls_test;

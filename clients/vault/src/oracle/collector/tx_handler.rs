@@ -16,7 +16,7 @@ impl ScpMessageCollector {
 	/// * `slot` - the slot of which the tx belongs to
 	/// * `tx_set` - where the txs are derived from.
 	/// * `filter` - filters out transactions (in the Transaction Set) for processing.
-	pub(super) async fn update_tx_hash_map(
+	pub(super)fn  update_tx_hash_map(
 		&mut self,
 		slot: Slot,
 		tx_set: &TransactionSet,

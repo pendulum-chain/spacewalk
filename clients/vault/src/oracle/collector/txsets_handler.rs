@@ -19,7 +19,7 @@ impl ScpMessageCollector {
     /// * `set` - the TransactionSet
     /// * `txset_hash_map` - provides the slot number of the given Transaction Set Hash
     /// * `filter` - filters out transactions (in the Transaction Set) for processing.
-    pub(crate) async fn handle_tx_set(
+    pub(crate) fn handle_tx_set(
         &mut self,
         set: &TransactionSet,
         txset_hash_map: &mut TxSetCheckerMap,
@@ -36,7 +36,7 @@ impl ScpMessageCollector {
             self.txset_map_mut().insert(slot, set.clone());
 
             // save the txs if the txset with the tx's hash as the key.
-            self.update_tx_hash_map(slot, set, filters).await?;
+            self.update_tx_hash_map(slot, set, filters)?;
         } else {
             tracing::warn!("WARNING! tx_set_hash: {:?} has no slot.", tx_set_hash);
         }
