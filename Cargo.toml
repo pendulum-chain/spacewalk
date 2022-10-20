@@ -5,7 +5,6 @@ members = [
     "pallets/nomination",
     "pallets/oracle",
     "pallets/reward",
-    "pallets/spacewalk",
     "pallets/staking",
     "pallets/stellar-relay",
     "pallets/vault-registry",
@@ -16,3 +15,11 @@ members = [
 ]
 [profile.release]
 panic = "unwind"
+
+[profile.production]
+inherits = "release"
+# Sacrifice compile speed for execution speed by using optimization flags:
+# https://doc.rust-lang.org/rustc/linker-plugin-lto.html
+lto = "fat"
+# https://doc.rust-lang.org/rustc/codegen-options/index.html#codegen-units
+codegen-units = 1
