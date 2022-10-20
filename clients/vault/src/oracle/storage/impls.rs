@@ -169,7 +169,6 @@ pub fn prepare_directories() -> Result<(), Error> {
 	create_dir_all("./resources/test/tx_hashes").map_err(Error::from)
 }
 
-
 #[cfg(test)]
 #[path = "impls_tests.rs"]
 mod impls_test;

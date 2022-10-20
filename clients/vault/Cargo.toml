@@ -5,10 +5,6 @@ edition = "2018"
 name = "vault"
 version = "0.0.1"
 
-
-[[examples]]
-name = "oracle"
-
 [features]
 integration = []
 parachain-metadata = ["runtime/parachain-metadata"]

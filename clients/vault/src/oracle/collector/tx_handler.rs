@@ -1,12 +1,13 @@
-
+use crate::oracle::{
+	collector::{check_memo, EncodedProof, ProofStatus, ScpMessageCollector},
+	errors::Error,
+	types::Slot,
+	TxFilterMap,
+};
 use stellar_relay::sdk::{
 	types::{PaymentOp, TransactionSet},
 	Transaction, TransactionEnvelope,
 };
-use crate::oracle::collector::{check_memo, EncodedProof, ProofStatus, ScpMessageCollector};
-use crate::oracle::errors::Error;
-use crate::oracle::TxFilterMap;
-use crate::oracle::types::Slot;
 
 impl ScpMessageCollector {
 	/// maps the slot to the transactions of the TransactionSet
@@ -16,11 +17,11 @@ impl ScpMessageCollector {
 	/// * `slot` - the slot of which the tx belongs to
 	/// * `tx_set` - where the txs are derived from.
 	/// * `filter` - filters out transactions (in the Transaction Set) for processing.
-	pub(super)fn  update_tx_hash_map(
+	pub(super) fn update_tx_hash_map(
 		&mut self,
 		slot: Slot,
 		tx_set: &TransactionSet,
-		filters: &TxFilterMap
+		filters: &TxFilterMap,
 	) -> Result<(), Error> {
 		tracing::info!("Inserting received transaction set for slot {}", slot);
 
@@ -45,7 +46,7 @@ impl ScpMessageCollector {
 						.is_none()
 					{
 						self.pending_transactions.push((tx_env.clone(), slot));
-						break;
+						break
 					}
 				}
 			}
@@ -82,7 +83,6 @@ impl ScpMessageCollector {
 
 // Checking for Tx Relevance
 impl ScpMessageCollector {
-
 	/// Checks whether the transaction is relevant to this vault.
 	fn is_tx_relevant(&self, transaction_env: &TransactionEnvelope) -> bool {
 		match transaction_env {

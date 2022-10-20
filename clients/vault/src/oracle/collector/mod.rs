@@ -1,21 +1,21 @@
-mod tx_handler;
-mod proof_builder;
 mod envelopes_handler;
+mod proof_builder;
+mod tx_handler;
 mod txsets_handler;
 
-
-use std::convert::TryInto;
 use parking_lot::{
 	lock_api::{RwLockReadGuard, RwLockWriteGuard},
 	RawRwLock, RwLock,
 };
 pub use proof_builder::*;
-use std::sync::Arc;
+use std::{convert::TryInto, sync::Arc};
 use stellar_relay::sdk::{types::ScpStatementExternalize, Memo, TransactionEnvelope};
 
+use crate::oracle::{
+	errors::Error,
+	types::{EnvelopesMap, Slot, TxHashMap, TxSetHash, TxSetMap},
+};
 use stellar_relay::sdk::network::{Network, PUBLIC_NETWORK, TEST_NETWORK};
-use crate::oracle::errors::Error;
-use crate::oracle::types::{EnvelopesMap, Slot, TxHashMap, TxSetHash, TxSetMap};
 
 /// Collects all ScpMessages and the TxSets.
 pub struct ScpMessageCollector {

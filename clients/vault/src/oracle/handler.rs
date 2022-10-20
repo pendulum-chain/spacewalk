@@ -1,16 +1,17 @@
-
+use crate::oracle::{
+	collector::{EncodedProof, ScpMessageCollector},
+	errors::Error,
+	storage::prepare_directories,
+	types::{TxEnvelopeFilter, TxSetCheckerMap},
+	FilterWith, TxFilterMap,
+};
 use std::collections::HashMap;
 use stellar_relay::{
-	node::NodeInfo, sdk::types::StellarMessage, ConnConfig, StellarOverlayConnection,
-	StellarRelayMessage,
+	node::NodeInfo,
+	sdk::{types::StellarMessage, TransactionEnvelope},
+	ConnConfig, StellarOverlayConnection, StellarRelayMessage,
 };
 use tokio::sync::{mpsc, oneshot};
-use stellar_relay::sdk::TransactionEnvelope;
-use crate::oracle::collector::{EncodedProof, ScpMessageCollector};
-use crate::oracle::errors::Error;
-use crate::oracle::storage::prepare_directories;
-use crate::oracle::{FilterWith, TxFilterMap};
-use crate::oracle::types::{TxEnvelopeFilter, TxSetCheckerMap};
 
 pub struct NoFilter;
 
@@ -32,9 +33,8 @@ pub enum ActorMessage {
 		sender: oneshot::Sender<usize>,
 	},
 	/// filters on the transaction we want to process.
-
-	AddFilter{
-		filter:Box<dyn FilterWith<TransactionEnvelope> + Send + Sync>
+	AddFilter {
+		filter: Box<dyn FilterWith<TransactionEnvelope> + Send + Sync>,
 	},
 
 	RemoveFilter(u32),
@@ -50,7 +50,7 @@ struct ScpMessageActor {
 	receiver: mpsc::Receiver<ActorMessage>,
 	collector: ScpMessageCollector,
 	/// the filters used to filter out transactions for processing.
-	tx_env_filters: TxFilterMap
+	tx_env_filters: TxFilterMap,
 }
 
 impl ScpMessageActor {
@@ -65,14 +65,13 @@ impl ScpMessageActor {
 				let _ = sender.send(self.collector.envelopes_map_len());
 			},
 
-			ActorMessage::AddFilter{ filter} => {
-				self.tx_env_filters.insert(filter.id(),filter);
-
+			ActorMessage::AddFilter { filter } => {
+				self.tx_env_filters.insert(filter.id(), filter);
 			},
 
 			ActorMessage::RemoveFilter(idx) => {
 				let _ = self.tx_env_filters.remove(&idx);
-			}
+			},
 
 			ActorMessage::GetPendingTx { sender } => {
 				let _ = sender.send(self.collector.get_pending_txs());
@@ -118,7 +117,6 @@ impl ScpMessageActor {
 	}
 }
 
-
 /// Handler to communicate with the ScpMessageActor
 pub struct ScpMessageHandler {
 	sender: mpsc::Sender<ActorMessage>,
@@ -154,22 +152,20 @@ impl ScpMessageHandler {
 
 	/// Adds a filter on what transactions to process.
 	/// Returns an index of the filter in the map.
-	pub async fn add_filter(
-		&self,
-		filter: Box<TxEnvelopeFilter>,
-	) -> Result<(), Error> {
-		self.sender.send(ActorMessage::AddFilter{ filter }).await.map_err(Error::from)
+	pub async fn add_filter(&self, filter: Box<TxEnvelopeFilter>) -> Result<(), Error> {
+		self.sender.send(ActorMessage::AddFilter { filter }).await.map_err(Error::from)
 	}
 
 	/// Removes an existing filter based on its id/key in the map.
 	pub async fn remove_filter(&self, filter_id: u32) -> Result<(), Error> {
-		self.sender.send(ActorMessage::RemoveFilter(filter_id)).await.map_err(Error::from)
+		self.sender
+			.send(ActorMessage::RemoveFilter(filter_id))
+			.await
+			.map_err(Error::from)
 	}
 
 	/// Returns a list of transactions with each of their corresponding proofs
-	pub async fn get_pending_txs(
-		&self
-	) -> Result<Vec<EncodedProof>, Error> {
+	pub async fn get_pending_txs(&self) -> Result<Vec<EncodedProof>, Error> {
 		let (sender, receiver) = oneshot::channel();
 
 		self.sender.send(ActorMessage::GetPendingTx { sender }).await?;
@@ -184,15 +180,16 @@ impl ScpMessageHandler {
 	pub fn handle_redeem_event(&self) {
 		todo!();
 	}
-
 }
 
-/// Creates the ScpMessageHandler and contains the thread that connects and listens to the Stellar Node
+/// Creates the ScpMessageHandler and contains the thread that connects and listens to the Stellar
+/// Node
 ///
 /// # Arguments
 ///
 /// * `node_info` - Information (w/o the address and port) of the Stellar Node to connect to.
-/// * `connection_cfg` - The configuration on how and what (address and port) Stellar Node to connect to.
+/// * `connection_cfg` - The configuration on how and what (address and port) Stellar Node to
+///   connect to.
 /// * `is_public_network` - Determines whether the network we'll connect to is public or not
 /// * `vault_addresses` - the addresses of this vault
 pub async fn create_handler(

@@ -14,8 +14,7 @@ use sp_std::{
 	str,
 };
 use stellar::{network::TEST_NETWORK, PublicKey, SecretKey, XdrCodec};
-use stellar_relay::sdk as stellar;
-use stellar_relay::sdk::types::Preconditions;
+use stellar_relay::{sdk as stellar, sdk::types::Preconditions};
 
 const SUBMISSION_TIMEOUT_PERIOD: u64 = 10000;
 

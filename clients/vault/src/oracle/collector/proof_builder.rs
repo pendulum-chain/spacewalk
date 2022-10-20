@@ -1,8 +1,11 @@
 use crate::oracle::{
 	traits::FileHandler, EnvelopesFileHandler, ScpMessageCollector, Slot, TxHash, TxSetsFileHandler,
 };
-use stellar_relay::sdk::{compound_types::UnlimitedVarArray, TransactionEnvelope, XdrCodec};
-use stellar_relay::sdk::types::{ScpEnvelope, TransactionSet};
+use stellar_relay::sdk::{
+	compound_types::UnlimitedVarArray,
+	types::{ScpEnvelope, TransactionSet},
+	TransactionEnvelope, XdrCodec,
+};
 
 /// Determines whether the data retrieved is from the current map or from a file.
 type DataFromFile<T> = (T, bool);
@@ -34,7 +37,8 @@ impl ScpMessageCollector {
 			self._get_envelopes(slot).ok_or(ProofStatus::NoEnvelopesFound(slot))?;
 
 		if self.is_public() {
-			// if the list does not come from a file, meaning there's still a chance to get more envelopes.
+			// if the list does not come from a file, meaning there's still a chance to get more
+			// envelopes.
 			if envelopes.len() < 20 && !is_from_file {
 				tracing::warn!("Not yet enough envelopes to build proof, current amount {:?}. Retrying in next loop...", envelopes.len());
 				return Err(ProofStatus::LackingEnvelopes)
