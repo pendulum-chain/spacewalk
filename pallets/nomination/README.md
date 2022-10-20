@@ -1,11 +1,11 @@
-# Fee module
+# Nomination module
 
 ## Testing
 
 To run the tests use:
 
 ```bash
-cargo test --package fee --features runtime-benchmarks
+cargo test --package nomination --features runtime-benchmarks
 ```
 
 ## Benchmarking
@@ -18,18 +18,19 @@ cargo build --package spacewalk-standalone --release --features runtime-benchmar
 
 ```bash
 # Show benchmarks for this pallet
-./target/release/spacewalk-standalone benchmark pallet -p fee -e '*' --list
+./target/release/spacewalk-standalone benchmark pallet -p nomination -e '*' --list
 ```
 
 Run the benchmarking for a pallet:
 
 ```bash
 ./target/release/spacewalk-standalone benchmark pallet \
---chain dev \
---pallet fee \
---extrinsic '*' \
---steps 20 \
---repeat 10 \
---output pallets/fee/src/default_weights.rs \
+--chain=dev \
+--pallet=nomination \
+--extrinsic='*' \
+--steps=100 \
+--repeat=10 \
+--wasm-execution=compiled \
+--output=pallets/nomination/src/default_weights.rs \
 --template=./.maintain/frame-weight-template.hbs
 ```
