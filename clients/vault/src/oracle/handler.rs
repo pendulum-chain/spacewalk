@@ -1,3 +1,13 @@
+use std::collections::HashMap;
+
+use tokio::sync::{mpsc, oneshot};
+
+use stellar_relay::{
+	node::NodeInfo,
+	sdk::{types::StellarMessage, TransactionEnvelope},
+	ConnConfig, StellarOverlayConnection, StellarRelayMessage,
+};
+
 use crate::oracle::{
 	collector::{EncodedProof, ScpMessageCollector},
 	errors::Error,
@@ -5,13 +15,6 @@ use crate::oracle::{
 	types::{TxEnvelopeFilter, TxSetCheckerMap},
 	FilterWith, TxFilterMap,
 };
-use std::collections::HashMap;
-use stellar_relay::{
-	node::NodeInfo,
-	sdk::{types::StellarMessage, TransactionEnvelope},
-	ConnConfig, StellarOverlayConnection, StellarRelayMessage,
-};
-use tokio::sync::{mpsc, oneshot};
 
 pub struct NoFilter;
 
@@ -103,9 +106,9 @@ impl ScpMessageActor {
 							}
 							_ => {}
 						},
-
+						StellarRelayMessage::Connect{ pub_key: _, node_info: _ }  => { todo!() },
 						StellarRelayMessage::Error(_) => { todo!() }
-						StellarRelayMessage::Timeout(_) => { todo!() }
+						StellarRelayMessage::Timeout => { todo!() }
 					}
 				}
 				// handle message from user
