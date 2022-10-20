@@ -56,3 +56,38 @@ You can view the reference docs for this pallet by running:
 ```
 cargo doc --open
 ```
+
+## Testing
+
+To run the tests use:
+
+```bash
+cargo test --package vault-registry --features runtime-benchmarks
+```
+
+## Benchmarking
+
+Build the node with the `runtime-benchmarks` feature:
+
+```bash
+cargo build --package spacewalk-standalone --release --features runtime-benchmarks
+```
+
+```bash
+# Show benchmarks for this pallet
+./target/release/spacewalk-standalone benchmark pallet -p vault-registry -e '*' --list
+```
+
+Run the benchmarking for a pallet:
+
+```bash
+./target/release/spacewalk-standalone benchmark pallet \
+--chain=dev \
+--pallet=vault-registry \
+--extrinsic='*' \
+--steps=100 \
+--repeat=10 \
+--wasm-execution=compiled \
+--output=pallets/vault-registry/src/default_weights.rs \
+--template=./.maintain/frame-weight-template.hbs
+```
