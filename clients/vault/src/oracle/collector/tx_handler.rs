@@ -10,51 +10,6 @@ use stellar_relay::sdk::{
 };
 
 impl ScpMessageCollector {
-	/// maps the slot to the transactions of the TransactionSet
-	///
-	/// # Arguments
-	///
-	/// * `slot` - the slot of which the tx belongs to
-	/// * `tx_set` - where the txs are derived from.
-	/// * `filter` - filters out transactions (in the Transaction Set) for processing.
-	pub(super) fn update_tx_hash_map(
-		&mut self,
-		slot: Slot,
-		tx_set: &TransactionSet,
-		filters: &TxFilterMap,
-	) -> Result<(), Error> {
-		tracing::info!("Inserting received transaction set for slot {}", slot);
-
-		// Collect tx hashes to save to file.
-		tx_set.txes.get_vec().iter().for_each(|tx_env| {
-			let tx_hash = tx_env.get_hash(self.network());
-
-			// only relevant transactions are saved.
-			if self.is_tx_relevant(tx_env) {
-				tracing::info!("saving to {:?} to hash map", base64::encode(&tx_hash));
-				self.tx_hash_map_mut().insert(tx_hash, slot);
-			}
-
-			// loops through the filters to check if transaction needs to be processed.
-			// Add transaction to pending transactions if it is not yet contained
-			while let Some(filter) = filters.values().next() {
-				if filter.check_for_processing(tx_env) {
-					if self
-						.pending_transactions
-						.iter()
-						.find(|(tx, _)| tx.get_hash(self.network()) == tx_hash)
-						.is_none()
-					{
-						self.pending_transactions.push((tx_env.clone(), slot));
-						break
-					}
-				}
-			}
-		});
-
-		Ok(())
-	}
-
 	/// Returns a list of transactions (only those with proofs) to be processed.
 	pub fn get_pending_txs(&mut self) -> Vec<EncodedProof> {
 		// Store the handled transaction indices in a vec to be able to remove them later
@@ -84,7 +39,7 @@ impl ScpMessageCollector {
 // Checking for Tx Relevance
 impl ScpMessageCollector {
 	/// Checks whether the transaction is relevant to this vault.
-	fn is_tx_relevant(&self, transaction_env: &TransactionEnvelope) -> bool {
+	pub(crate) fn is_tx_relevant(&self, transaction_env: &TransactionEnvelope) -> bool {
 		match transaction_env {
 			TransactionEnvelope::EnvelopeTypeTx(value) =>
 				self._is_tx_relevant(&value.tx) && is_hash_memo(&value.tx.memo),

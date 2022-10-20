@@ -5,7 +5,7 @@ use crate::oracle::{
 	},
 	errors::Error,
 	storage::{traits::FileHandlerExt, EnvelopesFileHandler},
-	types::{Slot, TxSetCheckerMap},
+	types::{Slot, TxSetToSlotMap},
 };
 use parking_lot::RwLock;
 use std::sync::Arc;
@@ -26,7 +26,7 @@ impl ScpMessageCollector {
 	pub(crate) async fn handle_envelope(
 		&mut self,
 		env: ScpEnvelope,
-		txset_hash_map: &mut TxSetCheckerMap,
+		txset_hash_map: &mut TxSetToSlotMap,
 		overlay_conn: &StellarOverlayConnection,
 	) -> Result<(), Error> {
 		let slot = env.statement.slot_index;

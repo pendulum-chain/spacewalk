@@ -12,7 +12,7 @@ use crate::oracle::{
 	collector::{EncodedProof, ScpMessageCollector},
 	errors::Error,
 	storage::prepare_directories,
-	types::{TxEnvelopeFilter, TxSetCheckerMap},
+	types::{TxEnvelopeFilter, TxSetToSlotMap},
 	FilterWith, TxFilterMap,
 };
 
@@ -84,7 +84,7 @@ impl ScpMessageActor {
 
 	/// runs the stellar-relay and listens to data to collect the scp messages and txsets.
 	async fn run(&mut self, mut overlay_conn: StellarOverlayConnection) -> Result<(), Error> {
-		let mut tx_set_hash_map: TxSetCheckerMap = HashMap::new();
+		let mut tx_set_to_slot_map: TxSetToSlotMap = HashMap::new();
 
 		loop {
 			tokio::select! {
@@ -98,11 +98,11 @@ impl ScpMessageActor {
 						} => match msg {
 							StellarMessage::ScpMessage(env) => {
 								self.collector
-									.handle_envelope(env, &mut tx_set_hash_map, &overlay_conn)
+									.handle_envelope(env, &mut tx_set_to_slot_map, &overlay_conn)
 									.await?;
 							}
 							StellarMessage::TxSet(set) => {
-								self.collector.handle_tx_set(&set, &mut tx_set_hash_map, &self.tx_env_filters)?;
+								self.collector.handle_tx_set(&set, &mut tx_set_to_slot_map, &self.tx_env_filters)?;
 							}
 							_ => {}
 						},

@@ -24,7 +24,7 @@ pub(crate) type TxHashMap = HashMap<TxHash, Slot>;
 
 /// The slot is not found in the `StellarMessage::TxSet(...)`, therefore this map
 /// serves as a holder of the slot when we hash the txset.
-pub(crate) type TxSetCheckerMap = HashMap<TxSetHash, Slot>;
+pub(crate) type TxSetToSlotMap = HashMap<TxSetHash, Slot>;
 
 /// The FilterWith has to be Send and Sync, as it is sent between channels.
 pub(crate) type TxEnvelopeFilter = dyn FilterWith<TransactionEnvelope> + Send + Sync;
