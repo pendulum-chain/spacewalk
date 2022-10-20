@@ -50,7 +50,7 @@ pub enum ActorMessage {
 /// Runs both the stellar-relay and its own.
 struct ScpMessageActor {
 	/// used to receive messages from outside the actor.
-	receiver: mpsc::Receiver<ActorMessage>,
+	action_receiver: mpsc::Receiver<ActorMessage>,
 	collector: ScpMessageCollector,
 	/// the filters used to filter out transactions for processing.
 	tx_env_filters: TxFilterMap,
@@ -58,7 +58,7 @@ struct ScpMessageActor {
 
 impl ScpMessageActor {
 	fn new(receiver: mpsc::Receiver<ActorMessage>, collector: ScpMessageCollector) -> Self {
-		ScpMessageActor { receiver, collector, tx_env_filters: HashMap::new() }
+		ScpMessageActor { action_receiver: receiver, collector, tx_env_filters: HashMap::new() }
 	}
 
 	/// handles messages sent from the outside.
@@ -112,7 +112,7 @@ impl ScpMessageActor {
 					}
 				}
 				// handle message from user
-				Some(msg) = self.receiver.recv() => {
+				Some(msg) = self.action_receiver.recv() => {
 						self.handle_message(msg).await;
 				}
 			}
@@ -122,7 +122,7 @@ impl ScpMessageActor {
 
 /// Handler to communicate with the ScpMessageActor
 pub struct ScpMessageHandler {
-	sender: mpsc::Sender<ActorMessage>,
+	action_sender: mpsc::Sender<ActorMessage>,
 }
 
 impl ScpMessageHandler {
@@ -140,7 +140,7 @@ impl ScpMessageHandler {
 		let mut actor = ScpMessageActor::new(receiver, collector);
 		tokio::spawn(async move { actor.run(overlay_conn).await });
 
-		Self { sender }
+		Self { action_sender: sender }
 	}
 
 	/// A sample method to communicate with the actor.
@@ -148,7 +148,7 @@ impl ScpMessageHandler {
 	pub async fn get_size(&self) -> Result<usize, Error> {
 		let (sender, receiver) = oneshot::channel();
 
-		self.sender.send(ActorMessage::CurrentMapSize { sender }).await?;
+		self.action_sender.send(ActorMessage::CurrentMapSize { sender }).await?;
 
 		receiver.await.map_err(Error::from)
 	}
@@ -156,12 +156,15 @@ impl ScpMessageHandler {
 	/// Adds a filter on what transactions to process.
 	/// Returns an index of the filter in the map.
 	pub async fn add_filter(&self, filter: Box<TxEnvelopeFilter>) -> Result<(), Error> {
-		self.sender.send(ActorMessage::AddFilter { filter }).await.map_err(Error::from)
+		self.action_sender
+			.send(ActorMessage::AddFilter { filter })
+			.await
+			.map_err(Error::from)
 	}
 
 	/// Removes an existing filter based on its id/key in the map.
 	pub async fn remove_filter(&self, filter_id: u32) -> Result<(), Error> {
-		self.sender
+		self.action_sender
 			.send(ActorMessage::RemoveFilter(filter_id))
 			.await
 			.map_err(Error::from)
@@ -173,7 +176,7 @@ impl ScpMessageHandler {
 	) -> Result<Vec<(TransactionEnvelope, EncodedProof)>, Error> {
 		let (sender, receiver) = oneshot::channel();
 
-		self.sender.send(ActorMessage::GetPendingTxsWithProof { sender }).await?;
+		self.action_sender.send(ActorMessage::GetPendingTxsWithProof { sender }).await?;
 
 		receiver.await.map_err(Error::from)
 	}
