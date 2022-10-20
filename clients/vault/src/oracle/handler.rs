@@ -42,8 +42,8 @@ pub enum ActorMessage {
 
 	RemoveFilter(u32),
 	/// Gets all Pending Transactions with Proofs
-	GetPendingTx {
-		sender: oneshot::Sender<Vec<EncodedProof>>,
+	GetPendingTxsWithProof {
+		sender: oneshot::Sender<Vec<(TransactionEnvelope, EncodedProof)>>,
 	},
 }
 
@@ -76,8 +76,8 @@ impl ScpMessageActor {
 				let _ = self.tx_env_filters.remove(&idx);
 			},
 
-			ActorMessage::GetPendingTx { sender } => {
-				let _ = sender.send(self.collector.get_pending_txs());
+			ActorMessage::GetPendingTxsWithProof { sender } => {
+				let _ = sender.send(self.collector.get_pending_txs_with_proof());
 			},
 		};
 	}
@@ -168,10 +168,12 @@ impl ScpMessageHandler {
 	}
 
 	/// Returns a list of transactions with each of their corresponding proofs
-	pub async fn get_pending_txs(&self) -> Result<Vec<EncodedProof>, Error> {
+	pub async fn get_pending_txs_with_proof(
+		&self,
+	) -> Result<Vec<(TransactionEnvelope, EncodedProof)>, Error> {
 		let (sender, receiver) = oneshot::channel();
 
-		self.sender.send(ActorMessage::GetPendingTx { sender }).await?;
+		self.sender.send(ActorMessage::GetPendingTxsWithProof { sender }).await?;
 
 		receiver.await.map_err(Error::from)
 	}
