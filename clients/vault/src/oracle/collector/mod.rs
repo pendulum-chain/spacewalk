@@ -92,7 +92,7 @@ pub fn get_tx_set_hash(x: &ScpStatementExternalize) -> Result<TxSetHash, Error> 
 }
 
 /// We only save transactions that has Memohash.
-fn check_memo(memo: &Memo) -> bool {
+fn is_hash_memo(memo: &Memo) -> bool {
 	match memo {
 		Memo::MemoHash(_) => true,
 		_ => false,

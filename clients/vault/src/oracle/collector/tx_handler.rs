@@ -1,5 +1,5 @@
 use crate::oracle::{
-	collector::{check_memo, EncodedProof, ProofStatus, ScpMessageCollector},
+	collector::{is_hash_memo, EncodedProof, ProofStatus, ScpMessageCollector},
 	errors::Error,
 	types::Slot,
 	TxFilterMap,
@@ -87,7 +87,7 @@ impl ScpMessageCollector {
 	fn is_tx_relevant(&self, transaction_env: &TransactionEnvelope) -> bool {
 		match transaction_env {
 			TransactionEnvelope::EnvelopeTypeTx(value) =>
-				self._is_tx_relevant(&value.tx) && check_memo(&value.tx.memo),
+				self._is_tx_relevant(&value.tx) && is_hash_memo(&value.tx.memo),
 			_ => false,
 		}
 	}
