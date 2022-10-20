@@ -86,6 +86,7 @@ impl ScpMessageActor {
 
 		loop {
 			tokio::select! {
+				// listen to stellar node
 				Some(conn_state) = overlay_conn.listen() => {
 					match conn_state {
 						StellarRelayMessage::Data {
@@ -104,12 +105,14 @@ impl ScpMessageActor {
 							_ => {}
 						},
 
-						_ => {}
+						StellarRelayMessage::Error(_) => { todo!() }
+						StellarRelayMessage::Timeout(_) => { todo!() }
 					}
 				}
+				// handle message from user
 				Some(msg) = self.receiver.recv() => {
 						self.handle_message(msg).await;
-					}
+				}
 			}
 		}
 	}
@@ -123,6 +126,7 @@ pub struct ScpMessageHandler {
 
 impl ScpMessageHandler {
 	/// creates a new Handler.
+	/// owns the Actor that runs the StellarOverlayConnection
 	fn new(
 		overlay_conn: StellarOverlayConnection,
 		vault_addresses: Vec<String>,
@@ -154,7 +158,6 @@ impl ScpMessageHandler {
 		&self,
 		filter: Box<TxEnvelopeFilter>,
 	) -> Result<(), Error> {
-		tracing::info!("adding filter: {}", filter.id());
 		self.sender.send(ActorMessage::AddFilter{ filter }).await.map_err(Error::from)
 	}
 
@@ -192,7 +195,6 @@ impl ScpMessageHandler {
 /// * `connection_cfg` - The configuration on how and what (address and port) Stellar Node to connect to.
 /// * `is_public_network` - Determines whether the network we'll connect to is public or not
 /// * `vault_addresses` - the addresses of this vault
-
 pub async fn create_handler(
 	node_info: NodeInfo,
 	connection_cfg: ConnConfig,
