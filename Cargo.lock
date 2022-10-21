@@ -7896,6 +7896,7 @@ dependencies = [
  "getrandom 0.2.7",
  "hex",
  "hex-literal 0.3.4",
+ "issue",
  "mocktopus",
  "orml-currencies",
  "orml-tokens",
