@@ -17,6 +17,13 @@ jobs:
         # Call `rustup show` as a hack so that the toolchain defined in rust-toolchain.toml is installed
         run: rustup show
 
+      - name: Use Cache
+        uses: Swatinem/rust-cache@v2
+        with:
+          cache-on-failure: true
+          key: "${{ matrix.platform }}-cargo-${{ hashFiles('**/Cargo.lock') }}"
+          shared-key: "shared"
+
       - name: Build
         uses: actions-rs/cargo@v1
         with:
