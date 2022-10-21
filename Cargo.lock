@@ -4286,6 +4286,8 @@ dependencies = [
  "frame-benchmarking",
  "frame-support",
  "frame-system",
+ "orml-tokens",
+ "orml-traits",
  "parity-scale-codec",
  "rand 0.8.5",
  "scale-info",
@@ -4295,6 +4297,7 @@ dependencies = [
  "sp-io",
  "sp-runtime",
  "sp-std",
+ "spacewalk-primitives",
  "substrate-stellar-sdk",
 ]
 
