@@ -22,7 +22,10 @@ use sp_consensus_aura::ed25519::AuthorityId as AuraId;
 use sp_core::{crypto::KeyTypeId, OpaqueMetadata};
 use sp_runtime::{
 	create_runtime_str, generic, impl_opaque_keys,
-	traits::{AccountIdConversion, AccountIdLookup, BlakeTwo256, Block as BlockT, NumberFor, Zero},
+	traits::{
+		AccountIdConversion, AccountIdLookup, BlakeTwo256, Block as BlockT, Convert, NumberFor,
+		Zero,
+	},
 	transaction_validity::{TransactionSource, TransactionValidity},
 	ApplyExtrinsicResult, DispatchError, FixedPointNumber, Perbill,
 };
@@ -31,6 +34,7 @@ use sp_std::prelude::*;
 use sp_version::NativeVersion;
 use sp_version::RuntimeVersion;
 
+pub use issue::{Event as IssueEvent, IssueRequest};
 pub use nomination::Event as NominationEvent;
 // A few exports that help ease life for downstream crates.
 pub use primitives::{
@@ -79,6 +83,14 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
 
 pub const MILLISECS_PER_BLOCK: u64 = 6000;
 pub const SLOT_DURATION: u64 = MILLISECS_PER_BLOCK;
+
+pub struct BlockNumberToBalance;
+
+impl Convert<BlockNumber, Balance> for BlockNumberToBalance {
+	fn convert(a: BlockNumber) -> Balance {
+		a.into()
+	}
+}
 
 /// The version information used to identify this runtime when compiled natively.
 #[cfg(feature = "std")]
@@ -348,6 +360,12 @@ impl oracle::Config for Runtime {
 	type WeightInfo = ();
 }
 
+impl issue::Config for Runtime {
+	type Event = Event;
+	type BlockNumberToBalance = BlockNumberToBalance;
+	type WeightInfo = ();
+}
+
 parameter_types! {
 	pub const MaxExpectedValue: UnsignedFixedPoint = UnsignedFixedPoint::from_inner(<UnsignedFixedPoint as FixedPointNumber>::DIV);
 }
@@ -392,9 +410,11 @@ construct_runtime! {
 		VaultStaking: staking::{Pallet, Storage, Event<T>} = 16,
 
 		Currency: currency::{Pallet} = 17,
+
 		Security: security::{Pallet, Call, Config, Storage, Event<T>} = 19,
 		VaultRegistry: vault_registry::{Pallet, Call, Config<T>, Storage, Event<T>, ValidateUnsigned} = 21,
 		Oracle: oracle::{Pallet, Call, Config<T>, Storage, Event<T>} = 22,
+		Issue: issue::{Pallet, Call, Config<T>, Storage, Event<T>} = 23,
 		Fee: fee::{Pallet, Call, Config<T>, Storage} = 26,
 		Nomination: nomination::{Pallet, Call, Config, Storage, Event<T>} = 28,
 

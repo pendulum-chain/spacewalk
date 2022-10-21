@@ -12,8 +12,9 @@ use sp_runtime::traits::{IdentifyAccount, Verify};
 use primitives::{CurrencyId::Token, VaultCurrencyPair, DOT, KSM};
 use spacewalk_runtime::{
 	AccountId, AuraConfig, BalancesConfig, CurrencyId, FeeConfig, GenesisConfig,
-	GetWrappedCurrencyId, GrandpaConfig, NominationConfig, OracleConfig, SecurityConfig, Signature,
-	StatusCode, SudoConfig, SystemConfig, TokensConfig, VaultRegistryConfig, DAYS, WASM_BINARY,
+	GetWrappedCurrencyId, GrandpaConfig, IssueConfig, NominationConfig, OracleConfig,
+	SecurityConfig, Signature, StatusCode, SudoConfig, SystemConfig, TokensConfig,
+	VaultRegistryConfig, DAYS, WASM_BINARY,
 };
 
 // The URL for the telemetry server.
@@ -237,6 +238,7 @@ fn testnet_genesis(
 				.flat_map(|k| vec![(k.clone(), CurrencyId::Token(DOT), 1 << 60)])
 				.collect(),
 		},
+		issue: IssueConfig { issue_period: DAYS },
 		security: SecurityConfig {
 			initial_status: if start_shutdown { StatusCode::Shutdown } else { StatusCode::Error },
 		},
