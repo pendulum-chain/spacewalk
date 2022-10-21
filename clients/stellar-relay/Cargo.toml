@@ -9,9 +9,6 @@ edition = "2021"
 name = "stellar_relay"
 path = "src/lib.rs"
 
-[[examples]]
-name = "connect"
-
 [dev-dependencies]
 env_logger = "0.9.0"
 
