@@ -8,8 +8,8 @@ pub type UnsignedFixedPoint<T> = <T as currency::Config>::UnsignedFixedPoint;
 /// Storage version.
 #[derive(Encode, Decode, Eq, PartialEq, TypeInfo, MaxEncodedLen)]
 pub enum Version {
-    /// Initial version.
-    V0,
-    /// BtcAddress type with script format.
-    V1,
+	/// Initial version.
+	V0,
+	/// BtcAddress type with script format.
+	V1,
 }
