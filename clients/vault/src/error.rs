@@ -5,7 +5,7 @@ use runtime::{Error as RuntimeError, SubxtError};
 use service::Error as ServiceError;
 use sp_runtime::traits::LookupError;
 use sp_std::str::Utf8Error;
-use substrate_stellar_sdk::StellarSdkError;
+use stellar_relay::sdk::StellarSdkError;
 use thiserror::Error;
 
 #[derive(Error, Debug)]
