@@ -67,13 +67,14 @@ Run this command:
  RUST_LOG=info cargo run --example oracle
 ```
 and you should be able to see in the terminal something similar when running the _`connect`_ example of `Stellar-Relay`.
-But every 8 seconds, it logs the slots in the map:
+But every 8 seconds, it logs the slots in the map, and on the 5th loop (8 seconds * 5), the `NoFilter` is added.
 ```
-[2022-10-19T08:34:03Z INFO  vault::oracle::collector::tx_handler] Inserting received transaction set for slot 574880
-[2022-10-19T08:34:08Z INFO  vault::oracle::collector::envelopes_handler] Adding received SCP envelopes for slot 574881
-[2022-10-19T08:34:08Z INFO  vault::oracle::collector::tx_handler] Inserting received transaction set for slot 574881
-[2022-10-19T08:34:10Z INFO  oracle] Slots in the map: 14
-[2022-10-19T08:34:13Z INFO  vault::oracle::collector::envelopes_handler] Adding received SCP envelopes for slot 574882
-[2022-10-19T08:34:13Z INFO  vault::oracle::collector::tx_handler] Inserting received transaction set for slot 574882
-[2022-10-19T08:34:18Z INFO  oracle] Slots in the map: 15
+[2022-10-21T08:29:30Z INFO  vault::oracle::collector::txsets_handler] Inserting received transaction set for slot 607717
+[2022-10-21T08:29:31Z INFO  oracle] Slots in the map: 6
+[2022-10-21T08:29:35Z INFO  vault::oracle::collector::envelopes_handler] Adding received SCP envelopes for slot 607718
+[2022-10-21T08:29:35Z INFO  vault::oracle::collector::txsets_handler] Inserting received transaction set for slot 607718
+[2022-10-21T08:29:39Z INFO  oracle] Slots in the map: 7
+[2022-10-21T08:29:39Z INFO  vault::oracle::handler] adding filter: NoFilter
+[2022-10-21T08:29:40Z INFO  vault::oracle::collector::envelopes_handler] Adding received SCP envelopes for slot 607719
+[2022-10-21T08:29:40Z INFO  vault::oracle::collector::txsets_handler] Inserting received transaction set for slot 607719
 ```

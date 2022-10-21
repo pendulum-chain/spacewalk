@@ -30,4 +30,4 @@ pub(crate) type TxSetToSlotMap = HashMap<TxSetHash, Slot>;
 pub(crate) type TxEnvelopeFilter = dyn FilterWith<TransactionEnvelope> + Send + Sync;
 
 /// A map that contains any type that implements FilterWith, explicitly for TransactionEnvelope
-pub(crate) type TxFilterMap = HashMap<u32, Box<TxEnvelopeFilter>>;
+pub(crate) type TxFilterMap = HashMap<&'static str, Box<TxEnvelopeFilter>>;

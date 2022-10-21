@@ -16,19 +16,6 @@ use crate::oracle::{
 	FilterWith, TxFilterMap,
 };
 
-pub struct NoFilter;
-
-// Dummy filter that does nothing.
-impl FilterWith<TransactionEnvelope> for NoFilter {
-	fn id(&self) -> u32 {
-		1
-	}
-
-	fn check_for_processing(&self, _param: &TransactionEnvelope) -> bool {
-		false
-	}
-}
-
 /// A message used to communicate with the Actor
 pub enum ActorMessage {
 	/// returns the envelopes map size.
@@ -40,7 +27,7 @@ pub enum ActorMessage {
 		filter: Box<dyn FilterWith<TransactionEnvelope> + Send + Sync>,
 	},
 
-	RemoveFilter(u32),
+	RemoveFilter(&'static str),
 	/// Gets all proofs
 	GetPendingProofs {
 		sender: oneshot::Sender<Vec<Proof>>,
@@ -69,11 +56,12 @@ impl ScpMessageActor {
 			},
 
 			ActorMessage::AddFilter { filter } => {
-				self.tx_env_filters.insert(filter.id(), filter);
+				tracing::info!("adding filter: {}", filter.name());
+				self.tx_env_filters.insert(filter.name(), filter);
 			},
 
-			ActorMessage::RemoveFilter(idx) => {
-				let _ = self.tx_env_filters.remove(&idx);
+			ActorMessage::RemoveFilter(name) => {
+				let _ = self.tx_env_filters.remove(name);
 			},
 
 			ActorMessage::GetPendingProofs { sender } => {
@@ -166,9 +154,9 @@ impl ScpMessageHandler {
 	}
 
 	/// Removes an existing filter based on its id/key in the map.
-	pub async fn remove_filter(&self, filter_id: u32) -> Result<(), Error> {
+	pub async fn remove_filter(&self, filter_name: &'static str) -> Result<(), Error> {
 		self.action_sender
-			.send(ActorMessage::RemoveFilter(filter_id))
+			.send(ActorMessage::RemoveFilter(filter_name))
 			.await
 			.map_err(Error::from)
 	}

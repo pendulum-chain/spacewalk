@@ -1,11 +1,11 @@
 use stellar_relay::sdk::{
 	network::{Network, PUBLIC_NETWORK, TEST_NETWORK},
-	SecretKey,
+	SecretKey, TransactionEnvelope,
 };
 
 use stellar_relay::{node::NodeInfo, ConnConfig};
 
-use vault::oracle::{create_handler, prepare_directories};
+use vault::oracle::{create_handler, prepare_directories, FilterWith};
 
 use tokio::time::Duration;
 
@@ -14,6 +14,19 @@ pub const SAMPLE_VAULT_ADDRESSES_FILTER: &[&str] =
 
 pub const TIER_1_VALIDATOR_IP_TESTNET: &str = "34.235.168.98";
 pub const TIER_1_VALIDATOR_IP_PUBLIC: &str = "135.181.16.110";
+
+pub struct NoFilter;
+
+// Dummy filter that does nothing.
+impl FilterWith<TransactionEnvelope> for NoFilter {
+	fn name(&self) -> &'static str {
+		"NoFilter"
+	}
+
+	fn check_for_processing(&self, _param: &TransactionEnvelope) -> bool {
+		false
+	}
+}
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -49,10 +62,17 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
 	let handler = create_handler(node_info, cfg, public_network, vault_addresses_filter).await?;
 
+	let mut counter = 0;
 	loop {
+		counter += 1;
 		tokio::time::sleep(Duration::from_secs(8)).await;
 		// let's try to send a message?
 		let slot_size = handler.get_size().await?;
 		tracing::info!("Slots in the map: {:?}", slot_size);
+
+		// adds filter at count 5
+		if counter == 5 {
+			handler.add_filter(Box::new(NoFilter)).await?;
+		}
 	}
 }
