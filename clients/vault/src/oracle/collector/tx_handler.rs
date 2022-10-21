@@ -1,14 +1,6 @@
-use stellar_relay::sdk::{
-	types::{PaymentOp, TransactionSet},
-	Transaction, TransactionEnvelope,
-};
+use stellar_relay::sdk::{types::PaymentOp, Transaction, TransactionEnvelope};
 
-use crate::oracle::{
-	collector::{is_hash_memo, Proof, ProofStatus, ScpMessageCollector},
-	errors::Error,
-	types::Slot,
-	TxFilterMap,
-};
+use crate::oracle::collector::{is_hash_memo, Proof, ProofStatus, ScpMessageCollector};
 
 impl ScpMessageCollector {
 	/// Returns a list of transactions (only those with proofs) to be processed.

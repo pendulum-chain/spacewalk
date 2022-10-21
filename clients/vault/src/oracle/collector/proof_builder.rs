@@ -22,13 +22,13 @@ pub struct Proof {
 impl Proof {
 	/// Encodes these Stellar structures to make it easier to send as extrinsic.
 	pub fn encode(&self) -> (String, String, String) {
-		let tx_env_xdr = tx_env.to_xdr();
+		let tx_env_xdr = self.tx_env.to_xdr();
 		let tx_env_encoded = base64::encode(tx_env_xdr);
 
-		let envelopes_xdr = envelopes.to_xdr();
+		let envelopes_xdr = self.envelopes.to_xdr();
 		let envelopes_encoded = base64::encode(envelopes_xdr);
 
-		let tx_set_xdr = tx_set.to_xdr();
+		let tx_set_xdr = self.tx_set.to_xdr();
 		let tx_set_encoded = base64::encode(tx_set_xdr);
 
 		(tx_env_encoded, envelopes_encoded, tx_set_encoded)

@@ -106,9 +106,12 @@ impl ScpMessageActor {
 							}
 							_ => {}
 						},
-						StellarRelayMessage::Connect{ pub_key: _, node_info: _ }  => { todo!() },
-						StellarRelayMessage::Error(_) => { todo!() }
-						StellarRelayMessage::Timeout => { todo!() }
+						// todo
+						StellarRelayMessage::Connect{ pub_key: _, node_info: _ }  => {},
+						// todo
+						StellarRelayMessage::Error(_) => {}
+						// todo
+						StellarRelayMessage::Timeout => {}
 					}
 				}
 				// handle message from user
