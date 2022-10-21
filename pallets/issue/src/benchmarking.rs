@@ -1,5 +1,5 @@
 use frame_benchmarking::{account, benchmarks, impl_benchmark_test_suite};
-use frame_support::assert_ok;
+use frame_support::{assert_ok, BoundedVec};
 use frame_system::RawOrigin;
 use orml_traits::MultiCurrency;
 use sp_core::H256;
@@ -20,6 +20,11 @@ use currency::getters::{get_relay_chain_currency_id as get_collateral_currency_i
 use oracle::Pallet as Oracle;
 use primitives::{CurrencyId, StellarPublicKeyRaw, VaultCurrencyPair, VaultId};
 use security::Pallet as Security;
+use stellar_relay::{
+	traits::{Organization, Validator},
+	types::{OrganizationOf, ValidatorOf},
+	Pallet as StellarRelay,
+};
 use vault_registry::{types::DefaultVaultCurrencyPair, Pallet as VaultRegistry};
 
 // Pallets
@@ -105,6 +110,46 @@ fn create_scp_envelope(
 	envelope
 }
 
+fn get_validators_and_organizations<T: crate::Config>(
+) -> (Vec<ValidatorOf<T>>, Vec<OrganizationOf<T>>) {
+	// Validators and organizations needed to build valid proof in the benchmark
+	let organization: OrganizationOf<T> = Organization {
+		id: 1.into(),
+		name: BoundedVec::try_from("organization".as_bytes().to_vec()).unwrap(),
+		public_network: false,
+	};
+
+	let validator_1: ValidatorOf<T> = Validator {
+		name: Default::default(),
+		public_key: BoundedVec::try_from(
+			SecretKey::from_binary(VALIDATOR_1_SECRET).get_public().to_encoding(),
+		)
+		.unwrap(),
+		organization_id: organization.id,
+		public_network: false,
+	};
+	let validator_2: ValidatorOf<T> = Validator {
+		name: Default::default(),
+		public_key: BoundedVec::try_from(
+			SecretKey::from_binary(VALIDATOR_2_SECRET).get_public().to_encoding(),
+		)
+		.unwrap(),
+		organization_id: organization.id,
+		public_network: false,
+	};
+	let validator_3: ValidatorOf<T> = Validator {
+		name: Default::default(),
+		public_key: BoundedVec::try_from(
+			SecretKey::from_binary(VALIDATOR_3_SECRET).get_public().to_encoding(),
+		)
+		.unwrap(),
+		organization_id: organization.id,
+		public_network: false,
+	};
+
+	(vec![validator_1, validator_2, validator_3], vec![organization])
+}
+
 fn build_dummy_proof_for<T: crate::Config>(issue_id: H256) -> (Vec<u8>, Vec<u8>, Vec<u8>) {
 	// Build a transaction
 	let source_account =
@@ -159,11 +204,13 @@ benchmarks! {
 		let asset = vault_id.wrapped_currency();
 		let relayer_id: T::AccountId = account("Relayer", 0, 0);
 
+		Oracle::<T>::_set_exchange_rate(get_collateral_currency_id::<T>(), <T as currency::Config>::UnsignedFixedPoint::one()).unwrap();
+		Oracle::<T>::_set_exchange_rate(<T as vault_registry::Config>::GetGriefingCollateralCurrencyId::get(), <T as currency::Config>::UnsignedFixedPoint::one()).unwrap();
+
 		mint_collateral::<T>(&origin, (1u32 << 31).into());
 		mint_collateral::<T>(&vault_id.account_id.clone(), (1u32 << 31).into());
 		mint_collateral::<T>(&relayer_id, (1u32 << 31).into());
 
-		Oracle::<T>::_set_exchange_rate(get_collateral_currency_id::<T>(), <T as currency::Config>::UnsignedFixedPoint::one()).unwrap();
 		VaultRegistry::<T>::_set_secure_collateral_threshold(get_currency_pair::<T>(), <T as currency::Config>::UnsignedFixedPoint::checked_from_rational(1, 100000).unwrap());// 0.001%
 		VaultRegistry::<T>::_set_system_collateral_ceiling(get_currency_pair::<T>(), 1_000_000_000u32.into());
 		register_vault::<T>(vault_id.clone());
@@ -200,6 +247,8 @@ benchmarks! {
 		Issue::<T>::insert_issue_request(&issue_id, &issue_request);
 		Security::<T>::set_active_block_number(1u32.into());
 
+		let (validators, organizations) = get_validators_and_organizations::<T>();
+		StellarRelay::<T>::_update_tier_1_validator_set(validators, organizations).unwrap();
 		let (tx_env_xdr_encoded, scp_envs_xdr_encoded, tx_set_xdr_encoded) = build_dummy_proof_for::<T>(issue_id);
 
 		VaultRegistry::<T>::_set_system_collateral_ceiling(get_currency_pair::<T>(), 1_000_000_000u32.into());

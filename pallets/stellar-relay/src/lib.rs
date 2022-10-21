@@ -437,6 +437,16 @@ pub mod pallet {
 			// Limit this call to root
 			let _ = ensure_root(origin)?;
 
+			Self::_update_tier_1_validator_set(validators, organizations)
+		}
+	}
+
+	// Helper functions
+	impl<T: Config> Pallet<T> {
+		pub fn _update_tier_1_validator_set(
+			validators: Vec<ValidatorOf<T>>,
+			organizations: Vec<OrganizationOf<T>>,
+		) -> DispatchResult {
 			// Ensure that the number of validators does not exceed the limit
 			ensure!(
 				validators.len() as u32 <= T::ValidatorLimit::get(),
@@ -460,10 +470,7 @@ pub mod pallet {
 
 			Ok(())
 		}
-	}
 
-	// Helper functions
-	impl<T: Config> Pallet<T> {
 		/// This function is used to verify if a give transaction was executed on the Stellar
 		/// network.
 		/// Parameters:

@@ -56,7 +56,11 @@ pub mod pallet {
 	/// The pallet's configuration trait.
 	#[pallet::config]
 	pub trait Config:
-		frame_system::Config + vault_registry::Config + stellar_relay::Config
+		frame_system::Config
+		+ vault_registry::Config
+		+ stellar_relay::Config
+		+ oracle::Config
+		+ fee::Config
 	{
 		/// The overarching event type.
 		type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;

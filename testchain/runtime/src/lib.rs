@@ -41,7 +41,7 @@ pub use primitives::{
 	self, AccountId, Balance, BlockNumber, CurrencyId, Hash, Moment, Nonce, Signature,
 	SignedFixedPoint, SignedInner, UnsignedFixedPoint, UnsignedInner,
 };
-use primitives::{CurrencyId::Token, TokenSymbol};
+use primitives::{CurrencyId::Token, TokenSymbol, TokenSymbol::INTR};
 pub use security::StatusCode;
 
 type VaultId = primitives::VaultId<AccountId, CurrencyId>;
@@ -188,7 +188,7 @@ impl pallet_timestamp::Config for Runtime {
 	type WeightInfo = ();
 }
 
-const NATIVE_TOKEN_ID: TokenSymbol = TokenSymbol::PEN;
+const NATIVE_TOKEN_ID: TokenSymbol = INTR;
 const NATIVE_CURRENCY_ID: CurrencyId = Token(NATIVE_TOKEN_ID);
 const PARENT_CURRENCY_ID: CurrencyId = Token(TokenSymbol::DOT);
 const WRAPPED_CURRENCY_ID: CurrencyId = Token(TokenSymbol::IBTC);
@@ -460,6 +460,7 @@ mod benches {
 		[frame_benchmarking, BaselineBench::<Runtime>]
 		[frame_system, SystemBench::<Runtime>]
 		[pallet_stellar_relay, StellarRelay]
+		[issue, Issue]
 		[fee, Fee]
 		[oracle, Oracle]
 		[vault_registry, VaultRegistry]
