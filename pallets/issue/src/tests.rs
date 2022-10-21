@@ -285,10 +285,12 @@ fn test_execute_issue_succeeds() {
 			fee: issue_fee,
 		});
 		assert!(System::events().iter().any(|a| a.event == execute_issue_event));
-		assert!(matches!(
-			Issue::issue_requests(&issue_id),
-			Some(IssueRequest { griefing_collateral, amount: issue_amount, fee: issue_fee, .. })
-		));
+		let executed_issue: IssueRequest<AccountId, BlockNumber, Balance, CurrencyId> =
+			Issue::issue_requests(&issue_id).unwrap();
+		assert!(matches!(executed_issue, IssueRequest { .. }));
+		assert_eq!(executed_issue.amount, issue_amount - issue_fee);
+		assert_eq!(executed_issue.fee, issue_fee);
+		assert_eq!(executed_issue.griefing_collateral, griefing_collateral);
 
 		assert_noop!(cancel_issue(USER, &issue_id), TestError::IssueCompleted);
 	})
