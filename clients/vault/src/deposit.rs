@@ -8,7 +8,7 @@ use service::Error as ServiceError;
 use sp_std::{convert::From, str, vec::Vec};
 use std::time::Duration;
 use stellar::SecretKey;
-use substrate_stellar_sdk as stellar;
+use stellar_relay::sdk as stellar;
 use tokio::time::sleep;
 
 const POLL_INTERVAL: u64 = 5000;

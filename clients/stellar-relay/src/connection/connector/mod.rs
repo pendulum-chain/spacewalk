@@ -10,7 +10,7 @@ pub(crate) use connector::Connector;
 
 #[derive(Debug)]
 pub enum ConnectorActions {
-    SendHello,
-    SendMessage(StellarMessage),
-    HandleMessage(Xdr),
+	SendHello,
+	SendMessage(StellarMessage),
+	HandleMessage(Xdr),
 }
