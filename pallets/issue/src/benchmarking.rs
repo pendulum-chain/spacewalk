@@ -2,18 +2,24 @@ use frame_benchmarking::{account, benchmarks, impl_benchmark_test_suite};
 use frame_support::assert_ok;
 use frame_system::RawOrigin;
 use orml_traits::MultiCurrency;
-use sp_core::{H256, U256};
-use sp_runtime::{
-	traits::{One, Zero},
-	FixedPointNumber,
-};
+use sp_core::H256;
+use sp_runtime::{traits::One, FixedPointNumber};
 use sp_std::prelude::*;
+use substrate_stellar_sdk::{
+	compound_types::{LimitedVarArray, LimitedVarOpaque, UnlimitedVarOpaque},
+	network::{Network, PUBLIC_NETWORK, TEST_NETWORK},
+	types::{
+		NodeId, Preconditions, ScpBallot, ScpStatement, ScpStatementExternalize,
+		ScpStatementPledges, Signature, StellarValue, StellarValueExt, TransactionExt,
+		TransactionV1Envelope, Value,
+	},
+	AccountId, Hash, Memo, MuxedAccount, PublicKey, SecretKey, Transaction, XdrCodec,
+};
 
 use currency::getters::{get_relay_chain_currency_id as get_collateral_currency_id, *};
 use oracle::Pallet as Oracle;
 use primitives::{CurrencyId, StellarPublicKeyRaw, VaultCurrencyPair, VaultId};
 use security::Pallet as Security;
-use stellar_relay::Pallet as StellarRelay;
 use vault_registry::{types::DefaultVaultCurrencyPair, Pallet as VaultRegistry};
 
 // Pallets
@@ -22,7 +28,12 @@ use crate::Pallet as Issue;
 use super::*;
 
 const STELLAR_PUBLIC_KEY_DUMMY: StellarPublicKeyRaw = [1u8; 32];
-const PUBLIC_NETWORK: bool = false;
+const IS_PUBLIC_NETWORK: bool = false;
+
+// These have to match the ones defined in the genesis config of mock.rs
+const VALIDATOR_1_SECRET: [u8; 32] = [1u8; 32];
+const VALIDATOR_2_SECRET: [u8; 32] = [2u8; 32];
+const VALIDATOR_3_SECRET: [u8; 32] = [3u8; 32];
 
 fn deposit_tokens<T: crate::Config>(
 	currency_id: CurrencyId,
@@ -58,6 +69,88 @@ fn register_vault<T: crate::Config>(vault_id: DefaultVaultId<T>) {
 	assert_ok!(VaultRegistry::<T>::_register_vault(vault_id.clone(), 100000000u32.into()));
 }
 
+fn create_scp_envelope(
+	tx_set_hash: Hash,
+	validator_secret_key: &SecretKey,
+	network: &Network,
+) -> ScpEnvelope {
+	let stellar_value: StellarValue = StellarValue {
+		tx_set_hash,
+		close_time: 0,
+		ext: StellarValueExt::StellarValueBasic,
+		upgrades: LimitedVarArray::new_empty(),
+	};
+	let stellar_value_xdr = stellar_value.to_xdr();
+	let value: Value = UnlimitedVarOpaque::new(stellar_value_xdr).unwrap();
+
+	let node_id = NodeId::from_encoding(validator_secret_key.get_public().to_encoding()).unwrap();
+
+	let statement: ScpStatement = ScpStatement {
+		node_id,
+		slot_index: 0,
+		pledges: ScpStatementPledges::ScpStExternalize(ScpStatementExternalize {
+			commit: ScpBallot { counter: 0, value },
+			n_h: 0,
+			commit_quorum_set_hash: Hash::default(),
+		}),
+	};
+
+	let network = network.get_id();
+	let envelope_type_scp = [0, 0, 0, 1].to_vec(); // xdr representation
+	let body: Vec<u8> = [network.to_vec(), envelope_type_scp, statement.to_xdr()].concat();
+	let signature_result = validator_secret_key.create_signature(body);
+	let signature: Signature = LimitedVarOpaque::new(signature_result.to_vec()).unwrap();
+
+	let envelope = ScpEnvelope { statement, signature };
+	envelope
+}
+
+fn build_dummy_proof_for<T: crate::Config>(issue_id: H256) -> (Vec<u8>, Vec<u8>, Vec<u8>) {
+	// Build a transaction
+	let source_account =
+		MuxedAccount::from(AccountId::from(PublicKey::PublicKeyTypeEd25519([0; 32])));
+	let operations = LimitedVarArray::new(vec![]).unwrap();
+	let transaction = Transaction {
+		source_account,
+		fee: 0,
+		seq_num: 0,
+		cond: Preconditions::PrecondNone,
+		memo: Memo::MemoHash(Hash::from(issue_id)), // Include the issue id in the memo
+		operations,
+		ext: TransactionExt::V0,
+	};
+
+	let transaction_envelope: TransactionEnvelope =
+		TransactionEnvelope::EnvelopeTypeTx(TransactionV1Envelope {
+			tx: transaction,
+			signatures: LimitedVarArray::new(vec![]).unwrap(),
+		});
+
+	// Build a transaction set with the transaction
+	let mut txes = UnlimitedVarArray::<TransactionEnvelope>::new_empty();
+	// Add the transaction that is to be verified to the transaction set
+	txes.push(transaction_envelope.clone()).unwrap();
+	let transaction_set = TransactionSet { previous_ledger_hash: Hash::default(), txes };
+
+	let tx_set_hash = stellar_relay::compute_non_generic_tx_set_content_hash(&transaction_set);
+	let network: &Network = if IS_PUBLIC_NETWORK { &PUBLIC_NETWORK } else { &TEST_NETWORK };
+
+	// Build the scp messages that externalize the transaction set
+	// The scp messages have to be externalized by nodes that build a valid quorum set
+	let mut envelopes = UnlimitedVarArray::<ScpEnvelope>::new_empty();
+	let validator_secret_keys = vec![VALIDATOR_1_SECRET, VALIDATOR_2_SECRET, VALIDATOR_3_SECRET];
+	for validator_secret_key in validator_secret_keys.iter() {
+		let secret_key = SecretKey::from_binary(*validator_secret_key);
+		let envelope = create_scp_envelope(tx_set_hash.clone(), &secret_key, network);
+		envelopes.push(envelope).unwrap();
+	}
+
+	let tx_env_xdr_encoded = base64::encode(&transaction_envelope.to_xdr()).as_bytes().to_vec();
+	let scp_envs_xdr_encoded = base64::encode(&envelopes.to_xdr()).as_bytes().to_vec();
+	let tx_set_xdr_encoded = base64::encode(&transaction_set.to_xdr()).as_bytes().to_vec();
+	(tx_env_xdr_encoded, scp_envs_xdr_encoded, tx_set_xdr_encoded)
+}
+
 benchmarks! {
 	request_issue {
 		let origin: T::AccountId = account("Origin", 0, 0);
@@ -76,7 +169,7 @@ benchmarks! {
 		register_vault::<T>(vault_id.clone());
 
 		Security::<T>::set_active_block_number(1u32.into());
-	}: _(RawOrigin::Signed(origin), amount, asset, vault_id, PUBLIC_NETWORK)
+	}: _(RawOrigin::Signed(origin), amount, asset, vault_id, IS_PUBLIC_NETWORK)
 
 	execute_issue {
 		let origin: T::AccountId = account("Origin", 0, 0);
@@ -102,15 +195,12 @@ benchmarks! {
 			opentime: Default::default(),
 			period: Default::default(),
 			status: Default::default(),
-			public_network: PUBLIC_NETWORK
+			public_network: IS_PUBLIC_NETWORK
 		};
 		Issue::<T>::insert_issue_request(&issue_id, &issue_request);
 		Security::<T>::set_active_block_number(1u32.into());
 
-		// TODO build a valid proof
-		let tx_env_xdr_encoded = vec![];
-		let scp_envs_xdr_encoded = vec![];
-		let tx_set_xdr_encoded = vec![];
+		let (tx_env_xdr_encoded, scp_envs_xdr_encoded, tx_set_xdr_encoded) = build_dummy_proof_for::<T>(issue_id);
 
 		VaultRegistry::<T>::_set_system_collateral_ceiling(get_currency_pair::<T>(), 1_000_000_000u32.into());
 		VaultRegistry::<T>::_set_secure_collateral_threshold(get_currency_pair::<T>(), <T as currency::Config>::UnsignedFixedPoint::checked_from_rational(1, 100000).unwrap());
@@ -129,7 +219,7 @@ benchmarks! {
 		mint_collateral::<T>(&origin, (1u32 << 31).into());
 		mint_collateral::<T>(&vault_id.account_id.clone(), (1u32 << 31).into());
 
-		let vault_stellar_address= STELLAR_PUBLIC_KEY_DUMMY;
+		let vault_stellar_address = STELLAR_PUBLIC_KEY_DUMMY;
 		let value = Amount::new(2u32.into(), get_wrapped_currency_id::<T>());
 
 		let issue_id = H256::zero();
@@ -144,7 +234,7 @@ benchmarks! {
 			griefing_collateral: Default::default(),
 			period: Default::default(),
 			status: Default::default(),
-			public_network: PUBLIC_NETWORK
+			public_network: IS_PUBLIC_NETWORK
 		};
 
 		Issue::<T>::insert_issue_request(&issue_id, &issue_request);

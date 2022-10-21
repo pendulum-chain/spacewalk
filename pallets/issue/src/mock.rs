@@ -1,9 +1,9 @@
 use frame_support::{
 	assert_ok, parameter_types,
 	traits::{ConstU32, Everything, GenesisBuild},
-	PalletId,
+	BoundedVec, PalletId,
 };
-use mocktopus::{macros::mockable, mocking::*};
+use mocktopus::{macros::mockable, mocking::clear_mocks};
 use orml_traits::parameter_type_with_key;
 use sp_arithmetic::{FixedI128, FixedPointNumber, FixedU128};
 use sp_core::H256;
@@ -11,10 +11,15 @@ use sp_runtime::{
 	testing::{Header, TestXt},
 	traits::{BlakeTwo256, Convert, IdentityLookup, One, Zero},
 };
+use substrate_stellar_sdk::SecretKey;
 
 use currency::Amount;
 pub use primitives::{CurrencyId, CurrencyId::Token, TokenSymbol::*};
 use primitives::{VaultCurrencyPair, VaultId};
+use stellar_relay::{
+	traits::{Organization, Validator},
+	types::{OrganizationOf, ValidatorOf},
+};
 
 use crate as issue;
 use crate::{Config, Error};
@@ -273,6 +278,11 @@ pub const VAULT: VaultId<AccountId, CurrencyId> = VaultId {
 	},
 };
 
+// Validator secrets for the benchmark test
+const VALIDATOR_1_SECRET: [u8; 32] = [1u8; 32];
+const VALIDATOR_2_SECRET: [u8; 32] = [2u8; 32];
+const VALIDATOR_3_SECRET: [u8; 32] = [3u8; 32];
+
 pub const ALICE_BALANCE: u128 = 1_000_000;
 pub const BOB_BALANCE: u128 = 1_000_000;
 
@@ -292,6 +302,49 @@ impl ExtBuilder {
 			premium_redeem_fee: UnsignedFixedPoint::checked_from_rational(5, 100).unwrap(), // 5%
 			punishment_fee: UnsignedFixedPoint::checked_from_rational(1, 10).unwrap(), // 10%
 			replace_griefing_collateral: UnsignedFixedPoint::checked_from_rational(1, 10).unwrap(), // 10%
+		}
+		.assimilate_storage(&mut storage)
+		.unwrap();
+
+		// Validators and organizations needed to build valid proof in the benchmark
+		let organization: OrganizationOf<Test> = Organization {
+			id: 1,
+			name: BoundedVec::try_from("organization".as_bytes().to_vec()).unwrap(),
+			public_network: false,
+		};
+
+		let validator_1: ValidatorOf<Test> = Validator {
+			name: Default::default(),
+			public_key: BoundedVec::try_from(
+				SecretKey::from_binary(VALIDATOR_1_SECRET).get_public().to_encoding(),
+			)
+			.unwrap(),
+			organization_id: 1,
+			public_network: false,
+		};
+		let validator_2: ValidatorOf<Test> = Validator {
+			name: Default::default(),
+			public_key: BoundedVec::try_from(
+				SecretKey::from_binary(VALIDATOR_2_SECRET).get_public().to_encoding(),
+			)
+			.unwrap(),
+			organization_id: 1,
+			public_network: false,
+		};
+		let validator_3: ValidatorOf<Test> = Validator {
+			name: Default::default(),
+			public_key: BoundedVec::try_from(
+				SecretKey::from_binary(VALIDATOR_3_SECRET).get_public().to_encoding(),
+			)
+			.unwrap(),
+			organization_id: 1,
+			public_network: false,
+		};
+
+		stellar_relay::GenesisConfig::<Test> {
+			validators: vec![validator_1, validator_2, validator_3],
+			organizations: vec![organization],
+			phantom: Default::default(),
 		}
 		.assimilate_storage(&mut storage)
 		.unwrap();

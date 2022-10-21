@@ -34,7 +34,6 @@ pub use crate::types::{DefaultIssueRequest, IssueRequest, IssueRequestStatus};
 mod benchmarking;
 mod default_weights;
 
-// mod default_weights;
 #[cfg(test)]
 mod mock;
 
