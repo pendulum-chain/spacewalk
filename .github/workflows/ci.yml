@@ -1,4 +1,4 @@
-on: [pull_request]
+on: [ pull_request ]
 
 name: continuous-integration
 
@@ -6,12 +6,40 @@ jobs:
   ci:
     strategy:
       matrix:
-        platform: [ubuntu-latest, macos-latest]
+        os: [ ubuntu-latest, macos-latest ]
+        include:
+          - os: ubuntu-latest
+            sccache-path: /home/runner/.cache/sccache
+          - os: macos-latest
+            sccache-path: /Users/runner/Library/Caches/Mozilla.sccache
 
-    runs-on: ${{ matrix.platform }}
+    runs-on: ${{ matrix.os }}
+
+    env:
+      RUST_BACKTRACE: full
+      RUSTC_WRAPPER: sccache
+      SCCACHE_CACHE_SIZE: 2G
+      SCCACHE_DIR: ${{ matrix.sccache-path }}
 
     steps:
       - uses: actions/checkout@v2
+
+      - name: Install sccache (ubuntu-latest)
+        if: matrix.os == 'ubuntu-latest'
+        env:
+          LINK: https://github.com/mozilla/sccache/releases/download
+          SCCACHE_VERSION: 0.2.13
+        run: |
+          SCCACHE_FILE=sccache-$SCCACHE_VERSION-x86_64-unknown-linux-musl
+          mkdir -p $HOME/.local/bin
+          curl -L "$LINK/$SCCACHE_VERSION/$SCCACHE_FILE.tar.gz" | tar xz
+          mv -f $SCCACHE_FILE/sccache $HOME/.local/bin/sccache
+          echo "$HOME/.local/bin" >> $GITHUB_PATH
+      - name: Install sccache (macos-latest)
+        if: matrix.os == 'macos-latest'
+        run: |
+          brew update
+          brew install sccache             
 
       - name: Setup Rust toolchain
         # Call `rustup show` as a hack so that the toolchain defined in rust-toolchain.toml is installed
@@ -21,8 +49,19 @@ jobs:
         uses: Swatinem/rust-cache@v2
         with:
           cache-on-failure: true
-          key: "${{ matrix.platform }}-cargo-${{ hashFiles('**/Cargo.lock') }}"
+          key: "${{ matrix.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}"
           shared-key: "shared"
+
+      - name: Save sccache
+        uses: actions/cache@v2
+        continue-on-error: false
+        with:
+          path: "${{ matrix.sccache-path }}"
+          key: "${{ matrix.os }}-sccache-${{ hashFiles('**/Cargo.lock') }}"
+          restore-keys: "${{ matrix.os }}-sccache-"
+
+      - name: Start sccache server
+        run: sccache --start-server
 
       - name: Build
         uses: actions-rs/cargo@v1
@@ -34,15 +73,22 @@ jobs:
         with:
           command: test
           args: --all
-      
+
       - name: Rustfmt
         uses: actions-rs/cargo@v1
         with:
           command: fmt
           args: --all -- --check
-      
+
       - name: Clippy
         uses: actions-rs/cargo@v1
         with:
           command: clippy
           args: --all -- -W warnings -W clippy::unwrap_used -W clippy::needless_collect
+
+      - name: Print sccache stats
+        run: sccache --show-stats
+
+      - name: Stop sccache server
+        run: sccache --stop-server || true
+
