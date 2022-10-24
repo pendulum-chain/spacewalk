@@ -53,8 +53,8 @@ jobs:
           shared-key: "shared"
 
       - name: Save sccache
-        uses: actions/cache@v2
-        continue-on-error: false
+        uses: actions/cache@v3
+        continue-on-error: true
         with:
           path: "${{ matrix.sccache-path }}"
           key: "${{ matrix.os }}-sccache-${{ hashFiles('**/Cargo.lock') }}"
@@ -81,10 +81,9 @@ jobs:
           args: --all -- --check
 
       - name: Clippy
-        uses: actions-rs/cargo@v1
-        with:
-          command: clippy
-          args: --all -- -W warnings -W clippy::unwrap_used -W clippy::needless_collect
+        run: |
+          rustup component add clippy 
+          cargo clippy --all -- -W warnings -W clippy::unwrap_used -W clippy::needless_collect 
 
       - name: Print sccache stats
         run: sccache --show-stats
