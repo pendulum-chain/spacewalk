@@ -1,7 +1,7 @@
 //! # Redeem Pallet
 //! Based on the [specification](https://spec.interlay.io/spec/redeem.html).
 
-#![deny(warnings)]
+// #![deny(warnings)]
 #![cfg_attr(test, feature(proc_macro_hygiene))]
 #![cfg_attr(not(feature = "std"), no_std)]
 

@@ -38,7 +38,7 @@ frame_support::construct_runtime!(
 		Rewards: reward::{Pallet, Call, Storage, Event<T>},
 
 		// Operational
-		BTCRelay: btc_relay::{Pallet, Call, Config<T>, Storage, Event<T>},
+		StellarRelay: stellar_relay::{Pallet, Call, Config<T>, Storage, Event<T>},
 		Security: security::{Pallet, Call, Storage, Event<T>},
 		VaultRegistry: vault_registry::{Pallet, Call, Config<T>, Storage, Event<T>},
 		Oracle: oracle::{Pallet, Call, Config<T>, Storage, Event<T>},
@@ -195,12 +195,17 @@ impl reward::Config for Test {
 }
 
 parameter_types! {
-	pub const ParachainBlocksPerBitcoinBlock: BlockNumber = 100;
+	pub const OrganizationLimit: u32 = 255;
+	pub const ValidatorLimit: u32 = 255;
 }
 
-impl btc_relay::Config for Test {
+pub type OrganizationId = u128;
+
+impl stellar_relay::Config for Test {
 	type Event = TestEvent;
-	type ParachainBlocksPerBitcoinBlock = ParachainBlocksPerBitcoinBlock;
+	type OrganizationId = OrganizationId;
+	type OrganizationLimit = OrganizationLimit;
+	type ValidatorLimit = ValidatorLimit;
 	type WeightInfo = ();
 }
 
@@ -305,13 +310,9 @@ impl ExtBuilder {
 		.assimilate_storage(&mut storage)
 		.unwrap();
 
-		redeem::GenesisConfig::<Test> {
-			redeem_transaction_size: 1,
-			redeem_period: 10,
-			redeem_btc_dust_value: 2,
-		}
-		.assimilate_storage(&mut storage)
-		.unwrap();
+		redeem::GenesisConfig::<Test> { redeem_transaction_size: 1, redeem_period: 10 }
+			.assimilate_storage(&mut storage)
+			.unwrap();
 
 		oracle::GenesisConfig::<Test> {
 			authorized_oracles: vec![(USER, "test".as_bytes().to_vec())],
