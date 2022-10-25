@@ -2,11 +2,16 @@
 members = [
   "testchain/node",
   "testchain/runtime",
+  "clients/runtime",
+  "clients/vault",
+  "clients/service",
+  "clients/stellar-relay",
   "primitives",
   "rpc",
   "pallets/spacewalk",
   "pallets/stellar-relay",
-  "pallets/currency"
+  "pallets/currency",
 ]
+
 [profile.release]
 panic = "unwind"
