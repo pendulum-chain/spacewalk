@@ -53,7 +53,7 @@ jobs:
           shared-key: "shared"
 
       - name: Save sccache
-        uses: actions/cache@v3
+        uses: pat-s/always-upload-cache@v3
         continue-on-error: true
         with:
           path: "${{ matrix.sccache-path }}"
