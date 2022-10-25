@@ -12,7 +12,7 @@ use substrate_stellar_sdk::{
 
 use currency::Amount;
 use primitives::{issue::IssueRequestStatus, StellarPublicKeyRaw};
-use stellar_relay::tests::{DEFAULT_STELLAR_PUBLIC_KEY, RANDOM_STELLAR_PUBLIC_KEY};
+use stellar_relay::testing_utils::{DEFAULT_STELLAR_PUBLIC_KEY, RANDOM_STELLAR_PUBLIC_KEY};
 use vault_registry::{DefaultVault, DefaultVaultId, Vault, VaultStatus};
 
 use crate::{ext, mock::*, Event, IssueRequest};
@@ -86,7 +86,7 @@ fn request_issue_ok_with_address(
 
 fn execute_issue(origin: AccountId, issue_id: &H256) -> Result<(), DispatchError> {
 	let (tx_env_encoded, scp_envelopes_encoded, transaction_set_encoded) =
-		stellar_relay::tests::create_dummy_scp_structs_encoded();
+		stellar_relay::testing_utils::create_dummy_scp_structs_encoded();
 
 	Issue::_execute_issue(
 		origin,

@@ -1,12 +1,10 @@
 use frame_support::{assert_err, assert_noop, assert_ok, dispatch::DispatchError};
 use mocktopus::mocking::*;
 use sp_core::H256;
-use substrate_stellar_sdk::XdrCodec;
 
 use currency::Amount;
-use primitives::StellarPublicKeyRaw;
 use security::Pallet as Security;
-use stellar_relay::tests::RANDOM_STELLAR_PUBLIC_KEY;
+use stellar_relay::testing_utils::RANDOM_STELLAR_PUBLIC_KEY;
 use vault_registry::{DefaultVault, VaultStatus};
 
 use crate::{
@@ -479,7 +477,7 @@ fn test_execute_redeem_succeeds_with_another_account() {
 			transaction_envelope_xdr_encoded,
 			scp_envelopes_xdr_encoded,
 			transaction_set_xdr_encoded,
-		) = stellar_relay::tests::create_dummy_scp_structs_encoded();
+		) = stellar_relay::testing_utils::create_dummy_scp_structs_encoded();
 
 		assert_ok!(Redeem::execute_redeem(
 			Origin::signed(USER),
@@ -568,7 +566,7 @@ fn test_execute_redeem_succeeds() {
 			transaction_envelope_xdr_encoded,
 			scp_envelopes_xdr_encoded,
 			transaction_set_xdr_encoded,
-		) = stellar_relay::tests::create_dummy_scp_structs_encoded();
+		) = stellar_relay::testing_utils::create_dummy_scp_structs_encoded();
 
 		assert_ok!(Redeem::execute_redeem(
 			Origin::signed(VAULT.account_id),
@@ -936,7 +934,7 @@ mod spec_based_tests {
 				transaction_envelope_xdr_encoded,
 				scp_envelopes_xdr_encoded,
 				transaction_set_xdr_encoded,
-			) = stellar_relay::tests::create_dummy_scp_structs_encoded();
+			) = stellar_relay::testing_utils::create_dummy_scp_structs_encoded();
 
 			assert_ok!(Redeem::execute_redeem(
 				Origin::signed(USER),

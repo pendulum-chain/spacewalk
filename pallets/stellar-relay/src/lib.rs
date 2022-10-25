@@ -9,13 +9,9 @@ pub use pallet::*;
 
 #[cfg(test)]
 mod mock;
-#[cfg(feature = "testing-utils")]
-pub mod mock;
 
 #[cfg(test)]
 mod tests;
-#[cfg(feature = "testing-utils")]
-pub mod tests;
 
 #[cfg(feature = "runtime-benchmarks")]
 mod benchmarking;
@@ -24,6 +20,9 @@ pub mod traits;
 pub mod types;
 
 mod weights;
+
+#[cfg(any(test, feature = "testing-utils"))]
+pub mod testing_utils;
 
 #[frame_support::pallet]
 pub mod pallet {
