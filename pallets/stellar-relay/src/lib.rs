@@ -664,7 +664,7 @@ pub mod pallet {
 		}
 	}
 
-	pub fn compute_non_generic_tx_set_content_hash(tx_set: &TransactionSet) -> [u8; 32] {
+	pub(crate) fn compute_non_generic_tx_set_content_hash(tx_set: &TransactionSet) -> [u8; 32] {
 		let mut hasher = Sha256::new();
 		hasher.update(tx_set.previous_ledger_hash);
 
