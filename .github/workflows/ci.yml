@@ -80,11 +80,6 @@ jobs:
           command: fmt
           args: --all -- --check
 
-      - name: Clippy
-        run: |
-          rustup component add clippy 
-          cargo clippy --all -- -W warnings -W clippy::unwrap_used -W clippy::needless_collect 
-
       - name: Print sccache stats
         run: sccache --show-stats
 
