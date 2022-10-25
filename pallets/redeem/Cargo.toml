@@ -1,9 +1,9 @@
 [package]
-authors = ["Interlay Ltd"]
+authors = ["Pendulum Chain <https://github.com/pendulum-chain>"]
 description = "Redeem module"
 edition = "2021"
 name = "redeem"
-version = "1.2.0"
+version = "1.0.0"
 
 [dependencies]
 serde = { version = "1.0.130", default-features = false, features = ['derive'], optional = true }
@@ -30,6 +30,8 @@ security = { path = "../security", default-features = false }
 stellar-relay = { package = "pallet-stellar-relay", path = "../stellar-relay", default-features = false }
 vault-registry = { path = "../vault-registry", default-features = false }
 primitives = { package = "spacewalk-primitives", path = "../../primitives", default-features = false }
+
+substrate-stellar-sdk = { git = "https://github.com/pendulum-chain/substrate-stellar-sdk", branch = "polkadot-v0.9.24", default-features = false, features = ['offchain'] }
 
 # Orml dependencies
 orml-tokens = { git = "https://github.com/open-web3-stack/open-runtime-module-library", branch = "polkadot-v0.9.24", default-features = false, optional = true }
@@ -68,6 +70,7 @@ std = [
     "security/std",
     "stellar-relay/std",
     "vault-registry/std",
+    "substrate-stellar-sdk/std",
     "primitives/std",
     "orml-tokens/std",
     "orml-traits/std",

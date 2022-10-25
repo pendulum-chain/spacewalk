@@ -2,60 +2,60 @@
 use mocktopus::macros::mockable;
 
 #[cfg_attr(test, mockable)]
-pub(crate) mod btc_relay {
-	use bitcoin::types::{MerkleProof, Transaction, Value};
-	use btc_relay::BtcAddress;
-	use frame_support::dispatch::DispatchError;
-	use sp_core::H256;
-	use sp_std::convert::TryInto;
+pub(crate) mod stellar_relay {
+	use sp_std::convert::TryFrom;
+	use substrate_stellar_sdk::{
+		compound_types::UnlimitedVarArray,
+		types::{ScpEnvelope, TransactionSet},
+		TransactionEnvelope, XdrCodec,
+	};
 
-	pub fn verify_and_validate_op_return_transaction<T: crate::Config, V: TryInto<Value>>(
-		merkle_proof: MerkleProof,
-		transaction: Transaction,
-		recipient_btc_address: BtcAddress,
-		expected_btc: V,
-		op_return_id: H256,
-	) -> Result<(), DispatchError> {
-		<btc_relay::Pallet<T>>::verify_and_validate_op_return_transaction(
-			merkle_proof,
-			transaction,
-			recipient_btc_address,
-			expected_btc,
-			op_return_id,
+	use primitives::StellarPublicKeyRaw;
+	use stellar_relay::Error;
+
+	use crate::types::CurrencyId;
+
+	pub fn validate_stellar_transaction<T: crate::Config>(
+		transaction_envelope: &TransactionEnvelope,
+		envelopes: &UnlimitedVarArray<ScpEnvelope>,
+		transaction_set: &TransactionSet,
+	) -> Result<(), Error<T>> {
+		<stellar_relay::Pallet<T>>::validate_stellar_transaction(
+			transaction_envelope,
+			envelopes,
+			transaction_set,
+			// TODO change this
+			true,
 		)
 	}
 
-	pub fn get_best_block_height<T: crate::Config>() -> u32 {
-		<btc_relay::Pallet<T>>::get_best_block_height()
+	pub fn construct_from_raw_encoded_xdr<T: crate::Config, V: XdrCodec>(
+		raw_encoded_xdr: &[u8],
+	) -> Result<V, Error<T>> {
+		<stellar_relay::Pallet<T>>::construct_from_raw_encoded_xdr(raw_encoded_xdr)
 	}
 
-	pub fn parse_transaction<T: btc_relay::Config>(
-		raw_tx: &[u8],
-	) -> Result<Transaction, DispatchError> {
-		<btc_relay::Pallet<T>>::parse_transaction(raw_tx)
-	}
-
-	pub fn parse_merkle_proof<T: btc_relay::Config>(
-		raw_merkle_proof: &[u8],
-	) -> Result<MerkleProof, DispatchError> {
-		<btc_relay::Pallet<T>>::parse_merkle_proof(raw_merkle_proof)
-	}
-
-	pub fn has_request_expired<T: crate::Config>(
-		opentime: T::BlockNumber,
-		btc_open_height: u32,
-		period: T::BlockNumber,
-	) -> Result<bool, DispatchError> {
-		<btc_relay::Pallet<T>>::has_request_expired(opentime, btc_open_height, period)
+	pub fn get_amount_from_transaction_envelope<T: crate::Config, V: TryFrom<i64>>(
+		transaction_envelope: &TransactionEnvelope,
+		recipient_stellar_address: StellarPublicKeyRaw,
+		currency: &CurrencyId<T>,
+	) -> Result<V, Error<T>> {
+		<stellar_relay::Pallet<T>>::get_amount_from_transaction_envelope(
+			transaction_envelope,
+			recipient_stellar_address,
+			currency,
+		)
 	}
 }
 
 #[cfg_attr(test, mockable)]
 pub(crate) mod vault_registry {
-	use crate::DefaultVaultId;
-	use currency::Amount;
 	use frame_support::dispatch::{DispatchError, DispatchResult};
+
+	use currency::Amount;
 	use vault_registry::types::{CurrencyId, CurrencySource, DefaultVault};
+
+	use crate::DefaultVaultId;
 
 	pub fn get_liquidated_collateral<T: crate::Config>(
 		vault_id: &DefaultVaultId<T>,
@@ -204,6 +204,14 @@ pub(crate) mod treasury {
 pub(crate) mod security {
 	use frame_support::dispatch::DispatchResult;
 	use sp_core::H256;
+	use sp_runtime::DispatchError;
+
+	pub fn parachain_block_expired<T: crate::Config>(
+		opentime: T::BlockNumber,
+		period: T::BlockNumber,
+	) -> Result<bool, DispatchError> {
+		<security::Pallet<T>>::parachain_block_expired(opentime, period)
+	}
 
 	pub fn get_secure_id<T: crate::Config>(id: &T::AccountId) -> H256 {
 		<security::Pallet<T>>::get_secure_id(id)
@@ -220,9 +228,11 @@ pub(crate) mod security {
 
 #[cfg_attr(test, mockable)]
 pub(crate) mod oracle {
-	use crate::OracleKey;
 	use frame_support::dispatch::DispatchError;
+
 	use oracle::types::UnsignedFixedPoint;
+
+	use crate::OracleKey;
 
 	pub fn get_price<T: crate::Config>(
 		key: OracleKey,
@@ -233,8 +243,9 @@ pub(crate) mod oracle {
 
 #[cfg_attr(test, mockable)]
 pub(crate) mod fee {
-	use currency::Amount;
 	use frame_support::dispatch::{DispatchError, DispatchResult};
+
+	use currency::Amount;
 
 	pub fn fee_pool_account_id<T: crate::Config>() -> T::AccountId {
 		<fee::Pallet<T>>::fee_pool_account_id()

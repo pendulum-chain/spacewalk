@@ -5131,7 +5131,7 @@ dependencies = [
 
 [[package]]
 name = "redeem"
-version = "1.2.0"
+version = "1.0.0"
 dependencies = [
  "currency",
  "fee",
@@ -5156,6 +5156,7 @@ dependencies = [
  "sp-std",
  "spacewalk-primitives",
  "staking",
+ "substrate-stellar-sdk",
  "vault-registry",
 ]
 

@@ -167,6 +167,75 @@ pub mod issue {
 	}
 }
 
+pub mod redeem {
+	use super::*;
+
+	#[derive(Encode, Decode, Clone, Eq, PartialEq, TypeInfo, MaxEncodedLen)]
+	#[cfg_attr(feature = "std", derive(Debug, Serialize, Deserialize))]
+	#[cfg_attr(feature = "std", serde(rename_all = "camelCase"))]
+	pub enum RedeemRequestStatus {
+		/// opened, but not yet executed or cancelled
+		Pending,
+		/// successfully executed with a valid payment from the vault
+		Completed,
+		/// bool=true indicates that the vault minted tokens for the amount that the redeemer
+		/// burned
+		Reimbursed(bool),
+		/// user received compensation, but is retrying the redeem with another vault
+		Retried,
+	}
+
+	impl Default for RedeemRequestStatus {
+		fn default() -> Self {
+			RedeemRequestStatus::Pending
+		}
+	}
+
+	// Due to a known bug in serde we need to specify how u128 is (de)serialized.
+	// See https://github.com/paritytech/substrate/issues/4641
+	#[derive(Encode, Decode, Clone, PartialEq, TypeInfo, MaxEncodedLen)]
+	#[cfg_attr(feature = "std", derive(Debug, Serialize, Deserialize))]
+	pub struct RedeemRequest<AccountId, BlockNumber, Balance, CurrencyId: Copy> {
+		/// the vault associated with this redeem request
+		pub vault: VaultId<AccountId, CurrencyId>,
+		/// the *active* block height when this request was opened
+		pub opentime: BlockNumber,
+		/// the redeem period when this request was opened
+		pub period: BlockNumber,
+		#[cfg_attr(feature = "std", serde(bound(deserialize = "Balance: std::str::FromStr")))]
+		#[cfg_attr(feature = "std", serde(deserialize_with = "deserialize_from_string"))]
+		#[cfg_attr(feature = "std", serde(bound(serialize = "Balance: std::fmt::Display")))]
+		#[cfg_attr(feature = "std", serde(serialize_with = "serialize_as_string"))]
+		/// total redeem fees - taken from request amount
+		pub fee: Balance,
+		#[cfg_attr(feature = "std", serde(bound(deserialize = "Balance: std::str::FromStr")))]
+		#[cfg_attr(feature = "std", serde(deserialize_with = "deserialize_from_string"))]
+		#[cfg_attr(feature = "std", serde(bound(serialize = "Balance: std::fmt::Display")))]
+		#[cfg_attr(feature = "std", serde(serialize_with = "serialize_as_string"))]
+		/// amount the vault should spend on the bitcoin inclusion fee - taken from request amount
+		pub transfer_fee_btc: Balance,
+		#[cfg_attr(feature = "std", serde(bound(deserialize = "Balance: std::str::FromStr")))]
+		#[cfg_attr(feature = "std", serde(deserialize_with = "deserialize_from_string"))]
+		#[cfg_attr(feature = "std", serde(bound(serialize = "Balance: std::fmt::Display")))]
+		#[cfg_attr(feature = "std", serde(serialize_with = "serialize_as_string"))]
+		/// total amount of some asset for the vault to send
+		pub amount: Balance,
+		pub asset: CurrencyId,
+		#[cfg_attr(feature = "std", serde(bound(deserialize = "Balance: std::str::FromStr")))]
+		#[cfg_attr(feature = "std", serde(deserialize_with = "deserialize_from_string"))]
+		#[cfg_attr(feature = "std", serde(bound(serialize = "Balance: std::fmt::Display")))]
+		#[cfg_attr(feature = "std", serde(serialize_with = "serialize_as_string"))]
+		/// premium redeem amount in collateral
+		pub premium: Balance,
+		/// the account redeeming tokens (for BTC)
+		pub redeemer: AccountId,
+		/// the user's Stellar address for payment verification
+		pub stellar_address: StellarPublicKeyRaw,
+		/// the status of this redeem request
+		pub status: RedeemRequestStatus,
+	}
+}
+
 pub mod oracle {
 	use super::*;
 

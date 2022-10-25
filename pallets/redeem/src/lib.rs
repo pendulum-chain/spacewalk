@@ -5,57 +5,62 @@
 #![cfg_attr(test, feature(proc_macro_hygiene))]
 #![cfg_attr(not(feature = "std"), no_std)]
 
-#[cfg(feature = "runtime-benchmarks")]
-mod benchmarking;
-
-mod default_weights;
-pub use default_weights::WeightInfo;
-
-#[cfg(test)]
-mod mock;
-
-#[cfg(test)]
-mod tests;
-
 #[cfg(test)]
 extern crate mocktopus;
 
-#[cfg(test)]
-use mocktopus::macros::mockable;
-
-mod ext;
-pub mod types;
-
-#[doc(inline)]
-pub use crate::types::{DefaultRedeemRequest, RedeemRequest, RedeemRequestStatus};
-
-use crate::types::{BalanceOf, RedeemRequestExt, Version};
-use btc_relay::BtcAddress;
-use currency::Amount;
 use frame_support::{
 	dispatch::{DispatchError, DispatchResult},
 	ensure, transactional,
 };
 use frame_system::{ensure_root, ensure_signed};
-use oracle::OracleKey;
+#[cfg(test)]
+use mocktopus::macros::mockable;
 use sp_core::H256;
 use sp_runtime::{ArithmeticError, FixedPointNumber};
 use sp_std::{convert::TryInto, vec::Vec};
+use substrate_stellar_sdk::{
+	compound_types::UnlimitedVarArray,
+	types::{ScpEnvelope, TransactionSet},
+	TransactionEnvelope,
+};
+
+use currency::Amount;
+pub use default_weights::WeightInfo;
+use oracle::OracleKey;
+pub use pallet::*;
+use primitives::StellarPublicKeyRaw;
 use types::DefaultVaultId;
 use vault_registry::{
 	types::{CurrencyId, DefaultVaultCurrencyPair},
 	CurrencySource,
 };
 
-pub use pallet::*;
+use crate::types::{BalanceOf, RedeemRequestExt, Version};
+#[doc(inline)]
+pub use crate::types::{DefaultRedeemRequest, RedeemRequest, RedeemRequestStatus};
+
+#[cfg(feature = "runtime-benchmarks")]
+mod benchmarking;
+
+mod default_weights;
+#[cfg(test)]
+mod mock;
+
+#[cfg(test)]
+mod tests;
+
+mod ext;
+pub mod types;
 
 #[frame_support::pallet]
 pub mod pallet {
-	use super::*;
 	use frame_support::pallet_prelude::*;
 	use frame_system::pallet_prelude::*;
-	use primitives::VaultId;
+
+	use primitives::{StellarPublicKeyRaw, VaultId};
 	use vault_registry::types::DefaultVaultCurrencyPair;
+
+	use super::*;
 
 	/// ## Configuration
 	/// The pallet's configuration trait.
@@ -63,7 +68,7 @@ pub mod pallet {
 	pub trait Config:
 		frame_system::Config
 		+ vault_registry::Config
-		+ btc_relay::Config
+		+ stellar_relay::Config
 		+ fee::Config<UnsignedInner = BalanceOf<Self>>
 	{
 		/// The overarching event type.
@@ -81,20 +86,23 @@ pub mod pallet {
 			redeemer: T::AccountId,
 			vault_id: DefaultVaultId<T>,
 			amount: BalanceOf<T>,
+			asset: CurrencyId<T>,
 			fee: BalanceOf<T>,
 			premium: BalanceOf<T>,
-			btc_address: BtcAddress,
+			stellar_address: StellarPublicKeyRaw,
 			transfer_fee: BalanceOf<T>,
 		},
 		LiquidationRedeem {
 			redeemer: T::AccountId,
 			amount: BalanceOf<T>,
+			asset: CurrencyId<T>,
 		},
 		ExecuteRedeem {
 			redeem_id: H256,
 			redeemer: T::AccountId,
 			vault_id: DefaultVaultId<T>,
 			amount: BalanceOf<T>,
+			asset: CurrencyId<T>,
 			fee: BalanceOf<T>,
 			transfer_fee: BalanceOf<T>,
 		},
@@ -167,32 +175,16 @@ pub mod pallet {
 	#[pallet::getter(fn redeem_transaction_size)]
 	pub(super) type RedeemTransactionSize<T: Config> = StorageValue<_, u32, ValueQuery>;
 
-	#[pallet::type_value]
-	pub(super) fn DefaultForStorageVersion() -> Version {
-		Version::V0
-	}
-
-	/// Build storage at V1 (requires default 0).
-	#[pallet::storage]
-	#[pallet::getter(fn storage_version)]
-	pub(super) type StorageVersion<T: Config> =
-		StorageValue<_, Version, ValueQuery, DefaultForStorageVersion>;
-
 	#[pallet::genesis_config]
 	pub struct GenesisConfig<T: Config> {
 		pub redeem_period: T::BlockNumber,
-		pub redeem_btc_dust_value: BalanceOf<T>,
 		pub redeem_transaction_size: u32,
 	}
 
 	#[cfg(feature = "std")]
 	impl<T: Config> Default for GenesisConfig<T> {
 		fn default() -> Self {
-			Self {
-				redeem_period: Default::default(),
-				redeem_btc_dust_value: Default::default(),
-				redeem_transaction_size: Default::default(),
-			}
+			Self { redeem_period: Default::default(), redeem_transaction_size: Default::default() }
 		}
 	}
 
@@ -200,7 +192,6 @@ pub mod pallet {
 	impl<T: Config> GenesisBuild<T> for GenesisConfig<T> {
 		fn build(&self) {
 			RedeemPeriod::<T>::put(self.redeem_period);
-			RedeemBtcDustValue::<T>::put(self.redeem_btc_dust_value);
 			RedeemTransactionSize::<T>::put(self.redeem_transaction_size);
 		}
 	}
@@ -228,11 +219,12 @@ pub mod pallet {
 		pub fn request_redeem(
 			origin: OriginFor<T>,
 			#[pallet::compact] amount_wrapped: BalanceOf<T>,
-			btc_address: BtcAddress,
+			asset: CurrencyId<T>,
+			stellar_address: StellarPublicKeyRaw,
 			vault_id: DefaultVaultId<T>,
 		) -> DispatchResultWithPostInfo {
 			let redeemer = ensure_signed(origin)?;
-			Self::_request_redeem(redeemer, amount_wrapped, btc_address, vault_id)?;
+			Self::_request_redeem(redeemer, amount_wrapped, asset, stellar_address, vault_id)?;
 			Ok(().into())
 		}
 
@@ -276,11 +268,17 @@ pub mod pallet {
 		pub fn execute_redeem(
 			origin: OriginFor<T>,
 			redeem_id: H256,
-			merkle_proof: Vec<u8>,
-			raw_tx: Vec<u8>,
+			transaction_envelope_xdr_encoded: Vec<u8>,
+			externalized_envelopes_encoded: Vec<u8>,
+			transaction_set_encoded: Vec<u8>,
 		) -> DispatchResultWithPostInfo {
 			let _ = ensure_signed(origin)?;
-			Self::_execute_redeem(redeem_id, merkle_proof, raw_tx)?;
+			Self::_execute_redeem(
+				redeem_id,
+				transaction_envelope_xdr_encoded,
+				externalized_envelopes_encoded,
+				transaction_set_encoded,
+			)?;
 
 			// Don't take tx fees on success. If the vault had to pay for this function, it would
 			// have been vulnerable to a griefing attack where users would redeem amounts just
@@ -407,6 +405,9 @@ mod self_redeem {
 		Ok(())
 	}
 
+	// how testnet would work
+	// - vault client
+
 	/// returns (fees, consumed_issued_tokens)
 	fn calculate_token_amounts<T: Config>(
 		vault_id: &DefaultVaultId<T>,
@@ -469,9 +470,11 @@ impl<T: Config> Pallet<T> {
 	fn _request_redeem(
 		redeemer: T::AccountId,
 		amount_wrapped: BalanceOf<T>,
-		btc_address: BtcAddress,
+		asset: CurrencyId<T>,
+		stellar_address: StellarPublicKeyRaw,
 		vault_id: DefaultVaultId<T>,
 	) -> Result<H256, DispatchError> {
+		// TODO change this to use the provided asset once multi-collateral is implemented
 		let amount_wrapped = Amount::new(amount_wrapped, vault_id.wrapped_currency());
 
 		ext::security::ensure_parachain_status_running::<T>()?;
@@ -479,10 +482,6 @@ impl<T: Config> Pallet<T> {
 		let redeemer_balance =
 			ext::treasury::get_balance::<T>(&redeemer, vault_id.wrapped_currency());
 		ensure!(amount_wrapped.le(&redeemer_balance)?, Error::<T>::AmountExceedsUserBalance);
-
-		// We saw a user lose bitcoin when he forgot to enter the address in the polkadotjs ui.
-		// Make sure this can't happen again.
-		ensure!(!btc_address.is_zero(), btc_relay::Error::<T>::InvalidBtcHash);
 
 		// todo: currently allowed to redeem from one currency to the other for free - decide if
 		// this is desirable
@@ -541,12 +540,12 @@ impl<T: Config> Pallet<T> {
 				opentime: ext::security::active_block_number::<T>(),
 				fee: fee_wrapped.amount(),
 				transfer_fee_btc: inclusion_fee.amount(),
-				amount_btc: user_to_be_received_btc.amount(),
+				amount: user_to_be_received_btc.amount(),
+				asset,
 				premium: premium_collateral.amount(),
 				period: Self::redeem_period(),
 				redeemer: redeemer.clone(),
-				btc_address,
-				btc_height: ext::btc_relay::get_best_block_height::<T>(),
+				stellar_address,
 				status: RedeemRequestStatus::Pending,
 			},
 		);
@@ -555,10 +554,11 @@ impl<T: Config> Pallet<T> {
 			redeem_id,
 			redeemer,
 			amount: user_to_be_received_btc.amount(),
+			asset,
 			fee: fee_wrapped.amount(),
 			premium: premium_collateral.amount(),
 			vault_id,
-			btc_address,
+			stellar_address,
 			transfer_fee: inclusion_fee.amount(),
 		});
 
@@ -587,6 +587,7 @@ impl<T: Config> Pallet<T> {
 		Self::deposit_event(Event::<T>::LiquidationRedeem {
 			redeemer,
 			amount: amount_wrapped.amount(),
+			asset: currencies.wrapped,
 		});
 
 		Ok(())
@@ -594,20 +595,32 @@ impl<T: Config> Pallet<T> {
 
 	fn _execute_redeem(
 		redeem_id: H256,
-		raw_merkle_proof: Vec<u8>,
-		raw_tx: Vec<u8>,
+		transaction_envelope_xdr_encoded: Vec<u8>,
+		externalized_envelopes_encoded: Vec<u8>,
+		transaction_set_encoded: Vec<u8>,
 	) -> Result<(), DispatchError> {
 		let redeem = Self::get_open_redeem_request_from_id(&redeem_id)?;
 
-		// check the transaction inclusion and validity
-		let transaction = ext::btc_relay::parse_transaction::<T>(&raw_tx)?;
-		let merkle_proof = ext::btc_relay::parse_merkle_proof::<T>(&raw_merkle_proof)?;
-		ext::btc_relay::verify_and_validate_op_return_transaction::<T, _>(
-			merkle_proof,
-			transaction,
-			redeem.btc_address,
-			redeem.amount_btc,
-			redeem_id,
+		let transaction_envelope = ext::stellar_relay::construct_from_raw_encoded_xdr::<
+			T,
+			TransactionEnvelope,
+		>(&transaction_envelope_xdr_encoded)?;
+
+		let envelopes = ext::stellar_relay::construct_from_raw_encoded_xdr::<
+			T,
+			UnlimitedVarArray<ScpEnvelope>,
+		>(&externalized_envelopes_encoded)?;
+
+		let transaction_set = ext::stellar_relay::construct_from_raw_encoded_xdr::<
+			T,
+			TransactionSet,
+		>(&transaction_set_encoded)?;
+
+		// Verify that the transaction is valid
+		ext::stellar_relay::validate_stellar_transaction::<T>(
+			&transaction_envelope,
+			&envelopes,
+			&transaction_set,
 		)?;
 
 		// burn amount (without parachain fee, but including transfer fee)
@@ -632,7 +645,8 @@ impl<T: Config> Pallet<T> {
 			redeem_id,
 			redeemer: redeem.redeemer,
 			vault_id: redeem.vault,
-			amount: redeem.amount_btc,
+			amount: redeem.amount,
+			asset: redeem.asset,
 			fee: redeem.fee,
 			transfer_fee: redeem.transfer_fee_btc,
 		});
@@ -647,9 +661,8 @@ impl<T: Config> Pallet<T> {
 
 		// only cancellable after the request has expired
 		ensure!(
-			ext::btc_relay::has_request_expired::<T>(
+			ext::security::parachain_block_expired::<T>(
 				redeem.opentime,
-				redeem.btc_height,
 				Self::redeem_period().max(redeem.period)
 			)?,
 			Error::<T>::TimeNotExpired
