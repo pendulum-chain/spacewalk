@@ -229,7 +229,7 @@ fn test_request_redeem_succeeds_with_normal_redeem() {
 				btc_address,
 				btc_height: 0,
 				status: RedeemRequestStatus::Pending,
-				transfer_fee_btc: Redeem::get_current_inclusion_fee(DEFAULT_WRAPPED_CURRENCY)
+				transfer_fee: Redeem::get_current_inclusion_fee(DEFAULT_WRAPPED_CURRENCY)
 					.unwrap()
 					.amount(),
 			}
@@ -330,7 +330,7 @@ fn test_request_redeem_succeeds_with_self_redeem() {
 				btc_address,
 				btc_height: 0,
 				status: RedeemRequestStatus::Pending,
-				transfer_fee_btc: Redeem::get_current_inclusion_fee(DEFAULT_WRAPPED_CURRENCY)
+				transfer_fee: Redeem::get_current_inclusion_fee(DEFAULT_WRAPPED_CURRENCY)
 					.unwrap()
 					.amount(),
 			}
@@ -430,7 +430,7 @@ fn test_execute_redeem_succeeds_with_another_account() {
 				btc_address: BtcAddress::random(),
 				btc_height: 0,
 				status: RedeemRequestStatus::Pending,
-				transfer_fee_btc: btc_fee.amount(),
+				transfer_fee: btc_fee.amount(),
 			},
 		);
 
@@ -515,7 +515,7 @@ fn test_execute_redeem_succeeds() {
 				btc_address: BtcAddress::random(),
 				btc_height: 0,
 				status: RedeemRequestStatus::Pending,
-				transfer_fee_btc: btc_fee.amount(),
+				transfer_fee: btc_fee.amount(),
 			},
 		);
 
@@ -584,7 +584,7 @@ fn test_cancel_redeem_fails_with_time_not_expired() {
 				btc_address: BtcAddress::random(),
 				btc_height: 0,
 				status: RedeemRequestStatus::Pending,
-				transfer_fee_btc: Redeem::get_current_inclusion_fee(DEFAULT_WRAPPED_CURRENCY)
+				transfer_fee: Redeem::get_current_inclusion_fee(DEFAULT_WRAPPED_CURRENCY)
 					.unwrap()
 					.amount(),
 			}))
@@ -614,7 +614,7 @@ fn test_cancel_redeem_fails_with_unauthorized_caller() {
 				btc_address: BtcAddress::random(),
 				btc_height: 0,
 				status: RedeemRequestStatus::Pending,
-				transfer_fee_btc: Redeem::get_current_inclusion_fee(DEFAULT_WRAPPED_CURRENCY)
+				transfer_fee: Redeem::get_current_inclusion_fee(DEFAULT_WRAPPED_CURRENCY)
 					.unwrap()
 					.amount(),
 			}))
@@ -643,7 +643,7 @@ fn test_cancel_redeem_succeeds() {
 				btc_address: BtcAddress::random(),
 				btc_height: 0,
 				status: RedeemRequestStatus::Pending,
-				transfer_fee_btc: Redeem::get_current_inclusion_fee(DEFAULT_WRAPPED_CURRENCY)
+				transfer_fee: Redeem::get_current_inclusion_fee(DEFAULT_WRAPPED_CURRENCY)
 					.unwrap()
 					.amount(),
 			},
@@ -699,7 +699,7 @@ fn test_mint_tokens_for_reimbursed_redeem() {
 			btc_address: BtcAddress::random(),
 			btc_height: 0,
 			status: RedeemRequestStatus::Reimbursed(false),
-			transfer_fee_btc: 1,
+			transfer_fee: 1,
 		};
 		let redeem_request_clone = redeem_request.clone();
 		inject_redeem_request(H256([0u8; 32]), redeem_request.clone());
@@ -727,7 +727,7 @@ fn test_mint_tokens_for_reimbursed_redeem() {
 				assert_eq!(vault_id, &VAULT);
 				assert_eq!(
 					amount,
-					&wrapped(redeem_request.amount_btc + redeem_request.transfer_fee_btc)
+					&wrapped(redeem_request.amount_btc + redeem_request.transfer_fee)
 				);
 				MockResult::Return(Ok(()))
 			},
@@ -736,7 +736,7 @@ fn test_mint_tokens_for_reimbursed_redeem() {
 			assert_eq!(vault_id, &VAULT);
 			assert_eq!(
 				amount,
-				&wrapped(redeem_request_clone.amount_btc + redeem_request_clone.transfer_fee_btc)
+				&wrapped(redeem_request_clone.amount_btc + redeem_request_clone.transfer_fee)
 			);
 			MockResult::Return(Ok(()))
 		});
@@ -880,7 +880,7 @@ mod spec_based_tests {
 				btc_address: BtcAddress::random(),
 				btc_height: 0,
 				status: RedeemRequestStatus::Pending,
-				transfer_fee_btc: btc_fee.amount(),
+				transfer_fee: btc_fee.amount(),
 			};
 			inject_redeem_request(H256([0u8; 32]), redeem_request.clone());
 
@@ -891,7 +891,7 @@ mod spec_based_tests {
 					assert_eq!(vault, &redeem_request.vault);
 					assert_eq!(
 						amount_wrapped,
-						&wrapped(redeem_request.amount_btc + redeem_request.transfer_fee_btc)
+						&wrapped(redeem_request.amount_btc + redeem_request.transfer_fee)
 					);
 					assert_eq!(premium, &collateral(redeem_request.premium));
 					assert_eq!(redeemer, &redeem_request.redeemer);
@@ -941,7 +941,7 @@ mod spec_based_tests {
 				btc_address: BtcAddress::random(),
 				btc_height: 0,
 				status: RedeemRequestStatus::Pending,
-				transfer_fee_btc: Redeem::get_current_inclusion_fee(DEFAULT_WRAPPED_CURRENCY)
+				transfer_fee: Redeem::get_current_inclusion_fee(DEFAULT_WRAPPED_CURRENCY)
 					.unwrap()
 					.amount(),
 			};
@@ -970,7 +970,7 @@ mod spec_based_tests {
 					assert_eq!(vault, &VAULT);
 					assert_eq!(
 						amount,
-						&wrapped(redeem_request.amount_btc + redeem_request.transfer_fee_btc)
+						&wrapped(redeem_request.amount_btc + redeem_request.transfer_fee)
 					);
 					MockResult::Return(Ok(()))
 				},
@@ -1009,7 +1009,7 @@ mod spec_based_tests {
 				btc_address: BtcAddress::random(),
 				btc_height: 0,
 				status: RedeemRequestStatus::Pending,
-				transfer_fee_btc: Redeem::get_current_inclusion_fee(DEFAULT_WRAPPED_CURRENCY)
+				transfer_fee: Redeem::get_current_inclusion_fee(DEFAULT_WRAPPED_CURRENCY)
 					.unwrap()
 					.amount(),
 			};
@@ -1038,7 +1038,7 @@ mod spec_based_tests {
 				assert_eq!(user, &USER);
 				assert_eq!(
 					amount,
-					&wrapped(redeem_request.amount_btc + redeem_request.transfer_fee_btc)
+					&wrapped(redeem_request.amount_btc + redeem_request.transfer_fee)
 				);
 				MockResult::Return(Ok(()))
 			});

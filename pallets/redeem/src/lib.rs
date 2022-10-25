@@ -12,7 +12,6 @@ use frame_support::{
 	dispatch::{DispatchError, DispatchResult},
 	ensure, transactional,
 };
-use frame_system::{ensure_root, ensure_signed};
 #[cfg(test)]
 use mocktopus::macros::mockable;
 use sp_core::H256;
@@ -35,7 +34,7 @@ use vault_registry::{
 	CurrencySource,
 };
 
-use crate::types::{BalanceOf, RedeemRequestExt, Version};
+use crate::types::{BalanceOf, RedeemRequestExt};
 #[doc(inline)]
 pub use crate::types::{DefaultRedeemRequest, RedeemRequest, RedeemRequestStatus};
 
@@ -539,7 +538,7 @@ impl<T: Config> Pallet<T> {
 				vault: vault_id.clone(),
 				opentime: ext::security::active_block_number::<T>(),
 				fee: fee_wrapped.amount(),
-				transfer_fee_btc: inclusion_fee.amount(),
+				transfer_fee: inclusion_fee.amount(),
 				amount: user_to_be_received_btc.amount(),
 				asset,
 				premium: premium_collateral.amount(),
@@ -624,7 +623,7 @@ impl<T: Config> Pallet<T> {
 		)?;
 
 		// burn amount (without parachain fee, but including transfer fee)
-		let burn_amount = redeem.amount_btc().checked_add(&redeem.transfer_fee_btc())?;
+		let burn_amount = redeem.amount().checked_add(&redeem.transfer_fee())?;
 		burn_amount.burn_from(&redeem.redeemer)?;
 
 		// send fees to pool
@@ -648,7 +647,7 @@ impl<T: Config> Pallet<T> {
 			amount: redeem.amount,
 			asset: redeem.asset,
 			fee: redeem.fee,
-			transfer_fee: redeem.transfer_fee_btc,
+			transfer_fee: redeem.transfer_fee,
 		});
 		Ok(())
 	}
@@ -673,8 +672,7 @@ impl<T: Config> Pallet<T> {
 			Amount::new(vault.to_be_redeemed_tokens, redeem.vault.wrapped_currency());
 		let vault_id = redeem.vault.clone();
 
-		let vault_to_be_burned_tokens =
-			redeem.amount_btc().checked_add(&redeem.transfer_fee_btc())?;
+		let vault_to_be_burned_tokens = redeem.amount().checked_add(&redeem.transfer_fee())?;
 
 		let amount_wrapped_in_collateral =
 			vault_to_be_burned_tokens.convert_to(vault_id.collateral_currency())?;
@@ -761,9 +759,9 @@ impl<T: Config> Pallet<T> {
 		} else {
 			// unlock user's issued tokens, including fee
 			let total_wrapped: Amount<T> = redeem
-				.amount_btc()
+				.amount()
 				.checked_add(&redeem.fee())?
-				.checked_add(&redeem.transfer_fee_btc())?;
+				.checked_add(&redeem.transfer_fee())?;
 			total_wrapped.unlock_on(&redeemer)?;
 			ext::vault_registry::decrease_to_be_redeemed_tokens::<T>(
 				&vault_id,
@@ -798,7 +796,7 @@ impl<T: Config> Pallet<T> {
 
 		ensure!(redeem.vault == vault_id, Error::<T>::UnauthorizedVault);
 
-		let reimbursed_amount = redeem.amount_btc().checked_add(&redeem.transfer_fee_btc())?;
+		let reimbursed_amount = redeem.amount().checked_add(&redeem.transfer_fee())?;
 
 		ext::vault_registry::try_increase_to_be_issued_tokens::<T>(&vault_id, &reimbursed_amount)?;
 		ext::vault_registry::issue_tokens::<T>(&vault_id, &reimbursed_amount)?;
