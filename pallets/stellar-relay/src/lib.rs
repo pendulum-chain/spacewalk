@@ -9,9 +9,13 @@ pub use pallet::*;
 
 #[cfg(test)]
 mod mock;
+#[cfg(feature = "testing-utils")]
+pub mod mock;
 
 #[cfg(test)]
 mod tests;
+#[cfg(feature = "testing-utils")]
+pub mod tests;
 
 #[cfg(feature = "runtime-benchmarks")]
 mod benchmarking;
