@@ -43,15 +43,15 @@ impl<T: Config> RedeemRequestExt<T>
 	for RedeemRequest<T::AccountId, T::BlockNumber, BalanceOf<T>, CurrencyId<T>>
 {
 	fn amount(&self) -> Amount<T> {
-		Amount::new(self.amount, self.asset)
+		Amount::new(self.amount, self.vault.wrapped_currency())
 	}
 	fn fee(&self) -> Amount<T> {
-		Amount::new(self.fee, self.asset)
+		Amount::new(self.fee, self.vault.wrapped_currency())
 	}
 	fn premium(&self) -> Result<Amount<T>, DispatchError> {
 		Ok(Amount::new(self.premium, self.vault.collateral_currency()))
 	}
 	fn transfer_fee(&self) -> Amount<T> {
-		Amount::new(self.transfer_fee, self.asset)
+		Amount::new(self.transfer_fee, self.vault.wrapped_currency())
 	}
 }

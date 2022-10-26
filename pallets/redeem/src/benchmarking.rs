@@ -190,7 +190,7 @@ benchmarks! {
 
 		let (validators, organizations) = get_validators_and_organizations::<T>();
 		StellarRelay::<T>::_update_tier_1_validator_set(validators, organizations).unwrap();
-		let (tx_env_xdr_encoded, scp_envs_xdr_encoded, tx_set_xdr_encoded) = build_dummy_proof_for::<T>(redeem_id, true);
+		let (tx_env_xdr_encoded, scp_envs_xdr_encoded, tx_set_xdr_encoded) = build_dummy_proof_for::<T>(redeem_id, false);
 
 		assert_ok!(Oracle::<T>::_set_exchange_rate(get_collateral_currency_id::<T>(),
 			UnsignedFixedPoint::<T>::one()
@@ -211,8 +211,6 @@ benchmarks! {
 
 		// expire redeem request
 		Security::<T>::set_active_block_number(Security::<T>::active_block_number() + Redeem::<T>::redeem_period() + 100u32.into());
-
-		register_public_key::<T>(vault_id.clone());
 
 		let vault = Vault {
 			id: vault_id.clone(),
@@ -244,8 +242,6 @@ benchmarks! {
 
 		// expire redeem request
 		Security::<T>::set_active_block_number(Security::<T>::active_block_number() + Redeem::<T>::redeem_period() + 100u32.into());
-
-		register_public_key::<T>(vault_id.clone());
 
 		let vault = Vault {
 			id: vault_id.clone(),

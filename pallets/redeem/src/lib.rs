@@ -474,7 +474,8 @@ impl<T: Config> Pallet<T> {
 		vault_id: DefaultVaultId<T>,
 	) -> Result<H256, DispatchError> {
 		// TODO change this to use the provided asset once multi-collateral is implemented
-		let amount_wrapped = Amount::new(amount_wrapped, vault_id.wrapped_currency());
+		let asset = vault_id.wrapped_currency();
+		let amount_wrapped = Amount::new(amount_wrapped, asset);
 
 		ext::security::ensure_parachain_status_running::<T>()?;
 
@@ -540,7 +541,7 @@ impl<T: Config> Pallet<T> {
 				fee: fee_wrapped.amount(),
 				transfer_fee: inclusion_fee.amount(),
 				amount: user_to_be_received_btc.amount(),
-				asset,
+				asset: user_to_be_received_btc.currency(),
 				premium: premium_collateral.amount(),
 				period: Self::redeem_period(),
 				redeemer: redeemer.clone(),
@@ -553,7 +554,7 @@ impl<T: Config> Pallet<T> {
 			redeem_id,
 			redeemer,
 			amount: user_to_be_received_btc.amount(),
-			asset,
+			asset: user_to_be_received_btc.currency(),
 			fee: fee_wrapped.amount(),
 			premium: premium_collateral.amount(),
 			vault_id,
@@ -624,7 +625,9 @@ impl<T: Config> Pallet<T> {
 
 		// burn amount (without parachain fee, but including transfer fee)
 		let burn_amount = redeem.amount().checked_add(&redeem.transfer_fee())?;
+		println!("burn amount: {:?} {:?}", burn_amount.amount(), burn_amount.currency());
 		burn_amount.burn_from(&redeem.redeemer)?;
+		println!("after burn from amount: {:?}", burn_amount.amount());
 
 		// send fees to pool
 		let fee = redeem.fee();
@@ -632,6 +635,7 @@ impl<T: Config> Pallet<T> {
 		fee.transfer(&redeem.redeemer, &ext::fee::fee_pool_account_id::<T>())?;
 		ext::fee::distribute_rewards::<T>(&fee)?;
 
+		// next line fails
 		ext::vault_registry::redeem_tokens::<T>(
 			&redeem.vault,
 			&burn_amount,

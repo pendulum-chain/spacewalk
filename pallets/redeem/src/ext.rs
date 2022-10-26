@@ -21,7 +21,7 @@ pub(crate) mod stellar_relay {
 			envelopes,
 			transaction_set,
 			// TODO change this
-			true,
+			false,
 		)
 	}
 
