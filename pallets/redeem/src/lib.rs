@@ -14,6 +14,7 @@ use frame_support::{
 };
 #[cfg(test)]
 use mocktopus::macros::mockable;
+use sp_arithmetic::traits::CheckedDiv;
 use sp_core::H256;
 use sp_runtime::{ArithmeticError, FixedPointNumber};
 use sp_std::{convert::TryInto, vec::Vec};
@@ -167,23 +168,18 @@ pub mod pallet {
 	/// risk the bitcoin client to reject the payment
 	#[pallet::storage]
 	#[pallet::getter(fn redeem_btc_dust_value)]
-	pub(super) type RedeemBtcDustValue<T: Config> = StorageValue<_, BalanceOf<T>, ValueQuery>;
-
-	/// the expected size in bytes of the redeem bitcoin transfer
-	#[pallet::storage]
-	#[pallet::getter(fn redeem_transaction_size)]
-	pub(super) type RedeemTransactionSize<T: Config> = StorageValue<_, u32, ValueQuery>;
+	pub(super) type RedeemDustValue<T: Config> = StorageValue<_, BalanceOf<T>, ValueQuery>;
 
 	#[pallet::genesis_config]
 	pub struct GenesisConfig<T: Config> {
 		pub redeem_period: T::BlockNumber,
-		pub redeem_transaction_size: u32,
+		pub redeem_dust_value: BalanceOf<T>,
 	}
 
 	#[cfg(feature = "std")]
 	impl<T: Config> Default for GenesisConfig<T> {
 		fn default() -> Self {
-			Self { redeem_period: Default::default(), redeem_transaction_size: Default::default() }
+			Self { redeem_period: Default::default(), redeem_dust_value: Default::default() }
 		}
 	}
 
@@ -191,7 +187,7 @@ pub mod pallet {
 	impl<T: Config> GenesisBuild<T> for GenesisConfig<T> {
 		fn build(&self) {
 			RedeemPeriod::<T>::put(self.redeem_period);
-			RedeemTransactionSize::<T>::put(self.redeem_transaction_size);
+			RedeemDustValue::<T>::put(self.redeem_dust_value);
 		}
 	}
 
@@ -856,21 +852,18 @@ impl<T: Config> Pallet<T> {
 		status
 	}
 
-	/// get current inclusion fee based on the expected number of bytes in the transaction, and
-	/// the inclusion fee rate reported by the oracle
+	/// Get the current inclusion fee based on the fee stats reported by the oracle
 	pub fn get_current_inclusion_fee(
 		wrapped_currency: CurrencyId<T>,
 	) -> Result<Amount<T>, DispatchError> {
-		let size: u32 = Self::redeem_transaction_size();
-		let satoshi_per_bytes = ext::oracle::get_price::<T>(OracleKey::FeeEstimation)?;
-
-		let fee = satoshi_per_bytes.checked_mul_int(size).ok_or(ArithmeticError::Overflow)?;
-		let amount = fee.try_into().map_err(|_| Error::<T>::TryIntoIntError)?;
-		Ok(Amount::new(amount, wrapped_currency))
+		// We don't charge a inclusion fee for now because fees on Stellar are so cheap
+		let fee: BalanceOf<T> = 0i64.try_into().map_err(|_| Error::<T>::TryIntoIntError)?;
+		let amount: Amount<T> = Amount::new(fee, wrapped_currency);
+		Ok(amount)
 	}
 
 	pub fn get_dust_value(currency_id: CurrencyId<T>) -> Amount<T> {
-		Amount::new(<RedeemBtcDustValue<T>>::get(), currency_id)
+		Amount::new(<RedeemDustValue<T>>::get(), currency_id)
 	}
 	/// Fetch all redeem requests for the specified account.
 	///
