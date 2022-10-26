@@ -83,7 +83,7 @@ fn test_request<T: crate::Config>(vault_id: &DefaultVaultId<T>) -> DefaultRedeem
 		fee: Default::default(),
 		transfer_fee: Default::default(),
 		amount: Default::default(),
-		asset: Token(DOT),
+		asset: get_wrapped_currency_id::<T>(),
 		premium: Default::default(),
 		redeemer: account("Redeemer", 0, 0),
 		stellar_address: Default::default(),
