@@ -1022,7 +1022,7 @@ mod spec_based_tests {
 				redeem_id: H256([0; 32]),
 				redeemer: USER,
 				vault_id: VAULT,
-				slashed_amount: 14,
+				slashed_amount: 11,
 				status: RedeemRequestStatus::Reimbursed(true)
 			});
 		})
@@ -1086,7 +1086,7 @@ mod spec_based_tests {
 				redeem_id: H256([0; 32]),
 				redeemer: USER,
 				vault_id: VAULT,
-				slashed_amount: 14,
+				slashed_amount: 11,
 				status: RedeemRequestStatus::Reimbursed(false)
 			});
 		})
