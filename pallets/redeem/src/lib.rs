@@ -625,9 +625,7 @@ impl<T: Config> Pallet<T> {
 
 		// burn amount (without parachain fee, but including transfer fee)
 		let burn_amount = redeem.amount().checked_add(&redeem.transfer_fee())?;
-		println!("burn amount: {:?} {:?}", burn_amount.amount(), burn_amount.currency());
 		burn_amount.burn_from(&redeem.redeemer)?;
-		println!("after burn from amount: {:?}", burn_amount.amount());
 
 		// send fees to pool
 		let fee = redeem.fee();
