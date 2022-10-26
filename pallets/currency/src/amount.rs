@@ -1,19 +1,20 @@
-use crate::{
-	pallet::{self, Config, Error},
-	types::*,
-};
-
 use frame_support::{
 	dispatch::{DispatchError, DispatchResult},
 	ensure,
 };
 use orml_traits::{MultiCurrency, MultiReservableCurrency};
-use primitives::TruncateFixedPointToInt;
 use sp_runtime::{
 	traits::{CheckedAdd, CheckedDiv, CheckedMul, CheckedSub, UniqueSaturatedInto, Zero},
 	ArithmeticError, FixedPointNumber,
 };
 use sp_std::{convert::TryInto, fmt::Debug};
+
+use primitives::TruncateFixedPointToInt;
+
+use crate::{
+	pallet::{self, Config, Error},
+	types::*,
+};
 
 #[cfg_attr(feature = "testing-utils", derive(Copy))]
 #[derive(Clone, PartialEq, Eq, Debug)]
@@ -46,7 +47,7 @@ mod conversions {
 			amount: SignedFixedPoint<T>,
 			currency_id: CurrencyId<T>,
 		) -> Result<Self, DispatchError> {
-			let amount: SignedFixedPoint<T> = amount
+			let amount = amount
 				.truncate_to_inner()
 				.ok_or(Error::<T>::TryIntoIntError)?
 				.try_into()
@@ -282,11 +283,12 @@ mod actions {
 
 #[cfg(feature = "testing-utils")]
 mod testing_utils {
-	use super::*;
 	use sp_std::{
 		cmp::{Ordering, PartialOrd},
 		ops::{Add, AddAssign, Div, Mul, Sub, SubAssign},
 	};
+
+	use super::*;
 
 	impl<T: Config> Amount<T> {
 		pub fn with_amount<F: FnOnce(BalanceOf<T>) -> BalanceOf<T>>(&self, f: F) -> Self {
