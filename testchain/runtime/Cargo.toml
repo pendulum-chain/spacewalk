@@ -56,6 +56,7 @@ fee = { path = "../../pallets/fee", default-features = false }
 issue = { path = "../../pallets/issue", default-features = false }
 nomination = { path = "../../pallets/nomination", default-features = false }
 oracle = { path = "../../pallets/oracle", default-features = false }
+redeem = { path = "../../pallets/redeem", default-features = false }
 reward = { path = "../../pallets/reward", default-features = false }
 security = { path = "../../pallets/security", default-features = false }
 staking = { path = "../../pallets/staking", default-features = false }
@@ -89,6 +90,7 @@ runtime-benchmarks = [
   "issue/runtime-benchmarks",
   "nomination/runtime-benchmarks",
   "oracle/runtime-benchmarks",
+  "redeem/runtime-benchmarks",
   "vault-registry/runtime-benchmarks",
 ]
 std = [
@@ -116,6 +118,7 @@ std = [
   "issue/std",
   "nomination/std",
   "oracle/std",
+  "redeem/std",
   "reward/std",
   "security/std",
   "staking/std",
