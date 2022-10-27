@@ -42,7 +42,7 @@ pub use primitives::{
 	SignedFixedPoint, SignedInner, UnsignedFixedPoint, UnsignedInner,
 };
 use primitives::{CurrencyId::Token, TokenSymbol, TokenSymbol::INTR};
-// pub use redeem::{Event as RedeemEvent, RedeemRequest};
+pub use redeem::{Event as RedeemEvent, RedeemRequest};
 pub use security::StatusCode;
 
 type VaultId = primitives::VaultId<AccountId, CurrencyId>;
@@ -367,10 +367,10 @@ impl issue::Config for Runtime {
 	type WeightInfo = ();
 }
 
-// impl redeem::Config for Runtime {
-// 	type Event = Event;
-// 	type WeightInfo = ();
-// }
+impl redeem::Config for Runtime {
+	type Event = Event;
+	type WeightInfo = ();
+}
 
 parameter_types! {
 	pub const MaxExpectedValue: UnsignedFixedPoint = UnsignedFixedPoint::from_inner(<UnsignedFixedPoint as FixedPointNumber>::DIV);
@@ -421,7 +421,7 @@ construct_runtime! {
 		VaultRegistry: vault_registry::{Pallet, Call, Config<T>, Storage, Event<T>, ValidateUnsigned} = 21,
 		Oracle: oracle::{Pallet, Call, Config<T>, Storage, Event<T>} = 22,
 		Issue: issue::{Pallet, Call, Config<T>, Storage, Event<T>} = 23,
-		// Redeem: redeem::{Pallet, Call, Config<T>, Storage, Event<T>} = 24,
+		Redeem: redeem::{Pallet, Call, Config<T>, Storage, Event<T>} = 24,
 		Fee: fee::{Pallet, Call, Config<T>, Storage} = 26,
 		Nomination: nomination::{Pallet, Call, Config, Storage, Event<T>} = 28,
 
@@ -470,7 +470,7 @@ mod benches {
 		[issue, Issue]
 		[fee, Fee]
 		[oracle, Oracle]
-		// [redeem, Redeem]
+		[redeem, Redeem]
 		[vault_registry, VaultRegistry]
 		[nomination, Nomination]
 	);
