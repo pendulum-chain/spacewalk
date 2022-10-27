@@ -24,11 +24,12 @@ pallet-timestamp = { git = "https://github.com/paritytech/substrate", branch = "
 
 # Parachain dependencies
 currency = { path = "../currency", default-features = false }
-oracle = { path = "../oracle", default-features = false }
 fee = { path = "../fee", default-features = false }
+oracle = { path = "../oracle", default-features = false }
 security = { path = "../security", default-features = false }
 stellar-relay = { package = "pallet-stellar-relay", path = "../stellar-relay", default-features = false }
 vault-registry = { path = "../vault-registry", default-features = false }
+
 primitives = { package = "spacewalk-primitives", path = "../../primitives", default-features = false }
 
 substrate-stellar-sdk = { git = "https://github.com/pendulum-chain/substrate-stellar-sdk", branch = "polkadot-v0.9.24", default-features = false, features = ['offchain'] }
@@ -66,13 +67,13 @@ std = [
     "frame-benchmarking/std",
     "pallet-timestamp/std",
     "currency/std",
-    "oracle/std",
     "fee/std",
+    "oracle/std",
     "security/std",
     "stellar-relay/std",
     "vault-registry/std",
-    "substrate-stellar-sdk/std",
     "primitives/std",
+    "substrate-stellar-sdk/std",
     "orml-tokens/std",
     "orml-traits/std",
 ]
