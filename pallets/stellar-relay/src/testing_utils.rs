@@ -1,4 +1,5 @@
 use frame_support::BoundedVec;
+use sp_std::{vec, vec::Vec};
 use substrate_stellar_sdk::{
 	compound_types::{LimitedVarArray, LimitedVarOpaque, UnlimitedVarArray, UnlimitedVarOpaque},
 	network::{Network, PUBLIC_NETWORK, TEST_NETWORK},
@@ -31,7 +32,7 @@ pub fn create_dummy_scp_structs(
 		source_account: MuxedAccount::KeyTypeEd25519(RANDOM_STELLAR_PUBLIC_KEY),
 		fee: 100,
 		seq_num: 1,
-		operations: LimitedVarArray::new(vec![]).unwrap(),
+		operations: LimitedVarArray::new_empty(),
 		cond: substrate_stellar_sdk::types::Preconditions::PrecondNone,
 		memo: substrate_stellar_sdk::Memo::MemoNone,
 		ext: substrate_stellar_sdk::types::TransactionExt::V0,
@@ -141,7 +142,7 @@ pub fn build_dummy_proof_for<T: crate::Config>(
 	// Build a transaction
 	let source_account =
 		MuxedAccount::from(AccountId::from(PublicKey::PublicKeyTypeEd25519([0; 32])));
-	let operations = LimitedVarArray::new(vec![]).unwrap();
+	let operations = LimitedVarArray::new_empty();
 	let transaction = Transaction {
 		source_account,
 		fee: 0,
@@ -155,7 +156,7 @@ pub fn build_dummy_proof_for<T: crate::Config>(
 	let transaction_envelope: TransactionEnvelope =
 		TransactionEnvelope::EnvelopeTypeTx(TransactionV1Envelope {
 			tx: transaction,
-			signatures: LimitedVarArray::new(vec![]).unwrap(),
+			signatures: LimitedVarArray::new_empty(),
 		});
 
 	// Build a transaction set with the transaction
