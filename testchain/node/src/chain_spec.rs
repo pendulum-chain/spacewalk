@@ -260,7 +260,7 @@ fn testnet_genesis(
 		security: SecurityConfig {
 			initial_status: if start_shutdown { StatusCode::Shutdown } else { StatusCode::Error },
 		},
-		redeem: RedeemConfig { redeem_period: DAYS, redeem_btc_dust_value: 100 },
+		redeem: RedeemConfig { redeem_period: DAYS, redeem_dust_value: 100 },
 		oracle: OracleConfig {
 			authorized_oracles,
 			max_delay: 3600000, // one hour
