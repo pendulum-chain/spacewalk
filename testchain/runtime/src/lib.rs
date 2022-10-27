@@ -34,7 +34,7 @@ use sp_std::prelude::*;
 use sp_version::NativeVersion;
 use sp_version::RuntimeVersion;
 
-// pub use issue::{Event as IssueEvent, IssueRequest};
+pub use issue::{Event as IssueEvent, IssueRequest};
 pub use nomination::Event as NominationEvent;
 // A few exports that help ease life for downstream crates.
 pub use primitives::{
@@ -361,11 +361,11 @@ impl oracle::Config for Runtime {
 	type WeightInfo = ();
 }
 
-// impl issue::Config for Runtime {
-// 	type Event = Event;
-// 	type BlockNumberToBalance = BlockNumberToBalance;
-// 	type WeightInfo = ();
-// }
+impl issue::Config for Runtime {
+	type Event = Event;
+	type BlockNumberToBalance = BlockNumberToBalance;
+	type WeightInfo = ();
+}
 
 // impl redeem::Config for Runtime {
 // 	type Event = Event;
@@ -420,7 +420,7 @@ construct_runtime! {
 		Security: security::{Pallet, Call, Config, Storage, Event<T>} = 19,
 		VaultRegistry: vault_registry::{Pallet, Call, Config<T>, Storage, Event<T>, ValidateUnsigned} = 21,
 		Oracle: oracle::{Pallet, Call, Config<T>, Storage, Event<T>} = 22,
-		// Issue: issue::{Pallet, Call, Config<T>, Storage, Event<T>} = 23,
+		Issue: issue::{Pallet, Call, Config<T>, Storage, Event<T>} = 23,
 		// Redeem: redeem::{Pallet, Call, Config<T>, Storage, Event<T>} = 24,
 		Fee: fee::{Pallet, Call, Config<T>, Storage} = 26,
 		Nomination: nomination::{Pallet, Call, Config, Storage, Event<T>} = 28,
@@ -467,7 +467,7 @@ mod benches {
 		[frame_benchmarking, BaselineBench::<Runtime>]
 		[frame_system, SystemBench::<Runtime>]
 		[pallet_stellar_relay, StellarRelay]
-		// [issue, Issue]
+		[issue, Issue]
 		[fee, Fee]
 		[oracle, Oracle]
 		// [redeem, Redeem]
