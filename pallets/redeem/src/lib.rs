@@ -16,7 +16,7 @@ use frame_support::{
 use mocktopus::macros::mockable;
 use sp_arithmetic::traits::CheckedDiv;
 use sp_core::H256;
-use sp_runtime::{ArithmeticError, FixedPointNumber};
+use sp_runtime::FixedPointNumber;
 use sp_std::{convert::TryInto, vec::Vec};
 use substrate_stellar_sdk::{
 	compound_types::UnlimitedVarArray,

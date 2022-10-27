@@ -2,7 +2,7 @@ use frame_benchmarking::{account, benchmarks, impl_benchmark_test_suite};
 use frame_support::assert_ok;
 use frame_system::RawOrigin;
 use orml_traits::MultiCurrency;
-use sp_core::{H256, U256};
+use sp_core::H256;
 use sp_runtime::traits::One;
 use sp_std::prelude::*;
 
