@@ -7469,7 +7469,6 @@ dependencies = [
  "pallet-transaction-payment-rpc-runtime-api",
  "parity-scale-codec",
  "pretty_assertions",
- "redeem",
  "reward",
  "scale-info",
  "security",
