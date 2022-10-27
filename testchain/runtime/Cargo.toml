@@ -53,7 +53,7 @@ orml-traits = { git = "https://github.com/open-web3-stack/open-runtime-module-li
 
 currency = { path = "../../pallets/currency", default-features = false }
 fee = { path = "../../pallets/fee", default-features = false }
-issue = { path = "../../pallets/issue", default-features = false }
+#issue = { path = "../../pallets/issue", default-features = false }
 nomination = { path = "../../pallets/nomination", default-features = false }
 oracle = { path = "../../pallets/oracle", default-features = false }
 pallet-stellar-relay = { path = "../../pallets/stellar-relay", default-features = false }
@@ -86,7 +86,7 @@ runtime-benchmarks = [
     "hex-literal",
     "pallet-stellar-relay/runtime-benchmarks",
     "fee/runtime-benchmarks",
-    "issue/runtime-benchmarks",
+#    "issue/runtime-benchmarks",
     "nomination/runtime-benchmarks",
     "oracle/runtime-benchmarks",
 #    "redeem/runtime-benchmarks",
@@ -112,7 +112,7 @@ std = [
     "pallet-transaction-payment/std",
     "currency/std",
     "fee/std",
-    "issue/std",
+#    "issue/std",
     "nomination/std",
     "oracle/std",
     "pallet-stellar-relay/std",
