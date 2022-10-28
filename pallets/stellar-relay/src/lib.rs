@@ -19,7 +19,7 @@ mod benchmarking;
 pub mod traits;
 pub mod types;
 
-mod weights;
+mod default_weights;
 
 #[frame_support::pallet]
 pub mod pallet {
@@ -38,7 +38,7 @@ pub mod pallet {
 		Hash, TransactionEnvelope, XdrCodec,
 	};
 
-	use weights::WeightInfo;
+	use default_weights::WeightInfo;
 
 	use crate::{
 		traits::FieldLength,
