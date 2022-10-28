@@ -60,7 +60,7 @@ nomination = { path = "../../pallets/nomination", default-features = false }
 reward = { path = "../../pallets/reward", default-features = false }
 staking = { path = "../../pallets/staking", default-features = false }
 
-pallet-stellar-relay = {path = "../../pallets/stellar-relay", default-features = false}
+stellar-relay = {path = "../../pallets/stellar-relay", default-features = false}
 
 primitives = {package = "spacewalk-primitives", path = "../../primitives", default-features = false}
 
@@ -83,10 +83,10 @@ runtime-benchmarks = [
   "frame-system/runtime-benchmarks",
   "frame-system-benchmarking",
   "hex-literal",
-  "pallet-stellar-relay/runtime-benchmarks",
   "fee/runtime-benchmarks",
   "nomination/runtime-benchmarks",
   "oracle/runtime-benchmarks",
+  "stellar-relay/runtime-benchmarks",
   "vault-registry/runtime-benchmarks",
 ]
 std = [
@@ -103,7 +103,6 @@ std = [
   "pallet-aura/std",
   "pallet-balances/std",
   "pallet-grandpa/std",
-  "pallet-stellar-relay/std",
   "pallet-sudo/std",
   "pallet-timestamp/std",
   "pallet-transaction-payment-rpc-runtime-api/std",
@@ -117,6 +116,7 @@ std = [
   "nomination/std",
   "reward/std",
   "staking/std",
+  "stellar-relay/std",
   "sp-api/std",
   "sp-block-builder/std",
   "sp-consensus-aura/std",

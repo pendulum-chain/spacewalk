@@ -4245,26 +4245,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "pallet-stellar-relay"
-version = "1.0.0"
-dependencies = [
- "base64",
- "frame-benchmarking",
- "frame-support",
- "frame-system",
- "parity-scale-codec",
- "rand 0.8.5",
- "scale-info",
- "serde",
- "sha2 0.10.6",
- "sp-core",
- "sp-io",
- "sp-runtime",
- "sp-std",
- "substrate-stellar-sdk",
-]
-
-[[package]]
 name = "pallet-sudo"
 version = "4.0.0-dev"
 source = "git+https://github.com/paritytech/substrate?branch=polkadot-v0.9.24#6a5b522116ae208d1cf02c6da09ce49aa40225be"
@@ -7393,7 +7373,6 @@ dependencies = [
  "pallet-aura",
  "pallet-balances",
  "pallet-grandpa",
- "pallet-stellar-relay",
  "pallet-sudo",
  "pallet-timestamp",
  "pallet-transaction-payment",
@@ -7418,6 +7397,7 @@ dependencies = [
  "sp-version",
  "spacewalk-primitives",
  "staking",
+ "stellar-relay",
  "substrate-wasm-builder",
  "vault-registry",
 ]
@@ -7535,6 +7515,26 @@ dependencies = [
  "nalgebra",
  "num-traits",
  "rand 0.8.5",
+]
+
+[[package]]
+name = "stellar-relay"
+version = "1.0.0"
+dependencies = [
+ "base64",
+ "frame-benchmarking",
+ "frame-support",
+ "frame-system",
+ "parity-scale-codec",
+ "rand 0.8.5",
+ "scale-info",
+ "serde",
+ "sha2 0.10.6",
+ "sp-core",
+ "sp-io",
+ "sp-runtime",
+ "sp-std",
+ "substrate-stellar-sdk",
 ]
 
 [[package]]
