@@ -17,7 +17,11 @@ use subxt::{
 use tokio::{sync::RwLock, time::timeout};
 
 cfg_if::cfg_if! {
-	if #[cfg(feature = "standalone-metadata")] {
+	if #[cfg(feature = "standalone-metadata")]
+	{
+		const DEFAULT_SPEC_VERSION: RangeInclusive<u32> = 1..=1;
+		const DEFAULT_SPEC_NAME: &str = "spacewalk-standalone";
+	} else if #[cfg(feature = "90-metadata")] {
 		const DEFAULT_SPEC_VERSION: RangeInclusive<u32> = 1..=1;
 		const DEFAULT_SPEC_NAME: &str = "spacewalk-standalone";
 	} else if #[cfg(feature = "parachain-metadata")] {
@@ -369,6 +373,8 @@ impl UtilFuncs for SpacewalkParachain {
 		&self.account_id
 	}
 }
+
+/*
 #[async_trait]
 pub trait SpacewalkPallet {
 	async fn report_stellar_transaction(&self, tx_envelope_xdr: &Vec<u8>) -> Result<(), Error>;
@@ -421,3 +427,4 @@ impl SpacewalkPallet for SpacewalkParachain {
 		Ok(())
 	}
 }
+*/

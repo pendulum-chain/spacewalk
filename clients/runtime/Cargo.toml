@@ -9,6 +9,8 @@ default = ["standalone-metadata"]
 multi-address = []
 parachain-metadata = []
 standalone-metadata = []
+90-metadata = []
+
 testing-utils = [
   # "substrate-subxt/client",
   # "substrate-subxt-client",

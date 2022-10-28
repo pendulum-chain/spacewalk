@@ -25,10 +25,22 @@ cfg_if::cfg_if! {
 mod metadata_aliases {
 	use super::*;
 
-	pub type DepositEvent = metadata::spacewalk::events::Deposit;
-	pub type RedeemEvent = metadata::spacewalk::events::Redeem;
+	use crate::metadata::runtime_types::spacewalk_primitives::{issue::IssueRequest, CurrencyId};
+
+	// pub type DepositEvent = metadata::spacewalk::events::Deposit;
+	// pub type RedeemEvent = metadata::spacewalk::events::Redeem;
+
+	#[cfg(feature = "90-metadata")]
+	pub type RequestIssueEvent = metadata::issue::events::RequestIssue;
+	#[cfg(feature = "90-metadata")]
+	pub type CancelIssueEvent = metadata::issue::events::CancelIssue;
+	#[cfg(feature = "90-metadata")]
+	pub type ExecuteIssueEvent = metadata::issue::events::ExecuteIssue;
 
 	pub type SpacewalkHeader = <SpacewalkRuntime as Config>::Header;
+
+	pub type DefaultIssueRequest =
+		IssueRequest<<SpacewalkRuntime as Config>::AccountId, BlockNumber, Balance, CurrencyId>;
 }
 
 mod dispatch_error {

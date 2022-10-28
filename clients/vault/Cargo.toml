@@ -9,6 +9,7 @@ version = "0.0.1"
 integration = []
 parachain-metadata = ["runtime/parachain-metadata"]
 standalone-metadata = ["runtime/standalone-metadata"]
+90-metadata = ["runtime/90-metadata"]
 multi-address = ["runtime/multi-address"]
 
 [dependencies]

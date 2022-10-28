@@ -19,8 +19,8 @@ pub struct NoFilter;
 
 // Dummy filter that does nothing.
 impl FilterWith<TransactionEnvelope> for NoFilter {
-	fn name(&self) -> &'static str {
-		"NoFilter"
+	fn name(&self) -> String {
+		"NoFilter".to_owned()
 	}
 
 	fn check_for_processing(&self, _param: &TransactionEnvelope) -> bool {
