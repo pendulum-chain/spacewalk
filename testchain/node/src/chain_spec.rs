@@ -282,7 +282,7 @@ fn testnet_genesis(
 		stellar_relay: StellarRelayConfig {
 			validators,
 			organizations,
-			is_public_network: true,
+			is_public_network: false,
 			phantom: Default::default(),
 		},
 		oracle: OracleConfig {
