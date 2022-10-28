@@ -100,8 +100,8 @@ pub mod pallet {
 		InvalidScpPledge,
 		InvalidTransactionSet,
 		InvalidTransactionXDR,
-		NoOrganizationsRegisteredForNetwork,
-		NoValidatorsRegisteredForNetwork,
+		NoOrganizationsRegistered,
+		NoValidatorsRegistered,
 		OrganizationLimitExceeded,
 		TransactionNotInTransactionSet,
 		TransactionSetHashCreationFailed,
@@ -119,10 +119,15 @@ pub mod pallet {
 	pub type Validators<T: Config> =
 		StorageValue<_, BoundedVec<ValidatorOf<T>, T::ValidatorLimit>, ValueQuery>;
 
+	#[pallet::storage]
+	#[pallet::getter(fn is_public_network)]
+	pub type IsPublicNetwork<T: Config> = StorageValue<_, bool, ValueQuery>;
+
 	#[pallet::genesis_config]
 	pub struct GenesisConfig<T: Config> {
 		pub validators: Vec<ValidatorOf<T>>,
 		pub organizations: Vec<OrganizationOf<T>>,
+		pub is_public_network: bool,
 		pub phantom: PhantomData<T>,
 	}
 
@@ -133,45 +138,19 @@ pub mod pallet {
 			let organization_sdf = OrganizationOf::<T> {
 				name: create_bounded_vec("Stellar Development Foundation"),
 				id: 0.into(),
-				public_network: true,
 			};
-			let organization_satoshipay = OrganizationOf::<T> {
-				name: create_bounded_vec("SatoshiPay"),
-				id: 1.into(),
-				public_network: true,
-			};
-			let organization_wirex = OrganizationOf::<T> {
-				name: create_bounded_vec("Wirex"),
-				id: 2.into(),
-				public_network: true,
-			};
-			let organization_coinqvest = OrganizationOf::<T> {
-				name: create_bounded_vec("Coinqvest"),
-				id: 3.into(),
-				public_network: true,
-			};
-			let organization_blockdaemon = OrganizationOf::<T> {
-				name: create_bounded_vec("Blockdaemon"),
-				id: 4.into(),
-				public_network: true,
-			};
-			let organization_lobstr = OrganizationOf::<T> {
-				name: create_bounded_vec("LOBSTR"),
-				id: 5.into(),
-				public_network: true,
-			};
-			let organization_public_node = OrganizationOf::<T> {
-				name: create_bounded_vec("Public Node"),
-				id: 6.into(),
-				public_network: true,
-			};
-
-			// Create test network organizations
-			let organization_testnet_sdf = OrganizationOf::<T> {
-				name: create_bounded_vec("sdftest"),
-				id: 7.into(),
-				public_network: false,
-			};
+			let organization_satoshipay =
+				OrganizationOf::<T> { name: create_bounded_vec("SatoshiPay"), id: 1.into() };
+			let organization_wirex =
+				OrganizationOf::<T> { name: create_bounded_vec("Wirex"), id: 2.into() };
+			let organization_coinqvest =
+				OrganizationOf::<T> { name: create_bounded_vec("Coinqvest"), id: 3.into() };
+			let organization_blockdaemon =
+				OrganizationOf::<T> { name: create_bounded_vec("Blockdaemon"), id: 4.into() };
+			let organization_lobstr =
+				OrganizationOf::<T> { name: create_bounded_vec("LOBSTR"), id: 5.into() };
+			let organization_public_node =
+				OrganizationOf::<T> { name: create_bounded_vec("Public Node"), id: 6.into() };
 
 			let validators: Vec<ValidatorOf<T>> = vec![
 				// Satoshipay validators
@@ -181,7 +160,6 @@ pub mod pallet {
 						"GAK6Z5UVGUVSEK6PEOCAYJISTT5EJBB34PN3NOLEQG2SUKXRVV2F6HZY",
 					),
 					organization_id: organization_satoshipay.id,
-					public_network: organization_satoshipay.public_network,
 				},
 				ValidatorOf::<T> {
 					name: create_bounded_vec("$satoshipay-de"),
@@ -189,7 +167,6 @@ pub mod pallet {
 						"GC5SXLNAM3C4NMGK2PXK4R34B5GNZ47FYQ24ZIBFDFOCU6D4KBN4POAE",
 					),
 					organization_id: organization_satoshipay.id,
-					public_network: organization_satoshipay.public_network,
 				},
 				ValidatorOf::<T> {
 					name: create_bounded_vec("$satoshipay-sg"),
@@ -197,7 +174,6 @@ pub mod pallet {
 						"GBJQUIXUO4XSNPAUT6ODLZUJRV2NPXYASKUBY4G5MYP3M47PCVI55MNT",
 					),
 					organization_id: organization_satoshipay.id,
-					public_network: organization_satoshipay.public_network,
 				},
 				// SDF validators
 				ValidatorOf::<T> {
@@ -206,7 +182,6 @@ pub mod pallet {
 						"GCGB2S2KGYARPVIA37HYZXVRM2YZUEXA6S33ZU5BUDC6THSB62LZSTYH",
 					),
 					organization_id: organization_sdf.id,
-					public_network: organization_sdf.public_network,
 				},
 				ValidatorOf::<T> {
 					name: create_bounded_vec("$sdf2"),
@@ -214,7 +189,6 @@ pub mod pallet {
 						"GCM6QMP3DLRPTAZW2UZPCPX2LF3SXWXKPMP3GKFZBDSF3QZGV2G5QSTK",
 					),
 					organization_id: organization_sdf.id,
-					public_network: organization_sdf.public_network,
 				},
 				ValidatorOf::<T> {
 					name: create_bounded_vec("$sdf3"),
@@ -222,7 +196,6 @@ pub mod pallet {
 						"GABMKJM6I25XI4K7U6XWMULOUQIQ27BCTMLS6BYYSOWKTBUXVRJSXHYQ",
 					),
 					organization_id: organization_sdf.id,
-					public_network: organization_sdf.public_network,
 				},
 				// Wirex validators
 				ValidatorOf::<T> {
@@ -231,7 +204,6 @@ pub mod pallet {
 						"GAB3GZIE6XAYWXGZUDM4GMFFLJBFMLE2JDPUCWUZXMOMT3NHXDHEWXAS",
 					),
 					organization_id: organization_wirex.id,
-					public_network: organization_wirex.public_network,
 				},
 				ValidatorOf::<T> {
 					name: create_bounded_vec("$wirex-us"),
@@ -239,7 +211,6 @@ pub mod pallet {
 						"GDXUKFGG76WJC7ACEH3JUPLKM5N5S76QSMNDBONREUXPCZYVPOLFWXUS",
 					),
 					organization_id: organization_wirex.id,
-					public_network: organization_wirex.public_network,
 				},
 				ValidatorOf::<T> {
 					name: create_bounded_vec("$wirex-uk"),
@@ -247,7 +218,6 @@ pub mod pallet {
 						"GBBQQT3EIUSXRJC6TGUCGVA3FVPXVZLGG3OJYACWBEWYBHU46WJLWXEU",
 					),
 					organization_id: organization_wirex.id,
-					public_network: organization_wirex.public_network,
 				},
 				// Coinqvest validators
 				ValidatorOf::<T> {
@@ -256,7 +226,6 @@ pub mod pallet {
 						"GD6SZQV3WEJUH352NTVLKEV2JM2RH266VPEM7EH5QLLI7ZZAALMLNUVN",
 					),
 					organization_id: organization_coinqvest.id,
-					public_network: organization_coinqvest.public_network,
 				},
 				ValidatorOf::<T> {
 					name: create_bounded_vec("$coinqvest-finland"),
@@ -264,7 +233,6 @@ pub mod pallet {
 						"GADLA6BJK6VK33EM2IDQM37L5KGVCY5MSHSHVJA4SCNGNUIEOTCR6J5T",
 					),
 					organization_id: organization_coinqvest.id,
-					public_network: organization_coinqvest.public_network,
 				},
 				ValidatorOf::<T> {
 					name: create_bounded_vec("$coinqvest-hongkong"),
@@ -272,7 +240,6 @@ pub mod pallet {
 						"GAZ437J46SCFPZEDLVGDMKZPLFO77XJ4QVAURSJVRZK2T5S7XUFHXI2Z",
 					),
 					organization_id: organization_coinqvest.id,
-					public_network: organization_coinqvest.public_network,
 				},
 				// Blockdaemon validators
 				ValidatorOf::<T> {
@@ -281,7 +248,6 @@ pub mod pallet {
 						"GAAV2GCVFLNN522ORUYFV33E76VPC22E72S75AQ6MBR5V45Z5DWVPWEU",
 					),
 					organization_id: organization_blockdaemon.id,
-					public_network: organization_blockdaemon.public_network,
 				},
 				ValidatorOf::<T> {
 					name: create_bounded_vec("$blockdaemon2"),
@@ -289,7 +255,6 @@ pub mod pallet {
 						"GAVXB7SBJRYHSG6KSQHY74N7JAFRL4PFVZCNWW2ARI6ZEKNBJSMSKW7C",
 					),
 					organization_id: organization_blockdaemon.id,
-					public_network: organization_blockdaemon.public_network,
 				},
 				ValidatorOf::<T> {
 					name: create_bounded_vec("$blockdaemon3"),
@@ -297,7 +262,6 @@ pub mod pallet {
 						"GAYXZ4PZ7P6QOX7EBHPIZXNWY4KCOBYWJCA4WKWRKC7XIUS3UJPT6EZ4",
 					),
 					organization_id: organization_blockdaemon.id,
-					public_network: organization_blockdaemon.public_network,
 				},
 				// LOBSTR validators
 				ValidatorOf::<T> {
@@ -306,7 +270,6 @@ pub mod pallet {
 						"GCFONE23AB7Y6C5YZOMKUKGETPIAJA4QOYLS5VNS4JHBGKRZCPYHDLW7",
 					),
 					organization_id: organization_lobstr.id,
-					public_network: organization_lobstr.public_network,
 				},
 				ValidatorOf::<T> {
 					name: create_bounded_vec("$lobstr2"),
@@ -314,7 +277,6 @@ pub mod pallet {
 						"GDXQB3OMMQ6MGG43PWFBZWBFKBBDUZIVSUDAZZTRAWQZKES2CDSE5HKJ",
 					),
 					organization_id: organization_lobstr.id,
-					public_network: organization_lobstr.public_network,
 				},
 				ValidatorOf::<T> {
 					name: create_bounded_vec("$lobstr3"),
@@ -322,7 +284,6 @@ pub mod pallet {
 						"GD5QWEVV4GZZTQP46BRXV5CUMMMLP4JTGFD7FWYJJWRL54CELY6JGQ63",
 					),
 					organization_id: organization_lobstr.id,
-					public_network: organization_lobstr.public_network,
 				},
 				ValidatorOf::<T> {
 					name: create_bounded_vec("$lobstr4"),
@@ -330,7 +291,6 @@ pub mod pallet {
 						"GA7TEPCBDQKI7JQLQ34ZURRMK44DVYCIGVXQQWNSWAEQR6KB4FMCBT7J",
 					),
 					organization_id: organization_lobstr.id,
-					public_network: organization_lobstr.public_network,
 				},
 				ValidatorOf::<T> {
 					name: create_bounded_vec("$lobstr5"),
@@ -338,7 +298,6 @@ pub mod pallet {
 						"GA5STBMV6QDXFDGD62MEHLLHZTPDI77U3PFOD2SELU5RJDHQWBR5NNK7",
 					),
 					organization_id: organization_lobstr.id,
-					public_network: organization_lobstr.public_network,
 				},
 				// Public Node validators
 				ValidatorOf::<T> {
@@ -347,7 +306,6 @@ pub mod pallet {
 						"GBLJNN3AVZZPG2FYAYTYQKECNWTQYYUUY2KVFN2OUKZKBULXIXBZ4FCT",
 					),
 					organization_id: organization_public_node.id,
-					public_network: organization_public_node.public_network,
 				},
 				ValidatorOf::<T> {
 					name: create_bounded_vec("$boötes"),
@@ -355,7 +313,6 @@ pub mod pallet {
 						"GCVJ4Z6TI6Z2SOGENSPXDQ2U4RKH3CNQKYUHNSSPYFPNWTLGS6EBH7I2",
 					),
 					organization_id: organization_public_node.id,
-					public_network: organization_public_node.public_network,
 				},
 				ValidatorOf::<T> {
 					name: create_bounded_vec("$lyra"),
@@ -363,32 +320,6 @@ pub mod pallet {
 						"GCIXVKNFPKWVMKJKVK2V4NK7D4TC6W3BUMXSIJ365QUAXWBRPPJXIR2Z",
 					),
 					organization_id: organization_public_node.id,
-					public_network: organization_public_node.public_network,
-				},
-				// Testnet validators
-				ValidatorOf::<T> {
-					name: create_bounded_vec("$sdftest1"),
-					public_key: create_bounded_vec(
-						"GDKXE2OZMJIPOSLNA6N6F2BVCI3O777I2OOC4BV7VOYUEHYX7RTRYA7Y",
-					),
-					organization_id: organization_testnet_sdf.id,
-					public_network: organization_testnet_sdf.public_network,
-				},
-				ValidatorOf::<T> {
-					name: create_bounded_vec("$sdftest2"),
-					public_key: create_bounded_vec(
-						"GCUCJTIYXSOXKBSNFGNFWW5MUQ54HKRPGJUTQFJ5RQXZXNOLNXYDHRAP",
-					),
-					organization_id: organization_testnet_sdf.id,
-					public_network: organization_testnet_sdf.public_network,
-				},
-				ValidatorOf::<T> {
-					name: create_bounded_vec("$sdftest3"),
-					public_key: create_bounded_vec(
-						"GC2V2EFSXN6SQTWVYA5EPJPBWWIMSD2XQNKUOHGEKB535AQE2I6IXV2Z",
-					),
-					organization_id: organization_testnet_sdf.id,
-					public_network: organization_testnet_sdf.public_network,
 				},
 			];
 
@@ -400,10 +331,14 @@ pub mod pallet {
 				organization_blockdaemon,
 				organization_lobstr,
 				organization_public_node,
-				organization_testnet_sdf,
 			];
 
-			GenesisConfig { validators, organizations, phantom: Default::default() }
+			GenesisConfig {
+				validators,
+				organizations,
+				is_public_network: true,
+				phantom: Default::default(),
+			}
 		}
 	}
 
@@ -420,6 +355,8 @@ pub mod pallet {
 			);
 			assert!(organization_vec.is_ok());
 			Organizations::<T>::put(organization_vec.unwrap());
+
+			IsPublicNetwork::<T>::put(self.is_public_network);
 		}
 	}
 
@@ -433,6 +370,7 @@ pub mod pallet {
 			origin: OriginFor<T>,
 			validators: Vec<ValidatorOf<T>>,
 			organizations: Vec<OrganizationOf<T>>,
+			public_network: bool,
 		) -> DispatchResult {
 			// Limit this call to root
 			let _ = ensure_root(origin)?;
@@ -458,6 +396,8 @@ pub mod pallet {
 					.map_err(|_| Error::<T>::BoundedVecCreationFailed)?;
 			Organizations::<T>::put(organization_vec);
 
+			IsPublicNetwork::<T>::put(public_network);
+
 			Ok(())
 		}
 	}
@@ -474,9 +414,9 @@ pub mod pallet {
 			transaction_envelope: TransactionEnvelope,
 			envelopes: UnlimitedVarArray<ScpEnvelope>,
 			transaction_set: TransactionSet,
-			public_network: bool,
 		) -> Result<(), Error<T>> {
-			let network: &Network = if public_network { &PUBLIC_NETWORK } else { &TEST_NETWORK };
+			let network: &Network =
+				if Self::is_public_network() { &PUBLIC_NETWORK } else { &TEST_NETWORK };
 
 			// Check if tx is included in the transaction set
 			let tx_hash = transaction_envelope.get_hash(&network);
@@ -486,14 +426,8 @@ pub mod pallet {
 
 			// Check if all externalized ScpEnvelopes were signed by a tier 1 validator
 			let validators = Validators::<T>::get();
-			// Filter validators for selected network type
-			let validators = validators
-				.into_iter()
-				.filter(|validator| validator.public_network == public_network)
-				.collect::<Vec<_>>();
-
-			// Make sure that at least one validator is registered for the selected network type
-			ensure!(!validators.is_empty(), Error::<T>::NoValidatorsRegisteredForNetwork);
+			// Make sure that at least one validator is registered
+			ensure!(!validators.is_empty(), Error::<T>::NoValidatorsRegistered);
 
 			for envelope in envelopes.get_vec() {
 				let node_id = envelope.statement.node_id.clone();
@@ -535,14 +469,8 @@ pub mod pallet {
 				.collect::<Vec<&ValidatorOf<T>>>();
 
 			let organizations = Organizations::<T>::get();
-			// Filter organizations for selected network type
-			let organizations = organizations
-				.into_iter()
-				.filter(|organization| organization.public_network == public_network)
-				.collect::<Vec<_>>();
-
-			// Make sure that at least one organization is registered for the selected network type
-			ensure!(!organizations.is_empty(), Error::<T>::NoOrganizationsRegisteredForNetwork);
+			// Make sure that at least one organization is registered
+			ensure!(!organizations.is_empty(), Error::<T>::NoOrganizationsRegistered);
 
 			// Map organizationID to the number of validators that belongs to it
 			let mut validator_count_per_organization_map =
