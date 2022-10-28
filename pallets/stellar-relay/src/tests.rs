@@ -20,12 +20,6 @@ use crate::{
 	Error,
 };
 
-fn create_bounded_vec<T: Clone>(input: &[T]) -> Result<BoundedVec<T, FieldLength>, Error<Test>> {
-	let bounded_vec = BoundedVec::try_from(input.to_vec())
-		.map_err(|_| Error::<Test>::BoundedVecCreationFailed)?;
-	Ok(bounded_vec)
-}
-
 fn create_dummy_externalize_message(keypair: &SecretKey, network: &Network) -> ScpEnvelope {
 	let value: Value = UnlimitedVarOpaque::new([0; 32].to_vec()).unwrap();
 	let commit = ScpBallot { counter: 1, value };
@@ -47,96 +41,6 @@ fn create_dummy_externalize_message(keypair: &SecretKey, network: &Network) -> S
 	let envelope = ScpEnvelope { statement: statement.clone(), signature: signature.clone() };
 
 	envelope
-}
-
-fn create_dummy_validator(
-	name: &str,
-	organization: &OrganizationOf<Test>,
-) -> (ValidatorOf<Test>, SecretKey) {
-	let rand = &mut rand::thread_rng();
-	let validator_secret = SecretKey::from_binary(rand.gen());
-
-	let validator = Validator {
-		name: create_bounded_vec(name.as_bytes()).unwrap(),
-		public_key: create_bounded_vec(validator_secret.get_public().to_encoding().as_slice())
-			.unwrap(),
-		organization_id: organization.id.clone(),
-	};
-
-	(validator, validator_secret)
-}
-
-fn create_dummy_validators() -> (Vec<OrganizationOf<Test>>, Vec<ValidatorOf<Test>>, Vec<SecretKey>)
-{
-	let mut organizations: Vec<OrganizationOf<Test>> = vec![];
-	let mut validators: Vec<ValidatorOf<Test>> = vec![];
-	// These secret keys are required to be in the same order as the validators in this test
-	// They are later used to sign the dummy scp messages
-	let mut validator_secret_keys: Vec<SecretKey> = vec![];
-
-	let organization_sdf =
-		Organization { name: create_bounded_vec("sdf".as_bytes()).unwrap(), id: 0 };
-	organizations.push(organization_sdf.clone());
-
-	let (validator, validator_secret) = create_dummy_validator("$sdf1", &organization_sdf);
-	validators.push(validator);
-	validator_secret_keys.push(validator_secret);
-	let (validator, validator_secret) = create_dummy_validator("$sdf2", &organization_sdf);
-	validators.push(validator);
-	validator_secret_keys.push(validator_secret);
-	let (validator, validator_secret) = create_dummy_validator("$sdf3", &organization_sdf);
-	validators.push(validator);
-	validator_secret_keys.push(validator_secret);
-
-	let organization_keybase =
-		Organization { name: create_bounded_vec("keybase".as_bytes()).unwrap(), id: 1 };
-	organizations.push(organization_keybase.clone());
-
-	let (validator, validator_secret) = create_dummy_validator("$keybase1", &organization_keybase);
-	validators.push(validator);
-	validator_secret_keys.push(validator_secret);
-	let (validator, validator_secret) = create_dummy_validator("$keybase2", &organization_keybase);
-	validators.push(validator);
-	validator_secret_keys.push(validator_secret);
-	let (validator, validator_secret) = create_dummy_validator("$keybase3", &organization_keybase);
-	validators.push(validator);
-	validator_secret_keys.push(validator_secret);
-
-	let organization_satoshipay =
-		Organization { name: create_bounded_vec("satoshipay".as_bytes()).unwrap(), id: 2 };
-	organizations.push(organization_satoshipay.clone());
-
-	let (validator, validator_secret) =
-		create_dummy_validator("$satoshipay-de", &organization_satoshipay);
-	validators.push(validator);
-	validator_secret_keys.push(validator_secret);
-	let (validator, validator_secret) =
-		create_dummy_validator("$satoshipay-us", &organization_satoshipay);
-	validators.push(validator);
-	validator_secret_keys.push(validator_secret);
-	let (validator, validator_secret) =
-		create_dummy_validator("$satoshipay-sg", &organization_satoshipay);
-	validators.push(validator);
-	validator_secret_keys.push(validator_secret);
-
-	let organization_lobstr =
-		Organization { name: create_bounded_vec("lobstr".as_bytes()).unwrap(), id: 3 };
-	organizations.push(organization_lobstr.clone());
-
-	let (validator, validator_secret) = create_dummy_validator("$lobstr1", &organization_lobstr);
-	validators.push(validator);
-	validator_secret_keys.push(validator_secret);
-	let (validator, validator_secret) = create_dummy_validator("$lobstr2", &organization_lobstr);
-	validators.push(validator);
-	validator_secret_keys.push(validator_secret);
-	let (validator, validator_secret) = create_dummy_validator("$lobstr3", &organization_lobstr);
-	validators.push(validator);
-	validator_secret_keys.push(validator_secret);
-	let (validator, validator_secret) = create_dummy_validator("$lobstr4", &organization_lobstr);
-	validators.push(validator);
-	validator_secret_keys.push(validator_secret);
-
-	(organizations, validators, validator_secret_keys)
 }
 
 fn create_scp_envelope(
@@ -226,17 +130,8 @@ fn create_valid_dummy_scp_envelopes(
 
 #[test]
 fn validate_stellar_transaction_fails_for_wrong_signature() {
-	new_test_ext().execute_with(|| {
-		let public_network = false;
-
-		// Set the validators used to create the scp messages
-		let (organizations, validators, mut validator_secret_keys) = create_dummy_validators();
-		assert_ok!(SpacewalkRelay::update_tier_1_validator_set(
-			Origin::root(),
-			validators.clone(),
-			organizations.clone(),
-			public_network,
-		));
+	run_test(|organizations, validators, mut validator_secret_keys| {
+		let public_network = true;
 
 		// Change one of the secret keys, so that the signature is invalid
 		validator_secret_keys[0] = SecretKey::from_binary([1; 32]);
@@ -276,16 +171,8 @@ fn validate_stellar_transaction_fails_for_wrong_signature() {
 
 #[test]
 fn validate_stellar_transaction_fails_for_unknown_validator() {
-	new_test_ext().execute_with(|| {
-		let public_network = false;
-		// Set the validators used to create the scp messages
-		let (organizations, mut validators, mut validator_secret_keys) = create_dummy_validators();
-		assert_ok!(SpacewalkRelay::update_tier_1_validator_set(
-			Origin::root(),
-			validators.clone(),
-			organizations.clone(),
-			public_network,
-		));
+	run_test(|organizations, mut validators, mut validator_secret_keys| {
+		let public_network = true;
 
 		// Add other validator that is not part of the 'known' validator set
 		let (validator, validator_secret) = create_dummy_validator("$unknown", &organizations[0]);
@@ -303,16 +190,8 @@ fn validate_stellar_transaction_fails_for_unknown_validator() {
 
 #[test]
 fn validate_stellar_transaction_fails_for_wrong_transaction() {
-	new_test_ext().execute_with(|| {
-		let public_network = false;
-		// Set the validators used to create the scp messages
-		let (organizations, validators, validator_secret_keys) = create_dummy_validators();
-		assert_ok!(SpacewalkRelay::update_tier_1_validator_set(
-			Origin::root(),
-			validators.clone(),
-			organizations.clone(),
-			public_network
-		));
+	run_test(|organizations, validators, validator_secret_keys| {
+		let public_network = true;
 
 		let (_tx_envelope, mut tx_set, scp_envelopes) =
 			create_valid_dummy_scp_envelopes(validators, validator_secret_keys, public_network);
@@ -353,16 +232,8 @@ fn validate_stellar_transaction_fails_for_wrong_transaction() {
 
 #[test]
 fn validate_stellar_transaction_fails_when_using_the_same_validator_multiple_times() {
-	new_test_ext().execute_with(|| {
-		let public_network = false;
-		// Set the validators used to create the scp messages
-		let (organizations, mut validators, mut validator_secret_keys) = create_dummy_validators();
-		assert_ok!(SpacewalkRelay::update_tier_1_validator_set(
-			Origin::root(),
-			validators.clone(),
-			organizations.clone(),
-			public_network,
-		));
+	run_test(|organizations, mut validators, mut validator_secret_keys| {
+		let public_network = true;
 
 		// Modify validator list to use the same validator multiple times
 		// Remove all sdf validators
@@ -393,16 +264,8 @@ fn validate_stellar_transaction_fails_when_using_the_same_validator_multiple_tim
 }
 #[test]
 fn validate_stellar_transaction_fails_for_invalid_quorum() {
-	new_test_ext().execute_with(|| {
-		let public_network = false;
-		// Set the validators used to create the scp messages
-		let (organizations, mut validators, mut validator_secret_keys) = create_dummy_validators();
-		assert_ok!(SpacewalkRelay::update_tier_1_validator_set(
-			Origin::root(),
-			validators.clone(),
-			organizations.clone(),
-			public_network,
-		));
+	run_test(|organizations, mut validators, mut validator_secret_keys| {
+		let public_network = true;
 
 		// Remove validators from the quorum set to make it invalid
 		// Remove all sdf validators
@@ -412,22 +275,18 @@ fn validate_stellar_transaction_fails_for_invalid_quorum() {
 		validators.drain(0..3);
 		validator_secret_keys.drain(0..3);
 
-		let (tx_envelope, tx_set, scp_envelopes) =
-			create_valid_dummy_scp_envelopes(validators, validator_secret_keys, public_network);
+		let (tx_envelope, tx_set, scp_envelopes) = create_valid_dummy_scp_envelopes(
+			validators.clone(),
+			validator_secret_keys.clone(),
+			public_network,
+		);
 
 		// This should be an invalid quorum set because only 50% of the total organizations are in
 		// the quorum set but it has to be >66%
 		let result =
 			SpacewalkRelay::validate_stellar_transaction(tx_envelope, scp_envelopes, tx_set);
+		println!("{:?}", result);
 		assert!(matches!(result, Err(Error::<Test>::InvalidQuorumSetNotEnoughOrganizations)));
-
-		let (organizations, mut validators, mut validator_secret_keys) = create_dummy_validators();
-		assert_ok!(SpacewalkRelay::update_tier_1_validator_set(
-			Origin::root(),
-			validators.clone(),
-			organizations.clone(),
-			public_network
-		));
 
 		// Remove validators from the quorum set to make it invalid
 		// Remove two keybase validators
@@ -445,33 +304,22 @@ fn validate_stellar_transaction_fails_for_invalid_quorum() {
 		// organizations have to have >1/2 of their validator nodes to build a valid quorum set.
 		let result =
 			SpacewalkRelay::validate_stellar_transaction(tx_envelope, scp_envelopes, tx_set);
+		println!("{:?}", result);
 		assert!(matches!(result, Err(Error::<Test>::InvalidQuorumSetNotEnoughValidators)));
 	});
 }
 
 #[test]
 fn validate_stellar_transaction_fails_for_differing_networks() {
-	new_test_ext().execute_with(|| {
-		let public_network = true;
-		// Set the validators used to create the scp messages
-		let (public_organizations, public_validators, _public_validator_secret_keys) =
-			create_dummy_validators();
-		let (testnet_organizations, testnet_validators, testnet_validator_secret_keys) =
-			create_dummy_validators();
-		assert_ok!(SpacewalkRelay::update_tier_1_validator_set(
-			Origin::root(),
-			[public_validators.clone(), testnet_validators.clone()].concat(),
-			[public_organizations, testnet_organizations].concat(),
-			public_network
-		));
-
+	run_test(|organizations, validators, validator_secret_keys| {
 		let (tx_envelope, tx_set, scp_envelopes) = create_valid_dummy_scp_envelopes(
-			testnet_validators,
-			testnet_validator_secret_keys,
-			false, // Create scp messages for the test network
+			validators,
+			validator_secret_keys,
+			// Create scp messages for the test network although the relay is configured in genesis
+			// to use public network
+			false,
 		);
 
-		// Validate the stellar transaction using the public network (ie the wrong one)
 		let result =
 			SpacewalkRelay::validate_stellar_transaction(tx_envelope, scp_envelopes, tx_set);
 		assert!(matches!(result, Err(Error::<Test>::InvalidEnvelopeSignature)));
@@ -480,24 +328,21 @@ fn validate_stellar_transaction_fails_for_differing_networks() {
 
 #[test]
 fn validate_stellar_transaction_fails_without_validators() {
-	new_test_ext().execute_with(|| {
+	run_test(|organizations, validators, validator_secret_keys| {
 		let public_network = true;
-		// Set the validators used to create the scp messages
-		let (organizations, validators, validator_secret_keys) = create_dummy_validators();
-
-		let (tx_envelope, tx_set, scp_envelopes) = create_valid_dummy_scp_envelopes(
-			validators.clone(),
-			validator_secret_keys,
-			public_network,
-		);
 
 		// Remove all validators
 		assert_ok!(SpacewalkRelay::update_tier_1_validator_set(
 			Origin::root(),
 			vec![],
 			organizations,
-			public_network,
 		));
+
+		let (tx_envelope, tx_set, scp_envelopes) = create_valid_dummy_scp_envelopes(
+			validators.clone(),
+			validator_secret_keys,
+			public_network,
+		);
 
 		let result = SpacewalkRelay::validate_stellar_transaction(
 			tx_envelope.clone(),
@@ -507,12 +352,9 @@ fn validate_stellar_transaction_fails_without_validators() {
 		assert!(matches!(result, Err(Error::<Test>::NoValidatorsRegistered)));
 
 		// Remove all validators
-		assert_ok!(SpacewalkRelay::update_tier_1_validator_set(
-			Origin::root(),
-			validators,
-			vec![],
-			public_network,
-		));
+		assert_ok!(
+			SpacewalkRelay::update_tier_1_validator_set(Origin::root(), validators, vec![],)
+		);
 		let result =
 			SpacewalkRelay::validate_stellar_transaction(tx_envelope, scp_envelopes, tx_set);
 		assert!(matches!(result, Err(Error::<Test>::NoOrganizationsRegistered)));
@@ -521,16 +363,8 @@ fn validate_stellar_transaction_fails_without_validators() {
 
 #[test]
 fn validate_stellar_transaction_works_with_barely_enough_validators() {
-	new_test_ext().execute_with(|| {
+	run_test(|organizations, mut validators, mut validator_secret_keys| {
 		let public_network = true;
-		// Set the validators used to create the scp messages
-		let (organizations, mut validators, mut validator_secret_keys) = create_dummy_validators();
-		assert_ok!(SpacewalkRelay::update_tier_1_validator_set(
-			Origin::root(),
-			validators.clone(),
-			organizations.clone(),
-			public_network
-		));
 
 		// Remove some validators but leave enough to build a valid quorum set
 		// Remove all sdf validators
@@ -559,17 +393,8 @@ fn validate_stellar_transaction_works_with_barely_enough_validators() {
 
 #[test]
 fn validate_stellar_transaction_works_with_all_validators() {
-	new_test_ext().execute_with(|| {
-		let public_network = false;
-		// Set the validators used to create the scp messages
-		let (organizations, validators, validator_secret_keys) = create_dummy_validators();
-		assert_ok!(SpacewalkRelay::update_tier_1_validator_set(
-			Origin::root(),
-			validators.clone(),
-			organizations.clone(),
-			public_network
-		));
-
+	run_test(|organizations, validators, validator_secret_keys| {
+		let public_network = true;
 		let (tx_envelope, tx_set, scp_envelopes) =
 			create_valid_dummy_scp_envelopes(validators, validator_secret_keys, public_network);
 
@@ -583,10 +408,10 @@ fn validate_stellar_transaction_works_with_all_validators() {
 
 #[test]
 fn update_tier_1_validator_set_fails_for_non_root_origin() {
-	new_test_ext().execute_with(|| {
+	run_test(|organizations, validators, validator_secret_keys| {
 		// Ensure the expected error is thrown when no value is present.
 		assert_noop!(
-			SpacewalkRelay::update_tier_1_validator_set(Origin::signed(1), vec![], vec![], true),
+			SpacewalkRelay::update_tier_1_validator_set(Origin::signed(1), vec![], vec![]),
 			BadOrigin
 		);
 	});
@@ -594,8 +419,8 @@ fn update_tier_1_validator_set_fails_for_non_root_origin() {
 
 #[test]
 fn update_tier_1_validator_set_works() {
-	new_test_ext().execute_with(|| {
-		let public_network = false;
+	run_test(|organizations, validators, validator_secret_keys| {
+		let public_network = true;
 		let organization = Organization { id: 0, name: Default::default() };
 		let validator = Validator {
 			name: Default::default(),
@@ -608,7 +433,6 @@ fn update_tier_1_validator_set_works() {
 			Origin::root(),
 			validator_set.clone(),
 			organization_set.clone(),
-			public_network,
 		));
 
 		let validator_bounded_vec =
@@ -621,7 +445,6 @@ fn update_tier_1_validator_set_works() {
 			.unwrap();
 		assert_eq!(SpacewalkRelay::validators(), validator_bounded_vec);
 		assert_eq!(SpacewalkRelay::organizations(), organization_bounded_vec);
-		assert_eq!(SpacewalkRelay::is_public_network(), public_network);
 
 		// Update the validator set
 		let organization = Organization { id: 1, name: Default::default() };
@@ -641,7 +464,6 @@ fn update_tier_1_validator_set_works() {
 			Origin::root(),
 			new_validator_set.clone(),
 			new_organization_set.clone(),
-			public_network
 		));
 		let validator_bounded_vec =
 			BoundedVec::<ValidatorOf<Test>, ValidatorLimit>::try_from(new_validator_set.clone())
@@ -658,8 +480,8 @@ fn update_tier_1_validator_set_works() {
 
 #[test]
 fn update_tier_1_validator_set_fails_when_set_too_large() {
-	new_test_ext().execute_with(|| {
-		let public_network = false;
+	run_test(|organizations, validators, validator_secret_keys| {
+		let public_network = true;
 		let organization = Organization { id: 0, name: Default::default() };
 		let validator = Validator {
 			name: Default::default(),
@@ -674,7 +496,6 @@ fn update_tier_1_validator_set_fails_when_set_too_large() {
 				Origin::root(),
 				validator_set,
 				organization_set,
-				public_network
 			),
 			Error::<Test>::ValidatorLimitExceeded
 		);
@@ -687,7 +508,6 @@ fn update_tier_1_validator_set_fails_when_set_too_large() {
 				Origin::root(),
 				validator_set,
 				organization_set,
-				public_network
 			),
 			Error::<Test>::OrganizationLimitExceeded
 		);

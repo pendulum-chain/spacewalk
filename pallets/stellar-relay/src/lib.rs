@@ -370,7 +370,6 @@ pub mod pallet {
 			origin: OriginFor<T>,
 			validators: Vec<ValidatorOf<T>>,
 			organizations: Vec<OrganizationOf<T>>,
-			public_network: bool,
 		) -> DispatchResult {
 			// Limit this call to root
 			let _ = ensure_root(origin)?;
@@ -395,8 +394,6 @@ pub mod pallet {
 				BoundedVec::<OrganizationOf<T>, T::OrganizationLimit>::try_from(organizations)
 					.map_err(|_| Error::<T>::BoundedVecCreationFailed)?;
 			Organizations::<T>::put(organization_vec);
-
-			IsPublicNetwork::<T>::put(public_network);
 
 			Ok(())
 		}
