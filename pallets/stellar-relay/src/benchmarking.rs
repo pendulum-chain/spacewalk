@@ -1,6 +1,6 @@
 //! Benchmarking setup for pallet-template
 
-use frame_benchmarking::{benchmarks, whitelisted_caller};
+use frame_benchmarking::{benchmarks, impl_benchmark_test_suite, whitelisted_caller};
 use frame_support::BoundedVec;
 use frame_system::RawOrigin;
 use sp_std::vec;
@@ -40,5 +40,10 @@ benchmarks! {
 		assert_eq!(Validators::<T>::get(), BoundedVec::<ValidatorOf<T>, T::ValidatorLimit>::try_from(validators).unwrap());
 	}
 
-	impl_benchmark_test_suite!(StellarRelay, crate::mock::new_test_ext(), crate::mock::Test);
 }
+
+impl_benchmark_test_suite!(
+	StellarRelay,
+	crate::mock::ExtBuilder::build(Default::default(), Default::default()),
+	crate::mock::Test
+);

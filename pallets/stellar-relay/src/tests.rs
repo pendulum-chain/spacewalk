@@ -1,5 +1,4 @@
 use frame_support::{assert_noop, assert_ok, BoundedVec};
-use rand::Rng;
 use sp_runtime::DispatchError::BadOrigin;
 use substrate_stellar_sdk::{
 	compound_types::{LimitedVarArray, LimitedVarOpaque, UnlimitedVarArray, UnlimitedVarOpaque},
@@ -15,7 +14,7 @@ use substrate_stellar_sdk::{
 
 use crate::{
 	mock::*,
-	traits::{FieldLength, Organization, Validator},
+	traits::{Organization, Validator},
 	types::{OrganizationOf, ValidatorOf},
 	Error,
 };
@@ -130,7 +129,7 @@ fn create_valid_dummy_scp_envelopes(
 
 #[test]
 fn validate_stellar_transaction_fails_for_wrong_signature() {
-	run_test(|organizations, validators, mut validator_secret_keys| {
+	run_test(|_, validators, mut validator_secret_keys| {
 		let public_network = true;
 
 		// Change one of the secret keys, so that the signature is invalid
@@ -190,7 +189,7 @@ fn validate_stellar_transaction_fails_for_unknown_validator() {
 
 #[test]
 fn validate_stellar_transaction_fails_for_wrong_transaction() {
-	run_test(|organizations, validators, validator_secret_keys| {
+	run_test(|_, validators, validator_secret_keys| {
 		let public_network = true;
 
 		let (_tx_envelope, mut tx_set, scp_envelopes) =
@@ -232,7 +231,7 @@ fn validate_stellar_transaction_fails_for_wrong_transaction() {
 
 #[test]
 fn validate_stellar_transaction_fails_when_using_the_same_validator_multiple_times() {
-	run_test(|organizations, mut validators, mut validator_secret_keys| {
+	run_test(|_, mut validators, mut validator_secret_keys| {
 		let public_network = true;
 
 		// Modify validator list to use the same validator multiple times
@@ -264,20 +263,22 @@ fn validate_stellar_transaction_fails_when_using_the_same_validator_multiple_tim
 }
 #[test]
 fn validate_stellar_transaction_fails_for_invalid_quorum() {
-	run_test(|organizations, mut validators, mut validator_secret_keys| {
+	run_test(|_, validators, validator_secret_keys| {
 		let public_network = true;
 
+		let mut drained_validators = validators.clone();
+		let mut drained_validator_secret_keys = validator_secret_keys.clone();
 		// Remove validators from the quorum set to make it invalid
 		// Remove all sdf validators
-		validators.drain(0..3);
-		validator_secret_keys.drain(0..3);
+		drained_validators.drain(0..3);
+		drained_validator_secret_keys.drain(0..3);
 		// Remove all keybase validators
-		validators.drain(0..3);
-		validator_secret_keys.drain(0..3);
+		drained_validators.drain(0..3);
+		drained_validator_secret_keys.drain(0..3);
 
 		let (tx_envelope, tx_set, scp_envelopes) = create_valid_dummy_scp_envelopes(
-			validators.clone(),
-			validator_secret_keys.clone(),
+			drained_validators.clone(),
+			drained_validator_secret_keys.clone(),
 			public_network,
 		);
 
@@ -285,33 +286,37 @@ fn validate_stellar_transaction_fails_for_invalid_quorum() {
 		// the quorum set but it has to be >66%
 		let result =
 			SpacewalkRelay::validate_stellar_transaction(tx_envelope, scp_envelopes, tx_set);
-		println!("{:?}", result);
 		assert!(matches!(result, Err(Error::<Test>::InvalidQuorumSetNotEnoughOrganizations)));
 
+		// Reset variables
+		let mut drained_validators = validators.clone();
+		let mut drained_validator_secret_keys = validator_secret_keys.clone();
 		// Remove validators from the quorum set to make it invalid
 		// Remove two keybase validators
-		validators.drain(3..5);
-		validator_secret_keys.drain(3..5);
+		drained_validators.drain(3..5);
+		drained_validator_secret_keys.drain(3..5);
 		// Remove two sdf validators
-		validators.drain(0..2);
-		validator_secret_keys.drain(0..2);
+		drained_validators.drain(0..2);
+		drained_validator_secret_keys.drain(0..2);
 
-		let (tx_envelope, tx_set, scp_envelopes) =
-			create_valid_dummy_scp_envelopes(validators, validator_secret_keys, public_network);
+		let (tx_envelope, tx_set, scp_envelopes) = create_valid_dummy_scp_envelopes(
+			drained_validators,
+			drained_validator_secret_keys,
+			public_network,
+		);
 
 		// This should be an invalid quorum set because 1/2 of the organizations only have 1/3 of
 		// their validator nodes in the quorum set. This is not enough because >2/3 of the
 		// organizations have to have >1/2 of their validator nodes to build a valid quorum set.
 		let result =
 			SpacewalkRelay::validate_stellar_transaction(tx_envelope, scp_envelopes, tx_set);
-		println!("{:?}", result);
 		assert!(matches!(result, Err(Error::<Test>::InvalidQuorumSetNotEnoughValidators)));
 	});
 }
 
 #[test]
 fn validate_stellar_transaction_fails_for_differing_networks() {
-	run_test(|organizations, validators, validator_secret_keys| {
+	run_test(|_, validators, validator_secret_keys| {
 		let (tx_envelope, tx_set, scp_envelopes) = create_valid_dummy_scp_envelopes(
 			validators,
 			validator_secret_keys,
@@ -363,7 +368,7 @@ fn validate_stellar_transaction_fails_without_validators() {
 
 #[test]
 fn validate_stellar_transaction_works_with_barely_enough_validators() {
-	run_test(|organizations, mut validators, mut validator_secret_keys| {
+	run_test(|_, mut validators, mut validator_secret_keys| {
 		let public_network = true;
 
 		// Remove some validators but leave enough to build a valid quorum set
@@ -379,7 +384,6 @@ fn validate_stellar_transaction_works_with_barely_enough_validators() {
 
 		// This should still be valid because 3 out of 4 organizations are still present
 		// and all organizations still have more than 1/2 of its validators in the quorum set
-
 		let (tx_envelope, tx_set, scp_envelopes) =
 			create_valid_dummy_scp_envelopes(validators, validator_secret_keys, public_network);
 
@@ -393,7 +397,7 @@ fn validate_stellar_transaction_works_with_barely_enough_validators() {
 
 #[test]
 fn validate_stellar_transaction_works_with_all_validators() {
-	run_test(|organizations, validators, validator_secret_keys| {
+	run_test(|_, validators, validator_secret_keys| {
 		let public_network = true;
 		let (tx_envelope, tx_set, scp_envelopes) =
 			create_valid_dummy_scp_envelopes(validators, validator_secret_keys, public_network);
@@ -408,8 +412,7 @@ fn validate_stellar_transaction_works_with_all_validators() {
 
 #[test]
 fn update_tier_1_validator_set_fails_for_non_root_origin() {
-	run_test(|organizations, validators, validator_secret_keys| {
-		// Ensure the expected error is thrown when no value is present.
+	run_test(|_, _, _| {
 		assert_noop!(
 			SpacewalkRelay::update_tier_1_validator_set(Origin::signed(1), vec![], vec![]),
 			BadOrigin
@@ -419,8 +422,7 @@ fn update_tier_1_validator_set_fails_for_non_root_origin() {
 
 #[test]
 fn update_tier_1_validator_set_works() {
-	run_test(|organizations, validators, validator_secret_keys| {
-		let public_network = true;
+	run_test(|_, _, _| {
 		let organization = Organization { id: 0, name: Default::default() };
 		let validator = Validator {
 			name: Default::default(),
@@ -480,8 +482,7 @@ fn update_tier_1_validator_set_works() {
 
 #[test]
 fn update_tier_1_validator_set_fails_when_set_too_large() {
-	run_test(|organizations, validators, validator_secret_keys| {
-		let public_network = true;
+	run_test(|_, _, _| {
 		let organization = Organization { id: 0, name: Default::default() };
 		let validator = Validator {
 			name: Default::default(),
