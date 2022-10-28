@@ -1,5 +1,6 @@
 use std::{convert::TryFrom, str::FromStr};
 
+use frame_support::BoundedVec;
 use hex_literal::hex;
 use sc_service::ChainType;
 use serde_json::{map::Map, Value};
@@ -11,9 +12,10 @@ use sp_runtime::traits::{IdentifyAccount, Verify};
 
 use primitives::{CurrencyId::Token, VaultCurrencyPair, DOT, KSM};
 use spacewalk_runtime::{
-	AccountId, AuraConfig, BalancesConfig, CurrencyId, FeeConfig, GenesisConfig,
-	GetWrappedCurrencyId, GrandpaConfig, NominationConfig, OracleConfig, SecurityConfig, Signature,
-	StatusCode, SudoConfig, SystemConfig, TokensConfig, VaultRegistryConfig, DAYS, WASM_BINARY,
+	AccountId, AuraConfig, BalancesConfig, CurrencyId, FeeConfig, FieldLength, GenesisConfig,
+	GetWrappedCurrencyId, GrandpaConfig, NominationConfig, OracleConfig, Organization,
+	SecurityConfig, Signature, StatusCode, StellarRelayConfig, SudoConfig, SystemConfig,
+	TokensConfig, Validator, VaultRegistryConfig, DAYS, WASM_BINARY,
 };
 
 // The URL for the telemetry server.
@@ -205,6 +207,15 @@ fn default_pair(currency_id: CurrencyId) -> VaultCurrencyPair<CurrencyId> {
 	VaultCurrencyPair { collateral: currency_id, wrapped: GetWrappedCurrencyId::get() }
 }
 
+// Used to create bounded vecs for genesis config
+// Does not return a result but panics because the genesis config is hardcoded
+fn create_bounded_vec(input: &str) -> BoundedVec<u8, FieldLength> {
+	let bounded_vec =
+		BoundedVec::try_from(input.as_bytes().to_vec()).expect("Failed to create bounded vec");
+
+	bounded_vec
+}
+
 fn testnet_genesis(
 	root_key: AccountId,
 	initial_authorities: Vec<(AuraId, GrandpaId)>,
@@ -212,6 +223,34 @@ fn testnet_genesis(
 	authorized_oracles: Vec<(AccountId, Vec<u8>)>,
 	start_shutdown: bool,
 ) -> GenesisConfig {
+	// Testnet organization
+	let organization_testnet_sdf =
+		Organization { name: create_bounded_vec("sdftest"), id: 1u128.into() };
+	// Testnet validators
+	let validators = vec![
+		Validator {
+			name: create_bounded_vec("$sdftest1"),
+			public_key: create_bounded_vec(
+				"GDKXE2OZMJIPOSLNA6N6F2BVCI3O777I2OOC4BV7VOYUEHYX7RTRYA7Y",
+			),
+			organization_id: organization_testnet_sdf.id,
+		},
+		Validator {
+			name: create_bounded_vec("$sdftest2"),
+			public_key: create_bounded_vec(
+				"GCUCJTIYXSOXKBSNFGNFWW5MUQ54HKRPGJUTQFJ5RQXZXNOLNXYDHRAP",
+			),
+			organization_id: organization_testnet_sdf.id,
+		},
+		Validator {
+			name: create_bounded_vec("$sdftest3"),
+			public_key: create_bounded_vec(
+				"GC2V2EFSXN6SQTWVYA5EPJPBWWIMSD2XQNKUOHGEKB535AQE2I6IXV2Z",
+			),
+			organization_id: organization_testnet_sdf.id,
+		},
+	];
+	let organizations = vec![organization_testnet_sdf];
 	GenesisConfig {
 		system: SystemConfig {
 			code: WASM_BINARY.expect("WASM binary was not build, please build it!").to_vec(),
@@ -239,6 +278,12 @@ fn testnet_genesis(
 		},
 		security: SecurityConfig {
 			initial_status: if start_shutdown { StatusCode::Shutdown } else { StatusCode::Error },
+		},
+		stellar_relay: StellarRelayConfig {
+			validators,
+			organizations,
+			is_public_network: true,
+			phantom: Default::default(),
 		},
 		oracle: OracleConfig {
 			authorized_oracles,

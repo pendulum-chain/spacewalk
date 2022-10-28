@@ -39,6 +39,7 @@ pub use primitives::{
 };
 use primitives::{CurrencyId::Token, TokenSymbol};
 pub use security::StatusCode;
+pub use stellar_relay::traits::{FieldLength, Organization, Validator};
 
 type VaultId = primitives::VaultId<AccountId, CurrencyId>;
 
@@ -319,7 +320,7 @@ impl staking::Config for Runtime {
 
 pub type OrganizationId = u128;
 
-impl pallet_stellar_relay::Config for Runtime {
+impl stellar_relay::Config for Runtime {
 	type Event = Event;
 	type OrganizationId = OrganizationId;
 	type OrganizationLimit = OrganizationLimit;
@@ -386,7 +387,7 @@ construct_runtime! {
 		Balances: pallet_balances::{Pallet, Call, Storage, Config<T>, Event<T>} = 8,
 		TransactionPayment: pallet_transaction_payment::{Pallet, Storage} = 9,
 
-		StellarRelay: pallet_stellar_relay::{Pallet, Call, Storage, Event<T>} = 10,
+		StellarRelay: stellar_relay::{Pallet, Call, Config<T>, Storage, Event<T>} = 10,
 
 		VaultRewards: reward::{Pallet, Storage, Event<T>} = 15,
 		VaultStaking: staking::{Pallet, Storage, Event<T>} = 16,
@@ -439,7 +440,7 @@ mod benches {
 	define_benchmarks!(
 		[frame_benchmarking, BaselineBench::<Runtime>]
 		[frame_system, SystemBench::<Runtime>]
-		[pallet_stellar_relay, StellarRelay]
+		[stellar_relay, StellarRelay]
 		[fee, Fee]
 		[oracle, Oracle]
 		[vault_registry, VaultRegistry]
