@@ -50,21 +50,19 @@ pub trait WeightInfo {
 pub struct SubstrateWeight<T>(PhantomData<T>);
 impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 	// Storage: StellarRelay Validators (r:0 w:1)
-	// Storage: StellarRelay IsPublicNetwork (r:0 w:1)
 	// Storage: StellarRelay Organizations (r:0 w:1)
 	fn update_tier_1_validator_set() -> Weight {
-		(21_000_000 as Weight)
-			.saturating_add(T::DbWeight::get().writes(3 as Weight))
+		(20_000_000 as Weight)
+			.saturating_add(T::DbWeight::get().writes(2 as Weight))
 	}
 }
 
 // For backwards compatibility and tests
 impl WeightInfo for () {
 	// Storage: StellarRelay Validators (r:0 w:1)
-	// Storage: StellarRelay IsPublicNetwork (r:0 w:1)
 	// Storage: StellarRelay Organizations (r:0 w:1)
 	fn update_tier_1_validator_set() -> Weight {
-		(21_000_000 as Weight)
-			.saturating_add(RocksDbWeight::get().writes(3 as Weight))
+		(20_000_000 as Weight)
+			.saturating_add(RocksDbWeight::get().writes(2 as Weight))
 	}
 }
