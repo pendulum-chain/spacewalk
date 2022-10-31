@@ -89,6 +89,7 @@ runtime-benchmarks = [
   "issue/runtime-benchmarks",
   "nomination/runtime-benchmarks",
   "oracle/runtime-benchmarks",
+  "stellar-relay/runtime-benchmarks",
   "vault-registry/runtime-benchmarks",
 ]
 std = [
