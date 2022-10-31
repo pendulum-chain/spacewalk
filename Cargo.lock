@@ -3867,7 +3867,7 @@ dependencies = [
 name = "module-issue-rpc"
 version = "1.2.0"
 dependencies = [
- "jsonrpsee 0.14.0",
+ "jsonrpsee 0.13.1",
  "module-issue-rpc-runtime-api",
  "parity-scale-codec",
  "sp-api 4.0.0-dev (git+https://github.com/paritytech/substrate?branch=polkadot-v0.9.24)",
@@ -8033,7 +8033,7 @@ name = "spacewalk-rpc"
 version = "1.2.0"
 dependencies = [
  "jsonrpc-core",
- "jsonrpsee 0.14.0",
+ "jsonrpsee 0.13.1",
  "module-issue-rpc",
  "pallet-transaction-payment-rpc",
  "sc-rpc",

@@ -38,14 +38,14 @@ where
 	C: Send + Sync + 'static,
 	C::Api: substrate_frame_rpc_system::AccountNonceApi<Block, AccountId, Nonce>,
 	C::Api: pallet_transaction_payment_rpc::TransactionPaymentRuntimeApi<Block, Balance>,
-	C::Api: BlockBuilder<Block>,
-	P: TransactionPool + 'static,
 	C::Api: module_issue_rpc::IssueRuntimeApi<
 		Block,
 		AccountId,
 		H256,
 		IssueRequest<AccountId, BlockNumber, Balance, CurrencyId>,
 	>,
+	C::Api: BlockBuilder<Block>,
+	P: TransactionPool + 'static,
 {
 	use module_issue_rpc::{Issue, IssueApiServer};
 	use pallet_transaction_payment_rpc::{TransactionPayment, TransactionPaymentApiServer};

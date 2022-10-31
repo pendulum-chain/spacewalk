@@ -39,7 +39,7 @@ pub use nomination::Event as NominationEvent;
 // A few exports that help ease life for downstream crates.
 pub use primitives::{
 	self, AccountId, Balance, BlockNumber, CurrencyId, Hash, Moment, Nonce, Signature,
-	SignedFixedPoint, SignedInner, UnsignedFixedPoint, UnsignedInner,
+	SignedFixedPoint, SignedInner, UnsignedFixedPoint, UnsignedInner, H256,
 };
 use primitives::{CurrencyId::Token, TokenSymbol, TokenSymbol::INTR};
 pub use security::StatusCode;

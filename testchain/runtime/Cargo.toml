@@ -121,6 +121,7 @@ std = [
   "staking/std",
   "stellar-relay/std",
   "vault-registry/std",
+  "module-issue-rpc-runtime-api/std",
   "sp-api/std",
   "sp-block-builder/std",
   "sp-consensus-aura/std",
