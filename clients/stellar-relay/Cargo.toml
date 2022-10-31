@@ -1,7 +1,7 @@
 [package]
+edition = "2021"
 name = "stellar-relay"
 version = "0.1.0"
-edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
@@ -29,14 +29,14 @@ substrate-stellar-sdk = {git = "https://github.com/pendulum-chain/substrate-stel
 
 err-derive = "0.3.1"
 
-tokio = { version = "1.0", features = [
-    "macros",           # allows main function to be async
-    "rt-multi-thread",  # for multi-thread runtime
-    "net",              # contains the TcpStream
-    "sync",             # to make channels available
-    "io-util",          # for async read/write operations
-    "time"              # for timeouts and sleep, when reconnecting
-] }
+tokio = {version = "1.0", features = [
+  "macros", # allows main function to be async
+  "rt-multi-thread", # for multi-thread runtime
+  "net", # contains the TcpStream
+  "sync", # to make channels available
+  "io-util", # for async read/write operations
+  "time", # for timeouts and sleep, when reconnecting
+]}
 
 [features]
 default = []

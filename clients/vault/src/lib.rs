@@ -6,6 +6,8 @@ mod horizon;
 mod redeem;
 mod system;
 
+pub mod oracle;
+
 pub mod service {
 	pub use crate::{
 		deposit::poll_horizon_for_new_transactions, horizon::HorizonTransactionsResponse,
