@@ -12,5 +12,5 @@ pub(crate) type UnsignedFixedPoint<T> = <T as Config>::UnsignedFixedPoint;
 
 pub(crate) type SignedInner<T> = <T as Config>::SignedInner;
 pub trait CurrencyConversion<Amount, CurrencyId> {
-    fn convert(amount: &Amount, to: CurrencyId) -> Result<Amount, DispatchError>;
+	fn convert(amount: &Amount, to: CurrencyId) -> Result<Amount, DispatchError>;
 }

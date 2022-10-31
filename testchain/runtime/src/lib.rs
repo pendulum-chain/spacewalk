@@ -17,8 +17,7 @@ use pallet_grandpa::{
 	fg_primitives, AuthorityId as GrandpaId, AuthorityList as GrandpaAuthorityList,
 };
 use primitives::currency::{
-	AddressConversion as StellarAddressConversion,
-	BalanceConversion as StellarBalanceConversion,
+	AddressConversion as StellarAddressConversion, BalanceConversion as StellarBalanceConversion,
 	CurrencyConversion as StellarCurrencyConversion,
 	StringCurrencyConversion as StellarStringCurrencyConversion,
 };
@@ -38,8 +37,8 @@ use sp_version::RuntimeVersion;
 
 // A few exports that help ease life for downstream crates.
 pub use primitives::{
-	self, AccountId, Balance, BlockNumber, Hash, Moment, Nonce, Signature, SignedFixedPoint,
-	SignedInner, UnsignedFixedPoint, UnsignedInner, currency::CurrencyId
+	self, currency::CurrencyId, AccountId, Balance, BlockNumber, Hash, Moment, Nonce, Signature,
+	SignedFixedPoint, SignedInner, UnsignedFixedPoint, UnsignedInner,
 };
 
 // Make the WASM binary available.

@@ -1,22 +1,22 @@
 use frame_support::error::LookupError;
 use sp_core::ed25519;
 use sp_runtime::{
-	traits::{IdentifyAccount, StaticLookup, Convert},
+	scale_info::TypeInfo,
+	traits::{Convert, IdentifyAccount, StaticLookup},
 	AccountId32, MultiSigner,
 };
-use sp_std::{str::from_utf8, vec::Vec};
-use sp_runtime::scale_info::TypeInfo;
 use sp_std::{
 	convert::{From, TryFrom, TryInto},
 	fmt, str,
+	str::from_utf8,
+	vec::Vec,
 };
 
-use substrate_stellar_sdk as stellar;
 use stellar::{
 	types::{AlphaNum12, AlphaNum4},
-	Asset,
-	PublicKey,
+	Asset, PublicKey,
 };
+use substrate_stellar_sdk as stellar;
 
 use codec::{Decode, Encode, MaxEncodedLen};
 
@@ -163,7 +163,6 @@ impl Convert<(Vec<u8>, Vec<u8>), Result<CurrencyId, ()>> for StringCurrencyConve
 		(asset_code, public_key.into_binary()).try_into().map_err(|_| ())
 	}
 }
-
 
 pub struct BalanceConversion;
 
