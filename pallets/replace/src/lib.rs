@@ -1,9 +1,38 @@
 //! # Replace Pallet
 //! Based on the [specification](https://spec.interlay.io/spec/replace.html).
 
-#![deny(warnings)]
+// #![deny(warnings)]
 #![cfg_attr(test, feature(proc_macro_hygiene))]
 #![cfg_attr(not(feature = "std"), no_std)]
+
+#[cfg(test)]
+extern crate mocktopus;
+
+use frame_support::{
+	dispatch::{DispatchError, DispatchResult},
+	ensure,
+	traits::Get,
+	transactional,
+};
+#[cfg(test)]
+use mocktopus::macros::mockable;
+use sp_core::H256;
+use sp_std::vec::Vec;
+use substrate_stellar_sdk::{
+	compound_types::UnlimitedVarArray,
+	types::{ScpEnvelope, TransactionSet},
+	TransactionEnvelope,
+};
+
+use currency::Amount;
+pub use default_weights::WeightInfo;
+pub use pallet::*;
+use primitives::StellarPublicKeyRaw;
+use types::DefaultVaultId;
+use vault_registry::{types::CurrencyId, CurrencySource};
+
+use crate::types::{BalanceOf, ReplaceRequestExt};
+pub use crate::types::{DefaultReplaceRequest, ReplaceRequest, ReplaceRequestStatus};
 
 #[cfg(feature = "runtime-benchmarks")]
 mod benchmarking;
@@ -19,38 +48,15 @@ mod mock;
 #[cfg(test)]
 mod tests;
 
-#[cfg(test)]
-extern crate mocktopus;
-
-#[cfg(test)]
-use mocktopus::macros::mockable;
-
-use crate::types::{BalanceOf, ReplaceRequestExt, Version};
-pub use crate::types::{DefaultReplaceRequest, ReplaceRequest, ReplaceRequestStatus};
-use btc_relay::BtcAddress;
-use currency::Amount;
-pub use default_weights::WeightInfo;
-use frame_support::{
-	dispatch::{DispatchError, DispatchResult},
-	ensure,
-	traits::Get,
-	transactional,
-};
-use frame_system::{ensure_root, ensure_signed};
-use sp_core::H256;
-use sp_std::vec::Vec;
-use types::DefaultVaultId;
-use vault_registry::{types::CurrencyId, CurrencySource};
-
-pub use pallet::*;
-
 #[frame_support::pallet]
 pub mod pallet {
-	use super::*;
 	use frame_support::pallet_prelude::*;
 	use frame_system::pallet_prelude::*;
-	use primitives::VaultId;
+
+	use primitives::{StellarPublicKeyRaw, VaultId};
 	use vault_registry::types::DefaultVaultCurrencyPair;
+
+	use super::*;
 
 	/// ## Configuration
 	/// The pallet's configuration trait.
@@ -58,7 +64,7 @@ pub mod pallet {
 	pub trait Config:
 		frame_system::Config
 		+ vault_registry::Config
-		+ btc_relay::Config
+		+ stellar_relay::Config
 		+ oracle::Config
 		+ fee::Config
 		+ nomination::Config
@@ -76,11 +82,13 @@ pub mod pallet {
 		RequestReplace {
 			old_vault_id: DefaultVaultId<T>,
 			amount: BalanceOf<T>,
+			asset: CurrencyId<T>,
 			griefing_collateral: BalanceOf<T>,
 		},
 		WithdrawReplace {
 			old_vault_id: DefaultVaultId<T>,
 			withdrawn_tokens: BalanceOf<T>,
+			asset: CurrencyId<T>,
 			withdrawn_griefing_collateral: BalanceOf<T>,
 		},
 		AcceptReplace {
@@ -88,8 +96,9 @@ pub mod pallet {
 			old_vault_id: DefaultVaultId<T>,
 			new_vault_id: DefaultVaultId<T>,
 			amount: BalanceOf<T>,
+			asset: CurrencyId<T>,
 			collateral: BalanceOf<T>,
-			btc_address: BtcAddress,
+			stellar_address: StellarPublicKeyRaw,
 		},
 		ExecuteReplace {
 			replace_id: H256,
@@ -152,17 +161,6 @@ pub mod pallet {
 	#[pallet::getter(fn replace_btc_dust_value)]
 	pub(super) type ReplaceBtcDustValue<T: Config> = StorageValue<_, BalanceOf<T>, ValueQuery>;
 
-	#[pallet::type_value]
-	pub(super) fn DefaultForStorageVersion() -> Version {
-		Version::V0
-	}
-
-	/// Build storage at V1 (requires default 0).
-	#[pallet::storage]
-	#[pallet::getter(fn storage_version)]
-	pub(super) type StorageVersion<T: Config> =
-		StorageValue<_, Version, ValueQuery, DefaultForStorageVersion>;
-
 	#[pallet::genesis_config]
 	pub struct GenesisConfig<T: Config> {
 		pub replace_period: T::BlockNumber,
@@ -199,7 +197,6 @@ pub mod pallet {
 		///
 		/// * `origin` - sender of the transaction
 		/// * `amount` - amount of issued tokens
-		/// * `griefing_collateral` - amount of collateral
 		#[pallet::weight(<T as Config>::WeightInfo::request_replace())]
 		#[transactional]
 		pub fn request_replace(
@@ -221,6 +218,7 @@ pub mod pallet {
 		/// # Arguments
 		///
 		/// * `origin` - sender of the transaction: the old vault
+		/// * `amount` - amount of tokens to be withdrawn from being replaced
 		#[pallet::weight(<T as Config>::WeightInfo::withdraw_replace())]
 		#[transactional]
 		pub fn withdraw_replace(
@@ -242,25 +240,27 @@ pub mod pallet {
 		/// # Arguments
 		///
 		/// * `origin` - the initiator of the transaction: the new vault
-		/// * `old_vault` - id of the old vault that we are (possibly partially) replacing
-		/// * `collateral` - the collateral for replacement
-		/// * `btc_address` - the address that old-vault should transfer the btc to
+		/// * `currency_pair` - currency_pair of the new vault
+		/// * `amount` - amount of tokens to be replaced
+		/// * `collateral` - the collateral provided by the new vault to match the replace request
+		///   (for backing the transferred tokens)
+		/// * `stellar_address` - the address that old-vault should transfer the wrapped asset to
 		#[pallet::weight(<T as Config>::WeightInfo::accept_replace())]
 		#[transactional]
 		pub fn accept_replace(
 			origin: OriginFor<T>,
 			currency_pair: DefaultVaultCurrencyPair<T>,
 			old_vault: DefaultVaultId<T>,
-			#[pallet::compact] amount_btc: BalanceOf<T>,
+			#[pallet::compact] amount: BalanceOf<T>,
 			#[pallet::compact] collateral: BalanceOf<T>,
-			btc_address: BtcAddress,
+			stellar_address: StellarPublicKeyRaw,
 		) -> DispatchResultWithPostInfo {
 			let new_vault = VaultId::new(
 				ensure_signed(origin)?,
 				currency_pair.collateral,
 				currency_pair.wrapped,
 			);
-			Self::_accept_replace(old_vault, new_vault, amount_btc, collateral, btc_address)?;
+			Self::_accept_replace(old_vault, new_vault, amount, collateral, stellar_address)?;
 			Ok(().into())
 		}
 
@@ -270,18 +270,22 @@ pub mod pallet {
 		///
 		/// * `origin` - sender of the transaction: the new vault
 		/// * `replace_id` - the ID of the replacement request
-		/// * 'merkle_proof' - the merkle root of the block
-		/// * `raw_tx` - the transaction id in bytes
 		#[pallet::weight(<T as Config>::WeightInfo::execute_replace())]
 		#[transactional]
 		pub fn execute_replace(
 			origin: OriginFor<T>,
 			replace_id: H256,
-			merkle_proof: Vec<u8>,
-			raw_tx: Vec<u8>,
+			transaction_envelope_xdr_encoded: Vec<u8>,
+			externalized_envelopes_xdr_encoded: Vec<u8>,
+			transaction_set_xdr_encoded: Vec<u8>,
 		) -> DispatchResultWithPostInfo {
 			let _ = ensure_signed(origin)?;
-			Self::_execute_replace(replace_id, merkle_proof, raw_tx)?;
+			Self::_execute_replace(
+				replace_id,
+				transaction_envelope_xdr_encoded,
+				externalized_envelopes_xdr_encoded,
+				transaction_set_xdr_encoded,
+			)?;
 			Ok(().into())
 		}
 
@@ -327,11 +331,11 @@ pub mod pallet {
 // "Internal" functions, callable by code.
 #[cfg_attr(test, mockable)]
 impl<T: Config> Pallet<T> {
-	fn _request_replace(vault_id: DefaultVaultId<T>, amount_btc: BalanceOf<T>) -> DispatchResult {
+	fn _request_replace(vault_id: DefaultVaultId<T>, amount: BalanceOf<T>) -> DispatchResult {
 		// check vault is not banned
 		ext::vault_registry::ensure_not_banned::<T>(&vault_id)?;
 
-		let amount_btc = Amount::new(amount_btc, vault_id.wrapped_currency());
+		let amount_to_replace = Amount::new(amount, vault_id.wrapped_currency());
 
 		ensure!(
 			!ext::nomination::is_nominatable::<T>(&vault_id)?,
@@ -340,7 +344,7 @@ impl<T: Config> Pallet<T> {
 
 		let requestable_tokens =
 			ext::vault_registry::requestable_to_be_replaced_tokens::<T>(&vault_id)?;
-		let to_be_replaced_increase = amount_btc.min(&requestable_tokens)?;
+		let to_be_replaced_increase = amount_to_replace.min(&requestable_tokens)?;
 
 		ensure!(!to_be_replaced_increase.is_zero(), Error::<T>::ReplaceAmountZero);
 
@@ -373,6 +377,7 @@ impl<T: Config> Pallet<T> {
 		Self::deposit_event(Event::<T>::RequestReplace {
 			old_vault_id: vault_id,
 			amount: to_be_replaced_increase.amount(),
+			asset: to_be_replaced_increase.currency(),
 			griefing_collateral: griefing_collateral.amount(),
 		});
 		Ok(())
@@ -395,6 +400,7 @@ impl<T: Config> Pallet<T> {
 		Self::deposit_event(Event::<T>::WithdrawReplace {
 			old_vault_id: vault_id,
 			withdrawn_tokens: withdrawn_tokens.amount(),
+			asset: withdrawn_tokens.currency(),
 			withdrawn_griefing_collateral: to_withdraw_collateral.amount(),
 		});
 		Ok(())
@@ -424,12 +430,12 @@ impl<T: Config> Pallet<T> {
 	fn _accept_replace(
 		old_vault_id: DefaultVaultId<T>,
 		new_vault_id: DefaultVaultId<T>,
-		amount_btc: BalanceOf<T>,
+		amount: BalanceOf<T>,
 		collateral: BalanceOf<T>,
-		btc_address: BtcAddress,
+		stellar_address: StellarPublicKeyRaw,
 	) -> Result<(), DispatchError> {
 		let new_vault_currency_id = new_vault_id.collateral_currency();
-		let amount_btc = Amount::new(amount_btc, old_vault_id.wrapped_currency());
+		let replace_amount = Amount::new(amount, old_vault_id.wrapped_currency());
 		let collateral = Amount::new(collateral, new_vault_currency_id);
 
 		// don't allow vaults to replace themselves
@@ -447,9 +453,12 @@ impl<T: Config> Pallet<T> {
 
 		// decrease old-vault's to-be-replaced tokens
 		let (redeemable_tokens, griefing_collateral) =
-			ext::vault_registry::decrease_to_be_replaced_tokens::<T>(&old_vault_id, &amount_btc)?;
+			ext::vault_registry::decrease_to_be_replaced_tokens::<T>(
+				&old_vault_id,
+				&replace_amount,
+			)?;
 
-		// check amount_btc is above the minimum
+		// check replace_amount is above the minimum
 		ensure!(
 			redeemable_tokens.ge(&Self::dust_value(old_vault_id.wrapped_currency()))?,
 			Error::<T>::AmountBelowDustAmount
@@ -459,7 +468,7 @@ impl<T: Config> Pallet<T> {
 		let actual_new_vault_collateral = ext::vault_registry::calculate_collateral::<T>(
 			&collateral,
 			&redeemable_tokens,
-			&amount_btc,
+			&replace_amount,
 		)?;
 
 		ext::vault_registry::try_deposit_collateral::<T>(
@@ -482,11 +491,11 @@ impl<T: Config> Pallet<T> {
 			new_vault: new_vault_id,
 			accept_time: ext::security::active_block_number::<T>(),
 			collateral: actual_new_vault_collateral.amount(),
-			btc_address,
+			stellar_address,
 			griefing_collateral: griefing_collateral.amount(),
 			amount: redeemable_tokens.amount(),
+			asset: redeemable_tokens.currency(),
 			period: Self::replace_period(),
-			btc_height: ext::btc_relay::get_best_block_height::<T>(),
 			status: ReplaceRequestStatus::Pending,
 		};
 
@@ -498,8 +507,9 @@ impl<T: Config> Pallet<T> {
 			old_vault_id: replace.old_vault,
 			new_vault_id: replace.new_vault,
 			amount: replace.amount,
+			asset: replace.asset,
 			collateral: replace.collateral,
-			btc_address: replace.btc_address,
+			stellar_address: replace.stellar_address,
 		});
 
 		Ok(())
@@ -507,8 +517,9 @@ impl<T: Config> Pallet<T> {
 
 	fn _execute_replace(
 		replace_id: H256,
-		raw_merkle_proof: Vec<u8>,
-		raw_tx: Vec<u8>,
+		transaction_envelope_xdr_encoded: Vec<u8>,
+		externalized_envelopes_xdr_encoded: Vec<u8>,
+		transaction_set_xdr_encoded: Vec<u8>,
 	) -> DispatchResult {
 		// retrieve the replace request using the id parameter
 		// we can still execute cancelled requests
@@ -522,15 +533,26 @@ impl<T: Config> Pallet<T> {
 		let new_vault_id = replace.new_vault;
 		let old_vault_id = replace.old_vault;
 
-		// check the transaction inclusion and validity
-		let transaction = ext::btc_relay::parse_transaction::<T>(&raw_tx)?;
-		let merkle_proof = ext::btc_relay::parse_merkle_proof::<T>(&raw_merkle_proof)?;
-		ext::btc_relay::verify_and_validate_op_return_transaction::<T, _>(
-			merkle_proof,
-			transaction,
-			replace.btc_address,
-			replace.amount,
-			replace_id,
+		let transaction_envelope = ext::stellar_relay::construct_from_raw_encoded_xdr::<
+			T,
+			TransactionEnvelope,
+		>(&transaction_envelope_xdr_encoded)?;
+
+		let envelopes = ext::stellar_relay::construct_from_raw_encoded_xdr::<
+			T,
+			UnlimitedVarArray<ScpEnvelope>,
+		>(&externalized_envelopes_xdr_encoded)?;
+
+		let transaction_set = ext::stellar_relay::construct_from_raw_encoded_xdr::<
+			T,
+			TransactionSet,
+		>(&transaction_set_xdr_encoded)?;
+
+		// Verify that the transaction is valid
+		ext::stellar_relay::validate_stellar_transaction::<T>(
+			&transaction_envelope,
+			&envelopes,
+			&transaction_set,
 		)?;
 
 		// only return griefing collateral if not already slashed
@@ -587,9 +609,8 @@ impl<T: Config> Pallet<T> {
 
 		// only cancellable after the request has expired
 		ensure!(
-			ext::btc_relay::has_request_expired::<T>(
+			ext::security::parachain_block_expired::<T>(
 				replace.accept_time,
-				replace.btc_height,
 				Self::replace_period().max(replace.period)
 			)?,
 			Error::<T>::ReplacePeriodNotExpired

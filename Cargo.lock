@@ -5286,6 +5286,7 @@ dependencies = [
  "sp-std",
  "spacewalk-primitives",
  "staking",
+ "substrate-stellar-sdk",
  "vault-registry",
 ]
 
