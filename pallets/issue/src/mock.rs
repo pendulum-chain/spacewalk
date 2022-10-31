@@ -1,7 +1,7 @@
 use frame_support::{
 	assert_ok, parameter_types,
 	traits::{ConstU32, Everything, GenesisBuild},
-	BoundedVec, PalletId,
+	PalletId,
 };
 use mocktopus::{macros::mockable, mocking::clear_mocks};
 use orml_traits::parameter_type_with_key;
@@ -11,15 +11,10 @@ use sp_runtime::{
 	testing::{Header, TestXt},
 	traits::{BlakeTwo256, Convert, IdentityLookup, One, Zero},
 };
-use substrate_stellar_sdk::SecretKey;
 
 use currency::Amount;
 pub use primitives::{CurrencyId, CurrencyId::Token, TokenSymbol::*};
 use primitives::{VaultCurrencyPair, VaultId};
-use stellar_relay::{
-	traits::{Organization, Validator},
-	types::{OrganizationOf, ValidatorOf},
-};
 
 use crate as issue;
 use crate::{Config, Error};

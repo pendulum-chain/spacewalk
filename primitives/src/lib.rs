@@ -162,8 +162,6 @@ pub mod issue {
 		pub stellar_address: StellarPublicKeyRaw,
 		/// the status of this issue request
 		pub status: IssueRequestStatus,
-		/// indicates whether this issue is for the Stellar public or test network
-		pub public_network: bool,
 	}
 }
 

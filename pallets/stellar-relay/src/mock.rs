@@ -1,9 +1,12 @@
 use frame_support::{
+	pallet_prelude::GenesisBuild,
 	parameter_types,
 	traits::{ConstU16, ConstU32, ConstU64, Everything},
+	BoundedVec,
 };
 use frame_system as system;
 use orml_traits::parameter_type_with_key;
+use rand::Rng;
 use sp_core::H256;
 use sp_runtime::{
 	testing::Header,
@@ -13,7 +16,7 @@ use sp_runtime::{
 use substrate_stellar_sdk::SecretKey;
 
 use currency::Amount;
-use primitives::{CurrencyId, CurrencyId::Token, VaultCurrencyPair, DOT, IBTC, INTR};
+use primitives::{CurrencyId, CurrencyId::Token, DOT, IBTC, INTR};
 
 use crate as pallet_spacewalk_relay;
 use crate::{
@@ -29,7 +32,6 @@ pub type RawAmount = i128;
 type SignedFixedPoint = FixedI128;
 type SignedInner = i128;
 type UnsignedFixedPoint = FixedU128;
-type UnsignedInner = u128;
 
 // Configure a mock runtime to test the pallet.
 frame_support::construct_runtime!(
@@ -84,18 +86,13 @@ impl currency::CurrencyConversion<currency::Amount<Test>, CurrencyId> for Curren
 	}
 }
 
-pub fn convert_to(to: CurrencyId, amount: Balance) -> Result<Balance, sp_runtime::DispatchError> {
+pub fn convert_to(_to: CurrencyId, amount: Balance) -> Result<Balance, sp_runtime::DispatchError> {
 	Ok(amount) // default conversion 1:1 - overwritable with mocktopus
 }
 
 pub const DEFAULT_COLLATERAL_CURRENCY: CurrencyId = Token(DOT);
 pub const DEFAULT_NATIVE_CURRENCY: CurrencyId = Token(INTR);
 pub const DEFAULT_WRAPPED_CURRENCY: CurrencyId = Token(IBTC);
-
-pub const DEFAULT_CURRENCY_PAIR: VaultCurrencyPair<CurrencyId> = VaultCurrencyPair {
-	collateral: DEFAULT_COLLATERAL_CURRENCY,
-	wrapped: DEFAULT_WRAPPED_CURRENCY,
-};
 
 parameter_types! {
 	pub const GetCollateralCurrencyId: CurrencyId = DEFAULT_COLLATERAL_CURRENCY;

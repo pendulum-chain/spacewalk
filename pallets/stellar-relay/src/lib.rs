@@ -35,7 +35,7 @@ pub mod pallet {
 			NodeId, OperationBody, ScpEnvelope, ScpStatementExternalize, ScpStatementPledges,
 			StellarValue, TransactionSet, Uint256,
 		},
-		Asset, Hash, MuxedAccount, PublicKey, TransactionEnvelope, XdrCodec,
+		Asset, Hash, MuxedAccount, TransactionEnvelope, XdrCodec,
 	};
 
 	use currency::CurrencyId;
@@ -335,7 +335,6 @@ pub mod pallet {
 				organization_blockdaemon,
 				organization_lobstr,
 				organization_public_node,
-				organization_testnet_sdf,
 			];
 
 			GenesisConfig {

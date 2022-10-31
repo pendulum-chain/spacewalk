@@ -7,7 +7,7 @@ use sp_runtime::{traits::One, FixedPointNumber};
 use sp_std::prelude::*;
 use substrate_stellar_sdk::{
 	compound_types::{LimitedVarArray, LimitedVarOpaque, UnlimitedVarOpaque},
-	network::{Network, PUBLIC_NETWORK, TEST_NETWORK},
+	network::TEST_NETWORK,
 	types::{
 		NodeId, Preconditions, ScpBallot, ScpStatement, ScpStatementExternalize,
 		ScpStatementPledges, Signature, StellarValue, StellarValueExt, TransactionExt,
@@ -33,7 +33,6 @@ use crate::Pallet as Issue;
 use super::*;
 
 const STELLAR_PUBLIC_KEY_DUMMY: StellarPublicKeyRaw = [1u8; 32];
-const IS_PUBLIC_NETWORK: bool = false;
 
 // These have to match the ones defined in the genesis config of mock.rs
 const VALIDATOR_1_SECRET: [u8; 32] = [1u8; 32];
@@ -74,11 +73,7 @@ fn register_vault<T: crate::Config>(vault_id: DefaultVaultId<T>) {
 	assert_ok!(VaultRegistry::<T>::_register_vault(vault_id.clone(), 100000000u32.into()));
 }
 
-fn create_scp_envelope(
-	tx_set_hash: Hash,
-	validator_secret_key: &SecretKey,
-	network: &Network,
-) -> ScpEnvelope {
+fn create_scp_envelope(tx_set_hash: Hash, validator_secret_key: &SecretKey) -> ScpEnvelope {
 	let stellar_value: StellarValue = StellarValue {
 		tx_set_hash,
 		close_time: 0,
@@ -100,7 +95,7 @@ fn create_scp_envelope(
 		}),
 	};
 
-	let network = network.get_id();
+	let network = TEST_NETWORK.get_id();
 	let envelope_type_scp = [0, 0, 0, 1].to_vec(); // xdr representation
 	let body: Vec<u8> = [network.to_vec(), envelope_type_scp, statement.to_xdr()].concat();
 	let signature_result = validator_secret_key.create_signature(body);
@@ -116,7 +111,6 @@ fn get_validators_and_organizations<T: crate::Config>(
 	let organization: OrganizationOf<T> = Organization {
 		id: 1.into(),
 		name: BoundedVec::try_from("organization".as_bytes().to_vec()).unwrap(),
-		public_network: false,
 	};
 
 	let validator_1: ValidatorOf<T> = Validator {
@@ -126,7 +120,6 @@ fn get_validators_and_organizations<T: crate::Config>(
 		)
 		.unwrap(),
 		organization_id: organization.id,
-		public_network: false,
 	};
 	let validator_2: ValidatorOf<T> = Validator {
 		name: Default::default(),
@@ -135,7 +128,6 @@ fn get_validators_and_organizations<T: crate::Config>(
 		)
 		.unwrap(),
 		organization_id: organization.id,
-		public_network: false,
 	};
 	let validator_3: ValidatorOf<T> = Validator {
 		name: Default::default(),
@@ -144,7 +136,6 @@ fn get_validators_and_organizations<T: crate::Config>(
 		)
 		.unwrap(),
 		organization_id: organization.id,
-		public_network: false,
 	};
 
 	(vec![validator_1, validator_2, validator_3], vec![organization])
@@ -178,7 +169,6 @@ fn build_dummy_proof_for<T: crate::Config>(issue_id: H256) -> (Vec<u8>, Vec<u8>,
 	let transaction_set = TransactionSet { previous_ledger_hash: Hash::default(), txes };
 
 	let tx_set_hash = stellar_relay::compute_non_generic_tx_set_content_hash(&transaction_set);
-	let network: &Network = if IS_PUBLIC_NETWORK { &PUBLIC_NETWORK } else { &TEST_NETWORK };
 
 	// Build the scp messages that externalize the transaction set
 	// The scp messages have to be externalized by nodes that build a valid quorum set
@@ -186,7 +176,7 @@ fn build_dummy_proof_for<T: crate::Config>(issue_id: H256) -> (Vec<u8>, Vec<u8>,
 	let validator_secret_keys = vec![VALIDATOR_1_SECRET, VALIDATOR_2_SECRET, VALIDATOR_3_SECRET];
 	for validator_secret_key in validator_secret_keys.iter() {
 		let secret_key = SecretKey::from_binary(*validator_secret_key);
-		let envelope = create_scp_envelope(tx_set_hash.clone(), &secret_key, network);
+		let envelope = create_scp_envelope(tx_set_hash.clone(), &secret_key);
 		envelopes.push(envelope).unwrap();
 	}
 
@@ -216,7 +206,7 @@ benchmarks! {
 		register_vault::<T>(vault_id.clone());
 
 		Security::<T>::set_active_block_number(1u32.into());
-	}: _(RawOrigin::Signed(origin), amount, asset, vault_id, IS_PUBLIC_NETWORK)
+	}: _(RawOrigin::Signed(origin), amount, asset, vault_id)
 
 	execute_issue {
 		let origin: T::AccountId = account("Origin", 0, 0);
@@ -242,7 +232,6 @@ benchmarks! {
 			opentime: Default::default(),
 			period: Default::default(),
 			status: Default::default(),
-			public_network: IS_PUBLIC_NETWORK
 		};
 		Issue::<T>::insert_issue_request(&issue_id, &issue_request);
 		Security::<T>::set_active_block_number(1u32.into());
@@ -283,7 +272,6 @@ benchmarks! {
 			griefing_collateral: Default::default(),
 			period: Default::default(),
 			status: Default::default(),
-			public_network: IS_PUBLIC_NETWORK
 		};
 
 		Issue::<T>::insert_issue_request(&issue_id, &issue_request);

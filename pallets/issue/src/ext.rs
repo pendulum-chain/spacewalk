@@ -19,13 +19,11 @@ pub(crate) mod stellar_relay {
 		transaction_envelope: &TransactionEnvelope,
 		envelopes: &UnlimitedVarArray<ScpEnvelope>,
 		transaction_set: &TransactionSet,
-		public_network: bool,
 	) -> Result<(), Error<T>> {
 		<stellar_relay::Pallet<T>>::validate_stellar_transaction(
 			transaction_envelope,
 			envelopes,
 			transaction_set,
-			public_network,
 		)
 	}
 
