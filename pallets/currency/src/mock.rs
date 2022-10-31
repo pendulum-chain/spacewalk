@@ -35,7 +35,7 @@ pub type BlockNumber = u64;
 pub type UnsignedFixedPoint = FixedU128;
 pub type SignedFixedPoint = FixedI128;
 pub type SignedInner = i128;
-pub type CurrencyId = primitives::currency::CurrencyId;
+pub type CurrencyId = primitives::CurrencyId;
 pub type Moment = u64;
 pub type Index = u64;
 
