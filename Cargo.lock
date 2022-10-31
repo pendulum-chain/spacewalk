@@ -2533,39 +2533,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "879d54834c8c76457ef4293a689b2a8c59b076067ad77b15efafbb05f92a592b"
 
 [[package]]
-name = "issue"
-version = "1.0.0"
-dependencies = [
- "base64",
- "currency",
- "fee",
- "frame-benchmarking",
- "frame-support",
- "frame-system",
- "log",
- "mocktopus",
- "oracle",
- "orml-tokens",
- "orml-traits",
- "pallet-stellar-relay",
- "pallet-timestamp",
- "parity-scale-codec",
- "reward",
- "scale-info",
- "security",
- "serde",
- "sp-arithmetic",
- "sp-core",
- "sp-io",
- "sp-runtime",
- "sp-std",
- "spacewalk-primitives",
- "staking",
- "substrate-stellar-sdk",
- "vault-registry",
-]
-
-[[package]]
 name = "itertools"
 version = "0.10.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4275,30 +4242,6 @@ dependencies = [
  "sp-staking",
  "sp-std",
  "sp-trie",
-]
-
-[[package]]
-name = "pallet-stellar-relay"
-version = "1.0.0"
-dependencies = [
- "base64",
- "currency",
- "frame-benchmarking",
- "frame-support",
- "frame-system",
- "orml-tokens",
- "orml-traits",
- "parity-scale-codec",
- "rand 0.8.5",
- "scale-info",
- "serde",
- "sha2 0.10.6",
- "sp-core",
- "sp-io",
- "sp-runtime",
- "sp-std",
- "spacewalk-primitives",
- "substrate-stellar-sdk",
 ]
 
 [[package]]
@@ -7421,7 +7364,6 @@ dependencies = [
  "getrandom 0.2.7",
  "hex",
  "hex-literal 0.3.4",
- "issue",
  "mocktopus",
  "nomination",
  "oracle",
@@ -7431,7 +7373,6 @@ dependencies = [
  "pallet-aura",
  "pallet-balances",
  "pallet-grandpa",
- "pallet-stellar-relay",
  "pallet-sudo",
  "pallet-timestamp",
  "pallet-transaction-payment",
@@ -7456,6 +7397,7 @@ dependencies = [
  "sp-version",
  "spacewalk-primitives",
  "staking",
+ "stellar-relay",
  "substrate-wasm-builder",
  "vault-registry",
 ]
@@ -7573,6 +7515,26 @@ dependencies = [
  "nalgebra",
  "num-traits",
  "rand 0.8.5",
+]
+
+[[package]]
+name = "stellar-relay"
+version = "1.0.0"
+dependencies = [
+ "base64",
+ "frame-benchmarking",
+ "frame-support",
+ "frame-system",
+ "parity-scale-codec",
+ "rand 0.8.5",
+ "scale-info",
+ "serde",
+ "sha2 0.10.6",
+ "sp-core",
+ "sp-io",
+ "sp-runtime",
+ "sp-std",
+ "substrate-stellar-sdk",
 ]
 
 [[package]]
