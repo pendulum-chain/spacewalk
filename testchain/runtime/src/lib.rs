@@ -16,7 +16,7 @@ use orml_traits::parameter_type_with_key;
 use pallet_grandpa::{
 	fg_primitives, AuthorityId as GrandpaId, AuthorityList as GrandpaAuthorityList,
 };
-use primitives::currency::{
+use primitives::{
 	AddressConversion as StellarAddressConversion, BalanceConversion as StellarBalanceConversion,
 	CurrencyConversion as StellarCurrencyConversion,
 	StringCurrencyConversion as StellarStringCurrencyConversion,
@@ -37,7 +37,7 @@ use sp_version::RuntimeVersion;
 
 // A few exports that help ease life for downstream crates.
 pub use primitives::{
-	self, currency::CurrencyId, AccountId, Balance, BlockNumber, Hash, Moment, Nonce, Signature,
+	self, AccountId, Balance, BlockNumber, CurrencyId, Hash, Moment, Nonce, Signature,
 	SignedFixedPoint, SignedInner, UnsignedFixedPoint, UnsignedInner,
 };
 
