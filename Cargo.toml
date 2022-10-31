@@ -1,14 +1,7 @@
 [workspace]
 members = [
-    "pallets/currency",
-    "pallets/fee",
-    "pallets/issue",
-    "pallets/nomination",
-    "pallets/oracle",
-    "pallets/reward",
-    "pallets/staking",
-    "pallets/stellar-relay",
-    "pallets/vault-registry",
+    "pallets/*",
+    "pallets/*/rpc",
     "primitives",
     "rpc",
     "testchain/node",
