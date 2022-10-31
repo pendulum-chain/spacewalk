@@ -3879,10 +3879,10 @@ dependencies = [
 name = "module-issue-rpc-runtime-api"
 version = "1.2.0"
 dependencies = [
- "frame-support 4.0.0-dev (git+https://github.com/paritytech/substrate?branch=polkadot-v0.9.26)",
+ "frame-support 4.0.0-dev (git+https://github.com/paritytech/substrate?branch=polkadot-v0.9.24)",
  "parity-scale-codec",
- "sp-api 4.0.0-dev (git+https://github.com/paritytech/substrate?branch=polkadot-v0.9.26)",
- "sp-std 4.0.0 (git+https://github.com/paritytech/substrate?branch=polkadot-v0.9.26)",
+ "sp-api 4.0.0-dev (git+https://github.com/paritytech/substrate?branch=polkadot-v0.9.24)",
+ "sp-std 4.0.0 (git+https://github.com/paritytech/substrate?branch=polkadot-v0.9.24)",
 ]
 
 [[package]]
@@ -8033,7 +8033,7 @@ name = "spacewalk-rpc"
 version = "1.2.0"
 dependencies = [
  "jsonrpc-core",
- "jsonrpsee 0.13.1",
+ "jsonrpsee 0.14.0",
  "module-issue-rpc",
  "pallet-transaction-payment-rpc",
  "sc-rpc",
