@@ -8034,6 +8034,7 @@ version = "1.2.0"
 dependencies = [
  "jsonrpc-core",
  "jsonrpsee 0.13.1",
+ "module-issue-rpc",
  "pallet-transaction-payment-rpc",
  "sc-rpc",
  "sc-rpc-api",
@@ -8065,6 +8066,7 @@ dependencies = [
  "hex-literal 0.3.4",
  "issue",
  "mocktopus",
+ "module-issue-rpc-runtime-api",
  "nomination",
  "oracle",
  "orml-currencies",

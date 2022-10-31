@@ -649,4 +649,20 @@ impl_runtime_apis! {
 			Ok(batches)
 		}
 	}
+
+	impl module_issue_rpc_runtime_api::IssueApi<
+		Block,
+		AccountId,
+		H256,
+		IssueRequest<AccountId, BlockNumber, Balance, CurrencyId>
+	> for Runtime {
+		fn get_issue_requests(account_id: AccountId) -> Vec<H256> {
+			Issue::get_issue_requests_for_account(account_id)
+		}
+
+		fn get_vault_issue_requests(vault_id: AccountId) -> Vec<H256> {
+			Issue::get_issue_requests_for_vault(vault_id)
+		}
+	}
+
 }

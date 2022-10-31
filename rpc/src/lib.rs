@@ -6,12 +6,13 @@
 #![warn(missing_docs)]
 
 pub use jsonrpsee;
-use primitives::{AccountId, Balance, Block, Nonce};
+use primitives::{issue::IssueRequest, AccountId, Balance, Block, BlockNumber, CurrencyId, Nonce};
 pub use sc_rpc_api::DenyUnsafe;
 use sc_transaction_pool_api::TransactionPool;
 use sp_api::ProvideRuntimeApi;
 use sp_block_builder::BlockBuilder;
 use sp_blockchain::{Error as BlockChainError, HeaderBackend, HeaderMetadata};
+use sp_core::H256;
 use std::sync::Arc;
 
 /// Full client dependencies.
@@ -39,7 +40,14 @@ where
 	C::Api: pallet_transaction_payment_rpc::TransactionPaymentRuntimeApi<Block, Balance>,
 	C::Api: BlockBuilder<Block>,
 	P: TransactionPool + 'static,
+	C::Api: module_issue_rpc::IssueRuntimeApi<
+		Block,
+		AccountId,
+		H256,
+		IssueRequest<AccountId, BlockNumber, Balance, CurrencyId>,
+	>,
 {
+	use module_issue_rpc::{Issue, IssueApiServer};
 	use pallet_transaction_payment_rpc::{TransactionPayment, TransactionPaymentApiServer};
 	use substrate_frame_rpc_system::{System, SystemApiServer};
 
@@ -48,6 +56,8 @@ where
 	module.merge(System::new(client.clone(), pool, deny_unsafe).into_rpc())?;
 
 	module.merge(TransactionPayment::new(client.clone()).into_rpc())?;
+
+	module.merge(Issue::new(client.clone()).into_rpc())?;
 
 	Ok(module)
 }

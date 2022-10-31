@@ -62,6 +62,8 @@ staking = { path = "../../pallets/staking", default-features = false }
 stellar-relay = {path = "../../pallets/stellar-relay", default-features = false}
 vault-registry = { path = "../../pallets/vault-registry", default-features = false }
 
+module-issue-rpc-runtime-api = { path = "../../pallets/issue/rpc/runtime-api", default-features = false }
+
 primitives = {package = "spacewalk-primitives", path = "../../primitives", default-features = false}
 
 [dev-dependencies]
