@@ -6,6 +6,7 @@ members = [
     "pallets/nomination",
     "pallets/oracle",
     "pallets/redeem",
+    "pallets/replace",
     "pallets/reward",
     "pallets/staking",
     "pallets/stellar-relay",

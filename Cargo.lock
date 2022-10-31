@@ -5259,6 +5259,37 @@ dependencies = [
 ]
 
 [[package]]
+name = "replace"
+version = "1.0.0"
+dependencies = [
+ "currency",
+ "fee",
+ "frame-benchmarking",
+ "frame-support",
+ "frame-system",
+ "mocktopus",
+ "nomination",
+ "oracle",
+ "orml-tokens",
+ "orml-traits",
+ "pallet-stellar-relay",
+ "pallet-timestamp",
+ "parity-scale-codec",
+ "reward",
+ "scale-info",
+ "security",
+ "serde",
+ "sp-arithmetic",
+ "sp-core",
+ "sp-io",
+ "sp-runtime",
+ "sp-std",
+ "spacewalk-primitives",
+ "staking",
+ "vault-registry",
+]
+
+[[package]]
 name = "resolv-conf"
 version = "0.7.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
