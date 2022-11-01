@@ -25,7 +25,11 @@ cfg_if::cfg_if! {
 mod metadata_aliases {
 	use super::*;
 
-	use crate::metadata::runtime_types::spacewalk_primitives::{issue::IssueRequest, CurrencyId};
+	use crate::metadata::runtime_types::spacewalk_primitives::{issue::IssueRequest, VaultId};
+
+	pub use crate::metadata::runtime_types::{
+		issue::pallet::Error as IssuePalletError, spacewalk_primitives::CurrencyId,
+	};
 
 	// pub type DepositEvent = metadata::spacewalk::events::Deposit;
 	// pub type RedeemEvent = metadata::spacewalk::events::Redeem;
@@ -41,6 +45,8 @@ mod metadata_aliases {
 
 	pub type DefaultIssueRequest =
 		IssueRequest<<SpacewalkRuntime as Config>::AccountId, BlockNumber, Balance, CurrencyId>;
+
+	pub type DefaultVaultId = VaultId<<SpacewalkRuntime as Config>::AccountId, CurrencyId>;
 }
 
 mod dispatch_error {

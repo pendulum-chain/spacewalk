@@ -374,6 +374,64 @@ impl UtilFuncs for SpacewalkParachain {
 	}
 }
 
+pub type IssueId = H256;
+
+#[async_trait]
+pub trait IssuePallet {
+	// async fn request_issue(
+	// 	&self,
+	// 	amount: u128,
+	// 	asset: CurrencyId,
+	// 	vault_id: VaultId<AccountId, CurrencyId>,
+	// 	public_network: bool
+	// ) -> Result<(),Error> ;
+
+	async fn execute_issue(
+		&self,
+		issue_id: IssueId,
+		tx_envelope_xdr_encoded: &[u8],
+		envelopes_xdr_encoded: &[u8],
+		tx_set_xdr_encoded: &[u8],
+	) -> Result<(), Error>;
+
+	// async fn cancel_issue(
+	// 	&self,
+	// 	issue_id:IssueId
+	// ) -> Result<(),Error> ;
+	//
+	// async fn set_issue_period(
+	// 	&self,
+	// 	period: u32
+	// ) -> Result<(),Error> ;
+}
+
+#[async_trait]
+impl IssuePallet for SpacewalkParachain {
+	async fn execute_issue(
+		&self,
+		issue_id: IssueId,
+		tx_envelope_xdr_encoded: &[u8],
+		envelopes_xdr_encoded: &[u8],
+		tx_set_xdr_encoded: &[u8],
+	) -> Result<(), Error> {
+		self.with_unique_signer(|signer| async move {
+			self.api
+				.tx()
+				.issue()
+				.execute_issue(
+					issue_id,
+					tx_envelope_xdr_encoded.to_vec(),
+					envelopes_xdr_encoded.to_vec(),
+					tx_set_xdr_encoded.to_vec(),
+				)
+				.sign_and_submit_then_watch_default(&signer)
+				.await
+		})
+		.await?;
+		Ok(())
+	}
+}
+
 /*
 #[async_trait]
 pub trait SpacewalkPallet {

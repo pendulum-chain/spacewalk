@@ -1,6 +1,6 @@
 pub use jsonrpsee::core::Error as JsonRpseeError;
 
-use crate::metadata::DispatchError;
+use crate::{metadata::DispatchError, types::*, ISSUE_MODULE};
 use codec::Error as CodecError;
 use jsonrpsee::{
 	client_transport::ws::WsHandshakeError, core::error::Error as RequestError,
@@ -8,7 +8,7 @@ use jsonrpsee::{
 };
 use serde_json::Error as SerdeJsonError;
 use std::{array::TryFromSliceError, fmt::Debug, io::Error as IoError, num::TryFromIntError};
-use subxt::{sp_core::crypto::SecretStringError, BasicError, TransactionError};
+use subxt::{sp_core::crypto::SecretStringError, BasicError, ModuleError, TransactionError};
 use thiserror::Error;
 use tokio::time::error::Elapsed;
 use url::ParseError as UrlParseError;
@@ -86,20 +86,24 @@ impl From<BasicError> for Error {
 }
 
 impl Error {
-	// fn is_module_err(&self, pallet_name: &str, error_name: &str) -> bool {
-	// 	matches!(
-	// 		self,
-	// 		Error::SubxtRuntimeError(SubxtError::Module(ModuleError {
-	// 			pallet, error, ..
-	// 		})) if pallet == pallet_name && error == error_name,
-	// 	)
-	// }
+	fn is_module_err(&self, pallet_name: &str, error_name: &str) -> bool {
+		matches!(
+			self,
+			Error::SubxtRuntimeError(SubxtError::Module(ModuleError {
+				pallet, error, ..
+			})) if pallet == pallet_name && error == error_name,
+		)
+	}
 
 	fn map_call_error<T>(&self, call: impl Fn(&CallError) -> Option<T>) -> Option<T> {
 		match self {
 			Error::SubxtRuntimeError(SubxtError::Rpc(RequestError::Call(err))) => call(err),
 			_ => None,
 		}
+	}
+
+	pub fn is_issue_completed(&self) -> bool {
+		self.is_module_err(ISSUE_MODULE, &format!("{:?}", IssuePalletError::IssueCompleted))
 	}
 
 	pub fn is_invalid_transaction(&self) -> Option<String> {

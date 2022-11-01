@@ -1,14 +1,37 @@
-use crate::oracle::{FilterWith, ScpMessageHandler};
+use crate::oracle::{FilterWith, Proof, ScpMessageHandler};
+use base64::DecodeError;
 use runtime::{
-	types::H256, Balance, CancelIssueEvent, DefaultIssueRequest, ExecuteIssueEvent,
-	RequestIssueEvent, SpacewalkParachain,
+	types::H256, Balance, CancelIssueEvent, DefaultIssueRequest, Error, ExecuteIssueEvent, IssueId,
+	IssuePallet, RequestIssueEvent, SpacewalkParachain,
 };
 use service::Error as ServiceError;
 use std::{collections::HashMap, sync::Arc};
 use stellar_relay::sdk::{Memo, SecretKey, TransactionEnvelope};
 use tokio::sync::mpsc::error::SendError;
 
-type IssueId = H256;
+fn get_issue_id_from_str(param: &str) -> Option<IssueId> {
+	let (_, issue_id) = param.rsplit_once("_")?;
+
+	match base64::decode(issue_id) {
+		Ok(issue_id) => Some(IssueId::from_slice(&issue_id)),
+		Err(e) => {
+			tracing::warn!("failed to decode issue id: {:?}", e);
+			None
+		},
+	}
+}
+
+pub fn get_issue_id_from_memo(memo: &Memo) -> Option<IssueId> {
+	match memo {
+		Memo::MemoHash(hash) => Some(IssueId::from_slice(hash)),
+		_ => None,
+	}
+}
+
+pub fn get_issue_id_of_proof(proof: &Proof) -> Option<IssueId> {
+	let memo = proof.get_memo()?;
+	get_issue_id_from_memo(memo)
+}
 
 fn create_name(issue_id: IssueId) -> String {
 	format!("issue_{:?}", base64::encode(issue_id))
@@ -147,11 +170,41 @@ async fn handle_issue_actions(
 	}
 }
 
+pub async fn execute_issue(
+	parachain_rpc: SpacewalkParachain,
+	proofs: Vec<Proof>,
+) -> Result<(), ServiceError> {
+	for proof in proofs {
+		let (tx_env_encoded, envelopes_encoded, tx_set_encoded) = proof.encode();
+
+		if let Some(issue_id) = get_issue_id_of_proof(&proof) {
+			match parachain_rpc
+				.execute_issue(
+					issue_id,
+					tx_env_encoded.as_bytes(),
+					envelopes_encoded.as_bytes(),
+					tx_set_encoded.as_bytes(),
+				)
+				.await
+			{
+				Ok(_) => (),
+				Err(err) if err.is_issue_completed() => {
+					tracing::info!("Issue #{} has already been completed", issue_id);
+				},
+				Err(err) => return Err(err.into()),
+			}
+		}
+	}
+
+	Ok(())
+}
+
 pub async fn process_issue_requests(
 	parachain_rpc: SpacewalkParachain,
 	vault_secret_key: String,
 	handler: &ScpMessageHandler,
 	mut receiver: tokio::sync::mpsc::Receiver<IssueActions>,
+	proof_map: &HashMap<String, Vec<Proof>>,
 ) -> Result<(), ServiceError> {
 	loop {
 		tokio::select! {
@@ -160,15 +213,8 @@ pub async fn process_issue_requests(
 			}
 
 			Ok(proofs) = handler.get_pending_proofs() => {
-				if proofs.len() > 0 {
-					tokio::spawn(async move {
-						for proof in proofs {
-							//todo:: execute_issue
-						}
-					});
-				}
+				tokio::spawn(execute_issue(parachain_rpc.clone(),proofs));
 			}
-
 		}
 	}
 }

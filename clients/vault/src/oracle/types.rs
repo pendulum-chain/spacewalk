@@ -8,6 +8,7 @@ pub type Slot = Uint64;
 pub type TxHash = Hash;
 pub type TxSetHash = Hash;
 pub type Filename = String;
+pub type FilterName = String;
 
 pub type SerializedData = Vec<u8>;
 
@@ -30,4 +31,4 @@ pub(crate) type TxSetToSlotMap = HashMap<TxSetHash, Slot>;
 pub(crate) type TxEnvelopeFilter = dyn FilterWith<TransactionEnvelope> + Send + Sync;
 
 /// A map that contains any type that implements FilterWith, explicitly for TransactionEnvelope
-pub(crate) type TxFilterMap = HashMap<String, Box<TxEnvelopeFilter>>;
+pub(crate) type TxFilterMap = HashMap<FilterName, Box<TxEnvelopeFilter>>;

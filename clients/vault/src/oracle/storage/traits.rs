@@ -51,7 +51,7 @@ pub trait FileHandler<T: Default> {
 		Ok(T::default())
 	}
 
-	fn find_file_by_slot(slot_param: Slot) -> Result<String, Error> {
+	fn find_file_by_slot(slot_param: Slot) -> Result<Filename, Error> {
 		let paths = fs::read_dir(Self::PATH)?;
 
 		for path in paths {

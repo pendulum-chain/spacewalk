@@ -1,7 +1,7 @@
 use stellar_relay::sdk::{
 	compound_types::UnlimitedVarArray,
 	types::{ScpEnvelope, TransactionSet},
-	TransactionEnvelope, XdrCodec,
+	Memo, TransactionEnvelope, XdrCodec,
 };
 
 use crate::oracle::{
@@ -32,6 +32,14 @@ impl Proof {
 		let tx_set_encoded = base64::encode(tx_set_xdr);
 
 		(tx_env_encoded, envelopes_encoded, tx_set_encoded)
+	}
+
+	pub fn get_memo(&self) -> Option<&Memo> {
+		match &self.tx_env {
+			TransactionEnvelope::EnvelopeTypeTxV0(tx_env) => Some(&tx_env.tx.memo),
+			TransactionEnvelope::EnvelopeTypeTx(tx_env) => Some(&tx_env.tx.memo),
+			_ => None,
+		}
 	}
 }
 

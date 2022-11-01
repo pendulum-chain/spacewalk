@@ -12,7 +12,7 @@ use crate::oracle::{
 	collector::{Proof, ScpMessageCollector},
 	errors::Error,
 	storage::prepare_directories,
-	types::{TxEnvelopeFilter, TxSetToSlotMap},
+	types::{FilterName, TxEnvelopeFilter, TxSetToSlotMap},
 	FilterWith, TxFilterMap,
 };
 
@@ -27,7 +27,7 @@ pub enum ActorMessage {
 		filter: Box<dyn FilterWith<TransactionEnvelope> + Send + Sync>,
 	},
 
-	RemoveFilter(String),
+	RemoveFilter(FilterName),
 	/// Gets all proofs
 	GetPendingProofs {
 		sender: oneshot::Sender<Vec<Proof>>,
@@ -154,7 +154,7 @@ impl ScpMessageHandler {
 	}
 
 	/// Removes an existing filter based on its id/key in the map.
-	pub async fn remove_filter(&self, filter_name: String) -> Result<(), Error> {
+	pub async fn remove_filter(&self, filter_name: FilterName) -> Result<(), Error> {
 		self.action_sender
 			.send(ActorMessage::RemoveFilter(filter_name))
 			.await
