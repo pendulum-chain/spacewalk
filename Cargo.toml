@@ -1,11 +1,16 @@
 [workspace]
 members = [
+    "clients/runtime",
+    "clients/vault",
+    "clients/service",
+    "clients/stellar-relay",
     "pallets/currency",
     "pallets/fee",
     "pallets/nomination",
     "pallets/oracle",
     "pallets/reward",
     "pallets/staking",
+    "pallets/spacewalk",
     "pallets/stellar-relay",
     "pallets/vault-registry",
     "primitives",
@@ -13,6 +18,7 @@ members = [
     "testchain/node",
     "testchain/runtime",
 ]
+
 [profile.release]
 panic = "unwind"
 

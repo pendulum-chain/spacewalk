@@ -1,0 +1,39 @@
+[package]
+name = "stellar-relay-bin"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[lib]
+name = "stellar_relay"
+path = "src/lib.rs"
+
+[dev-dependencies]
+env_logger = "0.9.0"
+
+[dependencies]
+log = {version = "0.4.14"}
+
+base64 = "0.13.0"
+rand = "0.8.5"
+tweetnacl = "0.4.0"
+
+hmac = "0.12.1"
+sha2 = "0.10.2"
+
+substrate-stellar-sdk = {git = "https://github.com/pendulum-chain/substrate-stellar-sdk", branch = "master", default-features = false, features = ['all-types']}
+
+err-derive = "0.3.1"
+
+tokio = { version = "1.0", features = [
+    "macros",           # allows main function to be async
+    "rt-multi-thread",  # for multi-thread runtime
+    "net",              # contains the TcpStream
+    "sync",             # to make channels available
+    "io-util",          # for async read/write operations
+    "time"              # for timeouts and sleep, when reconnecting
+] }
+
+[features]
+default = []
