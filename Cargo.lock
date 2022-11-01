@@ -1120,6 +1120,27 @@ dependencies = [
 ]
 
 [[package]]
+name = "currency"
+version = "1.2.0"
+dependencies = [
+ "frame-support",
+ "frame-system",
+ "mocktopus",
+ "orml-tokens",
+ "orml-traits",
+ "pallet-transaction-payment",
+ "parity-scale-codec",
+ "scale-info",
+ "serde",
+ "sp-arithmetic",
+ "sp-core",
+ "sp-io",
+ "sp-runtime",
+ "sp-std",
+ "spacewalk-primitives",
+]
+
+[[package]]
 name = "curve25519-dalek"
 version = "2.1.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1579,6 +1600,32 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "2c4c9e43643f5a3be4ca5b67d26b98031ff9db6806c3440ae32e02e3ceac3f1b"
 dependencies = [
  "libc",
+]
+
+[[package]]
+name = "fee"
+version = "1.0.0"
+dependencies = [
+ "currency",
+ "frame-benchmarking",
+ "frame-support",
+ "frame-system",
+ "mocktopus",
+ "orml-tokens",
+ "orml-traits",
+ "pallet-timestamp",
+ "parity-scale-codec",
+ "reward",
+ "scale-info",
+ "security",
+ "serde",
+ "sp-arithmetic",
+ "sp-core",
+ "sp-io",
+ "sp-runtime",
+ "sp-std",
+ "spacewalk-primitives",
+ "staking",
 ]
 
 [[package]]
@@ -4201,6 +4248,35 @@ dependencies = [
 ]
 
 [[package]]
+name = "nomination"
+version = "0.5.0"
+dependencies = [
+ "currency",
+ "fee",
+ "frame-benchmarking",
+ "frame-support",
+ "frame-system",
+ "mocktopus",
+ "oracle",
+ "orml-tokens",
+ "orml-traits",
+ "pallet-timestamp",
+ "parity-scale-codec",
+ "reward",
+ "scale-info",
+ "security",
+ "serde",
+ "sp-arithmetic",
+ "sp-core",
+ "sp-io",
+ "sp-runtime",
+ "sp-std",
+ "spacewalk-primitives",
+ "staking",
+ "vault-registry",
+]
+
+[[package]]
 name = "normalize-line-endings"
 version = "0.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4373,6 +4449,30 @@ dependencies = [
 ]
 
 [[package]]
+name = "oracle"
+version = "1.2.0"
+dependencies = [
+ "currency",
+ "frame-benchmarking",
+ "frame-support",
+ "frame-system",
+ "mocktopus",
+ "orml-tokens",
+ "orml-traits",
+ "pallet-timestamp",
+ "parity-scale-codec",
+ "scale-info",
+ "security",
+ "sp-arithmetic",
+ "sp-core",
+ "sp-io",
+ "sp-runtime",
+ "sp-std",
+ "spacewalk-primitives",
+ "staking",
+]
+
+[[package]]
 name = "orml-currencies"
 version = "0.4.1-dev"
 source = "git+https://github.com/open-web3-stack/open-runtime-module-library?branch=polkadot-v0.9.24#41dddc878ecef961b9b20207713abdcb8d84ae53"
@@ -4530,23 +4630,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "pallet-security"
-version = "1.2.0"
-dependencies = [
- "frame-support",
- "frame-system",
- "mocktopus",
- "parity-scale-codec",
- "scale-info",
- "serde",
- "sha2 0.8.2",
- "sp-core",
- "sp-io",
- "sp-runtime",
- "sp-std",
-]
-
-[[package]]
 name = "pallet-session"
 version = "4.0.0-dev"
 source = "git+https://github.com/paritytech/substrate?branch=polkadot-v0.9.24#6a5b522116ae208d1cf02c6da09ce49aa40225be"
@@ -4565,52 +4648,6 @@ dependencies = [
  "sp-staking",
  "sp-std",
  "sp-trie",
-]
-
-[[package]]
-name = "pallet-spacewalk"
-version = "4.0.0-dev"
-dependencies = [
- "base64",
- "frame-benchmarking",
- "frame-support",
- "frame-system",
- "hex",
- "log",
- "orml-traits",
- "pallet-security",
- "pallet-transaction-payment",
- "parity-scale-codec",
- "scale-info",
- "serde",
- "serde_json",
- "sp-arithmetic",
- "sp-core",
- "sp-io",
- "sp-runtime",
- "sp-std",
- "spacewalk-runtime-standalone",
- "substrate-stellar-sdk 0.2.3 (git+https://github.com/pendulum-chain/substrate-stellar-sdk?branch=polkadot-v0.9.24)",
-]
-
-[[package]]
-name = "pallet-stellar-relay"
-version = "1.0.0"
-dependencies = [
- "base64",
- "frame-benchmarking",
- "frame-support",
- "frame-system",
- "parity-scale-codec",
- "rand 0.8.5",
- "scale-info",
- "serde",
- "sha2 0.10.6",
- "sp-core",
- "sp-io",
- "sp-runtime",
- "sp-std",
- "substrate-stellar-sdk 0.2.3 (git+https://github.com/pendulum-chain/substrate-stellar-sdk?branch=polkadot-v0.9.24)",
 ]
 
 [[package]]
@@ -4639,6 +4676,7 @@ dependencies = [
  "parity-scale-codec",
  "scale-info",
  "sp-inherents",
+ "sp-io",
  "sp-runtime",
  "sp-std",
  "sp-timestamp",
@@ -5668,6 +5706,27 @@ name = "retain_mut"
 version = "0.1.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "4389f1d5789befaf6029ebd9f7dac4af7f7e3d61b69d4f30e2ac02b57e7712b0"
+
+[[package]]
+name = "reward"
+version = "1.0.0"
+dependencies = [
+ "frame-benchmarking",
+ "frame-support",
+ "frame-system",
+ "mocktopus",
+ "pallet-timestamp",
+ "parity-scale-codec",
+ "rand 0.8.5",
+ "scale-info",
+ "serde",
+ "sp-arithmetic",
+ "sp-core",
+ "sp-io",
+ "sp-runtime",
+ "sp-std",
+ "spacewalk-primitives",
+]
 
 [[package]]
 name = "rfc6979"
@@ -6854,6 +6913,23 @@ dependencies = [
 ]
 
 [[package]]
+name = "security"
+version = "1.2.0"
+dependencies = [
+ "frame-support",
+ "frame-system",
+ "mocktopus",
+ "parity-scale-codec",
+ "scale-info",
+ "serde",
+ "sha2 0.8.2",
+ "sp-core",
+ "sp-io",
+ "sp-runtime",
+ "sp-std",
+]
+
+[[package]]
 name = "security-framework"
 version = "2.6.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -7853,6 +7929,8 @@ dependencies = [
 name = "spacewalk-runtime-standalone"
 version = "1.2.0"
 dependencies = [
+ "currency",
+ "fee",
  "flate2",
  "frame-benchmarking",
  "frame-executive",
@@ -7864,21 +7942,23 @@ dependencies = [
  "hex",
  "hex-literal 0.3.4",
  "mocktopus",
+ "nomination",
+ "oracle",
  "orml-currencies",
  "orml-tokens",
  "orml-traits",
  "pallet-aura",
  "pallet-balances",
  "pallet-grandpa",
- "pallet-spacewalk",
- "pallet-stellar-relay",
  "pallet-sudo",
  "pallet-timestamp",
  "pallet-transaction-payment",
  "pallet-transaction-payment-rpc-runtime-api",
  "parity-scale-codec",
  "pretty_assertions",
+ "reward",
  "scale-info",
+ "security",
  "serde_json",
  "sp-api",
  "sp-block-builder",
@@ -7893,7 +7973,10 @@ dependencies = [
  "sp-transaction-pool",
  "sp-version",
  "spacewalk-primitives",
+ "staking",
+ "stellar-relay",
  "substrate-wasm-builder",
+ "vault-registry",
 ]
 
 [[package]]
@@ -7970,6 +8053,29 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a8f112729512f8e442d81f95a8a7ddf2b7c6b8a1a6f509a95864142b30cab2d3"
 
 [[package]]
+name = "staking"
+version = "1.0.0"
+dependencies = [
+ "frame-benchmarking",
+ "frame-support",
+ "frame-system",
+ "mocktopus",
+ "orml-tokens",
+ "orml-traits",
+ "pallet-timestamp",
+ "parity-scale-codec",
+ "rand 0.8.5",
+ "scale-info",
+ "serde",
+ "sp-arithmetic",
+ "sp-core",
+ "sp-io",
+ "sp-runtime",
+ "sp-std",
+ "spacewalk-primitives",
+]
+
+[[package]]
 name = "static_assertions"
 version = "1.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -7990,6 +8096,26 @@ dependencies = [
 
 [[package]]
 name = "stellar-relay"
+version = "1.0.0"
+dependencies = [
+ "base64",
+ "frame-benchmarking",
+ "frame-support",
+ "frame-system",
+ "parity-scale-codec",
+ "rand 0.8.5",
+ "scale-info",
+ "serde",
+ "sha2 0.10.6",
+ "sp-core",
+ "sp-io",
+ "sp-runtime",
+ "sp-std",
+ "substrate-stellar-sdk 0.2.3 (git+https://github.com/pendulum-chain/substrate-stellar-sdk?branch=polkadot-v0.9.24)",
+]
+
+[[package]]
+name = "stellar-relay-lib"
 version = "0.1.0"
 dependencies = [
  "base64",
@@ -8105,24 +8231,6 @@ dependencies = [
 name = "substrate-stellar-sdk"
 version = "0.2.3"
 source = "git+https://github.com/pendulum-chain/substrate-stellar-sdk?branch=polkadot-v0.9.24#c3aa39ad89f2d78930bcc2da2f59857e3afd27fd"
-dependencies = [
- "base64",
- "hex",
- "lazy_static",
- "num-rational 0.4.1",
- "serde",
- "serde_json",
- "sha2 0.9.9",
- "sodalite",
- "sp-io",
- "sp-runtime",
- "sp-std",
-]
-
-[[package]]
-name = "substrate-stellar-sdk"
-version = "0.2.3"
-source = "git+https://github.com/pendulum-chain/substrate-stellar-sdk#c3aa39ad89f2d78930bcc2da2f59857e3afd27fd"
 dependencies = [
  "base64",
  "hex",
@@ -8865,7 +8973,10 @@ version = "0.0.1"
 dependencies = [
  "async-trait",
  "base64",
+ "bincode",
  "clap",
+ "env_logger 0.9.0",
+ "err-derive",
  "frame-support",
  "futures 0.3.21",
  "git-version",
@@ -8874,6 +8985,8 @@ dependencies = [
  "jsonrpc-core-client",
  "mockall",
  "parity-scale-codec",
+ "parking_lot 0.12.1",
+ "rand 0.8.5",
  "reqwest",
  "runtime",
  "scale-info",
@@ -8887,12 +9000,44 @@ dependencies = [
  "sp-keyring",
  "sp-runtime",
  "sp-std",
- "substrate-stellar-sdk 0.2.3 (git+https://github.com/pendulum-chain/substrate-stellar-sdk)",
+ "stellar-relay-lib",
  "thiserror",
  "tokio",
  "tracing",
  "tracing-futures",
  "tracing-subscriber",
+]
+
+[[package]]
+name = "vault-registry"
+version = "1.2.0"
+dependencies = [
+ "currency",
+ "fee",
+ "fixed-hash",
+ "frame-benchmarking",
+ "frame-support",
+ "frame-system",
+ "log",
+ "mocktopus",
+ "oracle",
+ "orml-tokens",
+ "orml-traits",
+ "pallet-timestamp",
+ "parity-scale-codec",
+ "pretty_assertions",
+ "reward",
+ "scale-info",
+ "security",
+ "serde",
+ "sp-arithmetic",
+ "sp-core",
+ "sp-io",
+ "sp-runtime",
+ "sp-std",
+ "spacewalk-primitives",
+ "staking",
+ "visibility",
 ]
 
 [[package]]
@@ -8906,6 +9051,17 @@ name = "version_check"
 version = "0.9.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "49874b5167b65d7193b8aba1567f5c7d93d001cafc34600cee003eda787e483f"
+
+[[package]]
+name = "visibility"
+version = "0.0.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "8881d5cc0ae34e3db2f1de5af81e5117a420d2f937506c2dc20d6f4cfb069051"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn",
+]
 
 [[package]]
 name = "void"
