@@ -34,11 +34,11 @@ mod metadata_aliases {
 	// pub type DepositEvent = metadata::spacewalk::events::Deposit;
 	// pub type RedeemEvent = metadata::spacewalk::events::Redeem;
 
-	#[cfg(feature = "90-metadata")]
+	// #[cfg(feature = "standalone-metadata")]
 	pub type RequestIssueEvent = metadata::issue::events::RequestIssue;
-	#[cfg(feature = "90-metadata")]
+	// #[cfg(feature = "standalone-metadata")]
 	pub type CancelIssueEvent = metadata::issue::events::CancelIssue;
-	#[cfg(feature = "90-metadata")]
+	// #[cfg(feature = "standalone-metadata")]
 	pub type ExecuteIssueEvent = metadata::issue::events::ExecuteIssue;
 
 	pub type SpacewalkHeader = <SpacewalkRuntime as Config>::Header;

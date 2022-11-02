@@ -3,7 +3,7 @@ use std::{
 	io::Write,
 	str::Split,
 };
-use stellar_relay::sdk::{
+use stellar_relay_lib::sdk::{
 	compound_types::UnlimitedVarArray,
 	types::{ScpEnvelope, TransactionSet},
 };
@@ -13,7 +13,7 @@ use crate::oracle::{
 	SlotEncodedMap, TxHashMap, TxHashesFileHandler, TxSetMap, TxSetsFileHandler,
 };
 
-use stellar_relay::sdk::XdrCodec;
+use stellar_relay_lib::sdk::XdrCodec;
 
 impl FileHandler<EnvelopesMap> for EnvelopesFileHandler {
 	#[cfg(test)]
@@ -184,7 +184,7 @@ mod test {
 	use frame_support::assert_err;
 	use mockall::lazy_static;
 	use std::{convert::TryFrom, env, fs, fs::File, io::Read, path::PathBuf};
-	use stellar_relay::{
+	use stellar_relay_lib::{
 		helper::compute_non_generic_tx_set_content_hash,
 		sdk::{network::PUBLIC_NETWORK, types::ScpStatementPledges},
 	};

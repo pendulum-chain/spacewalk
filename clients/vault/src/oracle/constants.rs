@@ -1,5 +1,5 @@
 use crate::oracle::types::Slot;
-use stellar_relay::sdk::types::Uint64;
+use stellar_relay_lib::sdk::types::Uint64;
 
 /// This is for `EnvelopesMap`; how many slots is accommodated per file.
 /// This is used to compare against the length of the "keys",

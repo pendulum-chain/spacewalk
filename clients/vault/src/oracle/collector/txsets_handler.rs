@@ -2,7 +2,9 @@ use std::sync::Arc;
 
 use parking_lot::RwLock;
 
-use stellar_relay::{helper::compute_non_generic_tx_set_content_hash, sdk::types::TransactionSet};
+use stellar_relay_lib::{
+	helper::compute_non_generic_tx_set_content_hash, sdk::types::TransactionSet,
+};
 
 use crate::oracle::{
 	collector::ScpMessageCollector,

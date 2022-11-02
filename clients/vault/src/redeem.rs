@@ -15,7 +15,7 @@ use sp_std::{
 	str,
 };
 use stellar::{network::TEST_NETWORK, PublicKey, SecretKey, XdrCodec};
-use stellar_relay::{sdk as stellar, sdk::types::Preconditions};
+use stellar_relay_lib::{sdk as stellar, sdk::types::Preconditions};
 
 const SUBMISSION_TIMEOUT_PERIOD: u64 = 10000;
 
@@ -308,7 +308,7 @@ mod tests {
 		))
 		.unwrap();
 		let destination_stellar_address =
-			stellar_relay::sdk::PublicKey::from_encoding(DESTINATION_PUBLIC_KEY).unwrap();
+			stellar_relay_lib::sdk::PublicKey::from_encoding(DESTINATION_PUBLIC_KEY).unwrap();
 
 		let result = execute_withdrawal(
 			&STELLAR_VAULT_SECRET_KEY.to_string(),

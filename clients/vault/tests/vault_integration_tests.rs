@@ -107,7 +107,7 @@ async fn test_redeem() {
 			let amount: u128 = 100000000;
 
 			let vault_keypair =
-				stellar_relay::sdk::SecretKey::from_encoding(STELLAR_VAULT_SECRET_KEY).unwrap();
+				stellar_relay_lib::sdk::SecretKey::from_encoding(STELLAR_VAULT_SECRET_KEY).unwrap();
 			let stellar_vault_pubkey = *vault_keypair.get_public().as_binary();
 
 			tracing::info!("hex key 0x{}", hex::encode(stellar_vault_pubkey));

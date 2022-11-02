@@ -43,13 +43,9 @@ pub const STABLE_PARACHAIN_CONFIRMATIONS: &str = "StableParachainConfirmations";
 	feature = "parachain-metadata",
 	subxt(runtime_metadata_path = "metadata-parachain.scale", generated_type_derives = "Clone")
 )]
-// #[cfg_attr(
-// 	feature = "standalone-metadata",
-// 	subxt(runtime_metadata_path = "metadata-standalone.scale", generated_type_derives = "Clone")
-// )]
 #[cfg_attr(
-	feature = "90-metadata",
-	subxt(runtime_metadata_path = "metadata-90.scale", generated_type_derives = "Clone")
+	feature = "standalone-metadata",
+	subxt(runtime_metadata_path = "metadata-standalone.scale", generated_type_derives = "Clone")
 )]
 pub mod metadata {}
 

@@ -1,4 +1,4 @@
-use stellar_relay::sdk::{types::PaymentOp, Transaction, TransactionEnvelope};
+use stellar_relay_lib::sdk::{types::PaymentOp, Transaction, TransactionEnvelope};
 
 use crate::oracle::collector::{is_hash_memo, Proof, ProofStatus, ScpMessageCollector};
 
@@ -47,7 +47,7 @@ impl ScpMessageCollector {
 			.get_vec()
 			.into_iter()
 			.filter_map(|op| match &op.body {
-				stellar_relay::sdk::types::OperationBody::Payment(p) => {
+				stellar_relay_lib::sdk::types::OperationBody::Payment(p) => {
 					let d = p.destination.clone();
 					if self.vault_addresses.contains(
 						&String::from_utf8(Vec::from(d.to_encoding().as_slice())).unwrap(),

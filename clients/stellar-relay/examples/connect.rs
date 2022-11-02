@@ -1,4 +1,4 @@
-use stellar_relay::{
+use stellar_relay_lib::{
 	node::NodeInfo,
 	sdk::{
 		network::{Network, PUBLIC_NETWORK, TEST_NETWORK},
@@ -9,7 +9,7 @@ use stellar_relay::{
 };
 
 const TIER_1_VALIDATOR_IP_TESTNET: &str = "34.235.168.98";
-const TIER_1_VALIDATOR_IP_PUBLIC: &str = "135.181.16.110";
+const TIER_1_VALIDATOR_IP_PUBLIC: &str = "51.161.197.48";
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {

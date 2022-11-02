@@ -1,4 +1,4 @@
-use stellar_relay::sdk::{
+use stellar_relay_lib::sdk::{
 	compound_types::UnlimitedVarArray,
 	types::{ScpEnvelope, TransactionSet},
 	Memo, TransactionEnvelope, XdrCodec,

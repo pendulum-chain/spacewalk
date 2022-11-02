@@ -1,9 +1,9 @@
-use stellar_relay::sdk::{
+use stellar_relay_lib::sdk::{
 	network::{Network, PUBLIC_NETWORK, TEST_NETWORK},
 	SecretKey, TransactionEnvelope,
 };
 
-use stellar_relay::{node::NodeInfo, ConnConfig};
+use stellar_relay_lib::{node::NodeInfo, ConnConfig};
 
 use vault::oracle::{create_handler, prepare_directories, FilterWith};
 
@@ -12,8 +12,8 @@ use tokio::time::Duration;
 pub const SAMPLE_VAULT_ADDRESSES_FILTER: &[&str] =
 	&["GAP4SFKVFVKENJ7B7VORAYKPB3CJIAJ2LMKDJ22ZFHIAIVYQOR6W3CXF"];
 
-pub const TIER_1_VALIDATOR_IP_TESTNET: &str = "34.235.168.98";
-pub const TIER_1_VALIDATOR_IP_PUBLIC: &str = "135.181.16.110";
+pub const TIER_1_VALIDATOR_IP_TESTNET: &str = "65.108.1.53";
+pub const TIER_1_VALIDATOR_IP_PUBLIC: &str = "51.161.197.48";
 
 pub struct NoFilter;
 

@@ -21,9 +21,6 @@ cfg_if::cfg_if! {
 	{
 		const DEFAULT_SPEC_VERSION: RangeInclusive<u32> = 1..=1;
 		const DEFAULT_SPEC_NAME: &str = "spacewalk-standalone";
-	} else if #[cfg(feature = "90-metadata")] {
-		const DEFAULT_SPEC_VERSION: RangeInclusive<u32> = 1..=1;
-		const DEFAULT_SPEC_NAME: &str = "spacewalk-standalone";
 	} else if #[cfg(feature = "parachain-metadata")] {
 		const DEFAULT_SPEC_VERSION: RangeInclusive<u32> = 1..=1;
 		const DEFAULT_SPEC_NAME: &str = "pendulum-parachain";
@@ -132,6 +129,11 @@ impl SpacewalkParachain {
 		)
 		.await?;
 		Self::new(ws_client, signer, shutdown_tx).await
+	}
+
+	pub async fn is_public_network(&self) -> Result<bool, Error> {
+		let head = self.get_latest_block_hash().await?;
+		Ok(self.api.storage().stellar_relay().is_public_network(head).await?)
 	}
 
 	async fn refresh_nonce(&self) {

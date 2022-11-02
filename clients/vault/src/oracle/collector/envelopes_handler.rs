@@ -9,7 +9,7 @@ use crate::oracle::{
 };
 use parking_lot::RwLock;
 use std::sync::Arc;
-use stellar_relay::{
+use stellar_relay_lib::{
 	sdk::types::{ScpEnvelope, ScpStatementPledges, StellarMessage},
 	StellarOverlayConnection,
 };

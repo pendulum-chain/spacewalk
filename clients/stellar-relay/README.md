@@ -58,7 +58,7 @@ For example, Stellar Relay will wait for 10 seconds to read from the existing tc
 ## Example
 In the `stellar-relay` directory, run this command:
 ```
- RUST_LOG=info cargo run --example connect
+ RUST_LOG=info cargo run --example connect  --features standalone-metadata
 ```
 and you should be able to see in the terminal:
 ```

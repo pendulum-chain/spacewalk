@@ -4,11 +4,16 @@ use crate::{
 	//redeem::listen_for_redeem_requests,
 	CHAIN_HEIGHT_POLLING_INTERVAL,
 };
+use crate::{
+	issue::listen_for_issue_requests,
+	oracle::{create_handler, prepare_directories},
+};
 use async_trait::async_trait;
 use clap::Parser;
 use git_version::git_version;
 use runtime::{SpacewalkParachain, UtilFuncs};
 use service::{wait_or_shutdown, Error as ServiceError, Service, ShutdownSender};
+use stellar_relay_lib::{node::NodeInfo, ConnConfig};
 use tokio::time::sleep;
 
 pub const VERSION: &str = git_version!(args = ["--tags"], fallback = "unknown");

@@ -1,8 +1,8 @@
 use std::collections::{BTreeMap, HashMap};
-use stellar_relay::sdk::TransactionEnvelope;
+use stellar_relay_lib::sdk::TransactionEnvelope;
 
 use crate::oracle::FilterWith;
-use stellar_relay::sdk::types::{Hash, ScpEnvelope, TransactionSet, Uint64};
+use stellar_relay_lib::sdk::types::{Hash, ScpEnvelope, TransactionSet, Uint64};
 
 pub type Slot = Uint64;
 pub type TxHash = Hash;

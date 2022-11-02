@@ -2,7 +2,7 @@ use std::collections::HashMap;
 
 use tokio::sync::{mpsc, oneshot};
 
-use stellar_relay::{
+use stellar_relay_lib::{
 	node::NodeInfo,
 	sdk::{types::StellarMessage, TransactionEnvelope},
 	ConnConfig, StellarOverlayConnection, StellarRelayMessage,

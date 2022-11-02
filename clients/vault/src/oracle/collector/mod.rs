@@ -9,13 +9,13 @@ use parking_lot::{
 };
 pub use proof_builder::*;
 use std::{convert::TryInto, sync::Arc};
-use stellar_relay::sdk::{types::ScpStatementExternalize, Memo, TransactionEnvelope};
+use stellar_relay_lib::sdk::{types::ScpStatementExternalize, Memo, TransactionEnvelope};
 
 use crate::oracle::{
 	errors::Error,
 	types::{EnvelopesMap, Slot, TxHashMap, TxSetHash, TxSetMap},
 };
-use stellar_relay::sdk::network::{Network, PUBLIC_NETWORK, TEST_NETWORK};
+use stellar_relay_lib::sdk::network::{Network, PUBLIC_NETWORK, TEST_NETWORK};
 
 /// Collects all ScpMessages and the TxSets.
 pub struct ScpMessageCollector {
