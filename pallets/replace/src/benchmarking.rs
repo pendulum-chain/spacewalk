@@ -7,7 +7,7 @@ use sp_runtime::{traits::One, FixedPointNumber};
 use sp_std::prelude::*;
 
 use currency::getters::{get_relay_chain_currency_id as get_collateral_currency_id, *};
-use oracle::Pallet as Oracle;
+use oracle::{OracleKey, Pallet as Oracle};
 use primitives::{CurrencyId, VaultCurrencyPair, VaultId};
 use security::Pallet as Security;
 use stellar_relay::{
@@ -53,6 +53,33 @@ fn mint_collateral<T: crate::Config>(account_id: &T::AccountId, amount: BalanceO
 	deposit_tokens::<T>(get_native_currency_id::<T>(), account_id, amount);
 }
 
+fn initialize_oracle<T: crate::Config>() {
+	let oracle_id: T::AccountId = account("Oracle", 12, 0);
+
+	Oracle::<T>::_feed_values(
+		oracle_id,
+		vec![
+			(
+				OracleKey::ExchangeRate(get_collateral_currency_id::<T>()),
+				UnsignedFixedPoint::<T>::checked_from_rational(1, 1).unwrap(),
+			),
+			(
+				OracleKey::ExchangeRate(get_native_currency_id::<T>()),
+				UnsignedFixedPoint::<T>::checked_from_rational(1, 1).unwrap(),
+			),
+			(
+				OracleKey::ExchangeRate(get_wrapped_currency_id::<T>()),
+				UnsignedFixedPoint::<T>::checked_from_rational(1, 1).unwrap(),
+			),
+			(
+				OracleKey::FeeEstimation,
+				UnsignedFixedPoint::<T>::checked_from_rational(3, 1).unwrap(),
+			),
+		],
+	);
+	Oracle::<T>::begin_block(0u32.into());
+}
+
 fn test_request<T: crate::Config>(
 	new_vault_id: &DefaultVaultId<T>,
 	old_vault_id: &DefaultVaultId<T>,
@@ -91,6 +118,7 @@ fn register_vault<T: crate::Config>(vault_id: DefaultVaultId<T>) {
 
 benchmarks! {
 	request_replace {
+		initialize_oracle::<T>();
 		let vault_id = get_vault_id::<T>("Vault");
 		mint_collateral::<T>(&vault_id.account_id, (1u32 << 31).into());
 		let amount = Replace::<T>::dust_value(get_wrapped_currency_id::<T>()).amount() + 1000u32.into();
@@ -113,6 +141,7 @@ benchmarks! {
 	}: _(RawOrigin::Signed(vault_id.account_id.clone()), vault_id.currencies.clone(), amount)
 
 	withdraw_replace {
+		initialize_oracle::<T>();
 		let vault_id = get_vault_id::<T>("OldVault");
 		mint_collateral::<T>(&vault_id.account_id, (1u32 << 31).into());
 		let amount = wrapped(5);
@@ -132,6 +161,7 @@ benchmarks! {
 	}: _(RawOrigin::Signed(vault_id.account_id.clone()), vault_id.currencies.clone(), amount.amount())
 
 	accept_replace {
+		initialize_oracle::<T>();
 		let new_vault_id = get_vault_id::<T>("NewVault");
 		let old_vault_id = get_vault_id::<T>("OldVault");
 		mint_collateral::<T>(&old_vault_id.account_id, (1u32 << 31).into());
@@ -158,14 +188,15 @@ benchmarks! {
 		replace_request.amount = amount.amount();
 		Replace::<T>::insert_replace_request(&replace_id, &replace_request);
 
-		Oracle::<T>::_set_exchange_rate(get_collateral_currency_id::<T>(), UnsignedFixedPoint::<T>::one()
-		).unwrap();
+		Oracle::<T>::_set_exchange_rate(get_collateral_currency_id::<T>(), UnsignedFixedPoint::<T>::one()).unwrap();
 	}: _(RawOrigin::Signed(new_vault_id.account_id.clone()), new_vault_id.currencies.clone(), old_vault_id, amount.amount(), griefing, new_vault_stellar_address)
 
 	execute_replace {
+		initialize_oracle::<T>();
 		let new_vault_id = get_vault_id::<T>("NewVault");
 		let old_vault_id = get_vault_id::<T>("OldVault");
 		let relayer_id: T::AccountId = account("Relayer", 0, 0);
+
 
 		let new_vault_stellar_address = [4u8; 32];
 		let old_vault_stellar_address = [5u8; 32];
@@ -204,6 +235,7 @@ benchmarks! {
 	}: _(RawOrigin::Signed(old_vault_id.account_id), replace_id, tx_env_xdr_encoded, scp_envs_xdr_encoded, tx_set_xdr_encoded)
 
 	cancel_replace {
+		initialize_oracle::<T>();
 		let new_vault_id = get_vault_id::<T>("NewVault");
 		let old_vault_id = get_vault_id::<T>("OldVault");
 		mint_collateral::<T>(&new_vault_id.account_id, (1u32 << 31).into());
