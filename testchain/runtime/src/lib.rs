@@ -19,7 +19,7 @@ use pallet_grandpa::{
 };
 use sp_api::impl_runtime_apis;
 use sp_consensus_aura::ed25519::AuthorityId as AuraId;
-use sp_core::{crypto::KeyTypeId, OpaqueMetadata};
+use sp_core::{crypto::KeyTypeId, OpaqueMetadata, H256};
 use sp_runtime::{
 	create_runtime_str, generic, impl_opaque_keys,
 	traits::{
@@ -43,6 +43,7 @@ pub use primitives::{
 };
 use primitives::{CurrencyId::Token, TokenSymbol, TokenSymbol::INTR};
 pub use redeem::{Event as RedeemEvent, RedeemRequest};
+pub use replace::{Event as ReplaceEvent, ReplaceRequest};
 pub use security::StatusCode;
 
 type VaultId = primitives::VaultId<AccountId, CurrencyId>;
@@ -389,8 +390,6 @@ impl fee::Config for Runtime {
 	type MaxExpectedValue = MaxExpectedValue;
 }
 
-pub use replace::{Event as ReplaceEvent, ReplaceRequest};
-
 impl replace::Config for Runtime {
 	type Event = Event;
 	type WeightInfo = ();
@@ -614,6 +613,21 @@ impl_runtime_apis! {
 			len: u32,
 		) -> pallet_transaction_payment_rpc_runtime_api::FeeDetails<Balance> {
 			TransactionPayment::query_fee_details(uxt, len)
+		}
+	}
+
+	impl module_replace_rpc_runtime_api::ReplaceApi<
+		Block,
+		AccountId,
+		H256,
+		ReplaceRequest<AccountId, BlockNumber, Balance, CurrencyId>
+	> for Runtime {
+		fn get_old_vault_replace_requests(vault_id: AccountId) -> Vec<H256> {
+			Replace::get_replace_requests_for_old_vault(vault_id)
+		}
+
+		fn get_new_vault_replace_requests(vault_id: AccountId) -> Vec<H256> {
+			Replace::get_replace_requests_for_new_vault(vault_id)
 		}
 	}
 

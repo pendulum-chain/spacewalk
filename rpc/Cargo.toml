@@ -21,5 +21,7 @@ sp-block-builder = {git = "https://github.com/paritytech/substrate", branch = "p
 sp-blockchain = {git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.24"}
 sp-core = {git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.24"}
 
+module-replace-rpc = { path = "../pallets/replace/rpc" }
+
 pallet-transaction-payment-rpc = {git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.24"}
 substrate-frame-rpc-system = {git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.24"}

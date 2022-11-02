@@ -64,6 +64,8 @@ security = { path = "../../pallets/security", default-features = false }
 staking = { path = "../../pallets/staking", default-features = false }
 vault-registry = { path = "../../pallets/vault-registry", default-features = false }
 
+module-replace-rpc-runtime-api = { path = "../../pallets/replace/rpc/runtime-api", default-features = false }
+
 primitives = { package = "spacewalk-primitives", path = "../../primitives", default-features = false }
 
 [dev-dependencies]
@@ -124,6 +126,7 @@ std = [
     "security/std",
     "staking/std",
     "vault-registry/std",
+    "module-replace-rpc-runtime-api/std",
     "primitives/std",
     "sp-api/std",
     "sp-block-builder/std",

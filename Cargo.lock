@@ -3697,6 +3697,28 @@ dependencies = [
 ]
 
 [[package]]
+name = "module-replace-rpc"
+version = "1.2.0"
+dependencies = [
+ "jsonrpsee",
+ "module-replace-rpc-runtime-api",
+ "parity-scale-codec",
+ "sp-api",
+ "sp-blockchain",
+ "sp-runtime",
+]
+
+[[package]]
+name = "module-replace-rpc-runtime-api"
+version = "1.2.0"
+dependencies = [
+ "frame-support",
+ "parity-scale-codec",
+ "sp-api",
+ "sp-std",
+]
+
+[[package]]
 name = "more-asserts"
 version = "0.2.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -7455,6 +7477,7 @@ version = "1.2.0"
 dependencies = [
  "jsonrpc-core",
  "jsonrpsee",
+ "module-replace-rpc",
  "pallet-transaction-payment-rpc",
  "sc-rpc",
  "sc-rpc-api",
@@ -7486,6 +7509,7 @@ dependencies = [
  "hex-literal 0.3.4",
  "issue",
  "mocktopus",
+ "module-replace-rpc-runtime-api",
  "nomination",
  "oracle",
  "orml-currencies",
