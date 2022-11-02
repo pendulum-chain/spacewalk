@@ -2673,6 +2673,39 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "879d54834c8c76457ef4293a689b2a8c59b076067ad77b15efafbb05f92a592b"
 
 [[package]]
+name = "issue"
+version = "1.0.0"
+dependencies = [
+ "base64",
+ "currency",
+ "fee",
+ "frame-benchmarking",
+ "frame-support",
+ "frame-system",
+ "log",
+ "mocktopus",
+ "oracle",
+ "orml-tokens",
+ "orml-traits",
+ "pallet-timestamp",
+ "parity-scale-codec",
+ "reward",
+ "scale-info",
+ "security",
+ "serde",
+ "sp-arithmetic",
+ "sp-core",
+ "sp-io",
+ "sp-runtime",
+ "sp-std",
+ "spacewalk-primitives",
+ "staking",
+ "stellar-relay",
+ "substrate-stellar-sdk 0.2.3 (git+https://github.com/pendulum-chain/substrate-stellar-sdk?branch=polkadot-v0.9.24)",
+ "vault-registry",
+]
+
+[[package]]
 name = "itertools"
 version = "0.10.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4004,6 +4037,28 @@ dependencies = [
  "proc-macro2",
  "quote",
  "syn",
+]
+
+[[package]]
+name = "module-issue-rpc"
+version = "1.2.0"
+dependencies = [
+ "jsonrpsee 0.13.1",
+ "module-issue-rpc-runtime-api",
+ "parity-scale-codec",
+ "sp-api",
+ "sp-blockchain",
+ "sp-runtime",
+]
+
+[[package]]
+name = "module-issue-rpc-runtime-api"
+version = "1.2.0"
+dependencies = [
+ "frame-support",
+ "parity-scale-codec",
+ "sp-api",
+ "sp-std",
 ]
 
 [[package]]
@@ -7914,6 +7969,7 @@ version = "1.2.0"
 dependencies = [
  "jsonrpc-core",
  "jsonrpsee 0.13.1",
+ "module-issue-rpc",
  "pallet-transaction-payment-rpc",
  "sc-rpc",
  "sc-rpc-api",
@@ -7943,7 +7999,9 @@ dependencies = [
  "getrandom 0.2.7",
  "hex",
  "hex-literal 0.3.4",
+ "issue",
  "mocktopus",
+ "module-issue-rpc-runtime-api",
  "nomination",
  "oracle",
  "orml-currencies",
@@ -8101,9 +8159,12 @@ name = "stellar-relay"
 version = "1.0.0"
 dependencies = [
  "base64",
+ "currency",
  "frame-benchmarking",
  "frame-support",
  "frame-system",
+ "orml-tokens",
+ "orml-traits",
  "parity-scale-codec",
  "rand 0.8.5",
  "scale-info",
@@ -8113,6 +8174,7 @@ dependencies = [
  "sp-io",
  "sp-runtime",
  "sp-std",
+ "spacewalk-primitives",
  "substrate-stellar-sdk 0.2.3 (git+https://github.com/pendulum-chain/substrate-stellar-sdk?branch=polkadot-v0.9.24)",
 ]
 
