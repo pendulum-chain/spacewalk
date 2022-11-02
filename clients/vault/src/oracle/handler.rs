@@ -34,7 +34,7 @@ pub enum ActorMessage {
 	},
 }
 
-/// Runs both the stellar-relay and its own.
+/// Runs both the stellar-relay-lib and its own.
 struct ScpMessageActor {
 	/// used to receive messages from outside the actor.
 	action_receiver: mpsc::Receiver<ActorMessage>,
@@ -70,7 +70,7 @@ impl ScpMessageActor {
 		};
 	}
 
-	/// runs the stellar-relay and listens to data to collect the scp messages and txsets.
+	/// runs the stellar-relay-lib and listens to data to collect the scp messages and txsets.
 	async fn run(&mut self, mut overlay_conn: StellarOverlayConnection) -> Result<(), Error> {
 		let mut tx_set_to_slot_map: TxSetToSlotMap = HashMap::new();
 

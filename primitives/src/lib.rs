@@ -1,22 +1,26 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
+use bstringify::bstringify;
 use codec::{Decode, Encode, MaxEncodedLen};
+use scale_info::TypeInfo;
+#[cfg(feature = "std")]
+use serde::{Deserialize, Deserializer, Serialize, Serializer};
+pub use sp_core::H256;
+pub use sp_runtime::OpaqueExtrinsic as UncheckedExtrinsic;
 use sp_runtime::{
 	generic,
-	scale_info::TypeInfo,
 	traits::{BlakeTwo256, Convert, IdentifyAccount, StaticLookup, Verify},
-	AccountId32, FixedI128, FixedPointNumber, FixedU128, MultiSignature, MultiSigner,
-	OpaqueExtrinsic as UncheckedExtrinsic,
+	AccountId32, FixedI128, FixedPointNumber, FixedU128, MultiSignature, RuntimeDebug,
+	MultiSigner,
 };
 
 use frame_support::error::LookupError;
 use sp_core::ed25519;
 
 use sp_std::{
-	convert::{From, TryFrom, TryInto},
-	fmt, str,
-	str::from_utf8,
-	vec::Vec,
+	convert::{TryFrom, TryInto, From},
+	fmt, str, str::from_utf8, vec::Vec,
+	prelude::*,
 };
 
 pub use substrate_stellar_sdk as stellar;
@@ -53,6 +57,74 @@ impl TruncateFixedPointToInt for SignedFixedPoint {
 impl TruncateFixedPointToInt for UnsignedFixedPoint {
 	fn truncate_to_inner(&self) -> Option<<Self as FixedPointNumber>::Inner> {
 		self.into_inner().checked_div(UnsignedFixedPoint::accuracy())
+	}
+}
+
+#[derive(Encode, Decode, Clone, PartialEq, Eq, Debug, PartialOrd, Ord, TypeInfo, MaxEncodedLen)]
+#[cfg_attr(feature = "std", derive(Serialize, Deserialize, std::hash::Hash))]
+pub struct VaultCurrencyPair<CurrencyId: Copy> {
+	pub collateral: CurrencyId,
+	pub wrapped: CurrencyId,
+}
+
+#[derive(Encode, Decode, Clone, PartialEq, Eq, Debug, PartialOrd, Ord, TypeInfo, MaxEncodedLen)]
+#[cfg_attr(feature = "std", derive(Serialize, Deserialize, std::hash::Hash))]
+pub struct VaultId<AccountId, CurrencyId: Copy> {
+	pub account_id: AccountId,
+	pub currencies: VaultCurrencyPair<CurrencyId>,
+}
+
+impl<AccountId, CurrencyId: Copy> VaultId<AccountId, CurrencyId> {
+	pub fn new(
+		account_id: AccountId,
+		collateral_currency: CurrencyId,
+		wrapped_currency: CurrencyId,
+	) -> Self {
+		Self {
+			account_id,
+			currencies: VaultCurrencyPair::<CurrencyId> {
+				collateral: collateral_currency,
+				wrapped: wrapped_currency,
+			},
+		}
+	}
+
+	pub fn collateral_currency(&self) -> CurrencyId {
+		self.currencies.collateral
+	}
+
+	pub fn wrapped_currency(&self) -> CurrencyId {
+		self.currencies.wrapped
+	}
+}
+
+pub type StellarPublicKeyRaw = [u8; 32];
+
+#[cfg(feature = "std")]
+fn serialize_as_string<S: Serializer, T: std::fmt::Display>(
+	t: &T,
+	serializer: S,
+) -> Result<S::Ok, S::Error> {
+	serializer.serialize_str(&t.to_string())
+}
+
+#[cfg(feature = "std")]
+fn deserialize_from_string<'de, D: Deserializer<'de>, T: std::str::FromStr>(
+	deserializer: D,
+) -> Result<T, D::Error> {
+	let s = String::deserialize(deserializer)?;
+	s.parse::<T>().map_err(|_| serde::de::Error::custom("Parse from string failed"))
+}
+
+pub mod oracle {
+	use super::*;
+
+	#[derive(Encode, Decode, Clone, Eq, PartialEq, Debug, TypeInfo, MaxEncodedLen)]
+	#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
+	#[cfg_attr(feature = "std", serde(rename_all = "camelCase"))]
+	pub enum Key {
+		ExchangeRate(CurrencyId),
+		FeeEstimation,
 	}
 }
 
@@ -109,21 +181,142 @@ pub type UnsignedFixedPoint = FixedU128;
 /// The `Inner` type of the `UnsignedFixedPoint`.
 pub type UnsignedInner = u128;
 
-pub type Bytes4 = [u8; 4];
-pub type Bytes12 = [u8; 12];
-pub type AssetIssuer = [u8; 32];
+pub trait CurrencyInfo {
+	fn name(&self) -> &str;
+	fn symbol(&self) -> &str;
+	fn decimals(&self) -> u8;
+}
 
-#[cfg(feature = "std")]
-use serde::{Deserialize, Serialize};
+macro_rules! create_currency_id {
+    ($(#[$meta:meta])*
+	$vis:vis enum TokenSymbol {
+        $($(#[$vmeta:meta])* $symbol:ident($name:expr, $deci:literal) = $val:literal,)*
+    }) => {
+		$(#[$meta])*
+		$vis enum TokenSymbol {
+			$($(#[$vmeta])* $symbol = $val,)*
+		}
 
-#[derive(Encode, Decode, Eq, PartialEq, Copy, Clone, PartialOrd, Ord, TypeInfo, MaxEncodedLen)]
+        $(pub const $symbol: TokenSymbol = TokenSymbol::$symbol;)*
+
+        impl TryFrom<u8> for TokenSymbol {
+			type Error = ();
+
+			fn try_from(v: u8) -> Result<Self, Self::Error> {
+				match v {
+					$($val => Ok(TokenSymbol::$symbol),)*
+					_ => Err(()),
+				}
+			}
+		}
+
+		impl Into<u8> for TokenSymbol {
+			fn into(self) -> u8 {
+				match self {
+					$(TokenSymbol::$symbol => ($val),)*
+				}
+			}
+		}
+
+        impl TokenSymbol {
+			pub fn get_info() -> Vec<(&'static str, u32)> {
+				vec![
+					$((stringify!($symbol), $deci),)*
+				]
+			}
+
+            pub const fn one(&self) -> Balance {
+                10u128.pow(self.decimals() as u32)
+            }
+
+            const fn decimals(&self) -> u8 {
+				match self {
+					$(TokenSymbol::$symbol => $deci,)*
+				}
+			}
+		}
+
+		impl CurrencyInfo for TokenSymbol {
+			fn name(&self) -> &str {
+				match self {
+					$(TokenSymbol::$symbol => $name,)*
+				}
+			}
+			fn symbol(&self) -> &str {
+				match self {
+					$(TokenSymbol::$symbol => stringify!($symbol),)*
+				}
+			}
+			fn decimals(&self) -> u8 {
+				self.decimals()
+			}
+		}
+
+		impl TryFrom<Vec<u8>> for TokenSymbol {
+			type Error = ();
+			fn try_from(v: Vec<u8>) -> Result<TokenSymbol, ()> {
+				match v.as_slice() {
+					$(bstringify!($symbol) => Ok(TokenSymbol::$symbol),)*
+					_ => Err(()),
+				}
+			}
+		}
+    }
+}
+
+create_currency_id! {
+	#[derive(Encode, Decode, Eq, Hash, PartialEq, Copy, Clone, RuntimeDebug, PartialOrd, Ord, TypeInfo, MaxEncodedLen)]
+	#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
+	#[repr(u8)]
+	pub enum TokenSymbol {
+		DOT("Polkadot", 10) = 0,
+		IBTC("interBTC", 8) = 1,
+		INTR("Interlay", 10) = 2,
+		PEN("Pendulum", 10) = 3,
+
+		KSM("Kusama", 12) = 10,
+		KBTC("kBTC", 8) = 11,
+		KINT("Kintsugi", 12) = 12,
+		AMPE("Amplitude", 12) = 13,
+	}
+}
+
+#[derive(
+	Encode,
+	Decode,
+	Eq,
+	Hash,
+	PartialEq,
+	Copy,
+	Clone,
+	RuntimeDebug,
+	PartialOrd,
+	Ord,
+	TypeInfo,
+	MaxEncodedLen,
+)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
+#[cfg_attr(feature = "std", serde(rename_all = "camelCase"))]
 pub enum CurrencyId {
+	Token(TokenSymbol),
+	ForeignAsset(ForeignAssetId),
 	Native,
 	StellarNative,
 	AlphaNum4 { code: Bytes4, issuer: AssetIssuer },
 	AlphaNum12 { code: Bytes12, issuer: AssetIssuer },
 }
+
+pub type ForeignAssetId = u32;
+
+#[derive(scale_info::TypeInfo, Encode, Decode, Clone, Eq, PartialEq, Debug)]
+pub struct CustomMetadata {
+	pub fee_per_second: u128,
+	pub coingecko_id: Vec<u8>,
+}
+
+pub type Bytes4 = [u8; 4];
+pub type Bytes12 = [u8; 12];
+pub type AssetIssuer = [u8; 32];
 
 impl Default for CurrencyId {
 	fn default() -> Self {
@@ -174,6 +367,8 @@ impl TryInto<stellar::Asset> for CurrencyId {
 
 	fn try_into(self) -> Result<stellar::Asset, Self::Error> {
 		match self {
+			Self::Token(t) => Err("Token {} not defined in the Stellar world."),
+			Self::ForeignAsset(f) => Err("Foreign Asset {} not defined in the Stellar world."),
 			Self::Native => Err("PEN token not defined in the Stellar world."),
 			Self::StellarNative => Ok(stellar::Asset::native()),
 			Self::AlphaNum4 { code, issuer } =>
@@ -190,36 +385,36 @@ impl TryInto<stellar::Asset> for CurrencyId {
 	}
 }
 
-impl fmt::Debug for CurrencyId {
-	fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-		match self {
-			Self::Native => write!(f, "PEN"),
-			Self::StellarNative => write!(f, "XLM"),
-			Self::AlphaNum4 { code, issuer } => {
-				write!(
-					f,
-					"{{ code: {}, issuer: {} }}",
-					str::from_utf8(code).unwrap(),
-					str::from_utf8(
-						stellar::PublicKey::from_binary(*issuer).to_encoding().as_slice()
-					)
-					.unwrap()
-				)
-			},
-			Self::AlphaNum12 { code, issuer } => {
-				write!(
-					f,
-					"{{ code: {}, issuer: {} }}",
-					str::from_utf8(code).unwrap(),
-					str::from_utf8(
-						stellar::PublicKey::from_binary(*issuer).to_encoding().as_slice()
-					)
-					.unwrap()
-				)
-			},
-		}
-	}
-}
+// impl fmt::Debug for CurrencyId {
+// 	fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+// 		match self {
+// 			Self::Native => write!(f, "PEN"),
+// 			Self::StellarNative => write!(f, "XLM"),
+// 			Self::AlphaNum4 { code, issuer } => {
+// 				write!(
+// 					f,
+// 					"{{ code: {}, issuer: {} }}",
+// 					str::from_utf8(code).unwrap(),
+// 					str::from_utf8(
+// 						stellar::PublicKey::from_binary(*issuer).to_encoding().as_slice()
+// 					)
+// 					.unwrap()
+// 				)
+// 			},
+// 			Self::AlphaNum12 { code, issuer } => {
+// 				write!(
+// 					f,
+// 					"{{ code: {}, issuer: {} }}",
+// 					str::from_utf8(code).unwrap(),
+// 					str::from_utf8(
+// 						stellar::PublicKey::from_binary(*issuer).to_encoding().as_slice()
+// 					)
+// 					.unwrap()
+// 				)
+// 			},
+// 		}
+// 	}
+// }
 
 pub struct CurrencyConversion;
 

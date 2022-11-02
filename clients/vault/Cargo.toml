@@ -48,7 +48,7 @@ sp-runtime = {git = "https://github.com/paritytech/substrate", branch = "polkado
 sp-std = {git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.24"}
 
 # Substrate Stellar Dependencies
-stellar-relay = {path = "../stellar-relay" }
+stellar-relay = {package = "stellar-relay-lib", path = "../stellar-relay-lib" }
 #substrate-stellar-sdk = {git = "https://github.com/pendulum-chain/substrate-stellar-sdk"}
 
 parking_lot = "0.12.1"

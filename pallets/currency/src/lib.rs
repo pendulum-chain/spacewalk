@@ -74,6 +74,18 @@ pub mod pallet {
 			+ Default
 			+ Debug;
 
+		/// Native currency e.g. INTR/KINT
+		#[pallet::constant]
+		type GetNativeCurrencyId: Get<CurrencyId<Self>>;
+
+		/// Relay chain currency e.g. DOT/KSM
+		#[pallet::constant]
+		type GetRelayChainCurrencyId: Get<CurrencyId<Self>>;
+
+		/// Wrapped currency e.g. IBTC/KBTC
+		#[pallet::constant]
+		type GetWrappedCurrencyId: Get<CurrencyId<Self>>;
+
 		type CurrencyConversion: types::CurrencyConversion<Amount<Self>, CurrencyId<Self>>;
 	}
 
@@ -87,9 +99,25 @@ pub mod pallet {
 	pub struct Pallet<T>(_);
 }
 
+pub mod getters {
+	use super::*;
+
+	pub fn get_relay_chain_currency_id<T: Config>() -> CurrencyId<T> {
+		<T as Config>::GetRelayChainCurrencyId::get()
+	}
+
+	pub fn get_native_currency_id<T: Config>() -> CurrencyId<T> {
+		<T as Config>::GetNativeCurrencyId::get()
+	}
+
+	pub fn get_wrapped_currency_id<T: Config>() -> CurrencyId<T> {
+		<T as Config>::GetWrappedCurrencyId::get()
+	}
+}
+
 pub fn get_free_balance<T: Config>(
 	currency_id: T::CurrencyId,
-	account: &T::AccountId,
+	account: &AccountIdOf<T>,
 ) -> Amount<T> {
 	let amount = <orml_tokens::Pallet<T>>::free_balance(currency_id, account);
 	Amount::new(amount, currency_id)
@@ -97,7 +125,7 @@ pub fn get_free_balance<T: Config>(
 
 pub fn get_reserved_balance<T: Config>(
 	currency_id: T::CurrencyId,
-	account: &T::AccountId,
+	account: &AccountIdOf<T>,
 ) -> Amount<T> {
 	let amount = <orml_tokens::Pallet<T>>::reserved_balance(currency_id, account);
 	Amount::new(amount, currency_id)
@@ -115,12 +143,12 @@ impl<AccountId, Balance> OnSweep<AccountId, Balance> for () {
 
 pub struct SweepFunds<T, GetAccountId>(PhantomData<(T, GetAccountId)>);
 
-impl<T, GetAccountId> OnSweep<T::AccountId, Amount<T>> for SweepFunds<T, GetAccountId>
+impl<T, GetAccountId> OnSweep<AccountIdOf<T>, Amount<T>> for SweepFunds<T, GetAccountId>
 where
 	T: Config,
-	GetAccountId: Get<T::AccountId>,
+	GetAccountId: Get<AccountIdOf<T>>,
 {
-	fn on_sweep(who: &T::AccountId, amount: Amount<T>) -> DispatchResult {
+	fn on_sweep(who: &AccountIdOf<T>, amount: Amount<T>) -> DispatchResult {
 		// transfer the funds to treasury account
 		amount.transfer(who, &GetAccountId::get())
 	}

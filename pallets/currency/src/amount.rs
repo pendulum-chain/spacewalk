@@ -1,20 +1,19 @@
+use crate::{
+	pallet::{self, Config, Error},
+	types::*,
+};
+
 use frame_support::{
 	dispatch::{DispatchError, DispatchResult},
 	ensure,
 };
 use orml_traits::{MultiCurrency, MultiReservableCurrency};
+use primitives::TruncateFixedPointToInt;
 use sp_runtime::{
 	traits::{CheckedAdd, CheckedDiv, CheckedMul, CheckedSub, UniqueSaturatedInto, Zero},
 	ArithmeticError, FixedPointNumber,
 };
 use sp_std::{convert::TryInto, fmt::Debug};
-
-use primitives::TruncateFixedPointToInt;
-
-use crate::{
-	pallet::{self, Config, Error},
-	types::*,
-};
 
 #[cfg_attr(feature = "testing-utils", derive(Copy))]
 #[derive(Clone, PartialEq, Eq, Debug)]
@@ -238,22 +237,24 @@ mod actions {
 	impl<T: Config> Amount<T> {
 		pub fn transfer(
 			&self,
-			source: &T::AccountId,
-			destination: &T::AccountId,
+			source: &AccountIdOf<T>,
+			destination: &AccountIdOf<T>,
 		) -> Result<(), DispatchError> {
-			<orml_tokens::Pallet<T> as MultiCurrency<T::AccountId>>::transfer(
+			<orml_tokens::Pallet<T> as MultiCurrency<AccountIdOf<T>>>::transfer(
 				self.currency_id,
 				source,
 				destination,
 				self.amount,
-			)
+			)?;
+			Ok(())
 		}
 
-		pub fn lock_on(&self, account_id: &T::AccountId) -> Result<(), DispatchError> {
-			<orml_tokens::Pallet<T>>::reserve(self.currency_id, account_id, self.amount)
+		pub fn lock_on(&self, account_id: &AccountIdOf<T>) -> Result<(), DispatchError> {
+			<orml_tokens::Pallet<T>>::reserve(self.currency_id, account_id, self.amount)?;
+			Ok(())
 		}
 
-		pub fn unlock_on(&self, account_id: &T::AccountId) -> Result<(), DispatchError> {
+		pub fn unlock_on(&self, account_id: &AccountIdOf<T>) -> Result<(), DispatchError> {
 			ensure!(
 				<orml_tokens::Pallet<T>>::unreserve(self.currency_id, account_id, self.amount)
 					.is_zero(),
@@ -262,7 +263,7 @@ mod actions {
 			Ok(())
 		}
 
-		pub fn burn_from(&self, account_id: &T::AccountId) -> DispatchResult {
+		pub fn burn_from(&self, account_id: &AccountIdOf<T>) -> DispatchResult {
 			ensure!(
 				<orml_tokens::Pallet<T>>::slash_reserved(self.currency_id, account_id, self.amount)
 					.is_zero(),
@@ -271,8 +272,9 @@ mod actions {
 			Ok(())
 		}
 
-		pub fn mint_to(&self, account_id: &T::AccountId) -> DispatchResult {
-			<orml_tokens::Pallet<T>>::deposit(self.currency_id, account_id, self.amount)
+		pub fn mint_to(&self, account_id: &AccountIdOf<T>) -> DispatchResult {
+			<orml_tokens::Pallet<T>>::deposit(self.currency_id, account_id, self.amount)?;
+			Ok(())
 		}
 
 		pub fn map<F: Fn(BalanceOf<T>) -> BalanceOf<T>>(&self, f: F) -> Self {
@@ -283,12 +285,11 @@ mod actions {
 
 #[cfg(feature = "testing-utils")]
 mod testing_utils {
+	use super::*;
 	use sp_std::{
 		cmp::{Ordering, PartialOrd},
 		ops::{Add, AddAssign, Div, Mul, Sub, SubAssign},
 	};
-
-	use super::*;
 
 	impl<T: Config> Amount<T> {
 		pub fn with_amount<F: FnOnce(BalanceOf<T>) -> BalanceOf<T>>(&self, f: F) -> Self {

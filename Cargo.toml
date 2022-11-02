@@ -1,17 +1,30 @@
 [workspace]
 members = [
-  "testchain/node",
-  "testchain/runtime",
-  "clients/runtime",
-  "clients/vault",
-  "clients/service",
-  "clients/stellar-relay",
-  "primitives",
-  "rpc",
-  "pallets/spacewalk",
-  "pallets/stellar-relay",
-  "pallets/currency",
+    "clients/runtime",
+    "clients/vault",
+    "clients/service",
+    "clients/stellar-relay-lib",
+    "pallets/currency",
+    "pallets/fee",
+    "pallets/nomination",
+    "pallets/oracle",
+    "pallets/reward",
+    "pallets/staking",
+    "pallets/stellar-relay",
+    "pallets/vault-registry",
+    "primitives",
+    "rpc",
+    "testchain/node",
+    "testchain/runtime",
 ]
 
 [profile.release]
 panic = "unwind"
+
+[profile.production]
+inherits = "release"
+# Sacrifice compile speed for execution speed by using optimization flags:
+# https://doc.rust-lang.org/rustc/linker-plugin-lto.html
+lto = "fat"
+# https://doc.rust-lang.org/rustc/codegen-options/index.html#codegen-units
+codegen-units = 1

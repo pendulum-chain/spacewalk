@@ -10,36 +10,38 @@ use frame_support::{
 	construct_runtime, parameter_types,
 	traits::{ConstU128, ConstU8, Contains, KeyOwnerProofSystem},
 	weights::{constants::WEIGHT_PER_SECOND, ConstantMultiplier, IdentityFee},
+	PalletId,
 };
 use orml_currencies::BasicCurrencyAdapter;
 use orml_traits::parameter_type_with_key;
 use pallet_grandpa::{
 	fg_primitives, AuthorityId as GrandpaId, AuthorityList as GrandpaAuthorityList,
 };
-use primitives::{
-	AddressConversion as StellarAddressConversion, BalanceConversion as StellarBalanceConversion,
-	CurrencyConversion as StellarCurrencyConversion,
-	StringCurrencyConversion as StellarStringCurrencyConversion,
-};
 use sp_api::impl_runtime_apis;
 use sp_consensus_aura::ed25519::AuthorityId as AuraId;
 use sp_core::{crypto::KeyTypeId, OpaqueMetadata};
 use sp_runtime::{
 	create_runtime_str, generic, impl_opaque_keys,
-	traits::{AccountIdLookup, BlakeTwo256, Block as BlockT, NumberFor, Zero},
+	traits::{AccountIdConversion, AccountIdLookup, BlakeTwo256, Block as BlockT, NumberFor, Zero},
 	transaction_validity::{TransactionSource, TransactionValidity},
-	ApplyExtrinsicResult, Perbill,
+	ApplyExtrinsicResult, DispatchError, FixedPointNumber, Perbill,
 };
 use sp_std::prelude::*;
 #[cfg(feature = "std")]
 use sp_version::NativeVersion;
 use sp_version::RuntimeVersion;
 
+pub use nomination::Event as NominationEvent;
 // A few exports that help ease life for downstream crates.
 pub use primitives::{
 	self, AccountId, Balance, BlockNumber, CurrencyId, Hash, Moment, Nonce, Signature,
 	SignedFixedPoint, SignedInner, UnsignedFixedPoint, UnsignedInner,
 };
+use primitives::{CurrencyId::Token, TokenSymbol};
+pub use security::StatusCode;
+pub use stellar_relay::traits::{FieldLength, Organization, Validator};
+
+type VaultId = primitives::VaultId<AccountId, CurrencyId>;
 
 // Make the WASM binary available.
 #[cfg(feature = "std")]
@@ -55,6 +57,13 @@ impl_opaque_keys! {
 pub const UNITS: Balance = 10_000_000_000;
 pub const CENTS: Balance = UNITS / 100; // 100_000_000
 pub const MILLICENTS: Balance = CENTS / 1_000; // 100_000
+
+// These time units are defined in number of blocks.
+pub const MINUTES: BlockNumber = 60_000 / (MILLISECS_PER_BLOCK as BlockNumber);
+pub const HOURS: BlockNumber = MINUTES * 60;
+pub const DAYS: BlockNumber = HOURS * 24;
+pub const WEEKS: BlockNumber = DAYS * 7;
+pub const YEARS: BlockNumber = DAYS * 365;
 
 /// This runtime version.
 #[sp_version::runtime_version]
@@ -168,8 +177,15 @@ impl pallet_timestamp::Config for Runtime {
 	type WeightInfo = ();
 }
 
+const NATIVE_TOKEN_ID: TokenSymbol = TokenSymbol::PEN;
+const NATIVE_CURRENCY_ID: CurrencyId = Token(NATIVE_TOKEN_ID);
+const PARENT_CURRENCY_ID: CurrencyId = Token(TokenSymbol::DOT);
+const WRAPPED_CURRENCY_ID: CurrencyId = Token(TokenSymbol::IBTC);
+
 parameter_types! {
-	pub const GetNativeCurrencyId: CurrencyId = CurrencyId::Native;
+	pub const GetNativeCurrencyId: CurrencyId = NATIVE_CURRENCY_ID;
+	pub const GetRelayChainCurrencyId: CurrencyId = PARENT_CURRENCY_ID;
+	pub const GetWrappedCurrencyId: CurrencyId = WRAPPED_CURRENCY_ID;
 	pub const TransactionByteFee: Balance = MILLICENTS;
 }
 
@@ -184,6 +200,23 @@ impl pallet_transaction_payment::Config for Runtime {
 impl pallet_sudo::Config for Runtime {
 	type Event = Event;
 	type Call = Call;
+}
+
+// Pallet accounts
+parameter_types! {
+	pub const FeePalletId: PalletId = PalletId(*b"mod/fees");
+	pub const VaultRegistryPalletId: PalletId = PalletId(*b"mod/vreg");
+}
+
+parameter_types! {
+	// 5EYCAe5i8QbRr5WN1PvaAVqPbfXsqazk9ocaxuzcTjgXPM1e
+	pub FeeAccount: AccountId = FeePalletId::get().into_account_truncating();
+	// 5EYCAe5i8QbRra1jndPz1WAuf1q1KHQNfu2cW1EXJ231emTd
+	pub VaultRegistryAccount: AccountId = VaultRegistryPalletId::get().into_account_truncating();
+}
+
+pub fn get_all_module_accounts() -> Vec<AccountId> {
+	vec![FeeAccount::get(), VaultRegistryAccount::get()]
 }
 
 parameter_types! {
@@ -219,16 +252,6 @@ impl Contains<AccountId> for DustRemovalWhitelist {
 	}
 }
 
-impl pallet_spacewalk::Config for Runtime {
-	type Call = Call;
-	type Event = Event;
-	type Currency = Currencies;
-	type AddressConversion = StellarAddressConversion;
-	type BalanceConversion = StellarBalanceConversion;
-	type StringCurrencyConversion = StellarStringCurrencyConversion;
-	type CurrencyConversion = StellarCurrencyConversion;
-}
-
 impl orml_currencies::Config for Runtime {
 	type MultiCurrency = Tokens;
 	type NativeCurrency = BasicCurrencyAdapter<Runtime, Balances, primitives::Amount, BlockNumber>;
@@ -253,13 +276,98 @@ parameter_types! {
 	pub const ValidatorLimit: u32 = 255;
 }
 
+impl reward::Config for Runtime {
+	type Event = Event;
+	type SignedFixedPoint = SignedFixedPoint;
+	type RewardId = VaultId;
+	type CurrencyId = CurrencyId;
+	type GetNativeCurrencyId = GetNativeCurrencyId;
+	type GetWrappedCurrencyId = GetWrappedCurrencyId;
+}
+
+impl security::Config for Runtime {
+	type Event = Event;
+}
+
+pub struct CurrencyConvert;
+impl currency::CurrencyConversion<currency::Amount<Runtime>, CurrencyId> for CurrencyConvert {
+	fn convert(
+		amount: &currency::Amount<Runtime>,
+		to: CurrencyId,
+	) -> Result<currency::Amount<Runtime>, DispatchError> {
+		Oracle::convert(amount, to)
+	}
+}
+
+impl currency::Config for Runtime {
+	type SignedInner = SignedInner;
+	type SignedFixedPoint = SignedFixedPoint;
+	type UnsignedFixedPoint = UnsignedFixedPoint;
+	type Balance = Balance;
+	type GetNativeCurrencyId = GetNativeCurrencyId;
+	type GetRelayChainCurrencyId = GetRelayChainCurrencyId;
+	type GetWrappedCurrencyId = GetWrappedCurrencyId;
+	type CurrencyConversion = CurrencyConvert;
+}
+
+impl staking::Config for Runtime {
+	type Event = Event;
+	type SignedFixedPoint = SignedFixedPoint;
+	type SignedInner = SignedInner;
+	type CurrencyId = CurrencyId;
+	type GetNativeCurrencyId = GetNativeCurrencyId;
+}
+
 pub type OrganizationId = u128;
 
-impl pallet_stellar_relay::Config for Runtime {
+impl stellar_relay::Config for Runtime {
 	type Event = Event;
 	type OrganizationId = OrganizationId;
 	type OrganizationLimit = OrganizationLimit;
 	type ValidatorLimit = ValidatorLimit;
+	type WeightInfo = ();
+}
+
+impl vault_registry::Config for Runtime {
+	type PalletId = VaultRegistryPalletId;
+	type Event = Event;
+	type Balance = Balance;
+	type WeightInfo = ();
+	type GetGriefingCollateralCurrencyId = GetNativeCurrencyId;
+}
+
+impl<C> frame_system::offchain::SendTransactionTypes<C> for Runtime
+where
+	Call: From<C>,
+{
+	type OverarchingCall = Call;
+	type Extrinsic = UncheckedExtrinsic;
+}
+
+impl oracle::Config for Runtime {
+	type Event = Event;
+	type WeightInfo = ();
+}
+
+parameter_types! {
+	pub const MaxExpectedValue: UnsignedFixedPoint = UnsignedFixedPoint::from_inner(<UnsignedFixedPoint as FixedPointNumber>::DIV);
+}
+
+impl fee::Config for Runtime {
+	type FeePalletId = FeePalletId;
+	type WeightInfo = ();
+	type SignedFixedPoint = SignedFixedPoint;
+	type SignedInner = SignedInner;
+	type UnsignedFixedPoint = UnsignedFixedPoint;
+	type UnsignedInner = UnsignedInner;
+	type VaultRewards = VaultRewards;
+	type VaultStaking = VaultStaking;
+	type OnSweep = currency::SweepFunds<Runtime, FeeAccount>;
+	type MaxExpectedValue = MaxExpectedValue;
+}
+
+impl nomination::Config for Runtime {
+	type Event = Event;
 	type WeightInfo = ();
 }
 
@@ -275,12 +383,22 @@ construct_runtime! {
 		Grandpa: pallet_grandpa::{Pallet, Call, Storage, Config, Event} = 3,
 		Sudo: pallet_sudo::{Pallet, Call, Storage, Config<T>, Event<T>} = 4,
 		Tokens: orml_tokens::{Pallet, Call, Storage, Config<T>, Event<T>} = 5,
-		Spacewalk: pallet_spacewalk::{Pallet, Call, Storage, Event<T>} = 6,
 		Currencies: orml_currencies::{Pallet, Call, Storage} = 7,
 		Balances: pallet_balances::{Pallet, Call, Storage, Config<T>, Event<T>} = 8,
 		TransactionPayment: pallet_transaction_payment::{Pallet, Storage} = 9,
 
-		StellarRelay: pallet_stellar_relay::{Pallet, Call, Storage, Event<T>} = 10,
+		StellarRelay: stellar_relay::{Pallet, Call, Config<T>, Storage, Event<T>} = 10,
+
+		VaultRewards: reward::{Pallet, Storage, Event<T>} = 15,
+		VaultStaking: staking::{Pallet, Storage, Event<T>} = 16,
+
+		Currency: currency::{Pallet} = 17,
+		Security: security::{Pallet, Call, Config, Storage, Event<T>} = 19,
+		VaultRegistry: vault_registry::{Pallet, Call, Config<T>, Storage, Event<T>, ValidateUnsigned} = 21,
+		Oracle: oracle::{Pallet, Call, Config<T>, Storage, Event<T>} = 22,
+		Fee: fee::{Pallet, Call, Config<T>, Storage} = 26,
+		Nomination: nomination::{Pallet, Call, Config, Storage, Event<T>} = 28,
+
 	}
 }
 
@@ -322,7 +440,11 @@ mod benches {
 	define_benchmarks!(
 		[frame_benchmarking, BaselineBench::<Runtime>]
 		[frame_system, SystemBench::<Runtime>]
-		[pallet_stellar_relay, StellarRelay]
+		[stellar_relay, StellarRelay]
+		[fee, Fee]
+		[oracle, Oracle]
+		[vault_registry, VaultRegistry]
+		[nomination, Nomination]
 	);
 }
 

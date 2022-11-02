@@ -1,15 +1,22 @@
+use std::{convert::TryFrom, str::FromStr};
+
+use frame_support::BoundedVec;
 use hex_literal::hex;
 use sc_service::ChainType;
 use serde_json::{map::Map, Value};
+use sp_arithmetic::{FixedPointNumber, FixedU128};
 use sp_consensus_aura::ed25519::AuthorityId as AuraId;
 use sp_core::{crypto::UncheckedInto, ed25519, sr25519, Pair, Public};
 use sp_finality_grandpa::AuthorityId as GrandpaId;
 use sp_runtime::traits::{IdentifyAccount, Verify};
+
+use primitives::{CurrencyId::Token, VaultCurrencyPair, DOT, KSM};
 use spacewalk_runtime::{
-	AccountId, AuraConfig, BalancesConfig, CurrencyId, GenesisConfig, GrandpaConfig, Signature,
-	SudoConfig, SystemConfig, TokensConfig, WASM_BINARY,
+	AccountId, AuraConfig, BalancesConfig, CurrencyId, FeeConfig, FieldLength, GenesisConfig,
+	GetWrappedCurrencyId, GrandpaConfig, NominationConfig, OracleConfig, Organization,
+	SecurityConfig, Signature, StatusCode, StellarRelayConfig, SudoConfig, SystemConfig,
+	TokensConfig, Validator, VaultRegistryConfig, DAYS, WASM_BINARY,
 };
-use std::{convert::TryFrom, str::FromStr};
 
 // The URL for the telemetry server.
 // const STAGING_TELEMETRY_URL: &str = "wss://telemetry.polkadot.io/submit/";
@@ -74,6 +81,11 @@ pub fn local_config() -> ChainSpec {
 					get_account_id_from_seed::<ed25519::Public>("Eve//stash"),
 					get_account_id_from_seed::<ed25519::Public>("Ferdie//stash"),
 				],
+				vec![(
+					get_account_id_from_seed::<sr25519::Public>("Bob"),
+					"Bob".as_bytes().to_vec(),
+				)],
+				false,
 			)
 		},
 		vec![],
@@ -133,6 +145,11 @@ pub fn beta_testnet_config() -> ChainSpec {
 					get_account_id_from_string("5H8zjSWfzMn86d1meeNrZJDj3QZSvRjKxpTfuVaZ46QJZ4qs"),
 					get_account_id_from_string("5FPBT2BVVaLveuvznZ9A1TUtDcbxK5yvvGcMTJxgFmhcWGwj"),
 				],
+				vec![(
+					get_account_id_from_seed::<sr25519::Public>("Bob"),
+					"Bob".as_bytes().to_vec(),
+				)],
+				false,
 			)
 		},
 		Vec::new(),
@@ -170,6 +187,11 @@ pub fn development_config() -> ChainSpec {
 					get_account_id_from_seed::<ed25519::Public>("Eve//stash"),
 					get_account_id_from_seed::<ed25519::Public>("Ferdie//stash"),
 				],
+				vec![(
+					get_account_id_from_seed::<sr25519::Public>("Bob"),
+					"Bob".as_bytes().to_vec(),
+				)],
+				false,
 			)
 		},
 		Vec::new(),
@@ -181,22 +203,54 @@ pub fn development_config() -> ChainSpec {
 	)
 }
 
+fn default_pair(currency_id: CurrencyId) -> VaultCurrencyPair<CurrencyId> {
+	VaultCurrencyPair { collateral: currency_id, wrapped: GetWrappedCurrencyId::get() }
+}
+
+// Used to create bounded vecs for genesis config
+// Does not return a result but panics because the genesis config is hardcoded
+fn create_bounded_vec(input: &str) -> BoundedVec<u8, FieldLength> {
+	let bounded_vec =
+		BoundedVec::try_from(input.as_bytes().to_vec()).expect("Failed to create bounded vec");
+
+	bounded_vec
+}
+
 fn testnet_genesis(
 	root_key: AccountId,
 	initial_authorities: Vec<(AuraId, GrandpaId)>,
 	endowed_accounts: Vec<AccountId>,
+	authorized_oracles: Vec<(AccountId, Vec<u8>)>,
+	start_shutdown: bool,
 ) -> GenesisConfig {
-	let stellar_usdc_asset: CurrencyId = CurrencyId::try_from((
-		"USDC",
-		substrate_stellar_sdk::PublicKey::from_encoding(
-			"GAKNDFRRWA3RPWNLTI3G4EBSD3RGNZZOY5WKWYMQ6CQTG3KIEKPYWAYC",
-		)
-		.unwrap()
-		.as_binary()
-		.clone(),
-	))
-	.unwrap();
-
+	// Testnet organization
+	let organization_testnet_sdf =
+		Organization { name: create_bounded_vec("sdftest"), id: 1u128.into() };
+	// Testnet validators
+	let validators = vec![
+		Validator {
+			name: create_bounded_vec("$sdftest1"),
+			public_key: create_bounded_vec(
+				"GDKXE2OZMJIPOSLNA6N6F2BVCI3O777I2OOC4BV7VOYUEHYX7RTRYA7Y",
+			),
+			organization_id: organization_testnet_sdf.id,
+		},
+		Validator {
+			name: create_bounded_vec("$sdftest2"),
+			public_key: create_bounded_vec(
+				"GCUCJTIYXSOXKBSNFGNFWW5MUQ54HKRPGJUTQFJ5RQXZXNOLNXYDHRAP",
+			),
+			organization_id: organization_testnet_sdf.id,
+		},
+		Validator {
+			name: create_bounded_vec("$sdftest3"),
+			public_key: create_bounded_vec(
+				"GC2V2EFSXN6SQTWVYA5EPJPBWWIMSD2XQNKUOHGEKB535AQE2I6IXV2Z",
+			),
+			organization_id: organization_testnet_sdf.id,
+		},
+	];
+	let organizations = vec![organization_testnet_sdf];
 	GenesisConfig {
 		system: SystemConfig {
 			code: WASM_BINARY.expect("WASM binary was not build, please build it!").to_vec(),
@@ -219,13 +273,50 @@ fn testnet_genesis(
 			// Configure the initial token supply for the native currency and USDC asset
 			balances: endowed_accounts
 				.iter()
-				.flat_map(|k| {
-					vec![
-						(k.clone(), CurrencyId::Native, 1 << 60),
-						(k.clone(), stellar_usdc_asset, 1 << 60),
-					]
-				})
+				.flat_map(|k| vec![(k.clone(), CurrencyId::Token(DOT), 1 << 60)])
 				.collect(),
 		},
+		security: SecurityConfig {
+			initial_status: if start_shutdown { StatusCode::Shutdown } else { StatusCode::Error },
+		},
+		stellar_relay: StellarRelayConfig {
+			validators,
+			organizations,
+			is_public_network: false,
+			phantom: Default::default(),
+		},
+		oracle: OracleConfig {
+			authorized_oracles,
+			max_delay: 3600000, // one hour
+		},
+		vault_registry: VaultRegistryConfig {
+			minimum_collateral_vault: vec![(Token(DOT), 0), (Token(KSM), 0)],
+			punishment_delay: DAYS,
+			secure_collateral_threshold: vec![
+				(default_pair(Token(DOT)), FixedU128::checked_from_rational(150, 100).unwrap()),
+				(default_pair(Token(KSM)), FixedU128::checked_from_rational(150, 100).unwrap()),
+			], /* 150% */
+			premium_redeem_threshold: vec![
+				(default_pair(Token(DOT)), FixedU128::checked_from_rational(135, 100).unwrap()),
+				(default_pair(Token(KSM)), FixedU128::checked_from_rational(135, 100).unwrap()),
+			], /* 135% */
+			liquidation_collateral_threshold: vec![
+				(default_pair(Token(DOT)), FixedU128::checked_from_rational(110, 100).unwrap()),
+				(default_pair(Token(KSM)), FixedU128::checked_from_rational(110, 100).unwrap()),
+			], /* 110% */
+			system_collateral_ceiling: vec![
+				(default_pair(Token(DOT)), 1000 * DOT.one()),
+				(default_pair(Token(KSM)), 1000 * KSM.one()),
+			],
+		},
+		fee: FeeConfig {
+			issue_fee: FixedU128::checked_from_rational(15, 10000).unwrap(), // 0.15%
+			issue_griefing_collateral: FixedU128::checked_from_rational(5, 100000).unwrap(), // 0.005%
+			redeem_fee: FixedU128::checked_from_rational(5, 1000).unwrap(),  // 0.5%
+			premium_redeem_fee: FixedU128::checked_from_rational(5, 100).unwrap(), // 5%
+			punishment_fee: FixedU128::checked_from_rational(1, 10).unwrap(), // 10%
+			replace_griefing_collateral: FixedU128::checked_from_rational(1, 10).unwrap(), // 10%
+		},
+		nomination: NominationConfig { is_nomination_enabled: false },
 	}
 }

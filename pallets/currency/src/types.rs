@@ -3,6 +3,7 @@ use frame_support::dispatch::DispatchError;
 use crate::Config;
 
 pub type CurrencyId<T> = <T as orml_tokens::Config>::CurrencyId;
+pub type AccountIdOf<T> = <T as frame_system::Config>::AccountId;
 
 pub(crate) type BalanceOf<T> = <T as Config>::Balance;
 
