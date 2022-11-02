@@ -3,6 +3,7 @@ use frame_support::{
 	traits::{ConstU32, Everything},
 };
 use orml_traits::parameter_type_with_key;
+pub use primitives::{CurrencyId::Token, TokenSymbol::*};
 use sp_arithmetic::{FixedI128, FixedU128};
 use sp_core::H256;
 use sp_runtime::{
@@ -72,6 +73,9 @@ impl frame_system::Config for Test {
 }
 
 parameter_types! {
+	pub const GetNativeCurrencyId: CurrencyId = Token(INTR);
+	pub const GetRelayChainCurrencyId: CurrencyId = Token(DOT);
+	pub const GetWrappedCurrencyId: CurrencyId = Token(IBTC);
 	pub const MaxLocks: u32 = 50;
 }
 
@@ -112,6 +116,9 @@ impl crate::Config for Test {
 	type SignedFixedPoint = SignedFixedPoint;
 	type UnsignedFixedPoint = UnsignedFixedPoint;
 	type Balance = Balance;
+	type GetNativeCurrencyId = GetNativeCurrencyId;
+	type GetRelayChainCurrencyId = GetRelayChainCurrencyId;
+	type GetWrappedCurrencyId = GetWrappedCurrencyId;
 	type CurrencyConversion = CurrencyConvert;
 }
 
