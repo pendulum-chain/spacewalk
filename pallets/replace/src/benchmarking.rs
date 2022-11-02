@@ -1,29 +1,31 @@
-use super::*;
-use bitcoin::{
-	formatter::{Formattable, TryFormattable},
-	types::{
-		BlockBuilder, RawBlockHeader, TransactionBuilder, TransactionInputBuilder,
-		TransactionInputSource, TransactionOutput,
-	},
-};
-use btc_relay::{BtcAddress, BtcPublicKey};
-use currency::getters::{get_relay_chain_currency_id as get_collateral_currency_id, *};
 use frame_benchmarking::{account, benchmarks, impl_benchmark_test_suite};
 use frame_support::assert_ok;
 use frame_system::RawOrigin;
 use orml_traits::MultiCurrency;
-use primitives::{CurrencyId, VaultCurrencyPair, VaultId};
-use sp_core::{H256, U256};
+use sp_core::H256;
 use sp_runtime::{traits::One, FixedPointNumber};
 use sp_std::prelude::*;
-use vault_registry::types::{DefaultVaultCurrencyPair, Vault};
+
+use currency::getters::{get_relay_chain_currency_id as get_collateral_currency_id, *};
+use oracle::Pallet as Oracle;
+use primitives::{CurrencyId, VaultCurrencyPair, VaultId};
+use security::Pallet as Security;
+use stellar_relay::{
+	testing_utils::{
+		build_dummy_proof_for, get_validators_and_organizations, DEFAULT_STELLAR_PUBLIC_KEY,
+		RANDOM_STELLAR_PUBLIC_KEY,
+	},
+	Pallet as StellarRelay,
+};
+use vault_registry::{
+	types::{DefaultVaultCurrencyPair, Vault},
+	Pallet as VaultRegistry,
+};
 
 // Pallets
 use crate::Pallet as Replace;
-use btc_relay::Pallet as BtcRelay;
-use oracle::Pallet as Oracle;
-use security::Pallet as Security;
-use vault_registry::Pallet as VaultRegistry;
+
+use super::*;
 
 type UnsignedFixedPoint<T> = <T as currency::Config>::UnsignedFixedPoint;
 
@@ -51,70 +53,6 @@ fn mint_collateral<T: crate::Config>(account_id: &T::AccountId, amount: BalanceO
 	deposit_tokens::<T>(get_native_currency_id::<T>(), account_id, amount);
 }
 
-fn mine_blocks_until_expiry<T: crate::Config>(request: &DefaultReplaceRequest<T>) {
-	let period = Replace::<T>::replace_period().max(request.period);
-	let expiry_height = BtcRelay::<T>::bitcoin_expiry_height(request.btc_height, period).unwrap();
-	mine_blocks::<T>(expiry_height + 100);
-}
-
-fn mine_blocks<T: crate::Config>(end_height: u32) {
-	let relayer_id: T::AccountId = account("Relayer", 0, 0);
-	mint_collateral::<T>(&relayer_id, (1u32 << 31).into());
-
-	let height = 0;
-	let block = BlockBuilder::new()
-		.with_version(4)
-		.with_coinbase(&BtcAddress::dummy(), 50, 3)
-		.with_timestamp(1588813835)
-		.mine(U256::from(2).pow(254.into()))
-		.unwrap();
-
-	let raw_block_header = RawBlockHeader::from_bytes(&block.header.try_format().unwrap()).unwrap();
-	let block_header = BtcRelay::<T>::parse_raw_block_header(&raw_block_header).unwrap();
-
-	Security::<T>::set_active_block_number(1u32.into());
-	BtcRelay::<T>::_initialize(relayer_id.clone(), block_header, height).unwrap();
-
-	let transaction = TransactionBuilder::new()
-		.with_version(2)
-		.add_input(
-			TransactionInputBuilder::new()
-				.with_source(TransactionInputSource::FromOutput(block.transactions[0].hash(), 0))
-				.with_script(&[
-					0, 71, 48, 68, 2, 32, 91, 128, 41, 150, 96, 53, 187, 63, 230, 129, 53, 234,
-					210, 186, 21, 187, 98, 38, 255, 112, 30, 27, 228, 29, 132, 140, 155, 62, 123,
-					216, 232, 168, 2, 32, 72, 126, 179, 207, 142, 8, 99, 8, 32, 78, 244, 166, 106,
-					160, 207, 227, 61, 210, 172, 234, 234, 93, 59, 159, 79, 12, 194, 240, 212, 3,
-					120, 50, 1, 71, 81, 33, 3, 113, 209, 131, 177, 9, 29, 242, 229, 15, 217, 247,
-					165, 78, 111, 80, 79, 50, 200, 117, 80, 30, 233, 210, 167, 133, 175, 62, 253,
-					134, 127, 212, 51, 33, 2, 128, 200, 184, 235, 148, 25, 43, 34, 28, 173, 55, 54,
-					189, 164, 187, 243, 243, 152, 7, 84, 210, 85, 156, 238, 77, 97, 188, 240, 162,
-					197, 105, 62, 82, 174,
-				])
-				.build(),
-		)
-		.build();
-
-	let mut prev_hash = block.header.hash;
-	for _ in 0..end_height {
-		let block = BlockBuilder::new()
-			.with_previous_hash(prev_hash)
-			.with_version(4)
-			.with_coinbase(&BtcAddress::dummy(), 50, 3)
-			.with_timestamp(1588813835)
-			.add_transaction(transaction.clone())
-			.mine(U256::from(2).pow(254.into()))
-			.unwrap();
-		prev_hash = block.header.hash;
-
-		let raw_block_header =
-			RawBlockHeader::from_bytes(&block.header.try_format().unwrap()).unwrap();
-		let block_header = BtcRelay::<T>::parse_raw_block_header(&raw_block_header).unwrap();
-
-		BtcRelay::<T>::_store_block_header(&relayer_id, block_header).unwrap();
-	}
-}
-
 fn test_request<T: crate::Config>(
 	new_vault_id: &DefaultVaultId<T>,
 	old_vault_id: &DefaultVaultId<T>,
@@ -125,11 +63,11 @@ fn test_request<T: crate::Config>(
 		period: Default::default(),
 		accept_time: Default::default(),
 		amount: Default::default(),
+		asset: get_wrapped_currency_id::<T>(),
 		griefing_collateral: Default::default(),
-		btc_address: Default::default(),
 		collateral: Default::default(),
-		btc_height: Default::default(),
 		status: Default::default(),
+		stellar_address: Default::default(),
 	}
 }
 
@@ -143,7 +81,7 @@ fn get_vault_id<T: crate::Config>(name: &'static str) -> DefaultVaultId<T> {
 
 fn register_public_key<T: crate::Config>(vault_id: DefaultVaultId<T>) {
 	let origin = RawOrigin::Signed(vault_id.account_id);
-	assert_ok!(VaultRegistry::<T>::register_public_key(origin.into(), BtcPublicKey::dummy()));
+	assert_ok!(VaultRegistry::<T>::register_public_key(origin.into(), DEFAULT_STELLAR_PUBLIC_KEY));
 }
 
 fn register_vault<T: crate::Config>(vault_id: DefaultVaultId<T>) {
@@ -202,7 +140,7 @@ benchmarks! {
 		let amount = dust_value.checked_add(&wrapped(100u32)).unwrap();
 		let griefing = 1000u32.into();
 
-		let new_vault_btc_address = BtcAddress::dummy();
+		let new_vault_stellar_address = RANDOM_STELLAR_PUBLIC_KEY;
 
 		VaultRegistry::<T>::_set_secure_collateral_threshold(get_currency_pair::<T>(), UnsignedFixedPoint::<T>::checked_from_rational(1, 100000).unwrap());
 		Oracle::<T>::_set_exchange_rate(get_collateral_currency_id::<T>(), UnsignedFixedPoint::<T>::one()).unwrap();
@@ -222,19 +160,19 @@ benchmarks! {
 
 		Oracle::<T>::_set_exchange_rate(get_collateral_currency_id::<T>(), UnsignedFixedPoint::<T>::one()
 		).unwrap();
-	}: _(RawOrigin::Signed(new_vault_id.account_id.clone()), new_vault_id.currencies.clone(), old_vault_id, amount.amount(), griefing, new_vault_btc_address)
+	}: _(RawOrigin::Signed(new_vault_id.account_id.clone()), new_vault_id.currencies.clone(), old_vault_id, amount.amount(), griefing, new_vault_stellar_address)
 
 	execute_replace {
 		let new_vault_id = get_vault_id::<T>("NewVault");
 		let old_vault_id = get_vault_id::<T>("OldVault");
 		let relayer_id: T::AccountId = account("Relayer", 0, 0);
 
-		let new_vault_btc_address = BtcAddress::dummy();
-		let old_vault_btc_address = BtcAddress::dummy();
+		let new_vault_stellar_address = [4u8; 32];
+		let old_vault_stellar_address = [5u8; 32];
 
 		let replace_id = H256::zero();
 		let mut replace_request = test_request::<T>(&new_vault_id, &old_vault_id);
-		replace_request.btc_address = old_vault_btc_address;
+		replace_request.stellar_address = old_vault_stellar_address;
 
 		Replace::<T>::insert_replace_request(&replace_id, &replace_request);
 
@@ -256,63 +194,14 @@ benchmarks! {
 			new_vault
 		);
 
-		let height = 0;
-		let block = BlockBuilder::new()
-			.with_version(4)
-			.with_coinbase(&new_vault_btc_address, 50, 3)
-			.with_timestamp(1588813835)
-			.mine(U256::from(2).pow(254.into())).unwrap();
-
-		let block_hash = block.header.hash;
-		let raw_block_header = RawBlockHeader::from_bytes(&block.header.try_format().unwrap()).unwrap();
-		let block_header = BtcRelay::<T>::parse_raw_block_header(&raw_block_header).unwrap();
-
 		Security::<T>::set_active_block_number(1u32.into());
 		VaultRegistry::<T>::_set_system_collateral_ceiling(get_currency_pair::<T>(), 1_000_000_000u32.into());
-		BtcRelay::<T>::_initialize(relayer_id.clone(), block_header, height).unwrap();
 
-		let value = 0;
-		let transaction = TransactionBuilder::new()
-			.with_version(2)
-			.add_input(
-				TransactionInputBuilder::new()
-					.with_source(TransactionInputSource::FromOutput(block.transactions[0].hash(), 0))
-					.with_script(&[
-						0, 71, 48, 68, 2, 32, 91, 128, 41, 150, 96, 53, 187, 63, 230, 129, 53, 234,
-						210, 186, 21, 187, 98, 38, 255, 112, 30, 27, 228, 29, 132, 140, 155, 62, 123,
-						216, 232, 168, 2, 32, 72, 126, 179, 207, 142, 8, 99, 8, 32, 78, 244, 166, 106,
-						160, 207, 227, 61, 210, 172, 234, 234, 93, 59, 159, 79, 12, 194, 240, 212, 3,
-						120, 50, 1, 71, 81, 33, 3, 113, 209, 131, 177, 9, 29, 242, 229, 15, 217, 247,
-						165, 78, 111, 80, 79, 50, 200, 117, 80, 30, 233, 210, 167, 133, 175, 62, 253,
-						134, 127, 212, 51, 33, 2, 128, 200, 184, 235, 148, 25, 43, 34, 28, 173, 55, 54,
-						189, 164, 187, 243, 243, 152, 7, 84, 210, 85, 156, 238, 77, 97, 188, 240, 162,
-						197, 105, 62, 82, 174,
-					])
-					.build(),
-			)
-			.add_output(TransactionOutput::payment(value.into(), &old_vault_btc_address))
-			.add_output(TransactionOutput::op_return(0, H256::zero().as_bytes()))
-			.build();
+		let (validators, organizations) = get_validators_and_organizations::<T>();
+		StellarRelay::<T>::_update_tier_1_validator_set(validators, organizations).unwrap();
+		let (tx_env_xdr_encoded, scp_envs_xdr_encoded, tx_set_xdr_encoded) = build_dummy_proof_for::<T>(replace_id, false);
 
-		let block = BlockBuilder::new()
-			.with_previous_hash(block_hash)
-			.with_version(4)
-			.with_coinbase(&new_vault_btc_address, 50, 3)
-			.with_timestamp(1588813835)
-			.add_transaction(transaction.clone())
-			.mine(U256::from(2).pow(254.into())).unwrap();
-
-		let tx_id = transaction.tx_id();
-		let proof = block.merkle_proof(&[tx_id]).unwrap().try_format().unwrap();
-		let raw_tx = transaction.format_with(true);
-
-		let raw_block_header = RawBlockHeader::from_bytes(&block.header.try_format().unwrap()).unwrap();
-		let block_header = BtcRelay::<T>::parse_raw_block_header(&raw_block_header).unwrap();
-
-		BtcRelay::<T>::_store_block_header(&relayer_id, block_header).unwrap();
-		Security::<T>::set_active_block_number(Security::<T>::active_block_number() + BtcRelay::<T>::parachain_confirmations() + 1u32.into());
-
-	}: _(RawOrigin::Signed(old_vault_id.account_id), replace_id, proof, raw_tx)
+	}: _(RawOrigin::Signed(old_vault_id.account_id), replace_id, tx_env_xdr_encoded, scp_envs_xdr_encoded, tx_set_xdr_encoded)
 
 	cancel_replace {
 		let new_vault_id = get_vault_id::<T>("NewVault");
@@ -328,7 +217,6 @@ benchmarks! {
 		Replace::<T>::insert_replace_request(&replace_id, &replace_request);
 
 		// expire replace request
-		mine_blocks_until_expiry::<T>(&replace_request);
 		Security::<T>::set_active_block_number(Security::<T>::active_block_number() + Replace::<T>::replace_period() + 100u32.into());
 
 		VaultRegistry::<T>::_set_secure_collateral_threshold(get_currency_pair::<T>(), UnsignedFixedPoint::<T>::checked_from_rational(1, 100000).unwrap());
