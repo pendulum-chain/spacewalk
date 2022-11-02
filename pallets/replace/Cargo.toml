@@ -46,6 +46,7 @@ frame-benchmarking = { git = "https://github.com/paritytech/substrate", branch =
 reward = { path = "../reward" }
 staking = { path = "../staking" }
 currency = { path = "../currency", features = ["testing-utils"] }
+stellar-relay = { package = "pallet-stellar-relay", path = "../stellar-relay", features = ["testing-utils"] }
 
 # Orml dependencies
 orml-tokens = { git = "https://github.com/open-web3-stack/open-runtime-module-library", branch = "polkadot-v0.9.24" }
@@ -83,4 +84,5 @@ runtime-benchmarks = [
     "frame-system/runtime-benchmarks",
     "orml-tokens",
     "orml-traits",
+    "stellar-relay/testing-utils"
 ]

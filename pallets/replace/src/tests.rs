@@ -1,25 +1,16 @@
+use frame_support::{assert_err, assert_ok};
+use mocktopus::mocking::*;
+use sp_core::H256;
+
+use currency::Amount;
+use stellar_relay::testing_utils::DEFAULT_STELLAR_PUBLIC_KEY;
+
 use crate::{
 	mock::{CurrencyId, *},
 	*,
 };
 
-use bitcoin::types::{MerkleProof, Transaction};
-use btc_relay::BtcAddress;
-use currency::Amount;
-use frame_support::{assert_err, assert_ok};
-use mocktopus::mocking::*;
-use sp_core::H256;
-
 type Event = crate::Event<Test>;
-
-fn dummy_merkle_proof() -> MerkleProof {
-	MerkleProof {
-		block_header: Default::default(),
-		transactions_count: 0,
-		flag_bits: vec![],
-		hashes: vec![],
-	}
-}
 
 macro_rules! assert_event_matches {
     ($( $pattern:pat_param )|+ $( if $guard: expr )? $(,)?) => {
@@ -39,10 +30,10 @@ fn test_request() -> ReplaceRequest<AccountId, BlockNumber, Balance, CurrencyId>
 		old_vault: OLD_VAULT,
 		accept_time: 1,
 		amount: 10,
+		asset: DEFAULT_WRAPPED_CURRENCY,
 		griefing_collateral: 0,
-		btc_address: BtcAddress::random(),
+		stellar_address: DEFAULT_STELLAR_PUBLIC_KEY,
 		collateral: 20,
-		btc_height: 0,
 		status: ReplaceRequestStatus::Pending,
 	}
 }
@@ -111,6 +102,7 @@ mod request_replace_tests {
 
 mod accept_replace_tests {
 	use super::*;
+	use stellar_relay::testing_utils::RANDOM_STELLAR_PUBLIC_KEY;
 
 	fn setup_mocks() {
 		ext::vault_registry::ensure_not_banned::<Test>.mock_safe(|_| MockResult::Return(Ok(())));
@@ -129,15 +121,16 @@ mod accept_replace_tests {
 	fn test_accept_replace_succeeds() {
 		run_test(|| {
 			setup_mocks();
-			let btc_address = BtcAddress::random();
-			assert_ok!(Replace::_accept_replace(OLD_VAULT, NEW_VAULT, 5, 10, btc_address));
+			let stellar_address = RANDOM_STELLAR_PUBLIC_KEY;
+			assert_ok!(Replace::_accept_replace(OLD_VAULT, NEW_VAULT, 5, 10, stellar_address));
 			assert_event_matches!(Event::AcceptReplace{
                 replace_id: _,
                 old_vault_id: OLD_VAULT,
                 new_vault_id: NEW_VAULT,
                 amount: 5,
+				asset: DEFAULT_WRAPPED_CURRENCY,
                 collateral: 10,
-                btc_address: addr} if addr == btc_address);
+                stellar_address: addr} if addr == stellar_address);
 		})
 	}
 
@@ -149,16 +142,17 @@ mod accept_replace_tests {
 			ext::vault_registry::decrease_to_be_replaced_tokens::<Test>
 				.mock_safe(|_, _| MockResult::Return(Ok((wrapped(4), griefing(8)))));
 
-			let btc_address = BtcAddress::random();
+			let stellar_address = RANDOM_STELLAR_PUBLIC_KEY;
 
-			assert_ok!(Replace::_accept_replace(OLD_VAULT, NEW_VAULT, 5, 10, btc_address));
+			assert_ok!(Replace::_accept_replace(OLD_VAULT, NEW_VAULT, 5, 10, stellar_address));
 			assert_event_matches!(Event::AcceptReplace{
                 replace_id: _, 
                 old_vault_id: OLD_VAULT, 
                 new_vault_id: NEW_VAULT, 
                 amount: 4, 
+				asset: DEFAULT_WRAPPED_CURRENCY,
                 collateral: 8,
-                btc_address: addr} if addr == btc_address);
+                stellar_address: addr} if addr == stellar_address);
 		})
 	}
 
@@ -169,7 +163,7 @@ mod accept_replace_tests {
 			ext::vault_registry::decrease_to_be_replaced_tokens::<Test>
 				.mock_safe(|_, _| MockResult::Return(Ok((wrapped(1), griefing(10)))));
 			assert_err!(
-				Replace::_accept_replace(OLD_VAULT, NEW_VAULT, 5, 10, BtcAddress::random()),
+				Replace::_accept_replace(OLD_VAULT, NEW_VAULT, 5, 10, RANDOM_STELLAR_PUBLIC_KEY),
 				TestError::AmountBelowDustAmount
 			);
 		})
@@ -178,6 +172,7 @@ mod accept_replace_tests {
 
 mod execute_replace_test {
 	use currency::Amount;
+	use stellar_relay::testing_utils::create_dummy_scp_structs_encoded;
 
 	use super::*;
 
@@ -190,14 +185,8 @@ mod execute_replace_test {
 		});
 
 		Replace::replace_period.mock_safe(|| MockResult::Return(20));
-		ext::btc_relay::has_request_expired::<Test>
-			.mock_safe(|_, _, _| MockResult::Return(Ok(false)));
-		ext::btc_relay::parse_merkle_proof::<Test>
-			.mock_safe(|_| MockResult::Return(Ok(dummy_merkle_proof())));
-		ext::btc_relay::parse_transaction::<Test>
-			.mock_safe(|_| MockResult::Return(Ok(Transaction::default())));
-		ext::btc_relay::verify_and_validate_op_return_transaction::<Test, Balance>
-			.mock_safe(|_, _, _, _, _| MockResult::Return(Ok(())));
+		ext::stellar_relay::validate_stellar_transaction::<Test>
+			.mock_safe(move |_, _, _| MockResult::Return(Ok(())));
 		ext::vault_registry::replace_tokens::<Test>
 			.mock_safe(|_, _, _, _| MockResult::Return(Ok(())));
 		Amount::<Test>::unlock_on.mock_safe(|_, _| MockResult::Return(Ok(())));
@@ -213,7 +202,14 @@ mod execute_replace_test {
 	fn test_execute_replace_succeeds() {
 		run_test(|| {
 			setup_mocks();
-			assert_ok!(Replace::_execute_replace(H256::zero(), Vec::new(), Vec::new()));
+
+			let structs_encoded = create_dummy_scp_structs_encoded();
+			assert_ok!(Replace::_execute_replace(
+				H256::zero(),
+				structs_encoded.0,
+				structs_encoded.1,
+				structs_encoded.2
+			));
 			assert_event_matches!(Event::ExecuteReplace {
 				replace_id: _,
 				old_vault_id: OLD_VAULT,
@@ -235,7 +231,13 @@ mod execute_replace_test {
 				replace
 			});
 
-			assert_ok!(Replace::_execute_replace(H256::zero(), Vec::new(), Vec::new()));
+			let structs_encoded = create_dummy_scp_structs_encoded();
+			assert_ok!(Replace::_execute_replace(
+				H256::zero(),
+				structs_encoded.0,
+				structs_encoded.1,
+				structs_encoded.2
+			));
 			assert_event_matches!(Event::ExecuteReplace {
 				replace_id: _,
 				old_vault_id: OLD_VAULT,
@@ -257,8 +259,8 @@ mod cancel_replace_tests {
 		});
 
 		Replace::replace_period.mock_safe(|| MockResult::Return(20));
-		ext::btc_relay::has_request_expired::<Test>
-			.mock_safe(|_, _, _| MockResult::Return(Ok(true)));
+		ext::security::parachain_block_expired::<Test>
+			.mock_safe(|_, _| MockResult::Return(Ok(true)));
 		ext::vault_registry::is_vault_liquidated::<Test>
 			.mock_safe(|_| MockResult::Return(Ok(false)));
 		ext::vault_registry::cancel_replace_tokens::<Test>
