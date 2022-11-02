@@ -15,7 +15,7 @@ use primitives::{
 use spacewalk_runtime::{
 	AccountId, AuraConfig, BalancesConfig, CurrencyId, FeeConfig, GenesisConfig,
 	GetWrappedCurrencyId, GrandpaConfig, IssueConfig, NominationConfig, OracleConfig, RedeemConfig,
-	SecurityConfig, Signature, StatusCode, SudoConfig, SystemConfig, TokensConfig,
+	ReplaceConfig, SecurityConfig, Signature, StatusCode, SudoConfig, SystemConfig, TokensConfig,
 	VaultRegistryConfig, DAYS, WASM_BINARY,
 };
 
@@ -261,6 +261,7 @@ fn testnet_genesis(
 			initial_status: if start_shutdown { StatusCode::Shutdown } else { StatusCode::Error },
 		},
 		redeem: RedeemConfig { redeem_period: DAYS, redeem_dust_value: 100 },
+		replace: ReplaceConfig { replace_period: DAYS, replace_btc_dust_value: 1000 },
 		oracle: OracleConfig {
 			authorized_oracles,
 			max_delay: 3600000, // one hour

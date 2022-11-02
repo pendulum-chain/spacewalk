@@ -389,6 +389,13 @@ impl fee::Config for Runtime {
 	type MaxExpectedValue = MaxExpectedValue;
 }
 
+pub use replace::{Event as ReplaceEvent, ReplaceRequest};
+
+impl replace::Config for Runtime {
+	type Event = Event;
+	type WeightInfo = ();
+}
+
 impl nomination::Config for Runtime {
 	type Event = Event;
 	type WeightInfo = ();
@@ -422,6 +429,7 @@ construct_runtime! {
 		Oracle: oracle::{Pallet, Call, Config<T>, Storage, Event<T>} = 22,
 		Issue: issue::{Pallet, Call, Config<T>, Storage, Event<T>} = 23,
 		Redeem: redeem::{Pallet, Call, Config<T>, Storage, Event<T>} = 24,
+		Replace: replace::{Pallet, Call, Config<T>, Storage, Event<T>} = 25,
 		Fee: fee::{Pallet, Call, Config<T>, Storage} = 26,
 		Nomination: nomination::{Pallet, Call, Config, Storage, Event<T>} = 28,
 
@@ -471,6 +479,7 @@ mod benches {
 		[fee, Fee]
 		[oracle, Oracle]
 		[redeem, Redeem]
+		[replace, Replace]
 		[vault_registry, VaultRegistry]
 		[nomination, Nomination]
 	);

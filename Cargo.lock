@@ -7502,6 +7502,7 @@ dependencies = [
  "parity-scale-codec",
  "pretty_assertions",
  "redeem",
+ "replace",
  "reward",
  "scale-info",
  "security",
