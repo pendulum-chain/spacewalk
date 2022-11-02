@@ -7898,12 +7898,14 @@ name = "spacewalk-primitives"
 version = "1.2.0"
 dependencies = [
  "bstringify",
+ "frame-support",
  "parity-scale-codec",
  "scale-info",
  "serde",
  "sp-core",
  "sp-runtime",
  "sp-std",
+ "substrate-stellar-sdk 0.2.3 (git+https://github.com/pendulum-chain/substrate-stellar-sdk?branch=polkadot-v0.9.24)",
 ]
 
 [[package]]
