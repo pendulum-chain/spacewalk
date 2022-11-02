@@ -393,7 +393,7 @@ impl fmt::Debug for CurrencyId {
 			Self::ForeignAsset(id) => {
 				write!(f, "{:?}", id)
 			},
-			Self::Native => write!(f, "PEN"),
+			Self::Native => write!(f, "Native"),
 			Self::StellarNative => write!(f, "XLM"),
 			Self::AlphaNum4 { code, issuer } => {
 				write!(
