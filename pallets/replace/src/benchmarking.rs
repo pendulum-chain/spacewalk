@@ -136,7 +136,6 @@ benchmarks! {
 			vault
 		);
 
-		Oracle::<T>::_set_exchange_rate(get_collateral_currency_id::<T>(), UnsignedFixedPoint::<T>::one()).unwrap();
 		VaultRegistry::<T>::_set_system_collateral_ceiling(vault_id.currencies.clone(), 1_000_000_000u32.into());
 	}: _(RawOrigin::Signed(vault_id.account_id.clone()), vault_id.currencies.clone(), amount)
 
@@ -148,7 +147,6 @@ benchmarks! {
 
 		let threshold = UnsignedFixedPoint::<T>::one();
 		VaultRegistry::<T>::_set_secure_collateral_threshold(get_currency_pair::<T>(), threshold);
-		Oracle::<T>::_set_exchange_rate(get_collateral_currency_id::<T>(), UnsignedFixedPoint::<T>::one()).unwrap();
 		VaultRegistry::<T>::_set_system_collateral_ceiling(get_currency_pair::<T>(), 1_000_000_000u32.into());
 
 		register_vault::<T>(vault_id.clone());
@@ -173,7 +171,6 @@ benchmarks! {
 		let new_vault_stellar_address = RANDOM_STELLAR_PUBLIC_KEY;
 
 		VaultRegistry::<T>::_set_secure_collateral_threshold(get_currency_pair::<T>(), UnsignedFixedPoint::<T>::checked_from_rational(1, 100000).unwrap());
-		Oracle::<T>::_set_exchange_rate(get_collateral_currency_id::<T>(), UnsignedFixedPoint::<T>::one()).unwrap();
 		VaultRegistry::<T>::_set_system_collateral_ceiling(get_currency_pair::<T>(), 1_000_000_000u32.into());
 		register_vault::<T>(old_vault_id.clone());
 
@@ -188,7 +185,6 @@ benchmarks! {
 		replace_request.amount = amount.amount();
 		Replace::<T>::insert_replace_request(&replace_id, &replace_request);
 
-		Oracle::<T>::_set_exchange_rate(get_collateral_currency_id::<T>(), UnsignedFixedPoint::<T>::one()).unwrap();
 	}: _(RawOrigin::Signed(new_vault_id.account_id.clone()), new_vault_id.currencies.clone(), old_vault_id, amount.amount(), griefing, new_vault_stellar_address)
 
 	execute_replace {
@@ -196,7 +192,6 @@ benchmarks! {
 		let new_vault_id = get_vault_id::<T>("NewVault");
 		let old_vault_id = get_vault_id::<T>("OldVault");
 		let relayer_id: T::AccountId = account("Relayer", 0, 0);
-
 
 		let new_vault_stellar_address = [4u8; 32];
 		let old_vault_stellar_address = [5u8; 32];
@@ -253,8 +248,6 @@ benchmarks! {
 
 		VaultRegistry::<T>::_set_secure_collateral_threshold(get_currency_pair::<T>(), UnsignedFixedPoint::<T>::checked_from_rational(1, 100000).unwrap());
 		VaultRegistry::<T>::_set_system_collateral_ceiling(get_currency_pair::<T>(), 1_000_000_000u32.into());
-
-		Oracle:: <T>::_set_exchange_rate(get_collateral_currency_id::<T>(), UnsignedFixedPoint::<T>::one()).unwrap();
 
 		register_vault::<T>(old_vault_id.clone());
 		VaultRegistry::<T>::try_increase_to_be_issued_tokens(&old_vault_id, &amount).unwrap();
