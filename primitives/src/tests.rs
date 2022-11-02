@@ -4,9 +4,7 @@ use substrate_stellar_sdk::{
 };
 
 use super::{CurrencyId, *};
-use crate::currency::AssetIssuer;
 use std::str::FromStr;
-use substrate_stellar_sdk::types::{AlphaNum12, AlphaNum4};
 
 #[test]
 fn test_from() {

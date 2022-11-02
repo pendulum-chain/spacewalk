@@ -2,9 +2,11 @@
 
 use bstringify::bstringify;
 use codec::{Decode, Encode, MaxEncodedLen};
+use frame_support::error::LookupError;
 use scale_info::TypeInfo;
 #[cfg(feature = "std")]
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
+use sp_core::ed25519;
 pub use sp_core::H256;
 pub use sp_runtime::OpaqueExtrinsic as UncheckedExtrinsic;
 use sp_runtime::{
@@ -12,10 +14,6 @@ use sp_runtime::{
 	traits::{BlakeTwo256, Convert, IdentifyAccount, StaticLookup, Verify},
 	AccountId32, FixedI128, FixedPointNumber, FixedU128, MultiSignature, MultiSigner, RuntimeDebug,
 };
-
-use frame_support::error::LookupError;
-use sp_core::ed25519;
-
 use sp_std::{
 	convert::{From, TryFrom, TryInto},
 	fmt,
@@ -25,13 +23,14 @@ use sp_std::{
 	vec,
 	vec::Vec,
 };
-
-pub use substrate_stellar_sdk as stellar;
-
 use stellar::{
 	types::{AlphaNum12, AlphaNum4},
 	Asset, PublicKey,
 };
+pub use substrate_stellar_sdk as stellar;
+
+#[cfg(test)]
+mod tests;
 
 pub trait BalanceToFixedPoint<FixedPoint> {
 	fn to_fixed(self) -> Option<FixedPoint>;
