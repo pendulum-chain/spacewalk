@@ -289,7 +289,6 @@ create_currency_id! {
 	PartialEq,
 	Copy,
 	Clone,
-	RuntimeDebug,
 	PartialOrd,
 	Ord,
 	TypeInfo,
@@ -385,36 +384,42 @@ impl TryInto<stellar::Asset> for CurrencyId {
 	}
 }
 
-// impl fmt::Debug for CurrencyId {
-// 	fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-// 		match self {
-// 			Self::Native => write!(f, "PEN"),
-// 			Self::StellarNative => write!(f, "XLM"),
-// 			Self::AlphaNum4 { code, issuer } => {
-// 				write!(
-// 					f,
-// 					"{{ code: {}, issuer: {} }}",
-// 					str::from_utf8(code).unwrap(),
-// 					str::from_utf8(
-// 						stellar::PublicKey::from_binary(*issuer).to_encoding().as_slice()
-// 					)
-// 					.unwrap()
-// 				)
-// 			},
-// 			Self::AlphaNum12 { code, issuer } => {
-// 				write!(
-// 					f,
-// 					"{{ code: {}, issuer: {} }}",
-// 					str::from_utf8(code).unwrap(),
-// 					str::from_utf8(
-// 						stellar::PublicKey::from_binary(*issuer).to_encoding().as_slice()
-// 					)
-// 					.unwrap()
-// 				)
-// 			},
-// 		}
-// 	}
-// }
+impl fmt::Debug for CurrencyId {
+	fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+		match self {
+			Self::Token(token_symbol) => {
+				write!(f, "{:?} ({:?})", token_symbol.name(), token_symbol.symbol())
+			},
+			Self::ForeignAsset(id) => {
+				write!(f, "{:?}", id)
+			},
+			Self::Native => write!(f, "PEN"),
+			Self::StellarNative => write!(f, "XLM"),
+			Self::AlphaNum4 { code, issuer } => {
+				write!(
+					f,
+					"{{ code: {}, issuer: {} }}",
+					str::from_utf8(code).unwrap(),
+					str::from_utf8(
+						stellar::PublicKey::from_binary(*issuer).to_encoding().as_slice()
+					)
+					.unwrap()
+				)
+			},
+			Self::AlphaNum12 { code, issuer } => {
+				write!(
+					f,
+					"{{ code: {}, issuer: {} }}",
+					str::from_utf8(code).unwrap(),
+					str::from_utf8(
+						stellar::PublicKey::from_binary(*issuer).to_encoding().as_slice()
+					)
+					.unwrap()
+				)
+			},
+		}
+	}
+}
 
 pub struct CurrencyConversion;
 
