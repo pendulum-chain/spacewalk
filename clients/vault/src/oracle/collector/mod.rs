@@ -2,6 +2,7 @@ mod envelopes_handler;
 mod proof_builder;
 mod tx_handler;
 mod txsets_handler;
+use tokio::sync::{mpsc};
 
 use parking_lot::{
 	lock_api::{RwLockReadGuard, RwLockWriteGuard},
@@ -16,6 +17,7 @@ use crate::oracle::{
 	types::{EnvelopesMap, Slot, TxHashMap, TxSetHash, TxSetMap},
 };
 use stellar_relay::sdk::network::{Network, PUBLIC_NETWORK, TEST_NETWORK};
+use crate::oracle::ActorMessage;
 
 /// Collects all ScpMessages and the TxSets.
 pub struct ScpMessageCollector {
@@ -29,19 +31,25 @@ pub struct ScpMessageCollector {
 	/// messages are available yet.
 	pending_transactions: Vec<(TransactionEnvelope, Slot)>,
 
+	last_slot_index: Arc<RwLock<u64>>,
+
 	public_network: bool,
 	vault_addresses: Vec<String>,
+
+	action_sender: mpsc::Sender<ActorMessage>
 }
 
 impl ScpMessageCollector {
-	pub(crate) fn new(public_network: bool, vault_addresses: Vec<String>) -> Self {
+	pub(crate) fn new(public_network: bool, vault_addresses: Vec<String>, action_sender: mpsc::Sender<ActorMessage>) -> Self {
 		ScpMessageCollector {
 			envelopes_map: Default::default(),
 			txset_map: Default::default(),
 			tx_hash_map: Default::default(),
+			last_slot_index: Default::default(),
 			pending_transactions: vec![],
 			public_network,
 			vault_addresses,
+			action_sender
 		}
 	}
 
@@ -59,6 +67,10 @@ impl ScpMessageCollector {
 
 	fn tx_hash_map(&self) -> RwLockReadGuard<'_, RawRwLock, TxHashMap> {
 		self.tx_hash_map.read()
+	}
+
+	fn last_slot_index(&self) -> RwLockReadGuard<'_, RawRwLock, u64> {
+		self.last_slot_index.read()
 	}
 
 	pub fn network(&self) -> &Network {
@@ -83,6 +95,10 @@ impl ScpMessageCollector {
 
 	fn tx_hash_map_mut(&mut self) -> RwLockWriteGuard<'_, RawRwLock, TxHashMap> {
 		self.tx_hash_map.write()
+	}
+
+	fn last_slot_index_mut(&mut self) -> RwLockWriteGuard<'_, RawRwLock, u64> {
+		self.last_slot_index.write()
 	}
 }
 

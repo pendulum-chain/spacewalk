@@ -3,6 +3,7 @@ use stellar_relay::sdk::{
 	types::{ScpEnvelope, TransactionSet},
 	TransactionEnvelope, XdrCodec,
 };
+use crate::oracle::ActorMessage;
 
 use crate::oracle::{
 	constants::get_min_externalized_messages, traits::FileHandler, EnvelopesFileHandler,
@@ -42,6 +43,7 @@ pub enum ProofStatus {
 	NoTxSetFound(Slot),
 }
 
+const MAX_SLOT_TO_REMEMBER : u64 = 12;
 // handles the creation of proofs.
 // this means it will access the maps and potentially the files.
 impl ScpMessageCollector {
@@ -49,10 +51,31 @@ impl ScpMessageCollector {
 		self.tx_hash_map().get(tx_hash).map(|slot| *slot)
 	}
 
+	
 	/// Returns either a list of ScpEnvelopes or a ProofStatus saying it failed to retrieve a list.
 	fn get_envelopes(&self, slot: Slot) -> Result<UnlimitedVarArray<ScpEnvelope>, ProofStatus> {
-		let (envelopes, is_from_file) =
-			self._get_envelopes(slot).ok_or(ProofStatus::NoEnvelopesFound(slot))?;
+		// let (envelopes, is_from_file) =
+		// 	self._get_envelopes(slot).ok_or(ProofStatus::NoEnvelopesFound(slot))?;
+
+		let envelopes =
+			self._get_envelopes(slot);
+		
+		if let None = envelopes{
+
+			let last_slot_index = *self.last_slot_index();
+			let action_sender = self.action_sender.clone();
+			if last_slot_index - MAX_SLOT_TO_REMEMBER < slot {
+				tokio::spawn(async move { 
+					action_sender
+					.send(ActorMessage::GetScpState { missed_slot : slot })
+					.await
+				});
+			}
+
+			return Err(ProofStatus::NoEnvelopesFound(slot))
+		}
+
+		let (envelopes, is_from_file) = envelopes.unwrap();
 
 		// if the list does not come from a file, meaning there's still a chance to get more
 		// envelopes.

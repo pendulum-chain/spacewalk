@@ -15,6 +15,7 @@ use crate::oracle::{
 	types::{TxEnvelopeFilter, TxSetToSlotMap},
 	FilterWith, TxFilterMap,
 };
+use std::convert::TryInto;
 
 /// A message used to communicate with the Actor
 pub enum ActorMessage {
@@ -31,6 +32,9 @@ pub enum ActorMessage {
 	/// Gets all proofs
 	GetPendingProofs {
 		sender: oneshot::Sender<Vec<Proof>>,
+	},
+	GetScpState {
+		missed_slot : u64
 	},
 }
 
@@ -49,7 +53,7 @@ impl ScpMessageActor {
 	}
 
 	/// handles messages sent from the outside.
-	async fn handle_message(&mut self, msg: ActorMessage) {
+	async fn handle_message(&mut self, msg: ActorMessage, overlay_conn: &StellarOverlayConnection) {
 		match msg {
 			ActorMessage::CurrentMapSize { sender } => {
 				let _ = sender.send(self.collector.envelopes_map_len());
@@ -67,6 +71,9 @@ impl ScpMessageActor {
 			ActorMessage::GetPendingProofs { sender } => {
 				let _ = sender.send(self.collector.get_pending_proofs());
 			},
+			ActorMessage::GetScpState { missed_slot } => {
+				overlay_conn.send(StellarMessage::GetScpState(missed_slot.try_into().unwrap())).await;
+			},
 		};
 	}
 
@@ -81,7 +88,7 @@ impl ScpMessageActor {
 					match conn_state {
 						StellarRelayMessage::Data {
 							p_id: _,
-							msg_type: _,
+							msg_type,
 							msg,
 						} => match msg {
 							StellarMessage::ScpMessage(env) => {
@@ -92,7 +99,17 @@ impl ScpMessageActor {
 							StellarMessage::TxSet(set) => {
 								self.collector.handle_tx_set(&set, &mut tx_set_to_slot_map, &self.tx_env_filters)?;
 							}
-							_ => {}
+
+							
+							StellarMessage::GetScpState(set) => {
+								tracing::info!("something : {:#?}", set);
+							}
+							_ => {
+								
+								if format!("{:#?}", msg_type) != "Transaction"{
+									tracing::info!("msg type : {:#?}", msg_type);
+								}
+							}
 						},
 						// todo
 						StellarRelayMessage::Connect{ pub_key: _, node_info: _ }  => {},
@@ -104,7 +121,7 @@ impl ScpMessageActor {
 				}
 				// handle message from user
 				Some(msg) = self.action_receiver.recv() => {
-						self.handle_message(msg).await;
+						self.handle_message(msg, &overlay_conn).await;
 				}
 			}
 		}
@@ -124,9 +141,8 @@ impl ScpMessageHandler {
 		vault_addresses: Vec<String>,
 		is_public_network: bool,
 	) -> Self {
-		let collector = ScpMessageCollector::new(is_public_network, vault_addresses);
-
 		let (sender, receiver) = mpsc::channel(1024);
+		let collector = ScpMessageCollector::new(is_public_network, vault_addresses, sender.clone());
 
 		let mut actor = ScpMessageActor::new(receiver, collector);
 		tokio::spawn(async move { actor.run(overlay_conn).await });

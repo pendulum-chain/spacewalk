@@ -11,9 +11,9 @@ use parking_lot::RwLock;
 use std::sync::Arc;
 use stellar_relay::{
 	sdk::types::{ScpEnvelope, ScpStatementPledges, StellarMessage},
-	StellarOverlayConnection,
+	StellarOverlayConnection, xdr_converter
 };
-
+use stellar_relay::sdk::XdrCodec;
 // Handling SCPEnvelopes
 impl ScpMessageCollector {
 	/// handles incoming ScpEnvelope.
@@ -31,6 +31,14 @@ impl ScpMessageCollector {
 	) -> Result<(), Error> {
 		let slot = env.statement.slot_index;
 
+		{
+			let mut last_slot_index = self.last_slot_index_mut();
+			if slot > *last_slot_index {
+				*last_slot_index = slot;
+			}
+		}
+		
+
 		// we are only interested with `ScpStExternalize`. Other messages are ignored.
 		if let ScpStatementPledges::ScpStExternalize(stmt) = &env.statement.pledges {
 			let txset_hash = get_tx_set_hash(stmt)?;
@@ -44,8 +52,17 @@ impl ScpMessageCollector {
 				// let's request the txset from Stellar Node
 				overlay_conn.send(StellarMessage::GetTxSet(txset_hash)).await?;
 
+
+				// tracing::info!("XXX");
+
+				
+				use std::convert::TryInto;
+				let missed_slot: u32 = (slot - 100).try_into().unwrap();
+				// let missed_slot = (slot - 5).to_xdr_buffered(write_stream);
+				//overlay_conn.send(StellarMessage::GetScpState(missed_slot)).await?;
+				// tracing::info!("YYY");
 				// check if we need to transfer the map to a file
-				self.check_write_envelopes_to_file(slot)?;
+				// self.check_write_envelopes_to_file(slot)?;
 			}
 
 			// insert/add the externalized message to map.
