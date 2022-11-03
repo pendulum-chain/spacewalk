@@ -30,7 +30,6 @@ frame_support::construct_runtime!(
 		NodeBlock = Block,
 		UncheckedExtrinsic = UncheckedExtrinsic,
 	{
-		// Tokens & Balances
 		System: frame_system::{Pallet, Call, Config, Storage, Event<T>},
 		SpacewalkRelay: pallet_spacewalk_relay::{Pallet, Call, Storage, Event<T>},
 	}
