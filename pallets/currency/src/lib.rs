@@ -4,21 +4,11 @@
 #![cfg_attr(test, feature(proc_macro_hygiene))]
 #![cfg_attr(not(feature = "std"), no_std)]
 
-#[cfg(test)]
-mod mock;
-
-#[cfg(test)]
-mod tests;
-
-pub mod amount;
-
 use codec::{EncodeLike, FullCodec};
 use frame_support::{dispatch::DispatchResult, traits::Get};
 use orml_traits::{MultiCurrency, MultiReservableCurrency};
-use primitives::TruncateFixedPointToInt;
-use scale_info::TypeInfo;
 use sp_runtime::{
-	traits::{AtLeast32BitUnsigned, CheckedDiv, MaybeSerializeDeserialize},
+	traits::{AtLeast32BitUnsigned, CheckedDiv, StaticLookup},
 	FixedPointNumber, FixedPointOperand,
 };
 use sp_std::{
@@ -29,17 +19,34 @@ use sp_std::{
 
 pub use amount::Amount;
 pub use pallet::*;
-
-mod types;
+use primitives::{
+	stellar::{
+		types::{OperationBody, Uint256},
+		ClaimPredicate, Claimant, MuxedAccount, PublicKey, TransactionEnvelope,
+	},
+	TruncateFixedPointToInt,
+};
 use types::*;
 pub use types::{CurrencyConversion, CurrencyId};
 
+#[cfg(test)]
+mod mock;
+
+#[cfg(test)]
+mod tests;
+
+pub mod amount;
+
+mod types;
+
 #[frame_support::pallet]
 pub mod pallet {
-	use super::*;
 	use frame_support::pallet_prelude::*;
-	use primitives::stellar::Asset;
 	use sp_runtime::traits::StaticLookup;
+
+	use primitives::stellar::Asset;
+
+	use super::*;
 
 	/// ## Configuration
 	/// The pallet's configuration trait.
@@ -103,6 +110,98 @@ pub mod pallet {
 
 	#[pallet::pallet]
 	pub struct Pallet<T>(_);
+}
+
+impl<T: Config> Pallet<T> {
+	/// Accumulate the amounts of the specified currency that happened in the operations of a
+	/// Stellar transaction
+	pub fn get_amount_from_transaction_envelope(
+		transaction_envelope: &TransactionEnvelope,
+		recipient_stellar_address: Uint256,
+		currency: CurrencyId<T>,
+	) -> Result<Amount<T>, Error<T>> {
+		let asset = T::AssetConversion::lookup(currency)
+			.map_err(|_| Error::<T>::AssetConversionError.into())?;
+		let recipient_account_muxed = MuxedAccount::KeyTypeEd25519(recipient_stellar_address);
+		let recipient_account_pk = PublicKey::PublicKeyTypeEd25519(recipient_stellar_address);
+
+		let amount: i64 = match transaction_envelope {
+			TransactionEnvelope::EnvelopeTypeTxV0(envelope) => {
+				let mut sum: i64 = 0;
+				for x in envelope.tx.operations.get_vec().iter() {
+					match x.body.clone() {
+						OperationBody::Payment(payment) => {
+							if payment.destination.eq(&recipient_account_muxed) &&
+								payment.asset == asset
+							{
+								sum = sum.saturating_add(payment.amount);
+							}
+						},
+						OperationBody::CreateClaimableBalance(payment) => {
+							// for security reasons, we only count operations that have the
+							// recipient as a single claimer and unconditional claim predicate
+							if payment.claimants.len() == 1 {
+								let Claimant::ClaimantTypeV0(claimant) =
+									payment.claimants.get_vec()[0].clone();
+
+								if claimant.destination.eq(&recipient_account_pk) &&
+									claimant.predicate ==
+										ClaimPredicate::ClaimPredicateUnconditional
+								{
+									sum = sum.saturating_add(payment.amount);
+								}
+							}
+						},
+						_ => {
+							// ignore other operations
+						},
+					}
+				}
+				// return the sum of the amounts
+				sum
+			},
+			TransactionEnvelope::EnvelopeTypeTx(envelope) => {
+				let mut sum: i64 = 0;
+				for x in envelope.tx.operations.get_vec().iter() {
+					match x.body.clone() {
+						OperationBody::Payment(payment) => {
+							if payment.destination.eq(&recipient_account_muxed) &&
+								payment.asset == asset
+							{
+								sum = sum.saturating_add(payment.amount);
+							}
+						},
+						OperationBody::CreateClaimableBalance(payment) => {
+							// for security reasons, we only count operations that have the
+							// recipient as a single claimer and unconditional claim predicate
+							if payment.claimants.len() == 1 {
+								let Claimant::ClaimantTypeV0(claimant) =
+									payment.claimants.get_vec()[0].clone();
+
+								if claimant.destination.eq(&recipient_account_pk) &&
+									claimant.predicate ==
+										ClaimPredicate::ClaimPredicateUnconditional
+								{
+									sum = sum.saturating_add(payment.amount);
+								}
+							}
+						},
+						_ => {
+							// ignore other operations
+						},
+					}
+				}
+				// return the sum of the amounts
+				sum
+			},
+			TransactionEnvelope::EnvelopeTypeTxFeeBump(_) => 0,
+			TransactionEnvelope::Default(_) => 0,
+		};
+
+		let balance = T::BalanceConversion::unlookup(amount);
+		let amount: Amount<T> = Amount::new(balance, currency);
+		Ok(amount)
+	}
 }
 
 pub mod getters {
