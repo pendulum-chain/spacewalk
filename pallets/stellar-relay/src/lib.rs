@@ -27,6 +27,7 @@ pub mod pallet {
 	use frame_support::pallet_prelude::*;
 	use frame_system::pallet_prelude::*;
 	use sha2::{Digest, Sha256};
+	use sp_runtime::traits::StaticLookup;
 	use sp_std::{collections::btree_map::BTreeMap, fmt::Debug, vec::Vec};
 	use substrate_stellar_sdk::{
 		compound_types::UnlimitedVarArray,
@@ -35,15 +36,16 @@ pub mod pallet {
 			NodeId, OperationBody, ScpEnvelope, ScpStatementExternalize, ScpStatementPledges,
 			StellarValue, TransactionSet, Uint256,
 		},
-		Asset, Hash, MuxedAccount, TransactionEnvelope, XdrCodec,
+		Asset, ClaimPredicate, Claimant, Hash, MuxedAccount, PublicKey, TransactionEnvelope,
+		XdrCodec,
 	};
 
-	use currency::CurrencyId;
+	use currency::{Amount, CurrencyConversion, CurrencyId};
 	use default_weights::WeightInfo;
 
 	use crate::{
 		traits::FieldLength,
-		types::{OrganizationOf, ValidatorOf},
+		types::{AssetConversionOf, BalanceConversionOf, OrganizationOf, ValidatorOf},
 	};
 
 	use super::*;
@@ -109,7 +111,6 @@ pub mod pallet {
 		TransactionNotInTransactionSet,
 		TransactionSetHashCreationFailed,
 		TransactionSetHashMismatch,
-		TryIntoError,
 		ValidatorLimitExceeded,
 	}
 
@@ -550,45 +551,93 @@ pub mod pallet {
 
 		/// Accumulate the amounts of the specified currency that happened in the operations of a
 		/// Stellar transaction
-		pub fn get_amount_from_transaction_envelope<V: TryFrom<i64>>(
+		pub fn get_amount_from_transaction_envelope(
 			transaction_envelope: &TransactionEnvelope,
 			recipient_stellar_address: Uint256,
-			currency: &CurrencyId<T>,
-		) -> Result<V, Error<T>> {
-			// TODO derive asset from currency and back
-			let asset = Asset::AssetTypeNative;
-			let recipient_account = MuxedAccount::KeyTypeEd25519(recipient_stellar_address);
+			currency: CurrencyId<T>,
+		) -> Result<Amount<T>, currency::Error<T>> {
+			let asset = AssetConversionOf::<T>::lookup(currency)
+				.map_err(|_| currency::Error::<T>::AssetConversionError.into())?;
+			let recipient_account_muxed = MuxedAccount::KeyTypeEd25519(recipient_stellar_address);
+			let recipient_account_pk = PublicKey::PublicKeyTypeEd25519(recipient_stellar_address);
 
 			let amount: i64 = match transaction_envelope {
 				TransactionEnvelope::EnvelopeTypeTxV0(envelope) => {
 					let mut sum: i64 = 0;
 					for x in envelope.tx.operations.get_vec().iter() {
-						if let OperationBody::Payment(payment) = x.body.clone() {
-							if payment.destination.eq(&recipient_account) && payment.asset == asset
-							{
-								sum = sum.saturating_add(payment.amount);
-							}
+						match x.body.clone() {
+							OperationBody::Payment(payment) => {
+								if payment.destination.eq(&recipient_account_muxed) &&
+									payment.asset == asset
+								{
+									sum = sum.saturating_add(payment.amount);
+								}
+							},
+							OperationBody::CreateClaimableBalance(payment) => {
+								// for security reasons, we only count operations that have the
+								// recipient as a single claimer and unconditional claim predicate
+								if payment.claimants.len() == 1 {
+									if let Claimant::ClaimantTypeV0(claimant) =
+										payment.claimants.get_vec()[0].clone()
+									{
+										if claimant.destination.eq(&recipient_account_pk) &&
+											claimant.predicate ==
+												ClaimPredicate::ClaimPredicateUnconditional
+										{
+											sum = sum.saturating_add(payment.amount);
+										}
+									}
+								}
+							},
+							_ => {
+								// ignore other operations
+							},
 						}
 					}
+					// return the sum of the amounts
 					sum
 				},
 				TransactionEnvelope::EnvelopeTypeTx(envelope) => {
 					let mut sum: i64 = 0;
 					for x in envelope.tx.operations.get_vec().iter() {
-						if let OperationBody::Payment(payment) = x.body.clone() {
-							if payment.destination.eq(&recipient_account) && payment.asset == asset
-							{
-								sum = sum.saturating_add(payment.amount);
-							}
+						match x.body.clone() {
+							OperationBody::Payment(payment) => {
+								if payment.destination.eq(&recipient_account_muxed) &&
+									payment.asset == asset
+								{
+									sum = sum.saturating_add(payment.amount);
+								}
+							},
+							OperationBody::CreateClaimableBalance(payment) => {
+								// for security reasons, we only count operations that have the
+								// recipient as a single claimer and unconditional claim predicate
+								if payment.claimants.len() == 1 {
+									if let Claimant::ClaimantTypeV0(claimant) =
+										payment.claimants.get_vec()[0].clone()
+									{
+										if claimant.destination.eq(&recipient_account_pk) &&
+											claimant.predicate ==
+												ClaimPredicate::ClaimPredicateUnconditional
+										{
+											sum = sum.saturating_add(payment.amount);
+										}
+									}
+								}
+							},
+							_ => {
+								// ignore other operations
+							},
 						}
 					}
+					// return the sum of the amounts
 					sum
 				},
 				TransactionEnvelope::EnvelopeTypeTxFeeBump(_) => 0,
 				TransactionEnvelope::Default(_) => 0,
 			};
 
-			let amount: V = amount.try_into().map_err(|_| Error::<T>::TryIntoError)?;
+			let balance = BalanceConversionOf::<T>::unlookup(amount);
+			let amount: Amount<T> = Amount::new(balance, currency);
 			Ok(amount)
 		}
 	}

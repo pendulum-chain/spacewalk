@@ -124,13 +124,15 @@ impl orml_tokens::Config for Test {
 }
 
 impl currency::Config for Test {
+	type UnsignedFixedPoint = UnsignedFixedPoint;
 	type SignedInner = SignedInner;
 	type SignedFixedPoint = SignedFixedPoint;
-	type UnsignedFixedPoint = UnsignedFixedPoint;
 	type Balance = Balance;
 	type GetNativeCurrencyId = GetNativeCurrencyId;
 	type GetRelayChainCurrencyId = GetCollateralCurrencyId;
 	type GetWrappedCurrencyId = GetWrappedCurrencyId;
+	type AssetConversion = primitives::AssetConversion;
+	type BalanceConversion = primitives::BalanceConversion;
 	type CurrencyConversion = CurrencyConvert;
 }
 

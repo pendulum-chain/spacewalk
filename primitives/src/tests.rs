@@ -90,13 +90,13 @@ fn test_try_into() {
 fn test_currency_conversion_native() {
 	let currency_id = CurrencyId::StellarNative;
 
-	let currency_lookup = CurrencyConversion::lookup(currency_id);
+	let currency_lookup = AssetConversion::lookup(currency_id);
 	assert!(currency_lookup.is_ok());
 
 	let currency_lookup = currency_lookup.unwrap();
 	assert_eq!(currency_lookup, Asset::AssetTypeNative);
 
-	let lookup_orig = CurrencyConversion::unlookup(currency_lookup);
+	let lookup_orig = AssetConversion::unlookup(currency_lookup);
 	assert_eq!(lookup_orig, currency_id);
 }
 
@@ -111,7 +111,7 @@ fn test_currency_conversion_anum4() {
 
 	let currency_id = CurrencyId::AlphaNum4 { code, issuer: account.clone().into_binary() };
 
-	let currency_lookup = CurrencyConversion::lookup(currency_id);
+	let currency_lookup = AssetConversion::lookup(currency_id);
 	assert!(currency_lookup.is_ok());
 
 	let currency_lookup = currency_lookup.unwrap();
@@ -120,7 +120,7 @@ fn test_currency_conversion_anum4() {
 		Asset::AssetTypeCreditAlphanum4(AlphaNum4 { asset_code: code, issuer: account })
 	);
 
-	let lookup_orig = CurrencyConversion::unlookup(currency_lookup);
+	let lookup_orig = AssetConversion::unlookup(currency_lookup);
 	assert_eq!(lookup_orig, currency_id);
 }
 
@@ -135,7 +135,7 @@ fn test_currency_conversion_anum12() {
 
 	let currency_id = CurrencyId::AlphaNum12 { code, issuer: account.clone().into_binary() };
 
-	let currency_lookup = CurrencyConversion::lookup(currency_id);
+	let currency_lookup = AssetConversion::lookup(currency_id);
 	assert!(currency_lookup.is_ok());
 
 	let currency_lookup = currency_lookup.unwrap();
@@ -144,7 +144,7 @@ fn test_currency_conversion_anum12() {
 		Asset::AssetTypeCreditAlphanum12(AlphaNum12 { asset_code: code, issuer: account })
 	);
 
-	let lookup_orig = CurrencyConversion::unlookup(currency_lookup);
+	let lookup_orig = AssetConversion::unlookup(currency_lookup);
 	assert_eq!(lookup_orig, currency_id);
 }
 

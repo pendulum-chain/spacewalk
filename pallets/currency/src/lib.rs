@@ -38,6 +38,8 @@ pub use types::{CurrencyConversion, CurrencyId};
 pub mod pallet {
 	use super::*;
 	use frame_support::pallet_prelude::*;
+	use primitives::stellar::Asset;
+	use sp_runtime::traits::StaticLookup;
 
 	/// ## Configuration
 	/// The pallet's configuration trait.
@@ -86,11 +88,15 @@ pub mod pallet {
 		#[pallet::constant]
 		type GetWrappedCurrencyId: Get<CurrencyId<Self>>;
 
+		type AssetConversion: StaticLookup<Source = CurrencyId<Self>, Target = Asset>;
+		type BalanceConversion: StaticLookup<Source = BalanceOf<Self>, Target = i64>;
 		type CurrencyConversion: types::CurrencyConversion<Amount<Self>, CurrencyId<Self>>;
 	}
 
 	#[pallet::error]
 	pub enum Error<T> {
+		AssetConversionError,
+		BalanceConversionError,
 		TryIntoIntError,
 		InvalidCurrency,
 	}

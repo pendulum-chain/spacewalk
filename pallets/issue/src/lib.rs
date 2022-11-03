@@ -360,11 +360,12 @@ impl<T: Config> Pallet<T> {
 			&transaction_set,
 		)?;
 
-		let amount_transferred = ext::stellar_relay::get_amount_from_transaction_envelope::<
-			T,
-			BalanceOf<T>,
-		>(&transaction_envelope, issue.stellar_address, &issue.asset)?;
-		let amount_transferred = Amount::new(amount_transferred, issue.asset);
+		let amount_transferred: Amount<T> =
+			ext::stellar_relay::get_amount_from_transaction_envelope::<T, BalanceOf<T>>(
+				&transaction_envelope,
+				issue.stellar_address,
+				issue.asset,
+			)?;
 
 		let expected_total_amount = issue.amount().checked_add(&issue.fee())?;
 

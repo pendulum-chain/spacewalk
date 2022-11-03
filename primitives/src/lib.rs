@@ -474,13 +474,13 @@ impl fmt::Debug for CurrencyId {
 	}
 }
 
-pub struct CurrencyConversion;
+pub struct AssetConversion;
 
 fn to_look_up_error(_: &'static str) -> LookupError {
 	LookupError
 }
 
-impl StaticLookup for CurrencyConversion {
+impl StaticLookup for AssetConversion {
 	type Source = CurrencyId;
 	type Target = Asset;
 

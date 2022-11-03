@@ -3,6 +3,7 @@ use mocktopus::macros::mockable;
 
 #[cfg_attr(test, mockable)]
 pub(crate) mod stellar_relay {
+	use currency::Amount;
 	use sp_std::convert::TryFrom;
 	use substrate_stellar_sdk::{
 		compound_types::UnlimitedVarArray,
@@ -36,8 +37,8 @@ pub(crate) mod stellar_relay {
 	pub fn get_amount_from_transaction_envelope<T: crate::Config, V: TryFrom<i64>>(
 		transaction_envelope: &TransactionEnvelope,
 		recipient_stellar_address: StellarPublicKeyRaw,
-		currency: &CurrencyId<T>,
-	) -> Result<V, Error<T>> {
+		currency: CurrencyId<T>,
+	) -> Result<Amount<T>, currency::Error<T>> {
 		<stellar_relay::Pallet<T>>::get_amount_from_transaction_envelope(
 			transaction_envelope,
 			recipient_stellar_address,
