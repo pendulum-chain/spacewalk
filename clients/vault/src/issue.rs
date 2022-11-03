@@ -1,23 +1,22 @@
 use crate::oracle::{FilterWith, Proof, ScpMessageHandler};
-use base64::DecodeError;
+use parking_lot::Mutex;
 use runtime::{
-	metadata::runtime_types::spacewalk_primitives::CurrencyId, types::H256, Balance,
-	CancelIssueEvent, DefaultIssueRequest, Error, ExecuteIssueEvent, IssueId, IssuePallet,
-	RequestIssueEvent, SpacewalkParachain,
+	metadata::runtime_types::spacewalk_primitives::CurrencyId, Balance, CancelIssueEvent,
+	ExecuteIssueEvent, IssueId, IssuePallet, RequestIssueEvent, SpacewalkParachain,
 };
 use service::Error as ServiceError;
 use std::{
-	collections::HashMap,
 	fmt::{Debug, Formatter},
 	sync::Arc,
 };
 use stellar_relay_lib::sdk::{Memo, SecretKey, TransactionEnvelope};
-use tokio::sync::mpsc::error::SendError;
-use tracing_subscriber::fmt::format;
 
+/// Actions to do, depending on the event received.
 #[derive(Clone)]
 pub enum IssueActions {
+	/// Filters the oracle based on the Issue Request
 	AddFilter(RequestIssueEvent),
+	/// Removes the filter in the oracle, given the issue id
 	RemoveFilter(IssueId),
 }
 
@@ -34,9 +33,12 @@ impl Debug for IssueActions {
 	}
 }
 
+/// The struct used to create a filter for oracle.
 pub struct IssueChecker {
 	issue_id: IssueId,
+	/// the amount specified in the `RequestIssueEvent`
 	amount: Balance,
+	/// the asset specified in the `RequestIssueEvent`
 	asset: CurrencyId,
 }
 
@@ -58,6 +60,7 @@ impl FilterWith<TransactionEnvelope> for IssueChecker {
 	fn check_for_processing(&self, param: &TransactionEnvelope) -> bool {
 		if let TransactionEnvelope::EnvelopeTypeTx(tx_env) = param {
 			if let Memo::MemoHash(hash) = tx_env.tx.memo {
+				// todo: check also the amount and the asset
 				return self.issue_id.0 == hash
 			}
 		}
@@ -72,17 +75,24 @@ async fn send_issue_action(sender: &tokio::sync::mpsc::Sender<IssueActions>, act
 	}
 }
 
+/// Listens for RequestIssueEvent directed at the vault.
+///
+/// # Arguments
+///
+/// * `parachain_rpc` - the parachain RPC handle
+/// * `vault_secret_key` - The secret key of this vault
+/// * `actions_channel` - the channel over which to perform `AddFilter` action for this event
 pub async fn listen_for_issue_requests(
 	parachain_rpc: SpacewalkParachain,
 	vault_secret_key: String,
-	sender: tokio::sync::mpsc::Sender<IssueActions>,
+	actions_channel: tokio::sync::mpsc::Sender<IssueActions>,
 ) -> Result<(), ServiceError> {
 	parachain_rpc
 		.on_event::<RequestIssueEvent, _, _, _>(
 			|event| async {
 				tracing::info!("Received Request Issue event: {:?}", event.issue_id);
 				if is_vault(&vault_secret_key, event.vault_stellar_public_key.clone()) {
-					send_issue_action(&sender, IssueActions::AddFilter(event)).await;
+					send_issue_action(&actions_channel, IssueActions::AddFilter(event)).await;
 				}
 			},
 			|error| tracing::error!("Error with RequestIssueEvent: {:?}", error),
@@ -92,11 +102,17 @@ pub async fn listen_for_issue_requests(
 	Ok(())
 }
 
+/// Listen for all `CancelIssueEvent`s.
+///
+/// # Arguments
+///
+/// * `parachain_rpc` - the parachain RPC handle
+/// * `actions_channel` - the channel over which to perform `RemoveFilter` action for this event
 pub async fn listen_for_cancel_requests(
 	parachain_rpc: SpacewalkParachain,
-	sender: tokio::sync::mpsc::Sender<IssueActions>,
+	actions_channel: tokio::sync::mpsc::Sender<IssueActions>,
 ) -> Result<(), ServiceError> {
-	let sender = &sender;
+	let sender = &actions_channel;
 	parachain_rpc
 		.on_event::<CancelIssueEvent, _, _, _>(
 			|event| async move {
@@ -110,11 +126,17 @@ pub async fn listen_for_cancel_requests(
 	Ok(())
 }
 
+/// Listen for ExecuteIssueEvent directed at this vault.
+///
+/// # Arguments
+///
+/// * `parachain_rpc` - the parachain RPC handle
+/// * `actions_channel` - the channel over which to perform `RemoveFilter` action for this event
 pub async fn listen_for_execute_requests(
 	parachain_rpc: SpacewalkParachain,
-	sender: tokio::sync::mpsc::Sender<IssueActions>,
+	actions_channel: tokio::sync::mpsc::Sender<IssueActions>,
 ) -> Result<(), ServiceError> {
-	let sender = &sender;
+	let sender = &actions_channel;
 	parachain_rpc
 		.on_event::<ExecuteIssueEvent, _, _, _>(
 			|event| async move {
@@ -128,25 +150,55 @@ pub async fn listen_for_execute_requests(
 	Ok(())
 }
 
+/// adds/removes issue requests in the set, and adds/removes filters in the oracle,
+/// depending on the Issue Action.
+///
+/// # Arguments
+///
+/// * `handler` - the oracle handler
+/// * `action` - the `IssueAction`
+/// * `issue_set` - the list of current issue requests
 async fn handle_issue_actions(
 	handler: &ScpMessageHandler,
 	action: IssueActions,
+	issue_set: Arc<Mutex<Vec<RequestIssueEvent>>>,
 ) -> Result<(), ServiceError> {
+	let mut issue_set = issue_set.lock();
 	match action {
 		IssueActions::AddFilter(event) => {
+			// create the filter
 			let checker = IssueChecker::create(&event);
+			// send the filter to the oracle
 			handler
 				.add_filter(Box::new(checker))
 				.await
-				.map_err(|e| ServiceError::Other(format!("{:?}", e)))
+				.map_err(|e| ServiceError::Other(format!("{:?}", e)))?;
+
+			tracing::debug!("added: {:?}", event);
+			issue_set.push(event)
 		},
-		IssueActions::RemoveFilter(issue_id) => handler
-			.remove_filter(create_name(issue_id))
-			.await
-			.map_err(|e| ServiceError::Other(format!("{:?}", e))),
+		IssueActions::RemoveFilter(issue_id) => {
+			// signal the oracle to remove this filter
+			handler
+				.remove_filter(create_name(issue_id))
+				.await
+				.map_err(|e| ServiceError::Other(format!("{:?}", e)))?;
+
+			if let Some(idx) = issue_set.iter().position(|event| event.issue_id == issue_id) {
+				let event = issue_set.remove(idx);
+				tracing::debug!("removed: {:?}", event);
+			}
+		},
 	}
+	Ok(())
 }
 
+/// executes issue requests
+///
+/// # Arguments
+///
+/// * `parachain_rpc` - the parachain RPC handle
+/// * `proofs` - a list of proofs to execute
 pub async fn execute_issue(
 	parachain_rpc: SpacewalkParachain,
 	proofs: Vec<Proof>,
@@ -176,19 +228,26 @@ pub async fn execute_issue(
 	Ok(())
 }
 
-pub async fn process_issue_requests(
+/// processes events that are directed to this vault.
+///
+/// # Arguments
+///
+/// * `parachain_rpc` - the parachain RPC handle
+/// * `handler` - the oracle handler
+/// * `proofs` - a list of proofs to execute
+/// * `action_receiver` - a channel that accepts IssueActions
+pub async fn process_issue_events(
 	parachain_rpc: SpacewalkParachain,
-	vault_secret_key: String,
 	handler: &ScpMessageHandler,
-	mut receiver: tokio::sync::mpsc::Receiver<IssueActions>,
-	proof_map: &HashMap<String, Vec<Proof>>,
+	mut action_receiver: tokio::sync::mpsc::Receiver<IssueActions>,
+	issue_set: Arc<Mutex<Vec<RequestIssueEvent>>>,
 ) -> Result<(), ServiceError> {
 	loop {
 		tokio::select! {
-			Some(msg) = receiver.recv() => {
-				handle_issue_actions(handler,msg).await?;
+			Some(msg) = action_receiver.recv() => {
+				handle_issue_actions(handler,msg,issue_set.clone()).await?;
 			}
-
+			// get all proofs
 			Ok(proofs) = handler.get_pending_proofs() => {
 				tokio::spawn(execute_issue(parachain_rpc.clone(),proofs));
 			}

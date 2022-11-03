@@ -9,7 +9,6 @@ version = "0.0.1"
 integration = []
 parachain-metadata = ["runtime/parachain-metadata"]
 standalone-metadata = ["runtime/standalone-metadata"]
-90-metadata = ["runtime/90-metadata"]
 multi-address = ["runtime/multi-address"]
 
 [dependencies]
@@ -49,7 +48,7 @@ sp-runtime = {git = "https://github.com/paritytech/substrate", branch = "polkado
 sp-std = {git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.24"}
 
 # Substrate Stellar Dependencies
-stellar-relay = {path = "../stellar-relay" }
+stellar-relay-lib = {path = "../stellar-relay" }
 #substrate-stellar-sdk = {git = "https://github.com/pendulum-chain/substrate-stellar-sdk"}
 
 parking_lot = "0.12.1"
