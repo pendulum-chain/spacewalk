@@ -99,17 +99,7 @@ impl ScpMessageActor {
 							StellarMessage::TxSet(set) => {
 								self.collector.handle_tx_set(&set, &mut tx_set_to_slot_map, &self.tx_env_filters)?;
 							}
-
-							
-							StellarMessage::GetScpState(set) => {
-								tracing::info!("something : {:#?}", set);
-							}
-							_ => {
-								
-								if format!("{:#?}", msg_type) != "Transaction"{
-									tracing::info!("msg type : {:#?}", msg_type);
-								}
-							}
+							_ => {}
 						},
 						// todo
 						StellarRelayMessage::Connect{ pub_key: _, node_info: _ }  => {},

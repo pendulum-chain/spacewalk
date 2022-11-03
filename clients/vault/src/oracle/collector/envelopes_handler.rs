@@ -51,18 +51,6 @@ impl ScpMessageCollector {
 				txset_hash_map.insert(txset_hash, slot);
 				// let's request the txset from Stellar Node
 				overlay_conn.send(StellarMessage::GetTxSet(txset_hash)).await?;
-
-
-				// tracing::info!("XXX");
-
-				
-				use std::convert::TryInto;
-				let missed_slot: u32 = (slot - 100).try_into().unwrap();
-				// let missed_slot = (slot - 5).to_xdr_buffered(write_stream);
-				//overlay_conn.send(StellarMessage::GetScpState(missed_slot)).await?;
-				// tracing::info!("YYY");
-				// check if we need to transfer the map to a file
-				// self.check_write_envelopes_to_file(slot)?;
 			}
 
 			// insert/add the externalized message to map.

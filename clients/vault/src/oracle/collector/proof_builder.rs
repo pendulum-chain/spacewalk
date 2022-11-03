@@ -54,9 +54,6 @@ impl ScpMessageCollector {
 	
 	/// Returns either a list of ScpEnvelopes or a ProofStatus saying it failed to retrieve a list.
 	fn get_envelopes(&self, slot: Slot) -> Result<UnlimitedVarArray<ScpEnvelope>, ProofStatus> {
-		// let (envelopes, is_from_file) =
-		// 	self._get_envelopes(slot).ok_or(ProofStatus::NoEnvelopesFound(slot))?;
-
 		let envelopes =
 			self._get_envelopes(slot);
 		
