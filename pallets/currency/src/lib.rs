@@ -15,6 +15,7 @@ use sp_std::{
 	convert::{TryFrom, TryInto},
 	fmt::Debug,
 	marker::PhantomData,
+	vec::Vec,
 };
 
 pub use amount::Amount;
@@ -22,7 +23,7 @@ pub use pallet::*;
 use primitives::{
 	stellar::{
 		types::{OperationBody, Uint256},
-		ClaimPredicate, Claimant, MuxedAccount, PublicKey, TransactionEnvelope,
+		ClaimPredicate, Claimant, MuxedAccount, Operation, PublicKey, TransactionEnvelope,
 	},
 	TruncateFixedPointToInt,
 };
@@ -125,80 +126,44 @@ impl<T: Config> Pallet<T> {
 		let recipient_account_muxed = MuxedAccount::KeyTypeEd25519(recipient_stellar_address);
 		let recipient_account_pk = PublicKey::PublicKeyTypeEd25519(recipient_stellar_address);
 
-		let amount: i64 = match transaction_envelope {
-			TransactionEnvelope::EnvelopeTypeTxV0(envelope) => {
-				let mut sum: i64 = 0;
-				for x in envelope.tx.operations.get_vec().iter() {
-					match x.body.clone() {
-						OperationBody::Payment(payment) => {
-							if payment.destination.eq(&recipient_account_muxed) &&
-								payment.asset == asset
-							{
-								sum = sum.saturating_add(payment.amount);
-							}
-						},
-						OperationBody::CreateClaimableBalance(payment) => {
-							// for security reasons, we only count operations that have the
-							// recipient as a single claimer and unconditional claim predicate
-							if payment.claimants.len() == 1 {
-								let Claimant::ClaimantTypeV0(claimant) =
-									payment.claimants.get_vec()[0].clone();
-
-								if claimant.destination.eq(&recipient_account_pk) &&
-									claimant.predicate ==
-										ClaimPredicate::ClaimPredicateUnconditional
-								{
-									sum = sum.saturating_add(payment.amount);
-								}
-							}
-						},
-						_ => {
-							// ignore other operations
-						},
-					}
-				}
-				// return the sum of the amounts
-				sum
-			},
-			TransactionEnvelope::EnvelopeTypeTx(envelope) => {
-				let mut sum: i64 = 0;
-				for x in envelope.tx.operations.get_vec().iter() {
-					match x.body.clone() {
-						OperationBody::Payment(payment) => {
-							if payment.destination.eq(&recipient_account_muxed) &&
-								payment.asset == asset
-							{
-								sum = sum.saturating_add(payment.amount);
-							}
-						},
-						OperationBody::CreateClaimableBalance(payment) => {
-							// for security reasons, we only count operations that have the
-							// recipient as a single claimer and unconditional claim predicate
-							if payment.claimants.len() == 1 {
-								let Claimant::ClaimantTypeV0(claimant) =
-									payment.claimants.get_vec()[0].clone();
-
-								if claimant.destination.eq(&recipient_account_pk) &&
-									payment.asset == asset && claimant.predicate ==
-									ClaimPredicate::ClaimPredicateUnconditional
-								{
-									sum = sum.saturating_add(payment.amount);
-								}
-							}
-						},
-						_ => {
-							// ignore other operations
-						},
-					}
-				}
-				// return the sum of the amounts
-				sum
-			},
-			TransactionEnvelope::EnvelopeTypeTxFeeBump(_) => 0,
-			TransactionEnvelope::Default(_) => 0,
+		let tx_operations: Vec<Operation> = match transaction_envelope {
+			TransactionEnvelope::EnvelopeTypeTxV0(env) => env.tx.operations.get_vec().clone(),
+			TransactionEnvelope::EnvelopeTypeTx(env) => env.tx.operations.get_vec().clone(),
+			TransactionEnvelope::EnvelopeTypeTxFeeBump(_) => Vec::new(),
+			TransactionEnvelope::Default(_) => Vec::new(),
 		};
 
-		let balance = T::BalanceConversion::unlookup(amount);
+		let mut transferred_amount: i64 = 0;
+		for x in tx_operations {
+			match x.body {
+				OperationBody::Payment(payment) => {
+					if payment.destination.eq(&recipient_account_muxed) && payment.asset == asset {
+						transferred_amount = transferred_amount.saturating_add(payment.amount);
+					}
+				},
+				OperationBody::CreateClaimableBalance(payment) => {
+					// for security reasons, we only count operations that have the
+					// recipient as a single claimer and unconditional claim predicate
+					if payment.claimants.len() == 1 {
+						let Claimant::ClaimantTypeV0(claimant) =
+							payment.claimants.get_vec()[0].clone();
+
+						if claimant.destination.eq(&recipient_account_pk) &&
+							payment.asset == asset && claimant.predicate ==
+							ClaimPredicate::ClaimPredicateUnconditional
+						{
+							transferred_amount = transferred_amount.saturating_add(payment.amount);
+						}
+					}
+				},
+				_ => {
+					// ignore other operations
+				},
+			}
+		}
+
+		// `transferred_amount` is in stroops, so we need to convert it
+		let balance = T::BalanceConversion::unlookup(transferred_amount);
 		let amount: Amount<T> = Amount::new(balance, currency);
 		Ok(amount)
 	}
