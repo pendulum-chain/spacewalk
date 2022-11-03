@@ -129,7 +129,7 @@ pub mod pallet {
 		/// Not expected origin.
 		InvalidExecutor,
 		/// Issue amount is too small.
-		AmountBelowDustAmount,
+		AmountBelowMinimumTransferAmount,
 	}
 
 	/// Users create issue requests to issue tokens. This mapping provides access
@@ -146,15 +146,24 @@ pub mod pallet {
 	#[pallet::getter(fn issue_period)]
 	pub(super) type IssuePeriod<T: Config> = StorageValue<_, T::BlockNumber, ValueQuery>;
 
+	/// The minimum amount of wrapped assets that is required for issue requests
+	#[pallet::storage]
+	pub(super) type IssueMinimumTransferAmount<T: Config> =
+		StorageValue<_, BalanceOf<T>, ValueQuery>;
+
 	#[pallet::genesis_config]
 	pub struct GenesisConfig<T: Config> {
 		pub issue_period: T::BlockNumber,
+		pub issue_minimum_transfer_amount: BalanceOf<T>,
 	}
 
 	#[cfg(feature = "std")]
 	impl<T: Config> Default for GenesisConfig<T> {
 		fn default() -> Self {
-			Self { issue_period: Default::default() }
+			Self {
+				issue_period: Default::default(),
+				issue_minimum_transfer_amount: Default::default(),
+			}
 		}
 	}
 
@@ -162,6 +171,7 @@ pub mod pallet {
 	impl<T: Config> GenesisBuild<T> for GenesisConfig<T> {
 		fn build(&self) {
 			IssuePeriod::<T>::put(self.issue_period);
+			IssueMinimumTransferAmount::<T>::put(self.issue_minimum_transfer_amount);
 		}
 	}
 
@@ -288,6 +298,13 @@ impl<T: Config> Pallet<T> {
 			T::GetGriefingCollateralCurrencyId::get(),
 		);
 		griefing_collateral.lock_on(&requester)?;
+
+		// only continue if the payment is above the minimum transfer amount
+		ensure!(
+			amount_requested
+				.ge(&Self::issue_minimum_transfer_amount(vault_id.wrapped_currency()))?,
+			Error::<T>::AmountBelowMinimumTransferAmount
+		);
 
 		ext::vault_registry::try_increase_to_be_issued_tokens::<T>(&vault_id, &amount_requested)?;
 
@@ -658,5 +675,9 @@ impl<T: Config> Pallet<T> {
 			*request =
 				request.clone().map(|request| DefaultIssueRequest::<T> { status, ..request });
 		});
+	}
+
+	fn issue_minimum_transfer_amount(currency_id: CurrencyId<T>) -> Amount<T> {
+		Amount::new(IssueMinimumTransferAmount::<T>::get(), currency_id)
 	}
 }

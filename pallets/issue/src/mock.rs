@@ -299,7 +299,7 @@ impl ExtBuilder {
 		.assimilate_storage(&mut storage)
 		.unwrap();
 
-		issue::GenesisConfig::<Test> { issue_period: 10 }
+		issue::GenesisConfig::<Test> { issue_period: 10, issue_minimum_transfer_amount: 1 }
 			.assimilate_storage(&mut storage)
 			.unwrap();
 

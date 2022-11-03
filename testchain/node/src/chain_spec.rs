@@ -294,7 +294,7 @@ fn testnet_genesis(
 				})
 				.collect(),
 		},
-		issue: IssueConfig { issue_period: DAYS },
+		issue: IssueConfig { issue_period: DAYS, issue_minimum_transfer_amount: 1000 },
 		security: SecurityConfig {
 			initial_status: if start_shutdown { StatusCode::Shutdown } else { StatusCode::Error },
 		},
