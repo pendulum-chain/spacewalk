@@ -94,7 +94,8 @@ impl frame_system::Config for Test {
 
 pub const DEFAULT_COLLATERAL_CURRENCY: CurrencyId = Token(DOT);
 pub const DEFAULT_NATIVE_CURRENCY: CurrencyId = Token(INTR);
-pub const DEFAULT_WRAPPED_CURRENCY: CurrencyId = Token(IBTC);
+pub const DEFAULT_WRAPPED_CURRENCY: CurrencyId =
+	CurrencyId::AlphaNum4 { code: *b"USDC", issuer: [0u8; 32] };
 
 parameter_types! {
 	pub const GetCollateralCurrencyId: CurrencyId = DEFAULT_COLLATERAL_CURRENCY;

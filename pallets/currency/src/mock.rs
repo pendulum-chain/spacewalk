@@ -75,7 +75,10 @@ impl frame_system::Config for Test {
 parameter_types! {
 	pub const GetNativeCurrencyId: CurrencyId = Token(INTR);
 	pub const GetRelayChainCurrencyId: CurrencyId = Token(DOT);
-	pub const GetWrappedCurrencyId: CurrencyId = Token(IBTC);
+	pub const GetWrappedCurrencyId: CurrencyId = CurrencyId::AlphaNum4 {
+		code: *b"USDC",
+		issuer: [0u8; 32],
+	};
 	pub const MaxLocks: u32 = 50;
 }
 
