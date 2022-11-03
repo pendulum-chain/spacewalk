@@ -419,8 +419,8 @@ impl TryInto<stellar::Asset> for CurrencyId {
 
 	fn try_into(self) -> Result<stellar::Asset, Self::Error> {
 		match self {
-			Self::Token(t) => Err("Token {} not defined in the Stellar world."),
-			Self::ForeignAsset(f) => Err("Foreign Asset {} not defined in the Stellar world."),
+			Self::Token(_) => Err("Token not defined in the Stellar world."),
+			Self::ForeignAsset(_) => Err("Foreign Asset not defined in the Stellar world."),
 			Self::Native => Err("PEN token not defined in the Stellar world."),
 			Self::StellarNative => Ok(stellar::Asset::native()),
 			Self::AlphaNum4 { code, issuer } =>
