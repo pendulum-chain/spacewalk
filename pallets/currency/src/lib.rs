@@ -179,8 +179,8 @@ impl<T: Config> Pallet<T> {
 									payment.claimants.get_vec()[0].clone();
 
 								if claimant.destination.eq(&recipient_account_pk) &&
-									claimant.predicate ==
-										ClaimPredicate::ClaimPredicateUnconditional
+									payment.asset == asset && claimant.predicate ==
+									ClaimPredicate::ClaimPredicateUnconditional
 								{
 									sum = sum.saturating_add(payment.amount);
 								}

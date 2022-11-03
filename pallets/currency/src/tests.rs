@@ -16,7 +16,7 @@ use primitives::{
 use crate::{mock::*, Amount, Config};
 
 #[test]
-fn test_get_amount_from_transaction_envelope() {
+fn test_get_amount_from_transaction_envelope_works() {
 	run_test(|| {
 		let code: Bytes4 = *b"USDC";
 		let issuer: AssetIssuer = [0; 32];
@@ -79,6 +79,75 @@ fn test_get_amount_from_transaction_envelope() {
 		assert_eq!(result_amount.currency(), currency);
 	})
 }
+
+#[test]
+fn test_get_amount_from_transaction_envelope_works_for_mismatching_assets() {
+	run_test(|| {
+		let code: Bytes4 = *b"USDC";
+		let issuer: AssetIssuer = [0; 32];
+		let currency = CurrencyId::AlphaNum4 { code, issuer };
+
+		// use a different asset when creating the transaction
+		let other_issuer: AssetIssuer = [1; 32];
+		let other_currency = CurrencyId::AlphaNum4 { code, issuer: other_issuer };
+		let asset = <Test as Config>::AssetConversion::lookup(other_currency).unwrap();
+		let recipient_stellar_address = [1u8; 32];
+		let source_account = MuxedAccount::KeyTypeEd25519(recipient_stellar_address);
+
+		// the amount contained in each operation
+		let stroop_amount: i64 = 100_000;
+		let operations = LimitedVarArray::new(vec![
+			Operation {
+				source_account: Some(source_account.clone()),
+				body: OperationBody::Payment(PaymentOp {
+					destination: MuxedAccount::KeyTypeEd25519(recipient_stellar_address),
+					asset: asset.clone(),
+					amount: stroop_amount,
+				}),
+			},
+			Operation {
+				source_account: Some(source_account.clone()),
+				body: OperationBody::CreateClaimableBalance(CreateClaimableBalanceOp {
+					asset: asset.clone(),
+					amount: stroop_amount,
+					claimants: LimitedVarArray::new(vec![Claimant::ClaimantTypeV0(ClaimantV0 {
+						destination: PublicKey::PublicKeyTypeEd25519(recipient_stellar_address),
+						predicate: ClaimPredicate::ClaimPredicateUnconditional,
+					})])
+					.unwrap(),
+				}),
+			},
+		])
+		.unwrap();
+
+		let tx_env = TransactionEnvelope::EnvelopeTypeTx(TransactionV1Envelope {
+			tx: Transaction {
+				source_account,
+				fee: 0,
+				seq_num: 0,
+				cond: Preconditions::PrecondNone,
+				memo: Memo::MemoNone,
+				operations,
+				ext: TransactionExt::V0,
+			},
+			signatures: LimitedVarArray::new_empty(),
+		});
+
+		let result = Currency::get_amount_from_transaction_envelope(
+			&tx_env,
+			recipient_stellar_address,
+			currency,
+		);
+		let result_amount: Amount<Test> =
+			result.expect("Failed to get amount from transaction envelope");
+
+		// We expect the result to be 0 because the assets don't match, thus the transaction did not
+		// contain any amount for the requested currency
+		assert_eq!(result_amount.amount(), 0);
+		assert_eq!(result_amount.currency(), currency);
+	})
+}
+
 #[test]
 fn test_checked_fixed_point_mul_rounded_up() {
 	run_test(|| {
