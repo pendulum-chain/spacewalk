@@ -27,32 +27,29 @@ pub mod pallet {
 	use frame_support::pallet_prelude::*;
 	use frame_system::pallet_prelude::*;
 	use sha2::{Digest, Sha256};
-	use sp_runtime::traits::StaticLookup;
 	use sp_std::{collections::btree_map::BTreeMap, fmt::Debug, vec::Vec};
 	use substrate_stellar_sdk::{
 		compound_types::UnlimitedVarArray,
 		network::{Network, PUBLIC_NETWORK, TEST_NETWORK},
 		types::{
-			NodeId, OperationBody, ScpEnvelope, ScpStatementExternalize, ScpStatementPledges,
-			StellarValue, TransactionSet, Uint256,
+			NodeId, ScpEnvelope, ScpStatementExternalize, ScpStatementPledges, StellarValue,
+			TransactionSet,
 		},
-		Asset, ClaimPredicate, Claimant, Hash, MuxedAccount, PublicKey, TransactionEnvelope,
-		XdrCodec,
+		Hash, TransactionEnvelope, XdrCodec,
 	};
 
-	use currency::{Amount, CurrencyConversion, CurrencyId};
 	use default_weights::WeightInfo;
 
 	use crate::{
 		traits::FieldLength,
-		types::{AssetConversionOf, BalanceConversionOf, OrganizationOf, ValidatorOf},
+		types::{OrganizationOf, ValidatorOf},
 	};
 
 	use super::*;
 
 	/// Configure the pallet by specifying the parameters and types on which it depends.
 	#[pallet::config]
-	pub trait Config: frame_system::Config + currency::Config {
+	pub trait Config: frame_system::Config {
 		/// Because this pallet emits events, it depends on the runtime's definition of an event.
 		type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
 
