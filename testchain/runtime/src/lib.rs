@@ -41,7 +41,7 @@ pub use primitives::{
 	self, AccountId, Balance, BlockNumber, CurrencyId, Hash, Moment, Nonce, Signature,
 	SignedFixedPoint, SignedInner, UnsignedFixedPoint, UnsignedInner, H256,
 };
-use primitives::{CurrencyId::Token, TokenSymbol, TokenSymbol::INTR};
+use primitives::{CurrencyId::Token, TokenSymbol};
 pub use security::StatusCode;
 pub use stellar_relay::traits::{FieldLength, Organization, Validator};
 
@@ -312,13 +312,15 @@ impl currency::CurrencyConversion<currency::Amount<Runtime>, CurrencyId> for Cur
 }
 
 impl currency::Config for Runtime {
+	type UnsignedFixedPoint = UnsignedFixedPoint;
 	type SignedInner = SignedInner;
 	type SignedFixedPoint = SignedFixedPoint;
-	type UnsignedFixedPoint = UnsignedFixedPoint;
 	type Balance = Balance;
 	type GetNativeCurrencyId = GetNativeCurrencyId;
 	type GetRelayChainCurrencyId = GetRelayChainCurrencyId;
 	type GetWrappedCurrencyId = GetWrappedCurrencyId;
+	type AssetConversion = primitives::AssetConversion;
+	type BalanceConversion = primitives::BalanceConversion;
 	type CurrencyConversion = CurrencyConvert;
 }
 
