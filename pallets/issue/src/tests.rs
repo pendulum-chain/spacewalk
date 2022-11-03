@@ -230,8 +230,9 @@ fn setup_execute(
 
 	ext::stellar_relay::validate_stellar_transaction::<Test>
 		.mock_safe(move |_, _, _| MockResult::Return(Ok(())));
-	ext::stellar_relay::get_amount_from_transaction_envelope::<Test, Balance>
-		.mock_safe(move |_, _, _| MockResult::Return(Ok(amount_transferred)));
+	ext::currency::get_amount_from_transaction_envelope::<Test>.mock_safe(move |_, _, currency| {
+		MockResult::Return(Ok(Amount::new(amount_transferred, currency)))
+	});
 
 	issue_id
 }

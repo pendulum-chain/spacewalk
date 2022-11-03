@@ -25,18 +25,13 @@ pub(crate) mod currency {
 
 #[cfg_attr(test, mockable)]
 pub(crate) mod stellar_relay {
-	use sp_std::convert::TryFrom;
 	use substrate_stellar_sdk::{
 		compound_types::UnlimitedVarArray,
 		types::{ScpEnvelope, TransactionSet},
 		TransactionEnvelope, XdrCodec,
 	};
 
-	use currency::Amount;
-	use primitives::StellarPublicKeyRaw;
 	use stellar_relay::Error;
-
-	use crate::types::CurrencyId;
 
 	pub fn validate_stellar_transaction<T: crate::Config>(
 		transaction_envelope: &TransactionEnvelope,
