@@ -10,10 +10,12 @@ use sp_core::{crypto::UncheckedInto, ed25519, sr25519, Pair, Public};
 use sp_finality_grandpa::AuthorityId as GrandpaId;
 use sp_runtime::traits::{IdentifyAccount, Verify};
 
-use primitives::{CurrencyId::Token, VaultCurrencyPair, DOT, KSM};
+use primitives::{
+	CurrencyId::Token, CurrencyInfo, VaultCurrencyPair, DOT, IBTC, INTR, KBTC, KINT, KSM,
+};
 use spacewalk_runtime::{
 	AccountId, AuraConfig, BalancesConfig, CurrencyId, FeeConfig, FieldLength, GenesisConfig,
-	GetWrappedCurrencyId, GrandpaConfig, NominationConfig, OracleConfig, Organization,
+	GetWrappedCurrencyId, GrandpaConfig, IssueConfig, NominationConfig, OracleConfig, Organization,
 	SecurityConfig, Signature, StatusCode, StellarRelayConfig, SudoConfig, SystemConfig,
 	TokensConfig, Validator, VaultRegistryConfig, DAYS, WASM_BINARY,
 };
@@ -51,6 +53,15 @@ where
 
 fn get_properties() -> Map<String, Value> {
 	let mut properties = Map::new();
+
+	let mut token_symbol: Vec<String> = vec![];
+	let mut token_decimals: Vec<u32> = vec![];
+	[INTR, IBTC, DOT, KINT, KBTC, KSM].iter().for_each(|token| {
+		token_symbol.push(token.symbol().to_string());
+		token_decimals.push(token.decimals() as u32);
+	});
+	properties.insert("tokenSymbol".into(), token_symbol.into());
+	properties.insert("tokenDecimals".into(), token_decimals.into());
 	properties.insert("ss58Format".into(), spacewalk_runtime::SS58Prefix::get().into());
 	properties
 }
@@ -273,9 +284,17 @@ fn testnet_genesis(
 			// Configure the initial token supply for the native currency and USDC asset
 			balances: endowed_accounts
 				.iter()
-				.flat_map(|k| vec![(k.clone(), CurrencyId::Token(DOT), 1 << 60)])
+				.flat_map(|k| {
+					vec![
+						(k.clone(), Token(DOT), 1 << 60),
+						(k.clone(), Token(INTR), 1 << 60),
+						(k.clone(), Token(KSM), 1 << 60),
+						(k.clone(), Token(KINT), 1 << 60),
+					]
+				})
 				.collect(),
 		},
+		issue: IssueConfig { issue_period: DAYS, issue_minimum_transfer_amount: 1000 },
 		security: SecurityConfig {
 			initial_status: if start_shutdown { StatusCode::Shutdown } else { StatusCode::Error },
 		},

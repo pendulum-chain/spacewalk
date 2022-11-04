@@ -22,7 +22,10 @@ use sp_consensus_aura::ed25519::AuthorityId as AuraId;
 use sp_core::{crypto::KeyTypeId, OpaqueMetadata};
 use sp_runtime::{
 	create_runtime_str, generic, impl_opaque_keys,
-	traits::{AccountIdConversion, AccountIdLookup, BlakeTwo256, Block as BlockT, NumberFor, Zero},
+	traits::{
+		AccountIdConversion, AccountIdLookup, BlakeTwo256, Block as BlockT, Convert, NumberFor,
+		Zero,
+	},
 	transaction_validity::{TransactionSource, TransactionValidity},
 	ApplyExtrinsicResult, DispatchError, FixedPointNumber, Perbill,
 };
@@ -31,11 +34,12 @@ use sp_std::prelude::*;
 use sp_version::NativeVersion;
 use sp_version::RuntimeVersion;
 
+pub use issue::{Event as IssueEvent, IssueRequest};
 pub use nomination::Event as NominationEvent;
 // A few exports that help ease life for downstream crates.
 pub use primitives::{
 	self, AccountId, Balance, BlockNumber, CurrencyId, Hash, Moment, Nonce, Signature,
-	SignedFixedPoint, SignedInner, UnsignedFixedPoint, UnsignedInner,
+	SignedFixedPoint, SignedInner, UnsignedFixedPoint, UnsignedInner, H256,
 };
 use primitives::{CurrencyId::Token, TokenSymbol};
 pub use security::StatusCode;
@@ -80,6 +84,14 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
 
 pub const MILLISECS_PER_BLOCK: u64 = 6000;
 pub const SLOT_DURATION: u64 = MILLISECS_PER_BLOCK;
+
+pub struct BlockNumberToBalance;
+
+impl Convert<BlockNumber, Balance> for BlockNumberToBalance {
+	fn convert(a: BlockNumber) -> Balance {
+		a.into()
+	}
+}
 
 /// The version information used to identify this runtime when compiled natively.
 #[cfg(feature = "std")]
@@ -180,7 +192,7 @@ impl pallet_timestamp::Config for Runtime {
 const NATIVE_TOKEN_ID: TokenSymbol = TokenSymbol::PEN;
 const NATIVE_CURRENCY_ID: CurrencyId = Token(NATIVE_TOKEN_ID);
 const PARENT_CURRENCY_ID: CurrencyId = Token(TokenSymbol::DOT);
-const WRAPPED_CURRENCY_ID: CurrencyId = Token(TokenSymbol::IBTC);
+const WRAPPED_CURRENCY_ID: CurrencyId = CurrencyId::AlphaNum4 { code: *b"USDC", issuer: [0u8; 32] };
 
 parameter_types! {
 	pub const GetNativeCurrencyId: CurrencyId = NATIVE_CURRENCY_ID;
@@ -300,13 +312,15 @@ impl currency::CurrencyConversion<currency::Amount<Runtime>, CurrencyId> for Cur
 }
 
 impl currency::Config for Runtime {
+	type UnsignedFixedPoint = UnsignedFixedPoint;
 	type SignedInner = SignedInner;
 	type SignedFixedPoint = SignedFixedPoint;
-	type UnsignedFixedPoint = UnsignedFixedPoint;
 	type Balance = Balance;
 	type GetNativeCurrencyId = GetNativeCurrencyId;
 	type GetRelayChainCurrencyId = GetRelayChainCurrencyId;
 	type GetWrappedCurrencyId = GetWrappedCurrencyId;
+	type AssetConversion = primitives::AssetConversion;
+	type BalanceConversion = primitives::BalanceConversion;
 	type CurrencyConversion = CurrencyConvert;
 }
 
@@ -346,6 +360,12 @@ where
 
 impl oracle::Config for Runtime {
 	type Event = Event;
+	type WeightInfo = ();
+}
+
+impl issue::Config for Runtime {
+	type Event = Event;
+	type BlockNumberToBalance = BlockNumberToBalance;
 	type WeightInfo = ();
 }
 
@@ -393,9 +413,11 @@ construct_runtime! {
 		VaultStaking: staking::{Pallet, Storage, Event<T>} = 16,
 
 		Currency: currency::{Pallet} = 17,
+
 		Security: security::{Pallet, Call, Config, Storage, Event<T>} = 19,
 		VaultRegistry: vault_registry::{Pallet, Call, Config<T>, Storage, Event<T>, ValidateUnsigned} = 21,
 		Oracle: oracle::{Pallet, Call, Config<T>, Storage, Event<T>} = 22,
+		Issue: issue::{Pallet, Call, Config<T>, Storage, Event<T>} = 23,
 		Fee: fee::{Pallet, Call, Config<T>, Storage} = 26,
 		Nomination: nomination::{Pallet, Call, Config, Storage, Event<T>} = 28,
 
@@ -441,6 +463,7 @@ mod benches {
 		[frame_benchmarking, BaselineBench::<Runtime>]
 		[frame_system, SystemBench::<Runtime>]
 		[stellar_relay, StellarRelay]
+		[issue, Issue]
 		[fee, Fee]
 		[oracle, Oracle]
 		[vault_registry, VaultRegistry]
@@ -628,4 +651,20 @@ impl_runtime_apis! {
 			Ok(batches)
 		}
 	}
+
+	impl module_issue_rpc_runtime_api::IssueApi<
+		Block,
+		AccountId,
+		H256,
+		IssueRequest<AccountId, BlockNumber, Balance, CurrencyId>
+	> for Runtime {
+		fn get_issue_requests(account_id: AccountId) -> Vec<H256> {
+			Issue::get_issue_requests_for_account(account_id)
+		}
+
+		fn get_vault_issue_requests(vault_id: AccountId) -> Vec<H256> {
+			Issue::get_issue_requests_for_vault(vault_id)
+		}
+	}
+
 }

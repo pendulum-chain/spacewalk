@@ -1,6 +1,3 @@
-use crate as nomination;
-use crate::{Config, Error};
-use currency::Amount;
 use frame_support::{
 	assert_ok, parameter_types,
 	traits::{ConstU32, Everything, GenesisBuild},
@@ -8,15 +5,19 @@ use frame_support::{
 };
 use mocktopus::{macros::mockable, mocking::clear_mocks};
 use orml_traits::parameter_type_with_key;
-pub use primitives::{CurrencyId, CurrencyId::Token, TokenSymbol::*};
-use primitives::{VaultCurrencyPair, VaultId};
-use sp_arithmetic::{FixedI128, FixedU128};
+use sp_arithmetic::{FixedI128, FixedPointNumber, FixedU128};
 use sp_core::H256;
 use sp_runtime::{
 	testing::{Header, TestXt},
-	traits::{BlakeTwo256, IdentityLookup, One, Zero},
-	FixedPointNumber,
+	traits::{BlakeTwo256, Convert, IdentityLookup, One, Zero},
 };
+
+use currency::Amount;
+pub use primitives::{CurrencyId, CurrencyId::Token, TokenSymbol::*};
+use primitives::{VaultCurrencyPair, VaultId};
+
+use crate as issue;
+use crate::{Config, Error};
 
 type TestExtrinsic = TestXt<Call, ()>;
 type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Test>;
@@ -35,16 +36,16 @@ frame_support::construct_runtime!(
 		// Tokens & Balances
 		Tokens: orml_tokens::{Pallet, Storage, Config<T>, Event<T>},
 
-		Rewards: reward::{Pallet, Call, Storage, Event<T>},
-
 		// Operational
-		Security: security::{Pallet, Call, Storage, Event<T>},
-		VaultRegistry: vault_registry::{Pallet, Call, Config<T>, Storage, Event<T>},
-		Fee: fee::{Pallet, Call, Config<T>, Storage},
-		Oracle: oracle::{Pallet, Call, Config<T>, Storage, Event<T>},
-		Nomination: nomination::{Pallet, Call, Config, Storage, Event<T>},
-		Staking: staking::{Pallet, Storage, Event<T>},
 		Currency: currency::{Pallet},
+		StellarRelay: stellar_relay::{Pallet, Call, Config<T>, Storage, Event<T>},
+		Security: security::{Pallet, Call, Storage, Event<T>},
+		Issue: issue::{Pallet, Call, Config<T>, Storage, Event<T>},
+		Oracle: oracle::{Pallet, Call, Config<T>, Storage, Event<T>},
+		Fee: fee::{Pallet, Call, Config<T>, Storage},
+		Staking: staking::{Pallet, Storage, Event<T>},
+		Rewards: reward::{Pallet, Call, Storage, Event<T>},
+		VaultRegistry: vault_registry::{Pallet, Call, Config<T>, Storage, Event<T>},
 	}
 );
 
@@ -93,12 +94,8 @@ impl frame_system::Config for Test {
 
 pub const DEFAULT_COLLATERAL_CURRENCY: CurrencyId = Token(DOT);
 pub const DEFAULT_NATIVE_CURRENCY: CurrencyId = Token(INTR);
-pub const DEFAULT_WRAPPED_CURRENCY: CurrencyId = Token(IBTC);
-
-pub const DEFAULT_CURRENCY_PAIR: VaultCurrencyPair<CurrencyId> = VaultCurrencyPair {
-	collateral: DEFAULT_COLLATERAL_CURRENCY,
-	wrapped: DEFAULT_WRAPPED_CURRENCY,
-};
+pub const DEFAULT_WRAPPED_CURRENCY: CurrencyId =
+	CurrencyId::AlphaNum4 { code: *b"USDC", issuer: [0u8; 32] };
 
 parameter_types! {
 	pub const GetCollateralCurrencyId: CurrencyId = DEFAULT_COLLATERAL_CURRENCY;
@@ -127,15 +124,6 @@ impl orml_tokens::Config for Test {
 	type ReserveIdentifier = (); // we don't use named reserves
 	type OnNewTokenAccount = ();
 	type OnKilledTokenAccount = ();
-}
-
-impl reward::Config for Test {
-	type Event = TestEvent;
-	type SignedFixedPoint = SignedFixedPoint;
-	type RewardId = VaultId<AccountId, CurrencyId>;
-	type CurrencyId = CurrencyId;
-	type GetNativeCurrencyId = GetNativeCurrencyId;
-	type GetWrappedCurrencyId = GetWrappedCurrencyId;
 }
 
 parameter_types! {
@@ -187,6 +175,38 @@ impl currency::Config for Test {
 	type CurrencyConversion = CurrencyConvert;
 }
 
+parameter_types! {
+	pub const ParachainBlocksPerBitcoinBlock: BlockNumber = 100;
+}
+
+parameter_types! {
+	pub const OrganizationLimit: u32 = 255;
+	pub const ValidatorLimit: u32 = 255;
+}
+
+pub type OrganizationId = u128;
+
+impl stellar_relay::Config for Test {
+	type Event = Event;
+	type OrganizationId = OrganizationId;
+	type OrganizationLimit = OrganizationLimit;
+	type ValidatorLimit = ValidatorLimit;
+	type WeightInfo = ();
+}
+
+impl security::Config for Test {
+	type Event = TestEvent;
+}
+
+impl reward::Config for Test {
+	type Event = TestEvent;
+	type SignedFixedPoint = SignedFixedPoint;
+	type RewardId = VaultId<AccountId, CurrencyId>;
+	type CurrencyId = CurrencyId;
+	type GetNativeCurrencyId = GetNativeCurrencyId;
+	type GetWrappedCurrencyId = GetWrappedCurrencyId;
+}
+
 impl staking::Config for Test {
 	type Event = TestEvent;
 	type SignedFixedPoint = SignedFixedPoint;
@@ -195,18 +215,8 @@ impl staking::Config for Test {
 	type GetNativeCurrencyId = GetNativeCurrencyId;
 }
 
-impl security::Config for Test {
+impl oracle::Config for Test {
 	type Event = TestEvent;
-}
-
-parameter_types! {
-	pub const MinimumPeriod: Moment = 5;
-}
-
-impl pallet_timestamp::Config for Test {
-	type Moment = Moment;
-	type OnTimestampSet = ();
-	type MinimumPeriod = MinimumPeriod;
 	type WeightInfo = ();
 }
 
@@ -228,36 +238,43 @@ impl fee::Config for Test {
 	type MaxExpectedValue = MaxExpectedValue;
 }
 
-impl oracle::Config for Test {
-	type Event = TestEvent;
+parameter_types! {
+	pub const MinimumPeriod: Moment = 5;
+}
+
+impl pallet_timestamp::Config for Test {
+	type Moment = Moment;
+	type OnTimestampSet = ();
+	type MinimumPeriod = MinimumPeriod;
 	type WeightInfo = ();
+}
+
+pub struct BlockNumberToBalance;
+
+impl Convert<BlockNumber, Balance> for BlockNumberToBalance {
+	fn convert(a: BlockNumber) -> Balance {
+		a.into()
+	}
 }
 
 impl Config for Test {
 	type Event = TestEvent;
+	type BlockNumberToBalance = BlockNumberToBalance;
 	type WeightInfo = ();
 }
 
 pub type TestEvent = Event;
 pub type TestError = Error<Test>;
+pub type VaultRegistryError = vault_registry::Error<Test>;
 
-pub const ALICE: VaultId<AccountId, CurrencyId> = VaultId {
-	account_id: 1,
-	currencies: VaultCurrencyPair {
-		collateral: DEFAULT_COLLATERAL_CURRENCY,
-		wrapped: DEFAULT_WRAPPED_CURRENCY,
-	},
-};
-pub const BOB: VaultId<AccountId, CurrencyId> = VaultId {
+pub const USER: AccountId = 1;
+pub const VAULT: VaultId<AccountId, CurrencyId> = VaultId {
 	account_id: 2,
 	currencies: VaultCurrencyPair {
 		collateral: DEFAULT_COLLATERAL_CURRENCY,
 		wrapped: DEFAULT_WRAPPED_CURRENCY,
 	},
 };
-
-#[allow(dead_code)]
-pub const DEFAULT_COLLATERAL: u128 = 100;
 
 pub const ALICE_BALANCE: u128 = 1_000_000;
 pub const BOB_BALANCE: u128 = 1_000_000;
@@ -269,12 +286,6 @@ impl ExtBuilder {
 		let mut storage = frame_system::GenesisConfig::default().build_storage::<Test>().unwrap();
 
 		balances.assimilate_storage(&mut storage).unwrap();
-
-		frame_support::traits::GenesisBuild::<Test>::assimilate_storage(
-			&nomination::GenesisConfig { is_nomination_enabled: true },
-			&mut storage,
-		)
-		.unwrap();
 
 		fee::GenesisConfig::<Test> {
 			issue_fee: UnsignedFixedPoint::checked_from_rational(5, 1000).unwrap(), // 0.5%
@@ -288,20 +299,28 @@ impl ExtBuilder {
 		.assimilate_storage(&mut storage)
 		.unwrap();
 
+		issue::GenesisConfig::<Test> { issue_period: 10, issue_minimum_transfer_amount: 1 }
+			.assimilate_storage(&mut storage)
+			.unwrap();
+
+		const PAIR: VaultCurrencyPair<CurrencyId> = VaultCurrencyPair {
+			collateral: DEFAULT_COLLATERAL_CURRENCY,
+			wrapped: DEFAULT_WRAPPED_CURRENCY,
+		};
 		vault_registry::GenesisConfig::<Test> {
 			minimum_collateral_vault: vec![(DEFAULT_COLLATERAL_CURRENCY, 0)],
 			punishment_delay: 8,
-			system_collateral_ceiling: vec![(DEFAULT_CURRENCY_PAIR, 1_000_000_000_000)],
+			system_collateral_ceiling: vec![(PAIR, 1_000_000_000_000)],
 			secure_collateral_threshold: vec![(
-				DEFAULT_CURRENCY_PAIR,
+				PAIR,
 				UnsignedFixedPoint::checked_from_rational(200, 100).unwrap(),
 			)],
 			premium_redeem_threshold: vec![(
-				DEFAULT_CURRENCY_PAIR,
+				PAIR,
 				UnsignedFixedPoint::checked_from_rational(120, 100).unwrap(),
 			)],
 			liquidation_collateral_threshold: vec![(
-				DEFAULT_CURRENCY_PAIR,
+				PAIR,
 				UnsignedFixedPoint::checked_from_rational(110, 100).unwrap(),
 			)],
 		}
@@ -313,12 +332,15 @@ impl ExtBuilder {
 
 	pub fn build() -> sp_io::TestExternalities {
 		ExtBuilder::build_with(orml_tokens::GenesisConfig::<Test> {
-			balances: vec![
-				(ALICE.account_id, Token(DOT), ALICE_BALANCE),
-				(BOB.account_id, Token(DOT), BOB_BALANCE),
-				(ALICE.account_id, Token(IBTC), ALICE_BALANCE),
-				(BOB.account_id, Token(IBTC), BOB_BALANCE),
-			],
+			balances: vec![DEFAULT_COLLATERAL_CURRENCY, DEFAULT_NATIVE_CURRENCY]
+				.into_iter()
+				.flat_map(|currency_id| {
+					vec![
+						(USER, currency_id, ALICE_BALANCE),
+						(VAULT.account_id, currency_id, BOB_BALANCE),
+					]
+				})
+				.collect(),
 		})
 	}
 }
@@ -335,6 +357,7 @@ where
 		));
 		Security::set_active_block_number(1);
 		System::set_block_number(1);
+
 		test();
 	});
 }

@@ -52,15 +52,17 @@ orml-tokens = {git = "https://github.com/open-web3-stack/open-runtime-module-lib
 orml-traits = {git = "https://github.com/open-web3-stack/open-runtime-module-library", branch = "polkadot-v0.9.24", default-features = false}
 
 currency = { path = "../../pallets/currency", default-features = false }
-security = { path = "../../pallets/security", default-features = false }
-vault-registry = { path = "../../pallets/vault-registry", default-features = false }
-oracle = { path = "../../pallets/oracle", default-features = false }
 fee = { path = "../../pallets/fee", default-features = false }
+issue = { path = "../../pallets/issue", default-features = false }
 nomination = { path = "../../pallets/nomination", default-features = false }
+oracle = { path = "../../pallets/oracle", default-features = false }
 reward = { path = "../../pallets/reward", default-features = false }
+security = { path = "../../pallets/security", default-features = false }
 staking = { path = "../../pallets/staking", default-features = false }
-
 stellar-relay = {path = "../../pallets/stellar-relay", default-features = false}
+vault-registry = { path = "../../pallets/vault-registry", default-features = false }
+
+module-issue-rpc-runtime-api = { path = "../../pallets/issue/rpc/runtime-api", default-features = false }
 
 primitives = {package = "spacewalk-primitives", path = "../../primitives", default-features = false}
 
@@ -84,6 +86,7 @@ runtime-benchmarks = [
   "frame-system-benchmarking",
   "hex-literal",
   "fee/runtime-benchmarks",
+  "issue/runtime-benchmarks",
   "nomination/runtime-benchmarks",
   "oracle/runtime-benchmarks",
   "stellar-relay/runtime-benchmarks",
@@ -109,14 +112,16 @@ std = [
   "pallet-transaction-payment/std",
   "primitives/std",
   "currency/std",
-  "security/std",
-  "vault-registry/std",
-  "oracle/std",
   "fee/std",
+  "issue/std",
   "nomination/std",
+  "oracle/std",
   "reward/std",
+  "security/std",
   "staking/std",
   "stellar-relay/std",
+  "vault-registry/std",
+  "module-issue-rpc-runtime-api/std",
   "sp-api/std",
   "sp-block-builder/std",
   "sp-consensus-aura/std",

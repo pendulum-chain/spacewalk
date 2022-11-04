@@ -93,11 +93,13 @@ pub mod pallet {
 		Base64DecodeError,
 		BoundedVecCreationFailed,
 		EnvelopeSignedByUnknownValidator,
-		InvalidExternalizedMessages,
-		InvalidEnvelopeSignature,
 		InvalidQuorumSetNotEnoughOrganizations,
 		InvalidQuorumSetNotEnoughValidators,
 		InvalidScpPledge,
+		InvalidEnvelopeSignature,
+		InvalidXDR,
+		NoOrganizationsRegisteredForNetwork,
+		NoValidatorsRegisteredForNetwork,
 		InvalidTransactionSet,
 		InvalidTransactionXDR,
 		NoOrganizationsRegistered,
@@ -374,6 +376,16 @@ pub mod pallet {
 			// Limit this call to root
 			let _ = ensure_root(origin)?;
 
+			Self::_update_tier_1_validator_set(validators, organizations)
+		}
+	}
+
+	// Helper functions
+	impl<T: Config> Pallet<T> {
+		pub fn _update_tier_1_validator_set(
+			validators: Vec<ValidatorOf<T>>,
+			organizations: Vec<OrganizationOf<T>>,
+		) -> DispatchResult {
 			// Ensure that the number of validators does not exceed the limit
 			ensure!(
 				validators.len() as u32 <= T::ValidatorLimit::get(),
@@ -408,9 +420,9 @@ pub mod pallet {
 		/// - `envelopes`: The set of SCP envelopes that were externalized on the Stellar network
 		/// - `transaction_set`: The set of transactions that belong to the envelopes
 		pub fn validate_stellar_transaction(
-			transaction_envelope: TransactionEnvelope,
-			envelopes: UnlimitedVarArray<ScpEnvelope>,
-			transaction_set: TransactionSet,
+			transaction_envelope: &TransactionEnvelope,
+			envelopes: &UnlimitedVarArray<ScpEnvelope>,
+			transaction_set: &TransactionSet,
 		) -> Result<(), Error<T>> {
 			let network: &Network =
 				if Self::is_public_network() { &PUBLIC_NETWORK } else { &TEST_NETWORK };
@@ -524,9 +536,18 @@ pub mod pallet {
 				.map_err(|_| Error::<T>::TransactionSetHashCreationFailed)?;
 			Ok(tx_set_hash)
 		}
+
+		pub fn construct_from_raw_encoded_xdr<V: XdrCodec>(
+			raw_encoded_xdr: &[u8],
+		) -> Result<V, Error<T>> {
+			let value_xdr =
+				base64::decode(raw_encoded_xdr).map_err(|_| Error::<T>::Base64DecodeError)?;
+			let decoded = V::from_xdr(value_xdr).map_err(|_| Error::<T>::InvalidXDR)?;
+			Ok(decoded)
+		}
 	}
 
-	pub(crate) fn compute_non_generic_tx_set_content_hash(tx_set: &TransactionSet) -> [u8; 32] {
+	pub fn compute_non_generic_tx_set_content_hash(tx_set: &TransactionSet) -> [u8; 32] {
 		let mut hasher = Sha256::new();
 		hasher.update(tx_set.previous_ledger_hash);
 
