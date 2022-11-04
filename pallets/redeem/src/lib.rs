@@ -147,7 +147,7 @@ pub mod pallet {
 		/// Unable to convert value.
 		TryIntoIntError,
 		/// Redeem amount is too small.
-		AmountBelowDustAmount,
+		AmountBelowMinimumTransferAmount,
 	}
 
 	/// The time difference in number of blocks between a redeem request is created and required
@@ -167,19 +167,23 @@ pub mod pallet {
 	/// The minimum amount of btc that is accepted for redeem requests; any lower values would
 	/// risk the bitcoin client to reject the payment
 	#[pallet::storage]
-	#[pallet::getter(fn redeem_btc_dust_value)]
-	pub(super) type RedeemDustValue<T: Config> = StorageValue<_, BalanceOf<T>, ValueQuery>;
+	#[pallet::getter(fn redeem_minimum_transfer_amount)]
+	pub(super) type RedeemMinimumTransferAmount<T: Config> =
+		StorageValue<_, BalanceOf<T>, ValueQuery>;
 
 	#[pallet::genesis_config]
 	pub struct GenesisConfig<T: Config> {
 		pub redeem_period: T::BlockNumber,
-		pub redeem_dust_value: BalanceOf<T>,
+		pub redeem_minimum_transfer_amount: BalanceOf<T>,
 	}
 
 	#[cfg(feature = "std")]
 	impl<T: Config> Default for GenesisConfig<T> {
 		fn default() -> Self {
-			Self { redeem_period: Default::default(), redeem_dust_value: Default::default() }
+			Self {
+				redeem_period: Default::default(),
+				redeem_minimum_transfer_amount: Default::default(),
+			}
 		}
 	}
 
@@ -187,7 +191,7 @@ pub mod pallet {
 	impl<T: Config> GenesisBuild<T> for GenesisConfig<T> {
 		fn build(&self) {
 			RedeemPeriod::<T>::put(self.redeem_period);
-			RedeemDustValue::<T>::put(self.redeem_dust_value);
+			RedeemMinimumTransferAmount::<T>::put(self.redeem_minimum_transfer_amount);
 		}
 	}
 
@@ -277,7 +281,7 @@ pub mod pallet {
 
 			// Don't take tx fees on success. If the vault had to pay for this function, it would
 			// have been vulnerable to a griefing attack where users would redeem amounts just
-			// above the dust value.
+			// above the minimum transfer value.
 			Ok(Pays::No.into())
 		}
 
@@ -382,7 +386,7 @@ mod self_redeem {
 		ext::vault_registry::ensure_not_banned::<T>(&vault_id)?;
 
 		// for self-redeem, dustAmount is effectively 1 satoshi
-		ensure!(!amount_wrapped.is_zero(), Error::<T>::AmountBelowDustAmount);
+		ensure!(!amount_wrapped.is_zero(), Error::<T>::AmountBelowMinimumTransferAmount);
 
 		let (fees, consumed_issued_tokens) =
 			calculate_token_amounts::<T>(&vault_id, &amount_wrapped)?;
@@ -490,19 +494,20 @@ impl<T: Config> Pallet<T> {
 
 		let vault_to_be_burned_tokens = amount_wrapped.checked_sub(&fee_wrapped)?;
 
-		// this can overflow for small requested values. As such return AmountBelowDustAmount when
-		// this happens
+		// this can overflow for small requested values. As such return
+		// AmountBelowMinimumTransferAmount when this happens
 		let user_to_be_received_btc = vault_to_be_burned_tokens
 			.checked_sub(&inclusion_fee)
-			.map_err(|_| Error::<T>::AmountBelowDustAmount)?;
+			.map_err(|_| Error::<T>::AmountBelowMinimumTransferAmount)?;
 
 		ext::vault_registry::ensure_not_banned::<T>(&vault_id)?;
 
 		// only allow requests of amount above above the minimum
 		ensure!(
 			// this is the amount the vault will send (minus fee)
-			user_to_be_received_btc.ge(&Self::get_dust_value(vault_id.wrapped_currency()))?,
-			Error::<T>::AmountBelowDustAmount
+			user_to_be_received_btc
+				.ge(&Self::get_minimum_transfer_amount(vault_id.wrapped_currency()))?,
+			Error::<T>::AmountBelowMinimumTransferAmount
 		);
 
 		// vault will get rid of the btc + btc_inclusion_fee
@@ -862,8 +867,8 @@ impl<T: Config> Pallet<T> {
 		Ok(amount)
 	}
 
-	pub fn get_dust_value(currency_id: CurrencyId<T>) -> Amount<T> {
-		Amount::new(<RedeemDustValue<T>>::get(), currency_id)
+	pub fn get_minimum_transfer_amount(currency_id: CurrencyId<T>) -> Amount<T> {
+		Amount::new(<RedeemMinimumTransferAmount<T>>::get(), currency_id)
 	}
 	/// Fetch all redeem requests for the specified account.
 	///

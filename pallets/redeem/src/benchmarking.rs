@@ -103,7 +103,7 @@ benchmarks! {
 	request_redeem {
 		let origin: T::AccountId = account("Origin", 0, 0);
 		let vault_id = get_vault_id::<T>();
-		let amount = Redeem::<T>::redeem_btc_dust_value() + 1000u32.into();
+		let amount = Redeem::<T>::redeem_minimum_transfer_amount() + 1000u32.into();
 		let asset = Token(DOT);
 		let stellar_address = DEFAULT_STELLAR_PUBLIC_KEY;
 

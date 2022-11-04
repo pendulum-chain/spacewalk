@@ -310,7 +310,7 @@ impl ExtBuilder {
 		.assimilate_storage(&mut storage)
 		.unwrap();
 
-		redeem::GenesisConfig::<Test> { redeem_period: 10, redeem_dust_value: 2 }
+		redeem::GenesisConfig::<Test> { redeem_period: 10, redeem_minimum_transfer_amount: 2 }
 			.assimilate_storage(&mut storage)
 			.unwrap();
 
