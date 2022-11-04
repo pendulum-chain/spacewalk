@@ -2,19 +2,17 @@
 
 use bstringify::bstringify;
 use codec::{Decode, Encode, MaxEncodedLen};
+use frame_support::error::LookupError;
 use scale_info::TypeInfo;
 #[cfg(feature = "std")]
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
-use sp_core::ed25519;
 pub use sp_core::H256;
+use sp_core::{crypto::AccountId32, ed25519};
 pub use sp_runtime::OpaqueExtrinsic as UncheckedExtrinsic;
 use sp_runtime::{
 	generic,
-	traits::{
-		AccountId32, BlakeTwo256, FixedI128, FixedPointNumber, FixedU128, IdentifyAccount,
-		MultiSignature, MultiSigner, RuntimeDebug, Verify,
-	},
-	FixedI128, FixedPointNumber, FixedU128, MultiSignature, RuntimeDebug,
+	traits::{BlakeTwo256, Convert, IdentifyAccount, StaticLookup, Verify},
+	FixedI128, FixedPointNumber, FixedU128, MultiSignature, MultiSigner, RuntimeDebug,
 };
 use sp_std::{
 	convert::{From, TryFrom, TryInto},
@@ -25,13 +23,10 @@ use sp_std::{
 	vec,
 	vec::Vec,
 };
-
-use frame_support::error::LookupError;
 use stellar::{
 	types::{AlphaNum12, AlphaNum4},
 	Asset, PublicKey,
 };
-
 pub use substrate_stellar_sdk as stellar;
 
 #[cfg(test)]

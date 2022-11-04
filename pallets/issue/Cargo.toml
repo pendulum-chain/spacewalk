@@ -46,7 +46,7 @@ frame-benchmarking = { git = "https://github.com/paritytech/substrate", branch =
 
 reward = { path = "../reward" }
 staking = { path = "../staking" }
-stellar-relay = { package = "pallet-stellar-relay", path = "../stellar-relay", features = ['testing-utils'] }
+stellar-relay = {  path = "../stellar-relay", features = ['testing-utils'] }
 
 
 # Orml dependencies

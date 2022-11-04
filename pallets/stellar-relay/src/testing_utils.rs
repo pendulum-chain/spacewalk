@@ -101,7 +101,6 @@ pub fn get_validators_and_organizations<T: crate::Config>(
 	let organization: OrganizationOf<T> = Organization {
 		id: 1.into(),
 		name: BoundedVec::try_from("organization".as_bytes().to_vec()).unwrap(),
-		public_network: false,
 	};
 
 	let validator_1: ValidatorOf<T> = Validator {
@@ -111,7 +110,6 @@ pub fn get_validators_and_organizations<T: crate::Config>(
 		)
 		.unwrap(),
 		organization_id: organization.id,
-		public_network: false,
 	};
 	let validator_2: ValidatorOf<T> = Validator {
 		name: Default::default(),
@@ -120,7 +118,6 @@ pub fn get_validators_and_organizations<T: crate::Config>(
 		)
 		.unwrap(),
 		organization_id: organization.id,
-		public_network: false,
 	};
 	let validator_3: ValidatorOf<T> = Validator {
 		name: Default::default(),
@@ -129,7 +126,6 @@ pub fn get_validators_and_organizations<T: crate::Config>(
 		)
 		.unwrap(),
 		organization_id: organization.id,
-		public_network: false,
 	};
 
 	(vec![validator_1, validator_2, validator_3], vec![organization])

@@ -4,11 +4,6 @@ use orml_traits::MultiCurrency;
 use sp_arithmetic::FixedU128;
 use sp_core::H256;
 use sp_runtime::traits::One;
-use substrate_stellar_sdk::{
-	compound_types::LimitedVarArray,
-	types::{ScpEnvelope, TransactionSet, TransactionV1Envelope},
-	MuxedAccount, XdrCodec,
-};
 
 use currency::Amount;
 use primitives::{issue::IssueRequestStatus, StellarPublicKeyRaw};
@@ -71,7 +66,7 @@ fn request_issue_ok_with_address(
 			.mock_raw(|_, _| MockResult::Return(Ok(address)));
 	}
 
-	Issue::_request_issue(origin, amount, asset, vault, public_network).unwrap()
+	Issue::_request_issue(origin, amount, asset, vault).unwrap()
 }
 
 fn execute_issue(origin: AccountId, issue_id: &H256) -> Result<(), DispatchError> {

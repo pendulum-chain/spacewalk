@@ -5612,6 +5612,37 @@ dependencies = [
 ]
 
 [[package]]
+name = "redeem"
+version = "1.0.0"
+dependencies = [
+ "currency",
+ "fee",
+ "frame-benchmarking",
+ "frame-support",
+ "frame-system",
+ "mocktopus",
+ "oracle",
+ "orml-tokens",
+ "orml-traits",
+ "pallet-timestamp",
+ "parity-scale-codec",
+ "reward",
+ "scale-info",
+ "security",
+ "serde",
+ "sp-arithmetic",
+ "sp-core",
+ "sp-io",
+ "sp-runtime",
+ "sp-std",
+ "spacewalk-primitives",
+ "staking",
+ "stellar-relay",
+ "substrate-stellar-sdk 0.2.3 (git+https://github.com/pendulum-chain/substrate-stellar-sdk?branch=polkadot-v0.9.24)",
+ "vault-registry",
+]
+
+[[package]]
 name = "redox_syscall"
 version = "0.2.13"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -8016,6 +8047,7 @@ dependencies = [
  "pallet-transaction-payment-rpc-runtime-api",
  "parity-scale-codec",
  "pretty_assertions",
+ "redeem",
  "reward",
  "scale-info",
  "security",
@@ -8159,6 +8191,7 @@ name = "stellar-relay"
 version = "1.0.0"
 dependencies = [
  "base64",
+ "currency",
  "frame-benchmarking",
  "frame-support",
  "frame-system",
