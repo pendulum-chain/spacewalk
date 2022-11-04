@@ -20,7 +20,6 @@ use sp_std::{
 	prelude::*,
 	str,
 	str::from_utf8,
-	vec,
 	vec::Vec,
 };
 use stellar::{
