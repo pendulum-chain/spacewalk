@@ -663,17 +663,16 @@ impl<T: Config> RichVault<T> {
 		secure_id: H256,
 	) -> Result<StellarPublicKeyRaw, DispatchError> {
 		// TODO fix me
-		// let vault_public_key = Pallet::<T>::get_bitcoin_public_key(&self.data.id.account_id)?;
-		// let vault_public_key = vault_public_key
-		// 	.new_deposit_public_key(secure_id)
-		// 	.map_err(|_| Error::<T>::InvalidPublicKey)?;
+		let vault_public_key = Pallet::<T>::get_stellar_public_key(&self.data.id.account_id)?;
+		let vault_public_key = vault_public_key
+			.new_deposit_public_key(secure_id)
+			.map_err(|_| Error::<T>::InvalidPublicKey)?;
 
-		let vault_public_key: StellarPublicKeyRaw = [0u8; 32];
 		Ok(vault_public_key)
 	}
 
 	pub(crate) fn new_deposit_address(
-		&mut self,
+		&mut self,report_undercollateralizereport_undercollateralized_vaultd_vault
 		secure_id: H256,
 	) -> Result<StellarPublicKeyRaw, DispatchError> {
 		let public_key = self.new_deposit_public_key(secure_id)?;

@@ -255,7 +255,7 @@ pub mod pallet {
 			Ok(().into())
 		}
 
-		/// Registers a new Bitcoin address for the vault.
+		/// Registers a new Stellar address for the vault.
 		///
 		/// # Arguments
 		/// * `public_key` - the BTC public key of the vault to update
@@ -268,11 +268,11 @@ pub mod pallet {
 			let account_id = ensure_signed(origin)?;
 
 			ensure!(
-				!VaultBitcoinPublicKey::<T>::get(&account_id).is_some(),
+				!VaultStellarPublicKey::<T>::get(&account_id).is_some(),
 				Error::<T>::PublicKeyAlreadyRegistered
 			);
 
-			VaultBitcoinPublicKey::<T>::insert(&account_id, &public_key);
+			VaultStellarPublicKey::<T>::insert(&account_id, &public_key);
 
 			Self::deposit_event(Event::<T>::UpdatePublicKey { account_id, public_key });
 			Ok(().into())
@@ -597,9 +597,9 @@ pub mod pallet {
 		VaultLiquidated,
 		/// Vault must be liquidated.
 		VaultNotRecoverable,
-		/// No bitcoin public key is registered for the vault.
-		NoBitcoinPublicKey,
-		/// A bitcoin public key was already registered for this account.
+		/// No Stellar public key is registered for the vault.
+		NoStellarPublicKey,
+		/// A Stellar public key was already registered for this account.
 		PublicKeyAlreadyRegistered,
 
 		// Errors used exclusively in RPC functions
@@ -686,7 +686,7 @@ pub mod pallet {
 
 	/// Mapping of Vaults, using the respective Vault account identifier as key.
 	#[pallet::storage]
-	pub(super) type VaultBitcoinPublicKey<T: Config> =
+	pub(super) type VaultStellarPublicKey<T: Config> =
 		StorageMap<_, Blake2_128Concat, T::AccountId, StellarPublicKeyRaw, OptionQuery>;
 
 	/// Mapping of reserved BTC addresses to the registered account
@@ -791,7 +791,7 @@ impl<T: Config> Pallet<T> {
 		);
 
 		// make sure a public key is registered
-		let _ = Self::get_bitcoin_public_key(&vault_id.account_id)?;
+		let _ = Self::get_stellar_public_key(&vault_id.account_id)?;
 
 		let collateral_currency = vault_id.currencies.collateral;
 		let amount = Amount::new(collateral, collateral_currency);
@@ -835,10 +835,10 @@ impl<T: Config> Pallet<T> {
 		vault.get_secure_threshold()
 	}
 
-	pub fn get_bitcoin_public_key(
+	pub fn get_stellar_public_key(
 		account_id: &T::AccountId,
 	) -> Result<StellarPublicKeyRaw, DispatchError> {
-		VaultBitcoinPublicKey::<T>::get(account_id).ok_or(Error::<T>::NoBitcoinPublicKey.into())
+		VaultStellarPublicKey::<T>::get(account_id).ok_or(Error::<T>::NoStellarPublicKey.into())
 	}
 
 	pub fn get_vault_from_id(

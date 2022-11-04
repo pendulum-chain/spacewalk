@@ -66,7 +66,7 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 	// Storage: VaultRegistry LiquidationCollateralThreshold (r:1 w:0)
 	// Storage: VaultRegistry MinimumCollateralVault (r:1 w:0)
 	// Storage: VaultRegistry SystemCollateralCeiling (r:1 w:0)
-	// Storage: VaultRegistry VaultBitcoinPublicKey (r:1 w:0)
+	// Storage: VaultRegistry VaultStellarPublicKey (r:1 w:0)
 	// Storage: VaultRegistry Vaults (r:1 w:1)
 	// Storage: VaultRegistry TotalUserVaultCollateral (r:1 w:1)
 	// Storage: Tokens Accounts (r:1 w:1)
@@ -123,7 +123,7 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 			.saturating_add(T::DbWeight::get().reads(17 as Weight))
 			.saturating_add(T::DbWeight::get().writes(8 as Weight))
 	}
-	// Storage: VaultRegistry VaultBitcoinPublicKey (r:1 w:1)
+	// Storage: VaultRegistry VaultStellarPublicKey (r:1 w:1)
 	fn register_public_key() -> Weight {
 		(23_000_000 as Weight)
 			.saturating_add(T::DbWeight::get().reads(1 as Weight))
@@ -208,7 +208,7 @@ impl WeightInfo for () {
 	// Storage: VaultRegistry LiquidationCollateralThreshold (r:1 w:0)
 	// Storage: VaultRegistry MinimumCollateralVault (r:1 w:0)
 	// Storage: VaultRegistry SystemCollateralCeiling (r:1 w:0)
-	// Storage: VaultRegistry VaultBitcoinPublicKey (r:1 w:0)
+	// Storage: VaultRegistry VaultStellarPublicKey (r:1 w:0)
 	// Storage: VaultRegistry Vaults (r:1 w:1)
 	// Storage: VaultRegistry TotalUserVaultCollateral (r:1 w:1)
 	// Storage: Tokens Accounts (r:1 w:1)
@@ -265,7 +265,7 @@ impl WeightInfo for () {
 			.saturating_add(RocksDbWeight::get().reads(17 as Weight))
 			.saturating_add(RocksDbWeight::get().writes(8 as Weight))
 	}
-	// Storage: VaultRegistry VaultBitcoinPublicKey (r:1 w:1)
+	// Storage: VaultRegistry VaultStellarPublicKey (r:1 w:1)
 	fn register_public_key() -> Weight {
 		(23_000_000 as Weight)
 			.saturating_add(RocksDbWeight::get().reads(1 as Weight))
