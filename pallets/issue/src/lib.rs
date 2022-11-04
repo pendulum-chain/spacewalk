@@ -182,10 +182,12 @@ pub mod pallet {
 		/// # Arguments
 		///
 		/// * `origin` - sender of the transaction
-		/// * `amount` - amount of BTC the user wants to convert to issued tokens. Note that the
+		/// * `amount` - amount of a stellar asset the user wants to convert to issued tokens. Note
+		///   that the
 		/// amount of issued tokens received will be less, because a fee is subtracted.
+		/// * `asset` - the currency id of the stellar asset the user wants to convert to issued
+		///   tokens
 		/// * `vault` - address of the vault
-		/// * `griefing_collateral` - amount of collateral
 		#[pallet::weight(<T as Config>::WeightInfo::request_issue())]
 		#[transactional]
 		pub fn request_issue(
@@ -205,9 +207,10 @@ pub mod pallet {
 		///
 		/// * `origin` - sender of the transaction
 		/// * `issue_id` - identifier of issue request as output from request_issue
-		/// * `tx_block_height` - block number of collateral chain
-		/// * `merkle_proof` - raw bytes
-		/// * `raw_tx` - raw bytes
+		/// * `transaction_envelope_xdr` - the XDR representation of the transaction envelope
+		/// * `externalized_envelopes_encoded` - the XDR representation of the externalized
+		///   envelopes
+		/// * `transaction_set_encoded` - the XDR representation of the transaction set
 		#[pallet::weight(<T as Config>::WeightInfo::execute_issue())]
 		#[transactional]
 		pub fn execute_issue(
@@ -248,8 +251,6 @@ pub mod pallet {
 		///
 		/// * `origin` - the dispatch origin of this call (must be _Root_)
 		/// * `period` - default period for new requests
-		///
-		/// # Weight: `O(1)`
 		#[pallet::weight(<T as Config>::WeightInfo::set_issue_period())]
 		#[transactional]
 		pub fn set_issue_period(
