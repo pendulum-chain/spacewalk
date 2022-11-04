@@ -1,7 +1,7 @@
 use crate::oracle::{
 	collector::{get_tx_set_hash, ScpMessageCollector},
 	constants::{
-		get_min_externalized_messages, MAX_DISTANCE_FROM_CURRENT_SLOT, MAX_SLOTS_PER_FILE,
+		get_min_externalized_messages, MAX_DISTANCE_FROM_CURRENT_SLOT, MAX_SLOTS_PER_FILE, MAX_SLOT_TO_REMEMBER
 	},
 	errors::Error,
 	storage::{traits::FileHandlerExt, EnvelopesFileHandler},
@@ -51,6 +51,8 @@ impl ScpMessageCollector {
 				txset_hash_map.insert(txset_hash, slot);
 				// let's request the txset from Stellar Node
 				overlay_conn.send(StellarMessage::GetTxSet(txset_hash)).await?;
+
+				self.check_write_envelopes_to_file(slot)?;
 			}
 
 			// insert/add the externalized message to map.

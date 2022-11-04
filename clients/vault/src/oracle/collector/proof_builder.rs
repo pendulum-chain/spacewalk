@@ -6,7 +6,7 @@ use stellar_relay::sdk::{
 use crate::oracle::ActorMessage;
 
 use crate::oracle::{
-	constants::get_min_externalized_messages, traits::FileHandler, EnvelopesFileHandler,
+	constants::{get_min_externalized_messages, MAX_SLOT_TO_REMEMBER}, traits::FileHandler, EnvelopesFileHandler, 
 	ScpMessageCollector, Slot, TxHash, TxSetsFileHandler,
 };
 
@@ -38,12 +38,11 @@ impl Proof {
 
 pub enum ProofStatus {
 	Proof(Proof),
-	LackingEnvelopes,
-	NoEnvelopesFound(Slot),
+	LackingEnvelopes(Slot),
 	NoTxSetFound(Slot),
 }
 
-const MAX_SLOT_TO_REMEMBER : u64 = 12;
+
 // handles the creation of proofs.
 // this means it will access the maps and potentially the files.
 impl ScpMessageCollector {
@@ -56,9 +55,15 @@ impl ScpMessageCollector {
 	fn get_envelopes(&self, slot: Slot) -> Result<UnlimitedVarArray<ScpEnvelope>, ProofStatus> {
 		let envelopes =
 			self._get_envelopes(slot);
-		
-		if let None = envelopes{
 
+		let mut vec_envelopes  = vec![];
+
+		let fetch_more = if envelopes.is_none() { true } else {
+			vec_envelopes = envelopes.unwrap().0;
+			vec_envelopes.len()  < get_min_externalized_messages(self.is_public()) 
+		};
+		
+		if fetch_more{
 			let last_slot_index = *self.last_slot_index();
 			let action_sender = self.action_sender.clone();
 			if last_slot_index - MAX_SLOT_TO_REMEMBER < slot {
@@ -69,19 +74,9 @@ impl ScpMessageCollector {
 				});
 			}
 
-			return Err(ProofStatus::NoEnvelopesFound(slot))
+			return Err(ProofStatus::LackingEnvelopes(slot))
 		}
-
-		let (envelopes, is_from_file) = envelopes.unwrap();
-
-		// if the list does not come from a file, meaning there's still a chance to get more
-		// envelopes.
-		if envelopes.len() < get_min_externalized_messages(self.is_public()) && !is_from_file {
-			tracing::warn!("Not yet enough envelopes to build proof, current amount {:?}. Retrying in next loop...", envelopes.len());
-			return Err(ProofStatus::LackingEnvelopes)
-		}
-
-		Ok(UnlimitedVarArray::new(envelopes).unwrap_or(UnlimitedVarArray::new_empty()))
+		Ok(UnlimitedVarArray::new(vec_envelopes).unwrap_or(UnlimitedVarArray::new_empty()))
 	}
 
 	/// helper method for `get_envelopes()`.
