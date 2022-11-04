@@ -6,7 +6,10 @@
 #![warn(missing_docs)]
 
 pub use jsonrpsee;
-use primitives::{issue::IssueRequest, AccountId, Balance, Block, BlockNumber, CurrencyId, Nonce};
+use primitives::{
+	issue::IssueRequest, redeem::RedeemRequest, AccountId, Balance, Block, BlockNumber, CurrencyId,
+	Nonce,
+};
 pub use sc_rpc_api::DenyUnsafe;
 use sc_transaction_pool_api::TransactionPool;
 use sp_api::ProvideRuntimeApi;
@@ -44,10 +47,17 @@ where
 		H256,
 		IssueRequest<AccountId, BlockNumber, Balance, CurrencyId>,
 	>,
+	C::Api: module_redeem_rpc::RedeemRuntimeApi<
+		Block,
+		AccountId,
+		H256,
+		RedeemRequest<AccountId, BlockNumber, Balance, CurrencyId>,
+	>,
 	C::Api: BlockBuilder<Block>,
 	P: TransactionPool + 'static,
 {
 	use module_issue_rpc::{Issue, IssueApiServer};
+	use module_redeem_rpc::{Redeem, RedeemApiServer};
 	use pallet_transaction_payment_rpc::{TransactionPayment, TransactionPaymentApiServer};
 	use substrate_frame_rpc_system::{System, SystemApiServer};
 
@@ -57,6 +67,7 @@ where
 
 	module.merge(TransactionPayment::new(client.clone()).into_rpc())?;
 
+	module.merge(Redeem::new(client.clone()).into_rpc())?;
 	module.merge(Issue::new(client.clone()).into_rpc())?;
 
 	Ok(module)

@@ -64,6 +64,7 @@ stellar-relay = { path = "../../pallets/stellar-relay", default-features = false
 vault-registry = { path = "../../pallets/vault-registry", default-features = false }
 
 module-issue-rpc-runtime-api = { path = "../../pallets/issue/rpc/runtime-api", default-features = false }
+module-redeem-rpc-runtime-api = { path = "../../pallets/redeem/rpc/runtime-api", default-features = false }
 
 primitives = { package = "spacewalk-primitives", path = "../../primitives", default-features = false }
 
@@ -125,6 +126,7 @@ std = [
     "vault-registry/std",
     "primitives/std",
     "module-issue-rpc-runtime-api/std",
+    "module-redeem-rpc-runtime-api/std",
     "sp-api/std",
     "sp-block-builder/std",
     "sp-consensus-aura/std",
