@@ -114,8 +114,6 @@ pub mod pallet {
 	pub enum Error<T> {
 		/// Issue request not found.
 		IssueIdNotFound,
-		/// Issue request has expired.
-		CommitPeriodExpired,
 		/// Issue request has not expired.
 		TimeNotExpired,
 		/// Issue request already completed.
@@ -124,8 +122,6 @@ pub mod pallet {
 		IssueCancelled,
 		/// Vault is not active.
 		VaultNotAcceptingNewIssues,
-		/// Relay is not initialized.
-		WaitingForRelayerInitialization,
 		/// Not expected origin.
 		InvalidExecutor,
 		/// Issue amount is too small.
