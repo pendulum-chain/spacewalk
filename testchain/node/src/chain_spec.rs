@@ -295,7 +295,7 @@ fn testnet_genesis(
 				.collect(),
 		},
 		issue: IssueConfig { issue_period: DAYS, issue_minimum_transfer_amount: 1000 },
-		redeem: RedeemConfig { redeem_period: DAYS, redeem_dust_value: 100 },
+		redeem: RedeemConfig { redeem_period: DAYS, redeem_minimum_transfer_amount: 100 },
 		security: SecurityConfig {
 			initial_status: if start_shutdown { StatusCode::Shutdown } else { StatusCode::Error },
 		},

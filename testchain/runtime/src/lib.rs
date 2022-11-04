@@ -41,7 +41,7 @@ pub use primitives::{
 	self, AccountId, Balance, BlockNumber, CurrencyId, Hash, Moment, Nonce, Signature,
 	SignedFixedPoint, SignedInner, UnsignedFixedPoint, UnsignedInner, H256,
 };
-use primitives::{CurrencyId::Token, TokenSymbol, TokenSymbol::INTR};
+use primitives::{CurrencyId::Token, TokenSymbol};
 pub use redeem::{Event as RedeemEvent, RedeemRequest};
 pub use security::StatusCode;
 pub use stellar_relay::traits::{FieldLength, Organization, Validator};
