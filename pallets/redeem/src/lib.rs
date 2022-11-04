@@ -14,7 +14,6 @@ use frame_support::{
 };
 #[cfg(test)]
 use mocktopus::macros::mockable;
-use sp_arithmetic::traits::CheckedDiv;
 use sp_core::H256;
 use sp_runtime::FixedPointNumber;
 use sp_std::{convert::TryInto, vec::Vec};
@@ -469,7 +468,7 @@ impl<T: Config> Pallet<T> {
 	fn _request_redeem(
 		redeemer: T::AccountId,
 		amount_wrapped: BalanceOf<T>,
-		asset: CurrencyId<T>,
+		_asset: CurrencyId<T>,
 		stellar_address: StellarPublicKeyRaw,
 		vault_id: DefaultVaultId<T>,
 	) -> Result<H256, DispatchError> {

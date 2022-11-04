@@ -20,8 +20,6 @@ pub(crate) mod stellar_relay {
 			transaction_envelope,
 			envelopes,
 			transaction_set,
-			// TODO change this
-			false,
 		)
 	}
 
@@ -207,21 +205,6 @@ pub(crate) mod security {
 
 	pub fn active_block_number<T: crate::Config>() -> T::BlockNumber {
 		<security::Pallet<T>>::active_block_number()
-	}
-}
-
-#[cfg_attr(test, mockable)]
-pub(crate) mod oracle {
-	use frame_support::dispatch::DispatchError;
-
-	use oracle::types::UnsignedFixedPoint;
-
-	use crate::OracleKey;
-
-	pub fn get_price<T: crate::Config>(
-		key: OracleKey,
-	) -> Result<UnsignedFixedPoint<T>, DispatchError> {
-		<oracle::Pallet<T>>::get_price(key)
 	}
 }
 
