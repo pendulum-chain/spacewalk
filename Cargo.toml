@@ -8,7 +8,6 @@ members = [
   "clients/stellar-relay",
   "primitives",
   "rpc",
-  "pallets/spacewalk",
   "pallets/stellar-relay",
   "pallets/fee",
   "pallets/reward",
