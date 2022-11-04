@@ -39,11 +39,12 @@ pub use nomination::Event as NominationEvent;
 // A few exports that help ease life for downstream crates.
 pub use primitives::{
 	self, AccountId, Balance, BlockNumber, CurrencyId, Hash, Moment, Nonce, Signature,
-	SignedFixedPoint, SignedInner, UnsignedFixedPoint, UnsignedInner,
+	SignedFixedPoint, SignedInner, UnsignedFixedPoint, UnsignedInner, H256,
 };
 use primitives::{CurrencyId::Token, TokenSymbol, TokenSymbol::INTR};
 pub use redeem::{Event as RedeemEvent, RedeemRequest};
 pub use security::StatusCode;
+pub use stellar_relay::traits::{FieldLength, Organization, Validator};
 
 type VaultId = primitives::VaultId<AccountId, CurrencyId>;
 
@@ -189,10 +190,10 @@ impl pallet_timestamp::Config for Runtime {
 	type WeightInfo = ();
 }
 
-const NATIVE_TOKEN_ID: TokenSymbol = INTR;
+const NATIVE_TOKEN_ID: TokenSymbol = TokenSymbol::PEN;
 const NATIVE_CURRENCY_ID: CurrencyId = Token(NATIVE_TOKEN_ID);
 const PARENT_CURRENCY_ID: CurrencyId = Token(TokenSymbol::DOT);
-const WRAPPED_CURRENCY_ID: CurrencyId = Token(TokenSymbol::IBTC);
+const WRAPPED_CURRENCY_ID: CurrencyId = CurrencyId::AlphaNum4 { code: *b"USDC", issuer: [0u8; 32] };
 
 parameter_types! {
 	pub const GetNativeCurrencyId: CurrencyId = NATIVE_CURRENCY_ID;
@@ -312,13 +313,15 @@ impl currency::CurrencyConversion<currency::Amount<Runtime>, CurrencyId> for Cur
 }
 
 impl currency::Config for Runtime {
+	type UnsignedFixedPoint = UnsignedFixedPoint;
 	type SignedInner = SignedInner;
 	type SignedFixedPoint = SignedFixedPoint;
-	type UnsignedFixedPoint = UnsignedFixedPoint;
 	type Balance = Balance;
 	type GetNativeCurrencyId = GetNativeCurrencyId;
 	type GetRelayChainCurrencyId = GetRelayChainCurrencyId;
 	type GetWrappedCurrencyId = GetWrappedCurrencyId;
+	type AssetConversion = primitives::AssetConversion;
+	type BalanceConversion = primitives::BalanceConversion;
 	type CurrencyConversion = CurrencyConvert;
 }
 
@@ -332,7 +335,7 @@ impl staking::Config for Runtime {
 
 pub type OrganizationId = u128;
 
-impl pallet_stellar_relay::Config for Runtime {
+impl stellar_relay::Config for Runtime {
 	type Event = Event;
 	type OrganizationId = OrganizationId;
 	type OrganizationLimit = OrganizationLimit;
@@ -410,7 +413,7 @@ construct_runtime! {
 		Balances: pallet_balances::{Pallet, Call, Storage, Config<T>, Event<T>} = 8,
 		TransactionPayment: pallet_transaction_payment::{Pallet, Storage} = 9,
 
-		StellarRelay: pallet_stellar_relay::{Pallet, Call, Storage, Event<T>} = 10,
+		StellarRelay: stellar_relay::{Pallet, Call, Config<T>, Storage, Event<T>} = 10,
 
 		VaultRewards: reward::{Pallet, Storage, Event<T>} = 15,
 		VaultStaking: staking::{Pallet, Storage, Event<T>} = 16,
@@ -466,7 +469,7 @@ mod benches {
 	define_benchmarks!(
 		[frame_benchmarking, BaselineBench::<Runtime>]
 		[frame_system, SystemBench::<Runtime>]
-		[pallet_stellar_relay, StellarRelay]
+		[stellar_relay, StellarRelay]
 		[issue, Issue]
 		[fee, Fee]
 		[oracle, Oracle]
@@ -656,4 +659,20 @@ impl_runtime_apis! {
 			Ok(batches)
 		}
 	}
+
+	impl module_issue_rpc_runtime_api::IssueApi<
+		Block,
+		AccountId,
+		H256,
+		IssueRequest<AccountId, BlockNumber, Balance, CurrencyId>
+	> for Runtime {
+		fn get_issue_requests(account_id: AccountId) -> Vec<H256> {
+			Issue::get_issue_requests_for_account(account_id)
+		}
+
+		fn get_vault_issue_requests(vault_id: AccountId) -> Vec<H256> {
+			Issue::get_issue_requests_for_vault(vault_id)
+		}
+	}
+
 }

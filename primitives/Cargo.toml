@@ -14,6 +14,10 @@ sp-core = { git = "https://github.com/paritytech/substrate", branch = "polkadot-
 sp-runtime = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.24", default-features = false }
 sp-std = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.24", default-features = false }
 
+frame-support = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.24" }
+
+substrate-stellar-sdk = { git = "https://github.com/pendulum-chain/substrate-stellar-sdk", branch = "polkadot-v0.9.24", default-features = false, features = ['offchain'] }
+
 [features]
 default = ["std"]
 std = [
@@ -22,4 +26,6 @@ std = [
     "sp-core/std",
     "sp-std/std",
     "sp-runtime/std",
+    "frame-support/std",
+    "substrate-stellar-sdk/std",
 ]

@@ -1,5 +1,9 @@
 [workspace]
 members = [
+    "clients/runtime",
+    "clients/vault",
+    "clients/service",
+    "clients/stellar-relay-lib",
     "pallets/currency",
     "pallets/fee",
     "pallets/issue",
@@ -15,6 +19,7 @@ members = [
     "testchain/node",
     "testchain/runtime",
 ]
+
 [profile.release]
 panic = "unwind"
 

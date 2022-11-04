@@ -1,6 +1,6 @@
 use crate::{
-    error::Error,
-    horizon::{HorizonTransactionsResponse, Transaction},
+	error::Error,
+	horizon::{HorizonTransactionsResponse, Transaction},
 };
 use async_trait::async_trait;
 use runtime::SpacewalkPallet;
@@ -8,163 +8,159 @@ use service::Error as ServiceError;
 use sp_std::{convert::From, str, vec::Vec};
 use std::time::Duration;
 use stellar::SecretKey;
-use substrate_stellar_sdk as stellar;
+use stellar_relay::sdk as stellar;
 use tokio::time::sleep;
 
 const POLL_INTERVAL: u64 = 5000;
 
 #[async_trait]
 pub trait HorizonClient {
-    async fn get_transactions(&self, url: &str) -> Result<HorizonTransactionsResponse, Error>;
+	async fn get_transactions(&self, url: &str) -> Result<HorizonTransactionsResponse, Error>;
 }
 
 #[async_trait]
 impl HorizonClient for reqwest::Client {
-    async fn get_transactions(&self, url: &str) -> Result<HorizonTransactionsResponse, Error> {
-        let response = self
-            .get(url)
-            .send()
-            .await
-            .map_err(|_| Error::HttpFetchingError)?
-            .json::<HorizonTransactionsResponse>()
-            .await
-            .map_err(|_| Error::HttpFetchingError)?;
+	async fn get_transactions(&self, url: &str) -> Result<HorizonTransactionsResponse, Error> {
+		let response = self
+			.get(url)
+			.send()
+			.await
+			.map_err(|_| Error::HttpFetchingError)?
+			.json::<HorizonTransactionsResponse>()
+			.await
+			.map_err(|_| Error::HttpFetchingError)?;
 
-        Ok(response)
-    }
+		Ok(response)
+	}
 }
 
 struct HorizonFetcher<P: SpacewalkPallet, C: HorizonClient> {
-    parachain_rpc: P,
-    client: C,
-    vault_secret_key: String,
-    last_tx_id: Option<Vec<u8>>,
+	parachain_rpc: P,
+	client: C,
+	vault_secret_key: String,
+	last_tx_id: Option<Vec<u8>>,
 }
 
 impl<P: SpacewalkPallet, C: HorizonClient> HorizonFetcher<P, C> {
-    pub fn new(parachain_rpc: P, client: C, vault_secret_key: String) -> Self {
-        Self {
-            parachain_rpc,
-            client,
-            vault_secret_key,
-            last_tx_id: None,
-        }
-    }
+	pub fn new(parachain_rpc: P, client: C, vault_secret_key: String) -> Self {
+		Self { parachain_rpc, client, vault_secret_key, last_tx_id: None }
+	}
 
-    /// Fetch recent transactions from remote and deserialize to HorizonResponse
-    /// Since the limit in the request url is set to one it will always fetch just one
-    async fn fetch_latest_txs(&self) -> Result<HorizonTransactionsResponse, Error> {
-        let vault_keypair: SecretKey = SecretKey::from_encoding(&self.vault_secret_key).unwrap();
-        let vault_address = vault_keypair.get_public();
+	/// Fetch recent transactions from remote and deserialize to HorizonResponse
+	/// Since the limit in the request url is set to one it will always fetch just one
+	async fn fetch_latest_txs(&self) -> Result<HorizonTransactionsResponse, Error> {
+		let vault_keypair: SecretKey = SecretKey::from_encoding(&self.vault_secret_key).unwrap();
+		let vault_address = vault_keypair.get_public();
 
-        let request_url = String::from("https://horizon-testnet.stellar.org/accounts/")
-            + str::from_utf8(vault_address.to_encoding().as_slice()).map_err(|_| Error::HttpFetchingError)?
-            + "/transactions?order=desc&limit=1";
+		let request_url = String::from("https://horizon-testnet.stellar.org/accounts/") +
+			str::from_utf8(vault_address.to_encoding().as_slice())
+				.map_err(|_| Error::HttpFetchingError)? +
+			"/transactions?order=desc&limit=1";
 
-        let horizon_response = self.client.get_transactions(request_url.as_str()).await;
+		let horizon_response = self.client.get_transactions(request_url.as_str()).await;
 
-        horizon_response
-    }
+		horizon_response
+	}
 
-    fn is_unhandled_transaction(&mut self, tx: &Transaction) -> bool {
-        const UP_TO_DATE: () = ();
-        let latest_tx_id_utf8 = &tx.id;
+	fn is_unhandled_transaction(&mut self, tx: &Transaction) -> bool {
+		const UP_TO_DATE: () = ();
+		let latest_tx_id_utf8 = &tx.id;
 
-        let prev_tx_id = &self.last_tx_id;
-        let initial = !matches!(prev_tx_id, Some(_));
+		let prev_tx_id = &self.last_tx_id;
+		let initial = !matches!(prev_tx_id, Some(_));
 
-        let result = match prev_tx_id {
-            Some(prev_tx_id) => {
-                if prev_tx_id == latest_tx_id_utf8 {
-                    Err(UP_TO_DATE)
-                } else {
-                    Ok(latest_tx_id_utf8.clone())
-                }
-            }
-            None => Ok(latest_tx_id_utf8.clone()),
-        };
+		let result = match prev_tx_id {
+			Some(prev_tx_id) =>
+				if prev_tx_id == latest_tx_id_utf8 {
+					Err(UP_TO_DATE)
+				} else {
+					Ok(latest_tx_id_utf8.clone())
+				},
+			None => Ok(latest_tx_id_utf8.clone()),
+		};
 
-        match result {
-            Ok(latest_tx_id) => {
-                self.last_tx_id = Some(latest_tx_id.clone());
-                if !initial {
-                    tracing::info!(
+		match result {
+			Ok(latest_tx_id) => {
+				self.last_tx_id = Some(latest_tx_id.clone());
+				if !initial {
+					tracing::info!(
                         "Found new transaction from Horizon (id {:#?}). Starting to process new transaction",
                         str::from_utf8(&latest_tx_id).unwrap()
                     );
 
-                    true
-                } else {
-                    tracing::info!("Initial transaction handled");
-                    false
-                }
-            }
-            Err(UP_TO_DATE) => {
-                tracing::info!("Already up to date");
-                false
-            }
-        }
-    }
+					true
+				} else {
+					tracing::info!("Initial transaction handled");
+					false
+				}
+			},
+			Err(UP_TO_DATE) => {
+				tracing::info!("Already up to date");
+				false
+			},
+		}
+	}
 
-    async fn report_transaction(&self, tx: &Transaction) -> Result<(), Error> {
-        // Send new transaction to spacewalk bridge pallet
-        let result = self.parachain_rpc.report_stellar_transaction(&tx.envelope_xdr).await;
-        match result {
-            Ok(_) => Ok(()),
-            Err(e) => Err(Error::RuntimeError(e)),
-        }
-    }
+	async fn report_transaction(&self, tx: &Transaction) -> Result<(), Error> {
+		// Send new transaction to spacewalk bridge pallet
+		let result = self.parachain_rpc.report_stellar_transaction(&tx.envelope_xdr).await;
+		match result {
+			Ok(_) => Ok(()),
+			Err(e) => Err(Error::RuntimeError(e)),
+		}
+	}
 
-    async fn fetch_horizon_and_process_new_transactions(&mut self) {
-        let res = self.fetch_latest_txs().await;
-        let transactions = match res {
-            Ok(txs) => txs._embedded.records,
-            Err(e) => {
-                tracing::warn!("Failed to fetch transactions: {:?}", e);
-                return;
-            }
-        };
+	async fn fetch_horizon_and_process_new_transactions(&mut self) {
+		let res = self.fetch_latest_txs().await;
+		let transactions = match res {
+			Ok(txs) => txs._embedded.records,
+			Err(e) => {
+				tracing::warn!("Failed to fetch transactions: {:?}", e);
+				return
+			},
+		};
 
-        if transactions.len() > 0 {
-            let tx = &transactions[0];
-            if self.is_unhandled_transaction(tx) {
-                let result = self.report_transaction(tx).await;
-                match result {
-                    Ok(_) => {
-                        tracing::info!("Reported Stellar transaction to spacewalk pallet");
-                    }
-                    Err(e) => {
-                        tracing::warn!("Failed to process transaction: {:?}", e);
-                    }
-                }
-            }
-        }
-    }
+		if transactions.len() > 0 {
+			let tx = &transactions[0];
+			if self.is_unhandled_transaction(tx) {
+				let result = self.report_transaction(tx).await;
+				match result {
+					Ok(_) => {
+						tracing::info!("Reported Stellar transaction to spacewalk pallet");
+					},
+					Err(e) => {
+						tracing::warn!("Failed to process transaction: {:?}", e);
+					},
+				}
+			}
+		}
+	}
 }
 
 pub async fn poll_horizon_for_new_transactions<P: SpacewalkPallet>(
-    parachain_rpc: P,
-    vault_secret_key: String,
+	parachain_rpc: P,
+	vault_secret_key: String,
 ) -> Result<(), ServiceError> {
-    let horizon_client = reqwest::Client::new();
-    let mut fetcher = HorizonFetcher::new(parachain_rpc, horizon_client, vault_secret_key);
-    // Start polling horizon every 5 seconds
-    loop {
-        fetcher.fetch_horizon_and_process_new_transactions().await;
+	let horizon_client = reqwest::Client::new();
+	let mut fetcher = HorizonFetcher::new(parachain_rpc, horizon_client, vault_secret_key);
+	// Start polling horizon every 5 seconds
+	loop {
+		fetcher.fetch_horizon_and_process_new_transactions().await;
 
-        sleep(Duration::from_millis(POLL_INTERVAL)).await;
-    }
+		sleep(Duration::from_millis(POLL_INTERVAL)).await;
+	}
 }
 
 #[cfg(all(test, feature = "standalone-metadata"))]
 mod tests {
-    use super::*;
-    use crate::horizon;
-    use async_trait::async_trait;
+	use super::*;
+	use crate::horizon;
+	use async_trait::async_trait;
 
-    const STELLAR_VAULT_SECRET_KEY: &str = "SB6WHKIU2HGVBRNKNOEOQUY4GFC4ZLG5XPGWLEAHTIZXBXXYACC76VSQ";
+	const STELLAR_VAULT_SECRET_KEY: &str =
+		"SB6WHKIU2HGVBRNKNOEOQUY4GFC4ZLG5XPGWLEAHTIZXBXXYACC76VSQ";
 
-    const TX_STRING_1: &str = r#" {
+	const TX_STRING_1: &str = r#" {
   "_links": { },
   "_embedded": {
     "records": [
@@ -199,7 +195,7 @@ mod tests {
   }
 }"#;
 
-    const TX_STRING_2: &str = r#"{
+	const TX_STRING_2: &str = r#"{
   "_links": { },
   "_embedded": {
     "records": [
@@ -234,100 +230,99 @@ mod tests {
   }
 }"#;
 
-    mockall::mock! {
-    SpacewalkPallet {}
+	mockall::mock! {
+	SpacewalkPallet {}
 
-    #[async_trait]
-    pub trait SpacewalkPallet {
-    async fn report_stellar_transaction(&self, tx_envelope_xdr: &Vec<u8>) -> Result<(), runtime::Error>;
-    async fn redeem(
-        &self,
-        asset_code: &Vec<u8>,
-        asset_issuer: &Vec<u8>,
-        amount: u128,
-        stellar_vault_pubkey: [u8; 32],
-    ) -> Result<(), runtime::Error>;
-    }
+	#[async_trait]
+	pub trait SpacewalkPallet {
+	async fn report_stellar_transaction(&self, tx_envelope_xdr: &Vec<u8>) -> Result<(), runtime::Error>;
+	async fn redeem(
+		&self,
+		asset_code: &Vec<u8>,
+		asset_issuer: &Vec<u8>,
+		amount: u128,
+		stellar_vault_pubkey: [u8; 32],
+	) -> Result<(), runtime::Error>;
+	}
 
-    }
+	}
 
-    mockall::mock! {
-    HttpClient{}
+	mockall::mock! {
+	HttpClient{}
 
-    #[async_trait]
-    pub trait HorizonClient {
-    async fn get_transactions(&self, url: &str) -> Result<HorizonTransactionsResponse, Error>;
-    }
-    }
+	#[async_trait]
+	pub trait HorizonClient {
+	async fn get_transactions(&self, url: &str) -> Result<HorizonTransactionsResponse, Error>;
+	}
+	}
 
-    impl Clone for MockSpacewalkPallet {
-        fn clone(&self) -> Self {
-            Self::default()
-        }
-    }
+	impl Clone for MockSpacewalkPallet {
+		fn clone(&self) -> Self {
+			Self::default()
+		}
+	}
 
-    impl Clone for MockHttpClient {
-        fn clone(&self) -> Self {
-            Self::default()
-        }
-    }
+	impl Clone for MockHttpClient {
+		fn clone(&self) -> Self {
+			Self::default()
+		}
+	}
 
-    #[tokio::test(flavor = "multi_thread")]
-    async fn test_deposit() {
-        // 1st test
-        let mut client = MockHttpClient::default();
-        let first_transaction: horizon::HorizonTransactionsResponse = serde_json::from_str(TX_STRING_1).unwrap();
-        // make client return the first transaction
-        client
-            .expect_get_transactions()
-            .times(1)
-            .return_once(move |_| Ok(first_transaction));
+	#[tokio::test(flavor = "multi_thread")]
+	async fn test_deposit() {
+		// 1st test
+		let mut client = MockHttpClient::default();
+		let first_transaction: horizon::HorizonTransactionsResponse =
+			serde_json::from_str(TX_STRING_1).unwrap();
+		// make client return the first transaction
+		client
+			.expect_get_transactions()
+			.times(1)
+			.return_once(move |_| Ok(first_transaction));
 
-        let mut parachain_rpc = MockSpacewalkPallet::default();
-        // expect that the first transaction will not be reported
-        parachain_rpc.expect_report_stellar_transaction().times(0);
+		let mut parachain_rpc = MockSpacewalkPallet::default();
+		// expect that the first transaction will not be reported
+		parachain_rpc.expect_report_stellar_transaction().times(0);
 
-        let mut fetcher = HorizonFetcher::new(parachain_rpc, client, STELLAR_VAULT_SECRET_KEY.to_string());
+		let mut fetcher =
+			HorizonFetcher::new(parachain_rpc, client, STELLAR_VAULT_SECRET_KEY.to_string());
 
-        fetcher.fetch_horizon_and_process_new_transactions().await;
+		fetcher.fetch_horizon_and_process_new_transactions().await;
 
-        // 2nd test
-        let mut client = MockHttpClient::default();
-        let second_transaction = serde_json::from_str(TX_STRING_2).unwrap();
-        // make client return a different transaction the next time the fetch happens
-        client
-            .expect_get_transactions()
-            .times(1)
-            .return_once(move |_| Ok(second_transaction));
+		// 2nd test
+		let mut client = MockHttpClient::default();
+		let second_transaction = serde_json::from_str(TX_STRING_2).unwrap();
+		// make client return a different transaction the next time the fetch happens
+		client
+			.expect_get_transactions()
+			.times(1)
+			.return_once(move |_| Ok(second_transaction));
 
-        let mut parachain_rpc = MockSpacewalkPallet::default();
-        // expect that the second transaction will be reported
-        parachain_rpc
-            .expect_report_stellar_transaction()
-            .times(1)
-            .returning(|_| Ok(()));
+		let mut parachain_rpc = MockSpacewalkPallet::default();
+		// expect that the second transaction will be reported
+		parachain_rpc.expect_report_stellar_transaction().times(1).returning(|_| Ok(()));
 
-        fetcher.parachain_rpc = parachain_rpc;
-        fetcher.client = client;
+		fetcher.parachain_rpc = parachain_rpc;
+		fetcher.client = client;
 
-        fetcher.fetch_horizon_and_process_new_transactions().await;
+		fetcher.fetch_horizon_and_process_new_transactions().await;
 
-        // 3rd test
-        let mut client = MockHttpClient::default();
-        let second_transaction = serde_json::from_str(TX_STRING_2).unwrap();
-        // make client return the same transaction as last time
-        client
-            .expect_get_transactions()
-            .times(1)
-            .return_once(move |_| Ok(second_transaction));
+		// 3rd test
+		let mut client = MockHttpClient::default();
+		let second_transaction = serde_json::from_str(TX_STRING_2).unwrap();
+		// make client return the same transaction as last time
+		client
+			.expect_get_transactions()
+			.times(1)
+			.return_once(move |_| Ok(second_transaction));
 
-        let mut parachain_rpc = MockSpacewalkPallet::default();
-        // expect that nothing will be reported since no new transaction was fetched
-        parachain_rpc.expect_report_stellar_transaction().times(0);
+		let mut parachain_rpc = MockSpacewalkPallet::default();
+		// expect that nothing will be reported since no new transaction was fetched
+		parachain_rpc.expect_report_stellar_transaction().times(0);
 
-        fetcher.parachain_rpc = parachain_rpc;
-        fetcher.client = client;
+		fetcher.parachain_rpc = parachain_rpc;
+		fetcher.client = client;
 
-        fetcher.fetch_horizon_and_process_new_transactions().await;
-    }
+		fetcher.fetch_horizon_and_process_new_transactions().await;
+	}
 }

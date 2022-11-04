@@ -30,7 +30,6 @@ fn request_issue(
 	amount: Balance,
 	asset: CurrencyId,
 	vault: DefaultVaultId<Test>,
-	public_network: bool,
 ) -> Result<H256, DispatchError> {
 	ext::security::get_secure_id::<Test>.mock_safe(|_| MockResult::Return(get_dummy_request_id()));
 
@@ -39,7 +38,7 @@ fn request_issue(
 	ext::vault_registry::register_deposit_address::<Test>
 		.mock_safe(|_, _| MockResult::Return(Ok(RANDOM_STELLAR_PUBLIC_KEY)));
 
-	Issue::_request_issue(origin, amount, asset, vault, public_network)
+	Issue::_request_issue(origin, amount, asset, vault)
 }
 
 fn request_issue_ok(
@@ -47,16 +46,8 @@ fn request_issue_ok(
 	amount: Balance,
 	asset: CurrencyId,
 	vault: DefaultVaultId<Test>,
-	public_network: bool,
 ) -> H256 {
-	request_issue_ok_with_address(
-		origin,
-		amount,
-		asset,
-		vault,
-		RANDOM_STELLAR_PUBLIC_KEY,
-		public_network,
-	)
+	request_issue_ok_with_address(origin, amount, asset, vault, RANDOM_STELLAR_PUBLIC_KEY)
 }
 
 fn request_issue_ok_with_address(
@@ -65,7 +56,6 @@ fn request_issue_ok_with_address(
 	asset: CurrencyId,
 	vault: DefaultVaultId<Test>,
 	address: StellarPublicKeyRaw,
-	public_network: bool,
 ) -> H256 {
 	ext::vault_registry::ensure_not_banned::<Test>.mock_safe(|_| MockResult::Return(Ok(())));
 
@@ -112,7 +102,6 @@ fn get_dummy_request_id() -> H256 {
 #[test]
 fn test_request_issue_banned_fails() {
 	run_test(|| {
-		let public_network = false;
 		let issue_asset = VAULT.wrapped_currency();
 
 		assert_ok!(<oracle::Pallet<Test>>::_set_exchange_rate(
@@ -135,10 +124,7 @@ fn test_request_issue_banned_fails() {
 				liquidated_collateral: 0,
 			},
 		);
-		assert_noop!(
-			request_issue(USER, 3, issue_asset, VAULT, public_network),
-			VaultRegistryError::VaultBanned
-		);
+		assert_noop!(request_issue(USER, 3, issue_asset, VAULT), VaultRegistryError::VaultBanned);
 	})
 }
 
@@ -154,7 +140,6 @@ fn test_request_issue_succeeds() {
 		let issue_fee = 1;
 		let issue_griefing_collateral = 20;
 		let address = DEFAULT_STELLAR_PUBLIC_KEY;
-		let public_network = false;
 
 		ext::vault_registry::get_active_vault_from_id::<Test>
 			.mock_safe(|_| MockResult::Return(Ok(init_zero_vault(VAULT))));
@@ -171,7 +156,6 @@ fn test_request_issue_succeeds() {
 			issue_asset,
 			vault.clone(),
 			address.clone(),
-			public_network,
 		);
 
 		let request_issue_event = TestEvent::Issue(Event::RequestIssue {
@@ -183,7 +167,6 @@ fn test_request_issue_succeeds() {
 			griefing_collateral: issue_griefing_collateral,
 			vault_id: vault,
 			vault_stellar_public_key: address,
-			public_network,
 		});
 		assert!(System::events().iter().any(|a| a.event == request_issue_event));
 	})
@@ -204,7 +187,6 @@ fn setup_execute(
 	issue_fee: Balance,
 	griefing_collateral: Balance,
 	amount_transferred: Balance,
-	public_network: bool,
 ) -> H256 {
 	ext::vault_registry::get_active_vault_from_id::<Test>
 		.mock_safe(|_| MockResult::Return(Ok(init_zero_vault(VAULT))));
@@ -215,13 +197,14 @@ fn setup_execute(
 	ext::fee::get_issue_griefing_collateral::<Test>
 		.mock_safe(move |_| MockResult::Return(Ok(griefing(griefing_collateral))));
 
-	let issue_id = request_issue_ok(USER, issue_amount, issue_asset, VAULT, public_network);
+	let issue_id = request_issue_ok(USER, issue_amount, issue_asset, VAULT);
 	<security::Pallet<Test>>::set_active_block_number(5);
 
 	ext::stellar_relay::validate_stellar_transaction::<Test>
-		.mock_safe(move |_, _, _, _| MockResult::Return(Ok(())));
-	ext::stellar_relay::get_amount_from_transaction_envelope::<Test, Balance>
-		.mock_safe(move |_, _, _| MockResult::Return(Ok(amount_transferred)));
+		.mock_safe(move |_, _, _| MockResult::Return(Ok(())));
+	ext::currency::get_amount_from_transaction_envelope::<Test>.mock_safe(move |_, _, currency| {
+		MockResult::Return(Ok(Amount::new(amount_transferred, currency)))
+	});
 
 	issue_id
 }
@@ -229,7 +212,6 @@ fn setup_execute(
 #[test]
 fn test_execute_issue_succeeds() {
 	run_test(|| {
-		let public_network = false;
 		// TODO change this to a custom asset
 		let issue_asset = VAULT.wrapped_currency();
 		let issue_amount = 3;
@@ -242,7 +224,6 @@ fn test_execute_issue_succeeds() {
 			issue_fee,
 			griefing_collateral,
 			amount_transferred,
-			public_network,
 		);
 
 		assert_ok!(execute_issue(USER, &issue_id));
@@ -253,7 +234,6 @@ fn test_execute_issue_succeeds() {
 			vault_id: VAULT,
 			amount: issue_amount,
 			asset: issue_asset,
-			public_network: false,
 			fee: issue_fee,
 		});
 		assert!(System::events().iter().any(|a| a.event == execute_issue_event));
@@ -271,7 +251,6 @@ fn test_execute_issue_succeeds() {
 #[test]
 fn test_execute_issue_overpayment_succeeds() {
 	run_test(|| {
-		let public_network = false;
 		let issue_asset = VAULT.wrapped_currency();
 		let issue_amount = 3;
 		let amount_transferred = 5;
@@ -283,7 +262,6 @@ fn test_execute_issue_overpayment_succeeds() {
 			issue_fee,
 			griefing_collateral,
 			amount_transferred,
-			public_network,
 		);
 		unsafe {
 			let mut increase_tokens_called = false;
@@ -314,7 +292,6 @@ fn test_execute_issue_overpayment_succeeds() {
 #[test]
 fn test_execute_issue_overpayment_up_to_max_succeeds() {
 	run_test(|| {
-		let public_network = false;
 		let issue_asset = VAULT.wrapped_currency();
 		let issue_amount = 3;
 		let amount_transferred = 10;
@@ -326,7 +303,6 @@ fn test_execute_issue_overpayment_up_to_max_succeeds() {
 			issue_fee,
 			griefing_collateral,
 			amount_transferred,
-			public_network,
 		);
 		unsafe {
 			let mut increase_tokens_called = false;
@@ -357,7 +333,6 @@ fn test_execute_issue_overpayment_up_to_max_succeeds() {
 #[test]
 fn test_execute_issue_underpayment_succeeds() {
 	run_test(|| {
-		let public_network = false;
 		let issue_asset = VAULT.wrapped_currency();
 		let issue_amount = 10;
 		let amount_transferred = 1;
@@ -369,7 +344,6 @@ fn test_execute_issue_underpayment_succeeds() {
 			issue_fee,
 			griefing_collateral,
 			amount_transferred,
-			public_network,
 		);
 		unsafe {
 			let mut transfer_funds_called = false;
@@ -418,12 +392,11 @@ fn test_cancel_issue_not_found_fails() {
 #[test]
 fn test_cancel_issue_not_expired_and_not_requester_fails() {
 	run_test(|| {
-		let public_network = false;
 		let issue_asset = VAULT.wrapped_currency();
 		ext::vault_registry::get_active_vault_from_id::<Test>
 			.mock_safe(|_| MockResult::Return(Ok(init_zero_vault(VAULT))));
 
-		let issue_id = request_issue_ok(USER, 3, issue_asset, VAULT, public_network);
+		let issue_id = request_issue_ok(USER, 3, issue_asset, VAULT);
 		// issue period is 10, we issued at block 1, so at block 5 the cancel should fail
 		<security::Pallet<Test>>::set_active_block_number(5);
 		assert_noop!(cancel_issue(3, &issue_id), TestError::TimeNotExpired);
@@ -442,9 +415,8 @@ fn test_cancel_issue_not_expired_and_requester_succeeds() {
 		ext::fee::get_issue_griefing_collateral::<Test>
 			.mock_safe(move |_| MockResult::Return(Ok(griefing(100))));
 
-		let public_network = false;
 		let issue_asset = VAULT.wrapped_currency();
-		let issue_id = request_issue_ok(USER, 300, issue_asset, VAULT, public_network);
+		let issue_id = request_issue_ok(USER, 300, issue_asset, VAULT);
 
 		unsafe {
 			let mut transfer_called = false;
@@ -484,9 +456,8 @@ fn test_cancel_issue_expired_succeeds() {
 		ext::fee::get_issue_griefing_collateral::<Test>
 			.mock_safe(move |_| MockResult::Return(Ok(griefing(100))));
 
-		let public_network = false;
 		let issue_asset = VAULT.wrapped_currency();
-		let issue_id = request_issue_ok(USER, 300, issue_asset, VAULT, public_network);
+		let issue_id = request_issue_ok(USER, 300, issue_asset, VAULT);
 
 		unsafe {
 			// issue period is 10, we issued at block 1, so at block 12 the request has expired

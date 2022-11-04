@@ -10,33 +10,33 @@ const STELLAR_VAULT_SECRET_KEY: &str = "SB6WHKIU2HGVBRNKNOEOQUY4GFC4ZLG5XPGWLEAH
 
 async fn test_with<F, R>(execute: impl FnOnce(SubxtClient) -> F) -> R
 where
-    F: Future<Output = R>,
+	F: Future<Output = R>,
 {
-    service::init_subscriber();
-    let (client, _tmp_dir) = default_provider_client(AccountKeyring::Alice).await;
+	service::init_subscriber();
+	let (client, _tmp_dir) = default_provider_client(AccountKeyring::Alice).await;
 
-    let parachain_rpc = setup_provider(client.clone(), AccountKeyring::Bob).await;
+	let parachain_rpc = setup_provider(client.clone(), AccountKeyring::Bob).await;
 
-    execute(client).await
+	execute(client).await
 }
 
 async fn test_with_vault<F, R>(execute: impl FnOnce(SubxtClient, SpacewalkParachain) -> F) -> R
 where
-    F: Future<Output = R>,
+	F: Future<Output = R>,
 {
-    service::init_subscriber();
-    let (client, _tmp_dir) = default_provider_client(AccountKeyring::Alice).await;
+	service::init_subscriber();
+	let (client, _tmp_dir) = default_provider_client(AccountKeyring::Alice).await;
 
-    let parachain_rpc = setup_provider(client.clone(), AccountKeyring::Bob).await;
+	let parachain_rpc = setup_provider(client.clone(), AccountKeyring::Bob).await;
 
-    let vault_provider = setup_provider(client.clone(), AccountKeyring::Charlie).await;
+	let vault_provider = setup_provider(client.clone(), AccountKeyring::Charlie).await;
 
-    execute(client, vault_provider).await
+	execute(client, vault_provider).await
 }
 
 #[tokio::test(flavor = "multi_thread")]
 async fn test_deposit() {
-    let tx_string: &str = r#"{
+	let tx_string: &str = r#"{
   "_links": { },
   "_embedded": {
     "records": [
@@ -71,64 +71,67 @@ async fn test_deposit() {
   }
 }"#;
 
-    let transaction: vault::service::HorizonTransactionsResponse = serde_json::from_str(tx_string).unwrap();
-    let tx_xdr = &transaction._embedded.records[0].envelope_xdr;
+	let transaction: vault::service::HorizonTransactionsResponse =
+		serde_json::from_str(tx_string).unwrap();
+	let tx_xdr = &transaction._embedded.records[0].envelope_xdr;
 
-    test_with_vault(|client, vault_provider| async move {
-        let deposit_listener = vault::service::poll_horizon_for_new_transactions(
-            vault_provider.clone(),
-            STELLAR_VAULT_SECRET_KEY.to_string(),
-        );
+	test_with_vault(|client, vault_provider| async move {
+		let deposit_listener = vault::service::poll_horizon_for_new_transactions(
+			vault_provider.clone(),
+			STELLAR_VAULT_SECRET_KEY.to_string(),
+		);
 
-        assert_ok!(vault_provider.report_stellar_transaction(tx_xdr).await);
+		assert_ok!(vault_provider.report_stellar_transaction(tx_xdr).await);
 
-        test_service(deposit_listener.map(Result::unwrap), async {}).await;
-    })
-    .await;
+		test_service(deposit_listener.map(Result::unwrap), async {}).await;
+	})
+	.await;
 }
 
 #[tokio::test(flavor = "multi_thread")]
 async fn test_redeem() {
-    test_with_vault(|client, vault_provider| async move {
-        let (shutdown_tx, _) = tokio::sync::broadcast::channel(16);
+	test_with_vault(|client, vault_provider| async move {
+		let (shutdown_tx, _) = tokio::sync::broadcast::channel(16);
 
-        // redeem handling
-        let redeem_listener = vault::service::listen_for_redeem_requests(
-            shutdown_tx,
-            vault_provider.clone(),
-            STELLAR_VAULT_SECRET_KEY.to_string(),
-        );
+		// redeem handling
+		let redeem_listener = vault::service::listen_for_redeem_requests(
+			shutdown_tx,
+			vault_provider.clone(),
+			STELLAR_VAULT_SECRET_KEY.to_string(),
+		);
 
-        test_service(redeem_listener.map(Result::unwrap), async {
-            let asset_code = "USDC".as_bytes();
-            let asset_issuer = "GAKNDFRRWA3RPWNLTI3G4EBSD3RGNZZOY5WKWYMQ6CQTG3KIEKPYWAYC".as_bytes();
-            let amount: u128 = 100000000;
+		test_service(redeem_listener.map(Result::unwrap), async {
+			let asset_code = "USDC".as_bytes();
+			let asset_issuer =
+				"GAKNDFRRWA3RPWNLTI3G4EBSD3RGNZZOY5WKWYMQ6CQTG3KIEKPYWAYC".as_bytes();
+			let amount: u128 = 100000000;
 
-            let vault_keypair = substrate_stellar_sdk::SecretKey::from_encoding(STELLAR_VAULT_SECRET_KEY).unwrap();
-            let stellar_vault_pubkey = *vault_keypair.get_public().as_binary();
+			let vault_keypair =
+				stellar_relay::sdk::SecretKey::from_encoding(STELLAR_VAULT_SECRET_KEY).unwrap();
+			let stellar_vault_pubkey = *vault_keypair.get_public().as_binary();
 
-            tracing::info!("hex key 0x{}", hex::encode(stellar_vault_pubkey));
+			tracing::info!("hex key 0x{}", hex::encode(stellar_vault_pubkey));
 
-            // Execute a redeem
-            assert_ok!(
-                vault_provider
-                    .redeem(
-                        &asset_code.to_vec(),
-                        &asset_issuer.to_vec(),
-                        amount,
-                        stellar_vault_pubkey.clone()
-                    )
-                    .await,
-            );
+			// Execute a redeem
+			assert_ok!(
+				vault_provider
+					.redeem(
+						&asset_code.to_vec(),
+						&asset_issuer.to_vec(),
+						amount,
+						stellar_vault_pubkey.clone()
+					)
+					.await,
+			);
 
-            // Expect that a RedeemEvent is registered by the vault provider
-            let event = assert_event::<RedeemEvent, _>(TIMEOUT, vault_provider, |_| true).await;
-            assert_eq!(event.asset_code, asset_code);
-            assert_eq!(event.asset_issuer, asset_issuer);
-            assert_eq!(event.stellar_vault_id, stellar_vault_pubkey);
-            assert_eq!(event.amount, amount);
-        })
-        .await;
-    })
-    .await;
+			// Expect that a RedeemEvent is registered by the vault provider
+			let event = assert_event::<RedeemEvent, _>(TIMEOUT, vault_provider, |_| true).await;
+			assert_eq!(event.asset_code, asset_code);
+			assert_eq!(event.asset_issuer, asset_issuer);
+			assert_eq!(event.stellar_vault_id, stellar_vault_pubkey);
+			assert_eq!(event.amount, amount);
+		})
+		.await;
+	})
+	.await;
 }
