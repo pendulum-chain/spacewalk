@@ -42,6 +42,7 @@ pub use primitives::{
 	SignedFixedPoint, SignedInner, UnsignedFixedPoint, UnsignedInner, H256,
 };
 use primitives::{CurrencyId::Token, TokenSymbol};
+pub use redeem::{Event as RedeemEvent, RedeemRequest};
 pub use security::StatusCode;
 pub use stellar_relay::traits::{FieldLength, Organization, Validator};
 
@@ -369,6 +370,11 @@ impl issue::Config for Runtime {
 	type WeightInfo = ();
 }
 
+impl redeem::Config for Runtime {
+	type Event = Event;
+	type WeightInfo = ();
+}
+
 parameter_types! {
 	pub const MaxExpectedValue: UnsignedFixedPoint = UnsignedFixedPoint::from_inner(<UnsignedFixedPoint as FixedPointNumber>::DIV);
 }
@@ -418,6 +424,7 @@ construct_runtime! {
 		VaultRegistry: vault_registry::{Pallet, Call, Config<T>, Storage, Event<T>, ValidateUnsigned} = 21,
 		Oracle: oracle::{Pallet, Call, Config<T>, Storage, Event<T>} = 22,
 		Issue: issue::{Pallet, Call, Config<T>, Storage, Event<T>} = 23,
+		Redeem: redeem::{Pallet, Call, Config<T>, Storage, Event<T>} = 24,
 		Fee: fee::{Pallet, Call, Config<T>, Storage} = 26,
 		Nomination: nomination::{Pallet, Call, Config, Storage, Event<T>} = 28,
 
@@ -466,6 +473,7 @@ mod benches {
 		[issue, Issue]
 		[fee, Fee]
 		[oracle, Oracle]
+		[redeem, Redeem]
 		[vault_registry, VaultRegistry]
 		[nomination, Nomination]
 	);
@@ -664,6 +672,21 @@ impl_runtime_apis! {
 
 		fn get_vault_issue_requests(vault_id: AccountId) -> Vec<H256> {
 			Issue::get_issue_requests_for_vault(vault_id)
+		}
+	}
+
+	impl module_redeem_rpc_runtime_api::RedeemApi<
+		Block,
+		AccountId,
+		H256,
+		RedeemRequest<AccountId, BlockNumber, Balance, CurrencyId>
+	> for Runtime {
+		fn get_redeem_requests(account_id: AccountId) -> Vec<H256> {
+			Redeem::get_redeem_requests_for_account(account_id)
+		}
+
+		fn get_vault_redeem_requests(vault_account_id: AccountId) -> Vec<H256> {
+			Redeem::get_redeem_requests_for_vault(vault_account_id)
 		}
 	}
 

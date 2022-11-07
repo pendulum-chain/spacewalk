@@ -16,8 +16,8 @@ use primitives::{
 use spacewalk_runtime::{
 	AccountId, AuraConfig, BalancesConfig, CurrencyId, FeeConfig, FieldLength, GenesisConfig,
 	GetWrappedCurrencyId, GrandpaConfig, IssueConfig, NominationConfig, OracleConfig, Organization,
-	SecurityConfig, Signature, StatusCode, StellarRelayConfig, SudoConfig, SystemConfig,
-	TokensConfig, Validator, VaultRegistryConfig, DAYS, WASM_BINARY,
+	RedeemConfig, SecurityConfig, Signature, StatusCode, StellarRelayConfig, SudoConfig,
+	SystemConfig, TokensConfig, Validator, VaultRegistryConfig, DAYS, WASM_BINARY,
 };
 
 // The URL for the telemetry server.
@@ -295,6 +295,7 @@ fn testnet_genesis(
 				.collect(),
 		},
 		issue: IssueConfig { issue_period: DAYS, issue_minimum_transfer_amount: 1000 },
+		redeem: RedeemConfig { redeem_period: DAYS, redeem_minimum_transfer_amount: 100 },
 		security: SecurityConfig {
 			initial_status: if start_shutdown { StatusCode::Shutdown } else { StatusCode::Error },
 		},

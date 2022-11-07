@@ -16,6 +16,9 @@ mod tests;
 #[cfg(feature = "runtime-benchmarks")]
 mod benchmarking;
 
+#[cfg(feature = "testing-utils")]
+pub mod testing_utils;
+
 pub mod traits;
 pub mod types;
 
