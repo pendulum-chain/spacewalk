@@ -1,4 +1,4 @@
-use std::str::FromStr;
+use std::{convert::TryFrom, str::FromStr};
 
 use hex_literal::hex;
 use sc_service::ChainType;
@@ -13,10 +13,10 @@ use primitives::{
 	CurrencyId::Token, CurrencyInfo, VaultCurrencyPair, DOT, IBTC, INTR, KBTC, KINT, KSM,
 };
 use spacewalk_runtime::{
-	AccountId, AuraConfig, BalancesConfig, CurrencyId, FeeConfig, GenesisConfig,
-	GetWrappedCurrencyId, GrandpaConfig, IssueConfig, NominationConfig, OracleConfig, RedeemConfig,
-	ReplaceConfig, SecurityConfig, Signature, StatusCode, SudoConfig, SystemConfig, TokensConfig,
-	VaultRegistryConfig, DAYS, WASM_BINARY,
+	AccountId, AuraConfig, BalancesConfig, CurrencyId, FeeConfig, FieldLength, GenesisConfig,
+	GetWrappedCurrencyId, GrandpaConfig, IssueConfig, NominationConfig, OracleConfig, Organization,
+	RedeemConfig, ReplaceConfig, SecurityConfig, Signature, StatusCode, StellarRelayConfig,
+	SudoConfig, SystemConfig, TokensConfig, Validator, VaultRegistryConfig, DAYS, WASM_BINARY,
 };
 
 // The URL for the telemetry server.
@@ -52,15 +52,6 @@ where
 
 fn get_properties() -> Map<String, Value> {
 	let mut properties = Map::new();
-
-	let mut token_symbol: Vec<String> = vec![];
-	let mut token_decimals: Vec<u32> = vec![];
-	[INTR, IBTC, DOT, KINT, KBTC, KSM].iter().for_each(|token| {
-		token_symbol.push(token.symbol().to_string());
-		token_decimals.push(token.decimals() as u32);
-	});
-	properties.insert("tokenSymbol".into(), token_symbol.into());
-	properties.insert("tokenDecimals".into(), token_decimals.into());
 	properties.insert("ss58Format".into(), spacewalk_runtime::SS58Prefix::get().into());
 	properties
 }
@@ -217,6 +208,15 @@ fn default_pair(currency_id: CurrencyId) -> VaultCurrencyPair<CurrencyId> {
 	VaultCurrencyPair { collateral: currency_id, wrapped: GetWrappedCurrencyId::get() }
 }
 
+// Used to create bounded vecs for genesis config
+// Does not return a result but panics because the genesis config is hardcoded
+fn create_bounded_vec(input: &str) -> BoundedVec<u8, FieldLength> {
+	let bounded_vec =
+		BoundedVec::try_from(input.as_bytes().to_vec()).expect("Failed to create bounded vec");
+
+	bounded_vec
+}
+
 fn testnet_genesis(
 	root_key: AccountId,
 	initial_authorities: Vec<(AuraId, GrandpaId)>,
@@ -224,6 +224,34 @@ fn testnet_genesis(
 	authorized_oracles: Vec<(AccountId, Vec<u8>)>,
 	start_shutdown: bool,
 ) -> GenesisConfig {
+	// Testnet organization
+	let organization_testnet_sdf =
+		Organization { name: create_bounded_vec("sdftest"), id: 1u128.into() };
+	// Testnet validators
+	let validators = vec![
+		Validator {
+			name: create_bounded_vec("$sdftest1"),
+			public_key: create_bounded_vec(
+				"GDKXE2OZMJIPOSLNA6N6F2BVCI3O777I2OOC4BV7VOYUEHYX7RTRYA7Y",
+			),
+			organization_id: organization_testnet_sdf.id,
+		},
+		Validator {
+			name: create_bounded_vec("$sdftest2"),
+			public_key: create_bounded_vec(
+				"GCUCJTIYXSOXKBSNFGNFWW5MUQ54HKRPGJUTQFJ5RQXZXNOLNXYDHRAP",
+			),
+			organization_id: organization_testnet_sdf.id,
+		},
+		Validator {
+			name: create_bounded_vec("$sdftest3"),
+			public_key: create_bounded_vec(
+				"GC2V2EFSXN6SQTWVYA5EPJPBWWIMSD2XQNKUOHGEKB535AQE2I6IXV2Z",
+			),
+			organization_id: organization_testnet_sdf.id,
+		},
+	];
+	let organizations = vec![organization_testnet_sdf];
 	GenesisConfig {
 		system: SystemConfig {
 			code: WASM_BINARY.expect("WASM binary was not build, please build it!").to_vec(),
@@ -256,12 +284,18 @@ fn testnet_genesis(
 				})
 				.collect(),
 		},
-		issue: IssueConfig { issue_period: DAYS },
+		issue: IssueConfig { issue_period: DAYS, issue_minimum_transfer_amount: 1000 },
+		redeem: RedeemConfig { redeem_period: DAYS, redeem_minimum_transfer_amount: 100 },
+		replace: ReplaceConfig { replace_period: DAYS, replace_btc_dust_value: 1000 },
 		security: SecurityConfig {
 			initial_status: if start_shutdown { StatusCode::Shutdown } else { StatusCode::Error },
 		},
-		redeem: RedeemConfig { redeem_period: DAYS, redeem_dust_value: 100 },
-		replace: ReplaceConfig { replace_period: DAYS, replace_btc_dust_value: 1000 },
+		stellar_relay: StellarRelayConfig {
+			validators,
+			organizations,
+			is_public_network: false,
+			phantom: Default::default(),
+		},
 		oracle: OracleConfig {
 			authorized_oracles,
 			max_delay: 3600000, // one hour

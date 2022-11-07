@@ -39,12 +39,13 @@ pub use nomination::Event as NominationEvent;
 // A few exports that help ease life for downstream crates.
 pub use primitives::{
 	self, AccountId, Balance, BlockNumber, CurrencyId, Hash, Moment, Nonce, Signature,
-	SignedFixedPoint, SignedInner, UnsignedFixedPoint, UnsignedInner,
+	SignedFixedPoint, SignedInner, UnsignedFixedPoint, UnsignedInner, H256,
 };
 use primitives::{CurrencyId::Token, TokenSymbol, TokenSymbol::INTR};
 pub use redeem::{Event as RedeemEvent, RedeemRequest};
 pub use replace::{Event as ReplaceEvent, ReplaceRequest};
 pub use security::StatusCode;
+pub use stellar_relay::traits::{FieldLength, Organization, Validator};
 
 type VaultId = primitives::VaultId<AccountId, CurrencyId>;
 
@@ -190,7 +191,7 @@ impl pallet_timestamp::Config for Runtime {
 	type WeightInfo = ();
 }
 
-const NATIVE_TOKEN_ID: TokenSymbol = INTR;
+const NATIVE_TOKEN_ID: TokenSymbol = TokenSymbol::PEN;
 const NATIVE_CURRENCY_ID: CurrencyId = Token(NATIVE_TOKEN_ID);
 const PARENT_CURRENCY_ID: CurrencyId = Token(TokenSymbol::DOT);
 const WRAPPED_CURRENCY_ID: CurrencyId = Token(TokenSymbol::IBTC);
@@ -320,6 +321,8 @@ impl currency::Config for Runtime {
 	type GetNativeCurrencyId = GetNativeCurrencyId;
 	type GetRelayChainCurrencyId = GetRelayChainCurrencyId;
 	type GetWrappedCurrencyId = GetWrappedCurrencyId;
+	type AssetConversion = primitives::AssetConversion;
+	type BalanceConversion = primitives::BalanceConversion;
 	type CurrencyConversion = CurrencyConvert;
 }
 
@@ -373,6 +376,11 @@ impl redeem::Config for Runtime {
 	type WeightInfo = ();
 }
 
+impl replace::Config for Runtime {
+	type Event = Event;
+	type WeightInfo = ();
+}
+
 parameter_types! {
 	pub const MaxExpectedValue: UnsignedFixedPoint = UnsignedFixedPoint::from_inner(<UnsignedFixedPoint as FixedPointNumber>::DIV);
 }
@@ -388,11 +396,6 @@ impl fee::Config for Runtime {
 	type VaultStaking = VaultStaking;
 	type OnSweep = currency::SweepFunds<Runtime, FeeAccount>;
 	type MaxExpectedValue = MaxExpectedValue;
-}
-
-impl replace::Config for Runtime {
-	type Event = Event;
-	type WeightInfo = ();
 }
 
 impl nomination::Config for Runtime {
@@ -416,7 +419,7 @@ construct_runtime! {
 		Balances: pallet_balances::{Pallet, Call, Storage, Config<T>, Event<T>} = 8,
 		TransactionPayment: pallet_transaction_payment::{Pallet, Storage} = 9,
 
-		StellarRelay: pallet_stellar_relay::{Pallet, Call, Storage, Event<T>} = 10,
+		StellarRelay: stellar_relay::{Pallet, Call, Config<T>, Storage, Event<T>} = 10,
 
 		VaultRewards: reward::{Pallet, Storage, Event<T>} = 15,
 		VaultStaking: staking::{Pallet, Storage, Event<T>} = 16,
@@ -473,7 +476,7 @@ mod benches {
 	define_benchmarks!(
 		[frame_benchmarking, BaselineBench::<Runtime>]
 		[frame_system, SystemBench::<Runtime>]
-		[pallet_stellar_relay, StellarRelay]
+		[stellar_relay, StellarRelay]
 		[issue, Issue]
 		[fee, Fee]
 		[oracle, Oracle]
@@ -616,21 +619,6 @@ impl_runtime_apis! {
 		}
 	}
 
-	impl module_replace_rpc_runtime_api::ReplaceApi<
-		Block,
-		AccountId,
-		H256,
-		ReplaceRequest<AccountId, BlockNumber, Balance, CurrencyId>
-	> for Runtime {
-		fn get_old_vault_replace_requests(vault_id: AccountId) -> Vec<H256> {
-			Replace::get_replace_requests_for_old_vault(vault_id)
-		}
-
-		fn get_new_vault_replace_requests(vault_id: AccountId) -> Vec<H256> {
-			Replace::get_replace_requests_for_new_vault(vault_id)
-		}
-	}
-
 	#[cfg(feature = "runtime-benchmarks")]
 	impl frame_benchmarking::Benchmark<Block> for Runtime {
 		fn benchmark_metadata(extra: bool) -> (
@@ -677,6 +665,51 @@ impl_runtime_apis! {
 			add_benchmarks!(params, batches);
 			if batches.is_empty() { return Err("Benchmark not found for this pallet.".into()) }
 			Ok(batches)
+		}
+	}
+
+	impl module_issue_rpc_runtime_api::IssueApi<
+		Block,
+		AccountId,
+		H256,
+		IssueRequest<AccountId, BlockNumber, Balance, CurrencyId>
+	> for Runtime {
+		fn get_issue_requests(account_id: AccountId) -> Vec<H256> {
+			Issue::get_issue_requests_for_account(account_id)
+		}
+
+		fn get_vault_issue_requests(vault_id: AccountId) -> Vec<H256> {
+			Issue::get_issue_requests_for_vault(vault_id)
+		}
+	}
+
+	impl module_redeem_rpc_runtime_api::RedeemApi<
+		Block,
+		AccountId,
+		H256,
+		RedeemRequest<AccountId, BlockNumber, Balance, CurrencyId>
+	> for Runtime {
+		fn get_redeem_requests(account_id: AccountId) -> Vec<H256> {
+			Redeem::get_redeem_requests_for_account(account_id)
+		}
+
+		fn get_vault_redeem_requests(vault_account_id: AccountId) -> Vec<H256> {
+			Redeem::get_redeem_requests_for_vault(vault_account_id)
+		}
+	}
+
+	impl module_replace_rpc_runtime_api::ReplaceApi<
+		Block,
+		AccountId,
+		H256,
+		ReplaceRequest<AccountId, BlockNumber, Balance, CurrencyId>
+	> for Runtime {
+		fn get_old_vault_replace_requests(vault_id: AccountId) -> Vec<H256> {
+			Replace::get_replace_requests_for_old_vault(vault_id)
+		}
+
+		fn get_new_vault_replace_requests(vault_id: AccountId) -> Vec<H256> {
+			Replace::get_replace_requests_for_new_vault(vault_id)
 		}
 	}
 }

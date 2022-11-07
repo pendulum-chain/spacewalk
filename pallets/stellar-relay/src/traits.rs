@@ -19,7 +19,6 @@ pub struct Validator<OrganizationId> {
 	pub name: BoundedVec<u8, FieldLength>,
 	pub public_key: BoundedVec<u8, FieldLength>,
 	pub organization_id: OrganizationId,
-	pub public_network: bool,
 }
 
 #[derive(Clone, Decode, Encode, Eq, MaxEncodedLen, PartialEq, RuntimeDebug, TypeInfo)]
@@ -27,5 +26,4 @@ pub struct Validator<OrganizationId> {
 pub struct Organization<OrganizationId> {
 	pub id: OrganizationId,
 	pub name: BoundedVec<u8, FieldLength>,
-	pub public_network: bool,
 }

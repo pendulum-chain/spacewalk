@@ -167,13 +167,15 @@ pub fn convert_to(to: CurrencyId, amount: Balance) -> Result<Balance, sp_runtime
 }
 
 impl currency::Config for Test {
+	type UnsignedFixedPoint = UnsignedFixedPoint;
 	type SignedInner = SignedInner;
 	type SignedFixedPoint = SignedFixedPoint;
-	type UnsignedFixedPoint = UnsignedFixedPoint;
 	type Balance = Balance;
 	type GetNativeCurrencyId = GetNativeCurrencyId;
 	type GetRelayChainCurrencyId = GetCollateralCurrencyId;
 	type GetWrappedCurrencyId = GetWrappedCurrencyId;
+	type AssetConversion = primitives::AssetConversion;
+	type BalanceConversion = primitives::BalanceConversion;
 	type CurrencyConversion = CurrencyConvert;
 }
 
@@ -310,7 +312,7 @@ impl ExtBuilder {
 		.assimilate_storage(&mut storage)
 		.unwrap();
 
-		redeem::GenesisConfig::<Test> { redeem_period: 10, redeem_dust_value: 2 }
+		redeem::GenesisConfig::<Test> { redeem_period: 10, redeem_minimum_transfer_amount: 2 }
 			.assimilate_storage(&mut storage)
 			.unwrap();
 

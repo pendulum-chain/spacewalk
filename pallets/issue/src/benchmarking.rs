@@ -1,31 +1,19 @@
 use frame_benchmarking::{account, benchmarks, impl_benchmark_test_suite};
-use frame_support::{assert_ok, BoundedVec};
+use frame_support::assert_ok;
 use frame_system::RawOrigin;
 use orml_traits::MultiCurrency;
 use sp_core::H256;
 use sp_runtime::{traits::One, FixedPointNumber};
 use sp_std::prelude::*;
-use substrate_stellar_sdk::{
-	compound_types::{LimitedVarArray, LimitedVarOpaque, UnlimitedVarOpaque},
-	network::{Network, PUBLIC_NETWORK, TEST_NETWORK},
-	types::{
-		NodeId, Preconditions, ScpBallot, ScpStatement, ScpStatementExternalize,
-		ScpStatementPledges, Signature, StellarValue, StellarValueExt, TransactionExt,
-		TransactionV1Envelope, Value,
-	},
-	AccountId, Hash, Memo, MuxedAccount, PublicKey, SecretKey, Transaction, XdrCodec,
-};
 
 use currency::getters::{get_relay_chain_currency_id as get_collateral_currency_id, *};
 use oracle::Pallet as Oracle;
-use primitives::{CurrencyId, StellarPublicKeyRaw, VaultCurrencyPair, VaultId};
+use primitives::{CurrencyId, VaultCurrencyPair, VaultId};
 use security::Pallet as Security;
 use stellar_relay::{
 	testing_utils::{
 		build_dummy_proof_for, get_validators_and_organizations, DEFAULT_STELLAR_PUBLIC_KEY,
 	},
-	traits::{Organization, Validator},
-	types::{OrganizationOf, ValidatorOf},
 	Pallet as StellarRelay,
 };
 use vault_registry::{types::DefaultVaultCurrencyPair, Pallet as VaultRegistry};
@@ -34,8 +22,6 @@ use vault_registry::{types::DefaultVaultCurrencyPair, Pallet as VaultRegistry};
 use crate::Pallet as Issue;
 
 use super::*;
-
-const IS_PUBLIC_NETWORK: bool = false;
 
 fn deposit_tokens<T: crate::Config>(
 	currency_id: CurrencyId,
@@ -91,7 +77,7 @@ benchmarks! {
 		register_vault::<T>(vault_id.clone());
 
 		Security::<T>::set_active_block_number(1u32.into());
-	}: _(RawOrigin::Signed(origin), amount, asset, vault_id, IS_PUBLIC_NETWORK)
+	}: _(RawOrigin::Signed(origin), amount, asset, vault_id)
 
 	execute_issue {
 		let origin: T::AccountId = account("Origin", 0, 0);
@@ -117,14 +103,14 @@ benchmarks! {
 			opentime: Default::default(),
 			period: Default::default(),
 			status: Default::default(),
-			public_network: IS_PUBLIC_NETWORK
 		};
 		Issue::<T>::insert_issue_request(&issue_id, &issue_request);
 		Security::<T>::set_active_block_number(1u32.into());
 
 		let (validators, organizations) = get_validators_and_organizations::<T>();
 		StellarRelay::<T>::_update_tier_1_validator_set(validators, organizations).unwrap();
-		let (tx_env_xdr_encoded, scp_envs_xdr_encoded, tx_set_xdr_encoded) = build_dummy_proof_for::<T>(issue_id, IS_PUBLIC_NETWORK);
+		let public_network = StellarRelay::<T>::is_public_network();
+		let (tx_env_xdr_encoded, scp_envs_xdr_encoded, tx_set_xdr_encoded) = build_dummy_proof_for::<T>(issue_id, public_network);
 
 		VaultRegistry::<T>::_set_system_collateral_ceiling(get_currency_pair::<T>(), 1_000_000_000u32.into());
 		VaultRegistry::<T>::_set_secure_collateral_threshold(get_currency_pair::<T>(), <T as currency::Config>::UnsignedFixedPoint::checked_from_rational(1, 100000).unwrap());
@@ -158,7 +144,6 @@ benchmarks! {
 			griefing_collateral: Default::default(),
 			period: Default::default(),
 			status: Default::default(),
-			public_network: IS_PUBLIC_NETWORK
 		};
 
 		Issue::<T>::insert_issue_request(&issue_id, &issue_request);

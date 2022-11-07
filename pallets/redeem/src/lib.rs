@@ -14,7 +14,6 @@ use frame_support::{
 };
 #[cfg(test)]
 use mocktopus::macros::mockable;
-use sp_arithmetic::traits::CheckedDiv;
 use sp_core::H256;
 use sp_runtime::FixedPointNumber;
 use sp_std::{convert::TryInto, vec::Vec};
@@ -147,7 +146,7 @@ pub mod pallet {
 		/// Unable to convert value.
 		TryIntoIntError,
 		/// Redeem amount is too small.
-		AmountBelowDustAmount,
+		AmountBelowMinimumTransferAmount,
 	}
 
 	/// The time difference in number of blocks between a redeem request is created and required
@@ -157,29 +156,32 @@ pub mod pallet {
 	#[pallet::getter(fn redeem_period)]
 	pub(super) type RedeemPeriod<T: Config> = StorageValue<_, T::BlockNumber, ValueQuery>;
 
-	/// Users create redeem requests to receive BTC in return for their previously issued tokens.
-	/// This mapping provides access from a unique hash redeemId to a Redeem struct.
+	/// Users create redeem requests to receive stellar assets in return for their previously issued
+	/// tokens. This mapping provides access from a unique hash redeemId to a Redeem struct.
 	#[pallet::storage]
 	#[pallet::getter(fn redeem_requests)]
 	pub(super) type RedeemRequests<T: Config> =
 		StorageMap<_, Blake2_128Concat, H256, DefaultRedeemRequest<T>, OptionQuery>;
 
-	/// The minimum amount of btc that is accepted for redeem requests; any lower values would
-	/// risk the bitcoin client to reject the payment
+	/// The minimum amount of wrapped assets that is accepted for redeem requests
 	#[pallet::storage]
-	#[pallet::getter(fn redeem_btc_dust_value)]
-	pub(super) type RedeemDustValue<T: Config> = StorageValue<_, BalanceOf<T>, ValueQuery>;
+	#[pallet::getter(fn redeem_minimum_transfer_amount)]
+	pub(super) type RedeemMinimumTransferAmount<T: Config> =
+		StorageValue<_, BalanceOf<T>, ValueQuery>;
 
 	#[pallet::genesis_config]
 	pub struct GenesisConfig<T: Config> {
 		pub redeem_period: T::BlockNumber,
-		pub redeem_dust_value: BalanceOf<T>,
+		pub redeem_minimum_transfer_amount: BalanceOf<T>,
 	}
 
 	#[cfg(feature = "std")]
 	impl<T: Config> Default for GenesisConfig<T> {
 		fn default() -> Self {
-			Self { redeem_period: Default::default(), redeem_dust_value: Default::default() }
+			Self {
+				redeem_period: Default::default(),
+				redeem_minimum_transfer_amount: Default::default(),
+			}
 		}
 	}
 
@@ -187,7 +189,7 @@ pub mod pallet {
 	impl<T: Config> GenesisBuild<T> for GenesisConfig<T> {
 		fn build(&self) {
 			RedeemPeriod::<T>::put(self.redeem_period);
-			RedeemDustValue::<T>::put(self.redeem_dust_value);
+			RedeemMinimumTransferAmount::<T>::put(self.redeem_minimum_transfer_amount);
 		}
 	}
 
@@ -206,8 +208,9 @@ pub mod pallet {
 		/// # Arguments
 		///
 		/// * `origin` - sender of the transaction
-		/// * `amount` - amount of issued tokens
-		/// * `btc_address` - the address to receive BTC
+		/// * `amount_wrapped` - amount of tokens to redeem
+		/// * `asset` - the asset to redeem
+		/// * `stellar_address` - the address to receive assets on Stellar
 		/// * `vault_id` - address of the vault
 		#[pallet::weight(<T as Config>::WeightInfo::request_redeem())]
 		#[transactional]
@@ -223,7 +226,7 @@ pub mod pallet {
 			Ok(().into())
 		}
 
-		/// When a Vault is liquidated, its collateral is slashed up to 150% of the liquidated BTC
+		/// When a Vault is liquidated, its collateral is slashed up to 150% of the liquidated
 		/// value. To re-establish the physical 1:1 peg, the bridge allows users to burn issued
 		/// tokens in return for collateral at a premium rate.
 		///
@@ -246,18 +249,19 @@ pub mod pallet {
 		}
 
 		/// A Vault calls this function after receiving an RequestRedeem event with their public
-		/// key. Before calling the function, the Vault transfers the specific amount of BTC to the
-		/// BTC address given in the original redeem request. The Vault completes the redeem with
-		/// this function.
+		/// key. Before calling the function, the Vault transfers the specific amount of Stellar
+		/// assets to the Stellar address given in the original redeem request. The Vault completes
+		/// the redeem with this function.
 		///
 		/// # Arguments
 		///
 		/// * `origin` - anyone executing this redeem request
 		/// * `redeem_id` - identifier of redeem request as output from request_redeem
-		/// * `tx_id` - transaction hash
-		/// * `tx_block_height` - block number of collateral chain
-		/// * `merkle_proof` - raw bytes
-		/// * `raw_tx` - raw bytes
+		/// * `transaction_envelope_xdr_encoded` - the XDR representation of the transaction
+		///   envelope
+		/// * `externalized_envelopes_encoded` - the XDR representation of the externalized
+		///   envelopes
+		/// * `transaction_set_encoded` - the XDR representation of the transaction set
 		#[pallet::weight(<T as Config>::WeightInfo::execute_redeem())]
 		#[transactional]
 		pub fn execute_redeem(
@@ -277,14 +281,14 @@ pub mod pallet {
 
 			// Don't take tx fees on success. If the vault had to pay for this function, it would
 			// have been vulnerable to a griefing attack where users would redeem amounts just
-			// above the dust value.
+			// above the minimum transfer value.
 			Ok(Pays::No.into())
 		}
 
 		/// If a redeem request is not completed on time, the redeem request can be cancelled.
 		/// The user that initially requested the redeem process calls this function to obtain
-		/// the Vault’s collateral as compensation for not transferring the BTC back to their
-		/// address.
+		/// the Vault’s collateral as compensation for not transferring the Stellar assets back to
+		/// their address.
 		///
 		/// # Arguments
 		///
@@ -311,8 +315,6 @@ pub mod pallet {
 		///
 		/// * `origin` - the dispatch origin of this call (must be _Root_)
 		/// * `period` - default period for new requests
-		///
-		/// # Weight: `O(1)`
 		#[pallet::weight(<T as Config>::WeightInfo::set_redeem_period())]
 		#[transactional]
 		pub fn set_redeem_period(
@@ -334,8 +336,6 @@ pub mod pallet {
 		///
 		/// * `origin` - the dispatch origin of this call (must be _Root_)
 		/// * `redeem_id` - identifier of redeem request as output from request_redeem
-		///
-		/// # Weight: `O(1)`
 		#[pallet::weight(<T as Config>::WeightInfo::set_redeem_period())]
 		#[transactional]
 		pub fn mint_tokens_for_reimbursed_redeem(
@@ -382,7 +382,7 @@ mod self_redeem {
 		ext::vault_registry::ensure_not_banned::<T>(&vault_id)?;
 
 		// for self-redeem, dustAmount is effectively 1 satoshi
-		ensure!(!amount_wrapped.is_zero(), Error::<T>::AmountBelowDustAmount);
+		ensure!(!amount_wrapped.is_zero(), Error::<T>::AmountBelowMinimumTransferAmount);
 
 		let (fees, consumed_issued_tokens) =
 			calculate_token_amounts::<T>(&vault_id, &amount_wrapped)?;
@@ -400,10 +400,6 @@ mod self_redeem {
 		Ok(())
 	}
 
-	// how testnet would work
-	// - vault client
-
-	/// returns (fees, consumed_issued_tokens)
 	fn calculate_token_amounts<T: Config>(
 		vault_id: &DefaultVaultId<T>,
 		requested_redeem_amount: &Amount<T>,
@@ -465,7 +461,7 @@ impl<T: Config> Pallet<T> {
 	fn _request_redeem(
 		redeemer: T::AccountId,
 		amount_wrapped: BalanceOf<T>,
-		asset: CurrencyId<T>,
+		_asset: CurrencyId<T>,
 		stellar_address: StellarPublicKeyRaw,
 		vault_id: DefaultVaultId<T>,
 	) -> Result<H256, DispatchError> {
@@ -490,19 +486,20 @@ impl<T: Config> Pallet<T> {
 
 		let vault_to_be_burned_tokens = amount_wrapped.checked_sub(&fee_wrapped)?;
 
-		// this can overflow for small requested values. As such return AmountBelowDustAmount when
-		// this happens
+		// this can overflow for small requested values. As such return
+		// AmountBelowMinimumTransferAmount when this happens
 		let user_to_be_received_btc = vault_to_be_burned_tokens
 			.checked_sub(&inclusion_fee)
-			.map_err(|_| Error::<T>::AmountBelowDustAmount)?;
+			.map_err(|_| Error::<T>::AmountBelowMinimumTransferAmount)?;
 
 		ext::vault_registry::ensure_not_banned::<T>(&vault_id)?;
 
 		// only allow requests of amount above above the minimum
 		ensure!(
 			// this is the amount the vault will send (minus fee)
-			user_to_be_received_btc.ge(&Self::get_dust_value(vault_id.wrapped_currency()))?,
-			Error::<T>::AmountBelowDustAmount
+			user_to_be_received_btc
+				.ge(&Self::get_minimum_transfer_amount(vault_id.wrapped_currency()))?,
+			Error::<T>::AmountBelowMinimumTransferAmount
 		);
 
 		// vault will get rid of the btc + btc_inclusion_fee
@@ -862,9 +859,10 @@ impl<T: Config> Pallet<T> {
 		Ok(amount)
 	}
 
-	pub fn get_dust_value(currency_id: CurrencyId<T>) -> Amount<T> {
-		Amount::new(<RedeemDustValue<T>>::get(), currency_id)
+	pub fn get_minimum_transfer_amount(currency_id: CurrencyId<T>) -> Amount<T> {
+		Amount::new(<RedeemMinimumTransferAmount<T>>::get(), currency_id)
 	}
+
 	/// Fetch all redeem requests for the specified account.
 	///
 	/// # Arguments

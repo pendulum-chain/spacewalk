@@ -1,7 +1,7 @@
 use frame_support::{
 	assert_ok, parameter_types,
 	traits::{ConstU32, Everything, GenesisBuild},
-	BoundedVec, PalletId,
+	PalletId,
 };
 use mocktopus::{macros::mockable, mocking::clear_mocks};
 use orml_traits::parameter_type_with_key;
@@ -11,15 +11,10 @@ use sp_runtime::{
 	testing::{Header, TestXt},
 	traits::{BlakeTwo256, Convert, IdentityLookup, One, Zero},
 };
-use substrate_stellar_sdk::SecretKey;
 
 use currency::Amount;
 pub use primitives::{CurrencyId, CurrencyId::Token, TokenSymbol::*};
 use primitives::{VaultCurrencyPair, VaultId};
-use stellar_relay::{
-	traits::{Organization, Validator},
-	types::{OrganizationOf, ValidatorOf},
-};
 
 use crate as issue;
 use crate::{Config, Error};
@@ -99,7 +94,8 @@ impl frame_system::Config for Test {
 
 pub const DEFAULT_COLLATERAL_CURRENCY: CurrencyId = Token(DOT);
 pub const DEFAULT_NATIVE_CURRENCY: CurrencyId = Token(INTR);
-pub const DEFAULT_WRAPPED_CURRENCY: CurrencyId = Token(IBTC);
+pub const DEFAULT_WRAPPED_CURRENCY: CurrencyId =
+	CurrencyId::AlphaNum4 { code: *b"USDC", issuer: [0u8; 32] };
 
 parameter_types! {
 	pub const GetCollateralCurrencyId: CurrencyId = DEFAULT_COLLATERAL_CURRENCY;
@@ -167,13 +163,15 @@ pub fn convert_to(to: CurrencyId, amount: Balance) -> Result<Balance, sp_runtime
 }
 
 impl currency::Config for Test {
+	type UnsignedFixedPoint = UnsignedFixedPoint;
 	type SignedInner = SignedInner;
 	type SignedFixedPoint = SignedFixedPoint;
-	type UnsignedFixedPoint = UnsignedFixedPoint;
 	type Balance = Balance;
 	type GetNativeCurrencyId = GetNativeCurrencyId;
 	type GetRelayChainCurrencyId = GetCollateralCurrencyId;
 	type GetWrappedCurrencyId = GetWrappedCurrencyId;
+	type AssetConversion = primitives::AssetConversion;
+	type BalanceConversion = primitives::BalanceConversion;
 	type CurrencyConversion = CurrencyConvert;
 }
 
@@ -301,7 +299,7 @@ impl ExtBuilder {
 		.assimilate_storage(&mut storage)
 		.unwrap();
 
-		issue::GenesisConfig::<Test> { issue_period: 10 }
+		issue::GenesisConfig::<Test> { issue_period: 10, issue_minimum_transfer_amount: 1 }
 			.assimilate_storage(&mut storage)
 			.unwrap();
 

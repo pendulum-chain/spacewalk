@@ -84,7 +84,6 @@ pub mod pallet {
 			griefing_collateral: BalanceOf<T>,
 			vault_id: DefaultVaultId<T>,
 			vault_stellar_public_key: StellarPublicKeyRaw,
-			public_network: bool,
 		},
 		IssueAmountChange {
 			issue_id: H256,
@@ -92,7 +91,6 @@ pub mod pallet {
 			asset: CurrencyId<T>,
 			fee: BalanceOf<T>,
 			confiscated_griefing_collateral: BalanceOf<T>,
-			public_network: bool,
 		},
 		ExecuteIssue {
 			issue_id: H256,
@@ -101,13 +99,11 @@ pub mod pallet {
 			amount: BalanceOf<T>,
 			asset: CurrencyId<T>,
 			fee: BalanceOf<T>,
-			public_network: bool,
 		},
 		CancelIssue {
 			issue_id: H256,
 			requester: T::AccountId,
 			griefing_collateral: BalanceOf<T>,
-			public_network: bool,
 		},
 		IssuePeriodChange {
 			period: T::BlockNumber,
@@ -118,8 +114,6 @@ pub mod pallet {
 	pub enum Error<T> {
 		/// Issue request not found.
 		IssueIdNotFound,
-		/// Issue request has expired.
-		CommitPeriodExpired,
 		/// Issue request has not expired.
 		TimeNotExpired,
 		/// Issue request already completed.
@@ -128,12 +122,10 @@ pub mod pallet {
 		IssueCancelled,
 		/// Vault is not active.
 		VaultNotAcceptingNewIssues,
-		/// Relay is not initialized.
-		WaitingForRelayerInitialization,
 		/// Not expected origin.
 		InvalidExecutor,
 		/// Issue amount is too small.
-		AmountBelowDustAmount,
+		AmountBelowMinimumTransferAmount,
 	}
 
 	/// Users create issue requests to issue tokens. This mapping provides access
@@ -150,15 +142,24 @@ pub mod pallet {
 	#[pallet::getter(fn issue_period)]
 	pub(super) type IssuePeriod<T: Config> = StorageValue<_, T::BlockNumber, ValueQuery>;
 
+	/// The minimum amount of wrapped assets that is required for issue requests
+	#[pallet::storage]
+	pub(super) type IssueMinimumTransferAmount<T: Config> =
+		StorageValue<_, BalanceOf<T>, ValueQuery>;
+
 	#[pallet::genesis_config]
 	pub struct GenesisConfig<T: Config> {
 		pub issue_period: T::BlockNumber,
+		pub issue_minimum_transfer_amount: BalanceOf<T>,
 	}
 
 	#[cfg(feature = "std")]
 	impl<T: Config> Default for GenesisConfig<T> {
 		fn default() -> Self {
-			Self { issue_period: Default::default() }
+			Self {
+				issue_period: Default::default(),
+				issue_minimum_transfer_amount: Default::default(),
+			}
 		}
 	}
 
@@ -166,6 +167,7 @@ pub mod pallet {
 	impl<T: Config> GenesisBuild<T> for GenesisConfig<T> {
 		fn build(&self) {
 			IssuePeriod::<T>::put(self.issue_period);
+			IssueMinimumTransferAmount::<T>::put(self.issue_minimum_transfer_amount);
 		}
 	}
 
@@ -180,10 +182,12 @@ pub mod pallet {
 		/// # Arguments
 		///
 		/// * `origin` - sender of the transaction
-		/// * `amount` - amount of BTC the user wants to convert to issued tokens. Note that the
+		/// * `amount` - amount of a stellar asset the user wants to convert to issued tokens. Note
+		///   that the
 		/// amount of issued tokens received will be less, because a fee is subtracted.
+		/// * `asset` - the currency id of the stellar asset the user wants to convert to issued
+		///   tokens
 		/// * `vault` - address of the vault
-		/// * `griefing_collateral` - amount of collateral
 		#[pallet::weight(<T as Config>::WeightInfo::request_issue())]
 		#[transactional]
 		pub fn request_issue(
@@ -191,10 +195,9 @@ pub mod pallet {
 			#[pallet::compact] amount: BalanceOf<T>,
 			asset: CurrencyId<T>,
 			vault_id: DefaultVaultId<T>,
-			public_network: bool,
 		) -> DispatchResultWithPostInfo {
 			let requester = ensure_signed(origin)?;
-			Self::_request_issue(requester, amount, asset, vault_id, public_network)?;
+			Self::_request_issue(requester, amount, asset, vault_id)?;
 			Ok(().into())
 		}
 
@@ -204,9 +207,11 @@ pub mod pallet {
 		///
 		/// * `origin` - sender of the transaction
 		/// * `issue_id` - identifier of issue request as output from request_issue
-		/// * `tx_block_height` - block number of collateral chain
-		/// * `merkle_proof` - raw bytes
-		/// * `raw_tx` - raw bytes
+		/// * `transaction_envelope_xdr_encoded` - the XDR representation of the transaction
+		///   envelope
+		/// * `externalized_envelopes_encoded` - the XDR representation of the externalized
+		///   envelopes
+		/// * `transaction_set_encoded` - the XDR representation of the transaction set
 		#[pallet::weight(<T as Config>::WeightInfo::execute_issue())]
 		#[transactional]
 		pub fn execute_issue(
@@ -247,8 +252,6 @@ pub mod pallet {
 		///
 		/// * `origin` - the dispatch origin of this call (must be _Root_)
 		/// * `period` - default period for new requests
-		///
-		/// # Weight: `O(1)`
 		#[pallet::weight(<T as Config>::WeightInfo::set_issue_period())]
 		#[transactional]
 		pub fn set_issue_period(
@@ -272,7 +275,6 @@ impl<T: Config> Pallet<T> {
 		amount_requested: BalanceOf<T>,
 		asset: CurrencyId<T>,
 		vault_id: DefaultVaultId<T>,
-		public_network: bool,
 	) -> Result<H256, DispatchError> {
 		// TODO change this to use the provided asset once multi-collateral is implemented
 		// let amount_requested = Amount::new(amount_requested, asset);
@@ -295,6 +297,13 @@ impl<T: Config> Pallet<T> {
 		);
 		griefing_collateral.lock_on(&requester)?;
 
+		// only continue if the payment is above the minimum transfer amount
+		ensure!(
+			amount_requested
+				.ge(&Self::issue_minimum_transfer_amount(vault_id.wrapped_currency()))?,
+			Error::<T>::AmountBelowMinimumTransferAmount
+		);
+
 		ext::vault_registry::try_increase_to_be_issued_tokens::<T>(&vault_id, &amount_requested)?;
 
 		let fee = ext::fee::get_issue_fee::<T>(&amount_requested)?;
@@ -315,7 +324,6 @@ impl<T: Config> Pallet<T> {
 			griefing_collateral: griefing_collateral.amount(),
 			period: Self::issue_period(),
 			status: IssueRequestStatus::Pending,
-			public_network,
 			stellar_address: stellar_public_key,
 		};
 		Self::insert_issue_request(&issue_id, &request);
@@ -329,7 +337,6 @@ impl<T: Config> Pallet<T> {
 			griefing_collateral: request.griefing_collateral,
 			vault_id: request.vault,
 			vault_stellar_public_key: stellar_public_key,
-			public_network,
 		});
 		Ok(issue_id)
 	}
@@ -366,14 +373,13 @@ impl<T: Config> Pallet<T> {
 			&transaction_envelope,
 			&envelopes,
 			&transaction_set,
-			issue.public_network,
 		)?;
 
-		let amount_transferred = ext::stellar_relay::get_amount_from_transaction_envelope::<
-			T,
-			BalanceOf<T>,
-		>(&transaction_envelope, issue.stellar_address, &issue.asset)?;
-		let amount_transferred = Amount::new(amount_transferred, issue.asset);
+		let amount_transferred: Amount<T> = ext::currency::get_amount_from_transaction_envelope::<T>(
+			&transaction_envelope,
+			issue.stellar_address,
+			issue.asset,
+		)?;
 
 		let expected_total_amount = issue.amount().checked_add(&issue.fee())?;
 
@@ -454,7 +460,6 @@ impl<T: Config> Pallet<T> {
 			amount: total.amount(),
 			asset: total.currency(),
 			fee: issue.fee,
-			public_network: issue.public_network,
 		});
 		Ok(())
 	}
@@ -524,7 +529,6 @@ impl<T: Config> Pallet<T> {
 			issue_id,
 			requester,
 			griefing_collateral: to_be_slashed_collateral.amount(),
-			public_network: issue.public_network,
 		});
 		Ok(())
 	}
@@ -655,7 +659,6 @@ impl<T: Config> Pallet<T> {
 			asset: issue.asset,
 			fee: issue.fee,
 			confiscated_griefing_collateral: confiscated_griefing_collateral.amount(),
-			public_network: issue.public_network,
 		});
 
 		Ok(())
@@ -670,5 +673,9 @@ impl<T: Config> Pallet<T> {
 			*request =
 				request.clone().map(|request| DefaultIssueRequest::<T> { status, ..request });
 		});
+	}
+
+	fn issue_minimum_transfer_amount(currency_id: CurrencyId<T>) -> Amount<T> {
+		Amount::new(IssueMinimumTransferAmount::<T>::get(), currency_id)
 	}
 }

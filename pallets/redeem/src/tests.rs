@@ -122,7 +122,7 @@ fn test_request_redeem_fails_with_amount_below_minimum() {
 				RANDOM_STELLAR_PUBLIC_KEY,
 				VAULT
 			),
-			TestError::AmountBelowDustAmount
+			TestError::AmountBelowMinimumTransferAmount
 		);
 	})
 }

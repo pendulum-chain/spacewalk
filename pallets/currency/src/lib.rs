@@ -4,6 +4,32 @@
 #![cfg_attr(test, feature(proc_macro_hygiene))]
 #![cfg_attr(not(feature = "std"), no_std)]
 
+use codec::{EncodeLike, FullCodec};
+use frame_support::{dispatch::DispatchResult, traits::Get};
+use orml_traits::{MultiCurrency, MultiReservableCurrency};
+use sp_runtime::{
+	traits::{AtLeast32BitUnsigned, CheckedDiv, StaticLookup},
+	FixedPointNumber, FixedPointOperand,
+};
+use sp_std::{
+	convert::{TryFrom, TryInto},
+	fmt::Debug,
+	marker::PhantomData,
+	vec::Vec,
+};
+
+pub use amount::Amount;
+pub use pallet::*;
+use primitives::{
+	stellar::{
+		types::{OperationBody, Uint256},
+		ClaimPredicate, Claimant, MuxedAccount, Operation, PublicKey, TransactionEnvelope,
+	},
+	TruncateFixedPointToInt,
+};
+use types::*;
+pub use types::{CurrencyConversion, CurrencyId};
+
 #[cfg(test)]
 mod mock;
 
@@ -12,32 +38,16 @@ mod tests;
 
 pub mod amount;
 
-use codec::{EncodeLike, FullCodec};
-use frame_support::{dispatch::DispatchResult, traits::Get};
-use orml_traits::{MultiCurrency, MultiReservableCurrency};
-use primitives::TruncateFixedPointToInt;
-use scale_info::TypeInfo;
-use sp_runtime::{
-	traits::{AtLeast32BitUnsigned, CheckedDiv, MaybeSerializeDeserialize},
-	FixedPointNumber, FixedPointOperand,
-};
-use sp_std::{
-	convert::{TryFrom, TryInto},
-	fmt::Debug,
-	marker::PhantomData,
-};
-
-pub use amount::Amount;
-pub use pallet::*;
-
 mod types;
-use types::*;
-pub use types::{CurrencyConversion, CurrencyId};
 
 #[frame_support::pallet]
 pub mod pallet {
-	use super::*;
 	use frame_support::pallet_prelude::*;
+	use sp_runtime::traits::StaticLookup;
+
+	use primitives::stellar::Asset;
+
+	use super::*;
 
 	/// ## Configuration
 	/// The pallet's configuration trait.
@@ -86,17 +96,77 @@ pub mod pallet {
 		#[pallet::constant]
 		type GetWrappedCurrencyId: Get<CurrencyId<Self>>;
 
+		type AssetConversion: StaticLookup<Source = CurrencyId<Self>, Target = Asset>;
+		type BalanceConversion: StaticLookup<Source = BalanceOf<Self>, Target = i64>;
 		type CurrencyConversion: types::CurrencyConversion<Amount<Self>, CurrencyId<Self>>;
 	}
 
 	#[pallet::error]
 	pub enum Error<T> {
+		AssetConversionError,
+		BalanceConversionError,
 		TryIntoIntError,
 		InvalidCurrency,
 	}
 
 	#[pallet::pallet]
 	pub struct Pallet<T>(_);
+}
+
+impl<T: Config> Pallet<T> {
+	/// Accumulate the amounts of the specified currency that happened in the operations of a
+	/// Stellar transaction
+	pub fn get_amount_from_transaction_envelope(
+		transaction_envelope: &TransactionEnvelope,
+		recipient_stellar_address: Uint256,
+		currency: CurrencyId<T>,
+	) -> Result<Amount<T>, Error<T>> {
+		let asset = T::AssetConversion::lookup(currency)
+			.map_err(|_| Error::<T>::AssetConversionError.into())?;
+		let recipient_account_muxed = MuxedAccount::KeyTypeEd25519(recipient_stellar_address);
+		let recipient_account_pk = PublicKey::PublicKeyTypeEd25519(recipient_stellar_address);
+
+		let tx_operations: Vec<Operation> = match transaction_envelope {
+			TransactionEnvelope::EnvelopeTypeTxV0(env) => env.tx.operations.get_vec().clone(),
+			TransactionEnvelope::EnvelopeTypeTx(env) => env.tx.operations.get_vec().clone(),
+			TransactionEnvelope::EnvelopeTypeTxFeeBump(_) => Vec::new(),
+			TransactionEnvelope::Default(_) => Vec::new(),
+		};
+
+		let mut transferred_amount: i64 = 0;
+		for x in tx_operations {
+			match x.body {
+				OperationBody::Payment(payment) => {
+					if payment.destination.eq(&recipient_account_muxed) && payment.asset == asset {
+						transferred_amount = transferred_amount.saturating_add(payment.amount);
+					}
+				},
+				OperationBody::CreateClaimableBalance(payment) => {
+					// for security reasons, we only count operations that have the
+					// recipient as a single claimer and unconditional claim predicate
+					if payment.claimants.len() == 1 {
+						let Claimant::ClaimantTypeV0(claimant) =
+							payment.claimants.get_vec()[0].clone();
+
+						if claimant.destination.eq(&recipient_account_pk) &&
+							payment.asset == asset && claimant.predicate ==
+							ClaimPredicate::ClaimPredicateUnconditional
+						{
+							transferred_amount = transferred_amount.saturating_add(payment.amount);
+						}
+					}
+				},
+				_ => {
+					// ignore other operations
+				},
+			}
+		}
+
+		// `transferred_amount` is in stroops, so we need to convert it
+		let balance = T::BalanceConversion::unlookup(transferred_amount);
+		let amount: Amount<T> = Amount::new(balance, currency);
+		Ok(amount)
+	}
 }
 
 pub mod getters {
