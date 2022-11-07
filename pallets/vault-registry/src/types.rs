@@ -672,7 +672,7 @@ impl<T: Config> RichVault<T> {
 	}
 
 	pub(crate) fn new_deposit_address(
-		&mut self,report_undercollateralizereport_undercollateralized_vaultd_vault
+		&mut self,
 		secure_id: H256,
 	) -> Result<StellarPublicKeyRaw, DispatchError> {
 		let public_key = self.new_deposit_public_key(secure_id)?;
