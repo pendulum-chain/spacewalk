@@ -39,9 +39,9 @@ pub use nomination::Event as NominationEvent;
 // A few exports that help ease life for downstream crates.
 pub use primitives::{
 	self, AccountId, Balance, BlockNumber, CurrencyId, Hash, Moment, Nonce, Signature,
-	SignedFixedPoint, SignedInner, UnsignedFixedPoint, UnsignedInner, H256,
+	SignedFixedPoint, SignedInner, UnsignedFixedPoint, UnsignedInner,
 };
-use primitives::{CurrencyId::Token, TokenSymbol, TokenSymbol::INTR};
+use primitives::{CurrencyId::Token, TokenSymbol};
 pub use redeem::{Event as RedeemEvent, RedeemRequest};
 pub use replace::{Event as ReplaceEvent, ReplaceRequest};
 pub use security::StatusCode;
@@ -194,7 +194,7 @@ impl pallet_timestamp::Config for Runtime {
 const NATIVE_TOKEN_ID: TokenSymbol = TokenSymbol::PEN;
 const NATIVE_CURRENCY_ID: CurrencyId = Token(NATIVE_TOKEN_ID);
 const PARENT_CURRENCY_ID: CurrencyId = Token(TokenSymbol::DOT);
-const WRAPPED_CURRENCY_ID: CurrencyId = Token(TokenSymbol::IBTC);
+const WRAPPED_CURRENCY_ID: CurrencyId = CurrencyId::AlphaNum4 { code: *b"USDC", issuer: [0u8; 32] };
 
 parameter_types! {
 	pub const GetNativeCurrencyId: CurrencyId = NATIVE_CURRENCY_ID;
@@ -336,7 +336,7 @@ impl staking::Config for Runtime {
 
 pub type OrganizationId = u128;
 
-impl pallet_stellar_relay::Config for Runtime {
+impl stellar_relay::Config for Runtime {
 	type Event = Event;
 	type OrganizationId = OrganizationId;
 	type OrganizationLimit = OrganizationLimit;

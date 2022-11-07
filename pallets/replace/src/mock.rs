@@ -1,6 +1,3 @@
-use crate as replace;
-use crate::{Config, Error};
-use currency::Amount;
 use frame_support::{
 	assert_ok, parameter_types,
 	traits::{ConstU32, Everything, GenesisBuild},
@@ -8,14 +5,19 @@ use frame_support::{
 };
 use mocktopus::{macros::mockable, mocking::clear_mocks};
 use orml_traits::parameter_type_with_key;
-pub use primitives::{CurrencyId, CurrencyId::Token, TokenSymbol::*};
-use primitives::{VaultCurrencyPair, VaultId};
 use sp_arithmetic::{FixedI128, FixedPointNumber, FixedU128};
 use sp_core::H256;
 use sp_runtime::{
 	testing::{Header, TestXt},
 	traits::{BlakeTwo256, IdentityLookup, One, Zero},
 };
+
+use currency::Amount;
+pub use primitives::{CurrencyId, CurrencyId::Token, TokenSymbol::*};
+use primitives::{VaultCurrencyPair, VaultId};
+
+use crate as replace;
+use crate::{Config, Error};
 
 type TestExtrinsic = TestXt<Call, ()>;
 type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Test>;
@@ -162,13 +164,15 @@ pub fn convert_to(to: CurrencyId, amount: Balance) -> Result<Balance, sp_runtime
 }
 
 impl currency::Config for Test {
+	type UnsignedFixedPoint = UnsignedFixedPoint;
 	type SignedInner = SignedInner;
 	type SignedFixedPoint = SignedFixedPoint;
-	type UnsignedFixedPoint = UnsignedFixedPoint;
 	type Balance = Balance;
 	type GetNativeCurrencyId = GetNativeCurrencyId;
 	type GetRelayChainCurrencyId = GetCollateralCurrencyId;
 	type GetWrappedCurrencyId = GetWrappedCurrencyId;
+	type AssetConversion = primitives::AssetConversion;
+	type BalanceConversion = primitives::BalanceConversion;
 	type CurrencyConversion = CurrencyConvert;
 }
 

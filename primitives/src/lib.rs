@@ -250,6 +250,66 @@ pub mod redeem {
 	}
 }
 
+pub mod replace {
+	use super::*;
+
+	#[derive(Encode, Decode, Clone, PartialEq, TypeInfo, MaxEncodedLen)]
+	#[cfg_attr(feature = "std", derive(Debug, Serialize, Deserialize, Eq))]
+	#[cfg_attr(feature = "std", serde(rename_all = "camelCase"))]
+	pub enum ReplaceRequestStatus {
+		/// accepted, but not yet executed or cancelled
+		Pending,
+		/// successfully executed with a valid payment from the old vault
+		Completed,
+		/// payment was not received, new vault may receive griefing collateral
+		Cancelled,
+	}
+
+	impl Default for ReplaceRequestStatus {
+		fn default() -> Self {
+			ReplaceRequestStatus::Pending
+		}
+	}
+
+	// Due to a known bug in serde we need to specify how u128 is (de)serialized.
+	// See https://github.com/paritytech/substrate/issues/4641
+	#[derive(Encode, Decode, Clone, PartialEq, TypeInfo, MaxEncodedLen)]
+	#[cfg_attr(feature = "std", derive(Debug, Serialize, Deserialize, Eq))]
+	pub struct ReplaceRequest<AccountId, BlockNumber, Balance, CurrencyId: Copy> {
+		/// the vault which has requested to be replaced
+		pub old_vault: VaultId<AccountId, CurrencyId>,
+		/// the vault which is replacing the old vault
+		pub new_vault: VaultId<AccountId, CurrencyId>,
+		#[cfg_attr(feature = "std", serde(bound(deserialize = "Balance: std::str::FromStr")))]
+		#[cfg_attr(feature = "std", serde(deserialize_with = "deserialize_from_string"))]
+		#[cfg_attr(feature = "std", serde(bound(serialize = "Balance: std::fmt::Display")))]
+		#[cfg_attr(feature = "std", serde(serialize_with = "serialize_as_string"))]
+		/// the amount of tokens to be replaced
+		pub amount: Balance,
+		pub asset: CurrencyId,
+		#[cfg_attr(feature = "std", serde(bound(deserialize = "Balance: std::str::FromStr")))]
+		#[cfg_attr(feature = "std", serde(deserialize_with = "deserialize_from_string"))]
+		#[cfg_attr(feature = "std", serde(bound(serialize = "Balance: std::fmt::Display")))]
+		#[cfg_attr(feature = "std", serde(serialize_with = "serialize_as_string"))]
+		/// the collateral held for spam prevention
+		pub griefing_collateral: Balance,
+		#[cfg_attr(feature = "std", serde(bound(deserialize = "Balance: std::str::FromStr")))]
+		#[cfg_attr(feature = "std", serde(deserialize_with = "deserialize_from_string"))]
+		#[cfg_attr(feature = "std", serde(bound(serialize = "Balance: std::fmt::Display")))]
+		#[cfg_attr(feature = "std", serde(serialize_with = "serialize_as_string"))]
+		/// additional collateral to cover replacement
+		pub collateral: Balance,
+		/// the *active* block height when this request was opened
+		pub accept_time: BlockNumber,
+		/// the replace period when this request was opened
+		pub period: BlockNumber,
+		/// the Bitcoin address of the new vault
+		pub stellar_address: StellarPublicKeyRaw,
+		/// the status of this replace request
+		pub status: ReplaceRequestStatus,
+	}
+}
+
 pub mod oracle {
 	use super::*;
 

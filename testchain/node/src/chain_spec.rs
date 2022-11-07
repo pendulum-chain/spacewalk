@@ -1,5 +1,6 @@
 use std::{convert::TryFrom, str::FromStr};
 
+use frame_support::BoundedVec;
 use hex_literal::hex;
 use sc_service::ChainType;
 use serde_json::{map::Map, Value};
@@ -9,9 +10,7 @@ use sp_core::{crypto::UncheckedInto, ed25519, sr25519, Pair, Public};
 use sp_finality_grandpa::AuthorityId as GrandpaId;
 use sp_runtime::traits::{IdentifyAccount, Verify};
 
-use primitives::{
-	CurrencyId::Token, CurrencyInfo, VaultCurrencyPair, DOT, IBTC, INTR, KBTC, KINT, KSM,
-};
+use primitives::{CurrencyId::Token, VaultCurrencyPair, DOT, INTR, KINT, KSM};
 use spacewalk_runtime::{
 	AccountId, AuraConfig, BalancesConfig, CurrencyId, FeeConfig, FieldLength, GenesisConfig,
 	GetWrappedCurrencyId, GrandpaConfig, IssueConfig, NominationConfig, OracleConfig, Organization,
