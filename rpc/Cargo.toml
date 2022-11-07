@@ -13,6 +13,7 @@ primitives = {package = "spacewalk-primitives", path = "../primitives"}
 
 module-issue-rpc = { path = "../pallets/issue/rpc" }
 module-redeem-rpc = { path = "../pallets/redeem/rpc" }
+module-replace-rpc = { path = "../pallets/replace/rpc" }
 
 # Substrate dependencies
 sc-rpc = {git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.24"}
@@ -23,8 +24,6 @@ sp-arithmetic = {git = "https://github.com/paritytech/substrate", branch = "polk
 sp-block-builder = {git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.24"}
 sp-blockchain = {git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.24"}
 sp-core = {git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.24"}
-
-module-replace-rpc = { path = "../pallets/replace/rpc" }
 
 pallet-transaction-payment-rpc = {git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.24"}
 substrate-frame-rpc-system = {git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.24"}
