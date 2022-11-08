@@ -54,7 +54,7 @@ impl ScpMessageCollector {
 			if let Some(value) = envelopes_map.get_mut(&slot) {
 				value.push(env);
 			} else {
-				tracing::info!("Adding received SCP envelopes for slot {}", slot);
+				tracing::debug!("Adding received SCP envelopes for slot {}", slot);
 				envelopes_map.insert(slot, vec![env]);
 			}
 		}

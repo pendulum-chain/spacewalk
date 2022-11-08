@@ -29,7 +29,7 @@ impl ScpMessageCollector {
 		tx_set: &TransactionSet,
 		filters: &TxFilterMap,
 	) -> Result<(), Error> {
-		tracing::info!("Inserting received transaction set for slot {}", slot);
+		tracing::debug!("Inserting received transaction set for slot {}", slot);
 
 		// Collect tx hashes to save to file.
 		tx_set.txes.get_vec().iter().for_each(|tx_env| {

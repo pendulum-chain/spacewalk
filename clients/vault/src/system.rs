@@ -37,7 +37,7 @@ pub const ABOUT: &str = env!("CARGO_PKG_DESCRIPTION");
 
 // SatoshiPay Validators
 pub const TIER_1_VALIDATOR_IP_TESTNET: &str = "65.108.1.53";
-pub const TIER_1_VALIDATOR_IP_PUBLIC: &str = "51.161.197.48";
+pub const TIER_1_VALIDATOR_IP_PUBLIC: &str = "116.202.133.115";
 
 #[derive(Parser, Clone, Debug)]
 pub struct VaultServiceConfig {
