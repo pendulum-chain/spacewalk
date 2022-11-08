@@ -13,6 +13,7 @@ primitives = {package = "spacewalk-primitives", path = "../primitives"}
 
 module-issue-rpc = { path = "../pallets/issue/rpc" }
 module-redeem-rpc = { path = "../pallets/redeem/rpc" }
+module-replace-rpc = { path = "../pallets/replace/rpc" }
 
 # Substrate dependencies
 sc-rpc = {git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.24"}
