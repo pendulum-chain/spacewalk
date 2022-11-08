@@ -12,7 +12,6 @@ use sp_runtime::{
 	traits::{CheckedAdd, CheckedSub, Zero},
 	ArithmeticError,
 };
-use sp_std::collections::btree_set::BTreeSet;
 
 use currency::Amount;
 use primitives::StellarPublicKeyRaw;
@@ -660,26 +659,17 @@ impl<T: Config> RichVault<T> {
 
 	fn new_deposit_public_key(
 		&self,
-		secure_id: H256,
+		_secure_id: H256,
 	) -> Result<StellarPublicKeyRaw, DispatchError> {
-		// TODO fix me
-		let vault_public_key = Pallet::<T>::get_stellar_public_key(&self.data.id.account_id)?;
-		let vault_public_key = vault_public_key
-			.new_deposit_public_key(secure_id)
-			.map_err(|_| Error::<T>::InvalidPublicKey)?;
-
-		Ok(vault_public_key)
+		// The new deposit public key will always be the same Vault Public key.
+		Pallet::<T>::get_stellar_public_key(&self.data.id.account_id)
 	}
 
 	pub(crate) fn new_deposit_address(
 		&mut self,
 		secure_id: H256,
 	) -> Result<StellarPublicKeyRaw, DispatchError> {
-		let public_key = self.new_deposit_public_key(secure_id)?;
-		// let btc_address = BtcAddress::P2WPKHv0(public_key.to_hash());
-		let stellar_address: StellarPublicKeyRaw = [0; 32];
-		// TODO change this to a stellar address
-		Ok(stellar_address)
+		self.new_deposit_public_key(secure_id)
 	}
 
 	fn update<F>(&mut self, func: F) -> DispatchResult

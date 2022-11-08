@@ -15,23 +15,13 @@ use frame_support::{
 	traits::Get,
 	transactional, PalletId,
 };
-use frame_system::{
-	ensure_signed,
-	offchain::{SendTransactionTypes, SubmitTransaction},
-};
+use frame_system::offchain::{SendTransactionTypes, SubmitTransaction};
 #[cfg(test)]
 use mocktopus::macros::mockable;
-use scale_info::TypeInfo;
 use sp_core::{H256, U256};
 #[cfg(feature = "std")]
 use sp_runtime::traits::AtLeast32BitUnsigned;
-use sp_runtime::{
-	traits::*,
-	transaction_validity::{
-		InvalidTransaction, TransactionSource, TransactionValidity, ValidTransaction,
-	},
-	ArithmeticError, FixedPointNumber, FixedPointOperand,
-};
+use sp_runtime::{traits::*, ArithmeticError, FixedPointNumber, FixedPointOperand};
 use sp_std::{
 	convert::{TryFrom, TryInto},
 	fmt::Debug,
@@ -2077,7 +2067,7 @@ impl<T: Config> Pallet<T> {
 	/// inverse of calculate_max_wrapped_from_collateral_for_threshold
 	///
 	/// # Arguments
-	/// * `amount_btc` - the amount of wrapped
+	/// * `amount` - the amount of wrapped
 	/// * `threshold` - the required secure collateral threshold
 	fn get_required_collateral_for_wrapped_with_threshold(
 		wrapped: &Amount<T>,
