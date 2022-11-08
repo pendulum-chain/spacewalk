@@ -10,9 +10,7 @@ use sp_core::{crypto::UncheckedInto, ed25519, sr25519, Pair, Public};
 use sp_finality_grandpa::AuthorityId as GrandpaId;
 use sp_runtime::traits::{IdentifyAccount, Verify};
 
-use primitives::{
-	CurrencyId::Token, CurrencyInfo, VaultCurrencyPair, DOT, IBTC, INTR, KBTC, KINT, KSM,
-};
+use primitives::{CurrencyId::Token, CurrencyInfo, VaultCurrencyPair, AMPE, DOT, KSM};
 use spacewalk_runtime::{
 	AccountId, AuraConfig, BalancesConfig, CurrencyId, FeeConfig, FieldLength, GenesisConfig,
 	GetWrappedCurrencyId, GrandpaConfig, IssueConfig, NominationConfig, OracleConfig, Organization,
@@ -56,7 +54,7 @@ fn get_properties() -> Map<String, Value> {
 
 	let mut token_symbol: Vec<String> = vec![];
 	let mut token_decimals: Vec<u32> = vec![];
-	[INTR, IBTC, DOT, KINT, KBTC, KSM].iter().for_each(|token| {
+	[DOT, AMPE, KSM].iter().for_each(|token| {
 		token_symbol.push(token.symbol().to_string());
 		token_decimals.push(token.decimals() as u32);
 	});
@@ -287,9 +285,8 @@ fn testnet_genesis(
 				.flat_map(|k| {
 					vec![
 						(k.clone(), Token(DOT), 1 << 60),
-						(k.clone(), Token(INTR), 1 << 60),
 						(k.clone(), Token(KSM), 1 << 60),
-						(k.clone(), Token(KINT), 1 << 60),
+						(k.clone(), Token(AMPE), 1 << 60),
 					]
 				})
 				.collect(),
