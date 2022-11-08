@@ -1,5 +1,4 @@
 use crate::oracle::{FilterWith, Proof, ScpMessageHandler};
-use parking_lot::Mutex;
 use runtime::{
 	metadata::runtime_types::spacewalk_primitives::CurrencyId, Balance, CancelIssueEvent,
 	ExecuteIssueEvent, IssueId, IssuePallet, RequestIssueEvent, SpacewalkParachain,
@@ -10,6 +9,7 @@ use std::{
 	sync::Arc,
 };
 use stellar_relay_lib::sdk::{Memo, SecretKey, TransactionEnvelope};
+use tokio::sync::Mutex;
 
 /// Actions to do, depending on the event received.
 #[derive(Clone)]
@@ -163,11 +163,13 @@ async fn handle_issue_actions(
 	action: IssueActions,
 	issue_set: Arc<Mutex<Vec<RequestIssueEvent>>>,
 ) -> Result<(), ServiceError> {
-	let mut issue_set = issue_set.lock();
+	let mut issue_set = issue_set.lock().await;
+
 	match action {
 		IssueActions::AddFilter(event) => {
 			// create the filter
 			let checker = IssueChecker::create(&event);
+
 			// send the filter to the oracle
 			handler
 				.add_filter(Box::new(checker))
@@ -175,6 +177,7 @@ async fn handle_issue_actions(
 				.map_err(|e| ServiceError::Other(format!("{:?}", e)))?;
 
 			tracing::debug!("added: {:?}", event);
+			// save this request
 			issue_set.push(event)
 		},
 		IssueActions::RemoveFilter(issue_id) => {
@@ -184,6 +187,7 @@ async fn handle_issue_actions(
 				.await
 				.map_err(|e| ServiceError::Other(format!("{:?}", e)))?;
 
+			// remove this request
 			if let Some(idx) = issue_set.iter().position(|event| event.issue_id == issue_id) {
 				let event = issue_set.remove(idx);
 				tracing::debug!("removed: {:?}", event);
@@ -238,14 +242,16 @@ pub async fn execute_issue(
 /// * `action_receiver` - a channel that accepts IssueActions
 pub async fn process_issue_events(
 	parachain_rpc: SpacewalkParachain,
-	handler: &ScpMessageHandler,
+	handler: Arc<Mutex<ScpMessageHandler>>,
 	mut action_receiver: tokio::sync::mpsc::Receiver<IssueActions>,
 	issue_set: Arc<Mutex<Vec<RequestIssueEvent>>>,
 ) -> Result<(), ServiceError> {
+	let handler = handler.lock().await;
+
 	loop {
 		tokio::select! {
 			Some(msg) = action_receiver.recv() => {
-				handle_issue_actions(handler,msg,issue_set.clone()).await?;
+				handle_issue_actions(&handler,msg,issue_set.clone()).await?;
 			}
 			// get all proofs
 			Ok(proofs) = handler.get_pending_proofs() => {

@@ -5,21 +5,39 @@ use crate::{
 	CHAIN_HEIGHT_POLLING_INTERVAL,
 };
 use crate::{
-	issue::listen_for_issue_requests,
-	oracle::{create_handler, prepare_directories},
+	issue::{
+		listen_for_cancel_requests, listen_for_execute_requests, listen_for_issue_requests,
+		process_issue_events, IssueActions,
+	},
+	oracle::{create_handler, prepare_directories, ScpMessageHandler},
 };
 use async_trait::async_trait;
 use clap::Parser;
 use git_version::git_version;
-use runtime::{SpacewalkParachain, UtilFuncs};
+use runtime::{RequestIssueEvent, SpacewalkParachain, UtilFuncs};
 use service::{wait_or_shutdown, Error as ServiceError, Service, ShutdownSender};
-use stellar_relay_lib::{node::NodeInfo, ConnConfig};
-use tokio::time::sleep;
+use std::sync::Arc;
+use stellar_relay_lib::{
+	node::NodeInfo,
+	sdk::{
+		network::{Network, PUBLIC_NETWORK, TEST_NETWORK},
+		SecretKey,
+	},
+	ConnConfig,
+};
+use tokio::{
+	sync::{mpsc, Mutex},
+	time::sleep,
+};
 
 pub const VERSION: &str = git_version!(args = ["--tags"], fallback = "unknown");
 pub const AUTHORS: &str = env!("CARGO_PKG_AUTHORS");
 pub const NAME: &str = env!("CARGO_PKG_NAME");
 pub const ABOUT: &str = env!("CARGO_PKG_DESCRIPTION");
+
+// SatoshiPay Validators
+pub const TIER_1_VALIDATOR_IP_TESTNET: &str = "65.108.1.53";
+pub const TIER_1_VALIDATOR_IP_PUBLIC: &str = "51.161.197.48";
 
 #[derive(Parser, Clone, Debug)]
 pub struct VaultServiceConfig {
@@ -64,6 +82,41 @@ impl VaultService {
 		Self { spacewalk_parachain: spacewalk_parachain.clone(), config, shutdown }
 	}
 
+	/// Returns the SCPMessageHandler, which contains the thread to connect/listen to the Stellar Node.
+	/// See the oracle.rs example
+	async fn create_handler(&self) -> Result<ScpMessageHandler, Error> {
+		prepare_directories().map_err(|e| {
+			tracing::error!("Failed to create the SCPMessageHandler: {:?}",e);
+			Error::StellarSdkError
+		})?;
+
+		let is_public_net =
+			self.spacewalk_parachain.is_public_network().await.map_err(Error::from)?;
+
+		let tier1_node_ip =
+			if is_public_net { TIER_1_VALIDATOR_IP_PUBLIC } else { TIER_1_VALIDATOR_IP_TESTNET };
+
+		let network: &Network = if is_public_net { &PUBLIC_NETWORK } else { &TEST_NETWORK };
+
+		tracing::info!(
+			"Connecting to {:?} through {:?}",
+			std::str::from_utf8(network.get_passphrase().as_slice()).unwrap(),
+			tier1_node_ip
+		);
+
+		let secret = SecretKey::from_encoding(&self.config.stellar_vault_secret_key).unwrap();
+
+		let node_info = NodeInfo::new(19, 21, 19, "v19.1.0".to_string(), network);
+		let cfg = ConnConfig::new(tier1_node_ip, 11625, secret, 0, true, true, false);
+
+		// todo: add vault addresses filter
+		let addresses = vec![];
+		create_handler(node_info, cfg, is_public_net, addresses).await.map_err(|e| {
+			tracing::error!("Failed to create the SCPMessageHandler: {:?}",e);
+			Error::StellarSdkError
+		})
+	}
+
 	async fn run_service(&self) -> Result<(), Error> {
 		self.await_parachain_block().await?;
 
@@ -74,6 +127,44 @@ impl VaultService {
 				.await?;
 			Ok(())
 		});
+
+		let (issue_events_tx, issue_events_rx) = mpsc::channel::<IssueActions>(32);
+
+		let issue_requests_listener = wait_or_shutdown(
+			self.shutdown.clone(),
+			listen_for_issue_requests(
+				self.spacewalk_parachain.clone(),
+				self.config.stellar_vault_secret_key.clone(),
+				issue_events_tx.clone(),
+			),
+		);
+
+		let issue_cancels_listener = wait_or_shutdown(
+			self.shutdown.clone(),
+			listen_for_cancel_requests(self.spacewalk_parachain.clone(), issue_events_tx.clone()),
+		);
+
+		let issue_executes_listener = wait_or_shutdown(
+			self.shutdown.clone(),
+			listen_for_execute_requests(self.spacewalk_parachain.clone(), issue_events_tx.clone()),
+		);
+
+		// issue handling
+		let issue_set: Arc<Mutex<Vec<RequestIssueEvent>>> = Arc::new(Mutex::new(vec![]));
+		let handler = {
+			let handler = self.create_handler().await?;
+			Arc::new(Mutex::new(handler))
+		};
+
+		let issue_handling_task = wait_or_shutdown(
+			self.shutdown.clone(),
+			process_issue_events(
+				self.spacewalk_parachain.clone(),
+				handler.clone(),
+				issue_events_rx,
+				issue_set.clone(),
+			),
+		);
 
 		// let deposit_listener = wait_or_shutdown(
 		// 	self.shutdown.clone(),
@@ -98,6 +189,14 @@ impl VaultService {
 		let _ = tokio::join!(
 			// runs error listener to log errors
 			tokio::spawn(async move { err_listener.await }),
+			// listen for issue requests
+			tokio::spawn(async move { issue_requests_listener.await }),
+			// listen for cancelled issue requests
+			tokio::spawn(async move { issue_cancels_listener.await }),
+			// listen for executed issue requests
+			tokio::spawn(async move { issue_executes_listener.await }),
+			// runs the handler
+			tokio::spawn(async move { issue_handling_task.await })
 			// listen for deposits
 			// tokio::task::spawn(async move { deposit_listener.await }),
 			// listen for redeem events
