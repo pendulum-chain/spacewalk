@@ -135,7 +135,7 @@ pub(crate) mod vault_registry {
 	pub fn get_stellar_public_key<T: crate::Config>(
 		account_id: &T::AccountId,
 	) -> Result<StellarPublicKeyRaw, DispatchError> {
-		<vault_registry::Pallet<T>>::get_bitcoin_public_key(account_id)
+		<vault_registry::Pallet<T>>::get_stellar_public_key(account_id)
 	}
 
 	pub fn issue_tokens<T: crate::Config>(
