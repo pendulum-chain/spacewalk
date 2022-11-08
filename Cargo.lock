@@ -9100,6 +9100,7 @@ dependencies = [
  "sp-std",
  "spacewalk-primitives",
  "staking",
+ "substrate-stellar-sdk 0.2.3 (git+https://github.com/pendulum-chain/substrate-stellar-sdk?branch=polkadot-v0.9.24)",
  "visibility",
 ]
 
