@@ -24,11 +24,14 @@ cfg_if::cfg_if! {
 
 mod metadata_aliases {
 	use super::*;
+	use crate::IssueId;
+	use std::collections::HashMap;
 
 	use crate::metadata::runtime_types::spacewalk_primitives::{issue::IssueRequest, VaultId};
 
 	pub use crate::metadata::runtime_types::{
-		issue::pallet::Error as IssuePalletError, spacewalk_primitives::CurrencyId,
+		issue::pallet::Error as IssuePalletError,
+		spacewalk_primitives::{issue::IssueRequestStatus, CurrencyId},
 	};
 
 	// pub type DepositEvent = metadata::spacewalk::events::Deposit;
@@ -43,8 +46,9 @@ mod metadata_aliases {
 
 	pub type SpacewalkHeader = <SpacewalkRuntime as Config>::Header;
 
-	pub type DefaultIssueRequest =
-		IssueRequest<<SpacewalkRuntime as Config>::AccountId, BlockNumber, Balance, CurrencyId>;
+	pub type DefaultIssueRequest = IssueRequest<AccountId, BlockNumber, Balance, CurrencyId>;
+
+	pub type IssueRequests = HashMap<IssueId, DefaultIssueRequest>;
 
 	pub type DefaultVaultId = VaultId<<SpacewalkRuntime as Config>::AccountId, CurrencyId>;
 }

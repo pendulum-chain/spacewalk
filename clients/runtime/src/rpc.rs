@@ -8,11 +8,12 @@ use crate::{
 };
 
 use async_trait::async_trait;
-use futures::{stream::StreamExt, FutureExt, SinkExt};
+use futures::{future::join_all, stream::StreamExt, FutureExt, SinkExt};
 use std::{future::Future, ops::RangeInclusive, sync::Arc, time::Duration};
 use subxt::{
-	rpc::JsonValue, BasicError, Client as SubxtClient, ClientBuilder as SubxtClientBuilder, Event,
-	Metadata, PolkadotExtrinsicParams, RpcClient, TransactionEvents, TransactionProgress,
+	rpc::{rpc_params, ClientT, JsonValue},
+	BasicError, Client as SubxtClient, ClientBuilder as SubxtClientBuilder, Event, Metadata,
+	PolkadotExtrinsicParams, RpcClient, TransactionEvents, TransactionProgress,
 };
 use tokio::{sync::RwLock, time::timeout};
 
@@ -85,6 +86,10 @@ impl SpacewalkParachain {
 		};
 		parachain_rpc.refresh_nonce().await;
 		Ok(parachain_rpc)
+	}
+
+	fn rpc(&self) -> Arc<RpcClient> {
+		self.ext_client.rpc().client.clone()
 	}
 
 	pub async fn from_url(
@@ -405,6 +410,13 @@ pub trait IssuePallet {
 	// 	&self,
 	// 	period: u32
 	// ) -> Result<(),Error> ;
+
+	async fn get_issue_request(&self, issue_id: IssueId) -> Result<DefaultIssueRequest, Error>;
+
+	async fn get_vault_issue_requests(
+		&self,
+		vault_id: AccountId,
+	) -> Result<Vec<(IssueId, DefaultIssueRequest)>, Error>;
 }
 
 #[async_trait]
@@ -431,6 +443,34 @@ impl IssuePallet for SpacewalkParachain {
 		})
 		.await?;
 		Ok(())
+	}
+
+	async fn get_issue_request(&self, issue_id: IssueId) -> Result<DefaultIssueRequest, Error> {
+		let head = self.get_latest_block_hash().await?;
+		Ok(self
+			.api
+			.storage()
+			.issue()
+			.issue_requests(&issue_id, head)
+			.await?
+			.ok_or(Error::StorageItemNotFound)?)
+	}
+
+	async fn get_vault_issue_requests(
+		&self,
+		vault_id: AccountId,
+	) -> Result<Vec<(IssueId, DefaultIssueRequest)>, Error> {
+		let head = self.get_latest_block_hash().await?;
+		let result: Vec<IssueId> = self
+			.rpc()
+			.request("issue_getVaultIssueRequests", rpc_params![vault_id, head])
+			.await?;
+		join_all(result.into_iter().map(|issue_id| async move {
+			self.get_issue_request(issue_id).await.map(|value| (issue_id, value))
+		}))
+		.await
+		.into_iter()
+		.collect()
 	}
 }
 

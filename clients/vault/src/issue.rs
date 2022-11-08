@@ -1,10 +1,12 @@
 use crate::oracle::{FilterWith, Proof, ScpMessageHandler};
 use runtime::{
 	metadata::runtime_types::spacewalk_primitives::CurrencyId, Balance, CancelIssueEvent,
-	ExecuteIssueEvent, IssueId, IssuePallet, RequestIssueEvent, SpacewalkParachain,
+	DefaultIssueRequest, ExecuteIssueEvent, IssueId, IssuePallet, IssueRequests, RequestIssueEvent,
+	SpacewalkParachain,
 };
 use service::Error as ServiceError;
 use std::{
+	collections::HashMap,
 	fmt::{Debug, Formatter},
 	sync::Arc,
 };
@@ -36,19 +38,12 @@ impl Debug for IssueActions {
 /// The struct used to create a filter for oracle.
 pub struct IssueChecker {
 	issue_id: IssueId,
-	/// the amount specified in the `RequestIssueEvent`
-	amount: Balance,
-	/// the asset specified in the `RequestIssueEvent`
-	asset: CurrencyId,
+	request: DefaultIssueRequest,
 }
 
 impl IssueChecker {
-	fn create(request: &RequestIssueEvent) -> Self {
-		IssueChecker {
-			issue_id: request.issue_id,
-			amount: request.amount,
-			asset: request.asset.clone(),
-		}
+	fn create(issue_id: IssueId, request: DefaultIssueRequest) -> Self {
+		IssueChecker { issue_id, request }
 	}
 }
 
@@ -159,16 +154,18 @@ pub async fn listen_for_execute_requests(
 /// * `action` - the `IssueAction`
 /// * `issue_set` - the list of current issue requests
 async fn handle_issue_actions(
+	parachain_rpc: SpacewalkParachain,
 	handler: &ScpMessageHandler,
 	action: IssueActions,
-	issue_set: Arc<Mutex<Vec<RequestIssueEvent>>>,
+	issue_set: Arc<Mutex<IssueRequests>>,
 ) -> Result<(), ServiceError> {
 	let mut issue_set = issue_set.lock().await;
 
 	match action {
 		IssueActions::AddFilter(event) => {
+			let request = parachain_rpc.get_issue_request(event.issue_id).await?;
 			// create the filter
-			let checker = IssueChecker::create(&event);
+			let checker = IssueChecker::create(event.issue_id, request.clone());
 
 			// send the filter to the oracle
 			handler
@@ -178,7 +175,7 @@ async fn handle_issue_actions(
 
 			tracing::debug!("added: {:?}", event);
 			// save this request
-			issue_set.push(event)
+			issue_set.insert(event.issue_id, request);
 		},
 		IssueActions::RemoveFilter(issue_id) => {
 			// signal the oracle to remove this filter
@@ -188,10 +185,7 @@ async fn handle_issue_actions(
 				.map_err(|e| ServiceError::Other(format!("{:?}", e)))?;
 
 			// remove this request
-			if let Some(idx) = issue_set.iter().position(|event| event.issue_id == issue_id) {
-				let event = issue_set.remove(idx);
-				tracing::debug!("removed: {:?}", event);
-			}
+			issue_set.remove(&issue_id);
 		},
 	}
 	Ok(())
@@ -244,14 +238,14 @@ pub async fn process_issue_events(
 	parachain_rpc: SpacewalkParachain,
 	handler: Arc<Mutex<ScpMessageHandler>>,
 	mut action_receiver: tokio::sync::mpsc::Receiver<IssueActions>,
-	issue_set: Arc<Mutex<Vec<RequestIssueEvent>>>,
+	issue_set: Arc<Mutex<IssueRequests>>,
 ) -> Result<(), ServiceError> {
 	let handler = handler.lock().await;
 
 	loop {
 		tokio::select! {
 			Some(msg) = action_receiver.recv() => {
-				handle_issue_actions(&handler,msg,issue_set.clone()).await?;
+				handle_issue_actions(parachain_rpc.clone(),&handler,msg,issue_set.clone()).await?;
 			}
 			// get all proofs
 			Ok(proofs) = handler.get_pending_proofs() => {

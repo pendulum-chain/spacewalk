@@ -14,7 +14,7 @@ use crate::{
 use async_trait::async_trait;
 use clap::Parser;
 use git_version::git_version;
-use runtime::{RequestIssueEvent, SpacewalkParachain, UtilFuncs};
+use runtime::{IssuePallet, IssueRequests, RequestIssueEvent, SpacewalkParachain, UtilFuncs};
 use service::{wait_or_shutdown, Error as ServiceError, Service, ShutdownSender};
 use std::sync::Arc;
 use stellar_relay_lib::{
@@ -82,11 +82,11 @@ impl VaultService {
 		Self { spacewalk_parachain: spacewalk_parachain.clone(), config, shutdown }
 	}
 
-	/// Returns the SCPMessageHandler, which contains the thread to connect/listen to the Stellar Node.
-	/// See the oracle.rs example
+	/// Returns SCPMessageHandler which contains the thread to connect/listen to the Stellar
+	/// Node. See the oracle.rs example
 	async fn create_handler(&self) -> Result<ScpMessageHandler, Error> {
 		prepare_directories().map_err(|e| {
-			tracing::error!("Failed to create the SCPMessageHandler: {:?}",e);
+			tracing::error!("Failed to create the SCPMessageHandler: {:?}", e);
 			Error::StellarSdkError
 		})?;
 
@@ -112,7 +112,7 @@ impl VaultService {
 		// todo: add vault addresses filter
 		let addresses = vec![];
 		create_handler(node_info, cfg, is_public_net, addresses).await.map_err(|e| {
-			tracing::error!("Failed to create the SCPMessageHandler: {:?}",e);
+			tracing::error!("Failed to create the SCPMessageHandler: {:?}", e);
 			Error::StellarSdkError
 		})
 	}
@@ -150,7 +150,11 @@ impl VaultService {
 		);
 
 		// issue handling
-		let issue_set: Arc<Mutex<Vec<RequestIssueEvent>>> = Arc::new(Mutex::new(vec![]));
+		let issue_set: Arc<Mutex<IssueRequests>> = Arc::new(Mutex::new(IssueRequests::new()));
+
+		// todo: get old issue requests, but it needs the vault id?
+		// self.spacewalk_parachain.get_vault_issue_requests()
+
 		let handler = {
 			let handler = self.create_handler().await?;
 			Arc::new(Mutex::new(handler))
@@ -166,24 +170,6 @@ impl VaultService {
 			),
 		);
 
-		// let deposit_listener = wait_or_shutdown(
-		// 	self.shutdown.clone(),
-		// 	poll_horizon_for_new_transactions(
-		// 		self.spacewalk_parachain.clone(),
-		// 		self.config.stellar_vault_secret_key.clone(),
-		// 	),
-		// );
-
-		// redeem handling
-		// let redeem_listener = wait_or_shutdown(
-		// 	self.shutdown.clone(),
-		// 	listen_for_redeem_requests(
-		// 		self.shutdown.clone(),
-		// 		self.spacewalk_parachain.clone(),
-		// 		self.config.stellar_vault_secret_key.clone(),
-		// 	),
-		// );
-
 		// starts all the tasks
 		tracing::info!("Starting to listen for events...");
 		let _ = tokio::join!(
@@ -197,10 +183,6 @@ impl VaultService {
 			tokio::spawn(async move { issue_executes_listener.await }),
 			// runs the handler
 			tokio::spawn(async move { issue_handling_task.await })
-			// listen for deposits
-			// tokio::task::spawn(async move { deposit_listener.await }),
-			// listen for redeem events
-			//tokio::spawn(async move { redeem_listener.await }),
 		);
 
 		Ok(())
