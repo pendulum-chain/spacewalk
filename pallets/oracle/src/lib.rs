@@ -1,7 +1,7 @@
 //! # Oracle Pallet
 //! Based on the [specification](https://spec.interlay.io/spec/oracle.html).
 
-#![deny(warnings)]
+// #![deny(warnings)]
 #![cfg_attr(test, feature(proc_macro_hygiene))]
 #![cfg_attr(not(feature = "std"), no_std)]
 
@@ -278,7 +278,8 @@ impl<T: Config> Pallet<T> {
 			if new_status_is_online {
 				Self::recover_from_oracle_offline();
 			} else {
-				Self::report_oracle_offline();
+				// don't report oracle offline for now
+				// Self::report_oracle_offline();
 			}
 		}
 	}

@@ -296,7 +296,12 @@ fn testnet_genesis(
 		},
 		issue: IssueConfig { issue_period: DAYS },
 		security: SecurityConfig {
-			initial_status: if start_shutdown { StatusCode::Shutdown } else { StatusCode::Error },
+			// Start chain in running mode (usually this would be discouraged because the chain
+			// switches to 'running' when oracles provide values but we don't have running oracles
+			// at the moment
+			initial_status: if start_shutdown { StatusCode::Shutdown } else { StatusCode::Running },
+			// initial_status: if start_shutdown { StatusCode::Shutdown } else { StatusCode::Error
+			// },
 		},
 		stellar_relay: StellarRelayConfig {
 			validators,
