@@ -75,7 +75,10 @@ impl frame_system::Config for Test {
 parameter_types! {
 	pub const GetNativeCurrencyId: CurrencyId = Token(INTR);
 	pub const GetRelayChainCurrencyId: CurrencyId = Token(DOT);
-	pub const GetWrappedCurrencyId: CurrencyId = Token(IBTC);
+	pub const GetWrappedCurrencyId: CurrencyId = CurrencyId::AlphaNum4 {
+		code: *b"USDC",
+		issuer: [0u8; 32],
+	};
 	pub const MaxLocks: u32 = 50;
 }
 
@@ -112,13 +115,15 @@ impl crate::CurrencyConversion<crate::Amount<Test>, CurrencyId> for CurrencyConv
 }
 
 impl crate::Config for Test {
+	type UnsignedFixedPoint = UnsignedFixedPoint;
 	type SignedInner = SignedInner;
 	type SignedFixedPoint = SignedFixedPoint;
-	type UnsignedFixedPoint = UnsignedFixedPoint;
 	type Balance = Balance;
 	type GetNativeCurrencyId = GetNativeCurrencyId;
 	type GetRelayChainCurrencyId = GetRelayChainCurrencyId;
 	type GetWrappedCurrencyId = GetWrappedCurrencyId;
+	type AssetConversion = primitives::AssetConversion;
+	type BalanceConversion = primitives::BalanceConversion;
 	type CurrencyConversion = CurrencyConvert;
 }
 

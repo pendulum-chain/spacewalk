@@ -1,14 +1,22 @@
-on: [pull_request]
+on:
+  pull_request:
+    branches:
+      - 'main'
 
-name: continuous-integration
+name: continuous-integration-main
 
 jobs:
   ci:
     strategy:
       matrix:
-        platform: [ubuntu-latest, macos-latest]
+        os: [ ubuntu-latest, macos-latest ]
 
-    runs-on: ${{ matrix.platform }}
+    runs-on: ${{ matrix.os }}
+
+    env:
+      RUST_BACKTRACE: full
+      # Make sure CI fails on all warnings, including Clippy lints
+      RUSTFLAGS: "-Dwarnings"
 
     steps:
       - uses: actions/checkout@v2
@@ -16,6 +24,13 @@ jobs:
       - name: Setup Rust toolchain
         # Call `rustup show` as a hack so that the toolchain defined in rust-toolchain.toml is installed
         run: rustup show
+
+      - name: Use Cache
+        uses: Swatinem/rust-cache@v2
+        with:
+          cache-on-failure: true
+          key: "${{ matrix.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}"
+          shared-key: "shared"
 
       - name: Build
         uses: actions-rs/cargo@v1
@@ -26,16 +41,16 @@ jobs:
         uses: actions-rs/cargo@v1
         with:
           command: test
-          args: --all
-      
+          args: --all --all-features
+
       - name: Rustfmt
         uses: actions-rs/cargo@v1
         with:
           command: fmt
           args: --all -- --check
-      
+
       - name: Clippy
         uses: actions-rs/cargo@v1
         with:
           command: clippy
-          args: --all -- -W warnings -W clippy::unwrap_used -W clippy::needless_collect
+          args: --all-features --all-targets -- -W clippy::all -A clippy::style

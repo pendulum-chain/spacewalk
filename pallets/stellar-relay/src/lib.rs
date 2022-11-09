@@ -16,6 +16,9 @@ mod tests;
 #[cfg(feature = "runtime-benchmarks")]
 mod benchmarking;
 
+#[cfg(feature = "testing-utils")]
+pub mod testing_utils;
+
 pub mod traits;
 pub mod types;
 
@@ -32,13 +35,12 @@ pub mod pallet {
 		compound_types::UnlimitedVarArray,
 		network::{Network, PUBLIC_NETWORK, TEST_NETWORK},
 		types::{
-			NodeId, OperationBody, ScpEnvelope, ScpStatementExternalize, ScpStatementPledges,
-			StellarValue, TransactionSet, Uint256,
+			NodeId, ScpEnvelope, ScpStatementExternalize, ScpStatementPledges, StellarValue,
+			TransactionSet,
 		},
-		Asset, Hash, MuxedAccount, TransactionEnvelope, XdrCodec,
+		Hash, TransactionEnvelope, XdrCodec,
 	};
 
-	use currency::CurrencyId;
 	use default_weights::WeightInfo;
 
 	use crate::{
@@ -50,7 +52,7 @@ pub mod pallet {
 
 	/// Configure the pallet by specifying the parameters and types on which it depends.
 	#[pallet::config]
-	pub trait Config: frame_system::Config + currency::Config {
+	pub trait Config: frame_system::Config {
 		/// Because this pallet emits events, it depends on the runtime's definition of an event.
 		type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
 
@@ -109,7 +111,6 @@ pub mod pallet {
 		TransactionNotInTransactionSet,
 		TransactionSetHashCreationFailed,
 		TransactionSetHashMismatch,
-		TryIntoError,
 		ValidatorLimitExceeded,
 	}
 
@@ -546,50 +547,6 @@ pub mod pallet {
 				base64::decode(raw_encoded_xdr).map_err(|_| Error::<T>::Base64DecodeError)?;
 			let decoded = V::from_xdr(value_xdr).map_err(|_| Error::<T>::InvalidXDR)?;
 			Ok(decoded)
-		}
-
-		/// Accumulate the amounts of the specified currency that happened in the operations of a
-		/// Stellar transaction
-		pub fn get_amount_from_transaction_envelope<V: TryFrom<i64>>(
-			transaction_envelope: &TransactionEnvelope,
-			recipient_stellar_address: Uint256,
-			currency: &CurrencyId<T>,
-		) -> Result<V, Error<T>> {
-			// TODO derive asset from currency and back
-			let asset = Asset::AssetTypeNative;
-			let recipient_account = MuxedAccount::KeyTypeEd25519(recipient_stellar_address);
-
-			let amount: i64 = match transaction_envelope {
-				TransactionEnvelope::EnvelopeTypeTxV0(envelope) => {
-					let mut sum: i64 = 0;
-					for x in envelope.tx.operations.get_vec().iter() {
-						if let OperationBody::Payment(payment) = x.body.clone() {
-							if payment.destination.eq(&recipient_account) && payment.asset == asset
-							{
-								sum = sum.saturating_add(payment.amount);
-							}
-						}
-					}
-					sum
-				},
-				TransactionEnvelope::EnvelopeTypeTx(envelope) => {
-					let mut sum: i64 = 0;
-					for x in envelope.tx.operations.get_vec().iter() {
-						if let OperationBody::Payment(payment) = x.body.clone() {
-							if payment.destination.eq(&recipient_account) && payment.asset == asset
-							{
-								sum = sum.saturating_add(payment.amount);
-							}
-						}
-					}
-					sum
-				},
-				TransactionEnvelope::EnvelopeTypeTxFeeBump(_) => 0,
-				TransactionEnvelope::Default(_) => 0,
-			};
-
-			let amount: V = amount.try_into().map_err(|_| Error::<T>::TryIntoError)?;
-			Ok(amount)
 		}
 	}
 

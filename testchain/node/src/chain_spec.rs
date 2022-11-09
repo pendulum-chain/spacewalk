@@ -10,14 +10,12 @@ use sp_core::{crypto::UncheckedInto, ed25519, sr25519, Pair, Public};
 use sp_finality_grandpa::AuthorityId as GrandpaId;
 use sp_runtime::traits::{IdentifyAccount, Verify};
 
-use primitives::{
-	CurrencyId::Token, CurrencyInfo, VaultCurrencyPair, DOT, IBTC, INTR, KBTC, KINT, KSM,
-};
+use primitives::{CurrencyId::Token, VaultCurrencyPair, DOT, INTR, KINT, KSM};
 use spacewalk_runtime::{
 	AccountId, AuraConfig, BalancesConfig, CurrencyId, FeeConfig, FieldLength, GenesisConfig,
 	GetWrappedCurrencyId, GrandpaConfig, IssueConfig, NominationConfig, OracleConfig, Organization,
-	SecurityConfig, Signature, StatusCode, StellarRelayConfig, SudoConfig, SystemConfig,
-	TokensConfig, Validator, VaultRegistryConfig, DAYS, WASM_BINARY,
+	RedeemConfig, ReplaceConfig, SecurityConfig, Signature, StatusCode, StellarRelayConfig,
+	SudoConfig, SystemConfig, TokensConfig, Validator, VaultRegistryConfig, DAYS, WASM_BINARY,
 };
 
 // The URL for the telemetry server.
@@ -53,15 +51,6 @@ where
 
 fn get_properties() -> Map<String, Value> {
 	let mut properties = Map::new();
-
-	let mut token_symbol: Vec<String> = vec![];
-	let mut token_decimals: Vec<u32> = vec![];
-	[INTR, IBTC, DOT, KINT, KBTC, KSM].iter().for_each(|token| {
-		token_symbol.push(token.symbol().to_string());
-		token_decimals.push(token.decimals() as u32);
-	});
-	properties.insert("tokenSymbol".into(), token_symbol.into());
-	properties.insert("tokenDecimals".into(), token_decimals.into());
 	properties.insert("ss58Format".into(), spacewalk_runtime::SS58Prefix::get().into());
 	properties
 }
@@ -294,14 +283,11 @@ fn testnet_genesis(
 				})
 				.collect(),
 		},
-		issue: IssueConfig { issue_period: DAYS },
+		issue: IssueConfig { issue_period: DAYS, issue_minimum_transfer_amount: 1000 },
+		redeem: RedeemConfig { redeem_period: DAYS, redeem_minimum_transfer_amount: 100 },
+		replace: ReplaceConfig { replace_period: DAYS, replace_btc_dust_value: 1000 },
 		security: SecurityConfig {
-			// Start chain in running mode (usually this would be discouraged because the chain
-			// switches to 'running' when oracles provide values but we don't have running oracles
-			// at the moment
-			initial_status: if start_shutdown { StatusCode::Shutdown } else { StatusCode::Running },
-			// initial_status: if start_shutdown { StatusCode::Shutdown } else { StatusCode::Error
-			// },
+			initial_status: if start_shutdown { StatusCode::Shutdown } else { StatusCode::Error },
 		},
 		stellar_relay: StellarRelayConfig {
 			validators,

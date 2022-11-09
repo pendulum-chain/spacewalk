@@ -4,20 +4,13 @@ use orml_traits::MultiCurrency;
 use sp_arithmetic::FixedU128;
 use sp_core::H256;
 use sp_runtime::traits::One;
-use substrate_stellar_sdk::{
-	compound_types::LimitedVarArray,
-	types::{ScpEnvelope, TransactionSet, TransactionV1Envelope},
-	MuxedAccount, XdrCodec,
-};
 
 use currency::Amount;
 use primitives::{issue::IssueRequestStatus, StellarPublicKeyRaw};
+use stellar_relay::testing_utils::{DEFAULT_STELLAR_PUBLIC_KEY, RANDOM_STELLAR_PUBLIC_KEY};
 use vault_registry::{DefaultVault, DefaultVaultId, Vault, VaultStatus};
 
 use crate::{ext, mock::*, Event, IssueRequest};
-
-const RANDOM_STELLAR_PUBLIC_KEY: StellarPublicKeyRaw = [0u8; 32];
-const DEFAULT_STELLAR_PUBLIC_KEY: StellarPublicKeyRaw = [1u8; 32];
 
 fn griefing(amount: u128) -> Amount<Test> {
 	Amount::new(amount, DEFAULT_NATIVE_CURRENCY)
@@ -76,42 +69,16 @@ fn request_issue_ok_with_address(
 	Issue::_request_issue(origin, amount, asset, vault).unwrap()
 }
 
-fn create_dummy_scp_structs(
-) -> (TransactionV1Envelope, LimitedVarArray<ScpEnvelope, 20>, TransactionSet) {
-	let tx = substrate_stellar_sdk::Transaction {
-		source_account: MuxedAccount::KeyTypeEd25519(RANDOM_STELLAR_PUBLIC_KEY),
-		fee: 100,
-		seq_num: 1,
-		operations: LimitedVarArray::new(vec![]).unwrap(),
-		cond: substrate_stellar_sdk::types::Preconditions::PrecondNone,
-		memo: substrate_stellar_sdk::Memo::MemoNone,
-		ext: substrate_stellar_sdk::types::TransactionExt::V0,
-	};
-	let tx_env = TransactionV1Envelope { tx, signatures: LimitedVarArray::new_empty() };
-
-	let scp_envelopes: LimitedVarArray<ScpEnvelope, 20> = LimitedVarArray::new_empty();
-
-	let transaction_set = TransactionSet {
-		previous_ledger_hash: Default::default(),
-		txes: LimitedVarArray::new_empty(),
-	};
-
-	(tx_env, scp_envelopes, transaction_set)
-}
-
 fn execute_issue(origin: AccountId, issue_id: &H256) -> Result<(), DispatchError> {
-	let (tx_env, scp_envelopes, transaction_set) = create_dummy_scp_structs();
-
-	let transaction_envelope_xdr_encoded = base64::encode(&tx_env.to_xdr());
-	let scp_envelopes_xdr_encoded = base64::encode(&scp_envelopes.to_xdr());
-	let transaction_set_xdr_encoded = base64::encode(&transaction_set.to_xdr());
+	let (tx_env_encoded, scp_envelopes_encoded, transaction_set_encoded) =
+		stellar_relay::testing_utils::create_dummy_scp_structs_encoded();
 
 	Issue::_execute_issue(
 		origin,
 		*issue_id,
-		transaction_envelope_xdr_encoded.as_bytes().to_vec(),
-		scp_envelopes_xdr_encoded.as_bytes().to_vec(),
-		transaction_set_xdr_encoded.as_bytes().to_vec(),
+		tx_env_encoded,
+		scp_envelopes_encoded,
+		transaction_set_encoded,
 	)
 }
 
@@ -230,8 +197,9 @@ fn setup_execute(
 
 	ext::stellar_relay::validate_stellar_transaction::<Test>
 		.mock_safe(move |_, _, _| MockResult::Return(Ok(())));
-	ext::stellar_relay::get_amount_from_transaction_envelope::<Test, Balance>
-		.mock_safe(move |_, _, _| MockResult::Return(Ok(amount_transferred)));
+	ext::currency::get_amount_from_transaction_envelope::<Test>.mock_safe(move |_, _, currency| {
+		MockResult::Return(Ok(Amount::new(amount_transferred, currency)))
+	});
 
 	issue_id
 }

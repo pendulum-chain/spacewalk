@@ -19,7 +19,7 @@ use pallet_grandpa::{
 };
 use sp_api::impl_runtime_apis;
 use sp_consensus_aura::ed25519::AuthorityId as AuraId;
-use sp_core::{crypto::KeyTypeId, OpaqueMetadata};
+use sp_core::{crypto::KeyTypeId, OpaqueMetadata, H256};
 use sp_runtime::{
 	create_runtime_str, generic, impl_opaque_keys,
 	traits::{
@@ -39,9 +39,11 @@ pub use nomination::Event as NominationEvent;
 // A few exports that help ease life for downstream crates.
 pub use primitives::{
 	self, AccountId, Balance, BlockNumber, CurrencyId, Hash, Moment, Nonce, Signature,
-	SignedFixedPoint, SignedInner, UnsignedFixedPoint, UnsignedInner, H256,
+	SignedFixedPoint, SignedInner, UnsignedFixedPoint, UnsignedInner,
 };
-use primitives::{CurrencyId::Token, TokenSymbol, TokenSymbol::INTR};
+use primitives::{CurrencyId::Token, TokenSymbol};
+pub use redeem::{Event as RedeemEvent, RedeemRequest};
+pub use replace::{Event as ReplaceEvent, ReplaceRequest};
 pub use security::StatusCode;
 pub use stellar_relay::traits::{FieldLength, Organization, Validator};
 
@@ -192,7 +194,7 @@ impl pallet_timestamp::Config for Runtime {
 const NATIVE_TOKEN_ID: TokenSymbol = TokenSymbol::PEN;
 const NATIVE_CURRENCY_ID: CurrencyId = Token(NATIVE_TOKEN_ID);
 const PARENT_CURRENCY_ID: CurrencyId = Token(TokenSymbol::DOT);
-const WRAPPED_CURRENCY_ID: CurrencyId = Token(TokenSymbol::IBTC);
+const WRAPPED_CURRENCY_ID: CurrencyId = CurrencyId::AlphaNum4 { code: *b"USDC", issuer: [0u8; 32] };
 
 parameter_types! {
 	pub const GetNativeCurrencyId: CurrencyId = NATIVE_CURRENCY_ID;
@@ -319,6 +321,8 @@ impl currency::Config for Runtime {
 	type GetNativeCurrencyId = GetNativeCurrencyId;
 	type GetRelayChainCurrencyId = GetRelayChainCurrencyId;
 	type GetWrappedCurrencyId = GetWrappedCurrencyId;
+	type AssetConversion = primitives::AssetConversion;
+	type BalanceConversion = primitives::BalanceConversion;
 	type CurrencyConversion = CurrencyConvert;
 }
 
@@ -364,6 +368,16 @@ impl oracle::Config for Runtime {
 impl issue::Config for Runtime {
 	type Event = Event;
 	type BlockNumberToBalance = BlockNumberToBalance;
+	type WeightInfo = ();
+}
+
+impl redeem::Config for Runtime {
+	type Event = Event;
+	type WeightInfo = ();
+}
+
+impl replace::Config for Runtime {
+	type Event = Event;
 	type WeightInfo = ();
 }
 
@@ -416,6 +430,8 @@ construct_runtime! {
 		VaultRegistry: vault_registry::{Pallet, Call, Config<T>, Storage, Event<T>, ValidateUnsigned} = 21,
 		Oracle: oracle::{Pallet, Call, Config<T>, Storage, Event<T>} = 22,
 		Issue: issue::{Pallet, Call, Config<T>, Storage, Event<T>} = 23,
+		Redeem: redeem::{Pallet, Call, Config<T>, Storage, Event<T>} = 24,
+		Replace: replace::{Pallet, Call, Config<T>, Storage, Event<T>} = 25,
 		Fee: fee::{Pallet, Call, Config<T>, Storage} = 26,
 		Nomination: nomination::{Pallet, Call, Config, Storage, Event<T>} = 28,
 
@@ -464,6 +480,8 @@ mod benches {
 		[issue, Issue]
 		[fee, Fee]
 		[oracle, Oracle]
+		[redeem, Redeem]
+		[replace, Replace]
 		[vault_registry, VaultRegistry]
 		[nomination, Nomination]
 	);
@@ -665,4 +683,33 @@ impl_runtime_apis! {
 		}
 	}
 
+	impl module_redeem_rpc_runtime_api::RedeemApi<
+		Block,
+		AccountId,
+		H256,
+		RedeemRequest<AccountId, BlockNumber, Balance, CurrencyId>
+	> for Runtime {
+		fn get_redeem_requests(account_id: AccountId) -> Vec<H256> {
+			Redeem::get_redeem_requests_for_account(account_id)
+		}
+
+		fn get_vault_redeem_requests(vault_account_id: AccountId) -> Vec<H256> {
+			Redeem::get_redeem_requests_for_vault(vault_account_id)
+		}
+	}
+
+	impl module_replace_rpc_runtime_api::ReplaceApi<
+		Block,
+		AccountId,
+		H256,
+		ReplaceRequest<AccountId, BlockNumber, Balance, CurrencyId>
+	> for Runtime {
+		fn get_old_vault_replace_requests(vault_id: AccountId) -> Vec<H256> {
+			Replace::get_replace_requests_for_old_vault(vault_id)
+		}
+
+		fn get_new_vault_replace_requests(vault_id: AccountId) -> Vec<H256> {
+			Replace::get_replace_requests_for_new_vault(vault_id)
+		}
+	}
 }
