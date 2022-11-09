@@ -16,6 +16,7 @@ use spacewalk_runtime::{
 	GetWrappedCurrencyId, GrandpaConfig, IssueConfig, NominationConfig, OracleConfig, Organization,
 	RedeemConfig, ReplaceConfig, SecurityConfig, Signature, StatusCode, StellarRelayConfig,
 	SudoConfig, SystemConfig, TokensConfig, Validator, VaultRegistryConfig, DAYS, WASM_BINARY,
+	WRAPPED_CURRENCY_ID,
 };
 
 // The URL for the telemetry server.
@@ -251,6 +252,7 @@ fn testnet_genesis(
 		},
 	];
 	let organizations = vec![organization_testnet_sdf];
+
 	GenesisConfig {
 		system: SystemConfig {
 			code: WASM_BINARY.expect("WASM binary was not build, please build it!").to_vec(),
@@ -279,6 +281,7 @@ fn testnet_genesis(
 						(k.clone(), Token(INTR), 1 << 60),
 						(k.clone(), Token(KSM), 1 << 60),
 						(k.clone(), Token(KINT), 1 << 60),
+						(k.clone(), WRAPPED_CURRENCY_ID, 1 << 60),
 					]
 				})
 				.collect(),
