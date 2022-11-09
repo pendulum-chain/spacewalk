@@ -35,9 +35,10 @@ pub const AUTHORS: &str = env!("CARGO_PKG_AUTHORS");
 pub const NAME: &str = env!("CARGO_PKG_NAME");
 pub const ABOUT: &str = env!("CARGO_PKG_DESCRIPTION");
 
-// SatoshiPay Validators
-pub const TIER_1_VALIDATOR_IP_TESTNET: &str = "65.108.1.53";
-pub const TIER_1_VALIDATOR_IP_PUBLIC: &str = "116.202.133.115";
+// sdftest3
+pub const TIER_1_VALIDATOR_IP_TESTNET: &str = "3.239.7.78";
+// SatoshiPay (DE, Frankfurt)
+pub const TIER_1_VALIDATOR_IP_PUBLIC: &str = "141.95.47.112";
 
 #[derive(Parser, Clone, Debug)]
 pub struct VaultServiceConfig {
@@ -105,11 +106,14 @@ impl VaultService {
 		);
 
 		let secret = SecretKey::from_encoding(&self.config.stellar_vault_secret_key).unwrap();
+		let public_key_binary = hex::encode(secret.get_public().as_binary());
+		tracing::info!("public key binary {:?}", public_key_binary);
 
 		let node_info = NodeInfo::new(19, 21, 19, "v19.1.0".to_string(), network);
 		let cfg = ConnConfig::new(tier1_node_ip, 11625, secret, 0, true, true, false);
 
 		// todo: add vault addresses filter
+
 		let addresses = vec![];
 		create_handler(node_info, cfg, is_public_net, addresses).await.map_err(|e| {
 			tracing::error!("Failed to create the SCPMessageHandler: {:?}", e);
