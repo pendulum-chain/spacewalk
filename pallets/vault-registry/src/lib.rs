@@ -323,7 +323,7 @@ pub mod pallet {
 			let vault = Self::get_vault_from_id(&vault_id)?;
 			let liquidation_threshold =
 				Self::liquidation_collateral_threshold(&vault_id.currencies)
-					.ok_or(Error::<T>::ThresholdNotSet)?;
+					.ok_or(Error::<T>::LiquidationCollateralThresholdNotSet)?;
 			if Self::is_vault_below_liquidation_threshold(&vault, liquidation_threshold)? {
 				Self::liquidate_vault(&vault_id)?;
 				Ok(().into())
@@ -601,12 +601,21 @@ pub mod pallet {
 		InvalidCurrency,
 
 		/// Threshold was not found for the given currency
-		ThresholdNotSet,
+		GlobalThresholdNotSet,
+
+		/// Threshold was not found for the given currency
+		LiquidationCollateralThresholdNotSet,
+
+		/// Threshold was not found for the given currency
+		PremiumRedeemThresholdNotSet,
+
+		/// Threshold was not found for the given currency
+		SecureCollateralThresholdNotSet,
+
 		/// Ceiling was not found for the given currency
 		CeilingNotSet,
 		/// Vault attempted to set secure threshold below the global secure threshold
 		ThresholdNotAboveGlobalThreshold,
-
 		/// Unable to convert value
 		TryIntoIntError,
 
@@ -759,15 +768,15 @@ impl<T: Config> Pallet<T> {
 	) -> DispatchResult {
 		ensure!(
 			SecureCollateralThreshold::<T>::contains_key(&vault_id.currencies),
-			Error::<T>::ThresholdNotSet
+			Error::<T>::SecureCollateralThresholdNotSet
 		);
 		ensure!(
 			PremiumRedeemThreshold::<T>::contains_key(&vault_id.currencies),
-			Error::<T>::ThresholdNotSet
+			Error::<T>::PremiumRedeemThresholdNotSet
 		);
 		ensure!(
 			LiquidationCollateralThreshold::<T>::contains_key(&vault_id.currencies),
-			Error::<T>::ThresholdNotSet
+			Error::<T>::LiquidationCollateralThresholdNotSet
 		);
 		ensure!(
 			MinimumCollateralVault::<T>::contains_key(vault_id.collateral_currency()),
@@ -806,7 +815,7 @@ impl<T: Config> Pallet<T> {
 	) -> DispatchResult {
 		if let Some(some_new_threshold) = new_threshold {
 			let global_threshold = Self::secure_collateral_threshold(&vault_id.currencies)
-				.ok_or(Error::<T>::ThresholdNotSet)?;
+				.ok_or(Error::<T>::GlobalThresholdNotSet)?;
 			ensure!(
 				some_new_threshold.gt(&global_threshold),
 				Error::<T>::ThresholdNotAboveGlobalThreshold
@@ -1664,7 +1673,7 @@ impl<T: Config> Pallet<T> {
 		vault_id: &DefaultVaultId<T>,
 	) -> Result<bool, DispatchError> {
 		let threshold = Self::premium_redeem_threshold(&vault_id.currencies)
-			.ok_or(Error::<T>::ThresholdNotSet)?;
+			.ok_or(Error::<T>::PremiumRedeemThresholdNotSet)?;
 		Self::is_vault_below_threshold(vault_id, threshold)
 	}
 
@@ -1907,8 +1916,8 @@ impl<T: Config> Pallet<T> {
 	) -> Result<Amount<T>, DispatchError> {
 		let currency_pair =
 			VaultCurrencyPair { collateral: currency_id, wrapped: amount_wrapped.currency() };
-		let threshold =
-			Self::secure_collateral_threshold(&currency_pair).ok_or(Error::<T>::ThresholdNotSet)?;
+		let threshold = Self::secure_collateral_threshold(&currency_pair)
+			.ok_or(Error::<T>::SecureCollateralThresholdNotSet)?;
 		let collateral = Self::get_required_collateral_for_wrapped_with_threshold(
 			amount_wrapped,
 			threshold,
@@ -1950,10 +1959,10 @@ impl<T: Config> Pallet<T> {
 		// MaxNominationRatio = (SecureCollateralThreshold / PremiumRedeemThreshold) - 1)
 		// It denotes the maximum amount of collateral that can be nominated to a particular Vault.
 		// Its effect is to minimise the impact on collateralization of nominator withdrawals.
-		let secure_collateral_threshold =
-			Self::secure_collateral_threshold(currency_pair).ok_or(Error::<T>::ThresholdNotSet)?;
-		let premium_redeem_threshold =
-			Self::premium_redeem_threshold(currency_pair).ok_or(Error::<T>::ThresholdNotSet)?;
+		let secure_collateral_threshold = Self::secure_collateral_threshold(currency_pair)
+			.ok_or(Error::<T>::SecureCollateralThresholdNotSet)?;
+		let premium_redeem_threshold = Self::premium_redeem_threshold(currency_pair)
+			.ok_or(Error::<T>::PremiumRedeemThresholdNotSet)?;
 		Ok(secure_collateral_threshold
 			.checked_div(&premium_redeem_threshold)
 			.ok_or(ArithmeticError::Underflow)?

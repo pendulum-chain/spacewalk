@@ -391,7 +391,7 @@ impl<T: Config> RichVault<T> {
 
 	pub fn get_secure_threshold(&self) -> Result<UnsignedFixedPoint<T>, DispatchError> {
 		let global_threshold = Pallet::<T>::secure_collateral_threshold(&self.id().currencies)
-			.ok_or(Error::<T>::ThresholdNotSet)?;
+			.ok_or(Error::<T>::GlobalThresholdNotSet)?;
 		Ok(self
 			.data
 			.secure_collateral_threshold
@@ -582,7 +582,7 @@ impl<T: Config> RichVault<T> {
 		// this value is the amount of collateral held for the issued + to_be_issued
 		let liquidated_collateral = self.get_used_collateral(
 			Pallet::<T>::liquidation_collateral_threshold(&self.data.id.currencies)
-				.ok_or(Error::<T>::ThresholdNotSet)?,
+				.ok_or(Error::<T>::LiquidationCollateralThresholdNotSet)?,
 		)?;
 
 		// Clear `to_be_replaced` tokens, since the vault will have no more `issued` or
