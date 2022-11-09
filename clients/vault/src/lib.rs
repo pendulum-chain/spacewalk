@@ -1,9 +1,6 @@
 #![recursion_limit = "256"]
 
-// mod deposit;
 mod error;
-mod horizon;
-// mod redeem;
 mod system;
 
 mod issue;
