@@ -573,8 +573,6 @@ pub mod pallet {
 		VaultAlreadyRegistered,
 		/// The specified vault does not exist.
 		VaultNotFound,
-		/// The Bitcoin Address has already been registered
-		ReservedDepositAddress,
 		/// Attempted to liquidate a vault that is not undercollateralized.
 		VaultNotBelowLiquidationThreshold,
 		/// Deposit address could not be generated with the given public key.
@@ -1094,7 +1092,8 @@ impl<T: Config> Pallet<T> {
 		Ok(())
 	}
 
-	/// Registers a btc address
+	/// Registers a stellar address. Actually does nothing because we don't use deposit addresses on
+	/// Stellar.
 	///
 	/// # Arguments
 	/// * `issue_id` - secure id for generating deposit address
@@ -1103,12 +1102,12 @@ impl<T: Config> Pallet<T> {
 		issue_id: H256,
 	) -> Result<StellarPublicKeyRaw, DispatchError> {
 		let mut vault = Self::get_active_rich_vault_from_id(&vault_id)?;
-		let btc_address = vault.new_deposit_address(issue_id)?;
+		let stellar_address = vault.new_deposit_address(issue_id)?;
 		Self::deposit_event(Event::<T>::RegisterAddress {
 			vault_id: vault.id(),
-			address: btc_address,
+			address: stellar_address,
 		});
-		Ok(btc_address)
+		Ok(stellar_address)
 	}
 
 	/// returns the amount of tokens that a vault can request to be replaced on top of the
@@ -2090,8 +2089,8 @@ impl<T: Config> Pallet<T> {
 		secure_id: H256,
 	) -> Result<StellarPublicKeyRaw, DispatchError> {
 		let mut vault = Self::get_active_rich_vault_from_id(vault_id)?;
-		let btc_address = vault.new_deposit_address(secure_id)?;
-		Ok(btc_address)
+		let stellar_address = vault.new_deposit_address(secure_id)?;
+		Ok(stellar_address)
 	}
 
 	#[cfg(feature = "integration-tests")]
