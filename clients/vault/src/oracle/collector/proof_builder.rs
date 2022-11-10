@@ -1,13 +1,14 @@
+use crate::oracle::ActorMessage;
 use stellar_relay::sdk::{
 	compound_types::UnlimitedVarArray,
 	types::{ScpEnvelope, TransactionSet},
 	TransactionEnvelope, XdrCodec,
 };
-use crate::oracle::ActorMessage;
 
 use crate::oracle::{
-	constants::{get_min_externalized_messages, MAX_SLOT_TO_REMEMBER}, traits::FileHandler, EnvelopesFileHandler, 
-	ScpMessageCollector, Slot, TxHash, TxSetsFileHandler,
+	constants::{get_min_externalized_messages, MAX_SLOT_TO_REMEMBER},
+	traits::FileHandler,
+	EnvelopesFileHandler, ScpMessageCollector, Slot, TxHash, TxSetsFileHandler,
 };
 
 /// Determines whether the data retrieved is from the current map or from a file.
@@ -42,7 +43,6 @@ pub enum ProofStatus {
 	NoTxSetFound(Slot),
 }
 
-
 // handles the creation of proofs.
 // this means it will access the maps and potentially the files.
 impl ScpMessageCollector {
@@ -50,27 +50,25 @@ impl ScpMessageCollector {
 		self.tx_hash_map().get(tx_hash).map(|slot| *slot)
 	}
 
-	
 	/// Returns either a list of ScpEnvelopes or a ProofStatus saying it failed to retrieve a list.
 	fn get_envelopes(&self, slot: Slot) -> Result<UnlimitedVarArray<ScpEnvelope>, ProofStatus> {
-		let envelopes =
-			self._get_envelopes(slot);
+		let envelopes = self._get_envelopes(slot);
 
-		let mut vec_envelopes  = vec![];
+		let mut vec_envelopes = vec![];
 
-		let fetch_more = if envelopes.is_none() { true } else {
+		let fetch_more = if envelopes.is_none() {
+			true
+		} else {
 			vec_envelopes = envelopes.unwrap().0;
-			vec_envelopes.len()  < get_min_externalized_messages(self.is_public()) 
+			vec_envelopes.len() < get_min_externalized_messages(self.is_public())
 		};
-		
-		if fetch_more{
+
+		if fetch_more {
 			let last_slot_index = *self.last_slot_index();
 			let action_sender = self.action_sender.clone();
 			if last_slot_index - MAX_SLOT_TO_REMEMBER < slot {
-				tokio::spawn(async move { 
-					action_sender
-					.send(ActorMessage::GetScpState { missed_slot : slot })
-					.await
+				tokio::spawn(async move {
+					action_sender.send(ActorMessage::GetScpState { missed_slot: slot }).await
 				});
 			}
 

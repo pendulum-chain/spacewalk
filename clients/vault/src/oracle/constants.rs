@@ -20,7 +20,7 @@ pub const MAX_DISTANCE_FROM_CURRENT_SLOT: Slot = 3;
 pub const VALIDATOR_COUNT_TEST_NETWORK: usize = 3;
 pub const VALIDATOR_COUNT_PUBLIC_NETWORK: usize = 23;
 
-pub const MAX_SLOT_TO_REMEMBER : u64 = 12;
+pub const MAX_SLOT_TO_REMEMBER: u64 = 12;
 
 /// Returns the minimum amount of SCP messages that are required to build a valid proof per network
 pub fn get_min_externalized_messages(public_network: bool) -> usize {

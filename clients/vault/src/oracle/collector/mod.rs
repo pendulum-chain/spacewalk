@@ -2,7 +2,7 @@ mod envelopes_handler;
 mod proof_builder;
 mod tx_handler;
 mod txsets_handler;
-use tokio::sync::{mpsc};
+use tokio::sync::mpsc;
 
 use parking_lot::{
 	lock_api::{RwLockReadGuard, RwLockWriteGuard},
@@ -15,9 +15,9 @@ use stellar_relay::sdk::{types::ScpStatementExternalize, Memo, TransactionEnvelo
 use crate::oracle::{
 	errors::Error,
 	types::{EnvelopesMap, Slot, TxHashMap, TxSetHash, TxSetMap},
+	ActorMessage,
 };
 use stellar_relay::sdk::network::{Network, PUBLIC_NETWORK, TEST_NETWORK};
-use crate::oracle::ActorMessage;
 
 /// Collects all ScpMessages and the TxSets.
 pub struct ScpMessageCollector {
@@ -36,11 +36,15 @@ pub struct ScpMessageCollector {
 	public_network: bool,
 	vault_addresses: Vec<String>,
 
-	action_sender: mpsc::Sender<ActorMessage>
+	action_sender: mpsc::Sender<ActorMessage>,
 }
 
 impl ScpMessageCollector {
-	pub(crate) fn new(public_network: bool, vault_addresses: Vec<String>, action_sender: mpsc::Sender<ActorMessage>) -> Self {
+	pub(crate) fn new(
+		public_network: bool,
+		vault_addresses: Vec<String>,
+		action_sender: mpsc::Sender<ActorMessage>,
+	) -> Self {
 		ScpMessageCollector {
 			envelopes_map: Default::default(),
 			txset_map: Default::default(),
@@ -49,7 +53,7 @@ impl ScpMessageCollector {
 			pending_transactions: vec![],
 			public_network,
 			vault_addresses,
-			action_sender
+			action_sender,
 		}
 	}
 

@@ -34,7 +34,7 @@ pub enum ActorMessage {
 		sender: oneshot::Sender<Vec<Proof>>,
 	},
 	GetScpState {
-		missed_slot : u64
+		missed_slot: u64,
 	},
 }
 
@@ -72,7 +72,9 @@ impl ScpMessageActor {
 				let _ = sender.send(self.collector.get_pending_proofs());
 			},
 			ActorMessage::GetScpState { missed_slot } => {
-				overlay_conn.send(StellarMessage::GetScpState(missed_slot.try_into().unwrap())).await;
+				overlay_conn
+					.send(StellarMessage::GetScpState(missed_slot.try_into().unwrap()))
+					.await;
 			},
 		};
 	}
@@ -132,7 +134,8 @@ impl ScpMessageHandler {
 		is_public_network: bool,
 	) -> Self {
 		let (sender, receiver) = mpsc::channel(1024);
-		let collector = ScpMessageCollector::new(is_public_network, vault_addresses, sender.clone());
+		let collector =
+			ScpMessageCollector::new(is_public_network, vault_addresses, sender.clone());
 
 		let mut actor = ScpMessageActor::new(receiver, collector);
 		tokio::spawn(async move { actor.run(overlay_conn).await });
