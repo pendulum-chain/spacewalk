@@ -273,5 +273,5 @@ fn get_issue_id_of_proof(proof: &Proof) -> Option<IssueId> {
 }
 
 fn create_name(issue_id: IssueId) -> String {
-	format!("issue_{:?}", base64::encode(issue_id))
+	format!("issue_{:?}", hex::encode(issue_id))
 }
