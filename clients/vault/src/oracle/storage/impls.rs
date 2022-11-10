@@ -159,7 +159,7 @@ impl FileHandler<TxHashMap> for TxHashesFileHandler {
 impl ScpAchiveStorage{
 
 	pub async fn get_scp_archive(slot_index : i32) -> Result<XdrArchive::<ScpHistoryEntry>, Error>{
-		let (url, file_name) = Self::get_url(slot_index);
+		let (url, file_name) = Self::get_url_and_file_name(slot_index);
 		let result = Self::gz_decode_file(&file_name);
 
 		if result.is_err(){
@@ -200,31 +200,21 @@ impl ScpAchiveStorage{
 		Ok(bytes)
 	}
 
-	fn get_url(slot_index : i32) -> (String, String){
-		let slot_index = Self::get_archive_ledger(slot_index);
-		let hex_string = Self::get_hex_string(slot_index);
+	fn get_url_and_file_name(slot_index : i32) -> (String, String){
+		let slot_index = Self::find_last_slot_index_in_batch(slot_index);
+		let hex_string = format!("0{:x}", slot_index);
 		let file_name = format!("{hex_string}.xdr");
 		let base_url = crate::oracle::constants::stellar_history_base_url;
 		let url = format!("{base_url}{}/{}/{}/scp-{file_name}.gz", &hex_string[..2],  &hex_string[2..4], &hex_string[4..6]);
 		(url, file_name)
 	}
-
-	fn get_tuples_from_ledger(slot_index : i32) -> String {
-		let hex = Self::get_hex_string(slot_index);
-		let last_part_url = format!("{} {} {}", &hex[0..1],  &hex[2..3], &hex[4..5]);
-		last_part_url
-	}
 	
-	fn get_archive_ledger(slot_index : i32) -> i32{
+	fn find_last_slot_index_in_batch(slot_index : i32) -> i32{
 		let rest = (slot_index + 1)  % 64;
 		if rest == 0{
 			return slot_index;
 		}
 		return slot_index + 64 - rest;
-	}
-
-	fn get_hex_string(slot_index : i32) -> String {
-		format!("0{:x}", slot_index)
 	}
 
 	fn read_file_xdr(filename: &str) -> Result<Vec<u8>, Error> {
