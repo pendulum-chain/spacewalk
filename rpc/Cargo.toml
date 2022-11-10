@@ -11,7 +11,8 @@ jsonrpsee = {version = "0.13.0", features = ["server", "macros"]}
 # Parachain dependencies
 primitives = {package = "spacewalk-primitives", path = "../primitives"}
 
-module-issue-rpc = { path = "../pallets/issue/rpc" }
+module-issue-rpc = {path = "../pallets/issue/rpc"}
+module-vault-registry-rpc = {path = "../pallets/vault-registry/rpc"}
 
 # Substrate dependencies
 sc-rpc = {git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.24"}

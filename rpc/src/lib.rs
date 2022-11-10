@@ -6,10 +6,13 @@
 #![warn(missing_docs)]
 
 pub use jsonrpsee;
-use primitives::{issue::IssueRequest, AccountId, Balance, Block, BlockNumber, CurrencyId, Nonce};
+use primitives::{
+	issue::IssueRequest, AccountId, Balance, Block, BlockNumber, CurrencyId, Nonce, VaultId,
+};
 pub use sc_rpc_api::DenyUnsafe;
 use sc_transaction_pool_api::TransactionPool;
 use sp_api::ProvideRuntimeApi;
+use sp_arithmetic::FixedU128;
 use sp_block_builder::BlockBuilder;
 use sp_blockchain::{Error as BlockChainError, HeaderBackend, HeaderMetadata};
 use sp_core::H256;
@@ -44,10 +47,19 @@ where
 		H256,
 		IssueRequest<AccountId, BlockNumber, Balance, CurrencyId>,
 	>,
+	C::Api: module_vault_registry_rpc::VaultRegistryRuntimeApi<
+		Block,
+		VaultId<AccountId, CurrencyId>,
+		Balance,
+		FixedU128,
+		CurrencyId,
+		AccountId,
+	>,
 	C::Api: BlockBuilder<Block>,
 	P: TransactionPool + 'static,
 {
 	use module_issue_rpc::{Issue, IssueApiServer};
+	use module_vault_registry_rpc::{VaultRegistry, VaultRegistryApiServer};
 	use pallet_transaction_payment_rpc::{TransactionPayment, TransactionPaymentApiServer};
 	use substrate_frame_rpc_system::{System, SystemApiServer};
 
@@ -56,6 +68,8 @@ where
 	module.merge(System::new(client.clone(), pool, deny_unsafe).into_rpc())?;
 
 	module.merge(TransactionPayment::new(client.clone()).into_rpc())?;
+
+	module.merge(VaultRegistry::new(client.clone()).into_rpc())?;
 
 	module.merge(Issue::new(client.clone()).into_rpc())?;
 
