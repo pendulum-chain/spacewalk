@@ -12,6 +12,8 @@ use crate::oracle::{
 	EnvelopesFileHandler, ScpMessageCollector, Slot, TxHash, TxSetsFileHandler,
 };
 
+use std::convert::TryInto;
+
 /// Determines whether the data retrieved is from the current map or from a file.
 type DataFromFile<T> = (T, bool);
 
@@ -77,7 +79,7 @@ impl ScpMessageCollector {
 					.await;
 				}
 				else{
-					let scp = ScpAchiveStorage::get_scp_archive(slot).await.unwrap();
+					let scp = ScpAchiveStorage::get_scp_archive(slot.try_into().unwrap()).await.unwrap();
 					println!("{:#?}", scp);
 				}
 				

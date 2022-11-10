@@ -17,7 +17,6 @@ use stellar_relay::{
 	},
 	xdr_converter, StellarOverlayConnection,
 };
-use stellar_relay::sdk::XdrCodec;
 // Handling SCPEnvelopes
 impl ScpMessageCollector {
 	/// handles incoming ScpEnvelope.
