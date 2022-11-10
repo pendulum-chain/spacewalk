@@ -1,10 +1,9 @@
-use crate::oracle::ActorMessage;
+use crate::oracle::{ActorMessage, ScpAchiveStorage};
 use stellar_relay::sdk::{
 	compound_types::UnlimitedVarArray,
 	types::{ScpEnvelope, TransactionSet},
 	TransactionEnvelope, XdrCodec,
 };
-use crate::oracle::{ActorMessage, ScpAchiveStorage};
 
 use crate::oracle::{
 	constants::{get_min_externalized_messages, MAX_SLOT_TO_REMEMBER},
