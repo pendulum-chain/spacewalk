@@ -1,3 +1,4 @@
+use crate::oracle::ActorMessage;
 use stellar_relay::sdk::{
 	compound_types::UnlimitedVarArray,
 	types::{ScpEnvelope, TransactionSet},
@@ -5,8 +6,9 @@ use stellar_relay::sdk::{
 };
 
 use crate::oracle::{
-	constants::get_min_externalized_messages, traits::FileHandler, EnvelopesFileHandler,
-	ScpMessageCollector, Slot, TxHash, TxSetsFileHandler,
+	constants::{get_min_externalized_messages, MAX_SLOT_TO_REMEMBER},
+	traits::FileHandler,
+	EnvelopesFileHandler, ScpMessageCollector, Slot, TxHash, TxSetsFileHandler,
 };
 
 /// Determines whether the data retrieved is from the current map or from a file.
@@ -37,8 +39,7 @@ impl Proof {
 
 pub enum ProofStatus {
 	Proof(Proof),
-	LackingEnvelopes,
-	NoEnvelopesFound(Slot),
+	LackingEnvelopes(Slot),
 	NoTxSetFound(Slot),
 }
 
@@ -51,17 +52,29 @@ impl ScpMessageCollector {
 
 	/// Returns either a list of ScpEnvelopes or a ProofStatus saying it failed to retrieve a list.
 	fn get_envelopes(&self, slot: Slot) -> Result<UnlimitedVarArray<ScpEnvelope>, ProofStatus> {
-		let (envelopes, is_from_file) =
-			self._get_envelopes(slot).ok_or(ProofStatus::NoEnvelopesFound(slot))?;
+		let envelopes = self._get_envelopes(slot);
 
-		// if the list does not come from a file, meaning there's still a chance to get more
-		// envelopes.
-		if envelopes.len() < get_min_externalized_messages(self.is_public()) && !is_from_file {
-			tracing::warn!("Not yet enough envelopes to build proof, current amount {:?}. Retrying in next loop...", envelopes.len());
-			return Err(ProofStatus::LackingEnvelopes)
+		let mut vec_envelopes = vec![];
+
+		let fetch_more = if envelopes.is_none() {
+			true
+		} else {
+			vec_envelopes = envelopes.unwrap().0;
+			vec_envelopes.len() < get_min_externalized_messages(self.is_public())
+		};
+
+		if fetch_more {
+			let last_slot_index = *self.last_slot_index();
+			let action_sender = self.action_sender.clone();
+			if last_slot_index - MAX_SLOT_TO_REMEMBER < slot {
+				tokio::spawn(async move {
+					action_sender.send(ActorMessage::GetScpState { missed_slot: slot }).await
+				});
+			}
+
+			return Err(ProofStatus::LackingEnvelopes(slot))
 		}
-
-		Ok(UnlimitedVarArray::new(envelopes).unwrap_or(UnlimitedVarArray::new_empty()))
+		Ok(UnlimitedVarArray::new(vec_envelopes).unwrap_or(UnlimitedVarArray::new_empty()))
 	}
 
 	/// helper method for `get_envelopes()`.

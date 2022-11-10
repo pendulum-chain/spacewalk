@@ -2,6 +2,7 @@ use crate::oracle::{
 	collector::{get_tx_set_hash, ScpMessageCollector},
 	constants::{
 		get_min_externalized_messages, MAX_DISTANCE_FROM_CURRENT_SLOT, MAX_SLOTS_PER_FILE,
+		MAX_SLOT_TO_REMEMBER,
 	},
 	errors::Error,
 	storage::{traits::FileHandlerExt, EnvelopesFileHandler},
@@ -10,10 +11,12 @@ use crate::oracle::{
 use parking_lot::RwLock;
 use std::sync::Arc;
 use stellar_relay::{
-	sdk::types::{ScpEnvelope, ScpStatementPledges, StellarMessage},
-	StellarOverlayConnection,
+	sdk::{
+		types::{ScpEnvelope, ScpStatementPledges, StellarMessage},
+		XdrCodec,
+	},
+	xdr_converter, StellarOverlayConnection,
 };
-
 // Handling SCPEnvelopes
 impl ScpMessageCollector {
 	/// handles incoming ScpEnvelope.
@@ -31,6 +34,13 @@ impl ScpMessageCollector {
 	) -> Result<(), Error> {
 		let slot = env.statement.slot_index;
 
+		{
+			let mut last_slot_index = self.last_slot_index_mut();
+			if slot > *last_slot_index {
+				*last_slot_index = slot;
+			}
+		}
+
 		// we are only interested with `ScpStExternalize`. Other messages are ignored.
 		if let ScpStatementPledges::ScpStExternalize(stmt) = &env.statement.pledges {
 			let txset_hash = get_tx_set_hash(stmt)?;
@@ -44,7 +54,6 @@ impl ScpMessageCollector {
 				// let's request the txset from Stellar Node
 				overlay_conn.send(StellarMessage::GetTxSet(txset_hash)).await?;
 
-				// check if we need to transfer the map to a file
 				self.check_write_envelopes_to_file(slot)?;
 			}
 
