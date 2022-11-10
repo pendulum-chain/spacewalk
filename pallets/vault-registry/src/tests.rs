@@ -9,7 +9,7 @@ use currency::Amount;
 use frame_support::{assert_err, assert_noop, assert_ok};
 use mocktopus::mocking::*;
 use pretty_assertions::assert_eq;
-use primitives::{VaultCurrencyPair, VaultId};
+use primitives::{StellarPublicKeyRaw, VaultCurrencyPair, VaultId};
 use security::Pallet as Security;
 use sp_arithmetic::{traits::One, FixedPointNumber, FixedU128};
 use sp_core::U256;
@@ -20,6 +20,8 @@ use sp_runtime::{
 use sp_std::convert::TryInto;
 
 type Event = crate::Event<Test>;
+
+const STELLAR_PUBLIC_KEY_DUMMY: StellarPublicKeyRaw = [1u8; 32];
 
 fn vault_id(account_id: AccountId) -> VaultId<AccountId, CurrencyId> {
 	VaultId {
@@ -71,8 +73,7 @@ fn create_vault_with_collateral(id: &DefaultVaultId<Test>, collateral: u128) {
 		.mock_safe(move |currency_id| MockResult::Return(Amount::new(collateral, currency_id)));
 	let origin = Origin::signed(id.account_id.clone());
 
-	// TODO fix me
-	// assert_ok!(VaultRegistry::register_public_key(origin.clone(), BtcPublicKey::dummy()));
+	assert_ok!(VaultRegistry::register_public_key(origin.clone(), STELLAR_PUBLIC_KEY_DUMMY));
 	assert_ok!(VaultRegistry::register_vault(origin, id.currencies.clone(), collateral));
 }
 
@@ -139,14 +140,13 @@ fn register_vault_succeeds() {
 fn registering_public_key_twice_fails() {
 	run_test(|| {
 		let origin = Origin::signed(DEFAULT_ID.account_id);
-		// TODO fix me
-		// let public_key_1 = BtcPublicKey([0u8; 33]);
-		// let public_key_2 = BtcPublicKey([1u8; 33]);
-		// assert_ok!(VaultRegistry::register_public_key(origin.clone(), public_key_1));
-		// assert_err!(
-		// 	VaultRegistry::register_public_key(origin.clone(), public_key_2),
-		// 	TestError::PublicKeyAlreadyRegistered
-		// );
+		let public_key_1: StellarPublicKeyRaw = [0u8; 32];
+		let public_key_2: StellarPublicKeyRaw = [1u8; 32];
+		assert_ok!(VaultRegistry::register_public_key(origin.clone(), public_key_1));
+		assert_err!(
+			VaultRegistry::register_public_key(origin.clone(), public_key_2),
+			TestError::PublicKeyAlreadyRegistered
+		);
 	})
 }
 
@@ -159,8 +159,7 @@ fn register_vault_fails_when_given_collateral_too_low() {
 		let collateral = 100;
 
 		let origin = Origin::signed(id.account_id);
-		// TODO fix me
-		// assert_ok!(VaultRegistry::register_public_key(origin.clone(), BtcPublicKey::dummy()));
+		assert_ok!(VaultRegistry::register_public_key(origin.clone(), STELLAR_PUBLIC_KEY_DUMMY));
 
 		let result = VaultRegistry::register_vault(origin, id.currencies.clone(), collateral);
 		assert_err!(result, TestError::InsufficientVaultCollateralAmount);
@@ -174,8 +173,7 @@ fn register_vault_fails_when_account_funds_too_low() {
 		let collateral = DEFAULT_COLLATERAL + 1;
 
 		let origin = Origin::signed(DEFAULT_ID.account_id);
-		// TODO fix me
-		// assert_ok!(VaultRegistry::register_public_key(origin.clone(), BtcPublicKey::dummy()));
+		assert_ok!(VaultRegistry::register_public_key(origin.clone(), STELLAR_PUBLIC_KEY_DUMMY));
 
 		let result = VaultRegistry::register_vault(origin, DEFAULT_ID.currencies, collateral);
 		assert_err!(result, TokensError::BalanceTooLow);

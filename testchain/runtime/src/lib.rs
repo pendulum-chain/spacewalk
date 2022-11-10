@@ -34,9 +34,10 @@ use sp_std::prelude::*;
 use sp_version::NativeVersion;
 use sp_version::RuntimeVersion;
 
+use currency::Amount;
 pub use issue::{Event as IssueEvent, IssueRequest};
+pub use module_oracle_rpc_runtime_api::BalanceWrapper;
 pub use nomination::Event as NominationEvent;
-// A few exports that help ease life for downstream crates.
 pub use primitives::{
 	self, AccountId, Balance, BlockNumber, CurrencyId, Hash, Moment, Nonce, Signature,
 	SignedFixedPoint, SignedInner, UnsignedFixedPoint, UnsignedInner,
@@ -680,6 +681,69 @@ impl_runtime_apis! {
 
 		fn get_vault_issue_requests(vault_id: AccountId) -> Vec<H256> {
 			Issue::get_issue_requests_for_vault(vault_id)
+		}
+	}
+
+	impl module_vault_registry_rpc_runtime_api::VaultRegistryApi<
+		Block,
+		VaultId,
+		Balance,
+		UnsignedFixedPoint,
+		CurrencyId,
+		AccountId,
+	> for Runtime {
+		fn get_vault_collateral(vault_id: VaultId) -> Result<BalanceWrapper<Balance>, DispatchError> {
+			let result = VaultRegistry::compute_collateral(&vault_id)?;
+			Ok(BalanceWrapper{amount:result.amount()})
+		}
+
+		fn get_vaults_by_account_id(account_id: AccountId) -> Result<Vec<VaultId>, DispatchError> {
+			VaultRegistry::get_vaults_by_account_id(account_id)
+		}
+
+		fn get_vault_total_collateral(vault_id: VaultId) -> Result<BalanceWrapper<Balance>, DispatchError> {
+			let result = VaultRegistry::get_backing_collateral(&vault_id)?;
+			Ok(BalanceWrapper{amount:result.amount()})
+		}
+
+		fn get_premium_redeem_vaults() -> Result<Vec<(VaultId, BalanceWrapper<Balance>)>, DispatchError> {
+			let result = VaultRegistry::get_premium_redeem_vaults()?;
+			Ok(result.iter().map(|v| (v.0.clone(), BalanceWrapper{amount:v.1.amount()})).collect())
+		}
+
+		fn get_vaults_with_issuable_tokens() -> Result<Vec<(VaultId, BalanceWrapper<Balance>)>, DispatchError> {
+			let result = VaultRegistry::get_vaults_with_issuable_tokens()?;
+			Ok(result.into_iter().map(|v| (v.0, BalanceWrapper{amount:v.1.amount()})).collect())
+		}
+
+		fn get_vaults_with_redeemable_tokens() -> Result<Vec<(VaultId, BalanceWrapper<Balance>)>, DispatchError> {
+			let result = VaultRegistry::get_vaults_with_redeemable_tokens()?;
+			Ok(result.into_iter().map(|v| (v.0, BalanceWrapper{amount:v.1.amount()})).collect())
+		}
+
+		fn get_issuable_tokens_from_vault(vault: VaultId) -> Result<BalanceWrapper<Balance>, DispatchError> {
+			let result = VaultRegistry::get_issuable_tokens_from_vault(&vault)?;
+			Ok(BalanceWrapper{amount:result.amount()})
+		}
+
+		fn get_collateralization_from_vault(vault: VaultId, only_issued: bool) -> Result<UnsignedFixedPoint, DispatchError> {
+			VaultRegistry::get_collateralization_from_vault(vault, only_issued)
+		}
+
+		fn get_collateralization_from_vault_and_collateral(vault: VaultId, collateral: BalanceWrapper<Balance>, only_issued: bool) -> Result<UnsignedFixedPoint, DispatchError> {
+			let amount = Amount::new(collateral.amount, vault.collateral_currency());
+			VaultRegistry::get_collateralization_from_vault_and_collateral(vault, &amount, only_issued)
+		}
+
+		fn get_required_collateral_for_wrapped(amount_btc: BalanceWrapper<Balance>, currency_id: CurrencyId) -> Result<BalanceWrapper<Balance>, DispatchError> {
+			let amount_btc = Amount::new(amount_btc.amount, GetWrappedCurrencyId::get());
+			let result = VaultRegistry::get_required_collateral_for_wrapped(&amount_btc, currency_id)?;
+			Ok(BalanceWrapper{amount:result.amount()})
+		}
+
+		fn get_required_collateral_for_vault(vault_id: VaultId) -> Result<BalanceWrapper<Balance>, DispatchError> {
+			let result = VaultRegistry::get_required_collateral_for_vault(vault_id)?;
+			Ok(BalanceWrapper{amount:result.amount()})
 		}
 	}
 

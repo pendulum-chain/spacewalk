@@ -12,7 +12,6 @@ use sp_runtime::{
 	traits::{CheckedAdd, CheckedSub, Zero},
 	ArithmeticError,
 };
-use sp_std::collections::btree_set::BTreeSet;
 
 use currency::Amount;
 use primitives::StellarPublicKeyRaw;
@@ -392,7 +391,7 @@ impl<T: Config> RichVault<T> {
 
 	pub fn get_secure_threshold(&self) -> Result<UnsignedFixedPoint<T>, DispatchError> {
 		let global_threshold = Pallet::<T>::secure_collateral_threshold(&self.id().currencies)
-			.ok_or(Error::<T>::ThresholdNotSet)?;
+			.ok_or(Error::<T>::GlobalThresholdNotSet)?;
 		Ok(self
 			.data
 			.secure_collateral_threshold
@@ -583,7 +582,7 @@ impl<T: Config> RichVault<T> {
 		// this value is the amount of collateral held for the issued + to_be_issued
 		let liquidated_collateral = self.get_used_collateral(
 			Pallet::<T>::liquidation_collateral_threshold(&self.data.id.currencies)
-				.ok_or(Error::<T>::ThresholdNotSet)?,
+				.ok_or(Error::<T>::LiquidationCollateralThresholdNotSet)?,
 		)?;
 
 		// Clear `to_be_replaced` tokens, since the vault will have no more `issued` or
@@ -660,27 +659,17 @@ impl<T: Config> RichVault<T> {
 
 	fn new_deposit_public_key(
 		&self,
-		secure_id: H256,
+		_secure_id: H256,
 	) -> Result<StellarPublicKeyRaw, DispatchError> {
-		// TODO fix me
-		// let vault_public_key = Pallet::<T>::get_bitcoin_public_key(&self.data.id.account_id)?;
-		// let vault_public_key = vault_public_key
-		// 	.new_deposit_public_key(secure_id)
-		// 	.map_err(|_| Error::<T>::InvalidPublicKey)?;
-
-		let vault_public_key: StellarPublicKeyRaw = [0u8; 32];
-		Ok(vault_public_key)
+		// The new deposit public key will always be the same Vault Public key.
+		Pallet::<T>::get_stellar_public_key(&self.data.id.account_id)
 	}
 
 	pub(crate) fn new_deposit_address(
 		&mut self,
 		secure_id: H256,
 	) -> Result<StellarPublicKeyRaw, DispatchError> {
-		let public_key = self.new_deposit_public_key(secure_id)?;
-		// let btc_address = BtcAddress::P2WPKHv0(public_key.to_hash());
-		let stellar_address: StellarPublicKeyRaw = [0; 32];
-		// TODO change this to a stellar address
-		Ok(stellar_address)
+		self.new_deposit_public_key(secure_id)
 	}
 
 	fn update<F>(&mut self, func: F) -> DispatchResult

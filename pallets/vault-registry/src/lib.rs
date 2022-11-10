@@ -15,23 +15,13 @@ use frame_support::{
 	traits::Get,
 	transactional, PalletId,
 };
-use frame_system::{
-	ensure_signed,
-	offchain::{SendTransactionTypes, SubmitTransaction},
-};
+use frame_system::offchain::{SendTransactionTypes, SubmitTransaction};
 #[cfg(test)]
 use mocktopus::macros::mockable;
-use scale_info::TypeInfo;
 use sp_core::{H256, U256};
 #[cfg(feature = "std")]
 use sp_runtime::traits::AtLeast32BitUnsigned;
-use sp_runtime::{
-	traits::*,
-	transaction_validity::{
-		InvalidTransaction, TransactionSource, TransactionValidity, ValidTransaction,
-	},
-	ArithmeticError, FixedPointNumber, FixedPointOperand,
-};
+use sp_runtime::{traits::*, ArithmeticError, FixedPointNumber, FixedPointOperand};
 use sp_std::{
 	convert::{TryFrom, TryInto},
 	fmt::Debug,
@@ -257,7 +247,7 @@ pub mod pallet {
 			Ok(().into())
 		}
 
-		/// Registers a new Bitcoin address for the vault.
+		/// Registers a new Stellar address for the vault.
 		///
 		/// # Arguments
 		/// * `public_key` - the BTC public key of the vault to update
@@ -270,11 +260,11 @@ pub mod pallet {
 			let account_id = ensure_signed(origin)?;
 
 			ensure!(
-				!VaultBitcoinPublicKey::<T>::get(&account_id).is_some(),
+				!VaultStellarPublicKey::<T>::get(&account_id).is_some(),
 				Error::<T>::PublicKeyAlreadyRegistered
 			);
 
-			VaultBitcoinPublicKey::<T>::insert(&account_id, &public_key);
+			VaultStellarPublicKey::<T>::insert(&account_id, &public_key);
 
 			Self::deposit_event(Event::<T>::UpdatePublicKey { account_id, public_key });
 			Ok(().into())
@@ -335,7 +325,7 @@ pub mod pallet {
 			let vault = Self::get_vault_from_id(&vault_id)?;
 			let liquidation_threshold =
 				Self::liquidation_collateral_threshold(&vault_id.currencies)
-					.ok_or(Error::<T>::ThresholdNotSet)?;
+					.ok_or(Error::<T>::LiquidationCollateralThresholdNotSet)?;
 			if Self::is_vault_below_liquidation_threshold(&vault, liquidation_threshold)? {
 				Self::liquidate_vault(&vault_id)?;
 				Ok(().into())
@@ -585,8 +575,6 @@ pub mod pallet {
 		VaultAlreadyRegistered,
 		/// The specified vault does not exist.
 		VaultNotFound,
-		/// The Bitcoin Address has already been registered
-		ReservedDepositAddress,
 		/// Attempted to liquidate a vault that is not undercollateralized.
 		VaultNotBelowLiquidationThreshold,
 		/// Deposit address could not be generated with the given public key.
@@ -599,9 +587,9 @@ pub mod pallet {
 		VaultLiquidated,
 		/// Vault must be liquidated.
 		VaultNotRecoverable,
-		/// No bitcoin public key is registered for the vault.
-		NoBitcoinPublicKey,
-		/// A bitcoin public key was already registered for this account.
+		/// No Stellar public key is registered for the vault.
+		NoStellarPublicKey,
+		/// A Stellar public key was already registered for this account.
 		PublicKeyAlreadyRegistered,
 
 		// Errors used exclusively in RPC functions
@@ -615,12 +603,21 @@ pub mod pallet {
 		InvalidCurrency,
 
 		/// Threshold was not found for the given currency
-		ThresholdNotSet,
+		GlobalThresholdNotSet,
+
+		/// Threshold was not found for the given currency
+		LiquidationCollateralThresholdNotSet,
+
+		/// Threshold was not found for the given currency
+		PremiumRedeemThresholdNotSet,
+
+		/// Threshold was not found for the given currency
+		SecureCollateralThresholdNotSet,
+
 		/// Ceiling was not found for the given currency
 		CeilingNotSet,
 		/// Vault attempted to set secure threshold below the global secure threshold
 		ThresholdNotAboveGlobalThreshold,
-
 		/// Unable to convert value
 		TryIntoIntError,
 
@@ -688,7 +685,7 @@ pub mod pallet {
 
 	/// Mapping of Vaults, using the respective Vault account identifier as key.
 	#[pallet::storage]
-	pub(super) type VaultBitcoinPublicKey<T: Config> =
+	pub(super) type VaultStellarPublicKey<T: Config> =
 		StorageMap<_, Blake2_128Concat, T::AccountId, StellarPublicKeyRaw, OptionQuery>;
 
 	/// Mapping of reserved BTC addresses to the registered account
@@ -773,15 +770,15 @@ impl<T: Config> Pallet<T> {
 	) -> DispatchResult {
 		ensure!(
 			SecureCollateralThreshold::<T>::contains_key(&vault_id.currencies),
-			Error::<T>::ThresholdNotSet
+			Error::<T>::SecureCollateralThresholdNotSet
 		);
 		ensure!(
 			PremiumRedeemThreshold::<T>::contains_key(&vault_id.currencies),
-			Error::<T>::ThresholdNotSet
+			Error::<T>::PremiumRedeemThresholdNotSet
 		);
 		ensure!(
 			LiquidationCollateralThreshold::<T>::contains_key(&vault_id.currencies),
-			Error::<T>::ThresholdNotSet
+			Error::<T>::LiquidationCollateralThresholdNotSet
 		);
 		ensure!(
 			MinimumCollateralVault::<T>::contains_key(vault_id.collateral_currency()),
@@ -793,7 +790,7 @@ impl<T: Config> Pallet<T> {
 		);
 
 		// make sure a public key is registered
-		let _ = Self::get_bitcoin_public_key(&vault_id.account_id)?;
+		let _ = Self::get_stellar_public_key(&vault_id.account_id)?;
 
 		let collateral_currency = vault_id.currencies.collateral;
 		let amount = Amount::new(collateral, collateral_currency);
@@ -820,7 +817,7 @@ impl<T: Config> Pallet<T> {
 	) -> DispatchResult {
 		if let Some(some_new_threshold) = new_threshold {
 			let global_threshold = Self::secure_collateral_threshold(&vault_id.currencies)
-				.ok_or(Error::<T>::ThresholdNotSet)?;
+				.ok_or(Error::<T>::GlobalThresholdNotSet)?;
 			ensure!(
 				some_new_threshold.gt(&global_threshold),
 				Error::<T>::ThresholdNotAboveGlobalThreshold
@@ -837,10 +834,10 @@ impl<T: Config> Pallet<T> {
 		vault.get_secure_threshold()
 	}
 
-	pub fn get_bitcoin_public_key(
+	pub fn get_stellar_public_key(
 		account_id: &T::AccountId,
 	) -> Result<StellarPublicKeyRaw, DispatchError> {
-		VaultBitcoinPublicKey::<T>::get(account_id).ok_or(Error::<T>::NoBitcoinPublicKey.into())
+		VaultStellarPublicKey::<T>::get(account_id).ok_or(Error::<T>::NoStellarPublicKey.into())
 	}
 
 	pub fn get_vault_from_id(
@@ -1106,7 +1103,8 @@ impl<T: Config> Pallet<T> {
 		Ok(())
 	}
 
-	/// Registers a btc address
+	/// Registers a stellar address. Actually does nothing because we don't use deposit addresses on
+	/// Stellar.
 	///
 	/// # Arguments
 	/// * `issue_id` - secure id for generating deposit address
@@ -1115,12 +1113,12 @@ impl<T: Config> Pallet<T> {
 		issue_id: H256,
 	) -> Result<StellarPublicKeyRaw, DispatchError> {
 		let mut vault = Self::get_active_rich_vault_from_id(&vault_id)?;
-		let btc_address = vault.new_deposit_address(issue_id)?;
+		let stellar_address = vault.new_deposit_address(issue_id)?;
 		Self::deposit_event(Event::<T>::RegisterAddress {
 			vault_id: vault.id(),
-			address: btc_address,
+			address: stellar_address,
 		});
-		Ok(btc_address)
+		Ok(stellar_address)
 	}
 
 	/// returns the amount of tokens that a vault can request to be replaced on top of the
@@ -1677,7 +1675,7 @@ impl<T: Config> Pallet<T> {
 		vault_id: &DefaultVaultId<T>,
 	) -> Result<bool, DispatchError> {
 		let threshold = Self::premium_redeem_threshold(&vault_id.currencies)
-			.ok_or(Error::<T>::ThresholdNotSet)?;
+			.ok_or(Error::<T>::PremiumRedeemThresholdNotSet)?;
 		Self::is_vault_below_threshold(vault_id, threshold)
 	}
 
@@ -1920,8 +1918,8 @@ impl<T: Config> Pallet<T> {
 	) -> Result<Amount<T>, DispatchError> {
 		let currency_pair =
 			VaultCurrencyPair { collateral: currency_id, wrapped: amount_wrapped.currency() };
-		let threshold =
-			Self::secure_collateral_threshold(&currency_pair).ok_or(Error::<T>::ThresholdNotSet)?;
+		let threshold = Self::secure_collateral_threshold(&currency_pair)
+			.ok_or(Error::<T>::SecureCollateralThresholdNotSet)?;
 		let collateral = Self::get_required_collateral_for_wrapped_with_threshold(
 			amount_wrapped,
 			threshold,
@@ -1963,10 +1961,10 @@ impl<T: Config> Pallet<T> {
 		// MaxNominationRatio = (SecureCollateralThreshold / PremiumRedeemThreshold) - 1)
 		// It denotes the maximum amount of collateral that can be nominated to a particular Vault.
 		// Its effect is to minimise the impact on collateralization of nominator withdrawals.
-		let secure_collateral_threshold =
-			Self::secure_collateral_threshold(currency_pair).ok_or(Error::<T>::ThresholdNotSet)?;
-		let premium_redeem_threshold =
-			Self::premium_redeem_threshold(currency_pair).ok_or(Error::<T>::ThresholdNotSet)?;
+		let secure_collateral_threshold = Self::secure_collateral_threshold(currency_pair)
+			.ok_or(Error::<T>::SecureCollateralThresholdNotSet)?;
+		let premium_redeem_threshold = Self::premium_redeem_threshold(currency_pair)
+			.ok_or(Error::<T>::PremiumRedeemThresholdNotSet)?;
 		Ok(secure_collateral_threshold
 			.checked_div(&premium_redeem_threshold)
 			.ok_or(ArithmeticError::Underflow)?
@@ -2079,7 +2077,7 @@ impl<T: Config> Pallet<T> {
 	/// inverse of calculate_max_wrapped_from_collateral_for_threshold
 	///
 	/// # Arguments
-	/// * `amount_btc` - the amount of wrapped
+	/// * `amount` - the amount of wrapped
 	/// * `threshold` - the required secure collateral threshold
 	fn get_required_collateral_for_wrapped_with_threshold(
 		wrapped: &Amount<T>,
@@ -2102,8 +2100,8 @@ impl<T: Config> Pallet<T> {
 		secure_id: H256,
 	) -> Result<StellarPublicKeyRaw, DispatchError> {
 		let mut vault = Self::get_active_rich_vault_from_id(vault_id)?;
-		let btc_address = vault.new_deposit_address(secure_id)?;
-		Ok(btc_address)
+		let stellar_address = vault.new_deposit_address(secure_id)?;
+		Ok(stellar_address)
 	}
 
 	#[cfg(feature = "integration-tests")]

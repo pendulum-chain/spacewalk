@@ -19,7 +19,6 @@ use sp_std::{
 	prelude::*,
 	str,
 	str::from_utf8,
-	vec,
 	vec::Vec,
 };
 
@@ -466,12 +465,12 @@ create_currency_id! {
 		DOT("Polkadot", 10) = 0,
 		IBTC("interBTC", 8) = 1,
 		INTR("Interlay", 10) = 2,
-		PEN("Pendulum", 10) = 3,
 
-		KSM("Kusama", 12) = 10,
-		KBTC("kBTC", 8) = 11,
-		KINT("Kintsugi", 12) = 12,
-		AMPE("Amplitude", 12) = 13,
+		KSM("Kusama", 10) = 10,
+		PEN("Pendulum", 10) = 11,
+		AMPE("Amplitude", 12) = 12,
+		KBTC("kBTC", 8) = 13,
+		KINT("Kintsugi", 12) = 14,
 	}
 }
 
