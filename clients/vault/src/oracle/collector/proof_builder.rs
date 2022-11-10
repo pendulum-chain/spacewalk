@@ -69,7 +69,7 @@ impl ScpMessageCollector {
 		if fetch_more{
 			let last_slot_index = *self.last_slot_index();
 			let action_sender = self.action_sender.clone();
-			
+			let rw_lock = self.envelopes_map_clone();
 			tokio::spawn(async move { 
 
 				if last_slot_index - MAX_SLOT_TO_REMEMBER < slot {
@@ -94,14 +94,13 @@ impl ScpMessageCollector {
 							let slot_scp_envelopes = scp_entry_v0.clone().ledger_messages.messages;
 							let vec_scp = slot_scp_envelopes.get_vec().clone(); //TODO store envelopes_map or send via mpsc
 							
-							// let mut envelopes_map = self.envelopes_map_mut();
+							
+							let mut envelopes_map = rw_lock.write();
 
-							// if let Some(value) = envelopes_map.get_mut(&slot) {
-							// 	value.push(env);
-							// } else {
-							// 	tracing::info!("Adding received SCP envelopes for slot {}", slot);
-							// 	envelopes_map.insert(slot, vec![env]);
-							// }
+							if let None = envelopes_map.get_mut(&slot) {
+								tracing::info!("Adding archived SCP envelopes for slot {}", slot);
+								envelopes_map.insert(slot, vec_scp);
+							}
 						}
 					}
 				}
