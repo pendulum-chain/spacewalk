@@ -1,3 +1,4 @@
+use crate::oracle::ActorMessage;
 use stellar_relay::sdk::{
 	compound_types::UnlimitedVarArray,
 	types::{ScpEnvelope, TransactionSet},
@@ -6,8 +7,9 @@ use stellar_relay::sdk::{
 use crate::oracle::{ActorMessage, ScpAchiveStorage};
 
 use crate::oracle::{
-	constants::{get_min_externalized_messages, MAX_SLOT_TO_REMEMBER}, traits::FileHandler, EnvelopesFileHandler, 
-	ScpMessageCollector, Slot, TxHash, TxSetsFileHandler,
+	constants::{get_min_externalized_messages, MAX_SLOT_TO_REMEMBER},
+	traits::FileHandler,
+	EnvelopesFileHandler, ScpMessageCollector, Slot, TxHash, TxSetsFileHandler,
 };
 
 /// Determines whether the data retrieved is from the current map or from a file.
@@ -75,7 +77,7 @@ impl ScpMessageCollector {
 					.await;
 				}
 				else{
-					let scp = ScpAchiveStorage::get_scp_archive(30000000).await.unwrap();
+					let scp = ScpAchiveStorage::get_scp_archive(slot).await.unwrap();
 					println!("{:#?}", scp);
 				}
 				

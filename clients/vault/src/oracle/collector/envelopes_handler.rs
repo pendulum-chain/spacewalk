@@ -1,7 +1,8 @@
 use crate::oracle::{
 	collector::{get_tx_set_hash, ScpMessageCollector},
 	constants::{
-		get_min_externalized_messages, MAX_DISTANCE_FROM_CURRENT_SLOT, MAX_SLOTS_PER_FILE, MAX_SLOT_TO_REMEMBER
+		get_min_externalized_messages, MAX_DISTANCE_FROM_CURRENT_SLOT, MAX_SLOTS_PER_FILE,
+		MAX_SLOT_TO_REMEMBER,
 	},
 	errors::Error,
 	storage::{traits::FileHandlerExt, EnvelopesFileHandler},
@@ -10,8 +11,11 @@ use crate::oracle::{
 use parking_lot::RwLock;
 use std::sync::Arc;
 use stellar_relay::{
-	sdk::types::{ScpEnvelope, ScpStatementPledges, StellarMessage},
-	StellarOverlayConnection, xdr_converter
+	sdk::{
+		types::{ScpEnvelope, ScpStatementPledges, StellarMessage},
+		XdrCodec,
+	},
+	xdr_converter, StellarOverlayConnection,
 };
 use stellar_relay::sdk::XdrCodec;
 // Handling SCPEnvelopes
@@ -37,7 +41,6 @@ impl ScpMessageCollector {
 				*last_slot_index = slot;
 			}
 		}
-		
 
 		// we are only interested with `ScpStExternalize`. Other messages are ignored.
 		if let ScpStatementPledges::ScpStExternalize(stmt) = &env.statement.pledges {
