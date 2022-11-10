@@ -24,7 +24,6 @@ benchmarks! {
 			name: bounded_vec.clone(),
 			public_key: bounded_vec.clone(),
 			organization_id: T::OrganizationId::default(),
-			public_network: false
 		};
 
 		let validators = vec![validator; 255];
@@ -32,7 +31,6 @@ benchmarks! {
 		let organization: OrganizationOf<T> = Organization {
 			id: T::OrganizationId::default(),
 			name: bounded_vec.clone(),
-			public_network: false
 		};
 
 		let organizations = vec![organization; 255];

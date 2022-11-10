@@ -96,6 +96,8 @@ pub mod pallet {
 			+ FixedPointOperand
 			+ Into<U256>
 			+ TryFrom<U256>
+			+ TryFrom<i64>
+			+ TryInto<i64>
 			+ MaybeSerializeDeserialize
 			+ FullCodec
 			+ Copy

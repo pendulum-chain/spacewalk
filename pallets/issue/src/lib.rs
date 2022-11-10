@@ -207,7 +207,8 @@ pub mod pallet {
 		///
 		/// * `origin` - sender of the transaction
 		/// * `issue_id` - identifier of issue request as output from request_issue
-		/// * `transaction_envelope_xdr` - the XDR representation of the transaction envelope
+		/// * `transaction_envelope_xdr_encoded` - the XDR representation of the transaction
+		///   envelope
 		/// * `externalized_envelopes_encoded` - the XDR representation of the externalized
 		///   envelopes
 		/// * `transaction_set_encoded` - the XDR representation of the transaction set
@@ -272,7 +273,7 @@ impl<T: Config> Pallet<T> {
 	fn _request_issue(
 		requester: T::AccountId,
 		amount_requested: BalanceOf<T>,
-		asset: CurrencyId<T>,
+		_asset: CurrencyId<T>,
 		vault_id: DefaultVaultId<T>,
 	) -> Result<H256, DispatchError> {
 		// TODO change this to use the provided asset once multi-collateral is implemented

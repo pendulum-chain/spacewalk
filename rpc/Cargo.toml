@@ -12,6 +12,8 @@ jsonrpsee = {version = "0.13.0", features = ["server", "macros"]}
 primitives = {package = "spacewalk-primitives", path = "../primitives"}
 
 module-issue-rpc = {path = "../pallets/issue/rpc"}
+module-redeem-rpc = {path = "../pallets/redeem/rpc"}
+module-replace-rpc = {path = "../pallets/replace/rpc"}
 module-vault-registry-rpc = {path = "../pallets/vault-registry/rpc"}
 
 # Substrate dependencies

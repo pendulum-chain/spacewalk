@@ -4192,6 +4192,50 @@ dependencies = [
 ]
 
 [[package]]
+name = "module-redeem-rpc"
+version = "1.2.0"
+dependencies = [
+ "jsonrpsee 0.13.1",
+ "module-redeem-rpc-runtime-api",
+ "parity-scale-codec",
+ "sp-api",
+ "sp-blockchain",
+ "sp-runtime",
+]
+
+[[package]]
+name = "module-redeem-rpc-runtime-api"
+version = "1.2.0"
+dependencies = [
+ "frame-support",
+ "parity-scale-codec",
+ "sp-api",
+ "sp-std 4.0.0 (git+https://github.com/paritytech/substrate?branch=polkadot-v0.9.24)",
+]
+
+[[package]]
+name = "module-replace-rpc"
+version = "1.2.0"
+dependencies = [
+ "jsonrpsee 0.13.1",
+ "module-replace-rpc-runtime-api",
+ "parity-scale-codec",
+ "sp-api",
+ "sp-blockchain",
+ "sp-runtime",
+]
+
+[[package]]
+name = "module-replace-rpc-runtime-api"
+version = "1.2.0"
+dependencies = [
+ "frame-support",
+ "parity-scale-codec",
+ "sp-api",
+ "sp-std 4.0.0 (git+https://github.com/paritytech/substrate?branch=polkadot-v0.9.24)",
+]
+
+[[package]]
 name = "module-vault-registry-rpc"
 version = "0.3.0"
 dependencies = [
@@ -5769,6 +5813,37 @@ dependencies = [
 ]
 
 [[package]]
+name = "redeem"
+version = "1.0.0"
+dependencies = [
+ "currency",
+ "fee",
+ "frame-benchmarking",
+ "frame-support",
+ "frame-system",
+ "mocktopus",
+ "oracle",
+ "orml-tokens",
+ "orml-traits",
+ "pallet-timestamp",
+ "parity-scale-codec",
+ "reward",
+ "scale-info",
+ "security",
+ "serde",
+ "sp-arithmetic",
+ "sp-core",
+ "sp-io",
+ "sp-runtime",
+ "sp-std 4.0.0 (git+https://github.com/paritytech/substrate?branch=polkadot-v0.9.24)",
+ "spacewalk-primitives",
+ "staking",
+ "stellar-relay",
+ "substrate-stellar-sdk 0.2.3",
+ "vault-registry",
+]
+
+[[package]]
 name = "redox_syscall"
 version = "0.2.16"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -5864,6 +5939,38 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "3acd125665422973a33ac9d3dd2df85edad0f4ae9b00dafb1a05e43a9f5ef8e7"
 dependencies = [
  "winapi",
+]
+
+[[package]]
+name = "replace"
+version = "1.0.0"
+dependencies = [
+ "currency",
+ "fee",
+ "frame-benchmarking",
+ "frame-support",
+ "frame-system",
+ "mocktopus",
+ "nomination",
+ "oracle",
+ "orml-tokens",
+ "orml-traits",
+ "pallet-timestamp",
+ "parity-scale-codec",
+ "reward",
+ "scale-info",
+ "security",
+ "serde",
+ "sp-arithmetic",
+ "sp-core",
+ "sp-io",
+ "sp-runtime",
+ "sp-std 4.0.0 (git+https://github.com/paritytech/substrate?branch=polkadot-v0.9.24)",
+ "spacewalk-primitives",
+ "staking",
+ "stellar-relay",
+ "substrate-stellar-sdk 0.2.3",
+ "vault-registry",
 ]
 
 [[package]]
@@ -8128,6 +8235,8 @@ dependencies = [
  "jsonrpc-core",
  "jsonrpsee 0.13.1",
  "module-issue-rpc",
+ "module-redeem-rpc",
+ "module-replace-rpc",
  "module-vault-registry-rpc",
  "pallet-transaction-payment-rpc",
  "sc-rpc",
@@ -8162,6 +8271,8 @@ dependencies = [
  "mocktopus",
  "module-issue-rpc-runtime-api",
  "module-oracle-rpc-runtime-api",
+ "module-redeem-rpc-runtime-api",
+ "module-replace-rpc-runtime-api",
  "module-vault-registry-rpc-runtime-api",
  "nomination",
  "oracle",
@@ -8177,6 +8288,8 @@ dependencies = [
  "pallet-transaction-payment-rpc-runtime-api",
  "parity-scale-codec",
  "pretty_assertions",
+ "redeem",
+ "replace",
  "reward",
  "scale-info",
  "security",
@@ -8320,6 +8433,7 @@ name = "stellar-relay"
 version = "1.0.0"
 dependencies = [
  "base64",
+ "currency",
  "frame-benchmarking",
  "frame-support",
  "frame-system",

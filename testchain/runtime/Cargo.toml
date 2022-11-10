@@ -56,6 +56,8 @@ fee = {path = "../../pallets/fee", default-features = false}
 issue = {path = "../../pallets/issue", default-features = false}
 nomination = {path = "../../pallets/nomination", default-features = false}
 oracle = {path = "../../pallets/oracle", default-features = false}
+redeem = {path = "../../pallets/redeem", default-features = false}
+replace = {path = "../../pallets/replace", default-features = false}
 reward = {path = "../../pallets/reward", default-features = false}
 security = {path = "../../pallets/security", default-features = false}
 staking = {path = "../../pallets/staking", default-features = false}
@@ -64,6 +66,8 @@ vault-registry = {path = "../../pallets/vault-registry", default-features = fals
 
 module-issue-rpc-runtime-api = {path = "../../pallets/issue/rpc/runtime-api", default-features = false}
 module-oracle-rpc-runtime-api = {path = "../../pallets/oracle/rpc/runtime-api", default-features = false}
+module-redeem-rpc-runtime-api = {path = "../../pallets/redeem/rpc/runtime-api", default-features = false}
+module-replace-rpc-runtime-api = {path = "../../pallets/replace/rpc/runtime-api", default-features = false}
 module-vault-registry-rpc-runtime-api = {path = "../../pallets/vault-registry/rpc/runtime-api", default-features = false}
 
 primitives = {package = "spacewalk-primitives", path = "../../primitives", default-features = false}
@@ -91,17 +95,28 @@ runtime-benchmarks = [
   "issue/runtime-benchmarks",
   "nomination/runtime-benchmarks",
   "oracle/runtime-benchmarks",
+  "redeem/runtime-benchmarks",
+  "replace/runtime-benchmarks",
   "stellar-relay/runtime-benchmarks",
   "vault-registry/runtime-benchmarks",
 ]
 std = [
   "codec/std",
-  "getrandom/std",
-  "scale-info/std",
+  "currency/std",
+  "fee/std",
   "frame-executive/std",
   "frame-support/std",
   "frame-system-rpc-runtime-api/std",
   "frame-system/std",
+  "getrandom/std",
+  "issue/std",
+  "module-issue-rpc-runtime-api/std",
+  "module-oracle-rpc-runtime-api/std",
+  "module-redeem-rpc-runtime-api/std",
+  "module-replace-rpc-runtime-api/std",
+  "module-vault-registry-rpc-runtime-api/std",
+  "nomination/std",
+  "oracle/std",
   "orml-currencies/std",
   "orml-tokens/std",
   "orml-traits/std",
@@ -113,19 +128,11 @@ std = [
   "pallet-transaction-payment-rpc-runtime-api/std",
   "pallet-transaction-payment/std",
   "primitives/std",
-  "currency/std",
-  "fee/std",
-  "issue/std",
-  "nomination/std",
-  "oracle/std",
+  "redeem/std",
+  "replace/std",
   "reward/std",
+  "scale-info/std",
   "security/std",
-  "staking/std",
-  "stellar-relay/std",
-  "vault-registry/std",
-  "module-issue-rpc-runtime-api/std",
-  "module-vault-registry-rpc-runtime-api/std",
-  "module-oracle-rpc-runtime-api/std",
   "sp-api/std",
   "sp-block-builder/std",
   "sp-consensus-aura/std",
@@ -138,4 +145,7 @@ std = [
   "sp-std/std",
   "sp-transaction-pool/std",
   "sp-version/std",
+  "staking/std",
+  "stellar-relay/std",
+  "vault-registry/std",
 ]
