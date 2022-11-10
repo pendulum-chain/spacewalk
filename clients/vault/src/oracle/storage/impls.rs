@@ -1,11 +1,12 @@
 use std::{
 	fs::{create_dir_all, File},
-	io::Write,
+	io::{Write, Read},
 	str::Split,
 };
+use sp_core::hexdisplay::AsBytesRef;
 use stellar_relay::sdk::{
-	compound_types::UnlimitedVarArray,
-	types::{ScpEnvelope, TransactionSet},
+	compound_types::{UnlimitedVarArray, XdrArchive},
+	types::{ScpEnvelope, TransactionSet, ScpHistoryEntry},
 };
 
 use crate::oracle::{
@@ -14,6 +15,8 @@ use crate::oracle::{
 };
 
 use stellar_relay::sdk::XdrCodec;
+
+use super::ScpAchiveStorage;
 
 impl FileHandler<EnvelopesMap> for EnvelopesFileHandler {
 	#[cfg(test)]
@@ -150,6 +153,85 @@ impl FileHandler<TxHashMap> for TxHashesFileHandler {
 
 	fn check_slot_in_splitted_filename(slot_param: Slot, splits: &mut Split<&str>) -> bool {
 		TxSetsFileHandler::check_slot_in_splitted_filename(slot_param, splits)
+	}
+}
+
+impl ScpAchiveStorage{
+
+	pub async fn get_scp_archive(slot_index : i32) -> Result<XdrArchive::<ScpHistoryEntry>, Error>{
+		let (url, file_name) = Self::get_url(slot_index);
+		let result = Self::gz_decode_file(&file_name);
+
+		if result.is_err(){
+			let result = Self::download_file_and_save(&url, &file_name).await;
+			if result.is_ok(){
+				let data = Self::gz_decode_file(&file_name)?;
+				return Ok(Self::decode_xdr(data));
+			}
+		}
+		let data  = result.unwrap();
+		Ok(Self::decode_xdr(data))
+	}
+
+	fn decode_xdr(xdr_data : Vec<u8>) -> XdrArchive::<ScpHistoryEntry>{
+		XdrArchive::<ScpHistoryEntry>::from_xdr(xdr_data).unwrap()
+	}
+
+	async fn download_file_and_save(url : &str, file_name : &str) -> Result<(), Error>{
+		
+		let response  = reqwest::get(url).await.unwrap();
+		let content = response.bytes().await.unwrap();
+
+		let mut file = match File::create(&file_name) {
+			Err(why) => panic!("couldn't create {}", why),
+			Ok(file) => file,
+		};
+		file.write_all(content.as_bytes_ref())?;
+		Ok(())
+	}
+
+	fn gz_decode_file(path : &str)-> Result<Vec<u8>, Error>{
+		use std::io::{self, Read,BufReader};
+		use flate2::bufread::GzDecoder;
+		let bytes = Self::read_file_xdr(path)?;
+		let mut gz = GzDecoder::new(&bytes[..]);
+		let mut bytes: Vec<u8> = vec![];
+		gz.read_to_end(&mut bytes)?;
+		Ok(bytes)
+	}
+
+	fn get_url(slot_index : i32) -> (String, String){
+		let slot_index = Self::get_archive_ledger(slot_index);
+		let hex_string = Self::get_hex_string(slot_index);
+		let file_name = format!("{hex_string}.xdr");
+		let base_url = crate::oracle::constants::stellar_history_base_url;
+		let url = format!("{base_url}{}/{}/{}/scp-{file_name}.gz", &hex_string[..2],  &hex_string[2..4], &hex_string[4..6]);
+		(url, file_name)
+	}
+
+	fn get_tuples_from_ledger(slot_index : i32) -> String {
+		let hex = Self::get_hex_string(slot_index);
+		let last_part_url = format!("{} {} {}", &hex[0..1],  &hex[2..3], &hex[4..5]);
+		last_part_url
+	}
+	
+	fn get_archive_ledger(slot_index : i32) -> i32{
+		let rest = (slot_index + 1)  % 64;
+		if rest == 0{
+			return slot_index;
+		}
+		return slot_index + 64 - rest;
+	}
+
+	fn get_hex_string(slot_index : i32) -> String {
+		format!("0{:x}", slot_index)
+	}
+
+	fn read_file_xdr(filename: &str) -> Result<Vec<u8>, Error> {
+		let mut file = File::open(filename)?;
+		let mut bytes: Vec<u8> = vec![];
+		file.read_to_end(&mut bytes)?;
+		Ok(bytes)
 	}
 }
 

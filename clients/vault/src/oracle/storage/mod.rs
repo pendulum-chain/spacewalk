@@ -1,4 +1,4 @@
-mod impls;
+pub mod impls;
 pub mod traits;
 
 pub use impls::*;
@@ -13,3 +13,5 @@ pub struct TxSetsFileHandler;
 /// TODO: This is currently not being used,
 /// since it's still under discussion about how to lookup through files.
 pub struct TxHashesFileHandler;
+
+pub struct ScpAchiveStorage;

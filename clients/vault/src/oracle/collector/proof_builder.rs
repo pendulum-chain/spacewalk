@@ -3,7 +3,7 @@ use stellar_relay::sdk::{
 	types::{ScpEnvelope, TransactionSet},
 	TransactionEnvelope, XdrCodec,
 };
-use crate::oracle::ActorMessage;
+use crate::oracle::{ActorMessage, ScpAchiveStorage};
 
 use crate::oracle::{
 	constants::{get_min_externalized_messages, MAX_SLOT_TO_REMEMBER}, traits::FileHandler, EnvelopesFileHandler, 
@@ -66,13 +66,21 @@ impl ScpMessageCollector {
 		if fetch_more{
 			let last_slot_index = *self.last_slot_index();
 			let action_sender = self.action_sender.clone();
-			if last_slot_index - MAX_SLOT_TO_REMEMBER < slot {
-				tokio::spawn(async move { 
-					action_sender
+			
+			tokio::spawn(async move { 
+
+				if last_slot_index - MAX_SLOT_TO_REMEMBER < slot {
+					let result = action_sender
 					.send(ActorMessage::GetScpState { missed_slot : slot })
-					.await
-				});
-			}
+					.await;
+				}
+				else{
+					let scp = ScpAchiveStorage::get_scp_archive(30000000).await.unwrap();
+					println!("{:#?}", scp);
+				}
+				
+			});
+			
 
 			return Err(ProofStatus::LackingEnvelopes(slot))
 		}
