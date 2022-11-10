@@ -21,7 +21,7 @@ use stellar_relay_lib::{
 	node::NodeInfo,
 	sdk::{
 		network::{Network, PUBLIC_NETWORK, TEST_NETWORK},
-		SecretKey,
+		PublicKey, SecretKey,
 	},
 	ConnConfig,
 };
@@ -108,6 +108,15 @@ impl VaultService {
 		let secret = SecretKey::from_encoding(&self.config.stellar_vault_secret_key).unwrap();
 		let public_key_binary = hex::encode(secret.get_public().as_binary());
 		tracing::info!("public key binary {:?}", public_key_binary);
+
+		let pk =
+			PublicKey::from_encoding("GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN")
+				.unwrap();
+		tracing::info!("mainnet {:?}", pk.as_binary());
+		let pk =
+			PublicKey::from_encoding("GAKNDFRRWA3RPWNLTI3G4EBSD3RGNZZOY5WKWYMQ6CQTG3KIEKPYWAYC")
+				.unwrap();
+		tracing::info!("testnet {:?}", pk.as_binary());
 
 		let node_info = NodeInfo::new(19, 21, 19, "v19.1.0".to_string(), network);
 		let cfg = ConnConfig::new(tier1_node_ip, 11625, secret, 0, true, true, false);

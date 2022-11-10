@@ -168,7 +168,7 @@ pub(crate) async fn receiving_service(
 			.await
 		{
 			Ok(Ok(0)) => {
-				log::error!("peeking empty");
+				// log::error!("peeking empty");
 			},
 			Ok(Ok(_)) if lack_bytes_from_prev == 0 => {
 				retry = 0;
