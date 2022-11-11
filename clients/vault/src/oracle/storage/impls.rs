@@ -159,12 +159,13 @@ impl FileHandler<TxHashMap> for TxHashesFileHandler {
 impl ScpArchiveStorage {
 	pub async fn get_scp_archive(slot_index: i32) -> Result<XdrArchive<ScpHistoryEntry>, Error> {
 		let (url, file_name) = Self::get_url_and_file_name(slot_index);
-		let result = Self::gz_decode_file(&file_name);
+		//try to find xdr.gz file and decode. if error then download archive from horizon archive node and save
+		let result = Self::try_gz_decode_archive_file(&file_name);
 
 		if result.is_err() {
 			let result = Self::download_file_and_save(&url, &file_name).await;
 			if result.is_ok() {
-				let data = Self::gz_decode_file(&file_name)?;
+				let data = Self::try_gz_decode_archive_file(&file_name)?;
 				return Ok(Self::decode_xdr(data))
 			}
 		}
@@ -188,7 +189,7 @@ impl ScpArchiveStorage {
 		Ok(())
 	}
 
-	fn gz_decode_file(path: &str) -> Result<Vec<u8>, Error> {
+	fn try_gz_decode_archive_file(path: &str) -> Result<Vec<u8>, Error> {
 		use flate2::bufread::GzDecoder;
 		use std::io::{self, BufReader, Read};
 		let bytes = Self::read_file_xdr(path)?;
