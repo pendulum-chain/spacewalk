@@ -1,13 +1,12 @@
-use crate::{
-	deposit::poll_horizon_for_new_transactions, error::Error, redeem::listen_for_redeem_requests,
-	CHAIN_HEIGHT_POLLING_INTERVAL,
-};
 use async_trait::async_trait;
 use clap::Parser;
 use git_version::git_version;
+use tokio::time::sleep;
+
 use runtime::{SpacewalkParachain, UtilFuncs};
 use service::{wait_or_shutdown, Error as ServiceError, Service, ShutdownSender};
-use tokio::time::sleep;
+
+use crate::{error::Error, CHAIN_HEIGHT_POLLING_INTERVAL};
 
 pub const VERSION: &str = git_version!(args = ["--tags"], fallback = "unknown");
 pub const AUTHORS: &str = env!("CARGO_PKG_AUTHORS");
@@ -68,23 +67,23 @@ impl VaultService {
 			Ok(())
 		});
 
-		let deposit_listener = wait_or_shutdown(
-			self.shutdown.clone(),
-			poll_horizon_for_new_transactions(
-				self.spacewalk_parachain.clone(),
-				self.config.stellar_vault_secret_key.clone(),
-			),
-		);
+		// let deposit_listener = wait_or_shutdown(
+		// 	self.shutdown.clone(),
+		// 	poll_horizon_for_new_transactions(
+		// 		self.spacewalk_parachain.clone(),
+		// 		self.config.stellar_vault_secret_key.clone(),
+		// 	),
+		// );
 
-		// redeem handling
-		let redeem_listener = wait_or_shutdown(
-			self.shutdown.clone(),
-			listen_for_redeem_requests(
-				self.shutdown.clone(),
-				self.spacewalk_parachain.clone(),
-				self.config.stellar_vault_secret_key.clone(),
-			),
-		);
+		// // redeem handling
+		// let redeem_listener = wait_or_shutdown(
+		// 	self.shutdown.clone(),
+		// 	listen_for_redeem_requests(
+		// 		self.shutdown.clone(),
+		// 		self.spacewalk_parachain.clone(),
+		// 		self.config.stellar_vault_secret_key.clone(),
+		// 	),
+		// );
 
 		// starts all the tasks
 		tracing::info!("Starting to listen for events...");
@@ -92,9 +91,9 @@ impl VaultService {
 			// runs error listener to log errors
 			tokio::spawn(async move { err_listener.await }),
 			// listen for deposits
-			tokio::task::spawn(async move { deposit_listener.await }),
+			// tokio::task::spawn(async move { deposit_listener.await }),
 			// listen for redeem events
-			tokio::spawn(async move { redeem_listener.await }),
+			// tokio::spawn(async move { redeem_listener.await }),
 		);
 
 		Ok(())
