@@ -10,11 +10,8 @@ multi-address = []
 parachain-metadata = []
 standalone-metadata = []
 testing-utils = [
-  # "substrate-subxt/client",
-  # "substrate-subxt-client",
   "tempdir",
   "rand",
-  "subxt-client",
   "testchain",
 ]
 
@@ -44,7 +41,6 @@ sp-version = {git = "https://github.com/paritytech/substrate", branch = "polkado
 # https://github.com/interlay/subxt/tree/polkadot-v0.9.24
 #subxt = {package = "subxt", git = "https://github.com/interlay/subxt", rev = "cad1564b487f59c53840894607debf1aaae7a2f7"}
 subxt = "0.24.0"
-subxt-client = {package = "subxt-client", path = "./client", optional = true}
 
 jsonrpsee = {version = "0.15.1", features = ["macros", "jsonrpsee-types", "client", "jsonrpsee-ws-client", "jsonrpsee-client-transport"]}
 
@@ -58,5 +54,4 @@ substrate-stellar-sdk = {git = "https://github.com/pendulum-chain/substrate-stel
 
 [dev-dependencies]
 env_logger = "0.8.3"
-runtime = {path = ".", features = ["testing-utils"]}
 tempdir = "0.3.7"
