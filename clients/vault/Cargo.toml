@@ -53,6 +53,7 @@ stellar-relay = {path = "../stellar-relay" }
 
 parking_lot = "0.12.1"
 err-derive = "0.3.1"
+flate2 = "1.0"
 
 [dev-dependencies]
 mockall = "0.8.1"

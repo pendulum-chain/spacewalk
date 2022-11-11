@@ -65,6 +65,10 @@ impl ScpMessageCollector {
 		self.envelopes_map.read().len()
 	}
 
+	fn envelopes_map_clone(&self) -> Arc<RwLock<EnvelopesMap>> {
+		self.envelopes_map.clone()
+	}
+
 	fn txset_map(&self) -> RwLockReadGuard<'_, RawRwLock, TxSetMap> {
 		self.txset_map.read()
 	}

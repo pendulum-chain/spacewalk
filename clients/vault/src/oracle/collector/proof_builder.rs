@@ -1,7 +1,7 @@
-use crate::oracle::ActorMessage;
+use crate::oracle::{ActorMessage, ScpArchiveStorage};
 use stellar_relay::sdk::{
-	compound_types::UnlimitedVarArray,
-	types::{ScpEnvelope, TransactionSet},
+	compound_types::{LimitedVarArray, UnlimitedVarArray, XdrArchive},
+	types::{ScpEnvelope, ScpHistoryEntry, TransactionSet},
 	TransactionEnvelope, XdrCodec,
 };
 
@@ -10,6 +10,8 @@ use crate::oracle::{
 	traits::FileHandler,
 	EnvelopesFileHandler, ScpMessageCollector, Slot, TxHash, TxSetsFileHandler,
 };
+
+use std::convert::TryInto;
 
 /// Determines whether the data retrieved is from the current map or from a file.
 type DataFromFile<T> = (T, bool);
@@ -64,17 +66,50 @@ impl ScpMessageCollector {
 		};
 
 		if fetch_more {
-			let last_slot_index = *self.last_slot_index();
-			let action_sender = self.action_sender.clone();
-			if last_slot_index - MAX_SLOT_TO_REMEMBER < slot {
-				tokio::spawn(async move {
-					action_sender.send(ActorMessage::GetScpState { missed_slot: slot }).await
-				});
-			}
-
+			self.restore_missed_slots(slot);
 			return Err(ProofStatus::LackingEnvelopes(slot))
 		}
+
 		Ok(UnlimitedVarArray::new(vec_envelopes).unwrap_or(UnlimitedVarArray::new_empty()))
+	}
+
+	fn restore_missed_slots(&self, slot: Slot) {
+		let last_slot_index = *self.last_slot_index();
+		let action_sender = self.action_sender.clone();
+		let rw_lock = self.envelopes_map_clone();
+		tokio::spawn(async move {
+			// If the current slot is still in the range of 'remembered' slots
+			if slot > last_slot_index - MAX_SLOT_TO_REMEMBER {
+				let result =
+					action_sender.send(ActorMessage::GetScpState { missed_slot: slot }).await;
+			} else {
+				let slot_index: u32 = slot.try_into().unwrap();
+				let scp_archive: XdrArchive<ScpHistoryEntry> =
+					ScpArchiveStorage::get_scp_archive(slot.try_into().unwrap()).await.unwrap();
+
+				let value = scp_archive.get_vec().into_iter().find(|&scp_entry| {
+					if let ScpHistoryEntry::V0(scp_entry_v0) = scp_entry {
+						return scp_entry_v0.ledger_messages.ledger_seq == slot_index
+					} else {
+						return false
+					}
+				});
+
+				if let Some(i) = value {
+					if let ScpHistoryEntry::V0(scp_entry_v0) = i {
+						let slot_scp_envelopes = scp_entry_v0.clone().ledger_messages.messages;
+						let vec_scp = slot_scp_envelopes.get_vec().clone(); //TODO store envelopes_map or send via mpsc
+
+						let mut envelopes_map = rw_lock.write();
+
+						if let None = envelopes_map.get_mut(&slot) {
+							tracing::info!("Adding archived SCP envelopes for slot {}", slot);
+							envelopes_map.insert(slot, vec_scp);
+						}
+					}
+				}
+			}
+		});
 	}
 
 	/// helper method for `get_envelopes()`.

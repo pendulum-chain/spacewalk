@@ -1,11 +1,12 @@
+use sp_core::hexdisplay::AsBytesRef;
 use std::{
 	fs::{create_dir_all, File},
-	io::Write,
+	io::{Read, Write},
 	str::Split,
 };
 use stellar_relay::sdk::{
-	compound_types::UnlimitedVarArray,
-	types::{ScpEnvelope, TransactionSet},
+	compound_types::{UnlimitedVarArray, XdrArchive},
+	types::{ScpEnvelope, ScpHistoryEntry, TransactionSet},
 };
 
 use crate::oracle::{
@@ -14,6 +15,8 @@ use crate::oracle::{
 };
 
 use stellar_relay::sdk::XdrCodec;
+
+use super::ScpArchiveStorage;
 
 impl FileHandler<EnvelopesMap> for EnvelopesFileHandler {
 	#[cfg(test)]
@@ -150,6 +153,80 @@ impl FileHandler<TxHashMap> for TxHashesFileHandler {
 
 	fn check_slot_in_splitted_filename(slot_param: Slot, splits: &mut Split<&str>) -> bool {
 		TxSetsFileHandler::check_slot_in_splitted_filename(slot_param, splits)
+	}
+}
+
+impl ScpArchiveStorage {
+	pub async fn get_scp_archive(slot_index: i32) -> Result<XdrArchive<ScpHistoryEntry>, Error> {
+		let (url, file_name) = Self::get_url_and_file_name(slot_index);
+		//try to find xdr.gz file and decode. if error then download archive from horizon archive
+		// node and save
+		let result = Self::try_gz_decode_archive_file(&file_name);
+
+		if result.is_err() {
+			let result = Self::download_file_and_save(&url, &file_name).await;
+			if result.is_ok() {
+				let data = Self::try_gz_decode_archive_file(&file_name)?;
+				return Ok(Self::decode_xdr(data))
+			}
+		}
+		let data = result.unwrap();
+		Ok(Self::decode_xdr(data))
+	}
+
+	fn decode_xdr(xdr_data: Vec<u8>) -> XdrArchive<ScpHistoryEntry> {
+		XdrArchive::<ScpHistoryEntry>::from_xdr(xdr_data).unwrap()
+	}
+
+	async fn download_file_and_save(url: &str, file_name: &str) -> Result<(), Error> {
+		let response = reqwest::get(url).await.unwrap();
+		let content = response.bytes().await.unwrap();
+
+		let mut file = match File::create(&file_name) {
+			Err(why) => panic!("couldn't create {}", why),
+			Ok(file) => file,
+		};
+		file.write_all(content.as_bytes_ref())?;
+		Ok(())
+	}
+
+	fn try_gz_decode_archive_file(path: &str) -> Result<Vec<u8>, Error> {
+		use flate2::bufread::GzDecoder;
+		use std::io::{self, BufReader, Read};
+		let bytes = Self::read_file_xdr(path)?;
+		let mut gz = GzDecoder::new(&bytes[..]);
+		let mut bytes: Vec<u8> = vec![];
+		gz.read_to_end(&mut bytes)?;
+		Ok(bytes)
+	}
+
+	fn get_url_and_file_name(slot_index: i32) -> (String, String) {
+		let slot_index = Self::find_last_slot_index_in_batch(slot_index);
+		let hex_string = format!("0{:x}", slot_index);
+		let file_name = format!("{hex_string}.xdr");
+		let base_url = crate::oracle::constants::stellar_history_base_url;
+		let url = format!(
+			"{base_url}{}/{}/{}/scp-{file_name}.gz",
+			&hex_string[..2],
+			&hex_string[2..4],
+			&hex_string[4..6]
+		);
+		(url, file_name)
+	}
+
+	fn find_last_slot_index_in_batch(slot_index: i32) -> i32 {
+		let rest = (slot_index + 1) % 64;
+		if rest == 0 {
+			return slot_index
+		}
+		return slot_index + 64 - rest
+	}
+
+	fn read_file_xdr(filename: &str) -> Result<Vec<u8>, Error> {
+		let mut file = File::open(filename)?;
+		let mut bytes: Vec<u8> = vec![];
+		file.read_to_end(&mut bytes)?;
+		Ok(bytes)
 	}
 }
 
@@ -386,5 +463,30 @@ mod test {
 			let path = TxSetsFileHandler::get_path(&new_file);
 			fs::remove_file(path).expect("should be able to remove the newly added file.");
 		}
+	}
+	#[tokio::test]
+	async fn get_scp_archive_works() {
+		use super::ScpArchiveStorage;
+		use std::convert::TryInto;
+		use stellar_relay::sdk::types::ScpHistoryEntry;
+
+		let slot_index = 30511500;
+
+		let scp_archive = ScpArchiveStorage::get_scp_archive(slot_index)
+			.await
+			.expect("should find the archive");
+
+		let slot_index_u32: u32 = slot_index.try_into().unwrap();
+		scp_archive
+			.get_vec()
+			.into_iter()
+			.find(|&scp_entry| {
+				if let ScpHistoryEntry::V0(scp_entry_v0) = scp_entry {
+					return scp_entry_v0.ledger_messages.ledger_seq == slot_index_u32
+				} else {
+					return false
+				}
+			})
+			.expect("slot index should be in archive");
 	}
 }
