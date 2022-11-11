@@ -46,7 +46,7 @@ sp-version = {git = "https://github.com/paritytech/substrate", branch = "polkado
 subxt = "0.24.0"
 subxt-client = {package = "subxt-client", path = "./client", optional = true}
 
-jsonrpsee = {version = "0.10.1", features = ["macros", "jsonrpsee-types", "client", "jsonrpsee-ws-client", "jsonrpsee-client-transport"]}
+jsonrpsee = {version = "0.15.1", features = ["macros", "jsonrpsee-types", "client", "jsonrpsee-ws-client", "jsonrpsee-client-transport"]}
 
 # Dependencies for the testing utils for integration tests
 rand = {version = "0.7", optional = true}

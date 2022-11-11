@@ -3,7 +3,7 @@
 use crate::{SpacewalkParachain, SpacewalkSigner};
 use futures::{future::Either, pin_mut, Future, FutureExt, SinkExt, StreamExt};
 use std::time::Duration;
-use subxt::Event;
+use subxt::events::StaticEvent as Event;
 use subxt_client::{
 	DatabaseSource, Ed25519Keyring, KeystoreConfig, Role, SubxtClientConfig, WasmExecutionMethod,
 	WasmtimeInstantiationStrategy,

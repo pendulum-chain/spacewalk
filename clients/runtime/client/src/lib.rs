@@ -6,7 +6,10 @@ use futures::{
 };
 use jsonrpsee_core::{
 	async_trait,
-	client::{Client as JsonRpcClient, TransportReceiverT, TransportSenderT},
+	client::{
+		Client as JsonRpcClient, ClientBuilder, ReceivedMessage, TransportReceiverT,
+		TransportSenderT,
+	},
 };
 use sc_network::config::TransportConfig;
 pub use sc_service::{
@@ -36,7 +39,7 @@ pub enum SubxtClientError {
 pub struct Sender(mpsc::UnboundedSender<String>);
 
 /// Receiving end
-pub struct Receiver(mpsc::UnboundedReceiver<String>);
+pub struct Receiver(mpsc::UnboundedReceiver<ReceivedMessage>);
 
 #[async_trait]
 impl TransportSenderT for Sender {
@@ -46,13 +49,17 @@ impl TransportSenderT for Sender {
 		self.0.send(msg).await?;
 		Ok(())
 	}
+
+	async fn send_ping(&mut self) -> Result<(), Self::Error> {
+		todo!()
+	}
 }
 
 #[async_trait]
 impl TransportReceiverT for Receiver {
 	type Error = SubxtClientError;
 
-	async fn receive(&mut self) -> Result<String, Self::Error> {
+	async fn receive(&mut self) -> Result<ReceivedMessage, Self::Error> {
 		let msg = self.0.next().await.expect("channel should be open");
 		Ok(msg)
 	}
@@ -69,7 +76,7 @@ impl SubxtClient {
 	/// Create a new client.
 	pub fn new(mut task_manager: TaskManager, rpc: RpcHandlers) -> Self {
 		let (to_back, from_front) = mpsc::unbounded();
-		let (to_front, from_back) = mpsc::unbounded();
+		let (to_front, from_back) = mpsc::unbounded::<ReceivedMessage>();
 
 		let rpc_copy = rpc.clone();
 		task::spawn(
@@ -79,10 +86,10 @@ impl SubxtClient {
 					let mut to_front = to_front.clone();
 					async move {
 						let (resp, mut stream) = rpc.rpc_query(&message).await.unwrap();
-						to_front.send(resp).await.ok();
+						to_front.send(ReceivedMessage::Text(resp)).await.ok();
 						task::spawn(async move {
 							while let Some(resp) = stream.next().await {
-								to_front.send(resp).await.ok();
+								to_front.send(ReceivedMessage::Text(resp)).await.ok();
 							}
 						});
 					}
@@ -119,10 +126,10 @@ impl Clone for SubxtClient {
 			let mut to_front = to_front.clone();
 			async move {
 				let (resp, mut stream) = rpc.rpc_query(&message).await.unwrap();
-				to_front.send(resp).await.ok();
+				to_front.send(ReceivedMessage::Text(resp)).await.ok();
 				task::spawn(async move {
 					while let Some(resp) = stream.next().await {
-						to_front.send(resp).await.ok();
+						to_front.send(ReceivedMessage::Text(resp)).await.ok();
 					}
 				});
 			}
@@ -134,7 +141,9 @@ impl Clone for SubxtClient {
 
 impl From<SubxtClient> for JsonRpcClient {
 	fn from(client: SubxtClient) -> Self {
-		(client.sender, client.receiver).into()
+		// JsonRpcClient::
+		// (client.sender, client.receiver).into()
+		ClientBuilder::default().build_with_tokio(client.sender, client.receiver)
 	}
 }
 

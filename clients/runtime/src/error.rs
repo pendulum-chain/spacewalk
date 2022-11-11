@@ -1,19 +1,23 @@
-pub use jsonrpsee::core::Error as JsonRpseeError;
+use std::{array::TryFromSliceError, fmt::Debug, io::Error as IoError, num::TryFromIntError};
 
-use crate::metadata::DispatchError;
 use codec::Error as CodecError;
+pub use jsonrpsee::core::Error as JsonRpseeError;
 use jsonrpsee::{
 	client_transport::ws::WsHandshakeError, core::error::Error as RequestError,
 	types::error::CallError,
 };
 use serde_json::Error as SerdeJsonError;
-use std::{array::TryFromSliceError, fmt::Debug, io::Error as IoError, num::TryFromIntError};
-use subxt::{sp_core::crypto::SecretStringError, BasicError, TransactionError};
+use subxt::{
+	error::{Error as BasicError, TransactionError},
+	ext::sp_core::crypto::SecretStringError,
+};
 use thiserror::Error;
 use tokio::time::error::Elapsed;
 use url::ParseError as UrlParseError;
 
-pub type SubxtError = subxt::Error<DispatchError>;
+use crate::metadata::DispatchError;
+
+pub type SubxtError = subxt::Error;
 
 #[derive(Error, Debug)]
 pub enum Error {
@@ -77,12 +81,6 @@ pub enum Error {
 	TimeElapsed(#[from] Elapsed),
 	#[error("UrlParseError: {0}")]
 	UrlParseError(#[from] UrlParseError),
-}
-
-impl From<BasicError> for Error {
-	fn from(err: BasicError) -> Self {
-		Self::SubxtRuntimeError(SubxtError::from(err))
-	}
 }
 
 impl Error {

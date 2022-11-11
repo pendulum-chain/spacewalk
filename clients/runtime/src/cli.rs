@@ -6,7 +6,7 @@ use crate::{
 use clap::Parser;
 use sp_keyring::Ed25519Keyring;
 use std::{collections::HashMap, num::ParseIntError, time::Duration};
-use subxt::sp_core::{ed25519::Pair, Pair as _};
+use subxt::ext::sp_core::{ed25519::Pair, Pair as _};
 
 #[derive(Parser, Debug, Clone)]
 pub struct ProviderUserOpts {

@@ -1,3 +1,18 @@
+use std::{future::Future, ops::RangeInclusive, sync::Arc, time::Duration};
+
+use async_trait::async_trait;
+use futures::{stream::StreamExt, FutureExt, SinkExt};
+use jsonrpsee::core::{client::Client, JsonValue};
+use subxt::{
+	client::OnlineClient,
+	events::StaticEvent,
+	rpc::{RpcClient, RpcClientT},
+	tx::{PolkadotExtrinsicParams, TxEvents, TxProgress},
+	Error as BasicError, Metadata,
+};
+// use subxt_client::OnlineClient;
+use tokio::{sync::RwLock, time::timeout};
+
 use crate::{
 	conn::{new_websocket_client, new_websocket_client_with_retry},
 	metadata,
@@ -6,15 +21,6 @@ use crate::{
 	types::*,
 	AccountId, Error, RetryPolicy, SpacewalkRuntime, SpacewalkSigner, SubxtError,
 };
-
-use async_trait::async_trait;
-use futures::{stream::StreamExt, FutureExt, SinkExt};
-use std::{future::Future, ops::RangeInclusive, sync::Arc, time::Duration};
-use subxt::{
-	rpc::JsonValue, BasicError, Client as SubxtClient, ClientBuilder as SubxtClientBuilder, Event,
-	Metadata, PolkadotExtrinsicParams, RpcClient, TransactionEvents, TransactionProgress,
-};
-use tokio::{sync::RwLock, time::timeout};
 
 cfg_if::cfg_if! {
 	if #[cfg(feature = "standalone-metadata")] {
@@ -27,31 +33,31 @@ cfg_if::cfg_if! {
 }
 const TRANSACTION_TIMEOUT: Duration = Duration::from_secs(300); // 5 minutes
 
-type RuntimeApi = metadata::RuntimeApi<SpacewalkRuntime, PolkadotExtrinsicParams<SpacewalkRuntime>>;
+// type RuntimeApi = metadata::RuntimeApi<SpacewalkRuntime,
+// PolkadotExtrinsicParams<SpacewalkRuntime>>;
 pub(crate) type ShutdownSender = tokio::sync::broadcast::Sender<Option<()>>;
 
 #[derive(Clone)]
 pub struct SpacewalkParachain {
-	ext_client: SubxtClient<SpacewalkRuntime>,
 	signer: Arc<RwLock<SpacewalkSigner>>,
 	account_id: AccountId,
-	api: Arc<RuntimeApi>,
+	api: OnlineClient<SpacewalkRuntime>,
 	shutdown_tx: ShutdownSender,
 	metadata: Arc<Metadata>,
 }
 
 impl SpacewalkParachain {
-	pub async fn new<P: Into<RpcClient>>(
-		rpc_client: P,
+	pub async fn new(
+		rpc_client: Client,
 		signer: SpacewalkSigner,
 		shutdown_tx: ShutdownSender,
 	) -> Result<Self, Error> {
 		let account_id = signer.account_id().clone();
-		let ext_client = SubxtClientBuilder::new().set_client(rpc_client).build().await?;
-		let api: RuntimeApi = ext_client.clone().to_runtime_api();
-		let metadata = Arc::new(ext_client.rpc().metadata().await?);
+		let api = OnlineClient::<SpacewalkRuntime>::from_rpc_client(rpc_client).await?;
+		// let api: RuntimeApi = ext_client.clone().to_runtime_api();
+		let metadata = Arc::new(api.rpc().metadata().await?);
 
-		let runtime_version = ext_client.rpc().runtime_version(None).await?;
+		let runtime_version = api.rpc().runtime_version(None).await?;
 		let default_spec_name = &JsonValue::default();
 		let spec_name = runtime_version.other.get("specName").unwrap_or(default_spec_name);
 		if spec_name == DEFAULT_SPEC_NAME {
@@ -74,14 +80,8 @@ impl SpacewalkParachain {
 			))
 		}
 
-		let parachain_rpc = Self {
-			ext_client,
-			api: Arc::new(api),
-			shutdown_tx,
-			metadata,
-			signer: Arc::new(RwLock::new(signer)),
-			account_id,
-		};
+		let parachain_rpc =
+			Self { api, shutdown_tx, metadata, signer: Arc::new(RwLock::new(signer)), account_id };
 		parachain_rpc.refresh_nonce().await;
 		Ok(parachain_rpc)
 	}
@@ -127,6 +127,7 @@ impl SpacewalkParachain {
 			connection_timeout,
 		)
 		.await?;
+		// let ws_client = new_websocket_client(url, None, None).await?;
 		Self::new(ws_client, signer, shutdown_tx).await
 	}
 
@@ -135,29 +136,30 @@ impl SpacewalkParachain {
 		// For getting the nonce, use latest, possibly non-finalized block.
 		// TODO: we might want to wait until the latest block is actually finalized
 		// query account info in order to get the nonce value used for communication
-		let account_info = self
-			.api
-			.storage()
-			.system()
-			.account(&self.account_id, None)
-			.await
-			.map(|x| x.nonce)
+		let account_info_query = metadata::storage().system().account(&self.account_id);
+		let account_info = self.api.storage().fetch(&account_info_query, None).await;
+
+		let nonce = account_info
+			.map(|x| match x {
+				Some(x) => x.nonce,
+				None => 0,
+			})
 			.unwrap_or(0);
 
-		log::info!("Refreshing nonce: {}", account_info);
-		signer.set_nonce(account_info);
+		log::info!("Refreshing nonce: {}", nonce);
+		signer.set_nonce(nonce);
 	}
 
 	/// Gets a copy of the signer with a unique nonce
 	async fn with_unique_signer<'client, F, R>(
 		&self,
 		call: F,
-	) -> Result<TransactionEvents<'client, SpacewalkRuntime, SpacewalkEvent>, Error>
+	) -> Result<TxEvents<SpacewalkRuntime>, Error>
 	where
 		F: Fn(SpacewalkSigner) -> R,
 		R: Future<
 			Output = Result<
-				TransactionProgress<'client, SpacewalkRuntime, DispatchError, SpacewalkEvent>,
+				TxProgress<SpacewalkRuntime, OnlineClient<SpacewalkRuntime>>,
 				BasicError,
 			>,
 		>,
@@ -254,7 +256,7 @@ impl SpacewalkParachain {
 	/// * `on_error` - callback for decoding error, is not allowed to take too long
 	pub async fn on_event<T, F, R, E>(&self, mut on_event: F, on_error: E) -> Result<(), Error>
 	where
-		T: Event + core::fmt::Debug,
+		T: StaticEvent + core::fmt::Debug,
 		F: FnMut(T) -> R,
 		R: Future<Output = ()>,
 		E: Fn(SubxtError),

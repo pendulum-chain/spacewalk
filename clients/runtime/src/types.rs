@@ -1,12 +1,12 @@
 use crate::{metadata, Config, SpacewalkRuntime};
 pub use metadata_aliases::*;
-use subxt::sp_core::ed25519::Pair as KeyPair;
+use subxt::ext::sp_core::ed25519::Pair as KeyPair;
 
 pub type Balance = u128;
 pub type BlockNumber = u32;
 pub type Index = u32;
-pub type H256 = subxt::sp_core::H256;
-pub type SpacewalkSigner = subxt::PairSigner<SpacewalkRuntime, KeyPair>;
+pub type H256 = subxt::ext::sp_core::H256;
+pub type SpacewalkSigner = subxt::tx::PairSigner<SpacewalkRuntime, KeyPair>;
 pub type FixedU128 = sp_arithmetic::FixedU128;
 
 cfg_if::cfg_if! {
@@ -17,7 +17,7 @@ cfg_if::cfg_if! {
 		pub type AccountId = <<Signature as Verify>::Signer as IdentifyAccount>::AccountId;
 		pub type Address = MultiAddress<AccountId, ()>;
 	} else {
-		pub type AccountId = subxt::sp_runtime::AccountId32;
+		pub type AccountId = subxt::ext::sp_runtime::AccountId32;
 		pub type Address = AccountId;
 	}
 }
@@ -25,8 +25,8 @@ cfg_if::cfg_if! {
 mod metadata_aliases {
 	use super::*;
 
-	pub type DepositEvent = metadata::spacewalk::events::Deposit;
-	pub type RedeemEvent = metadata::spacewalk::events::Redeem;
+	// pub type DepositEvent = metadata::spacewalk::events::Deposit;
+	// pub type RedeemEvent = metadata::spacewalk::events::Redeem;
 
 	pub type SpacewalkHeader = <SpacewalkRuntime as Config>::Header;
 }
