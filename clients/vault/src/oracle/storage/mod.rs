@@ -14,4 +14,4 @@ pub struct TxSetsFileHandler;
 /// since it's still under discussion about how to lookup through files.
 pub struct TxHashesFileHandler;
 
-pub struct ScpAchiveStorage;
+pub struct ScpArchiveStorage;

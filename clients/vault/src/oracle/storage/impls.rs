@@ -16,7 +16,7 @@ use crate::oracle::{
 
 use stellar_relay::sdk::XdrCodec;
 
-use super::ScpAchiveStorage;
+use super::ScpArchiveStorage;
 
 impl FileHandler<EnvelopesMap> for EnvelopesFileHandler {
 	#[cfg(test)]
@@ -156,7 +156,7 @@ impl FileHandler<TxHashMap> for TxHashesFileHandler {
 	}
 }
 
-impl ScpAchiveStorage {
+impl ScpArchiveStorage {
 	pub async fn get_scp_archive(slot_index: i32) -> Result<XdrArchive<ScpHistoryEntry>, Error> {
 		let (url, file_name) = Self::get_url_and_file_name(slot_index);
 		let result = Self::gz_decode_file(&file_name);

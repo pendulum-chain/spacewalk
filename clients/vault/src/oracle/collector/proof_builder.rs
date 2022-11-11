@@ -1,4 +1,4 @@
-use crate::oracle::{ActorMessage, ScpAchiveStorage};
+use crate::oracle::{ActorMessage, };
 use stellar_relay::sdk::{
 	compound_types::{LimitedVarArray, UnlimitedVarArray, XdrArchive},
 	types::{ScpEnvelope, ScpHistoryEntry, TransactionSet},
@@ -84,7 +84,7 @@ impl ScpMessageCollector {
 			} else {
 				let slot_index: u32 = slot.try_into().unwrap();
 				let scp: XdrArchive<ScpHistoryEntry> =
-					ScpAchiveStorage::get_scp_archive(slot.try_into().unwrap()).await.unwrap();
+					ScpArchiveStorage::get_scp_archive(slot.try_into().unwrap()).await.unwrap();
 
 				let value = scp.get_vec().into_iter().find(|&scp_entry| {
 					if let ScpHistoryEntry::V0(scp_entry_v0) = scp_entry {
