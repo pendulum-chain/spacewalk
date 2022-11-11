@@ -159,7 +159,8 @@ impl FileHandler<TxHashMap> for TxHashesFileHandler {
 impl ScpArchiveStorage {
 	pub async fn get_scp_archive(slot_index: i32) -> Result<XdrArchive<ScpHistoryEntry>, Error> {
 		let (url, file_name) = Self::get_url_and_file_name(slot_index);
-		//try to find xdr.gz file and decode. if error then download archive from horizon archive node and save
+		//try to find xdr.gz file and decode. if error then download archive from horizon archive
+		// node and save
 		let result = Self::try_gz_decode_archive_file(&file_name);
 
 		if result.is_err() {
@@ -465,22 +466,27 @@ mod test {
 	}
 	#[tokio::test]
 	async fn get_scp_archive_works() {
-
 		use super::ScpArchiveStorage;
-		use stellar_relay::sdk::types::ScpHistoryEntry;
 		use std::convert::TryInto;
-		
+		use stellar_relay::sdk::types::ScpHistoryEntry;
+
 		let slot_index = 30511500;
-		
-		let scp_archive = ScpArchiveStorage::get_scp_archive(slot_index).await.expect("should find the archive");
-		
+
+		let scp_archive = ScpArchiveStorage::get_scp_archive(slot_index)
+			.await
+			.expect("should find the archive");
+
 		let slot_index_u32: u32 = slot_index.try_into().unwrap();
-		scp_archive.get_vec().into_iter().find(|&scp_entry| {
-			if let ScpHistoryEntry::V0(scp_entry_v0) = scp_entry {
-				return scp_entry_v0.ledger_messages.ledger_seq == slot_index_u32
-			} else {
-				return false
-			}
-		}).expect("slot index should be in archive");
+		scp_archive
+			.get_vec()
+			.into_iter()
+			.find(|&scp_entry| {
+				if let ScpHistoryEntry::V0(scp_entry_v0) = scp_entry {
+					return scp_entry_v0.ledger_messages.ledger_seq == slot_index_u32
+				} else {
+					return false
+				}
+			})
+			.expect("slot index should be in archive");
 	}
 }

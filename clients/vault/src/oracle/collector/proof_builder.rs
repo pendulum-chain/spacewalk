@@ -1,4 +1,4 @@
-use crate::oracle::{ActorMessage, ScpArchiveStorage, };
+use crate::oracle::{ActorMessage, ScpArchiveStorage};
 use stellar_relay::sdk::{
 	compound_types::{LimitedVarArray, UnlimitedVarArray, XdrArchive},
 	types::{ScpEnvelope, ScpHistoryEntry, TransactionSet},
@@ -79,7 +79,7 @@ impl ScpMessageCollector {
 		let rw_lock = self.envelopes_map_clone();
 		tokio::spawn(async move {
 			// If the current slot is still in the range of 'remembered' slots
-			if slot >  last_slot_index - MAX_SLOT_TO_REMEMBER {
+			if slot > last_slot_index - MAX_SLOT_TO_REMEMBER {
 				let result =
 					action_sender.send(ActorMessage::GetScpState { missed_slot: slot }).await;
 			} else {
