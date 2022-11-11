@@ -463,4 +463,24 @@ mod test {
 			fs::remove_file(path).expect("should be able to remove the newly added file.");
 		}
 	}
+	#[tokio::test]
+	async fn get_scp_archive_works() {
+
+		use super::ScpArchiveStorage;
+		use stellar_relay::sdk::types::ScpHistoryEntry;
+		use std::convert::TryInto;
+		
+		let slot_index = 30511500;
+		
+		let scp_archive = ScpArchiveStorage::get_scp_archive(slot_index).await.expect("should find the archive");
+		
+		let slot_index_u32: u32 = slot_index.try_into().unwrap();
+		scp_archive.get_vec().into_iter().find(|&scp_entry| {
+			if let ScpHistoryEntry::V0(scp_entry_v0) = scp_entry {
+				return scp_entry_v0.ledger_messages.ledger_seq == slot_index_u32
+			} else {
+				return false
+			}
+		}).expect("slot index should be in archive");
+	}
 }
