@@ -65,7 +65,7 @@ impl ScpMessageCollector {
 		self.envelopes_map.read().len()
 	}
 
-	fn envelopes_map_clone(&self) -> Arc<RwLock<EnvelopesMap>>{
+	fn envelopes_map_clone(&self) -> Arc<RwLock<EnvelopesMap>> {
 		self.envelopes_map.clone()
 	}
 

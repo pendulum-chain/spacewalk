@@ -1,7 +1,7 @@
 use crate::oracle::{ActorMessage, ScpAchiveStorage};
 use stellar_relay::sdk::{
-	compound_types::{UnlimitedVarArray, XdrArchive, LimitedVarArray},
-	types::{ScpEnvelope, TransactionSet, ScpHistoryEntry},
+	compound_types::{LimitedVarArray, UnlimitedVarArray, XdrArchive},
+	types::{ScpEnvelope, ScpHistoryEntry, TransactionSet},
 	TransactionEnvelope, XdrCodec,
 };
 
@@ -45,7 +45,6 @@ pub enum ProofStatus {
 	NoTxSetFound(Slot),
 }
 
-
 // handles the creation of proofs.
 // this means it will access the maps and potentially the files.
 impl ScpMessageCollector {
@@ -53,20 +52,20 @@ impl ScpMessageCollector {
 		self.tx_hash_map().get(tx_hash).map(|slot| *slot)
 	}
 
-	
 	/// Returns either a list of ScpEnvelopes or a ProofStatus saying it failed to retrieve a list.
 	fn get_envelopes(&self, slot: Slot) -> Result<UnlimitedVarArray<ScpEnvelope>, ProofStatus> {
-		let envelopes =
-			self._get_envelopes(slot);
+		let envelopes = self._get_envelopes(slot);
 
-		let mut vec_envelopes  = vec![];
+		let mut vec_envelopes = vec![];
 
-		let fetch_more = if envelopes.is_none() { true } else {
+		let fetch_more = if envelopes.is_none() {
+			true
+		} else {
 			vec_envelopes = envelopes.unwrap().0;
-			vec_envelopes.len()  < get_min_externalized_messages(self.is_public()) 
+			vec_envelopes.len() < get_min_externalized_messages(self.is_public())
 		};
-		
-		if fetch_more{
+
+		if fetch_more {
 			self.restore_missed_slots(slot);
 			return Err(ProofStatus::LackingEnvelopes(slot))
 		}
@@ -78,31 +77,28 @@ impl ScpMessageCollector {
 		let last_slot_index = *self.last_slot_index();
 		let action_sender = self.action_sender.clone();
 		let rw_lock = self.envelopes_map_clone();
-		tokio::spawn(async move { 
-
+		tokio::spawn(async move {
 			if last_slot_index - MAX_SLOT_TO_REMEMBER < slot {
-				let result = action_sender
-				.send(ActorMessage::GetScpState { missed_slot : slot })
-				.await;
-			}
-			else{
-				let slot_index : u32 = slot.try_into().unwrap();
-				let scp : XdrArchive::<ScpHistoryEntry> = ScpAchiveStorage::get_scp_archive(slot.try_into().unwrap()).await.unwrap();
+				let result =
+					action_sender.send(ActorMessage::GetScpState { missed_slot: slot }).await;
+			} else {
+				let slot_index: u32 = slot.try_into().unwrap();
+				let scp: XdrArchive<ScpHistoryEntry> =
+					ScpAchiveStorage::get_scp_archive(slot.try_into().unwrap()).await.unwrap();
 
 				let value = scp.get_vec().into_iter().find(|&scp_entry| {
 					if let ScpHistoryEntry::V0(scp_entry_v0) = scp_entry {
-						return scp_entry_v0.ledger_messages.ledger_seq == slot_index;
+						return scp_entry_v0.ledger_messages.ledger_seq == slot_index
 					} else {
-						return false;
+						return false
 					}
 				});
 
-				if let Some(i) = value{
+				if let Some(i) = value {
 					if let ScpHistoryEntry::V0(scp_entry_v0) = i {
 						let slot_scp_envelopes = scp_entry_v0.clone().ledger_messages.messages;
 						let vec_scp = slot_scp_envelopes.get_vec().clone(); //TODO store envelopes_map or send via mpsc
-					
-					
+
 						let mut envelopes_map = rw_lock.write();
 
 						if let None = envelopes_map.get_mut(&slot) {
@@ -112,7 +108,6 @@ impl ScpMessageCollector {
 					}
 				}
 			}
-		
 		});
 	}
 
