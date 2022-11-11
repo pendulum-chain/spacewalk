@@ -1,7 +1,9 @@
+use std::sync::Arc;
+
 use clap::Parser;
+
 use runtime::SpacewalkSigner;
 use service::{ConnectionManager, ServiceConfig};
-
 use vault::{Error, VaultService, VaultServiceConfig, ABOUT, AUTHORS, NAME, VERSION};
 
 #[derive(Parser, Debug, Clone)]
@@ -29,10 +31,10 @@ async fn start() -> Result<(), Error> {
 	opts.service.logging_format.init_subscriber();
 
 	let (pair, wallet_name) = opts.account_info.get_key_pair()?;
-	let signer = SpacewalkSigner::new(pair);
+	let signer = Arc::new(SpacewalkSigner::new(pair));
 
 	ConnectionManager::<_, VaultService>::new(
-		signer.clone(),
+		signer,
 		Some(wallet_name.to_string()),
 		opts.parachain,
 		opts.service,

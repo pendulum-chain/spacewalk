@@ -9,7 +9,7 @@ use subxt::{
 
 pub use error::{Error, SubxtError};
 pub use retry::{notify_retry, RetryPolicy};
-pub use rpc::{SpacewalkPallet, SpacewalkParachain, UtilFuncs};
+pub use rpc::{SpacewalkParachain, UtilFuncs};
 pub use types::*;
 // explicitly import some types for making it clearer which ones we use in the runtime
 use types::{AccountId, Address, BlockNumber, Index, H256};
@@ -22,9 +22,6 @@ mod retry;
 mod rpc;
 
 pub mod types;
-
-#[cfg(all(feature = "testing-utils", feature = "standalone-metadata"))]
-pub mod integration;
 
 pub const TX_FEES: u128 = 2000000000;
 pub const MILLISECS_PER_BLOCK: u64 = 6000;
@@ -55,7 +52,7 @@ pub struct WrapperKeepOpaque<T> {
 	_phantom: PhantomData<T>,
 }
 
-type SpacewalkRuntime = subxt::PolkadotConfig;
+type SpacewalkRuntime = subxt::SubstrateConfig; // TODO check if this should be substrate or polkadot config
 
 // #[derive(Debug, Clone, Eq, PartialEq)]
 // pub struct SpacewalkRuntime;

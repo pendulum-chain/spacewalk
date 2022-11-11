@@ -5,7 +5,7 @@ use crate::{
 };
 use clap::Parser;
 use sp_keyring::Ed25519Keyring;
-use std::{collections::HashMap, num::ParseIntError, time::Duration};
+use std::{collections::HashMap, num::ParseIntError, sync::Arc, time::Duration};
 use subxt::ext::sp_core::{ed25519::Pair, Pair as _};
 
 #[derive(Parser, Debug, Clone)]
@@ -33,7 +33,11 @@ impl ProviderUserOpts {
 		{
 			(Some(file_path), Some(keyname), None) =>
 				(get_credentials_from_file(file_path, keyname)?, keyname.to_string()),
-			(None, None, Some(keyring)) => (keyring.pair(), format!("{}", keyring)),
+			(None, None, Some(keyring)) => {
+				let pair = Pair::from_string(keyring.to_seed().as_str(), None)
+					.map_err(|e| Error::KeyringAccountParsingError)?;
+				(pair, format!("{}", keyring))
+			},
 			_ => {
 				// should never occur, due to clap constraints
 				return Err(Error::KeyringArgumentError)
@@ -102,7 +106,7 @@ pub struct ConnectionOpts {
 impl ConnectionOpts {
 	pub async fn try_connect(
 		&self,
-		signer: SpacewalkSigner,
+		signer: Arc<SpacewalkSigner>,
 		shutdown_tx: ShutdownSender,
 	) -> Result<SpacewalkParachain, Error> {
 		SpacewalkParachain::from_url_and_config_with_retry(

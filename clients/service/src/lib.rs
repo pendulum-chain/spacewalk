@@ -4,7 +4,7 @@ use runtime::{
 	cli::ConnectionOpts as ParachainConfig, Error as RuntimeError, SpacewalkParachain,
 	SpacewalkSigner, Ss58Codec,
 };
-use std::marker::PhantomData;
+use std::{marker::PhantomData, sync::Arc};
 
 mod cli;
 mod error;
@@ -31,7 +31,7 @@ pub trait Service<Config> {
 }
 
 pub struct ConnectionManager<Config: Clone, S: Service<Config>> {
-	signer: SpacewalkSigner,
+	signer: Arc<SpacewalkSigner>,
 	wallet_name: Option<String>,
 	parachain_config: ParachainConfig,
 	service_config: ServiceConfig,
@@ -41,7 +41,7 @@ pub struct ConnectionManager<Config: Clone, S: Service<Config>> {
 
 impl<Config: Clone + Send + 'static, S: Service<Config>> ConnectionManager<Config, S> {
 	pub fn new(
-		signer: SpacewalkSigner,
+		signer: Arc<SpacewalkSigner>,
 		wallet_name: Option<String>,
 		parachain_config: ParachainConfig,
 		service_config: ServiceConfig,

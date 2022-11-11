@@ -3,12 +3,13 @@ use std::{array::TryFromSliceError, fmt::Debug, io::Error as IoError, num::TryFr
 use codec::Error as CodecError;
 pub use jsonrpsee::core::Error as JsonRpseeError;
 use jsonrpsee::{
-	client_transport::ws::WsHandshakeError, core::error::Error as RequestError,
-	types::error::CallError,
+	client_transport::ws::WsHandshakeError,
+	core::error::Error as RequestError,
+	types::{error::CallError, ErrorObject},
 };
 use serde_json::Error as SerdeJsonError;
 use subxt::{
-	error::{Error as BasicError, TransactionError},
+	error::{Error as BasicError, RpcError, TransactionError},
 	ext::sp_core::crypto::SecretStringError,
 };
 use thiserror::Error;
@@ -93,35 +94,35 @@ impl Error {
 	// 	)
 	// }
 
-	fn map_call_error<T>(&self, call: impl Fn(&CallError) -> Option<T>) -> Option<T> {
+	fn map_call_error<T>(&self, call: impl Fn(&RpcError) -> Option<T>) -> Option<T> {
 		match self {
-			Error::SubxtRuntimeError(SubxtError::Rpc(RequestError::Call(err))) => call(err),
+			Error::SubxtRuntimeError(SubxtError::Rpc(rpc_error)) => call(rpc_error),
 			_ => None,
 		}
 	}
 
 	pub fn is_invalid_transaction(&self) -> Option<String> {
 		self.map_call_error(|call_error| {
-			if let CallError::Custom { code: POOL_INVALID_TX, data, .. } = call_error {
-				Some(data.clone().map(|raw| raw.to_string()).unwrap_or_default())
-			} else {
-				None
+			// TODO fix this because it can never be true
+			if let RpcError(error) = call_error {
+				return Some(error.to_string())
 			}
+			None
 		})
 	}
 
 	pub fn is_pool_too_low_priority(&self) -> Option<()> {
 		self.map_call_error(|call_error| {
-			if let CallError::Custom { code: POOL_TOO_LOW_PRIORITY, .. } = call_error {
-				Some(())
-			} else {
-				None
+			if let RpcError(error) = call_error {
+				return Some(())
 			}
+			None
 		})
 	}
 
 	pub fn is_rpc_disconnect_error(&self) -> bool {
-		matches!(self, Error::SubxtRuntimeError(SubxtError::Rpc(JsonRpseeError::RestartNeeded(_))))
+		// TODO
+		matches!(self, Error::SubxtRuntimeError(SubxtError::Rpc(RpcError(_))))
 	}
 
 	pub fn is_rpc_error(&self) -> bool {

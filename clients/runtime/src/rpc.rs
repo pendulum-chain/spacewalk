@@ -7,7 +7,7 @@ use subxt::{
 	client::OnlineClient,
 	events::StaticEvent,
 	rpc::{RpcClient, RpcClientT},
-	tx::{PolkadotExtrinsicParams, TxEvents, TxProgress},
+	tx::{PolkadotExtrinsicParams, Signer, TxEvents, TxProgress},
 	Error as BasicError, Metadata,
 };
 // use subxt_client::OnlineClient;
@@ -39,7 +39,7 @@ pub(crate) type ShutdownSender = tokio::sync::broadcast::Sender<Option<()>>;
 
 #[derive(Clone)]
 pub struct SpacewalkParachain {
-	signer: Arc<RwLock<SpacewalkSigner>>,
+	signer: Arc<SpacewalkSigner>,
 	account_id: AccountId,
 	api: OnlineClient<SpacewalkRuntime>,
 	shutdown_tx: ShutdownSender,
@@ -49,7 +49,7 @@ pub struct SpacewalkParachain {
 impl SpacewalkParachain {
 	pub async fn new(
 		rpc_client: Client,
-		signer: SpacewalkSigner,
+		signer: Arc<SpacewalkSigner>,
 		shutdown_tx: ShutdownSender,
 	) -> Result<Self, Error> {
 		let account_id = signer.account_id().clone();
@@ -80,15 +80,13 @@ impl SpacewalkParachain {
 			))
 		}
 
-		let parachain_rpc =
-			Self { api, shutdown_tx, metadata, signer: Arc::new(RwLock::new(signer)), account_id };
-		parachain_rpc.refresh_nonce().await;
+		let parachain_rpc = Self { api, shutdown_tx, metadata, signer, account_id };
 		Ok(parachain_rpc)
 	}
 
 	pub async fn from_url(
 		url: &str,
-		signer: SpacewalkSigner,
+		signer: Arc<SpacewalkSigner>,
 		shutdown_tx: ShutdownSender,
 	) -> Result<Self, Error> {
 		let ws_client = new_websocket_client(url, None, None).await?;
@@ -97,7 +95,7 @@ impl SpacewalkParachain {
 
 	pub async fn from_url_with_retry(
 		url: &str,
-		signer: SpacewalkSigner,
+		signer: Arc<SpacewalkSigner>,
 		connection_timeout: Duration,
 		shutdown_tx: ShutdownSender,
 	) -> Result<Self, Error> {
@@ -114,7 +112,7 @@ impl SpacewalkParachain {
 
 	pub async fn from_url_and_config_with_retry(
 		url: &str,
-		signer: SpacewalkSigner,
+		signer: Arc<SpacewalkSigner>,
 		max_concurrent_requests: Option<usize>,
 		max_notifs_per_subscription: Option<usize>,
 		connection_timeout: Duration,
@@ -131,32 +129,31 @@ impl SpacewalkParachain {
 		Self::new(ws_client, signer, shutdown_tx).await
 	}
 
-	async fn refresh_nonce(&self) {
-		let mut signer = self.signer.write().await;
-		// For getting the nonce, use latest, possibly non-finalized block.
-		// TODO: we might want to wait until the latest block is actually finalized
-		// query account info in order to get the nonce value used for communication
-		let account_info_query = metadata::storage().system().account(&self.account_id);
-		let account_info = self.api.storage().fetch(&account_info_query, None).await;
-
-		let nonce = account_info
-			.map(|x| match x {
-				Some(x) => x.nonce,
-				None => 0,
-			})
-			.unwrap_or(0);
-
-		log::info!("Refreshing nonce: {}", nonce);
-		signer.set_nonce(nonce);
-	}
+	// async fn refresh_nonce(&mut self) {
+	// 	// For getting the nonce, use latest, possibly non-finalized block.
+	// 	// TODO: we might want to wait until the latest block is actually finalized
+	// 	// query account info in order to get the nonce value used for communication
+	// 	let account_info_query = metadata::storage().system().account(&self.account_id);
+	// 	let account_info = self.api.storage().fetch(&account_info_query, None).await;
+	//
+	// 	let nonce = account_info
+	// 		.map(|x| match x {
+	// 			Some(x) => x.nonce,
+	// 			None => 0,
+	// 		})
+	// 		.unwrap_or(0);
+	//
+	// 	log::info!("Refreshing nonce: {}", nonce);
+	// 	self.signer.set_nonce(nonce);
+	// }
 
 	/// Gets a copy of the signer with a unique nonce
 	async fn with_unique_signer<'client, F, R>(
-		&self,
+		&mut self,
 		call: F,
 	) -> Result<TxEvents<SpacewalkRuntime>, Error>
 	where
-		F: Fn(SpacewalkSigner) -> R,
+		F: Fn(&SpacewalkSigner) -> R,
 		R: Future<
 			Output = Result<
 				TxProgress<SpacewalkRuntime, OnlineClient<SpacewalkRuntime>>,
@@ -166,15 +163,8 @@ impl SpacewalkParachain {
 	{
 		notify_retry::<Error, _, _, _, _, _>(
 			|| async {
-				let signer = {
-					let mut signer = self.signer.write().await;
-					// return the current value, increment afterwards
-					let cloned_signer = signer.clone();
-					signer.increment_nonce();
-					cloned_signer
-				};
 				match timeout(TRANSACTION_TIMEOUT, async {
-					call(signer).await?.wait_for_finalized_success().await
+					call(&self.signer).await?.wait_for_finalized_success().await
 				})
 				.await
 				{
@@ -191,13 +181,10 @@ impl SpacewalkParachain {
 					Ok(te) => Ok(te),
 					Err(err) =>
 						if let Some(data) = err.is_invalid_transaction() {
-							self.refresh_nonce().await;
 							Err(RetryPolicy::Skip(Error::InvalidTransaction(data)))
 						} else if err.is_pool_too_low_priority().is_some() {
-							self.refresh_nonce().await;
 							Err(RetryPolicy::Skip(Error::PoolTooLowPriority))
 						} else if err.is_block_hash_not_found_error() {
-							self.refresh_nonce().await;
 							log::info!("Re-sending transaction after apparent fork");
 							Err(RetryPolicy::Skip(Error::BlockHashNotFound))
 						} else {
@@ -210,7 +197,7 @@ impl SpacewalkParachain {
 	}
 
 	pub async fn get_latest_block_hash(&self) -> Result<Option<H256>, Error> {
-		Ok(Some(self.ext_client.rpc().finalized_head().await?))
+		Ok(Some(self.api.rpc().finalized_head().await?))
 	}
 
 	/// Subscribe to new parachain blocks.
@@ -219,7 +206,7 @@ impl SpacewalkParachain {
 		F: Fn(SpacewalkHeader) -> R,
 		R: Future<Output = Result<(), Error>>,
 	{
-		let mut sub = self.ext_client.rpc().subscribe_finalized_blocks().await?;
+		let mut sub = self.api.rpc().subscribe_finalized_blocks().await?;
 		loop {
 			on_block(sub.next().await.ok_or(Error::ChannelClosed)??).await?;
 		}
@@ -363,63 +350,15 @@ pub trait UtilFuncs {
 #[async_trait]
 impl UtilFuncs for SpacewalkParachain {
 	async fn get_current_chain_height(&self) -> Result<u32, Error> {
-		let head = self.get_latest_block_hash().await?;
-		Ok(self.api.storage().system().number(head).await?)
+		let height_query = metadata::storage().system().number();
+		let height = self.api.storage().fetch(&height_query, None).await?;
+		match height {
+			Some(height) => Ok(height),
+			None => Err(Error::BlockNotFound),
+		}
 	}
 
 	fn get_account_id(&self) -> &AccountId {
 		&self.account_id
-	}
-}
-#[async_trait]
-pub trait SpacewalkPallet {
-	async fn report_stellar_transaction(&self, tx_envelope_xdr: &Vec<u8>) -> Result<(), Error>;
-
-	async fn redeem(
-		&self,
-		asset_code: &Vec<u8>,
-		asset_issuer: &Vec<u8>,
-		amount: u128,
-		stellar_vault_pubkey: [u8; 32],
-	) -> Result<(), Error>;
-}
-
-#[async_trait]
-impl SpacewalkPallet for SpacewalkParachain {
-	async fn report_stellar_transaction(&self, tx_envelope_xdr: &Vec<u8>) -> Result<(), Error> {
-		self.with_unique_signer(|signer| async move {
-			self.api
-				.tx()
-				.spacewalk() // assume that spacewalk pallet is registered in connected chain
-				.report_stellar_transaction(tx_envelope_xdr.to_vec()) // spacewalk pallet offers extrinsic `report_stellar_transaction`
-				.sign_and_submit_then_watch_default(&signer)
-				.await
-		})
-		.await?;
-		Ok(())
-	}
-
-	async fn redeem(
-		&self,
-		asset_code: &Vec<u8>,
-		asset_issuer: &Vec<u8>,
-		amount: u128,
-		stellar_vault_pubkey: [u8; 32],
-	) -> Result<(), Error> {
-		self.with_unique_signer(|signer| async move {
-			self.api
-				.tx()
-				.spacewalk() // assume that spacewalk pallet is registered in connected chain
-				.redeem(
-					asset_code.to_vec(),
-					asset_issuer.to_vec(),
-					amount,
-					stellar_vault_pubkey.clone().to_vec(),
-				) // spacewalk pallet offers extrinsic `redeem`
-				.sign_and_submit_then_watch_default(&signer)
-				.await
-		})
-		.await?;
-		Ok(())
 	}
 }
