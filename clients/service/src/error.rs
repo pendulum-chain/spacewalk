@@ -4,7 +4,12 @@ use serde_json::Error as SerdeJsonError;
 use thiserror::Error;
 
 #[derive(Error, Debug)]
-pub enum Error {
+pub enum Error<InnerError> {
+	#[error("Abort: {0}")]
+	Abort(InnerError),
+	#[error("Retry: {0}")]
+	Retry(InnerError),
+
 	#[error("Received an invalid response")]
 	InvalidResponse,
 	#[error("Client has shutdown")]

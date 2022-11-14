@@ -1,4 +1,5 @@
-use subxt::ext::sp_core::ed25519::Pair as KeyPair; // TODO maybe change this back to sr25519
+// TODO maybe change this back to sr25519
+use subxt::ext::sp_core::ed25519::Pair as KeyPair;
 
 pub use metadata_aliases::*;
 
@@ -43,8 +44,6 @@ mod metadata_aliases {
 	pub use crate::metadata::runtime_types::spacewalk_primitives::CurrencyId;
 
 	use super::*;
-
-	// pub type UnsignedFixedPoint = FixedU128;
 
 	pub type SpacewalkHeader = <SpacewalkRuntime as Config>::Header;
 
