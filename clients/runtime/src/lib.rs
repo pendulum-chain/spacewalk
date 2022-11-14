@@ -9,7 +9,7 @@ use subxt::{
 
 pub use error::{Error, SubxtError};
 pub use retry::{notify_retry, RetryPolicy};
-pub use rpc::{SpacewalkParachain, UtilFuncs};
+pub use rpc::{SpacewalkParachain, UtilFuncs, DEFAULT_SPEC_NAME, SS58_PREFIX};
 pub use types::*;
 // explicitly import some types for making it clearer which ones we use in the runtime
 use types::{AccountId, Address, BlockNumber, Index, H256};

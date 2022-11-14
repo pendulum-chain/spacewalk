@@ -3,7 +3,7 @@ use subxt::ext::sp_core::ed25519::Pair as KeyPair;
 
 pub use metadata_aliases::*;
 
-use crate::{metadata, Config, SpacewalkRuntime};
+use crate::{metadata, Config, SpacewalkRuntime, SS58_PREFIX};
 
 // pub use spacewalk_primitives::CurrencyId;
 
@@ -58,6 +58,22 @@ mod metadata_aliases {
 		metadata::runtime_types::spacewalk_primitives::VaultId<AccountId, CurrencyId>;
 	pub type VaultCurrencyPair =
 		metadata::runtime_types::spacewalk_primitives::VaultCurrencyPair<CurrencyId>;
+}
+
+pub trait PrettyPrint {
+	fn pretty_print(&self) -> String;
+}
+
+mod account_id {
+	use subxt::ext::sp_core::crypto::Ss58Codec;
+
+	use super::*;
+
+	impl PrettyPrint for AccountId {
+		fn pretty_print(&self) -> String {
+			self.to_ss58check_with_version(SS58_PREFIX.into())
+		}
+	}
 }
 
 mod dispatch_error {

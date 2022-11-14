@@ -31,17 +31,19 @@ pub type UnsignedFixedPoint = FixedU128;
 cfg_if::cfg_if! {
 	if #[cfg(feature = "standalone-metadata")] {
 		const DEFAULT_SPEC_VERSION: RangeInclusive<u32> = 1..=1;
-		const DEFAULT_SPEC_NAME: &str = "spacewalk-standalone";
+		pub const DEFAULT_SPEC_NAME: &str = "spacewalk-standalone";
+		// The prefix for the testchain is 42
+		pub const SS58_PREFIX: u16 = 42;
 	} else if #[cfg(feature = "parachain-metadata")] {
 		const DEFAULT_SPEC_VERSION: RangeInclusive<u32> = 1..=1;
-		const DEFAULT_SPEC_NAME: &str = "pendulum-parachain";
+		pub const DEFAULT_SPEC_NAME: &str = "pendulum-parachain";
+		// The prefix for pendulum is 56
+		pub const SS58_PREFIX: u16 = 56;
 	}
 }
 const TRANSACTION_TIMEOUT: Duration = Duration::from_secs(300); // 5 minutes
 
-// type RuntimeApi = metadata::RuntimeApi<SpacewalkRuntime,
-// PolkadotExtrinsicParams<SpacewalkRuntime>>;
-pub(crate) type ShutdownSender = tokio::sync::broadcast::Sender<Option<()>>;
+pub(crate) type ShutdownSender = tokio::sync::broadcast::Sender<()>;
 
 #[derive(Clone)]
 pub struct SpacewalkParachain {
@@ -176,7 +178,7 @@ impl SpacewalkParachain {
 				{
 					Err(_) => {
 						log::warn!("Timeout on transaction submission - restart required");
-						let _ = self.shutdown_tx.send(Some(()));
+						let _ = self.shutdown_tx.send(());
 						Err(Error::Timeout)
 					},
 					Ok(x) => Ok(x?),
