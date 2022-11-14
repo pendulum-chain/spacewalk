@@ -3,15 +3,19 @@ use std::{future::Future, ops::RangeInclusive, sync::Arc, time::Duration};
 use async_trait::async_trait;
 use futures::{stream::StreamExt, FutureExt, SinkExt};
 use jsonrpsee::core::{client::Client, JsonValue};
+use sp_arithmetic::FixedPointNumber;
+use sp_runtime::FixedU128;
 use subxt::{
 	client::OnlineClient,
 	events::StaticEvent,
-	rpc::{RpcClient, RpcClientT},
+	rpc::{rpc_params, RpcClient, RpcClientT},
 	tx::{PolkadotExtrinsicParams, Signer, TxEvents, TxProgress},
 	Error as BasicError, Metadata,
 };
 // use subxt_client::OnlineClient;
 use tokio::{sync::RwLock, time::timeout};
+
+use module_oracle_rpc_runtime_api::BalanceWrapper;
 
 use crate::{
 	conn::{new_websocket_client, new_websocket_client_with_retry},
@@ -21,6 +25,8 @@ use crate::{
 	types::*,
 	AccountId, Error, RetryPolicy, SpacewalkRuntime, SpacewalkSigner, SubxtError,
 };
+
+pub type UnsignedFixedPoint = FixedU128;
 
 cfg_if::cfg_if! {
 	if #[cfg(feature = "standalone-metadata")] {
@@ -360,5 +366,244 @@ impl UtilFuncs for SpacewalkParachain {
 
 	fn get_account_id(&self) -> &AccountId {
 		&self.account_id
+	}
+}
+
+#[async_trait]
+pub trait VaultRegistryPallet {
+	async fn get_vault(&self, vault_id: &VaultId) -> Result<SpacewalkVault, Error>;
+
+	async fn get_vaults_by_account_id(&self, account_id: &AccountId)
+		-> Result<Vec<VaultId>, Error>;
+
+	async fn get_all_vaults(&self) -> Result<Vec<SpacewalkVault>, Error>;
+
+	async fn register_vault(&self, vault_id: &VaultId, collateral: u128) -> Result<(), Error>;
+
+	async fn deposit_collateral(&self, vault_id: &VaultId, amount: u128) -> Result<(), Error>;
+
+	async fn withdraw_collateral(&self, vault_id: &VaultId, amount: u128) -> Result<(), Error>;
+
+	async fn get_public_key(&self) -> Result<Option<StellarPublicKey>, Error>;
+
+	async fn register_public_key(&self, public_key: StellarPublicKey) -> Result<(), Error>;
+
+	async fn get_required_collateral_for_wrapped(
+		&self,
+		amount_btc: u128,
+		collateral_currency: CurrencyId,
+	) -> Result<u128, Error>;
+
+	async fn get_required_collateral_for_vault(&self, vault_id: VaultId) -> Result<u128, Error>;
+
+	async fn get_vault_total_collateral(&self, vault_id: VaultId) -> Result<u128, Error>;
+
+	async fn get_collateralization_from_vault(
+		&self,
+		vault_id: VaultId,
+		only_issued: bool,
+	) -> Result<u128, Error>;
+}
+
+#[async_trait]
+impl VaultRegistryPallet for SpacewalkParachain {
+	/// Fetch a specific vault by ID.
+	///
+	/// # Arguments
+	/// * `vault_id` - account ID of the vault
+	///
+	/// # Errors
+	/// * `VaultNotFound` - if the rpc returned a default value rather than the vault we want
+	/// * `VaultLiquidated` - if the vault is liquidated
+	async fn get_vault(&self, vault_id: &VaultId) -> Result<SpacewalkVault, Error> {
+		let head = self.get_latest_block_hash().await?;
+
+		let query = metadata::storage().vault_registry().vaults(vault_id);
+
+		match self.api.storage().fetch(&query, head).await? {
+			Some(SpacewalkVault { status: VaultStatus::Liquidated, .. }) =>
+				Err(Error::VaultLiquidated),
+			Some(vault) if &vault.id == vault_id => Ok(vault),
+			_ => Err(Error::VaultNotFound),
+		}
+	}
+
+	async fn get_vaults_by_account_id(
+		&self,
+		account_id: &AccountId,
+	) -> Result<Vec<VaultId>, Error> {
+		let head = self.get_latest_block_hash().await?;
+		let result = self
+			.api
+			.rpc()
+			.request("vaultRegistry_getVaultsByAccountId", rpc_params![account_id, head])
+			.await?;
+
+		Ok(result)
+	}
+
+	/// Fetch all active vaults.
+	async fn get_all_vaults(&self) -> Result<Vec<SpacewalkVault>, Error> {
+		let mut vaults = Vec::new();
+		let head = self.get_latest_block_hash().await?;
+		let key_addr = metadata::storage().vault_registry().vaults_root();
+		let mut iter = self.api.storage().iter(key_addr, 10, head).await?;
+		while let Some((_, account)) = iter.next().await? {
+			if let VaultStatus::Active(..) = account.status {
+				vaults.push(account);
+			}
+		}
+		Ok(vaults)
+	}
+
+	/// Submit extrinsic to register a vault.
+	///
+	/// # Arguments
+	/// * `collateral` - deposit
+	/// * `public_key` - Bitcoin public key
+	async fn register_vault(&self, vault_id: &VaultId, collateral: u128) -> Result<(), Error> {
+		// TODO: check MinimumDeposit
+		if collateral == 0 {
+			return Err(Error::InsufficientFunds)
+		}
+
+		let register_vault_tx = metadata::tx()
+			.vault_registry()
+			.register_vault(vault_id.currencies.clone(), collateral);
+
+		self.api
+			.tx()
+			.sign_and_submit_then_watch_default(&register_vault_tx, self.signer.as_ref())
+			.await?;
+		Ok(())
+	}
+
+	/// Locks additional collateral as a security against stealing the
+	/// Bitcoin locked with it.
+	///
+	/// # Arguments
+	/// * `amount` - the amount of extra collateral to lock
+	async fn deposit_collateral(&self, vault_id: &VaultId, amount: u128) -> Result<(), Error> {
+		let deposit_collateral_tx = metadata::tx()
+			.vault_registry()
+			.deposit_collateral(vault_id.currencies.clone(), amount);
+
+		self.api
+			.tx()
+			.sign_and_submit_then_watch_default(&deposit_collateral_tx, self.signer.as_ref())
+			.await?;
+		Ok(())
+	}
+
+	/// Withdraws `amount` of the collateral from the amount locked by
+	/// the vault corresponding to the origin account
+	/// The collateral left after withdrawal must be more than MinimumCollateralVault
+	/// and above the SecureCollateralThreshold. Collateral that is currently
+	/// being used to back issued tokens remains locked until the Vault
+	/// is used for a redeem request (full release can take multiple redeem requests).
+	///
+	/// # Arguments
+	/// * `amount` - the amount of collateral to withdraw
+	async fn withdraw_collateral(&self, vault_id: &VaultId, amount: u128) -> Result<(), Error> {
+		let withdraw_collateral_tx = metadata::tx()
+			.vault_registry()
+			.withdraw_collateral(vault_id.currencies.clone(), amount);
+
+		self.api
+			.tx()
+			.sign_and_submit_then_watch_default(&withdraw_collateral_tx, self.signer.as_ref())
+			.await?;
+		Ok(())
+	}
+
+	async fn get_public_key(&self) -> Result<Option<StellarPublicKey>, Error> {
+		let head = self.get_latest_block_hash().await?;
+
+		let query = metadata::storage()
+			.vault_registry()
+			.vault_stellar_public_key(self.get_account_id());
+
+		Ok(self.api.storage().fetch(&query, head).await?)
+	}
+
+	/// Update the default BTC public key for the vault corresponding to the signer.
+	///
+	/// # Arguments
+	/// * `public_key` - the new public key of the vault
+	async fn register_public_key(&self, public_key: StellarPublicKey) -> Result<(), Error> {
+		let public_key = &public_key.clone();
+
+		let register_public_key_tx =
+			metadata::tx().vault_registry().register_public_key(public_key.clone());
+
+		self.api
+			.tx()
+			.sign_and_submit_then_watch_default(&register_public_key_tx, self.signer.as_ref())
+			.await?;
+		Ok(())
+	}
+
+	/// Custom RPC that calculates the exact collateral required to cover the BTC amount.
+	///
+	/// # Arguments
+	/// * `amount_btc` - amount of btc to cover
+	async fn get_required_collateral_for_wrapped(
+		&self,
+		amount_btc: u128,
+		collateral_currency: CurrencyId,
+	) -> Result<u128, Error> {
+		let head = self.get_latest_block_hash().await?;
+		let result: BalanceWrapper<_> = self
+			.api
+			.rpc()
+			.request(
+				"vaultRegistry_getRequiredCollateralForWrapped",
+				rpc_params![BalanceWrapper { amount: amount_btc }, collateral_currency, head],
+			)
+			.await?;
+
+		Ok(result.amount)
+	}
+
+	/// Get the amount of collateral required for the given vault to be at the
+	/// current SecureCollateralThreshold with the current exchange rate
+	async fn get_required_collateral_for_vault(&self, vault_id: VaultId) -> Result<u128, Error> {
+		let head = self.get_latest_block_hash().await?;
+		let result: BalanceWrapper<_> = self
+			.api
+			.rpc()
+			.request("vaultRegistry_getRequiredCollateralForVault", rpc_params![vault_id, head])
+			.await?;
+
+		Ok(result.amount)
+	}
+
+	async fn get_vault_total_collateral(&self, vault_id: VaultId) -> Result<u128, Error> {
+		let head = self.get_latest_block_hash().await?;
+		let result: BalanceWrapper<_> = self
+			.api
+			.rpc()
+			.request("vaultRegistry_getVaultTotalCollateral", rpc_params![vault_id, head])
+			.await?;
+
+		Ok(result.amount)
+	}
+
+	async fn get_collateralization_from_vault(
+		&self,
+		vault_id: VaultId,
+		only_issued: bool,
+	) -> Result<u128, Error> {
+		let head = self.get_latest_block_hash().await?;
+		let result: UnsignedFixedPoint = self
+			.api
+			.rpc()
+			.request(
+				"vaultRegistry_getCollateralizationFromVault",
+				rpc_params![vault_id, only_issued, head],
+			)
+			.await?;
+
+		Ok(result.into_inner())
 	}
 }
