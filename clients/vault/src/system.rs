@@ -9,10 +9,13 @@ use futures::{
 use git_version::git_version;
 use tokio::{sync::RwLock, time::sleep};
 
-use runtime::{RegisterVaultEvent, SpacewalkParachain, UtilFuncs, VaultId};
+use runtime::{
+	CurrencyId, Error as RuntimeError, PrettyPrint, RegisterVaultEvent, SpacewalkParachain,
+	UtilFuncs, VaultId,
+};
 use service::{wait_or_shutdown, Error as ServiceError, Service, ShutdownSender};
 
-use crate::{error::Error, CHAIN_HEIGHT_POLLING_INTERVAL};
+use crate::{error::Error, stellar_wallet::StellarWallet, CHAIN_HEIGHT_POLLING_INTERVAL};
 
 pub const VERSION: &str = git_version!(args = ["--tags"], fallback = "unknown");
 pub const AUTHORS: &str = env!("CARGO_PKG_AUTHORS");
@@ -22,108 +25,33 @@ pub const ABOUT: &str = env!("CARGO_PKG_DESCRIPTION");
 #[derive(Clone)]
 pub struct VaultData {
 	pub vault_id: VaultId,
-	pub btc_rpc: DynBitcoinCoreApi,
-	pub metrics: PerCurrencyMetrics,
+	pub stellar_wallet: StellarWallet,
 }
 
 #[derive(Clone)]
 pub struct VaultIdManager {
 	vault_data: Arc<RwLock<HashMap<VaultId, VaultData>>>,
-	btc_parachain: InterBtcParachain,
-	btc_rpc_master_wallet: DynBitcoinCoreApi,
-	// TODO: refactor this
-	#[allow(clippy::type_complexity)]
-	constructor: Arc<Box<dyn Fn(VaultId) -> Result<DynBitcoinCoreApi, BitcoinError> + Send + Sync>>,
+	spacewalk_parachain: SpacewalkParachain,
+	stellar_wallet: StellarWallet,
 }
 
 impl VaultIdManager {
-	pub fn new(
-		btc_parachain: InterBtcParachain,
-		btc_rpc_master_wallet: DynBitcoinCoreApi,
-		constructor: impl Fn(VaultId) -> Result<DynBitcoinCoreApi, BitcoinError> + Send + Sync + 'static,
-	) -> Self {
+	pub fn new(spacewalk_parachain: SpacewalkParachain, stellar_wallet: StellarWallet) -> Self {
 		Self {
 			vault_data: Arc::new(RwLock::new(HashMap::new())),
-			constructor: Arc::new(Box::new(constructor)),
-			btc_rpc_master_wallet,
-			btc_parachain,
-		}
-	}
-
-	// used for testing only
-	pub fn from_map(
-		btc_parachain: InterBtcParachain,
-		btc_rpc_master_wallet: DynBitcoinCoreApi,
-		map: HashMap<VaultId, DynBitcoinCoreApi>,
-	) -> Self {
-		let vault_data = map
-			.into_iter()
-			.map(|(key, value)| {
-				(
-					key.clone(),
-					VaultData {
-						vault_id: key,
-						btc_rpc: value,
-						metrics: PerCurrencyMetrics::dummy(),
-					},
-				)
-			})
-			.collect();
-		Self {
-			vault_data: Arc::new(RwLock::new(vault_data)),
-			constructor: Arc::new(Box::new(|_| unimplemented!())),
-			btc_rpc_master_wallet,
-			btc_parachain,
+			spacewalk_parachain,
+			stellar_wallet,
 		}
 	}
 
 	async fn add_vault_id(&self, vault_id: VaultId) -> Result<(), Error> {
-		let btc_rpc = (*self.constructor)(vault_id.clone())?;
+		// TODO what is this about?
+		// tracing::info!("Adding keys from past issues...");
+		// issue::add_keys_from_past_issue_request(&btc_rpc, &self.spacewalk_parachain, &vault_id)
+		// 	.await?;
 
-		// load wallet. Exit on failure, since without wallet we can't do a lot
-		btc_rpc
-			.create_or_load_wallet()
-			.await
-			.map_err(Error::WalletInitializationFailure)?;
-
-		tracing::info!("Adding derivation key...");
-		let derivation_key = self
-			.btc_parachain
-			.get_public_key()
-			.await?
-			.ok_or(BitcoinError::MissingPublicKey)?;
-
-		// migration to the new shared public key setup: copy the public key from the
-		// currency-specific wallet to the master wallet. This can be removed once all
-		// vaults have migrated
-		let public_key =
-			PublicKey::from_slice(&derivation_key.0).map_err(BitcoinError::KeyError)?;
-		if let Ok(private_key) = btc_rpc.dump_derivation_key(&public_key) {
-			self.btc_rpc_master_wallet.import_derivation_key(&private_key)?;
-		}
-
-		// Copy the derivation key from the master wallet to use currency-specific wallet
-		match self.btc_rpc_master_wallet.dump_derivation_key(&public_key) {
-			Ok(private_key) => {
-				btc_rpc.import_derivation_key(&private_key)?;
-			},
-			Err(err) => {
-				tracing::error!("Could not find the derivation key in the bitcoin wallet");
-				return Err(err.into())
-			},
-		}
-
-		tracing::info!("Adding keys from past issues...");
-		issue::add_keys_from_past_issue_request(&btc_rpc, &self.btc_parachain, &vault_id).await?;
-
-		tracing::info!("Initializing metrics...");
-		let metrics = PerCurrencyMetrics::new(&vault_id);
-		let data = VaultData {
-			vault_id: vault_id.clone(),
-			btc_rpc: btc_rpc.clone(),
-			metrics: metrics.clone(),
-		};
-		PerCurrencyMetrics::initialize_values(self.btc_parachain.clone(), &data).await;
+		let data =
+			VaultData { vault_id: vault_id.clone(), stellar_wallet: self.stellar_wallet.clone() };
 
 		self.vault_data.write().await.insert(vault_id, data.clone());
 
@@ -132,11 +60,11 @@ impl VaultIdManager {
 
 	pub async fn fetch_vault_ids(&self) -> Result<(), Error> {
 		for vault_id in self
-			.btc_parachain
-			.get_vaults_by_account_id(self.btc_parachain.get_account_id())
+			.spacewalk_parachain
+			.get_vaults_by_account_id(self.spacewalk_parachain.get_account_id())
 			.await?
 		{
-			match is_vault_registered(&self.btc_parachain, &vault_id).await {
+			match is_vault_registered(&self.spacewalk_parachain, &vault_id).await {
 				Err(Error::RuntimeError(RuntimeError::VaultLiquidated)) => {
 					tracing::error!(
 						"[{}] Vault is liquidated -- not going to process events for this vault.",
@@ -154,11 +82,11 @@ impl VaultIdManager {
 
 	pub async fn listen_for_vault_id_registrations(self) -> Result<(), ServiceError<Error>> {
 		Ok(self
-			.btc_parachain
+			.spacewalk_parachain
 			.on_event::<RegisterVaultEvent, _, _, _>(
 				|event| async {
 					let vault_id = event.vault_id;
-					if self.btc_parachain.is_this_vault(&vault_id) {
+					if self.spacewalk_parachain.is_this_vault(&vault_id) {
 						tracing::info!("New vault registered: {}", vault_id.pretty_print());
 						let _ = self.add_vault_id(vault_id).await;
 					}
@@ -168,8 +96,8 @@ impl VaultIdManager {
 			.await?)
 	}
 
-	pub async fn get_bitcoin_rpc(&self, vault_id: &VaultId) -> Option<DynBitcoinCoreApi> {
-		self.vault_data.read().await.get(vault_id).map(|x| x.btc_rpc.clone())
+	pub async fn get_bitcoin_rpc(&self, vault_id: &VaultId) -> Option<StellarWallet> {
+		self.vault_data.read().await.get(vault_id).map(|x| x.stellar_wallet.clone())
 	}
 
 	pub async fn get_vault(&self, vault_id: &VaultId) -> Option<VaultData> {
@@ -189,12 +117,15 @@ impl VaultIdManager {
 			.collect()
 	}
 
-	pub async fn get_vault_btc_rpcs(&self) -> Vec<(VaultId, DynBitcoinCoreApi)> {
+	// TODO think about this. It is probably not needed because we don't use deposit addresses and
+	// use one stellar wallet for everything
+	// But we could in theory let a vault have multiple stellar wallets
+	pub async fn get_vault_stellar_wallets(&self) -> Vec<(VaultId, StellarWallet)> {
 		self.vault_data
 			.read()
 			.await
 			.iter()
-			.map(|(vault_id, data)| (vault_id.clone(), data.btc_rpc.clone()))
+			.map(|(vault_id, data)| (vault_id.clone(), data.stellar_wallet.clone()))
 			.collect()
 	}
 }
@@ -203,6 +134,10 @@ impl VaultIdManager {
 pub struct VaultServiceConfig {
 	#[clap(long, help = "The Stellar secret key that is used to sign transactions.")]
 	pub stellar_vault_secret_key: String,
+
+	/// Pass the faucet URL for auto-registration.
+	#[clap(long)]
+	pub faucet_url: Option<String>,
 }
 
 pub struct VaultService {
@@ -212,7 +147,7 @@ pub struct VaultService {
 }
 
 #[async_trait]
-impl Service<VaultServiceConfig> for VaultService {
+impl Service<VaultServiceConfig, Error> for VaultService {
 	const NAME: &'static str = NAME;
 	const VERSION: &'static str = VERSION;
 
@@ -224,7 +159,7 @@ impl Service<VaultServiceConfig> for VaultService {
 		VaultService::new(spacewalk_parachain, config, shutdown)
 	}
 
-	async fn start(&self) -> Result<(), ServiceError<InnerError>> {
+	async fn start(&self) -> Result<(), ServiceError<Error>> {
 		self.run_service().await
 	}
 }
@@ -318,7 +253,7 @@ impl VaultService {
 
 		let open_request_executor = execute_open_requests(
 			self.shutdown.clone(),
-			self.btc_parachain.clone(),
+			self.spacewalk_parachain.clone(),
 			self.vault_id_manager.clone(),
 			self.btc_rpc_master_wallet.clone(),
 			num_confirmations,
@@ -338,11 +273,11 @@ impl VaultService {
 		let tasks = vec![
 			(
 				"Registered Asset Listener",
-				run(listen_for_registered_assets(self.btc_parachain.clone())),
+				run(listen_for_registered_assets(self.spacewalk_parachain.clone())),
 			),
 			(
 				"Fee Estimate Listener",
-				run(listen_for_fee_rate_estimate_changes(self.btc_parachain.clone())),
+				run(listen_for_fee_rate_estimate_changes(self.spacewalk_parachain.clone())),
 			),
 			(
 				"VaultId Registration Listener",
@@ -363,18 +298,13 @@ impl VaultService {
 
 	async fn maybe_register_public_key(&self) -> Result<(), Error> {
 		if let Some(faucet_url) = &self.config.faucet_url {
-			// fund the native token first to pay for tx fees
-			crate::faucet::fund_account(
-				faucet_url,
-				&self.get_vault_id(self.btc_parachain.native_currency_id),
-			)
-			.await?;
+			// TODO fund account with faucet
 		}
 
-		if self.btc_parachain.get_public_key().await?.is_none() {
+		if self.spacewalk_parachain.get_public_key().await?.is_none() {
 			tracing::info!("Registering bitcoin public key to the parachain...");
 			let public_key = self.btc_rpc_master_wallet.get_new_public_key().await?;
-			self.btc_parachain
+			self.spacewalk_parachain
 				.register_public_key(public_key.inner.serialize().into())
 				.await?;
 		}
@@ -389,7 +319,7 @@ impl VaultService {
 	) -> Result<(), Error> {
 		let vault_id = self.get_vault_id(*collateral_currency);
 
-		match is_vault_registered(&self.btc_parachain, &vault_id).await {
+		match is_vault_registered(&self.spacewalk_parachain, &vault_id).await {
 			Err(Error::RuntimeError(RuntimeError::VaultLiquidated)) | Ok(true) => {
 				tracing::info!(
 					"[{}] Not registering vault -- already registered",
@@ -400,9 +330,11 @@ impl VaultService {
 				tracing::info!("[{}] Not registered", vault_id.pretty_print());
 				if let Some(collateral) = maybe_collateral_amount {
 					tracing::info!("[{}] Automatically registering...", vault_id.pretty_print());
-					let free_balance =
-						self.btc_parachain.get_free_balance(vault_id.collateral_currency()).await?;
-					self.btc_parachain
+					let free_balance = self
+						.spacewalk_parachain
+						.get_free_balance(vault_id.collateral_currency())
+						.await?;
+					self.spacewalk_parachain
 						.register_vault(
 							&vault_id,
 							if collateral.gt(&free_balance) {
@@ -419,7 +351,9 @@ impl VaultService {
 						.await?;
 				} else if let Some(faucet_url) = &self.config.faucet_url {
 					tracing::info!("[{}] Automatically registering...", vault_id.pretty_print());
-					faucet::fund_and_register(&self.btc_parachain, faucet_url, &vault_id).await?;
+					// TODO
+					// faucet::fund_and_register(&self.spacewalk_parachain, faucet_url, &vault_id)
+					// 	.await?;
 				}
 			},
 			Err(x) => return Err(x),
