@@ -1,32 +1,13 @@
+//todo: to be deleted, once this logic is transferred
+
 use stellar_relay::sdk::{types::PaymentOp, Transaction, TransactionEnvelope};
 
 use crate::oracle::collector::{is_hash_memo, Proof, ProofStatus, ScpMessageCollector};
+use crate::oracle::types::Slot;
 
 impl ScpMessageCollector {
-	/// Returns a list of transactions (only those with proofs) to be processed.
-	pub fn get_pending_proofs(&mut self) -> Vec<Proof> {
-		// Store the handled transaction indices in a vec to be able to remove them later
-		let mut handled_tx_indices = Vec::new();
 
-		let mut proofs_for_handled_txs = Vec::<Proof>::new();
 
-		for (index, (tx_env, slot)) in self.pending_transactions.iter().enumerate() {
-			// Try to build proofs
-			match self.build_proof(tx_env.clone(), *slot) {
-				ProofStatus::Proof(proof) => {
-					handled_tx_indices.push(index);
-					proofs_for_handled_txs.push(proof);
-				},
-				_ => {},
-			}
-		}
-		// Remove the transactions with proofs from the pending list.
-		for index in handled_tx_indices.iter().rev() {
-			self.pending_transactions.remove(*index);
-		}
-
-		proofs_for_handled_txs
-	}
 }
 
 // Checking for Tx Relevance

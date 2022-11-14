@@ -2,38 +2,59 @@ use crate::oracle::{
 	collector::{get_tx_set_hash, ScpMessageCollector},
 	constants::{
 		get_min_externalized_messages, MAX_DISTANCE_FROM_CURRENT_SLOT, MAX_SLOTS_PER_FILE,
-		MAX_SLOT_TO_REMEMBER,
 	},
 	errors::Error,
 	storage::{traits::FileHandlerExt, EnvelopesFileHandler},
-	types::{Slot, TxSetToSlotMap},
+	types::{Slot, TxSetHash},
 };
 use parking_lot::RwLock;
 use std::sync::Arc;
 use stellar_relay::{
-	sdk::{
-		types::{ScpEnvelope, ScpStatementPledges, StellarMessage},
-		XdrCodec,
-	},
-	xdr_converter, StellarOverlayConnection,
+	sdk::types::{ScpEnvelope, ScpStatementPledges, StellarMessage},
+	StellarOverlayConnection,
 };
+
 // Handling SCPEnvelopes
 impl ScpMessageCollector {
+	pub fn min_externalized_messages(&self) -> usize {
+		get_min_externalized_messages(self.public_network)
+	}
+
+	/// sends a message to StellarNode for the `TransactionSet`
+	async fn request_for_txset(
+		&mut self,
+		txset_hash: TxSetHash,
+		slot: Slot,
+		overlay_conn: &StellarOverlayConnection,
+	) -> Result<(), Error> {
+		// save the mapping of the hash of the txset and the slot.
+		self.txset_and_slot_map_mut().insert(txset_hash, slot);
+		// let's request the txset from Stellar Node
+		overlay_conn
+			.send(StellarMessage::GetTxSet(txset_hash))
+			.await
+			.map_err(Error::from)
+	}
+
 	/// handles incoming ScpEnvelope.
 	///
 	/// # Arguments
 	///
 	/// * `env` - the ScpEnvelope
-	/// * `txset_hash_map` - provides the slot number of the given Transaction Set Hash
 	/// * `overlay_conn` - The StellarOverlayConnection used for sending messages to Stellar Node
 	pub(crate) async fn handle_envelope(
 		&mut self,
 		env: ScpEnvelope,
-		txset_hash_map: &mut TxSetToSlotMap,
 		overlay_conn: &StellarOverlayConnection,
 	) -> Result<(), Error> {
 		let slot = env.statement.slot_index;
 
+		// ignore if slot is not in the list
+		if !self.slot_watchlist().contains_key(&slot) {
+			return Ok(())
+		}
+
+		// set the last_slot_index
 		{
 			let mut last_slot_index = self.last_slot_index_mut();
 			if slot > *last_slot_index {
@@ -45,15 +66,15 @@ impl ScpMessageCollector {
 		if let ScpStatementPledges::ScpStExternalize(stmt) = &env.statement.pledges {
 			let txset_hash = get_tx_set_hash(stmt)?;
 
-			// check for any new entries to insert
-			if txset_hash_map.get(&txset_hash).is_none() &&
-                // also check whether this is a delayed message.
+			// Check if we've already saved this txset_hash
+			if self.txset_and_slot_map().get_slot(&txset_hash).is_none() &&
+                // also check whether this is a delayed message
                 !self.txset_map().contains_key(&slot)
 			{
-				txset_hash_map.insert(txset_hash, slot);
-				// let's request the txset from Stellar Node
-				overlay_conn.send(StellarMessage::GetTxSet(txset_hash)).await?;
+				let _ = self.request_for_txset(txset_hash, slot, overlay_conn).await?;
 
+				// check if we need to transfer the map to a file
+				// todo: maybe we don't need this anymore
 				self.check_write_envelopes_to_file(slot)?;
 			}
 
@@ -63,7 +84,7 @@ impl ScpMessageCollector {
 			if let Some(value) = envelopes_map.get_mut(&slot) {
 				value.push(env);
 			} else {
-				tracing::info!("Adding received SCP envelopes for slot {}", slot);
+				tracing::debug!("Adding received SCP envelopes for slot {}", slot);
 				envelopes_map.insert(slot, vec![env]);
 			}
 		}
@@ -168,7 +189,7 @@ mod test {
 		});
 
 		let (sender, _) = mpsc::channel(1024);
-		let mut collector = ScpMessageCollector::new(true, vec![], sender);
+		let mut collector = ScpMessageCollector::new(true, vec![]);
 		collector.envelopes_map_mut().append(&mut env_map);
 
 		// this should not write to file.

@@ -1,6 +1,6 @@
 mod envelopes_handler;
 mod proof_builder;
-mod tx_handler;
+
 mod txsets_handler;
 use tokio::sync::mpsc;
 
@@ -10,12 +10,11 @@ use parking_lot::{
 };
 pub use proof_builder::*;
 use std::{convert::TryInto, sync::Arc};
-use stellar_relay::sdk::{types::ScpStatementExternalize, Memo, TransactionEnvelope};
+use stellar_relay::sdk::{types::ScpStatementExternalize, Memo};
 
 use crate::oracle::{
 	errors::Error,
-	types::{EnvelopesMap, Slot, TxHashMap, TxSetHash, TxSetMap},
-	ActorMessage,
+	types::{EnvelopesMap, Slot, SlotList, TxSetHash, TxSetHashAndSlotMap, TxSetMap},
 };
 use stellar_relay::sdk::network::{Network, PUBLIC_NETWORK, TEST_NETWORK};
 
@@ -23,46 +22,48 @@ use stellar_relay::sdk::network::{Network, PUBLIC_NETWORK, TEST_NETWORK};
 pub struct ScpMessageCollector {
 	/// holds the mapping of the Slot Number(key) and the ScpEnvelopes(value)
 	envelopes_map: Arc<RwLock<EnvelopesMap>>,
+
 	/// holds the mapping of the Slot Number(key) and the TransactionSet(value)
 	txset_map: Arc<RwLock<TxSetMap>>,
-	/// holds the mapping of the Transaction Hash(key) and the Slot Number(value)
-	tx_hash_map: Arc<RwLock<TxHashMap>>,
-	/// Holds the transactions that still have to be processed but were not because not enough scp
-	/// messages are available yet.
-	pending_transactions: Vec<(TransactionEnvelope, Slot)>,
+
+	/// Mapping between the txset's hash and its corresponding slot.
+	/// An entry is removed when a `TransactionSet` is found.
+	txset_and_slot_map: Arc<RwLock<TxSetHashAndSlotMap>>,
+
+	/// Holds the slots of transactions with `TransactionSet` already.
+	/// A slot is removed when a proof is generated.
+	slot_pendinglist: Arc<RwLock<Vec<Slot>>>,
+
+	/// List of slots from transactions we want to generate a proof of.
+	/// A slot is removed when a proof is generated.
+	slot_watchlist: Arc<RwLock<SlotList>>,
 
 	last_slot_index: Arc<RwLock<u64>>,
 
 	public_network: bool,
 	vault_addresses: Vec<String>,
-
-	action_sender: mpsc::Sender<ActorMessage>,
 }
 
 impl ScpMessageCollector {
-	pub(crate) fn new(
-		public_network: bool,
-		vault_addresses: Vec<String>,
-		action_sender: mpsc::Sender<ActorMessage>,
-	) -> Self {
+	pub(crate) fn new(public_network: bool, vault_addresses: Vec<String>) -> Self {
 		ScpMessageCollector {
 			envelopes_map: Default::default(),
 			txset_map: Default::default(),
-			tx_hash_map: Default::default(),
-			last_slot_index: Default::default(),
-			pending_transactions: vec![],
+			txset_and_slot_map: Arc::new(Default::default()),
+			slot_pendinglist: Arc::new(Default::default()),
+			slot_watchlist: Arc::new(Default::default()),
+			last_slot_index: Arc::new(Default::default()),
 			public_network,
 			vault_addresses,
-			action_sender,
 		}
-	}
-
-	fn envelopes_map(&self) -> RwLockReadGuard<'_, RawRwLock, EnvelopesMap> {
-		self.envelopes_map.read()
 	}
 
 	pub(crate) fn envelopes_map_len(&self) -> usize {
 		self.envelopes_map.read().len()
+	}
+
+	fn envelopes_map(&self) -> RwLockReadGuard<'_, RawRwLock, EnvelopesMap> {
+		self.envelopes_map.read()
 	}
 
 	fn envelopes_map_clone(&self) -> Arc<RwLock<EnvelopesMap>> {
@@ -73,8 +74,16 @@ impl ScpMessageCollector {
 		self.txset_map.read()
 	}
 
-	fn tx_hash_map(&self) -> RwLockReadGuard<'_, RawRwLock, TxHashMap> {
-		self.tx_hash_map.read()
+	fn txset_and_slot_map(&self) -> RwLockReadGuard<'_, RawRwLock, TxSetHashAndSlotMap> {
+		self.txset_and_slot_map.read()
+	}
+
+	fn slot_pendinglist(&self) -> RwLockReadGuard<'_, RawRwLock, Vec<Slot>> {
+		self.slot_pendinglist.read()
+	}
+
+	fn slot_watchlist(&self) -> RwLockReadGuard<'_, RawRwLock, SlotList> {
+		self.slot_watchlist.read()
 	}
 
 	fn last_slot_index(&self) -> RwLockReadGuard<'_, RawRwLock, u64> {
@@ -101,12 +110,27 @@ impl ScpMessageCollector {
 		self.txset_map.write()
 	}
 
-	fn tx_hash_map_mut(&mut self) -> RwLockWriteGuard<'_, RawRwLock, TxHashMap> {
-		self.tx_hash_map.write()
+	fn txset_and_slot_map_mut(&mut self) -> RwLockWriteGuard<'_, RawRwLock, TxSetHashAndSlotMap> {
+		self.txset_and_slot_map.write()
+	}
+
+	fn slot_pendinglist_mut(&self) -> RwLockWriteGuard<'_, RawRwLock, Vec<Slot>> {
+		self.slot_pendinglist.write()
+	}
+
+	fn slot_watchlist_mut(&mut self) -> RwLockWriteGuard<'_, RawRwLock, SlotList> {
+		self.slot_watchlist.write()
 	}
 
 	fn last_slot_index_mut(&mut self) -> RwLockWriteGuard<'_, RawRwLock, u64> {
 		self.last_slot_index.write()
+	}
+
+	pub fn watch_transaction(&mut self, tx_from_horizon: crate::horizon::Transaction) {
+		let slot = Slot::from(tx_from_horizon.ledger());
+
+		let mut list = self.slot_watchlist_mut();
+		list.insert(slot, ());
 	}
 }
 

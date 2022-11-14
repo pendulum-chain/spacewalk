@@ -54,6 +54,12 @@ pub struct Transaction {
 	pub memo_type: Vec<u8>,
 }
 
+impl Transaction {
+	pub(crate) fn ledger(&self) -> u32 {
+		self.ledger
+	}
+}
+
 // The following structs represent the whole response when fetching any Horizon API
 // In this particular case we assume the embedded payload will allways be for transactions
 // ref https://developers.stellar.org/api/introduction/response-format/

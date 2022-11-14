@@ -17,17 +17,61 @@ pub(crate) type SlotEncodedMap = BTreeMap<Slot, SerializedData>;
 /// Sometimes not enough `StellarMessage::ScpMessage(...)` are sent per slot;
 /// or that the `Stellar:message::TxSet(...)` took too long to arrive (may not even arrive at all)
 /// So I've kept both of them separate: the `EnvelopesMap` and the `TxSetMap`
+/// A `HashSet` is required for `EnvelopesMap` to make sure that all envelopes are unique.
+/// It is possible that during the `GetScpState`, some ScpEnvelopes may have been inserted already.
 pub(crate) type EnvelopesMap = BTreeMap<Slot, Vec<ScpEnvelope>>;
 pub(crate) type TxSetMap = BTreeMap<Slot, TransactionSet>;
 
-pub(crate) type TxHashMap = HashMap<TxHash, Slot>;
-
-/// The slot is not found in the `StellarMessage::TxSet(...)`, therefore this map
-/// serves as a holder of the slot when we hash the txset.
-pub(crate) type TxSetToSlotMap = HashMap<TxSetHash, Slot>;
+pub(crate) type SlotList = BTreeMap<Slot, ()>;
 
 /// The FilterWith has to be Send and Sync, as it is sent between channels.
 pub(crate) type TxEnvelopeFilter = dyn FilterWith<TransactionEnvelope> + Send + Sync;
 
 /// A map that contains any type that implements FilterWith, explicitly for TransactionEnvelope
 pub(crate) type TxFilterMap = HashMap<&'static str, Box<TxEnvelopeFilter>>;
+
+/// The slot is not found in the `StellarMessage::TxSet(...)`, therefore this map
+/// serves as a holder of the slot when we hash the txset.
+#[derive(Clone)]
+pub struct TxSetHashAndSlotMap {
+	hash_slot: HashMap<TxSetHash, Slot>,
+	slot_hash: HashMap<Slot, TxSetHash>,
+}
+
+impl Default for TxSetHashAndSlotMap {
+	fn default() -> Self {
+		TxSetHashAndSlotMap::new()
+	}
+}
+
+impl TxSetHashAndSlotMap {
+	pub fn new() -> Self {
+		TxSetHashAndSlotMap { hash_slot: Default::default(), slot_hash: Default::default() }
+	}
+
+	pub fn get_slot(&self, hash: &TxSetHash) -> Option<&Slot> {
+		self.hash_slot.get(hash)
+	}
+
+	pub fn get_txset_hash(&self, slot: &Slot) -> Option<&TxSetHash> {
+		self.slot_hash.get(slot)
+	}
+
+	pub fn remove_by_slot(&mut self, slot: &Slot) -> Option<TxSetHash> {
+		let hash = self.slot_hash.remove(slot)?;
+		self.hash_slot.remove(&hash)?;
+
+		Some(hash)
+	}
+
+	pub fn remove_by_txset_hash(&mut self, txset_hash: &TxSetHash) -> Option<Slot> {
+		let slot = self.hash_slot.remove(txset_hash)?;
+		self.slot_hash.remove(&slot)?;
+		Some(slot)
+	}
+
+	pub fn insert(&mut self, hash: TxSetHash, slot: Slot) {
+		self.hash_slot.insert(hash.clone(), slot);
+		self.slot_hash.insert(slot, hash);
+	}
+}

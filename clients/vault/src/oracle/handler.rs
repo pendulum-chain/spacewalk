@@ -1,21 +1,19 @@
-use std::collections::HashMap;
-
 use tokio::sync::{mpsc, oneshot};
 
 use stellar_relay::{
-	node::NodeInfo,
-	sdk::{types::StellarMessage, TransactionEnvelope},
-	ConnConfig, StellarOverlayConnection, StellarRelayMessage,
+	node::NodeInfo, sdk::types::StellarMessage, ConnConfig, StellarOverlayConnection,
+	StellarRelayMessage,
 };
 
-use crate::oracle::{
-	collector::{Proof, ScpMessageCollector},
-	errors::Error,
-	storage::prepare_directories,
-	types::{TxEnvelopeFilter, TxSetToSlotMap},
-	FilterWith, TxFilterMap,
+use crate::{
+	horizon::Transaction,
+	oracle::{
+		collector::{Proof, ProofStatus, ScpMessageCollector},
+		errors::Error,
+		storage::prepare_directories,
+		types::Slot,
+	},
 };
-use std::convert::TryInto;
 
 /// A message used to communicate with the Actor
 pub enum ActorMessage {
@@ -23,18 +21,19 @@ pub enum ActorMessage {
 	CurrentMapSize {
 		sender: oneshot::Sender<usize>,
 	},
-	/// filters on the transaction we want to process.
-	AddFilter {
-		filter: Box<dyn FilterWith<TransactionEnvelope> + Send + Sync>,
+
+	/// Watch out for scpenvelopes and txsets for the given transaction (from Horizon)
+	WatchTransaction {
+		transaction: Transaction,
 	},
 
-	RemoveFilter(&'static str),
+	GetProof {
+		slot: Slot,
+		sender: oneshot::Sender<ProofStatus>,
+	},
 	/// Gets all proofs
 	GetPendingProofs {
 		sender: oneshot::Sender<Vec<Proof>>,
-	},
-	GetScpState {
-		missed_slot: u64,
 	},
 }
 
@@ -43,13 +42,11 @@ struct ScpMessageActor {
 	/// used to receive messages from outside the actor.
 	action_receiver: mpsc::Receiver<ActorMessage>,
 	collector: ScpMessageCollector,
-	/// the filters used to filter out transactions for processing.
-	tx_env_filters: TxFilterMap,
 }
 
 impl ScpMessageActor {
 	fn new(receiver: mpsc::Receiver<ActorMessage>, collector: ScpMessageCollector) -> Self {
-		ScpMessageActor { action_receiver: receiver, collector, tx_env_filters: HashMap::new() }
+		ScpMessageActor { action_receiver: receiver, collector }
 	}
 
 	/// handles messages sent from the outside.
@@ -59,30 +56,23 @@ impl ScpMessageActor {
 				let _ = sender.send(self.collector.envelopes_map_len());
 			},
 
-			ActorMessage::AddFilter { filter } => {
-				tracing::info!("adding filter: {}", filter.name());
-				self.tx_env_filters.insert(filter.name(), filter);
-			},
-
-			ActorMessage::RemoveFilter(name) => {
-				let _ = self.tx_env_filters.remove(name);
-			},
-
 			ActorMessage::GetPendingProofs { sender } => {
-				let _ = sender.send(self.collector.get_pending_proofs());
+				let _ = sender.send(self.collector.get_pending_proofs(overlay_conn).await);
 			},
-			ActorMessage::GetScpState { missed_slot } => {
-				overlay_conn
-					.send(StellarMessage::GetScpState(missed_slot.try_into().unwrap()))
-					.await;
+
+			ActorMessage::WatchTransaction { transaction } => {
+				// watch out for this transaction
+				self.collector.watch_transaction(transaction);
+			},
+
+			ActorMessage::GetProof { slot, sender } => {
+				let _ = sender.send(self.collector.build_proof(slot, overlay_conn).await);
 			},
 		};
 	}
 
 	/// runs the stellar-relay and listens to data to collect the scp messages and txsets.
 	async fn run(&mut self, mut overlay_conn: StellarOverlayConnection) -> Result<(), Error> {
-		let mut tx_set_to_slot_map: TxSetToSlotMap = HashMap::new();
-
 		loop {
 			tokio::select! {
 				// listen to stellar node
@@ -90,16 +80,16 @@ impl ScpMessageActor {
 					match conn_state {
 						StellarRelayMessage::Data {
 							p_id: _,
-							msg_type,
+							msg_type: _,
 							msg,
 						} => match msg {
 							StellarMessage::ScpMessage(env) => {
 								self.collector
-									.handle_envelope(env, &mut tx_set_to_slot_map, &overlay_conn)
+									.handle_envelope(env, &overlay_conn)
 									.await?;
 							}
 							StellarMessage::TxSet(set) => {
-								self.collector.handle_tx_set(&set, &mut tx_set_to_slot_map, &self.tx_env_filters)?;
+								self.collector.handle_tx_set(&set)?;
 							}
 							_ => {}
 						},
@@ -134,8 +124,7 @@ impl ScpMessageHandler {
 		is_public_network: bool,
 	) -> Self {
 		let (sender, receiver) = mpsc::channel(1024);
-		let collector =
-			ScpMessageCollector::new(is_public_network, vault_addresses, sender.clone());
+		let collector = ScpMessageCollector::new(is_public_network, vault_addresses);
 
 		let mut actor = ScpMessageActor::new(receiver, collector);
 		tokio::spawn(async move { actor.run(overlay_conn).await });
@@ -151,23 +140,6 @@ impl ScpMessageHandler {
 		self.action_sender.send(ActorMessage::CurrentMapSize { sender }).await?;
 
 		receiver.await.map_err(Error::from)
-	}
-
-	/// Adds a filter on what transactions to process.
-	/// Returns an index of the filter in the map.
-	pub async fn add_filter(&self, filter: Box<TxEnvelopeFilter>) -> Result<(), Error> {
-		self.action_sender
-			.send(ActorMessage::AddFilter { filter })
-			.await
-			.map_err(Error::from)
-	}
-
-	/// Removes an existing filter based on its id/key in the map.
-	pub async fn remove_filter(&self, filter_name: &'static str) -> Result<(), Error> {
-		self.action_sender
-			.send(ActorMessage::RemoveFilter(filter_name))
-			.await
-			.map_err(Error::from)
 	}
 
 	/// Returns a list of transactions with each of their corresponding proofs

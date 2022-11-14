@@ -2,90 +2,86 @@ use std::sync::Arc;
 
 use parking_lot::RwLock;
 
-use stellar_relay::{helper::compute_non_generic_tx_set_content_hash, sdk::types::TransactionSet};
+use stellar_relay::{
+	helper::compute_non_generic_tx_set_content_hash,
+	sdk::types::{StellarMessage, TransactionSet},
+	StellarOverlayConnection,
+};
 
 use crate::oracle::{
 	collector::ScpMessageCollector,
 	constants::MAX_TXSETS_PER_FILE,
 	errors::Error,
 	storage::{traits::FileHandlerExt, TxSetsFileHandler},
-	types::{Slot, TxSetMap, TxSetToSlotMap},
-	TxFilterMap,
+	types::TxSetMap,
 };
 
 impl ScpMessageCollector {
-	/// maps the slot to the transactions of the TransactionSet
-	///
-	/// # Arguments
-	///
-	/// * `slot` - the slot of which the tx belongs to
-	/// * `tx_set` - where the txs are derived from.
-	/// * `filter` - filters out transactions (in the Transaction Set) for processing.
-	fn save_transactions_to_map(
-		&mut self,
-		slot: Slot,
-		tx_set: &TransactionSet,
-		filters: &TxFilterMap,
-	) -> Result<(), Error> {
-		tracing::info!("Inserting received transaction set for slot {}", slot);
-
-		// Collect tx hashes to save to file.
-		tx_set.txes.get_vec().iter().for_each(|tx_env| {
-			let tx_hash = tx_env.get_hash(self.network());
-
-			// only relevant transactions are saved.
-			if self.is_tx_relevant(tx_env) {
-				tracing::info!("saving to {:?} to hash map", base64::encode(&tx_hash));
-				self.tx_hash_map_mut().insert(tx_hash, slot);
-			}
-
-			// loops through the filters to check if transaction needs to be processed.
-			// Add transaction to pending transactions if it is not yet contained
-			while let Some(filter) = filters.values().next() {
-				if filter.check_for_processing(tx_env) {
-					if self
-						.pending_transactions
-						.iter()
-						.find(|(tx, _)| tx.get_hash(self.network()) == tx_hash)
-						.is_none()
-					{
-						self.pending_transactions.push((tx_env.clone(), slot));
-						break
-					}
-				}
-			}
-		});
-
-		Ok(())
-	}
+	// /// maps the slot to the transactions of the TransactionSet
+	// ///
+	// /// # Arguments
+	// ///
+	// /// * `slot` - the slot of which the tx belongs to
+	// /// * `tx_set` - where the txs are derived from.
+	// /// * `filter` - filters out transactions (in the Transaction Set) for processing.
+	// fn save_transactions_to_map(
+	// 	&mut self,
+	// 	slot: Slot,
+	// 	tx_set: &TransactionSet,
+	// 	filters: &TxFilterMap,
+	// ) -> Result<(), Error> {
+	// 	tracing::info!("Inserting received transaction set for slot {}", slot);
+	//
+	// 	// Collect tx hashes to save to file.
+	// 	tx_set.txes.get_vec().iter().for_each(|tx_env| {
+	// 		let tx_hash = tx_env.get_hash(self.network());
+	//
+	// 		// only relevant transactions are saved.
+	// 		if self.is_tx_relevant(tx_env) {
+	// 			tracing::info!("saving to {:?} to hash map", base64::encode(&tx_hash));
+	// 			self.tx_hash_map_mut().insert(tx_hash, slot);
+	// 		}
+	//
+	// 		// loops through the filters to check if transaction needs to be processed.
+	// 		// Add transaction to pending transactions if it is not yet contained
+	// 		while let Some(filter) = filters.values().next() {
+	// 			if filter.check_for_processing(tx_env) {
+	// 				if self
+	// 					.pending_transactions
+	// 					.iter()
+	// 					.find(|(tx, _)| tx.get_hash(self.network()) == tx_hash)
+	// 					.is_none()
+	// 				{
+	// 					self.pending_transactions.push((tx_env.clone(), slot));
+	// 					break
+	// 				}
+	// 			}
+	// 		}
+	// 	});
+	//
+	// 	Ok(())
+	// }
 
 	/// handles incoming TransactionSet.
-	///
-	/// # Arguments
-	///
-	/// * `set` - the TransactionSet
-	/// * `txset_hash_map` - provides the slot number of the given Transaction Set Hash
-	/// * `filter` - filters out transactions (in the Transaction Set) for processing.
-	pub(crate) fn handle_tx_set(
-		&mut self,
-		set: &TransactionSet,
-		txset_to_slot_map: &mut TxSetToSlotMap,
-		filters: &TxFilterMap,
-	) -> Result<(), Error> {
+	pub(crate) fn handle_tx_set(&mut self, set: &TransactionSet) -> Result<(), Error> {
+		// todo: maybe we don't need this anymore?
 		self.check_write_tx_set_to_file()?;
 
 		// compute the tx_set_hash, to check what slot this set belongs too.
 		let tx_set_hash = compute_non_generic_tx_set_content_hash(set);
 
-		// We remove the slot from the map, as we will now process it and don't need it anymore
-		if let Some(slot) = txset_to_slot_map.remove(&tx_set_hash) {
-			// saving a new txset entry
-			self.txset_map_mut().insert(slot, set.clone());
+		// Remove slot from this map and into the pending list
+		let slot_opt = self.txset_and_slot_map_mut().remove_by_txset_hash(&tx_set_hash);
+		match slot_opt {
+			None => {
+				tracing::warn!("WARNING! tx_set_hash: {:?} has no slot.", tx_set_hash);
+			},
+			Some(slot) => {
+				self.slot_pendinglist_mut().push(slot);
 
-			// save the txs if the txset with the tx's hash as the key.
-			self.save_transactions_to_map(slot, set, filters)?;
-		} else {
-			tracing::warn!("WARNING! tx_set_hash: {:?} has no slot.", tx_set_hash);
+				// saving a new txset entry
+				self.txset_map_mut().insert(slot, set.clone());
+			},
 		}
 
 		Ok(())

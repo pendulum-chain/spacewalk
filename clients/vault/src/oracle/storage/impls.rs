@@ -11,7 +11,7 @@ use stellar_relay::sdk::{
 
 use crate::oracle::{
 	storage::traits::*, EnvelopesFileHandler, EnvelopesMap, Error, Filename, SerializedData, Slot,
-	SlotEncodedMap, TxHashMap, TxHashesFileHandler, TxSetMap, TxSetsFileHandler,
+	SlotEncodedMap, TxSetMap, TxSetsFileHandler,
 };
 
 use stellar_relay::sdk::XdrCodec;
@@ -126,36 +126,6 @@ impl FileHandlerExt<TxSetMap> for TxSetsFileHandler {
 	}
 }
 
-impl TxHashesFileHandler {
-	fn create_data(data: &TxHashMap) -> Result<SerializedData, Error> {
-		bincode::serialize(data).map_err(Error::from)
-	}
-
-	pub fn write_to_file(filename: Filename, data: &TxHashMap) -> Result<(), Error> {
-		let path = Self::get_path(&filename);
-		let mut file = File::create(path)?;
-
-		let data = Self::create_data(data)?;
-		file.write_all(&data).map_err(Error::from)
-	}
-}
-
-impl FileHandler<TxHashMap> for TxHashesFileHandler {
-	#[cfg(test)]
-	const PATH: &'static str = "./resources/test/tx_hashes";
-
-	#[cfg(not(test))]
-	const PATH: &'static str = "./tx_hashes";
-
-	fn deserialize_bytes(bytes: Vec<u8>) -> Result<TxHashMap, Error> {
-		bincode::deserialize(&bytes).map_err(Error::from)
-	}
-
-	fn check_slot_in_splitted_filename(slot_param: Slot, splits: &mut Split<&str>) -> bool {
-		TxSetsFileHandler::check_slot_in_splitted_filename(slot_param, splits)
-	}
-}
-
 impl ScpArchiveStorage {
 	pub async fn get_scp_archive(slot_index: i32) -> Result<XdrArchive<ScpHistoryEntry>, Error> {
 		let (url, file_name) = Self::get_url_and_file_name(slot_index);
@@ -204,7 +174,7 @@ impl ScpArchiveStorage {
 		let slot_index = Self::find_last_slot_index_in_batch(slot_index);
 		let hex_string = format!("0{:x}", slot_index);
 		let file_name = format!("{hex_string}.xdr");
-		let base_url = crate::oracle::constants::stellar_history_base_url;
+		let base_url = crate::oracle::constants::STELLAR_HISTORY_BASE_URL;
 		let url = format!(
 			"{base_url}{}/{}/{}/scp-{file_name}.gz",
 			&hex_string[..2],
