@@ -38,11 +38,49 @@ pub const STABLE_PARACHAIN_CONFIRMATIONS: &str = "StableParachainConfirmations";
 
 #[cfg_attr(
 	feature = "parachain-metadata",
-	subxt(runtime_metadata_path = "metadata-parachain.scale", derive_for_all_types = "Clone")
+	subxt(
+		runtime_metadata_path = "metadata-parachain.scale",
+		derive_for_all_types = "Clone, PartialEq, Eq",
+		derive_for_type(
+			type = "spacewalk_primitives::TokenSymbol",
+			derive = "serde::Serialize, serde::Deserialize"
+		),
+		derive_for_type(
+			type = "spacewalk_primitives::CurrencyId",
+			derive = "serde::Serialize, serde::Deserialize"
+		),
+		derive_for_type(
+			type = "spacewalk_primitives::VaultCurrencyPair",
+			derive = "serde::Serialize, serde::Deserialize"
+		),
+		derive_for_type(
+			type = "spacewalk_primitives::VaultId",
+			derive = "serde::Serialize, serde::Deserialize"
+		),
+	)
 )]
 #[cfg_attr(
 	feature = "standalone-metadata",
-	subxt(runtime_metadata_path = "metadata-standalone.scale", derive_for_all_types = "Clone")
+	subxt(
+		runtime_metadata_path = "metadata-standalone.scale",
+		derive_for_all_types = "Clone, PartialEq, Eq",
+		derive_for_type(
+			type = "spacewalk_primitives::TokenSymbol",
+			derive = "serde::Serialize, serde::Deserialize"
+		),
+		derive_for_type(
+			type = "spacewalk_primitives::CurrencyId",
+			derive = "serde::Serialize, serde::Deserialize"
+		),
+		derive_for_type(
+			type = "spacewalk_primitives::VaultCurrencyPair",
+			derive = "serde::Serialize, serde::Deserialize"
+		),
+		derive_for_type(
+			type = "spacewalk_primitives::VaultId",
+			derive = "serde::Serialize, serde::Deserialize"
+		),
+	)
 )]
 pub mod metadata {}
 
