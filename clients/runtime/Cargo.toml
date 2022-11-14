@@ -45,6 +45,7 @@ jsonrpsee = { version = "0.15.1", features = ["macros", "jsonrpsee-types", "clie
 
 # Needed for the `BalanceWrapper` struct
 module-oracle-rpc-runtime-api = { path = "../../pallets/oracle/rpc/runtime-api" }
+primitives = { path = "../../primitives", package = "spacewalk-primitives" }
 
 # Dependencies for the testing utils for integration tests
 rand = { version = "0.7", optional = true }

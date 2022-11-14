@@ -9,10 +9,8 @@ use subxt::{
 
 pub use error::{Error, SubxtError};
 pub use retry::{notify_retry, RetryPolicy};
-pub use rpc::{SpacewalkParachain, UtilFuncs, DEFAULT_SPEC_NAME, SS58_PREFIX};
+pub use rpc::{SpacewalkParachain, UtilFuncs, VaultRegistryPallet, DEFAULT_SPEC_NAME, SS58_PREFIX};
 pub use types::*;
-// explicitly import some types for making it clearer which ones we use in the runtime
-use types::{AccountId, Address, BlockNumber, Index, H256};
 
 pub mod cli;
 
@@ -64,22 +62,6 @@ pub const STABLE_PARACHAIN_CONFIRMATIONS: &str = "StableParachainConfirmations";
 	subxt(
 		runtime_metadata_path = "metadata-standalone.scale",
 		derive_for_all_types = "Clone, PartialEq, Eq",
-		derive_for_type(
-			type = "spacewalk_primitives::TokenSymbol",
-			derive = "serde::Serialize, serde::Deserialize"
-		),
-		derive_for_type(
-			type = "spacewalk_primitives::CurrencyId",
-			derive = "serde::Serialize, serde::Deserialize"
-		),
-		derive_for_type(
-			type = "spacewalk_primitives::VaultCurrencyPair",
-			derive = "serde::Serialize, serde::Deserialize"
-		),
-		derive_for_type(
-			type = "spacewalk_primitives::VaultId",
-			derive = "serde::Serialize, serde::Deserialize"
-		),
 	)
 )]
 pub mod metadata {}
