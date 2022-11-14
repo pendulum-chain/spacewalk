@@ -9945,6 +9945,7 @@ dependencies = [
  "frame-support",
  "futures 0.3.25",
  "git-version",
+ "governor",
  "hex",
  "jsonrpc-core",
  "jsonrpc-core-client",

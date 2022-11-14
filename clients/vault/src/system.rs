@@ -96,7 +96,7 @@ impl VaultIdManager {
 			.await?)
 	}
 
-	pub async fn get_bitcoin_rpc(&self, vault_id: &VaultId) -> Option<StellarWallet> {
+	pub async fn get_stellar_wallet(&self, vault_id: &VaultId) -> Option<StellarWallet> {
 		self.vault_data.read().await.get(vault_id).map(|x| x.stellar_wallet.clone())
 	}
 
@@ -130,6 +130,17 @@ impl VaultIdManager {
 	}
 }
 
+fn parse_collateral_and_amount(
+	s: &str,
+) -> Result<(String, Option<u128>), Box<dyn std::error::Error + Send + Sync + 'static>> {
+	let pos = s
+		.find('=')
+		.ok_or_else(|| format!("invalid CurrencyId=amount: no `=` found in `{}`", s))?;
+
+	let val = &s[pos + 1..];
+	Ok((s[..pos].to_string(), if val.contains("faucet") { None } else { Some(val.parse()?) }))
+}
+
 #[derive(Parser, Clone, Debug)]
 pub struct VaultServiceConfig {
 	#[clap(long, help = "The Stellar secret key that is used to sign transactions.")]
@@ -138,6 +149,10 @@ pub struct VaultServiceConfig {
 	/// Pass the faucet URL for auto-registration.
 	#[clap(long)]
 	pub faucet_url: Option<String>,
+
+	/// Automatically register the vault with the given amount of collateral
+	#[clap(long, value_parser = parse_collateral_and_amount)]
+	pub auto_register: Vec<(String, Option<u128>)>,
 }
 
 pub struct VaultService {
@@ -234,6 +249,22 @@ impl VaultService {
 	async fn run_service(&self) -> Result<(), ServiceError<Error>> {
 		self.await_parachain_block().await?;
 
+		let parsed_auto_register = self
+			.config
+			.auto_register
+			.clone()
+			.into_iter()
+			.map(|(symbol, amount)| Ok((CurrencyId::try_from_symbol(symbol)?, amount)))
+			.into_iter()
+			.collect::<Result<Vec<_>, Error>>()
+			.map_err(ServiceError::Abort)?;
+
+		// exit if auto-register uses faucet and faucet url not set
+		if parsed_auto_register.iter().any(|(_, o)| o.is_none()) && self.config.faucet_url.is_none()
+		{
+			return Err(ServiceError::Abort(Error::FaucetUrlNotSet))
+		}
+
 		// Subscribe to an event (any event will do) so that a period of inactivity does not close
 		// the jsonrpsee connection
 		let err_provider = self.spacewalk_parachain.clone();
@@ -246,7 +277,14 @@ impl VaultService {
 		tokio::task::spawn(err_listener);
 
 		self.maybe_register_public_key().await?;
-		self.maybe_register_vault(currency_id, amount);
+		join_all(
+			parsed_auto_register
+				.iter()
+				.map(|(currency_id, amount)| self.maybe_register_vault(currency_id, amount)),
+		)
+		.await
+		.into_iter()
+		.collect::<Result<_, Error>>()?;
 
 		// purposefully _after_ maybe_register_vault and _before_ other calls
 		self.vault_id_manager.fetch_vault_ids().await?;
@@ -256,7 +294,6 @@ impl VaultService {
 			self.spacewalk_parachain.clone(),
 			self.vault_id_manager.clone(),
 			self.btc_rpc_master_wallet.clone(),
-			num_confirmations,
 			self.config.payment_margin_minutes,
 			self.config.auto_rbf,
 		);
