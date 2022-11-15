@@ -27,3 +27,4 @@ nonzero_ext = "0.3.0"
 
 # Workspace dependencies
 runtime = { path = "../runtime" }
+wallet = { path = "../wallet" }

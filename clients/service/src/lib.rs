@@ -2,17 +2,18 @@ use std::{fmt, sync::Arc, time::Duration};
 
 use async_trait::async_trait;
 use futures::{future::Either, Future, FutureExt};
+use governor::{Quota, RateLimiter};
+use nonzero_ext::*;
+pub use warp;
 
 pub use cli::{LoggingFormat, RestartPolicy, ServiceConfig};
 pub use error::Error;
-use governor::{Quota, RateLimiter};
-use nonzero_ext::*;
 use runtime::{
 	cli::ConnectionOpts as ParachainConfig, CurrencyId, PrettyPrint, SpacewalkParachain,
 	SpacewalkSigner,
 };
 pub use trace::init_subscriber;
-pub use warp;
+use wallet::StellarWallet;
 
 mod cli;
 mod error;

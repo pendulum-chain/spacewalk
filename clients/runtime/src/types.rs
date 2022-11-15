@@ -1,5 +1,5 @@
 // TODO maybe change this back to sr25519
-use subxt::ext::sp_core::ed25519::Pair as KeyPair;
+pub use subxt::ext::sp_core::ed25519::Pair as KeyPair;
 
 pub use metadata_aliases::*;
 pub use primitives::CurrencyId;
@@ -21,8 +21,10 @@ cfg_if::cfg_if! {
 		use sp_runtime::{traits::{IdentifyAccount, Verify}, MultiAddress, MultiSignature};
 
 		type Signature = MultiSignature;
-		pub type AccountId = <<Signature as Verify>::Signer as IdentifyAccount>::AccountId;
-		pub type Address = MultiAddress<AccountId, ()>;
+		// pub type AccountId = <<Signature as Verify>::Signer as IdentifyAccount>::AccountId;
+		pub type AccountId = subxt::ext::sp_runtime::AccountId32;
+		pub type Address = subxt::ext::sp_runtime::MultiAddress<AccountId, ()>;
+		// pub type Address = MultiAddress<AccountId, ()>;
 	} else {
 		pub type AccountId = subxt::ext::sp_runtime::AccountId32;
 		pub type Address = AccountId;

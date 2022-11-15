@@ -615,3 +615,83 @@ impl VaultRegistryPallet for SpacewalkParachain {
 		Ok(result.into_inner())
 	}
 }
+
+#[async_trait]
+pub trait CollateralBalancesPallet {
+	async fn get_free_balance(&self, currency_id: CurrencyId) -> Result<Balance, Error>;
+
+	async fn get_free_balance_for_id(
+		&self,
+		id: AccountId,
+		currency_id: CurrencyId,
+	) -> Result<Balance, Error>;
+
+	async fn get_reserved_balance(&self, currency_id: CurrencyId) -> Result<Balance, Error>;
+
+	async fn get_reserved_balance_for_id(
+		&self,
+		id: AccountId,
+		currency_id: CurrencyId,
+	) -> Result<Balance, Error>;
+
+	async fn transfer_to(
+		&self,
+		recipient: &AccountId,
+		amount: u128,
+		currency_id: CurrencyId,
+	) -> Result<(), Error>;
+}
+
+#[async_trait]
+impl CollateralBalancesPallet for SpacewalkParachain {
+	async fn get_free_balance(&self, currency_id: CurrencyId) -> Result<Balance, Error> {
+		Ok(Self::get_free_balance_for_id(self, self.account_id.clone(), currency_id).await?)
+	}
+
+	async fn get_free_balance_for_id(
+		&self,
+		id: AccountId,
+		currency_id: CurrencyId,
+	) -> Result<Balance, Error> {
+		let head = self.get_latest_block_hash().await?;
+		let query = metadata::storage().tokens().accounts(&id, &currency_id);
+
+		let result = self.api.storage().fetch(&query, head).await?;
+		Ok(result.map(|x| x.free).unwrap_or_default())
+	}
+
+	async fn get_reserved_balance(&self, currency_id: CurrencyId) -> Result<Balance, Error> {
+		Ok(Self::get_reserved_balance_for_id(self, self.account_id.clone(), currency_id).await?)
+	}
+
+	async fn get_reserved_balance_for_id(
+		&self,
+		id: AccountId,
+		currency_id: CurrencyId,
+	) -> Result<Balance, Error> {
+		let head = self.get_latest_block_hash().await?;
+		let query = metadata::storage().tokens().accounts(&id, &currency_id);
+
+		let result = self.api.storage().fetch(&query, head).await?;
+		Ok(result.map(|x| x.reserved).unwrap_or_default())
+	}
+
+	async fn transfer_to(
+		&self,
+		recipient: &Address,
+		amount: u128,
+		currency_id: CurrencyId,
+	) -> Result<(), Error> {
+		let transfer_tx = metadata::tx().tokens().transfer(
+			subxt::ext::sp_runtime::MultiAddress::Id(recipient.clone()),
+			currency_id,
+			amount,
+		);
+
+		self.api
+			.tx()
+			.sign_and_submit_then_watch_default(&transfer_tx, self.signer.as_ref())
+			.await?;
+		Ok(())
+	}
+}

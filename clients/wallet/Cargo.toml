@@ -1,29 +1,8 @@
 [package]
-authors = ["Interlay <contact@interlay.io>"]
-edition = "2018"
-name = "service"
-version = "1.1.0"
+authors = ["Pendulum Chain <https://github.com/pendulum-chain>"]
+edition = "2021"
+name = "wallet"
+version = "1.0.0"
 
 [dependencies]
-async-trait = "0.1.40"
-clap = "3.1"
-futures = "0.3.5"
-thiserror = "1.0"
 
-hyper = { version = "0.14.11" }
-hyper-tls = "0.5.0"
-tokio = { version = "1.0", features = ["full"] }
-warp = "0.3.2"
-
-serde = { version = "1.0.136", features = ["derive"] }
-serde_json = "1.0.71"
-
-tracing = { version = "0.1", features = ["log"] }
-tracing-futures = { version = "0.2.5" }
-tracing-subscriber = { version = "0.2.12", features = ["registry", "env-filter", "fmt"] }
-
-governor = "0.5.0"
-nonzero_ext = "0.3.0"
-
-# Workspace dependencies
-runtime = { path = "../runtime" }

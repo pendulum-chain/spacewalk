@@ -8,7 +8,8 @@ pub use crate::error::Error;
 
 mod error;
 mod execution;
-mod metrics;
+pub mod metrics;
+pub mod process;
 mod system;
 
 pub mod oracle;

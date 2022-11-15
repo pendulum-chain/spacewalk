@@ -9,8 +9,12 @@ use subxt::{
 
 pub use assets::TryFromSymbol;
 pub use error::{Error, SubxtError};
+pub use prometheus;
 pub use retry::{notify_retry, RetryPolicy};
-pub use rpc::{SpacewalkParachain, UtilFuncs, VaultRegistryPallet, DEFAULT_SPEC_NAME, SS58_PREFIX};
+pub use rpc::{
+	CollateralBalancesPallet, SpacewalkParachain, UtilFuncs, VaultRegistryPallet,
+	DEFAULT_SPEC_NAME, SS58_PREFIX,
+};
 pub use types::*;
 
 pub mod cli;
@@ -67,6 +71,8 @@ pub const STABLE_PARACHAIN_CONFIRMATIONS: &str = "StableParachainConfirmations";
 	)
 )]
 pub mod metadata {
+	#[subxt(substitute_type = "sp_core::crypto::AccountId32")]
+	use crate::AccountId;
 	// TODO why does it fix it? What does it do?
 	#[subxt(substitute_type = "spacewalk_primitives::CurrencyId")]
 	use crate::CurrencyId;
