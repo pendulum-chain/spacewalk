@@ -193,3 +193,32 @@ impl Connector {
 		self.flow_controller.enable(local_overlay_version, remote_overlay_version)
 	}
 }
+
+use substrate_stellar_sdk::{
+	network::TEST_NETWORK, SecretKey,
+};
+#[test]
+fn create_new_connector_works() {
+	let secret =
+		SecretKey::from_encoding("SBLI7RKEJAEFGLZUBSCOFJHQBPFYIIPLBCKN7WVCWT4NEG2UJEW33N73")
+			.unwrap();
+	let node_info = NodeInfo::new(19, 21, 19, "v19.1.0".to_string(), &TEST_NETWORK);
+	let cfg = ConnConfig::new("34.235.168.98", 11625, secret, 0, false, true, false);
+	// this is a channel to communicate with the connection/config (this needs renaming)
+	let (actions_sender, _) = mpsc::channel::<ConnectorActions>(1024);
+	// this is a channel to communicate with the user/caller.
+	let (relay_message_sender, _) = mpsc::channel::<StellarRelayMessage>(1024);
+	let connector = Connector::new(
+		node_info.clone(),
+		cfg.clone(),
+		actions_sender.clone(),
+		relay_message_sender,
+	);
+
+	let connector_local_node = connector.local.node();
+	assert_eq!(connector_local_node.ledger_version, node_info.ledger_version);
+	assert_eq!(connector_local_node.overlay_version, node_info.overlay_version);
+	assert_eq!(connector_local_node.overlay_min_version, node_info.overlay_min_version);
+	assert_eq!(connector_local_node.version_str, node_info.version_str);
+	assert_eq!(connector_local_node.network_id, node_info.network_id);
+}
