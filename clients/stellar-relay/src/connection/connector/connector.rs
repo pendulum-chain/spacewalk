@@ -1,18 +1,20 @@
+use std::vec;
+
 use substrate_stellar_sdk::{
-	types::{AuthenticatedMessageV0, Curve25519Public, HmacSha256Mac, MessageType},
-	XdrCodec,
+	types::{AuthenticatedMessageV0, Curve25519Public, HmacSha256Mac, MessageType, Hello},
+	XdrCodec, compound_types::LimitedString, PublicKey,
 };
 use tokio::sync::mpsc;
 
 use crate::{
 	connection::{
-		authentication::{gen_shared_key, ConnectionAuth},
+		authentication::{gen_shared_key, ConnectionAuth, create_auth_cert},
 		flow_controller::FlowController,
 		hmac::{verify_hmac, HMacKeys},
 	},
 	handshake::HandshakeState,
 	node::{LocalInfo, NodeInfo, RemoteInfo},
-	ConnConfig, ConnectorActions, Error, StellarRelayMessage,
+	ConnConfig, ConnectorActions, Error, StellarRelayMessage, helper::time_now,
 };
 
 pub struct Connector {
@@ -195,31 +197,137 @@ impl Connector {
 }
 
 
-#[test]
-fn create_new_connector_works() {
+mod test{
+	use crate::Connector;
+	use std::vec;
 	use substrate_stellar_sdk::{
-		network::TEST_NETWORK, SecretKey,
+		types::{AuthenticatedMessageV0, Curve25519Public, HmacSha256Mac, MessageType, Hello},
+		XdrCodec, compound_types::LimitedString, PublicKey,
 	};
-	let secret =
-		SecretKey::from_encoding("SBLI7RKEJAEFGLZUBSCOFJHQBPFYIIPLBCKN7WVCWT4NEG2UJEW33N73")
-			.unwrap();
-	let node_info = NodeInfo::new(19, 21, 19, "v19.1.0".to_string(), &TEST_NETWORK);
-	let cfg = ConnConfig::new("34.235.168.98", 11625, secret, 0, false, true, false);
-	// this is a channel to communicate with the connection/config (this needs renaming)
-	let (actions_sender, _) = mpsc::channel::<ConnectorActions>(1024);
-	// this is a channel to communicate with the user/caller.
-	let (relay_message_sender, _) = mpsc::channel::<StellarRelayMessage>(1024);
-	let connector = Connector::new(
-		node_info.clone(),
-		cfg.clone(),
-		actions_sender.clone(),
-		relay_message_sender,
-	);
+	use tokio::sync::mpsc;
 
-	let connector_local_node = connector.local.node();
-	assert_eq!(connector_local_node.ledger_version, node_info.ledger_version);
-	assert_eq!(connector_local_node.overlay_version, node_info.overlay_version);
-	assert_eq!(connector_local_node.overlay_min_version, node_info.overlay_min_version);
-	assert_eq!(connector_local_node.version_str, node_info.version_str);
-	assert_eq!(connector_local_node.network_id, node_info.network_id);
+	use crate::{
+		connection::{
+			authentication::{gen_shared_key, ConnectionAuth, create_auth_cert},
+			flow_controller::FlowController,
+			hmac::{verify_hmac, HMacKeys},
+		},
+		handshake::HandshakeState,
+		node::{LocalInfo, NodeInfo, RemoteInfo},
+		ConnConfig, ConnectorActions, Error, StellarRelayMessage, helper::time_now,
+	};
+	#[test]
+	fn create_new_connector_works() {
+		use substrate_stellar_sdk::{
+			network::TEST_NETWORK,
+		};
+		let (node_info, _, mut connector) = create_connector();
+	
+		let connector_local_node = connector.local.node();
+		
+		assert_eq!(connector_local_node.ledger_version, node_info.ledger_version);
+		assert_eq!(connector_local_node.overlay_version, node_info.overlay_version);
+		assert_eq!(connector_local_node.overlay_min_version, node_info.overlay_min_version);
+		assert_eq!(connector_local_node.version_str, node_info.version_str);
+		assert_eq!(connector_local_node.network_id, node_info.network_id);
+	}
+	
+	#[test]
+	fn connector_local_sequence_works() {
+		let (node_info, _, mut connector) = create_connector();
+		assert_eq!(connector.local_sequence(), 0);
+		connector.increment_local_sequence();
+		assert_eq!(connector.local_sequence(), 1);
+	}
+	
+	#[test]
+	fn connector_set_remote_works() {
+		let (node_info, _, mut connector) = create_connector();
+	
+		let connector_auth = &connector.connection_auth;
+		let new_auth_cert =
+		create_auth_cert_from_connection_auth(connector_auth);
+	
+		let hello = Hello{ledger_version : 0, overlay_version: 0, overlay_min_version: 0, network_id: [0;32], version_str: LimitedString::<100_i32>::new(vec![]).unwrap(), listening_port: 11625, peer_id: PublicKey::PublicKeyTypeEd25519([0;32]), cert: new_auth_cert, nonce: [0;32] };
+		connector.set_remote(RemoteInfo::new(&hello) );
+	
+		assert!(connector.remote().is_some());
+	}
+	
+	#[test]
+	fn connector_increment_remote_sequence_works() {
+		let (node_info, _, mut connector) = create_connector();
+		
+	
+		let connector_auth = &connector.connection_auth;
+		let new_auth_cert = create_auth_cert_from_connection_auth(connector_auth);
+	
+		let hello = Hello{ledger_version : 0, overlay_version: 0, overlay_min_version: 0, network_id: [0;32], version_str: LimitedString::<100_i32>::new(vec![]).unwrap(), listening_port: 11625, peer_id: PublicKey::PublicKeyTypeEd25519([0;32]), cert: new_auth_cert, nonce: [0;32] };
+		connector.set_remote(RemoteInfo::new(&hello) );
+		assert_eq!(connector.remote().unwrap().sequence(), 0);
+	
+		connector.increment_remote_sequence().unwrap();
+		connector.increment_remote_sequence().unwrap();
+		connector.increment_remote_sequence().unwrap();
+		assert_eq!(connector.remote().unwrap().sequence(), 3);
+	}
+
+	#[test]
+	fn connector_get_set_hmac_keys_works() {
+
+		//arrange
+		let (node_info, _, mut connector) = create_connector();
+		let connector_auth = &connector.connection_auth;
+		let new_auth_cert = create_auth_cert_from_connection_auth(connector_auth);
+	
+		let hello = Hello{ledger_version : 0, overlay_version: 0, overlay_min_version: 0, network_id: [0;32], version_str: LimitedString::<100_i32>::new(vec![]).unwrap(), listening_port: 11625, peer_id: PublicKey::PublicKeyTypeEd25519([0;32]), cert: new_auth_cert, nonce: [0;32] };
+		let remote = RemoteInfo::new(&hello);
+		let remote_nonce = remote.nonce();
+		connector.set_remote(remote.clone());
+
+		let shared_key = connector.get_shared_key(&remote.pub_key_ecdh());
+		assert!(connector.hmac_keys().is_none());
+		//act
+		connector.set_hmac_keys(HMacKeys::new(
+			&shared_key,
+			connector.local().nonce(),
+			remote_nonce,
+			connector.remote_called_us(),
+		));
+		//assert
+		assert!(connector.hmac_keys().is_some());
+	}
+
+	
+
+	fn create_auth_cert_from_connection_auth(connector_auth: &ConnectionAuth) -> substrate_stellar_sdk::types::AuthCert {
+		let time_now = time_now();
+		let new_auth_cert =
+					create_auth_cert(connector_auth.network_id(), connector_auth.keypair(), time_now, connector_auth.pub_key_ecdh().clone())
+						.expect("should successfully create an auth cert");
+		new_auth_cert
+	}
+	
+	fn create_connector() -> (NodeInfo, ConnConfig, Connector) {
+		use substrate_stellar_sdk::{
+			network::TEST_NETWORK, SecretKey,
+		};
+		let secret =
+				SecretKey::from_encoding("SBLI7RKEJAEFGLZUBSCOFJHQBPFYIIPLBCKN7WVCWT4NEG2UJEW33N73")
+					.unwrap();
+		let node_info = NodeInfo::new(19, 21, 19, "v19.1.0".to_string(), &TEST_NETWORK);
+		let cfg = ConnConfig::new("34.235.168.98", 11625, secret, 0, false, true, false);
+		// this is a channel to communicate with the connection/config (this needs renaming)
+		let (actions_sender, _) = mpsc::channel::<ConnectorActions>(1024);
+		// this is a channel to communicate with the user/caller.
+		let (relay_message_sender, _) = mpsc::channel::<StellarRelayMessage>(1024);
+		let mut connector = Connector::new(
+				node_info.clone(),
+				cfg.clone(),
+				actions_sender.clone(),
+				relay_message_sender,
+			);
+		(node_info, cfg, connector)
+	}
+	
 }
