@@ -45,18 +45,3 @@ impl From<Error> for service::Error<Error> {
 		Self::Retry(err)
 	}
 }
-
-impl From<StellarSdkError> for Error {
-	fn from(error: StellarSdkError) -> Self {
-		match error {
-			StellarSdkError::ExceedsMaximumLength { .. } => Self::ExceedsMaximumLengthError,
-			_ => Self::StellarSdkError,
-		}
-	}
-}
-
-impl From<LookupError> for Error {
-	fn from(_: LookupError) -> Self {
-		Self::BalanceConversionError
-	}
-}

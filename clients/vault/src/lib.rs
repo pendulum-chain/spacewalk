@@ -2,13 +2,13 @@
 
 use std::time::Duration;
 
-pub use system::{VaultService, VaultServiceConfig, ABOUT, AUTHORS, NAME, VERSION};
+pub use system::{VaultIdManager, VaultService, VaultServiceConfig, ABOUT, AUTHORS, NAME, VERSION};
 
 pub use crate::error::Error;
 
 mod error;
 mod execution;
-mod stellar_wallet;
+mod metrics;
 mod system;
 
 pub mod oracle;

@@ -1,4 +1,4 @@
-use std::{collections::HashMap, convert::TryInto, time::Duration};
+use std::{collections::HashMap, convert::TryInto, sync::Arc, time::Duration};
 
 use futures::{future::Either, stream::StreamExt, try_join, TryStreamExt};
 use governor::RateLimiter;
@@ -6,18 +6,13 @@ use tokio::time::sleep;
 use tokio_stream::wrappers::BroadcastStream;
 
 use runtime::{
-	CurrencyId, Error as RuntimeError, FixedPointNumber, FixedU128, OraclePallet, PrettyPrint,
-	SpacewalkParachain, StellarPublicKey, UtilFuncs, VaultId, VaultRegistryPallet, H256,
+	CurrencyId, Error as RuntimeError, FixedPointNumber, FixedU128, PrettyPrint,
+	SpacewalkParachain, StellarPublicKey, UtilFuncs, VaultId, H256,
 };
-use service::{spawn_cancelable, DynBitcoinCoreApi, Error as ServiceError, ShutdownSender};
+use service::{spawn_cancelable, Error as ServiceError, ShutdownSender};
+use wallet::StellarWallet;
 
-use crate::{
-	error::Error,
-	metrics::update_bitcoin_metrics,
-	stellar_wallet::StellarWallet,
-	system::{VaultData, VaultIdManager},
-	VaultIdManager, YIELD_RATE,
-};
+use crate::{error::Error, system::VaultData, VaultIdManager};
 
 #[derive(Debug, Clone, PartialEq)]
 struct Deadline {
@@ -55,7 +50,7 @@ pub async fn execute_open_requests(
 	shutdown_tx: ShutdownSender,
 	parachain_rpc: SpacewalkParachain,
 	vault_id_manager: VaultIdManager,
-	read_only_stellar_wallet: StellarWallet,
+	read_only_stellar_wallet: Arc<StellarWallet>,
 	payment_margin: Duration,
 ) -> Result<(), ServiceError<Error>> {
 	// TODO

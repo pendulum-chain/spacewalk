@@ -1,4 +1,6 @@
-use std::{collections::HashMap, future::Future, pin::Pin, sync::Arc};
+use std::{
+	collections::HashMap, convert::TryInto, future::Future, pin::Pin, sync::Arc, time::Duration,
+};
 
 use async_trait::async_trait;
 use clap::Parser;
@@ -10,33 +12,43 @@ use git_version::git_version;
 use tokio::{sync::RwLock, time::sleep};
 
 use runtime::{
-	CurrencyId, Error as RuntimeError, PrettyPrint, RegisterVaultEvent, SpacewalkParachain,
-	UtilFuncs, VaultId,
+	cli::{parse_duration_minutes, parse_duration_ms},
+	CollateralBalancesPallet, CurrencyId, Error as RuntimeError, PrettyPrint, RegisterVaultEvent,
+	SpacewalkParachain, TryFromSymbol, UtilFuncs, VaultCurrencyPair, VaultId, VaultRegistryPallet,
 };
 use service::{wait_or_shutdown, Error as ServiceError, Service, ShutdownSender};
+use wallet::StellarWallet;
 
-use crate::{error::Error, stellar_wallet::StellarWallet, CHAIN_HEIGHT_POLLING_INTERVAL};
+use crate::{
+	error::Error, execution::execute_open_requests, metrics::publish_tokio_metrics,
+	CHAIN_HEIGHT_POLLING_INTERVAL,
+};
 
 pub const VERSION: &str = git_version!(args = ["--tags"], fallback = "unknown");
 pub const AUTHORS: &str = env!("CARGO_PKG_AUTHORS");
 pub const NAME: &str = env!("CARGO_PKG_NAME");
 pub const ABOUT: &str = env!("CARGO_PKG_DESCRIPTION");
 
+const RESTART_INTERVAL: Duration = Duration::from_secs(10800); // restart every 3 hours
+
 #[derive(Clone)]
 pub struct VaultData {
 	pub vault_id: VaultId,
-	pub stellar_wallet: StellarWallet,
+	pub stellar_wallet: Arc<StellarWallet>,
 }
 
 #[derive(Clone)]
 pub struct VaultIdManager {
 	vault_data: Arc<RwLock<HashMap<VaultId, VaultData>>>,
 	spacewalk_parachain: SpacewalkParachain,
-	stellar_wallet: StellarWallet,
+	stellar_wallet: Arc<StellarWallet>,
 }
 
 impl VaultIdManager {
-	pub fn new(spacewalk_parachain: SpacewalkParachain, stellar_wallet: StellarWallet) -> Self {
+	pub fn new(
+		spacewalk_parachain: SpacewalkParachain,
+		stellar_wallet: Arc<StellarWallet>,
+	) -> Self {
 		Self {
 			vault_data: Arc::new(RwLock::new(HashMap::new())),
 			spacewalk_parachain,
@@ -96,7 +108,7 @@ impl VaultIdManager {
 			.await?)
 	}
 
-	pub async fn get_stellar_wallet(&self, vault_id: &VaultId) -> Option<StellarWallet> {
+	pub async fn get_stellar_wallet(&self, vault_id: &VaultId) -> Option<Arc<StellarWallet>> {
 		self.vault_data.read().await.get(vault_id).map(|x| x.stellar_wallet.clone())
 	}
 
@@ -120,7 +132,7 @@ impl VaultIdManager {
 	// TODO think about this. It is probably not needed because we don't use deposit addresses and
 	// use one stellar wallet for everything
 	// But we could in theory let a vault have multiple stellar wallets
-	pub async fn get_vault_stellar_wallets(&self) -> Vec<(VaultId, StellarWallet)> {
+	pub async fn get_vault_stellar_wallets(&self) -> Vec<(VaultId, Arc<StellarWallet>)> {
 		self.vault_data
 			.read()
 			.await
@@ -130,15 +142,32 @@ impl VaultIdManager {
 	}
 }
 
+/// Expecting an input of the form: `collateral_currency,wrapped_currency,collateral_amount` with
+/// `collateral_currency` being the currency of the collateral (e.g. DOT, KSM, ...),
+/// `wrapped_currency` being the currency codes of the wrapped currency (e.g. USDC, EURT...)
+///  including the issuer and code, ie 'GABC...:USDC'  and
+/// `collateral_amount` being the amount of collateral to be locked.
 fn parse_collateral_and_amount(
 	s: &str,
-) -> Result<(String, Option<u128>), Box<dyn std::error::Error + Send + Sync + 'static>> {
-	let pos = s
-		.find('=')
-		.ok_or_else(|| format!("invalid CurrencyId=amount: no `=` found in `{}`", s))?;
+) -> Result<(String, String, Option<u128>), Box<dyn std::error::Error + Send + Sync + 'static>> {
+	let parts: Vec<&str> = s
+		.split(":")
+		.map(|s| s.trim())
+		.collect::<Vec<_>>()
+		.try_into()
+		.map_err(|_| format!("invalid CurrencyId=amount: `{}`", s))?;
 
-	let val = &s[pos + 1..];
-	Ok((s[..pos].to_string(), if val.contains("faucet") { None } else { Some(val.parse()?) }))
+	assert_eq!(
+		parts.len(),
+		3,
+		"{}",
+		format!("invalid string, expected 3 parts, got {} for `{}`", parts.len(), s)
+	);
+
+	let collateral_currency = parts[0].to_string();
+	let wrapped_currency = parts[1].to_string();
+	let collateral_amount = parts[2].parse::<u128>()?;
+	Ok((collateral_currency, wrapped_currency, Some(collateral_amount)))
 }
 
 #[derive(Parser, Clone, Debug)]
@@ -152,13 +181,19 @@ pub struct VaultServiceConfig {
 
 	/// Automatically register the vault with the given amount of collateral
 	#[clap(long, value_parser = parse_collateral_and_amount)]
-	pub auto_register: Vec<(String, Option<u128>)>,
+	pub auto_register: Vec<(String, String, Option<u128>)>,
+
+	/// Minimum time to the the redeem/replace execution deadline to make the stellar payment.
+	#[clap(long, value_parser = parse_duration_minutes, default_value = "120")]
+	pub payment_margin_minutes: Duration,
 }
 
 pub struct VaultService {
 	spacewalk_parachain: SpacewalkParachain,
+	stellar_wallet: Arc<StellarWallet>,
 	config: VaultServiceConfig,
 	shutdown: ShutdownSender,
+	vault_id_manager: VaultIdManager,
 }
 
 #[async_trait]
@@ -243,7 +278,31 @@ impl VaultService {
 		config: VaultServiceConfig,
 		shutdown: ShutdownSender,
 	) -> Self {
-		Self { spacewalk_parachain: spacewalk_parachain.clone(), config, shutdown }
+		let stellar_wallet =
+			Arc::new(StellarWallet::from_secret_encoded(&config.stellar_vault_secret_key));
+		Self {
+			spacewalk_parachain: spacewalk_parachain.clone(),
+			stellar_wallet: stellar_wallet.clone(),
+			config,
+			shutdown,
+			vault_id_manager: VaultIdManager::new(spacewalk_parachain, stellar_wallet.clone()),
+		}
+	}
+
+	fn get_vault_id(
+		&self,
+		collateral_currency: CurrencyId,
+		wrapped_currency: CurrencyId,
+	) -> VaultId {
+		let account_id = self.spacewalk_parachain.get_account_id();
+
+		VaultId {
+			account_id: account_id.clone(),
+			currencies: VaultCurrencyPair {
+				collateral: collateral_currency,
+				wrapped: wrapped_currency,
+			},
+		}
 	}
 
 	async fn run_service(&self) -> Result<(), ServiceError<Error>> {
@@ -254,13 +313,20 @@ impl VaultService {
 			.auto_register
 			.clone()
 			.into_iter()
-			.map(|(symbol, amount)| Ok((CurrencyId::try_from_symbol(symbol)?, amount)))
+			.map(|(collateral, wrapped, amount)| {
+				Ok((
+					CurrencyId::try_from_symbol(collateral)?,
+					CurrencyId::try_from_symbol(wrapped)?,
+					amount,
+				))
+			})
 			.into_iter()
 			.collect::<Result<Vec<_>, Error>>()
 			.map_err(ServiceError::Abort)?;
 
 		// exit if auto-register uses faucet and faucet url not set
-		if parsed_auto_register.iter().any(|(_, o)| o.is_none()) && self.config.faucet_url.is_none()
+		if parsed_auto_register.iter().any(|(_, _, o)| o.is_none()) &&
+			self.config.faucet_url.is_none()
 		{
 			return Err(ServiceError::Abort(Error::FaucetUrlNotSet))
 		}
@@ -277,11 +343,11 @@ impl VaultService {
 		tokio::task::spawn(err_listener);
 
 		self.maybe_register_public_key().await?;
-		join_all(
-			parsed_auto_register
-				.iter()
-				.map(|(currency_id, amount)| self.maybe_register_vault(currency_id, amount)),
-		)
+		join_all(parsed_auto_register.iter().map(
+			|(collateral_currency, wrapped_currency, amount)| {
+				self.maybe_register_vault(collateral_currency, wrapped_currency, amount)
+			},
+		))
 		.await
 		.into_iter()
 		.collect::<Result<_, Error>>()?;
@@ -293,9 +359,8 @@ impl VaultService {
 			self.shutdown.clone(),
 			self.spacewalk_parachain.clone(),
 			self.vault_id_manager.clone(),
-			self.btc_rpc_master_wallet.clone(),
+			self.stellar_wallet.clone(),
 			self.config.payment_margin_minutes,
-			self.config.auto_rbf,
 		);
 		service::spawn_cancelable(self.shutdown.subscribe(), async move {
 			tracing::info!("Checking for open requests...");
@@ -308,14 +373,6 @@ impl VaultService {
 
 		tracing::info!("Starting all services...");
 		let tasks = vec![
-			(
-				"Registered Asset Listener",
-				run(listen_for_registered_assets(self.spacewalk_parachain.clone())),
-			),
-			(
-				"Fee Estimate Listener",
-				run(listen_for_fee_rate_estimate_changes(self.spacewalk_parachain.clone())),
-			),
 			(
 				"VaultId Registration Listener",
 				run(self.vault_id_manager.clone().listen_for_vault_id_registrations()),
@@ -339,11 +396,9 @@ impl VaultService {
 		}
 
 		if self.spacewalk_parachain.get_public_key().await?.is_none() {
-			tracing::info!("Registering bitcoin public key to the parachain...");
-			let public_key = self.btc_rpc_master_wallet.get_new_public_key().await?;
-			self.spacewalk_parachain
-				.register_public_key(public_key.inner.serialize().into())
-				.await?;
+			tracing::info!("Registering public key to the parachain...");
+			let public_key = self.stellar_wallet.get_public_key();
+			self.spacewalk_parachain.register_public_key(public_key).await?;
 		}
 
 		Ok(())
@@ -352,9 +407,10 @@ impl VaultService {
 	async fn maybe_register_vault(
 		&self,
 		collateral_currency: &CurrencyId,
+		wrapped_currency: &CurrencyId,
 		maybe_collateral_amount: &Option<u128>,
 	) -> Result<(), Error> {
-		let vault_id = self.get_vault_id(*collateral_currency);
+		let vault_id = self.get_vault_id(*collateral_currency, *wrapped_currency);
 
 		match is_vault_registered(&self.spacewalk_parachain, &vault_id).await {
 			Err(Error::RuntimeError(RuntimeError::VaultLiquidated)) | Ok(true) => {
