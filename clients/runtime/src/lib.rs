@@ -7,6 +7,7 @@ use subxt::{
 	subxt, Config,
 };
 
+pub use assets::TryFromSymbol;
 pub use error::{Error, SubxtError};
 pub use retry::{notify_retry, RetryPolicy};
 pub use rpc::{SpacewalkParachain, UtilFuncs, VaultRegistryPallet, DEFAULT_SPEC_NAME, SS58_PREFIX};
@@ -14,6 +15,7 @@ pub use types::*;
 
 pub mod cli;
 
+mod assets;
 mod conn;
 mod error;
 mod retry;

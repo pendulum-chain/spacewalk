@@ -353,6 +353,8 @@ pub trait UtilFuncs {
 
 	/// Get the address of the configured signer.
 	fn get_account_id(&self) -> &AccountId;
+
+	fn is_this_vault(&self, vault_id: &VaultId) -> bool;
 }
 
 #[async_trait]
@@ -364,6 +366,10 @@ impl UtilFuncs for SpacewalkParachain {
 			Some(height) => Ok(height),
 			None => Err(Error::BlockNotFound),
 		}
+	}
+
+	fn is_this_vault(&self, vault_id: &VaultId) -> bool {
+		&vault_id.account_id == self.get_account_id()
 	}
 
 	fn get_account_id(&self) -> &AccountId {
