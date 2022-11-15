@@ -313,16 +313,41 @@ mod test{
 
 	#[tokio::test]
 	async fn connector_send_to_user_works() {
-		let (_, connConfig, mut connector, r1, mut message_receiver) = create_connector();
+		let (_, _, mut connector, _, mut message_receiver) = create_connector();
 
 		let message = StellarRelayMessage::Timeout;
-		let result = connector.send_to_user(message).await.unwrap();
+		connector.send_to_user(message).await.unwrap();
 
 		let received_message = message_receiver.recv().await;
 		assert!(received_message.is_some());
 		let message = received_message.unwrap();
 		match message{
 			StellarRelayMessage::Timeout => {}
+			_ => {
+				panic!("Incorrect message received!!!")
+			}
+		}
+	}
+
+	#[test]
+	fn enable_flow_controller_works() {
+		let (node_info, _, mut connector, _, _) = create_connector();
+
+		assert!(!connector.inner_check_to_send_more(MessageType::ScpMessage));
+		connector.enable_flow_controller(node_info.overlay_version, node_info.overlay_version);
+	}
+
+	#[tokio::test]
+	async fn connector_send_to_node_works() {
+		let (_, _, mut connector, mut actions_receiver, _) = create_connector();
+
+		connector.send_to_node(ConnectorActions::SendHello).await.unwrap();
+
+		let received_message = actions_receiver.recv().await;
+		assert!(received_message.is_some());
+		let message = received_message.unwrap();
+		match message{
+			ConnectorActions::SendHello => {}
 			_ => {
 				panic!("Incorrect message received!!!")
 			}
