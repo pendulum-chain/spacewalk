@@ -106,7 +106,7 @@ impl Connector {
 			timeout_in_secs: cfg.timeout_in_secs,
 			retries: cfg.retries,
 			remote_called_us: cfg.remote_called_us,
-			receive_tx_messages: cfg.recv_scp_messages,
+			receive_tx_messages: cfg.recv_tx_msgs,
 			receive_scp_messages: cfg.recv_scp_messages,
 			handshake_state: HandshakeState::Connecting,
 			flow_controller: FlowController::default(),
@@ -257,7 +257,6 @@ mod test{
 	#[test]
 	fn connector_increment_remote_sequence_works() {
 		let (node_info, _, mut connector) = create_connector();
-		
 	
 		let connector_auth = &connector.connection_auth;
 		let new_auth_cert = create_auth_cert_from_connection_auth(connector_auth);
@@ -276,7 +275,7 @@ mod test{
 	fn connector_get_set_hmac_keys_works() {
 
 		//arrange
-		let (node_info, _, mut connector) = create_connector();
+		let (_, _, mut connector) = create_connector();
 		let connector_auth = &connector.connection_auth;
 		let new_auth_cert = create_auth_cert_from_connection_auth(connector_auth);
 	
@@ -296,6 +295,22 @@ mod test{
 		));
 		//assert
 		assert!(connector.hmac_keys().is_some());
+	}
+
+	#[test]
+	fn connector_method_works() {
+		let (_, connConfig, mut connector) = create_connector();
+
+		assert_eq!(connector.remote_called_us(), connConfig.remote_called_us);
+		assert_eq!(connector.receive_tx_messages(), connConfig.recv_tx_msgs);
+		assert_eq!(connector.receive_scp_messages(), connConfig.recv_scp_messages);
+
+		connector.got_hello();
+		assert!(connector.is_handshake_created());
+
+		connector.handshake_completed();
+		assert!(connector.is_handshake_created());
+
 	}
 
 	
