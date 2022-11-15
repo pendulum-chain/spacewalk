@@ -64,25 +64,13 @@ pub const STABLE_PARACHAIN_CONFIRMATIONS: &str = "StableParachainConfirmations";
 	subxt(
 		runtime_metadata_path = "metadata-standalone.scale",
 		derive_for_all_types = "Clone, PartialEq, Eq",
-		derive_for_type(
-			type = "spacewalk_primitives::TokenSymbol",
-			derive = "serde::Serialize, serde::Deserialize, std::hash::Hash"
-		),
-		derive_for_type(
-			type = "spacewalk_primitives::CurrencyId",
-			derive = "serde::Serialize, serde::Deserialize, std::hash::Hash"
-		),
-		derive_for_type(
-			type = "spacewalk_primitives::VaultCurrencyPair",
-			derive = "serde::Serialize, serde::Deserialize, std::hash::Hash"
-		),
-		derive_for_type(
-			type = "spacewalk_primitives::VaultId",
-			derive = "serde::Serialize, serde::Deserialize, std::hash::Hash"
-		),
 	)
 )]
-pub mod metadata {}
+pub mod metadata {
+	// TODO why does it fix it? What does it do?
+	#[subxt(substitute_type = "spacewalk_primitives::CurrencyId")]
+	use crate::CurrencyId;
+}
 
 #[derive(Debug, Eq, PartialEq, Ord, PartialOrd, Default, Clone, Decode, Encode)]
 pub struct WrapperKeepOpaque<T> {

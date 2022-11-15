@@ -426,7 +426,7 @@ impl VaultRegistryPallet for SpacewalkParachain {
 	async fn get_vault(&self, vault_id: &VaultId) -> Result<SpacewalkVault, Error> {
 		let head = self.get_latest_block_hash().await?;
 
-		let query = metadata::storage().vault_registry().vaults(vault_id);
+		let query = metadata::storage().vault_registry().vaults(&vault_id.clone());
 
 		match self.api.storage().fetch(&query, head).await? {
 			Some(SpacewalkVault { status: VaultStatus::Liquidated, .. }) =>

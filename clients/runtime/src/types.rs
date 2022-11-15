@@ -1,10 +1,10 @@
 // TODO maybe change this back to sr25519
 use subxt::ext::sp_core::ed25519::Pair as KeyPair;
 
-use crate::{metadata, Config, SpacewalkRuntime, SS58_PREFIX};
 pub use metadata_aliases::*;
+pub use primitives::CurrencyId;
 
-// pub use spacewalk_primitives::CurrencyId;
+use crate::{metadata, Config, SpacewalkRuntime, SS58_PREFIX};
 
 pub type Balance = u128;
 pub type BlockNumber = u32;
@@ -42,7 +42,7 @@ mod metadata_aliases {
 
 	use super::*;
 
-	pub use crate::metadata::runtime_types::spacewalk_primitives::CurrencyId;
+	// pub use crate::metadata::runtime_types::spacewalk_primitives::CurrencyId;
 
 	pub type SpacewalkHeader = <SpacewalkRuntime as Config>::Header;
 
@@ -78,6 +78,8 @@ mod account_id {
 mod vault_id {
 	use super::*;
 
+	type RichVaultId = primitives::VaultId<AccountId, primitives::CurrencyId>;
+
 	impl crate::VaultId {
 		pub fn new(
 			account_id: AccountId,
@@ -112,6 +114,57 @@ mod vault_id {
 				collateral_currency,
 				wrapped_currency,
 			)
+		}
+	}
+
+	impl From<crate::VaultId> for RichVaultId {
+		fn from(value: crate::VaultId) -> Self {
+			Self {
+				account_id: value.account_id,
+				currencies: primitives::VaultCurrencyPair {
+					collateral: value.currencies.collateral,
+					wrapped: value.currencies.wrapped,
+				},
+			}
+		}
+	}
+
+	impl From<RichVaultId> for crate::VaultId {
+		fn from(value: RichVaultId) -> Self {
+			Self {
+				account_id: value.account_id,
+				currencies: crate::VaultCurrencyPair {
+					collateral: value.currencies.collateral,
+					wrapped: value.currencies.wrapped,
+				},
+			}
+		}
+	}
+
+	impl serde::Serialize for crate::VaultId {
+		fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+		where
+			S: serde::Serializer,
+		{
+			let value: RichVaultId = self.clone().into();
+			value.serialize(serializer)
+		}
+	}
+
+	impl<'de> serde::Deserialize<'de> for crate::VaultId {
+		fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+		where
+			D: serde::Deserializer<'de>,
+		{
+			let value = RichVaultId::deserialize(deserializer)?;
+			Ok(value.into())
+		}
+	}
+
+	impl std::hash::Hash for crate::VaultId {
+		fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+			let vault: RichVaultId = self.clone().into();
+			vault.hash(state)
 		}
 	}
 }
