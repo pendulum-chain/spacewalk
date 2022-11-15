@@ -199,12 +199,11 @@ impl Connector {
 
 mod test{
 	use crate::Connector;
-	use std::vec;
 	use substrate_stellar_sdk::{
 		types::{AuthenticatedMessageV0, Curve25519Public, HmacSha256Mac, MessageType, Hello},
 		XdrCodec, compound_types::LimitedString, PublicKey,
 	};
-	use tokio::sync::mpsc;
+	use tokio::sync::mpsc::{self, Receiver};
 
 	use crate::{
 		connection::{
@@ -221,7 +220,7 @@ mod test{
 		use substrate_stellar_sdk::{
 			network::TEST_NETWORK,
 		};
-		let (node_info, _, mut connector) = create_connector();
+		let (node_info, _, mut connector, _ , _ ) = create_connector();
 	
 		let connector_local_node = connector.local.node();
 		
@@ -234,7 +233,7 @@ mod test{
 	
 	#[test]
 	fn connector_local_sequence_works() {
-		let (node_info, _, mut connector) = create_connector();
+		let (node_info, _, mut connector, _, _) = create_connector();
 		assert_eq!(connector.local_sequence(), 0);
 		connector.increment_local_sequence();
 		assert_eq!(connector.local_sequence(), 1);
@@ -242,7 +241,7 @@ mod test{
 	
 	#[test]
 	fn connector_set_remote_works() {
-		let (node_info, _, mut connector) = create_connector();
+		let (node_info, _, mut connector, _, _) = create_connector();
 	
 		let connector_auth = &connector.connection_auth;
 		let new_auth_cert =
@@ -256,7 +255,7 @@ mod test{
 	
 	#[test]
 	fn connector_increment_remote_sequence_works() {
-		let (node_info, _, mut connector) = create_connector();
+		let (node_info, _, mut connector, _, _) = create_connector();
 	
 		let connector_auth = &connector.connection_auth;
 		let new_auth_cert = create_auth_cert_from_connection_auth(connector_auth);
@@ -275,7 +274,7 @@ mod test{
 	fn connector_get_set_hmac_keys_works() {
 
 		//arrange
-		let (_, _, mut connector) = create_connector();
+		let (_, _, mut connector, _, _) = create_connector();
 		let connector_auth = &connector.connection_auth;
 		let new_auth_cert = create_auth_cert_from_connection_auth(connector_auth);
 	
@@ -299,7 +298,7 @@ mod test{
 
 	#[test]
 	fn connector_method_works() {
-		let (_, connConfig, mut connector) = create_connector();
+		let (_, connConfig, mut connector, _, _) = create_connector();
 
 		assert_eq!(connector.remote_called_us(), connConfig.remote_called_us);
 		assert_eq!(connector.receive_tx_messages(), connConfig.recv_tx_msgs);
@@ -310,7 +309,24 @@ mod test{
 
 		connector.handshake_completed();
 		assert!(connector.is_handshake_created());
+	}
 
+	#[tokio::test]
+	async fn connector_send_to_user_works() {
+		let (_, connConfig, mut connector, r1, mut message_receiver) = create_connector();
+
+		let message = StellarRelayMessage::Timeout;
+		let result = connector.send_to_user(message).await.unwrap();
+
+		let received_message = message_receiver.recv().await;
+		assert!(received_message.is_some());
+		let message = received_message.unwrap();
+		match message{
+			StellarRelayMessage::Timeout => {}
+			_ => {
+				panic!("Incorrect message received!!!")
+			}
+		}
 	}
 
 	
@@ -323,7 +339,7 @@ mod test{
 		new_auth_cert
 	}
 	
-	fn create_connector() -> (NodeInfo, ConnConfig, Connector) {
+	fn create_connector() -> (NodeInfo, ConnConfig, Connector, Receiver<ConnectorActions>, Receiver<StellarRelayMessage>) {
 		use substrate_stellar_sdk::{
 			network::TEST_NETWORK, SecretKey,
 		};
@@ -333,16 +349,16 @@ mod test{
 		let node_info = NodeInfo::new(19, 21, 19, "v19.1.0".to_string(), &TEST_NETWORK);
 		let cfg = ConnConfig::new("34.235.168.98", 11625, secret, 0, false, true, false);
 		// this is a channel to communicate with the connection/config (this needs renaming)
-		let (actions_sender, _) = mpsc::channel::<ConnectorActions>(1024);
+		let (actions_sender, actions_receiver) = mpsc::channel::<ConnectorActions>(1024);
 		// this is a channel to communicate with the user/caller.
-		let (relay_message_sender, _) = mpsc::channel::<StellarRelayMessage>(1024);
+		let (relay_message_sender, relay_message_receiver) = mpsc::channel::<StellarRelayMessage>(1024);
 		let mut connector = Connector::new(
 				node_info.clone(),
 				cfg.clone(),
-				actions_sender.clone(),
+				actions_sender,
 				relay_message_sender,
 			);
-		(node_info, cfg, connector)
+		(node_info, cfg, connector, actions_receiver, relay_message_receiver)
 	}
 	
 }
