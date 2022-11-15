@@ -7,6 +7,7 @@ use clap::Parser;
 use sp_keyring::Ed25519Keyring;
 use std::{collections::HashMap, num::ParseIntError, sync::Arc, time::Duration};
 use subxt::ext::sp_core::{ed25519::Pair, Pair as _};
+use tokio::sync::RwLock;
 
 #[derive(Parser, Debug, Clone)]
 pub struct ProviderUserOpts {
@@ -106,7 +107,7 @@ pub struct ConnectionOpts {
 impl ConnectionOpts {
 	pub async fn try_connect(
 		&self,
-		signer: Arc<SpacewalkSigner>,
+		signer: Arc<RwLock<SpacewalkSigner>>,
 		shutdown_tx: ShutdownSender,
 	) -> Result<SpacewalkParachain, Error> {
 		SpacewalkParachain::from_url_and_config_with_retry(

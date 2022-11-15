@@ -8,6 +8,7 @@ use std::{
 use clap::Parser;
 use futures::Future;
 use sysinfo::{System, SystemExt};
+use tokio::sync::RwLock;
 use tokio_stream::StreamExt;
 
 use runtime::{KeyPair, SpacewalkSigner, Ss58Codec, DEFAULT_SPEC_NAME, SS58_PREFIX};
@@ -103,7 +104,7 @@ async fn start() -> Result<(), ServiceError<Error>> {
 	opts.service.logging_format.init_subscriber();
 
 	let (pair, wallet_name) = opts.account_info.get_key_pair()?;
-	let signer = Arc::new(SpacewalkSigner::new(pair));
+	let signer = Arc::new(RwLock::new(SpacewalkSigner::new(pair)));
 
 	let vault_connection_manager = ConnectionManager::new(
 		signer.clone(),
@@ -120,8 +121,11 @@ async fn start() -> Result<(), ServiceError<Error>> {
 
 	// Create a PID file to signal to other processes that a vault is running.
 	// This file is auto-removed when `drop`ped.
-	let _pidfile =
-		PidFile::create(&String::from(DEFAULT_SPEC_NAME), signer.account_id(), &mut sys)?;
+	let _pidfile = PidFile::create(
+		&String::from(DEFAULT_SPEC_NAME),
+		signer.read().await.account_id(),
+		&mut sys,
+	)?;
 
 	// Unless termination signals are caught, the PID file is not dropped.
 	let main_task = async move { vault_connection_manager.start::<VaultService, Error>().await };

@@ -4,6 +4,7 @@ use async_trait::async_trait;
 use futures::{future::Either, Future, FutureExt};
 use governor::{Quota, RateLimiter};
 use nonzero_ext::*;
+use tokio::sync::RwLock;
 pub use warp;
 
 pub use cli::{LoggingFormat, RestartPolicy, ServiceConfig};
@@ -32,11 +33,11 @@ pub trait Service<Config, InnerError> {
 		config: Config,
 		shutdown: ShutdownSender,
 	) -> Self;
-	async fn start(&self) -> Result<(), Error<InnerError>>;
+	async fn start(&mut self) -> Result<(), Error<InnerError>>;
 }
 
 pub struct ConnectionManager<Config: Clone, F: Fn()> {
-	signer: Arc<SpacewalkSigner>,
+	signer: Arc<RwLock<SpacewalkSigner>>,
 	wallet_name: Option<String>,
 	parachain_config: ParachainConfig,
 	service_config: ServiceConfig,
@@ -47,7 +48,7 @@ pub struct ConnectionManager<Config: Clone, F: Fn()> {
 impl<Config: Clone + Send + 'static, F: Fn()> ConnectionManager<Config, F> {
 	#[allow(clippy::too_many_arguments)]
 	pub fn new(
-		signer: Arc<SpacewalkSigner>,
+		signer: Arc<RwLock<SpacewalkSigner>>,
 		wallet_name: Option<String>,
 		parachain_config: ParachainConfig,
 		service_config: ServiceConfig,
@@ -69,7 +70,7 @@ impl<Config: Clone + Send + 'static, F: Fn()> ConnectionManager<Config, F> {
 	) -> Result<(), Error<InnerError>> {
 		loop {
 			tracing::info!("Version: {}", S::VERSION);
-			tracing::info!("AccountId: {}", self.signer.account_id().pretty_print());
+			tracing::info!("AccountId: {}", self.signer.read().await.account_id().pretty_print());
 
 			let config = self.config.clone();
 			let (shutdown_tx, _) = tokio::sync::broadcast::channel(16);
@@ -87,7 +88,7 @@ impl<Config: Clone + Send + 'static, F: Fn()> ConnectionManager<Config, F> {
 			)
 			.await?;
 
-			let service = S::new_service(spacewalk_parachain, config, shutdown_tx.clone());
+			let mut service = S::new_service(spacewalk_parachain, config, shutdown_tx.clone());
 
 			match service.start().await {
 				Err(err @ Error::Abort(_)) => {

@@ -13,7 +13,10 @@ use subxt::{
 	Error as BasicError, Metadata,
 };
 // use subxt_client::OnlineClient;
-use tokio::{sync::RwLock, time::timeout};
+use tokio::{
+	sync::{Mutex, RwLock},
+	time::timeout,
+};
 
 use module_oracle_rpc_runtime_api::BalanceWrapper;
 
@@ -47,7 +50,7 @@ pub(crate) type ShutdownSender = tokio::sync::broadcast::Sender<()>;
 
 #[derive(Clone)]
 pub struct SpacewalkParachain {
-	signer: Arc<SpacewalkSigner>,
+	signer: Arc<RwLock<SpacewalkSigner>>,
 	account_id: AccountId,
 	api: OnlineClient<SpacewalkRuntime>,
 	shutdown_tx: ShutdownSender,
@@ -57,10 +60,10 @@ pub struct SpacewalkParachain {
 impl SpacewalkParachain {
 	pub async fn new(
 		rpc_client: Client,
-		signer: Arc<SpacewalkSigner>,
+		signer: Arc<RwLock<SpacewalkSigner>>,
 		shutdown_tx: ShutdownSender,
 	) -> Result<Self, Error> {
-		let account_id = signer.account_id().clone();
+		let account_id = signer.read().await.account_id().clone();
 		let api = OnlineClient::<SpacewalkRuntime>::from_rpc_client(rpc_client).await?;
 		// let api: RuntimeApi = ext_client.clone().to_runtime_api();
 		let metadata = Arc::new(api.rpc().metadata().await?);
@@ -94,7 +97,7 @@ impl SpacewalkParachain {
 
 	pub async fn from_url(
 		url: &str,
-		signer: Arc<SpacewalkSigner>,
+		signer: Arc<RwLock<SpacewalkSigner>>,
 		shutdown_tx: ShutdownSender,
 	) -> Result<Self, Error> {
 		let ws_client = new_websocket_client(url, None, None).await?;
@@ -103,7 +106,7 @@ impl SpacewalkParachain {
 
 	pub async fn from_url_with_retry(
 		url: &str,
-		signer: Arc<SpacewalkSigner>,
+		signer: Arc<RwLock<SpacewalkSigner>>,
 		connection_timeout: Duration,
 		shutdown_tx: ShutdownSender,
 	) -> Result<Self, Error> {
@@ -120,7 +123,7 @@ impl SpacewalkParachain {
 
 	pub async fn from_url_and_config_with_retry(
 		url: &str,
-		signer: Arc<SpacewalkSigner>,
+		signer: Arc<RwLock<SpacewalkSigner>>,
 		max_concurrent_requests: Option<usize>,
 		max_notifs_per_subscription: Option<usize>,
 		connection_timeout: Duration,
@@ -137,23 +140,23 @@ impl SpacewalkParachain {
 		Self::new(ws_client, signer, shutdown_tx).await
 	}
 
-	// async fn refresh_nonce(&mut self) {
-	// 	// For getting the nonce, use latest, possibly non-finalized block.
-	// 	// TODO: we might want to wait until the latest block is actually finalized
-	// 	// query account info in order to get the nonce value used for communication
-	// 	let account_info_query = metadata::storage().system().account(&self.account_id);
-	// 	let account_info = self.api.storage().fetch(&account_info_query, None).await;
-	//
-	// 	let nonce = account_info
-	// 		.map(|x| match x {
-	// 			Some(x) => x.nonce,
-	// 			None => 0,
-	// 		})
-	// 		.unwrap_or(0);
-	//
-	// 	log::info!("Refreshing nonce: {}", nonce);
-	// 	self.signer.set_nonce(nonce);
-	// }
+	async fn refresh_nonce(&mut self) {
+		// For getting the nonce, use latest, possibly non-finalized block.
+		// TODO: we might want to wait until the latest block is actually finalized
+		// query account info in order to get the nonce value used for communication
+		let account_info_query = metadata::storage().system().account(&self.account_id);
+		let account_info = self.api.storage().fetch(&account_info_query, None).await;
+
+		let nonce = account_info
+			.map(|x| match x {
+				Some(x) => x.nonce,
+				None => 0,
+			})
+			.unwrap_or(0);
+
+		log::info!("Refreshing nonce: {}", nonce);
+		self.signer.write().await.set_nonce(nonce);
+	}
 
 	/// Gets a copy of the signer with a unique nonce
 	async fn with_unique_signer<'client, F, R>(
@@ -172,7 +175,8 @@ impl SpacewalkParachain {
 		notify_retry::<Error, _, _, _, _, _>(
 			|| async {
 				match timeout(TRANSACTION_TIMEOUT, async {
-					call(&self.signer).await?.wait_for_finalized_success().await
+					let signer = self.signer.read().await;
+					call(&*signer).await?.wait_for_finalized_success().await
 				})
 				.await
 				{
@@ -394,7 +398,7 @@ pub trait VaultRegistryPallet {
 
 	async fn get_public_key(&self) -> Result<Option<StellarPublicKey>, Error>;
 
-	async fn register_public_key(&self, public_key: StellarPublicKey) -> Result<(), Error>;
+	async fn register_public_key(&mut self, public_key: StellarPublicKey) -> Result<(), Error>;
 
 	async fn get_required_collateral_for_wrapped(
 		&self,
@@ -479,9 +483,11 @@ impl VaultRegistryPallet for SpacewalkParachain {
 			.vault_registry()
 			.register_vault(vault_id.currencies.clone(), collateral);
 
+		let signer = self.signer.read().await;
+
 		self.api
 			.tx()
-			.sign_and_submit_then_watch_default(&register_vault_tx, self.signer.as_ref())
+			.sign_and_submit_then_watch_default(&register_vault_tx, &*signer)
 			.await?;
 		Ok(())
 	}
@@ -496,9 +502,11 @@ impl VaultRegistryPallet for SpacewalkParachain {
 			.vault_registry()
 			.deposit_collateral(vault_id.currencies.clone(), amount);
 
+		let signer = self.signer.read().await;
+
 		self.api
 			.tx()
-			.sign_and_submit_then_watch_default(&deposit_collateral_tx, self.signer.as_ref())
+			.sign_and_submit_then_watch_default(&deposit_collateral_tx, &*signer)
 			.await?;
 		Ok(())
 	}
@@ -517,9 +525,11 @@ impl VaultRegistryPallet for SpacewalkParachain {
 			.vault_registry()
 			.withdraw_collateral(vault_id.currencies.clone(), amount);
 
+		let signer = self.signer.read().await;
+
 		self.api
 			.tx()
-			.sign_and_submit_then_watch_default(&withdraw_collateral_tx, self.signer.as_ref())
+			.sign_and_submit_then_watch_default(&withdraw_collateral_tx, &*signer)
 			.await?;
 		Ok(())
 	}
@@ -538,15 +548,20 @@ impl VaultRegistryPallet for SpacewalkParachain {
 	///
 	/// # Arguments
 	/// * `public_key` - the new public key of the vault
-	async fn register_public_key(&self, public_key: StellarPublicKey) -> Result<(), Error> {
+	async fn register_public_key(&mut self, public_key: StellarPublicKey) -> Result<(), Error> {
 		let public_key = &public_key.clone();
 
 		let register_public_key_tx =
 			metadata::tx().vault_registry().register_public_key(public_key.clone());
 
+		self.refresh_nonce().await;
+		let mut signer = self.signer.write().await;
+		// increment nonce before submitting
+		signer.increment_nonce();
+
 		self.api
 			.tx()
-			.sign_and_submit_then_watch_default(&register_public_key_tx, self.signer.as_ref())
+			.sign_and_submit_then_watch_default(&register_public_key_tx, &*signer)
 			.await?;
 		Ok(())
 	}
@@ -688,10 +703,9 @@ impl CollateralBalancesPallet for SpacewalkParachain {
 			amount,
 		);
 
-		self.api
-			.tx()
-			.sign_and_submit_then_watch_default(&transfer_tx, self.signer.as_ref())
-			.await?;
+		let signer = self.signer.read().await;
+
+		self.api.tx().sign_and_submit_then_watch_default(&transfer_tx, &*signer).await?;
 		Ok(())
 	}
 }

@@ -16,6 +16,8 @@ To run the vault with the provided standalone chain use:
 
 ```
 cargo run --bin vault --features standalone-metadata  -- --keyring alice --stellar-vault-secret-key SB6WHKIU2HGVBRNKNOEOQUY4GFC4ZLG5XPGWLEAHTIZXBXXYACC76VSQ
+# Run the vault with auto-registering for the USDC asset
+cargo run --bin vault --features standalone-metadata  -- --keyring alice --stellar-vault-secret-key SB6WHKIU2HGVBRNKNOEOQUY4GFC4ZLG5XPGWLEAHTIZXBXXYACC76VSQ --auto-register "DOT,USDC,50"
 ```
 
 To run the vault with a parachain (e.g. Pendulum) you need to specify the URL, so use:

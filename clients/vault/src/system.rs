@@ -209,7 +209,7 @@ impl Service<VaultServiceConfig, Error> for VaultService {
 		VaultService::new(spacewalk_parachain, config, shutdown)
 	}
 
-	async fn start(&self) -> Result<(), ServiceError<Error>> {
+	async fn start(&mut self) -> Result<(), ServiceError<Error>> {
 		self.run_service().await
 	}
 }
@@ -305,7 +305,7 @@ impl VaultService {
 		}
 	}
 
-	async fn run_service(&self) -> Result<(), ServiceError<Error>> {
+	async fn run_service(&mut self) -> Result<(), ServiceError<Error>> {
 		self.await_parachain_block().await?;
 
 		let parsed_auto_register = self
@@ -390,7 +390,7 @@ impl VaultService {
 		run_and_monitor_tasks(self.shutdown.clone(), tasks).await
 	}
 
-	async fn maybe_register_public_key(&self) -> Result<(), Error> {
+	async fn maybe_register_public_key(&mut self) -> Result<(), Error> {
 		if let Some(faucet_url) = &self.config.faucet_url {
 			// TODO fund account with faucet
 		}
