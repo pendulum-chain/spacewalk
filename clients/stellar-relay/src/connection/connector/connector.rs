@@ -194,11 +194,12 @@ impl Connector {
 	}
 }
 
-use substrate_stellar_sdk::{
-	network::TEST_NETWORK, SecretKey,
-};
+
 #[test]
 fn create_new_connector_works() {
+	use substrate_stellar_sdk::{
+		network::TEST_NETWORK, SecretKey,
+	};
 	let secret =
 		SecretKey::from_encoding("SBLI7RKEJAEFGLZUBSCOFJHQBPFYIIPLBCKN7WVCWT4NEG2UJEW33N73")
 			.unwrap();
