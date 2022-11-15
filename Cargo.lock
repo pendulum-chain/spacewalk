@@ -3020,10 +3020,10 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a1f2ab5a60e558e74ea93bcf5164ebc47939a7fff8938fa9b5233bbc63e16061"
 dependencies = [
  "jsonrpsee-core 0.13.1",
- "jsonrpsee-http-server",
+ "jsonrpsee-http-server 0.13.1",
  "jsonrpsee-proc-macros 0.13.1",
  "jsonrpsee-types 0.13.1",
- "jsonrpsee-ws-server",
+ "jsonrpsee-ws-server 0.13.1",
  "tracing",
 ]
 
@@ -3036,10 +3036,12 @@ dependencies = [
  "jsonrpsee-client-transport",
  "jsonrpsee-core 0.15.1",
  "jsonrpsee-http-client",
+ "jsonrpsee-http-server 0.15.1",
  "jsonrpsee-proc-macros 0.15.1",
  "jsonrpsee-types 0.15.1",
  "jsonrpsee-wasm-client",
  "jsonrpsee-ws-client",
+ "jsonrpsee-ws-server 0.15.1",
  "tracing",
 ]
 
@@ -3100,21 +3102,29 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f3dc3e9cf2ba50b7b1d7d76a667619f82846caa39e8e8daa8a4962d74acaddca"
 dependencies = [
  "anyhow",
+ "arrayvec 0.7.2",
  "async-lock",
  "async-trait",
  "beef",
  "futures-channel",
  "futures-timer",
  "futures-util",
+ "globset",
+ "http",
  "hyper",
  "jsonrpsee-types 0.15.1",
+ "lazy_static",
+ "parking_lot 0.12.1",
+ "rand 0.8.5",
  "rustc-hash",
  "serde",
  "serde_json",
+ "soketto",
  "thiserror",
  "tokio",
  "tracing",
  "tracing-futures",
+ "unicase",
  "wasm-bindgen-futures",
 ]
 
@@ -3155,6 +3165,24 @@ dependencies = [
  "tokio",
  "tracing",
  "unicase",
+]
+
+[[package]]
+name = "jsonrpsee-http-server"
+version = "0.15.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "03802f0373a38c2420c70b5144742d800b509e2937edc4afb116434f07120117"
+dependencies = [
+ "futures-channel",
+ "futures-util",
+ "hyper",
+ "jsonrpsee-core 0.15.1",
+ "jsonrpsee-types 0.15.1",
+ "serde",
+ "serde_json",
+ "tokio",
+ "tracing",
+ "tracing-futures",
 ]
 
 [[package]]
@@ -3247,6 +3275,26 @@ dependencies = [
  "tokio",
  "tokio-util",
  "tracing",
+]
+
+[[package]]
+name = "jsonrpsee-ws-server"
+version = "0.15.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d488ba74fb369e5ab68926feb75a483458b88e768d44319f37e4ecad283c7325"
+dependencies = [
+ "futures-channel",
+ "futures-util",
+ "http",
+ "jsonrpsee-core 0.15.1",
+ "jsonrpsee-types 0.15.1",
+ "serde_json",
+ "soketto",
+ "tokio",
+ "tokio-stream",
+ "tokio-util",
+ "tracing",
+ "tracing-futures",
 ]
 
 [[package]]
@@ -4278,7 +4326,7 @@ dependencies = [
 name = "module-issue-rpc"
 version = "1.2.0"
 dependencies = [
- "jsonrpsee 0.13.1",
+ "jsonrpsee 0.15.1",
  "module-issue-rpc-runtime-api",
  "parity-scale-codec",
  "sp-api",
@@ -4300,7 +4348,7 @@ dependencies = [
 name = "module-oracle-rpc"
 version = "1.2.0"
 dependencies = [
- "jsonrpsee 0.13.1",
+ "jsonrpsee 0.15.1",
  "module-oracle-rpc-runtime-api",
  "parity-scale-codec",
  "sp-api",
@@ -4323,7 +4371,7 @@ dependencies = [
 name = "module-redeem-rpc"
 version = "1.2.0"
 dependencies = [
- "jsonrpsee 0.13.1",
+ "jsonrpsee 0.15.1",
  "module-redeem-rpc-runtime-api",
  "parity-scale-codec",
  "sp-api",
@@ -4345,7 +4393,7 @@ dependencies = [
 name = "module-replace-rpc"
 version = "1.2.0"
 dependencies = [
- "jsonrpsee 0.13.1",
+ "jsonrpsee 0.15.1",
  "module-replace-rpc-runtime-api",
  "parity-scale-codec",
  "sp-api",
@@ -4367,7 +4415,7 @@ dependencies = [
 name = "module-vault-registry-rpc"
 version = "0.3.0"
 dependencies = [
- "jsonrpsee 0.13.1",
+ "jsonrpsee 0.15.1",
  "module-oracle-rpc-runtime-api",
  "module-vault-registry-rpc-runtime-api",
  "parity-scale-codec",
@@ -8856,7 +8904,7 @@ name = "spacewalk-rpc"
 version = "1.2.0"
 dependencies = [
  "jsonrpc-core",
- "jsonrpsee 0.13.1",
+ "jsonrpsee 0.15.1",
  "module-issue-rpc",
  "module-redeem-rpc",
  "module-replace-rpc",
