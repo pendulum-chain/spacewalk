@@ -119,7 +119,9 @@ impl StellarOverlayConnection {
 mod test{
     use crate::{StellarOverlayConnection, ConnConfig, node::NodeInfo, ConnectorActions, StellarRelayMessage};
 	use substrate_stellar_sdk::{network::TEST_NETWORK, SecretKey, types::StellarMessage};
-use tokio::sync::mpsc;
+	use tokio::sync::mpsc;
+	use crate::Error;
+
 	#[test]
 	fn create_stellar_overlay_connection_works() {
 		
@@ -143,7 +145,7 @@ use tokio::sync::mpsc;
 		let (node_info, cfg) = create_node_and_conn();
 
 		let (actions_sender, mut actions_receiver) = mpsc::channel::<ConnectorActions>(1024);
-		let (relay_message_sender, relay_message_receiver) = mpsc::channel::<StellarRelayMessage>(1024);
+		let (_, relay_message_receiver) = mpsc::channel::<StellarRelayMessage>(1024);
 
 		let overlay_connection = StellarOverlayConnection::new(
 			actions_sender.clone(),
@@ -197,6 +199,33 @@ use tokio::sync::mpsc;
 		else{
 			panic!("Incorrect stellar relay message type")
 		}
+	}
+
+	#[tokio::test]
+	async fn connect_should_fail_incorrect_address() {
+		let secret =
+					SecretKey::from_encoding("SBLI7RKEJAEFGLZUBSCOFJHQBPFYIIPLBCKN7WVCWT4NEG2UJEW33N73")
+						.unwrap();
+		let node_info = NodeInfo::new(19, 21, 19, "v19.1.0".to_string(), &TEST_NETWORK);
+		let cfg = ConnConfig::new("incorrect address", 11625, secret, 0, false, true, false);
+		
+		let stellar_overlay_connection = StellarOverlayConnection::connect(node_info, cfg).await;
+
+		assert!(stellar_overlay_connection.is_err());
+		match stellar_overlay_connection.err().unwrap(){
+			Error::ConnectionFailed(_) => {},
+			_ => {
+				panic!("Incorrect error")
+			}
+		}
+	}
+
+	#[tokio::test]
+	async fn stellar_overlay_connect_works() {
+		let (node_info, cfg) = create_node_and_conn();
+		let stellar_overlay_connection = StellarOverlayConnection::connect(node_info, cfg).await;
+
+		assert!(stellar_overlay_connection.is_ok());
 	}
 
 
