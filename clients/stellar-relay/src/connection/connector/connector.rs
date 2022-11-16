@@ -1,20 +1,16 @@
-use std::vec;
-
 use substrate_stellar_sdk::{
-	compound_types::LimitedString,
-	types::{AuthenticatedMessageV0, Curve25519Public, Hello, HmacSha256Mac, MessageType},
-	PublicKey, XdrCodec,
+	types::{AuthenticatedMessageV0, Curve25519Public, HmacSha256Mac, MessageType},
+	XdrCodec,
 };
 use tokio::sync::mpsc;
 
 use crate::{
 	connection::{
-		authentication::{create_auth_cert, gen_shared_key, ConnectionAuth},
+		authentication::{gen_shared_key, ConnectionAuth},
 		flow_controller::FlowController,
 		hmac::{verify_hmac, HMacKeys},
 	},
 	handshake::HandshakeState,
-	helper::time_now,
 	node::{LocalInfo, NodeInfo, RemoteInfo},
 	ConnConfig, ConnectorActions, Error, StellarRelayMessage,
 };
@@ -199,24 +195,20 @@ impl Connector {
 }
 
 mod test {
-	use crate::Connector;
+	use crate::{connection::hmac::HMacKeys, node::RemoteInfo, Connector};
+
 	use substrate_stellar_sdk::{
 		compound_types::LimitedString,
-		types::{AuthenticatedMessageV0, Curve25519Public, Hello, HmacSha256Mac, MessageType},
-		PublicKey, XdrCodec,
+		types::{Hello, MessageType},
+		PublicKey,
 	};
 	use tokio::sync::mpsc::{self, Receiver};
 
 	use crate::{
-		connection::{
-			authentication::{create_auth_cert, gen_shared_key, ConnectionAuth},
-			flow_controller::FlowController,
-			hmac::{verify_hmac, HMacKeys},
-		},
-		handshake::HandshakeState,
+		connection::authentication::{create_auth_cert, ConnectionAuth},
 		helper::time_now,
-		node::{LocalInfo, NodeInfo, RemoteInfo},
-		ConnConfig, ConnectorActions, Error, StellarRelayMessage,
+		node::NodeInfo,
+		ConnConfig, ConnectorActions, StellarRelayMessage,
 	};
 	#[test]
 	fn create_new_connector_works() {
@@ -411,7 +403,7 @@ mod test {
 		// this is a channel to communicate with the user/caller.
 		let (relay_message_sender, relay_message_receiver) =
 			mpsc::channel::<StellarRelayMessage>(1024);
-		let mut connector =
+		let connector =
 			Connector::new(node_info.clone(), cfg.clone(), actions_sender, relay_message_sender);
 		(node_info, cfg, connector, actions_receiver, relay_message_receiver)
 	}
