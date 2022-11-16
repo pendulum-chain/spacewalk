@@ -130,6 +130,13 @@ impl SpacewalkParachain {
 		Self::new(ws_client, signer, shutdown_tx).await
 	}
 
+	pub async fn is_public_network(&self) -> Result<bool, Error> {
+		// todo: check from the stellar_relay pallet if the network is public or not
+		// let head = self.get_latest_block_hash().await?;
+		// Ok(self.api.storage().stellar_relay().is_public_network(head).await?)
+		Ok(true)
+	}
+
 	async fn refresh_nonce(&self) {
 		let mut signer = self.signer.write().await;
 		// For getting the nonce, use latest, possibly non-finalized block.
