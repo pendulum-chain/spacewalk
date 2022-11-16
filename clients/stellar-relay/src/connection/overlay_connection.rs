@@ -118,7 +118,7 @@ impl StellarOverlayConnection {
 #[cfg(test)]
 mod test{
     use crate::{StellarOverlayConnection, ConnConfig, node::NodeInfo, ConnectorActions, StellarRelayMessage};
-	use substrate_stellar_sdk::{network::TEST_NETWORK, SecretKey};
+	use substrate_stellar_sdk::{network::TEST_NETWORK, SecretKey, types::StellarMessage};
 use tokio::sync::mpsc;
 	#[test]
 	fn create_stellar_overlay_connection_works() {
@@ -136,6 +136,70 @@ use tokio::sync::mpsc;
 			cfg
 		);
 	}
+
+	#[tokio::test]
+	async fn stellar_overlay_connection_send_works() {
+		//arrange
+		let (node_info, cfg) = create_node_and_conn();
+
+		let (actions_sender, mut actions_receiver) = mpsc::channel::<ConnectorActions>(1024);
+		let (relay_message_sender, relay_message_receiver) = mpsc::channel::<StellarRelayMessage>(1024);
+
+		let overlay_connection = StellarOverlayConnection::new(
+			actions_sender.clone(),
+			relay_message_receiver,
+			cfg.retries,
+			node_info,
+			cfg
+		);
+		let message_s = StellarMessage::GetPeers;
+
+		//act
+		overlay_connection.send(message_s.clone()).await.expect("Should sent message");
+
+		//assert
+		let message = actions_receiver.recv().await.unwrap();
+		if let ConnectorActions::SendMessage(message) = message{
+			assert_eq!(message,message_s);
+		}
+		else{
+			panic!("Incorrect stellar message")
+		}
+	}
+
+	#[tokio::test]
+	async fn stellar_overlay_connection_listen_works() {
+		//arrange
+		let (node_info, cfg) = create_node_and_conn();
+
+		let (actions_sender, mut actions_receiver) = mpsc::channel::<ConnectorActions>(1024);
+		let (relay_message_sender, relay_message_receiver) = mpsc::channel::<StellarRelayMessage>(1024);
+
+		let mut overlay_connection = StellarOverlayConnection::new(
+			actions_sender.clone(),
+			relay_message_receiver,
+			cfg.retries,
+			node_info,
+			cfg
+		);
+		let error_messae = "error message".to_owned();
+		relay_message_sender
+			.send(StellarRelayMessage::Error(error_messae.clone()))
+			.await.expect("Stellar Relay message should be sent");
+
+		//act
+		let message = overlay_connection.listen().await.expect("Should receive some message");
+
+		//assert
+		if let StellarRelayMessage::Error(m) = message{
+			assert_eq!(m, error_messae);
+		}
+		else{
+			panic!("Incorrect stellar relay message type")
+		}
+	}
+
+
 
 	fn create_node_and_conn() -> (NodeInfo, ConnConfig) {
 		let secret =
