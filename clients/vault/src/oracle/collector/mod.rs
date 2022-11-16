@@ -2,7 +2,6 @@ mod envelopes_handler;
 mod proof_builder;
 
 mod txsets_handler;
-use tokio::sync::mpsc;
 
 use parking_lot::{
 	lock_api::{RwLockReadGuard, RwLockWriteGuard},

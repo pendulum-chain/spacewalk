@@ -1,11 +1,11 @@
 use crate::oracle::ScpArchiveStorage;
 use parking_lot::RwLock;
-use std::{convert::TryInto, iter::FromIterator, sync::Arc};
+use std::{convert::TryInto, sync::Arc};
 use stellar_relay::{
 	sdk::{
-		compound_types::{LimitedVarArray, UnlimitedVarArray, XdrArchive},
+		compound_types::{UnlimitedVarArray, XdrArchive},
 		types::{ScpEnvelope, ScpHistoryEntry, StellarMessage, TransactionSet},
-		TransactionEnvelope, XdrCodec,
+		XdrCodec,
 	},
 	StellarOverlayConnection,
 };
@@ -51,7 +51,7 @@ pub enum ProofStatus {
 	NoEnvelopesFound,
 	/// Envelopes is fetched again, and user just needs to wait for it.
 	WaitForEnvelopes,
-	/// TxSet is not found and will not be fetched again since the slot is too far back.
+	/// TxSet is not found and the slot is too far back.
 	NoTxSetFound,
 	/// TxSet is fetched again, and user just needs to wait for it.
 	WaitForTxSet,
@@ -64,8 +64,6 @@ impl ScpMessageCollector {
 	fn get_envelopes(&self, slot: Slot) -> Result<UnlimitedVarArray<ScpEnvelope>, ProofStatus> {
 		let envelopes = self._get_envelopes(slot);
 
-		let mut vec_envelopes = vec![];
-
 		// there's no record of this slot in the storage
 		if envelopes.is_none() {
 			// If the current slot is still in the range of 'remembered' slots
@@ -76,7 +74,7 @@ impl ScpMessageCollector {
 			return Err(ProofStatus::NoEnvelopesFound)
 		}
 
-		vec_envelopes = envelopes.unwrap().0;
+		let vec_envelopes = envelopes.unwrap().0;
 
 		// lacking envelopes
 		if vec_envelopes.len() < self.min_externalized_messages() {
@@ -182,6 +180,12 @@ impl ScpMessageCollector {
 		ProofStatus::Proof(Proof { slot, envelopes, tx_set })
 	}
 
+	fn remove_data(&mut self, slot: &Slot) {
+		self.slot_watchlist_mut().remove(&slot);
+		self.envelopes_map_mut().remove(&slot);
+		self.txset_map_mut().remove(&slot);
+	}
+
 	/// Returns a list of transactions (only those with proofs) to be processed.
 	pub async fn get_pending_proofs(
 		&mut self,
@@ -198,7 +202,7 @@ impl ScpMessageCollector {
 			match self.build_proof(*slot, overlay_conn).await {
 				ProofStatus::Proof(proof) => {
 					// a proof has been found. Remove this slot.
-					self.slot_watchlist_mut().remove(slot);
+					self.remove_data(slot);
 
 					handled_tx_indices.push(index);
 					proofs_for_handled_txs.push(proof);

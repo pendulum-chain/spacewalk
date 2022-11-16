@@ -71,11 +71,8 @@ impl ScpMessageCollector {
                 // also check whether this is a delayed message
                 !self.txset_map().contains_key(&slot)
 			{
+				// request for txset
 				let _ = self.request_for_txset(txset_hash, slot, overlay_conn).await?;
-
-				// check if we need to transfer the map to a file
-				// todo: maybe we don't need this anymore
-				self.check_write_envelopes_to_file(slot)?;
 			}
 
 			// insert/add the externalized message to map.
@@ -94,6 +91,7 @@ impl ScpMessageCollector {
 
 	/// Checks whether the envelopes map requires saving to file.
 	/// One of the factors would be "how old" the slot is, against the current slot.
+	/// todo: this is not needed anymore
 	fn check_write_envelopes_to_file(&mut self, current_slot: Slot) -> Result<bool, Error> {
 		let env_map = self.envelopes_map().clone();
 		let mut slots = env_map.keys();
@@ -137,6 +135,7 @@ impl ScpMessageCollector {
 	}
 
 	/// saves a portion/or everything of the `envelopes_map` to a file.
+	/// todo: this is not needed anymore
 	fn write_envelopes_to_file(&mut self, last_slot: Slot) -> Result<(), Error> {
 		let new_slot_map = self.envelopes_map_mut().split_off(&last_slot);
 		let res = EnvelopesFileHandler::write_to_file(&self.envelopes_map())?;

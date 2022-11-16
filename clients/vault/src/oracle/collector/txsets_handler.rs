@@ -2,11 +2,7 @@ use std::sync::Arc;
 
 use parking_lot::RwLock;
 
-use stellar_relay::{
-	helper::compute_non_generic_tx_set_content_hash,
-	sdk::types::{StellarMessage, TransactionSet},
-	StellarOverlayConnection,
-};
+use stellar_relay::{helper::compute_non_generic_tx_set_content_hash, sdk::types::TransactionSet};
 
 use crate::oracle::{
 	collector::ScpMessageCollector,
@@ -64,9 +60,6 @@ impl ScpMessageCollector {
 
 	/// handles incoming TransactionSet.
 	pub(crate) fn handle_tx_set(&mut self, set: &TransactionSet) -> Result<(), Error> {
-		// todo: maybe we don't need this anymore?
-		self.check_write_tx_set_to_file()?;
-
 		// compute the tx_set_hash, to check what slot this set belongs too.
 		let tx_set_hash = compute_non_generic_tx_set_content_hash(set);
 
@@ -88,6 +81,7 @@ impl ScpMessageCollector {
 	}
 
 	/// checks whether the transaction set map requires saving to file.
+	/// todo: remove this
 	fn check_write_tx_set_to_file(&mut self) -> Result<(), Error> {
 		// map is too small; we don't have to write it to file just yet.
 		if self.txset_map().len() < MAX_TXSETS_PER_FILE {
@@ -99,7 +93,6 @@ impl ScpMessageCollector {
 		let filename = TxSetsFileHandler::write_to_file(&self.txset_map())?;
 		tracing::info!("new file created: {:?}", filename);
 
-		// todo: how to appropriately store the tx_hash_map that would make lookup easier?
 		// see Marcel's comment:
 		// https://satoshipay.slack.com/archives/C01V1F56RMJ/p1665130289894279?thread_ts=1665117606.469799&cid=C01V1F56RMJ
 		// TxHashesFileHandler::write_to_file(filename, &self.tx_hash_map())?;

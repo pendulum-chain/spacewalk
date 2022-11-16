@@ -111,8 +111,10 @@ impl ScpMessageActor {
 }
 
 /// Handler to communicate with the ScpMessageActor
+#[derive(Clone)]
 pub struct ScpMessageHandler {
 	action_sender: mpsc::Sender<ActorMessage>,
+	pub is_public_network: bool,
 }
 
 impl ScpMessageHandler {
@@ -129,7 +131,7 @@ impl ScpMessageHandler {
 		let mut actor = ScpMessageActor::new(receiver, collector);
 		tokio::spawn(async move { actor.run(overlay_conn).await });
 
-		Self { action_sender: sender }
+		Self { action_sender: sender, is_public_network }
 	}
 
 	/// A sample method to communicate with the actor.
@@ -149,6 +151,11 @@ impl ScpMessageHandler {
 		self.action_sender.send(ActorMessage::GetPendingProofs { sender }).await?;
 
 		receiver.await.map_err(Error::from)
+	}
+
+	pub async fn watch_transaction(&self, transaction: Transaction) -> Result<(), Error> {
+		self.action_sender.send(ActorMessage::WatchTransaction { transaction }).await?;
+		Ok(())
 	}
 
 	pub fn handle_issue_event(&self) {
