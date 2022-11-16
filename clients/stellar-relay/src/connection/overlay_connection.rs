@@ -114,3 +114,35 @@ impl StellarOverlayConnection {
 		Ok(overlay_connection)
 	}
 }
+
+#[cfg(test)]
+mod test{
+    use crate::{StellarOverlayConnection, ConnConfig, node::NodeInfo, ConnectorActions, StellarRelayMessage};
+	use substrate_stellar_sdk::{network::TEST_NETWORK, SecretKey};
+use tokio::sync::mpsc;
+	#[test]
+	fn create_stellar_overlay_connection_works() {
+		
+		let (node_info, cfg) = create_node_and_conn();
+
+		let (actions_sender, actions_receiver) = mpsc::channel::<ConnectorActions>(1024);
+		let (relay_message_sender, relay_message_receiver) = mpsc::channel::<StellarRelayMessage>(1024);
+
+		StellarOverlayConnection::new(
+			actions_sender.clone(),
+			relay_message_receiver,
+			cfg.retries,
+			node_info,
+			cfg
+		);
+	}
+
+	fn create_node_and_conn() -> (NodeInfo, ConnConfig) {
+		let secret =
+					SecretKey::from_encoding("SBLI7RKEJAEFGLZUBSCOFJHQBPFYIIPLBCKN7WVCWT4NEG2UJEW33N73")
+						.unwrap();
+		let node_info = NodeInfo::new(19, 21, 19, "v19.1.0".to_string(), &TEST_NETWORK);
+		let cfg = ConnConfig::new("34.235.168.98", 11625, secret, 0, false, true, false);
+		(node_info, cfg)
+	}
+}
