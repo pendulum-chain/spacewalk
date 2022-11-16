@@ -11,12 +11,8 @@ use stellar_relay::{
 };
 
 use crate::oracle::{
-	constants::MAX_SLOT_TO_REMEMBER, traits::FileHandler, types::EnvelopesMap,
-	EnvelopesFileHandler, ScpMessageCollector, Slot, TxSetsFileHandler,
+	constants::MAX_SLOT_TO_REMEMBER, types::EnvelopesMap, ScpMessageCollector, Slot,
 };
-
-/// Determines whether the data retrieved is from the current map or from a file.
-type DataFromFile<T> = (T, bool);
 
 /// The Proof of Transactions that needed to be processed
 #[derive(Debug, Eq, PartialEq)]
@@ -62,57 +58,35 @@ pub enum ProofStatus {
 impl ScpMessageCollector {
 	/// Returns either a list of ScpEnvelopes or a ProofStatus saying it failed to retrieve a list.
 	fn get_envelopes(&self, slot: Slot) -> Result<UnlimitedVarArray<ScpEnvelope>, ProofStatus> {
-		let envelopes = self._get_envelopes(slot);
+		match self.envelopes_map().get(&slot) {
+			None => {
+				// If the current slot is still in the range of 'remembered' slots
+				if check_slot_position(*self.last_slot_index(), slot) {
+					return Err(ProofStatus::WaitForEnvelopes)
+				}
+				// Use Horizon Archive node to get ScpHistoryEntry
+				Err(ProofStatus::NoEnvelopesFound)
+			},
+			Some(envelopes) => {
+				// lacking envelopes
+				if envelopes.len() < self.min_externalized_messages() {
+					// If the current slot is still in the range of 'remembered' slots
+					if check_slot_position(*self.last_slot_index(), slot) {
+						return Err(ProofStatus::WaitForMoreEnvelopes)
+					}
+					// Use Horizon Archive node to get ScpHistoryEntry
+					return Err(ProofStatus::LackingEnvelopes)
+				}
 
-		// there's no record of this slot in the storage
-		if envelopes.is_none() {
-			// If the current slot is still in the range of 'remembered' slots
-			if check_slot_position(*self.last_slot_index(), slot) {
-				return Err(ProofStatus::WaitForEnvelopes)
-			}
-			// Use Horizon Archive node to get ScpHistoryEntry
-			return Err(ProofStatus::NoEnvelopesFound)
+				Ok(UnlimitedVarArray::new(envelopes.clone())
+					.unwrap_or(UnlimitedVarArray::new_empty()))
+			},
 		}
-
-		let vec_envelopes = envelopes.unwrap().0;
-
-		// lacking envelopes
-		if vec_envelopes.len() < self.min_externalized_messages() {
-			// If the current slot is still in the range of 'remembered' slots
-			if check_slot_position(*self.last_slot_index(), slot) {
-				return Err(ProofStatus::WaitForMoreEnvelopes)
-			}
-			// Use Horizon Archive node to get ScpHistoryEntry
-			return Err(ProofStatus::LackingEnvelopes)
-		}
-
-		Ok(UnlimitedVarArray::new(vec_envelopes).unwrap_or(UnlimitedVarArray::new_empty()))
-	}
-
-	/// helper method for `get_envelopes()`.
-	/// It returns a tuple of (list of `ScpEnvelope`s, <if_list_came_from_a_file>).
-	fn _get_envelopes(&self, slot: Slot) -> Option<DataFromFile<Vec<ScpEnvelope>>> {
-		self.envelopes_map().get(&slot).map(|envs| (envs.clone(), false)).or_else(|| {
-			match EnvelopesFileHandler::get_map_from_archives(slot) {
-				Ok(env_map) => env_map.get(&slot).map(|envs| (envs.clone(), true)),
-				Err(e) => {
-					tracing::warn!("Failed to read envelopes map from a file: {:?}", e);
-					None
-				},
-			}
-		})
 	}
 
 	/// Returns either a TransactionSet or a ProofStatus saying it failed to retrieve the set.
-	fn get_txset(&self, slot: Slot) -> Result<DataFromFile<TransactionSet>, ProofStatus> {
-		let res = self.txset_map().get(&slot).map(|set| (set.clone(), false)).or_else(|| {
-			match TxSetsFileHandler::get_map_from_archives(slot) {
-				Ok(set_map) => set_map.get(&slot).map(|set| (set.clone(), true)),
-				Err(_) => None,
-			}
-		});
-
-		match res {
+	fn get_txset(&self, slot: Slot) -> Result<TransactionSet, ProofStatus> {
+		match self.txset_map().get(&slot).map(|set| set.clone()) {
 			None => {
 				// If the current slot is still in the range of 'remembered' slots
 				if check_slot_position(*self.last_slot_index(), slot) {
@@ -147,6 +121,7 @@ impl ScpMessageCollector {
 							.send(StellarMessage::GetScpState(slot.try_into().unwrap()))
 							.await;
 					},
+					// let's get envelopes from horizon
 					ProofStatus::NoEnvelopesFound => {
 						let rw_lock = self.envelopes_map_clone();
 						tokio::spawn(get_envelopes_from_horizon_archive(rw_lock, slot));
@@ -159,9 +134,11 @@ impl ScpMessageCollector {
 
 		// get the TransactionSet
 		let tx_set = match self.get_txset(slot) {
-			Ok((tx_set, _)) => tx_set,
+			Ok(set) => set,
 			Err(neg_status) => {
+				// if status is "waiting", fetch the txset again from StellarNode
 				if neg_status == ProofStatus::WaitForTxSet {
+					// we need the txset hash to create the message.
 					let txset_and_slot_map = self.txset_and_slot_map().clone();
 
 					if let Some(txset_hash) = txset_and_slot_map.get_txset_hash(&slot) {
@@ -180,10 +157,15 @@ impl ScpMessageCollector {
 		ProofStatus::Proof(Proof { slot, envelopes, tx_set })
 	}
 
+	/// Clear out data related to this slot.
 	fn remove_data(&mut self, slot: &Slot) {
 		self.slot_watchlist_mut().remove(&slot);
 		self.envelopes_map_mut().remove(&slot);
 		self.txset_map_mut().remove(&slot);
+
+		if let Some(idx) = self.slot_pendinglist().iter().position(|s| s == slot) {
+			self.slot_pendinglist_mut().remove(idx);
+		}
 	}
 
 	/// Returns a list of transactions (only those with proofs) to be processed.
@@ -196,6 +178,7 @@ impl ScpMessageCollector {
 
 		let mut proofs_for_handled_txs = Vec::<Proof>::new();
 
+		// let's generate proofs from the pending list.
 		let slot_pendinglist = self.slot_pendinglist().clone();
 		for (index, slot) in slot_pendinglist.iter().enumerate() {
 			// Try to build proofs
@@ -207,7 +190,9 @@ impl ScpMessageCollector {
 					handled_tx_indices.push(index);
 					proofs_for_handled_txs.push(proof);
 				},
-				_ => {},
+				x => {
+					tracing::warn!("cannot build proof for slot {:?}: {:?}", slot, x);
+				},
 			}
 		}
 		// Remove the transactions with proofs from the pending list.

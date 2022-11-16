@@ -9,7 +9,7 @@ use parking_lot::{
 };
 pub use proof_builder::*;
 use std::{convert::TryInto, sync::Arc};
-use stellar_relay::sdk::{types::ScpStatementExternalize, Memo};
+use stellar_relay::sdk::types::ScpStatementExternalize;
 
 use crate::oracle::{
 	errors::Error,
@@ -136,12 +136,4 @@ impl ScpMessageCollector {
 pub fn get_tx_set_hash(x: &ScpStatementExternalize) -> Result<TxSetHash, Error> {
 	let scp_value = x.commit.value.get_vec();
 	scp_value[0..32].try_into().map_err(Error::from)
-}
-
-/// We only save transactions that has Memohash.
-fn is_hash_memo(memo: &Memo) -> bool {
-	match memo {
-		Memo::MemoHash(_) => true,
-		_ => false,
-	}
 }
