@@ -7,6 +7,7 @@ mod handler;
 pub mod storage;
 mod types;
 
+pub use collector::{Proof, ProofStatus};
 pub use handler::*;
 pub use storage::prepare_directories;
 

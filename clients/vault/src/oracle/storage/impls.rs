@@ -162,7 +162,6 @@ impl ScpArchiveStorage {
 
 	fn try_gz_decode_archive_file(path: &str) -> Result<Vec<u8>, Error> {
 		use flate2::bufread::GzDecoder;
-		use std::io::{self, BufReader, Read};
 		let bytes = Self::read_file_xdr(path)?;
 		let mut gz = GzDecoder::new(&bytes[..]);
 		let mut bytes: Vec<u8> = vec![];
@@ -224,7 +223,7 @@ mod test {
 		errors::Error,
 		storage::{
 			traits::{FileHandler, FileHandlerExt},
-			EnvelopesFileHandler, TxHashesFileHandler, TxSetsFileHandler,
+			EnvelopesFileHandler, TxSetsFileHandler,
 		},
 		types::Slot,
 	};

@@ -5,7 +5,7 @@ use stellar_relay::sdk::{
 
 use stellar_relay::{node::NodeInfo, ConnConfig};
 
-use vault::oracle::{create_handler, prepare_directories, FilterWith};
+use vault::oracle::{create_handler, prepare_directories, FilterWith, ProofStatus};
 
 use tokio::time::Duration;
 
@@ -13,7 +13,7 @@ pub const SAMPLE_VAULT_ADDRESSES_FILTER: &[&str] =
 	&["GAP4SFKVFVKENJ7B7VORAYKPB3CJIAJ2LMKDJ22ZFHIAIVYQOR6W3CXF"];
 
 pub const TIER_1_VALIDATOR_IP_TESTNET: &str = "34.235.168.98";
-pub const TIER_1_VALIDATOR_IP_PUBLIC: &str = "135.181.16.110";
+pub const TIER_1_VALIDATOR_IP_PUBLIC: &str = "65.108.1.53";
 
 pub struct NoFilter;
 
@@ -54,7 +54,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 		SecretKey::from_encoding("SBLI7RKEJAEFGLZUBSCOFJHQBPFYIIPLBCKN7WVCWT4NEG2UJEW33N73")
 			.unwrap();
 
-	let node_info = NodeInfo::new(19, 21, 19, "v19.1.0".to_string(), network);
+	let node_info = NodeInfo::new(19, 25, 23, "v19.5.0".to_string(), network);
 	let cfg = ConnConfig::new(tier1_node_ip, 11625, secret, 0, true, true, false);
 
 	let vault_addresses_filter =
@@ -67,12 +67,15 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 		counter += 1;
 		tokio::time::sleep(Duration::from_secs(8)).await;
 		// let's try to send a message?
-		let slot_size = handler.get_size().await?;
-		tracing::info!("Slots in the map: {:?}", slot_size);
+		let last_slot = handler.get_last_slot_index().await?;
+		tracing::info!("last slot: {:?}", last_slot);
 
-		// adds filter at count 5
-		if counter == 5 {
-			handler.add_filter(Box::new(NoFilter)).await?;
+		if counter % 5 == 0 {
+			let check_slot = last_slot - 100;
+			let res = handler.get_proof(check_slot).await?;
+			tracing::info!("proof of slot {}:\n {:?}", check_slot, res);
+		} else if counter % 10 == 0 {
+			handler.watch_slot(last_slot + 10).await?;
 		}
 	}
 }

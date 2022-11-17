@@ -1,3 +1,4 @@
+use std::convert::TryInto;
 use tokio::sync::{mpsc, oneshot};
 
 use stellar_relay::{
@@ -23,8 +24,8 @@ pub enum ActorMessage {
 	},
 
 	/// Watch out for scpenvelopes and txsets for the given transaction (from Horizon)
-	WatchTransaction {
-		transaction: Transaction,
+	WatchSlot {
+		slot: Slot,
 	},
 
 	GetProof {
@@ -34,6 +35,10 @@ pub enum ActorMessage {
 	/// Gets all proofs
 	GetPendingProofs {
 		sender: oneshot::Sender<Vec<Proof>>,
+	},
+
+	GetLastSlotIndex {
+		sender: oneshot::Sender<Slot>,
 	},
 }
 
@@ -60,13 +65,20 @@ impl ScpMessageActor {
 				let _ = sender.send(self.collector.get_pending_proofs(overlay_conn).await);
 			},
 
-			ActorMessage::WatchTransaction { transaction } => {
-				// watch out for this transaction
-				self.collector.watch_transaction(transaction);
+			ActorMessage::WatchSlot { slot } => {
+				// watch out for this slot
+				self.collector.watch_slot(slot);
 			},
 
 			ActorMessage::GetProof { slot, sender } => {
 				let _ = sender.send(self.collector.build_proof(slot, overlay_conn).await);
+			},
+
+			ActorMessage::GetLastSlotIndex { sender } => {
+				let res = self.collector.last_slot_index();
+				if let Err(slot) = sender.send(*res) {
+					tracing::warn!("failed to send back the slot number: {}", slot);
+				}
 			},
 		};
 	}
@@ -89,7 +101,7 @@ impl ScpMessageActor {
 									.await?;
 							}
 							StellarMessage::TxSet(set) => {
-								self.collector.handle_tx_set(&set)?;
+								self.collector.handle_tx_set(&set);
 							}
 							_ => {}
 						},
@@ -153,8 +165,8 @@ impl ScpMessageHandler {
 		receiver.await.map_err(Error::from)
 	}
 
-	pub async fn watch_transaction(&self, transaction: Transaction) -> Result<(), Error> {
-		self.action_sender.send(ActorMessage::WatchTransaction { transaction }).await?;
+	pub async fn watch_slot(&self, slot: Slot) -> Result<(), Error> {
+		self.action_sender.send(ActorMessage::WatchSlot { slot }).await?;
 		Ok(())
 	}
 
@@ -164,6 +176,19 @@ impl ScpMessageHandler {
 
 	pub fn handle_redeem_event(&self) {
 		todo!();
+	}
+
+	pub async fn get_proof(&self, slot: Slot) -> Result<ProofStatus, Error> {
+		let (sender, receiver) = oneshot::channel();
+		self.action_sender.send(ActorMessage::GetProof { slot, sender }).await?;
+
+		receiver.await.map_err(Error::from)
+	}
+
+	pub async fn get_last_slot_index(&self) -> Result<Slot, Error> {
+		let (sender, receiver) = oneshot::channel();
+		self.action_sender.send(ActorMessage::GetLastSlotIndex { sender }).await?;
+		receiver.await.map_err(Error::from)
 	}
 }
 

@@ -7,7 +7,7 @@ use async_trait::async_trait;
 use runtime::SpacewalkPallet;
 use service::Error as ServiceError;
 use sp_std::{convert::From, str, vec::Vec};
-use std::{sync::Arc, time::Duration};
+use std::{convert::TryInto, sync::Arc, time::Duration};
 use stellar::SecretKey;
 use stellar_relay::{sdk as stellar, sdk::Hash};
 use tokio::{sync::Mutex, time::sleep};
@@ -141,7 +141,7 @@ impl<P: SpacewalkPallet, C: HorizonClient> HorizonFetcher<P, C> {
 			let tx = transactions[0].clone();
 			let id = tx.id.clone();
 			if self.is_unhandled_transaction(&tx) && is_tx_relevant(&tx, issue_set) {
-				match handler.watch_transaction(tx).await {
+				match handler.watch_slot(tx.ledger.try_into().unwrap()).await {
 					Ok(_) => {
 						tracing::info!("following transaction {:?}", String::from_utf8(id));
 					},

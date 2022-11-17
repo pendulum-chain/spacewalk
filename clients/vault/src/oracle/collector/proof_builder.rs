@@ -11,7 +11,9 @@ use stellar_relay::{
 };
 
 use crate::oracle::{
-	constants::MAX_SLOT_TO_REMEMBER, types::EnvelopesMap, ScpMessageCollector, Slot,
+	constants::{get_min_externalized_messages, MAX_SLOT_TO_REMEMBER},
+	types::EnvelopesMap,
+	ScpMessageCollector, Slot,
 };
 
 /// The Proof of Transactions that needed to be processed
@@ -69,7 +71,7 @@ impl ScpMessageCollector {
 			},
 			Some(envelopes) => {
 				// lacking envelopes
-				if envelopes.len() < self.min_externalized_messages() {
+				if envelopes.len() < get_min_externalized_messages(self.is_public()) {
 					// If the current slot is still in the range of 'remembered' slots
 					if check_slot_position(*self.last_slot_index(), slot) {
 						return Err(ProofStatus::WaitForMoreEnvelopes)
@@ -117,12 +119,22 @@ impl ScpMessageCollector {
 				match &neg_status {
 					// let's fetch from Stellar Node again
 					ProofStatus::WaitForMoreEnvelopes | ProofStatus::WaitForEnvelopes => {
+						self.watch_slot(slot);
 						let _ = overlay_conn
 							.send(StellarMessage::GetScpState(slot.try_into().unwrap()))
 							.await;
+						tracing::info!(
+							"requesting to StellarNode for messages of slot {}...",
+							slot
+						);
 					},
 					// let's get envelopes from horizon
 					ProofStatus::NoEnvelopesFound => {
+						tracing::info!(
+							"requesting to Horizon Archive for messages of slot {}...",
+							slot
+						);
+
 						let rw_lock = self.envelopes_map_clone();
 						tokio::spawn(get_envelopes_from_horizon_archive(rw_lock, slot));
 					},
@@ -139,33 +151,19 @@ impl ScpMessageCollector {
 				// if status is "waiting", fetch the txset again from StellarNode
 				if neg_status == ProofStatus::WaitForTxSet {
 					// we need the txset hash to create the message.
-					let txset_and_slot_map = self.txset_and_slot_map().clone();
-
-					if let Some(txset_hash) = txset_and_slot_map.get_txset_hash(&slot) {
+					if let Some(txset_hash) = self.get_txset_hash(&slot) {
 						let _ =
 							overlay_conn.send(StellarMessage::GetTxSet(txset_hash.clone())).await;
 					}
 				}
-
 				return neg_status
 			},
 		};
 
-		// removing this slot from the list of slots to watch.
-		self.slot_watchlist_mut().remove(&slot);
+		// a proof has been found. Remove this slot.
+		self.remove_data(&slot);
 
 		ProofStatus::Proof(Proof { slot, envelopes, tx_set })
-	}
-
-	/// Clear out data related to this slot.
-	fn remove_data(&mut self, slot: &Slot) {
-		self.slot_watchlist_mut().remove(&slot);
-		self.envelopes_map_mut().remove(&slot);
-		self.txset_map_mut().remove(&slot);
-
-		if let Some(idx) = self.slot_pendinglist().iter().position(|s| s == slot) {
-			self.slot_pendinglist_mut().remove(idx);
-		}
 	}
 
 	/// Returns a list of transactions (only those with proofs) to be processed.
@@ -173,31 +171,19 @@ impl ScpMessageCollector {
 		&mut self,
 		overlay_conn: &StellarOverlayConnection,
 	) -> Vec<Proof> {
-		// Store the handled transaction indices in a vec to be able to remove them later
-		let mut handled_tx_indices = Vec::new();
-
 		let mut proofs_for_handled_txs = Vec::<Proof>::new();
 
 		// let's generate proofs from the pending list.
-		let slot_pendinglist = self.slot_pendinglist().clone();
-		for (index, slot) in slot_pendinglist.iter().enumerate() {
+		for slot in self.read_slot_pending_list().iter() {
 			// Try to build proofs
 			match self.build_proof(*slot, overlay_conn).await {
 				ProofStatus::Proof(proof) => {
-					// a proof has been found. Remove this slot.
-					self.remove_data(slot);
-
-					handled_tx_indices.push(index);
 					proofs_for_handled_txs.push(proof);
 				},
-				x => {
-					tracing::warn!("cannot build proof for slot {:?}: {:?}", slot, x);
+				other => {
+					tracing::warn!("cannot build proof for slot {:?}: {:?}", slot, other);
 				},
 			}
-		}
-		// Remove the transactions with proofs from the pending list.
-		for index in handled_tx_indices.iter().rev() {
-			self.slot_pendinglist_mut().remove(*index);
 		}
 
 		proofs_for_handled_txs
@@ -237,5 +223,19 @@ async fn get_envelopes_from_horizon_archive(
 				envelopes_map.insert(slot, vec_scp);
 			}
 		}
+	}
+}
+
+#[cfg(test)]
+mod test {
+	use crate::oracle::collector::proof_builder::check_slot_position;
+
+	#[test]
+	fn test_check_slot_position() {
+		let last_slot = 100;
+		let curr_slot = 50;
+
+		let res = check_slot_position(last_slot, curr_slot);
+		println!("the result, men: {}", res);
 	}
 }

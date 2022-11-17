@@ -75,3 +75,45 @@ impl TxSetHashAndSlotMap {
 		self.slot_hash.insert(slot, hash);
 	}
 }
+
+#[cfg(test)]
+mod test {
+	use crate::oracle::types::TxSetHashAndSlotMap;
+
+	#[test]
+	fn get_TxSetHashAndSlotMap_tests_works() {
+		let mut x = TxSetHashAndSlotMap::new();
+
+		x.insert([0; 32], 0);
+		x.insert([1; 32], 1);
+
+		let zero_hash = x.get_txset_hash(&0).expect("should return an array of 32 zeroes inside");
+		assert_eq!(*zero_hash, [0; 32]);
+
+		let one_hash = x.get_txset_hash(&1).expect("should return an array of 32 ones inside");
+		assert_eq!(*one_hash, [1; 32]);
+
+		let zero_slot = x.get_slot(&[0; 32]).expect("should return a zero slot");
+		assert_eq!(*zero_slot, 0);
+
+		let one_slot = x.get_slot(&[1; 32]).expect("should return the one slot");
+		assert_eq!(*one_slot, 1);
+	}
+
+	#[test]
+	fn remove_TxSetHashAndSlotMap_tests_works() {
+		let mut x = TxSetHashAndSlotMap::new();
+
+		x.insert([0; 32], 0);
+		x.insert([1; 32], 1);
+		x.insert([2; 32], 2);
+
+		x.remove_by_slot(&1);
+		assert_eq!(x.get_txset_hash(&1), None);
+		assert_eq!(x.get_slot(&[1; 32]), None);
+
+		x.remove_by_txset_hash(&[2; 32]);
+		assert_eq!(x.get_slot(&[2; 32]), None);
+		assert_eq!(x.get_txset_hash(&2), None);
+	}
+}
