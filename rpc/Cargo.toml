@@ -17,14 +17,14 @@ module-replace-rpc = {path = "../pallets/replace/rpc"}
 module-vault-registry-rpc = {path = "../pallets/vault-registry/rpc"}
 
 # Substrate dependencies
-sc-rpc = {git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.24"}
-sc-rpc-api = {git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.24"}
-sc-transaction-pool-api = {git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.24"}
-sp-api = {git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.24"}
-sp-arithmetic = {git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.24"}
-sp-block-builder = {git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.24"}
-sp-blockchain = {git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.24"}
-sp-core = {git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.24"}
+sc-rpc = {git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.31"}
+sc-rpc-api = {git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.31"}
+sc-transaction-pool-api = {git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.31"}
+sp-api = {git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.31"}
+sp-arithmetic = {git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.31"}
+sp-block-builder = {git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.31"}
+sp-blockchain = {git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.31"}
+sp-core = {git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.31"}
 
-pallet-transaction-payment-rpc = {git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.24"}
-substrate-frame-rpc-system = {git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.24"}
+pallet-transaction-payment-rpc = {git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.31"}
+substrate-frame-rpc-system = {git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.31"}
