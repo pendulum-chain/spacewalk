@@ -75,9 +75,7 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 	// Storage: Redeem RedeemPeriod (r:1 w:0)
 	// Storage: Redeem RedeemRequests (r:0 w:1)
 	fn request_redeem() -> Weight {
-		(88_569_000 as Weight)
-			.saturating_add(T::DbWeight::get().reads(20 as Weight))
-			.saturating_add(T::DbWeight::get().writes(8 as Weight))
+		Weight::from_ref_time(0)
 	}
 	// Storage: Tokens Accounts (r:3 w:3)
 	// Storage: Tokens TotalIssuance (r:1 w:1)
@@ -85,9 +83,7 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 	// Storage: VaultRegistry TotalUserVaultCollateral (r:1 w:1)
 	// Storage: System Account (r:2 w:1)
 	fn liquidation_redeem() -> Weight {
-		(73_864_000 as Weight)
-			.saturating_add(T::DbWeight::get().reads(8 as Weight))
-			.saturating_add(T::DbWeight::get().writes(7 as Weight))
+		Weight::from_ref_time(0)
 	}
 	// Storage: Redeem RedeemRequests (r:1 w:1)
 	// Storage: StellarRelay IsPublicNetwork (r:1 w:0)
@@ -96,9 +92,7 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 	// Storage: VaultRewards TotalStake (r:1 w:0)
 	// Storage: VaultRegistry Vaults (r:1 w:1)
 	fn execute_redeem() -> Weight {
-		(7_192_594_000 as Weight)
-			.saturating_add(T::DbWeight::get().reads(6 as Weight))
-			.saturating_add(T::DbWeight::get().writes(2 as Weight))
+		Weight::from_ref_time(0)
 	}
 	// Storage: Security ParachainStatus (r:1 w:0)
 	// Storage: Redeem RedeemRequests (r:1 w:1)
@@ -116,9 +110,7 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 	// Storage: VaultRegistry SecureCollateralThreshold (r:1 w:0)
 	// Storage: VaultRewards Stake (r:1 w:0)
 	fn cancel_redeem_reimburse() -> Weight {
-		(78_920_000 as Weight)
-			.saturating_add(T::DbWeight::get().reads(15 as Weight))
-			.saturating_add(T::DbWeight::get().writes(3 as Weight))
+		Weight::from_ref_time(0)
 	}
 	// Storage: Security ParachainStatus (r:1 w:0)
 	// Storage: Redeem RedeemRequests (r:1 w:1)
@@ -134,14 +126,11 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 	// Storage: VaultRegistry PunishmentDelay (r:1 w:0)
 	// Storage: VaultRewards Stake (r:1 w:0)
 	fn cancel_redeem_retry() -> Weight {
-		(66_630_000 as Weight)
-			.saturating_add(T::DbWeight::get().reads(13 as Weight))
-			.saturating_add(T::DbWeight::get().writes(3 as Weight))
+		Weight::from_ref_time(0)
 	}
 	// Storage: Redeem RedeemPeriod (r:0 w:1)
 	fn set_redeem_period() -> Weight {
-		(9_574_000 as Weight)
-			.saturating_add(T::DbWeight::get().writes(1 as Weight))
+		Weight::from_ref_time(0)
 	}
 	// Storage: VaultRegistry Vaults (r:1 w:1)
 	// Storage: Tokens Accounts (r:1 w:1)
@@ -152,9 +141,7 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 	// Storage: VaultRewards Stake (r:1 w:1)
 	// Storage: VaultRewards RewardTally (r:2 w:2)
 	fn self_redeem() -> Weight {
-		(78_092_000 as Weight)
-			.saturating_add(T::DbWeight::get().reads(10 as Weight))
-			.saturating_add(T::DbWeight::get().writes(9 as Weight))
+		Weight::from_ref_time(0)
 	}
 }
 
@@ -180,9 +167,7 @@ impl WeightInfo for () {
 	// Storage: Redeem RedeemPeriod (r:1 w:0)
 	// Storage: Redeem RedeemRequests (r:0 w:1)
 	fn request_redeem() -> Weight {
-		(88_569_000 as Weight)
-			.saturating_add(RocksDbWeight::get().reads(20 as Weight))
-			.saturating_add(RocksDbWeight::get().writes(8 as Weight))
+		Weight::from_ref_time(0)
 	}
 	// Storage: Tokens Accounts (r:3 w:3)
 	// Storage: Tokens TotalIssuance (r:1 w:1)
@@ -190,9 +175,7 @@ impl WeightInfo for () {
 	// Storage: VaultRegistry TotalUserVaultCollateral (r:1 w:1)
 	// Storage: System Account (r:2 w:1)
 	fn liquidation_redeem() -> Weight {
-		(73_864_000 as Weight)
-			.saturating_add(RocksDbWeight::get().reads(8 as Weight))
-			.saturating_add(RocksDbWeight::get().writes(7 as Weight))
+		Weight::from_ref_time(0)
 	}
 	// Storage: Redeem RedeemRequests (r:1 w:1)
 	// Storage: StellarRelay IsPublicNetwork (r:1 w:0)
@@ -201,9 +184,7 @@ impl WeightInfo for () {
 	// Storage: VaultRewards TotalStake (r:1 w:0)
 	// Storage: VaultRegistry Vaults (r:1 w:1)
 	fn execute_redeem() -> Weight {
-		(7_192_594_000 as Weight)
-			.saturating_add(RocksDbWeight::get().reads(6 as Weight))
-			.saturating_add(RocksDbWeight::get().writes(2 as Weight))
+		Weight::from_ref_time(0)
 	}
 	// Storage: Security ParachainStatus (r:1 w:0)
 	// Storage: Redeem RedeemRequests (r:1 w:1)
@@ -221,9 +202,7 @@ impl WeightInfo for () {
 	// Storage: VaultRegistry SecureCollateralThreshold (r:1 w:0)
 	// Storage: VaultRewards Stake (r:1 w:0)
 	fn cancel_redeem_reimburse() -> Weight {
-		(78_920_000 as Weight)
-			.saturating_add(RocksDbWeight::get().reads(15 as Weight))
-			.saturating_add(RocksDbWeight::get().writes(3 as Weight))
+		Weight::from_ref_time(0)
 	}
 	// Storage: Security ParachainStatus (r:1 w:0)
 	// Storage: Redeem RedeemRequests (r:1 w:1)
@@ -239,14 +218,11 @@ impl WeightInfo for () {
 	// Storage: VaultRegistry PunishmentDelay (r:1 w:0)
 	// Storage: VaultRewards Stake (r:1 w:0)
 	fn cancel_redeem_retry() -> Weight {
-		(66_630_000 as Weight)
-			.saturating_add(RocksDbWeight::get().reads(13 as Weight))
-			.saturating_add(RocksDbWeight::get().writes(3 as Weight))
+		Weight::from_ref_time(0)
 	}
 	// Storage: Redeem RedeemPeriod (r:0 w:1)
 	fn set_redeem_period() -> Weight {
-		(9_574_000 as Weight)
-			.saturating_add(RocksDbWeight::get().writes(1 as Weight))
+		Weight::from_ref_time(0)
 	}
 	// Storage: VaultRegistry Vaults (r:1 w:1)
 	// Storage: Tokens Accounts (r:1 w:1)
@@ -257,8 +233,6 @@ impl WeightInfo for () {
 	// Storage: VaultRewards Stake (r:1 w:1)
 	// Storage: VaultRewards RewardTally (r:2 w:2)
 	fn self_redeem() -> Weight {
-		(78_092_000 as Weight)
-			.saturating_add(RocksDbWeight::get().reads(10 as Weight))
-			.saturating_add(RocksDbWeight::get().writes(9 as Weight))
+		Weight::from_ref_time(0)
 	}
 }

@@ -52,8 +52,7 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 	// Storage: StellarRelay Validators (r:0 w:1)
 	// Storage: StellarRelay Organizations (r:0 w:1)
 	fn update_tier_1_validator_set() -> Weight {
-		(32_736_000 as Weight)
-			.saturating_add(T::DbWeight::get().writes(2 as Weight))
+		Weight::from_ref_time(0)
 	}
 }
 
@@ -62,7 +61,6 @@ impl WeightInfo for () {
 	// Storage: StellarRelay Validators (r:0 w:1)
 	// Storage: StellarRelay Organizations (r:0 w:1)
 	fn update_tier_1_validator_set() -> Weight {
-		(32_736_000 as Weight)
-			.saturating_add(RocksDbWeight::get().writes(2 as Weight))
+		Weight::from_ref_time(0)
 	}
 }

@@ -68,9 +68,7 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 	// Storage: Issue IssuePeriod (r:1 w:0)
 	// Storage: Issue IssueRequests (r:0 w:1)
 	fn request_issue() -> Weight {
-		(77_146_000 as Weight)
-			.saturating_add(T::DbWeight::get().reads(15 as Weight))
-			.saturating_add(T::DbWeight::get().writes(3 as Weight))
+		Weight::from_ref_time(0)
 	}
 	// Storage: Issue IssueRequests (r:1 w:1)
 	// Storage: StellarRelay IsPublicNetwork (r:1 w:0)
@@ -81,23 +79,18 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 	// Storage: VaultRewards Stake (r:1 w:0)
 	// Storage: VaultRewards TotalStake (r:1 w:0)
 	fn execute_issue() -> Weight {
-		(7_951_468_000 as Weight)
-			.saturating_add(T::DbWeight::get().reads(8 as Weight))
-			.saturating_add(T::DbWeight::get().writes(2 as Weight))
+		Weight::from_ref_time(0)
 	}
 	// Storage: Issue IssueRequests (r:1 w:1)
 	// Storage: Issue IssuePeriod (r:1 w:0)
 	// Storage: Security ActiveBlockCount (r:1 w:0)
 	// Storage: VaultRegistry Vaults (r:1 w:1)
 	fn cancel_issue() -> Weight {
-		(38_801_000 as Weight)
-			.saturating_add(T::DbWeight::get().reads(4 as Weight))
-			.saturating_add(T::DbWeight::get().writes(2 as Weight))
+		Weight::from_ref_time(0)
 	}
 	// Storage: Issue IssuePeriod (r:0 w:1)
 	fn set_issue_period() -> Weight {
-		(11_346_000 as Weight)
-			.saturating_add(T::DbWeight::get().writes(1 as Weight))
+		Weight::from_ref_time(0)
 	}
 }
 
@@ -119,9 +112,7 @@ impl WeightInfo for () {
 	// Storage: Issue IssuePeriod (r:1 w:0)
 	// Storage: Issue IssueRequests (r:0 w:1)
 	fn request_issue() -> Weight {
-		(77_146_000 as Weight)
-			.saturating_add(RocksDbWeight::get().reads(15 as Weight))
-			.saturating_add(RocksDbWeight::get().writes(3 as Weight))
+		Weight::from_ref_time(0)
 	}
 	// Storage: Issue IssueRequests (r:1 w:1)
 	// Storage: StellarRelay IsPublicNetwork (r:1 w:0)
@@ -132,22 +123,17 @@ impl WeightInfo for () {
 	// Storage: VaultRewards Stake (r:1 w:0)
 	// Storage: VaultRewards TotalStake (r:1 w:0)
 	fn execute_issue() -> Weight {
-		(7_951_468_000 as Weight)
-			.saturating_add(RocksDbWeight::get().reads(8 as Weight))
-			.saturating_add(RocksDbWeight::get().writes(2 as Weight))
+		Weight::from_ref_time(0)
 	}
 	// Storage: Issue IssueRequests (r:1 w:1)
 	// Storage: Issue IssuePeriod (r:1 w:0)
 	// Storage: Security ActiveBlockCount (r:1 w:0)
 	// Storage: VaultRegistry Vaults (r:1 w:1)
 	fn cancel_issue() -> Weight {
-		(38_801_000 as Weight)
-			.saturating_add(RocksDbWeight::get().reads(4 as Weight))
-			.saturating_add(RocksDbWeight::get().writes(2 as Weight))
+		Weight::from_ref_time(0)
 	}
 	// Storage: Issue IssuePeriod (r:0 w:1)
 	fn set_issue_period() -> Weight {
-		(11_346_000 as Weight)
-			.saturating_add(RocksDbWeight::get().writes(1 as Weight))
+		Weight::from_ref_time(0)
 	}
 }

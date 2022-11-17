@@ -62,15 +62,11 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 	// Storage: Fee ReplaceGriefingCollateral (r:1 w:0)
 	// Storage: Tokens Accounts (r:1 w:1)
 	fn request_replace() -> Weight {
-		(58_572_000 as Weight)
-			.saturating_add(T::DbWeight::get().reads(7 as Weight))
-			.saturating_add(T::DbWeight::get().writes(2 as Weight))
+		Weight::from_ref_time(0)
 	}
 	// Storage: VaultRegistry Vaults (r:1 w:1)
 	fn withdraw_replace() -> Weight {
-		(30_879_000 as Weight)
-			.saturating_add(T::DbWeight::get().reads(1 as Weight))
-			.saturating_add(T::DbWeight::get().writes(1 as Weight))
+		Weight::from_ref_time(0)
 	}
 	// Storage: VaultRegistry Vaults (r:2 w:2)
 	// Storage: Replace ReplaceBtcDustValue (r:1 w:0)
@@ -98,9 +94,7 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 	// Storage: Replace ReplacePeriod (r:1 w:0)
 	// Storage: Replace ReplaceRequests (r:0 w:1)
 	fn accept_replace() -> Weight {
-		(178_258_000 as Weight)
-			.saturating_add(T::DbWeight::get().reads(29 as Weight))
-			.saturating_add(T::DbWeight::get().writes(16 as Weight))
+		Weight::from_ref_time(0)
 	}
 	// Storage: Replace ReplaceRequests (r:1 w:1)
 	// Storage: StellarRelay IsPublicNetwork (r:1 w:0)
@@ -109,9 +103,7 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 	// Storage: VaultRegistry Vaults (r:2 w:2)
 	// Storage: VaultRewards Stake (r:1 w:0)
 	fn execute_replace() -> Weight {
-		(8_040_987_000 as Weight)
-			.saturating_add(T::DbWeight::get().reads(7 as Weight))
-			.saturating_add(T::DbWeight::get().writes(3 as Weight))
+		Weight::from_ref_time(0)
 	}
 	// Storage: Replace ReplaceRequests (r:1 w:1)
 	// Storage: Replace ReplacePeriod (r:1 w:0)
@@ -132,14 +124,11 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 	// Storage: VaultStaking SlashTally (r:1 w:1)
 	// Storage: VaultStaking TotalStake (r:1 w:1)
 	fn cancel_replace() -> Weight {
-		(115_974_000 as Weight)
-			.saturating_add(T::DbWeight::get().reads(21 as Weight))
-			.saturating_add(T::DbWeight::get().writes(11 as Weight))
+		Weight::from_ref_time(0)
 	}
 	// Storage: Replace ReplacePeriod (r:0 w:1)
 	fn set_replace_period() -> Weight {
-		(11_560_000 as Weight)
-			.saturating_add(T::DbWeight::get().writes(1 as Weight))
+		Weight::from_ref_time(0)
 	}
 }
 
@@ -153,15 +142,11 @@ impl WeightInfo for () {
 	// Storage: Fee ReplaceGriefingCollateral (r:1 w:0)
 	// Storage: Tokens Accounts (r:1 w:1)
 	fn request_replace() -> Weight {
-		(58_572_000 as Weight)
-			.saturating_add(RocksDbWeight::get().reads(7 as Weight))
-			.saturating_add(RocksDbWeight::get().writes(2 as Weight))
+		Weight::from_ref_time(0)
 	}
 	// Storage: VaultRegistry Vaults (r:1 w:1)
 	fn withdraw_replace() -> Weight {
-		(30_879_000 as Weight)
-			.saturating_add(RocksDbWeight::get().reads(1 as Weight))
-			.saturating_add(RocksDbWeight::get().writes(1 as Weight))
+		Weight::from_ref_time(0)
 	}
 	// Storage: VaultRegistry Vaults (r:2 w:2)
 	// Storage: Replace ReplaceBtcDustValue (r:1 w:0)
@@ -189,9 +174,7 @@ impl WeightInfo for () {
 	// Storage: Replace ReplacePeriod (r:1 w:0)
 	// Storage: Replace ReplaceRequests (r:0 w:1)
 	fn accept_replace() -> Weight {
-		(178_258_000 as Weight)
-			.saturating_add(RocksDbWeight::get().reads(29 as Weight))
-			.saturating_add(RocksDbWeight::get().writes(16 as Weight))
+		Weight::from_ref_time(0)
 	}
 	// Storage: Replace ReplaceRequests (r:1 w:1)
 	// Storage: StellarRelay IsPublicNetwork (r:1 w:0)
@@ -200,9 +183,7 @@ impl WeightInfo for () {
 	// Storage: VaultRegistry Vaults (r:2 w:2)
 	// Storage: VaultRewards Stake (r:1 w:0)
 	fn execute_replace() -> Weight {
-		(8_040_987_000 as Weight)
-			.saturating_add(RocksDbWeight::get().reads(7 as Weight))
-			.saturating_add(RocksDbWeight::get().writes(3 as Weight))
+		Weight::from_ref_time(0)
 	}
 	// Storage: Replace ReplaceRequests (r:1 w:1)
 	// Storage: Replace ReplacePeriod (r:1 w:0)
@@ -223,13 +204,10 @@ impl WeightInfo for () {
 	// Storage: VaultStaking SlashTally (r:1 w:1)
 	// Storage: VaultStaking TotalStake (r:1 w:1)
 	fn cancel_replace() -> Weight {
-		(115_974_000 as Weight)
-			.saturating_add(RocksDbWeight::get().reads(21 as Weight))
-			.saturating_add(RocksDbWeight::get().writes(11 as Weight))
+		Weight::from_ref_time(0)
 	}
 	// Storage: Replace ReplacePeriod (r:0 w:1)
 	fn set_replace_period() -> Weight {
-		(11_560_000 as Weight)
-			.saturating_add(RocksDbWeight::get().writes(1 as Weight))
+		Weight::from_ref_time(0)
 	}
 }

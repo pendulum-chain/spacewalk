@@ -56,29 +56,23 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 	// Storage: Oracle ValidUntil (r:0 w:1)
 	// Storage: Timestamp Now (r:0 w:1)
 	fn on_initialize() -> Weight {
-		(1_745_000 as Weight)
-			.saturating_add(T::DbWeight::get().writes(3 as Weight))
+		Weight::from_ref_time(0)
 	}
 	// Storage: Oracle AuthorizedOracles (r:1 w:0)
 	// Storage: Timestamp Now (r:1 w:0)
 	// Storage: Oracle RawValuesUpdated (r:0 w:1)
 	// Storage: Oracle RawValues (r:0 w:1)
 	fn feed_values(u: u32, ) -> Weight {
-		(50_315_000 as Weight)
-			// Standard Error: 6_000
-			.saturating_add((1_344_000 as Weight).saturating_mul(u as Weight))
-			.saturating_add(T::DbWeight::get().reads(2 as Weight))
-			.saturating_add(T::DbWeight::get().writes(2 as Weight))
+		Weight::from_ref_time(0)
 	}
 	// Storage: Oracle AuthorizedOracles (r:0 w:1)
 	fn insert_authorized_oracle() -> Weight {
-		(11_015_000 as Weight)
-			.saturating_add(T::DbWeight::get().writes(1 as Weight))
+		Weight::from_ref_time(0)
 	}
 	// Storage: Oracle AuthorizedOracles (r:0 w:1)
 	fn remove_authorized_oracle() -> Weight {
-		(11_222_000 as Weight)
-			.saturating_add(T::DbWeight::get().writes(1 as Weight))
+		Weight::from_ref_time(0)
+	
 	}
 }
 
@@ -88,28 +82,22 @@ impl WeightInfo for () {
 	// Storage: Oracle ValidUntil (r:0 w:1)
 	// Storage: Timestamp Now (r:0 w:1)
 	fn on_initialize() -> Weight {
-		(1_745_000 as Weight)
-			.saturating_add(RocksDbWeight::get().writes(3 as Weight))
+		Weight::from_ref_time(0)
+	
 	}
 	// Storage: Oracle AuthorizedOracles (r:1 w:0)
 	// Storage: Timestamp Now (r:1 w:0)
 	// Storage: Oracle RawValuesUpdated (r:0 w:1)
 	// Storage: Oracle RawValues (r:0 w:1)
 	fn feed_values(u: u32, ) -> Weight {
-		(50_315_000 as Weight)
-			// Standard Error: 6_000
-			.saturating_add((1_344_000 as Weight).saturating_mul(u as Weight))
-			.saturating_add(RocksDbWeight::get().reads(2 as Weight))
-			.saturating_add(RocksDbWeight::get().writes(2 as Weight))
+		Weight::from_ref_time(0)
 	}
 	// Storage: Oracle AuthorizedOracles (r:0 w:1)
 	fn insert_authorized_oracle() -> Weight {
-		(11_015_000 as Weight)
-			.saturating_add(RocksDbWeight::get().writes(1 as Weight))
+		Weight::from_ref_time(0)
 	}
 	// Storage: Oracle AuthorizedOracles (r:0 w:1)
 	fn remove_authorized_oracle() -> Weight {
-		(11_222_000 as Weight)
-			.saturating_add(RocksDbWeight::get().writes(1 as Weight))
+		Weight::from_ref_time(0)
 	}
 }

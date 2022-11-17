@@ -55,17 +55,14 @@ pub struct SubstrateWeight<T>(PhantomData<T>);
 impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 	// Storage: Nomination NominationEnabled (r:0 w:1)
 	fn set_nomination_enabled() -> Weight {
-		(3_520_000 as Weight)
-			.saturating_add(T::DbWeight::get().writes(1 as Weight))
+		Weight::from_ref_time(0)
 	}
 	// Storage: Security ParachainStatus (r:1 w:0)
 	// Storage: Nomination NominationEnabled (r:1 w:0)
 	// Storage: VaultRegistry Vaults (r:1 w:0)
 	// Storage: Nomination Vaults (r:1 w:1)
 	fn opt_in_to_nomination() -> Weight {
-		(28_208_000 as Weight)
-			.saturating_add(T::DbWeight::get().reads(4 as Weight))
-			.saturating_add(T::DbWeight::get().writes(1 as Weight))
+		Weight::from_ref_time(0)
 	}
 	// Storage: Security ParachainStatus (r:1 w:0)
 	// Storage: Nomination Vaults (r:1 w:1)
@@ -82,9 +79,7 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 	// Storage: VaultStaking RewardPerToken (r:4 w:0)
 	// Storage: VaultRegistry TotalUserVaultCollateral (r:1 w:1)
 	fn opt_out_of_nomination() -> Weight {
-		(149_630_000 as Weight)
-			.saturating_add(T::DbWeight::get().reads(25 as Weight))
-			.saturating_add(T::DbWeight::get().writes(15 as Weight))
+		Weight::from_ref_time(0)
 	}
 	// Storage: Security ParachainStatus (r:1 w:0)
 	// Storage: Nomination NominationEnabled (r:1 w:0)
@@ -108,9 +103,7 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 	// Storage: VaultRegistry TotalUserVaultCollateral (r:1 w:1)
 	// Storage: VaultRegistry SystemCollateralCeiling (r:1 w:0)
 	fn deposit_collateral() -> Weight {
-		(157_557_000 as Weight)
-			.saturating_add(T::DbWeight::get().reads(29 as Weight))
-			.saturating_add(T::DbWeight::get().writes(15 as Weight))
+		Weight::from_ref_time(0)
 	}
 	// Storage: Security ParachainStatus (r:1 w:0)
 	// Storage: VaultStaking Nonce (r:1 w:0)
@@ -134,9 +127,7 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 	// Storage: Tokens Accounts (r:2 w:2)
 	// Storage: System Account (r:1 w:0)
 	fn withdraw_collateral() -> Weight {
-		(166_619_000 as Weight)
-			.saturating_add(T::DbWeight::get().reads(27 as Weight))
-			.saturating_add(T::DbWeight::get().writes(15 as Weight))
+		Weight::from_ref_time(0)
 	}
 }
 
@@ -144,17 +135,14 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 impl WeightInfo for () {
 	// Storage: Nomination NominationEnabled (r:0 w:1)
 	fn set_nomination_enabled() -> Weight {
-		(3_520_000 as Weight)
-			.saturating_add(RocksDbWeight::get().writes(1 as Weight))
+		Weight::from_ref_time(0)
 	}
 	// Storage: Security ParachainStatus (r:1 w:0)
 	// Storage: Nomination NominationEnabled (r:1 w:0)
 	// Storage: VaultRegistry Vaults (r:1 w:0)
 	// Storage: Nomination Vaults (r:1 w:1)
 	fn opt_in_to_nomination() -> Weight {
-		(28_208_000 as Weight)
-			.saturating_add(RocksDbWeight::get().reads(4 as Weight))
-			.saturating_add(RocksDbWeight::get().writes(1 as Weight))
+		Weight::from_ref_time(0)
 	}
 	// Storage: Security ParachainStatus (r:1 w:0)
 	// Storage: Nomination Vaults (r:1 w:1)
@@ -171,9 +159,7 @@ impl WeightInfo for () {
 	// Storage: VaultStaking RewardPerToken (r:4 w:0)
 	// Storage: VaultRegistry TotalUserVaultCollateral (r:1 w:1)
 	fn opt_out_of_nomination() -> Weight {
-		(149_630_000 as Weight)
-			.saturating_add(RocksDbWeight::get().reads(25 as Weight))
-			.saturating_add(RocksDbWeight::get().writes(15 as Weight))
+		Weight::from_ref_time(0)
 	}
 	// Storage: Security ParachainStatus (r:1 w:0)
 	// Storage: Nomination NominationEnabled (r:1 w:0)
@@ -197,9 +183,7 @@ impl WeightInfo for () {
 	// Storage: VaultRegistry TotalUserVaultCollateral (r:1 w:1)
 	// Storage: VaultRegistry SystemCollateralCeiling (r:1 w:0)
 	fn deposit_collateral() -> Weight {
-		(157_557_000 as Weight)
-			.saturating_add(RocksDbWeight::get().reads(29 as Weight))
-			.saturating_add(RocksDbWeight::get().writes(15 as Weight))
+		Weight::from_ref_time(0)
 	}
 	// Storage: Security ParachainStatus (r:1 w:0)
 	// Storage: VaultStaking Nonce (r:1 w:0)
@@ -223,8 +207,6 @@ impl WeightInfo for () {
 	// Storage: Tokens Accounts (r:2 w:2)
 	// Storage: System Account (r:1 w:0)
 	fn withdraw_collateral() -> Weight {
-		(166_619_000 as Weight)
-			.saturating_add(RocksDbWeight::get().reads(27 as Weight))
-			.saturating_add(RocksDbWeight::get().writes(15 as Weight))
+		Weight::from_ref_time(0)
 	}
 }
