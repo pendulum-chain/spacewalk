@@ -185,9 +185,9 @@ mod test {
 			node_info,
 			cfg,
 		);
-		let error_messae = "error message".to_owned();
+		let error_message = "error message".to_owned();
 		relay_message_sender
-			.send(StellarRelayMessage::Error(error_messae.clone()))
+			.send(StellarRelayMessage::Error(error_message.clone()))
 			.await
 			.expect("Stellar Relay message should be sent");
 
@@ -196,7 +196,7 @@ mod test {
 
 		//assert
 		if let StellarRelayMessage::Error(m) = message {
-			assert_eq!(m, error_messae);
+			assert_eq!(m, error_message);
 		} else {
 			panic!("Incorrect stellar relay message type")
 		}

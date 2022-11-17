@@ -194,6 +194,7 @@ impl Connector {
 	}
 }
 
+#[cfg(test)]
 mod test {
 	use crate::{connection::hmac::HMacKeys, node::RemoteInfo, Connector};
 
@@ -210,6 +211,42 @@ mod test {
 		node::NodeInfo,
 		ConnConfig, ConnectorActions, StellarRelayMessage,
 	};
+
+	#[cfg(test)]
+	fn create_auth_cert_from_connection_auth(
+		connector_auth: &ConnectionAuth,
+	) -> substrate_stellar_sdk::types::AuthCert {
+		let time_now = time_now();
+		let new_auth_cert = create_auth_cert(
+			connector_auth.network_id(),
+			connector_auth.keypair(),
+			time_now,
+			connector_auth.pub_key_ecdh().clone(),
+		)
+		.expect("should successfully create an auth cert");
+		new_auth_cert
+	}
+
+	#[cfg(test)]
+	fn create_connector(
+	) -> (NodeInfo, ConnConfig, Connector, Receiver<ConnectorActions>, Receiver<StellarRelayMessage>)
+	{
+		use substrate_stellar_sdk::{network::TEST_NETWORK, SecretKey};
+		let secret =
+			SecretKey::from_encoding("SBLI7RKEJAEFGLZUBSCOFJHQBPFYIIPLBCKN7WVCWT4NEG2UJEW33N73")
+				.unwrap();
+		let node_info = NodeInfo::new(19, 21, 19, "v19.1.0".to_string(), &TEST_NETWORK);
+		let cfg = ConnConfig::new("34.235.168.98", 11625, secret, 0, false, true, false);
+		// this is a channel to communicate with the connection/config (this needs renaming)
+		let (actions_sender, actions_receiver) = mpsc::channel::<ConnectorActions>(1024);
+		// this is a channel to communicate with the user/caller.
+		let (relay_message_sender, relay_message_receiver) =
+			mpsc::channel::<StellarRelayMessage>(1024);
+		let connector =
+			Connector::new(node_info.clone(), cfg.clone(), actions_sender, relay_message_sender);
+		(node_info, cfg, connector, actions_receiver, relay_message_receiver)
+	}
+
 	#[test]
 	fn create_new_connector_works() {
 		use substrate_stellar_sdk::network::TEST_NETWORK;
@@ -283,7 +320,7 @@ mod test {
 	}
 
 	#[test]
-	fn connector_get_set_hmac_keys_works() {
+	fn connector_get_and_set_hmac_keys_works() {
 		//arrange
 		let (_, _, mut connector, _, _) = create_connector();
 		let connector_auth = &connector.connection_auth;
@@ -375,36 +412,5 @@ mod test {
 		}
 	}
 
-	fn create_auth_cert_from_connection_auth(
-		connector_auth: &ConnectionAuth,
-	) -> substrate_stellar_sdk::types::AuthCert {
-		let time_now = time_now();
-		let new_auth_cert = create_auth_cert(
-			connector_auth.network_id(),
-			connector_auth.keypair(),
-			time_now,
-			connector_auth.pub_key_ecdh().clone(),
-		)
-		.expect("should successfully create an auth cert");
-		new_auth_cert
-	}
-
-	fn create_connector(
-	) -> (NodeInfo, ConnConfig, Connector, Receiver<ConnectorActions>, Receiver<StellarRelayMessage>)
-	{
-		use substrate_stellar_sdk::{network::TEST_NETWORK, SecretKey};
-		let secret =
-			SecretKey::from_encoding("SBLI7RKEJAEFGLZUBSCOFJHQBPFYIIPLBCKN7WVCWT4NEG2UJEW33N73")
-				.unwrap();
-		let node_info = NodeInfo::new(19, 21, 19, "v19.1.0".to_string(), &TEST_NETWORK);
-		let cfg = ConnConfig::new("34.235.168.98", 11625, secret, 0, false, true, false);
-		// this is a channel to communicate with the connection/config (this needs renaming)
-		let (actions_sender, actions_receiver) = mpsc::channel::<ConnectorActions>(1024);
-		// this is a channel to communicate with the user/caller.
-		let (relay_message_sender, relay_message_receiver) =
-			mpsc::channel::<StellarRelayMessage>(1024);
-		let connector =
-			Connector::new(node_info.clone(), cfg.clone(), actions_sender, relay_message_sender);
-		(node_info, cfg, connector, actions_receiver, relay_message_receiver)
-	}
+	
 }
