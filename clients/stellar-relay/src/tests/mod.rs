@@ -1,4 +1,4 @@
-use substrate_stellar_sdk::{network::PUBLIC_NETWORK, types::{StellarMessage, ScpStatementPledges}, SecretKey};
+use substrate_stellar_sdk::{network::PUBLIC_NETWORK, types::{StellarMessage, ScpStatementPledges, ScpStatementExternalize}, SecretKey};
 
 use crate::{node::NodeInfo, ConnConfig, StellarOverlayConnection, StellarRelayMessage};
 
@@ -100,6 +100,50 @@ async fn stellar_overlay_should_receive_scp_messages() {
 			StellarRelayMessage::Data { p_id, msg_type, msg } => match msg {
 				StellarMessage::ScpMessage(msg) => {
 					scps_vec.push(msg);
+					break;
+				},
+				_ => {
+				},
+			},
+			_ => {}
+		}
+	}
+	assert!(scps_vec.len() > 0);
+}
+use substrate_stellar_sdk::Hash;
+#[tokio::test]
+async fn stellar_overlay_should_receive_tx_set() {
+
+	pub fn get_tx_set_hash(x: &ScpStatementExternalize) -> Hash {
+		let scp_value = x.commit.value.get_vec();
+		return scp_value[0..32].try_into().unwrap();
+	}
+
+	let secret =
+		SecretKey::from_encoding("SBLI7RKEJAEFGLZUBSCOFJHQBPFYIIPLBCKN7WVCWT4NEG2UJEW33N73")
+			.unwrap();
+
+	let node_info = NodeInfo::new(19, 25, 23, "v19.5.0".to_string(), &PUBLIC_NETWORK);
+	let cfg = ConnConfig::new(TIER_1_VALIDATOR_IP_PUBLIC, 11625, secret, 0, true, true, false);
+	let mut overlay_connection = StellarOverlayConnection::connect(node_info.clone(), cfg).await.unwrap();
+
+	let mut scps_vec = vec![];
+	let mut attempt = 0;
+	while let Some(relay_message) = overlay_connection.listen().await {
+		if attempt > 300{
+			break;
+		}
+		attempt = attempt + 1;
+		match relay_message {
+			StellarRelayMessage::Data { p_id, msg_type, msg } => match msg {
+				StellarMessage::ScpMessage(msg) => {
+					if let ScpStatementPledges::ScpStExternalize(stmt) = &msg.statement.pledges {
+						let txset_hash = get_tx_set_hash(stmt);
+						overlay_connection.send(StellarMessage::GetTxSet(txset_hash)).await.unwrap();
+					}
+				},
+				StellarMessage::TxSet(set) => {
+					scps_vec.push(set);
 					break;
 				},
 				_ => {
