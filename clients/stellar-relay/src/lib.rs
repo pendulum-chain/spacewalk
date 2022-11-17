@@ -1,5 +1,7 @@
 mod connection;
 pub mod node;
+#[cfg(test)]
+mod tests;
 
 pub use connection::*;
 
