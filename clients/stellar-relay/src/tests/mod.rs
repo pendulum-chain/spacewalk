@@ -10,10 +10,10 @@ async fn stellar_overlay_connect_and_listen_connect_message() {
 			.unwrap();
 
 	let node_info = NodeInfo::new(19, 25, 23, "v19.5.0".to_string(), &PUBLIC_NETWORK);
-	let cfg = ConnConfig::new(TIER_1_VALIDATOR_IP_PUBLIC, 11625, secret, 0, false, false, false);
-	let mut overlay_conn = StellarOverlayConnection::connect(node_info.clone(), cfg).await.unwrap();
+	let cfg = ConnConfig::new(TIER_1_VALIDATOR_IP_PUBLIC, 11625, secret, 0, false, true, false);
+	let mut overlay_connection = StellarOverlayConnection::connect(node_info.clone(), cfg).await.unwrap();
 
-	let message = overlay_conn.listen().await.unwrap();
+	let message = overlay_connection.listen().await.unwrap();
 	if let StellarRelayMessage::Connect{pub_key : x, node_info : y} = message{
 		assert_eq!(y.ledger_version, node_info.ledger_version);
 	}
@@ -22,11 +22,11 @@ async fn stellar_overlay_connect_and_listen_connect_message() {
 	}
 
 	let mut attempt = 0;
-	while let Some(relay_message) = overlay_conn.listen().await {
+	while let Some(relay_message) = overlay_connection.listen().await {
 		if attempt > 20{
 			break;
 		}
-		println!("{:#?}", relay_message);
+		// println!("{:#?}", relay_message);
 		attempt = attempt + 1;
 		match relay_message {
 			StellarRelayMessage::Connect { pub_key, node_info } => {
