@@ -84,7 +84,7 @@ pub struct WrapperKeepOpaque<T> {
 	_phantom: PhantomData<T>,
 }
 
-type SpacewalkRuntime = subxt::SubstrateConfig; // TODO check if this should be substrate or polkadot config
+type SpacewalkRuntime = subxt::PolkadotConfig; // TODO check if this should be substrate or polkadot config
 
 // #[derive(Debug, Clone, Eq, PartialEq)]
 // pub struct SpacewalkRuntime;
