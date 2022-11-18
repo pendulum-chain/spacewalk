@@ -20,9 +20,9 @@ impl TryFromSymbol for CurrencyId {
 		// Try to build stellar asset
 		let parts = uppercase_symbol.split(':').collect::<Vec<&str>>();
 		if parts.len() == 2 {
-			let code = parts[0];
-			let issuer = parts[1];
-			return CurrencyId::try_from((code, issuer)).map_err(|_| Error::InvalidCurrency)
+			let issuer = parts[0].trim();
+			let code = parts[1].trim();
+			return CurrencyId::try_from((code, issuer)).map_err(|err| Error::InvalidCurrency)
 		}
 
 		// try hardcoded currencies first
