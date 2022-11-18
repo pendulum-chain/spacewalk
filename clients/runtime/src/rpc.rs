@@ -6,10 +6,11 @@ use jsonrpsee::core::{client::Client, JsonValue};
 use sp_arithmetic::FixedPointNumber;
 use sp_runtime::FixedU128;
 use subxt::{
+	blocks::ExtrinsicEvents,
 	client::OnlineClient,
-	events::StaticEvent,
+	events::{EventDetails, StaticEvent},
 	rpc::{rpc_params, RpcClient, RpcClientT},
-	tx::{PolkadotExtrinsicParams, Signer, TxEvents, TxProgress},
+	tx::{PolkadotExtrinsicParams, Signer, TxProgress},
 	Error as BasicError, Metadata,
 };
 // use subxt_client::OnlineClient;
@@ -64,7 +65,7 @@ impl SpacewalkParachain {
 		shutdown_tx: ShutdownSender,
 	) -> Result<Self, Error> {
 		let account_id = signer.read().await.account_id().clone();
-		let api = OnlineClient::<SpacewalkRuntime>::from_rpc_client(rpc_client).await?;
+		let api = OnlineClient::<SpacewalkRuntime>::from_rpc_client(Arc::new(rpc_client)).await?;
 		// let api: RuntimeApi = ext_client.clone().to_runtime_api();
 		let metadata = Arc::new(api.rpc().metadata().await?);
 
@@ -140,29 +141,11 @@ impl SpacewalkParachain {
 		Self::new(ws_client, signer, shutdown_tx).await
 	}
 
-	async fn refresh_nonce(&mut self) {
-		// For getting the nonce, use latest, possibly non-finalized block.
-		// TODO: we might want to wait until the latest block is actually finalized
-		// query account info in order to get the nonce value used for communication
-		let account_info_query = metadata::storage().system().account(&self.account_id);
-		let account_info = self.api.storage().fetch(&account_info_query, None).await;
-
-		let nonce = account_info
-			.map(|x| match x {
-				Some(x) => x.nonce,
-				None => 0,
-			})
-			.unwrap_or(0);
-
-		log::info!("Refreshing nonce: {}", nonce);
-		self.signer.write().await.set_nonce(nonce);
-	}
-
 	/// Gets a copy of the signer with a unique nonce
 	async fn with_unique_signer<'client, F, R>(
 		&mut self,
 		call: F,
-	) -> Result<TxEvents<SpacewalkRuntime>, Error>
+	) -> Result<ExtrinsicEvents<SpacewalkRuntime>, Error>
 	where
 		F: Fn(&SpacewalkSigner) -> R,
 		R: Future<
@@ -191,17 +174,19 @@ impl SpacewalkParachain {
 			|result| async {
 				match result.map_err(Into::<Error>::into) {
 					Ok(te) => Ok(te),
-					Err(err) =>
-						if let Some(data) = err.is_invalid_transaction() {
-							Err(RetryPolicy::Skip(Error::InvalidTransaction(data)))
-						} else if err.is_pool_too_low_priority().is_some() {
-							Err(RetryPolicy::Skip(Error::PoolTooLowPriority))
-						} else if err.is_block_hash_not_found_error() {
-							log::info!("Re-sending transaction after apparent fork");
-							Err(RetryPolicy::Skip(Error::BlockHashNotFound))
-						} else {
-							Err(RetryPolicy::Throw(err))
-						},
+					Err(err) => {
+						Err(RetryPolicy::Throw(err))
+					}
+						// if let Some(data) = err.is_invalid_transaction() {
+						// 	Err(RetryPolicy::Skip(Error::InvalidTransaction(data)))
+						// } else if err.is_pool_too_low_priority().is_some() {
+						// 	Err(RetryPolicy::Skip(Error::PoolTooLowPriority))
+						// } else if err.is_block_hash_not_found_error() {
+						// 	log::info!("Re-sending transaction after apparent fork");
+						// 	Err(RetryPolicy::Skip(Error::BlockHashNotFound))
+						// } else {
+						// 	Err(RetryPolicy::Throw(err))
+						// },
 				}
 			},
 		)
@@ -218,7 +203,7 @@ impl SpacewalkParachain {
 		F: Fn(SpacewalkHeader) -> R,
 		R: Future<Output = Result<(), Error>>,
 	{
-		let mut sub = self.api.rpc().subscribe_finalized_blocks().await?;
+		let mut sub = self.api.rpc().subscribe_finalized_block_headers().await?;
 		loop {
 			on_block(sub.next().await.ok_or(Error::ChannelClosed)??).await?;
 		}
@@ -231,7 +216,7 @@ impl SpacewalkParachain {
 	/// # Arguments
 	/// * `on_error` - callback for decoding errors, is not allowed to take too long
 	pub async fn on_event_error<E: Fn(BasicError)>(&self, on_error: E) -> Result<(), Error> {
-		let mut sub = self.api.events().subscribe_finalized().await?;
+		let mut sub = self.api.blocks().subscribe_finalized().await?;
 
 		loop {
 			match sub.next().await {
@@ -260,23 +245,30 @@ impl SpacewalkParachain {
 		R: Future<Output = ()>,
 		E: Fn(SubxtError),
 	{
-		let mut sub = self.api.events().subscribe_finalized().await?.filter_events::<(T,)>();
-		let (tx, mut rx) = futures::channel::mpsc::channel::<T>(32);
+		let mut sub = self.api.blocks().subscribe_finalized().await?;
+		let (tx, mut rx) = futures::channel::mpsc::channel(32);
 
 		// two tasks: one for event listening and one for callback calling
 		futures::future::try_join(
 			async move {
 				let tx = &tx;
 				while let Some(result) = sub.next().fuse().await {
-					match result {
-						Ok(event_details) => {
-							let event = event_details.event;
-							log::trace!("event: {:?}", event);
-							if tx.clone().send(event).await.is_err() {
-								break
-							}
-						},
-						Err(err) => on_error(err.into()),
+					let block = result?;
+					let events = block.events().await?;
+					for event in events.iter() {
+						match event {
+							Ok(event) => {
+								// Try to convert to target event
+								let target_event = event.as_event::<T>();
+								if let Ok(Some(target_event)) = target_event {
+									log::trace!("event: {:?}", target_event);
+									if tx.clone().send(target_event).await.is_err() {
+										break
+									}
+								}
+							},
+							Err(err) => on_error(err.into()),
+						}
 					}
 				}
 				Result::<(), _>::Err(Error::ChannelClosed)
@@ -554,10 +546,9 @@ impl VaultRegistryPallet for SpacewalkParachain {
 		let register_public_key_tx =
 			metadata::tx().vault_registry().register_public_key(public_key.clone());
 
-		self.refresh_nonce().await;
 		let mut signer = self.signer.write().await;
 		// increment nonce before submitting
-		signer.increment_nonce();
+		// signer.increment_nonce();
 
 		self.api
 			.tx()

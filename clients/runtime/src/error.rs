@@ -5,18 +5,18 @@ pub use jsonrpsee::core::Error as JsonRpseeError;
 use jsonrpsee::{
 	client_transport::ws::WsHandshakeError,
 	core::error::Error as RequestError,
-	types::{error::CallError, ErrorObject},
+	types::{error::CallError, ErrorObject, ErrorObjectOwned},
 };
 use serde_json::Error as SerdeJsonError;
 use subxt::{
-	error::{Error as BasicError, RpcError, TransactionError},
+	error::{DispatchError, Error as BasicError, ModuleError, RpcError, TransactionError},
 	ext::sp_core::crypto::SecretStringError,
 };
 use thiserror::Error;
 use tokio::time::error::Elapsed;
 use url::ParseError as UrlParseError;
 
-use crate::metadata::DispatchError;
+use crate::{types::*, ISSUE_MODULE, SYSTEM_MODULE};
 
 pub type SubxtError = subxt::Error;
 
@@ -85,48 +85,17 @@ pub enum Error {
 }
 
 impl Error {
-	// fn is_module_err(&self, pallet_name: &str, error_name: &str) -> bool {
-	// 	matches!(
-	// 		self,
-	// 		Error::SubxtRuntimeError(SubxtError::Module(ModuleError {
-	// 			pallet, error, ..
-	// 		})) if pallet == pallet_name && error == error_name,
-	// 	)
-	// }
-
-	fn map_call_error<T>(&self, call: impl Fn(&RpcError) -> Option<T>) -> Option<T> {
-		match self {
-			Error::SubxtRuntimeError(SubxtError::Rpc(rpc_error)) => call(rpc_error),
-			_ => None,
-		}
+	fn is_module_err(&self, pallet_name: &str, error_name: &str) -> bool {
+		matches!(
+			self,
+			Error::SubxtRuntimeError(SubxtError::Runtime(DispatchError::Module(ModuleError{
+				pallet, error, ..
+			}))) if pallet == pallet_name && error == error_name,
+		)
 	}
 
-	pub fn is_invalid_transaction(&self) -> Option<String> {
-		self.map_call_error(|call_error| {
-			// TODO fix this because it can never be true
-			if let RpcError(error) = call_error {
-				return Some(error.to_string())
-			}
-			None
-		})
-	}
-
-	pub fn is_pool_too_low_priority(&self) -> Option<()> {
-		self.map_call_error(|call_error| {
-			if let RpcError(error) = call_error {
-				return Some(())
-			}
-			None
-		})
-	}
-
-	pub fn is_rpc_disconnect_error(&self) -> bool {
-		// TODO
-		matches!(self, Error::SubxtRuntimeError(SubxtError::Rpc(RpcError(_))))
-	}
-
-	pub fn is_rpc_error(&self) -> bool {
-		matches!(self, Error::SubxtRuntimeError(SubxtError::Rpc(_)))
+	pub fn is_issue_completed(&self) -> bool {
+		self.is_module_err(ISSUE_MODULE, &format!("{:?}", IssuePalletError::IssueCompleted))
 	}
 
 	pub fn is_block_hash_not_found_error(&self) -> bool {
@@ -142,6 +111,10 @@ impl Error {
 			Error::JsonRpseeError(JsonRpseeError::Transport(err))
 			if matches!(err.downcast_ref::<WsHandshakeError>(), Some(WsHandshakeError::Url(_)))
 		)
+	}
+
+	pub fn is_parachain_shutdown_error(&self) -> bool {
+		self.is_module_err(SYSTEM_MODULE, &format!("{:?}", SystemPalletError::CallFiltered))
 	}
 }
 

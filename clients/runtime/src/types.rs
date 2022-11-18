@@ -34,7 +34,9 @@ cfg_if::cfg_if! {
 mod metadata_aliases {
 	pub use metadata::{
 		runtime_types::{
-			sp_arithmetic::fixed_point::FixedU128, vault_registry::types::VaultStatus,
+			frame_system::pallet::Error as SystemPalletError,
+			issue::pallet::Error as IssuePalletError, sp_arithmetic::fixed_point::FixedU128,
+			vault_registry::types::VaultStatus,
 		},
 		vault_registry::events::{
 			DepositCollateral as DepositCollateralEvent, LiquidateVault as LiquidateVaultEvent,
@@ -225,6 +227,9 @@ mod dispatch_error {
 					DispatchError::Arithmetic(arithmetic_error.into()),
 				RichDispatchError::Transactional(transactional_error) =>
 					DispatchError::Transactional(transactional_error.into()),
+				RichDispatchError::Exhausted |
+				sp_runtime::DispatchError::Corruption |
+				sp_runtime::DispatchError::Unavailable => todo!(),
 			}
 		}
 	}
