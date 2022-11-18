@@ -3,6 +3,7 @@ use std::{future::Future, ops::RangeInclusive, sync::Arc, time::Duration};
 use async_trait::async_trait;
 use futures::{stream::StreamExt, FutureExt, SinkExt};
 use jsonrpsee::core::{client::Client, JsonValue};
+use log::log;
 use sp_arithmetic::FixedPointNumber;
 use sp_runtime::FixedU128;
 use subxt::{
@@ -477,10 +478,25 @@ impl VaultRegistryPallet for SpacewalkParachain {
 
 		let signer = self.signer.read().await;
 
-		self.api
+		let register_event = self
+			.api
 			.tx()
 			.sign_and_submit_then_watch_default(&register_vault_tx, &*signer)
+			.await?
+			.wait_for_finalized()
 			.await?;
+
+		let events = register_event.wait_for_success().await?;
+
+		let failed_event = events.find_first::<metadata::system::events::ExtrinsicFailed>()?;
+
+		if let Some(_ev) = failed_event {
+			// We found a failed event; the transfer didn't succeed.
+			log::info!("Extrinsic failed");
+		} else {
+			log::info!("Successfully registered vault");
+		}
+
 		Ok(())
 	}
 
@@ -547,8 +563,6 @@ impl VaultRegistryPallet for SpacewalkParachain {
 			metadata::tx().vault_registry().register_public_key(public_key.clone());
 
 		let mut signer = self.signer.write().await;
-		// increment nonce before submitting
-		// signer.increment_nonce();
 
 		self.api
 			.tx()
