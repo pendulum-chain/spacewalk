@@ -17,7 +17,7 @@ To run the vault with the provided standalone chain use:
 ```
 cargo run --bin vault --features standalone-metadata  -- --keyring alice --stellar-vault-secret-key SB6WHKIU2HGVBRNKNOEOQUY4GFC4ZLG5XPGWLEAHTIZXBXXYACC76VSQ
 # Run the vault with auto-registering for the USDC asset
-cargo run --bin vault --features standalone-metadata  -- --keyring alice --stellar-vault-secret-key SB6WHKIU2HGVBRNKNOEOQUY4GFC4ZLG5XPGWLEAHTIZXBXXYACC76VSQ --auto-register "DOT,USDC,50"
+cargo run --bin vault --features standalone-metadata  -- --keyring alice --stellar-vault-secret-key SB6WHKIU2HGVBRNKNOEOQUY4GFC4ZLG5XPGWLEAHTIZXBXXYACC76VSQ --auto-register "DOT,GAKNDFRRWA3RPWNLTI3G4EBSD3RGNZZOY5WKWYMQ6CQTG3KIEKPYWAYC:USDC,50"
 ```
 
 To run the vault with a parachain (e.g. Pendulum) you need to specify the URL, so use:
@@ -26,7 +26,8 @@ To run the vault with a parachain (e.g. Pendulum) you need to specify the URL, s
 cargo run --bin vault --features parachain-metadata -- --keyring alice --spacewalk-parachain-url ws://localhost:8844 --stellar-vault-secret-key SB6WHKIU2HGVBRNKNOEOQUY4GFC4ZLG5XPGWLEAHTIZXBXXYACC76VSQ
 ```
 
-If you encounter subxt errors when doing RPC api calls, you can change the address types used when compiling the client by passing the `multi-address` feature:
+If you encounter subxt errors when doing RPC api calls, you can change the address types used when compiling the client
+by passing the `multi-address` feature:
 
 ```
 cargo run --bin vault --features "parachain-metadata multi-address" -- --keyring alice --spacewalk-parachain-url ws://localhost:8844 --stellar-vault-secret-key SB6WHKIU2HGVBRNKNOEOQUY4GFC4ZLG5XPGWLEAHTIZXBXXYACC76VSQ
@@ -75,7 +76,8 @@ subxt metadata -f bytes --url http://{chain-url} > runtime/metadata-{your-chain-
 
 ### Invalid spec version
 
-If there are errors with spec versions not matching you might have to change the `DEFAULT_SPEC_VERSION` in runtime/src/rpc.rs.
+If there are errors with spec versions not matching you might have to change the `DEFAULT_SPEC_VERSION` in
+runtime/src/rpc.rs.
 
 ### Building on macOS
 
@@ -98,5 +100,6 @@ export CC=/opt/homebrew/opt/llvm/bin/clang
 
 ### Transaction submission failed
 
-If the transaction submission fails giving a `tx_failed` in the `result_codes` object of the response, this is likely due to the converted destination account not having trustlines set up for the redeemed asset.
+If the transaction submission fails giving a `tx_failed` in the `result_codes` object of the response, this is likely
+due to the converted destination account not having trustlines set up for the redeemed asset.
 The destination account is derived automatically from the account that called the extrinsic on-chain.

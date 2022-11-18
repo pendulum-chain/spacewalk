@@ -151,11 +151,11 @@ fn parse_collateral_and_amount(
 	s: &str,
 ) -> Result<(String, String, Option<u128>), Box<dyn std::error::Error + Send + Sync + 'static>> {
 	let parts: Vec<&str> = s
-		.split(":")
+		.split(",")
 		.map(|s| s.trim())
 		.collect::<Vec<_>>()
 		.try_into()
-		.map_err(|_| format!("invalid CurrencyId=amount: `{}`", s))?;
+		.map_err(|_| format!("invalid auto-register parameter: `{}`", s))?;
 
 	assert_eq!(
 		parts.len(),
@@ -396,9 +396,11 @@ impl VaultService {
 		}
 
 		if self.spacewalk_parachain.get_public_key().await?.is_none() {
-			tracing::info!("Registering public key to the parachain...");
 			let public_key = self.stellar_wallet.get_public_key();
+			tracing::info!("Registering public key to the parachain... {:?}", public_key);
 			self.spacewalk_parachain.register_public_key(public_key).await?;
+		} else {
+			tracing::info!("Public key already registered");
 		}
 
 		Ok(())
