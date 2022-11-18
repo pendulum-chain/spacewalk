@@ -5,8 +5,25 @@
 #![cfg_attr(test, feature(proc_macro_hygiene))]
 #![cfg_attr(not(feature = "std"), no_std)]
 
+#[cfg(test)]
+extern crate mocktopus;
+
+use codec::Encode;
+use frame_support::{
+	dispatch::{DispatchError, DispatchResult},
+	transactional,
+};
+#[cfg(test)]
+use mocktopus::macros::mockable;
+use sha2::{Digest, Sha256};
+use sp_core::{H256, U256};
 use sp_runtime::{traits::*, ArithmeticError};
-use sp_std::convert::TryInto;
+use sp_std::{collections::btree_set::BTreeSet, convert::TryInto, prelude::*, vec};
+
+pub use pallet::*;
+
+#[doc(inline)]
+pub use crate::types::{ErrorCode, StatusCode};
 
 pub mod types;
 
@@ -16,40 +33,19 @@ mod mock;
 #[cfg(test)]
 mod tests;
 
-#[cfg(test)]
-extern crate mocktopus;
-
-#[cfg(test)]
-use mocktopus::macros::mockable;
-
-#[doc(inline)]
-pub use crate::types::{ErrorCode, StatusCode};
-
-use codec::Encode;
-use frame_support::{
-	dispatch::{DispatchError, DispatchResult},
-	transactional,
-	weights::Weight,
-};
-use frame_system::ensure_root;
-use sha2::{Digest, Sha256};
-use sp_core::{H256, U256};
-use sp_std::{collections::btree_set::BTreeSet, prelude::*, vec};
-
-pub use pallet::*;
-
 #[frame_support::pallet]
 pub mod pallet {
-	use super::*;
 	use frame_support::pallet_prelude::*;
 	use frame_system::pallet_prelude::*;
+
+	use super::*;
 
 	/// ## Configuration
 	/// The pallet's configuration trait.
 	#[pallet::config]
 	pub trait Config: frame_system::Config {
 		/// The overarching event type.
-		type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
+		type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
 	}
 
 	#[pallet::event]
@@ -70,7 +66,7 @@ pub mod pallet {
 		fn on_initialize(_n: T::BlockNumber) -> Weight {
 			Self::increment_active_block();
 			// TODO: calculate weight
-			0
+			Weight::from_ref_time(0)
 		}
 	}
 

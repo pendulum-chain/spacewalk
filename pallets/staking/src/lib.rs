@@ -53,14 +53,17 @@
 #![cfg_attr(test, feature(proc_macro_hygiene))]
 #![cfg_attr(not(feature = "std"), no_std)]
 
-use codec::EncodeLike;
+use codec::{Decode, Encode, EncodeLike};
 use frame_support::{
 	dispatch::{DispatchError, DispatchResult},
 	traits::Get,
 };
+use scale_info::TypeInfo;
 use sp_arithmetic::{FixedPointNumber, FixedPointOperand};
 use sp_runtime::{
-	traits::{CheckedAdd, CheckedDiv, CheckedMul, CheckedSub, One, Zero},
+	traits::{
+		CheckedAdd, CheckedDiv, CheckedMul, CheckedSub, MaybeSerializeDeserialize, One, Zero,
+	},
 	ArithmeticError,
 };
 use sp_std::{cmp, convert::TryInto};
@@ -92,7 +95,7 @@ pub mod pallet {
 	#[pallet::config]
 	pub trait Config: frame_system::Config {
 		/// The overarching event type.
-		type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
+		type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
 
 		/// The `Inner` type of the `SignedFixedPoint`.
 		type SignedInner: CheckedDiv + Ord + FixedPointOperand;
