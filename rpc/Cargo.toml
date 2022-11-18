@@ -6,7 +6,7 @@ version = "1.2.0"
 
 [dependencies]
 jsonrpc-core = "18.0.0"
-jsonrpsee = {version = "0.15.1", features = ["server", "macros"]}
+jsonrpsee = {version = "0.16.0", features = ["server", "macros"]}
 
 # Parachain dependencies
 primitives = {package = "spacewalk-primitives", path = "../primitives"}
