@@ -9,7 +9,10 @@ use service::Error as ServiceError;
 use sp_std::{convert::From, str, vec::Vec};
 use std::{convert::TryInto, sync::Arc, time::Duration};
 use stellar::SecretKey;
-use stellar_relay::{sdk as stellar, sdk::Hash};
+use stellar_relay::{
+	sdk as stellar,
+	sdk::{Hash, PublicKey},
+};
 use tokio::{sync::Mutex, time::sleep};
 
 const POLL_INTERVAL: u64 = 5000;
@@ -51,16 +54,15 @@ impl HorizonClient for reqwest::Client {
 	}
 }
 
-struct HorizonFetcher<P: SpacewalkPallet, C: HorizonClient> {
-	parachain_rpc: P,
+struct HorizonFetcher<C: HorizonClient> {
 	client: C,
 	vault_secret_key: String,
 	last_tx_id: Option<Vec<u8>>,
 }
 
-impl<P: SpacewalkPallet, C: HorizonClient> HorizonFetcher<P, C> {
-	pub fn new(parachain_rpc: P, client: C, vault_secret_key: String) -> Self {
-		Self { parachain_rpc, client, vault_secret_key, last_tx_id: None }
+impl<C: HorizonClient> HorizonFetcher<C> {
+	pub fn new(client: C, vault_secret_key: String) -> Self {
+		Self { client, vault_secret_key, last_tx_id: None }
 	}
 
 	/// Fetch recent transactions from remote and deserialize to HorizonResponse
@@ -76,6 +78,8 @@ impl<P: SpacewalkPallet, C: HorizonClient> HorizonFetcher<P, C> {
 			"/accounts/" + str::from_utf8(vault_address.to_encoding().as_slice())
 			.map_err(|_| Error::HttpFetchingError)? +
 			"/transactions?order=desc&limit=1";
+
+		println!("request url: {:?}", request_url);
 
 		let horizon_response = self.client.get_transactions(request_url.as_str()).await;
 
@@ -103,6 +107,10 @@ impl<P: SpacewalkPallet, C: HorizonClient> HorizonFetcher<P, C> {
 			Ok(latest_tx_id) => {
 				self.last_tx_id = Some(latest_tx_id.clone());
 				if !initial {
+					println!(
+                        "Found new transaction from Horizon (id {:#?}). Starting to process new transaction",
+                        str::from_utf8(&latest_tx_id).unwrap()
+                    );
 					tracing::info!(
                         "Found new transaction from Horizon (id {:#?}). Starting to process new transaction",
                         str::from_utf8(&latest_tx_id).unwrap()
@@ -110,11 +118,13 @@ impl<P: SpacewalkPallet, C: HorizonClient> HorizonFetcher<P, C> {
 
 					true
 				} else {
+					println!("Initial transaction handled");
 					tracing::info!("Initial transaction handled");
 					false
 				}
 			},
 			Err(UP_TO_DATE) => {
+				println!("Already up to date");
 				tracing::info!("Already up to date");
 				false
 			},
@@ -133,6 +143,7 @@ impl<P: SpacewalkPallet, C: HorizonClient> HorizonFetcher<P, C> {
 			Ok(txs) => txs._embedded.records,
 			Err(e) => {
 				tracing::warn!("Failed to fetch transactions: {:?}", e);
+				println!("oh no, :( failed to fetch transactions: {:?}", e);
 				return
 			},
 		};
@@ -143,9 +154,11 @@ impl<P: SpacewalkPallet, C: HorizonClient> HorizonFetcher<P, C> {
 			if self.is_unhandled_transaction(&tx) && is_tx_relevant(&tx, issue_set) {
 				match handler.watch_slot(tx.ledger.try_into().unwrap()).await {
 					Ok(_) => {
+						println!("following transaction {:?}", String::from_utf8(id.clone()));
 						tracing::info!("following transaction {:?}", String::from_utf8(id));
 					},
 					Err(e) => {
+						println!("Failed to watch transaction: {:?}", e);
 						tracing::error!("Failed to watch transaction: {:?}", e);
 					},
 				}
@@ -154,14 +167,13 @@ impl<P: SpacewalkPallet, C: HorizonClient> HorizonFetcher<P, C> {
 	}
 }
 
-pub async fn poll_horizon_for_new_transactions<P: SpacewalkPallet>(
-	parachain_rpc: P,
+pub async fn poll_horizon_for_new_transactions(
 	vault_secret_key: String,
 	issue_set: Arc<Mutex<IssueRequests>>,
 	handler: Arc<Mutex<ScpMessageHandler>>,
 ) -> Result<(), ServiceError> {
 	let horizon_client = reqwest::Client::new();
-	let mut fetcher = HorizonFetcher::new(parachain_rpc, horizon_client, vault_secret_key);
+	let mut fetcher = HorizonFetcher::new(horizon_client, vault_secret_key);
 
 	// Start polling horizon every 5 seconds
 	loop {
@@ -186,4 +198,54 @@ fn is_tx_relevant(transaction: &Transaction, _issue_set: Arc<Mutex<IssueRequests
 	}
 
 	false
+}
+
+#[cfg(test)]
+mod tests {
+	use crate::{
+		horizon::client::{HorizonFetcher, POLL_INTERVAL},
+		oracle::{create_handler, ScpMessageHandler},
+		system::TIER_1_VALIDATOR_IP_PUBLIC,
+	};
+	use std::{sync::Arc, time::Duration};
+	use stellar_relay::{
+		node::NodeInfo,
+		sdk::{network::PUBLIC_NETWORK, SecretKey},
+		ConnConfig, StellarOverlayConnection,
+	};
+	use tokio::{sync::Mutex, time::sleep};
+
+	const SECRET: &'static str = "SBLI7RKEJAEFGLZUBSCOFJHQBPFYIIPLBCKN7WVCWT4NEG2UJEW33N73";
+
+	async fn prepare_handler(vault_addresses: Vec<String>) -> ScpMessageHandler {
+		let secret = SecretKey::from_encoding(SECRET).unwrap();
+		let node_info = NodeInfo::new(19, 25, 23, "v19.5.0".to_string(), &PUBLIC_NETWORK);
+		let cfg = ConnConfig::new(TIER_1_VALIDATOR_IP_PUBLIC, 11625, secret, 0, false, true, false);
+		create_handler(node_info, cfg, true, vault_addresses).await.unwrap()
+	}
+
+	#[tokio::test(flavor = "multi_thread")]
+	async fn client_test_for_polling() {
+		println!("RUNNING TEST: ");
+		let handler = Arc::new(Mutex::new(prepare_handler(vec![]).await));
+		let mut issue_set = Arc::new(Mutex::new(vec![]));
+
+		let horizon_client = reqwest::Client::new();
+		let mut fetcher = HorizonFetcher::new(horizon_client, String::from(SECRET));
+
+		let mut counter = 0;
+		// Start polling horizon every 5 seconds
+		loop {
+			println!("counter: {}", counter);
+			counter += 1;
+			fetcher
+				.fetch_horizon_and_process_new_transactions(issue_set.clone(), handler.clone())
+				.await;
+			sleep(Duration::from_millis(POLL_INTERVAL)).await;
+
+			if counter == 5 {
+				break
+			}
+		}
+	}
 }

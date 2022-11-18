@@ -5,7 +5,7 @@ use stellar_relay::sdk::{
 
 use stellar_relay::{node::NodeInfo, ConnConfig};
 
-use vault::oracle::{create_handler, prepare_directories, FilterWith, ProofStatus};
+use vault::oracle::{create_handler, prepare_directories, FilterWith, Proof, ProofStatus};
 
 use tokio::time::Duration;
 
@@ -57,25 +57,60 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 	let node_info = NodeInfo::new(19, 25, 23, "v19.5.0".to_string(), network);
 	let cfg = ConnConfig::new(tier1_node_ip, 11625, secret, 0, true, true, false);
 
-	let vault_addresses_filter =
-		vec!["GAP4SFKVFVKENJ7B7VORAYKPB3CJIAJ2LMKDJ22ZFHIAIVYQOR6W3CXF".to_string()];
+	// let vault_addresses_filter =
+	// 	vec!["GAP4SFKVFVKENJ7B7VORAYKPB3CJIAJ2LMKDJ22ZFHIAIVYQOR6W3CXF".to_string()];
 
-	let handler = create_handler(node_info, cfg, public_network, vault_addresses_filter).await?;
+	let handler = create_handler(node_info, cfg, public_network, vec![]).await?;
 
 	let mut counter = 0;
+
+	let mut old_slot = 0;
 	loop {
 		counter += 1;
-		tokio::time::sleep(Duration::from_secs(8)).await;
+		tokio::time::sleep(Duration::from_secs(3)).await;
 		// let's try to send a message?
 		let last_slot = handler.get_last_slot_index().await?;
-		tracing::info!("last slot: {:?}", last_slot);
+		tracing::info!("counter: {:?}  slot: {:?}", counter, last_slot);
 
-		if counter % 5 == 0 {
-			let check_slot = last_slot - 100;
-			let res = handler.get_proof(check_slot).await?;
-			tracing::info!("proof of slot {}:\n {:?}", check_slot, res);
-		} else if counter % 10 == 0 {
-			handler.watch_slot(last_slot + 10).await?;
+		if counter % 10 == 0 {
+			match handler.get_pending_proofs().await {
+				Ok(proofs) => {
+					tracing::info!("proofs size: {:?}", proofs.len());
+					for proof in proofs.iter() {
+						tracing::info!(
+							"found proof for {:?}, with {} envelopes and {} txes",
+							proof.slot(),
+							proof.envelopes().len(),
+							proof.tx_set().txes.len()
+						);
+					}
+				},
+				Err(e) => {
+					tracing::warn!("ERROR! {:?}", e);
+				},
+			}
+		} else if counter % 6 == 0 {
+			handler.watch_slot(last_slot + 5).await?;
+		} else if counter % 4 == 0 {
+			if old_slot == 0 {
+				old_slot = last_slot - 100;
+			}
+
+			match handler.get_proof(old_slot).await? {
+				ProofStatus::Proof(p) => {
+					tracing::info!(
+						"found proof for {}, env len: {}",
+						old_slot,
+						p.envelopes().len()
+					);
+					old_slot = 0;
+				},
+				other => {
+					tracing::info!("no proof yet for {}: {:?}", old_slot, other);
+				},
+			}
+			let res = handler.get_size().await?;
+			tracing::info!("  --> envelopes size: {}", res);
 		}
 	}
 }

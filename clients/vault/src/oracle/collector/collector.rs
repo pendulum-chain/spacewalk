@@ -64,8 +64,9 @@ impl ScpMessageCollector {
 		self.public_network
 	}
 
+	/// watch out in Stellar Node's messages for SCPMessages containing this slot.
 	pub fn watch_slot(&mut self, slot: Slot) {
-		tracing::info!("watching slot {:?}", slot);
+		tracing::debug!("watching slot {:?}", slot);
 		self.slot_watchlist.write().insert(slot, ());
 	}
 }

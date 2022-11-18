@@ -35,6 +35,18 @@ impl Proof {
 
 		(envelopes_encoded, tx_set_encoded)
 	}
+
+	pub fn slot(&self) -> Slot {
+		self.slot
+	}
+
+	pub fn envelopes(&self) -> &Vec<ScpEnvelope> {
+		self.envelopes.get_vec()
+	}
+
+	pub fn tx_set(&self) -> &TransactionSet {
+		&self.tx_set
+	}
 }
 
 #[derive(Debug, Eq, PartialEq)]
@@ -135,8 +147,8 @@ impl ScpMessageCollector {
 							slot
 						);
 
-						let rw_lock = self.envelopes_map_clone();
-						tokio::spawn(get_envelopes_from_horizon_archive(rw_lock, slot));
+						let envelopes_map_lock = self.envelopes_map_clone();
+						tokio::spawn(get_envelopes_from_horizon_archive(envelopes_map_lock, slot));
 					},
 					_ => {},
 				}
@@ -149,13 +161,21 @@ impl ScpMessageCollector {
 			Ok(set) => set,
 			Err(neg_status) => {
 				// if status is "waiting", fetch the txset again from StellarNode
-				if neg_status == ProofStatus::WaitForTxSet {
-					// we need the txset hash to create the message.
-					if let Some(txset_hash) = self.get_txset_hash(&slot) {
-						let _ =
-							overlay_conn.send(StellarMessage::GetTxSet(txset_hash.clone())).await;
-					}
+				match neg_status {
+					ProofStatus::WaitForTxSet | ProofStatus::NoTxSetFound => {
+						// we need the txset hash to create the message.
+						if let Some(txset_hash) = self.get_txset_hash(&slot) {
+							tracing::debug!(
+								"requesting txset for slot {}: {:?}",
+								slot,
+								String::from_utf8(txset_hash.to_vec())
+							);
+							let _ = overlay_conn.send(StellarMessage::GetTxSet(txset_hash)).await;
+						}
+					},
+					_ => {},
 				}
+
 				return neg_status
 			},
 		};

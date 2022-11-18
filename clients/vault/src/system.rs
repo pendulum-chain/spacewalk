@@ -143,7 +143,6 @@ impl VaultService {
 		let tx_listener = wait_or_shutdown(
 			self.shutdown.clone(),
 			poll_horizon_for_new_transactions(
-				self.spacewalk_parachain.clone(),
 				self.config.stellar_vault_secret_key.clone(),
 				issue_set.clone(),
 				handler.clone(),
