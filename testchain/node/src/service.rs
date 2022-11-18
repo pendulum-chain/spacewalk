@@ -1,4 +1,5 @@
-use primitives::Block;
+use std::{sync::Arc, time::Duration};
+
 use sc_client_api::{BlockBackend, ExecutorProvider};
 use sc_consensus_aura::{ImportQueueParams, SlotProportion, StartAuraParams};
 use sc_executor::NativeElseWasmExecutor;
@@ -10,14 +11,20 @@ use sc_service::{
 };
 use sc_telemetry::{Telemetry, TelemetryWorker};
 use sp_consensus_aura::ed25519::AuthorityPair as AuraPair;
+
+use primitives::Block;
 use spacewalk_runtime::RuntimeApi;
-use std::{sync::Arc, time::Duration};
 
 // Native executor instance.
 pub struct Executor;
 
 impl sc_executor::NativeExecutionDispatch for Executor {
+	/// Only enable the benchmarking host functions when we actually want to benchmark.
+	#[cfg(feature = "runtime-benchmarks")]
 	type ExtendHostFunctions = frame_benchmarking::benchmarking::HostFunctions;
+	/// Otherwise we only use the default Substrate host functions.
+	#[cfg(not(feature = "runtime-benchmarks"))]
+	type ExtendHostFunctions = ();
 
 	fn dispatch(method: &str, data: &[u8]) -> Option<Vec<u8>> {
 		spacewalk_runtime::api::dispatch(method, data)
@@ -110,7 +117,7 @@ pub fn new_partial(
 	let slot_duration = sc_consensus_aura::slot_duration(&*client)?;
 
 	let import_queue =
-		sc_consensus_aura::import_queue::<AuraPair, _, _, _, _, _, _>(ImportQueueParams {
+		sc_consensus_aura::import_queue::<AuraPair, _, _, _, _, _>(ImportQueueParams {
 			block_import: grandpa_block_import.clone(),
 			justification_import: Some(Box::new(grandpa_block_import.clone())),
 			client: client.clone(),
@@ -123,12 +130,9 @@ pub fn new_partial(
 						slot_duration,
 					);
 
-				Ok((timestamp, slot))
+				Ok((slot, timestamp))
 			},
 			spawner: &task_manager.spawn_essential_handle(),
-			can_author_with: sp_consensus::CanAuthorWithNativeVersion::new(
-				client.executor().clone(),
-			),
 			registry: config.prometheus_registry(),
 			check_for_equivocation: Default::default(),
 			telemetry: telemetry.as_ref().map(|x| x.handle()),
@@ -187,7 +191,7 @@ pub fn new_full(mut config: Configuration) -> Result<(TaskManager, RpcHandlers),
 		.extra_sets
 		.push(sc_finality_grandpa::grandpa_peers_set_config(grandpa_protocol_name.clone()));
 
-	let (network, system_rpc_tx, network_starter) =
+	let (network, system_rpc_tx, tx_handler_controller, network_starter) =
 		sc_service::build_network(sc_service::BuildNetworkParams {
 			config: &config,
 			client: client.clone(),
@@ -237,6 +241,7 @@ pub fn new_full(mut config: Configuration) -> Result<(TaskManager, RpcHandlers),
 		system_rpc_tx,
 		config,
 		telemetry: telemetry.as_mut(),
+		tx_handler_controller,
 	})?;
 
 	if role.is_authority() {
@@ -248,37 +253,34 @@ pub fn new_full(mut config: Configuration) -> Result<(TaskManager, RpcHandlers),
 			telemetry.as_ref().map(|x| x.handle()),
 		);
 
-		let can_author_with =
-			sp_consensus::CanAuthorWithNativeVersion::new(client.executor().clone());
-
 		let slot_duration = sc_consensus_aura::slot_duration(&*client)?;
 
-		let aura = sc_consensus_aura::start_aura::<AuraPair, _, _, _, _, _, _, _, _, _, _, _>(
+		let aura = sc_consensus_aura::start_aura::<AuraPair, _, _, _, _, _, _, _, _, _, _>(
 			StartAuraParams {
 				slot_duration,
-				client: client.clone(),
+				client,
 				select_chain,
 				block_import,
 				proposer_factory,
 				create_inherent_data_providers: move |_, ()| async move {
 					let timestamp = sp_timestamp::InherentDataProvider::from_system_time();
 
-					let slot = sp_consensus_aura::inherents::InherentDataProvider::from_timestamp_and_slot_duration(
-                    *timestamp,
-                    slot_duration,
-                );
+					let slot =
+						sp_consensus_aura::inherents::InherentDataProvider::from_timestamp_and_slot_duration(
+							*timestamp,
+							slot_duration,
+						);
 
-					Ok((timestamp, slot))
+					Ok((slot, timestamp))
 				},
 				force_authoring,
 				backoff_authoring_blocks,
 				keystore: keystore_container.sync_keystore(),
-				can_author_with,
 				sync_oracle: network.clone(),
 				justification_sync_link: network.clone(),
 				block_proposal_slot_portion: SlotProportion::new(2f32 / 3f32),
-				telemetry: telemetry.as_ref().map(|x| x.handle()),
 				max_block_proposal_slot_portion: None,
+				telemetry: telemetry.as_ref().map(|x| x.handle()),
 			},
 		)?;
 

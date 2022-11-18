@@ -16,14 +16,16 @@
 
 use std::io::Write;
 
-use frame_benchmarking_cli::{BenchmarkCmd, SUBSTRATE_REFERENCE_HARDWARE};
+use frame_benchmarking_cli::{BenchmarkCmd, ExtrinsicFactory, SUBSTRATE_REFERENCE_HARDWARE};
 use sc_cli::{ChainSpec, Result, RuntimeVersion, SubstrateCli};
 use sc_service::{Configuration, PartialComponents, TaskManager};
 use sp_core::hexdisplay::HexDisplay;
+use sp_keyring::Sr25519Keyring;
 
-use spacewalk_runtime::Block;
+use spacewalk_runtime::{Block, EXISTENTIAL_DEPOSIT};
 
 use crate::{
+	benchmarking::{inherent_benchmark_data, RemarkBuilder, TransferKeepAliveBuilder},
 	chain_spec,
 	cli::{Cli, Subcommand},
 	service as spacewalk_service,
@@ -80,6 +82,7 @@ pub fn run() -> Result<()> {
 	let cli = Cli::from_args();
 
 	match &cli.subcommand {
+		Some(Subcommand::Key(cmd)) => cmd.run(&cli),
 		Some(Subcommand::BuildSpec(cmd)) => {
 			let runner = cli.create_runner(cmd)?;
 			runner.sync_run(|config| cmd.run(config.chain_spec, config.network))
@@ -152,6 +155,12 @@ pub fn run() -> Result<()> {
 							spacewalk_service::new_partial(&config)?;
 						cmd.run(client)
 					},
+					#[cfg(not(feature = "runtime-benchmarks"))]
+					BenchmarkCmd::Storage(_) => Err(
+						"Storage benchmarking can be enabled with `--features runtime-benchmarks`."
+							.into(),
+					),
+					#[cfg(feature = "runtime-benchmarks")]
 					BenchmarkCmd::Storage(cmd) => {
 						let PartialComponents { client, backend, .. } =
 							spacewalk_service::new_partial(&config)?;
@@ -160,40 +169,65 @@ pub fn run() -> Result<()> {
 
 						cmd.run(config, client, db, storage)
 					},
-					BenchmarkCmd::Overhead(_) => Err("Unsupported benchmarking command".into()),
+					BenchmarkCmd::Overhead(cmd) => {
+						let PartialComponents { client, .. } =
+							spacewalk_service::new_partial(&config)?;
+						let ext_builder = RemarkBuilder::new(client.clone());
+
+						cmd.run(
+							config,
+							client,
+							inherent_benchmark_data()?,
+							Vec::new(),
+							&ext_builder,
+						)
+					},
+					BenchmarkCmd::Extrinsic(cmd) => {
+						let PartialComponents { client, .. } =
+							spacewalk_service::new_partial(&config)?;
+						// Register the *Remark* and *TKA* builders.
+						let ext_factory = ExtrinsicFactory(vec![
+							Box::new(RemarkBuilder::new(client.clone())),
+							Box::new(TransferKeepAliveBuilder::new(
+								client.clone(),
+								Sr25519Keyring::Alice.to_account_id(),
+								EXISTENTIAL_DEPOSIT,
+							)),
+						]);
+
+						cmd.run(client, inherent_benchmark_data()?, Vec::new(), &ext_factory)
+					},
 					BenchmarkCmd::Machine(cmd) =>
 						cmd.run(&config, SUBSTRATE_REFERENCE_HARDWARE.clone()),
 				}
 			})
 		},
-		Some(Subcommand::ExportMetadata(params)) => {
-			let mut ext = frame_support::BasicExternalities::default();
-			sc_executor::with_externalities_safe(&mut ext, move || {
-				let raw_meta_blob = spacewalk_runtime::Runtime::metadata().into();
-				let output_buf = if params.raw {
-					raw_meta_blob
-				} else {
-					format!("0x{:?}", HexDisplay::from(&raw_meta_blob)).into_bytes()
-				};
-
-				if let Some(output) = &params.output {
-					std::fs::write(output, output_buf)?;
-				} else {
-					std::io::stdout().write_all(&output_buf)?;
-				}
-
-				Ok::<_, sc_cli::Error>(())
-			})
-			.map_err(|err| sc_cli::Error::Application(err.into()))??;
-
-			Ok(())
-		},
 		None => {
-			let runner = cli.create_runner(&*cli.run)?;
-
+			let runner = cli.create_runner(&cli.run)?;
 			runner
 				.run_node_until_exit(|config| async move { start_node(cli, config).await })
 				.map_err(Into::into)
+		},
+		#[cfg(feature = "try-runtime")]
+		Some(Subcommand::TryRuntime(cmd)) => {
+			let runner = cli.create_runner(cmd)?;
+			runner.async_run(|config| {
+				// we don't need any of the components of new_partial, just a runtime, or a task
+				// manager to do `async_run`.
+				let registry = config.prometheus_config.as_ref().map(|cfg| &cfg.registry);
+				let task_manager =
+					sc_service::TaskManager::new(config.tokio_handle.clone(), registry)
+						.map_err(|e| sc_cli::Error::Service(sc_service::Error::Prometheus(e)))?;
+				Ok((cmd.run::<Block, service::ExecutorDispatch>(config), task_manager))
+			})
+		},
+		#[cfg(not(feature = "try-runtime"))]
+		Some(Subcommand::TryRuntime) => Err("TryRuntime wasn't enabled when building the node. \
+				You can enable it with `--features try-runtime`."
+			.into()),
+		Some(Subcommand::ChainInfo(cmd)) => {
+			let runner = cli.create_runner(cmd)?;
+			runner.sync_run(|config| cmd.run::<Block>(&config))
 		},
 	}
 }

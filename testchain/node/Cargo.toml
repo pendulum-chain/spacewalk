@@ -15,7 +15,7 @@ name = "spacewalk-standalone"
 substrate-build-script-utils = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.31" }
 
 [dependencies]
-clap = { version = "3.1", features = ["derive"] }
+clap = { version = "4.0.26", features = ["derive"] }
 codec = { package = "parity-scale-codec", version = "3.0.0" }
 hex-literal = "0.2.1"
 log = "0.4.8"
@@ -49,6 +49,7 @@ sp-finality-grandpa = { git = "https://github.com/paritytech/substrate", branch 
 sp-inherents = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.31" }
 sp-io = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.31" }
 sp-offchain = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.31" }
+sp-keyring = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.31" }
 sp-runtime = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.31" }
 sp-session = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.31" }
 sp-timestamp = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.31" }
@@ -59,10 +60,14 @@ frame-benchmarking-cli = { git = "https://github.com/paritytech/substrate", bran
 frame-support = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.31" }
 frame-system = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.31" }
 
+pallet-transaction-payment = { default-features = false, git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.31" }
+
 substrate-stellar-sdk = { git = "https://github.com/pendulum-chain/substrate-stellar-sdk", branch = "polkadot-v0.9.31" }
 
 [features]
 default = []
 runtime-benchmarks = [
     "spacewalk-runtime/runtime-benchmarks",
+    "frame-benchmarking/runtime-benchmarks",
+    "frame-benchmarking-cli/runtime-benchmarks",
 ]

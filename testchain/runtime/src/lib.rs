@@ -12,11 +12,14 @@ use frame_support::{
 	weights::{constants::WEIGHT_PER_SECOND, ConstantMultiplier, IdentityFee},
 	PalletId,
 };
+pub use frame_system::Call as SystemCall;
 use orml_currencies::BasicCurrencyAdapter;
 use orml_traits::parameter_type_with_key;
+pub use pallet_balances::Call as BalancesCall;
 use pallet_grandpa::{
 	fg_primitives, AuthorityId as GrandpaId, AuthorityList as GrandpaAuthorityList,
 };
+pub use pallet_timestamp::Call as TimestampCall;
 use sp_api::impl_runtime_apis;
 use sp_consensus_aura::ed25519::AuthorityId as AuraId;
 use sp_core::{crypto::KeyTypeId, OpaqueMetadata, H256};
@@ -280,11 +283,14 @@ impl orml_currencies::Config for Runtime {
 	type WeightInfo = ();
 }
 
+/// Existential deposit.
+pub const EXISTENTIAL_DEPOSIT: u128 = 500;
+
 impl pallet_balances::Config for Runtime {
 	type Balance = Balance;
 	type DustRemoval = ();
 	type RuntimeEvent = RuntimeEvent;
-	type ExistentialDeposit = ConstU128<500>;
+	type ExistentialDeposit = ConstU128<EXISTENTIAL_DEPOSIT>;
 	type AccountStore = System;
 	type WeightInfo = pallet_balances::weights::SubstrateWeight<Runtime>;
 	type MaxLocks = MaxLocks;
@@ -457,6 +463,7 @@ pub type SignedBlock = generic::SignedBlock<Block>;
 pub type BlockId = generic::BlockId<Block>;
 /// The SignedExtension to the basic transaction logic.
 pub type SignedExtra = (
+	frame_system::CheckNonZeroSender<Runtime>,
 	frame_system::CheckSpecVersion<Runtime>,
 	frame_system::CheckTxVersion<Runtime>,
 	frame_system::CheckGenesis<Runtime>,
@@ -470,6 +477,7 @@ pub type UncheckedExtrinsic =
 	generic::UncheckedExtrinsic<Address, RuntimeCall, Signature, SignedExtra>;
 /// Extrinsic type that has already been checked.
 pub type CheckedExtrinsic = generic::CheckedExtrinsic<AccountId, RuntimeCall, SignedExtra>;
+pub type SignedPayload = generic::SignedPayload<RuntimeCall, SignedExtra>;
 /// Executive: handles dispatch to the various modules.
 pub type Executive = frame_executive::Executive<
 	Runtime,
