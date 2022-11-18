@@ -200,7 +200,22 @@ impl pallet_timestamp::Config for Runtime {
 const NATIVE_TOKEN_ID: TokenSymbol = TokenSymbol::PEN;
 const NATIVE_CURRENCY_ID: CurrencyId = Token(NATIVE_TOKEN_ID);
 const PARENT_CURRENCY_ID: CurrencyId = Token(TokenSymbol::DOT);
-const WRAPPED_CURRENCY_ID: CurrencyId = CurrencyId::AlphaNum4 { code: *b"USDC", issuer: [0u8; 32] };
+// For mainnet USDC issued by centre.io
+// const WRAPPED_CURRENCY_ID: CurrencyId = CurrencyId::AlphaNum4 {
+// 	code: *b"USDC",
+// 	issuer: [
+// 		59, 153, 17, 56, 14, 254, 152, 139, 160, 168, 144, 14, 177, 207, 228, 79, 54, 111, 125,
+// 		190, 148, 107, 237, 7, 114, 64, 247, 246, 36, 223, 21, 197,
+// 	],
+// };
+// For Testnet USDC issued by
+const WRAPPED_CURRENCY_ID: CurrencyId = CurrencyId::AlphaNum4 {
+	code: *b"USDC",
+	issuer: [
+		20, 209, 150, 49, 176, 55, 23, 217, 171, 154, 54, 110, 16, 50, 30, 226, 102, 231, 46, 199,
+		108, 171, 97, 144, 240, 161, 51, 109, 72, 34, 159, 139,
+	],
+};
 
 parameter_types! {
 	pub const GetNativeCurrencyId: CurrencyId = NATIVE_CURRENCY_ID;
