@@ -54,6 +54,8 @@ pub struct Transaction {
 	pub fee_meta_xdr: Vec<u8>,
 	#[serde(deserialize_with = "de_string_to_bytes")]
 	pub memo_type: Vec<u8>,
+	#[serde(deserialize_with = "de_string_to_bytes")]
+	pub memo: Vec<u8>,
 }
 
 impl Transaction {
