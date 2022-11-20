@@ -5,15 +5,9 @@ mod proof_builder;
 pub use collector::ScpMessageCollector;
 pub use proof_builder::*;
 use std::convert::TryInto;
-use stellar_relay::{
-	sdk::types::{ScpEnvelope, ScpStatementExternalize, TransactionSet},
-	StellarOverlayConnection,
-};
+use stellar_relay::sdk::types::ScpStatementExternalize;
 
-use crate::oracle::{
-	errors::Error,
-	types::{Slot, TxSetHash},
-};
+use crate::oracle::{errors::Error, types::TxSetHash};
 
 pub fn get_tx_set_hash(x: &ScpStatementExternalize) -> Result<TxSetHash, Error> {
 	let scp_value = x.commit.value.get_vec();

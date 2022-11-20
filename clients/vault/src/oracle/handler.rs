@@ -1,4 +1,3 @@
-use std::convert::TryInto;
 use tokio::sync::{mpsc, oneshot};
 
 use stellar_relay::{
@@ -6,14 +5,11 @@ use stellar_relay::{
 	StellarRelayMessage,
 };
 
-use crate::{
-	horizon::Transaction,
-	oracle::{
-		collector::{Proof, ProofStatus, ScpMessageCollector},
-		errors::Error,
-		storage::prepare_directories,
-		types::Slot,
-	},
+use crate::oracle::{
+	collector::{Proof, ProofStatus, ScpMessageCollector},
+	errors::Error,
+	storage::prepare_directories,
+	types::Slot,
 };
 
 /// A message used to communicate with the Actor

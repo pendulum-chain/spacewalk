@@ -4,15 +4,11 @@ use crate::{
 	oracle::ScpMessageHandler,
 };
 use async_trait::async_trait;
-use runtime::SpacewalkPallet;
 use service::Error as ServiceError;
 use sp_std::{convert::From, str, vec::Vec};
 use std::{convert::TryInto, sync::Arc, time::Duration};
 use stellar::SecretKey;
-use stellar_relay::{
-	sdk as stellar,
-	sdk::{Hash, PublicKey},
-};
+use stellar_relay::{sdk as stellar, sdk::Hash};
 use tokio::{sync::Mutex, time::sleep};
 
 const POLL_INTERVAL: u64 = 5000;
