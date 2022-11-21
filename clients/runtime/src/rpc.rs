@@ -698,7 +698,7 @@ impl CollateralBalancesPallet for SpacewalkParachain {
 
 	async fn transfer_to(
 		&self,
-		recipient: &Address,
+		recipient: &AccountId,
 		amount: u128,
 		currency_id: CurrencyId,
 	) -> Result<(), Error> {

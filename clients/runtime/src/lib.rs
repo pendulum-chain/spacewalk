@@ -1,4 +1,5 @@
 use codec::{Decode, Encode};
+pub use prometheus;
 pub use sp_arithmetic::{traits as FixedPointTraits, FixedI128, FixedPointNumber, FixedU128};
 use sp_std::marker::PhantomData;
 pub use subxt::ext::sp_core::{crypto::Ss58Codec, sr25519::Pair};
@@ -9,7 +10,6 @@ use subxt::{
 
 pub use assets::TryFromSymbol;
 pub use error::{Error, SubxtError};
-pub use prometheus;
 pub use retry::{notify_retry, RetryPolicy};
 pub use rpc::{
 	CollateralBalancesPallet, SpacewalkParachain, UtilFuncs, VaultRegistryPallet,
@@ -84,20 +84,19 @@ pub struct WrapperKeepOpaque<T> {
 	_phantom: PhantomData<T>,
 }
 
-type SpacewalkRuntime = subxt::PolkadotConfig; // TODO check if this should be substrate or polkadot config
+// type SpacewalkRuntime = subxt::PolkadotConfig; // TODO check if this should be substrate or
 
-// #[derive(Debug, Clone, Eq, PartialEq)]
-// pub struct SpacewalkRuntime;
-//
-// impl Config for SpacewalkRuntime {
-// 	type Index = Index;
-// 	type BlockNumber = BlockNumber;
-// 	type Hash = H256;
-// 	type Hashing = BlakeTwo256;
-// 	type AccountId = AccountId;
-// 	type Address = Address;
-// 	type Header = Header<Self::BlockNumber, BlakeTwo256>;
-// 	type Signature = MultiSignature;
-// 	type Extrinsic = OpaqueExtrinsic;
-// 	type ExtrinsicParams = (); // TODO figure this out
-// }
+#[derive(Debug, Clone, Eq, PartialEq)]
+pub struct SpacewalkRuntime;
+
+impl Config for SpacewalkRuntime {
+	type Index = Index;
+	type BlockNumber = BlockNumber;
+	type Hash = H256;
+	type Hashing = BlakeTwo256;
+	type AccountId = AccountId;
+	type Address = Address;
+	type Header = Header<Self::BlockNumber, BlakeTwo256>;
+	type Signature = MultiSignature;
+	type ExtrinsicParams = subxt::tx::PolkadotExtrinsicParams<Self>;
+}
