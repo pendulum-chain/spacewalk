@@ -205,7 +205,7 @@ impl Service<VaultServiceConfig, Error> for VaultService {
 		spacewalk_parachain: SpacewalkParachain,
 		config: VaultServiceConfig,
 		shutdown: ShutdownSender,
-	) -> Self {
+	) -> Result<Self, Error> {
 		VaultService::new(spacewalk_parachain, config, shutdown)
 	}
 
@@ -277,16 +277,16 @@ impl VaultService {
 		spacewalk_parachain: SpacewalkParachain,
 		config: VaultServiceConfig,
 		shutdown: ShutdownSender,
-	) -> Self {
-		let stellar_wallet =
-			Arc::new(StellarWallet::from_secret_encoded(&config.stellar_vault_secret_key));
-		Self {
+	) -> Result<Self, Error> {
+		let stellar_wallet = StellarWallet::from_secret_encoded(&config.stellar_vault_secret_key)?;
+		let stellar_wallet = Arc::new(stellar_wallet);
+		Ok(Self {
 			spacewalk_parachain: spacewalk_parachain.clone(),
 			stellar_wallet: stellar_wallet.clone(),
 			config,
 			shutdown,
 			vault_id_manager: VaultIdManager::new(spacewalk_parachain, stellar_wallet.clone()),
-		}
+		})
 	}
 
 	fn get_vault_id(
@@ -396,7 +396,7 @@ impl VaultService {
 		}
 
 		if self.spacewalk_parachain.get_public_key().await?.is_none() {
-			let public_key = self.stellar_wallet.get_public_key();
+			let public_key = self.stellar_wallet.get_public_key_raw();
 			tracing::info!("Registering public key to the parachain... {:?}", public_key);
 			self.spacewalk_parachain.register_public_key(public_key).await?;
 		} else {

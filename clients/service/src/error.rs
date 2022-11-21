@@ -12,6 +12,8 @@ pub enum Error<InnerError> {
 	Abort(InnerError),
 	#[error("Retry: {0}")]
 	Retry(InnerError),
+	#[error("Could not start service: {0}")]
+	StartServiceError(InnerError),
 
 	#[error("Client has shutdown")]
 	ClientShutdown,

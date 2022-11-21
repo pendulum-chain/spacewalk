@@ -3086,7 +3086,7 @@ dependencies = [
  "spacewalk-primitives",
  "staking",
  "stellar-relay",
- "substrate-stellar-sdk 0.2.4 (git+https://github.com/pendulum-chain/substrate-stellar-sdk?branch=polkadot-v0.9.31)",
+ "substrate-stellar-sdk",
  "vault-registry",
 ]
 
@@ -5900,7 +5900,7 @@ dependencies = [
  "spacewalk-primitives",
  "staking",
  "stellar-relay",
- "substrate-stellar-sdk 0.2.4 (git+https://github.com/pendulum-chain/substrate-stellar-sdk?branch=polkadot-v0.9.31)",
+ "substrate-stellar-sdk",
  "vault-registry",
 ]
 
@@ -6019,7 +6019,7 @@ dependencies = [
  "spacewalk-primitives",
  "staking",
  "stellar-relay",
- "substrate-stellar-sdk 0.2.4 (git+https://github.com/pendulum-chain/substrate-stellar-sdk?branch=polkadot-v0.9.31)",
+ "substrate-stellar-sdk",
  "vault-registry",
 ]
 
@@ -6178,7 +6178,7 @@ dependencies = [
  "sp-version",
  "spacewalk-primitives",
  "spacewalk-standalone",
- "substrate-stellar-sdk 0.2.4 (git+https://github.com/pendulum-chain/substrate-stellar-sdk?branch=polkadot-v0.9.31)",
+ "substrate-stellar-sdk",
  "subxt",
  "tempdir",
  "thiserror",
@@ -8797,7 +8797,7 @@ dependencies = [
  "sp-core 6.0.0",
  "sp-runtime 6.0.0",
  "sp-std 4.0.0",
- "substrate-stellar-sdk 0.2.4 (git+https://github.com/pendulum-chain/substrate-stellar-sdk?branch=polkadot-v0.9.31)",
+ "substrate-stellar-sdk",
 ]
 
 [[package]]
@@ -8930,7 +8930,7 @@ dependencies = [
  "spacewalk-rpc",
  "spacewalk-runtime-standalone",
  "substrate-build-script-utils",
- "substrate-stellar-sdk 0.2.4 (git+https://github.com/pendulum-chain/substrate-stellar-sdk?branch=polkadot-v0.9.31)",
+ "substrate-stellar-sdk",
 ]
 
 [[package]]
@@ -9061,7 +9061,7 @@ dependencies = [
  "sp-runtime 6.0.0",
  "sp-std 4.0.0",
  "spacewalk-primitives",
- "substrate-stellar-sdk 0.2.4 (git+https://github.com/pendulum-chain/substrate-stellar-sdk?branch=polkadot-v0.9.31)",
+ "substrate-stellar-sdk",
 ]
 
 [[package]]
@@ -9075,7 +9075,7 @@ dependencies = [
  "log",
  "rand 0.8.5",
  "sha2 0.10.6",
- "substrate-stellar-sdk 0.2.4 (git+https://github.com/pendulum-chain/substrate-stellar-sdk?branch=master)",
+ "substrate-stellar-sdk",
  "tokio",
  "tweetnacl",
 ]
@@ -9161,20 +9161,6 @@ dependencies = [
  "prometheus 0.13.3",
  "thiserror",
  "tokio",
-]
-
-[[package]]
-name = "substrate-stellar-sdk"
-version = "0.2.4"
-source = "git+https://github.com/pendulum-chain/substrate-stellar-sdk?branch=master#f659041c6643f80f4e1f6e9e35268dba3ae2d313"
-dependencies = [
- "base64",
- "hex",
- "lazy_static",
- "num-rational",
- "sha2 0.9.9",
- "sodalite",
- "sp-std 4.0.0",
 ]
 
 [[package]]
@@ -10128,7 +10114,7 @@ dependencies = [
  "sp-std 4.0.0",
  "spacewalk-primitives",
  "staking",
- "substrate-stellar-sdk 0.2.4 (git+https://github.com/pendulum-chain/substrate-stellar-sdk?branch=polkadot-v0.9.31)",
+ "substrate-stellar-sdk",
  "visibility",
 ]
 
@@ -10181,6 +10167,10 @@ dependencies = [
 [[package]]
 name = "wallet"
 version = "1.0.0"
+dependencies = [
+ "substrate-stellar-sdk",
+ "thiserror",
+]
 
 [[package]]
 name = "want"
@@ -10910,6 +10900,111 @@ dependencies = [
 ]
 
 [[patch.unused]]
+name = "cumulus-client-cli"
+version = "0.1.0"
+source = "git+https://github.com/paritytech//cumulus?branch=polkadot-v0.9.31#fb8c5a3d0800ebdebe14bd0e708d2a348f976d9e"
+
+[[patch.unused]]
+name = "cumulus-client-collator"
+version = "0.1.0"
+source = "git+https://github.com/paritytech//cumulus?branch=polkadot-v0.9.31#fb8c5a3d0800ebdebe14bd0e708d2a348f976d9e"
+
+[[patch.unused]]
+name = "cumulus-client-consensus-aura"
+version = "0.1.0"
+source = "git+https://github.com/paritytech//cumulus?branch=polkadot-v0.9.31#fb8c5a3d0800ebdebe14bd0e708d2a348f976d9e"
+
+[[patch.unused]]
+name = "cumulus-client-consensus-common"
+version = "0.1.0"
+source = "git+https://github.com/paritytech//cumulus?branch=polkadot-v0.9.31#fb8c5a3d0800ebdebe14bd0e708d2a348f976d9e"
+
+[[patch.unused]]
+name = "cumulus-client-consensus-relay-chain"
+version = "0.1.0"
+source = "git+https://github.com/paritytech//cumulus?branch=polkadot-v0.9.31#fb8c5a3d0800ebdebe14bd0e708d2a348f976d9e"
+
+[[patch.unused]]
+name = "cumulus-client-network"
+version = "0.1.0"
+source = "git+https://github.com/paritytech//cumulus?branch=polkadot-v0.9.31#fb8c5a3d0800ebdebe14bd0e708d2a348f976d9e"
+
+[[patch.unused]]
+name = "cumulus-client-service"
+version = "0.1.0"
+source = "git+https://github.com/paritytech//cumulus?branch=polkadot-v0.9.31#fb8c5a3d0800ebdebe14bd0e708d2a348f976d9e"
+
+[[patch.unused]]
+name = "cumulus-pallet-aura-ext"
+version = "0.1.0"
+source = "git+https://github.com/paritytech//cumulus?branch=polkadot-v0.9.31#fb8c5a3d0800ebdebe14bd0e708d2a348f976d9e"
+
+[[patch.unused]]
+name = "cumulus-pallet-dmp-queue"
+version = "0.1.0"
+source = "git+https://github.com/paritytech//cumulus?branch=polkadot-v0.9.31#fb8c5a3d0800ebdebe14bd0e708d2a348f976d9e"
+
+[[patch.unused]]
+name = "cumulus-pallet-parachain-system"
+version = "0.1.0"
+source = "git+https://github.com/paritytech//cumulus?branch=polkadot-v0.9.31#fb8c5a3d0800ebdebe14bd0e708d2a348f976d9e"
+
+[[patch.unused]]
+name = "cumulus-pallet-xcm"
+version = "0.1.0"
+source = "git+https://github.com/paritytech//cumulus?branch=polkadot-v0.9.31#fb8c5a3d0800ebdebe14bd0e708d2a348f976d9e"
+
+[[patch.unused]]
+name = "cumulus-pallet-xcmp-queue"
+version = "0.1.0"
+source = "git+https://github.com/paritytech//cumulus?branch=polkadot-v0.9.31#fb8c5a3d0800ebdebe14bd0e708d2a348f976d9e"
+
+[[patch.unused]]
+name = "cumulus-primitives-core"
+version = "0.1.0"
+source = "git+https://github.com/paritytech//cumulus?branch=polkadot-v0.9.31#fb8c5a3d0800ebdebe14bd0e708d2a348f976d9e"
+
+[[patch.unused]]
+name = "cumulus-primitives-parachain-inherent"
+version = "0.1.0"
+source = "git+https://github.com/paritytech//cumulus?branch=polkadot-v0.9.31#fb8c5a3d0800ebdebe14bd0e708d2a348f976d9e"
+
+[[patch.unused]]
+name = "cumulus-primitives-timestamp"
+version = "0.1.0"
+source = "git+https://github.com/paritytech//cumulus?branch=polkadot-v0.9.31#fb8c5a3d0800ebdebe14bd0e708d2a348f976d9e"
+
+[[patch.unused]]
+name = "cumulus-primitives-utility"
+version = "0.1.0"
+source = "git+https://github.com/paritytech//cumulus?branch=polkadot-v0.9.31#fb8c5a3d0800ebdebe14bd0e708d2a348f976d9e"
+
+[[patch.unused]]
+name = "cumulus-relay-chain-inprocess-interface"
+version = "0.1.0"
+source = "git+https://github.com/paritytech//cumulus?branch=polkadot-v0.9.31#fb8c5a3d0800ebdebe14bd0e708d2a348f976d9e"
+
+[[patch.unused]]
+name = "cumulus-relay-chain-interface"
+version = "0.1.0"
+source = "git+https://github.com/paritytech//cumulus?branch=polkadot-v0.9.31#fb8c5a3d0800ebdebe14bd0e708d2a348f976d9e"
+
+[[patch.unused]]
+name = "cumulus-relay-chain-rpc-interface"
+version = "0.1.0"
+source = "git+https://github.com/paritytech//cumulus?branch=polkadot-v0.9.31#fb8c5a3d0800ebdebe14bd0e708d2a348f976d9e"
+
+[[patch.unused]]
+name = "cumulus-test-relay-sproof-builder"
+version = "0.1.0"
+source = "git+https://github.com/paritytech//cumulus?branch=polkadot-v0.9.31#fb8c5a3d0800ebdebe14bd0e708d2a348f976d9e"
+
+[[patch.unused]]
+name = "parachain-info"
+version = "0.1.0"
+source = "git+https://github.com/paritytech//cumulus?branch=polkadot-v0.9.31#fb8c5a3d0800ebdebe14bd0e708d2a348f976d9e"
+
+[[patch.unused]]
 name = "beefy-gadget"
 version = "4.0.0-dev"
 source = "git+https://github.com/paritytech//substrate?branch=polkadot-jsonrpsee-v0.9.31#2af8d593224fecd988589b5126dcd158e6d0d2da"
@@ -11203,111 +11298,6 @@ source = "git+https://github.com/paritytech//substrate?branch=polkadot-jsonrpsee
 name = "try-runtime-cli"
 version = "0.10.0-dev"
 source = "git+https://github.com/paritytech//substrate?branch=polkadot-jsonrpsee-v0.9.31#2af8d593224fecd988589b5126dcd158e6d0d2da"
-
-[[patch.unused]]
-name = "cumulus-client-cli"
-version = "0.1.0"
-source = "git+https://github.com/paritytech//cumulus?branch=polkadot-v0.9.31#fb8c5a3d0800ebdebe14bd0e708d2a348f976d9e"
-
-[[patch.unused]]
-name = "cumulus-client-collator"
-version = "0.1.0"
-source = "git+https://github.com/paritytech//cumulus?branch=polkadot-v0.9.31#fb8c5a3d0800ebdebe14bd0e708d2a348f976d9e"
-
-[[patch.unused]]
-name = "cumulus-client-consensus-aura"
-version = "0.1.0"
-source = "git+https://github.com/paritytech//cumulus?branch=polkadot-v0.9.31#fb8c5a3d0800ebdebe14bd0e708d2a348f976d9e"
-
-[[patch.unused]]
-name = "cumulus-client-consensus-common"
-version = "0.1.0"
-source = "git+https://github.com/paritytech//cumulus?branch=polkadot-v0.9.31#fb8c5a3d0800ebdebe14bd0e708d2a348f976d9e"
-
-[[patch.unused]]
-name = "cumulus-client-consensus-relay-chain"
-version = "0.1.0"
-source = "git+https://github.com/paritytech//cumulus?branch=polkadot-v0.9.31#fb8c5a3d0800ebdebe14bd0e708d2a348f976d9e"
-
-[[patch.unused]]
-name = "cumulus-client-network"
-version = "0.1.0"
-source = "git+https://github.com/paritytech//cumulus?branch=polkadot-v0.9.31#fb8c5a3d0800ebdebe14bd0e708d2a348f976d9e"
-
-[[patch.unused]]
-name = "cumulus-client-service"
-version = "0.1.0"
-source = "git+https://github.com/paritytech//cumulus?branch=polkadot-v0.9.31#fb8c5a3d0800ebdebe14bd0e708d2a348f976d9e"
-
-[[patch.unused]]
-name = "cumulus-pallet-aura-ext"
-version = "0.1.0"
-source = "git+https://github.com/paritytech//cumulus?branch=polkadot-v0.9.31#fb8c5a3d0800ebdebe14bd0e708d2a348f976d9e"
-
-[[patch.unused]]
-name = "cumulus-pallet-dmp-queue"
-version = "0.1.0"
-source = "git+https://github.com/paritytech//cumulus?branch=polkadot-v0.9.31#fb8c5a3d0800ebdebe14bd0e708d2a348f976d9e"
-
-[[patch.unused]]
-name = "cumulus-pallet-parachain-system"
-version = "0.1.0"
-source = "git+https://github.com/paritytech//cumulus?branch=polkadot-v0.9.31#fb8c5a3d0800ebdebe14bd0e708d2a348f976d9e"
-
-[[patch.unused]]
-name = "cumulus-pallet-xcm"
-version = "0.1.0"
-source = "git+https://github.com/paritytech//cumulus?branch=polkadot-v0.9.31#fb8c5a3d0800ebdebe14bd0e708d2a348f976d9e"
-
-[[patch.unused]]
-name = "cumulus-pallet-xcmp-queue"
-version = "0.1.0"
-source = "git+https://github.com/paritytech//cumulus?branch=polkadot-v0.9.31#fb8c5a3d0800ebdebe14bd0e708d2a348f976d9e"
-
-[[patch.unused]]
-name = "cumulus-primitives-core"
-version = "0.1.0"
-source = "git+https://github.com/paritytech//cumulus?branch=polkadot-v0.9.31#fb8c5a3d0800ebdebe14bd0e708d2a348f976d9e"
-
-[[patch.unused]]
-name = "cumulus-primitives-parachain-inherent"
-version = "0.1.0"
-source = "git+https://github.com/paritytech//cumulus?branch=polkadot-v0.9.31#fb8c5a3d0800ebdebe14bd0e708d2a348f976d9e"
-
-[[patch.unused]]
-name = "cumulus-primitives-timestamp"
-version = "0.1.0"
-source = "git+https://github.com/paritytech//cumulus?branch=polkadot-v0.9.31#fb8c5a3d0800ebdebe14bd0e708d2a348f976d9e"
-
-[[patch.unused]]
-name = "cumulus-primitives-utility"
-version = "0.1.0"
-source = "git+https://github.com/paritytech//cumulus?branch=polkadot-v0.9.31#fb8c5a3d0800ebdebe14bd0e708d2a348f976d9e"
-
-[[patch.unused]]
-name = "cumulus-relay-chain-inprocess-interface"
-version = "0.1.0"
-source = "git+https://github.com/paritytech//cumulus?branch=polkadot-v0.9.31#fb8c5a3d0800ebdebe14bd0e708d2a348f976d9e"
-
-[[patch.unused]]
-name = "cumulus-relay-chain-interface"
-version = "0.1.0"
-source = "git+https://github.com/paritytech//cumulus?branch=polkadot-v0.9.31#fb8c5a3d0800ebdebe14bd0e708d2a348f976d9e"
-
-[[patch.unused]]
-name = "cumulus-relay-chain-rpc-interface"
-version = "0.1.0"
-source = "git+https://github.com/paritytech//cumulus?branch=polkadot-v0.9.31#fb8c5a3d0800ebdebe14bd0e708d2a348f976d9e"
-
-[[patch.unused]]
-name = "cumulus-test-relay-sproof-builder"
-version = "0.1.0"
-source = "git+https://github.com/paritytech//cumulus?branch=polkadot-v0.9.31#fb8c5a3d0800ebdebe14bd0e708d2a348f976d9e"
-
-[[patch.unused]]
-name = "parachain-info"
-version = "0.1.0"
-source = "git+https://github.com/paritytech//cumulus?branch=polkadot-v0.9.31#fb8c5a3d0800ebdebe14bd0e708d2a348f976d9e"
 
 [[patch.unused]]
 name = "kusama-runtime"

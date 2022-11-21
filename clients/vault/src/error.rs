@@ -9,6 +9,7 @@ use tokio_stream::wrappers::errors::BroadcastStreamRecvError;
 use runtime::{Error as RuntimeError, SubxtError};
 use service::Error as ServiceError;
 use stellar_relay::sdk::StellarSdkError;
+use wallet::Error as WalletError;
 
 #[derive(Error, Debug)]
 pub enum Error {
@@ -33,6 +34,8 @@ pub enum Error {
 	CodecError(#[from] CodecError),
 	#[error("BroadcastStreamRecvError: {0}")]
 	BroadcastStreamRecvError(#[from] BroadcastStreamRecvError),
+	#[error("StellarWalletError: {0}")]
+	StellarWalletError(#[from] WalletError),
 
 	#[error("Lookup Error")]
 	LookupError,

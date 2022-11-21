@@ -32,7 +32,9 @@ pub trait Service<Config, InnerError> {
 		spacewalk_parachain: SpacewalkParachain,
 		config: Config,
 		shutdown: ShutdownSender,
-	) -> Self;
+	) -> Result<Self, InnerError>
+	where
+		Self: Sized;
 	async fn start(&mut self) -> Result<(), Error<InnerError>>;
 }
 
@@ -88,7 +90,8 @@ impl<Config: Clone + Send + 'static, F: Fn()> ConnectionManager<Config, F> {
 			)
 			.await?;
 
-			let mut service = S::new_service(spacewalk_parachain, config, shutdown_tx.clone());
+			let mut service = S::new_service(spacewalk_parachain, config, shutdown_tx.clone())
+				.map_err(|e| Error::StartServiceError(e))?;
 
 			match service.start().await {
 				Err(err @ Error::Abort(_)) => {

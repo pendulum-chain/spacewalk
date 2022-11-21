@@ -1,3 +1,3 @@
-mod stellar_wallet;
+pub use stellar_wallet::{Error, StellarWallet};
 
-pub use stellar_wallet::StellarWallet;
+mod stellar_wallet;
