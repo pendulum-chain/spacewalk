@@ -10,8 +10,10 @@ use subxt::{
 	blocks::ExtrinsicEvents,
 	client::OnlineClient,
 	events::{EventDetails, StaticEvent},
+	metadata::DecodeWithMetadata,
 	rpc::{rpc_params, RpcClient, RpcClientT},
-	tx::{PolkadotExtrinsicParams, Signer, TxProgress},
+	storage::{address::Yes, StorageAddress},
+	tx::{PolkadotExtrinsicParams, Signer, TxPayload, TxProgress},
 	Error as BasicError, Metadata,
 };
 // use subxt_client::OnlineClient;
@@ -46,7 +48,12 @@ cfg_if::cfg_if! {
 		pub const SS58_PREFIX: u16 = 56;
 	}
 }
+
+// timeout before retrying parachain calls (5 minutes)
 const TRANSACTION_TIMEOUT: Duration = Duration::from_secs(300); // 5 minutes
+
+// number of storage entries to fetch at a time
+const DEFAULT_PAGE_SIZE: u32 = 10;
 
 pub(crate) type ShutdownSender = tokio::sync::broadcast::Sender<()>;
 
@@ -142,25 +149,17 @@ impl SpacewalkParachain {
 		Self::new(ws_client, signer, shutdown_tx).await
 	}
 
-	/// Gets a copy of the signer with a unique nonce
-	async fn with_unique_signer<'client, F, R>(
-		&mut self,
-		call: F,
-	) -> Result<ExtrinsicEvents<SpacewalkRuntime>, Error>
+	async fn with_retry<Call>(&self, call: Call) -> Result<ExtrinsicEvents<SpacewalkRuntime>, Error>
 	where
-		F: Fn(&SpacewalkSigner) -> R,
-		R: Future<
-			Output = Result<
-				TxProgress<SpacewalkRuntime, OnlineClient<SpacewalkRuntime>>,
-				BasicError,
-			>,
-		>,
+		Call: TxPayload,
 	{
 		notify_retry::<Error, _, _, _, _, _>(
 			|| async {
+				let signer = self.signer.read().await;
 				match timeout(TRANSACTION_TIMEOUT, async {
-					let signer = self.signer.read().await;
-					call(&*signer).await?.wait_for_finalized_success().await
+					let tx_progress =
+						self.api.tx().sign_and_submit_then_watch_default(&call, &*signer).await?;
+					tx_progress.wait_for_finalized_success().await
 				})
 				.await
 				{
@@ -175,26 +174,46 @@ impl SpacewalkParachain {
 			|result| async {
 				match result.map_err(Into::<Error>::into) {
 					Ok(te) => Ok(te),
-					Err(err) => {
-						Err(RetryPolicy::Throw(err))
-					}
-						// if let Some(data) = err.is_invalid_transaction() {
-						// 	Err(RetryPolicy::Skip(Error::InvalidTransaction(data)))
-						// } else if err.is_pool_too_low_priority().is_some() {
-						// 	Err(RetryPolicy::Skip(Error::PoolTooLowPriority))
-						// } else if err.is_block_hash_not_found_error() {
-						// 	log::info!("Re-sending transaction after apparent fork");
-						// 	Err(RetryPolicy::Skip(Error::BlockHashNotFound))
-						// } else {
-						// 	Err(RetryPolicy::Throw(err))
-						// },
+					Err(err) => Err(RetryPolicy::Throw(err)),
 				}
 			},
 		)
 		.await
 	}
 
-	pub async fn get_latest_block_hash(&self) -> Result<Option<H256>, Error> {
+	async fn query_finalized<Address>(
+		&self,
+		address: Address,
+	) -> Result<Option<<Address::Target as DecodeWithMetadata>::Target>, Error>
+	where
+		Address: StorageAddress<IsFetchable = Yes>,
+	{
+		let hash = self.get_finalized_block_hash().await?;
+		Ok(self.api.storage().fetch(&address, hash).await?)
+	}
+
+	async fn query_finalized_or_error<Address>(
+		&self,
+		address: Address,
+	) -> Result<<Address::Target as DecodeWithMetadata>::Target, Error>
+	where
+		Address: StorageAddress<IsFetchable = Yes>,
+	{
+		self.query_finalized(address).await?.ok_or(Error::StorageItemNotFound)
+	}
+
+	async fn query_finalized_or_default<Address>(
+		&self,
+		address: Address,
+	) -> Result<<Address::Target as DecodeWithMetadata>::Target, Error>
+	where
+		Address: StorageAddress<IsFetchable = Yes, IsDefaultable = Yes>,
+	{
+		let hash = self.get_finalized_block_hash().await?;
+		Ok(self.api.storage().fetch_or_default(&address, hash).await?)
+	}
+
+	pub async fn get_finalized_block_hash(&self) -> Result<Option<H256>, Error> {
 		Ok(Some(self.api.rpc().finalized_head().await?))
 	}
 
@@ -421,11 +440,9 @@ impl VaultRegistryPallet for SpacewalkParachain {
 	/// * `VaultNotFound` - if the rpc returned a default value rather than the vault we want
 	/// * `VaultLiquidated` - if the vault is liquidated
 	async fn get_vault(&self, vault_id: &VaultId) -> Result<SpacewalkVault, Error> {
-		let head = self.get_latest_block_hash().await?;
-
 		let query = metadata::storage().vault_registry().vaults(&vault_id.clone());
 
-		match self.api.storage().fetch(&query, head).await? {
+		match self.query_finalized(query).await? {
 			Some(SpacewalkVault { status: VaultStatus::Liquidated, .. }) =>
 				Err(Error::VaultLiquidated),
 			Some(vault) if &vault.id == vault_id => Ok(vault),
@@ -437,7 +454,7 @@ impl VaultRegistryPallet for SpacewalkParachain {
 		&self,
 		account_id: &AccountId,
 	) -> Result<Vec<VaultId>, Error> {
-		let head = self.get_latest_block_hash().await?;
+		let head = self.get_finalized_block_hash().await?;
 		let result = self
 			.api
 			.rpc()
@@ -450,9 +467,10 @@ impl VaultRegistryPallet for SpacewalkParachain {
 	/// Fetch all active vaults.
 	async fn get_all_vaults(&self) -> Result<Vec<SpacewalkVault>, Error> {
 		let mut vaults = Vec::new();
-		let head = self.get_latest_block_hash().await?;
+		let head = self.get_finalized_block_hash().await?;
 		let key_addr = metadata::storage().vault_registry().vaults_root();
-		let mut iter = self.api.storage().iter(key_addr, 10, head).await?;
+
+		let mut iter = self.api.storage().iter(key_addr, DEFAULT_PAGE_SIZE, head).await?;
 		while let Some((_, account)) = iter.next().await? {
 			if let VaultStatus::Active(..) = account.status {
 				vaults.push(account);
@@ -476,27 +494,7 @@ impl VaultRegistryPallet for SpacewalkParachain {
 			.vault_registry()
 			.register_vault(vault_id.currencies.clone(), collateral);
 
-		let signer = self.signer.read().await;
-
-		let register_event = self
-			.api
-			.tx()
-			.sign_and_submit_then_watch_default(&register_vault_tx, &*signer)
-			.await?
-			.wait_for_finalized()
-			.await?;
-
-		let events = register_event.wait_for_success().await?;
-
-		let failed_event = events.find_first::<metadata::system::events::ExtrinsicFailed>()?;
-
-		if let Some(_ev) = failed_event {
-			// We found a failed event; the transfer didn't succeed.
-			log::info!("Extrinsic failed");
-		} else {
-			log::info!("Successfully registered vault");
-		}
-
+		self.with_retry(register_vault_tx).await?;
 		Ok(())
 	}
 
@@ -510,12 +508,7 @@ impl VaultRegistryPallet for SpacewalkParachain {
 			.vault_registry()
 			.deposit_collateral(vault_id.currencies.clone(), amount);
 
-		let signer = self.signer.read().await;
-
-		self.api
-			.tx()
-			.sign_and_submit_then_watch_default(&deposit_collateral_tx, &*signer)
-			.await?;
+		self.with_retry(deposit_collateral_tx).await?;
 		Ok(())
 	}
 
@@ -533,23 +526,16 @@ impl VaultRegistryPallet for SpacewalkParachain {
 			.vault_registry()
 			.withdraw_collateral(vault_id.currencies.clone(), amount);
 
-		let signer = self.signer.read().await;
-
-		self.api
-			.tx()
-			.sign_and_submit_then_watch_default(&withdraw_collateral_tx, &*signer)
-			.await?;
+		self.with_retry(withdraw_collateral_tx).await?;
 		Ok(())
 	}
 
 	async fn get_public_key(&self) -> Result<Option<StellarPublicKey>, Error> {
-		let head = self.get_latest_block_hash().await?;
-
 		let query = metadata::storage()
 			.vault_registry()
 			.vault_stellar_public_key(self.get_account_id());
 
-		Ok(self.api.storage().fetch(&query, head).await?)
+		self.query_finalized(query).await
 	}
 
 	/// Update the default BTC public key for the vault corresponding to the signer.
@@ -557,17 +543,11 @@ impl VaultRegistryPallet for SpacewalkParachain {
 	/// # Arguments
 	/// * `public_key` - the new public key of the vault
 	async fn register_public_key(&mut self, public_key: StellarPublicKey) -> Result<(), Error> {
-		let public_key = &public_key.clone();
-
 		let register_public_key_tx =
 			metadata::tx().vault_registry().register_public_key(public_key.clone());
 
-		let mut signer = self.signer.write().await;
+		self.with_retry(register_public_key_tx).await?;
 
-		self.api
-			.tx()
-			.sign_and_submit_then_watch_default(&register_public_key_tx, &*signer)
-			.await?;
 		Ok(())
 	}
 
@@ -580,7 +560,7 @@ impl VaultRegistryPallet for SpacewalkParachain {
 		amount_btc: u128,
 		collateral_currency: CurrencyId,
 	) -> Result<u128, Error> {
-		let head = self.get_latest_block_hash().await?;
+		let head = self.get_finalized_block_hash().await?;
 		let result: BalanceWrapper<_> = self
 			.api
 			.rpc()
@@ -596,7 +576,7 @@ impl VaultRegistryPallet for SpacewalkParachain {
 	/// Get the amount of collateral required for the given vault to be at the
 	/// current SecureCollateralThreshold with the current exchange rate
 	async fn get_required_collateral_for_vault(&self, vault_id: VaultId) -> Result<u128, Error> {
-		let head = self.get_latest_block_hash().await?;
+		let head = self.get_finalized_block_hash().await?;
 		let result: BalanceWrapper<_> = self
 			.api
 			.rpc()
@@ -607,7 +587,7 @@ impl VaultRegistryPallet for SpacewalkParachain {
 	}
 
 	async fn get_vault_total_collateral(&self, vault_id: VaultId) -> Result<u128, Error> {
-		let head = self.get_latest_block_hash().await?;
+		let head = self.get_finalized_block_hash().await?;
 		let result: BalanceWrapper<_> = self
 			.api
 			.rpc()
@@ -622,7 +602,7 @@ impl VaultRegistryPallet for SpacewalkParachain {
 		vault_id: VaultId,
 		only_issued: bool,
 	) -> Result<u128, Error> {
-		let head = self.get_latest_block_hash().await?;
+		let head = self.get_finalized_block_hash().await?;
 		let result: UnsignedFixedPoint = self
 			.api
 			.rpc()
@@ -673,7 +653,7 @@ impl CollateralBalancesPallet for SpacewalkParachain {
 		id: AccountId,
 		currency_id: CurrencyId,
 	) -> Result<Balance, Error> {
-		let head = self.get_latest_block_hash().await?;
+		let head = self.get_finalized_block_hash().await?;
 		let query = metadata::storage().tokens().accounts(&id, &currency_id);
 
 		let result = self.api.storage().fetch(&query, head).await?;
@@ -689,7 +669,7 @@ impl CollateralBalancesPallet for SpacewalkParachain {
 		id: AccountId,
 		currency_id: CurrencyId,
 	) -> Result<Balance, Error> {
-		let head = self.get_latest_block_hash().await?;
+		let head = self.get_finalized_block_hash().await?;
 		let query = metadata::storage().tokens().accounts(&id, &currency_id);
 
 		let result = self.api.storage().fetch(&query, head).await?;
