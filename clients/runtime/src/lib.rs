@@ -45,22 +45,6 @@ pub const STABLE_PARACHAIN_CONFIRMATIONS: &str = "StableParachainConfirmations";
 	subxt(
 		runtime_metadata_path = "metadata-parachain.scale",
 		derive_for_all_types = "Clone, PartialEq, Eq",
-		derive_for_type(
-			type = "spacewalk_primitives::TokenSymbol",
-			derive = "serde::Serialize, serde::Deserialize"
-		),
-		derive_for_type(
-			type = "spacewalk_primitives::CurrencyId",
-			derive = "serde::Serialize, serde::Deserialize"
-		),
-		derive_for_type(
-			type = "spacewalk_primitives::VaultCurrencyPair",
-			derive = "serde::Serialize, serde::Deserialize"
-		),
-		derive_for_type(
-			type = "spacewalk_primitives::VaultId",
-			derive = "serde::Serialize, serde::Deserialize"
-		),
 	)
 )]
 #[cfg_attr(
@@ -73,7 +57,6 @@ pub const STABLE_PARACHAIN_CONFIRMATIONS: &str = "StableParachainConfirmations";
 pub mod metadata {
 	#[subxt(substitute_type = "sp_core::crypto::AccountId32")]
 	use crate::AccountId;
-	// TODO why does it fix it? What does it do?
 	#[subxt(substitute_type = "spacewalk_primitives::CurrencyId")]
 	use crate::CurrencyId;
 }
@@ -83,8 +66,6 @@ pub struct WrapperKeepOpaque<T> {
 	data: Vec<u8>,
 	_phantom: PhantomData<T>,
 }
-
-// type SpacewalkRuntime = subxt::PolkadotConfig; // TODO check if this should be substrate or
 
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub struct SpacewalkRuntime;

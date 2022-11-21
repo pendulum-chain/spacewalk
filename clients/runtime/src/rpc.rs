@@ -16,7 +16,6 @@ use subxt::{
 	tx::{PolkadotExtrinsicParams, Signer, TxPayload, TxProgress},
 	Error as BasicError, Metadata,
 };
-// use subxt_client::OnlineClient;
 use tokio::{
 	sync::{Mutex, RwLock},
 	time::timeout,
