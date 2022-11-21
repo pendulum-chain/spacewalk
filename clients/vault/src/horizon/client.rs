@@ -22,9 +22,15 @@ pub const fn horizon_url(is_public_network: bool) -> &'static str {
 }
 
 // todo: temporary struct, as the real IssueRequest definition is in another branch.
-#[derive(Clone)]
+#[derive(Clone, PartialEq)]
 pub struct IssueRequest {
 	pub issue_id: Hash,
+}
+
+impl From<Vec<u8>> for IssueRequest {
+	fn from(val: Vec<u8>) -> Self {
+		IssueRequest { issue_id: val[0..31].try_into().unwrap() }
+	}
 }
 
 pub type IssueRequests = Vec<IssueRequest>;
@@ -147,7 +153,7 @@ impl<C: HorizonClient> HorizonFetcher<C> {
 		if transactions.len() > 0 {
 			let tx = transactions[0].clone();
 			let id = tx.id.clone();
-			if self.is_unhandled_transaction(&tx) && is_tx_relevant(&tx, issue_set) {
+			if self.is_unhandled_transaction(&tx) && is_tx_relevant(&tx, issue_set.clone()).await {
 				match handler.watch_slot(tx.ledger.try_into().unwrap()).await {
 					Ok(_) => {
 						println!("following transaction {:?}", String::from_utf8(id.clone()));
@@ -180,12 +186,14 @@ pub async fn poll_horizon_for_new_transactions(
 	}
 }
 
-fn is_tx_relevant(transaction: &Transaction, _issue_set: Arc<Mutex<IssueRequests>>) -> bool {
+pub async fn is_tx_relevant(
+	transaction: &Transaction,
+	issue_set: Arc<Mutex<IssueRequests>>,
+) -> bool {
 	match String::from_utf8(transaction.memo_type.clone()) {
 		Ok(memo_type) if memo_type == "hash" => {
-			// we only want those with hash memo type.
-			// todo: check if the memo == to any of the issue_id in the issue_set
-			return true
+			let issue_set = issue_set.lock().await;
+			return issue_set.contains(&IssueRequest::from(transaction.memo.clone()))
 		},
 		Err(e) => {
 			tracing::error!("Failed to retrieve memo type: {:?}", e);
@@ -195,7 +203,6 @@ fn is_tx_relevant(transaction: &Transaction, _issue_set: Arc<Mutex<IssueRequests
 
 	false
 }
-
 #[cfg(test)]
 mod tests {
 	use crate::{
