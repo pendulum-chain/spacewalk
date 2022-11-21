@@ -114,3 +114,39 @@ export CC=/opt/homebrew/opt/llvm/bin/clang
 If the transaction submission fails giving a `tx_failed` in the `result_codes` object of the response, this is likely
 due to the converted destination account not having trustlines set up for the redeemed asset.
 The destination account is derived automatically from the account that called the extrinsic on-chain.
+
+## Notes on the implementation of subxt
+
+This section is supposed to help when encountering issues with communication of vault client and parachain.
+
+### The runtime configuration
+
+In `runtime/src/lib.rs` the `Config` for the runtime is defined.
+These are the types that are used by subxt when connecting to the target chain.
+Note that, although the `Config` types are all declared explicitly here, it would also work to use
+the `subxt::PolkadotConfig` type.
+This type is defined in the `subxt` crate and contains all the types that are used in the Polkadot runtime.
+Using the `subxt::SubstrateConfig` type does not work however, because the `ExtrinsicParams` type does not work with the
+testchain.
+When encountering an error with 'validate_transaction() failed' it is likely that the `Config` type is not set
+correctly.
+
+### Trait derivations
+It might happen that you encounter errors complaining about missing trait derivations.
+There are different ways to derive traits for the automatically generated types.
+You can either implement the traits manually (see the modules in `runtime/src/rpc.rs`) or use the respective
+statements in the `#[subxt::subxt]` macro.
+More documentation can be found [here](https://docs.rs/subxt-macro/latest/subxt_macro/#adding-derives-for-specific-types).
+```
+#[subxt::subxt(
+    runtime_metadata_path = "polkadot_metadata.scale",
+    derive_for_all_types = "Eq, PartialEq",
+    derive_for_type(type = "frame_support::PalletId", derive = "Ord, PartialOrd"),
+    derive_for_type(type = "sp_runtime::ModuleError", derive = "Hash"),
+)]
+```
+
+### Type substitutions
+When the compiler complains about mismatched types although the types seem to be the same, you might have to use type substitutions.
+This is done by adding the `#[subxt(substitute_type = "some type")]` attribute to the metadata module.
+More documentation can be found [here](https://docs.rs/subxt-macro/latest/subxt_macro/#substituting-types).
