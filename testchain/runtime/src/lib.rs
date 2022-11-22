@@ -21,7 +21,7 @@ use pallet_grandpa::{
 };
 pub use pallet_timestamp::Call as TimestampCall;
 use sp_api::impl_runtime_apis;
-use sp_consensus_aura::ed25519::AuthorityId as AuraId;
+use sp_consensus_aura::sr25519::AuthorityId as AuraId;
 use sp_core::{crypto::KeyTypeId, OpaqueMetadata, H256};
 use sp_runtime::{
 	create_runtime_str, generic, impl_opaque_keys,

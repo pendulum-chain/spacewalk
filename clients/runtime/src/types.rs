@@ -1,5 +1,4 @@
-// TODO maybe change this back to sr25519
-pub use subxt::ext::sp_core::ed25519::Pair as KeyPair;
+pub use subxt::ext::sp_core::sr25519::Pair as KeyPair;
 
 pub use metadata_aliases::*;
 pub use primitives::CurrencyId;

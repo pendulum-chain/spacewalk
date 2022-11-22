@@ -10,7 +10,7 @@ use sc_service::{
 	TaskManager,
 };
 use sc_telemetry::{Telemetry, TelemetryWorker};
-use sp_consensus_aura::ed25519::AuthorityPair as AuraPair;
+use sp_consensus_aura::sr25519::AuthorityPair as AuraPair;
 
 use primitives::Block;
 use spacewalk_runtime::RuntimeApi;
