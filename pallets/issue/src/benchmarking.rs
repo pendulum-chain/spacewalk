@@ -77,7 +77,7 @@ benchmarks! {
 		register_vault::<T>(vault_id.clone());
 
 		Security::<T>::set_active_block_number(1u32.into());
-	}: _(RawOrigin::Signed(origin), amount, asset, vault_id)
+	}: _(RawOrigin::Signed(origin), amount, vault_id)
 
 	execute_issue {
 		let origin: T::AccountId = account("Origin", 0, 0);
