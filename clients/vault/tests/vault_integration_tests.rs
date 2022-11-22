@@ -1,7 +1,7 @@
 use frame_support::assert_ok;
 use futures::{Future, FutureExt};
 use runtime::{integration::*, types::*, SpacewalkPallet, SpacewalkParachain, UtilFuncs};
-use sp_keyring::Ed25519Keyring as AccountKeyring;
+use sp_keyring::AccountKeyring;
 use std::time::Duration;
 
 const TIMEOUT: Duration = Duration::from_secs(90);

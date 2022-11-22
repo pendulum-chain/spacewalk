@@ -4,15 +4,16 @@ use crate::{
 	SpacewalkParachain, SpacewalkSigner,
 };
 use clap::Parser;
-use sp_keyring::Ed25519Keyring;
-use std::{collections::HashMap, num::ParseIntError, time::Duration};
-use subxt::sp_core::{ed25519::Pair, Pair as _};
+use sp_keyring::AccountKeyring;
+use std::{collections::HashMap, num::ParseIntError, sync::Arc, time::Duration};
+use subxt::ext::sp_core::{sr25519::Pair, Pair as _};
+use tokio::sync::RwLock;
 
 #[derive(Parser, Debug, Clone)]
 pub struct ProviderUserOpts {
 	/// Keyring to use, mutually exclusive with keyfile.
 	#[clap(long, required_unless_present = "keyfile", parse(try_from_str = parse_account_keyring))]
-	pub keyring: Option<Ed25519Keyring>,
+	pub keyring: Option<AccountKeyring>,
 
 	/// Path to the json file containing key pairs in a map.
 	/// Valid content of this file is e.g.
@@ -33,7 +34,11 @@ impl ProviderUserOpts {
 		{
 			(Some(file_path), Some(keyname), None) =>
 				(get_credentials_from_file(file_path, keyname)?, keyname.to_string()),
-			(None, None, Some(keyring)) => (keyring.pair(), format!("{}", keyring)),
+			(None, None, Some(keyring)) => {
+				let pair = Pair::from_string(keyring.to_seed().as_str(), None)
+					.map_err(|e| Error::KeyringAccountParsingError)?;
+				(pair, format!("{}", keyring))
+			},
 			_ => {
 				// should never occur, due to clap constraints
 				return Err(Error::KeyringArgumentError)
@@ -58,16 +63,16 @@ fn get_credentials_from_file(file_path: &str, keyname: &str) -> Result<Pair, Key
 	Ok(pair)
 }
 
-pub fn parse_account_keyring(src: &str) -> Result<Ed25519Keyring, Error> {
+pub fn parse_account_keyring(src: &str) -> Result<AccountKeyring, Error> {
 	match src {
-		"alice" => Ok(Ed25519Keyring::Alice),
-		"bob" => Ok(Ed25519Keyring::Bob),
-		"charlie" => Ok(Ed25519Keyring::Charlie),
-		"dave" => Ok(Ed25519Keyring::Dave),
-		"eve" => Ok(Ed25519Keyring::Eve),
-		"ferdie" => Ok(Ed25519Keyring::Ferdie),
-		"one" => Ok(Ed25519Keyring::One),
-		"two" => Ok(Ed25519Keyring::Two),
+		"alice" => Ok(AccountKeyring::Alice),
+		"bob" => Ok(AccountKeyring::Bob),
+		"charlie" => Ok(AccountKeyring::Charlie),
+		"dave" => Ok(AccountKeyring::Dave),
+		"eve" => Ok(AccountKeyring::Eve),
+		"ferdie" => Ok(AccountKeyring::Ferdie),
+		"one" => Ok(AccountKeyring::One),
+		"two" => Ok(AccountKeyring::Two),
 		_ => Err(Error::KeyringAccountParsingError),
 	}
 }
@@ -102,7 +107,7 @@ pub struct ConnectionOpts {
 impl ConnectionOpts {
 	pub async fn try_connect(
 		&self,
-		signer: SpacewalkSigner,
+		signer: Arc<RwLock<SpacewalkSigner>>,
 		shutdown_tx: ShutdownSender,
 	) -> Result<SpacewalkParachain, Error> {
 		SpacewalkParachain::from_url_and_config_with_retry(

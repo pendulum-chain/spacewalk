@@ -1,0 +1,9 @@
+[package]
+authors = ["Pendulum Chain <https://github.com/pendulum-chain>"]
+edition = "2021"
+name = "wallet"
+version = "1.0.0"
+
+[dependencies]
+thiserror = "1.0"
+substrate-stellar-sdk = { git = "https://github.com/pendulum-chain/substrate-stellar-sdk", branch = "polkadot-v0.9.31" }

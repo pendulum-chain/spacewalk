@@ -1,7 +1,7 @@
 //! # Oracle Pallet
 //! Based on the [specification](https://spec.interlay.io/spec/oracle.html).
 
-#![deny(warnings)]
+// #![deny(warnings)]
 #![cfg_attr(test, feature(proc_macro_hygiene))]
 #![cfg_attr(not(feature = "std"), no_std)]
 
@@ -71,7 +71,7 @@ pub mod pallet {
 		+ currency::Config<CurrencyId = CurrencyId>
 	{
 		/// The overarching event type.
-		type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
+		type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
 
 		/// Weight information for the extrinsics in this module.
 		type WeightInfo: WeightInfo;

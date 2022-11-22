@@ -2,6 +2,7 @@
 
 use bstringify::bstringify;
 use codec::{Decode, Encode, MaxEncodedLen};
+use frame_support::error::LookupError;
 use scale_info::TypeInfo;
 #[cfg(feature = "std")]
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
@@ -21,13 +22,10 @@ use sp_std::{
 	str::from_utf8,
 	vec::Vec,
 };
-
-use frame_support::error::LookupError;
 use stellar::{
 	types::{AlphaNum12, AlphaNum4},
 	Asset, PublicKey,
 };
-
 pub use substrate_stellar_sdk as stellar;
 
 #[cfg(test)]
@@ -503,6 +501,29 @@ pub type AssetIssuer = [u8; 32];
 impl Default for CurrencyId {
 	fn default() -> Self {
 		CurrencyId::Native
+	}
+}
+
+impl TryFrom<(&str, &str)> for CurrencyId {
+	type Error = &'static str;
+
+	fn try_from(value: (&str, &str)) -> Result<Self, Self::Error> {
+		let slice = value.0;
+		let issuer_encoded = value.1;
+		let issuer_pk = stellar::PublicKey::from_encoding(issuer_encoded)
+			.map_err(|_| "Invalid issuer encoding")?;
+		let issuer: AssetIssuer = issuer_pk.as_binary().clone();
+		if slice.len() <= 4 {
+			let mut code: Bytes4 = [0; 4];
+			code[..slice.len()].copy_from_slice(slice.as_bytes());
+			Ok(CurrencyId::AlphaNum4 { code, issuer })
+		} else if slice.len() > 4 && slice.len() <= 12 {
+			let mut code: Bytes12 = [0; 12];
+			code[..slice.len()].copy_from_slice(slice.as_bytes());
+			Ok(CurrencyId::AlphaNum12 { code, issuer })
+		} else {
+			Err("More than 12 bytes not supported")
+		}
 	}
 }
 

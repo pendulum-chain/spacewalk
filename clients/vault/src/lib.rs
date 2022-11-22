@@ -1,23 +1,20 @@
 #![recursion_limit = "256"]
 
-mod deposit;
+use std::time::Duration;
+
+pub use system::{VaultIdManager, VaultService, VaultServiceConfig, ABOUT, AUTHORS, NAME, VERSION};
+
+pub use crate::error::Error;
+
 mod error;
-mod horizon;
-mod redeem;
+mod execution;
+pub mod metrics;
+pub mod process;
 mod system;
 
 pub mod oracle;
 
-pub mod service {
-	pub use crate::{
-		deposit::poll_horizon_for_new_transactions, horizon::HorizonTransactionsResponse,
-		redeem::listen_for_redeem_requests,
-	};
-}
-use std::time::Duration;
-pub use system::{VaultService, VaultServiceConfig, ABOUT, AUTHORS, NAME, VERSION};
-
-pub use crate::error::Error;
+pub mod service {}
 
 /// At startup we wait until a new block has arrived before we start event listeners.
 /// This constant defines the rate at which we check whether the chain height has increased.

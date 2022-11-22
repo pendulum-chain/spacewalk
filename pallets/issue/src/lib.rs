@@ -63,7 +63,7 @@ pub mod pallet {
 		+ fee::Config
 	{
 		/// The overarching event type.
-		type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
+		type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
 
 		/// Convert the block number into a balance.
 		type BlockNumberToBalance: Convert<Self::BlockNumber, BalanceOf<Self>>;

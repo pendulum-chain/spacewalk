@@ -13,18 +13,18 @@ scale-info = { version = "2.0.0", default-features = false, features = ["derive"
 log = { version = "0.4.14", default-features = false }
 
 # Substrate dependencies
-sp-io = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.24", default-features = false }
-sp-core = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.24", default-features = false }
-sp-std = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.24", default-features = false }
-sp-arithmetic = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.24", default-features = false }
-sp-runtime = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.24", default-features = false }
+sp-io = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.31", default-features = false }
+sp-core = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.31", default-features = false }
+sp-std = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.31", default-features = false }
+sp-arithmetic = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.31", default-features = false }
+sp-runtime = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.31", default-features = false }
 
-frame-support = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.24", default-features = false }
-frame-system = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.24", default-features = false }
-frame-benchmarking = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.24", default-features = false, optional = true }
-pallet-timestamp = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.24", default-features = false }
+frame-support = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.31", default-features = false }
+frame-system = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.31", default-features = false }
+frame-benchmarking = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.31", default-features = false, optional = true }
+pallet-timestamp = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.31", default-features = false }
 
-substrate-stellar-sdk = { git = "https://github.com/pendulum-chain/substrate-stellar-sdk", branch = "polkadot-v0.9.24", default-features = false, features = ['offchain'] }
+substrate-stellar-sdk = { git = "https://github.com/pendulum-chain/substrate-stellar-sdk", branch = "polkadot-v0.9.31", default-features = false, features = ['offchain'] }
 
 # Parachain dependencies
 currency = { path = "../currency", default-features = false }
@@ -37,12 +37,12 @@ vault-registry = { path = "../vault-registry", default-features = false }
 primitives = { package = "spacewalk-primitives", path = "../../primitives", default-features = false }
 
 # Orml dependencies
-orml-tokens = { git = "https://github.com/open-web3-stack/open-runtime-module-library", branch = "polkadot-v0.9.24", default-features = false, optional = true }
-orml-traits = { git = "https://github.com/open-web3-stack/open-runtime-module-library", branch = "polkadot-v0.9.24", default-features = false, optional = true }
+orml-tokens = { git = "https://github.com/open-web3-stack/open-runtime-module-library", branch = "polkadot-v0.9.31", default-features = false, optional = true }
+orml-traits = { git = "https://github.com/open-web3-stack/open-runtime-module-library", branch = "polkadot-v0.9.31", default-features = false, optional = true }
 
 [dev-dependencies]
 mocktopus = "0.7.0"
-frame-benchmarking = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.24" }
+frame-benchmarking = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.31" }
 
 reward = { path = "../reward" }
 staking = { path = "../staking" }
@@ -50,8 +50,8 @@ stellar-relay = {  path = "../stellar-relay", features = ['testing-utils'] }
 
 
 # Orml dependencies
-orml-tokens = { git = "https://github.com/open-web3-stack/open-runtime-module-library", branch = "polkadot-v0.9.24" }
-orml-traits = { git = "https://github.com/open-web3-stack/open-runtime-module-library", branch = "polkadot-v0.9.24" }
+orml-tokens = { git = "https://github.com/open-web3-stack/open-runtime-module-library", branch = "polkadot-v0.9.31" }
+orml-traits = { git = "https://github.com/open-web3-stack/open-runtime-module-library", branch = "polkadot-v0.9.31" }
 
 [features]
 default = ["std"]

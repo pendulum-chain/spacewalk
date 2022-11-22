@@ -1,3 +1,28 @@
+use std::{future::Future, ops::RangeInclusive, sync::Arc, time::Duration};
+
+use async_trait::async_trait;
+use futures::{stream::StreamExt, FutureExt, SinkExt};
+use jsonrpsee::core::{client::Client, JsonValue};
+use log::log;
+use sp_arithmetic::FixedPointNumber;
+use sp_runtime::FixedU128;
+use subxt::{
+	blocks::ExtrinsicEvents,
+	client::OnlineClient,
+	events::{EventDetails, StaticEvent},
+	metadata::DecodeWithMetadata,
+	rpc::{rpc_params, RpcClient, RpcClientT},
+	storage::{address::Yes, StorageAddress},
+	tx::{PolkadotExtrinsicParams, Signer, TxPayload, TxProgress},
+	Error as BasicError, Metadata,
+};
+use tokio::{
+	sync::{Mutex, RwLock},
+	time::timeout,
+};
+
+use module_oracle_rpc_runtime_api::BalanceWrapper;
+
 use crate::{
 	conn::{new_websocket_client, new_websocket_client_with_retry},
 	metadata,
@@ -7,51 +32,51 @@ use crate::{
 	AccountId, Error, RetryPolicy, SpacewalkRuntime, SpacewalkSigner, SubxtError,
 };
 
-use async_trait::async_trait;
-use futures::{stream::StreamExt, FutureExt, SinkExt};
-use std::{future::Future, ops::RangeInclusive, sync::Arc, time::Duration};
-use subxt::{
-	rpc::JsonValue, BasicError, Client as SubxtClient, ClientBuilder as SubxtClientBuilder, Event,
-	Metadata, PolkadotExtrinsicParams, RpcClient, TransactionEvents, TransactionProgress,
-};
-use tokio::{sync::RwLock, time::timeout};
+pub type UnsignedFixedPoint = FixedU128;
 
 cfg_if::cfg_if! {
 	if #[cfg(feature = "standalone-metadata")] {
 		const DEFAULT_SPEC_VERSION: RangeInclusive<u32> = 1..=1;
-		const DEFAULT_SPEC_NAME: &str = "spacewalk-standalone";
+		pub const DEFAULT_SPEC_NAME: &str = "spacewalk-standalone";
+		// The prefix for the testchain is 42
+		pub const SS58_PREFIX: u16 = 42;
 	} else if #[cfg(feature = "parachain-metadata")] {
 		const DEFAULT_SPEC_VERSION: RangeInclusive<u32> = 1..=1;
-		const DEFAULT_SPEC_NAME: &str = "pendulum-parachain";
+		pub const DEFAULT_SPEC_NAME: &str = "pendulum-parachain";
+		// The prefix for pendulum is 56
+		pub const SS58_PREFIX: u16 = 56;
 	}
 }
+
+// timeout before retrying parachain calls (5 minutes)
 const TRANSACTION_TIMEOUT: Duration = Duration::from_secs(300); // 5 minutes
 
-type RuntimeApi = metadata::RuntimeApi<SpacewalkRuntime, PolkadotExtrinsicParams<SpacewalkRuntime>>;
-pub(crate) type ShutdownSender = tokio::sync::broadcast::Sender<Option<()>>;
+// number of storage entries to fetch at a time
+const DEFAULT_PAGE_SIZE: u32 = 10;
+
+pub(crate) type ShutdownSender = tokio::sync::broadcast::Sender<()>;
 
 #[derive(Clone)]
 pub struct SpacewalkParachain {
-	ext_client: SubxtClient<SpacewalkRuntime>,
 	signer: Arc<RwLock<SpacewalkSigner>>,
 	account_id: AccountId,
-	api: Arc<RuntimeApi>,
+	api: OnlineClient<SpacewalkRuntime>,
 	shutdown_tx: ShutdownSender,
 	metadata: Arc<Metadata>,
 }
 
 impl SpacewalkParachain {
-	pub async fn new<P: Into<RpcClient>>(
-		rpc_client: P,
-		signer: SpacewalkSigner,
+	pub async fn new(
+		rpc_client: Client,
+		signer: Arc<RwLock<SpacewalkSigner>>,
 		shutdown_tx: ShutdownSender,
 	) -> Result<Self, Error> {
-		let account_id = signer.account_id().clone();
-		let ext_client = SubxtClientBuilder::new().set_client(rpc_client).build().await?;
-		let api: RuntimeApi = ext_client.clone().to_runtime_api();
-		let metadata = Arc::new(ext_client.rpc().metadata().await?);
+		let account_id = signer.read().await.account_id().clone();
+		let api = OnlineClient::<SpacewalkRuntime>::from_rpc_client(Arc::new(rpc_client)).await?;
+		// let api: RuntimeApi = ext_client.clone().to_runtime_api();
+		let metadata = Arc::new(api.rpc().metadata().await?);
 
-		let runtime_version = ext_client.rpc().runtime_version(None).await?;
+		let runtime_version = api.rpc().runtime_version(None).await?;
 		let default_spec_name = &JsonValue::default();
 		let spec_name = runtime_version.other.get("specName").unwrap_or(default_spec_name);
 		if spec_name == DEFAULT_SPEC_NAME {
@@ -74,21 +99,13 @@ impl SpacewalkParachain {
 			))
 		}
 
-		let parachain_rpc = Self {
-			ext_client,
-			api: Arc::new(api),
-			shutdown_tx,
-			metadata,
-			signer: Arc::new(RwLock::new(signer)),
-			account_id,
-		};
-		parachain_rpc.refresh_nonce().await;
+		let parachain_rpc = Self { api, shutdown_tx, metadata, signer, account_id };
 		Ok(parachain_rpc)
 	}
 
 	pub async fn from_url(
 		url: &str,
-		signer: SpacewalkSigner,
+		signer: Arc<RwLock<SpacewalkSigner>>,
 		shutdown_tx: ShutdownSender,
 	) -> Result<Self, Error> {
 		let ws_client = new_websocket_client(url, None, None).await?;
@@ -97,7 +114,7 @@ impl SpacewalkParachain {
 
 	pub async fn from_url_with_retry(
 		url: &str,
-		signer: SpacewalkSigner,
+		signer: Arc<RwLock<SpacewalkSigner>>,
 		connection_timeout: Duration,
 		shutdown_tx: ShutdownSender,
 	) -> Result<Self, Error> {
@@ -114,7 +131,7 @@ impl SpacewalkParachain {
 
 	pub async fn from_url_and_config_with_retry(
 		url: &str,
-		signer: SpacewalkSigner,
+		signer: Arc<RwLock<SpacewalkSigner>>,
 		max_concurrent_requests: Option<usize>,
 		max_notifs_per_subscription: Option<usize>,
 		connection_timeout: Duration,
@@ -127,58 +144,27 @@ impl SpacewalkParachain {
 			connection_timeout,
 		)
 		.await?;
+		// let ws_client = new_websocket_client(url, None, None).await?;
 		Self::new(ws_client, signer, shutdown_tx).await
 	}
 
-	async fn refresh_nonce(&self) {
-		let mut signer = self.signer.write().await;
-		// For getting the nonce, use latest, possibly non-finalized block.
-		// TODO: we might want to wait until the latest block is actually finalized
-		// query account info in order to get the nonce value used for communication
-		let account_info = self
-			.api
-			.storage()
-			.system()
-			.account(&self.account_id, None)
-			.await
-			.map(|x| x.nonce)
-			.unwrap_or(0);
-
-		log::info!("Refreshing nonce: {}", account_info);
-		signer.set_nonce(account_info);
-	}
-
-	/// Gets a copy of the signer with a unique nonce
-	async fn with_unique_signer<'client, F, R>(
-		&self,
-		call: F,
-	) -> Result<TransactionEvents<'client, SpacewalkRuntime, SpacewalkEvent>, Error>
+	async fn with_retry<Call>(&self, call: Call) -> Result<ExtrinsicEvents<SpacewalkRuntime>, Error>
 	where
-		F: Fn(SpacewalkSigner) -> R,
-		R: Future<
-			Output = Result<
-				TransactionProgress<'client, SpacewalkRuntime, DispatchError, SpacewalkEvent>,
-				BasicError,
-			>,
-		>,
+		Call: TxPayload,
 	{
 		notify_retry::<Error, _, _, _, _, _>(
 			|| async {
-				let signer = {
-					let mut signer = self.signer.write().await;
-					// return the current value, increment afterwards
-					let cloned_signer = signer.clone();
-					signer.increment_nonce();
-					cloned_signer
-				};
+				let signer = self.signer.read().await;
 				match timeout(TRANSACTION_TIMEOUT, async {
-					call(signer).await?.wait_for_finalized_success().await
+					let tx_progress =
+						self.api.tx().sign_and_submit_then_watch_default(&call, &*signer).await?;
+					tx_progress.wait_for_finalized_success().await
 				})
 				.await
 				{
 					Err(_) => {
 						log::warn!("Timeout on transaction submission - restart required");
-						let _ = self.shutdown_tx.send(Some(()));
+						let _ = self.shutdown_tx.send(());
 						Err(Error::Timeout)
 					},
 					Ok(x) => Ok(x?),
@@ -187,28 +173,47 @@ impl SpacewalkParachain {
 			|result| async {
 				match result.map_err(Into::<Error>::into) {
 					Ok(te) => Ok(te),
-					Err(err) =>
-						if let Some(data) = err.is_invalid_transaction() {
-							self.refresh_nonce().await;
-							Err(RetryPolicy::Skip(Error::InvalidTransaction(data)))
-						} else if err.is_pool_too_low_priority().is_some() {
-							self.refresh_nonce().await;
-							Err(RetryPolicy::Skip(Error::PoolTooLowPriority))
-						} else if err.is_block_hash_not_found_error() {
-							self.refresh_nonce().await;
-							log::info!("Re-sending transaction after apparent fork");
-							Err(RetryPolicy::Skip(Error::BlockHashNotFound))
-						} else {
-							Err(RetryPolicy::Throw(err))
-						},
+					Err(err) => Err(RetryPolicy::Throw(err)),
 				}
 			},
 		)
 		.await
 	}
 
-	pub async fn get_latest_block_hash(&self) -> Result<Option<H256>, Error> {
-		Ok(Some(self.ext_client.rpc().finalized_head().await?))
+	async fn query_finalized<Address>(
+		&self,
+		address: Address,
+	) -> Result<Option<<Address::Target as DecodeWithMetadata>::Target>, Error>
+	where
+		Address: StorageAddress<IsFetchable = Yes>,
+	{
+		let hash = self.get_finalized_block_hash().await?;
+		Ok(self.api.storage().fetch(&address, hash).await?)
+	}
+
+	async fn query_finalized_or_error<Address>(
+		&self,
+		address: Address,
+	) -> Result<<Address::Target as DecodeWithMetadata>::Target, Error>
+	where
+		Address: StorageAddress<IsFetchable = Yes>,
+	{
+		self.query_finalized(address).await?.ok_or(Error::StorageItemNotFound)
+	}
+
+	async fn query_finalized_or_default<Address>(
+		&self,
+		address: Address,
+	) -> Result<<Address::Target as DecodeWithMetadata>::Target, Error>
+	where
+		Address: StorageAddress<IsFetchable = Yes, IsDefaultable = Yes>,
+	{
+		let hash = self.get_finalized_block_hash().await?;
+		Ok(self.api.storage().fetch_or_default(&address, hash).await?)
+	}
+
+	pub async fn get_finalized_block_hash(&self) -> Result<Option<H256>, Error> {
+		Ok(Some(self.api.rpc().finalized_head().await?))
 	}
 
 	/// Subscribe to new parachain blocks.
@@ -217,7 +222,7 @@ impl SpacewalkParachain {
 		F: Fn(SpacewalkHeader) -> R,
 		R: Future<Output = Result<(), Error>>,
 	{
-		let mut sub = self.ext_client.rpc().subscribe_finalized_blocks().await?;
+		let mut sub = self.api.rpc().subscribe_finalized_block_headers().await?;
 		loop {
 			on_block(sub.next().await.ok_or(Error::ChannelClosed)??).await?;
 		}
@@ -230,7 +235,7 @@ impl SpacewalkParachain {
 	/// # Arguments
 	/// * `on_error` - callback for decoding errors, is not allowed to take too long
 	pub async fn on_event_error<E: Fn(BasicError)>(&self, on_error: E) -> Result<(), Error> {
-		let mut sub = self.api.events().subscribe_finalized().await?;
+		let mut sub = self.api.blocks().subscribe_finalized().await?;
 
 		loop {
 			match sub.next().await {
@@ -254,28 +259,35 @@ impl SpacewalkParachain {
 	/// * `on_error` - callback for decoding error, is not allowed to take too long
 	pub async fn on_event<T, F, R, E>(&self, mut on_event: F, on_error: E) -> Result<(), Error>
 	where
-		T: Event + core::fmt::Debug,
+		T: StaticEvent + core::fmt::Debug,
 		F: FnMut(T) -> R,
 		R: Future<Output = ()>,
 		E: Fn(SubxtError),
 	{
-		let mut sub = self.api.events().subscribe_finalized().await?.filter_events::<(T,)>();
-		let (tx, mut rx) = futures::channel::mpsc::channel::<T>(32);
+		let mut sub = self.api.blocks().subscribe_finalized().await?;
+		let (tx, mut rx) = futures::channel::mpsc::channel(32);
 
 		// two tasks: one for event listening and one for callback calling
 		futures::future::try_join(
 			async move {
 				let tx = &tx;
 				while let Some(result) = sub.next().fuse().await {
-					match result {
-						Ok(event_details) => {
-							let event = event_details.event;
-							log::trace!("event: {:?}", event);
-							if tx.clone().send(event).await.is_err() {
-								break
-							}
-						},
-						Err(err) => on_error(err.into()),
+					let block = result?;
+					let events = block.events().await?;
+					for event in events.iter() {
+						match event {
+							Ok(event) => {
+								// Try to convert to target event
+								let target_event = event.as_event::<T>();
+								if let Ok(Some(target_event)) = target_event {
+									log::trace!("event: {:?}", target_event);
+									if tx.clone().send(target_event).await.is_err() {
+										break
+									}
+								}
+							},
+							Err(err) => on_error(err.into()),
+						}
 					}
 				}
 				Result::<(), _>::Err(Error::ChannelClosed)
@@ -356,68 +368,328 @@ pub trait UtilFuncs {
 
 	/// Get the address of the configured signer.
 	fn get_account_id(&self) -> &AccountId;
+
+	fn is_this_vault(&self, vault_id: &VaultId) -> bool;
 }
 
 #[async_trait]
 impl UtilFuncs for SpacewalkParachain {
 	async fn get_current_chain_height(&self) -> Result<u32, Error> {
-		let head = self.get_latest_block_hash().await?;
-		Ok(self.api.storage().system().number(head).await?)
+		let height_query = metadata::storage().system().number();
+		let height = self.api.storage().fetch(&height_query, None).await?;
+		match height {
+			Some(height) => Ok(height),
+			None => Err(Error::BlockNotFound),
+		}
+	}
+
+	fn is_this_vault(&self, vault_id: &VaultId) -> bool {
+		&vault_id.account_id == self.get_account_id()
 	}
 
 	fn get_account_id(&self) -> &AccountId {
 		&self.account_id
 	}
 }
-#[async_trait]
-pub trait SpacewalkPallet {
-	async fn report_stellar_transaction(&self, tx_envelope_xdr: &Vec<u8>) -> Result<(), Error>;
 
-	async fn redeem(
+#[async_trait]
+pub trait VaultRegistryPallet {
+	async fn get_vault(&self, vault_id: &VaultId) -> Result<SpacewalkVault, Error>;
+
+	async fn get_vaults_by_account_id(&self, account_id: &AccountId)
+		-> Result<Vec<VaultId>, Error>;
+
+	async fn get_all_vaults(&self) -> Result<Vec<SpacewalkVault>, Error>;
+
+	async fn register_vault(&self, vault_id: &VaultId, collateral: u128) -> Result<(), Error>;
+
+	async fn deposit_collateral(&self, vault_id: &VaultId, amount: u128) -> Result<(), Error>;
+
+	async fn withdraw_collateral(&self, vault_id: &VaultId, amount: u128) -> Result<(), Error>;
+
+	async fn get_public_key(&self) -> Result<Option<StellarPublicKey>, Error>;
+
+	async fn register_public_key(&mut self, public_key: StellarPublicKey) -> Result<(), Error>;
+
+	async fn get_required_collateral_for_wrapped(
 		&self,
-		asset_code: &Vec<u8>,
-		asset_issuer: &Vec<u8>,
+		amount_btc: u128,
+		collateral_currency: CurrencyId,
+	) -> Result<u128, Error>;
+
+	async fn get_required_collateral_for_vault(&self, vault_id: VaultId) -> Result<u128, Error>;
+
+	async fn get_vault_total_collateral(&self, vault_id: VaultId) -> Result<u128, Error>;
+
+	async fn get_collateralization_from_vault(
+		&self,
+		vault_id: VaultId,
+		only_issued: bool,
+	) -> Result<u128, Error>;
+}
+
+#[async_trait]
+impl VaultRegistryPallet for SpacewalkParachain {
+	/// Fetch a specific vault by ID.
+	///
+	/// # Arguments
+	/// * `vault_id` - account ID of the vault
+	///
+	/// # Errors
+	/// * `VaultNotFound` - if the rpc returned a default value rather than the vault we want
+	/// * `VaultLiquidated` - if the vault is liquidated
+	async fn get_vault(&self, vault_id: &VaultId) -> Result<SpacewalkVault, Error> {
+		let query = metadata::storage().vault_registry().vaults(&vault_id.clone());
+
+		match self.query_finalized(query).await? {
+			Some(SpacewalkVault { status: VaultStatus::Liquidated, .. }) =>
+				Err(Error::VaultLiquidated),
+			Some(vault) if &vault.id == vault_id => Ok(vault),
+			_ => Err(Error::VaultNotFound),
+		}
+	}
+
+	async fn get_vaults_by_account_id(
+		&self,
+		account_id: &AccountId,
+	) -> Result<Vec<VaultId>, Error> {
+		let head = self.get_finalized_block_hash().await?;
+		let result = self
+			.api
+			.rpc()
+			.request("vaultRegistry_getVaultsByAccountId", rpc_params![account_id, head])
+			.await?;
+
+		Ok(result)
+	}
+
+	/// Fetch all active vaults.
+	async fn get_all_vaults(&self) -> Result<Vec<SpacewalkVault>, Error> {
+		let mut vaults = Vec::new();
+		let head = self.get_finalized_block_hash().await?;
+		let key_addr = metadata::storage().vault_registry().vaults_root();
+
+		let mut iter = self.api.storage().iter(key_addr, DEFAULT_PAGE_SIZE, head).await?;
+		while let Some((_, account)) = iter.next().await? {
+			if let VaultStatus::Active(..) = account.status {
+				vaults.push(account);
+			}
+		}
+		Ok(vaults)
+	}
+
+	/// Submit extrinsic to register a vault.
+	///
+	/// # Arguments
+	/// * `collateral` - deposit
+	/// * `public_key` - Bitcoin public key
+	async fn register_vault(&self, vault_id: &VaultId, collateral: u128) -> Result<(), Error> {
+		// TODO: check MinimumDeposit
+		if collateral == 0 {
+			return Err(Error::InsufficientFunds)
+		}
+
+		let register_vault_tx = metadata::tx()
+			.vault_registry()
+			.register_vault(vault_id.currencies.clone(), collateral);
+
+		self.with_retry(register_vault_tx).await?;
+		Ok(())
+	}
+
+	/// Locks additional collateral as a security against stealing the
+	/// Bitcoin locked with it.
+	///
+	/// # Arguments
+	/// * `amount` - the amount of extra collateral to lock
+	async fn deposit_collateral(&self, vault_id: &VaultId, amount: u128) -> Result<(), Error> {
+		let deposit_collateral_tx = metadata::tx()
+			.vault_registry()
+			.deposit_collateral(vault_id.currencies.clone(), amount);
+
+		self.with_retry(deposit_collateral_tx).await?;
+		Ok(())
+	}
+
+	/// Withdraws `amount` of the collateral from the amount locked by
+	/// the vault corresponding to the origin account
+	/// The collateral left after withdrawal must be more than MinimumCollateralVault
+	/// and above the SecureCollateralThreshold. Collateral that is currently
+	/// being used to back issued tokens remains locked until the Vault
+	/// is used for a redeem request (full release can take multiple redeem requests).
+	///
+	/// # Arguments
+	/// * `amount` - the amount of collateral to withdraw
+	async fn withdraw_collateral(&self, vault_id: &VaultId, amount: u128) -> Result<(), Error> {
+		let withdraw_collateral_tx = metadata::tx()
+			.vault_registry()
+			.withdraw_collateral(vault_id.currencies.clone(), amount);
+
+		self.with_retry(withdraw_collateral_tx).await?;
+		Ok(())
+	}
+
+	async fn get_public_key(&self) -> Result<Option<StellarPublicKey>, Error> {
+		let query = metadata::storage()
+			.vault_registry()
+			.vault_stellar_public_key(self.get_account_id());
+
+		self.query_finalized(query).await
+	}
+
+	/// Update the default BTC public key for the vault corresponding to the signer.
+	///
+	/// # Arguments
+	/// * `public_key` - the new public key of the vault
+	async fn register_public_key(&mut self, public_key: StellarPublicKey) -> Result<(), Error> {
+		let register_public_key_tx =
+			metadata::tx().vault_registry().register_public_key(public_key.clone());
+
+		self.with_retry(register_public_key_tx).await?;
+
+		Ok(())
+	}
+
+	/// Custom RPC that calculates the exact collateral required to cover the BTC amount.
+	///
+	/// # Arguments
+	/// * `amount_btc` - amount of btc to cover
+	async fn get_required_collateral_for_wrapped(
+		&self,
+		amount_btc: u128,
+		collateral_currency: CurrencyId,
+	) -> Result<u128, Error> {
+		let head = self.get_finalized_block_hash().await?;
+		let result: BalanceWrapper<_> = self
+			.api
+			.rpc()
+			.request(
+				"vaultRegistry_getRequiredCollateralForWrapped",
+				rpc_params![BalanceWrapper { amount: amount_btc }, collateral_currency, head],
+			)
+			.await?;
+
+		Ok(result.amount)
+	}
+
+	/// Get the amount of collateral required for the given vault to be at the
+	/// current SecureCollateralThreshold with the current exchange rate
+	async fn get_required_collateral_for_vault(&self, vault_id: VaultId) -> Result<u128, Error> {
+		let head = self.get_finalized_block_hash().await?;
+		let result: BalanceWrapper<_> = self
+			.api
+			.rpc()
+			.request("vaultRegistry_getRequiredCollateralForVault", rpc_params![vault_id, head])
+			.await?;
+
+		Ok(result.amount)
+	}
+
+	async fn get_vault_total_collateral(&self, vault_id: VaultId) -> Result<u128, Error> {
+		let head = self.get_finalized_block_hash().await?;
+		let result: BalanceWrapper<_> = self
+			.api
+			.rpc()
+			.request("vaultRegistry_getVaultTotalCollateral", rpc_params![vault_id, head])
+			.await?;
+
+		Ok(result.amount)
+	}
+
+	async fn get_collateralization_from_vault(
+		&self,
+		vault_id: VaultId,
+		only_issued: bool,
+	) -> Result<u128, Error> {
+		let head = self.get_finalized_block_hash().await?;
+		let result: UnsignedFixedPoint = self
+			.api
+			.rpc()
+			.request(
+				"vaultRegistry_getCollateralizationFromVault",
+				rpc_params![vault_id, only_issued, head],
+			)
+			.await?;
+
+		Ok(result.into_inner())
+	}
+}
+
+#[async_trait]
+pub trait CollateralBalancesPallet {
+	async fn get_free_balance(&self, currency_id: CurrencyId) -> Result<Balance, Error>;
+
+	async fn get_free_balance_for_id(
+		&self,
+		id: AccountId,
+		currency_id: CurrencyId,
+	) -> Result<Balance, Error>;
+
+	async fn get_reserved_balance(&self, currency_id: CurrencyId) -> Result<Balance, Error>;
+
+	async fn get_reserved_balance_for_id(
+		&self,
+		id: AccountId,
+		currency_id: CurrencyId,
+	) -> Result<Balance, Error>;
+
+	async fn transfer_to(
+		&self,
+		recipient: &AccountId,
 		amount: u128,
-		stellar_vault_pubkey: [u8; 32],
+		currency_id: CurrencyId,
 	) -> Result<(), Error>;
 }
 
 #[async_trait]
-impl SpacewalkPallet for SpacewalkParachain {
-	async fn report_stellar_transaction(&self, tx_envelope_xdr: &Vec<u8>) -> Result<(), Error> {
-		self.with_unique_signer(|signer| async move {
-			self.api
-				.tx()
-				.spacewalk() // assume that spacewalk pallet is registered in connected chain
-				.report_stellar_transaction(tx_envelope_xdr.to_vec()) // spacewalk pallet offers extrinsic `report_stellar_transaction`
-				.sign_and_submit_then_watch_default(&signer)
-				.await
-		})
-		.await?;
-		Ok(())
+impl CollateralBalancesPallet for SpacewalkParachain {
+	async fn get_free_balance(&self, currency_id: CurrencyId) -> Result<Balance, Error> {
+		Ok(Self::get_free_balance_for_id(self, self.account_id.clone(), currency_id).await?)
 	}
 
-	async fn redeem(
+	async fn get_free_balance_for_id(
 		&self,
-		asset_code: &Vec<u8>,
-		asset_issuer: &Vec<u8>,
+		id: AccountId,
+		currency_id: CurrencyId,
+	) -> Result<Balance, Error> {
+		let head = self.get_finalized_block_hash().await?;
+		let query = metadata::storage().tokens().accounts(&id, &currency_id);
+
+		let result = self.api.storage().fetch(&query, head).await?;
+		Ok(result.map(|x| x.free).unwrap_or_default())
+	}
+
+	async fn get_reserved_balance(&self, currency_id: CurrencyId) -> Result<Balance, Error> {
+		Ok(Self::get_reserved_balance_for_id(self, self.account_id.clone(), currency_id).await?)
+	}
+
+	async fn get_reserved_balance_for_id(
+		&self,
+		id: AccountId,
+		currency_id: CurrencyId,
+	) -> Result<Balance, Error> {
+		let head = self.get_finalized_block_hash().await?;
+		let query = metadata::storage().tokens().accounts(&id, &currency_id);
+
+		let result = self.api.storage().fetch(&query, head).await?;
+		Ok(result.map(|x| x.reserved).unwrap_or_default())
+	}
+
+	async fn transfer_to(
+		&self,
+		recipient: &AccountId,
 		amount: u128,
-		stellar_vault_pubkey: [u8; 32],
+		currency_id: CurrencyId,
 	) -> Result<(), Error> {
-		self.with_unique_signer(|signer| async move {
-			self.api
-				.tx()
-				.spacewalk() // assume that spacewalk pallet is registered in connected chain
-				.redeem(
-					asset_code.to_vec(),
-					asset_issuer.to_vec(),
-					amount,
-					stellar_vault_pubkey.clone().to_vec(),
-				) // spacewalk pallet offers extrinsic `redeem`
-				.sign_and_submit_then_watch_default(&signer)
-				.await
-		})
-		.await?;
+		let transfer_tx = metadata::tx().tokens().transfer(
+			subxt::ext::sp_runtime::MultiAddress::Id(recipient.clone()),
+			currency_id,
+			amount,
+		);
+
+		let signer = self.signer.read().await;
+
+		self.api.tx().sign_and_submit_then_watch_default(&transfer_tx, &*signer).await?;
 		Ok(())
 	}
 }

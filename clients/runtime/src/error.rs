@@ -1,19 +1,24 @@
-pub use jsonrpsee::core::Error as JsonRpseeError;
+use std::{array::TryFromSliceError, fmt::Debug, io::Error as IoError, num::TryFromIntError};
 
-use crate::metadata::DispatchError;
 use codec::Error as CodecError;
+pub use jsonrpsee::core::Error as JsonRpseeError;
 use jsonrpsee::{
-	client_transport::ws::WsHandshakeError, core::error::Error as RequestError,
-	types::error::CallError,
+	client_transport::ws::WsHandshakeError,
+	core::error::Error as RequestError,
+	types::{error::CallError, ErrorObject, ErrorObjectOwned},
 };
 use serde_json::Error as SerdeJsonError;
-use std::{array::TryFromSliceError, fmt::Debug, io::Error as IoError, num::TryFromIntError};
-use subxt::{sp_core::crypto::SecretStringError, BasicError, TransactionError};
+use subxt::{
+	error::{DispatchError, Error as BasicError, ModuleError, RpcError, TransactionError},
+	ext::sp_core::crypto::SecretStringError,
+};
 use thiserror::Error;
 use tokio::time::error::Elapsed;
 use url::ParseError as UrlParseError;
 
-pub type SubxtError = subxt::Error<DispatchError>;
+use crate::{types::*, ISSUE_MODULE, SYSTEM_MODULE};
+
+pub type SubxtError = subxt::Error;
 
 #[derive(Error, Debug)]
 pub enum Error {
@@ -79,55 +84,18 @@ pub enum Error {
 	UrlParseError(#[from] UrlParseError),
 }
 
-impl From<BasicError> for Error {
-	fn from(err: BasicError) -> Self {
-		Self::SubxtRuntimeError(SubxtError::from(err))
-	}
-}
-
 impl Error {
-	// fn is_module_err(&self, pallet_name: &str, error_name: &str) -> bool {
-	// 	matches!(
-	// 		self,
-	// 		Error::SubxtRuntimeError(SubxtError::Module(ModuleError {
-	// 			pallet, error, ..
-	// 		})) if pallet == pallet_name && error == error_name,
-	// 	)
-	// }
-
-	fn map_call_error<T>(&self, call: impl Fn(&CallError) -> Option<T>) -> Option<T> {
-		match self {
-			Error::SubxtRuntimeError(SubxtError::Rpc(RequestError::Call(err))) => call(err),
-			_ => None,
-		}
+	fn is_module_err(&self, pallet_name: &str, error_name: &str) -> bool {
+		matches!(
+			self,
+			Error::SubxtRuntimeError(SubxtError::Runtime(DispatchError::Module(ModuleError{
+				pallet, error, ..
+			}))) if pallet == pallet_name && error == error_name,
+		)
 	}
 
-	pub fn is_invalid_transaction(&self) -> Option<String> {
-		self.map_call_error(|call_error| {
-			if let CallError::Custom { code: POOL_INVALID_TX, data, .. } = call_error {
-				Some(data.clone().map(|raw| raw.to_string()).unwrap_or_default())
-			} else {
-				None
-			}
-		})
-	}
-
-	pub fn is_pool_too_low_priority(&self) -> Option<()> {
-		self.map_call_error(|call_error| {
-			if let CallError::Custom { code: POOL_TOO_LOW_PRIORITY, .. } = call_error {
-				Some(())
-			} else {
-				None
-			}
-		})
-	}
-
-	pub fn is_rpc_disconnect_error(&self) -> bool {
-		matches!(self, Error::SubxtRuntimeError(SubxtError::Rpc(JsonRpseeError::RestartNeeded(_))))
-	}
-
-	pub fn is_rpc_error(&self) -> bool {
-		matches!(self, Error::SubxtRuntimeError(SubxtError::Rpc(_)))
+	pub fn is_issue_completed(&self) -> bool {
+		self.is_module_err(ISSUE_MODULE, &format!("{:?}", IssuePalletError::IssueCompleted))
 	}
 
 	pub fn is_block_hash_not_found_error(&self) -> bool {
@@ -143,6 +111,10 @@ impl Error {
 			Error::JsonRpseeError(JsonRpseeError::Transport(err))
 			if matches!(err.downcast_ref::<WsHandshakeError>(), Some(WsHandshakeError::Url(_)))
 		)
+	}
+
+	pub fn is_parachain_shutdown_error(&self) -> bool {
+		self.is_module_err(SYSTEM_MODULE, &format!("{:?}", SystemPalletError::CallFiltered))
 	}
 }
 

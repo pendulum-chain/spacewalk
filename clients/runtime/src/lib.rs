@@ -1,30 +1,31 @@
+use codec::{Decode, Encode};
+pub use prometheus;
+pub use sp_arithmetic::{traits as FixedPointTraits, FixedI128, FixedPointNumber, FixedU128};
+use sp_std::marker::PhantomData;
+pub use subxt::ext::sp_core::{crypto::Ss58Codec, sr25519::Pair};
+use subxt::{
+	ext::sp_runtime::{generic::Header, traits::BlakeTwo256, MultiSignature, OpaqueExtrinsic},
+	subxt, Config,
+};
+
+pub use assets::TryFromSymbol;
+pub use error::{Error, SubxtError};
+pub use retry::{notify_retry, RetryPolicy};
+pub use rpc::{
+	CollateralBalancesPallet, SpacewalkParachain, UtilFuncs, VaultRegistryPallet,
+	DEFAULT_SPEC_NAME, SS58_PREFIX,
+};
+pub use types::*;
+
 pub mod cli;
 
+mod assets;
 mod conn;
 mod error;
 mod retry;
 mod rpc;
 
 pub mod types;
-
-#[cfg(all(feature = "testing-utils", feature = "standalone-metadata"))]
-pub mod integration;
-
-use codec::{Decode, Encode};
-use sp_std::marker::PhantomData;
-use subxt::{
-	sp_runtime::{generic::Header, traits::BlakeTwo256, MultiSignature, OpaqueExtrinsic},
-	subxt, Config,
-};
-
-pub use error::{Error, SubxtError};
-pub use retry::{notify_retry, RetryPolicy};
-pub use rpc::{SpacewalkPallet, SpacewalkParachain, UtilFuncs};
-pub use sp_arithmetic::{traits as FixedPointTraits, FixedI128, FixedPointNumber, FixedU128};
-pub use subxt::sp_core::{crypto::Ss58Codec, sr25519::Pair};
-pub use types::*;
-// explicitly import some types for making it clearer which ones we use in the runtime
-use types::{AccountId, Address, BlockNumber, Index, H256};
 
 pub const TX_FEES: u128 = 2000000000;
 pub const MILLISECS_PER_BLOCK: u64 = 6000;
@@ -41,13 +42,24 @@ pub const STABLE_PARACHAIN_CONFIRMATIONS: &str = "StableParachainConfirmations";
 
 #[cfg_attr(
 	feature = "parachain-metadata",
-	subxt(runtime_metadata_path = "metadata-parachain.scale", generated_type_derives = "Clone")
+	subxt(
+		runtime_metadata_path = "metadata-parachain.scale",
+		derive_for_all_types = "Clone, PartialEq, Eq",
+	)
 )]
 #[cfg_attr(
 	feature = "standalone-metadata",
-	subxt(runtime_metadata_path = "metadata-standalone.scale", generated_type_derives = "Clone")
+	subxt(
+		runtime_metadata_path = "metadata-standalone.scale",
+		derive_for_all_types = "Clone, PartialEq, Eq",
+	)
 )]
-pub mod metadata {}
+pub mod metadata {
+	#[subxt(substitute_type = "sp_core::crypto::AccountId32")]
+	use crate::AccountId;
+	#[subxt(substitute_type = "spacewalk_primitives::CurrencyId")]
+	use crate::CurrencyId;
+}
 
 #[derive(Debug, Eq, PartialEq, Ord, PartialOrd, Default, Clone, Decode, Encode)]
 pub struct WrapperKeepOpaque<T> {
@@ -66,6 +78,6 @@ impl Config for SpacewalkRuntime {
 	type AccountId = AccountId;
 	type Address = Address;
 	type Header = Header<Self::BlockNumber, BlakeTwo256>;
-	type Extrinsic = OpaqueExtrinsic;
 	type Signature = MultiSignature;
+	type ExtrinsicParams = subxt::tx::PolkadotExtrinsicParams<Self>;
 }
