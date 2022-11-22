@@ -48,7 +48,7 @@ impl frame_system::Config for Test {
 	type BlockWeights = ();
 	type BlockLength = ();
 	type DbWeight = ();
-	type Origin = Origin;
+	type RuntimeOrigin = RuntimeOrigin;
 	type RuntimeCall = RuntimeCall;
 	type Index = Index;
 	type BlockNumber = BlockNumber;
@@ -57,7 +57,7 @@ impl frame_system::Config for Test {
 	type AccountId = AccountId;
 	type Lookup = IdentityLookup<Self::AccountId>;
 	type Header = Header;
-	type Event = TestEvent;
+	type RuntimeEvent = TestEvent;
 	type BlockHashCount = BlockHashCount;
 	type Version = ();
 	type PalletInfo = PalletInfo;
@@ -75,7 +75,7 @@ parameter_types! {
 }
 
 impl Config for Test {
-	type Event = TestEvent;
+	type RuntimeEvent = TestEvent;
 	type SignedInner = SignedInner;
 	type SignedFixedPoint = SignedFixedPoint;
 	type CurrencyId = CurrencyId;
@@ -93,22 +93,25 @@ parameter_type_with_key! {
 	};
 }
 impl orml_tokens::Config for Test {
-	type Event = TestEvent;
+	type RuntimeEvent = TestEvent;
 	type Balance = Balance;
 	type Amount = RawAmount;
 	type CurrencyId = CurrencyId;
 	type WeightInfo = ();
 	type ExistentialDeposits = ExistentialDeposits;
 	type OnDust = ();
-	type MaxLocks = MaxLocks;
-	type DustRemovalWhitelist = Everything;
-	type MaxReserves = ConstU32<0>; // we don't use named reserves
-	type ReserveIdentifier = (); // we don't use named reserves
+	type OnSlash = ();
+	type OnDeposit = ();
+	type OnTransfer = ();
 	type OnNewTokenAccount = ();
 	type OnKilledTokenAccount = ();
+	type MaxLocks = MaxLocks;
+	type MaxReserves = ConstU32<0>;
+	type ReserveIdentifier = ();
+	type DustRemovalWhitelist = Everything;
 }
 
-pub type TestEvent = Event;
+pub type TestEvent = RuntimeEvent;
 pub type TestError = Error<Test>;
 
 pub const VAULT: VaultId<AccountId, CurrencyId> = VaultId {
