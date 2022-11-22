@@ -66,12 +66,10 @@ fn test_request_redeem_fails_with_amount_exceeds_user_balance() {
 			Amount::<Test>::new(2, <Test as currency::Config>::GetWrappedCurrencyId::get());
 		amount.mint_to(&USER).unwrap();
 		let amount = 10_000_000;
-		let asset = DEFAULT_WRAPPED_CURRENCY;
 		assert_err!(
 			Redeem::request_redeem(
 				RuntimeOrigin::signed(USER),
 				amount,
-				asset,
 				RANDOM_STELLAR_PUBLIC_KEY,
 				VAULT
 			),
@@ -103,7 +101,6 @@ fn test_request_redeem_fails_with_amount_below_minimum() {
 
 		let redeemer = USER;
 		let amount = 9;
-		let asset = DEFAULT_WRAPPED_CURRENCY;
 
 		ext::vault_registry::try_increase_to_be_redeemed_tokens::<Test>.mock_safe(
 			move |vault_id, amount_wrapped| {
@@ -118,7 +115,6 @@ fn test_request_redeem_fails_with_amount_below_minimum() {
 			Redeem::request_redeem(
 				RuntimeOrigin::signed(redeemer),
 				1,
-				asset,
 				RANDOM_STELLAR_PUBLIC_KEY,
 				VAULT
 			),
@@ -130,12 +126,10 @@ fn test_request_redeem_fails_with_amount_below_minimum() {
 #[test]
 fn test_request_redeem_fails_with_vault_not_found() {
 	run_test(|| {
-		let asset = DEFAULT_WRAPPED_CURRENCY;
 		assert_err!(
 			Redeem::request_redeem(
 				RuntimeOrigin::signed(USER),
 				1500,
-				asset,
 				RANDOM_STELLAR_PUBLIC_KEY,
 				VAULT
 			),
@@ -150,12 +144,10 @@ fn test_request_redeem_fails_with_vault_banned() {
 		ext::vault_registry::ensure_not_banned::<Test>
 			.mock_safe(|_| MockResult::Return(Err(VaultRegistryError::VaultBanned.into())));
 
-		let asset = DEFAULT_WRAPPED_CURRENCY;
 		assert_err!(
 			Redeem::request_redeem(
 				RuntimeOrigin::signed(USER),
 				1500,
-				asset,
 				RANDOM_STELLAR_PUBLIC_KEY,
 				VAULT
 			),
@@ -168,12 +160,10 @@ fn test_request_redeem_fails_with_vault_banned() {
 fn test_request_redeem_fails_with_vault_liquidated() {
 	run_test(|| {
 		ext::vault_registry::ensure_not_banned::<Test>.mock_safe(|_| MockResult::Return(Ok(())));
-		let asset = DEFAULT_WRAPPED_CURRENCY;
 		assert_err!(
 			Redeem::request_redeem(
 				RuntimeOrigin::signed(USER),
 				3000,
-				asset,
 				RANDOM_STELLAR_PUBLIC_KEY,
 				VAULT
 			),
@@ -235,7 +225,6 @@ fn test_request_redeem_succeeds_with_normal_redeem() {
 		assert_ok!(Redeem::request_redeem(
 			RuntimeOrigin::signed(redeemer),
 			amount,
-			asset,
 			stellar_address,
 			VAULT
 		));
@@ -324,7 +313,6 @@ fn test_request_redeem_succeeds_with_self_redeem() {
 		assert_ok!(Redeem::request_redeem(
 			RuntimeOrigin::signed(redeemer),
 			amount,
-			asset,
 			stellar_address,
 			VAULT
 		));
@@ -834,7 +822,6 @@ mod spec_based_tests {
 			assert_ok!(Redeem::request_redeem(
 				RuntimeOrigin::signed(USER),
 				amount_to_redeem,
-				asset,
 				RANDOM_STELLAR_PUBLIC_KEY,
 				VAULT
 			));

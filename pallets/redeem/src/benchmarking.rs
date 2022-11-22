@@ -127,7 +127,7 @@ benchmarks! {
 		assert_ok!(Oracle::<T>::_set_exchange_rate(get_collateral_currency_id::<T>(),
 			UnsignedFixedPoint::<T>::one()
 		));
-	}: _(RawOrigin::Signed(origin), amount, asset, stellar_address, vault_id.clone())
+	}: _(RawOrigin::Signed(origin), amount, stellar_address, vault_id.clone())
 
 	liquidation_redeem {
 		assert_ok!(Oracle::<T>::_set_exchange_rate(get_collateral_currency_id::<T>(),
