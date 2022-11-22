@@ -332,7 +332,7 @@ fn validate_stellar_transaction_fails_without_validators() {
 
 		// Remove all validators
 		assert_ok!(SpacewalkRelay::update_tier_1_validator_set(
-			Origin::root(),
+			RuntimeOrigin::root(),
 			vec![],
 			organizations,
 		));
@@ -348,9 +348,11 @@ fn validate_stellar_transaction_fails_without_validators() {
 		assert!(matches!(result, Err(Error::<Test>::NoValidatorsRegistered)));
 
 		// Remove all validators
-		assert_ok!(
-			SpacewalkRelay::update_tier_1_validator_set(Origin::root(), validators, vec![],)
-		);
+		assert_ok!(SpacewalkRelay::update_tier_1_validator_set(
+			RuntimeOrigin::root(),
+			validators,
+			vec![],
+		));
 		let result =
 			SpacewalkRelay::validate_stellar_transaction(&tx_envelope, &scp_envelopes, &tx_set);
 		assert!(matches!(result, Err(Error::<Test>::NoOrganizationsRegistered)));
@@ -405,7 +407,7 @@ fn validate_stellar_transaction_works_with_all_validators() {
 fn update_tier_1_validator_set_fails_for_non_root_origin() {
 	run_test(|_, _, _| {
 		assert_noop!(
-			SpacewalkRelay::update_tier_1_validator_set(Origin::signed(1), vec![], vec![]),
+			SpacewalkRelay::update_tier_1_validator_set(RuntimeOrigin::signed(1), vec![], vec![]),
 			BadOrigin
 		);
 	});
@@ -423,7 +425,7 @@ fn update_tier_1_validator_set_works() {
 		let validator_set = vec![validator; 3];
 		let organization_set = vec![organization; 3];
 		assert_ok!(SpacewalkRelay::update_tier_1_validator_set(
-			Origin::root(),
+			RuntimeOrigin::root(),
 			validator_set.clone(),
 			organization_set.clone(),
 		));
@@ -454,7 +456,7 @@ fn update_tier_1_validator_set_works() {
 		assert_ne!(organization_set, new_organization_set);
 
 		assert_ok!(SpacewalkRelay::update_tier_1_validator_set(
-			Origin::root(),
+			RuntimeOrigin::root(),
 			new_validator_set.clone(),
 			new_organization_set.clone(),
 		));
@@ -485,7 +487,7 @@ fn update_tier_1_validator_set_fails_when_set_too_large() {
 		let organization_set = vec![organization.clone(); 3];
 		assert_noop!(
 			SpacewalkRelay::update_tier_1_validator_set(
-				Origin::root(),
+				RuntimeOrigin::root(),
 				validator_set,
 				organization_set,
 			),
@@ -497,7 +499,7 @@ fn update_tier_1_validator_set_fails_when_set_too_large() {
 		let organization_set = vec![organization.clone(); 256];
 		assert_noop!(
 			SpacewalkRelay::update_tier_1_validator_set(
-				Origin::root(),
+				RuntimeOrigin::root(),
 				validator_set,
 				organization_set,
 			),

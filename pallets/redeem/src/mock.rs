@@ -18,7 +18,7 @@ use sp_runtime::{
 	traits::{BlakeTwo256, IdentityLookup, Zero},
 };
 
-type TestExtrinsic = TestXt<Call, ()>;
+type TestExtrinsic = TestXt<RuntimeCall, ()>;
 type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Test>;
 type Block = frame_system::mocking::MockBlock<Test>;
 
@@ -70,7 +70,7 @@ impl frame_system::Config for Test {
 	type BlockWeights = ();
 	type BlockLength = ();
 	type DbWeight = ();
-	type Origin = Origin;
+	type RuntimeOrigin = RuntimeOrigin;
 	type RuntimeCall = RuntimeCall;
 	type Index = Index;
 	type BlockNumber = BlockNumber;
@@ -79,7 +79,7 @@ impl frame_system::Config for Test {
 	type AccountId = AccountId;
 	type Lookup = IdentityLookup<Self::AccountId>;
 	type Header = Header;
-	type Event = TestEvent;
+	type RuntimeEvent = TestEvent;
 	type BlockHashCount = BlockHashCount;
 	type Version = ();
 	type PalletInfo = PalletInfo;
@@ -122,12 +122,15 @@ impl orml_tokens::Config for Test {
 	type WeightInfo = ();
 	type ExistentialDeposits = ExistentialDeposits;
 	type OnDust = ();
-	type MaxLocks = MaxLocks;
-	type DustRemovalWhitelist = Everything;
-	type MaxReserves = ConstU32<0>; // we don't use named reserves
-	type ReserveIdentifier = (); // we don't use named reserves
+	type OnSlash = ();
+	type OnDeposit = ();
+	type OnTransfer = ();
 	type OnNewTokenAccount = ();
 	type OnKilledTokenAccount = ();
+	type MaxLocks = MaxLocks;
+	type MaxReserves = ConstU32<0>;
+	type ReserveIdentifier = ();
+	type DustRemovalWhitelist = Everything;
 }
 
 parameter_types! {
@@ -136,15 +139,15 @@ parameter_types! {
 
 impl<C> frame_system::offchain::SendTransactionTypes<C> for Test
 where
-	Call: From<C>,
+	RuntimeCall: From<C>,
 {
-	type OverarchingCall = Call;
+	type OverarchingCall = RuntimeCall;
 	type Extrinsic = TestExtrinsic;
 }
 
 impl vault_registry::Config for Test {
 	type PalletId = VaultPalletId;
-	type Event = TestEvent;
+	type RuntimeEvent = TestEvent;
 	type Balance = Balance;
 	type WeightInfo = ();
 	type GetGriefingCollateralCurrencyId = GetNativeCurrencyId;
@@ -180,7 +183,7 @@ impl currency::Config for Test {
 }
 
 impl staking::Config for Test {
-	type Event = TestEvent;
+	type RuntimeEvent = TestEvent;
 	type SignedFixedPoint = SignedFixedPoint;
 	type SignedInner = SignedInner;
 	type CurrencyId = CurrencyId;
@@ -188,7 +191,7 @@ impl staking::Config for Test {
 }
 
 impl reward::Config for Test {
-	type Event = TestEvent;
+	type RuntimeEvent = TestEvent;
 	type SignedFixedPoint = SignedFixedPoint;
 	type RewardId = VaultId<AccountId, CurrencyId>;
 	type CurrencyId = CurrencyId;
@@ -204,7 +207,7 @@ parameter_types! {
 pub type OrganizationId = u128;
 
 impl stellar_relay::Config for Test {
-	type Event = TestEvent;
+	type RuntimeEvent = TestEvent;
 	type OrganizationId = OrganizationId;
 	type OrganizationLimit = OrganizationLimit;
 	type ValidatorLimit = ValidatorLimit;
@@ -212,7 +215,7 @@ impl stellar_relay::Config for Test {
 }
 
 impl security::Config for Test {
-	type Event = TestEvent;
+	type RuntimeEvent = TestEvent;
 }
 
 parameter_types! {
@@ -227,7 +230,7 @@ impl pallet_timestamp::Config for Test {
 }
 
 impl oracle::Config for Test {
-	type Event = TestEvent;
+	type RuntimeEvent = TestEvent;
 	type WeightInfo = ();
 }
 
@@ -250,11 +253,11 @@ impl fee::Config for Test {
 }
 
 impl Config for Test {
-	type Event = TestEvent;
+	type RuntimeEvent = TestEvent;
 	type WeightInfo = ();
 }
 
-pub type TestEvent = Event;
+pub type TestEvent = RuntimeEvent;
 pub type TestError = Error<Test>;
 pub type VaultRegistryError = vault_registry::Error<Test>;
 
@@ -347,7 +350,7 @@ where
 	clear_mocks();
 	ExtBuilder::build().execute_with(|| {
 		assert_ok!(<oracle::Pallet<Test>>::feed_values(
-			Origin::signed(USER),
+			RuntimeOrigin::signed(USER),
 			vec![
 				(OracleKey::ExchangeRate(Token(DOT)), FixedU128::from(1)),
 				(OracleKey::FeeEstimation, FixedU128::from(3)),

@@ -32,7 +32,7 @@ fn feed_values_succeeds() {
 		let rate = FixedU128::checked_from_rational(100, 1).unwrap();
 
 		Oracle::is_authorized.mock_safe(|_| MockResult::Return(true));
-		let result = Oracle::feed_values(Origin::signed(3), vec![(key.clone(), rate)]);
+		let result = Oracle::feed_values(RuntimeOrigin::signed(3), vec![(key.clone(), rate)]);
 		assert_ok!(result);
 
 		mine_block();
@@ -63,7 +63,7 @@ mod oracle_offline_detection {
 
 	fn feed_value(currency_id: CurrencyId, oracle: SubmittingOracle) {
 		assert_ok!(Oracle::feed_values(
-			Origin::signed(match oracle {
+			RuntimeOrigin::signed(match oracle {
 				OracleA => 1,
 				OracleB => 2,
 			}),
@@ -163,13 +163,16 @@ fn feed_values_fails_with_invalid_oracle_source() {
 		let failed_rate = FixedU128::checked_from_rational(100, 1).unwrap();
 
 		Oracle::is_authorized.mock_safe(|_| MockResult::Return(true));
-		assert_ok!(Oracle::feed_values(Origin::signed(4), vec![(key.clone(), successful_rate)]));
+		assert_ok!(Oracle::feed_values(
+			RuntimeOrigin::signed(4),
+			vec![(key.clone(), successful_rate)]
+		));
 
 		mine_block();
 
 		Oracle::is_authorized.mock_safe(|_| MockResult::Return(false));
 		assert_err!(
-			Oracle::feed_values(Origin::signed(3), vec![(key.clone(), failed_rate)]),
+			Oracle::feed_values(RuntimeOrigin::signed(3), vec![(key.clone(), failed_rate)]),
 			TestError::InvalidOracleSource
 		);
 
@@ -237,7 +240,7 @@ fn test_is_invalidated() {
 		let rate = FixedU128::checked_from_rational(100, 1).unwrap();
 
 		Oracle::is_authorized.mock_safe(|_| MockResult::Return(true));
-		assert_ok!(Oracle::feed_values(Origin::signed(3), vec![(key.clone(), rate)]));
+		assert_ok!(Oracle::feed_values(RuntimeOrigin::signed(3), vec![(key.clone(), rate)]));
 		mine_block();
 
 		// max delay is 60 minutes, 60+ passed
@@ -266,16 +269,16 @@ fn insert_authorized_oracle_succeeds() {
 		let rate = FixedU128::checked_from_rational(1, 1).unwrap();
 		let name = Vec::<u8>::new();
 		assert_err!(
-			Oracle::feed_values(Origin::signed(oracle), vec![]),
+			Oracle::feed_values(RuntimeOrigin::signed(oracle), vec![]),
 			TestError::InvalidOracleSource
 		);
 		assert_err!(
-			Oracle::insert_authorized_oracle(Origin::signed(oracle), oracle, name.clone()),
+			Oracle::insert_authorized_oracle(RuntimeOrigin::signed(oracle), oracle, name.clone()),
 			DispatchError::BadOrigin
 		);
-		assert_ok!(Oracle::insert_authorized_oracle(Origin::root(), oracle, name.clone()));
+		assert_ok!(Oracle::insert_authorized_oracle(RuntimeOrigin::root(), oracle, name.clone()));
 		assert_emitted!(Event::OracleAdded { oracle_id: 1, name });
-		assert_ok!(Oracle::feed_values(Origin::signed(oracle), vec![(key, rate)]));
+		assert_ok!(Oracle::feed_values(RuntimeOrigin::signed(oracle), vec![(key, rate)]));
 	});
 }
 
@@ -285,10 +288,10 @@ fn remove_authorized_oracle_succeeds() {
 		let oracle = 1;
 		Oracle::insert_oracle(oracle, Vec::<u8>::new());
 		assert_err!(
-			Oracle::remove_authorized_oracle(Origin::signed(oracle), oracle),
+			Oracle::remove_authorized_oracle(RuntimeOrigin::signed(oracle), oracle),
 			DispatchError::BadOrigin
 		);
-		assert_ok!(Oracle::remove_authorized_oracle(Origin::root(), oracle,));
+		assert_ok!(Oracle::remove_authorized_oracle(RuntimeOrigin::root(), oracle,));
 		assert_emitted!(Event::OracleRemoved { oracle_id: 1 });
 	});
 }
@@ -308,7 +311,7 @@ fn set_btc_tx_fees_per_byte_succeeds() {
 			})
 			.collect();
 
-		assert_ok!(Oracle::feed_values(Origin::signed(3), values.clone()));
+		assert_ok!(Oracle::feed_values(RuntimeOrigin::signed(3), values.clone()));
 		mine_block();
 
 		for (key, value) in values {

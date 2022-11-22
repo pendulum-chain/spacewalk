@@ -66,12 +66,10 @@ fn test_request_redeem_fails_with_amount_exceeds_user_balance() {
 			Amount::<Test>::new(2, <Test as currency::Config>::GetWrappedCurrencyId::get());
 		amount.mint_to(&USER).unwrap();
 		let amount = 10_000_000;
-		let asset = DEFAULT_WRAPPED_CURRENCY;
 		assert_err!(
 			Redeem::request_redeem(
-				Origin::signed(USER),
+				RuntimeOrigin::signed(USER),
 				amount,
-				asset,
 				RANDOM_STELLAR_PUBLIC_KEY,
 				VAULT
 			),
@@ -103,7 +101,6 @@ fn test_request_redeem_fails_with_amount_below_minimum() {
 
 		let redeemer = USER;
 		let amount = 9;
-		let asset = DEFAULT_WRAPPED_CURRENCY;
 
 		ext::vault_registry::try_increase_to_be_redeemed_tokens::<Test>.mock_safe(
 			move |vault_id, amount_wrapped| {
@@ -116,9 +113,8 @@ fn test_request_redeem_fails_with_amount_below_minimum() {
 
 		assert_err!(
 			Redeem::request_redeem(
-				Origin::signed(redeemer),
+				RuntimeOrigin::signed(redeemer),
 				1,
-				asset,
 				RANDOM_STELLAR_PUBLIC_KEY,
 				VAULT
 			),
@@ -130,12 +126,10 @@ fn test_request_redeem_fails_with_amount_below_minimum() {
 #[test]
 fn test_request_redeem_fails_with_vault_not_found() {
 	run_test(|| {
-		let asset = DEFAULT_WRAPPED_CURRENCY;
 		assert_err!(
 			Redeem::request_redeem(
-				Origin::signed(USER),
+				RuntimeOrigin::signed(USER),
 				1500,
-				asset,
 				RANDOM_STELLAR_PUBLIC_KEY,
 				VAULT
 			),
@@ -150,12 +144,10 @@ fn test_request_redeem_fails_with_vault_banned() {
 		ext::vault_registry::ensure_not_banned::<Test>
 			.mock_safe(|_| MockResult::Return(Err(VaultRegistryError::VaultBanned.into())));
 
-		let asset = DEFAULT_WRAPPED_CURRENCY;
 		assert_err!(
 			Redeem::request_redeem(
-				Origin::signed(USER),
+				RuntimeOrigin::signed(USER),
 				1500,
-				asset,
 				RANDOM_STELLAR_PUBLIC_KEY,
 				VAULT
 			),
@@ -168,12 +160,10 @@ fn test_request_redeem_fails_with_vault_banned() {
 fn test_request_redeem_fails_with_vault_liquidated() {
 	run_test(|| {
 		ext::vault_registry::ensure_not_banned::<Test>.mock_safe(|_| MockResult::Return(Ok(())));
-		let asset = DEFAULT_WRAPPED_CURRENCY;
 		assert_err!(
 			Redeem::request_redeem(
-				Origin::signed(USER),
+				RuntimeOrigin::signed(USER),
 				3000,
-				asset,
 				RANDOM_STELLAR_PUBLIC_KEY,
 				VAULT
 			),
@@ -233,9 +223,8 @@ fn test_request_redeem_succeeds_with_normal_redeem() {
 		let btc_fee = Redeem::get_current_inclusion_fee(DEFAULT_WRAPPED_CURRENCY).unwrap();
 
 		assert_ok!(Redeem::request_redeem(
-			Origin::signed(redeemer),
+			RuntimeOrigin::signed(redeemer),
 			amount,
-			asset,
 			stellar_address,
 			VAULT
 		));
@@ -322,9 +311,8 @@ fn test_request_redeem_succeeds_with_self_redeem() {
 		let btc_fee = Redeem::get_current_inclusion_fee(DEFAULT_WRAPPED_CURRENCY).unwrap();
 
 		assert_ok!(Redeem::request_redeem(
-			Origin::signed(redeemer),
+			RuntimeOrigin::signed(redeemer),
 			amount,
-			asset,
 			stellar_address,
 			VAULT
 		));
@@ -389,7 +377,7 @@ fn test_liquidation_redeem_succeeds() {
 		);
 
 		assert_ok!(Redeem::liquidation_redeem(
-			Origin::signed(USER),
+			RuntimeOrigin::signed(USER),
 			DEFAULT_CURRENCY_PAIR,
 			total_amount,
 		));
@@ -402,7 +390,7 @@ fn test_execute_redeem_fails_with_redeem_id_not_found() {
 		convert_to.mock_safe(|_, x| MockResult::Return(Ok(x)));
 		assert_err!(
 			Redeem::execute_redeem(
-				Origin::signed(VAULT.account_id),
+				RuntimeOrigin::signed(VAULT.account_id),
 				H256([0u8; 32]),
 				Vec::default(),
 				Vec::default(),
@@ -480,7 +468,7 @@ fn test_execute_redeem_succeeds_with_another_account() {
 		) = stellar_relay::testing_utils::create_dummy_scp_structs_encoded();
 
 		assert_ok!(Redeem::execute_redeem(
-			Origin::signed(USER),
+			RuntimeOrigin::signed(USER),
 			H256([0u8; 32]),
 			transaction_envelope_xdr_encoded,
 			scp_envelopes_xdr_encoded,
@@ -569,7 +557,7 @@ fn test_execute_redeem_succeeds() {
 		) = stellar_relay::testing_utils::create_dummy_scp_structs_encoded();
 
 		assert_ok!(Redeem::execute_redeem(
-			Origin::signed(VAULT.account_id),
+			RuntimeOrigin::signed(VAULT.account_id),
 			H256([0u8; 32]),
 			transaction_envelope_xdr_encoded,
 			scp_envelopes_xdr_encoded,
@@ -595,7 +583,7 @@ fn test_execute_redeem_succeeds() {
 fn test_cancel_redeem_fails_with_redeem_id_not_found() {
 	run_test(|| {
 		assert_err!(
-			Redeem::cancel_redeem(Origin::signed(USER), H256([0u8; 32]), false),
+			Redeem::cancel_redeem(RuntimeOrigin::signed(USER), H256([0u8; 32]), false),
 			TestError::RedeemIdNotFound
 		);
 	})
@@ -625,7 +613,7 @@ fn test_cancel_redeem_fails_with_time_not_expired() {
 		});
 
 		assert_err!(
-			Redeem::cancel_redeem(Origin::signed(USER), H256([0u8; 32]), false),
+			Redeem::cancel_redeem(RuntimeOrigin::signed(USER), H256([0u8; 32]), false),
 			TestError::TimeNotExpired
 		);
 	})
@@ -655,7 +643,7 @@ fn test_cancel_redeem_fails_with_unauthorized_caller() {
 		});
 
 		assert_noop!(
-			Redeem::cancel_redeem(Origin::signed(CAROL), H256([0u8; 32]), true),
+			Redeem::cancel_redeem(RuntimeOrigin::signed(CAROL), H256([0u8; 32]), true),
 			TestError::UnauthorizedRedeemer
 		);
 	})
@@ -701,7 +689,7 @@ fn test_cancel_redeem_succeeds() {
 		});
 		ext::vault_registry::decrease_to_be_redeemed_tokens::<Test>
 			.mock_safe(|_, _| MockResult::Return(Ok(())));
-		assert_ok!(Redeem::cancel_redeem(Origin::signed(USER), H256([0u8; 32]), false));
+		assert_ok!(Redeem::cancel_redeem(RuntimeOrigin::signed(USER), H256([0u8; 32]), false));
 		assert_err!(
 			Redeem::get_open_redeem_request_from_id(&H256([0u8; 32])),
 			TestError::RedeemCancelled,
@@ -749,7 +737,7 @@ fn test_mint_tokens_for_reimbursed_redeem() {
 		Security::<Test>::set_active_block_number(100);
 		assert_noop!(
 			Redeem::mint_tokens_for_reimbursed_redeem(
-				Origin::signed(VAULT.account_id),
+				RuntimeOrigin::signed(VAULT.account_id),
 				VAULT.currencies.clone(),
 				H256([0u8; 32])
 			),
@@ -772,7 +760,7 @@ fn test_mint_tokens_for_reimbursed_redeem() {
 			MockResult::Return(Ok(()))
 		});
 		assert_ok!(Redeem::mint_tokens_for_reimbursed_redeem(
-			Origin::signed(VAULT.account_id),
+			RuntimeOrigin::signed(VAULT.account_id),
 			VAULT.currencies.clone(),
 			H256([0u8; 32])
 		));
@@ -782,8 +770,11 @@ fn test_mint_tokens_for_reimbursed_redeem() {
 #[test]
 fn test_set_redeem_period_only_root() {
 	run_test(|| {
-		assert_noop!(Redeem::set_redeem_period(Origin::signed(USER), 1), DispatchError::BadOrigin);
-		assert_ok!(Redeem::set_redeem_period(Origin::root(), 1));
+		assert_noop!(
+			Redeem::set_redeem_period(RuntimeOrigin::signed(USER), 1),
+			DispatchError::BadOrigin
+		);
+		assert_ok!(Redeem::set_redeem_period(RuntimeOrigin::root(), 1));
 	})
 }
 
@@ -829,9 +820,8 @@ mod spec_based_tests {
 			});
 
 			assert_ok!(Redeem::request_redeem(
-				Origin::signed(USER),
+				RuntimeOrigin::signed(USER),
 				amount_to_redeem,
-				asset,
 				RANDOM_STELLAR_PUBLIC_KEY,
 				VAULT
 			));
@@ -866,7 +856,7 @@ mod spec_based_tests {
 			);
 
 			assert_ok!(Redeem::liquidation_redeem(
-				Origin::signed(USER),
+				RuntimeOrigin::signed(USER),
 				DEFAULT_CURRENCY_PAIR,
 				total_amount.into(),
 			));
@@ -937,7 +927,7 @@ mod spec_based_tests {
 			) = stellar_relay::testing_utils::create_dummy_scp_structs_encoded();
 
 			assert_ok!(Redeem::execute_redeem(
-				Origin::signed(USER),
+				RuntimeOrigin::signed(USER),
 				H256([0u8; 32]),
 				transaction_envelope_xdr_encoded,
 				scp_envelopes_xdr_encoded,
@@ -1013,7 +1003,7 @@ mod spec_based_tests {
 					MockResult::Return(Ok(()))
 				},
 			);
-			assert_ok!(Redeem::cancel_redeem(Origin::signed(USER), H256([0u8; 32]), true));
+			assert_ok!(Redeem::cancel_redeem(RuntimeOrigin::signed(USER), H256([0u8; 32]), true));
 			assert_err!(
 				Redeem::get_open_redeem_request_from_id(&H256([0u8; 32])),
 				TestError::RedeemCancelled,
@@ -1077,7 +1067,7 @@ mod spec_based_tests {
 				assert_eq!(amount, &wrapped(redeem_request.amount + redeem_request.transfer_fee));
 				MockResult::Return(Ok(()))
 			});
-			assert_ok!(Redeem::cancel_redeem(Origin::signed(USER), H256([0u8; 32]), true));
+			assert_ok!(Redeem::cancel_redeem(RuntimeOrigin::signed(USER), H256([0u8; 32]), true));
 			assert_err!(
 				Redeem::get_open_redeem_request_from_id(&H256([0u8; 32])),
 				TestError::RedeemCancelled,

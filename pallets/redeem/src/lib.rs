@@ -217,12 +217,11 @@ pub mod pallet {
 		pub fn request_redeem(
 			origin: OriginFor<T>,
 			#[pallet::compact] amount_wrapped: BalanceOf<T>,
-			asset: CurrencyId<T>,
 			stellar_address: StellarPublicKeyRaw,
 			vault_id: DefaultVaultId<T>,
 		) -> DispatchResultWithPostInfo {
 			let redeemer = ensure_signed(origin)?;
-			Self::_request_redeem(redeemer, amount_wrapped, asset, stellar_address, vault_id)?;
+			Self::_request_redeem(redeemer, amount_wrapped, stellar_address, vault_id)?;
 			Ok(().into())
 		}
 
@@ -461,13 +460,10 @@ impl<T: Config> Pallet<T> {
 	fn _request_redeem(
 		redeemer: T::AccountId,
 		amount_wrapped: BalanceOf<T>,
-		_asset: CurrencyId<T>,
 		stellar_address: StellarPublicKeyRaw,
 		vault_id: DefaultVaultId<T>,
 	) -> Result<H256, DispatchError> {
-		// TODO change this to use the provided asset once multi-collateral is implemented
-		let asset = vault_id.wrapped_currency();
-		let amount_wrapped = Amount::new(amount_wrapped, asset);
+		let amount_wrapped = Amount::new(amount_wrapped, vault_id.wrapped_currency());
 
 		ext::security::ensure_parachain_status_running::<T>()?;
 
