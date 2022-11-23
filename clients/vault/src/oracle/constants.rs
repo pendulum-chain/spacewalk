@@ -22,6 +22,8 @@ pub const VALIDATOR_COUNT_PUBLIC_NETWORK: usize = 23;
 
 pub const MAX_SLOT_TO_REMEMBER: u64 = 12;
 
+pub const ARCHIVE_NODE_LEDGER_BATCH: i32 = 64;
+
 pub const stellar_history_base_url: &str =
 	"http://history.stellar.org/prd/core-live/core_live_002/scp/";
 
