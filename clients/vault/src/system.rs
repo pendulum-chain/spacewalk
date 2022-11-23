@@ -15,7 +15,7 @@ use stellar_relay::{
 	node::NodeInfo,
 	sdk::{
 		network::{Network, PUBLIC_NETWORK, TEST_NETWORK},
-		PublicKey, SecretKey,
+		SecretKey,
 	},
 	ConnConfig,
 };

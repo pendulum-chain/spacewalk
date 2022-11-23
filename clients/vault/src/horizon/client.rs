@@ -147,7 +147,7 @@ impl<C: HorizonClient> HorizonFetcher<C> {
 
 		let mut paging_token = PagingToken::new();
 		for transaction in transactions {
-			/// update the paging_token
+			// update the paging_token
 			if let Some(page) = transaction.paging_token() {
 				paging_token = page;
 			} else {

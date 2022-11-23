@@ -9,7 +9,7 @@ use crate::oracle::{
 	collector::{Proof, ProofStatus, ScpMessageCollector},
 	errors::Error,
 	storage::prepare_directories,
-	types::{Slot, SlotList},
+	types::Slot,
 };
 
 /// A message used to communicate with the Actor

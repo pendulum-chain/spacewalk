@@ -1,8 +1,7 @@
 pub mod client;
 
-use crate::Error;
 use parity_scale_codec::{Decode, Encode};
-use serde::{Deserialize, Deserializer, Serialize};
+use serde::{Deserialize, Deserializer};
 use sp_core::ed25519;
 use sp_runtime::{
 	scale_info::TypeInfo,
@@ -17,7 +16,6 @@ use sp_std::{
 	str::from_utf8,
 	vec::Vec,
 };
-use std::string::FromUtf8Error;
 use stellar::{
 	types::{AlphaNum12, AlphaNum4},
 	Asset, PublicKey,
