@@ -44,6 +44,13 @@ impl StellarOverlayConnection {
 			.map_err(Error::from)
 	}
 
+	pub async fn disconnect(&self) -> Result<(), Error> {
+		self.actions_sender
+			.send(ConnectorActions::Disconnect)
+			.await
+			.map_err(Error::from)
+	}
+
 	/// Receives Stellar messages from the connection.
 	/// Restarts the connection when lost.
 	pub async fn listen(&mut self) -> Option<StellarRelayMessage> {
