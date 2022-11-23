@@ -304,6 +304,7 @@ impl SpacewalkParachain {
 		Ok(())
 	}
 
+	/*
 	/// Emulate the POOL_INVALID_TX error using token transfer extrinsics.
 	#[cfg(test)]
 	pub async fn get_invalid_tx_error(&self, recipient: AccountId) -> Error {
@@ -354,6 +355,7 @@ impl SpacewalkParachain {
 			.unwrap_err()
 			.into()
 	}
+	*/
 }
 
 #[async_trait]

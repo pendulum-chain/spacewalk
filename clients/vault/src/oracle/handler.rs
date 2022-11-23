@@ -9,7 +9,7 @@ use crate::oracle::{
 	collector::{Proof, ProofStatus, ScpMessageCollector},
 	errors::Error,
 	storage::prepare_directories,
-	types::Slot,
+	types::{Slot, SlotList},
 };
 
 /// A message used to communicate with the Actor
@@ -35,6 +35,10 @@ pub enum ActorMessage {
 
 	GetLastSlotIndex {
 		sender: oneshot::Sender<Slot>,
+	},
+
+	GetSlotWatchList {
+		sender: oneshot::Sender<Vec<Slot>>,
 	},
 }
 
@@ -75,6 +79,9 @@ impl ScpMessageActor {
 				if let Err(slot) = sender.send(*res) {
 					tracing::warn!("failed to send back the slot number: {}", slot);
 				}
+			},
+			ActorMessage::GetSlotWatchList { sender } => {
+				let _ = sender.send(self.collector.get_slot_watch_list());
 			},
 		};
 	}
@@ -184,6 +191,12 @@ impl ScpMessageHandler {
 	pub async fn get_last_slot_index(&self) -> Result<Slot, Error> {
 		let (sender, receiver) = oneshot::channel();
 		self.action_sender.send(ActorMessage::GetLastSlotIndex { sender }).await?;
+		receiver.await.map_err(Error::from)
+	}
+
+	pub async fn get_slot_watchlist(&self) -> Result<Vec<Slot>, Error> {
+		let (sender, receiver) = oneshot::channel();
+		self.action_sender.send(ActorMessage::GetSlotWatchList { sender }).await?;
 		receiver.await.map_err(Error::from)
 	}
 }

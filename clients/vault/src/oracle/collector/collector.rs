@@ -66,7 +66,7 @@ impl ScpMessageCollector {
 
 	/// watch out in Stellar Node's messages for SCPMessages containing this slot.
 	pub fn watch_slot(&mut self, slot: Slot) {
-		tracing::debug!("watching slot {:?}", slot);
+		tracing::info!("watching slot {:?}", slot);
 		self.slot_watchlist.write().insert(slot, ());
 	}
 }
@@ -95,6 +95,11 @@ impl ScpMessageCollector {
 
 	pub(crate) fn last_slot_index(&self) -> RwLockReadGuard<'_, RawRwLock, u64> {
 		self.last_slot_index.read()
+	}
+
+	pub(crate) fn get_slot_watch_list(&self) -> Vec<Slot> {
+		let res = self.slot_watchlist.read().clone();
+		res.keys().cloned().collect::<Vec<Slot>>()
 	}
 }
 

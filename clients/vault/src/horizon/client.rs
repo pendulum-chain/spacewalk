@@ -1,6 +1,6 @@
 use crate::{
 	error::Error,
-	horizon::{HorizonTransactionsResponse, Transaction},
+	horizon::{HorizonTransactionsResponse, PagingToken, Transaction},
 	oracle::ScpMessageHandler,
 };
 use async_trait::async_trait;
@@ -43,16 +43,13 @@ pub trait HorizonClient {
 #[async_trait]
 impl HorizonClient for reqwest::Client {
 	async fn get_transactions(&self, url: &str) -> Result<HorizonTransactionsResponse, Error> {
-		let response = self
-			.get(url)
+		self.get(url)
 			.send()
 			.await
 			.map_err(|_| Error::HttpFetchingError)?
 			.json::<HorizonTransactionsResponse>()
 			.await
-			.map_err(|_| Error::HttpFetchingError)?;
-
-		Ok(response)
+			.map_err(|_| Error::HttpFetchingError)
 	}
 }
 
@@ -72,20 +69,24 @@ impl<C: HorizonClient> HorizonFetcher<C> {
 	async fn fetch_latest_txs(
 		&self,
 		is_public_network: bool,
+		next_page: PagingToken,
 	) -> Result<HorizonTransactionsResponse, Error> {
 		let vault_keypair: SecretKey = SecretKey::from_encoding(&self.vault_secret_key).unwrap();
 		let vault_address = vault_keypair.get_public();
 
-		let request_url = String::from(horizon_url(is_public_network)) +
+		let mut request_url = String::from(horizon_url(is_public_network)) +
 			"/accounts/" + str::from_utf8(vault_address.to_encoding().as_slice())
 			.map_err(|_| Error::HttpFetchingError)? +
-			"/transactions?order=desc&limit=1";
+			"/transactions?";
 
-		println!("request url: {:?}", request_url);
+		if !next_page.is_empty() {
+			request_url.push_str(&format!("cursor={}&", next_page));
+		}
+		request_url += "order=desc&limit=20";
 
-		let horizon_response = self.client.get_transactions(request_url.as_str()).await;
+		tracing::info!("request url: {:?}", request_url);
 
-		horizon_response
+		self.client.get_transactions(request_url.as_str()).await
 	}
 
 	fn is_unhandled_transaction(&mut self, tx: &Transaction) -> bool {
@@ -109,24 +110,18 @@ impl<C: HorizonClient> HorizonFetcher<C> {
 			Ok(latest_tx_id) => {
 				self.last_tx_id = Some(latest_tx_id.clone());
 				if !initial {
-					println!(
-                        "Found new transaction from Horizon (id {:#?}). Starting to process new transaction",
-                        str::from_utf8(&latest_tx_id).unwrap()
-                    );
-					tracing::info!(
-                        "Found new transaction from Horizon (id {:#?}). Starting to process new transaction",
-                        str::from_utf8(&latest_tx_id).unwrap()
-                    );
+					tracing::debug!(
+						"Found new transaction from Horizon (id {:#?}) to process...",
+						str::from_utf8(&latest_tx_id).unwrap()
+					);
 
 					true
 				} else {
-					println!("Initial transaction handled");
 					tracing::info!("Initial transaction handled");
 					false
 				}
 			},
 			Err(UP_TO_DATE) => {
-				println!("Already up to date");
 				tracing::info!("Already up to date");
 				false
 			},
@@ -137,35 +132,43 @@ impl<C: HorizonClient> HorizonFetcher<C> {
 		&mut self,
 		issue_set: Arc<Mutex<IssueRequests>>,
 		handler: Arc<Mutex<ScpMessageHandler>>,
-	) {
+		next_page: PagingToken,
+	) -> Result<PagingToken, Error> {
 		let handler = handler.lock().await;
 
-		let res = self.fetch_latest_txs(handler.is_public_network).await;
+		let res = self.fetch_latest_txs(handler.is_public_network, next_page).await;
 		let transactions = match res {
 			Ok(txs) => txs._embedded.records,
 			Err(e) => {
 				tracing::warn!("Failed to fetch transactions: {:?}", e);
-				println!("oh no, :( failed to fetch transactions: {:?}", e);
-				return
+				return Ok(PagingToken::new())
 			},
 		};
 
-		if transactions.len() > 0 {
-			let tx = transactions[0].clone();
+		let mut paging_token = PagingToken::new();
+		for transaction in transactions {
+			/// update the paging_token
+			if let Some(page) = transaction.paging_token() {
+				paging_token = page;
+			} else {
+				paging_token = PagingToken::new();
+			}
+
+			let tx = transaction.clone();
 			let id = tx.id.clone();
 			if self.is_unhandled_transaction(&tx) && is_tx_relevant(&tx, issue_set.clone()).await {
 				match handler.watch_slot(tx.ledger.try_into().unwrap()).await {
 					Ok(_) => {
-						println!("following transaction {:?}", String::from_utf8(id.clone()));
 						tracing::info!("following transaction {:?}", String::from_utf8(id));
 					},
 					Err(e) => {
-						println!("Failed to watch transaction: {:?}", e);
 						tracing::error!("Failed to watch transaction: {:?}", e);
 					},
 				}
 			}
 		}
+
+		Ok(paging_token)
 	}
 }
 
@@ -177,11 +180,19 @@ pub async fn poll_horizon_for_new_transactions(
 	let horizon_client = reqwest::Client::new();
 	let mut fetcher = HorizonFetcher::new(horizon_client, vault_secret_key);
 
+	let mut next_page = PagingToken::new();
 	// Start polling horizon every 5 seconds
 	loop {
-		fetcher
-			.fetch_horizon_and_process_new_transactions(issue_set.clone(), handler.clone())
-			.await;
+		if let Ok(new_paging_token) = fetcher
+			.fetch_horizon_and_process_new_transactions(
+				issue_set.clone(),
+				handler.clone(),
+				next_page.clone(),
+			)
+			.await
+		{
+			next_page = new_paging_token;
+		}
 		sleep(Duration::from_millis(POLL_INTERVAL)).await;
 	}
 }
@@ -193,7 +204,9 @@ pub async fn is_tx_relevant(
 	match String::from_utf8(transaction.memo_type.clone()) {
 		Ok(memo_type) if memo_type == "hash" => {
 			let issue_set = issue_set.lock().await;
-			return issue_set.contains(&IssueRequest::from(transaction.memo.clone()))
+			if let Some(memo) = &transaction.memo {
+				return issue_set.contains(&IssueRequest::from(memo.clone()))
+			}
 		},
 		Err(e) => {
 			tracing::error!("Failed to retrieve memo type: {:?}", e);
@@ -206,7 +219,10 @@ pub async fn is_tx_relevant(
 #[cfg(test)]
 mod tests {
 	use crate::{
-		horizon::client::{HorizonFetcher, POLL_INTERVAL},
+		horizon::{
+			client::{HorizonFetcher, POLL_INTERVAL},
+			PagingToken,
+		},
 		oracle::{create_handler, ScpMessageHandler},
 		system::TIER_1_VALIDATOR_IP_PUBLIC,
 	};
@@ -229,7 +245,6 @@ mod tests {
 
 	#[tokio::test(flavor = "multi_thread")]
 	async fn client_test_for_polling() {
-		println!("RUNNING TEST: ");
 		let handler = Arc::new(Mutex::new(prepare_handler(vec![]).await));
 		let mut issue_set = Arc::new(Mutex::new(vec![]));
 
@@ -238,12 +253,21 @@ mod tests {
 
 		let mut counter = 0;
 		// Start polling horizon every 5 seconds
+
+		let mut cursor = PagingToken::new();
 		loop {
 			println!("counter: {}", counter);
 			counter += 1;
-			fetcher
-				.fetch_horizon_and_process_new_transactions(issue_set.clone(), handler.clone())
-				.await;
+			if let Ok(next_page) = fetcher
+				.fetch_horizon_and_process_new_transactions(
+					issue_set.clone(),
+					handler.clone(),
+					cursor.clone(),
+				)
+				.await
+			{
+				cursor = next_page;
+			}
 			sleep(Duration::from_millis(POLL_INTERVAL)).await;
 
 			if counter == 5 {

@@ -76,6 +76,16 @@ where
 	Ok(s.as_bytes().to_vec())
 }
 
+pub fn de_string_to_optional_bytes<'de, D>(de: D) -> Result<Option<Vec<u8>>, D::Error>
+where
+	D: Deserializer<'de>,
+{
+	match Option::deserialize(de) {
+		Ok(s) => Ok(s.map(|x: &str| x.as_bytes().to_vec())),
+		Err(_) => Ok(None),
+	}
+}
+
 // Claimable balances objects
 
 #[derive(Deserialize, Debug)]

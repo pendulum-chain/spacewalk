@@ -1,7 +1,8 @@
 pub mod client;
 
+use crate::Error;
 use parity_scale_codec::{Decode, Encode};
-use serde::{Deserialize, Deserializer};
+use serde::{Deserialize, Deserializer, Serialize};
 use sp_core::ed25519;
 use sp_runtime::{
 	scale_info::TypeInfo,
@@ -16,17 +17,22 @@ use sp_std::{
 	str::from_utf8,
 	vec::Vec,
 };
+use std::string::FromUtf8Error;
 use stellar::{
 	types::{AlphaNum12, AlphaNum4},
 	Asset, PublicKey,
 };
 use stellar_relay::{sdk as stellar, sdk::types::AssetType};
 
+pub type PagingToken = String;
+
 // This represents each record for a transaction in the Horizon API response
 #[derive(Clone, Deserialize, Encode, Decode, Default, Debug)]
 pub struct Transaction {
 	#[serde(deserialize_with = "de_string_to_bytes")]
 	pub id: Vec<u8>,
+	#[serde(deserialize_with = "de_string_to_bytes")]
+	pub paging_token: Vec<u8>,
 	successful: bool,
 	#[serde(deserialize_with = "de_string_to_bytes")]
 	pub hash: Vec<u8>,
@@ -54,13 +60,27 @@ pub struct Transaction {
 	pub fee_meta_xdr: Vec<u8>,
 	#[serde(deserialize_with = "de_string_to_bytes")]
 	pub memo_type: Vec<u8>,
-	#[serde(deserialize_with = "de_string_to_bytes")]
-	pub memo: Vec<u8>,
+	#[serde(default)]
+	#[serde(deserialize_with = "de_string_to_optional_bytes")]
+	pub memo: Option<Vec<u8>>,
 }
 
 impl Transaction {
 	pub(crate) fn ledger(&self) -> u32 {
 		self.ledger
+	}
+	pub(super) fn paging_token(&self) -> Option<PagingToken> {
+		if self.paging_token.is_empty() {
+			return None
+		}
+
+		match String::from_utf8(self.paging_token.clone()) {
+			Ok(value) => Some(value),
+			Err(e) => {
+				tracing::info!("failed to convert to paging token to string: {:?}", e);
+				None
+			},
+		}
 	}
 }
 
@@ -101,6 +121,13 @@ where
 {
 	let s: &str = Deserialize::deserialize(de)?;
 	Ok(s.as_bytes().to_vec())
+}
+
+pub fn de_string_to_optional_bytes<'de, D>(de: D) -> Result<Option<Vec<u8>>, D::Error>
+where
+	D: Deserializer<'de>,
+{
+	Option::<&str>::deserialize(de).map(|opt_wrapped| opt_wrapped.map(|x| x.as_bytes().to_vec()))
 }
 
 // Claimable balances objects

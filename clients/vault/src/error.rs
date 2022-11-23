@@ -54,6 +54,8 @@ pub enum Error {
 	Utf8Error(#[from] Utf8Error),
 	#[error("Failed to parse sequence number")]
 	SeqNoParsingError,
+	#[error("Dummy error")]
+	DummyError,
 }
 
 impl From<StellarSdkError> for Error {
