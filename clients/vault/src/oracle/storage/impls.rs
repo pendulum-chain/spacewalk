@@ -180,7 +180,7 @@ impl ScpArchiveStorage {
 		let content = response.bytes().await.unwrap();
 
 		let mut file = match File::create(&file_name) {
-			Err(why) => panic!("couldn't create {}", why),
+			Err(why) => panic!("couldn't create {}: {}", &file_name, why),
 			Ok(file) => file,
 		};
 		file.write_all(content.as_bytes_ref())?;
@@ -251,7 +251,7 @@ impl TransactionsArchiveStorage {
 		let content = response.bytes().await.unwrap();
 
 		let mut file = match File::create(&file_name) {
-			Err(why) => panic!("couldn't create {}", why),
+			Err(why) => panic!("couldn't create {}: {}", &file_name, why),
 			Ok(file) => file,
 		};
 		file.write_all(content.as_bytes_ref())?;
