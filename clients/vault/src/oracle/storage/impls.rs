@@ -156,145 +156,62 @@ impl FileHandler<TxHashMap> for TxHashesFileHandler {
 	}
 }
 
+async fn download_file_and_save(url: &str, file_name: &str) -> Result<(), Error> {
+	let response = reqwest::get(url).await.unwrap();
+	let content = response.bytes().await.unwrap();
+
+	let mut file = match File::create(&file_name) {
+		Err(why) => panic!("couldn't create {}: {}", &file_name, why),
+		Ok(file) => file,
+	};
+	file.write_all(content.as_bytes_ref())?;
+	Ok(())
+}
+
+
+impl ArchiveStorage for ScpArchiveStorage{
+	type T = ScpHistoryEntry;
+    const STELLAR_HISTORY_BASE_URL: &'static str = crate::oracle::constants::stellar_history_base_url;
+    const prefix_url : &'static str = "scp";
+    const prefix_filename : &'static str = "";
+}
+
 impl ScpArchiveStorage {
-	pub async fn get_scp_archive(slot_index: i32) -> Result<XdrArchive<ScpHistoryEntry>, Error> {
+	pub async fn get_scp_archive(slot_index: i32) -> Result<XdrArchive<<Self as ArchiveStorage>::T>, Error> {
 		let (url, file_name) = Self::get_url_and_file_name(slot_index);
 		//try to find xdr.gz file and decode. if error then download archive from horizon archive
 		// node and save
 		let mut result = Self::try_gz_decode_archive_file(&file_name);
 
 		if result.is_err() {
-			Self::download_file_and_save(&url, &file_name).await?;
+			download_file_and_save(&url, &file_name).await?;
 			result = Self::try_gz_decode_archive_file(&file_name);
 		}
 		let data = result.unwrap();
 		Ok(Self::decode_xdr(data))
-	}
-
-	fn decode_xdr(xdr_data: Vec<u8>) -> XdrArchive<ScpHistoryEntry> {
-		XdrArchive::<ScpHistoryEntry>::from_xdr(xdr_data).unwrap()
-	}
-
-	async fn download_file_and_save(url: &str, file_name: &str) -> Result<(), Error> {
-		let response = reqwest::get(url).await.unwrap();
-		let content = response.bytes().await.unwrap();
-
-		let mut file = match File::create(&file_name) {
-			Err(why) => panic!("couldn't create {}: {}", &file_name, why),
-			Ok(file) => file,
-		};
-		file.write_all(content.as_bytes_ref())?;
-		Ok(())
-	}
-
-	fn try_gz_decode_archive_file(path: &str) -> Result<Vec<u8>, Error> {
-		use flate2::bufread::GzDecoder;
-		use std::io::{self, BufReader, Read};
-		let bytes = Self::read_file_xdr(path)?;
-		let mut gz = GzDecoder::new(&bytes[..]);
-		let mut bytes: Vec<u8> = vec![];
-		gz.read_to_end(&mut bytes)?;
-		Ok(bytes)
-	}
-
-	fn get_url_and_file_name(slot_index: i32) -> (String, String) {
-		let slot_index = Self::find_last_slot_index_in_batch(slot_index);
-		let hex_string = format!("0{:x}", slot_index);
-		let file_name = format!("{hex_string}.xdr");
-		let base_url = crate::oracle::constants::stellar_history_base_url;
-		let url = format!(
-			"{base_url}{}/{}/{}/scp-{file_name}.gz",
-			&hex_string[..2],
-			&hex_string[2..4],
-			&hex_string[4..6]
-		);
-		(url, file_name)
-	}
-
-	fn find_last_slot_index_in_batch(slot_index: i32) -> i32 {
-		let rest = (slot_index + 1) % ARCHIVE_NODE_LEDGER_BATCH;
-		if rest == 0 {
-			return slot_index
-		}
-		return slot_index + ARCHIVE_NODE_LEDGER_BATCH - rest
-	}
-
-	fn read_file_xdr(filename: &str) -> Result<Vec<u8>, Error> {
-		let mut file = File::open(filename)?;
-		let mut bytes: Vec<u8> = vec![];
-		file.read_to_end(&mut bytes)?;
-		Ok(bytes)
 	}
 }
 
+impl ArchiveStorage for TransactionsArchiveStorage{
+	type T = TransactionHistoryEntry;
+    const STELLAR_HISTORY_BASE_URL: &'static str = crate::oracle::constants::stellar_history_base_url_transactions;
+	const prefix_url : &'static str = "transactions";
+    const prefix_filename : &'static str = "txs-";
+}
+
 impl TransactionsArchiveStorage {
-	pub async fn get_transactions_archive(slot_index: i32) -> Result<XdrArchive<TransactionHistoryEntry>, Error> {
+	pub async fn get_transactions_archive(slot_index: i32) -> Result<XdrArchive<<Self as ArchiveStorage>::T>, Error> {
 		let (url, file_name) = Self::get_url_and_file_name(slot_index);
 		//try to find xdr.gz file and decode. if error then download archive from horizon archive
 		// node and save
 		let mut result = Self::try_gz_decode_archive_file(&file_name);
 
 		if result.is_err() {
-			Self::download_file_and_save(&url, &file_name).await?;
+			download_file_and_save(&url, &file_name).await?;
 			result = Self::try_gz_decode_archive_file(&file_name);
 		}
 		let data = result.unwrap();
 		Ok(Self::decode_xdr(data))
-	}
-
-	fn decode_xdr(xdr_data: Vec<u8>) -> XdrArchive<TransactionHistoryEntry> {
-		XdrArchive::<TransactionHistoryEntry>::from_xdr(xdr_data).unwrap()
-	}
-
-	async fn download_file_and_save(url: &str, file_name: &str) -> Result<(), Error> {
-		let response = reqwest::get(url).await.unwrap();
-		let content = response.bytes().await.unwrap();
-
-		let mut file = match File::create(&file_name) {
-			Err(why) => panic!("couldn't create {}: {}", &file_name, why),
-			Ok(file) => file,
-		};
-		file.write_all(content.as_bytes_ref())?;
-		Ok(())
-	}
-
-	fn try_gz_decode_archive_file(path: &str) -> Result<Vec<u8>, Error> {
-		use flate2::bufread::GzDecoder;
-		use std::io::{self, BufReader, Read};
-		let bytes = Self::read_file_xdr(path)?;
-		let mut gz = GzDecoder::new(&bytes[..]);
-		let mut bytes: Vec<u8> = vec![];
-		gz.read_to_end(&mut bytes)?;
-		Ok(bytes)
-	}
-
-	fn get_url_and_file_name(slot_index: i32) -> (String, String) {
-		let slot_index = Self::find_last_slot_index_in_batch(slot_index);
-		let hex_string = format!("0{:x}", slot_index);
-		let file_name = format!("{hex_string}.xdr");
-		let base_url = crate::oracle::constants::stellar_history_base_url_transactions;
-		let url = format!(
-			"{base_url}{}/{}/{}/transactions-{file_name}.gz",
-			&hex_string[..2],
-			&hex_string[2..4],
-			&hex_string[4..6]
-		);
-		(url, format!("txs-{file_name}"))
-	}
-
-	fn find_last_slot_index_in_batch(slot_index: i32) -> i32 {
-		let rest = (slot_index + 1) % ARCHIVE_NODE_LEDGER_BATCH;
-		if rest == 0 {
-			return slot_index
-		}
-		return slot_index + ARCHIVE_NODE_LEDGER_BATCH - rest
-	}
-
-	fn read_file_xdr(filename: &str) -> Result<Vec<u8>, Error> {
-		let mut file = File::open(filename)?;
-		let mut bytes: Vec<u8> = vec![];
-		file.read_to_end(&mut bytes)?;
-		Ok(bytes)
 	}
 }
 
@@ -324,7 +241,7 @@ mod test {
 			traits::{FileHandler, FileHandlerExt},
 			EnvelopesFileHandler, TxHashesFileHandler, TxSetsFileHandler,
 		},
-		types::Slot, TransactionsArchiveStorage,
+		types::Slot, TransactionsArchiveStorage, impls::ArchiveStorage,
 	};
 	use frame_support::assert_err;
 	use mockall::lazy_static;
@@ -569,20 +486,5 @@ mod test {
 		let transactions_archive = TransactionsArchiveStorage::get_transactions_archive(slot_index)
 			.await
 			.expect("should find the archive");
-
-		// println!("{:#?}", transactions_archive);
-
-		// let slot_index_u32: u32 = slot_index.try_into().unwrap();
-		// scp_archive
-		// 	.get_vec()
-		// 	.into_iter()
-		// 	.find(|&scp_entry| {
-		// 		if let ScpHistoryEntry::V0(scp_entry_v0) = scp_entry {
-		// 			return scp_entry_v0.ledger_messages.ledger_seq == slot_index_u32
-		// 		} else {
-		// 			return false
-		// 		}
-		// 	})
-		// 	.expect("slot index should be in archive");
 	}
 }
