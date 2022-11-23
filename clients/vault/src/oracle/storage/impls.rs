@@ -283,11 +283,11 @@ impl TransactionsArchiveStorage {
 	}
 
 	fn find_last_slot_index_in_batch(slot_index: i32) -> i32 {
-		let rest = (slot_index + 1) % 64;
+		let rest = (slot_index + 1) % ARCHIVE_NODE_LEDGER_BATCH;
 		if rest == 0 {
 			return slot_index
 		}
-		return slot_index + 64 - rest
+		return slot_index + ARCHIVE_NODE_LEDGER_BATCH - rest
 	}
 
 	fn read_file_xdr(filename: &str) -> Result<Vec<u8>, Error> {
