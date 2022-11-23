@@ -240,6 +240,9 @@ mod test {
 		helper::compute_non_generic_tx_set_content_hash,
 		sdk::{network::PUBLIC_NETWORK, types::ScpStatementPledges},
 	};
+	use super::ScpArchiveStorage;
+		use std::convert::TryInto;
+		use stellar_relay::sdk::types::ScpHistoryEntry;
 
 	lazy_static! {
 		static ref M_SLOTS_FILE: Slot =
@@ -441,10 +444,6 @@ mod test {
 	}
 	#[tokio::test]
 	async fn get_scp_archive_works() {
-		use super::ScpArchiveStorage;
-		use std::convert::TryInto;
-		use stellar_relay::sdk::types::ScpHistoryEntry;
-
 		let slot_index = 30511500;
 
 		let scp_archive = ScpArchiveStorage::get_scp_archive(slot_index)
@@ -468,13 +467,17 @@ mod test {
 	#[tokio::test]
 	async fn get_transactions_archive_works() {
 		use super::TransactionsArchiveStorage;
-		use std::convert::TryInto;
-		use stellar_relay::sdk::types::TransactionHistoryEntry;
 
+		//arrange
 		let slot_index = 30511500;
+		let (url, ref filename) = TransactionsArchiveStorage::get_url_and_file_name(slot_index);
 
+		//act
 		let transactions_archive = TransactionsArchiveStorage::get_transactions_archive(slot_index)
 			.await
 			.expect("should find the archive");
+
+		//assert
+		TransactionsArchiveStorage::read_file_xdr(filename).expect("File with transactions should exists");
 	}
 }
