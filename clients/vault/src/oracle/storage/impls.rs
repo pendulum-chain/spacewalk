@@ -161,14 +161,11 @@ impl ScpArchiveStorage {
 		let (url, file_name) = Self::get_url_and_file_name(slot_index);
 		//try to find xdr.gz file and decode. if error then download archive from horizon archive
 		// node and save
-		let result = Self::try_gz_decode_archive_file(&file_name);
+		let mut result = Self::try_gz_decode_archive_file(&file_name);
 
 		if result.is_err() {
-			let result = Self::download_file_and_save(&url, &file_name).await;
-			if result.is_ok() {
-				let data = Self::try_gz_decode_archive_file(&file_name)?;
-				return Ok(Self::decode_xdr(data))
-			}
+			Self::download_file_and_save(&url, &file_name).await?;
+			result = Self::try_gz_decode_archive_file(&file_name);
 		}
 		let data = result.unwrap();
 		Ok(Self::decode_xdr(data))
@@ -235,16 +232,11 @@ impl TransactionsArchiveStorage {
 		let (url, file_name) = Self::get_url_and_file_name(slot_index);
 		//try to find xdr.gz file and decode. if error then download archive from horizon archive
 		// node and save
-		println!("{url}");
-		println!("{file_name}");
-		let result = Self::try_gz_decode_archive_file(&file_name);
+		let mut result = Self::try_gz_decode_archive_file(&file_name);
 
 		if result.is_err() {
-			let result = Self::download_file_and_save(&url, &file_name).await;
-			if result.is_ok() {
-				let data = Self::try_gz_decode_archive_file(&file_name)?;
-				return Ok(Self::decode_xdr(data))
-			}
+			Self::download_file_and_save(&url, &file_name).await?;
+			result = Self::try_gz_decode_archive_file(&file_name);
 		}
 		let data = result.unwrap();
 		Ok(Self::decode_xdr(data))
