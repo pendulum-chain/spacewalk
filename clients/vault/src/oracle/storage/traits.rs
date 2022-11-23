@@ -1,9 +1,11 @@
-
+use sp_core::hexdisplay::AsBytesRef;
 use stellar_relay::sdk::{
 	XdrCodec,
 	compound_types::{XdrArchive},
 	types::{ScpEnvelope, ScpHistoryEntry, TransactionSet, TransactionHistoryEntry},
 };
+
+use flate2::bufread::GzDecoder;
 
 use crate::oracle::{Error, Filename, SerializedData, Slot, constants::ARCHIVE_NODE_LEDGER_BATCH};
 use std::{
@@ -89,8 +91,6 @@ pub trait ArchiveStorage{
 	const prefix_filename : &'static str = "";
 
 	fn try_gz_decode_archive_file(path: &str) -> Result<Vec<u8>, Error> {
-		use flate2::bufread::GzDecoder;
-		use std::io::{self, BufReader, Read};
 		let bytes = Self::read_file_xdr(path)?;
 		let mut gz = GzDecoder::new(&bytes[..]);
 		let mut bytes: Vec<u8> = vec![];
@@ -131,4 +131,16 @@ pub trait ArchiveStorage{
 	fn decode_xdr(xdr_data: Vec<u8>) -> XdrArchive<Self::T> {
 		XdrArchive::<Self::T>::from_xdr(xdr_data).unwrap()
 	}
+}
+
+pub(crate) async fn download_file_and_save(url: &str, file_name: &str) -> Result<(), Error> {
+	let response = reqwest::get(url).await.unwrap();
+	let content = response.bytes().await.unwrap();
+
+	let mut file = match File::create(&file_name) {
+		Err(why) => panic!("couldn't create {}: {}", &file_name, why),
+		Ok(file) => file,
+	};
+	file.write_all(content.as_bytes_ref())?;
+	Ok(())
 }

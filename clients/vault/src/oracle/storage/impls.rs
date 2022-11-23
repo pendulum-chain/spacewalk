@@ -1,4 +1,4 @@
-use sp_core::hexdisplay::AsBytesRef;
+
 use std::{
 	fs::{create_dir_all, File},
 	io::{Read, Write},
@@ -156,17 +156,7 @@ impl FileHandler<TxHashMap> for TxHashesFileHandler {
 	}
 }
 
-async fn download_file_and_save(url: &str, file_name: &str) -> Result<(), Error> {
-	let response = reqwest::get(url).await.unwrap();
-	let content = response.bytes().await.unwrap();
 
-	let mut file = match File::create(&file_name) {
-		Err(why) => panic!("couldn't create {}: {}", &file_name, why),
-		Ok(file) => file,
-	};
-	file.write_all(content.as_bytes_ref())?;
-	Ok(())
-}
 
 
 impl ArchiveStorage for ScpArchiveStorage{
