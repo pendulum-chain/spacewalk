@@ -15,3 +15,5 @@ pub struct TxSetsFileHandler;
 pub struct TxHashesFileHandler;
 
 pub struct ScpArchiveStorage;
+
+pub struct TransactionsArchiveStorage;
