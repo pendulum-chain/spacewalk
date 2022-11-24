@@ -6198,6 +6198,7 @@ dependencies = [
  "parity-scale-codec",
  "prometheus 0.12.0",
  "rand 0.7.3",
+ "runtime",
  "serde",
  "serde_json",
  "sp-arithmetic 5.0.0",

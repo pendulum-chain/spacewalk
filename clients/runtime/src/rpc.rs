@@ -413,14 +413,16 @@ impl SpacewalkParachain {
 			.unwrap();
 
 		// now call with outdated nonce
-		self.api
+		let result = self
+			.api
 			.tx()
 			.create_signed_with_nonce(&call, &signer, 0, Default::default())
 			.unwrap()
 			.submit_and_watch()
-			.await
-			.unwrap_err()
-			.into()
+			.await;
+
+		assert!(result.is_err());
+		result.unwrap_err().into()
 	}
 
 	/// Emulate the POOL_TOO_LOW_PRIORITY error using token transfer extrinsics.
@@ -446,14 +448,16 @@ impl SpacewalkParachain {
 			.unwrap();
 
 		// should call with the same nonce
-		self.api
+		let result = self
+			.api
 			.tx()
 			.create_signed_with_nonce(&call, &signer, nonce, Default::default())
 			.unwrap()
 			.submit_and_watch()
-			.await
-			.unwrap_err()
-			.into()
+			.await;
+
+		assert!(result.is_err());
+		result.unwrap_err().into()
 	}
 }
 
