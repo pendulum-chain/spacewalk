@@ -13,7 +13,7 @@ pub const SAMPLE_VAULT_ADDRESSES_FILTER: &[&str] =
 	&["GAP4SFKVFVKENJ7B7VORAYKPB3CJIAJ2LMKDJ22ZFHIAIVYQOR6W3CXF"];
 
 pub const TIER_1_VALIDATOR_IP_TESTNET: &str = "34.235.168.98";
-pub const TIER_1_VALIDATOR_IP_PUBLIC: &str = "135.181.16.110";
+pub const TIER_1_VALIDATOR_IP_PUBLIC: &str = "51.161.197.48";
 
 pub struct NoFilter;
 
@@ -54,7 +54,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 		SecretKey::from_encoding("SBLI7RKEJAEFGLZUBSCOFJHQBPFYIIPLBCKN7WVCWT4NEG2UJEW33N73")
 			.unwrap();
 
-	let node_info = NodeInfo::new(19, 21, 19, "v19.1.0".to_string(), network);
+			let node_info = NodeInfo::new(19, 25, 23, "v19.5.0".to_string(), network);
 	let cfg = ConnConfig::new(tier1_node_ip, 11625, secret, 0, true, true, false);
 
 	let vault_addresses_filter =
@@ -70,9 +70,14 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 		let slot_size = handler.get_size().await?;
 		tracing::info!("Slots in the map: {:?}", slot_size);
 
-		// adds filter at count 5
+		//adds filter at count 5
 		if counter == 5 {
 			handler.add_filter(Box::new(NoFilter)).await?;
 		}
+
+		//disconnect from stellar relay node
+		// if counter == 3 {
+		// 	handler.disconnect().await?;
+		// }
 	}
 }

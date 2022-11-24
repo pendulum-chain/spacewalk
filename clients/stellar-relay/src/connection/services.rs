@@ -280,6 +280,7 @@ pub(crate) async fn connection_handler(
 		match timeout(Duration::from_secs(connector.timeout_in_secs), actions_receiver.recv()).await
 		{
 			Ok(Some(ConnectorActions::Disconnect)) => {
+				log::error!("dropped");
 				drop(w_stream);
 				return Ok(());
 			}

@@ -14,15 +14,12 @@ async fn stellar_overlay_connect_and_listen_connect_message() {
 	let mut overlay_connection = StellarOverlayConnection::connect(node_info.clone(), cfg).await.unwrap();
 
 	let message = overlay_connection.listen().await.unwrap();
-	overlay_connection.disconnect().await;
 	if let StellarRelayMessage::Connect{pub_key : x, node_info : y} = message{
 		assert_eq!(y.ledger_version, node_info.ledger_version);
 	}
 	else{
 		panic!("Incorrect stellar relay message received");
 	}
-
-	
 }
 
 #[tokio::test]
