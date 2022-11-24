@@ -10,7 +10,7 @@ use sp_core::{crypto::UncheckedInto, sr25519, Pair, Public};
 use sp_finality_grandpa::AuthorityId as GrandpaId;
 use sp_runtime::traits::{IdentifyAccount, Verify};
 
-use primitives::{CurrencyId::Token, VaultCurrencyPair, AMPE, DOT, KSM};
+use primitives::{CurrencyId::Token, VaultCurrencyPair, AMPE, DOT, KSM, PEN};
 use spacewalk_runtime::{
 	AccountId, AuraConfig, BalancesConfig, CurrencyId, FeeConfig, FieldLength, GenesisConfig,
 	GetWrappedCurrencyId, GrandpaConfig, IssueConfig, NominationConfig, OracleConfig, Organization,
@@ -271,6 +271,7 @@ fn testnet_genesis(
 					vec![
 						(k.clone(), Token(DOT), 1 << 60),
 						(k.clone(), Token(KSM), 1 << 60),
+						(k.clone(), Token(PEN), 1 << 60),
 						(k.clone(), Token(AMPE), 1 << 60),
 					]
 				})
@@ -296,20 +297,20 @@ fn testnet_genesis(
 			minimum_collateral_vault: vec![(Token(DOT), 0), (Token(KSM), 0)],
 			punishment_delay: DAYS,
 			secure_collateral_threshold: vec![
-				(default_pair(Token(DOT)), FixedU128::checked_from_rational(150, 100).unwrap()),
-				(default_pair(Token(KSM)), FixedU128::checked_from_rational(150, 100).unwrap()),
+				(default_pair(Token(DOT)), FixedU128::checked_from_rational(260, 100).unwrap()),
+				(default_pair(Token(KSM)), FixedU128::checked_from_rational(260, 100).unwrap()),
 			], /* 150% */
 			premium_redeem_threshold: vec![
-				(default_pair(Token(DOT)), FixedU128::checked_from_rational(135, 100).unwrap()),
-				(default_pair(Token(KSM)), FixedU128::checked_from_rational(135, 100).unwrap()),
+				(default_pair(Token(DOT)), FixedU128::checked_from_rational(200, 100).unwrap()),
+				(default_pair(Token(KSM)), FixedU128::checked_from_rational(200, 100).unwrap()),
 			], /* 135% */
 			liquidation_collateral_threshold: vec![
-				(default_pair(Token(DOT)), FixedU128::checked_from_rational(110, 100).unwrap()),
-				(default_pair(Token(KSM)), FixedU128::checked_from_rational(110, 100).unwrap()),
+				(default_pair(Token(DOT)), FixedU128::checked_from_rational(150, 100).unwrap()),
+				(default_pair(Token(KSM)), FixedU128::checked_from_rational(150, 100).unwrap()),
 			], /* 110% */
 			system_collateral_ceiling: vec![
-				(default_pair(Token(DOT)), 1000 * DOT.one()),
-				(default_pair(Token(KSM)), 1000 * KSM.one()),
+				(default_pair(Token(DOT)), 60_000 * DOT.one()),
+				(default_pair(Token(KSM)), 60_000 * KSM.one()),
 			],
 		},
 		fee: FeeConfig {
