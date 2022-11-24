@@ -3,22 +3,17 @@ use std::{future::Future, ops::RangeInclusive, sync::Arc, time::Duration};
 use async_trait::async_trait;
 use futures::{stream::StreamExt, FutureExt, SinkExt};
 use jsonrpsee::core::{client::Client, JsonValue};
-use log::log;
-use sp_arithmetic::FixedPointNumber;
 use subxt::{
 	blocks::ExtrinsicEvents,
 	client::OnlineClient,
-	events::{EventDetails, StaticEvent},
+	events::StaticEvent,
 	metadata::DecodeWithMetadata,
-	rpc::{rpc_params, RpcClient, RpcClientT},
+	rpc::rpc_params,
 	storage::{address::Yes, StorageAddress},
-	tx::{PolkadotExtrinsicParams, Signer, TxPayload, TxProgress},
+	tx::{Signer, TxPayload},
 	Error as BasicError, Metadata,
 };
-use tokio::{
-	sync::{Mutex, RwLock},
-	time::timeout,
-};
+use tokio::{sync::RwLock, time::timeout};
 
 use module_oracle_rpc_runtime_api::BalanceWrapper;
 use primitives::Hash;
@@ -26,7 +21,7 @@ use primitives::Hash;
 use crate::{
 	conn::{new_websocket_client, new_websocket_client_with_retry},
 	metadata,
-	metadata::{DispatchError, Event as SpacewalkEvent},
+	metadata::DispatchError,
 	notify_retry,
 	types::*,
 	AccountId, Error, RetryPolicy, ShutdownSender, SpacewalkRuntime, SpacewalkSigner, SubxtError,
@@ -763,9 +758,9 @@ pub trait OraclePallet {
 
 	async fn feed_values(&self, values: Vec<(OracleKey, FixedU128)>) -> Result<(), Error>;
 
-	async fn set_bitcoin_fees(&self, value: FixedU128) -> Result<(), Error>;
+	async fn set_stellar_fees(&self, value: FixedU128) -> Result<(), Error>;
 
-	async fn get_bitcoin_fees(&self) -> Result<FixedU128, Error>;
+	async fn get_stellar_fees(&self) -> Result<FixedU128, Error>;
 
 	async fn wrapped_to_collateral(
 		&self,
@@ -809,7 +804,7 @@ impl OraclePallet for SpacewalkParachain {
 	///
 	/// # Arguments
 	/// * `value` - the estimated fee rate
-	async fn set_bitcoin_fees(&self, value: FixedU128) -> Result<(), Error> {
+	async fn set_stellar_fees(&self, value: FixedU128) -> Result<(), Error> {
 		self.with_retry(
 			metadata::tx().oracle().feed_values(vec![(OracleKey::FeeEstimation, value)]),
 		)
@@ -819,7 +814,7 @@ impl OraclePallet for SpacewalkParachain {
 
 	/// Gets the estimated Satoshis per bytes required to get a Bitcoin transaction included in
 	/// in the next x blocks
-	async fn get_bitcoin_fees(&self) -> Result<FixedU128, Error> {
+	async fn get_stellar_fees(&self) -> Result<FixedU128, Error> {
 		self.query_finalized_or_error(
 			metadata::storage().oracle().aggregate(&OracleKey::FeeEstimation),
 		)

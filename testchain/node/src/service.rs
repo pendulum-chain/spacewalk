@@ -1,7 +1,7 @@
 use std::{sync::Arc, time::Duration};
 
 use futures::StreamExt;
-use sc_client_api::{BlockBackend, ExecutorProvider, HeaderBackend};
+use sc_client_api::BlockBackend;
 use sc_consensus_aura::{ImportQueueParams, SlotProportion, StartAuraParams};
 use sc_executor::NativeElseWasmExecutor;
 use sc_finality_grandpa::SharedVoterState;
@@ -11,10 +11,9 @@ use sc_service::{
 	TaskManager,
 };
 use sc_telemetry::{Telemetry, TelemetryWorker};
-use sp_api::ConstructRuntimeApi;
-use sp_consensus_aura::sr25519::{AuthorityId as AuraId, AuthorityPair as AuraPair};
+use sp_consensus_aura::sr25519::AuthorityPair as AuraPair;
 
-use primitives::{Block, Hash};
+use primitives::Block;
 use spacewalk_runtime::RuntimeApi;
 
 // Native executor instance.
@@ -418,8 +417,6 @@ pub async fn start_instant(
 				sender: None,
 			}
 		});
-
-		let client_for_cidp = client.clone();
 
 		let authorship_future =
 			sc_consensus_manual_seal::run_manual_seal(sc_consensus_manual_seal::ManualSealParams {

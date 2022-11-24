@@ -1,12 +1,14 @@
+use std::{collections::HashMap, num::ParseIntError, sync::Arc, time::Duration};
+
+use clap::Parser;
+use sp_keyring::AccountKeyring;
+use subxt::ext::sp_core::{sr25519::Pair, Pair as _};
+use tokio::sync::RwLock;
+
 use crate::{
 	error::{Error, KeyLoadingError},
 	ShutdownSender, SpacewalkParachain, SpacewalkSigner,
 };
-use clap::Parser;
-use sp_keyring::AccountKeyring;
-use std::{collections::HashMap, num::ParseIntError, sync::Arc, time::Duration};
-use subxt::ext::sp_core::{sr25519::Pair, Pair as _};
-use tokio::sync::RwLock;
 
 #[derive(Parser, Debug, Clone)]
 pub struct ProviderUserOpts {
@@ -35,7 +37,7 @@ impl ProviderUserOpts {
 				(get_credentials_from_file(file_path, keyname)?, keyname.to_string()),
 			(None, None, Some(keyring)) => {
 				let pair = Pair::from_string(keyring.to_seed().as_str(), None)
-					.map_err(|e| Error::KeyringAccountParsingError)?;
+					.map_err(|_| Error::KeyringAccountParsingError)?;
 				(pair, format!("{:?}", keyring))
 			},
 			_ => {

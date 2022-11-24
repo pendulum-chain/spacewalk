@@ -1,20 +1,15 @@
 use std::{array::TryFromSliceError, fmt::Debug, io::Error as IoError, num::TryFromIntError};
 
 use codec::Error as CodecError;
+use jsonrpsee::client_transport::ws::{InvalidUri as UrlParseError, WsHandshakeError};
 pub use jsonrpsee::core::Error as JsonRpseeError;
-use jsonrpsee::{
-	client_transport::ws::WsHandshakeError,
-	core::error::Error as RequestError,
-	types::{error::CallError, ErrorObject, ErrorObjectOwned},
-};
 use serde_json::Error as SerdeJsonError;
 use subxt::{
-	error::{DispatchError, Error as BasicError, ModuleError, RpcError, TransactionError},
+	error::{DispatchError, ModuleError, TransactionError},
 	ext::sp_core::crypto::SecretStringError,
 };
 use thiserror::Error;
 use tokio::time::error::Elapsed;
-use url::ParseError as UrlParseError;
 
 use crate::{types::*, ISSUE_MODULE, SYSTEM_MODULE};
 

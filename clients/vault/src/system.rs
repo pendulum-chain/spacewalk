@@ -392,7 +392,7 @@ impl VaultService {
 	}
 
 	async fn maybe_register_public_key(&mut self) -> Result<(), Error> {
-		if let Some(faucet_url) = &self.config.faucet_url {
+		if let Some(_faucet_url) = &self.config.faucet_url {
 			// TODO fund account with faucet
 		}
 
@@ -445,7 +445,7 @@ impl VaultService {
 							},
 						)
 						.await?;
-				} else if let Some(faucet_url) = &self.config.faucet_url {
+				} else if let Some(_faucet_url) = &self.config.faucet_url {
 					tracing::info!("[{}] Automatically registering...", vault_id.pretty_print());
 					// TODO
 					// faucet::fund_and_register(&self.spacewalk_parachain, faucet_url, &vault_id)

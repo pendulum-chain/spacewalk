@@ -14,7 +14,6 @@ use runtime::{
 	ShutdownSender, SpacewalkParachain, SpacewalkSigner,
 };
 pub use trace::init_subscriber;
-use wallet::StellarWallet;
 
 mod cli;
 mod error;

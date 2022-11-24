@@ -2,17 +2,12 @@ use std::time::Duration;
 
 use async_trait::async_trait;
 use frame_support::assert_ok;
-use futures::{
-	channel::mpsc,
-	future::{join, join3, join5},
-	Future, FutureExt, SinkExt, TryStreamExt,
-};
-use sp_core::ByteArray;
+use futures::Future;
 use sp_keyring::AccountKeyring;
 
 use runtime::{
 	integration::*, types::*, CurrencyId::Token, FixedPointNumber, FixedU128, SpacewalkParachain,
-	UtilFuncs, VaultRegistryPallet,
+	VaultRegistryPallet,
 };
 use stellar_relay::sdk::SecretKey;
 
@@ -52,7 +47,7 @@ where
 		FixedU128::saturating_from_rational(1u128, 100u128),
 	)
 	.await;
-	set_bitcoin_fees(&parachain_rpc, FixedU128::from(1)).await;
+	set_stellar_fees(&parachain_rpc, FixedU128::from(1)).await;
 
 	execute(client).await
 }
@@ -79,7 +74,7 @@ where
 		FixedU128::saturating_from_rational(1u128, 100u128),
 	)
 	.await;
-	set_bitcoin_fees(&parachain_rpc, FixedU128::from(1)).await;
+	set_stellar_fees(&parachain_rpc, FixedU128::from(1)).await;
 
 	let vault_provider = setup_provider(client.clone(), AccountKeyring::Charlie).await;
 

@@ -3,10 +3,7 @@
 use std::{sync::Arc, time::Duration};
 
 use frame_support::assert_ok;
-use futures::{
-	future::{try_join, Either},
-	pin_mut, Future, FutureExt, SinkExt, StreamExt,
-};
+use futures::{future::Either, pin_mut, Future, FutureExt, SinkExt, StreamExt};
 use subxt::{
 	events::StaticEvent as Event,
 	ext::sp_core::{sr25519::Pair, Pair as _},
@@ -25,7 +22,7 @@ use subxt_client::{
 
 use crate::{
 	rpc::{OraclePallet, VaultRegistryPallet},
-	CurrencyId, FixedU128, OracleKey, SpacewalkParachain, SpacewalkSigner, VaultId,
+	CurrencyId, FixedU128, OracleKey, SpacewalkParachain, SpacewalkSigner,
 };
 
 /// Start a new instance of the parachain. The second item in the returned tuple must remain in
@@ -34,9 +31,9 @@ use crate::{
 pub async fn default_provider_client(key: AccountKeyring) -> (SubxtClient, TempDir) {
 	let tmp = TempDir::new("btc-parachain-").expect("failed to create tempdir");
 	let config = SubxtClientConfig {
-		impl_name: "btc-parachain-full-client",
+		impl_name: "spacewalk-parachain-full-client",
 		impl_version: "0.0.1",
-		author: "Interlay Ltd",
+		author: "SatoshiPay",
 		copyright_start_year: 2020,
 		db: DatabaseSource::ParityDb { path: tmp.path().join("db") },
 		keystore: KeystoreConfig::Path { path: tmp.path().join("keystore"), password: None },
@@ -129,8 +126,8 @@ pub async fn set_exchange_rate_and_wait(
 	assert_ok!(timeout(TIMEOUT_DURATION, wait_for_aggregate(parachain_rpc, &key)).await);
 }
 
-pub async fn set_bitcoin_fees(parachain_rpc: &SpacewalkParachain, value: FixedU128) {
-	assert_ok!(parachain_rpc.set_bitcoin_fees(value).await);
+pub async fn set_stellar_fees(parachain_rpc: &SpacewalkParachain, value: FixedU128) {
+	assert_ok!(parachain_rpc.set_stellar_fees(value).await);
 	parachain_rpc.manual_seal().await;
 	// we need a new block to get on_initialize to run
 	assert_ok!(

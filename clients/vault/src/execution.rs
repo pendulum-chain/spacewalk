@@ -1,18 +1,10 @@
-use std::{collections::HashMap, convert::TryInto, sync::Arc, time::Duration};
+use std::{sync::Arc, time::Duration};
 
-use futures::{future::Either, stream::StreamExt, try_join, TryStreamExt};
-use governor::RateLimiter;
-use tokio::time::sleep;
-use tokio_stream::wrappers::BroadcastStream;
-
-use runtime::{
-	CurrencyId, Error as RuntimeError, FixedPointNumber, FixedU128, PrettyPrint, ShutdownSender,
-	SpacewalkParachain, StellarPublicKey, UtilFuncs, VaultId, H256,
-};
+use runtime::{CurrencyId, ShutdownSender, SpacewalkParachain, StellarPublicKey, VaultId, H256};
 use service::{spawn_cancelable, Error as ServiceError};
 use wallet::StellarWallet;
 
-use crate::{error::Error, system::VaultData, VaultIdManager};
+use crate::{error::Error, VaultIdManager};
 
 #[derive(Debug, Clone, PartialEq)]
 struct Deadline {

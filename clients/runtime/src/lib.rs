@@ -4,7 +4,7 @@ pub use sp_arithmetic::{traits as FixedPointTraits, FixedI128, FixedPointNumber,
 use sp_std::marker::PhantomData;
 pub use subxt::ext::sp_core::{crypto::Ss58Codec, sr25519::Pair};
 use subxt::{
-	ext::sp_runtime::{generic::Header, traits::BlakeTwo256, MultiSignature, OpaqueExtrinsic},
+	ext::sp_runtime::{generic::Header, traits::BlakeTwo256, MultiSignature},
 	subxt, Config,
 };
 
