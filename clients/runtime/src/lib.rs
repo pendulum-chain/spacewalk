@@ -15,16 +15,20 @@ pub use rpc::{
 	CollateralBalancesPallet, SpacewalkParachain, UtilFuncs, VaultRegistryPallet,
 	DEFAULT_SPEC_NAME, SS58_PREFIX,
 };
+pub use shutdown::{ShutdownReceiver, ShutdownSender};
 pub use types::*;
 
 pub mod cli;
+
+#[cfg(feature = "testing-utils")]
+pub mod integration;
 
 mod assets;
 mod conn;
 mod error;
 mod retry;
 mod rpc;
-
+mod shutdown;
 pub mod types;
 
 pub const TX_FEES: u128 = 2000000000;
@@ -59,6 +63,8 @@ pub mod metadata {
 	use crate::AccountId;
 	#[subxt(substitute_type = "spacewalk_primitives::CurrencyId")]
 	use crate::CurrencyId;
+	#[subxt(substitute_type = "sp_arithmetic::fixed_point::FixedU128")]
+	use crate::FixedU128;
 }
 
 #[derive(Debug, Eq, PartialEq, Ord, PartialOrd, Default, Clone, Decode, Encode)]

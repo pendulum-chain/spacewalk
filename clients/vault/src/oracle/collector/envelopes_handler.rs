@@ -1,3 +1,15 @@
+use std::sync::Arc;
+
+use parking_lot::RwLock;
+
+use stellar_relay::{
+	sdk::{
+		types::{ScpEnvelope, ScpStatementPledges, StellarMessage},
+		XdrCodec,
+	},
+	xdr_converter, StellarOverlayConnection,
+};
+
 use crate::oracle::{
 	collector::{get_tx_set_hash, ScpMessageCollector},
 	constants::{
@@ -8,15 +20,7 @@ use crate::oracle::{
 	storage::{traits::FileHandlerExt, EnvelopesFileHandler},
 	types::{Slot, TxSetToSlotMap},
 };
-use parking_lot::RwLock;
-use std::sync::Arc;
-use stellar_relay::{
-	sdk::{
-		types::{ScpEnvelope, ScpStatementPledges, StellarMessage},
-		XdrCodec,
-	},
-	xdr_converter, StellarOverlayConnection,
-};
+
 // Handling SCPEnvelopes
 impl ScpMessageCollector {
 	/// handles incoming ScpEnvelope.
@@ -129,15 +133,19 @@ impl ScpMessageCollector {
 
 #[cfg(test)]
 mod test {
+	use std::{collections::HashSet, convert::TryFrom};
+
+	use mockall::lazy_static;
+	use rand::Rng;
+	use tokio::sync::mpsc;
+
 	use crate::oracle::{
 		collector::ScpMessageCollector,
 		constants::MAX_SLOTS_PER_FILE,
 		storage::{traits::FileHandler, EnvelopesFileHandler},
 		types::Slot,
 	};
-	use mockall::lazy_static;
-	use rand::Rng;
-	use std::{collections::HashSet, convert::TryFrom};
+
 	lazy_static! {
 		static ref M_SLOTS_FILE: Slot =
 			Slot::try_from(MAX_SLOTS_PER_FILE - 1).expect("should convert just fine");
@@ -166,7 +174,8 @@ mod test {
 			assert!(env_map.remove(slot).is_some());
 		});
 
-		let mut collector = ScpMessageCollector::new(true, vec![]);
+		let (sender, receiver) = mpsc::channel(1024);
+		let mut collector = ScpMessageCollector::new(true, vec![], sender);
 		collector.envelopes_map_mut().append(&mut env_map);
 
 		// this should not write to file.

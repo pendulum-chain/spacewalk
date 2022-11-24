@@ -1,7 +1,6 @@
 use crate::{
 	error::{Error, KeyLoadingError},
-	rpc::ShutdownSender,
-	SpacewalkParachain, SpacewalkSigner,
+	ShutdownSender, SpacewalkParachain, SpacewalkSigner,
 };
 use clap::Parser;
 use sp_keyring::AccountKeyring;
@@ -37,7 +36,7 @@ impl ProviderUserOpts {
 			(None, None, Some(keyring)) => {
 				let pair = Pair::from_string(keyring.to_seed().as_str(), None)
 					.map_err(|e| Error::KeyringAccountParsingError)?;
-				(pair, format!("{}", keyring))
+				(pair, format!("{:?}", keyring))
 			},
 			_ => {
 				// should never occur, due to clap constraints

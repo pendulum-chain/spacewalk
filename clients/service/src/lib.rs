@@ -10,8 +10,8 @@ pub use warp;
 pub use cli::{LoggingFormat, RestartPolicy, ServiceConfig};
 pub use error::Error;
 use runtime::{
-	cli::ConnectionOpts as ParachainConfig, CurrencyId, PrettyPrint, SpacewalkParachain,
-	SpacewalkSigner,
+	cli::ConnectionOpts as ParachainConfig, CurrencyId, PrettyPrint, ShutdownReceiver,
+	ShutdownSender, SpacewalkParachain, SpacewalkSigner,
 };
 pub use trace::init_subscriber;
 use wallet::StellarWallet;
@@ -19,9 +19,6 @@ use wallet::StellarWallet;
 mod cli;
 mod error;
 mod trace;
-
-pub type ShutdownSender = tokio::sync::broadcast::Sender<()>;
-pub type ShutdownReceiver = tokio::sync::broadcast::Receiver<()>;
 
 #[async_trait]
 pub trait Service<Config, InnerError> {
@@ -75,9 +72,7 @@ impl<Config: Clone + Send + 'static, F: Fn()> ConnectionManager<Config, F> {
 			tracing::info!("AccountId: {}", self.signer.read().await.account_id().pretty_print());
 
 			let config = self.config.clone();
-			let (shutdown_tx, _) = tokio::sync::broadcast::channel(16);
-
-			let prefix = self.wallet_name.clone().unwrap_or_else(|| "vault".to_string());
+			let shutdown_tx = ShutdownSender::new();
 
 			let signer = self.signer.clone();
 			let spacewalk_parachain = SpacewalkParachain::from_url_and_config_with_retry(

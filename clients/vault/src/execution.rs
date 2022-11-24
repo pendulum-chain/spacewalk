@@ -6,10 +6,10 @@ use tokio::time::sleep;
 use tokio_stream::wrappers::BroadcastStream;
 
 use runtime::{
-	CurrencyId, Error as RuntimeError, FixedPointNumber, FixedU128, PrettyPrint,
+	CurrencyId, Error as RuntimeError, FixedPointNumber, FixedU128, PrettyPrint, ShutdownSender,
 	SpacewalkParachain, StellarPublicKey, UtilFuncs, VaultId, H256,
 };
-use service::{spawn_cancelable, Error as ServiceError, ShutdownSender};
+use service::{spawn_cancelable, Error as ServiceError};
 use wallet::StellarWallet;
 
 use crate::{error::Error, system::VaultData, VaultIdManager};

@@ -14,9 +14,10 @@ use tokio::{sync::RwLock, time::sleep};
 use runtime::{
 	cli::{parse_duration_minutes, parse_duration_ms},
 	CollateralBalancesPallet, CurrencyId, Error as RuntimeError, PrettyPrint, RegisterVaultEvent,
-	SpacewalkParachain, TryFromSymbol, UtilFuncs, VaultCurrencyPair, VaultId, VaultRegistryPallet,
+	ShutdownSender, SpacewalkParachain, TryFromSymbol, UtilFuncs, VaultCurrencyPair, VaultId,
+	VaultRegistryPallet,
 };
-use service::{wait_or_shutdown, Error as ServiceError, Service, ShutdownSender};
+use service::{wait_or_shutdown, Error as ServiceError, Service};
 use wallet::StellarWallet;
 
 use crate::{
