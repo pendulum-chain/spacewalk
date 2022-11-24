@@ -912,3 +912,34 @@ impl OraclePallet for SpacewalkParachain {
 		self.fee_rate_update_tx.subscribe()
 	}
 }
+
+#[async_trait]
+pub trait SecurityPallet {
+	async fn get_parachain_status(&self) -> Result<StatusCode, Error>;
+
+	async fn get_error_codes(&self) -> Result<Vec<ErrorCode>, Error>;
+
+	/// Gets the current active block number of the parachain
+	async fn get_current_active_block_number(&self) -> Result<u32, Error>;
+}
+
+#[async_trait]
+impl SecurityPallet for SpacewalkParachain {
+	/// Get the current security status of the parachain.
+	/// Should be one of; `Running`, `Error` or `Shutdown`.
+	async fn get_parachain_status(&self) -> Result<StatusCode, Error> {
+		self.query_finalized_or_error(metadata::storage().security().parachain_status())
+			.await
+	}
+
+	/// Return any `ErrorCode`s set in the security module.
+	async fn get_error_codes(&self) -> Result<Vec<ErrorCode>, Error> {
+		self.query_finalized_or_error(metadata::storage().security().errors()).await
+	}
+
+	/// Gets the current active block number of the parachain
+	async fn get_current_active_block_number(&self) -> Result<u32, Error> {
+		self.query_finalized_or_default(metadata::storage().security().active_block_count())
+			.await
+	}
+}

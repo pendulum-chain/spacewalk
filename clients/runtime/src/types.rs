@@ -1,7 +1,7 @@
 pub use subxt::ext::sp_core::sr25519::Pair as KeyPair;
 
 pub use metadata_aliases::*;
-pub use primitives::{CurrencyId, TokenSymbol};
+pub use primitives::{CurrencyId, CurrencyId::Token, TokenSymbol};
 
 use crate::{metadata, Config, SpacewalkRuntime, SS58_PREFIX};
 
@@ -22,7 +22,9 @@ mod metadata_aliases {
 		runtime_types::{
 			frame_system::pallet::Error as SystemPalletError,
 			issue::pallet::Error as IssuePalletError,
-			spacewalk_primitives::oracle::Key as OracleKey, vault_registry::types::VaultStatus,
+			security::types::{ErrorCode, StatusCode},
+			spacewalk_primitives::oracle::Key as OracleKey,
+			vault_registry::types::VaultStatus,
 		},
 		vault_registry::events::{
 			DepositCollateral as DepositCollateralEvent, LiquidateVault as LiquidateVaultEvent,
