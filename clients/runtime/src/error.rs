@@ -1,9 +1,13 @@
 use std::{array::TryFromSliceError, fmt::Debug, io::Error as IoError, num::TryFromIntError};
 
 use codec::Error as CodecError;
-use jsonrpsee::client_transport::ws::{InvalidUri as UrlParseError, WsHandshakeError};
 pub use jsonrpsee::core::Error as JsonRpseeError;
+use jsonrpsee::{
+	client_transport::ws::{InvalidUri as UrlParseError, WsHandshakeError},
+	types::{error::CallError, ErrorObjectOwned},
+};
 use serde_json::Error as SerdeJsonError;
+pub use subxt::{error::RpcError, Error as SubxtError};
 use subxt::{
 	error::{DispatchError, ModuleError, TransactionError},
 	ext::sp_core::crypto::SecretStringError,
@@ -12,8 +16,6 @@ use thiserror::Error;
 use tokio::time::error::Elapsed;
 
 use crate::{types::*, ISSUE_MODULE, SYSTEM_MODULE};
-
-pub type SubxtError = subxt::Error;
 
 #[derive(Error, Debug)]
 pub enum Error {
@@ -91,6 +93,64 @@ impl Error {
 
 	pub fn is_issue_completed(&self) -> bool {
 		self.is_module_err(ISSUE_MODULE, &format!("{:?}", IssuePalletError::IssueCompleted))
+	}
+
+	fn map_custom_error<T>(&self, call: impl Fn(&ErrorObjectOwned) -> Option<T>) -> Option<T> {
+		if let Error::SubxtRuntimeError(SubxtError::Rpc(RpcError::ClientError(e))) = self {
+			match e.downcast_ref::<JsonRpseeError>() {
+				Some(e) => match e {
+					JsonRpseeError::Call(CallError::Custom(err)) => call(&err),
+					_ => None,
+				},
+				None => {
+					log::error!("Failed to downcast RPC error; this is a bug please file an issue");
+					return None
+				},
+			}
+		} else {
+			None
+		}
+	}
+
+	pub fn is_invalid_transaction(&self) -> Option<String> {
+		self.map_custom_error(|custom_error| {
+			if custom_error.code() == POOL_INVALID_TX {
+				Some(custom_error.data().map(ToString::to_string).unwrap_or_default())
+			} else {
+				None
+			}
+		})
+	}
+
+	pub fn is_pool_too_low_priority(&self) -> Option<()> {
+		self.map_custom_error(|custom_error| {
+			if custom_error.code() == POOL_TOO_LOW_PRIORITY {
+				Some(())
+			} else {
+				None
+			}
+		})
+	}
+
+	pub fn is_rpc_disconnect_error(&self) -> bool {
+		match self {
+			Error::SubxtRuntimeError(SubxtError::Rpc(RpcError::ClientError(e))) =>
+				match e.downcast_ref::<JsonRpseeError>() {
+					Some(e) => matches!(e, JsonRpseeError::RestartNeeded(_)),
+					None => {
+						log::error!(
+							"Failed to downcast RPC error; this is a bug please file an issue"
+						);
+						return false
+					},
+				},
+			Error::SubxtRuntimeError(SubxtError::Rpc(RpcError::SubscriptionDropped)) => true,
+			_ => false,
+		}
+	}
+
+	pub fn is_rpc_error(&self) -> bool {
+		matches!(self, Error::SubxtRuntimeError(SubxtError::Rpc(_)))
 	}
 
 	pub fn is_block_hash_not_found_error(&self) -> bool {

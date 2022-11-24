@@ -16,7 +16,7 @@ use subxt::{
 use tokio::{sync::RwLock, time::timeout};
 
 use module_oracle_rpc_runtime_api::BalanceWrapper;
-use primitives::Hash;
+use primitives::{CurrencyId::Token, Hash, DOT};
 
 use crate::{
 	conn::{new_websocket_client, new_websocket_client_with_retry},
@@ -210,11 +210,37 @@ impl SpacewalkParachain {
 			|result| async {
 				match result.map_err(Into::<Error>::into) {
 					Ok(te) => Ok(te),
-					Err(err) => Err(RetryPolicy::Throw(err)),
+					Err(err) =>
+						if let Some(data) = err.is_invalid_transaction() {
+							Err(RetryPolicy::Skip(Error::InvalidTransaction(data)))
+						} else if err.is_pool_too_low_priority().is_some() {
+							Err(RetryPolicy::Skip(Error::PoolTooLowPriority))
+						} else if err.is_block_hash_not_found_error() {
+							log::info!("Re-sending transaction after apparent fork");
+							Err(RetryPolicy::Skip(Error::BlockHashNotFound))
+						} else {
+							Err(RetryPolicy::Throw(err))
+						},
 				}
 			},
 		)
 		.await
+	}
+
+	async fn get_fresh_nonce(&self) -> u32 {
+		// For getting the nonce, use latest, possibly non-finalized block.
+		let storage_key = metadata::storage().system().account(&self.account_id);
+		let on_chain_nonce = self
+			.api
+			.storage()
+			.fetch(&storage_key, None)
+			.await
+			.transpose()
+			.and_then(|x| x.ok())
+			.map(|x| x.nonce)
+			.unwrap_or_default();
+
+		on_chain_nonce.saturating_add(1)
 	}
 
 	async fn query_finalized<Address>(
@@ -346,57 +372,6 @@ impl SpacewalkParachain {
 		Ok(())
 	}
 
-	/// Emulate the POOL_INVALID_TX error using token transfer extrinsics.
-	#[cfg(test)]
-	pub async fn get_invalid_tx_error(&self, recipient: AccountId) -> Error {
-		let mut signer = self.signer.write().await;
-
-		self.api
-			.tx()
-			.tokens()
-			.transfer(recipient.clone(), Token(DOT), 100)
-			.sign_and_submit_then_watch_default(&signer.clone())
-			.await
-			.unwrap();
-
-		signer.set_nonce(0);
-
-		// now call with outdated nonce
-		self.api
-			.tx()
-			.tokens()
-			.transfer(recipient.clone(), Token(DOT), 100)
-			.sign_and_submit_then_watch_default(&signer.clone())
-			.await
-			.unwrap_err()
-			.into()
-	}
-
-	/// Emulate the POOL_TOO_LOW_PRIORITY error using token transfer extrinsics.
-	#[cfg(test)]
-	pub async fn get_too_low_priority_error(&self, recipient: AccountId) -> Error {
-		let signer = self.signer.write().await;
-
-		// submit tx but don't watch
-		self.api
-			.tx()
-			.tokens()
-			.transfer(recipient.clone(), Token(DOT), 100)
-			.sign_and_submit_default(&signer.clone())
-			.await
-			.unwrap();
-
-		// should call with the same nonce
-		self.api
-			.tx()
-			.tokens()
-			.transfer(recipient, Token(DOT), 100)
-			.sign_and_submit_then_watch_default(&signer.clone())
-			.await
-			.unwrap_err()
-			.into()
-	}
-
 	/// Listen to fee_rate changes and broadcast new values on the fee_rate_update_tx channel
 	pub async fn listen_for_fee_rate_changes(&self) -> Result<(), Error> {
 		self.on_event::<FeedValuesEvent, _, _, _>(
@@ -416,6 +391,69 @@ impl SpacewalkParachain {
 		)
 		.await?;
 		Ok(())
+	}
+
+	/// Emulate the POOL_INVALID_TX error using token transfer extrinsics.
+	#[cfg(test)]
+	pub async fn get_invalid_tx_error(&self, recipient: AccountId) -> Error {
+		let call = metadata::tx().tokens().transfer(
+			subxt::ext::sp_runtime::MultiAddress::Id(recipient),
+			Token(DOT),
+			100,
+		);
+		let nonce = self.get_fresh_nonce().await;
+		let signer = self.signer.read().await.clone();
+
+		self.api
+			.tx()
+			.create_signed_with_nonce(&call, &signer, nonce, Default::default())
+			.unwrap()
+			.submit_and_watch()
+			.await
+			.unwrap();
+
+		// now call with outdated nonce
+		self.api
+			.tx()
+			.create_signed_with_nonce(&call, &signer, 0, Default::default())
+			.unwrap()
+			.submit_and_watch()
+			.await
+			.unwrap_err()
+			.into()
+	}
+
+	/// Emulate the POOL_TOO_LOW_PRIORITY error using token transfer extrinsics.
+	#[cfg(test)]
+	pub async fn get_too_low_priority_error(&self, recipient: AccountId) -> Error {
+		let call = metadata::tx().tokens().transfer(
+			subxt::ext::sp_runtime::MultiAddress::Id(recipient),
+			Token(DOT),
+			100,
+		);
+
+		let nonce = self.get_fresh_nonce().await;
+
+		let signer = self.signer.read().await.clone();
+
+		// submit tx but don't watch
+		self.api
+			.tx()
+			.create_signed_with_nonce(&call, &signer, nonce, Default::default())
+			.unwrap()
+			.submit()
+			.await
+			.unwrap();
+
+		// should call with the same nonce
+		self.api
+			.tx()
+			.create_signed_with_nonce(&call, &signer, nonce, Default::default())
+			.unwrap()
+			.submit_and_watch()
+			.await
+			.unwrap_err()
+			.into()
 	}
 }
 
