@@ -36,7 +36,7 @@ pub enum ActorMessage {
 	GetScpState {
 		missed_slot: u64,
 	},
-	Disconnect
+	Disconnect,
 }
 
 /// Runs both the stellar-relay and its own.
@@ -77,9 +77,9 @@ impl ScpMessageActor {
 					.send(StellarMessage::GetScpState(missed_slot.try_into().unwrap()))
 					.await;
 			},
-			ActorMessage::Disconnect =>{
+			ActorMessage::Disconnect => {
 				overlay_conn.disconnect().await;
-			}
+			},
 		};
 	}
 
@@ -192,10 +192,7 @@ impl ScpMessageHandler {
 	}
 
 	pub async fn disconnect(&self) -> Result<(), Error> {
-		self.action_sender
-			.send(ActorMessage::Disconnect)
-			.await
-			.map_err(Error::from)
+		self.action_sender.send(ActorMessage::Disconnect).await.map_err(Error::from)
 	}
 }
 

@@ -1,4 +1,8 @@
-use substrate_stellar_sdk::{network::PUBLIC_NETWORK, types::{StellarMessage, ScpStatementPledges, ScpStatementExternalize}, SecretKey};
+use substrate_stellar_sdk::{
+	network::PUBLIC_NETWORK,
+	types::{ScpStatementExternalize, ScpStatementPledges, StellarMessage},
+	SecretKey,
+};
 
 use crate::{node::NodeInfo, ConnConfig, StellarOverlayConnection, StellarRelayMessage};
 
@@ -11,13 +15,13 @@ async fn stellar_overlay_connect_and_listen_connect_message() {
 
 	let node_info = NodeInfo::new(19, 25, 23, "v19.5.0".to_string(), &PUBLIC_NETWORK);
 	let cfg = ConnConfig::new(TIER_1_VALIDATOR_IP_PUBLIC, 11625, secret, 0, false, true, false);
-	let mut overlay_connection = StellarOverlayConnection::connect(node_info.clone(), cfg).await.unwrap();
+	let mut overlay_connection =
+		StellarOverlayConnection::connect(node_info.clone(), cfg).await.unwrap();
 
 	let message = overlay_connection.listen().await.unwrap();
-	if let StellarRelayMessage::Connect{pub_key : x, node_info : y} = message{
+	if let StellarRelayMessage::Connect { pub_key: x, node_info: y } = message {
 		assert_eq!(y.ledger_version, node_info.ledger_version);
-	}
-	else{
+	} else {
 		panic!("Incorrect stellar relay message received");
 	}
 }
@@ -32,25 +36,25 @@ async fn stellar_overlay_should_receive_scp_messages() {
 	let node_info = NodeInfo::new(19, 25, 23, "v19.5.0".to_string(), &PUBLIC_NETWORK);
 	//act
 	let cfg = ConnConfig::new(TIER_1_VALIDATOR_IP_PUBLIC, 11625, secret, 0, false, true, false);
-	let mut overlay_connection = StellarOverlayConnection::connect(node_info.clone(), cfg).await.unwrap();
+	let mut overlay_connection =
+		StellarOverlayConnection::connect(node_info.clone(), cfg).await.unwrap();
 
 	let mut scps_vec = vec![];
 	let mut attempt = 0;
 	while let Some(relay_message) = overlay_connection.listen().await {
-		if attempt > 20{
-			break;
+		if attempt > 20 {
+			break
 		}
 		attempt = attempt + 1;
 		match relay_message {
 			StellarRelayMessage::Data { p_id, msg_type, msg } => match msg {
 				StellarMessage::ScpMessage(msg) => {
 					scps_vec.push(msg);
-					break;
+					break
 				},
-				_ => {
-				},
+				_ => {},
 			},
-			_ => {}
+			_ => {},
 		}
 	}
 	//assert
@@ -60,11 +64,10 @@ async fn stellar_overlay_should_receive_scp_messages() {
 use substrate_stellar_sdk::Hash;
 #[tokio::test]
 async fn stellar_overlay_should_receive_tx_set() {
-
 	//arrange
 	pub fn get_tx_set_hash(x: &ScpStatementExternalize) -> Hash {
 		let scp_value = x.commit.value.get_vec();
-		return scp_value[0..32].try_into().unwrap();
+		return scp_value[0..32].try_into().unwrap()
 	}
 
 	let secret =
@@ -74,13 +77,14 @@ async fn stellar_overlay_should_receive_tx_set() {
 	let node_info = NodeInfo::new(19, 25, 23, "v19.5.0".to_string(), &PUBLIC_NETWORK);
 	let cfg = ConnConfig::new(TIER_1_VALIDATOR_IP_PUBLIC, 11625, secret, 0, true, true, false);
 	//act
-	let mut overlay_connection = StellarOverlayConnection::connect(node_info.clone(), cfg).await.unwrap();
+	let mut overlay_connection =
+		StellarOverlayConnection::connect(node_info.clone(), cfg).await.unwrap();
 
 	let mut tx_set_vec = vec![];
 	let mut attempt = 0;
 	while let Some(relay_message) = overlay_connection.listen().await {
-		if attempt > 300{
-			break;
+		if attempt > 300 {
+			break
 		}
 		attempt = attempt + 1;
 		match relay_message {
@@ -88,22 +92,24 @@ async fn stellar_overlay_should_receive_tx_set() {
 				StellarMessage::ScpMessage(msg) => {
 					if let ScpStatementPledges::ScpStExternalize(stmt) = &msg.statement.pledges {
 						let txset_hash = get_tx_set_hash(stmt);
-						overlay_connection.send(StellarMessage::GetTxSet(txset_hash)).await.unwrap();
+						overlay_connection
+							.send(StellarMessage::GetTxSet(txset_hash))
+							.await
+							.unwrap();
 					}
 				},
 				StellarMessage::TxSet(set) => {
 					tx_set_vec.push(set);
-					break;
+					break
 				},
-				_ => {
-				},
+				_ => {},
 			},
-			_ => {}
+			_ => {},
 		}
 	}
 	//arrange
 	//ensure that we receive some tx set from stellar node
-	assert!(tx_set_vec.len() > 0); 
+	assert!(tx_set_vec.len() > 0);
 }
 
 #[tokio::test]
@@ -114,13 +120,13 @@ async fn stellar_overlay_disconnect_works() {
 
 	let node_info = NodeInfo::new(19, 25, 23, "v19.5.0".to_string(), &PUBLIC_NETWORK);
 	let cfg = ConnConfig::new(TIER_1_VALIDATOR_IP_PUBLIC, 11625, secret, 0, false, false, false);
-	let mut overlay_connection = StellarOverlayConnection::connect(node_info.clone(), cfg).await.unwrap();
+	let mut overlay_connection =
+		StellarOverlayConnection::connect(node_info.clone(), cfg).await.unwrap();
 
 	let message = overlay_connection.listen().await.unwrap();
-	if let StellarRelayMessage::Connect{pub_key : x, node_info : y} = message{
+	if let StellarRelayMessage::Connect { pub_key: x, node_info: y } = message {
 		assert_eq!(y.ledger_version, node_info.ledger_version);
-	}
-	else{
+	} else {
 		panic!("Incorrect stellar relay message received");
 	}
 	overlay_connection.disconnect().await.unwrap();

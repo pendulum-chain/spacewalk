@@ -54,7 +54,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 		SecretKey::from_encoding("SBLI7RKEJAEFGLZUBSCOFJHQBPFYIIPLBCKN7WVCWT4NEG2UJEW33N73")
 			.unwrap();
 
-			let node_info = NodeInfo::new(19, 25, 23, "v19.5.0".to_string(), network);
+	let node_info = NodeInfo::new(19, 25, 23, "v19.5.0".to_string(), network);
 	let cfg = ConnConfig::new(tier1_node_ip, 11625, secret, 0, true, true, false);
 
 	let vault_addresses_filter =

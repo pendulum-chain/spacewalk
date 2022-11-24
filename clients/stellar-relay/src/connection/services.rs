@@ -259,7 +259,7 @@ async fn _connection_handler(
 			connector.process_raw_message(xdr).await?;
 		},
 
-		ConnectorActions::Disconnect => panic!("Should disconnect")
+		ConnectorActions::Disconnect => panic!("Should disconnect"),
 	}
 
 	Ok(())
@@ -282,8 +282,8 @@ pub(crate) async fn connection_handler(
 			Ok(Some(ConnectorActions::Disconnect)) => {
 				log::error!("dropped");
 				drop(w_stream);
-				return Ok(());
-			}
+				return Ok(())
+			},
 
 			Ok(Some(action)) => {
 				timeout_counter = 0;
