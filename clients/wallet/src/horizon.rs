@@ -300,6 +300,7 @@ mod tests {
 	#[async_trait]
 	impl Watcher for MockWatcher {
 		async fn watch_slot(&self, slot: u128) -> Result<(), Error> {
+			// Maybe mock this with some library to check how often it's called?
 			todo!()
 		}
 	}

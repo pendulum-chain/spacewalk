@@ -1,9 +1,11 @@
+use async_trait::async_trait;
 use tokio::sync::{mpsc, oneshot};
 
 use stellar_relay_lib::{
 	node::NodeInfo, sdk::types::StellarMessage, ConnConfig, StellarOverlayConnection,
 	StellarRelayMessage,
 };
+use wallet::Watcher;
 
 use crate::oracle::{
 	collector::{Proof, ProofStatus, ScpMessageCollector},
@@ -198,6 +200,13 @@ impl ScpMessageHandler {
 		let (sender, receiver) = oneshot::channel();
 		self.action_sender.send(ActorMessage::GetSlotWatchList { sender }).await?;
 		receiver.await.map_err(Error::from)
+	}
+}
+
+#[async_trait]
+impl Watcher for ScpMessageHandler {
+	async fn watch_slot(&self, slot: u64) -> Result<(), wallet::error::Error> {
+		self.watch_slot(slot).await.map_err(|e| e.into())
 	}
 }
 

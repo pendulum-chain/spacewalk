@@ -8,7 +8,6 @@ pub use crate::error::Error;
 
 mod error;
 mod execution;
-mod horizon;
 pub mod metrics;
 pub mod process;
 mod system;

@@ -1,20 +1,18 @@
 #![allow(dead_code)]
 
+use collector::*;
+pub use collector::{Proof, ProofStatus};
+use errors::Error;
+pub use handler::*;
+pub use storage::{prepare_directories, *};
+use types::*;
+
 mod collector;
 mod constants;
 mod errors;
 mod handler;
 pub mod storage;
 mod types;
-
-pub use collector::{Proof, ProofStatus};
-pub use handler::*;
-pub use storage::prepare_directories;
-
-use collector::*;
-use errors::Error;
-pub use storage::*;
-use types::*;
 
 /// A filter trait to check whether `T` should be processed.
 pub trait FilterWith<T> {
