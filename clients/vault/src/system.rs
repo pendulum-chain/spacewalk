@@ -1,8 +1,3 @@
-use crate::{
-	horizon::client::{poll_horizon_for_new_transactions, IssueRequests},
-	oracle::{create_handler, prepare_directories, ScpMessageHandler},
-};
-
 use std::{
 	collections::HashMap, convert::TryInto, future::Future, pin::Pin, sync::Arc, time::Duration,
 };
@@ -29,14 +24,18 @@ use stellar_relay_lib::{
 	node::NodeInfo,
 	sdk::{
 		network::{Network, PUBLIC_NETWORK, TEST_NETWORK},
-		SecretKey,
+		Hash, SecretKey,
 	},
 	ConnConfig,
 };
 use wallet::StellarWallet;
 
 use crate::{
-	error::Error, execution::execute_open_requests, metrics::publish_tokio_metrics,
+	error::Error,
+	execution::execute_open_requests,
+	horizon::client::{poll_horizon_for_new_transactions, IssueRequests},
+	metrics::publish_tokio_metrics,
+	oracle::{create_handler, prepare_directories, ScpMessageHandler},
 	CHAIN_HEIGHT_POLLING_INTERVAL,
 };
 
@@ -435,8 +434,14 @@ impl VaultService {
 
 		let handler = {
 			let handler = self.create_handler().await?;
-			Arc::new(Mutex::new(handler))
+			Arc::new(RwLock::new(handler))
 		};
+
+		let is_public_network = self.spacewalk_parachain.is_public_network().await?;
+		self.stellar_wallet.set_is_public_network(is_public_network);
+		// this vec is passed to the stellar wallet to filter out transactions that are not relevant
+		// this has to be modified every time the issue set changes
+		let issue_hashes_vec: Arc<RwLock<Vec<Hash>>> = Arc::new(RwLock::new(Vec::new()));
 
 		tracing::info!("Starting all services...");
 		let tasks = vec![
@@ -454,11 +459,9 @@ impl VaultService {
 			),
 			(
 				"Listen for New Transactions",
-				run(poll_horizon_for_new_transactions(
-					self.config.stellar_vault_secret_key.clone(),
-					issue_set.clone(),
-					handler.clone(),
-				)),
+				run(self
+					.stellar_wallet
+					.listen_for_new_transactions(issue_hashes_vec, handler.clone())),
 			),
 		];
 
