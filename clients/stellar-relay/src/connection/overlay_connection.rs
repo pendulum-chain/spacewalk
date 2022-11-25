@@ -131,6 +131,15 @@ mod test {
 	use substrate_stellar_sdk::{network::TEST_NETWORK, types::StellarMessage, SecretKey};
 	use tokio::sync::mpsc;
 
+	fn create_node_and_conn() -> (NodeInfo, ConnConfig) {
+		let secret =
+			SecretKey::from_encoding("SBLI7RKEJAEFGLZUBSCOFJHQBPFYIIPLBCKN7WVCWT4NEG2UJEW33N73")
+				.unwrap();
+		let node_info = NodeInfo::new(19, 21, 19, "v19.1.0".to_string(), &TEST_NETWORK);
+		let cfg = ConnConfig::new("34.235.168.98", 11625, secret, 0, false, true, false);
+		(node_info, cfg)
+	}
+
 	#[test]
 	fn create_stellar_overlay_connection_works() {
 		let (node_info, cfg) = create_node_and_conn();
@@ -236,12 +245,5 @@ mod test {
 		assert!(stellar_overlay_connection.is_ok());
 	}
 
-	fn create_node_and_conn() -> (NodeInfo, ConnConfig) {
-		let secret =
-			SecretKey::from_encoding("SBLI7RKEJAEFGLZUBSCOFJHQBPFYIIPLBCKN7WVCWT4NEG2UJEW33N73")
-				.unwrap();
-		let node_info = NodeInfo::new(19, 21, 19, "v19.1.0".to_string(), &TEST_NETWORK);
-		let cfg = ConnConfig::new("34.235.168.98", 11625, secret, 0, false, true, false);
-		(node_info, cfg)
-	}
+	
 }
