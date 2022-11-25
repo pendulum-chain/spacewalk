@@ -1194,6 +1194,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "dashmap"
+version = "5.3.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "3495912c9c1ccf2e18976439f4443f3fee0fd61f424ff99fde6a66b15ecb448f"
+dependencies = [
+ "cfg-if 1.0.0",
+ "hashbrown 0.12.2",
+ "lock_api",
+ "parking_lot_core 0.9.3",
+]
+
+[[package]]
 name = "data-encoding"
 version = "2.3.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -6953,6 +6965,32 @@ dependencies = [
 ]
 
 [[package]]
+name = "serial_test"
+version = "0.9.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "92761393ee4dc3ff8f4af487bd58f4307c9329bbedea02cac0089ad9c411e153"
+dependencies = [
+ "dashmap",
+ "futures 0.3.21",
+ "lazy_static",
+ "log",
+ "parking_lot 0.12.1",
+ "serial_test_derive",
+]
+
+[[package]]
+name = "serial_test_derive"
+version = "0.9.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "4b6f5d1c3087fb119617cff2966fe3808a80e5eb59a8c1601d5994d66f4346a5"
+dependencies = [
+ "proc-macro-error",
+ "proc-macro2",
+ "quote",
+ "syn",
+]
+
+[[package]]
 name = "service"
 version = "1.1.0"
 dependencies = [
@@ -7998,6 +8036,7 @@ dependencies = [
  "hmac 0.12.1",
  "log",
  "rand 0.8.5",
+ "serial_test",
  "sha2 0.10.6",
  "substrate-stellar-sdk 0.2.3 (git+https://github.com/pendulum-chain/substrate-stellar-sdk?branch=master)",
  "tokio",
@@ -8105,24 +8144,6 @@ dependencies = [
 name = "substrate-stellar-sdk"
 version = "0.2.3"
 source = "git+https://github.com/pendulum-chain/substrate-stellar-sdk?branch=polkadot-v0.9.24#c3aa39ad89f2d78930bcc2da2f59857e3afd27fd"
-dependencies = [
- "base64",
- "hex",
- "lazy_static",
- "num-rational 0.4.1",
- "serde",
- "serde_json",
- "sha2 0.9.9",
- "sodalite",
- "sp-io",
- "sp-runtime",
- "sp-std",
-]
-
-[[package]]
-name = "substrate-stellar-sdk"
-version = "0.2.3"
-source = "git+https://github.com/pendulum-chain/substrate-stellar-sdk#c3aa39ad89f2d78930bcc2da2f59857e3afd27fd"
 dependencies = [
  "base64",
  "hex",
@@ -8865,7 +8886,11 @@ version = "0.0.1"
 dependencies = [
  "async-trait",
  "base64",
+ "bincode",
  "clap",
+ "env_logger 0.9.0",
+ "err-derive",
+ "flate2",
  "frame-support",
  "futures 0.3.21",
  "git-version",
@@ -8874,6 +8899,8 @@ dependencies = [
  "jsonrpc-core-client",
  "mockall",
  "parity-scale-codec",
+ "parking_lot 0.12.1",
+ "rand 0.8.5",
  "reqwest",
  "runtime",
  "scale-info",
@@ -8887,7 +8914,7 @@ dependencies = [
  "sp-keyring",
  "sp-runtime",
  "sp-std",
- "substrate-stellar-sdk 0.2.3 (git+https://github.com/pendulum-chain/substrate-stellar-sdk)",
+ "stellar-relay",
  "thiserror",
  "tokio",
  "tracing",

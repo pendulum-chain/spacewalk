@@ -1,13 +1,16 @@
 use substrate_stellar_sdk::{
 	network::PUBLIC_NETWORK,
 	types::{ScpStatementExternalize, ScpStatementPledges, StellarMessage},
-	SecretKey,
+	Hash, SecretKey,
 };
 
 use crate::{node::NodeInfo, ConnConfig, StellarOverlayConnection, StellarRelayMessage};
+use serial_test::serial;
 
 const TIER_1_VALIDATOR_IP_PUBLIC: &str = "51.161.197.48";
+
 #[tokio::test]
+#[serial]
 async fn stellar_overlay_connect_and_listen_connect_message() {
 	let secret =
 		SecretKey::from_encoding("SBLI7RKEJAEFGLZUBSCOFJHQBPFYIIPLBCKN7WVCWT4NEG2UJEW33N73")
@@ -27,6 +30,7 @@ async fn stellar_overlay_connect_and_listen_connect_message() {
 }
 
 #[tokio::test]
+#[serial]
 async fn stellar_overlay_should_receive_scp_messages() {
 	//arrange
 	let secret =
@@ -61,8 +65,9 @@ async fn stellar_overlay_should_receive_scp_messages() {
 	//ensure that we receive some scp message from stellar node
 	assert!(scps_vec.len() > 0);
 }
-use substrate_stellar_sdk::Hash;
+
 #[tokio::test]
+#[serial]
 async fn stellar_overlay_should_receive_tx_set() {
 	//arrange
 	pub fn get_tx_set_hash(x: &ScpStatementExternalize) -> Hash {
@@ -113,6 +118,7 @@ async fn stellar_overlay_should_receive_tx_set() {
 }
 
 #[tokio::test]
+#[serial]
 async fn stellar_overlay_disconnect_works() {
 	let secret =
 		SecretKey::from_encoding("SBLI7RKEJAEFGLZUBSCOFJHQBPFYIIPLBCKN7WVCWT4NEG2UJEW33N73")
