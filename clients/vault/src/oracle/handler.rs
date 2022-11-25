@@ -78,7 +78,7 @@ impl ScpMessageActor {
 					.await;
 			},
 			ActorMessage::Disconnect => {
-				overlay_conn.disconnect().await;
+				panic!("Should disconnect from run method")
 			},
 		};
 	}
@@ -117,7 +117,14 @@ impl ScpMessageActor {
 				}
 				// handle message from user
 				Some(msg) = self.action_receiver.recv() => {
-						self.handle_message(msg, &overlay_conn).await;
+					match msg{
+						ActorMessage::Disconnect => {
+							overlay_conn.disconnect().await;
+						},
+						_ => {
+							self.handle_message(msg, &overlay_conn).await;
+						}
+					}
 				}
 			}
 		}
