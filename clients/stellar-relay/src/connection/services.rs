@@ -153,6 +153,7 @@ pub(crate) async fn receiving_service(
 	retries: u8,
 ) -> Result<(), Error> {
 	let mut retry = 0;
+	let mut retry_read = 0;
 	let mut proc_id = 0;
 
 	// holds the number of bytes that were missing from the previous stellar message.
@@ -168,10 +169,16 @@ pub(crate) async fn receiving_service(
 			.await
 		{
 			Ok(Ok(0)) => {
-				log::error!("peeking empty");
+				if retry_read >= retries {
+					return Err(Error::ReadFailed(format!(
+						"Failed to read messages from the stream. Received 0 size more than {retries} times"
+					)))
+				}
+				retry_read += 1;
 			},
 			Ok(Ok(_)) if lack_bytes_from_prev == 0 => {
 				retry = 0;
+				retry_read = 0;
 				// if there are no more bytes lacking from the previous message,
 				// then check the size of next stellar message.
 				// If it's not enough, skip it.
@@ -200,6 +207,7 @@ pub(crate) async fn receiving_service(
 
 			Ok(Ok(_)) => {
 				retry = 0;
+				retry_read = 0;
 				// let's read the continuation number of bytes from the previous message.
 				read_unfinished_message(
 					&mut r_stream,
