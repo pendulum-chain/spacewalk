@@ -74,7 +74,6 @@ impl Config for Test {
 	type RewardId = AccountId;
 	type CurrencyId = CurrencyId;
 	type GetNativeCurrencyId = GetNativeCurrencyId;
-	type GetWrappedCurrencyId = GetWrappedCurrencyId;
 }
 
 pub type TestEvent = RuntimeEvent;

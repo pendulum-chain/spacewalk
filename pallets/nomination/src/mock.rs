@@ -138,7 +138,6 @@ impl reward::Config for Test {
 	type RewardId = VaultId<AccountId, CurrencyId>;
 	type CurrencyId = CurrencyId;
 	type GetNativeCurrencyId = GetNativeCurrencyId;
-	type GetWrappedCurrencyId = GetWrappedCurrencyId;
 }
 
 parameter_types! {
@@ -184,7 +183,7 @@ impl currency::Config for Test {
 	type Balance = Balance;
 	type GetNativeCurrencyId = GetNativeCurrencyId;
 	type GetRelayChainCurrencyId = GetCollateralCurrencyId;
-	type GetWrappedCurrencyId = GetWrappedCurrencyId;
+
 	type AssetConversion = primitives::AssetConversion;
 	type BalanceConversion = primitives::BalanceConversion;
 	type CurrencyConversion = CurrencyConvert;

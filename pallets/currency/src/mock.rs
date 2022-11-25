@@ -125,7 +125,7 @@ impl crate::Config for Test {
 	type Balance = Balance;
 	type GetNativeCurrencyId = GetNativeCurrencyId;
 	type GetRelayChainCurrencyId = GetRelayChainCurrencyId;
-	type GetWrappedCurrencyId = GetWrappedCurrencyId;
+
 	type AssetConversion = primitives::AssetConversion;
 	type BalanceConversion = primitives::BalanceConversion;
 	type CurrencyConversion = CurrencyConvert;

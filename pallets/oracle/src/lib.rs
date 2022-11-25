@@ -5,31 +5,10 @@
 #![cfg_attr(test, feature(proc_macro_hygiene))]
 #![cfg_attr(not(feature = "std"), no_std)]
 
-mod ext;
-
-#[cfg(feature = "runtime-benchmarks")]
-mod benchmarking;
-
-mod default_weights;
-pub use default_weights::WeightInfo;
-
-#[cfg(test)]
-mod tests;
-
-#[cfg(test)]
-mod mock;
-
-pub mod types;
-
 #[cfg(test)]
 extern crate mocktopus;
 
-#[cfg(test)]
-use mocktopus::macros::mockable;
-
-use crate::types::{BalanceOf, UnsignedFixedPoint, Version};
 use codec::{Decode, Encode, MaxEncodedLen};
-use currency::Amount;
 use frame_support::{
 	dispatch::{DispatchError, DispatchResult},
 	ensure,
@@ -38,16 +17,36 @@ use frame_support::{
 	weights::Weight,
 };
 use frame_system::{ensure_root, ensure_signed};
+#[cfg(test)]
+use mocktopus::macros::mockable;
 use scale_info::TypeInfo;
-use security::{ErrorCode, StatusCode};
 use sp_runtime::{
 	traits::{UniqueSaturatedInto, *},
 	ArithmeticError, FixedPointNumber,
 };
 use sp_std::{convert::TryInto, vec::Vec};
 
+use currency::Amount;
+pub use default_weights::WeightInfo;
 pub use pallet::*;
 pub use primitives::{oracle::Key as OracleKey, CurrencyId, TruncateFixedPointToInt};
+use security::{ErrorCode, StatusCode};
+
+use crate::types::{BalanceOf, UnsignedFixedPoint, Version};
+
+mod ext;
+
+#[cfg(feature = "runtime-benchmarks")]
+mod benchmarking;
+
+mod default_weights;
+#[cfg(test)]
+mod tests;
+
+#[cfg(test)]
+mod mock;
+
+pub mod types;
 
 #[derive(Encode, Decode, Eq, PartialEq, Clone, Copy, Ord, PartialOrd, TypeInfo, MaxEncodedLen)]
 pub struct TimestampedValue<Value, Moment> {
@@ -57,9 +56,10 @@ pub struct TimestampedValue<Value, Moment> {
 
 #[frame_support::pallet]
 pub mod pallet {
-	use super::*;
 	use frame_support::pallet_prelude::*;
 	use frame_system::pallet_prelude::*;
+
+	use super::*;
 
 	/// ## Configuration
 	/// The pallet's configuration trait.
@@ -310,16 +310,8 @@ impl<T: Config> Pallet<T> {
 	) -> Result<Amount<T>, DispatchError> {
 		let converted = match (amount.currency(), currency_id) {
 			(x, y) if x == y => amount.amount(),
-			(x, _) if x == T::GetWrappedCurrencyId::get() => {
-				// convert interbtc to collateral
-				Self::wrapped_to_collateral(amount.amount(), currency_id)?
-			},
-			(from_currency, x) if x == T::GetWrappedCurrencyId::get() => {
-				// convert collateral to interbtc
-				Self::collateral_to_wrapped(amount.amount(), from_currency)?
-			},
 			(_, _) => {
-				// first convert to btc, then convert the btc to the desired currency
+				// first convert to wrapped, then convert wrapped to the desired currency
 				let base = Self::collateral_to_wrapped(amount.amount(), amount.currency())?;
 				Self::wrapped_to_collateral(base, currency_id)?
 			},
