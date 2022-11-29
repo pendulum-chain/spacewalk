@@ -1,7 +1,7 @@
-use std::{sync::Arc, time::Duration};
+use std::{ops::Deref, sync::Arc, time::Duration};
 
 use async_trait::async_trait;
-use substrate_stellar_sdk::{Hash, SecretKey};
+use substrate_stellar_sdk::{Hash, PublicKey, SecretKey};
 use tokio::{
 	sync::{Mutex, RwLock},
 	time::sleep,
@@ -13,10 +13,9 @@ use crate::{
 };
 
 pub type StellarPublicKeyRaw = [u8; 32];
-const POLL_INTERVAL: u64 = 5000;
 
 #[async_trait]
-pub trait Watcher {
+pub trait Watcher: Send + Sync {
 	async fn watch_slot(&self, slot: u128) -> Result<(), Error>;
 }
 
@@ -42,32 +41,11 @@ impl StellarWallet {
 		self.secret_key.get_public().clone().into_binary()
 	}
 
-	pub async fn listen_for_new_transactions(
-		&self,
-		targets: Arc<RwLock<Vec<Hash>>>,
-		watcher: Arc<RwLock<dyn Watcher>>,
-	) -> Result<(), Error> {
-		let horizon_client = reqwest::Client::new();
-		let mut fetcher = HorizonFetcher::new(
-			horizon_client,
-			self.secret_key.get_public().clone(),
-			self.is_public_network,
-		);
+	pub fn get_public_key(&self) -> PublicKey {
+		self.secret_key.get_public().clone()
+	}
 
-		let mut latest_paging_token = 0;
-		// Start polling horizon every 5 seconds
-		loop {
-			if let Ok(new_paging_token) = fetcher
-				.fetch_horizon_and_process_new_transactions(
-					targets.clone(),
-					watcher.clone(),
-					latest_paging_token,
-				)
-				.await
-			{
-				latest_paging_token = new_paging_token;
-			}
-			sleep(Duration::from_millis(POLL_INTERVAL)).await;
-		}
+	pub fn is_public_network(&self) -> bool {
+		self.is_public_network
 	}
 }

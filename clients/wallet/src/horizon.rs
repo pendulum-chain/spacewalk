@@ -16,6 +16,8 @@ use crate::{error::Error, stellar_wallet::Watcher};
 
 pub type PagingToken = u128;
 
+const POLL_INTERVAL: u64 = 5000;
+
 // This represents each record for a transaction in the Horizon API response
 #[derive(Clone, Deserialize, Encode, Decode, Default, Debug)]
 pub struct Transaction {
@@ -221,6 +223,7 @@ impl<C: HorizonClient> HorizonFetcher<C> {
 		}
 
 		tracing::info!("request url: {:?}", request_url);
+		println!("request url: {:?}", request_url);
 
 		self.client.get_transactions(request_url.as_str()).await
 	}
@@ -231,36 +234,35 @@ impl<C: HorizonClient> HorizonFetcher<C> {
 		watcher: Arc<RwLock<dyn Watcher>>,
 		last_paging_token: PagingToken,
 	) -> Result<PagingToken, Error> {
-		let watcher = watcher.write().await;
-
 		let res = self.fetch_latest_txs(last_paging_token).await;
 		let transactions = match res {
 			Ok(txs) => txs._embedded.records,
 			Err(e) => {
 				tracing::warn!("Failed to fetch transactions: {:?}", e);
+				println!("Failed to fetch transactions: {:?}", e);
 				Vec::new()
 			},
 		};
 
 		// Define the new latest paging token as the highest paging token of the transactions we
 		// received or the last paging token if we didn't receive any transactions
-		let latest_paging_token = transactions
-			.iter()
-			.map(|tx| tx.paging_token)
-			.max()
-			.unwrap_or_else(|| last_paging_token);
+		let latest_paging_token =
+			transactions.iter().map(|tx| tx.paging_token).max().unwrap_or(last_paging_token);
 
 		let issue_hashes = issue_hashes.read().await;
+		let w = watcher.read().await;
 		for transaction in transactions {
 			let tx = transaction.clone();
 			let id = tx.id.clone();
 			if is_tx_relevant(&tx, issue_hashes.clone()).await {
-				match watcher.watch_slot(tx.ledger.try_into().unwrap()).await {
+				match w.watch_slot(tx.ledger.try_into().unwrap()).await {
 					Ok(_) => {
-						tracing::info!("following transaction {:?}", String::from_utf8(id));
+						tracing::info!("following transaction {:?}", String::from_utf8(id.clone()));
+						println!("following transaction {:?}", String::from_utf8(id));
 					},
 					Err(e) => {
 						tracing::error!("Failed to watch transaction: {:?}", e);
+						println!("Failed to watch transaction: {:?}", e);
 					},
 				}
 			}
@@ -285,6 +287,34 @@ async fn is_tx_relevant(transaction: &Transaction, issue_hashes: Vec<Hash>) -> b
 	false
 }
 
+pub async fn listen_for_new_transactions(
+	vault_account_public_key: PublicKey,
+	is_public_network: bool,
+	targets: Arc<RwLock<Vec<Hash>>>,
+	watcher: Arc<RwLock<dyn Watcher>>,
+) -> Result<(), Error> {
+	let horizon_client = reqwest::Client::new();
+	let mut fetcher =
+		HorizonFetcher::new(horizon_client, vault_account_public_key, is_public_network);
+
+	let mut latest_paging_token: PagingToken = 0;
+	// Start polling horizon every 5 seconds
+	loop {
+		if let Ok(new_paging_token) = fetcher
+			.fetch_horizon_and_process_new_transactions(
+				targets.clone(),
+				watcher.clone(),
+				latest_paging_token,
+			)
+			.await
+		{
+			latest_paging_token = new_paging_token;
+		}
+
+		sleep(Duration::from_millis(POLL_INTERVAL)).await;
+	}
+}
+
 #[cfg(test)]
 mod tests {
 	use std::{sync::Arc, time::Duration};
@@ -300,8 +330,8 @@ mod tests {
 	#[async_trait]
 	impl Watcher for MockWatcher {
 		async fn watch_slot(&self, slot: u128) -> Result<(), Error> {
-			// Maybe mock this with some library to check how often it's called?
-			todo!()
+			println!("heeve ho");
+			Ok(())
 		}
 	}
 
@@ -313,7 +343,7 @@ mod tests {
 
 		let horizon_client = reqwest::Client::new();
 		let secret = SecretKey::from_encoding(SECRET).unwrap();
-		let mut fetcher = HorizonFetcher::new(horizon_client, secret.get_public().clone(), false);
+		let mut fetcher = HorizonFetcher::new(horizon_client, secret.get_public().clone(), true);
 
 		let mut counter = 0;
 		// Start polling horizon every 5 seconds

@@ -22,6 +22,9 @@ pub enum Error {
 
 	#[error(display = "{:?}", _0)]
 	ConnError(stellar_relay_lib::Error),
+
+	#[error(display = "{:?}", _0)]
+	WalletError(wallet::error::Error),
 }
 
 impl From<StellarSdkError> for Error {

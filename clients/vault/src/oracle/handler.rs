@@ -1,4 +1,5 @@
 use async_trait::async_trait;
+use std::convert::TryFrom;
 use tokio::sync::{mpsc, oneshot};
 
 use stellar_relay_lib::{
@@ -170,11 +171,6 @@ impl ScpMessageHandler {
 		receiver.await.map_err(Error::from)
 	}
 
-	pub async fn watch_slot(&self, slot: Slot) -> Result<(), Error> {
-		self.action_sender.send(ActorMessage::WatchSlot { slot }).await?;
-		Ok(())
-	}
-
 	pub fn handle_issue_event(&self) {
 		todo!();
 	}
@@ -201,12 +197,33 @@ impl ScpMessageHandler {
 		self.action_sender.send(ActorMessage::GetSlotWatchList { sender }).await?;
 		receiver.await.map_err(Error::from)
 	}
+
+	/// creates a struct that will send a `watch_slot` message to oracle.
+	pub fn create_watcher(&self) -> OracleWatcher {
+		OracleWatcher { action_sender: self.action_sender.clone() }
+	}
+}
+
+#[derive(Clone)]
+pub struct OracleWatcher {
+	action_sender: mpsc::Sender<ActorMessage>,
 }
 
 #[async_trait]
-impl Watcher for ScpMessageHandler {
-	async fn watch_slot(&self, slot: u64) -> Result<(), wallet::error::Error> {
-		self.watch_slot(slot).await.map_err(|e| e.into())
+impl Watcher for OracleWatcher {
+	async fn watch_slot(&self, slot: u128) -> Result<(), wallet::error::Error> {
+		let u64_slot = Slot::try_from(slot).map_err(|_| {
+			tracing::error!("Failed to convert slot {} of type u128 to u64", slot);
+			wallet::error::Error::OracleError
+		})?;
+
+		self.action_sender
+			.send(ActorMessage::WatchSlot { slot: u64_slot })
+			.await
+			.map_err(|e| {
+				tracing::error!("Failed to send {:?} message to Oracle.", e.to_string());
+				wallet::error::Error::OracleError
+			})
 	}
 }
 

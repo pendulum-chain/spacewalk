@@ -6,4 +6,6 @@ pub enum Error {
 	InvalidSecretKey,
 	#[error("Error fetching horizon data")]
 	HttpFetchingError,
+	#[error("Oracle returned error")]
+	OracleError,
 }
