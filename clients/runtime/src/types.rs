@@ -1,7 +1,7 @@
 pub use subxt::ext::sp_core::sr25519::Pair as KeyPair;
 
 pub use metadata_aliases::*;
-pub use primitives::CurrencyId;
+pub use primitives::{CurrencyId, CurrencyId::Token, TokenSymbol};
 
 use crate::{metadata, Config, SpacewalkRuntime, SS58_PREFIX};
 
@@ -12,14 +12,18 @@ pub type BlockNumber = u32;
 pub type Index = u32;
 pub type H256 = subxt::ext::sp_core::H256;
 pub type SpacewalkSigner = subxt::tx::PairSigner<SpacewalkRuntime, KeyPair>;
+pub type FixedU128 = sp_arithmetic::FixedU128;
 
 pub type StellarPublicKey = [u8; 32];
 
 mod metadata_aliases {
 	pub use metadata::{
+		oracle::events::FeedValues as FeedValuesEvent,
 		runtime_types::{
 			frame_system::pallet::Error as SystemPalletError,
-			issue::pallet::Error as IssuePalletError, sp_arithmetic::fixed_point::FixedU128,
+			issue::pallet::Error as IssuePalletError,
+			security::types::{ErrorCode, StatusCode},
+			spacewalk_primitives::oracle::Key as OracleKey,
 			vault_registry::types::VaultStatus,
 		},
 		vault_registry::events::{

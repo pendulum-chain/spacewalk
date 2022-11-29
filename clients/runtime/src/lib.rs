@@ -4,7 +4,7 @@ pub use sp_arithmetic::{traits as FixedPointTraits, FixedI128, FixedPointNumber,
 use sp_std::marker::PhantomData;
 pub use subxt::ext::sp_core::{crypto::Ss58Codec, sr25519::Pair};
 use subxt::{
-	ext::sp_runtime::{generic::Header, traits::BlakeTwo256, MultiSignature, OpaqueExtrinsic},
+	ext::sp_runtime::{generic::Header, traits::BlakeTwo256, MultiSignature},
 	subxt, Config,
 };
 
@@ -12,19 +12,26 @@ pub use assets::TryFromSymbol;
 pub use error::{Error, SubxtError};
 pub use retry::{notify_retry, RetryPolicy};
 pub use rpc::{
-	CollateralBalancesPallet, SpacewalkParachain, UtilFuncs, VaultRegistryPallet,
-	DEFAULT_SPEC_NAME, SS58_PREFIX,
+	CollateralBalancesPallet, OraclePallet, SecurityPallet, SpacewalkParachain, UtilFuncs,
+	VaultRegistryPallet, DEFAULT_SPEC_NAME, SS58_PREFIX,
 };
+pub use shutdown::{ShutdownReceiver, ShutdownSender};
 pub use types::*;
 
 pub mod cli;
+
+#[cfg(test)]
+mod tests;
+
+#[cfg(feature = "testing-utils")]
+pub mod integration;
 
 mod assets;
 mod conn;
 mod error;
 mod retry;
 mod rpc;
-
+mod shutdown;
 pub mod types;
 
 pub const TX_FEES: u128 = 2000000000;
@@ -59,6 +66,8 @@ pub mod metadata {
 	use crate::AccountId;
 	#[subxt(substitute_type = "spacewalk_primitives::CurrencyId")]
 	use crate::CurrencyId;
+	#[subxt(substitute_type = "sp_arithmetic::fixed_point::FixedU128")]
+	use crate::FixedU128;
 }
 
 #[derive(Debug, Eq, PartialEq, Ord, PartialOrd, Default, Clone, Decode, Encode)]

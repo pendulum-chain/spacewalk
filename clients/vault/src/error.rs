@@ -1,14 +1,10 @@
-use hex::FromHexError;
 use jsonrpc_core_client::RpcError;
 use parity_scale_codec::Error as CodecError;
-use sp_runtime::traits::LookupError;
 use sp_std::str::Utf8Error;
 use thiserror::Error;
 use tokio_stream::wrappers::errors::BroadcastStreamRecvError;
 
-use runtime::{Error as RuntimeError, SubxtError};
-use service::Error as ServiceError;
-use stellar_relay::sdk::StellarSdkError;
+use runtime::Error as RuntimeError;
 use wallet::Error as WalletError;
 
 #[derive(Error, Debug)]

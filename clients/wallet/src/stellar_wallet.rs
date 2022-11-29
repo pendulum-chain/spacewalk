@@ -16,7 +16,7 @@ pub struct StellarWallet {
 
 impl StellarWallet {
 	pub fn from_secret_encoded(x: &String) -> Result<Self, Error> {
-		let secret_key = SecretKey::from_encoding(x).map_err(|e| Error::InvalidSecretKey)?;
+		let secret_key = SecretKey::from_encoding(x).map_err(|_| Error::InvalidSecretKey)?;
 
 		let wallet = StellarWallet { secret_key };
 		Ok(wallet)

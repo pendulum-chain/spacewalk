@@ -1,6 +1,7 @@
 [workspace]
 members = [
     "clients/runtime",
+    "clients/runtime/client",
     "clients/vault",
     "clients/wallet",
     "clients/service",
