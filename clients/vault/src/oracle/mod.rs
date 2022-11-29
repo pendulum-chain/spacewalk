@@ -4,7 +4,7 @@ mod collector;
 mod constants;
 mod errors;
 mod handler;
-mod storage;
+pub mod storage;
 mod types;
 
 pub use handler::*;
@@ -12,7 +12,7 @@ pub use storage::prepare_directories;
 
 use collector::*;
 use errors::Error;
-use storage::*;
+pub use storage::*;
 use types::*;
 
 /// A filter trait to check whether `T` should be processed.

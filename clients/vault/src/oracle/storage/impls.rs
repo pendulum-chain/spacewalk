@@ -1,19 +1,22 @@
+
 use std::{
 	fs::{create_dir_all, File},
-	io::Write,
+	io::{Read, Write},
 	str::Split,
 };
 use stellar_relay::sdk::{
-	compound_types::UnlimitedVarArray,
-	types::{ScpEnvelope, TransactionSet},
+	compound_types::{UnlimitedVarArray, XdrArchive},
+	types::{ScpEnvelope, ScpHistoryEntry, TransactionSet, TransactionHistoryEntry},
 };
 
 use crate::oracle::{
 	storage::traits::*, EnvelopesFileHandler, EnvelopesMap, Error, Filename, SerializedData, Slot,
-	SlotEncodedMap, TxHashMap, TxHashesFileHandler, TxSetMap, TxSetsFileHandler,
+	SlotEncodedMap, TxHashMap, TxHashesFileHandler, TxSetMap, TxSetsFileHandler, constants::ARCHIVE_NODE_LEDGER_BATCH,
 };
 
 use stellar_relay::sdk::XdrCodec;
+
+use super::{ScpArchiveStorage, TransactionsArchiveStorage};
 
 impl FileHandler<EnvelopesMap> for EnvelopesFileHandler {
 	#[cfg(test)]
@@ -153,6 +156,55 @@ impl FileHandler<TxHashMap> for TxHashesFileHandler {
 	}
 }
 
+
+
+
+impl ArchiveStorage for ScpArchiveStorage{
+	type T = ScpHistoryEntry;
+    const STELLAR_HISTORY_BASE_URL: &'static str = crate::oracle::constants::stellar_history_base_url;
+    const prefix_url : &'static str = "scp";
+    const prefix_filename : &'static str = "";
+}
+
+impl ScpArchiveStorage {
+	pub async fn get_scp_archive(slot_index: i32) -> Result<XdrArchive<<Self as ArchiveStorage>::T>, Error> {
+		let (url, file_name) = Self::get_url_and_file_name(slot_index);
+		//try to find xdr.gz file and decode. if error then download archive from horizon archive
+		// node and save
+		let mut result = Self::try_gz_decode_archive_file(&file_name);
+
+		if result.is_err() {
+			download_file_and_save(&url, &file_name).await?;
+			result = Self::try_gz_decode_archive_file(&file_name);
+		}
+		let data = result.unwrap();
+		Ok(Self::decode_xdr(data))
+	}
+}
+
+impl ArchiveStorage for TransactionsArchiveStorage{
+	type T = TransactionHistoryEntry;
+    const STELLAR_HISTORY_BASE_URL: &'static str = crate::oracle::constants::stellar_history_base_url_transactions;
+	const prefix_url : &'static str = "transactions";
+    const prefix_filename : &'static str = "txs-";
+}
+
+impl TransactionsArchiveStorage {
+	pub async fn get_transactions_archive(slot_index: i32) -> Result<XdrArchive<<Self as ArchiveStorage>::T>, Error> {
+		let (url, file_name) = Self::get_url_and_file_name(slot_index);
+		//try to find xdr.gz file and decode. if error then download archive from horizon archive
+		// node and save
+		let mut result = Self::try_gz_decode_archive_file(&file_name);
+
+		if result.is_err() {
+			download_file_and_save(&url, &file_name).await?;
+			result = Self::try_gz_decode_archive_file(&file_name);
+		}
+		let data = result.unwrap();
+		Ok(Self::decode_xdr(data))
+	}
+}
+
 #[cfg(not(test))]
 pub fn prepare_directories() -> Result<(), Error> {
 	create_dir_all("./scp_envelopes")?;
@@ -179,7 +231,7 @@ mod test {
 			traits::{FileHandler, FileHandlerExt},
 			EnvelopesFileHandler, TxHashesFileHandler, TxSetsFileHandler,
 		},
-		types::Slot,
+		types::Slot, TransactionsArchiveStorage, impls::ArchiveStorage,
 	};
 	use frame_support::assert_err;
 	use mockall::lazy_static;
@@ -188,6 +240,9 @@ mod test {
 		helper::compute_non_generic_tx_set_content_hash,
 		sdk::{network::PUBLIC_NETWORK, types::ScpStatementPledges},
 	};
+	use super::ScpArchiveStorage;
+		use std::convert::TryInto;
+		use stellar_relay::sdk::types::ScpHistoryEntry;
 
 	lazy_static! {
 		static ref M_SLOTS_FILE: Slot =
@@ -386,5 +441,43 @@ mod test {
 			let path = TxSetsFileHandler::get_path(&new_file);
 			fs::remove_file(path).expect("should be able to remove the newly added file.");
 		}
+	}
+	#[tokio::test]
+	async fn get_scp_archive_works() {
+		let slot_index = 30511500;
+
+		let scp_archive = ScpArchiveStorage::get_scp_archive(slot_index)
+			.await
+			.expect("should find the archive");
+
+		let slot_index_u32: u32 = slot_index.try_into().unwrap();
+		scp_archive
+			.get_vec()
+			.into_iter()
+			.find(|&scp_entry| {
+				if let ScpHistoryEntry::V0(scp_entry_v0) = scp_entry {
+					return scp_entry_v0.ledger_messages.ledger_seq == slot_index_u32
+				} else {
+					return false
+				}
+			})
+			.expect("slot index should be in archive");
+	}
+
+	#[tokio::test]
+	async fn get_transactions_archive_works() {
+		use super::TransactionsArchiveStorage;
+
+		//arrange
+		let slot_index = 30511500;
+		let (url, ref filename) = TransactionsArchiveStorage::get_url_and_file_name(slot_index);
+
+		//act
+		let transactions_archive = TransactionsArchiveStorage::get_transactions_archive(slot_index)
+			.await
+			.expect("should find the archive");
+
+		//assert
+		TransactionsArchiveStorage::read_file_xdr(filename).expect("File with transactions should exists");
 	}
 }
