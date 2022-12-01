@@ -1065,3 +1065,16 @@ impl IssuePallet for SpacewalkParachain {
 		Ok(issue_requests)
 	}
 }
+
+#[async_trait]
+pub trait StellarRelayPallet {
+	async fn is_public_network(&self) -> Result<bool, Error>;
+}
+
+#[async_trait]
+impl StellarRelayPallet for SpacewalkParachain {
+	async fn is_public_network(&self) -> Result<bool, Error> {
+		self.query_finalized_or_error(metadata::storage().stellar_relay().is_public_network())
+			.await
+	}
+}

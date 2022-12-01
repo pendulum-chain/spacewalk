@@ -10227,6 +10227,7 @@ dependencies = [
  "clap 3.2.23",
  "env_logger 0.9.3",
  "err-derive",
+ "flate2",
  "frame-support",
  "futures 0.3.25",
  "git-version",
@@ -10350,8 +10351,20 @@ dependencies = [
 name = "wallet"
 version = "1.0.0"
 dependencies = [
+ "async-trait",
+ "mockall 0.8.3",
+ "parity-scale-codec",
+ "reqwest",
+ "serde",
+ "serde_json",
  "substrate-stellar-sdk",
  "thiserror",
+ "tokio",
+ "tokio-metrics",
+ "tokio-stream",
+ "tracing",
+ "tracing-futures",
+ "tracing-subscriber",
 ]
 
 [[package]]
