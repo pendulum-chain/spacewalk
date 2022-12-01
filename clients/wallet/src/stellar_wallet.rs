@@ -13,14 +13,18 @@ pub trait Watcher: Send + Sync {
 #[derive(Clone, PartialEq, Debug, Eq)]
 pub struct StellarWallet {
 	secret_key: SecretKey,
+	is_public_network: bool,
 }
 
 impl StellarWallet {
-	pub fn from_secret_encoded(secret_key: &String) -> Result<Self, Error> {
+	pub fn from_secret_encoded(
+		secret_key: &String,
+		is_public_network: bool,
+	) -> Result<Self, Error> {
 		let secret_key =
 			SecretKey::from_encoding(secret_key).map_err(|_| Error::InvalidSecretKey)?;
 
-		let wallet = StellarWallet { secret_key };
+		let wallet = StellarWallet { secret_key, is_public_network };
 		Ok(wallet)
 	}
 

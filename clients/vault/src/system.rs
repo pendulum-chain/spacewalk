@@ -217,12 +217,12 @@ impl Service<VaultServiceConfig, Error> for VaultService {
 	const NAME: &'static str = NAME;
 	const VERSION: &'static str = VERSION;
 
-	fn new_service(
+	async fn new_service(
 		spacewalk_parachain: SpacewalkParachain,
 		config: VaultServiceConfig,
 		shutdown: ShutdownSender,
 	) -> Result<Self, Error> {
-		VaultService::new(spacewalk_parachain, config, shutdown)
+		VaultService::new(spacewalk_parachain, config, shutdown).await
 	}
 
 	async fn start(&mut self) -> Result<(), ServiceError<Error>> {
@@ -289,13 +289,17 @@ where
 }
 
 impl VaultService {
-	fn new(
+	async fn new(
 		spacewalk_parachain: SpacewalkParachain,
 		config: VaultServiceConfig,
 		shutdown: ShutdownSender,
 	) -> Result<Self, Error> {
-		let mut stellar_wallet =
-			StellarWallet::from_secret_encoded(&config.stellar_vault_secret_key)?;
+		let is_public_network = spacewalk_parachain.is_public_network().await?;
+
+		let stellar_wallet = StellarWallet::from_secret_encoded(
+			&config.stellar_vault_secret_key,
+			is_public_network,
+		)?;
 		let stellar_wallet = Arc::new(stellar_wallet);
 
 		Ok(Self {
