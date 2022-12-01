@@ -28,4 +28,8 @@ impl StellarWallet {
 	pub fn get_public_key(&self) -> PublicKey {
 		self.secret_key.get_public().clone()
 	}
+
+	pub fn is_public_network(&self) -> bool {
+		self.is_public_network
+	}
 }

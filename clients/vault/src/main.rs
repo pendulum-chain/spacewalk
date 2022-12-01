@@ -1,9 +1,4 @@
-use std::{
-	io::Write,
-	net::{Ipv4Addr, SocketAddr},
-	path::PathBuf,
-	sync::Arc,
-};
+use std::{io::Write, path::PathBuf, sync::Arc};
 
 use clap::Parser;
 use futures::Future;
@@ -11,8 +6,8 @@ use sysinfo::{System, SystemExt};
 use tokio::sync::RwLock;
 use tokio_stream::StreamExt;
 
-use runtime::{KeyPair, SpacewalkSigner, Ss58Codec, DEFAULT_SPEC_NAME, SS58_PREFIX};
-use service::{warp, warp::Filter, ConnectionManager, Error as ServiceError, ServiceConfig};
+use runtime::{SpacewalkSigner, DEFAULT_SPEC_NAME};
+use service::{ConnectionManager, Error as ServiceError, ServiceConfig};
 use signal_hook::consts::*;
 use signal_hook_tokio::Signals;
 use vault::{

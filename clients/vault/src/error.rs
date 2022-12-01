@@ -1,12 +1,11 @@
-
 use jsonrpc_core_client::RpcError;
 use parity_scale_codec::Error as CodecError;
 use sp_std::str::Utf8Error;
 use thiserror::Error;
 use tokio_stream::wrappers::errors::BroadcastStreamRecvError;
 
-use runtime::{Error as RuntimeError, SubxtError};
-use wallet::error::Error as WalletError;
+use runtime::Error as RuntimeError;
+use wallet::{error::Error as WalletError, Error as WalletError};
 
 #[derive(Error, Debug)]
 pub enum Error {

@@ -1,12 +1,9 @@
-use std::{collections::HashMap, time::Duration};
+use std::collections::HashMap;
 
 use lazy_static::lazy_static;
 use tokio_metrics::TaskMetrics;
 
-use runtime::prometheus::{
-	gather, proto::MetricFamily, Encoder, Gauge, GaugeVec, IntCounter, IntGauge, IntGaugeVec, Opts,
-	Registry, TextEncoder,
-};
+use runtime::prometheus::IntCounter;
 use service::Error as ServiceError;
 
 use crate::Error;

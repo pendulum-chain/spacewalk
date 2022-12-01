@@ -12,9 +12,10 @@ use git_version::git_version;
 use tokio::{sync::RwLock, time::sleep};
 
 use runtime::{
-	cli::parse_duration_minutes, CollateralBalancesPallet, CurrencyId, Error as RuntimeError,
-	PrettyPrint, RegisterVaultEvent, SpacewalkParachain, TryFromSymbol, UtilFuncs,
-	VaultCurrencyPair, VaultId, VaultRegistryPallet,
+	cli::{parse_duration_minutes, parse_duration_ms},
+	CollateralBalancesPallet, CurrencyId, Error as RuntimeError, PrettyPrint, RegisterVaultEvent,
+	ShutdownSender, SpacewalkParachain, TryFromSymbol, UtilFuncs, VaultCurrencyPair, VaultId,
+	VaultRegistryPallet,
 };
 use service::{wait_or_shutdown, Error as ServiceError, Service, ShutdownSender};
 use stellar_relay_lib::{
@@ -329,7 +330,6 @@ impl VaultService {
 
 	async fn run_service(&mut self) -> Result<(), ServiceError<Error>> {
 		self.await_parachain_block().await?;
-		let is_public_network = self.spacewalk_parachain.is_public_network().await?;
 
 		let parsed_auto_register = self
 			.config
@@ -422,7 +422,7 @@ impl VaultService {
 				"Listen for New Transactions",
 				run(wallet::listen_for_new_transactions(
 					self.stellar_wallet.get_public_key(),
-					is_public_network,
+					self.stellar_wallet.is_public_network(),
 					issue_hashes_vec.clone(),
 					watcher.clone(),
 					wallet::types::TxFilter, /* todo: change with a filter specific to the issue

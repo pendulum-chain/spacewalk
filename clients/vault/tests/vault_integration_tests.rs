@@ -1,185 +1,144 @@
-// use frame_support::assert_ok;
-// use futures::{Future, FutureExt};
-// use runtime::{integration::*, types::*, SpacewalkPallet, SpacewalkParachain, UtilFuncs};
-// use sp_keyring::AccountKeyring;
-// use std::time::Duration;
-//
-// const TIMEOUT: Duration = Duration::from_secs(90);
-//
-// const STELLAR_VAULT_SECRET_KEY: &str =
-// "SB6WHKIU2HGVBRNKNOEOQUY4GFC4ZLG5XPGWLEAHTIZXBXXYACC76VSQ";
-//
-// async fn test_with<F, R>(execute: impl FnOnce(SubxtClient) -> F) -> R
-// where
-// 	F: Future<Output = R>,
-// {
-// 	service::init_subscriber();
-// 	let (client, _tmp_dir) = default_provider_client(AccountKeyring::Alice).await;
-//
-// 	let parachain_rpc = setup_provider(client.clone(), AccountKeyring::Bob).await;
-//
-// 	execute(client).await
-// }
-//
-// async fn test_with_vault<F, R>(execute: impl FnOnce(SubxtClient, SpacewalkParachain) -> F) -> R
-// where
-// 	F: Future<Output = R>,
-// {
-// 	service::init_subscriber();
-// 	let (client, _tmp_dir) = default_provider_client(AccountKeyring::Alice).await;
-//
-// 	let parachain_rpc = setup_provider(client.clone(), AccountKeyring::Bob).await;
-//
-// 	let vault_provider = setup_provider(client.clone(), AccountKeyring::Charlie).await;
-//
-// 	execute(client, vault_provider).await
-// }
-//
-// #[tokio::test(flavor = "multi_thread")]
-// async fn test_deposit() {
-// 	let tx_string: &str = r#"{
-//   "_links": { },
-//   "_embedded": {
-//     "records": [
-//       {
-//         "_links": { },
-//         "id": "0eb09b01df05990221197c67b5c7a03157008e270a690b31f3809b5083506895",
-//         "paging_token": "876173332480",
-//         "successful": true,
-//         "hash": "b9d0b2292c4e09e8eb22d036171491e87b8d2086bf8b265874c8d182cb9c9020",
-//         "ledger": 176,
-//         "created_at": "2022-03-16T10:02:39Z",
-//         "source_account": "GBRPYHIL2CI3FNQ4BXLFMNDLFJUNPU2HY3ZMFSHONUCEOASW7QC7OX2H",
-//         "source_account_sequence": "1",
-//         "fee_account": "GBRPYHIL2CI3FNQ4BXLFMNDLFJUNPU2HY3ZMFSHONUCEOASW7QC7OX2H",
-//         "fee_charged": "1100",
-//         "max_fee": "1100",
-//         "operation_count": 11,
-//         "envelope_xdr":
-// "AAAAAgAAAABi/
-// B0L0JGythwN1lY0aypo19NHxvLCyO5tBEcCVvwF9wAABEwAAAAAAAAAAQAAAAEAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAsAAAAAAAAAAAAAAAAQfdFrLDgzSIIugR73qs8U0ZiKbwBUclTTPh5thlbgnAFjRXhdigAAAAAAAAAAAAAAAAAA3b5KF6uk1w1fSKYLrzR8gF2lB+AHAi6oU6CaWhunAskAAAAXSHboAAAAAAAAAAAAAAAAAHfmNeMLin2aTUfxa530ZRn4zwRu7ROAQfUJeJco8HSCAAHGv1JjQAAAAAAAAAAAAAAAAAAAlRt2go9sp7E1a5ZWvr7vin4UPrFQThpQax1lOFm33AAAABdIdugAAAAAAAAAAAAAAAAAmv+knlR6JR2VqWeU0k/
-// 4FgvZ/tSV5DEY4gu0iOTKgpUAAAAXSHboAAAAAAAAAAAAAAAAANpaWLojuOtfC0cmMh+DvQTfPDrkfXhblQTdFXrGYc0bAAAAF0h26AAAAAABAAAAAACVG3aCj2ynsTVrlla+vu+KfhQ+sVBOGlBrHWU4WbfcAAAABgAAAAFURVNUAAAAANpaWLojuOtfC0cmMh+DvQTfPDrkfXhblQTdFXrGYc0bf/
-// ////////8AAAABAAAAAJr/
-// pJ5UeiUdlalnlNJP+BYL2f7UleQxGOILtIjkyoKVAAAABgAAAAFURVNUAAAAANpaWLojuOtfC0cmMh+DvQTfPDrkfXhblQTdFXrGYc0bf/
-// ////////8AAAABAAAAANpaWLojuOtfC0cmMh+DvQTfPDrkfXhblQTdFXrGYc0bAAAAAQAAAAAAlRt2go9sp7E1a5ZWvr7vin4UPrFQThpQax1lOFm33AAAAAFURVNUAAAAANpaWLojuOtfC0cmMh+DvQTfPDrkfXhblQTdFXrGYc0bAAAJGE5yoAAAAAABAAAAANpaWLojuOtfC0cmMh+DvQTfPDrkfXhblQTdFXrGYc0bAAAAAQAAAACa/
-// 6SeVHolHZWpZ5TST/
-// gWC9n+1JXkMRjiC7SI5MqClQAAAAFURVNUAAAAANpaWLojuOtfC0cmMh+DvQTfPDrkfXhblQTdFXrGYc0bAAAJGE5yoAAAAAAAAAAAAAAAAABKBB+2UBMP/
-// abwcm/M1TXO+/JQWhPwkalgqizKmXyRIQx7qh6aAFYAAAAAAAAAAARW/
-// AX3AAAAQDVB8fT2ZXF0PZqtZX9brK0kz+P4G8VKs1DkDklP6ULsvXRexXFBdH4xG8xRAsR1HJeEBH278hiBNNvUwNw6zgzGYc0bAAAAQLgZUU/
-// oYGL7frWDQhJHhCQu9JmfqN03PrJq4/
-// cJrN1OSUWXnmLc94sv8m2L+cxl2p0skr2Jxy+vt1Lcxkv7wAI4WbfcAAAAQHvZEVqlygIProf3jVTZohDWm2WUNrFAFXf1LctTqDCQBHph14Eo+APwrTURLLYTIvNoXeGzBKbL03SsOARWcQLkyoKVAAAAQHAvKv2/
-// Ro4+cNh6bKQO/G9NNiUozYysGwG1GvJQkFjwy/OTsL6WBfuI0Oye84lVBVrQVk2EY1ERFhgdMpuFSg4=",
-//         "result_xdr":
-// "AAAAAAAABEwAAAAAAAAACwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAGAAAAAAAAAAAAAAAGAAAAAAAAAAAAAAABAAAAAAAAAAAAAAABAAAAAAAAAAAAAAAAAAAAAAAAAAA="
-// ,         "result_meta_xdr":
-// "AAAAAgAAAAIAAAADAAAAsAAAAAAAAAAAYvwdC9CRsrYcDdZWNGsqaNfTR8bywsjubQRHAlb8BfcN4Lazp2P7tAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAEAAAAAAAAAAAAAAAAAAAAAAAABAAAAsAAAAAAAAAAAYvwdC9CRsrYcDdZWNGsqaNfTR8bywsjubQRHAlb8BfcN4Lazp2P7tAAAAAAAAAABAAAAAAAAAAAAAAAAAAAAAAEAAAAAAAAAAAAAAAAAAAAAAAALAAAAAwAAAAMAAACwAAAAAAAAAABi/
-// B0L0JGythwN1lY0aypo19NHxvLCyO5tBEcCVvwF9w3gtrOnY/
-// u0AAAAAAAAAAEAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAEAAACwAAAAAAAAAABi/
-// B0L0JGythwN1lY0aypo19NHxvLCyO5tBEcCVvwF9wx9cTtJ2fu0AAAAAAAAAAEAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAAAAACwAAAAAAAAAAAQfdFrLDgzSIIugR73qs8U0ZiKbwBUclTTPh5thlbgnAFjRXhdigAAAAAAsAAAAAAAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAMAAAADAAAAsAAAAAAAAAAAYvwdC9CRsrYcDdZWNGsqaNfTR8bywsjubQRHAlb8BfcMfXE7Sdn7tAAAAAAAAAABAAAAAAAAAAAAAAAAAAAAAAEAAAAAAAAAAAAAAAAAAAAAAAABAAAAsAAAAAAAAAAAYvwdC9CRsrYcDdZWNGsqaNfTR8bywsjubQRHAlb8BfcMfXEkAWMTtAAAAAAAAAABAAAAAAAAAAAAAAAAAAAAAAEAAAAAAAAAAAAAAAAAAAAAAAAAAAAAsAAAAAAAAAAA3b5KF6uk1w1fSKYLrzR8gF2lB+AHAi6oU6CaWhunAskAAAAXSHboAAAAALAAAAAAAAAAAAAAAAAAAAAAAAAAAAEAAAAAAAAAAAAAAAAAAAAAAAADAAAAAwAAALAAAAAAAAAAAGL8HQvQkbK2HA3WVjRrKmjX00fG8sLI7m0ERwJW/
-// AX3DH1xJAFjE7QAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAABAAAAAAAAAAAAAAAAAAAAAAAAAQAAALAAAAAAAAAAAGL8HQvQkbK2HA3WVjRrKmjX00fG8sLI7m0ERwJW/
-// AX3DHuqZK7/
-// 07QAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAABAAAAAAAAAAAAAAAAAAAAAAAAAAAAALAAAAAAAAAAAHfmNeMLin2aTUfxa530ZRn4zwRu7ROAQfUJeJco8HSCAAHGv1JjQAAAAACwAAAAAAAAAAAAAAAAAAAAAAAAAAABAAAAAAAAAAAAAAAAAAAAAAAAAwAAAAMAAACwAAAAAAAAAABi/
-// B0L0JGythwN1lY0aypo19NHxvLCyO5tBEcCVvwF9wx7qmSu/
-// 9O0AAAAAAAAAAEAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAEAAACwAAAAAAAAAABi/
-// B0L0JGythwN1lY0aypo19NHxvLCyO5tBEcCVvwF9wx7qk1miOu0AAAAAAAAAAEAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAAAAACwAAAAAAAAAAAAlRt2go9sp7E1a5ZWvr7vin4UPrFQThpQax1lOFm33AAAABdIdugAAAAAsAAAAAAAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAMAAAADAAAAsAAAAAAAAAAAYvwdC9CRsrYcDdZWNGsqaNfTR8bywsjubQRHAlb8BfcMe6pNZojrtAAAAAAAAAABAAAAAAAAAAAAAAAAAAAAAAEAAAAAAAAAAAAAAAAAAAAAAAABAAAAsAAAAAAAAAAAYvwdC9CRsrYcDdZWNGsqaNfTR8bywsjubQRHAlb8BfcMe6o2HhIDtAAAAAAAAAABAAAAAAAAAAAAAAAAAAAAAAEAAAAAAAAAAAAAAAAAAAAAAAAAAAAAsAAAAAAAAAAAmv+knlR6JR2VqWeU0k/
-// 4FgvZ/tSV5DEY4gu0iOTKgpUAAAAXSHboAAAAALAAAAAAAAAAAAAAAAAAAAAAAAAAAAEAAAAAAAAAAAAAAAAAAAAAAAADAAAAAwAAALAAAAAAAAAAAGL8HQvQkbK2HA3WVjRrKmjX00fG8sLI7m0ERwJW/
-// AX3DHuqNh4SA7QAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAABAAAAAAAAAAAAAAAAAAAAAAAAAQAAALAAAAAAAAAAAGL8HQvQkbK2HA3WVjRrKmjX00fG8sLI7m0ERwJW/
-// AX3DHuqHtWbG7QAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAABAAAAAAAAAAAAAAAAAAAAAAAAAAAAALAAAAAAAAAAANpaWLojuOtfC0cmMh+DvQTfPDrkfXhblQTdFXrGYc0bAAAAF0h26AAAAACwAAAAAAAAAAAAAAAAAAAAAAAAAAABAAAAAAAAAAAAAAAAAAAAAAAAAwAAAAAAAACwAAAAAQAAAAAAlRt2go9sp7E1a5ZWvr7vin4UPrFQThpQax1lOFm33AAAAAFURVNUAAAAANpaWLojuOtfC0cmMh+DvQTfPDrkfXhblQTdFXrGYc0bAAAAAAAAAAB/
-// /////////wAAAAEAAAAAAAAAAAAAAAMAAACwAAAAAAAAAAAAlRt2go9sp7E1a5ZWvr7vin4UPrFQThpQax1lOFm33AAAABdIdugAAAAAsAAAAAAAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAEAAACwAAAAAAAAAAAAlRt2go9sp7E1a5ZWvr7vin4UPrFQThpQax1lOFm33AAAABdIdugAAAAAsAAAAAAAAAABAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAMAAAAAAAAAsAAAAAEAAAAAmv+knlR6JR2VqWeU0k/
-// 4FgvZ/tSV5DEY4gu0iOTKgpUAAAABVEVTVAAAAADaWli6I7jrXwtHJjIfg70E3zw65H14W5UE3RV6xmHNGwAAAAAAAAAAf///
-// //////8AAAABAAAAAAAAAAAAAAADAAAAsAAAAAAAAAAAmv+knlR6JR2VqWeU0k/4FgvZ/
-// tSV5DEY4gu0iOTKgpUAAAAXSHboAAAAALAAAAAAAAAAAAAAAAAAAAAAAAAAAAEAAAAAAAAAAAAAAAAAAAAAAAABAAAAsAAAAAAAAAAAmv+knlR6JR2VqWeU0k/
-// 4FgvZ/tSV5DEY4gu0iOTKgpUAAAAXSHboAAAAALAAAAAAAAAAAQAAAAAAAAAAAAAAAAEAAAAAAAAAAAAAAAAAAAAAAAACAAAAAwAAALAAAAABAAAAAACVG3aCj2ynsTVrlla+vu+KfhQ+sVBOGlBrHWU4WbfcAAAAAVRFU1QAAAAA2lpYuiO4618LRyYyH4O9BN88OuR9eFuVBN0VesZhzRsAAAAAAAAAAH/
-// /////////AAAAAQAAAAAAAAAAAAAAAQAAALAAAAABAAAAAACVG3aCj2ynsTVrlla+vu+KfhQ+sVBOGlBrHWU4WbfcAAAAAVRFU1QAAAAA2lpYuiO4618LRyYyH4O9BN88OuR9eFuVBN0VesZhzRsAAAkYTnKgAH/
-// /////////AAAAAQAAAAAAAAAAAAAAAgAAAAMAAACwAAAAAQAAAACa/6SeVHolHZWpZ5TST/
-// gWC9n+1JXkMRjiC7SI5MqClQAAAAFURVNUAAAAANpaWLojuOtfC0cmMh+DvQTfPDrkfXhblQTdFXrGYc0bAAAAAAAAAAB////
-// //////wAAAAEAAAAAAAAAAAAAAAEAAACwAAAAAQAAAACa/6SeVHolHZWpZ5TST/
-// gWC9n+1JXkMRjiC7SI5MqClQAAAAFURVNUAAAAANpaWLojuOtfC0cmMh+DvQTfPDrkfXhblQTdFXrGYc0bAAAJGE5yoAB////
-// //////wAAAAEAAAAAAAAAAAAAAAMAAAADAAAAsAAAAAAAAAAAYvwdC9CRsrYcDdZWNGsqaNfTR8bywsjubQRHAlb8BfcMe6oe1ZsbtAAAAAAAAAABAAAAAAAAAAAAAAAAAAAAAAEAAAAAAAAAAAAAAAAAAAAAAAABAAAAsAAAAAAAAAAAYvwdC9CRsrYcDdZWNGsqaNfTR8bywsjubQRHAlb8BfcAAAAAO5rFtAAAAAAAAAABAAAAAAAAAAAAAAAAAAAAAAEAAAAAAAAAAAAAAAAAAAAAAAAAAAAAsAAAAAAAAAAASgQftlATD/
-//
-//
-//
-//
-// 2m8HJvzNU1zvvyUFoT8JGpYKosypl8kSEMe6oemgBWAAAAALAAAAAAAAAAAAAAAAAAAAAAAAAAAAEAAAAAAAAAAAAAAAAAAAAAAAAA"
-// ,         "fee_meta_xdr":
-// "AAAAAgAAAAMAAAABAAAAAAAAAABi/
-// B0L0JGythwN1lY0aypo19NHxvLCyO5tBEcCVvwF9w3gtrOnZAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAEAAACwAAAAAAAAAABi/
-// B0L0JGythwN1lY0aypo19NHxvLCyO5tBEcCVvwF9w3gtrOnY/
-// u0AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAA==",         "memo_type": "none",
-//         "signatures": [
-//           "NUHx9PZlcXQ9mq1lf1usrSTP4/gbxUqzUOQOSU/
-// pQuy9dF7FcUF0fjEbzFECxHUcl4QEfbvyGIE029TA3DrODA==",           "
-// uBlRT+hgYvt+tYNCEkeEJC70mZ+o3Tc+smrj9wms3U5JRZeeYtz3iy/ybYv5zGXanSySvYnHL6+3UtzGS/vAAg==",
-//           "e9kRWqXKAg+uh/eNVNmiENabZZQ2sUAVd/Uty1OoMJAEemHXgSj4A/
-// CtNREsthMi82hd4bMEpsvTdKw4BFZxAg==",           "cC8q/
-// b9Gjj5w2HpspA78b002JSjNjKwbAbUa8lCQWPDL85OwvpYF+4jQ7J7ziVUFWtBWTYRjUREWGB0ym4VKDg=="         ],
-//         "valid_after": "1970-01-01T00:00:00Z"
-//       }
-//     ]
-//   }
-// }"#;
-//
-// 	let transaction: vault::service::HorizonTransactionsResponse =
-// 		serde_json::from_str(tx_string).unwrap();
-// 	let tx_xdr = &transaction._embedded.records[0].envelope_xdr;
-//
-// 	test_with_vault(|client, vault_provider| async move {
-// 		let deposit_listener = vault::service::poll_horizon_for_new_transactions(
-// 			vault_provider.clone(),
-// 			STELLAR_VAULT_SECRET_KEY.to_string(),
-// 		);
-//
-// 		assert_ok!(vault_provider.report_stellar_transaction(tx_xdr).await);
-//
-// 		test_service(deposit_listener.map(Result::unwrap), async {}).await;
-// 	})
-// 	.await;
-// }
-//
-// #[tokio::test(flavor = "multi_thread")]
-// async fn test_redeem() {
-// 	test_with_vault(|client, vault_provider| async move {
-// 		let (shutdown_tx, _) = tokio::sync::broadcast::channel(16);
-//
-// 		// redeem handling
-// 		let redeem_listener = vault::service::listen_for_redeem_requests(
-// 			shutdown_tx,
-// 			vault_provider.clone(),
-// 			STELLAR_VAULT_SECRET_KEY.to_string(),
-// 		);
-//
-// 		test_service(redeem_listener.map(Result::unwrap), async {
-// 			let asset_code = "USDC".as_bytes();
-// 			let asset_issuer =
-// 				"GAKNDFRRWA3RPWNLTI3G4EBSD3RGNZZOY5WKWYMQ6CQTG3KIEKPYWAYC".as_bytes();
-// 			let amount: u128 = 100000000;
-//
-// 			let vault_keypair =
-// 				stellar_relay_lib::sdk::SecretKey::from_encoding(STELLAR_VAULT_SECRET_KEY).unwrap();
-// 			let stellar_vault_pubkey = *vault_keypair.get_public().as_binary();
-//
-// 			tracing::info!("hex key 0x{}", hex::encode(stellar_vault_pubkey));
-//
-// 			// Execute a redeem
-// 			assert_ok!(
-// 				vault_provider
-// 					.redeem(
-// 						&asset_code.to_vec(),
-// 						&asset_issuer.to_vec(),
-// 						amount,
-// 						stellar_vault_pubkey.clone()
-// 					)
-// 					.await,
-// 			);
-//
-// 			// Expect that a RedeemEvent is registered by the vault provider
-// 			let event = assert_event::<RedeemEvent, _>(TIMEOUT, vault_provider, |_| true).await;
-// 			assert_eq!(event.asset_code, asset_code);
-// 			assert_eq!(event.asset_issuer, asset_issuer);
-// 			assert_eq!(event.stellar_vault_id, stellar_vault_pubkey);
-// 			assert_eq!(event.amount, amount);
-// 		})
-// 		.await;
-// 	})
-// 	.await;
-// }
+use std::time::Duration;
+
+use async_trait::async_trait;
+use frame_support::assert_ok;
+use futures::Future;
+use sp_keyring::AccountKeyring;
+
+use runtime::{
+	integration::*, types::*, CurrencyId::Token, FixedPointNumber, FixedU128, SpacewalkParachain,
+	VaultRegistryPallet,
+};
+use stellar_relay::sdk::SecretKey;
+
+const TIMEOUT: Duration = Duration::from_secs(90);
+
+const DEFAULT_NATIVE_CURRENCY: CurrencyId = Token(TokenSymbol::AMPE);
+const DEFAULT_TESTING_CURRENCY: CurrencyId = Token(TokenSymbol::KSM);
+const DEFAULT_WRAPPED_CURRENCY: CurrencyId = CurrencyId::AlphaNum4 {
+	code: *b"USDC",
+	issuer: [
+		20, 209, 150, 49, 176, 55, 23, 217, 171, 154, 54, 110, 16, 50, 30, 226, 102, 231, 46, 199,
+		108, 171, 97, 144, 240, 161, 51, 109, 72, 34, 159, 139,
+	],
+};
+
+const STELLAR_VAULT_SECRET_KEY: &str = "SB6WHKIU2HGVBRNKNOEOQUY4GFC4ZLG5XPGWLEAHTIZXBXXYACC76VSQ";
+
+async fn test_with<F, R>(execute: impl FnOnce(SubxtClient) -> F) -> R
+where
+	F: Future<Output = R>,
+{
+	service::init_subscriber();
+	let (client, _tmp_dir) = default_provider_client(AccountKeyring::Alice).await;
+
+	// Has to be Bob because he is set as `authorized_oracle` in the genesis config
+	let parachain_rpc = setup_provider(client.clone(), AccountKeyring::Bob).await;
+
+	set_exchange_rate_and_wait(
+		&parachain_rpc,
+		DEFAULT_TESTING_CURRENCY,
+		FixedU128::from(100000000),
+	)
+	.await;
+	set_exchange_rate_and_wait(
+		&parachain_rpc,
+		DEFAULT_NATIVE_CURRENCY,
+		FixedU128::saturating_from_rational(1u128, 100u128),
+	)
+	.await;
+	set_stellar_fees(&parachain_rpc, FixedU128::from(1)).await;
+
+	execute(client).await
+}
+
+async fn test_with_vault<F, R>(
+	execute: impl FnOnce(SubxtClient, VaultId, SpacewalkParachain) -> F,
+) -> R
+where
+	F: Future<Output = R>,
+{
+	service::init_subscriber();
+	let (client, _tmp_dir) = default_provider_client(AccountKeyring::Alice).await;
+
+	let parachain_rpc = setup_provider(client.clone(), AccountKeyring::Bob).await;
+	set_exchange_rate_and_wait(
+		&parachain_rpc,
+		DEFAULT_TESTING_CURRENCY,
+		FixedU128::from(100000000),
+	)
+	.await;
+	set_exchange_rate_and_wait(
+		&parachain_rpc,
+		DEFAULT_NATIVE_CURRENCY,
+		FixedU128::saturating_from_rational(1u128, 100u128),
+	)
+	.await;
+	set_stellar_fees(&parachain_rpc, FixedU128::from(1)).await;
+
+	let vault_provider = setup_provider(client.clone(), AccountKeyring::Charlie).await;
+
+	let account_id = AccountKeyring::Charlie.to_raw_public();
+	// Convert to the subxt AccountId type because unfortunately there is a version mismatch between
+	// the sp_xxx dependencies subxt uses and the ones we use
+	let account_id = subxt::ext::sp_runtime::AccountId32::from(account_id);
+
+	let vault_id = VaultId::new(account_id, DEFAULT_TESTING_CURRENCY, DEFAULT_WRAPPED_CURRENCY);
+
+	execute(client, vault_id, vault_provider).await
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn test_issue_overpayment_succeeds() {
+	test_with_vault(|client, vault_id, vault_provider| async move {
+		let relayer_provider = setup_provider(client.clone(), AccountKeyring::Bob).await;
+		let user_provider = setup_provider(client.clone(), AccountKeyring::Dave).await;
+
+		let secret = SecretKey::from_encoding(STELLAR_VAULT_SECRET_KEY).unwrap();
+		let public_key = secret.get_public().clone().into_binary();
+
+		let issue_amount = 100000;
+		let over_payment_factor = 3;
+		let vault_collateral = get_required_vault_collateral_for_issue(
+			&vault_provider,
+			issue_amount * over_payment_factor,
+			vault_id.collateral_currency(),
+		)
+		.await;
+
+		assert_ok!(
+			vault_provider
+				.register_vault_with_public_key(&vault_id, vault_collateral, public_key)
+				.await
+		);
+
+		// TODO add the rest
+	})
+	.await;
+}
+
+type StellarPublicKey = [u8; 32];
+
+#[async_trait]
+trait SpacewalkParachainExt {
+	async fn register_vault_with_public_key(
+		&self,
+		vault_id: &VaultId,
+		collateral: u128,
+		public_key: StellarPublicKey,
+	) -> Result<(), runtime::Error>;
+}
+
+#[async_trait]
+impl SpacewalkParachainExt for SpacewalkParachain {
+	async fn register_vault_with_public_key(
+		&self,
+		vault_id: &VaultId,
+		collateral: u128,
+		public_key: StellarPublicKey,
+	) -> Result<(), runtime::Error> {
+		self.register_public_key(public_key).await.unwrap();
+		self.register_vault(vault_id, collateral).await.unwrap();
+		Ok(())
+	}
+}

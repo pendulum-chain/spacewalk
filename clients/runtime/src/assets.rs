@@ -1,12 +1,8 @@
-use std::{
-	collections::BTreeMap,
-	convert::TryFrom,
-	sync::{Mutex, MutexGuard},
-};
+use std::convert::TryFrom;
 
 use primitives::{CurrencyId::Token, CurrencyInfo, TokenSymbol::*};
 
-use crate::{types::*, CurrencyId, Error};
+use crate::{CurrencyId, Error};
 
 /// Convert a ticker symbol into a `CurrencyId` at runtime
 pub trait TryFromSymbol: Sized {
@@ -22,7 +18,7 @@ impl TryFromSymbol for CurrencyId {
 		if parts.len() == 2 {
 			let issuer = parts[0].trim();
 			let code = parts[1].trim();
-			return CurrencyId::try_from((code, issuer)).map_err(|err| Error::InvalidCurrency)
+			return CurrencyId::try_from((code, issuer)).map_err(|_| Error::InvalidCurrency)
 		}
 
 		// try hardcoded currencies first

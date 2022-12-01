@@ -13,6 +13,8 @@ testing-utils = [
     "tempdir",
     "rand",
     "testchain",
+    "testchain-runtime",
+    "subxt-client",
 ]
 
 [dependencies]
@@ -41,6 +43,8 @@ sp-version = { git = "https://github.com/paritytech/substrate", branch = "polkad
 # Subxt dependencies
 subxt = "0.25.0"
 jsonrpsee = { version = "0.16.0", features = ["macros", "jsonrpsee-types", "client", "jsonrpsee-ws-client", "jsonrpsee-client-transport"] }
+# Used for performing the integration tests
+subxt-client = { path = "./client", optional = true }
 
 # Needed for the `BalanceWrapper` struct
 module-oracle-rpc-runtime-api = { path = "../../pallets/oracle/rpc/runtime-api" }
@@ -50,6 +54,7 @@ primitives = { path = "../../primitives", package = "spacewalk-primitives" }
 rand = { version = "0.7", optional = true }
 tempdir = { version = "0.3.7", optional = true }
 testchain = { package = "spacewalk-standalone", path = "../../testchain/node", optional = true }
+testchain-runtime = { package = "spacewalk-runtime-standalone", path = "../../testchain/runtime", optional = true }
 
 # Substrate Stellar Dependencies
 substrate-stellar-sdk = { git = "https://github.com/pendulum-chain/substrate-stellar-sdk", branch = "polkadot-v0.9.31" }
@@ -57,3 +62,5 @@ substrate-stellar-sdk = { git = "https://github.com/pendulum-chain/substrate-ste
 [dev-dependencies]
 env_logger = "0.8.3"
 tempdir = "0.3.7"
+runtime = { path = ".", features = ["testing-utils"] }
+
