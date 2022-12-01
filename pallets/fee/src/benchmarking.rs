@@ -5,6 +5,7 @@ use primitives::VaultId;
 
 #[cfg(test)]
 use crate::Pallet as Fee;
+use currency::getters::get_wrapped_currency_id;
 
 use super::*;
 
@@ -16,10 +17,14 @@ fn get_fee<T: crate::Config>() -> UnsignedFixedPoint<T> {
 	fee
 }
 
+fn get_wrapped_currency<T: crate::Config>() -> T::CurrencyId {
+	get_wrapped_currency_id::<T>()
+}
+
 benchmarks! {
 	withdraw_rewards {
 		let nominator: T::AccountId = account("recipient", 0, SEED);
-		let vault_id = VaultId::new(nominator.clone(), T::GetWrappedCurrencyId::get(), T::GetWrappedCurrencyId::get());
+		let vault_id = VaultId::new(nominator.clone(), get_wrapped_currency_id::<T>(), get_wrapped_currency_id::<T>());
 	}: _(RawOrigin::Signed(nominator), vault_id, None)
 
 	set_issue_fee {

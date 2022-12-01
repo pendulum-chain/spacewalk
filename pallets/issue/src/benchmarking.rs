@@ -23,6 +23,18 @@ use crate::Pallet as Issue;
 
 use super::*;
 
+pub fn get_wrapped_currency_id() -> CurrencyId {
+	// Return some wrapped currency id for convenience in tests
+	let default_wrapped_currency: CurrencyId = CurrencyId::AlphaNum4 {
+		code: *b"USDC",
+		issuer: [
+			20, 209, 150, 49, 176, 55, 23, 217, 171, 154, 54, 110, 16, 50, 30, 226, 102, 231, 46,
+			199, 108, 171, 97, 144, 240, 161, 51, 109, 72, 34, 159, 139,
+		],
+	};
+	default_wrapped_currency
+}
+
 fn deposit_tokens<T: crate::Config>(
 	currency_id: CurrencyId,
 	account_id: &T::AccountId,
@@ -39,7 +51,7 @@ fn mint_collateral<T: crate::Config>(account_id: &T::AccountId, amount: BalanceO
 fn get_currency_pair<T: crate::Config>() -> DefaultVaultCurrencyPair<T> {
 	VaultCurrencyPair {
 		collateral: get_collateral_currency_id::<T>(),
-		wrapped: get_wrapped_currency_id::<T>(),
+		wrapped: get_wrapped_currency_id(),
 	}
 }
 
@@ -47,7 +59,7 @@ fn get_vault_id<T: crate::Config>() -> DefaultVaultId<T> {
 	VaultId::new(
 		account("Vault", 0, 0),
 		get_collateral_currency_id::<T>(),
-		get_wrapped_currency_id::<T>(),
+		get_wrapped_currency_id(),
 	)
 }
 
@@ -89,7 +101,7 @@ benchmarks! {
 		mint_collateral::<T>(&relayer_id, (1u32 << 31).into());
 
 		let vault_stellar_address = DEFAULT_STELLAR_PUBLIC_KEY;
-		let value: Amount<T> = Amount::new(2u32.into(), get_wrapped_currency_id::<T>());
+		let value: Amount<T> = Amount::new(2u32.into(), get_wrapped_currency_id());
 
 		let issue_id = H256::zero();
 		let issue_request = IssueRequest {
@@ -130,7 +142,7 @@ benchmarks! {
 		mint_collateral::<T>(&vault_id.account_id.clone(), (1u32 << 31).into());
 
 		let vault_stellar_address = DEFAULT_STELLAR_PUBLIC_KEY;
-		let value = Amount::new(2u32.into(), get_wrapped_currency_id::<T>());
+		let value = Amount::new(2u32.into(), get_wrapped_currency_id());
 
 		let issue_id = H256::zero();
 		let issue_request = IssueRequest {
