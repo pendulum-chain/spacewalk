@@ -6,7 +6,7 @@ use stellar_relay_lib::{
 	node::NodeInfo, sdk::types::StellarMessage, ConnConfig, StellarOverlayConnection,
 	StellarRelayMessage,
 };
-use wallet::Watcher;
+use wallet::types::Watcher;
 
 use crate::oracle::{
 	collector::{Proof, ProofStatus, ScpMessageCollector},

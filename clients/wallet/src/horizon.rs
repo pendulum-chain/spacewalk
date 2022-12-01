@@ -6,7 +6,11 @@ use serde::{Deserialize, Deserializer};
 use substrate_stellar_sdk::{Hash, PublicKey};
 use tokio::{sync::RwLock, time::sleep};
 
-use crate::{error::Error, stellar_wallet::Watcher, FilterParam, FilterWith};
+use crate::{
+	error::Error,
+	stellar_wallet,
+	types::{FilterWith, TransactionFilterParam, Watcher},
+};
 
 pub type PagingToken = u128;
 
@@ -225,7 +229,7 @@ impl<C: HorizonClient> HorizonFetcher<C> {
 		&mut self,
 		issue_hashes: Arc<RwLock<Vec<Hash>>>,
 		watcher: Arc<RwLock<dyn Watcher>>,
-		filter: impl FilterWith<FilterParam>,
+		filter: impl FilterWith<TransactionFilterParam>,
 		last_paging_token: PagingToken,
 	) -> Result<PagingToken, Error> {
 		let res = self.fetch_latest_txs(last_paging_token).await;
@@ -264,13 +268,16 @@ impl<C: HorizonClient> HorizonFetcher<C> {
 	}
 }
 
-pub async fn listen_for_new_transactions(
+pub async fn listen_for_new_transactions<Filter>(
 	vault_account_public_key: PublicKey,
 	is_public_network: bool,
 	targets: Arc<RwLock<Vec<Hash>>>,
 	watcher: Arc<RwLock<dyn Watcher>>,
-	filter_with: impl FilterWith<FilterParam> + Clone,
-) -> Result<(), Error> {
+	filter: Filter,
+) -> Result<(), Error>
+where
+	Filter: FilterWith<TransactionFilterParam> + Clone,
+{
 	let horizon_client = reqwest::Client::new();
 	let mut fetcher =
 		HorizonFetcher::new(horizon_client, vault_account_public_key, is_public_network);
@@ -282,7 +289,7 @@ pub async fn listen_for_new_transactions(
 			.fetch_horizon_and_process_new_transactions(
 				targets.clone(),
 				watcher.clone(),
-				filter_with.clone(),
+				filter.clone(),
 				latest_paging_token,
 			)
 			.await
@@ -303,7 +310,7 @@ mod tests {
 
 	use mockall::{predicate::*, *};
 
-	use crate::{stellar_wallet::MockWatcher, FilterParam};
+	use crate::types::{FilterWith, MockWatcher, TransactionFilterParam};
 
 	use super::*;
 
@@ -312,8 +319,8 @@ mod tests {
 	#[derive(Clone)]
 	struct MockFilter;
 
-	impl FilterWith<FilterParam> for MockFilter {
-		fn is_relevant(&self, param: FilterParam) -> bool {
+	impl FilterWith<TransactionFilterParam> for MockFilter {
+		fn is_relevant(&self, param: TransactionFilterParam) -> bool {
 			// We consider all transactions relevant for the test
 			true
 		}

@@ -1,13 +1,14 @@
-use stellar_relay_lib::sdk::{
-	network::{Network, PUBLIC_NETWORK, TEST_NETWORK},
-	SecretKey, TransactionEnvelope,
-};
-
-use stellar_relay_lib::{node::NodeInfo, ConnConfig};
-
-use vault::oracle::{create_handler, prepare_directories, Proof, ProofStatus};
-
 use tokio::time::Duration;
+
+use stellar_relay_lib::{
+	node::NodeInfo,
+	sdk::{
+		network::{Network, PUBLIC_NETWORK, TEST_NETWORK},
+		SecretKey, TransactionEnvelope,
+	},
+	ConnConfig,
+};
+use vault::oracle::{create_handler, prepare_directories, Proof, ProofStatus};
 
 pub const SAMPLE_VAULT_ADDRESSES_FILTER: &[&str] =
 	&["GAP4SFKVFVKENJ7B7VORAYKPB3CJIAJ2LMKDJ22ZFHIAIVYQOR6W3CXF"];
@@ -96,7 +97,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 			// for every multiples of 4, let's try to get proof of an old slot.
 		} else if counter % 4 == 0 {
 			let check_slot = if get_from_random {
-				// let's get a proof of a slot 10 0r 100 steps away from the current one.
+				// let's get a proof of a slot 10 or 100 steps away from the current one.
 				let last_slot = last_slot - ten_or_hundred;
 				// this helps with alternating between fetching from stellar node and from Archive..
 				if ten_or_hundred == 10 {

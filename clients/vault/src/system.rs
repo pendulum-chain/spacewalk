@@ -425,7 +425,8 @@ impl VaultService {
 					is_public_network,
 					issue_hashes_vec.clone(),
 					watcher.clone(),
-					wallet::TxFilter, //todo: change with a filter specific to the issue request?
+					wallet::types::TxFilter, /* todo: change with a filter specific to the issue
+					                          * request? */
 				)),
 			),
 		];

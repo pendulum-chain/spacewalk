@@ -1,18 +1,7 @@
 use async_trait::async_trait;
 use substrate_stellar_sdk::{PublicKey, SecretKey};
 
-#[cfg(test)]
-use mockall::{automock, mock, predicate::*};
-
-use crate::error::Error;
-
-pub type StellarPublicKeyRaw = [u8; 32];
-
-#[async_trait]
-#[cfg_attr(test, automock)]
-pub trait Watcher: Send + Sync {
-	async fn watch_slot(&self, slot: u128) -> Result<(), Error>;
-}
+use crate::{error::Error, types::StellarPublicKeyRaw};
 
 #[derive(Clone, PartialEq, Debug, Eq)]
 pub struct StellarWallet {
