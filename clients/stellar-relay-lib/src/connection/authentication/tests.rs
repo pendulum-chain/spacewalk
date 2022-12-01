@@ -12,7 +12,7 @@ use crate::{
 };
 use substrate_stellar_sdk::{
 	network::Network,
-	types::{AuthCert, Curve25519Public, HmacSha256Mac},
+	types::{Curve25519Public, HmacSha256Mac},
 	SecretKey, XdrCodec,
 };
 

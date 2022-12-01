@@ -24,7 +24,7 @@ pub trait Service<Config, InnerError> {
 	const NAME: &'static str;
 	const VERSION: &'static str;
 
-	fn new_service(
+	async fn new_service(
 		spacewalk_parachain: SpacewalkParachain,
 		config: Config,
 		shutdown: ShutdownSender,
@@ -85,6 +85,7 @@ impl<Config: Clone + Send + 'static, F: Fn()> ConnectionManager<Config, F> {
 			.await?;
 
 			let mut service = S::new_service(spacewalk_parachain, config, shutdown_tx.clone())
+				.await
 				.map_err(|e| Error::StartServiceError(e))?;
 
 			match service.start().await {

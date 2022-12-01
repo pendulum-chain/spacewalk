@@ -9,7 +9,7 @@ use runtime::{
 	integration::*, types::*, CurrencyId::Token, FixedPointNumber, FixedU128, SpacewalkParachain,
 	VaultRegistryPallet,
 };
-use stellar_relay::sdk::SecretKey;
+use stellar_relay_lib::sdk::SecretKey;
 
 const TIMEOUT: Duration = Duration::from_secs(90);
 
