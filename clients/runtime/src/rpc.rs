@@ -945,6 +945,128 @@ impl SecurityPallet for SpacewalkParachain {
 }
 
 #[async_trait]
+pub trait IssuePallet {
+	/// Request a new issue
+	async fn request_issue(
+		&self,
+		amount: u128,
+		vault_id: &VaultId,
+	) -> Result<RequestIssueEvent, Error>;
+
+	/// Execute a issue request by providing a Bitcoin transaction inclusion proof
+	async fn execute_issue(
+		&self,
+		issue_id: H256,
+		tx_envelope_xdr_encoded: &[u8],
+		envelopes_xdr_encoded: &[u8],
+		tx_set_xdr_encoded: &[u8],
+	) -> Result<(), Error>;
+
+	/// Cancel an ongoing issue request
+	async fn cancel_issue(&self, issue_id: H256) -> Result<(), Error>;
+
+	async fn get_issue_request(&self, issue_id: H256) -> Result<SpacewalkIssueRequest, Error>;
+
+	async fn get_vault_issue_requests(
+		&self,
+		account_id: AccountId,
+	) -> Result<Vec<(H256, SpacewalkIssueRequest)>, Error>;
+
+	async fn get_issue_period(&self) -> Result<u32, Error>;
+
+	async fn get_all_active_issues(&self) -> Result<Vec<(H256, SpacewalkIssueRequest)>, Error>;
+}
+
+#[async_trait]
+impl IssuePallet for SpacewalkParachain {
+	async fn request_issue(
+		&self,
+		amount: u128,
+		vault_id: &VaultId,
+	) -> Result<RequestIssueEvent, Error> {
+		self.with_retry(metadata::tx().issue().request_issue(amount, vault_id.clone()))
+			.await?
+			.find_first::<RequestIssueEvent>()?
+			.ok_or(Error::RequestIssueIDNotFound)
+	}
+
+	async fn execute_issue(
+		&self,
+		issue_id: H256,
+		tx_envelope_xdr_encoded: &[u8],
+		envelopes_xdr_encoded: &[u8],
+		tx_set_xdr_encoded: &[u8],
+	) -> Result<(), Error> {
+		self.with_retry(metadata::tx().issue().execute_issue(
+			issue_id,
+			tx_envelope_xdr_encoded.to_vec(),
+			envelopes_xdr_encoded.to_vec(),
+			tx_set_xdr_encoded.to_vec(),
+		))
+		.await?;
+		Ok(())
+	}
+
+	async fn cancel_issue(&self, issue_id: H256) -> Result<(), Error> {
+		self.with_retry(metadata::tx().issue().cancel_issue(issue_id)).await?;
+		Ok(())
+	}
+
+	async fn get_issue_request(&self, issue_id: H256) -> Result<SpacewalkIssueRequest, Error> {
+		self.query_finalized_or_error(metadata::storage().issue().issue_requests(&issue_id))
+			.await
+	}
+
+	async fn get_vault_issue_requests(
+		&self,
+		account_id: AccountId,
+	) -> Result<Vec<(H256, SpacewalkIssueRequest)>, Error> {
+		let head = self.get_finalized_block_hash().await?;
+		let result: Vec<H256> = self
+			.api
+			.rpc()
+			.request("issue_getVaultIssueRequests", rpc_params![account_id, head])
+			.await?;
+		join_all(
+			result.into_iter().map(|key| async move {
+				self.get_issue_request(key).await.map(|value| (key, value))
+			}),
+		)
+		.await
+		.into_iter()
+		.collect()
+	}
+
+	async fn get_issue_period(&self) -> Result<u32, Error> {
+		self.query_finalized_or_error(metadata::storage().issue().issue_period()).await
+	}
+
+	async fn get_all_active_issues(&self) -> Result<Vec<(H256, SpacewalkIssueRequest)>, Error> {
+		let current_height = self.get_current_active_block_number().await?;
+		let issue_period = self.get_issue_period().await?;
+
+		let mut issue_requests = Vec::new();
+
+		let head = self.get_finalized_block_hash().await?;
+		let key_addr = metadata::storage().issue().issue_requests_root();
+		let mut iter = self.api.storage().iter(key_addr, DEFAULT_PAGE_SIZE, head).await?;
+
+		while let Some((issue_id, request)) = iter.next().await? {
+			// todo: we also need to check the bitcoin height
+			if request.status == IssueRequestStatus::Pending &&
+				request.opentime + issue_period > current_height
+			{
+				let key_hash = issue_id.0.as_slice();
+				// last bytes are the raw key
+				let key = &key_hash[key_hash.len() - 32..];
+				issue_requests.push((H256::from_slice(key), request));
+			}
+		}
+		Ok(issue_requests)
+	}
+}
+
+#[async_trait]
 pub trait StellarRelayPallet {
 	async fn is_public_network(&self) -> Result<bool, Error>;
 }
