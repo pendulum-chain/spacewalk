@@ -19,10 +19,11 @@ use subxt_client::{
 	AccountKeyring, DatabaseSource, KeystoreConfig, Role, SubxtClientConfig, WasmExecutionMethod,
 	WasmtimeInstantiationStrategy,
 };
+use wallet::StellarWallet;
 
 use crate::{
-	rpc::{OraclePallet, VaultRegistryPallet},
-	CurrencyId, FixedU128, OracleKey, SpacewalkParachain, SpacewalkSigner,
+	rpc::{IssuePallet, OraclePallet, VaultRegistryPallet},
+	CurrencyId, FixedU128, OracleKey, SpacewalkParachain, SpacewalkSigner, VaultId,
 };
 
 /// Start a new instance of the parachain. The second item in the returned tuple must remain in
@@ -76,33 +77,32 @@ pub async fn setup_provider(client: SubxtClient, key: AccountKeyring) -> Spacewa
 		.expect("Error creating parachain_rpc")
 }
 
-// /// request, pay and execute an issue
-// pub async fn assert_issue(
-// 	parachain_rpc: &SpacewalkParachain,
-// 	btc_rpc: &DynBitcoinCoreApi,
-// 	vault_id: &VaultId,
-// 	amount: u128,
-// ) {
-// 	let issue = parachain_rpc.request_issue(amount, vault_id).await.unwrap();
-//
-// 	let fee_rate = SatPerVbyte(1000);
-//
-// 	let metadata = btc_rpc
-// 		.send_to_address(
-// 			issue.vault_address.to_address(btc_rpc.network()).unwrap(),
-// 			(issue.amount + issue.fee) as u64,
-// 			None,
-// 			fee_rate,
-// 			0,
-// 		)
-// 		.await
-// 		.unwrap();
-//
-// 	parachain_rpc
-// 		.execute_issue(issue.issue_id, &metadata.proof, &metadata.raw_tx)
-// 		.await
-// 		.unwrap();
-// }
+/// request, pay and execute an issue
+pub async fn assert_issue(
+	parachain_rpc: &SpacewalkParachain,
+	wallet: StellarWallet,
+	vault_id: &VaultId,
+	amount: u128,
+) {
+	let issue = parachain_rpc.request_issue(amount, vault_id).await.unwrap();
+
+	// TODO change this to set up the relay helper and then send the transaction
+	// let metadata = btc_rpc
+	// 	.send_to_address(
+	// 		issue.vault_address.to_address(btc_rpc.network()).unwrap(),
+	// 		(issue.amount + issue.fee) as u64,
+	// 		None,
+	// 		fee_rate,
+	// 		0,
+	// 	)
+	// 	.await
+	// 	.unwrap();
+	//
+	// parachain_rpc
+	// 	.execute_issue(issue.issue_id, &metadata.proof, &metadata.raw_tx)
+	// 	.await
+	// 	.unwrap();
+}
 
 const SLEEP_DURATION: Duration = Duration::from_millis(1000);
 const TIMEOUT_DURATION: Duration = Duration::from_secs(20);

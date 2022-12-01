@@ -7,9 +7,10 @@ use sp_keyring::AccountKeyring;
 
 use runtime::{
 	integration::*, types::*, CurrencyId::Token, FixedPointNumber, FixedU128, SpacewalkParachain,
-	VaultRegistryPallet,
+	UtilFuncs, VaultRegistryPallet,
 };
 use stellar_relay_lib::sdk::SecretKey;
+use wallet::StellarWallet;
 
 const TIMEOUT: Duration = Duration::from_secs(90);
 
@@ -112,7 +113,33 @@ async fn test_issue_overpayment_succeeds() {
 				.await
 		);
 
-		// TODO add the rest
+		let issue = user_provider.request_issue(issue_amount, &vault_id).await.unwrap();
+
+		wallet
+			.send_payment_to_address(
+				issue.vault_address.to_address(btc_rpc.network()).unwrap(),
+				(issue.amount + issue.fee) as u64 * over_payment_factor as u64,
+				issue.id,
+			)
+			.await
+			.unwrap();
+
+		let metadata = btc_rpc.send_to_address().await.unwrap();
+
+		join(
+			assert_event::<EndowedEvent, _>(TIMEOUT, user_provider.clone(), |x| {
+				if &x.who == user_provider.get_account_id() {
+					assert_eq!(x.amount, issue.amount * over_payment_factor);
+					true
+				} else {
+					false
+				}
+			}),
+			user_provider
+				.execute_issue(issue.issue_id, &metadata.proof, &metadata.raw_tx)
+				.map(Result::unwrap),
+		)
+		.await;
 	})
 	.await;
 }

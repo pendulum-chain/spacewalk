@@ -1,7 +1,13 @@
-use async_trait::async_trait;
-use substrate_stellar_sdk::{PublicKey, SecretKey};
+use substrate_stellar_sdk::{Hash, PublicKey, SecretKey};
+use thiserror::Error;
 
-use crate::{error::Error, types::StellarPublicKeyRaw};
+pub type StellarPublicKeyRaw = [u8; 32];
+
+#[derive(PartialEq, Eq, Clone, Debug, Error)]
+pub enum Error {
+	#[error("Server returned rpc error")]
+	InvalidSecretKey,
+}
 
 #[derive(Clone, PartialEq, Debug, Eq)]
 pub struct StellarWallet {
@@ -23,6 +29,16 @@ impl StellarWallet {
 
 	pub fn get_public_key_raw(&self) -> StellarPublicKeyRaw {
 		self.secret_key.get_public().clone().into_binary()
+	}
+
+	pub async fn send_payment_to_address(
+		&self,
+		address: PublicKey,
+		amount: u64,
+		memo_hash: Hash,
+	) -> Result<(), Error> {
+		// todo!()
+		Ok(())
 	}
 
 	pub fn get_public_key(&self) -> PublicKey {
