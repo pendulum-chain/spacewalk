@@ -693,3 +693,35 @@ impl CollateralBalancesPallet for SpacewalkParachain {
 		Ok(())
 	}
 }
+
+#[async_trait]
+pub trait RedeemPallet {
+	/// Request a new redeem
+	async fn request_redeem(
+		&self,
+		amount: u128,
+		stellar_address: StellarPublicKey,
+		vault_id: &VaultId,
+	) -> Result<H256, Error>;
+
+	/// Execute a redeem request by providing a Bitcoin transaction inclusion proof
+	async fn execute_redeem(
+		&self,
+		redeem_id: H256,
+		merkle_proof: &[u8],
+		raw_tx: &[u8],
+	) -> Result<(), Error>;
+
+	/// Cancel an ongoing redeem request
+	async fn cancel_redeem(&self, redeem_id: H256, reimburse: bool) -> Result<(), Error>;
+
+	async fn get_redeem_request(&self, redeem_id: H256) -> Result<SpacewalkRedeemRequest, Error>;
+
+	/// Get all redeem requests requested of the given vault
+	async fn get_vault_redeem_requests(
+		&self,
+		account_id: AccountId,
+	) -> Result<Vec<(H256, SpacewalkRedeemRequest)>, Error>;
+
+	async fn get_redeem_period(&self) -> Result<BlockNumber, Error>;
+}

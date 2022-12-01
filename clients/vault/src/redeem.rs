@@ -1,6 +1,4 @@
-use crate::{
-	execution::*, metrics::publish_expected_bitcoin_balance, system::VaultIdManager, Error,
-};
+use crate::{execution::*, system::VaultIdManager, Error};
 use runtime::{InterBtcParachain, RedeemPallet, RequestRedeemEvent};
 use service::{spawn_cancelable, Error as ServiceError, ShutdownSender};
 use std::time::Duration;
@@ -32,7 +30,8 @@ pub async fn listen_for_redeem_requests(
 
 				tracing::info!("Received redeem request: {:?}", event);
 
-				let _ = publish_expected_bitcoin_balance(&vault, parachain_rpc.clone()).await;
+				// TODO publish expected balance to be consumed by some external system / the user?
+				// let _ = publish_expected_bitcoin_balance(&vault, parachain_rpc.clone()).await;
 
 				// within this event callback, we captured the arguments of
 				// listen_for_redeem_requests by reference. Since spawn requires static lifetimes,

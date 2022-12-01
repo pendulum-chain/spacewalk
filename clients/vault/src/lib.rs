@@ -10,11 +10,14 @@ mod error;
 mod execution;
 pub mod metrics;
 pub mod process;
+mod redeem;
 mod system;
 
 pub mod oracle;
 
-pub mod service {}
+pub mod service {
+	pub use crate::redeem::listen_for_redeem_requests;
+}
 
 /// At startup we wait until a new block has arrived before we start event listeners.
 /// This constant defines the rate at which we check whether the chain height has increased.

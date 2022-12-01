@@ -45,6 +45,14 @@ mod metadata_aliases {
 		metadata::runtime_types::spacewalk_primitives::VaultId<AccountId, CurrencyId>;
 	pub type VaultCurrencyPair =
 		metadata::runtime_types::spacewalk_primitives::VaultCurrencyPair<CurrencyId>;
+
+	pub type SpacewalkRedeemRequest =
+		metadata::runtime_types::spacewalk_primitives::redeem::RedeemRequest<
+			AccountId,
+			BlockNumber,
+			Balance,
+			CurrencyId,
+		>;
 }
 
 pub trait PrettyPrint {
