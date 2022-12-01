@@ -5,7 +5,7 @@ use thiserror::Error;
 use tokio_stream::wrappers::errors::BroadcastStreamRecvError;
 
 use runtime::Error as RuntimeError;
-use wallet::{error::Error as WalletError, Error as WalletError};
+use wallet::error::Error as WalletError;
 
 #[derive(Error, Debug)]
 pub enum Error {

@@ -14,10 +14,10 @@ use tokio::{sync::RwLock, time::sleep};
 use runtime::{
 	cli::{parse_duration_minutes, parse_duration_ms},
 	CollateralBalancesPallet, CurrencyId, Error as RuntimeError, PrettyPrint, RegisterVaultEvent,
-	ShutdownSender, SpacewalkParachain, TryFromSymbol, UtilFuncs, VaultCurrencyPair, VaultId,
-	VaultRegistryPallet,
+	ShutdownSender, SpacewalkParachain, StellarRelayPallet, TryFromSymbol, UtilFuncs,
+	VaultCurrencyPair, VaultId, VaultRegistryPallet,
 };
-use service::{wait_or_shutdown, Error as ServiceError, Service, ShutdownSender};
+use service::{wait_or_shutdown, Error as ServiceError, Service};
 use stellar_relay_lib::{
 	node::NodeInfo,
 	sdk::{
@@ -399,9 +399,11 @@ impl VaultService {
 		// this has to be modified every time the issue set changes
 		let issue_hashes_vec: Arc<RwLock<Vec<Hash>>> = Arc::new(RwLock::new(Vec::new()));
 
-		let handler =
-			inner_create_handler(&self.spacewalk_parachain, &self.config.stellar_vault_secret_key)
-				.await?;
+		let handler = inner_create_handler(
+			self.stellar_wallet.get_secret_key(),
+			self.stellar_wallet.is_public_network(),
+		)
+		.await?;
 		let watcher = Arc::new(RwLock::new(handler.create_watcher()));
 
 		tracing::info!("Starting all services...");
@@ -528,20 +530,18 @@ pub(crate) async fn is_vault_registered(
 /// Returns SCPMessageHandler which contains the thread to connect/listen to the Stellar
 /// Node. See the oracle.rs example
 async fn inner_create_handler(
-	spacewalk_parachain: &SpacewalkParachain,
-	stellar_vault_secret_key: &str,
+	stellar_vault_secret_key: SecretKey,
+	is_public_network: bool,
 ) -> Result<ScpMessageHandler, Error> {
 	prepare_directories().map_err(|e| {
 		tracing::error!("Failed to create the SCPMessageHandler: {:?}", e);
 		Error::StellarSdkError
 	})?;
 
-	let is_public_net = spacewalk_parachain.is_public_network().await.map_err(Error::from)?;
-
 	let tier1_node_ip =
-		if is_public_net { TIER_1_VALIDATOR_IP_PUBLIC } else { TIER_1_VALIDATOR_IP_TESTNET };
+		if is_public_network { TIER_1_VALIDATOR_IP_PUBLIC } else { TIER_1_VALIDATOR_IP_TESTNET };
 
-	let network: &Network = if is_public_net { &PUBLIC_NETWORK } else { &TEST_NETWORK };
+	let network: &Network = if is_public_network { &PUBLIC_NETWORK } else { &TEST_NETWORK };
 
 	tracing::info!(
 		"Connecting to {:?} through {:?}",
@@ -549,18 +549,10 @@ async fn inner_create_handler(
 		tier1_node_ip
 	);
 
-	let secret = SecretKey::from_encoding(stellar_vault_secret_key).unwrap();
-
-	let public_key = secret.get_public().to_encoding();
-	let vault_address = std::str::from_utf8(public_key.as_slice())?;
-
 	let node_info = NodeInfo::new(19, 21, 19, "v19.1.0".to_string(), network);
-	let cfg = ConnConfig::new(tier1_node_ip, 11625, secret, 0, true, true, false);
+	let cfg = ConnConfig::new(tier1_node_ip, 11625, stellar_vault_secret_key, 0, true, true, false);
 
-	// todo: add vault addresses filter
-	//	let addresses = vec![format!("{}",vault_address)];
-	let addresses = vec![];
-	create_handler(node_info, cfg, is_public_net).await.map_err(|e| {
+	create_handler(node_info, cfg, is_public_network).await.map_err(|e| {
 		tracing::error!("Failed to create the SCPMessageHandler: {:?}", e);
 		Error::StellarSdkError
 	})

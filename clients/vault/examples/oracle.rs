@@ -49,7 +49,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 	// let vault_addresses_filter =
 	// 	vec!["GAP4SFKVFVKENJ7B7VORAYKPB3CJIAJ2LMKDJ22ZFHIAIVYQOR6W3CXF".to_string()];
 
-	let handler = create_handler(node_info, cfg, public_network, vec![]).await?;
+	let handler = create_handler(node_info, cfg, public_network).await?;
 
 	// this is to test out that
 	// 1. "retrieving envelopes from Archives" works; ✓
