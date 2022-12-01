@@ -1,4 +1,4 @@
-use std::{convert::TryInto, str::FromStr, sync::Arc, time::Duration};
+use std::{collections::HashMap, convert::TryInto, str::FromStr, sync::Arc, time::Duration};
 
 use async_trait::async_trait;
 use parity_scale_codec::{Decode, Encode};
@@ -169,6 +169,7 @@ pub const fn horizon_url(is_public_network: bool) -> &'static str {
 #[async_trait]
 pub trait HorizonClient {
 	async fn get_transactions(&self, url: &str) -> Result<HorizonTransactionsResponse, Error>;
+	async fn submit_transaction(&self, url: &str, transaction: &str) -> Result<Transaction, Error>;
 }
 
 #[async_trait]
@@ -179,6 +180,24 @@ impl HorizonClient for reqwest::Client {
 			.await
 			.map_err(|_| Error::HttpFetchingError)?
 			.json::<HorizonTransactionsResponse>()
+			.await
+			.map_err(|_| Error::HttpFetchingError)
+	}
+
+	async fn submit_transaction(
+		&self,
+		base_url: &str,
+		transaction_xdr: &str,
+	) -> Result<Transaction, Error> {
+		let params = [("tx", transaction_xdr)];
+
+		let url = format!("{}/transactions", base_url);
+		self.post(url)
+			.form(&params)
+			.send()
+			.await
+			.map_err(|_| Error::HttpFetchingError)?
+			.json::<Transaction>()
 			.await
 			.map_err(|_| Error::HttpFetchingError)
 	}
