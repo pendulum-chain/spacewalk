@@ -3,16 +3,10 @@ use std::{convert::TryInto, str::FromStr, sync::Arc, time::Duration};
 use async_trait::async_trait;
 use parity_scale_codec::{Decode, Encode};
 use serde::{Deserialize, Deserializer};
-use substrate_stellar_sdk::{
-	types::{AlphaNum12, AlphaNum4, AssetType},
-	Asset, Hash, PublicKey, SecretKey,
-};
-use tokio::{
-	sync::{Mutex, RwLock},
-	time::sleep,
-};
+use substrate_stellar_sdk::{Hash, PublicKey};
+use tokio::{sync::RwLock, time::sleep};
 
-use crate::{error::Error, stellar_wallet::Watcher};
+use crate::{error::Error, stellar_wallet::Watcher, FilterTypes, FilterWith};
 
 pub type PagingToken = u128;
 
@@ -223,7 +217,6 @@ impl<C: HorizonClient> HorizonFetcher<C> {
 		}
 
 		tracing::info!("request url: {:?}", request_url);
-		println!("request url: {:?}", request_url);
 
 		self.client.get_transactions(request_url.as_str()).await
 	}
@@ -232,6 +225,7 @@ impl<C: HorizonClient> HorizonFetcher<C> {
 		&mut self,
 		issue_hashes: Arc<RwLock<Vec<Hash>>>,
 		watcher: Arc<RwLock<dyn Watcher>>,
+		filter: impl FilterWith<FilterTypes>,
 		last_paging_token: PagingToken,
 	) -> Result<PagingToken, Error> {
 		let res = self.fetch_latest_txs(last_paging_token).await;
@@ -239,7 +233,6 @@ impl<C: HorizonClient> HorizonFetcher<C> {
 			Ok(txs) => txs._embedded.records,
 			Err(e) => {
 				tracing::warn!("Failed to fetch transactions: {:?}", e);
-				println!("Failed to fetch transactions: {:?}", e);
 				Vec::new()
 			},
 		};
@@ -254,15 +247,14 @@ impl<C: HorizonClient> HorizonFetcher<C> {
 		for transaction in transactions {
 			let tx = transaction.clone();
 			let id = tx.id.clone();
-			if is_tx_relevant(&tx, issue_hashes.clone()).await {
+
+			if filter.is_relevant((tx.clone(), issue_hashes.clone())) {
 				match w.watch_slot(tx.ledger.try_into().unwrap()).await {
 					Ok(_) => {
 						tracing::info!("following transaction {:?}", String::from_utf8(id.clone()));
-						println!("following transaction {:?}", String::from_utf8(id));
 					},
 					Err(e) => {
 						tracing::error!("Failed to watch transaction: {:?}", e);
-						println!("Failed to watch transaction: {:?}", e);
 					},
 				}
 			}
@@ -272,38 +264,26 @@ impl<C: HorizonClient> HorizonFetcher<C> {
 	}
 }
 
-async fn is_tx_relevant(transaction: &Transaction, issue_hashes: Vec<Hash>) -> bool {
-	match String::from_utf8(transaction.memo_type.clone()) {
-		Ok(memo_type) if memo_type == "hash" =>
-			if let Some(memo) = &transaction.memo {
-				return issue_hashes.iter().any(|hash| &hash.to_vec() == memo)
-			},
-		Err(e) => {
-			tracing::error!("Failed to retrieve memo type: {:?}", e);
-		},
-		_ => {},
-	}
-
-	false
-}
-
 pub async fn listen_for_new_transactions(
 	vault_account_public_key: PublicKey,
 	is_public_network: bool,
 	targets: Arc<RwLock<Vec<Hash>>>,
 	watcher: Arc<RwLock<dyn Watcher>>,
+	filter_with: impl FilterWith<FilterTypes> + Clone,
 ) -> Result<(), Error> {
 	let horizon_client = reqwest::Client::new();
 	let mut fetcher =
 		HorizonFetcher::new(horizon_client, vault_account_public_key, is_public_network);
 
 	let mut latest_paging_token: PagingToken = 0;
+
 	// Start polling horizon every 5 seconds
 	loop {
 		if let Ok(new_paging_token) = fetcher
 			.fetch_horizon_and_process_new_transactions(
 				targets.clone(),
 				watcher.clone(),
+				filter_with.clone(),
 				latest_paging_token,
 			)
 			.await
@@ -319,6 +299,7 @@ pub async fn listen_for_new_transactions(
 mod tests {
 	use std::{sync::Arc, time::Duration};
 
+	use crate::FilterTypes;
 	use tokio::{sync::Mutex, time::sleep};
 
 	use super::*;
@@ -330,45 +311,93 @@ mod tests {
 	#[async_trait]
 	impl Watcher for MockWatcher {
 		async fn watch_slot(&self, slot: u128) -> Result<(), Error> {
-			println!("heeve ho");
+			assert!(vec![1282580, 1282582, 1282578].contains(&slot));
+
 			Ok(())
 		}
 	}
 
-	// not yet working
+	#[derive(Clone)]
+	struct MockFilter;
+
+	impl FilterWith<FilterTypes> for MockFilter {
+		fn is_relevant(&self, param: FilterTypes) -> bool {
+			let fee_charged = &param.0.fee_charged.as_slice();
+			if let Ok(res) = std::str::from_utf8(fee_charged) {
+				return res == "10000"
+			}
+			false
+		}
+	}
+
+	#[tokio::test(flavor = "multi_thread")]
+	async fn horizon_get_transaction_success() {
+		let watcher = Arc::new(RwLock::new(MockWatcher));
+		let horizon_client = reqwest::Client::new();
+
+		let sample_url = "https://horizon.stellar.org/accounts/GAYOLLLUIZE4DZMBB2ZBKGBUBZLIOYU6XFLW37GBP2VZD3ABNXCW4BVA/transactions?limit=2";
+		match horizon_client.get_transactions(sample_url).await {
+			Ok(res) => {
+				let txs = res._embedded.records;
+				assert_eq!(txs.len(), 2);
+			},
+			Err(e) => {
+				panic!("failed: {:?}", e);
+			},
+		}
+	}
+
+	#[tokio::test(flavor = "multi_thread")]
+	async fn horizon_fetch_txs_cursor() {
+		let horizon_client = reqwest::Client::new();
+		let secret = SecretKey::from_encoding(SECRET).unwrap();
+		let mut fetcher = HorizonFetcher::new(horizon_client, secret.get_public().clone(), false);
+
+		let res = fetcher.fetch_latest_txs(0).await.expect("should return a response");
+		let txs = res._embedded.records;
+		let latest_paging_token = txs.iter().map(|tx| tx.paging_token).max().unwrap_or(0);
+
+		assert_eq!(latest_paging_token, 5508699284062208);
+		let res = fetcher
+			.fetch_latest_txs(latest_paging_token)
+			.await
+			.expect("should return a response");
+		assert_eq!(res._embedded.records.len(), 0);
+	}
+
+	// the assertions are found in the `watch_slot`
 	#[tokio::test(flavor = "multi_thread")]
 	async fn client_test_for_polling() {
 		let watcher = Arc::new(RwLock::new(MockWatcher));
+
 		let issue_hashes = Arc::new(RwLock::new(vec![]));
 
 		let horizon_client = reqwest::Client::new();
 		let secret = SecretKey::from_encoding(SECRET).unwrap();
-		let mut fetcher = HorizonFetcher::new(horizon_client, secret.get_public().clone(), true);
+		let mut fetcher = HorizonFetcher::new(horizon_client, secret.get_public().clone(), false);
 
 		let mut counter = 0;
 		// Start polling horizon every 5 seconds
 
-		let mut cursor = 0;
+		let mut cursor = 5508467356119040;
 		loop {
-			println!("counter: {}", counter);
 			counter += 1;
 			if let Ok(next_page) = fetcher
 				.fetch_horizon_and_process_new_transactions(
 					issue_hashes.clone(),
 					watcher.clone(),
+					MockFilter,
 					cursor,
 				)
 				.await
 			{
 				cursor = next_page;
 			}
-			sleep(Duration::from_millis(5000)).await;
+			//sleep(Duration::from_millis(5000)).await;
 
 			if counter == 5 {
 				break
 			}
 		}
-
-		// TODO assert some stuff
 	}
 }

@@ -5,7 +5,7 @@ use stellar_relay_lib::sdk::{
 
 use stellar_relay_lib::{node::NodeInfo, ConnConfig};
 
-use vault::oracle::{create_handler, prepare_directories, FilterWith, Proof, ProofStatus};
+use vault::oracle::{create_handler, prepare_directories, Proof, ProofStatus};
 
 use tokio::time::Duration;
 
@@ -14,19 +14,6 @@ pub const SAMPLE_VAULT_ADDRESSES_FILTER: &[&str] =
 
 pub const TIER_1_VALIDATOR_IP_TESTNET: &str = "34.235.168.98";
 pub const TIER_1_VALIDATOR_IP_PUBLIC: &str = "65.108.1.53";
-
-pub struct NoFilter;
-
-// Dummy filter that does nothing.
-impl FilterWith<TransactionEnvelope> for NoFilter {
-	fn name(&self) -> &'static str {
-		"NoFilter"
-	}
-
-	fn check_for_processing(&self, _param: &TransactionEnvelope) -> bool {
-		false
-	}
-}
 
 // TODO: THIS WILL NOT WORK PROPERLY JUST YET, SINCE IT NEEDS SOME STUFF FROM OTHER PRS.
 #[tokio::main]
@@ -103,9 +90,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 		// for every multiples of 6, let's watch out for a slot.
 		} else if counter % 6 == 0 {
 			// let's watch out for a slot that is 5 steps away from the current one.
-			handler.watch_slot(last_slot + 5).await?;
+			// this needs to be updated.
+			// handler.watch_slot(last_slot + 5).await?;
 
-		// for every multiples of 4, let's try to get proof of an old slot.
+			// for every multiples of 4, let's try to get proof of an old slot.
 		} else if counter % 4 == 0 {
 			let check_slot = if get_from_random {
 				// let's get a proof of a slot 10 0r 100 steps away from the current one.

@@ -217,12 +217,12 @@ impl Service<VaultServiceConfig, Error> for VaultService {
 	const NAME: &'static str = NAME;
 	const VERSION: &'static str = VERSION;
 
-	async fn new_service(
+	fn new_service(
 		spacewalk_parachain: SpacewalkParachain,
 		config: VaultServiceConfig,
 		shutdown: ShutdownSender,
 	) -> Result<Self, Error> {
-		VaultService::new(spacewalk_parachain, config, shutdown).await
+		VaultService::new(spacewalk_parachain, config, shutdown)
 	}
 
 	async fn start(&mut self) -> Result<(), ServiceError<Error>> {
@@ -289,16 +289,13 @@ where
 }
 
 impl VaultService {
-	async fn new(
+	fn new(
 		spacewalk_parachain: SpacewalkParachain,
 		config: VaultServiceConfig,
 		shutdown: ShutdownSender,
 	) -> Result<Self, Error> {
-		let is_public_network = spacewalk_parachain.is_public_network().await?;
-
 		let mut stellar_wallet =
 			StellarWallet::from_secret_encoded(&config.stellar_vault_secret_key)?;
-		stellar_wallet.set_is_public_network(is_public_network);
 		let stellar_wallet = Arc::new(stellar_wallet);
 
 		Ok(Self {
@@ -328,6 +325,7 @@ impl VaultService {
 
 	async fn run_service(&mut self) -> Result<(), ServiceError<Error>> {
 		self.await_parachain_block().await?;
+		let is_public_network = self.spacewalk_parachain.is_public_network().await?;
 
 		let parsed_auto_register = self
 			.config
@@ -420,9 +418,10 @@ impl VaultService {
 				"Listen for New Transactions",
 				run(wallet::listen_for_new_transactions(
 					self.stellar_wallet.get_public_key(),
-					self.stellar_wallet.is_public_network(),
+					is_public_network,
 					issue_hashes_vec.clone(),
 					watcher.clone(),
+					wallet::TxFilter, //todo: change with a filter specific to the issue request?
 				)),
 			),
 		];
@@ -546,13 +545,15 @@ async fn inner_create_handler(
 	);
 
 	let secret = SecretKey::from_encoding(stellar_vault_secret_key).unwrap();
-	let public_key_binary = hex::encode(secret.get_public().as_binary());
-	tracing::info!("public key binary {:?}", public_key_binary);
+
+	let public_key = secret.get_public().to_encoding();
+	let vault_address = std::str::from_utf8(public_key.as_slice())?;
 
 	let node_info = NodeInfo::new(19, 21, 19, "v19.1.0".to_string(), network);
 	let cfg = ConnConfig::new(tier1_node_ip, 11625, secret, 0, true, true, false);
 
 	// todo: add vault addresses filter
+	//	let addresses = vec![format!("{}",vault_address)];
 	let addresses = vec![];
 	create_handler(node_info, cfg, is_public_net, addresses).await.map_err(|e| {
 		tracing::error!("Failed to create the SCPMessageHandler: {:?}", e);

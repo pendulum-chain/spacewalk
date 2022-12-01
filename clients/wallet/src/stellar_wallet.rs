@@ -1,16 +1,7 @@
-use std::{ops::Deref, sync::Arc, time::Duration};
-
 use async_trait::async_trait;
-use substrate_stellar_sdk::{Hash, PublicKey, SecretKey};
-use tokio::{
-	sync::{Mutex, RwLock},
-	time::sleep,
-};
+use substrate_stellar_sdk::{PublicKey, SecretKey};
 
-use crate::{
-	error::Error,
-	horizon::{HorizonFetcher, PagingToken},
-};
+use crate::error::Error;
 
 pub type StellarPublicKeyRaw = [u8; 32];
 
@@ -22,19 +13,15 @@ pub trait Watcher: Send + Sync {
 #[derive(Clone, PartialEq, Debug, Eq)]
 pub struct StellarWallet {
 	secret_key: SecretKey,
-	is_public_network: bool,
 }
 
 impl StellarWallet {
-	pub fn from_secret_encoded(x: &String) -> Result<Self, Error> {
-		let secret_key = SecretKey::from_encoding(x).map_err(|e| Error::InvalidSecretKey)?;
+	pub fn from_secret_encoded(secret_key: &String) -> Result<Self, Error> {
+		let secret_key =
+			SecretKey::from_encoding(secret_key).map_err(|_| Error::InvalidSecretKey)?;
 
-		let wallet = StellarWallet { secret_key, is_public_network: false };
+		let wallet = StellarWallet { secret_key };
 		Ok(wallet)
-	}
-
-	pub fn set_is_public_network(&mut self, is_public_network: bool) {
-		self.is_public_network = is_public_network;
 	}
 
 	pub fn get_public_key_raw(&self) -> StellarPublicKeyRaw {
@@ -43,9 +30,5 @@ impl StellarWallet {
 
 	pub fn get_public_key(&self) -> PublicKey {
 		self.secret_key.get_public().clone()
-	}
-
-	pub fn is_public_network(&self) -> bool {
-		self.is_public_network
 	}
 }
