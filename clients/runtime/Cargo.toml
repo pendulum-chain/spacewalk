@@ -63,4 +63,5 @@ substrate-stellar-sdk = { git = "https://github.com/pendulum-chain/substrate-ste
 env_logger = "0.8.3"
 tempdir = "0.3.7"
 runtime = { path = ".", features = ["testing-utils"] }
+wallet = { path = "../wallet" }
 

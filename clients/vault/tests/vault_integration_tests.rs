@@ -7,9 +7,10 @@ use sp_keyring::AccountKeyring;
 
 use runtime::{
 	integration::*, types::*, CurrencyId::Token, FixedPointNumber, FixedU128, SpacewalkParachain,
-	VaultRegistryPallet,
+	UtilFuncs, VaultRegistryPallet,
 };
 use stellar_relay::sdk::SecretKey;
+use wallet::StellarWallet;
 
 const TIMEOUT: Duration = Duration::from_secs(90);
 
@@ -94,8 +95,9 @@ async fn test_issue_overpayment_succeeds() {
 		let relayer_provider = setup_provider(client.clone(), AccountKeyring::Bob).await;
 		let user_provider = setup_provider(client.clone(), AccountKeyring::Dave).await;
 
-		let secret = SecretKey::from_encoding(STELLAR_VAULT_SECRET_KEY).unwrap();
-		let public_key = secret.get_public().clone().into_binary();
+		let wallet =
+			StellarWallet::from_secret_encoded(&STELLAR_VAULT_SECRET_KEY.to_string()).unwrap();
+		let public_key = wallet.get_public_key_raw();
 
 		let issue_amount = 100000;
 		let over_payment_factor = 3;
@@ -112,7 +114,33 @@ async fn test_issue_overpayment_succeeds() {
 				.await
 		);
 
-		// TODO add the rest
+		let issue = user_provider.request_issue(issue_amount, &vault_id).await.unwrap();
+
+		wallet
+			.send_payment_to_address(
+				issue.vault_address.to_address(btc_rpc.network()).unwrap(),
+				(issue.amount + issue.fee) as u64 * over_payment_factor as u64,
+				issue.id,
+			)
+			.await
+			.unwrap();
+
+		let metadata = btc_rpc.send_to_address().await.unwrap();
+
+		join(
+			assert_event::<EndowedEvent, _>(TIMEOUT, user_provider.clone(), |x| {
+				if &x.who == user_provider.get_account_id() {
+					assert_eq!(x.amount, issue.amount * over_payment_factor);
+					true
+				} else {
+					false
+				}
+			}),
+			user_provider
+				.execute_issue(issue.issue_id, &metadata.proof, &metadata.raw_tx)
+				.map(Result::unwrap),
+		)
+		.await;
 	})
 	.await;
 }

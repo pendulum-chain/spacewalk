@@ -1,4 +1,4 @@
-use substrate_stellar_sdk::SecretKey;
+use substrate_stellar_sdk::{Hash, PublicKey, SecretKey};
 use thiserror::Error;
 
 pub type StellarPublicKeyRaw = [u8; 32];
@@ -24,5 +24,15 @@ impl StellarWallet {
 
 	pub fn get_public_key_raw(&self) -> StellarPublicKeyRaw {
 		self.secret_key.get_public().clone().into_binary()
+	}
+
+	pub async fn send_payment_to_address(
+		&self,
+		address: PublicKey,
+		amount: u64,
+		memo_hash: Hash,
+	) -> Result<(), Error> {
+		// todo!()
+		Ok(())
 	}
 }
