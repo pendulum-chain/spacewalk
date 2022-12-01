@@ -18,12 +18,16 @@ pub type StellarPublicKey = [u8; 32];
 
 mod metadata_aliases {
 	pub use metadata::{
+		issue::events::{
+			CancelIssue as CancelIssueEvent, ExecuteIssue as ExecuteIssueEvent,
+			RequestIssue as RequestIssueEvent,
+		},
 		oracle::events::FeedValues as FeedValuesEvent,
 		runtime_types::{
 			frame_system::pallet::Error as SystemPalletError,
 			issue::pallet::Error as IssuePalletError,
 			security::types::{ErrorCode, StatusCode},
-			spacewalk_primitives::oracle::Key as OracleKey,
+			spacewalk_primitives::{issue::IssueRequestStatus, oracle::Key as OracleKey},
 			vault_registry::types::VaultStatus,
 		},
 		vault_registry::events::{
@@ -35,6 +39,14 @@ mod metadata_aliases {
 	use super::*;
 
 	// pub use crate::metadata::runtime_types::spacewalk_primitives::CurrencyId;
+
+	pub type SpacewalkIssueRequest =
+		metadata::runtime_types::spacewalk_primitives::issue::IssueRequest<
+			AccountId,
+			BlockNumber,
+			Balance,
+			CurrencyId,
+		>;
 
 	pub type SpacewalkHeader = <SpacewalkRuntime as Config>::Header;
 
