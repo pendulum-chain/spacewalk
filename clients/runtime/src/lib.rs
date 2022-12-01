@@ -12,8 +12,8 @@ pub use assets::TryFromSymbol;
 pub use error::{Error, SubxtError};
 pub use retry::{notify_retry, RetryPolicy};
 pub use rpc::{
-	CollateralBalancesPallet, OraclePallet, SecurityPallet, SpacewalkParachain, UtilFuncs,
-	VaultRegistryPallet, DEFAULT_SPEC_NAME, SS58_PREFIX,
+	CollateralBalancesPallet, OraclePallet, SecurityPallet, SpacewalkParachain, StellarRelayPallet,
+	UtilFuncs, VaultRegistryPallet, DEFAULT_SPEC_NAME, SS58_PREFIX,
 };
 pub use shutdown::{ShutdownReceiver, ShutdownSender};
 pub use types::*;
