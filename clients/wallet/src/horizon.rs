@@ -6,7 +6,7 @@ use serde::{Deserialize, Deserializer};
 use substrate_stellar_sdk::{Hash, PublicKey};
 use tokio::{sync::RwLock, time::sleep};
 
-use crate::{error::Error, stellar_wallet::Watcher, FilterTypes, FilterWith};
+use crate::{error::Error, stellar_wallet::Watcher, FilterParam, FilterWith};
 
 pub type PagingToken = u128;
 
@@ -225,7 +225,7 @@ impl<C: HorizonClient> HorizonFetcher<C> {
 		&mut self,
 		issue_hashes: Arc<RwLock<Vec<Hash>>>,
 		watcher: Arc<RwLock<dyn Watcher>>,
-		filter: impl FilterWith<FilterTypes>,
+		filter: impl FilterWith<FilterParam>,
 		last_paging_token: PagingToken,
 	) -> Result<PagingToken, Error> {
 		let res = self.fetch_latest_txs(last_paging_token).await;
@@ -269,7 +269,7 @@ pub async fn listen_for_new_transactions(
 	is_public_network: bool,
 	targets: Arc<RwLock<Vec<Hash>>>,
 	watcher: Arc<RwLock<dyn Watcher>>,
-	filter_with: impl FilterWith<FilterTypes> + Clone,
+	filter_with: impl FilterWith<FilterParam> + Clone,
 ) -> Result<(), Error> {
 	let horizon_client = reqwest::Client::new();
 	let mut fetcher =
@@ -277,7 +277,6 @@ pub async fn listen_for_new_transactions(
 
 	let mut latest_paging_token: PagingToken = 0;
 
-	// Start polling horizon every 5 seconds
 	loop {
 		if let Ok(new_paging_token) = fetcher
 			.fetch_horizon_and_process_new_transactions(
@@ -297,42 +296,31 @@ pub async fn listen_for_new_transactions(
 
 #[cfg(test)]
 mod tests {
-	use std::{sync::Arc, time::Duration};
+	use std::{future, sync::Arc, time::Duration};
 
-	use crate::FilterTypes;
-	use tokio::{sync::Mutex, time::sleep};
+	use substrate_stellar_sdk::SecretKey;
+	use tokio::{io::AsyncReadExt, sync::Mutex, time::sleep};
+
+	use mockall::{predicate::*, *};
+
+	use crate::{stellar_wallet::MockWatcher, FilterParam};
 
 	use super::*;
 
 	const SECRET: &'static str = "SBLI7RKEJAEFGLZUBSCOFJHQBPFYIIPLBCKN7WVCWT4NEG2UJEW33N73";
 
-	struct MockWatcher;
-
-	#[async_trait]
-	impl Watcher for MockWatcher {
-		async fn watch_slot(&self, slot: u128) -> Result<(), Error> {
-			assert!(vec![1282580, 1282582, 1282578].contains(&slot));
-
-			Ok(())
-		}
-	}
-
 	#[derive(Clone)]
 	struct MockFilter;
 
-	impl FilterWith<FilterTypes> for MockFilter {
-		fn is_relevant(&self, param: FilterTypes) -> bool {
-			let fee_charged = &param.0.fee_charged.as_slice();
-			if let Ok(res) = std::str::from_utf8(fee_charged) {
-				return res == "10000"
-			}
-			false
+	impl FilterWith<FilterParam> for MockFilter {
+		fn is_relevant(&self, param: FilterParam) -> bool {
+			// We consider all transactions relevant for the test
+			true
 		}
 	}
 
 	#[tokio::test(flavor = "multi_thread")]
 	async fn horizon_get_transaction_success() {
-		let watcher = Arc::new(RwLock::new(MockWatcher));
 		let horizon_client = reqwest::Client::new();
 
 		let sample_url = "https://horizon.stellar.org/accounts/GAYOLLLUIZE4DZMBB2ZBKGBUBZLIOYU6XFLW37GBP2VZD3ABNXCW4BVA/transactions?limit=2";
@@ -357,18 +345,20 @@ mod tests {
 		let txs = res._embedded.records;
 		let latest_paging_token = txs.iter().map(|tx| tx.paging_token).max().unwrap_or(0);
 
-		assert_eq!(latest_paging_token, 5508699284062208);
+		assert_ne!(latest_paging_token, 0);
 		let res = fetcher
 			.fetch_latest_txs(latest_paging_token)
 			.await
 			.expect("should return a response");
+		// assert that when using the latest paging token for fetching we don't get any new
+		// transactions
 		assert_eq!(res._embedded.records.len(), 0);
 	}
 
-	// the assertions are found in the `watch_slot`
 	#[tokio::test(flavor = "multi_thread")]
 	async fn client_test_for_polling() {
-		let watcher = Arc::new(RwLock::new(MockWatcher));
+		let mut watcher = MockWatcher::new();
+		let watcher = Arc::new(RwLock::new(watcher));
 
 		let issue_hashes = Arc::new(RwLock::new(vec![]));
 
@@ -376,28 +366,41 @@ mod tests {
 		let secret = SecretKey::from_encoding(SECRET).unwrap();
 		let mut fetcher = HorizonFetcher::new(horizon_client, secret.get_public().clone(), false);
 
-		let mut counter = 0;
-		// Start polling horizon every 5 seconds
+		// We assume that the watch_slot function is called at exactly once because the intial fetch
+		// without a cursor returns the latest transaction only
+		watcher
+			.write()
+			.await
+			.expect_watch_slot()
+			.once()
+			.returning(|_| Box::pin(future::ready(Ok(()))));
 
-		let mut cursor = 5508467356119040;
-		loop {
-			counter += 1;
-			if let Ok(next_page) = fetcher
-				.fetch_horizon_and_process_new_transactions(
-					issue_hashes.clone(),
-					watcher.clone(),
-					MockFilter,
-					cursor,
-				)
-				.await
-			{
-				cursor = next_page;
-			}
-			//sleep(Duration::from_millis(5000)).await;
-
-			if counter == 5 {
-				break
-			}
+		let mut cursor = 0;
+		if let Ok(next_page) = fetcher
+			.fetch_horizon_and_process_new_transactions(
+				issue_hashes.clone(),
+				watcher.clone(),
+				MockFilter,
+				cursor,
+			)
+			.await
+		{
+			cursor = next_page;
 		}
+
+		// Fetch again but this time with latest cursor
+		// Assume that the watch_slot function is not called this time because no new transaction
+		// happened
+		watcher.write().await.expect_watch_slot().never();
+
+		fetcher
+			.fetch_horizon_and_process_new_transactions(
+				issue_hashes.clone(),
+				watcher.clone(),
+				MockFilter,
+				cursor,
+			)
+			.await
+			.unwrap();
 	}
 }
