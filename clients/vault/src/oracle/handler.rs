@@ -138,13 +138,9 @@ pub struct ScpMessageHandler {
 impl ScpMessageHandler {
 	/// creates a new Handler.
 	/// owns the Actor that runs the StellarOverlayConnection
-	fn new(
-		overlay_conn: StellarOverlayConnection,
-		vault_addresses: Vec<String>,
-		is_public_network: bool,
-	) -> Self {
+	fn new(overlay_conn: StellarOverlayConnection, is_public_network: bool) -> Self {
 		let (sender, receiver) = mpsc::channel(1024);
-		let collector = ScpMessageCollector::new(is_public_network, vault_addresses);
+		let collector = ScpMessageCollector::new(is_public_network);
 
 		let mut actor = ScpMessageActor::new(receiver, collector);
 		tokio::spawn(async move { actor.run(overlay_conn).await });
@@ -236,16 +232,14 @@ impl Watcher for OracleWatcher {
 /// * `connection_cfg` - The configuration on how and what (address and port) Stellar Node to
 ///   connect to.
 /// * `is_public_network` - Determines whether the network we'll connect to is public or not
-/// * `vault_addresses` - the addresses of this vault
 pub async fn create_handler(
 	node_info: NodeInfo,
 	connection_cfg: ConnConfig,
 	is_public_network: bool,
-	vault_addresses: Vec<String>,
 ) -> Result<ScpMessageHandler, Error> {
 	prepare_directories()?;
 
 	let overlay_connection = StellarOverlayConnection::connect(node_info, connection_cfg).await?;
 
-	Ok(ScpMessageHandler::new(overlay_connection, vault_addresses, is_public_network))
+	Ok(ScpMessageHandler::new(overlay_connection, is_public_network))
 }

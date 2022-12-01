@@ -560,7 +560,7 @@ async fn inner_create_handler(
 	// todo: add vault addresses filter
 	//	let addresses = vec![format!("{}",vault_address)];
 	let addresses = vec![];
-	create_handler(node_info, cfg, is_public_net, addresses).await.map_err(|e| {
+	create_handler(node_info, cfg, is_public_net).await.map_err(|e| {
 		tracing::error!("Failed to create the SCPMessageHandler: {:?}", e);
 		Error::StellarSdkError
 	})

@@ -31,11 +31,10 @@ pub struct ScpMessageCollector {
 	last_slot_index: Arc<RwLock<u64>>,
 
 	public_network: bool,
-	vault_addresses: Vec<String>,
 }
 
 impl ScpMessageCollector {
-	pub(crate) fn new(public_network: bool, vault_addresses: Vec<String>) -> Self {
+	pub(crate) fn new(public_network: bool) -> Self {
 		ScpMessageCollector {
 			envelopes_map: Default::default(),
 			txset_map: Default::default(),
@@ -44,7 +43,6 @@ impl ScpMessageCollector {
 			slot_watchlist: Arc::new(Default::default()),
 			last_slot_index: Arc::new(Default::default()),
 			public_network,
-			vault_addresses,
 		}
 	}
 
@@ -193,7 +191,7 @@ mod test {
 
 	#[test]
 	fn envelopes_map_len_works() {
-		let collector = ScpMessageCollector::new(true, vec![]);
+		let collector = ScpMessageCollector::new(true);
 
 		assert_eq!(collector.envelopes_map_len(), 0);
 
@@ -208,19 +206,19 @@ mod test {
 
 	#[test]
 	fn network_and_is_public_works() {
-		let collector = ScpMessageCollector::new(true, vec![]);
+		let collector = ScpMessageCollector::new(true);
 		assert_eq!(&collector.network().get_passphrase(), &PUBLIC_NETWORK.get_passphrase());
 
 		assert!(collector.is_public());
 
-		let collector = ScpMessageCollector::new(false, vec![]);
+		let collector = ScpMessageCollector::new(false);
 		assert_eq!(&collector.network().get_passphrase(), &TEST_NETWORK.get_passphrase());
 		assert!(!collector.is_public());
 	}
 
 	#[test]
 	fn watch_slot_works() {
-		let mut collector = ScpMessageCollector::new(true, vec![]);
+		let mut collector = ScpMessageCollector::new(true);
 
 		let slot = 12345;
 		collector.watch_slot(slot);
@@ -230,7 +228,7 @@ mod test {
 
 	#[test]
 	fn add_scp_envelope_works() {
-		let mut collector = ScpMessageCollector::new(true, vec![]);
+		let mut collector = ScpMessageCollector::new(true);
 
 		let first_slot = 578291;
 		let env_map =
@@ -262,7 +260,7 @@ mod test {
 
 	#[test]
 	fn add_txset_works() {
-		let mut collector = ScpMessageCollector::new(false, vec![]);
+		let mut collector = ScpMessageCollector::new(false);
 
 		let slot = 42867088;
 		let txsets_map =
@@ -276,7 +274,7 @@ mod test {
 
 	#[test]
 	fn insert_to_pending_list_works() {
-		let mut collector = ScpMessageCollector::new(false, vec![]);
+		let mut collector = ScpMessageCollector::new(false);
 
 		collector.save_txset_hash_and_slot([0; 32], 0);
 		collector.save_txset_hash_and_slot([1; 32], 1);
@@ -291,7 +289,7 @@ mod test {
 
 	#[test]
 	fn set_last_slot_index_works() {
-		let mut collector = ScpMessageCollector::new(true, vec![]);
+		let mut collector = ScpMessageCollector::new(true);
 		{
 			let mut idx = collector.last_slot_index.write();
 			*idx = 10;
@@ -311,7 +309,7 @@ mod test {
 
 	#[test]
 	fn remove_data_works() {
-		let mut collector = ScpMessageCollector::new(false, vec![]);
+		let mut collector = ScpMessageCollector::new(false);
 
 		let env_slot = 578291;
 		let mut env_map =
@@ -347,7 +345,7 @@ mod test {
 
 	#[test]
 	fn is_txset_new_works() {
-		let collector = ScpMessageCollector::new(false, vec![]);
+		let collector = ScpMessageCollector::new(false);
 
 		let txset_slot = 42867088;
 		let mut txsets_map =
@@ -367,7 +365,7 @@ mod test {
 
 	#[test]
 	fn is_slot_relevant_works() {
-		let collector = ScpMessageCollector::new(false, vec![]);
+		let collector = ScpMessageCollector::new(false);
 
 		collector.slot_watchlist.write().insert(123, ());
 		collector.slot_watchlist.write().insert(456, ());
