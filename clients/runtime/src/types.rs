@@ -19,6 +19,8 @@ pub type IssueId = H256;
 pub type StellarPublicKey = [u8; 32];
 
 mod metadata_aliases {
+	use std::collections::HashMap;
+
 	pub use metadata::{
 		issue::events::{
 			CancelIssue as CancelIssueEvent, ExecuteIssue as ExecuteIssueEvent,
@@ -38,7 +40,6 @@ mod metadata_aliases {
 			RegisterAddress as RegisterAddressEvent, RegisterVault as RegisterVaultEvent,
 		},
 	};
-	use std::collections::HashMap;
 
 	use super::*;
 
