@@ -52,18 +52,12 @@ impl StellarWallet {
 		stroop_amount: i64,
 		memo_hash: Hash,
 	) -> Result<TransactionResponse, Error> {
-		let horizon_url = if self.is_public_network {
-			"https://horizon.stellar.org"
-		} else {
-			"https://horizon-testnet.stellar.org"
-		};
-
 		let horizon_client = reqwest::Client::new();
 
 		let public_key_encoded = self.get_public_key().to_encoding();
 		let account_id_string =
 			std::str::from_utf8(&public_key_encoded).map_err(|e| Error::Utf8Error(e))?;
-		let account = horizon_client.get_account(horizon_url, account_id_string).await?;
+		let account = horizon_client.get_account(account_id_string, self.is_public_network).await?;
 		let next_sequence_number = account.sequence + 1;
 
 		let fee_per_operation = 100;
@@ -105,7 +99,7 @@ impl StellarWallet {
 		let xdr_string = std::str::from_utf8(&env_xdr).map_err(|e| Error::Utf8Error(e))?;
 
 		let transaction_response =
-			horizon_client.submit_transaction(horizon_url, xdr_string).await?;
+			horizon_client.submit_transaction(xdr_string, self.is_public_network).await?;
 
 		Ok(transaction_response)
 	}

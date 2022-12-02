@@ -174,22 +174,55 @@ pub const fn horizon_url(is_public_network: bool) -> &'static str {
 
 #[async_trait]
 pub trait HorizonClient {
-	async fn get_transactions(&self, url: &str) -> Result<HorizonTransactionsResponse, Error>;
+	async fn get_transactions(
+		&self,
+		account_id: &str,
+		is_public_network: bool,
+		cursor: PagingToken,
+		limit: i64,
+		order_ascending: bool,
+	) -> Result<HorizonTransactionsResponse, Error>;
 	async fn get_account(
 		&self,
-		base_url: &str,
 		account_encoded: &str,
+		is_public_network: bool,
 	) -> Result<HorizonAccountResponse, Error>;
 	async fn submit_transaction(
 		&self,
-		url: &str,
 		transaction: &str,
+		is_public_network: bool,
 	) -> Result<TransactionResponse, Error>;
 }
 
 #[async_trait]
 impl HorizonClient for reqwest::Client {
-	async fn get_transactions(&self, url: &str) -> Result<HorizonTransactionsResponse, Error> {
+	async fn get_transactions(
+		&self,
+		account_id: &str,
+		is_public_network: bool,
+		cursor: PagingToken,
+		limit: i64,
+		order_ascending: bool,
+	) -> Result<HorizonTransactionsResponse, Error> {
+		let base_url = horizon_url(is_public_network);
+		let mut url = format!("{}/accounts/{}/transactions", base_url, account_id);
+
+		if limit != 0 {
+			url = format!("{}?limit={}", url, limit);
+		} else {
+			url = format!("{}?limit={}", url, DEFAULT_PAGE_SIZE);
+		}
+
+		if cursor != 0 {
+			url = format!("{}&cursor={}", url, cursor);
+		}
+
+		if order_ascending {
+			url = format!("{}&order=asc", url);
+		} else {
+			url = format!("{}&order=desc", url);
+		}
+
 		self.get(url)
 			.send()
 			.await
@@ -201,9 +234,10 @@ impl HorizonClient for reqwest::Client {
 
 	async fn get_account(
 		&self,
-		base_url: &str,
 		account_encoded: &str,
+		is_public_network: bool,
 	) -> Result<HorizonAccountResponse, Error> {
+		let base_url = horizon_url(is_public_network);
 		let url = format!("{}/accounts/{}", base_url, account_encoded);
 
 		self.get(url)
@@ -217,9 +251,10 @@ impl HorizonClient for reqwest::Client {
 
 	async fn submit_transaction(
 		&self,
-		base_url: &str,
 		transaction_xdr: &str,
+		is_public_network: bool,
 	) -> Result<TransactionResponse, Error> {
+		let base_url = horizon_url(is_public_network);
 		let params = [("tx", transaction_xdr)];
 
 		let url = format!("{}/transactions", base_url);
@@ -241,7 +276,7 @@ pub(crate) struct HorizonFetcher<C: HorizonClient> {
 	vault_account_public_key: PublicKey,
 }
 
-const DEFAULT_PAGE_SIZE: u32 = 200;
+const DEFAULT_PAGE_SIZE: i64 = 200;
 
 impl<C: HorizonClient> HorizonFetcher<C> {
 	pub fn new(client: C, vault_account_public_key: PublicKey, is_public_network: bool) -> Self {
@@ -253,26 +288,28 @@ impl<C: HorizonClient> HorizonFetcher<C> {
 		&self,
 		cursor: PagingToken,
 	) -> Result<HorizonTransactionsResponse, Error> {
-		let mut request_url = String::from(horizon_url(self.is_public_network)) +
-			"/accounts/" + std::str::from_utf8(
-			self.vault_account_public_key.to_encoding().as_slice(),
-		)
-		.map_err(|_| Error::HttpFetchingError)? +
-			"/transactions?";
+		let public_key_encoded = self.vault_account_public_key.to_encoding();
+		let account_id =
+			std::str::from_utf8(&public_key_encoded).map_err(|e| Error::Utf8Error(e))?;
 
 		if cursor == 0 {
 			// Fetch the first/latest transaction and set it as the new paging token
-			request_url.push_str(&format!("order=desc&limit=1"));
+			self.client
+				.get_transactions(account_id, self.is_public_network, 0, 1, false)
+				.await
 		} else {
 			// If we have a paging token, fetch the transactions that occurred after our last stored
 			// paging token
-			request_url
-				.push_str(&format!("cursor={}&order=asc&limit={}", cursor, DEFAULT_PAGE_SIZE));
+			self.client
+				.get_transactions(
+					account_id,
+					self.is_public_network,
+					cursor,
+					DEFAULT_PAGE_SIZE,
+					true,
+				)
+				.await
 		}
-
-		tracing::info!("request url: {:?}", request_url);
-
-		self.client.get_transactions(request_url.as_str()).await
 	}
 
 	pub async fn fetch_horizon_and_process_new_transactions(
@@ -380,8 +417,9 @@ mod tests {
 	async fn horizon_get_transaction_success() {
 		let horizon_client = reqwest::Client::new();
 
-		let sample_url = "https://horizon.stellar.org/accounts/GAYOLLLUIZE4DZMBB2ZBKGBUBZLIOYU6XFLW37GBP2VZD3ABNXCW4BVA/transactions?limit=2";
-		match horizon_client.get_transactions(sample_url).await {
+		let public_key_encoded = "GAYOLLLUIZE4DZMBB2ZBKGBUBZLIOYU6XFLW37GBP2VZD3ABNXCW4BVA";
+		let limit = 2;
+		match horizon_client.get_transactions(public_key_encoded, true, 0, limit, false).await {
 			Ok(res) => {
 				let txs = res._embedded.records;
 				assert_eq!(txs.len(), 2);
