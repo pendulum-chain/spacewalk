@@ -219,7 +219,7 @@ fn return_proper_envelopes_error(last_slot_index: Slot, slot: Slot) -> ProofStat
 
 /// Fetching old SCPMessages is only possible if it's not too far back.
 fn check_slot_position(last_slot_index: Slot, slot: Slot) -> bool {
-	slot > (last_slot_index - MAX_SLOT_TO_REMEMBER)
+	slot > (last_slot_index.saturating_sub(MAX_SLOT_TO_REMEMBER))
 }
 
 async fn get_envelopes_from_horizon_archive(
