@@ -1,21 +1,27 @@
-use std::time::Duration;
+use std::{convert::TryInto, sync::Arc, time::Duration};
 
 use async_trait::async_trait;
 use frame_support::assert_ok;
-use futures::Future;
+use futures::{future::join, Future, FutureExt};
 use sp_keyring::AccountKeyring;
+use sp_runtime::traits::StaticLookup;
+use tokio::{sync::RwLock, time::sleep};
 
+use primitives::{issue::IssueRequest, H256};
 use runtime::{
-	integration::*, types::*, CurrencyId::Token, FixedPointNumber, FixedU128, SpacewalkParachain,
-	UtilFuncs, VaultRegistryPallet,
+	integration::*, types::*, CurrencyId::Token, FixedPointNumber, FixedU128, IssuePallet,
+	SpacewalkParachain, UtilFuncs, VaultRegistryPallet,
 };
-use stellar_relay_lib::sdk::SecretKey;
-use wallet::StellarWallet;
+use stellar_relay_lib::sdk::{Hash, PublicKey, SecretKey, XdrCodec};
+use vault::oracle::{create_handler, Proof, ProofStatus};
+use wallet::{types::Watcher, StellarWallet};
 
 const TIMEOUT: Duration = Duration::from_secs(90);
 
-const DEFAULT_NATIVE_CURRENCY: CurrencyId = Token(TokenSymbol::AMPE);
-const DEFAULT_TESTING_CURRENCY: CurrencyId = Token(TokenSymbol::KSM);
+// Be careful when changing these values because they are used in the parachain genesis config
+// and only for some combination of them, secure collateralization thresholds are set.
+const DEFAULT_NATIVE_CURRENCY: CurrencyId = Token(TokenSymbol::PEN);
+const DEFAULT_TESTING_CURRENCY: CurrencyId = Token(TokenSymbol::DOT);
 const DEFAULT_WRAPPED_CURRENCY: CurrencyId = CurrencyId::AlphaNum4 {
 	code: *b"USDC",
 	issuer: [
@@ -95,9 +101,18 @@ async fn test_issue_overpayment_succeeds() {
 		let relayer_provider = setup_provider(client.clone(), AccountKeyring::Bob).await;
 		let user_provider = setup_provider(client.clone(), AccountKeyring::Dave).await;
 
-		let wallet =
-			StellarWallet::from_secret_encoded(&STELLAR_VAULT_SECRET_KEY.to_string()).unwrap();
+		let is_public_network = false;
+		let wallet = StellarWallet::from_secret_encoded(
+			&STELLAR_VAULT_SECRET_KEY.to_string(),
+			is_public_network,
+		)
+		.unwrap();
 		let public_key = wallet.get_public_key_raw();
+
+		// Already start listening for scp messages
+		let scp_handler = vault::inner_create_handler(wallet.get_secret_key(), is_public_network)
+			.await
+			.expect("Failed to create scp handler");
 
 		let issue_amount = 100000;
 		let over_payment_factor = 3;
@@ -114,18 +129,64 @@ async fn test_issue_overpayment_succeeds() {
 				.await
 		);
 
-		let issue = user_provider.request_issue(issue_amount, &vault_id).await.unwrap();
+		// This call returns a RequestIssueEvent, not the IssueRequest from primitives
+		let issue = user_provider
+			.request_issue(issue_amount, &vault_id)
+			.await
+			.expect("Requesting issue failed");
 
-		wallet
+		// Send a payment to the destination of the issue request (ie the targeted vault's
+		// stellar account)
+		let stroop_amount = (issue.amount + issue.fee) * over_payment_factor;
+		let destination_public_key = PublicKey::from_binary(issue.vault_stellar_public_key);
+		let stellar_asset =
+			primitives::AssetConversion::lookup(issue.asset).expect("Asset not found");
+
+		let (transaction_response, tx_envelope) = wallet
 			.send_payment_to_address(
-				issue.vault_address.to_address(btc_rpc.network()).unwrap(),
-				(issue.amount + issue.fee) as u64 * over_payment_factor as u64,
-				issue.id,
+				destination_public_key,
+				stellar_asset,
+				stroop_amount.try_into().unwrap(),
+				issue.issue_id.0,
 			)
 			.await
-			.unwrap();
+			.expect("Sending payment failed");
 
-		let metadata = btc_rpc.send_to_address().await.unwrap();
+		assert!(transaction_response.successful);
+
+		// Loop pending proofs until it is ready
+		let mut proof: Option<Proof> = None;
+		with_timeout(
+			async {
+				loop {
+					let proof_status = scp_handler
+						.get_proof(transaction_response.ledger as u64)
+						.await
+						.expect("Failed to get proof");
+
+					match proof_status {
+						ProofStatus::Proof(p) => {
+							proof = Some(p);
+							break
+						},
+						ProofStatus::LackingEnvelopes => {},
+						ProofStatus::NoEnvelopesFound => {},
+						ProofStatus::NoTxSetFound => {},
+						ProofStatus::WaitForTxSet => {},
+					}
+
+					// Wait a bit before trying again
+					sleep(Duration::from_secs(3)).await;
+				}
+			},
+			Duration::from_secs(60),
+		)
+		.await;
+
+		let proof = proof.expect("Proof should be available");
+		let tx_envelope_xdr_encoded = tx_envelope.to_xdr();
+		let tx_envelope_xdr_encoded = base64::encode(tx_envelope_xdr_encoded);
+		let (envelopes_xdr_encoded, tx_set_xdr_encoded) = proof.encode();
 
 		join(
 			assert_event::<EndowedEvent, _>(TIMEOUT, user_provider.clone(), |x| {
@@ -137,7 +198,12 @@ async fn test_issue_overpayment_succeeds() {
 				}
 			}),
 			user_provider
-				.execute_issue(issue.issue_id, &metadata.proof, &metadata.raw_tx)
+				.execute_issue(
+					issue.issue_id,
+					tx_envelope_xdr_encoded.as_bytes(),
+					envelopes_xdr_encoded.as_bytes(),
+					tx_set_xdr_encoded.as_bytes(),
+				)
 				.map(Result::unwrap),
 		)
 		.await;

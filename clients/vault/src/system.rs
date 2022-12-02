@@ -529,7 +529,7 @@ pub(crate) async fn is_vault_registered(
 
 /// Returns SCPMessageHandler which contains the thread to connect/listen to the Stellar
 /// Node. See the oracle.rs example
-async fn inner_create_handler(
+pub async fn inner_create_handler(
 	stellar_vault_secret_key: SecretKey,
 	is_public_network: bool,
 ) -> Result<ScpMessageHandler, Error> {
@@ -549,7 +549,7 @@ async fn inner_create_handler(
 		tier1_node_ip
 	);
 
-	let node_info = NodeInfo::new(19, 21, 19, "v19.1.0".to_string(), network);
+	let node_info = NodeInfo::new(19, 25, 23, "v19.5.0".to_string(), network);
 	let cfg = ConnConfig::new(tier1_node_ip, 11625, stellar_vault_secret_key, 0, true, true, false);
 
 	create_handler(node_info, cfg, is_public_network).await.map_err(|e| {

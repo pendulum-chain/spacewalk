@@ -30,6 +30,7 @@ mod metadata_aliases {
 			spacewalk_primitives::{issue::IssueRequestStatus, oracle::Key as OracleKey},
 			vault_registry::types::VaultStatus,
 		},
+		tokens::events::Endowed as EndowedEvent,
 		vault_registry::events::{
 			DepositCollateral as DepositCollateralEvent, LiquidateVault as LiquidateVaultEvent,
 			RegisterAddress as RegisterAddressEvent, RegisterVault as RegisterVaultEvent,

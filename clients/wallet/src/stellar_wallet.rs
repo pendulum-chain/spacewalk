@@ -2,7 +2,8 @@ use substrate_stellar_sdk::{
 	horizon::Horizon,
 	network::{Network, PUBLIC_NETWORK, TEST_NETWORK},
 	types::Preconditions,
-	Asset, Hash, Memo, Operation, PublicKey, SecretKey, StroopAmount, Transaction, XdrCodec,
+	Asset, Hash, Memo, Operation, PublicKey, SecretKey, StroopAmount, Transaction,
+	TransactionEnvelope, XdrCodec,
 };
 
 use crate::{
@@ -51,7 +52,7 @@ impl StellarWallet {
 		asset: Asset,
 		stroop_amount: i64,
 		memo_hash: Hash,
-	) -> Result<TransactionResponse, Error> {
+	) -> Result<(TransactionResponse, TransactionEnvelope), Error> {
 		let horizon_client = reqwest::Client::new();
 
 		let public_key_encoded = self.get_public_key().to_encoding();
@@ -95,10 +96,11 @@ impl StellarWallet {
 
 		envelope.sign(network, vec![&self.get_secret_key()]);
 
-		let transaction_response =
-			horizon_client.submit_transaction(envelope, self.is_public_network).await?;
+		let transaction_response = horizon_client
+			.submit_transaction(envelope.clone(), self.is_public_network)
+			.await?;
 
-		Ok(transaction_response)
+		Ok((transaction_response, envelope))
 	}
 }
 

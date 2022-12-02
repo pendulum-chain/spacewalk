@@ -70,10 +70,10 @@ pub struct TransactionResponse {
 	pub id: Vec<u8>,
 	#[serde(deserialize_with = "de_string_to_u128")]
 	pub paging_token: PagingToken,
-	successful: bool,
+	pub successful: bool,
 	#[serde(deserialize_with = "de_string_to_bytes")]
 	pub hash: Vec<u8>,
-	ledger: u32,
+	pub ledger: u32,
 	#[serde(deserialize_with = "de_string_to_bytes")]
 	pub created_at: Vec<u8>,
 	#[serde(deserialize_with = "de_string_to_bytes")]
