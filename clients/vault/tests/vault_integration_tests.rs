@@ -95,8 +95,9 @@ async fn test_issue_overpayment_succeeds() {
 		let relayer_provider = setup_provider(client.clone(), AccountKeyring::Bob).await;
 		let user_provider = setup_provider(client.clone(), AccountKeyring::Dave).await;
 
-		let secret = SecretKey::from_encoding(STELLAR_VAULT_SECRET_KEY).unwrap();
-		let public_key = secret.get_public().clone().into_binary();
+		let wallet =
+			StellarWallet::from_secret_encoded(&STELLAR_VAULT_SECRET_KEY.to_string()).unwrap();
+		let public_key = wallet.get_public_key_raw();
 
 		let issue_amount = 100000;
 		let over_payment_factor = 3;

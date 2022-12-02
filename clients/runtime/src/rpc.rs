@@ -1,7 +1,7 @@
 use std::{future::Future, ops::RangeInclusive, sync::Arc, time::Duration};
 
 use async_trait::async_trait;
-use futures::{stream::StreamExt, FutureExt, SinkExt};
+use futures::{future::join_all, stream::StreamExt, FutureExt, SinkExt};
 use jsonrpsee::core::{client::Client, JsonValue};
 use subxt::{
 	blocks::ExtrinsicEvents,
@@ -1027,7 +1027,7 @@ impl IssuePallet for SpacewalkParachain {
 			.rpc()
 			.request("issue_getVaultIssueRequests", rpc_params![account_id, head])
 			.await?;
-		futures::future::join_all(
+		join_all(
 			result.into_iter().map(|key| async move {
 				self.get_issue_request(key).await.map(|value| (key, value))
 			}),

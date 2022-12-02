@@ -1,5 +1,3 @@
-
-use thiserror::Error;
 use substrate_stellar_sdk::{
 	horizon::Horizon,
 	network::{Network, PUBLIC_NETWORK, TEST_NETWORK},
