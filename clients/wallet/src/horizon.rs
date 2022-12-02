@@ -3,7 +3,7 @@ use std::{collections::HashMap, convert::TryInto, str::FromStr, sync::Arc, time:
 use async_trait::async_trait;
 use parity_scale_codec::{Decode, Encode};
 use serde::{Deserialize, Deserializer};
-use substrate_stellar_sdk::{Hash, PublicKey};
+use substrate_stellar_sdk::{Hash, PublicKey, TransactionEnvelope, XdrCodec};
 use tokio::{sync::RwLock, time::sleep};
 
 use crate::{
@@ -189,7 +189,7 @@ pub trait HorizonClient {
 	) -> Result<HorizonAccountResponse, Error>;
 	async fn submit_transaction(
 		&self,
-		transaction: &str,
+		transaction: TransactionEnvelope,
 		is_public_network: bool,
 	) -> Result<TransactionResponse, Error>;
 }
@@ -251,13 +251,17 @@ impl HorizonClient for reqwest::Client {
 
 	async fn submit_transaction(
 		&self,
-		transaction_xdr: &str,
+		transaction_envelope: TransactionEnvelope,
 		is_public_network: bool,
 	) -> Result<TransactionResponse, Error> {
-		let base_url = horizon_url(is_public_network);
-		let params = [("tx", transaction_xdr)];
+		let transaction_xdr = transaction_envelope.to_base64_xdr();
+		let transaction_xdr =
+			std::str::from_utf8(&transaction_xdr).map_err(|e| Error::Utf8Error(e))?;
 
+		let base_url = horizon_url(is_public_network);
 		let url = format!("{}/transactions", base_url);
+
+		let params = [("tx", transaction_xdr)];
 		self.post(url)
 			.form(&params)
 			.send()
@@ -392,7 +396,11 @@ where
 mod tests {
 	use std::{future, sync::Arc, time::Duration};
 
-	use substrate_stellar_sdk::SecretKey;
+	use substrate_stellar_sdk::{
+		network::{Network, PUBLIC_NETWORK, TEST_NETWORK},
+		types::Preconditions,
+		Asset, Memo, Operation, SecretKey, StroopAmount, Transaction, TransactionEnvelope,
+	};
 	use tokio::{io::AsyncReadExt, sync::Mutex, time::sleep};
 
 	use mockall::{predicate::*, *};
@@ -410,6 +418,100 @@ mod tests {
 		fn is_relevant(&self, param: TransactionFilterParam) -> bool {
 			// We consider all transactions relevant for the test
 			true
+		}
+	}
+
+	async fn build_simple_transaction(
+		source: SecretKey,
+		destination: PublicKey,
+		amount: i64,
+		is_public_network: bool,
+	) -> Result<TransactionEnvelope, Error> {
+		let horizon_client = reqwest::Client::new();
+
+		let public_key_encoded = source.get_encoded_public();
+		let account_id_string =
+			std::str::from_utf8(&public_key_encoded).map_err(|e| Error::Utf8Error(e))?;
+		let account = horizon_client.get_account(account_id_string, is_public_network).await?;
+		let next_sequence_number = account.sequence + 1;
+
+		let fee_per_operation = 100;
+
+		let mut transaction = Transaction::new(
+			source.get_public().clone(),
+			next_sequence_number,
+			Some(fee_per_operation),
+			Preconditions::PrecondNone,
+			None,
+		)
+		.map_err(|e| Error::BuildTransactionError("Creating new transaction failed".to_string()))?;
+
+		let asset = Asset::native();
+		let amount = StroopAmount(amount);
+		transaction
+			.append_operation(
+				Operation::new_payment(destination, asset, amount)
+					.map_err(|e| {
+						Error::BuildTransactionError(
+							"Creation of payment operation failed".to_string(),
+						)
+					})?
+					.set_source_account(source.get_public().clone())
+					.map_err(|e| {
+						Error::BuildTransactionError("Setting source account failed".to_string())
+					})?,
+			)
+			.map_err(|e| {
+				Error::BuildTransactionError("Appending payment operation failed".to_string())
+			})?;
+
+		let mut envelope = transaction.into_transaction_envelope();
+		let network: &Network = if is_public_network { &PUBLIC_NETWORK } else { &TEST_NETWORK };
+
+		envelope.sign(network, vec![&source]).expect("Signing failed");
+
+		Ok(envelope)
+	}
+
+	#[tokio::test(flavor = "multi_thread")]
+	async fn horizon_submit_transaction_success() {
+		let horizon_client = reqwest::Client::new();
+
+		let source = SecretKey::from_encoding(SECRET).unwrap();
+		// The destination is the same account as the source
+		let destination = source.get_public().clone();
+		let amount = 100;
+
+		// Build simple transaction
+		let tx_env = build_simple_transaction(source, destination, amount, false)
+			.await
+			.expect("Failed to build transaction");
+
+		match horizon_client.submit_transaction(tx_env, false).await {
+			Ok(res) => {
+				assert!(res.successful);
+				assert!(res.ledger > 0);
+			},
+			Err(e) => {
+				panic!("failed: {:?}", e);
+			},
+		}
+	}
+
+	#[tokio::test(flavor = "multi_thread")]
+	async fn horizon_get_account_success() {
+		let horizon_client = reqwest::Client::new();
+
+		let public_key_encoded = "GAYOLLLUIZE4DZMBB2ZBKGBUBZLIOYU6XFLW37GBP2VZD3ABNXCW4BVA";
+		match horizon_client.get_account(public_key_encoded, true).await {
+			Ok(res) => {
+				let res_account = std::str::from_utf8(&res.account_id).unwrap();
+				assert_eq!(res_account, public_key_encoded);
+				assert!(res.sequence > 0);
+			},
+			Err(e) => {
+				panic!("failed: {:?}", e);
+			},
 		}
 	}
 

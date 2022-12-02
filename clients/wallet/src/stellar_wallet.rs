@@ -95,11 +95,8 @@ impl StellarWallet {
 
 		envelope.sign(network, vec![&self.get_secret_key()]);
 
-		let env_xdr = envelope.to_base64_xdr();
-		let xdr_string = std::str::from_utf8(&env_xdr).map_err(|e| Error::Utf8Error(e))?;
-
 		let transaction_response =
-			horizon_client.submit_transaction(xdr_string, self.is_public_network).await?;
+			horizon_client.submit_transaction(envelope, self.is_public_network).await?;
 
 		Ok(transaction_response)
 	}
@@ -128,6 +125,8 @@ mod test {
 		let result = wallet.send_payment_to_address(destination, asset, amount, memo_hash).await;
 
 		assert!(result.is_ok());
-		assert!(result.unwrap().ledger() > 0);
+		let transaction_response = result.unwrap();
+		assert!(transaction_response.hash.to_vec().len() > 0);
+		assert!(transaction_response.ledger() > 0);
 	}
 }
