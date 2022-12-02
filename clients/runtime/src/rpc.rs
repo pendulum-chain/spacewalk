@@ -1028,7 +1028,7 @@ impl IssuePallet for SpacewalkParachain {
 			.rpc()
 			.request("issue_getVaultIssueRequests", rpc_params![account_id, head])
 			.await?;
-		join_all(
+		futures::future::join_all(
 			result.into_iter().map(|key| async move {
 				self.get_issue_request(key).await.map(|value| (key, value))
 			}),

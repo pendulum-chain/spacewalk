@@ -51,6 +51,8 @@ pub const SYSTEM_MODULE: &str = "System";
 pub const STABLE_BITCOIN_CONFIRMATIONS: &str = "StableBitcoinConfirmations";
 pub const STABLE_PARACHAIN_CONFIRMATIONS: &str = "StableParachainConfirmations";
 
+pub use rpc::IssuePallet;
+
 #[cfg_attr(
 	feature = "parachain-metadata",
 	subxt(
