@@ -16,9 +16,56 @@ pub type PagingToken = u128;
 
 const POLL_INTERVAL: u64 = 5000;
 
+pub fn de_string_to_bytes<'de, D>(de: D) -> Result<Vec<u8>, D::Error>
+where
+	D: Deserializer<'de>,
+{
+	let s: &str = Deserialize::deserialize(de)?;
+	Ok(s.as_bytes().to_vec())
+}
+
+pub fn de_string_to_u128<'de, D>(de: D) -> Result<u128, D::Error>
+where
+	D: Deserializer<'de>,
+{
+	let s: &str = Deserialize::deserialize(de)?;
+	u128::from_str(s).map_err(serde::de::Error::custom)
+}
+
+pub fn de_string_to_i64<'de, D>(de: D) -> Result<i64, D::Error>
+where
+	D: Deserializer<'de>,
+{
+	let s: &str = Deserialize::deserialize(de)?;
+	i64::from_str(s).map_err(serde::de::Error::custom)
+}
+
+pub fn de_string_to_optional_bytes<'de, D>(de: D) -> Result<Option<Vec<u8>>, D::Error>
+where
+	D: Deserializer<'de>,
+{
+	Option::<&str>::deserialize(de).map(|opt_wrapped| opt_wrapped.map(|x| x.as_bytes().to_vec()))
+}
+
+// The following structs represent the whole response when fetching any Horizon API
+// In this particular case we assume the embedded payload will allways be for transactions
+// ref https://developers.stellar.org/api/introduction/response-format/
+#[derive(Deserialize, Debug)]
+pub struct HorizonTransactionsResponse {
+	// We don't care about specifics of pagination, so we just tell serde that this will be a
+	// generic json value
+	pub _links: serde_json::Value,
+	pub _embedded: EmbeddedTransactions,
+}
+
+#[derive(Deserialize, Debug)]
+pub struct EmbeddedTransactions {
+	pub records: Vec<TransactionResponse>,
+}
+
 // This represents each record for a transaction in the Horizon API response
 #[derive(Clone, Deserialize, Encode, Decode, Default, Debug)]
-pub struct Transaction {
+pub struct TransactionResponse {
 	#[serde(deserialize_with = "de_string_to_bytes")]
 	pub id: Vec<u8>,
 	#[serde(deserialize_with = "de_string_to_u128")]
@@ -55,18 +102,10 @@ pub struct Transaction {
 	pub memo: Option<Vec<u8>>,
 }
 
-impl Transaction {
+impl TransactionResponse {
 	pub(crate) fn ledger(&self) -> u32 {
 		self.ledger
 	}
-}
-
-// The following structs represent the whole response when fetching any Horizon API
-// In this particular case we assume the embedded payload will allways be for transactions
-// ref https://developers.stellar.org/api/introduction/response-format/
-#[derive(Deserialize, Debug)]
-pub struct EmbeddedTransactions {
-	pub records: Vec<Transaction>,
 }
 
 #[derive(Deserialize, Debug)]
@@ -79,43 +118,10 @@ pub struct HorizonAccountResponse {
 	pub id: Vec<u8>,
 	#[serde(deserialize_with = "de_string_to_bytes")]
 	pub account_id: Vec<u8>,
-	#[serde(deserialize_with = "de_string_to_bytes")]
-	pub sequence: Vec<u8>,
+	#[serde(deserialize_with = "de_string_to_i64")]
+	pub sequence: i64,
 	// ...
 }
-
-#[derive(Deserialize, Debug)]
-pub struct HorizonTransactionsResponse {
-	// We don't care about specifics of pagination, so we just tell serde that this will be a
-	// generic json value
-	pub _links: serde_json::Value,
-	pub _embedded: EmbeddedTransactions,
-}
-
-pub fn de_string_to_bytes<'de, D>(de: D) -> Result<Vec<u8>, D::Error>
-where
-	D: Deserializer<'de>,
-{
-	let s: &str = Deserialize::deserialize(de)?;
-	Ok(s.as_bytes().to_vec())
-}
-
-pub fn de_string_to_u128<'de, D>(de: D) -> Result<u128, D::Error>
-where
-	D: Deserializer<'de>,
-{
-	let s: &str = Deserialize::deserialize(de)?;
-	u128::from_str(s).map_err(serde::de::Error::custom)
-}
-
-pub fn de_string_to_optional_bytes<'de, D>(de: D) -> Result<Option<Vec<u8>>, D::Error>
-where
-	D: Deserializer<'de>,
-{
-	Option::<&str>::deserialize(de).map(|opt_wrapped| opt_wrapped.map(|x| x.as_bytes().to_vec()))
-}
-
-// Claimable balances objects
 
 #[derive(Deserialize, Debug)]
 pub struct HorizonClaimableBalanceResponse {
@@ -169,7 +175,16 @@ pub const fn horizon_url(is_public_network: bool) -> &'static str {
 #[async_trait]
 pub trait HorizonClient {
 	async fn get_transactions(&self, url: &str) -> Result<HorizonTransactionsResponse, Error>;
-	async fn submit_transaction(&self, url: &str, transaction: &str) -> Result<Transaction, Error>;
+	async fn get_account(
+		&self,
+		base_url: &str,
+		account_encoded: &str,
+	) -> Result<HorizonAccountResponse, Error>;
+	async fn submit_transaction(
+		&self,
+		url: &str,
+		transaction: &str,
+	) -> Result<TransactionResponse, Error>;
 }
 
 #[async_trait]
@@ -184,11 +199,27 @@ impl HorizonClient for reqwest::Client {
 			.map_err(|_| Error::HttpFetchingError)
 	}
 
+	async fn get_account(
+		&self,
+		base_url: &str,
+		account_encoded: &str,
+	) -> Result<HorizonAccountResponse, Error> {
+		let url = format!("{}/accounts/{}", base_url, account_encoded);
+
+		self.get(url)
+			.send()
+			.await
+			.map_err(|_| Error::HttpFetchingError)?
+			.json::<HorizonAccountResponse>()
+			.await
+			.map_err(|_| Error::HttpFetchingError)
+	}
+
 	async fn submit_transaction(
 		&self,
 		base_url: &str,
 		transaction_xdr: &str,
-	) -> Result<Transaction, Error> {
+	) -> Result<TransactionResponse, Error> {
 		let params = [("tx", transaction_xdr)];
 
 		let url = format!("{}/transactions", base_url);
@@ -197,7 +228,7 @@ impl HorizonClient for reqwest::Client {
 			.send()
 			.await
 			.map_err(|_| Error::HttpFetchingError)?
-			.json::<Transaction>()
+			.json::<TransactionResponse>()
 			.await
 			.map_err(|_| Error::HttpFetchingError)
 	}

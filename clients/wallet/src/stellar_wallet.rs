@@ -5,7 +5,11 @@ use substrate_stellar_sdk::{
 	Asset, Hash, Memo, Operation, PublicKey, SecretKey, StroopAmount, Transaction, XdrCodec,
 };
 
-use crate::{error::Error, horizon::HorizonClient, types::StellarPublicKeyRaw};
+use crate::{
+	error::Error,
+	horizon::{HorizonClient, TransactionResponse},
+	types::StellarPublicKeyRaw,
+};
 
 #[derive(Clone, PartialEq, Debug, Eq)]
 pub struct StellarWallet {
@@ -47,17 +51,20 @@ impl StellarWallet {
 		asset: Asset,
 		stroop_amount: i64,
 		memo_hash: Hash,
-	) -> Result<(), Error> {
-		// todo!()
-
+	) -> Result<TransactionResponse, Error> {
 		let horizon_url = if self.is_public_network {
 			"https://horizon.stellar.org"
 		} else {
 			"https://horizon-testnet.stellar.org"
 		};
 
-		// TODO properly fetch the sequence number
-		let next_sequence_number = 0;
+		let horizon_client = reqwest::Client::new();
+
+		let public_key_encoded = self.get_public_key().to_encoding();
+		let account_id_string =
+			std::str::from_utf8(&public_key_encoded).map_err(|e| Error::Utf8Error(e))?;
+		let account = horizon_client.get_account(horizon_url, account_id_string).await?;
+		let next_sequence_number = account.sequence + 1;
 
 		let fee_per_operation = 100;
 
@@ -68,17 +75,25 @@ impl StellarWallet {
 			Preconditions::PrecondNone,
 			Some(Memo::MemoHash(memo_hash)),
 		)
-		.map_err(|e| Error::BuildTransactionError)?;
+		.map_err(|e| Error::BuildTransactionError("Creating new transaction failed".to_string()))?;
 
 		let amount = StroopAmount(stroop_amount);
 		transaction
 			.append_operation(
 				Operation::new_payment(destination_address, asset, amount)
-					.map_err(|e| Error::BuildTransactionError)?
+					.map_err(|e| {
+						Error::BuildTransactionError(
+							"Creation of payment operation failed".to_string(),
+						)
+					})?
 					.set_source_account(self.get_public_key())
-					.map_err(|e| Error::BuildTransactionError)?,
+					.map_err(|e| {
+						Error::BuildTransactionError("Setting source account failed".to_string())
+					})?,
 			)
-			.map_err(|e| Error::BuildTransactionError)?;
+			.map_err(|e| {
+				Error::BuildTransactionError("Appending payment operation failed".to_string())
+			})?;
 
 		let mut envelope = transaction.into_transaction_envelope();
 		let network: &Network =
@@ -87,17 +102,12 @@ impl StellarWallet {
 		envelope.sign(network, vec![&self.get_secret_key()]);
 
 		let env_xdr = envelope.to_base64_xdr();
-		let xdr_string = std::str::from_utf8(&env_xdr).map_err(|e| Error::BuildTransactionError)?;
+		let xdr_string = std::str::from_utf8(&env_xdr).map_err(|e| Error::Utf8Error(e))?;
 
-		let horizon_client = reqwest::Client::new();
-		let submission_response = horizon_client
-			.submit_transaction(horizon_url, xdr_string)
-			.await
-			.map_err(|e| Error::HorizonSubmissionError)?;
+		let transaction_response =
+			horizon_client.submit_transaction(horizon_url, xdr_string).await?;
 
-		tracing::info!("Response: {:?}", submission_response);
-
-		Ok(())
+		Ok(transaction_response)
 	}
 }
 
@@ -124,5 +134,6 @@ mod test {
 		let result = wallet.send_payment_to_address(destination, asset, amount, memo_hash).await;
 
 		assert!(result.is_ok());
+		assert!(result.unwrap().ledger() > 0);
 	}
 }

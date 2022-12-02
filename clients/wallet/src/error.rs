@@ -9,8 +9,10 @@ pub enum Error {
 	HttpFetchingError,
 	#[error("Oracle returned error")]
 	OracleError,
-	#[error("Could not build transaction")]
-	BuildTransactionError,
-	#[error("Transaction submission failed")]
-	HorizonSubmissionError,
+	#[error("Could not build transaction: {0}")]
+	BuildTransactionError(String),
+	#[error("Transaction submission failed: {0}")]
+	HorizonSubmissionError(String),
+	#[error("Could not parse string: {0}")]
+	Utf8Error(#[from] std::str::Utf8Error),
 }
