@@ -23,6 +23,7 @@ use wallet::StellarWallet;
 
 use crate::{
 	rpc::{IssuePallet, OraclePallet, VaultRegistryPallet},
+	types::{ErrorCode, StatusCode},
 	CurrencyId, FixedU128, OracleKey, SpacewalkParachain, SpacewalkSigner, VaultId,
 };
 

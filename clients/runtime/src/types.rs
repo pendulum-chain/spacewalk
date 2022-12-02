@@ -14,6 +14,8 @@ pub type H256 = subxt::ext::sp_core::H256;
 pub type SpacewalkSigner = subxt::tx::PairSigner<SpacewalkRuntime, KeyPair>;
 pub type FixedU128 = sp_arithmetic::FixedU128;
 
+pub type IssueId = H256;
+
 pub type StellarPublicKey = [u8; 32];
 
 mod metadata_aliases {
@@ -36,6 +38,7 @@ mod metadata_aliases {
 			RegisterAddress as RegisterAddressEvent, RegisterVault as RegisterVaultEvent,
 		},
 	};
+	use std::collections::HashMap;
 
 	use super::*;
 
@@ -62,6 +65,8 @@ mod metadata_aliases {
 		metadata::runtime_types::spacewalk_primitives::VaultId<AccountId, CurrencyId>;
 	pub type VaultCurrencyPair =
 		metadata::runtime_types::spacewalk_primitives::VaultCurrencyPair<CurrencyId>;
+
+	pub type IssueRequestsMap = HashMap<IssueId, SpacewalkIssueRequest>;
 }
 
 pub trait PrettyPrint {

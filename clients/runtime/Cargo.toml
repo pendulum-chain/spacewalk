@@ -60,9 +60,12 @@ testchain-runtime = { package = "spacewalk-runtime-standalone", path = "../../te
 
 # Substrate Stellar Dependencies
 substrate-stellar-sdk = { git = "https://github.com/pendulum-chain/substrate-stellar-sdk", branch = "polkadot-v0.9.31" }
+wallet = { path = "../wallet" }
+
 
 [dev-dependencies]
 env_logger = "0.8.3"
 tempdir = "0.3.7"
 runtime = { path = ".", features = ["testing-utils"] }
+
 

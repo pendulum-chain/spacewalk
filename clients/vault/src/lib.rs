@@ -15,6 +15,7 @@ mod system;
 // Used for integration test
 pub use system::inner_create_handler;
 
+mod issue;
 pub mod oracle;
 
 pub mod service {}
