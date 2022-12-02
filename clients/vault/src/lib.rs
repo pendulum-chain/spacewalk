@@ -12,6 +12,7 @@ pub mod metrics;
 pub mod process;
 mod system;
 
+mod issue;
 pub mod oracle;
 
 pub mod service {}
