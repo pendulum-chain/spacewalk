@@ -447,6 +447,13 @@ impl VaultService {
 					issue_map.clone(),
 				)),
 			),
+			(
+				"Listen for Executed Issues",
+				run(issue::listen_for_executed_issues(
+					self.spacewalk_parachain.clone(),
+					issue_map.clone(),
+				)),
+			),
 		];
 
 		run_and_monitor_tasks(self.shutdown.clone(), tasks).await
