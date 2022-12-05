@@ -316,11 +316,11 @@ impl<C: HorizonClient> HorizonFetcher<C> {
 		}
 	}
 
-	pub async fn fetch_horizon_and_process_new_transactions(
+	pub async fn fetch_horizon_and_process_new_transactions<T: Clone>(
 		&mut self,
-		issue_hashes: Arc<RwLock<Vec<Hash>>>,
 		watcher: Arc<RwLock<dyn Watcher>>,
-		filter: impl FilterWith<TransactionFilterParam>,
+		targets: Arc<RwLock<T>>,
+		filter: impl FilterWith<TransactionFilterParam<T>>,
 		last_paging_token: PagingToken,
 	) -> Result<PagingToken, Error> {
 		let res = self.fetch_latest_txs(last_paging_token).await;
@@ -337,13 +337,13 @@ impl<C: HorizonClient> HorizonFetcher<C> {
 		let latest_paging_token =
 			transactions.iter().map(|tx| tx.paging_token).max().unwrap_or(last_paging_token);
 
-		let issue_hashes = issue_hashes.read().await;
+		let targets = targets.read().await;
 		let w = watcher.read().await;
 		for transaction in transactions {
 			let tx = transaction.clone();
 			let id = tx.id.clone();
 
-			if filter.is_relevant((tx.clone(), issue_hashes.clone())) {
+			if filter.is_relevant((tx.clone(), targets.clone())) {
 				match w.watch_slot(tx.ledger.try_into().unwrap()).await {
 					Ok(_) => {
 						tracing::info!("following transaction {:?}", String::from_utf8(id.clone()));
@@ -359,15 +359,16 @@ impl<C: HorizonClient> HorizonFetcher<C> {
 	}
 }
 
-pub async fn listen_for_new_transactions<Filter>(
+pub async fn listen_for_new_transactions<T, Filter>(
 	vault_account_public_key: PublicKey,
 	is_public_network: bool,
-	targets: Arc<RwLock<Vec<Hash>>>,
 	watcher: Arc<RwLock<dyn Watcher>>,
+	targets: Arc<RwLock<T>>,
 	filter: Filter,
 ) -> Result<(), Error>
 where
-	Filter: FilterWith<TransactionFilterParam> + Clone,
+	T: Clone,
+	Filter: FilterWith<TransactionFilterParam<T>> + Clone,
 {
 	let horizon_client = reqwest::Client::new();
 	let mut fetcher =
@@ -378,8 +379,8 @@ where
 	loop {
 		if let Ok(new_paging_token) = fetcher
 			.fetch_horizon_and_process_new_transactions(
-				targets.clone(),
 				watcher.clone(),
+				targets.clone(),
 				filter.clone(),
 				latest_paging_token,
 			)
@@ -414,10 +415,16 @@ mod tests {
 	#[derive(Clone)]
 	struct MockFilter;
 
-	impl FilterWith<TransactionFilterParam> for MockFilter {
-		fn is_relevant(&self, param: TransactionFilterParam) -> bool {
+	impl FilterWith<TransactionFilterParam<Vec<u64>>> for MockFilter {
+		fn is_relevant(&self, param: TransactionFilterParam<Vec<u64>>) -> bool {
 			// We consider all transactions relevant for the test
 			true
+		}
+	}
+
+	impl Clone for MockWatcher {
+		fn clone(&self) -> Self {
+			MockWatcher::new()
 		}
 	}
 
@@ -565,7 +572,7 @@ mod tests {
 
 		// We assume that the watch_slot function is called at exactly once because the intial fetch
 		// without a cursor returns the latest transaction only
-		watcher
+		let wat = watcher
 			.write()
 			.await
 			.expect_watch_slot()
@@ -575,8 +582,8 @@ mod tests {
 		let mut cursor = 0;
 		if let Ok(next_page) = fetcher
 			.fetch_horizon_and_process_new_transactions(
-				issue_hashes.clone(),
 				watcher.clone(),
+				issue_hashes.clone(),
 				MockFilter,
 				cursor,
 			)
@@ -592,8 +599,8 @@ mod tests {
 
 		fetcher
 			.fetch_horizon_and_process_new_transactions(
-				issue_hashes.clone(),
 				watcher.clone(),
+				issue_hashes.clone(),
 				MockFilter,
 				cursor,
 			)

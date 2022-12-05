@@ -127,7 +127,7 @@ mod test {
 		let result = wallet.send_payment_to_address(destination, asset, amount, memo_hash).await;
 
 		assert!(result.is_ok());
-		let transaction_response = result.unwrap();
+		let (transaction_response, _) = result.unwrap();
 		assert!(transaction_response.hash.to_vec().len() > 0);
 		assert!(transaction_response.ledger() > 0);
 	}

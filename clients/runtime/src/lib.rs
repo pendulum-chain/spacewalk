@@ -2,7 +2,11 @@ use codec::{Decode, Encode};
 pub use prometheus;
 pub use sp_arithmetic::{traits as FixedPointTraits, FixedI128, FixedPointNumber, FixedU128};
 use sp_std::marker::PhantomData;
-pub use subxt::ext::sp_core::{crypto::Ss58Codec, sr25519::Pair};
+pub use subxt::{
+	events::StaticEvent,
+	ext::sp_core::{crypto::Ss58Codec, sr25519::Pair},
+};
+
 use subxt::{
 	ext::sp_runtime::{generic::Header, traits::BlakeTwo256, MultiSignature},
 	subxt, Config,

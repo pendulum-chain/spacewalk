@@ -14,7 +14,7 @@ pub trait Watcher: Send + Sync {
 	async fn watch_slot(&self, slot: u128) -> Result<(), Error>;
 }
 
-pub type TransactionFilterParam = (TransactionResponse, Vec<Hash>);
+pub type TransactionFilterParam<T> = (TransactionResponse, T);
 
 /// A filter trait to check whether `T` should be processed.
 pub trait FilterWith<T: Clone> {
@@ -23,9 +23,9 @@ pub trait FilterWith<T: Clone> {
 }
 
 #[derive(Clone)]
-pub struct TxFilter;
+pub struct TxFilterByHash;
 
-impl FilterWith<(TransactionResponse, Vec<Hash>)> for TxFilter {
+impl FilterWith<(TransactionResponse, Vec<Hash>)> for TxFilterByHash {
 	fn is_relevant(&self, param: (TransactionResponse, Vec<Hash>)) -> bool {
 		match String::from_utf8(param.0.memo_type.clone()) {
 			Ok(memo_type) if memo_type == "hash" =>

@@ -13,9 +13,9 @@ use tokio::{sync::RwLock, time::sleep};
 
 use runtime::{
 	cli::{parse_duration_minutes, parse_duration_ms},
-	CollateralBalancesPallet, CurrencyId, Error as RuntimeError, PrettyPrint, RegisterVaultEvent,
-	ShutdownSender, SpacewalkParachain, StellarRelayPallet, TryFromSymbol, UtilFuncs,
-	VaultCurrencyPair, VaultId, VaultRegistryPallet,
+	CollateralBalancesPallet, CurrencyId, Error as RuntimeError, IssueRequestsMap, PrettyPrint,
+	RegisterVaultEvent, ShutdownSender, SpacewalkParachain, StellarRelayPallet, TryFromSymbol,
+	UtilFuncs, VaultCurrencyPair, VaultId, VaultRegistryPallet,
 };
 use service::{wait_or_shutdown, Error as ServiceError, Service};
 use stellar_relay_lib::{
@@ -31,6 +31,8 @@ use wallet::StellarWallet;
 use crate::{
 	error::Error,
 	execution::execute_open_requests,
+	issue,
+	issue::IssueFilter,
 	metrics::publish_tokio_metrics,
 	oracle::{create_handler, prepare_directories, ScpMessageHandler},
 	CHAIN_HEIGHT_POLLING_INTERVAL,
@@ -397,13 +399,13 @@ impl VaultService {
 		// issue handling
 		// this vec is passed to the stellar wallet to filter out transactions that are not relevant
 		// this has to be modified every time the issue set changes
-		let issue_hashes_vec: Arc<RwLock<Vec<Hash>>> = Arc::new(RwLock::new(Vec::new()));
+		let issue_map: Arc<RwLock<IssueRequestsMap>> =
+			Arc::new(RwLock::new(IssueRequestsMap::new()));
+		let secret_key = self.stellar_wallet.get_secret_key();
 
-		let handler = inner_create_handler(
-			self.stellar_wallet.get_secret_key(),
-			self.stellar_wallet.is_public_network(),
-		)
-		.await?;
+		let handler =
+			inner_create_handler(secret_key.clone(), self.stellar_wallet.is_public_network())
+				.await?;
 		let watcher = Arc::new(RwLock::new(handler.create_watcher()));
 
 		tracing::info!("Starting all services...");
@@ -425,10 +427,24 @@ impl VaultService {
 				run(wallet::listen_for_new_transactions(
 					self.stellar_wallet.get_public_key(),
 					self.stellar_wallet.is_public_network(),
-					issue_hashes_vec.clone(),
 					watcher.clone(),
-					wallet::types::TxFilter, /* todo: change with a filter specific to the issue
-					                          * request? */
+					issue_map.clone(),
+					IssueFilter,
+				)),
+			),
+			(
+				"Listen for Issue Requests",
+				run(issue::listen_for_issue_requests(
+					self.spacewalk_parachain.clone(),
+					secret_key.clone(),
+					issue_map.clone(),
+				)),
+			),
+			(
+				"Listen for Issue Cancels",
+				run(issue::listen_for_issue_cancels(
+					self.spacewalk_parachain.clone(),
+					issue_map.clone(),
 				)),
 			),
 		];
