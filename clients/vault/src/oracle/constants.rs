@@ -6,12 +6,9 @@ use stellar_relay_lib::sdk::types::Uint64;
 /// NOT the "values" of the map
 pub const MAX_SLOTS_PER_FILE: usize = 200;
 
-/// This is for `TxHashMap`.
-/// When the map reaches the MAX or more, then we write to file.
-pub const MAX_TXS_PER_FILE: Uint64 = 10_000_000;
-
-/// This is for `TxSetMap`.
-pub const MAX_TXSETS_PER_FILE: usize = 20000;
+/// This is used to determine how many items the `TxSetMap` and `EnvelopesMap` can hold before
+/// dropping some.
+pub const MAX_ITEMS_IN_QUEUE: usize = 100;
 
 // the maximum distance of the selected slot from the current slot.
 // this is primarily used when deciding to move maps to a file.

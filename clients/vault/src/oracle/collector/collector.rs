@@ -1,12 +1,16 @@
+use std::sync::Arc;
+
 use parking_lot::{lock_api::RwLockReadGuard, RawRwLock, RwLock};
 
-use std::sync::Arc;
-use stellar_relay_lib::sdk::types::{ScpEnvelope, TransactionSet};
+use stellar_relay_lib::sdk::{
+	network::{Network, PUBLIC_NETWORK, TEST_NETWORK},
+	types::{ScpEnvelope, TransactionSet},
+};
 
 use crate::oracle::types::{
-	EnvelopesMap, Slot, SlotList, TxSetHash, TxSetHashAndSlotMap, TxSetMap,
+	EnvelopesMap, LifoMap, Slot, SlotList, TxSetHash, TxSetHashAndSlotMap, TxSetMap,
 };
-use stellar_relay_lib::sdk::network::{Network, PUBLIC_NETWORK, TEST_NETWORK};
+
 /// Collects all ScpMessages and the TxSets.
 pub struct ScpMessageCollector {
 	/// holds the mapping of the Slot Number(key) and the ScpEnvelopes(value)
@@ -107,16 +111,18 @@ impl ScpMessageCollector {
 		// insert/add the externalized message to map.
 		let mut envelopes_map = self.envelopes_map.write();
 
-		if let Some(value) = envelopes_map.get_mut(&slot) {
+		if let Some(value) = envelopes_map.get_with_key(&slot) {
+			let mut value = value.clone();
 			value.push(scp_envelope);
+			envelopes_map.set_with_key(slot, value);
 		} else {
 			tracing::debug!("Adding received SCP envelopes for slot {}", slot);
-			envelopes_map.insert(slot, vec![scp_envelope]);
+			envelopes_map.set_with_key(slot, vec![scp_envelope]);
 		}
 	}
 
 	pub(super) fn add_txset(&mut self, slot: Slot, transaction_set: TransactionSet) {
-		self.txset_map.write().insert(slot, transaction_set);
+		self.txset_map.write().set_with_key(slot, transaction_set);
 	}
 
 	pub(super) fn save_txset_hash_and_slot(&mut self, txset_hash: TxSetHash, slot: Slot) {
@@ -151,8 +157,8 @@ impl ScpMessageCollector {
 	/// Clear out data related to this slot.
 	pub(super) fn remove_data(&mut self, slot: &Slot) {
 		self.slot_watchlist.write().remove(slot);
-		self.envelopes_map.write().remove(slot);
-		self.txset_map.write().remove(slot);
+		self.envelopes_map.write().remove_with_key(slot);
+		self.txset_map.write().remove_with_key(slot);
 
 		let mut to_remove = vec![];
 		if let Some(idx) = self.slot_pendinglist.read().iter().position(|s| s == slot) {
@@ -182,12 +188,12 @@ impl ScpMessageCollector {
 
 #[cfg(test)]
 mod test {
+	use stellar_relay_lib::sdk::network::{PUBLIC_NETWORK, TEST_NETWORK};
+
 	use crate::oracle::{
-		collector::ScpMessageCollector, traits::FileHandler, EnvelopesFileHandler,
+		collector::ScpMessageCollector, traits::FileHandler, types::LifoMap, EnvelopesFileHandler,
 		TxSetsFileHandler,
 	};
-
-	use stellar_relay_lib::sdk::network::{PUBLIC_NETWORK, TEST_NETWORK};
 
 	#[test]
 	fn envelopes_map_len_works() {
@@ -234,24 +240,24 @@ mod test {
 		let env_map =
 			EnvelopesFileHandler::get_map_from_archives(first_slot).expect("should return a map");
 
-		let mut env_map_keys = env_map.keys();
 		let slot = 1234;
 
-		let x = env_map_keys.next_back().expect("should return a slot");
-		let value = env_map.get(x).expect("should return a vec of scp envelopes");
+		let (slot, value) = env_map.get(0).expect("should return a tuple");
 		let one_scp_env = value[0].clone();
-		collector.add_scp_envelope(slot, one_scp_env.clone());
+		collector.add_scp_envelope(*slot, one_scp_env.clone());
 
 		assert_eq!(collector.envelopes_map_len(), 1);
 		assert!(collector.envelopes_map.read().contains_key(&slot));
 
 		// let's try to add again.
 		let two_scp_env = value[1].clone();
-		collector.add_scp_envelope(slot, two_scp_env.clone());
+		collector.add_scp_envelope(*slot, two_scp_env.clone());
 		assert_eq!(collector.envelopes_map_len(), 1); // length shouldn't change, since we're insertin to the same key.
 
 		let collctr_env_map = collector.envelopes_map.read();
-		let res = collctr_env_map.get(&slot).expect("should return a vector of scpenvelopes");
+		let res = collctr_env_map
+			.get_with_key(&slot)
+			.expect("should return a vector of scpenvelopes");
 
 		assert_eq!(res.len(), 2);
 		assert_eq!(&res[0], &one_scp_env);
@@ -265,7 +271,7 @@ mod test {
 		let slot = 42867088;
 		let txsets_map =
 			TxSetsFileHandler::get_map_from_archives(slot).expect("should return a map");
-		let value = txsets_map.get(&slot).expect("should return a transaction set");
+		let value = txsets_map.get_with_key(&slot).expect("should return a transaction set");
 
 		collector.add_txset(slot, value.clone());
 
@@ -311,7 +317,7 @@ mod test {
 	fn remove_data_works() {
 		let mut collector = ScpMessageCollector::new(false);
 
-		let env_slot = 578291;
+		let env_slot = 578391;
 		let mut env_map =
 			EnvelopesFileHandler::get_map_from_archives(env_slot).expect("should return a map");
 
@@ -322,25 +328,21 @@ mod test {
 		collector.watch_slot(env_slot);
 		collector.envelopes_map.write().append(&mut env_map);
 
-		let txset = txsets_map.get(&txset_slot).expect("should return a tx set");
-		collector.txset_map.write().insert(env_slot, txset.clone());
+		let txset = txsets_map.get_with_key(&txset_slot).expect("should return a tx set");
+		collector.txset_map.write().set_with_key(env_slot, txset.clone());
 
 		collector.slot_pendinglist.write().push(env_slot);
 
-		assert!(
-			collector.envelopes_map.read().contains_key(&env_slot) &&
-				collector.txset_map.read().contains_key(&env_slot) &&
-				collector.slot_watchlist.read().contains_key(&env_slot) &&
-				collector.slot_pendinglist.read().contains(&env_slot)
-		);
+		assert!(collector.envelopes_map.read().contains_key(&env_slot));
+		assert!(collector.txset_map.read().contains_key(&env_slot));
+		assert!(collector.slot_watchlist.read().contains_key(&env_slot));
+		assert!(collector.slot_pendinglist.read().contains(&env_slot));
 
 		collector.remove_data(&env_slot);
-		assert!(
-			!collector.envelopes_map.read().contains_key(&env_slot) &&
-				!collector.txset_map.read().contains_key(&env_slot) &&
-				!collector.slot_watchlist.read().contains_key(&env_slot) &&
-				!collector.slot_pendinglist.read().contains(&env_slot)
-		);
+		assert!(!collector.envelopes_map.read().contains_key(&env_slot));
+		assert!(!collector.txset_map.read().contains_key(&env_slot));
+		assert!(!collector.slot_watchlist.read().contains_key(&env_slot));
+		assert!(!collector.slot_pendinglist.read().contains(&env_slot));
 	}
 
 	#[test]

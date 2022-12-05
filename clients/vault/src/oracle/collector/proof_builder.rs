@@ -1,6 +1,7 @@
-use crate::oracle::ScpArchiveStorage;
-use parking_lot::RwLock;
 use std::{convert::TryInto, sync::Arc};
+
+use parking_lot::RwLock;
+
 use stellar_relay_lib::{
 	sdk::{
 		compound_types::{UnlimitedVarArray, XdrArchive},
@@ -12,8 +13,8 @@ use stellar_relay_lib::{
 
 use crate::oracle::{
 	constants::{get_min_externalized_messages, MAX_SLOT_TO_REMEMBER},
-	types::EnvelopesMap,
-	ScpMessageCollector, Slot,
+	types::{EnvelopesMap, LifoMap},
+	ScpArchiveStorage, ScpMessageCollector, Slot,
 };
 
 /// The Proof of Transactions that needed to be processed
@@ -67,7 +68,7 @@ pub enum ProofStatus {
 impl ScpMessageCollector {
 	/// Returns either a list of ScpEnvelopes or a ProofStatus saying it failed to retrieve a list.
 	fn get_envelopes(&self, slot: Slot) -> Result<UnlimitedVarArray<ScpEnvelope>, ProofStatus> {
-		match self.envelopes_map().get(&slot) {
+		match self.envelopes_map().get_with_key(&slot) {
 			None => return Err(return_proper_envelopes_error(*self.last_slot_index(), slot)),
 			Some(envelopes) => {
 				// lacking envelopes
@@ -83,7 +84,7 @@ impl ScpMessageCollector {
 
 	/// Returns either a TransactionSet or a ProofStatus saying it failed to retrieve the set.
 	fn get_txset(&self, slot: Slot) -> Result<TransactionSet, ProofStatus> {
-		match self.txset_map().get(&slot).map(|set| set.clone()) {
+		match self.txset_map().get_with_key(&slot).map(|set| set.clone()) {
 			None => {
 				// If the current slot is still in the range of 'remembered' slots
 				if check_slot_position(*self.last_slot_index(), slot) {
@@ -113,6 +114,13 @@ impl ScpMessageCollector {
 			},
 			// let's get envelopes from horizon
 			ProofStatus::NoEnvelopesFound => {
+				if !self.is_public() {
+					// We can only fetch from archives if we are on public network because there are
+					// no archive nodes on testnet
+					tracing::info!("Not fetching missing envelopes from archive for slot {:?}, because on testnet", slot);
+					return
+				}
+
 				self.watch_slot(slot);
 				tracing::info!("requesting to Horizon Archive for messages of slot {}...", slot);
 
@@ -227,8 +235,17 @@ async fn get_envelopes_from_horizon_archive(
 	slot: Slot,
 ) {
 	let slot_index: u32 = slot.try_into().unwrap();
-	let scp_archive: XdrArchive<ScpHistoryEntry> =
-		ScpArchiveStorage::get_scp_archive(slot.try_into().unwrap()).await.unwrap();
+	let scp_archive_result = ScpArchiveStorage::get_scp_archive(slot.try_into().unwrap()).await;
+
+	if let Err(e) = scp_archive_result {
+		tracing::error!(
+			"Could not get SCPArchive for slot {:?} from Horizon Archive: {:?}",
+			slot_index,
+			e
+		);
+		return
+	}
+	let scp_archive: XdrArchive<ScpHistoryEntry> = scp_archive_result.unwrap();
 
 	let value = scp_archive.get_vec().into_iter().find(|&scp_entry| {
 		if let ScpHistoryEntry::V0(scp_entry_v0) = scp_entry {
@@ -245,9 +262,9 @@ async fn get_envelopes_from_horizon_archive(
 
 			let mut envelopes_map = envelopes_map_lock.write();
 
-			if let None = envelopes_map.get_mut(&slot) {
+			if let None = envelopes_map.get_with_key(&slot) {
 				tracing::info!("Adding archived SCP envelopes for slot {}", slot);
-				envelopes_map.insert(slot, vec_scp);
+				envelopes_map.set_with_key(slot, vec_scp);
 			}
 		}
 	}

@@ -1,9 +1,12 @@
-use sp_core::hexdisplay::AsBytesRef;
 use std::{
+	collections::VecDeque,
 	fs::{create_dir_all, File},
 	io::{Read, Write},
 	str::Split,
 };
+
+use sp_core::hexdisplay::AsBytesRef;
+
 use stellar_relay_lib::sdk::{
 	compound_types::{UnlimitedVarArray, XdrArchive},
 	types::{ScpEnvelope, ScpHistoryEntry, TransactionSet},
@@ -11,8 +14,8 @@ use stellar_relay_lib::sdk::{
 };
 
 use crate::oracle::{
-	storage::traits::*, EnvelopesFileHandler, EnvelopesMap, Error, Filename, SerializedData, Slot,
-	SlotEncodedMap, TxSetMap, TxSetsFileHandler,
+	constants::MAX_ITEMS_IN_QUEUE, storage::traits::*, EnvelopesFileHandler, EnvelopesMap, Error,
+	Filename, SerializedData, Slot, SlotEncodedMap, TxSetMap, TxSetsFileHandler,
 };
 
 use super::ScpArchiveStorage;
@@ -30,7 +33,11 @@ impl FileHandler<EnvelopesMap> for EnvelopesFileHandler {
 		let mut m: EnvelopesMap = EnvelopesMap::new();
 		for (key, value) in inside.into_iter() {
 			if let Ok(envelopes) = UnlimitedVarArray::<ScpEnvelope>::from_xdr(value) {
-				m.insert(key, envelopes.get_vec().to_vec());
+				m.push_back((key, envelopes.get_vec().to_vec()));
+
+				if m.len() > MAX_ITEMS_IN_QUEUE {
+					m.pop_front();
+				}
 			}
 		}
 
@@ -91,7 +98,11 @@ impl FileHandler<TxSetMap> for TxSetsFileHandler {
 
 		for (key, value) in inside.into_iter() {
 			if let Ok(set) = TransactionSet::from_xdr(value) {
-				m.insert(key, set);
+				m.push_back((key, set));
+
+				if m.len() > MAX_ITEMS_IN_QUEUE {
+					m.pop_front();
+				}
 			}
 		}
 
@@ -216,6 +227,10 @@ pub fn prepare_directories() -> Result<(), Error> {
 
 #[cfg(test)]
 mod test {
+	use std::{convert::TryFrom, fs, fs::File, io::Read, path::PathBuf};
+
+	use mockall::lazy_static;
+
 	use crate::oracle::{
 		constants::MAX_SLOTS_PER_FILE,
 		errors::Error,
@@ -223,10 +238,8 @@ mod test {
 			traits::{FileHandler, FileHandlerExt},
 			EnvelopesFileHandler, TxSetsFileHandler,
 		},
-		types::Slot,
+		types::{LifoMap, Slot},
 	};
-	use mockall::lazy_static;
-	use std::{convert::TryFrom, fs, fs::File, io::Read, path::PathBuf};
 
 	lazy_static! {
 		static ref M_SLOTS_FILE: Slot =
@@ -307,13 +320,14 @@ mod test {
 			let envelopes_map = EnvelopesFileHandler::get_map_from_archives(last_slot - 20)
 				.expect("should return envelopes map");
 
-			for (idx, slot) in envelopes_map.keys().enumerate() {
+			for (idx, (slot, envs)) in envelopes_map.iter().enumerate() {
 				let expected_slot_num =
 					first_slot + u64::try_from(idx).expect("should return u64 data type");
 				assert_eq!(slot, &expected_slot_num);
 			}
 
-			let scp_envelopes = envelopes_map.get(&last_slot).expect("should have scp envelopes");
+			let scp_envelopes =
+				envelopes_map.get_with_key(&last_slot).expect("should have scp envelopes");
 			for x in scp_envelopes {
 				assert_eq!(x.statement.slot_index, last_slot);
 			}
@@ -326,7 +340,7 @@ mod test {
 			let txsets_map = TxSetsFileHandler::get_map_from_archives(find_slot)
 				.expect("should return txsets map");
 
-			assert!(txsets_map.get(&find_slot).is_some());
+			assert!(txsets_map.get_with_key(&find_slot).is_some());
 		}
 	}
 
@@ -376,8 +390,8 @@ mod test {
 				EnvelopesFileHandler::deserialize_bytes(bytes).expect("should generate a map");
 
 			// let's remove the first_slot and last_slot in the map, so we can create a new file.
-			env_map.remove(&first_slot);
-			env_map.remove(&last_slot);
+			env_map.remove_with_key(&first_slot);
+			env_map.remove_with_key(&last_slot);
 
 			let expected_filename = format!("{}_{}", first_slot + 1, last_slot - 1);
 			let actual_filename = EnvelopesFileHandler::write_to_file(&env_map)
@@ -409,8 +423,8 @@ mod test {
 				TxSetsFileHandler::deserialize_bytes(bytes).expect("should generate a map");
 
 			// let's remove the first_slot and last_slot in the map, so we can create a new file.
-			txset_map.remove(&first_slot);
-			txset_map.remove(&last_slot);
+			txset_map.remove_with_key(&first_slot);
+			txset_map.remove_with_key(&last_slot);
 
 			let expected_filename = format!("{}_{}", first_slot + 1, last_slot - 1);
 			let actual_filename = TxSetsFileHandler::write_to_file(&txset_map)

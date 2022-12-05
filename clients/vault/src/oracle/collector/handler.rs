@@ -23,13 +23,15 @@ impl ScpMessageCollector {
 	) -> Result<(), Error> {
 		let slot = env.statement.slot_index;
 
+		tracing::info!("received envelope for slot {}", slot);
+
 		// set the last_slot_index
 		self.set_last_slot_index(slot);
 
 		// ignore if slot is not in the list
-		if !self.is_slot_relevant(&slot) {
-			return Ok(())
-		}
+		// if !self.is_slot_relevant(&slot) {
+		// 	return Ok(())
+		// }
 
 		// we are only interested with `ScpStExternalize`. Other messages are ignored.
 		if let ScpStatementPledges::ScpStExternalize(stmt) = &env.statement.pledges {
