@@ -1,5 +1,6 @@
-use crate::oracle::types::Slot;
 use stellar_relay_lib::sdk::types::Uint64;
+
+use crate::oracle::types::Slot;
 
 /// This is for `EnvelopesMap`; how many slots is accommodated per file.
 /// This is used to compare against the length of the "keys",
@@ -8,7 +9,7 @@ pub const MAX_SLOTS_PER_FILE: usize = 200;
 
 /// This is used to determine how many items the `TxSetMap` and `EnvelopesMap` can hold before
 /// dropping some.
-pub const MAX_ITEMS_IN_QUEUE: usize = 100;
+pub const MAX_ITEMS_IN_QUEUE: usize = MAX_SLOTS_PER_FILE;
 
 // the maximum distance of the selected slot from the current slot.
 // this is primarily used when deciding to move maps to a file.
