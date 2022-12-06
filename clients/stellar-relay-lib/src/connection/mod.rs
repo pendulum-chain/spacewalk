@@ -16,6 +16,8 @@ pub use overlay_connection::*;
 
 type Xdr = (u32, Vec<u8>);
 
+pub const BLOCK_INTERVAL: u32 = 6; // In average, check https://dashboard.stellar.org/ for more info
+
 use crate::node::NodeInfo;
 use substrate_stellar_sdk::{
 	types::{MessageType, StellarMessage},

@@ -1,15 +1,14 @@
 use std::{collections::HashMap, convert::TryInto, sync::Arc, time::Duration};
 
 use futures::{future::Either, stream::StreamExt, try_join, TryStreamExt};
-use governor::RateLimiter;
 use tokio::time::sleep;
 use tokio_stream::wrappers::BroadcastStream;
 
 use runtime::{
-	BtcRelayPallet, CurrencyId, Error as RuntimeError, FixedPointNumber, FixedU128, H256Le,
-	InterBtcParachain, InterBtcReplaceRequest, OraclePallet, PartialAddress, PrettyPrint,
-	RedeemPallet, RedeemRequestStatus, ReplacePallet, ReplaceRequestStatus, SecurityPallet,
-	SpacewalkParachain, StellarPublicKey, UtilFuncs, VaultId, VaultRegistryPallet, H256,
+	CurrencyId, Error as RuntimeError, FixedPointNumber, FixedU128, H256Le, OraclePallet,
+	PartialAddress, RedeemPallet, RedeemRequestStatus, ReplacePallet, ReplaceRequestStatus,
+	SecurityPallet, SpacewalkParachain, SpacewalkRedeemRequest, SpacewalkReplaceRequest,
+	StellarPublicKey, StellarRelayPallet, UtilFuncs, VaultId, VaultRegistryPallet, H256,
 };
 use service::{spawn_cancelable, Error as ServiceError, ShutdownSender};
 use wallet::StellarWallet;
@@ -33,6 +32,24 @@ pub struct Request {
 	request_type: RequestType,
 	vault_id: VaultId,
 	fee_budget: Option<u128>,
+}
+
+pub fn parachain_blocks_to_stellar_blocks_rounded_up(parachain_blocks: u32) -> Result<u32, Error> {
+	let millis = (parachain_blocks as u64)
+		.checked_mul(runtime::MILLISECS_PER_BLOCK)
+		.ok_or(Error::ArithmeticOverflow)?;
+
+	let denominator = stellar_relay::BLOCK_INTERVAL.as_millis();
+
+	let num_stellar_blocks = (millis as u128)
+		.checked_add(denominator)
+		.ok_or(Error::ArithmeticOverflow)?
+		.checked_sub(1)
+		.ok_or(Error::ArithmeticUnderflow)?
+		.checked_div(denominator)
+		.ok_or(Error::ArithmeticUnderflow)?;
+
+	Ok(num_stellar_blocks.try_into()?)
 }
 
 #[derive(Debug, Copy, Clone)]
@@ -62,13 +79,13 @@ impl Request {
 			.checked_sub(margin_parachain_blocks)
 			.ok_or(Error::ArithmeticUnderflow)?;
 
-		let bitcoin_deadline = btc_start_height
-			.checked_add(parachain_blocks_to_bitcoin_blocks_rounded_up(period)?)
+		let stellar_deadline = btc_start_height
+			.checked_add(parachain_blocks_to_stellar_blocks_rounded_up(period)?)
 			.ok_or(Error::ArithmeticOverflow)?
-			.checked_sub(parachain_blocks_to_bitcoin_blocks_rounded_up(margin_parachain_blocks)?)
+			.checked_sub(parachain_blocks_to_stellar_blocks_rounded_up(margin_parachain_blocks)?)
 			.ok_or(Error::ArithmeticUnderflow)?;
 
-		Ok(Deadline { bitcoin: bitcoin_deadline, parachain: parachain_deadline })
+		Ok(Deadline { bitcoin: stellar_deadline, parachain: parachain_deadline })
 	}
 
 	/// Constructs a Request for the given SpacewalkRedeemRequest
