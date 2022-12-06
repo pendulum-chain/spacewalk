@@ -235,7 +235,7 @@ impl IssueFilter {
 
 fn check_asset(issue_asset: CurrencyId, tx_asset: Asset) -> bool {
 	match primitives::AssetConversion::lookup(issue_asset) {
-		Ok(issue_asset) => issue_asset != tx_asset,
+		Ok(issue_asset) => issue_asset == tx_asset,
 		Err(e) => {
 			tracing::warn!("Cannot convert to asset type: {:?}", e);
 			false
