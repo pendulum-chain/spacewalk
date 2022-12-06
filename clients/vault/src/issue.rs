@@ -1,23 +1,26 @@
-use crate::{oracle::*, Error};
-use primitives::CurrencyId;
+use std::{
+	collections::HashMap, convert::TryFrom, fmt::Debug, num::TryFromIntError,
+	string::FromUtf8Error, sync::Arc,
+};
+
+use async_trait::async_trait;
+use itertools::Itertools;
+use sp_runtime::traits::{LookupError, StaticLookup};
+use tokio::sync::RwLock;
+
+use primitives::{stellar::Memo, CurrencyId};
 use runtime::{
 	CancelIssueEvent, ExecuteIssueEvent, IssueId, IssuePallet, IssueRequestsMap, RequestIssueEvent,
 	SpacewalkIssueRequest, SpacewalkParachain, StaticEvent, H256,
 };
 use service::Error as ServiceError;
-use sp_runtime::traits::{LookupError, StaticLookup};
-use std::{collections::HashMap, convert::TryFrom, fmt::Debug, string::FromUtf8Error, sync::Arc};
-
-use async_trait::async_trait;
-use itertools::Itertools;
-use primitives::stellar::Memo;
-use std::num::TryFromIntError;
 use stellar_relay_lib::sdk::{
 	types::{Int64, PaymentOp, TransactionV1Envelope},
 	Asset, PublicKey, SecretKey, Transaction, TransactionEnvelope, XdrCodec,
 };
-use tokio::sync::RwLock;
 use wallet::types::{FilterWith, TransactionFilterParam};
+
+use crate::{oracle::*, Error};
 
 fn is_vault(secret_key: &SecretKey, public_key: [u8; 32]) -> bool {
 	return public_key == *secret_key.get_public().as_binary()
@@ -211,23 +214,20 @@ pub struct IssueFilter {
 }
 
 impl IssueFilter {
-	pub fn new(vault_public_key: &PublicKey) -> Result<Self,Error> {
+	pub fn new(vault_public_key: &PublicKey) -> Result<Self, Error> {
 		let encoding = vault_public_key.to_encoding();
 		let x = std::str::from_utf8(&encoding)?;
 		Ok(IssueFilter { vault_address: format!("{}", x) })
 	}
 }
 
-
-fn check_asset(issue_asset: CurrencyId, tx_asset:Asset) -> bool {
+fn check_asset(issue_asset: CurrencyId, tx_asset: Asset) -> bool {
 	match primitives::AssetConversion::lookup(issue_asset) {
-		Ok(issue_asset) => {
-			issue_asset != tx_asset
-		}
+		Ok(issue_asset) => issue_asset != tx_asset,
 		Err(e) => {
-			tracing::warn!("Cannot convert to asset type: {:?}",e );
+			tracing::warn!("Cannot convert to asset type: {:?}", e);
 			false
-		}
+		},
 	}
 }
 
@@ -248,11 +248,10 @@ fn is_tx_relevant(
 					let d = p.destination.clone();
 					if let Ok(d_address) = std::str::from_utf8(d.to_encoding().as_slice()) {
 						if vault_address == d_address {
-							return Some(p);
+							return Some(p)
 						}
 					}
 					None
-
 				},
 				_ => None,
 			})
@@ -260,13 +259,12 @@ fn is_tx_relevant(
 
 		if payment_ops_to_vault_address.len() > 0 {
 			for payment_op in payment_ops_to_vault_address {
-
 				// todo: check also the amount?
 				let tx_amount = payment_op.amount;
 
 				// check asset
-				if check_asset(issue_asset,payment_op.asset.clone()) {
-					return true;
+				if check_asset(issue_asset, payment_op.asset.clone()) {
+					return true
 				}
 			}
 		}
@@ -298,7 +296,14 @@ impl FilterWith<TransactionFilterParam<IssueRequestsMap>> for IssueFilter {
 		// get the issue_id from the memo field of tx.
 		let issue_id = match &tx.memo {
 			None => return false,
-			Some(memo) => H256::from_slice(memo),
+			Some(memo) => {
+				// First decode the hex encoded memo to a vector of 32 bytes
+				let decoded_memo = hex::decode(memo.clone());
+				if decoded_memo.is_err() {
+					return false
+				}
+				H256::from_slice(decoded_memo.unwrap().as_slice())
+			},
 		};
 
 		// check if the issue_id is in the list.

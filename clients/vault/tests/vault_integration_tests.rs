@@ -1,9 +1,9 @@
-use std::{convert::TryInto, sync::Arc, time::Duration};
+use std::{collections::HashMap, convert::TryInto, sync::Arc, time::Duration};
 
 use async_trait::async_trait;
 use frame_support::assert_ok;
 use futures::{
-	future::{join, join3},
+	future::{join, join3, join4},
 	Future, FutureExt,
 };
 use sp_keyring::AccountKeyring;
@@ -21,7 +21,8 @@ use runtime::{
 use stellar_relay_lib::sdk::{Hash, PublicKey, SecretKey, XdrCodec};
 use vault::{
 	oracle::{create_handler, Proof, ProofExt, ProofStatus},
-	VaultIdManager,
+	service::IssueFilter,
+	Event as CancellationEvent, VaultIdManager,
 };
 use wallet::{types::Watcher, StellarWallet};
 
@@ -333,17 +334,36 @@ async fn test_automatic_issue_execution_succeeds() {
 			.await;
 		};
 
+		let slot_tx_env_map: Arc<RwLock<HashMap<u32, String>>> =
+			Arc::new(RwLock::new(HashMap::new()));
+
+		let issue_filter = IssueFilter::new(&wallet.get_public_key()).expect("Invalid filter");
+		let handler = vault::inner_create_handler(wallet.get_secret_key(), is_public_network)
+			.await
+			.expect("Failed to create handler");
+		let watcher = Arc::new(RwLock::new(handler.create_watcher()));
+		let proof_ops = Arc::new(RwLock::new(handler.proof_operations()));
+
 		let issue_set = Arc::new(RwLock::new(IssueRequestsMap::new()));
-		// let (issue_event_tx, _issue_event_rx) = mpsc::channel::<CancellationEvent>(16);
-		let service = join3(
+		let (issue_event_tx, _issue_event_rx) = mpsc::channel::<CancellationEvent>(16);
+		let service = join4(
+			vault::service::listen_for_new_transactions(
+				wallet.get_public_key(),
+				wallet.is_public_network(),
+				watcher.clone(),
+				slot_tx_env_map.clone(),
+				issue_set.clone(),
+				issue_filter,
+			),
 			vault::service::listen_for_issue_requests(
 				vault2_provider.clone(),
 				wallet.get_secret_key(),
 				issue_set.clone(),
 			),
-			vault::service::process_issue_requests(
+			vault::service::process_issues_with_proofs(
 				vault2_provider.clone(),
-				wallet.clone(),
+				proof_ops.clone(),
+				slot_tx_env_map.clone(),
 				issue_set.clone(),
 			),
 			periodically_produce_blocks(vault2_provider.clone()),
