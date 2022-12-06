@@ -27,11 +27,19 @@ mod metadata_aliases {
 			RequestIssue as RequestIssueEvent,
 		},
 		oracle::events::FeedValues as FeedValuesEvent,
+		replace::events::{
+			AcceptReplace as AcceptReplaceEvent, CancelReplace as CancelReplaceEvent,
+			ExecuteReplace as ExecuteReplaceEvent, RequestReplace as RequestReplaceEvent,
+			WithdrawReplace as WithdrawReplaceEvent,
+		},
 		runtime_types::{
 			frame_system::pallet::Error as SystemPalletError,
 			issue::pallet::Error as IssuePalletError,
 			security::types::{ErrorCode, StatusCode},
-			spacewalk_primitives::{issue::IssueRequestStatus, oracle::Key as OracleKey},
+			spacewalk_primitives::{
+				issue::IssueRequestStatus, oracle::Key as OracleKey, redeem::RedeemRequestStatus,
+				replace::ReplaceRequestStatus,
+			},
 			vault_registry::types::VaultStatus,
 		},
 		tokens::events::Endowed as EndowedEvent,
@@ -42,6 +50,14 @@ mod metadata_aliases {
 	};
 
 	use super::*;
+
+	pub type SpacewalkReplaceRequest =
+		metadata::runtime_types::spacewalk_primitives::replace::ReplaceRequest<
+			AccountId,
+			BlockNumber,
+			Balance,
+			CurrencyId,
+		>;
 
 	// pub use crate::metadata::runtime_types::spacewalk_primitives::CurrencyId;
 

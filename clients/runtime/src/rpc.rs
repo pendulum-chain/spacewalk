@@ -1067,6 +1067,12 @@ impl IssuePallet for SpacewalkParachain {
 }
 
 #[async_trait]
+pub trait ReplacePallet {}
+
+#[async_trait]
+impl ReplacePallet for SpacewalkParachain {}
+
+#[async_trait]
 pub trait StellarRelayPallet {
 	async fn is_public_network(&self) -> Result<bool, Error>;
 }

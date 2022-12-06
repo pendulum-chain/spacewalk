@@ -6,8 +6,9 @@ pub use system::{VaultIdManager, VaultService, VaultServiceConfig, ABOUT, AUTHOR
 // Used for integration test
 pub use system::inner_create_handler;
 
-pub use crate::error::Error;
+pub use crate::{cancellation::Event, error::Error};
 
+mod cancellation;
 mod error;
 mod execution;
 pub mod metrics;
@@ -18,9 +19,12 @@ mod issue;
 pub mod oracle;
 
 pub mod service {
-	pub use crate::issue::{
-		listen_for_executed_issues, listen_for_issue_cancels, listen_for_issue_requests,
-		process_issue_requests,
+	pub use crate::{
+		cancellation::{CancellationScheduler, IssueCanceller, ReplaceCanceller},
+		issue::{
+			listen_for_executed_issues, listen_for_issue_cancels, listen_for_issue_requests,
+			process_issue_requests,
+		},
 	};
 }
 
