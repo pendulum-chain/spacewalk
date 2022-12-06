@@ -10233,6 +10233,7 @@ dependencies = [
  "git-version",
  "governor",
  "hex",
+ "itertools",
  "jsonrpc-core",
  "jsonrpc-core-client",
  "lazy_static",
