@@ -271,7 +271,6 @@ async fn test_automatic_issue_execution_succeeds() {
 		)
 		.unwrap();
 		let wallet = Arc::new(wallet);
-		let public_key = wallet.get_public_key_raw();
 
 		let vault_ids = vec![vault2_id.clone()];
 		let vault_id_manager =
@@ -316,16 +315,17 @@ async fn test_automatic_issue_execution_succeeds() {
 				primitives::AssetConversion::lookup(issue.asset).expect("Asset not found");
 			let memo_hash = issue.issue_id.0;
 
-			assert_ok!(
-				wallet
-					.send_payment_to_address(
-						destination_public_key,
-						stellar_asset,
-						stroop_amount,
-						memo_hash
-					)
-					.await
-			);
+			let result = wallet
+				.send_payment_to_address(
+					destination_public_key,
+					stellar_asset,
+					stroop_amount,
+					memo_hash,
+				)
+				.await;
+			assert!(result.is_ok());
+
+			tracing::warn!("Sent payment to address. Ledger is {:?}", result.unwrap().0.ledger);
 
 			// wait for vault1 to execute this issue
 			assert_event::<ExecuteIssueEvent, _>(TIMEOUT, user_provider.clone(), move |x| {
@@ -357,7 +357,7 @@ async fn test_automatic_issue_execution_succeeds() {
 			),
 			vault::service::listen_for_issue_requests(
 				vault2_provider.clone(),
-				wallet.get_secret_key(),
+				wallet.get_public_key(),
 				issue_set.clone(),
 			),
 			vault::service::process_issues_with_proofs(
