@@ -403,10 +403,16 @@ impl VaultService {
 			Arc::new(RwLock::new(IssueRequestsMap::new()));
 		let secret_key = self.stellar_wallet.get_secret_key();
 
-		let handler =
+		let issue_filter = IssueFilter::new(secret_key.get_public())?;
+
+		let slot_tx_env_map: Arc<RwLock<HashMap<u32, String>>> =
+			Arc::new(RwLock::new(HashMap::new()));
+
+		let handler: ScpMessageHandler =
 			inner_create_handler(secret_key.clone(), self.stellar_wallet.is_public_network())
 				.await?;
 		let watcher = Arc::new(RwLock::new(handler.create_watcher()));
+		let proof_ops = Arc::new(RwLock::new(handler.proof_operations()));
 
 		tracing::info!("Starting all services...");
 		let tasks = vec![
@@ -428,8 +434,9 @@ impl VaultService {
 					self.stellar_wallet.get_public_key(),
 					self.stellar_wallet.is_public_network(),
 					watcher.clone(),
+					slot_tx_env_map.clone(),
 					issue_map.clone(),
-					IssueFilter,
+					issue_filter,
 				)),
 			),
 			(
@@ -451,6 +458,15 @@ impl VaultService {
 				"Listen for Executed Issues",
 				run(issue::listen_for_executed_issues(
 					self.spacewalk_parachain.clone(),
+					issue_map.clone(),
+				)),
+			),
+			(
+				"Execute Issues with Proof",
+				run(issue::process_issues_with_proofs(
+					self.spacewalk_parachain.clone(),
+					proof_ops.clone(),
+					slot_tx_env_map.clone(),
 					issue_map.clone(),
 				)),
 			),

@@ -13,8 +13,8 @@ use runtime::{
 	SpacewalkParachain, UtilFuncs, VaultRegistryPallet,
 };
 use stellar_relay_lib::sdk::{Hash, PublicKey, SecretKey, XdrCodec};
-use vault::oracle::{create_handler, Proof, ProofStatus};
-use wallet::{types::Watcher, StellarWallet};
+use vault::oracle::{create_handler, Proof, ProofExt, ProofStatus};
+use wallet::StellarWallet;
 
 const TIMEOUT: Duration = Duration::from_secs(90);
 
@@ -152,9 +152,6 @@ async fn test_issue_overpayment_succeeds() {
 			.await
 			.expect("Sending payment failed");
 
-		let watcher = scp_handler.create_watcher();
-		watcher.watch_slot(transaction_response.ledger as u128).await.expect("should watch slot okay");
-
 		assert!(transaction_response.successful);
 
 		tracing::info!("sleep for 10 seconds...");
@@ -165,7 +162,7 @@ async fn test_issue_overpayment_succeeds() {
 		with_timeout(
 			async {
 				loop {
-					let proof_status = scp_handler
+					let proof_status = scp_handler.proof_operations()
 						.get_proof(transaction_response.ledger as u64)
 						.await
 						.expect("Failed to get proof");
