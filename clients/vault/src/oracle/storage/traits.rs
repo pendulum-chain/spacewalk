@@ -1,13 +1,13 @@
 use sp_core::hexdisplay::AsBytesRef;
 use stellar_relay::sdk::{
+	compound_types::XdrArchive,
+	types::{ScpEnvelope, ScpHistoryEntry, TransactionHistoryEntry, TransactionSet},
 	XdrCodec,
-	compound_types::{XdrArchive},
-	types::{ScpEnvelope, ScpHistoryEntry, TransactionSet, TransactionHistoryEntry},
 };
 
 use flate2::bufread::GzDecoder;
 
-use crate::oracle::{Error, Filename, SerializedData, Slot, constants::ARCHIVE_NODE_LEDGER_BATCH};
+use crate::oracle::{constants::ARCHIVE_NODE_LEDGER_BATCH, Error, Filename, SerializedData, Slot};
 use std::{
 	fs,
 	fs::File,
@@ -82,13 +82,11 @@ pub trait FileHandler<T: Default> {
 	}
 }
 
-
-pub trait ArchiveStorage{
-
-	type T : XdrCodec;
+pub trait ArchiveStorage {
+	type T: XdrCodec;
 	const STELLAR_HISTORY_BASE_URL: &'static str;
-	const prefix_url : &'static str;
-	const prefix_filename : &'static str = "";
+	const prefix_url: &'static str;
+	const prefix_filename: &'static str = "";
 
 	fn try_gz_decode_archive_file(path: &str) -> Result<Vec<u8>, Error> {
 		let bytes = Self::read_file_xdr(path)?;

@@ -266,6 +266,8 @@ async fn _connection_handler(
 		ConnectorActions::HandleMessage(xdr) => {
 			connector.process_raw_message(xdr).await?;
 		},
+
+		ConnectorActions::Disconnect => panic!("Should disconnect"),
 	}
 
 	Ok(())
@@ -285,6 +287,12 @@ pub(crate) async fn connection_handler(
 	loop {
 		match timeout(Duration::from_secs(connector.timeout_in_secs), actions_receiver.recv()).await
 		{
+			Ok(Some(ConnectorActions::Disconnect)) => {
+				log::info!("Disconnected by dropping the TCP stream");
+				drop(w_stream);
+				return Ok(())
+			},
+
 			Ok(Some(action)) => {
 				timeout_counter = 0;
 				_connection_handler(action, &mut connector, &mut w_stream).await?;

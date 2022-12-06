@@ -18,6 +18,8 @@ pub struct StellarOverlayConnection {
 	cfg: ConnConfig,
 	/// Maximum retries for reconnection
 	max_retries: u8,
+
+	is_disconnected: bool,
 }
 
 impl StellarOverlayConnection {
@@ -34,14 +36,30 @@ impl StellarOverlayConnection {
 			local_node,
 			cfg,
 			max_retries,
+			is_disconnected: false,
 		}
 	}
 
 	pub async fn send(&self, message: StellarMessage) -> Result<(), Error> {
+		if self.is_disconnected {
+			return Err(Error::Disconnected)
+		}
 		self.actions_sender
 			.send(ConnectorActions::SendMessage(message))
 			.await
 			.map_err(Error::from)
+	}
+
+	pub async fn disconnect(&mut self) -> Result<(), Error> {
+		let result = self
+			.actions_sender
+			.send(ConnectorActions::Disconnect)
+			.await
+			.map_err(Error::from);
+		if result.is_ok() {
+			self.is_disconnected = true;
+		}
+		return result
 	}
 
 	/// Receives Stellar messages from the connection.
@@ -123,6 +141,15 @@ mod test {
 	};
 	use substrate_stellar_sdk::{network::TEST_NETWORK, types::StellarMessage, SecretKey};
 	use tokio::sync::mpsc;
+
+	fn create_node_and_conn() -> (NodeInfo, ConnConfig) {
+		let secret =
+			SecretKey::from_encoding("SBLI7RKEJAEFGLZUBSCOFJHQBPFYIIPLBCKN7WVCWT4NEG2UJEW33N73")
+				.unwrap();
+		let node_info = NodeInfo::new(19, 21, 19, "v19.1.0".to_string(), &TEST_NETWORK);
+		let cfg = ConnConfig::new("34.235.168.98", 11625, secret, 0, false, true, false);
+		(node_info, cfg)
+	}
 
 	#[test]
 	fn create_stellar_overlay_connection_works() {
@@ -227,14 +254,5 @@ mod test {
 		let stellar_overlay_connection = StellarOverlayConnection::connect(node_info, cfg).await;
 
 		assert!(stellar_overlay_connection.is_ok());
-	}
-
-	fn create_node_and_conn() -> (NodeInfo, ConnConfig) {
-		let secret =
-			SecretKey::from_encoding("SBLI7RKEJAEFGLZUBSCOFJHQBPFYIIPLBCKN7WVCWT4NEG2UJEW33N73")
-				.unwrap();
-		let node_info = NodeInfo::new(19, 21, 19, "v19.1.0".to_string(), &TEST_NETWORK);
-		let cfg = ConnConfig::new("34.235.168.98", 11625, secret, 0, false, true, false);
-		(node_info, cfg)
 	}
 }

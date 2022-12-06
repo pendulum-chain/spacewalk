@@ -36,6 +36,7 @@ pub enum ActorMessage {
 	GetScpState {
 		missed_slot: u64,
 	},
+	Disconnect,
 }
 
 /// Runs both the stellar-relay and its own.
@@ -76,6 +77,9 @@ impl ScpMessageActor {
 					.send(StellarMessage::GetScpState(missed_slot.try_into().unwrap()))
 					.await;
 			},
+			ActorMessage::Disconnect => {
+				panic!("Should disconnect from run method")
+			},
 		};
 	}
 
@@ -113,7 +117,14 @@ impl ScpMessageActor {
 				}
 				// handle message from user
 				Some(msg) = self.action_receiver.recv() => {
-						self.handle_message(msg, &overlay_conn).await;
+					match msg{
+						ActorMessage::Disconnect => {
+							overlay_conn.disconnect().await;
+						},
+						_ => {
+							self.handle_message(msg, &overlay_conn).await;
+						}
+					}
 				}
 			}
 		}
@@ -185,6 +196,10 @@ impl ScpMessageHandler {
 
 	pub fn handle_redeem_event(&self) {
 		todo!();
+	}
+
+	pub async fn disconnect(&self) -> Result<(), Error> {
+		self.action_sender.send(ActorMessage::Disconnect).await.map_err(Error::from)
 	}
 }
 
