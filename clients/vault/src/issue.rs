@@ -22,8 +22,8 @@ use wallet::types::{FilterWith, TransactionFilterParam};
 
 use crate::{oracle::*, Error};
 
-fn is_vault(secret_key: &SecretKey, public_key: [u8; 32]) -> bool {
-	return public_key == *secret_key.get_public().as_binary()
+fn is_vault(p1: &PublicKey, p2_raw: [u8; 32]) -> bool {
+	return *p1.as_binary() == p2_raw
 }
 
 async fn listen_event<T>(
@@ -32,7 +32,7 @@ async fn listen_event<T>(
 where
 	T: StaticEvent + Debug,
 {
-	let (sender, mut receiver) = tokio::sync::mpsc::channel(10);
+	let (sender, mut receiver) = tokio::sync::mpsc::channel(1);
 
 	parachain_rpc
 		.on_event::<T, _, _, _>(
@@ -60,23 +60,35 @@ where
 /// * `issues` - a map to save all the new issue requests
 pub async fn listen_for_issue_requests(
 	parachain_rpc: SpacewalkParachain,
-	vault_secret_key: SecretKey,
+	vault_public_key: PublicKey,
 	issues: Arc<RwLock<IssueRequestsMap>>,
 ) -> Result<(), ServiceError<Error>> {
-	match listen_event::<RequestIssueEvent>(&parachain_rpc).await? {
-		Some(event) => {
-			let event: RequestIssueEvent = event;
-			if is_vault(&vault_secret_key, event.vault_stellar_public_key.clone()) {
-				// let's get the IssueRequest
-				let issue_request = parachain_rpc.get_issue_request(event.issue_id).await?;
-				issues.write().await.insert(event.issue_id, issue_request);
-			}
-		},
-		None => {
-			tracing::trace!("Receiver didn't receive any Issue Request.");
-		},
-	}
-
+	// Use references to prevent 'moved closure' errors
+	let parachain_rpc = &parachain_rpc;
+	let vault_public_key = &vault_public_key;
+	let issues = &issues;
+	parachain_rpc
+		.on_event::<RequestIssueEvent, _, _, _>(
+			|event| async move {
+				tracing::info!("Received RequestIssueEvent: {:?}", event);
+				if is_vault(vault_public_key, event.vault_stellar_public_key.clone()) {
+					// let's get the IssueRequest
+					let issue_request_result =
+						parachain_rpc.get_issue_request(event.issue_id).await;
+					if let Ok(issue_request) = issue_request_result {
+						tracing::warn!("Adding issue request to issue map: {:?}", issue_request);
+						issues.write().await.insert(event.issue_id, issue_request);
+					} else {
+						tracing::error!(
+							"Failed to get issue request for issue id: {:?}",
+							event.issue_id
+						);
+					}
+				}
+			},
+			|error| tracing::error!("Error reading RequestIssueEvent: {:?}", error.to_string()),
+		)
+		.await?;
 	Ok(())
 }
 
@@ -297,8 +309,8 @@ impl FilterWith<TransactionFilterParam<IssueRequestsMap>> for IssueFilter {
 		let issue_id = match &tx.memo {
 			None => return false,
 			Some(memo) => {
-				// First decode the hex encoded memo to a vector of 32 bytes
-				let decoded_memo = hex::decode(memo.clone());
+				// First decode the base64-encoded memo to a vector of 32 bytes
+				let decoded_memo = base64::decode(memo.clone());
 				if decoded_memo.is_err() {
 					return false
 				}

@@ -461,7 +461,7 @@ impl VaultService {
 				"Listen for Issue Requests",
 				run(issue::listen_for_issue_requests(
 					self.spacewalk_parachain.clone(),
-					secret_key.clone(),
+					self.stellar_wallet.get_public_key(),
 					issue_map.clone(),
 				)),
 			),
