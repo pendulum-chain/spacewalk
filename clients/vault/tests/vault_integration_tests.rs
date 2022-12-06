@@ -20,7 +20,7 @@ use runtime::{
 };
 use stellar_relay_lib::sdk::{Hash, PublicKey, SecretKey, XdrCodec};
 use vault::{
-	oracle::{create_handler, Proof, ProofStatus},
+	oracle::{create_handler, Proof, ProofExt, ProofStatus},
 	VaultIdManager,
 };
 use wallet::{types::Watcher, StellarWallet};
@@ -196,6 +196,7 @@ async fn test_issue_overpayment_succeeds() {
 			async {
 				loop {
 					let proof_status = scp_handler
+						.proof_operations()
 						.get_proof(transaction_response.ledger as u64)
 						.await
 						.expect("Failed to get proof");

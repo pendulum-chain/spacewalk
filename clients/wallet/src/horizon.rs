@@ -3,7 +3,7 @@ use std::{collections::HashMap, convert::TryInto, str::FromStr, sync::Arc, time:
 use async_trait::async_trait;
 use parity_scale_codec::{Decode, Encode};
 use serde::{Deserialize, Deserializer};
-use substrate_stellar_sdk::{Hash, PublicKey, TransactionEnvelope, XdrCodec};
+use substrate_stellar_sdk::{Hash, PublicKey, Transaction, TransactionEnvelope, XdrCodec};
 use tokio::{sync::RwLock, time::sleep};
 
 use crate::{
@@ -319,6 +319,7 @@ impl<C: HorizonClient> HorizonFetcher<C> {
 	pub async fn fetch_horizon_and_process_new_transactions<T: Clone>(
 		&mut self,
 		watcher: Arc<RwLock<dyn Watcher>>,
+		slot_tx_env_map: Arc<RwLock<HashMap<u32, String>>>,
 		targets: Arc<RwLock<T>>,
 		filter: impl FilterWith<TransactionFilterParam<T>>,
 		last_paging_token: PagingToken,
@@ -347,6 +348,10 @@ impl<C: HorizonClient> HorizonFetcher<C> {
 				match w.watch_slot(tx.ledger.try_into().unwrap()).await {
 					Ok(_) => {
 						tracing::info!("following transaction {:?}", String::from_utf8(id.clone()));
+						slot_tx_env_map
+							.write()
+							.await
+							.insert(tx.ledger, String::from_utf8(tx.envelope_xdr).unwrap());
 					},
 					Err(e) => {
 						tracing::error!("Failed to watch transaction: {:?}", e);
@@ -363,6 +368,7 @@ pub async fn listen_for_new_transactions<T, Filter>(
 	vault_account_public_key: PublicKey,
 	is_public_network: bool,
 	watcher: Arc<RwLock<dyn Watcher>>,
+	slot_tx_env_map: Arc<RwLock<HashMap<u32, String>>>,
 	targets: Arc<RwLock<T>>,
 	filter: Filter,
 ) -> Result<(), Error>
@@ -380,6 +386,7 @@ where
 		if let Ok(new_paging_token) = fetcher
 			.fetch_horizon_and_process_new_transactions(
 				watcher.clone(),
+				slot_tx_env_map.clone(),
 				targets.clone(),
 				filter.clone(),
 				latest_paging_token,
@@ -565,6 +572,7 @@ mod tests {
 		let watcher = Arc::new(RwLock::new(watcher));
 
 		let issue_hashes = Arc::new(RwLock::new(vec![]));
+		let slot_env_map = Arc::new(RwLock::new(HashMap::new()));
 
 		let horizon_client = reqwest::Client::new();
 		let secret = SecretKey::from_encoding(SECRET).unwrap();
@@ -583,6 +591,7 @@ mod tests {
 		if let Ok(next_page) = fetcher
 			.fetch_horizon_and_process_new_transactions(
 				watcher.clone(),
+				slot_env_map.clone(),
 				issue_hashes.clone(),
 				MockFilter,
 				cursor,
@@ -600,6 +609,7 @@ mod tests {
 		fetcher
 			.fetch_horizon_and_process_new_transactions(
 				watcher.clone(),
+				slot_env_map.clone(),
 				issue_hashes.clone(),
 				MockFilter,
 				cursor,
