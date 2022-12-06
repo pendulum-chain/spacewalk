@@ -75,6 +75,24 @@ impl VaultIdManager {
 		}
 	}
 
+	// used for testing only
+	pub fn from_map(
+		spacewalk_parachain: SpacewalkParachain,
+		stellar_wallet: Arc<StellarWallet>,
+		vault_ids: Vec<VaultId>,
+	) -> Self {
+		let vault_data = vault_ids
+			.iter()
+			.map(|key| {
+				(
+					key.clone(),
+					VaultData { vault_id: key.clone(), stellar_wallet: stellar_wallet.clone() },
+				)
+			})
+			.collect();
+		Self { vault_data: Arc::new(RwLock::new(vault_data)), spacewalk_parachain, stellar_wallet }
+	}
+
 	async fn add_vault_id(&self, vault_id: VaultId) -> Result<(), Error> {
 		// TODO what is this about?
 		// tracing::info!("Adding keys from past issues...");

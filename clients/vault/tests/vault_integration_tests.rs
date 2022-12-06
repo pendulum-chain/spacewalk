@@ -2,10 +2,16 @@ use std::{convert::TryInto, sync::Arc, time::Duration};
 
 use async_trait::async_trait;
 use frame_support::assert_ok;
-use futures::{future::join, Future, FutureExt};
+use futures::{
+	future::{join, join3},
+	Future, FutureExt,
+};
 use sp_keyring::AccountKeyring;
 use sp_runtime::traits::StaticLookup;
-use tokio::{sync::RwLock, time::sleep};
+use tokio::{
+	sync::{mpsc, RwLock},
+	time::sleep,
+};
 
 use primitives::{issue::IssueRequest, H256};
 use runtime::{
@@ -13,10 +19,13 @@ use runtime::{
 	SpacewalkParachain, UtilFuncs, VaultRegistryPallet,
 };
 use stellar_relay_lib::sdk::{Hash, PublicKey, SecretKey, XdrCodec};
-use vault::oracle::{create_handler, Proof, ProofStatus};
+use vault::{
+	oracle::{create_handler, Proof, ProofStatus},
+	VaultIdManager,
+};
 use wallet::{types::Watcher, StellarWallet};
 
-const TIMEOUT: Duration = Duration::from_secs(90);
+const TIMEOUT: Duration = Duration::from_secs(60);
 
 // Be careful when changing these values because they are used in the parachain genesis config
 // and only for some combination of them, secure collateralization thresholds are set.
@@ -31,6 +40,32 @@ const DEFAULT_WRAPPED_CURRENCY: CurrencyId = CurrencyId::AlphaNum4 {
 };
 
 const STELLAR_VAULT_SECRET_KEY: &str = "SB6WHKIU2HGVBRNKNOEOQUY4GFC4ZLG5XPGWLEAHTIZXBXXYACC76VSQ";
+
+type StellarPublicKey = [u8; 32];
+
+#[async_trait]
+trait SpacewalkParachainExt {
+	async fn register_vault_with_public_key(
+		&self,
+		vault_id: &VaultId,
+		collateral: u128,
+		public_key: StellarPublicKey,
+	) -> Result<(), runtime::Error>;
+}
+
+#[async_trait]
+impl SpacewalkParachainExt for SpacewalkParachain {
+	async fn register_vault_with_public_key(
+		&self,
+		vault_id: &VaultId,
+		collateral: u128,
+		public_key: StellarPublicKey,
+	) -> Result<(), runtime::Error> {
+		self.register_public_key(public_key).await.unwrap();
+		self.register_vault(vault_id, collateral).await.unwrap();
+		Ok(())
+	}
+}
 
 async fn test_with<F, R>(execute: impl FnOnce(SubxtClient) -> F) -> R
 where
@@ -141,24 +176,19 @@ async fn test_issue_overpayment_succeeds() {
 		let destination_public_key = PublicKey::from_binary(issue.vault_stellar_public_key);
 		let stellar_asset =
 			primitives::AssetConversion::lookup(issue.asset).expect("Asset not found");
+		let memo_hash = issue.issue_id.0;
 
 		let (transaction_response, tx_envelope) = wallet
 			.send_payment_to_address(
 				destination_public_key,
 				stellar_asset,
 				stroop_amount.try_into().unwrap(),
-				issue.issue_id.0,
+				memo_hash,
 			)
 			.await
 			.expect("Sending payment failed");
 
-		let watcher = scp_handler.create_watcher();
-		watcher.watch_slot(transaction_response.ledger as u128).await.expect("should watch slot okay");
-
 		assert!(transaction_response.successful);
-
-		tracing::info!("sleep for 10 seconds...");
-		tokio::time::sleep(Duration::from_secs(10)).await;
 
 		// Loop pending proofs until it is ready
 		let mut proof: Option<Proof> = None;
@@ -217,28 +247,108 @@ async fn test_issue_overpayment_succeeds() {
 	.await;
 }
 
-type StellarPublicKey = [u8; 32];
+#[tokio::test(flavor = "multi_thread")]
+async fn test_automatic_issue_execution_succeeds() {
+	test_with_vault(|client, vault1_id, _vault1_provider| async move {
+		let relayer_provider = setup_provider(client.clone(), AccountKeyring::Bob).await;
+		let vault1_provider = setup_provider(client.clone(), AccountKeyring::Charlie).await;
+		let vault2_provider = setup_provider(client.clone(), AccountKeyring::Eve).await;
 
-#[async_trait]
-trait SpacewalkParachainExt {
-	async fn register_vault_with_public_key(
-		&self,
-		vault_id: &VaultId,
-		collateral: u128,
-		public_key: StellarPublicKey,
-	) -> Result<(), runtime::Error>;
-}
+		// This conversion is necessary for now because subxt uses newer versions of the sp_xxx
+		// dependencies
+		let eve_account =
+			subxt::ext::sp_runtime::AccountId32::from(AccountKeyring::Eve.to_raw_public());
+		let vault2_id =
+			VaultId::new(eve_account, DEFAULT_TESTING_CURRENCY, DEFAULT_WRAPPED_CURRENCY);
+		let user_provider = setup_provider(client.clone(), AccountKeyring::Dave).await;
 
-#[async_trait]
-impl SpacewalkParachainExt for SpacewalkParachain {
-	async fn register_vault_with_public_key(
-		&self,
-		vault_id: &VaultId,
-		collateral: u128,
-		public_key: StellarPublicKey,
-	) -> Result<(), runtime::Error> {
-		self.register_public_key(public_key).await.unwrap();
-		self.register_vault(vault_id, collateral).await.unwrap();
-		Ok(())
-	}
+		let is_public_network = false;
+		let wallet = StellarWallet::from_secret_encoded(
+			&STELLAR_VAULT_SECRET_KEY.to_string(),
+			is_public_network,
+		)
+		.unwrap();
+		let wallet = Arc::new(wallet);
+		let public_key = wallet.get_public_key_raw();
+
+		let vault_ids = vec![vault2_id.clone()];
+		let vault_id_manager =
+			VaultIdManager::from_map(vault2_provider.clone(), wallet.clone(), vault_ids);
+
+		let issue_amount = 100000;
+		let vault_collateral = get_required_vault_collateral_for_issue(
+			&vault1_provider,
+			issue_amount,
+			vault1_id.collateral_currency(),
+		)
+		.await;
+
+		assert_ok!(
+			vault1_provider
+				.register_vault_with_public_key(
+					&vault1_id,
+					vault_collateral,
+					wallet.get_public_key_raw(),
+				)
+				.await
+		);
+		assert_ok!(
+			vault2_provider
+				.register_vault_with_public_key(
+					&vault2_id,
+					vault_collateral,
+					wallet.get_public_key_raw(),
+				)
+				.await
+		);
+
+		let fut_user = async {
+			// The account of the 'user_provider' is used to request a new issue that
+			// has to be executed by vault1
+			let issue = user_provider.request_issue(issue_amount, &vault1_id).await.unwrap();
+			tracing::warn!("REQUESTED ISSUE: {:?}", issue);
+
+			let destination_public_key = PublicKey::from_binary(issue.vault_stellar_public_key);
+			let stroop_amount = (issue.amount + issue.fee) as i64;
+			let stellar_asset =
+				primitives::AssetConversion::lookup(issue.asset).expect("Asset not found");
+			let memo_hash = issue.issue_id.0;
+
+			assert_ok!(
+				wallet
+					.send_payment_to_address(
+						destination_public_key,
+						stellar_asset,
+						stroop_amount,
+						memo_hash
+					)
+					.await
+			);
+
+			// wait for vault1 to execute this issue
+			assert_event::<ExecuteIssueEvent, _>(TIMEOUT, user_provider.clone(), move |x| {
+				x.vault_id == vault1_id.clone()
+			})
+			.await;
+		};
+
+		let issue_set = Arc::new(RwLock::new(IssueRequestsMap::new()));
+		// let (issue_event_tx, _issue_event_rx) = mpsc::channel::<CancellationEvent>(16);
+		let service = join3(
+			vault::service::listen_for_issue_requests(
+				vault2_provider.clone(),
+				wallet.get_secret_key(),
+				issue_set.clone(),
+			),
+			vault::service::process_issue_requests(
+				vault2_provider.clone(),
+				wallet.clone(),
+				issue_set.clone(),
+			),
+			periodically_produce_blocks(vault2_provider.clone()),
+		);
+
+		test_service(service, fut_user).await;
+	})
+	.await;
 }

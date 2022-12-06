@@ -3,6 +3,8 @@
 use std::time::Duration;
 
 pub use system::{VaultIdManager, VaultService, VaultServiceConfig, ABOUT, AUTHORS, NAME, VERSION};
+// Used for integration test
+pub use system::inner_create_handler;
 
 pub use crate::error::Error;
 
@@ -12,13 +14,15 @@ pub mod metrics;
 pub mod process;
 mod system;
 
-// Used for integration test
-pub use system::inner_create_handler;
-
 mod issue;
 pub mod oracle;
 
-pub mod service {}
+pub mod service {
+	pub use crate::issue::{
+		listen_for_executed_issues, listen_for_issue_cancels, listen_for_issue_requests,
+		process_issue_requests,
+	};
+}
 
 /// At startup we wait until a new block has arrived before we start event listeners.
 /// This constant defines the rate at which we check whether the chain height has increased.

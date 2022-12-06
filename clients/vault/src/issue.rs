@@ -7,7 +7,10 @@ use service::Error as ServiceError;
 use std::{fmt::Debug, string::FromUtf8Error, sync::Arc};
 use stellar_relay_lib::sdk::SecretKey;
 use tokio::sync::RwLock;
-use wallet::types::{FilterWith, TransactionFilterParam};
+use wallet::{
+	types::{FilterWith, TransactionFilterParam},
+	StellarWallet,
+};
 
 fn is_vault(secret_key: &SecretKey, public_key: [u8; 32]) -> bool {
 	return public_key == *secret_key.get_public().as_binary()
@@ -95,6 +98,15 @@ pub async fn listen_for_executed_issues(
 		},
 	}
 
+	Ok(())
+}
+
+pub async fn process_issue_requests(
+	parachain_rpc: SpacewalkParachain,
+	wallet: Arc<StellarWallet>,
+	issues: Arc<RwLock<IssueRequestsMap>>,
+) -> Result<(), ServiceError<Error>> {
+	// TODO: implement this
 	Ok(())
 }
 
