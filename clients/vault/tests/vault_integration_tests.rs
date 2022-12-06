@@ -478,7 +478,13 @@ async fn test_issue_overpayment_succeeds() {
 			.await
 			.expect("Sending payment failed");
 
+		let watcher = scp_handler.create_watcher();
+		watcher.watch_slot(transaction_response.ledger as u128).await.expect("should watch slot okay");
+
 		assert!(transaction_response.successful);
+
+		tracing::info!("sleep for 10 seconds...");
+		tokio::time::sleep(Duration::from_secs(10)).await;
 
 		// Loop pending proofs until it is ready
 		let mut proof: Option<Proof> = None;

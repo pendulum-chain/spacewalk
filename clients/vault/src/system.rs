@@ -437,6 +437,7 @@ impl VaultService {
 		let (issue_event_tx, issue_event_rx) = mpsc::channel::<Event>(32);
 
 		tracing::info!("Starting all services...");
+		println!("CARLA CARLA STARTING ALL SERVICES...");
 		let tasks = vec![
 			(
 				"VaultId Registration Listener",
