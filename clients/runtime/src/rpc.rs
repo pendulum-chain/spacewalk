@@ -1067,10 +1067,204 @@ impl IssuePallet for SpacewalkParachain {
 }
 
 #[async_trait]
-pub trait ReplacePallet {}
+pub trait ReplacePallet {
+	/// Request the replacement of a new vault ownership
+	///
+	/// # Arguments
+	///
+	/// * `&self` - sender of the transaction
+	/// * `amount` - amount of [Wrapped]
+	async fn request_replace(&self, vault_id: &VaultId, amount: u128) -> Result<(), Error>;
+
+	/// Withdraw a request of vault replacement
+	///
+	/// # Arguments
+	///
+	/// * `&self` - sender of the transaction: the old vault
+	/// * `amount` - the amount of [Wrapped] to replace
+	async fn withdraw_replace(&self, vault_id: &VaultId, amount: u128) -> Result<(), Error>;
+
+	/// Accept request of vault replacement
+	///
+	/// # Arguments
+	///
+	/// * `&self` - the initiator of the transaction: the new vault
+	/// * `old_vault` - the vault to replace
+	/// * `amount_btc` - the amount of [Wrapped] to replace
+	/// * `collateral` - the collateral for replacement
+	/// * `btc_address` - the address to send funds to
+	async fn accept_replace(
+		&self,
+		new_vault: &VaultId,
+		old_vault: &VaultId,
+		amount_btc: u128,
+		collateral: u128,
+		stellar_address: StellarPublicKey,
+	) -> Result<(), Error>;
+	//
+	/// Execute vault replacement
+	///
+	/// # Arguments
+	///
+	/// * `&self` - sender of the transaction: the old vault
+	/// * `replace_id` - the ID of the replacement request
+	/// * 'merkle_proof' - the merkle root of the block
+	/// * `raw_tx` - the transaction id in bytes
+	async fn execute_replace(
+		&self,
+		replace_id: H256,
+		tx_envelope_xdr_encoded: &[u8],
+		envelopes_xdr_encoded: &[u8],
+		tx_set_xdr_encoded: &[u8],
+	) -> Result<(), Error>;
+
+	/// Cancel vault replacement
+	///
+	/// # Arguments
+	///
+	/// * `&self` - sender of the transaction: the new vault
+	/// * `replace_id` - the ID of the replacement request
+	async fn cancel_replace(&self, replace_id: H256) -> Result<(), Error>;
+
+	/// Get all replace requests accepted by the given vault
+	async fn get_new_vault_replace_requests(
+		&self,
+		account_id: AccountId,
+	) -> Result<Vec<(H256, SpacewalkReplaceRequest)>, Error>;
+
+	/// Get all replace requests made by the given vault
+	async fn get_old_vault_replace_requests(
+		&self,
+		account_id: AccountId,
+	) -> Result<Vec<(H256, SpacewalkReplaceRequest)>, Error>;
+
+	/// Get the time difference in number of blocks between when a replace
+	/// request is created and required completion time by a vault
+	async fn get_replace_period(&self) -> Result<u32, Error>;
+
+	/// Get a replace request from storage
+	async fn get_replace_request(&self, replace_id: H256)
+		-> Result<SpacewalkReplaceRequest, Error>;
+
+	/// Gets the minimum btc amount for replace requests
+	async fn get_replace_dust_amount(&self) -> Result<u128, Error>;
+}
 
 #[async_trait]
-impl ReplacePallet for SpacewalkParachain {}
+impl ReplacePallet for SpacewalkParachain {
+	async fn request_replace(&self, vault_id: &VaultId, amount: u128) -> Result<(), Error> {
+		self.with_retry(
+			metadata::tx().replace().request_replace(vault_id.currencies.clone(), amount),
+		)
+		.await?;
+		Ok(())
+	}
+
+	async fn withdraw_replace(&self, vault_id: &VaultId, amount: u128) -> Result<(), Error> {
+		self.with_retry(
+			metadata::tx().replace().withdraw_replace(vault_id.currencies.clone(), amount),
+		)
+		.await?;
+		Ok(())
+	}
+
+	async fn accept_replace(
+		&self,
+		new_vault: &VaultId,
+		old_vault: &VaultId,
+		amount_btc: u128,
+		collateral: u128,
+		stellar_address: StellarPublicKey,
+	) -> Result<(), Error> {
+		self.with_retry(metadata::tx().replace().accept_replace(
+			new_vault.currencies.clone(),
+			old_vault.clone(),
+			amount_btc,
+			collateral,
+			stellar_address,
+		))
+		.await?;
+		Ok(())
+	}
+
+	async fn execute_replace(
+		&self,
+		replace_id: H256,
+		tx_envelope_xdr_encoded: &[u8],
+		envelopes_xdr_encoded: &[u8],
+		tx_set_xdr_encoded: &[u8],
+	) -> Result<(), Error> {
+		self.with_retry(metadata::tx().replace().execute_replace(
+			replace_id,
+			tx_envelope_xdr_encoded.to_vec(),
+			envelopes_xdr_encoded.to_vec(),
+			tx_set_xdr_encoded.to_vec(),
+		))
+		.await?;
+		Ok(())
+	}
+
+	async fn cancel_replace(&self, replace_id: H256) -> Result<(), Error> {
+		self.with_retry(metadata::tx().replace().cancel_replace(replace_id)).await?;
+		Ok(())
+	}
+
+	/// Get all replace requests accepted by the given vault
+	async fn get_new_vault_replace_requests(
+		&self,
+		account_id: AccountId,
+	) -> Result<Vec<(H256, SpacewalkReplaceRequest)>, Error> {
+		let head = self.get_finalized_block_hash().await?;
+		let result: Vec<H256> = self
+			.api
+			.rpc()
+			.request("replace_getNewVaultReplaceRequests", rpc_params![account_id, head])
+			.await?;
+		join_all(result.into_iter().map(|key| async move {
+			self.get_replace_request(key).await.map(|value| (key, value))
+		}))
+		.await
+		.into_iter()
+		.collect()
+	}
+
+	/// Get all replace requests made by the given vault
+	async fn get_old_vault_replace_requests(
+		&self,
+		account_id: AccountId,
+	) -> Result<Vec<(H256, SpacewalkReplaceRequest)>, Error> {
+		let head = self.get_finalized_block_hash().await?;
+		let result: Vec<H256> = self
+			.api
+			.rpc()
+			.request("replace_getOldVaultReplaceRequests", rpc_params![account_id, head])
+			.await?;
+		join_all(result.into_iter().map(|key| async move {
+			self.get_replace_request(key).await.map(|value| (key, value))
+		}))
+		.await
+		.into_iter()
+		.collect()
+	}
+
+	async fn get_replace_period(&self) -> Result<u32, Error> {
+		self.query_finalized_or_error(metadata::storage().replace().replace_period())
+			.await
+	}
+
+	async fn get_replace_request(
+		&self,
+		replace_id: H256,
+	) -> Result<SpacewalkReplaceRequest, Error> {
+		self.query_finalized_or_error(metadata::storage().replace().replace_requests(&replace_id))
+			.await
+	}
+
+	async fn get_replace_dust_amount(&self) -> Result<u128, Error> {
+		self.query_finalized_or_error(metadata::storage().replace().replace_btc_dust_value())
+			.await
+	}
+}
 
 #[async_trait]
 pub trait StellarRelayPallet {
