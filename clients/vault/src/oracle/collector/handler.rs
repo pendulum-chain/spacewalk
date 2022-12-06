@@ -57,12 +57,12 @@ impl ScpMessageCollector {
 	}
 
 	/// handles incoming TransactionSet.
-	pub(crate) fn handle_tx_set(&mut self, set: &TransactionSet) {
+	pub(crate) fn handle_tx_set(&mut self, set: TransactionSet) {
 		// compute the tx_set_hash, to check what slot this set belongs too.
-		let tx_set_hash = compute_non_generic_tx_set_content_hash(set);
+		let tx_set_hash = compute_non_generic_tx_set_content_hash(&set);
 
 		// Let's flag this as pending.
-		self.insert_to_pending_list(&tx_set_hash);
+		self.insert_to_pending_list(&tx_set_hash,set);
 	}
 }
 

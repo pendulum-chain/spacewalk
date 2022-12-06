@@ -107,7 +107,7 @@ impl ScpMessageActor {
 									.await?;
 							}
 							StellarMessage::TxSet(set) => {
-								self.collector.handle_tx_set(&set);
+								self.collector.handle_tx_set(set);
 							}
 							_ => {}
 						},
@@ -176,6 +176,7 @@ impl ScpMessageHandler {
 	}
 
 	pub async fn get_proof(&self, slot: Slot) -> Result<ProofStatus, Error> {
+		tracing::info!("CARLA CARLA CARLA TIME TO GETPROOF OF SLOT: {:?}",slot);
 		let (sender, receiver) = oneshot::channel();
 		self.action_sender.send(ActorMessage::GetProof { slot, sender }).await?;
 

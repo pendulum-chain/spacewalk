@@ -133,12 +133,13 @@ impl ScpMessageCollector {
 
 	/// Once a TransactionSet is found, remove that entry in `txset_and_slot` map and then
 	/// add to pending list.
-	pub(super) fn insert_to_pending_list(&mut self, txset_hash: &TxSetHash) {
+	pub(super) fn insert_to_pending_list(&mut self, txset_hash: &TxSetHash, tx_set: TransactionSet) {
 		match self.txset_and_slot_map.write().remove_by_txset_hash(txset_hash) {
 			None => {
 				tracing::warn!("WARNING! tx_set_hash: {:?} has no slot.", txset_hash);
 			},
 			Some(slot) => {
+				self.txset_map.write().set_with_key(slot, tx_set);
 				self.slot_pendinglist.write().push(slot);
 			},
 		}
@@ -189,6 +190,7 @@ impl ScpMessageCollector {
 #[cfg(test)]
 mod test {
 	use stellar_relay_lib::sdk::network::{PUBLIC_NETWORK, TEST_NETWORK};
+	use stellar_relay_lib::sdk::types::TransactionSet;
 
 	use crate::oracle::{
 		collector::ScpMessageCollector, traits::FileHandler, types::LifoMap, EnvelopesFileHandler,
@@ -282,14 +284,19 @@ mod test {
 	fn insert_to_pending_list_works() {
 		let mut collector = ScpMessageCollector::new(false);
 
+		let slot = 42867088;
+		let txsets_map =
+			TxSetsFileHandler::get_map_from_archives(slot).expect("should return a map");
+		let value = txsets_map.get_with_key(&slot).expect("should return a transaction set");
+
 		collector.save_txset_hash_and_slot([0; 32], 0);
 		collector.save_txset_hash_and_slot([1; 32], 1);
 
-		collector.insert_to_pending_list(&[1; 32]);
+		collector.insert_to_pending_list(&[1; 32], value.clone());
 		assert!(collector.slot_pendinglist.read().contains(&1));
 
 		// trying to insert a non-existing txset_hash
-		collector.insert_to_pending_list(&[2; 32]);
+		collector.insert_to_pending_list(&[2; 32], value.clone());
 		assert!(!collector.slot_pendinglist.read().contains(&2));
 	}
 

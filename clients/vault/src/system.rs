@@ -409,6 +409,7 @@ impl VaultService {
 		let watcher = Arc::new(RwLock::new(handler.create_watcher()));
 
 		tracing::info!("Starting all services...");
+		println!("CARLA CARLA STARTING ALL SERVICES...");
 		let tasks = vec![
 			(
 				"VaultId Registration Listener",
