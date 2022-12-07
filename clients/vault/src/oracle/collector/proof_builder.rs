@@ -195,7 +195,7 @@ impl ScpMessageCollector {
 		};
 
 		// a proof has been found. Remove this slot.
-		self.remove_data(&slot);
+		// self.remove_data(&slot);
 
 		ProofStatus::Proof(Proof { slot, envelopes, tx_set })
 	}
