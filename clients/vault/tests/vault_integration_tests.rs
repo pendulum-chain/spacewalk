@@ -16,7 +16,7 @@ use tokio::{
 use primitives::{issue::IssueRequest, H256};
 use runtime::{
 	integration::*, types::*, CurrencyId::Token, FixedPointNumber, FixedU128, IssuePallet,
-	SpacewalkParachain, UtilFuncs, VaultRegistryPallet,
+	SpacewalkParachain, SudoPallet, UtilFuncs, VaultRegistryPallet,
 };
 use stellar_relay_lib::sdk::{Hash, PublicKey, SecretKey, XdrCodec};
 use vault::{
@@ -370,6 +370,72 @@ async fn test_automatic_issue_execution_succeeds() {
 		);
 
 		test_service(service, fut_user).await;
+	})
+	.await;
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn test_shutdown() {
+	test_with(|client| async move {
+		let sudo_provider = setup_provider(client.clone(), AccountKeyring::Alice).await;
+		let user_provider = setup_provider(client.clone(), AccountKeyring::Dave).await;
+
+		// This conversion is necessary for now because subxt uses newer versions of the sp_xxx
+		// dependencies
+		let alice_account =
+			subxt::ext::sp_runtime::AccountId32::from(AccountKeyring::Alice.to_raw_public());
+		let sudo_vault_id =
+			VaultId::new(alice_account, DEFAULT_TESTING_CURRENCY, DEFAULT_WRAPPED_CURRENCY);
+
+		let is_public_network = false;
+		let wallet = StellarWallet::from_secret_encoded(
+			&STELLAR_VAULT_SECRET_KEY.to_string(),
+			is_public_network,
+		)
+		.unwrap();
+		let wallet = Arc::new(wallet);
+
+		// register a vault..
+		let issue_amount = 100000;
+		let vault_collateral = get_required_vault_collateral_for_issue(
+			&sudo_provider,
+			issue_amount,
+			sudo_vault_id.collateral_currency(),
+		)
+		.await;
+
+		assert_ok!(
+			sudo_provider
+				.register_vault_with_public_key(
+					&sudo_vault_id,
+					vault_collateral,
+					wallet.get_public_key_raw(),
+				)
+				.await
+		);
+
+		// shutdown chain..
+		assert_ok!(
+			sudo_provider
+				.sudo(EncodedCall::Security(SecurityCall::set_parachain_status {
+					status_code: StatusCode::Shutdown,
+				}))
+				.await
+		);
+
+		// request issue should fail:
+		let result = user_provider.request_issue(issue_amount, &sudo_vault_id).await.unwrap_err();
+		assert!(result.is_parachain_shutdown_error());
+
+		// restore parachain status and check that we can issue now
+		assert_ok!(
+			sudo_provider
+				.sudo(EncodedCall::Security(SecurityCall::set_parachain_status {
+					status_code: StatusCode::Running,
+				}))
+				.await
+		);
+		assert_ok!(user_provider.request_issue(issue_amount, &sudo_vault_id).await);
 	})
 	.await;
 }
