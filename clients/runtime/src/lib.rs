@@ -6,7 +6,6 @@ pub use subxt::{
 	events::StaticEvent,
 	ext::sp_core::{crypto::Ss58Codec, sr25519::Pair},
 };
-
 use subxt::{
 	ext::sp_runtime::{generic::Header, traits::BlakeTwo256, MultiSignature},
 	subxt, Config,
@@ -17,8 +16,8 @@ pub use error::{Error, SubxtError};
 pub use retry::{notify_retry, RetryPolicy};
 pub use rpc::{
 	CollateralBalancesPallet, IssuePallet, OraclePallet, ReplacePallet, SecurityPallet,
-	SpacewalkParachain, StellarRelayPallet, UtilFuncs, VaultRegistryPallet, DEFAULT_SPEC_NAME,
-	SS58_PREFIX,
+	SpacewalkParachain, StellarRelayPallet, SudoPallet, UtilFuncs, VaultRegistryPallet,
+	DEFAULT_SPEC_NAME, SS58_PREFIX,
 };
 pub use shutdown::{ShutdownReceiver, ShutdownSender};
 pub use types::*;

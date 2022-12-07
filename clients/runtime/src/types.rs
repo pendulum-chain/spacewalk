@@ -35,12 +35,16 @@ mod metadata_aliases {
 		runtime_types::{
 			frame_system::pallet::Error as SystemPalletError,
 			issue::pallet::Error as IssuePalletError,
-			security::types::{ErrorCode, StatusCode},
+			redeem::pallet::Error as RedeemPalletError,
+			security::{
+				pallet::{Call as SecurityCall, Error as SecurityPalletError},
+				types::{ErrorCode, StatusCode},
+			},
 			spacewalk_primitives::{
 				issue::IssueRequestStatus, oracle::Key as OracleKey, redeem::RedeemRequestStatus,
 				replace::ReplaceRequestStatus,
 			},
-			vault_registry::types::VaultStatus,
+			vault_registry::{pallet::Error as VaultRegistryPalletError, types::VaultStatus},
 		},
 		tokens::events::Endowed as EndowedEvent,
 		vault_registry::events::{
@@ -84,6 +88,9 @@ mod metadata_aliases {
 		metadata::runtime_types::spacewalk_primitives::VaultCurrencyPair<CurrencyId>;
 
 	pub type IssueRequestsMap = HashMap<IssueId, SpacewalkIssueRequest>;
+
+	#[cfg(feature = "standalone-metadata")]
+	pub type EncodedCall = metadata::runtime_types::spacewalk_runtime_standalone::RuntimeCall;
 }
 
 pub trait PrettyPrint {

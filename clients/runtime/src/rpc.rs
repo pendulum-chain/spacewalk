@@ -1,6 +1,7 @@
 use std::{future::Future, ops::RangeInclusive, sync::Arc, time::Duration};
 
 use async_trait::async_trait;
+use codec::Encode;
 use futures::{future::join_all, stream::StreamExt, FutureExt, SinkExt};
 use jsonrpsee::core::{client::Client, JsonValue};
 use subxt::{
@@ -1276,5 +1277,102 @@ impl StellarRelayPallet for SpacewalkParachain {
 	async fn is_public_network(&self) -> Result<bool, Error> {
 		self.query_finalized_or_error(metadata::storage().stellar_relay().is_public_network())
 			.await
+	}
+}
+
+#[async_trait]
+pub trait SudoPallet {
+	async fn sudo(&self, call: EncodedCall) -> Result<(), Error>;
+	async fn set_storage<V: Encode + Send + Sync>(
+		&self,
+		module: &str,
+		key: &str,
+		value: V,
+	) -> Result<(), Error>;
+	async fn set_redeem_period(&self, period: BlockNumber) -> Result<(), Error>;
+	async fn set_parachain_confirmations(&self, value: BlockNumber) -> Result<(), Error>;
+	async fn set_issue_period(&self, period: u32) -> Result<(), Error>;
+	async fn insert_authorized_oracle(
+		&self,
+		account_id: AccountId,
+		name: String,
+	) -> Result<(), Error>;
+	async fn set_replace_period(&self, period: u32) -> Result<(), Error>;
+}
+
+#[cfg(feature = "standalone-metadata")]
+#[async_trait]
+impl SudoPallet for SpacewalkParachain {
+	async fn sudo(&self, call: EncodedCall) -> Result<(), Error> {
+		self.with_retry(metadata::tx().sudo().sudo(call)).await?;
+		Ok(())
+	}
+
+	async fn set_storage<V: Encode + Send + Sync>(
+		&self,
+		module: &str,
+		key: &str,
+		value: V,
+	) -> Result<(), Error> {
+		let module = subxt::ext::sp_core::twox_128(module.as_bytes());
+		let item = subxt::ext::sp_core::twox_128(key.as_bytes());
+
+		Ok(self
+			.sudo(EncodedCall::System(
+				metadata::runtime_types::frame_system::pallet::Call::set_storage {
+					items: vec![([module, item].concat(), value.encode())],
+				},
+			))
+			.await?)
+	}
+
+	async fn set_redeem_period(&self, period: BlockNumber) -> Result<(), Error> {
+		Ok(self
+			.sudo(EncodedCall::Redeem(
+				metadata::runtime_types::redeem::pallet::Call::set_redeem_period { period },
+			))
+			.await?)
+	}
+
+	/// Set the global security parameter for stable parachain confirmations
+	async fn set_parachain_confirmations(&self, value: BlockNumber) -> Result<(), Error> {
+		self.set_storage(crate::BTC_RELAY_MODULE, crate::STABLE_PARACHAIN_CONFIRMATIONS, value)
+			.await
+	}
+
+	async fn set_issue_period(&self, period: u32) -> Result<(), Error> {
+		Ok(self
+			.sudo(EncodedCall::Issue(
+				metadata::runtime_types::issue::pallet::Call::set_issue_period { period },
+			))
+			.await?)
+	}
+
+	/// Adds a new authorized oracle with the given name and the signer's AccountId
+	///
+	/// # Arguments
+	/// * `account_id` - The Account ID of the new oracle
+	/// * `name` - The name of the new oracle
+	async fn insert_authorized_oracle(
+		&self,
+		account_id: AccountId,
+		name: String,
+	) -> Result<(), Error> {
+		Ok(self
+			.sudo(EncodedCall::Oracle(
+				metadata::runtime_types::oracle::pallet::Call::insert_authorized_oracle {
+					account_id,
+					name: name.into_bytes(),
+				},
+			))
+			.await?)
+	}
+
+	async fn set_replace_period(&self, period: u32) -> Result<(), Error> {
+		Ok(self
+			.sudo(EncodedCall::Replace(
+				metadata::runtime_types::replace::pallet::Call::set_replace_period { period },
+			))
+			.await?)
 	}
 }
