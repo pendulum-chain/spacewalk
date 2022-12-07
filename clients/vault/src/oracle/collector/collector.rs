@@ -159,9 +159,7 @@ impl ScpMessageCollector {
 	pub(super) fn is_pending_proof(&mut self, slot: Slot) -> bool {
 		let env_map_read = self.envelopes_map.read();
 		let envs = match env_map_read.get_with_key(&slot) {
-			None => {
-				return false
-			},
+			None => return false,
 			Some(envs) => envs,
 		};
 
@@ -190,7 +188,7 @@ impl ScpMessageCollector {
 // delete/remove functions
 impl ScpMessageCollector {
 	/// Clear out data related to this slot.
-	pub(super) fn remove_data(&mut self, slot: &Slot) {
+	pub(crate) fn remove_data(&mut self, slot: &Slot) {
 		self.slot_watchlist.write().remove(slot);
 		self.envelopes_map.write().remove_with_key(slot);
 		self.txset_map.write().remove_with_key(slot);

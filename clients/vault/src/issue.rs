@@ -37,7 +37,7 @@ where
 	parachain_rpc
 		.on_event::<T, _, _, _>(
 			|event| async {
-				tracing::info!("Received Event: {:?}", event);
+				tracing::info!("TESTING TESTING TESTING Received Event: {:?}", event);
 
 				if let Err(e) = sender.send(event).await {
 					tracing::error!("failed to send issue id: {:?}", e);
@@ -157,8 +157,10 @@ pub async fn process_issues_with_proofs(
 	issues: Arc<RwLock<IssueRequestsMap>>,
 ) -> Result<(), ServiceError<Error>> {
 	loop {
-		let ops_clone = proof_ops.read().await;
-		match ops_clone.get_pending_proofs().await {
+		let ops_clone = proof_ops.clone();
+		let ops_read = proof_ops.read().await;
+
+		match ops_read.get_pending_proofs().await {
 			Ok(proofs) => {
 				tracing::warn!("Pending proofs: {:?}", proofs.len());
 				tokio::spawn(execute_issue(
@@ -166,6 +168,7 @@ pub async fn process_issues_with_proofs(
 					slot_tx_env_map.clone(),
 					issues.clone(),
 					proofs,
+					ops_clone,
 				));
 			},
 			Err(e) => {
@@ -188,6 +191,7 @@ pub async fn execute_issue(
 	slot_tx_env_map: Arc<RwLock<HashMap<u32, String>>>,
 	issues: Arc<RwLock<IssueRequestsMap>>,
 	proofs: Vec<Proof>,
+	proof_ops: Arc<RwLock<dyn ProofExt>>,
 ) -> Result<(), ServiceError<Error>> {
 	let slot_tx_map = slot_tx_env_map.read().await;
 	for proof in proofs {
@@ -216,7 +220,9 @@ pub async fn execute_issue(
 			.execute_issue(issue_id, tx_env.as_bytes(), envelopes.as_bytes(), tx_set.as_bytes())
 			.await
 		{
-			Ok(_) => {},
+			Ok(_) => {
+				proof_ops.read().await.processed_proof(proof.slot()).await;
+			},
 			Err(err) if err.is_issue_completed() => {
 				tracing::info!("Issue #{} has been completed", issue_id);
 			},

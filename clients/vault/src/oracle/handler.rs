@@ -43,6 +43,10 @@ pub enum ActorMessage {
 	GetSlotWatchList {
 		sender: oneshot::Sender<Vec<Slot>>,
 	},
+
+	RemoveData {
+		slot: Slot,
+	},
 }
 
 /// Runs both the stellar-relay and its own.
@@ -85,6 +89,9 @@ impl ScpMessageActor {
 			},
 			ActorMessage::GetSlotWatchList { sender } => {
 				let _ = sender.send(self.collector.get_slot_watch_list());
+			},
+			ActorMessage::RemoveData { slot } => {
+				self.collector.remove_data(&slot);
 			},
 		};
 	}
@@ -230,6 +237,16 @@ impl ProofExt for OracleProofOps {
 		self.action_sender.send(ActorMessage::GetPendingProofs { sender }).await?;
 
 		receiver.await.map_err(Error::from)
+	}
+
+	async fn processed_proof(&self, slot: Slot) {
+		if let Err(e) = self.action_sender.send(ActorMessage::RemoveData { slot }).await {
+			tracing::warn!(
+				"Failed to send RemoveData action for slot {}: {:?}",
+				slot,
+				e.to_string()
+			);
+		}
 	}
 }
 
