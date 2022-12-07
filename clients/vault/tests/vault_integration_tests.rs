@@ -251,17 +251,7 @@ async fn test_issue_overpayment_succeeds() {
 
 #[tokio::test(flavor = "multi_thread")]
 async fn test_automatic_issue_execution_succeeds() {
-	test_with_vault(|client, vault1_id, _vault1_provider| async move {
-		let relayer_provider = setup_provider(client.clone(), AccountKeyring::Bob).await;
-		let vault1_provider = setup_provider(client.clone(), AccountKeyring::Charlie).await;
-		let vault2_provider = setup_provider(client.clone(), AccountKeyring::Eve).await;
-
-		// This conversion is necessary for now because subxt uses newer versions of the sp_xxx
-		// dependencies
-		let eve_account =
-			subxt::ext::sp_runtime::AccountId32::from(AccountKeyring::Eve.to_raw_public());
-		let vault2_id =
-			VaultId::new(eve_account, DEFAULT_TESTING_CURRENCY, DEFAULT_WRAPPED_CURRENCY);
+	test_with_vault(|client, vault_id, vault_provider| async move {
 		let user_provider = setup_provider(client.clone(), AccountKeyring::Dave).await;
 
 		let is_public_network = false;
@@ -272,9 +262,119 @@ async fn test_automatic_issue_execution_succeeds() {
 		.unwrap();
 		let wallet = Arc::new(wallet);
 
-		let vault_ids = vec![vault2_id.clone()];
-		let vault_id_manager =
-			VaultIdManager::from_map(vault2_provider.clone(), wallet.clone(), vault_ids);
+		let issue_amount = 100000;
+		let vault_collateral = get_required_vault_collateral_for_issue(
+			&vault_provider,
+			issue_amount,
+			vault_id.collateral_currency(),
+		)
+		.await;
+
+		assert_ok!(
+			vault_provider
+				.register_vault_with_public_key(
+					&vault_id,
+					vault_collateral,
+					wallet.get_public_key_raw(),
+				)
+				.await
+		);
+
+		let fut_user = async {
+			// The account of the 'user_provider' is used to request a new issue that
+			// has to be executed by the vault_provider
+			let issue = user_provider.request_issue(issue_amount, &vault_id).await.unwrap();
+			tracing::warn!("TESTING TESTING TESTING REQUESTED ISSUE: {:?}", issue.issue_id);
+
+			let destination_public_key = PublicKey::from_binary(issue.vault_stellar_public_key);
+			let stroop_amount = (issue.amount + issue.fee) as i64;
+			let stellar_asset =
+				primitives::AssetConversion::lookup(issue.asset).expect("Asset not found");
+			let memo_hash = issue.issue_id.0;
+
+			let result = wallet
+				.send_payment_to_address(
+					destination_public_key,
+					stellar_asset,
+					stroop_amount,
+					memo_hash,
+				)
+				.await;
+			assert!(result.is_ok());
+
+			tracing::warn!("Sent payment to address. Ledger is {:?}", result.unwrap().0.ledger);
+
+			// wait for vault2 to execute this issue
+			assert_event::<ExecuteIssueEvent, _>(TIMEOUT, user_provider.clone(), move |x| {
+				x.vault_id == vault_id.clone()
+			})
+			.await;
+		};
+
+		let slot_tx_env_map: Arc<RwLock<HashMap<u32, String>>> =
+			Arc::new(RwLock::new(HashMap::new()));
+
+		let issue_filter = IssueFilter::new(&wallet.get_public_key()).expect("Invalid filter");
+		let handler = vault::inner_create_handler(wallet.get_secret_key(), is_public_network)
+			.await
+			.expect("Failed to create handler");
+		let watcher = Arc::new(RwLock::new(handler.create_watcher()));
+		let proof_ops = Arc::new(RwLock::new(handler.proof_operations()));
+
+		let issue_set = Arc::new(RwLock::new(IssueRequestsMap::new()));
+		let (issue_event_tx, _issue_event_rx) = mpsc::channel::<CancellationEvent>(16);
+		let service = join4(
+			vault::service::listen_for_new_transactions(
+				wallet.get_public_key(),
+				wallet.is_public_network(),
+				watcher.clone(),
+				slot_tx_env_map.clone(),
+				issue_set.clone(),
+				issue_filter,
+			),
+			vault::service::listen_for_issue_requests(
+				vault_provider.clone(),
+				wallet.get_public_key(),
+				issue_set.clone(),
+			),
+			vault::service::process_issues_with_proofs(
+				vault_provider.clone(),
+				proof_ops.clone(),
+				slot_tx_env_map.clone(),
+				issue_set.clone(),
+			),
+			periodically_produce_blocks(vault_provider.clone()),
+		);
+
+		test_service(service, fut_user).await;
+	})
+	.await;
+}
+
+/// This test demonstrates that a vault can execute an issue request even if it is not the original
+/// vault that was requested to execute the issue. This is possible because anyone can execute an
+/// issue request. (However, only the requester of the issue can execute payments with insufficient
+/// amounts).
+#[tokio::test(flavor = "multi_thread")]
+async fn test_automatic_issue_execution_succeeds_for_other_vault() {
+	test_with_vault(|client, vault1_id, vault1_provider| async move {
+		let user_provider = setup_provider(client.clone(), AccountKeyring::Dave).await;
+		let vault2_provider = setup_provider(client.clone(), AccountKeyring::Eve).await;
+
+		// This conversion is necessary for now because subxt uses newer versions of the sp_xxx
+		// dependencies
+		let eve_account =
+			subxt::ext::sp_runtime::AccountId32::from(AccountKeyring::Eve.to_raw_public());
+		let vault2_id =
+			VaultId::new(eve_account, DEFAULT_TESTING_CURRENCY, DEFAULT_WRAPPED_CURRENCY);
+
+		let is_public_network = false;
+		let wallet = StellarWallet::from_secret_encoded(
+			&STELLAR_VAULT_SECRET_KEY.to_string(),
+			is_public_network,
+		)
+		.unwrap();
+		let wallet = Arc::new(wallet);
 
 		let issue_amount = 100000;
 		let vault_collateral = get_required_vault_collateral_for_issue(
@@ -327,7 +427,7 @@ async fn test_automatic_issue_execution_succeeds() {
 
 			tracing::warn!("Sent payment to address. Ledger is {:?}", result.unwrap().0.ledger);
 
-			// wait for vault1 to execute this issue
+			// wait for vault2 to execute this issue
 			assert_event::<ExecuteIssueEvent, _>(TIMEOUT, user_provider.clone(), move |x| {
 				x.vault_id == vault1_id.clone()
 			})
