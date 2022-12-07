@@ -18,6 +18,7 @@ use runtime::{
 	integration::*, types::*, CurrencyId::Token, FixedPointNumber, FixedU128, IssuePallet,
 	SpacewalkParachain, SudoPallet, UtilFuncs, VaultRegistryPallet,
 };
+use serial_test::serial;
 use stellar_relay_lib::sdk::{Hash, PublicKey, SecretKey, XdrCodec};
 use vault::{
 	oracle::{create_handler, Proof, ProofExt, ProofStatus},
@@ -132,9 +133,9 @@ where
 }
 
 #[tokio::test(flavor = "multi_thread")]
+#[serial]
 async fn test_issue_overpayment_succeeds() {
 	test_with_vault(|client, vault_id, vault_provider| async move {
-		let relayer_provider = setup_provider(client.clone(), AccountKeyring::Bob).await;
 		let user_provider = setup_provider(client.clone(), AccountKeyring::Dave).await;
 
 		let is_public_network = false;
@@ -250,6 +251,7 @@ async fn test_issue_overpayment_succeeds() {
 }
 
 #[tokio::test(flavor = "multi_thread")]
+#[serial]
 async fn test_automatic_issue_execution_succeeds() {
 	test_with_vault(|client, vault_id, vault_provider| async move {
 		let user_provider = setup_provider(client.clone(), AccountKeyring::Dave).await;
@@ -356,6 +358,7 @@ async fn test_automatic_issue_execution_succeeds() {
 /// issue request. (However, only the requester of the issue can execute payments with insufficient
 /// amounts).
 #[tokio::test(flavor = "multi_thread")]
+#[serial]
 async fn test_automatic_issue_execution_succeeds_for_other_vault() {
 	test_with_vault(|client, vault1_id, vault1_provider| async move {
 		let user_provider = setup_provider(client.clone(), AccountKeyring::Dave).await;
@@ -475,6 +478,7 @@ async fn test_automatic_issue_execution_succeeds_for_other_vault() {
 }
 
 #[tokio::test(flavor = "multi_thread")]
+#[serial]
 async fn test_shutdown() {
 	test_with(|client| async move {
 		let sudo_provider = setup_provider(client.clone(), AccountKeyring::Alice).await;

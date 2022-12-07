@@ -7666,6 +7666,32 @@ dependencies = [
 ]
 
 [[package]]
+name = "serial_test"
+version = "0.9.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "92761393ee4dc3ff8f4af487bd58f4307c9329bbedea02cac0089ad9c411e153"
+dependencies = [
+ "dashmap",
+ "futures 0.3.25",
+ "lazy_static",
+ "log",
+ "parking_lot 0.12.1",
+ "serial_test_derive",
+]
+
+[[package]]
+name = "serial_test_derive"
+version = "0.9.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "4b6f5d1c3087fb119617cff2966fe3808a80e5eb59a8c1601d5994d66f4346a5"
+dependencies = [
+ "proc-macro-error",
+ "proc-macro2",
+ "quote",
+ "syn",
+]
+
+[[package]]
 name = "service"
 version = "1.1.0"
 dependencies = [
@@ -10246,6 +10272,7 @@ dependencies = [
  "scale-info",
  "serde",
  "serde_json",
+ "serial_test",
  "service",
  "sha2 0.8.2",
  "signal-hook",
@@ -11097,126 +11124,6 @@ dependencies = [
 ]
 
 [[patch.unused]]
-name = "kusama-runtime"
-version = "0.9.31"
-source = "git+https://github.com/paritytech//polkadot?branch=release-v0.9.31#32dd0c9cfcd1a1bda821747f6ab334f0e3577558"
-
-[[patch.unused]]
-name = "pallet-xcm"
-version = "0.9.31"
-source = "git+https://github.com/paritytech//polkadot?branch=release-v0.9.31#32dd0c9cfcd1a1bda821747f6ab334f0e3577558"
-
-[[patch.unused]]
-name = "polkadot-cli"
-version = "0.9.31"
-source = "git+https://github.com/paritytech//polkadot?branch=release-v0.9.31#32dd0c9cfcd1a1bda821747f6ab334f0e3577558"
-
-[[patch.unused]]
-name = "polkadot-client"
-version = "0.9.31"
-source = "git+https://github.com/paritytech//polkadot?branch=release-v0.9.31#32dd0c9cfcd1a1bda821747f6ab334f0e3577558"
-
-[[patch.unused]]
-name = "polkadot-core-primitives"
-version = "0.9.31"
-source = "git+https://github.com/paritytech//polkadot?branch=release-v0.9.31#32dd0c9cfcd1a1bda821747f6ab334f0e3577558"
-
-[[patch.unused]]
-name = "polkadot-node-core-av-store"
-version = "0.9.31"
-source = "git+https://github.com/paritytech//polkadot?branch=release-v0.9.31#32dd0c9cfcd1a1bda821747f6ab334f0e3577558"
-
-[[patch.unused]]
-name = "polkadot-node-core-pvf"
-version = "0.9.31"
-source = "git+https://github.com/paritytech//polkadot?branch=release-v0.9.31#32dd0c9cfcd1a1bda821747f6ab334f0e3577558"
-
-[[patch.unused]]
-name = "polkadot-node-network-protocol"
-version = "0.9.31"
-source = "git+https://github.com/paritytech//polkadot?branch=release-v0.9.31#32dd0c9cfcd1a1bda821747f6ab334f0e3577558"
-
-[[patch.unused]]
-name = "polkadot-node-primitives"
-version = "0.9.31"
-source = "git+https://github.com/paritytech//polkadot?branch=release-v0.9.31#32dd0c9cfcd1a1bda821747f6ab334f0e3577558"
-
-[[patch.unused]]
-name = "polkadot-node-subsystem"
-version = "0.9.31"
-source = "git+https://github.com/paritytech//polkadot?branch=release-v0.9.31#32dd0c9cfcd1a1bda821747f6ab334f0e3577558"
-
-[[patch.unused]]
-name = "polkadot-node-subsystem-util"
-version = "0.9.31"
-source = "git+https://github.com/paritytech//polkadot?branch=release-v0.9.31#32dd0c9cfcd1a1bda821747f6ab334f0e3577558"
-
-[[patch.unused]]
-name = "polkadot-overseer"
-version = "0.9.31"
-source = "git+https://github.com/paritytech//polkadot?branch=release-v0.9.31#32dd0c9cfcd1a1bda821747f6ab334f0e3577558"
-
-[[patch.unused]]
-name = "polkadot-parachain"
-version = "0.9.31"
-source = "git+https://github.com/paritytech//polkadot?branch=release-v0.9.31#32dd0c9cfcd1a1bda821747f6ab334f0e3577558"
-
-[[patch.unused]]
-name = "polkadot-primitives"
-version = "0.9.31"
-source = "git+https://github.com/paritytech//polkadot?branch=release-v0.9.31#32dd0c9cfcd1a1bda821747f6ab334f0e3577558"
-
-[[patch.unused]]
-name = "polkadot-runtime"
-version = "0.9.31"
-source = "git+https://github.com/paritytech//polkadot?branch=release-v0.9.31#32dd0c9cfcd1a1bda821747f6ab334f0e3577558"
-
-[[patch.unused]]
-name = "polkadot-runtime-common"
-version = "0.9.31"
-source = "git+https://github.com/paritytech//polkadot?branch=release-v0.9.31#32dd0c9cfcd1a1bda821747f6ab334f0e3577558"
-
-[[patch.unused]]
-name = "polkadot-runtime-parachains"
-version = "0.9.31"
-source = "git+https://github.com/paritytech//polkadot?branch=release-v0.9.31#32dd0c9cfcd1a1bda821747f6ab334f0e3577558"
-
-[[patch.unused]]
-name = "polkadot-service"
-version = "0.9.31"
-source = "git+https://github.com/paritytech//polkadot?branch=release-v0.9.31#32dd0c9cfcd1a1bda821747f6ab334f0e3577558"
-
-[[patch.unused]]
-name = "polkadot-statement-table"
-version = "0.9.31"
-source = "git+https://github.com/paritytech//polkadot?branch=release-v0.9.31#32dd0c9cfcd1a1bda821747f6ab334f0e3577558"
-
-[[patch.unused]]
-name = "rococo-runtime"
-version = "0.9.31"
-source = "git+https://github.com/paritytech//polkadot?branch=release-v0.9.31#32dd0c9cfcd1a1bda821747f6ab334f0e3577558"
-
-[[patch.unused]]
-name = "westend-runtime"
-version = "0.9.31"
-source = "git+https://github.com/paritytech//polkadot?branch=release-v0.9.31#32dd0c9cfcd1a1bda821747f6ab334f0e3577558"
-
-[[patch.unused]]
-name = "xcm-builder"
-version = "0.9.31"
-source = "git+https://github.com/paritytech//polkadot?branch=release-v0.9.31#32dd0c9cfcd1a1bda821747f6ab334f0e3577558"
-
-[[patch.unused]]
-name = "xcm-executor"
-version = "0.9.31"
-source = "git+https://github.com/paritytech//polkadot?branch=release-v0.9.31#32dd0c9cfcd1a1bda821747f6ab334f0e3577558"
-
-[[patch.unused]]
-name = "xcm-simulator"
-version = "0.9.31"
-source = "git+https://github.com/paritytech//polkadot?branch=release-v0.9.31#32dd0c9cfcd1a1bda821747f6ab334f0e3577558"
-
-[[patch.unused]]
 name = "beefy-gadget"
 version = "4.0.0-dev"
 source = "git+https://github.com/paritytech//substrate?branch=polkadot-jsonrpsee-v0.9.31#2af8d593224fecd988589b5126dcd158e6d0d2da"
@@ -11485,6 +11392,126 @@ source = "git+https://github.com/paritytech//substrate?branch=polkadot-jsonrpsee
 name = "try-runtime-cli"
 version = "0.10.0-dev"
 source = "git+https://github.com/paritytech//substrate?branch=polkadot-jsonrpsee-v0.9.31#2af8d593224fecd988589b5126dcd158e6d0d2da"
+
+[[patch.unused]]
+name = "kusama-runtime"
+version = "0.9.31"
+source = "git+https://github.com/paritytech//polkadot?branch=release-v0.9.31#32dd0c9cfcd1a1bda821747f6ab334f0e3577558"
+
+[[patch.unused]]
+name = "pallet-xcm"
+version = "0.9.31"
+source = "git+https://github.com/paritytech//polkadot?branch=release-v0.9.31#32dd0c9cfcd1a1bda821747f6ab334f0e3577558"
+
+[[patch.unused]]
+name = "polkadot-cli"
+version = "0.9.31"
+source = "git+https://github.com/paritytech//polkadot?branch=release-v0.9.31#32dd0c9cfcd1a1bda821747f6ab334f0e3577558"
+
+[[patch.unused]]
+name = "polkadot-client"
+version = "0.9.31"
+source = "git+https://github.com/paritytech//polkadot?branch=release-v0.9.31#32dd0c9cfcd1a1bda821747f6ab334f0e3577558"
+
+[[patch.unused]]
+name = "polkadot-core-primitives"
+version = "0.9.31"
+source = "git+https://github.com/paritytech//polkadot?branch=release-v0.9.31#32dd0c9cfcd1a1bda821747f6ab334f0e3577558"
+
+[[patch.unused]]
+name = "polkadot-node-core-av-store"
+version = "0.9.31"
+source = "git+https://github.com/paritytech//polkadot?branch=release-v0.9.31#32dd0c9cfcd1a1bda821747f6ab334f0e3577558"
+
+[[patch.unused]]
+name = "polkadot-node-core-pvf"
+version = "0.9.31"
+source = "git+https://github.com/paritytech//polkadot?branch=release-v0.9.31#32dd0c9cfcd1a1bda821747f6ab334f0e3577558"
+
+[[patch.unused]]
+name = "polkadot-node-network-protocol"
+version = "0.9.31"
+source = "git+https://github.com/paritytech//polkadot?branch=release-v0.9.31#32dd0c9cfcd1a1bda821747f6ab334f0e3577558"
+
+[[patch.unused]]
+name = "polkadot-node-primitives"
+version = "0.9.31"
+source = "git+https://github.com/paritytech//polkadot?branch=release-v0.9.31#32dd0c9cfcd1a1bda821747f6ab334f0e3577558"
+
+[[patch.unused]]
+name = "polkadot-node-subsystem"
+version = "0.9.31"
+source = "git+https://github.com/paritytech//polkadot?branch=release-v0.9.31#32dd0c9cfcd1a1bda821747f6ab334f0e3577558"
+
+[[patch.unused]]
+name = "polkadot-node-subsystem-util"
+version = "0.9.31"
+source = "git+https://github.com/paritytech//polkadot?branch=release-v0.9.31#32dd0c9cfcd1a1bda821747f6ab334f0e3577558"
+
+[[patch.unused]]
+name = "polkadot-overseer"
+version = "0.9.31"
+source = "git+https://github.com/paritytech//polkadot?branch=release-v0.9.31#32dd0c9cfcd1a1bda821747f6ab334f0e3577558"
+
+[[patch.unused]]
+name = "polkadot-parachain"
+version = "0.9.31"
+source = "git+https://github.com/paritytech//polkadot?branch=release-v0.9.31#32dd0c9cfcd1a1bda821747f6ab334f0e3577558"
+
+[[patch.unused]]
+name = "polkadot-primitives"
+version = "0.9.31"
+source = "git+https://github.com/paritytech//polkadot?branch=release-v0.9.31#32dd0c9cfcd1a1bda821747f6ab334f0e3577558"
+
+[[patch.unused]]
+name = "polkadot-runtime"
+version = "0.9.31"
+source = "git+https://github.com/paritytech//polkadot?branch=release-v0.9.31#32dd0c9cfcd1a1bda821747f6ab334f0e3577558"
+
+[[patch.unused]]
+name = "polkadot-runtime-common"
+version = "0.9.31"
+source = "git+https://github.com/paritytech//polkadot?branch=release-v0.9.31#32dd0c9cfcd1a1bda821747f6ab334f0e3577558"
+
+[[patch.unused]]
+name = "polkadot-runtime-parachains"
+version = "0.9.31"
+source = "git+https://github.com/paritytech//polkadot?branch=release-v0.9.31#32dd0c9cfcd1a1bda821747f6ab334f0e3577558"
+
+[[patch.unused]]
+name = "polkadot-service"
+version = "0.9.31"
+source = "git+https://github.com/paritytech//polkadot?branch=release-v0.9.31#32dd0c9cfcd1a1bda821747f6ab334f0e3577558"
+
+[[patch.unused]]
+name = "polkadot-statement-table"
+version = "0.9.31"
+source = "git+https://github.com/paritytech//polkadot?branch=release-v0.9.31#32dd0c9cfcd1a1bda821747f6ab334f0e3577558"
+
+[[patch.unused]]
+name = "rococo-runtime"
+version = "0.9.31"
+source = "git+https://github.com/paritytech//polkadot?branch=release-v0.9.31#32dd0c9cfcd1a1bda821747f6ab334f0e3577558"
+
+[[patch.unused]]
+name = "westend-runtime"
+version = "0.9.31"
+source = "git+https://github.com/paritytech//polkadot?branch=release-v0.9.31#32dd0c9cfcd1a1bda821747f6ab334f0e3577558"
+
+[[patch.unused]]
+name = "xcm-builder"
+version = "0.9.31"
+source = "git+https://github.com/paritytech//polkadot?branch=release-v0.9.31#32dd0c9cfcd1a1bda821747f6ab334f0e3577558"
+
+[[patch.unused]]
+name = "xcm-executor"
+version = "0.9.31"
+source = "git+https://github.com/paritytech//polkadot?branch=release-v0.9.31#32dd0c9cfcd1a1bda821747f6ab334f0e3577558"
+
+[[patch.unused]]
+name = "xcm-simulator"
+version = "0.9.31"
+source = "git+https://github.com/paritytech//polkadot?branch=release-v0.9.31#32dd0c9cfcd1a1bda821747f6ab334f0e3577558"
 
 [[patch.unused]]
 name = "cumulus-client-cli"
