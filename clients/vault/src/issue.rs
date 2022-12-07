@@ -1,6 +1,6 @@
 use std::{
 	collections::HashMap, convert::TryFrom, fmt::Debug, num::TryFromIntError,
-	string::FromUtf8Error, sync::Arc,
+	string::FromUtf8Error, sync::Arc, time::Duration,
 };
 
 use async_trait::async_trait;
@@ -160,6 +160,7 @@ pub async fn process_issues_with_proofs(
 		let ops_clone = proof_ops.read().await;
 		match ops_clone.get_pending_proofs().await {
 			Ok(proofs) => {
+				tracing::warn!("Pending proofs: {:?}", proofs.len());
 				tokio::spawn(execute_issue(
 					parachain_rpc.clone(),
 					slot_tx_env_map.clone(),
@@ -171,6 +172,8 @@ pub async fn process_issues_with_proofs(
 				tracing::warn!("no proofs found just yet: {:?}", e);
 			},
 		}
+
+		tokio::time::sleep(Duration::from_secs(5)).await;
 	}
 }
 
