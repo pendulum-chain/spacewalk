@@ -6,7 +6,10 @@ use sp_core::H256;
 use sp_runtime::{traits::One, FixedPointNumber};
 use sp_std::prelude::*;
 
-use currency::getters::{get_relay_chain_currency_id as get_collateral_currency_id, *};
+use currency::{
+	getters::{get_relay_chain_currency_id as get_collateral_currency_id, *},
+	testing_utils::get_wrapped_currency_id,
+};
 use oracle::Pallet as Oracle;
 use primitives::{CurrencyId, VaultCurrencyPair, VaultId};
 use security::Pallet as Security;
@@ -22,18 +25,6 @@ use vault_registry::{types::DefaultVaultCurrencyPair, Pallet as VaultRegistry};
 use crate::Pallet as Issue;
 
 use super::*;
-
-pub fn get_wrapped_currency_id() -> CurrencyId {
-	// Return some wrapped currency id for convenience in tests
-	let default_wrapped_currency: CurrencyId = CurrencyId::AlphaNum4 {
-		code: *b"USDC",
-		issuer: [
-			20, 209, 150, 49, 176, 55, 23, 217, 171, 154, 54, 110, 16, 50, 30, 226, 102, 231, 46,
-			199, 108, 171, 97, 144, 240, 161, 51, 109, 72, 34, 159, 139,
-		],
-	};
-	default_wrapped_currency
-}
 
 fn deposit_tokens<T: crate::Config>(
 	currency_id: CurrencyId,

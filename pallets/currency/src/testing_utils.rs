@@ -1,5 +1,6 @@
 use primitives::{CurrencyId, CurrencyId::Token, DOT, INTR};
 
+// These constants best are set to match the definitions in the testchain's runtime
 pub const DEFAULT_COLLATERAL_CURRENCY: CurrencyId = Token(DOT);
 pub const DEFAULT_NATIVE_CURRENCY: CurrencyId = Token(INTR);
 

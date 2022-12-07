@@ -85,5 +85,6 @@ runtime-benchmarks = [
     "frame-system/runtime-benchmarks",
     "orml-tokens",
     "orml-traits",
+    "currency/testing-utils"
 ]
 try-runtime = ["frame-support/try-runtime"]
