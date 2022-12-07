@@ -13,6 +13,9 @@ use sp_runtime::{
 	FixedPointNumber,
 };
 
+pub use currency::testing_utils::{
+	DEFAULT_COLLATERAL_CURRENCY, DEFAULT_NATIVE_CURRENCY, DEFAULT_WRAPPED_CURRENCY,
+};
 use primitives::VaultId;
 pub use primitives::{CurrencyId, CurrencyId::Token, TokenSymbol::*};
 
@@ -88,9 +91,9 @@ impl frame_system::Config for Test {
 }
 
 parameter_types! {
-	pub const GetNativeCurrencyId: CurrencyId = Token(INTR);
-	pub const GetRelayChainCurrencyId: CurrencyId = Token(DOT);
-	pub const GetWrappedCurrencyId: CurrencyId = Token(IBTC);
+	pub const GetNativeCurrencyId: CurrencyId = DEFAULT_NATIVE_CURRENCY;
+	pub const GetRelayChainCurrencyId: CurrencyId = DEFAULT_COLLATERAL_CURRENCY;
+	pub const GetWrappedCurrencyId: CurrencyId = DEFAULT_WRAPPED_CURRENCY;
 	pub const MaxLocks: u32 = 50;
 }
 
