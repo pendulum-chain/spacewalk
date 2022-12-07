@@ -12,7 +12,12 @@ use sp_runtime::{
 	traits::{BlakeTwo256, IdentityLookup, One, Zero},
 };
 
-use currency::Amount;
+pub use currency::{
+	testing_utils::{
+		DEFAULT_COLLATERAL_CURRENCY, DEFAULT_NATIVE_CURRENCY, DEFAULT_WRAPPED_CURRENCY,
+	},
+	Amount,
+};
 pub use primitives::{CurrencyId, CurrencyId::Token, TokenSymbol::*};
 use primitives::{VaultCurrencyPair, VaultId};
 
@@ -94,14 +99,9 @@ impl frame_system::Config for Test {
 	type MaxConsumers = frame_support::traits::ConstU32<16>;
 }
 
-pub const DEFAULT_COLLATERAL_CURRENCY: CurrencyId = Token(DOT);
-pub const DEFAULT_NATIVE_CURRENCY: CurrencyId = Token(INTR);
-pub const DEFAULT_WRAPPED_CURRENCY: CurrencyId = Token(IBTC);
-
 parameter_types! {
 	pub const GetCollateralCurrencyId: CurrencyId = DEFAULT_COLLATERAL_CURRENCY;
 	pub const GetNativeCurrencyId: CurrencyId = DEFAULT_NATIVE_CURRENCY;
-	pub const GetWrappedCurrencyId: CurrencyId = DEFAULT_WRAPPED_CURRENCY;
 	pub const MaxLocks: u32 = 50;
 }
 
@@ -336,8 +336,8 @@ impl ExtBuilder {
 	pub fn build() -> sp_io::TestExternalities {
 		ExtBuilder::build_with(orml_tokens::GenesisConfig::<Test> {
 			balances: vec![
-				(OLD_VAULT.account_id, Token(DOT), OLD_VAULT_BALANCE),
-				(NEW_VAULT.account_id, Token(DOT), NEW_VAULT_BALANCE),
+				(OLD_VAULT.account_id, DEFAULT_COLLATERAL_CURRENCY, OLD_VAULT_BALANCE),
+				(NEW_VAULT.account_id, DEFAULT_COLLATERAL_CURRENCY, NEW_VAULT_BALANCE),
 			],
 		})
 	}

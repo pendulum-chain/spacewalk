@@ -6,7 +6,10 @@ use sp_core::H256;
 use sp_runtime::{traits::One, FixedPointNumber};
 use sp_std::prelude::*;
 
-use currency::getters::{get_relay_chain_currency_id as get_collateral_currency_id, *};
+use currency::{
+	getters::{get_relay_chain_currency_id as get_collateral_currency_id, *},
+	testing_utils::get_wrapped_currency_id,
+};
 use oracle::{OracleKey, Pallet as Oracle};
 use primitives::{CurrencyId, VaultCurrencyPair, VaultId};
 use security::Pallet as Security;
@@ -30,13 +33,13 @@ use super::*;
 type UnsignedFixedPoint<T> = <T as currency::Config>::UnsignedFixedPoint;
 
 fn wrapped<T: crate::Config>(amount: u32) -> Amount<T> {
-	Amount::new(amount.into(), get_wrapped_currency_id::<T>())
+	Amount::new(amount.into(), get_wrapped_currency_id())
 }
 
 fn get_currency_pair<T: crate::Config>() -> DefaultVaultCurrencyPair<T> {
 	VaultCurrencyPair {
 		collateral: get_collateral_currency_id::<T>(),
-		wrapped: get_wrapped_currency_id::<T>(),
+		wrapped: get_wrapped_currency_id(),
 	}
 }
 
@@ -68,7 +71,7 @@ fn initialize_oracle<T: crate::Config>() {
 				UnsignedFixedPoint::<T>::checked_from_rational(1, 1).unwrap(),
 			),
 			(
-				OracleKey::ExchangeRate(get_wrapped_currency_id::<T>()),
+				OracleKey::ExchangeRate(get_wrapped_currency_id()),
 				UnsignedFixedPoint::<T>::checked_from_rational(1, 1).unwrap(),
 			),
 			(
@@ -90,7 +93,7 @@ fn test_request<T: crate::Config>(
 		period: Default::default(),
 		accept_time: Default::default(),
 		amount: Default::default(),
-		asset: get_wrapped_currency_id::<T>(),
+		asset: get_wrapped_currency_id(),
 		griefing_collateral: Default::default(),
 		collateral: Default::default(),
 		status: Default::default(),
@@ -99,11 +102,7 @@ fn test_request<T: crate::Config>(
 }
 
 fn get_vault_id<T: crate::Config>(name: &'static str) -> DefaultVaultId<T> {
-	VaultId::new(
-		account(name, 0, 0),
-		get_collateral_currency_id::<T>(),
-		get_wrapped_currency_id::<T>(),
-	)
+	VaultId::new(account(name, 0, 0), get_collateral_currency_id::<T>(), get_wrapped_currency_id())
 }
 
 fn register_public_key<T: crate::Config>(vault_id: DefaultVaultId<T>) {
@@ -121,7 +120,7 @@ benchmarks! {
 		initialize_oracle::<T>();
 		let vault_id = get_vault_id::<T>("Vault");
 		mint_collateral::<T>(&vault_id.account_id, (1u32 << 31).into());
-		let amount = Replace::<T>::dust_value(get_wrapped_currency_id::<T>()).amount() + 1000u32.into();
+		let amount = Replace::<T>::dust_value(get_wrapped_currency_id()).amount() + 1000u32.into();
 
 		register_public_key::<T>(vault_id.clone());
 
@@ -164,7 +163,7 @@ benchmarks! {
 		let old_vault_id = get_vault_id::<T>("OldVault");
 		mint_collateral::<T>(&old_vault_id.account_id, (1u32 << 31).into());
 		mint_collateral::<T>(&new_vault_id.account_id, (1u32 << 31).into());
-		let dust_value =  Replace::<T>::dust_value(get_wrapped_currency_id::<T>());
+		let dust_value =  Replace::<T>::dust_value(get_wrapped_currency_id());
 		let amount = dust_value.checked_add(&wrapped(100u32)).unwrap();
 		let griefing = 1000u32.into();
 
