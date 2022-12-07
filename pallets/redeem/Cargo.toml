@@ -83,5 +83,6 @@ runtime-benchmarks = [
     "frame-system/runtime-benchmarks",
     "orml-tokens",
     "orml-traits",
-    "stellar-relay/testing-utils"
+    "stellar-relay/testing-utils",
+    "currency/testing-utils"
 ]

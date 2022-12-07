@@ -1,22 +1,29 @@
-use crate as redeem;
-use crate::{Config, Error};
-use currency::Amount;
 use frame_support::{
 	assert_ok, parameter_types,
 	traits::{ConstU32, Everything, GenesisBuild},
 	PalletId,
 };
 use mocktopus::{macros::mockable, mocking::clear_mocks};
-pub use oracle::{CurrencyId, OracleKey};
 use orml_traits::parameter_type_with_key;
-pub use primitives::{CurrencyId::Token, TokenSymbol::*};
-use primitives::{VaultCurrencyPair, VaultId};
 pub use sp_arithmetic::{FixedI128, FixedPointNumber, FixedU128};
 use sp_core::H256;
 use sp_runtime::{
 	testing::{Header, TestXt},
 	traits::{BlakeTwo256, IdentityLookup, Zero},
 };
+
+pub use currency::{
+	testing_utils::{
+		DEFAULT_COLLATERAL_CURRENCY, DEFAULT_NATIVE_CURRENCY, DEFAULT_WRAPPED_CURRENCY,
+	},
+	Amount,
+};
+pub use oracle::{CurrencyId, OracleKey};
+pub use primitives::{CurrencyId::Token, TokenSymbol::*};
+use primitives::{VaultCurrencyPair, VaultId};
+
+use crate as redeem;
+use crate::{Config, Error};
 
 type TestExtrinsic = TestXt<RuntimeCall, ()>;
 type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Test>;
@@ -92,10 +99,6 @@ impl frame_system::Config for Test {
 	type MaxConsumers = frame_support::traits::ConstU32<16>;
 }
 
-pub const DEFAULT_COLLATERAL_CURRENCY: CurrencyId = Token(DOT);
-pub const DEFAULT_NATIVE_CURRENCY: CurrencyId = Token(INTR);
-pub const DEFAULT_WRAPPED_CURRENCY: CurrencyId = Token(IBTC);
-
 pub const DEFAULT_CURRENCY_PAIR: VaultCurrencyPair<CurrencyId> = VaultCurrencyPair {
 	collateral: DEFAULT_COLLATERAL_CURRENCY,
 	wrapped: DEFAULT_WRAPPED_CURRENCY,
@@ -104,7 +107,6 @@ pub const DEFAULT_CURRENCY_PAIR: VaultCurrencyPair<CurrencyId> = VaultCurrencyPa
 parameter_types! {
 	pub const GetCollateralCurrencyId: CurrencyId = DEFAULT_COLLATERAL_CURRENCY;
 	pub const GetNativeCurrencyId: CurrencyId = DEFAULT_NATIVE_CURRENCY;
-	pub const GetWrappedCurrencyId: CurrencyId = DEFAULT_WRAPPED_CURRENCY;
 	pub const MaxLocks: u32 = 50;
 }
 
@@ -331,12 +333,12 @@ impl ExtBuilder {
 	pub fn build() -> sp_io::TestExternalities {
 		ExtBuilder::build_with(orml_tokens::GenesisConfig::<Test> {
 			balances: vec![
-				(USER, Token(DOT), ALICE_BALANCE),
-				(VAULT.account_id, Token(DOT), VAULT_BALANCE),
-				(CAROL, Token(DOT), CAROL_BALANCE),
-				(USER, Token(IBTC), ALICE_BALANCE),
-				(VAULT.account_id, Token(IBTC), VAULT_BALANCE),
-				(CAROL, Token(IBTC), CAROL_BALANCE),
+				(USER, DEFAULT_COLLATERAL_CURRENCY, ALICE_BALANCE),
+				(VAULT.account_id, DEFAULT_COLLATERAL_CURRENCY, VAULT_BALANCE),
+				(CAROL, DEFAULT_COLLATERAL_CURRENCY, CAROL_BALANCE),
+				(USER, DEFAULT_WRAPPED_CURRENCY, ALICE_BALANCE),
+				(VAULT.account_id, DEFAULT_WRAPPED_CURRENCY, VAULT_BALANCE),
+				(CAROL, DEFAULT_WRAPPED_CURRENCY, CAROL_BALANCE),
 			],
 		})
 	}
