@@ -36,6 +36,9 @@ mod mock;
 #[cfg(test)]
 mod tests;
 
+#[cfg(feature = "testing-utils")]
+pub mod testing_utils;
+
 pub mod amount;
 
 mod types;
@@ -174,19 +177,6 @@ pub mod getters {
 
 	pub fn get_native_currency_id<T: Config>() -> CurrencyId<T> {
 		<T as Config>::GetNativeCurrencyId::get()
-	}
-
-	#[cfg(feature = "testing-utils")]
-	pub fn get_wrapped_currency_id<T: Config>() -> CurrencyId<T> {
-		// Return some wrapped currency id for convenience in tests
-		// Is it even possible to get the wrapped currency id from the primitives?
-		let default_wrapped_currency: CurrencyId<T> = CurrencyId::<T>::AlphaNum4 {
-			code: *b"USDC",
-			issuer: [
-				20, 209, 150, 49, 176, 55, 23, 217, 171, 154, 54, 110, 16, 50, 30, 226, 102, 231,
-				46, 199, 108, 171, 97, 144, 240, 161, 51, 109, 72, 34, 159, 139,
-			],
-		};
 	}
 }
 
