@@ -479,15 +479,6 @@ impl VaultService {
 					issue_map.clone(),
 				)),
 			),
-			(
-				"Execute Issues with Proof",
-				run(issue::process_issues_with_proofs(
-					self.spacewalk_parachain.clone(),
-					proof_ops.clone(),
-					slot_tx_env_map.clone(),
-					issue_map.clone(),
-				)),
-			),
 		];
 
 		run_and_monitor_tasks(self.shutdown.clone(), tasks).await

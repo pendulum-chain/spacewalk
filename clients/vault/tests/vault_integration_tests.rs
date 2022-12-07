@@ -307,7 +307,7 @@ async fn test_automatic_issue_execution_succeeds() {
 			// The account of the 'user_provider' is used to request a new issue that
 			// has to be executed by vault1
 			let issue = user_provider.request_issue(issue_amount, &vault1_id).await.unwrap();
-			tracing::warn!("REQUESTED ISSUE: {:?}", issue);
+			tracing::warn!("TESTING TESTING TESTING REQUESTED ISSUE: {:?}", issue.issue_id);
 
 			let destination_public_key = PublicKey::from_binary(issue.vault_stellar_public_key);
 			let stroop_amount = (issue.amount + issue.fee) as i64;

@@ -347,7 +347,11 @@ impl<C: HorizonClient> HorizonFetcher<C> {
 			if filter.is_relevant((tx.clone(), targets.clone())) {
 				match w.watch_slot(tx.ledger.try_into().unwrap()).await {
 					Ok(_) => {
-						tracing::info!("following transaction {:?}", String::from_utf8(id.clone()));
+						tracing::info!(
+							"TESTING TESTING TESTING following transaction {:?} WITH SLOT: {}",
+							String::from_utf8(id.clone()),
+							tx.ledger
+						);
 						slot_tx_env_map
 							.write()
 							.await

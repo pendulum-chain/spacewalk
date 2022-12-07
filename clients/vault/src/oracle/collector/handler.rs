@@ -23,15 +23,15 @@ impl ScpMessageCollector {
 	) -> Result<(), Error> {
 		let slot = env.statement.slot_index;
 
-		tracing::info!("received envelope for slot {}", slot);
+		// tracing::info!("received envelope for slot {}", slot);
 
 		// set the last_slot_index
 		self.set_last_slot_index(slot);
 
 		// ignore if slot is not in the list
-		// if !self.is_slot_relevant(&slot) {
-		// 	return Ok(())
-		// }
+		if self.is_slot_relevant(&slot) {
+			tracing::info!("TESTING TESTING TESTING FOUND ENVELOPE FOR SLOT {}", slot);
+		}
 
 		// we are only interested with `ScpStExternalize`. Other messages are ignored.
 		if let ScpStatementPledges::ScpStExternalize(stmt) = &env.statement.pledges {
@@ -40,7 +40,7 @@ impl ScpMessageCollector {
 			// Check if collector has a record of this hash.
 			if self.is_txset_new(&txset_hash, &slot) {
 				// if it doesn't exist, let's request from the Stellar Node.
-				tracing::info!("requesting TxSet for slot {}...", slot);
+				tracing::info!("TESTING TESTING TESTING requesting TxSet for slot {}...", slot);
 				overlay_conn.send(StellarMessage::GetTxSet(txset_hash)).await?;
 
 				// let's save this for creating the proof later on.
@@ -61,8 +61,8 @@ impl ScpMessageCollector {
 		// compute the tx_set_hash, to check what slot this set belongs too.
 		let tx_set_hash = compute_non_generic_tx_set_content_hash(&set);
 
-		// Let's flag this as pending.
-		self.insert_to_pending_list(&tx_set_hash,set);
+		// save this txset.
+		self.add_txset(&tx_set_hash, set);
 	}
 }
 

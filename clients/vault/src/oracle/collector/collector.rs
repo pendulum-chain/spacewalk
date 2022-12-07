@@ -1,7 +1,9 @@
+use itertools::min;
 use std::sync::Arc;
 
 use parking_lot::{lock_api::RwLockReadGuard, RawRwLock, RwLock};
 
+use crate::oracle::constants::get_min_externalized_messages;
 use stellar_relay_lib::sdk::{
 	network::{Network, PUBLIC_NETWORK, TEST_NETWORK},
 	types::{ScpEnvelope, TransactionSet},
@@ -109,20 +111,41 @@ impl ScpMessageCollector {
 impl ScpMessageCollector {
 	pub(super) fn add_scp_envelope(&mut self, slot: Slot, scp_envelope: ScpEnvelope) {
 		// insert/add the externalized message to map.
-		let mut envelopes_map = self.envelopes_map.write();
+		{
+			let mut envelopes_map = self.envelopes_map.write();
 
-		if let Some(value) = envelopes_map.get_with_key(&slot) {
-			let mut value = value.clone();
-			value.push(scp_envelope);
-			envelopes_map.set_with_key(slot, value);
-		} else {
-			tracing::debug!("Adding received SCP envelopes for slot {}", slot);
-			envelopes_map.set_with_key(slot, vec![scp_envelope]);
+			if let Some(value) = envelopes_map.get_with_key(&slot) {
+				let mut value = value.clone();
+				value.push(scp_envelope);
+				envelopes_map.set_with_key(slot, value);
+			} else {
+				tracing::debug!("Adding received SCP envelopes for slot {}", slot);
+				envelopes_map.set_with_key(slot, vec![scp_envelope]);
+			}
 		}
+
+		// check if this slot is pending for building proof.
+		self.is_pending_proof(slot);
 	}
 
-	pub(super) fn add_txset(&mut self, slot: Slot, transaction_set: TransactionSet) {
-		self.txset_map.write().set_with_key(slot, transaction_set);
+	pub(super) fn add_txset(&mut self, txset_hash: &TxSetHash, tx_set: TransactionSet) {
+		let slot = {
+			let mut map_write = self.txset_and_slot_map.write();
+			map_write.remove_by_txset_hash(txset_hash).map(|slot| {
+				self.txset_map.write().set_with_key(slot, tx_set);
+				slot
+			})
+		};
+
+		match slot {
+			None => {
+				tracing::warn!("WARNING! tx_set_hash: {:?} has no slot.", txset_hash);
+			},
+			Some(slot) => {
+				// check if this slot is pending for building proof.
+				self.is_pending_proof(slot);
+			},
+		}
 	}
 
 	pub(super) fn save_txset_hash_and_slot(&mut self, txset_hash: TxSetHash, slot: Slot) {
@@ -133,16 +156,27 @@ impl ScpMessageCollector {
 
 	/// Once a TransactionSet is found, remove that entry in `txset_and_slot` map and then
 	/// add to pending list.
-	pub(super) fn insert_to_pending_list(&mut self, txset_hash: &TxSetHash, tx_set: TransactionSet) {
-		match self.txset_and_slot_map.write().remove_by_txset_hash(txset_hash) {
+	pub(super) fn is_pending_proof(&mut self, slot: Slot) -> bool {
+		let env_map_read = self.envelopes_map.read();
+		let envs = match env_map_read.get_with_key(&slot) {
 			None => {
-				tracing::warn!("WARNING! tx_set_hash: {:?} has no slot.", txset_hash);
+				return false
 			},
-			Some(slot) => {
-				self.txset_map.write().set_with_key(slot, tx_set);
-				self.slot_pendinglist.write().push(slot);
-			},
+			Some(envs) => envs,
+		};
+
+		if envs.len() < get_min_externalized_messages(self.is_public()) {
+			return false
 		}
+
+		if !self.txset_map.read().contains_key(&slot) {
+			return false
+		}
+
+		tracing::info!("TESTING TESTING TESTING: inserting SLOT {} to pending list!!!", slot);
+		self.slot_pendinglist.write().push(slot);
+
+		true
 	}
 
 	pub(super) fn set_last_slot_index(&mut self, slot: Slot) {
@@ -189,12 +223,14 @@ impl ScpMessageCollector {
 
 #[cfg(test)]
 mod test {
-	use stellar_relay_lib::sdk::network::{PUBLIC_NETWORK, TEST_NETWORK};
-	use stellar_relay_lib::sdk::types::TransactionSet;
+	use stellar_relay_lib::sdk::{
+		network::{PUBLIC_NETWORK, TEST_NETWORK},
+		types::TransactionSet,
+	};
 
 	use crate::oracle::{
-		collector::ScpMessageCollector, traits::FileHandler, types::LifoMap, EnvelopesFileHandler,
-		TxSetsFileHandler,
+		collector::ScpMessageCollector, constants::get_min_externalized_messages,
+		traits::FileHandler, types::LifoMap, EnvelopesFileHandler, TxSetsFileHandler,
 	};
 
 	#[test]
@@ -271,33 +307,55 @@ mod test {
 		let mut collector = ScpMessageCollector::new(false);
 
 		let slot = 42867088;
+		let dummy_hash = [0; 32];
 		let txsets_map =
 			TxSetsFileHandler::get_map_from_archives(slot).expect("should return a map");
 		let value = txsets_map.get_with_key(&slot).expect("should return a transaction set");
 
-		collector.add_txset(slot, value.clone());
+		collector.save_txset_hash_and_slot(dummy_hash.clone(), slot);
+
+		collector.add_txset(&dummy_hash, value.clone());
 
 		assert!(collector.txset_map.read().contains_key(&slot));
 	}
 
 	#[test]
-	fn insert_to_pending_list_works() {
-		let mut collector = ScpMessageCollector::new(false);
+	fn is_pending_proof_works() {
+		let is_pub_network = false;
+		let min_ext_msgs = get_min_externalized_messages(is_pub_network);
 
-		let slot = 42867088;
-		let txsets_map =
-			TxSetsFileHandler::get_map_from_archives(slot).expect("should return a map");
-		let value = txsets_map.get_with_key(&slot).expect("should return a transaction set");
+		let dummy_slot_0 = 0;
+		let mut collector = ScpMessageCollector::new(is_pub_network);
 
-		collector.save_txset_hash_and_slot([0; 32], 0);
-		collector.save_txset_hash_and_slot([1; 32], 1);
+		// ------------------- prepare scpenvelopes -------------------
 
-		collector.insert_to_pending_list(&[1; 32], value.clone());
-		assert!(collector.slot_pendinglist.read().contains(&1));
+		let env_map = {
+			let first_slot = 578291;
+			EnvelopesFileHandler::get_map_from_archives(first_slot).expect("should return a map")
+		};
+		{
+			let (_, value) = env_map.get(0).expect("should return a tuple");
+			let one_scp_env = value[0].clone();
 
-		// trying to insert a non-existing txset_hash
-		collector.insert_to_pending_list(&[2; 32], value.clone());
-		assert!(!collector.slot_pendinglist.read().contains(&2));
+			// let's fill the collector with the minimum # of envelopes
+			for i in 0..min_ext_msgs + 1 {
+				collector.add_scp_envelope(dummy_slot_0, one_scp_env.clone());
+			}
+		}
+
+		// ------------------- prepare txset -------------------
+		let txsets_map = {
+			let slot = 42867088;
+			TxSetsFileHandler::get_map_from_archives(slot).expect("should return a map")
+		};
+		{
+			let (_, value) = txsets_map.get(0).expect("should return a transaction set");
+
+			collector.save_txset_hash_and_slot([0; 32], dummy_slot_0);
+			collector.add_txset(&[0; 32], value.clone());
+		}
+
+		assert!(collector.is_pending_proof(dummy_slot_0));
 	}
 
 	#[test]

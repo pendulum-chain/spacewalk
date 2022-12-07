@@ -70,7 +70,10 @@ pub async fn listen_for_issue_requests(
 	parachain_rpc
 		.on_event::<RequestIssueEvent, _, _, _>(
 			|event| async move {
-				tracing::info!("Received RequestIssueEvent: {:?}", event);
+				tracing::info!(
+					"TESTING TESTING TESTING Received RequestIssueEvent: {:?}",
+					event.issue_id
+				);
 				if is_vault(vault_public_key, event.vault_stellar_public_key.clone()) {
 					// let's get the IssueRequest
 					let issue_request_result =
@@ -185,6 +188,7 @@ pub async fn execute_issue(
 ) -> Result<(), ServiceError<Error>> {
 	let slot_tx_map = slot_tx_env_map.read().await;
 	for proof in proofs {
+		tracing::info!("TESTING TESTING TESTING PROCESSING PROOF FOR SLOT: {}", proof.slot());
 		let (envelopes, tx_set) = proof.encode();
 
 		let u32_slot = match u32::try_from(proof.slot()) {
