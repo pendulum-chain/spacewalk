@@ -312,7 +312,7 @@ impl<T: Config> Pallet<T> {
 			(x, y) if x == y => amount.amount(),
 			(_, _) => {
 				// first convert to wrapped, then convert wrapped to the desired currency
-				let base = Self::collateral_to_wrapped(amount.amount(), amount.currency())?;
+				let base = Self::collateral_to_wrapped(amount.amount(), amount.currency())?; // maybe this does not work?
 				Self::wrapped_to_collateral(base, currency_id)?
 			},
 		};

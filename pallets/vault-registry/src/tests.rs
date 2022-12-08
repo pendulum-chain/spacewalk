@@ -1305,7 +1305,7 @@ mod get_vaults_below_premium_collaterlization_tests {
 
 			assert_eq!(
 				VaultRegistry::get_premium_redeem_vaults(),
-				Ok(vec![(id1, wrapped(issue_tokens1)), (id2, wrapped(issue_tokens2))])
+				Ok(vec![(id2, wrapped(issue_tokens2)), (id1, wrapped(issue_tokens1))])
 			);
 		})
 	}
