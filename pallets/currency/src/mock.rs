@@ -12,7 +12,7 @@ use sp_runtime::{
 
 pub use primitives::{CurrencyId::Token, TokenSymbol::*};
 
-use crate::testing_utils::{DEFAULT_COLLATERAL_CURRENCY, DEFAULT_NATIVE_CURRENCY};
+use crate::testing_constants::{DEFAULT_COLLATERAL_CURRENCY, DEFAULT_NATIVE_CURRENCY};
 
 type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Test>;
 type Block = frame_system::mocking::MockBlock<Test>;

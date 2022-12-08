@@ -2,7 +2,7 @@ use frame_support::{assert_err, assert_noop, assert_ok, dispatch::DispatchError}
 use mocktopus::mocking::*;
 use sp_core::H256;
 
-use currency::{testing_utils::get_wrapped_currency_id, Amount};
+use currency::{testing_constants::get_wrapped_currency_id, Amount};
 use security::Pallet as Security;
 use stellar_relay::testing_utils::RANDOM_STELLAR_PUBLIC_KEY;
 use vault_registry::{DefaultVault, VaultStatus};

@@ -37,7 +37,7 @@ mod mock;
 mod tests;
 
 #[cfg(any(test, feature = "testing-constants"))]
-pub mod testing_utils;
+pub mod testing_constants;
 
 pub mod amount;
 

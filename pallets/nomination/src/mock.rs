@@ -13,7 +13,7 @@ use sp_runtime::{
 	FixedPointNumber,
 };
 
-pub use currency::testing_utils::{
+pub use currency::testing_constants::{
 	DEFAULT_COLLATERAL_CURRENCY, DEFAULT_NATIVE_CURRENCY, DEFAULT_WRAPPED_CURRENCY,
 };
 use currency::Amount;

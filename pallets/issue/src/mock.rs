@@ -13,7 +13,7 @@ use sp_runtime::{
 };
 
 pub use currency::{
-	testing_utils::{
+	testing_constants::{
 		DEFAULT_COLLATERAL_CURRENCY, DEFAULT_NATIVE_CURRENCY, DEFAULT_WRAPPED_CURRENCY,
 	},
 	Amount,

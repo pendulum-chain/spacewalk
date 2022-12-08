@@ -8,7 +8,7 @@ use sp_std::prelude::*;
 
 use currency::{
 	getters::{get_relay_chain_currency_id as get_collateral_currency_id, *},
-	testing_utils::get_wrapped_currency_id,
+	testing_constants::get_wrapped_currency_id,
 };
 use oracle::Pallet as Oracle;
 use primitives::{CurrencyId, VaultCurrencyPair, VaultId};

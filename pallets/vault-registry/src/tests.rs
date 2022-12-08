@@ -10,7 +10,9 @@ use sp_runtime::{
 };
 use sp_std::convert::TryInto;
 
-use currency::{getters::get_native_currency_id, testing_utils::get_wrapped_currency_id, Amount};
+use currency::{
+	getters::get_native_currency_id, testing_constants::get_wrapped_currency_id, Amount,
+};
 use primitives::{StellarPublicKeyRaw, VaultCurrencyPair, VaultId};
 use security::Pallet as Security;
 
