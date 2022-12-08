@@ -36,4 +36,6 @@ pub enum Error<InnerError> {
 	TokioError(#[from] TokioJoinError),
 	#[error("System I/O error: {0}")]
 	IoError(#[from] IoError),
+	#[error("Wallet error: {0}")]
+	WalletError(#[from] wallet::error::Error),
 }

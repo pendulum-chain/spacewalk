@@ -14,13 +14,25 @@ use tokio::{sync::RwLock, time::sleep};
 use runtime::{
 	cli::{parse_duration_minutes, parse_duration_ms},
 	CollateralBalancesPallet, CurrencyId, Error as RuntimeError, PrettyPrint, RegisterVaultEvent,
-	SpacewalkParachain, TryFromSymbol, UtilFuncs, VaultCurrencyPair, VaultId, VaultRegistryPallet,
+	ShutdownSender, SpacewalkParachain, StellarRelayPallet, TryFromSymbol, UtilFuncs,
+	VaultCurrencyPair, VaultId, VaultRegistryPallet,
 };
-use service::{wait_or_shutdown, Error as ServiceError, Service, ShutdownSender};
+use service::{wait_or_shutdown, Error as ServiceError, Service};
+use stellar_relay_lib::{
+	node::NodeInfo,
+	sdk::{
+		network::{Network, PUBLIC_NETWORK, TEST_NETWORK},
+		Hash, SecretKey,
+	},
+	ConnConfig,
+};
 use wallet::StellarWallet;
 
 use crate::{
-	error::Error, execution::execute_open_requests, metrics::publish_tokio_metrics,
+	error::Error,
+	execution::execute_open_requests,
+	metrics::publish_tokio_metrics,
+	oracle::{create_handler, prepare_directories, ScpMessageHandler},
 	CHAIN_HEIGHT_POLLING_INTERVAL,
 };
 
@@ -30,6 +42,11 @@ pub const NAME: &str = env!("CARGO_PKG_NAME");
 pub const ABOUT: &str = env!("CARGO_PKG_DESCRIPTION");
 
 const RESTART_INTERVAL: Duration = Duration::from_secs(10800); // restart every 3 hours
+
+// sdftest3
+pub const TIER_1_VALIDATOR_IP_TESTNET: &str = "3.239.7.78";
+// SatoshiPay (DE, Frankfurt)
+pub const TIER_1_VALIDATOR_IP_PUBLIC: &str = "141.95.47.112";
 
 #[derive(Clone)]
 pub struct VaultData {
@@ -201,12 +218,12 @@ impl Service<VaultServiceConfig, Error> for VaultService {
 	const NAME: &'static str = NAME;
 	const VERSION: &'static str = VERSION;
 
-	fn new_service(
+	async fn new_service(
 		spacewalk_parachain: SpacewalkParachain,
 		config: VaultServiceConfig,
 		shutdown: ShutdownSender,
 	) -> Result<Self, Error> {
-		VaultService::new(spacewalk_parachain, config, shutdown)
+		VaultService::new(spacewalk_parachain, config, shutdown).await
 	}
 
 	async fn start(&mut self) -> Result<(), ServiceError<Error>> {
@@ -273,19 +290,25 @@ where
 }
 
 impl VaultService {
-	fn new(
+	async fn new(
 		spacewalk_parachain: SpacewalkParachain,
 		config: VaultServiceConfig,
 		shutdown: ShutdownSender,
 	) -> Result<Self, Error> {
-		let stellar_wallet = StellarWallet::from_secret_encoded(&config.stellar_vault_secret_key)?;
+		let is_public_network = spacewalk_parachain.is_public_network().await?;
+
+		let stellar_wallet = StellarWallet::from_secret_encoded(
+			&config.stellar_vault_secret_key,
+			is_public_network,
+		)?;
 		let stellar_wallet = Arc::new(stellar_wallet);
+
 		Ok(Self {
 			spacewalk_parachain: spacewalk_parachain.clone(),
 			stellar_wallet: stellar_wallet.clone(),
 			config,
 			shutdown,
-			vault_id_manager: VaultIdManager::new(spacewalk_parachain, stellar_wallet.clone()),
+			vault_id_manager: VaultIdManager::new(spacewalk_parachain, stellar_wallet),
 		})
 	}
 
@@ -371,6 +394,18 @@ impl VaultService {
 			}
 		});
 
+		// issue handling
+		// this vec is passed to the stellar wallet to filter out transactions that are not relevant
+		// this has to be modified every time the issue set changes
+		let issue_hashes_vec: Arc<RwLock<Vec<Hash>>> = Arc::new(RwLock::new(Vec::new()));
+
+		let handler = inner_create_handler(
+			self.stellar_wallet.get_secret_key(),
+			self.stellar_wallet.is_public_network(),
+		)
+		.await?;
+		let watcher = Arc::new(RwLock::new(handler.create_watcher()));
+
 		tracing::info!("Starting all services...");
 		let tasks = vec![
 			(
@@ -385,13 +420,24 @@ impl VaultService {
 					Err(ServiceError::ClientShutdown)
 				}),
 			),
+			(
+				"Listen for New Transactions",
+				run(wallet::listen_for_new_transactions(
+					self.stellar_wallet.get_public_key(),
+					self.stellar_wallet.is_public_network(),
+					issue_hashes_vec.clone(),
+					watcher.clone(),
+					wallet::types::TxFilter, /* todo: change with a filter specific to the issue
+					                          * request? */
+				)),
+			),
 		];
 
 		run_and_monitor_tasks(self.shutdown.clone(), tasks).await
 	}
 
 	async fn maybe_register_public_key(&mut self) -> Result<(), Error> {
-		if let Some(faucet_url) = &self.config.faucet_url {
+		if let Some(_faucet_url) = &self.config.faucet_url {
 			// TODO fund account with faucet
 		}
 
@@ -444,7 +490,7 @@ impl VaultService {
 							},
 						)
 						.await?;
-				} else if let Some(faucet_url) = &self.config.faucet_url {
+				} else if let Some(_faucet_url) = &self.config.faucet_url {
 					tracing::info!("[{}] Automatically registering...", vault_id.pretty_print());
 					// TODO
 					// faucet::fund_and_register(&self.spacewalk_parachain, faucet_url, &vault_id)
@@ -479,4 +525,35 @@ pub(crate) async fn is_vault_registered(
 		Err(RuntimeError::VaultNotFound) => Ok(false),
 		Err(err) => Err(err.into()),
 	}
+}
+
+/// Returns SCPMessageHandler which contains the thread to connect/listen to the Stellar
+/// Node. See the oracle.rs example
+async fn inner_create_handler(
+	stellar_vault_secret_key: SecretKey,
+	is_public_network: bool,
+) -> Result<ScpMessageHandler, Error> {
+	prepare_directories().map_err(|e| {
+		tracing::error!("Failed to create the SCPMessageHandler: {:?}", e);
+		Error::StellarSdkError
+	})?;
+
+	let tier1_node_ip =
+		if is_public_network { TIER_1_VALIDATOR_IP_PUBLIC } else { TIER_1_VALIDATOR_IP_TESTNET };
+
+	let network: &Network = if is_public_network { &PUBLIC_NETWORK } else { &TEST_NETWORK };
+
+	tracing::info!(
+		"Connecting to {:?} through {:?}",
+		std::str::from_utf8(network.get_passphrase().as_slice()).unwrap(),
+		tier1_node_ip
+	);
+
+	let node_info = NodeInfo::new(19, 21, 19, "v19.1.0".to_string(), network);
+	let cfg = ConnConfig::new(tier1_node_ip, 11625, stellar_vault_secret_key, 0, true, true, false);
+
+	create_handler(node_info, cfg, is_public_network).await.map_err(|e| {
+		tracing::error!("Failed to create the SCPMessageHandler: {:?}", e);
+		Error::StellarSdkError
+	})
 }

@@ -1,5 +1,5 @@
 use crate::oracle::types::Slot;
-use stellar_relay::sdk::types::Uint64;
+use stellar_relay_lib::sdk::types::Uint64;
 
 /// This is for `EnvelopesMap`; how many slots is accommodated per file.
 /// This is used to compare against the length of the "keys",
@@ -21,6 +21,9 @@ pub const VALIDATOR_COUNT_TEST_NETWORK: usize = 3;
 pub const VALIDATOR_COUNT_PUBLIC_NETWORK: usize = 23;
 
 pub const MAX_SLOT_TO_REMEMBER: u64 = 12;
+
+pub const STELLAR_HISTORY_BASE_URL: &str =
+	"http://history.stellar.org/prd/core-live/core_live_002/scp/";
 
 /// Returns the minimum amount of SCP messages that are required to build a valid proof per network
 pub fn get_min_externalized_messages(public_network: bool) -> usize {

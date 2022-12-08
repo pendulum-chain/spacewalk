@@ -3,33 +3,28 @@ use std::{future::Future, ops::RangeInclusive, sync::Arc, time::Duration};
 use async_trait::async_trait;
 use futures::{stream::StreamExt, FutureExt, SinkExt};
 use jsonrpsee::core::{client::Client, JsonValue};
-use log::log;
-use sp_arithmetic::FixedPointNumber;
-use sp_runtime::FixedU128;
 use subxt::{
 	blocks::ExtrinsicEvents,
 	client::OnlineClient,
-	events::{EventDetails, StaticEvent},
+	events::StaticEvent,
 	metadata::DecodeWithMetadata,
-	rpc::{rpc_params, RpcClient, RpcClientT},
+	rpc::rpc_params,
 	storage::{address::Yes, StorageAddress},
-	tx::{PolkadotExtrinsicParams, Signer, TxPayload, TxProgress},
+	tx::{Signer, TxPayload},
 	Error as BasicError, Metadata,
 };
-use tokio::{
-	sync::{Mutex, RwLock},
-	time::timeout,
-};
+use tokio::{sync::RwLock, time::timeout};
 
 use module_oracle_rpc_runtime_api::BalanceWrapper;
+use primitives::{CurrencyId::Token, Hash, DOT};
 
 use crate::{
 	conn::{new_websocket_client, new_websocket_client_with_retry},
 	metadata,
-	metadata::{DispatchError, Event as SpacewalkEvent},
+	metadata::DispatchError,
 	notify_retry,
 	types::*,
-	AccountId, Error, RetryPolicy, SpacewalkRuntime, SpacewalkSigner, SubxtError,
+	AccountId, Error, RetryPolicy, ShutdownSender, SpacewalkRuntime, SpacewalkSigner, SubxtError,
 };
 
 pub type UnsignedFixedPoint = FixedU128;
@@ -54,7 +49,8 @@ const TRANSACTION_TIMEOUT: Duration = Duration::from_secs(300); // 5 minutes
 // number of storage entries to fetch at a time
 const DEFAULT_PAGE_SIZE: u32 = 10;
 
-pub(crate) type ShutdownSender = tokio::sync::broadcast::Sender<()>;
+pub(crate) type FeeRateUpdateSender = tokio::sync::broadcast::Sender<FixedU128>;
+pub type FeeRateUpdateReceiver = tokio::sync::broadcast::Receiver<FixedU128>;
 
 #[derive(Clone)]
 pub struct SpacewalkParachain {
@@ -63,6 +59,7 @@ pub struct SpacewalkParachain {
 	api: OnlineClient<SpacewalkRuntime>,
 	shutdown_tx: ShutdownSender,
 	metadata: Arc<Metadata>,
+	fee_rate_update_tx: FeeRateUpdateSender,
 }
 
 impl SpacewalkParachain {
@@ -73,7 +70,6 @@ impl SpacewalkParachain {
 	) -> Result<Self, Error> {
 		let account_id = signer.read().await.account_id().clone();
 		let api = OnlineClient::<SpacewalkRuntime>::from_rpc_client(Arc::new(rpc_client)).await?;
-		// let api: RuntimeApi = ext_client.clone().to_runtime_api();
 		let metadata = Arc::new(api.rpc().metadata().await?);
 
 		let runtime_version = api.rpc().runtime_version(None).await?;
@@ -99,8 +95,49 @@ impl SpacewalkParachain {
 			))
 		}
 
-		let parachain_rpc = Self { api, shutdown_tx, metadata, signer, account_id };
+		// low capacity channel since we generally only care about the newest value, so it's ok
+		// if we miss an event
+		let (fee_rate_update_tx, _) = tokio::sync::broadcast::channel(2);
+
+		let parachain_rpc =
+			Self { api, shutdown_tx, metadata, signer, account_id, fee_rate_update_tx };
 		Ok(parachain_rpc)
+	}
+
+	/// This function is used in integration tests to manually 'seal' ie create blocks.
+	#[cfg(feature = "testing-utils")]
+	pub async fn manual_seal(&self) {
+		// rather than adding a conditional dependency on substrate, just re-define the
+		// struct. We don't really care about the contents anyway, and if this is ever
+		// to change upstream we'll know from failing tests
+		#[derive(Debug, serde::Deserialize, serde::Serialize, PartialEq, Eq)]
+		pub struct ImportedAux {
+			/// Only the header has been imported. Block body verification was skipped.
+			pub header_only: bool,
+			/// Clear all pending justification requests.
+			pub clear_justification_requests: bool,
+			/// Request a justification for the given block.
+			pub needs_justification: bool,
+			/// Received a bad justification.
+			pub bad_justification: bool,
+			/// Whether the block that was imported is the new best block.
+			pub is_new_best: bool,
+		}
+		#[derive(Debug, serde::Deserialize, serde::Serialize, PartialEq, Eq)]
+		pub struct CreatedBlock<Hash> {
+			/// hash of the created block.
+			pub hash: Hash,
+			/// some extra details about the import operation
+			pub aux: ImportedAux,
+		}
+
+		let head = self.get_finalized_block_hash().await.unwrap();
+		let _: CreatedBlock<Hash> = self
+			.api
+			.rpc()
+			.request("engine_createBlock", rpc_params![true, true, head])
+			.await
+			.expect("failed to create block");
 	}
 
 	pub async fn from_url(
@@ -173,11 +210,37 @@ impl SpacewalkParachain {
 			|result| async {
 				match result.map_err(Into::<Error>::into) {
 					Ok(te) => Ok(te),
-					Err(err) => Err(RetryPolicy::Throw(err)),
+					Err(err) =>
+						if let Some(data) = err.is_invalid_transaction() {
+							Err(RetryPolicy::Skip(Error::InvalidTransaction(data)))
+						} else if err.is_pool_too_low_priority().is_some() {
+							Err(RetryPolicy::Skip(Error::PoolTooLowPriority))
+						} else if err.is_block_hash_not_found_error() {
+							log::info!("Re-sending transaction after apparent fork");
+							Err(RetryPolicy::Skip(Error::BlockHashNotFound))
+						} else {
+							Err(RetryPolicy::Throw(err))
+						},
 				}
 			},
 		)
 		.await
+	}
+
+	async fn get_fresh_nonce(&self) -> u32 {
+		// For getting the nonce, use latest, possibly non-finalized block.
+		let storage_key = metadata::storage().system().account(&self.account_id);
+		let on_chain_nonce = self
+			.api
+			.storage()
+			.fetch(&storage_key, None)
+			.await
+			.transpose()
+			.and_then(|x| x.ok())
+			.map(|x| x.nonce)
+			.unwrap_or_default();
+
+		on_chain_nonce.saturating_add(1)
 	}
 
 	async fn query_finalized<Address>(
@@ -309,55 +372,92 @@ impl SpacewalkParachain {
 		Ok(())
 	}
 
+	/// Listen to fee_rate changes and broadcast new values on the fee_rate_update_tx channel
+	pub async fn listen_for_fee_rate_changes(&self) -> Result<(), Error> {
+		self.on_event::<FeedValuesEvent, _, _, _>(
+			|event| async move {
+				for (key, value) in event.values {
+					if let OracleKey::FeeEstimation = key {
+						let _ = self.fee_rate_update_tx.send(value);
+					}
+				}
+			},
+			|_error| {
+				// Don't propagate error, it's unlikely to be useful.
+				// We assume critical errors will cause the system to restart.
+				// Note that we can't send the error itself due to the channel requiring
+				// the type to be clonable, which Error isn't
+			},
+		)
+		.await?;
+		Ok(())
+	}
+
 	/// Emulate the POOL_INVALID_TX error using token transfer extrinsics.
 	#[cfg(test)]
 	pub async fn get_invalid_tx_error(&self, recipient: AccountId) -> Error {
-		let mut signer = self.signer.write().await;
+		let call = metadata::tx().tokens().transfer(
+			subxt::ext::sp_runtime::MultiAddress::Id(recipient),
+			Token(DOT),
+			100,
+		);
+		let nonce = self.get_fresh_nonce().await;
+		let signer = self.signer.read().await.clone();
 
 		self.api
 			.tx()
-			.tokens()
-			.transfer(recipient.clone(), Token(DOT), 100)
-			.sign_and_submit_then_watch_default(&signer.clone())
+			.create_signed_with_nonce(&call, &signer, nonce, Default::default())
+			.unwrap()
+			.submit_and_watch()
 			.await
 			.unwrap();
 
-		signer.set_nonce(0);
-
 		// now call with outdated nonce
-		self.api
+		let result = self
+			.api
 			.tx()
-			.tokens()
-			.transfer(recipient.clone(), Token(DOT), 100)
-			.sign_and_submit_then_watch_default(&signer.clone())
-			.await
-			.unwrap_err()
-			.into()
+			.create_signed_with_nonce(&call, &signer, 0, Default::default())
+			.unwrap()
+			.submit_and_watch()
+			.await;
+
+		assert!(result.is_err());
+		result.unwrap_err().into()
 	}
 
 	/// Emulate the POOL_TOO_LOW_PRIORITY error using token transfer extrinsics.
 	#[cfg(test)]
 	pub async fn get_too_low_priority_error(&self, recipient: AccountId) -> Error {
-		let signer = self.signer.write().await;
+		let call = metadata::tx().tokens().transfer(
+			subxt::ext::sp_runtime::MultiAddress::Id(recipient),
+			Token(DOT),
+			100,
+		);
+
+		let nonce = self.get_fresh_nonce().await;
+
+		let signer = self.signer.read().await.clone();
 
 		// submit tx but don't watch
 		self.api
 			.tx()
-			.tokens()
-			.transfer(recipient.clone(), Token(DOT), 100)
-			.sign_and_submit_default(&signer.clone())
+			.create_signed_with_nonce(&call, &signer, nonce, Default::default())
+			.unwrap()
+			.submit()
 			.await
 			.unwrap();
 
 		// should call with the same nonce
-		self.api
+		let result = self
+			.api
 			.tx()
-			.tokens()
-			.transfer(recipient, Token(DOT), 100)
-			.sign_and_submit_then_watch_default(&signer.clone())
-			.await
-			.unwrap_err()
-			.into()
+			.create_signed_with_nonce(&call, &signer, nonce, Default::default())
+			.unwrap()
+			.submit_and_watch()
+			.await;
+
+		assert!(result.is_err());
+		result.unwrap_err().into()
 	}
 }
 
@@ -409,7 +509,7 @@ pub trait VaultRegistryPallet {
 
 	async fn get_public_key(&self) -> Result<Option<StellarPublicKey>, Error>;
 
-	async fn register_public_key(&mut self, public_key: StellarPublicKey) -> Result<(), Error>;
+	async fn register_public_key(&self, public_key: StellarPublicKey) -> Result<(), Error>;
 
 	async fn get_required_collateral_for_wrapped(
 		&self,
@@ -541,7 +641,7 @@ impl VaultRegistryPallet for SpacewalkParachain {
 	///
 	/// # Arguments
 	/// * `public_key` - the new public key of the vault
-	async fn register_public_key(&mut self, public_key: StellarPublicKey) -> Result<(), Error> {
+	async fn register_public_key(&self, public_key: StellarPublicKey) -> Result<(), Error> {
 		let register_public_key_tx =
 			metadata::tx().vault_registry().register_public_key(public_key.clone());
 
@@ -691,5 +791,168 @@ impl CollateralBalancesPallet for SpacewalkParachain {
 
 		self.api.tx().sign_and_submit_then_watch_default(&transfer_tx, &*signer).await?;
 		Ok(())
+	}
+}
+
+#[async_trait]
+pub trait OraclePallet {
+	async fn get_exchange_rate(&self, currency_id: CurrencyId) -> Result<FixedU128, Error>;
+
+	async fn feed_values(&self, values: Vec<(OracleKey, FixedU128)>) -> Result<(), Error>;
+
+	async fn set_stellar_fees(&self, value: FixedU128) -> Result<(), Error>;
+
+	async fn get_stellar_fees(&self) -> Result<FixedU128, Error>;
+
+	async fn wrapped_to_collateral(
+		&self,
+		amount: u128,
+		currency_id: CurrencyId,
+	) -> Result<u128, Error>;
+
+	async fn collateral_to_wrapped(
+		&self,
+		amount: u128,
+		currency_id: CurrencyId,
+	) -> Result<u128, Error>;
+
+	async fn has_updated(&self, key: &OracleKey) -> Result<bool, Error>;
+
+	fn on_fee_rate_change(&self) -> FeeRateUpdateReceiver;
+}
+
+#[async_trait]
+impl OraclePallet for SpacewalkParachain {
+	/// Returns the last exchange rate in planck per satoshis, the time at which it was set
+	/// and the configured max delay.
+	async fn get_exchange_rate(&self, currency_id: CurrencyId) -> Result<FixedU128, Error> {
+		self.query_finalized_or_error(
+			metadata::storage().oracle().aggregate(&OracleKey::ExchangeRate(currency_id)),
+		)
+		.await
+	}
+
+	/// Sets the current exchange rate (i.e. DOT/BTC)
+	///
+	/// # Arguments
+	/// * `value` - the current exchange rate
+	async fn feed_values(&self, values: Vec<(OracleKey, FixedU128)>) -> Result<(), Error> {
+		self.with_retry(metadata::tx().oracle().feed_values(values)).await?;
+		Ok(())
+	}
+
+	/// Sets the estimated Satoshis per bytes required to get a Bitcoin transaction included in
+	/// in the next block (~10 min)
+	///
+	/// # Arguments
+	/// * `value` - the estimated fee rate
+	async fn set_stellar_fees(&self, value: FixedU128) -> Result<(), Error> {
+		self.with_retry(
+			metadata::tx().oracle().feed_values(vec![(OracleKey::FeeEstimation, value)]),
+		)
+		.await?;
+		Ok(())
+	}
+
+	/// Gets the estimated Satoshis per bytes required to get a Bitcoin transaction included in
+	/// in the next x blocks
+	async fn get_stellar_fees(&self) -> Result<FixedU128, Error> {
+		self.query_finalized_or_error(
+			metadata::storage().oracle().aggregate(&OracleKey::FeeEstimation),
+		)
+		.await
+	}
+
+	/// Converts the amount in btc to dot, based on the current set exchange rate.
+	async fn wrapped_to_collateral(
+		&self,
+		amount: u128,
+		currency_id: CurrencyId,
+	) -> Result<u128, Error> {
+		let head = self.get_finalized_block_hash().await?;
+		let result: BalanceWrapper<_> = self
+			.api
+			.rpc()
+			.request(
+				"oracle_wrappedToCollateral",
+				rpc_params![BalanceWrapper { amount }, currency_id, head],
+			)
+			.await?;
+
+		Ok(result.amount)
+	}
+
+	/// Converts the amount in dot to btc, based on the current set exchange rate.
+	async fn collateral_to_wrapped(
+		&self,
+		amount: u128,
+		currency_id: CurrencyId,
+	) -> Result<u128, Error> {
+		let head = self.get_finalized_block_hash().await?;
+		let result: BalanceWrapper<_> = self
+			.api
+			.rpc()
+			.request(
+				"oracle_collateralToWrapped",
+				rpc_params![BalanceWrapper { amount }, currency_id, head],
+			)
+			.await?;
+
+		Ok(result.amount)
+	}
+
+	async fn has_updated(&self, key: &OracleKey) -> Result<bool, Error> {
+		Ok(self
+			.query_finalized_or_error(metadata::storage().oracle().raw_values_updated(key))
+			.await
+			.unwrap_or(false))
+	}
+
+	fn on_fee_rate_change(&self) -> FeeRateUpdateReceiver {
+		self.fee_rate_update_tx.subscribe()
+	}
+}
+
+#[async_trait]
+pub trait SecurityPallet {
+	async fn get_parachain_status(&self) -> Result<StatusCode, Error>;
+
+	async fn get_error_codes(&self) -> Result<Vec<ErrorCode>, Error>;
+
+	/// Gets the current active block number of the parachain
+	async fn get_current_active_block_number(&self) -> Result<u32, Error>;
+}
+
+#[async_trait]
+impl SecurityPallet for SpacewalkParachain {
+	/// Get the current security status of the parachain.
+	/// Should be one of; `Running`, `Error` or `Shutdown`.
+	async fn get_parachain_status(&self) -> Result<StatusCode, Error> {
+		self.query_finalized_or_error(metadata::storage().security().parachain_status())
+			.await
+	}
+
+	/// Return any `ErrorCode`s set in the security module.
+	async fn get_error_codes(&self) -> Result<Vec<ErrorCode>, Error> {
+		self.query_finalized_or_error(metadata::storage().security().errors()).await
+	}
+
+	/// Gets the current active block number of the parachain
+	async fn get_current_active_block_number(&self) -> Result<u32, Error> {
+		self.query_finalized_or_default(metadata::storage().security().active_block_count())
+			.await
+	}
+}
+
+#[async_trait]
+pub trait StellarRelayPallet {
+	async fn is_public_network(&self) -> Result<bool, Error>;
+}
+
+#[async_trait]
+impl StellarRelayPallet for SpacewalkParachain {
+	async fn is_public_network(&self) -> Result<bool, Error> {
+		self.query_finalized_or_error(metadata::storage().stellar_relay().is_public_network())
+			.await
 	}
 }
