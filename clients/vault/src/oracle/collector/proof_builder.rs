@@ -17,16 +17,6 @@ use crate::oracle::{
 	ScpArchiveStorage, ScpMessageCollector, Slot,
 };
 
-#[async_trait::async_trait]
-pub trait ProofExt: Send + Sync {
-	async fn get_proof(&self, slot: Slot) -> Result<ProofStatus, crate::oracle::Error>;
-
-	/// Returns a list of transactions with each of their corresponding proofs
-	async fn get_pending_proofs(&self) -> Result<Vec<Proof>, crate::oracle::Error>;
-
-	async fn processed_proof(&self, slot: Slot);
-}
-
 /// The Proof of Transactions that needed to be processed
 #[derive(Debug, Eq, PartialEq)]
 pub struct Proof {
