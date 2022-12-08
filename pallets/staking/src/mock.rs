@@ -10,7 +10,7 @@ use sp_runtime::{
 	traits::{BlakeTwo256, IdentityLookup},
 };
 
-pub use currency::testing_utils::{
+pub use currency::testing_constants::{
 	DEFAULT_COLLATERAL_CURRENCY, DEFAULT_NATIVE_CURRENCY, DEFAULT_WRAPPED_CURRENCY,
 };
 pub use primitives::{CurrencyId, CurrencyId::Token, TokenSymbol::*};

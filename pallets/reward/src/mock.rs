@@ -6,7 +6,7 @@ use sp_runtime::{
 	traits::{BlakeTwo256, IdentityLookup},
 };
 
-pub use currency::testing_utils::{DEFAULT_NATIVE_CURRENCY, DEFAULT_WRAPPED_CURRENCY};
+pub use currency::testing_constants::{DEFAULT_NATIVE_CURRENCY, DEFAULT_WRAPPED_CURRENCY};
 pub use primitives::{CurrencyId, CurrencyId::Token, TokenSymbol::*, VaultCurrencyPair, VaultId};
 
 use crate as reward;
