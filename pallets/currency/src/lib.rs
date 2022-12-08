@@ -87,7 +87,7 @@ pub mod pallet {
 			+ Default
 			+ Debug;
 
-		/// Native currency e.g. INTR/KINT
+		/// Native currency e.g. PEN/AMPE
 		#[pallet::constant]
 		type GetNativeCurrencyId: Get<CurrencyId<Self>>;
 

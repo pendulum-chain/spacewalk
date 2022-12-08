@@ -4,7 +4,8 @@ use primitives::{CurrencyId, CurrencyId::Token, DOT, PEN};
 pub const DEFAULT_COLLATERAL_CURRENCY: CurrencyId = Token(DOT);
 pub const DEFAULT_NATIVE_CURRENCY: CurrencyId = Token(PEN);
 
-// Return some wrapped currency id for convenience in tests
+// We support many different wrapped currencies but here we return some wrapped currency id for
+// convenience in tests
 pub const DEFAULT_WRAPPED_CURRENCY: CurrencyId = CurrencyId::AlphaNum4 {
 	code: *b"USDC",
 	issuer: [
