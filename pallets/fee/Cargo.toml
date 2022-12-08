@@ -32,7 +32,7 @@ primitives = { package = "spacewalk-primitives", path = "../../primitives", defa
 mocktopus = "0.7.0"
 frame-benchmarking = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.31", default-features = false }
 pallet-timestamp = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.31", default-features = false }
-currency = { path = "../currency", default-features = false, features = ["testing-utils"] }
+currency = { path = "../currency", default-features = false, features = ["testing-constants"] }
 
 # Orml dependencies
 orml-tokens = { git = "https://github.com/open-web3-stack/open-runtime-module-library", branch = "polkadot-v0.9.31", default-features = false }
