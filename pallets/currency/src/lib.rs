@@ -36,7 +36,7 @@ mod mock;
 #[cfg(test)]
 mod tests;
 
-#[cfg(any(test, feature = "testing-utils"))]
+#[cfg(any(test, feature = "testing-constants"))]
 pub mod testing_utils;
 
 pub mod amount;

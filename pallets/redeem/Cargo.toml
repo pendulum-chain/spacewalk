@@ -84,4 +84,5 @@ runtime-benchmarks = [
     "orml-tokens",
     "orml-traits",
     "stellar-relay/testing-utils",
+    "currency/testing-constants"
 ]
