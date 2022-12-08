@@ -5,10 +5,10 @@ use tokio::time::sleep;
 use tokio_stream::wrappers::BroadcastStream;
 
 use runtime::{
-	CurrencyId, Error as RuntimeError, FixedPointNumber, FixedU128, H256Le, OraclePallet,
-	PartialAddress, RedeemPallet, RedeemRequestStatus, ReplacePallet, ReplaceRequestStatus,
-	SecurityPallet, SpacewalkParachain, SpacewalkRedeemRequest, SpacewalkReplaceRequest,
-	StellarPublicKey, StellarRelayPallet, UtilFuncs, VaultId, VaultRegistryPallet, H256,
+	CurrencyId, Error as RuntimeError, FixedPointNumber, FixedU128, PartialAddress, RedeemPallet,
+	RedeemRequestStatus, ReplacePallet, ReplaceRequestStatus, SecurityPallet, SpacewalkParachain,
+	SpacewalkRedeemRequest, SpacewalkReplaceRequest, StellarPublicKey, StellarRelayPallet,
+	UtilFuncs, VaultId, VaultRegistryPallet, H256,
 };
 use service::{spawn_cancelable, Error as ServiceError, ShutdownSender};
 use wallet::StellarWallet;
@@ -111,10 +111,10 @@ impl Request {
 		})
 	}
 
-	/// Constructs a Request for the given InterBtcReplaceRequest
+	/// Constructs a Request for the given SpacewalkReplaceRequest
 	pub fn from_replace_request(
 		hash: H256,
-		request: InterBtcReplaceRequest,
+		request: SpacewalkReplaceRequest,
 		payment_margin: Duration,
 	) -> Result<Request, Error> {
 		Ok(Request {
