@@ -6,6 +6,7 @@ use sp_runtime::{
 	traits::{BlakeTwo256, IdentityLookup},
 };
 
+pub use currency::testing_utils::{DEFAULT_NATIVE_CURRENCY, DEFAULT_WRAPPED_CURRENCY};
 pub use primitives::{CurrencyId, CurrencyId::Token, TokenSymbol::*, VaultCurrencyPair, VaultId};
 
 use crate as reward;
@@ -64,8 +65,7 @@ impl frame_system::Config for Test {
 }
 
 parameter_types! {
-	pub const GetNativeCurrencyId: CurrencyId = Token(INTR);
-	pub const GetWrappedCurrencyId: CurrencyId = Token(IBTC);
+	pub const GetNativeCurrencyId: CurrencyId = DEFAULT_NATIVE_CURRENCY;
 }
 
 impl Config for Test {
