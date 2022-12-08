@@ -6,6 +6,7 @@ use futures::{
 	future::{join, join3, join4, join5},
 	Future, FutureExt,
 };
+use serial_test::serial;
 use sp_keyring::AccountKeyring;
 use sp_runtime::traits::StaticLookup;
 use tokio::{
@@ -18,7 +19,6 @@ use runtime::{
 	integration::*, types::*, CurrencyId::Token, FixedPointNumber, FixedU128, IssuePallet,
 	SpacewalkParachain, SudoPallet, UtilFuncs, VaultRegistryPallet,
 };
-use serial_test::serial;
 use stellar_relay_lib::sdk::{Hash, PublicKey, SecretKey, XdrCodec};
 use vault::{
 	oracle::{create_handler, Proof, ProofExt, ProofStatus},
@@ -325,7 +325,7 @@ async fn test_automatic_issue_execution_succeeds() {
 
 		let issue_set = Arc::new(RwLock::new(IssueRequestsMap::new()));
 		let (issue_event_tx, _issue_event_rx) = mpsc::channel::<CancellationEvent>(16);
-		let service = join4(
+		let service = join3(
 			vault::service::listen_for_new_transactions(
 				wallet.get_public_key(),
 				wallet.is_public_network(),
@@ -345,7 +345,6 @@ async fn test_automatic_issue_execution_succeeds() {
 				slot_tx_env_map.clone(),
 				issue_set.clone(),
 			),
-			periodically_produce_blocks(vault_provider.clone()),
 		);
 
 		test_service(service, fut_user).await;
@@ -432,21 +431,29 @@ async fn test_automatic_issue_execution_succeeds_for_other_vault() {
 
 			tracing::warn!("Sent payment to address. Ledger is {:?}", result.unwrap().0.ledger);
 
-			tracing::info!(
-				"TESTING TESTING TESTING TESTING issue_set size: {:?} !!!!!!!!",
-				issue_set.read().await.len()
-			);
+			// Wrap this in a block to make sure the lock is dropped
+			{
+				tracing::info!(
+					"TESTING TESTING TESTING TESTING issue_set size: {:?} !!!!!!!!",
+					issue_set.read().await.len()
+				);
+			}
 			// wait for vault2 to execute this issue
 			assert_event::<ExecuteIssueEvent, _>(TIMEOUT, user_provider.clone(), move |x| {
 				x.vault_id == vault1_id.clone()
 			})
 			.await;
 
-			// todo: check if the size decreased
-			tracing::info!(
-				"TESTING TESTING TESTING AFTER EXECUTEISSUEVENT SIZE: {:?} !!!!!",
-				issue_set.read().await.len()
-			);
+			// Wrap this in a block to make sure the lock is dropped
+			{
+				let issue_set = issue_set.read().await;
+				tracing::info!(
+					"TESTING TESTING TESTING AFTER EXECUTEISSUEVENT SIZE: {:?} !!!!!",
+					issue_set.len()
+				);
+
+				assert!(issue_set.is_empty());
+			}
 		};
 
 		let slot_tx_env_map: Arc<RwLock<HashMap<u32, String>>> =
@@ -460,7 +467,7 @@ async fn test_automatic_issue_execution_succeeds_for_other_vault() {
 		let proof_ops = Arc::new(RwLock::new(handler.proof_operations()));
 
 		let (issue_event_tx, _issue_event_rx) = mpsc::channel::<CancellationEvent>(16);
-		let service = join5(
+		let service = join4(
 			vault::service::listen_for_new_transactions(
 				wallet.get_public_key(),
 				wallet.is_public_network(),
@@ -481,7 +488,6 @@ async fn test_automatic_issue_execution_succeeds_for_other_vault() {
 				issue_set.clone(),
 			),
 			vault::service::listen_for_executed_issues(vault2_provider.clone(), issue_set.clone()),
-			periodically_produce_blocks(vault2_provider.clone()),
 		);
 
 		test_service(service, fut_user).await;
