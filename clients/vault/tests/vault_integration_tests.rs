@@ -3,7 +3,7 @@ use std::{collections::HashMap, convert::TryInto, sync::Arc, time::Duration};
 use async_trait::async_trait;
 use frame_support::assert_ok;
 use futures::{
-	future::{join, join3, join4},
+	future::{join, join3, join4, join5},
 	Future, FutureExt,
 };
 use sp_keyring::AccountKeyring;
@@ -406,6 +406,8 @@ async fn test_automatic_issue_execution_succeeds_for_other_vault() {
 				.await
 		);
 
+		let issue_set = Arc::new(RwLock::new(IssueRequestsMap::new()));
+
 		let fut_user = async {
 			// The account of the 'user_provider' is used to request a new issue that
 			// has to be executed by vault1
@@ -430,11 +432,21 @@ async fn test_automatic_issue_execution_succeeds_for_other_vault() {
 
 			tracing::warn!("Sent payment to address. Ledger is {:?}", result.unwrap().0.ledger);
 
+			tracing::info!(
+				"TESTING TESTING TESTING TESTING issue_set size: {:?} !!!!!!!!",
+				issue_set.read().await.len()
+			);
 			// wait for vault2 to execute this issue
 			assert_event::<ExecuteIssueEvent, _>(TIMEOUT, user_provider.clone(), move |x| {
 				x.vault_id == vault1_id.clone()
 			})
 			.await;
+
+			// todo: check if the size decreased
+			tracing::info!(
+				"TESTING TESTING TESTING AFTER EXECUTEISSUEVENT SIZE: {:?} !!!!!",
+				issue_set.read().await.len()
+			);
 		};
 
 		let slot_tx_env_map: Arc<RwLock<HashMap<u32, String>>> =
@@ -447,9 +459,8 @@ async fn test_automatic_issue_execution_succeeds_for_other_vault() {
 		let watcher = Arc::new(RwLock::new(handler.create_watcher()));
 		let proof_ops = Arc::new(RwLock::new(handler.proof_operations()));
 
-		let issue_set = Arc::new(RwLock::new(IssueRequestsMap::new()));
 		let (issue_event_tx, _issue_event_rx) = mpsc::channel::<CancellationEvent>(16);
-		let service = join4(
+		let service = join5(
 			vault::service::listen_for_new_transactions(
 				wallet.get_public_key(),
 				wallet.is_public_network(),
@@ -469,6 +480,7 @@ async fn test_automatic_issue_execution_succeeds_for_other_vault() {
 				slot_tx_env_map.clone(),
 				issue_set.clone(),
 			),
+			vault::service::listen_for_executed_issues(vault2_provider.clone(), issue_set.clone()),
 			periodically_produce_blocks(vault2_provider.clone()),
 		);
 

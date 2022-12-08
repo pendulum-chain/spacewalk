@@ -72,6 +72,9 @@ impl ScpMessageCollector {
 	pub fn watch_slot(&mut self, slot: Slot) {
 		tracing::info!("watching slot {:?}", slot);
 		self.slot_watchlist.write().insert(slot, ());
+
+		// check if this slot already exists
+		self.is_pending_proof(slot);
 	}
 }
 
@@ -154,29 +157,6 @@ impl ScpMessageCollector {
 		m.insert(txset_hash, slot);
 	}
 
-	/// Once a TransactionSet is found, remove that entry in `txset_and_slot` map and then
-	/// add to pending list.
-	pub(super) fn is_pending_proof(&mut self, slot: Slot) -> bool {
-		let env_map_read = self.envelopes_map.read();
-		let envs = match env_map_read.get_with_key(&slot) {
-			None => return false,
-			Some(envs) => envs,
-		};
-
-		if envs.len() < get_min_externalized_messages(self.is_public()) {
-			return false
-		}
-
-		if !self.txset_map.read().contains_key(&slot) {
-			return false
-		}
-
-		tracing::info!("TESTING TESTING TESTING: inserting SLOT {} to pending list!!!", slot);
-		self.slot_pendinglist.write().push(slot);
-
-		true
-	}
-
 	pub(super) fn set_last_slot_index(&mut self, slot: Slot) {
 		let mut last_slot_index = self.last_slot_index.write();
 		if slot > *last_slot_index {
@@ -216,6 +196,34 @@ impl ScpMessageCollector {
 	/// checks whether the slot is on the watchlist.
 	pub(super) fn is_slot_relevant(&self, slot: &Slot) -> bool {
 		self.slot_watchlist.read().contains_key(slot)
+	}
+
+	/// Once a TransactionSet is found, remove that entry in `txset_and_slot` map and then
+	/// add to pending list.
+	pub(super) fn is_pending_proof(&mut self, slot: Slot) -> bool {
+		let env_map_read = self.envelopes_map.read();
+		let envs = match env_map_read.get_with_key(&slot) {
+			None => return false,
+			Some(envs) => envs,
+		};
+
+		if envs.len() < get_min_externalized_messages(self.is_public()) {
+			return false
+		}
+
+		if !self.txset_map.read().contains_key(&slot) {
+			return false
+		}
+
+		// only slots that are in the watch list should be in the pending list.
+		if !self.slot_watchlist.read().contains_key(&slot) {
+			return false
+		}
+
+		tracing::info!("TESTING TESTING TESTING inserting slot {} to pending list.", slot);
+		self.slot_pendinglist.write().push(slot);
+
+		true
 	}
 }
 

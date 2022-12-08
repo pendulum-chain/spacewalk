@@ -17,22 +17,31 @@ use crate::oracle::{
 	ScpArchiveStorage, ScpMessageCollector, Slot,
 };
 
-#[async_trait::async_trait]
-pub trait ProofExt: Send + Sync {
-	async fn get_proof(&self, slot: Slot) -> Result<ProofStatus, crate::oracle::Error>;
-
-	/// Returns a list of transactions with each of their corresponding proofs
-	async fn get_pending_proofs(&self) -> Result<Vec<Proof>, crate::oracle::Error>;
-
-	async fn processed_proof(&self, slot: Slot);
-}
-
 /// The Proof of Transactions that needed to be processed
 #[derive(Debug, Eq, PartialEq)]
 pub struct Proof {
+	/// the slot (or ledger) where the transaction is found
 	slot: Slot,
+
+	/// the envelopes belonging to the slot
 	envelopes: UnlimitedVarArray<ScpEnvelope>,
+
+	/// the transaction set belonging to the slot
 	tx_set: TransactionSet,
+}
+
+#[derive(Debug, Eq, PartialEq)]
+pub enum ProofStatus {
+	Proof(Proof),
+	/// The available ScpEnvelopes are not enough to create a proof, and the slot is too far back
+	/// to fetch more.
+	LackingEnvelopes,
+	/// No ScpEnvelopes found and the slot is too far back.
+	NoEnvelopesFound,
+	/// TxSet is not found and the slot is too far back.
+	NoTxSetFound,
+	/// TxSet is fetched again, so wait for it
+	WaitForTxSet,
 }
 
 impl Proof {
@@ -60,53 +69,16 @@ impl Proof {
 	}
 }
 
-#[derive(Debug, Eq, PartialEq)]
-pub enum ProofStatus {
-	Proof(Proof),
-	/// The available ScpEnvelopes are not enough to create a proof, and the slot is too far back
-	/// to fetch more.
-	LackingEnvelopes,
-	/// No ScpEnvelopes found and the slot is too far back.
-	NoEnvelopesFound,
-	/// TxSet is not found and the slot is too far back.
-	NoTxSetFound,
-	/// TxSet is fetched again, so wait for it
-	WaitForTxSet,
-}
-// handles the creation of proofs.
-// this means it will access the maps and potentially the files.
+// for fetching missing info to generate the proof
 impl ScpMessageCollector {
-	/// Returns either a list of ScpEnvelopes or a ProofStatus saying it failed to retrieve a list.
-	fn get_envelopes(&self, slot: Slot) -> Result<UnlimitedVarArray<ScpEnvelope>, ProofStatus> {
-		match self.envelopes_map().get_with_key(&slot) {
-			None => return Err(return_proper_envelopes_error(*self.last_slot_index(), slot)),
-			Some(envelopes) => {
-				// lacking envelopes
-				if envelopes.len() < get_min_externalized_messages(self.is_public()) {
-					return Err(return_proper_envelopes_error(*self.last_slot_index(), slot))
-				}
-
-				Ok(UnlimitedVarArray::new(envelopes.clone())
-					.unwrap_or(UnlimitedVarArray::new_empty()))
-			},
-		}
-	}
-
-	/// Returns either a TransactionSet or a ProofStatus saying it failed to retrieve the set.
-	fn get_txset(&self, slot: Slot) -> Result<TransactionSet, ProofStatus> {
-		match self.txset_map().get_with_key(&slot).map(|set| set.clone()) {
-			None => {
-				// If the current slot is still in the range of 'remembered' slots
-				if check_slot_position(*self.last_slot_index(), slot) {
-					return Err(ProofStatus::WaitForTxSet)
-				}
-				// Use Horizon Archive node to get TransactionHistoryEntry
-				Err(ProofStatus::NoTxSetFound)
-			},
-			Some(res) => Ok(res),
-		}
-	}
-
+	/// Fetch envelopes that are missing in the collector's map.
+	///
+	/// # Arguments
+	///
+	/// * `neg_proof_status` - the ProofStatus that will determine what method to use to fetch the
+	///   missing envelopes.
+	/// * `slot` - the slot where the missng envelopes belong to.
+	/// * `overlay_conn` - the overlay connection that connects to the Stellar Node
 	async fn fetch_missing_envelopes(
 		&mut self,
 		neg_proof_status: &ProofStatus,
@@ -141,6 +113,7 @@ impl ScpMessageCollector {
 		}
 	}
 
+	/// Fetch txset that are missing in the collector's map.
 	async fn fetch_missing_txset(
 		&mut self,
 		neg_proof_status: &ProofStatus,
@@ -164,6 +137,42 @@ impl ScpMessageCollector {
 			//todo: retrieve from TransactionHistoryEntry: https://github.com/pendulum-chain/spacewalk/pull/137
 			// },
 			_ => {},
+		}
+	}
+}
+
+// handles the creation of proofs.
+// this means it will access the maps and potentially the files.
+impl ScpMessageCollector {
+	/// Returns either a list of ScpEnvelopes or a ProofStatus saying it failed to retrieve a list.
+	fn get_envelopes(&self, slot: Slot) -> Result<UnlimitedVarArray<ScpEnvelope>, ProofStatus> {
+		match self.envelopes_map().get_with_key(&slot) {
+			// if no record is found, then send a proper error based on the last slot index.
+			None => Err(return_proper_envelopes_error(*self.last_slot_index(), slot)),
+			Some(envelopes) => {
+				// lacking envelopes
+				if envelopes.len() < get_min_externalized_messages(self.is_public()) {
+					return Err(return_proper_envelopes_error(*self.last_slot_index(), slot))
+				}
+
+				Ok(UnlimitedVarArray::new(envelopes.clone())
+					.unwrap_or(UnlimitedVarArray::new_empty()))
+			},
+		}
+	}
+
+	/// Returns either a TransactionSet or a ProofStatus saying it failed to retrieve the set.
+	fn get_txset(&self, slot: Slot) -> Result<TransactionSet, ProofStatus> {
+		match self.txset_map().get_with_key(&slot).map(|set| set.clone()) {
+			None => {
+				// If the current slot is still in the range of 'remembered' slots
+				if check_slot_position(*self.last_slot_index(), slot) {
+					return Err(ProofStatus::WaitForTxSet)
+				}
+				// Use Horizon Archive node to get TransactionHistoryEntry
+				Err(ProofStatus::NoTxSetFound)
+			},
+			Some(res) => Ok(res),
 		}
 	}
 
@@ -280,9 +289,21 @@ async fn get_envelopes_from_horizon_archive(
 	}
 }
 
+#[async_trait::async_trait]
+pub trait ProofExt: Send + Sync {
+	async fn get_proof(&self, slot: Slot) -> Result<ProofStatus, crate::oracle::Error>;
+
+	/// Returns a list of transactions with each of their corresponding proofs
+	async fn get_pending_proofs(&self) -> Result<Vec<Proof>, crate::oracle::Error>;
+
+	async fn processed_proof(&self, slot: Slot);
+}
+
 #[cfg(test)]
 mod test {
-	use crate::oracle::collector::proof_builder::check_slot_position;
+	use crate::oracle::collector::proof_builder::{
+		check_slot_position, return_proper_envelopes_error,
+	};
 
 	#[test]
 	fn test_check_slot_position() {

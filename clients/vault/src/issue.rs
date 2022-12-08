@@ -79,7 +79,14 @@ pub async fn listen_for_issue_requests(
 					let issue_request_result =
 						parachain_rpc.get_issue_request(event.issue_id).await;
 					if let Ok(issue_request) = issue_request_result {
-						tracing::warn!("Adding issue request to issue map: {:?}", issue_request);
+						tracing::info!(
+							"TESTING TESTING TESTING previous issues size: {}",
+							issues.read().await.len()
+						);
+						tracing::info!(
+							"TESTING TESTING TESTING Adding issue request to issue map: {:?}",
+							issue_request
+						);
 						issues.write().await.insert(event.issue_id, issue_request);
 					} else {
 						tracing::error!(
@@ -114,14 +121,18 @@ pub async fn listen_for_executed_issues(
 	parachain_rpc: SpacewalkParachain,
 	issues: Arc<RwLock<IssueRequestsMap>>,
 ) -> Result<(), ServiceError<Error>> {
-	match listen_event::<ExecuteIssueEvent>(&parachain_rpc).await? {
-		Some(event) => {
-			issues.write().await.remove(&event.issue_id);
-		},
-		None => {
-			tracing::trace!("Receiver didn't receive any execute issue event.");
-		},
-	}
+	let issues = &issues;
+
+	parachain_rpc
+		.on_event::<ExecuteIssueEvent, _, _, _>(
+			|event| async move {
+				issues.write().await.remove(&event.issue_id);
+				tracing::info!("TESTING TESTING TESTING issue id {:?} was executed and will be removed. issues size: {}", event.issue_id, issues.read().await.len());
+
+			},
+			|error| tracing::error!("Error reading ExecuteIssueEvent: {:?}", error.to_string()),
+		)
+		.await?;
 
 	Ok(())
 }
@@ -217,14 +228,25 @@ pub async fn execute_issue(
 		};
 
 		match parachain_rpc
-			.execute_issue(issue_id, tx_env.as_bytes(), envelopes.as_bytes(), tx_set.as_bytes())
+			.execute_issue(
+				issue_id.clone(),
+				tx_env.as_bytes(),
+				envelopes.as_bytes(),
+				tx_set.as_bytes(),
+			)
 			.await
 		{
 			Ok(_) => {
+				tracing::info!(
+					"TESTING TESTING TESTING ISSUE {:?} EXECUTED with issue_id: {:?}",
+					u32_slot,
+					issue_id
+				);
+
 				proof_ops.read().await.processed_proof(proof.slot()).await;
 			},
 			Err(err) if err.is_issue_completed() => {
-				tracing::info!("Issue #{} has been completed", issue_id);
+				tracing::info!("TESTING TESTING TESTING Issue #{} has been completed", issue_id);
 			},
 			Err(err) => return Err(err.into()),
 		}

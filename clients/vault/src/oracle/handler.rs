@@ -16,7 +16,7 @@ use crate::oracle::{
 };
 
 /// A message used to communicate with the Actor
-pub enum ActorMessage {
+enum ActorMessage {
 	/// returns the envelopes map size.
 	CurrentMapSize {
 		sender: oneshot::Sender<usize>,
@@ -163,14 +163,6 @@ impl ScpMessageHandler {
 		self.action_sender.send(ActorMessage::CurrentMapSize { sender }).await?;
 
 		receiver.await.map_err(Error::from)
-	}
-
-	pub fn handle_issue_event(&self) {
-		todo!();
-	}
-
-	pub fn handle_redeem_event(&self) {
-		todo!();
 	}
 
 	pub async fn get_last_slot_index(&self) -> Result<Slot, Error> {
