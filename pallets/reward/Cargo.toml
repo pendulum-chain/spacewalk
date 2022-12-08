@@ -30,7 +30,7 @@ rand = "0.8.3"
 frame-benchmarking = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.31", default-features = false }
 pallet-timestamp = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.31", default-features = false }
 
-currency = { path = "../currency", features = ["testing-utils"] }
+currency = { path = "../currency", default-features = false, features = ["testing-utils"] }
 primitives = { package = "spacewalk-primitives", path = "../../primitives", default-features = false }
 
 [features]
