@@ -1,4 +1,5 @@
 use std::array::TryFromSliceError;
+
 use tokio::sync::{mpsc, oneshot};
 
 use stellar_relay_lib::sdk::StellarSdkError;
@@ -25,6 +26,9 @@ pub enum Error {
 
 	#[error(display = "{:?}", _0)]
 	WalletError(wallet::error::Error),
+
+	#[error(display = "{:?}", _0)]
+	ProofTimeout(String),
 }
 
 impl From<StellarSdkError> for Error {

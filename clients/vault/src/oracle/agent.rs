@@ -1,13 +1,25 @@
+use std::time::Duration;
+
 use async_trait::async_trait;
 use rand::RngCore;
-use tokio::sync::{mpsc::Sender, oneshot};
+use tokio::{
+	sync::{mpsc::Sender, oneshot},
+	time::timeout,
+};
 
 use runtime::ShutdownSender;
-use stellar_relay_lib::{node::NodeInfo, sdk::SecretKey, ConnConfig, StellarOverlayConnection};
+use stellar_relay_lib::{
+	node::NodeInfo,
+	sdk::{
+		network::{PUBLIC_NETWORK, TEST_NETWORK},
+		SecretKey,
+	},
+	ConnConfig, StellarOverlayConnection,
+};
 
-use crate::{
-	oracle::{collector::ScpMessageCollector, types::Slot, ActorMessage, Proof, ScpMessageActor},
-	Error,
+use crate::oracle::{
+	collector::ScpMessageCollector, constants::*, errors::Error, types::Slot, ActorMessage, Proof,
+	ScpMessageActor,
 };
 
 #[async_trait]
@@ -55,12 +67,44 @@ impl Agent {
 		let secret_key = SecretKey::from_binary(secret_binary);
 
 		if self.is_public_network {
-			let node_info = NodeInfo::new(19, 25, 23, "v19.5.0".to_string(), network);
-			let cfg = ConnConfig::new(tier1_node_ip, 11625, secret_key, 0, true, true, false);
+			let network = &PUBLIC_NETWORK;
+			let node_info = NodeInfo::new(
+				LEDGER_VERSION_PUBNET,
+				OVERLAY_VERSION_PUBNET,
+				MIN_OVERLAY_VERSION_PUBNET,
+				VERSION_STRING_PUBNET.to_string(),
+				network,
+			);
+
+			let cfg = ConnConfig::new(
+				TIER_1_NODE_IP_PUBNET,
+				TIER_1_NODE_PORT_PUBNET,
+				secret_key,
+				0,
+				true,
+				true,
+				false,
+			);
 			(node_info, cfg)
 		} else {
-			let node_info = NodeInfo::new(19, 25, 23, "v19.5.0".to_string(), network);
-			let cfg = ConnConfig::new(tier1_node_ip, 11625, secret_key, 0, true, true, false);
+			let network = &TEST_NETWORK;
+			let node_info = NodeInfo::new(
+				LEDGER_VERSION_TESTNET,
+				OVERLAY_VERSION_TESTNET,
+				MIN_OVERLAY_VERSION_TESTNET,
+				VERSION_STRING_TESTNET.to_string(),
+				network,
+			);
+
+			let cfg = ConnConfig::new(
+				TIER_1_NODE_IP_TESTNET,
+				TIER_1_NODE_PORT_TESTNET,
+				secret_key,
+				0,
+				true,
+				true,
+				false,
+			);
 			(node_info, cfg)
 		}
 	}
@@ -73,7 +117,14 @@ impl OracleAgent for Agent {
 		let (sender, receiver) = oneshot::channel();
 		self.actor_action_sender.send(ActorMessage::GetProof { slot, sender }).await?;
 
-		receiver.await.map_err(Error::from)
+		let future = async {
+			let proof = receiver.await?;
+			Ok(proof)
+		};
+
+		timeout(Duration::from_secs(10), future.await)
+			.await
+			.map_err(|_| Error::ProofTimeout("Getting the proof timed out.".to_string()))
 	}
 
 	async fn start(&mut self) -> Result<(), Error> {
@@ -95,5 +146,42 @@ impl OracleAgent for Agent {
 			tracing::error!("Failed to send shutdown signal to the agent: {:?}", e);
 		}
 		Ok(())
+	}
+}
+
+#[cfg(test)]
+mod tests {
+	use crate::oracle::storage::prepare_directories;
+
+	use super::*;
+
+	#[tokio::test]
+	async fn test_get_proof_for_current_slot() {
+		prepare_directories().expect("Failed to prepare directories.");
+
+		let mut agent = Agent::new(true);
+		agent.start().await.expect("Failed to start agent");
+
+		// TODO get the current slot from the network
+		let target_slot = 573112;
+		let proof = agent.get_proof(target_slot).await.unwrap();
+
+		assert_eq!(proof.slot(), 1);
+		agent.stop().await.expect("Failed to stop the agent");
+	}
+
+	#[tokio::test]
+	async fn test_get_proof_for_archived_slot() {
+		prepare_directories().expect("Failed to prepare directories.");
+
+		let mut agent = Agent::new(true);
+		agent.start().await.expect("Failed to start agent");
+
+		// This slot should be archived on the public network
+		let target_slot = 573112;
+		let proof = agent.get_proof(target_slot).await.unwrap();
+
+		assert_eq!(proof.slot(), 1);
+		agent.stop().await.expect("Failed to stop the agent");
 	}
 }
