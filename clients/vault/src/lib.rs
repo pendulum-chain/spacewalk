@@ -3,8 +3,6 @@
 use std::time::Duration;
 
 pub use system::{VaultIdManager, VaultService, VaultServiceConfig, ABOUT, AUTHORS, NAME, VERSION};
-// Used for integration test
-pub use system::inner_create_handler;
 
 pub use crate::{cancellation::Event, error::Error};
 
@@ -19,6 +17,8 @@ mod issue;
 pub mod oracle;
 
 pub mod service {
+	pub use wallet::listen_for_new_transactions;
+
 	pub use crate::{
 		cancellation::{CancellationScheduler, IssueCanceller, ReplaceCanceller},
 		issue::{
@@ -26,7 +26,6 @@ pub mod service {
 			process_issues_with_proofs, IssueFilter,
 		},
 	};
-	pub use wallet::listen_for_new_transactions;
 }
 
 /// At startup we wait until a new block has arrived before we start event listeners.

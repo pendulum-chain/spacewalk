@@ -38,4 +38,7 @@ pub enum Error<InnerError> {
 	IoError(#[from] IoError),
 	#[error("Wallet error: {0}")]
 	WalletError(#[from] wallet::error::Error),
+
+	#[error("Could not start oracle agent")]
+	StartOracleAgentError,
 }
