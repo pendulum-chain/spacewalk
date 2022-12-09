@@ -211,6 +211,9 @@ impl ScpMessageCollector {
 		let envelopes = envelopes.expect("envelopes should be Some");
 		let tx_set = tx_set.expect("tx_set should be Some");
 
+		// TODO maybe join the two loops above into one to improve performance
+		// but more nice-to-have than necessary
+
 		let proof = Proof { slot, envelopes, tx_set };
 		Ok(proof)
 	}
