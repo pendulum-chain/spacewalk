@@ -7,6 +7,7 @@ pub use handler::*;
 pub use storage::{prepare_directories, *};
 use types::*;
 
+mod agent;
 mod collector;
 mod constants;
 mod errors;
