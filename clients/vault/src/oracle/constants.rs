@@ -31,3 +31,21 @@ pub fn get_min_externalized_messages(public_network: bool) -> usize {
 	// This value is likely higher than the actual minimum but it's a good approximation
 	validator_count * 2 / 3
 }
+
+/// --- Default values for the stellar overlay connection ---
+pub const LEDGER_VERSION_PUBNET: u32 = 26;
+pub const OVERLAY_VERSION_PUBNET: u32 = 23;
+pub const MIN_OVERLAY_VERSION_PUBNET: u32 = 19;
+pub const VERSION_STRING_PUBNET: &str = "v19.6.0";
+// For SatoshiPay (DE, Frankfurt)
+pub const TIER_1_NODE_IP_PUBNET: &str = "141.95.47.112";
+pub const TIER_1_NODE_PORT_PUBNET: u32 = 11625;
+
+pub const LEDGER_VERSION_TESTNET: u32 = 26;
+pub const OVERLAY_VERSION_TESTNET: u32 = 23;
+pub const MIN_OVERLAY_VERSION_TESTNET: u32 = 19;
+pub const VERSION_STRING_TESTNET: &str =
+	"stellar-core 19.6.0 (b3a6bc28116e80bff7889c2f3bcd7c30dd1ac4d6)";
+// For sdftest-1
+pub const TIER_1_NODE_IP_TESTNET: &str = "34.235.168.98";
+pub const TIER_1_NODE_PORT_TESTNET: u32 = 11625;
