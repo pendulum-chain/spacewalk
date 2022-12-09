@@ -46,6 +46,7 @@ mod metadata_aliases {
 			},
 			vault_registry::{pallet::Error as VaultRegistryPalletError, types::VaultStatus},
 		},
+		security::events::UpdateActiveBlock as UpdateActiveBlockEvent,
 		tokens::events::Endowed as EndowedEvent,
 		vault_registry::events::{
 			DepositCollateral as DepositCollateralEvent, LiquidateVault as LiquidateVaultEvent,

@@ -5,6 +5,7 @@ use std::{
 use async_trait::async_trait;
 use clap::Parser;
 use futures::{
+	channel::mpsc,
 	future::{join, join_all},
 	TryFutureExt,
 };
@@ -35,7 +36,8 @@ use crate::{
 	issue::IssueFilter,
 	metrics::publish_tokio_metrics,
 	oracle::{create_handler, prepare_directories, ScpMessageHandler},
-	CHAIN_HEIGHT_POLLING_INTERVAL,
+	service::{CancellationScheduler, IssueCanceller},
+	Event, CHAIN_HEIGHT_POLLING_INTERVAL,
 };
 
 pub const VERSION: &str = git_version!(args = ["--tags"], fallback = "unknown");
@@ -349,7 +351,8 @@ impl VaultService {
 	}
 
 	async fn run_service(&mut self) -> Result<(), ServiceError<Error>> {
-		self.await_parachain_block().await?;
+		let startup_height = self.await_parachain_block().await?;
+		let account_id = self.spacewalk_parachain.get_account_id().clone();
 
 		let parsed_auto_register = self
 			.config
@@ -432,6 +435,8 @@ impl VaultService {
 		let watcher = Arc::new(RwLock::new(handler.create_watcher()));
 		let proof_ops = Arc::new(RwLock::new(handler.proof_operations()));
 
+		let (issue_event_tx, issue_event_rx) = mpsc::channel::<Event>(32);
+
 		tracing::info!("Starting all services...");
 		let tasks = vec![
 			(
@@ -462,6 +467,7 @@ impl VaultService {
 				run(issue::listen_for_issue_requests(
 					self.spacewalk_parachain.clone(),
 					self.stellar_wallet.get_public_key(),
+					issue_event_tx.clone(),
 					issue_map.clone(),
 				)),
 			),
@@ -478,6 +484,15 @@ impl VaultService {
 					self.spacewalk_parachain.clone(),
 					issue_map.clone(),
 				)),
+			),
+			(
+				"Issue Cancel Scheduler",
+				run(CancellationScheduler::new(
+					self.spacewalk_parachain.clone(),
+					startup_height,
+					account_id.clone(),
+				)
+				.handle_cancellation::<IssueCanceller>(issue_event_rx)),
 			),
 		];
 

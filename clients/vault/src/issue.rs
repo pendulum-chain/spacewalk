@@ -4,7 +4,7 @@ use std::{
 };
 
 use async_trait::async_trait;
-use futures::channel::mpsc::Sender;
+use futures::{channel::mpsc::Sender, SinkExt};
 use itertools::Itertools;
 use sp_runtime::traits::{LookupError, StaticLookup};
 use tokio::sync::RwLock;
@@ -69,6 +69,8 @@ pub async fn listen_for_issue_requests(
 	let parachain_rpc = &parachain_rpc;
 	let vault_public_key = &vault_public_key;
 	let issues = &issues;
+	let event_channel = &event_channel;
+
 	parachain_rpc
 		.on_event::<RequestIssueEvent, _, _, _>(
 			|event| async move {
@@ -90,6 +92,10 @@ pub async fn listen_for_issue_requests(
 							issue_request
 						);
 						issues.write().await.insert(event.issue_id, issue_request);
+
+						// try to send the event, but ignore the returned result since
+						// the only way it can fail is if the channel is closed
+						let _ = event_channel.clone().send(Event::Opened).await;
 					} else {
 						tracing::error!(
 							"Failed to get issue request for issue id: {:?}",
@@ -108,14 +114,17 @@ pub async fn listen_for_issue_cancels(
 	parachain_rpc: SpacewalkParachain,
 	issues: Arc<RwLock<IssueRequestsMap>>,
 ) -> Result<(), ServiceError<Error>> {
-	match listen_event::<CancelIssueEvent>(&parachain_rpc).await? {
-		Some(event) => {
-			issues.write().await.remove(&event.issue_id);
-		},
-		None => {
-			tracing::trace!("Receiver didn't receive any cancel issue event.");
-		},
-	}
+	let issues = &issues;
+
+	parachain_rpc
+		.on_event::<CancelIssueEvent, _, _, _>(
+			|event| async move {
+				issues.write().await.remove(&event.issue_id);
+			},
+			|error| tracing::error!("Error reading ExecuteIssueEvent: {:?}", error.to_string()),
+		)
+		.await?;
+
 	Ok(())
 }
 
