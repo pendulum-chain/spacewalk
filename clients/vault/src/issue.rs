@@ -4,6 +4,7 @@ use std::{
 };
 
 use async_trait::async_trait;
+use futures::channel::mpsc::Sender;
 use itertools::Itertools;
 use sp_runtime::traits::{LookupError, StaticLookup};
 use tokio::sync::RwLock;
@@ -20,7 +21,7 @@ use stellar_relay_lib::sdk::{
 };
 use wallet::types::{FilterWith, TransactionFilterParam};
 
-use crate::{oracle::*, Error};
+use crate::{oracle::*, Error, Event};
 
 fn is_vault(p1: &PublicKey, p2_raw: [u8; 32]) -> bool {
 	return *p1.as_binary() == p2_raw
@@ -61,6 +62,7 @@ where
 pub async fn listen_for_issue_requests(
 	parachain_rpc: SpacewalkParachain,
 	vault_public_key: PublicKey,
+	event_channel: Sender<Event>,
 	issues: Arc<RwLock<IssueRequestsMap>>,
 ) -> Result<(), ServiceError<Error>> {
 	// Use references to prevent 'moved closure' errors
