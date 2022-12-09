@@ -422,6 +422,204 @@ async fn test_issue_cancel_succeeds() {
 
 #[tokio::test(flavor = "multi_thread")]
 #[serial]
+async fn test_cancellation_succeeds() {
+	// tests cancellation of issue, redeem and replace.
+	// issue and replace cancellation is tested through the vault's cancellation service.
+	// cancel_redeem is called manually
+	test_with_vault(|client, old_vault_id, old_vault_provider| async move {
+		let root_provider = setup_provider(client.clone(), AccountKeyring::Alice).await;
+		let user_provider = setup_provider(client.clone(), AccountKeyring::Dave).await;
+		let new_vault_provider = setup_provider(client.clone(), AccountKeyring::Eve).await;
+		// This conversion is necessary for now because subxt uses newer versions of the sp_xxx
+		// dependencies
+		let eve_account =
+			subxt::ext::sp_runtime::AccountId32::from(AccountKeyring::Eve.to_raw_public());
+		let new_vault_id =
+			VaultId::new(eve_account, DEFAULT_TESTING_CURRENCY, DEFAULT_WRAPPED_CURRENCY);
+
+		let is_public_network = false;
+		let wallet = StellarWallet::from_secret_encoded(
+			&STELLAR_VAULT_SECRET_KEY.to_string(),
+			is_public_network,
+		)
+		.unwrap();
+		let wallet = Arc::new(wallet);
+
+		let issue_amount = 100000;
+		let vault_collateral = get_required_vault_collateral_for_issue(
+			&old_vault_provider,
+			issue_amount * 10,
+			old_vault_id.collateral_currency(),
+		)
+		.await;
+		assert_ok!(
+			old_vault_provider
+				.register_vault_with_public_key(
+					&old_vault_id,
+					vault_collateral,
+					wallet.get_public_key_raw()
+				)
+				.await
+		);
+		assert_ok!(
+			new_vault_provider
+				.register_vault_with_public_key(
+					&new_vault_id,
+					vault_collateral,
+					wallet.get_public_key_raw()
+				)
+				.await
+		);
+
+		// TODO why is this needed?
+		// assert_issue(&user_provider, &btc_rpc, &old_vault_id, issue_amount).await;
+
+		// set low timeout periods
+		assert_ok!(root_provider.set_issue_period(1).await);
+		// assert_ok!(root_provider.set_replace_period(1).await);
+		// assert_ok!(root_provider.set_redeem_period(1).await);
+
+		let (issue_cancellation_event_tx, issue_cancellation_rx) =
+			mpsc::channel::<CancellationEvent>(16);
+		let (replace_cancellation_event_tx, replace_cancellation_rx) =
+			mpsc::channel::<CancellationEvent>(16);
+
+		let block_listener = new_vault_provider.clone();
+		let issue_set = Arc::new(IssueRequests::new());
+
+		let issue_request_listener = vault::service::listen_for_issue_requests(
+			new_vault_provider.clone(),
+			wallet.get_public_key(),
+			issue_cancellation_event_tx.clone(),
+			issue_set.clone(),
+		);
+
+		let issue_cancellation_scheduler = vault::service::CancellationScheduler::new(
+			new_vault_provider.clone(),
+			new_vault_provider.get_current_chain_height().await.unwrap(),
+			new_vault_provider.get_account_id().clone(),
+		);
+		// let replace_cancellation_scheduler = vault::service::CancellationScheduler::new(
+		// 	new_vault_provider.clone(),
+		// 	new_vault_provider.get_current_chain_height().await.unwrap(),
+		// 	0,
+		// 	new_vault_provider.get_account_id().clone(),
+		// );
+		let issue_canceller = issue_cancellation_scheduler
+			.handle_cancellation::<vault::service::IssueCanceller>(issue_cancellation_rx);
+		// let replace_canceller = replace_cancellation_scheduler
+		// 	.handle_cancellation::<vault::service::ReplaceCanceller>(replace_cancellation_rx);
+
+		let parachain_block_listener = async {
+			let issue_block_tx = &issue_cancellation_event_tx.clone();
+			let replace_block_tx = &replace_cancellation_event_tx.clone();
+
+			block_listener
+				.clone()
+				.on_event::<UpdateActiveBlockEvent, _, _, _>(
+					|event| async move {
+						assert_ok!(
+							issue_block_tx
+								.clone()
+								.send(CancellationEvent::ParachainBlock(event.block_number))
+								.await
+						);
+						assert_ok!(
+							replace_block_tx
+								.clone()
+								.send(CancellationEvent::ParachainBlock(event.block_number))
+								.await
+						);
+					},
+					|_err| (),
+				)
+				.await
+				.unwrap();
+		};
+
+		test_service(
+			join3(
+				issue_canceller.map(Result::unwrap),
+				// replace_canceller.map(Result::unwrap),
+				issue_request_listener.map(Result::unwrap),
+				parachain_block_listener,
+			),
+			async {
+				// let address = BtcAddress::P2PKH(H160::from_slice(&[2; 20]));
+
+				// setup the to-be-cancelled redeem
+				// let redeem_id =
+				// 	user_provider.request_redeem(20000, address, &old_vault_id).await.unwrap();
+
+				join2(
+					async {
+						// setup the to-be-cancelled replace
+						// assert_ok!(
+						// 	old_vault_provider
+						// 		.request_replace(&old_vault_id, issue_amount / 2)
+						// 		.await
+						// );
+						// assert_ok!(
+						// 	new_vault_provider
+						// 		.accept_replace(
+						// 			&new_vault_id,
+						// 			&old_vault_id,
+						// 			10000000u32.into(),
+						// 			0u32.into(),
+						// 			address
+						// 		)
+						// 		.await
+						// );
+						// assert_ok!(
+						// 	replace_cancellation_event_tx
+						// 		.clone()
+						// 		.send(CancellationEvent::Opened)
+						// 		.await
+						// );
+						//
+						// setup the to-be-cancelled issue
+						assert_ok!(user_provider.request_issue(issue_amount, &new_vault_id).await);
+
+						for _ in 0u32..2 {
+							assert_ok!(
+								btc_rpc
+									.send_to_address(
+										BtcAddress::P2PKH(H160::from_slice(&[0; 20]))
+											.to_address(btc_rpc.network())
+											.unwrap(),
+										100_000,
+										None,
+										SatPerVbyte(1000),
+										1
+									)
+									.await
+							);
+						}
+					},
+					assert_event::<CancelIssueEvent, _>(
+						Duration::from_secs(120),
+						user_provider.clone(),
+						|_| true,
+					),
+					// assert_event::<CancelReplaceEvent, _>(
+					// 	Duration::from_secs(120),
+					// 	user_provider.clone(),
+					// 	|_| true,
+					// ),
+				)
+				.await;
+
+				// now make sure we can cancel the redeem
+				// assert_ok!(user_provider.cancel_redeem(redeem_id, true).await);
+			},
+		)
+		.await;
+	})
+	.await;
+}
+
+#[tokio::test(flavor = "multi_thread")]
+#[serial]
 async fn test_issue_overpayment_succeeds() {
 	test_with_vault(|client, vault_id, vault_provider| async move {
 		let user_provider = setup_provider(client.clone(), AccountKeyring::Dave).await;
