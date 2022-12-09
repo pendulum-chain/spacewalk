@@ -2,6 +2,7 @@ use async_trait::async_trait;
 use rand::RngCore;
 use tokio::sync::{mpsc::Sender, oneshot};
 
+use runtime::ShutdownSender;
 use stellar_relay_lib::{node::NodeInfo, sdk::SecretKey, ConnConfig, StellarOverlayConnection};
 
 use crate::{
@@ -23,9 +24,11 @@ pub trait OracleAgent {
 }
 
 pub struct Agent {
-	action_sender: Sender<ActorMessage>,
+	actor_action_sender: Sender<ActorMessage>,
+	actor: ScpMessageActor,
 	overlay_conn: Option<StellarOverlayConnection>,
 	pub is_public_network: bool,
+	shutdown_sender: ShutdownSender,
 }
 
 impl Agent {
@@ -33,11 +36,16 @@ impl Agent {
 		let (sender, receiver) = tokio::sync::mpsc::channel(1024);
 		let collector = ScpMessageCollector::new(is_public_network);
 
-		let mut actor = ScpMessageActor::new(receiver, collector);
+		let actor = ScpMessageActor::new(receiver, collector);
+		let shutdown_sender = ShutdownSender::default();
 
-		tokio::spawn(async move { actor.run().await });
-
-		Self { action_sender: sender, is_public_network, overlay_conn: None }
+		Self {
+			actor_action_sender: sender,
+			actor,
+			is_public_network,
+			shutdown_sender,
+			overlay_conn: None,
+		}
 	}
 
 	fn get_default_overlay_conn_config(&self) -> (NodeInfo, ConnConfig) {
@@ -61,22 +69,31 @@ impl Agent {
 #[async_trait]
 impl OracleAgent for Agent {
 	async fn get_proof(&self, slot: Slot) -> Result<Proof, Error> {
+		tracing::info!("Getting proof for slot {}", slot);
 		let (sender, receiver) = oneshot::channel();
-		self.action_sender.send(ActorMessage::GetProof { slot, sender }).await?;
+		self.actor_action_sender.send(ActorMessage::GetProof { slot, sender }).await?;
 
 		receiver.await.map_err(Error::from)
 	}
 
 	async fn start(&mut self) -> Result<(), Error> {
+		tracing::info!("Starting agent");
 		let (node_info, conn_config) = self.get_default_overlay_conn_config();
 		let overlay_conn = StellarOverlayConnection::connect(node_info, conn_config).await?;
-		self.overlay_conn = Some(overlay_conn);
+		self.overlay_conn = Some(overlay_conn.clone());
 
+		service::spawn_cancelable(self.shutdown_sender.subscribe(), async move {
+			self.actor.run(overlay_conn).await?;
+		});
 		Ok(())
 	}
 
 	async fn stop(&mut self) -> Result<(), Error> {
+		tracing::info!("Stopping agent");
 		// self.overlay_conn.disconnect();
+		if let Err(e) = self.shutdown_sender.send(()).await {
+			tracing::error!("Failed to send shutdown signal to the agent: {:?}", e);
+		}
 		Ok(())
 	}
 }
