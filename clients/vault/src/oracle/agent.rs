@@ -12,15 +12,23 @@ use stellar_relay_lib::{
 	node::NodeInfo,
 	sdk::{
 		network::{PUBLIC_NETWORK, TEST_NETWORK},
+		types::StellarMessage,
 		SecretKey,
 	},
-	ConnConfig, StellarOverlayConnection,
+	ConnConfig, StellarOverlayConnection, StellarRelayMessage,
 };
 
 use crate::oracle::{
-	collector::ScpMessageCollector, constants::*, errors::Error, types::Slot, ActorMessage, Proof,
-	ScpMessageActor,
+	collector::ScpMessageCollector, constants::*, errors::Error, prepare_directories, types::Slot,
+	Proof, ProofStatus,
 };
+
+/// A message used to communicate with the Actor
+pub enum ActorMessage {
+	GetProof { slot: Slot, sender: oneshot::Sender<Proof> },
+	GetLastSlotIndex { sender: oneshot::Sender<Slot> },
+	RemoveData { slot: Slot },
+}
 
 #[async_trait]
 pub trait OracleAgent {
@@ -37,23 +45,27 @@ pub trait OracleAgent {
 
 pub struct Agent {
 	actor_action_sender: Sender<ActorMessage>,
-	actor: ScpMessageActor,
+	collector: ScpMessageCollector,
 	overlay_conn: Option<StellarOverlayConnection>,
 	pub is_public_network: bool,
 	shutdown_sender: ShutdownSender,
 }
 
 impl Agent {
-	fn new(is_public_network: bool) -> Self {
+	pub(crate) fn new(is_public_network: bool) -> Self {
 		let (sender, receiver) = tokio::sync::mpsc::channel(1024);
 		let collector = ScpMessageCollector::new(is_public_network);
 
-		let actor = ScpMessageActor::new(receiver, collector);
 		let shutdown_sender = ShutdownSender::default();
+
+		prepare_directories().map_err(|e| {
+			tracing::error!("Failed to create the SCPMessageHandler: {:?}", e);
+			Error::StellarSdkError
+		})?;
 
 		Self {
 			actor_action_sender: sender,
-			actor,
+			collector,
 			is_public_network,
 			shutdown_sender,
 			overlay_conn: None,
@@ -108,6 +120,85 @@ impl Agent {
 			(node_info, cfg)
 		}
 	}
+
+	async fn handle_actor_message(&mut self, msg: ActorMessage) {
+		if self.overlay_conn.is_none() {
+			return
+		}
+		let overlay_conn = self.overlay_conn.expect("overlay_conn cannot be None");
+
+		match msg {
+			ActorMessage::GetProof { slot, sender } => {
+				let proof = self.collector.build_proof(slot, &overlay_conn).await;
+				match proof {
+					Ok(proof) => {
+						let _ = sender.send(proof);
+					},
+					Err(e) => {
+						tracing::error!("Error while building proof: {}", e);
+						// TODO maybe change this to send an error back to the sender
+					},
+				}
+			},
+			ActorMessage::GetLastSlotIndex { sender } => {
+				let res = self.collector.last_slot_index();
+				if let Err(slot) = sender.send(*res) {
+					tracing::warn!("failed to send back the slot number: {}", slot);
+				}
+			},
+			ActorMessage::RemoveData { slot } => {
+				self.collector.remove_data(&slot);
+			},
+		};
+	}
+
+	async fn handle_stellar_relay_message(&mut self, message: StellarRelayMessage) {
+		if self.overlay_conn.is_none() {
+			return
+		}
+		let overlay_conn = self.overlay_conn.expect("overlay_conn cannot be None");
+		match message {
+			StellarRelayMessage::Data { p_id: _, msg_type: _, msg } => match msg {
+				StellarMessage::ScpMessage(env) => {
+					self.collector.handle_envelope(env, &overlay_conn).await?;
+				},
+				StellarMessage::TxSet(set) => {
+					self.collector.handle_tx_set(set);
+				},
+				_ => {},
+			},
+			// todo
+			StellarRelayMessage::Connect { pub_key: _, node_info: _ } => {},
+			// todo
+			StellarRelayMessage::Error(_) => {},
+			// todo
+			StellarRelayMessage::Timeout => {},
+		}
+	}
+
+	/// runs the stellar-relay and listens to data to collect the scp messages and txsets.
+	async fn run(&mut self) -> Result<(), Error> {
+		if self.overlay_conn.is_none() {
+			return Ok(())
+		}
+		let overlay_conn = self.overlay_conn.expect("overlay_conn cannot be None");
+
+		// Periodically either handle a message from the overlay network or from the 'user' that
+		// sends an actor-message we should act upon
+		service::spawn_cancelable(self.shutdown_sender.subscribe(), async move {
+			loop {
+				tokio::select! {
+					Some(msg) = overlay_conn.listen() => {
+							self.handle_stellar_relay_message(msg).await;
+					},
+					Some(msg) = self.action_receiver.recv() => {
+							self.handle_actor_message(msg).await;
+					}
+				}
+			}
+		})
+		.await
+	}
 }
 
 #[async_trait]
@@ -133,9 +224,7 @@ impl OracleAgent for Agent {
 		let overlay_conn = StellarOverlayConnection::connect(node_info, conn_config).await?;
 		self.overlay_conn = Some(overlay_conn.clone());
 
-		service::spawn_cancelable(self.shutdown_sender.subscribe(), async move {
-			self.actor.run(overlay_conn).await?;
-		});
+		self.run();
 		Ok(())
 	}
 

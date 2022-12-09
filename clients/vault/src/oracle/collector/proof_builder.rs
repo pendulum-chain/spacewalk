@@ -13,6 +13,7 @@ use stellar_relay_lib::{
 
 use crate::oracle::{
 	constants::{get_min_externalized_messages, MAX_SLOT_TO_REMEMBER},
+	errors::Error,
 	types::{EnvelopesMap, LifoMap},
 	ScpArchiveStorage, ScpMessageCollector, Slot,
 };
@@ -186,52 +187,32 @@ impl ScpMessageCollector {
 		&mut self,
 		slot: Slot,
 		overlay_conn: &StellarOverlayConnection,
-	) -> ProofStatus {
+	) -> Result<Proof, Error> {
 		// get the SCPEnvelopes
-		let envelopes = match self.get_envelopes(slot) {
-			Ok(envelopes) => envelopes,
-			Err(neg_status) => {
-				self.fetch_missing_envelopes(&neg_status, slot, overlay_conn).await;
-				return neg_status
-			},
-		};
-
-		// get the TransactionSet
-		let tx_set = match self.get_txset(slot) {
-			Ok(set) => set,
-			Err(neg_status) => {
-				self.fetch_missing_txset(&neg_status, slot, overlay_conn).await;
-				return neg_status
-			},
-		};
-
-		// a proof has been found. Remove this slot.
-		// self.remove_data(&slot);
-
-		ProofStatus::Proof(Proof { slot, envelopes, tx_set })
-	}
-
-	/// Returns a list of transactions (only those with proofs) to be processed.
-	pub async fn get_pending_proofs(
-		&mut self,
-		overlay_conn: &StellarOverlayConnection,
-	) -> Vec<Proof> {
-		let mut proofs_for_handled_txs = Vec::<Proof>::new();
-
-		// let's generate proofs from the pending list.
-		for slot in self.read_slot_pending_list().iter() {
-			// Try to build proofs
-			match self.build_proof(*slot, overlay_conn).await {
-				ProofStatus::Proof(proof) => {
-					proofs_for_handled_txs.push(proof);
+		let mut envelopes: Option<UnlimitedVarArray<ScpEnvelope>> = None;
+		while envelopes.is_none() {
+			match self.get_envelopes(slot) {
+				Ok(envlps) => envelopes = Some(envlps),
+				Err(neg_status) => {
+					self.fetch_missing_envelopes(&neg_status, slot, overlay_conn).await;
 				},
-				other => {
-					tracing::warn!("cannot build proof for slot {:?}: {:?}", slot, other);
+			};
+		}
+
+		let mut tx_set: Option<TransactionSet> = None;
+		while tx_set.is_none() {
+			match self.get_txset(slot) {
+				Ok(txset) => tx_set = Some(txset),
+				Err(neg_status) => {
+					self.fetch_missing_txset(&neg_status, slot, overlay_conn).await;
 				},
 			}
 		}
+		let envelopes = envelopes.expect("envelopes should be Some");
+		let tx_set = tx_set.expect("tx_set should be Some");
 
-		proofs_for_handled_txs
+		let proof = Proof { slot, envelopes, tx_set };
+		Ok(proof)
 	}
 }
 
