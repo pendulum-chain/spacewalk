@@ -13,17 +13,16 @@ use git_version::git_version;
 use tokio::{sync::RwLock, time::sleep};
 
 use runtime::{
-	cli::{parse_duration_minutes, parse_duration_ms},
-	CollateralBalancesPallet, CurrencyId, Error as RuntimeError, IssueRequestsMap, PrettyPrint,
-	RegisterVaultEvent, ShutdownSender, SpacewalkParachain, StellarRelayPallet, TryFromSymbol,
-	UtilFuncs, VaultCurrencyPair, VaultId, VaultRegistryPallet,
+	cli::parse_duration_minutes, CollateralBalancesPallet, CurrencyId, Error as RuntimeError,
+	IssueRequestsMap, PrettyPrint, RegisterVaultEvent, ShutdownSender, SpacewalkParachain,
+	StellarRelayPallet, TryFromSymbol, UtilFuncs, VaultCurrencyPair, VaultId, VaultRegistryPallet,
 };
 use service::{wait_or_shutdown, Error as ServiceError, Service};
 use stellar_relay_lib::{
 	node::NodeInfo,
 	sdk::{
 		network::{Network, PUBLIC_NETWORK, TEST_NETWORK},
-		Hash, SecretKey,
+		SecretKey,
 	},
 	ConnConfig,
 };
@@ -482,6 +481,15 @@ impl VaultService {
 				"Listen for Executed Issues",
 				run(issue::listen_for_executed_issues(
 					self.spacewalk_parachain.clone(),
+					issue_map.clone(),
+				)),
+			),
+			(
+				"Execute issues with proofs",
+				run(issue::process_issues_with_proofs(
+					self.spacewalk_parachain.clone(),
+					proof_ops.clone(),
+					slot_tx_env_map.clone(),
 					issue_map.clone(),
 				)),
 			),

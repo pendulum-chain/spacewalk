@@ -14,7 +14,7 @@ use tokio::{sync::RwLock, time::sleep};
 
 use primitives::{issue::IssueRequest, H256};
 use runtime::{
-	integration::*, types::*, CurrencyId::Token, FixedPointNumber, FixedU128, IssuePallet,
+	integration::*, types::*, CurrencyId::Token, Error, FixedPointNumber, FixedU128, IssuePallet,
 	SpacewalkParachain, SudoPallet, UtilFuncs, VaultRegistryPallet,
 };
 use stellar_relay_lib::sdk::{Hash, PublicKey, SecretKey, XdrCodec};
@@ -130,9 +130,10 @@ where
 	execute(client, vault_id, vault_provider).await
 }
 
+/*
 #[tokio::test(flavor = "multi_thread")]
 #[serial]
-async fn test_cancellation_succeeds() {
+async fn test_cancel_scheduler_succeeds() {
 	// tests cancellation of issue, redeem and replace.
 	// issue and replace cancellation is tested through the vault's cancellation service.
 	// cancel_redeem is called manually
@@ -330,6 +331,94 @@ async fn test_cancellation_succeeds() {
 	})
 	.await;
 }
+*/
+
+#[tokio::test(flavor = "multi_thread")]
+#[serial]
+async fn test_issue_cancel_succeeds() {
+	test_with_vault(|client, vault_id, vault_provider| async move {
+		let user_provider = setup_provider(client.clone(), AccountKeyring::Dave).await;
+		let issue_set = Arc::new(RwLock::new(IssueRequestsMap::new()));
+
+		let is_public_network = false;
+		let wallet = StellarWallet::from_secret_encoded(
+			&STELLAR_VAULT_SECRET_KEY.to_string(),
+			is_public_network,
+		)
+		.unwrap();
+		let issue_filter = IssueFilter::new(&wallet.get_public_key()).expect("Invalid filter");
+
+		let wallet = Arc::new(wallet);
+
+		let issue_amount = 100000;
+		let vault_collateral = get_required_vault_collateral_for_issue(
+			&vault_provider,
+			issue_amount,
+			vault_id.collateral_currency(),
+		)
+		.await;
+
+		assert_ok!(
+			vault_provider
+				.register_vault_with_public_key(
+					&vault_id,
+					vault_collateral,
+					wallet.get_public_key_raw(),
+				)
+				.await
+		);
+
+		let fut_user = async {
+			// The account of the 'user_provider' is used to request a new issue that
+			// has to be executed by the vault_provider
+			let issue = user_provider.request_issue(issue_amount, &vault_id).await.unwrap();
+			assert_eq!(issue_set.read().await.len(), 1);
+
+			match user_provider.cancel_issue(issue.issue_id).await {
+				Ok(_) => {
+					assert!(true);
+				},
+				Err(e) => {
+					panic!("Failed to Cancel Issue: {:?}", e);
+				},
+			}
+
+			// wait for vault2 to execute this issue
+			assert_event::<CancelIssueEvent, _>(TIMEOUT, user_provider.clone(), |_| true).await;
+			assert!(issue_set.read().await.is_empty());
+		};
+
+		let slot_tx_env_map: Arc<RwLock<HashMap<u32, String>>> =
+			Arc::new(RwLock::new(HashMap::new()));
+
+		let handler = vault::inner_create_handler(wallet.get_secret_key(), is_public_network)
+			.await
+			.expect("Failed to create handler");
+		let watcher = Arc::new(RwLock::new(handler.create_watcher()));
+
+		let (issue_event_tx, _issue_event_rx) = mpsc::channel::<CancellationEvent>(16);
+		let service = join3(
+			vault::service::listen_for_new_transactions(
+				wallet.get_public_key(),
+				wallet.is_public_network(),
+				watcher.clone(),
+				slot_tx_env_map.clone(),
+				issue_set.clone(),
+				issue_filter,
+			),
+			vault::service::listen_for_issue_requests(
+				vault_provider.clone(),
+				wallet.get_public_key(),
+				issue_event_tx,
+				issue_set.clone(),
+			),
+			vault::service::listen_for_issue_cancels(vault_provider.clone(), issue_set.clone()),
+		);
+
+		test_service(service, fut_user).await;
+	})
+	.await;
+}
 
 #[tokio::test(flavor = "multi_thread")]
 #[serial]
@@ -485,7 +574,6 @@ async fn test_automatic_issue_execution_succeeds() {
 			// The account of the 'user_provider' is used to request a new issue that
 			// has to be executed by the vault_provider
 			let issue = user_provider.request_issue(issue_amount, &vault_id).await.unwrap();
-			tracing::warn!("TESTING TESTING TESTING REQUESTED ISSUE: {:?}", issue.issue_id);
 
 			let destination_public_key = PublicKey::from_binary(issue.vault_stellar_public_key);
 			let stroop_amount = (issue.amount + issue.fee) as i64;
@@ -606,18 +694,25 @@ async fn test_automatic_issue_execution_succeeds_for_other_vault() {
 		);
 
 		let issue_set = Arc::new(RwLock::new(IssueRequestsMap::new()));
+		let slot_tx_env_map: Arc<RwLock<HashMap<u32, String>>> =
+			Arc::new(RwLock::new(HashMap::new()));
 
 		let fut_user = async {
 			// The account of the 'user_provider' is used to request a new issue that
 			// has to be executed by vault1
 			let issue = user_provider.request_issue(issue_amount, &vault1_id).await.unwrap();
-			tracing::warn!("TESTING TESTING TESTING REQUESTED ISSUE: {:?}", issue.issue_id);
 
 			let destination_public_key = PublicKey::from_binary(issue.vault_stellar_public_key);
 			let stroop_amount = (issue.amount + issue.fee) as i64;
 			let stellar_asset =
 				primitives::AssetConversion::lookup(issue.asset).expect("Asset not found");
 			let memo_hash = issue.issue_id.0;
+
+			// Wrap this in a block to make sure the lock is dropped
+			{
+				let issue_set = issue_set.read().await;
+				assert!(!issue_set.is_empty());
+			}
 
 			let result = wallet
 				.send_payment_to_address(
@@ -629,15 +724,8 @@ async fn test_automatic_issue_execution_succeeds_for_other_vault() {
 				.await;
 			assert!(result.is_ok());
 
-			tracing::warn!("Sent payment to address. Ledger is {:?}", result.unwrap().0.ledger);
+			tracing::info!("Sent payment to address. Ledger is {:?}", result.unwrap().0.ledger);
 
-			// Wrap this in a block to make sure the lock is dropped
-			{
-				tracing::info!(
-					"TESTING TESTING TESTING TESTING issue_set size: {:?} !!!!!!!!",
-					issue_set.read().await.len()
-				);
-			}
 			// wait for vault2 to execute this issue
 			assert_event::<ExecuteIssueEvent, _>(TIMEOUT, user_provider.clone(), move |x| {
 				x.vault_id == vault1_id.clone()
@@ -647,17 +735,9 @@ async fn test_automatic_issue_execution_succeeds_for_other_vault() {
 			// Wrap this in a block to make sure the lock is dropped
 			{
 				let issue_set = issue_set.read().await;
-				tracing::info!(
-					"TESTING TESTING TESTING AFTER EXECUTEISSUEVENT SIZE: {:?} !!!!!",
-					issue_set.len()
-				);
-
 				assert!(issue_set.is_empty());
 			}
 		};
-
-		let slot_tx_env_map: Arc<RwLock<HashMap<u32, String>>> =
-			Arc::new(RwLock::new(HashMap::new()));
 
 		let issue_filter = IssueFilter::new(&wallet.get_public_key()).expect("Invalid filter");
 		let handler = vault::inner_create_handler(wallet.get_secret_key(), is_public_network)

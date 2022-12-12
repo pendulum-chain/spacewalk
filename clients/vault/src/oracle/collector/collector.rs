@@ -220,7 +220,7 @@ impl ScpMessageCollector {
 			return false
 		}
 
-		tracing::info!("TESTING TESTING TESTING inserting slot {} to pending list.", slot);
+		tracing::trace!("inserting slot {} to pending list.", slot);
 		self.slot_pendinglist.write().push(slot);
 
 		true
@@ -332,6 +332,7 @@ mod test {
 
 		let dummy_slot_0 = 0;
 		let mut collector = ScpMessageCollector::new(is_pub_network);
+		collector.watch_slot(dummy_slot_0);
 
 		// ------------------- prepare scpenvelopes -------------------
 

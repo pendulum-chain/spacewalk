@@ -30,7 +30,7 @@ impl ScpMessageCollector {
 
 		// ignore if slot is not in the list
 		if self.is_slot_relevant(&slot) {
-			tracing::info!("TESTING TESTING TESTING FOUND ENVELOPE FOR SLOT {}", slot);
+			tracing::trace!("found envelope for slot {}", slot);
 		}
 
 		// we are only interested with `ScpStExternalize`. Other messages are ignored.
@@ -40,7 +40,7 @@ impl ScpMessageCollector {
 			// Check if collector has a record of this hash.
 			if self.is_txset_new(&txset_hash, &slot) {
 				// if it doesn't exist, let's request from the Stellar Node.
-				tracing::info!("TESTING TESTING TESTING requesting TxSet for slot {}...", slot);
+				tracing::debug!("requesting TxSet for slot {}...", slot);
 				overlay_conn.send(StellarMessage::GetTxSet(txset_hash)).await?;
 
 				// let's save this for creating the proof later on.

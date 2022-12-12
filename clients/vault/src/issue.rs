@@ -1,23 +1,17 @@
-use std::{
-	collections::HashMap, convert::TryFrom, fmt::Debug, num::TryFromIntError,
-	string::FromUtf8Error, sync::Arc, time::Duration,
-};
+use std::{collections::HashMap, convert::TryFrom, fmt::Debug, sync::Arc, time::Duration};
 
-use async_trait::async_trait;
 use futures::{channel::mpsc::Sender, SinkExt};
-use itertools::Itertools;
-use sp_runtime::traits::{LookupError, StaticLookup};
+use sp_runtime::traits::StaticLookup;
 use tokio::sync::RwLock;
 
 use primitives::{stellar::Memo, CurrencyId};
 use runtime::{
 	CancelIssueEvent, ExecuteIssueEvent, IssueId, IssuePallet, IssueRequestsMap, RequestIssueEvent,
-	SpacewalkIssueRequest, SpacewalkParachain, StaticEvent, H256,
+	SpacewalkParachain, H256,
 };
 use service::Error as ServiceError;
 use stellar_relay_lib::sdk::{
-	types::{Int64, PaymentOp, TransactionV1Envelope},
-	Asset, PublicKey, SecretKey, Transaction, TransactionEnvelope, XdrCodec,
+	types::PaymentOp, Asset, PublicKey, SecretKey, Transaction, TransactionEnvelope, XdrCodec,
 };
 use wallet::types::{FilterWith, TransactionFilterParam};
 
@@ -25,31 +19,6 @@ use crate::{oracle::*, Error, Event};
 
 fn is_vault(p1: &PublicKey, p2_raw: [u8; 32]) -> bool {
 	return *p1.as_binary() == p2_raw
-}
-
-async fn listen_event<T>(
-	parachain_rpc: &SpacewalkParachain,
-) -> Result<Option<T>, ServiceError<Error>>
-where
-	T: StaticEvent + Debug,
-{
-	let (sender, mut receiver) = tokio::sync::mpsc::channel(1);
-
-	parachain_rpc
-		.on_event::<T, _, _, _>(
-			|event| async {
-				tracing::info!("TESTING TESTING TESTING Received Event: {:?}", event);
-
-				if let Err(e) = sender.send(event).await {
-					tracing::error!("failed to send issue id: {:?}", e);
-					return
-				}
-			},
-			|error| tracing::error!("Error: {:?}", error),
-		)
-		.await?;
-
-	Ok(receiver.recv().await)
 }
 
 /// Listens for RequestIssueEvent directed at the vault.
@@ -74,23 +43,13 @@ pub async fn listen_for_issue_requests(
 	parachain_rpc
 		.on_event::<RequestIssueEvent, _, _, _>(
 			|event| async move {
-				tracing::info!(
-					"TESTING TESTING TESTING Received RequestIssueEvent: {:?}",
-					event.issue_id
-				);
+				tracing::info!("Received RequestIssueEvent: {:?}", event.issue_id);
 				if is_vault(vault_public_key, event.vault_stellar_public_key.clone()) {
 					// let's get the IssueRequest
 					let issue_request_result =
 						parachain_rpc.get_issue_request(event.issue_id).await;
 					if let Ok(issue_request) = issue_request_result {
-						tracing::info!(
-							"TESTING TESTING TESTING previous issues size: {}",
-							issues.read().await.len()
-						);
-						tracing::info!(
-							"TESTING TESTING TESTING Adding issue request to issue map: {:?}",
-							issue_request
-						);
+						tracing::trace!("Adding issue request to issue map: {:?}", issue_request);
 						issues.write().await.insert(event.issue_id, issue_request);
 
 						// try to send the event, but ignore the returned result since
@@ -120,8 +79,10 @@ pub async fn listen_for_issue_cancels(
 		.on_event::<CancelIssueEvent, _, _, _>(
 			|event| async move {
 				issues.write().await.remove(&event.issue_id);
+
+				tracing::info!("Received CancelIssueEvent: {:?}", event);
 			},
-			|error| tracing::error!("Error reading ExecuteIssueEvent: {:?}", error.to_string()),
+			|error| tracing::error!("Error reading CancelIssueEvent: {:?}", error.to_string()),
 		)
 		.await?;
 
@@ -138,8 +99,12 @@ pub async fn listen_for_executed_issues(
 		.on_event::<ExecuteIssueEvent, _, _, _>(
 			|event| async move {
 				issues.write().await.remove(&event.issue_id);
-				tracing::info!("TESTING TESTING TESTING issue id {:?} was executed and will be removed. issues size: {}", event.issue_id, issues.read().await.len());
 
+				tracing::trace!(
+					"issue id {:?} was executed and will be removed. issues size: {}",
+					event.issue_id,
+					issues.read().await.len()
+				);
 			},
 			|error| tracing::error!("Error reading ExecuteIssueEvent: {:?}", error.to_string()),
 		)
@@ -215,9 +180,8 @@ pub async fn execute_issue(
 	proofs: Vec<Proof>,
 	proof_ops: Arc<RwLock<dyn ProofExt>>,
 ) -> Result<(), ServiceError<Error>> {
-	let slot_tx_map = slot_tx_env_map.read().await;
+	let mut slot_tx_map = slot_tx_env_map.write().await;
 	for proof in proofs {
-		tracing::info!("TESTING TESTING TESTING PROCESSING PROOF FOR SLOT: {}", proof.slot());
 		let (envelopes, tx_set) = proof.encode();
 
 		let u32_slot = match u32::try_from(proof.slot()) {
@@ -248,16 +212,12 @@ pub async fn execute_issue(
 			.await
 		{
 			Ok(_) => {
-				tracing::info!(
-					"TESTING TESTING TESTING ISSUE {:?} EXECUTED with issue_id: {:?}",
-					u32_slot,
-					issue_id
-				);
-
+				tracing::trace!("Slot {:?} EXECUTED with issue_id: {:?}", u32_slot, issue_id);
+				slot_tx_map.remove(&u32_slot);
 				proof_ops.read().await.processed_proof(proof.slot()).await;
 			},
 			Err(err) if err.is_issue_completed() => {
-				tracing::info!("TESTING TESTING TESTING Issue #{} has been completed", issue_id);
+				tracing::info!("Issue #{} has been completed", issue_id);
 			},
 			Err(err) => return Err(err.into()),
 		}

@@ -348,7 +348,7 @@ impl<C: HorizonClient> HorizonFetcher<C> {
 				match w.watch_slot(tx.ledger.try_into().unwrap()).await {
 					Ok(_) => {
 						tracing::info!(
-							"TESTING TESTING TESTING following transaction {:?} WITH SLOT: {}",
+							"following transaction {:?} WITH SLOT: {}",
 							String::from_utf8(id.clone()),
 							tx.ledger
 						);
