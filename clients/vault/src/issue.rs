@@ -249,12 +249,7 @@ fn check_asset(issue_asset: CurrencyId, tx_asset: Asset) -> bool {
 	}
 }
 
-fn is_tx_relevant(
-	tx_xdr: &[u8],
-	vault_address: &str,
-	issue_asset: CurrencyId,
-	issue_amount: u128,
-) -> bool {
+fn is_tx_relevant(tx_xdr: &[u8], vault_address: &str, issue_asset: CurrencyId) -> bool {
 	// get envelope
 	if let Some(transaction) = get_relevant_envelope(tx_xdr) {
 		let payment_ops_to_vault_address: Vec<&PaymentOp> = transaction
@@ -277,8 +272,9 @@ fn is_tx_relevant(
 
 		if payment_ops_to_vault_address.len() > 0 {
 			for payment_op in payment_ops_to_vault_address {
-				// todo: check also the amount?
-				let tx_amount = payment_op.amount;
+				// We do not need to check the amount here, because the amount is checked when
+				// calling the extrinsic in the parachain. It is also possible to execute issue
+				// request with an amount that is not the same as the one requested.
 
 				// check asset
 				if check_asset(issue_asset, payment_op.asset.clone()) {
@@ -329,7 +325,7 @@ impl FilterWith<TransactionFilterParam<IssueRequestsMap>> for IssueFilter {
 			None => false,
 			Some(request) => {
 				// check if the transaction matches with the issue request
-				is_tx_relevant(&tx.envelope_xdr, &self.vault_address, request.asset, request.amount)
+				is_tx_relevant(&tx.envelope_xdr, &self.vault_address, request.asset)
 			},
 		}
 	}

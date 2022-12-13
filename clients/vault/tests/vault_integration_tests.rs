@@ -370,7 +370,7 @@ async fn test_issue_cancel_succeeds() {
 
 		let fut_user = async {
 			// The account of the 'user_provider' is used to request a new issue that
-			// has to be executed by the vault_provider
+			// will be canceled in the next step
 			let issue = user_provider.request_issue(issue_amount, &vault_id).await.unwrap();
 			assert_eq!(issue_set.read().await.len(), 1);
 
@@ -383,7 +383,7 @@ async fn test_issue_cancel_succeeds() {
 				},
 			}
 
-			// wait for vault2 to execute this issue
+			// wait for the issue to be canceled
 			assert_event::<CancelIssueEvent, _>(TIMEOUT, user_provider.clone(), |_| true).await;
 			assert!(issue_set.read().await.is_empty());
 		};
