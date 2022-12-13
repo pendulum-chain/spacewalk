@@ -19,7 +19,7 @@ use runtime::{
 };
 use stellar_relay_lib::sdk::{Hash, PublicKey, SecretKey, XdrCodec};
 use vault::{
-	oracle::{create_handler, Proof, ProofExt, ProofStatus},
+	oracle::{create_handler, types::Slot, OracleProofOps, Proof, ProofExt, ProofStatus},
 	service::IssueFilter,
 	Event as CancellationEvent, VaultIdManager,
 };
@@ -67,13 +67,77 @@ impl SpacewalkParachainExt for SpacewalkParachain {
 	}
 }
 
-async fn assert_redeem_event(
+async fn assert_execute_redeem_event(
 	duration: Duration,
 	parachain_rpc: SpacewalkParachain,
 	redeem_id: H256,
 ) -> ExecuteRedeemEvent {
 	assert_event::<ExecuteRedeemEvent, _>(duration, parachain_rpc, |x| x.redeem_id == redeem_id)
 		.await
+}
+
+/// request, pay and execute an issue
+pub async fn assert_issue(
+	parachain_rpc: &SpacewalkParachain,
+	wallet: Arc<StellarWallet>,
+	vault_id: &VaultId,
+	amount: u128,
+	proof_ops: Arc<RwLock<OracleProofOps>>,
+) {
+	let issue = parachain_rpc.request_issue(amount, vault_id).await.unwrap();
+
+	let asset = primitives::AssetConversion::lookup(issue.asset).expect("Invalid asset");
+	let stroop_amount = amount as i64;
+	let memo_hash = issue.issue_id.0;
+
+	let (response, tx_env) = wallet
+		.send_payment_to_address(wallet.get_public_key(), asset, stroop_amount, memo_hash)
+		.await
+		.expect("Failed to send payment");
+
+	let slot = response.ledger as u64;
+
+	let ops_read = proof_ops.read().await;
+
+	// Loop pending proofs until it is ready
+	let mut proof: Option<Proof> = None;
+	with_timeout(
+		async {
+			loop {
+				let proof_status = ops_read.get_proof(slot).await.expect("Failed to get proof");
+
+				match proof_status {
+					ProofStatus::Proof(p) => {
+						proof = Some(p);
+						break
+					},
+					ProofStatus::LackingEnvelopes => {},
+					ProofStatus::NoEnvelopesFound => {},
+					ProofStatus::NoTxSetFound => {},
+					ProofStatus::WaitForTxSet => {},
+				}
+
+				// Wait a bit before trying again
+				sleep(Duration::from_secs(3)).await;
+			}
+		},
+		Duration::from_secs(60),
+	)
+	.await;
+
+	let proof = proof.expect("Proof should be available");
+	let tx_envelope_xdr_encoded = tx_env.to_base64_xdr();
+	let (envelopes_xdr_encoded, tx_set_xdr_encoded) = proof.encode();
+
+	parachain_rpc
+		.execute_issue(
+			issue.issue_id,
+			tx_envelope_xdr_encoded.as_slice(),
+			envelopes_xdr_encoded.as_bytes(),
+			tx_set_xdr_encoded.as_bytes(),
+		)
+		.await
+		.expect("Failed to execute issue");
 }
 
 async fn test_with<F, R>(execute: impl FnOnce(SubxtClient) -> F) -> R
@@ -176,8 +240,6 @@ async fn test_redeem_succeeds() {
 				.await
 		);
 
-		assert_issue(&user_provider, wallet.clone(), &vault_id, issue_amount).await;
-
 		let shutdown_tx = ShutdownSender::new();
 
 		// Setup scp handler for proofs
@@ -186,6 +248,9 @@ async fn test_redeem_succeeds() {
 			.await
 			.expect("Failed to create handler");
 		let proof_ops = Arc::new(RwLock::new(handler.proof_operations()));
+
+		assert_issue(&user_provider, wallet.clone(), &vault_id, issue_amount, proof_ops.clone())
+			.await;
 
 		test_service(
 			vault::service::listen_for_redeem_requests(
@@ -199,7 +264,7 @@ async fn test_redeem_succeeds() {
 				let address = wallet.get_public_key_raw();
 				let redeem_id =
 					user_provider.request_redeem(10000, address, &vault_id).await.unwrap();
-				assert_redeem_event(TIMEOUT, user_provider, redeem_id).await;
+				assert_execute_redeem_event(TIMEOUT, user_provider, redeem_id).await;
 			},
 		)
 		.await;
