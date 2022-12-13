@@ -16,7 +16,7 @@ pub type FixedU128 = sp_arithmetic::FixedU128;
 
 pub type IssueId = H256;
 
-pub type StellarPublicKey = [u8; 32];
+pub type StellarPublicKeyRaw = [u8; 32];
 
 mod metadata_aliases {
 	use std::collections::HashMap;
