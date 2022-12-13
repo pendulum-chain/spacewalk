@@ -1,12 +1,14 @@
-use std::time::Duration;
+use std::{sync::Arc, time::Duration};
 
-use runtime::{InterBtcParachain, RedeemPallet, RequestRedeemEvent, SpacewalkParachain};
-use service::{spawn_cancelable, Error as ServiceError, ShutdownSender};
+use tokio::sync::RwLock;
+
+use runtime::{RedeemPallet, RequestRedeemEvent, ShutdownSender, SpacewalkParachain};
+use service::{spawn_cancelable, Error as ServiceError};
 use stellar_relay_lib::sdk::PublicKey;
 
 use crate::{
 	execution::*,
-	metrics::publish_expected_bitcoin_balance,
+	oracle::ProofExt,
 	system::{VaultData, VaultIdManager},
 	Error,
 };
@@ -23,6 +25,7 @@ pub async fn listen_for_redeem_requests(
 	parachain_rpc: SpacewalkParachain,
 	vault_id_manager: VaultIdManager,
 	payment_margin: Duration,
+	proof_ops: Arc<RwLock<dyn ProofExt>>,
 ) -> Result<(), ServiceError<Error>> {
 	parachain_rpc
 		.on_event::<RequestRedeemEvent, _, _, _>(
@@ -42,6 +45,7 @@ pub async fn listen_for_redeem_requests(
 				// these:
 				let parachain_rpc = parachain_rpc.clone();
 				// Spawn a new task so that we handle these events concurrently
+				let proof_ops = proof_ops.clone();
 				spawn_cancelable(shutdown_tx.subscribe(), async move {
 					tracing::info!("Executing redeem #{:?}", event.redeem_id);
 					let result = async {
@@ -50,7 +54,7 @@ pub async fn listen_for_redeem_requests(
 							parachain_rpc.get_redeem_request(event.redeem_id).await?,
 							payment_margin,
 						)?;
-						request.pay_and_execute(parachain_rpc, vault).await
+						request.pay_and_execute(parachain_rpc, vault, proof_ops).await
 					}
 					.await;
 

@@ -12,4 +12,4 @@ mod constants;
 mod errors;
 mod handler;
 pub mod storage;
-mod types;
+pub mod types;
