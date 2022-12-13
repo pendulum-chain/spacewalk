@@ -8,7 +8,7 @@ use stellar_relay_lib::{
 	},
 	ConnConfig,
 };
-use vault::oracle::{create_handler, prepare_directories, Proof, ProofStatus};
+use vault::oracle::{create_handler, prepare_directories, Proof, ProofExt, ProofStatus};
 
 pub const SAMPLE_VAULT_ADDRESSES_FILTER: &[&str] =
 	&["GAP4SFKVFVKENJ7B7VORAYKPB3CJIAJ2LMKDJ22ZFHIAIVYQOR6W3CXF"];
@@ -72,7 +72,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
 		// for every multiples of 10,let's get all the pending proofs.
 		if counter % 10 == 0 {
-			match handler.get_pending_proofs().await {
+			match handler.proof_operations().get_pending_proofs().await {
 				Ok(proofs) => {
 					tracing::info!("proofs size: {:?}", proofs.len());
 					for proof in proofs.iter() {
@@ -115,7 +115,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 				*watch_list.first().unwrap_or(&last_slot)
 			};
 
-			match handler.get_proof(check_slot).await? {
+			match handler.proof_operations().get_proof(check_slot).await? {
 				ProofStatus::Proof(p) => {
 					tracing::info!(
 						"found proof for {}, env len: {}",

@@ -9,14 +9,14 @@ use stellar_relay_lib::{
 use wallet::types::Watcher;
 
 use crate::oracle::{
-	collector::{Proof, ProofStatus, ScpMessageCollector},
+	collector::{Proof, ProofExt, ProofStatus, ScpMessageCollector},
 	errors::Error,
 	storage::prepare_directories,
 	types::Slot,
 };
 
 /// A message used to communicate with the Actor
-pub enum ActorMessage {
+enum ActorMessage {
 	/// returns the envelopes map size.
 	CurrentMapSize {
 		sender: oneshot::Sender<usize>,
@@ -42,6 +42,10 @@ pub enum ActorMessage {
 
 	GetSlotWatchList {
 		sender: oneshot::Sender<Vec<Slot>>,
+	},
+
+	RemoveData {
+		slot: Slot,
 	},
 }
 
@@ -86,6 +90,9 @@ impl ScpMessageActor {
 			ActorMessage::GetSlotWatchList { sender } => {
 				let _ = sender.send(self.collector.get_slot_watch_list());
 			},
+			ActorMessage::RemoveData { slot } => {
+				self.collector.remove_data(&slot);
+			},
 		};
 	}
 
@@ -107,7 +114,7 @@ impl ScpMessageActor {
 									.await?;
 							}
 							StellarMessage::TxSet(set) => {
-								self.collector.handle_tx_set(&set);
+								self.collector.handle_tx_set(set);
 							}
 							_ => {}
 						},
@@ -158,30 +165,6 @@ impl ScpMessageHandler {
 		receiver.await.map_err(Error::from)
 	}
 
-	/// Returns a list of transactions with each of their corresponding proofs
-	pub async fn get_pending_proofs(&self) -> Result<Vec<Proof>, Error> {
-		let (sender, receiver) = oneshot::channel();
-
-		self.action_sender.send(ActorMessage::GetPendingProofs { sender }).await?;
-
-		receiver.await.map_err(Error::from)
-	}
-
-	pub fn handle_issue_event(&self) {
-		todo!();
-	}
-
-	pub fn handle_redeem_event(&self) {
-		todo!();
-	}
-
-	pub async fn get_proof(&self, slot: Slot) -> Result<ProofStatus, Error> {
-		let (sender, receiver) = oneshot::channel();
-		self.action_sender.send(ActorMessage::GetProof { slot, sender }).await?;
-
-		receiver.await.map_err(Error::from)
-	}
-
 	pub async fn get_last_slot_index(&self) -> Result<Slot, Error> {
 		let (sender, receiver) = oneshot::channel();
 		self.action_sender.send(ActorMessage::GetLastSlotIndex { sender }).await?;
@@ -197,6 +180,11 @@ impl ScpMessageHandler {
 	/// creates a struct that will send a `watch_slot` message to oracle.
 	pub fn create_watcher(&self) -> OracleWatcher {
 		OracleWatcher { action_sender: self.action_sender.clone() }
+	}
+
+	/// creates a struct that will send proof related messages to oracle.
+	pub fn proof_operations(&self) -> OracleProofOps {
+		OracleProofOps { action_sender: self.action_sender.clone() }
 	}
 }
 
@@ -220,6 +208,37 @@ impl Watcher for OracleWatcher {
 				tracing::error!("Failed to send {:?} message to Oracle.", e.to_string());
 				wallet::error::Error::OracleError
 			})
+	}
+}
+
+pub struct OracleProofOps {
+	action_sender: mpsc::Sender<ActorMessage>,
+}
+
+#[async_trait]
+impl ProofExt for OracleProofOps {
+	async fn get_proof(&self, slot: Slot) -> Result<ProofStatus, Error> {
+		let (sender, receiver) = oneshot::channel();
+		self.action_sender.send(ActorMessage::GetProof { slot, sender }).await?;
+
+		receiver.await.map_err(Error::from)
+	}
+
+	async fn get_pending_proofs(&self) -> Result<Vec<Proof>, Error> {
+		let (sender, receiver) = oneshot::channel();
+		self.action_sender.send(ActorMessage::GetPendingProofs { sender }).await?;
+
+		receiver.await.map_err(Error::from)
+	}
+
+	async fn processed_proof(&self, slot: Slot) {
+		if let Err(e) = self.action_sender.send(ActorMessage::RemoveData { slot }).await {
+			tracing::warn!(
+				"Failed to send RemoveData action for slot {}: {:?}",
+				slot,
+				e.to_string()
+			);
+		}
 	}
 }
 

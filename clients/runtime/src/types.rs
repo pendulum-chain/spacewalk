@@ -14,18 +14,40 @@ pub type H256 = subxt::ext::sp_core::H256;
 pub type SpacewalkSigner = subxt::tx::PairSigner<SpacewalkRuntime, KeyPair>;
 pub type FixedU128 = sp_arithmetic::FixedU128;
 
+pub type IssueId = H256;
+
 pub type StellarPublicKey = [u8; 32];
 
 mod metadata_aliases {
+	use std::collections::HashMap;
+
 	pub use metadata::{
+		issue::events::{
+			CancelIssue as CancelIssueEvent, ExecuteIssue as ExecuteIssueEvent,
+			RequestIssue as RequestIssueEvent,
+		},
 		oracle::events::FeedValues as FeedValuesEvent,
+		replace::events::{
+			AcceptReplace as AcceptReplaceEvent, CancelReplace as CancelReplaceEvent,
+			ExecuteReplace as ExecuteReplaceEvent, RequestReplace as RequestReplaceEvent,
+			WithdrawReplace as WithdrawReplaceEvent,
+		},
 		runtime_types::{
 			frame_system::pallet::Error as SystemPalletError,
 			issue::pallet::Error as IssuePalletError,
-			security::types::{ErrorCode, StatusCode},
-			spacewalk_primitives::oracle::Key as OracleKey,
-			vault_registry::types::VaultStatus,
+			redeem::pallet::Error as RedeemPalletError,
+			security::{
+				pallet::{Call as SecurityCall, Error as SecurityPalletError},
+				types::{ErrorCode, StatusCode},
+			},
+			spacewalk_primitives::{
+				issue::IssueRequestStatus, oracle::Key as OracleKey, redeem::RedeemRequestStatus,
+				replace::ReplaceRequestStatus,
+			},
+			vault_registry::{pallet::Error as VaultRegistryPalletError, types::VaultStatus},
 		},
+		security::events::UpdateActiveBlock as UpdateActiveBlockEvent,
+		tokens::events::Endowed as EndowedEvent,
 		vault_registry::events::{
 			DepositCollateral as DepositCollateralEvent, LiquidateVault as LiquidateVaultEvent,
 			RegisterAddress as RegisterAddressEvent, RegisterVault as RegisterVaultEvent,
@@ -34,7 +56,23 @@ mod metadata_aliases {
 
 	use super::*;
 
+	pub type SpacewalkReplaceRequest =
+		metadata::runtime_types::spacewalk_primitives::replace::ReplaceRequest<
+			AccountId,
+			BlockNumber,
+			Balance,
+			CurrencyId,
+		>;
+
 	// pub use crate::metadata::runtime_types::spacewalk_primitives::CurrencyId;
+
+	pub type SpacewalkIssueRequest =
+		metadata::runtime_types::spacewalk_primitives::issue::IssueRequest<
+			AccountId,
+			BlockNumber,
+			Balance,
+			CurrencyId,
+		>;
 
 	pub type SpacewalkHeader = <SpacewalkRuntime as Config>::Header;
 
@@ -49,6 +87,11 @@ mod metadata_aliases {
 		metadata::runtime_types::spacewalk_primitives::VaultId<AccountId, CurrencyId>;
 	pub type VaultCurrencyPair =
 		metadata::runtime_types::spacewalk_primitives::VaultCurrencyPair<CurrencyId>;
+
+	pub type IssueRequestsMap = HashMap<IssueId, SpacewalkIssueRequest>;
+
+	#[cfg(feature = "standalone-metadata")]
+	pub type EncodedCall = metadata::runtime_types::spacewalk_runtime_standalone::RuntimeCall;
 }
 
 pub trait PrettyPrint {

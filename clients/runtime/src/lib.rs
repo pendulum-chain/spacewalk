@@ -2,7 +2,10 @@ use codec::{Decode, Encode};
 pub use prometheus;
 pub use sp_arithmetic::{traits as FixedPointTraits, FixedI128, FixedPointNumber, FixedU128};
 use sp_std::marker::PhantomData;
-pub use subxt::ext::sp_core::{crypto::Ss58Codec, sr25519::Pair};
+pub use subxt::{
+	events::StaticEvent,
+	ext::sp_core::{crypto::Ss58Codec, sr25519::Pair},
+};
 use subxt::{
 	ext::sp_runtime::{generic::Header, traits::BlakeTwo256, MultiSignature},
 	subxt, Config,
@@ -12,8 +15,9 @@ pub use assets::TryFromSymbol;
 pub use error::{Error, SubxtError};
 pub use retry::{notify_retry, RetryPolicy};
 pub use rpc::{
-	CollateralBalancesPallet, OraclePallet, SecurityPallet, SpacewalkParachain, StellarRelayPallet,
-	UtilFuncs, VaultRegistryPallet, DEFAULT_SPEC_NAME, SS58_PREFIX,
+	CollateralBalancesPallet, IssuePallet, OraclePallet, ReplacePallet, SecurityPallet,
+	SpacewalkParachain, StellarRelayPallet, SudoPallet, UtilFuncs, VaultRegistryPallet,
+	DEFAULT_SPEC_NAME, SS58_PREFIX,
 };
 pub use shutdown::{ShutdownReceiver, ShutdownSender};
 pub use types::*;
