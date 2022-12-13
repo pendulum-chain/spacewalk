@@ -13,20 +13,23 @@ mod error;
 mod execution;
 pub mod metrics;
 pub mod process;
+mod redeem;
 mod system;
 
 mod issue;
 pub mod oracle;
 
 pub mod service {
+	pub use wallet::listen_for_new_transactions;
+
 	pub use crate::{
 		cancellation::{CancellationScheduler, IssueCanceller, ReplaceCanceller},
 		issue::{
 			listen_for_executed_issues, listen_for_issue_cancels, listen_for_issue_requests,
 			process_issues_with_proofs, IssueFilter,
 		},
+		redeem::listen_for_redeem_requests,
 	};
-	pub use wallet::listen_for_new_transactions;
 }
 
 /// At startup we wait until a new block has arrived before we start event listeners.
