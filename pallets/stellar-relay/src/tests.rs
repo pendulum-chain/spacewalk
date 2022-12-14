@@ -286,7 +286,8 @@ fn validate_stellar_transaction_fails_for_wrong_signature() {
 		assert_ok!(SpacewalkRelay::update_tier_1_validator_set(
 			Origin::root(),
 			validators.clone(),
-			organizations.clone()
+			organizations.clone(),
+			0
 		));
 
 		// Change one of the secret keys, so that the signature is invalid
@@ -339,7 +340,8 @@ fn validate_stellar_transaction_fails_for_unknown_validator() {
 		assert_ok!(SpacewalkRelay::update_tier_1_validator_set(
 			Origin::root(),
 			validators.clone(),
-			organizations.clone()
+			organizations.clone(),
+			0
 		));
 
 		// Add other validator that is not part of the 'known' validator set
@@ -373,7 +375,8 @@ fn validate_stellar_transaction_fails_for_wrong_transaction() {
 		assert_ok!(SpacewalkRelay::update_tier_1_validator_set(
 			Origin::root(),
 			validators.clone(),
-			organizations.clone()
+			organizations.clone(),
+			0
 		));
 
 		let (_tx_envelope, mut tx_set, scp_envelopes) =
@@ -427,7 +430,8 @@ fn validate_stellar_transaction_fails_when_using_the_same_validator_multiple_tim
 		assert_ok!(SpacewalkRelay::update_tier_1_validator_set(
 			Origin::root(),
 			validators.clone(),
-			organizations.clone()
+			organizations.clone(),
+			0
 		));
 
 		// Modify validator list to use the same validator multiple times
@@ -473,7 +477,8 @@ fn validate_stellar_transaction_fails_for_invalid_quorum() {
 		assert_ok!(SpacewalkRelay::update_tier_1_validator_set(
 			Origin::root(),
 			validators.clone(),
-			organizations.clone()
+			organizations.clone(),
+			0
 		));
 
 		// Remove validators from the quorum set to make it invalid
@@ -502,7 +507,8 @@ fn validate_stellar_transaction_fails_for_invalid_quorum() {
 		assert_ok!(SpacewalkRelay::update_tier_1_validator_set(
 			Origin::root(),
 			validators.clone(),
-			organizations.clone()
+			organizations.clone(),
+			0
 		));
 
 		// Remove validators from the quorum set to make it invalid
@@ -540,7 +546,8 @@ fn validate_stellar_transaction_fails_for_differing_networks() {
 		assert_ok!(SpacewalkRelay::update_tier_1_validator_set(
 			Origin::root(),
 			[public_validators.clone(), testnet_validators.clone()].concat(),
-			[public_organizations, testnet_organizations].concat()
+			[public_organizations, testnet_organizations].concat(),
+			0
 		));
 
 		// Create scp messages for the test network
@@ -575,7 +582,8 @@ fn validate_stellar_transaction_fails_without_validators() {
 		assert_ok!(SpacewalkRelay::update_tier_1_validator_set(
 			Origin::root(),
 			validators,
-			organizations
+			organizations,
+			0
 		));
 
 		// This should be invalid because there are no validators for the public network as the ones
@@ -598,7 +606,8 @@ fn validate_stellar_transaction_works_with_barely_enough_validators() {
 		assert_ok!(SpacewalkRelay::update_tier_1_validator_set(
 			Origin::root(),
 			validators.clone(),
-			organizations.clone()
+			organizations.clone(),
+			0
 		));
 
 		// Remove some validators but leave enough to build a valid quorum set
@@ -639,7 +648,8 @@ fn validate_stellar_transaction_works_with_all_validators() {
 		assert_ok!(SpacewalkRelay::update_tier_1_validator_set(
 			Origin::root(),
 			validators.clone(),
-			organizations.clone()
+			organizations.clone(),
+			0
 		));
 
 		let (tx_envelope, tx_set, scp_envelopes) =
@@ -659,7 +669,7 @@ fn update_tier_1_validator_set_fails_for_non_root_origin() {
 	new_test_ext().execute_with(|| {
 		// Ensure the expected error is thrown when no value is present.
 		assert_noop!(
-			SpacewalkRelay::update_tier_1_validator_set(Origin::signed(1), vec![], vec![]),
+			SpacewalkRelay::update_tier_1_validator_set(Origin::signed(1), vec![], vec![], 0),
 			BadOrigin
 		);
 	});
@@ -681,7 +691,8 @@ fn update_tier_1_validator_set_works() {
 		assert_ok!(SpacewalkRelay::update_tier_1_validator_set(
 			Origin::root(),
 			validator_set.clone(),
-			organization_set.clone()
+			organization_set.clone(),
+			0
 		));
 
 		let validator_bounded_vec =
@@ -713,7 +724,8 @@ fn update_tier_1_validator_set_works() {
 		assert_ok!(SpacewalkRelay::update_tier_1_validator_set(
 			Origin::root(),
 			new_validator_set.clone(),
-			new_organization_set.clone()
+			new_organization_set.clone(),
+			0
 		));
 		let validator_bounded_vec =
 			BoundedVec::<ValidatorOf<Test>, ValidatorLimit>::try_from(new_validator_set.clone())
@@ -746,7 +758,8 @@ fn update_tier_1_validator_set_fails_when_set_too_large() {
 			SpacewalkRelay::update_tier_1_validator_set(
 				Origin::root(),
 				validator_set,
-				organization_set
+				organization_set,
+				0
 			),
 			Error::<Test>::ValidatorLimitExceeded
 		);
@@ -758,7 +771,8 @@ fn update_tier_1_validator_set_fails_when_set_too_large() {
 			SpacewalkRelay::update_tier_1_validator_set(
 				Origin::root(),
 				validator_set,
-				organization_set
+				organization_set,
+				0
 			),
 			Error::<Test>::OrganizationLimitExceeded
 		);
