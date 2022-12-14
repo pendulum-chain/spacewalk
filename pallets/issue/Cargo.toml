@@ -44,7 +44,7 @@ orml-traits = { git = "https://github.com/open-web3-stack/open-runtime-module-li
 mocktopus = "0.7.0"
 frame-benchmarking = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.31" }
 
-currency = { path = "../currency", features = ['testing-utils'] }
+currency = { path = "../currency", features = ['testing-utils', 'testing-constants'] }
 reward = { path = "../reward" }
 staking = { path = "../staking" }
 stellar-relay = { path = "../stellar-relay", features = ['testing-utils'] }
