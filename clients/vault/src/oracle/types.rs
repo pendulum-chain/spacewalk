@@ -1,6 +1,8 @@
 #![allow(non_snake_case)]
 
-use std::collections::{BTreeMap, HashMap};
+use std::collections::{BTreeMap, HashMap, VecDeque};
+
+use itertools::Itertools;
 
 use stellar_relay_lib::sdk::types::{Hash, ScpEnvelope, TransactionSet, Uint64};
 
@@ -17,10 +19,49 @@ pub(crate) type SlotEncodedMap = BTreeMap<Slot, SerializedData>;
 /// Sometimes not enough `StellarMessage::ScpMessage(...)` are sent per slot;
 /// or that the `Stellar:message::TxSet(...)` took too long to arrive (may not even arrive at all)
 /// So I've kept both of them separate: the `EnvelopesMap` and the `TxSetMap`
-pub(crate) type EnvelopesMap = BTreeMap<Slot, Vec<ScpEnvelope>>;
-pub(crate) type TxSetMap = BTreeMap<Slot, TransactionSet>;
+pub(crate) type EnvelopesMap = VecDeque<(Slot, Vec<ScpEnvelope>)>;
+pub(crate) type TxSetMap = VecDeque<(Slot, TransactionSet)>;
 
 pub(crate) type SlotList = BTreeMap<Slot, ()>;
+
+/// This is used to add some helpers that make using the VecDeque easier.
+pub trait LifoMap<T, K> {
+	fn get_with_key(&self, key: &K) -> Option<&T>;
+
+	fn set_with_key(&mut self, key: K, value: T);
+
+	fn remove_with_key(&mut self, key: &K) -> Option<T>;
+
+	fn contains_key(&self, key: &K) -> bool;
+}
+
+impl<T, K> LifoMap<T, K> for VecDeque<(K, T)>
+where
+	K: PartialEq,
+{
+	fn get_with_key(&self, key: &K) -> Option<&T> {
+		self.iter().find(|(k, _)| k == key).map(|(_, v)| v)
+	}
+
+	fn set_with_key(&mut self, key: K, value: T) {
+		// If the key already exists, remove it first
+		self.remove_with_key(&key);
+
+		self.push_back((key, value));
+	}
+
+	fn remove_with_key(&mut self, key: &K) -> Option<T> {
+		let index = self.iter().find_position(|(k, _)| k == key);
+		if let Some((index, _)) = index {
+			return self.remove(index).map(|(_, v)| v)
+		}
+		None
+	}
+
+	fn contains_key(&self, key: &K) -> bool {
+		self.iter().find(|(k, _)| k == key).is_some()
+	}
+}
 
 /// The slot is not found in the `StellarMessage::TxSet(...)`, therefore this map
 /// serves as a holder of the slot when we hash the txset.

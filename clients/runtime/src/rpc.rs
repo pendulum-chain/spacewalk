@@ -1,7 +1,8 @@
 use std::{future::Future, ops::RangeInclusive, sync::Arc, time::Duration};
 
 use async_trait::async_trait;
-use futures::{stream::StreamExt, FutureExt, SinkExt};
+use codec::Encode;
+use futures::{future::join_all, stream::StreamExt, FutureExt, SinkExt};
 use jsonrpsee::core::{client::Client, JsonValue};
 use subxt::{
 	blocks::ExtrinsicEvents,
@@ -945,6 +946,328 @@ impl SecurityPallet for SpacewalkParachain {
 }
 
 #[async_trait]
+pub trait IssuePallet {
+	/// Request a new issue
+	async fn request_issue(
+		&self,
+		amount: u128,
+		vault_id: &VaultId,
+	) -> Result<RequestIssueEvent, Error>;
+
+	/// Execute a issue request by providing a Bitcoin transaction inclusion proof
+	async fn execute_issue(
+		&self,
+		issue_id: H256,
+		tx_envelope_xdr_encoded: &[u8],
+		envelopes_xdr_encoded: &[u8],
+		tx_set_xdr_encoded: &[u8],
+	) -> Result<(), Error>;
+
+	/// Cancel an ongoing issue request
+	async fn cancel_issue(&self, issue_id: H256) -> Result<(), Error>;
+
+	async fn get_issue_request(&self, issue_id: H256) -> Result<SpacewalkIssueRequest, Error>;
+
+	async fn get_vault_issue_requests(
+		&self,
+		account_id: AccountId,
+	) -> Result<Vec<(H256, SpacewalkIssueRequest)>, Error>;
+
+	async fn get_issue_period(&self) -> Result<u32, Error>;
+
+	async fn get_all_active_issues(&self) -> Result<Vec<(H256, SpacewalkIssueRequest)>, Error>;
+}
+
+#[async_trait]
+impl IssuePallet for SpacewalkParachain {
+	async fn request_issue(
+		&self,
+		amount: u128,
+		vault_id: &VaultId,
+	) -> Result<RequestIssueEvent, Error> {
+		self.with_retry(metadata::tx().issue().request_issue(amount, vault_id.clone()))
+			.await?
+			.find_first::<RequestIssueEvent>()?
+			.ok_or(Error::RequestIssueIDNotFound)
+	}
+
+	async fn execute_issue(
+		&self,
+		issue_id: H256,
+		tx_envelope_xdr_encoded: &[u8],
+		envelopes_xdr_encoded: &[u8],
+		tx_set_xdr_encoded: &[u8],
+	) -> Result<(), Error> {
+		self.with_retry(metadata::tx().issue().execute_issue(
+			issue_id,
+			tx_envelope_xdr_encoded.to_vec(),
+			envelopes_xdr_encoded.to_vec(),
+			tx_set_xdr_encoded.to_vec(),
+		))
+		.await?;
+		Ok(())
+	}
+
+	async fn cancel_issue(&self, issue_id: H256) -> Result<(), Error> {
+		self.with_retry(metadata::tx().issue().cancel_issue(issue_id)).await?;
+		Ok(())
+	}
+
+	async fn get_issue_request(&self, issue_id: H256) -> Result<SpacewalkIssueRequest, Error> {
+		self.query_finalized_or_error(metadata::storage().issue().issue_requests(&issue_id))
+			.await
+	}
+
+	async fn get_vault_issue_requests(
+		&self,
+		account_id: AccountId,
+	) -> Result<Vec<(H256, SpacewalkIssueRequest)>, Error> {
+		let head = self.get_finalized_block_hash().await?;
+		let result: Vec<H256> = self
+			.api
+			.rpc()
+			.request("issue_getVaultIssueRequests", rpc_params![account_id, head])
+			.await?;
+		join_all(
+			result.into_iter().map(|key| async move {
+				self.get_issue_request(key).await.map(|value| (key, value))
+			}),
+		)
+		.await
+		.into_iter()
+		.collect()
+	}
+
+	async fn get_issue_period(&self) -> Result<u32, Error> {
+		self.query_finalized_or_error(metadata::storage().issue().issue_period()).await
+	}
+
+	async fn get_all_active_issues(&self) -> Result<Vec<(H256, SpacewalkIssueRequest)>, Error> {
+		let current_height = self.get_current_active_block_number().await?;
+		let issue_period = self.get_issue_period().await?;
+
+		let mut issue_requests = Vec::new();
+
+		let head = self.get_finalized_block_hash().await?;
+		let key_addr = metadata::storage().issue().issue_requests_root();
+		let mut iter = self.api.storage().iter(key_addr, DEFAULT_PAGE_SIZE, head).await?;
+
+		while let Some((issue_id, request)) = iter.next().await? {
+			// todo: we also need to check the bitcoin height
+			if request.status == IssueRequestStatus::Pending &&
+				request.opentime + issue_period > current_height
+			{
+				let key_hash = issue_id.0.as_slice();
+				// last bytes are the raw key
+				let key = &key_hash[key_hash.len() - 32..];
+				issue_requests.push((H256::from_slice(key), request));
+			}
+		}
+		Ok(issue_requests)
+	}
+}
+
+#[async_trait]
+pub trait ReplacePallet {
+	/// Request the replacement of a new vault ownership
+	///
+	/// # Arguments
+	///
+	/// * `&self` - sender of the transaction
+	/// * `amount` - amount of [Wrapped]
+	async fn request_replace(&self, vault_id: &VaultId, amount: u128) -> Result<(), Error>;
+
+	/// Withdraw a request of vault replacement
+	///
+	/// # Arguments
+	///
+	/// * `&self` - sender of the transaction: the old vault
+	/// * `amount` - the amount of [Wrapped] to replace
+	async fn withdraw_replace(&self, vault_id: &VaultId, amount: u128) -> Result<(), Error>;
+
+	/// Accept request of vault replacement
+	///
+	/// # Arguments
+	///
+	/// * `&self` - the initiator of the transaction: the new vault
+	/// * `old_vault` - the vault to replace
+	/// * `amount_btc` - the amount of [Wrapped] to replace
+	/// * `collateral` - the collateral for replacement
+	/// * `btc_address` - the address to send funds to
+	async fn accept_replace(
+		&self,
+		new_vault: &VaultId,
+		old_vault: &VaultId,
+		amount_btc: u128,
+		collateral: u128,
+		stellar_address: StellarPublicKey,
+	) -> Result<(), Error>;
+	//
+	/// Execute vault replacement
+	///
+	/// # Arguments
+	///
+	/// * `&self` - sender of the transaction: the old vault
+	/// * `replace_id` - the ID of the replacement request
+	/// * 'merkle_proof' - the merkle root of the block
+	/// * `raw_tx` - the transaction id in bytes
+	async fn execute_replace(
+		&self,
+		replace_id: H256,
+		tx_envelope_xdr_encoded: &[u8],
+		envelopes_xdr_encoded: &[u8],
+		tx_set_xdr_encoded: &[u8],
+	) -> Result<(), Error>;
+
+	/// Cancel vault replacement
+	///
+	/// # Arguments
+	///
+	/// * `&self` - sender of the transaction: the new vault
+	/// * `replace_id` - the ID of the replacement request
+	async fn cancel_replace(&self, replace_id: H256) -> Result<(), Error>;
+
+	/// Get all replace requests accepted by the given vault
+	async fn get_new_vault_replace_requests(
+		&self,
+		account_id: AccountId,
+	) -> Result<Vec<(H256, SpacewalkReplaceRequest)>, Error>;
+
+	/// Get all replace requests made by the given vault
+	async fn get_old_vault_replace_requests(
+		&self,
+		account_id: AccountId,
+	) -> Result<Vec<(H256, SpacewalkReplaceRequest)>, Error>;
+
+	/// Get the time difference in number of blocks between when a replace
+	/// request is created and required completion time by a vault
+	async fn get_replace_period(&self) -> Result<u32, Error>;
+
+	/// Get a replace request from storage
+	async fn get_replace_request(&self, replace_id: H256)
+		-> Result<SpacewalkReplaceRequest, Error>;
+
+	/// Gets the minimum btc amount for replace requests
+	async fn get_replace_dust_amount(&self) -> Result<u128, Error>;
+}
+
+#[async_trait]
+impl ReplacePallet for SpacewalkParachain {
+	async fn request_replace(&self, vault_id: &VaultId, amount: u128) -> Result<(), Error> {
+		self.with_retry(
+			metadata::tx().replace().request_replace(vault_id.currencies.clone(), amount),
+		)
+		.await?;
+		Ok(())
+	}
+
+	async fn withdraw_replace(&self, vault_id: &VaultId, amount: u128) -> Result<(), Error> {
+		self.with_retry(
+			metadata::tx().replace().withdraw_replace(vault_id.currencies.clone(), amount),
+		)
+		.await?;
+		Ok(())
+	}
+
+	async fn accept_replace(
+		&self,
+		new_vault: &VaultId,
+		old_vault: &VaultId,
+		amount_btc: u128,
+		collateral: u128,
+		stellar_address: StellarPublicKey,
+	) -> Result<(), Error> {
+		self.with_retry(metadata::tx().replace().accept_replace(
+			new_vault.currencies.clone(),
+			old_vault.clone(),
+			amount_btc,
+			collateral,
+			stellar_address,
+		))
+		.await?;
+		Ok(())
+	}
+
+	async fn execute_replace(
+		&self,
+		replace_id: H256,
+		tx_envelope_xdr_encoded: &[u8],
+		envelopes_xdr_encoded: &[u8],
+		tx_set_xdr_encoded: &[u8],
+	) -> Result<(), Error> {
+		self.with_retry(metadata::tx().replace().execute_replace(
+			replace_id,
+			tx_envelope_xdr_encoded.to_vec(),
+			envelopes_xdr_encoded.to_vec(),
+			tx_set_xdr_encoded.to_vec(),
+		))
+		.await?;
+		Ok(())
+	}
+
+	async fn cancel_replace(&self, replace_id: H256) -> Result<(), Error> {
+		self.with_retry(metadata::tx().replace().cancel_replace(replace_id)).await?;
+		Ok(())
+	}
+
+	/// Get all replace requests accepted by the given vault
+	async fn get_new_vault_replace_requests(
+		&self,
+		account_id: AccountId,
+	) -> Result<Vec<(H256, SpacewalkReplaceRequest)>, Error> {
+		let head = self.get_finalized_block_hash().await?;
+		let result: Vec<H256> = self
+			.api
+			.rpc()
+			.request("replace_getNewVaultReplaceRequests", rpc_params![account_id, head])
+			.await?;
+		join_all(result.into_iter().map(|key| async move {
+			self.get_replace_request(key).await.map(|value| (key, value))
+		}))
+		.await
+		.into_iter()
+		.collect()
+	}
+
+	/// Get all replace requests made by the given vault
+	async fn get_old_vault_replace_requests(
+		&self,
+		account_id: AccountId,
+	) -> Result<Vec<(H256, SpacewalkReplaceRequest)>, Error> {
+		let head = self.get_finalized_block_hash().await?;
+		let result: Vec<H256> = self
+			.api
+			.rpc()
+			.request("replace_getOldVaultReplaceRequests", rpc_params![account_id, head])
+			.await?;
+		join_all(result.into_iter().map(|key| async move {
+			self.get_replace_request(key).await.map(|value| (key, value))
+		}))
+		.await
+		.into_iter()
+		.collect()
+	}
+
+	async fn get_replace_period(&self) -> Result<u32, Error> {
+		self.query_finalized_or_error(metadata::storage().replace().replace_period())
+			.await
+	}
+
+	async fn get_replace_request(
+		&self,
+		replace_id: H256,
+	) -> Result<SpacewalkReplaceRequest, Error> {
+		self.query_finalized_or_error(metadata::storage().replace().replace_requests(&replace_id))
+			.await
+	}
+
+	async fn get_replace_dust_amount(&self) -> Result<u128, Error> {
+		self.query_finalized_or_error(metadata::storage().replace().replace_btc_dust_value())
+			.await
+	}
+}
+
+#[async_trait]
 pub trait StellarRelayPallet {
 	async fn is_public_network(&self) -> Result<bool, Error>;
 }
@@ -954,5 +1277,102 @@ impl StellarRelayPallet for SpacewalkParachain {
 	async fn is_public_network(&self) -> Result<bool, Error> {
 		self.query_finalized_or_error(metadata::storage().stellar_relay().is_public_network())
 			.await
+	}
+}
+
+#[async_trait]
+pub trait SudoPallet {
+	async fn sudo(&self, call: EncodedCall) -> Result<(), Error>;
+	async fn set_storage<V: Encode + Send + Sync>(
+		&self,
+		module: &str,
+		key: &str,
+		value: V,
+	) -> Result<(), Error>;
+	async fn set_redeem_period(&self, period: BlockNumber) -> Result<(), Error>;
+	async fn set_parachain_confirmations(&self, value: BlockNumber) -> Result<(), Error>;
+	async fn set_issue_period(&self, period: u32) -> Result<(), Error>;
+	async fn insert_authorized_oracle(
+		&self,
+		account_id: AccountId,
+		name: String,
+	) -> Result<(), Error>;
+	async fn set_replace_period(&self, period: u32) -> Result<(), Error>;
+}
+
+#[cfg(feature = "standalone-metadata")]
+#[async_trait]
+impl SudoPallet for SpacewalkParachain {
+	async fn sudo(&self, call: EncodedCall) -> Result<(), Error> {
+		self.with_retry(metadata::tx().sudo().sudo(call)).await?;
+		Ok(())
+	}
+
+	async fn set_storage<V: Encode + Send + Sync>(
+		&self,
+		module: &str,
+		key: &str,
+		value: V,
+	) -> Result<(), Error> {
+		let module = subxt::ext::sp_core::twox_128(module.as_bytes());
+		let item = subxt::ext::sp_core::twox_128(key.as_bytes());
+
+		Ok(self
+			.sudo(EncodedCall::System(
+				metadata::runtime_types::frame_system::pallet::Call::set_storage {
+					items: vec![([module, item].concat(), value.encode())],
+				},
+			))
+			.await?)
+	}
+
+	async fn set_redeem_period(&self, period: BlockNumber) -> Result<(), Error> {
+		Ok(self
+			.sudo(EncodedCall::Redeem(
+				metadata::runtime_types::redeem::pallet::Call::set_redeem_period { period },
+			))
+			.await?)
+	}
+
+	/// Set the global security parameter for stable parachain confirmations
+	async fn set_parachain_confirmations(&self, value: BlockNumber) -> Result<(), Error> {
+		self.set_storage(crate::BTC_RELAY_MODULE, crate::STABLE_PARACHAIN_CONFIRMATIONS, value)
+			.await
+	}
+
+	async fn set_issue_period(&self, period: u32) -> Result<(), Error> {
+		Ok(self
+			.sudo(EncodedCall::Issue(
+				metadata::runtime_types::issue::pallet::Call::set_issue_period { period },
+			))
+			.await?)
+	}
+
+	/// Adds a new authorized oracle with the given name and the signer's AccountId
+	///
+	/// # Arguments
+	/// * `account_id` - The Account ID of the new oracle
+	/// * `name` - The name of the new oracle
+	async fn insert_authorized_oracle(
+		&self,
+		account_id: AccountId,
+		name: String,
+	) -> Result<(), Error> {
+		Ok(self
+			.sudo(EncodedCall::Oracle(
+				metadata::runtime_types::oracle::pallet::Call::insert_authorized_oracle {
+					account_id,
+					name: name.into_bytes(),
+				},
+			))
+			.await?)
+	}
+
+	async fn set_replace_period(&self, period: u32) -> Result<(), Error> {
+		Ok(self
+			.sudo(EncodedCall::Replace(
+				metadata::runtime_types::replace::pallet::Call::set_replace_period { period },
+			))
+			.await?)
 	}
 }

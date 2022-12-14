@@ -6217,6 +6217,7 @@ dependencies = [
  "thiserror",
  "tokio",
  "url 2.3.1",
+ "wallet",
 ]
 
 [[package]]
@@ -7663,6 +7664,32 @@ dependencies = [
  "itoa",
  "ryu",
  "serde",
+]
+
+[[package]]
+name = "serial_test"
+version = "0.9.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "92761393ee4dc3ff8f4af487bd58f4307c9329bbedea02cac0089ad9c411e153"
+dependencies = [
+ "dashmap",
+ "futures 0.3.25",
+ "lazy_static",
+ "log",
+ "parking_lot 0.12.1",
+ "serial_test_derive",
+]
+
+[[package]]
+name = "serial_test_derive"
+version = "0.9.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "4b6f5d1c3087fb119617cff2966fe3808a80e5eb59a8c1601d5994d66f4346a5"
+dependencies = [
+ "proc-macro-error",
+ "proc-macro2",
+ "quote",
+ "syn",
 ]
 
 [[package]]
@@ -10234,6 +10261,7 @@ dependencies = [
  "git-version",
  "governor",
  "hex",
+ "itertools",
  "jsonrpc-core",
  "jsonrpc-core-client",
  "lazy_static",
@@ -10246,6 +10274,7 @@ dependencies = [
  "scale-info",
  "serde",
  "serde_json",
+ "serial_test",
  "service",
  "sha2 0.8.2",
  "signal-hook",
@@ -10256,6 +10285,7 @@ dependencies = [
  "sp-keyring",
  "sp-runtime 6.0.0",
  "sp-std 4.0.0",
+ "spacewalk-primitives",
  "stellar-relay-lib",
  "subxt",
  "sysinfo",

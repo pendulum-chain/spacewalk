@@ -15,7 +15,7 @@ use subxt::{
 use thiserror::Error;
 use tokio::time::error::Elapsed;
 
-use crate::{types::*, ISSUE_MODULE, SYSTEM_MODULE};
+use crate::{types::*, ISSUE_MODULE, SECURITY_MODULE, SYSTEM_MODULE};
 
 #[derive(Error, Debug)]
 pub enum Error {
@@ -169,7 +169,10 @@ impl Error {
 	}
 
 	pub fn is_parachain_shutdown_error(&self) -> bool {
-		self.is_module_err(SYSTEM_MODULE, &format!("{:?}", SystemPalletError::CallFiltered))
+		self.is_module_err(
+			SECURITY_MODULE,
+			&format!("{:?}", SecurityPalletError::ParachainNotRunning),
+		)
 	}
 }
 
