@@ -15,4 +15,6 @@ pub enum Error {
 	HorizonSubmissionError(String),
 	#[error("Could not parse string: {0}")]
 	Utf8Error(#[from] std::str::Utf8Error),
+	#[error("Could not decode XDR")]
+	DecodeError,
 }

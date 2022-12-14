@@ -27,6 +27,9 @@ use stellar::{
 	Asset, PublicKey,
 };
 pub use substrate_stellar_sdk as stellar;
+use substrate_stellar_sdk::{
+	types::OperationBody, ClaimPredicate, Claimant, MuxedAccount, Operation, TransactionEnvelope,
+};
 
 #[cfg(test)]
 mod tests;
@@ -698,4 +701,57 @@ impl StaticLookup for AddressConversion {
 #[derive(Debug)]
 pub enum AddressConversionError {
 	//     UnexpectedKeyType
+}
+
+pub trait TransactionEnvelopeExt {
+	fn get_payment_amount_for_asset_to(&self, to: StellarPublicKeyRaw, asset: Asset) -> u128;
+}
+
+impl TransactionEnvelopeExt for TransactionEnvelope {
+	/// Returns the amount of the given asset that is being sent to the given address.
+	/// Only considers payment and claimable balance operations.
+	fn get_payment_amount_for_asset_to(&self, to: StellarPublicKeyRaw, asset: Asset) -> u128 {
+		let recipient_account_muxed = MuxedAccount::KeyTypeEd25519(to);
+		let recipient_account_pk = PublicKey::PublicKeyTypeEd25519(to);
+
+		let tx_operations: Vec<Operation> = match self {
+			TransactionEnvelope::EnvelopeTypeTxV0(env) => env.tx.operations.get_vec().clone(),
+			TransactionEnvelope::EnvelopeTypeTx(env) => env.tx.operations.get_vec().clone(),
+			TransactionEnvelope::EnvelopeTypeTxFeeBump(_) => Vec::new(),
+			TransactionEnvelope::Default(_) => Vec::new(),
+		};
+
+		let mut transferred_amount: i64 = 0;
+		for x in tx_operations {
+			match x.body {
+				OperationBody::Payment(payment) => {
+					if payment.destination.eq(&recipient_account_muxed) && payment.asset == asset {
+						transferred_amount = transferred_amount.saturating_add(payment.amount);
+					}
+				},
+				OperationBody::CreateClaimableBalance(payment) => {
+					// for security reasons, we only count operations that have the
+					// recipient as a single claimer and unconditional claim predicate
+					if payment.claimants.len() == 1 {
+						let Claimant::ClaimantTypeV0(claimant) =
+							payment.claimants.get_vec()[0].clone();
+
+						if claimant.destination.eq(&recipient_account_pk) &&
+							payment.asset == asset && claimant.predicate ==
+							ClaimPredicate::ClaimPredicateUnconditional
+						{
+							transferred_amount = transferred_amount.saturating_add(payment.amount);
+						}
+					}
+				},
+				_ => {
+					// ignore other operations
+				},
+			}
+		}
+
+		// `transferred_amount` is in stroops, so we need to convert it
+		let balance = BalanceConversion::unlookup(transferred_amount);
+		balance
+	}
 }

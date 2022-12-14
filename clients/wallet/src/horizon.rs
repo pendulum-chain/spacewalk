@@ -106,6 +106,31 @@ impl TransactionResponse {
 	pub(crate) fn ledger(&self) -> u32 {
 		self.ledger
 	}
+
+	pub fn memo_hash(&self) -> Option<Hash> {
+		if self.memo.is_none() {
+			return None
+		}
+
+		if self.memo_type == b"hash" {
+			// First decode the base64-encoded memo to a vector of 32 bytes
+			let memo = self.memo.clone().unwrap();
+			let decoded_memo = base64::decode(&memo);
+			if decoded_memo.is_err() {
+				return None
+			}
+			let hash: Result<[u8; 32], _> = decoded_memo.unwrap().as_slice().try_into();
+			hash.ok()
+		} else {
+			None
+		}
+	}
+
+	pub fn envelope(&self) -> Result<TransactionEnvelope, Error> {
+		let envelope = TransactionEnvelope::from_base64_xdr(self.envelope_xdr.clone())
+			.map_err(|_| Error::DecodeError);
+		envelope
+	}
 }
 
 #[derive(Deserialize, Debug)]
@@ -408,14 +433,13 @@ where
 mod tests {
 	use std::{future, sync::Arc, time::Duration};
 
+	use mockall::{predicate::*, *};
 	use substrate_stellar_sdk::{
 		network::{Network, PUBLIC_NETWORK, TEST_NETWORK},
 		types::Preconditions,
 		Asset, Memo, Operation, SecretKey, StroopAmount, Transaction, TransactionEnvelope,
 	};
 	use tokio::{io::AsyncReadExt, sync::Mutex, time::sleep};
-
-	use mockall::{predicate::*, *};
 
 	use crate::types::{FilterWith, MockWatcher, TransactionFilterParam};
 
