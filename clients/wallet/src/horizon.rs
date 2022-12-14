@@ -123,7 +123,7 @@ impl TransactionResponse {
 		}
 	}
 
-	pub fn envelope(&self) -> Result<TransactionEnvelope, Error> {
+	pub fn to_envelope(&self) -> Result<TransactionEnvelope, Error> {
 		let envelope = TransactionEnvelope::from_base64_xdr(self.envelope_xdr.clone())
 			.map_err(|_| Error::DecodeError);
 		envelope

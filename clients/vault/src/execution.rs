@@ -338,8 +338,7 @@ pub async fn execute_open_requests(
 					let vault_id_manager = vault_id_manager.clone();
 					let proof_ops = proof_ops.clone();
 					spawn_cancelable(shutdown_tx.subscribe(), async move {
-						let tx_env = TransactionEnvelope::from_xdr(&transaction.envelope_xdr);
-						match tx_env {
+						match transaction.to_envelope() {
 							Ok(tx_env) => {
 								let slot = transaction.ledger as Slot;
 
@@ -452,7 +451,7 @@ fn get_request_for_stellar_tx(
 	let h256 = H256::from_slice(&hash);
 	let request = hash_map.get(&h256)?;
 
-	let envelope = tx.envelope().ok()?;
+	let envelope = tx.to_envelope().ok()?;
 	let paid_amount = envelope
 		.get_payment_amount_for_asset_to(request.stellar_address.clone(), request.asset.clone());
 
