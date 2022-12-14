@@ -19,7 +19,8 @@ use crate::{
 /// # Arguments
 ///
 /// * `parachain_rpc` - the parachain RPC handle
-/// * `payment_margin` - the duration after which a redeem request is considered expired
+/// * `payment_margin` - minimum time to the the redeem execution deadline to make the stellar
+///   payment.
 pub async fn listen_for_redeem_requests(
 	shutdown_tx: ShutdownSender,
 	parachain_rpc: SpacewalkParachain,

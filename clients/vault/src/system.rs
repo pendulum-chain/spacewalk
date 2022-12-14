@@ -222,7 +222,7 @@ pub struct VaultServiceConfig {
 	pub auto_register: Vec<(String, String, Option<u128>)>,
 
 	/// Minimum time to the the redeem/replace execution deadline to make the stellar payment.
-	#[clap(long, value_parser = parse_duration_minutes, default_value = "120")]
+	#[clap(long, value_parser = parse_duration_minutes, default_value = "1")]
 	pub payment_margin_minutes: Duration,
 }
 
