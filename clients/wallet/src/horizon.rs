@@ -238,13 +238,18 @@ impl HorizonClient for reqwest::Client {
 			url = format!("{}&order=desc", url);
 		}
 
-		self.get(url)
-			.send()
-			.await
-			.map_err(|e| Error::HttpFetchingError(e))?
-			.json::<HorizonTransactionsResponse>()
-			.await
-			.map_err(|e| Error::HttpFetchingError(e))
+		let response = self.get(url).send().await.map_err(|e| Error::HttpFetchingError(e))?;
+
+		if response.status().is_success() {
+			response
+				.json::<HorizonTransactionsResponse>()
+				.await
+				.map_err(|e| Error::HttpFetchingError(e))
+		} else {
+			Err(Error::HorizonSubmissionError(
+				response.text().await.map_err(|e| Error::HttpFetchingError(e))?,
+			))
+		}
 	}
 
 	async fn get_account(
@@ -255,13 +260,18 @@ impl HorizonClient for reqwest::Client {
 		let base_url = horizon_url(is_public_network);
 		let url = format!("{}/accounts/{}", base_url, account_encoded);
 
-		self.get(url)
-			.send()
-			.await
-			.map_err(|e| Error::HttpFetchingError(e))?
-			.json::<HorizonAccountResponse>()
-			.await
-			.map_err(|e| Error::HttpFetchingError(e))
+		let response = self.get(url).send().await.map_err(|e| Error::HttpFetchingError(e))?;
+
+		if response.status().is_success() {
+			response
+				.json::<HorizonAccountResponse>()
+				.await
+				.map_err(|e| Error::HttpFetchingError(e))
+		} else {
+			Err(Error::HorizonSubmissionError(
+				response.text().await.map_err(|e| Error::HttpFetchingError(e))?,
+			))
+		}
 	}
 
 	async fn submit_transaction(
@@ -277,14 +287,23 @@ impl HorizonClient for reqwest::Client {
 		let url = format!("{}/transactions", base_url);
 
 		let params = [("tx", transaction_xdr)];
-		self.post(url)
+		let response = self
+			.post(url)
 			.form(&params)
 			.send()
 			.await
-			.map_err(|e| Error::HttpFetchingError(e))?
-			.json::<TransactionResponse>()
-			.await
-			.map_err(|e| Error::HttpFetchingError(e))
+			.map_err(|e| Error::HttpFetchingError(e))?;
+
+		if response.status().is_success() {
+			response
+				.json::<TransactionResponse>()
+				.await
+				.map_err(|e| Error::HttpFetchingError(e))
+		} else {
+			Err(Error::HorizonSubmissionError(
+				response.text().await.map_err(|e| Error::HttpFetchingError(e))?,
+			))
+		}
 	}
 }
 
