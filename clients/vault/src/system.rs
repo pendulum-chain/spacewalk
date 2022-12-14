@@ -34,7 +34,7 @@ use crate::{
 	issue,
 	issue::IssueFilter,
 	metrics::publish_tokio_metrics,
-	oracle::{create_handler, prepare_directories, ScpMessageHandler},
+	oracle::{prepare_directories, OracleAgent},
 	service::{CancellationScheduler, IssueCanceller},
 	Event, CHAIN_HEIGHT_POLLING_INTERVAL,
 };
@@ -428,11 +428,12 @@ impl VaultService {
 		let slot_tx_env_map: Arc<RwLock<HashMap<u32, String>>> =
 			Arc::new(RwLock::new(HashMap::new()));
 
-		let handler: ScpMessageHandler =
-			inner_create_handler(secret_key.clone(), self.stellar_wallet.is_public_network())
+		let handler =
+			create_agent(secret_key.clone(), self.stellar_wallet.is_public_network())
 				.await?;
-		let watcher = Arc::new(RwLock::new(handler.create_watcher()));
-		let proof_ops = Arc::new(RwLock::new(handler.proof_operations()));
+
+		//let watcher = Arc::new(RwLock::new(handler.create_watcher()));
+		//let proof_ops = Arc::new(RwLock::new(handler.proof_operations()));
 
 		let (issue_event_tx, issue_event_rx) = mpsc::channel::<Event>(32);
 
@@ -450,17 +451,17 @@ impl VaultService {
 					Err(ServiceError::ClientShutdown)
 				}),
 			),
-			(
-				"Listen for New Transactions",
-				run(wallet::listen_for_new_transactions(
-					self.stellar_wallet.get_public_key(),
-					self.stellar_wallet.is_public_network(),
-					watcher.clone(),
-					slot_tx_env_map.clone(),
-					issue_map.clone(),
-					issue_filter,
-				)),
-			),
+			// (
+			// 	"Listen for New Transactions",
+			// 	run(wallet::listen_for_new_transactions(
+			// 		self.stellar_wallet.get_public_key(),
+			// 		self.stellar_wallet.is_public_network(),
+			// 		watcher.clone(),
+			// 		slot_tx_env_map.clone(),
+			// 		issue_map.clone(),
+			// 		issue_filter,
+			// 	)),
+			// ),
 			(
 				"Listen for Issue Requests",
 				run(issue::listen_for_issue_requests(
@@ -484,15 +485,15 @@ impl VaultService {
 					issue_map.clone(),
 				)),
 			),
-			(
-				"Execute issues with proofs",
-				run(issue::process_issues_with_proofs(
-					self.spacewalk_parachain.clone(),
-					proof_ops.clone(),
-					slot_tx_env_map.clone(),
-					issue_map.clone(),
-				)),
-			),
+			// (
+			// 	"Execute issues with proofs",
+			// 	run(issue::process_issues_with_proofs(
+			// 		self.spacewalk_parachain.clone(),
+			// 		proof_ops.clone(),
+			// 		slot_tx_env_map.clone(),
+			// 		issue_map.clone(),
+			// 	)),
+			// ),
 			(
 				"Issue Cancel Scheduler",
 				run(CancellationScheduler::new(
@@ -600,10 +601,10 @@ pub(crate) async fn is_vault_registered(
 
 /// Returns SCPMessageHandler which contains the thread to connect/listen to the Stellar
 /// Node. See the oracle.rs example
-pub async fn inner_create_handler(
+pub async fn create_agent(
 	stellar_vault_secret_key: SecretKey,
 	is_public_network: bool,
-) -> Result<ScpMessageHandler, Error> {
+) -> Result<OracleAgent, Error> {
 	prepare_directories().map_err(|e| {
 		tracing::error!("Failed to create the SCPMessageHandler: {:?}", e);
 		Error::StellarSdkError
@@ -623,8 +624,5 @@ pub async fn inner_create_handler(
 	let node_info = NodeInfo::new(19, 25, 23, "v19.5.0".to_string(), network);
 	let cfg = ConnConfig::new(tier1_node_ip, 11625, stellar_vault_secret_key, 0, true, true, false);
 
-	create_handler(node_info, cfg, is_public_network).await.map_err(|e| {
-		tracing::error!("Failed to create the SCPMessageHandler: {:?}", e);
-		Error::StellarSdkError
-	})
+	Ok(OracleAgent::new(is_public_network)?)
 }

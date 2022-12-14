@@ -3,7 +3,7 @@
 pub use agent::*;
 use collector::*;
 pub use collector::{Proof, ProofExt, ProofStatus};
-use errors::Error;
+pub use errors::Error;
 pub use storage::{prepare_directories, *};
 use types::*;
 
