@@ -11,8 +11,8 @@ use tokio::{
 
 use primitives::{stellar::PublicKey, TransactionEnvelopeExt};
 use runtime::{
-	types::FixedU128, CurrencyId, OraclePallet, RedeemPallet, RedeemRequestStatus, ReplacePallet,
-	ReplaceRequestStatus, SecurityPallet, ShutdownSender, SpacewalkParachain,
+	types::FixedU128, CurrencyId, OraclePallet, PrettyPrint, RedeemPallet, RedeemRequestStatus,
+	ReplacePallet, ReplaceRequestStatus, SecurityPallet, ShutdownSender, SpacewalkParachain,
 	SpacewalkRedeemRequest, SpacewalkReplaceRequest, StellarPublicKeyRaw, StellarRelayPallet,
 	UtilFuncs, VaultId, VaultRegistryPallet, H256,
 };
@@ -395,48 +395,49 @@ pub async fn execute_open_requests(
 		},
 	}
 
-	// // All requests remaining in the hashmap did not have a Stellar payment yet, so pay
-	// // and execute all of these
-	// for (_, request) in open_requests {
-	// 	// there are potentially a large number of open requests - pay and execute each
-	// 	// in a separate task to ensure that awaiting confirmations does not significantly
-	// 	// delay other requests
-	// 	// make copies of the variables we move into the task
-	// 	let parachain_rpc = parachain_rpc.clone();
-	// 	let vault_id_manager = vault_id_manager.clone();
-	// 	spawn_cancelable(shutdown_tx.subscribe(), async move {
-	// 		let vault = match vault_id_manager.get_vault(&request.vault_id).await {
-	// 			Some(x) => x,
-	// 			None => {
-	// 				tracing::error!(
-	// 					"Failed to fetch bitcoin rpc for vault {}",
-	// 					request.vault_id.pretty_print()
-	// 				);
-	// 				return // nothing we can do - bail
-	// 			},
-	// 		};
-	//
-	// 		tracing::info!(
-	// 			"{:?} request #{:?} found without bitcoin payment - processing...",
-	// 			request.request_type,
-	// 			request.hash
-	// 		);
-	//
-	// 		match request.pay_and_execute(parachain_rpc, vault, num_confirmations, auto_rbf).await {
-	// 			Ok(_) => tracing::info!(
-	// 				"{:?} request #{:?} successfully executed",
-	// 				request.request_type,
-	// 				request.hash
-	// 			),
-	// 			Err(e) => tracing::info!(
-	// 				"{:?} request #{:?} failed to process: {}",
-	// 				request.request_type,
-	// 				request.hash,
-	// 				e
-	// 			),
-	// 		}
-	// 	});
-	// }
+	// All requests remaining in the hashmap did not have a Stellar payment yet, so pay
+	// and execute all of these
+	for (_, request) in open_requests {
+		// there are potentially a large number of open requests - pay and execute each
+		// in a separate task to ensure that awaiting confirmations does not significantly
+		// delay other requests
+		// make copies of the variables we move into the task
+		let parachain_rpc = parachain_rpc.clone();
+		let vault_id_manager = vault_id_manager.clone();
+		let proof_ops = proof_ops.clone();
+		spawn_cancelable(shutdown_tx.subscribe(), async move {
+			let vault = match vault_id_manager.get_vault(&request.vault_id).await {
+				Some(x) => x,
+				None => {
+					tracing::error!(
+						"Failed to fetch vault data for vault {}",
+						request.vault_id.pretty_print()
+					);
+					return // nothing we can do - bail
+				},
+			};
+
+			tracing::info!(
+				"{:?} request #{:?} found without Stellar payment - processing...",
+				request.request_type,
+				request.hash
+			);
+
+			match request.pay_and_execute(parachain_rpc, vault, proof_ops).await {
+				Ok(_) => tracing::info!(
+					"{:?} request #{:?} successfully executed",
+					request.request_type,
+					request.hash
+				),
+				Err(e) => tracing::info!(
+					"{:?} request #{:?} failed to process: {}",
+					request.request_type,
+					request.hash,
+					e
+				),
+			}
+		});
+	}
 
 	Ok(())
 }
