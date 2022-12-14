@@ -27,6 +27,7 @@ pub mod service {
 
 	pub use crate::{
 		cancellation::{CancellationScheduler, IssueCanceller, ReplaceCanceller},
+		execution::execute_open_requests,
 		issue::{
 			listen_for_executed_issues, listen_for_issue_cancels, listen_for_issue_requests,
 			process_issues_with_proofs, IssueFilter,

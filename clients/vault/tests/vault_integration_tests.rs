@@ -919,6 +919,104 @@ async fn test_automatic_issue_execution_succeeds_for_other_vault() {
 }
 
 #[tokio::test(flavor = "multi_thread")]
+#[serial]
+async fn test_execute_open_requests_succeeds() {
+	test_with_vault(|client, vault_id, vault_provider| async move {
+		let user_provider = setup_provider(client.clone(), AccountKeyring::Dave).await;
+
+		let is_public_network = false;
+		let wallet = StellarWallet::from_secret_encoded(
+			&STELLAR_VAULT_SECRET_KEY.to_string(),
+			is_public_network,
+		)
+		.unwrap();
+		let wallet = Arc::new(wallet);
+
+		let vault_ids = vec![vault_id.clone()];
+		let vault_id_manager =
+			VaultIdManager::from_map(vault_provider.clone(), wallet.clone(), vault_ids);
+
+		let issue_amount = 100000;
+		let vault_collateral = get_required_vault_collateral_for_issue(
+			&vault_provider,
+			issue_amount,
+			vault_id.collateral_currency(),
+		)
+		.await;
+		assert_ok!(
+			vault_provider
+				.register_vault_with_public_key(
+					&vault_id,
+					vault_collateral,
+					wallet.get_public_key_raw(),
+				)
+				.await
+		);
+
+		// Setup scp handler for proofs
+		// TODO refactor once improved 'OracleAgent' is implemented
+		let handler = vault::inner_create_handler(wallet.get_secret_key(), is_public_network)
+			.await
+			.expect("Failed to create handler");
+		let proof_ops = Arc::new(RwLock::new(handler.proof_operations()));
+
+		assert_issue(&user_provider, wallet.clone(), &vault_id, issue_amount, proof_ops.clone())
+			.await;
+
+		// TODO does this need to be another address?
+		let address = wallet.get_public_key();
+		let address_raw = wallet.get_public_key_raw();
+		// place replace requests
+		let redeem_ids = futures::future::join_all(
+			(0..3u128).map(|_| user_provider.request_redeem(10000, address_raw, &vault_id)),
+		)
+		.await
+		.into_iter()
+		.map(|x| x.unwrap())
+		.collect::<Vec<_>>();
+
+		let redeems: Vec<SpacewalkRedeemRequest> = futures::future::join_all(
+			redeem_ids.iter().map(|id| user_provider.get_redeem_request(*id)),
+		)
+		.await
+		.into_iter()
+		.map(|x| x.unwrap())
+		.collect::<Vec<_>>();
+
+		let stroop_amount = redeems[0].amount as i64;
+		let asset = primitives::AssetConversion::lookup(redeems[0].asset).expect("Invalid asset");
+		let memo_hash = redeem_ids[0].0;
+		// do stellar transfer for redeem 0
+		assert_ok!(wallet.send_payment_to_address(address, asset, stroop_amount, memo_hash).await);
+
+		let shutdown_tx = ShutdownSender::new();
+		join3(
+			vault::service::execute_open_requests(
+				shutdown_tx.clone(),
+				vault_provider,
+				vault_id_manager,
+				wallet.clone(),
+				proof_ops,
+				Duration::from_secs(0),
+			)
+			.map(Result::unwrap),
+			assert_execute_redeem_event(TIMEOUT, user_provider.clone(), redeem_ids[0]),
+			assert_execute_redeem_event(TIMEOUT, user_provider.clone(), redeem_ids[2]),
+		)
+		.await;
+
+		// // now move from mempool into chain and await the remaining redeem
+		// mock_bitcoin_core.flush_mempool().await;
+		// test_service(
+		// 	periodically_produce_blocks(user_provider.clone()),
+		// 	assert_redeem_event(TIMEOUT, user_provider, redeem_ids[1]),
+		// )
+		// .await;
+	})
+	.await;
+}
+
+#[tokio::test(flavor = "multi_thread")]
 async fn test_shutdown() {
 	test_with(|client| async move {
 		let sudo_provider = setup_provider(client.clone(), AccountKeyring::Alice).await;

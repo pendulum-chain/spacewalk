@@ -397,25 +397,6 @@ impl VaultService {
 		.into_iter()
 		.collect::<Result<_, Error>>()?;
 
-		// purposefully _after_ maybe_register_vault and _before_ other calls
-		self.vault_id_manager.fetch_vault_ids().await?;
-
-		let open_request_executor = execute_open_requests(
-			self.shutdown.clone(),
-			self.spacewalk_parachain.clone(),
-			self.vault_id_manager.clone(),
-			self.stellar_wallet.clone(),
-			self.config.payment_margin_minutes,
-		);
-		service::spawn_cancelable(self.shutdown.subscribe(), async move {
-			tracing::info!("Checking for open requests...");
-			// TODO: kill task on shutdown signal to prevent double payment
-			match open_request_executor.await {
-				Ok(_) => tracing::info!("Done processing open requests"),
-				Err(e) => tracing::error!("Failed to process open requests: {}", e),
-			}
-		});
-
 		// issue handling
 		// this vec is passed to the stellar wallet to filter out transactions that are not relevant
 		// this has to be modified every time the issue set changes
@@ -433,6 +414,26 @@ impl VaultService {
 				.await?;
 		let watcher = Arc::new(RwLock::new(handler.create_watcher()));
 		let proof_ops = Arc::new(RwLock::new(handler.proof_operations()));
+
+		// purposefully _after_ maybe_register_vault and _before_ other calls
+		self.vault_id_manager.fetch_vault_ids().await?;
+
+		let open_request_executor = execute_open_requests(
+			self.shutdown.clone(),
+			self.spacewalk_parachain.clone(),
+			self.vault_id_manager.clone(),
+			self.stellar_wallet.clone(),
+			proof_ops.clone(),
+			self.config.payment_margin_minutes,
+		);
+		service::spawn_cancelable(self.shutdown.subscribe(), async move {
+			tracing::info!("Checking for open requests...");
+			// TODO: kill task on shutdown signal to prevent double payment
+			match open_request_executor.await {
+				Ok(_) => tracing::info!("Done processing open requests"),
+				Err(e) => tracing::error!("Failed to process open requests: {}", e),
+			}
+		});
 
 		let (issue_event_tx, issue_event_rx) = mpsc::channel::<Event>(32);
 

@@ -9,7 +9,7 @@ use tokio::{
 	time::{sleep, timeout},
 };
 
-use primitives::stellar::PublicKey;
+use primitives::{stellar::PublicKey, TransactionEnvelopeExt};
 use runtime::{
 	types::FixedU128, CurrencyId, OraclePallet, RedeemPallet, RedeemRequestStatus, ReplacePallet,
 	ReplaceRequestStatus, SecurityPallet, ShutdownSender, SpacewalkParachain,
@@ -17,8 +17,8 @@ use runtime::{
 	UtilFuncs, VaultId, VaultRegistryPallet, H256,
 };
 use service::{spawn_cancelable, Error as ServiceError};
-use stellar_relay_lib::sdk::{TransactionEnvelope, XdrCodec};
-use wallet::StellarWallet;
+use stellar_relay_lib::sdk::{Asset, TransactionEnvelope, XdrCodec};
+use wallet::{StellarWallet, TransactionResponse};
 
 use crate::{
 	error::Error,
@@ -38,7 +38,8 @@ pub struct Request {
 	/// Deadline (unit: active block number) after which payments will no longer be attempted.
 	deadline: Option<Deadline>,
 	amount: u128,
-	asset: CurrencyId,
+	asset: Asset,
+	currency: CurrencyId,
 	stellar_address: StellarPublicKeyRaw,
 	request_type: RequestType,
 	vault_id: VaultId,
@@ -80,6 +81,11 @@ impl Request {
 		request: SpacewalkRedeemRequest,
 		payment_margin: Duration,
 	) -> Result<Request, Error> {
+		// Convert the currency ID contained in the request to a Stellar asset and store both
+		// in the request struct for convenience
+		let asset =
+			primitives::AssetConversion::lookup(request.asset).map_err(|_| Error::LookupError)?;
+
 		Ok(Request {
 			hash,
 			deadline: Some(Self::calculate_deadline(
@@ -88,7 +94,8 @@ impl Request {
 				payment_margin,
 			)?),
 			amount: request.amount,
-			asset: request.asset,
+			asset,
+			currency: request.asset,
 			stellar_address: request.stellar_address,
 			request_type: RequestType::Redeem,
 			vault_id: request.vault,
@@ -102,6 +109,11 @@ impl Request {
 		request: SpacewalkReplaceRequest,
 		payment_margin: Duration,
 	) -> Result<Request, Error> {
+		// Convert the currency ID contained in the request to a Stellar asset and store both
+		// in the request struct for convenience
+		let asset =
+			primitives::AssetConversion::lookup(request.asset).map_err(|_| Error::LookupError)?;
+
 		Ok(Request {
 			hash,
 			deadline: Some(Self::calculate_deadline(
@@ -110,7 +122,8 @@ impl Request {
 				payment_margin,
 			)?),
 			amount: request.amount,
-			asset: request.asset,
+			asset,
+			currency: request.asset,
 			stellar_address: request.stellar_address,
 			request_type: RequestType::Replace,
 			vault_id: request.old_vault,
@@ -180,15 +193,13 @@ impl Request {
 		wallet: Arc<StellarWallet>,
 	) -> Result<(TransactionEnvelope, u32), Error> {
 		let destination_public_key = PublicKey::from_binary(self.stellar_address);
-		let stellar_asset =
-			primitives::AssetConversion::lookup(self.asset).map_err(|_| Error::LookupError)?;
 		let stroop_amount = self.amount as i64;
 		let memo_hash = self.hash.0;
 
 		let result = wallet
 			.send_payment_to_address(
 				destination_public_key.clone(),
-				stellar_asset,
+				self.asset.clone(),
 				stroop_amount,
 				memo_hash,
 			)
@@ -301,7 +312,7 @@ pub async fn execute_open_requests(
 
 	// Query the latest 200 transactions for the targeted vault account and check if any of
 	// them is targeted
-	let transactions_result = wallet.get_latest_transactions(0, 200, false);
+	let transactions_result = wallet.get_latest_transactions(0, 200, false).await;
 	match transactions_result {
 		Ok(transactions) => {
 			tracing::info!("Checking {} transactions for payments", transactions.len());
@@ -325,6 +336,7 @@ pub async fn execute_open_requests(
 					// variables we move into the task
 					let parachain_rpc = parachain_rpc.clone();
 					let vault_id_manager = vault_id_manager.clone();
+					let proof_ops = proof_ops.clone();
 					spawn_cancelable(shutdown_tx.subscribe(), async move {
 						let tx_env = TransactionEnvelope::from_xdr(&transaction.envelope_xdr);
 						match tx_env {
@@ -384,48 +396,48 @@ pub async fn execute_open_requests(
 		},
 	}
 
-	// All requests remaining in the hashmap did not have a Stellar payment yet, so pay
-	// and execute all of these
-	for (_, request) in open_requests {
-		// there are potentially a large number of open requests - pay and execute each
-		// in a separate task to ensure that awaiting confirmations does not significantly
-		// delay other requests
-		// make copies of the variables we move into the task
-		let parachain_rpc = parachain_rpc.clone();
-		let vault_id_manager = vault_id_manager.clone();
-		spawn_cancelable(shutdown_tx.subscribe(), async move {
-			let vault = match vault_id_manager.get_vault(&request.vault_id).await {
-				Some(x) => x,
-				None => {
-					tracing::error!(
-						"Failed to fetch bitcoin rpc for vault {}",
-						request.vault_id.pretty_print()
-					);
-					return // nothing we can do - bail
-				},
-			};
-
-			tracing::info!(
-				"{:?} request #{:?} found without bitcoin payment - processing...",
-				request.request_type,
-				request.hash
-			);
-
-			match request.pay_and_execute(parachain_rpc, vault, num_confirmations, auto_rbf).await {
-				Ok(_) => tracing::info!(
-					"{:?} request #{:?} successfully executed",
-					request.request_type,
-					request.hash
-				),
-				Err(e) => tracing::info!(
-					"{:?} request #{:?} failed to process: {}",
-					request.request_type,
-					request.hash,
-					e
-				),
-			}
-		});
-	}
+	// // All requests remaining in the hashmap did not have a Stellar payment yet, so pay
+	// // and execute all of these
+	// for (_, request) in open_requests {
+	// 	// there are potentially a large number of open requests - pay and execute each
+	// 	// in a separate task to ensure that awaiting confirmations does not significantly
+	// 	// delay other requests
+	// 	// make copies of the variables we move into the task
+	// 	let parachain_rpc = parachain_rpc.clone();
+	// 	let vault_id_manager = vault_id_manager.clone();
+	// 	spawn_cancelable(shutdown_tx.subscribe(), async move {
+	// 		let vault = match vault_id_manager.get_vault(&request.vault_id).await {
+	// 			Some(x) => x,
+	// 			None => {
+	// 				tracing::error!(
+	// 					"Failed to fetch bitcoin rpc for vault {}",
+	// 					request.vault_id.pretty_print()
+	// 				);
+	// 				return // nothing we can do - bail
+	// 			},
+	// 		};
+	//
+	// 		tracing::info!(
+	// 			"{:?} request #{:?} found without bitcoin payment - processing...",
+	// 			request.request_type,
+	// 			request.hash
+	// 		);
+	//
+	// 		match request.pay_and_execute(parachain_rpc, vault, num_confirmations, auto_rbf).await {
+	// 			Ok(_) => tracing::info!(
+	// 				"{:?} request #{:?} successfully executed",
+	// 				request.request_type,
+	// 				request.hash
+	// 			),
+	// 			Err(e) => tracing::info!(
+	// 				"{:?} request #{:?} failed to process: {}",
+	// 				request.request_type,
+	// 				request.hash,
+	// 				e
+	// 			),
+	// 		}
+	// 	});
+	// }
 
 	Ok(())
 }
@@ -436,10 +448,15 @@ fn get_request_for_stellar_tx(
 	tx: &TransactionResponse,
 	hash_map: &HashMap<H256, Request>,
 ) -> Option<Request> {
-	let hash = tx.get_op_return()?;
-	let request = hash_map.get(&hash)?;
-	let paid_amount = tx.get_payment_amount_to(request.btc_address.to_payload().ok()?)?;
-	if paid_amount as u128 >= request.amount {
+	let hash = tx.memo_hash()?;
+	let h256 = H256::from_slice(&hash);
+	let request = hash_map.get(&h256)?;
+
+	let envelope = tx.envelope().ok()?;
+	let paid_amount = envelope
+		.get_payment_amount_for_asset_to(request.stellar_address.clone(), request.asset.clone());
+
+	if paid_amount >= request.amount {
 		Some(request.clone())
 	} else {
 		None

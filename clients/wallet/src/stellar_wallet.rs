@@ -46,7 +46,7 @@ impl StellarWallet {
 		self.is_public_network
 	}
 
-	pub fn get_latest_transactions(
+	pub async fn get_latest_transactions(
 		&self,
 		cursor: PagingToken,
 		limit: i64,
@@ -58,13 +58,11 @@ impl StellarWallet {
 		let account_id =
 			std::str::from_utf8(&public_key_encoded).map_err(|e| Error::Utf8Error(e))?;
 
-		let transactions = horizon_client.get_transactions(
-			account_id,
-			self.is_public_network,
-			cursor,
-			limit,
-			order_ascending,
-		)?;
+		let transactions_response = horizon_client
+			.get_transactions(account_id, self.is_public_network, cursor, limit, order_ascending)
+			.await?;
+
+		let transactions = transactions_response._embedded.records;
 
 		Ok(transactions)
 	}
