@@ -8,7 +8,7 @@ use substrate_stellar_sdk::{
 
 use crate::{
 	error::Error,
-	horizon::{HorizonClient, TransactionResponse},
+	horizon::{HorizonClient, PagingToken, TransactionResponse},
 	types::StellarPublicKeyRaw,
 };
 
@@ -44,6 +44,29 @@ impl StellarWallet {
 
 	pub fn is_public_network(&self) -> bool {
 		self.is_public_network
+	}
+
+	pub fn get_latest_transactions(
+		&self,
+		cursor: PagingToken,
+		limit: i64,
+		order_ascending: bool,
+	) -> Result<Vec<TransactionResponse>, Error> {
+		let horizon_client = reqwest::Client::new();
+
+		let public_key_encoded = self.get_public_key().to_encoding();
+		let account_id =
+			std::str::from_utf8(&public_key_encoded).map_err(|e| Error::Utf8Error(e))?;
+
+		let transactions = horizon_client.get_transactions(
+			account_id,
+			self.is_public_network,
+			cursor,
+			limit,
+			order_ascending,
+		)?;
+
+		Ok(transactions)
 	}
 
 	pub async fn send_payment_to_address(
