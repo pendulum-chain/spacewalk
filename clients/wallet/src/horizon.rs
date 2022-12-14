@@ -251,10 +251,10 @@ impl HorizonClient for reqwest::Client {
 		self.get(url)
 			.send()
 			.await
-			.map_err(|_| Error::HttpFetchingError)?
+			.map_err(|e| Error::HttpFetchingError(e))?
 			.json::<HorizonTransactionsResponse>()
 			.await
-			.map_err(|_| Error::HttpFetchingError)
+			.map_err(|e| Error::HttpFetchingError(e))
 	}
 
 	async fn get_account(
@@ -268,10 +268,10 @@ impl HorizonClient for reqwest::Client {
 		self.get(url)
 			.send()
 			.await
-			.map_err(|_| Error::HttpFetchingError)?
+			.map_err(|e| Error::HttpFetchingError(e))?
 			.json::<HorizonAccountResponse>()
 			.await
-			.map_err(|_| Error::HttpFetchingError)
+			.map_err(|e| Error::HttpFetchingError(e))
 	}
 
 	async fn submit_transaction(
@@ -291,10 +291,10 @@ impl HorizonClient for reqwest::Client {
 			.form(&params)
 			.send()
 			.await
-			.map_err(|_| Error::HttpFetchingError)?
+			.map_err(|e| Error::HttpFetchingError(e))?
 			.json::<TransactionResponse>()
 			.await
-			.map_err(|_| Error::HttpFetchingError)
+			.map_err(|e| Error::HttpFetchingError(e))
 	}
 }
 

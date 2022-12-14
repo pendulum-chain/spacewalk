@@ -1,12 +1,13 @@
-use substrate_stellar_sdk::{horizon::FetchError, StellarSdkError};
+use reqwest::Error as FetchError;
+use substrate_stellar_sdk::StellarSdkError;
 use thiserror::Error;
 
-#[derive(PartialEq, Clone, Debug, Error)]
+#[derive(Debug, Error)]
 pub enum Error {
 	#[error("Server returned rpc error")]
 	InvalidSecretKey,
-	#[error("Error fetching horizon data")]
-	HttpFetchingError,
+	#[error("Error fetching horizon data: {0}")]
+	HttpFetchingError(#[from] FetchError),
 	#[error("Oracle returned error")]
 	OracleError,
 	#[error("Could not build transaction: {0}")]
