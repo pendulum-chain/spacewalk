@@ -1,5 +1,3 @@
-use crate as vault_registry;
-use crate::{Config, Error};
 use frame_support::{
 	parameter_types,
 	traits::{ConstU32, Everything, GenesisBuild},
@@ -7,14 +5,21 @@ use frame_support::{
 };
 use mocktopus::{macros::mockable, mocking::clear_mocks};
 use orml_traits::parameter_type_with_key;
-pub use primitives::{CurrencyId, CurrencyId::Token, TokenSymbol::*};
-use primitives::{VaultCurrencyPair, VaultId};
 use sp_arithmetic::{FixedI128, FixedPointNumber, FixedU128};
 use sp_core::H256;
 use sp_runtime::{
 	testing::{Header, TestXt},
 	traits::{BlakeTwo256, IdentityLookup, One, Zero},
 };
+
+pub use currency::testing_constants::{
+	DEFAULT_COLLATERAL_CURRENCY, DEFAULT_NATIVE_CURRENCY, DEFAULT_WRAPPED_CURRENCY,
+};
+pub use primitives::{CurrencyId, CurrencyId::Token, TokenSymbol::*};
+use primitives::{VaultCurrencyPair, VaultId};
+
+use crate as vault_registry;
+use crate::{Config, Error};
 
 pub(crate) type Extrinsic = TestXt<RuntimeCall, ()>;
 type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Test>;
@@ -87,10 +92,6 @@ impl frame_system::Config for Test {
 	type MaxConsumers = frame_support::traits::ConstU32<16>;
 }
 
-pub const DEFAULT_COLLATERAL_CURRENCY: CurrencyId = Token(DOT);
-pub const DEFAULT_NATIVE_CURRENCY: CurrencyId = Token(INTR);
-pub const DEFAULT_WRAPPED_CURRENCY: CurrencyId = Token(IBTC);
-
 pub const DEFAULT_CURRENCY_PAIR: VaultCurrencyPair<CurrencyId> = VaultCurrencyPair {
 	collateral: DEFAULT_COLLATERAL_CURRENCY,
 	wrapped: DEFAULT_WRAPPED_CURRENCY,
@@ -135,7 +136,6 @@ impl reward::Config for Test {
 	type RewardId = VaultId<AccountId, CurrencyId>;
 	type CurrencyId = CurrencyId;
 	type GetNativeCurrencyId = GetNativeCurrencyId;
-	type GetWrappedCurrencyId = GetWrappedCurrencyId;
 }
 
 parameter_types! {
@@ -179,7 +179,7 @@ impl currency::Config for Test {
 	type Balance = Balance;
 	type GetNativeCurrencyId = GetNativeCurrencyId;
 	type GetRelayChainCurrencyId = GetCollateralCurrencyId;
-	type GetWrappedCurrencyId = GetWrappedCurrencyId;
+
 	type AssetConversion = primitives::AssetConversion;
 	type BalanceConversion = primitives::BalanceConversion;
 	type CurrencyConversion = CurrencyConvert;
@@ -326,6 +326,10 @@ where
 		set_default_thresholds();
 		<oracle::Pallet<Test>>::_set_exchange_rate(
 			DEFAULT_COLLATERAL_CURRENCY,
+			UnsignedFixedPoint::one(),
+		);
+		<oracle::Pallet<Test>>::_set_exchange_rate(
+			DEFAULT_WRAPPED_CURRENCY,
 			UnsignedFixedPoint::one(),
 		)
 		.unwrap();

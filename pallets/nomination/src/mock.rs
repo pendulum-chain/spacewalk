@@ -1,6 +1,3 @@
-use crate as nomination;
-use crate::{Config, Error};
-use currency::Amount;
 use frame_support::{
 	assert_ok, parameter_types,
 	traits::{ConstU32, Everything, GenesisBuild},
@@ -8,8 +5,6 @@ use frame_support::{
 };
 use mocktopus::{macros::mockable, mocking::clear_mocks};
 use orml_traits::parameter_type_with_key;
-pub use primitives::{CurrencyId, CurrencyId::Token, TokenSymbol::*};
-use primitives::{VaultCurrencyPair, VaultId};
 use sp_arithmetic::{FixedI128, FixedU128};
 use sp_core::H256;
 use sp_runtime::{
@@ -17,6 +12,16 @@ use sp_runtime::{
 	traits::{BlakeTwo256, IdentityLookup, One, Zero},
 	FixedPointNumber,
 };
+
+pub use currency::testing_constants::{
+	DEFAULT_COLLATERAL_CURRENCY, DEFAULT_NATIVE_CURRENCY, DEFAULT_WRAPPED_CURRENCY,
+};
+use currency::Amount;
+pub use primitives::{CurrencyId, CurrencyId::Token, TokenSymbol::*};
+use primitives::{VaultCurrencyPair, VaultId};
+
+use crate as nomination;
+use crate::{Config, Error};
 
 type TestExtrinsic = TestXt<RuntimeCall, ()>;
 type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Test>;
@@ -91,10 +96,6 @@ impl frame_system::Config for Test {
 	type MaxConsumers = frame_support::traits::ConstU32<16>;
 }
 
-pub const DEFAULT_COLLATERAL_CURRENCY: CurrencyId = Token(DOT);
-pub const DEFAULT_NATIVE_CURRENCY: CurrencyId = Token(INTR);
-pub const DEFAULT_WRAPPED_CURRENCY: CurrencyId = Token(IBTC);
-
 pub const DEFAULT_CURRENCY_PAIR: VaultCurrencyPair<CurrencyId> = VaultCurrencyPair {
 	collateral: DEFAULT_COLLATERAL_CURRENCY,
 	wrapped: DEFAULT_WRAPPED_CURRENCY,
@@ -103,7 +104,6 @@ pub const DEFAULT_CURRENCY_PAIR: VaultCurrencyPair<CurrencyId> = VaultCurrencyPa
 parameter_types! {
 	pub const GetCollateralCurrencyId: CurrencyId = DEFAULT_COLLATERAL_CURRENCY;
 	pub const GetNativeCurrencyId: CurrencyId = DEFAULT_NATIVE_CURRENCY;
-	pub const GetWrappedCurrencyId: CurrencyId = DEFAULT_WRAPPED_CURRENCY;
 	pub const MaxLocks: u32 = 50;
 }
 
@@ -138,7 +138,6 @@ impl reward::Config for Test {
 	type RewardId = VaultId<AccountId, CurrencyId>;
 	type CurrencyId = CurrencyId;
 	type GetNativeCurrencyId = GetNativeCurrencyId;
-	type GetWrappedCurrencyId = GetWrappedCurrencyId;
 }
 
 parameter_types! {
@@ -184,7 +183,7 @@ impl currency::Config for Test {
 	type Balance = Balance;
 	type GetNativeCurrencyId = GetNativeCurrencyId;
 	type GetRelayChainCurrencyId = GetCollateralCurrencyId;
-	type GetWrappedCurrencyId = GetWrappedCurrencyId;
+
 	type AssetConversion = primitives::AssetConversion;
 	type BalanceConversion = primitives::BalanceConversion;
 	type CurrencyConversion = CurrencyConvert;
@@ -317,10 +316,10 @@ impl ExtBuilder {
 	pub fn build() -> sp_io::TestExternalities {
 		ExtBuilder::build_with(orml_tokens::GenesisConfig::<Test> {
 			balances: vec![
-				(ALICE.account_id, Token(DOT), ALICE_BALANCE),
-				(BOB.account_id, Token(DOT), BOB_BALANCE),
-				(ALICE.account_id, Token(IBTC), ALICE_BALANCE),
-				(BOB.account_id, Token(IBTC), BOB_BALANCE),
+				(ALICE.account_id, DEFAULT_COLLATERAL_CURRENCY, ALICE_BALANCE),
+				(BOB.account_id, DEFAULT_COLLATERAL_CURRENCY, BOB_BALANCE),
+				(ALICE.account_id, DEFAULT_WRAPPED_CURRENCY, ALICE_BALANCE),
+				(BOB.account_id, DEFAULT_WRAPPED_CURRENCY, BOB_BALANCE),
 			],
 		})
 	}

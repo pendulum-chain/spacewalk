@@ -461,14 +461,10 @@ create_currency_id! {
 	#[repr(u8)]
 	pub enum TokenSymbol {
 		DOT("Polkadot", 10) = 0,
-		IBTC("interBTC", 8) = 1,
-		INTR("Interlay", 10) = 2,
+		PEN("Pendulum", 10) = 1,
 
 		KSM("Kusama", 10) = 10,
-		PEN("Pendulum", 10) = 11,
 		AMPE("Amplitude", 12) = 12,
-		KBTC("kBTC", 8) = 13,
-		KINT("Kintsugi", 12) = 14,
 	}
 }
 

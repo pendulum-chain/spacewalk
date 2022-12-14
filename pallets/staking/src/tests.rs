@@ -18,8 +18,8 @@ fn reproduce_broken_state() {
     run_test(|| {
         use crate::pallet::*;
         let account = VAULT.account_id;
-        let currency = Token(INTR);
-        let wrong_currency = Token(KBTC);
+        let currency = DEFAULT_NATIVE_CURRENCY;
+        let wrong_currency = Token(AMPE);
 
         let f = |x: i128| {
             SignedFixedPoint::from_inner(x)
@@ -62,7 +62,7 @@ fn slash_stake_does_not_break_state() {
     run_test(|| {
         use crate::pallet::*;
         let account = VAULT.account_id;
-        let currency = Token(INTR);
+        let currency = DEFAULT_NATIVE_CURRENCY;
 
         let f = |x: i128| {
             SignedFixedPoint::from_inner(x)
@@ -106,14 +106,20 @@ fn should_stake_and_earn_rewards() {
 	run_test(|| {
 		assert_ok!(Staking::deposit_stake(&VAULT, &ALICE.account_id, fixed!(50)));
 		assert_ok!(Staking::deposit_stake(&VAULT, &BOB.account_id, fixed!(50)));
-		assert_ok!(Staking::distribute_reward(Token(IBTC), &VAULT, fixed!(100)));
-		assert_ok!(Staking::compute_reward(Token(IBTC), &VAULT, &ALICE.account_id), 50);
-		assert_ok!(Staking::compute_reward(Token(IBTC), &VAULT, &BOB.account_id), 50);
+		assert_ok!(Staking::distribute_reward(DEFAULT_WRAPPED_CURRENCY, &VAULT, fixed!(100)));
+		assert_ok!(
+			Staking::compute_reward(DEFAULT_WRAPPED_CURRENCY, &VAULT, &ALICE.account_id),
+			50
+		);
+		assert_ok!(Staking::compute_reward(DEFAULT_WRAPPED_CURRENCY, &VAULT, &BOB.account_id), 50);
 		assert_ok!(Staking::slash_stake(&VAULT, fixed!(20)));
 		assert_ok!(Staking::compute_stake(&VAULT, &ALICE.account_id), 40);
 		assert_ok!(Staking::compute_stake(&VAULT, &BOB.account_id), 40);
-		assert_ok!(Staking::compute_reward(Token(IBTC), &VAULT, &ALICE.account_id), 50);
-		assert_ok!(Staking::compute_reward(Token(IBTC), &VAULT, &BOB.account_id), 50);
+		assert_ok!(
+			Staking::compute_reward(DEFAULT_WRAPPED_CURRENCY, &VAULT, &ALICE.account_id),
+			50
+		);
+		assert_ok!(Staking::compute_reward(DEFAULT_WRAPPED_CURRENCY, &VAULT, &BOB.account_id), 50);
 	})
 }
 
@@ -126,23 +132,38 @@ fn continues_functioning_after_slash() {
 
 		// step 1: initial (normal) flow
 		assert_ok!(Staking::deposit_stake(&VAULT, &ALICE.account_id, fixed!(50)));
-		assert_ok!(Staking::distribute_reward(Token(IBTC), &VAULT, fixed!(10000)));
-		assert_ok!(Staking::compute_reward(Token(IBTC), &VAULT, &ALICE.account_id), 10000);
+		assert_ok!(Staking::distribute_reward(DEFAULT_WRAPPED_CURRENCY, &VAULT, fixed!(10000)));
+		assert_ok!(
+			Staking::compute_reward(DEFAULT_WRAPPED_CURRENCY, &VAULT, &ALICE.account_id),
+			10000
+		);
 
 		// step 2: slash
 		assert_ok!(Staking::slash_stake(&VAULT, fixed!(30)));
 		assert_ok!(Staking::compute_stake(&VAULT, &ALICE.account_id), 20);
 
 		// step 3: withdraw rewards
-		assert_ok!(Staking::compute_reward(Token(IBTC), &VAULT, &ALICE.account_id), 10000);
-		assert_ok!(Staking::withdraw_reward(Token(IBTC), &VAULT, &ALICE.account_id), 10000);
+		assert_ok!(
+			Staking::compute_reward(DEFAULT_WRAPPED_CURRENCY, &VAULT, &ALICE.account_id),
+			10000
+		);
+		assert_ok!(
+			Staking::withdraw_reward(DEFAULT_WRAPPED_CURRENCY, &VAULT, &ALICE.account_id),
+			10000
+		);
 
 		// Now distribute more rewards - behavior should be back to normal.
 		// The slash should not have any effect on this!
-		assert_ok!(Staking::distribute_reward(Token(IBTC), &VAULT, fixed!(10000)));
-		assert_ok!(Staking::compute_reward(Token(IBTC), &VAULT, &ALICE.account_id), 10000);
-		assert_ok!(Staking::withdraw_reward(Token(IBTC), &VAULT, &ALICE.account_id), 10000);
-		assert_ok!(Staking::compute_reward(Token(IBTC), &VAULT, &ALICE.account_id), 0);
+		assert_ok!(Staking::distribute_reward(DEFAULT_WRAPPED_CURRENCY, &VAULT, fixed!(10000)));
+		assert_ok!(
+			Staking::compute_reward(DEFAULT_WRAPPED_CURRENCY, &VAULT, &ALICE.account_id),
+			10000
+		);
+		assert_ok!(
+			Staking::withdraw_reward(DEFAULT_WRAPPED_CURRENCY, &VAULT, &ALICE.account_id),
+			10000
+		);
+		assert_ok!(Staking::compute_reward(DEFAULT_WRAPPED_CURRENCY, &VAULT, &ALICE.account_id), 0);
 	})
 }
 
@@ -152,18 +173,24 @@ fn should_stake_and_distribute_and_withdraw() {
 		assert_ok!(Staking::deposit_stake(&VAULT, &ALICE.account_id, fixed!(10000)));
 		assert_ok!(Staking::deposit_stake(&VAULT, &BOB.account_id, fixed!(10000)));
 
-		assert_ok!(Staking::distribute_reward(Token(IBTC), &VAULT, fixed!(1000)));
-		assert_ok!(Staking::compute_reward(Token(IBTC), &VAULT, &ALICE.account_id), 500);
-		assert_ok!(Staking::compute_reward(Token(IBTC), &VAULT, &BOB.account_id), 500);
+		assert_ok!(Staking::distribute_reward(DEFAULT_WRAPPED_CURRENCY, &VAULT, fixed!(1000)));
+		assert_ok!(
+			Staking::compute_reward(DEFAULT_WRAPPED_CURRENCY, &VAULT, &ALICE.account_id),
+			500
+		);
+		assert_ok!(Staking::compute_reward(DEFAULT_WRAPPED_CURRENCY, &VAULT, &BOB.account_id), 500);
 
 		assert_ok!(Staking::slash_stake(&VAULT, fixed!(50)));
 		assert_ok!(Staking::slash_stake(&VAULT, fixed!(50)));
 
 		assert_ok!(Staking::deposit_stake(&VAULT, &ALICE.account_id, fixed!(1000)));
-		assert_ok!(Staking::distribute_reward(Token(IBTC), &VAULT, fixed!(1000)));
+		assert_ok!(Staking::distribute_reward(DEFAULT_WRAPPED_CURRENCY, &VAULT, fixed!(1000)));
 
-		assert_ok!(Staking::compute_reward(Token(IBTC), &VAULT, &ALICE.account_id), 1023);
-		assert_ok!(Staking::compute_reward(Token(IBTC), &VAULT, &BOB.account_id), 976);
+		assert_ok!(
+			Staking::compute_reward(DEFAULT_WRAPPED_CURRENCY, &VAULT, &ALICE.account_id),
+			1023
+		);
+		assert_ok!(Staking::compute_reward(DEFAULT_WRAPPED_CURRENCY, &VAULT, &BOB.account_id), 976);
 
 		assert_ok!(Staking::withdraw_stake(&VAULT, &ALICE.account_id, fixed!(10000), None));
 		assert_ok!(Staking::compute_stake(&VAULT, &ALICE.account_id), 950);
@@ -174,13 +201,19 @@ fn should_stake_and_distribute_and_withdraw() {
 		assert_ok!(Staking::deposit_stake(&VAULT, &BOB.account_id, fixed!(10000)));
 		assert_ok!(Staking::compute_stake(&VAULT, &BOB.account_id), 19950);
 
-		assert_ok!(Staking::distribute_reward(Token(IBTC), &VAULT, fixed!(1000)));
+		assert_ok!(Staking::distribute_reward(DEFAULT_WRAPPED_CURRENCY, &VAULT, fixed!(1000)));
 		assert_ok!(Staking::slash_stake(&VAULT, fixed!(10000)));
 
 		assert_ok!(Staking::compute_stake(&VAULT, &BOB.account_id), 9950);
 
-		assert_ok!(Staking::compute_reward(Token(IBTC), &VAULT, &ALICE.account_id), 1023);
-		assert_ok!(Staking::compute_reward(Token(IBTC), &VAULT, &BOB.account_id), 1976);
+		assert_ok!(
+			Staking::compute_reward(DEFAULT_WRAPPED_CURRENCY, &VAULT, &ALICE.account_id),
+			1023
+		);
+		assert_ok!(
+			Staking::compute_reward(DEFAULT_WRAPPED_CURRENCY, &VAULT, &BOB.account_id),
+			1976
+		);
 	})
 }
 
@@ -188,10 +221,16 @@ fn should_stake_and_distribute_and_withdraw() {
 fn should_stake_and_withdraw_rewards() {
 	run_test(|| {
 		assert_ok!(Staking::deposit_stake(&VAULT, &ALICE.account_id, fixed!(100)));
-		assert_ok!(Staking::distribute_reward(Token(IBTC), &VAULT, fixed!(100)));
-		assert_ok!(Staking::compute_reward(Token(IBTC), &VAULT, &ALICE.account_id), 100);
-		assert_ok!(Staking::withdraw_reward(Token(IBTC), &VAULT, &ALICE.account_id), 100);
-		assert_ok!(Staking::compute_reward(Token(IBTC), &VAULT, &ALICE.account_id), 0);
+		assert_ok!(Staking::distribute_reward(DEFAULT_WRAPPED_CURRENCY, &VAULT, fixed!(100)));
+		assert_ok!(
+			Staking::compute_reward(DEFAULT_WRAPPED_CURRENCY, &VAULT, &ALICE.account_id),
+			100
+		);
+		assert_ok!(
+			Staking::withdraw_reward(DEFAULT_WRAPPED_CURRENCY, &VAULT, &ALICE.account_id),
+			100
+		);
+		assert_ok!(Staking::compute_reward(DEFAULT_WRAPPED_CURRENCY, &VAULT, &ALICE.account_id), 0);
 	})
 }
 
@@ -230,19 +269,29 @@ fn should_force_refund() {
 		assert_ok!(Staking::slash_stake(&VAULT, fixed!(100)));
 		assert_ok!(Staking::deposit_stake(&VAULT, &VAULT.account_id, fixed!(100)));
 		assert_ok!(Staking::deposit_stake(&VAULT, &ALICE.account_id, fixed!(10)));
-		assert_ok!(Staking::distribute_reward(Token(IBTC), &VAULT, fixed!(100)));
+		assert_ok!(Staking::distribute_reward(DEFAULT_WRAPPED_CURRENCY, &VAULT, fixed!(100)));
 
 		// vault stake & rewards pre-refund
 		assert_ok!(Staking::compute_stake_at_index(nonce, &VAULT, &VAULT.account_id), 150);
 		assert_ok!(
-			Staking::compute_reward_at_index(nonce, Token(IBTC), &VAULT, &VAULT.account_id),
+			Staking::compute_reward_at_index(
+				nonce,
+				DEFAULT_WRAPPED_CURRENCY,
+				&VAULT,
+				&VAULT.account_id
+			),
 			71
 		);
 
 		// alice stake & rewards pre-refund
 		assert_ok!(Staking::compute_stake_at_index(nonce, &VAULT, &ALICE.account_id), 60);
 		assert_ok!(
-			Staking::compute_reward_at_index(nonce, Token(IBTC), &VAULT, &ALICE.account_id),
+			Staking::compute_reward_at_index(
+				nonce,
+				DEFAULT_WRAPPED_CURRENCY,
+				&VAULT,
+				&ALICE.account_id
+			),
 			28
 		);
 
@@ -253,25 +302,45 @@ fn should_force_refund() {
 		// vault stake & rewards post-refund
 		assert_ok!(Staking::compute_stake_at_index(nonce, &VAULT, &VAULT.account_id), 150);
 		assert_ok!(
-			Staking::compute_reward_at_index(nonce, Token(IBTC), &VAULT, &VAULT.account_id),
+			Staking::compute_reward_at_index(
+				nonce,
+				DEFAULT_WRAPPED_CURRENCY,
+				&VAULT,
+				&VAULT.account_id
+			),
 			0
 		);
 
 		assert_ok!(
-			Staking::compute_reward_at_index(nonce - 1, Token(IBTC), &VAULT, &VAULT.account_id),
+			Staking::compute_reward_at_index(
+				nonce - 1,
+				DEFAULT_WRAPPED_CURRENCY,
+				&VAULT,
+				&VAULT.account_id
+			),
 			71
 		);
 
 		// alice stake & rewards post-refund
 		assert_ok!(Staking::compute_stake_at_index(nonce, &VAULT, &ALICE.account_id), 0);
 		assert_ok!(
-			Staking::compute_reward_at_index(nonce, Token(IBTC), &VAULT, &ALICE.account_id),
+			Staking::compute_reward_at_index(
+				nonce,
+				DEFAULT_WRAPPED_CURRENCY,
+				&VAULT,
+				&ALICE.account_id
+			),
 			0
 		);
 
 		assert_ok!(Staking::compute_stake_at_index(nonce - 1, &VAULT, &ALICE.account_id), 60);
 		assert_ok!(
-			Staking::compute_reward_at_index(nonce - 1, Token(IBTC), &VAULT, &ALICE.account_id),
+			Staking::compute_reward_at_index(
+				nonce - 1,
+				DEFAULT_WRAPPED_CURRENCY,
+				&VAULT,
+				&ALICE.account_id
+			),
 			28
 		);
 	})
