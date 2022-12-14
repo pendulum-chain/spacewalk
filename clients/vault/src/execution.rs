@@ -1,15 +1,20 @@
-use std::{convert::TryInto, sync::Arc, time::Duration};
+use std::{collections::HashMap, convert::TryInto, sync::Arc, time::Duration};
 
-use futures::{future::Either, StreamExt};
+use futures::{future::Either, try_join, StreamExt};
+use governor::RateLimiter;
 use sp_arithmetic::FixedPointNumber;
 use sp_runtime::traits::StaticLookup;
-use tokio::sync::RwLock;
+use tokio::{
+	sync::RwLock,
+	time::{sleep, timeout},
+};
 
 use primitives::stellar::PublicKey;
 use runtime::{
-	types::FixedU128, CurrencyId, OraclePallet, RedeemPallet, ReplacePallet, SecurityPallet,
-	ShutdownSender, SpacewalkParachain, SpacewalkRedeemRequest, SpacewalkReplaceRequest,
-	StellarPublicKeyRaw, StellarRelayPallet, UtilFuncs, VaultId, VaultRegistryPallet, H256,
+	types::FixedU128, CurrencyId, OraclePallet, RedeemPallet, RedeemRequestStatus, ReplacePallet,
+	ReplaceRequestStatus, SecurityPallet, ShutdownSender, SpacewalkParachain,
+	SpacewalkRedeemRequest, SpacewalkReplaceRequest, StellarPublicKeyRaw, StellarRelayPallet,
+	UtilFuncs, VaultId, VaultRegistryPallet, H256,
 };
 use service::{spawn_cancelable, Error as ServiceError};
 use stellar_relay_lib::sdk::{TransactionEnvelope, XdrCodec};
@@ -19,7 +24,7 @@ use crate::{
 	error::Error,
 	oracle::{types::Slot, Proof, ProofExt, ProofStatus},
 	system::VaultData,
-	VaultIdManager,
+	VaultIdManager, YIELD_RATE,
 };
 
 #[derive(Debug, Clone, PartialEq)]
@@ -256,9 +261,187 @@ pub async fn execute_open_requests(
 	shutdown_tx: ShutdownSender,
 	parachain_rpc: SpacewalkParachain,
 	vault_id_manager: VaultIdManager,
-	read_only_stellar_wallet: Arc<StellarWallet>,
+	wallet: Arc<StellarWallet>,
+	proof_ops: Arc<RwLock<dyn ProofExt>>,
 	payment_margin: Duration,
 ) -> Result<(), ServiceError<Error>> {
-	// TODO
+	let parachain_rpc = &parachain_rpc;
+	let vault_id = parachain_rpc.get_account_id().clone();
+
+	// get all redeem and replace requests
+	let (redeem_requests, replace_requests) = try_join!(
+		parachain_rpc.get_vault_redeem_requests(vault_id.clone()),
+		parachain_rpc.get_old_vault_replace_requests(vault_id.clone()),
+	)?;
+
+	let open_redeems = redeem_requests
+		.into_iter()
+		.filter(|(_, request)| request.status == RedeemRequestStatus::Pending)
+		.filter_map(|(hash, request)| {
+			Request::from_redeem_request(hash, request, payment_margin).ok()
+		});
+
+	let open_replaces = replace_requests
+		.into_iter()
+		.filter(|(_, request)| request.status == ReplaceRequestStatus::Pending)
+		.filter_map(|(hash, request)| {
+			Request::from_replace_request(hash, request, payment_margin).ok()
+		});
+
+	// collect all requests into a hashmap, indexed by their id
+	let mut open_requests = open_redeems
+		.chain(open_replaces)
+		.map(|x| (x.hash, x))
+		.collect::<HashMap<_, _>>();
+
+	let rate_limiter = RateLimiter::direct(YIELD_RATE);
+
+	// Check if some of the requests that are open already have a corresponding payment on Stellar
+	// and are just waiting to be executed on the parachain
+
+	// Query the latest 200 transactions for the targeted vault account and check if any of
+	// them is targeted
+	let transactions_result = wallet.get_latest_transactions(0, 200, false);
+	match transactions_result {
+		Ok(transactions) => {
+			tracing::info!("Checking {} transactions for payments", transactions.len());
+			for transaction in transactions {
+				if rate_limiter.check().is_ok() {
+					// give the outer `select` a chance to check the shutdown signal
+					tokio::task::yield_now().await;
+				}
+
+				if let Some(request) = get_request_for_stellar_tx(&transaction, &open_requests) {
+					// remove request from the hashmap
+					open_requests.retain(|&key, _| key != request.hash);
+
+					tracing::info!(
+						"{:?} request #{:?} has valid Stellar payment - processing...",
+						request.request_type,
+						request.hash
+					);
+
+					// start a new task to execute on the parachain and make copies of the
+					// variables we move into the task
+					let parachain_rpc = parachain_rpc.clone();
+					let vault_id_manager = vault_id_manager.clone();
+					spawn_cancelable(shutdown_tx.subscribe(), async move {
+						let tx_env = TransactionEnvelope::from_xdr(&transaction.envelope_xdr);
+						match tx_env {
+							Ok(tx_env) => {
+								let slot = transaction.ledger as Slot;
+
+								// Loop pending proofs until it is ready
+								// TODO refactor this once improved 'OracleAgent' is ready
+								let mut proof: Option<Proof> = None;
+								timeout(Duration::from_secs(60), async {
+									loop {
+										let ops_read = proof_ops.read().await;
+										let proof_status = ops_read
+											.get_proof(slot)
+											.await
+											.expect("Failed to get proof");
+
+										match proof_status {
+											ProofStatus::Proof(p) => {
+												proof = Some(p);
+												break
+											},
+											ProofStatus::LackingEnvelopes => {},
+											ProofStatus::NoEnvelopesFound => {},
+											ProofStatus::NoTxSetFound => {},
+											ProofStatus::WaitForTxSet => {},
+										}
+
+										// Wait a bit before trying again
+										sleep(Duration::from_secs(3)).await;
+									}
+								})
+								.await;
+
+								if let Some(proof) = proof {
+									if let Err(e) =
+										request.execute(parachain_rpc.clone(), tx_env, proof).await
+									{
+										tracing::error!(
+											"Failed to execute request #{}: {}",
+											request.hash,
+											e
+										);
+									}
+								}
+							},
+							Err(error) => {
+								tracing::error!("Failed to decode transaction envelope");
+							},
+						}
+					});
+				}
+			}
+		},
+		Err(error) => {
+			tracing::error!("Failed to get transactions from Stellar: {}", error);
+		},
+	}
+
+	// All requests remaining in the hashmap did not have a Stellar payment yet, so pay
+	// and execute all of these
+	for (_, request) in open_requests {
+		// there are potentially a large number of open requests - pay and execute each
+		// in a separate task to ensure that awaiting confirmations does not significantly
+		// delay other requests
+		// make copies of the variables we move into the task
+		let parachain_rpc = parachain_rpc.clone();
+		let vault_id_manager = vault_id_manager.clone();
+		spawn_cancelable(shutdown_tx.subscribe(), async move {
+			let vault = match vault_id_manager.get_vault(&request.vault_id).await {
+				Some(x) => x,
+				None => {
+					tracing::error!(
+						"Failed to fetch bitcoin rpc for vault {}",
+						request.vault_id.pretty_print()
+					);
+					return // nothing we can do - bail
+				},
+			};
+
+			tracing::info!(
+				"{:?} request #{:?} found without bitcoin payment - processing...",
+				request.request_type,
+				request.hash
+			);
+
+			match request.pay_and_execute(parachain_rpc, vault, num_confirmations, auto_rbf).await {
+				Ok(_) => tracing::info!(
+					"{:?} request #{:?} successfully executed",
+					request.request_type,
+					request.hash
+				),
+				Err(e) => tracing::info!(
+					"{:?} request #{:?} failed to process: {}",
+					request.request_type,
+					request.hash,
+					e
+				),
+			}
+		});
+	}
+
 	Ok(())
+}
+
+/// Get the Request from the hashmap that the given Transaction satisfies, based
+/// on the amount of assets that is transferred to the address.
+fn get_request_for_stellar_tx(
+	tx: &TransactionResponse,
+	hash_map: &HashMap<H256, Request>,
+) -> Option<Request> {
+	let hash = tx.get_op_return()?;
+	let request = hash_map.get(&hash)?;
+	let paid_amount = tx.get_payment_amount_to(request.btc_address.to_payload().ok()?)?;
+	if paid_amount as u128 >= request.amount {
+		Some(request.clone())
+	} else {
+		None
+	}
 }
