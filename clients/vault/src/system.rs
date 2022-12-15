@@ -54,20 +54,20 @@ pub const TIER_1_VALIDATOR_IP_PUBLIC: &str = "141.95.47.112";
 #[derive(Clone)]
 pub struct VaultData {
 	pub vault_id: VaultId,
-	pub stellar_wallet: Arc<StellarWallet>,
+	pub stellar_wallet: Arc<RwLock<StellarWallet>>,
 }
 
 #[derive(Clone)]
 pub struct VaultIdManager {
 	vault_data: Arc<RwLock<HashMap<VaultId, VaultData>>>,
 	spacewalk_parachain: SpacewalkParachain,
-	stellar_wallet: Arc<StellarWallet>,
+	stellar_wallet: Arc<RwLock<StellarWallet>>,
 }
 
 impl VaultIdManager {
 	pub fn new(
 		spacewalk_parachain: SpacewalkParachain,
-		stellar_wallet: Arc<StellarWallet>,
+		stellar_wallet: Arc<RwLock<StellarWallet>>,
 	) -> Self {
 		Self {
 			vault_data: Arc::new(RwLock::new(HashMap::new())),
@@ -79,7 +79,7 @@ impl VaultIdManager {
 	// used for testing only
 	pub fn from_map(
 		spacewalk_parachain: SpacewalkParachain,
-		stellar_wallet: Arc<StellarWallet>,
+		stellar_wallet: Arc<RwLock<StellarWallet>>,
 		vault_ids: Vec<VaultId>,
 	) -> Self {
 		let vault_data = vault_ids
@@ -146,7 +146,10 @@ impl VaultIdManager {
 			.await?)
 	}
 
-	pub async fn get_stellar_wallet(&self, vault_id: &VaultId) -> Option<Arc<StellarWallet>> {
+	pub async fn get_stellar_wallet(
+		&self,
+		vault_id: &VaultId,
+	) -> Option<Arc<RwLock<StellarWallet>>> {
 		self.vault_data.read().await.get(vault_id).map(|x| x.stellar_wallet.clone())
 	}
 
@@ -170,7 +173,7 @@ impl VaultIdManager {
 	// TODO think about this. It is probably not needed because we don't use deposit addresses and
 	// use one stellar wallet for everything
 	// But we could in theory let a vault have multiple stellar wallets
-	pub async fn get_vault_stellar_wallets(&self) -> Vec<(VaultId, Arc<StellarWallet>)> {
+	pub async fn get_vault_stellar_wallets(&self) -> Vec<(VaultId, Arc<RwLock<StellarWallet>>)> {
 		self.vault_data
 			.read()
 			.await
@@ -228,7 +231,7 @@ pub struct VaultServiceConfig {
 
 pub struct VaultService {
 	spacewalk_parachain: SpacewalkParachain,
-	stellar_wallet: Arc<StellarWallet>,
+	stellar_wallet: Arc<RwLock<StellarWallet>>,
 	config: VaultServiceConfig,
 	shutdown: ShutdownSender,
 	vault_id_manager: VaultIdManager,
@@ -322,7 +325,7 @@ impl VaultService {
 			&config.stellar_vault_secret_key,
 			is_public_network,
 		)?;
-		let stellar_wallet = Arc::new(stellar_wallet);
+		let stellar_wallet = Arc::new(RwLock::new(stellar_wallet));
 
 		Ok(Self {
 			spacewalk_parachain: spacewalk_parachain.clone(),
@@ -402,7 +405,8 @@ impl VaultService {
 		// this has to be modified every time the issue set changes
 		let issue_map: Arc<RwLock<IssueRequestsMap>> =
 			Arc::new(RwLock::new(IssueRequestsMap::new()));
-		let secret_key = self.stellar_wallet.get_secret_key();
+		let wallet = self.stellar_wallet.read().await;
+		let secret_key = wallet.get_secret_key();
 
 		let issue_filter = IssueFilter::new(secret_key.get_public())?;
 
@@ -410,8 +414,7 @@ impl VaultService {
 			Arc::new(RwLock::new(HashMap::new()));
 
 		let handler: ScpMessageHandler =
-			inner_create_handler(secret_key.clone(), self.stellar_wallet.is_public_network())
-				.await?;
+			inner_create_handler(secret_key.clone(), wallet.is_public_network()).await?;
 		let watcher = Arc::new(RwLock::new(handler.create_watcher()));
 		let proof_ops = Arc::new(RwLock::new(handler.proof_operations()));
 
@@ -454,8 +457,8 @@ impl VaultService {
 			(
 				"Listen for New Transactions",
 				run(wallet::listen_for_new_transactions(
-					self.stellar_wallet.get_public_key(),
-					self.stellar_wallet.is_public_network(),
+					wallet.get_public_key(),
+					wallet.is_public_network(),
 					watcher.clone(),
 					slot_tx_env_map.clone(),
 					issue_map.clone(),
@@ -466,7 +469,7 @@ impl VaultService {
 				"Listen for Issue Requests",
 				run(issue::listen_for_issue_requests(
 					self.spacewalk_parachain.clone(),
-					self.stellar_wallet.get_public_key(),
+					wallet.get_public_key(),
 					issue_event_tx.clone(),
 					issue_map.clone(),
 				)),
@@ -504,6 +507,7 @@ impl VaultService {
 				.handle_cancellation::<IssueCanceller>(issue_event_rx)),
 			),
 		];
+		drop(wallet);
 
 		run_and_monitor_tasks(self.shutdown.clone(), tasks).await
 	}
@@ -514,7 +518,7 @@ impl VaultService {
 		}
 
 		if self.spacewalk_parachain.get_public_key().await?.is_none() {
-			let public_key = self.stellar_wallet.get_public_key_raw();
+			let public_key = self.stellar_wallet.read().await.get_public_key_raw();
 			tracing::info!("Registering public key to the parachain... {:?}", public_key);
 			self.spacewalk_parachain.register_public_key(public_key).await?;
 		} else {

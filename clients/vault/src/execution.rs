@@ -190,18 +190,20 @@ impl Request {
 	)]
 	async fn transfer_stellar_asset(
 		&self,
-		wallet: Arc<StellarWallet>,
+		wallet: Arc<RwLock<StellarWallet>>,
 	) -> Result<(TransactionEnvelope, u32), Error> {
 		let destination_public_key = PublicKey::from_binary(self.stellar_address);
 		let stroop_amount = self.amount as i64;
 		let memo_hash = self.hash.0;
 
+		let mut wallet = wallet.write().await;
 		let result = wallet
 			.send_payment_to_address(
 				destination_public_key.clone(),
 				self.asset.clone(),
 				stroop_amount,
 				memo_hash,
+				300, // TODO change this to use config parameter
 			)
 			.await;
 
@@ -272,7 +274,7 @@ pub async fn execute_open_requests(
 	shutdown_tx: ShutdownSender,
 	parachain_rpc: SpacewalkParachain,
 	vault_id_manager: VaultIdManager,
-	wallet: Arc<StellarWallet>,
+	wallet: Arc<RwLock<StellarWallet>>,
 	proof_ops: Arc<RwLock<dyn ProofExt>>,
 	payment_margin: Duration,
 ) -> Result<(), ServiceError<Error>> {
@@ -305,14 +307,19 @@ pub async fn execute_open_requests(
 		.map(|x| (x.hash, x))
 		.collect::<HashMap<_, _>>();
 
-	let rate_limiter = RateLimiter::direct(YIELD_RATE);
+	let rate_limiter = Arc::new(RateLimiter::direct(YIELD_RATE));
+
+	// Query the latest 200 transactions for the targeted vault account and check if any of
+	// them is targeted. This assumes that not more than 200 transactions are sent to the vault in
+	// the period where redeem/replace requests are valid. It would be better to query all
+	// transactions until one is found that is older than this period but limiting it to 200 should
+	// be fine for now.
+	let wallet = wallet.read().await;
+	let transactions_result = wallet.get_latest_transactions(0, 200, false).await;
+	drop(wallet);
 
 	// Check if some of the requests that are open already have a corresponding payment on Stellar
 	// and are just waiting to be executed on the parachain
-
-	// Query the latest 200 transactions for the targeted vault account and check if any of
-	// them is targeted
-	let transactions_result = wallet.get_latest_transactions(0, 200, false).await;
 	match transactions_result {
 		Ok(transactions) => {
 			tracing::info!("Checking {} transactions for payments", transactions.len());
@@ -405,6 +412,7 @@ pub async fn execute_open_requests(
 		let parachain_rpc = parachain_rpc.clone();
 		let vault_id_manager = vault_id_manager.clone();
 		let proof_ops = proof_ops.clone();
+		let rate_limiter = rate_limiter.clone();
 		spawn_cancelable(shutdown_tx.subscribe(), async move {
 			let vault = match vault_id_manager.get_vault(&request.vault_id).await {
 				Some(x) => x,
@@ -423,6 +431,11 @@ pub async fn execute_open_requests(
 				request.hash
 			);
 
+			// We rate limit the number of transactions we pay and execute simultaneously because
+			// sending too many at once might cause the Stellar network to respond with a timeout
+			// error.
+			rate_limiter.until_ready().await;
+			tracing::info!("After rate limit");
 			match request.pay_and_execute(parachain_rpc, vault, proof_ops).await {
 				Ok(_) => tracing::info!(
 					"{:?} request #{:?} successfully executed",
