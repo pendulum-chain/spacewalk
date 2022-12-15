@@ -286,6 +286,7 @@ async fn test_redeem_succeeds() {
 }
 
 #[tokio::test(flavor = "multi_thread")]
+#[serial]
 async fn test_replace_succeeds() {
 	test_with_vault(|client, old_vault_id, old_vault_provider| async move {
 		let new_vault_provider = setup_provider(client.clone(), AccountKeyring::Eve).await;
@@ -373,7 +374,7 @@ async fn test_replace_succeeds() {
 					vault_id_manager.clone(),
 					Duration::from_secs(0),
 					proof_ops.clone(),
-				), // periodically_produce_blocks(old_vault_provider.clone()),
+				),
 			),
 			async {
 				old_vault_provider.request_replace(&old_vault_id, issue_amount).await.unwrap();
@@ -398,6 +399,7 @@ async fn test_replace_succeeds() {
 }
 
 #[tokio::test(flavor = "multi_thread")]
+#[serial]
 async fn test_withdraw_replace_succeeds() {
 	test_with_vault(|client, old_vault_id, old_vault_provider| async move {
 		let new_vault_provider = setup_provider(client.clone(), AccountKeyring::Eve).await;
@@ -488,7 +490,6 @@ async fn test_withdraw_replace_succeeds() {
 	.await;
 }
 
-/*
 #[tokio::test(flavor = "multi_thread")]
 #[serial]
 async fn test_cancel_scheduler_succeeds() {
@@ -514,7 +515,7 @@ async fn test_cancel_scheduler_succeeds() {
 			is_public_network,
 		)
 		.unwrap();
-		let wallet = Arc::new(wallet);
+		let wallet_arc = Arc::new(RwLock::new(wallet));
 
 		let issue_amount = 100000;
 		let vault_collateral = get_required_vault_collateral_for_issue(
@@ -523,6 +524,8 @@ async fn test_cancel_scheduler_succeeds() {
 			old_vault_id.collateral_currency(),
 		)
 		.await;
+
+		let wallet = wallet_arc.read().await;
 		assert_ok!(
 			old_vault_provider
 				.register_vault_with_public_key(
@@ -541,14 +544,27 @@ async fn test_cancel_scheduler_succeeds() {
 				)
 				.await
 		);
+		// Setup scp handler for proofs
+		// TODO refactor once improved 'OracleAgent' is implemented
+		let handler = vault::inner_create_handler(wallet.get_secret_key(), is_public_network)
+			.await
+			.expect("Failed to create handler");
+		let proof_ops = Arc::new(RwLock::new(handler.proof_operations()));
+		drop(wallet);
 
-		// TODO why is this needed?
-		// assert_issue(&user_provider, &parachain_rpc, &old_vault_id, issue_amount).await;
+		assert_issue(
+			&user_provider,
+			wallet_arc.clone(),
+			&old_vault_id,
+			issue_amount,
+			proof_ops.clone(),
+		)
+		.await;
 
 		// set low timeout periods
 		assert_ok!(root_provider.set_issue_period(1).await);
-		// assert_ok!(root_provider.set_replace_period(1).await);
-		// assert_ok!(root_provider.set_redeem_period(1).await);
+		assert_ok!(root_provider.set_replace_period(1).await);
+		assert_ok!(root_provider.set_redeem_period(1).await);
 
 		let (issue_cancellation_event_tx, issue_cancellation_rx) =
 			mpsc::channel::<CancellationEvent>(16);
@@ -558,28 +574,29 @@ async fn test_cancel_scheduler_succeeds() {
 		let block_listener = new_vault_provider.clone();
 		let issue_set = Arc::new(RwLock::new(IssueRequestsMap::new()));
 
+		let wallet = wallet_arc.read().await;
 		let issue_request_listener = vault::service::listen_for_issue_requests(
 			new_vault_provider.clone(),
 			wallet.get_public_key(),
 			issue_cancellation_event_tx.clone(),
 			issue_set.clone(),
 		);
+		drop(wallet);
 
 		let issue_cancellation_scheduler = vault::service::CancellationScheduler::new(
 			new_vault_provider.clone(),
 			new_vault_provider.get_current_chain_height().await.unwrap(),
 			new_vault_provider.get_account_id().clone(),
 		);
-		// let replace_cancellation_scheduler = vault::service::CancellationScheduler::new(
-		// 	new_vault_provider.clone(),
-		// 	new_vault_provider.get_current_chain_height().await.unwrap(),
-		// 	0,
-		// 	new_vault_provider.get_account_id().clone(),
-		// );
+		let replace_cancellation_scheduler = vault::service::CancellationScheduler::new(
+			new_vault_provider.clone(),
+			new_vault_provider.get_current_chain_height().await.unwrap(),
+			new_vault_provider.get_account_id().clone(),
+		);
 		let issue_canceller = issue_cancellation_scheduler
 			.handle_cancellation::<vault::service::IssueCanceller>(issue_cancellation_rx);
-		// let replace_canceller = replace_cancellation_scheduler
-		// 	.handle_cancellation::<vault::service::ReplaceCanceller>(replace_cancellation_rx);
+		let replace_canceller = replace_cancellation_scheduler
+			.handle_cancellation::<vault::service::ReplaceCanceller>(replace_cancellation_rx);
 
 		let parachain_block_listener = async {
 			let issue_block_tx = &issue_cancellation_event_tx.clone();
@@ -609,87 +626,75 @@ async fn test_cancel_scheduler_succeeds() {
 		};
 
 		test_service(
-			join3(
+			join4(
 				issue_canceller.map(Result::unwrap),
-				// replace_canceller.map(Result::unwrap),
+				replace_canceller.map(Result::unwrap),
 				issue_request_listener.map(Result::unwrap),
 				parachain_block_listener,
 			),
 			async {
-				// let address = BtcAddress::P2PKH(H160::from_slice(&[2; 20]));
+				let address = [2u8; 32];
 
 				// setup the to-be-cancelled redeem
-				// let redeem_id =
-				// 	user_provider.request_redeem(20000, address, &old_vault_id).await.unwrap();
+				let redeem_id =
+					user_provider.request_redeem(20000, address, &old_vault_id).await.unwrap();
 
-				join(
+				join3(
 					async {
 						// setup the to-be-cancelled replace
-						// assert_ok!(
-						// 	old_vault_provider
-						// 		.request_replace(&old_vault_id, issue_amount / 2)
-						// 		.await
-						// );
-						// assert_ok!(
-						// 	new_vault_provider
-						// 		.accept_replace(
-						// 			&new_vault_id,
-						// 			&old_vault_id,
-						// 			10000000u32.into(),
-						// 			0u32.into(),
-						// 			address
-						// 		)
-						// 		.await
-						// );
-						// assert_ok!(
-						// 	replace_cancellation_event_tx
-						// 		.clone()
-						// 		.send(CancellationEvent::Opened)
-						// 		.await
-						// );
-						//
+						assert_ok!(
+							old_vault_provider
+								.request_replace(&old_vault_id, issue_amount / 2)
+								.await
+						);
+						assert_ok!(
+							new_vault_provider
+								.accept_replace(
+									&new_vault_id,
+									&old_vault_id,
+									10000000u32.into(),
+									0u32.into(),
+									address
+								)
+								.await
+						);
+						assert_ok!(
+							replace_cancellation_event_tx
+								.clone()
+								.send(CancellationEvent::Opened)
+								.await
+						);
+
 						// setup the to-be-cancelled issue
 						assert_ok!(user_provider.request_issue(issue_amount, &new_vault_id).await);
 
-						// todo: the `send_to_address` is still a todo.
-						// for _ in 0u32..2 {
-						// 	assert_ok!(
-						// 		parachain_rpc
-						// 			.send_to_address(
-						// 				BtcAddress::P2PKH(H160::from_slice(&[0; 20]))
-						// 					.to_address(parachain_rpc.network())
-						// 					.unwrap(),
-						// 				100_000,
-						// 				None,
-						// 				SatPerVbyte(1000),
-						// 				1
-						// 			)
-						// 			.await
-						// 	);
-						// }
+						// Create two new blocks so that the current requests expire (since we set
+						// the periods to 1 before)
+						parachain_rpc.manual_seal().await;
+						sleep(Duration::from_secs(1)).await;
+						parachain_rpc.manual_seal().await;
 					},
 					assert_event::<CancelIssueEvent, _>(
 						Duration::from_secs(120),
 						user_provider.clone(),
 						|_| true,
 					),
-					// assert_event::<CancelReplaceEvent, _>(
-					// 	Duration::from_secs(120),
-					// 	user_provider.clone(),
-					// 	|_| true,
-					// ),
+					assert_event::<CancelReplaceEvent, _>(
+						Duration::from_secs(120),
+						user_provider.clone(),
+						|_| true,
+					),
 				)
 				.await;
 
 				// now make sure we can cancel the redeem
-				// assert_ok!(user_provider.cancel_redeem(redeem_id, true).await);
+				assert_ok!(user_provider.cancel_redeem(redeem_id, true).await);
 			},
 		)
 		.await;
 	})
 	.await;
 }
-*/
 
 #[tokio::test(flavor = "multi_thread")]
 #[serial]
@@ -1260,6 +1265,7 @@ async fn test_execute_open_requests_succeeds() {
 }
 
 #[tokio::test(flavor = "multi_thread")]
+#[serial]
 async fn test_off_chain_liquidation() {
 	test_with_vault(|client, vault_id, vault_provider| async move {
 		// Bob is set as an authorized oracle in the chain_spec
