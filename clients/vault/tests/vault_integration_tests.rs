@@ -749,6 +749,7 @@ async fn test_automatic_issue_execution_succeeds() {
 				)
 				.await;
 			assert!(result.is_ok());
+			drop(wallet);
 
 			tracing::warn!("Sent payment to address. Ledger is {:?}", result.unwrap().0.ledger);
 
@@ -794,6 +795,7 @@ async fn test_automatic_issue_execution_succeeds() {
 				issue_set.clone(),
 			),
 		);
+		drop(wallet);
 
 		test_service(service, fut_user).await;
 	})
@@ -887,6 +889,7 @@ async fn test_automatic_issue_execution_succeeds_for_other_vault() {
 				)
 				.await;
 			assert!(result.is_ok());
+			drop(wallet);
 
 			tracing::info!("Sent payment to address. Ledger is {:?}", result.unwrap().0.ledger);
 
