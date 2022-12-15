@@ -16,6 +16,10 @@ use crate::{
 pub struct StellarWallet {
 	secret_key: SecretKey,
 	is_public_network: bool,
+	/// The last used account sequence number. We need this when sending multiple transactions in a
+	/// batch because otherwise the transactions would be rejected since the sequence number is not
+	/// increased on the network.
+	last_account_sequence: i64,
 }
 
 impl StellarWallet {
@@ -26,7 +30,7 @@ impl StellarWallet {
 		let secret_key =
 			SecretKey::from_encoding(secret_key).map_err(|_| Error::InvalidSecretKey)?;
 
-		let wallet = StellarWallet { secret_key, is_public_network };
+		let wallet = StellarWallet { secret_key, is_public_network, last_account_sequence: 0 };
 		Ok(wallet)
 	}
 
@@ -68,11 +72,12 @@ impl StellarWallet {
 	}
 
 	pub async fn send_payment_to_address(
-		&self,
+		&mut self,
 		destination_address: PublicKey,
 		asset: Asset,
 		stroop_amount: i64,
 		memo_hash: Hash,
+		stroop_fee_per_operation: u32,
 	) -> Result<(TransactionResponse, TransactionEnvelope), Error> {
 		let horizon_client = reqwest::Client::new();
 
@@ -80,14 +85,19 @@ impl StellarWallet {
 		let account_id_string =
 			std::str::from_utf8(&public_key_encoded).map_err(|e| Error::Utf8Error(e))?;
 		let account = horizon_client.get_account(account_id_string, self.is_public_network).await?;
-		let next_sequence_number = account.sequence + 1;
+		// Either use the local one or the one from the network depending on which one is higher.
+		let next_sequence_number = if self.last_account_sequence > account.sequence {
+			self.last_account_sequence + 1
+		} else {
+			account.sequence + 1
+		};
 
-		let fee_per_operation = 100;
+		self.last_account_sequence = next_sequence_number;
 
 		let mut transaction = Transaction::new(
 			self.get_public_key(),
 			next_sequence_number,
-			Some(fee_per_operation),
+			Some(stroop_fee_per_operation),
 			Preconditions::PrecondNone,
 			Some(Memo::MemoHash(memo_hash)),
 		)
