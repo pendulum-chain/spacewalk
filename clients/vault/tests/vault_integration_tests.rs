@@ -1260,6 +1260,68 @@ async fn test_execute_open_requests_succeeds() {
 }
 
 #[tokio::test(flavor = "multi_thread")]
+async fn test_off_chain_liquidation() {
+	test_with_vault(|client, vault_id, vault_provider| async move {
+		// Bob is set as an authorized oracle in the chain_spec
+		let authorized_oracle_provider = setup_provider(client.clone(), AccountKeyring::Bob).await;
+		let user_provider = setup_provider(client.clone(), AccountKeyring::Dave).await;
+
+		let is_public_network = false;
+		let wallet = StellarWallet::from_secret_encoded(
+			&STELLAR_VAULT_SECRET_KEY.to_string(),
+			is_public_network,
+		)
+		.unwrap();
+		let wallet_arc = Arc::new(RwLock::new(wallet));
+
+		let issue_amount = 100000;
+		let vault_collateral = get_required_vault_collateral_for_issue(
+			&vault_provider,
+			issue_amount,
+			vault_id.collateral_currency(),
+		)
+		.await;
+
+		let wallet = wallet_arc.read().await;
+		assert_ok!(
+			vault_provider
+				.register_vault_with_public_key(
+					&vault_id,
+					vault_collateral,
+					wallet.get_public_key_raw()
+				)
+				.await
+		);
+		// Setup scp handler for proofs
+		// TODO refactor once improved 'OracleAgent' is implemented
+		let handler = vault::inner_create_handler(wallet.get_secret_key(), is_public_network)
+			.await
+			.expect("Failed to create handler");
+		let proof_ops = Arc::new(RwLock::new(handler.proof_operations()));
+		drop(wallet);
+
+		assert_issue(
+			&user_provider,
+			wallet_arc.clone(),
+			&vault_id,
+			issue_amount,
+			proof_ops.clone(),
+		)
+		.await;
+
+		set_exchange_rate_and_wait(
+			&authorized_oracle_provider,
+			DEFAULT_TESTING_CURRENCY,
+			FixedU128::from(1000000000),
+		)
+		.await;
+
+		assert_event::<LiquidateVaultEvent, _>(TIMEOUT, vault_provider.clone(), |_| true).await;
+	})
+	.await;
+}
+
+#[tokio::test(flavor = "multi_thread")]
 async fn test_shutdown() {
 	test_with(|client| async move {
 		let sudo_provider = setup_provider(client.clone(), AccountKeyring::Alice).await;
