@@ -17,6 +17,7 @@ mod execution;
 pub mod metrics;
 pub mod process;
 mod redeem;
+mod replace;
 mod system;
 
 mod issue;
@@ -33,6 +34,9 @@ pub mod service {
 			process_issues_with_proofs, IssueFilter,
 		},
 		redeem::listen_for_redeem_requests,
+		replace::{
+			listen_for_accept_replace, listen_for_execute_replace, listen_for_replace_requests,
+		},
 	};
 }
 
