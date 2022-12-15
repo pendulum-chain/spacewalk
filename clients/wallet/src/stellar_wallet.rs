@@ -1,3 +1,5 @@
+use std::fmt::Formatter;
+
 use substrate_stellar_sdk::{
 	horizon::Horizon,
 	network::{Network, PUBLIC_NETWORK, TEST_NETWORK},
@@ -12,7 +14,7 @@ use crate::{
 	types::StellarPublicKeyRaw,
 };
 
-#[derive(Clone, PartialEq, Debug, Eq)]
+#[derive(Clone, PartialEq, Eq)]
 pub struct StellarWallet {
 	secret_key: SecretKey,
 	is_public_network: bool,
@@ -132,6 +134,19 @@ impl StellarWallet {
 			.await?;
 
 		Ok((transaction_response, envelope))
+	}
+}
+
+impl std::fmt::Debug for StellarWallet {
+	fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+		let public_key_encoded = self.get_public_key().to_encoding();
+		let account_id_string =
+			std::str::from_utf8(&public_key_encoded).map_err(|e| std::fmt::Error)?;
+		write!(
+			f,
+			"StellarWallet [public key: {}, public network: {}]",
+			account_id_string, self.is_public_network
+		)
 	}
 }
 
