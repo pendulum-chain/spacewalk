@@ -397,6 +397,97 @@ async fn test_replace_succeeds() {
 	.await;
 }
 
+#[tokio::test(flavor = "multi_thread")]
+async fn test_withdraw_replace_succeeds() {
+	test_with_vault(|client, old_vault_id, old_vault_provider| async move {
+		let new_vault_provider = setup_provider(client.clone(), AccountKeyring::Eve).await;
+		// This conversion is necessary for now because subxt uses newer versions of the sp_xxx
+		// dependencies
+		let eve_account =
+			subxt::ext::sp_runtime::AccountId32::from(AccountKeyring::Eve.to_raw_public());
+		let new_vault_id =
+			VaultId::new(eve_account, DEFAULT_TESTING_CURRENCY, DEFAULT_WRAPPED_CURRENCY);
+		let user_provider = setup_provider(client.clone(), AccountKeyring::Dave).await;
+
+		let is_public_network = false;
+		let wallet = StellarWallet::from_secret_encoded(
+			&STELLAR_VAULT_SECRET_KEY.to_string(),
+			is_public_network,
+		)
+		.unwrap();
+		let wallet_arc = Arc::new(RwLock::new(wallet));
+
+		let issue_amount = 100000;
+		let vault_collateral = get_required_vault_collateral_for_issue(
+			&old_vault_provider,
+			issue_amount,
+			old_vault_id.collateral_currency(),
+		)
+		.await;
+		let wallet = wallet_arc.read().await;
+		assert_ok!(
+			old_vault_provider
+				.register_vault_with_public_key(
+					&old_vault_id,
+					vault_collateral,
+					wallet.get_public_key_raw()
+				)
+				.await
+		);
+		assert_ok!(
+			new_vault_provider
+				.register_vault_with_public_key(
+					&new_vault_id,
+					vault_collateral,
+					wallet.get_public_key_raw()
+				)
+				.await
+		);
+		// Setup scp handler for proofs
+		// TODO refactor once improved 'OracleAgent' is implemented
+		let handler = vault::inner_create_handler(wallet.get_secret_key(), is_public_network)
+			.await
+			.expect("Failed to create handler");
+		let proof_ops = Arc::new(RwLock::new(handler.proof_operations()));
+		drop(wallet);
+
+		assert_issue(
+			&user_provider,
+			wallet_arc.clone(),
+			&old_vault_id,
+			issue_amount,
+			proof_ops.clone(),
+		)
+		.await;
+
+		join(
+			old_vault_provider
+				.request_replace(&old_vault_id, issue_amount)
+				.map(Result::unwrap),
+			assert_event::<RequestReplaceEvent, _>(TIMEOUT, old_vault_provider.clone(), |_| true),
+		)
+		.await;
+
+		join(
+			old_vault_provider
+				.withdraw_replace(&old_vault_id, issue_amount)
+				.map(Result::unwrap),
+			assert_event::<WithdrawReplaceEvent, _>(TIMEOUT, old_vault_provider.clone(), |e| {
+				assert_eq!(e.old_vault_id, old_vault_id);
+				true
+			}),
+		)
+		.await;
+
+		let address = [2u8; 32];
+		assert!(new_vault_provider
+			.accept_replace(&new_vault_id, &old_vault_id, 1u32.into(), vault_collateral, address)
+			.await
+			.is_err());
+	})
+	.await;
+}
+
 /*
 #[tokio::test(flavor = "multi_thread")]
 #[serial]
