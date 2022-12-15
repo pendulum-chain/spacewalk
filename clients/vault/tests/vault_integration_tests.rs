@@ -524,6 +524,8 @@ async fn test_issue_cancel_succeeds() {
 			// The account of the 'user_provider' is used to request a new issue that
 			// will be canceled in the next step
 			let issue = user_provider.request_issue(issue_amount, &vault_id).await.unwrap();
+			// First await the event that the issue has been requested
+			assert_event::<RequestIssueEvent, _>(TIMEOUT, user_provider.clone(), |_| true).await;
 			assert_eq!(issue_set.read().await.len(), 1);
 
 			match user_provider.cancel_issue(issue.issue_id).await {
