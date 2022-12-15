@@ -216,3 +216,143 @@ pub async fn listen_for_execute_replace(
 		.await?;
 	Ok(())
 }
+
+#[cfg(all(test, feature = "standalone-metadata"))]
+mod tests {
+	use std::{str::FromStr, sync::Arc};
+
+	use async_trait::async_trait;
+
+	use primitives::{TokenSymbol::AMPE, DOT};
+	use runtime::{
+		AccountId, Balance, CurrencyId, Error as RuntimeError, SpacewalkReplaceRequest,
+		SpacewalkVault, StellarPublicKeyRaw, Token, VaultId, H256,
+	};
+
+	use super::*;
+
+	macro_rules! assert_err {
+		($result:expr, $err:pat) => {{
+			match $result {
+				Err($err) => (),
+				Ok(v) => panic!("assertion failed: Ok({:?})", v),
+				_ => panic!("expected: Err($err)"),
+			}
+		}};
+	}
+
+	mockall::mock! {
+	Provider {}
+
+	#[async_trait]
+	pub trait VaultRegistryPallet {
+		async fn get_vault(&self, vault_id: &VaultId) -> Result<SpacewalkVault, RuntimeError>;
+		async fn get_vaults_by_account_id(&self, account_id: &AccountId) -> Result<Vec<VaultId>, RuntimeError>;
+		async fn get_all_vaults(&self) -> Result<Vec<SpacewalkVault>, RuntimeError>;
+		async fn register_vault(&self, vault_id: &VaultId, collateral: u128) -> Result<(), RuntimeError>;
+		async fn deposit_collateral(&self, vault_id: &VaultId, amount: u128) -> Result<(), RuntimeError>;
+		async fn withdraw_collateral(&self, vault_id: &VaultId, amount: u128) -> Result<(), RuntimeError>;
+		async fn get_public_key(&self) -> Result<Option<StellarPublicKeyRaw>, RuntimeError>;
+		async fn register_public_key(&self, public_key: StellarPublicKeyRaw) -> Result<(), RuntimeError>;
+		async fn get_required_collateral_for_wrapped(&self, amount: u128, collateral_currency: CurrencyId) -> Result<u128, RuntimeError>;
+		async fn get_required_collateral_for_vault(&self, vault_id: VaultId) -> Result<u128, RuntimeError>;
+		async fn get_vault_total_collateral(&self, vault_id: VaultId) -> Result<u128, RuntimeError>;
+		async fn get_collateralization_from_vault(&self, vault_id: VaultId, only_issued: bool) -> Result<u128, RuntimeError>;
+	}
+
+	#[async_trait]
+	pub trait ReplacePallet {
+		async fn request_replace(&self, vault_id: &VaultId, amount: u128) -> Result<(), RuntimeError>;
+		async fn withdraw_replace(&self, vault_id: &VaultId, amount: u128) -> Result<(), RuntimeError>;
+		async fn accept_replace(&self, new_vault: &VaultId, old_vault: &VaultId, amount: u128, collateral: u128, stellar_address: StellarPublicKeyRaw) -> Result<(), RuntimeError>;
+		async fn execute_replace(&self, replace_id: H256, tx_env: &[u8], scp_envs: &[u8], tx_set: &[u8]) -> Result<(), RuntimeError>;
+		async fn cancel_replace(&self, replace_id: H256) -> Result<(), RuntimeError>;
+		async fn get_new_vault_replace_requests(&self, account_id: AccountId) -> Result<Vec<(H256, SpacewalkReplaceRequest)>, RuntimeError>;
+		async fn get_old_vault_replace_requests(&self, account_id: AccountId) -> Result<Vec<(H256, SpacewalkReplaceRequest)>, RuntimeError>;
+		async fn get_replace_period(&self) -> Result<u32, RuntimeError>;
+		async fn get_replace_request(&self, replace_id: H256) -> Result<SpacewalkReplaceRequest, RuntimeError>;
+		async fn get_replace_dust_amount(&self) -> Result<u128, RuntimeError>;
+	}
+
+
+	#[async_trait]
+	pub trait CollateralBalancesPallet {
+		async fn get_free_balance(&self, currency_id: CurrencyId) -> Result<Balance, RuntimeError>;
+		async fn get_free_balance_for_id(&self, id: AccountId, currency_id: CurrencyId) -> Result<Balance, RuntimeError>;
+		async fn get_reserved_balance(&self, currency_id: CurrencyId) -> Result<Balance, RuntimeError>;
+		async fn get_reserved_balance_for_id(&self, id: AccountId, currency_id: CurrencyId) -> Result<Balance, RuntimeError>;
+		async fn transfer_to(&self, recipient: &AccountId, amount: u128, currency_id: CurrencyId) -> Result<(), RuntimeError>;         }
+	}
+
+	impl Clone for MockProvider {
+		fn clone(&self) -> Self {
+			// NOTE: expectations dropped
+			Self::default()
+		}
+	}
+
+	fn dummy_vault_id() -> VaultId {
+		VaultId::new(AccountId::new([1u8; 32]), Token(DOT), Token(AMPE))
+	}
+
+	const STELLAR_VAULT_SECRET_KEY: &str =
+		"SB6WHKIU2HGVBRNKNOEOQUY4GFC4ZLG5XPGWLEAHTIZXBXXYACC76VSQ";
+
+	#[tokio::test]
+	async fn test_handle_replace_request_with_insufficient_balance() {
+		let is_public_network = false;
+		let wallet = StellarWallet::from_secret_encoded(
+			&STELLAR_VAULT_SECRET_KEY.to_string(),
+			is_public_network,
+		)
+		.unwrap();
+		let wallet_arc = Arc::new(RwLock::new(wallet));
+
+		let mut parachain_rpc = MockProvider::default();
+		parachain_rpc
+			.expect_get_required_collateral_for_wrapped()
+			.returning(|_, _| Ok(51));
+		parachain_rpc.expect_get_required_collateral_for_vault().returning(|_| Ok(50));
+		parachain_rpc.expect_get_vault_total_collateral().returning(|_| Ok(100));
+
+		let event = RequestReplaceEvent {
+			old_vault_id: dummy_vault_id(),
+			amount: Default::default(),
+			asset: Default::default(),
+			griefing_collateral: Default::default(),
+		};
+		assert_err!(
+			handle_replace_request(parachain_rpc, wallet_arc, &event, &dummy_vault_id()).await,
+			Error::InsufficientFunds
+		);
+	}
+
+	#[tokio::test]
+	async fn test_handle_replace_request_with_sufficient_balance() {
+		let is_public_network = false;
+		let wallet = StellarWallet::from_secret_encoded(
+			&STELLAR_VAULT_SECRET_KEY.to_string(),
+			is_public_network,
+		)
+		.unwrap();
+		let wallet_arc = Arc::new(RwLock::new(wallet));
+
+		let mut parachain_rpc = MockProvider::default();
+		parachain_rpc
+			.expect_get_required_collateral_for_wrapped()
+			.returning(|_, _| Ok(50));
+		parachain_rpc.expect_get_required_collateral_for_vault().returning(|_| Ok(50));
+		parachain_rpc.expect_get_vault_total_collateral().returning(|_| Ok(100));
+		parachain_rpc.expect_accept_replace().returning(|_, _, _, _, _| Ok(()));
+
+		let event = RequestReplaceEvent {
+			old_vault_id: dummy_vault_id(),
+			amount: Default::default(),
+			asset: Default::default(),
+			griefing_collateral: Default::default(),
+		};
+		handle_replace_request(parachain_rpc, wallet_arc, &event, &dummy_vault_id())
+			.await
+			.unwrap();
+	}
+}
