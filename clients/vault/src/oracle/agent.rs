@@ -1,9 +1,10 @@
+use std::fmt::{Debug, Display, Formatter};
 use std::time::Duration;
 
 use async_trait::async_trait;
 use rand::RngCore;
 use tokio::{
-	sync::{mpsc::Sender, oneshot},
+	sync::{mpsc, oneshot},
 	time::timeout,
 };
 
@@ -30,9 +31,26 @@ pub enum ActorMessage {
 	RemoveData { slot: Slot },
 }
 
+// impl Debug for ActorMessage {
+// 	fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+// 		match self {
+// 			ActorMessage::GetProof { slot, sender:_ } => {
+// 				write!(f, "ActorMessage::GetProof: {{ slot:{} }}", slot)
+// 			}
+// 			ActorMessage::GetLastSlotIndex { .. } => {
+// 				write!(f, "ActorMessage::GetLastSlotIndex:{{}}")
+//
+// 			}
+// 			ActorMessage::RemoveData { slot } => {
+// 				write!(f, "ActorMessage::RemoveData:{{ slot:{} }}", slot)
+// 			}
+// 		}
+// 	}
+//}
+
 
 pub struct OracleAgent {
-	actor_action_sender: Sender<ActorMessage>,
+	actor_action_sender: Option<mpsc::Sender<ActorMessage>>,
 	collector: ScpMessageCollector,
 	overlay_conn: Option<StellarOverlayConnection>,
 	pub is_public_network: bool,
@@ -45,6 +63,7 @@ trait MessageHandler<T> {
 	async fn handle_message(&mut self, message:T) -> Result<(),Error>;
 }
 
+/// handle messages sent from the outside
 #[async_trait]
 impl MessageHandler<ActorMessage> for OracleAgent {
 	async fn handle_message(&mut self, message: ActorMessage) -> Result<(),Error> {
@@ -62,7 +81,7 @@ impl MessageHandler<ActorMessage> for OracleAgent {
 						let _ = sender.send(proof);
 					},
 					Err(e) => {
-						tracing::error!("Error while building proof: {}", e);
+						tracing::error!("Error while building proof: {:?}", e);
 						// TODO maybe change this to send an error back to the sender
 					},
 				}
@@ -82,6 +101,7 @@ impl MessageHandler<ActorMessage> for OracleAgent {
 	}
 }
 
+// listens to data to collect the scp messages and txsets.
 #[async_trait]
 impl MessageHandler<StellarRelayMessage> for OracleAgent {
 	async fn handle_message(&mut self, message: StellarRelayMessage) -> Result<(),Error> {
@@ -115,7 +135,6 @@ impl MessageHandler<StellarRelayMessage> for OracleAgent {
 
 impl OracleAgent {
 	pub(crate) fn new(is_public_network: bool) -> Result<Self,Error> {
-		let (sender, receiver) = tokio::sync::mpsc::channel(1024);
 		let collector = ScpMessageCollector::new(is_public_network);
 
 		let shutdown_sender = ShutdownSender::default();
@@ -124,7 +143,7 @@ impl OracleAgent {
 
 		Ok(
 			Self {
-				actor_action_sender: sender,
+				actor_action_sender: None,
 				collector,
 				is_public_network,
 				shutdown_sender,
@@ -189,21 +208,27 @@ impl OracleAgent {
 		}
 		let overlay_conn = self.overlay_conn.as_ref().expect("overlay_conn cannot be None");
 
+		let (sender, mut receiver) = mpsc::channel(1024);
+		self.actor_action_sender = Some(sender);
+
 		// Periodically either handle a message from the overlay network or from the 'user' that
 		// sends an actor-message we should act upon
 		service::spawn_cancelable(self.shutdown_sender.subscribe(), async move {
 			loop {
 				tokio::select! {
 					Some(msg) = overlay_conn.listen() => {
-							self.handle_message(msg).await?;
+						if let Err(e) = &self.handle_message(msg).await {
+							//tracing::error!("message {:?} not handled: {:?}",msg, e);
+						}
 					},
-					Some(msg) = self.action_receiver.recv() => {
-							self.handle_message(msg).await?;
+					Some(msg) = receiver.recv() => {
+						if let Err(e) = &self.handle_message(msg).await {
+							//tracing::error!("message {:?} not handled: {:?}",msg,e);
+						}
 					}
 				}
 			}
-		})
-		.await;
+		});
 
 		Ok(())
 	}
@@ -212,9 +237,12 @@ impl OracleAgent {
 	/// The agent will try every possible way to get the proof before returning an error.
 
 	pub async fn get_proof(&self, slot: Slot) -> Result<Proof, Error> {
+		let actor_sender = self.actor_action_sender.as_ref().ok_or(Error::SenderUninitialized)?;
+
 		tracing::info!("Getting proof for slot {}", slot);
 		let (sender, receiver) = oneshot::channel();
-		self.actor_action_sender.send(ActorMessage::GetProof { slot, sender }).await?;
+
+		actor_sender.send(ActorMessage::GetProof { slot, sender}).await?;
 
 		let future = async {
 			let proof = receiver.await?;

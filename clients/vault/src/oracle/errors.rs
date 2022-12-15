@@ -29,6 +29,9 @@ pub enum Error {
 
 	#[error(display = "{:?}", _0)]
 	ProofTimeout(String),
+
+	#[error(display = "Sender is not initialized")]
+	SenderUninitialized
 }
 
 impl From<StellarSdkError> for Error {
