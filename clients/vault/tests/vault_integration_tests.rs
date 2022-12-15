@@ -938,6 +938,7 @@ async fn test_automatic_issue_execution_succeeds_for_other_vault() {
 			),
 			vault::service::listen_for_executed_issues(vault2_provider.clone(), issue_set.clone()),
 		);
+		drop(wallet);
 
 		test_service(service, fut_user).await;
 	})
@@ -987,7 +988,6 @@ async fn test_execute_open_requests_succeeds() {
 			.await
 			.expect("Failed to create handler");
 		let proof_ops = Arc::new(RwLock::new(handler.proof_operations()));
-
 		drop(wallet);
 
 		assert_issue(
@@ -999,9 +999,10 @@ async fn test_execute_open_requests_succeeds() {
 		)
 		.await;
 
-		let mut wallet = wallet_arc.write().await;
+		let wallet = wallet_arc.read().await;
 		let address = wallet.get_public_key();
 		let address_raw = wallet.get_public_key_raw();
+		drop(wallet);
 		// place replace requests
 		let redeem_ids = futures::future::join_all(
 			(0..3u128).map(|_| user_provider.request_redeem(10000, address_raw, &vault_id)),
@@ -1023,12 +1024,12 @@ async fn test_execute_open_requests_succeeds() {
 		let asset = primitives::AssetConversion::lookup(redeems[0].asset).expect("Invalid asset");
 		let memo_hash = redeem_ids[0].0;
 		// do stellar transfer for redeem 0
+		let mut wallet = wallet_arc.write().await;
 		assert_ok!(
 			wallet
 				.send_payment_to_address(address, asset, stroop_amount, memo_hash, 300)
 				.await
 		);
-
 		drop(wallet);
 
 		let shutdown_tx = ShutdownSender::new();

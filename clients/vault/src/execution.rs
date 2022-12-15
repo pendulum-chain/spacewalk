@@ -352,7 +352,7 @@ pub async fn execute_open_requests(
 								// Loop pending proofs until it is ready
 								// TODO refactor this once improved 'OracleAgent' is ready
 								let mut proof: Option<Proof> = None;
-								timeout(Duration::from_secs(60), async {
+								let timeout_result = timeout(Duration::from_secs(60), async {
 									loop {
 										let ops_read = proof_ops.read().await;
 										let proof_status = ops_read
@@ -373,9 +373,15 @@ pub async fn execute_open_requests(
 
 										// Wait a bit before trying again
 										sleep(Duration::from_secs(3)).await;
+										tracing::info!("Waiting for proof to be ready. Sleeping for 3 seconds...");
 									}
 								})
 								.await;
+
+								if let Err(_) = timeout_result {
+									tracing::error!("Failed to get proof for slot {}", slot);
+									return
+								}
 
 								if let Some(proof) = proof {
 									if let Err(e) =
