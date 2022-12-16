@@ -306,14 +306,14 @@ async fn run_and_monitor_tasks(
 		})
 		.unzip();
 
-	let tokio_metrics = tokio::spawn(wait_or_shutdown(
-		shutdown_tx.clone(),
-		publish_tokio_metrics(metrics_iterators),
-	));
+	// We don't use metrics for now
+	// let tokio_metrics = tokio::spawn(wait_or_shutdown(
+	// 	shutdown_tx.clone(),
+	// 	publish_tokio_metrics(metrics_iterators),
+	// ));
 
-	match join(tokio_metrics, join_all(tasks)).await {
-		(Ok(Err(err)), _) => Err(err),
-		(_, results) => results
+	match join_all(tasks).await {
+		results => results
 			.into_iter()
 			.find(|res| matches!(res, Ok(Err(_))))
 			.and_then(|res| res.ok())
@@ -713,7 +713,7 @@ pub async fn inner_create_handler(
 		tier1_node_ip
 	);
 
-	let node_info = NodeInfo::new(19, 25, 23, "v19.5.0".to_string(), network);
+	let node_info = NodeInfo::new(19, 26, 23, "v19.6.0".to_string(), network);
 	let cfg = ConnConfig::new(tier1_node_ip, 11625, stellar_vault_secret_key, 0, true, true, false);
 
 	create_handler(node_info, cfg, is_public_network).await.map_err(|e| {
