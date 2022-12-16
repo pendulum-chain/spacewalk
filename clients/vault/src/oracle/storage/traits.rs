@@ -1,4 +1,13 @@
-use crate::oracle::{Error, Filename, SerializedData, Slot};
+use sp_core::hexdisplay::AsBytesRef;
+use stellar_relay::sdk::{
+	compound_types::XdrArchive,
+	types::{ScpEnvelope, ScpHistoryEntry, TransactionHistoryEntry, TransactionSet},
+	XdrCodec,
+};
+
+use flate2::bufread::GzDecoder;
+
+use crate::oracle::{constants::ARCHIVE_NODE_LEDGER_BATCH, Error, Filename, SerializedData, Slot};
 use std::{
 	fs,
 	fs::File,
@@ -71,4 +80,65 @@ pub trait FileHandler<T: Default> {
 
 		Self::read_file(&filename)
 	}
+}
+
+pub trait ArchiveStorage {
+	type T: XdrCodec;
+	const STELLAR_HISTORY_BASE_URL: &'static str;
+	const prefix_url: &'static str;
+	const prefix_filename: &'static str = "";
+
+	fn try_gz_decode_archive_file(path: &str) -> Result<Vec<u8>, Error> {
+		let bytes = Self::read_file_xdr(path)?;
+		let mut gz = GzDecoder::new(&bytes[..]);
+		let mut bytes: Vec<u8> = vec![];
+		gz.read_to_end(&mut bytes)?;
+		Ok(bytes)
+	}
+
+	fn get_url_and_file_name(slot_index: i32) -> (String, String) {
+		let slot_index = Self::find_last_slot_index_in_batch(slot_index);
+		let hex_string = format!("0{:x}", slot_index);
+		let file_name = format!("{hex_string}.xdr");
+		let base_url = Self::STELLAR_HISTORY_BASE_URL;
+		let url = format!(
+			"{base_url}{}/{}/{}/{}-{file_name}.gz",
+			&hex_string[..2],
+			&hex_string[2..4],
+			&hex_string[4..6],
+			Self::prefix_url
+		);
+		(url, format!("{}{file_name}", Self::prefix_filename))
+	}
+
+	fn find_last_slot_index_in_batch(slot_index: i32) -> i32 {
+		let rest = (slot_index + 1) % ARCHIVE_NODE_LEDGER_BATCH;
+		if rest == 0 {
+			return slot_index
+		}
+		return slot_index + ARCHIVE_NODE_LEDGER_BATCH - rest
+	}
+
+	fn read_file_xdr(filename: &str) -> Result<Vec<u8>, Error> {
+		let mut file = File::open(filename)?;
+		let mut bytes: Vec<u8> = vec![];
+		file.read_to_end(&mut bytes)?;
+		Ok(bytes)
+	}
+
+	fn decode_xdr(xdr_data: Vec<u8>) -> XdrArchive<Self::T> {
+		XdrArchive::<Self::T>::from_xdr(xdr_data).unwrap()
+	}
+}
+
+pub(crate) async fn download_file_and_save(url: &str, file_name: &str) -> Result<(), Error> {
+	let response = reqwest::get(url).await.unwrap();
+	let content = response.bytes().await.unwrap();
+
+	let mut file = match File::create(&file_name) {
+		Err(why) => panic!("couldn't create {}: {}", &file_name, why),
+		Ok(file) => file,
+	};
+	file.write_all(content.as_bytes_ref())?;
+	Ok(())
 }

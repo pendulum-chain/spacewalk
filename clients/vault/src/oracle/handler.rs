@@ -1,4 +1,4 @@
-use std::convert::TryFrom;
+use std::convert::{TryFrom, TryInto};
 
 use async_trait::async_trait;
 use tokio::sync::{mpsc, oneshot};
@@ -17,7 +17,7 @@ use crate::oracle::{
 };
 
 /// A message used to communicate with the Actor
-enum ActorMessage {
+pub enum ActorMessage {
 	/// returns the envelopes map size.
 	CurrentMapSize {
 		sender: oneshot::Sender<usize>,
@@ -48,6 +48,10 @@ enum ActorMessage {
 	RemoveData {
 		slot: Slot,
 	},
+	GetScpState {
+		missed_slot: u64,
+	},
+	Disconnect,
 }
 
 /// Runs both the stellar-relay and its own.
@@ -94,6 +98,14 @@ impl ScpMessageActor {
 			ActorMessage::RemoveData { slot } => {
 				self.collector.remove_data(&slot);
 			},
+			ActorMessage::GetScpState { missed_slot } => {
+				overlay_conn
+					.send(StellarMessage::GetScpState(missed_slot.try_into().unwrap()))
+					.await;
+			},
+			ActorMessage::Disconnect => {
+				panic!("Should disconnect from run method")
+			},
 		};
 	}
 
@@ -106,7 +118,7 @@ impl ScpMessageActor {
 					match conn_state {
 						StellarRelayMessage::Data {
 							p_id: _,
-							msg_type: _,
+							msg_type,
 							msg,
 						} => match msg {
 							StellarMessage::ScpMessage(env) => {
@@ -129,7 +141,14 @@ impl ScpMessageActor {
 				}
 				// handle message from user
 				Some(msg) = self.action_receiver.recv() => {
-						self.handle_message(msg, &overlay_conn).await;
+					match msg{
+						ActorMessage::Disconnect => {
+							overlay_conn.disconnect().await;
+						},
+						_ => {
+							self.handle_message(msg, &overlay_conn).await;
+						}
+					}
 				}
 				else => continue,
 			}
@@ -241,6 +260,10 @@ impl ProofExt for OracleProofOps {
 				e.to_string()
 			);
 		}
+	}
+
+	pub async fn disconnect(&self) -> Result<(), Error> {
+		self.action_sender.send(ActorMessage::Disconnect).await.map_err(Error::from)
 	}
 }
 
