@@ -96,7 +96,7 @@ impl<Config: Clone + Send + 'static, F: Fn()> ConnectionManager<Config, F> {
 				Err(err) => {
 					tracing::warn!("Disconnected: {}", err);
 				},
-				_ => {
+				Ok(_) => {
 					tracing::warn!("Disconnected");
 				},
 			}
