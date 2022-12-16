@@ -36,6 +36,9 @@ mod mock;
 #[cfg(test)]
 mod tests;
 
+#[cfg(any(test, feature = "testing-constants"))]
+pub mod testing_constants;
+
 pub mod amount;
 
 mod types;
@@ -84,17 +87,13 @@ pub mod pallet {
 			+ Default
 			+ Debug;
 
-		/// Native currency e.g. INTR/KINT
+		/// Native currency e.g. PEN/AMPE
 		#[pallet::constant]
 		type GetNativeCurrencyId: Get<CurrencyId<Self>>;
 
 		/// Relay chain currency e.g. DOT/KSM
 		#[pallet::constant]
 		type GetRelayChainCurrencyId: Get<CurrencyId<Self>>;
-
-		/// Wrapped currency e.g. IBTC/KBTC
-		#[pallet::constant]
-		type GetWrappedCurrencyId: Get<CurrencyId<Self>>;
 
 		type AssetConversion: StaticLookup<Source = CurrencyId<Self>, Target = Asset>;
 		type BalanceConversion: StaticLookup<Source = BalanceOf<Self>, Target = i64>;
@@ -178,10 +177,6 @@ pub mod getters {
 
 	pub fn get_native_currency_id<T: Config>() -> CurrencyId<T> {
 		<T as Config>::GetNativeCurrencyId::get()
-	}
-
-	pub fn get_wrapped_currency_id<T: Config>() -> CurrencyId<T> {
-		<T as Config>::GetWrappedCurrencyId::get()
 	}
 }
 

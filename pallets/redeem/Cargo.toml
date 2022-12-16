@@ -45,7 +45,7 @@ frame-benchmarking = { git = "https://github.com/paritytech/substrate", branch =
 # Parachain dependencies
 reward = { path = "../reward" }
 staking = { path = "../staking" }
-currency = { path = "../currency", features = ["testing-utils"] }
+currency = { path = "../currency", default-features = false, features = ["testing-constants", "testing-utils"] }
 stellar-relay = { path = "../stellar-relay", features = ["testing-utils"] }
 
 # Orml dependencies
@@ -83,5 +83,6 @@ runtime-benchmarks = [
     "frame-system/runtime-benchmarks",
     "orml-tokens",
     "orml-traits",
-    "stellar-relay/testing-utils"
+    "stellar-relay/testing-utils",
+    "currency/testing-constants"
 ]

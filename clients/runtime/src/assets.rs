@@ -24,11 +24,9 @@ impl TryFromSymbol for CurrencyId {
 		// try hardcoded currencies first
 		match uppercase_symbol.as_str() {
 			id if id == DOT.symbol() => Ok(Token(DOT)),
-			id if id == IBTC.symbol() => Ok(Token(IBTC)),
-			id if id == INTR.symbol() => Ok(Token(INTR)),
+			id if id == PEN.symbol() => Ok(Token(PEN)),
 			id if id == KSM.symbol() => Ok(Token(KSM)),
-			id if id == KBTC.symbol() => Ok(Token(KBTC)),
-			id if id == KINT.symbol() => Ok(Token(KINT)),
+			id if id == AMPE.symbol() => Ok(Token(AMPE)),
 			_ => Err(Error::InvalidCurrency),
 		}
 	}

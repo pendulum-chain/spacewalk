@@ -1,16 +1,21 @@
-use super::*;
-use currency::getters::{get_relay_chain_currency_id as get_collateral_currency_id, *};
 use frame_benchmarking::{account, benchmarks, impl_benchmark_test_suite};
 use frame_support::assert_ok;
 use frame_system::RawOrigin;
 use orml_traits::MultiCurrency;
-use primitives::{CurrencyId, StellarPublicKeyRaw};
 use sp_runtime::traits::One;
+
+use currency::{
+	getters::{get_relay_chain_currency_id as get_collateral_currency_id, *},
+	testing_constants::get_wrapped_currency_id,
+};
+use oracle::Pallet as Oracle;
+use primitives::{CurrencyId, StellarPublicKeyRaw};
+use vault_registry::Pallet as VaultRegistry;
 
 // Pallets
 use crate::Pallet as Nomination;
-use oracle::Pallet as Oracle;
-use vault_registry::Pallet as VaultRegistry;
+
+use super::*;
 
 const STELLAR_PUBLIC_KEY_DUMMY: StellarPublicKeyRaw = [0u8; 32];
 
@@ -39,7 +44,7 @@ fn get_vault_id<T: crate::Config>() -> DefaultVaultId<T> {
 	VaultId::new(
 		account("Vault", 0, 0),
 		get_collateral_currency_id::<T>(),
-		get_wrapped_currency_id::<T>(),
+		get_wrapped_currency_id(),
 	)
 }
 
