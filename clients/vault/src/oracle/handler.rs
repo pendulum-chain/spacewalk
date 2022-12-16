@@ -1,5 +1,6 @@
-use async_trait::async_trait;
 use std::convert::TryFrom;
+
+use async_trait::async_trait;
 use tokio::sync::{mpsc, oneshot};
 
 use stellar_relay_lib::{
@@ -130,6 +131,7 @@ impl ScpMessageActor {
 				Some(msg) = self.action_receiver.recv() => {
 						self.handle_message(msg, &overlay_conn).await;
 				}
+				else => continue,
 			}
 		}
 	}
