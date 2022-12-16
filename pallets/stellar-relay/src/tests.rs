@@ -604,8 +604,8 @@ fn update_tier_1_validator_store_old_organization_and_validator_and_block_height
 		assert_eq!(SpacewalkRelay::validators(), validator_bounded_vec);
 		assert_eq!(SpacewalkRelay::organizations(), organization_bounded_vec);
 
-		assert_eq!(SpacewalkRelay::validators_old(), validator_bounded_vec_old);
-		assert_eq!(SpacewalkRelay::organizations_old(), organization_bounded_vec_old);
+		assert_eq!(SpacewalkRelay::old_validators(), validator_bounded_vec_old);
+		assert_eq!(SpacewalkRelay::old_organizations(), organization_bounded_vec_old);
 
 		assert_eq!(
 			SpacewalkRelay::new_validators_enactment_block_height(),

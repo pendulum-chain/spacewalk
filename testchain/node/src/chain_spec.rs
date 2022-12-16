@@ -284,8 +284,11 @@ fn testnet_genesis(
 			initial_status: if start_shutdown { StatusCode::Shutdown } else { StatusCode::Error },
 		},
 		stellar_relay: StellarRelayConfig {
+			old_validators: vec![],
+			old_organizations: vec![],
 			validators,
 			organizations,
+			enactment_block_height: 0,
 			is_public_network: false,
 			phantom: Default::default(),
 		},

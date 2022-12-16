@@ -183,9 +183,12 @@ impl ExtBuilder {
 		let mut storage = frame_system::GenesisConfig::default().build_storage::<Test>().unwrap();
 
 		crate::GenesisConfig::<Test> {
+			old_validators: vec![],
+			old_organizations: vec![],
 			validators,
 			organizations,
 			is_public_network: true,
+			enactment_block_height: 0,
 			phantom: Default::default(),
 		}
 		.assimilate_storage(&mut storage)
