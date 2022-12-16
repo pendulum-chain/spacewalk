@@ -111,7 +111,8 @@ benchmarks! {
 		Security::<T>::set_active_block_number(1u32.into());
 
 		let (validators, organizations) = get_validators_and_organizations::<T>();
-		StellarRelay::<T>::_update_tier_1_validator_set(validators, organizations).unwrap();
+		let enactment_block_height = T::BlockNumber::default();
+		StellarRelay::<T>::_update_tier_1_validator_set(validators, organizations, enactment_block_height).unwrap();
 		let public_network = StellarRelay::<T>::is_public_network();
 		let (tx_env_xdr_encoded, scp_envs_xdr_encoded, tx_set_xdr_encoded) = build_dummy_proof_for::<T>(issue_id, public_network);
 
