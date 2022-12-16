@@ -182,7 +182,7 @@ impl Request {
 	/// Make a stellar transfer to fulfil the request
 	#[tracing::instrument(
 	name = "transfer_stellar_asset",
-	skip(self),
+	skip(self, wallet),
 	fields(
 	request_type = ?self.request_type,
 	request_id = ?self.hash,
@@ -197,6 +197,13 @@ impl Request {
 		let memo_hash = self.hash.0;
 
 		let mut wallet = wallet.write().await;
+		tracing::info!(
+			"Sending {:?} stroops of {:?} to {:?} from {:?}",
+			stroop_amount,
+			self.asset.clone(),
+			destination_public_key,
+			wallet,
+		);
 		let result = wallet
 			.send_payment_to_address(
 				destination_public_key.clone(),
