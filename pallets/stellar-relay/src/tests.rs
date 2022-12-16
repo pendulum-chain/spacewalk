@@ -697,14 +697,7 @@ fn validate_stellar_transaction_fails_no_organizations_registered_when_new_valid
 
 		assert!(matches!(result, Err(Error::<Test>::NoValidatorsRegistered)));
 
-		let validator = Validator {
-			name: Default::default(),
-			public_key: Default::default(),
-			organization_id: organization.id,
-		};
-
 		new_validators_enactment_block_height = new_validators_enactment_block_height * 2;
-		let new_validator_set = vec![validator; 2];
 		assert_ok!(SpacewalkRelay::update_tier_1_validator_set(
 			RuntimeOrigin::root(),
 			validators_cloned.clone(),
