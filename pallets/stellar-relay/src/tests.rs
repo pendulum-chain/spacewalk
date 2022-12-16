@@ -582,8 +582,6 @@ fn update_tier_1_validator_store_old_organization_and_validator_and_block_height
 		};
 		let new_validator_set = vec![validator; 2];
 		let new_organization_set = vec![organization; 2];
-		// let new_validator_set: Vec<ValidatorOf<Test>> = vec![validator; 2];
-		// let new_organization_set: Vec<OrganizationOf<Test>> = vec![organization; 2];
 		assert_ne!(validator_set, new_validator_set);
 		assert_ne!(organization_set, new_organization_set);
 
@@ -644,7 +642,7 @@ fn validate_stellar_transaction_fails_no_validators_registered_when_new_validato
 			&tx_set,
 		));
 
-		System::set_block_number(new_validators_enactment_block_height + 10);
+		System::set_block_number(new_validators_enactment_block_height);
 
 		let result =
 			SpacewalkRelay::validate_stellar_transaction(&tx_envelope, &scp_envelopes, &tx_set);
@@ -702,11 +700,9 @@ fn validate_stellar_transaction_fails_no_organizations_registered_when_new_valid
 			SpacewalkRelay::validate_stellar_transaction(&tx_envelope, &scp_envelopes, &tx_set);
 		assert!(matches!(result, Err(Error::<Test>::NoValidatorsRegistered)));
 
-		System::set_block_number(new_validators_enactment_block_height + 2);
+		System::set_block_number(new_validators_enactment_block_height);
 		let result =
 			SpacewalkRelay::validate_stellar_transaction(&tx_envelope, &scp_envelopes, &tx_set);
-
-		println!("{:#?}", result);
 
 		assert!(matches!(result, Err(Error::<Test>::NoOrganizationsRegistered)));
 	});
@@ -742,7 +738,7 @@ fn validate_stellar_transaction_works_when_enactment_block_height_reached() {
 			&tx_set,
 		));
 
-		System::set_block_number(new_validators_enactment_block_height + 2);
+		System::set_block_number(new_validators_enactment_block_height);
 
 		let result =
 			SpacewalkRelay::validate_stellar_transaction(&tx_envelope, &scp_envelopes, &tx_set);
@@ -761,7 +757,7 @@ fn validate_stellar_transaction_works_when_enactment_block_height_reached() {
 			SpacewalkRelay::validate_stellar_transaction(&tx_envelope, &scp_envelopes, &tx_set);
 		assert!(matches!(result, Err(Error::<Test>::NoValidatorsRegistered)));
 
-		System::set_block_number(new_validators_enactment_block_height + 2);
+		System::set_block_number(new_validators_enactment_block_height);
 		let result =
 			SpacewalkRelay::validate_stellar_transaction(&tx_envelope, &scp_envelopes, &tx_set);
 
@@ -779,7 +775,7 @@ fn validate_stellar_transaction_works_when_enactment_block_height_reached() {
 			SpacewalkRelay::validate_stellar_transaction(&tx_envelope, &scp_envelopes, &tx_set);
 		assert!(matches!(result, Err(Error::<Test>::NoOrganizationsRegistered)));
 
-		System::set_block_number(new_validators_enactment_block_height + 2);
+		System::set_block_number(new_validators_enactment_block_height);
 
 		assert_ok!(SpacewalkRelay::validate_stellar_transaction(
 			&tx_envelope,
