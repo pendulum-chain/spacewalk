@@ -5,9 +5,9 @@ use std::{
 use async_trait::async_trait;
 use clap::Parser;
 use futures::{
-	channel::mpsc,
+	channel::{mpsc, mpsc::Sender},
 	future::{join, join_all},
-	TryFutureExt,
+	SinkExt, TryFutureExt,
 };
 use git_version::git_version;
 use tokio::{sync::RwLock, time::sleep};
@@ -15,7 +15,8 @@ use tokio::{sync::RwLock, time::sleep};
 use runtime::{
 	cli::parse_duration_minutes, CollateralBalancesPallet, CurrencyId, Error as RuntimeError,
 	IssueRequestsMap, PrettyPrint, RegisterVaultEvent, ShutdownSender, SpacewalkParachain,
-	StellarRelayPallet, TryFromSymbol, UtilFuncs, VaultCurrencyPair, VaultId, VaultRegistryPallet,
+	StellarRelayPallet, TryFromSymbol, UpdateActiveBlockEvent, UtilFuncs, VaultCurrencyPair,
+	VaultId, VaultRegistryPallet,
 };
 use service::{wait_or_shutdown, Error as ServiceError, Service};
 use stellar_relay_lib::{
@@ -29,12 +30,15 @@ use stellar_relay_lib::{
 use wallet::StellarWallet;
 
 use crate::{
+	cancellation::ReplaceCanceller,
 	error::Error,
 	execution::execute_open_requests,
 	issue,
 	issue::IssueFilter,
 	metrics::publish_tokio_metrics,
 	oracle::{create_handler, prepare_directories, ScpMessageHandler},
+	redeem::listen_for_redeem_requests,
+	replace::{listen_for_accept_replace, listen_for_execute_replace, listen_for_replace_requests},
 	service::{CancellationScheduler, IssueCanceller},
 	Event, CHAIN_HEIGHT_POLLING_INTERVAL,
 };
@@ -227,6 +231,33 @@ pub struct VaultServiceConfig {
 	/// Minimum time to the the redeem/replace execution deadline to make the stellar payment.
 	#[clap(long, value_parser = parse_duration_minutes, default_value = "1")]
 	pub payment_margin_minutes: Duration,
+
+	/// Opt out of participation in replace requests.
+	#[clap(long)]
+	pub no_auto_replace: bool,
+
+	/// Don't try to execute issues.
+	#[clap(long)]
+	pub no_issue_execution: bool,
+}
+
+async fn active_block_listener(
+	parachain_rpc: SpacewalkParachain,
+	issue_tx: Sender<Event>,
+	replace_tx: Sender<Event>,
+) -> Result<(), ServiceError<Error>> {
+	let issue_tx = &issue_tx;
+	let replace_tx = &replace_tx;
+	parachain_rpc
+		.on_event::<UpdateActiveBlockEvent, _, _, _>(
+			|event| async move {
+				let _ = issue_tx.clone().send(Event::ParachainBlock(event.block_number)).await;
+				let _ = replace_tx.clone().send(Event::ParachainBlock(event.block_number)).await;
+			},
+			|err| tracing::error!("Error (UpdateActiveBlockEvent): {}", err.to_string()),
+		)
+		.await?;
+	Ok(())
 }
 
 pub struct VaultService {
@@ -439,6 +470,7 @@ impl VaultService {
 		});
 
 		let (issue_event_tx, issue_event_rx) = mpsc::channel::<Event>(32);
+		let (replace_event_tx, replace_event_rx) = mpsc::channel::<Event>(16);
 
 		tracing::info!("Starting all services...");
 		let tasks = vec![
@@ -455,7 +487,7 @@ impl VaultService {
 				}),
 			),
 			(
-				"Listen for New Transactions",
+				"Stellar Transaction Listener",
 				run(wallet::listen_for_new_transactions(
 					wallet.get_public_key(),
 					wallet.is_public_network(),
@@ -466,7 +498,7 @@ impl VaultService {
 				)),
 			),
 			(
-				"Listen for Issue Requests",
+				"Issue Request Listener",
 				run(issue::listen_for_issue_requests(
 					self.spacewalk_parachain.clone(),
 					wallet.get_public_key(),
@@ -475,27 +507,30 @@ impl VaultService {
 				)),
 			),
 			(
-				"Listen for Issue Cancels",
+				"Issue Cancel Listener",
 				run(issue::listen_for_issue_cancels(
 					self.spacewalk_parachain.clone(),
 					issue_map.clone(),
 				)),
 			),
 			(
-				"Listen for Executed Issues",
+				"Issue Execute Listener",
 				run(issue::listen_for_executed_issues(
 					self.spacewalk_parachain.clone(),
 					issue_map.clone(),
 				)),
 			),
 			(
-				"Execute issues with proofs",
-				run(issue::process_issues_with_proofs(
-					self.spacewalk_parachain.clone(),
-					proof_ops.clone(),
-					slot_tx_env_map.clone(),
-					issue_map.clone(),
-				)),
+				"Issue Executor",
+				maybe_run(
+					!self.config.no_issue_execution,
+					issue::process_issues_with_proofs(
+						self.spacewalk_parachain.clone(),
+						proof_ops.clone(),
+						slot_tx_env_map.clone(),
+						issue_map.clone(),
+					),
+				),
 			),
 			(
 				"Issue Cancel Scheduler",
@@ -505,6 +540,59 @@ impl VaultService {
 					account_id.clone(),
 				)
 				.handle_cancellation::<IssueCanceller>(issue_event_rx)),
+			),
+			(
+				"Request Replace Listener",
+				run(listen_for_replace_requests(
+					self.spacewalk_parachain.clone(),
+					self.vault_id_manager.clone(),
+					replace_event_tx.clone(),
+					!self.config.no_auto_replace,
+				)),
+			),
+			(
+				"Accept Replace Listener",
+				run(listen_for_accept_replace(
+					self.shutdown.clone(),
+					self.spacewalk_parachain.clone(),
+					self.vault_id_manager.clone(),
+					self.config.payment_margin_minutes,
+					proof_ops.clone(),
+				)),
+			),
+			(
+				"Execute Replace Listener",
+				run(listen_for_execute_replace(
+					self.spacewalk_parachain.clone(),
+					replace_event_tx.clone(),
+				)),
+			),
+			(
+				"Replace Cancellation Scheduler",
+				run(CancellationScheduler::new(
+					self.spacewalk_parachain.clone(),
+					startup_height,
+					account_id.clone(),
+				)
+				.handle_cancellation::<ReplaceCanceller>(replace_event_rx)),
+			),
+			(
+				"Parachain Block Listener",
+				run(active_block_listener(
+					self.spacewalk_parachain.clone(),
+					issue_event_tx.clone(),
+					replace_event_tx.clone(),
+				)),
+			),
+			(
+				"Redeem Request Listener",
+				run(listen_for_redeem_requests(
+					self.shutdown.clone(),
+					self.spacewalk_parachain.clone(),
+					self.vault_id_manager.clone(),
+					self.config.payment_margin_minutes,
+					proof_ops.clone(),
+				)),
 			),
 		];
 		drop(wallet);
