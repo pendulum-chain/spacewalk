@@ -168,7 +168,7 @@ impl ScpMessageHandler {
 	/// owns the Actor that runs the StellarOverlayConnection
 	fn new(overlay_conn: StellarOverlayConnection, is_public_network: bool) -> Self {
 		let (sender, receiver) = mpsc::channel(1024);
-		let collector = ScpMessageCollector::new(is_public_network);
+		let collector = ScpMessageCollector::new(is_public_network, sender.clone());
 
 		let mut actor = ScpMessageActor::new(receiver, collector);
 		tokio::spawn(async move { actor.run(overlay_conn).await });
@@ -206,6 +206,10 @@ impl ScpMessageHandler {
 	/// creates a struct that will send proof related messages to oracle.
 	pub fn proof_operations(&self) -> OracleProofOps {
 		OracleProofOps { action_sender: self.action_sender.clone() }
+	}
+
+	pub async fn disconnect(&self) -> Result<(), Error> {
+		self.action_sender.send(ActorMessage::Disconnect).await.map_err(Error::from)
 	}
 }
 
@@ -260,10 +264,6 @@ impl ProofExt for OracleProofOps {
 				e.to_string()
 			);
 		}
-	}
-
-	pub async fn disconnect(&self) -> Result<(), Error> {
-		self.action_sender.send(ActorMessage::Disconnect).await.map_err(Error::from)
 	}
 }
 

@@ -2,16 +2,11 @@ use std::{convert::TryInto, sync::Arc};
 
 use parking_lot::RwLock;
 
-use stellar_relay::sdk::{
-	compound_types::{LimitedVarArray, UnlimitedVarArray, XdrArchive},
-	types::{ScpEnvelope, ScpHistoryEntry, TransactionSet},
-	TransactionEnvelope, XdrCodec,
-};
 use stellar_relay_lib::{
 	sdk::{
-		compound_types::{UnlimitedVarArray, XdrArchive},
+		compound_types::{LimitedVarArray, UnlimitedVarArray, XdrArchive},
 		types::{ScpEnvelope, ScpHistoryEntry, StellarMessage, TransactionSet},
-		XdrCodec,
+		TransactionEnvelope, XdrCodec,
 	},
 	StellarOverlayConnection,
 };
@@ -156,21 +151,20 @@ impl ScpMessageCollector {
 impl ScpMessageCollector {
 	/// Returns either a list of ScpEnvelopes or a ProofStatus saying it failed to retrieve a list.
 	fn get_envelopes(&self, slot: Slot) -> Result<UnlimitedVarArray<ScpEnvelope>, ProofStatus> {
-		let envelopes = self.envelopes_map().get_with_key(&slot);
+		let map = self.envelopes_map();
+		let envelopes = map.get_with_key(&slot);
 
-		let fetch_more = if envelopes.is_none() {
-			true
-		} else {
-			vec_envelopes = envelopes.unwrap().0;
-			vec_envelopes.len() < get_min_externalized_messages(self.is_public())
-		};
-
-		if fetch_more {
-			self.restore_missed_slots(slot);
-			return Err(ProofStatus::LackingEnvelopes(slot))
+		match envelopes {
+			None => {
+				self.restore_missed_slots(slot);
+				Err(ProofStatus::LackingEnvelopes)
+			},
+			Some(envelopes) => {
+				envelopes.len() < get_min_externalized_messages(self.is_public());
+				Ok(UnlimitedVarArray::new(envelopes.clone())
+					.unwrap_or(UnlimitedVarArray::new_empty()))
+			},
 		}
-
-		Ok(UnlimitedVarArray::new(vec_envelopes).unwrap_or(UnlimitedVarArray::new_empty()))
 	}
 
 	fn restore_missed_slots(&self, slot: Slot) {
@@ -202,9 +196,9 @@ impl ScpMessageCollector {
 
 						let mut envelopes_map = rw_lock.write();
 
-						if let None = envelopes_map.get_mut(&slot) {
+						if let None = envelopes_map.get_with_key(&slot) {
 							tracing::info!("Adding archived SCP envelopes for slot {}", slot);
-							envelopes_map.insert(slot, vec_scp);
+							envelopes_map.set_with_key(slot, vec_scp);
 						}
 					}
 				}
@@ -215,15 +209,16 @@ impl ScpMessageCollector {
 	/// helper method for `get_envelopes()`.
 	/// It returns a tuple of (list of `ScpEnvelope`s, <if_list_came_from_a_file>).
 	fn _get_envelopes(&self, slot: Slot) -> Option<DataFromFile<Vec<ScpEnvelope>>> {
-		self.envelopes_map().get(&slot).map(|envs| (envs.clone(), false)).or_else(|| {
-			match EnvelopesFileHandler::get_map_from_archives(slot) {
-				Ok(env_map) => env_map.get(&slot).map(|envs| (envs.clone(), true)),
+		self.envelopes_map()
+			.get_with_key(&slot)
+			.map(|envs| (envs.clone(), false))
+			.or_else(|| match EnvelopesFileHandler::get_map_from_archives(slot) {
+				Ok(env_map) => env_map.get_with_key(&slot).map(|envs| (envs.clone(), true)),
 				Err(e) => {
 					tracing::warn!("Failed to read envelopes map from a file: {:?}", e);
 					None
 				},
-			}
-		})
+			})
 	}
 
 	/// Returns either a TransactionSet or a ProofStatus saying it failed to retrieve the set.
