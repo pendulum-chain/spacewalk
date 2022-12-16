@@ -478,7 +478,7 @@ pub mod pallet {
 			ensure!(tx_included, Error::<T>::TransactionNotInTransactionSet);
 
 			// Check if all externalized ScpEnvelopes were signed by a tier 1 validator
-			let is_new_data = BlockHeight::<T>::get() > <frame_system::Pallet<T>>::block_number();
+			let is_new_data = <frame_system::Pallet<T>>::block_number() >= BlockHeight::<T>::get();
 			let validators = if is_new_data {
 				// Check if all externalized ScpEnvelopes were signed by a tier 1 validator
 				Validators::<T>::get()
