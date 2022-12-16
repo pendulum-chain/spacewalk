@@ -161,6 +161,12 @@ where
 	.await;
 	set_exchange_rate_and_wait(
 		&parachain_rpc,
+		DEFAULT_WRAPPED_CURRENCY,
+		FixedU128::saturating_from_rational(1u128, 1u128),
+	)
+	.await;
+	set_exchange_rate_and_wait(
+		&parachain_rpc,
 		DEFAULT_NATIVE_CURRENCY,
 		FixedU128::saturating_from_rational(1u128, 100u128),
 	)
@@ -184,6 +190,12 @@ where
 		&parachain_rpc,
 		DEFAULT_TESTING_CURRENCY,
 		FixedU128::from(100000000),
+	)
+	.await;
+	set_exchange_rate_and_wait(
+		&parachain_rpc,
+		DEFAULT_WRAPPED_CURRENCY,
+		FixedU128::saturating_from_rational(1u128, 1u128),
 	)
 	.await;
 	set_exchange_rate_and_wait(
