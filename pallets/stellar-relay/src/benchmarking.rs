@@ -34,7 +34,7 @@ benchmarks! {
 		};
 
 		let organizations = vec![organization; 255];
-	}: update_tier_1_validator_set(RawOrigin::Root, validators.clone(), organizations.clone())
+	}: update_tier_1_validator_set(RawOrigin::Root, validators.clone(), organizations.clone(),0)
 	verify {
 		assert_eq!(Organizations::<T>::get(), BoundedVec::<OrganizationOf<T>, T::OrganizationLimit>::try_from(organizations).unwrap());
 		assert_eq!(Validators::<T>::get(), BoundedVec::<ValidatorOf<T>, T::ValidatorLimit>::try_from(validators).unwrap());
