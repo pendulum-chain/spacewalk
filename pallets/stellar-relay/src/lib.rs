@@ -414,7 +414,8 @@ pub mod pallet {
 		/// OldValidators and OldOrganizations respectively, and the function arguments are stored
 		/// as new/current values. The `enactment_block_height` parameter is used by the
 		/// `validate_stellar_transaction` function to determine if it should use the 'old' or
-		/// updated sets for validation.
+		/// updated sets for validation. This makes a seamless transition between old and new
+		/// validators possible.
 		///
 		/// It can only be called by the root origin.
 		#[pallet::weight(<T as Config>::WeightInfo::update_tier_1_validator_set())]
