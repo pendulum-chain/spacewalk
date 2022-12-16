@@ -335,6 +335,7 @@ fn validate_stellar_transaction_fails_without_validators() {
 			RuntimeOrigin::root(),
 			vec![],
 			organizations,
+			0
 		));
 
 		let (tx_envelope, tx_set, scp_envelopes) = create_valid_dummy_scp_envelopes(
@@ -352,6 +353,7 @@ fn validate_stellar_transaction_fails_without_validators() {
 			RuntimeOrigin::root(),
 			validators,
 			vec![],
+			0
 		));
 		let result =
 			SpacewalkRelay::validate_stellar_transaction(&tx_envelope, &scp_envelopes, &tx_set);
@@ -407,7 +409,7 @@ fn validate_stellar_transaction_works_with_all_validators() {
 fn update_tier_1_validator_set_fails_for_non_root_origin() {
 	run_test(|_, _, _| {
 		assert_noop!(
-			SpacewalkRelay::update_tier_1_validator_set(RuntimeOrigin::signed(1), vec![], vec![]),
+			SpacewalkRelay::update_tier_1_validator_set(RuntimeOrigin::signed(1), vec![], vec![], 0),
 			BadOrigin
 		);
 	});
@@ -428,6 +430,7 @@ fn update_tier_1_validator_set_works() {
 			RuntimeOrigin::root(),
 			validator_set.clone(),
 			organization_set.clone(),
+			0
 		));
 
 		let validator_bounded_vec =
@@ -459,6 +462,7 @@ fn update_tier_1_validator_set_works() {
 			RuntimeOrigin::root(),
 			new_validator_set.clone(),
 			new_organization_set.clone(),
+			0
 		));
 		let validator_bounded_vec =
 			BoundedVec::<ValidatorOf<Test>, ValidatorLimit>::try_from(new_validator_set.clone())
@@ -490,6 +494,7 @@ fn update_tier_1_validator_set_fails_when_set_too_large() {
 				RuntimeOrigin::root(),
 				validator_set,
 				organization_set,
+				0
 			),
 			Error::<Test>::ValidatorLimitExceeded
 		);
@@ -502,6 +507,7 @@ fn update_tier_1_validator_set_fails_when_set_too_large() {
 				RuntimeOrigin::root(),
 				validator_set,
 				organization_set,
+				0
 			),
 			Error::<Test>::OrganizationLimitExceeded
 		);
