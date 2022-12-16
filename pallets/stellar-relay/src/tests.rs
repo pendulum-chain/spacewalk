@@ -537,3 +537,75 @@ fn verify_signature_works_for_mock_message() {
 
 	assert!(is_valid)
 }
+
+#[test]
+fn update_tier_1_validator_store_old_organization_and_validator_and_block_height_works() {
+	run_test(|_, _, _| {
+		let organization = Organization { id: 0, name: Default::default() };
+		let validator = Validator {
+			name: Default::default(),
+			public_key: Default::default(),
+			organization_id: organization.id,
+		};
+		let validator_set = vec![validator; 3];
+		let organization_set = vec![organization; 3];
+		let block_height = 11;
+		assert_ok!(SpacewalkRelay::update_tier_1_validator_set(
+			RuntimeOrigin::root(),
+			validator_set.clone(),
+			organization_set.clone(),
+			0
+		));
+
+		let validator_bounded_vec =
+			BoundedVec::<ValidatorOf<Test>, ValidatorLimit>::try_from(validator_set.clone())
+				.unwrap();
+		let organization_bounded_vec =
+			BoundedVec::<OrganizationOf<Test>, OrganizationLimit>::try_from(
+				organization_set.clone(),
+			)
+			.unwrap();
+		assert_eq!(SpacewalkRelay::validators(), validator_bounded_vec);
+		assert_eq!(SpacewalkRelay::organizations(), organization_bounded_vec);
+		let validator_bounded_vec_old = validator_bounded_vec;
+		let organization_bounded_vec_old = organization_bounded_vec;
+
+
+		// Update the validator set
+		let organization = Organization { id: 1, name: Default::default() };
+		let validator = Validator {
+			name: Default::default(),
+			public_key: Default::default(),
+			organization_id: organization.id,
+		};
+		let new_validator_set = vec![validator; 2];
+		let new_organization_set = vec![organization; 2];
+		// let new_validator_set: Vec<ValidatorOf<Test>> = vec![validator; 2];
+		// let new_organization_set: Vec<OrganizationOf<Test>> = vec![organization; 2];
+		assert_ne!(validator_set, new_validator_set);
+		assert_ne!(organization_set, new_organization_set);
+
+		assert_ok!(SpacewalkRelay::update_tier_1_validator_set(
+			RuntimeOrigin::root(),
+			new_validator_set.clone(),
+			new_organization_set.clone(),
+			block_height
+		));
+		let validator_bounded_vec =
+			BoundedVec::<ValidatorOf<Test>, ValidatorLimit>::try_from(new_validator_set.clone())
+				.unwrap();
+		let organization_bounded_vec =
+			BoundedVec::<OrganizationOf<Test>, OrganizationLimit>::try_from(
+				new_organization_set.clone(),
+			)
+			.unwrap();
+		assert_eq!(SpacewalkRelay::validators(), validator_bounded_vec);
+		assert_eq!(SpacewalkRelay::organizations(), organization_bounded_vec);
+
+		assert_eq!(SpacewalkRelay::validators_old(), validator_bounded_vec_old);
+		assert_eq!(SpacewalkRelay::organizations_old(), organization_bounded_vec_old);
+
+		assert_eq!(SpacewalkRelay::block_height(), block_height);
+
+	});
+}
