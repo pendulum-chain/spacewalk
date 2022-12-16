@@ -8,7 +8,7 @@ use stellar_relay_lib::{
 	},
 	ConnConfig,
 };
-use vault::oracle::{create_handler, prepare_directories, Proof, ProofExt, ProofStatus};
+use vault::oracle::{prepare_directories, OracleAgent, Proof, ProofExt, ProofStatus};
 
 pub const SAMPLE_VAULT_ADDRESSES_FILTER: &[&str] =
 	&["GAP4SFKVFVKENJ7B7VORAYKPB3CJIAJ2LMKDJ22ZFHIAIVYQOR6W3CXF"];
@@ -49,7 +49,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 	// let vault_addresses_filter =
 	// 	vec!["GAP4SFKVFVKENJ7B7VORAYKPB3CJIAJ2LMKDJ22ZFHIAIVYQOR6W3CXF".to_string()];
 
-	let handler = create_handler(node_info, cfg, public_network).await?;
+	let mut handler = OracleAgent::new(true).expect("should return agent");
+
+	handler.start().await?;
 
 	// this is to test out that
 	// 1. "retrieving envelopes from Archives" works; ✓
@@ -57,88 +59,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 	// 3. todo: "retrieving transaction set" works;
 	// 4.
 
-	let mut counter = 0;
+	tokio::time::sleep(Duration::from_secs(3)).await;
+	let slot = 44041116;
 
-	// whether we go 10 steps back, or 100.
-	let mut ten_or_hundred = 100;
-	let mut get_from_random = true;
+	let res = handler.get_proof(slot).await;
+	println!("result: {:?}", res);
 
-	loop {
-		counter += 1;
-		tokio::time::sleep(Duration::from_secs(3)).await;
-		// let's try to send a message?
-		let last_slot = handler.get_last_slot_index().await?;
-		tracing::info!("counter: {:?}  slot: {:?}", counter, last_slot);
-
-		// for every multiples of 10,let's get all the pending proofs.
-		if counter % 10 == 0 {
-			match handler.proof_operations().get_pending_proofs().await {
-				Ok(proofs) => {
-					tracing::info!("proofs size: {:?}", proofs.len());
-					for proof in proofs.iter() {
-						tracing::info!(
-							"found proof for {:?}, with {} envelopes and {} txes",
-							proof.slot(),
-							proof.envelopes().len(),
-							proof.tx_set().txes.len()
-						);
-					}
-				},
-				Err(e) => {
-					tracing::warn!("ERROR! {:?}", e);
-				},
-			}
-		// for every multiples of 6, let's watch out for a slot.
-		} else if counter % 6 == 0 {
-			// let's watch out for a slot that is 5 steps away from the current one.
-			// this needs to be updated.
-			// handler.watch_slot(last_slot + 5).await?;
-
-			// for every multiples of 4, let's try to get proof of an old slot.
-		} else if counter % 4 == 0 {
-			let check_slot = if get_from_random {
-				// let's get a proof of a slot 10 or 100 steps away from the current one.
-				let last_slot = last_slot - ten_or_hundred;
-				// this helps with alternating between fetching from stellar node and from Archive..
-				if ten_or_hundred == 10 {
-					ten_or_hundred = 100;
-				} else {
-					ten_or_hundred = 10;
-				}
-
-				get_from_random = false;
-				last_slot
-			} else {
-				get_from_random = true;
-				let watch_list = handler.get_slot_watchlist().await?;
-
-				*watch_list.first().unwrap_or(&last_slot)
-			};
-
-			match handler.proof_operations().get_proof(check_slot).await? {
-				ProofStatus::Proof(p) => {
-					tracing::info!(
-						"found proof for {}, env len: {}",
-						check_slot,
-						p.envelopes().len()
-					);
-					// todo: once we figure out how to get the txset for old slots, reactivate this
-					//old_slot = 0;
-				},
-				ProofStatus::NoTxSetFound => {
-					tracing::info!(
-						"skipping slot {:?}, since it's impossible to retrieve it. YET.",
-						check_slot
-					);
-				},
-				ProofStatus::WaitForTxSet => {},
-
-				other => {
-					tracing::info!("no proof yet for {}: {:?}", check_slot, other);
-				},
-			}
-			let res = handler.get_size().await?;
-			tracing::info!("  --> envelopes size: {}", res);
-		}
-	}
+	Ok(())
 }

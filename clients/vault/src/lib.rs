@@ -1,6 +1,7 @@
 #![recursion_limit = "256"]
 
-use std::time::Duration;
+use std::{sync::Arc, time::Duration};
+use tokio::sync::RwLock;
 
 pub use system::{VaultIdManager, VaultService, VaultServiceConfig, ABOUT, AUTHORS, NAME, VERSION};
 
@@ -15,6 +16,8 @@ mod system;
 
 mod issue;
 pub mod oracle;
+
+type ArcRwLock<T> = Arc<RwLock<T>>;
 
 pub mod service {
 	pub use wallet::listen_for_new_transactions;

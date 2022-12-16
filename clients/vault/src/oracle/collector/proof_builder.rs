@@ -1,6 +1,7 @@
 use std::{convert::TryInto, sync::Arc};
 
 use parking_lot::RwLock;
+use tokio::sync::{mpsc, mpsc::error::SendError};
 
 use stellar_relay_lib::{
 	sdk::{
@@ -70,74 +71,57 @@ impl Proof {
 	}
 }
 
-// for fetching missing info to generate the proof
+// handle missing envelopes
 impl ScpMessageCollector {
-	/// Fetch envelopes that are missing in the collector's map.
-	///
-	/// # Arguments
-	///
-	/// * `neg_proof_status` - the ProofStatus that will determine what method to use to fetch the
-	///   missing envelopes.
-	/// * `slot` - the slot where the missng envelopes belong to.
-	/// * `overlay_conn` - the overlay connection that connects to the Stellar Node
-	async fn fetch_missing_envelopes(
-		&mut self,
-		neg_proof_status: &ProofStatus,
-		slot: Slot,
-		overlay_conn: &StellarOverlayConnection,
-	) {
-		match neg_proof_status {
-			// let's fetch from Stellar Node again
-			ProofStatus::LackingEnvelopes => {
-				// for this slot to be processed, we must put this in our watch list.
-				self.watch_slot(slot);
-				let _ =
-					overlay_conn.send(StellarMessage::GetScpState(slot.try_into().unwrap())).await;
-				tracing::info!("requesting to StellarNode for messages of slot {}...", slot);
-			},
-			// let's get envelopes from horizon
-			ProofStatus::NoEnvelopesFound => {
-				if !self.is_public() {
-					// We can only fetch from archives if we are on public network because there are
-					// no archive nodes on testnet
-					tracing::info!("Not fetching missing envelopes from archive for slot {:?}, because on testnet", slot);
-					return
-				}
+	async fn fetch_missing_envelopes(&mut self, slot: Slot, sender: &mpsc::Sender<StellarMessage>) {
+		let last_slot_index = *self.last_slot_index();
 
-				self.watch_slot(slot);
-				tracing::info!("requesting to Horizon Archive for messages of slot {}...", slot);
-
-				let envelopes_map_lock = self.envelopes_map_clone();
-				tokio::spawn(get_envelopes_from_horizon_archive(envelopes_map_lock, slot));
-			},
-			_ => {},
+		// If the current slot is still in the range of 'remembered' slots
+		if check_slot_position(last_slot_index, slot) {
+			self.ask_node_for_envelopes(slot, sender).await;
+		} else {
+			self.ask_archive_for_envelopes(slot).await;
 		}
 	}
 
+	async fn ask_node_for_envelopes(&mut self, slot: Slot, sender: &mpsc::Sender<StellarMessage>) {
+		// for this slot to be processed, we must put this in our watch list.
+		self.watch_slot(slot);
+		let _ = sender.send(StellarMessage::GetScpState(slot.try_into().unwrap())).await;
+		tracing::info!("requesting to StellarNode for messages of slot {}...", slot);
+	}
+
+	async fn ask_archive_for_envelopes(&mut self, slot: Slot) {
+		if !self.is_public() {
+			// We can only fetch from archives if we are on public network because there are
+			// no archive nodes on testnet
+			tracing::info!(
+				"Not fetching missing envelopes from archive for slot {:?}, because on testnet",
+				slot
+			);
+			return
+		}
+
+		self.watch_slot(slot);
+		tracing::info!("requesting to Horizon Archive for messages of slot {}...", slot);
+
+		let envelopes_map_lock = self.envelopes_map_clone();
+		tokio::spawn(get_envelopes_from_horizon_archive(envelopes_map_lock, slot));
+	}
+}
+
+// for fetching missing txset
+impl ScpMessageCollector {
 	/// Fetch txset that are missing in the collector's map.
-	async fn fetch_missing_txset(
-		&mut self,
-		neg_proof_status: &ProofStatus,
-		slot: Slot,
-		overlay_conn: &StellarOverlayConnection,
-	) {
-		// if status is "waiting", fetch the txset again from StellarNode
-		match neg_proof_status {
-			ProofStatus::WaitForTxSet | ProofStatus::NoTxSetFound => {
-				// we need the txset hash to create the message.
-				if let Some(txset_hash) = self.get_txset_hash(&slot) {
-					tracing::info!(
-						"requesting txset for slot {}: {:?}",
-						slot,
-						String::from_utf8(txset_hash.to_vec())
-					);
-					let _ = overlay_conn.send(StellarMessage::GetTxSet(txset_hash)).await;
-				}
-			},
-			// ProofStatus::NoTxSetFound => {
-			//todo: retrieve from TransactionHistoryEntry: https://github.com/pendulum-chain/spacewalk/pull/137
-			// },
-			_ => {},
+	async fn fetch_missing_txset(&mut self, slot: Slot, sender: &mpsc::Sender<StellarMessage>) {
+		// we need the txset hash to create the message.
+		if let Some(txset_hash) = self.get_txset_hash(&slot) {
+			tracing::info!(
+				"requesting txset for slot {}: {:?}",
+				slot,
+				String::from_utf8(txset_hash.to_vec())
+			);
+			let _ = sender.send(StellarMessage::GetTxSet(txset_hash)).await;
 		}
 	}
 }
@@ -146,34 +130,49 @@ impl ScpMessageCollector {
 // this means it will access the maps and potentially the files.
 impl ScpMessageCollector {
 	/// Returns either a list of ScpEnvelopes or a ProofStatus saying it failed to retrieve a list.
-	fn get_envelopes(&self, slot: Slot) -> Result<UnlimitedVarArray<ScpEnvelope>, ProofStatus> {
-		match self.envelopes_map().get_with_key(&slot) {
-			// if no record is found, then send a proper error based on the last slot index.
-			None => Err(return_proper_envelopes_error(*self.last_slot_index(), slot)),
-			Some(envelopes) => {
-				// lacking envelopes
-				if envelopes.len() < get_min_externalized_messages(self.is_public()) {
-					return Err(return_proper_envelopes_error(*self.last_slot_index(), slot))
-				}
+	async fn get_envelopes(
+		&mut self,
+		slot: Slot,
+		sender: &mpsc::Sender<StellarMessage>,
+	) -> UnlimitedVarArray<ScpEnvelope> {
+		let empty = UnlimitedVarArray::new_empty();
 
-				Ok(UnlimitedVarArray::new(envelopes.clone())
-					.unwrap_or(UnlimitedVarArray::new_empty()))
-			},
+		if let Some(envelopes) = self.envelopes_map().get_with_key(&slot) {
+			// lacking envelopes
+			if envelopes.len() < get_min_externalized_messages(self.is_public()) {
+				tracing::warn!("not enough envelopes to build proof for slot {}", slot);
+			} else {
+				return UnlimitedVarArray::new(envelopes.clone()).unwrap_or(empty)
+			}
 		}
+
+		self.fetch_missing_envelopes(slot, sender).await;
+
+		empty
 	}
 
 	/// Returns either a TransactionSet or a ProofStatus saying it failed to retrieve the set.
-	fn get_txset(&self, slot: Slot) -> Result<TransactionSet, ProofStatus> {
-		match self.txset_map().get_with_key(&slot).map(|set| set.clone()) {
+	async fn get_txset(
+		&mut self,
+		slot: Slot,
+		sender: &mpsc::Sender<StellarMessage>,
+	) -> Option<TransactionSet> {
+		let txset_map = self.txset_map().clone();
+		let txset_map = txset_map.get_with_key(&slot).cloned();
+
+		match txset_map {
 			None => {
 				// If the current slot is still in the range of 'remembered' slots
 				if check_slot_position(*self.last_slot_index(), slot) {
-					return Err(ProofStatus::WaitForTxSet)
+					tracing::info!("Wait for TxSet of slot {}", slot);
+				} else {
+					tracing::warn!("No TxSet found for slot {}", slot);
 				}
-				// Use Horizon Archive node to get TransactionHistoryEntry
-				Err(ProofStatus::NoTxSetFound)
+
+				self.fetch_missing_txset(slot, sender).await;
+				None
 			},
-			Some(res) => Ok(res),
+			Some(res) => Some(res),
 		}
 	}
 
@@ -186,46 +185,17 @@ impl ScpMessageCollector {
 	pub async fn build_proof(
 		&mut self,
 		slot: Slot,
-		overlay_conn: &StellarOverlayConnection,
-	) -> Result<Proof, Error> {
-		// get the SCPEnvelopes
-		let mut envelopes: Option<UnlimitedVarArray<ScpEnvelope>> = None;
-		while envelopes.is_none() {
-			match self.get_envelopes(slot) {
-				Ok(envlps) => envelopes = Some(envlps),
-				Err(neg_status) => {
-					self.fetch_missing_envelopes(&neg_status, slot, overlay_conn).await;
-				},
-			};
+		sender: &mpsc::Sender<StellarMessage>,
+	) -> Option<Proof> {
+		let envelopes = self.get_envelopes(slot, sender).await;
+		if envelopes.len() == 0 {
+			return None
 		}
 
-		let mut tx_set: Option<TransactionSet> = None;
-		while tx_set.is_none() {
-			match self.get_txset(slot) {
-				Ok(txset) => tx_set = Some(txset),
-				Err(neg_status) => {
-					self.fetch_missing_txset(&neg_status, slot, overlay_conn).await;
-				},
-			}
-		}
-		let envelopes = envelopes.expect("envelopes should be Some");
-		let tx_set = tx_set.expect("tx_set should be Some");
+		let tx_set = self.get_txset(slot, sender).await?;
 
-		// TODO maybe join the two loops above into one to improve performance
-		// but more nice-to-have than necessary
-
-		let proof = Proof { slot, envelopes, tx_set };
-		Ok(proof)
+		Some(Proof { slot, envelopes, tx_set })
 	}
-}
-
-fn return_proper_envelopes_error(last_slot_index: Slot, slot: Slot) -> ProofStatus {
-	// If the current slot is still in the range of 'remembered' slots
-	if check_slot_position(last_slot_index, slot) {
-		return ProofStatus::LackingEnvelopes
-	}
-	// Use Horizon Archive node to get ScpHistoryEntry
-	ProofStatus::NoEnvelopesFound
 }
 
 /// Fetching old SCPMessages is only possible if it's not too far back.
@@ -285,9 +255,7 @@ pub trait ProofExt: Send + Sync {
 
 #[cfg(test)]
 mod test {
-	use crate::oracle::collector::proof_builder::{
-		check_slot_position, return_proper_envelopes_error,
-	};
+	use crate::oracle::collector::proof_builder::check_slot_position;
 
 	#[test]
 	fn test_check_slot_position() {

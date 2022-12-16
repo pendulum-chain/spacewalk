@@ -36,9 +36,10 @@ pub fn get_min_externalized_messages(public_network: bool) -> usize {
 pub const OVERLAY_VERSION_PUBNET: u32 = 26;
 pub const MIN_OVERLAY_VERSION_PUBNET: u32 = 23;
 pub const LEDGER_VERSION_PUBNET: u32 = 19;
-pub const VERSION_STRING_PUBNET: &str = "stellar-core 19.6.0 (b3a6bc28116e80bff7889c2f3bcd7c30dd1ac4d6)";
+pub const VERSION_STRING_PUBNET: &str =
+	"stellar-core 19.6.0 (b3a6bc28116e80bff7889c2f3bcd7c30dd1ac4d6)";
 // For SatoshiPay (DE, Frankfurt)
-pub const TIER_1_NODE_IP_PUBNET: &str = "141.95.47.112";
+pub const TIER_1_NODE_IP_PUBNET: &str = "15.235.11.99";
 pub const TIER_1_NODE_PORT_PUBNET: u32 = 11625;
 
 pub const OVERLAY_VERSION_TESTNET: u32 = 26;

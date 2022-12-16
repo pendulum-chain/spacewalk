@@ -7,6 +7,7 @@ use stellar_relay_lib::{
 	sdk::types::{ScpEnvelope, ScpStatementPledges, StellarMessage, TransactionSet},
 	StellarOverlayConnection,
 };
+use tokio::sync::mpsc;
 
 // Handling SCPEnvelopes
 impl ScpMessageCollector {
@@ -19,7 +20,7 @@ impl ScpMessageCollector {
 	pub(crate) async fn handle_envelope(
 		&mut self,
 		env: ScpEnvelope,
-		overlay_conn: &StellarOverlayConnection,
+		message_sender: &mpsc::Sender<StellarMessage>,
 	) -> Result<(), Error> {
 		let slot = env.statement.slot_index;
 
@@ -41,7 +42,7 @@ impl ScpMessageCollector {
 			if self.is_txset_new(&txset_hash, &slot) {
 				// if it doesn't exist, let's request from the Stellar Node.
 				tracing::debug!("requesting TxSet for slot {}...", slot);
-				overlay_conn.send(StellarMessage::GetTxSet(txset_hash)).await?;
+				message_sender.send(StellarMessage::GetTxSet(txset_hash)).await?;
 
 				// let's save this for creating the proof later on.
 				self.save_txset_hash_and_slot(txset_hash, slot);

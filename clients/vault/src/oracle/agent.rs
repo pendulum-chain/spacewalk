@@ -1,15 +1,18 @@
-use std::fmt::{Debug, Display, Formatter};
-use std::sync::Arc;
-use std::time::Duration;
+use std::{
+	fmt::{Debug, Display, Formatter},
+	sync::Arc,
+	thread::sleep,
+	time::Duration,
+};
 
 use async_trait::async_trait;
 use rand::RngCore;
 use tokio::{
-	sync::{mpsc, oneshot},
+	sync::{mpsc, oneshot, RwLock, RwLockReadGuard},
 	time::timeout,
 };
-use tokio::sync::RwLock;
 
+use crate::ArcRwLock;
 use runtime::ShutdownSender;
 use stellar_relay_lib::{
 	node::NodeInfo,
@@ -26,85 +29,50 @@ use crate::oracle::{
 	Proof, ProofStatus,
 };
 
-
 pub struct OracleAgent {
-	actor_action_sender: Option<mpsc::Sender<OracleMessage>>,
-	collector: ScpMessageCollector,
-	overlay_conn: Option<StellarOverlayConnection>,
+	collector: ArcRwLock<ScpMessageCollector>,
 	pub is_public_network: bool,
+	message_sender: Option<mpsc::Sender<StellarMessage>>,
 	shutdown_sender: ShutdownSender,
 }
 
-/// A message used to communicate with the agent
-pub enum OracleMessage {
-	GetProof { slot: Slot, sender: oneshot::Sender<Proof> },
-	GetLastSlotIndex { sender: oneshot::Sender<Slot> },
-	RemoveData { slot: Slot },
-}
-
-/// Handles oracle messages
-///
-/// # Arguments
-/// * `message` - the oracle message
-/// * `overlay_conn` - the connection to communicate with Stellar Node
-/// * `collector` - where it collects messages and transactionsets
-async fn handle_message(message:OracleMessage, overlay_conn:&StellarOverlayConnection, collector:&mut ScpMessageCollector ) -> Result<(),Error> {
-	match message {
-		OracleMessage::GetProof { slot, sender } => {
-			let proof = collector.build_proof(slot,overlay_conn).await?;
-			let _ = sender.send(proof);
-		}
-		OracleMessage::GetLastSlotIndex { sender } => {
-			let last_slot_idx = collector.last_slot_index();
-			if let Err(slot) = sender.send(*last_slot_idx) {
-				tracing::warn!("failed to send back the slot number: {}", slot);
-			}
-		}
-		OracleMessage::RemoveData { slot } => {
-			collector.remove_data(&slot);
-		}
-	}
-
-	Ok(())
-}
-
 /// listens to data to collect the scp messages and txsets.
-async fn handle_stellar_relay_message(message: StellarRelayMessage, overlay_conn:&StellarOverlayConnection, collector:&mut ScpMessageCollector) -> Result<(),Error> {
+async fn handle_message(
+	message: StellarRelayMessage,
+	collector: ArcRwLock<ScpMessageCollector>,
+	message_sender: &mpsc::Sender<StellarMessage>,
+) -> Result<(), Error> {
 	match message {
 		StellarRelayMessage::Data { p_id, msg_type, msg } => match msg {
 			StellarMessage::ScpMessage(env) => {
-				collector.handle_envelope(env, &overlay_conn).await?;
+				let mut collector_w = collector.write().await;
+				collector_w.handle_envelope(env, message_sender).await?;
+				drop(collector_w);
 			},
 			StellarMessage::TxSet(set) => {
-				collector.handle_tx_set(set);
+				let mut collector_w = collector.write().await;
+				collector_w.handle_tx_set(set);
+				drop(collector_w);
 			},
 			_ => {},
 		},
 		// todo
-		StellarRelayMessage::Connect { pub_key, node_info } => {}
+		StellarRelayMessage::Connect { pub_key, node_info } => {},
 		// todo
-		StellarRelayMessage::Error(_) => {}
+		StellarRelayMessage::Error(_) => {},
 		// todo
-		StellarRelayMessage::Timeout => {}
+		StellarRelayMessage::Timeout => {},
 	}
 
 	Ok(())
 }
 
 impl OracleAgent {
-	pub(crate) fn new(is_public_network: bool) -> Result<Self,Error> {
-		let collector = ScpMessageCollector::new(is_public_network);
+	pub fn new(is_public_network: bool) -> Result<Self, Error> {
+		let collector = Arc::new(RwLock::new(ScpMessageCollector::new(is_public_network)));
 		let shutdown_sender = ShutdownSender::default();
 		prepare_directories()?;
-		Ok(
-			Self {
-				actor_action_sender: None,
-				collector,
-				is_public_network,
-				shutdown_sender,
-				overlay_conn: None,
-			}
-		)
+		Ok(Self { collector, is_public_network, message_sender: None, shutdown_sender })
 	}
 
 	fn get_default_overlay_conn_config(&self) -> (NodeInfo, ConnConfig) {
@@ -156,61 +124,72 @@ impl OracleAgent {
 		}
 	}
 
-	/// runs the stellar-relay and listens to data to collect the scp messages and txsets.
-	async fn run(&mut self) -> Result<(), Error> {
-		if self.overlay_conn.is_none() {
-			return Ok(())
-		}
-		let overlay_conn = self.overlay_conn.as_mut().expect("overlay_conn cannot be None");
-
-		let (sender, mut receiver) = mpsc::channel(1024);
-		self.actor_action_sender = Some(sender);
-
-		println!("PLEASE SELF SENDER: {}", self.actor_action_sender.is_some());
-
-		// Either handle a message from the overlay network or from the 'user' that
-		// sends an actor-message we should act upon
-		loop {
-			tokio::select! {
-				Some(msg) = overlay_conn.listen() => {
-					handle_stellar_relay_message(msg,overlay_conn,&mut self.collector).await?;
-				},
-				Some(msg) = receiver.recv() => {
-					handle_message(msg,overlay_conn,&mut self.collector).await?;
-				}
-			}
-		}
-	}
-
 	/// This method returns the proof for a given slot or an error if the proof cannot be provided.
 	/// The agent will try every possible way to get the proof before returning an error.
-	pub async fn get_proof(&self, slot: Slot) -> Result<Proof, Error> {
-		let actor_sender = self.actor_action_sender.as_ref().ok_or(Error::SenderUninitialized)?;
+	/// Set timeout to 60 seconds; 10 seconds interval.
+	pub async fn get_proof(&mut self, slot: Slot) -> Result<Proof, Error> {
+		let mut num_of_retries = 0;
 
-		tracing::info!("Getting proof for slot {}", slot);
-		let (sender, receiver) = oneshot::channel();
+		let sender = self
+			.message_sender
+			.as_ref()
+			.ok_or(Error::Uninitialized("MessageSender".to_string()))?;
 
-		actor_sender.send(OracleMessage::GetProof { slot, sender}).await?;
+		while num_of_retries < 6 {
+			println!("retry attempt #{}", num_of_retries);
+			match self.collector.write().await.build_proof(slot, sender).await {
+				None => {
+					num_of_retries += 1;
+					sleep(Duration::from_secs(10));
+				},
+				Some(proof) => return Ok(proof),
+			}
+		}
 
-		let future = async {
-			let proof = receiver.await?;
-			Ok(proof)
-		};
+		Err(Error::ProofTimeout("Proof not found after 6 attempts.".to_string()))
+	}
 
-		timeout(Duration::from_secs(10), future)
-			.await
-			.map_err(|_| Error::ProofTimeout("Getting the proof timed out.".to_string()))
-			.and_then(|res| res )
+	pub async fn get_last_slot_index(&self) -> Slot {
+		let collector = self.collector.read().await;
+		let last_slot_idx = collector.last_slot_index();
+
+		*last_slot_idx
+	}
+
+	pub async fn remove_data(&mut self, slot: &Slot) {
+		self.collector.write().await.remove_data(slot);
 	}
 
 	/// Starts listening for new SCP messages and stores them in the collector.
 	pub async fn start(&mut self) -> Result<(), Error> {
 		tracing::info!("Starting agent");
 		let (node_info, conn_config) = self.get_default_overlay_conn_config();
-		let overlay_conn = StellarOverlayConnection::connect(node_info, conn_config).await?;
-		self.overlay_conn = Some(overlay_conn);
+		let mut overlay_conn = StellarOverlayConnection::connect(node_info, conn_config).await?;
 
-		self.run().await?;
+		let (sender, mut receiver) = mpsc::channel(34);
+		self.message_sender = Some(sender.clone());
+
+		let collector = self.collector.clone();
+
+		// handle a message from the overlay network
+		service::spawn_cancelable(self.shutdown_sender.subscribe(), async move {
+			loop {
+				tokio::select! {
+					// runs the stellar-relay and listens to data to collect the scp messages and txsets.
+
+					Some(msg) = overlay_conn.listen() => {
+						handle_message(msg,collector.clone(),&sender).await?;
+					},
+
+					Some(msg) = receiver.recv() => {
+						sender.clone().send(msg).await?;
+
+					}
+				}
+			}
+			Ok::<(), Error>(())
+		});
+
 		Ok(())
 	}
 
@@ -238,28 +217,30 @@ mod tests {
 		let mut agent = OracleAgent::new(true).unwrap();
 		agent.start().await.expect("Failed to start agent");
 
-		// TODO get the current slot from the network
-		let target_slot = 573112;
-		let proof = agent.get_proof(target_slot).await.unwrap();
+		tokio::time::sleep(Duration::from_secs(3)).await;
+		let slot = 44041116;
 
-		assert_eq!(proof.slot(), 1);
-		agent.stop().await.expect("Failed to stop the agent");
+		match agent.get_proof(slot).await {
+			Ok(proof) => {
+				println!("proof: {:?}", proof);
+				assert!(true)
+			},
+			Err(e) => assert!(false),
+		}
 	}
 
-	#[tokio::test]
-	async fn test_get_proof_for_archived_slot() {
-		prepare_directories().expect("Failed to prepare directories.");
-
-		let mut agent = OracleAgent::new(true).expect("should return an agent");
-		agent.start().await.expect("Failed to start agent");
-
-		println!("hohohohoh:");
-		// This slot should be archived on the public network
-		let target_slot = 573112;
-		let proof = agent.get_proof(target_slot).await.unwrap();
-
-		println!("wahoo");
-		assert_eq!(proof.slot(), 1);
-		agent.stop().await.expect("Failed to stop the agent");
-	}
+	// #[tokio::test]
+	// async fn test_get_proof_for_archived_slot() {
+	// 	prepare_directories().expect("Failed to prepare directories.");
+	//
+	// 	let mut agent = OracleAgent::new(true).expect("should return an agent");
+	// 	agent.start().await.expect("Failed to start agent");
+	//
+	// 	// This slot should be archived on the public network
+	// 	let target_slot = 573112;
+	// 	let proof = agent.get_proof(target_slot).await.unwrap();
+	//
+	// 	assert_eq!(proof.slot(), 1);
+	// 	agent.stop().await.expect("Failed to stop the agent");
+	// }
 }

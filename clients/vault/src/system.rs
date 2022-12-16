@@ -429,8 +429,7 @@ impl VaultService {
 			Arc::new(RwLock::new(HashMap::new()));
 
 		let handler =
-			create_agent(secret_key.clone(), self.stellar_wallet.is_public_network())
-				.await?;
+			create_agent(secret_key.clone(), self.stellar_wallet.is_public_network()).await?;
 
 		//let watcher = Arc::new(RwLock::new(handler.create_watcher()));
 		//let proof_ops = Arc::new(RwLock::new(handler.proof_operations()));
