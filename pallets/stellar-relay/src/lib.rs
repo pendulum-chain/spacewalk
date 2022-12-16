@@ -395,7 +395,7 @@ pub mod pallet {
 			// Limit this call to root
 			let _ = ensure_root(origin)?;
 
-			Self::_update_tier_1_validator_set(validators, organizations)
+			Self::_update_tier_1_validator_set(validators, organizations, enactment_block_height)
 		}
 	}
 
