@@ -10266,6 +10266,7 @@ dependencies = [
  "jsonrpc-core-client",
  "lazy_static",
  "mockall 0.8.3",
+ "nonzero_ext",
  "parity-scale-codec",
  "parking_lot 0.12.1",
  "rand 0.8.5",
@@ -10383,6 +10384,7 @@ name = "wallet"
 version = "1.0.0"
 dependencies = [
  "async-trait",
+ "base64",
  "mockall 0.8.3",
  "parity-scale-codec",
  "reqwest",

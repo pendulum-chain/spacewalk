@@ -15,11 +15,12 @@ use tokio::{sync::RwLock, time::sleep};
 use primitives::{issue::IssueRequest, H256};
 use runtime::{
 	integration::*, types::*, CurrencyId::Token, Error, FixedPointNumber, FixedU128, IssuePallet,
-	SpacewalkParachain, SudoPallet, UtilFuncs, VaultRegistryPallet,
+	RedeemPallet, ReplacePallet, ShutdownSender, SpacewalkParachain, SudoPallet, UtilFuncs,
+	VaultRegistryPallet,
 };
 use stellar_relay_lib::sdk::{Hash, PublicKey, SecretKey, XdrCodec};
 use vault::{
-	oracle::{create_handler, Proof, ProofExt, ProofStatus},
+	oracle::{create_handler, types::Slot, OracleProofOps, Proof, ProofExt, ProofStatus},
 	service::IssueFilter,
 	Event as CancellationEvent, VaultIdManager,
 };
@@ -65,6 +66,81 @@ impl SpacewalkParachainExt for SpacewalkParachain {
 		self.register_vault(vault_id, collateral).await.unwrap();
 		Ok(())
 	}
+}
+
+async fn assert_execute_redeem_event(
+	duration: Duration,
+	parachain_rpc: SpacewalkParachain,
+	redeem_id: H256,
+) -> ExecuteRedeemEvent {
+	assert_event::<ExecuteRedeemEvent, _>(duration, parachain_rpc, |x| x.redeem_id == redeem_id)
+		.await
+}
+
+/// request, pay and execute an issue
+pub async fn assert_issue(
+	parachain_rpc: &SpacewalkParachain,
+	wallet: Arc<RwLock<StellarWallet>>,
+	vault_id: &VaultId,
+	amount: u128,
+	proof_ops: Arc<RwLock<OracleProofOps>>,
+) {
+	let issue = parachain_rpc.request_issue(amount, vault_id).await.unwrap();
+
+	let asset = primitives::AssetConversion::lookup(issue.asset).expect("Invalid asset");
+	let stroop_amount = amount as i64;
+	let memo_hash = issue.issue_id.0;
+
+	let mut wallet = wallet.write().await;
+	let destination_address = wallet.get_public_key();
+	let (response, tx_env) = wallet
+		.send_payment_to_address(destination_address, asset, stroop_amount, memo_hash, 300)
+		.await
+		.expect("Failed to send payment");
+
+	let slot = response.ledger as u64;
+
+	let ops_read = proof_ops.read().await;
+
+	// Loop pending proofs until it is ready
+	let mut proof: Option<Proof> = None;
+	with_timeout(
+		async {
+			loop {
+				let proof_status = ops_read.get_proof(slot).await.expect("Failed to get proof");
+
+				match proof_status {
+					ProofStatus::Proof(p) => {
+						proof = Some(p);
+						break
+					},
+					ProofStatus::LackingEnvelopes => {},
+					ProofStatus::NoEnvelopesFound => {},
+					ProofStatus::NoTxSetFound => {},
+					ProofStatus::WaitForTxSet => {},
+				}
+
+				// Wait a bit before trying again
+				sleep(Duration::from_secs(3)).await;
+			}
+		},
+		Duration::from_secs(60),
+	)
+	.await;
+
+	let proof = proof.expect("Proof should be available");
+	let tx_envelope_xdr_encoded = tx_env.to_base64_xdr();
+	let (envelopes_xdr_encoded, tx_set_xdr_encoded) = proof.encode();
+
+	parachain_rpc
+		.execute_issue(
+			issue.issue_id,
+			tx_envelope_xdr_encoded.as_slice(),
+			envelopes_xdr_encoded.as_bytes(),
+			tx_set_xdr_encoded.as_bytes(),
+		)
+		.await
+		.expect("Failed to execute issue");
 }
 
 async fn test_with<F, R>(execute: impl FnOnce(SubxtClient) -> F) -> R
@@ -130,7 +206,290 @@ where
 	execute(client, vault_id, vault_provider).await
 }
 
-/*
+#[tokio::test(flavor = "multi_thread")]
+#[serial]
+async fn test_redeem_succeeds() {
+	test_with_vault(|client, vault_id, vault_provider| async move {
+		let user_provider = setup_provider(client.clone(), AccountKeyring::Dave).await;
+
+		let is_public_network = false;
+		let wallet = StellarWallet::from_secret_encoded(
+			&STELLAR_VAULT_SECRET_KEY.to_string(),
+			is_public_network,
+		)
+		.unwrap();
+		let wallet_arc = Arc::new(RwLock::new(wallet));
+
+		let vault_ids = vec![vault_id.clone()];
+		let vault_id_manager =
+			VaultIdManager::from_map(vault_provider.clone(), wallet_arc.clone(), vault_ids);
+
+		let issue_amount = 100000;
+		let vault_collateral = get_required_vault_collateral_for_issue(
+			&vault_provider,
+			issue_amount,
+			vault_id.collateral_currency(),
+		)
+		.await;
+		tracing::error!("vault_collateral: {vault_collateral}");
+
+		let wallet = wallet_arc.read().await;
+		assert_ok!(
+			vault_provider
+				.register_vault_with_public_key(
+					&vault_id,
+					vault_collateral,
+					wallet.get_public_key_raw()
+				)
+				.await
+		);
+
+		let shutdown_tx = ShutdownSender::new();
+
+		// Setup scp handler for proofs
+		// TODO refactor once improved 'OracleAgent' is implemented
+		let handler = vault::inner_create_handler(wallet.get_secret_key(), is_public_network)
+			.await
+			.expect("Failed to create handler");
+		let proof_ops = Arc::new(RwLock::new(handler.proof_operations()));
+		drop(wallet);
+
+		assert_issue(
+			&user_provider,
+			wallet_arc.clone(),
+			&vault_id,
+			issue_amount,
+			proof_ops.clone(),
+		)
+		.await;
+
+		test_service(
+			vault::service::listen_for_redeem_requests(
+				shutdown_tx,
+				vault_provider.clone(),
+				vault_id_manager,
+				Duration::from_secs(0),
+				proof_ops,
+			),
+			async {
+				let wallet = wallet_arc.read().await;
+				let address = wallet.get_public_key_raw();
+				drop(wallet);
+				let redeem_id =
+					user_provider.request_redeem(10000, address, &vault_id).await.unwrap();
+				assert_execute_redeem_event(TIMEOUT, user_provider, redeem_id).await;
+			},
+		)
+		.await;
+	})
+	.await;
+}
+
+#[tokio::test(flavor = "multi_thread")]
+#[serial]
+async fn test_replace_succeeds() {
+	test_with_vault(|client, old_vault_id, old_vault_provider| async move {
+		let new_vault_provider = setup_provider(client.clone(), AccountKeyring::Eve).await;
+		// This conversion is necessary for now because subxt uses newer versions of the sp_xxx
+		// dependencies
+		let eve_account =
+			subxt::ext::sp_runtime::AccountId32::from(AccountKeyring::Eve.to_raw_public());
+		let new_vault_id =
+			VaultId::new(eve_account, DEFAULT_TESTING_CURRENCY, DEFAULT_WRAPPED_CURRENCY);
+		let user_provider = setup_provider(client.clone(), AccountKeyring::Dave).await;
+
+		let is_public_network = false;
+		let wallet = StellarWallet::from_secret_encoded(
+			&STELLAR_VAULT_SECRET_KEY.to_string(),
+			is_public_network,
+		)
+		.unwrap();
+		let wallet_arc = Arc::new(RwLock::new(wallet));
+
+		let vault_ids = vec![new_vault_id.clone()].into_iter().collect();
+		let _vault_id_manager =
+			VaultIdManager::from_map(new_vault_provider.clone(), wallet_arc.clone(), vault_ids);
+		let vault_ids = vec![old_vault_id.clone(), new_vault_id.clone()].into_iter().collect();
+		let vault_id_manager =
+			VaultIdManager::from_map(old_vault_provider.clone(), wallet_arc.clone(), vault_ids);
+
+		let issue_amount = 100000;
+		let vault_collateral = get_required_vault_collateral_for_issue(
+			&old_vault_provider,
+			issue_amount,
+			old_vault_id.collateral_currency(),
+		)
+		.await;
+
+		let wallet = wallet_arc.read().await;
+		assert_ok!(
+			old_vault_provider
+				.register_vault_with_public_key(
+					&old_vault_id,
+					vault_collateral,
+					wallet.get_public_key_raw()
+				)
+				.await
+		);
+		assert_ok!(
+			new_vault_provider
+				.register_vault_with_public_key(
+					&new_vault_id,
+					vault_collateral,
+					wallet.get_public_key_raw()
+				)
+				.await
+		);
+
+		// Setup scp handler for proofs
+		// TODO refactor once improved 'OracleAgent' is implemented
+		let handler = vault::inner_create_handler(wallet.get_secret_key(), is_public_network)
+			.await
+			.expect("Failed to create handler");
+		let proof_ops = Arc::new(RwLock::new(handler.proof_operations()));
+		drop(wallet);
+
+		assert_issue(
+			&user_provider,
+			wallet_arc.clone(),
+			&old_vault_id,
+			issue_amount,
+			proof_ops.clone(),
+		)
+		.await;
+
+		let shutdown_tx = ShutdownSender::new();
+		let (replace_event_tx, _) = mpsc::channel::<CancellationEvent>(16);
+		test_service(
+			join(
+				vault::service::listen_for_replace_requests(
+					new_vault_provider.clone(),
+					vault_id_manager.clone(),
+					replace_event_tx.clone(),
+					true,
+				),
+				vault::service::listen_for_accept_replace(
+					shutdown_tx.clone(),
+					old_vault_provider.clone(),
+					vault_id_manager.clone(),
+					Duration::from_secs(0),
+					proof_ops.clone(),
+				),
+			),
+			async {
+				old_vault_provider.request_replace(&old_vault_id, issue_amount).await.unwrap();
+
+				assert_event::<AcceptReplaceEvent, _>(TIMEOUT, old_vault_provider.clone(), |e| {
+					assert_eq!(e.old_vault_id, old_vault_id);
+					assert_eq!(e.new_vault_id, new_vault_id);
+					true
+				})
+				.await;
+				assert_event::<ExecuteReplaceEvent, _>(TIMEOUT, old_vault_provider.clone(), |e| {
+					assert_eq!(e.old_vault_id, old_vault_id);
+					assert_eq!(e.new_vault_id, new_vault_id);
+					true
+				})
+				.await;
+			},
+		)
+		.await;
+	})
+	.await;
+}
+
+#[tokio::test(flavor = "multi_thread")]
+#[serial]
+async fn test_withdraw_replace_succeeds() {
+	test_with_vault(|client, old_vault_id, old_vault_provider| async move {
+		let new_vault_provider = setup_provider(client.clone(), AccountKeyring::Eve).await;
+		// This conversion is necessary for now because subxt uses newer versions of the sp_xxx
+		// dependencies
+		let eve_account =
+			subxt::ext::sp_runtime::AccountId32::from(AccountKeyring::Eve.to_raw_public());
+		let new_vault_id =
+			VaultId::new(eve_account, DEFAULT_TESTING_CURRENCY, DEFAULT_WRAPPED_CURRENCY);
+		let user_provider = setup_provider(client.clone(), AccountKeyring::Dave).await;
+
+		let is_public_network = false;
+		let wallet = StellarWallet::from_secret_encoded(
+			&STELLAR_VAULT_SECRET_KEY.to_string(),
+			is_public_network,
+		)
+		.unwrap();
+		let wallet_arc = Arc::new(RwLock::new(wallet));
+
+		let issue_amount = 100000;
+		let vault_collateral = get_required_vault_collateral_for_issue(
+			&old_vault_provider,
+			issue_amount,
+			old_vault_id.collateral_currency(),
+		)
+		.await;
+		let wallet = wallet_arc.read().await;
+		assert_ok!(
+			old_vault_provider
+				.register_vault_with_public_key(
+					&old_vault_id,
+					vault_collateral,
+					wallet.get_public_key_raw()
+				)
+				.await
+		);
+		assert_ok!(
+			new_vault_provider
+				.register_vault_with_public_key(
+					&new_vault_id,
+					vault_collateral,
+					wallet.get_public_key_raw()
+				)
+				.await
+		);
+		// Setup scp handler for proofs
+		// TODO refactor once improved 'OracleAgent' is implemented
+		let handler = vault::inner_create_handler(wallet.get_secret_key(), is_public_network)
+			.await
+			.expect("Failed to create handler");
+		let proof_ops = Arc::new(RwLock::new(handler.proof_operations()));
+		drop(wallet);
+
+		assert_issue(
+			&user_provider,
+			wallet_arc.clone(),
+			&old_vault_id,
+			issue_amount,
+			proof_ops.clone(),
+		)
+		.await;
+
+		join(
+			old_vault_provider
+				.request_replace(&old_vault_id, issue_amount)
+				.map(Result::unwrap),
+			assert_event::<RequestReplaceEvent, _>(TIMEOUT, old_vault_provider.clone(), |_| true),
+		)
+		.await;
+
+		join(
+			old_vault_provider
+				.withdraw_replace(&old_vault_id, issue_amount)
+				.map(Result::unwrap),
+			assert_event::<WithdrawReplaceEvent, _>(TIMEOUT, old_vault_provider.clone(), |e| {
+				assert_eq!(e.old_vault_id, old_vault_id);
+				true
+			}),
+		)
+		.await;
+
+		let address = [2u8; 32];
+		assert!(new_vault_provider
+			.accept_replace(&new_vault_id, &old_vault_id, 1u32.into(), vault_collateral, address)
+			.await
+			.is_err());
+	})
+	.await;
+}
+
 #[tokio::test(flavor = "multi_thread")]
 #[serial]
 async fn test_cancel_scheduler_succeeds() {
@@ -156,7 +515,7 @@ async fn test_cancel_scheduler_succeeds() {
 			is_public_network,
 		)
 		.unwrap();
-		let wallet = Arc::new(wallet);
+		let wallet_arc = Arc::new(RwLock::new(wallet));
 
 		let issue_amount = 100000;
 		let vault_collateral = get_required_vault_collateral_for_issue(
@@ -165,6 +524,8 @@ async fn test_cancel_scheduler_succeeds() {
 			old_vault_id.collateral_currency(),
 		)
 		.await;
+
+		let wallet = wallet_arc.read().await;
 		assert_ok!(
 			old_vault_provider
 				.register_vault_with_public_key(
@@ -183,14 +544,27 @@ async fn test_cancel_scheduler_succeeds() {
 				)
 				.await
 		);
+		// Setup scp handler for proofs
+		// TODO refactor once improved 'OracleAgent' is implemented
+		let handler = vault::inner_create_handler(wallet.get_secret_key(), is_public_network)
+			.await
+			.expect("Failed to create handler");
+		let proof_ops = Arc::new(RwLock::new(handler.proof_operations()));
+		drop(wallet);
 
-		// TODO why is this needed?
-		// assert_issue(&user_provider, &parachain_rpc, &old_vault_id, issue_amount).await;
+		assert_issue(
+			&user_provider,
+			wallet_arc.clone(),
+			&old_vault_id,
+			issue_amount,
+			proof_ops.clone(),
+		)
+		.await;
 
 		// set low timeout periods
 		assert_ok!(root_provider.set_issue_period(1).await);
-		// assert_ok!(root_provider.set_replace_period(1).await);
-		// assert_ok!(root_provider.set_redeem_period(1).await);
+		assert_ok!(root_provider.set_replace_period(1).await);
+		assert_ok!(root_provider.set_redeem_period(1).await);
 
 		let (issue_cancellation_event_tx, issue_cancellation_rx) =
 			mpsc::channel::<CancellationEvent>(16);
@@ -200,28 +574,29 @@ async fn test_cancel_scheduler_succeeds() {
 		let block_listener = new_vault_provider.clone();
 		let issue_set = Arc::new(RwLock::new(IssueRequestsMap::new()));
 
+		let wallet = wallet_arc.read().await;
 		let issue_request_listener = vault::service::listen_for_issue_requests(
 			new_vault_provider.clone(),
 			wallet.get_public_key(),
 			issue_cancellation_event_tx.clone(),
 			issue_set.clone(),
 		);
+		drop(wallet);
 
 		let issue_cancellation_scheduler = vault::service::CancellationScheduler::new(
 			new_vault_provider.clone(),
 			new_vault_provider.get_current_chain_height().await.unwrap(),
 			new_vault_provider.get_account_id().clone(),
 		);
-		// let replace_cancellation_scheduler = vault::service::CancellationScheduler::new(
-		// 	new_vault_provider.clone(),
-		// 	new_vault_provider.get_current_chain_height().await.unwrap(),
-		// 	0,
-		// 	new_vault_provider.get_account_id().clone(),
-		// );
+		let replace_cancellation_scheduler = vault::service::CancellationScheduler::new(
+			new_vault_provider.clone(),
+			new_vault_provider.get_current_chain_height().await.unwrap(),
+			new_vault_provider.get_account_id().clone(),
+		);
 		let issue_canceller = issue_cancellation_scheduler
 			.handle_cancellation::<vault::service::IssueCanceller>(issue_cancellation_rx);
-		// let replace_canceller = replace_cancellation_scheduler
-		// 	.handle_cancellation::<vault::service::ReplaceCanceller>(replace_cancellation_rx);
+		let replace_canceller = replace_cancellation_scheduler
+			.handle_cancellation::<vault::service::ReplaceCanceller>(replace_cancellation_rx);
 
 		let parachain_block_listener = async {
 			let issue_block_tx = &issue_cancellation_event_tx.clone();
@@ -251,87 +626,75 @@ async fn test_cancel_scheduler_succeeds() {
 		};
 
 		test_service(
-			join3(
+			join4(
 				issue_canceller.map(Result::unwrap),
-				// replace_canceller.map(Result::unwrap),
+				replace_canceller.map(Result::unwrap),
 				issue_request_listener.map(Result::unwrap),
 				parachain_block_listener,
 			),
 			async {
-				// let address = BtcAddress::P2PKH(H160::from_slice(&[2; 20]));
+				let address = [2u8; 32];
 
 				// setup the to-be-cancelled redeem
-				// let redeem_id =
-				// 	user_provider.request_redeem(20000, address, &old_vault_id).await.unwrap();
+				let redeem_id =
+					user_provider.request_redeem(20000, address, &old_vault_id).await.unwrap();
 
-				join(
+				join3(
 					async {
 						// setup the to-be-cancelled replace
-						// assert_ok!(
-						// 	old_vault_provider
-						// 		.request_replace(&old_vault_id, issue_amount / 2)
-						// 		.await
-						// );
-						// assert_ok!(
-						// 	new_vault_provider
-						// 		.accept_replace(
-						// 			&new_vault_id,
-						// 			&old_vault_id,
-						// 			10000000u32.into(),
-						// 			0u32.into(),
-						// 			address
-						// 		)
-						// 		.await
-						// );
-						// assert_ok!(
-						// 	replace_cancellation_event_tx
-						// 		.clone()
-						// 		.send(CancellationEvent::Opened)
-						// 		.await
-						// );
-						//
+						assert_ok!(
+							old_vault_provider
+								.request_replace(&old_vault_id, issue_amount / 2)
+								.await
+						);
+						assert_ok!(
+							new_vault_provider
+								.accept_replace(
+									&new_vault_id,
+									&old_vault_id,
+									10000000u32.into(),
+									0u32.into(),
+									address
+								)
+								.await
+						);
+						assert_ok!(
+							replace_cancellation_event_tx
+								.clone()
+								.send(CancellationEvent::Opened)
+								.await
+						);
+
 						// setup the to-be-cancelled issue
 						assert_ok!(user_provider.request_issue(issue_amount, &new_vault_id).await);
 
-						// todo: the `send_to_address` is still a todo.
-						// for _ in 0u32..2 {
-						// 	assert_ok!(
-						// 		parachain_rpc
-						// 			.send_to_address(
-						// 				BtcAddress::P2PKH(H160::from_slice(&[0; 20]))
-						// 					.to_address(parachain_rpc.network())
-						// 					.unwrap(),
-						// 				100_000,
-						// 				None,
-						// 				SatPerVbyte(1000),
-						// 				1
-						// 			)
-						// 			.await
-						// 	);
-						// }
+						// Create two new blocks so that the current requests expire (since we set
+						// the periods to 1 before)
+						parachain_rpc.manual_seal().await;
+						sleep(Duration::from_secs(1)).await;
+						parachain_rpc.manual_seal().await;
 					},
 					assert_event::<CancelIssueEvent, _>(
 						Duration::from_secs(120),
 						user_provider.clone(),
 						|_| true,
 					),
-					// assert_event::<CancelReplaceEvent, _>(
-					// 	Duration::from_secs(120),
-					// 	user_provider.clone(),
-					// 	|_| true,
-					// ),
+					assert_event::<CancelReplaceEvent, _>(
+						Duration::from_secs(120),
+						user_provider.clone(),
+						|_| true,
+					),
 				)
 				.await;
 
 				// now make sure we can cancel the redeem
-				// assert_ok!(user_provider.cancel_redeem(redeem_id, true).await);
+				assert_ok!(user_provider.cancel_redeem(redeem_id, true).await);
 			},
 		)
 		.await;
 	})
 	.await;
 }
-*/
 
 #[tokio::test(flavor = "multi_thread")]
 #[serial]
@@ -341,14 +704,12 @@ async fn test_issue_cancel_succeeds() {
 		let issue_set = Arc::new(RwLock::new(IssueRequestsMap::new()));
 
 		let is_public_network = false;
-		let wallet = StellarWallet::from_secret_encoded(
+		let mut wallet = StellarWallet::from_secret_encoded(
 			&STELLAR_VAULT_SECRET_KEY.to_string(),
 			is_public_network,
 		)
 		.unwrap();
 		let issue_filter = IssueFilter::new(&wallet.get_public_key()).expect("Invalid filter");
-
-		let wallet = Arc::new(wallet);
 
 		let issue_amount = 100000;
 		let vault_collateral = get_required_vault_collateral_for_issue(
@@ -372,6 +733,8 @@ async fn test_issue_cancel_succeeds() {
 			// The account of the 'user_provider' is used to request a new issue that
 			// will be canceled in the next step
 			let issue = user_provider.request_issue(issue_amount, &vault_id).await.unwrap();
+			// First await the event that the issue has been requested
+			assert_event::<RequestIssueEvent, _>(TIMEOUT, user_provider.clone(), |_| true).await;
 			assert_eq!(issue_set.read().await.len(), 1);
 
 			match user_provider.cancel_issue(issue.issue_id).await {
@@ -427,7 +790,7 @@ async fn test_issue_overpayment_succeeds() {
 		let user_provider = setup_provider(client.clone(), AccountKeyring::Dave).await;
 
 		let is_public_network = false;
-		let wallet = StellarWallet::from_secret_encoded(
+		let mut wallet = StellarWallet::from_secret_encoded(
 			&STELLAR_VAULT_SECRET_KEY.to_string(),
 			is_public_network,
 		)
@@ -474,6 +837,7 @@ async fn test_issue_overpayment_succeeds() {
 				stellar_asset,
 				stroop_amount.try_into().unwrap(),
 				memo_hash,
+				300,
 			)
 			.await
 			.expect("Sending payment failed");
@@ -550,7 +914,7 @@ async fn test_automatic_issue_execution_succeeds() {
 			is_public_network,
 		)
 		.unwrap();
-		let wallet = Arc::new(wallet);
+		let wallet_arc = Arc::new(RwLock::new(wallet));
 
 		let issue_amount = 100000;
 		let vault_collateral = get_required_vault_collateral_for_issue(
@@ -560,6 +924,7 @@ async fn test_automatic_issue_execution_succeeds() {
 		)
 		.await;
 
+		let wallet = wallet_arc.read().await;
 		assert_ok!(
 			vault_provider
 				.register_vault_with_public_key(
@@ -569,6 +934,7 @@ async fn test_automatic_issue_execution_succeeds() {
 				)
 				.await
 		);
+		drop(wallet);
 
 		let fut_user = async {
 			// The account of the 'user_provider' is used to request a new issue that
@@ -581,15 +947,18 @@ async fn test_automatic_issue_execution_succeeds() {
 				primitives::AssetConversion::lookup(issue.asset).expect("Asset not found");
 			let memo_hash = issue.issue_id.0;
 
+			let mut wallet = wallet_arc.write().await;
 			let result = wallet
 				.send_payment_to_address(
 					destination_public_key,
 					stellar_asset,
 					stroop_amount,
 					memo_hash,
+					300,
 				)
 				.await;
 			assert!(result.is_ok());
+			drop(wallet);
 
 			tracing::warn!("Sent payment to address. Ledger is {:?}", result.unwrap().0.ledger);
 
@@ -603,6 +972,7 @@ async fn test_automatic_issue_execution_succeeds() {
 		let slot_tx_env_map: Arc<RwLock<HashMap<u32, String>>> =
 			Arc::new(RwLock::new(HashMap::new()));
 
+		let wallet = wallet_arc.read().await;
 		let issue_filter = IssueFilter::new(&wallet.get_public_key()).expect("Invalid filter");
 		let handler = vault::inner_create_handler(wallet.get_secret_key(), is_public_network)
 			.await
@@ -634,6 +1004,7 @@ async fn test_automatic_issue_execution_succeeds() {
 				issue_set.clone(),
 			),
 		);
+		drop(wallet);
 
 		test_service(service, fut_user).await;
 	})
@@ -664,7 +1035,7 @@ async fn test_automatic_issue_execution_succeeds_for_other_vault() {
 			is_public_network,
 		)
 		.unwrap();
-		let wallet = Arc::new(wallet);
+		let wallet_arc = Arc::new(RwLock::new(wallet));
 
 		let issue_amount = 100000;
 		let vault_collateral = get_required_vault_collateral_for_issue(
@@ -674,6 +1045,7 @@ async fn test_automatic_issue_execution_succeeds_for_other_vault() {
 		)
 		.await;
 
+		let wallet = wallet_arc.read().await;
 		assert_ok!(
 			vault1_provider
 				.register_vault_with_public_key(
@@ -692,6 +1064,7 @@ async fn test_automatic_issue_execution_succeeds_for_other_vault() {
 				)
 				.await
 		);
+		drop(wallet);
 
 		let issue_set = Arc::new(RwLock::new(IssueRequestsMap::new()));
 		let slot_tx_env_map: Arc<RwLock<HashMap<u32, String>>> =
@@ -714,15 +1087,18 @@ async fn test_automatic_issue_execution_succeeds_for_other_vault() {
 				assert!(!issue_set.is_empty());
 			}
 
+			let mut wallet = wallet_arc.write().await;
 			let result = wallet
 				.send_payment_to_address(
 					destination_public_key,
 					stellar_asset,
 					stroop_amount,
 					memo_hash,
+					300,
 				)
 				.await;
 			assert!(result.is_ok());
+			drop(wallet);
 
 			tracing::info!("Sent payment to address. Ledger is {:?}", result.unwrap().0.ledger);
 
@@ -739,6 +1115,7 @@ async fn test_automatic_issue_execution_succeeds_for_other_vault() {
 			}
 		};
 
+		let wallet = wallet_arc.read().await;
 		let issue_filter = IssueFilter::new(&wallet.get_public_key()).expect("Invalid filter");
 		let handler = vault::inner_create_handler(wallet.get_secret_key(), is_public_network)
 			.await
@@ -770,8 +1147,182 @@ async fn test_automatic_issue_execution_succeeds_for_other_vault() {
 			),
 			vault::service::listen_for_executed_issues(vault2_provider.clone(), issue_set.clone()),
 		);
+		drop(wallet);
 
 		test_service(service, fut_user).await;
+	})
+	.await;
+}
+
+#[tokio::test(flavor = "multi_thread")]
+#[serial]
+async fn test_execute_open_requests_succeeds() {
+	test_with_vault(|client, vault_id, vault_provider| async move {
+		let user_provider = setup_provider(client.clone(), AccountKeyring::Dave).await;
+
+		let is_public_network = false;
+		let wallet = StellarWallet::from_secret_encoded(
+			&STELLAR_VAULT_SECRET_KEY.to_string(),
+			is_public_network,
+		)
+		.unwrap();
+		let wallet_arc = Arc::new(RwLock::new(wallet));
+
+		let vault_ids = vec![vault_id.clone()];
+		let vault_id_manager =
+			VaultIdManager::from_map(vault_provider.clone(), wallet_arc.clone(), vault_ids);
+
+		let issue_amount = 100000;
+		let vault_collateral = get_required_vault_collateral_for_issue(
+			&vault_provider,
+			issue_amount,
+			vault_id.collateral_currency(),
+		)
+		.await;
+
+		let wallet = wallet_arc.read().await;
+		assert_ok!(
+			vault_provider
+				.register_vault_with_public_key(
+					&vault_id,
+					vault_collateral,
+					wallet.get_public_key_raw(),
+				)
+				.await
+		);
+
+		// Setup scp handler for proofs
+		// TODO refactor once improved 'OracleAgent' is implemented
+		let handler = vault::inner_create_handler(wallet.get_secret_key(), is_public_network)
+			.await
+			.expect("Failed to create handler");
+		let proof_ops = Arc::new(RwLock::new(handler.proof_operations()));
+		drop(wallet);
+
+		assert_issue(
+			&user_provider,
+			wallet_arc.clone(),
+			&vault_id,
+			issue_amount,
+			proof_ops.clone(),
+		)
+		.await;
+
+		let wallet = wallet_arc.read().await;
+		let address = wallet.get_public_key();
+		let address_raw = wallet.get_public_key_raw();
+		drop(wallet);
+		// place replace requests
+		let redeem_ids = futures::future::join_all(
+			(0..3u128).map(|_| user_provider.request_redeem(10000, address_raw, &vault_id)),
+		)
+		.await
+		.into_iter()
+		.map(|x| x.unwrap())
+		.collect::<Vec<_>>();
+
+		let redeems: Vec<SpacewalkRedeemRequest> = futures::future::join_all(
+			redeem_ids.iter().map(|id| user_provider.get_redeem_request(*id)),
+		)
+		.await
+		.into_iter()
+		.map(|x| x.unwrap())
+		.collect::<Vec<_>>();
+
+		let stroop_amount = redeems[0].amount as i64;
+		let asset = primitives::AssetConversion::lookup(redeems[0].asset).expect("Invalid asset");
+		let memo_hash = redeem_ids[0].0;
+		// do stellar transfer for redeem 0
+		let mut wallet = wallet_arc.write().await;
+		assert_ok!(
+			wallet
+				.send_payment_to_address(address, asset, stroop_amount, memo_hash, 300)
+				.await
+		);
+		drop(wallet);
+
+		let shutdown_tx = ShutdownSender::new();
+		join4(
+			vault::service::execute_open_requests(
+				shutdown_tx.clone(),
+				vault_provider,
+				vault_id_manager,
+				wallet_arc.clone(),
+				proof_ops,
+				Duration::from_secs(0),
+			)
+			.map(Result::unwrap),
+			// Redeem 0 should be executed without creating an extra payment since we already sent
+			// one just before
+			assert_execute_redeem_event(TIMEOUT, user_provider.clone(), redeem_ids[0]),
+			// Redeem 1 and 2 should be executed after creating an extra payment
+			assert_execute_redeem_event(TIMEOUT, user_provider.clone(), redeem_ids[1]),
+			assert_execute_redeem_event(TIMEOUT, user_provider.clone(), redeem_ids[2]),
+		)
+		.await;
+	})
+	.await;
+}
+
+#[tokio::test(flavor = "multi_thread")]
+#[serial]
+async fn test_off_chain_liquidation() {
+	test_with_vault(|client, vault_id, vault_provider| async move {
+		// Bob is set as an authorized oracle in the chain_spec
+		let authorized_oracle_provider = setup_provider(client.clone(), AccountKeyring::Bob).await;
+		let user_provider = setup_provider(client.clone(), AccountKeyring::Dave).await;
+
+		let is_public_network = false;
+		let wallet = StellarWallet::from_secret_encoded(
+			&STELLAR_VAULT_SECRET_KEY.to_string(),
+			is_public_network,
+		)
+		.unwrap();
+		let wallet_arc = Arc::new(RwLock::new(wallet));
+
+		let issue_amount = 100000;
+		let vault_collateral = get_required_vault_collateral_for_issue(
+			&vault_provider,
+			issue_amount,
+			vault_id.collateral_currency(),
+		)
+		.await;
+
+		let wallet = wallet_arc.read().await;
+		assert_ok!(
+			vault_provider
+				.register_vault_with_public_key(
+					&vault_id,
+					vault_collateral,
+					wallet.get_public_key_raw()
+				)
+				.await
+		);
+		// Setup scp handler for proofs
+		// TODO refactor once improved 'OracleAgent' is implemented
+		let handler = vault::inner_create_handler(wallet.get_secret_key(), is_public_network)
+			.await
+			.expect("Failed to create handler");
+		let proof_ops = Arc::new(RwLock::new(handler.proof_operations()));
+		drop(wallet);
+
+		assert_issue(
+			&user_provider,
+			wallet_arc.clone(),
+			&vault_id,
+			issue_amount,
+			proof_ops.clone(),
+		)
+		.await;
+
+		set_exchange_rate_and_wait(
+			&authorized_oracle_provider,
+			DEFAULT_TESTING_CURRENCY,
+			FixedU128::from(1000000000),
+		)
+		.await;
+
+		assert_event::<LiquidateVaultEvent, _>(TIMEOUT, vault_provider.clone(), |_| true).await;
 	})
 	.await;
 }
@@ -795,7 +1346,6 @@ async fn test_shutdown() {
 			is_public_network,
 		)
 		.unwrap();
-		let wallet = Arc::new(wallet);
 
 		// register a vault..
 		let issue_amount = 100000;

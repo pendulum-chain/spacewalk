@@ -52,9 +52,6 @@ where
 // ref https://developers.stellar.org/api/introduction/response-format/
 #[derive(Deserialize, Debug)]
 pub struct HorizonTransactionsResponse {
-	// We don't care about specifics of pagination, so we just tell serde that this will be a
-	// generic json value
-	pub _links: serde_json::Value,
 	pub _embedded: EmbeddedTransactions,
 }
 
@@ -106,14 +103,35 @@ impl TransactionResponse {
 	pub(crate) fn ledger(&self) -> u32 {
 		self.ledger
 	}
+
+	pub fn memo_hash(&self) -> Option<Hash> {
+		if self.memo.is_none() {
+			return None
+		}
+
+		if self.memo_type == b"hash" {
+			// First decode the base64-encoded memo to a vector of 32 bytes
+			let memo = self.memo.clone().unwrap();
+			let decoded_memo = base64::decode(&memo);
+			if decoded_memo.is_err() {
+				return None
+			}
+			let hash: Result<[u8; 32], _> = decoded_memo.unwrap().as_slice().try_into();
+			hash.ok()
+		} else {
+			None
+		}
+	}
+
+	pub fn to_envelope(&self) -> Result<TransactionEnvelope, Error> {
+		let envelope = TransactionEnvelope::from_base64_xdr(self.envelope_xdr.clone())
+			.map_err(|_| Error::DecodeError);
+		envelope
+	}
 }
 
 #[derive(Deserialize, Debug)]
 pub struct HorizonAccountResponse {
-	// We don't care about specifics of pagination, so we just tell serde that this will be a
-	// generic json value
-	pub _links: serde_json::Value,
-
 	#[serde(deserialize_with = "de_string_to_bytes")]
 	pub id: Vec<u8>,
 	#[serde(deserialize_with = "de_string_to_bytes")]
@@ -125,9 +143,6 @@ pub struct HorizonAccountResponse {
 
 #[derive(Deserialize, Debug)]
 pub struct HorizonClaimableBalanceResponse {
-	// We don't care about specifics of pagination, so we just tell serde that this will be a
-	// generic json value
-	pub _links: serde_json::Value,
 	pub _embedded: EmbeddedClaimableBalance,
 }
 
@@ -223,13 +238,18 @@ impl HorizonClient for reqwest::Client {
 			url = format!("{}&order=desc", url);
 		}
 
-		self.get(url)
-			.send()
-			.await
-			.map_err(|_| Error::HttpFetchingError)?
-			.json::<HorizonTransactionsResponse>()
-			.await
-			.map_err(|_| Error::HttpFetchingError)
+		let response = self.get(url).send().await.map_err(|e| Error::HttpFetchingError(e))?;
+
+		if response.status().is_success() {
+			response
+				.json::<HorizonTransactionsResponse>()
+				.await
+				.map_err(|e| Error::HttpFetchingError(e))
+		} else {
+			Err(Error::HorizonSubmissionError(
+				response.text().await.map_err(|e| Error::HttpFetchingError(e))?,
+			))
+		}
 	}
 
 	async fn get_account(
@@ -240,13 +260,18 @@ impl HorizonClient for reqwest::Client {
 		let base_url = horizon_url(is_public_network);
 		let url = format!("{}/accounts/{}", base_url, account_encoded);
 
-		self.get(url)
-			.send()
-			.await
-			.map_err(|_| Error::HttpFetchingError)?
-			.json::<HorizonAccountResponse>()
-			.await
-			.map_err(|_| Error::HttpFetchingError)
+		let response = self.get(url).send().await.map_err(|e| Error::HttpFetchingError(e))?;
+
+		if response.status().is_success() {
+			response
+				.json::<HorizonAccountResponse>()
+				.await
+				.map_err(|e| Error::HttpFetchingError(e))
+		} else {
+			Err(Error::HorizonSubmissionError(
+				response.text().await.map_err(|e| Error::HttpFetchingError(e))?,
+			))
+		}
 	}
 
 	async fn submit_transaction(
@@ -262,14 +287,23 @@ impl HorizonClient for reqwest::Client {
 		let url = format!("{}/transactions", base_url);
 
 		let params = [("tx", transaction_xdr)];
-		self.post(url)
+		let response = self
+			.post(url)
 			.form(&params)
 			.send()
 			.await
-			.map_err(|_| Error::HttpFetchingError)?
-			.json::<TransactionResponse>()
-			.await
-			.map_err(|_| Error::HttpFetchingError)
+			.map_err(|e| Error::HttpFetchingError(e))?;
+
+		if response.status().is_success() {
+			response
+				.json::<TransactionResponse>()
+				.await
+				.map_err(|e| Error::HttpFetchingError(e))
+		} else {
+			Err(Error::HorizonSubmissionError(
+				response.text().await.map_err(|e| Error::HttpFetchingError(e))?,
+			))
+		}
 	}
 }
 
@@ -408,14 +442,13 @@ where
 mod tests {
 	use std::{future, sync::Arc, time::Duration};
 
+	use mockall::{predicate::*, *};
 	use substrate_stellar_sdk::{
 		network::{Network, PUBLIC_NETWORK, TEST_NETWORK},
 		types::Preconditions,
 		Asset, Memo, Operation, SecretKey, StroopAmount, Transaction, TransactionEnvelope,
 	};
 	use tokio::{io::AsyncReadExt, sync::Mutex, time::sleep};
-
-	use mockall::{predicate::*, *};
 
 	use crate::types::{FilterWith, MockWatcher, TransactionFilterParam};
 

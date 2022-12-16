@@ -4,16 +4,19 @@ use futures::{channel::mpsc::Sender, SinkExt};
 use sp_runtime::traits::StaticLookup;
 use tokio::sync::RwLock;
 
-use primitives::{stellar::Memo, CurrencyId};
+use primitives::{stellar::Memo, CurrencyId, TransactionEnvelopeExt};
 use runtime::{
 	CancelIssueEvent, ExecuteIssueEvent, IssueId, IssuePallet, IssueRequestsMap, RequestIssueEvent,
-	SpacewalkParachain, H256,
+	SpacewalkParachain, StellarPublicKeyRaw, H256,
 };
 use service::Error as ServiceError;
 use stellar_relay_lib::sdk::{
 	types::PaymentOp, Asset, PublicKey, SecretKey, Transaction, TransactionEnvelope, XdrCodec,
 };
-use wallet::types::{FilterWith, TransactionFilterParam};
+use wallet::{
+	types::{FilterWith, TransactionFilterParam},
+	TransactionResponse,
+};
 
 use crate::{oracle::*, Error, Event};
 
@@ -228,65 +231,14 @@ pub async fn execute_issue(
 
 #[derive(Clone)]
 pub struct IssueFilter {
-	vault_address: String,
+	vault_address: StellarPublicKeyRaw,
 }
 
 impl IssueFilter {
 	pub fn new(vault_public_key: &PublicKey) -> Result<Self, Error> {
-		let encoding = vault_public_key.to_encoding();
-		let x = std::str::from_utf8(&encoding)?;
-		Ok(IssueFilter { vault_address: format!("{}", x) })
+		let vault_address_raw = vault_public_key.clone().into_binary();
+		Ok(IssueFilter { vault_address: vault_address_raw })
 	}
-}
-
-fn check_asset(issue_asset: CurrencyId, tx_asset: Asset) -> bool {
-	match primitives::AssetConversion::lookup(issue_asset) {
-		Ok(issue_asset) => issue_asset == tx_asset,
-		Err(e) => {
-			tracing::warn!("Cannot convert to asset type: {:?}", e);
-			false
-		},
-	}
-}
-
-fn is_tx_relevant(tx_xdr: &[u8], vault_address: &str, issue_asset: CurrencyId) -> bool {
-	// get envelope
-	if let Some(transaction) = get_relevant_envelope(tx_xdr) {
-		let payment_ops_to_vault_address: Vec<&PaymentOp> = transaction
-			.operations
-			.get_vec()
-			.into_iter()
-			.filter_map(|op| match &op.body {
-				stellar_relay_lib::sdk::types::OperationBody::Payment(p) => {
-					let d = p.destination.clone();
-					if let Ok(d_address) = std::str::from_utf8(d.to_encoding().as_slice()) {
-						if vault_address == d_address {
-							return Some(p)
-						}
-					}
-					None
-				},
-				_ => None,
-			})
-			.collect();
-
-		if payment_ops_to_vault_address.len() > 0 {
-			for payment_op in payment_ops_to_vault_address {
-				// We do not need to check the amount here, because the amount is checked when
-				// calling the extrinsic in the parachain. It is also possible to execute issue
-				// request with an amount that is not the same as the one requested.
-
-				// check asset
-				if check_asset(issue_asset, payment_op.asset.clone()) {
-					return true
-				}
-			}
-		}
-	}
-
-	// The transaction is not relevant to use since it doesn't
-	// include a payment to our vault address
-	false
 }
 
 impl FilterWith<TransactionFilterParam<IssueRequestsMap>> for IssueFilter {
@@ -294,38 +246,33 @@ impl FilterWith<TransactionFilterParam<IssueRequestsMap>> for IssueFilter {
 		let tx = param.0;
 		let issue_requests = param.1;
 
-		let memo_type = match String::from_utf8(tx.memo_type.clone()) {
-			Ok(memo) => memo,
-			Err(e) => {
-				tracing::warn!("Failed to retrieve memo type: {:?}", e);
-				return false
-			},
-		};
-
-		// we only care about hash memo types.
-		if memo_type != "hash" {
-			return false
-		}
-
-		// get the issue_id from the memo field of tx.
-		let issue_id = match &tx.memo {
+		// try to convert the contained memo_hash (if any) to a h256
+		let memo_h256 = match &tx.memo_hash() {
 			None => return false,
-			Some(memo) => {
-				// First decode the base64-encoded memo to a vector of 32 bytes
-				let decoded_memo = base64::decode(memo.clone());
-				if decoded_memo.is_err() {
-					return false
-				}
-				H256::from_slice(decoded_memo.unwrap().as_slice())
-			},
+			Some(memo) => H256::from_slice(memo),
 		};
 
-		// check if the issue_id is in the list.
-		match issue_requests.get(&issue_id) {
+		// check if the memo id is in the list of issues.
+		match issue_requests.get(&memo_h256) {
 			None => false,
 			Some(request) => {
-				// check if the transaction matches with the issue request
-				is_tx_relevant(&tx.envelope_xdr, &self.vault_address, request.asset)
+				// Check if the transaction can be used for the issue request by checking if it
+				// contains a payment to the vault with an amount greater than 0.
+				let tx_env = TransactionEnvelope::from_base64_xdr(tx.envelope_xdr);
+				return match tx_env {
+					Ok(tx_env) => {
+						let asset = primitives::AssetConversion::lookup(request.asset);
+						if let Ok(asset) = asset {
+							let payment_amount_to_vault =
+								tx_env.get_payment_amount_for_asset_to(self.vault_address, asset);
+							if payment_amount_to_vault > 0 {
+								return true
+							}
+						}
+						false
+					},
+					Err(_) => false,
+				}
 			},
 		}
 	}

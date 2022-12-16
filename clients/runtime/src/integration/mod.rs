@@ -4,6 +4,8 @@ use std::{sync::Arc, time::Duration};
 
 use frame_support::assert_ok;
 use futures::{future::Either, pin_mut, Future, FutureExt, SinkExt, StreamExt};
+use sp_runtime::traits::StaticLookup;
+use substrate_stellar_sdk::{Asset, XdrCodec};
 use subxt::{
 	events::StaticEvent as Event,
 	ext::sp_core::{sr25519::Pair, Pair as _},
@@ -76,33 +78,6 @@ pub async fn setup_provider(client: SubxtClient, key: AccountKeyring) -> Spacewa
 	SpacewalkParachain::new(client.into(), signer, shutdown_tx)
 		.await
 		.expect("Error creating parachain_rpc")
-}
-
-/// request, pay and execute an issue
-pub async fn assert_issue(
-	parachain_rpc: &SpacewalkParachain,
-	wallet: StellarWallet,
-	vault_id: &VaultId,
-	amount: u128,
-) {
-	let issue = parachain_rpc.request_issue(amount, vault_id).await.unwrap();
-
-	// TODO change this to set up the relay helper and then send the transaction
-	// let metadata = btc_rpc
-	// 	.send_to_address(
-	// 		issue.vault_address.to_address(btc_rpc.network()).unwrap(),
-	// 		(issue.amount + issue.fee) as u64,
-	// 		None,
-	// 		fee_rate,
-	// 		0,
-	// 	)
-	// 	.await
-	// 	.unwrap();
-	//
-	// parachain_rpc
-	// 	.execute_issue(issue.issue_id, &metadata.proof, &metadata.raw_tx)
-	// 	.await
-	// 	.unwrap();
 }
 
 const SLEEP_DURATION: Duration = Duration::from_millis(1000);
