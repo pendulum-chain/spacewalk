@@ -145,9 +145,12 @@ pub mod pallet {
 
 	#[pallet::genesis_config]
 	pub struct GenesisConfig<T: Config> {
+		pub old_validators: Vec<ValidatorOf<T>>,
+		pub old_organizations: Vec<OrganizationOf<T>>,
 		pub validators: Vec<ValidatorOf<T>>,
 		pub organizations: Vec<OrganizationOf<T>>,
 		pub is_public_network: bool,
+		pub enactment_block_height: T::BlockNumber,
 		pub phantom: PhantomData<T>,
 	}
 
@@ -353,10 +356,19 @@ pub mod pallet {
 				organization_public_node,
 			];
 
+			// By default we initialize the old validators and organizations with an empty vec to
+			// save space on chain
+			let old_organizations = vec![];
+			let old_validators = vec![];
+			let enactment_block_height = T::BlockNumber::default();
+
 			GenesisConfig {
+				old_organizations,
+				old_validators,
 				validators,
 				organizations,
 				is_public_network: true,
+				enactment_block_height,
 				phantom: Default::default(),
 			}
 		}
@@ -365,10 +377,23 @@ pub mod pallet {
 	#[pallet::genesis_build]
 	impl<T: Config> GenesisBuild<T> for GenesisConfig<T> {
 		fn build(&self) {
+			let old_validator_vec = BoundedVec::<ValidatorOf<T>, T::ValidatorLimit>::try_from(
+				self.old_validators.clone(),
+			);
+			assert!(old_validator_vec.is_ok());
+			ValidatorsOld::<T>::put(old_validator_vec.unwrap());
+
 			let validator_vec =
 				BoundedVec::<ValidatorOf<T>, T::ValidatorLimit>::try_from(self.validators.clone());
 			assert!(validator_vec.is_ok());
 			Validators::<T>::put(validator_vec.unwrap());
+
+			let old_organization_vec =
+				BoundedVec::<OrganizationOf<T>, T::OrganizationLimit>::try_from(
+					self.old_organizations.clone(),
+				);
+			assert!(old_organization_vec.is_ok());
+			OrganizationsOld::<T>::put(old_organization_vec.unwrap());
 
 			let organization_vec = BoundedVec::<OrganizationOf<T>, T::OrganizationLimit>::try_from(
 				self.organizations.clone(),
@@ -377,14 +402,21 @@ pub mod pallet {
 			Organizations::<T>::put(organization_vec.unwrap());
 
 			IsPublicNetwork::<T>::put(self.is_public_network);
+			NewValidatorsEnactmentBlockHeight::<T>::put(self.enactment_block_height);
 		}
 	}
 
 	// Extrinsics
 	#[pallet::call]
 	impl<T: Config> Pallet<T> {
-		/// This extrinsic is used to update/replace the current sets of validators and
-		/// organizations
+		/// This extrinsic is used to update the current sets of validators and
+		/// organizations. The current values of validators and organizations are moved to the
+		/// OldValidators and OldOrganizations respectively, and the function arguments are stored
+		/// as new/current values. The `enactment_block_height` parameter is used by the
+		/// `validate_stellar_transaction` function to determine if it should use the 'old' or
+		/// updated sets for validation.
+		///
+		/// It can only be called by the root origin.
 		#[pallet::weight(<T as Config>::WeightInfo::update_tier_1_validator_set())]
 		pub fn update_tier_1_validator_set(
 			origin: OriginFor<T>,
@@ -475,8 +507,8 @@ pub mod pallet {
 				transaction_set.txes.get_vec().iter().any(|tx| tx.get_hash(&network) == tx_hash);
 			ensure!(tx_included, Error::<T>::TransactionNotInTransactionSet);
 
-			// validators set depends on current block number and 'new validators enactment block
-			// height' stored value
+			// Choose the set of validators to use for validation based on the enactment block
+			// height and the current block number
 			let should_use_new_validator_set = <frame_system::Pallet<T>>::block_number() >=
 				NewValidatorsEnactmentBlockHeight::<T>::get();
 			let validators = if should_use_new_validator_set {
@@ -527,8 +559,8 @@ pub mod pallet {
 				})
 				.collect::<Vec<&ValidatorOf<T>>>();
 
-			// organizations set depends on current block number and 'new validators enactment block
-			// height' stored value
+			// Choose the set of organizations to use for validation based on the enactment block
+			// height and the current block number
 			let organizations = if should_use_new_validator_set {
 				Organizations::<T>::get()
 			} else {
