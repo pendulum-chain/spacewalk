@@ -125,13 +125,13 @@ pub mod pallet {
 		StorageValue<_, BoundedVec<ValidatorOf<T>, T::ValidatorLimit>, ValueQuery>;
 
 	#[pallet::storage]
-	#[pallet::getter(fn organizations_old)]
-	pub type OrganizationsOld<T: Config> =
+	#[pallet::getter(fn old_organizations)]
+	pub type OldOrganizations<T: Config> =
 		StorageValue<_, BoundedVec<OrganizationOf<T>, T::OrganizationLimit>, ValueQuery>;
 
 	#[pallet::storage]
-	#[pallet::getter(fn validators_old)]
-	pub type ValidatorsOld<T: Config> =
+	#[pallet::getter(fn old_validators)]
+	pub type OldValidators<T: Config> =
 		StorageValue<_, BoundedVec<ValidatorOf<T>, T::ValidatorLimit>, ValueQuery>;
 
 	#[pallet::storage]
@@ -381,7 +381,7 @@ pub mod pallet {
 				self.old_validators.clone(),
 			);
 			assert!(old_validator_vec.is_ok());
-			ValidatorsOld::<T>::put(old_validator_vec.unwrap());
+			OldValidators::<T>::put(old_validator_vec.unwrap());
 
 			let validator_vec =
 				BoundedVec::<ValidatorOf<T>, T::ValidatorLimit>::try_from(self.validators.clone());
@@ -393,7 +393,7 @@ pub mod pallet {
 					self.old_organizations.clone(),
 				);
 			assert!(old_organization_vec.is_ok());
-			OrganizationsOld::<T>::put(old_organization_vec.unwrap());
+			OldOrganizations::<T>::put(old_organization_vec.unwrap());
 
 			let organization_vec = BoundedVec::<OrganizationOf<T>, T::OrganizationLimit>::try_from(
 				self.organizations.clone(),
@@ -456,7 +456,7 @@ pub mod pallet {
 			let current_validators =
 				BoundedVec::<ValidatorOf<T>, T::ValidatorLimit>::try_from(current_validators)
 					.map_err(|_| Error::<T>::BoundedVecCreationFailed)?;
-			ValidatorsOld::<T>::put(current_validators);
+			OldValidators::<T>::put(current_validators);
 
 			let current_organizations = Organizations::<T>::get();
 			// Filter organizations for selected network type
@@ -467,7 +467,7 @@ pub mod pallet {
 					current_organizations,
 				)
 				.map_err(|_| Error::<T>::BoundedVecCreationFailed)?;
-			OrganizationsOld::<T>::put(current_organizations);
+			OldOrganizations::<T>::put(current_organizations);
 
 			NewValidatorsEnactmentBlockHeight::<T>::put(enactment_block_height);
 
@@ -514,7 +514,7 @@ pub mod pallet {
 			let validators = if should_use_new_validator_set {
 				Validators::<T>::get()
 			} else {
-				ValidatorsOld::<T>::get()
+				OldValidators::<T>::get()
 			};
 
 			// Make sure that at least one validator is registered
@@ -564,7 +564,7 @@ pub mod pallet {
 			let organizations = if should_use_new_validator_set {
 				Organizations::<T>::get()
 			} else {
-				OrganizationsOld::<T>::get()
+				OldOrganizations::<T>::get()
 			};
 			// Make sure that at least one organization is registered
 			ensure!(!organizations.is_empty(), Error::<T>::NoOrganizationsRegistered);
