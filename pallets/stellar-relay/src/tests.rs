@@ -409,7 +409,12 @@ fn validate_stellar_transaction_works_with_all_validators() {
 fn update_tier_1_validator_set_fails_for_non_root_origin() {
 	run_test(|_, _, _| {
 		assert_noop!(
-			SpacewalkRelay::update_tier_1_validator_set(RuntimeOrigin::signed(1), vec![], vec![], 0),
+			SpacewalkRelay::update_tier_1_validator_set(
+				RuntimeOrigin::signed(1),
+				vec![],
+				vec![],
+				0
+			),
 			BadOrigin
 		);
 	});
@@ -453,8 +458,6 @@ fn update_tier_1_validator_set_works() {
 		};
 		let new_validator_set = vec![validator; 2];
 		let new_organization_set = vec![organization; 2];
-		// let new_validator_set: Vec<ValidatorOf<Test>> = vec![validator; 2];
-		// let new_organization_set: Vec<OrganizationOf<Test>> = vec![organization; 2];
 		assert_ne!(validator_set, new_validator_set);
 		assert_ne!(organization_set, new_organization_set);
 
@@ -549,7 +552,7 @@ fn update_tier_1_validator_store_old_organization_and_validator_and_block_height
 		};
 		let validator_set = vec![validator; 3];
 		let organization_set = vec![organization; 3];
-		let block_height = 11;
+		let new_validators_enactment_block_height = 11;
 		assert_ok!(SpacewalkRelay::update_tier_1_validator_set(
 			RuntimeOrigin::root(),
 			validator_set.clone(),
@@ -570,7 +573,6 @@ fn update_tier_1_validator_store_old_organization_and_validator_and_block_height
 		let validator_bounded_vec_old = validator_bounded_vec;
 		let organization_bounded_vec_old = organization_bounded_vec;
 
-
 		// Update the validator set
 		let organization = Organization { id: 1, name: Default::default() };
 		let validator = Validator {
@@ -589,7 +591,7 @@ fn update_tier_1_validator_store_old_organization_and_validator_and_block_height
 			RuntimeOrigin::root(),
 			new_validator_set.clone(),
 			new_organization_set.clone(),
-			block_height
+			new_validators_enactment_block_height
 		));
 		let validator_bounded_vec =
 			BoundedVec::<ValidatorOf<Test>, ValidatorLimit>::try_from(new_validator_set.clone())
@@ -605,7 +607,9 @@ fn update_tier_1_validator_store_old_organization_and_validator_and_block_height
 		assert_eq!(SpacewalkRelay::validators_old(), validator_bounded_vec_old);
 		assert_eq!(SpacewalkRelay::organizations_old(), organization_bounded_vec_old);
 
-		assert_eq!(SpacewalkRelay::block_height(), block_height);
-
+		assert_eq!(
+			SpacewalkRelay::new_validators_enactment_block_height(),
+			new_validators_enactment_block_height
+		);
 	});
 }
