@@ -18,4 +18,6 @@ pub enum Error {
 	Utf8Error(#[from] std::str::Utf8Error),
 	#[error("Could not decode XDR")]
 	DecodeError,
+	#[error("Could not sign envelop")]
+	SignEnvelopError
 }

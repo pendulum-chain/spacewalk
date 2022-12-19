@@ -79,12 +79,11 @@ async fn start() -> Result<(), ServiceError<Error>> {
 	let opts = cli.opts;
 	opts.service.logging_format.init_subscriber();
 
-	let (pair, wallet_name) = opts.account_info.get_key_pair()?;
+	let (pair, _) = opts.account_info.get_key_pair()?;
 	let signer = Arc::new(RwLock::new(SpacewalkSigner::new(pair)));
 
 	let vault_connection_manager = ConnectionManager::new(
 		signer.clone(),
-		Some(wallet_name.to_string()),
 		opts.parachain,
 		opts.service,
 		opts.vault,

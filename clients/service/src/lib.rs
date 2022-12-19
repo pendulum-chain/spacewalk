@@ -36,7 +36,6 @@ pub trait Service<Config, InnerError> {
 
 pub struct ConnectionManager<Config: Clone, F: Fn()> {
 	signer: Arc<RwLock<SpacewalkSigner>>,
-	wallet_name: Option<String>,
 	parachain_config: ParachainConfig,
 	service_config: ServiceConfig,
 	config: Config,
@@ -47,7 +46,6 @@ impl<Config: Clone + Send + 'static, F: Fn()> ConnectionManager<Config, F> {
 	#[allow(clippy::too_many_arguments)]
 	pub fn new(
 		signer: Arc<RwLock<SpacewalkSigner>>,
-		wallet_name: Option<String>,
 		parachain_config: ParachainConfig,
 		service_config: ServiceConfig,
 		config: Config,
@@ -55,7 +53,6 @@ impl<Config: Clone + Send + 'static, F: Fn()> ConnectionManager<Config, F> {
 	) -> Self {
 		Self {
 			signer,
-			wallet_name,
 			parachain_config,
 			service_config,
 			config,

@@ -12,7 +12,7 @@ use subxt::{
 	rpc::rpc_params,
 	storage::{address::Yes, StorageAddress},
 	tx::{TxPayload},
-	Error as BasicError, Metadata,
+	Error as BasicError,
 };
 use tokio::{sync::RwLock, time::timeout};
 
@@ -58,7 +58,6 @@ pub struct SpacewalkParachain {
 	account_id: AccountId,
 	api: OnlineClient<SpacewalkRuntime>,
 	shutdown_tx: ShutdownSender,
-	metadata: Arc<Metadata>,
 	fee_rate_update_tx: FeeRateUpdateSender,
 }
 
@@ -70,7 +69,6 @@ impl SpacewalkParachain {
 	) -> Result<Self, Error> {
 		let account_id = signer.read().await.account_id().clone();
 		let api = OnlineClient::<SpacewalkRuntime>::from_rpc_client(Arc::new(rpc_client)).await?;
-		let metadata = Arc::new(api.rpc().metadata().await?);
 
 		let runtime_version = api.rpc().runtime_version(None).await?;
 		let default_spec_name = &JsonValue::default();
@@ -100,7 +98,7 @@ impl SpacewalkParachain {
 		let (fee_rate_update_tx, _) = tokio::sync::broadcast::channel(2);
 
 		let parachain_rpc =
-			Self { api, shutdown_tx, metadata, signer, account_id, fee_rate_update_tx };
+			Self { api, shutdown_tx, signer, account_id, fee_rate_update_tx };
 		Ok(parachain_rpc)
 	}
 

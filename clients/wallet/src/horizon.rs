@@ -99,9 +99,6 @@ pub struct TransactionResponse {
 }
 
 impl TransactionResponse {
-	pub(crate) fn ledger(&self) -> u32 {
-		self.ledger
-	}
 
 	pub fn memo_hash(&self) -> Option<Hash> {
 		if self.memo.is_none() {

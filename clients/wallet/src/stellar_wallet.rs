@@ -126,7 +126,9 @@ impl StellarWallet {
 		let network: &Network =
 			if self.is_public_network { &PUBLIC_NETWORK } else { &TEST_NETWORK };
 
-		envelope.sign(network, vec![&self.get_secret_key()]);
+		envelope.sign(network, vec![&self.get_secret_key()]).map_err(|_e| {
+			Error::SignEnvelopError
+		})?;
 
 		let transaction_response = horizon_client
 			.submit_transaction(envelope.clone(), self.is_public_network)
@@ -174,6 +176,6 @@ mod test {
 		assert!(result.is_ok());
 		let (transaction_response, _) = result.unwrap();
 		assert!(transaction_response.hash.to_vec().len() > 0);
-		assert!(transaction_response.ledger() > 0);
+		assert!(transaction_response.ledger > 0);
 	}
 }

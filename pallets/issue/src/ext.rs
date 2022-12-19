@@ -76,7 +76,6 @@ pub(crate) mod security {
 #[cfg_attr(test, mockable)]
 pub(crate) mod vault_registry {
 	use frame_support::dispatch::{DispatchError, DispatchResult};
-	use sp_core::H256;
 
 	use primitives::StellarPublicKeyRaw;
 	use vault_registry::{
