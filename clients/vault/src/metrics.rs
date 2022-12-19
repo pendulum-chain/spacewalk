@@ -19,7 +19,7 @@ pub fn increment_restart_counter() {
 }
 
 pub async fn publish_tokio_metrics(
-	mut metrics_iterators: HashMap<String, impl Iterator<Item = TaskMetrics>>,
+	_metrics_iterators: HashMap<String, impl Iterator<Item = TaskMetrics>>,
 ) -> Result<(), ServiceError<Error>> {
 	// TODO: publish metrics to prometheus
 	// We don't need this for now

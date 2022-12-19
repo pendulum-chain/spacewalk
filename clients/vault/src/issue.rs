@@ -1,21 +1,20 @@
-use std::{collections::HashMap, convert::TryFrom, fmt::Debug, sync::Arc, time::Duration};
+use std::{collections::HashMap, convert::TryFrom, sync::Arc, time::Duration};
 
 use futures::{channel::mpsc::Sender, SinkExt};
 use sp_runtime::traits::StaticLookup;
 use tokio::sync::RwLock;
 
-use primitives::{stellar::Memo, CurrencyId, TransactionEnvelopeExt};
+use primitives::{stellar::Memo, TransactionEnvelopeExt};
 use runtime::{
 	CancelIssueEvent, ExecuteIssueEvent, IssueId, IssuePallet, IssueRequestsMap, RequestIssueEvent,
 	SpacewalkParachain, StellarPublicKeyRaw, H256,
 };
 use service::Error as ServiceError;
 use stellar_relay_lib::sdk::{
-	types::PaymentOp, Asset, PublicKey, SecretKey, Transaction, TransactionEnvelope, XdrCodec,
+	PublicKey, Transaction, TransactionEnvelope, XdrCodec,
 };
 use wallet::{
 	types::{FilterWith, TransactionFilterParam},
-	TransactionResponse,
 };
 
 use crate::{oracle::*, Error, Event};

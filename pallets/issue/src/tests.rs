@@ -223,7 +223,7 @@ fn test_execute_issue_succeeds() {
 #[test]
 fn test_execute_issue_overpayment_succeeds() {
 	run_test(|| {
-		let issue_asset = VAULT.wrapped_currency();
+		let _issue_asset = VAULT.wrapped_currency();
 		let issue_amount = 3;
 		let amount_transferred = 5;
 		let issue_fee = 0;
@@ -259,7 +259,7 @@ fn test_execute_issue_overpayment_succeeds() {
 #[test]
 fn test_execute_issue_overpayment_up_to_max_succeeds() {
 	run_test(|| {
-		let issue_asset = VAULT.wrapped_currency();
+		let _issue_asset = VAULT.wrapped_currency();
 		let issue_amount = 3;
 		let amount_transferred = 10;
 		let issue_fee = 0;
@@ -295,7 +295,7 @@ fn test_execute_issue_overpayment_up_to_max_succeeds() {
 #[test]
 fn test_execute_issue_underpayment_succeeds() {
 	run_test(|| {
-		let issue_asset = VAULT.wrapped_currency();
+		let _issue_asset = VAULT.wrapped_currency();
 		let issue_amount = 10;
 		let amount_transferred = 1;
 		let issue_fee = 0;

@@ -11,12 +11,10 @@ extern crate mocktopus;
 use codec::{Decode, Encode, MaxEncodedLen};
 use frame_support::{
 	dispatch::{DispatchError, DispatchResult},
-	ensure,
 	traits::Get,
 	transactional,
-	weights::Weight,
 };
-use frame_system::{ensure_root, ensure_signed};
+
 #[cfg(test)]
 use mocktopus::macros::mockable;
 use scale_info::TypeInfo;

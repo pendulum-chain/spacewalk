@@ -439,15 +439,15 @@ where
 
 #[cfg(test)]
 mod tests {
-	use std::{future, sync::Arc, time::Duration};
+	use std::{future, sync::Arc};
 
-	use mockall::{predicate::*, *};
+	use mockall::{predicate::*};
 	use substrate_stellar_sdk::{
 		network::{Network, PUBLIC_NETWORK, TEST_NETWORK},
 		types::Preconditions,
-		Asset, Memo, Operation, SecretKey, StroopAmount, Transaction, TransactionEnvelope,
+		Asset, Operation, SecretKey, StroopAmount, Transaction, TransactionEnvelope,
 	};
-	use tokio::{io::AsyncReadExt, sync::Mutex, time::sleep};
+	
 
 	use crate::types::{FilterWith, MockWatcher, TransactionFilterParam};
 
@@ -459,7 +459,7 @@ mod tests {
 	struct MockFilter;
 
 	impl FilterWith<TransactionFilterParam<Vec<u64>>> for MockFilter {
-		fn is_relevant(&self, param: TransactionFilterParam<Vec<u64>>) -> bool {
+		fn is_relevant(&self, _param: TransactionFilterParam<Vec<u64>>) -> bool {
 			// We consider all transactions relevant for the test
 			true
 		}
@@ -494,24 +494,24 @@ mod tests {
 			Preconditions::PrecondNone,
 			None,
 		)
-		.map_err(|e| Error::BuildTransactionError("Creating new transaction failed".to_string()))?;
+		.map_err(|_e| Error::BuildTransactionError("Creating new transaction failed".to_string()))?;
 
 		let asset = Asset::native();
 		let amount = StroopAmount(amount);
 		transaction
 			.append_operation(
 				Operation::new_payment(destination, asset, amount)
-					.map_err(|e| {
+					.map_err(|_e| {
 						Error::BuildTransactionError(
 							"Creation of payment operation failed".to_string(),
 						)
 					})?
 					.set_source_account(source.get_public().clone())
-					.map_err(|e| {
+					.map_err(|_e| {
 						Error::BuildTransactionError("Setting source account failed".to_string())
 					})?,
 			)
-			.map_err(|e| {
+			.map_err(|_e| {
 				Error::BuildTransactionError("Appending payment operation failed".to_string())
 			})?;
 
@@ -586,7 +586,7 @@ mod tests {
 	async fn horizon_fetch_txs_cursor() {
 		let horizon_client = reqwest::Client::new();
 		let secret = SecretKey::from_encoding(SECRET).unwrap();
-		let mut fetcher = HorizonFetcher::new(horizon_client, secret.get_public().clone(), false);
+		let fetcher = HorizonFetcher::new(horizon_client, secret.get_public().clone(), false);
 
 		let res = fetcher.fetch_latest_txs(0).await.expect("should return a response");
 		let txs = res._embedded.records;
@@ -604,7 +604,7 @@ mod tests {
 
 	#[tokio::test(flavor = "multi_thread")]
 	async fn client_test_for_polling() {
-		let mut watcher = MockWatcher::new();
+		let watcher = MockWatcher::new();
 		let watcher = Arc::new(RwLock::new(watcher));
 
 		let issue_hashes = Arc::new(RwLock::new(vec![]));
@@ -616,7 +616,7 @@ mod tests {
 
 		// We assume that the watch_slot function is called at exactly once because the intial fetch
 		// without a cursor returns the latest transaction only
-		let wat = watcher
+		let _wat = watcher
 			.write()
 			.await
 			.expect_watch_slot()

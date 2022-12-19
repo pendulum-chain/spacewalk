@@ -1,11 +1,9 @@
 use std::{
-	collections::VecDeque,
-	fs::{create_dir_all, File},
-	io::{Read, Write},
+	fs::{create_dir_all},
 	str::Split,
 };
 
-use sp_core::hexdisplay::AsBytesRef;
+
 
 use stellar_relay_lib::sdk::{
 	compound_types::{UnlimitedVarArray, XdrArchive},
@@ -14,10 +12,9 @@ use stellar_relay_lib::sdk::{
 };
 
 use crate::oracle::{
-	constants::{ARCHIVE_NODE_LEDGER_BATCH, MAX_ITEMS_IN_QUEUE},
+	constants::{MAX_ITEMS_IN_QUEUE},
 	storage::traits::*,
-	EnvelopesFileHandler, EnvelopesMap, Error, Filename, SerializedData, Slot, SlotEncodedMap,
-	TxHashesFileHandler, TxSetMap, TxSetsFileHandler,
+	EnvelopesFileHandler, EnvelopesMap, Error, Filename, SerializedData, Slot, SlotEncodedMap, TxSetMap, TxSetsFileHandler,
 };
 
 use super::{ScpArchiveStorage, TransactionsArchiveStorage};
@@ -209,21 +206,18 @@ pub fn prepare_directories() -> Result<(), Error> {
 #[cfg(test)]
 mod test {
 	use std::{
-		convert::{TryFrom, TryInto},
-		env, fs,
+		convert::{TryFrom, TryInto}, fs,
 		fs::File,
 		io::Read,
 		path::PathBuf,
 	};
 
-	use frame_support::assert_err;
+	
 	use mockall::lazy_static;
 
 	use stellar_relay_lib::{
-		helper::compute_non_generic_tx_set_content_hash,
 		sdk::{
-			network::PUBLIC_NETWORK,
-			types::{ScpHistoryEntry, ScpStatementPledges},
+			types::{ScpHistoryEntry},
 		},
 	};
 
@@ -236,7 +230,6 @@ mod test {
 			EnvelopesFileHandler, TxSetsFileHandler,
 		},
 		types::{LifoMap, Slot},
-		TransactionsArchiveStorage,
 	};
 
 	use super::ScpArchiveStorage;
@@ -320,7 +313,7 @@ mod test {
 			let envelopes_map = EnvelopesFileHandler::get_map_from_archives(last_slot - 20)
 				.expect("should return envelopes map");
 
-			for (idx, (slot, envs)) in envelopes_map.iter().enumerate() {
+			for (idx, (slot, _envs)) in envelopes_map.iter().enumerate() {
 				let expected_slot_num =
 					first_slot + u64::try_from(idx).expect("should return u64 data type");
 				assert_eq!(slot, &expected_slot_num);
@@ -469,10 +462,10 @@ mod test {
 
 		//arrange
 		let slot_index = 30511500;
-		let (url, ref filename) = TransactionsArchiveStorage::get_url_and_file_name(slot_index);
+		let (_url, ref filename) = TransactionsArchiveStorage::get_url_and_file_name(slot_index);
 
 		//act
-		let transactions_archive = TransactionsArchiveStorage::get_transactions_archive(slot_index)
+		let _transactions_archive = TransactionsArchiveStorage::get_transactions_archive(slot_index)
 			.await
 			.expect("should find the archive");
 

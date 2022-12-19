@@ -1,4 +1,4 @@
-use stellar_relay_lib::sdk::types::Uint64;
+
 
 use crate::oracle::types::Slot;
 

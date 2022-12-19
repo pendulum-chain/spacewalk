@@ -4,9 +4,8 @@ use parking_lot::RwLock;
 
 use stellar_relay_lib::{
 	sdk::{
-		compound_types::{LimitedVarArray, UnlimitedVarArray, XdrArchive},
-		types::{ScpEnvelope, ScpHistoryEntry, StellarMessage, TransactionSet},
-		TransactionEnvelope, XdrCodec,
+		compound_types::{UnlimitedVarArray, XdrArchive},
+		types::{ScpEnvelope, ScpHistoryEntry, StellarMessage, TransactionSet}, XdrCodec,
 	},
 	StellarOverlayConnection,
 };
@@ -15,8 +14,7 @@ use crate::oracle::{
 	constants::{get_min_externalized_messages, MAX_SLOT_TO_REMEMBER},
 	traits::FileHandler,
 	types::{EnvelopesMap, LifoMap},
-	ActorMessage, EnvelopesFileHandler, ScpArchiveStorage, ScpMessageCollector, Slot, TxHash,
-	TxSetsFileHandler,
+	ActorMessage, EnvelopesFileHandler, ScpArchiveStorage, ScpMessageCollector, Slot,
 };
 
 /// Determines whether the data retrieved is from the current map or from a file.
@@ -160,7 +158,7 @@ impl ScpMessageCollector {
 				Err(ProofStatus::LackingEnvelopes)
 			},
 			Some(envelopes) => {
-				envelopes.len() < get_min_externalized_messages(self.is_public());
+				let _ = envelopes.len() < get_min_externalized_messages(self.is_public());
 				Ok(UnlimitedVarArray::new(envelopes.clone())
 					.unwrap_or(UnlimitedVarArray::new_empty()))
 			},
@@ -174,7 +172,7 @@ impl ScpMessageCollector {
 		tokio::spawn(async move {
 			// If the current slot is still in the range of 'remembered' slots
 			if slot > last_slot_index - MAX_SLOT_TO_REMEMBER {
-				let result =
+				let _result =
 					action_sender.send(ActorMessage::GetScpState { missed_slot: slot }).await;
 			} else {
 				let slot_index: u32 = slot.try_into().unwrap();
@@ -362,7 +360,7 @@ pub trait ProofExt: Send + Sync {
 #[cfg(test)]
 mod test {
 	use crate::oracle::collector::proof_builder::{
-		check_slot_position, return_proper_envelopes_error,
+		check_slot_position,
 	};
 
 	#[test]

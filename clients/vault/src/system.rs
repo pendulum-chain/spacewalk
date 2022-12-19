@@ -6,7 +6,7 @@ use async_trait::async_trait;
 use clap::Parser;
 use futures::{
 	channel::{mpsc, mpsc::Sender},
-	future::{join, join_all},
+	future::{join_all},
 	SinkExt, TryFutureExt,
 };
 use git_version::git_version;
@@ -35,7 +35,6 @@ use crate::{
 	execution::execute_open_requests,
 	issue,
 	issue::IssueFilter,
-	metrics::publish_tokio_metrics,
 	oracle::{create_handler, prepare_directories, ScpMessageHandler},
 	redeem::listen_for_redeem_requests,
 	replace::{listen_for_accept_replace, listen_for_execute_replace, listen_for_replace_requests},
@@ -290,7 +289,7 @@ async fn run_and_monitor_tasks(
 	shutdown_tx: ShutdownSender,
 	items: Vec<(&str, ServiceTask)>,
 ) -> Result<(), ServiceError<Error>> {
-	let (metrics_iterators, tasks): (HashMap<String, _>, Vec<_>) = items
+	let (_metrics_iterators, tasks): (HashMap<String, _>, Vec<_>) = items
 		.into_iter()
 		.filter_map(|(name, task)| {
 			let monitor = tokio_metrics::TaskMonitor::new();

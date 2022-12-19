@@ -15,7 +15,7 @@ use frame_support::{
 #[cfg(test)]
 use mocktopus::macros::mockable;
 use sp_core::H256;
-use sp_runtime::FixedPointNumber;
+
 use sp_std::{convert::TryInto, vec::Vec};
 use substrate_stellar_sdk::{
 	compound_types::UnlimitedVarArray,
@@ -25,7 +25,7 @@ use substrate_stellar_sdk::{
 
 use currency::Amount;
 pub use default_weights::WeightInfo;
-use oracle::OracleKey;
+
 pub use pallet::*;
 use primitives::StellarPublicKeyRaw;
 use types::DefaultVaultId;

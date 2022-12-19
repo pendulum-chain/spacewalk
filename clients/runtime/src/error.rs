@@ -15,7 +15,7 @@ use subxt::{
 use thiserror::Error;
 use tokio::time::error::Elapsed;
 
-use crate::{types::*, ISSUE_MODULE, SECURITY_MODULE, SYSTEM_MODULE};
+use crate::{types::*, ISSUE_MODULE, SECURITY_MODULE};
 
 #[derive(Error, Debug)]
 pub enum Error {

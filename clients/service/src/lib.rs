@@ -10,7 +10,7 @@ pub use warp;
 pub use cli::{LoggingFormat, RestartPolicy, ServiceConfig};
 pub use error::Error;
 use runtime::{
-	cli::ConnectionOpts as ParachainConfig, CurrencyId, PrettyPrint, ShutdownReceiver,
+	cli::ConnectionOpts as ParachainConfig, PrettyPrint, ShutdownReceiver,
 	ShutdownSender, SpacewalkParachain, SpacewalkSigner,
 };
 pub use trace::init_subscriber;

@@ -17,12 +17,11 @@ use subxt::{
 use tokio::{sync::RwLock, time::timeout};
 
 use module_oracle_rpc_runtime_api::BalanceWrapper;
-use primitives::{CurrencyId::Token, Hash, DOT};
+use primitives::{Hash};
 
 use crate::{
 	conn::{new_websocket_client, new_websocket_client_with_retry},
 	metadata,
-	metadata::DispatchError,
 	notify_retry,
 	types::*,
 	AccountId, Error, RetryPolicy, ShutdownSender, SpacewalkRuntime, SpacewalkSigner, SubxtError,

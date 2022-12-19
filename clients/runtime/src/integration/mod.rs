@@ -4,8 +4,8 @@ use std::{sync::Arc, time::Duration};
 
 use frame_support::assert_ok;
 use futures::{future::Either, pin_mut, Future, FutureExt, SinkExt, StreamExt};
-use sp_runtime::traits::StaticLookup;
-use substrate_stellar_sdk::{Asset, XdrCodec};
+
+
 use subxt::{
 	events::StaticEvent as Event,
 	ext::sp_core::{sr25519::Pair, Pair as _},
@@ -21,12 +21,11 @@ use subxt_client::{
 	AccountKeyring, DatabaseSource, KeystoreConfig, Role, SubxtClientConfig, WasmExecutionMethod,
 	WasmtimeInstantiationStrategy,
 };
-use wallet::StellarWallet;
+
 
 use crate::{
-	rpc::{IssuePallet, OraclePallet, VaultRegistryPallet},
-	types::{ErrorCode, StatusCode},
-	CurrencyId, FixedU128, OracleKey, SpacewalkParachain, SpacewalkSigner, VaultId,
+	rpc::{OraclePallet, VaultRegistryPallet},
+	CurrencyId, FixedU128, OracleKey, SpacewalkParachain, SpacewalkSigner,
 };
 
 /// Start a new instance of the parachain. The second item in the returned tuple must remain in

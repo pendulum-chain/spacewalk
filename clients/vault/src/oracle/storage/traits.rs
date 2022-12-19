@@ -11,7 +11,6 @@ use sp_core::hexdisplay::AsBytesRef;
 
 use stellar_relay_lib::sdk::{
 	compound_types::XdrArchive,
-	types::{ScpEnvelope, ScpHistoryEntry, TransactionHistoryEntry, TransactionSet},
 	XdrCodec,
 };
 

@@ -118,7 +118,7 @@ impl ScpMessageActor {
 					match conn_state {
 						StellarRelayMessage::Data {
 							p_id: _,
-							msg_type,
+							msg_type: _,
 							msg,
 						} => match msg {
 							StellarMessage::ScpMessage(env) => {

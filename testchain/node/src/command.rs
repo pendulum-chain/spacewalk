@@ -14,12 +14,12 @@
 // You should have received a copy of the GNU General Public License
 // along with Substrate.  If not, see <http://www.gnu.org/licenses/>.
 
-use std::io::Write;
+
 
 use frame_benchmarking_cli::{BenchmarkCmd, ExtrinsicFactory, SUBSTRATE_REFERENCE_HARDWARE};
 use sc_cli::{ChainSpec, Result, RuntimeVersion, SubstrateCli};
 use sc_service::{Configuration, PartialComponents, TaskManager};
-use sp_core::hexdisplay::HexDisplay;
+
 use sp_keyring::Sr25519Keyring;
 
 use spacewalk_runtime::{Block, EXISTENTIAL_DEPOSIT};

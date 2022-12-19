@@ -789,7 +789,7 @@ mod spec_based_tests {
 			let replace_collateral = 100;
 			let amount = Amount::<Test>::new(amount_to_redeem, get_wrapped_currency_id());
 			amount.mint_to(&USER).unwrap();
-			let asset = DEFAULT_WRAPPED_CURRENCY;
+			let _asset = DEFAULT_WRAPPED_CURRENCY;
 
 			ext::vault_registry::ensure_not_banned::<Test>
 				.mock_safe(move |_vault_id| MockResult::Return(Ok(())));
