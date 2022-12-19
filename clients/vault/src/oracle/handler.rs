@@ -99,9 +99,12 @@ impl ScpMessageActor {
 				self.collector.remove_data(&slot);
 			},
 			ActorMessage::GetScpState { missed_slot } => {
-				overlay_conn
+				let result = overlay_conn
 					.send(StellarMessage::GetScpState(missed_slot.try_into().unwrap()))
 					.await;
+				if let Err(_) = result {
+					tracing::warn!("failed to send GetScpState for missed slot : {}", missed_slot);
+				}
 			},
 			ActorMessage::Disconnect => {
 				panic!("Should disconnect from run method")
@@ -143,7 +146,10 @@ impl ScpMessageActor {
 				Some(msg) = self.action_receiver.recv() => {
 					match msg{
 						ActorMessage::Disconnect => {
-							overlay_conn.disconnect().await;
+							let result = overlay_conn.disconnect().await;
+							if result.is_err(){
+								tracing::error!("disconnect error");
+							}
 						},
 						_ => {
 							self.handle_message(msg, &overlay_conn).await;
