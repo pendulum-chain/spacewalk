@@ -29,7 +29,9 @@ fn request_issue(
 
 	ext::vault_registry::try_increase_to_be_issued_tokens::<Test>
 		.mock_safe(|_, _| MockResult::Return(Ok(())));
-	ext::vault_registry::register_deposit_address::<Test>
+
+		<vault_registry::Pallet<T>>::register_deposit_address(vault_id, secure_id)
+	// ext::vault_registry::register_deposit_address::<Test>
 		.mock_safe(|_, _| MockResult::Return(Ok(RANDOM_STELLAR_PUBLIC_KEY)));
 
 	Issue::_request_issue(origin, amount, vault)
@@ -55,7 +57,8 @@ fn request_issue_ok_with_address(
 		.mock_safe(|_| MockResult::Return(Ok(DEFAULT_STELLAR_PUBLIC_KEY)));
 
 	unsafe {
-		ext::vault_registry::register_deposit_address::<Test>
+		<vault_registry::Pallet<T>>::register_deposit_address(vault_id, secure_id)
+		// ext::vault_registry::register_deposit_address::<Test>
 			.mock_raw(|_, _| MockResult::Return(Ok(address)));
 	}
 

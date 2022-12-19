@@ -227,6 +227,7 @@ impl SpacewalkParachain {
 		.await
 	}
 
+	#[cfg(test)]
 	async fn get_fresh_nonce(&self) -> u32 {
 		// For getting the nonce, use latest, possibly non-finalized block.
 		let storage_key = metadata::storage().system().account(&self.account_id);

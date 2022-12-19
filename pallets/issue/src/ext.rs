@@ -125,12 +125,12 @@ pub(crate) mod vault_registry {
 		<vault_registry::Pallet<T>>::get_issuable_tokens_from_vault(vault_id)
 	}
 
-	pub fn register_deposit_address<T: crate::Config>(
-		vault_id: &DefaultVaultId<T>,
-		secure_id: H256,
-	) -> Result<StellarPublicKeyRaw, DispatchError> {
-		<vault_registry::Pallet<T>>::register_deposit_address(vault_id, secure_id)
-	}
+	// pub fn register_deposit_address<T: crate::Config>(
+	// 	vault_id: &DefaultVaultId<T>,
+	// 	secure_id: H256,
+	// ) -> Result<StellarPublicKeyRaw, DispatchError> {
+	// 	<vault_registry::Pallet<T>>::register_deposit_address(vault_id, secure_id)
+	// }
 
 	pub fn get_stellar_public_key<T: crate::Config>(
 		account_id: &T::AccountId,
