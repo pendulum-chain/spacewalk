@@ -88,7 +88,11 @@ pub mod pallet {
 	// https://docs.substrate.io/v3/runtime/events-and-errors
 	#[pallet::event]
 	#[pallet::generate_deposit(pub (super) fn deposit_event)]
-	pub enum Event<T: Config> {}
+	pub enum Event<T: Config> {
+		UpdateTier1ValidatorSet {
+			new_validators_enactment_block_height: T::BlockNumber
+		},
+	}
 
 	// Errors inform users that something went wrong.
 	#[pallet::error]
@@ -483,6 +487,10 @@ pub mod pallet {
 				BoundedVec::<OrganizationOf<T>, T::OrganizationLimit>::try_from(organizations)
 					.map_err(|_| Error::<T>::BoundedVecCreationFailed)?;
 			Organizations::<T>::put(new_organization_vec);
+
+			Self::deposit_event(Event::<T>::UpdateTier1ValidatorSet {
+				new_validators_enactment_block_height : enactment_block_height
+			});
 
 			Ok(())
 		}
