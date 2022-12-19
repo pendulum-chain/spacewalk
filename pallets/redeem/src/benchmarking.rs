@@ -5,6 +5,7 @@ use orml_traits::MultiCurrency;
 use sp_core::H256;
 use sp_runtime::traits::One;
 use sp_std::prelude::*;
+use sp_runtime::FixedPointNumber;
 
 use currency::{
 	getters::{get_relay_chain_currency_id as get_collateral_currency_id, *},
@@ -62,15 +63,16 @@ fn mint_wrapped<T: crate::Config>(account_id: &T::AccountId, amount: BalanceOf<T
 fn initialize_oracle<T: crate::Config>() {
 	let oracle_id: T::AccountId = account("Oracle", 12, 0);
 
+	use primitives::oracle::Key;
 	Oracle::<T>::_feed_values(
 		oracle_id,
 		vec![
 			(
-				OracleKey::ExchangeRate(Token(DOT)),
+				Key::ExchangeRate(Token(DOT)),
 				UnsignedFixedPoint::<T>::checked_from_rational(1, 1).unwrap(),
 			),
 			(
-				OracleKey::FeeEstimation,
+				Key::FeeEstimation,
 				UnsignedFixedPoint::<T>::checked_from_rational(3, 1).unwrap(),
 			),
 		],
