@@ -73,7 +73,7 @@ impl Proof {
 
 // handle missing envelopes
 impl ScpMessageCollector {
-	async fn fetch_missing_envelopes(&mut self, slot: Slot, sender: &mpsc::Sender<StellarMessage>) {
+	async fn fetch_missing_envelopes(&self, slot: Slot, sender: &mpsc::Sender<StellarMessage>) {
 		let last_slot_index = *self.last_slot_index();
 
 		// If the current slot is still in the range of 'remembered' slots
@@ -84,14 +84,14 @@ impl ScpMessageCollector {
 		}
 	}
 
-	async fn ask_node_for_envelopes(&mut self, slot: Slot, sender: &mpsc::Sender<StellarMessage>) {
+	async fn ask_node_for_envelopes(&self, slot: Slot, sender: &mpsc::Sender<StellarMessage>) {
 		// for this slot to be processed, we must put this in our watch list.
 		self.watch_slot(slot);
 		let _ = sender.send(StellarMessage::GetScpState(slot.try_into().unwrap())).await;
 		tracing::info!("requesting to StellarNode for messages of slot {}...", slot);
 	}
 
-	async fn ask_archive_for_envelopes(&mut self, slot: Slot) {
+	async fn ask_archive_for_envelopes(&self, slot: Slot) {
 		if !self.is_public() {
 			// We can only fetch from archives if we are on public network because there are
 			// no archive nodes on testnet
@@ -113,7 +113,7 @@ impl ScpMessageCollector {
 // for fetching missing txset
 impl ScpMessageCollector {
 	/// Fetch txset that are missing in the collector's map.
-	async fn fetch_missing_txset(&mut self, slot: Slot, sender: &mpsc::Sender<StellarMessage>) {
+	async fn fetch_missing_txset(&self, slot: Slot, sender: &mpsc::Sender<StellarMessage>) {
 		// we need the txset hash to create the message.
 		if let Some(txset_hash) = self.get_txset_hash(&slot) {
 			tracing::info!(
@@ -131,7 +131,7 @@ impl ScpMessageCollector {
 impl ScpMessageCollector {
 	/// Returns either a list of ScpEnvelopes or a ProofStatus saying it failed to retrieve a list.
 	async fn get_envelopes(
-		&mut self,
+		&self,
 		slot: Slot,
 		sender: &mpsc::Sender<StellarMessage>,
 	) -> UnlimitedVarArray<ScpEnvelope> {
@@ -153,7 +153,7 @@ impl ScpMessageCollector {
 
 	/// Returns either a TransactionSet or a ProofStatus saying it failed to retrieve the set.
 	async fn get_txset(
-		&mut self,
+		&self,
 		slot: Slot,
 		sender: &mpsc::Sender<StellarMessage>,
 	) -> Option<TransactionSet> {
@@ -183,7 +183,7 @@ impl ScpMessageCollector {
 	/// * `slot` - The slot of a transactionwe want a proof of.
 	/// * `overlay_conn` - The StellarOverlayConnection used for sending messages to Stellar Node
 	pub async fn build_proof(
-		&mut self,
+		&self,
 		slot: Slot,
 		sender: &mpsc::Sender<StellarMessage>,
 	) -> Option<Proof> {

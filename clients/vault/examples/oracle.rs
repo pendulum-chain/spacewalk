@@ -59,11 +59,13 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 	// 3. todo: "retrieving transaction set" works;
 	// 4.
 
-	tokio::time::sleep(Duration::from_secs(3)).await;
-	let slot = 44041116;
+	loop {
+		tokio::time::sleep(Duration::from_secs(20)).await;
+		let slot = handler.get_last_slot_index();
 
-	let res = handler.get_proof(slot).await;
-	println!("result: {:?}", res);
+		let res = handler.get_proof(slot).await;
+		println!("result: {:?}", res);
+	}
 
 	Ok(())
 }

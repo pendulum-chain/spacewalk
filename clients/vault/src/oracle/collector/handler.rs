@@ -18,7 +18,7 @@ impl ScpMessageCollector {
 	/// * `env` - the ScpEnvelope
 	/// * `overlay_conn` - The StellarOverlayConnection used for sending messages to Stellar Node
 	pub(crate) async fn handle_envelope(
-		&mut self,
+		&self,
 		env: ScpEnvelope,
 		message_sender: &mpsc::Sender<StellarMessage>,
 	) -> Result<(), Error> {
@@ -41,7 +41,7 @@ impl ScpMessageCollector {
 			// Check if collector has a record of this hash.
 			if self.is_txset_new(&txset_hash, &slot) {
 				// if it doesn't exist, let's request from the Stellar Node.
-				tracing::debug!("requesting TxSet for slot {}...", slot);
+				tracing::info!("requesting TxSet for slot {}...", slot);
 				message_sender.send(StellarMessage::GetTxSet(txset_hash)).await?;
 
 				// let's save this for creating the proof later on.
@@ -58,7 +58,7 @@ impl ScpMessageCollector {
 	}
 
 	/// handles incoming TransactionSet.
-	pub(crate) fn handle_tx_set(&mut self, set: TransactionSet) {
+	pub(crate) fn handle_tx_set(&self, set: TransactionSet) {
 		// compute the tx_set_hash, to check what slot this set belongs too.
 		let tx_set_hash = compute_non_generic_tx_set_content_hash(&set);
 

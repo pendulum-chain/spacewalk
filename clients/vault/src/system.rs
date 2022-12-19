@@ -428,8 +428,8 @@ impl VaultService {
 		let slot_tx_env_map: Arc<RwLock<HashMap<u32, String>>> =
 			Arc::new(RwLock::new(HashMap::new()));
 
-		let handler =
-			create_agent(secret_key.clone(), self.stellar_wallet.is_public_network()).await?;
+		let handler = OracleAgent::new(self.stellar_wallet.is_public_network())
+			.expect("failed to create agent");
 
 		//let watcher = Arc::new(RwLock::new(handler.create_watcher()));
 		//let proof_ops = Arc::new(RwLock::new(handler.proof_operations()));
@@ -596,32 +596,4 @@ pub(crate) async fn is_vault_registered(
 		Err(RuntimeError::VaultNotFound) => Ok(false),
 		Err(err) => Err(err.into()),
 	}
-}
-
-/// Returns SCPMessageHandler which contains the thread to connect/listen to the Stellar
-/// Node. See the oracle.rs example
-pub async fn create_agent(
-	stellar_vault_secret_key: SecretKey,
-	is_public_network: bool,
-) -> Result<OracleAgent, Error> {
-	prepare_directories().map_err(|e| {
-		tracing::error!("Failed to create the SCPMessageHandler: {:?}", e);
-		Error::StellarSdkError
-	})?;
-
-	let tier1_node_ip =
-		if is_public_network { TIER_1_VALIDATOR_IP_PUBLIC } else { TIER_1_VALIDATOR_IP_TESTNET };
-
-	let network: &Network = if is_public_network { &PUBLIC_NETWORK } else { &TEST_NETWORK };
-
-	tracing::info!(
-		"Connecting to {:?} through {:?}",
-		std::str::from_utf8(network.get_passphrase().as_slice()).unwrap(),
-		tier1_node_ip
-	);
-
-	let node_info = NodeInfo::new(19, 25, 23, "v19.5.0".to_string(), network);
-	let cfg = ConnConfig::new(tier1_node_ip, 11625, stellar_vault_secret_key, 0, true, true, false);
-
-	Ok(OracleAgent::new(is_public_network)?)
 }

@@ -19,7 +19,7 @@
 // };
 // use stellar_relay_lib::sdk::{Hash, PublicKey, SecretKey, XdrCodec};
 // use vault::{
-// 	oracle::{create_handler, Proof, ProofExt, ProofStatus},
+// 	oracle::{ Proof, ProofExt, ProofStatus},
 // 	service::IssueFilter,
 // 	Event as CancellationEvent, VaultIdManager,
 // };
@@ -392,10 +392,11 @@
 // 		let slot_tx_env_map: Arc<RwLock<HashMap<u32, String>>> =
 // 			Arc::new(RwLock::new(HashMap::new()));
 //
-// 		let handler = vault::inner_create_handler(wallet.get_secret_key(), is_public_network)
+// 		let mut agent = vault::create_agent( is_public_network)
 // 			.await
-// 			.expect("Failed to create handler");
-// 		let watcher = Arc::new(RwLock::new(handler.create_watcher()));
+// 			.expect("Failed to create agent");
+//
+// 		agent.start_with_secret_key(wallet.get_secret_key()).await.expect("failed to start agent");
 //
 // 		let (issue_event_tx, _issue_event_rx) = mpsc::channel::<CancellationEvent>(16);
 // 		let service = join3(

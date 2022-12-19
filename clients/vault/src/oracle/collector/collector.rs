@@ -69,7 +69,7 @@ impl ScpMessageCollector {
 	}
 
 	/// watch out in Stellar Node's messages for SCPMessages containing this slot.
-	pub fn watch_slot(&mut self, slot: Slot) {
+	pub fn watch_slot(&self, slot: Slot) {
 		tracing::info!("watching slot {:?}", slot);
 		self.slot_watchlist.write().insert(slot, ());
 
@@ -112,7 +112,7 @@ impl ScpMessageCollector {
 
 // insert/add/save functions
 impl ScpMessageCollector {
-	pub(super) fn add_scp_envelope(&mut self, slot: Slot, scp_envelope: ScpEnvelope) {
+	pub(super) fn add_scp_envelope(&self, slot: Slot, scp_envelope: ScpEnvelope) {
 		// insert/add the externalized message to map.
 		{
 			let mut envelopes_map = self.envelopes_map.write();
@@ -131,10 +131,11 @@ impl ScpMessageCollector {
 		self.is_pending_proof(slot);
 	}
 
-	pub(super) fn add_txset(&mut self, txset_hash: &TxSetHash, tx_set: TransactionSet) {
+	pub(super) fn add_txset(&self, txset_hash: &TxSetHash, tx_set: TransactionSet) {
 		let slot = {
 			let mut map_write = self.txset_and_slot_map.write();
 			map_write.remove_by_txset_hash(txset_hash).map(|slot| {
+				tracing::info!("saved txset_hash for slot: {:?}", slot);
 				self.txset_map.write().set_with_key(slot, tx_set);
 				slot
 			})
@@ -151,13 +152,13 @@ impl ScpMessageCollector {
 		}
 	}
 
-	pub(super) fn save_txset_hash_and_slot(&mut self, txset_hash: TxSetHash, slot: Slot) {
+	pub(super) fn save_txset_hash_and_slot(&self, txset_hash: TxSetHash, slot: Slot) {
 		// save the mapping of the hash of the txset and the slot.
 		let mut m = self.txset_and_slot_map.write();
 		m.insert(txset_hash, slot);
 	}
 
-	pub(super) fn set_last_slot_index(&mut self, slot: Slot) {
+	pub(super) fn set_last_slot_index(&self, slot: Slot) {
 		let mut last_slot_index = self.last_slot_index.write();
 		if slot > *last_slot_index {
 			*last_slot_index = slot;
@@ -168,7 +169,7 @@ impl ScpMessageCollector {
 // delete/remove functions
 impl ScpMessageCollector {
 	/// Clear out data related to this slot.
-	pub(crate) fn remove_data(&mut self, slot: &Slot) {
+	pub(crate) fn remove_data(&self, slot: &Slot) {
 		self.slot_watchlist.write().remove(slot);
 		self.envelopes_map.write().remove_with_key(slot);
 		self.txset_map.write().remove_with_key(slot);
@@ -200,7 +201,7 @@ impl ScpMessageCollector {
 
 	/// Once a TransactionSet is found, remove that entry in `txset_and_slot` map and then
 	/// add to pending list.
-	pub(super) fn is_pending_proof(&mut self, slot: Slot) -> bool {
+	pub(super) fn is_pending_proof(&self, slot: Slot) -> bool {
 		let env_map_read = self.envelopes_map.read();
 		let envs = match env_map_read.get_with_key(&slot) {
 			None => return false,
@@ -310,7 +311,7 @@ mod test {
 
 	#[test]
 	fn add_txset_works() {
-		let mut collector = ScpMessageCollector::new(false);
+		let collector = ScpMessageCollector::new(false);
 
 		let slot = 42867088;
 		let dummy_hash = [0; 32];

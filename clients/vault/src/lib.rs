@@ -17,8 +17,6 @@ mod system;
 mod issue;
 pub mod oracle;
 
-type ArcRwLock<T> = Arc<RwLock<T>>;
-
 pub mod service {
 	pub use wallet::listen_for_new_transactions;
 
