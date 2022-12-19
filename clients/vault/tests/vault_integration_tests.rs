@@ -1078,7 +1078,7 @@ async fn test_automatic_issue_execution_succeeds_for_other_vault() {
 		);
 		drop(wallet);
 
-		let issue_set = Arc::new(RwLock::new(IssueRequestsMap::new()));
+		let issue_set_arc = Arc::new(RwLock::new(IssueRequestsMap::new()));
 		let slot_tx_env_map: Arc<RwLock<HashMap<u32, String>>> =
 			Arc::new(RwLock::new(HashMap::new()));
 
@@ -1093,11 +1093,9 @@ async fn test_automatic_issue_execution_succeeds_for_other_vault() {
 				primitives::AssetConversion::lookup(issue.asset).expect("Asset not found");
 			let memo_hash = issue.issue_id.0;
 
-			// Wrap this in a block to make sure the lock is dropped
-			{
-				let issue_set = issue_set.read().await;
-				assert!(!issue_set.is_empty());
-			}
+			let issue_set = issue_set_arc.read().await;
+			assert!(!issue_set.is_empty());
+			drop(issue_set);
 
 			let mut wallet = wallet_arc.write().await;
 			let result = wallet
@@ -1120,11 +1118,12 @@ async fn test_automatic_issue_execution_succeeds_for_other_vault() {
 			})
 			.await;
 
-			// Wrap this in a block to make sure the lock is dropped
-			{
-				let issue_set = issue_set.read().await;
-				assert!(issue_set.is_empty());
-			}
+			// wait a second to give the `listen_for_executed_issues()` service time to update the
+			// issue set
+			sleep(Duration::from_secs(1)).await;
+			let issue_set = issue_set_arc.read().await;
+			assert!(issue_set.is_empty());
+			drop(issue_set);
 		};
 
 		let wallet = wallet_arc.read().await;
@@ -1142,22 +1141,25 @@ async fn test_automatic_issue_execution_succeeds_for_other_vault() {
 				wallet.is_public_network(),
 				watcher.clone(),
 				slot_tx_env_map.clone(),
-				issue_set.clone(),
+				issue_set_arc.clone(),
 				issue_filter,
 			),
 			vault::service::listen_for_issue_requests(
 				vault2_provider.clone(),
 				wallet.get_public_key(),
 				issue_event_tx,
-				issue_set.clone(),
+				issue_set_arc.clone(),
 			),
 			vault::service::process_issues_with_proofs(
 				vault2_provider.clone(),
 				proof_ops.clone(),
 				slot_tx_env_map.clone(),
-				issue_set.clone(),
+				issue_set_arc.clone(),
 			),
-			vault::service::listen_for_executed_issues(vault2_provider.clone(), issue_set.clone()),
+			vault::service::listen_for_executed_issues(
+				vault2_provider.clone(),
+				issue_set_arc.clone(),
+			),
 		);
 		drop(wallet);
 
