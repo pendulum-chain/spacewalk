@@ -306,7 +306,6 @@ impl HorizonClient for reqwest::Client {
 pub(crate) struct HorizonFetcher<C: HorizonClient> {
 	client: C,
 	is_public_network: bool,
-	last_tx_id: Option<Vec<u8>>,
 	vault_account_public_key: PublicKey,
 }
 
@@ -314,7 +313,7 @@ const DEFAULT_PAGE_SIZE: i64 = 200;
 
 impl<C: HorizonClient> HorizonFetcher<C> {
 	pub fn new(client: C, vault_account_public_key: PublicKey, is_public_network: bool) -> Self {
-		Self { client, vault_account_public_key, last_tx_id: None, is_public_network }
+		Self { client, vault_account_public_key, is_public_network }
 	}
 
 	/// Fetch recent transactions from remote and deserialize to HorizonResponse
