@@ -30,7 +30,7 @@ pub mod service {
 		execution::execute_open_requests,
 		issue::{
 			listen_for_executed_issues, listen_for_issue_cancels, listen_for_issue_requests,
-			process_issues_with_proofs, IssueFilter,
+			process_issues_requests, IssueFilter,
 		},
 		redeem::listen_for_redeem_requests,
 		replace::{

@@ -125,7 +125,7 @@ impl OracleAgent {
 	/// This method returns the proof for a given slot or an error if the proof cannot be provided.
 	/// The agent will try every possible way to get the proof before returning an error.
 	/// Set timeout to 60 seconds; 10 seconds interval.
-	pub async fn get_proof(&mut self, slot: Slot) -> Result<Proof, Error> {
+	pub async fn get_proof(&self, slot: Slot) -> Result<Proof, Error> {
 		let sender = self
 			.message_sender
 			.clone()

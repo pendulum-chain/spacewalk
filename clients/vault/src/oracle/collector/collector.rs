@@ -74,15 +74,6 @@ impl ScpMessageCollector {
 	pub fn is_public(&self) -> bool {
 		self.public_network
 	}
-
-	/// watch out in Stellar Node's messages for SCPMessages containing this slot.
-	pub fn watch_slot(&mut self, slot: Slot) {
-		tracing::info!("watching slot {:?}", slot);
-		self.slot_watchlist.write().insert(slot, ());
-
-		// check if this slot already exists
-		self.is_pending_proof(slot);
-	}
 }
 
 // read functions
@@ -275,17 +266,6 @@ mod test {
 		let collector = ScpMessageCollector::new(false, sender);
 		assert_eq!(&collector.network().get_passphrase(), &TEST_NETWORK.get_passphrase());
 		assert!(!collector.is_public());
-	}
-
-	#[test]
-	fn watch_slot_works() {
-		let (sender, receiver) = mpsc::channel(1024);
-		let mut collector = ScpMessageCollector::new(true, sender);
-
-		let slot = 12345;
-		collector.watch_slot(slot);
-
-		assert!(collector.slot_watchlist.read().contains_key(&slot));
 	}
 
 	#[test]

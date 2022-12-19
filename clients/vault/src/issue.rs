@@ -18,7 +18,10 @@ use wallet::{
 	TransactionResponse,
 };
 
-use crate::{oracle::*, Error, Event};
+use crate::{
+	oracle::{types::Slot, *},
+	Error, Event,
+};
 
 fn is_vault(p1: &PublicKey, p2_raw: [u8; 32]) -> bool {
 	return *p1.as_binary() == p2_raw
@@ -116,23 +119,11 @@ pub async fn listen_for_executed_issues(
 	Ok(())
 }
 
-fn get_relevant_envelope(base64_xdr: &[u8]) -> Option<Transaction> {
-	let xdr = base64::decode(base64_xdr).unwrap();
-
-	match TransactionEnvelope::from_xdr(xdr) {
-		Ok(res) => match res {
-			TransactionEnvelope::EnvelopeTypeTx(env) => Some(env.tx),
-			_ => None,
-		},
-		Err(e) => {
-			tracing::error!("could not derive a TransactionEnvelope: {:?}", e);
-			None
-		},
-	}
-}
-
-fn get_issue_id_from_tx(base64_xdr: &str) -> Option<IssueId> {
-	let tx = get_relevant_envelope(base64_xdr.as_bytes())?;
+fn get_issue_id_from_tx_env(tx_env: &TransactionEnvelope) -> Option<IssueId> {
+	let tx = match tx_env {
+		TransactionEnvelope::EnvelopeTypeTx(env) => env.tx.clone(),
+		_ => return None,
+	};
 
 	match tx.memo {
 		Memo::MemoHash(issue_id) => Some(H256::from(issue_id)),
@@ -140,37 +131,29 @@ fn get_issue_id_from_tx(base64_xdr: &str) -> Option<IssueId> {
 	}
 }
 
-pub async fn process_issues_with_proofs(
+pub async fn process_issues_requests(
 	parachain_rpc: SpacewalkParachain,
-	proof_ops: Arc<RwLock<dyn ProofExt>>,
-	slot_tx_env_map: Arc<RwLock<HashMap<u32, String>>>,
+	oracle_agent: Arc<OracleAgent>,
+	slot_tx_env_map: Arc<RwLock<HashMap<Slot, TransactionEnvelope>>>,
 	issues: Arc<RwLock<IssueRequestsMap>>,
 ) -> Result<(), ServiceError<Error>> {
 	loop {
-		let ops_clone = proof_ops.clone();
-		let ops_read = proof_ops.read().await;
-
-		match ops_read.get_pending_proofs().await {
-			Ok(proofs) => {
-				tracing::warn!("Pending proofs: {:?}", proofs.len());
-				tokio::spawn(execute_issue(
-					parachain_rpc.clone(),
-					slot_tx_env_map.clone(),
-					issues.clone(),
-					proofs,
-					ops_clone,
-				));
-			},
-			Err(e) => {
-				tracing::warn!("no proofs found just yet: {:?}", e);
-			},
+		for (slot, tx_env) in slot_tx_env_map.read().await.iter() {
+			tracing::warn!("Pending proofs: {:?}", proofs.len());
+			tokio::spawn(execute_issue(
+				parachain_rpc.clone(),
+				slot_tx_env_map.clone(),
+				issues.clone(),
+				oracle_agent.clone(),
+				slot.clone(),
+			));
 		}
 
 		tokio::time::sleep(Duration::from_secs(5)).await;
 	}
 }
 
-/// executes issue requests
+/// Execute the issue request for a specific slot
 ///
 /// # Arguments
 ///
@@ -178,51 +161,36 @@ pub async fn process_issues_with_proofs(
 /// * `proofs` - a list of proofs to execute
 pub async fn execute_issue(
 	parachain_rpc: SpacewalkParachain,
-	slot_tx_env_map: Arc<RwLock<HashMap<u32, String>>>,
+	slot_tx_env_map: Arc<RwLock<HashMap<Slot, TransactionEnvelope>>>,
 	issues: Arc<RwLock<IssueRequestsMap>>,
-	proofs: Vec<Proof>,
-	proof_ops: Arc<RwLock<dyn ProofExt>>,
+	oracle_agent: Arc<OracleAgent>,
+	slot: Slot,
 ) -> Result<(), ServiceError<Error>> {
+	let proof = oracle_agent.get_proof(slot).await?;
+	let (envelopes, tx_set) = proof.encode();
+
 	let mut slot_tx_map = slot_tx_env_map.write().await;
-	for proof in proofs {
-		let (envelopes, tx_set) = proof.encode();
-
-		let u32_slot = match u32::try_from(proof.slot()) {
-			Ok(x) => x,
-			Err(e) => {
-				tracing::warn!("conversion problem: {:?}", e);
-				continue
-			},
-		};
-
-		let tx_env = match slot_tx_map.get(&u32_slot) {
-			None => continue,
-			Some(tx_env) => tx_env,
-		};
-
-		let issue_id = match get_issue_id_from_tx(tx_env) {
-			Some(issue_id) if issues.read().await.contains_key(&issue_id) => issue_id,
-			_ => continue,
-		};
-
-		match parachain_rpc
-			.execute_issue(
-				issue_id.clone(),
-				tx_env.as_bytes(),
-				envelopes.as_bytes(),
-				tx_set.as_bytes(),
-			)
-			.await
-		{
-			Ok(_) => {
-				tracing::trace!("Slot {:?} EXECUTED with issue_id: {:?}", u32_slot, issue_id);
-				slot_tx_map.remove(&u32_slot);
-				proof_ops.read().await.processed_proof(proof.slot()).await;
-			},
-			Err(err) if err.is_issue_completed() => {
-				tracing::info!("Issue #{} has been completed", issue_id);
-			},
-			Err(err) => return Err(err.into()),
+	if let Some(tx_env) = slot_tx_map.get(&u32_slot) {
+		if let Some(issue_id) = get_issue_id_from_tx_env(tx_env) {
+			match parachain_rpc
+				.execute_issue(
+					issue_id.clone(),
+					tx_env.as_bytes(),
+					envelopes.as_bytes(),
+					tx_set.as_bytes(),
+				)
+				.await
+			{
+				Ok(_) => {
+					tracing::trace!("Slot {:?} EXECUTED with issue_id: {:?}", u32_slot, issue_id);
+					slot_tx_map.remove(&u32_slot);
+					issues.write().await.remove(&issue_id);
+				},
+				Err(err) if err.is_issue_completed() => {
+					tracing::info!("Issue #{} has been completed", issue_id);
+				},
+				Err(err) => return Err(err.into()),
+			}
 		}
 	}
 

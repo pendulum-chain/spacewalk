@@ -86,7 +86,6 @@ impl ScpMessageCollector {
 
 	async fn ask_node_for_envelopes(&self, slot: Slot, sender: &mpsc::Sender<StellarMessage>) {
 		// for this slot to be processed, we must put this in our watch list.
-		self.watch_slot(slot);
 		let _ = sender.send(StellarMessage::GetScpState(slot.try_into().unwrap())).await;
 		tracing::info!("requesting to StellarNode for messages of slot {}...", slot);
 	}
@@ -102,9 +101,7 @@ impl ScpMessageCollector {
 			return
 		}
 
-		self.watch_slot(slot);
 		tracing::info!("requesting to Horizon Archive for messages of slot {}...", slot);
-
 		let envelopes_map_lock = self.envelopes_map_clone();
 		tokio::spawn(get_envelopes_from_horizon_archive(envelopes_map_lock, slot));
 	}
@@ -241,16 +238,6 @@ async fn get_envelopes_from_horizon_archive(
 			}
 		}
 	}
-}
-
-#[async_trait::async_trait]
-pub trait ProofExt: Send + Sync {
-	async fn get_proof(&self, slot: Slot) -> Result<ProofStatus, crate::oracle::Error>;
-
-	/// Returns a list of transactions with each of their corresponding proofs
-	async fn get_pending_proofs(&self) -> Result<Vec<Proof>, crate::oracle::Error>;
-
-	async fn processed_proof(&self, slot: Slot);
 }
 
 #[cfg(test)]

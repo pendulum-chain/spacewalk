@@ -12,7 +12,8 @@ use service::{spawn_cancelable, Error as ServiceError};
 use wallet::StellarWallet;
 
 use crate::{
-	cancellation::Event, error::Error, execution::Request, oracle::ProofExt, system::VaultIdManager,
+	cancellation::Event, error::Error, execution::Request, oracle::OracleAgent,
+	system::VaultIdManager,
 };
 
 /// Listen for AcceptReplaceEvent directed at this vault and continue the replacement
@@ -26,12 +27,12 @@ pub async fn listen_for_accept_replace(
 	parachain_rpc: SpacewalkParachain,
 	vault_id_manager: VaultIdManager,
 	payment_margin: Duration,
-	proof_ops: Arc<RwLock<dyn ProofExt>>,
+	oracle_agent: Arc<OracleAgent>,
 ) -> Result<(), ServiceError<Error>> {
 	let parachain_rpc = &parachain_rpc;
 	let vault_id_manager = &vault_id_manager;
 	let shutdown_tx = &shutdown_tx;
-	let proof_ops = &proof_ops;
+	let oracle_agent = &oracle_agent;
 	parachain_rpc
 		.on_event::<AcceptReplaceEvent, _, _, _>(
 			|event| async move {
@@ -48,7 +49,7 @@ pub async fn listen_for_accept_replace(
 				// we will need to capture the arguments by value rather than by reference, so clone
 				// these:
 				let parachain_rpc = parachain_rpc.clone();
-				let proof_ops = proof_ops.clone();
+				let oracle_agent = oracle_agent.clone();
 				// Spawn a new task so that we handle these events concurrently
 				spawn_cancelable(shutdown_tx.subscribe(), async move {
 					tracing::info!("Executing accept replace #{:?}", event.replace_id);
@@ -59,7 +60,7 @@ pub async fn listen_for_accept_replace(
 							parachain_rpc.get_replace_request(event.replace_id).await?,
 							payment_margin,
 						)?;
-						request.pay_and_execute(parachain_rpc, vault, proof_ops).await
+						request.pay_and_execute(parachain_rpc, vault, oracle_agent).await
 					}
 					.await;
 

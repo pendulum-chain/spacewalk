@@ -23,7 +23,7 @@ use stellar_relay_lib::{
 	node::NodeInfo,
 	sdk::{
 		network::{Network, PUBLIC_NETWORK, TEST_NETWORK},
-		SecretKey,
+		SecretKey, TransactionEnvelope,
 	},
 	ConnConfig,
 };
@@ -36,7 +36,7 @@ use crate::{
 	issue,
 	issue::IssueFilter,
 	metrics::publish_tokio_metrics,
-	oracle::{create_handler, prepare_directories, OracleAgent, ScpMessageHandler},
+	oracle::{create_handler, prepare_directories, types::Slot, OracleAgent, ScpMessageHandler},
 	redeem::listen_for_redeem_requests,
 	replace::{listen_for_accept_replace, listen_for_execute_replace, listen_for_replace_requests},
 	service::{CancellationScheduler, IssueCanceller},
@@ -434,12 +434,20 @@ impl VaultService {
 		// purposefully _after_ maybe_register_vault and _before_ other calls
 		self.vault_id_manager.fetch_vault_ids().await?;
 
+		let wallet = self.stellar_wallet.read().await;
+		let secret_key = wallet.get_secret_key();
+		let vault_public_key = wallet.get_public_key();
+		let is_public_network = wallet.is_public_network();
+		let oracle_agent =
+			Arc::new(OracleAgent::new(is_public_network).expect("failed to create agent"));
+		drop(wallet);
+
 		let open_request_executor = execute_open_requests(
 			self.shutdown.clone(),
 			self.spacewalk_parachain.clone(),
 			self.vault_id_manager.clone(),
 			self.stellar_wallet.clone(),
-			proof_ops.clone(),
+			oracle_agent.clone(),
 			self.config.payment_margin_minutes,
 		);
 		service::spawn_cancelable(self.shutdown.subscribe(), async move {
@@ -456,19 +464,11 @@ impl VaultService {
 		// this has to be modified every time the issue set changes
 		let issue_map: Arc<RwLock<IssueRequestsMap>> =
 			Arc::new(RwLock::new(IssueRequestsMap::new()));
-		let wallet = self.stellar_wallet.read().await;
-		let secret_key = self.stellar_wallet.get_secret_key();
 
 		let issue_filter = IssueFilter::new(secret_key.get_public())?;
 
-		let slot_tx_env_map: Arc<RwLock<HashMap<u32, String>>> =
+		let slot_tx_env_map: Arc<RwLock<HashMap<Slot, TransactionEnvelope>>> =
 			Arc::new(RwLock::new(HashMap::new()));
-
-		let handler = OracleAgent::new(self.stellar_wallet.is_public_network())
-			.expect("failed to create agent");
-
-		//let watcher = Arc::new(RwLock::new(handler.create_watcher()));
-		//let proof_ops = Arc::new(RwLock::new(handler.proof_operations()));
 
 		let (issue_event_tx, issue_event_rx) = mpsc::channel::<Event>(32);
 		let (replace_event_tx, replace_event_rx) = mpsc::channel::<Event>(16);
@@ -490,9 +490,8 @@ impl VaultService {
 			(
 				"Stellar Transaction Listener",
 				run(wallet::listen_for_new_transactions(
-					wallet.get_public_key(),
-					wallet.is_public_network(),
-					watcher.clone(),
+					vault_public_key.clone(),
+					is_public_network,
 					slot_tx_env_map.clone(),
 					issue_map.clone(),
 					issue_filter,
@@ -502,7 +501,7 @@ impl VaultService {
 				"Issue Request Listener",
 				run(issue::listen_for_issue_requests(
 					self.spacewalk_parachain.clone(),
-					wallet.get_public_key(),
+					vault_public_key,
 					issue_event_tx.clone(),
 					issue_map.clone(),
 				)),
@@ -525,9 +524,9 @@ impl VaultService {
 				"Issue Executor",
 				maybe_run(
 					!self.config.no_issue_execution,
-					issue::process_issues_with_proofs(
+					issue::process_issues_requests(
 						self.spacewalk_parachain.clone(),
-						proof_ops.clone(),
+						oracle_agent.clone(),
 						slot_tx_env_map.clone(),
 						issue_map.clone(),
 					),
@@ -558,7 +557,7 @@ impl VaultService {
 					self.spacewalk_parachain.clone(),
 					self.vault_id_manager.clone(),
 					self.config.payment_margin_minutes,
-					proof_ops.clone(),
+					oracle_agent.clone(),
 				)),
 			),
 			(
@@ -592,11 +591,10 @@ impl VaultService {
 					self.spacewalk_parachain.clone(),
 					self.vault_id_manager.clone(),
 					self.config.payment_margin_minutes,
-					proof_ops.clone(),
+					oracle_agent.clone(),
 				)),
 			),
 		];
-		drop(wallet);
 
 		run_and_monitor_tasks(self.shutdown.clone(), tasks).await
 	}

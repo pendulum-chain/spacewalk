@@ -8,12 +8,6 @@ use crate::{error::Error, horizon::TransactionResponse};
 
 pub type StellarPublicKeyRaw = [u8; 32];
 
-#[async_trait]
-#[cfg_attr(test, automock)]
-pub trait Watcher: Send + Sync {
-	async fn watch_slot(&self, slot: u128) -> Result<(), Error>;
-}
-
 pub type TransactionFilterParam<T> = (TransactionResponse, T);
 
 /// A filter trait to check whether `T` should be processed.

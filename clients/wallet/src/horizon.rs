@@ -352,8 +352,7 @@ impl<C: HorizonClient> HorizonFetcher<C> {
 
 	pub async fn fetch_horizon_and_process_new_transactions<T: Clone>(
 		&mut self,
-		watcher: Arc<RwLock<dyn Watcher>>,
-		slot_tx_env_map: Arc<RwLock<HashMap<u32, String>>>,
+		slot_tx_env_map: Arc<RwLock<HashMap<Slot, TransactionEnvelope>>>,
 		targets: Arc<RwLock<T>>,
 		filter: impl FilterWith<TransactionFilterParam<T>>,
 		last_paging_token: PagingToken,
@@ -373,28 +372,18 @@ impl<C: HorizonClient> HorizonFetcher<C> {
 			transactions.iter().map(|tx| tx.paging_token).max().unwrap_or(last_paging_token);
 
 		let targets = targets.read().await;
-		let w = watcher.read().await;
 		for transaction in transactions {
 			let tx = transaction.clone();
 			let id = tx.id.clone();
 
 			if filter.is_relevant((tx.clone(), targets.clone())) {
-				match w.watch_slot(tx.ledger.try_into().unwrap()).await {
-					Ok(_) => {
-						tracing::info!(
-							"following transaction {:?} WITH SLOT: {}",
-							String::from_utf8(id.clone()),
-							tx.ledger
-						);
-						slot_tx_env_map
-							.write()
-							.await
-							.insert(tx.ledger, String::from_utf8(tx.envelope_xdr).unwrap());
-					},
-					Err(e) => {
-						tracing::error!("Failed to watch transaction: {:?}", e);
-					},
-				}
+				tracing::info!(
+					"Adding transaction {:?} with slot {} to the slot_tx_env_map",
+					String::from_utf8(id.clone()),
+					tx.ledger
+				);
+				let tx_env = tx.to_envelope()?;
+				slot_tx_env_map.write().await.insert(tx.ledger, tx_env);
 			}
 		}
 
@@ -405,8 +394,7 @@ impl<C: HorizonClient> HorizonFetcher<C> {
 pub async fn listen_for_new_transactions<T, Filter>(
 	vault_account_public_key: PublicKey,
 	is_public_network: bool,
-	watcher: Arc<RwLock<dyn Watcher>>,
-	slot_tx_env_map: Arc<RwLock<HashMap<u32, String>>>,
+	slot_tx_env_map: Arc<RwLock<HashMap<Slot, TransactionEnvelope>>>,
 	targets: Arc<RwLock<T>>,
 	filter: Filter,
 ) -> Result<(), Error>
@@ -423,7 +411,6 @@ where
 	loop {
 		if let Ok(new_paging_token) = fetcher
 			.fetch_horizon_and_process_new_transactions(
-				watcher.clone(),
 				slot_tx_env_map.clone(),
 				targets.clone(),
 				filter.clone(),
@@ -615,19 +602,19 @@ mod tests {
 		let secret = SecretKey::from_encoding(SECRET).unwrap();
 		let mut fetcher = HorizonFetcher::new(horizon_client, secret.get_public().clone(), false);
 
+		// TODO change this to check the slot_env_map instead and remove the watcher stuff
 		// We assume that the watch_slot function is called at exactly once because the intial fetch
 		// without a cursor returns the latest transaction only
-		let wat = watcher
-			.write()
-			.await
-			.expect_watch_slot()
-			.once()
-			.returning(|_| Box::pin(future::ready(Ok(()))));
+		// let wat = watcher
+		// 	.write()
+		// 	.await
+		// 	.expect_watch_slot()
+		// 	.once()
+		// 	.returning(|_| Box::pin(future::ready(Ok(()))));
 
 		let mut cursor = 0;
 		if let Ok(next_page) = fetcher
 			.fetch_horizon_and_process_new_transactions(
-				watcher.clone(),
 				slot_env_map.clone(),
 				issue_hashes.clone(),
 				MockFilter,
@@ -645,7 +632,6 @@ mod tests {
 
 		fetcher
 			.fetch_horizon_and_process_new_transactions(
-				watcher.clone(),
 				slot_env_map.clone(),
 				issue_hashes.clone(),
 				MockFilter,

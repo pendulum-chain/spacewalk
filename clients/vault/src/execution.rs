@@ -22,7 +22,7 @@ use wallet::{StellarWallet, TransactionResponse};
 
 use crate::{
 	error::Error,
-	oracle::{types::Slot, Proof, ProofExt, ProofStatus},
+	oracle::{types::Slot, OracleAgent, Proof, ProofExt, ProofStatus},
 	system::VaultData,
 	VaultIdManager, YIELD_RATE,
 };
@@ -147,7 +147,7 @@ impl Request {
 		&self,
 		parachain_rpc: P,
 		vault: VaultData,
-		proof_ops: Arc<RwLock<dyn ProofExt>>,
+		oracle_agent: Arc<OracleAgent>,
 	) -> Result<(), Error> {
 		// ensure the deadline has not expired yet
 		if let Some(ref deadline) = self.deadline {
@@ -158,23 +158,7 @@ impl Request {
 
 		let (tx_env, slot) = self.transfer_stellar_asset(vault.stellar_wallet).await?;
 
-		let ops_read = proof_ops.read().await;
-		// TODO refactor this once the improved 'OracleAgent' is implemented
-		let proof: Proof = loop {
-			let proof_status_result = ops_read.get_proof(slot as Slot).await;
-			match proof_status_result {
-				Ok(proof_status) => match proof_status {
-					ProofStatus::Proof(p) => break p,
-					ProofStatus::LackingEnvelopes => {},
-					ProofStatus::NoEnvelopesFound => {},
-					ProofStatus::NoTxSetFound => {},
-					ProofStatus::WaitForTxSet => {},
-				},
-				Err(e) => {
-					tracing::error!("Error while fetching proof: {:?}", e);
-				},
-			}
-		};
+		let proof = oracle_agent.get_proof(slot).await?;
 
 		self.execute(parachain_rpc, tx_env, proof).await
 	}
@@ -191,7 +175,7 @@ impl Request {
 	async fn transfer_stellar_asset(
 		&self,
 		wallet: Arc<RwLock<StellarWallet>>,
-	) -> Result<(TransactionEnvelope, u32), Error> {
+	) -> Result<(TransactionEnvelope, Slot), Error> {
 		let destination_public_key = PublicKey::from_binary(self.stellar_address);
 		let stroop_amount = self.amount as i64;
 		let memo_hash = self.hash.0;
@@ -216,7 +200,7 @@ impl Request {
 
 		match result {
 			Ok((response, tx_env)) => {
-				let slot = response.ledger;
+				let slot: Slot = response.ledger as Slot;
 				tracing::info!(
 					"Successfully sent stellar payment to {:?} for {}",
 					destination_public_key,
@@ -282,7 +266,7 @@ pub async fn execute_open_requests(
 	parachain_rpc: SpacewalkParachain,
 	vault_id_manager: VaultIdManager,
 	wallet: Arc<RwLock<StellarWallet>>,
-	proof_ops: Arc<RwLock<dyn ProofExt>>,
+	oracle_agent: Arc<OracleAgent>,
 	payment_margin: Duration,
 ) -> Result<(), ServiceError<Error>> {
 	let parachain_rpc = &parachain_rpc;
@@ -350,56 +334,32 @@ pub async fn execute_open_requests(
 					// variables we move into the task
 					let parachain_rpc = parachain_rpc.clone();
 					let vault_id_manager = vault_id_manager.clone();
-					let proof_ops = proof_ops.clone();
+					let oracle_agent = oracle_agent.clone();
 					spawn_cancelable(shutdown_tx.subscribe(), async move {
 						match transaction.to_envelope() {
 							Ok(tx_env) => {
 								let slot = transaction.ledger as Slot;
 
-								// Loop pending proofs until it is ready
-								// TODO refactor this once improved 'OracleAgent' is ready
-								let mut proof: Option<Proof> = None;
-								let timeout_result = timeout(Duration::from_secs(60), async {
-									loop {
-										let ops_read = proof_ops.read().await;
-										let proof_status = ops_read
-											.get_proof(slot)
+								match oracle_agent.get_proof(slot).await {
+									Ok(proof) => {
+										if let Err(e) = request
+											.execute(parachain_rpc.clone(), tx_env, proof)
 											.await
-											.expect("Failed to get proof");
-
-										match proof_status {
-											ProofStatus::Proof(p) => {
-												proof = Some(p);
-												break
-											},
-											ProofStatus::LackingEnvelopes => {},
-											ProofStatus::NoEnvelopesFound => {},
-											ProofStatus::NoTxSetFound => {},
-											ProofStatus::WaitForTxSet => {},
+										{
+											tracing::error!(
+												"Failed to execute request #{}: {}",
+												request.hash,
+												e
+											);
 										}
-
-										// Wait a bit before trying again
-										sleep(Duration::from_secs(3)).await;
-										tracing::info!("Waiting for proof to be ready. Sleeping for 3 seconds...");
-									}
-								})
-								.await;
-
-								if let Err(_) = timeout_result {
-									tracing::error!("Failed to get proof for slot {}", slot);
-									return
-								}
-
-								if let Some(proof) = proof {
-									if let Err(e) =
-										request.execute(parachain_rpc.clone(), tx_env, proof).await
-									{
+									},
+									Err(error) => {
 										tracing::error!(
-											"Failed to execute request #{}: {}",
-											request.hash,
-											e
+											"Failed to get proof for slot {}: {:?}",
+											slot,
+											error
 										);
-									}
+									},
 								}
 							},
 							Err(error) => {
@@ -424,7 +384,7 @@ pub async fn execute_open_requests(
 		// make copies of the variables we move into the task
 		let parachain_rpc = parachain_rpc.clone();
 		let vault_id_manager = vault_id_manager.clone();
-		let proof_ops = proof_ops.clone();
+		let oracle_agent = oracle_agent.clone();
 		let rate_limiter = rate_limiter.clone();
 		spawn_cancelable(shutdown_tx.subscribe(), async move {
 			let vault = match vault_id_manager.get_vault(&request.vault_id).await {
@@ -449,7 +409,7 @@ pub async fn execute_open_requests(
 			// error.
 			rate_limiter.until_ready().await;
 			tracing::info!("After rate limit");
-			match request.pay_and_execute(parachain_rpc, vault, proof_ops).await {
+			match request.pay_and_execute(parachain_rpc, vault, oracle_agent).await {
 				Ok(_) => tracing::info!(
 					"{:?} request #{:?} successfully executed",
 					request.request_type,

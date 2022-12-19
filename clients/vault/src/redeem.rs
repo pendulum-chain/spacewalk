@@ -8,7 +8,7 @@ use stellar_relay_lib::sdk::PublicKey;
 
 use crate::{
 	execution::*,
-	oracle::ProofExt,
+	oracle::{OracleAgent, ProofExt},
 	system::{VaultData, VaultIdManager},
 	Error,
 };
@@ -26,7 +26,7 @@ pub async fn listen_for_redeem_requests(
 	parachain_rpc: SpacewalkParachain,
 	vault_id_manager: VaultIdManager,
 	payment_margin: Duration,
-	proof_ops: Arc<RwLock<dyn ProofExt>>,
+	oracle_agent: Arc<OracleAgent>,
 ) -> Result<(), ServiceError<Error>> {
 	parachain_rpc
 		.on_event::<RequestRedeemEvent, _, _, _>(
@@ -46,7 +46,7 @@ pub async fn listen_for_redeem_requests(
 				// these:
 				let parachain_rpc = parachain_rpc.clone();
 				// Spawn a new task so that we handle these events concurrently
-				let proof_ops = proof_ops.clone();
+				let oracle_agent = oracle_agent.clone();
 				spawn_cancelable(shutdown_tx.subscribe(), async move {
 					tracing::info!("Executing redeem #{:?}", event.redeem_id);
 					let result = async {
@@ -55,7 +55,7 @@ pub async fn listen_for_redeem_requests(
 							parachain_rpc.get_redeem_request(event.redeem_id).await?,
 							payment_margin,
 						)?;
-						request.pay_and_execute(parachain_rpc, vault, proof_ops).await
+						request.pay_and_execute(parachain_rpc, vault, oracle_agent).await
 					}
 					.await;
 

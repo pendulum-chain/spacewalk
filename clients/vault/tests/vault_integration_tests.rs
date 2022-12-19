@@ -1009,7 +1009,7 @@ async fn test_automatic_issue_execution_succeeds() {
 				issue_event_tx,
 				issue_set.clone(),
 			),
-			vault::service::process_issues_with_proofs(
+			vault::service::process_issues_requests(
 				vault_provider.clone(),
 				proof_ops.clone(),
 				slot_tx_env_map.clone(),
@@ -1150,7 +1150,7 @@ async fn test_automatic_issue_execution_succeeds_for_other_vault() {
 				issue_event_tx,
 				issue_set_arc.clone(),
 			),
-			vault::service::process_issues_with_proofs(
+			vault::service::process_issues_requests(
 				vault2_provider.clone(),
 				proof_ops.clone(),
 				slot_tx_env_map.clone(),
