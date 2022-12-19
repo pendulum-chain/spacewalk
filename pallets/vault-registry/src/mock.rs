@@ -327,7 +327,8 @@ where
 		<oracle::Pallet<Test>>::_set_exchange_rate(
 			DEFAULT_COLLATERAL_CURRENCY,
 			UnsignedFixedPoint::one(),
-		);
+		)
+		.unwrap();
 		<oracle::Pallet<Test>>::_set_exchange_rate(
 			DEFAULT_WRAPPED_CURRENCY,
 			UnsignedFixedPoint::one(),

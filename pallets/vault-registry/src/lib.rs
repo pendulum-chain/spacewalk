@@ -260,7 +260,7 @@ pub mod pallet {
 			let account_id = ensure_signed(origin)?;
 
 			ensure!(
-				!VaultStellarPublicKey::<T>::get(&account_id).is_some(),
+				VaultStellarPublicKey::<T>::get(&account_id).is_none(),
 				Error::<T>::PublicKeyAlreadyRegistered
 			);
 
@@ -438,7 +438,7 @@ pub mod pallet {
 				VaultId::new(account_id, currency_pair.collateral, currency_pair.wrapped);
 			ensure!(Self::is_vault_liquidated(&vault_id)?, Error::<T>::VaultNotRecoverable);
 
-			let mut vault = Self::get_rich_vault_from_id(&vault_id.clone())?;
+			let mut vault = Self::get_rich_vault_from_id(&vault_id)?;
 			ensure!(vault.to_be_redeemed_tokens().is_zero(), Error::<T>::VaultNotRecoverable);
 
 			// Vault accepts new issues by default
@@ -806,7 +806,7 @@ impl<T: Config> Pallet<T> {
 
 		Self::try_deposit_collateral(&vault_id, &amount)?;
 
-		Self::deposit_event(Event::<T>::RegisterVault { vault_id: vault_id.clone(), collateral });
+		Self::deposit_event(Event::<T>::RegisterVault { vault_id: vault_id, collateral });
 
 		Ok(())
 	}
