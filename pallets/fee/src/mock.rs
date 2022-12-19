@@ -13,6 +13,9 @@ use sp_runtime::{
 	FixedPointNumber,
 };
 
+pub use currency::testing_constants::{
+	DEFAULT_COLLATERAL_CURRENCY, DEFAULT_NATIVE_CURRENCY, DEFAULT_WRAPPED_CURRENCY,
+};
 use primitives::VaultId;
 pub use primitives::{CurrencyId, CurrencyId::Token, TokenSymbol::*};
 
@@ -88,9 +91,8 @@ impl frame_system::Config for Test {
 }
 
 parameter_types! {
-	pub const GetNativeCurrencyId: CurrencyId = Token(INTR);
-	pub const GetRelayChainCurrencyId: CurrencyId = Token(DOT);
-	pub const GetWrappedCurrencyId: CurrencyId = Token(IBTC);
+	pub const GetNativeCurrencyId: CurrencyId = DEFAULT_NATIVE_CURRENCY;
+	pub const GetRelayChainCurrencyId: CurrencyId = DEFAULT_COLLATERAL_CURRENCY;
 	pub const MaxLocks: u32 = 50;
 }
 
@@ -125,7 +127,6 @@ impl reward::Config for Test {
 	type RewardId = VaultId<AccountId, CurrencyId>;
 	type CurrencyId = CurrencyId;
 	type GetNativeCurrencyId = GetNativeCurrencyId;
-	type GetWrappedCurrencyId = GetWrappedCurrencyId;
 }
 
 impl staking::Config for Test {
@@ -168,7 +169,7 @@ impl currency::Config for Test {
 	type Balance = Balance;
 	type GetNativeCurrencyId = GetNativeCurrencyId;
 	type GetRelayChainCurrencyId = GetRelayChainCurrencyId;
-	type GetWrappedCurrencyId = GetWrappedCurrencyId;
+
 	type AssetConversion = primitives::AssetConversion;
 	type BalanceConversion = primitives::BalanceConversion;
 	type CurrencyConversion = CurrencyConvert;

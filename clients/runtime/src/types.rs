@@ -16,7 +16,7 @@ pub type FixedU128 = sp_arithmetic::FixedU128;
 
 pub type IssueId = H256;
 
-pub type StellarPublicKey = [u8; 32];
+pub type StellarPublicKeyRaw = [u8; 32];
 
 mod metadata_aliases {
 	use std::collections::HashMap;
@@ -27,6 +27,9 @@ mod metadata_aliases {
 			RequestIssue as RequestIssueEvent,
 		},
 		oracle::events::FeedValues as FeedValuesEvent,
+		redeem::events::{
+			ExecuteRedeem as ExecuteRedeemEvent, RequestRedeem as RequestRedeemEvent,
+		},
 		replace::events::{
 			AcceptReplace as AcceptReplaceEvent, CancelReplace as CancelReplaceEvent,
 			ExecuteReplace as ExecuteReplaceEvent, RequestReplace as RequestReplaceEvent,
@@ -64,6 +67,13 @@ mod metadata_aliases {
 			CurrencyId,
 		>;
 
+	pub type SpacewalkRedeemRequest =
+		metadata::runtime_types::spacewalk_primitives::redeem::RedeemRequest<
+			AccountId,
+			BlockNumber,
+			Balance,
+			CurrencyId,
+		>;
 	// pub use crate::metadata::runtime_types::spacewalk_primitives::CurrencyId;
 
 	pub type SpacewalkIssueRequest =

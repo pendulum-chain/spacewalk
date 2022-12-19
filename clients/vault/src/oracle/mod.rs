@@ -12,4 +12,4 @@ mod collector;
 mod constants;
 mod errors;
 pub mod storage;
-mod types;
+pub mod types;

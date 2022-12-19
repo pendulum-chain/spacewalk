@@ -104,7 +104,7 @@ impl Connector {
 			timeout_in_secs: cfg.timeout_in_secs,
 			retries: cfg.retries,
 			remote_called_us: cfg.remote_called_us,
-			receive_tx_messages: cfg.recv_scp_messages,
+			receive_tx_messages: cfg.recv_tx_msgs,
 			receive_scp_messages: cfg.recv_scp_messages,
 			handshake_state: HandshakeState::Connecting,
 			flow_controller: FlowController::default(),
@@ -191,5 +191,224 @@ impl Connector {
 		remote_overlay_version: u32,
 	) {
 		self.flow_controller.enable(local_overlay_version, remote_overlay_version)
+	}
+}
+
+#[cfg(test)]
+mod test {
+	use crate::{connection::hmac::HMacKeys, node::RemoteInfo, Connector};
+
+	use substrate_stellar_sdk::{
+		compound_types::LimitedString,
+		types::{Hello, MessageType},
+		PublicKey,
+	};
+	use tokio::sync::mpsc::{self, Receiver};
+
+	use crate::{
+		connection::authentication::{create_auth_cert, ConnectionAuth},
+		helper::time_now,
+		node::NodeInfo,
+		ConnConfig, ConnectorActions, StellarRelayMessage,
+	};
+
+	#[cfg(test)]
+	fn create_auth_cert_from_connection_auth(
+		connector_auth: &ConnectionAuth,
+	) -> substrate_stellar_sdk::types::AuthCert {
+		let time_now = time_now();
+		let new_auth_cert = create_auth_cert(
+			connector_auth.network_id(),
+			connector_auth.keypair(),
+			time_now,
+			connector_auth.pub_key_ecdh().clone(),
+		)
+		.expect("should successfully create an auth cert");
+		new_auth_cert
+	}
+
+	#[cfg(test)]
+	fn create_connector(
+	) -> (NodeInfo, ConnConfig, Connector, Receiver<ConnectorActions>, Receiver<StellarRelayMessage>)
+	{
+		use substrate_stellar_sdk::{network::TEST_NETWORK, SecretKey};
+		let secret =
+			SecretKey::from_encoding("SBLI7RKEJAEFGLZUBSCOFJHQBPFYIIPLBCKN7WVCWT4NEG2UJEW33N73")
+				.unwrap();
+		let node_info = NodeInfo::new(19, 21, 19, "v19.1.0".to_string(), &TEST_NETWORK);
+		let cfg = ConnConfig::new("34.235.168.98", 11625, secret, 0, false, true, false);
+		// this is a channel to communicate with the connection/config (this needs renaming)
+		let (actions_sender, actions_receiver) = mpsc::channel::<ConnectorActions>(1024);
+		// this is a channel to communicate with the user/caller.
+		let (relay_message_sender, relay_message_receiver) =
+			mpsc::channel::<StellarRelayMessage>(1024);
+		let connector =
+			Connector::new(node_info.clone(), cfg.clone(), actions_sender, relay_message_sender);
+		(node_info, cfg, connector, actions_receiver, relay_message_receiver)
+	}
+
+	#[test]
+	fn create_new_connector_works() {
+		use substrate_stellar_sdk::network::TEST_NETWORK;
+		let (node_info, _, mut connector, _, _) = create_connector();
+
+		let connector_local_node = connector.local.node();
+
+		assert_eq!(connector_local_node.ledger_version, node_info.ledger_version);
+		assert_eq!(connector_local_node.overlay_version, node_info.overlay_version);
+		assert_eq!(connector_local_node.overlay_min_version, node_info.overlay_min_version);
+		assert_eq!(connector_local_node.version_str, node_info.version_str);
+		assert_eq!(connector_local_node.network_id, node_info.network_id);
+	}
+
+	#[test]
+	fn connector_local_sequence_works() {
+		let (node_info, _, mut connector, _, _) = create_connector();
+		assert_eq!(connector.local_sequence(), 0);
+		connector.increment_local_sequence();
+		assert_eq!(connector.local_sequence(), 1);
+	}
+
+	#[test]
+	fn connector_set_remote_works() {
+		let (node_info, _, mut connector, _, _) = create_connector();
+
+		let connector_auth = &connector.connection_auth;
+		let new_auth_cert = create_auth_cert_from_connection_auth(connector_auth);
+
+		let hello = Hello {
+			ledger_version: 0,
+			overlay_version: 0,
+			overlay_min_version: 0,
+			network_id: [0; 32],
+			version_str: LimitedString::<100_i32>::new(vec![]).unwrap(),
+			listening_port: 11625,
+			peer_id: PublicKey::PublicKeyTypeEd25519([0; 32]),
+			cert: new_auth_cert,
+			nonce: [0; 32],
+		};
+		connector.set_remote(RemoteInfo::new(&hello));
+
+		assert!(connector.remote().is_some());
+	}
+
+	#[test]
+	fn connector_increment_remote_sequence_works() {
+		let (node_info, _, mut connector, _, _) = create_connector();
+
+		let connector_auth = &connector.connection_auth;
+		let new_auth_cert = create_auth_cert_from_connection_auth(connector_auth);
+
+		let hello = Hello {
+			ledger_version: 0,
+			overlay_version: 0,
+			overlay_min_version: 0,
+			network_id: [0; 32],
+			version_str: LimitedString::<100_i32>::new(vec![]).unwrap(),
+			listening_port: 11625,
+			peer_id: PublicKey::PublicKeyTypeEd25519([0; 32]),
+			cert: new_auth_cert,
+			nonce: [0; 32],
+		};
+		connector.set_remote(RemoteInfo::new(&hello));
+		assert_eq!(connector.remote().unwrap().sequence(), 0);
+
+		connector.increment_remote_sequence().unwrap();
+		connector.increment_remote_sequence().unwrap();
+		connector.increment_remote_sequence().unwrap();
+		assert_eq!(connector.remote().unwrap().sequence(), 3);
+	}
+
+	#[test]
+	fn connector_get_and_set_hmac_keys_works() {
+		//arrange
+		let (_, _, mut connector, _, _) = create_connector();
+		let connector_auth = &connector.connection_auth;
+		let new_auth_cert = create_auth_cert_from_connection_auth(connector_auth);
+
+		let hello = Hello {
+			ledger_version: 0,
+			overlay_version: 0,
+			overlay_min_version: 0,
+			network_id: [0; 32],
+			version_str: LimitedString::<100_i32>::new(vec![]).unwrap(),
+			listening_port: 11625,
+			peer_id: PublicKey::PublicKeyTypeEd25519([0; 32]),
+			cert: new_auth_cert,
+			nonce: [0; 32],
+		};
+		let remote = RemoteInfo::new(&hello);
+		let remote_nonce = remote.nonce();
+		connector.set_remote(remote.clone());
+
+		let shared_key = connector.get_shared_key(&remote.pub_key_ecdh());
+		assert!(connector.hmac_keys().is_none());
+		//act
+		connector.set_hmac_keys(HMacKeys::new(
+			&shared_key,
+			connector.local().nonce(),
+			remote_nonce,
+			connector.remote_called_us(),
+		));
+		//assert
+		assert!(connector.hmac_keys().is_some());
+	}
+
+	#[test]
+	fn connector_method_works() {
+		let (_, connConfig, mut connector, _, _) = create_connector();
+
+		assert_eq!(connector.remote_called_us(), connConfig.remote_called_us);
+		assert_eq!(connector.receive_tx_messages(), connConfig.recv_tx_msgs);
+		assert_eq!(connector.receive_scp_messages(), connConfig.recv_scp_messages);
+
+		connector.got_hello();
+		assert!(connector.is_handshake_created());
+
+		connector.handshake_completed();
+		assert!(connector.is_handshake_created());
+	}
+
+	#[tokio::test]
+	async fn connector_send_to_user_works() {
+		let (_, _, mut connector, _, mut message_receiver) = create_connector();
+
+		let message = StellarRelayMessage::Timeout;
+		connector.send_to_user(message).await.unwrap();
+
+		let received_message = message_receiver.recv().await;
+		assert!(received_message.is_some());
+		let message = received_message.unwrap();
+		match message {
+			StellarRelayMessage::Timeout => {},
+			_ => {
+				panic!("Incorrect message received!!!")
+			},
+		}
+	}
+
+	#[test]
+	fn enable_flow_controller_works() {
+		let (node_info, _, mut connector, _, _) = create_connector();
+
+		assert!(!connector.inner_check_to_send_more(MessageType::ScpMessage));
+		connector.enable_flow_controller(node_info.overlay_version, node_info.overlay_version);
+	}
+
+	#[tokio::test]
+	async fn connector_send_to_node_works() {
+		let (_, _, mut connector, mut actions_receiver, _) = create_connector();
+
+		connector.send_to_node(ConnectorActions::SendHello).await.unwrap();
+
+		let received_message = actions_receiver.recv().await;
+		assert!(received_message.is_some());
+		let message = received_message.unwrap();
+		match message {
+			ConnectorActions::SendHello => {},
+			_ => {
+				panic!("Incorrect message received!!!")
+			},
+		}
 	}
 }

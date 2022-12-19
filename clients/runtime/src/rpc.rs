@@ -508,9 +508,9 @@ pub trait VaultRegistryPallet {
 
 	async fn withdraw_collateral(&self, vault_id: &VaultId, amount: u128) -> Result<(), Error>;
 
-	async fn get_public_key(&self) -> Result<Option<StellarPublicKey>, Error>;
+	async fn get_public_key(&self) -> Result<Option<StellarPublicKeyRaw>, Error>;
 
-	async fn register_public_key(&self, public_key: StellarPublicKey) -> Result<(), Error>;
+	async fn register_public_key(&self, public_key: StellarPublicKeyRaw) -> Result<(), Error>;
 
 	async fn get_required_collateral_for_wrapped(
 		&self,
@@ -630,7 +630,7 @@ impl VaultRegistryPallet for SpacewalkParachain {
 		Ok(())
 	}
 
-	async fn get_public_key(&self) -> Result<Option<StellarPublicKey>, Error> {
+	async fn get_public_key(&self) -> Result<Option<StellarPublicKeyRaw>, Error> {
 		let query = metadata::storage()
 			.vault_registry()
 			.vault_stellar_public_key(self.get_account_id());
@@ -642,7 +642,7 @@ impl VaultRegistryPallet for SpacewalkParachain {
 	///
 	/// # Arguments
 	/// * `public_key` - the new public key of the vault
-	async fn register_public_key(&self, public_key: StellarPublicKey) -> Result<(), Error> {
+	async fn register_public_key(&self, public_key: StellarPublicKeyRaw) -> Result<(), Error> {
 		let register_public_key_tx =
 			metadata::tx().vault_registry().register_public_key(public_key.clone());
 
@@ -1068,6 +1068,113 @@ impl IssuePallet for SpacewalkParachain {
 }
 
 #[async_trait]
+pub trait RedeemPallet {
+	/// Request a new redeem
+	async fn request_redeem(
+		&self,
+		amount: u128,
+		stellar_address: StellarPublicKeyRaw,
+		vault_id: &VaultId,
+	) -> Result<H256, Error>;
+
+	/// Execute a redeem request by providing a Bitcoin transaction inclusion proof
+	async fn execute_redeem(
+		&self,
+		redeem_id: H256,
+		tx_envelope_xdr_encoded: &[u8],
+		envelopes_xdr_encoded: &[u8],
+		tx_set_xdr_encoded: &[u8],
+	) -> Result<(), Error>;
+
+	/// Cancel an ongoing redeem request
+	async fn cancel_redeem(&self, redeem_id: H256, reimburse: bool) -> Result<(), Error>;
+
+	async fn get_redeem_request(&self, redeem_id: H256) -> Result<SpacewalkRedeemRequest, Error>;
+
+	/// Get all redeem requests requested of the given vault
+	async fn get_vault_redeem_requests(
+		&self,
+		account_id: AccountId,
+	) -> Result<Vec<(H256, SpacewalkRedeemRequest)>, Error>;
+
+	async fn get_redeem_period(&self) -> Result<BlockNumber, Error>;
+}
+
+#[async_trait]
+impl RedeemPallet for SpacewalkParachain {
+	async fn request_redeem(
+		&self,
+		amount: u128,
+		stellar_address: StellarPublicKeyRaw,
+		vault_id: &VaultId,
+	) -> Result<H256, Error> {
+		let redeem_event = self
+			.with_retry(metadata::tx().redeem().request_redeem(
+				amount,
+				stellar_address,
+				vault_id.clone(),
+			))
+			.await?
+			.find_first::<RequestRedeemEvent>()?
+			.ok_or(Error::RequestRedeemIDNotFound)?;
+		Ok(redeem_event.redeem_id)
+	}
+
+	async fn execute_redeem(
+		&self,
+		redeem_id: H256,
+		tx_envelope_xdr_encoded: &[u8],
+		envelopes_xdr_encoded: &[u8],
+		tx_set_xdr_encoded: &[u8],
+	) -> Result<(), Error> {
+		self.with_retry(metadata::tx().redeem().execute_redeem(
+			redeem_id,
+			tx_envelope_xdr_encoded.to_vec(),
+			envelopes_xdr_encoded.to_vec(),
+			tx_set_xdr_encoded.to_vec(),
+		))
+		.await?;
+		Ok(())
+	}
+
+	async fn cancel_redeem(&self, redeem_id: H256, reimburse: bool) -> Result<(), Error> {
+		self.with_retry(metadata::tx().redeem().cancel_redeem(redeem_id, reimburse))
+			.await?;
+		Ok(())
+	}
+
+	async fn get_redeem_request(&self, redeem_id: H256) -> Result<SpacewalkRedeemRequest, Error> {
+		self.query_finalized_or_error(metadata::storage().redeem().redeem_requests(&redeem_id))
+			.await
+	}
+
+	async fn get_vault_redeem_requests(
+		&self,
+		account_id: AccountId,
+	) -> Result<Vec<(H256, SpacewalkRedeemRequest)>, Error> {
+		let head = self.get_finalized_block_hash().await?;
+		let result: Vec<H256> = self
+			.api
+			.rpc()
+			.request("redeem_getVaultRedeemRequests", rpc_params![account_id, head])
+			.await?;
+		join_all(
+			result.into_iter().map(|key| async move {
+				self.get_redeem_request(key).await.map(|value| (key, value))
+			}),
+		)
+		.await
+		.into_iter()
+		.collect()
+	}
+
+	async fn get_redeem_period(&self) -> Result<BlockNumber, Error> {
+		self.query_finalized_or_error(metadata::storage().redeem().redeem_period())
+			.await
+	}
+}
+
+#[async_trait]
 pub trait ReplacePallet {
 	/// Request the replacement of a new vault ownership
 	///
@@ -1093,14 +1200,14 @@ pub trait ReplacePallet {
 	/// * `old_vault` - the vault to replace
 	/// * `amount_btc` - the amount of [Wrapped] to replace
 	/// * `collateral` - the collateral for replacement
-	/// * `btc_address` - the address to send funds to
+	/// * `stellar_address` - the address to send funds to
 	async fn accept_replace(
 		&self,
 		new_vault: &VaultId,
 		old_vault: &VaultId,
 		amount_btc: u128,
 		collateral: u128,
-		stellar_address: StellarPublicKey,
+		stellar_address: StellarPublicKeyRaw,
 	) -> Result<(), Error>;
 	//
 	/// Execute vault replacement
@@ -1175,7 +1282,7 @@ impl ReplacePallet for SpacewalkParachain {
 		old_vault: &VaultId,
 		amount_btc: u128,
 		collateral: u128,
-		stellar_address: StellarPublicKey,
+		stellar_address: StellarPublicKeyRaw,
 	) -> Result<(), Error> {
 		self.with_retry(metadata::tx().replace().accept_replace(
 			new_vault.currencies.clone(),

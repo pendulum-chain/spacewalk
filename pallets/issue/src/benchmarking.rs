@@ -6,7 +6,10 @@ use sp_core::H256;
 use sp_runtime::{traits::One, FixedPointNumber};
 use sp_std::prelude::*;
 
-use currency::getters::{get_relay_chain_currency_id as get_collateral_currency_id, *};
+use currency::{
+	getters::{get_relay_chain_currency_id as get_collateral_currency_id, *},
+	testing_constants::get_wrapped_currency_id,
+};
 use oracle::Pallet as Oracle;
 use primitives::{CurrencyId, VaultCurrencyPair, VaultId};
 use security::Pallet as Security;
@@ -39,7 +42,7 @@ fn mint_collateral<T: crate::Config>(account_id: &T::AccountId, amount: BalanceO
 fn get_currency_pair<T: crate::Config>() -> DefaultVaultCurrencyPair<T> {
 	VaultCurrencyPair {
 		collateral: get_collateral_currency_id::<T>(),
-		wrapped: get_wrapped_currency_id::<T>(),
+		wrapped: get_wrapped_currency_id(),
 	}
 }
 
@@ -47,7 +50,7 @@ fn get_vault_id<T: crate::Config>() -> DefaultVaultId<T> {
 	VaultId::new(
 		account("Vault", 0, 0),
 		get_collateral_currency_id::<T>(),
-		get_wrapped_currency_id::<T>(),
+		get_wrapped_currency_id(),
 	)
 }
 
@@ -89,7 +92,7 @@ benchmarks! {
 		mint_collateral::<T>(&relayer_id, (1u32 << 31).into());
 
 		let vault_stellar_address = DEFAULT_STELLAR_PUBLIC_KEY;
-		let value: Amount<T> = Amount::new(2u32.into(), get_wrapped_currency_id::<T>());
+		let value: Amount<T> = Amount::new(2u32.into(), get_wrapped_currency_id());
 
 		let issue_id = H256::zero();
 		let issue_request = IssueRequest {
@@ -108,7 +111,8 @@ benchmarks! {
 		Security::<T>::set_active_block_number(1u32.into());
 
 		let (validators, organizations) = get_validators_and_organizations::<T>();
-		StellarRelay::<T>::_update_tier_1_validator_set(validators, organizations).unwrap();
+		let enactment_block_height = T::BlockNumber::default();
+		StellarRelay::<T>::_update_tier_1_validator_set(validators, organizations, enactment_block_height).unwrap();
 		let public_network = StellarRelay::<T>::is_public_network();
 		let (tx_env_xdr_encoded, scp_envs_xdr_encoded, tx_set_xdr_encoded) = build_dummy_proof_for::<T>(issue_id, public_network);
 
@@ -130,7 +134,7 @@ benchmarks! {
 		mint_collateral::<T>(&vault_id.account_id.clone(), (1u32 << 31).into());
 
 		let vault_stellar_address = DEFAULT_STELLAR_PUBLIC_KEY;
-		let value = Amount::new(2u32.into(), get_wrapped_currency_id::<T>());
+		let value = Amount::new(2u32.into(), get_wrapped_currency_id());
 
 		let issue_id = H256::zero();
 		let issue_request = IssueRequest {

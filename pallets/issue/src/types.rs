@@ -1,5 +1,6 @@
-use currency::Amount;
 use frame_support::traits::Get;
+
+use currency::Amount;
 pub use primitives::issue::{IssueRequest, IssueRequestStatus};
 use primitives::VaultId;
 pub use vault_registry::types::CurrencyId;

@@ -51,3 +51,6 @@ std = [
 testing-utils = [
     "mocktopus"
 ]
+# This feature has to be separate from the testing-utils feature because combining them causes the 'duplicate lang item' error
+# when compiling the testchain runtime
+testing-constants = []

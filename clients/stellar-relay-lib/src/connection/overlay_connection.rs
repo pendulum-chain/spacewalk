@@ -19,6 +19,8 @@ pub struct StellarOverlayConnection {
 	cfg: ConnConfig,
 	/// Maximum retries for reconnection
 	max_retries: u8,
+
+	is_disconnected: bool,
 }
 
 impl StellarOverlayConnection {
@@ -35,14 +37,30 @@ impl StellarOverlayConnection {
 			local_node,
 			cfg,
 			max_retries,
+			is_disconnected: false,
 		}
 	}
 
 	pub async fn send(&self, message: StellarMessage) -> Result<(), Error> {
+		if self.is_disconnected {
+			return Err(Error::Disconnected)
+		}
 		self.actions_sender
 			.send(ConnectorActions::SendMessage(message))
 			.await
 			.map_err(Error::from)
+	}
+
+	pub async fn disconnect(&mut self) -> Result<(), Error> {
+		let result = self
+			.actions_sender
+			.send(ConnectorActions::Disconnect)
+			.await
+			.map_err(Error::from);
+		if result.is_ok() {
+			self.is_disconnected = true;
+		}
+		return result
 	}
 
 	/// Receives Stellar messages from the connection.
@@ -113,5 +131,129 @@ impl StellarOverlayConnection {
 		// start the handshake
 		actions_sender.send(ConnectorActions::SendHello).await?;
 		Ok(overlay_connection)
+	}
+}
+
+#[cfg(test)]
+mod test {
+	use crate::{
+		node::NodeInfo, ConnConfig, ConnectorActions, Error, StellarOverlayConnection,
+		StellarRelayMessage,
+	};
+	use substrate_stellar_sdk::{network::TEST_NETWORK, types::StellarMessage, SecretKey};
+	use tokio::sync::mpsc;
+
+	fn create_node_and_conn() -> (NodeInfo, ConnConfig) {
+		let secret =
+			SecretKey::from_encoding("SBLI7RKEJAEFGLZUBSCOFJHQBPFYIIPLBCKN7WVCWT4NEG2UJEW33N73")
+				.unwrap();
+		let node_info = NodeInfo::new(19, 21, 19, "v19.1.0".to_string(), &TEST_NETWORK);
+		let cfg = ConnConfig::new("34.235.168.98", 11625, secret, 0, false, true, false);
+		(node_info, cfg)
+	}
+
+	#[test]
+	fn create_stellar_overlay_connection_works() {
+		let (node_info, cfg) = create_node_and_conn();
+
+		let (actions_sender, _) = mpsc::channel::<ConnectorActions>(1024);
+		let (_, relay_message_receiver) = mpsc::channel::<StellarRelayMessage>(1024);
+
+		StellarOverlayConnection::new(
+			actions_sender.clone(),
+			relay_message_receiver,
+			cfg.retries,
+			node_info,
+			cfg,
+		);
+	}
+
+	#[tokio::test]
+	async fn stellar_overlay_connection_send_works() {
+		//arrange
+		let (node_info, cfg) = create_node_and_conn();
+
+		let (actions_sender, mut actions_receiver) = mpsc::channel::<ConnectorActions>(1024);
+		let (_, relay_message_receiver) = mpsc::channel::<StellarRelayMessage>(1024);
+
+		let overlay_connection = StellarOverlayConnection::new(
+			actions_sender.clone(),
+			relay_message_receiver,
+			cfg.retries,
+			node_info,
+			cfg,
+		);
+		let message_s = StellarMessage::GetPeers;
+
+		//act
+		overlay_connection.send(message_s.clone()).await.expect("Should sent message");
+
+		//assert
+		let message = actions_receiver.recv().await.unwrap();
+		if let ConnectorActions::SendMessage(message) = message {
+			assert_eq!(message, message_s);
+		} else {
+			panic!("Incorrect stellar message")
+		}
+	}
+
+	#[tokio::test]
+	async fn stellar_overlay_connection_listen_works() {
+		//arrange
+		let (node_info, cfg) = create_node_and_conn();
+
+		let (actions_sender, mut actions_receiver) = mpsc::channel::<ConnectorActions>(1024);
+		let (relay_message_sender, relay_message_receiver) =
+			mpsc::channel::<StellarRelayMessage>(1024);
+
+		let mut overlay_connection = StellarOverlayConnection::new(
+			actions_sender.clone(),
+			relay_message_receiver,
+			cfg.retries,
+			node_info,
+			cfg,
+		);
+		let error_message = "error message".to_owned();
+		relay_message_sender
+			.send(StellarRelayMessage::Error(error_message.clone()))
+			.await
+			.expect("Stellar Relay message should be sent");
+
+		//act
+		let message = overlay_connection.listen().await.expect("Should receive some message");
+
+		//assert
+		if let StellarRelayMessage::Error(m) = message {
+			assert_eq!(m, error_message);
+		} else {
+			panic!("Incorrect stellar relay message type")
+		}
+	}
+
+	#[tokio::test]
+	async fn connect_should_fail_incorrect_address() {
+		let secret =
+			SecretKey::from_encoding("SBLI7RKEJAEFGLZUBSCOFJHQBPFYIIPLBCKN7WVCWT4NEG2UJEW33N73")
+				.unwrap();
+		let node_info = NodeInfo::new(19, 21, 19, "v19.1.0".to_string(), &TEST_NETWORK);
+		let cfg = ConnConfig::new("incorrect address", 11625, secret, 0, false, true, false);
+
+		let stellar_overlay_connection = StellarOverlayConnection::connect(node_info, cfg).await;
+
+		assert!(stellar_overlay_connection.is_err());
+		match stellar_overlay_connection.err().unwrap() {
+			Error::ConnectionFailed(_) => {},
+			_ => {
+				panic!("Incorrect error")
+			},
+		}
+	}
+
+	#[tokio::test]
+	async fn stellar_overlay_connect_works() {
+		let (node_info, cfg) = create_node_and_conn();
+		let stellar_overlay_connection = StellarOverlayConnection::connect(node_info, cfg).await;
+
+		assert!(stellar_overlay_connection.is_ok());
 	}
 }

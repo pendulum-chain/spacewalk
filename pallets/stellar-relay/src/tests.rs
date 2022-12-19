@@ -335,6 +335,7 @@ fn validate_stellar_transaction_fails_without_validators() {
 			RuntimeOrigin::root(),
 			vec![],
 			organizations,
+			0
 		));
 
 		let (tx_envelope, tx_set, scp_envelopes) = create_valid_dummy_scp_envelopes(
@@ -352,6 +353,7 @@ fn validate_stellar_transaction_fails_without_validators() {
 			RuntimeOrigin::root(),
 			validators,
 			vec![],
+			0
 		));
 		let result =
 			SpacewalkRelay::validate_stellar_transaction(&tx_envelope, &scp_envelopes, &tx_set);
@@ -407,7 +409,12 @@ fn validate_stellar_transaction_works_with_all_validators() {
 fn update_tier_1_validator_set_fails_for_non_root_origin() {
 	run_test(|_, _, _| {
 		assert_noop!(
-			SpacewalkRelay::update_tier_1_validator_set(RuntimeOrigin::signed(1), vec![], vec![]),
+			SpacewalkRelay::update_tier_1_validator_set(
+				RuntimeOrigin::signed(1),
+				vec![],
+				vec![],
+				0
+			),
 			BadOrigin
 		);
 	});
@@ -428,6 +435,7 @@ fn update_tier_1_validator_set_works() {
 			RuntimeOrigin::root(),
 			validator_set.clone(),
 			organization_set.clone(),
+			0
 		));
 
 		let validator_bounded_vec =
@@ -450,8 +458,6 @@ fn update_tier_1_validator_set_works() {
 		};
 		let new_validator_set = vec![validator; 2];
 		let new_organization_set = vec![organization; 2];
-		// let new_validator_set: Vec<ValidatorOf<Test>> = vec![validator; 2];
-		// let new_organization_set: Vec<OrganizationOf<Test>> = vec![organization; 2];
 		assert_ne!(validator_set, new_validator_set);
 		assert_ne!(organization_set, new_organization_set);
 
@@ -459,6 +465,7 @@ fn update_tier_1_validator_set_works() {
 			RuntimeOrigin::root(),
 			new_validator_set.clone(),
 			new_organization_set.clone(),
+			0
 		));
 		let validator_bounded_vec =
 			BoundedVec::<ValidatorOf<Test>, ValidatorLimit>::try_from(new_validator_set.clone())
@@ -490,6 +497,7 @@ fn update_tier_1_validator_set_fails_when_set_too_large() {
 				RuntimeOrigin::root(),
 				validator_set,
 				organization_set,
+				0
 			),
 			Error::<Test>::ValidatorLimitExceeded
 		);
@@ -502,6 +510,7 @@ fn update_tier_1_validator_set_fails_when_set_too_large() {
 				RuntimeOrigin::root(),
 				validator_set,
 				organization_set,
+				0
 			),
 			Error::<Test>::OrganizationLimitExceeded
 		);
@@ -530,4 +539,248 @@ fn verify_signature_works_for_mock_message() {
 	let is_valid = crate::verify_signature(&envelope, &node_id, network);
 
 	assert!(is_valid)
+}
+
+#[test]
+fn update_tier_1_validator_store_old_organization_and_validator_and_block_height_works() {
+	run_test(|_, _, _| {
+		let organization = Organization { id: 0, name: Default::default() };
+		let validator = Validator {
+			name: Default::default(),
+			public_key: Default::default(),
+			organization_id: organization.id,
+		};
+		let validator_set = vec![validator; 3];
+		let organization_set = vec![organization; 3];
+		let new_validators_enactment_block_height = 11;
+		assert_ok!(SpacewalkRelay::update_tier_1_validator_set(
+			RuntimeOrigin::root(),
+			validator_set.clone(),
+			organization_set.clone(),
+			0
+		));
+
+		let validator_bounded_vec =
+			BoundedVec::<ValidatorOf<Test>, ValidatorLimit>::try_from(validator_set.clone())
+				.unwrap();
+		let organization_bounded_vec =
+			BoundedVec::<OrganizationOf<Test>, OrganizationLimit>::try_from(
+				organization_set.clone(),
+			)
+			.unwrap();
+		assert_eq!(SpacewalkRelay::validators(), validator_bounded_vec);
+		assert_eq!(SpacewalkRelay::organizations(), organization_bounded_vec);
+		let validator_bounded_vec_old = validator_bounded_vec;
+		let organization_bounded_vec_old = organization_bounded_vec;
+
+		// Update the validator set
+		let organization = Organization { id: 1, name: Default::default() };
+		let validator = Validator {
+			name: Default::default(),
+			public_key: Default::default(),
+			organization_id: organization.id,
+		};
+		let new_validator_set = vec![validator; 2];
+		let new_organization_set = vec![organization; 2];
+		assert_ne!(validator_set, new_validator_set);
+		assert_ne!(organization_set, new_organization_set);
+
+		assert_ok!(SpacewalkRelay::update_tier_1_validator_set(
+			RuntimeOrigin::root(),
+			new_validator_set.clone(),
+			new_organization_set.clone(),
+			new_validators_enactment_block_height
+		));
+		let validator_bounded_vec =
+			BoundedVec::<ValidatorOf<Test>, ValidatorLimit>::try_from(new_validator_set.clone())
+				.unwrap();
+		let organization_bounded_vec =
+			BoundedVec::<OrganizationOf<Test>, OrganizationLimit>::try_from(
+				new_organization_set.clone(),
+			)
+			.unwrap();
+		assert_eq!(SpacewalkRelay::validators(), validator_bounded_vec);
+		assert_eq!(SpacewalkRelay::organizations(), organization_bounded_vec);
+
+		assert_eq!(SpacewalkRelay::old_validators(), validator_bounded_vec_old);
+		assert_eq!(SpacewalkRelay::old_organizations(), organization_bounded_vec_old);
+
+		assert_eq!(
+			SpacewalkRelay::new_validators_enactment_block_height(),
+			new_validators_enactment_block_height
+		);
+	});
+}
+
+#[test]
+fn validate_stellar_transaction_fails_no_validators_registered_when_new_validators_enactment_block_height_reached(
+) {
+	run_test(|_, validators, validator_secret_keys| {
+		let public_network = true;
+		let (tx_envelope, tx_set, scp_envelopes) =
+			create_valid_dummy_scp_envelopes(validators, validator_secret_keys, public_network);
+
+		assert_ok!(SpacewalkRelay::validate_stellar_transaction(
+			&tx_envelope,
+			&scp_envelopes,
+			&tx_set,
+		));
+
+		let validator_set: Vec<Validator<_>> = vec![];
+		let organization_set: Vec<Organization<_>> = vec![];
+		let new_validators_enactment_block_height = 11;
+		assert_ok!(SpacewalkRelay::update_tier_1_validator_set(
+			RuntimeOrigin::root(),
+			validator_set.clone(),
+			organization_set.clone(),
+			new_validators_enactment_block_height
+		));
+
+		assert_ok!(SpacewalkRelay::validate_stellar_transaction(
+			&tx_envelope,
+			&scp_envelopes,
+			&tx_set,
+		));
+
+		System::set_block_number(new_validators_enactment_block_height);
+
+		let result =
+			SpacewalkRelay::validate_stellar_transaction(&tx_envelope, &scp_envelopes, &tx_set);
+		assert!(matches!(result, Err(Error::<Test>::NoValidatorsRegistered)));
+	});
+}
+
+#[test]
+fn validate_stellar_transaction_fails_no_organizations_registered_when_new_validators_enactment_block_height_reached(
+) {
+	run_test(|_, validators, validator_secret_keys| {
+		let validators_cloned = validators.clone();
+		let public_network = true;
+		let (tx_envelope, tx_set, scp_envelopes) =
+			create_valid_dummy_scp_envelopes(validators, validator_secret_keys, public_network);
+
+		assert_ok!(SpacewalkRelay::validate_stellar_transaction(
+			&tx_envelope,
+			&scp_envelopes,
+			&tx_set,
+		));
+
+		let empty_validator_set: Vec<Validator<_>> = vec![];
+		let empty_organization_set: Vec<Organization<_>> = vec![];
+		let mut new_validators_enactment_block_height = 11;
+		assert_ok!(SpacewalkRelay::update_tier_1_validator_set(
+			RuntimeOrigin::root(),
+			empty_validator_set.clone(),
+			empty_organization_set.clone(),
+			new_validators_enactment_block_height
+		));
+
+		assert_ok!(SpacewalkRelay::validate_stellar_transaction(
+			&tx_envelope,
+			&scp_envelopes,
+			&tx_set,
+		));
+
+		System::set_block_number(new_validators_enactment_block_height + 2);
+
+		let result =
+			SpacewalkRelay::validate_stellar_transaction(&tx_envelope, &scp_envelopes, &tx_set);
+
+		assert!(matches!(result, Err(Error::<Test>::NoValidatorsRegistered)));
+
+		new_validators_enactment_block_height = new_validators_enactment_block_height * 2;
+		assert_ok!(SpacewalkRelay::update_tier_1_validator_set(
+			RuntimeOrigin::root(),
+			validators_cloned.clone(),
+			empty_organization_set.clone(),
+			new_validators_enactment_block_height
+		));
+
+		let result =
+			SpacewalkRelay::validate_stellar_transaction(&tx_envelope, &scp_envelopes, &tx_set);
+		assert!(matches!(result, Err(Error::<Test>::NoValidatorsRegistered)));
+
+		System::set_block_number(new_validators_enactment_block_height);
+		let result =
+			SpacewalkRelay::validate_stellar_transaction(&tx_envelope, &scp_envelopes, &tx_set);
+
+		assert!(matches!(result, Err(Error::<Test>::NoOrganizationsRegistered)));
+	});
+}
+
+#[test]
+fn validate_stellar_transaction_works_when_enactment_block_height_reached() {
+	run_test(|organizations, validators, validator_secret_keys| {
+		let validators_cloned = validators.clone();
+		let public_network = true;
+		let (tx_envelope, tx_set, scp_envelopes) =
+			create_valid_dummy_scp_envelopes(validators, validator_secret_keys, public_network);
+
+		assert_ok!(SpacewalkRelay::validate_stellar_transaction(
+			&tx_envelope,
+			&scp_envelopes,
+			&tx_set,
+		));
+
+		let empty_validator_set: Vec<Validator<_>> = vec![];
+		let empty_organization_set: Vec<Organization<_>> = vec![];
+		let mut new_validators_enactment_block_height = 11;
+		assert_ok!(SpacewalkRelay::update_tier_1_validator_set(
+			RuntimeOrigin::root(),
+			empty_validator_set.clone(),
+			empty_organization_set.clone(),
+			new_validators_enactment_block_height
+		));
+
+		assert_ok!(SpacewalkRelay::validate_stellar_transaction(
+			&tx_envelope,
+			&scp_envelopes,
+			&tx_set,
+		));
+
+		System::set_block_number(new_validators_enactment_block_height);
+
+		let result =
+			SpacewalkRelay::validate_stellar_transaction(&tx_envelope, &scp_envelopes, &tx_set);
+
+		assert!(matches!(result, Err(Error::<Test>::NoValidatorsRegistered)));
+
+		new_validators_enactment_block_height = new_validators_enactment_block_height * 2;
+		assert_ok!(SpacewalkRelay::update_tier_1_validator_set(
+			RuntimeOrigin::root(),
+			validators_cloned.clone(),
+			empty_organization_set.clone(),
+			new_validators_enactment_block_height
+		));
+
+		let result =
+			SpacewalkRelay::validate_stellar_transaction(&tx_envelope, &scp_envelopes, &tx_set);
+		assert!(matches!(result, Err(Error::<Test>::NoValidatorsRegistered)));
+
+		System::set_block_number(new_validators_enactment_block_height);
+		let result =
+			SpacewalkRelay::validate_stellar_transaction(&tx_envelope, &scp_envelopes, &tx_set);
+
+		assert!(matches!(result, Err(Error::<Test>::NoOrganizationsRegistered)));
+
+		new_validators_enactment_block_height = new_validators_enactment_block_height * 2;
+		assert_ok!(SpacewalkRelay::update_tier_1_validator_set(
+			RuntimeOrigin::root(),
+			validators_cloned.clone(),
+			organizations.clone(),
+			new_validators_enactment_block_height
+		));
+
+		let result =
+			SpacewalkRelay::validate_stellar_transaction(&tx_envelope, &scp_envelopes, &tx_set);
+		assert!(matches!(result, Err(Error::<Test>::NoOrganizationsRegistered)));
+
+		System::set_block_number(new_validators_enactment_block_height);
+
+		assert_ok!(SpacewalkRelay::validate_stellar_transaction(
+			&tx_envelope,
+			&scp_envelopes,
+			&tx_set,
+		));
+	});
 }

@@ -5,9 +5,9 @@ use std::{
 use async_trait::async_trait;
 use clap::Parser;
 use futures::{
-	channel::mpsc,
+	channel::{mpsc, mpsc::Sender},
 	future::{join, join_all},
-	TryFutureExt,
+	SinkExt, TryFutureExt,
 };
 use git_version::git_version;
 use tokio::{sync::RwLock, time::sleep};
@@ -15,7 +15,8 @@ use tokio::{sync::RwLock, time::sleep};
 use runtime::{
 	cli::parse_duration_minutes, CollateralBalancesPallet, CurrencyId, Error as RuntimeError,
 	IssueRequestsMap, PrettyPrint, RegisterVaultEvent, ShutdownSender, SpacewalkParachain,
-	StellarRelayPallet, TryFromSymbol, UtilFuncs, VaultCurrencyPair, VaultId, VaultRegistryPallet,
+	StellarRelayPallet, TryFromSymbol, UpdateActiveBlockEvent, UtilFuncs, VaultCurrencyPair,
+	VaultId, VaultRegistryPallet,
 };
 use service::{wait_or_shutdown, Error as ServiceError, Service};
 use stellar_relay_lib::{
@@ -29,12 +30,15 @@ use stellar_relay_lib::{
 use wallet::StellarWallet;
 
 use crate::{
+	cancellation::ReplaceCanceller,
 	error::Error,
 	execution::execute_open_requests,
 	issue,
 	issue::IssueFilter,
 	metrics::publish_tokio_metrics,
-	oracle::{prepare_directories, OracleAgent},
+	oracle::{create_handler, prepare_directories, OracleAgent, ScpMessageHandler},
+	redeem::listen_for_redeem_requests,
+	replace::{listen_for_accept_replace, listen_for_execute_replace, listen_for_replace_requests},
 	service::{CancellationScheduler, IssueCanceller},
 	Event, CHAIN_HEIGHT_POLLING_INTERVAL,
 };
@@ -54,20 +58,20 @@ pub const TIER_1_VALIDATOR_IP_PUBLIC: &str = "141.95.47.112";
 #[derive(Clone)]
 pub struct VaultData {
 	pub vault_id: VaultId,
-	pub stellar_wallet: Arc<StellarWallet>,
+	pub stellar_wallet: Arc<RwLock<StellarWallet>>,
 }
 
 #[derive(Clone)]
 pub struct VaultIdManager {
 	vault_data: Arc<RwLock<HashMap<VaultId, VaultData>>>,
 	spacewalk_parachain: SpacewalkParachain,
-	stellar_wallet: Arc<StellarWallet>,
+	stellar_wallet: Arc<RwLock<StellarWallet>>,
 }
 
 impl VaultIdManager {
 	pub fn new(
 		spacewalk_parachain: SpacewalkParachain,
-		stellar_wallet: Arc<StellarWallet>,
+		stellar_wallet: Arc<RwLock<StellarWallet>>,
 	) -> Self {
 		Self {
 			vault_data: Arc::new(RwLock::new(HashMap::new())),
@@ -79,7 +83,7 @@ impl VaultIdManager {
 	// used for testing only
 	pub fn from_map(
 		spacewalk_parachain: SpacewalkParachain,
-		stellar_wallet: Arc<StellarWallet>,
+		stellar_wallet: Arc<RwLock<StellarWallet>>,
 		vault_ids: Vec<VaultId>,
 	) -> Self {
 		let vault_data = vault_ids
@@ -146,7 +150,10 @@ impl VaultIdManager {
 			.await?)
 	}
 
-	pub async fn get_stellar_wallet(&self, vault_id: &VaultId) -> Option<Arc<StellarWallet>> {
+	pub async fn get_stellar_wallet(
+		&self,
+		vault_id: &VaultId,
+	) -> Option<Arc<RwLock<StellarWallet>>> {
 		self.vault_data.read().await.get(vault_id).map(|x| x.stellar_wallet.clone())
 	}
 
@@ -170,7 +177,7 @@ impl VaultIdManager {
 	// TODO think about this. It is probably not needed because we don't use deposit addresses and
 	// use one stellar wallet for everything
 	// But we could in theory let a vault have multiple stellar wallets
-	pub async fn get_vault_stellar_wallets(&self) -> Vec<(VaultId, Arc<StellarWallet>)> {
+	pub async fn get_vault_stellar_wallets(&self) -> Vec<(VaultId, Arc<RwLock<StellarWallet>>)> {
 		self.vault_data
 			.read()
 			.await
@@ -222,13 +229,40 @@ pub struct VaultServiceConfig {
 	pub auto_register: Vec<(String, String, Option<u128>)>,
 
 	/// Minimum time to the the redeem/replace execution deadline to make the stellar payment.
-	#[clap(long, value_parser = parse_duration_minutes, default_value = "120")]
+	#[clap(long, value_parser = parse_duration_minutes, default_value = "1")]
 	pub payment_margin_minutes: Duration,
+
+	/// Opt out of participation in replace requests.
+	#[clap(long)]
+	pub no_auto_replace: bool,
+
+	/// Don't try to execute issues.
+	#[clap(long)]
+	pub no_issue_execution: bool,
+}
+
+async fn active_block_listener(
+	parachain_rpc: SpacewalkParachain,
+	issue_tx: Sender<Event>,
+	replace_tx: Sender<Event>,
+) -> Result<(), ServiceError<Error>> {
+	let issue_tx = &issue_tx;
+	let replace_tx = &replace_tx;
+	parachain_rpc
+		.on_event::<UpdateActiveBlockEvent, _, _, _>(
+			|event| async move {
+				let _ = issue_tx.clone().send(Event::ParachainBlock(event.block_number)).await;
+				let _ = replace_tx.clone().send(Event::ParachainBlock(event.block_number)).await;
+			},
+			|err| tracing::error!("Error (UpdateActiveBlockEvent): {}", err.to_string()),
+		)
+		.await?;
+	Ok(())
 }
 
 pub struct VaultService {
 	spacewalk_parachain: SpacewalkParachain,
-	stellar_wallet: Arc<StellarWallet>,
+	stellar_wallet: Arc<RwLock<StellarWallet>>,
 	config: VaultServiceConfig,
 	shutdown: ShutdownSender,
 	vault_id_manager: VaultIdManager,
@@ -272,14 +306,14 @@ async fn run_and_monitor_tasks(
 		})
 		.unzip();
 
-	let tokio_metrics = tokio::spawn(wait_or_shutdown(
-		shutdown_tx.clone(),
-		publish_tokio_metrics(metrics_iterators),
-	));
+	// We don't use metrics for now
+	// let tokio_metrics = tokio::spawn(wait_or_shutdown(
+	// 	shutdown_tx.clone(),
+	// 	publish_tokio_metrics(metrics_iterators),
+	// ));
 
-	match join(tokio_metrics, join_all(tasks)).await {
-		(Ok(Err(err)), _) => Err(err),
-		(_, results) => results
+	match join_all(tasks).await {
+		results => results
 			.into_iter()
 			.find(|res| matches!(res, Ok(Err(_))))
 			.and_then(|res| res.ok())
@@ -322,7 +356,7 @@ impl VaultService {
 			&config.stellar_vault_secret_key,
 			is_public_network,
 		)?;
-		let stellar_wallet = Arc::new(stellar_wallet);
+		let stellar_wallet = Arc::new(RwLock::new(stellar_wallet));
 
 		Ok(Self {
 			spacewalk_parachain: spacewalk_parachain.clone(),
@@ -405,6 +439,7 @@ impl VaultService {
 			self.spacewalk_parachain.clone(),
 			self.vault_id_manager.clone(),
 			self.stellar_wallet.clone(),
+			proof_ops.clone(),
 			self.config.payment_margin_minutes,
 		);
 		service::spawn_cancelable(self.shutdown.subscribe(), async move {
@@ -421,6 +456,7 @@ impl VaultService {
 		// this has to be modified every time the issue set changes
 		let issue_map: Arc<RwLock<IssueRequestsMap>> =
 			Arc::new(RwLock::new(IssueRequestsMap::new()));
+		let wallet = self.stellar_wallet.read().await;
 		let secret_key = self.stellar_wallet.get_secret_key();
 
 		let issue_filter = IssueFilter::new(secret_key.get_public())?;
@@ -435,6 +471,7 @@ impl VaultService {
 		//let proof_ops = Arc::new(RwLock::new(handler.proof_operations()));
 
 		let (issue_event_tx, issue_event_rx) = mpsc::channel::<Event>(32);
+		let (replace_event_tx, replace_event_rx) = mpsc::channel::<Event>(16);
 
 		tracing::info!("Starting all services...");
 		let tasks = vec![
@@ -450,49 +487,52 @@ impl VaultService {
 					Err(ServiceError::ClientShutdown)
 				}),
 			),
-			// (
-			// 	"Listen for New Transactions",
-			// 	run(wallet::listen_for_new_transactions(
-			// 		self.stellar_wallet.get_public_key(),
-			// 		self.stellar_wallet.is_public_network(),
-			// 		watcher.clone(),
-			// 		slot_tx_env_map.clone(),
-			// 		issue_map.clone(),
-			// 		issue_filter,
-			// 	)),
-			// ),
 			(
-				"Listen for Issue Requests",
+				"Stellar Transaction Listener",
+				run(wallet::listen_for_new_transactions(
+					wallet.get_public_key(),
+					wallet.is_public_network(),
+					watcher.clone(),
+					slot_tx_env_map.clone(),
+					issue_map.clone(),
+					issue_filter,
+				)),
+			),
+			(
+				"Issue Request Listener",
 				run(issue::listen_for_issue_requests(
 					self.spacewalk_parachain.clone(),
-					self.stellar_wallet.get_public_key(),
+					wallet.get_public_key(),
 					issue_event_tx.clone(),
 					issue_map.clone(),
 				)),
 			),
 			(
-				"Listen for Issue Cancels",
+				"Issue Cancel Listener",
 				run(issue::listen_for_issue_cancels(
 					self.spacewalk_parachain.clone(),
 					issue_map.clone(),
 				)),
 			),
 			(
-				"Listen for Executed Issues",
+				"Issue Execute Listener",
 				run(issue::listen_for_executed_issues(
 					self.spacewalk_parachain.clone(),
 					issue_map.clone(),
 				)),
 			),
-			// (
-			// 	"Execute issues with proofs",
-			// 	run(issue::process_issues_with_proofs(
-			// 		self.spacewalk_parachain.clone(),
-			// 		proof_ops.clone(),
-			// 		slot_tx_env_map.clone(),
-			// 		issue_map.clone(),
-			// 	)),
-			// ),
+			(
+				"Issue Executor",
+				maybe_run(
+					!self.config.no_issue_execution,
+					issue::process_issues_with_proofs(
+						self.spacewalk_parachain.clone(),
+						proof_ops.clone(),
+						slot_tx_env_map.clone(),
+						issue_map.clone(),
+					),
+				),
+			),
 			(
 				"Issue Cancel Scheduler",
 				run(CancellationScheduler::new(
@@ -502,7 +542,61 @@ impl VaultService {
 				)
 				.handle_cancellation::<IssueCanceller>(issue_event_rx)),
 			),
+			(
+				"Request Replace Listener",
+				run(listen_for_replace_requests(
+					self.spacewalk_parachain.clone(),
+					self.vault_id_manager.clone(),
+					replace_event_tx.clone(),
+					!self.config.no_auto_replace,
+				)),
+			),
+			(
+				"Accept Replace Listener",
+				run(listen_for_accept_replace(
+					self.shutdown.clone(),
+					self.spacewalk_parachain.clone(),
+					self.vault_id_manager.clone(),
+					self.config.payment_margin_minutes,
+					proof_ops.clone(),
+				)),
+			),
+			(
+				"Execute Replace Listener",
+				run(listen_for_execute_replace(
+					self.spacewalk_parachain.clone(),
+					replace_event_tx.clone(),
+				)),
+			),
+			(
+				"Replace Cancellation Scheduler",
+				run(CancellationScheduler::new(
+					self.spacewalk_parachain.clone(),
+					startup_height,
+					account_id.clone(),
+				)
+				.handle_cancellation::<ReplaceCanceller>(replace_event_rx)),
+			),
+			(
+				"Parachain Block Listener",
+				run(active_block_listener(
+					self.spacewalk_parachain.clone(),
+					issue_event_tx.clone(),
+					replace_event_tx.clone(),
+				)),
+			),
+			(
+				"Redeem Request Listener",
+				run(listen_for_redeem_requests(
+					self.shutdown.clone(),
+					self.spacewalk_parachain.clone(),
+					self.vault_id_manager.clone(),
+					self.config.payment_margin_minutes,
+					proof_ops.clone(),
+				)),
+			),
 		];
+		drop(wallet);
 
 		run_and_monitor_tasks(self.shutdown.clone(), tasks).await
 	}
@@ -513,7 +607,7 @@ impl VaultService {
 		}
 
 		if self.spacewalk_parachain.get_public_key().await?.is_none() {
-			let public_key = self.stellar_wallet.get_public_key_raw();
+			let public_key = self.stellar_wallet.read().await.get_public_key_raw();
 			tracing::info!("Registering public key to the parachain... {:?}", public_key);
 			self.spacewalk_parachain.register_public_key(public_key).await?;
 		} else {

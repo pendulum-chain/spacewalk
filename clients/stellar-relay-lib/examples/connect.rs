@@ -9,7 +9,7 @@ use stellar_relay::{
 };
 
 const TIER_1_VALIDATOR_IP_TESTNET: &str = "34.235.168.98";
-const TIER_1_VALIDATOR_IP_PUBLIC: &str = "135.181.16.110";
+const TIER_1_VALIDATOR_IP_PUBLIC: &str = "51.161.197.48";
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -36,7 +36,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 		SecretKey::from_encoding("SBLI7RKEJAEFGLZUBSCOFJHQBPFYIIPLBCKN7WVCWT4NEG2UJEW33N73")
 			.unwrap();
 
-	let node_info = NodeInfo::new(19, 21, 19, "v19.1.0".to_string(), network);
+	let node_info = NodeInfo::new(19, 25, 23, "v19.5.0".to_string(), network);
 	let cfg = ConnConfig::new(tier1_node_ip, 11625, secret, 0, false, true, false);
 	let mut overlay_connection = StellarOverlayConnection::connect(node_info, cfg).await?;
 
