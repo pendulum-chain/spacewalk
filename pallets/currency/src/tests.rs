@@ -217,7 +217,7 @@ fn test_checked_fixed_point_mul() {
 				Amount::new(625, currency),
 			),
 			(
-				Amount::new(1 * 10u128.pow(10), currency), // 1 DOT
+				Amount::new(10u128.pow(10), currency), // 1 DOT
 				UnsignedFixedPoint::checked_from_rational(1, 10).unwrap(), // 10%
 				Amount::new(1000000000, currency),
 			),

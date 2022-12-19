@@ -284,7 +284,7 @@ impl<T: Config> Pallet<T> {
 	pub fn _feed_values(oracle: T::AccountId, values: Vec<(OracleKey, T::UnsignedFixedPoint)>) {
 		for (key, value) in values.iter() {
 			let timestamped =
-				TimestampedValue { timestamp: Self::get_current_time(), value: value.clone() };
+				TimestampedValue { timestamp: Self::get_current_time(), value: *value };
 			RawValues::<T>::insert(key, &oracle, timestamped);
 			RawValuesUpdated::<T>::insert(key, true);
 		}

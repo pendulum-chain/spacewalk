@@ -170,7 +170,7 @@ pub fn build_dummy_proof_for<T: crate::Config>(
 	let validator_secret_keys = vec![VALIDATOR_1_SECRET, VALIDATOR_2_SECRET, VALIDATOR_3_SECRET];
 	for validator_secret_key in validator_secret_keys.iter() {
 		let secret_key = SecretKey::from_binary(*validator_secret_key);
-		let envelope = create_scp_envelope(tx_set_hash.clone(), &secret_key, network);
+		let envelope = create_scp_envelope(tx_set_hash, &secret_key, network);
 		envelopes.push(envelope).unwrap();
 	}
 

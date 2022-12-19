@@ -43,8 +43,8 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 	// Storage: Timestamp DidUpdate (r:0 w:1)
 	fn on_initialize() -> Weight {
 		// Minimum execution time: 1_000 nanoseconds.
-		Weight::from_ref_time(1_000_000 as u64)
-			.saturating_add(T::DbWeight::get().writes(4 as u64))
+		Weight::from_ref_time(1_000_000_u64)
+			.saturating_add(T::DbWeight::get().writes(4_u64))
 	}
 	// Storage: Oracle AuthorizedOracles (r:1 w:0)
 	// Storage: Timestamp Now (r:1 w:0)
@@ -53,23 +53,23 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 	/// The range of component `u` is `[1, 1000]`.
 	fn feed_values(u: u32, ) -> Weight {
 		// Minimum execution time: 13_000 nanoseconds.
-		Weight::from_ref_time(13_108_559 as u64)
+		Weight::from_ref_time(13_108_559_u64)
 			// Standard Error: 812
-			.saturating_add(Weight::from_ref_time(1_142_381 as u64).saturating_mul(u as u64))
-			.saturating_add(T::DbWeight::get().reads(2 as u64))
-			.saturating_add(T::DbWeight::get().writes(2 as u64))
+			.saturating_add(Weight::from_ref_time(1_142_381_u64).saturating_mul(u as u64))
+			.saturating_add(T::DbWeight::get().reads(2_u64))
+			.saturating_add(T::DbWeight::get().writes(2_u64))
 	}
 	// Storage: Oracle AuthorizedOracles (r:0 w:1)
 	fn insert_authorized_oracle() -> Weight {
 		// Minimum execution time: 8_000 nanoseconds.
-		Weight::from_ref_time(8_000_000 as u64)
-			.saturating_add(T::DbWeight::get().writes(1 as u64))
+		Weight::from_ref_time(8_000_000_u64)
+			.saturating_add(T::DbWeight::get().writes(1_u64))
 	}
 	// Storage: Oracle AuthorizedOracles (r:0 w:1)
 	fn remove_authorized_oracle() -> Weight {
 		// Minimum execution time: 8_000 nanoseconds.
-		Weight::from_ref_time(8_000_000 as u64)
-			.saturating_add(T::DbWeight::get().writes(1 as u64))
+		Weight::from_ref_time(8_000_000_u64)
+			.saturating_add(T::DbWeight::get().writes(1_u64))
 	}
 }
 
@@ -81,8 +81,8 @@ impl WeightInfo for () {
 	// Storage: Timestamp DidUpdate (r:0 w:1)
 	fn on_initialize() -> Weight {
 		// Minimum execution time: 1_000 nanoseconds.
-		Weight::from_ref_time(1_000_000 as u64)
-			.saturating_add(RocksDbWeight::get().writes(4 as u64))
+		Weight::from_ref_time(1_000_000_u64)
+			.saturating_add(RocksDbWeight::get().writes(4_u64))
 	}
 	// Storage: Oracle AuthorizedOracles (r:1 w:0)
 	// Storage: Timestamp Now (r:1 w:0)
@@ -91,22 +91,22 @@ impl WeightInfo for () {
 	/// The range of component `u` is `[1, 1000]`.
 	fn feed_values(u: u32, ) -> Weight {
 		// Minimum execution time: 13_000 nanoseconds.
-		Weight::from_ref_time(13_108_559 as u64)
+		Weight::from_ref_time(13_108_559_u64)
 			// Standard Error: 812
-			.saturating_add(Weight::from_ref_time(1_142_381 as u64).saturating_mul(u as u64))
-			.saturating_add(RocksDbWeight::get().reads(2 as u64))
-			.saturating_add(RocksDbWeight::get().writes(2 as u64))
+			.saturating_add(Weight::from_ref_time(1_142_381_u64).saturating_mul(u as u64))
+			.saturating_add(RocksDbWeight::get().reads(2_u64))
+			.saturating_add(RocksDbWeight::get().writes(2_u64))
 	}
 	// Storage: Oracle AuthorizedOracles (r:0 w:1)
 	fn insert_authorized_oracle() -> Weight {
 		// Minimum execution time: 8_000 nanoseconds.
-		Weight::from_ref_time(8_000_000 as u64)
-			.saturating_add(RocksDbWeight::get().writes(1 as u64))
+		Weight::from_ref_time(8_000_000_u64)
+			.saturating_add(RocksDbWeight::get().writes(1_u64))
 	}
 	// Storage: Oracle AuthorizedOracles (r:0 w:1)
 	fn remove_authorized_oracle() -> Weight {
 		// Minimum execution time: 8_000 nanoseconds.
-		Weight::from_ref_time(8_000_000 as u64)
-			.saturating_add(RocksDbWeight::get().writes(1 as u64))
+		Weight::from_ref_time(8_000_000_u64)
+			.saturating_add(RocksDbWeight::get().writes(1_u64))
 	}
 }

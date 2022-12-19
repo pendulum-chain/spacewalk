@@ -465,9 +465,7 @@ impl<T: Config> Pallet<T> {
 		Self::distribute_from_reward_pool::<Rewards, Staking>(&vault_id)?;
 
 		for currency_id in [vault_id.wrapped_currency(), T::GetNativeCurrencyId::get()] {
-			let rewards = Staking::withdraw_reward(vault_id, nominator_id, index, currency_id)?
-				.try_into()
-				.map_err(|_| Error::<T>::TryIntoIntError)?;
+			let rewards = Staking::withdraw_reward(vault_id, nominator_id, index, currency_id)?;
 			let amount = Amount::<T>::new(rewards, currency_id);
 			amount.transfer(&Self::fee_pool_account_id(), nominator_id)?;
 		}

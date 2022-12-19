@@ -547,7 +547,7 @@ pub mod pallet {
 							Error::<T>::TransactionSetHashMismatch
 						);
 					},
-					_ => return Err(Error::<T>::InvalidScpPledge.into()),
+					_ => return Err(Error::<T>::InvalidScpPledge),
 				}
 			}
 

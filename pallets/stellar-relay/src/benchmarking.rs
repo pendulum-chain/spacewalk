@@ -30,7 +30,7 @@ benchmarks! {
 
 		let organization: OrganizationOf<T> = Organization {
 			id: T::OrganizationId::default(),
-			name: bounded_vec.clone(),
+			name: bounded_vec,
 		};
 
 		let organizations = vec![organization; 255];
