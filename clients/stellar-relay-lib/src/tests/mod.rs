@@ -22,7 +22,7 @@ async fn stellar_overlay_connect_and_listen_connect_message() {
 		StellarOverlayConnection::connect(node_info.clone(), cfg).await.unwrap();
 
 	let message = overlay_connection.listen().await.unwrap();
-	if let StellarRelayMessage::Connect { pub_key: x, node_info: y } = message {
+	if let StellarRelayMessage::Connect { pub_key: _x, node_info: y } = message {
 		assert_eq!(y.ledger_version, node_info.ledger_version);
 	} else {
 		panic!("Incorrect stellar relay message received");
@@ -51,7 +51,7 @@ async fn stellar_overlay_should_receive_scp_messages() {
 		}
 		attempt = attempt + 1;
 		match relay_message {
-			StellarRelayMessage::Data { p_id, msg_type, msg } => match msg {
+			StellarRelayMessage::Data { p_id: _, msg_type: _, msg } => match msg {
 				StellarMessage::ScpMessage(msg) => {
 					scps_vec.push(msg);
 					break
@@ -93,7 +93,7 @@ async fn stellar_overlay_should_receive_tx_set() {
 		}
 		attempt = attempt + 1;
 		match relay_message {
-			StellarRelayMessage::Data { p_id, msg_type, msg } => match msg {
+			StellarRelayMessage::Data { p_id: _, msg_type: _, msg } => match msg {
 				StellarMessage::ScpMessage(msg) => {
 					if let ScpStatementPledges::ScpStExternalize(stmt) = &msg.statement.pledges {
 						let txset_hash = get_tx_set_hash(stmt);
@@ -130,7 +130,7 @@ async fn stellar_overlay_disconnect_works() {
 		StellarOverlayConnection::connect(node_info.clone(), cfg).await.unwrap();
 
 	let message = overlay_connection.listen().await.unwrap();
-	if let StellarRelayMessage::Connect { pub_key: x, node_info: y } = message {
+	if let StellarRelayMessage::Connect { pub_key: _x, node_info: y } = message {
 		assert_eq!(y.ledger_version, node_info.ledger_version);
 	} else {
 		panic!("Incorrect stellar relay message received");

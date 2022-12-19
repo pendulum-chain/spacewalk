@@ -201,7 +201,7 @@ mod test {
 		//arrange
 		let (node_info, cfg) = create_node_and_conn();
 
-		let (actions_sender, mut actions_receiver) = mpsc::channel::<ConnectorActions>(1024);
+		let (actions_sender, _actions_receiver) = mpsc::channel::<ConnectorActions>(1024);
 		let (relay_message_sender, relay_message_receiver) =
 			mpsc::channel::<StellarRelayMessage>(1024);
 

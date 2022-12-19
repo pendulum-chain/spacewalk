@@ -3,12 +3,11 @@ use std::{collections::HashMap, convert::TryInto, str::FromStr, sync::Arc, time:
 use async_trait::async_trait;
 use parity_scale_codec::{Decode, Encode};
 use serde::{Deserialize, Deserializer};
-use substrate_stellar_sdk::{Hash, PublicKey, Transaction, TransactionEnvelope, XdrCodec};
+use substrate_stellar_sdk::{Hash, PublicKey, TransactionEnvelope, XdrCodec};
 use tokio::{sync::RwLock, time::sleep};
 
 use crate::{
 	error::Error,
-	stellar_wallet,
 	types::{FilterWith, TransactionFilterParam, Watcher},
 };
 

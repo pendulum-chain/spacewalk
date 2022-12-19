@@ -1,11 +1,10 @@
 use std::fmt::Formatter;
 
 use substrate_stellar_sdk::{
-	horizon::Horizon,
 	network::{Network, PUBLIC_NETWORK, TEST_NETWORK},
 	types::Preconditions,
 	Asset, Hash, Memo, Operation, PublicKey, SecretKey, StroopAmount, Transaction,
-	TransactionEnvelope, XdrCodec,
+	TransactionEnvelope,
 };
 
 use crate::{
@@ -103,23 +102,23 @@ impl StellarWallet {
 			Preconditions::PrecondNone,
 			Some(Memo::MemoHash(memo_hash)),
 		)
-		.map_err(|e| Error::BuildTransactionError("Creating new transaction failed".to_string()))?;
+		.map_err(|_e| Error::BuildTransactionError("Creating new transaction failed".to_string()))?;
 
 		let amount = StroopAmount(stroop_amount);
 		transaction
 			.append_operation(
 				Operation::new_payment(destination_address, asset, amount)
-					.map_err(|e| {
+					.map_err(|_e| {
 						Error::BuildTransactionError(
 							"Creation of payment operation failed".to_string(),
 						)
 					})?
 					.set_source_account(self.get_public_key())
-					.map_err(|e| {
+					.map_err(|_e| {
 						Error::BuildTransactionError("Setting source account failed".to_string())
 					})?,
 			)
-			.map_err(|e| {
+			.map_err(|_e| {
 				Error::BuildTransactionError("Appending payment operation failed".to_string())
 			})?;
 
@@ -141,7 +140,7 @@ impl std::fmt::Debug for StellarWallet {
 	fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
 		let public_key_encoded = self.get_public_key().to_encoding();
 		let account_id_string =
-			std::str::from_utf8(&public_key_encoded).map_err(|e| std::fmt::Error)?;
+			std::str::from_utf8(&public_key_encoded).map_err(|_e| std::fmt::Error)?;
 		write!(
 			f,
 			"StellarWallet [public key: {}, public network: {}]",
@@ -160,7 +159,7 @@ mod test {
 
 	#[tokio::test]
 	async fn sending_payment_works() {
-		let wallet =
+		let mut wallet =
 			StellarWallet::from_secret_encoded(&STELLAR_SECRET_ENCODED.to_string(), false).unwrap();
 
 		let destination =
@@ -170,7 +169,7 @@ mod test {
 		let amount = 100;
 		let memo_hash = [0u8; 32];
 
-		let result = wallet.send_payment_to_address(destination, asset, amount, memo_hash).await;
+		let result = wallet.send_payment_to_address(destination, asset, amount, memo_hash, 1).await;
 
 		assert!(result.is_ok());
 		let (transaction_response, _) = result.unwrap();

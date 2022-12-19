@@ -1,5 +1,5 @@
 use reqwest::Error as FetchError;
-use substrate_stellar_sdk::StellarSdkError;
+
 use thiserror::Error;
 
 #[derive(Debug, Error)]
