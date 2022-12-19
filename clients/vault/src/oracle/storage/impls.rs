@@ -139,8 +139,8 @@ impl ArchiveStorage for ScpArchiveStorage {
 	type T = ScpHistoryEntry;
 	const STELLAR_HISTORY_BASE_URL: &'static str =
 		crate::oracle::constants::STELLAR_HISTORY_BASE_URL;
-	const prefix_url: &'static str = "scp";
-	const prefix_filename: &'static str = "";
+	const PREFIX_URL: &'static str = "scp";
+	const PREFIX_FILENAME: &'static str = "";
 }
 
 impl ScpArchiveStorage {
@@ -165,8 +165,8 @@ impl ArchiveStorage for TransactionsArchiveStorage {
 	type T = TransactionHistoryEntry;
 	const STELLAR_HISTORY_BASE_URL: &'static str =
 		crate::oracle::constants::STELLAR_HISTORY_BASE_URL_TRANSACTIONS;
-	const prefix_url: &'static str = "transactions";
-	const prefix_filename: &'static str = "txs-";
+	const PREFIX_URL: &'static str = "transactions";
+	const PREFIX_FILENAME: &'static str = "txs-";
 }
 
 impl TransactionsArchiveStorage {

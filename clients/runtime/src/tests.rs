@@ -10,7 +10,7 @@ use crate::{integration::*, FeedValuesEvent, OracleKey, VaultId};
 
 use super::{
 	CollateralBalancesPallet, CurrencyId, FixedPointNumber, FixedU128, OraclePallet,
-	SecurityPallet, StatusCode, Token, TryFromSymbol, VaultRegistryPallet,
+	SecurityPallet, StatusCode, Token, VaultRegistryPallet,
 };
 
 const DEFAULT_TESTING_CURRENCY: CurrencyId = Token(TokenSymbol::KSM);

@@ -11,7 +11,7 @@ use subxt::{
 	metadata::DecodeWithMetadata,
 	rpc::rpc_params,
 	storage::{address::Yes, StorageAddress},
-	tx::{Signer, TxPayload},
+	tx::{TxPayload},
 	Error as BasicError, Metadata,
 };
 use tokio::{sync::RwLock, time::timeout};

@@ -85,8 +85,8 @@ pub trait FileHandler<T: Default> {
 pub trait ArchiveStorage {
 	type T: XdrCodec;
 	const STELLAR_HISTORY_BASE_URL: &'static str;
-	const prefix_url: &'static str;
-	const prefix_filename: &'static str = "";
+	const PREFIX_URL: &'static str;
+	const PREFIX_FILENAME: &'static str = "";
 
 	fn try_gz_decode_archive_file(path: &str) -> Result<Vec<u8>, Error> {
 		let bytes = Self::read_file_xdr(path)?;
@@ -106,9 +106,9 @@ pub trait ArchiveStorage {
 			&hex_string[..2],
 			&hex_string[2..4],
 			&hex_string[4..6],
-			Self::prefix_url
+			Self::PREFIX_URL
 		);
-		(url, format!("{}{file_name}", Self::prefix_filename))
+		(url, format!("{}{file_name}", Self::PREFIX_FILENAME))
 	}
 
 	fn find_last_slot_index_in_batch(slot_index: i32) -> i32 {
