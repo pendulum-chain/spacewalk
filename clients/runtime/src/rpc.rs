@@ -58,6 +58,7 @@ pub struct SpacewalkParachain {
 	account_id: AccountId,
 	api: OnlineClient<SpacewalkRuntime>,
 	shutdown_tx: ShutdownSender,
+	#[warn(dead_code)]
 	metadata: Arc<Metadata>,
 	fee_rate_update_tx: FeeRateUpdateSender,
 }
@@ -227,6 +228,7 @@ impl SpacewalkParachain {
 		.await
 	}
 
+	#[warn(dead_code)]
 	async fn get_fresh_nonce(&self) -> u32 {
 		// For getting the nonce, use latest, possibly non-finalized block.
 		let storage_key = metadata::storage().system().account(&self.account_id);

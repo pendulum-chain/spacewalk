@@ -1,6 +1,6 @@
 use std::{collections::HashMap, convert::TryInto, sync::Arc, time::Duration};
 
-use futures::{try_join, StreamExt};
+use futures::{try_join};
 use governor::RateLimiter;
 
 use sp_runtime::traits::StaticLookup;

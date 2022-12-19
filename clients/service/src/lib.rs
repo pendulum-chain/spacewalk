@@ -36,6 +36,7 @@ pub trait Service<Config, InnerError> {
 
 pub struct ConnectionManager<Config: Clone, F: Fn()> {
 	signer: Arc<RwLock<SpacewalkSigner>>,
+	#[warn(dead_code)]
 	wallet_name: Option<String>,
 	parachain_config: ParachainConfig,
 	service_config: ServiceConfig,
