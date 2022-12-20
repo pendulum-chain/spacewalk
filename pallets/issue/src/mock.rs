@@ -300,9 +300,13 @@ impl ExtBuilder {
 		.assimilate_storage(&mut storage)
 		.unwrap();
 
-		issue::GenesisConfig::<Test> { issue_period: 10, issue_minimum_transfer_amount: 1 }
-			.assimilate_storage(&mut storage)
-			.unwrap();
+		issue::GenesisConfig::<Test> {
+			issue_period: 10,
+			issue_minimum_transfer_amount: 1,
+			..issue::GenesisConfig::<Test>::default()
+		}
+		.assimilate_storage(&mut storage)
+		.unwrap();
 
 		const PAIR: VaultCurrencyPair<CurrencyId> = VaultCurrencyPair {
 			collateral: DEFAULT_COLLATERAL_CURRENCY,

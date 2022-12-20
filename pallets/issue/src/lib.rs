@@ -108,6 +108,13 @@ pub mod pallet {
 		IssuePeriodChange {
 			period: T::BlockNumber,
 		},
+		RateLimitUpdate {
+			limit_volume_amount: Option<BalanceOf<T>>,
+			limit_volume_currency_id: T::CurrencyId,
+			current_volume_amount: BalanceOf<T>,
+			interval_length: T::BlockNumber,
+			last_interval_index: T::BlockNumber,
+		},
 	}
 
 	#[pallet::error]
@@ -173,14 +180,26 @@ pub mod pallet {
 	pub struct GenesisConfig<T: Config> {
 		pub issue_period: T::BlockNumber,
 		pub issue_minimum_transfer_amount: BalanceOf<T>,
+		pub limit_volume_amount: Option<BalanceOf<T>>,
+		pub limit_volume_currency_id: T::CurrencyId,
+		pub current_volume_amount: BalanceOf<T>,
+		pub interval_length: T::BlockNumber,
+		pub last_interval_index: T::BlockNumber,
 	}
 
+	use std::str::FromStr;
 	#[cfg(feature = "std")]
 	impl<T: Config> Default for GenesisConfig<T> {
 		fn default() -> Self {
 			Self {
 				issue_period: Default::default(),
 				issue_minimum_transfer_amount: Default::default(),
+				limit_volume_amount: None,
+				limit_volume_currency_id: T::CurrencyId::default(),
+				current_volume_amount: BalanceOf::<T>::zero(),
+				interval_length: T::BlockNumber::from_str(&(24 * 60 * 60 / 12).to_string())
+					.unwrap_or_default(),
+				last_interval_index: T::BlockNumber::zero(),
 			}
 		}
 	}
@@ -190,6 +209,10 @@ pub mod pallet {
 		fn build(&self) {
 			IssuePeriod::<T>::put(self.issue_period);
 			IssueMinimumTransferAmount::<T>::put(self.issue_minimum_transfer_amount);
+			LimitVolumeAmount::<T>::put(self.limit_volume_amount);
+			LimitVolumeCurrencyId::<T>::put(self.limit_volume_currency_id);
+			IntervalLength::<T>::put(self.interval_length);
+			LastIntervalIndex::<T>::put(self.last_interval_index);
 		}
 	}
 
@@ -286,12 +309,54 @@ pub mod pallet {
 			Self::deposit_event(Event::IssuePeriodChange { period });
 			Ok(().into())
 		}
+
+		#[pallet::weight(<T as Config>::WeightInfo::set_issue_period())]
+		#[transactional]
+		pub fn rate_limit_update(
+			origin: OriginFor<T>,
+			limit_volume_amount: Option<BalanceOf<T>>,
+			limit_volume_currency_id: T::CurrencyId,
+			current_volume_amount: BalanceOf<T>,
+			interval_length: T::BlockNumber,
+			last_interval_index: T::BlockNumber,
+		) -> DispatchResultWithPostInfo {
+			ensure_root(origin)?;
+			Self::_rate_limit_update(
+				limit_volume_amount,
+				limit_volume_currency_id,
+				current_volume_amount,
+				interval_length,
+				last_interval_index,
+			);
+			Self::deposit_event(Event::RateLimitUpdate {
+				limit_volume_amount,
+				limit_volume_currency_id,
+				current_volume_amount,
+				interval_length,
+				last_interval_index,
+			});
+			Ok(().into())
+		}
 	}
 }
 
 // "Internal" functions, callable by code.
 #[cfg_attr(test, mockable)]
 impl<T: Config> Pallet<T> {
+	fn _rate_limit_update(
+		limit_volume_amount: Option<BalanceOf<T>>,
+		limit_volume_currency_id: T::CurrencyId,
+		current_volume_amount: BalanceOf<T>,
+		interval_length: T::BlockNumber,
+		last_interval_index: T::BlockNumber,
+	) {
+		<LimitVolumeAmount<T>>::set(limit_volume_amount);
+		<LimitVolumeCurrencyId<T>>::set(limit_volume_currency_id);
+		<CurrentVolumeAmount<T>>::set(current_volume_amount);
+		<IntervalLength<T>>::set(interval_length);
+		<LastIntervalIndex<T>>::set(last_interval_index);
+	}
+
 	/// Requests CBA issuance, returns unique tracking ID.
 	fn _request_issue(
 		requester: T::AccountId,
