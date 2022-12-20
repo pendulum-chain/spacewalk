@@ -49,11 +49,11 @@
 //     }
 // }
 
-// #![deny(warnings)]
+#![deny(warnings)]
 #![cfg_attr(test, feature(proc_macro_hygiene))]
 #![cfg_attr(not(feature = "std"), no_std)]
 
-use codec::{EncodeLike};
+use codec::EncodeLike;
 use frame_support::{
 	dispatch::{DispatchError, DispatchResult},
 	traits::Get,
@@ -61,9 +61,7 @@ use frame_support::{
 
 use sp_arithmetic::{FixedPointNumber, FixedPointOperand};
 use sp_runtime::{
-	traits::{
-		CheckedAdd, CheckedDiv, CheckedMul, CheckedSub, One, Zero,
-	},
+	traits::{CheckedAdd, CheckedDiv, CheckedMul, CheckedSub, One, Zero},
 	ArithmeticError,
 };
 use sp_std::{cmp, convert::TryInto};

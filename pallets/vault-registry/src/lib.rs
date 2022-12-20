@@ -1,7 +1,7 @@
 //! # Vault Registry Module
 //! Based on the [specification](https://spec.interlay.io/spec/vault-registry.html).
 
-// #![deny(warnings)]
+#![deny(warnings)]
 #![cfg_attr(test, feature(proc_macro_hygiene))]
 #![cfg_attr(not(feature = "std"), no_std)]
 
@@ -806,7 +806,7 @@ impl<T: Config> Pallet<T> {
 
 		Self::try_deposit_collateral(&vault_id, &amount)?;
 
-		Self::deposit_event(Event::<T>::RegisterVault { vault_id: vault_id, collateral });
+		Self::deposit_event(Event::<T>::RegisterVault { vault_id, collateral });
 
 		Ok(())
 	}
