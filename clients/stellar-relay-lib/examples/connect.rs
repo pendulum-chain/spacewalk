@@ -1,4 +1,4 @@
-use stellar_relay::{
+use stellar_relay_lib::{
 	node::NodeInfo,
 	sdk::{
 		network::{Network, PUBLIC_NETWORK, TEST_NETWORK},
