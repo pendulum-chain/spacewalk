@@ -12,15 +12,16 @@ use frame_support::{dispatch::DispatchError, ensure, traits::Get, transactional}
 #[cfg(test)]
 use mocktopus::macros::mockable;
 use sp_core::H256;
-use sp_runtime::{traits::{Convert, Saturating}, ArithmeticError};
+use sp_runtime::{
+	traits::{CheckedAdd, CheckedDiv, Convert, Saturating},
+	ArithmeticError,
+};
 use sp_std::vec::Vec;
 use substrate_stellar_sdk::{
 	compound_types::UnlimitedVarArray,
 	types::{ScpEnvelope, TransactionSet},
 	TransactionEnvelope,
 };
-use sp_runtime::traits::CheckedDiv;
-use sp_runtime::traits::CheckedAdd;
 
 use currency::Amount;
 pub use default_weights::WeightInfo;
@@ -157,25 +158,18 @@ pub mod pallet {
 
 	///Currency id for limit rate volume value. DOT, BTC or PEN
 	#[pallet::storage]
-	pub(super) type LimitVolumeCurrencyId<T: Config> =
-		StorageValue<_, T::CurrencyId, ValueQuery>;
-	
+	pub(super) type LimitVolumeCurrencyId<T: Config> = StorageValue<_, T::CurrencyId, ValueQuery>;
+
 	#[pallet::storage]
-	pub(super) type CurrentVolumeAmount<T: Config> =
-		StorageValue<_, BalanceOf<T>, ValueQuery>;
+	pub(super) type CurrentVolumeAmount<T: Config> = StorageValue<_, BalanceOf<T>, ValueQuery>;
 
 	/// Represent interval define regular 24 hour intervals (every 24 * 3600 / 12 blocks)
 	#[pallet::storage]
-	pub(super) type IntervalLength<T: Config> =
-		StorageValue<_, T::BlockNumber, ValueQuery>;
+	pub(super) type IntervalLength<T: Config> = StorageValue<_, T::BlockNumber, ValueQuery>;
 
 	// Represent current interval current_block_number / IntervalLength
 	#[pallet::storage]
-	pub(super) type CurrentInterval<T: Config> =
-		StorageValue<_, T::BlockNumber, ValueQuery>;
-
-	
-		
+	pub(super) type CurrentInterval<T: Config> = StorageValue<_, T::BlockNumber, ValueQuery>;
 
 	#[pallet::genesis_config]
 	pub struct GenesisConfig<T: Config> {
@@ -472,14 +466,10 @@ impl<T: Config> Pallet<T> {
 		let total = issue_amount.checked_add(&issue_fee)?;
 		ext::vault_registry::issue_tokens::<T>(&issue.vault, &total)?;
 
-		
-		
 		// mint issued tokens
 		issue_amount.mint_to(&requester)?;
 		//increase volume regarding to rate limits
 		Self::increase_interval_volume(issue_amount)?;
-
-
 
 		// mint wrapped fees
 		issue_fee.mint_to(&ext::fee::fee_pool_account_id::<T>())?;
@@ -716,42 +706,44 @@ impl<T: Config> Pallet<T> {
 	}
 
 	fn increase_interval_volume(issue_amount: Amount<T>) -> Result<(), DispatchError> {
-		Ok(if let Some(limit_volume) = LimitVolumeAmount::<T>::get(){
-					let issue_volume = Self::convert_into_limit_currency_id_amount(issue_amount)?;
-					let current_volume = CurrentVolumeAmount::<T>::get();
-					let new_volume = current_volume.checked_add(&issue_volume.amount()).ok_or(ArithmeticError::Overflow)?;
-					CurrentVolumeAmount::<T>::put(new_volume);
-				})
+		Ok(if let Some(limit_volume) = LimitVolumeAmount::<T>::get() {
+			let issue_volume = Self::convert_into_limit_currency_id_amount(issue_amount)?;
+			let current_volume = CurrentVolumeAmount::<T>::get();
+			let new_volume = current_volume
+				.checked_add(&issue_volume.amount())
+				.ok_or(ArithmeticError::Overflow)?;
+			CurrentVolumeAmount::<T>::put(new_volume);
+		})
 	}
 
-	fn convert_into_limit_currency_id_amount(issue_amount: Amount<T>) -> Result<Amount<T>, DispatchError> {
-		let issue_volume = oracle::Pallet::<T>::convert(&issue_amount, LimitVolumeCurrencyId::<T>::get()).map_err(|_| DispatchError::Other("Missing Exchange Rate"))?;
+	fn convert_into_limit_currency_id_amount(
+		issue_amount: Amount<T>,
+	) -> Result<Amount<T>, DispatchError> {
+		let issue_volume =
+			oracle::Pallet::<T>::convert(&issue_amount, LimitVolumeCurrencyId::<T>::get())
+				.map_err(|_| DispatchError::Other("Missing Exchange Rate"))?;
 		Ok(issue_volume)
 	}
 
 	fn check_volume(amount_requested: Amount<T>) -> Result<(), DispatchError> {
-		let limit_volume : Option<BalanceOf<T>> = LimitVolumeAmount::<T>::get();
-		Ok(if let Some(limit_volume) = limit_volume{
-			let current_block : T::BlockNumber = <frame_system::Pallet<T>>::block_number();
-			let interval_length : T::BlockNumber = IntervalLength::<T>::get();
-	
+		let limit_volume: Option<BalanceOf<T>> = LimitVolumeAmount::<T>::get();
+		Ok(if let Some(limit_volume) = limit_volume {
+			let current_block: T::BlockNumber = <frame_system::Pallet<T>>::block_number();
+			let interval_length: T::BlockNumber = IntervalLength::<T>::get();
+
 			let current_index = current_block.checked_div(&interval_length);
 			let mut current_volume = BalanceOf::<T>::default();
-			if current_index > Some(CurrentInterval::<T>::get()){
+			if current_index > Some(CurrentInterval::<T>::get()) {
 				CurrentInterval::<T>::put(current_index.unwrap_or_default());
 				CurrentVolumeAmount::<T>::put(current_volume);
-			}
-			else{
+			} else {
 				current_volume = CurrentVolumeAmount::<T>::get();
 			}
 			let new_issue_request = Self::convert_into_limit_currency_id_amount(amount_requested)?;
-			ensure!(new_issue_request.amount().saturating_add(current_volume) > limit_volume, Error::<T>::VaultNotAcceptingNewIssues);
+			ensure!(
+				new_issue_request.amount().saturating_add(current_volume) > limit_volume,
+				Error::<T>::VaultNotAcceptingNewIssues
+			);
 		})
 	}
 }
-
-
-
-
-
-
