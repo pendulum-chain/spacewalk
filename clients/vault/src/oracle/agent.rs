@@ -1,13 +1,12 @@
 use std::{
-	fmt::{Debug, Display, Formatter},
 	sync::Arc,
 	time::Duration,
 };
 
-use async_trait::async_trait;
+
 use rand::RngCore;
 use tokio::{
-	sync::{mpsc, oneshot, RwLock, RwLockReadGuard},
+	sync::{mpsc},
 	time::{sleep, timeout},
 };
 
@@ -41,7 +40,7 @@ async fn handle_message(
 	message_sender: &mpsc::Sender<StellarMessage>,
 ) -> Result<(), Error> {
 	match message {
-		StellarRelayMessage::Data { p_id, msg_type, msg } => match msg {
+		StellarRelayMessage::Data { p_id: _, msg_type: _, msg } => match *msg {
 			StellarMessage::ScpMessage(env) => {
 				collector.handle_envelope(env, message_sender).await?;
 			},
@@ -51,7 +50,7 @@ async fn handle_message(
 			_ => {},
 		},
 		// todo
-		StellarRelayMessage::Connect { pub_key, node_info } => {},
+		StellarRelayMessage::Connect { pub_key: _, node_info: _ } => {},
 		// todo
 		StellarRelayMessage::Error(_) => {},
 		// todo
@@ -131,7 +130,7 @@ impl OracleAgent {
 			.clone()
 			.ok_or(Error::Uninitialized("MessageSender".to_string()))?;
 
-		let mut collector = self.collector.clone();
+		let collector = self.collector.clone();
 
 		timeout(Duration::from_secs(80), async move {
 			loop {
@@ -218,9 +217,9 @@ impl OracleAgent {
 
 #[cfg(test)]
 mod tests {
-	use crate::oracle::storage::prepare_directories;
+	
 
-	use super::*;
+	
 
 	// #[tokio::test]
 	// async fn test_get_proof_for_current_slot() {

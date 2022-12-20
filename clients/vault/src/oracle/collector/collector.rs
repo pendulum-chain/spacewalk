@@ -1,18 +1,13 @@
-use itertools::min;
 use std::sync::Arc;
 
 use parking_lot::{lock_api::RwLockReadGuard, RawRwLock, RwLock};
-use tokio::sync::mpsc;
 
 use stellar_relay_lib::sdk::{
 	network::{Network, PUBLIC_NETWORK, TEST_NETWORK},
 	types::{ScpEnvelope, TransactionSet},
 };
 
-use crate::oracle::{
-	constants::get_min_externalized_messages,
-	types::{EnvelopesMap, LifoMap, Slot, SlotList, TxSetHash, TxSetHashAndSlotMap, TxSetMap},
-};
+use crate::oracle::types::{EnvelopesMap, LifoMap, Slot, TxSetHash, TxSetHashAndSlotMap, TxSetMap};
 
 /// Collects all ScpMessages and the TxSets.
 pub struct ScpMessageCollector {
@@ -150,16 +145,12 @@ impl ScpMessageCollector {
 
 #[cfg(test)]
 mod test {
-	use stellar_relay_lib::sdk::{
-		network::{PUBLIC_NETWORK, TEST_NETWORK},
-		types::TransactionSet,
-	};
+	use stellar_relay_lib::sdk::network::{PUBLIC_NETWORK, TEST_NETWORK};
 
 	use crate::oracle::{
-		collector::ScpMessageCollector, constants::get_min_externalized_messages,
-		traits::FileHandler, types::LifoMap, EnvelopesFileHandler, TxSetsFileHandler,
+		collector::ScpMessageCollector, traits::FileHandler, types::LifoMap, EnvelopesFileHandler,
+		TxSetsFileHandler,
 	};
-	use tokio::sync::mpsc;
 
 	#[test]
 	fn envelopes_map_len_works() {
@@ -190,20 +181,20 @@ mod test {
 
 	#[test]
 	fn add_scp_envelope_works() {
-		let mut collector = ScpMessageCollector::new(true);
+		let collector = ScpMessageCollector::new(true);
 
 		let first_slot = 578291;
 		let env_map =
 			EnvelopesFileHandler::get_map_from_archives(first_slot).expect("should return a map");
 
-		let slot = 1234;
+		let _slot = 1234;
 
 		let (slot, value) = env_map.get(0).expect("should return a tuple");
 		let one_scp_env = value[0].clone();
 		collector.add_scp_envelope(*slot, one_scp_env.clone());
 
 		assert_eq!(collector.envelopes_map_len(), 1);
-		assert!(collector.envelopes_map.read().contains_key(&slot));
+		assert!(collector.envelopes_map.read().contains_key(slot));
 
 		// let's try to add again.
 		let two_scp_env = value[1].clone();
@@ -212,7 +203,7 @@ mod test {
 
 		let collctr_env_map = collector.envelopes_map.read();
 		let res = collctr_env_map
-			.get_with_key(&slot)
+			.get_with_key(slot)
 			.expect("should return a vector of scpenvelopes");
 
 		assert_eq!(res.len(), 2);
@@ -222,7 +213,7 @@ mod test {
 
 	#[test]
 	fn add_txset_works() {
-		let mut collector = ScpMessageCollector::new(false);
+		let collector = ScpMessageCollector::new(false);
 
 		let slot = 42867088;
 		let dummy_hash = [0; 32];
@@ -230,7 +221,7 @@ mod test {
 			TxSetsFileHandler::get_map_from_archives(slot).expect("should return a map");
 		let value = txsets_map.get_with_key(&slot).expect("should return a transaction set");
 
-		collector.save_txset_hash_and_slot(dummy_hash.clone(), slot);
+		collector.save_txset_hash_and_slot(dummy_hash, slot);
 
 		collector.add_txset(&dummy_hash, value.clone());
 
@@ -239,7 +230,7 @@ mod test {
 
 	#[test]
 	fn set_last_slot_index_works() {
-		let mut collector = ScpMessageCollector::new(true);
+		let collector = ScpMessageCollector::new(true);
 		{
 			let mut idx = collector.last_slot_index.write();
 			*idx = 10;
@@ -259,7 +250,7 @@ mod test {
 
 	#[test]
 	fn remove_data_works() {
-		let mut collector = ScpMessageCollector::new(false);
+		let collector = ScpMessageCollector::new(false);
 
 		let env_slot = 578391;
 		let mut env_map =

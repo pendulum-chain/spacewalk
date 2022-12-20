@@ -1,7 +1,7 @@
 use std::{convert::TryInto, sync::Arc};
 
 use parking_lot::RwLock;
-use tokio::sync::{mpsc, mpsc::error::SendError};
+use tokio::sync::{mpsc};
 
 use stellar_relay_lib::{
 	sdk::{
@@ -9,12 +9,10 @@ use stellar_relay_lib::{
 		types::{ScpEnvelope, ScpHistoryEntry, StellarMessage, TransactionSet},
 		XdrCodec,
 	},
-	StellarOverlayConnection,
 };
 
 use crate::oracle::{
 	constants::{get_min_externalized_messages, MAX_SLOT_TO_REMEMBER},
-	errors::Error,
 	types::{EnvelopesMap, LifoMap},
 	ScpArchiveStorage, ScpMessageCollector, Slot,
 };
@@ -203,11 +201,11 @@ async fn get_envelopes_from_horizon_archive(
 	}
 	let scp_archive: XdrArchive<ScpHistoryEntry> = scp_archive_result.unwrap();
 
-	let value = scp_archive.get_vec().into_iter().find(|&scp_entry| {
+	let value = scp_archive.get_vec().iter().find(|&scp_entry| {
 		if let ScpHistoryEntry::V0(scp_entry_v0) = scp_entry {
-			return scp_entry_v0.ledger_messages.ledger_seq == slot_index
+			scp_entry_v0.ledger_messages.ledger_seq == slot_index
 		} else {
-			return false
+			false
 		}
 	});
 
@@ -218,7 +216,7 @@ async fn get_envelopes_from_horizon_archive(
 
 			let mut envelopes_map = envelopes_map_lock.write();
 
-			if let None = envelopes_map.get_with_key(&slot) {
+			if envelopes_map.get_with_key(&slot).is_none() {
 				tracing::info!("Adding archived SCP envelopes for slot {}", slot);
 				envelopes_map.set_with_key(slot, vec_scp);
 			}

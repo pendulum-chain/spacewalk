@@ -5,7 +5,6 @@ use crate::oracle::{
 use stellar_relay_lib::{
 	helper::compute_non_generic_tx_set_content_hash,
 	sdk::types::{ScpEnvelope, ScpStatementPledges, StellarMessage, TransactionSet},
-	StellarOverlayConnection,
 };
 use tokio::sync::mpsc;
 

@@ -1,5 +1,5 @@
 use std::collections::HashMap;
-use substrate_stellar_sdk::{Hash, TransactionEnvelope};
+use substrate_stellar_sdk::{TransactionEnvelope};
 
 pub use horizon::{listen_for_new_transactions, TransactionResponse};
 pub use stellar_wallet::StellarWallet;

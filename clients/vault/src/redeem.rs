@@ -1,15 +1,15 @@
 use std::{sync::Arc, time::Duration};
 
-use tokio::sync::RwLock;
+
 
 use runtime::{RedeemPallet, RequestRedeemEvent, ShutdownSender, SpacewalkParachain};
 use service::{spawn_cancelable, Error as ServiceError};
-use stellar_relay_lib::sdk::PublicKey;
+
 
 use crate::{
 	execution::*,
 	oracle::OracleAgent,
-	system::{VaultData, VaultIdManager},
+	system::{VaultIdManager},
 	Error,
 };
 

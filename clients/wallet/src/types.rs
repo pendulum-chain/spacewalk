@@ -1,10 +1,6 @@
-use async_trait::async_trait;
 use substrate_stellar_sdk::Hash;
 
-#[cfg(test)]
-use mockall::{automock, predicate::*};
-
-use crate::{error::Error, horizon::TransactionResponse};
+use crate::horizon::TransactionResponse;
 
 pub type StellarPublicKeyRaw = [u8; 32];
 

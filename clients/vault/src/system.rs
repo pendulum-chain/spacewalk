@@ -6,7 +6,7 @@ use async_trait::async_trait;
 use clap::Parser;
 use futures::{
 	channel::{mpsc, mpsc::Sender},
-	future::{join, join_all},
+	future::{join_all},
 	SinkExt, TryFutureExt,
 };
 use git_version::git_version;
@@ -19,14 +19,7 @@ use runtime::{
 	VaultId, VaultRegistryPallet,
 };
 use service::{wait_or_shutdown, Error as ServiceError, Service};
-use stellar_relay_lib::{
-	node::NodeInfo,
-	sdk::{
-		network::{Network, PUBLIC_NETWORK, TEST_NETWORK},
-		SecretKey, TransactionEnvelope,
-	},
-	ConnConfig,
-};
+
 use wallet::{LedgerTxEnvMap, StellarWallet};
 
 use crate::{
@@ -35,8 +28,7 @@ use crate::{
 	execution::execute_open_requests,
 	issue,
 	issue::IssueFilter,
-	metrics::publish_tokio_metrics,
-	oracle::{prepare_directories, types::Slot, OracleAgent},
+	oracle::{OracleAgent},
 	redeem::listen_for_redeem_requests,
 	replace::{listen_for_accept_replace, listen_for_execute_replace, listen_for_replace_requests},
 	service::{CancellationScheduler, IssueCanceller},
@@ -193,7 +185,7 @@ fn parse_collateral_and_amount(
 	s: &str,
 ) -> Result<(String, String, Option<u128>), Box<dyn std::error::Error + Send + Sync + 'static>> {
 	let parts: Vec<&str> = s
-		.split(",")
+		.split(',')
 		.map(|s| s.trim())
 		.collect::<Vec<_>>()
 		.try_into()
@@ -287,7 +279,7 @@ async fn run_and_monitor_tasks(
 	shutdown_tx: ShutdownSender,
 	items: Vec<(&str, ServiceTask)>,
 ) -> Result<(), ServiceError<Error>> {
-	let (metrics_iterators, tasks): (HashMap<String, _>, Vec<_>) = items
+	let (_metrics_iterators, tasks): (HashMap<String, _>, Vec<_>) = items
 		.into_iter()
 		.filter_map(|(name, task)| {
 			let monitor = tokio_metrics::TaskMonitor::new();

@@ -1,17 +1,16 @@
 use std::{collections::HashMap, convert::TryInto, sync::Arc, time::Duration};
 
-use futures::{future::Either, try_join, StreamExt};
+use futures::{try_join, StreamExt};
 use governor::RateLimiter;
-use sp_arithmetic::FixedPointNumber;
+
 use sp_runtime::traits::StaticLookup;
 use tokio::{
 	sync::RwLock,
-	time::{sleep, timeout},
 };
 
 use primitives::{stellar::PublicKey, TransactionEnvelopeExt};
 use runtime::{
-	types::FixedU128, CurrencyId, OraclePallet, PrettyPrint, RedeemPallet, RedeemRequestStatus,
+	CurrencyId, OraclePallet, PrettyPrint, RedeemPallet, RedeemRequestStatus,
 	ReplacePallet, ReplaceRequestStatus, SecurityPallet, ShutdownSender, SpacewalkParachain,
 	SpacewalkRedeemRequest, SpacewalkReplaceRequest, StellarPublicKeyRaw, StellarRelayPallet,
 	UtilFuncs, VaultId, VaultRegistryPallet, H256,
@@ -333,7 +332,7 @@ pub async fn execute_open_requests(
 					// start a new task to execute on the parachain and make copies of the
 					// variables we move into the task
 					let parachain_rpc = parachain_rpc.clone();
-					let vault_id_manager = vault_id_manager.clone();
+					let _vault_id_manager = vault_id_manager.clone();
 					let oracle_agent = oracle_agent.clone();
 					spawn_cancelable(shutdown_tx.subscribe(), async move {
 						match transaction.to_envelope() {
@@ -362,7 +361,7 @@ pub async fn execute_open_requests(
 									},
 								}
 							},
-							Err(error) => {
+							Err(_error) => {
 								tracing::error!("Failed to decode transaction envelope");
 							},
 						}
@@ -440,7 +439,7 @@ fn get_request_for_stellar_tx(
 
 	let envelope = tx.to_envelope().ok()?;
 	let paid_amount = envelope
-		.get_payment_amount_for_asset_to(request.stellar_address.clone(), request.asset.clone());
+		.get_payment_amount_for_asset_to(request.stellar_address, request.asset.clone());
 
 	if paid_amount >= request.amount {
 		Some(request.clone())

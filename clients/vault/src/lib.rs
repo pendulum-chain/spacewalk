@@ -1,15 +1,15 @@
 #![recursion_limit = "256"]
 
-use std::{collections::HashMap, sync::Arc, time::Duration};
+use std::{sync::Arc, time::Duration};
 use tokio::sync::RwLock;
 
 use governor::Quota;
 use nonzero_ext::*;
-use stellar_relay_lib::sdk::TransactionEnvelope;
+
 
 pub use system::{VaultIdManager, VaultService, VaultServiceConfig, ABOUT, AUTHORS, NAME, VERSION};
 
-use crate::oracle::types::Slot;
+
 pub use crate::{cancellation::Event, error::Error};
 
 mod cancellation;

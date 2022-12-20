@@ -4,11 +4,11 @@ use stellar_relay_lib::{
 	node::NodeInfo,
 	sdk::{
 		network::{Network, PUBLIC_NETWORK, TEST_NETWORK},
-		SecretKey, TransactionEnvelope,
+		SecretKey,
 	},
 	ConnConfig,
 };
-use vault::oracle::{prepare_directories, OracleAgent, Proof};
+use vault::oracle::{prepare_directories, OracleAgent};
 
 pub const SAMPLE_VAULT_ADDRESSES_FILTER: &[&str] =
 	&["GAP4SFKVFVKENJ7B7VORAYKPB3CJIAJ2LMKDJ22ZFHIAIVYQOR6W3CXF"];
@@ -43,8 +43,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 		SecretKey::from_encoding("SBLI7RKEJAEFGLZUBSCOFJHQBPFYIIPLBCKN7WVCWT4NEG2UJEW33N73")
 			.unwrap();
 
-	let node_info = NodeInfo::new(19, 25, 23, "v19.5.0".to_string(), network);
-	let cfg = ConnConfig::new(tier1_node_ip, 11625, secret, 0, true, true, false);
+	let _node_info = NodeInfo::new(19, 25, 23, "v19.5.0".to_string(), network);
+	let _cfg = ConnConfig::new(tier1_node_ip, 11625, secret, 0, true, true, false);
 
 	// let vault_addresses_filter =
 	// 	vec!["GAP4SFKVFVKENJ7B7VORAYKPB3CJIAJ2LMKDJ22ZFHIAIVYQOR6W3CXF".to_string()];

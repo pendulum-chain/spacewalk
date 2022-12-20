@@ -435,12 +435,12 @@ mod test {
 		let slot_index_u32: u32 = slot_index.try_into().unwrap();
 		scp_archive
 			.get_vec()
-			.into_iter()
+			.iter()
 			.find(|&scp_entry| {
 				if let ScpHistoryEntry::V0(scp_entry_v0) = scp_entry {
-					return scp_entry_v0.ledger_messages.ledger_seq == slot_index_u32
+					scp_entry_v0.ledger_messages.ledger_seq == slot_index_u32
 				} else {
-					return false
+					false
 				}
 			})
 			.expect("slot index should be in archive");
