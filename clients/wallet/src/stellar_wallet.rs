@@ -60,8 +60,7 @@ impl StellarWallet {
 		let horizon_client = reqwest::Client::new();
 
 		let public_key_encoded = self.get_public_key().to_encoding();
-		let account_id =
-			std::str::from_utf8(&public_key_encoded).map_err(Error::Utf8Error)?;
+		let account_id = std::str::from_utf8(&public_key_encoded).map_err(Error::Utf8Error)?;
 
 		let transactions_response = horizon_client
 			.get_transactions(account_id, self.is_public_network, cursor, limit, order_ascending)
@@ -102,7 +101,9 @@ impl StellarWallet {
 			Preconditions::PrecondNone,
 			Some(Memo::MemoHash(memo_hash)),
 		)
-		.map_err(|_e| Error::BuildTransactionError("Creating new transaction failed".to_string()))?;
+		.map_err(|_e| {
+			Error::BuildTransactionError("Creating new transaction failed".to_string())
+		})?;
 
 		let amount = StroopAmount(stroop_amount);
 		transaction
@@ -169,7 +170,8 @@ mod test {
 		let amount = 100;
 		let memo_hash = [0u8; 32];
 
-		let result = wallet.send_payment_to_address(destination, asset, amount, memo_hash,1).await;
+		let result =
+			wallet.send_payment_to_address(destination, asset, amount, memo_hash, 100).await;
 
 		println!("the result: {:?}", result);
 		assert!(result.is_ok());
