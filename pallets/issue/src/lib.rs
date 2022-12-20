@@ -343,7 +343,7 @@ pub mod pallet {
 // "Internal" functions, callable by code.
 #[cfg_attr(test, mockable)]
 impl<T: Config> Pallet<T> {
-	fn _rate_limit_update(
+	pub fn _rate_limit_update(
 		limit_volume_amount: Option<BalanceOf<T>>,
 		limit_volume_currency_id: T::CurrencyId,
 		current_volume_amount: BalanceOf<T>,
