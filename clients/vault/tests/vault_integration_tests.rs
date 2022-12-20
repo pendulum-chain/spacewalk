@@ -20,9 +20,7 @@ use runtime::{
 };
 use stellar_relay_lib::sdk::{PublicKey, XdrCodec};
 use vault::{
-	oracle::{OracleAgent, Proof},
-	service::IssueFilter,
-	Event as CancellationEvent, VaultIdManager,
+	oracle::OracleAgent, service::IssueFilter, Event as CancellationEvent, VaultIdManager,
 };
 use wallet::StellarWallet;
 
@@ -205,6 +203,10 @@ async fn test_redeem_succeeds() {
 		.unwrap();
 		let wallet_arc = Arc::new(RwLock::new(wallet));
 
+		let mut oracle_agent = OracleAgent::new(is_public_network).expect("failed to create agent");
+		oracle_agent.start().await.expect("failed to start agent");
+		let oracle_agent = Arc::new(oracle_agent);
+
 		let vault_ids = vec![vault_id.clone()];
 		let vault_id_manager =
 			VaultIdManager::from_map(vault_provider.clone(), wallet_arc.clone(), vault_ids);
@@ -228,11 +230,9 @@ async fn test_redeem_succeeds() {
 				)
 				.await
 		);
+		drop(wallet);
 
 		let shutdown_tx = ShutdownSender::new();
-
-		let oracle_agent =
-			Arc::new(OracleAgent::new(is_public_network).expect("failed to create agent"));
 
 		assert_issue(
 			&user_provider,
@@ -286,6 +286,10 @@ async fn test_replace_succeeds() {
 		.unwrap();
 		let wallet_arc = Arc::new(RwLock::new(wallet));
 
+		let mut oracle_agent = OracleAgent::new(is_public_network).expect("failed to create agent");
+		oracle_agent.start().await.expect("failed to start agent");
+		let oracle_agent = Arc::new(oracle_agent);
+
 		let vault_ids = vec![new_vault_id.clone()].into_iter().collect();
 		let _vault_id_manager =
 			VaultIdManager::from_map(new_vault_provider.clone(), wallet_arc.clone(), vault_ids);
@@ -320,9 +324,7 @@ async fn test_replace_succeeds() {
 				)
 				.await
 		);
-
-		let oracle_agent =
-			Arc::new(OracleAgent::new(is_public_network).expect("failed to create agent"));
+		drop(wallet);
 
 		assert_issue(
 			&user_provider,
@@ -394,6 +396,10 @@ async fn test_withdraw_replace_succeeds() {
 		.unwrap();
 		let wallet_arc = Arc::new(RwLock::new(wallet));
 
+		let mut oracle_agent = OracleAgent::new(is_public_network).expect("failed to create agent");
+		oracle_agent.start().await.expect("failed to start agent");
+		let oracle_agent = Arc::new(oracle_agent);
+
 		let issue_amount = 100000;
 		let vault_collateral = get_required_vault_collateral_for_issue(
 			&old_vault_provider,
@@ -420,9 +426,7 @@ async fn test_withdraw_replace_succeeds() {
 				)
 				.await
 		);
-
-		let oracle_agent =
-			Arc::new(OracleAgent::new(is_public_network).expect("failed to create agent"));
+		drop(wallet);
 
 		assert_issue(
 			&user_provider,
@@ -488,6 +492,10 @@ async fn test_cancel_scheduler_succeeds() {
 		.unwrap();
 		let wallet_arc = Arc::new(RwLock::new(wallet));
 
+		let mut oracle_agent = OracleAgent::new(is_public_network).expect("failed to create agent");
+		oracle_agent.start().await.expect("failed to start agent");
+		let oracle_agent = Arc::new(oracle_agent);
+
 		let issue_amount = 100000;
 		let vault_collateral = get_required_vault_collateral_for_issue(
 			&old_vault_provider,
@@ -515,9 +523,7 @@ async fn test_cancel_scheduler_succeeds() {
 				)
 				.await
 		);
-
-		let oracle_agent =
-			Arc::new(OracleAgent::new(is_public_network).expect("failed to create agent"));
+		drop(wallet);
 
 		assert_issue(
 			&user_provider,
@@ -750,6 +756,10 @@ async fn test_issue_overpayment_succeeds() {
 		let user_provider = setup_provider(client.clone(), AccountKeyring::Dave).await;
 
 		let is_public_network = false;
+		let mut oracle_agent = OracleAgent::new(is_public_network).expect("failed to create agent");
+		oracle_agent.start().await.expect("failed to start agent");
+		let oracle_agent = Arc::new(oracle_agent);
+
 		let mut wallet = StellarWallet::from_secret_encoded(
 			&STELLAR_VAULT_SECRET_KEY.to_string(),
 			is_public_network,
@@ -801,9 +811,6 @@ async fn test_issue_overpayment_succeeds() {
 
 		let slot = transaction_response.ledger as u64;
 
-		let oracle_agent =
-			Arc::new(OracleAgent::new(is_public_network).expect("failed to create agent"));
-
 		// Loop pending proofs until it is ready
 		let proof = oracle_agent.get_proof(slot).await.expect("Proof should be available");
 		let tx_envelope_xdr_encoded = tx_envelope.to_xdr();
@@ -846,6 +853,10 @@ async fn test_automatic_issue_execution_succeeds() {
 		)
 		.unwrap();
 		let wallet_arc = Arc::new(RwLock::new(wallet));
+
+		let mut oracle_agent = OracleAgent::new(is_public_network).expect("failed to create agent");
+		oracle_agent.start().await.expect("failed to start agent");
+		let oracle_agent = Arc::new(oracle_agent);
 
 		let issue_amount = 100000;
 		let vault_collateral = get_required_vault_collateral_for_issue(
@@ -899,9 +910,6 @@ async fn test_automatic_issue_execution_succeeds() {
 			})
 			.await;
 		};
-
-		let oracle_agent =
-			Arc::new(OracleAgent::new(is_public_network).expect("failed to create agent"));
 
 		let wallet = wallet_arc.read().await;
 		let issue_filter = IssueFilter::new(&wallet.get_public_key()).expect("Invalid filter");
@@ -962,6 +970,10 @@ async fn test_automatic_issue_execution_succeeds_for_other_vault() {
 		)
 		.unwrap();
 		let wallet_arc = Arc::new(RwLock::new(wallet));
+
+		let mut oracle_agent = OracleAgent::new(is_public_network).expect("failed to create agent");
+		oracle_agent.start().await.expect("failed to start agent");
+		let oracle_agent = Arc::new(oracle_agent);
 
 		let issue_amount = 100000;
 		let vault_collateral = get_required_vault_collateral_for_issue(
@@ -1043,8 +1055,6 @@ async fn test_automatic_issue_execution_succeeds_for_other_vault() {
 		let vault_account_public_key = wallet.get_public_key();
 		drop(wallet);
 		let issue_filter = IssueFilter::new(&vault_account_public_key).expect("Invalid filter");
-		let oracle_agent =
-			Arc::new(OracleAgent::new(is_public_network).expect("failed to create agent"));
 
 		let (issue_event_tx, _issue_event_rx) = mpsc::channel::<CancellationEvent>(16);
 		let service = join4(
@@ -1092,6 +1102,10 @@ async fn test_execute_open_requests_succeeds() {
 		.unwrap();
 		let wallet_arc = Arc::new(RwLock::new(wallet));
 
+		let mut oracle_agent = OracleAgent::new(is_public_network).expect("failed to create agent");
+		oracle_agent.start().await.expect("failed to start agent");
+		let oracle_agent = Arc::new(oracle_agent);
+
 		let vault_ids = vec![vault_id.clone()];
 		let vault_id_manager =
 			VaultIdManager::from_map(vault_provider.clone(), wallet_arc.clone(), vault_ids);
@@ -1114,9 +1128,7 @@ async fn test_execute_open_requests_succeeds() {
 				)
 				.await
 		);
-
-		let oracle_agent =
-			Arc::new(OracleAgent::new(is_public_network).expect("failed to create agent"));
+		drop(wallet);
 
 		assert_issue(
 			&user_provider,
@@ -1199,6 +1211,10 @@ async fn test_off_chain_liquidation() {
 		.unwrap();
 		let wallet_arc = Arc::new(RwLock::new(wallet));
 
+		let mut oracle_agent = OracleAgent::new(is_public_network).expect("failed to create agent");
+		oracle_agent.start().await.expect("failed to start agent");
+		let oracle_agent = Arc::new(oracle_agent);
+
 		let issue_amount = 100000;
 		let vault_collateral = get_required_vault_collateral_for_issue(
 			&vault_provider,
@@ -1217,9 +1233,7 @@ async fn test_off_chain_liquidation() {
 				)
 				.await
 		);
-
-		let oracle_agent =
-			Arc::new(OracleAgent::new(is_public_network).expect("failed to create agent"));
+		drop(wallet);
 
 		assert_issue(
 			&user_provider,
