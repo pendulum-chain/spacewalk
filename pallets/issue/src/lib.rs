@@ -129,7 +129,7 @@ pub mod pallet {
 		InvalidExecutor,
 		/// Issue amount is too small.
 		AmountBelowMinimumTransferAmount,
-		///Exceed the limit volume for issue request.
+		/// Exceeds the volume limit for an issue request.
 		ExceedLimitVolumeForIssueRequest,
 	}
 
