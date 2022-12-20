@@ -13,12 +13,12 @@ macro_rules! fixed {
 }
 
 #[test]
-#[cfg_attr(rustfmt, rustfmt_skip)]
+#[rustfmt::skip]
 fn reproduce_live_state() {
     // This function is most useful for debugging. Keeping this test here for convenience
     // and to function as an additional regression test
     run_test(|| {
-        let f = |x: i128| SignedFixedPoint::from_inner(x);
+        let f = SignedFixedPoint::from_inner;
         let currency = DEFAULT_NATIVE_CURRENCY;
 
         // state for a3eFe9M2HbAgrQrShEDH2CEvXACtzLhSf4JGkwuT9SQ1EV4ti at block 0xb47ed0e773e25c81da2cc606495ab6f716c3c2024f9beb361605860912fee652

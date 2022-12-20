@@ -10,9 +10,7 @@ use sp_runtime::{
 };
 use sp_std::convert::TryInto;
 
-use currency::{
-	getters::get_native_currency_id, testing_constants::get_wrapped_currency_id, Amount,
-};
+use currency::{testing_constants::get_wrapped_currency_id, Amount};
 use primitives::{StellarPublicKeyRaw, VaultCurrencyPair, VaultId};
 use security::Pallet as Security;
 
@@ -75,7 +73,7 @@ fn convert_with_exchange_rate(
 fn create_vault_with_collateral(id: &DefaultVaultId<Test>, collateral: u128) {
 	VaultRegistry::get_minimum_collateral_vault
 		.mock_safe(move |currency_id| MockResult::Return(Amount::new(collateral, currency_id)));
-	let origin = RuntimeOrigin::signed(id.account_id.clone());
+	let origin = RuntimeOrigin::signed(id.account_id);
 
 	assert_ok!(VaultRegistry::register_public_key(origin.clone(), STELLAR_PUBLIC_KEY_DUMMY));
 	assert_ok!(VaultRegistry::register_vault(origin, id.currencies.clone(), collateral));
@@ -147,7 +145,7 @@ fn registering_public_key_twice_fails() {
 		let public_key_2: StellarPublicKeyRaw = [1u8; 32];
 		assert_ok!(VaultRegistry::register_public_key(origin.clone(), public_key_1));
 		assert_err!(
-			VaultRegistry::register_public_key(origin.clone(), public_key_2),
+			VaultRegistry::register_public_key(origin, public_key_2),
 			TestError::PublicKeyAlreadyRegistered
 		);
 	})
@@ -894,7 +892,7 @@ fn can_withdraw_only_up_to_custom_threshold() {
 		// should be able to withdraw to the secure threshold
 		assert_ok!(VaultRegistry::withdraw_collateral(
 			RuntimeOrigin::signed(vault_id.account_id),
-			vault_id.currencies.clone(),
+			vault_id.currencies,
 			backing_collateral - minimum_backing_collateral - 1
 		));
 	});
@@ -984,7 +982,7 @@ fn test_threshold_equivalent_to_legacy_calculation() {
 
 	run_test(|| {
 		let threshold = FixedU128::checked_from_rational(199999, 100000).unwrap(); // 199.999%
-		let random_start = 987529462328 as u128;
+		let random_start = 987529462328_u128;
 		for btc in random_start..random_start + 199999 {
 			let old =
 				legacy_calculate_max_wrapped_from_collateral_for_threshold(btc, 199999).unwrap();
@@ -1031,7 +1029,7 @@ fn test_get_required_collateral_threshold_equivalent_to_legacy_calculation_() {
 
 	run_test(|| {
 		let threshold = FixedU128::checked_from_rational(199999, 100000).unwrap(); // 199.999%
-		let random_start = 987529462328 as u128;
+		let random_start = 987529462328_u128;
 		for btc in random_start..random_start + 199999 {
 			let old = legacy_get_required_collateral_for_wrapped_with_threshold(btc, 199999);
 			let new = VaultRegistry::get_required_collateral_for_wrapped_with_threshold(
@@ -1048,7 +1046,7 @@ fn test_get_required_collateral_threshold_equivalent_to_legacy_calculation_() {
 fn get_required_collateral_for_wrapped_with_threshold_succeeds() {
 	run_test(|| {
 		let threshold = FixedU128::checked_from_rational(19999, 10000).unwrap(); // 199.99%
-		let random_start = 987529387592 as u128;
+		let random_start = 987529387592_u128;
 		for btc in random_start..random_start + 19999 {
 			let min_collateral = VaultRegistry::get_required_collateral_for_wrapped_with_threshold(
 				&wrapped(btc),
@@ -1321,7 +1319,7 @@ mod get_vaults_below_premium_collaterlization_tests {
 			let id1 = vault_id(3);
 			let issue_tokens1: u128 = 50;
 			let collateral1 = 50;
-			add_vault(id1.clone(), issue_tokens1, collateral1);
+			add_vault(id1, issue_tokens1, collateral1);
 
 			// returned
 			let id2 = vault_id(4);

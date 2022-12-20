@@ -1,19 +1,22 @@
-use crate::{
-	pallet::{self, Config, Error},
-	types::*,
-};
-
+// We allow these lints because they are only caused by the 'mockable' attribute.
+#![allow(clippy::forget_non_drop, clippy::swap_ptr_to_ref, clippy::forget_ref, clippy::forget_copy)]
 use frame_support::{
 	dispatch::{DispatchError, DispatchResult},
 	ensure,
 };
 use orml_traits::{MultiCurrency, MultiReservableCurrency};
-use primitives::TruncateFixedPointToInt;
 use sp_runtime::{
 	traits::{CheckedAdd, CheckedDiv, CheckedMul, CheckedSub, UniqueSaturatedInto, Zero},
 	ArithmeticError, FixedPointNumber,
 };
 use sp_std::{convert::TryInto, fmt::Debug};
+
+use primitives::TruncateFixedPointToInt;
+
+use crate::{
+	pallet::{self, Config, Error},
+	types::*,
+};
 
 #[cfg_attr(feature = "testing-utils", derive(Copy))]
 #[derive(Clone, PartialEq, Eq, Debug)]
@@ -137,7 +140,7 @@ mod math {
 				.ok_or(Error::<T>::TryIntoIntError)?;
 
 			// do the multiplication
-			let product = self_fixed_point.checked_mul(&scalar).ok_or(ArithmeticError::Overflow)?;
+			let product = self_fixed_point.checked_mul(scalar).ok_or(ArithmeticError::Overflow)?;
 
 			// convert to inner
 			let product_inner =
@@ -163,7 +166,7 @@ mod math {
 		pub fn checked_div(&self, scalar: &UnsignedFixedPoint<T>) -> Result<Self, DispatchError> {
 			let amount = UnsignedFixedPoint::<T>::checked_from_integer(self.amount)
 				.ok_or(Error::<T>::TryIntoIntError)?
-				.checked_div(&scalar)
+				.checked_div(scalar)
 				.ok_or(ArithmeticError::Overflow)?
 				.truncate_to_inner()
 				.ok_or(Error::<T>::TryIntoIntError)?;
@@ -285,11 +288,12 @@ mod actions {
 
 #[cfg(feature = "testing-utils")]
 mod testing_utils {
-	use super::*;
 	use sp_std::{
 		cmp::{Ordering, PartialOrd},
 		ops::{Add, AddAssign, Div, Mul, Sub, SubAssign},
 	};
+
+	use super::*;
 
 	impl<T: Config> Amount<T> {
 		pub fn with_amount<F: FnOnce(BalanceOf<T>) -> BalanceOf<T>>(&self, f: F) -> Self {

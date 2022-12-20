@@ -1,11 +1,4 @@
-use std::{
-	collections::VecDeque,
-	fs::{create_dir_all, File},
-	io::{Read, Write},
-	str::Split,
-};
-
-use sp_core::hexdisplay::AsBytesRef;
+use std::{fmt::Write, fs::create_dir_all, str::Split};
 
 use stellar_relay_lib::sdk::{
 	compound_types::{UnlimitedVarArray, XdrArchive},
@@ -14,10 +7,8 @@ use stellar_relay_lib::sdk::{
 };
 
 use crate::oracle::{
-	constants::{ARCHIVE_NODE_LEDGER_BATCH, MAX_ITEMS_IN_QUEUE},
-	storage::traits::*,
-	EnvelopesFileHandler, EnvelopesMap, Error, Filename, SerializedData, Slot, SlotEncodedMap,
-	TxHashesFileHandler, TxSetMap, TxSetsFileHandler,
+	constants::MAX_ITEMS_IN_QUEUE, storage::traits::*, EnvelopesFileHandler, EnvelopesMap, Error,
+	Filename, SerializedData, Slot, SlotEncodedMap, TxSetMap, TxSetsFileHandler,
 };
 
 use super::{ScpArchiveStorage, TransactionsArchiveStorage};
@@ -46,7 +37,7 @@ impl FileHandler<EnvelopesMap> for EnvelopesFileHandler {
 		Ok(m)
 	}
 
-	fn check_slot_in_splitted_filename(slot_param: Slot, splits: &mut Split<&str>) -> bool {
+	fn check_slot_in_splitted_filename(slot_param: Slot, splits: &mut Split<char>) -> bool {
 		fn parse_slot(slot_opt: Option<&str>) -> Option<Slot> {
 			(slot_opt?).parse::<Slot>().ok()
 		}
@@ -69,11 +60,11 @@ impl FileHandlerExt<EnvelopesMap> for EnvelopesFileHandler {
 
 		for (idx, (key, value)) in data.iter().enumerate() {
 			if idx == 0 {
-				filename.push_str(&format!("{}_", key));
+				let _ = write!(filename, "{}_", key);
 			}
 
 			if idx == (len - 1) {
-				filename.push_str(&format!("{}", key));
+				let _ = write!(filename, "{}", key);
 			}
 
 			let stellar_array = UnlimitedVarArray::new(value.clone())?;
@@ -111,7 +102,7 @@ impl FileHandler<TxSetMap> for TxSetsFileHandler {
 		Ok(m)
 	}
 
-	fn check_slot_in_splitted_filename(slot_param: Slot, splits: &mut Split<&str>) -> bool {
+	fn check_slot_in_splitted_filename(slot_param: Slot, splits: &mut Split<char>) -> bool {
 		EnvelopesFileHandler::check_slot_in_splitted_filename(slot_param, splits)
 	}
 }
@@ -124,11 +115,11 @@ impl FileHandlerExt<TxSetMap> for TxSetsFileHandler {
 
 		for (idx, (key, set)) in data.iter().enumerate() {
 			if idx == 0 {
-				filename.push_str(&format!("{}_", key));
+				let _ = write!(filename, "{}_", key);
 			}
 
 			if idx == (len - 1) {
-				filename.push_str(&format!("{}", key));
+				let _ = write!(filename, "{}", key);
 			}
 
 			m.insert(*key, set.to_xdr());
@@ -142,8 +133,8 @@ impl ArchiveStorage for ScpArchiveStorage {
 	type T = ScpHistoryEntry;
 	const STELLAR_HISTORY_BASE_URL: &'static str =
 		crate::oracle::constants::STELLAR_HISTORY_BASE_URL;
-	const prefix_url: &'static str = "scp";
-	const prefix_filename: &'static str = "";
+	const PREFIX_URL: &'static str = "scp";
+	const PREFIX_FILENAME: &'static str = "";
 }
 
 impl ScpArchiveStorage {
@@ -168,8 +159,8 @@ impl ArchiveStorage for TransactionsArchiveStorage {
 	type T = TransactionHistoryEntry;
 	const STELLAR_HISTORY_BASE_URL: &'static str =
 		crate::oracle::constants::STELLAR_HISTORY_BASE_URL_TRANSACTIONS;
-	const prefix_url: &'static str = "transactions";
-	const prefix_filename: &'static str = "txs-";
+	const PREFIX_URL: &'static str = "transactions";
+	const PREFIX_FILENAME: &'static str = "txs-";
 }
 
 impl TransactionsArchiveStorage {
@@ -210,22 +201,15 @@ pub fn prepare_directories() -> Result<(), Error> {
 mod test {
 	use std::{
 		convert::{TryFrom, TryInto},
-		env, fs,
+		fs,
 		fs::File,
 		io::Read,
 		path::PathBuf,
 	};
 
-	use frame_support::assert_err;
 	use mockall::lazy_static;
 
-	use stellar_relay_lib::{
-		helper::compute_non_generic_tx_set_content_hash,
-		sdk::{
-			network::PUBLIC_NETWORK,
-			types::{ScpHistoryEntry, ScpStatementPledges},
-		},
-	};
+	use stellar_relay_lib::sdk::types::ScpHistoryEntry;
 
 	use crate::oracle::{
 		constants::MAX_SLOTS_PER_FILE,
@@ -236,7 +220,6 @@ mod test {
 			EnvelopesFileHandler, TxSetsFileHandler,
 		},
 		types::{LifoMap, Slot},
-		TransactionsArchiveStorage,
 	};
 
 	use super::ScpArchiveStorage;
@@ -320,7 +303,7 @@ mod test {
 			let envelopes_map = EnvelopesFileHandler::get_map_from_archives(last_slot - 20)
 				.expect("should return envelopes map");
 
-			for (idx, (slot, envs)) in envelopes_map.iter().enumerate() {
+			for (idx, (slot, _envs)) in envelopes_map.iter().enumerate() {
 				let expected_slot_num =
 					first_slot + u64::try_from(idx).expect("should return u64 data type");
 				assert_eq!(slot, &expected_slot_num);
@@ -469,12 +452,13 @@ mod test {
 
 		//arrange
 		let slot_index = 30511500;
-		let (url, ref filename) = TransactionsArchiveStorage::get_url_and_file_name(slot_index);
+		let (_url, ref filename) = TransactionsArchiveStorage::get_url_and_file_name(slot_index);
 
 		//act
-		let transactions_archive = TransactionsArchiveStorage::get_transactions_archive(slot_index)
-			.await
-			.expect("should find the archive");
+		let _transactions_archive =
+			TransactionsArchiveStorage::get_transactions_archive(slot_index)
+				.await
+				.expect("should find the archive");
 
 		//assert
 		TransactionsArchiveStorage::read_file_xdr(filename)

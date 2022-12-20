@@ -6,7 +6,7 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [lib]
-name = "stellar_relay"
+name = "stellar_relay_lib"
 path = "src/lib.rs"
 
 [dev-dependencies]

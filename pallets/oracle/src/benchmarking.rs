@@ -39,7 +39,7 @@ benchmarks! {
 		let origin: T::AccountId = account("origin", 0, 0);
 	}: _(RawOrigin::Root, origin.clone(), "Origin".as_bytes().to_vec())
 	verify {
-		assert_eq!(Oracle::<T>::is_authorized(&origin), true);
+		assert!(Oracle::<T>::is_authorized(&origin));
 	}
 
 	remove_authorized_oracle {
@@ -47,7 +47,7 @@ benchmarks! {
 		Oracle::<T>::insert_oracle(origin.clone(), "Origin".as_bytes().to_vec());
 	}: _(RawOrigin::Root, origin.clone())
 	verify {
-		assert_eq!(Oracle::<T>::is_authorized(&origin), false);
+		assert!(!Oracle::<T>::is_authorized(&origin));
 	}
 }
 

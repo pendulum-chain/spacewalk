@@ -2,7 +2,7 @@ use async_trait::async_trait;
 use substrate_stellar_sdk::Hash;
 
 #[cfg(test)]
-use mockall::{automock, mock, predicate::*};
+use mockall::{automock, predicate::*};
 
 use crate::{error::Error, horizon::TransactionResponse};
 

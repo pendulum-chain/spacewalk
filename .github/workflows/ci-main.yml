@@ -21,6 +21,17 @@ jobs:
     steps:
       - uses: actions/checkout@v2
 
+      - name: Install package (ubuntu-latest)
+        if: matrix.os == 'ubuntu-latest'
+        run: |
+          sudo apt-get update && sudo apt-get upgrade -y
+          sudo apt-get install -y protobuf-compiler libprotobuf-dev
+
+      - name: Install package (macos-latest)
+        if: matrix.os == 'macos-latest'
+        run: |
+          brew install protobuf
+
       - name: Setup Rust toolchain
         # Call `rustup show` as a hack so that the toolchain defined in rust-toolchain.toml is installed
         run: rustup show
@@ -49,8 +60,15 @@ jobs:
           command: fmt
           args: --all -- --check
 
-      - name: Clippy
+      - name: Clippy -- Main
         uses: actions-rs/cargo@v1
         with:
           command: clippy
-          args: --all-features --all-targets -- -W clippy::all -A clippy::style
+          args: -- -W clippy::all -A clippy::style -A clippy::forget_copy -A clippy::forget_ref
+
+      - name: Clippy -- All Targets
+        uses: actions-rs/cargo@v1
+        with:
+          command: clippy
+          # We are a bit more forgiving when it comes to the code in tests and only check for correctness
+          args: --all-features --all-targets -- -A clippy::all -W clippy::correctness -A clippy::forget_copy -A clippy::forget_ref

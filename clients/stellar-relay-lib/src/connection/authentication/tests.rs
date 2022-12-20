@@ -95,7 +95,7 @@ fn create_valid_shared_key() {
 	let shared_key = gen_shared_key(
 		&remote_pub_key,
 		auth.secret_key_ecdh(),
-		&auth.pub_key_ecdh(),
+		auth.pub_key_ecdh(),
 		we_called_remote,
 	);
 

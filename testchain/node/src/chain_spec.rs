@@ -218,8 +218,7 @@ fn testnet_genesis(
 	start_shutdown: bool,
 ) -> GenesisConfig {
 	// Testnet organization
-	let organization_testnet_sdf =
-		Organization { name: create_bounded_vec("sdftest"), id: 1u128.into() };
+	let organization_testnet_sdf = Organization { name: create_bounded_vec("sdftest"), id: 1u128 };
 	// Testnet validators
 	let validators = vec![
 		Validator {
@@ -257,7 +256,7 @@ fn testnet_genesis(
 		},
 		sudo: SudoConfig {
 			// Assign network admin rights.
-			key: Some(root_key.clone()),
+			key: Some(root_key),
 		},
 		balances: BalancesConfig {
 			// Configure endowed accounts with initial balance of 1 << 60.

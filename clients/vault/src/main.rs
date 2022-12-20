@@ -1,4 +1,4 @@
-use std::{io::Write, path::PathBuf, sync::Arc};
+use std::sync::Arc;
 
 use clap::Parser;
 use futures::Future;
@@ -11,9 +11,8 @@ use service::{ConnectionManager, Error as ServiceError, ServiceConfig};
 use signal_hook::consts::*;
 use signal_hook_tokio::Signals;
 use vault::{
-	metrics::{self, increment_restart_counter},
-	process::PidFile,
-	Error, VaultService, VaultServiceConfig, ABOUT, AUTHORS, NAME, VERSION,
+	metrics::increment_restart_counter, process::PidFile, Error, VaultService, VaultServiceConfig,
+	ABOUT, AUTHORS, NAME, VERSION,
 };
 
 #[derive(Parser)]
@@ -30,25 +29,6 @@ struct Cli {
 enum Commands {
 	#[clap(name = "run")]
 	RunVault(Box<RunVaultOpts>),
-}
-
-// write the file to stdout or disk - fail if it already exists
-fn try_write_file<D: AsRef<[u8]>>(
-	output: &Option<PathBuf>,
-	data: D,
-) -> Result<(), ServiceError<Error>> {
-	let data = data.as_ref();
-	if let Some(output) = output {
-		if output.exists() {
-			Err(ServiceError::FileAlreadyExists)
-		} else {
-			std::fs::write(output, data)?;
-			Ok(())
-		}
-	} else {
-		std::io::stdout().write_all(data)?;
-		Ok(())
-	}
 }
 
 #[derive(Parser, Debug, Clone)]
@@ -98,12 +78,11 @@ async fn start() -> Result<(), ServiceError<Error>> {
 	let opts = cli.opts;
 	opts.service.logging_format.init_subscriber();
 
-	let (pair, wallet_name) = opts.account_info.get_key_pair()?;
+	let (pair, _) = opts.account_info.get_key_pair()?;
 	let signer = Arc::new(RwLock::new(SpacewalkSigner::new(pair)));
 
 	let vault_connection_manager = ConnectionManager::new(
 		signer.clone(),
-		Some(wallet_name.to_string()),
 		opts.parachain,
 		opts.service,
 		opts.vault,

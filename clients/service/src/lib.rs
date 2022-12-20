@@ -10,8 +10,8 @@ pub use warp;
 pub use cli::{LoggingFormat, RestartPolicy, ServiceConfig};
 pub use error::Error;
 use runtime::{
-	cli::ConnectionOpts as ParachainConfig, CurrencyId, PrettyPrint, ShutdownReceiver,
-	ShutdownSender, SpacewalkParachain, SpacewalkSigner,
+	cli::ConnectionOpts as ParachainConfig, PrettyPrint, ShutdownReceiver, ShutdownSender,
+	SpacewalkParachain, SpacewalkSigner,
 };
 pub use trace::init_subscriber;
 
@@ -36,7 +36,6 @@ pub trait Service<Config, InnerError> {
 
 pub struct ConnectionManager<Config: Clone, F: Fn()> {
 	signer: Arc<RwLock<SpacewalkSigner>>,
-	wallet_name: Option<String>,
 	parachain_config: ParachainConfig,
 	service_config: ServiceConfig,
 	config: Config,
@@ -47,20 +46,12 @@ impl<Config: Clone + Send + 'static, F: Fn()> ConnectionManager<Config, F> {
 	#[allow(clippy::too_many_arguments)]
 	pub fn new(
 		signer: Arc<RwLock<SpacewalkSigner>>,
-		wallet_name: Option<String>,
 		parachain_config: ParachainConfig,
 		service_config: ServiceConfig,
 		config: Config,
 		increment_restart_counter: F,
 	) -> Self {
-		Self {
-			signer,
-			wallet_name,
-			parachain_config,
-			service_config,
-			config,
-			increment_restart_counter,
-		}
+		Self { signer, parachain_config, service_config, config, increment_restart_counter }
 	}
 
 	pub async fn start<S: Service<Config, InnerError>, InnerError: fmt::Display>(
