@@ -170,8 +170,9 @@ mod test {
 		let amount = 100;
 		let memo_hash = [0u8; 32];
 
-		let result = wallet.send_payment_to_address(destination, asset, amount, memo_hash).await;
+		let result = wallet.send_payment_to_address(destination, asset, amount, memo_hash,1).await;
 
+		println!("the result: {:?}", result);
 		assert!(result.is_ok());
 		let (transaction_response, _) = result.unwrap();
 		assert!(transaction_response.hash.to_vec().len() > 0);

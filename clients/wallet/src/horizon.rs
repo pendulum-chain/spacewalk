@@ -438,7 +438,7 @@ mod tests {
 	};
 	use tokio::{io::AsyncReadExt, sync::Mutex, time::sleep};
 
-	use crate::types::{FilterWith, MockWatcher, TransactionFilterParam};
+	use crate::types::{FilterWith, TransactionFilterParam};
 
 	use super::*;
 
@@ -451,12 +451,6 @@ mod tests {
 		fn is_relevant(&self, param: TransactionFilterParam<Vec<u64>>) -> bool {
 			// We consider all transactions relevant for the test
 			true
-		}
-	}
-
-	impl Clone for MockWatcher {
-		fn clone(&self) -> Self {
-			MockWatcher::new()
 		}
 	}
 
@@ -593,9 +587,6 @@ mod tests {
 
 	#[tokio::test(flavor = "multi_thread")]
 	async fn client_test_for_polling() {
-		let mut watcher = MockWatcher::new();
-		let watcher = Arc::new(RwLock::new(watcher));
-
 		let issue_hashes = Arc::new(RwLock::new(vec![]));
 		let slot_env_map = Arc::new(RwLock::new(HashMap::new()));
 
@@ -625,11 +616,6 @@ mod tests {
 		{
 			cursor = next_page;
 		}
-
-		// Fetch again but this time with latest cursor
-		// Assume that the watch_slot function is not called this time because no new transaction
-		// happened
-		watcher.write().await.expect_watch_slot().never();
 
 		fetcher
 			.fetch_horizon_and_process_new_transactions(
