@@ -298,7 +298,7 @@ impl<T: Config> Pallet<T> {
 	pub fn get_price(key: OracleKey) -> Result<UnsignedFixedPoint<T>, DispatchError> {
 		ext::security::ensure_parachain_status_running::<T>()?;
 
-		Aggregate::<T>::get(key).ok_or(Error::<T>::MissingExchangeRate.into())
+		Aggregate::<T>::get(key).ok_or_else(|| Error::<T>::MissingExchangeRate.into())
 	}
 
 	pub fn convert(
@@ -322,8 +322,7 @@ impl<T: Config> Pallet<T> {
 	) -> Result<BalanceOf<T>, DispatchError> {
 		let rate = Self::get_price(OracleKey::ExchangeRate(currency_id))?;
 		let converted = rate.checked_mul_int(amount).ok_or(ArithmeticError::Overflow)?;
-		let result = converted.try_into().map_err(|_e| Error::<T>::TryIntoIntError)?;
-		Ok(result)
+		Ok(converted)
 	}
 
 	pub fn collateral_to_wrapped(

@@ -74,8 +74,12 @@ impl Connector {
 				log::trace!("what to do with send more");
 			},
 			other => {
-				self.send_to_user(StellarRelayMessage::Data { p_id, msg_type, msg: other })
-					.await?;
+				self.send_to_user(StellarRelayMessage::Data {
+					p_id,
+					msg_type,
+					msg: Box::new(other),
+				})
+				.await?;
 				self.check_to_send_more(msg_type).await?;
 			},
 		}

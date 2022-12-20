@@ -51,7 +51,7 @@ async fn stellar_overlay_should_receive_scp_messages() {
 		}
 		attempt += 1;
 		match relay_message {
-			StellarRelayMessage::Data { p_id: _, msg_type: _, msg } => match msg {
+			StellarRelayMessage::Data { p_id: _, msg_type: _, msg } => match *msg {
 				StellarMessage::ScpMessage(msg) => {
 					scps_vec.push(msg);
 					break
@@ -93,7 +93,7 @@ async fn stellar_overlay_should_receive_tx_set() {
 		}
 		attempt += 1;
 		match relay_message {
-			StellarRelayMessage::Data { p_id: _, msg_type: _, msg } => match msg {
+			StellarRelayMessage::Data { p_id: _, msg_type: _, msg } => match *msg {
 				StellarMessage::ScpMessage(msg) => {
 					if let ScpStatementPledges::ScpStExternalize(stmt) = &msg.statement.pledges {
 						let txset_hash = get_tx_set_hash(stmt);

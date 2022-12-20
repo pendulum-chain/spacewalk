@@ -45,7 +45,7 @@ impl StellarOverlayConnection {
 			return Err(Error::Disconnected)
 		}
 		self.actions_sender
-			.send(ConnectorActions::SendMessage(message))
+			.send(ConnectorActions::SendMessage(Box::new(message)))
 			.await
 			.map_err(Error::from)
 	}
@@ -190,7 +190,7 @@ mod test {
 		//assert
 		let message = actions_receiver.recv().await.unwrap();
 		if let ConnectorActions::SendMessage(message) = message {
-			assert_eq!(message, message_s);
+			assert_eq!(*message, message_s);
 		} else {
 			panic!("Incorrect stellar message")
 		}

@@ -141,11 +141,11 @@ mod vault_id {
 		}
 
 		pub fn collateral_currency(&self) -> CurrencyId {
-			self.currencies.collateral.clone()
+			self.currencies.collateral
 		}
 
 		pub fn wrapped_currency(&self) -> CurrencyId {
-			self.currencies.wrapped.clone()
+			self.currencies.wrapped
 		}
 	}
 

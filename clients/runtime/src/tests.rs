@@ -1,6 +1,6 @@
 #![cfg(test)]
 
-use std::{convert::TryInto, time::Duration};
+use std::{time::Duration};
 
 use sp_keyring::AccountKeyring;
 

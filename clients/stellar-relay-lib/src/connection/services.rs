@@ -255,7 +255,7 @@ async fn _connection_handler(
 
 		// write message to the stream
 		ConnectorActions::SendMessage(msg) => {
-			let xdr_msg = connector.create_xdr_message(msg)?;
+			let xdr_msg = connector.create_xdr_message(*msg)?;
 			w_stream
 				.write_all(&xdr_msg)
 				.await

@@ -837,13 +837,14 @@ impl<T: Config> Pallet<T> {
 	pub fn get_stellar_public_key(
 		account_id: &T::AccountId,
 	) -> Result<StellarPublicKeyRaw, DispatchError> {
-		VaultStellarPublicKey::<T>::get(account_id).ok_or(Error::<T>::NoStellarPublicKey.into())
+		VaultStellarPublicKey::<T>::get(account_id)
+			.ok_or_else(|| Error::<T>::NoStellarPublicKey.into())
 	}
 
 	pub fn get_vault_from_id(
 		vault_id: &DefaultVaultId<T>,
 	) -> Result<DefaultVault<T>, DispatchError> {
-		Vaults::<T>::get(vault_id).ok_or(Error::<T>::VaultNotFound.into())
+		Vaults::<T>::get(vault_id).ok_or_else(|| Error::<T>::VaultNotFound.into())
 	}
 
 	pub fn get_backing_collateral(
@@ -1776,6 +1777,7 @@ impl<T: Config> Pallet<T> {
 	/// Maybe returns a tuple of (VaultId, RedeemableTokens)
 	/// The redeemable tokens are the currently vault.issued_tokens - the
 	/// vault.to_be_redeemed_tokens
+	#[allow(clippy::type_complexity)]
 	pub fn get_premium_redeem_vaults() -> Result<Vec<(DefaultVaultId<T>, Amount<T>)>, DispatchError>
 	{
 		let mut suitable_vaults = Vaults::<T>::iter()
@@ -1803,6 +1805,7 @@ impl<T: Config> Pallet<T> {
 	}
 
 	/// Get all vaults with non-zero issuable tokens, ordered in descending order of this amount
+	#[allow(clippy::type_complexity)]
 	pub fn get_vaults_with_issuable_tokens(
 	) -> Result<Vec<(DefaultVaultId<T>, Amount<T>)>, DispatchError> {
 		let mut vaults_with_issuable_tokens = Vaults::<T>::iter()
@@ -1829,6 +1832,7 @@ impl<T: Config> Pallet<T> {
 
 	/// Get all vaults with non-zero issued (thus redeemable) tokens, ordered in descending order of
 	/// this amount
+	#[allow(clippy::type_complexity)]
 	pub fn get_vaults_with_redeemable_tokens(
 	) -> Result<Vec<(DefaultVaultId<T>, Amount<T>)>, DispatchError> {
 		// find all vault accounts with sufficient collateral

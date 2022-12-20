@@ -395,7 +395,7 @@ impl<T: Config> RichVault<T> {
 		Ok(self
 			.data
 			.secure_collateral_threshold
-			.unwrap_or(UnsignedFixedPoint::<T>::zero())
+			.unwrap_or_else(UnsignedFixedPoint::<T>::zero)
 			.max(global_threshold))
 	}
 

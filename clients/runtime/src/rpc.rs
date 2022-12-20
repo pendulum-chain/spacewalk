@@ -86,8 +86,8 @@ impl SpacewalkParachain {
 			log::info!("transaction_version={}", runtime_version.transaction_version);
 		} else {
 			return Err(Error::InvalidSpecVersion(
-				DEFAULT_SPEC_VERSION.start().clone(),
-				DEFAULT_SPEC_VERSION.end().clone(),
+				*DEFAULT_SPEC_VERSION.start(),
+				*DEFAULT_SPEC_VERSION.end(),
 				runtime_version.spec_version,
 			))
 		}
@@ -346,7 +346,7 @@ impl SpacewalkParachain {
 									}
 								}
 							},
-							Err(err) => on_error(err.into()),
+							Err(err) => on_error(err),
 						}
 					}
 				}
@@ -395,7 +395,7 @@ impl SpacewalkParachain {
 	pub async fn get_invalid_tx_error(&self, recipient: AccountId) -> Error {
 		let call = metadata::tx().tokens().transfer(
 			subxt::ext::sp_runtime::MultiAddress::Id(recipient),
-			Token(DOT),
+			Token(TokenSymbol::DOT),
 			100,
 		);
 		let nonce = self.get_fresh_nonce().await;
@@ -427,7 +427,7 @@ impl SpacewalkParachain {
 	pub async fn get_too_low_priority_error(&self, recipient: AccountId) -> Error {
 		let call = metadata::tx().tokens().transfer(
 			subxt::ext::sp_runtime::MultiAddress::Id(recipient),
-			Token(DOT),
+			Token(TokenSymbol::DOT),
 			100,
 		);
 
@@ -640,7 +640,7 @@ impl VaultRegistryPallet for SpacewalkParachain {
 	/// * `public_key` - the new public key of the vault
 	async fn register_public_key(&self, public_key: StellarPublicKeyRaw) -> Result<(), Error> {
 		let register_public_key_tx =
-			metadata::tx().vault_registry().register_public_key(public_key.clone());
+			metadata::tx().vault_registry().register_public_key(public_key);
 
 		self.with_retry(register_public_key_tx).await?;
 

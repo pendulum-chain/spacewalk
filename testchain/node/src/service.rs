@@ -41,6 +41,7 @@ pub type FullBackend = TFullBackend<Block>;
 
 type FullSelectChain = sc_consensus::LongestChain<FullBackend, Block>;
 
+#[allow(clippy::type_complexity)]
 pub fn new_partial(
 	config: &Configuration,
 	instant_seal: bool,
@@ -358,6 +359,7 @@ pub fn new_full(mut config: Configuration) -> Result<(TaskManager, RpcHandlers),
 	Ok((task_manager, rpc_handlers))
 }
 
+#[allow(dead_code)]
 pub async fn start_instant(
 	config: Configuration,
 ) -> sc_service::error::Result<(TaskManager, RpcHandlers)> {

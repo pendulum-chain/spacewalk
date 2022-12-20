@@ -11,7 +11,7 @@ pub(crate) use connector::Connector;
 #[derive(Debug)]
 pub enum ConnectorActions {
 	SendHello,
-	SendMessage(StellarMessage),
+	SendMessage(Box<StellarMessage>),
 	HandleMessage(Xdr),
 	Disconnect,
 }

@@ -123,7 +123,7 @@ impl ScpMessageActor {
 							p_id: _,
 							msg_type: _,
 							msg,
-						} => match msg {
+						} => match *msg {
 							StellarMessage::ScpMessage(env) => {
 								self.collector
 									.handle_envelope(env, &overlay_conn)

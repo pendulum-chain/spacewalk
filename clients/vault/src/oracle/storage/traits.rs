@@ -62,7 +62,7 @@ pub trait FileHandler<T: Default> {
 
 		for path in paths {
 			let filename = path?.file_name().into_string().unwrap();
-			let mut splits = filename.split("_");
+			let mut splits: Split<&str> = filename.split("_");
 
 			if Self::check_slot_in_splitted_filename(slot_param, &mut splits) {
 				return Ok(filename)
