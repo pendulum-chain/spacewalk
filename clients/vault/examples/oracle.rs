@@ -4,11 +4,11 @@ use stellar_relay_lib::{
 	node::NodeInfo,
 	sdk::{
 		network::{Network, PUBLIC_NETWORK, TEST_NETWORK},
-		SecretKey, TransactionEnvelope,
+		SecretKey,
 	},
 	ConnConfig,
 };
-use vault::oracle::{create_handler, prepare_directories, Proof, ProofExt, ProofStatus};
+use vault::oracle::{create_handler, prepare_directories, ProofExt, ProofStatus};
 
 pub const SAMPLE_VAULT_ADDRESSES_FILTER: &[&str] =
 	&["GAP4SFKVFVKENJ7B7VORAYKPB3CJIAJ2LMKDJ22ZFHIAIVYQOR6W3CXF"];
