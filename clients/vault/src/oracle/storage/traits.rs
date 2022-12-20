@@ -34,7 +34,7 @@ pub trait FileHandler<T: Default> {
 
 	fn deserialize_bytes(bytes: Vec<u8>) -> Result<T, Error>;
 
-	fn check_slot_in_splitted_filename(slot_param: Slot, splits: &mut Split<&str>) -> bool;
+	fn check_slot_in_splitted_filename(slot_param: Slot, splits: &mut Split<char>) -> bool;
 
 	fn get_path(filename: &str) -> PathBuf {
 		let mut path = PathBuf::new();
@@ -62,7 +62,7 @@ pub trait FileHandler<T: Default> {
 
 		for path in paths {
 			let filename = path?.file_name().into_string().unwrap();
-			let mut splits: Split<&str> = filename.split("_");
+			let mut splits: Split<char> = filename.split('_');
 
 			if Self::check_slot_in_splitted_filename(slot_param, &mut splits) {
 				return Ok(filename)
@@ -113,7 +113,7 @@ pub trait ArchiveStorage {
 		if rest == 0 {
 			return slot_index
 		}
-		return slot_index + ARCHIVE_NODE_LEDGER_BATCH - rest
+		slot_index + ARCHIVE_NODE_LEDGER_BATCH - rest
 	}
 
 	fn read_file_xdr(filename: &str) -> Result<Vec<u8>, Error> {

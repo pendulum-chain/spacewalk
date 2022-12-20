@@ -191,11 +191,12 @@ impl VaultIdManager {
 /// `wrapped_currency` being the currency codes of the wrapped currency (e.g. USDC, EURT...)
 ///  including the issuer and code, ie 'GABC...:USDC'  and
 /// `collateral_amount` being the amount of collateral to be locked.
+#[allow(clippy::useless_conversion, clippy::format_in_format_args)]
 fn parse_collateral_and_amount(
 	s: &str,
 ) -> Result<(String, String, Option<u128>), Box<dyn std::error::Error + Send + Sync + 'static>> {
 	let parts: Vec<&str> = s
-		.split(",")
+		.split(',')
 		.map(|s| s.trim())
 		.collect::<Vec<_>>()
 		.try_into()
@@ -311,13 +312,12 @@ async fn run_and_monitor_tasks(
 	// 	publish_tokio_metrics(metrics_iterators),
 	// ));
 
-	match join_all(tasks).await {
-		results => results
-			.into_iter()
-			.find(|res| matches!(res, Ok(Err(_))))
-			.and_then(|res| res.ok())
-			.unwrap_or(Ok(())),
-	}
+	let results = join_all(tasks).await;
+	results
+		.into_iter()
+		.find(|res| matches!(res, Ok(Err(_))))
+		.and_then(|res| res.ok())
+		.unwrap_or(Ok(()))
 }
 
 type Task = Pin<Box<dyn Future<Output = Result<(), ServiceError<Error>>> + Send + 'static>>;

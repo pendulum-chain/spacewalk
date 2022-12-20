@@ -42,7 +42,7 @@ pub async fn listen_for_issue_requests(
 		.on_event::<RequestIssueEvent, _, _, _>(
 			|event| async move {
 				tracing::info!("Received RequestIssueEvent: {:?}", event.issue_id);
-				if is_vault(vault_public_key, event.vault_stellar_public_key.clone()) {
+				if is_vault(vault_public_key, event.vault_stellar_public_key) {
 					// let's get the IssueRequest
 					let issue_request_result =
 						parachain_rpc.get_issue_request(event.issue_id).await;
@@ -202,7 +202,7 @@ pub async fn execute_issue(
 
 		match parachain_rpc
 			.execute_issue(
-				issue_id.clone(),
+				issue_id,
 				tx_env.as_bytes(),
 				envelopes.as_bytes(),
 				tx_set.as_bytes(),
@@ -254,7 +254,7 @@ impl FilterWith<TransactionFilterParam<IssueRequestsMap>> for IssueFilter {
 				// Check if the transaction can be used for the issue request by checking if it
 				// contains a payment to the vault with an amount greater than 0.
 				let tx_env = TransactionEnvelope::from_base64_xdr(tx.envelope_xdr);
-				return match tx_env {
+				match tx_env {
 					Ok(tx_env) => {
 						let asset = primitives::AssetConversion::lookup(request.asset);
 						if let Ok(asset) = asset {

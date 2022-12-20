@@ -1,4 +1,4 @@
-use std::{fs::create_dir_all, str::Split};
+use std::{fmt::Write, fs::create_dir_all, str::Split};
 
 use stellar_relay_lib::sdk::{
 	compound_types::{UnlimitedVarArray, XdrArchive},
@@ -37,7 +37,7 @@ impl FileHandler<EnvelopesMap> for EnvelopesFileHandler {
 		Ok(m)
 	}
 
-	fn check_slot_in_splitted_filename(slot_param: Slot, splits: &mut Split<&str>) -> bool {
+	fn check_slot_in_splitted_filename(slot_param: Slot, splits: &mut Split<char>) -> bool {
 		fn parse_slot(slot_opt: Option<&str>) -> Option<Slot> {
 			(slot_opt?).parse::<Slot>().ok()
 		}
@@ -60,11 +60,11 @@ impl FileHandlerExt<EnvelopesMap> for EnvelopesFileHandler {
 
 		for (idx, (key, value)) in data.iter().enumerate() {
 			if idx == 0 {
-				filename.push_str(&format!("{}_", key));
+				let _ = write!(filename, "{}_", key);
 			}
 
 			if idx == (len - 1) {
-				filename.push_str(&format!("{}", key));
+				let _ = write!(filename, "{}", key);
 			}
 
 			let stellar_array = UnlimitedVarArray::new(value.clone())?;
@@ -102,7 +102,7 @@ impl FileHandler<TxSetMap> for TxSetsFileHandler {
 		Ok(m)
 	}
 
-	fn check_slot_in_splitted_filename(slot_param: Slot, splits: &mut Split<&str>) -> bool {
+	fn check_slot_in_splitted_filename(slot_param: Slot, splits: &mut Split<char>) -> bool {
 		EnvelopesFileHandler::check_slot_in_splitted_filename(slot_param, splits)
 	}
 }
@@ -115,11 +115,11 @@ impl FileHandlerExt<TxSetMap> for TxSetsFileHandler {
 
 		for (idx, (key, set)) in data.iter().enumerate() {
 			if idx == 0 {
-				filename.push_str(&format!("{}_", key));
+				let _ = write!(filename, "{}_", key);
 			}
 
 			if idx == (len - 1) {
-				filename.push_str(&format!("{}", key));
+				let _ = write!(filename, "{}", key);
 			}
 
 			m.insert(*key, set.to_xdr());

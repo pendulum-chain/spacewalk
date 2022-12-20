@@ -385,7 +385,7 @@ pub async fn execute_open_requests(
 								})
 								.await;
 
-								if let Err(_) = timeout_result {
+								if timeout_result.is_err() {
 									tracing::error!("Failed to get proof for slot {}", slot);
 									return
 								}
@@ -483,7 +483,7 @@ fn get_request_for_stellar_tx(
 
 	let envelope = tx.to_envelope().ok()?;
 	let paid_amount = envelope
-		.get_payment_amount_for_asset_to(request.stellar_address.clone(), request.asset.clone());
+		.get_payment_amount_for_asset_to(request.stellar_address, request.asset.clone());
 
 	if paid_amount >= request.amount {
 		Some(request.clone())

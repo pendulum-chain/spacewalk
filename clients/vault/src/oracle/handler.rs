@@ -102,7 +102,7 @@ impl ScpMessageActor {
 				let result = overlay_conn
 					.send(StellarMessage::GetScpState(missed_slot.try_into().unwrap()))
 					.await;
-				if let Err(_) = result {
+				if result.is_err() {
 					tracing::warn!("failed to send GetScpState for missed slot : {}", missed_slot);
 				}
 			},

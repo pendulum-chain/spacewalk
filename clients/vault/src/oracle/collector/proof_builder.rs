@@ -161,7 +161,7 @@ impl ScpMessageCollector {
 			Some(envelopes) => {
 				let _ = envelopes.len() < get_min_externalized_messages(self.is_public());
 				Ok(UnlimitedVarArray::new(envelopes.clone())
-					.unwrap_or(UnlimitedVarArray::new_empty()))
+					.unwrap_or_else(|_| UnlimitedVarArray::new_empty()))
 			},
 		}
 	}
@@ -180,11 +180,11 @@ impl ScpMessageCollector {
 				let scp_archive: XdrArchive<ScpHistoryEntry> =
 					ScpArchiveStorage::get_scp_archive(slot.try_into().unwrap()).await.unwrap();
 
-				let value = scp_archive.get_vec().into_iter().find(|&scp_entry| {
+				let value = scp_archive.get_vec().iter().find(|&scp_entry| {
 					if let ScpHistoryEntry::V0(scp_entry_v0) = scp_entry {
-						return scp_entry_v0.ledger_messages.ledger_seq == slot_index
+						scp_entry_v0.ledger_messages.ledger_seq == slot_index
 					} else {
-						return false
+						false
 					}
 				});
 
@@ -195,7 +195,7 @@ impl ScpMessageCollector {
 
 						let mut envelopes_map = rw_lock.write();
 
-						if let None = envelopes_map.get_with_key(&slot) {
+						if envelopes_map.get_with_key(&slot).is_none() {
 							tracing::info!("Adding archived SCP envelopes for slot {}", slot);
 							envelopes_map.set_with_key(slot, vec_scp);
 						}
@@ -222,7 +222,7 @@ impl ScpMessageCollector {
 
 	/// Returns either a TransactionSet or a ProofStatus saying it failed to retrieve the set.
 	fn get_txset(&self, slot: Slot) -> Result<TransactionSet, ProofStatus> {
-		match self.txset_map().get_with_key(&slot).map(|set| set.clone()) {
+		match self.txset_map().get_with_key(&slot).cloned() {
 			None => {
 				// If the current slot is still in the range of 'remembered' slots
 				if check_slot_position(*self.last_slot_index(), slot) {
@@ -325,11 +325,11 @@ async fn get_envelopes_from_horizon_archive(
 	}
 	let scp_archive: XdrArchive<ScpHistoryEntry> = scp_archive_result.unwrap();
 
-	let value = scp_archive.get_vec().into_iter().find(|&scp_entry| {
+	let value = scp_archive.get_vec().iter().find(|&scp_entry| {
 		if let ScpHistoryEntry::V0(scp_entry_v0) = scp_entry {
-			return scp_entry_v0.ledger_messages.ledger_seq == slot_index
+			scp_entry_v0.ledger_messages.ledger_seq == slot_index
 		} else {
-			return false
+			false
 		}
 	});
 
@@ -340,7 +340,7 @@ async fn get_envelopes_from_horizon_archive(
 
 			let mut envelopes_map = envelopes_map_lock.write();
 
-			if let None = envelopes_map.get_with_key(&slot) {
+			if envelopes_map.get_with_key(&slot).is_none() {
 				tracing::info!("Adding archived SCP envelopes for slot {}", slot);
 				envelopes_map.set_with_key(slot, vec_scp);
 			}
