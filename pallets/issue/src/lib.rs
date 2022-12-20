@@ -16,6 +16,7 @@ use sp_runtime::{
 	traits::{CheckedAdd, CheckedDiv, Convert, Saturating},
 	ArithmeticError,
 };
+use sp_runtime::traits::Zero;
 use sp_std::vec::Vec;
 use substrate_stellar_sdk::{
 	compound_types::UnlimitedVarArray,
@@ -156,7 +157,7 @@ pub mod pallet {
 	pub(super) type LimitVolumeAmount<T: Config> =
 		StorageValue<_, Option<BalanceOf<T>>, ValueQuery>;
 
-	///Currency id for limit rate volume value. DOT, BTC or PEN
+	/// CurrencyID that represents the currency in which the volume limit is measured, eg DOT, USDC or PEN
 	#[pallet::storage]
 	pub(super) type LimitVolumeCurrencyId<T: Config> = StorageValue<_, T::CurrencyId, ValueQuery>;
 
@@ -167,7 +168,7 @@ pub mod pallet {
 	#[pallet::storage]
 	pub(super) type IntervalLength<T: Config> = StorageValue<_, T::BlockNumber, ValueQuery>;
 
-	// Represent current interval current_block_number / IntervalLength
+	/// Represent current interval current_block_number / IntervalLength
 	#[pallet::storage]
 	pub(super) type CurrentInterval<T: Config> = StorageValue<_, T::BlockNumber, ValueQuery>;
 
@@ -468,7 +469,7 @@ impl<T: Config> Pallet<T> {
 
 		// mint issued tokens
 		issue_amount.mint_to(&requester)?;
-		//increase volume regarding to rate limits
+		// increase volume according to volume limits
 		Self::increase_interval_volume(issue_amount)?;
 
 		// mint wrapped fees
@@ -593,9 +594,9 @@ impl<T: Config> Pallet<T> {
 		amount_transferred: Amount<T>,
 		expected_total_amount: Amount<T>,
 	) -> Result<(), DispatchError> {
-		let surplus_btc = amount_transferred.checked_sub(&expected_total_amount)?;
+		let surplus_amount = amount_transferred.checked_sub(&expected_total_amount)?;
 		let max_allowed = ext::vault_registry::get_issuable_tokens_from_vault::<T>(&issue.vault)?;
-		let issue_amount = surplus_btc.min(&max_allowed)?;
+		let issue_amount = surplus_amount.min(&max_allowed)?;
 
 		if let Ok(_) =
 			ext::vault_registry::try_increase_to_be_issued_tokens::<T>(&issue.vault, &issue_amount)
@@ -663,12 +664,12 @@ impl<T: Config> Pallet<T> {
 	fn set_issue_amount(
 		issue_id: &H256,
 		issue: &mut DefaultIssueRequest<T>,
-		transferred_btc: Amount<T>,
+		transferred_amount: Amount<T>,
 		confiscated_griefing_collateral: Amount<T>,
 	) -> Result<(), DispatchError> {
 		// Current vault can handle the surplus; update the issue request
-		issue.fee = ext::fee::get_issue_fee::<T>(&transferred_btc)?.amount();
-		issue.amount = transferred_btc.checked_sub(&issue.fee())?.amount();
+		issue.fee = ext::fee::get_issue_fee::<T>(&transferred_amount)?.amount();
+		issue.amount = transferred_amount.checked_sub(&issue.fee())?.amount();
 
 		// update storage
 		<IssueRequests<T>>::mutate_exists(issue_id, |request| {
@@ -706,14 +707,14 @@ impl<T: Config> Pallet<T> {
 	}
 
 	fn increase_interval_volume(issue_amount: Amount<T>) -> Result<(), DispatchError> {
-		Ok(if let Some(limit_volume) = LimitVolumeAmount::<T>::get() {
+		if let Some(limit_volume) = LimitVolumeAmount::<T>::get() {
 			let issue_volume = Self::convert_into_limit_currency_id_amount(issue_amount)?;
 			let current_volume = CurrentVolumeAmount::<T>::get();
 			let new_volume = current_volume
-				.checked_add(&issue_volume.amount())
-				.ok_or(ArithmeticError::Overflow)?;
+				.saturating_add(issue_volume.amount());
 			CurrentVolumeAmount::<T>::put(new_volume);
-		})
+		}
+		Ok(())
 	}
 
 	fn convert_into_limit_currency_id_amount(
@@ -727,12 +728,12 @@ impl<T: Config> Pallet<T> {
 
 	fn check_volume(amount_requested: Amount<T>) -> Result<(), DispatchError> {
 		let limit_volume: Option<BalanceOf<T>> = LimitVolumeAmount::<T>::get();
-		Ok(if let Some(limit_volume) = limit_volume {
+		if let Some(limit_volume) = limit_volume {
 			let current_block: T::BlockNumber = <frame_system::Pallet<T>>::block_number();
 			let interval_length: T::BlockNumber = IntervalLength::<T>::get();
 
 			let current_index = current_block.checked_div(&interval_length);
-			let mut current_volume = BalanceOf::<T>::default();
+			let mut current_volume = BalanceOf::<T>::zero();			;
 			if current_index > Some(CurrentInterval::<T>::get()) {
 				CurrentInterval::<T>::put(current_index.unwrap_or_default());
 				CurrentVolumeAmount::<T>::put(current_volume);
@@ -741,9 +742,10 @@ impl<T: Config> Pallet<T> {
 			}
 			let new_issue_request = Self::convert_into_limit_currency_id_amount(amount_requested)?;
 			ensure!(
-				new_issue_request.amount().saturating_add(current_volume) > limit_volume,
+				new_issue_request.amount().saturating_add(current_volume) <= limit_volume,
 				Error::<T>::ExceedLimitVolumeForIssueRequest
 			);
-		})
+		}
+		Ok(())
 	}
 }
