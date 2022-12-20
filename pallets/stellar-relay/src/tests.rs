@@ -36,9 +36,7 @@ fn create_dummy_externalize_message(keypair: &SecretKey, network: &Network) -> S
 	let signature_result = keypair.create_signature(body);
 	let signature: Signature = LimitedVarOpaque::new(signature_result.to_vec()).unwrap();
 
-	let envelope = ScpEnvelope { statement, signature };
-
-	envelope
+	ScpEnvelope { statement, signature }
 }
 
 fn create_scp_envelope(
@@ -74,8 +72,7 @@ fn create_scp_envelope(
 	let signature_result = validator_secret_key.create_signature(body);
 	let signature: Signature = LimitedVarOpaque::new(signature_result.to_vec()).unwrap();
 
-	let envelope = ScpEnvelope { statement, signature };
-	envelope
+	ScpEnvelope { statement, signature }
 }
 
 fn create_valid_dummy_scp_envelopes(
@@ -516,7 +513,7 @@ fn verify_signature_works_for_xdr_message() {
 	let envelope = ScpEnvelope::from_base64_xdr(envelope_base64_xdr).unwrap();
 	let node_id: &PublicKey = &envelope.statement.node_id;
 
-	let is_valid = crate::verify_signature(&envelope, &node_id, network);
+	let is_valid = crate::verify_signature(&envelope, node_id, network);
 
 	assert!(is_valid)
 }
@@ -528,7 +525,7 @@ fn verify_signature_works_for_mock_message() {
 	let envelope: ScpEnvelope = create_dummy_externalize_message(&secret, network);
 	let node_id: &PublicKey = secret.get_public();
 
-	let is_valid = crate::verify_signature(&envelope, &node_id, network);
+	let is_valid = crate::verify_signature(&envelope, node_id, network);
 
 	assert!(is_valid)
 }
@@ -677,7 +674,7 @@ fn validate_stellar_transaction_fails_no_organizations_registered_when_new_valid
 
 		assert!(matches!(result, Err(Error::<Test>::NoValidatorsRegistered)));
 
-		new_validators_enactment_block_height = new_validators_enactment_block_height * 2;
+		new_validators_enactment_block_height *= 2;
 		assert_ok!(SpacewalkRelay::update_tier_1_validator_set(
 			RuntimeOrigin::root(),
 			validators_cloned,
@@ -734,7 +731,7 @@ fn validate_stellar_transaction_works_when_enactment_block_height_reached() {
 
 		assert!(matches!(result, Err(Error::<Test>::NoValidatorsRegistered)));
 
-		new_validators_enactment_block_height = new_validators_enactment_block_height * 2;
+		new_validators_enactment_block_height *= 2;
 		assert_ok!(SpacewalkRelay::update_tier_1_validator_set(
 			RuntimeOrigin::root(),
 			validators_cloned.clone(),
@@ -752,7 +749,7 @@ fn validate_stellar_transaction_works_when_enactment_block_height_reached() {
 
 		assert!(matches!(result, Err(Error::<Test>::NoOrganizationsRegistered)));
 
-		new_validators_enactment_block_height = new_validators_enactment_block_height * 2;
+		new_validators_enactment_block_height *= 2;
 		assert_ok!(SpacewalkRelay::update_tier_1_validator_set(
 			RuntimeOrigin::root(),
 			validators_cloned,

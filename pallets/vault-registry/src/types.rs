@@ -19,7 +19,7 @@ pub use primitives::{VaultCurrencyPair, VaultId};
 
 use crate::{ext, Config, Error, Pallet};
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Eq)]
 pub enum CurrencySource<T: frame_system::Config + orml_tokens::Config> {
 	/// Used by vault to back issued tokens
 	Collateral(DefaultVaultId<T>),
@@ -81,7 +81,7 @@ impl<T: Config> CurrencySource<T> {
 				Amount::new(vault.liquidated_collateral, vault_id.collateral_currency())
 			},
 			CurrencySource::LiquidationVault(currency_pair) => {
-				let liquidation_vault = Pallet::<T>::get_liquidation_vault(&currency_pair);
+				let liquidation_vault = Pallet::<T>::get_liquidation_vault(currency_pair);
 				Amount::new(liquidation_vault.collateral, currency_pair.collateral)
 			},
 		};
@@ -147,7 +147,7 @@ pub struct Vault<AccountId, BlockNumber, Balance, CurrencyId: Copy, UnsignedFixe
 	pub liquidated_collateral: Balance,
 }
 
-#[derive(Encode, Decode, Clone, PartialEq, TypeInfo, MaxEncodedLen)]
+#[derive(Encode, Decode, Clone, PartialEq, Eq, TypeInfo, MaxEncodedLen)]
 #[cfg_attr(feature = "std", derive(Debug, serde::Serialize, serde::Deserialize))]
 pub struct SystemVault<Balance, CurrencyId: Copy> {
 	// Number of tokens pending issue
@@ -229,7 +229,7 @@ impl<T: Config> UpdatableVault<T> for RichVault<T> {
 			Pallet::<T>::get_rich_liquidation_vault(&self.data.id.currencies)
 				.increase_issued(tokens)
 		} else {
-			let new_value = self.issued_tokens().checked_add(&tokens)?.amount();
+			let new_value = self.issued_tokens().checked_add(tokens)?.amount();
 			self.update(|v| {
 				v.issued_tokens = new_value;
 				Ok(())
@@ -241,7 +241,7 @@ impl<T: Config> UpdatableVault<T> for RichVault<T> {
 		// this function should never be called on liquidated vaults
 		ensure!(!self.data.is_liquidated(), Error::<T>::VaultNotFound);
 
-		let new_value = self.to_be_issued_tokens().checked_add(&tokens)?.amount();
+		let new_value = self.to_be_issued_tokens().checked_add(tokens)?.amount();
 		self.update(|v| {
 			v.to_be_issued_tokens = new_value;
 			Ok(())
@@ -252,7 +252,7 @@ impl<T: Config> UpdatableVault<T> for RichVault<T> {
 		// this function should never be called on liquidated vaults
 		ensure!(!self.data.is_liquidated(), Error::<T>::VaultNotFound);
 
-		let new_value = self.to_be_redeemed_tokens().checked_add(&tokens)?.amount();
+		let new_value = self.to_be_redeemed_tokens().checked_add(tokens)?.amount();
 		self.update(|v| {
 			v.to_be_redeemed_tokens = new_value;
 			Ok(())
@@ -264,7 +264,7 @@ impl<T: Config> UpdatableVault<T> for RichVault<T> {
 			Pallet::<T>::get_rich_liquidation_vault(&self.data.id.currencies)
 				.decrease_issued(tokens)
 		} else {
-			let new_value = self.issued_tokens().checked_sub(&tokens)?.amount();
+			let new_value = self.issued_tokens().checked_sub(tokens)?.amount();
 			self.update(|v| {
 				v.issued_tokens = new_value;
 				Ok(())
@@ -277,7 +277,7 @@ impl<T: Config> UpdatableVault<T> for RichVault<T> {
 			Pallet::<T>::get_rich_liquidation_vault(&self.data.id.currencies)
 				.decrease_to_be_issued(tokens)
 		} else {
-			let new_value = self.to_be_issued_tokens().checked_sub(&tokens)?.amount();
+			let new_value = self.to_be_issued_tokens().checked_sub(tokens)?.amount();
 			self.update(|v| {
 				v.to_be_issued_tokens = new_value;
 				Ok(())
@@ -291,7 +291,7 @@ impl<T: Config> UpdatableVault<T> for RichVault<T> {
 			Pallet::<T>::get_rich_liquidation_vault(&self.data.id.currencies)
 				.decrease_to_be_redeemed(tokens)?;
 		}
-		let new_value = self.to_be_redeemed_tokens().checked_sub(&tokens)?.amount();
+		let new_value = self.to_be_redeemed_tokens().checked_sub(tokens)?.amount();
 		self.update(|v| {
 			v.to_be_redeemed_tokens = new_value;
 			Ok(())
@@ -747,7 +747,7 @@ impl<T: Config> RichSystemVault<T> {
 	}
 
 	pub(crate) fn increase_collateral(&mut self, amount: &Amount<T>) -> DispatchResult {
-		let new_value = self.collateral().checked_add(&amount)?.amount();
+		let new_value = self.collateral().checked_add(amount)?.amount();
 		self.update(|v| {
 			v.collateral = new_value;
 			Ok(())
@@ -755,7 +755,7 @@ impl<T: Config> RichSystemVault<T> {
 	}
 
 	pub(crate) fn decrease_collateral(&mut self, amount: &Amount<T>) -> DispatchResult {
-		let new_value = self.collateral().checked_sub(&amount)?.amount();
+		let new_value = self.collateral().checked_sub(amount)?.amount();
 		self.update(|v| {
 			v.collateral = new_value;
 			Ok(())
@@ -765,7 +765,7 @@ impl<T: Config> RichSystemVault<T> {
 
 impl<T: Config> UpdatableVault<T> for RichSystemVault<T> {
 	fn increase_issued(&mut self, tokens: &Amount<T>) -> DispatchResult {
-		let new_value = self.issued_tokens().checked_add(&tokens)?.amount();
+		let new_value = self.issued_tokens().checked_add(tokens)?.amount();
 		self.update(|v| {
 			v.issued_tokens = new_value;
 			Ok(())
@@ -773,7 +773,7 @@ impl<T: Config> UpdatableVault<T> for RichSystemVault<T> {
 	}
 
 	fn increase_to_be_issued(&mut self, tokens: &Amount<T>) -> DispatchResult {
-		let new_value = self.to_be_issued_tokens().checked_add(&tokens)?.amount();
+		let new_value = self.to_be_issued_tokens().checked_add(tokens)?.amount();
 		self.update(|v| {
 			v.to_be_issued_tokens = new_value;
 			Ok(())
@@ -781,7 +781,7 @@ impl<T: Config> UpdatableVault<T> for RichSystemVault<T> {
 	}
 
 	fn increase_to_be_redeemed(&mut self, tokens: &Amount<T>) -> DispatchResult {
-		let new_value = self.to_be_redeemed_tokens().checked_add(&tokens)?.amount();
+		let new_value = self.to_be_redeemed_tokens().checked_add(tokens)?.amount();
 		self.update(|v| {
 			v.to_be_redeemed_tokens = new_value;
 			Ok(())
@@ -789,7 +789,7 @@ impl<T: Config> UpdatableVault<T> for RichSystemVault<T> {
 	}
 
 	fn decrease_issued(&mut self, tokens: &Amount<T>) -> DispatchResult {
-		let new_value = self.issued_tokens().checked_sub(&tokens)?.amount();
+		let new_value = self.issued_tokens().checked_sub(tokens)?.amount();
 		self.update(|v| {
 			v.issued_tokens = new_value;
 			Ok(())
@@ -797,7 +797,7 @@ impl<T: Config> UpdatableVault<T> for RichSystemVault<T> {
 	}
 
 	fn decrease_to_be_issued(&mut self, tokens: &Amount<T>) -> DispatchResult {
-		let new_value = self.to_be_issued_tokens().checked_sub(&tokens)?.amount();
+		let new_value = self.to_be_issued_tokens().checked_sub(tokens)?.amount();
 		self.update(|v| {
 			v.to_be_issued_tokens = new_value;
 			Ok(())
@@ -805,7 +805,7 @@ impl<T: Config> UpdatableVault<T> for RichSystemVault<T> {
 	}
 
 	fn decrease_to_be_redeemed(&mut self, tokens: &Amount<T>) -> DispatchResult {
-		let new_value = self.to_be_redeemed_tokens().checked_sub(&tokens)?.amount();
+		let new_value = self.to_be_redeemed_tokens().checked_sub(tokens)?.amount();
 		self.update(|v| {
 			v.to_be_redeemed_tokens = new_value;
 			Ok(())

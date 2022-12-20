@@ -30,9 +30,6 @@ fn request_issue(
 	ext::vault_registry::try_increase_to_be_issued_tokens::<Test>
 		.mock_safe(|_, _| MockResult::Return(Ok(())));
 
-	<vault_registry::Pallet<T>>::register_deposit_address(vault_id, secure_id)
-		.mock_safe(|_, _| MockResult::Return(Ok(RANDOM_STELLAR_PUBLIC_KEY)));
-
 	Issue::_request_issue(origin, amount, vault)
 }
 
@@ -44,7 +41,7 @@ fn request_issue_ok_with_address(
 	origin: AccountId,
 	amount: Balance,
 	vault: DefaultVaultId<Test>,
-	address: StellarPublicKeyRaw,
+	_address: StellarPublicKeyRaw,
 ) -> H256 {
 	ext::vault_registry::ensure_not_banned::<Test>.mock_safe(|_| MockResult::Return(Ok(())));
 
@@ -54,11 +51,6 @@ fn request_issue_ok_with_address(
 		.mock_safe(|_, _| MockResult::Return(Ok(())));
 	ext::vault_registry::get_stellar_public_key::<Test>
 		.mock_safe(|_| MockResult::Return(Ok(DEFAULT_STELLAR_PUBLIC_KEY)));
-
-	unsafe {
-		<vault_registry::Pallet<T>>::register_deposit_address(vault_id, secure_id)
-			.mock_raw(|_, _| MockResult::Return(Ok(address)));
-	}
 
 	Issue::_request_issue(origin, amount, vault).unwrap()
 }
@@ -135,8 +127,7 @@ fn test_request_issue_succeeds() {
 		ext::fee::get_issue_griefing_collateral::<Test>
 			.mock_safe(move |_| MockResult::Return(Ok(griefing(issue_griefing_collateral))));
 
-		let issue_id =
-			request_issue_ok_with_address(origin, amount, vault.clone(), address.clone());
+		let issue_id = request_issue_ok_with_address(origin, amount, vault.clone(), address);
 
 		let request_issue_event = TestEvent::Issue(Event::RequestIssue {
 			issue_id,

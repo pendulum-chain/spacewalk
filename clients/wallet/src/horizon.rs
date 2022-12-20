@@ -100,9 +100,7 @@ pub struct TransactionResponse {
 
 impl TransactionResponse {
 	pub fn memo_hash(&self) -> Option<Hash> {
-		if self.memo.is_none() {
-			return None
-		}
+		self.memo.as_ref()?;
 
 		if self.memo_type == b"hash" {
 			// First decode the base64-encoded memo to a vector of 32 bytes
@@ -119,9 +117,9 @@ impl TransactionResponse {
 	}
 
 	pub fn to_envelope(&self) -> Result<TransactionEnvelope, Error> {
-		let envelope = TransactionEnvelope::from_base64_xdr(self.envelope_xdr.clone())
-			.map_err(|_| Error::DecodeError);
-		envelope
+		
+		TransactionEnvelope::from_base64_xdr(self.envelope_xdr.clone())
+			.map_err(|_| Error::DecodeError)
 	}
 }
 
@@ -233,16 +231,16 @@ impl HorizonClient for reqwest::Client {
 			url = format!("{}&order=desc", url);
 		}
 
-		let response = self.get(url).send().await.map_err(|e| Error::HttpFetchingError(e))?;
+		let response = self.get(url).send().await.map_err(Error::HttpFetchingError)?;
 
 		if response.status().is_success() {
 			response
 				.json::<HorizonTransactionsResponse>()
 				.await
-				.map_err(|e| Error::HttpFetchingError(e))
+				.map_err(Error::HttpFetchingError)
 		} else {
 			Err(Error::HorizonSubmissionError(
-				response.text().await.map_err(|e| Error::HttpFetchingError(e))?,
+				response.text().await.map_err(Error::HttpFetchingError)?,
 			))
 		}
 	}
@@ -255,16 +253,16 @@ impl HorizonClient for reqwest::Client {
 		let base_url = horizon_url(is_public_network);
 		let url = format!("{}/accounts/{}", base_url, account_encoded);
 
-		let response = self.get(url).send().await.map_err(|e| Error::HttpFetchingError(e))?;
+		let response = self.get(url).send().await.map_err(Error::HttpFetchingError)?;
 
 		if response.status().is_success() {
 			response
 				.json::<HorizonAccountResponse>()
 				.await
-				.map_err(|e| Error::HttpFetchingError(e))
+				.map_err(Error::HttpFetchingError)
 		} else {
 			Err(Error::HorizonSubmissionError(
-				response.text().await.map_err(|e| Error::HttpFetchingError(e))?,
+				response.text().await.map_err(Error::HttpFetchingError)?,
 			))
 		}
 	}
@@ -276,7 +274,7 @@ impl HorizonClient for reqwest::Client {
 	) -> Result<TransactionResponse, Error> {
 		let transaction_xdr = transaction_envelope.to_base64_xdr();
 		let transaction_xdr =
-			std::str::from_utf8(&transaction_xdr).map_err(|e| Error::Utf8Error(e))?;
+			std::str::from_utf8(&transaction_xdr).map_err(Error::Utf8Error)?;
 
 		let base_url = horizon_url(is_public_network);
 		let url = format!("{}/transactions", base_url);
@@ -287,16 +285,16 @@ impl HorizonClient for reqwest::Client {
 			.form(&params)
 			.send()
 			.await
-			.map_err(|e| Error::HttpFetchingError(e))?;
+			.map_err(Error::HttpFetchingError)?;
 
 		if response.status().is_success() {
 			response
 				.json::<TransactionResponse>()
 				.await
-				.map_err(|e| Error::HttpFetchingError(e))
+				.map_err(Error::HttpFetchingError)
 		} else {
 			Err(Error::HorizonSubmissionError(
-				response.text().await.map_err(|e| Error::HttpFetchingError(e))?,
+				response.text().await.map_err(Error::HttpFetchingError)?,
 			))
 		}
 	}
@@ -322,7 +320,7 @@ impl<C: HorizonClient> HorizonFetcher<C> {
 	) -> Result<HorizonTransactionsResponse, Error> {
 		let public_key_encoded = self.vault_account_public_key.to_encoding();
 		let account_id =
-			std::str::from_utf8(&public_key_encoded).map_err(|e| Error::Utf8Error(e))?;
+			std::str::from_utf8(&public_key_encoded).map_err(Error::Utf8Error)?;
 
 		if cursor == 0 {
 			// Fetch the first/latest transaction and set it as the new paging token
@@ -447,7 +445,7 @@ mod tests {
 
 	use super::*;
 
-	const SECRET: &'static str = "SBLI7RKEJAEFGLZUBSCOFJHQBPFYIIPLBCKN7WVCWT4NEG2UJEW33N73";
+	const SECRET: &str = "SBLI7RKEJAEFGLZUBSCOFJHQBPFYIIPLBCKN7WVCWT4NEG2UJEW33N73";
 
 	#[derive(Clone)]
 	struct MockFilter;
@@ -475,7 +473,7 @@ mod tests {
 
 		let public_key_encoded = source.get_encoded_public();
 		let account_id_string =
-			std::str::from_utf8(&public_key_encoded).map_err(|e| Error::Utf8Error(e))?;
+			std::str::from_utf8(&public_key_encoded).map_err(Error::Utf8Error)?;
 		let account = horizon_client.get_account(account_id_string, is_public_network).await?;
 		let next_sequence_number = account.sequence + 1;
 

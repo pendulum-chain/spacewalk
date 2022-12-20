@@ -340,7 +340,7 @@ mod test {
 		let remote_nonce = remote.nonce();
 		connector.set_remote(remote.clone());
 
-		let shared_key = connector.get_shared_key(&remote.pub_key_ecdh());
+		let shared_key = connector.get_shared_key(remote.pub_key_ecdh());
 		assert!(connector.hmac_keys().is_none());
 		//act
 		connector.set_hmac_keys(HMacKeys::new(

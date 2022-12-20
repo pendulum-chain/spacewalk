@@ -429,7 +429,7 @@ pub mod pallet {
 			enactment_block_height: T::BlockNumber,
 		) -> DispatchResult {
 			// Limit this call to root
-			let _ = ensure_root(origin)?;
+			ensure_root(origin)?;
 
 			Self::_update_tier_1_validator_set(validators, organizations, enactment_block_height)
 		}
@@ -511,9 +511,9 @@ pub mod pallet {
 				if Self::is_public_network() { &PUBLIC_NETWORK } else { &TEST_NETWORK };
 
 			// Check if tx is included in the transaction set
-			let tx_hash = transaction_envelope.get_hash(&network);
+			let tx_hash = transaction_envelope.get_hash(network);
 			let tx_included =
-				transaction_set.txes.get_vec().iter().any(|tx| tx.get_hash(&network) == tx_hash);
+				transaction_set.txes.get_vec().iter().any(|tx| tx.get_hash(network) == tx_hash);
 			ensure!(tx_included, Error::<T>::TransactionNotInTransactionSet);
 
 			// Choose the set of validators to use for validation based on the enactment block
@@ -542,7 +542,7 @@ pub mod pallet {
 			}
 
 			// Check if transaction set matches tx_set_hash included in the ScpEnvelopes
-			let expected_tx_set_hash = compute_non_generic_tx_set_content_hash(&transaction_set);
+			let expected_tx_set_hash = compute_non_generic_tx_set_content_hash(transaction_set);
 
 			for envelope in envelopes.get_vec() {
 				match envelope.clone().statement.pledges {

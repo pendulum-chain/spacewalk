@@ -16,10 +16,10 @@ impl HMacKeys {
 		remote_called_us: bool,
 	) -> Self {
 		let sending =
-			create_sending_mac_key(&shared_key, local_nonce, remote_nonce, !remote_called_us);
+			create_sending_mac_key(shared_key, local_nonce, remote_nonce, !remote_called_us);
 
 		let receiving =
-			create_receiving_mac_key(&shared_key, local_nonce, remote_nonce, !remote_called_us);
+			create_receiving_mac_key(shared_key, local_nonce, remote_nonce, !remote_called_us);
 
 		HMacKeys { sending, receiving }
 	}
@@ -110,5 +110,5 @@ pub fn verify_hmac(data_buffer: &[u8], mac_key_buffer: &Buffer, mac: &[u8]) -> R
 		HmacSha256::new_from_slice(mac_key_buffer).map_err(|_| Error::HmacInvalidLength)?;
 
 	hmac.update(data_buffer);
-	hmac.verify_slice(mac).map_err(|e| Error::HmacError(e))
+	hmac.verify_slice(mac).map_err(Error::HmacError)
 }

@@ -123,7 +123,7 @@ fn deserialize_from_string<'de, D: Deserializer<'de>, T: std::str::FromStr>(
 pub mod issue {
 	use super::*;
 
-	#[derive(Encode, Decode, Clone, PartialEq, TypeInfo, MaxEncodedLen)]
+	#[derive(Encode, Decode, Clone, PartialEq, Eq, TypeInfo, MaxEncodedLen)]
 	#[cfg_attr(feature = "std", derive(Debug, Serialize, Deserialize))]
 	#[cfg_attr(feature = "std", serde(rename_all = "camelCase"))]
 	pub enum IssueRequestStatus {
@@ -143,7 +143,7 @@ pub mod issue {
 
 	// Due to a known bug in serde we need to specify how u128 is (de)serialized.
 	// See https://github.com/paritytech/substrate/issues/4641
-	#[derive(Encode, Decode, Clone, PartialEq, TypeInfo, MaxEncodedLen)]
+	#[derive(Encode, Decode, Clone, PartialEq, Eq, TypeInfo, MaxEncodedLen)]
 	#[cfg_attr(feature = "std", derive(Debug, Serialize, Deserialize))]
 	pub struct IssueRequest<AccountId, BlockNumber, Balance, CurrencyId: Copy> {
 		/// the vault associated with this issue request
@@ -207,7 +207,7 @@ pub mod redeem {
 
 	// Due to a known bug in serde we need to specify how u128 is (de)serialized.
 	// See https://github.com/paritytech/substrate/issues/4641
-	#[derive(Encode, Decode, Clone, PartialEq, TypeInfo, MaxEncodedLen)]
+	#[derive(Encode, Decode, Clone, PartialEq, Eq, TypeInfo, MaxEncodedLen)]
 	#[cfg_attr(feature = "std", derive(Debug, Serialize, Deserialize))]
 	pub struct RedeemRequest<AccountId, BlockNumber, Balance, CurrencyId: Copy> {
 		/// the vault associated with this redeem request
@@ -747,7 +747,7 @@ impl TransactionEnvelopeExt for TransactionEnvelope {
 		}
 
 		// `transferred_amount` is in stroops, so we need to convert it
-		let balance = BalanceConversion::unlookup(transferred_amount);
-		balance
+
+		BalanceConversion::unlookup(transferred_amount)
 	}
 }

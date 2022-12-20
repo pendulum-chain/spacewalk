@@ -117,7 +117,7 @@ impl Connector {
 		}
 
 		let remote_info = RemoteInfo::new(&hello);
-		let shared_key = self.get_shared_key(&remote_info.pub_key_ecdh());
+		let shared_key = self.get_shared_key(remote_info.pub_key_ecdh());
 
 		self.set_hmac_keys(HMacKeys::new(
 			&shared_key,

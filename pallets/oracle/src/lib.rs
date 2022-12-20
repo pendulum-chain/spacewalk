@@ -268,7 +268,7 @@ impl<T: Config> Pallet<T> {
 		}
 
 		let current_status_is_online = Self::is_oracle_online();
-		let new_status_is_online = raw_values_updated.len() > 0 &&
+		let new_status_is_online = !raw_values_updated.is_empty() &&
 			raw_values_updated.iter().all(|(key, _)| Aggregate::<T>::get(key).is_some());
 
 		if current_status_is_online != new_status_is_online {
@@ -351,7 +351,7 @@ impl<T: Config> Pallet<T> {
 			RawValues::<T>::iter_prefix(key).map(|(_, value)| value).collect();
 		let min_timestamp = Self::get_current_time().saturating_sub(Self::get_max_delay());
 		raw_values.retain(|value| value.timestamp >= min_timestamp);
-		if raw_values.len() == 0 {
+		if raw_values.is_empty() {
 			Aggregate::<T>::remove(key);
 			ValidUntil::<T>::remove(key);
 			None

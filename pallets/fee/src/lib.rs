@@ -462,7 +462,7 @@ impl<T: Config> Pallet<T> {
 		nominator_id: &T::AccountId,
 		index: Option<T::Index>,
 	) -> DispatchResult {
-		Self::distribute_from_reward_pool::<Rewards, Staking>(&vault_id)?;
+		Self::distribute_from_reward_pool::<Rewards, Staking>(vault_id)?;
 
 		for currency_id in [vault_id.wrapped_currency(), T::GetNativeCurrencyId::get()] {
 			let rewards = Staking::withdraw_reward(vault_id, nominator_id, index, currency_id)?;
@@ -473,7 +473,7 @@ impl<T: Config> Pallet<T> {
 	}
 
 	fn distribute(reward: &Amount<T>) -> Result<Amount<T>, DispatchError> {
-		Ok(if let Err(_) = T::VaultRewards::distribute_reward(reward.amount(), reward.currency()) {
+		Ok(if T::VaultRewards::distribute_reward(reward.amount(), reward.currency()).is_err() {
 			reward.clone()
 		} else {
 			Amount::<T>::zero(reward.currency())

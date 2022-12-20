@@ -248,7 +248,7 @@ impl<T: Config> Pallet<T> {
 		// withdraw `amount` of stake from the vault staking pool
 		ext::staking::withdraw_stake::<T>(vault_id, nominator_id, amount.amount(), Some(index))?;
 		amount.unlock_on(&vault_id.account_id)?;
-		amount.transfer(&vault_id.account_id, &nominator_id)?;
+		amount.transfer(&vault_id.account_id, nominator_id)?;
 
 		Self::deposit_event(Event::<T>::WithdrawCollateral {
 			vault_id: vault_id.clone(),
@@ -285,7 +285,7 @@ impl<T: Config> Pallet<T> {
 
 		// Deposit `amount` of stake into the vault staking pool
 		ext::staking::deposit_stake::<T>(vault_id, nominator_id, amount.amount())?;
-		amount.transfer(&nominator_id, &vault_id.account_id)?;
+		amount.transfer(nominator_id, &vault_id.account_id)?;
 		amount.lock_on(&vault_id.account_id)?;
 		ext::vault_registry::try_increase_total_backing_collateral(&vault_id.currencies, &amount)?;
 
@@ -303,7 +303,7 @@ impl<T: Config> Pallet<T> {
 	/// * `vault_id` - the id of the vault to allow nomination for
 	fn _opt_in_to_nomination(vault_id: &DefaultVaultId<T>) -> DispatchResult {
 		ensure!(Self::is_nomination_enabled(), Error::<T>::VaultNominationDisabled);
-		ensure!(ext::vault_registry::vault_exists::<T>(&vault_id), Error::<T>::VaultNotFound);
+		ensure!(ext::vault_registry::vault_exists::<T>(vault_id), Error::<T>::VaultNotFound);
 		ensure!(!<Vaults<T>>::contains_key(vault_id), Error::<T>::VaultAlreadyOptedInToNomination);
 		<Vaults<T>>::insert(vault_id, true);
 		Self::deposit_event(Event::<T>::NominationOptIn { vault_id: vault_id.clone() });
@@ -311,11 +311,11 @@ impl<T: Config> Pallet<T> {
 	}
 
 	fn _opt_out_of_nomination(vault_id: &DefaultVaultId<T>) -> DispatchResult {
-		ensure!(Self::is_opted_in(&vault_id)?, Error::<T>::VaultNotOptedInToNomination);
-		let total_nominated_collateral = Self::get_total_nominated_collateral(&vault_id)?;
+		ensure!(Self::is_opted_in(vault_id)?, Error::<T>::VaultNotOptedInToNomination);
+		let total_nominated_collateral = Self::get_total_nominated_collateral(vault_id)?;
 		ensure!(
 			ext::vault_registry::is_allowed_to_withdraw_collateral::<T>(
-				&vault_id,
+				vault_id,
 				&total_nominated_collateral
 			)?,
 			Error::<T>::CollateralizationTooLow

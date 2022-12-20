@@ -90,8 +90,7 @@ fn create_scp_envelope(
 	let signature_result = validator_secret_key.create_signature(body);
 	let signature: Signature = LimitedVarOpaque::new(signature_result.to_vec()).unwrap();
 
-	let envelope = ScpEnvelope { statement, signature };
-	envelope
+	ScpEnvelope { statement, signature }
 }
 
 pub fn get_validators_and_organizations<T: crate::Config>(

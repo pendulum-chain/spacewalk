@@ -552,7 +552,7 @@ impl<T: Config> Pallet<T> {
 			&slashed_collateral,
 		)?;
 
-		Self::set_issue_amount(&issue_id, issue, amount_transferred, slashed_collateral)?;
+		Self::set_issue_amount(issue_id, issue, amount_transferred, slashed_collateral)?;
 
 		Ok(to_release_collateral)
 	}
@@ -567,12 +567,12 @@ impl<T: Config> Pallet<T> {
 		let max_allowed = ext::vault_registry::get_issuable_tokens_from_vault::<T>(&issue.vault)?;
 		let issue_amount = surplus_btc.min(&max_allowed)?;
 
-		if let Ok(_) =
-			ext::vault_registry::try_increase_to_be_issued_tokens::<T>(&issue.vault, &issue_amount)
+		if ext::vault_registry::try_increase_to_be_issued_tokens::<T>(&issue.vault, &issue_amount)
+			.is_ok()
 		{
 			// Current vault can handle the surplus; update the issue request
 			Self::set_issue_amount(
-				&issue_id,
+				issue_id,
 				issue,
 				expected_total_amount.checked_add(&issue_amount)?,
 				Amount::zero(T::GetGriefingCollateralCurrencyId::get()),

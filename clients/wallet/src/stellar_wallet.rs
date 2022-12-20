@@ -61,7 +61,7 @@ impl StellarWallet {
 
 		let public_key_encoded = self.get_public_key().to_encoding();
 		let account_id =
-			std::str::from_utf8(&public_key_encoded).map_err(|e| Error::Utf8Error(e))?;
+			std::str::from_utf8(&public_key_encoded).map_err(Error::Utf8Error)?;
 
 		let transactions_response = horizon_client
 			.get_transactions(account_id, self.is_public_network, cursor, limit, order_ascending)
@@ -84,7 +84,7 @@ impl StellarWallet {
 
 		let public_key_encoded = self.get_public_key().to_encoding();
 		let account_id_string =
-			std::str::from_utf8(&public_key_encoded).map_err(|e| Error::Utf8Error(e))?;
+			std::str::from_utf8(&public_key_encoded).map_err(Error::Utf8Error)?;
 		let account = horizon_client.get_account(account_id_string, self.is_public_network).await?;
 		// Either use the local one or the one from the network depending on which one is higher.
 		let next_sequence_number = if self.last_account_sequence > account.sequence {
@@ -177,7 +177,7 @@ mod test {
 
 		assert!(result.is_ok());
 		let (transaction_response, _) = result.unwrap();
-		assert!(transaction_response.hash.to_vec().len() > 0);
+		assert!(!transaction_response.hash.to_vec().is_empty());
 		assert!(transaction_response.ledger > 0);
 	}
 }

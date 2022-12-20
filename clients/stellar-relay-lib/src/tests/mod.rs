@@ -49,7 +49,7 @@ async fn stellar_overlay_should_receive_scp_messages() {
 		if attempt > 20 {
 			break
 		}
-		attempt = attempt + 1;
+		attempt += 1;
 		match relay_message {
 			StellarRelayMessage::Data { p_id: _, msg_type: _, msg } => match msg {
 				StellarMessage::ScpMessage(msg) => {
@@ -63,7 +63,7 @@ async fn stellar_overlay_should_receive_scp_messages() {
 	}
 	//assert
 	//ensure that we receive some scp message from stellar node
-	assert!(scps_vec.len() > 0);
+	assert!(!scps_vec.is_empty());
 }
 
 #[tokio::test]
@@ -72,7 +72,7 @@ async fn stellar_overlay_should_receive_tx_set() {
 	//arrange
 	pub fn get_tx_set_hash(x: &ScpStatementExternalize) -> Hash {
 		let scp_value = x.commit.value.get_vec();
-		return scp_value[0..32].try_into().unwrap()
+		scp_value[0..32].try_into().unwrap()
 	}
 
 	let secret =
@@ -91,7 +91,7 @@ async fn stellar_overlay_should_receive_tx_set() {
 		if attempt > 300 {
 			break
 		}
-		attempt = attempt + 1;
+		attempt += 1;
 		match relay_message {
 			StellarRelayMessage::Data { p_id: _, msg_type: _, msg } => match msg {
 				StellarMessage::ScpMessage(msg) => {
@@ -114,7 +114,7 @@ async fn stellar_overlay_should_receive_tx_set() {
 	}
 	//arrange
 	//ensure that we receive some tx set from stellar node
-	assert!(tx_set_vec.len() > 0);
+	assert!(!tx_set_vec.is_empty());
 }
 
 #[tokio::test]

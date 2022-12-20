@@ -403,12 +403,12 @@ mod self_redeem {
 		vault_id: &DefaultVaultId<T>,
 		requested_redeem_amount: &Amount<T>,
 	) -> Result<(Amount<T>, Amount<T>), DispatchError> {
-		let redeemable_tokens = ext::vault_registry::get_free_redeemable_tokens(&vault_id)?;
+		let redeemable_tokens = ext::vault_registry::get_free_redeemable_tokens(vault_id)?;
 
-		let fees = if redeemable_tokens.eq(&requested_redeem_amount)? {
+		let fees = if redeemable_tokens.eq(requested_redeem_amount)? {
 			Amount::zero(vault_id.wrapped_currency())
 		} else {
-			ext::fee::get_redeem_fee::<T>(&requested_redeem_amount)?
+			ext::fee::get_redeem_fee::<T>(requested_redeem_amount)?
 		};
 
 		let consumed_issued_tokens = requested_redeem_amount.checked_sub(&fees)?;
@@ -813,7 +813,7 @@ impl<T: Config> Pallet<T> {
 		// or a replace. As such, we decrease the to-be-replaced tokens here. This call will
 		// never fail due to insufficient to-be-replaced tokens
 		let (_, griefing_collateral) =
-			ext::vault_registry::decrease_to_be_replaced_tokens::<T>(&vault_id, &burned_tokens)?;
+			ext::vault_registry::decrease_to_be_replaced_tokens::<T>(vault_id, burned_tokens)?;
 		// release the griefing collateral that is locked for the replace request
 		if !griefing_collateral.is_zero() {
 			ext::vault_registry::transfer_funds(

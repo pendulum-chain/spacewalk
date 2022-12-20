@@ -59,7 +59,7 @@ impl StellarOverlayConnection {
 		if result.is_ok() {
 			self.is_disconnected = true;
 		}
-		return result
+		result
 	}
 
 	/// Receives Stellar messages from the connection.
