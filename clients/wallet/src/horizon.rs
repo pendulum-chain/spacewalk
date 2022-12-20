@@ -3,12 +3,11 @@ use std::{collections::HashMap, convert::TryInto, str::FromStr, sync::Arc, time:
 use async_trait::async_trait;
 use parity_scale_codec::{Decode, Encode};
 use serde::{Deserialize, Deserializer};
-use substrate_stellar_sdk::{Hash, PublicKey, Transaction, TransactionEnvelope, XdrCodec};
+use substrate_stellar_sdk::{Hash, PublicKey, TransactionEnvelope, XdrCodec};
 use tokio::{sync::RwLock, time::sleep};
 
 use crate::{
 	error::Error,
-	stellar_wallet,
 	types::{FilterWith, TransactionFilterParam, Watcher},
 };
 
@@ -100,14 +99,8 @@ pub struct TransactionResponse {
 }
 
 impl TransactionResponse {
-	pub(crate) fn ledger(&self) -> u32 {
-		self.ledger
-	}
-
 	pub fn memo_hash(&self) -> Option<Hash> {
-		if self.memo.is_none() {
-			return None
-		}
+		self.memo.as_ref()?;
 
 		if self.memo_type == b"hash" {
 			// First decode the base64-encoded memo to a vector of 32 bytes
@@ -124,9 +117,9 @@ impl TransactionResponse {
 	}
 
 	pub fn to_envelope(&self) -> Result<TransactionEnvelope, Error> {
-		let envelope = TransactionEnvelope::from_base64_xdr(self.envelope_xdr.clone())
-			.map_err(|_| Error::DecodeError);
-		envelope
+		
+		TransactionEnvelope::from_base64_xdr(self.envelope_xdr.clone())
+			.map_err(|_| Error::DecodeError)
 	}
 }
 
@@ -238,16 +231,16 @@ impl HorizonClient for reqwest::Client {
 			url = format!("{}&order=desc", url);
 		}
 
-		let response = self.get(url).send().await.map_err(|e| Error::HttpFetchingError(e))?;
+		let response = self.get(url).send().await.map_err(Error::HttpFetchingError)?;
 
 		if response.status().is_success() {
 			response
 				.json::<HorizonTransactionsResponse>()
 				.await
-				.map_err(|e| Error::HttpFetchingError(e))
+				.map_err(Error::HttpFetchingError)
 		} else {
 			Err(Error::HorizonSubmissionError(
-				response.text().await.map_err(|e| Error::HttpFetchingError(e))?,
+				response.text().await.map_err(Error::HttpFetchingError)?,
 			))
 		}
 	}
@@ -260,16 +253,16 @@ impl HorizonClient for reqwest::Client {
 		let base_url = horizon_url(is_public_network);
 		let url = format!("{}/accounts/{}", base_url, account_encoded);
 
-		let response = self.get(url).send().await.map_err(|e| Error::HttpFetchingError(e))?;
+		let response = self.get(url).send().await.map_err(Error::HttpFetchingError)?;
 
 		if response.status().is_success() {
 			response
 				.json::<HorizonAccountResponse>()
 				.await
-				.map_err(|e| Error::HttpFetchingError(e))
+				.map_err(Error::HttpFetchingError)
 		} else {
 			Err(Error::HorizonSubmissionError(
-				response.text().await.map_err(|e| Error::HttpFetchingError(e))?,
+				response.text().await.map_err(Error::HttpFetchingError)?,
 			))
 		}
 	}
@@ -281,7 +274,7 @@ impl HorizonClient for reqwest::Client {
 	) -> Result<TransactionResponse, Error> {
 		let transaction_xdr = transaction_envelope.to_base64_xdr();
 		let transaction_xdr =
-			std::str::from_utf8(&transaction_xdr).map_err(|e| Error::Utf8Error(e))?;
+			std::str::from_utf8(&transaction_xdr).map_err(Error::Utf8Error)?;
 
 		let base_url = horizon_url(is_public_network);
 		let url = format!("{}/transactions", base_url);
@@ -292,16 +285,16 @@ impl HorizonClient for reqwest::Client {
 			.form(&params)
 			.send()
 			.await
-			.map_err(|e| Error::HttpFetchingError(e))?;
+			.map_err(Error::HttpFetchingError)?;
 
 		if response.status().is_success() {
 			response
 				.json::<TransactionResponse>()
 				.await
-				.map_err(|e| Error::HttpFetchingError(e))
+				.map_err(Error::HttpFetchingError)
 		} else {
 			Err(Error::HorizonSubmissionError(
-				response.text().await.map_err(|e| Error::HttpFetchingError(e))?,
+				response.text().await.map_err(Error::HttpFetchingError)?,
 			))
 		}
 	}
@@ -310,7 +303,6 @@ impl HorizonClient for reqwest::Client {
 pub(crate) struct HorizonFetcher<C: HorizonClient> {
 	client: C,
 	is_public_network: bool,
-	last_tx_id: Option<Vec<u8>>,
 	vault_account_public_key: PublicKey,
 }
 
@@ -318,7 +310,7 @@ const DEFAULT_PAGE_SIZE: i64 = 200;
 
 impl<C: HorizonClient> HorizonFetcher<C> {
 	pub fn new(client: C, vault_account_public_key: PublicKey, is_public_network: bool) -> Self {
-		Self { client, vault_account_public_key, last_tx_id: None, is_public_network }
+		Self { client, vault_account_public_key, is_public_network }
 	}
 
 	/// Fetch recent transactions from remote and deserialize to HorizonResponse
@@ -328,7 +320,7 @@ impl<C: HorizonClient> HorizonFetcher<C> {
 	) -> Result<HorizonTransactionsResponse, Error> {
 		let public_key_encoded = self.vault_account_public_key.to_encoding();
 		let account_id =
-			std::str::from_utf8(&public_key_encoded).map_err(|e| Error::Utf8Error(e))?;
+			std::str::from_utf8(&public_key_encoded).map_err(Error::Utf8Error)?;
 
 		if cursor == 0 {
 			// Fetch the first/latest transaction and set it as the new paging token
@@ -440,27 +432,26 @@ where
 
 #[cfg(test)]
 mod tests {
-	use std::{future, sync::Arc, time::Duration};
+	use std::{future, sync::Arc};
 
-	use mockall::{predicate::*, *};
+	use mockall::predicate::*;
 	use substrate_stellar_sdk::{
 		network::{Network, PUBLIC_NETWORK, TEST_NETWORK},
 		types::Preconditions,
-		Asset, Memo, Operation, SecretKey, StroopAmount, Transaction, TransactionEnvelope,
+		Asset, Operation, SecretKey, StroopAmount, Transaction, TransactionEnvelope,
 	};
-	use tokio::{io::AsyncReadExt, sync::Mutex, time::sleep};
 
 	use crate::types::{FilterWith, MockWatcher, TransactionFilterParam};
 
 	use super::*;
 
-	const SECRET: &'static str = "SBLI7RKEJAEFGLZUBSCOFJHQBPFYIIPLBCKN7WVCWT4NEG2UJEW33N73";
+	const SECRET: &str = "SBLI7RKEJAEFGLZUBSCOFJHQBPFYIIPLBCKN7WVCWT4NEG2UJEW33N73";
 
 	#[derive(Clone)]
 	struct MockFilter;
 
 	impl FilterWith<TransactionFilterParam<Vec<u64>>> for MockFilter {
-		fn is_relevant(&self, param: TransactionFilterParam<Vec<u64>>) -> bool {
+		fn is_relevant(&self, _param: TransactionFilterParam<Vec<u64>>) -> bool {
 			// We consider all transactions relevant for the test
 			true
 		}
@@ -482,7 +473,7 @@ mod tests {
 
 		let public_key_encoded = source.get_encoded_public();
 		let account_id_string =
-			std::str::from_utf8(&public_key_encoded).map_err(|e| Error::Utf8Error(e))?;
+			std::str::from_utf8(&public_key_encoded).map_err(Error::Utf8Error)?;
 		let account = horizon_client.get_account(account_id_string, is_public_network).await?;
 		let next_sequence_number = account.sequence + 1;
 
@@ -495,24 +486,26 @@ mod tests {
 			Preconditions::PrecondNone,
 			None,
 		)
-		.map_err(|e| Error::BuildTransactionError("Creating new transaction failed".to_string()))?;
+		.map_err(|_e| {
+			Error::BuildTransactionError("Creating new transaction failed".to_string())
+		})?;
 
 		let asset = Asset::native();
 		let amount = StroopAmount(amount);
 		transaction
 			.append_operation(
 				Operation::new_payment(destination, asset, amount)
-					.map_err(|e| {
+					.map_err(|_e| {
 						Error::BuildTransactionError(
 							"Creation of payment operation failed".to_string(),
 						)
 					})?
 					.set_source_account(source.get_public().clone())
-					.map_err(|e| {
+					.map_err(|_e| {
 						Error::BuildTransactionError("Setting source account failed".to_string())
 					})?,
 			)
-			.map_err(|e| {
+			.map_err(|_e| {
 				Error::BuildTransactionError("Appending payment operation failed".to_string())
 			})?;
 
@@ -587,7 +580,7 @@ mod tests {
 	async fn horizon_fetch_txs_cursor() {
 		let horizon_client = reqwest::Client::new();
 		let secret = SecretKey::from_encoding(SECRET).unwrap();
-		let mut fetcher = HorizonFetcher::new(horizon_client, secret.get_public().clone(), false);
+		let fetcher = HorizonFetcher::new(horizon_client, secret.get_public().clone(), false);
 
 		let res = fetcher.fetch_latest_txs(0).await.expect("should return a response");
 		let txs = res._embedded.records;
@@ -605,7 +598,7 @@ mod tests {
 
 	#[tokio::test(flavor = "multi_thread")]
 	async fn client_test_for_polling() {
-		let mut watcher = MockWatcher::new();
+		let watcher = MockWatcher::new();
 		let watcher = Arc::new(RwLock::new(watcher));
 
 		let issue_hashes = Arc::new(RwLock::new(vec![]));
@@ -617,7 +610,7 @@ mod tests {
 
 		// We assume that the watch_slot function is called at exactly once because the intial fetch
 		// without a cursor returns the latest transaction only
-		let wat = watcher
+		let _wat = watcher
 			.write()
 			.await
 			.expect_watch_slot()

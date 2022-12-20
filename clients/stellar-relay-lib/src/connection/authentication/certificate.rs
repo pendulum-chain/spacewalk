@@ -87,7 +87,7 @@ pub fn verify_remote_auth_cert(
 				"failed to convert auth cert signature of size {} to fixed array of 64.",
 				sig_len
 			);
-			return false
+			false
 		},
 	}
 }

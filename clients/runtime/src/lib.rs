@@ -51,10 +51,13 @@ pub const SYSTEM_MODULE: &str = "System";
 pub const STABLE_BITCOIN_CONFIRMATIONS: &str = "StableBitcoinConfirmations";
 pub const STABLE_PARACHAIN_CONFIRMATIONS: &str = "StableParachainConfirmations";
 
+// We are using the `metadata-standalone.scale` file here as well because currently the
+// spacewalk pallets are not installed on any parachain but we want to keep this feature for the
+// future.
 #[cfg_attr(
 	feature = "parachain-metadata",
 	subxt(
-		runtime_metadata_path = "metadata-parachain.scale",
+		runtime_metadata_path = "metadata-standalone.scale",
 		derive_for_all_types = "Clone, PartialEq, Eq",
 	)
 )]

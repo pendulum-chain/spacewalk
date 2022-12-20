@@ -46,12 +46,10 @@ fn test_try_from() {
 	let mut code_a12: [u8; 12] = [0; 12];
 	code_a12.copy_from_slice("AmericaDolar".as_bytes());
 
-	let currency_a4 =
-		CurrencyId::try_from(("EURO", AssetIssuer::from(*account.as_binary()))).unwrap();
+	let currency_a4 = CurrencyId::try_from(("EURO", (*account.as_binary()))).unwrap();
 	assert_eq!(currency_a4, CurrencyId::AlphaNum4 { code: code_a4, issuer: *account.as_binary() });
 
-	let currency_a12 =
-		CurrencyId::try_from(("AmericaDolar", AssetIssuer::from(*account.as_binary()))).unwrap();
+	let currency_a12 = CurrencyId::try_from(("AmericaDolar", (*account.as_binary()))).unwrap();
 	assert_eq!(
 		currency_a12,
 		CurrencyId::AlphaNum12 { code: code_a12, issuer: *account.as_binary() }

@@ -1,7 +1,7 @@
 use std::time::Duration;
 
 use jsonrpsee::{
-	client_transport::ws::{InvalidUri, Receiver, Sender, Uri, WsTransportClientBuilder},
+	client_transport::ws::{Receiver, Sender, Uri, WsTransportClientBuilder},
 	core::client::{Client, ClientBuilder},
 };
 use tokio::time::{sleep, timeout};
@@ -12,7 +12,7 @@ const RETRY_TIMEOUT: Duration = Duration::from_millis(1000);
 const CONNECTION_TIMEOUT: Duration = Duration::from_secs(10);
 
 async fn ws_transport(url: &str) -> Result<(Sender, Receiver), Error> {
-	let url: Uri = url.parse().map_err(|e: InvalidUri| Error::UrlParseError(e))?;
+	let url: Uri = url.parse().map_err(Error::UrlParseError)?;
 	WsTransportClientBuilder::default()
 		.build(url)
 		.await

@@ -34,7 +34,7 @@ pub enum StellarRelayMessage {
 	Data {
 		p_id: u32,
 		msg_type: MessageType,
-		msg: StellarMessage,
+		msg: Box<StellarMessage>,
 	},
 	Error(String),
 	/// The amount of time to wait for Stellar Node messages
@@ -80,6 +80,7 @@ impl ConnConfig {
 		)
 	}
 
+	#[allow(clippy::too_many_arguments)]
 	pub fn new_with_timeout_and_retries(
 		addr: &str,
 		port: u32,

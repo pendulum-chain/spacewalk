@@ -8,8 +8,7 @@ use substrate_stellar_sdk::{
 		ScpStatementPledges, Signature, StellarValue, StellarValueExt, TransactionExt,
 		TransactionSet, TransactionV1Envelope, Value,
 	},
-	AccountId, Hash, Memo, MuxedAccount, PublicKey, SecretKey, Transaction, TransactionEnvelope,
-	XdrCodec,
+	Hash, Memo, MuxedAccount, PublicKey, SecretKey, Transaction, TransactionEnvelope, XdrCodec,
 };
 
 use primitives::{StellarPublicKeyRaw, H256};
@@ -91,8 +90,7 @@ fn create_scp_envelope(
 	let signature_result = validator_secret_key.create_signature(body);
 	let signature: Signature = LimitedVarOpaque::new(signature_result.to_vec()).unwrap();
 
-	let envelope = ScpEnvelope { statement, signature };
-	envelope
+	ScpEnvelope { statement, signature }
 }
 
 pub fn get_validators_and_organizations<T: crate::Config>(
@@ -136,8 +134,7 @@ pub fn build_dummy_proof_for<T: crate::Config>(
 	public_network: bool,
 ) -> (Vec<u8>, Vec<u8>, Vec<u8>) {
 	// Build a transaction
-	let source_account =
-		MuxedAccount::from(AccountId::from(PublicKey::PublicKeyTypeEd25519([0; 32])));
+	let source_account = MuxedAccount::from(PublicKey::PublicKeyTypeEd25519([0; 32]));
 	let operations = LimitedVarArray::new_empty();
 	let transaction = Transaction {
 		source_account,
@@ -170,7 +167,7 @@ pub fn build_dummy_proof_for<T: crate::Config>(
 	let validator_secret_keys = vec![VALIDATOR_1_SECRET, VALIDATOR_2_SECRET, VALIDATOR_3_SECRET];
 	for validator_secret_key in validator_secret_keys.iter() {
 		let secret_key = SecretKey::from_binary(*validator_secret_key);
-		let envelope = create_scp_envelope(tx_set_hash.clone(), &secret_key, network);
+		let envelope = create_scp_envelope(tx_set_hash, &secret_key, network);
 		envelopes.push(envelope).unwrap();
 	}
 

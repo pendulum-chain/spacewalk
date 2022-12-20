@@ -74,8 +74,12 @@ impl Connector {
 				log::trace!("what to do with send more");
 			},
 			other => {
-				self.send_to_user(StellarRelayMessage::Data { p_id, msg_type, msg: other })
-					.await?;
+				self.send_to_user(StellarRelayMessage::Data {
+					p_id,
+					msg_type,
+					msg: Box::new(other),
+				})
+				.await?;
 				self.check_to_send_more(msg_type).await?;
 			},
 		}
@@ -117,7 +121,7 @@ impl Connector {
 		}
 
 		let remote_info = RemoteInfo::new(&hello);
-		let shared_key = self.get_shared_key(&remote_info.pub_key_ecdh());
+		let shared_key = self.get_shared_key(remote_info.pub_key_ecdh());
 
 		self.set_hmac_keys(HMacKeys::new(
 			&shared_key,

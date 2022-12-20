@@ -120,8 +120,8 @@ impl<T: Config> Pallet<T> {
 		recipient_stellar_address: Uint256,
 		currency: CurrencyId<T>,
 	) -> Result<Amount<T>, Error<T>> {
-		let asset = T::AssetConversion::lookup(currency)
-			.map_err(|_| Error::<T>::AssetConversionError.into())?;
+		let asset =
+			T::AssetConversion::lookup(currency).map_err(|_| Error::<T>::AssetConversionError)?;
 		let recipient_account_muxed = MuxedAccount::KeyTypeEd25519(recipient_stellar_address);
 		let recipient_account_pk = PublicKey::PublicKeyTypeEd25519(recipient_stellar_address);
 

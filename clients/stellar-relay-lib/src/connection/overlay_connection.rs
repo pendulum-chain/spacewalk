@@ -45,7 +45,7 @@ impl StellarOverlayConnection {
 			return Err(Error::Disconnected)
 		}
 		self.actions_sender
-			.send(ConnectorActions::SendMessage(message))
+			.send(ConnectorActions::SendMessage(Box::new(message)))
 			.await
 			.map_err(Error::from)
 	}
@@ -59,7 +59,7 @@ impl StellarOverlayConnection {
 		if result.is_ok() {
 			self.is_disconnected = true;
 		}
-		return result
+		result
 	}
 
 	/// Receives Stellar messages from the connection.
@@ -159,7 +159,7 @@ mod test {
 		let (_, relay_message_receiver) = mpsc::channel::<StellarRelayMessage>(1024);
 
 		StellarOverlayConnection::new(
-			actions_sender.clone(),
+			actions_sender,
 			relay_message_receiver,
 			cfg.retries,
 			node_info,
@@ -190,7 +190,7 @@ mod test {
 		//assert
 		let message = actions_receiver.recv().await.unwrap();
 		if let ConnectorActions::SendMessage(message) = message {
-			assert_eq!(message, message_s);
+			assert_eq!(*message, message_s);
 		} else {
 			panic!("Incorrect stellar message")
 		}
@@ -201,7 +201,7 @@ mod test {
 		//arrange
 		let (node_info, cfg) = create_node_and_conn();
 
-		let (actions_sender, mut actions_receiver) = mpsc::channel::<ConnectorActions>(1024);
+		let (actions_sender, _actions_receiver) = mpsc::channel::<ConnectorActions>(1024);
 		let (relay_message_sender, relay_message_receiver) =
 			mpsc::channel::<StellarRelayMessage>(1024);
 

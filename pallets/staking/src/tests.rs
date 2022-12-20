@@ -13,7 +13,7 @@ macro_rules! fixed {
 }
 
 #[test]
-#[cfg_attr(rustfmt, rustfmt_skip)]
+#[rustfmt::skip]
 fn reproduce_broken_state() {
     run_test(|| {
         use crate::pallet::*;
@@ -57,7 +57,7 @@ fn reproduce_broken_state() {
 }
 
 #[test]
-#[cfg_attr(rustfmt, rustfmt_skip)]
+#[rustfmt::skip]
 fn slash_stake_does_not_break_state() {
     run_test(|| {
         use crate::pallet::*;

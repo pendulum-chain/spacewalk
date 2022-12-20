@@ -136,7 +136,7 @@ pub fn log_decode_error<T: Debug>(source: &str, error: T) -> Error {
 
 // extra function.
 fn is_xdr_complete_message(data: &[u8], message_len: usize) -> bool {
-	return data.len() - 4 >= message_len
+	data.len() - 4 >= message_len
 }
 
 // extra function

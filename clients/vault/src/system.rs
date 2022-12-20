@@ -6,7 +6,7 @@ use async_trait::async_trait;
 use clap::Parser;
 use futures::{
 	channel::{mpsc, mpsc::Sender},
-	future::{join, join_all},
+	future::join_all,
 	SinkExt, TryFutureExt,
 };
 use git_version::git_version;
@@ -35,7 +35,6 @@ use crate::{
 	execution::execute_open_requests,
 	issue,
 	issue::IssueFilter,
-	metrics::publish_tokio_metrics,
 	oracle::{create_handler, prepare_directories, ScpMessageHandler},
 	redeem::listen_for_redeem_requests,
 	replace::{listen_for_accept_replace, listen_for_execute_replace, listen_for_replace_requests},
@@ -192,11 +191,12 @@ impl VaultIdManager {
 /// `wrapped_currency` being the currency codes of the wrapped currency (e.g. USDC, EURT...)
 ///  including the issuer and code, ie 'GABC...:USDC'  and
 /// `collateral_amount` being the amount of collateral to be locked.
+#[allow(clippy::useless_conversion, clippy::format_in_format_args)]
 fn parse_collateral_and_amount(
 	s: &str,
 ) -> Result<(String, String, Option<u128>), Box<dyn std::error::Error + Send + Sync + 'static>> {
 	let parts: Vec<&str> = s
-		.split(",")
+		.split(',')
 		.map(|s| s.trim())
 		.collect::<Vec<_>>()
 		.try_into()
@@ -290,7 +290,7 @@ async fn run_and_monitor_tasks(
 	shutdown_tx: ShutdownSender,
 	items: Vec<(&str, ServiceTask)>,
 ) -> Result<(), ServiceError<Error>> {
-	let (metrics_iterators, tasks): (HashMap<String, _>, Vec<_>) = items
+	let (_metrics_iterators, tasks): (HashMap<String, _>, Vec<_>) = items
 		.into_iter()
 		.filter_map(|(name, task)| {
 			let monitor = tokio_metrics::TaskMonitor::new();
@@ -312,13 +312,12 @@ async fn run_and_monitor_tasks(
 	// 	publish_tokio_metrics(metrics_iterators),
 	// ));
 
-	match join_all(tasks).await {
-		results => results
-			.into_iter()
-			.find(|res| matches!(res, Ok(Err(_))))
-			.and_then(|res| res.ok())
-			.unwrap_or(Ok(())),
-	}
+	let results = join_all(tasks).await;
+	results
+		.into_iter()
+		.find(|res| matches!(res, Ok(Err(_))))
+		.and_then(|res| res.ok())
+		.unwrap_or(Ok(()))
 }
 
 type Task = Pin<Box<dyn Future<Output = Result<(), ServiceError<Error>>> + Send + 'static>>;

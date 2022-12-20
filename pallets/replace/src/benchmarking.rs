@@ -112,7 +112,7 @@ fn register_public_key<T: crate::Config>(vault_id: DefaultVaultId<T>) {
 
 fn register_vault<T: crate::Config>(vault_id: DefaultVaultId<T>) {
 	register_public_key::<T>(vault_id.clone());
-	assert_ok!(VaultRegistry::<T>::_register_vault(vault_id.clone(), 100000000u32.into()));
+	assert_ok!(VaultRegistry::<T>::_register_vault(vault_id, 100000000u32.into()));
 }
 
 benchmarks! {

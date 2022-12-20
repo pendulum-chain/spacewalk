@@ -29,8 +29,6 @@ fn request_issue(
 
 	ext::vault_registry::try_increase_to_be_issued_tokens::<Test>
 		.mock_safe(|_, _| MockResult::Return(Ok(())));
-	ext::vault_registry::register_deposit_address::<Test>
-		.mock_safe(|_, _| MockResult::Return(Ok(RANDOM_STELLAR_PUBLIC_KEY)));
 
 	Issue::_request_issue(origin, amount, vault)
 }
@@ -43,7 +41,7 @@ fn request_issue_ok_with_address(
 	origin: AccountId,
 	amount: Balance,
 	vault: DefaultVaultId<Test>,
-	address: StellarPublicKeyRaw,
+	_address: StellarPublicKeyRaw,
 ) -> H256 {
 	ext::vault_registry::ensure_not_banned::<Test>.mock_safe(|_| MockResult::Return(Ok(())));
 
@@ -53,11 +51,6 @@ fn request_issue_ok_with_address(
 		.mock_safe(|_, _| MockResult::Return(Ok(())));
 	ext::vault_registry::get_stellar_public_key::<Test>
 		.mock_safe(|_| MockResult::Return(Ok(DEFAULT_STELLAR_PUBLIC_KEY)));
-
-	unsafe {
-		ext::vault_registry::register_deposit_address::<Test>
-			.mock_raw(|_, _| MockResult::Return(Ok(address)));
-	}
 
 	Issue::_request_issue(origin, amount, vault).unwrap()
 }
@@ -134,8 +127,7 @@ fn test_request_issue_succeeds() {
 		ext::fee::get_issue_griefing_collateral::<Test>
 			.mock_safe(move |_| MockResult::Return(Ok(griefing(issue_griefing_collateral))));
 
-		let issue_id =
-			request_issue_ok_with_address(origin, amount, vault.clone(), address.clone());
+		let issue_id = request_issue_ok_with_address(origin, amount, vault.clone(), address);
 
 		let request_issue_event = TestEvent::Issue(Event::RequestIssue {
 			issue_id,
@@ -223,7 +215,7 @@ fn test_execute_issue_succeeds() {
 #[test]
 fn test_execute_issue_overpayment_succeeds() {
 	run_test(|| {
-		let issue_asset = VAULT.wrapped_currency();
+		let _issue_asset = VAULT.wrapped_currency();
 		let issue_amount = 3;
 		let amount_transferred = 5;
 		let issue_fee = 0;
@@ -259,7 +251,7 @@ fn test_execute_issue_overpayment_succeeds() {
 #[test]
 fn test_execute_issue_overpayment_up_to_max_succeeds() {
 	run_test(|| {
-		let issue_asset = VAULT.wrapped_currency();
+		let _issue_asset = VAULT.wrapped_currency();
 		let issue_amount = 3;
 		let amount_transferred = 10;
 		let issue_fee = 0;
@@ -295,7 +287,7 @@ fn test_execute_issue_overpayment_up_to_max_succeeds() {
 #[test]
 fn test_execute_issue_underpayment_succeeds() {
 	run_test(|| {
-		let issue_asset = VAULT.wrapped_currency();
+		let _issue_asset = VAULT.wrapped_currency();
 		let issue_amount = 10;
 		let amount_transferred = 1;
 		let issue_fee = 0;

@@ -15,7 +15,7 @@ use subxt::{
 use thiserror::Error;
 use tokio::time::error::Elapsed;
 
-use crate::{types::*, ISSUE_MODULE, SECURITY_MODULE, SYSTEM_MODULE};
+use crate::{types::*, ISSUE_MODULE, SECURITY_MODULE};
 
 #[derive(Error, Debug)]
 pub enum Error {
@@ -99,12 +99,12 @@ impl Error {
 		if let Error::SubxtRuntimeError(SubxtError::Rpc(RpcError::ClientError(e))) = self {
 			match e.downcast_ref::<JsonRpseeError>() {
 				Some(e) => match e {
-					JsonRpseeError::Call(CallError::Custom(err)) => call(&err),
+					JsonRpseeError::Call(CallError::Custom(err)) => call(err),
 					_ => None,
 				},
 				None => {
 					log::error!("Failed to downcast RPC error; this is a bug please file an issue");
-					return None
+					None
 				},
 			}
 		} else {
@@ -141,7 +141,7 @@ impl Error {
 						log::error!(
 							"Failed to downcast RPC error; this is a bug please file an issue"
 						);
-						return false
+						false
 					},
 				},
 			Error::SubxtRuntimeError(SubxtError::Rpc(RpcError::SubscriptionDropped)) => true,

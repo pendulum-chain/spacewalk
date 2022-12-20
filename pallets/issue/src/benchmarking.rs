@@ -57,7 +57,7 @@ fn get_vault_id<T: crate::Config>() -> DefaultVaultId<T> {
 fn register_vault<T: crate::Config>(vault_id: DefaultVaultId<T>) {
 	let origin = RawOrigin::Signed(vault_id.account_id.clone());
 	assert_ok!(VaultRegistry::<T>::register_public_key(origin.into(), DEFAULT_STELLAR_PUBLIC_KEY));
-	assert_ok!(VaultRegistry::<T>::_register_vault(vault_id.clone(), 100000000u32.into()));
+	assert_ok!(VaultRegistry::<T>::_register_vault(vault_id, 100000000u32.into()));
 }
 
 benchmarks! {
@@ -72,7 +72,7 @@ benchmarks! {
 		Oracle::<T>::_set_exchange_rate(<T as vault_registry::Config>::GetGriefingCollateralCurrencyId::get(), <T as currency::Config>::UnsignedFixedPoint::one()).unwrap();
 
 		mint_collateral::<T>(&origin, (1u32 << 31).into());
-		mint_collateral::<T>(&vault_id.account_id.clone(), (1u32 << 31).into());
+		mint_collateral::<T>(&vault_id.account_id, (1u32 << 31).into());
 		mint_collateral::<T>(&relayer_id, (1u32 << 31).into());
 
 		VaultRegistry::<T>::_set_secure_collateral_threshold(get_currency_pair::<T>(), <T as currency::Config>::UnsignedFixedPoint::checked_from_rational(1, 100000).unwrap());// 0.001%
@@ -88,7 +88,7 @@ benchmarks! {
 		let relayer_id: T::AccountId = account("Relayer", 0, 0);
 
 		mint_collateral::<T>(&origin, (1u32 << 31).into());
-		mint_collateral::<T>(&vault_id.account_id.clone(), (1u32 << 31).into());
+		mint_collateral::<T>(&vault_id.account_id, (1u32 << 31).into());
 		mint_collateral::<T>(&relayer_id, (1u32 << 31).into());
 
 		let vault_stellar_address = DEFAULT_STELLAR_PUBLIC_KEY;
@@ -131,7 +131,7 @@ benchmarks! {
 		let vault_id = get_vault_id::<T>();
 
 		mint_collateral::<T>(&origin, (1u32 << 31).into());
-		mint_collateral::<T>(&vault_id.account_id.clone(), (1u32 << 31).into());
+		mint_collateral::<T>(&vault_id.account_id, (1u32 << 31).into());
 
 		let vault_stellar_address = DEFAULT_STELLAR_PUBLIC_KEY;
 		let value = Amount::new(2u32.into(), get_wrapped_currency_id());

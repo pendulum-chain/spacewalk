@@ -59,7 +59,7 @@ where
 	}
 
 	fn contains_key(&self, key: &K) -> bool {
-		self.iter().find(|(k, _)| k == key).is_some()
+		self.iter().any(|(k, _)| k == key)
 	}
 }
 
@@ -104,7 +104,7 @@ impl TxSetHashAndSlotMap {
 	}
 
 	pub fn insert(&mut self, hash: TxSetHash, slot: Slot) {
-		self.hash_slot.insert(hash.clone(), slot);
+		self.hash_slot.insert(hash, slot);
 		self.slot_hash.insert(slot, hash);
 	}
 }
