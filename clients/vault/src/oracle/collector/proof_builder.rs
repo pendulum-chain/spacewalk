@@ -1,8 +1,10 @@
-use std::{convert::TryInto, sync::Arc};
+use std::{collections::VecDeque, convert::TryInto, sync::Arc};
 
-use parking_lot::RwLock;
+use futures::TryFutureExt;
+use parking_lot::{lock_api::RwLockReadGuard, RawRwLock, RwLock};
 use tokio::sync::mpsc;
 
+use primitives::stellar::types::TransactionHistoryEntry;
 use stellar_relay_lib::sdk::{
 	compound_types::{UnlimitedVarArray, XdrArchive},
 	types::{ScpEnvelope, ScpHistoryEntry, StellarMessage, TransactionSet},
@@ -11,8 +13,9 @@ use stellar_relay_lib::sdk::{
 
 use crate::oracle::{
 	constants::{get_min_externalized_messages, MAX_SLOT_TO_REMEMBER},
-	types::{EnvelopesMap, LifoMap},
-	ScpArchiveStorage, ScpMessageCollector, Slot,
+	traits::{ArchiveStorage, FileHandler},
+	types::{EnvelopesMap, LifoMap, TxSetMap},
+	ScpArchiveStorage, ScpMessageCollector, Slot, TransactionsArchiveStorage, TxSetsFileHandler,
 };
 
 /// The Proof of Transactions that needed to be processed
@@ -59,7 +62,7 @@ impl ScpMessageCollector {
 		let last_slot_index = *self.last_slot_index();
 
 		// If the current slot is still in the range of 'remembered' slots
-		if check_slot_position(last_slot_index, slot) {
+		if check_slot_still_recoverable_from_overlay(last_slot_index, slot) {
 			self.ask_node_for_envelopes(slot, sender).await;
 		} else {
 			self.ask_archive_for_envelopes(slot).await;
@@ -137,21 +140,22 @@ impl ScpMessageCollector {
 		sender: &mpsc::Sender<StellarMessage>,
 	) -> Option<TransactionSet> {
 		let txset_map = self.txset_map().clone();
-		let txset_map = txset_map.get_with_key(&slot).cloned();
+		let tx_set = txset_map.get_with_key(&slot).cloned();
 
-		match txset_map {
+		match tx_set {
+			Some(res) => Some(res),
 			None => {
 				// If the current slot is still in the range of 'remembered' slots
-				if check_slot_position(*self.last_slot_index(), slot) {
-					tracing::info!("Wait for TxSet of slot {}", slot);
+				if check_slot_still_recoverable_from_overlay(*self.last_slot_index(), slot) {
+					tracing::info!("Waiting for TxSet of slot {} from overlay", slot);
+					self.fetch_missing_txset(slot, sender).await;
 				} else {
-					tracing::warn!("No TxSet found for slot {}", slot);
+					tracing::warn!("Fetching TxSet for slot {} from archive", slot);
+					tokio::spawn(get_txset_from_horizon_archive(self.txset_map_clone(), slot));
 				}
 
-				self.fetch_missing_txset(slot, sender).await;
 				None
 			},
-			Some(res) => Some(res),
 		}
 	}
 
@@ -167,19 +171,21 @@ impl ScpMessageCollector {
 		sender: &mpsc::Sender<StellarMessage>,
 	) -> Option<Proof> {
 		let envelopes = self.get_envelopes(slot, sender).await;
-		if envelopes.len() == 0 {
+		let tx_set = self.get_txset(slot, sender).await;
+		// return early if we don't have enough envelopes or the tx_set
+		if envelopes.len() == 0 || tx_set.is_none() {
 			return None
 		}
-
-		let tx_set = self.get_txset(slot, sender).await?;
+		let tx_set = tx_set.unwrap();
 
 		Some(Proof { slot, envelopes, tx_set })
 	}
 }
 
-/// Fetching old SCPMessages is only possible if it's not too far back.
-fn check_slot_position(last_slot_index: Slot, slot: Slot) -> bool {
-	slot != 0 && slot > (last_slot_index.saturating_sub(MAX_SLOT_TO_REMEMBER))
+/// Returns true if the SCP messages for a given slot are still recoverable from the overlay because
+/// the slot is not too far back.
+fn check_slot_still_recoverable_from_overlay(last_slot_index: Slot, slot: Slot) -> bool {
+	last_slot_index != 0 && slot > (last_slot_index.saturating_sub(MAX_SLOT_TO_REMEMBER))
 }
 
 async fn get_envelopes_from_horizon_archive(
@@ -222,20 +228,45 @@ async fn get_envelopes_from_horizon_archive(
 	}
 }
 
-// async fn get_txset_from_horizon_archive
+async fn get_txset_from_horizon_archive(tx_set_map: Arc<RwLock<TxSetMap>>, slot: Slot) {
+	let slot_index: u32 = slot.try_into().unwrap();
+	let transactions_archive =
+		TransactionsArchiveStorage::get_transactions_archive(slot.try_into().unwrap()).await;
+
+	if let Err(e) = transactions_archive {
+		tracing::error!(
+			"Could not get TransactionsArchive for slot {:?} from Horizon Archive: {:?}",
+			slot_index,
+			e
+		);
+		return
+	}
+	let transactions_archive: XdrArchive<TransactionHistoryEntry> = transactions_archive.unwrap();
+
+	let value = transactions_archive
+		.get_vec()
+		.iter()
+		.find(|&entry| entry.ledger_seq == slot_index);
+
+	if let Some(target_history_entry) = value {
+		tracing::info!("Adding archived tx set for slot {}", slot);
+		let mut tx_set_map = tx_set_map.write();
+		tx_set_map.set_with_key(slot, target_history_entry.tx_set.clone());
+	}
+}
 
 #[cfg(test)]
 mod test {
-	use crate::oracle::collector::proof_builder::check_slot_position;
+	use crate::oracle::collector::proof_builder::check_slot_still_recoverable_from_overlay;
 
 	#[test]
 	fn test_check_slot_position() {
 		let last_slot = 100;
 
-		assert!(!check_slot_position(last_slot, 50));
-		assert!(!check_slot_position(last_slot, 75));
-		assert!(check_slot_position(last_slot, 90));
-		assert!(check_slot_position(last_slot, 100));
-		assert!(check_slot_position(last_slot, 101));
+		assert!(!check_slot_still_recoverable_from_overlay(last_slot, 50));
+		assert!(!check_slot_still_recoverable_from_overlay(last_slot, 75));
+		assert!(check_slot_still_recoverable_from_overlay(last_slot, 90));
+		assert!(check_slot_still_recoverable_from_overlay(last_slot, 100));
+		assert!(check_slot_still_recoverable_from_overlay(last_slot, 101));
 	}
 }

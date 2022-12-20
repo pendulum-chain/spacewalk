@@ -68,6 +68,10 @@ impl ScpMessageCollector {
 		self.txset_map.read()
 	}
 
+	pub(super) fn txset_map_clone(&self) -> Arc<RwLock<TxSetMap>> {
+		self.txset_map.clone()
+	}
+
 	pub(super) fn get_txset_hash(&self, slot: &Slot) -> Option<TxSetHash> {
 		self.txset_and_slot_map.read().get_txset_hash(slot).cloned()
 	}

@@ -221,15 +221,15 @@ mod tests {
 		let mut agent = OracleAgent::new(true).unwrap();
 		agent.start().await.expect("Failed to start agent");
 
-		let slot = 44041116;
-
-		match agent.get_proof(slot).await {
-			Ok(proof) => {
-				println!("proof: {:?}", proof);
-				assert!(true)
-			},
-			Err(e) => assert!(false),
+		// Wait until agent is caught up with the network.
+		while agent.get_last_slot_index() == 0 {
+			sleep(Duration::from_secs(1)).await;
 		}
+		let latest_slot = agent.get_last_slot_index();
+		println!("Fetching proof for latest slot: {}", latest_slot);
+
+		let proof_result = agent.get_proof(latest_slot).await;
+		assert!(proof_result.is_ok(), "Failed to get proof for slot: {}", latest_slot);
 	}
 
 	#[tokio::test]
@@ -240,10 +240,10 @@ mod tests {
 		agent.start().await.expect("Failed to start agent");
 
 		// This slot should be archived on the public network
-		let target_slot = 573112;
-		let proof = agent.get_proof(target_slot).await.unwrap();
+		let target_slot = 44041116;
+		let proof = agent.get_proof(target_slot).await.expect("should return a proof");
 
-		assert_eq!(proof.slot(), 1);
+		assert_eq!(proof.slot(), 44041116);
 		agent.stop().expect("Failed to stop the agent");
 	}
 }
