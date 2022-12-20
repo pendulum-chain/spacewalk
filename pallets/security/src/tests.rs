@@ -64,7 +64,7 @@ fn test_is_parachain_error_oracle_offline() {
 	run_test(|| {
 		Security::set_status(StatusCode::Error);
 		Security::insert_error(ErrorCode::OracleOffline);
-		assert_eq!(Security::is_parachain_error_oracle_offline(), true);
+		assert!(Security::is_parachain_error_oracle_offline());
 	})
 }
 
@@ -77,7 +77,7 @@ where
 	}
 	recover();
 	for err in &error_codes {
-		assert_eq!(Security::get_errors().contains(&err), false);
+		assert!(!Security::get_errors().contains(err));
 	}
 	assert_eq!(Security::parachain_status(), StatusCode::Running);
 	assert_emitted!(Event::RecoverFromErrors {

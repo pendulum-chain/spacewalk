@@ -330,7 +330,7 @@ impl<T: Config> Pallet<T> {
 	) -> Result<<SignedFixedPoint<T> as FixedPointNumber>::Inner, DispatchError> {
 		let nonce = Self::nonce(vault_id);
 		let total = Self::total_current_stake_at_index(nonce, vault_id);
-		total.truncate_to_inner().ok_or(Error::<T>::TryIntoIntError.into())
+		total.truncate_to_inner().ok_or_else(|| Error::<T>::TryIntoIntError.into())
 	}
 
 	fn reward_tally(
@@ -634,7 +634,7 @@ impl<T: Config> Pallet<T> {
 			stake.checked_mul(&slash_per_token).ok_or(ArithmeticError::Overflow)?,
 		);
 
-		return Ok(stake)
+		Ok(stake)
 	}
 
 	/// Withdraw an `amount` of stake from the `vault_id` for the `nominator_id`.
@@ -644,7 +644,7 @@ impl<T: Config> Pallet<T> {
 		amount: SignedFixedPoint<T>,
 		index: Option<T::Index>,
 	) -> DispatchResult {
-		let nonce = index.unwrap_or(Self::nonce(vault_id));
+		let nonce = index.unwrap_or_else(|| Self::nonce(vault_id));
 		let stake = Self::apply_slash(vault_id, nominator_id)?;
 
 		if amount.is_zero() {
@@ -925,7 +925,7 @@ where
 		index: Option<T::Index>,
 		currency_id: T::CurrencyId,
 	) -> Result<Balance, DispatchError> {
-		let nonce = index.unwrap_or(Pallet::<T>::nonce(vault_id));
+		let nonce = index.unwrap_or_else(|| Pallet::<T>::nonce(vault_id));
 		Pallet::<T>::withdraw_reward_at_index(nonce, currency_id, vault_id, nominator_id)?
 			.try_into()
 			.map_err(|_| Error::<T>::TryIntoIntError.into())
