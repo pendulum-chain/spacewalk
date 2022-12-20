@@ -3,7 +3,7 @@ use frame_support::assert_ok;
 use frame_system::RawOrigin;
 use orml_traits::MultiCurrency;
 use sp_core::H256;
-use sp_runtime::traits::One;
+use sp_runtime::{traits::One, FixedPointNumber};
 use sp_std::prelude::*;
 
 use currency::{
@@ -37,7 +37,7 @@ fn wrapped<T: crate::Config>(amount: u32) -> Amount<T> {
 }
 
 fn register_public_key<T: crate::Config>(vault_id: DefaultVaultId<T>) {
-	let origin = RawOrigin::Signed(vault_id.account_id.clone());
+	let origin = RawOrigin::Signed(vault_id.account_id);
 	assert_ok!(VaultRegistry::<T>::register_public_key(origin.into(), DEFAULT_STELLAR_PUBLIC_KEY));
 }
 
@@ -62,17 +62,15 @@ fn mint_wrapped<T: crate::Config>(account_id: &T::AccountId, amount: BalanceOf<T
 fn initialize_oracle<T: crate::Config>() {
 	let oracle_id: T::AccountId = account("Oracle", 12, 0);
 
+	use primitives::oracle::Key;
 	Oracle::<T>::_feed_values(
 		oracle_id,
 		vec![
 			(
-				OracleKey::ExchangeRate(Token(DOT)),
+				Key::ExchangeRate(Token(DOT)),
 				UnsignedFixedPoint::<T>::checked_from_rational(1, 1).unwrap(),
 			),
-			(
-				OracleKey::FeeEstimation,
-				UnsignedFixedPoint::<T>::checked_from_rational(3, 1).unwrap(),
-			),
+			(Key::FeeEstimation, UnsignedFixedPoint::<T>::checked_from_rational(3, 1).unwrap()),
 		],
 	);
 	Oracle::<T>::begin_block(0u32.into());
@@ -130,7 +128,7 @@ benchmarks! {
 		assert_ok!(Oracle::<T>::_set_exchange_rate(get_collateral_currency_id::<T>(),
 			UnsignedFixedPoint::<T>::one()
 		));
-	}: _(RawOrigin::Signed(origin), amount, stellar_address, vault_id.clone())
+	}: _(RawOrigin::Signed(origin), amount, stellar_address, vault_id)
 
 	liquidation_redeem {
 		assert_ok!(Oracle::<T>::_set_exchange_rate(get_collateral_currency_id::<T>(),

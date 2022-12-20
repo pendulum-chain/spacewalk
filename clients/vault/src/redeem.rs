@@ -4,14 +4,8 @@ use tokio::sync::RwLock;
 
 use runtime::{RedeemPallet, RequestRedeemEvent, ShutdownSender, SpacewalkParachain};
 use service::{spawn_cancelable, Error as ServiceError};
-use stellar_relay_lib::sdk::PublicKey;
 
-use crate::{
-	execution::*,
-	oracle::ProofExt,
-	system::{VaultData, VaultIdManager},
-	Error,
-};
+use crate::{execution::*, oracle::ProofExt, system::VaultIdManager, Error};
 
 /// Listen for RequestRedeemEvent directed at this vault; upon reception, transfer
 /// bitcoin and call execute_redeem

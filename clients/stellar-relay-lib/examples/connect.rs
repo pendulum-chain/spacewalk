@@ -2,7 +2,7 @@ use stellar_relay::{
 	node::NodeInfo,
 	sdk::{
 		network::{Network, PUBLIC_NETWORK, TEST_NETWORK},
-		types::{MessageType, ScpStatementPledges, StellarMessage},
+		types::{ScpStatementPledges, StellarMessage},
 		SecretKey, XdrCodec,
 	},
 	ConnConfig, StellarOverlayConnection, StellarRelayMessage,
@@ -47,7 +47,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 				log::info!("Connected to Stellar Node: {:?}", base64::encode(pub_key_xdr));
 				log::info!("{:?}", node_info);
 			},
-			StellarRelayMessage::Data { p_id, msg_type, msg } => match msg {
+			StellarRelayMessage::Data { p_id: _, msg_type, msg } => match *msg {
 				StellarMessage::ScpMessage(msg) => {
 					let node_id = msg.statement.node_id.to_encoding();
 					let node_id = base64::encode(&node_id);

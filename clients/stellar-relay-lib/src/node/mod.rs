@@ -30,7 +30,7 @@ impl NodeInfo {
 			overlay_version,
 			overlay_min_version,
 			version_str: version_str.into_bytes(),
-			network_id: network.get_id().clone(),
+			network_id: *network.get_id(),
 		}
 	}
 }

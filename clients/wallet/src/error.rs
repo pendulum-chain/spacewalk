@@ -1,5 +1,5 @@
 use reqwest::Error as FetchError;
-use substrate_stellar_sdk::StellarSdkError;
+
 use thiserror::Error;
 
 #[derive(Debug, Error)]
@@ -18,4 +18,6 @@ pub enum Error {
 	Utf8Error(#[from] std::str::Utf8Error),
 	#[error("Could not decode XDR")]
 	DecodeError,
+	#[error("Could not sign envelope")]
+	SignEnvelopeError,
 }

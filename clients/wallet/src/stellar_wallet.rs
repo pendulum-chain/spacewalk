@@ -1,11 +1,10 @@
 use std::fmt::Formatter;
 
 use substrate_stellar_sdk::{
-	horizon::Horizon,
 	network::{Network, PUBLIC_NETWORK, TEST_NETWORK},
 	types::Preconditions,
 	Asset, Hash, Memo, Operation, PublicKey, SecretKey, StroopAmount, Transaction,
-	TransactionEnvelope, XdrCodec,
+	TransactionEnvelope,
 };
 
 use crate::{
@@ -61,8 +60,7 @@ impl StellarWallet {
 		let horizon_client = reqwest::Client::new();
 
 		let public_key_encoded = self.get_public_key().to_encoding();
-		let account_id =
-			std::str::from_utf8(&public_key_encoded).map_err(|e| Error::Utf8Error(e))?;
+		let account_id = std::str::from_utf8(&public_key_encoded).map_err(Error::Utf8Error)?;
 
 		let transactions_response = horizon_client
 			.get_transactions(account_id, self.is_public_network, cursor, limit, order_ascending)
@@ -85,7 +83,7 @@ impl StellarWallet {
 
 		let public_key_encoded = self.get_public_key().to_encoding();
 		let account_id_string =
-			std::str::from_utf8(&public_key_encoded).map_err(|e| Error::Utf8Error(e))?;
+			std::str::from_utf8(&public_key_encoded).map_err(Error::Utf8Error)?;
 		let account = horizon_client.get_account(account_id_string, self.is_public_network).await?;
 		// Either use the local one or the one from the network depending on which one is higher.
 		let next_sequence_number = if self.last_account_sequence > account.sequence {
@@ -103,23 +101,25 @@ impl StellarWallet {
 			Preconditions::PrecondNone,
 			Some(Memo::MemoHash(memo_hash)),
 		)
-		.map_err(|e| Error::BuildTransactionError("Creating new transaction failed".to_string()))?;
+		.map_err(|_e| {
+			Error::BuildTransactionError("Creating new transaction failed".to_string())
+		})?;
 
 		let amount = StroopAmount(stroop_amount);
 		transaction
 			.append_operation(
 				Operation::new_payment(destination_address, asset, amount)
-					.map_err(|e| {
+					.map_err(|_e| {
 						Error::BuildTransactionError(
 							"Creation of payment operation failed".to_string(),
 						)
 					})?
 					.set_source_account(self.get_public_key())
-					.map_err(|e| {
+					.map_err(|_e| {
 						Error::BuildTransactionError("Setting source account failed".to_string())
 					})?,
 			)
-			.map_err(|e| {
+			.map_err(|_e| {
 				Error::BuildTransactionError("Appending payment operation failed".to_string())
 			})?;
 
@@ -127,7 +127,9 @@ impl StellarWallet {
 		let network: &Network =
 			if self.is_public_network { &PUBLIC_NETWORK } else { &TEST_NETWORK };
 
-		envelope.sign(network, vec![&self.get_secret_key()]);
+		envelope
+			.sign(network, vec![&self.get_secret_key()])
+			.map_err(|_e| Error::SignEnvelopeError)?;
 
 		let transaction_response = horizon_client
 			.submit_transaction(envelope.clone(), self.is_public_network)
@@ -141,7 +143,7 @@ impl std::fmt::Debug for StellarWallet {
 	fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
 		let public_key_encoded = self.get_public_key().to_encoding();
 		let account_id_string =
-			std::str::from_utf8(&public_key_encoded).map_err(|e| std::fmt::Error)?;
+			std::str::from_utf8(&public_key_encoded).map_err(|_e| std::fmt::Error)?;
 		write!(
 			f,
 			"StellarWallet [public key: {}, public network: {}]",
@@ -160,7 +162,7 @@ mod test {
 
 	#[tokio::test]
 	async fn sending_payment_works() {
-		let wallet =
+		let mut wallet =
 			StellarWallet::from_secret_encoded(&STELLAR_SECRET_ENCODED.to_string(), false).unwrap();
 
 		let destination =
@@ -170,11 +172,11 @@ mod test {
 		let amount = 100;
 		let memo_hash = [0u8; 32];
 
-		let result = wallet.send_payment_to_address(destination, asset, amount, memo_hash).await;
+		let result = wallet.send_payment_to_address(destination, asset, amount, memo_hash, 1).await;
 
 		assert!(result.is_ok());
 		let (transaction_response, _) = result.unwrap();
-		assert!(transaction_response.hash.to_vec().len() > 0);
-		assert!(transaction_response.ledger() > 0);
+		assert!(!transaction_response.hash.to_vec().is_empty());
+		assert!(transaction_response.ledger > 0);
 	}
 }

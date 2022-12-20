@@ -182,6 +182,7 @@ pub mod pallet {
 }
 
 // "Internal" functions, callable by code.
+#[allow(clippy::forget_non_drop, clippy::swap_ptr_to_ref, clippy::forget_ref, clippy::forget_copy)]
 #[cfg_attr(test, mockable)]
 impl<T: Config> Pallet<T> {
 	/// Ensures the Parachain is RUNNING

@@ -4,9 +4,9 @@ use parking_lot::RwLock;
 
 use stellar_relay_lib::{
 	sdk::{
-		compound_types::{LimitedVarArray, UnlimitedVarArray, XdrArchive},
+		compound_types::{UnlimitedVarArray, XdrArchive},
 		types::{ScpEnvelope, ScpHistoryEntry, StellarMessage, TransactionSet},
-		TransactionEnvelope, XdrCodec,
+		XdrCodec,
 	},
 	StellarOverlayConnection,
 };
@@ -15,8 +15,7 @@ use crate::oracle::{
 	constants::{get_min_externalized_messages, MAX_SLOT_TO_REMEMBER},
 	traits::FileHandler,
 	types::{EnvelopesMap, LifoMap},
-	ActorMessage, EnvelopesFileHandler, ScpArchiveStorage, ScpMessageCollector, Slot, TxHash,
-	TxSetsFileHandler,
+	ActorMessage, EnvelopesFileHandler, ScpArchiveStorage, ScpMessageCollector, Slot,
 };
 
 /// Determines whether the data retrieved is from the current map or from a file.
@@ -160,9 +159,9 @@ impl ScpMessageCollector {
 				Err(ProofStatus::LackingEnvelopes)
 			},
 			Some(envelopes) => {
-				envelopes.len() < get_min_externalized_messages(self.is_public());
+				let _ = envelopes.len() < get_min_externalized_messages(self.is_public());
 				Ok(UnlimitedVarArray::new(envelopes.clone())
-					.unwrap_or(UnlimitedVarArray::new_empty()))
+					.unwrap_or_else(|_| UnlimitedVarArray::new_empty()))
 			},
 		}
 	}
@@ -174,18 +173,18 @@ impl ScpMessageCollector {
 		tokio::spawn(async move {
 			// If the current slot is still in the range of 'remembered' slots
 			if slot > last_slot_index - MAX_SLOT_TO_REMEMBER {
-				let result =
+				let _result =
 					action_sender.send(ActorMessage::GetScpState { missed_slot: slot }).await;
 			} else {
 				let slot_index: u32 = slot.try_into().unwrap();
 				let scp_archive: XdrArchive<ScpHistoryEntry> =
 					ScpArchiveStorage::get_scp_archive(slot.try_into().unwrap()).await.unwrap();
 
-				let value = scp_archive.get_vec().into_iter().find(|&scp_entry| {
+				let value = scp_archive.get_vec().iter().find(|&scp_entry| {
 					if let ScpHistoryEntry::V0(scp_entry_v0) = scp_entry {
-						return scp_entry_v0.ledger_messages.ledger_seq == slot_index
+						scp_entry_v0.ledger_messages.ledger_seq == slot_index
 					} else {
-						return false
+						false
 					}
 				});
 
@@ -196,7 +195,7 @@ impl ScpMessageCollector {
 
 						let mut envelopes_map = rw_lock.write();
 
-						if let None = envelopes_map.get_with_key(&slot) {
+						if envelopes_map.get_with_key(&slot).is_none() {
 							tracing::info!("Adding archived SCP envelopes for slot {}", slot);
 							envelopes_map.set_with_key(slot, vec_scp);
 						}
@@ -223,7 +222,7 @@ impl ScpMessageCollector {
 
 	/// Returns either a TransactionSet or a ProofStatus saying it failed to retrieve the set.
 	fn get_txset(&self, slot: Slot) -> Result<TransactionSet, ProofStatus> {
-		match self.txset_map().get_with_key(&slot).map(|set| set.clone()) {
+		match self.txset_map().get_with_key(&slot).cloned() {
 			None => {
 				// If the current slot is still in the range of 'remembered' slots
 				if check_slot_position(*self.last_slot_index(), slot) {
@@ -326,11 +325,11 @@ async fn get_envelopes_from_horizon_archive(
 	}
 	let scp_archive: XdrArchive<ScpHistoryEntry> = scp_archive_result.unwrap();
 
-	let value = scp_archive.get_vec().into_iter().find(|&scp_entry| {
+	let value = scp_archive.get_vec().iter().find(|&scp_entry| {
 		if let ScpHistoryEntry::V0(scp_entry_v0) = scp_entry {
-			return scp_entry_v0.ledger_messages.ledger_seq == slot_index
+			scp_entry_v0.ledger_messages.ledger_seq == slot_index
 		} else {
-			return false
+			false
 		}
 	});
 
@@ -341,7 +340,7 @@ async fn get_envelopes_from_horizon_archive(
 
 			let mut envelopes_map = envelopes_map_lock.write();
 
-			if let None = envelopes_map.get_with_key(&slot) {
+			if envelopes_map.get_with_key(&slot).is_none() {
 				tracing::info!("Adding archived SCP envelopes for slot {}", slot);
 				envelopes_map.set_with_key(slot, vec_scp);
 			}
@@ -361,9 +360,7 @@ pub trait ProofExt: Send + Sync {
 
 #[cfg(test)]
 mod test {
-	use crate::oracle::collector::proof_builder::{
-		check_slot_position, return_proper_envelopes_error,
-	};
+	use crate::oracle::collector::proof_builder::check_slot_position;
 
 	#[test]
 	fn test_check_slot_position() {

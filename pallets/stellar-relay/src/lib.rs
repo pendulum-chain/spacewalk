@@ -27,7 +27,7 @@ mod default_weights;
 #[frame_support::pallet]
 pub mod pallet {
 	use codec::FullCodec;
-	use frame_support::pallet_prelude::*;
+	use frame_support::{pallet_prelude::*, transactional};
 	use frame_system::pallet_prelude::*;
 	use sha2::{Digest, Sha256};
 	use sp_std::{collections::btree_map::BTreeMap, fmt::Debug, vec::Vec};
@@ -88,7 +88,9 @@ pub mod pallet {
 	// https://docs.substrate.io/v3/runtime/events-and-errors
 	#[pallet::event]
 	#[pallet::generate_deposit(pub (super) fn deposit_event)]
-	pub enum Event<T: Config> {}
+	pub enum Event<T: Config> {
+		UpdateTier1ValidatorSet { new_validators_enactment_block_height: T::BlockNumber },
+	}
 
 	// Errors inform users that something went wrong.
 	#[pallet::error]
@@ -419,6 +421,7 @@ pub mod pallet {
 		///
 		/// It can only be called by the root origin.
 		#[pallet::weight(<T as Config>::WeightInfo::update_tier_1_validator_set())]
+		#[transactional]
 		pub fn update_tier_1_validator_set(
 			origin: OriginFor<T>,
 			validators: Vec<ValidatorOf<T>>,
@@ -426,7 +429,7 @@ pub mod pallet {
 			enactment_block_height: T::BlockNumber,
 		) -> DispatchResult {
 			// Limit this call to root
-			let _ = ensure_root(origin)?;
+			ensure_root(origin)?;
 
 			Self::_update_tier_1_validator_set(validators, organizations, enactment_block_height)
 		}
@@ -482,6 +485,10 @@ pub mod pallet {
 					.map_err(|_| Error::<T>::BoundedVecCreationFailed)?;
 			Organizations::<T>::put(new_organization_vec);
 
+			Self::deposit_event(Event::<T>::UpdateTier1ValidatorSet {
+				new_validators_enactment_block_height: enactment_block_height,
+			});
+
 			Ok(())
 		}
 	}
@@ -503,9 +510,9 @@ pub mod pallet {
 				if Self::is_public_network() { &PUBLIC_NETWORK } else { &TEST_NETWORK };
 
 			// Check if tx is included in the transaction set
-			let tx_hash = transaction_envelope.get_hash(&network);
+			let tx_hash = transaction_envelope.get_hash(network);
 			let tx_included =
-				transaction_set.txes.get_vec().iter().any(|tx| tx.get_hash(&network) == tx_hash);
+				transaction_set.txes.get_vec().iter().any(|tx| tx.get_hash(network) == tx_hash);
 			ensure!(tx_included, Error::<T>::TransactionNotInTransactionSet);
 
 			// Choose the set of validators to use for validation based on the enactment block
@@ -534,7 +541,7 @@ pub mod pallet {
 			}
 
 			// Check if transaction set matches tx_set_hash included in the ScpEnvelopes
-			let expected_tx_set_hash = compute_non_generic_tx_set_content_hash(&transaction_set);
+			let expected_tx_set_hash = compute_non_generic_tx_set_content_hash(transaction_set);
 
 			for envelope in envelopes.get_vec() {
 				match envelope.clone().statement.pledges {
@@ -545,7 +552,7 @@ pub mod pallet {
 							Error::<T>::TransactionSetHashMismatch
 						);
 					},
-					_ => return Err(Error::<T>::InvalidScpPledge.into()),
+					_ => return Err(Error::<T>::InvalidScpPledge),
 				}
 			}
 

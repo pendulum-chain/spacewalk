@@ -41,7 +41,7 @@ fn test_get_amount_from_transaction_envelope_works() {
 			Operation {
 				source_account: Some(source_account.clone()),
 				body: OperationBody::CreateClaimableBalance(CreateClaimableBalanceOp {
-					asset: asset.clone(),
+					asset,
 					amount: stroop_amount,
 					claimants: LimitedVarArray::new(vec![Claimant::ClaimantTypeV0(ClaimantV0 {
 						destination: PublicKey::PublicKeyTypeEd25519(recipient_stellar_address),
@@ -108,7 +108,7 @@ fn test_get_amount_from_transaction_envelope_works_for_mismatching_assets() {
 			Operation {
 				source_account: Some(source_account.clone()),
 				body: OperationBody::CreateClaimableBalance(CreateClaimableBalanceOp {
-					asset: asset.clone(),
+					asset,
 					amount: stroop_amount,
 					claimants: LimitedVarArray::new(vec![Claimant::ClaimantTypeV0(ClaimantV0 {
 						destination: PublicKey::PublicKeyTypeEd25519(recipient_stellar_address),
@@ -197,7 +197,7 @@ fn test_checked_fixed_point_mul() {
 		let currency = CurrencyId::Native;
 		let tests: Vec<(Amount<Test>, UnsignedFixedPoint, Amount<Test>)> = vec![
 			(
-				Amount::new(1 * 10u128.pow(8), currency), // 1 BTC
+				Amount::new(10u128.pow(8), currency), // 1 BTC
 				UnsignedFixedPoint::checked_from_rational(1, 2).unwrap(), // 50%
 				Amount::new(50000000, currency),
 			),
@@ -217,7 +217,7 @@ fn test_checked_fixed_point_mul() {
 				Amount::new(625, currency),
 			),
 			(
-				Amount::new(1 * 10u128.pow(10), currency), // 1 DOT
+				Amount::new(10u128.pow(10), currency), // 1 DOT
 				UnsignedFixedPoint::checked_from_rational(1, 10).unwrap(), // 10%
 				Amount::new(1000000000, currency),
 			),

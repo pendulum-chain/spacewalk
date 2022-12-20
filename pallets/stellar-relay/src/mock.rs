@@ -94,7 +94,7 @@ pub fn create_dummy_validator(
 		name: create_bounded_vec(name.as_bytes()).unwrap(),
 		public_key: create_bounded_vec(validator_secret.get_public().to_encoding().as_slice())
 			.unwrap(),
-		organization_id: organization.id.clone(),
+		organization_id: organization.id,
 	};
 
 	(validator, validator_secret)

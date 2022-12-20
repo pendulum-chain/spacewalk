@@ -249,8 +249,7 @@ mod test {
 
 	#[test]
 	fn create_new_connector_works() {
-		use substrate_stellar_sdk::network::TEST_NETWORK;
-		let (node_info, _, mut connector, _, _) = create_connector();
+		let (node_info, _, connector, _, _) = create_connector();
 
 		let connector_local_node = connector.local.node();
 
@@ -263,7 +262,7 @@ mod test {
 
 	#[test]
 	fn connector_local_sequence_works() {
-		let (node_info, _, mut connector, _, _) = create_connector();
+		let (_node_info, _, mut connector, _, _) = create_connector();
 		assert_eq!(connector.local_sequence(), 0);
 		connector.increment_local_sequence();
 		assert_eq!(connector.local_sequence(), 1);
@@ -271,7 +270,7 @@ mod test {
 
 	#[test]
 	fn connector_set_remote_works() {
-		let (node_info, _, mut connector, _, _) = create_connector();
+		let (_node_info, _, mut connector, _, _) = create_connector();
 
 		let connector_auth = &connector.connection_auth;
 		let new_auth_cert = create_auth_cert_from_connection_auth(connector_auth);
@@ -294,7 +293,7 @@ mod test {
 
 	#[test]
 	fn connector_increment_remote_sequence_works() {
-		let (node_info, _, mut connector, _, _) = create_connector();
+		let (_node_info, _, mut connector, _, _) = create_connector();
 
 		let connector_auth = &connector.connection_auth;
 		let new_auth_cert = create_auth_cert_from_connection_auth(connector_auth);
@@ -341,7 +340,7 @@ mod test {
 		let remote_nonce = remote.nonce();
 		connector.set_remote(remote.clone());
 
-		let shared_key = connector.get_shared_key(&remote.pub_key_ecdh());
+		let shared_key = connector.get_shared_key(remote.pub_key_ecdh());
 		assert!(connector.hmac_keys().is_none());
 		//act
 		connector.set_hmac_keys(HMacKeys::new(
@@ -356,11 +355,11 @@ mod test {
 
 	#[test]
 	fn connector_method_works() {
-		let (_, connConfig, mut connector, _, _) = create_connector();
+		let (_, conn_config, mut connector, _, _) = create_connector();
 
-		assert_eq!(connector.remote_called_us(), connConfig.remote_called_us);
-		assert_eq!(connector.receive_tx_messages(), connConfig.recv_tx_msgs);
-		assert_eq!(connector.receive_scp_messages(), connConfig.recv_scp_messages);
+		assert_eq!(connector.remote_called_us(), conn_config.remote_called_us);
+		assert_eq!(connector.receive_tx_messages(), conn_config.recv_tx_msgs);
+		assert_eq!(connector.receive_scp_messages(), conn_config.recv_scp_messages);
 
 		connector.got_hello();
 		assert!(connector.is_handshake_created());
@@ -371,7 +370,7 @@ mod test {
 
 	#[tokio::test]
 	async fn connector_send_to_user_works() {
-		let (_, _, mut connector, _, mut message_receiver) = create_connector();
+		let (_, _, connector, _, mut message_receiver) = create_connector();
 
 		let message = StellarRelayMessage::Timeout;
 		connector.send_to_user(message).await.unwrap();
@@ -397,7 +396,7 @@ mod test {
 
 	#[tokio::test]
 	async fn connector_send_to_node_works() {
-		let (_, _, mut connector, mut actions_receiver, _) = create_connector();
+		let (_, _, connector, mut actions_receiver, _) = create_connector();
 
 		connector.send_to_node(ConnectorActions::SendHello).await.unwrap();
 

@@ -1,6 +1,5 @@
 use std::sync::Arc;
 
-use itertools::min;
 use parking_lot::{lock_api::RwLockReadGuard, RawRwLock, RwLock};
 use tokio::sync::mpsc;
 
@@ -234,10 +233,7 @@ impl ScpMessageCollector {
 
 #[cfg(test)]
 mod test {
-	use stellar_relay_lib::sdk::{
-		network::{PUBLIC_NETWORK, TEST_NETWORK},
-		types::TransactionSet,
-	};
+	use stellar_relay_lib::sdk::network::{PUBLIC_NETWORK, TEST_NETWORK};
 
 	use crate::oracle::{
 		collector::ScpMessageCollector, constants::get_min_externalized_messages,
@@ -247,7 +243,7 @@ mod test {
 
 	#[test]
 	fn envelopes_map_len_works() {
-		let (sender, receiver) = mpsc::channel(1024);
+		let (sender, _receiver) = mpsc::channel(1024);
 		let collector = ScpMessageCollector::new(true, sender);
 
 		assert_eq!(collector.envelopes_map_len(), 0);
@@ -263,7 +259,7 @@ mod test {
 
 	#[test]
 	fn network_and_is_public_works() {
-		let (sender, receiver) = mpsc::channel(1024);
+		let (sender, _receiver) = mpsc::channel(1024);
 		let collector = ScpMessageCollector::new(true, sender.clone());
 		assert_eq!(&collector.network().get_passphrase(), &PUBLIC_NETWORK.get_passphrase());
 
@@ -276,7 +272,7 @@ mod test {
 
 	#[test]
 	fn watch_slot_works() {
-		let (sender, receiver) = mpsc::channel(1024);
+		let (sender, _receiver) = mpsc::channel(1024);
 		let mut collector = ScpMessageCollector::new(true, sender);
 
 		let slot = 12345;
@@ -287,14 +283,12 @@ mod test {
 
 	#[test]
 	fn add_scp_envelope_works() {
-		let (sender, receiver) = mpsc::channel(1024);
+		let (sender, _receiver) = mpsc::channel(1024);
 		let mut collector = ScpMessageCollector::new(true, sender);
 
 		let first_slot = 578291;
 		let env_map =
 			EnvelopesFileHandler::get_map_from_archives(first_slot).expect("should return a map");
-
-		let slot = 1234;
 
 		let (slot, value) = env_map.get(0).expect("should return a tuple");
 		let one_scp_env = value[0].clone();
@@ -308,10 +302,10 @@ mod test {
 		collector.add_scp_envelope(*slot, two_scp_env.clone());
 		assert_eq!(collector.envelopes_map_len(), 1); // length shouldn't change, since we're insertin to the same key.
 
-		let collctr_env_map = collector.envelopes_map.read();
-		let res = collctr_env_map
+		let collector_env_map = collector.envelopes_map.read();
+		let res = collector_env_map
 			.get_with_key(&slot)
-			.expect("should return a vector of scpenvelopes");
+			.expect("should return a vector of scp envelopes");
 
 		assert_eq!(res.len(), 2);
 		assert_eq!(&res[0], &one_scp_env);
@@ -320,7 +314,7 @@ mod test {
 
 	#[test]
 	fn add_txset_works() {
-		let (sender, receiver) = mpsc::channel(1024);
+		let (sender, _receiver) = mpsc::channel(1024);
 		let mut collector = ScpMessageCollector::new(false, sender);
 
 		let slot = 42867088;
@@ -342,7 +336,7 @@ mod test {
 		let min_ext_msgs = get_min_externalized_messages(is_pub_network);
 
 		let dummy_slot_0 = 0;
-		let (sender, receiver) = mpsc::channel(1024);
+		let (sender, _receiver) = mpsc::channel(1024);
 		let mut collector = ScpMessageCollector::new(is_pub_network, sender);
 		collector.watch_slot(dummy_slot_0);
 
@@ -357,7 +351,7 @@ mod test {
 			let one_scp_env = value[0].clone();
 
 			// let's fill the collector with the minimum # of envelopes
-			for i in 0..min_ext_msgs + 1 {
+			for _ in 0..min_ext_msgs + 1 {
 				collector.add_scp_envelope(dummy_slot_0, one_scp_env.clone());
 			}
 		}
@@ -379,7 +373,7 @@ mod test {
 
 	#[test]
 	fn set_last_slot_index_works() {
-		let (sender, receiver) = mpsc::channel(1024);
+		let (sender, _receiver) = mpsc::channel(1024);
 		let mut collector = ScpMessageCollector::new(true, sender);
 		{
 			let mut idx = collector.last_slot_index.write();
@@ -400,7 +394,7 @@ mod test {
 
 	#[test]
 	fn remove_data_works() {
-		let (sender, receiver) = mpsc::channel(1024);
+		let (sender, _receiver) = mpsc::channel(1024);
 		let mut collector = ScpMessageCollector::new(false, sender);
 
 		let env_slot = 578391;
@@ -433,7 +427,7 @@ mod test {
 
 	#[test]
 	fn is_txset_new_works() {
-		let (sender, receiver) = mpsc::channel(1024);
+		let (sender, _receiver) = mpsc::channel(1024);
 		let collector = ScpMessageCollector::new(false, sender);
 
 		let txset_slot = 42867088;
@@ -454,7 +448,7 @@ mod test {
 
 	#[test]
 	fn is_slot_relevant_works() {
-		let (sender, receiver) = mpsc::channel(1024);
+		let (sender, _receiver) = mpsc::channel(1024);
 		let collector = ScpMessageCollector::new(false, sender);
 
 		collector.slot_watchlist.write().insert(123, ());

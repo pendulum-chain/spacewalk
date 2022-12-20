@@ -230,9 +230,9 @@ pub(crate) async fn receiving_service(
 				);
 
 				if retry >= retries {
-					return Err(Error::ConnectionFailed(format!(
-						"TIMED OUT reading for messages from the stream"
-					)))
+					return Err(Error::ConnectionFailed(
+						"TIMED OUT reading for messages from the stream".to_string(),
+					))
 				}
 				retry += 1;
 			},
@@ -255,7 +255,7 @@ async fn _connection_handler(
 
 		// write message to the stream
 		ConnectorActions::SendMessage(msg) => {
-			let xdr_msg = connector.create_xdr_message(msg)?;
+			let xdr_msg = connector.create_xdr_message(*msg)?;
 			w_stream
 				.write_all(&xdr_msg)
 				.await

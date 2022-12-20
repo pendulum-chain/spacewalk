@@ -1,7 +1,7 @@
 //! # Oracle Pallet
 //! Based on the [specification](https://spec.interlay.io/spec/oracle.html).
 
-// #![deny(warnings)]
+#![deny(warnings)]
 #![cfg_attr(test, feature(proc_macro_hygiene))]
 #![cfg_attr(not(feature = "std"), no_std)]
 
@@ -11,12 +11,9 @@ extern crate mocktopus;
 use codec::{Decode, Encode, MaxEncodedLen};
 use frame_support::{
 	dispatch::{DispatchError, DispatchResult},
-	ensure,
-	traits::Get,
 	transactional,
-	weights::Weight,
 };
-use frame_system::{ensure_root, ensure_signed};
+
 #[cfg(test)]
 use mocktopus::macros::mockable;
 use scale_info::TypeInfo;
@@ -271,7 +268,7 @@ impl<T: Config> Pallet<T> {
 		}
 
 		let current_status_is_online = Self::is_oracle_online();
-		let new_status_is_online = raw_values_updated.len() > 0 &&
+		let new_status_is_online = !raw_values_updated.is_empty() &&
 			raw_values_updated.iter().all(|(key, _)| Aggregate::<T>::get(key).is_some());
 
 		if current_status_is_online != new_status_is_online {
@@ -287,7 +284,7 @@ impl<T: Config> Pallet<T> {
 	pub fn _feed_values(oracle: T::AccountId, values: Vec<(OracleKey, T::UnsignedFixedPoint)>) {
 		for (key, value) in values.iter() {
 			let timestamped =
-				TimestampedValue { timestamp: Self::get_current_time(), value: value.clone() };
+				TimestampedValue { timestamp: Self::get_current_time(), value: *value };
 			RawValues::<T>::insert(key, &oracle, timestamped);
 			RawValuesUpdated::<T>::insert(key, true);
 		}
@@ -301,7 +298,7 @@ impl<T: Config> Pallet<T> {
 	pub fn get_price(key: OracleKey) -> Result<UnsignedFixedPoint<T>, DispatchError> {
 		ext::security::ensure_parachain_status_running::<T>()?;
 
-		Aggregate::<T>::get(key).ok_or(Error::<T>::MissingExchangeRate.into())
+		Aggregate::<T>::get(key).ok_or_else(|| Error::<T>::MissingExchangeRate.into())
 	}
 
 	pub fn convert(
@@ -325,8 +322,7 @@ impl<T: Config> Pallet<T> {
 	) -> Result<BalanceOf<T>, DispatchError> {
 		let rate = Self::get_price(OracleKey::ExchangeRate(currency_id))?;
 		let converted = rate.checked_mul_int(amount).ok_or(ArithmeticError::Overflow)?;
-		let result = converted.try_into().map_err(|_e| Error::<T>::TryIntoIntError)?;
-		Ok(result)
+		Ok(converted)
 	}
 
 	pub fn collateral_to_wrapped(
@@ -354,7 +350,7 @@ impl<T: Config> Pallet<T> {
 			RawValues::<T>::iter_prefix(key).map(|(_, value)| value).collect();
 		let min_timestamp = Self::get_current_time().saturating_sub(Self::get_max_delay());
 		raw_values.retain(|value| value.timestamp >= min_timestamp);
-		if raw_values.len() == 0 {
+		if raw_values.is_empty() {
 			Aggregate::<T>::remove(key);
 			ValidUntil::<T>::remove(key);
 			None

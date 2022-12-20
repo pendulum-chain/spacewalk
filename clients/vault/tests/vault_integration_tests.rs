@@ -4,7 +4,7 @@ use async_trait::async_trait;
 use frame_support::assert_ok;
 use futures::{
 	channel::mpsc,
-	future::{join, join3, join4, join5},
+	future::{join, join3, join4},
 	Future, FutureExt, SinkExt,
 };
 use serial_test::serial;
@@ -12,19 +12,19 @@ use sp_keyring::AccountKeyring;
 use sp_runtime::traits::StaticLookup;
 use tokio::{sync::RwLock, time::sleep};
 
-use primitives::{issue::IssueRequest, H256};
+use primitives::H256;
 use runtime::{
-	integration::*, types::*, CurrencyId::Token, Error, FixedPointNumber, FixedU128, IssuePallet,
+	integration::*, types::*, CurrencyId::Token, FixedPointNumber, FixedU128, IssuePallet,
 	RedeemPallet, ReplacePallet, ShutdownSender, SpacewalkParachain, SudoPallet, UtilFuncs,
 	VaultRegistryPallet,
 };
-use stellar_relay_lib::sdk::{Hash, PublicKey, SecretKey, XdrCodec};
+use stellar_relay_lib::sdk::{PublicKey, XdrCodec};
 use vault::{
-	oracle::{create_handler, types::Slot, OracleProofOps, Proof, ProofExt, ProofStatus},
+	oracle::{OracleProofOps, Proof, ProofExt, ProofStatus},
 	service::IssueFilter,
 	Event as CancellationEvent, VaultIdManager,
 };
-use wallet::{types::Watcher, StellarWallet};
+use wallet::StellarWallet;
 
 const TIMEOUT: Duration = Duration::from_secs(60);
 
@@ -716,7 +716,7 @@ async fn test_issue_cancel_succeeds() {
 		let issue_set = Arc::new(RwLock::new(IssueRequestsMap::new()));
 
 		let is_public_network = false;
-		let mut wallet = StellarWallet::from_secret_encoded(
+		let wallet = StellarWallet::from_secret_encoded(
 			&STELLAR_VAULT_SECRET_KEY.to_string(),
 			is_public_network,
 		)

@@ -11,19 +11,17 @@ use subxt::{
 	metadata::DecodeWithMetadata,
 	rpc::rpc_params,
 	storage::{address::Yes, StorageAddress},
-	tx::{Signer, TxPayload},
-	Error as BasicError, Metadata,
+	tx::TxPayload,
+	Error as BasicError,
 };
 use tokio::{sync::RwLock, time::timeout};
 
 use module_oracle_rpc_runtime_api::BalanceWrapper;
-use primitives::{CurrencyId::Token, Hash, DOT};
+use primitives::Hash;
 
 use crate::{
 	conn::{new_websocket_client, new_websocket_client_with_retry},
-	metadata,
-	metadata::DispatchError,
-	notify_retry,
+	metadata, notify_retry,
 	types::*,
 	AccountId, Error, RetryPolicy, ShutdownSender, SpacewalkRuntime, SpacewalkSigner, SubxtError,
 };
@@ -59,7 +57,6 @@ pub struct SpacewalkParachain {
 	account_id: AccountId,
 	api: OnlineClient<SpacewalkRuntime>,
 	shutdown_tx: ShutdownSender,
-	metadata: Arc<Metadata>,
 	fee_rate_update_tx: FeeRateUpdateSender,
 }
 
@@ -71,7 +68,6 @@ impl SpacewalkParachain {
 	) -> Result<Self, Error> {
 		let account_id = signer.read().await.account_id().clone();
 		let api = OnlineClient::<SpacewalkRuntime>::from_rpc_client(Arc::new(rpc_client)).await?;
-		let metadata = Arc::new(api.rpc().metadata().await?);
 
 		let runtime_version = api.rpc().runtime_version(None).await?;
 		let default_spec_name = &JsonValue::default();
@@ -90,8 +86,8 @@ impl SpacewalkParachain {
 			log::info!("transaction_version={}", runtime_version.transaction_version);
 		} else {
 			return Err(Error::InvalidSpecVersion(
-				DEFAULT_SPEC_VERSION.start().clone(),
-				DEFAULT_SPEC_VERSION.end().clone(),
+				*DEFAULT_SPEC_VERSION.start(),
+				*DEFAULT_SPEC_VERSION.end(),
 				runtime_version.spec_version,
 			))
 		}
@@ -100,8 +96,7 @@ impl SpacewalkParachain {
 		// if we miss an event
 		let (fee_rate_update_tx, _) = tokio::sync::broadcast::channel(2);
 
-		let parachain_rpc =
-			Self { api, shutdown_tx, metadata, signer, account_id, fee_rate_update_tx };
+		let parachain_rpc = Self { api, shutdown_tx, signer, account_id, fee_rate_update_tx };
 		Ok(parachain_rpc)
 	}
 
@@ -228,6 +223,7 @@ impl SpacewalkParachain {
 		.await
 	}
 
+	#[cfg(test)]
 	async fn get_fresh_nonce(&self) -> u32 {
 		// For getting the nonce, use latest, possibly non-finalized block.
 		let storage_key = metadata::storage().system().account(&self.account_id);
@@ -350,7 +346,7 @@ impl SpacewalkParachain {
 									}
 								}
 							},
-							Err(err) => on_error(err.into()),
+							Err(err) => on_error(err),
 						}
 					}
 				}
@@ -399,7 +395,7 @@ impl SpacewalkParachain {
 	pub async fn get_invalid_tx_error(&self, recipient: AccountId) -> Error {
 		let call = metadata::tx().tokens().transfer(
 			subxt::ext::sp_runtime::MultiAddress::Id(recipient),
-			Token(DOT),
+			Token(TokenSymbol::DOT),
 			100,
 		);
 		let nonce = self.get_fresh_nonce().await;
@@ -431,7 +427,7 @@ impl SpacewalkParachain {
 	pub async fn get_too_low_priority_error(&self, recipient: AccountId) -> Error {
 		let call = metadata::tx().tokens().transfer(
 			subxt::ext::sp_runtime::MultiAddress::Id(recipient),
-			Token(DOT),
+			Token(TokenSymbol::DOT),
 			100,
 		);
 
@@ -644,7 +640,7 @@ impl VaultRegistryPallet for SpacewalkParachain {
 	/// * `public_key` - the new public key of the vault
 	async fn register_public_key(&self, public_key: StellarPublicKeyRaw) -> Result<(), Error> {
 		let register_public_key_tx =
-			metadata::tx().vault_registry().register_public_key(public_key.clone());
+			metadata::tx().vault_registry().register_public_key(public_key);
 
 		self.with_retry(register_public_key_tx).await?;
 

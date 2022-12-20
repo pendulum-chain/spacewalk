@@ -1,7 +1,7 @@
 //! # Issue Pallet
 //! Based on the [specification](https://spec.interlay.io/spec/issue.html).
 
-// #![deny(warnings)]
+#![deny(warnings)]
 #![cfg_attr(test, feature(proc_macro_hygiene))]
 #![cfg_attr(not(feature = "std"), no_std)]
 
@@ -12,11 +12,7 @@ use frame_support::{dispatch::DispatchError, ensure, traits::Get, transactional}
 #[cfg(test)]
 use mocktopus::macros::mockable;
 use sp_core::H256;
-use sp_runtime::{
-	traits::{CheckedAdd, CheckedDiv, Convert, Saturating},
-	ArithmeticError,
-};
-use sp_runtime::traits::Zero;
+use sp_runtime::traits::{CheckedDiv, Convert, Saturating, Zero};
 use sp_std::vec::Vec;
 use substrate_stellar_sdk::{
 	compound_types::UnlimitedVarArray,
@@ -157,7 +153,8 @@ pub mod pallet {
 	pub(super) type LimitVolumeAmount<T: Config> =
 		StorageValue<_, Option<BalanceOf<T>>, ValueQuery>;
 
-	/// CurrencyID that represents the currency in which the volume limit is measured, eg DOT, USDC or PEN
+	/// CurrencyID that represents the currency in which the volume limit is measured, eg DOT, USDC
+	/// or PEN
 	#[pallet::storage]
 	pub(super) type LimitVolumeCurrencyId<T: Config> = StorageValue<_, T::CurrencyId, ValueQuery>;
 
@@ -583,7 +580,7 @@ impl<T: Config> Pallet<T> {
 			&slashed_collateral,
 		)?;
 
-		Self::set_issue_amount(&issue_id, issue, amount_transferred, slashed_collateral)?;
+		Self::set_issue_amount(issue_id, issue, amount_transferred, slashed_collateral)?;
 
 		Ok(to_release_collateral)
 	}
@@ -598,12 +595,12 @@ impl<T: Config> Pallet<T> {
 		let max_allowed = ext::vault_registry::get_issuable_tokens_from_vault::<T>(&issue.vault)?;
 		let issue_amount = surplus_amount.min(&max_allowed)?;
 
-		if let Ok(_) =
-			ext::vault_registry::try_increase_to_be_issued_tokens::<T>(&issue.vault, &issue_amount)
+		if ext::vault_registry::try_increase_to_be_issued_tokens::<T>(&issue.vault, &issue_amount)
+			.is_ok()
 		{
 			// Current vault can handle the surplus; update the issue request
 			Self::set_issue_amount(
-				&issue_id,
+				issue_id,
 				issue,
 				expected_total_amount.checked_add(&issue_amount)?,
 				Amount::zero(T::GetGriefingCollateralCurrencyId::get()),
@@ -707,11 +704,10 @@ impl<T: Config> Pallet<T> {
 	}
 
 	fn increase_interval_volume(issue_amount: Amount<T>) -> Result<(), DispatchError> {
-		if let Some(limit_volume) = LimitVolumeAmount::<T>::get() {
+		if let Some(_limit_volume) = LimitVolumeAmount::<T>::get() {
 			let issue_volume = Self::convert_into_limit_currency_id_amount(issue_amount)?;
 			let current_volume = CurrentVolumeAmount::<T>::get();
-			let new_volume = current_volume
-				.saturating_add(issue_volume.amount());
+			let new_volume = current_volume.saturating_add(issue_volume.amount());
 			CurrentVolumeAmount::<T>::put(new_volume);
 		}
 		Ok(())
@@ -733,14 +729,15 @@ impl<T: Config> Pallet<T> {
 			let interval_length: T::BlockNumber = IntervalLength::<T>::get();
 
 			let current_index = current_block.checked_div(&interval_length);
-			let mut current_volume = BalanceOf::<T>::zero();			;
+			let mut current_volume = BalanceOf::<T>::zero();
 			if current_index != Some(LastIntervalIndex::<T>::get()) {
 				LastIntervalIndex::<T>::put(current_index.unwrap_or_default());
 				CurrentVolumeAmount::<T>::put(current_volume);
 			} else {
 				current_volume = CurrentVolumeAmount::<T>::get();
 			}
-			let new_issue_request_amount = Self::convert_into_limit_currency_id_amount(amount_requested)?;
+			let new_issue_request_amount =
+				Self::convert_into_limit_currency_id_amount(amount_requested)?;
 			ensure!(
 				new_issue_request_amount.amount().saturating_add(current_volume) <= limit_volume,
 				Error::<T>::ExceedLimitVolumeForIssueRequest

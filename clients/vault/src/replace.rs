@@ -219,7 +219,7 @@ pub async fn listen_for_execute_replace(
 
 #[cfg(all(test, feature = "standalone-metadata"))]
 mod tests {
-	use std::{str::FromStr, sync::Arc};
+	use std::sync::Arc;
 
 	use async_trait::async_trait;
 

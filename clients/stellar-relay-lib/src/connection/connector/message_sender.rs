@@ -8,7 +8,7 @@ use crate::{
 impl Connector {
 	/// Sends an xdr version of a wrapped AuthenticatedMessage ( StellarMessage ).
 	async fn send_stellar_message(&mut self, msg: StellarMessage) -> Result<(), Error> {
-		self.send_to_node(ConnectorActions::SendMessage(msg)).await
+		self.send_to_node(ConnectorActions::SendMessage(Box::new(msg))).await
 	}
 
 	pub(super) async fn check_to_send_more(

@@ -1,8 +1,8 @@
 use std::{collections::HashMap, convert::TryInto, sync::Arc, time::Duration};
 
-use futures::{future::Either, try_join, StreamExt};
+use futures::try_join;
 use governor::RateLimiter;
-use sp_arithmetic::FixedPointNumber;
+
 use sp_runtime::traits::StaticLookup;
 use tokio::{
 	sync::RwLock,
@@ -11,8 +11,8 @@ use tokio::{
 
 use primitives::{stellar::PublicKey, TransactionEnvelopeExt};
 use runtime::{
-	types::FixedU128, CurrencyId, OraclePallet, PrettyPrint, RedeemPallet, RedeemRequestStatus,
-	ReplacePallet, ReplaceRequestStatus, SecurityPallet, ShutdownSender, SpacewalkParachain,
+	CurrencyId, OraclePallet, PrettyPrint, RedeemPallet, RedeemRequestStatus, ReplacePallet,
+	ReplaceRequestStatus, SecurityPallet, ShutdownSender, SpacewalkParachain,
 	SpacewalkRedeemRequest, SpacewalkReplaceRequest, StellarPublicKeyRaw, StellarRelayPallet,
 	UtilFuncs, VaultId, VaultRegistryPallet, H256,
 };
@@ -32,6 +32,7 @@ struct Deadline {
 	parachain: u32,
 }
 
+#[allow(dead_code)]
 #[derive(Debug, Clone)]
 pub struct Request {
 	hash: H256,
@@ -349,7 +350,6 @@ pub async fn execute_open_requests(
 					// start a new task to execute on the parachain and make copies of the
 					// variables we move into the task
 					let parachain_rpc = parachain_rpc.clone();
-					let vault_id_manager = vault_id_manager.clone();
 					let proof_ops = proof_ops.clone();
 					spawn_cancelable(shutdown_tx.subscribe(), async move {
 						match transaction.to_envelope() {
@@ -385,7 +385,7 @@ pub async fn execute_open_requests(
 								})
 								.await;
 
-								if let Err(_) = timeout_result {
+								if timeout_result.is_err() {
 									tracing::error!("Failed to get proof for slot {}", slot);
 									return
 								}
@@ -403,7 +403,10 @@ pub async fn execute_open_requests(
 								}
 							},
 							Err(error) => {
-								tracing::error!("Failed to decode transaction envelope");
+								tracing::error!(
+									"Failed to decode transaction envelope {:?}",
+									error
+								);
 							},
 						}
 					});
@@ -479,8 +482,8 @@ fn get_request_for_stellar_tx(
 	let request = hash_map.get(&h256)?;
 
 	let envelope = tx.to_envelope().ok()?;
-	let paid_amount = envelope
-		.get_payment_amount_for_asset_to(request.stellar_address.clone(), request.asset.clone());
+	let paid_amount =
+		envelope.get_payment_amount_for_asset_to(request.stellar_address, request.asset.clone());
 
 	if paid_amount >= request.amount {
 		Some(request.clone())
