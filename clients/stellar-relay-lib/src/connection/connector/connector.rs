@@ -355,11 +355,11 @@ mod test {
 
 	#[test]
 	fn connector_method_works() {
-		let (_, connConfig, mut connector, _, _) = create_connector();
+		let (_, conn_config, mut connector, _, _) = create_connector();
 
-		assert_eq!(connector.remote_called_us(), connConfig.remote_called_us);
-		assert_eq!(connector.receive_tx_messages(), connConfig.recv_tx_msgs);
-		assert_eq!(connector.receive_scp_messages(), connConfig.recv_scp_messages);
+		assert_eq!(connector.remote_called_us(), conn_config.remote_called_us);
+		assert_eq!(connector.receive_tx_messages(), conn_config.recv_tx_msgs);
+		assert_eq!(connector.receive_scp_messages(), conn_config.recv_scp_messages);
 
 		connector.got_hello();
 		assert!(connector.is_handshake_created());
