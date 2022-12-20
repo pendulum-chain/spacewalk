@@ -27,7 +27,7 @@ use stellar_relay_lib::{
 	},
 	ConnConfig,
 };
-use wallet::StellarWallet;
+use wallet::{LedgerTxEnvMap, StellarWallet};
 
 use crate::{
 	cancellation::ReplaceCanceller,
@@ -36,11 +36,11 @@ use crate::{
 	issue,
 	issue::IssueFilter,
 	metrics::publish_tokio_metrics,
-	oracle::{create_handler, prepare_directories, types::Slot, OracleAgent, ScpMessageHandler},
+	oracle::{prepare_directories, types::Slot, OracleAgent},
 	redeem::listen_for_redeem_requests,
 	replace::{listen_for_accept_replace, listen_for_execute_replace, listen_for_replace_requests},
 	service::{CancellationScheduler, IssueCanceller},
-	Event, CHAIN_HEIGHT_POLLING_INTERVAL,
+	ArcRwLock, Event, CHAIN_HEIGHT_POLLING_INTERVAL,
 };
 
 pub const VERSION: &str = git_version!(args = ["--tags"], fallback = "unknown");
@@ -58,20 +58,20 @@ pub const TIER_1_VALIDATOR_IP_PUBLIC: &str = "141.95.47.112";
 #[derive(Clone)]
 pub struct VaultData {
 	pub vault_id: VaultId,
-	pub stellar_wallet: Arc<RwLock<StellarWallet>>,
+	pub stellar_wallet: ArcRwLock<StellarWallet>,
 }
 
 #[derive(Clone)]
 pub struct VaultIdManager {
-	vault_data: Arc<RwLock<HashMap<VaultId, VaultData>>>,
+	vault_data: ArcRwLock<HashMap<VaultId, VaultData>>,
 	spacewalk_parachain: SpacewalkParachain,
-	stellar_wallet: Arc<RwLock<StellarWallet>>,
+	stellar_wallet: ArcRwLock<StellarWallet>,
 }
 
 impl VaultIdManager {
 	pub fn new(
 		spacewalk_parachain: SpacewalkParachain,
-		stellar_wallet: Arc<RwLock<StellarWallet>>,
+		stellar_wallet: ArcRwLock<StellarWallet>,
 	) -> Self {
 		Self {
 			vault_data: Arc::new(RwLock::new(HashMap::new())),
@@ -83,7 +83,7 @@ impl VaultIdManager {
 	// used for testing only
 	pub fn from_map(
 		spacewalk_parachain: SpacewalkParachain,
-		stellar_wallet: Arc<RwLock<StellarWallet>>,
+		stellar_wallet: ArcRwLock<StellarWallet>,
 		vault_ids: Vec<VaultId>,
 	) -> Self {
 		let vault_data = vault_ids
@@ -150,10 +150,7 @@ impl VaultIdManager {
 			.await?)
 	}
 
-	pub async fn get_stellar_wallet(
-		&self,
-		vault_id: &VaultId,
-	) -> Option<Arc<RwLock<StellarWallet>>> {
+	pub async fn get_stellar_wallet(&self, vault_id: &VaultId) -> Option<ArcRwLock<StellarWallet>> {
 		self.vault_data.read().await.get(vault_id).map(|x| x.stellar_wallet.clone())
 	}
 
@@ -177,7 +174,7 @@ impl VaultIdManager {
 	// TODO think about this. It is probably not needed because we don't use deposit addresses and
 	// use one stellar wallet for everything
 	// But we could in theory let a vault have multiple stellar wallets
-	pub async fn get_vault_stellar_wallets(&self) -> Vec<(VaultId, Arc<RwLock<StellarWallet>>)> {
+	pub async fn get_vault_stellar_wallets(&self) -> Vec<(VaultId, ArcRwLock<StellarWallet>)> {
 		self.vault_data
 			.read()
 			.await
@@ -262,7 +259,7 @@ async fn active_block_listener(
 
 pub struct VaultService {
 	spacewalk_parachain: SpacewalkParachain,
-	stellar_wallet: Arc<RwLock<StellarWallet>>,
+	stellar_wallet: ArcRwLock<StellarWallet>,
 	config: VaultServiceConfig,
 	shutdown: ShutdownSender,
 	vault_id_manager: VaultIdManager,
@@ -462,13 +459,11 @@ impl VaultService {
 		// issue handling
 		// this vec is passed to the stellar wallet to filter out transactions that are not relevant
 		// this has to be modified every time the issue set changes
-		let issue_map: Arc<RwLock<IssueRequestsMap>> =
-			Arc::new(RwLock::new(IssueRequestsMap::new()));
+		let issue_map: ArcRwLock<IssueRequestsMap> = Arc::new(RwLock::new(IssueRequestsMap::new()));
 
 		let issue_filter = IssueFilter::new(secret_key.get_public())?;
 
-		let slot_tx_env_map: Arc<RwLock<HashMap<Slot, TransactionEnvelope>>> =
-			Arc::new(RwLock::new(HashMap::new()));
+		let ledger_env_map: ArcRwLock<LedgerTxEnvMap> = Arc::new(RwLock::new(HashMap::new()));
 
 		let (issue_event_tx, issue_event_rx) = mpsc::channel::<Event>(32);
 		let (replace_event_tx, replace_event_rx) = mpsc::channel::<Event>(16);
@@ -492,7 +487,7 @@ impl VaultService {
 				run(wallet::listen_for_new_transactions(
 					vault_public_key.clone(),
 					is_public_network,
-					slot_tx_env_map.clone(),
+					ledger_env_map.clone(),
 					issue_map.clone(),
 					issue_filter,
 				)),
@@ -527,7 +522,7 @@ impl VaultService {
 					issue::process_issues_requests(
 						self.spacewalk_parachain.clone(),
 						oracle_agent.clone(),
-						slot_tx_env_map.clone(),
+						ledger_env_map.clone(),
 						issue_map.clone(),
 					),
 				),

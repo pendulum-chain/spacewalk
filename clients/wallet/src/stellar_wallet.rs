@@ -160,7 +160,7 @@ mod test {
 
 	#[tokio::test]
 	async fn sending_payment_works() {
-		let wallet =
+		let mut wallet =
 			StellarWallet::from_secret_encoded(&STELLAR_SECRET_ENCODED.to_string(), false).unwrap();
 
 		let destination =

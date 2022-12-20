@@ -29,11 +29,6 @@ impl ScpMessageCollector {
 		// set the last_slot_index
 		self.set_last_slot_index(slot);
 
-		// ignore if slot is not in the list
-		if self.is_slot_relevant(&slot) {
-			tracing::trace!("found envelope for slot {}", slot);
-		}
-
 		// we are only interested with `ScpStExternalize`. Other messages are ignored.
 		if let ScpStatementPledges::ScpStExternalize(stmt) = &env.statement.pledges {
 			let txset_hash = get_tx_set_hash(stmt)?;

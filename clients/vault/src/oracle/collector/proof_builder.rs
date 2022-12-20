@@ -32,20 +32,6 @@ pub struct Proof {
 	tx_set: TransactionSet,
 }
 
-#[derive(Debug, Eq, PartialEq)]
-pub enum ProofStatus {
-	Proof(Proof),
-	/// The available ScpEnvelopes are not enough to create a proof, and the slot is too far back
-	/// to fetch more.
-	LackingEnvelopes,
-	/// No ScpEnvelopes found and the slot is too far back.
-	NoEnvelopesFound,
-	/// TxSet is not found and the slot is too far back.
-	NoTxSetFound,
-	/// TxSet is fetched again, so wait for it
-	WaitForTxSet,
-}
-
 impl Proof {
 	/// Encodes these Stellar structures to make it easier to send as extrinsic.
 	pub fn encode(&self) -> (String, String) {
@@ -126,7 +112,7 @@ impl ScpMessageCollector {
 // handles the creation of proofs.
 // this means it will access the maps and potentially the files.
 impl ScpMessageCollector {
-	/// Returns either a list of ScpEnvelopes or a ProofStatus saying it failed to retrieve a list.
+	/// Returns either a list of ScpEnvelopes
 	async fn get_envelopes(
 		&self,
 		slot: Slot,
@@ -173,7 +159,7 @@ impl ScpMessageCollector {
 		}
 	}
 
-	/// Returns a `ProofStatus`.
+	/// Returns the Proof
 	///
 	/// # Arguments
 	///
@@ -239,6 +225,8 @@ async fn get_envelopes_from_horizon_archive(
 		}
 	}
 }
+
+// async fn get_txset_from_horizon_archive
 
 #[cfg(test)]
 mod test {

@@ -8,7 +8,7 @@ use stellar_relay_lib::sdk::PublicKey;
 
 use crate::{
 	execution::*,
-	oracle::{OracleAgent, ProofExt},
+	oracle::OracleAgent,
 	system::{VaultData, VaultIdManager},
 	Error,
 };

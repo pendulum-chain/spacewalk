@@ -1,8 +1,8 @@
 #![allow(dead_code)]
 
 pub use agent::*;
+pub use collector::Proof;
 use collector::*;
-pub use collector::{Proof, ProofExt, ProofStatus};
 pub use errors::Error;
 pub use storage::{prepare_directories, *};
 use types::*;

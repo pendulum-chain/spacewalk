@@ -15,12 +15,12 @@ use stellar_relay_lib::sdk::{
 };
 use wallet::{
 	types::{FilterWith, TransactionFilterParam},
-	TransactionResponse,
+	Ledger, LedgerTxEnvMap, TransactionResponse,
 };
 
 use crate::{
 	oracle::{types::Slot, *},
-	Error, Event,
+	ArcRwLock, Error, Event,
 };
 
 fn is_vault(p1: &PublicKey, p2_raw: [u8; 32]) -> bool {
@@ -38,7 +38,7 @@ pub async fn listen_for_issue_requests(
 	parachain_rpc: SpacewalkParachain,
 	vault_public_key: PublicKey,
 	event_channel: Sender<Event>,
-	issues: Arc<RwLock<IssueRequestsMap>>,
+	issues: ArcRwLock<IssueRequestsMap>,
 ) -> Result<(), ServiceError<Error>> {
 	// Use references to prevent 'moved closure' errors
 	let parachain_rpc = &parachain_rpc;
@@ -77,7 +77,7 @@ pub async fn listen_for_issue_requests(
 
 pub async fn listen_for_issue_cancels(
 	parachain_rpc: SpacewalkParachain,
-	issues: Arc<RwLock<IssueRequestsMap>>,
+	issues: ArcRwLock<IssueRequestsMap>,
 ) -> Result<(), ServiceError<Error>> {
 	let issues = &issues;
 
@@ -97,7 +97,7 @@ pub async fn listen_for_issue_cancels(
 
 pub async fn listen_for_executed_issues(
 	parachain_rpc: SpacewalkParachain,
-	issues: Arc<RwLock<IssueRequestsMap>>,
+	issues: ArcRwLock<IssueRequestsMap>,
 ) -> Result<(), ServiceError<Error>> {
 	let issues = &issues;
 
@@ -134,18 +134,17 @@ fn get_issue_id_from_tx_env(tx_env: &TransactionEnvelope) -> Option<IssueId> {
 pub async fn process_issues_requests(
 	parachain_rpc: SpacewalkParachain,
 	oracle_agent: Arc<OracleAgent>,
-	slot_tx_env_map: Arc<RwLock<HashMap<Slot, TransactionEnvelope>>>,
-	issues: Arc<RwLock<IssueRequestsMap>>,
+	ledger_env_map: ArcRwLock<LedgerTxEnvMap>,
+	issues: ArcRwLock<IssueRequestsMap>,
 ) -> Result<(), ServiceError<Error>> {
 	loop {
-		for (slot, tx_env) in slot_tx_env_map.read().await.iter() {
-			tracing::warn!("Pending proofs: {:?}", proofs.len());
+		for (ledger, tx_env) in ledger_env_map.read().await.iter() {
 			tokio::spawn(execute_issue(
 				parachain_rpc.clone(),
-				slot_tx_env_map.clone(),
+				ledger_env_map.clone(),
 				issues.clone(),
 				oracle_agent.clone(),
-				slot.clone(),
+				Slot::from(*ledger),
 			));
 		}
 
@@ -161,29 +160,41 @@ pub async fn process_issues_requests(
 /// * `proofs` - a list of proofs to execute
 pub async fn execute_issue(
 	parachain_rpc: SpacewalkParachain,
-	slot_tx_env_map: Arc<RwLock<HashMap<Slot, TransactionEnvelope>>>,
-	issues: Arc<RwLock<IssueRequestsMap>>,
+	ledger_env_map: ArcRwLock<LedgerTxEnvMap>,
+	issues: ArcRwLock<IssueRequestsMap>,
 	oracle_agent: Arc<OracleAgent>,
 	slot: Slot,
 ) -> Result<(), ServiceError<Error>> {
-	let proof = oracle_agent.get_proof(slot).await?;
+	let ledger =
+		Ledger::try_from(slot).map_err(|e| ServiceError::VaultError(Error::TryIntoIntError(e)))?;
+
+	let proof = oracle_agent
+		.get_proof(slot)
+		.await
+		.map_err(|e| ServiceError::OracleError(Error::OracleError(e)))?;
+
 	let (envelopes, tx_set) = proof.encode();
 
-	let mut slot_tx_map = slot_tx_env_map.write().await;
-	if let Some(tx_env) = slot_tx_map.get(&u32_slot) {
+	let mut ledger_env_map = ledger_env_map.write().await;
+	if let Some(tx_env) = ledger_env_map.get(&ledger) {
+		let tx_env_encoded = {
+			let tx_env_xdr = tx_env.to_xdr();
+			base64::encode(tx_env_xdr)
+		};
+
 		if let Some(issue_id) = get_issue_id_from_tx_env(tx_env) {
 			match parachain_rpc
 				.execute_issue(
 					issue_id.clone(),
-					tx_env.as_bytes(),
+					tx_env_encoded.as_bytes(),
 					envelopes.as_bytes(),
 					tx_set.as_bytes(),
 				)
 				.await
 			{
 				Ok(_) => {
-					tracing::trace!("Slot {:?} EXECUTED with issue_id: {:?}", u32_slot, issue_id);
-					slot_tx_map.remove(&u32_slot);
+					tracing::trace!("Slot {:?} EXECUTED with issue_id: {:?}", ledger, issue_id);
+					ledger_env_map.remove(&ledger);
 					issues.write().await.remove(&issue_id);
 				},
 				Err(err) if err.is_issue_completed() => {

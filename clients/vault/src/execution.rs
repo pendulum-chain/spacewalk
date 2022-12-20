@@ -22,7 +22,7 @@ use wallet::{StellarWallet, TransactionResponse};
 
 use crate::{
 	error::Error,
-	oracle::{types::Slot, OracleAgent, Proof, ProofExt, ProofStatus},
+	oracle::{types::Slot, OracleAgent, Proof},
 	system::VaultData,
 	VaultIdManager, YIELD_RATE,
 };

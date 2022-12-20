@@ -24,7 +24,7 @@ use stellar_relay_lib::{
 
 use crate::oracle::{
 	collector::ScpMessageCollector, constants::*, errors::Error, prepare_directories, types::Slot,
-	Proof, ProofStatus,
+	Proof,
 };
 
 pub struct OracleAgent {

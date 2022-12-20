@@ -9,7 +9,8 @@ use tokio::{sync::RwLock, time::sleep};
 use crate::{
 	error::Error,
 	stellar_wallet,
-	types::{FilterWith, TransactionFilterParam, Watcher},
+	types::{FilterWith, TransactionFilterParam},
+	Ledger, LedgerTxEnvMap,
 };
 
 pub type PagingToken = u128;
@@ -70,7 +71,7 @@ pub struct TransactionResponse {
 	pub successful: bool,
 	#[serde(deserialize_with = "de_string_to_bytes")]
 	pub hash: Vec<u8>,
-	pub ledger: u32,
+	pub ledger: Ledger,
 	#[serde(deserialize_with = "de_string_to_bytes")]
 	pub created_at: Vec<u8>,
 	#[serde(deserialize_with = "de_string_to_bytes")]
@@ -100,7 +101,7 @@ pub struct TransactionResponse {
 }
 
 impl TransactionResponse {
-	pub(crate) fn ledger(&self) -> u32 {
+	pub(crate) fn ledger(&self) -> Ledger {
 		self.ledger
 	}
 
@@ -165,7 +166,7 @@ pub struct ClaimableBalance {
 	#[serde(deserialize_with = "de_string_to_bytes")]
 	pub amount: Vec<u8>,
 	pub claimants: Vec<Claimant>,
-	pub last_modified_ledger: u32,
+	pub last_modified_ledger: Ledger,
 	#[serde(deserialize_with = "de_string_to_bytes")]
 	pub last_modified_time: Vec<u8>,
 }
@@ -352,7 +353,7 @@ impl<C: HorizonClient> HorizonFetcher<C> {
 
 	pub async fn fetch_horizon_and_process_new_transactions<T: Clone>(
 		&mut self,
-		slot_tx_env_map: Arc<RwLock<HashMap<Slot, TransactionEnvelope>>>,
+		ledger_env_map: Arc<RwLock<LedgerTxEnvMap>>,
 		targets: Arc<RwLock<T>>,
 		filter: impl FilterWith<TransactionFilterParam<T>>,
 		last_paging_token: PagingToken,
@@ -378,12 +379,12 @@ impl<C: HorizonClient> HorizonFetcher<C> {
 
 			if filter.is_relevant((tx.clone(), targets.clone())) {
 				tracing::info!(
-					"Adding transaction {:?} with slot {} to the slot_tx_env_map",
+					"Adding transaction {:?} with slot {} to the ledger_env_map",
 					String::from_utf8(id.clone()),
 					tx.ledger
 				);
 				let tx_env = tx.to_envelope()?;
-				slot_tx_env_map.write().await.insert(tx.ledger, tx_env);
+				ledger_env_map.write().await.insert(tx.ledger, tx_env);
 			}
 		}
 
@@ -394,7 +395,7 @@ impl<C: HorizonClient> HorizonFetcher<C> {
 pub async fn listen_for_new_transactions<T, Filter>(
 	vault_account_public_key: PublicKey,
 	is_public_network: bool,
-	slot_tx_env_map: Arc<RwLock<HashMap<Slot, TransactionEnvelope>>>,
+	ledger_env_map: Arc<RwLock<LedgerTxEnvMap>>,
 	targets: Arc<RwLock<T>>,
 	filter: Filter,
 ) -> Result<(), Error>
@@ -411,7 +412,7 @@ where
 	loop {
 		if let Ok(new_paging_token) = fetcher
 			.fetch_horizon_and_process_new_transactions(
-				slot_tx_env_map.clone(),
+				ledger_env_map.clone(),
 				targets.clone(),
 				filter.clone(),
 				latest_paging_token,

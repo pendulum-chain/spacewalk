@@ -1,13 +1,15 @@
 #![recursion_limit = "256"]
 
-use std::{sync::Arc, time::Duration};
+use std::{collections::HashMap, sync::Arc, time::Duration};
 use tokio::sync::RwLock;
 
 use governor::Quota;
 use nonzero_ext::*;
+use stellar_relay_lib::sdk::TransactionEnvelope;
 
 pub use system::{VaultIdManager, VaultService, VaultServiceConfig, ABOUT, AUTHORS, NAME, VERSION};
 
+use crate::oracle::types::Slot;
 pub use crate::{cancellation::Event, error::Error};
 
 mod cancellation;
@@ -38,6 +40,8 @@ pub mod service {
 		},
 	};
 }
+
+pub type ArcRwLock<T> = Arc<RwLock<T>>;
 
 /// At startup we wait until a new block has arrived before we start event listeners.
 /// This constant defines the rate at which we check whether the chain height has increased.

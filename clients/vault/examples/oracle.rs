@@ -8,7 +8,7 @@ use stellar_relay_lib::{
 	},
 	ConnConfig,
 };
-use vault::oracle::{prepare_directories, OracleAgent, Proof, ProofExt, ProofStatus};
+use vault::oracle::{prepare_directories, OracleAgent, Proof};
 
 pub const SAMPLE_VAULT_ADDRESSES_FILTER: &[&str] =
 	&["GAP4SFKVFVKENJ7B7VORAYKPB3CJIAJ2LMKDJ22ZFHIAIVYQOR6W3CXF"];
