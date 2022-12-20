@@ -159,7 +159,7 @@ mod test {
 		let (_, relay_message_receiver) = mpsc::channel::<StellarRelayMessage>(1024);
 
 		StellarOverlayConnection::new(
-			actions_sender.clone(),
+			actions_sender,
 			relay_message_receiver,
 			cfg.retries,
 			node_info,

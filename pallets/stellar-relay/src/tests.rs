@@ -8,8 +8,7 @@ use substrate_stellar_sdk::{
 		ScpStatementPledges, Signature, StellarValue, StellarValueExt, TransactionExt,
 		TransactionSet, TransactionV1Envelope, Value,
 	},
-	AccountId, Hash, Memo, MuxedAccount, PublicKey, SecretKey, Transaction, TransactionEnvelope,
-	XdrCodec,
+	Hash, Memo, MuxedAccount, PublicKey, SecretKey, Transaction, TransactionEnvelope, XdrCodec,
 };
 
 use crate::{
@@ -37,7 +36,7 @@ fn create_dummy_externalize_message(keypair: &SecretKey, network: &Network) -> S
 	let signature_result = keypair.create_signature(body);
 	let signature: Signature = LimitedVarOpaque::new(signature_result.to_vec()).unwrap();
 
-	let envelope = ScpEnvelope { statement: statement, signature: signature };
+	let envelope = ScpEnvelope { statement, signature };
 
 	envelope
 }
@@ -85,8 +84,7 @@ fn create_valid_dummy_scp_envelopes(
 	public_network: bool,
 ) -> (TransactionEnvelope, TransactionSet, LimitedVarArray<ScpEnvelope, { i32::MAX }>) {
 	// Build a transaction
-	let source_account =
-		MuxedAccount::from(PublicKey::PublicKeyTypeEd25519([0; 32]));
+	let source_account = MuxedAccount::from(PublicKey::PublicKeyTypeEd25519([0; 32]));
 	let operations = LimitedVarArray::new(vec![]).unwrap();
 	let transaction = Transaction {
 		source_account,
@@ -119,8 +117,7 @@ fn create_valid_dummy_scp_envelopes(
 	let mut envelopes = UnlimitedVarArray::<ScpEnvelope>::new_empty();
 	for (i, validator_secret_key) in validator_secret_keys.iter().enumerate() {
 		let validator = validators.get(i).unwrap();
-		let envelope =
-			create_scp_envelope(tx_set_hash, validator, validator_secret_key, network);
+		let envelope = create_scp_envelope(tx_set_hash, validator, validator_secret_key, network);
 		envelopes.push(envelope).unwrap();
 	}
 
@@ -192,9 +189,7 @@ fn validate_stellar_transaction_fails_for_wrong_transaction() {
 		// Change tx_envelope that was used to create scp_envelopes
 		let changed_tx_envelope = TransactionEnvelope::EnvelopeTypeTx(TransactionV1Envelope {
 			tx: Transaction {
-				source_account: MuxedAccount::from(
-					PublicKey::PublicKeyTypeEd25519([1; 32]),
-				),
+				source_account: MuxedAccount::from(PublicKey::PublicKeyTypeEd25519([1; 32])),
 				fee: 1,
 				seq_num: 1,
 				cond: Preconditions::PrecondNone,
@@ -468,13 +463,10 @@ fn update_tier_1_validator_set_works() {
 			0
 		));
 		let validator_bounded_vec =
-			BoundedVec::<ValidatorOf<Test>, ValidatorLimit>::try_from(new_validator_set)
-				.unwrap();
+			BoundedVec::<ValidatorOf<Test>, ValidatorLimit>::try_from(new_validator_set).unwrap();
 		let organization_bounded_vec =
-			BoundedVec::<OrganizationOf<Test>, OrganizationLimit>::try_from(
-				new_organization_set,
-			)
-			.unwrap();
+			BoundedVec::<OrganizationOf<Test>, OrganizationLimit>::try_from(new_organization_set)
+				.unwrap();
 		assert_eq!(SpacewalkRelay::validators(), validator_bounded_vec);
 		assert_eq!(SpacewalkRelay::organizations(), organization_bounded_vec);
 	});
@@ -592,13 +584,10 @@ fn update_tier_1_validator_store_old_organization_and_validator_and_block_height
 			new_validators_enactment_block_height
 		));
 		let validator_bounded_vec =
-			BoundedVec::<ValidatorOf<Test>, ValidatorLimit>::try_from(new_validator_set)
-				.unwrap();
+			BoundedVec::<ValidatorOf<Test>, ValidatorLimit>::try_from(new_validator_set).unwrap();
 		let organization_bounded_vec =
-			BoundedVec::<OrganizationOf<Test>, OrganizationLimit>::try_from(
-				new_organization_set,
-			)
-			.unwrap();
+			BoundedVec::<OrganizationOf<Test>, OrganizationLimit>::try_from(new_organization_set)
+				.unwrap();
 		assert_eq!(SpacewalkRelay::validators(), validator_bounded_vec);
 		assert_eq!(SpacewalkRelay::organizations(), organization_bounded_vec);
 

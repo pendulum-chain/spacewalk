@@ -679,7 +679,7 @@ fn test_cancel_redeem_succeeds() {
 		});
 		Amount::<Test>::unlock_on.mock_safe(|_, _| MockResult::Return(Ok(())));
 		ext::vault_registry::transfer_funds_saturated::<Test>
-			.mock_safe(move |_, _, amount| MockResult::Return(Ok(amount.clone())));
+			.mock_safe(move |_, _, amount| MockResult::Return(Ok(*amount)));
 		ext::vault_registry::get_vault_from_id::<Test>.mock_safe(|_| {
 			MockResult::Return(Ok(vault_registry::types::Vault {
 				status: VaultStatus::Active(true),
@@ -854,7 +854,7 @@ mod spec_based_tests {
 			assert_ok!(Redeem::liquidation_redeem(
 				RuntimeOrigin::signed(USER),
 				DEFAULT_CURRENCY_PAIR,
-				total_amount.into(),
+				total_amount,
 			));
 		})
 	}
@@ -982,7 +982,7 @@ mod spec_based_tests {
 			Amount::<Test>::unlock_on.mock_safe(|_, _| MockResult::Return(Ok(())));
 			Amount::<Test>::transfer.mock_safe(|_, _, _| MockResult::Return(Ok(())));
 			ext::vault_registry::transfer_funds_saturated::<Test>
-				.mock_safe(move |_, _, amount| MockResult::Return(Ok(amount.clone())));
+				.mock_safe(move |_, _, amount| MockResult::Return(Ok(*amount)));
 			ext::vault_registry::get_vault_from_id::<Test>.mock_safe(|_| {
 				MockResult::Return(Ok(vault_registry::types::Vault {
 					status: VaultStatus::Active(true),
@@ -1050,7 +1050,7 @@ mod spec_based_tests {
 			Amount::<Test>::unlock_on.mock_safe(|_, _| MockResult::Return(Ok(())));
 			Amount::<Test>::burn_from.mock_safe(|_, _| MockResult::Return(Ok(())));
 			ext::vault_registry::transfer_funds_saturated::<Test>
-				.mock_safe(move |_, _, amount| MockResult::Return(Ok(amount.clone())));
+				.mock_safe(move |_, _, amount| MockResult::Return(Ok(*amount)));
 			ext::vault_registry::get_vault_from_id::<Test>.mock_safe(|_| {
 				MockResult::Return(Ok(vault_registry::types::Vault {
 					status: VaultStatus::Active(true),

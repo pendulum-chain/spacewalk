@@ -61,9 +61,9 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 	// Storage: Redeem RedeemRequests (r:0 w:1)
 	fn request_redeem() -> Weight {
 		// Minimum execution time: 57_000 nanoseconds.
-		Weight::from_ref_time(58_000_000 as u64)
-			.saturating_add(T::DbWeight::get().reads(20 as u64))
-			.saturating_add(T::DbWeight::get().writes(8 as u64))
+		Weight::from_ref_time(58_000_000_u64)
+			.saturating_add(T::DbWeight::get().reads(20_u64))
+			.saturating_add(T::DbWeight::get().writes(8_u64))
 	}
 	// Storage: Tokens Accounts (r:3 w:3)
 	// Storage: Tokens TotalIssuance (r:1 w:1)
@@ -72,9 +72,9 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 	// Storage: System Account (r:2 w:1)
 	fn liquidation_redeem() -> Weight {
 		// Minimum execution time: 50_000 nanoseconds.
-		Weight::from_ref_time(51_000_000 as u64)
-			.saturating_add(T::DbWeight::get().reads(8 as u64))
-			.saturating_add(T::DbWeight::get().writes(7 as u64))
+		Weight::from_ref_time(51_000_000_u64)
+			.saturating_add(T::DbWeight::get().reads(8_u64))
+			.saturating_add(T::DbWeight::get().writes(7_u64))
 	}
 	// Storage: Redeem RedeemRequests (r:1 w:1)
 	// Storage: StellarRelay IsPublicNetwork (r:1 w:0)
@@ -84,9 +84,9 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 	// Storage: VaultRegistry Vaults (r:1 w:1)
 	fn execute_redeem() -> Weight {
 		// Minimum execution time: 4_060_000 nanoseconds.
-		Weight::from_ref_time(4_092_000_000 as u64)
-			.saturating_add(T::DbWeight::get().reads(6 as u64))
-			.saturating_add(T::DbWeight::get().writes(2 as u64))
+		Weight::from_ref_time(4_092_000_000_u64)
+			.saturating_add(T::DbWeight::get().reads(6_u64))
+			.saturating_add(T::DbWeight::get().writes(2_u64))
 	}
 	// Storage: Security ParachainStatus (r:1 w:0)
 	// Storage: Redeem RedeemRequests (r:1 w:1)
@@ -105,9 +105,9 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 	// Storage: VaultRewards Stake (r:1 w:0)
 	fn cancel_redeem_reimburse() -> Weight {
 		// Minimum execution time: 52_000 nanoseconds.
-		Weight::from_ref_time(53_000_000 as u64)
-			.saturating_add(T::DbWeight::get().reads(15 as u64))
-			.saturating_add(T::DbWeight::get().writes(3 as u64))
+		Weight::from_ref_time(53_000_000_u64)
+			.saturating_add(T::DbWeight::get().reads(15_u64))
+			.saturating_add(T::DbWeight::get().writes(3_u64))
 	}
 	// Storage: Security ParachainStatus (r:1 w:0)
 	// Storage: Redeem RedeemRequests (r:1 w:1)
@@ -124,15 +124,15 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 	// Storage: VaultRewards Stake (r:1 w:0)
 	fn cancel_redeem_retry() -> Weight {
 		// Minimum execution time: 47_000 nanoseconds.
-		Weight::from_ref_time(51_000_000 as u64)
-			.saturating_add(T::DbWeight::get().reads(13 as u64))
-			.saturating_add(T::DbWeight::get().writes(3 as u64))
+		Weight::from_ref_time(51_000_000_u64)
+			.saturating_add(T::DbWeight::get().reads(13_u64))
+			.saturating_add(T::DbWeight::get().writes(3_u64))
 	}
 	// Storage: Redeem RedeemPeriod (r:0 w:1)
 	fn set_redeem_period() -> Weight {
 		// Minimum execution time: 7_000 nanoseconds.
-		Weight::from_ref_time(8_000_000 as u64)
-			.saturating_add(T::DbWeight::get().writes(1 as u64))
+		Weight::from_ref_time(8_000_000_u64)
+			.saturating_add(T::DbWeight::get().writes(1_u64))
 	}
 	// Storage: VaultRegistry Vaults (r:1 w:1)
 	// Storage: Tokens Accounts (r:1 w:1)
@@ -144,9 +144,9 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 	// Storage: VaultRewards RewardTally (r:2 w:2)
 	fn self_redeem() -> Weight {
 		// Minimum execution time: 55_000 nanoseconds.
-		Weight::from_ref_time(56_000_000 as u64)
-			.saturating_add(T::DbWeight::get().reads(10 as u64))
-			.saturating_add(T::DbWeight::get().writes(9 as u64))
+		Weight::from_ref_time(56_000_000_u64)
+			.saturating_add(T::DbWeight::get().reads(10_u64))
+			.saturating_add(T::DbWeight::get().writes(9_u64))
 	}
 }
 
@@ -173,9 +173,9 @@ impl WeightInfo for () {
 	// Storage: Redeem RedeemRequests (r:0 w:1)
 	fn request_redeem() -> Weight {
 		// Minimum execution time: 57_000 nanoseconds.
-		Weight::from_ref_time(58_000_000 as u64)
-			.saturating_add(RocksDbWeight::get().reads(20 as u64))
-			.saturating_add(RocksDbWeight::get().writes(8 as u64))
+		Weight::from_ref_time(58_000_000_u64)
+			.saturating_add(RocksDbWeight::get().reads(20_u64))
+			.saturating_add(RocksDbWeight::get().writes(8_u64))
 	}
 	// Storage: Tokens Accounts (r:3 w:3)
 	// Storage: Tokens TotalIssuance (r:1 w:1)
@@ -184,9 +184,9 @@ impl WeightInfo for () {
 	// Storage: System Account (r:2 w:1)
 	fn liquidation_redeem() -> Weight {
 		// Minimum execution time: 50_000 nanoseconds.
-		Weight::from_ref_time(51_000_000 as u64)
-			.saturating_add(RocksDbWeight::get().reads(8 as u64))
-			.saturating_add(RocksDbWeight::get().writes(7 as u64))
+		Weight::from_ref_time(51_000_000_u64)
+			.saturating_add(RocksDbWeight::get().reads(8_u64))
+			.saturating_add(RocksDbWeight::get().writes(7_u64))
 	}
 	// Storage: Redeem RedeemRequests (r:1 w:1)
 	// Storage: StellarRelay IsPublicNetwork (r:1 w:0)
@@ -196,9 +196,9 @@ impl WeightInfo for () {
 	// Storage: VaultRegistry Vaults (r:1 w:1)
 	fn execute_redeem() -> Weight {
 		// Minimum execution time: 4_060_000 nanoseconds.
-		Weight::from_ref_time(4_092_000_000 as u64)
-			.saturating_add(RocksDbWeight::get().reads(6 as u64))
-			.saturating_add(RocksDbWeight::get().writes(2 as u64))
+		Weight::from_ref_time(4_092_000_000_u64)
+			.saturating_add(RocksDbWeight::get().reads(6_u64))
+			.saturating_add(RocksDbWeight::get().writes(2_u64))
 	}
 	// Storage: Security ParachainStatus (r:1 w:0)
 	// Storage: Redeem RedeemRequests (r:1 w:1)
@@ -217,9 +217,9 @@ impl WeightInfo for () {
 	// Storage: VaultRewards Stake (r:1 w:0)
 	fn cancel_redeem_reimburse() -> Weight {
 		// Minimum execution time: 52_000 nanoseconds.
-		Weight::from_ref_time(53_000_000 as u64)
-			.saturating_add(RocksDbWeight::get().reads(15 as u64))
-			.saturating_add(RocksDbWeight::get().writes(3 as u64))
+		Weight::from_ref_time(53_000_000_u64)
+			.saturating_add(RocksDbWeight::get().reads(15_u64))
+			.saturating_add(RocksDbWeight::get().writes(3_u64))
 	}
 	// Storage: Security ParachainStatus (r:1 w:0)
 	// Storage: Redeem RedeemRequests (r:1 w:1)
@@ -236,15 +236,15 @@ impl WeightInfo for () {
 	// Storage: VaultRewards Stake (r:1 w:0)
 	fn cancel_redeem_retry() -> Weight {
 		// Minimum execution time: 47_000 nanoseconds.
-		Weight::from_ref_time(51_000_000 as u64)
-			.saturating_add(RocksDbWeight::get().reads(13 as u64))
-			.saturating_add(RocksDbWeight::get().writes(3 as u64))
+		Weight::from_ref_time(51_000_000_u64)
+			.saturating_add(RocksDbWeight::get().reads(13_u64))
+			.saturating_add(RocksDbWeight::get().writes(3_u64))
 	}
 	// Storage: Redeem RedeemPeriod (r:0 w:1)
 	fn set_redeem_period() -> Weight {
 		// Minimum execution time: 7_000 nanoseconds.
-		Weight::from_ref_time(8_000_000 as u64)
-			.saturating_add(RocksDbWeight::get().writes(1 as u64))
+		Weight::from_ref_time(8_000_000_u64)
+			.saturating_add(RocksDbWeight::get().writes(1_u64))
 	}
 	// Storage: VaultRegistry Vaults (r:1 w:1)
 	// Storage: Tokens Accounts (r:1 w:1)
@@ -256,8 +256,8 @@ impl WeightInfo for () {
 	// Storage: VaultRewards RewardTally (r:2 w:2)
 	fn self_redeem() -> Weight {
 		// Minimum execution time: 55_000 nanoseconds.
-		Weight::from_ref_time(56_000_000 as u64)
-			.saturating_add(RocksDbWeight::get().reads(10 as u64))
-			.saturating_add(RocksDbWeight::get().writes(9 as u64))
+		Weight::from_ref_time(56_000_000_u64)
+			.saturating_add(RocksDbWeight::get().reads(10_u64))
+			.saturating_add(RocksDbWeight::get().writes(9_u64))
 	}
 }

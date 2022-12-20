@@ -314,7 +314,7 @@ impl<T: Config> RichVault<T> {
 	}
 
 	pub(crate) fn freely_redeemable_tokens(&self) -> Result<Amount<T>, DispatchError> {
-		Ok(self.issued_tokens().checked_sub(&self.to_be_redeemed_tokens())?)
+		self.issued_tokens().checked_sub(&self.to_be_redeemed_tokens())
 	}
 
 	pub(crate) fn request_issue_tokens(&mut self, tokens: &Amount<T>) -> DispatchResult {
@@ -557,7 +557,7 @@ impl<T: Config> RichVault<T> {
 		let collateral = self.get_vault_collateral()?;
 		let (to_withdraw, to_slash) = amount
 			.checked_sub(&collateral)
-			.and_then(|leftover| Ok((collateral, Some(leftover))))
+			.map(|leftover| (collateral, Some(leftover)))
 			.unwrap_or((amount.clone(), None));
 
 		// "slash" vault first

@@ -511,7 +511,7 @@ impl TryFrom<(&str, &str)> for CurrencyId {
 		let issuer_encoded = value.1;
 		let issuer_pk = stellar::PublicKey::from_encoding(issuer_encoded)
 			.map_err(|_| "Invalid issuer encoding")?;
-		let issuer: AssetIssuer = issuer_pk.as_binary().clone();
+		let issuer: AssetIssuer = *issuer_pk.as_binary();
 		if slice.len() <= 4 {
 			let mut code: Bytes4 = [0; 4];
 			code[..slice.len()].copy_from_slice(slice.as_bytes());

@@ -40,7 +40,7 @@ fn feed_values_succeeds() {
 		let exchange_rate = Oracle::get_price(key.clone()).unwrap();
 		assert_eq!(exchange_rate, rate);
 
-		assert_emitted!(Event::FeedValues { oracle_id: 3, values: vec![(key.clone(), rate)] });
+		assert_emitted!(Event::FeedValues { oracle_id: 3, values: vec![(key, rate)] });
 	});
 }
 
@@ -185,10 +185,7 @@ fn feed_values_fails_with_invalid_oracle_source() {
 			oracle_id: 3,
 			values: vec![(key.clone(), failed_rate)]
 		});
-		assert_not_emitted!(Event::FeedValues {
-			oracle_id: 4,
-			values: vec![(key.clone(), failed_rate)]
-		});
+		assert_not_emitted!(Event::FeedValues { oracle_id: 4, values: vec![(key, failed_rate)] });
 	});
 }
 

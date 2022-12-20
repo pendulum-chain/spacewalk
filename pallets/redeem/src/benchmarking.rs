@@ -37,7 +37,7 @@ fn wrapped<T: crate::Config>(amount: u32) -> Amount<T> {
 }
 
 fn register_public_key<T: crate::Config>(vault_id: DefaultVaultId<T>) {
-	let origin = RawOrigin::Signed(vault_id.account_id.clone());
+	let origin = RawOrigin::Signed(vault_id.account_id);
 	assert_ok!(VaultRegistry::<T>::register_public_key(origin.into(), DEFAULT_STELLAR_PUBLIC_KEY));
 }
 
@@ -128,7 +128,7 @@ benchmarks! {
 		assert_ok!(Oracle::<T>::_set_exchange_rate(get_collateral_currency_id::<T>(),
 			UnsignedFixedPoint::<T>::one()
 		));
-	}: _(RawOrigin::Signed(origin), amount, stellar_address, vault_id.clone())
+	}: _(RawOrigin::Signed(origin), amount, stellar_address, vault_id)
 
 	liquidation_redeem {
 		assert_ok!(Oracle::<T>::_set_exchange_rate(get_collateral_currency_id::<T>(),

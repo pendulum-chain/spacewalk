@@ -863,7 +863,7 @@ impl<T: Config> Pallet<T> {
 	pub fn get_free_redeemable_tokens(
 		vault_id: &DefaultVaultId<T>,
 	) -> Result<Amount<T>, DispatchError> {
-		Ok(Self::get_rich_vault_from_id(vault_id)?.freely_redeemable_tokens()?)
+		Self::get_rich_vault_from_id(vault_id)?.freely_redeemable_tokens()
 	}
 
 	/// Like get_vault_from_id, but additionally checks that the vault is active
@@ -950,7 +950,7 @@ impl<T: Config> Pallet<T> {
 		let new_vault_collateral = vault_collateral.checked_sub(&amount)?;
 		let max_nomination_after_withdrawal =
 			Self::get_max_nominatable_collateral(&new_vault_collateral, &vault_id.currencies)?;
-		Ok(current_nomination.le(&max_nomination_after_withdrawal)?)
+		current_nomination.le(&max_nomination_after_withdrawal)
 	}
 
 	/// Checks if the vault would be above the secure threshold after withdrawing collateral
@@ -2069,7 +2069,7 @@ impl<T: Config> Pallet<T> {
 			threshold,
 		)?;
 		// check if the max_tokens are below the issued tokens
-		Ok(max_tokens.lt(&btc_amount)?)
+		max_tokens.lt(&btc_amount)
 	}
 
 	/// Gets the minimum amount of collateral required for the given amount of btc

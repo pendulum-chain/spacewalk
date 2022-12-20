@@ -197,7 +197,7 @@ fn test_checked_fixed_point_mul() {
 		let currency = CurrencyId::Native;
 		let tests: Vec<(Amount<Test>, UnsignedFixedPoint, Amount<Test>)> = vec![
 			(
-				Amount::new(1 * 10u128.pow(8), currency), // 1 BTC
+				Amount::new(10u128.pow(8), currency), // 1 BTC
 				UnsignedFixedPoint::checked_from_rational(1, 2).unwrap(), // 50%
 				Amount::new(50000000, currency),
 			),

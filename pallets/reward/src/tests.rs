@@ -13,7 +13,7 @@ macro_rules! fixed {
 }
 
 #[test]
-#[cfg_attr(rustfmt, rustfmt_skip)]
+#[rustfmt::skip]
 fn reproduce_live_state() {
     // This function is most useful for debugging. Keeping this test here for convenience
     // and to function as an additional regression test

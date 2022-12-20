@@ -160,7 +160,7 @@ impl currency::CurrencyConversion<currency::Amount<Test>, CurrencyId> for Curren
 		amount: &currency::Amount<Test>,
 		to: CurrencyId,
 	) -> Result<currency::Amount<Test>, sp_runtime::DispatchError> {
-		convert_to(to, amount.clone())
+		convert_to(to, *amount)
 	}
 }
 

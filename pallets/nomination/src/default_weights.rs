@@ -41,8 +41,8 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 	// Storage: Nomination NominationEnabled (r:0 w:1)
 	fn set_nomination_enabled() -> Weight {
 		// Minimum execution time: 3_000 nanoseconds.
-		Weight::from_ref_time(4_000_000 as u64)
-			.saturating_add(T::DbWeight::get().writes(1 as u64))
+		Weight::from_ref_time(4_000_000_u64)
+			.saturating_add(T::DbWeight::get().writes(1_u64))
 	}
 	// Storage: Security ParachainStatus (r:1 w:0)
 	// Storage: Nomination NominationEnabled (r:1 w:0)
@@ -50,9 +50,9 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 	// Storage: Nomination Vaults (r:1 w:1)
 	fn opt_in_to_nomination() -> Weight {
 		// Minimum execution time: 17_000 nanoseconds.
-		Weight::from_ref_time(18_000_000 as u64)
-			.saturating_add(T::DbWeight::get().reads(4 as u64))
-			.saturating_add(T::DbWeight::get().writes(1 as u64))
+		Weight::from_ref_time(18_000_000_u64)
+			.saturating_add(T::DbWeight::get().reads(4_u64))
+			.saturating_add(T::DbWeight::get().writes(1_u64))
 	}
 	// Storage: Security ParachainStatus (r:1 w:0)
 	// Storage: Nomination Vaults (r:1 w:1)
@@ -70,9 +70,9 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 	// Storage: VaultRegistry TotalUserVaultCollateral (r:1 w:1)
 	fn opt_out_of_nomination() -> Weight {
 		// Minimum execution time: 90_000 nanoseconds.
-		Weight::from_ref_time(93_000_000 as u64)
-			.saturating_add(T::DbWeight::get().reads(25 as u64))
-			.saturating_add(T::DbWeight::get().writes(15 as u64))
+		Weight::from_ref_time(93_000_000_u64)
+			.saturating_add(T::DbWeight::get().reads(25_u64))
+			.saturating_add(T::DbWeight::get().writes(15_u64))
 	}
 	// Storage: Security ParachainStatus (r:1 w:0)
 	// Storage: Nomination NominationEnabled (r:1 w:0)
@@ -97,9 +97,9 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 	// Storage: VaultRegistry SystemCollateralCeiling (r:1 w:0)
 	fn deposit_collateral() -> Weight {
 		// Minimum execution time: 96_000 nanoseconds.
-		Weight::from_ref_time(98_000_000 as u64)
-			.saturating_add(T::DbWeight::get().reads(29 as u64))
-			.saturating_add(T::DbWeight::get().writes(15 as u64))
+		Weight::from_ref_time(98_000_000_u64)
+			.saturating_add(T::DbWeight::get().reads(29_u64))
+			.saturating_add(T::DbWeight::get().writes(15_u64))
 	}
 	// Storage: Security ParachainStatus (r:1 w:0)
 	// Storage: VaultStaking Nonce (r:1 w:0)
@@ -124,9 +124,9 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 	// Storage: System Account (r:1 w:0)
 	fn withdraw_collateral() -> Weight {
 		// Minimum execution time: 107_000 nanoseconds.
-		Weight::from_ref_time(108_000_000 as u64)
-			.saturating_add(T::DbWeight::get().reads(27 as u64))
-			.saturating_add(T::DbWeight::get().writes(15 as u64))
+		Weight::from_ref_time(108_000_000_u64)
+			.saturating_add(T::DbWeight::get().reads(27_u64))
+			.saturating_add(T::DbWeight::get().writes(15_u64))
 	}
 }
 
@@ -135,8 +135,8 @@ impl WeightInfo for () {
 	// Storage: Nomination NominationEnabled (r:0 w:1)
 	fn set_nomination_enabled() -> Weight {
 		// Minimum execution time: 3_000 nanoseconds.
-		Weight::from_ref_time(4_000_000 as u64)
-			.saturating_add(RocksDbWeight::get().writes(1 as u64))
+		Weight::from_ref_time(4_000_000_u64)
+			.saturating_add(RocksDbWeight::get().writes(1_u64))
 	}
 	// Storage: Security ParachainStatus (r:1 w:0)
 	// Storage: Nomination NominationEnabled (r:1 w:0)
@@ -144,9 +144,9 @@ impl WeightInfo for () {
 	// Storage: Nomination Vaults (r:1 w:1)
 	fn opt_in_to_nomination() -> Weight {
 		// Minimum execution time: 17_000 nanoseconds.
-		Weight::from_ref_time(18_000_000 as u64)
-			.saturating_add(RocksDbWeight::get().reads(4 as u64))
-			.saturating_add(RocksDbWeight::get().writes(1 as u64))
+		Weight::from_ref_time(18_000_000_u64)
+			.saturating_add(RocksDbWeight::get().reads(4_u64))
+			.saturating_add(RocksDbWeight::get().writes(1_u64))
 	}
 	// Storage: Security ParachainStatus (r:1 w:0)
 	// Storage: Nomination Vaults (r:1 w:1)
@@ -164,9 +164,9 @@ impl WeightInfo for () {
 	// Storage: VaultRegistry TotalUserVaultCollateral (r:1 w:1)
 	fn opt_out_of_nomination() -> Weight {
 		// Minimum execution time: 90_000 nanoseconds.
-		Weight::from_ref_time(93_000_000 as u64)
-			.saturating_add(RocksDbWeight::get().reads(25 as u64))
-			.saturating_add(RocksDbWeight::get().writes(15 as u64))
+		Weight::from_ref_time(93_000_000_u64)
+			.saturating_add(RocksDbWeight::get().reads(25_u64))
+			.saturating_add(RocksDbWeight::get().writes(15_u64))
 	}
 	// Storage: Security ParachainStatus (r:1 w:0)
 	// Storage: Nomination NominationEnabled (r:1 w:0)
@@ -191,9 +191,9 @@ impl WeightInfo for () {
 	// Storage: VaultRegistry SystemCollateralCeiling (r:1 w:0)
 	fn deposit_collateral() -> Weight {
 		// Minimum execution time: 96_000 nanoseconds.
-		Weight::from_ref_time(98_000_000 as u64)
-			.saturating_add(RocksDbWeight::get().reads(29 as u64))
-			.saturating_add(RocksDbWeight::get().writes(15 as u64))
+		Weight::from_ref_time(98_000_000_u64)
+			.saturating_add(RocksDbWeight::get().reads(29_u64))
+			.saturating_add(RocksDbWeight::get().writes(15_u64))
 	}
 	// Storage: Security ParachainStatus (r:1 w:0)
 	// Storage: VaultStaking Nonce (r:1 w:0)
@@ -218,8 +218,8 @@ impl WeightInfo for () {
 	// Storage: System Account (r:1 w:0)
 	fn withdraw_collateral() -> Weight {
 		// Minimum execution time: 107_000 nanoseconds.
-		Weight::from_ref_time(108_000_000 as u64)
-			.saturating_add(RocksDbWeight::get().reads(27 as u64))
-			.saturating_add(RocksDbWeight::get().writes(15 as u64))
+		Weight::from_ref_time(108_000_000_u64)
+			.saturating_add(RocksDbWeight::get().reads(27_u64))
+			.saturating_add(RocksDbWeight::get().writes(15_u64))
 	}
 }
