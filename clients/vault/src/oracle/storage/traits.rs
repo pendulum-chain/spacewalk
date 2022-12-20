@@ -9,10 +9,7 @@ use std::{
 use flate2::bufread::GzDecoder;
 use sp_core::hexdisplay::AsBytesRef;
 
-use stellar_relay_lib::sdk::{
-	compound_types::XdrArchive,
-	XdrCodec,
-};
+use stellar_relay_lib::sdk::{compound_types::XdrArchive, XdrCodec};
 
 use crate::oracle::{constants::ARCHIVE_NODE_LEDGER_BATCH, Error, Filename, SerializedData, Slot};
 

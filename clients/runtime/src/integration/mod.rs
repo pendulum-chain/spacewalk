@@ -5,7 +5,6 @@ use std::{sync::Arc, time::Duration};
 use frame_support::assert_ok;
 use futures::{future::Either, pin_mut, Future, FutureExt, SinkExt, StreamExt};
 
-
 use subxt::{
 	events::StaticEvent as Event,
 	ext::sp_core::{sr25519::Pair, Pair as _},
@@ -21,7 +20,6 @@ use subxt_client::{
 	AccountKeyring, DatabaseSource, KeystoreConfig, Role, SubxtClientConfig, WasmExecutionMethod,
 	WasmtimeInstantiationStrategy,
 };
-
 
 use crate::{
 	rpc::{OraclePallet, VaultRegistryPallet},

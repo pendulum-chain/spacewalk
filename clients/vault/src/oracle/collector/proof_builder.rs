@@ -5,7 +5,8 @@ use parking_lot::RwLock;
 use stellar_relay_lib::{
 	sdk::{
 		compound_types::{UnlimitedVarArray, XdrArchive},
-		types::{ScpEnvelope, ScpHistoryEntry, StellarMessage, TransactionSet}, XdrCodec,
+		types::{ScpEnvelope, ScpHistoryEntry, StellarMessage, TransactionSet},
+		XdrCodec,
 	},
 	StellarOverlayConnection,
 };
@@ -359,9 +360,7 @@ pub trait ProofExt: Send + Sync {
 
 #[cfg(test)]
 mod test {
-	use crate::oracle::collector::proof_builder::{
-		check_slot_position,
-	};
+	use crate::oracle::collector::proof_builder::check_slot_position;
 
 	#[test]
 	fn test_check_slot_position() {

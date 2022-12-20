@@ -1,5 +1,3 @@
-
-
 use crate::oracle::types::Slot;
 
 /// This is for `EnvelopesMap`; how many slots is accommodated per file.

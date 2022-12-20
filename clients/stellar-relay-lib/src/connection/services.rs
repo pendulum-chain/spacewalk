@@ -230,7 +230,9 @@ pub(crate) async fn receiving_service(
 				);
 
 				if retry >= retries {
-					return Err(Error::ConnectionFailed("TIMED OUT reading for messages from the stream".to_string()))
+					return Err(Error::ConnectionFailed(
+						"TIMED OUT reading for messages from the stream".to_string(),
+					))
 				}
 				retry += 1;
 			},

@@ -10,8 +10,8 @@ pub use warp;
 pub use cli::{LoggingFormat, RestartPolicy, ServiceConfig};
 pub use error::Error;
 use runtime::{
-	cli::ConnectionOpts as ParachainConfig, PrettyPrint, ShutdownReceiver,
-	ShutdownSender, SpacewalkParachain, SpacewalkSigner,
+	cli::ConnectionOpts as ParachainConfig, PrettyPrint, ShutdownReceiver, ShutdownSender,
+	SpacewalkParachain, SpacewalkSigner,
 };
 pub use trace::init_subscriber;
 
@@ -51,13 +51,7 @@ impl<Config: Clone + Send + 'static, F: Fn()> ConnectionManager<Config, F> {
 		config: Config,
 		increment_restart_counter: F,
 	) -> Self {
-		Self {
-			signer,
-			parachain_config,
-			service_config,
-			config,
-			increment_restart_counter,
-		}
+		Self { signer, parachain_config, service_config, config, increment_restart_counter }
 	}
 
 	pub async fn start<S: Service<Config, InnerError>, InnerError: fmt::Display>(

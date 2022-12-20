@@ -6,7 +6,7 @@ use async_trait::async_trait;
 use clap::Parser;
 use futures::{
 	channel::{mpsc, mpsc::Sender},
-	future::{join_all},
+	future::join_all,
 	SinkExt, TryFutureExt,
 };
 use git_version::git_version;

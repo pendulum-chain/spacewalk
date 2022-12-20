@@ -11,18 +11,17 @@ use subxt::{
 	metadata::DecodeWithMetadata,
 	rpc::rpc_params,
 	storage::{address::Yes, StorageAddress},
-	tx::{TxPayload},
+	tx::TxPayload,
 	Error as BasicError,
 };
 use tokio::{sync::RwLock, time::timeout};
 
 use module_oracle_rpc_runtime_api::BalanceWrapper;
-use primitives::{Hash};
+use primitives::Hash;
 
 use crate::{
 	conn::{new_websocket_client, new_websocket_client_with_retry},
-	metadata,
-	notify_retry,
+	metadata, notify_retry,
 	types::*,
 	AccountId, Error, RetryPolicy, ShutdownSender, SpacewalkRuntime, SpacewalkSigner, SubxtError,
 };
@@ -97,8 +96,7 @@ impl SpacewalkParachain {
 		// if we miss an event
 		let (fee_rate_update_tx, _) = tokio::sync::broadcast::channel(2);
 
-		let parachain_rpc =
-			Self { api, shutdown_tx, signer, account_id, fee_rate_update_tx };
+		let parachain_rpc = Self { api, shutdown_tx, signer, account_id, fee_rate_update_tx };
 		Ok(parachain_rpc)
 	}
 

@@ -10,12 +10,8 @@ use runtime::{
 	SpacewalkParachain, StellarPublicKeyRaw, H256,
 };
 use service::Error as ServiceError;
-use stellar_relay_lib::sdk::{
-	PublicKey, Transaction, TransactionEnvelope, XdrCodec,
-};
-use wallet::{
-	types::{FilterWith, TransactionFilterParam},
-};
+use stellar_relay_lib::sdk::{PublicKey, Transaction, TransactionEnvelope, XdrCodec};
+use wallet::types::{FilterWith, TransactionFilterParam};
 
 use crate::{oracle::*, Error, Event};
 

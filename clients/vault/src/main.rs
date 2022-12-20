@@ -1,4 +1,4 @@
-use std::{sync::Arc};
+use std::sync::Arc;
 
 use clap::Parser;
 use futures::Future;
@@ -11,9 +11,8 @@ use service::{ConnectionManager, Error as ServiceError, ServiceConfig};
 use signal_hook::consts::*;
 use signal_hook_tokio::Signals;
 use vault::{
-	metrics::{increment_restart_counter},
-	process::PidFile,
-	Error, VaultService, VaultServiceConfig, ABOUT, AUTHORS, NAME, VERSION,
+	metrics::increment_restart_counter, process::PidFile, Error, VaultService, VaultServiceConfig,
+	ABOUT, AUTHORS, NAME, VERSION,
 };
 
 #[derive(Parser)]

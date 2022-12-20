@@ -1,5 +1,3 @@
-
-
 pub use horizon::{listen_for_new_transactions, TransactionResponse};
 pub use stellar_wallet::StellarWallet;
 

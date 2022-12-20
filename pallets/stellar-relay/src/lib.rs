@@ -27,7 +27,7 @@ mod default_weights;
 #[frame_support::pallet]
 pub mod pallet {
 	use codec::FullCodec;
-	use frame_support::{pallet_prelude::*, transactional, require_transactional};
+	use frame_support::{pallet_prelude::*, require_transactional, transactional};
 	use frame_system::pallet_prelude::*;
 	use sha2::{Digest, Sha256};
 	use sp_std::{collections::btree_map::BTreeMap, fmt::Debug, vec::Vec};
@@ -89,9 +89,7 @@ pub mod pallet {
 	#[pallet::event]
 	#[pallet::generate_deposit(pub (super) fn deposit_event)]
 	pub enum Event<T: Config> {
-		UpdateTier1ValidatorSet {
-			new_validators_enactment_block_height: T::BlockNumber
-		},
+		UpdateTier1ValidatorSet { new_validators_enactment_block_height: T::BlockNumber },
 	}
 
 	// Errors inform users that something went wrong.
@@ -489,7 +487,7 @@ pub mod pallet {
 			Organizations::<T>::put(new_organization_vec);
 
 			Self::deposit_event(Event::<T>::UpdateTier1ValidatorSet {
-				new_validators_enactment_block_height : enactment_block_height
+				new_validators_enactment_block_height: enactment_block_height,
 			});
 
 			Ok(())

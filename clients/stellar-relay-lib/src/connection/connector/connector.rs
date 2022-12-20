@@ -249,7 +249,6 @@ mod test {
 
 	#[test]
 	fn create_new_connector_works() {
-		
 		let (node_info, _, connector, _, _) = create_connector();
 
 		let connector_local_node = connector.local.node();

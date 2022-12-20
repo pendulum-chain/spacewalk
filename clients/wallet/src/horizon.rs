@@ -99,7 +99,6 @@ pub struct TransactionResponse {
 }
 
 impl TransactionResponse {
-
 	pub fn memo_hash(&self) -> Option<Hash> {
 		if self.memo.is_none() {
 			return None
@@ -437,13 +436,12 @@ where
 mod tests {
 	use std::{future, sync::Arc};
 
-	use mockall::{predicate::*};
+	use mockall::predicate::*;
 	use substrate_stellar_sdk::{
 		network::{Network, PUBLIC_NETWORK, TEST_NETWORK},
 		types::Preconditions,
 		Asset, Operation, SecretKey, StroopAmount, Transaction, TransactionEnvelope,
 	};
-	
 
 	use crate::types::{FilterWith, MockWatcher, TransactionFilterParam};
 
@@ -490,7 +488,9 @@ mod tests {
 			Preconditions::PrecondNone,
 			None,
 		)
-		.map_err(|_e| Error::BuildTransactionError("Creating new transaction failed".to_string()))?;
+		.map_err(|_e| {
+			Error::BuildTransactionError("Creating new transaction failed".to_string())
+		})?;
 
 		let asset = Asset::native();
 		let amount = StroopAmount(amount);

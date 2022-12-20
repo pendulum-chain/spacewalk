@@ -1,9 +1,4 @@
-use std::{
-	fs::{create_dir_all},
-	str::Split,
-};
-
-
+use std::{fs::create_dir_all, str::Split};
 
 use stellar_relay_lib::sdk::{
 	compound_types::{UnlimitedVarArray, XdrArchive},
@@ -12,9 +7,8 @@ use stellar_relay_lib::sdk::{
 };
 
 use crate::oracle::{
-	constants::{MAX_ITEMS_IN_QUEUE},
-	storage::traits::*,
-	EnvelopesFileHandler, EnvelopesMap, Error, Filename, SerializedData, Slot, SlotEncodedMap, TxSetMap, TxSetsFileHandler,
+	constants::MAX_ITEMS_IN_QUEUE, storage::traits::*, EnvelopesFileHandler, EnvelopesMap, Error,
+	Filename, SerializedData, Slot, SlotEncodedMap, TxSetMap, TxSetsFileHandler,
 };
 
 use super::{ScpArchiveStorage, TransactionsArchiveStorage};
@@ -206,20 +200,16 @@ pub fn prepare_directories() -> Result<(), Error> {
 #[cfg(test)]
 mod test {
 	use std::{
-		convert::{TryFrom, TryInto}, fs,
+		convert::{TryFrom, TryInto},
+		fs,
 		fs::File,
 		io::Read,
 		path::PathBuf,
 	};
 
-	
 	use mockall::lazy_static;
 
-	use stellar_relay_lib::{
-		sdk::{
-			types::{ScpHistoryEntry},
-		},
-	};
+	use stellar_relay_lib::sdk::types::ScpHistoryEntry;
 
 	use crate::oracle::{
 		constants::MAX_SLOTS_PER_FILE,
@@ -465,9 +455,10 @@ mod test {
 		let (_url, ref filename) = TransactionsArchiveStorage::get_url_and_file_name(slot_index);
 
 		//act
-		let _transactions_archive = TransactionsArchiveStorage::get_transactions_archive(slot_index)
-			.await
-			.expect("should find the archive");
+		let _transactions_archive =
+			TransactionsArchiveStorage::get_transactions_archive(slot_index)
+				.await
+				.expect("should find the archive");
 
 		//assert
 		TransactionsArchiveStorage::read_file_xdr(filename)
