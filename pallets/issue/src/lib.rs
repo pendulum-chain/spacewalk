@@ -742,7 +742,7 @@ impl<T: Config> Pallet<T> {
 			let new_issue_request = Self::convert_into_limit_currency_id_amount(amount_requested)?;
 			ensure!(
 				new_issue_request.amount().saturating_add(current_volume) > limit_volume,
-				Error::<T>::VaultNotAcceptingNewIssues
+				Error::<T>::ExceedLimitVolumeForIssueRequest
 			);
 		})
 	}
