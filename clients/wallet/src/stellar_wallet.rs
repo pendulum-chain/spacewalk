@@ -102,7 +102,9 @@ impl StellarWallet {
 			Preconditions::PrecondNone,
 			Some(Memo::MemoHash(memo_hash)),
 		)
-		.map_err(|_e| Error::BuildTransactionError("Creating new transaction failed".to_string()))?;
+		.map_err(|_e| {
+			Error::BuildTransactionError("Creating new transaction failed".to_string())
+		})?;
 
 		let amount = StroopAmount(stroop_amount);
 		transaction
@@ -126,9 +128,9 @@ impl StellarWallet {
 		let network: &Network =
 			if self.is_public_network { &PUBLIC_NETWORK } else { &TEST_NETWORK };
 
-		envelope.sign(network, vec![&self.get_secret_key()]).map_err(|_e| {
-			Error::SignEnvelopError
-		})?;
+		envelope
+			.sign(network, vec![&self.get_secret_key()])
+			.map_err(|_e| Error::SignEnvelopeError)?;
 
 		let transaction_response = horizon_client
 			.submit_transaction(envelope.clone(), self.is_public_network)

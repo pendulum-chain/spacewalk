@@ -3,9 +3,8 @@ use frame_support::assert_ok;
 use frame_system::RawOrigin;
 use orml_traits::MultiCurrency;
 use sp_core::H256;
-use sp_runtime::traits::One;
+use sp_runtime::{traits::One, FixedPointNumber};
 use sp_std::prelude::*;
-use sp_runtime::FixedPointNumber;
 
 use currency::{
 	getters::{get_relay_chain_currency_id as get_collateral_currency_id, *},
@@ -71,10 +70,7 @@ fn initialize_oracle<T: crate::Config>() {
 				Key::ExchangeRate(Token(DOT)),
 				UnsignedFixedPoint::<T>::checked_from_rational(1, 1).unwrap(),
 			),
-			(
-				Key::FeeEstimation,
-				UnsignedFixedPoint::<T>::checked_from_rational(3, 1).unwrap(),
-			),
+			(Key::FeeEstimation, UnsignedFixedPoint::<T>::checked_from_rational(3, 1).unwrap()),
 		],
 	);
 	Oracle::<T>::begin_block(0u32.into());

@@ -1,6 +1,5 @@
 use std::sync::Arc;
 
-
 use parking_lot::{lock_api::RwLockReadGuard, RawRwLock, RwLock};
 use tokio::sync::mpsc;
 
@@ -234,9 +233,7 @@ impl ScpMessageCollector {
 
 #[cfg(test)]
 mod test {
-	use stellar_relay_lib::sdk::{
-		network::{PUBLIC_NETWORK, TEST_NETWORK},
-	};
+	use stellar_relay_lib::sdk::network::{PUBLIC_NETWORK, TEST_NETWORK};
 
 	use crate::oracle::{
 		collector::ScpMessageCollector, constants::get_min_externalized_messages,
@@ -293,8 +290,6 @@ mod test {
 		let env_map =
 			EnvelopesFileHandler::get_map_from_archives(first_slot).expect("should return a map");
 
-		let _slot = 1234;
-
 		let (slot, value) = env_map.get(0).expect("should return a tuple");
 		let one_scp_env = value[0].clone();
 		collector.add_scp_envelope(*slot, one_scp_env.clone());
@@ -307,10 +302,10 @@ mod test {
 		collector.add_scp_envelope(*slot, two_scp_env.clone());
 		assert_eq!(collector.envelopes_map_len(), 1); // length shouldn't change, since we're insertin to the same key.
 
-		let collctr_env_map = collector.envelopes_map.read();
-		let res = collctr_env_map
+		let collector_env_map = collector.envelopes_map.read();
+		let res = collector_env_map
 			.get_with_key(&slot)
-			.expect("should return a vector of scpenvelopes");
+			.expect("should return a vector of scp envelopes");
 
 		assert_eq!(res.len(), 2);
 		assert_eq!(&res[0], &one_scp_env);
@@ -356,7 +351,7 @@ mod test {
 			let one_scp_env = value[0].clone();
 
 			// let's fill the collector with the minimum # of envelopes
-			for _i in 0..min_ext_msgs + 1 {
+			for _ in 0..min_ext_msgs + 1 {
 				collector.add_scp_envelope(dummy_slot_0, one_scp_env.clone());
 			}
 		}

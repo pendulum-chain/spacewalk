@@ -41,7 +41,7 @@ fn test_get_amount_from_transaction_envelope_works() {
 			Operation {
 				source_account: Some(source_account.clone()),
 				body: OperationBody::CreateClaimableBalance(CreateClaimableBalanceOp {
-					asset: asset,
+					asset,
 					amount: stroop_amount,
 					claimants: LimitedVarArray::new(vec![Claimant::ClaimantTypeV0(ClaimantV0 {
 						destination: PublicKey::PublicKeyTypeEd25519(recipient_stellar_address),
@@ -108,7 +108,7 @@ fn test_get_amount_from_transaction_envelope_works_for_mismatching_assets() {
 			Operation {
 				source_account: Some(source_account.clone()),
 				body: OperationBody::CreateClaimableBalance(CreateClaimableBalanceOp {
-					asset: asset,
+					asset,
 					amount: stroop_amount,
 					claimants: LimitedVarArray::new(vec![Claimant::ClaimantTypeV0(ClaimantV0 {
 						destination: PublicKey::PublicKeyTypeEd25519(recipient_stellar_address),
