@@ -169,11 +169,12 @@ impl OracleAgent {
 				tokio::select! {
 					// runs the stellar-relay and listens to data to collect the scp messages and txsets.
 					Some(msg) = overlay_conn.listen() => {
-						handle_message(msg,&collector,&sender).await?;
+						handle_message(msg, &collector, &sender).await?;
 					},
 
 					Some(msg) = receiver.recv() => {
-						sender.clone().send(msg).await?;
+						// We received the instruction to send a message to the overlay network by the receiver
+						overlay_conn.send(msg).await?;
 					}
 				}
 			}

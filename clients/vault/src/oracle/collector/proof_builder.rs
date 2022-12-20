@@ -98,12 +98,10 @@ impl ScpMessageCollector {
 	async fn fetch_missing_txset(&self, slot: Slot, sender: &mpsc::Sender<StellarMessage>) {
 		// we need the txset hash to create the message.
 		if let Some(txset_hash) = self.get_txset_hash(&slot) {
-			tracing::info!(
-				"requesting txset for slot {}: {:?}",
-				slot,
-				String::from_utf8(txset_hash.to_vec())
-			);
-			let _ = sender.send(StellarMessage::GetTxSet(txset_hash)).await;
+			tracing::info!("requesting tx_set for slot {}: {:?}", slot, hex::encode(txset_hash));
+			if let Err(error) = sender.send(StellarMessage::GetTxSet(txset_hash)).await {
+				tracing::error!("failed to send GetTxSet message: {:?}", error);
+			}
 		}
 	}
 }
