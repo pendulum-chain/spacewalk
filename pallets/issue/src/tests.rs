@@ -31,7 +31,6 @@ fn request_issue(
 		.mock_safe(|_, _| MockResult::Return(Ok(())));
 
 	<vault_registry::Pallet<T>>::register_deposit_address(vault_id, secure_id)
-		// ext::vault_registry::register_deposit_address::<Test>
 		.mock_safe(|_, _| MockResult::Return(Ok(RANDOM_STELLAR_PUBLIC_KEY)));
 
 	Issue::_request_issue(origin, amount, vault)
@@ -58,7 +57,6 @@ fn request_issue_ok_with_address(
 
 	unsafe {
 		<vault_registry::Pallet<T>>::register_deposit_address(vault_id, secure_id)
-			// ext::vault_registry::register_deposit_address::<Test>
 			.mock_raw(|_, _| MockResult::Return(Ok(address)));
 	}
 
