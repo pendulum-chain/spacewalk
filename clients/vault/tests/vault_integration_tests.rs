@@ -20,7 +20,7 @@ use runtime::{
 };
 use stellar_relay_lib::sdk::{PublicKey, XdrCodec};
 use vault::{
-	oracle::{OracleProofOps, Proof, ProofExt, ProofStatus},
+	oracle::{OracleAgent, Proof},
 	service::IssueFilter,
 	Event as CancellationEvent, VaultIdManager,
 };
@@ -83,7 +83,7 @@ pub async fn assert_issue(
 	wallet: Arc<RwLock<StellarWallet>>,
 	vault_id: &VaultId,
 	amount: u128,
-	proof_ops: Arc<RwLock<OracleProofOps>>,
+	oracle_agent: Arc<OracleAgent>,
 ) {
 	let issue = parachain_rpc.request_issue(amount, vault_id).await.unwrap();
 
@@ -100,35 +100,8 @@ pub async fn assert_issue(
 
 	let slot = response.ledger as u64;
 
-	let ops_read = proof_ops.read().await;
-
 	// Loop pending proofs until it is ready
-	let mut proof: Option<Proof> = None;
-	with_timeout(
-		async {
-			loop {
-				let proof_status = ops_read.get_proof(slot).await.expect("Failed to get proof");
-
-				match proof_status {
-					ProofStatus::Proof(p) => {
-						proof = Some(p);
-						break
-					},
-					ProofStatus::LackingEnvelopes => {},
-					ProofStatus::NoEnvelopesFound => {},
-					ProofStatus::NoTxSetFound => {},
-					ProofStatus::WaitForTxSet => {},
-				}
-
-				// Wait a bit before trying again
-				sleep(Duration::from_secs(3)).await;
-			}
-		},
-		Duration::from_secs(60),
-	)
-	.await;
-
-	let proof = proof.expect("Proof should be available");
+	let proof = oracle_agent.get_proof(slot).await.expect("Proof should be available");
 	let tx_envelope_xdr_encoded = tx_env.to_base64_xdr();
 	let (envelopes_xdr_encoded, tx_set_xdr_encoded) = proof.encode();
 
@@ -258,20 +231,15 @@ async fn test_redeem_succeeds() {
 
 		let shutdown_tx = ShutdownSender::new();
 
-		// Setup scp handler for proofs
-		// TODO refactor once improved 'OracleAgent' is implemented
-		let handler = vault::inner_create_handler(wallet.get_secret_key(), is_public_network)
-			.await
-			.expect("Failed to create handler");
-		let proof_ops = Arc::new(RwLock::new(handler.proof_operations()));
-		drop(wallet);
+		let oracle_agent =
+			Arc::new(OracleAgent::new(is_public_network).expect("failed to create agent"));
 
 		assert_issue(
 			&user_provider,
 			wallet_arc.clone(),
 			&vault_id,
 			issue_amount,
-			proof_ops.clone(),
+			oracle_agent.clone(),
 		)
 		.await;
 
@@ -281,7 +249,7 @@ async fn test_redeem_succeeds() {
 				vault_provider.clone(),
 				vault_id_manager,
 				Duration::from_secs(0),
-				proof_ops,
+				oracle_agent,
 			),
 			async {
 				let wallet = wallet_arc.read().await;
@@ -353,20 +321,15 @@ async fn test_replace_succeeds() {
 				.await
 		);
 
-		// Setup scp handler for proofs
-		// TODO refactor once improved 'OracleAgent' is implemented
-		let handler = vault::inner_create_handler(wallet.get_secret_key(), is_public_network)
-			.await
-			.expect("Failed to create handler");
-		let proof_ops = Arc::new(RwLock::new(handler.proof_operations()));
-		drop(wallet);
+		let oracle_agent =
+			Arc::new(OracleAgent::new(is_public_network).expect("failed to create agent"));
 
 		assert_issue(
 			&user_provider,
 			wallet_arc.clone(),
 			&old_vault_id,
 			issue_amount,
-			proof_ops.clone(),
+			oracle_agent.clone(),
 		)
 		.await;
 
@@ -385,7 +348,7 @@ async fn test_replace_succeeds() {
 					old_vault_provider.clone(),
 					vault_id_manager.clone(),
 					Duration::from_secs(0),
-					proof_ops.clone(),
+					oracle_agent.clone(),
 				),
 			),
 			async {
@@ -457,20 +420,16 @@ async fn test_withdraw_replace_succeeds() {
 				)
 				.await
 		);
-		// Setup scp handler for proofs
-		// TODO refactor once improved 'OracleAgent' is implemented
-		let handler = vault::inner_create_handler(wallet.get_secret_key(), is_public_network)
-			.await
-			.expect("Failed to create handler");
-		let proof_ops = Arc::new(RwLock::new(handler.proof_operations()));
-		drop(wallet);
+
+		let oracle_agent =
+			Arc::new(OracleAgent::new(is_public_network).expect("failed to create agent"));
 
 		assert_issue(
 			&user_provider,
 			wallet_arc.clone(),
 			&old_vault_id,
 			issue_amount,
-			proof_ops.clone(),
+			oracle_agent.clone(),
 		)
 		.await;
 
@@ -556,20 +515,16 @@ async fn test_cancel_scheduler_succeeds() {
 				)
 				.await
 		);
-		// Setup scp handler for proofs
-		// TODO refactor once improved 'OracleAgent' is implemented
-		let handler = vault::inner_create_handler(wallet.get_secret_key(), is_public_network)
-			.await
-			.expect("Failed to create handler");
-		let proof_ops = Arc::new(RwLock::new(handler.proof_operations()));
-		drop(wallet);
+
+		let oracle_agent =
+			Arc::new(OracleAgent::new(is_public_network).expect("failed to create agent"));
 
 		assert_issue(
 			&user_provider,
 			wallet_arc.clone(),
 			&old_vault_id,
 			issue_amount,
-			proof_ops.clone(),
+			oracle_agent.clone(),
 		)
 		.await;
 
@@ -763,20 +718,13 @@ async fn test_issue_cancel_succeeds() {
 			assert!(issue_set.read().await.is_empty());
 		};
 
-		let slot_tx_env_map: Arc<RwLock<HashMap<u32, String>>> =
-			Arc::new(RwLock::new(HashMap::new()));
-
-		let handler = vault::inner_create_handler(wallet.get_secret_key(), is_public_network)
-			.await
-			.expect("Failed to create handler");
-		let watcher = Arc::new(RwLock::new(handler.create_watcher()));
+		let slot_tx_env_map = Arc::new(RwLock::new(HashMap::new()));
 
 		let (issue_event_tx, _issue_event_rx) = mpsc::channel::<CancellationEvent>(16);
 		let service = join3(
 			vault::service::listen_for_new_transactions(
 				wallet.get_public_key(),
 				wallet.is_public_network(),
-				watcher.clone(),
 				slot_tx_env_map.clone(),
 				issue_set.clone(),
 				issue_filter,
@@ -808,11 +756,6 @@ async fn test_issue_overpayment_succeeds() {
 		)
 		.unwrap();
 		let public_key = wallet.get_public_key_raw();
-
-		// Already start listening for scp messages
-		let scp_handler = vault::inner_create_handler(wallet.get_secret_key(), is_public_network)
-			.await
-			.expect("Failed to create scp handler");
 
 		let issue_amount = 100000;
 		let over_payment_factor = 3;
@@ -856,37 +799,13 @@ async fn test_issue_overpayment_succeeds() {
 
 		assert!(transaction_response.successful);
 
+		let slot = transaction_response.ledger as u64;
+
+		let oracle_agent =
+			Arc::new(OracleAgent::new(is_public_network).expect("failed to create agent"));
+
 		// Loop pending proofs until it is ready
-		let mut proof: Option<Proof> = None;
-		with_timeout(
-			async {
-				loop {
-					let proof_status = scp_handler
-						.proof_operations()
-						.get_proof(transaction_response.ledger as u64)
-						.await
-						.expect("Failed to get proof");
-
-					match proof_status {
-						ProofStatus::Proof(p) => {
-							proof = Some(p);
-							break
-						},
-						ProofStatus::LackingEnvelopes => {},
-						ProofStatus::NoEnvelopesFound => {},
-						ProofStatus::NoTxSetFound => {},
-						ProofStatus::WaitForTxSet => {},
-					}
-
-					// Wait a bit before trying again
-					sleep(Duration::from_secs(3)).await;
-				}
-			},
-			Duration::from_secs(60),
-		)
-		.await;
-
-		let proof = proof.expect("Proof should be available");
+		let proof = oracle_agent.get_proof(slot).await.expect("Proof should be available");
 		let tx_envelope_xdr_encoded = tx_envelope.to_xdr();
 		let tx_envelope_xdr_encoded = base64::encode(tx_envelope_xdr_encoded);
 		let (envelopes_xdr_encoded, tx_set_xdr_encoded) = proof.encode();
@@ -981,16 +900,12 @@ async fn test_automatic_issue_execution_succeeds() {
 			.await;
 		};
 
-		let slot_tx_env_map: Arc<RwLock<HashMap<u32, String>>> =
-			Arc::new(RwLock::new(HashMap::new()));
+		let oracle_agent =
+			Arc::new(OracleAgent::new(is_public_network).expect("failed to create agent"));
 
 		let wallet = wallet_arc.read().await;
 		let issue_filter = IssueFilter::new(&wallet.get_public_key()).expect("Invalid filter");
-		let handler = vault::inner_create_handler(wallet.get_secret_key(), is_public_network)
-			.await
-			.expect("Failed to create handler");
-		let watcher = Arc::new(RwLock::new(handler.create_watcher()));
-		let proof_ops = Arc::new(RwLock::new(handler.proof_operations()));
+		let slot_tx_env_map = Arc::new(RwLock::new(HashMap::new()));
 
 		let issue_set = Arc::new(RwLock::new(IssueRequestsMap::new()));
 		let (issue_event_tx, _issue_event_rx) = mpsc::channel::<CancellationEvent>(16);
@@ -998,7 +913,6 @@ async fn test_automatic_issue_execution_succeeds() {
 			vault::service::listen_for_new_transactions(
 				wallet.get_public_key(),
 				wallet.is_public_network(),
-				watcher.clone(),
 				slot_tx_env_map.clone(),
 				issue_set.clone(),
 				issue_filter,
@@ -1011,7 +925,7 @@ async fn test_automatic_issue_execution_succeeds() {
 			),
 			vault::service::process_issues_requests(
 				vault_provider.clone(),
-				proof_ops.clone(),
+				oracle_agent.clone(),
 				slot_tx_env_map.clone(),
 				issue_set.clone(),
 			),
@@ -1079,8 +993,7 @@ async fn test_automatic_issue_execution_succeeds_for_other_vault() {
 		drop(wallet);
 
 		let issue_set_arc = Arc::new(RwLock::new(IssueRequestsMap::new()));
-		let slot_tx_env_map: Arc<RwLock<HashMap<u32, String>>> =
-			Arc::new(RwLock::new(HashMap::new()));
+		let slot_tx_env_map = Arc::new(RwLock::new(HashMap::new()));
 
 		let fut_user = async {
 			// The account of the 'user_provider' is used to request a new issue that
@@ -1127,32 +1040,30 @@ async fn test_automatic_issue_execution_succeeds_for_other_vault() {
 		};
 
 		let wallet = wallet_arc.read().await;
-		let issue_filter = IssueFilter::new(&wallet.get_public_key()).expect("Invalid filter");
-		let handler = vault::inner_create_handler(wallet.get_secret_key(), is_public_network)
-			.await
-			.expect("Failed to create handler");
-		let watcher = Arc::new(RwLock::new(handler.create_watcher()));
-		let proof_ops = Arc::new(RwLock::new(handler.proof_operations()));
+		let vault_account_public_key = wallet.get_public_key();
+		drop(wallet);
+		let issue_filter = IssueFilter::new(&vault_account_public_key).expect("Invalid filter");
+		let oracle_agent =
+			Arc::new(OracleAgent::new(is_public_network).expect("failed to create agent"));
 
 		let (issue_event_tx, _issue_event_rx) = mpsc::channel::<CancellationEvent>(16);
 		let service = join4(
 			vault::service::listen_for_new_transactions(
-				wallet.get_public_key(),
-				wallet.is_public_network(),
-				watcher.clone(),
+				vault_account_public_key.clone(),
+				is_public_network,
 				slot_tx_env_map.clone(),
 				issue_set_arc.clone(),
 				issue_filter,
 			),
 			vault::service::listen_for_issue_requests(
 				vault2_provider.clone(),
-				wallet.get_public_key(),
+				vault_account_public_key,
 				issue_event_tx,
 				issue_set_arc.clone(),
 			),
 			vault::service::process_issues_requests(
 				vault2_provider.clone(),
-				proof_ops.clone(),
+				oracle_agent.clone(),
 				slot_tx_env_map.clone(),
 				issue_set_arc.clone(),
 			),
@@ -1161,7 +1072,6 @@ async fn test_automatic_issue_execution_succeeds_for_other_vault() {
 				issue_set_arc.clone(),
 			),
 		);
-		drop(wallet);
 
 		test_service(service, fut_user).await;
 	})
@@ -1205,20 +1115,15 @@ async fn test_execute_open_requests_succeeds() {
 				.await
 		);
 
-		// Setup scp handler for proofs
-		// TODO refactor once improved 'OracleAgent' is implemented
-		let handler = vault::inner_create_handler(wallet.get_secret_key(), is_public_network)
-			.await
-			.expect("Failed to create handler");
-		let proof_ops = Arc::new(RwLock::new(handler.proof_operations()));
-		drop(wallet);
+		let oracle_agent =
+			Arc::new(OracleAgent::new(is_public_network).expect("failed to create agent"));
 
 		assert_issue(
 			&user_provider,
 			wallet_arc.clone(),
 			&vault_id,
 			issue_amount,
-			proof_ops.clone(),
+			oracle_agent.clone(),
 		)
 		.await;
 
@@ -1262,7 +1167,7 @@ async fn test_execute_open_requests_succeeds() {
 				vault_provider,
 				vault_id_manager,
 				wallet_arc.clone(),
-				proof_ops,
+				oracle_agent.clone(),
 				Duration::from_secs(0),
 			)
 			.map(Result::unwrap),
@@ -1312,20 +1217,16 @@ async fn test_off_chain_liquidation() {
 				)
 				.await
 		);
-		// Setup scp handler for proofs
-		// TODO refactor once improved 'OracleAgent' is implemented
-		let handler = vault::inner_create_handler(wallet.get_secret_key(), is_public_network)
-			.await
-			.expect("Failed to create handler");
-		let proof_ops = Arc::new(RwLock::new(handler.proof_operations()));
-		drop(wallet);
+
+		let oracle_agent =
+			Arc::new(OracleAgent::new(is_public_network).expect("failed to create agent"));
 
 		assert_issue(
 			&user_provider,
 			wallet_arc.clone(),
 			&vault_id,
 			issue_amount,
-			proof_ops.clone(),
+			oracle_agent.clone(),
 		)
 		.await;
 
