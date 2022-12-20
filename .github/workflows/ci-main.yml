@@ -27,7 +27,7 @@ jobs:
           sudo apt-get update && sudo apt-get upgrade -y
           sudo apt-get install -y protobuf-compiler libprotobuf-dev
 
-      - name: Install package (ubuntu-latest)
+      - name: Install package (macos-latest)
         if: matrix.os == 'macos-latest'
         run: |
           brew install protobuf
