@@ -170,7 +170,7 @@ pub mod pallet {
 
 	/// Represent current interval current_block_number / IntervalLength
 	#[pallet::storage]
-	pub(super) type CurrentInterval<T: Config> = StorageValue<_, T::BlockNumber, ValueQuery>;
+	pub(super) type LastIntervalIndex<T: Config> = StorageValue<_, T::BlockNumber, ValueQuery>;
 
 	#[pallet::genesis_config]
 	pub struct GenesisConfig<T: Config> {
@@ -734,15 +734,15 @@ impl<T: Config> Pallet<T> {
 
 			let current_index = current_block.checked_div(&interval_length);
 			let mut current_volume = BalanceOf::<T>::zero();			;
-			if current_index > Some(CurrentInterval::<T>::get()) {
-				CurrentInterval::<T>::put(current_index.unwrap_or_default());
+			if current_index != Some(LastIntervalIndex::<T>::get()) {
+				LastIntervalIndex::<T>::put(current_index.unwrap_or_default());
 				CurrentVolumeAmount::<T>::put(current_volume);
 			} else {
 				current_volume = CurrentVolumeAmount::<T>::get();
 			}
-			let new_issue_request = Self::convert_into_limit_currency_id_amount(amount_requested)?;
+			let new_issue_request_amount = Self::convert_into_limit_currency_id_amount(amount_requested)?;
 			ensure!(
-				new_issue_request.amount().saturating_add(current_volume) <= limit_volume,
+				new_issue_request_amount.amount().saturating_add(current_volume) <= limit_volume,
 				Error::<T>::ExceedLimitVolumeForIssueRequest
 			);
 		}
