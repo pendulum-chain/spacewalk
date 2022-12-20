@@ -6,7 +6,7 @@ use async_trait::async_trait;
 use clap::Parser;
 use futures::{
 	channel::{mpsc, mpsc::Sender},
-	future::{join_all},
+	future::join_all,
 	SinkExt, TryFutureExt,
 };
 use git_version::git_version;
@@ -19,7 +19,6 @@ use runtime::{
 	VaultId, VaultRegistryPallet,
 };
 use service::{wait_or_shutdown, Error as ServiceError, Service};
-
 use wallet::{LedgerTxEnvMap, StellarWallet};
 
 use crate::{
@@ -28,7 +27,7 @@ use crate::{
 	execution::execute_open_requests,
 	issue,
 	issue::IssueFilter,
-	oracle::{OracleAgent},
+	oracle::OracleAgent,
 	redeem::listen_for_redeem_requests,
 	replace::{listen_for_accept_replace, listen_for_execute_replace, listen_for_replace_requests},
 	service::{CancellationScheduler, IssueCanceller},
@@ -427,9 +426,12 @@ impl VaultService {
 		let secret_key = wallet.get_secret_key();
 		let vault_public_key = wallet.get_public_key();
 		let is_public_network = wallet.is_public_network();
-		let oracle_agent =
-			Arc::new(OracleAgent::new(is_public_network).expect("failed to create agent"));
 		drop(wallet);
+
+		let mut oracle_agent =
+			OracleAgent::new(is_public_network).expect("Failed to create oracle agent");
+		oracle_agent.start().await.expect("Failed to start oracle agent");
+		let oracle_agent = Arc::new(oracle_agent);
 
 		let open_request_executor = execute_open_requests(
 			self.shutdown.clone(),
