@@ -1,12 +1,8 @@
-use std::{
-	sync::Arc,
-	time::Duration,
-};
-
+use std::{sync::Arc, time::Duration};
 
 use rand::RngCore;
 use tokio::{
-	sync::{mpsc},
+	sync::mpsc,
 	time::{sleep, timeout},
 };
 
@@ -172,7 +168,6 @@ impl OracleAgent {
 			loop {
 				tokio::select! {
 					// runs the stellar-relay and listens to data to collect the scp messages and txsets.
-
 					Some(msg) = overlay_conn.listen() => {
 						handle_message(msg,&collector,&sender).await?;
 					},
@@ -217,41 +212,38 @@ impl OracleAgent {
 
 #[cfg(test)]
 mod tests {
-	
+	use super::*;
 
-	
+	#[tokio::test]
+	async fn test_get_proof_for_current_slot() {
+		prepare_directories().expect("Failed to prepare directories.");
 
-	// #[tokio::test]
-	// async fn test_get_proof_for_current_slot() {
-	// 	prepare_directories().expect("Failed to prepare directories.");
-	//
-	// 	let mut agent = OracleAgent::new(true).unwrap();
-	// 	agent.start().await.expect("Failed to start agent");
-	//
-	// 	tokio::time::sleep(Duration::from_secs(3)).await;
-	// 	let slot = 44041116;
-	//
-	// 	match agent.get_proof(slot).await {
-	// 		Ok(proof) => {
-	// 			println!("proof: {:?}", proof);
-	// 			assert!(true)
-	// 		},
-	// 		Err(e) => assert!(false),
-	// 	}
-	// }
+		let mut agent = OracleAgent::new(true).unwrap();
+		agent.start().await.expect("Failed to start agent");
 
-	// #[tokio::test]
-	// async fn test_get_proof_for_archived_slot() {
-	// 	prepare_directories().expect("Failed to prepare directories.");
-	//
-	// 	let mut agent = OracleAgent::new(true).expect("should return an agent");
-	// 	agent.start().await.expect("Failed to start agent");
-	//
-	// 	// This slot should be archived on the public network
-	// 	let target_slot = 573112;
-	// 	let proof = agent.get_proof(target_slot).await.unwrap();
-	//
-	// 	assert_eq!(proof.slot(), 1);
-	// 	agent.stop().await.expect("Failed to stop the agent");
-	// }
+		let slot = 44041116;
+
+		match agent.get_proof(slot).await {
+			Ok(proof) => {
+				println!("proof: {:?}", proof);
+				assert!(true)
+			},
+			Err(e) => assert!(false),
+		}
+	}
+
+	#[tokio::test]
+	async fn test_get_proof_for_archived_slot() {
+		prepare_directories().expect("Failed to prepare directories.");
+
+		let mut agent = OracleAgent::new(true).expect("should return an agent");
+		agent.start().await.expect("Failed to start agent");
+
+		// This slot should be archived on the public network
+		let target_slot = 573112;
+		let proof = agent.get_proof(target_slot).await.unwrap();
+
+		assert_eq!(proof.slot(), 1);
+		agent.stop().expect("Failed to stop the agent");
+	}
 }

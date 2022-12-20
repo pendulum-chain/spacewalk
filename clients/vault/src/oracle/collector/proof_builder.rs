@@ -1,14 +1,12 @@
 use std::{convert::TryInto, sync::Arc};
 
 use parking_lot::RwLock;
-use tokio::sync::{mpsc};
+use tokio::sync::mpsc;
 
-use stellar_relay_lib::{
-	sdk::{
-		compound_types::{UnlimitedVarArray, XdrArchive},
-		types::{ScpEnvelope, ScpHistoryEntry, StellarMessage, TransactionSet},
-		XdrCodec,
-	},
+use stellar_relay_lib::sdk::{
+	compound_types::{UnlimitedVarArray, XdrArchive},
+	types::{ScpEnvelope, ScpHistoryEntry, StellarMessage, TransactionSet},
+	XdrCodec,
 };
 
 use crate::oracle::{
@@ -181,7 +179,7 @@ impl ScpMessageCollector {
 
 /// Fetching old SCPMessages is only possible if it's not too far back.
 fn check_slot_position(last_slot_index: Slot, slot: Slot) -> bool {
-	slot > (last_slot_index.saturating_sub(MAX_SLOT_TO_REMEMBER))
+	slot != 0 && slot > (last_slot_index.saturating_sub(MAX_SLOT_TO_REMEMBER))
 }
 
 async fn get_envelopes_from_horizon_archive(
