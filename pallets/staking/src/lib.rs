@@ -53,14 +53,17 @@
 #![cfg_attr(test, feature(proc_macro_hygiene))]
 #![cfg_attr(not(feature = "std"), no_std)]
 
-use codec::EncodeLike;
+use codec::{Decode, Encode, EncodeLike};
 use frame_support::{
 	dispatch::{DispatchError, DispatchResult},
 	traits::Get,
 };
+use scale_info::TypeInfo;
 use sp_arithmetic::{FixedPointNumber, FixedPointOperand};
 use sp_runtime::{
-	traits::{CheckedAdd, CheckedDiv, CheckedMul, CheckedSub, One, Zero},
+	traits::{
+		CheckedAdd, CheckedDiv, CheckedMul, CheckedSub, MaybeSerializeDeserialize, One, Zero,
+	},
 	ArithmeticError,
 };
 use sp_std::{cmp, convert::TryInto};
@@ -92,7 +95,7 @@ pub mod pallet {
 	#[pallet::config]
 	pub trait Config: frame_system::Config {
 		/// The overarching event type.
-		type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
+		type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
 
 		/// The `Inner` type of the `SignedFixedPoint`.
 		type SignedInner: CheckedDiv + Ord + FixedPointOperand;
@@ -988,35 +991,56 @@ pub mod migration {
 
 			// step 1: initial (normal) flow
 			assert_ok!(Staking::deposit_stake(&VAULT, &VAULT.account_id, fixed!(50)));
-			assert_ok!(Staking::distribute_reward(Token(IBTC), &VAULT, fixed!(10000)));
-			assert_ok!(Staking::compute_reward(Token(IBTC), &VAULT, &VAULT.account_id), 10000);
+			assert_ok!(Staking::distribute_reward(DEFAULT_WRAPPED_CURRENCY, &VAULT, fixed!(10000)));
+			assert_ok!(
+				Staking::compute_reward(DEFAULT_WRAPPED_CURRENCY, &VAULT, &VAULT.account_id),
+				10000
+			);
 
 			// step 2: slash
 			assert_ok!(Staking::slash_stake(&VAULT, fixed!(30)));
 			assert_ok!(Staking::compute_stake(&VAULT, &VAULT.account_id), 20);
 
 			// step 3: withdraw rewards
-			assert_ok!(Staking::compute_reward(Token(IBTC), &VAULT, &VAULT.account_id), 10000);
 			assert_ok!(
-				legacy_withdraw_reward_at_index::<Test>(0, Token(IBTC), &VAULT, &VAULT.account_id),
+				Staking::compute_reward(DEFAULT_WRAPPED_CURRENCY, &VAULT, &VAULT.account_id),
+				10000
+			);
+			assert_ok!(
+				legacy_withdraw_reward_at_index::<Test>(
+					0,
+					DEFAULT_WRAPPED_CURRENCY,
+					&VAULT,
+					&VAULT.account_id
+				),
 				10000
 			);
 
-			assert_ok!(Staking::distribute_reward(Token(IBTC), &VAULT, fixed!(10000)));
+			assert_ok!(Staking::distribute_reward(DEFAULT_WRAPPED_CURRENCY, &VAULT, fixed!(10000)));
 			assert_ok!(
-				legacy_withdraw_reward_at_index::<Test>(0, Token(IBTC), &VAULT, &VAULT.account_id),
+				legacy_withdraw_reward_at_index::<Test>(
+					0,
+					DEFAULT_WRAPPED_CURRENCY,
+					&VAULT,
+					&VAULT.account_id
+				),
 				0
 			);
 			// check that we keep track of the tokens we're still owed
 			assert_total_rewards(10000);
 
-			assert_ok!(Staking::distribute_reward(Token(IBTC), &VAULT, fixed!(2000)));
+			assert_ok!(Staking::distribute_reward(DEFAULT_WRAPPED_CURRENCY, &VAULT, fixed!(2000)));
 			assert_eq!(
-				Staking::total_rewards(Token(IBTC), (0, VAULT.clone())),
+				Staking::total_rewards(DEFAULT_WRAPPED_CURRENCY, (0, VAULT.clone())),
 				FixedI128::from(12000)
 			);
 			assert_ok!(
-				legacy_withdraw_reward_at_index::<Test>(0, Token(IBTC), &VAULT, &VAULT.account_id),
+				legacy_withdraw_reward_at_index::<Test>(
+					0,
+					DEFAULT_WRAPPED_CURRENCY,
+					&VAULT,
+					&VAULT.account_id
+				),
 				0
 			);
 			assert_total_rewards(12000);
@@ -1025,7 +1049,7 @@ pub mod migration {
 		fn assert_total_rewards(amount: i128) {
 			use mock::*;
 			assert_eq!(
-				Staking::total_rewards(Token(IBTC), (0, VAULT.clone())),
+				Staking::total_rewards(DEFAULT_WRAPPED_CURRENCY, (0, VAULT.clone())),
 				FixedI128::from(amount)
 			);
 		}
@@ -1039,19 +1063,36 @@ pub mod migration {
 				assert_total_rewards(12000);
 
 				// now simulate that we deploy the fix, but don't the migration.
-				assert_ok!(Staking::distribute_reward(Token(IBTC), &VAULT, fixed!(3000)));
+				assert_ok!(Staking::distribute_reward(
+					DEFAULT_WRAPPED_CURRENCY,
+					&VAULT,
+					fixed!(3000)
+				));
 				assert_total_rewards(15000);
 
 				// the first withdraw are still incorrect: we need a sequence [withdraw_reward,
 				// distribute_reward] to start working correctly again
-				assert_ok!(Staking::withdraw_reward(Token(IBTC), &VAULT, &VAULT.account_id), 0);
-				assert_ok!(Staking::withdraw_reward(Token(IBTC), &VAULT, &VAULT.account_id), 0);
+				assert_ok!(
+					Staking::withdraw_reward(DEFAULT_WRAPPED_CURRENCY, &VAULT, &VAULT.account_id),
+					0
+				);
+				assert_ok!(
+					Staking::withdraw_reward(DEFAULT_WRAPPED_CURRENCY, &VAULT, &VAULT.account_id),
+					0
+				);
 				assert_total_rewards(15000);
 
 				// distribute 500 more - we should actually receive that now.
-				assert_ok!(Staking::distribute_reward(Token(IBTC), &VAULT, fixed!(500)));
+				assert_ok!(Staking::distribute_reward(
+					DEFAULT_WRAPPED_CURRENCY,
+					&VAULT,
+					fixed!(500)
+				));
 				assert_total_rewards(15500);
-				assert_ok!(Staking::withdraw_reward(Token(IBTC), &VAULT, &VAULT.account_id), 500);
+				assert_ok!(
+					Staking::withdraw_reward(DEFAULT_WRAPPED_CURRENCY, &VAULT, &VAULT.account_id),
+					500
+				);
 				assert_total_rewards(15000);
 			})
 		}
@@ -1064,7 +1105,7 @@ pub mod migration {
 
 				assert_ok!(<orml_tokens::Pallet<Test> as MultiCurrency<
 					<Test as frame_system::Config>::AccountId,
-				>>::deposit(Token(IBTC), &fee_pool_account_id, 100_000,));
+				>>::deposit(DEFAULT_WRAPPED_CURRENCY, &fee_pool_account_id, 100_000,));
 
 				setup_broken_state();
 				assert_total_rewards(12000);
@@ -1076,17 +1117,27 @@ pub mod migration {
 				assert_eq!(
 					<orml_tokens::Pallet<Test> as MultiCurrency<
 						<Test as frame_system::Config>::AccountId,
-					>>::free_balance(Token(IBTC), &VAULT.account_id),
+					>>::free_balance(DEFAULT_WRAPPED_CURRENCY, &VAULT.account_id),
 					12000
 				);
 
 				// check that we can't withdraw any additional amount
-				assert_ok!(Staking::withdraw_reward(Token(IBTC), &VAULT, &VAULT.account_id), 0);
+				assert_ok!(
+					Staking::withdraw_reward(DEFAULT_WRAPPED_CURRENCY, &VAULT, &VAULT.account_id),
+					0
+				);
 
 				// check that behavior is back to normal
-				assert_ok!(Staking::distribute_reward(Token(IBTC), &VAULT, fixed!(3000)));
+				assert_ok!(Staking::distribute_reward(
+					DEFAULT_WRAPPED_CURRENCY,
+					&VAULT,
+					fixed!(3000)
+				));
 				assert_total_rewards(3000);
-				assert_ok!(Staking::withdraw_reward(Token(IBTC), &VAULT, &VAULT.account_id), 3000);
+				assert_ok!(
+					Staking::withdraw_reward(DEFAULT_WRAPPED_CURRENCY, &VAULT, &VAULT.account_id),
+					3000
+				);
 				assert_total_rewards(0);
 			});
 		}
@@ -1098,7 +1149,11 @@ pub mod migration {
 
 			setup_broken_state();
 			assert_total_rewards(12000);
-			assert_ok!(Staking::distribute_reward(Token(IBTC), &VAULT, fixed!(1_000_000)));
+			assert_ok!(Staking::distribute_reward(
+				DEFAULT_WRAPPED_CURRENCY,
+				&VAULT,
+				fixed!(1_000_000)
+			));
 			assert_total_rewards(1_012_000);
 		}
 
@@ -1111,12 +1166,15 @@ pub mod migration {
 
 				// check that we can indeed withdraw some non-zero amount
 				assert_ok!(
-					Staking::withdraw_reward(Token(IBTC), &VAULT, &VAULT.account_id),
+					Staking::withdraw_reward(DEFAULT_WRAPPED_CURRENCY, &VAULT, &VAULT.account_id),
 					967_000
 				);
 				assert_total_rewards(1_012_000 - 967_000);
 
-				assert_ok!(Staking::withdraw_reward(Token(IBTC), &VAULT, &VAULT.account_id), 0);
+				assert_ok!(
+					Staking::withdraw_reward(DEFAULT_WRAPPED_CURRENCY, &VAULT, &VAULT.account_id),
+					0
+				);
 			});
 		}
 
@@ -1128,7 +1186,7 @@ pub mod migration {
 
 				assert_ok!(<orml_tokens::Pallet<Test> as MultiCurrency<
 					<Test as frame_system::Config>::AccountId,
-				>>::deposit(Token(IBTC), &fee_pool_account_id, 10_000_000,));
+				>>::deposit(DEFAULT_WRAPPED_CURRENCY, &fee_pool_account_id, 10_000_000,));
 
 				setup_broken_state_with_withdrawable_reward();
 				assert_total_rewards(1_012_000);
@@ -1140,17 +1198,27 @@ pub mod migration {
 				assert_eq!(
 					<orml_tokens::Pallet<Test> as MultiCurrency<
 						<Test as frame_system::Config>::AccountId,
-					>>::free_balance(Token(IBTC), &VAULT.account_id),
+					>>::free_balance(DEFAULT_WRAPPED_CURRENCY, &VAULT.account_id),
 					1_012_000
 				);
 
 				// check that we can't withdraw any additional amount
-				assert_ok!(Staking::withdraw_reward(Token(IBTC), &VAULT, &VAULT.account_id), 0);
+				assert_ok!(
+					Staking::withdraw_reward(DEFAULT_WRAPPED_CURRENCY, &VAULT, &VAULT.account_id),
+					0
+				);
 
 				// check that behavior is back to normal
-				assert_ok!(Staking::distribute_reward(Token(IBTC), &VAULT, fixed!(3000)));
+				assert_ok!(Staking::distribute_reward(
+					DEFAULT_WRAPPED_CURRENCY,
+					&VAULT,
+					fixed!(3000)
+				));
 				assert_total_rewards(3000);
-				assert_ok!(Staking::withdraw_reward(Token(IBTC), &VAULT, &VAULT.account_id), 3000);
+				assert_ok!(
+					Staking::withdraw_reward(DEFAULT_WRAPPED_CURRENCY, &VAULT, &VAULT.account_id),
+					3000
+				);
 				assert_total_rewards(0);
 			});
 		}

@@ -3,13 +3,16 @@ use frame_support::{
 	traits::{ConstU32, Everything},
 };
 use orml_traits::parameter_type_with_key;
-pub use primitives::{CurrencyId::Token, TokenSymbol::*};
 use sp_arithmetic::{FixedI128, FixedU128};
 use sp_core::H256;
 use sp_runtime::{
 	testing::Header,
 	traits::{BlakeTwo256, IdentityLookup},
 };
+
+pub use primitives::{CurrencyId::Token, TokenSymbol::*};
+
+use crate::testing_constants::{DEFAULT_COLLATERAL_CURRENCY, DEFAULT_NATIVE_CURRENCY};
 
 type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Test>;
 type Block = frame_system::mocking::MockBlock<Test>;
@@ -50,8 +53,8 @@ impl frame_system::Config for Test {
 	type BlockWeights = ();
 	type BlockLength = ();
 	type DbWeight = ();
-	type Origin = Origin;
-	type Call = Call;
+	type RuntimeOrigin = RuntimeOrigin;
+	type RuntimeCall = RuntimeCall;
 	type Index = Index;
 	type BlockNumber = BlockNumber;
 	type Hash = H256;
@@ -59,7 +62,7 @@ impl frame_system::Config for Test {
 	type AccountId = AccountId;
 	type Lookup = IdentityLookup<Self::AccountId>;
 	type Header = Header;
-	type Event = TestEvent;
+	type RuntimeEvent = TestEvent;
 	type BlockHashCount = BlockHashCount;
 	type Version = ();
 	type PalletInfo = PalletInfo;
@@ -73,12 +76,8 @@ impl frame_system::Config for Test {
 }
 
 parameter_types! {
-	pub const GetNativeCurrencyId: CurrencyId = Token(INTR);
-	pub const GetRelayChainCurrencyId: CurrencyId = Token(DOT);
-	pub const GetWrappedCurrencyId: CurrencyId = CurrencyId::AlphaNum4 {
-		code: *b"USDC",
-		issuer: [0u8; 32],
-	};
+	pub const GetNativeCurrencyId: CurrencyId = DEFAULT_NATIVE_CURRENCY;
+	pub const GetRelayChainCurrencyId: CurrencyId = DEFAULT_COLLATERAL_CURRENCY;
 	pub const MaxLocks: u32 = 50;
 }
 
@@ -89,19 +88,23 @@ parameter_type_with_key! {
 }
 
 impl orml_tokens::Config for Test {
-	type Event = Event;
+	type RuntimeEvent = RuntimeEvent;
 	type Balance = Balance;
 	type Amount = primitives::Amount;
 	type CurrencyId = CurrencyId;
 	type WeightInfo = ();
 	type ExistentialDeposits = ExistentialDeposits;
 	type OnDust = ();
-	type MaxLocks = MaxLocks;
-	type DustRemovalWhitelist = Everything;
-	type MaxReserves = ConstU32<0>; // we don't use named reserves
-	type ReserveIdentifier = (); // we don't use named reserves
+	type OnSlash = ();
+	type OnDeposit = ();
+	type OnTransfer = ();
 	type OnNewTokenAccount = ();
 	type OnKilledTokenAccount = ();
+	type MaxLocks = MaxLocks;
+	type MaxReserves = ConstU32<0>;
+	// we don't use named reserves
+	type ReserveIdentifier = ();
+	type DustRemovalWhitelist = Everything;
 }
 
 pub struct CurrencyConvert;
@@ -121,7 +124,7 @@ impl crate::Config for Test {
 	type Balance = Balance;
 	type GetNativeCurrencyId = GetNativeCurrencyId;
 	type GetRelayChainCurrencyId = GetRelayChainCurrencyId;
-	type GetWrappedCurrencyId = GetWrappedCurrencyId;
+
 	type AssetConversion = primitives::AssetConversion;
 	type BalanceConversion = primitives::BalanceConversion;
 	type CurrencyConversion = CurrencyConvert;
@@ -131,7 +134,7 @@ parameter_types! {
 	pub const MinimumPeriod: Moment = 5;
 }
 
-pub type TestEvent = Event;
+pub type TestEvent = RuntimeEvent;
 
 pub struct ExtBuilder;
 

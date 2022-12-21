@@ -1,19 +1,26 @@
 use std::{
+	collections::VecDeque,
 	fs::{create_dir_all, File},
-	io::Write,
+	io::{Read, Write},
 	str::Split,
 };
-use stellar_relay::sdk::{
-	compound_types::UnlimitedVarArray,
-	types::{ScpEnvelope, TransactionSet},
+
+use sp_core::hexdisplay::AsBytesRef;
+
+use stellar_relay_lib::sdk::{
+	compound_types::{UnlimitedVarArray, XdrArchive},
+	types::{ScpEnvelope, ScpHistoryEntry, TransactionHistoryEntry, TransactionSet},
+	XdrCodec,
 };
 
 use crate::oracle::{
-	storage::traits::*, EnvelopesFileHandler, EnvelopesMap, Error, Filename, SerializedData, Slot,
-	SlotEncodedMap, TxHashMap, TxHashesFileHandler, TxSetMap, TxSetsFileHandler,
+	constants::{ARCHIVE_NODE_LEDGER_BATCH, MAX_ITEMS_IN_QUEUE},
+	storage::traits::*,
+	EnvelopesFileHandler, EnvelopesMap, Error, Filename, SerializedData, Slot, SlotEncodedMap,
+	TxHashesFileHandler, TxSetMap, TxSetsFileHandler,
 };
 
-use stellar_relay::sdk::XdrCodec;
+use super::{ScpArchiveStorage, TransactionsArchiveStorage};
 
 impl FileHandler<EnvelopesMap> for EnvelopesFileHandler {
 	#[cfg(test)]
@@ -28,7 +35,11 @@ impl FileHandler<EnvelopesMap> for EnvelopesFileHandler {
 		let mut m: EnvelopesMap = EnvelopesMap::new();
 		for (key, value) in inside.into_iter() {
 			if let Ok(envelopes) = UnlimitedVarArray::<ScpEnvelope>::from_xdr(value) {
-				m.insert(key, envelopes.get_vec().to_vec());
+				m.push_back((key, envelopes.get_vec().to_vec()));
+
+				if m.len() > MAX_ITEMS_IN_QUEUE {
+					m.pop_front();
+				}
 			}
 		}
 
@@ -89,7 +100,11 @@ impl FileHandler<TxSetMap> for TxSetsFileHandler {
 
 		for (key, value) in inside.into_iter() {
 			if let Ok(set) = TransactionSet::from_xdr(value) {
-				m.insert(key, set);
+				m.push_back((key, set));
+
+				if m.len() > MAX_ITEMS_IN_QUEUE {
+					m.pop_front();
+				}
 			}
 		}
 
@@ -123,33 +138,55 @@ impl FileHandlerExt<TxSetMap> for TxSetsFileHandler {
 	}
 }
 
-impl TxHashesFileHandler {
-	fn create_data(data: &TxHashMap) -> Result<SerializedData, Error> {
-		bincode::serialize(data).map_err(Error::from)
-	}
+impl ArchiveStorage for ScpArchiveStorage {
+	type T = ScpHistoryEntry;
+	const STELLAR_HISTORY_BASE_URL: &'static str =
+		crate::oracle::constants::STELLAR_HISTORY_BASE_URL;
+	const prefix_url: &'static str = "scp";
+	const prefix_filename: &'static str = "";
+}
 
-	pub fn write_to_file(filename: Filename, data: &TxHashMap) -> Result<(), Error> {
-		let path = Self::get_path(&filename);
-		let mut file = File::create(path)?;
+impl ScpArchiveStorage {
+	pub async fn get_scp_archive(
+		slot_index: i32,
+	) -> Result<XdrArchive<<Self as ArchiveStorage>::T>, Error> {
+		let (url, file_name) = Self::get_url_and_file_name(slot_index);
+		//try to find xdr.gz file and decode. if error then download archive from horizon archive
+		// node and save
+		let mut result = Self::try_gz_decode_archive_file(&file_name);
 
-		let data = Self::create_data(data)?;
-		file.write_all(&data).map_err(Error::from)
+		if result.is_err() {
+			download_file_and_save(&url, &file_name).await?;
+			result = Self::try_gz_decode_archive_file(&file_name);
+		}
+		let data = result.unwrap();
+		Ok(Self::decode_xdr(data))
 	}
 }
 
-impl FileHandler<TxHashMap> for TxHashesFileHandler {
-	#[cfg(test)]
-	const PATH: &'static str = "./resources/test/tx_hashes";
+impl ArchiveStorage for TransactionsArchiveStorage {
+	type T = TransactionHistoryEntry;
+	const STELLAR_HISTORY_BASE_URL: &'static str =
+		crate::oracle::constants::STELLAR_HISTORY_BASE_URL_TRANSACTIONS;
+	const prefix_url: &'static str = "transactions";
+	const prefix_filename: &'static str = "txs-";
+}
 
-	#[cfg(not(test))]
-	const PATH: &'static str = "./tx_hashes";
+impl TransactionsArchiveStorage {
+	pub async fn get_transactions_archive(
+		slot_index: i32,
+	) -> Result<XdrArchive<<Self as ArchiveStorage>::T>, Error> {
+		let (url, file_name) = Self::get_url_and_file_name(slot_index);
+		//try to find xdr.gz file and decode. if error then download archive from horizon archive
+		// node and save
+		let mut result = Self::try_gz_decode_archive_file(&file_name);
 
-	fn deserialize_bytes(bytes: Vec<u8>) -> Result<TxHashMap, Error> {
-		bincode::deserialize(&bytes).map_err(Error::from)
-	}
-
-	fn check_slot_in_splitted_filename(slot_param: Slot, splits: &mut Split<&str>) -> bool {
-		TxSetsFileHandler::check_slot_in_splitted_filename(slot_param, splits)
+		if result.is_err() {
+			download_file_and_save(&url, &file_name).await?;
+			result = Self::try_gz_decode_archive_file(&file_name);
+		}
+		let data = result.unwrap();
+		Ok(Self::decode_xdr(data))
 	}
 }
 
@@ -171,23 +208,38 @@ pub fn prepare_directories() -> Result<(), Error> {
 
 #[cfg(test)]
 mod test {
-	use crate::oracle::{
-		collector::get_tx_set_hash,
-		constants::MAX_SLOTS_PER_FILE,
-		errors::Error,
-		storage::{
-			traits::{FileHandler, FileHandlerExt},
-			EnvelopesFileHandler, TxHashesFileHandler, TxSetsFileHandler,
-		},
-		types::Slot,
+	use std::{
+		convert::{TryFrom, TryInto},
+		env, fs,
+		fs::File,
+		io::Read,
+		path::PathBuf,
 	};
+
 	use frame_support::assert_err;
 	use mockall::lazy_static;
-	use std::{convert::TryFrom, env, fs, fs::File, io::Read, path::PathBuf};
-	use stellar_relay::{
+
+	use stellar_relay_lib::{
 		helper::compute_non_generic_tx_set_content_hash,
-		sdk::{network::PUBLIC_NETWORK, types::ScpStatementPledges},
+		sdk::{
+			network::PUBLIC_NETWORK,
+			types::{ScpHistoryEntry, ScpStatementPledges},
+		},
 	};
+
+	use crate::oracle::{
+		constants::MAX_SLOTS_PER_FILE,
+		errors::Error,
+		impls::ArchiveStorage,
+		storage::{
+			traits::{FileHandler, FileHandlerExt},
+			EnvelopesFileHandler, TxSetsFileHandler,
+		},
+		types::{LifoMap, Slot},
+		TransactionsArchiveStorage,
+	};
+
+	use super::ScpArchiveStorage;
 
 	lazy_static! {
 		static ref M_SLOTS_FILE: Slot =
@@ -268,13 +320,14 @@ mod test {
 			let envelopes_map = EnvelopesFileHandler::get_map_from_archives(last_slot - 20)
 				.expect("should return envelopes map");
 
-			for (idx, slot) in envelopes_map.keys().enumerate() {
+			for (idx, (slot, envs)) in envelopes_map.iter().enumerate() {
 				let expected_slot_num =
 					first_slot + u64::try_from(idx).expect("should return u64 data type");
 				assert_eq!(slot, &expected_slot_num);
 			}
 
-			let scp_envelopes = envelopes_map.get(&last_slot).expect("should have scp envelopes");
+			let scp_envelopes =
+				envelopes_map.get_with_key(&last_slot).expect("should have scp envelopes");
 			for x in scp_envelopes {
 				assert_eq!(x.statement.slot_index, last_slot);
 			}
@@ -287,7 +340,7 @@ mod test {
 			let txsets_map = TxSetsFileHandler::get_map_from_archives(find_slot)
 				.expect("should return txsets map");
 
-			assert!(txsets_map.get(&find_slot).is_some());
+			assert!(txsets_map.get_with_key(&find_slot).is_some());
 		}
 	}
 
@@ -337,8 +390,8 @@ mod test {
 				EnvelopesFileHandler::deserialize_bytes(bytes).expect("should generate a map");
 
 			// let's remove the first_slot and last_slot in the map, so we can create a new file.
-			env_map.remove(&first_slot);
-			env_map.remove(&last_slot);
+			env_map.remove_with_key(&first_slot);
+			env_map.remove_with_key(&last_slot);
 
 			let expected_filename = format!("{}_{}", first_slot + 1, last_slot - 1);
 			let actual_filename = EnvelopesFileHandler::write_to_file(&env_map)
@@ -370,8 +423,8 @@ mod test {
 				TxSetsFileHandler::deserialize_bytes(bytes).expect("should generate a map");
 
 			// let's remove the first_slot and last_slot in the map, so we can create a new file.
-			txset_map.remove(&first_slot);
-			txset_map.remove(&last_slot);
+			txset_map.remove_with_key(&first_slot);
+			txset_map.remove_with_key(&last_slot);
 
 			let expected_filename = format!("{}_{}", first_slot + 1, last_slot - 1);
 			let actual_filename = TxSetsFileHandler::write_to_file(&txset_map)
@@ -386,5 +439,45 @@ mod test {
 			let path = TxSetsFileHandler::get_path(&new_file);
 			fs::remove_file(path).expect("should be able to remove the newly added file.");
 		}
+	}
+
+	#[tokio::test]
+	async fn get_scp_archive_works() {
+		let slot_index = 30511500;
+
+		let scp_archive = ScpArchiveStorage::get_scp_archive(slot_index)
+			.await
+			.expect("should find the archive");
+
+		let slot_index_u32: u32 = slot_index.try_into().unwrap();
+		scp_archive
+			.get_vec()
+			.into_iter()
+			.find(|&scp_entry| {
+				if let ScpHistoryEntry::V0(scp_entry_v0) = scp_entry {
+					return scp_entry_v0.ledger_messages.ledger_seq == slot_index_u32
+				} else {
+					return false
+				}
+			})
+			.expect("slot index should be in archive");
+	}
+
+	#[tokio::test]
+	async fn get_transactions_archive_works() {
+		use super::TransactionsArchiveStorage;
+
+		//arrange
+		let slot_index = 30511500;
+		let (url, ref filename) = TransactionsArchiveStorage::get_url_and_file_name(slot_index);
+
+		//act
+		let transactions_archive = TransactionsArchiveStorage::get_transactions_archive(slot_index)
+			.await
+			.expect("should find the archive");
+
+		//assert
+		TransactionsArchiveStorage::read_file_xdr(filename)
+			.expect("File with transactions should exists");
 	}
 }

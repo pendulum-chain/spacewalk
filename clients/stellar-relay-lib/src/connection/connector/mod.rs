@@ -13,4 +13,5 @@ pub enum ConnectorActions {
 	SendHello,
 	SendMessage(StellarMessage),
 	HandleMessage(Xdr),
+	Disconnect,
 }

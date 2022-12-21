@@ -10,6 +10,9 @@ use sp_runtime::{
 	traits::{BlakeTwo256, IdentityLookup},
 };
 
+pub use currency::testing_constants::{
+	DEFAULT_COLLATERAL_CURRENCY, DEFAULT_NATIVE_CURRENCY, DEFAULT_WRAPPED_CURRENCY,
+};
 pub use primitives::{CurrencyId, CurrencyId::Token, TokenSymbol::*};
 use primitives::{VaultCurrencyPair, VaultId};
 
@@ -48,8 +51,8 @@ impl frame_system::Config for Test {
 	type BlockWeights = ();
 	type BlockLength = ();
 	type DbWeight = ();
-	type Origin = Origin;
-	type Call = Call;
+	type RuntimeOrigin = RuntimeOrigin;
+	type RuntimeCall = RuntimeCall;
 	type Index = Index;
 	type BlockNumber = BlockNumber;
 	type Hash = H256;
@@ -57,7 +60,7 @@ impl frame_system::Config for Test {
 	type AccountId = AccountId;
 	type Lookup = IdentityLookup<Self::AccountId>;
 	type Header = Header;
-	type Event = TestEvent;
+	type RuntimeEvent = TestEvent;
 	type BlockHashCount = BlockHashCount;
 	type Version = ();
 	type PalletInfo = PalletInfo;
@@ -71,11 +74,11 @@ impl frame_system::Config for Test {
 }
 
 parameter_types! {
-	pub const GetNativeCurrencyId: CurrencyId = Token(INTR);
+	pub const GetNativeCurrencyId: CurrencyId = DEFAULT_NATIVE_CURRENCY;
 }
 
 impl Config for Test {
-	type Event = TestEvent;
+	type RuntimeEvent = TestEvent;
 	type SignedInner = SignedInner;
 	type SignedFixedPoint = SignedFixedPoint;
 	type CurrencyId = CurrencyId;
@@ -93,35 +96,47 @@ parameter_type_with_key! {
 	};
 }
 impl orml_tokens::Config for Test {
-	type Event = TestEvent;
+	type RuntimeEvent = TestEvent;
 	type Balance = Balance;
 	type Amount = RawAmount;
 	type CurrencyId = CurrencyId;
 	type WeightInfo = ();
 	type ExistentialDeposits = ExistentialDeposits;
 	type OnDust = ();
-	type MaxLocks = MaxLocks;
-	type DustRemovalWhitelist = Everything;
-	type MaxReserves = ConstU32<0>; // we don't use named reserves
-	type ReserveIdentifier = (); // we don't use named reserves
+	type OnSlash = ();
+	type OnDeposit = ();
+	type OnTransfer = ();
 	type OnNewTokenAccount = ();
 	type OnKilledTokenAccount = ();
+	type MaxLocks = MaxLocks;
+	type MaxReserves = ConstU32<0>;
+	type ReserveIdentifier = ();
+	type DustRemovalWhitelist = Everything;
 }
 
-pub type TestEvent = Event;
+pub type TestEvent = RuntimeEvent;
 pub type TestError = Error<Test>;
 
 pub const VAULT: VaultId<AccountId, CurrencyId> = VaultId {
 	account_id: 1,
-	currencies: VaultCurrencyPair { collateral: Token(DOT), wrapped: Token(IBTC) },
+	currencies: VaultCurrencyPair {
+		collateral: DEFAULT_COLLATERAL_CURRENCY,
+		wrapped: DEFAULT_WRAPPED_CURRENCY,
+	},
 };
 pub const ALICE: VaultId<AccountId, CurrencyId> = VaultId {
 	account_id: 2,
-	currencies: VaultCurrencyPair { collateral: Token(DOT), wrapped: Token(IBTC) },
+	currencies: VaultCurrencyPair {
+		collateral: DEFAULT_COLLATERAL_CURRENCY,
+		wrapped: DEFAULT_WRAPPED_CURRENCY,
+	},
 };
 pub const BOB: VaultId<AccountId, CurrencyId> = VaultId {
 	account_id: 3,
-	currencies: VaultCurrencyPair { collateral: Token(DOT), wrapped: Token(IBTC) },
+	currencies: VaultCurrencyPair {
+		collateral: DEFAULT_COLLATERAL_CURRENCY,
+		wrapped: DEFAULT_WRAPPED_CURRENCY,
+	},
 };
 
 pub struct ExtBuilder;

@@ -63,7 +63,7 @@ pub mod pallet {
 		+ fee::Config
 	{
 		/// The overarching event type.
-		type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
+		type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
 
 		/// Convert the block number into a balance.
 		type BlockNumberToBalance: Convert<Self::BlockNumber, BalanceOf<Self>>;
@@ -193,11 +193,10 @@ pub mod pallet {
 		pub fn request_issue(
 			origin: OriginFor<T>,
 			#[pallet::compact] amount: BalanceOf<T>,
-			asset: CurrencyId<T>,
 			vault_id: DefaultVaultId<T>,
 		) -> DispatchResultWithPostInfo {
 			let requester = ensure_signed(origin)?;
-			Self::_request_issue(requester, amount, asset, vault_id)?;
+			Self::_request_issue(requester, amount, vault_id)?;
 			Ok(().into())
 		}
 
@@ -273,11 +272,8 @@ impl<T: Config> Pallet<T> {
 	fn _request_issue(
 		requester: T::AccountId,
 		amount_requested: BalanceOf<T>,
-		_asset: CurrencyId<T>,
 		vault_id: DefaultVaultId<T>,
 	) -> Result<H256, DispatchError> {
-		// TODO change this to use the provided asset once multi-collateral is implemented
-		// let amount_requested = Amount::new(amount_requested, asset);
 		let amount_requested = Amount::new(amount_requested, vault_id.wrapped_currency());
 
 		let vault = ext::vault_registry::get_active_vault_from_id::<T>(&vault_id)?;

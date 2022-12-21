@@ -34,8 +34,14 @@ benchmarks! {
 		};
 
 		let organizations = vec![organization; 255];
-	}: update_tier_1_validator_set(RawOrigin::Root, validators.clone(), organizations.clone())
+		let enactment_block_height = T::BlockNumber::default();
+
+		let old_organizations = OldOrganizations::<T>::get();
+		let old_validators = OldValidators::<T>::get();
+	}: update_tier_1_validator_set(RawOrigin::Root, validators.clone(), organizations.clone(), enactment_block_height)
 	verify {
+		assert_eq!(OldOrganizations::<T>::get(), BoundedVec::<OrganizationOf<T>, T::OrganizationLimit>::try_from(old_organizations).unwrap());
+		assert_eq!(OldValidators::<T>::get(), BoundedVec::<ValidatorOf<T>, T::ValidatorLimit>::try_from(old_validators).unwrap());
 		assert_eq!(Organizations::<T>::get(), BoundedVec::<OrganizationOf<T>, T::OrganizationLimit>::try_from(organizations).unwrap());
 		assert_eq!(Validators::<T>::get(), BoundedVec::<ValidatorOf<T>, T::ValidatorLimit>::try_from(validators).unwrap());
 	}

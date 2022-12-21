@@ -54,7 +54,7 @@ pub mod pallet {
 	#[pallet::config]
 	pub trait Config: frame_system::Config {
 		/// Because this pallet emits events, it depends on the runtime's definition of an event.
-		type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
+		type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
 
 		type OrganizationId: Clone
 			+ Copy
@@ -125,14 +125,32 @@ pub mod pallet {
 		StorageValue<_, BoundedVec<ValidatorOf<T>, T::ValidatorLimit>, ValueQuery>;
 
 	#[pallet::storage]
+	#[pallet::getter(fn old_organizations)]
+	pub type OldOrganizations<T: Config> =
+		StorageValue<_, BoundedVec<OrganizationOf<T>, T::OrganizationLimit>, ValueQuery>;
+
+	#[pallet::storage]
+	#[pallet::getter(fn old_validators)]
+	pub type OldValidators<T: Config> =
+		StorageValue<_, BoundedVec<ValidatorOf<T>, T::ValidatorLimit>, ValueQuery>;
+
+	#[pallet::storage]
 	#[pallet::getter(fn is_public_network)]
 	pub type IsPublicNetwork<T: Config> = StorageValue<_, bool, ValueQuery>;
 
+	#[pallet::storage]
+	#[pallet::getter(fn new_validators_enactment_block_height)]
+	pub type NewValidatorsEnactmentBlockHeight<T: Config> =
+		StorageValue<_, T::BlockNumber, ValueQuery>;
+
 	#[pallet::genesis_config]
 	pub struct GenesisConfig<T: Config> {
+		pub old_validators: Vec<ValidatorOf<T>>,
+		pub old_organizations: Vec<OrganizationOf<T>>,
 		pub validators: Vec<ValidatorOf<T>>,
 		pub organizations: Vec<OrganizationOf<T>>,
 		pub is_public_network: bool,
+		pub enactment_block_height: T::BlockNumber,
 		pub phantom: PhantomData<T>,
 	}
 
@@ -338,10 +356,19 @@ pub mod pallet {
 				organization_public_node,
 			];
 
+			// By default we initialize the old validators and organizations with an empty vec to
+			// save space on chain
+			let old_organizations = vec![];
+			let old_validators = vec![];
+			let enactment_block_height = T::BlockNumber::default();
+
 			GenesisConfig {
+				old_organizations,
+				old_validators,
 				validators,
 				organizations,
 				is_public_network: true,
+				enactment_block_height,
 				phantom: Default::default(),
 			}
 		}
@@ -350,10 +377,23 @@ pub mod pallet {
 	#[pallet::genesis_build]
 	impl<T: Config> GenesisBuild<T> for GenesisConfig<T> {
 		fn build(&self) {
+			let old_validator_vec = BoundedVec::<ValidatorOf<T>, T::ValidatorLimit>::try_from(
+				self.old_validators.clone(),
+			);
+			assert!(old_validator_vec.is_ok());
+			OldValidators::<T>::put(old_validator_vec.unwrap());
+
 			let validator_vec =
 				BoundedVec::<ValidatorOf<T>, T::ValidatorLimit>::try_from(self.validators.clone());
 			assert!(validator_vec.is_ok());
 			Validators::<T>::put(validator_vec.unwrap());
+
+			let old_organization_vec =
+				BoundedVec::<OrganizationOf<T>, T::OrganizationLimit>::try_from(
+					self.old_organizations.clone(),
+				);
+			assert!(old_organization_vec.is_ok());
+			OldOrganizations::<T>::put(old_organization_vec.unwrap());
 
 			let organization_vec = BoundedVec::<OrganizationOf<T>, T::OrganizationLimit>::try_from(
 				self.organizations.clone(),
@@ -362,24 +402,33 @@ pub mod pallet {
 			Organizations::<T>::put(organization_vec.unwrap());
 
 			IsPublicNetwork::<T>::put(self.is_public_network);
+			NewValidatorsEnactmentBlockHeight::<T>::put(self.enactment_block_height);
 		}
 	}
 
 	// Extrinsics
 	#[pallet::call]
 	impl<T: Config> Pallet<T> {
-		/// This extrinsic is used to update/replace the current sets of validators and
-		/// organizations
+		/// This extrinsic is used to update the current sets of validators and
+		/// organizations. The current values of validators and organizations are moved to the
+		/// OldValidators and OldOrganizations respectively, and the function arguments are stored
+		/// as new/current values. The `enactment_block_height` parameter is used by the
+		/// `validate_stellar_transaction` function to determine if it should use the 'old' or
+		/// updated sets for validation. This makes a seamless transition between old and new
+		/// validators possible.
+		///
+		/// It can only be called by the root origin.
 		#[pallet::weight(<T as Config>::WeightInfo::update_tier_1_validator_set())]
 		pub fn update_tier_1_validator_set(
 			origin: OriginFor<T>,
 			validators: Vec<ValidatorOf<T>>,
 			organizations: Vec<OrganizationOf<T>>,
+			enactment_block_height: T::BlockNumber,
 		) -> DispatchResult {
 			// Limit this call to root
 			let _ = ensure_root(origin)?;
 
-			Self::_update_tier_1_validator_set(validators, organizations)
+			Self::_update_tier_1_validator_set(validators, organizations, enactment_block_height)
 		}
 	}
 
@@ -388,6 +437,7 @@ pub mod pallet {
 		pub fn _update_tier_1_validator_set(
 			validators: Vec<ValidatorOf<T>>,
 			organizations: Vec<OrganizationOf<T>>,
+			enactment_block_height: T::BlockNumber,
 		) -> DispatchResult {
 			// Ensure that the number of validators does not exceed the limit
 			ensure!(
@@ -400,15 +450,37 @@ pub mod pallet {
 				Error::<T>::OrganizationLimitExceeded
 			);
 
-			let validator_vec =
+			let current_validators = Validators::<T>::get();
+			// Filter validators for selected network type
+			let current_validators = current_validators.into_iter().collect::<Vec<_>>();
+
+			let current_validators =
+				BoundedVec::<ValidatorOf<T>, T::ValidatorLimit>::try_from(current_validators)
+					.map_err(|_| Error::<T>::BoundedVecCreationFailed)?;
+			OldValidators::<T>::put(current_validators);
+
+			let current_organizations = Organizations::<T>::get();
+			// Filter organizations for selected network type
+			let current_organizations = current_organizations.into_iter().collect::<Vec<_>>();
+
+			let current_organizations =
+				BoundedVec::<OrganizationOf<T>, T::OrganizationLimit>::try_from(
+					current_organizations,
+				)
+				.map_err(|_| Error::<T>::BoundedVecCreationFailed)?;
+			OldOrganizations::<T>::put(current_organizations);
+
+			NewValidatorsEnactmentBlockHeight::<T>::put(enactment_block_height);
+
+			let new_validator_vec =
 				BoundedVec::<ValidatorOf<T>, T::ValidatorLimit>::try_from(validators)
 					.map_err(|_| Error::<T>::BoundedVecCreationFailed)?;
-			Validators::<T>::put(validator_vec);
+			Validators::<T>::put(new_validator_vec);
 
-			let organization_vec =
+			let new_organization_vec =
 				BoundedVec::<OrganizationOf<T>, T::OrganizationLimit>::try_from(organizations)
 					.map_err(|_| Error::<T>::BoundedVecCreationFailed)?;
-			Organizations::<T>::put(organization_vec);
+			Organizations::<T>::put(new_organization_vec);
 
 			Ok(())
 		}
@@ -436,8 +508,16 @@ pub mod pallet {
 				transaction_set.txes.get_vec().iter().any(|tx| tx.get_hash(&network) == tx_hash);
 			ensure!(tx_included, Error::<T>::TransactionNotInTransactionSet);
 
-			// Check if all externalized ScpEnvelopes were signed by a tier 1 validator
-			let validators = Validators::<T>::get();
+			// Choose the set of validators to use for validation based on the enactment block
+			// height and the current block number
+			let should_use_new_validator_set = <frame_system::Pallet<T>>::block_number() >=
+				NewValidatorsEnactmentBlockHeight::<T>::get();
+			let validators = if should_use_new_validator_set {
+				Validators::<T>::get()
+			} else {
+				OldValidators::<T>::get()
+			};
+
 			// Make sure that at least one validator is registered
 			ensure!(!validators.is_empty(), Error::<T>::NoValidatorsRegistered);
 
@@ -480,7 +560,13 @@ pub mod pallet {
 				})
 				.collect::<Vec<&ValidatorOf<T>>>();
 
-			let organizations = Organizations::<T>::get();
+			// Choose the set of organizations to use for validation based on the enactment block
+			// height and the current block number
+			let organizations = if should_use_new_validator_set {
+				Organizations::<T>::get()
+			} else {
+				OldOrganizations::<T>::get()
+			};
 			// Make sure that at least one organization is registered
 			ensure!(!organizations.is_empty(), Error::<T>::NoOrganizationsRegistered);
 

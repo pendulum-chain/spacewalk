@@ -2,6 +2,7 @@
 
 use bstringify::bstringify;
 use codec::{Decode, Encode, MaxEncodedLen};
+use frame_support::error::LookupError;
 use scale_info::TypeInfo;
 #[cfg(feature = "std")]
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
@@ -21,14 +22,14 @@ use sp_std::{
 	str::from_utf8,
 	vec::Vec,
 };
-
-use frame_support::error::LookupError;
 use stellar::{
 	types::{AlphaNum12, AlphaNum4},
 	Asset, PublicKey,
 };
-
 pub use substrate_stellar_sdk as stellar;
+use substrate_stellar_sdk::{
+	types::OperationBody, ClaimPredicate, Claimant, MuxedAccount, Operation, TransactionEnvelope,
+};
 
 #[cfg(test)]
 mod tests;
@@ -463,14 +464,10 @@ create_currency_id! {
 	#[repr(u8)]
 	pub enum TokenSymbol {
 		DOT("Polkadot", 10) = 0,
-		IBTC("interBTC", 8) = 1,
-		INTR("Interlay", 10) = 2,
+		PEN("Pendulum", 10) = 1,
 
 		KSM("Kusama", 10) = 10,
-		PEN("Pendulum", 10) = 11,
 		AMPE("Amplitude", 12) = 12,
-		KBTC("kBTC", 8) = 13,
-		KINT("Kintsugi", 12) = 14,
 	}
 }
 
@@ -503,6 +500,29 @@ pub type AssetIssuer = [u8; 32];
 impl Default for CurrencyId {
 	fn default() -> Self {
 		CurrencyId::Native
+	}
+}
+
+impl TryFrom<(&str, &str)> for CurrencyId {
+	type Error = &'static str;
+
+	fn try_from(value: (&str, &str)) -> Result<Self, Self::Error> {
+		let slice = value.0;
+		let issuer_encoded = value.1;
+		let issuer_pk = stellar::PublicKey::from_encoding(issuer_encoded)
+			.map_err(|_| "Invalid issuer encoding")?;
+		let issuer: AssetIssuer = issuer_pk.as_binary().clone();
+		if slice.len() <= 4 {
+			let mut code: Bytes4 = [0; 4];
+			code[..slice.len()].copy_from_slice(slice.as_bytes());
+			Ok(CurrencyId::AlphaNum4 { code, issuer })
+		} else if slice.len() > 4 && slice.len() <= 12 {
+			let mut code: Bytes12 = [0; 12];
+			code[..slice.len()].copy_from_slice(slice.as_bytes());
+			Ok(CurrencyId::AlphaNum12 { code, issuer })
+		} else {
+			Err("More than 12 bytes not supported")
+		}
 	}
 }
 
@@ -677,4 +697,57 @@ impl StaticLookup for AddressConversion {
 #[derive(Debug)]
 pub enum AddressConversionError {
 	//     UnexpectedKeyType
+}
+
+pub trait TransactionEnvelopeExt {
+	fn get_payment_amount_for_asset_to(&self, to: StellarPublicKeyRaw, asset: Asset) -> u128;
+}
+
+impl TransactionEnvelopeExt for TransactionEnvelope {
+	/// Returns the amount of the given asset that is being sent to the given address.
+	/// Only considers payment and claimable balance operations.
+	fn get_payment_amount_for_asset_to(&self, to: StellarPublicKeyRaw, asset: Asset) -> u128 {
+		let recipient_account_muxed = MuxedAccount::KeyTypeEd25519(to);
+		let recipient_account_pk = PublicKey::PublicKeyTypeEd25519(to);
+
+		let tx_operations: Vec<Operation> = match self {
+			TransactionEnvelope::EnvelopeTypeTxV0(env) => env.tx.operations.get_vec().clone(),
+			TransactionEnvelope::EnvelopeTypeTx(env) => env.tx.operations.get_vec().clone(),
+			TransactionEnvelope::EnvelopeTypeTxFeeBump(_) => Vec::new(),
+			TransactionEnvelope::Default(_) => Vec::new(),
+		};
+
+		let mut transferred_amount: i64 = 0;
+		for x in tx_operations {
+			match x.body {
+				OperationBody::Payment(payment) => {
+					if payment.destination.eq(&recipient_account_muxed) && payment.asset == asset {
+						transferred_amount = transferred_amount.saturating_add(payment.amount);
+					}
+				},
+				OperationBody::CreateClaimableBalance(payment) => {
+					// for security reasons, we only count operations that have the
+					// recipient as a single claimer and unconditional claim predicate
+					if payment.claimants.len() == 1 {
+						let Claimant::ClaimantTypeV0(claimant) =
+							payment.claimants.get_vec()[0].clone();
+
+						if claimant.destination.eq(&recipient_account_pk) &&
+							payment.asset == asset && claimant.predicate ==
+							ClaimPredicate::ClaimPredicateUnconditional
+						{
+							transferred_amount = transferred_amount.saturating_add(payment.amount);
+						}
+					}
+				},
+				_ => {
+					// ignore other operations
+				},
+			}
+		}
+
+		// `transferred_amount` is in stroops, so we need to convert it
+		let balance = BalanceConversion::unlookup(transferred_amount);
+		balance
+	}
 }

@@ -3,8 +3,9 @@ use mocktopus::macros::mockable;
 
 #[cfg_attr(test, mockable)]
 pub(crate) mod currency {
-	use crate::types::CurrencyId;
 	use currency::Amount;
+
+	use crate::types::CurrencyId;
 
 	pub fn get_free_balance<T: crate::Config>(
 		currency_id: CurrencyId<T>,
@@ -30,10 +31,12 @@ pub(crate) mod security {
 
 #[cfg_attr(test, mockable)]
 pub(crate) mod staking {
-	use crate::{types::BalanceOf, DefaultVaultId};
-	use currency::Amount;
 	use frame_support::dispatch::{DispatchError, DispatchResult};
+
+	use currency::Amount;
 	use staking::Staking;
+
+	use crate::{types::BalanceOf, DefaultVaultId};
 
 	pub fn deposit_stake<T: crate::Config>(
 		vault_id: &DefaultVaultId<T>,
@@ -74,16 +77,18 @@ pub(crate) mod staking {
 
 #[cfg_attr(test, mockable)]
 pub(crate) mod reward {
-	use crate::DefaultVaultId;
-	use currency::Amount;
 	use frame_support::dispatch::DispatchError;
+
+	use currency::Amount;
 	use reward::Rewards;
+
+	use crate::DefaultVaultId;
 
 	pub fn set_stake<T: crate::Config>(
 		vault_id: &DefaultVaultId<T>,
 		amount: &Amount<T>,
 	) -> Result<(), DispatchError> {
-		T::VaultRewards::set_stake(vault_id, amount.amount())
+		T::VaultRewards::set_stake(vault_id, amount.amount(), amount.currency())
 	}
 
 	#[cfg(feature = "integration-tests")]

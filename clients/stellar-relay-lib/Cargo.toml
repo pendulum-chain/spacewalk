@@ -11,6 +11,7 @@ path = "src/lib.rs"
 
 [dev-dependencies]
 env_logger = "0.9.0"
+serial_test = "0.9.0"
 
 [dependencies]
 log = {version = "0.4.14"}
@@ -22,7 +23,7 @@ tweetnacl = "0.4.0"
 hmac = "0.12.1"
 sha2 = "0.10.2"
 
-substrate-stellar-sdk = {git = "https://github.com/pendulum-chain/substrate-stellar-sdk", branch = "master", default-features = false, features = ['all-types']}
+substrate-stellar-sdk = {git = "https://github.com/pendulum-chain/substrate-stellar-sdk", branch = "polkadot-v0.9.31", default-features = false, features = ['all-types']}
 
 err-derive = "0.3.1"
 

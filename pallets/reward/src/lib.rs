@@ -11,14 +11,15 @@ use frame_support::{
 	ensure,
 	traits::Get,
 };
-pub use pallet::*;
-use primitives::{BalanceToFixedPoint, TruncateFixedPointToInt};
 use sp_arithmetic::FixedPointNumber;
 use sp_runtime::{
 	traits::{CheckedAdd, CheckedDiv, CheckedMul, CheckedSub, Saturating, Zero},
 	ArithmeticError,
 };
 use sp_std::{cmp::PartialOrd, convert::TryInto, fmt::Debug};
+
+pub use pallet::*;
+use primitives::{BalanceToFixedPoint, TruncateFixedPointToInt};
 
 #[cfg(test)]
 mod mock;
@@ -39,7 +40,8 @@ pub mod pallet {
 	#[pallet::config]
 	pub trait Config<I: 'static = ()>: frame_system::Config {
 		/// The overarching event type.
-		type Event: From<Event<Self, I>> + IsType<<Self as frame_system::Config>::Event>;
+		type RuntimeEvent: From<Event<Self, I>>
+			+ IsType<<Self as frame_system::Config>::RuntimeEvent>;
 
 		/// Signed fixed point type.
 		type SignedFixedPoint: FixedPointNumber
@@ -57,9 +59,6 @@ pub mod pallet {
 
 		#[pallet::constant]
 		type GetNativeCurrencyId: Get<Self::CurrencyId>;
-
-		#[pallet::constant]
-		type GetWrappedCurrencyId: Get<Self::CurrencyId>;
 	}
 
 	// The pallet's events
@@ -199,11 +198,12 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 	pub fn deposit_stake(
 		reward_id: &T::RewardId,
 		amount: SignedFixedPoint<T, I>,
+		wrapped_currency: T::CurrencyId,
 	) -> Result<(), DispatchError> {
 		checked_add_mut!(Stake<T, I>, reward_id, &amount);
 		checked_add_mut!(TotalStake<T, I>, &amount);
 
-		for currency_id in [T::GetNativeCurrencyId::get(), T::GetWrappedCurrencyId::get()] {
+		for currency_id in [T::GetNativeCurrencyId::get(), wrapped_currency] {
 			<RewardTally<T, I>>::mutate(currency_id, reward_id, |reward_tally| {
 				let reward_per_token = Self::reward_per_token(currency_id);
 				let reward_per_token_mul_amount =
@@ -258,6 +258,7 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 	pub fn withdraw_stake(
 		reward_id: &T::RewardId,
 		amount: SignedFixedPoint<T, I>,
+		wrapped_currency: T::CurrencyId,
 	) -> Result<(), DispatchError> {
 		if amount > Self::stake(reward_id) {
 			return Err(Error::<T, I>::InsufficientFunds.into())
@@ -266,7 +267,7 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 		checked_sub_mut!(Stake<T, I>, &reward_id, &amount);
 		checked_sub_mut!(TotalStake<T, I>, &amount);
 
-		for currency_id in [T::GetNativeCurrencyId::get(), T::GetWrappedCurrencyId::get()] {
+		for currency_id in [T::GetNativeCurrencyId::get(), wrapped_currency] {
 			<RewardTally<T, I>>::mutate(currency_id, reward_id, |reward_tally| {
 				let reward_per_token = Self::reward_per_token(currency_id);
 				let reward_per_token_mul_amount =
@@ -314,7 +315,11 @@ pub trait Rewards<AccountId, Balance, CurrencyId> {
 	fn get_stake(account_id: &AccountId) -> Result<Balance, DispatchError>;
 
 	/// Set the stake to `amount` for `account_id` regardless of its current stake.
-	fn set_stake(account_id: &AccountId, amount: Balance) -> DispatchResult;
+	fn set_stake(
+		account_id: &AccountId,
+		amount: Balance,
+		wrapped_currency: CurrencyId,
+	) -> DispatchResult;
 
 	/// Distribute the `amount` to all participants OR error if zero total stake.
 	fn distribute_reward(amount: Balance, currency_id: CurrencyId) -> DispatchResult;
@@ -347,7 +352,11 @@ where
 			.map_err(|_| Error::<T, I>::TryIntoIntError.into())
 	}
 
-	fn set_stake(reward_id: &T::RewardId, amount: Balance) -> DispatchResult {
+	fn set_stake(
+		reward_id: &T::RewardId,
+		amount: Balance,
+		wrapped_currency: T::CurrencyId,
+	) -> DispatchResult {
 		let current_stake =
 			<Self as Rewards<T::RewardId, Balance, T::CurrencyId>>::get_stake(reward_id)?;
 		if current_stake < amount {
@@ -355,12 +364,14 @@ where
 			Pallet::<T, I>::deposit_stake(
 				reward_id,
 				additional_stake.to_fixed().ok_or(Error::<T, I>::TryIntoIntError)?,
+				wrapped_currency,
 			)
 		} else if current_stake > amount {
 			let surplus_stake = current_stake.saturating_sub(amount);
 			Pallet::<T, I>::withdraw_stake(
 				reward_id,
 				surplus_stake.to_fixed().ok_or(Error::<T, I>::TryIntoIntError)?,
+				wrapped_currency,
 			)
 		} else {
 			Ok(())
@@ -393,36 +404,49 @@ where
 	}
 }
 
-pub trait ModifyStake<AccountId, Balance> {
+pub trait ModifyStake<AccountId, Balance, CurrencyId> {
 	/// Deposit stake for an account.
-	fn deposit_stake(account_id: &AccountId, amount: Balance) -> DispatchResult;
+	fn deposit_stake(
+		account_id: &AccountId,
+		amount: Balance,
+		wrapped_currency: CurrencyId,
+	) -> DispatchResult;
 	/// Withdraw all stake for an account.
-	fn withdraw_stake(account_id: &AccountId) -> DispatchResult;
+	fn withdraw_stake(account_id: &AccountId, wrapped_currency: CurrencyId) -> DispatchResult;
 }
 
-impl<T, I, Balance> ModifyStake<T::RewardId, Balance> for Pallet<T, I>
+impl<T, I, Balance> ModifyStake<T::RewardId, Balance, T::CurrencyId> for Pallet<T, I>
 where
 	T: Config<I>,
 	I: 'static,
 	Balance: BalanceToFixedPoint<SignedFixedPoint<T, I>>,
 {
-	fn deposit_stake(reward_id: &T::RewardId, amount: Balance) -> DispatchResult {
+	fn deposit_stake(
+		reward_id: &T::RewardId,
+		amount: Balance,
+		wrapped_currency: T::CurrencyId,
+	) -> DispatchResult {
 		Pallet::<T, I>::deposit_stake(
 			reward_id,
 			amount.to_fixed().ok_or(Error::<T, I>::TryIntoIntError)?,
+			wrapped_currency,
 		)
 	}
 
-	fn withdraw_stake(reward_id: &T::RewardId) -> DispatchResult {
-		Pallet::<T, I>::withdraw_stake(reward_id, Pallet::<T, I>::stake(reward_id))
+	fn withdraw_stake(reward_id: &T::RewardId, wrapped_currency: T::CurrencyId) -> DispatchResult {
+		Pallet::<T, I>::withdraw_stake(
+			reward_id,
+			Pallet::<T, I>::stake(reward_id),
+			wrapped_currency,
+		)
 	}
 }
 
-impl<AccountId, Balance> ModifyStake<AccountId, Balance> for () {
-	fn deposit_stake(_: &AccountId, _: Balance) -> DispatchResult {
+impl<AccountId, Balance, CurrencyId> ModifyStake<AccountId, Balance, CurrencyId> for () {
+	fn deposit_stake(_: &AccountId, _: Balance, _: CurrencyId) -> DispatchResult {
 		Ok(())
 	}
-	fn withdraw_stake(_: &AccountId) -> DispatchResult {
+	fn withdraw_stake(_: &AccountId, _: CurrencyId) -> DispatchResult {
 		Ok(())
 	}
 }

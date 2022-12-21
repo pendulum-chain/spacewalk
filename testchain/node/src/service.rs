@@ -1,5 +1,7 @@
-use primitives::Block;
-use sc_client_api::{BlockBackend, ExecutorProvider};
+use std::{sync::Arc, time::Duration};
+
+use futures::StreamExt;
+use sc_client_api::BlockBackend;
 use sc_consensus_aura::{ImportQueueParams, SlotProportion, StartAuraParams};
 use sc_executor::NativeElseWasmExecutor;
 use sc_finality_grandpa::SharedVoterState;
@@ -9,15 +11,21 @@ use sc_service::{
 	TaskManager,
 };
 use sc_telemetry::{Telemetry, TelemetryWorker};
-use sp_consensus_aura::ed25519::AuthorityPair as AuraPair;
+use sp_consensus_aura::sr25519::AuthorityPair as AuraPair;
+
+use primitives::Block;
 use spacewalk_runtime::RuntimeApi;
-use std::{sync::Arc, time::Duration};
 
 // Native executor instance.
 pub struct Executor;
 
 impl sc_executor::NativeExecutionDispatch for Executor {
+	/// Only enable the benchmarking host functions when we actually want to benchmark.
+	#[cfg(feature = "runtime-benchmarks")]
 	type ExtendHostFunctions = frame_benchmarking::benchmarking::HostFunctions;
+	/// Otherwise we only use the default Substrate host functions.
+	#[cfg(not(feature = "runtime-benchmarks"))]
+	type ExtendHostFunctions = ();
 
 	fn dispatch(method: &str, data: &[u8]) -> Option<Vec<u8>> {
 		spacewalk_runtime::api::dispatch(method, data)
@@ -35,6 +43,7 @@ type FullSelectChain = sc_consensus::LongestChain<FullBackend, Block>;
 
 pub fn new_partial(
 	config: &Configuration,
+	instant_seal: bool,
 ) -> Result<
 	sc_service::PartialComponents<
 		FullClient,
@@ -92,6 +101,13 @@ pub fn new_partial(
 
 	let select_chain = sc_consensus::LongestChain::new(backend.clone());
 
+	// TODO check if this is needed
+	// let select_chain = if instant_seal {
+	// 	Some(LongestChain::new(backend.clone()))
+	// } else {
+	// 	None
+	// };
+
 	let transaction_pool = sc_transaction_pool::BasicPool::new_full(
 		config.transaction_pool.clone(),
 		config.role.is_authority().into(),
@@ -108,9 +124,17 @@ pub fn new_partial(
 	)?;
 
 	let slot_duration = sc_consensus_aura::slot_duration(&*client)?;
+	let registry = config.prometheus_registry();
 
-	let import_queue =
-		sc_consensus_aura::import_queue::<AuraPair, _, _, _, _, _, _>(ImportQueueParams {
+	let import_queue = if instant_seal {
+		// instance sealing
+		sc_consensus_manual_seal::import_queue(
+			Box::new(client.clone()),
+			&task_manager.spawn_essential_handle(),
+			registry,
+		)
+	} else {
+		sc_consensus_aura::import_queue::<AuraPair, _, _, _, _, _>(ImportQueueParams {
 			block_import: grandpa_block_import.clone(),
 			justification_import: Some(Box::new(grandpa_block_import.clone())),
 			client: client.clone(),
@@ -123,16 +147,14 @@ pub fn new_partial(
 						slot_duration,
 					);
 
-				Ok((timestamp, slot))
+				Ok((slot, timestamp))
 			},
 			spawner: &task_manager.spawn_essential_handle(),
-			can_author_with: sp_consensus::CanAuthorWithNativeVersion::new(
-				client.executor().clone(),
-			),
-			registry: config.prometheus_registry(),
+			registry,
 			check_for_equivocation: Default::default(),
 			telemetry: telemetry.as_ref().map(|x| x.handle()),
-		})?;
+		})?
+	};
 
 	Ok(sc_service::PartialComponents {
 		client,
@@ -164,7 +186,7 @@ pub fn new_full(mut config: Configuration) -> Result<(TaskManager, RpcHandlers),
 		select_chain,
 		transaction_pool,
 		other: (block_import, grandpa_link, mut telemetry),
-	} = new_partial(&config)?;
+	} = new_partial(&config, false)?;
 
 	if let Some(url) = &config.keystore_remote {
 		match remote_keystore(url) {
@@ -187,7 +209,7 @@ pub fn new_full(mut config: Configuration) -> Result<(TaskManager, RpcHandlers),
 		.extra_sets
 		.push(sc_finality_grandpa::grandpa_peers_set_config(grandpa_protocol_name.clone()));
 
-	let (network, system_rpc_tx, network_starter) =
+	let (network, system_rpc_tx, tx_handler_controller, network_starter) =
 		sc_service::build_network(sc_service::BuildNetworkParams {
 			config: &config,
 			client: client.clone(),
@@ -219,8 +241,12 @@ pub fn new_full(mut config: Configuration) -> Result<(TaskManager, RpcHandlers),
 		let pool = transaction_pool.clone();
 
 		Box::new(move |deny_unsafe, _| {
-			let deps =
-				spacewalk_rpc::FullDeps { client: client.clone(), pool: pool.clone(), deny_unsafe };
+			let deps = spacewalk_rpc::FullDeps {
+				client: client.clone(),
+				pool: pool.clone(),
+				deny_unsafe,
+				command_sink: None,
+			};
 
 			spacewalk_rpc::create_full(deps).map_err(Into::into)
 		})
@@ -237,6 +263,7 @@ pub fn new_full(mut config: Configuration) -> Result<(TaskManager, RpcHandlers),
 		system_rpc_tx,
 		config,
 		telemetry: telemetry.as_mut(),
+		tx_handler_controller,
 	})?;
 
 	if role.is_authority() {
@@ -248,37 +275,34 @@ pub fn new_full(mut config: Configuration) -> Result<(TaskManager, RpcHandlers),
 			telemetry.as_ref().map(|x| x.handle()),
 		);
 
-		let can_author_with =
-			sp_consensus::CanAuthorWithNativeVersion::new(client.executor().clone());
-
 		let slot_duration = sc_consensus_aura::slot_duration(&*client)?;
 
-		let aura = sc_consensus_aura::start_aura::<AuraPair, _, _, _, _, _, _, _, _, _, _, _>(
+		let aura = sc_consensus_aura::start_aura::<AuraPair, _, _, _, _, _, _, _, _, _, _>(
 			StartAuraParams {
 				slot_duration,
-				client: client.clone(),
+				client,
 				select_chain,
 				block_import,
 				proposer_factory,
 				create_inherent_data_providers: move |_, ()| async move {
 					let timestamp = sp_timestamp::InherentDataProvider::from_system_time();
 
-					let slot = sp_consensus_aura::inherents::InherentDataProvider::from_timestamp_and_slot_duration(
-                    *timestamp,
-                    slot_duration,
-                );
+					let slot =
+						sp_consensus_aura::inherents::InherentDataProvider::from_timestamp_and_slot_duration(
+							*timestamp,
+							slot_duration,
+						);
 
-					Ok((timestamp, slot))
+					Ok((slot, timestamp))
 				},
 				force_authoring,
 				backoff_authoring_blocks,
 				keystore: keystore_container.sync_keystore(),
-				can_author_with,
 				sync_oracle: network.clone(),
 				justification_sync_link: network.clone(),
 				block_proposal_slot_portion: SlotProportion::new(2f32 / 3f32),
-				telemetry: telemetry.as_ref().map(|x| x.handle()),
 				max_block_proposal_slot_portion: None,
+				telemetry: telemetry.as_ref().map(|x| x.handle()),
 			},
 		)?;
 
@@ -331,5 +355,125 @@ pub fn new_full(mut config: Configuration) -> Result<(TaskManager, RpcHandlers),
 	}
 
 	network_starter.start_network();
+	Ok((task_manager, rpc_handlers))
+}
+
+pub async fn start_instant(
+	config: Configuration,
+) -> sc_service::error::Result<(TaskManager, RpcHandlers)> {
+	let sc_service::PartialComponents {
+		client,
+		backend,
+		mut task_manager,
+		import_queue,
+		keystore_container,
+		select_chain,
+		transaction_pool,
+		other: (_, _, mut telemetry),
+	} = new_partial(&config, true)?;
+
+	let (network, system_rpc_tx, tx_handler_controller, network_starter) =
+		sc_service::build_network(sc_service::BuildNetworkParams {
+			config: &config,
+			client: client.clone(),
+			transaction_pool: transaction_pool.clone(),
+			spawn_handle: task_manager.spawn_handle(),
+			import_queue,
+			block_announce_validator_builder: None,
+			warp_sync: None,
+		})?;
+
+	if config.offchain_worker.enabled {
+		sc_service::build_offchain_workers(
+			&config,
+			task_manager.spawn_handle(),
+			client.clone(),
+			network.clone(),
+		);
+	};
+
+	let prometheus_registry = config.prometheus_registry().cloned();
+
+	let role = config.role.clone();
+
+	let command_sink = if role.is_authority() {
+		let proposer_factory = sc_basic_authorship::ProposerFactory::new(
+			task_manager.spawn_handle(),
+			client.clone(),
+			transaction_pool.clone(),
+			prometheus_registry.as_ref(),
+			telemetry.as_ref().map(|x| x.handle()),
+		);
+
+		// Channel for the rpc handler to communicate with the authorship task.
+		let (command_sink, commands_stream) = futures::channel::mpsc::channel(1024);
+
+		let pool = transaction_pool.pool().clone();
+		let import_stream = pool.validated_pool().import_notification_stream().map(|_| {
+			sc_consensus_manual_seal::rpc::EngineCommand::SealNewBlock {
+				create_empty: true,
+				finalize: true,
+				parent_hash: None,
+				sender: None,
+			}
+		});
+
+		let authorship_future =
+			sc_consensus_manual_seal::run_manual_seal(sc_consensus_manual_seal::ManualSealParams {
+				block_import: client.clone(),
+				env: proposer_factory,
+				client: client.clone(),
+				pool: transaction_pool.clone(),
+				commands_stream: futures::stream_select!(commands_stream, import_stream),
+				select_chain,
+				consensus_data_provider: None,
+				create_inherent_data_providers: move |_, ()| async move {
+					Ok(sp_timestamp::InherentDataProvider::from_system_time())
+				},
+			});
+
+		// we spawn the future on a background thread managed by service.
+		task_manager.spawn_essential_handle().spawn_blocking(
+			"instant-seal",
+			Some("block-authoring"),
+			authorship_future,
+		);
+		Some(command_sink)
+	} else {
+		None
+	};
+
+	let rpc_builder = {
+		let client = client.clone();
+		let transaction_pool = transaction_pool.clone();
+
+		move |deny_unsafe, _| {
+			let deps = spacewalk_rpc::FullDeps {
+				client: client.clone(),
+				pool: transaction_pool.clone(),
+				deny_unsafe,
+				command_sink: command_sink.clone(),
+			};
+
+			spacewalk_rpc::create_full(deps).map_err(Into::into)
+		}
+	};
+
+	let rpc_handlers = sc_service::spawn_tasks(sc_service::SpawnTasksParams {
+		rpc_builder: Box::new(rpc_builder),
+		client: client.clone(),
+		transaction_pool,
+		task_manager: &mut task_manager,
+		config,
+		keystore: keystore_container.sync_keystore(),
+		backend,
+		network,
+		system_rpc_tx,
+		tx_handler_controller,
+		telemetry: telemetry.as_mut(),
+	})?;
+
+	network_starter.start_network();
+
 	Ok((task_manager, rpc_handlers))
 }

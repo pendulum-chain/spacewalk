@@ -1,6 +1,7 @@
 use frame_benchmarking::{account, benchmarks, impl_benchmark_test_suite};
 use frame_system::RawOrigin;
 
+use currency::getters::get_native_currency_id;
 use primitives::VaultId;
 
 #[cfg(test)]
@@ -19,7 +20,7 @@ fn get_fee<T: crate::Config>() -> UnsignedFixedPoint<T> {
 benchmarks! {
 	withdraw_rewards {
 		let nominator: T::AccountId = account("recipient", 0, SEED);
-		let vault_id = VaultId::new(nominator.clone(), T::GetWrappedCurrencyId::get(), T::GetWrappedCurrencyId::get());
+		let vault_id: VaultId<_, CurrencyId<T>> = VaultId::new(nominator.clone(), get_native_currency_id::<T>(), get_native_currency_id::<T>());
 	}: _(RawOrigin::Signed(nominator), vault_id, None)
 
 	set_issue_fee {

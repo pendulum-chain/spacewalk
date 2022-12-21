@@ -40,8 +40,8 @@ impl system::Config for Test {
 	type BlockWeights = ();
 	type BlockLength = ();
 	type DbWeight = ();
-	type Origin = Origin;
-	type Call = Call;
+	type RuntimeOrigin = RuntimeOrigin;
+	type RuntimeCall = RuntimeCall;
 	type Index = u64;
 	type BlockNumber = u64;
 	type Hash = H256;
@@ -49,7 +49,7 @@ impl system::Config for Test {
 	type AccountId = u64;
 	type Lookup = IdentityLookup<Self::AccountId>;
 	type Header = Header;
-	type Event = Event;
+	type RuntimeEvent = RuntimeEvent;
 	type BlockHashCount = ConstU64<250>;
 	type Version = ();
 	type PalletInfo = PalletInfo;
@@ -70,7 +70,7 @@ parameter_types! {
 pub type OrganizationId = u128;
 
 impl pallet_spacewalk_relay::Config for Test {
-	type Event = Event;
+	type RuntimeEvent = RuntimeEvent;
 	type OrganizationId = OrganizationId;
 	type OrganizationLimit = OrganizationLimit;
 	type ValidatorLimit = ValidatorLimit;
@@ -183,9 +183,12 @@ impl ExtBuilder {
 		let mut storage = frame_system::GenesisConfig::default().build_storage::<Test>().unwrap();
 
 		crate::GenesisConfig::<Test> {
+			old_validators: vec![],
+			old_organizations: vec![],
 			validators,
 			organizations,
 			is_public_network: true,
+			enactment_block_height: 0,
 			phantom: Default::default(),
 		}
 		.assimilate_storage(&mut storage)

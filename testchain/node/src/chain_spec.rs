@@ -5,12 +5,12 @@ use hex_literal::hex;
 use sc_service::ChainType;
 use serde_json::{map::Map, Value};
 use sp_arithmetic::{FixedPointNumber, FixedU128};
-use sp_consensus_aura::ed25519::AuthorityId as AuraId;
-use sp_core::{crypto::UncheckedInto, ed25519, sr25519, Pair, Public};
+use sp_consensus_aura::sr25519::AuthorityId as AuraId;
+use sp_core::{crypto::UncheckedInto, sr25519, Pair, Public};
 use sp_finality_grandpa::AuthorityId as GrandpaId;
 use sp_runtime::traits::{IdentifyAccount, Verify};
 
-use primitives::{CurrencyId::Token, VaultCurrencyPair, AMPE, DOT, KSM};
+use primitives::{CurrencyId::Token, VaultCurrencyPair, AMPE, DOT, KSM, PEN};
 use spacewalk_runtime::{
 	AccountId, AuraConfig, BalancesConfig, CurrencyId, FeeConfig, FieldLength, GenesisConfig,
 	GetWrappedCurrencyId, GrandpaConfig, IssueConfig, NominationConfig, OracleConfig, Organization,
@@ -62,24 +62,21 @@ pub fn local_config() -> ChainSpec {
 		ChainType::Local,
 		move || {
 			testnet_genesis(
-				get_account_id_from_seed::<ed25519::Public>("Alice"),
+				get_account_id_from_seed::<sr25519::Public>("Alice"),
 				vec![],
 				vec![
 					get_account_id_from_seed::<sr25519::Public>("Alice"),
-					get_account_id_from_seed::<ed25519::Public>("Alice"),
 					get_account_id_from_seed::<sr25519::Public>("Bob"),
-					get_account_id_from_seed::<ed25519::Public>("Bob"),
 					get_account_id_from_seed::<sr25519::Public>("Charlie"),
-					get_account_id_from_seed::<ed25519::Public>("Charlie"),
-					get_account_id_from_seed::<ed25519::Public>("Dave"),
-					get_account_id_from_seed::<ed25519::Public>("Eve"),
-					get_account_id_from_seed::<ed25519::Public>("Ferdie"),
-					get_account_id_from_seed::<ed25519::Public>("Alice//stash"),
-					get_account_id_from_seed::<ed25519::Public>("Bob//stash"),
-					get_account_id_from_seed::<ed25519::Public>("Charlie//stash"),
-					get_account_id_from_seed::<ed25519::Public>("Dave//stash"),
-					get_account_id_from_seed::<ed25519::Public>("Eve//stash"),
-					get_account_id_from_seed::<ed25519::Public>("Ferdie//stash"),
+					get_account_id_from_seed::<sr25519::Public>("Dave"),
+					get_account_id_from_seed::<sr25519::Public>("Eve"),
+					get_account_id_from_seed::<sr25519::Public>("Ferdie"),
+					get_account_id_from_seed::<sr25519::Public>("Alice//stash"),
+					get_account_id_from_seed::<sr25519::Public>("Bob//stash"),
+					get_account_id_from_seed::<sr25519::Public>("Charlie//stash"),
+					get_account_id_from_seed::<sr25519::Public>("Dave//stash"),
+					get_account_id_from_seed::<sr25519::Public>("Eve//stash"),
+					get_account_id_from_seed::<sr25519::Public>("Ferdie//stash"),
 				],
 				vec![(
 					get_account_id_from_seed::<sr25519::Public>("Bob"),
@@ -168,24 +165,21 @@ pub fn development_config() -> ChainSpec {
 		ChainType::Development,
 		move || {
 			testnet_genesis(
-				get_account_id_from_seed::<ed25519::Public>("Alice"),
+				get_account_id_from_seed::<sr25519::Public>("Alice"),
 				vec![authority_keys_from_seed("Alice")],
 				vec![
 					get_account_id_from_seed::<sr25519::Public>("Alice"),
-					get_account_id_from_seed::<ed25519::Public>("Alice"),
 					get_account_id_from_seed::<sr25519::Public>("Bob"),
-					get_account_id_from_seed::<ed25519::Public>("Bob"),
 					get_account_id_from_seed::<sr25519::Public>("Charlie"),
-					get_account_id_from_seed::<ed25519::Public>("Charlie"),
-					get_account_id_from_seed::<ed25519::Public>("Dave"),
-					get_account_id_from_seed::<ed25519::Public>("Eve"),
-					get_account_id_from_seed::<ed25519::Public>("Ferdie"),
-					get_account_id_from_seed::<ed25519::Public>("Alice//stash"),
-					get_account_id_from_seed::<ed25519::Public>("Bob//stash"),
-					get_account_id_from_seed::<ed25519::Public>("Charlie//stash"),
-					get_account_id_from_seed::<ed25519::Public>("Dave//stash"),
-					get_account_id_from_seed::<ed25519::Public>("Eve//stash"),
-					get_account_id_from_seed::<ed25519::Public>("Ferdie//stash"),
+					get_account_id_from_seed::<sr25519::Public>("Dave"),
+					get_account_id_from_seed::<sr25519::Public>("Eve"),
+					get_account_id_from_seed::<sr25519::Public>("Ferdie"),
+					get_account_id_from_seed::<sr25519::Public>("Alice//stash"),
+					get_account_id_from_seed::<sr25519::Public>("Bob//stash"),
+					get_account_id_from_seed::<sr25519::Public>("Charlie//stash"),
+					get_account_id_from_seed::<sr25519::Public>("Dave//stash"),
+					get_account_id_from_seed::<sr25519::Public>("Eve//stash"),
+					get_account_id_from_seed::<sr25519::Public>("Ferdie//stash"),
 				],
 				vec![(
 					get_account_id_from_seed::<sr25519::Public>("Bob"),
@@ -277,6 +271,7 @@ fn testnet_genesis(
 					vec![
 						(k.clone(), Token(DOT), 1 << 60),
 						(k.clone(), Token(KSM), 1 << 60),
+						(k.clone(), Token(PEN), 1 << 60),
 						(k.clone(), Token(AMPE), 1 << 60),
 					]
 				})
@@ -289,8 +284,11 @@ fn testnet_genesis(
 			initial_status: if start_shutdown { StatusCode::Shutdown } else { StatusCode::Error },
 		},
 		stellar_relay: StellarRelayConfig {
+			old_validators: vec![],
+			old_organizations: vec![],
 			validators,
 			organizations,
+			enactment_block_height: 0,
 			is_public_network: false,
 			phantom: Default::default(),
 		},
@@ -302,20 +300,20 @@ fn testnet_genesis(
 			minimum_collateral_vault: vec![(Token(DOT), 0), (Token(KSM), 0)],
 			punishment_delay: DAYS,
 			secure_collateral_threshold: vec![
-				(default_pair(Token(DOT)), FixedU128::checked_from_rational(150, 100).unwrap()),
-				(default_pair(Token(KSM)), FixedU128::checked_from_rational(150, 100).unwrap()),
+				(default_pair(Token(DOT)), FixedU128::checked_from_rational(260, 100).unwrap()),
+				(default_pair(Token(KSM)), FixedU128::checked_from_rational(260, 100).unwrap()),
 			], /* 150% */
 			premium_redeem_threshold: vec![
-				(default_pair(Token(DOT)), FixedU128::checked_from_rational(135, 100).unwrap()),
-				(default_pair(Token(KSM)), FixedU128::checked_from_rational(135, 100).unwrap()),
+				(default_pair(Token(DOT)), FixedU128::checked_from_rational(200, 100).unwrap()),
+				(default_pair(Token(KSM)), FixedU128::checked_from_rational(200, 100).unwrap()),
 			], /* 135% */
 			liquidation_collateral_threshold: vec![
-				(default_pair(Token(DOT)), FixedU128::checked_from_rational(110, 100).unwrap()),
-				(default_pair(Token(KSM)), FixedU128::checked_from_rational(110, 100).unwrap()),
+				(default_pair(Token(DOT)), FixedU128::checked_from_rational(150, 100).unwrap()),
+				(default_pair(Token(KSM)), FixedU128::checked_from_rational(150, 100).unwrap()),
 			], /* 110% */
 			system_collateral_ceiling: vec![
-				(default_pair(Token(DOT)), 1000 * DOT.one()),
-				(default_pair(Token(KSM)), 1000 * KSM.one()),
+				(default_pair(Token(DOT)), 60_000 * DOT.one()),
+				(default_pair(Token(KSM)), 60_000 * KSM.one()),
 			],
 		},
 		fee: FeeConfig {
