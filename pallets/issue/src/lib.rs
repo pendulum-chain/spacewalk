@@ -20,6 +20,9 @@ use substrate_stellar_sdk::{
 	TransactionEnvelope,
 };
 
+#[cfg(feature = "std")]
+use std::str::FromStr;
+
 use currency::Amount;
 pub use default_weights::WeightInfo;
 pub use pallet::*;
@@ -111,9 +114,7 @@ pub mod pallet {
 		RateLimitUpdate {
 			limit_volume_amount: Option<BalanceOf<T>>,
 			limit_volume_currency_id: T::CurrencyId,
-			current_volume_amount: BalanceOf<T>,
 			interval_length: T::BlockNumber,
-			last_interval_index: T::BlockNumber,
 		},
 	}
 
@@ -187,7 +188,7 @@ pub mod pallet {
 		pub last_interval_index: T::BlockNumber,
 	}
 
-	use std::str::FromStr;
+	
 	#[cfg(feature = "std")]
 	impl<T: Config> Default for GenesisConfig<T> {
 		fn default() -> Self {
@@ -211,6 +212,7 @@ pub mod pallet {
 			IssueMinimumTransferAmount::<T>::put(self.issue_minimum_transfer_amount);
 			LimitVolumeAmount::<T>::put(self.limit_volume_amount);
 			LimitVolumeCurrencyId::<T>::put(self.limit_volume_currency_id);
+			CurrentVolumeAmount::<T>::put(self.current_volume_amount);
 			IntervalLength::<T>::put(self.interval_length);
 			LastIntervalIndex::<T>::put(self.last_interval_index);
 		}
@@ -316,24 +318,18 @@ pub mod pallet {
 			origin: OriginFor<T>,
 			limit_volume_amount: Option<BalanceOf<T>>,
 			limit_volume_currency_id: T::CurrencyId,
-			current_volume_amount: BalanceOf<T>,
 			interval_length: T::BlockNumber,
-			last_interval_index: T::BlockNumber,
 		) -> DispatchResultWithPostInfo {
 			ensure_root(origin)?;
 			Self::_rate_limit_update(
 				limit_volume_amount,
 				limit_volume_currency_id,
-				current_volume_amount,
 				interval_length,
-				last_interval_index,
 			);
 			Self::deposit_event(Event::RateLimitUpdate {
 				limit_volume_amount,
 				limit_volume_currency_id,
-				current_volume_amount,
 				interval_length,
-				last_interval_index,
 			});
 			Ok(().into())
 		}
@@ -346,15 +342,11 @@ impl<T: Config> Pallet<T> {
 	pub fn _rate_limit_update(
 		limit_volume_amount: Option<BalanceOf<T>>,
 		limit_volume_currency_id: T::CurrencyId,
-		current_volume_amount: BalanceOf<T>,
 		interval_length: T::BlockNumber,
-		last_interval_index: T::BlockNumber,
 	) {
 		<LimitVolumeAmount<T>>::set(limit_volume_amount);
 		<LimitVolumeCurrencyId<T>>::set(limit_volume_currency_id);
-		<CurrentVolumeAmount<T>>::set(current_volume_amount);
 		<IntervalLength<T>>::set(interval_length);
-		<LastIntervalIndex<T>>::set(last_interval_index);
 	}
 
 	/// Requests CBA issuance, returns unique tracking ID.
