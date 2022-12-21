@@ -1,7 +1,7 @@
 //! # Redeem Pallet
 //! Based on the [specification](https://spec.interlay.io/spec/redeem.html).
 
-#![deny(warnings)]
+// #![deny(warnings)]
 #![cfg_attr(test, feature(proc_macro_hygiene))]
 #![cfg_attr(not(feature = "std"), no_std)]
 
@@ -15,6 +15,10 @@ use frame_support::{
 #[cfg(test)]
 use mocktopus::macros::mockable;
 use sp_core::H256;
+
+use sp_runtime::traits::{CheckedDiv, Convert, Saturating, Zero};
+#[cfg(feature = "std")]
+use std::str::FromStr;
 
 use sp_std::{convert::TryInto, vec::Vec};
 use substrate_stellar_sdk::{
@@ -125,6 +129,11 @@ pub mod pallet {
 			amount: BalanceOf<T>,
 			fee: BalanceOf<T>,
 		},
+		RateLimitUpdate {
+			limit_volume_amount: Option<BalanceOf<T>>,
+			limit_volume_currency_id: T::CurrencyId,
+			interval_length: T::BlockNumber,
+		},
 	}
 
 	#[pallet::error]
@@ -147,6 +156,8 @@ pub mod pallet {
 		TryIntoIntError,
 		/// Redeem amount is too small.
 		AmountBelowMinimumTransferAmount,
+		/// Exceeds the volume limit for an issue request.
+		ExceedLimitVolumeForIssueRequest,
 	}
 
 	/// The time difference in number of blocks between a redeem request is created and required
@@ -168,11 +179,36 @@ pub mod pallet {
 	#[pallet::getter(fn redeem_minimum_transfer_amount)]
 	pub(super) type RedeemMinimumTransferAmount<T: Config> =
 		StorageValue<_, BalanceOf<T>, ValueQuery>;
+	
+	#[pallet::storage]
+	pub(super) type LimitVolumeAmount<T: Config> =
+		StorageValue<_, Option<BalanceOf<T>>, ValueQuery>;
+
+	/// CurrencyID that represents the currency in which the volume limit is measured, eg DOT, USDC
+	/// or PEN
+	#[pallet::storage]
+	pub(super) type LimitVolumeCurrencyId<T: Config> = StorageValue<_, T::CurrencyId, ValueQuery>;
+
+	#[pallet::storage]
+	pub(super) type CurrentVolumeAmount<T: Config> = StorageValue<_, BalanceOf<T>, ValueQuery>;
+
+	/// Represent interval define regular 24 hour intervals (every 24 * 3600 / 12 blocks)
+	#[pallet::storage]
+	pub(super) type IntervalLength<T: Config> = StorageValue<_, T::BlockNumber, ValueQuery>;
+
+	/// Represent current interval current_block_number / IntervalLength
+	#[pallet::storage]
+	pub(super) type LastIntervalIndex<T: Config> = StorageValue<_, T::BlockNumber, ValueQuery>;
 
 	#[pallet::genesis_config]
 	pub struct GenesisConfig<T: Config> {
 		pub redeem_period: T::BlockNumber,
 		pub redeem_minimum_transfer_amount: BalanceOf<T>,
+		pub limit_volume_amount: Option<BalanceOf<T>>,
+		pub limit_volume_currency_id: T::CurrencyId,
+		pub current_volume_amount: BalanceOf<T>,
+		pub interval_length: T::BlockNumber,
+		pub last_interval_index: T::BlockNumber,
 	}
 
 	#[cfg(feature = "std")]
@@ -181,6 +217,12 @@ pub mod pallet {
 			Self {
 				redeem_period: Default::default(),
 				redeem_minimum_transfer_amount: Default::default(),
+				limit_volume_amount: None,
+				limit_volume_currency_id: T::CurrencyId::default(),
+				current_volume_amount: BalanceOf::<T>::zero(),
+				interval_length: T::BlockNumber::from_str(&(24 * 60 * 60 / 12).to_string())
+					.unwrap_or_default(),
+				last_interval_index: T::BlockNumber::zero(),
 			}
 		}
 	}
@@ -190,6 +232,11 @@ pub mod pallet {
 		fn build(&self) {
 			RedeemPeriod::<T>::put(self.redeem_period);
 			RedeemMinimumTransferAmount::<T>::put(self.redeem_minimum_transfer_amount);
+			LimitVolumeAmount::<T>::put(self.limit_volume_amount);
+			LimitVolumeCurrencyId::<T>::put(self.limit_volume_currency_id);
+			CurrentVolumeAmount::<T>::put(self.current_volume_amount);
+			IntervalLength::<T>::put(self.interval_length);
+			LastIntervalIndex::<T>::put(self.last_interval_index);
 		}
 	}
 
