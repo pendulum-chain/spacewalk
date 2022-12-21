@@ -600,15 +600,7 @@ mod tests {
 		let secret = SecretKey::from_encoding(SECRET).unwrap();
 		let mut fetcher = HorizonFetcher::new(horizon_client, secret.get_public().clone(), false);
 
-		// TODO change this to check the slot_env_map instead and remove the watcher stuff
-		// We assume that the watch_slot function is called at exactly once because the intial fetch
-		// without a cursor returns the latest transaction only
-		// let wat = watcher
-		// 	.write()
-		// 	.await
-		// 	.expect_watch_slot()
-		// 	.once()
-		// 	.returning(|_| Box::pin(future::ready(Ok(()))));
+		assert!(slot_env_map.read().await.is_empty());
 
 		let mut cursor = 0;
 		if let Ok(next_page) = fetcher
@@ -632,5 +624,7 @@ mod tests {
 			)
 			.await
 			.unwrap();
+
+		assert!(!slot_env_map.read().await.is_empty());
 	}
 }
