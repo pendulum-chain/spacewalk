@@ -360,6 +360,11 @@ where
 			DEFAULT_COLLATERAL_CURRENCY,
 			UnsignedFixedPoint::one()
 		));
+
+		assert_ok!(<oracle::Pallet<Test>>::_set_exchange_rate(
+			DEFAULT_WRAPPED_CURRENCY,
+			UnsignedFixedPoint::one()
+		));
 		Security::set_active_block_number(1);
 		System::set_block_number(1);
 

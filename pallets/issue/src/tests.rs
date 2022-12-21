@@ -1,3 +1,5 @@
+use std::panic;
+
 use frame_support::{assert_noop, assert_ok, dispatch::DispatchError};
 use mocktopus::mocking::*;
 use orml_traits::MultiCurrency;
@@ -53,6 +55,23 @@ fn request_issue_ok_with_address(
 		.mock_safe(|_| MockResult::Return(Ok(DEFAULT_STELLAR_PUBLIC_KEY)));
 
 	Issue::_request_issue(origin, amount, vault).unwrap()
+}
+
+fn request_issue_ok_with_address_for_rate_limits(
+	origin: AccountId,
+	amount: Balance,
+	vault: DefaultVaultId<Test>
+) -> Result<H256, DispatchError> {
+	ext::vault_registry::ensure_not_banned::<Test>.mock_safe(|_| MockResult::Return(Ok(())));
+
+	ext::security::get_secure_id::<Test>.mock_safe(|_| MockResult::Return(get_dummy_request_id()));
+
+	ext::vault_registry::try_increase_to_be_issued_tokens::<Test>
+		.mock_safe(|_, _| MockResult::Return(Ok(())));
+	ext::vault_registry::get_stellar_public_key::<Test>
+		.mock_safe(|_| MockResult::Return(Ok(DEFAULT_STELLAR_PUBLIC_KEY)));
+
+	Issue::_request_issue(origin, amount, vault)
 }
 
 fn execute_issue(origin: AccountId, issue_id: &H256) -> Result<(), DispatchError> {
@@ -177,6 +196,34 @@ fn setup_execute(
 	});
 
 	issue_id
+}
+
+
+fn setup_execute_for_rate_limits(
+	issue_amount: Balance,
+	issue_fee: Balance,
+	griefing_collateral: Balance,
+	amount_transferred: Balance,
+) -> Result<H256, DispatchError> {
+	ext::vault_registry::get_active_vault_from_id::<Test>
+		.mock_safe(|_| MockResult::Return(Ok(init_zero_vault(VAULT))));
+	ext::vault_registry::issue_tokens::<Test>.mock_safe(|_, _| MockResult::Return(Ok(())));
+	ext::vault_registry::is_vault_liquidated::<Test>.mock_safe(|_| MockResult::Return(Ok(false)));
+
+	ext::fee::get_issue_fee::<Test>.mock_safe(move |_| MockResult::Return(Ok(wrapped(issue_fee))));
+	ext::fee::get_issue_griefing_collateral::<Test>
+		.mock_safe(move |_| MockResult::Return(Ok(griefing(griefing_collateral))));
+
+	let issue_id = request_issue_ok_with_address_for_rate_limits(USER, issue_amount, VAULT)?;
+	<security::Pallet<Test>>::set_active_block_number(5);
+
+	ext::stellar_relay::validate_stellar_transaction::<Test>
+		.mock_safe(move |_, _, _| MockResult::Return(Ok(())));
+	ext::currency::get_amount_from_transaction_envelope::<Test>.mock_safe(move |_, _, currency| {
+		MockResult::Return(Ok(Amount::new(amount_transferred, currency)))
+	});
+
+	Ok(issue_id)
 }
 
 #[test]
@@ -432,5 +479,88 @@ fn test_set_issue_period_only_root() {
 			DispatchError::BadOrigin
 		);
 		assert_ok!(Issue::set_issue_period(RuntimeOrigin::root(), 1));
+	})
+}
+
+
+#[test]
+fn test_request_issue_fails_exceed_limit_volume_for_issue_request() {
+	run_test(|| {
+
+		// let r = spacewalk_primitives::CurrencyId::ForeignAsset(10);
+		crate::Pallet::<Test>::_rate_limit_update(std::option::Option::<u128>::Some(1u128), DEFAULT_COLLATERAL_CURRENCY, 1u64);
+
+		// let issue_asset = VAULT.wrapped_currency();
+		let issue_amount = 3;
+		let issue_fee = 1;
+		let griefing_collateral = 1;
+		let amount_transferred = 3;
+		let request_issue_result = setup_execute_for_rate_limits(issue_amount, issue_fee, griefing_collateral, amount_transferred);
+
+		assert_noop!(request_issue_result, TestError::ExceedLimitVolumeForIssueRequest);
+		// panic::catch_unwind(|| {
+		// 	println!("hello!");
+		// 	let issue_id =
+		// 	assert_eq!(issue_id, H256([1;32]));
+		// });
+		
+
+		// return;
+		// assert_ok!(execute_issue(USER, &issue_id));
+
+		// let execute_issue_event = TestEvent::Issue(Event::ExecuteIssue {
+		// 	issue_id,
+		// 	requester: USER,
+		// 	vault_id: VAULT,
+		// 	amount: issue_amount,
+		// 	asset: issue_asset,
+		// 	fee: issue_fee,
+		// });
+		// assert!(System::events().iter().any(|a| a.event == execute_issue_event));
+		// let executed_issue: IssueRequest<AccountId, BlockNumber, Balance, CurrencyId> =
+		// 	Issue::issue_requests(&issue_id).unwrap();
+		// assert!(matches!(executed_issue, IssueRequest { .. }));
+		// assert_eq!(executed_issue.amount, issue_amount - issue_fee);
+		// assert_eq!(executed_issue.fee, issue_fee);
+		// assert_eq!(executed_issue.griefing_collateral, griefing_collateral);
+
+		// assert_noop!(cancel_issue(USER, &issue_id), TestError::IssueCompleted);
+	})
+}
+
+
+#[test]
+fn test_request_issue_succeeds_with_limits() {
+	run_test(|| {
+		let origin = USER;
+		let vault = VAULT;
+		let amount: Balance = 3;
+		let issue_asset = vault.wrapped_currency();
+		let issue_fee = 1;
+		let issue_griefing_collateral = 20;
+		let address = DEFAULT_STELLAR_PUBLIC_KEY;
+
+		ext::vault_registry::get_active_vault_from_id::<Test>
+			.mock_safe(|_| MockResult::Return(Ok(init_zero_vault(VAULT))));
+
+		ext::fee::get_issue_fee::<Test>
+			.mock_safe(move |_| MockResult::Return(Ok(wrapped(issue_fee))));
+
+		ext::fee::get_issue_griefing_collateral::<Test>
+			.mock_safe(move |_| MockResult::Return(Ok(griefing(issue_griefing_collateral))));
+
+		let issue_id = request_issue_ok_with_address(origin, amount, vault.clone(), address);
+
+		let request_issue_event = TestEvent::Issue(Event::RequestIssue {
+			issue_id,
+			requester: origin,
+			amount: amount - issue_fee,
+			asset: issue_asset,
+			fee: issue_fee,
+			griefing_collateral: issue_griefing_collateral,
+			vault_id: vault,
+			vault_stellar_public_key: address,
+		});
+		assert!(System::events().iter().any(|a| a.event == request_issue_event));
 	})
 }
