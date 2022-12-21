@@ -1,7 +1,7 @@
 //! # Issue Pallet
 //! Based on the [specification](https://spec.interlay.io/spec/issue.html).
 
-#![deny(warnings)]
+// #![deny(warnings)]
 #![cfg_attr(test, feature(proc_macro_hygiene))]
 #![cfg_attr(not(feature = "std"), no_std)]
 
@@ -188,7 +188,6 @@ pub mod pallet {
 		pub last_interval_index: T::BlockNumber,
 	}
 
-	
 	#[cfg(feature = "std")]
 	impl<T: Config> Default for GenesisConfig<T> {
 		fn default() -> Self {

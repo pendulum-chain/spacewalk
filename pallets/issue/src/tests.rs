@@ -12,7 +12,8 @@ use primitives::{issue::IssueRequestStatus, StellarPublicKeyRaw};
 use stellar_relay::testing_utils::{DEFAULT_STELLAR_PUBLIC_KEY, RANDOM_STELLAR_PUBLIC_KEY};
 use vault_registry::{DefaultVault, DefaultVaultId, Vault, VaultStatus};
 
-use crate::{ext, mock::*, Event, IssueRequest};
+use crate::{ext, mock::*, BalanceOf, Event, IssueRequest};
+use sp_runtime::traits::Zero;
 
 fn griefing(amount: u128) -> Amount<Test> {
 	Amount::new(amount, DEFAULT_NATIVE_CURRENCY)
@@ -60,7 +61,7 @@ fn request_issue_ok_with_address(
 fn request_issue_ok_with_address_for_rate_limits(
 	origin: AccountId,
 	amount: Balance,
-	vault: DefaultVaultId<Test>
+	vault: DefaultVaultId<Test>,
 ) -> Result<H256, DispatchError> {
 	ext::vault_registry::ensure_not_banned::<Test>.mock_safe(|_| MockResult::Return(Ok(())));
 
@@ -197,7 +198,6 @@ fn setup_execute(
 
 	issue_id
 }
-
 
 fn setup_execute_for_rate_limits(
 	issue_amount: Balance,
@@ -482,18 +482,25 @@ fn test_set_issue_period_only_root() {
 	})
 }
 
-
 #[test]
 fn test_request_issue_fails_exceed_limit_volume_for_issue_request() {
 	run_test(|| {
-
-		crate::Pallet::<Test>::_rate_limit_update(std::option::Option::<u128>::Some(1u128), DEFAULT_COLLATERAL_CURRENCY, 7200u64);
+		crate::Pallet::<Test>::_rate_limit_update(
+			std::option::Option::<u128>::Some(1u128),
+			DEFAULT_COLLATERAL_CURRENCY,
+			7200u64,
+		);
 
 		let issue_amount = 3;
 		let issue_fee = 1;
 		let griefing_collateral = 1;
 		let amount_transferred = 3;
-		let request_issue_result = setup_execute_for_rate_limits(issue_amount, issue_fee, griefing_collateral, amount_transferred);
+		let request_issue_result = setup_execute_for_rate_limits(
+			issue_amount,
+			issue_fee,
+			griefing_collateral,
+			amount_transferred,
+		);
 
 		assert_noop!(request_issue_result, TestError::ExceedLimitVolumeForIssueRequest);
 	})
@@ -502,15 +509,23 @@ fn test_request_issue_fails_exceed_limit_volume_for_issue_request() {
 #[test]
 fn test_request_issue_fails_after_execute_issue_exceed_limit_volume_for_issue_request() {
 	run_test(|| {
-
-		crate::Pallet::<Test>::_rate_limit_update(std::option::Option::<u128>::Some(3u128), DEFAULT_COLLATERAL_CURRENCY, 7200u64);
+		crate::Pallet::<Test>::_rate_limit_update(
+			std::option::Option::<u128>::Some(3u128),
+			DEFAULT_COLLATERAL_CURRENCY,
+			7200u64,
+		);
 
 		let issue_asset = VAULT.wrapped_currency();
 		let issue_amount = 3;
 		let issue_fee = 1;
 		let griefing_collateral = 1;
 		let amount_transferred = 3;
-		let request_issue_result = setup_execute_for_rate_limits(issue_amount, issue_fee, griefing_collateral, amount_transferred);
+		let request_issue_result = setup_execute_for_rate_limits(
+			issue_amount,
+			issue_fee,
+			griefing_collateral,
+			amount_transferred,
+		);
 
 		assert_ok!(request_issue_result);
 		let issue_id = request_issue_result.unwrap();
@@ -537,27 +552,38 @@ fn test_request_issue_fails_after_execute_issue_exceed_limit_volume_for_issue_re
 		assert_noop!(cancel_issue(USER, &issue_id), TestError::IssueCompleted);
 
 		//act
-		let request_issue_result = setup_execute_for_rate_limits(issue_amount, issue_fee, griefing_collateral, amount_transferred);
+		let request_issue_result = setup_execute_for_rate_limits(
+			issue_amount,
+			issue_fee,
+			griefing_collateral,
+			amount_transferred,
+		);
 
 		//assert check that we do not exceed the rate limit after execute issue request
 		assert_noop!(request_issue_result, TestError::ExceedLimitVolumeForIssueRequest);
 	})
 }
 
-
-
 #[test]
 fn test_request_issue_success_with_rate_limit() {
 	run_test(|| {
-
-		crate::Pallet::<Test>::_rate_limit_update(std::option::Option::<u128>::Some(3u128), DEFAULT_COLLATERAL_CURRENCY, 7200u64);
+		crate::Pallet::<Test>::_rate_limit_update(
+			std::option::Option::<u128>::Some(3u128),
+			DEFAULT_COLLATERAL_CURRENCY,
+			7200u64,
+		);
 
 		let issue_asset = VAULT.wrapped_currency();
 		let issue_amount = 3;
 		let issue_fee = 1;
 		let griefing_collateral = 1;
 		let amount_transferred = 3;
-		let request_issue_result = setup_execute_for_rate_limits(issue_amount, issue_fee, griefing_collateral, amount_transferred);
+		let request_issue_result = setup_execute_for_rate_limits(
+			issue_amount,
+			issue_fee,
+			griefing_collateral,
+			amount_transferred,
+		);
 
 		assert_ok!(request_issue_result);
 		let issue_id = request_issue_result.unwrap();
@@ -585,3 +611,75 @@ fn test_request_issue_success_with_rate_limit() {
 	})
 }
 
+#[test]
+fn test_request_issue_reset_interval_and_succeeds_with_rate_limit() {
+	run_test(|| {
+		crate::Pallet::<Test>::_rate_limit_update(
+			std::option::Option::<u128>::Some(3u128),
+			DEFAULT_COLLATERAL_CURRENCY,
+			7200u64,
+		);
+
+		let issue_asset = VAULT.wrapped_currency();
+		let issue_amount = 3;
+		let issue_fee = 1;
+		let griefing_collateral = 1;
+		let amount_transferred = 3;
+		let request_issue_result = setup_execute_for_rate_limits(
+			issue_amount,
+			issue_fee,
+			griefing_collateral,
+			amount_transferred,
+		);
+
+		assert_ok!(request_issue_result);
+		let issue_id = request_issue_result.unwrap();
+
+		// return;
+		assert_ok!(execute_issue(USER, &issue_id));
+
+		let execute_issue_event = TestEvent::Issue(Event::ExecuteIssue {
+			issue_id,
+			requester: USER,
+			vault_id: VAULT,
+			amount: issue_amount,
+			asset: issue_asset,
+			fee: issue_fee,
+		});
+		assert!(System::events().iter().any(|a| a.event == execute_issue_event));
+		let executed_issue: IssueRequest<AccountId, BlockNumber, Balance, CurrencyId> =
+			Issue::issue_requests(&issue_id).unwrap();
+		assert!(matches!(executed_issue, IssueRequest { .. }));
+		assert_eq!(executed_issue.amount, issue_amount - issue_fee);
+		assert_eq!(executed_issue.fee, issue_fee);
+		assert_eq!(executed_issue.griefing_collateral, griefing_collateral);
+
+		assert_noop!(cancel_issue(USER, &issue_id), TestError::IssueCompleted);
+
+		//act
+		let request_issue_result = setup_execute_for_rate_limits(
+			issue_amount,
+			issue_fee,
+			griefing_collateral,
+			amount_transferred,
+		);
+
+		//assert check that we do not exceed the rate limit after execute issue request
+		assert_noop!(request_issue_result, TestError::ExceedLimitVolumeForIssueRequest);
+
+		System::set_block_number(7200 + 20);
+
+		//act
+		let request_issue_result = setup_execute_for_rate_limits(
+			issue_amount,
+			issue_fee,
+			griefing_collateral,
+			amount_transferred,
+		);
+
+		//assert check that limit volume resets after interval exceed\
+
+		assert_ok!(request_issue_result);
+		assert_eq!(<crate::CurrentVolumeAmount<Test>>::get(), BalanceOf::<Test>::zero());
+	})
+}
