@@ -1109,7 +1109,6 @@ fn test_request_redeem_fails_limits() {
 
 		let redeemer = USER;
 		let amount = 90;
-		let asset = DEFAULT_WRAPPED_CURRENCY;
 		let redeem_fee = 5;
 		let stellar_address = RANDOM_STELLAR_PUBLIC_KEY;
 
@@ -1134,7 +1133,6 @@ fn test_request_redeem_fails_limits() {
 			.mock_safe(move |_| MockResult::Return(Ok(false)));
 		ext::fee::get_redeem_fee::<Test>
 			.mock_safe(move |_| MockResult::Return(Ok(wrapped(redeem_fee))));
-		let btc_fee = Redeem::get_current_inclusion_fee(DEFAULT_WRAPPED_CURRENCY).unwrap();
 
 		assert_err!(
 			Redeem::request_redeem(RuntimeOrigin::signed(redeemer), amount, stellar_address, VAULT),
@@ -1172,7 +1170,6 @@ fn test_request_redeem_limits_succeeds() {
 
 		let redeemer = USER;
 		let amount = 90;
-		let asset = DEFAULT_WRAPPED_CURRENCY;
 		let redeem_fee = 5;
 		let stellar_address = RANDOM_STELLAR_PUBLIC_KEY;
 
@@ -1197,7 +1194,6 @@ fn test_request_redeem_limits_succeeds() {
 			.mock_safe(move |_| MockResult::Return(Ok(false)));
 		ext::fee::get_redeem_fee::<Test>
 			.mock_safe(move |_| MockResult::Return(Ok(wrapped(redeem_fee))));
-		let btc_fee = Redeem::get_current_inclusion_fee(DEFAULT_WRAPPED_CURRENCY).unwrap();
 
 		assert_ok!(Redeem::request_redeem(
 			RuntimeOrigin::signed(redeemer),
