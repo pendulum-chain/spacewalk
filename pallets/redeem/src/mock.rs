@@ -9,9 +9,8 @@ pub use sp_arithmetic::{FixedI128, FixedPointNumber, FixedU128};
 use sp_core::H256;
 use sp_runtime::{
 	testing::{Header, TestXt},
-	traits::{BlakeTwo256, IdentityLookup, Zero},
+	traits::{BlakeTwo256, IdentityLookup, One, Zero},
 };
-use sp_runtime::traits::One;
 
 pub use currency::{
 	testing_constants::{
@@ -317,9 +316,13 @@ impl ExtBuilder {
 		.assimilate_storage(&mut storage)
 		.unwrap();
 
-		redeem::GenesisConfig::<Test> { redeem_period: 10, redeem_minimum_transfer_amount: 2, .. redeem::GenesisConfig::<Test>::default() }
-			.assimilate_storage(&mut storage)
-			.unwrap();
+		redeem::GenesisConfig::<Test> {
+			redeem_period: 10,
+			redeem_minimum_transfer_amount: 2,
+			..redeem::GenesisConfig::<Test>::default()
+		}
+		.assimilate_storage(&mut storage)
+		.unwrap();
 
 		oracle::GenesisConfig::<Test> {
 			authorized_oracles: vec![(USER, "test".as_bytes().to_vec())],

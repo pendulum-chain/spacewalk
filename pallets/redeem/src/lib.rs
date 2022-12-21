@@ -179,7 +179,7 @@ pub mod pallet {
 	#[pallet::getter(fn redeem_minimum_transfer_amount)]
 	pub(super) type RedeemMinimumTransferAmount<T: Config> =
 		StorageValue<_, BalanceOf<T>, ValueQuery>;
-	
+
 	#[pallet::storage]
 	pub(super) type LimitVolumeAmount<T: Config> =
 		StorageValue<_, Option<BalanceOf<T>>, ValueQuery>;
@@ -526,7 +526,6 @@ mod self_redeem {
 // "Internal" functions, callable by code.
 #[cfg_attr(test, mockable)]
 impl<T: Config> Pallet<T> {
-
 	pub fn _rate_limit_update(
 		limit_volume_amount: Option<BalanceOf<T>>,
 		limit_volume_currency_id: T::CurrencyId,
