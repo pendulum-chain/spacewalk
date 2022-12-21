@@ -23,7 +23,7 @@ cargo build --package spacewalk-standalone --release --features runtime-benchmar
 
 ```bash
 # Show benchmarks for this pallet
-./target/release/spacewalk-standalone benchmark pallet -p fee -e '*' --list
+./target/release/spacewalk-standalone benchmark pallet -p <pallet-name> -e '*' --list
 ```
 
 Run the benchmarking for a pallet:
@@ -36,7 +36,7 @@ Run the benchmarking for a pallet:
 --steps=100 \
 --repeat=10 \
 --wasm-execution=compiled \
---output=pallets/fee/src/default_weights.rs \
+--output=pallets/<pallet-name>/src/default_weights.rs \
 --template=./.maintain/frame-weight-template.hbs
 ```
 

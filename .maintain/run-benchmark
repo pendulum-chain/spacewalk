@@ -3,8 +3,8 @@
 #### Function definitions
 print_help () {
   echo "USAGE: \\n\
-  \\trun-benchmark.sh --all\\n\
-  \\trun-benchmark.sh --pallet <pallet-name>\\n\
+  \\trun-benchmark --all\\n\
+  \\trun-benchmark --pallet <pallet-name>\\n\
   "
 }
 
