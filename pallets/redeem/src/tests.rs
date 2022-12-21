@@ -1078,3 +1078,80 @@ mod spec_based_tests {
 		})
 	}
 }
+
+
+#[test]
+fn test_request_redeem_fails_limits() {
+	run_test(|| {
+
+		crate::Pallet::<Test>::_rate_limit_update(
+			std::option::Option::<u128>::Some(9u128),
+			DEFAULT_COLLATERAL_CURRENCY,
+			7200u64,
+		);
+
+		convert_to.mock_safe(|_, x| MockResult::Return(Ok(x)));
+		<vault_registry::Pallet<Test>>::insert_vault(
+			&VAULT,
+			vault_registry::Vault {
+				id: VAULT,
+				to_be_replaced_tokens: 0,
+				to_be_issued_tokens: 0,
+				issued_tokens: 10,
+				to_be_redeemed_tokens: 0,
+				replace_collateral: 0,
+				active_replace_collateral: 0,
+				banned_until: None,
+				secure_collateral_threshold: None,
+				status: VaultStatus::Active(true),
+				liquidated_collateral: 0,
+			},
+		);
+
+		let redeemer = USER;
+		let amount = 90;
+		let asset = DEFAULT_WRAPPED_CURRENCY;
+		let redeem_fee = 5;
+		let stellar_address = RANDOM_STELLAR_PUBLIC_KEY;
+
+		ext::vault_registry::try_increase_to_be_redeemed_tokens::<Test>.mock_safe(
+			move |vault_id, amount_wrapped| {
+				assert_eq!(vault_id, &VAULT);
+				assert_eq!(amount_wrapped, &wrapped(amount - redeem_fee));
+
+				MockResult::Return(Ok(()))
+			},
+		);
+
+		Amount::<Test>::lock_on.mock_safe(move |amount_wrapped, account| {
+			assert_eq!(account, &redeemer);
+			assert_eq!(amount_wrapped, &wrapped(amount));
+
+			MockResult::Return(Ok(()))
+		});
+
+		ext::security::get_secure_id::<Test>.mock_safe(move |_| MockResult::Return(H256([0; 32])));
+		ext::vault_registry::is_vault_below_premium_threshold::<Test>
+			.mock_safe(move |_| MockResult::Return(Ok(false)));
+		ext::fee::get_redeem_fee::<Test>
+			.mock_safe(move |_| MockResult::Return(Ok(wrapped(redeem_fee))));
+		let btc_fee = Redeem::get_current_inclusion_fee(DEFAULT_WRAPPED_CURRENCY).unwrap();
+
+		// assert_ok!(Redeem::request_redeem(
+		// 	RuntimeOrigin::signed(redeemer),
+		// 	amount,
+		// 	stellar_address,
+		// 	VAULT
+		// ));
+
+		assert_err!(
+			Redeem::request_redeem(
+				RuntimeOrigin::signed(redeemer),
+				amount,
+				stellar_address,
+				VAULT
+			),
+			TestError::ExceedLimitVolumeForIssueRequest
+		);
+	})
+}

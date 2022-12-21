@@ -11,6 +11,7 @@ use sp_runtime::{
 	testing::{Header, TestXt},
 	traits::{BlakeTwo256, IdentityLookup, Zero},
 };
+use sp_runtime::traits::One;
 
 pub use currency::{
 	testing_constants::{
@@ -357,6 +358,17 @@ where
 				(OracleKey::FeeEstimation, FixedU128::from(3)),
 			]
 		));
+
+		assert_ok!(<oracle::Pallet<Test>>::_set_exchange_rate(
+			DEFAULT_COLLATERAL_CURRENCY,
+			UnsignedFixedPoint::one()
+		));
+
+		assert_ok!(<oracle::Pallet<Test>>::_set_exchange_rate(
+			DEFAULT_WRAPPED_CURRENCY,
+			UnsignedFixedPoint::one()
+		));
+
 		<oracle::Pallet<Test>>::begin_block(0);
 		Security::set_active_block_number(1);
 		System::set_block_number(1);
