@@ -3,16 +3,13 @@ use std::{convert::TryFrom, sync::Arc, time::Duration};
 use futures::{channel::mpsc::Sender, SinkExt};
 use sp_runtime::traits::StaticLookup;
 
-
 use primitives::{stellar::Memo, TransactionEnvelopeExt};
 use runtime::{
 	CancelIssueEvent, ExecuteIssueEvent, IssueId, IssuePallet, IssueRequestsMap, RequestIssueEvent,
 	SpacewalkParachain, StellarPublicKeyRaw, H256,
 };
 use service::Error as ServiceError;
-use stellar_relay_lib::sdk::{
-	PublicKey, TransactionEnvelope, XdrCodec,
-};
+use stellar_relay_lib::sdk::{PublicKey, TransactionEnvelope, XdrCodec};
 use wallet::{
 	types::{FilterWith, TransactionFilterParam},
 	Ledger, LedgerTxEnvMap,
@@ -33,6 +30,7 @@ fn is_vault(p1: &PublicKey, p2_raw: [u8; 32]) -> bool {
 ///
 /// * `parachain_rpc` - the parachain RPC handle
 /// * `vault_secret_key` - The secret key of this vault
+/// * `event_channel` - the channel over which to signal events
 /// * `issues` - a map to save all the new issue requests
 pub async fn listen_for_issue_requests(
 	parachain_rpc: SpacewalkParachain,
@@ -75,6 +73,12 @@ pub async fn listen_for_issue_requests(
 	Ok(())
 }
 
+/// Listens for CancelIssueEvent directed at the vault.
+///
+/// # Arguments
+///
+/// * `parachain_rpc` - the parachain RPC handle
+/// * `issues` - a map to save all the new issue requests
 pub async fn listen_for_issue_cancels(
 	parachain_rpc: SpacewalkParachain,
 	issues: ArcRwLock<IssueRequestsMap>,
@@ -95,6 +99,12 @@ pub async fn listen_for_issue_cancels(
 	Ok(())
 }
 
+/// Listens for ExecuteIssueEvent directed at the vault.
+///
+/// # Arguments
+///
+/// * `parachain_rpc` - the parachain RPC handle
+/// * `issues` - a map to save all the new issue requests
 pub async fn listen_for_executed_issues(
 	parachain_rpc: SpacewalkParachain,
 	issues: ArcRwLock<IssueRequestsMap>,
@@ -119,6 +129,8 @@ pub async fn listen_for_executed_issues(
 	Ok(())
 }
 
+/// Returns IssueId of the given TransactionEnvelope, or None if it wasn't in a list of
+/// IssueRequests
 fn get_issue_id_from_tx_env(tx_env: &TransactionEnvelope) -> Option<IssueId> {
 	let tx = match tx_env {
 		TransactionEnvelope::EnvelopeTypeTx(env) => env.tx.clone(),
@@ -131,6 +143,14 @@ fn get_issue_id_from_tx_env(tx_env: &TransactionEnvelope) -> Option<IssueId> {
 	}
 }
 
+/// Processes all the issue requests
+///
+/// # Arguments
+///
+/// * `parachain_rpc` - the parachain RPC handle
+/// * `oracle_agent` - the agent used to get the proofs
+/// * `ledger_env_map` -  a list of TransactionEnvelopes and its corresponding ledger it belongs to
+/// * `issues` - a map of all issue requests
 pub async fn process_issues_requests(
 	parachain_rpc: SpacewalkParachain,
 	oracle_agent: Arc<OracleAgent>,
@@ -157,7 +177,10 @@ pub async fn process_issues_requests(
 /// # Arguments
 ///
 /// * `parachain_rpc` - the parachain RPC handle
-/// * `proofs` - a list of proofs to execute
+/// * `ledger_env_map` -  a list of TransactionEnvelopes and its corresponding ledger it belongs to
+/// * `issues` - a map of all issue requests
+/// * `oracle_agent` - the agent used to get the proofs
+/// * `slot` - the slot of the transaction envelope it belongs to
 pub async fn execute_issue(
 	parachain_rpc: SpacewalkParachain,
 	ledger_env_map: ArcRwLock<LedgerTxEnvMap>,
@@ -168,6 +191,7 @@ pub async fn execute_issue(
 	let ledger =
 		Ledger::try_from(slot).map_err(|e| ServiceError::VaultError(Error::TryIntoIntError(e)))?;
 
+	// Get the proof of the given slot
 	let proof = oracle_agent
 		.get_proof(slot)
 		.await
@@ -176,6 +200,8 @@ pub async fn execute_issue(
 	let (envelopes, tx_set) = proof.encode();
 
 	let mut ledger_env_map = ledger_env_map.write().await;
+
+	// Get the transaction envelope where the ledger belongs to
 	if let Some(tx_env) = ledger_env_map.get(&ledger) {
 		let tx_env_encoded = {
 			let tx_env_xdr = tx_env.to_xdr();
@@ -183,6 +209,7 @@ pub async fn execute_issue(
 		};
 
 		if let Some(issue_id) = get_issue_id_from_tx_env(tx_env) {
+			// calls the execute_issue of the `Issue` Pallet
 			match parachain_rpc
 				.execute_issue(
 					issue_id,
@@ -208,6 +235,7 @@ pub async fn execute_issue(
 	Ok(())
 }
 
+/// The IssueFilter used for
 #[derive(Clone)]
 pub struct IssueFilter {
 	vault_address: StellarPublicKeyRaw,

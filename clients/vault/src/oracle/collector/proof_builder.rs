@@ -1,7 +1,5 @@
 use std::{convert::TryInto, future::Future};
 
-
-
 use tokio::sync::mpsc;
 
 use primitives::stellar::types::TransactionHistoryEntry;
@@ -13,7 +11,7 @@ use stellar_relay_lib::sdk::{
 
 use crate::oracle::{
 	constants::{get_min_externalized_messages, MAX_SLOT_TO_REMEMBER},
-	types::{LifoMap},
+	types::LifoMap,
 	ScpArchiveStorage, ScpMessageCollector, Slot, TransactionsArchiveStorage,
 };
 
@@ -63,6 +61,7 @@ impl Proof {
 
 // handle missing envelopes
 impl ScpMessageCollector {
+	/// fetch envelopes not found in the collector
 	async fn fetch_missing_envelopes(&self, slot: Slot, sender: &mpsc::Sender<StellarMessage>) {
 		let last_slot_index = *self.last_slot_index();
 
@@ -74,16 +73,18 @@ impl ScpMessageCollector {
 		}
 	}
 
+	/// fetches envelopes from the stellar node
 	async fn ask_node_for_envelopes(&self, slot: Slot, sender: &mpsc::Sender<StellarMessage>) {
 		// for this slot to be processed, we must put this in our watch list.
 		let _ = sender.send(StellarMessage::GetScpState(slot.try_into().unwrap())).await;
 		tracing::info!("requesting to StellarNode for messages of slot {}...", slot);
 	}
 
+	/// fetches envelopes from the archive
 	async fn ask_archive_for_envelopes(&self, slot: Slot) {
 		if !self.is_public() {
-			// We can only fetch from archives if we are on public network because there are
-			// no archive nodes on testnet
+			// Fetch from archives only on public network since no archive nodes
+			// are available on testnet
 			tracing::info!(
 				"Not fetching missing envelopes from archive for slot {:?}, because on testnet",
 				slot
@@ -95,6 +96,11 @@ impl ScpMessageCollector {
 	}
 
 	/// Returns either a list of ScpEnvelopes
+	///
+	/// # Arguments
+	///
+	/// * `slot` - the slot where the needed envelopes are.
+	/// * `sender` - used to send messages to Stellar Node
 	async fn get_envelopes(
 		&self,
 		slot: Slot,
@@ -111,12 +117,18 @@ impl ScpMessageCollector {
 			}
 		}
 
+		// forcefully retrieve envelopes
 		self.fetch_missing_envelopes(slot, sender).await;
 
 		empty
 	}
 
 	/// Returns either a TransactionSet or a ProofStatus saying it failed to retrieve the set.
+	///
+	/// # Arguments
+	///
+	/// * `slot` - the slot where the txset is  to get.
+	/// * `sender` - used to send messages to Stellar Node
 	async fn get_txset(
 		&self,
 		slot: Slot,
@@ -160,24 +172,30 @@ impl ScpMessageCollector {
 	///
 	/// # Arguments
 	///
-	/// * `slot` - The slot of a transactionwe want a proof of.
-	/// * `overlay_conn` - The StellarOverlayConnection used for sending messages to Stellar Node
+	/// * `slot` - the slot where the txset is  to get.
+	/// * `sender` - used to send messages to Stellar Node
 	pub async fn build_proof(
 		&self,
 		slot: Slot,
 		sender: &mpsc::Sender<StellarMessage>,
 	) -> Option<Proof> {
 		let envelopes = self.get_envelopes(slot, sender).await;
-		let tx_set = self.get_txset(slot, sender).await;
 		// return early if we don't have enough envelopes or the tx_set
-		if envelopes.len() == 0 || tx_set.is_none() {
+		if envelopes.len() == 0 {
 			return None
 		}
-		let tx_set = tx_set.unwrap();
+
+		let tx_set = self.get_txset(slot, sender).await?;
 
 		Some(Proof { slot, envelopes, tx_set })
 	}
 
+	/// Insert envelopes fetched from the archive to the map
+	///
+	/// # Arguments
+	///
+	/// * `envelopes_map_lock` - the map to insert the envelopes to.
+	/// * `slot` - the slot where the envelopes belong to
 	fn get_envelopes_from_horizon_archive(&self, slot: Slot) -> impl Future<Output = ()> {
 		tracing::info!("Fetching SCP envelopes for slot {} from horizon archive", slot);
 		let envelopes_map_arc = self.envelopes_map_clone();
@@ -220,6 +238,12 @@ impl ScpMessageCollector {
 		}
 	}
 
+	/// Inserts txset fetched from the archive to the map
+	///
+	/// # Arguments
+	///
+	/// * `txset` - the map to insert the txset to.
+	/// * `slot` - the slot where the txset belong to.
 	fn get_txset_from_horizon_archive(&self, slot: Slot) -> impl Future<Output = ()> {
 		tracing::warn!("Fetching TxSet for slot {} from horizon archive", slot);
 		let txset_map_arc = self.txset_map_clone();

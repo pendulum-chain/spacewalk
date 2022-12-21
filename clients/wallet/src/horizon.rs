@@ -338,6 +338,15 @@ impl<C: HorizonClient> HorizonFetcher<C> {
 		}
 	}
 
+	/// Fetches the transactions from horizon
+	///
+	/// # Arguments
+	/// * `ledger_env_map` -  a list of TransactionEnvelopes and its corresponding ledger it belongs
+	///   to
+	/// * `targets` - helps in filtering out the transactions to save
+	/// * `is_public_network` - the network the transaction belongs to
+	/// * `filter` - logic to save the needed transaction
+	/// * `last_paging_token` - acts as a marker to scroll over sets of transactions
 	pub async fn fetch_horizon_and_process_new_transactions<T: Clone>(
 		&mut self,
 		ledger_env_map: Arc<RwLock<LedgerTxEnvMap>>,
@@ -379,6 +388,15 @@ impl<C: HorizonClient> HorizonFetcher<C> {
 	}
 }
 
+///  Saves transactions in the map, based on the filter and the kind of filter
+///
+/// # Arguments
+///
+/// * `vault_account_public_key` - used to get the transaction
+/// * `is_public_network` - the network the transaction belongs to
+/// * `ledger_env_map` -  a list of TransactionEnvelopes and its corresponding ledger it belongs to
+/// * `targets` - helps in filtering out the transactions to save
+/// * `filter` - logic to save the needed transaction
 pub async fn listen_for_new_transactions<T, Filter>(
 	vault_account_public_key: PublicKey,
 	is_public_network: bool,

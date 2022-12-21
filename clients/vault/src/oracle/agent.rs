@@ -30,6 +30,11 @@ pub struct OracleAgent {
 }
 
 /// listens to data to collect the scp messages and txsets.
+/// # Arguments
+///
+/// * `message` - A message from the StellarRelay
+/// * `collector` - used to collect envelopes and transaction sets
+/// * `message_sender` - used to send messages to Stellar Node
 async fn handle_message(
 	message: StellarRelayMessage,
 	collector: &Arc<ScpMessageCollector>,
@@ -154,6 +159,7 @@ impl OracleAgent {
 		self.collector.remove_data(slot);
 	}
 
+	/// Runs a task to handle messages coming from the Stellar Nodes, and external messages
 	async fn run(&mut self, node_info: NodeInfo, conn_config: ConnConfig) -> Result<(), Error> {
 		let mut overlay_conn = StellarOverlayConnection::connect(node_info, conn_config).await?;
 
@@ -185,6 +191,7 @@ impl OracleAgent {
 		Ok(())
 	}
 
+	/// Starts the agent with the vault's secret key
 	pub async fn start_with_secret_key(&mut self, secret_key: SecretKey) -> Result<(), Error> {
 		tracing::info!("Starting agent with secret key: {:?}", secret_key);
 
