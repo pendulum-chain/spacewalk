@@ -414,6 +414,28 @@ pub mod pallet {
 
 			Ok(().into())
 		}
+
+		#[pallet::weight(<T as Config>::WeightInfo::self_redeem())]
+		#[transactional]
+		pub fn rate_limit_update(
+			origin: OriginFor<T>,
+			limit_volume_amount: Option<BalanceOf<T>>,
+			limit_volume_currency_id: T::CurrencyId,
+			interval_length: T::BlockNumber,
+		) -> DispatchResultWithPostInfo {
+			ensure_root(origin)?;
+			Self::_rate_limit_update(
+				limit_volume_amount,
+				limit_volume_currency_id,
+				interval_length,
+			);
+			Self::deposit_event(Event::RateLimitUpdate {
+				limit_volume_amount,
+				limit_volume_currency_id,
+				interval_length,
+			});
+			Ok(().into())
+		}
 	}
 }
 
@@ -504,6 +526,17 @@ mod self_redeem {
 // "Internal" functions, callable by code.
 #[cfg_attr(test, mockable)]
 impl<T: Config> Pallet<T> {
+
+	pub fn _rate_limit_update(
+		limit_volume_amount: Option<BalanceOf<T>>,
+		limit_volume_currency_id: T::CurrencyId,
+		interval_length: T::BlockNumber,
+	) {
+		<LimitVolumeAmount<T>>::set(limit_volume_amount);
+		<LimitVolumeCurrencyId<T>>::set(limit_volume_currency_id);
+		<IntervalLength<T>>::set(interval_length);
+	}
+
 	fn _request_redeem(
 		redeemer: T::AccountId,
 		amount_wrapped: BalanceOf<T>,
