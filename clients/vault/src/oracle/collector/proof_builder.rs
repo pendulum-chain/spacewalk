@@ -214,7 +214,7 @@ async fn get_envelopes_from_horizon_archive(
 	if let Some(i) = value {
 		if let ScpHistoryEntry::V0(scp_entry_v0) = i {
 			let slot_scp_envelopes = scp_entry_v0.clone().ledger_messages.messages;
-			let vec_scp = slot_scp_envelopes.get_vec().clone(); //TODO store envelopes_map or send via mpsc
+			let vec_scp = slot_scp_envelopes.get_vec().clone();
 
 			let mut envelopes_map = envelopes_map_lock.write();
 

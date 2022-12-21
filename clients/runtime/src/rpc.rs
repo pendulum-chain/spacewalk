@@ -1049,7 +1049,6 @@ impl IssuePallet for SpacewalkParachain {
 		let mut iter = self.api.storage().iter(key_addr, DEFAULT_PAGE_SIZE, head).await?;
 
 		while let Some((issue_id, request)) = iter.next().await? {
-			// todo: we also need to check the bitcoin height
 			if request.status == IssueRequestStatus::Pending &&
 				request.opentime + issue_period > current_height
 			{

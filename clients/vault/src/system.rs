@@ -90,11 +90,6 @@ impl VaultIdManager {
 	}
 
 	async fn add_vault_id(&self, vault_id: VaultId) -> Result<(), Error> {
-		// TODO what is this about?
-		// tracing::info!("Adding keys from past issues...");
-		// issue::add_keys_from_past_issue_request(&btc_rpc, &self.spacewalk_parachain, &vault_id)
-		// 	.await?;
-
 		let data =
 			VaultData { vault_id: vault_id.clone(), stellar_wallet: self.stellar_wallet.clone() };
 
@@ -162,9 +157,8 @@ impl VaultIdManager {
 			.collect()
 	}
 
-	// TODO think about this. It is probably not needed because we don't use deposit addresses and
-	// use one stellar wallet for everything
-	// But we could in theory let a vault have multiple stellar wallets
+	// This could be refactored since at the moment every vault has the same stellar wallet. But
+	// we might want to change that in the future
 	pub async fn get_vault_stellar_wallets(&self) -> Vec<(VaultId, ArcRwLock<StellarWallet>)> {
 		self.vault_data
 			.read()

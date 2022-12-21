@@ -4,14 +4,12 @@ use futures::{try_join, StreamExt};
 use governor::RateLimiter;
 
 use sp_runtime::traits::StaticLookup;
-use tokio::{
-	sync::RwLock,
-};
+use tokio::sync::RwLock;
 
 use primitives::{stellar::PublicKey, TransactionEnvelopeExt};
 use runtime::{
-	CurrencyId, OraclePallet, PrettyPrint, RedeemPallet, RedeemRequestStatus,
-	ReplacePallet, ReplaceRequestStatus, SecurityPallet, ShutdownSender, SpacewalkParachain,
+	CurrencyId, OraclePallet, PrettyPrint, RedeemPallet, RedeemRequestStatus, ReplacePallet,
+	ReplaceRequestStatus, SecurityPallet, ShutdownSender, SpacewalkParachain,
 	SpacewalkRedeemRequest, SpacewalkReplaceRequest, StellarPublicKeyRaw, StellarRelayPallet,
 	UtilFuncs, VaultId, VaultRegistryPallet, H256,
 };
@@ -25,6 +23,10 @@ use crate::{
 	system::VaultData,
 	VaultIdManager, YIELD_RATE,
 };
+
+/// Determines how much the vault is going to pay for the Stellar transaction fees.
+/// We use a fixed fee of 300 stroops for now but might want to make this dynamic in the future.
+const DEFAULT_STROOP_FEE_PER_OPERATION: u32 = 300;
 
 #[derive(Debug, Clone, PartialEq)]
 struct Deadline {
@@ -193,7 +195,7 @@ impl Request {
 				self.asset.clone(),
 				stroop_amount,
 				memo_hash,
-				300, // TODO change this to use config parameter
+				DEFAULT_STROOP_FEE_PER_OPERATION,
 			)
 			.await;
 
@@ -438,8 +440,8 @@ fn get_request_for_stellar_tx(
 	let request = hash_map.get(&h256)?;
 
 	let envelope = tx.to_envelope().ok()?;
-	let paid_amount = envelope
-		.get_payment_amount_for_asset_to(request.stellar_address, request.asset.clone());
+	let paid_amount =
+		envelope.get_payment_amount_for_asset_to(request.stellar_address, request.asset.clone());
 
 	if paid_amount >= request.amount {
 		Some(request.clone())
