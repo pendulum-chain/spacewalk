@@ -1,4 +1,4 @@
-use std::{collections::VecDeque, convert::TryInto, sync::Arc};
+use std::{collections::VecDeque, convert::TryInto, future::Future, sync::Arc};
 
 use futures::TryFutureExt;
 use parking_lot::{lock_api::RwLockReadGuard, RawRwLock, RwLock};
@@ -17,6 +17,12 @@ use crate::oracle::{
 	types::{EnvelopesMap, LifoMap, TxSetMap},
 	ScpArchiveStorage, ScpMessageCollector, Slot, TransactionsArchiveStorage, TxSetsFileHandler,
 };
+
+/// Returns true if the SCP messages for a given slot are still recoverable from the overlay
+/// because the slot is not too far back.
+fn check_slot_still_recoverable_from_overlay(last_slot_index: Slot, slot: Slot) -> bool {
+	last_slot_index != 0 && slot > (last_slot_index.saturating_sub(MAX_SLOT_TO_REMEMBER))
+}
 
 /// The Proof of Transactions that needed to be processed
 #[derive(Debug, Eq, PartialEq)]
@@ -86,29 +92,9 @@ impl ScpMessageCollector {
 			return
 		}
 
-		tracing::info!("requesting to Horizon Archive for messages of slot {}...", slot);
-		let envelopes_map_lock = self.envelopes_map_clone();
-		tokio::spawn(get_envelopes_from_horizon_archive(envelopes_map_lock, slot));
+		tokio::spawn(self.get_envelopes_from_horizon_archive(slot));
 	}
-}
 
-// for fetching missing txset
-impl ScpMessageCollector {
-	/// Fetch txset that are missing in the collector's map.
-	async fn fetch_missing_txset(&self, slot: Slot, sender: &mpsc::Sender<StellarMessage>) {
-		// we need the txset hash to create the message.
-		if let Some(txset_hash) = self.get_txset_hash(&slot) {
-			tracing::info!("requesting tx_set for slot {}: {:?}", slot, hex::encode(txset_hash));
-			if let Err(error) = sender.send(StellarMessage::GetTxSet(txset_hash)).await {
-				tracing::error!("failed to send GetTxSet message: {:?}", error);
-			}
-		}
-	}
-}
-
-// handles the creation of proofs.
-// this means it will access the maps and potentially the files.
-impl ScpMessageCollector {
 	/// Returns either a list of ScpEnvelopes
 	async fn get_envelopes(
 		&self,
@@ -145,15 +131,29 @@ impl ScpMessageCollector {
 			None => {
 				// If the current slot is still in the range of 'remembered' slots
 				if check_slot_still_recoverable_from_overlay(*self.last_slot_index(), slot) {
-					tracing::info!("Waiting for TxSet of slot {} from overlay", slot);
-					self.fetch_missing_txset(slot, sender).await;
+					self.fetch_missing_txset_from_overlay(slot, sender).await;
 				} else {
-					tracing::warn!("Fetching TxSet for slot {} from archive", slot);
-					tokio::spawn(get_txset_from_horizon_archive(self.txset_map_clone(), slot));
+					tokio::spawn(self.get_txset_from_horizon_archive(slot));
 				}
 
 				None
 			},
+		}
+	}
+
+	/// Send message to overlay network to fetch the missing txset _if_ we already have the txset
+	/// hash for it. If we don't have the hash, we can't fetch it from the overlay network.
+	async fn fetch_missing_txset_from_overlay(
+		&self,
+		slot: Slot,
+		sender: &mpsc::Sender<StellarMessage>,
+	) {
+		// we need the txset hash to create the message.
+		if let Some(txset_hash) = self.get_txset_hash(&slot) {
+			tracing::info!("Fetching TxSet for slot {} from overlay", slot);
+			if let Err(error) = sender.send(StellarMessage::GetTxSet(txset_hash)).await {
+				tracing::error!("failed to send GetTxSet message: {:?}", error);
+			}
 		}
 	}
 
@@ -178,78 +178,80 @@ impl ScpMessageCollector {
 
 		Some(Proof { slot, envelopes, tx_set })
 	}
-}
 
-/// Returns true if the SCP messages for a given slot are still recoverable from the overlay because
-/// the slot is not too far back.
-fn check_slot_still_recoverable_from_overlay(last_slot_index: Slot, slot: Slot) -> bool {
-	last_slot_index != 0 && slot > (last_slot_index.saturating_sub(MAX_SLOT_TO_REMEMBER))
-}
+	fn get_envelopes_from_horizon_archive(&self, slot: Slot) -> impl Future<Output = ()> {
+		tracing::info!("Fetching SCP envelopes for slot {} from horizon archive", slot);
+		let envelopes_map_arc = self.envelopes_map_clone();
+		async move {
+			let slot_index: u32 = slot.try_into().unwrap();
+			let scp_archive_result =
+				ScpArchiveStorage::get_scp_archive(slot.try_into().unwrap()).await;
 
-async fn get_envelopes_from_horizon_archive(
-	envelopes_map_lock: Arc<RwLock<EnvelopesMap>>,
-	slot: Slot,
-) {
-	let slot_index: u32 = slot.try_into().unwrap();
-	let scp_archive_result = ScpArchiveStorage::get_scp_archive(slot.try_into().unwrap()).await;
+			if let Err(e) = scp_archive_result {
+				tracing::error!(
+					"Could not get SCPArchive for slot {:?} from Horizon Archive: {:?}",
+					slot_index,
+					e
+				);
+				return
+			}
+			let scp_archive: XdrArchive<ScpHistoryEntry> = scp_archive_result.unwrap();
 
-	if let Err(e) = scp_archive_result {
-		tracing::error!(
-			"Could not get SCPArchive for slot {:?} from Horizon Archive: {:?}",
-			slot_index,
-			e
-		);
-		return
-	}
-	let scp_archive: XdrArchive<ScpHistoryEntry> = scp_archive_result.unwrap();
+			let value = scp_archive.get_vec().iter().find(|&scp_entry| {
+				if let ScpHistoryEntry::V0(scp_entry_v0) = scp_entry {
+					scp_entry_v0.ledger_messages.ledger_seq == slot_index
+				} else {
+					false
+				}
+			});
 
-	let value = scp_archive.get_vec().iter().find(|&scp_entry| {
-		if let ScpHistoryEntry::V0(scp_entry_v0) = scp_entry {
-			scp_entry_v0.ledger_messages.ledger_seq == slot_index
-		} else {
-			false
-		}
-	});
+			if let Some(i) = value {
+				if let ScpHistoryEntry::V0(scp_entry_v0) = i {
+					let slot_scp_envelopes = scp_entry_v0.clone().ledger_messages.messages;
+					let vec_scp = slot_scp_envelopes.get_vec().clone();
 
-	if let Some(i) = value {
-		if let ScpHistoryEntry::V0(scp_entry_v0) = i {
-			let slot_scp_envelopes = scp_entry_v0.clone().ledger_messages.messages;
-			let vec_scp = slot_scp_envelopes.get_vec().clone();
+					let mut envelopes_map = envelopes_map_arc.write();
 
-			let mut envelopes_map = envelopes_map_lock.write();
-
-			if envelopes_map.get_with_key(&slot).is_none() {
-				tracing::info!("Adding archived SCP envelopes for slot {}", slot);
-				envelopes_map.set_with_key(slot, vec_scp);
+					if envelopes_map.get_with_key(&slot).is_none() {
+						tracing::info!("Adding archived SCP envelopes for slot {}", slot);
+						envelopes_map.set_with_key(slot, vec_scp);
+					}
+				}
 			}
 		}
 	}
-}
 
-async fn get_txset_from_horizon_archive(tx_set_map: Arc<RwLock<TxSetMap>>, slot: Slot) {
-	let slot_index: u32 = slot.try_into().unwrap();
-	let transactions_archive =
-		TransactionsArchiveStorage::get_transactions_archive(slot.try_into().unwrap()).await;
+	fn get_txset_from_horizon_archive(&self, slot: Slot) -> impl Future<Output = ()> {
+		tracing::warn!("Fetching TxSet for slot {} from horizon archive", slot);
+		let txset_map_arc = self.txset_map_clone();
+		async move {
+			let slot_index: u32 = slot.try_into().unwrap();
+			let transactions_archive =
+				TransactionsArchiveStorage::get_transactions_archive(slot.try_into().unwrap())
+					.await;
 
-	if let Err(e) = transactions_archive {
-		tracing::error!(
-			"Could not get TransactionsArchive for slot {:?} from Horizon Archive: {:?}",
-			slot_index,
-			e
-		);
-		return
-	}
-	let transactions_archive: XdrArchive<TransactionHistoryEntry> = transactions_archive.unwrap();
+			if let Err(e) = transactions_archive {
+				tracing::error!(
+					"Could not get TransactionsArchive for slot {:?} from horizon archive: {:?}",
+					slot_index,
+					e
+				);
+				return
+			}
+			let transactions_archive: XdrArchive<TransactionHistoryEntry> =
+				transactions_archive.unwrap();
 
-	let value = transactions_archive
-		.get_vec()
-		.iter()
-		.find(|&entry| entry.ledger_seq == slot_index);
+			let value = transactions_archive
+				.get_vec()
+				.iter()
+				.find(|&entry| entry.ledger_seq == slot_index);
 
-	if let Some(target_history_entry) = value {
-		tracing::info!("Adding archived tx set for slot {}", slot);
-		let mut tx_set_map = tx_set_map.write();
-		tx_set_map.set_with_key(slot, target_history_entry.tx_set.clone());
+			if let Some(target_history_entry) = value {
+				tracing::info!("Adding archived tx set for slot {}", slot);
+				let mut tx_set_map = txset_map_arc.write();
+				tx_set_map.set_with_key(slot, target_history_entry.tx_set.clone());
+			}
+		}
 	}
 }
 
