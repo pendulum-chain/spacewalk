@@ -529,7 +529,6 @@ fn test_request_issue_fails_after_execute_issue_exceed_limit_volume_for_issue_re
 		assert_ok!(request_issue_result);
 		let issue_id = request_issue_result.unwrap();
 
-		// return;
 		assert_ok!(execute_issue(USER, &issue_id));
 
 		let execute_issue_event = TestEvent::Issue(Event::ExecuteIssue {
@@ -587,7 +586,6 @@ fn test_request_issue_success_with_rate_limit() {
 		assert_ok!(request_issue_result);
 		let issue_id = request_issue_result.unwrap();
 
-		// return;
 		assert_ok!(execute_issue(USER, &issue_id));
 
 		let execute_issue_event = TestEvent::Issue(Event::ExecuteIssue {
@@ -634,7 +632,6 @@ fn test_request_issue_reset_interval_and_succeeds_with_rate_limit() {
 		assert_ok!(request_issue_result);
 		let issue_id = request_issue_result.unwrap();
 
-		// return;
 		assert_ok!(execute_issue(USER, &issue_id));
 
 		let execute_issue_event = TestEvent::Issue(Event::ExecuteIssue {
