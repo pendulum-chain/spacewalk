@@ -1294,7 +1294,7 @@ fn test_execute_redeem_before_exceed_rate_limit_succeeds() {
 #[test]
 fn test_execute_redeem_fails_after_exceed_rate_limit() {
 	run_test(|| {
-		let volume_limit: u128 = 101u128;
+		let volume_limit: u128 = 100u128;
 		crate::Pallet::<Test>::_rate_limit_update(
 			std::option::Option::<u128>::Some(volume_limit),
 			DEFAULT_COLLATERAL_CURRENCY,
@@ -1321,7 +1321,7 @@ fn test_execute_redeem_fails_after_exceed_rate_limit() {
 			.mock_safe(move |_, _, _| MockResult::Return(Ok(())));
 
 		let btc_fee = Redeem::get_current_inclusion_fee(DEFAULT_WRAPPED_CURRENCY).unwrap();
-		let amount = volume_limit - 1;
+		let amount = volume_limit;
 		let redeem_request = RedeemRequest {
 			period: 0,
 			vault: VAULT,
