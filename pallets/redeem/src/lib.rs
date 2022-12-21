@@ -545,6 +545,8 @@ impl<T: Config> Pallet<T> {
 	) -> Result<H256, DispatchError> {
 		let amount_wrapped = Amount::new(amount_wrapped, vault_id.wrapped_currency());
 
+		Self::check_volume(amount_wrapped.clone())?;
+
 		ext::security::ensure_parachain_status_running::<T>()?;
 
 		let redeemer_balance =
@@ -695,6 +697,8 @@ impl<T: Config> Pallet<T> {
 		// burn amount (without parachain fee, but including transfer fee)
 		let burn_amount = redeem.amount().checked_add(&redeem.transfer_fee())?;
 		burn_amount.burn_from(&redeem.redeemer)?;
+		// increase volume according to volume limits
+		Self::increase_interval_volume(burn_amount.clone())?;
 
 		// send fees to pool
 		let fee = redeem.fee();
