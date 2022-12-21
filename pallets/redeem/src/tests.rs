@@ -1217,3 +1217,200 @@ fn test_request_redeem_limits_succeeds() {
 		);
 	})
 }
+
+#[test]
+fn test_execute_redeem_succeeds_before_exceed_rate_limit() {
+	// POSTCONDITION: `redeemTokens` MUST be called, supplying `redeemRequest.vault`,
+	// `redeemRequest.amountBtc + redeemRequest.transferFeeBtc`, `redeemRequest.premium` and
+	// `redeemRequest.redeemer` as arguments.
+	run_test(|| {
+		crate::Pallet::<Test>::_rate_limit_update(
+			std::option::Option::<u128>::Some(101u128),
+			DEFAULT_COLLATERAL_CURRENCY,
+			7200u64,
+		);
+
+		convert_to.mock_safe(|_, x| MockResult::Return(Ok(x)));
+		Security::<Test>::set_active_block_number(40);
+		<vault_registry::Pallet<Test>>::insert_vault(
+			&VAULT,
+			vault_registry::Vault {
+				id: VAULT,
+				to_be_replaced_tokens: 0,
+				to_be_issued_tokens: 0,
+				issued_tokens: 200,
+				to_be_redeemed_tokens: 200,
+				replace_collateral: 0,
+				banned_until: None,
+				status: VaultStatus::Active(true),
+				..default_vault()
+			},
+		);
+		ext::stellar_relay::validate_stellar_transaction::<Test>
+			.mock_safe(move |_, _, _| MockResult::Return(Ok(())));
+
+		let btc_fee = Redeem::get_current_inclusion_fee(DEFAULT_WRAPPED_CURRENCY).unwrap();
+		let redeem_request = RedeemRequest {
+			period: 0,
+			vault: VAULT,
+			opentime: 40,
+			fee: 0,
+			amount: 100,
+			asset: DEFAULT_WRAPPED_CURRENCY,
+			premium: 0,
+			redeemer: USER,
+			stellar_address: RANDOM_STELLAR_PUBLIC_KEY,
+			status: RedeemRequestStatus::Pending,
+			transfer_fee: btc_fee.amount(),
+		};
+		inject_redeem_request(H256([0u8; 32]), redeem_request.clone());
+
+		Amount::<Test>::burn_from.mock_safe(move |_, _| MockResult::Return(Ok(())));
+
+		ext::vault_registry::redeem_tokens::<Test>.mock_safe(
+			move |vault, amount_wrapped, premium, redeemer| {
+				assert_eq!(vault, &redeem_request.vault);
+				assert_eq!(
+					amount_wrapped,
+					&wrapped(redeem_request.amount + redeem_request.transfer_fee)
+				);
+				assert_eq!(premium, &collateral(redeem_request.premium));
+				assert_eq!(redeemer, &redeem_request.redeemer);
+
+				MockResult::Return(Ok(()))
+			},
+		);
+
+		let (
+			transaction_envelope_xdr_encoded,
+			scp_envelopes_xdr_encoded,
+			transaction_set_xdr_encoded,
+		) = stellar_relay::testing_utils::create_dummy_scp_structs_encoded();
+
+		assert_ok!(Redeem::execute_redeem(
+			RuntimeOrigin::signed(USER),
+			H256([0u8; 32]),
+			transaction_envelope_xdr_encoded,
+			scp_envelopes_xdr_encoded,
+			transaction_set_xdr_encoded,
+		));
+		assert_emitted!(Event::ExecuteRedeem {
+			redeem_id: H256([0; 32]),
+			redeemer: USER,
+			vault_id: VAULT,
+			amount: 100,
+			asset: DEFAULT_WRAPPED_CURRENCY,
+			fee: 0,
+			transfer_fee: btc_fee.amount(),
+		});
+		assert_err!(
+			Redeem::get_open_redeem_request_from_id(&H256([0u8; 32])),
+			TestError::RedeemCompleted,
+		);
+	})
+}
+
+#[test]
+fn test_execute_redeem_fails_after_exceed_rate_limit() {
+	// POSTCONDITION: `redeemTokens` MUST be called, supplying `redeemRequest.vault`,
+	// `redeemRequest.amountBtc + redeemRequest.transferFeeBtc`, `redeemRequest.premium` and
+	// `redeemRequest.redeemer` as arguments.
+	run_test(|| {
+		crate::Pallet::<Test>::_rate_limit_update(
+			std::option::Option::<u128>::Some(101u128),
+			DEFAULT_COLLATERAL_CURRENCY,
+			7200u64,
+		);
+
+		convert_to.mock_safe(|_, x| MockResult::Return(Ok(x)));
+		Security::<Test>::set_active_block_number(40);
+		<vault_registry::Pallet<Test>>::insert_vault(
+			&VAULT,
+			vault_registry::Vault {
+				id: VAULT,
+				to_be_replaced_tokens: 0,
+				to_be_issued_tokens: 0,
+				issued_tokens: 200,
+				to_be_redeemed_tokens: 200,
+				replace_collateral: 0,
+				banned_until: None,
+				status: VaultStatus::Active(true),
+				..default_vault()
+			},
+		);
+		ext::stellar_relay::validate_stellar_transaction::<Test>
+			.mock_safe(move |_, _, _| MockResult::Return(Ok(())));
+
+		let btc_fee = Redeem::get_current_inclusion_fee(DEFAULT_WRAPPED_CURRENCY).unwrap();
+		let redeem_request = RedeemRequest {
+			period: 0,
+			vault: VAULT,
+			opentime: 40,
+			fee: 0,
+			amount: 100,
+			asset: DEFAULT_WRAPPED_CURRENCY,
+			premium: 0,
+			redeemer: USER,
+			stellar_address: RANDOM_STELLAR_PUBLIC_KEY,
+			status: RedeemRequestStatus::Pending,
+			transfer_fee: btc_fee.amount(),
+		};
+		inject_redeem_request(H256([0u8; 32]), redeem_request.clone());
+
+		Amount::<Test>::burn_from.mock_safe(move |_, _| MockResult::Return(Ok(())));
+
+		ext::vault_registry::redeem_tokens::<Test>.mock_safe(
+			move |vault, amount_wrapped, premium, redeemer| {
+				assert_eq!(vault, &redeem_request.vault);
+				assert_eq!(
+					amount_wrapped,
+					&wrapped(redeem_request.amount + redeem_request.transfer_fee)
+				);
+				assert_eq!(premium, &collateral(redeem_request.premium));
+				assert_eq!(redeemer, &redeem_request.redeemer);
+
+				MockResult::Return(Ok(()))
+			},
+		);
+
+		let (
+			transaction_envelope_xdr_encoded,
+			scp_envelopes_xdr_encoded,
+			transaction_set_xdr_encoded,
+		) = stellar_relay::testing_utils::create_dummy_scp_structs_encoded();
+
+		assert_ok!(Redeem::execute_redeem(
+			RuntimeOrigin::signed(USER),
+			H256([0u8; 32]),
+			transaction_envelope_xdr_encoded,
+			scp_envelopes_xdr_encoded,
+			transaction_set_xdr_encoded,
+		));
+		assert_emitted!(Event::ExecuteRedeem {
+			redeem_id: H256([0; 32]),
+			redeemer: USER,
+			vault_id: VAULT,
+			amount: 100,
+			asset: DEFAULT_WRAPPED_CURRENCY,
+			fee: 0,
+			transfer_fee: btc_fee.amount(),
+		});
+		assert_err!(
+			Redeem::get_open_redeem_request_from_id(&H256([0u8; 32])),
+			TestError::RedeemCompleted,
+		);
+
+		let redeemer = USER;
+		let amount = 2;
+		let stellar_address = RANDOM_STELLAR_PUBLIC_KEY;
+		assert_err!(
+			Redeem::request_redeem(
+				RuntimeOrigin::signed(redeemer),
+				amount,
+				stellar_address,
+				VAULT
+			),
+			TestError::ExceedLimitVolumeForIssueRequest
+		);
+	})
+}
