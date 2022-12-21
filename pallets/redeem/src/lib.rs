@@ -1002,4 +1002,47 @@ impl<T: Config> Pallet<T> {
 		);
 		Ok(request)
 	}
+
+	fn increase_interval_volume(issue_amount: Amount<T>) -> Result<(), DispatchError> {
+		if let Some(_limit_volume) = LimitVolumeAmount::<T>::get() {
+			let issue_volume = Self::convert_into_limit_currency_id_amount(issue_amount)?;
+			let current_volume = CurrentVolumeAmount::<T>::get();
+			let new_volume = current_volume.saturating_add(issue_volume.amount());
+			CurrentVolumeAmount::<T>::put(new_volume);
+		}
+		Ok(())
+	}
+
+	fn convert_into_limit_currency_id_amount(
+		issue_amount: Amount<T>,
+	) -> Result<Amount<T>, DispatchError> {
+		let issue_volume =
+			oracle::Pallet::<T>::convert(&issue_amount, LimitVolumeCurrencyId::<T>::get())
+				.map_err(|_| DispatchError::Other("Missing Exchange Rate"))?;
+		Ok(issue_volume)
+	}
+
+	fn check_volume(amount_requested: Amount<T>) -> Result<(), DispatchError> {
+		let limit_volume: Option<BalanceOf<T>> = LimitVolumeAmount::<T>::get();
+		if let Some(limit_volume) = limit_volume {
+			let current_block: T::BlockNumber = <frame_system::Pallet<T>>::block_number();
+			let interval_length: T::BlockNumber = IntervalLength::<T>::get();
+
+			let current_index = current_block.checked_div(&interval_length);
+			let mut current_volume = BalanceOf::<T>::zero();
+			if current_index != Some(LastIntervalIndex::<T>::get()) {
+				LastIntervalIndex::<T>::put(current_index.unwrap_or_default());
+				CurrentVolumeAmount::<T>::put(current_volume);
+			} else {
+				current_volume = CurrentVolumeAmount::<T>::get();
+			}
+			let new_issue_request_amount =
+				Self::convert_into_limit_currency_id_amount(amount_requested)?;
+			ensure!(
+				new_issue_request_amount.amount().saturating_add(current_volume) <= limit_volume,
+				Error::<T>::ExceedLimitVolumeForIssueRequest
+			);
+		}
+		Ok(())
+	}
 }
