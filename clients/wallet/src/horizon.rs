@@ -99,6 +99,7 @@ pub struct TransactionResponse {
 	pub memo: Option<Vec<u8>>,
 }
 
+#[allow(dead_code)]
 impl TransactionResponse {
 	pub(crate) fn ledger(&self) -> Ledger {
 		self.ledger
@@ -299,7 +300,6 @@ impl HorizonClient for reqwest::Client {
 pub(crate) struct HorizonFetcher<C: HorizonClient> {
 	client: C,
 	is_public_network: bool,
-	last_tx_id: Option<Vec<u8>>,
 	vault_account_public_key: PublicKey,
 }
 
@@ -307,7 +307,7 @@ const DEFAULT_PAGE_SIZE: i64 = 200;
 
 impl<C: HorizonClient> HorizonFetcher<C> {
 	pub fn new(client: C, vault_account_public_key: PublicKey, is_public_network: bool) -> Self {
-		Self { client, vault_account_public_key, last_tx_id: None, is_public_network }
+		Self { client, vault_account_public_key, is_public_network }
 	}
 
 	/// Fetch recent transactions from remote and deserialize to HorizonResponse
@@ -417,13 +417,12 @@ where
 mod tests {
 	use std::{collections::HashMap, sync::Arc};
 
-	use mockall::{predicate::*};
+	use mockall::predicate::*;
 	use substrate_stellar_sdk::{
 		network::{Network, PUBLIC_NETWORK, TEST_NETWORK},
 		types::Preconditions,
 		Asset, Operation, SecretKey, StroopAmount, Transaction, TransactionEnvelope,
 	};
-	
 
 	use crate::types::{FilterWith, TransactionFilterParam};
 
@@ -464,7 +463,9 @@ mod tests {
 			Preconditions::PrecondNone,
 			None,
 		)
-		.map_err(|_e| Error::BuildTransactionError("Creating new transaction failed".to_string()))?;
+		.map_err(|_e| {
+			Error::BuildTransactionError("Creating new transaction failed".to_string())
+		})?;
 
 		let asset = Asset::native();
 		let amount = StroopAmount(amount);

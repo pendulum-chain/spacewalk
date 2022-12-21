@@ -1,7 +1,7 @@
-use std::{collections::VecDeque, convert::TryInto, future::Future, sync::Arc};
+use std::{convert::TryInto, future::Future};
 
-use futures::TryFutureExt;
-use parking_lot::{lock_api::RwLockReadGuard, RawRwLock, RwLock};
+
+
 use tokio::sync::mpsc;
 
 use primitives::stellar::types::TransactionHistoryEntry;
@@ -13,9 +13,8 @@ use stellar_relay_lib::sdk::{
 
 use crate::oracle::{
 	constants::{get_min_externalized_messages, MAX_SLOT_TO_REMEMBER},
-	traits::{ArchiveStorage, FileHandler},
-	types::{EnvelopesMap, LifoMap, TxSetMap},
-	ScpArchiveStorage, ScpMessageCollector, Slot, TransactionsArchiveStorage, TxSetsFileHandler,
+	types::{LifoMap},
+	ScpArchiveStorage, ScpMessageCollector, Slot, TransactionsArchiveStorage,
 };
 
 /// Returns true if the SCP messages for a given slot are still recoverable from the overlay

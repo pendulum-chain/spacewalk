@@ -17,6 +17,7 @@ pub const TIER_1_VALIDATOR_IP_TESTNET: &str = "34.235.168.98";
 pub const TIER_1_VALIDATOR_IP_PUBLIC: &str = "65.108.1.53";
 
 // TODO: THIS WILL NOT WORK PROPERLY JUST YET, SINCE IT NEEDS SOME STUFF FROM OTHER PRS.
+#[allow(unreachable_code)]
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
 	env_logger::init();

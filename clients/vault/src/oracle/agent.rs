@@ -124,7 +124,7 @@ impl OracleAgent {
 		let sender = self
 			.message_sender
 			.clone()
-			.ok_or(Error::Uninitialized("MessageSender".to_string()))?;
+			.ok_or_else(|| Error::Uninitialized("MessageSender".to_string()))?;
 
 		let collector = self.collector.clone();
 
@@ -178,6 +178,7 @@ impl OracleAgent {
 					}
 				}
 			}
+			#[allow(unreachable_code)]
 			Ok::<(), Error>(())
 		});
 

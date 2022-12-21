@@ -41,11 +41,6 @@ pub const ABOUT: &str = env!("CARGO_PKG_DESCRIPTION");
 
 const RESTART_INTERVAL: Duration = Duration::from_secs(10800); // restart every 3 hours
 
-// sdftest3
-pub const TIER_1_VALIDATOR_IP_TESTNET: &str = "3.239.7.78";
-// SatoshiPay (DE, Frankfurt)
-pub const TIER_1_VALIDATOR_IP_PUBLIC: &str = "141.95.47.112";
-
 #[derive(Clone)]
 pub struct VaultData {
 	pub vault_id: VaultId,
@@ -174,6 +169,7 @@ impl VaultIdManager {
 /// `wrapped_currency` being the currency codes of the wrapped currency (e.g. USDC, EURT...)
 ///  including the issuer and code, ie 'GABC...:USDC'  and
 /// `collateral_amount` being the amount of collateral to be locked.
+#[allow(clippy::format_in_format_args, clippy::useless_conversion)]
 fn parse_collateral_and_amount(
 	s: &str,
 ) -> Result<(String, String, Option<u128>), Box<dyn std::error::Error + Send + Sync + 'static>> {
@@ -294,13 +290,12 @@ async fn run_and_monitor_tasks(
 	// 	publish_tokio_metrics(metrics_iterators),
 	// ));
 
-	match join_all(tasks).await {
-		results => results
-			.into_iter()
-			.find(|res| matches!(res, Ok(Err(_))))
-			.and_then(|res| res.ok())
-			.unwrap_or(Ok(())),
-	}
+	let results = join_all(tasks).await;
+	results
+		.into_iter()
+		.find(|res| matches!(res, Ok(Err(_))))
+		.and_then(|res| res.ok())
+		.unwrap_or(Ok(()))
 }
 
 type Task = Pin<Box<dyn Future<Output = Result<(), ServiceError<Error>>> + Send + 'static>>;
