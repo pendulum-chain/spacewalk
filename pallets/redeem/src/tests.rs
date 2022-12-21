@@ -1393,7 +1393,7 @@ fn test_execute_redeem_fails_after_exceed_rate_limit() {
 #[test]
 fn test_execute_redeem_after_exceed_rate_limit_reset_interval_succeeds() {
 	run_test(|| {
-		let volume_limit: u128 = 51u128;
+		let volume_limit: u128 = 50u128;
 		crate::Pallet::<Test>::_rate_limit_update(
 			std::option::Option::<u128>::Some(volume_limit),
 			DEFAULT_COLLATERAL_CURRENCY,
@@ -1420,7 +1420,7 @@ fn test_execute_redeem_after_exceed_rate_limit_reset_interval_succeeds() {
 			.mock_safe(move |_, _, _| MockResult::Return(Ok(())));
 
 		let btc_fee = Redeem::get_current_inclusion_fee(DEFAULT_WRAPPED_CURRENCY).unwrap();
-		let amount = volume_limit - 1;
+		let amount = volume_limit;
 		let redeem_request = RedeemRequest {
 			period: 0,
 			vault: VAULT,
@@ -1480,7 +1480,7 @@ fn test_execute_redeem_after_exceed_rate_limit_reset_interval_succeeds() {
 		);
 
 		let redeemer = USER;
-		let amount = 2;
+		let amount = 1;
 		let stellar_address = RANDOM_STELLAR_PUBLIC_KEY;
 		assert_err!(
 			Redeem::request_redeem(RuntimeOrigin::signed(redeemer), amount, stellar_address, VAULT),
@@ -1489,7 +1489,7 @@ fn test_execute_redeem_after_exceed_rate_limit_reset_interval_succeeds() {
 
 		System::set_block_number(7200 + 20);
 		let redeemer = USER;
-		let amount = volume_limit - amount + 1;
+		let amount = volume_limit;
 		let stellar_address = RANDOM_STELLAR_PUBLIC_KEY;
 		assert_ok!(Redeem::request_redeem(
 			RuntimeOrigin::signed(redeemer),
