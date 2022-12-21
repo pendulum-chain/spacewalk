@@ -827,8 +827,6 @@ mod spec_based_tests {
 
 	#[test]
 	fn test_liquidation_redeem_succeeds() {
-		// POSTCONDITION: `redeemTokensLiquidation` MUST be called with `redeemer`
-		// and `amountWrapped` as arguments.
 		run_test(|| {
 			let total_amount = 10 * 100_000_000;
 
@@ -862,9 +860,6 @@ mod spec_based_tests {
 
 	#[test]
 	fn test_execute_redeem_succeeds_with_another_account() {
-		// POSTCONDITION: `redeemTokens` MUST be called, supplying `redeemRequest.vault`,
-		// `redeemRequest.amountBtc + redeemRequest.transferFeeBtc`, `redeemRequest.premium` and
-		// `redeemRequest.redeemer` as arguments.
 		run_test(|| {
 			convert_to.mock_safe(|_, x| MockResult::Return(Ok(x)));
 			Security::<Test>::set_active_block_number(40);
@@ -1083,8 +1078,9 @@ mod spec_based_tests {
 #[test]
 fn test_request_redeem_fails_limits() {
 	run_test(|| {
+		let volume_limit: u128 = 9;
 		crate::Pallet::<Test>::_rate_limit_update(
-			std::option::Option::<u128>::Some(9u128),
+			std::option::Option::<u128>::Some(volume_limit),
 			DEFAULT_COLLATERAL_CURRENCY,
 			7200u64,
 		);
@@ -1108,7 +1104,7 @@ fn test_request_redeem_fails_limits() {
 		);
 
 		let redeemer = USER;
-		let amount = 90;
+		let amount = volume_limit + 1;
 		let redeem_fee = 5;
 		let stellar_address = RANDOM_STELLAR_PUBLIC_KEY;
 
@@ -1144,8 +1140,9 @@ fn test_request_redeem_fails_limits() {
 #[test]
 fn test_request_redeem_limits_succeeds() {
 	run_test(|| {
+		let volume_limit: u128 = 91u128;
 		crate::Pallet::<Test>::_rate_limit_update(
-			std::option::Option::<u128>::Some(91u128),
+			std::option::Option::<u128>::Some(volume_limit),
 			DEFAULT_COLLATERAL_CURRENCY,
 			7200u64,
 		);
@@ -1169,7 +1166,7 @@ fn test_request_redeem_limits_succeeds() {
 		);
 
 		let redeemer = USER;
-		let amount = 90;
+		let amount = volume_limit - 1;
 		let redeem_fee = 5;
 		let stellar_address = RANDOM_STELLAR_PUBLIC_KEY;
 
@@ -1205,13 +1202,11 @@ fn test_request_redeem_limits_succeeds() {
 }
 
 #[test]
-fn test_execute_redeem_succeeds_before_exceed_rate_limit() {
-	// POSTCONDITION: `redeemTokens` MUST be called, supplying `redeemRequest.vault`,
-	// `redeemRequest.amountBtc + redeemRequest.transferFeeBtc`, `redeemRequest.premium` and
-	// `redeemRequest.redeemer` as arguments.
+fn test_execute_redeem_before_exceed_rate_limit_succeeds() {
 	run_test(|| {
+		let volume_limit: u128 = 101u128;
 		crate::Pallet::<Test>::_rate_limit_update(
-			std::option::Option::<u128>::Some(101u128),
+			std::option::Option::<u128>::Some(volume_limit),
 			DEFAULT_COLLATERAL_CURRENCY,
 			7200u64,
 		);
@@ -1241,7 +1236,7 @@ fn test_execute_redeem_succeeds_before_exceed_rate_limit() {
 			vault: VAULT,
 			opentime: 40,
 			fee: 0,
-			amount: 100,
+			amount: volume_limit - 1,
 			asset: DEFAULT_WRAPPED_CURRENCY,
 			premium: 0,
 			redeemer: USER,
@@ -1298,12 +1293,10 @@ fn test_execute_redeem_succeeds_before_exceed_rate_limit() {
 
 #[test]
 fn test_execute_redeem_fails_after_exceed_rate_limit() {
-	// POSTCONDITION: `redeemTokens` MUST be called, supplying `redeemRequest.vault`,
-	// `redeemRequest.amountBtc + redeemRequest.transferFeeBtc`, `redeemRequest.premium` and
-	// `redeemRequest.redeemer` as arguments.
 	run_test(|| {
+		let volume_limit: u128 = 101u128;
 		crate::Pallet::<Test>::_rate_limit_update(
-			std::option::Option::<u128>::Some(101u128),
+			std::option::Option::<u128>::Some(volume_limit),
 			DEFAULT_COLLATERAL_CURRENCY,
 			7200u64,
 		);
@@ -1328,12 +1321,13 @@ fn test_execute_redeem_fails_after_exceed_rate_limit() {
 			.mock_safe(move |_, _, _| MockResult::Return(Ok(())));
 
 		let btc_fee = Redeem::get_current_inclusion_fee(DEFAULT_WRAPPED_CURRENCY).unwrap();
+		let amount = volume_limit - 1;
 		let redeem_request = RedeemRequest {
 			period: 0,
 			vault: VAULT,
 			opentime: 40,
 			fee: 0,
-			amount: 100,
+			amount,
 			asset: DEFAULT_WRAPPED_CURRENCY,
 			premium: 0,
 			redeemer: USER,
@@ -1387,7 +1381,7 @@ fn test_execute_redeem_fails_after_exceed_rate_limit() {
 		);
 
 		let redeemer = USER;
-		let amount = 2;
+		let amount = volume_limit - amount + 1;
 		let stellar_address = RANDOM_STELLAR_PUBLIC_KEY;
 		assert_err!(
 			Redeem::request_redeem(RuntimeOrigin::signed(redeemer), amount, stellar_address, VAULT),
@@ -1398,12 +1392,10 @@ fn test_execute_redeem_fails_after_exceed_rate_limit() {
 
 #[test]
 fn test_execute_redeem_after_exceed_rate_limit_reset_interval_succeeds() {
-	// POSTCONDITION: `redeemTokens` MUST be called, supplying `redeemRequest.vault`,
-	// `redeemRequest.amountBtc + redeemRequest.transferFeeBtc`, `redeemRequest.premium` and
-	// `redeemRequest.redeemer` as arguments.
 	run_test(|| {
+		let volume_limit: u128 = 51u128;
 		crate::Pallet::<Test>::_rate_limit_update(
-			std::option::Option::<u128>::Some(51u128),
+			std::option::Option::<u128>::Some(volume_limit),
 			DEFAULT_COLLATERAL_CURRENCY,
 			7200u64,
 		);
@@ -1428,12 +1420,13 @@ fn test_execute_redeem_after_exceed_rate_limit_reset_interval_succeeds() {
 			.mock_safe(move |_, _, _| MockResult::Return(Ok(())));
 
 		let btc_fee = Redeem::get_current_inclusion_fee(DEFAULT_WRAPPED_CURRENCY).unwrap();
+		let amount = volume_limit - 1;
 		let redeem_request = RedeemRequest {
 			period: 0,
 			vault: VAULT,
 			opentime: 40,
 			fee: 0,
-			amount: 50,
+			amount,
 			asset: DEFAULT_WRAPPED_CURRENCY,
 			premium: 0,
 			redeemer: USER,
@@ -1476,7 +1469,7 @@ fn test_execute_redeem_after_exceed_rate_limit_reset_interval_succeeds() {
 			redeem_id: H256([0; 32]),
 			redeemer: USER,
 			vault_id: VAULT,
-			amount: 50,
+			amount,
 			asset: DEFAULT_WRAPPED_CURRENCY,
 			fee: 0,
 			transfer_fee: btc_fee.amount(),
@@ -1496,7 +1489,7 @@ fn test_execute_redeem_after_exceed_rate_limit_reset_interval_succeeds() {
 
 		System::set_block_number(7200 + 20);
 		let redeemer = USER;
-		let amount = 50;
+		let amount = volume_limit - amount + 1;
 		let stellar_address = RANDOM_STELLAR_PUBLIC_KEY;
 		assert_ok!(Redeem::request_redeem(
 			RuntimeOrigin::signed(redeemer),
