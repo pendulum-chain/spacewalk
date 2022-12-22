@@ -53,12 +53,12 @@ stellar-relay-lib = { package = "stellar-relay-lib", path = "../stellar-relay-li
 primitives = { path = "../../primitives", package = "spacewalk-primitives" }
 
 # Substrate dependencies
-sp-arithmetic = { git = "https://github.com/paritytech//substrate", branch = "polkadot-v0.9.35" }
-sp-core = { git = "https://github.com/paritytech//substrate", branch = "polkadot-v0.9.35" }
-sp-io = { git = "https://github.com/paritytech//substrate", branch = "polkadot-v0.9.35" }
-sp-keyring = { git = "https://github.com/paritytech//substrate", branch = "polkadot-v0.9.35" }
-sp-runtime = { git = "https://github.com/paritytech//substrate", branch = "polkadot-v0.9.35" }
-sp-std = { git = "https://github.com/paritytech//substrate", branch = "polkadot-v0.9.35" }
+sp-arithmetic = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.35" }
+sp-core = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.35" }
+sp-io = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.35" }
+sp-keyring = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.35" }
+sp-runtime = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.35" }
+sp-std = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.35" }
 
 parking_lot = "0.12.1"
 err-derive = "0.3.1"
@@ -75,4 +75,4 @@ runtime = { path = "../runtime", features = ["testing-utils"] }
 subxt = { version = "0.25.0" }
 
 # Substrate dependencies
-frame-support = { git = "https://github.com/paritytech//substrate", branch = "polkadot-v0.9.35" }
+frame-support = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.35" }
