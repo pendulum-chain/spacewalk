@@ -45,8 +45,8 @@ pub enum Error {
 	Utf8Error(#[from] Utf8Error),
 	#[error("Failed to parse sequence number")]
 	SeqNoParsingError,
-	#[error("Dummy error")]
-	DummyError,
+	#[error("OracleError: {0}")]
+	OracleError(#[from] crate::oracle::Error),
 }
 
 impl From<Error> for service::Error<Error> {

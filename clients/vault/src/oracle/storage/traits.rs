@@ -93,7 +93,7 @@ pub trait ArchiveStorage {
 		Ok(bytes)
 	}
 
-	fn get_url_and_file_name(slot_index: i32) -> (String, String) {
+	fn get_url_and_file_name(slot_index: u32) -> (String, String) {
 		let slot_index = Self::find_last_slot_index_in_batch(slot_index);
 		let hex_string = format!("0{:x}", slot_index);
 		let file_name = format!("{hex_string}.xdr");
@@ -108,7 +108,7 @@ pub trait ArchiveStorage {
 		(url, format!("{}{file_name}", Self::PREFIX_FILENAME))
 	}
 
-	fn find_last_slot_index_in_batch(slot_index: i32) -> i32 {
+	fn find_last_slot_index_in_batch(slot_index: u32) -> u32 {
 		let rest = (slot_index + 1) % ARCHIVE_NODE_LEDGER_BATCH;
 		if rest == 0 {
 			return slot_index

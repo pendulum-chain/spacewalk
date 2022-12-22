@@ -1,15 +1,15 @@
 #![allow(dead_code)]
 
+pub use agent::*;
+pub use collector::Proof;
 use collector::*;
-pub use collector::{Proof, ProofExt, ProofStatus};
-use errors::Error;
-pub use handler::*;
+pub use errors::Error;
 pub use storage::{prepare_directories, *};
 use types::*;
 
+mod agent;
 mod collector;
 mod constants;
 mod errors;
-mod handler;
 pub mod storage;
 pub mod types;

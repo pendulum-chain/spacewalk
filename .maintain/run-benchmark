@@ -1,0 +1,79 @@
+#!/bin/sh
+
+#### Function definitions
+print_help () {
+  echo "USAGE: \\n\
+  \\trun-benchmark --all\\n\
+  \\trun-benchmark --pallet <pallet-name>\\n\
+  "
+}
+
+build () {
+  cargo build --package spacewalk-standalone --release --features runtime-benchmarks
+}
+
+run_single_benchmark_quiet () {
+  LOGS=$(run_single_benchmark $1)
+  RES=$?
+  [ "$2" = "--with-logs" ] && echo $LOGS
+  return $RES
+}
+
+run_single_benchmark () {
+  ./target/release/spacewalk-standalone benchmark pallet \
+  --chain=dev \
+  --pallet="$1" \
+  --extrinsic='*' \
+  --steps=100 \
+  --repeat=10 \
+  --wasm-execution=compiled \
+  --output="pallets/$1/src/default_weights.rs" \
+  --template=.maintain/frame-weight-template.hbs 2>&1
+}
+
+run_all_benchmarks () {
+  cd pallets
+  for dir in */; do
+    pallet=${dir%"/"}
+    printf "%s" "Run for pallet $pallet..."
+    cd ..
+    $(run_single_benchmark_quiet $pallet) && printf "✓\n" || printf "✗\n"
+    cd pallets
+  done
+}
+
+run_checks () {
+  # Check that binary exists
+  if test -e target/release/spacewalk-standalone ; then
+    echo "Binary found ✓"
+  else 
+    echo "Binary not found. Building project... "
+    build
+  fi
+
+  # Check that the feature benchmark is enabled
+  FEATURE=`echo ./target/release/spacewalk-standalone benchmark -V | { grep -q spacewalk-standalone-benchmark; echo $? ;}`
+  if test $FEATURE ; then
+    echo "Feature benchmark present ✓"
+  else
+    echo "Feature benchmark not present. Building project..."
+    build
+    exit 1
+  fi
+}
+
+#### Run becnhmarks
+
+if [ "$1" = "--all" ]; then
+  run_checks
+  echo "Running all..."
+  run_all_benchmarks
+elif [ $1 = "--pallet" ] && [ -d "./pallets/$2" ]; then
+  run_checks
+  printf "%s" "Running for pallet $2... "
+  run_single_benchmark_quiet $2 --with-logs && printf "✓\n"
+elif [ $1 = "--help" ]; then
+  print_help
+else
+  print_help
+fi
