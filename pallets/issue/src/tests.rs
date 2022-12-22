@@ -1,17 +1,16 @@
 use frame_support::{assert_noop, assert_ok, dispatch::DispatchError};
-use mocktopus::mocking::*;
 use orml_traits::MultiCurrency;
 use sp_arithmetic::FixedU128;
 use sp_core::H256;
-use sp_runtime::traits::One;
+use sp_runtime::traits::{One, Zero};
 
 use currency::Amount;
+use mocktopus::mocking::*;
 use primitives::{issue::IssueRequestStatus, StellarPublicKeyRaw};
 use stellar_relay::testing_utils::{DEFAULT_STELLAR_PUBLIC_KEY, RANDOM_STELLAR_PUBLIC_KEY};
 use vault_registry::{DefaultVault, DefaultVaultId, Vault, VaultStatus};
 
 use crate::{ext, mock::*, BalanceOf, Event, IssueRequest};
-use sp_runtime::traits::Zero;
 
 fn griefing(amount: u128) -> Amount<Test> {
 	Amount::new(amount, DEFAULT_NATIVE_CURRENCY)
@@ -445,16 +444,17 @@ fn test_set_issue_period_only_root() {
 #[test]
 fn test_request_issue_fails_exceed_limit_volume_for_issue_request() {
 	run_test(|| {
+		let volume_limit = 1u128;
 		crate::Pallet::<Test>::_rate_limit_update(
-			std::option::Option::<u128>::Some(1u128),
+			std::option::Option::<u128>::Some(volume_limit),
 			DEFAULT_COLLATERAL_CURRENCY,
 			7200u64,
 		);
 
-		let issue_amount = 2;
+		let issue_amount = volume_limit + 1;
 		let issue_fee = 1;
 		let griefing_collateral = 1;
-		let amount_transferred = 3;
+		let amount_transferred = issue_amount;
 		let request_issue_result =
 			setup_execute(issue_amount, issue_fee, griefing_collateral, amount_transferred);
 
@@ -465,17 +465,18 @@ fn test_request_issue_fails_exceed_limit_volume_for_issue_request() {
 #[test]
 fn test_request_issue_fails_after_execute_issue_exceed_limit_volume_for_issue_request() {
 	run_test(|| {
+		let volume_limit = 3u128;
 		crate::Pallet::<Test>::_rate_limit_update(
-			std::option::Option::<u128>::Some(3u128),
+			std::option::Option::<u128>::Some(volume_limit),
 			DEFAULT_COLLATERAL_CURRENCY,
 			7200u64,
 		);
 
 		let issue_asset = VAULT.wrapped_currency();
-		let issue_amount = 3;
+		let issue_amount = volume_limit;
 		let issue_fee = 1;
 		let griefing_collateral = 1;
-		let amount_transferred = 3;
+		let amount_transferred = issue_amount;
 		let request_issue_result =
 			setup_execute(issue_amount, issue_fee, griefing_collateral, amount_transferred);
 
@@ -503,6 +504,7 @@ fn test_request_issue_fails_after_execute_issue_exceed_limit_volume_for_issue_re
 		assert_noop!(cancel_issue(USER, &issue_id), TestError::IssueCompleted);
 
 		//act
+		// Try to request issue again although the volume limit has been reached
 		let request_issue_result =
 			setup_execute(issue_amount, issue_fee, griefing_collateral, amount_transferred);
 
@@ -514,17 +516,18 @@ fn test_request_issue_fails_after_execute_issue_exceed_limit_volume_for_issue_re
 #[test]
 fn test_request_issue_success_with_rate_limit() {
 	run_test(|| {
+		let volume_limit = 3u128;
 		crate::Pallet::<Test>::_rate_limit_update(
-			std::option::Option::<u128>::Some(3u128),
+			std::option::Option::<u128>::Some(volume_limit),
 			DEFAULT_COLLATERAL_CURRENCY,
 			7200u64,
 		);
 
 		let issue_asset = VAULT.wrapped_currency();
-		let issue_amount = 3;
+		let issue_amount = volume_limit;
 		let issue_fee = 1;
 		let griefing_collateral = 1;
-		let amount_transferred = 3;
+		let amount_transferred = issue_amount;
 		let request_issue_result =
 			setup_execute(issue_amount, issue_fee, griefing_collateral, amount_transferred);
 
@@ -556,17 +559,18 @@ fn test_request_issue_success_with_rate_limit() {
 #[test]
 fn test_request_issue_reset_interval_and_succeeds_with_rate_limit() {
 	run_test(|| {
+		let volume_limit = 3u128;
 		crate::Pallet::<Test>::_rate_limit_update(
-			std::option::Option::<u128>::Some(3u128),
+			std::option::Option::<u128>::Some(volume_limit),
 			DEFAULT_COLLATERAL_CURRENCY,
 			7200u64,
 		);
 
 		let issue_asset = VAULT.wrapped_currency();
-		let issue_amount = 3;
+		let issue_amount = volume_limit;
 		let issue_fee = 1;
 		let griefing_collateral = 1;
-		let amount_transferred = 3;
+		let amount_transferred = issue_amount;
 		let request_issue_result =
 			setup_execute(issue_amount, issue_fee, griefing_collateral, amount_transferred);
 
@@ -602,13 +606,18 @@ fn test_request_issue_reset_interval_and_succeeds_with_rate_limit() {
 
 		System::set_block_number(7200 + 20);
 
+		// The volume limit does not automatically reset when the block number changes.
+		// We need to request a new issue so that the rate limit is reset for the new interval.
+		assert!(<crate::CurrentVolumeAmount<Test>>::get() > BalanceOf::<Test>::zero());
+
 		//act
 		let request_issue_result =
 			setup_execute(issue_amount, issue_fee, griefing_collateral, amount_transferred);
 
-		//assert check that limit volume resets after interval exceed
-
 		assert_ok!(request_issue_result);
+
+		// The volume limit should be reset after the new issue request.
+		// It is 0 because the issue was only requested and not yet executed.
 		assert_eq!(<crate::CurrentVolumeAmount<Test>>::get(), BalanceOf::<Test>::zero());
 	})
 }
