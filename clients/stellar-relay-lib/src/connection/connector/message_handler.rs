@@ -70,8 +70,7 @@ impl Connector {
 			},
 
 			StellarMessage::SendMore(_) => {
-				// todo: what to do with send more?
-				log::trace!("what to do with send more");
+				log::info!("SendMore message received from overlay");
 			},
 			other => {
 				self.send_to_user(StellarRelayMessage::Data {

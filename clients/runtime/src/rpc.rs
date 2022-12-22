@@ -1024,7 +1024,7 @@ impl IssuePallet for SpacewalkParachain {
 			.rpc()
 			.request("issue_getVaultIssueRequests", rpc_params![account_id, head])
 			.await?;
-		join_all(
+		futures::future::join_all(
 			result.into_iter().map(|key| async move {
 				self.get_issue_request(key).await.map(|value| (key, value))
 			}),
@@ -1049,7 +1049,6 @@ impl IssuePallet for SpacewalkParachain {
 		let mut iter = self.api.storage().iter(key_addr, DEFAULT_PAGE_SIZE, head).await?;
 
 		while let Some((issue_id, request)) = iter.next().await? {
-			// todo: we also need to check the bitcoin height
 			if request.status == IssueRequestStatus::Pending &&
 				request.opentime + issue_period > current_height
 			{

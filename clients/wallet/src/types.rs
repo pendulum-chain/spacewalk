@@ -1,18 +1,8 @@
-use async_trait::async_trait;
 use substrate_stellar_sdk::Hash;
 
-#[cfg(test)]
-use mockall::{automock, predicate::*};
-
-use crate::{error::Error, horizon::TransactionResponse};
+use crate::horizon::TransactionResponse;
 
 pub type StellarPublicKeyRaw = [u8; 32];
-
-#[async_trait]
-#[cfg_attr(test, automock)]
-pub trait Watcher: Send + Sync {
-	async fn watch_slot(&self, slot: u128) -> Result<(), Error>;
-}
 
 pub type TransactionFilterParam<T> = (TransactionResponse, T);
 

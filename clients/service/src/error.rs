@@ -14,6 +14,10 @@ pub enum Error<InnerError> {
 	Retry(InnerError),
 	#[error("Could not start service: {0}")]
 	StartServiceError(InnerError),
+	#[error("Oracle Error: {0}")]
+	OracleError(InnerError),
+	#[error("Vault Error: {0}")]
+	VaultError(InnerError),
 
 	#[error("Client has shutdown")]
 	ClientShutdown,
@@ -38,4 +42,7 @@ pub enum Error<InnerError> {
 	IoError(#[from] IoError),
 	#[error("Wallet error: {0}")]
 	WalletError(#[from] wallet::error::Error),
+
+	#[error("Could not start oracle agent")]
+	StartOracleAgentError,
 }
