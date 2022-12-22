@@ -224,7 +224,21 @@ impl OracleAgent {
 
 #[cfg(test)]
 mod tests {
+	use std::fs;
+
+	use crate::oracle::{traits::ArchiveStorage, ScpArchiveStorage, TransactionsArchiveStorage};
+
 	use super::*;
+
+	fn remove_xdr_files(target_slot: u64) {
+		let (_, file) = <TransactionsArchiveStorage as ArchiveStorage>::get_url_and_file_name(
+			target_slot as u32,
+		);
+		fs::remove_file(file).expect("should be able to remove the newly added file.");
+		let (_, file) =
+			<ScpArchiveStorage as ArchiveStorage>::get_url_and_file_name(target_slot as u32);
+		fs::remove_file(file).expect("should be able to remove the newly added file.");
+	}
 
 	#[tokio::test]
 	async fn test_get_proof_for_current_slot() {
@@ -252,6 +266,9 @@ mod tests {
 		let proof = agent.get_proof(target_slot).await.expect("should return a proof");
 
 		assert_eq!(proof.slot(), 44041116);
+
+		remove_xdr_files(target_slot);
+
 		agent.stop().expect("Failed to stop the agent");
 	}
 }
