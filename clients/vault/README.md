@@ -1,6 +1,6 @@
 # Oracle
 
-The Stellar Oracle uses [Stellar-Relay](../stellar-relay-lib) to listen to messages from the StellarNode.  
+The Stellar Oracle uses [Stellar-Relay](../stellar-relay-lib) to listen to messages from the Stellar Node.  
 The Oracle collects and saves **`SCPStatementExternalize`** SCPMessages and its corresponding `TransactionSets`.
 
 ## Usage
@@ -8,73 +8,64 @@ The Oracle collects and saves **`SCPStatementExternalize`** SCPMessages and its 
 ### Provide the `NodeInfo` and `ConnConfig` 
 Refer to [Stellar-Relay readme](../stellar-relay-lib/README.md) on how to initialize these structures.
 
-### Create the `ScpMessageHandler`
-Simply call the _async_ function `create_handler()`:
+### Create the `OracleAgent`
+Simply call the _`new()`_ function of `OracleAgent`:
 ```rust
-let handler = create_handler(node_info, cfg, is_public_network, vault_addresses_filter).await?;
+let mut oracle_agent = OracleAgent::new(is_public_network)?;
 ```
-The `vault_address_filter` is a list of addresses for the vault.
-
-The `ScpMessageHandler` has a couple of async methods available:
-* _`get_size()`_ -> returns the number of slots saved in the map at runtime.
-* _`add_filter(filter: Box<TxEnvelopeFilter>)`_ -> adds a unique filter that will check if a given transaction should be processed.
-* _`remove_filter(filter_id)`_ -> removes a filter
-* _`get_pending_txs()`_ -> gets a list of transaction proofs
-
-## The `FilterWith` trait
+### Start the `OracleAgent`
+Starting the `OracleAgent` means creating a `StellarOverlayConnection` and
+To start, call the async method:
 ```rust
-pub trait FilterWith<T> {
-    /// unique identifier of this filter
-    fn id(&self) -> u32;
+oracle_agent.start().await?
+```
+or if you can provide the vault's secret key:
+```rust
+oracle_agent.start_with_secret_key(<secret_key>).await?
+```
+Note: starting the agent means listening to messages coming from  the `StellarOverlayConnection`.
+### Building a proof
+Given a slot, call the method: 
+```rust
+oracle_agent.get_proof(<slot>).await
+```
 
-    /// logic to check whether a given param should be processed.
-    fn check_for_processing(&self, param: &T) -> bool;
+### Stopping the `OracleAgent`
+It is as simple as:
+```rust
+oracle_agent.stop()
+```
+
+## Understanding `OracleAgent`'s field: `collector`
+The `collector` is of type `ScpMessageCollector` where the ScpMessages and its corresponding TransactionSet are stored.
+```rust
+pub struct ScpMessageCollector {
+	/// holds the mapping of the Slot Number(key) and the ScpEnvelopes(value)
+	envelopes_map: Arc<RwLock<EnvelopesMap>>,
+
+	/// holds the mapping of the Slot Number(key) and the TransactionSet(value)
+	txset_map: Arc<RwLock<TxSetMap>>,
+
+	/// Mapping between the txset's hash and its corresponding slot.
+	/// An entry is removed when a `TransactionSet` is found.
+	txset_and_slot_map: Arc<RwLock<TxSetHashAndSlotMap>>,
+
+	last_slot_index: Arc<RwLock<u64>>,
+
+	public_network: bool,
 }
 ```
-The oracle looks through all the transactions in a `TransactionSet` and checks if a transaction is to be processed.
-In the case of `RequestIssueEvent`, we can do something like:
-```rust
-pub struct IssueEventsFilter{
-    issue_ids: Vec<stellar_relay::sdk::Hash>
-}
+The `ScpMessageCollector` have methods such as `add_scp_envelopes` and `add_txset` to store the ScpMessages and TransactionSet.
 
-impl FilterWith<TransactionEnvelope> for IssueEventsFilter {
-    fn id(&self) -> u32 {
-        5 // any number that is unique from the other filters
-    }
-
-    fn check_for_processing(&self, param: &TransactionEnvelope) -> bool {
-        if let TransactionEnvelope::EnvelopeTypeTx(tx_env) = param {
-            match tx_env.tx.memo {
-                // we will only process this transaction if the issue_id is in the list.
-                Memo::MemoHash(hash) => {  return self.issue_ids.contains(&hash); }
-                _ => {}
-            }
-        }
-        false
-    }
-}
-```
-Then with the `ScpMessageHandler`, just call:
-```rust
-handler.add_filter(Box::new(issue_events_filter)).await?;
-```
-The _`Box`_ is required because we want it to be flexible enough to accommodate different filters.
-
-## Example
-Run this command:
-```
- RUST_LOG=info cargo run --example oracle
-```
-and you should be able to see in the terminal something similar when running the _`connect`_ example of `Stellar-Relay`.
-But every 8 seconds, it logs the slots in the map, and on the 5th loop (8 seconds * 5), the `NoFilter` is added.
-```
-[2022-10-21T08:29:30Z INFO  vault::oracle::collector::txsets_handler] Inserting received transaction set for slot 607717
-[2022-10-21T08:29:31Z INFO  oracle] Slots in the map: 6
-[2022-10-21T08:29:35Z INFO  vault::oracle::collector::envelopes_handler] Adding received SCP envelopes for slot 607718
-[2022-10-21T08:29:35Z INFO  vault::oracle::collector::txsets_handler] Inserting received transaction set for slot 607718
-[2022-10-21T08:29:39Z INFO  oracle] Slots in the map: 7
-[2022-10-21T08:29:39Z INFO  vault::oracle::handler] adding filter: NoFilter
-[2022-10-21T08:29:40Z INFO  vault::oracle::collector::envelopes_handler] Adding received SCP envelopes for slot 607719
-[2022-10-21T08:29:40Z INFO  vault::oracle::collector::txsets_handler] Inserting received transaction set for slot 607719
-```
+### How `ScpMessageCollector` handles `ScpEnvelopes` and `TransactionSet` 
+Found in [handler.rs](src/oracle/collector).
+It only contains 2 methods:
+* _`async fn handle_envelope( &self, env: ScpEnvelope, message_sender: &StellarMessageSender,)`_
+  * handles only envelopes with `ScpStExternalize`, and saves two important things in the **`txset_and_slot_map`** field:
+    * extracting the _slot_ from this envelope for future reference
+    * extracting the _txset_hash_.
+  * sends a `GetTxSet(<txset_hash>)` message to Stellar Relay (on the first occurrence of this slot).
+* _`handle_tx_set(&self, set: TransactionSet)`_
+  * handles only `TransactionSet`s that are in the **`txset_and_slot_map`** field.
+  * given a `TransactionSet`, extract the `txset_hash` and check if it's one of the `txset_hash`es we want.
+    * if it is, save to **`txset_map`** field.

@@ -15,7 +15,7 @@ impl ScpMessageCollector {
 	/// # Arguments
 	///
 	/// * `env` - the ScpEnvelope
-	/// * `overlay_conn` - The StellarOverlayConnection used for sending messages to Stellar Node
+	/// * `message_sender` - used for sending messages to Stellar Node
 	pub(crate) async fn handle_envelope(
 		&self,
 		env: ScpEnvelope,
