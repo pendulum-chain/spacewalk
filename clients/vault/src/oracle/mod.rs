@@ -4,7 +4,7 @@ pub use agent::*;
 pub use collector::Proof;
 use collector::*;
 pub use errors::Error;
-pub use storage::{prepare_directories, *};
+pub use storage::*;
 use types::*;
 
 mod agent;

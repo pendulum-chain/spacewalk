@@ -1,4 +1,4 @@
-use std::{fmt::Write, fs::create_dir_all, str::Split};
+use std::{fmt::Write, str::Split};
 
 use stellar_relay_lib::sdk::{
 	compound_types::{UnlimitedVarArray, XdrArchive},
@@ -179,22 +179,6 @@ impl TransactionsArchiveStorage {
 		let data = result.unwrap();
 		Ok(Self::decode_xdr(data))
 	}
-}
-
-#[cfg(not(test))]
-pub fn prepare_directories() -> Result<(), Error> {
-	create_dir_all("./scp_envelopes")?;
-	create_dir_all("./tx_sets")?;
-
-	create_dir_all("./tx_hashes").map_err(Error::from)
-}
-
-#[cfg(test)]
-pub fn prepare_directories() -> Result<(), Error> {
-	create_dir_all("./resources/test/scp_envelopes")?;
-	create_dir_all("./resources/test/tx_sets")?;
-
-	create_dir_all("./resources/test/tx_hashes").map_err(Error::from)
 }
 
 #[cfg(test)]

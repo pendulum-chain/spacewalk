@@ -21,7 +21,6 @@ use crate::oracle::{
 	collector::ScpMessageCollector,
 	constants::*,
 	errors::Error,
-	prepare_directories,
 	types::{Slot, StellarMessageSender},
 	Proof,
 };
@@ -70,7 +69,6 @@ impl OracleAgent {
 	pub fn new(is_public_network: bool) -> Result<Self, Error> {
 		let collector = Arc::new(ScpMessageCollector::new(is_public_network));
 		let shutdown_sender = ShutdownSender::default();
-		prepare_directories()?;
 		Ok(Self { collector, is_public_network, message_sender: None, shutdown_sender })
 	}
 
@@ -230,8 +228,6 @@ mod tests {
 
 	#[tokio::test]
 	async fn test_get_proof_for_current_slot() {
-		prepare_directories().expect("Failed to prepare directories.");
-
 		let mut agent = OracleAgent::new(true).unwrap();
 		agent.start().await.expect("Failed to start agent");
 
@@ -248,8 +244,6 @@ mod tests {
 
 	#[tokio::test]
 	async fn test_get_proof_for_archived_slot() {
-		prepare_directories().expect("Failed to prepare directories.");
-
 		let mut agent = OracleAgent::new(true).expect("should return an agent");
 		agent.start().await.expect("Failed to start agent");
 
