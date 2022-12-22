@@ -3,7 +3,6 @@ use std::{convert::TryFrom, str::FromStr};
 use frame_support::BoundedVec;
 use hex_literal::hex;
 use sc_service::ChainType;
-use serde_json::{map::Map, Value};
 use sp_arithmetic::{FixedPointNumber, FixedU128};
 use sp_consensus_aura::sr25519::AuthorityId as AuraId;
 use sp_core::{crypto::UncheckedInto, sr25519, Pair, Public};
@@ -11,6 +10,7 @@ use sp_finality_grandpa::AuthorityId as GrandpaId;
 use sp_runtime::traits::{IdentifyAccount, Verify};
 
 use primitives::{CurrencyId::Token, VaultCurrencyPair, AMPE, DOT, KSM, PEN};
+use serde_json::{map::Map, Value};
 use spacewalk_runtime::{
 	AccountId, AuraConfig, BalancesConfig, CurrencyId, FeeConfig, FieldLength, GenesisConfig,
 	GetWrappedCurrencyId, GrandpaConfig, IssueConfig, NominationConfig, OracleConfig, Organization,
@@ -276,8 +276,24 @@ fn testnet_genesis(
 				})
 				.collect(),
 		},
-		issue: IssueConfig { issue_period: DAYS, issue_minimum_transfer_amount: 1000 },
-		redeem: RedeemConfig { redeem_period: DAYS, redeem_minimum_transfer_amount: 100 },
+		issue: IssueConfig {
+			issue_period: DAYS,
+			issue_minimum_transfer_amount: 1000,
+			limit_volume_amount: None,
+			limit_volume_currency_id: Token(DOT),
+			current_volume_amount: 0u32.into(),
+			interval_length: (60u32 * 60 * 24).into(),
+			last_interval_index: 0u32.into(),
+		},
+		redeem: RedeemConfig {
+			redeem_period: DAYS,
+			redeem_minimum_transfer_amount: 100,
+			limit_volume_amount: None,
+			limit_volume_currency_id: Token(DOT),
+			current_volume_amount: 0u32.into(),
+			interval_length: (60u32 * 60 * 24).into(),
+			last_interval_index: 0u32.into(),
+		},
 		replace: ReplaceConfig { replace_period: DAYS, replace_btc_dust_value: 1000 },
 		security: SecurityConfig {
 			initial_status: if start_shutdown { StatusCode::Shutdown } else { StatusCode::Error },

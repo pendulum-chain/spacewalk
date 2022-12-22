@@ -60,8 +60,7 @@ impl StellarWallet {
 		let horizon_client = reqwest::Client::new();
 
 		let public_key_encoded = self.get_public_key().to_encoding();
-		let account_id =
-			std::str::from_utf8(&public_key_encoded).map_err(Error::Utf8Error)?;
+		let account_id = std::str::from_utf8(&public_key_encoded).map_err(Error::Utf8Error)?;
 
 		let transactions_response = horizon_client
 			.get_transactions(account_id, self.is_public_network, cursor, limit, order_ascending)

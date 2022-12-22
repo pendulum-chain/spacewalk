@@ -1,16 +1,16 @@
 use frame_support::{assert_noop, assert_ok, dispatch::DispatchError};
-use mocktopus::mocking::*;
 use orml_traits::MultiCurrency;
 use sp_arithmetic::FixedU128;
 use sp_core::H256;
-use sp_runtime::traits::One;
+use sp_runtime::traits::{One, Zero};
 
 use currency::Amount;
+use mocktopus::mocking::*;
 use primitives::{issue::IssueRequestStatus, StellarPublicKeyRaw};
 use stellar_relay::testing_utils::{DEFAULT_STELLAR_PUBLIC_KEY, RANDOM_STELLAR_PUBLIC_KEY};
 use vault_registry::{DefaultVault, DefaultVaultId, Vault, VaultStatus};
 
-use crate::{ext, mock::*, Event, IssueRequest};
+use crate::{ext, mock::*, BalanceOf, Event, IssueRequest};
 
 fn griefing(amount: u128) -> Amount<Test> {
 	Amount::new(amount, DEFAULT_NATIVE_CURRENCY)
@@ -34,7 +34,7 @@ fn request_issue(
 }
 
 fn request_issue_ok(origin: AccountId, amount: Balance, vault: DefaultVaultId<Test>) -> H256 {
-	request_issue_ok_with_address(origin, amount, vault, RANDOM_STELLAR_PUBLIC_KEY)
+	request_issue_ok_with_address(origin, amount, vault, RANDOM_STELLAR_PUBLIC_KEY).unwrap()
 }
 
 fn request_issue_ok_with_address(
@@ -42,7 +42,7 @@ fn request_issue_ok_with_address(
 	amount: Balance,
 	vault: DefaultVaultId<Test>,
 	_address: StellarPublicKeyRaw,
-) -> H256 {
+) -> Result<H256, DispatchError> {
 	ext::vault_registry::ensure_not_banned::<Test>.mock_safe(|_| MockResult::Return(Ok(())));
 
 	ext::security::get_secure_id::<Test>.mock_safe(|_| MockResult::Return(get_dummy_request_id()));
@@ -52,7 +52,7 @@ fn request_issue_ok_with_address(
 	ext::vault_registry::get_stellar_public_key::<Test>
 		.mock_safe(|_| MockResult::Return(Ok(DEFAULT_STELLAR_PUBLIC_KEY)));
 
-	Issue::_request_issue(origin, amount, vault).unwrap()
+	Issue::_request_issue(origin, amount, vault)
 }
 
 fn execute_issue(origin: AccountId, issue_id: &H256) -> Result<(), DispatchError> {
@@ -127,7 +127,8 @@ fn test_request_issue_succeeds() {
 		ext::fee::get_issue_griefing_collateral::<Test>
 			.mock_safe(move |_| MockResult::Return(Ok(griefing(issue_griefing_collateral))));
 
-		let issue_id = request_issue_ok_with_address(origin, amount, vault.clone(), address);
+		let issue_id =
+			request_issue_ok_with_address(origin, amount, vault.clone(), address).unwrap();
 
 		let request_issue_event = TestEvent::Issue(Event::RequestIssue {
 			issue_id,
@@ -157,7 +158,7 @@ fn setup_execute(
 	issue_fee: Balance,
 	griefing_collateral: Balance,
 	amount_transferred: Balance,
-) -> H256 {
+) -> Result<H256, DispatchError> {
 	ext::vault_registry::get_active_vault_from_id::<Test>
 		.mock_safe(|_| MockResult::Return(Ok(init_zero_vault(VAULT))));
 	ext::vault_registry::issue_tokens::<Test>.mock_safe(|_, _| MockResult::Return(Ok(())));
@@ -167,7 +168,8 @@ fn setup_execute(
 	ext::fee::get_issue_griefing_collateral::<Test>
 		.mock_safe(move |_| MockResult::Return(Ok(griefing(griefing_collateral))));
 
-	let issue_id = request_issue_ok(USER, issue_amount, VAULT);
+	let issue_id =
+		request_issue_ok_with_address(USER, issue_amount, VAULT, RANDOM_STELLAR_PUBLIC_KEY)?;
 	<security::Pallet<Test>>::set_active_block_number(5);
 
 	ext::stellar_relay::validate_stellar_transaction::<Test>
@@ -176,7 +178,7 @@ fn setup_execute(
 		MockResult::Return(Ok(Amount::new(amount_transferred, currency)))
 	});
 
-	issue_id
+	Ok(issue_id)
 }
 
 #[test]
@@ -188,7 +190,8 @@ fn test_execute_issue_succeeds() {
 		let griefing_collateral = 1;
 		let amount_transferred = 3;
 		let issue_id =
-			setup_execute(issue_amount, issue_fee, griefing_collateral, amount_transferred);
+			setup_execute(issue_amount, issue_fee, griefing_collateral, amount_transferred)
+				.unwrap();
 
 		assert_ok!(execute_issue(USER, &issue_id));
 
@@ -221,7 +224,8 @@ fn test_execute_issue_overpayment_succeeds() {
 		let issue_fee = 0;
 		let griefing_collateral = 0;
 		let issue_id =
-			setup_execute(issue_amount, issue_fee, griefing_collateral, amount_transferred);
+			setup_execute(issue_amount, issue_fee, griefing_collateral, amount_transferred)
+				.unwrap();
 		unsafe {
 			let mut increase_tokens_called = false;
 
@@ -257,7 +261,8 @@ fn test_execute_issue_overpayment_up_to_max_succeeds() {
 		let issue_fee = 0;
 		let griefing_collateral = 0;
 		let issue_id =
-			setup_execute(issue_amount, issue_fee, griefing_collateral, amount_transferred);
+			setup_execute(issue_amount, issue_fee, griefing_collateral, amount_transferred)
+				.unwrap();
 		unsafe {
 			let mut increase_tokens_called = false;
 
@@ -293,7 +298,8 @@ fn test_execute_issue_underpayment_succeeds() {
 		let issue_fee = 0;
 		let griefing_collateral = 20;
 		let issue_id =
-			setup_execute(issue_amount, issue_fee, griefing_collateral, amount_transferred);
+			setup_execute(issue_amount, issue_fee, griefing_collateral, amount_transferred)
+				.unwrap();
 		unsafe {
 			let mut transfer_funds_called = false;
 			ext::vault_registry::transfer_funds::<Test>.mock_raw(|from, to, amount| {
@@ -432,5 +438,186 @@ fn test_set_issue_period_only_root() {
 			DispatchError::BadOrigin
 		);
 		assert_ok!(Issue::set_issue_period(RuntimeOrigin::root(), 1));
+	})
+}
+
+#[test]
+fn test_request_issue_fails_exceed_limit_volume_for_issue_request() {
+	run_test(|| {
+		let volume_limit = 1u128;
+		crate::Pallet::<Test>::_rate_limit_update(
+			std::option::Option::<u128>::Some(volume_limit),
+			DEFAULT_COLLATERAL_CURRENCY,
+			7200u64,
+		);
+
+		let issue_amount = volume_limit + 1;
+		let issue_fee = 1;
+		let griefing_collateral = 1;
+		let amount_transferred = issue_amount;
+		let request_issue_result =
+			setup_execute(issue_amount, issue_fee, griefing_collateral, amount_transferred);
+
+		assert_noop!(request_issue_result, TestError::ExceedLimitVolumeForIssueRequest);
+	})
+}
+
+#[test]
+fn test_request_issue_fails_after_execute_issue_exceed_limit_volume_for_issue_request() {
+	run_test(|| {
+		let volume_limit = 3u128;
+		crate::Pallet::<Test>::_rate_limit_update(
+			std::option::Option::<u128>::Some(volume_limit),
+			DEFAULT_COLLATERAL_CURRENCY,
+			7200u64,
+		);
+
+		let issue_asset = VAULT.wrapped_currency();
+		let issue_amount = volume_limit;
+		let issue_fee = 1;
+		let griefing_collateral = 1;
+		let amount_transferred = issue_amount;
+		let request_issue_result =
+			setup_execute(issue_amount, issue_fee, griefing_collateral, amount_transferred);
+
+		assert_ok!(request_issue_result);
+		let issue_id = request_issue_result.unwrap();
+
+		assert_ok!(execute_issue(USER, &issue_id));
+
+		let execute_issue_event = TestEvent::Issue(Event::ExecuteIssue {
+			issue_id,
+			requester: USER,
+			vault_id: VAULT,
+			amount: issue_amount,
+			asset: issue_asset,
+			fee: issue_fee,
+		});
+		assert!(System::events().iter().any(|a| a.event == execute_issue_event));
+		let executed_issue: IssueRequest<AccountId, BlockNumber, Balance, CurrencyId> =
+			Issue::issue_requests(&issue_id).unwrap();
+		assert!(matches!(executed_issue, IssueRequest { .. }));
+		assert_eq!(executed_issue.amount, issue_amount - issue_fee);
+		assert_eq!(executed_issue.fee, issue_fee);
+		assert_eq!(executed_issue.griefing_collateral, griefing_collateral);
+
+		assert_noop!(cancel_issue(USER, &issue_id), TestError::IssueCompleted);
+
+		//act
+		// Try to request issue again although the volume limit has been reached
+		let request_issue_result =
+			setup_execute(issue_amount, issue_fee, griefing_collateral, amount_transferred);
+
+		//assert check that we do not exceed the rate limit after execute issue request
+		assert_noop!(request_issue_result, TestError::ExceedLimitVolumeForIssueRequest);
+	})
+}
+
+#[test]
+fn test_request_issue_success_with_rate_limit() {
+	run_test(|| {
+		let volume_limit = 3u128;
+		crate::Pallet::<Test>::_rate_limit_update(
+			std::option::Option::<u128>::Some(volume_limit),
+			DEFAULT_COLLATERAL_CURRENCY,
+			7200u64,
+		);
+
+		let issue_asset = VAULT.wrapped_currency();
+		let issue_amount = volume_limit;
+		let issue_fee = 1;
+		let griefing_collateral = 1;
+		let amount_transferred = issue_amount;
+		let request_issue_result =
+			setup_execute(issue_amount, issue_fee, griefing_collateral, amount_transferred);
+
+		assert_ok!(request_issue_result);
+		let issue_id = request_issue_result.unwrap();
+
+		assert_ok!(execute_issue(USER, &issue_id));
+
+		let execute_issue_event = TestEvent::Issue(Event::ExecuteIssue {
+			issue_id,
+			requester: USER,
+			vault_id: VAULT,
+			amount: issue_amount,
+			asset: issue_asset,
+			fee: issue_fee,
+		});
+		assert!(System::events().iter().any(|a| a.event == execute_issue_event));
+		let executed_issue: IssueRequest<AccountId, BlockNumber, Balance, CurrencyId> =
+			Issue::issue_requests(&issue_id).unwrap();
+		assert!(matches!(executed_issue, IssueRequest { .. }));
+		assert_eq!(executed_issue.amount, issue_amount - issue_fee);
+		assert_eq!(executed_issue.fee, issue_fee);
+		assert_eq!(executed_issue.griefing_collateral, griefing_collateral);
+
+		assert_noop!(cancel_issue(USER, &issue_id), TestError::IssueCompleted);
+	})
+}
+
+#[test]
+fn test_request_issue_reset_interval_and_succeeds_with_rate_limit() {
+	run_test(|| {
+		let volume_limit = 3u128;
+		crate::Pallet::<Test>::_rate_limit_update(
+			std::option::Option::<u128>::Some(volume_limit),
+			DEFAULT_COLLATERAL_CURRENCY,
+			7200u64,
+		);
+
+		let issue_asset = VAULT.wrapped_currency();
+		let issue_amount = volume_limit;
+		let issue_fee = 1;
+		let griefing_collateral = 1;
+		let amount_transferred = issue_amount;
+		let request_issue_result =
+			setup_execute(issue_amount, issue_fee, griefing_collateral, amount_transferred);
+
+		assert_ok!(request_issue_result);
+		let issue_id = request_issue_result.unwrap();
+
+		assert_ok!(execute_issue(USER, &issue_id));
+
+		let execute_issue_event = TestEvent::Issue(Event::ExecuteIssue {
+			issue_id,
+			requester: USER,
+			vault_id: VAULT,
+			amount: issue_amount,
+			asset: issue_asset,
+			fee: issue_fee,
+		});
+		assert!(System::events().iter().any(|a| a.event == execute_issue_event));
+		let executed_issue: IssueRequest<AccountId, BlockNumber, Balance, CurrencyId> =
+			Issue::issue_requests(&issue_id).unwrap();
+		assert!(matches!(executed_issue, IssueRequest { .. }));
+		assert_eq!(executed_issue.amount, issue_amount - issue_fee);
+		assert_eq!(executed_issue.fee, issue_fee);
+		assert_eq!(executed_issue.griefing_collateral, griefing_collateral);
+
+		assert_noop!(cancel_issue(USER, &issue_id), TestError::IssueCompleted);
+
+		//act
+		let request_issue_result =
+			setup_execute(issue_amount, issue_fee, griefing_collateral, amount_transferred);
+
+		//assert check that we do not exceed the rate limit after execute issue request
+		assert_noop!(request_issue_result, TestError::ExceedLimitVolumeForIssueRequest);
+
+		System::set_block_number(7200 + 20);
+
+		// The volume limit does not automatically reset when the block number changes.
+		// We need to request a new issue so that the rate limit is reset for the new interval.
+		assert!(<crate::CurrentVolumeAmount<Test>>::get() > BalanceOf::<Test>::zero());
+
+		//act
+		let request_issue_result =
+			setup_execute(issue_amount, issue_fee, griefing_collateral, amount_transferred);
+
+		assert_ok!(request_issue_result);
+
+		// The volume limit should be reset after the new issue request.
+		// It is 0 because the issue was only requested and not yet executed.
+		assert_eq!(<crate::CurrentVolumeAmount<Test>>::get(), BalanceOf::<Test>::zero());
 	})
 }

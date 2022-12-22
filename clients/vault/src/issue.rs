@@ -201,12 +201,7 @@ pub async fn execute_issue(
 		};
 
 		match parachain_rpc
-			.execute_issue(
-				issue_id,
-				tx_env.as_bytes(),
-				envelopes.as_bytes(),
-				tx_set.as_bytes(),
-			)
+			.execute_issue(issue_id, tx_env.as_bytes(), envelopes.as_bytes(), tx_set.as_bytes())
 			.await
 		{
 			Ok(_) => {

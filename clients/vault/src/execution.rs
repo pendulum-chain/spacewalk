@@ -482,8 +482,8 @@ fn get_request_for_stellar_tx(
 	let request = hash_map.get(&h256)?;
 
 	let envelope = tx.to_envelope().ok()?;
-	let paid_amount = envelope
-		.get_payment_amount_for_asset_to(request.stellar_address, request.asset.clone());
+	let paid_amount =
+		envelope.get_payment_amount_for_asset_to(request.stellar_address, request.asset.clone());
 
 	if paid_amount >= request.amount {
 		Some(request.clone())
