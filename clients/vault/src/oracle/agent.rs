@@ -21,7 +21,6 @@ use crate::oracle::{
 	collector::ScpMessageCollector,
 	constants::*,
 	errors::Error,
-	prepare_directories,
 	types::{Slot, StellarMessageSender},
 	Proof,
 };
@@ -70,7 +69,6 @@ impl OracleAgent {
 	pub fn new(is_public_network: bool) -> Result<Self, Error> {
 		let collector = Arc::new(ScpMessageCollector::new(is_public_network));
 		let shutdown_sender = ShutdownSender::default();
-		prepare_directories()?;
 		Ok(Self { collector, is_public_network, message_sender: None, shutdown_sender })
 	}
 
@@ -226,12 +224,24 @@ impl OracleAgent {
 
 #[cfg(test)]
 mod tests {
+	use std::fs;
+
+	use crate::oracle::{traits::ArchiveStorage, ScpArchiveStorage, TransactionsArchiveStorage};
+
 	use super::*;
+
+	fn remove_xdr_files(target_slot: u64) {
+		let (_, file) = <TransactionsArchiveStorage as ArchiveStorage>::get_url_and_file_name(
+			target_slot as u32,
+		);
+		fs::remove_file(file).expect("should be able to remove the newly added file.");
+		let (_, file) =
+			<ScpArchiveStorage as ArchiveStorage>::get_url_and_file_name(target_slot as u32);
+		fs::remove_file(file).expect("should be able to remove the newly added file.");
+	}
 
 	#[tokio::test]
 	async fn test_get_proof_for_current_slot() {
-		prepare_directories().expect("Failed to prepare directories.");
-
 		let mut agent = OracleAgent::new(true).unwrap();
 		agent.start().await.expect("Failed to start agent");
 
@@ -248,8 +258,6 @@ mod tests {
 
 	#[tokio::test]
 	async fn test_get_proof_for_archived_slot() {
-		prepare_directories().expect("Failed to prepare directories.");
-
 		let mut agent = OracleAgent::new(true).expect("should return an agent");
 		agent.start().await.expect("Failed to start agent");
 
@@ -258,6 +266,9 @@ mod tests {
 		let proof = agent.get_proof(target_slot).await.expect("should return a proof");
 
 		assert_eq!(proof.slot(), 44041116);
+
+		remove_xdr_files(target_slot);
+
 		agent.stop().expect("Failed to stop the agent");
 	}
 }

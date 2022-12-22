@@ -1,4 +1,4 @@
-use std::{fmt::Write, fs::create_dir_all, str::Split};
+use std::{fmt::Write, str::Split};
 
 use stellar_relay_lib::sdk::{
 	compound_types::{UnlimitedVarArray, XdrArchive},
@@ -179,22 +179,6 @@ impl TransactionsArchiveStorage {
 		let data = result.unwrap();
 		Ok(Self::decode_xdr(data))
 	}
-}
-
-#[cfg(not(test))]
-pub fn prepare_directories() -> Result<(), Error> {
-	create_dir_all("./scp_envelopes")?;
-	create_dir_all("./tx_sets")?;
-
-	create_dir_all("./tx_hashes").map_err(Error::from)
-}
-
-#[cfg(test)]
-pub fn prepare_directories() -> Result<(), Error> {
-	create_dir_all("./resources/test/scp_envelopes")?;
-	create_dir_all("./resources/test/tx_sets")?;
-
-	create_dir_all("./resources/test/tx_hashes").map_err(Error::from)
 }
 
 #[cfg(test)]
@@ -444,6 +428,10 @@ mod test {
 				}
 			})
 			.expect("slot index should be in archive");
+
+		let (_, file) = <ScpArchiveStorage as ArchiveStorage>::get_url_and_file_name(slot_index);
+
+		fs::remove_file(file).expect("should be able to remove the newly added file.");
 	}
 
 	#[tokio::test]
@@ -463,5 +451,10 @@ mod test {
 		//assert
 		TransactionsArchiveStorage::read_file_xdr(filename)
 			.expect("File with transactions should exists");
+
+		let (_, file) =
+			<TransactionsArchiveStorage as ArchiveStorage>::get_url_and_file_name(slot_index);
+
+		fs::remove_file(file).expect("should be able to remove the newly added file.");
 	}
 }
