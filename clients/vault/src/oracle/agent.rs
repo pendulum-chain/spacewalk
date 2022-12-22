@@ -138,7 +138,7 @@ impl OracleAgent {
 
 		let collector = self.collector.clone();
 
-		timeout(Duration::from_secs(80), async move {
+		timeout(Duration::from_secs(60), async move {
 			loop {
 				let stellar_sender = sender.clone();
 				match collector.build_proof(slot, &stellar_sender).await {
