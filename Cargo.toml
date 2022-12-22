@@ -137,6 +137,7 @@ sp-tracing = { git = "https://github.com/paritytech//substrate", branch = "polka
 sp-transaction-pool = { git = "https://github.com/paritytech//substrate", branch = "polkadot-v0.9.35" }
 sp-transaction-storage-proof = { git = "https://github.com/paritytech//substrate", branch = "polkadot-v0.9.35" }
 sp-trie = { git = "https://github.com/paritytech//substrate", branch = "polkadot-v0.9.35" }
+sp-timestamp = { git = "https://github.com/paritytech//substrate", branch = "polkadot-v0.9.35" }
 sp-version = { git = "https://github.com/paritytech//substrate", branch = "polkadot-v0.9.35" }
 sp-version-proc-macro = { git = "https://github.com/paritytech//substrate", branch = "polkadot-v0.9.35" }
 sp-weights = { git = "https://github.com/paritytech//substrate", branch = "polkadot-v0.9.35" }
