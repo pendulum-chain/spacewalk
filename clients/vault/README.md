@@ -37,7 +37,7 @@ oracle_agent.stop()
 ```
 
 ## Understanding `OracleAgent`'s field: `collector`
-The `collector` is of type `ScpMessageCollector` where the ScpMessages and its corresponding TransactionSet are stored.
+The `collector` is a `ScpMessageCollector` that stores the ScpMessages and its corresponding TransactionSet.
 ```rust
 pub struct ScpMessageCollector {
 	/// holds the mapping of the Slot Number(key) and the ScpEnvelopes(value)
@@ -58,8 +58,7 @@ pub struct ScpMessageCollector {
 The `ScpMessageCollector` have methods such as `add_scp_envelopes` and `add_txset` to store the ScpMessages and TransactionSet.
 
 ### How `ScpMessageCollector` handles `ScpEnvelopes` and `TransactionSet` 
-Found in [handler.rs](src/oracle/collector).
-It only contains 2 methods:
+Found in [handler.rs](src/oracle/collector/handler.rs) contains 2 methods:
 * _`async fn handle_envelope( &self, env: ScpEnvelope, message_sender: &StellarMessageSender,)`_
   * handles only envelopes with `ScpStExternalize`, and saves two important things in the **`txset_and_slot_map`** field:
     * extracting the _slot_ from this envelope for future reference
@@ -69,3 +68,23 @@ It only contains 2 methods:
   * handles only `TransactionSet`s that are in the **`txset_and_slot_map`** field.
   * given a `TransactionSet`, extract the `txset_hash` and check if it's one of the `txset_hash`es we want.
     * if it is, save to **`txset_map`** field.
+
+### How `ScpMessageCollector` builds the `Proof`
+```rust
+pub struct Proof {
+	/// the slot (or ledger) where the transaction is found
+	slot: Slot,
+
+	/// the envelopes belonging to the slot
+	envelopes: UnlimitedVarArray<ScpEnvelope>,
+
+	/// the transaction set belonging to the slot
+	tx_set: TransactionSet,
+}
+```
+* _`pub async fn build_proof(&self, slot: Slot, sender: &StellarMessageSender)`_
+  * gets all the envelopes and the transaction set that belongs to the slot.
+  * if any of these are not fulfilled, either:
+    * ask the Stellar Relay for the envelopes and/or the transactionset; or
+    * ask the archive for the envelopes and/or the transactionset
+  * note: this method is called when calling OracleAgent's `get_proof(..)`.
