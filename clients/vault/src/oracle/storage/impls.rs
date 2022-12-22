@@ -468,7 +468,8 @@ mod test {
 		TransactionsArchiveStorage::read_file_xdr(filename)
 			.expect("File with transactions should exists");
 
-		let (_, file) = <TransactionsArchiveStorage as ArchiveStorage>::get_url_and_file_name(slot_index);
+		let (_, file) =
+			<TransactionsArchiveStorage as ArchiveStorage>::get_url_and_file_name(slot_index);
 
 		fs::remove_file(file).expect("should be able to remove the newly added file.");
 	}
