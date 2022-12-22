@@ -1,20 +1,36 @@
-use substrate_stellar_sdk::network::Network;
+use std::fmt::{Debug, Formatter};
 
-mod local;
-mod remote;
+use substrate_stellar_sdk::network::Network;
 
 pub use local::*;
 pub use remote::*;
 
+mod local;
+mod remote;
+
 pub type NetworkId = [u8; 32];
 
-#[derive(Debug, Clone)]
+#[derive(Clone)]
 pub struct NodeInfo {
 	pub ledger_version: u32,
 	pub overlay_version: u32,
 	pub overlay_min_version: u32,
 	pub version_str: Vec<u8>,
 	pub network_id: NetworkId,
+}
+
+impl Debug for NodeInfo {
+	fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+		write!(
+			f,
+			"NodeInfo {{ ledger_version: {}, overlay_version: {}, overlay_min_version: {}, \
+			version_str: {} }}",
+			self.ledger_version,
+			self.overlay_version,
+			self.overlay_min_version,
+			String::from_utf8_lossy(&self.version_str),
+		)
+	}
 }
 
 impl NodeInfo {
