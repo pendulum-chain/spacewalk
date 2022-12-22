@@ -6,9 +6,7 @@ use tokio::sync::RwLock;
 use governor::Quota;
 use nonzero_ext::*;
 
-
 pub use system::{VaultIdManager, VaultService, VaultServiceConfig, ABOUT, AUTHORS, NAME, VERSION};
-
 
 pub use crate::{cancellation::Event, error::Error};
 

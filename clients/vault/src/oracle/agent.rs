@@ -18,14 +18,18 @@ use stellar_relay_lib::{
 };
 
 use crate::oracle::{
-	collector::ScpMessageCollector, constants::*, errors::Error, prepare_directories, types::Slot,
+	collector::ScpMessageCollector,
+	constants::*,
+	errors::Error,
+	prepare_directories,
+	types::{Slot, StellarMessageSender},
 	Proof,
 };
 
 pub struct OracleAgent {
 	collector: Arc<ScpMessageCollector>,
 	pub is_public_network: bool,
-	message_sender: Option<mpsc::Sender<StellarMessage>>,
+	message_sender: Option<StellarMessageSender>,
 	shutdown_sender: ShutdownSender,
 }
 
@@ -38,7 +42,7 @@ pub struct OracleAgent {
 async fn handle_message(
 	message: StellarRelayMessage,
 	collector: &Arc<ScpMessageCollector>,
-	message_sender: &mpsc::Sender<StellarMessage>,
+	message_sender: &StellarMessageSender,
 ) -> Result<(), Error> {
 	match message {
 		StellarRelayMessage::Data { p_id: _, msg_type: _, msg } => match *msg {
@@ -50,12 +54,13 @@ async fn handle_message(
 			},
 			_ => {},
 		},
-		// todo
-		StellarRelayMessage::Connect { pub_key: _, node_info: _ } => {},
-		// todo
-		StellarRelayMessage::Error(_) => {},
-		// todo
-		StellarRelayMessage::Timeout => {},
+		StellarRelayMessage::Connect { pub_key, node_info } => {
+			tracing::info!("Connected: {:#?}\n via public key: {:?}", node_info, pub_key);
+		},
+		StellarRelayMessage::Timeout => {
+			tracing::error!("The Stellar Relay timed out.");
+		},
+		_ => {},
 	}
 
 	Ok(())

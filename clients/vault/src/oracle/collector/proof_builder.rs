@@ -1,7 +1,5 @@
 use std::{convert::TryInto, future::Future};
 
-use tokio::sync::mpsc;
-
 use primitives::stellar::types::TransactionHistoryEntry;
 use stellar_relay_lib::sdk::{
 	compound_types::{UnlimitedVarArray, XdrArchive},
@@ -11,7 +9,7 @@ use stellar_relay_lib::sdk::{
 
 use crate::oracle::{
 	constants::{get_min_externalized_messages, MAX_SLOT_TO_REMEMBER},
-	types::LifoMap,
+	types::{LifoMap, StellarMessageSender},
 	ScpArchiveStorage, ScpMessageCollector, Slot, TransactionsArchiveStorage,
 };
 
@@ -62,7 +60,7 @@ impl Proof {
 // handle missing envelopes
 impl ScpMessageCollector {
 	/// fetch envelopes not found in the collector
-	async fn fetch_missing_envelopes(&self, slot: Slot, sender: &mpsc::Sender<StellarMessage>) {
+	async fn fetch_missing_envelopes(&self, slot: Slot, sender: &StellarMessageSender) {
 		let last_slot_index = *self.last_slot_index();
 
 		// If the current slot is still in the range of 'remembered' slots
@@ -74,7 +72,7 @@ impl ScpMessageCollector {
 	}
 
 	/// fetches envelopes from the stellar node
-	async fn ask_node_for_envelopes(&self, slot: Slot, sender: &mpsc::Sender<StellarMessage>) {
+	async fn ask_node_for_envelopes(&self, slot: Slot, sender: &StellarMessageSender) {
 		// for this slot to be processed, we must put this in our watch list.
 		let _ = sender.send(StellarMessage::GetScpState(slot.try_into().unwrap())).await;
 		tracing::info!("requesting to StellarNode for messages of slot {}...", slot);
@@ -104,7 +102,7 @@ impl ScpMessageCollector {
 	async fn get_envelopes(
 		&self,
 		slot: Slot,
-		sender: &mpsc::Sender<StellarMessage>,
+		sender: &StellarMessageSender,
 	) -> UnlimitedVarArray<ScpEnvelope> {
 		let empty = UnlimitedVarArray::new_empty();
 
@@ -129,11 +127,7 @@ impl ScpMessageCollector {
 	///
 	/// * `slot` - the slot where the txset is  to get.
 	/// * `sender` - used to send messages to Stellar Node
-	async fn get_txset(
-		&self,
-		slot: Slot,
-		sender: &mpsc::Sender<StellarMessage>,
-	) -> Option<TransactionSet> {
+	async fn get_txset(&self, slot: Slot, sender: &StellarMessageSender) -> Option<TransactionSet> {
 		let txset_map = self.txset_map().clone();
 		let tx_set = txset_map.get_with_key(&slot).cloned();
 
@@ -154,11 +148,7 @@ impl ScpMessageCollector {
 
 	/// Send message to overlay network to fetch the missing txset _if_ we already have the txset
 	/// hash for it. If we don't have the hash, we can't fetch it from the overlay network.
-	async fn fetch_missing_txset_from_overlay(
-		&self,
-		slot: Slot,
-		sender: &mpsc::Sender<StellarMessage>,
-	) {
+	async fn fetch_missing_txset_from_overlay(&self, slot: Slot, sender: &StellarMessageSender) {
 		// we need the txset hash to create the message.
 		if let Some(txset_hash) = self.get_txset_hash(&slot) {
 			tracing::info!("Fetching TxSet for slot {} from overlay", slot);
@@ -174,11 +164,7 @@ impl ScpMessageCollector {
 	///
 	/// * `slot` - the slot where the txset is  to get.
 	/// * `sender` - used to send messages to Stellar Node
-	pub async fn build_proof(
-		&self,
-		slot: Slot,
-		sender: &mpsc::Sender<StellarMessage>,
-	) -> Option<Proof> {
+	pub async fn build_proof(&self, slot: Slot, sender: &StellarMessageSender) -> Option<Proof> {
 		let envelopes = self.get_envelopes(slot, sender).await;
 		// return early if we don't have enough envelopes or the tx_set
 		if envelopes.len() == 0 {

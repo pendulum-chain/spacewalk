@@ -1,12 +1,12 @@
 use crate::oracle::{
 	collector::{get_tx_set_hash, ScpMessageCollector},
 	errors::Error,
+	types::StellarMessageSender,
 };
 use stellar_relay_lib::{
 	helper::compute_non_generic_tx_set_content_hash,
 	sdk::types::{ScpEnvelope, ScpStatementPledges, StellarMessage, TransactionSet},
 };
-use tokio::sync::mpsc;
 
 // Handling SCPEnvelopes
 impl ScpMessageCollector {
@@ -19,7 +19,7 @@ impl ScpMessageCollector {
 	pub(crate) async fn handle_envelope(
 		&self,
 		env: ScpEnvelope,
-		message_sender: &mpsc::Sender<StellarMessage>,
+		message_sender: &StellarMessageSender,
 	) -> Result<(), Error> {
 		let slot = env.statement.slot_index;
 
