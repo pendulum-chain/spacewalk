@@ -1,4 +1,4 @@
-use std::{collections::HashMap, convert::TryInto, str::FromStr, sync::Arc, time::Duration};
+use std::{convert::TryInto, str::FromStr, sync::Arc, time::Duration};
 
 use async_trait::async_trait;
 use parity_scale_codec::{Decode, Encode};
@@ -8,7 +8,8 @@ use tokio::{sync::RwLock, time::sleep};
 
 use crate::{
 	error::Error,
-	types::{FilterWith, TransactionFilterParam, Watcher},
+	types::{FilterWith, TransactionFilterParam},
+	Ledger, LedgerTxEnvMap,
 };
 
 pub type PagingToken = u128;
@@ -69,7 +70,7 @@ pub struct TransactionResponse {
 	pub successful: bool,
 	#[serde(deserialize_with = "de_string_to_bytes")]
 	pub hash: Vec<u8>,
-	pub ledger: u32,
+	pub ledger: Ledger,
 	#[serde(deserialize_with = "de_string_to_bytes")]
 	pub created_at: Vec<u8>,
 	#[serde(deserialize_with = "de_string_to_bytes")]
@@ -98,7 +99,12 @@ pub struct TransactionResponse {
 	pub memo: Option<Vec<u8>>,
 }
 
+#[allow(dead_code)]
 impl TransactionResponse {
+	pub(crate) fn ledger(&self) -> Ledger {
+		self.ledger
+	}
+
 	pub fn memo_hash(&self) -> Option<Hash> {
 		self.memo.as_ref()?;
 
@@ -157,7 +163,7 @@ pub struct ClaimableBalance {
 	#[serde(deserialize_with = "de_string_to_bytes")]
 	pub amount: Vec<u8>,
 	pub claimants: Vec<Claimant>,
-	pub last_modified_ledger: u32,
+	pub last_modified_ledger: Ledger,
 	#[serde(deserialize_with = "de_string_to_bytes")]
 	pub last_modified_time: Vec<u8>,
 }
@@ -332,10 +338,18 @@ impl<C: HorizonClient> HorizonFetcher<C> {
 		}
 	}
 
+	/// Fetches the transactions from horizon
+	///
+	/// # Arguments
+	/// * `ledger_env_map` -  a list of TransactionEnvelopes and its corresponding ledger it belongs
+	///   to
+	/// * `targets` - helps in filtering out the transactions to save
+	/// * `is_public_network` - the network the transaction belongs to
+	/// * `filter` - logic to save the needed transaction
+	/// * `last_paging_token` - acts as a marker to scroll over sets of transactions
 	pub async fn fetch_horizon_and_process_new_transactions<T: Clone>(
 		&mut self,
-		watcher: Arc<RwLock<dyn Watcher>>,
-		slot_tx_env_map: Arc<RwLock<HashMap<u32, String>>>,
+		ledger_env_map: Arc<RwLock<LedgerTxEnvMap>>,
 		targets: Arc<RwLock<T>>,
 		filter: impl FilterWith<TransactionFilterParam<T>>,
 		last_paging_token: PagingToken,
@@ -355,28 +369,18 @@ impl<C: HorizonClient> HorizonFetcher<C> {
 			transactions.iter().map(|tx| tx.paging_token).max().unwrap_or(last_paging_token);
 
 		let targets = targets.read().await;
-		let w = watcher.read().await;
 		for transaction in transactions {
 			let tx = transaction.clone();
 			let id = tx.id.clone();
 
 			if filter.is_relevant((tx.clone(), targets.clone())) {
-				match w.watch_slot(tx.ledger.try_into().unwrap()).await {
-					Ok(_) => {
-						tracing::info!(
-							"following transaction {:?} WITH SLOT: {}",
-							String::from_utf8(id.clone()),
-							tx.ledger
-						);
-						slot_tx_env_map
-							.write()
-							.await
-							.insert(tx.ledger, String::from_utf8(tx.envelope_xdr).unwrap());
-					},
-					Err(e) => {
-						tracing::error!("Failed to watch transaction: {:?}", e);
-					},
-				}
+				tracing::info!(
+					"Adding transaction {:?} with slot {} to the ledger_env_map",
+					String::from_utf8(id.clone()),
+					tx.ledger
+				);
+				let tx_env = tx.to_envelope()?;
+				ledger_env_map.write().await.insert(tx.ledger, tx_env);
 			}
 		}
 
@@ -384,11 +388,19 @@ impl<C: HorizonClient> HorizonFetcher<C> {
 	}
 }
 
+///  Saves transactions in the map, based on the filter and the kind of filter
+///
+/// # Arguments
+///
+/// * `vault_account_public_key` - used to get the transaction
+/// * `is_public_network` - the network the transaction belongs to
+/// * `ledger_env_map` -  a list of TransactionEnvelopes and its corresponding ledger it belongs to
+/// * `targets` - helps in filtering out the transactions to save
+/// * `filter` - logic to save the needed transaction
 pub async fn listen_for_new_transactions<T, Filter>(
 	vault_account_public_key: PublicKey,
 	is_public_network: bool,
-	watcher: Arc<RwLock<dyn Watcher>>,
-	slot_tx_env_map: Arc<RwLock<HashMap<u32, String>>>,
+	ledger_env_map: Arc<RwLock<LedgerTxEnvMap>>,
 	targets: Arc<RwLock<T>>,
 	filter: Filter,
 ) -> Result<(), Error>
@@ -405,8 +417,7 @@ where
 	loop {
 		if let Ok(new_paging_token) = fetcher
 			.fetch_horizon_and_process_new_transactions(
-				watcher.clone(),
-				slot_tx_env_map.clone(),
+				ledger_env_map.clone(),
 				targets.clone(),
 				filter.clone(),
 				latest_paging_token,
@@ -422,7 +433,7 @@ where
 
 #[cfg(test)]
 mod tests {
-	use std::{future, sync::Arc};
+	use std::{collections::HashMap, sync::Arc};
 
 	use mockall::predicate::*;
 	use substrate_stellar_sdk::{
@@ -431,7 +442,7 @@ mod tests {
 		Asset, Operation, SecretKey, StroopAmount, Transaction, TransactionEnvelope,
 	};
 
-	use crate::types::{FilterWith, MockWatcher, TransactionFilterParam};
+	use crate::types::{FilterWith, TransactionFilterParam};
 
 	use super::*;
 
@@ -444,12 +455,6 @@ mod tests {
 		fn is_relevant(&self, _param: TransactionFilterParam<Vec<u64>>) -> bool {
 			// We consider all transactions relevant for the test
 			true
-		}
-	}
-
-	impl Clone for MockWatcher {
-		fn clone(&self) -> Self {
-			MockWatcher::new()
 		}
 	}
 
@@ -588,9 +593,6 @@ mod tests {
 
 	#[tokio::test(flavor = "multi_thread")]
 	async fn client_test_for_polling() {
-		let watcher = MockWatcher::new();
-		let watcher = Arc::new(RwLock::new(watcher));
-
 		let issue_hashes = Arc::new(RwLock::new(vec![]));
 		let slot_env_map = Arc::new(RwLock::new(HashMap::new()));
 
@@ -598,19 +600,11 @@ mod tests {
 		let secret = SecretKey::from_encoding(SECRET).unwrap();
 		let mut fetcher = HorizonFetcher::new(horizon_client, secret.get_public().clone(), false);
 
-		// We assume that the watch_slot function is called at exactly once because the intial fetch
-		// without a cursor returns the latest transaction only
-		let _wat = watcher
-			.write()
-			.await
-			.expect_watch_slot()
-			.once()
-			.returning(|_| Box::pin(future::ready(Ok(()))));
+		assert!(slot_env_map.read().await.is_empty());
 
 		let mut cursor = 0;
 		if let Ok(next_page) = fetcher
 			.fetch_horizon_and_process_new_transactions(
-				watcher.clone(),
 				slot_env_map.clone(),
 				issue_hashes.clone(),
 				MockFilter,
@@ -621,14 +615,8 @@ mod tests {
 			cursor = next_page;
 		}
 
-		// Fetch again but this time with latest cursor
-		// Assume that the watch_slot function is not called this time because no new transaction
-		// happened
-		watcher.write().await.expect_watch_slot().never();
-
 		fetcher
 			.fetch_horizon_and_process_new_transactions(
-				watcher.clone(),
 				slot_env_map.clone(),
 				issue_hashes.clone(),
 				MockFilter,
@@ -636,5 +624,7 @@ mod tests {
 			)
 			.await
 			.unwrap();
+
+		assert!(!slot_env_map.read().await.is_empty());
 	}
 }

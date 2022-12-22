@@ -45,7 +45,7 @@ pub(crate) fn from_authenticated_message(message: &AuthenticatedMessage) -> Resu
 ///
 /// ```
 /// use substrate_stellar_sdk::types::Auth;
-/// use stellar_relay::parse_stellar_type;
+/// use stellar_relay_lib::parse_stellar_type;
 /// let auth_xdr =  [0, 0, 0, 1];
 /// let result = parse_stellar_type!(auth_xdr,Auth);
 /// assert_eq!(result, Ok(Auth { flags: 1 }))

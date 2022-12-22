@@ -1,5 +1,3 @@
-#![allow(dead_code)] //todo: remove after being tested and implemented
-
 mod authentication;
 mod certificate;
 mod shared_key;

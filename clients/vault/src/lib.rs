@@ -1,13 +1,12 @@
 #![recursion_limit = "256"]
 
-use std::time::Duration;
+use std::{sync::Arc, time::Duration};
+use tokio::sync::RwLock;
 
 use governor::Quota;
 use nonzero_ext::*;
 
 pub use system::{VaultIdManager, VaultService, VaultServiceConfig, ABOUT, AUTHORS, NAME, VERSION};
-// Used for integration test
-pub use system::inner_create_handler;
 
 pub use crate::{cancellation::Event, error::Error};
 
@@ -31,7 +30,7 @@ pub mod service {
 		execution::execute_open_requests,
 		issue::{
 			listen_for_executed_issues, listen_for_issue_cancels, listen_for_issue_requests,
-			process_issues_with_proofs, IssueFilter,
+			process_issues_requests, IssueFilter,
 		},
 		redeem::listen_for_redeem_requests,
 		replace::{
@@ -39,6 +38,8 @@ pub mod service {
 		},
 	};
 }
+
+pub type ArcRwLock<T> = Arc<RwLock<T>>;
 
 /// At startup we wait until a new block has arrived before we start event listeners.
 /// This constant defines the rate at which we check whether the chain height has increased.

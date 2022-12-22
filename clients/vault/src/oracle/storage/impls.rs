@@ -139,7 +139,7 @@ impl ArchiveStorage for ScpArchiveStorage {
 
 impl ScpArchiveStorage {
 	pub async fn get_scp_archive(
-		slot_index: i32,
+		slot_index: u32,
 	) -> Result<XdrArchive<<Self as ArchiveStorage>::T>, Error> {
 		let (url, file_name) = Self::get_url_and_file_name(slot_index);
 		//try to find xdr.gz file and decode. if error then download archive from horizon archive
@@ -165,7 +165,7 @@ impl ArchiveStorage for TransactionsArchiveStorage {
 
 impl TransactionsArchiveStorage {
 	pub async fn get_transactions_archive(
-		slot_index: i32,
+		slot_index: u32,
 	) -> Result<XdrArchive<<Self as ArchiveStorage>::T>, Error> {
 		let (url, file_name) = Self::get_url_and_file_name(slot_index);
 		//try to find xdr.gz file and decode. if error then download archive from horizon archive
@@ -435,12 +435,12 @@ mod test {
 		let slot_index_u32: u32 = slot_index.try_into().unwrap();
 		scp_archive
 			.get_vec()
-			.into_iter()
+			.iter()
 			.find(|&scp_entry| {
 				if let ScpHistoryEntry::V0(scp_entry_v0) = scp_entry {
-					return scp_entry_v0.ledger_messages.ledger_seq == slot_index_u32
+					scp_entry_v0.ledger_messages.ledger_seq == slot_index_u32
 				} else {
-					return false
+					false
 				}
 			})
 			.expect("slot index should be in archive");

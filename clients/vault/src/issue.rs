@@ -1,8 +1,7 @@
-use std::{collections::HashMap, convert::TryFrom, sync::Arc, time::Duration};
+use std::{convert::TryFrom, sync::Arc, time::Duration};
 
 use futures::{channel::mpsc::Sender, SinkExt};
 use sp_runtime::traits::StaticLookup;
-use tokio::sync::RwLock;
 
 use primitives::{stellar::Memo, TransactionEnvelopeExt};
 use runtime::{
@@ -10,10 +9,16 @@ use runtime::{
 	SpacewalkParachain, StellarPublicKeyRaw, H256,
 };
 use service::Error as ServiceError;
-use stellar_relay_lib::sdk::{PublicKey, Transaction, TransactionEnvelope, XdrCodec};
-use wallet::types::{FilterWith, TransactionFilterParam};
+use stellar_relay_lib::sdk::{PublicKey, TransactionEnvelope, XdrCodec};
+use wallet::{
+	types::{FilterWith, TransactionFilterParam},
+	Ledger, LedgerTxEnvMap,
+};
 
-use crate::{oracle::*, Error, Event};
+use crate::{
+	oracle::{types::Slot, *},
+	ArcRwLock, Error, Event,
+};
 
 fn is_vault(p1: &PublicKey, p2_raw: [u8; 32]) -> bool {
 	return *p1.as_binary() == p2_raw
@@ -25,12 +30,13 @@ fn is_vault(p1: &PublicKey, p2_raw: [u8; 32]) -> bool {
 ///
 /// * `parachain_rpc` - the parachain RPC handle
 /// * `vault_secret_key` - The secret key of this vault
+/// * `event_channel` - the channel over which to signal events
 /// * `issues` - a map to save all the new issue requests
 pub async fn listen_for_issue_requests(
 	parachain_rpc: SpacewalkParachain,
 	vault_public_key: PublicKey,
 	event_channel: Sender<Event>,
-	issues: Arc<RwLock<IssueRequestsMap>>,
+	issues: ArcRwLock<IssueRequestsMap>,
 ) -> Result<(), ServiceError<Error>> {
 	// Use references to prevent 'moved closure' errors
 	let parachain_rpc = &parachain_rpc;
@@ -67,9 +73,15 @@ pub async fn listen_for_issue_requests(
 	Ok(())
 }
 
+/// Listens for CancelIssueEvent directed at the vault.
+///
+/// # Arguments
+///
+/// * `parachain_rpc` - the parachain RPC handle
+/// * `issues` - a map to save all the new issue requests
 pub async fn listen_for_issue_cancels(
 	parachain_rpc: SpacewalkParachain,
-	issues: Arc<RwLock<IssueRequestsMap>>,
+	issues: ArcRwLock<IssueRequestsMap>,
 ) -> Result<(), ServiceError<Error>> {
 	let issues = &issues;
 
@@ -87,9 +99,15 @@ pub async fn listen_for_issue_cancels(
 	Ok(())
 }
 
+/// Listens for ExecuteIssueEvent directed at the vault.
+///
+/// # Arguments
+///
+/// * `parachain_rpc` - the parachain RPC handle
+/// * `issues` - a map to save all the new issue requests
 pub async fn listen_for_executed_issues(
 	parachain_rpc: SpacewalkParachain,
-	issues: Arc<RwLock<IssueRequestsMap>>,
+	issues: ArcRwLock<IssueRequestsMap>,
 ) -> Result<(), ServiceError<Error>> {
 	let issues = &issues;
 
@@ -111,23 +129,13 @@ pub async fn listen_for_executed_issues(
 	Ok(())
 }
 
-fn get_relevant_envelope(base64_xdr: &[u8]) -> Option<Transaction> {
-	let xdr = base64::decode(base64_xdr).unwrap();
-
-	match TransactionEnvelope::from_xdr(xdr) {
-		Ok(res) => match res {
-			TransactionEnvelope::EnvelopeTypeTx(env) => Some(env.tx),
-			_ => None,
-		},
-		Err(e) => {
-			tracing::error!("could not derive a TransactionEnvelope: {:?}", e);
-			None
-		},
-	}
-}
-
-fn get_issue_id_from_tx(base64_xdr: &str) -> Option<IssueId> {
-	let tx = get_relevant_envelope(base64_xdr.as_bytes())?;
+/// Returns IssueId of the given TransactionEnvelope, or None if it wasn't in a list of
+/// IssueRequests
+fn get_issue_id_from_tx_env(tx_env: &TransactionEnvelope) -> Option<IssueId> {
+	let tx = match tx_env {
+		TransactionEnvelope::EnvelopeTypeTx(env) => env.tx.clone(),
+		_ => return None,
+	};
 
 	match tx.memo {
 		Memo::MemoHash(issue_id) => Some(H256::from(issue_id)),
@@ -135,90 +143,99 @@ fn get_issue_id_from_tx(base64_xdr: &str) -> Option<IssueId> {
 	}
 }
 
-pub async fn process_issues_with_proofs(
+/// Processes all the issue requests
+///
+/// # Arguments
+///
+/// * `parachain_rpc` - the parachain RPC handle
+/// * `oracle_agent` - the agent used to get the proofs
+/// * `ledger_env_map` -  a list of TransactionEnvelopes and its corresponding ledger it belongs to
+/// * `issues` - a map of all issue requests
+pub async fn process_issues_requests(
 	parachain_rpc: SpacewalkParachain,
-	proof_ops: Arc<RwLock<dyn ProofExt>>,
-	slot_tx_env_map: Arc<RwLock<HashMap<u32, String>>>,
-	issues: Arc<RwLock<IssueRequestsMap>>,
+	oracle_agent: Arc<OracleAgent>,
+	ledger_env_map: ArcRwLock<LedgerTxEnvMap>,
+	issues: ArcRwLock<IssueRequestsMap>,
 ) -> Result<(), ServiceError<Error>> {
 	loop {
-		let ops_clone = proof_ops.clone();
-		let ops_read = proof_ops.read().await;
-
-		match ops_read.get_pending_proofs().await {
-			Ok(proofs) => {
-				tracing::warn!("Pending proofs: {:?}", proofs.len());
-				tokio::spawn(execute_issue(
-					parachain_rpc.clone(),
-					slot_tx_env_map.clone(),
-					issues.clone(),
-					proofs,
-					ops_clone,
-				));
-			},
-			Err(e) => {
-				tracing::warn!("no proofs found just yet: {:?}", e);
-			},
+		for (ledger, _tx_env) in ledger_env_map.read().await.iter() {
+			tokio::spawn(execute_issue(
+				parachain_rpc.clone(),
+				ledger_env_map.clone(),
+				issues.clone(),
+				oracle_agent.clone(),
+				Slot::from(*ledger),
+			));
 		}
 
 		tokio::time::sleep(Duration::from_secs(5)).await;
 	}
 }
 
-/// executes issue requests
+/// Execute the issue request for a specific slot
 ///
 /// # Arguments
 ///
 /// * `parachain_rpc` - the parachain RPC handle
-/// * `proofs` - a list of proofs to execute
+/// * `ledger_env_map` -  a list of TransactionEnvelopes and its corresponding ledger it belongs to
+/// * `issues` - a map of all issue requests
+/// * `oracle_agent` - the agent used to get the proofs
+/// * `slot` - the slot of the transaction envelope it belongs to
 pub async fn execute_issue(
 	parachain_rpc: SpacewalkParachain,
-	slot_tx_env_map: Arc<RwLock<HashMap<u32, String>>>,
-	issues: Arc<RwLock<IssueRequestsMap>>,
-	proofs: Vec<Proof>,
-	proof_ops: Arc<RwLock<dyn ProofExt>>,
+	ledger_env_map: ArcRwLock<LedgerTxEnvMap>,
+	issues: ArcRwLock<IssueRequestsMap>,
+	oracle_agent: Arc<OracleAgent>,
+	slot: Slot,
 ) -> Result<(), ServiceError<Error>> {
-	let mut slot_tx_map = slot_tx_env_map.write().await;
-	for proof in proofs {
-		let (envelopes, tx_set) = proof.encode();
+	let ledger =
+		Ledger::try_from(slot).map_err(|e| ServiceError::VaultError(Error::TryIntoIntError(e)))?;
 
-		let u32_slot = match u32::try_from(proof.slot()) {
-			Ok(x) => x,
-			Err(e) => {
-				tracing::warn!("conversion problem: {:?}", e);
-				continue
-			},
+	// Get the proof of the given slot
+	let proof = oracle_agent
+		.get_proof(slot)
+		.await
+		.map_err(|e| ServiceError::OracleError(Error::OracleError(e)))?;
+
+	let (envelopes, tx_set) = proof.encode();
+
+	let mut ledger_env_map = ledger_env_map.write().await;
+
+	// Get the transaction envelope where the ledger belongs to
+	if let Some(tx_env) = ledger_env_map.get(&ledger) {
+		let tx_env_encoded = {
+			let tx_env_xdr = tx_env.to_xdr();
+			base64::encode(tx_env_xdr)
 		};
 
-		let tx_env = match slot_tx_map.get(&u32_slot) {
-			None => continue,
-			Some(tx_env) => tx_env,
-		};
-
-		let issue_id = match get_issue_id_from_tx(tx_env) {
-			Some(issue_id) if issues.read().await.contains_key(&issue_id) => issue_id,
-			_ => continue,
-		};
-
-		match parachain_rpc
-			.execute_issue(issue_id, tx_env.as_bytes(), envelopes.as_bytes(), tx_set.as_bytes())
-			.await
-		{
-			Ok(_) => {
-				tracing::trace!("Slot {:?} EXECUTED with issue_id: {:?}", u32_slot, issue_id);
-				slot_tx_map.remove(&u32_slot);
-				proof_ops.read().await.processed_proof(proof.slot()).await;
-			},
-			Err(err) if err.is_issue_completed() => {
-				tracing::info!("Issue #{} has been completed", issue_id);
-			},
-			Err(err) => return Err(err.into()),
+		if let Some(issue_id) = get_issue_id_from_tx_env(tx_env) {
+			// calls the execute_issue of the `Issue` Pallet
+			match parachain_rpc
+				.execute_issue(
+					issue_id,
+					tx_env_encoded.as_bytes(),
+					envelopes.as_bytes(),
+					tx_set.as_bytes(),
+				)
+				.await
+			{
+				Ok(_) => {
+					tracing::trace!("Slot {:?} EXECUTED with issue_id: {:?}", ledger, issue_id);
+					ledger_env_map.remove(&ledger);
+					issues.write().await.remove(&issue_id);
+				},
+				Err(err) if err.is_issue_completed() => {
+					tracing::info!("Issue #{} has been completed", issue_id);
+				},
+				Err(err) => return Err(err.into()),
+			}
 		}
 	}
 
 	Ok(())
 }
 
+/// The IssueFilter used for
 #[derive(Clone)]
 pub struct IssueFilter {
 	vault_address: StellarPublicKeyRaw,

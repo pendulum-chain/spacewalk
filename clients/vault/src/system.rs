@@ -19,15 +19,7 @@ use runtime::{
 	VaultId, VaultRegistryPallet,
 };
 use service::{wait_or_shutdown, Error as ServiceError, Service};
-use stellar_relay_lib::{
-	node::NodeInfo,
-	sdk::{
-		network::{Network, PUBLIC_NETWORK, TEST_NETWORK},
-		SecretKey,
-	},
-	ConnConfig,
-};
-use wallet::StellarWallet;
+use wallet::{LedgerTxEnvMap, StellarWallet};
 
 use crate::{
 	cancellation::ReplaceCanceller,
@@ -35,11 +27,11 @@ use crate::{
 	execution::execute_open_requests,
 	issue,
 	issue::IssueFilter,
-	oracle::{create_handler, prepare_directories, ScpMessageHandler},
+	oracle::OracleAgent,
 	redeem::listen_for_redeem_requests,
 	replace::{listen_for_accept_replace, listen_for_execute_replace, listen_for_replace_requests},
 	service::{CancellationScheduler, IssueCanceller},
-	Event, CHAIN_HEIGHT_POLLING_INTERVAL,
+	ArcRwLock, Event, CHAIN_HEIGHT_POLLING_INTERVAL,
 };
 
 pub const VERSION: &str = git_version!(args = ["--tags"], fallback = "unknown");
@@ -49,28 +41,23 @@ pub const ABOUT: &str = env!("CARGO_PKG_DESCRIPTION");
 
 const RESTART_INTERVAL: Duration = Duration::from_secs(10800); // restart every 3 hours
 
-// sdftest3
-pub const TIER_1_VALIDATOR_IP_TESTNET: &str = "3.239.7.78";
-// SatoshiPay (DE, Frankfurt)
-pub const TIER_1_VALIDATOR_IP_PUBLIC: &str = "141.95.47.112";
-
 #[derive(Clone)]
 pub struct VaultData {
 	pub vault_id: VaultId,
-	pub stellar_wallet: Arc<RwLock<StellarWallet>>,
+	pub stellar_wallet: ArcRwLock<StellarWallet>,
 }
 
 #[derive(Clone)]
 pub struct VaultIdManager {
-	vault_data: Arc<RwLock<HashMap<VaultId, VaultData>>>,
+	vault_data: ArcRwLock<HashMap<VaultId, VaultData>>,
 	spacewalk_parachain: SpacewalkParachain,
-	stellar_wallet: Arc<RwLock<StellarWallet>>,
+	stellar_wallet: ArcRwLock<StellarWallet>,
 }
 
 impl VaultIdManager {
 	pub fn new(
 		spacewalk_parachain: SpacewalkParachain,
-		stellar_wallet: Arc<RwLock<StellarWallet>>,
+		stellar_wallet: ArcRwLock<StellarWallet>,
 	) -> Self {
 		Self {
 			vault_data: Arc::new(RwLock::new(HashMap::new())),
@@ -82,7 +69,7 @@ impl VaultIdManager {
 	// used for testing only
 	pub fn from_map(
 		spacewalk_parachain: SpacewalkParachain,
-		stellar_wallet: Arc<RwLock<StellarWallet>>,
+		stellar_wallet: ArcRwLock<StellarWallet>,
 		vault_ids: Vec<VaultId>,
 	) -> Self {
 		let vault_data = vault_ids
@@ -98,11 +85,6 @@ impl VaultIdManager {
 	}
 
 	async fn add_vault_id(&self, vault_id: VaultId) -> Result<(), Error> {
-		// TODO what is this about?
-		// tracing::info!("Adding keys from past issues...");
-		// issue::add_keys_from_past_issue_request(&btc_rpc, &self.spacewalk_parachain, &vault_id)
-		// 	.await?;
-
 		let data =
 			VaultData { vault_id: vault_id.clone(), stellar_wallet: self.stellar_wallet.clone() };
 
@@ -149,10 +131,7 @@ impl VaultIdManager {
 			.await?)
 	}
 
-	pub async fn get_stellar_wallet(
-		&self,
-		vault_id: &VaultId,
-	) -> Option<Arc<RwLock<StellarWallet>>> {
+	pub async fn get_stellar_wallet(&self, vault_id: &VaultId) -> Option<ArcRwLock<StellarWallet>> {
 		self.vault_data.read().await.get(vault_id).map(|x| x.stellar_wallet.clone())
 	}
 
@@ -173,10 +152,9 @@ impl VaultIdManager {
 			.collect()
 	}
 
-	// TODO think about this. It is probably not needed because we don't use deposit addresses and
-	// use one stellar wallet for everything
-	// But we could in theory let a vault have multiple stellar wallets
-	pub async fn get_vault_stellar_wallets(&self) -> Vec<(VaultId, Arc<RwLock<StellarWallet>>)> {
+	// This could be refactored since at the moment every vault has the same stellar wallet. But
+	// we might want to change that in the future
+	pub async fn get_vault_stellar_wallets(&self) -> Vec<(VaultId, ArcRwLock<StellarWallet>)> {
 		self.vault_data
 			.read()
 			.await
@@ -191,7 +169,7 @@ impl VaultIdManager {
 /// `wrapped_currency` being the currency codes of the wrapped currency (e.g. USDC, EURT...)
 ///  including the issuer and code, ie 'GABC...:USDC'  and
 /// `collateral_amount` being the amount of collateral to be locked.
-#[allow(clippy::useless_conversion, clippy::format_in_format_args)]
+#[allow(clippy::format_in_format_args, clippy::useless_conversion)]
 fn parse_collateral_and_amount(
 	s: &str,
 ) -> Result<(String, String, Option<u128>), Box<dyn std::error::Error + Send + Sync + 'static>> {
@@ -262,7 +240,7 @@ async fn active_block_listener(
 
 pub struct VaultService {
 	spacewalk_parachain: SpacewalkParachain,
-	stellar_wallet: Arc<RwLock<StellarWallet>>,
+	stellar_wallet: ArcRwLock<StellarWallet>,
 	config: VaultServiceConfig,
 	shutdown: ShutdownSender,
 	vault_id_manager: VaultIdManager,
@@ -430,33 +408,26 @@ impl VaultService {
 		.into_iter()
 		.collect::<Result<_, Error>>()?;
 
-		// issue handling
-		// this vec is passed to the stellar wallet to filter out transactions that are not relevant
-		// this has to be modified every time the issue set changes
-		let issue_map: Arc<RwLock<IssueRequestsMap>> =
-			Arc::new(RwLock::new(IssueRequestsMap::new()));
-		let wallet = self.stellar_wallet.read().await;
-		let secret_key = wallet.get_secret_key();
-
-		let issue_filter = IssueFilter::new(secret_key.get_public())?;
-
-		let slot_tx_env_map: Arc<RwLock<HashMap<u32, String>>> =
-			Arc::new(RwLock::new(HashMap::new()));
-
-		let handler: ScpMessageHandler =
-			inner_create_handler(secret_key.clone(), wallet.is_public_network()).await?;
-		let watcher = Arc::new(RwLock::new(handler.create_watcher()));
-		let proof_ops = Arc::new(RwLock::new(handler.proof_operations()));
-
 		// purposefully _after_ maybe_register_vault and _before_ other calls
 		self.vault_id_manager.fetch_vault_ids().await?;
+
+		let wallet = self.stellar_wallet.read().await;
+		let secret_key = wallet.get_secret_key();
+		let vault_public_key = wallet.get_public_key();
+		let is_public_network = wallet.is_public_network();
+		drop(wallet);
+
+		let mut oracle_agent =
+			OracleAgent::new(is_public_network).expect("Failed to create oracle agent");
+		oracle_agent.start().await.expect("Failed to start oracle agent");
+		let oracle_agent = Arc::new(oracle_agent);
 
 		let open_request_executor = execute_open_requests(
 			self.shutdown.clone(),
 			self.spacewalk_parachain.clone(),
 			self.vault_id_manager.clone(),
 			self.stellar_wallet.clone(),
-			proof_ops.clone(),
+			oracle_agent.clone(),
 			self.config.payment_margin_minutes,
 		);
 		service::spawn_cancelable(self.shutdown.subscribe(), async move {
@@ -467,6 +438,15 @@ impl VaultService {
 				Err(e) => tracing::error!("Failed to process open requests: {}", e),
 			}
 		});
+
+		// issue handling
+		// this vec is passed to the stellar wallet to filter out transactions that are not relevant
+		// this has to be modified every time the issue set changes
+		let issue_map: ArcRwLock<IssueRequestsMap> = Arc::new(RwLock::new(IssueRequestsMap::new()));
+
+		let issue_filter = IssueFilter::new(secret_key.get_public())?;
+
+		let ledger_env_map: ArcRwLock<LedgerTxEnvMap> = Arc::new(RwLock::new(HashMap::new()));
 
 		let (issue_event_tx, issue_event_rx) = mpsc::channel::<Event>(32);
 		let (replace_event_tx, replace_event_rx) = mpsc::channel::<Event>(16);
@@ -488,10 +468,9 @@ impl VaultService {
 			(
 				"Stellar Transaction Listener",
 				run(wallet::listen_for_new_transactions(
-					wallet.get_public_key(),
-					wallet.is_public_network(),
-					watcher.clone(),
-					slot_tx_env_map.clone(),
+					vault_public_key.clone(),
+					is_public_network,
+					ledger_env_map.clone(),
 					issue_map.clone(),
 					issue_filter,
 				)),
@@ -500,7 +479,7 @@ impl VaultService {
 				"Issue Request Listener",
 				run(issue::listen_for_issue_requests(
 					self.spacewalk_parachain.clone(),
-					wallet.get_public_key(),
+					vault_public_key,
 					issue_event_tx.clone(),
 					issue_map.clone(),
 				)),
@@ -523,10 +502,10 @@ impl VaultService {
 				"Issue Executor",
 				maybe_run(
 					!self.config.no_issue_execution,
-					issue::process_issues_with_proofs(
+					issue::process_issues_requests(
 						self.spacewalk_parachain.clone(),
-						proof_ops.clone(),
-						slot_tx_env_map.clone(),
+						oracle_agent.clone(),
+						ledger_env_map.clone(),
 						issue_map.clone(),
 					),
 				),
@@ -556,7 +535,7 @@ impl VaultService {
 					self.spacewalk_parachain.clone(),
 					self.vault_id_manager.clone(),
 					self.config.payment_margin_minutes,
-					proof_ops.clone(),
+					oracle_agent.clone(),
 				)),
 			),
 			(
@@ -590,11 +569,10 @@ impl VaultService {
 					self.spacewalk_parachain.clone(),
 					self.vault_id_manager.clone(),
 					self.config.payment_margin_minutes,
-					proof_ops.clone(),
+					oracle_agent.clone(),
 				)),
 			),
 		];
-		drop(wallet);
 
 		run_and_monitor_tasks(self.shutdown.clone(), tasks).await
 	}
@@ -688,35 +666,4 @@ pub(crate) async fn is_vault_registered(
 		Err(RuntimeError::VaultNotFound) => Ok(false),
 		Err(err) => Err(err.into()),
 	}
-}
-
-/// Returns SCPMessageHandler which contains the thread to connect/listen to the Stellar
-/// Node. See the oracle.rs example
-pub async fn inner_create_handler(
-	stellar_vault_secret_key: SecretKey,
-	is_public_network: bool,
-) -> Result<ScpMessageHandler, Error> {
-	prepare_directories().map_err(|e| {
-		tracing::error!("Failed to create the SCPMessageHandler: {:?}", e);
-		Error::StellarSdkError
-	})?;
-
-	let tier1_node_ip =
-		if is_public_network { TIER_1_VALIDATOR_IP_PUBLIC } else { TIER_1_VALIDATOR_IP_TESTNET };
-
-	let network: &Network = if is_public_network { &PUBLIC_NETWORK } else { &TEST_NETWORK };
-
-	tracing::info!(
-		"Connecting to {:?} through {:?}",
-		std::str::from_utf8(network.get_passphrase().as_slice()).unwrap(),
-		tier1_node_ip
-	);
-
-	let node_info = NodeInfo::new(19, 26, 23, "v19.6.0".to_string(), network);
-	let cfg = ConnConfig::new(tier1_node_ip, 11625, stellar_vault_secret_key, 0, true, true, false);
-
-	create_handler(node_info, cfg, is_public_network).await.map_err(|e| {
-		tracing::error!("Failed to create the SCPMessageHandler: {:?}", e);
-		Error::StellarSdkError
-	})
 }
