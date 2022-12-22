@@ -117,7 +117,6 @@ impl TransactionResponse {
 	}
 
 	pub fn to_envelope(&self) -> Result<TransactionEnvelope, Error> {
-		
 		TransactionEnvelope::from_base64_xdr(self.envelope_xdr.clone())
 			.map_err(|_| Error::DecodeError)
 	}
@@ -273,25 +272,17 @@ impl HorizonClient for reqwest::Client {
 		is_public_network: bool,
 	) -> Result<TransactionResponse, Error> {
 		let transaction_xdr = transaction_envelope.to_base64_xdr();
-		let transaction_xdr =
-			std::str::from_utf8(&transaction_xdr).map_err(Error::Utf8Error)?;
+		let transaction_xdr = std::str::from_utf8(&transaction_xdr).map_err(Error::Utf8Error)?;
 
 		let base_url = horizon_url(is_public_network);
 		let url = format!("{}/transactions", base_url);
 
 		let params = [("tx", transaction_xdr)];
-		let response = self
-			.post(url)
-			.form(&params)
-			.send()
-			.await
-			.map_err(Error::HttpFetchingError)?;
+		let response =
+			self.post(url).form(&params).send().await.map_err(Error::HttpFetchingError)?;
 
 		if response.status().is_success() {
-			response
-				.json::<TransactionResponse>()
-				.await
-				.map_err(Error::HttpFetchingError)
+			response.json::<TransactionResponse>().await.map_err(Error::HttpFetchingError)
 		} else {
 			Err(Error::HorizonSubmissionError(
 				response.text().await.map_err(Error::HttpFetchingError)?,
@@ -319,8 +310,7 @@ impl<C: HorizonClient> HorizonFetcher<C> {
 		cursor: PagingToken,
 	) -> Result<HorizonTransactionsResponse, Error> {
 		let public_key_encoded = self.vault_account_public_key.to_encoding();
-		let account_id =
-			std::str::from_utf8(&public_key_encoded).map_err(Error::Utf8Error)?;
+		let account_id = std::str::from_utf8(&public_key_encoded).map_err(Error::Utf8Error)?;
 
 		if cursor == 0 {
 			// Fetch the first/latest transaction and set it as the new paging token
