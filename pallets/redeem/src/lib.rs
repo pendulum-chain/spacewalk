@@ -16,6 +16,10 @@ use frame_support::{
 use mocktopus::macros::mockable;
 use sp_core::H256;
 
+use sp_runtime::traits::{CheckedDiv, Saturating, Zero};
+#[cfg(feature = "std")]
+use std::str::FromStr;
+
 use sp_std::{convert::TryInto, vec::Vec};
 use substrate_stellar_sdk::{
 	compound_types::UnlimitedVarArray,
@@ -125,6 +129,11 @@ pub mod pallet {
 			amount: BalanceOf<T>,
 			fee: BalanceOf<T>,
 		},
+		RateLimitUpdate {
+			limit_volume_amount: Option<BalanceOf<T>>,
+			limit_volume_currency_id: T::CurrencyId,
+			interval_length: T::BlockNumber,
+		},
 	}
 
 	#[pallet::error]
@@ -147,6 +156,8 @@ pub mod pallet {
 		TryIntoIntError,
 		/// Redeem amount is too small.
 		AmountBelowMinimumTransferAmount,
+		/// Exceeds the volume limit for an issue request.
+		ExceedLimitVolumeForIssueRequest,
 	}
 
 	/// The time difference in number of blocks between a redeem request is created and required
@@ -169,10 +180,35 @@ pub mod pallet {
 	pub(super) type RedeemMinimumTransferAmount<T: Config> =
 		StorageValue<_, BalanceOf<T>, ValueQuery>;
 
+	#[pallet::storage]
+	pub(super) type LimitVolumeAmount<T: Config> =
+		StorageValue<_, Option<BalanceOf<T>>, ValueQuery>;
+
+	/// CurrencyID that represents the currency in which the volume limit is measured, eg DOT, USDC
+	/// or PEN
+	#[pallet::storage]
+	pub(super) type LimitVolumeCurrencyId<T: Config> = StorageValue<_, T::CurrencyId, ValueQuery>;
+
+	#[pallet::storage]
+	pub(super) type CurrentVolumeAmount<T: Config> = StorageValue<_, BalanceOf<T>, ValueQuery>;
+
+	/// Represent interval define regular 24 hour intervals (every 24 * 3600 / 12 blocks)
+	#[pallet::storage]
+	pub(super) type IntervalLength<T: Config> = StorageValue<_, T::BlockNumber, ValueQuery>;
+
+	/// Represent current interval current_block_number / IntervalLength
+	#[pallet::storage]
+	pub(super) type LastIntervalIndex<T: Config> = StorageValue<_, T::BlockNumber, ValueQuery>;
+
 	#[pallet::genesis_config]
 	pub struct GenesisConfig<T: Config> {
 		pub redeem_period: T::BlockNumber,
 		pub redeem_minimum_transfer_amount: BalanceOf<T>,
+		pub limit_volume_amount: Option<BalanceOf<T>>,
+		pub limit_volume_currency_id: T::CurrencyId,
+		pub current_volume_amount: BalanceOf<T>,
+		pub interval_length: T::BlockNumber,
+		pub last_interval_index: T::BlockNumber,
 	}
 
 	#[cfg(feature = "std")]
@@ -181,6 +217,12 @@ pub mod pallet {
 			Self {
 				redeem_period: Default::default(),
 				redeem_minimum_transfer_amount: Default::default(),
+				limit_volume_amount: None,
+				limit_volume_currency_id: T::CurrencyId::default(),
+				current_volume_amount: BalanceOf::<T>::zero(),
+				interval_length: T::BlockNumber::from_str(&(24 * 60 * 60 / 12).to_string())
+					.unwrap_or_default(),
+				last_interval_index: T::BlockNumber::zero(),
 			}
 		}
 	}
@@ -190,6 +232,11 @@ pub mod pallet {
 		fn build(&self) {
 			RedeemPeriod::<T>::put(self.redeem_period);
 			RedeemMinimumTransferAmount::<T>::put(self.redeem_minimum_transfer_amount);
+			LimitVolumeAmount::<T>::put(self.limit_volume_amount);
+			LimitVolumeCurrencyId::<T>::put(self.limit_volume_currency_id);
+			CurrentVolumeAmount::<T>::put(self.current_volume_amount);
+			IntervalLength::<T>::put(self.interval_length);
+			LastIntervalIndex::<T>::put(self.last_interval_index);
 		}
 	}
 
@@ -367,6 +414,28 @@ pub mod pallet {
 
 			Ok(().into())
 		}
+
+		#[pallet::weight(<T as Config>::WeightInfo::self_redeem())]
+		#[transactional]
+		pub fn rate_limit_update(
+			origin: OriginFor<T>,
+			limit_volume_amount: Option<BalanceOf<T>>,
+			limit_volume_currency_id: T::CurrencyId,
+			interval_length: T::BlockNumber,
+		) -> DispatchResultWithPostInfo {
+			ensure_root(origin)?;
+			Self::_rate_limit_update(
+				limit_volume_amount,
+				limit_volume_currency_id,
+				interval_length,
+			);
+			Self::deposit_event(Event::RateLimitUpdate {
+				limit_volume_amount,
+				limit_volume_currency_id,
+				interval_length,
+			});
+			Ok(().into())
+		}
 	}
 }
 
@@ -457,6 +526,16 @@ mod self_redeem {
 // "Internal" functions, callable by code.
 #[cfg_attr(test, mockable)]
 impl<T: Config> Pallet<T> {
+	pub fn _rate_limit_update(
+		limit_volume_amount: Option<BalanceOf<T>>,
+		limit_volume_currency_id: T::CurrencyId,
+		interval_length: T::BlockNumber,
+	) {
+		<LimitVolumeAmount<T>>::set(limit_volume_amount);
+		<LimitVolumeCurrencyId<T>>::set(limit_volume_currency_id);
+		<IntervalLength<T>>::set(interval_length);
+	}
+
 	fn _request_redeem(
 		redeemer: T::AccountId,
 		amount_wrapped: BalanceOf<T>,
@@ -464,6 +543,8 @@ impl<T: Config> Pallet<T> {
 		vault_id: DefaultVaultId<T>,
 	) -> Result<H256, DispatchError> {
 		let amount_wrapped = Amount::new(amount_wrapped, vault_id.wrapped_currency());
+
+		Self::check_volume(amount_wrapped.clone())?;
 
 		ext::security::ensure_parachain_status_running::<T>()?;
 
@@ -615,6 +696,8 @@ impl<T: Config> Pallet<T> {
 		// burn amount (without parachain fee, but including transfer fee)
 		let burn_amount = redeem.amount().checked_add(&redeem.transfer_fee())?;
 		burn_amount.burn_from(&redeem.redeemer)?;
+		// increase volume according to volume limits
+		Self::increase_interval_volume(burn_amount.clone())?;
 
 		// send fees to pool
 		let fee = redeem.fee();
@@ -921,5 +1004,48 @@ impl<T: Config> Pallet<T> {
 			Error::<T>::RedeemCancelled
 		);
 		Ok(request)
+	}
+
+	fn increase_interval_volume(issue_amount: Amount<T>) -> Result<(), DispatchError> {
+		if let Some(_limit_volume) = LimitVolumeAmount::<T>::get() {
+			let issue_volume = Self::convert_into_limit_currency_id_amount(issue_amount)?;
+			let current_volume = CurrentVolumeAmount::<T>::get();
+			let new_volume = current_volume.saturating_add(issue_volume.amount());
+			CurrentVolumeAmount::<T>::put(new_volume);
+		}
+		Ok(())
+	}
+
+	fn convert_into_limit_currency_id_amount(
+		issue_amount: Amount<T>,
+	) -> Result<Amount<T>, DispatchError> {
+		let issue_volume =
+			oracle::Pallet::<T>::convert(&issue_amount, LimitVolumeCurrencyId::<T>::get())
+				.map_err(|_| DispatchError::Other("Missing Exchange Rate"))?;
+		Ok(issue_volume)
+	}
+
+	fn check_volume(amount_requested: Amount<T>) -> Result<(), DispatchError> {
+		let limit_volume: Option<BalanceOf<T>> = LimitVolumeAmount::<T>::get();
+		if let Some(limit_volume) = limit_volume {
+			let current_block: T::BlockNumber = <frame_system::Pallet<T>>::block_number();
+			let interval_length: T::BlockNumber = IntervalLength::<T>::get();
+
+			let current_index = current_block.checked_div(&interval_length);
+			let mut current_volume = BalanceOf::<T>::zero();
+			if current_index != Some(LastIntervalIndex::<T>::get()) {
+				LastIntervalIndex::<T>::put(current_index.unwrap_or_default());
+				CurrentVolumeAmount::<T>::put(current_volume);
+			} else {
+				current_volume = CurrentVolumeAmount::<T>::get();
+			}
+			let new_issue_request_amount =
+				Self::convert_into_limit_currency_id_amount(amount_requested)?;
+			ensure!(
+				new_issue_request_amount.amount().saturating_add(current_volume) <= limit_volume,
+				Error::<T>::ExceedLimitVolumeForIssueRequest
+			);
+		}
+		Ok(())
 	}
 }

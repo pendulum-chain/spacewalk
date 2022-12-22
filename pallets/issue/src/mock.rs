@@ -300,9 +300,13 @@ impl ExtBuilder {
 		.assimilate_storage(&mut storage)
 		.unwrap();
 
-		issue::GenesisConfig::<Test> { issue_period: 10, issue_minimum_transfer_amount: 1 }
-			.assimilate_storage(&mut storage)
-			.unwrap();
+		issue::GenesisConfig::<Test> {
+			issue_period: 10,
+			issue_minimum_transfer_amount: 1,
+			..issue::GenesisConfig::<Test>::default()
+		}
+		.assimilate_storage(&mut storage)
+		.unwrap();
 
 		const PAIR: VaultCurrencyPair<CurrencyId> = VaultCurrencyPair {
 			collateral: DEFAULT_COLLATERAL_CURRENCY,
@@ -354,6 +358,11 @@ where
 	ExtBuilder::build().execute_with(|| {
 		assert_ok!(<oracle::Pallet<Test>>::_set_exchange_rate(
 			DEFAULT_COLLATERAL_CURRENCY,
+			UnsignedFixedPoint::one()
+		));
+
+		assert_ok!(<oracle::Pallet<Test>>::_set_exchange_rate(
+			DEFAULT_WRAPPED_CURRENCY,
 			UnsignedFixedPoint::one()
 		));
 		Security::set_active_block_number(1);
