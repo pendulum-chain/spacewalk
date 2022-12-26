@@ -11,7 +11,7 @@ extern crate mocktopus;
 use codec::FullCodec;
 use frame_support::{
 	dispatch::{DispatchError, DispatchResult},
-	ensure,
+	ensure, require_transactional,
 	traits::Get,
 	transactional, PalletId,
 };
@@ -764,6 +764,7 @@ impl<T: Config> Pallet<T> {
 		<T as Config>::PalletId::get().into_account_truncating()
 	}
 
+	#[require_transactional]
 	pub fn _register_vault(
 		vault_id: DefaultVaultId<T>,
 		collateral: BalanceOf<T>,
@@ -811,6 +812,7 @@ impl<T: Config> Pallet<T> {
 		Ok(())
 	}
 
+	#[require_transactional]
 	pub fn try_set_vault_custom_secure_threshold(
 		vault_id: &DefaultVaultId<T>,
 		new_threshold: Option<UnsignedFixedPoint<T>>,
@@ -883,6 +885,7 @@ impl<T: Config> Pallet<T> {
 	/// # Arguments
 	/// * `vault_id` - the id of the vault
 	/// * `amount` - the amount of collateral
+	#[require_transactional]
 	pub fn try_deposit_collateral(
 		vault_id: &DefaultVaultId<T>,
 		amount: &Amount<T>,
@@ -906,6 +909,7 @@ impl<T: Config> Pallet<T> {
 	/// # Arguments
 	/// * `vault_id` - the id of the vault
 	/// * `amount` - the amount of collateral
+	#[require_transactional]
 	pub fn force_withdraw_collateral(
 		vault_id: &DefaultVaultId<T>,
 		amount: &Amount<T>,

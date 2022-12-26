@@ -10,6 +10,7 @@ extern crate mocktopus;
 use codec::EncodeLike;
 use frame_support::{
 	dispatch::{DispatchError, DispatchResult},
+	require_transactional,
 	traits::Get,
 	transactional, PalletId,
 };
@@ -454,6 +455,7 @@ impl<T: Config> Pallet<T> {
 	// Private functions internal to this pallet
 
 	/// Withdraw rewards from a pool and transfer to `account_id`.
+	#[require_transactional]
 	fn withdraw_from_reward_pool<
 		Rewards: reward::Rewards<DefaultVaultId<T>, BalanceOf<T>, CurrencyId<T>>,
 		Staking: staking::Staking<DefaultVaultId<T>, T::AccountId, T::Index, BalanceOf<T>, CurrencyId<T>>,

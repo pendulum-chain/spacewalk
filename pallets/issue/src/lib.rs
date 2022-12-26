@@ -8,7 +8,9 @@
 #[cfg(test)]
 extern crate mocktopus;
 
-use frame_support::{dispatch::DispatchError, ensure, traits::Get, transactional};
+use frame_support::{
+	dispatch::DispatchError, ensure, require_transactional, traits::Get, transactional,
+};
 #[cfg(test)]
 use mocktopus::macros::mockable;
 use sp_core::H256;
@@ -349,6 +351,7 @@ impl<T: Config> Pallet<T> {
 	}
 
 	/// Requests CBA issuance, returns unique tracking ID.
+	#[require_transactional]
 	fn _request_issue(
 		requester: T::AccountId,
 		amount_requested: BalanceOf<T>,
@@ -420,6 +423,7 @@ impl<T: Config> Pallet<T> {
 	}
 
 	/// Completes CBA issuance, removing request from storage and minting token.
+	#[require_transactional]
 	fn _execute_issue(
 		executor: T::AccountId,
 		issue_id: H256,
@@ -545,6 +549,7 @@ impl<T: Config> Pallet<T> {
 	}
 
 	/// Cancels CBA issuance if time has expired and slashes collateral.
+	#[require_transactional]
 	fn _cancel_issue(requester: T::AccountId, issue_id: H256) -> Result<(), DispatchError> {
 		let issue = Self::get_pending_issue(&issue_id)?;
 

@@ -10,7 +10,7 @@ extern crate mocktopus;
 
 use frame_support::{
 	dispatch::{DispatchError, DispatchResult},
-	ensure,
+	ensure, require_transactional,
 	traits::Get,
 	transactional,
 };
@@ -331,6 +331,7 @@ pub mod pallet {
 // "Internal" functions, callable by code.
 #[cfg_attr(test, mockable)]
 impl<T: Config> Pallet<T> {
+	#[require_transactional]
 	fn _request_replace(vault_id: DefaultVaultId<T>, amount: BalanceOf<T>) -> DispatchResult {
 		// check vault is not banned
 		ext::vault_registry::ensure_not_banned::<T>(&vault_id)?;
@@ -383,6 +384,7 @@ impl<T: Config> Pallet<T> {
 		Ok(())
 	}
 
+	#[require_transactional]
 	fn _withdraw_replace_request(
 		vault_id: DefaultVaultId<T>,
 		amount: BalanceOf<T>,
@@ -427,6 +429,7 @@ impl<T: Config> Pallet<T> {
 		Ok(())
 	}
 
+	#[require_transactional]
 	fn _accept_replace(
 		old_vault_id: DefaultVaultId<T>,
 		new_vault_id: DefaultVaultId<T>,
@@ -515,6 +518,7 @@ impl<T: Config> Pallet<T> {
 		Ok(())
 	}
 
+	#[require_transactional]
 	fn _execute_replace(
 		replace_id: H256,
 		transaction_envelope_xdr_encoded: Vec<u8>,
@@ -598,6 +602,7 @@ impl<T: Config> Pallet<T> {
 		Ok(())
 	}
 
+	#[require_transactional]
 	fn _cancel_replace(replace_id: H256) -> Result<(), DispatchError> {
 		// Retrieve the ReplaceRequest as per the replaceId parameter from Vaults in the
 		// VaultRegistry

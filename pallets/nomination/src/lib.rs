@@ -27,7 +27,7 @@ pub use default_weights::WeightInfo;
 use currency::Amount;
 use frame_support::{
 	dispatch::{DispatchError, DispatchResult},
-	ensure, transactional,
+	ensure, require_transactional, transactional,
 };
 use frame_system::{ensure_root, ensure_signed};
 pub use pallet::*;
@@ -211,6 +211,7 @@ pub mod pallet {
 // "Internal" functions, callable by code.
 #[cfg_attr(test, mockable)]
 impl<T: Config> Pallet<T> {
+	#[require_transactional]
 	pub fn _withdraw_collateral(
 		vault_id: &DefaultVaultId<T>,
 		nominator_id: &T::AccountId,

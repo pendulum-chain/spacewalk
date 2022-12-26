@@ -27,7 +27,7 @@ mod default_weights;
 #[frame_support::pallet]
 pub mod pallet {
 	use codec::FullCodec;
-	use frame_support::{pallet_prelude::*, transactional};
+	use frame_support::{pallet_prelude::*, require_transactional, transactional};
 	use frame_system::pallet_prelude::*;
 	use sha2::{Digest, Sha256};
 	use sp_std::{collections::btree_map::BTreeMap, fmt::Debug, vec::Vec};
@@ -437,6 +437,7 @@ pub mod pallet {
 
 	// Helper functions
 	impl<T: Config> Pallet<T> {
+		#[require_transactional]
 		pub fn _update_tier_1_validator_set(
 			validators: Vec<ValidatorOf<T>>,
 			organizations: Vec<OrganizationOf<T>>,

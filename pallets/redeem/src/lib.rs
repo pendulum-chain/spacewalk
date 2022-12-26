@@ -10,7 +10,7 @@ extern crate mocktopus;
 
 use frame_support::{
 	dispatch::{DispatchError, DispatchResult},
-	ensure, transactional,
+	ensure, require_transactional, transactional,
 };
 #[cfg(test)]
 use mocktopus::macros::mockable;
@@ -442,6 +442,7 @@ pub mod pallet {
 mod self_redeem {
 	use super::*;
 
+	#[require_transactional]
 	pub(crate) fn execute<T: Config>(
 		vault_id: DefaultVaultId<T>,
 		amount_wrapped: Amount<T>,
@@ -535,7 +536,7 @@ impl<T: Config> Pallet<T> {
 		<LimitVolumeCurrencyId<T>>::set(limit_volume_currency_id);
 		<IntervalLength<T>>::set(interval_length);
 	}
-
+	#[require_transactional]
 	fn _request_redeem(
 		redeemer: T::AccountId,
 		amount_wrapped: BalanceOf<T>,
@@ -635,6 +636,7 @@ impl<T: Config> Pallet<T> {
 		Ok(redeem_id)
 	}
 
+	#[require_transactional]
 	fn _liquidation_redeem(
 		redeemer: T::AccountId,
 		currencies: DefaultVaultCurrencyPair<T>,
@@ -663,6 +665,7 @@ impl<T: Config> Pallet<T> {
 		Ok(())
 	}
 
+	#[require_transactional]
 	fn _execute_redeem(
 		redeem_id: H256,
 		transaction_envelope_xdr_encoded: Vec<u8>,
@@ -726,6 +729,7 @@ impl<T: Config> Pallet<T> {
 		Ok(())
 	}
 
+	#[require_transactional]
 	fn _cancel_redeem(redeemer: T::AccountId, redeem_id: H256, reimburse: bool) -> DispatchResult {
 		ext::security::ensure_parachain_status_running::<T>()?;
 
@@ -855,6 +859,7 @@ impl<T: Config> Pallet<T> {
 		Ok(())
 	}
 
+	#[require_transactional]
 	fn _mint_tokens_for_reimbursed_redeem(
 		vault_id: DefaultVaultId<T>,
 		redeem_id: H256,
