@@ -31,7 +31,7 @@ use crate::{
 	redeem::listen_for_redeem_requests,
 	replace::{listen_for_accept_replace, listen_for_execute_replace, listen_for_replace_requests},
 	service::{CancellationScheduler, IssueCanceller},
-	ArcRwLock, Event, CHAIN_HEIGHT_POLLING_INTERVAL,
+	ArcRwLock, Event, CHAIN_HEIGHT_POLLING_INTERVAL, metrics::PerCurrencyMetrics,
 };
 
 pub const VERSION: &str = git_version!(args = ["--tags"], fallback = "unknown");
@@ -45,6 +45,7 @@ const RESTART_INTERVAL: Duration = Duration::from_secs(10800); // restart every 
 pub struct VaultData {
 	pub vault_id: VaultId,
 	pub stellar_wallet: ArcRwLock<StellarWallet>,
+	pub metrics: PerCurrencyMetrics,
 }
 
 #[derive(Clone)]
@@ -77,7 +78,7 @@ impl VaultIdManager {
 			.map(|key| {
 				(
 					key.clone(),
-					VaultData { vault_id: key.clone(), stellar_wallet: stellar_wallet.clone() },
+					VaultData { vault_id: key.clone(), stellar_wallet: stellar_wallet.clone(), metrics: PerCurrencyMetrics::dummy()},
 				)
 			})
 			.collect();
@@ -86,7 +87,7 @@ impl VaultIdManager {
 
 	async fn add_vault_id(&self, vault_id: VaultId) -> Result<(), Error> {
 		let data =
-			VaultData { vault_id: vault_id.clone(), stellar_wallet: self.stellar_wallet.clone() };
+			VaultData { vault_id: vault_id.clone(), stellar_wallet: self.stellar_wallet.clone(), metrics: PerCurrencyMetrics::dummy(), };
 
 		self.vault_data.write().await.insert(vault_id, data.clone());
 
