@@ -67,6 +67,12 @@ jobs:
       - name: Start sccache server
         run: sccache --start-server
 
+
+      - name: Install Protoc
+        uses: arduino/setup-protoc@v1
+        with:
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
+
       - name: Build
         uses: actions-rs/cargo@v1
         with:
