@@ -66,11 +66,7 @@ async fn test_getters() {
 async fn test_invalid_tx_matching() {
 	let (client, _tmp_dir) = default_provider_client(AccountKeyring::Alice).await;
 	let parachain_rpc = setup_provider(client.clone(), AccountKeyring::Alice).await;
-
-	// This conversion is necessary for now because subxt uses newer versions of the sp_xxx
-	// dependencies
-	let recipient = subxt::ext::sp_runtime::AccountId32::from(AccountKeyring::Bob.to_raw_public());
-	let err = parachain_rpc.get_invalid_tx_error(recipient).await;
+	let err = parachain_rpc.get_invalid_tx_error(AccountKeyring::Bob.into()).await;
 	assert!(err.is_invalid_transaction().is_some())
 }
 
@@ -79,11 +75,7 @@ async fn test_invalid_tx_matching() {
 async fn test_too_low_priority_matching() {
 	let (client, _tmp_dir) = default_provider_client(AccountKeyring::Alice).await;
 	let parachain_rpc = setup_provider(client.clone(), AccountKeyring::Alice).await;
-
-	// This conversion is necessary for now because subxt uses newer versions of the sp_xxx
-	// dependencies
-	let recipient = subxt::ext::sp_runtime::AccountId32::from(AccountKeyring::Bob.to_raw_public());
-	let err = parachain_rpc.get_too_low_priority_error(recipient).await;
+	let err = parachain_rpc.get_too_low_priority_error(AccountKeyring::Bob.into()).await;
 	assert!(err.is_pool_too_low_priority().is_some())
 }
 
@@ -121,11 +113,11 @@ async fn test_register_vault() {
 	let parachain_rpc = setup_provider(client.clone(), AccountKeyring::Alice).await;
 	set_exchange_rate(client.clone()).await;
 
-	// This conversion is necessary for now because subxt uses newer versions of the sp_xxx
-	// dependencies
-	let account_id =
-		subxt::ext::sp_runtime::AccountId32::from(AccountKeyring::Alice.to_raw_public());
-	let vault_id = VaultId::new(account_id, DEFAULT_TESTING_CURRENCY, DEFAULT_WRAPPED_CURRENCY);
+	let vault_id = VaultId::new(
+		AccountKeyring::Alice.into(),
+		DEFAULT_TESTING_CURRENCY,
+		DEFAULT_WRAPPED_CURRENCY,
+	);
 
 	parachain_rpc.register_public_key(dummy_public_key()).await.unwrap();
 	parachain_rpc

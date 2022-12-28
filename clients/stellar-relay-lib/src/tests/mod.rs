@@ -27,6 +27,8 @@ async fn stellar_overlay_connect_and_listen_connect_message() {
 	} else {
 		panic!("Incorrect stellar relay message received");
 	}
+
+	overlay_connection.disconnect();
 }
 
 #[tokio::test]
@@ -64,6 +66,7 @@ async fn stellar_overlay_should_receive_scp_messages() {
 	//assert
 	//ensure that we receive some scp message from stellar node
 	assert!(!scps_vec.is_empty());
+	overlay_connection.disconnect();
 }
 
 #[tokio::test]
@@ -115,6 +118,7 @@ async fn stellar_overlay_should_receive_tx_set() {
 	//arrange
 	//ensure that we receive some tx set from stellar node
 	assert!(!tx_set_vec.is_empty());
+	overlay_connection.disconnect();
 }
 
 #[tokio::test]

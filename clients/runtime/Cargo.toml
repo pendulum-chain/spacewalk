@@ -33,12 +33,12 @@ prometheus = { version = "0.12.0", features = ["process"] }
 url = "2"
 
 # Substrate dependencies
-frame-support = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.31" }
-sp-arithmetic = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.31" }
-sp-keyring = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.31" }
-sp-runtime = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.31" }
-sp-std = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.31" }
-sp-version = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.31" }
+frame-support = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.35" }
+sp-arithmetic = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.35" }
+sp-keyring = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.35" }
+sp-runtime = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.35" }
+sp-std = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.35" }
+sp-version = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.35" }
 
 # Subxt dependencies
 subxt = "0.25.0"
@@ -57,7 +57,7 @@ testchain = { package = "spacewalk-standalone", path = "../../testchain/node", o
 testchain-runtime = { package = "spacewalk-runtime-standalone", path = "../../testchain/runtime", optional = true }
 
 # Substrate Stellar Dependencies
-substrate-stellar-sdk = { git = "https://github.com/pendulum-chain/substrate-stellar-sdk", branch = "polkadot-v0.9.31" }
+substrate-stellar-sdk = { git = "https://github.com/pendulum-chain/substrate-stellar-sdk", branch = "polkadot-v0.9.35" }
 wallet = { path = "../wallet" }
 
 

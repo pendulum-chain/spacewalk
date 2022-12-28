@@ -178,13 +178,11 @@ where
 	set_stellar_fees(&parachain_rpc, FixedU128::from(1)).await;
 
 	let vault_provider = setup_provider(client.clone(), AccountKeyring::Charlie).await;
-
-	let account_id = AccountKeyring::Charlie.to_raw_public();
-	// Convert to the subxt AccountId type because unfortunately there is a version mismatch between
-	// the sp_xxx dependencies subxt uses and the ones we use
-	let account_id = subxt::ext::sp_runtime::AccountId32::from(account_id);
-
-	let vault_id = VaultId::new(account_id, DEFAULT_TESTING_CURRENCY, DEFAULT_WRAPPED_CURRENCY);
+	let vault_id = VaultId::new(
+		AccountKeyring::Charlie.into(),
+		DEFAULT_TESTING_CURRENCY,
+		DEFAULT_WRAPPED_CURRENCY,
+	);
 
 	execute(client, vault_id, vault_provider).await
 }
@@ -270,12 +268,11 @@ async fn test_redeem_succeeds() {
 async fn test_replace_succeeds() {
 	test_with_vault(|client, old_vault_id, old_vault_provider| async move {
 		let new_vault_provider = setup_provider(client.clone(), AccountKeyring::Eve).await;
-		// This conversion is necessary for now because subxt uses newer versions of the sp_xxx
-		// dependencies
-		let eve_account =
-			subxt::ext::sp_runtime::AccountId32::from(AccountKeyring::Eve.to_raw_public());
-		let new_vault_id =
-			VaultId::new(eve_account, DEFAULT_TESTING_CURRENCY, DEFAULT_WRAPPED_CURRENCY);
+		let new_vault_id = VaultId::new(
+			AccountKeyring::Eve.into(),
+			DEFAULT_TESTING_CURRENCY,
+			DEFAULT_WRAPPED_CURRENCY,
+		);
 		let user_provider = setup_provider(client.clone(), AccountKeyring::Dave).await;
 
 		let is_public_network = false;
@@ -380,12 +377,11 @@ async fn test_replace_succeeds() {
 async fn test_withdraw_replace_succeeds() {
 	test_with_vault(|client, old_vault_id, old_vault_provider| async move {
 		let new_vault_provider = setup_provider(client.clone(), AccountKeyring::Eve).await;
-		// This conversion is necessary for now because subxt uses newer versions of the sp_xxx
-		// dependencies
-		let eve_account =
-			subxt::ext::sp_runtime::AccountId32::from(AccountKeyring::Eve.to_raw_public());
-		let new_vault_id =
-			VaultId::new(eve_account, DEFAULT_TESTING_CURRENCY, DEFAULT_WRAPPED_CURRENCY);
+		let new_vault_id = VaultId::new(
+			AccountKeyring::Eve.into(),
+			DEFAULT_TESTING_CURRENCY,
+			DEFAULT_WRAPPED_CURRENCY,
+		);
 		let user_provider = setup_provider(client.clone(), AccountKeyring::Dave).await;
 
 		let is_public_network = false;
@@ -477,12 +473,11 @@ async fn test_cancel_scheduler_succeeds() {
 		let root_provider = setup_provider(client.clone(), AccountKeyring::Alice).await;
 		let user_provider = setup_provider(client.clone(), AccountKeyring::Dave).await;
 		let new_vault_provider = setup_provider(client.clone(), AccountKeyring::Eve).await;
-		// This conversion is necessary for now because subxt uses newer versions of the sp_xxx
-		// dependencies
-		let eve_account =
-			subxt::ext::sp_runtime::AccountId32::from(AccountKeyring::Eve.to_raw_public());
-		let new_vault_id =
-			VaultId::new(eve_account, DEFAULT_TESTING_CURRENCY, DEFAULT_WRAPPED_CURRENCY);
+		let new_vault_id = VaultId::new(
+			AccountKeyring::Eve.into(),
+			DEFAULT_TESTING_CURRENCY,
+			DEFAULT_WRAPPED_CURRENCY,
+		);
 
 		let is_public_network = false;
 		let wallet = StellarWallet::from_secret_encoded(
@@ -955,13 +950,11 @@ async fn test_automatic_issue_execution_succeeds_for_other_vault() {
 	test_with_vault(|client, vault1_id, vault1_provider| async move {
 		let user_provider = setup_provider(client.clone(), AccountKeyring::Dave).await;
 		let vault2_provider = setup_provider(client.clone(), AccountKeyring::Eve).await;
-
-		// This conversion is necessary for now because subxt uses newer versions of the sp_xxx
-		// dependencies
-		let eve_account =
-			subxt::ext::sp_runtime::AccountId32::from(AccountKeyring::Eve.to_raw_public());
-		let vault2_id =
-			VaultId::new(eve_account, DEFAULT_TESTING_CURRENCY, DEFAULT_WRAPPED_CURRENCY);
+		let vault2_id = VaultId::new(
+			AccountKeyring::Eve.into(),
+			DEFAULT_TESTING_CURRENCY,
+			DEFAULT_WRAPPED_CURRENCY,
+		);
 
 		let is_public_network = false;
 		let wallet = StellarWallet::from_secret_encoded(
@@ -1262,12 +1255,11 @@ async fn test_shutdown() {
 		let sudo_provider = setup_provider(client.clone(), AccountKeyring::Alice).await;
 		let user_provider = setup_provider(client.clone(), AccountKeyring::Dave).await;
 
-		// This conversion is necessary for now because subxt uses newer versions of the sp_xxx
-		// dependencies
-		let alice_account =
-			subxt::ext::sp_runtime::AccountId32::from(AccountKeyring::Alice.to_raw_public());
-		let sudo_vault_id =
-			VaultId::new(alice_account, DEFAULT_TESTING_CURRENCY, DEFAULT_WRAPPED_CURRENCY);
+		let sudo_vault_id = VaultId::new(
+			AccountKeyring::Alice.into(),
+			DEFAULT_TESTING_CURRENCY,
+			DEFAULT_WRAPPED_CURRENCY,
+		);
 
 		let is_public_network = false;
 		let wallet = StellarWallet::from_secret_encoded(

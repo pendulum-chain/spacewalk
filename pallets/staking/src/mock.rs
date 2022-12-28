@@ -95,6 +95,21 @@ parameter_type_with_key! {
 		0
 	};
 }
+
+pub struct CurrencyHooks<T>(sp_std::marker::PhantomData<T>);
+impl<T: orml_tokens::Config>
+	orml_traits::currency::MutationHooks<T::AccountId, T::CurrencyId, T::Balance> for CurrencyHooks<T>
+{
+	type OnDust = ();
+	type OnSlash = ();
+	type PreDeposit = ();
+	type PostDeposit = ();
+	type PreTransfer = ();
+	type PostTransfer = ();
+	type OnNewTokenAccount = ();
+	type OnKilledTokenAccount = ();
+}
+
 impl orml_tokens::Config for Test {
 	type RuntimeEvent = TestEvent;
 	type Balance = Balance;
@@ -102,12 +117,7 @@ impl orml_tokens::Config for Test {
 	type CurrencyId = CurrencyId;
 	type WeightInfo = ();
 	type ExistentialDeposits = ExistentialDeposits;
-	type OnDust = ();
-	type OnSlash = ();
-	type OnDeposit = ();
-	type OnTransfer = ();
-	type OnNewTokenAccount = ();
-	type OnKilledTokenAccount = ();
+	type CurrencyHooks = CurrencyHooks<Self>;
 	type MaxLocks = MaxLocks;
 	type MaxReserves = ConstU32<0>;
 	type ReserveIdentifier = ();
