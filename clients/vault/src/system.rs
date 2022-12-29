@@ -18,7 +18,7 @@ use runtime::{
 	StellarRelayPallet, TryFromSymbol, UpdateActiveBlockEvent, UtilFuncs, VaultCurrencyPair,
 	VaultId, VaultRegistryPallet,
 };
-use service::{wait_or_shutdown, Error as ServiceError, Service};
+use service::{wait_or_shutdown, Error as ServiceError, Service, MonitoringConfig};
 use wallet::{LedgerTxEnvMap, StellarWallet};
 
 use crate::{
@@ -243,6 +243,7 @@ pub struct VaultService {
 	spacewalk_parachain: SpacewalkParachain,
 	stellar_wallet: ArcRwLock<StellarWallet>,
 	config: VaultServiceConfig,
+	monitoring_config: MonitoringConfig,
 	shutdown: ShutdownSender,
 	vault_id_manager: VaultIdManager,
 }
@@ -255,9 +256,10 @@ impl Service<VaultServiceConfig, Error> for VaultService {
 	async fn new_service(
 		spacewalk_parachain: SpacewalkParachain,
 		config: VaultServiceConfig,
+		monitoring_config: MonitoringConfig,
 		shutdown: ShutdownSender,
 	) -> Result<Self, Error> {
-		VaultService::new(spacewalk_parachain, config, shutdown).await
+		VaultService::new(spacewalk_parachain, config, monitoring_config, shutdown).await
 	}
 
 	async fn start(&mut self) -> Result<(), ServiceError<Error>> {
@@ -326,6 +328,7 @@ impl VaultService {
 	async fn new(
 		spacewalk_parachain: SpacewalkParachain,
 		config: VaultServiceConfig,
+		monitoring_config: MonitoringConfig,
 		shutdown: ShutdownSender,
 	) -> Result<Self, Error> {
 		let is_public_network = spacewalk_parachain.is_public_network().await?;
@@ -340,6 +343,7 @@ impl VaultService {
 			spacewalk_parachain: spacewalk_parachain.clone(),
 			stellar_wallet: stellar_wallet.clone(),
 			config,
+			monitoring_config,
 			shutdown,
 			vault_id_manager: VaultIdManager::new(spacewalk_parachain, stellar_wallet),
 		})
@@ -573,6 +577,13 @@ impl VaultService {
 					oracle_agent.clone(),
 				)),
 			),
+			(
+                "Bridge Metrics Poller",
+                maybe_run(
+                    !self.monitoring_config.no_prometheus,
+                    poll_metrics(self.spacewalk_parachain.clone(), self.vault_id_manager.clone()),
+                ),
+            ),
 		];
 
 		run_and_monitor_tasks(self.shutdown.clone(), tasks).await
