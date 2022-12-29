@@ -290,7 +290,7 @@ impl PerCurrencyMetrics {
 		let _ = tokio::join!(
 			// Self::initialize_fee_budget_surplus(vault, parachain_rpc.clone(),
 			// bitcoin_transactions),
-			publish_average_bitcoin_fee(vault),
+			// publish_average_bitcoin_fee(vault),
 			publish_expected_bitcoin_balance(vault, parachain_rpc.clone()),
 			publish_locked_collateral(vault, parachain_rpc.clone()),
 			publish_required_collateral(vault, parachain_rpc.clone()),
