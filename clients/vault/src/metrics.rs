@@ -1,12 +1,12 @@
 use std::{collections::HashMap, convert::TryInto, sync::Arc};
 
 use crate::{
-    execution::parachain_blocks_to_bitcoin_blocks_rounded_up,
+    // execution::parachain_blocks_to_bitcoin_blocks_rounded_up,
     system::{VaultData, VaultIdManager},
     Error,
 };
 use async_trait::async_trait;
-use bitcoin::{json::ListTransactionResult, GetTransactionResultDetailCategory, SignedAmount, TransactionExt};
+// use bitcoin::{json::ListTransactionResult, GetTransactionResultDetailCategory, SignedAmount, TransactionExt};
 use futures::{try_join, StreamExt, TryFutureExt};
 use lazy_static::lazy_static;
 use runtime::{
@@ -25,6 +25,7 @@ use service::{
 use std::time::Duration;
 use tokio::{sync::RwLock, time::sleep};
 use tokio_metrics::TaskMetrics;
+use runtime::types::currency_id::CurrencyIdExt;
 
 const SLEEP_DURATION: Duration = Duration::from_secs(5 * 60);
 const SECONDS_PER_HOUR: f64 = 3600.0;
@@ -152,20 +153,21 @@ impl VaultDataReader for VaultIdManager {
 
 impl PerCurrencyMetrics {
     pub fn new(vault_id: &VaultId) -> Self {
-        let label = format!(
-            "{}_{}",
-            vault_id
-                .collateral_currency()
-                .inner()
-                .map(|i| i.symbol().to_string())
-                .unwrap_or_default(),
-            vault_id
-                .wrapped_currency()
-                .inner()
-                .map(|i| i.symbol().to_string())
-                .unwrap_or_default()
-        );
-        Self::new_with_label(label.as_ref())
+        // let label = format!(
+        //     "{}_{}",
+        //     vault_id
+        //         .collateral_currency()
+        //         .inner()
+        //         .map(|i| i.symbol().to_string())
+        //         .unwrap_or_default(),
+        //     vault_id
+        //         .wrapped_currency()
+        //         .inner()
+        //         .map(|i| i.symbol().to_string())
+        //         .unwrap_or_default()
+        // );
+        // Self::new_with_label(label.as_ref())
+        todo!()
     }
 
     // construct a dummy metrics struct for testing purposes
@@ -216,69 +218,69 @@ impl PerCurrencyMetrics {
         }
     }
 
-    async fn initialize_fee_budget_surplus<P: VaultRegistryPallet + RedeemPallet + ReplacePallet>(
-        vault: &VaultData,
-        parachain_rpc: P,
-        bitcoin_transactions: Vec<ListTransactionResult>,
-    ) -> Result<(), ServiceError<Error>> {
-        let vault_id = &vault.vault_id;
-        // update fee surplus
-        if let Ok((redeem_requests, replace_requests)) = try_join!(
-            parachain_rpc.get_vault_redeem_requests(vault_id.account_id.clone()),
-            parachain_rpc.get_old_vault_replace_requests(vault_id.account_id.clone())
-        ) {
-            let redeems = redeem_requests
-                .iter()
-                .map(|(id, redeem)| (*id, redeem.transfer_fee_btc));
-            let replaces = replace_requests.iter().map(|(id, _)| (*id, 0));
-            let fee_budgets = redeems.chain(replaces).collect::<HashMap<_, _>>();
-            let fee_budgets = &fee_budgets;
+    // async fn initialize_fee_budget_surplus<P: VaultRegistryPallet + RedeemPallet + ReplacePallet>(
+    //     vault: &VaultData,
+    //     parachain_rpc: P,
+    //     bitcoin_transactions: Vec<ListTransactionResult>,
+    // ) -> Result<(), ServiceError<Error>> {
+    //     let vault_id = &vault.vault_id;
+    //     // update fee surplus
+    //     if let Ok((redeem_requests, replace_requests)) = try_join!(
+    //         parachain_rpc.get_vault_redeem_requests(vault_id.account_id.clone()),
+    //         parachain_rpc.get_old_vault_replace_requests(vault_id.account_id.clone())
+    //     ) {
+    //         let redeems = redeem_requests
+    //             .iter()
+    //             .map(|(id, redeem)| (*id, redeem.transfer_fee_btc));
+    //         let replaces = replace_requests.iter().map(|(id, _)| (*id, 0));
+    //         let fee_budgets = redeems.chain(replaces).collect::<HashMap<_, _>>();
+    //         let fee_budgets = &fee_budgets;
 
-            let fee_budget_surplus = futures::stream::iter(bitcoin_transactions.iter())
-                .filter_map(|tx| async move {
-                    let transaction = vault
-                        .btc_rpc
-                        .get_transaction(&tx.info.txid, tx.info.blockhash)
-                        .await
-                        .ok()?;
-                    let op_return = transaction.get_op_return()?;
-                    let budget: i64 = (*fee_budgets.get(&op_return)?).try_into().ok()?;
+    //         let fee_budget_surplus = futures::stream::iter(bitcoin_transactions.iter())
+    //             .filter_map(|tx| async move {
+    //                 let transaction = vault
+    //                     .btc_rpc
+    //                     .get_transaction(&tx.info.txid, tx.info.blockhash)
+    //                     .await
+    //                     .ok()?;
+    //                 let op_return = transaction.get_op_return()?;
+    //                 let budget: i64 = (*fee_budgets.get(&op_return)?).try_into().ok()?;
 
-                    // give any outer `select` a chance to check the shutdown/termination signal
-                    tokio::task::yield_now().await;
+    //                 // give any outer `select` a chance to check the shutdown/termination signal
+    //                 tokio::task::yield_now().await;
 
-                    budget.checked_sub(tx.detail.fee?.to_sat().abs())
-                })
-                .fold(0i64, |acc, x| async move { acc.saturating_add(x) })
-                .await;
+    //                 budget.checked_sub(tx.detail.fee?.to_sat().abs())
+    //             })
+    //             .fold(0i64, |acc, x| async move { acc.saturating_add(x) })
+    //             .await;
 
-            *vault.metrics.fee_budget_surplus.data.write().await = fee_budget_surplus;
-            publish_fee_budget_surplus(vault).await?;
-        }
-        Ok(())
-    }
+    //         *vault.metrics.fee_budget_surplus.data.write().await = fee_budget_surplus;
+    //         publish_fee_budget_surplus(vault).await?;
+    //     }
+    //     Ok(())
+    // }
 
     pub async fn initialize_values(parachain_rpc: SpacewalkParachain, vault: &VaultData) {
-        let bitcoin_transactions = match vault.btc_rpc.list_transactions(None) {
-            Ok(x) => x
-                .into_iter()
-                .filter(|x| x.detail.category == GetTransactionResultDetailCategory::Send)
-                .collect(),
-            Err(_) => vec![],
-        };
+        // let bitcoin_transactions = match vault.btc_rpc.list_transactions(None) {
+        //     Ok(x) => x
+        //         .into_iter()
+        //         .filter(|x| x.detail.category == GetTransactionResultDetailCategory::Send)
+        //         .collect(),
+        //     Err(_) => vec![],
+        // };
 
         // update average fee
-        let (total, count) = bitcoin_transactions
-            .iter()
-            .filter_map(|tx| tx.detail.fee.map(|amount| amount.to_sat().unsigned_abs()))
-            .fold((0, 0), |(total, count), x| (total + x, count + 1));
-        *vault.metrics.average_btc_fee.data.write().await = AverageTracker { total, count };
+        // let (total, count) = bitcoin_transactions
+        //     .iter()
+        //     .filter_map(|tx| tx.detail.fee.map(|amount| amount.to_sat().unsigned_abs()))
+        //     .fold((0, 0), |(total, count), x| (total + x, count + 1));
+        // *vault.metrics.average_btc_fee.data.write().await = AverageTracker { total, count };
 
-        publish_utxo_count(vault);
-        publish_bitcoin_balance(vault);
+        // publish_utxo_count(vault);
+        // publish_bitcoin_balance(vault);
 
         let _ = tokio::join!(
-            Self::initialize_fee_budget_surplus(vault, parachain_rpc.clone(), bitcoin_transactions),
+            // Self::initialize_fee_budget_surplus(vault, parachain_rpc.clone(), bitcoin_transactions),
             publish_average_bitcoin_fee(vault),
             publish_expected_bitcoin_balance(vault, parachain_rpc.clone()),
             publish_locked_collateral(vault, parachain_rpc.clone()),
@@ -289,21 +291,21 @@ impl PerCurrencyMetrics {
 }
 
 pub fn register_custom_metrics() -> Result<(), RuntimeError> {
-    REGISTRY.register(Box::new(AVERAGE_BTC_FEE.clone()))?;
-    REGISTRY.register(Box::new(LOCKED_COLLATERAL.clone()))?;
-    REGISTRY.register(Box::new(COLLATERALIZATION.clone()))?;
-    REGISTRY.register(Box::new(REQUIRED_COLLATERAL.clone()))?;
-    REGISTRY.register(Box::new(FEE_BUDGET_SURPLUS.clone()))?;
-    REGISTRY.register(Box::new(BTC_BALANCE.clone()))?;
-    REGISTRY.register(Box::new(NATIVE_CURRENCY_BALANCE.clone()))?;
-    REGISTRY.register(Box::new(ISSUES.clone()))?;
-    REGISTRY.register(Box::new(REDEEMS.clone()))?;
-    REGISTRY.register(Box::new(UTXO_COUNT.clone()))?;
-    REGISTRY.register(Box::new(MEAN_IDLE_DURATION.clone()))?;
-    REGISTRY.register(Box::new(MEAN_POLL_DURATION.clone()))?;
-    REGISTRY.register(Box::new(MEAN_SCHEDULED_DURATION.clone()))?;
-    REGISTRY.register(Box::new(REMAINING_TIME_TO_REDEEM_HOURS.clone()))?;
-    REGISTRY.register(Box::new(RESTART_COUNT.clone()))?;
+    // REGISTRY.register(Box::new(AVERAGE_BTC_FEE.clone()))?;
+    // REGISTRY.register(Box::new(LOCKED_COLLATERAL.clone()))?;
+    // REGISTRY.register(Box::new(COLLATERALIZATION.clone()))?;
+    // REGISTRY.register(Box::new(REQUIRED_COLLATERAL.clone()))?;
+    // REGISTRY.register(Box::new(FEE_BUDGET_SURPLUS.clone()))?;
+    // REGISTRY.register(Box::new(BTC_BALANCE.clone()))?;
+    // REGISTRY.register(Box::new(NATIVE_CURRENCY_BALANCE.clone()))?;
+    // REGISTRY.register(Box::new(ISSUES.clone()))?;
+    // REGISTRY.register(Box::new(REDEEMS.clone()))?;
+    // REGISTRY.register(Box::new(UTXO_COUNT.clone()))?;
+    // REGISTRY.register(Box::new(MEAN_IDLE_DURATION.clone()))?;
+    // REGISTRY.register(Box::new(MEAN_POLL_DURATION.clone()))?;
+    // REGISTRY.register(Box::new(MEAN_SCHEDULED_DURATION.clone()))?;
+    // REGISTRY.register(Box::new(REMAINING_TIME_TO_REDEEM_HOURS.clone()))?;
+    // REGISTRY.register(Box::new(RESTART_COUNT.clone()))?;
 
     Ok(())
 }
@@ -373,33 +375,33 @@ pub async fn publish_collateralization<P: VaultRegistryPallet>(vault: &VaultData
     vault.metrics.collateralization.set(float_collateralization_percentage);
 }
 
-pub async fn update_bitcoin_metrics(
-    vault: &VaultData,
-    new_fee_entry: Option<SignedAmount>,
-    fee_budget: Option<u128>,
-) -> Result<(), ServiceError<Error>> {
-    // update the average fee
-    if let Some(amount) = new_fee_entry {
-        {
-            let mut tmp = vault.metrics.average_btc_fee.data.write().await;
-            *tmp = AverageTracker {
-                total: tmp.total.saturating_add(amount.to_sat().unsigned_abs()),
-                count: tmp.count.saturating_add(1),
-            };
-        }
-        publish_average_bitcoin_fee(vault).await;
+// pub async fn update_bitcoin_metrics(
+//     vault: &VaultData,
+//     new_fee_entry: Option<SignedAmount>,
+//     fee_budget: Option<u128>,
+// ) -> Result<(), ServiceError<Error>> {
+//     // update the average fee
+//     if let Some(amount) = new_fee_entry {
+//         {
+//             let mut tmp = vault.metrics.average_btc_fee.data.write().await;
+//             *tmp = AverageTracker {
+//                 total: tmp.total.saturating_add(amount.to_sat().unsigned_abs()),
+//                 count: tmp.count.saturating_add(1),
+//             };
+//         }
+//         publish_average_bitcoin_fee(vault).await;
 
-        if let Ok(budget) = TryInto::<i64>::try_into(fee_budget.unwrap_or(0)) {
-            let surplus = budget.saturating_sub(amount.to_sat().abs());
-            let mut tmp = vault.metrics.fee_budget_surplus.data.write().await;
-            *tmp = tmp.saturating_add(surplus);
-        }
-        publish_fee_budget_surplus(vault).await?;
-    }
+//         if let Ok(budget) = TryInto::<i64>::try_into(fee_budget.unwrap_or(0)) {
+//             let surplus = budget.saturating_sub(amount.to_sat().abs());
+//             let mut tmp = vault.metrics.fee_budget_surplus.data.write().await;
+//             *tmp = tmp.saturating_add(surplus);
+//         }
+//         publish_fee_budget_surplus(vault).await?;
+//     }
 
-    publish_bitcoin_balance(vault);
-    Ok(())
-}
+//     publish_bitcoin_balance(vault);
+//     Ok(())
+// }
 
 async fn publish_fee_budget_surplus(vault: &VaultData) -> Result<(), ServiceError<Error>> {
     let surplus = *vault.metrics.fee_budget_surplus.data.read().await;
@@ -419,15 +421,15 @@ async fn publish_average_bitcoin_fee(vault: &VaultData) {
     vault.metrics.average_btc_fee.gauge.set(average);
 }
 
-fn publish_bitcoin_balance(vault: &VaultData) {
-    match vault.btc_rpc.get_balance(None) {
-        Ok(bitcoin_balance) => vault.metrics.btc_balance.actual.set(bitcoin_balance.to_btc() as f64),
-        Err(e) => {
-            // unexpected error, but not critical so just continue
-            tracing::warn!("Failed to get Bitcoin balance: {}", e);
-        }
-    }
-}
+// fn publish_bitcoin_balance(vault: &VaultData) {
+//     match vault.btc_rpc.get_balance(None) {
+//         Ok(bitcoin_balance) => vault.metrics.btc_balance.actual.set(bitcoin_balance.to_btc() as f64),
+//         Err(e) => {
+//             // unexpected error, but not critical so just continue
+//             tracing::warn!("Failed to get Bitcoin balance: {}", e);
+//         }
+//     }
+// }
 
 async fn publish_native_currency_balance<P: CollateralBalancesPallet + UtilFuncs>(
     parachain_rpc: &P,
@@ -441,13 +443,13 @@ async fn publish_native_currency_balance<P: CollateralBalancesPallet + UtilFuncs
     // Ok(())
 }
 
-fn publish_utxo_count(vault: &VaultData) {
-    if let Ok(count) = vault.btc_rpc.get_utxo_count() {
-        if let Ok(count_i64) = count.try_into() {
-            vault.metrics.utxo_count.set(count_i64);
-        }
-    }
-}
+// fn publish_utxo_count(vault: &VaultData) {
+//     if let Ok(count) = vault.btc_rpc.get_utxo_count() {
+//         if let Ok(count_i64) = count.try_into() {
+//             vault.metrics.utxo_count.set(count_i64);
+//         }
+//     }
+// }
 
 pub fn increment_restart_counter() {
     RESTART_COUNT.inc();
@@ -539,7 +541,7 @@ fn calculate_remaining_time(
     // Some(time_to_parachain_deadline.max(time_to_bitcoin_deadline))
 }
 
-async fn publish_redeem_count<V: VaultDataReader>(vault_id_manager: &V, redeems: &[(H256, SpacewalkReplaceRequest)]) {
+async fn publish_redeem_count<V: VaultDataReader>(vault_id_manager: &V, redeems: &[(H256, runtime::SpacewalkRedeemRequest)]) {
     for vault in vault_id_manager.get_entries().await {
         let relevant_redeems: Vec<_> = redeems
             .iter()
@@ -622,9 +624,9 @@ pub async fn poll_metrics<P: CollateralBalancesPallet + RedeemPallet + IssuePall
             // publish_time_to_first_deadline(parachain_rpc, vault_id_manager, &redeems).await;
         }
 
-        for vault in vault_id_manager.get_entries().await {
-            publish_utxo_count(&vault);
-        }
+        // for vault in vault_id_manager.get_entries().await {
+        //     publish_utxo_count(&vault);
+        // }
 
         sleep(SLEEP_DURATION).await;
     }
@@ -686,11 +688,12 @@ mod tests {
     use jsonrpc_core::serde_json::{Map, Value};
     use runtime::{
         AccountId, AssetMetadata, Balance, BlockNumber, BtcAddress, BtcPublicKey, CurrencyId, Error as RuntimeError,
-        ErrorCode, InterBtcIssueRequest, SpacewalkReplaceRequest, InterBtcReplaceRequest, InterBtcVault,
+        ErrorCode, InterBtcIssueRequest, SpacewalkReplaceRequest, SpacewalkRedeemRequest, InterBtcReplaceRequest, InterBtcVault,
         RequestIssueEvent, StatusCode, Token, VaultId, VaultStatus, DOT, H256, IBTC, INTR,
     };
     use service::DynBitcoinCoreApi;
     use std::collections::BTreeSet;
+    
 
     mockall::mock! {
         Provider {}

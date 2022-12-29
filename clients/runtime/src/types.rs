@@ -104,6 +104,24 @@ mod metadata_aliases {
 	pub type EncodedCall = metadata::runtime_types::spacewalk_runtime_standalone::RuntimeCall;
 }
 
+pub mod currency_id {
+    use super::*;
+    use crate::Error;
+
+    pub trait CurrencyIdExt {
+        fn inner(&self) -> Result<primitives::TokenSymbol, Error>;
+    }
+
+    impl CurrencyIdExt for CurrencyId {
+        fn inner(&self) -> Result<primitives::TokenSymbol, Error> {
+            match self {
+                Token(x) => Ok(*x),
+				_ => Err(Error::CurrencyNotFound)
+            }
+        }
+    }
+}
+
 pub trait PrettyPrint {
 	fn pretty_print(&self) -> String;
 }

@@ -79,6 +79,8 @@ pub enum Error {
 	TimeElapsed(#[from] Elapsed),
 	#[error("UrlParseError: {0}")]
 	UrlParseError(#[from] UrlParseError),
+	#[error("Currency not found")]
+    CurrencyNotFound,
 }
 
 impl Error {
