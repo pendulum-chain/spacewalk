@@ -15,11 +15,10 @@ use runtime::{
 		gather, proto::MetricFamily, Encoder, Gauge, GaugeVec, IntCounter, IntGauge, IntGaugeVec,
 		Opts, Registry, TextEncoder,
 	},
-    CurrencyInfo,
 	types::currency_id::CurrencyIdExt,
-	CollateralBalancesPallet, CurrencyId, Error as RuntimeError, FeedValuesEvent, FixedU128,
-	IssuePallet, IssueRequestStatus, OracleKey, RedeemPallet, RedeemRequestStatus, ReplacePallet,
-	SecurityPallet, SpacewalkParachain, SpacewalkReplaceRequest, UtilFuncs, VaultId,
+	CollateralBalancesPallet, CurrencyId, CurrencyInfo, Error as RuntimeError, FeedValuesEvent,
+	FixedU128, IssuePallet, IssueRequestStatus, OracleKey, RedeemPallet, RedeemRequestStatus,
+	ReplacePallet, SecurityPallet, SpacewalkParachain, SpacewalkReplaceRequest, UtilFuncs, VaultId,
 	VaultRegistryPallet, H256,
 };
 use service::{
@@ -29,7 +28,6 @@ use service::{
 use std::time::Duration;
 use tokio::{sync::RwLock, time::sleep};
 use tokio_metrics::TaskMetrics;
-
 
 const SLEEP_DURATION: Duration = Duration::from_secs(5 * 60);
 const SECONDS_PER_HOUR: f64 = 3600.0;
@@ -158,17 +156,17 @@ impl VaultDataReader for VaultIdManager {
 impl PerCurrencyMetrics {
 	pub fn new(vault_id: &VaultId) -> Self {
 		let label = format!(
-		    "{}_{}",
-		    vault_id
-		        .collateral_currency()
-		        .inner()
-		        .map(|i| i.symbol().to_string())
-		        .unwrap_or_default(),
-		    vault_id
-		        .wrapped_currency()
-		        .inner()
-		        .map(|i| i.symbol().to_string())
-		        .unwrap_or_default()
+			"{}_{}",
+			vault_id
+				.collateral_currency()
+				.inner()
+				.map(|i| i.symbol().to_string())
+				.unwrap_or_default(),
+			vault_id
+				.wrapped_currency()
+				.inner()
+				.map(|i| i.symbol().to_string())
+				.unwrap_or_default()
 		);
 		Self::new_with_label(label.as_ref())
 		// todo!()
@@ -453,8 +451,8 @@ async fn publish_native_currency_balance<P: CollateralBalancesPallet + UtilFuncs
 ) -> Result<(), ServiceError<Error>> {
 	let native_currency = parachain_rpc.get_native_currency_id();
 	if let Ok(balance) = parachain_rpc.get_free_balance(native_currency).await {
-	    let balance = raw_value_as_currency(balance, native_currency)?;
-	    NATIVE_CURRENCY_BALANCE.set(balance);
+		let balance = raw_value_as_currency(balance, native_currency)?;
+		NATIVE_CURRENCY_BALANCE.set(balance);
 	}
 	Ok(())
 }
@@ -525,7 +523,7 @@ async fn publish_time_to_first_deadline<V: VaultDataReader, P: RedeemPallet + Se
 	//             .iter()
 	//             .filter(|(_, redeem)| redeem.vault == vault.vault_id && redeem.status ==
 	// RedeemRequestStatus::Pending)             .filter_map(|(_, redeem)|
-	// calculate_remaining_time(redeem_period, redeem, para_height, bitcoin_height))             
+	// calculate_remaining_time(redeem_period, redeem, para_height, bitcoin_height))
 	// .min();
 
 	//         // if no redeem deadlines, then use the redeem period

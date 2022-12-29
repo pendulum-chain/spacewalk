@@ -13,6 +13,7 @@ use subxt::{
 
 pub use assets::TryFromSymbol;
 pub use error::{Error, SubxtError};
+pub use primitives::CurrencyInfo;
 pub use retry::{notify_retry, RetryPolicy};
 pub use rpc::{
 	CollateralBalancesPallet, IssuePallet, OraclePallet, RedeemPallet, ReplacePallet,
@@ -21,7 +22,6 @@ pub use rpc::{
 };
 pub use shutdown::{ShutdownReceiver, ShutdownSender};
 pub use types::*;
-pub use primitives::CurrencyInfo;
 
 pub mod cli;
 

@@ -59,7 +59,7 @@ pub struct SpacewalkParachain {
 	shutdown_tx: ShutdownSender,
 	fee_rate_update_tx: FeeRateUpdateSender,
 	pub native_currency_id: CurrencyId,
-    pub relay_chain_currency_id: CurrencyId,
+	pub relay_chain_currency_id: CurrencyId,
 }
 
 impl SpacewalkParachain {
@@ -95,15 +95,25 @@ impl SpacewalkParachain {
 		}
 
 		let currency_constants = metadata::constants().currency();
-        let native_currency_id = api.constants().at(&currency_constants.get_native_currency_id())?;
-        let relay_chain_currency_id = api.constants().at(&currency_constants.get_relay_chain_currency_id())?;
-        // let wrapped_currency_id = api.constants().at(&currency_constants.get_wrapped_currency_id())?;
+		let native_currency_id = api.constants().at(&currency_constants.get_native_currency_id())?;
+		let relay_chain_currency_id =
+			api.constants().at(&currency_constants.get_relay_chain_currency_id())?;
+		// let wrapped_currency_id =
+		// api.constants().at(&currency_constants.get_wrapped_currency_id())?;
 
 		// low capacity channel since we generally only care about the newest value, so it's ok
 		// if we miss an event
 		let (fee_rate_update_tx, _) = tokio::sync::broadcast::channel(2);
 
-		let parachain_rpc = Self { api, shutdown_tx, signer, account_id, fee_rate_update_tx, native_currency_id, relay_chain_currency_id };
+		let parachain_rpc = Self {
+			api,
+			shutdown_tx,
+			signer,
+			account_id,
+			fee_rate_update_tx,
+			native_currency_id,
+			relay_chain_currency_id,
+		};
 		Ok(parachain_rpc)
 	}
 
@@ -471,7 +481,7 @@ pub trait UtilFuncs {
 	async fn get_current_chain_height(&self) -> Result<u32, Error>;
 
 	/// Gets the ID of the native currency.
-    fn get_native_currency_id(&self) -> CurrencyId;
+	fn get_native_currency_id(&self) -> CurrencyId;
 
 	/// Get the address of the configured signer.
 	fn get_account_id(&self) -> &AccountId;
@@ -491,8 +501,8 @@ impl UtilFuncs for SpacewalkParachain {
 	}
 
 	fn get_native_currency_id(&self) -> CurrencyId {
-        self.native_currency_id
-    }
+		self.native_currency_id
+	}
 
 	fn is_this_vault(&self, vault_id: &VaultId) -> bool {
 		&vault_id.account_id == self.get_account_id()
