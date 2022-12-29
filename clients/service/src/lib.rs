@@ -7,7 +7,7 @@ use nonzero_ext::*;
 use tokio::sync::RwLock;
 pub use warp;
 
-pub use cli::{LoggingFormat, RestartPolicy, ServiceConfig};
+pub use cli::{LoggingFormat, RestartPolicy, ServiceConfig, MonitoringConfig};
 pub use error::Error;
 use runtime::{
 	cli::ConnectionOpts as ParachainConfig, PrettyPrint, ShutdownReceiver, ShutdownSender,
