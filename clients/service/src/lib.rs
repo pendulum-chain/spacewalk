@@ -7,7 +7,7 @@ use nonzero_ext::*;
 use tokio::sync::RwLock;
 pub use warp;
 
-pub use cli::{LoggingFormat, RestartPolicy, ServiceConfig, MonitoringConfig};
+pub use cli::{LoggingFormat, MonitoringConfig, RestartPolicy, ServiceConfig};
 pub use error::Error;
 use runtime::{
 	cli::ConnectionOpts as ParachainConfig, PrettyPrint, ShutdownReceiver, ShutdownSender,
@@ -27,6 +27,7 @@ pub trait Service<Config, InnerError> {
 	async fn new_service(
 		spacewalk_parachain: SpacewalkParachain,
 		config: Config,
+		monitoring_config: MonitoringConfig,
 		shutdown: ShutdownSender,
 	) -> Result<Self, InnerError>
 	where
@@ -39,6 +40,7 @@ pub struct ConnectionManager<Config: Clone, F: Fn()> {
 	parachain_config: ParachainConfig,
 	service_config: ServiceConfig,
 	config: Config,
+	monitoring_config: MonitoringConfig,
 	increment_restart_counter: F,
 }
 
@@ -48,10 +50,18 @@ impl<Config: Clone + Send + 'static, F: Fn()> ConnectionManager<Config, F> {
 		signer: Arc<RwLock<SpacewalkSigner>>,
 		parachain_config: ParachainConfig,
 		service_config: ServiceConfig,
+		monitoring_config: MonitoringConfig,
 		config: Config,
 		increment_restart_counter: F,
 	) -> Self {
-		Self { signer, parachain_config, service_config, config, increment_restart_counter }
+		Self {
+			signer,
+			parachain_config,
+			service_config,
+			config,
+			monitoring_config,
+			increment_restart_counter,
+		}
 	}
 
 	pub async fn start<S: Service<Config, InnerError>, InnerError: fmt::Display>(
@@ -75,9 +85,14 @@ impl<Config: Clone + Send + 'static, F: Fn()> ConnectionManager<Config, F> {
 			)
 			.await?;
 
-			let mut service = S::new_service(spacewalk_parachain, config, shutdown_tx.clone())
-				.await
-				.map_err(|e| Error::StartServiceError(e))?;
+			let mut service = S::new_service(
+				spacewalk_parachain,
+				config,
+				self.monitoring_config.clone(),
+				shutdown_tx.clone(),
+			)
+			.await
+			.map_err(|e| Error::StartServiceError(e))?;
 
 			match service.start().await {
 				Err(err @ Error::Abort(_)) => {

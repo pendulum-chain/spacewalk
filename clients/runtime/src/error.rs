@@ -81,9 +81,9 @@ pub enum Error {
 	#[error("UrlParseError: {0}")]
 	UrlParseError(#[from] UrlParseError),
 	#[error("Currency not found")]
-    CurrencyNotFound,
+	CurrencyNotFound,
 	#[error("PrometheusError: {0}")]
-    PrometheusError(#[from] PrometheusError),
+	PrometheusError(#[from] PrometheusError),
 }
 
 impl Error {

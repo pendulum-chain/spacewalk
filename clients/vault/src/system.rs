@@ -18,7 +18,7 @@ use runtime::{
 	StellarRelayPallet, TryFromSymbol, UpdateActiveBlockEvent, UtilFuncs, VaultCurrencyPair,
 	VaultId, VaultRegistryPallet,
 };
-use service::{wait_or_shutdown, Error as ServiceError, Service, MonitoringConfig};
+use service::{wait_or_shutdown, Error as ServiceError, MonitoringConfig, Service};
 use wallet::{LedgerTxEnvMap, StellarWallet};
 
 use crate::{
@@ -27,11 +27,12 @@ use crate::{
 	execution::execute_open_requests,
 	issue,
 	issue::IssueFilter,
+	metrics::{poll_metrics, PerCurrencyMetrics},
 	oracle::OracleAgent,
 	redeem::listen_for_redeem_requests,
 	replace::{listen_for_accept_replace, listen_for_execute_replace, listen_for_replace_requests},
 	service::{CancellationScheduler, IssueCanceller},
-	ArcRwLock, Event, CHAIN_HEIGHT_POLLING_INTERVAL, metrics::PerCurrencyMetrics,
+	ArcRwLock, Event, CHAIN_HEIGHT_POLLING_INTERVAL,
 };
 
 pub const VERSION: &str = git_version!(args = ["--tags"], fallback = "unknown");
@@ -78,7 +79,11 @@ impl VaultIdManager {
 			.map(|key| {
 				(
 					key.clone(),
-					VaultData { vault_id: key.clone(), stellar_wallet: stellar_wallet.clone(), metrics: PerCurrencyMetrics::dummy()},
+					VaultData {
+						vault_id: key.clone(),
+						stellar_wallet: stellar_wallet.clone(),
+						metrics: PerCurrencyMetrics::dummy(),
+					},
 				)
 			})
 			.collect();
@@ -86,8 +91,14 @@ impl VaultIdManager {
 	}
 
 	async fn add_vault_id(&self, vault_id: VaultId) -> Result<(), Error> {
-		let data =
-			VaultData { vault_id: vault_id.clone(), stellar_wallet: self.stellar_wallet.clone(), metrics: PerCurrencyMetrics::dummy(), };
+		tracing::info!("Initializing metrics...");
+		let metrics = PerCurrencyMetrics::new(&vault_id);
+		let data = VaultData {
+			vault_id: vault_id.clone(),
+			stellar_wallet: self.stellar_wallet.clone(),
+			metrics,
+		};
+		PerCurrencyMetrics::initialize_values(self.spacewalk_parachain.clone(), &data).await;
 
 		self.vault_data.write().await.insert(vault_id, data.clone());
 
@@ -578,12 +589,12 @@ impl VaultService {
 				)),
 			),
 			(
-                "Bridge Metrics Poller",
-                maybe_run(
-                    !self.monitoring_config.no_prometheus,
-                    poll_metrics(self.spacewalk_parachain.clone(), self.vault_id_manager.clone()),
-                ),
-            ),
+				"Bridge Metrics Poller",
+				maybe_run(
+					!self.monitoring_config.no_prometheus,
+					poll_metrics(self.spacewalk_parachain.clone(), self.vault_id_manager.clone()),
+				),
+			),
 		];
 
 		run_and_monitor_tasks(self.shutdown.clone(), tasks).await

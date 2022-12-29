@@ -1,4 +1,7 @@
-use std::{sync::Arc, net::{Ipv4Addr, SocketAddr}};
+use std::{
+	net::{Ipv4Addr, SocketAddr},
+	sync::Arc,
+};
 
 use clap::Parser;
 use futures::Future;
@@ -7,12 +10,16 @@ use tokio::sync::RwLock;
 use tokio_stream::StreamExt;
 
 use runtime::{SpacewalkSigner, DEFAULT_SPEC_NAME};
-use service::{ConnectionManager, Error as ServiceError, ServiceConfig, MonitoringConfig, warp::{self, Filter}};
+use service::{
+	warp::{self, Filter},
+	ConnectionManager, Error as ServiceError, MonitoringConfig, ServiceConfig,
+};
 use signal_hook::consts::*;
 use signal_hook_tokio::Signals;
 use vault::{
-	metrics::{increment_restart_counter, self}, process::PidFile, Error, VaultService, VaultServiceConfig,
-	ABOUT, AUTHORS, NAME, VERSION,
+	metrics::{self, increment_restart_counter},
+	process::PidFile,
+	Error, VaultService, VaultServiceConfig, ABOUT, AUTHORS, NAME, VERSION,
 };
 
 #[derive(Parser)]
@@ -51,8 +58,8 @@ pub struct RunVaultOpts {
 	pub service: ServiceConfig,
 
 	/// Prometheus monitoring settings.
-    #[clap(flatten)]
-    pub monitoring: MonitoringConfig,
+	#[clap(flatten)]
+	pub monitoring: MonitoringConfig,
 }
 
 async fn catch_signals<F>(
@@ -89,31 +96,32 @@ async fn start() -> Result<(), ServiceError<Error>> {
 		signer.clone(),
 		opts.parachain,
 		opts.service,
+		opts.monitoring.clone(),
 		opts.vault,
 		increment_restart_counter,
 	);
 
 	if !opts.monitoring.no_prometheus {
-        metrics::register_custom_metrics()?;
-        let metrics_route = warp::path("metrics").and_then(metrics::metrics_handler);
-        let prometheus_host = if opts.monitoring.prometheus_external {
-            Ipv4Addr::UNSPECIFIED
-        } else {
-            Ipv4Addr::LOCALHOST
-        };
-        tracing::info!(
-            "Starting Prometheus exporter at http://{}:{}",
-            prometheus_host,
-            opts.monitoring.prometheus_port
-        );
-        let prometheus_port = opts.monitoring.prometheus_port;
+		metrics::register_custom_metrics()?;
+		let metrics_route = warp::path("metrics").and_then(metrics::metrics_handler);
+		let prometheus_host = if opts.monitoring.prometheus_external {
+			Ipv4Addr::UNSPECIFIED
+		} else {
+			Ipv4Addr::LOCALHOST
+		};
+		tracing::info!(
+			"Starting Prometheus exporter at http://{}:{}",
+			prometheus_host,
+			opts.monitoring.prometheus_port
+		);
+		let prometheus_port = opts.monitoring.prometheus_port;
 
-        tokio::task::spawn(async move {
-            warp::serve(metrics_route)
-                .run(SocketAddr::new(prometheus_host.into(), prometheus_port))
-                .await;
-        });
-    }
+		tokio::task::spawn(async move {
+			warp::serve(metrics_route)
+				.run(SocketAddr::new(prometheus_host.into(), prometheus_port))
+				.await;
+		});
+	}
 
 	// The system information struct should only be created once.
 	// Source: https://docs.rs/sysinfo/0.26.1/sysinfo/#usage

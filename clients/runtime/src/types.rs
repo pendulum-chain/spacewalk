@@ -105,21 +105,21 @@ mod metadata_aliases {
 }
 
 pub mod currency_id {
-    use super::*;
-    use crate::Error;
+	use super::*;
+	use crate::Error;
 
-    pub trait CurrencyIdExt {
-        fn inner(&self) -> Result<primitives::TokenSymbol, Error>;
-    }
+	pub trait CurrencyIdExt {
+		fn inner(&self) -> Result<primitives::TokenSymbol, Error>;
+	}
 
-    impl CurrencyIdExt for CurrencyId {
-        fn inner(&self) -> Result<primitives::TokenSymbol, Error> {
-            match self {
-                Token(x) => Ok(*x),
-				_ => Err(Error::CurrencyNotFound)
-            }
-        }
-    }
+	impl CurrencyIdExt for CurrencyId {
+		fn inner(&self) -> Result<primitives::TokenSymbol, Error> {
+			match self {
+				Token(x) => Ok(*x),
+				_ => Err(Error::CurrencyNotFound),
+			}
+		}
+	}
 }
 
 pub trait PrettyPrint {
