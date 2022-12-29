@@ -21,6 +21,7 @@ pub use rpc::{
 };
 pub use shutdown::{ShutdownReceiver, ShutdownSender};
 pub use types::*;
+pub use primitives::CurrencyInfo;
 
 pub mod cli;
 
