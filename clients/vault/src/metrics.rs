@@ -449,13 +449,12 @@ async fn publish_average_bitcoin_fee(vault: &VaultData) {
 async fn publish_native_currency_balance<P: CollateralBalancesPallet + UtilFuncs>(
 	parachain_rpc: &P,
 ) -> Result<(), ServiceError<Error>> {
-	todo!()
-	// let native_currency = parachain_rpc.get_native_currency_id();
-	// if let Ok(balance) = parachain_rpc.get_free_balance(native_currency).await {
-	//     let balance = raw_value_as_currency(balance, native_currency)?;
-	//     NATIVE_CURRENCY_BALANCE.set(balance);
-	// }
-	// Ok(())
+	let native_currency = parachain_rpc.get_native_currency_id();
+	if let Ok(balance) = parachain_rpc.get_free_balance(native_currency).await {
+	    let balance = raw_value_as_currency(balance, native_currency)?;
+	    NATIVE_CURRENCY_BALANCE.set(balance);
+	}
+	Ok(())
 }
 
 // fn publish_utxo_count(vault: &VaultData) {
