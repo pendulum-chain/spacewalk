@@ -291,21 +291,21 @@ impl PerCurrencyMetrics {
 }
 
 pub fn register_custom_metrics() -> Result<(), RuntimeError> {
-    // REGISTRY.register(Box::new(AVERAGE_BTC_FEE.clone()))?;
-    // REGISTRY.register(Box::new(LOCKED_COLLATERAL.clone()))?;
-    // REGISTRY.register(Box::new(COLLATERALIZATION.clone()))?;
-    // REGISTRY.register(Box::new(REQUIRED_COLLATERAL.clone()))?;
-    // REGISTRY.register(Box::new(FEE_BUDGET_SURPLUS.clone()))?;
-    // REGISTRY.register(Box::new(BTC_BALANCE.clone()))?;
-    // REGISTRY.register(Box::new(NATIVE_CURRENCY_BALANCE.clone()))?;
-    // REGISTRY.register(Box::new(ISSUES.clone()))?;
-    // REGISTRY.register(Box::new(REDEEMS.clone()))?;
-    // REGISTRY.register(Box::new(UTXO_COUNT.clone()))?;
-    // REGISTRY.register(Box::new(MEAN_IDLE_DURATION.clone()))?;
-    // REGISTRY.register(Box::new(MEAN_POLL_DURATION.clone()))?;
-    // REGISTRY.register(Box::new(MEAN_SCHEDULED_DURATION.clone()))?;
-    // REGISTRY.register(Box::new(REMAINING_TIME_TO_REDEEM_HOURS.clone()))?;
-    // REGISTRY.register(Box::new(RESTART_COUNT.clone()))?;
+    REGISTRY.register(Box::new(AVERAGE_BTC_FEE.clone()))?;
+    REGISTRY.register(Box::new(LOCKED_COLLATERAL.clone()))?;
+    REGISTRY.register(Box::new(COLLATERALIZATION.clone()))?;
+    REGISTRY.register(Box::new(REQUIRED_COLLATERAL.clone()))?;
+    REGISTRY.register(Box::new(FEE_BUDGET_SURPLUS.clone()))?;
+    REGISTRY.register(Box::new(BTC_BALANCE.clone()))?;
+    REGISTRY.register(Box::new(NATIVE_CURRENCY_BALANCE.clone()))?;
+    REGISTRY.register(Box::new(ISSUES.clone()))?;
+    REGISTRY.register(Box::new(REDEEMS.clone()))?;
+    REGISTRY.register(Box::new(UTXO_COUNT.clone()))?;
+    REGISTRY.register(Box::new(MEAN_IDLE_DURATION.clone()))?;
+    REGISTRY.register(Box::new(MEAN_POLL_DURATION.clone()))?;
+    REGISTRY.register(Box::new(MEAN_SCHEDULED_DURATION.clone()))?;
+    REGISTRY.register(Box::new(REMAINING_TIME_TO_REDEEM_HOURS.clone()))?;
+    REGISTRY.register(Box::new(RESTART_COUNT.clone()))?;
 
     Ok(())
 }
