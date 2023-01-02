@@ -208,6 +208,7 @@ impl staking::Config for Test {
 
 impl security::Config for Test {
 	type RuntimeEvent = TestEvent;
+	type WeightInfo = ();
 }
 
 parameter_types! {

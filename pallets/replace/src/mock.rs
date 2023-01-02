@@ -224,6 +224,7 @@ impl stellar_relay::Config for Test {
 
 impl security::Config for Test {
 	type RuntimeEvent = TestEvent;
+	type WeightInfo = ();
 }
 
 impl nomination::Config for Test {

@@ -165,6 +165,7 @@ impl pallet_timestamp::Config for Test {
 
 impl security::Config for Test {
 	type RuntimeEvent = TestEvent;
+	type WeightInfo = ();
 }
 
 impl staking::Config for Test {
