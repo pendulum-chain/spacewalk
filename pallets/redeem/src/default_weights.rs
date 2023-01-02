@@ -35,6 +35,7 @@ pub trait WeightInfo {
 	fn cancel_redeem_retry() -> Weight;
 	fn set_redeem_period() -> Weight;
 	fn self_redeem() -> Weight;
+	fn rate_limit_update() -> Weight;
 }
 
 /// Weights for redeem using the Substrate node and recommended hardware.
@@ -59,10 +60,15 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 	// Storage: Security ActiveBlockCount (r:1 w:0)
 	// Storage: Redeem RedeemPeriod (r:1 w:0)
 	// Storage: Redeem RedeemRequests (r:0 w:1)
+	// Storage: Redeem LimitVolumeAmount (r:1 w:0)
+	// Storage: Redeem IntervalLength (r:1 w:0)
+	// Storage: Redeem LastIntervalIndex (r:1 w:0)
+	// Storage: Redeem CurrentVolumeAmount (r:1 w:0)
+	
 	fn request_redeem() -> Weight {
 		// Minimum execution time: 57_000 nanoseconds.
 		Weight::from_ref_time(58_000_000_u64)
-			.saturating_add(T::DbWeight::get().reads(20_u64))
+			.saturating_add(T::DbWeight::get().reads(24_u64))
 			.saturating_add(T::DbWeight::get().writes(8_u64))
 	}
 	// Storage: Tokens Accounts (r:3 w:3)
@@ -82,11 +88,16 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 	// Storage: StellarRelay Organizations (r:1 w:0)
 	// Storage: VaultRewards TotalStake (r:1 w:0)
 	// Storage: VaultRegistry Vaults (r:1 w:1)
+
+	// Storage: Redeem LimitVolumeAmount (r:1 w:0)
+	// Storage: Redeem CurrentVolumeAmount (r:1 w:1)
+	// Storage: Security ParachainStatus (r:2 w0)
+	// Storage: Oracle Aggregate (r:2 w0)
 	fn execute_redeem() -> Weight {
 		// Minimum execution time: 4_060_000 nanoseconds.
 		Weight::from_ref_time(4_092_000_000_u64)
-			.saturating_add(T::DbWeight::get().reads(6_u64))
-			.saturating_add(T::DbWeight::get().writes(2_u64))
+			.saturating_add(T::DbWeight::get().reads(12_u64))
+			.saturating_add(T::DbWeight::get().writes(3_u64))
 	}
 	// Storage: Security ParachainStatus (r:1 w:0)
 	// Storage: Redeem RedeemRequests (r:1 w:1)
@@ -147,6 +158,12 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 		Weight::from_ref_time(56_000_000_u64)
 			.saturating_add(T::DbWeight::get().reads(10_u64))
 			.saturating_add(T::DbWeight::get().writes(9_u64))
+	}
+	
+	fn rate_limit_update() -> Weight{
+		// Minimum execution time: 7_000 nanoseconds.
+		Weight::from_ref_time(8_000_000_u64)
+			.saturating_add(T::DbWeight::get().writes(3_u64))
 	}
 }
 
@@ -259,5 +276,11 @@ impl WeightInfo for () {
 		Weight::from_ref_time(56_000_000_u64)
 			.saturating_add(RocksDbWeight::get().reads(10_u64))
 			.saturating_add(RocksDbWeight::get().writes(9_u64))
+	}
+
+	fn rate_limit_update() -> Weight{
+		// Minimum execution time: 7_000 nanoseconds.
+		Weight::from_ref_time(8_000_000_u64)
+			.saturating_add(RocksDbWeight::get().writes(3_u64))
 	}
 }

@@ -32,6 +32,7 @@ pub trait WeightInfo {
 	fn execute_issue() -> Weight;
 	fn cancel_issue() -> Weight;
 	fn set_issue_period() -> Weight;
+	fn rate_limit_update() -> Weight;
 }
 
 /// Weights for issue using the Substrate node and recommended hardware.
@@ -88,6 +89,11 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 		Weight::from_ref_time(8_000_000_u64)
 			.saturating_add(T::DbWeight::get().writes(1_u64))
 	}
+	fn rate_limit_update() -> Weight{
+		// Minimum execution time: 7_000 nanoseconds.
+		Weight::from_ref_time(8_000_000_u64)
+			.saturating_add(T::DbWeight::get().writes(3_u64))
+	}
 }
 
 // For backwards compatibility and tests
@@ -107,10 +113,14 @@ impl WeightInfo for () {
 	// Storage: Security ActiveBlockCount (r:1 w:0)
 	// Storage: Issue IssuePeriod (r:1 w:0)
 	// Storage: Issue IssueRequests (r:0 w:1)
+	// Storage: Redeem LimitVolumeAmount (r:1 w:0)
+	// Storage: Redeem IntervalLength (r:1 w:0)
+	// Storage: Redeem LastIntervalIndex (r:1 w:0)
+	// Storage: Redeem CurrentVolumeAmount (r:1 w:0)
 	fn request_issue() -> Weight {
 		// Minimum execution time: 48_000 nanoseconds.
 		Weight::from_ref_time(50_000_000_u64)
-			.saturating_add(RocksDbWeight::get().reads(15_u64))
+			.saturating_add(RocksDbWeight::get().reads(19_u64))
 			.saturating_add(RocksDbWeight::get().writes(3_u64))
 	}
 	// Storage: Issue IssueRequests (r:1 w:1)
@@ -121,11 +131,15 @@ impl WeightInfo for () {
 	// Storage: Fee IssueFee (r:1 w:0)
 	// Storage: VaultRewards Stake (r:1 w:0)
 	// Storage: VaultRewards TotalStake (r:1 w:0)
+	// Storage: Redeem LimitVolumeAmount (r:1 w:0)
+	// Storage: Redeem CurrentVolumeAmount (r:1 w:1)
+	// Storage: Security ParachainStatus (r:2 w0)
+	// Storage: Oracle Aggregate (r:2 w0)
 	fn execute_issue() -> Weight {
 		// Minimum execution time: 4_078_000 nanoseconds.
 		Weight::from_ref_time(4_104_000_000_u64)
-			.saturating_add(RocksDbWeight::get().reads(8_u64))
-			.saturating_add(RocksDbWeight::get().writes(2_u64))
+			.saturating_add(RocksDbWeight::get().reads(14_u64))
+			.saturating_add(RocksDbWeight::get().writes(3_u64))
 	}
 	// Storage: Issue IssueRequests (r:1 w:1)
 	// Storage: Issue IssuePeriod (r:1 w:0)
@@ -142,5 +156,11 @@ impl WeightInfo for () {
 		// Minimum execution time: 7_000 nanoseconds.
 		Weight::from_ref_time(8_000_000_u64)
 			.saturating_add(RocksDbWeight::get().writes(1_u64))
+	}
+
+	fn rate_limit_update() -> Weight{
+		// Minimum execution time: 7_000 nanoseconds.
+		Weight::from_ref_time(8_000_000_u64)
+			.saturating_add(RocksDbWeight::get().writes(3_u64))
 	}
 }

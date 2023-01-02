@@ -311,7 +311,7 @@ pub mod pallet {
 			Ok(().into())
 		}
 
-		#[pallet::weight(<T as Config>::WeightInfo::set_issue_period())]
+		#[pallet::weight(<T as Config>::WeightInfo::rate_limit_update())]
 		#[transactional]
 		pub fn rate_limit_update(
 			origin: OriginFor<T>,
