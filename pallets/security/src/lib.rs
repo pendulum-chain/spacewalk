@@ -308,6 +308,9 @@ impl<T: Config> Pallet<T> {
 	}
 
 	/// for testing purposes only!
+	/// Std is never enabled in the Runtime.
+	/// This function can only be called from testing but not from the pallet itself:
+	#[cfg(feature = "std")]
 	pub fn set_active_block_number(n: T::BlockNumber) {
 		ActiveBlockCount::<T>::set(n);
 	}
