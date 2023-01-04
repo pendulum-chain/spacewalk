@@ -38,6 +38,11 @@ fn setup_exchange_rate<T: crate::Config>() {
 		<T as currency::Config>::UnsignedFixedPoint::one(),
 	)
 	.unwrap();
+	Oracle::<T>::_set_exchange_rate(
+		get_wrapped_currency_id(),
+		<T as currency::Config>::UnsignedFixedPoint::one(),
+	)
+	.unwrap();
 }
 
 fn get_vault_id<T: crate::Config>() -> DefaultVaultId<T> {
