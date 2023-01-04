@@ -57,7 +57,8 @@ runtime-benchmarks = [
   "frame-benchmarking",
   "frame-support/runtime-benchmarks",
   "frame-system/runtime-benchmarks",
-  "currency/testing-constants"
+  "currency/testing-constants",
+  "security/testing-utils"
 ]
 skip-slow-tests = []
 std = [
