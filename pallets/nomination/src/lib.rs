@@ -149,8 +149,8 @@ pub mod pallet {
 			origin: OriginFor<T>,
 			currency_pair: DefaultVaultCurrencyPair<T>,
 		) -> DispatchResultWithPostInfo {
-			ext::security::ensure_parachain_status_running::<T>()?;
 			let account_id = ensure_signed(origin)?;
+			ext::security::ensure_parachain_status_running::<T>()?;
 			let vault_id =
 				VaultId::new(account_id, currency_pair.collateral, currency_pair.wrapped);
 
@@ -165,9 +165,8 @@ pub mod pallet {
 			origin: OriginFor<T>,
 			currency_pair: DefaultVaultCurrencyPair<T>,
 		) -> DispatchResultWithPostInfo {
-			ext::security::ensure_parachain_status_running::<T>()?;
-
 			let account_id = ensure_signed(origin)?;
+			ext::security::ensure_parachain_status_running::<T>()?;
 			let vault_id =
 				VaultId::new(account_id, currency_pair.collateral, currency_pair.wrapped);
 			Self::_opt_out_of_nomination(&vault_id)?;
