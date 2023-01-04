@@ -41,6 +41,7 @@ mocktopus = "0.8.0"
 frame-benchmarking = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.35", default-features = false }
 
 currency = { path = "../currency", default-features = false, features = ["testing-constants"] }
+security = { path = "../security", features = ['testing-utils'] }
 
 # Orml dependencies
 orml-tokens = { git = "https://github.com/open-web3-stack/open-runtime-module-library", branch = "polkadot-v0.9.33", default-features = false }
