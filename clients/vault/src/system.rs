@@ -6,7 +6,7 @@ use async_trait::async_trait;
 use clap::Parser;
 use futures::{
 	channel::{mpsc, mpsc::Sender},
-	future::join_all,
+	future::{join, join_all},
 	SinkExt, TryFutureExt,
 };
 use git_version::git_version;
@@ -27,7 +27,7 @@ use crate::{
 	execution::execute_open_requests,
 	issue,
 	issue::IssueFilter,
-	metrics::{poll_metrics, PerCurrencyMetrics},
+	metrics::{poll_metrics, publish_tokio_metrics, PerCurrencyMetrics},
 	oracle::OracleAgent,
 	redeem::listen_for_redeem_requests,
 	replace::{listen_for_accept_replace, listen_for_execute_replace, listen_for_replace_requests},
@@ -282,7 +282,7 @@ async fn run_and_monitor_tasks(
 	shutdown_tx: ShutdownSender,
 	items: Vec<(&str, ServiceTask)>,
 ) -> Result<(), ServiceError<Error>> {
-	let (_metrics_iterators, tasks): (HashMap<String, _>, Vec<_>) = items
+	let (metrics_iterators, tasks): (HashMap<String, _>, Vec<_>) = items
 		.into_iter()
 		.filter_map(|(name, task)| {
 			let monitor = tokio_metrics::TaskMonitor::new();
@@ -298,18 +298,19 @@ async fn run_and_monitor_tasks(
 		})
 		.unzip();
 
-	// We don't use metrics for now
-	// let tokio_metrics = tokio::spawn(wait_or_shutdown(
-	// 	shutdown_tx.clone(),
-	// 	publish_tokio_metrics(metrics_iterators),
-	// ));
+	let tokio_metrics = tokio::spawn(wait_or_shutdown(
+		shutdown_tx.clone(),
+		publish_tokio_metrics(metrics_iterators),
+	));
 
-	let results = join_all(tasks).await;
-	results
-		.into_iter()
-		.find(|res| matches!(res, Ok(Err(_))))
-		.and_then(|res| res.ok())
-		.unwrap_or(Ok(()))
+	match join(tokio_metrics, join_all(tasks)).await {
+		(Ok(Err(err)), _) => Err(err),
+		(_, results) => results
+			.into_iter()
+			.find(|res| matches!(res, Ok(Err(_))))
+			.and_then(|res| res.ok())
+			.unwrap_or(Ok(())),
+	}
 }
 
 type Task = Pin<Box<dyn Future<Output = Result<(), ServiceError<Error>>> + Send + 'static>>;
