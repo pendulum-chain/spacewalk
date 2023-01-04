@@ -313,6 +313,7 @@ impl<T: Config> Pallet<T> {
 	}
 
 	/// for testing purposes only!
+	#[cfg(feature = "testing-utils")]
 	pub fn set_active_block_number(n: T::BlockNumber) {
 		ActiveBlockCount::<T>::set(n);
 	}

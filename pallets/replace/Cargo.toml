@@ -47,6 +47,7 @@ reward = { path = "../reward" }
 staking = { path = "../staking" }
 currency = { path = "../currency", default-features = false, features = ["testing-constants"] }
 stellar-relay = { path = "../stellar-relay", features = ["testing-utils"] }
+security = { path = "../security", features = ['testing-utils'] }
 
 # Orml dependencies
 orml-tokens = { git = "https://github.com/open-web3-stack/open-runtime-module-library", branch = "polkadot-v0.9.33" }
@@ -85,5 +86,6 @@ runtime-benchmarks = [
     "orml-tokens",
     "orml-traits",
     "stellar-relay/testing-utils",
-    "currency/testing-constants"
+    "currency/testing-constants",
+    "security/testing-utils"
 ]
