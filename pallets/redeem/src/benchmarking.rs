@@ -67,7 +67,11 @@ fn initialize_oracle<T: crate::Config>() {
 		oracle_id,
 		vec![
 			(
-				Key::ExchangeRate(Token(DOT)),
+				Key::ExchangeRate(get_collateral_currency_id::<T>()),
+				UnsignedFixedPoint::<T>::checked_from_rational(1, 1).unwrap(),
+			),
+			(
+				Key::ExchangeRate(get_wrapped_currency_id()),
 				UnsignedFixedPoint::<T>::checked_from_rational(1, 1).unwrap(),
 			),
 			(Key::FeeEstimation, UnsignedFixedPoint::<T>::checked_from_rational(3, 1).unwrap()),
@@ -131,9 +135,7 @@ benchmarks! {
 	}: _(RawOrigin::Signed(origin), amount, stellar_address, vault_id)
 
 	liquidation_redeem {
-		assert_ok!(Oracle::<T>::_set_exchange_rate(get_collateral_currency_id::<T>(),
-			UnsignedFixedPoint::<T>::one()
-		));
+		initialize_oracle::<T>();
 
 		let origin: T::AccountId = account("Origin", 0, 0);
 		let vault_id = get_vault_id::<T>();
@@ -262,13 +264,8 @@ benchmarks! {
 		));
 	}: cancel_redeem(RawOrigin::Signed(origin), redeem_id, false)
 
-	set_redeem_period {
-	}: _(RawOrigin::Root, 1u32.into())
-
 	self_redeem {
-		assert_ok!(Oracle::<T>::_set_exchange_rate(get_collateral_currency_id::<T>(),
-			UnsignedFixedPoint::<T>::one()
-		));
+		initialize_oracle::<T>();
 
 		let vault_id = get_vault_id::<T>();
 		let origin = vault_id.account_id.clone();
@@ -294,6 +291,15 @@ benchmarks! {
 			wrapped: get_wrapped_currency_id()
 		};
 	}: _(RawOrigin::Signed(origin), currency_pair, amount.into())
+
+	set_redeem_period {
+	}: _(RawOrigin::Root, 1u32.into())
+
+	rate_limit_update {
+		let limit_volume_amount: Option<BalanceOf<T>> = Some(1u32.into());
+		let limit_volume_currency_id: T::CurrencyId = get_wrapped_currency_id();
+		let interval_length: T::BlockNumber = 1u32.into();
+	}: _(RawOrigin::Root, limit_volume_amount, limit_volume_currency_id, interval_length)
 }
 
 impl_benchmark_test_suite!(

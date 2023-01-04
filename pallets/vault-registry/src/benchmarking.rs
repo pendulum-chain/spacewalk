@@ -131,12 +131,13 @@ benchmarks! {
 
 		register_vault_with_collateral::<T>(vault_id.clone(), 10_000);
 		Oracle::<T>::_set_exchange_rate(get_collateral_currency_id::<T>(), UnsignedFixedPoint::<T>::one()).unwrap();
-		Oracle::<T>::_set_exchange_rate(get_wrapped_currency_id(), UnsignedFixedPoint::<T>::one()).unwrap();
+		Oracle::<T>::_set_exchange_rate(get_wrapped_currency_id(), UnsignedFixedPoint::<T>::checked_from_rational(10, 1).unwrap()).unwrap();
 
 		VaultRegistry::<T>::try_increase_to_be_issued_tokens(&vault_id, &wrapped(5_000)).unwrap();
 		VaultRegistry::<T>::issue_tokens(&vault_id, &wrapped(5_000)).unwrap();
 
 		Oracle::<T>::_set_exchange_rate(get_collateral_currency_id::<T>(), UnsignedFixedPoint::<T>::checked_from_rational(10, 1).unwrap()).unwrap();
+		Oracle::<T>::_set_exchange_rate(get_wrapped_currency_id(), UnsignedFixedPoint::<T>::one()).unwrap();
 	}: _(RawOrigin::Signed(origin), vault_id)
 
 	recover_vault_id {
