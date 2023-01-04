@@ -71,7 +71,6 @@ pub mod pallet {
 	impl<T: Config> Hooks<T::BlockNumber> for Pallet<T> {
 		fn on_initialize(_n: T::BlockNumber) -> Weight {
 			Self::increment_active_block();
-			// TODO: calculate weight
 			<T as Config>::WeightInfo::on_initialize()
 		}
 	}
