@@ -234,6 +234,7 @@ where
 
 impl security::Config for Test {
 	type RuntimeEvent = TestEvent;
+	type WeightInfo = ();
 }
 
 impl staking::Config for Test {

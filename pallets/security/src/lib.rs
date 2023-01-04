@@ -26,12 +26,15 @@ pub use pallet::*;
 pub use crate::types::{ErrorCode, StatusCode};
 
 pub mod types;
+pub use default_weights::WeightInfo;
 
 #[cfg(test)]
 mod mock;
 
 #[cfg(test)]
 mod tests;
+
+mod default_weights;
 
 #[frame_support::pallet]
 pub mod pallet {
@@ -46,6 +49,9 @@ pub mod pallet {
 	pub trait Config: frame_system::Config {
 		/// The overarching event type.
 		type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
+
+		/// Weight information for the extrinsics in this module.
+		type WeightInfo: WeightInfo;
 	}
 
 	#[pallet::event]
@@ -65,8 +71,7 @@ pub mod pallet {
 	impl<T: Config> Hooks<T::BlockNumber> for Pallet<T> {
 		fn on_initialize(_n: T::BlockNumber) -> Weight {
 			Self::increment_active_block();
-			// TODO: calculate weight
-			Weight::from_ref_time(0)
+			<T as Config>::WeightInfo::on_initialize()
 		}
 	}
 
@@ -130,7 +135,7 @@ pub mod pallet {
 		/// * `status_code` - the status code to set
 		///
 		/// # Weight: `O(1)`
-		#[pallet::weight(0)]
+		#[pallet::weight(<T as Config>::WeightInfo::set_parachain_status())]
 		#[transactional]
 		pub fn set_parachain_status(
 			origin: OriginFor<T>,
@@ -149,7 +154,7 @@ pub mod pallet {
 		/// * `error_code` - the error code to insert
 		///
 		/// # Weight: `O(1)`
-		#[pallet::weight(0)]
+		#[pallet::weight(<T as Config>::WeightInfo::insert_parachain_error())]
 		#[transactional]
 		pub fn insert_parachain_error(
 			origin: OriginFor<T>,
@@ -168,7 +173,7 @@ pub mod pallet {
 		/// * `error_code` - the error code to remove
 		///
 		/// # Weight: `O(1)`
-		#[pallet::weight(0)]
+		#[pallet::weight(<T as Config>::WeightInfo::remove_parachain_error())]
 		#[transactional]
 		pub fn remove_parachain_error(
 			origin: OriginFor<T>,

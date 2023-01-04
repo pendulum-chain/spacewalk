@@ -337,6 +337,7 @@ impl reward::Config for Runtime {
 
 impl security::Config for Runtime {
 	type RuntimeEvent = RuntimeEvent;
+	type WeightInfo = ();
 }
 
 pub struct CurrencyConvert;
