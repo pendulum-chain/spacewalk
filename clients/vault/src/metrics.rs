@@ -1,13 +1,10 @@
 use std::{collections::HashMap, convert::TryInto, sync::Arc};
 
 use crate::{
-	// execution::parachain_blocks_to_bitcoin_blocks_rounded_up,
 	system::{VaultData, VaultIdManager},
 	Error,
 };
 use async_trait::async_trait;
-// use bitcoin::{json::ListTransactionResult, GetTransactionResultDetailCategory, SignedAmount,
-// TransactionExt};
 use futures::{try_join, StreamExt, TryFutureExt};
 use lazy_static::lazy_static;
 use runtime::{
@@ -133,7 +130,7 @@ pub struct PerCurrencyMetrics {
 	collateralization: Gauge,
 	required_collateral: Gauge,
 	remaining_time_to_redeem_hours: Gauge,
-	btc_balance: XLMBalance,
+	xlm_balance: XLMBalance,
 	issues: RequestCounter,
 	redeems: RequestCounter,
 	average_btc_fee: StatefulGauge<AverageTracker>,
@@ -169,7 +166,6 @@ impl PerCurrencyMetrics {
 				.unwrap_or_default()
 		);
 		Self::new_with_label(label.as_ref())
-		// todo!()
 	}
 
 	// construct a dummy metrics struct for testing purposes
@@ -208,7 +204,7 @@ impl PerCurrencyMetrics {
 				gauge: AVERAGE_BTC_FEE.with(&labels),
 				data: Arc::new(RwLock::new(AverageTracker { total: 0, count: 0 })),
 			},
-			btc_balance: XLMBalance {
+			xlm_balance: XLMBalance {
 				upperbound: btc_balance_gauge("required_upperbound"),
 				lowerbound: btc_balance_gauge("required_lowerbound"),
 				actual: btc_balance_gauge("actual"),
@@ -666,8 +662,8 @@ pub async fn publish_expected_bitcoin_balance<P: VaultRegistryPallet>(
 		let lowerbound = v.issued_tokens.saturating_sub(v.to_be_redeemed_tokens);
 		let upperbound = v.issued_tokens.saturating_add(v.to_be_issued_tokens);
 		let scaling_factor = vault.vault_id.wrapped_currency().inner()?.one() as f64;
-		vault.metrics.btc_balance.lowerbound.set(lowerbound as f64 / scaling_factor);
-		vault.metrics.btc_balance.upperbound.set(upperbound as f64 / scaling_factor);
+		vault.metrics.xlm_balance.lowerbound.set(lowerbound as f64 / scaling_factor);
+		vault.metrics.xlm_balance.upperbound.set(upperbound as f64 / scaling_factor);
 	}
 	Ok(())
 }
