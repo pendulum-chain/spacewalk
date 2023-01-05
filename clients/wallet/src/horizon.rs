@@ -152,13 +152,15 @@ pub struct HorizonAccountResponse {
 #[derive(Deserialize, Encode, Decode, Default, Debug)]
 pub struct Balance {
 	#[serde(deserialize_with = "de_string_to_f64")]
-	pub balance : f64,
+	pub balance: f64,
 	#[serde(default)]
 	#[serde(deserialize_with = "de_string_to_optional_bytes")]
 	pub asset_code: Option<Vec<u8>>,
 	#[serde(default)]
 	#[serde(deserialize_with = "de_string_to_optional_bytes")]
-	pub asset_issuer: Option<Vec<u8>>
+	pub asset_issuer: Option<Vec<u8>>,
+	#[serde(deserialize_with = "de_string_to_bytes")]
+	pub asset_type: Vec<u8>,
 }
 
 #[derive(Deserialize, Debug)]
