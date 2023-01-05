@@ -148,13 +148,13 @@ fn test_currency_conversion_anum12() {
 
 #[test]
 fn test_balance_convr() {
-	let balance: u128 = 100_000_000;
+	let balance: u128 = 10_000_000;
 
 	let balance_lookup = BalanceConversion::lookup(balance);
 	assert!(balance_lookup.is_ok());
 
 	let balance_lookup = balance_lookup.unwrap();
-	assert_eq!(balance_lookup, 1000);
+	assert_eq!(balance_lookup, balance_lookup / CONVERSION_RATE);
 
 	let lookup_orig = BalanceConversion::unlookup(balance_lookup);
 	assert_eq!(lookup_orig, balance);

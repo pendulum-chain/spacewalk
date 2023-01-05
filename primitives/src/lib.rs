@@ -656,14 +656,19 @@ impl Convert<(Vec<u8>, Vec<u8>), Result<CurrencyId, ()>> for StringCurrencyConve
 	}
 }
 
+// This struct can be used to convert from a 'Spacewalk' balance to a 'Stellar' balance.
+// It converts the native balance of the chain to the stroop representation of the asset on Stellar.
 pub struct BalanceConversion;
+
+// We set the conversion rate to 1:1 for now.
+const CONVERSION_RATE: u128 = 1;
 
 impl StaticLookup for BalanceConversion {
 	type Source = u128;
 	type Target = i64;
 
 	fn lookup(pendulum_balance: Self::Source) -> Result<Self::Target, LookupError> {
-		let stroops128: u128 = pendulum_balance / 100000;
+		let stroops128: u128 = pendulum_balance / CONVERSION_RATE;
 
 		if stroops128 > i64::MAX as u128 {
 			Err(LookupError)
@@ -673,7 +678,7 @@ impl StaticLookup for BalanceConversion {
 	}
 
 	fn unlookup(stellar_stroops: Self::Target) -> Self::Source {
-		(stellar_stroops * 100000) as u128
+		(stellar_stroops * CONVERSION_RATE as i64) as u128
 	}
 }
 
@@ -747,7 +752,6 @@ impl TransactionEnvelopeExt for TransactionEnvelope {
 		}
 
 		// `transferred_amount` is in stroops, so we need to convert it
-
 		BalanceConversion::unlookup(transferred_amount)
 	}
 }
