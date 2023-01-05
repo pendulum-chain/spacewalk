@@ -40,6 +40,14 @@ where
 	i64::from_str(s).map_err(serde::de::Error::custom)
 }
 
+pub fn de_string_to_f64<'de, D>(de: D) -> Result<f64, D::Error>
+where
+	D: Deserializer<'de>,
+{
+	let s: &str = Deserialize::deserialize(de)?;
+	f64::from_str(s).map_err(serde::de::Error::custom)
+}
+
 pub fn de_string_to_optional_bytes<'de, D>(de: D) -> Result<Option<Vec<u8>>, D::Error>
 where
 	D: Deserializer<'de>,
@@ -136,7 +144,21 @@ pub struct HorizonAccountResponse {
 	pub account_id: Vec<u8>,
 	#[serde(deserialize_with = "de_string_to_i64")]
 	pub sequence: i64,
+	pub balances: Vec<Balance>,
 	// ...
+}
+
+// This represents a Claimant
+#[derive(Deserialize, Encode, Decode, Default, Debug)]
+pub struct Balance {
+	#[serde(deserialize_with = "de_string_to_f64")]
+	pub balance : f64,
+	#[serde(default)]
+	#[serde(deserialize_with = "de_string_to_optional_bytes")]
+	pub asset_code: Option<Vec<u8>>,
+	#[serde(default)]
+	#[serde(deserialize_with = "de_string_to_optional_bytes")]
+	pub asset_issuer: Option<Vec<u8>>
 }
 
 #[derive(Deserialize, Debug)]
