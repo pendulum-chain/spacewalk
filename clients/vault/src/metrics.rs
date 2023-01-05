@@ -7,6 +7,7 @@ use crate::{
 use async_trait::async_trait;
 use futures::{try_join, StreamExt, TryFutureExt};
 use lazy_static::lazy_static;
+use primitives::stellar;
 use runtime::{
 	prometheus::{
 		gather, proto::MetricFamily, Encoder, Gauge, GaugeVec, IntCounter, IntGauge, IntGaugeVec,
@@ -438,31 +439,55 @@ async fn publish_average_bitcoin_fee(vault: &VaultData) {
 async fn publish_stellar_balance<P: OraclePallet>(parachain_rpc: P, vault: &VaultData) {
 	match vault.stellar_wallet.read().await.get_balance().await {
 		Ok(balance) => {
-			match vault.vault_id.wrapped_currency() {
-				CurrencyId::Native => {
-					let native_xlm_balance = balance
+			let currency_id = vault.vault_id.wrapped_currency();
+			let asset: Result<stellar::Asset, _> = currency_id.try_into();
+			let mut wrapped_to_collateral: u128 = 0;
+			if let Ok(asset) = asset {
+				let xlm_balance: Option<f64> = match asset {
+					stellar::Asset::AssetTypeNative => balance
 						.iter()
 						.find(|i| i.asset_type == STELLAR_NATIVE_ASSET_TYPE.to_vec())
-						.map(|i| i.balance);
-					let mut wrapped_to_collateral: u128 = 0;
-					if let Some(b) = native_xlm_balance {
-						wrapped_to_collateral = parachain_rpc
-							.wrapped_to_collateral(b as u128, CurrencyId::Native)
-							.await
-							.unwrap_or_else(|e| {
-								// unexpected error, but not critical so just continue
-								tracing::warn!("Failed to get balance: {}", e);
-								0
-							});
-					};
-					vault.metrics.xlm_balance.actual.set(wrapped_to_collateral as f64);
-				},
-				_ => {},
-			};
+						.map(|i| i.balance),
+					stellar::Asset::AssetTypeCreditAlphanum4(a4) => balance
+						.iter()
+						.find(|i| {
+							i.asset_type != STELLAR_NATIVE_ASSET_TYPE.to_vec() &&
+								i.asset_code.clone().unwrap_or_default() ==
+									a4.asset_code.to_vec()
+						})
+						.map(|i| i.balance),
+					stellar::Asset::AssetTypeCreditAlphanum12(a12) => balance
+						.iter()
+						.find(|i| {
+							i.asset_type != STELLAR_NATIVE_ASSET_TYPE.to_vec() &&
+								i.asset_code.clone().unwrap_or_default() ==
+									a12.asset_code.to_vec()
+						})
+						.map(|i| i.balance),
+					_ => {
+						tracing::warn!("Unsupported stellar asset type");
+						None
+					},
+				};
+				if let Some(b) = xlm_balance {
+					wrapped_to_collateral = parachain_rpc
+						.wrapped_to_collateral(b as u128, currency_id)
+						.await
+						.unwrap_or_else(|e| {
+							// unexpected error, but not critical so just continue
+							tracing::warn!("Failed to get balance: {}", e);
+							0
+						});
+				};
+			} else {
+				tracing::warn!("Incorrect stellar asset type");
+			}
+			vault.metrics.xlm_balance.actual.set(wrapped_to_collateral as f64);
 		},
 		Err(e) => {
 			// unexpected error, but not critical so just continue
 			tracing::warn!("Failed to get balance: {}", e);
+			vault.metrics.xlm_balance.actual.set(0 as f64);
 		},
 	}
 }
