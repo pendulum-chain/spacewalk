@@ -221,6 +221,7 @@ pub async fn execute_issue(
 			{
 				Ok(_) => {
 					tracing::trace!("Slot {:?} EXECUTED with issue_id: {:?}", ledger, issue_id);
+					tracing::info!("Issue request {:?} was executed", issue_id);
 					ledger_env_map.remove(&ledger);
 					issues.write().await.remove(&issue_id);
 				},

@@ -33,7 +33,7 @@ impl ScpMessageCollector {
 			// Check if collector has a record of this hash.
 			if self.is_txset_new(&txset_hash, &slot) {
 				// if it doesn't exist, let's request from the Stellar Node.
-				tracing::info!("requesting TxSet for slot {}...", slot);
+				tracing::debug!("requesting TxSet for slot {}...", slot);
 				message_sender.send(StellarMessage::GetTxSet(txset_hash)).await?;
 
 				// let's save this for creating the proof later on.
