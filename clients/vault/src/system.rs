@@ -443,6 +443,7 @@ impl VaultService {
 		// this vec is passed to the stellar wallet to filter out transactions that are not relevant
 		// this has to be modified every time the issue set changes
 		let issue_map: ArcRwLock<IssueRequestsMap> = Arc::new(RwLock::new(IssueRequestsMap::new()));
+		issue::initialize_issue_set(&self.spacewalk_parachain, &issue_map).await?;
 
 		let issue_filter = IssueFilter::new(secret_key.get_public())?;
 

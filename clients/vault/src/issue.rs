@@ -1,6 +1,6 @@
 use std::{convert::TryFrom, sync::Arc, time::Duration};
 
-use futures::{channel::mpsc::Sender, SinkExt};
+use futures::{channel::mpsc::Sender, future, SinkExt};
 use sp_runtime::traits::StaticLookup;
 
 use primitives::{stellar::Memo, TransactionEnvelopeExt};
@@ -22,6 +22,22 @@ use crate::{
 
 fn is_vault(p1: &PublicKey, p2_raw: [u8; 32]) -> bool {
 	return *p1.as_binary() == p2_raw
+}
+
+// Initialize the `issue_set` with currently open issues
+pub(crate) async fn initialize_issue_set(
+	spacewalk_parachain: &SpacewalkParachain,
+	issue_set: &ArcRwLock<IssueRequestsMap>,
+) -> Result<(), Error> {
+	let (mut issue_set, requests) =
+		future::join(issue_set.write(), spacewalk_parachain.get_all_active_issues()).await;
+	let requests = requests?;
+
+	for (issue_id, request) in requests.into_iter() {
+		issue_set.insert(issue_id, request);
+	}
+
+	Ok(())
 }
 
 /// Listens for RequestIssueEvent directed at the vault.
