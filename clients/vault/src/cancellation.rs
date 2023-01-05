@@ -290,7 +290,7 @@ impl<P: IssuePallet + ReplacePallet + UtilFuncs + SecurityPallet + Clone> Cancel
 	}
 }
 
-#[cfg(all(test, feature = "parachain-metadata-kintsugi-testnet"))]
+#[cfg(all(test, feature = "parachain-metadata-testnet"))]
 mod tests {
 	use std::collections::BTreeSet;
 

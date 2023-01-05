@@ -139,7 +139,7 @@ pub fn pid_name_matches_existing_client(
 	Ok(sys.process_name(client_pid)? == sys.process_name(pidfile_value)?)
 }
 
-#[cfg(all(test, feature = "parachain-metadata-kintsugi-testnet"))]
+#[cfg(all(test, feature = "parachain-metadata-testnet"))]
 mod tests {
 	use serial_test::serial;
 	use sysinfo::Pid;
@@ -168,7 +168,7 @@ mod tests {
 	#[serial]
 	fn test_create_pid_file() {
 		let dummy_account_id = AccountId::new(Default::default());
-		let dummy_spec_name = "kintsugi-testnet".to_string();
+		let dummy_spec_name = "testnet".to_string();
 		let mut sys = MockSystem::default();
 		assert_eq!(PidFile::compute_path(&dummy_spec_name, &dummy_account_id).exists(), false);
 		let pidfile = PidFile::create(&dummy_spec_name, &dummy_account_id, &mut sys).unwrap();
@@ -179,7 +179,7 @@ mod tests {
 	#[serial]
 	fn test_overwrite_stale_pid_file() {
 		let dummy_account_id = AccountId::new(Default::default());
-		let dummy_spec_name = "kintsugi-testnet".to_string();
+		let dummy_spec_name = "testnet".to_string();
 		let mut sys = MockSystem::default();
 		sys.expect_refresh_process().once().return_const(false);
 		let mut pidfile = PidFile::new(&dummy_spec_name, &dummy_account_id);
@@ -197,7 +197,7 @@ mod tests {
 	#[serial]
 	fn test_pid_file_with_same_process() {
 		let dummy_account_id = AccountId::new(Default::default());
-		let dummy_spec_name = "kintsugi-testnet".to_string();
+		let dummy_spec_name = "testnet".to_string();
 		let mut sys = MockSystem::default();
 		sys.expect_refresh_process().once().return_const(true);
 		let mut pidfile = PidFile::new(&dummy_spec_name, &dummy_account_id);
@@ -218,7 +218,7 @@ mod tests {
 	#[serial]
 	fn test_pid_file_overwrite_does_not_fail_when_process_is_not_running() {
 		let dummy_account_id = AccountId::new(Default::default());
-		let dummy_spec_name = "kintsugi-testnet".to_string();
+		let dummy_spec_name = "testnet".to_string();
 		let mut sys = MockSystem::default();
 		sys.expect_refresh_process().once().return_const(true);
 		let mut pidfile = PidFile::new(&dummy_spec_name, &dummy_account_id);
@@ -241,7 +241,7 @@ mod tests {
 	#[serial]
 	fn test_pidfile_removal() {
 		let dummy_account_id = AccountId::new(Default::default());
-		let dummy_spec_name = "kintsugi-testnet".to_string();
+		let dummy_spec_name = "testnet".to_string();
 		let mut sys = MockSystem::default();
 		sys.expect_refresh_process().return_const(true); // indicate the process still exists
 		sys.expect_process_name().returning(|_| Ok("vault".to_string()));

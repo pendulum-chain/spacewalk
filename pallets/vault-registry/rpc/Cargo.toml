@@ -1,5 +1,5 @@
 [package]
-authors = ["Interlay Ltd"]
+authors = ["Pendulum"]
 edition = "2021"
 name = "module-vault-registry-rpc"
 version = '0.3.0'
