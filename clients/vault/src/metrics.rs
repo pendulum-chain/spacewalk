@@ -23,6 +23,7 @@ use service::{
 	warp::{Rejection, Reply},
 	Error as ServiceError,
 };
+use wallet::TransactionResponse;
 use std::time::Duration;
 use tokio::{sync::RwLock, time::sleep};
 use tokio_metrics::TaskMetrics;
@@ -228,7 +229,7 @@ impl PerCurrencyMetrics {
 	// async fn initialize_fee_budget_surplus<P: VaultRegistryPallet + RedeemPallet +
 	// ReplacePallet>(     vault: &VaultData,
 	//     parachain_rpc: P,
-	//     bitcoin_transactions: Vec<ListTransactionResult>,
+	//     bitcoin_transactions: Vec<TransactionResponse>,
 	// ) -> Result<(), ServiceError<Error>> {
 	//     let vault_id = &vault.vault_id;
 	//     // update fee surplus
@@ -238,7 +239,7 @@ impl PerCurrencyMetrics {
 	//     ) {
 	//         let redeems = redeem_requests
 	//             .iter()
-	//             .map(|(id, redeem)| (*id, redeem.transfer_fee_btc));
+	//             .map(|(id, redeem)| (*id, redeem.transfer_fee));
 	//         let replaces = replace_requests.iter().map(|(id, _)| (*id, 0));
 	//         let fee_budgets = redeems.chain(replaces).collect::<HashMap<_, _>>();
 	//         let fee_budgets = &fee_budgets;
@@ -278,11 +279,12 @@ impl PerCurrencyMetrics {
 			};
 
 		// update average fee
-		// let (total, count) = bitcoin_transactions
-		//     .iter()
-		//     .filter_map(|tx| tx.detail.fee.map(|amount| amount.to_sat().unsigned_abs()))
-		//     .fold((0, 0), |(total, count), x| (total + x, count + 1));
-		// *vault.metrics.average_btc_fee.data.write().await = AverageTracker { total, count };
+		let (total, count) = bitcoin_transactions
+		    .iter()
+		//  .filter_map(|tx| tx.detail.fee.map(|amount| amount.to_sat().unsigned_abs()))`
+		    .filter_map(|tx| Some(tx.fee_charged))
+		    .fold((0, 0), |(total, count), x| (total + x, count + 1));
+		*vault.metrics.average_btc_fee.data.write().await = AverageTracker { total, count };
 
 		// publish_utxo_count(vault);
 		publish_stellar_balance(parachain_rpc.clone(), vault).await;
