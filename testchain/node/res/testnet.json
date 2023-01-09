@@ -18,11 +18,9 @@
     ],
     "tokenSymbol": [
       "DOT",
-      "INTERBTC",
-      "INTR",
+      "PEN",
       "KSM",
-      "KBTC",
-      "KINT"
+      "AMPE"
     ]
   },
   "consensusEngine": null,
