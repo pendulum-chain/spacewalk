@@ -5,7 +5,7 @@ use std::{fmt::Debug, time::Duration};
 
 /// Gets the default retrying policy. This should be used for unexpected errors, not for operations
 /// that are expected to take a while to succeed. That is, it is unsuitable for e.g. awaiting
-/// bitcoin confirmation proof, due to potentially high retrying time.
+/// stellar confirmation proof, due to potentially high retrying time.
 /// Note: technically this is not a constant due to the use of `Default::default()`
 fn get_exponential_backoff() -> ExponentialBackoff {
 	ExponentialBackoff {

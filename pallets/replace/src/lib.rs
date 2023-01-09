@@ -155,8 +155,8 @@ pub mod pallet {
 	#[pallet::getter(fn replace_period)]
 	pub(super) type ReplacePeriod<T: Config> = StorageValue<_, T::BlockNumber, ValueQuery>;
 
-	/// The minimum amount of btc that is accepted for replace requests; any lower values would
-	/// risk the bitcoin client to reject the payment
+	/// The minimum amount of wrapped stellar asset that is accepted for replace requests; any lower
+	/// values would risk the stellar client to reject the payment
 	#[pallet::storage]
 	#[pallet::getter(fn replace_btc_dust_value)]
 	pub(super) type ReplaceBtcDustValue<T: Config> = StorageValue<_, BalanceOf<T>, ValueQuery>;

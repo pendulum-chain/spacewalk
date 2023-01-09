@@ -191,7 +191,7 @@ pub async fn handle_replace_request<
 }
 
 /// Listen for ExecuteReplaceEvent directed at this vault and continue the replacement
-/// procedure by transferring bitcoin and calling execute_replace
+/// procedure by transferring wrapped stellar asset and calling execute_replace
 ///
 /// # Arguments
 ///
@@ -212,7 +212,7 @@ pub async fn listen_for_execute_replace(
 					let _ = event_channel.clone().send(Event::Executed(event.replace_id)).await;
 				}
 			},
-			|error| tracing::error!("Error reading redeem event: {}", error.to_string()),
+			|error| tracing::error!("Error reading replace event: {}", error.to_string()),
 		)
 		.await?;
 	Ok(())

@@ -6,7 +6,7 @@ use service::{spawn_cancelable, Error as ServiceError};
 use crate::{execution::*, oracle::OracleAgent, system::VaultIdManager, Error};
 
 /// Listen for RequestRedeemEvent directed at this vault; upon reception, transfer
-/// bitcoin and call execute_redeem
+/// stellar wrapped asset and call execute_redeem
 ///
 /// # Arguments
 ///

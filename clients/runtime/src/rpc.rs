@@ -579,7 +579,7 @@ impl VaultRegistryPallet for SpacewalkParachain {
 	///
 	/// # Arguments
 	/// * `collateral` - deposit
-	/// * `public_key` - Bitcoin public key
+	/// * `public_key` - Stellar public key
 	async fn register_vault(&self, vault_id: &VaultId, collateral: u128) -> Result<(), Error> {
 		// TODO: check MinimumDeposit
 		if collateral == 0 {
@@ -595,7 +595,7 @@ impl VaultRegistryPallet for SpacewalkParachain {
 	}
 
 	/// Locks additional collateral as a security against stealing the
-	/// Bitcoin locked with it.
+	/// Stellar assets locked with it.
 	///
 	/// # Arguments
 	/// * `amount` - the amount of extra collateral to lock
@@ -838,7 +838,7 @@ impl OraclePallet for SpacewalkParachain {
 		Ok(())
 	}
 
-	/// Sets the estimated Satoshis per bytes required to get a Bitcoin transaction included in
+	/// Sets the estimated Satoshis per bytes required to get a Stellar transaction included in
 	/// in the next block (~10 min)
 	///
 	/// # Arguments
@@ -851,7 +851,7 @@ impl OraclePallet for SpacewalkParachain {
 		Ok(())
 	}
 
-	/// Gets the estimated Satoshis per bytes required to get a Bitcoin transaction included in
+	/// Gets the estimated Satoshis per bytes required to get a Stellar transaction included in
 	/// in the next x blocks
 	async fn get_stellar_fees(&self) -> Result<FixedU128, Error> {
 		self.query_finalized_or_error(
@@ -950,7 +950,7 @@ pub trait IssuePallet {
 		vault_id: &VaultId,
 	) -> Result<RequestIssueEvent, Error>;
 
-	/// Execute a issue request by providing a Bitcoin transaction inclusion proof
+	/// Execute a issue request by providing a Stellar transaction inclusion proof
 	async fn execute_issue(
 		&self,
 		issue_id: H256,
@@ -1072,7 +1072,7 @@ pub trait RedeemPallet {
 		vault_id: &VaultId,
 	) -> Result<H256, Error>;
 
-	/// Execute a redeem request by providing a Bitcoin transaction inclusion proof
+	/// Execute a redeem request by providing a Stellar transaction inclusion proof
 	async fn execute_redeem(
 		&self,
 		redeem_id: H256,

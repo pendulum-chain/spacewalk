@@ -178,7 +178,7 @@ pub mod pallet {
 		}
 
 		/// Deposit collateral as a security against stealing the
-		/// Bitcoin locked with the caller.
+		/// Stellar assets locked with the caller.
 		///
 		/// # Arguments
 		/// * `amount` - the amount of extra collateral to lock

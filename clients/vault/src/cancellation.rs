@@ -430,21 +430,9 @@ mod tests {
 		assert_eq!(
 			canceller.get_open_requests::<IssueCanceller>().await.unwrap(),
 			vec![
-				ActiveRequest {
-					id: H256::from_slice(&[1; 32]),
-					parachain_deadline_height: 10_500,
-					bitcoin_deadline_height: 120,
-				},
-				ActiveRequest {
-					id: H256::from_slice(&[2; 32]),
-					parachain_deadline_height: 2_000,
-					bitcoin_deadline_height: 120,
-				},
-				ActiveRequest {
-					id: H256::from_slice(&[3; 32]),
-					parachain_deadline_height: 9_500,
-					bitcoin_deadline_height: 120,
-				},
+				ActiveRequest { id: H256::from_slice(&[1; 32]), parachain_deadline_height: 10_500 },
+				ActiveRequest { id: H256::from_slice(&[2; 32]), parachain_deadline_height: 2_000 },
+				ActiveRequest { id: H256::from_slice(&[3; 32]), parachain_deadline_height: 9_500 },
 			]
 		);
 	}
@@ -501,7 +489,7 @@ mod tests {
 	}
 
 	#[tokio::test]
-	async fn test_process_event_only_removes_when_both_parachain_and_bitcoin_expired() {
+	async fn test_process_event_only_removes_when_both_parachain_and_stellar_expired() {
 		// check that we actually cancel the issue when it expires
 		let mut parachain_rpc = MockProvider::default();
 		parachain_rpc.expect_get_vault_issue_requests().returning(|_| {
@@ -524,7 +512,7 @@ mod tests {
 		let mut cancellation_scheduler =
 			CancellationScheduler::new(parachain_rpc, 10_001, 101, AccountId::new([1u8; 32]));
 
-		// deadline is at parachain_height = 11_000 and bitcoin_height = 120
+		// deadline is at parachain_height = 11_000 and stellar_height = 120
 
 		cancellation_scheduler
 			.process_event::<IssueCanceller>(

@@ -107,7 +107,7 @@ pub mod pallet {
 	pub type Errors<T: Config> = StorageValue<_, BTreeSet<ErrorCode>, ValueQuery>;
 
 	/// Integer increment-only counter, used to prevent collisions when generating identifiers
-	/// for e.g. issue, redeem or replace requests (for OP_RETURN field in Bitcoin).
+	/// for e.g. issue, redeem or replace requests (Stellar).
 	#[pallet::storage]
 	pub type Nonce<T: Config> = StorageValue<_, U256, ValueQuery>;
 
