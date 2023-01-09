@@ -131,6 +131,7 @@ pub mod pallet {
 	// The pallet's dispatchable functions.
 	#[pallet::call]
 	impl<T: Config> Pallet<T> {
+		#[pallet::call_index(0)]
 		#[pallet::weight(<T as Config>::WeightInfo::set_nomination_enabled())]
 		#[transactional]
 		pub fn set_nomination_enabled(
@@ -143,6 +144,7 @@ pub mod pallet {
 		}
 
 		/// Allow nomination for this vault
+		#[pallet::call_index(1)]
 		#[pallet::weight(<T as Config>::WeightInfo::opt_in_to_nomination())]
 		#[transactional]
 		pub fn opt_in_to_nomination(
@@ -159,6 +161,7 @@ pub mod pallet {
 		}
 
 		/// Disallow nomination for this vault
+		#[pallet::call_index(2)]
 		#[pallet::weight(<T as Config>::WeightInfo::opt_out_of_nomination())]
 		#[transactional]
 		pub fn opt_out_of_nomination(
@@ -173,6 +176,7 @@ pub mod pallet {
 			Ok(().into())
 		}
 
+		#[pallet::call_index(3)]
 		#[pallet::weight(<T as Config>::WeightInfo::deposit_collateral())]
 		#[transactional]
 		pub fn deposit_collateral(
@@ -186,6 +190,7 @@ pub mod pallet {
 			Ok(().into())
 		}
 
+		#[pallet::call_index(4)]
 		#[pallet::weight(<T as Config>::WeightInfo::withdraw_collateral())]
 		#[transactional]
 		pub fn withdraw_collateral(
