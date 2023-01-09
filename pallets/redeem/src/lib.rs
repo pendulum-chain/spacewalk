@@ -162,7 +162,7 @@ pub mod pallet {
 
 	/// The time difference in number of blocks between a redeem request is created and required
 	/// completion time by a vault. The redeem period has an upper limit to ensure the user gets
-	/// their BTC in time and to potentially punish a vault for inactivity or stealing BTC.
+	/// their XLM in time and to potentially punish a vault for inactivity or stealing XLM.
 	#[pallet::storage]
 	#[pallet::getter(fn redeem_period)]
 	pub(super) type RedeemPeriod<T: Config> = StorageValue<_, T::BlockNumber, ValueQuery>;
@@ -565,7 +565,7 @@ impl<T: Config> Pallet<T> {
 
 		// this can overflow for small requested values. As such return
 		// AmountBelowMinimumTransferAmount when this happens
-		let user_to_be_received_btc = vault_to_be_burned_tokens
+		let user_to_be_received_xlm = vault_to_be_burned_tokens
 			.checked_sub(&inclusion_fee)
 			.map_err(|_| Error::<T>::AmountBelowMinimumTransferAmount)?;
 
@@ -574,12 +574,12 @@ impl<T: Config> Pallet<T> {
 		// only allow requests of amount above above the minimum
 		ensure!(
 			// this is the amount the vault will send (minus fee)
-			user_to_be_received_btc
+			user_to_be_received_xlm
 				.ge(&Self::get_minimum_transfer_amount(vault_id.wrapped_currency()))?,
 			Error::<T>::AmountBelowMinimumTransferAmount
 		);
 
-		// vault will get rid of the btc + btc_inclusion_fee
+		// vault will get rid of the xlm + xlm_inclusion_fee
 		ext::vault_registry::try_increase_to_be_redeemed_tokens::<T>(
 			&vault_id,
 			&vault_to_be_burned_tokens,
@@ -595,7 +595,7 @@ impl<T: Config> Pallet<T> {
 
 		let premium_collateral = if below_premium_redeem {
 			let redeem_amount_wrapped_in_collateral =
-				user_to_be_received_btc.convert_to(currency_id)?;
+				user_to_be_received_xlm.convert_to(currency_id)?;
 			ext::fee::get_premium_redeem_fee::<T>(&redeem_amount_wrapped_in_collateral)?
 		} else {
 			Amount::zero(currency_id)
@@ -610,8 +610,8 @@ impl<T: Config> Pallet<T> {
 				opentime: ext::security::active_block_number::<T>(),
 				fee: fee_wrapped.amount(),
 				transfer_fee: inclusion_fee.amount(),
-				amount: user_to_be_received_btc.amount(),
-				asset: user_to_be_received_btc.currency(),
+				amount: user_to_be_received_xlm.amount(),
+				asset: user_to_be_received_xlm.currency(),
 				premium: premium_collateral.amount(),
 				period: Self::redeem_period(),
 				redeemer: redeemer.clone(),
@@ -623,8 +623,8 @@ impl<T: Config> Pallet<T> {
 		Self::deposit_event(Event::<T>::RequestRedeem {
 			redeem_id,
 			redeemer,
-			amount: user_to_be_received_btc.amount(),
-			asset: user_to_be_received_btc.currency(),
+			amount: user_to_be_received_xlm.amount(),
+			asset: user_to_be_received_xlm.currency(),
 			fee: fee_wrapped.amount(),
 			premium: premium_collateral.amount(),
 			vault_id,

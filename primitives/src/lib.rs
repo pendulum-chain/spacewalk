@@ -241,7 +241,7 @@ pub mod redeem {
 		#[cfg_attr(feature = "std", serde(serialize_with = "serialize_as_string"))]
 		/// premium redeem amount in collateral
 		pub premium: Balance,
-		/// the account redeeming tokens (for BTC)
+		/// the account redeeming tokens (for XLM)
 		pub redeemer: AccountId,
 		/// the user's Stellar address for payment verification
 		pub stellar_address: StellarPublicKeyRaw,

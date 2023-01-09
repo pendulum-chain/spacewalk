@@ -250,7 +250,7 @@ pub mod pallet {
 		/// Registers a new Stellar address for the vault.
 		///
 		/// # Arguments
-		/// * `public_key` - the BTC public key of the vault to update
+		/// * `public_key` - the XLM public key of the vault to update
 		#[pallet::weight(<T as Config>::WeightInfo::register_public_key())]
 		#[transactional]
 		pub fn register_public_key(
@@ -688,7 +688,7 @@ pub mod pallet {
 	pub(super) type VaultStellarPublicKey<T: Config> =
 		StorageMap<_, Blake2_128Concat, T::AccountId, StellarPublicKeyRaw, OptionQuery>;
 
-	/// Mapping of reserved BTC addresses to the registered account
+	/// Mapping of reserved XLM addresses to the registered account
 	#[pallet::storage]
 	pub(super) type ReservedAddresses<T: Config> =
 		StorageMap<_, Blake2_128Concat, StellarPublicKeyRaw, DefaultVaultId<T>, OptionQuery>;
@@ -1405,7 +1405,7 @@ impl<T: Config> Pallet<T> {
 	/// * `currency_id` - the currency being redeemed
 	/// * `redeemer_id` - the account of the user redeeming issued tokens
 	/// * `tokens` - the amount of tokens to be redeemed in collateral with the LiquidationVault,
-	///   denominated in BTC
+	///   denominated in XLM
 	///
 	/// # Errors
 	/// * `InsufficientTokensCommitted` - if the amount of tokens issued by the liquidation vault is
@@ -1910,7 +1910,7 @@ impl<T: Config> Pallet<T> {
 		Self::get_collateralization(&collateral_in_wrapped, &issued_tokens)
 	}
 
-	/// Gets the minimum amount of collateral required for the given amount of btc
+	/// Gets the minimum amount of collateral required for the given amount of XLM
 	/// with the current threshold and exchange rate
 	///
 	/// # Arguments
@@ -2064,19 +2064,19 @@ impl<T: Config> Pallet<T> {
 
 	fn is_collateral_below_threshold(
 		collateral: &Amount<T>,
-		btc_amount: &Amount<T>,
+		xlm_amount: &Amount<T>,
 		threshold: UnsignedFixedPoint<T>,
 	) -> Result<bool, DispatchError> {
 		let max_tokens = Self::calculate_max_wrapped_from_collateral_for_threshold(
 			collateral,
-			btc_amount.currency(),
+			xlm_amount.currency(),
 			threshold,
 		)?;
 		// check if the max_tokens are below the issued tokens
-		max_tokens.lt(btc_amount)
+		max_tokens.lt(xlm_amount)
 	}
 
-	/// Gets the minimum amount of collateral required for the given amount of btc
+	/// Gets the minimum amount of collateral required for the given amount of XLM
 	/// with the current exchange rate and the given threshold. This function is the
 	/// inverse of calculate_max_wrapped_from_collateral_for_threshold
 	///

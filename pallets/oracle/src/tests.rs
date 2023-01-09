@@ -294,7 +294,7 @@ fn remove_authorized_oracle_succeeds() {
 }
 
 #[test]
-fn set_btc_tx_fees_per_byte_succeeds() {
+fn set_xlm_tx_fees_per_byte_succeeds() {
 	run_test(|| {
 		Oracle::is_authorized.mock_safe(|_| MockResult::Return(true));
 

@@ -634,7 +634,7 @@ impl VaultRegistryPallet for SpacewalkParachain {
 		self.query_finalized(query).await
 	}
 
-	/// Update the default BTC public key for the vault corresponding to the signer.
+	/// Update the default Stellar public key for the vault corresponding to the signer.
 	///
 	/// # Arguments
 	/// * `public_key` - the new public key of the vault
@@ -647,10 +647,10 @@ impl VaultRegistryPallet for SpacewalkParachain {
 		Ok(())
 	}
 
-	/// Custom RPC that calculates the exact collateral required to cover the BTC amount.
+	/// Custom RPC that calculates the exact collateral required to cover the Stellar amount.
 	///
 	/// # Arguments
-	/// * `amount_xlm` - amount of btc to cover
+	/// * `amount_xlm` - amount of stellar to cover
 	async fn get_required_collateral_for_wrapped(
 		&self,
 		amount_xlm: u128,
@@ -829,7 +829,7 @@ impl OraclePallet for SpacewalkParachain {
 		.await
 	}
 
-	/// Sets the current exchange rate (i.e. DOT/BTC)
+	/// Sets the current exchange rate (i.e. DOT/XLM)
 	///
 	/// # Arguments
 	/// * `value` - the current exchange rate
@@ -860,7 +860,7 @@ impl OraclePallet for SpacewalkParachain {
 		.await
 	}
 
-	/// Converts the amount in btc to dot, based on the current set exchange rate.
+	/// Converts the amount in stellar asset to dot, based on the current set exchange rate.
 	async fn wrapped_to_collateral(
 		&self,
 		amount: u128,
@@ -879,7 +879,7 @@ impl OraclePallet for SpacewalkParachain {
 		Ok(result.amount)
 	}
 
-	/// Converts the amount in dot to btc, based on the current set exchange rate.
+	/// Converts the amount in dot to stellar asset, based on the current set exchange rate.
 	async fn collateral_to_wrapped(
 		&self,
 		amount: u128,
@@ -1249,7 +1249,7 @@ pub trait ReplacePallet {
 	async fn get_replace_request(&self, replace_id: H256)
 		-> Result<SpacewalkReplaceRequest, Error>;
 
-	/// Gets the minimum btc amount for replace requests
+	/// Gets the minimum xlm amount for replace requests
 	async fn get_replace_dust_amount(&self) -> Result<u128, Error>;
 }
 

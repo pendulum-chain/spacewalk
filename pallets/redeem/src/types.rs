@@ -13,11 +13,11 @@ use currency::Amount;
 pub enum Version {
 	/// Initial version.
 	V0,
-	/// BtcAddress type with script format.
+	/// StellarAddress type with script format.
 	V1,
-	/// RedeemRequestStatus, removed amount_dot and amount_polka_btc
+	/// RedeemRequestStatus, removed amount_dot and amount_stellar
 	V2,
-	/// ActiveBlockNumber, btc_height, transfer_fee_btc
+	/// ActiveBlockNumber, xlm_height, transfer_fee_xlm
 	V3,
 }
 

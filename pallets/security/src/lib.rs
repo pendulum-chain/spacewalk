@@ -96,7 +96,7 @@ pub mod pallet {
 		}
 	}
 
-	/// Integer/Enum defining the current state of the BTC-Parachain.
+	/// Integer/Enum defining the current state of the Stellar-Parachain.
 	#[pallet::storage]
 	#[pallet::getter(fn parachain_status)]
 	pub type ParachainStatus<T: Config> = StorageValue<_, StatusCode, ValueQuery>;
@@ -269,7 +269,7 @@ impl<T: Config> Pallet<T> {
 		});
 	}
 
-	/// Recovers the BTC Parachain state from an `ORACLE_OFFLINE` error
+	/// Recovers the Stellar Parachain state from an `ORACLE_OFFLINE` error
 	/// and sets ParachainStatus to `RUNNING` if there are no other errors.
 	pub fn recover_from_oracle_offline() {
 		Self::recover_from_(vec![ErrorCode::OracleOffline])

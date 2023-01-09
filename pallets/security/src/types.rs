@@ -2,15 +2,15 @@ use codec::{Decode, Encode, MaxEncodedLen};
 use scale_info::TypeInfo;
 use sp_std::{cmp::Ord, fmt::Debug};
 
-/// Enum indicating the status of the BTC Parachain.
+/// Enum indicating the status of the Stellar Parachain.
 #[cfg_attr(feature = "std", derive(serde::Serialize, serde::Deserialize))]
 #[derive(Encode, Decode, Clone, Copy, PartialEq, MaxEncodedLen, Eq, Debug, TypeInfo)]
 pub enum StatusCode {
-	/// BTC Parachain is fully operational.
+	/// Stellar Parachain is fully operational.
 	Running,
 	/// An error has occurred. See Errors for more details.
 	Error,
-	/// BTC Parachain operation has been fully suspended.
+	/// Stellar Parachain operation has been fully suspended.
 	Shutdown,
 }
 

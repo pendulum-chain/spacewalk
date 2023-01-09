@@ -902,7 +902,7 @@ fn can_withdraw_only_up_to_custom_threshold() {
 fn is_collateral_below_threshold_true_succeeds() {
 	run_test(|| {
 		let collateral = DEFAULT_COLLATERAL;
-		let btc_amount = DEFAULT_COLLATERAL / 2;
+		let xlm_amount = DEFAULT_COLLATERAL / 2;
 		let threshold = FixedU128::checked_from_rational(201, 100).unwrap(); // 201%
 
 		convert_to.mock_safe(move |_, _| MockResult::Return(Ok(wrapped(collateral))));
@@ -910,7 +910,7 @@ fn is_collateral_below_threshold_true_succeeds() {
 		assert_eq!(
 			VaultRegistry::is_collateral_below_threshold(
 				&amount(collateral),
-				&wrapped(btc_amount),
+				&wrapped(xlm_amount),
 				threshold
 			),
 			Ok(true)
@@ -922,7 +922,7 @@ fn is_collateral_below_threshold_true_succeeds() {
 fn is_collateral_below_threshold_false_succeeds() {
 	run_test(|| {
 		let collateral = DEFAULT_COLLATERAL;
-		let btc_amount = 50;
+		let xlm_amount = 50;
 		let threshold = FixedU128::checked_from_rational(200, 100).unwrap(); // 200%
 
 		convert_to.mock_safe(move |_, _| MockResult::Return(Ok(wrapped(collateral))));
@@ -930,7 +930,7 @@ fn is_collateral_below_threshold_false_succeeds() {
 		assert_eq!(
 			VaultRegistry::is_collateral_below_threshold(
 				&amount(collateral),
-				&wrapped(btc_amount),
+				&wrapped(xlm_amount),
 				threshold
 			),
 			Ok(false)
@@ -983,11 +983,11 @@ fn test_threshold_equivalent_to_legacy_calculation() {
 	run_test(|| {
 		let threshold = FixedU128::checked_from_rational(199999, 100000).unwrap(); // 199.999%
 		let random_start = 987529462328_u128;
-		for btc in random_start..random_start + 199999 {
+		for xlm in random_start..random_start + 199999 {
 			let old =
-				legacy_calculate_max_wrapped_from_collateral_for_threshold(btc, 199999).unwrap();
+				legacy_calculate_max_wrapped_from_collateral_for_threshold(xlm, 199999).unwrap();
 			let new = VaultRegistry::calculate_max_wrapped_from_collateral_for_threshold(
-				&amount(btc),
+				&amount(xlm),
 				DEFAULT_WRAPPED_CURRENCY,
 				threshold,
 			)
@@ -1002,38 +1002,38 @@ fn test_threshold_equivalent_to_legacy_calculation() {
 fn test_get_required_collateral_threshold_equivalent_to_legacy_calculation_() {
 	// old version
 	fn legacy_get_required_collateral_for_wrapped_with_threshold(
-		btc: BalanceOf<Test>,
+		xlm: BalanceOf<Test>,
 		threshold: u128,
 	) -> Result<BalanceOf<Test>, DispatchError> {
 		let granularity = 5;
-		let btc = U256::from(btc);
+		let xlm = U256::from(xlm);
 
 		// Step 1: inverse of the scaling applied in
 		// calculate_max_wrapped_from_collateral_for_threshold
 
 		// inverse of the div
-		let btc = btc.checked_mul(threshold.into()).ok_or(ArithmeticError::Overflow)?;
+		let xlm = xlm.checked_mul(threshold.into()).ok_or(ArithmeticError::Overflow)?;
 
 		// To do the inverse of the multiplication, we need to do division, but
 		// we need to round up. To round up (a/b), we need to do ((a+b-1)/b):
 		let rounding_addition = U256::from(10).pow(granularity.into()) - U256::from(1);
-		let btc = (btc + rounding_addition)
+		let xlm = (xlm + rounding_addition)
 			.checked_div(U256::from(10).pow(granularity.into()))
 			.ok_or(ArithmeticError::Underflow)?;
 
 		// Step 2: convert the amount to collateral
 		let amount_in_collateral =
-			convert_to(DEFAULT_COLLATERAL_CURRENCY, wrapped(btc.try_into()?))?;
+			convert_to(DEFAULT_COLLATERAL_CURRENCY, wrapped(xlm.try_into()?))?;
 		Ok(amount_in_collateral.amount())
 	}
 
 	run_test(|| {
 		let threshold = FixedU128::checked_from_rational(199999, 100000).unwrap(); // 199.999%
 		let random_start = 987529462328_u128;
-		for btc in random_start..random_start + 199999 {
-			let old = legacy_get_required_collateral_for_wrapped_with_threshold(btc, 199999);
+		for xlm in random_start..random_start + 199999 {
+			let old = legacy_get_required_collateral_for_wrapped_with_threshold(xlm, 199999);
 			let new = VaultRegistry::get_required_collateral_for_wrapped_with_threshold(
-				&wrapped(btc),
+				&wrapped(xlm),
 				threshold,
 				DEFAULT_COLLATERAL_CURRENCY,
 			);
@@ -1047,15 +1047,15 @@ fn get_required_collateral_for_wrapped_with_threshold_succeeds() {
 	run_test(|| {
 		let threshold = FixedU128::checked_from_rational(19999, 10000).unwrap(); // 199.99%
 		let random_start = 987529387592_u128;
-		for btc in random_start..random_start + 19999 {
+		for xlm in random_start..random_start + 19999 {
 			let min_collateral = VaultRegistry::get_required_collateral_for_wrapped_with_threshold(
-				&wrapped(btc),
+				&wrapped(xlm),
 				threshold,
 				DEFAULT_COLLATERAL_CURRENCY,
 			)
 			.unwrap();
 
-			let max_btc_for_min_collateral =
+			let max_xlm_for_min_collateral =
 				VaultRegistry::calculate_max_wrapped_from_collateral_for_threshold(
 					&min_collateral,
 					DEFAULT_WRAPPED_CURRENCY,
@@ -1063,7 +1063,7 @@ fn get_required_collateral_for_wrapped_with_threshold_succeeds() {
 				)
 				.unwrap();
 
-			let max_btc_for_below_min_collateral =
+			let max_xlm_for_below_min_collateral =
 				VaultRegistry::calculate_max_wrapped_from_collateral_for_threshold(
 					&amount(min_collateral.amount() - 1),
 					DEFAULT_WRAPPED_CURRENCY,
@@ -1072,9 +1072,9 @@ fn get_required_collateral_for_wrapped_with_threshold_succeeds() {
 				.unwrap();
 
 			// Check that the amount we found is indeed the lowest amount that is sufficient for
-			// `btc`
-			assert!(max_btc_for_min_collateral.amount() >= btc);
-			assert!(max_btc_for_below_min_collateral.amount() < btc);
+			// `xlm`
+			assert!(max_xlm_for_min_collateral.amount() >= xlm);
+			assert!(max_xlm_for_below_min_collateral.amount() < xlm);
 		}
 	})
 }
