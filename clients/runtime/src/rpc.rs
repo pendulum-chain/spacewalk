@@ -510,7 +510,7 @@ pub trait VaultRegistryPallet {
 
 	async fn get_required_collateral_for_wrapped(
 		&self,
-		amount_btc: u128,
+		amount_xlm: u128,
 		collateral_currency: CurrencyId,
 	) -> Result<u128, Error>;
 
@@ -650,10 +650,10 @@ impl VaultRegistryPallet for SpacewalkParachain {
 	/// Custom RPC that calculates the exact collateral required to cover the BTC amount.
 	///
 	/// # Arguments
-	/// * `amount_btc` - amount of btc to cover
+	/// * `amount_xlm` - amount of btc to cover
 	async fn get_required_collateral_for_wrapped(
 		&self,
-		amount_btc: u128,
+		amount_xlm: u128,
 		collateral_currency: CurrencyId,
 	) -> Result<u128, Error> {
 		let head = self.get_finalized_block_hash().await?;
@@ -662,7 +662,7 @@ impl VaultRegistryPallet for SpacewalkParachain {
 			.rpc()
 			.request(
 				"vaultRegistry_getRequiredCollateralForWrapped",
-				rpc_params![BalanceWrapper { amount: amount_btc }, collateral_currency, head],
+				rpc_params![BalanceWrapper { amount: amount_xlm }, collateral_currency, head],
 			)
 			.await?;
 
@@ -1193,14 +1193,14 @@ pub trait ReplacePallet {
 	///
 	/// * `&self` - the initiator of the transaction: the new vault
 	/// * `old_vault` - the vault to replace
-	/// * `amount_btc` - the amount of [Wrapped] to replace
+	/// * `amount_xlm` - the amount of [Wrapped] to replace
 	/// * `collateral` - the collateral for replacement
 	/// * `stellar_address` - the address to send funds to
 	async fn accept_replace(
 		&self,
 		new_vault: &VaultId,
 		old_vault: &VaultId,
-		amount_btc: u128,
+		amount_xlm: u128,
 		collateral: u128,
 		stellar_address: StellarPublicKeyRaw,
 	) -> Result<(), Error>;
@@ -1275,14 +1275,14 @@ impl ReplacePallet for SpacewalkParachain {
 		&self,
 		new_vault: &VaultId,
 		old_vault: &VaultId,
-		amount_btc: u128,
+		amount_xlm: u128,
 		collateral: u128,
 		stellar_address: StellarPublicKeyRaw,
 	) -> Result<(), Error> {
 		self.with_retry(metadata::tx().replace().accept_replace(
 			new_vault.currencies.clone(),
 			old_vault.clone(),
-			amount_btc,
+			amount_xlm,
 			collateral,
 			stellar_address,
 		))

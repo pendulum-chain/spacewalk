@@ -335,7 +335,7 @@ mod tests {
 		pub trait ReplacePallet {
 			async fn request_replace(&self, vault_id: &VaultId, amount: u128) -> Result<(), RuntimeError>;
 			async fn withdraw_replace(&self, vault_id: &VaultId, amount: u128) -> Result<(), RuntimeError>;
-			async fn accept_replace(&self, new_vault: &VaultId, old_vault: &VaultId, amount_btc: u128, collateral: u128, btc_address: BtcAddress) -> Result<(), RuntimeError>;
+			async fn accept_replace(&self, new_vault: &VaultId, old_vault: &VaultId, amount_xlm: u128, collateral: u128, btc_address: BtcAddress) -> Result<(), RuntimeError>;
 			async fn execute_replace(&self, replace_id: H256, merkle_proof: &[u8], raw_tx: &[u8]) -> Result<(), RuntimeError>;
 			async fn cancel_replace(&self, replace_id: H256) -> Result<(), RuntimeError>;
 			async fn get_new_vault_replace_requests(&self, account_id: AccountId) -> Result<Vec<(H256, InterBtcReplaceRequest)>, RuntimeError>;
