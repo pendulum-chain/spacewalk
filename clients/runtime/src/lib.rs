@@ -41,10 +41,9 @@ pub mod types;
 pub const TX_FEES: u128 = 2000000000;
 pub const MILLISECS_PER_BLOCK: u64 = 6000;
 
-pub const BTC_RELAY_MODULE: &str = "BTCRelay";
+pub const STELLAR_RELAY_MODULE: &str = "XLMRelay";
 pub const ISSUE_MODULE: &str = "Issue";
 pub const REDEEM_MODULE: &str = "Redeem";
-pub const RELAY_MODULE: &str = "Relay";
 pub const SECURITY_MODULE: &str = "Security";
 pub const SYSTEM_MODULE: &str = "System";
 

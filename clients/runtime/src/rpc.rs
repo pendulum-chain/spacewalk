@@ -1438,7 +1438,7 @@ impl SudoPallet for SpacewalkParachain {
 
 	/// Set the global security parameter for stable parachain confirmations
 	async fn set_parachain_confirmations(&self, value: BlockNumber) -> Result<(), Error> {
-		self.set_storage(crate::BTC_RELAY_MODULE, crate::STABLE_PARACHAIN_CONFIRMATIONS, value)
+		self.set_storage(crate::STELLAR_RELAY_MODULE, crate::STABLE_PARACHAIN_CONFIRMATIONS, value)
 			.await
 	}
 
