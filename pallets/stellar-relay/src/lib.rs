@@ -30,6 +30,7 @@ pub mod pallet {
 	use frame_support::{pallet_prelude::*, transactional};
 	use frame_system::pallet_prelude::*;
 	use sha2::{Digest, Sha256};
+	use sp_core::H256;
 	use sp_std::{collections::btree_map::BTreeMap, fmt::Debug, vec::Vec};
 	use substrate_stellar_sdk::{
 		compound_types::UnlimitedVarArray,
@@ -110,6 +111,7 @@ pub mod pallet {
 		NoOrganizationsRegistered,
 		NoValidatorsRegistered,
 		OrganizationLimitExceeded,
+		TransactionMemoDoesNotMatch,
 		TransactionNotInTransactionSet,
 		TransactionSetHashCreationFailed,
 		TransactionSetHashMismatch,
@@ -640,6 +642,18 @@ pub mod pallet {
 				base64::decode(raw_encoded_xdr).map_err(|_| Error::<T>::Base64DecodeError)?;
 			let decoded = V::from_xdr(value_xdr).map_err(|_| Error::<T>::InvalidXDR)?;
 			Ok(decoded)
+		}
+
+		pub fn ensure_transaction_memo_matches_hash(
+			transaction_envelope: &TransactionEnvelope,
+			expected_hash: &H256,
+		) -> Result<(), Error<T>> {
+			let network: &Network =
+				if Self::is_public_network() { &PUBLIC_NETWORK } else { &TEST_NETWORK };
+			let tx_hash = transaction_envelope.get_hash(network);
+
+			ensure!(tx_hash == expected_hash.0, Error::TransactionMemoDoesNotMatch);
+			Ok(())
 		}
 	}
 
