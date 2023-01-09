@@ -472,18 +472,6 @@ mod tests {
 		// not empty yet..
 		assert!(!active_processes.is_empty());
 
-		assert_eq!(
-			cancellation_scheduler
-				.process_event::<IssueCanceller>(
-					Event::BitcoinBlock(4),
-					&mut active_processes,
-					ListState::Valid,
-				)
-				.await
-				.unwrap(),
-			ListState::Valid
-		);
-
 		// issue should have been removed from the list after it has been canceled
 		assert!(active_processes.is_empty());
 	}
@@ -524,15 +512,6 @@ mod tests {
 			.unwrap();
 		assert!(!active_processes.is_empty());
 
-		cancellation_scheduler
-			.process_event::<IssueCanceller>(
-				Event::BitcoinBlock(120),
-				&mut active_processes,
-				ListState::Valid,
-			)
-			.await
-			.unwrap();
-
 		// not removed yet, both not yet expired
 		assert!(!active_processes.is_empty());
 
@@ -545,7 +524,7 @@ mod tests {
 			.await
 			.unwrap();
 
-		// not removed yet; bitcoin not expired
+		// not removed yet;
 		assert!(!active_processes.is_empty());
 
 		cancellation_scheduler
@@ -556,15 +535,6 @@ mod tests {
 			)
 			.await
 			.unwrap();
-		cancellation_scheduler
-			.process_event::<IssueCanceller>(
-				Event::BitcoinBlock(121),
-				&mut active_processes,
-				ListState::Valid,
-			)
-			.await
-			.unwrap();
-
 		// not removed yet - parachain not expired
 		assert!(!active_processes.is_empty());
 
@@ -577,7 +547,7 @@ mod tests {
 			.await
 			.unwrap();
 
-		// both parachain and bitcoin expired, should be removed now
+		// parachain expired, should be removed now
 		assert!(active_processes.is_empty());
 	}
 
@@ -588,21 +558,9 @@ mod tests {
 		let parachain_rpc = MockProvider::default();
 
 		let mut active_processes: Vec<ActiveRequest> = vec![
-			ActiveRequest {
-				id: H256::from_slice(&[1; 32]),
-				parachain_deadline_height: 0,
-				bitcoin_deadline_height: 0,
-			},
-			ActiveRequest {
-				id: H256::from_slice(&[2; 32]),
-				parachain_deadline_height: 0,
-				bitcoin_deadline_height: 0,
-			},
-			ActiveRequest {
-				id: H256::from_slice(&[3; 32]),
-				parachain_deadline_height: 0,
-				bitcoin_deadline_height: 0,
-			},
+			ActiveRequest { id: H256::from_slice(&[1; 32]), parachain_deadline_height: 0 },
+			ActiveRequest { id: H256::from_slice(&[2; 32]), parachain_deadline_height: 0 },
+			ActiveRequest { id: H256::from_slice(&[3; 32]), parachain_deadline_height: 0 },
 		];
 
 		let mut cancellation_scheduler =
@@ -732,7 +690,7 @@ mod tests {
 		let mut cancellation_scheduler =
 			CancellationScheduler::new(parachain_rpc, 10_001, 200, AccountId::new([1u8; 32]));
 
-		// deadline is at parachain_height = 11_000 and bitcoin_height = 120, so not yet expired..
+		// deadline is at parachain_height = 11_000 so not yet expired..
 		cancellation_scheduler
 			.process_event::<IssueCanceller>(
 				Event::ParachainBlock(10_500),
@@ -747,7 +705,6 @@ mod tests {
 			vec![ActiveRequest {
 				id: H256::from_slice(&[1; 32]),
 				parachain_deadline_height: 11_000,
-				bitcoin_deadline_height: 120,
 			}]
 		);
 
@@ -764,7 +721,6 @@ mod tests {
 			vec![ActiveRequest {
 				id: H256::from_slice(&[1; 32]),
 				parachain_deadline_height: 12_000,
-				bitcoin_deadline_height: 140,
 			}]
 		);
 	}
@@ -790,7 +746,7 @@ mod tests {
 		let mut cancellation_scheduler =
 			CancellationScheduler::new(parachain_rpc, 10_001, 200, AccountId::new([1u8; 32]));
 
-		// deadline is at parachain_height = 11_000 and bitcoin_height = 120, so not yet expired..
+		// deadline is at parachain_height = 11_000 so not yet expired..
 		cancellation_scheduler
 			.process_event::<IssueCanceller>(
 				Event::ParachainBlock(10_500),
@@ -806,7 +762,6 @@ mod tests {
 			vec![ActiveRequest {
 				id: H256::from_slice(&[1; 32]),
 				parachain_deadline_height: 11_000,
-				bitcoin_deadline_height: 120,
 			}]
 		);
 	}
