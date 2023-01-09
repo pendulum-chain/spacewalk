@@ -1364,7 +1364,7 @@ impl ReplacePallet for SpacewalkParachain {
 	}
 
 	async fn get_replace_dust_amount(&self) -> Result<u128, Error> {
-		self.query_finalized_or_error(metadata::storage().replace().replace_btc_dust_value())
+		self.query_finalized_or_error(metadata::storage().replace().replace_xlm_dust_value())
 			.await
 	}
 }

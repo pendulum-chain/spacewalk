@@ -158,19 +158,19 @@ pub mod pallet {
 	/// The minimum amount of wrapped stellar asset that is accepted for replace requests; any lower
 	/// values would risk the stellar client to reject the payment
 	#[pallet::storage]
-	#[pallet::getter(fn replace_btc_dust_value)]
-	pub(super) type ReplaceBtcDustValue<T: Config> = StorageValue<_, BalanceOf<T>, ValueQuery>;
+	#[pallet::getter(fn replace_xlm_dust_value)]
+	pub(super) type ReplaceXlmDustValue<T: Config> = StorageValue<_, BalanceOf<T>, ValueQuery>;
 
 	#[pallet::genesis_config]
 	pub struct GenesisConfig<T: Config> {
 		pub replace_period: T::BlockNumber,
-		pub replace_btc_dust_value: BalanceOf<T>,
+		pub replace_xlm_dust_value: BalanceOf<T>,
 	}
 
 	#[cfg(feature = "std")]
 	impl<T: Config> Default for GenesisConfig<T> {
 		fn default() -> Self {
-			Self { replace_period: Default::default(), replace_btc_dust_value: Default::default() }
+			Self { replace_period: Default::default(), replace_xlm_dust_value: Default::default() }
 		}
 	}
 
@@ -178,7 +178,7 @@ pub mod pallet {
 	impl<T: Config> GenesisBuild<T> for GenesisConfig<T> {
 		fn build(&self) {
 			ReplacePeriod::<T>::put(self.replace_period);
-			ReplaceBtcDustValue::<T>::put(self.replace_btc_dust_value);
+			ReplaceXlmDustValue::<T>::put(self.replace_xlm_dust_value);
 		}
 	}
 
@@ -730,6 +730,6 @@ impl<T: Config> Pallet<T> {
 	}
 
 	pub fn dust_value(currency_id: CurrencyId<T>) -> Amount<T> {
-		Amount::new(ReplaceBtcDustValue::<T>::get(), currency_id)
+		Amount::new(ReplaceXlmDustValue::<T>::get(), currency_id)
 	}
 }
