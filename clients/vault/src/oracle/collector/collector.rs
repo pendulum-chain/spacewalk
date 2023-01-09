@@ -103,7 +103,7 @@ impl ScpMessageCollector {
 		let slot = {
 			let mut map_write = self.txset_and_slot_map.write();
 			map_write.remove_by_txset_hash(txset_hash).map(|slot| {
-				tracing::info!("saved txset_hash for slot: {:?}", slot);
+				tracing::debug!("saved txset_hash for slot: {:?}", slot);
 				self.txset_map.write().set_with_key(slot, tx_set);
 				slot
 			})

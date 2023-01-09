@@ -409,7 +409,6 @@ pub async fn execute_open_requests(
 			// sending too many at once might cause the Stellar network to respond with a timeout
 			// error.
 			rate_limiter.until_ready().await;
-			tracing::info!("After rate limit");
 			match request.pay_and_execute(parachain_rpc, vault, oracle_agent).await {
 				Ok(_) => tracing::info!(
 					"{:?} request #{:?} successfully executed",
