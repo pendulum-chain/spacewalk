@@ -24,7 +24,7 @@ use sp_runtime::{
 use sp_std::{convert::TryInto, vec::Vec};
 
 use currency::Amount;
-pub use default_weights::{WeightInfo, SubstrateWeight};
+pub use default_weights::{SubstrateWeight, WeightInfo};
 pub use pallet::*;
 pub use primitives::{oracle::Key as OracleKey, CurrencyId, TruncateFixedPointToInt};
 use security::{ErrorCode, StatusCode};

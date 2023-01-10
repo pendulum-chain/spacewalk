@@ -23,7 +23,7 @@ use sp_std::{
 };
 
 use currency::{Amount, CurrencyId, OnSweep};
-pub use default_weights::{WeightInfo, SubstrateWeight};
+pub use default_weights::{SubstrateWeight, WeightInfo};
 pub use pallet::*;
 use reward::Rewards;
 use types::{BalanceOf, DefaultVaultId, SignedFixedPoint, UnsignedFixedPoint};
@@ -171,7 +171,7 @@ pub mod pallet {
 
 	/// Default griefing collateral (e.g. DOT/KSM) as a percentage of the to-be-locked collateral
 	/// of the new Vault. This collateral will be slashed and allocated to the replacing Vault
-	/// if the to-be-replaced Vault does not transfer BTC on time.
+	/// if the to-be-replaced Vault does not transfer the Stellar assets on time.
 	#[pallet::storage]
 	#[pallet::getter(fn replace_griefing_collateral)]
 	pub type ReplaceGriefingCollateral<T: Config> =
