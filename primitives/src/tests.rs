@@ -154,7 +154,7 @@ fn test_balance_convr() {
 	assert!(balance_lookup.is_ok());
 
 	let balance_lookup = balance_lookup.unwrap();
-	assert_eq!(balance_lookup, balance_lookup / CONVERSION_RATE);
+	assert_eq!(balance_lookup, (balance / CONVERSION_RATE) as i64);
 
 	let lookup_orig = BalanceConversion::unlookup(balance_lookup);
 	assert_eq!(lookup_orig, balance);
