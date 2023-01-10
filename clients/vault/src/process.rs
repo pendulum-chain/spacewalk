@@ -139,7 +139,7 @@ pub fn pid_name_matches_existing_client(
 	Ok(sys.process_name(client_pid)? == sys.process_name(pidfile_value)?)
 }
 
-#[cfg(all(test, feature = "parachain-metadata-testnet"))]
+#[cfg(all(test, feature = "parachain-metadata"))]
 mod tests {
 	use serial_test::serial;
 	use sysinfo::Pid;
