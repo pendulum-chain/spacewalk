@@ -44,6 +44,7 @@ orml-traits = {git = "https://github.com/open-web3-stack/open-runtime-module-lib
 [dev-dependencies]
 currency = {path = "../currency", default-features = false, features = ["testing-utils", "testing-constants"]}
 security = { path = "../security", features = ['testing-utils'] }
+oracle = { path = "../oracle", features = ['testing-utils'] }
 frame-benchmarking = {git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.35", default-features = false}
 mocktopus = "0.8.0"
 pretty_assertions = "0.7.2"
@@ -58,7 +59,8 @@ runtime-benchmarks = [
   "frame-support/runtime-benchmarks",
   "frame-system/runtime-benchmarks",
   "currency/testing-constants",
-  "security/testing-utils"
+  "security/testing-utils",
+  "oracle/testing-utils"
 ]
 skip-slow-tests = []
 std = [

@@ -42,6 +42,7 @@ frame-benchmarking = { git = "https://github.com/paritytech/substrate", branch =
 
 currency = { path = "../currency", default-features = false, features = ["testing-constants"] }
 security = { path = "../security", features = ['testing-utils'] }
+oracle = { path = "../oracle", features = ['testing-utils'] }
 
 # Orml dependencies
 orml-tokens = { git = "https://github.com/open-web3-stack/open-runtime-module-library", branch = "polkadot-v0.9.33", default-features = false }
@@ -79,5 +80,6 @@ runtime-benchmarks = [
     "orml-tokens",
     "orml-traits",
     "currency/testing-constants",
-    "security/testing-utils"
+    "security/testing-utils",
+    "oracle/testing-utils"
 ]
