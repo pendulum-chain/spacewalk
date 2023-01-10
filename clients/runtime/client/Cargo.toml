@@ -25,7 +25,7 @@ thiserror = "1.0.23"
 
 subxt = "0.25.0"
 
-sc-client-db = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.35" }
-sp-keyring = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.35", default-features = false }
-sc-network = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.35", default-features = false }
-sc-service = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.35", default-features = false }
+sc-client-db = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.36" }
+sp-keyring = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.36", default-features = false }
+sc-network = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.36", default-features = false }
+sc-service = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.36", default-features = false }
