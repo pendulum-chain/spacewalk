@@ -46,14 +46,8 @@ mod mock;
 pub mod types;
 
 
-pub(crate) type MomentOf<T> = <<T as Config>::Time as Time>::Moment;
-pub(crate) type TimestampedValueOf<T> = TimestampedValue<<T as Config>::OracleValue, MomentOf<T>>;
-
-// #[derive(Encode, Decode, Eq, PartialEq, Clone, Copy, Ord, PartialOrd, TypeInfo, MaxEncodedLen)]
-// pub struct TimestampedValue<Value, Moment> {
-// 	pub value: Value,
-// 	pub timestamp: Moment,
-// }
+// pub(crate) type MomentOf<T> = <<T as Config>::Time as Time>::Moment;
+// pub(crate) type TimestampedValueOf<T> = TimestampedValue<<T as Config>::OracleValue, MomentOf<T>>;
 
 #[frame_support::pallet]
 pub mod pallet {
@@ -77,14 +71,12 @@ pub mod pallet {
 		/// Weight information for the extrinsics in this module.
 		type WeightInfo: WeightInfo;
 
-		type Time: Time;
+		// type Time: Time;
+		// type OracleKey: Parameter + Member;
+		// type OracleValue: Parameter + Member + Ord;
+		// type DataProvider: DataProviderExtended<Self::OracleKey, TimestampedValueOf<Self>>;
 
-		type OracleKey: Parameter + Member;
-
-		/// The data value type
-		type OracleValue: Parameter + Member + Ord;
-
-		type DataProvider: DataProviderExtended<Self::OracleKey, TimestampedValueOf<Self>>;
+		type DataProvider: DataProviderExtended<OracleKey, TimestampedValue<Self::UnsignedFixedPoint, Self::Moment>>;
 	}
 
 	#[pallet::event]
