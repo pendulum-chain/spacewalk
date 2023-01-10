@@ -63,3 +63,4 @@ runtime-benchmarks = [
     "currency/testing-constants",
     "security/testing-utils"
 ]
+testing-utils = []

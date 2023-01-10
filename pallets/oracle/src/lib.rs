@@ -9,11 +9,9 @@
 extern crate mocktopus;
 
 use codec::{Decode, Encode, MaxEncodedLen};
-use frame_support::{
-	dispatch::{DispatchError, DispatchResult},
-	transactional,
-};
-
+#[cfg(feature = "testing-utils")]
+use frame_support::dispatch::DispatchResult;
+use frame_support::{dispatch::DispatchError, transactional};
 #[cfg(test)]
 use mocktopus::macros::mockable;
 use scale_info::TypeInfo;
@@ -391,6 +389,7 @@ impl<T: Config> Pallet<T> {
 	/// # Arguments
 	///
 	/// * `exchange_rate` - i.e. planck per satoshi
+	#[cfg(feature = "testing-utils")]
 	pub fn _set_exchange_rate(
 		currency_id: CurrencyId,
 		exchange_rate: UnsignedFixedPoint<T>,
