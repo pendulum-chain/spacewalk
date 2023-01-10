@@ -1,7 +1,7 @@
 //! # Oracle Pallet
 //! Based on the [specification](https://spec.interlay.io/spec/oracle.html).
 
-#![warn(warnings)]
+#![deny(warnings)]
 #![cfg_attr(test, feature(proc_macro_hygiene))]
 #![cfg_attr(not(feature = "std"), no_std)]
 
@@ -9,11 +9,9 @@
 extern crate mocktopus;
 
 use codec::{Decode, Encode, MaxEncodedLen};
-use frame_support::{
-	dispatch::{DispatchError, DispatchResult},
-	transactional,
-};
-
+#[cfg(feature = "testing-utils")]
+use frame_support::dispatch::DispatchResult;
+use frame_support::{dispatch::DispatchError, transactional};
 #[cfg(test)]
 use mocktopus::macros::mockable;
 use scale_info::TypeInfo;
@@ -24,7 +22,7 @@ use sp_runtime::{
 use sp_std::{convert::TryInto, vec::Vec};
 
 use currency::Amount;
-pub use default_weights::{WeightInfo, SubstrateWeight};
+pub use default_weights::{SubstrateWeight, WeightInfo};
 pub use pallet::*;
 pub use primitives::{oracle::Key as OracleKey, CurrencyId, TruncateFixedPointToInt};
 use security::{ErrorCode, StatusCode};
