@@ -23,7 +23,7 @@ use service::{
 	warp::{Rejection, Reply},
 	Error as ServiceError,
 };
-use wallet::TransactionResponse;
+use wallet::{TransactionResponse, Balance};
 use std::time::Duration;
 use tokio::{sync::RwLock, time::sleep};
 use tokio_metrics::TaskMetrics;
@@ -99,8 +99,7 @@ lazy_static! {
 		IntCounter::new("restart_count", "Number of service restarts")
 			.expect("Failed to create prometheus metric");
 }
-//[110, 97, 116, 105, 118, 101]
-const STELLAR_NATIVE_ASSET_TYPE: [u8; 6] = [110, 97, 116, 105, 118, 101];
+const STELLAR_NATIVE_ASSET_TYPE: [u8; 6] = [110, 97, 116, 105, 118, 101]; //"native"
 
 #[derive(Clone, Debug)]
 struct AverageTracker {
@@ -134,7 +133,7 @@ pub struct PerCurrencyMetrics {
 	collateralization: Gauge,
 	required_collateral: Gauge,
 	remaining_time_to_redeem_hours: Gauge,
-	xlm_balance: XLMBalance,
+	asset_balance: XLMBalance,
 	issues: RequestCounter,
 	redeems: RequestCounter,
 	average_btc_fee: StatefulGauge<AverageTracker>,
@@ -208,7 +207,7 @@ impl PerCurrencyMetrics {
 				gauge: AVERAGE_BTC_FEE.with(&labels),
 				data: Arc::new(RwLock::new(AverageTracker { total: 0, count: 0 })),
 			},
-			xlm_balance: XLMBalance {
+			asset_balance: XLMBalance {
 				upperbound: btc_balance_gauge("required_upperbound"),
 				lowerbound: btc_balance_gauge("required_lowerbound"),
 				actual: btc_balance_gauge("actual"),
@@ -229,7 +228,7 @@ impl PerCurrencyMetrics {
 	// async fn initialize_fee_budget_surplus<P: VaultRegistryPallet + RedeemPallet +
 	// ReplacePallet>(     vault: &VaultData,
 	//     parachain_rpc: P,
-	//     bitcoin_transactions: Vec<TransactionResponse>,
+	//     stellar_transactions: Vec<TransactionResponse>,
 	// ) -> Result<(), ServiceError<Error>> {
 	//     let vault_id = &vault.vault_id;
 	//     // update fee surplus
@@ -244,7 +243,7 @@ impl PerCurrencyMetrics {
 	//         let fee_budgets = redeems.chain(replaces).collect::<HashMap<_, _>>();
 	//         let fee_budgets = &fee_budgets;
 
-	//         let fee_budget_surplus = futures::stream::iter(bitcoin_transactions.iter())
+	//         let fee_budget_surplus = futures::stream::iter(stellar_transactions.iter())
 	//             .filter_map(|tx| async move {
 	//                 let transaction = vault
 	//                     .btc_rpc
@@ -269,19 +268,17 @@ impl PerCurrencyMetrics {
 	// }
 
 	pub async fn initialize_values(parachain_rpc: SpacewalkParachain, vault: &VaultData) {
-		let bitcoin_transactions =
+		let stellar_transactions =
 			match vault.stellar_wallet.read().await.get_latest_transactions(0, 200, false).await {
 				Ok(x) => x
 					.into_iter()
-					// .filter(|x| x.detail.category == GetTransactionResultDetailCategory::Send)
 					.collect(),
 				Err(_) => vec![],
 			};
 
 		// update average fee
-		let (total, count) = bitcoin_transactions
+		let (total, count) = stellar_transactions
 		    .iter()
-		//  .filter_map(|tx| tx.detail.fee.map(|amount| amount.to_sat().unsigned_abs()))`
 		    .filter_map(|tx| Some(tx.fee_charged))
 		    .fold((0, 0), |(total, count), x| (total + x, count + 1));
 		*vault.metrics.average_btc_fee.data.write().await = AverageTracker { total, count };
@@ -291,7 +288,7 @@ impl PerCurrencyMetrics {
 
 		let _ = tokio::join!(
 			// Self::initialize_fee_budget_surplus(vault, parachain_rpc.clone(),
-			// bitcoin_transactions),
+			// stellar_transactions),
 			publish_average_bitcoin_fee(vault),
 			publish_expected_bitcoin_balance(vault, parachain_rpc.clone()),
 			publish_locked_collateral(vault, parachain_rpc.clone()),
@@ -445,33 +442,8 @@ async fn publish_stellar_balance<P: OraclePallet>(parachain_rpc: P, vault: &Vaul
 			let asset: Result<stellar::Asset, _> = currency_id.try_into();
 			let mut wrapped_to_collateral: u128 = 0;
 			if let Ok(asset) = asset {
-				let xlm_balance: Option<f64> = match asset {
-					stellar::Asset::AssetTypeNative => balance
-						.iter()
-						.find(|i| i.asset_type == STELLAR_NATIVE_ASSET_TYPE.to_vec())
-						.map(|i| i.balance),
-					stellar::Asset::AssetTypeCreditAlphanum4(a4) => balance
-						.iter()
-						.find(|i| {
-							i.asset_type != STELLAR_NATIVE_ASSET_TYPE.to_vec() &&
-								i.asset_code.clone().unwrap_or_default() ==
-									a4.asset_code.to_vec()
-						})
-						.map(|i| i.balance),
-					stellar::Asset::AssetTypeCreditAlphanum12(a12) => balance
-						.iter()
-						.find(|i| {
-							i.asset_type != STELLAR_NATIVE_ASSET_TYPE.to_vec() &&
-								i.asset_code.clone().unwrap_or_default() ==
-									a12.asset_code.to_vec()
-						})
-						.map(|i| i.balance),
-					_ => {
-						tracing::warn!("Unsupported stellar asset type");
-						None
-					},
-				};
-				if let Some(b) = xlm_balance {
+				let asset_balance = get_balance_for_asset(asset, balance);
+				if let Some(b) = asset_balance {
 					wrapped_to_collateral = parachain_rpc
 						.wrapped_to_collateral(b as u128, currency_id)
 						.await
@@ -484,14 +456,44 @@ async fn publish_stellar_balance<P: OraclePallet>(parachain_rpc: P, vault: &Vaul
 			} else {
 				tracing::warn!("Incorrect stellar asset type");
 			}
-			vault.metrics.xlm_balance.actual.set(wrapped_to_collateral as f64);
+			vault.metrics.asset_balance.actual.set(wrapped_to_collateral as f64);
 		},
 		Err(e) => {
 			// unexpected error, but not critical so just continue
 			tracing::warn!("Failed to get balance: {}", e);
-			vault.metrics.xlm_balance.actual.set(0 as f64);
+			vault.metrics.asset_balance.actual.set(0 as f64);
 		},
 	}
+}
+
+fn get_balance_for_asset(asset: stellar::Asset, balance: Vec<Balance>) -> Option<f64> {
+    let asset_balance: Option<f64> = match asset {
+					    stellar::Asset::AssetTypeNative => balance
+						    .iter()
+						    .find(|i| i.asset_type == STELLAR_NATIVE_ASSET_TYPE.to_vec())
+						    .map(|i| i.balance),
+					    stellar::Asset::AssetTypeCreditAlphanum4(a4) => balance
+						    .iter()
+						    .find(|i| {
+							    i.asset_type != STELLAR_NATIVE_ASSET_TYPE.to_vec() &&
+								    i.asset_code.clone().unwrap_or_default() ==
+									    a4.asset_code.to_vec()
+						    })
+						    .map(|i| i.balance),
+					    stellar::Asset::AssetTypeCreditAlphanum12(a12) => balance
+						    .iter()
+						    .find(|i| {
+							    i.asset_type != STELLAR_NATIVE_ASSET_TYPE.to_vec() &&
+								    i.asset_code.clone().unwrap_or_default() ==
+									    a12.asset_code.to_vec()
+						    })
+						    .map(|i| i.balance),
+					    _ => {
+						    tracing::warn!("Unsupported stellar asset type");
+						    None
+					    },
+				    };
+    asset_balance
 }
 
 async fn publish_native_currency_balance<P: CollateralBalancesPallet + UtilFuncs>(
@@ -714,8 +716,8 @@ pub async fn publish_expected_bitcoin_balance<P: VaultRegistryPallet>(
 		let lowerbound = v.issued_tokens.saturating_sub(v.to_be_redeemed_tokens);
 		let upperbound = v.issued_tokens.saturating_add(v.to_be_issued_tokens);
 		let scaling_factor = vault.vault_id.wrapped_currency().inner()?.one() as f64;
-		vault.metrics.xlm_balance.lowerbound.set(lowerbound as f64 / scaling_factor);
-		vault.metrics.xlm_balance.upperbound.set(upperbound as f64 / scaling_factor);
+		vault.metrics.asset_balance.lowerbound.set(lowerbound as f64 / scaling_factor);
+		vault.metrics.asset_balance.upperbound.set(upperbound as f64 / scaling_factor);
 	}
 	Ok(())
 }
