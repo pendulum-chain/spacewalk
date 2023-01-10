@@ -26,7 +26,7 @@ pub use pallet::*;
 pub use crate::types::{ErrorCode, StatusCode};
 
 pub mod types;
-pub use default_weights::WeightInfo;
+pub use default_weights::{WeightInfo, SubstrateWeight};
 
 #[cfg(test)]
 mod mock;
@@ -135,6 +135,7 @@ pub mod pallet {
 		/// * `status_code` - the status code to set
 		///
 		/// # Weight: `O(1)`
+		#[pallet::call_index(0)]
 		#[pallet::weight(<T as Config>::WeightInfo::set_parachain_status())]
 		#[transactional]
 		pub fn set_parachain_status(
@@ -154,6 +155,7 @@ pub mod pallet {
 		/// * `error_code` - the error code to insert
 		///
 		/// # Weight: `O(1)`
+		#[pallet::call_index(1)]
 		#[pallet::weight(<T as Config>::WeightInfo::insert_parachain_error())]
 		#[transactional]
 		pub fn insert_parachain_error(
@@ -173,6 +175,7 @@ pub mod pallet {
 		/// * `error_code` - the error code to remove
 		///
 		/// # Weight: `O(1)`
+		#[pallet::call_index(2)]
 		#[pallet::weight(<T as Config>::WeightInfo::remove_parachain_error())]
 		#[transactional]
 		pub fn remove_parachain_error(
