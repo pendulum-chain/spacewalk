@@ -294,7 +294,7 @@ fn testnet_genesis(
 			interval_length: (60u32 * 60 * 24).into(),
 			last_interval_index: 0u32.into(),
 		},
-		replace: ReplaceConfig { replace_period: DAYS, replace_btc_dust_value: 1000 },
+		replace: ReplaceConfig { replace_period: DAYS, replace_minimum_transfer_amount: 1000 },
 		security: SecurityConfig {
 			initial_status: if start_shutdown { StatusCode::Shutdown } else { StatusCode::Error },
 		},

@@ -187,10 +187,6 @@ impl currency::Config for Test {
 }
 
 parameter_types! {
-	pub const ParachainBlocksPerBitcoinBlock: BlockNumber = 100;
-}
-
-parameter_types! {
 	pub const OrganizationLimit: u32 = 255;
 	pub const ValidatorLimit: u32 = 255;
 }

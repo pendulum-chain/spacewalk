@@ -510,7 +510,7 @@ pub trait VaultRegistryPallet {
 
 	async fn get_required_collateral_for_wrapped(
 		&self,
-		amount_btc: u128,
+		amount_wrapped_asset: u128,
 		collateral_currency: CurrencyId,
 	) -> Result<u128, Error>;
 
@@ -579,7 +579,7 @@ impl VaultRegistryPallet for SpacewalkParachain {
 	///
 	/// # Arguments
 	/// * `collateral` - deposit
-	/// * `public_key` - Bitcoin public key
+	/// * `public_key` - Stellar public key
 	async fn register_vault(&self, vault_id: &VaultId, collateral: u128) -> Result<(), Error> {
 		// TODO: check MinimumDeposit
 		if collateral == 0 {
@@ -595,7 +595,7 @@ impl VaultRegistryPallet for SpacewalkParachain {
 	}
 
 	/// Locks additional collateral as a security against stealing the
-	/// Bitcoin locked with it.
+	/// Stellar assets locked with it.
 	///
 	/// # Arguments
 	/// * `amount` - the amount of extra collateral to lock
@@ -634,7 +634,7 @@ impl VaultRegistryPallet for SpacewalkParachain {
 		self.query_finalized(query).await
 	}
 
-	/// Update the default BTC public key for the vault corresponding to the signer.
+	/// Update the default Stellar public key for the vault corresponding to the signer.
 	///
 	/// # Arguments
 	/// * `public_key` - the new public key of the vault
@@ -647,13 +647,13 @@ impl VaultRegistryPallet for SpacewalkParachain {
 		Ok(())
 	}
 
-	/// Custom RPC that calculates the exact collateral required to cover the BTC amount.
+	/// Custom RPC that calculates the exact collateral required to cover the Stellar amount.
 	///
 	/// # Arguments
-	/// * `amount_btc` - amount of btc to cover
+	/// * `amount_wrapped_asset` - amount of the wrapped Stellar asset to convert
 	async fn get_required_collateral_for_wrapped(
 		&self,
-		amount_btc: u128,
+		amount_wrapped_asset: u128,
 		collateral_currency: CurrencyId,
 	) -> Result<u128, Error> {
 		let head = self.get_finalized_block_hash().await?;
@@ -662,7 +662,11 @@ impl VaultRegistryPallet for SpacewalkParachain {
 			.rpc()
 			.request(
 				"vaultRegistry_getRequiredCollateralForWrapped",
-				rpc_params![BalanceWrapper { amount: amount_btc }, collateral_currency, head],
+				rpc_params![
+					BalanceWrapper { amount: amount_wrapped_asset },
+					collateral_currency,
+					head
+				],
 			)
 			.await?;
 
@@ -829,7 +833,7 @@ impl OraclePallet for SpacewalkParachain {
 		.await
 	}
 
-	/// Sets the current exchange rate (i.e. DOT/BTC)
+	/// Sets the current exchange rate (i.e. DOT/XLM)
 	///
 	/// # Arguments
 	/// * `value` - the current exchange rate
@@ -838,8 +842,7 @@ impl OraclePallet for SpacewalkParachain {
 		Ok(())
 	}
 
-	/// Sets the estimated Satoshis per bytes required to get a Bitcoin transaction included in
-	/// in the next block (~10 min)
+	/// Sets the estimated fee required to get a Stellar transaction included in the next block.
 	///
 	/// # Arguments
 	/// * `value` - the estimated fee rate
@@ -851,8 +854,7 @@ impl OraclePallet for SpacewalkParachain {
 		Ok(())
 	}
 
-	/// Gets the estimated Satoshis per bytes required to get a Bitcoin transaction included in
-	/// in the next x blocks
+	/// Gets the estimated fee required to get a Stellar transaction included in the next block.
 	async fn get_stellar_fees(&self) -> Result<FixedU128, Error> {
 		self.query_finalized_or_error(
 			metadata::storage().oracle().aggregate(&OracleKey::FeeEstimation),
@@ -860,7 +862,8 @@ impl OraclePallet for SpacewalkParachain {
 		.await
 	}
 
-	/// Converts the amount in btc to dot, based on the current set exchange rate.
+	/// Converts the amount of wrapped Stellar assets to the collateral currency, based on the
+	/// current set exchange rate.
 	async fn wrapped_to_collateral(
 		&self,
 		amount: u128,
@@ -879,7 +882,8 @@ impl OraclePallet for SpacewalkParachain {
 		Ok(result.amount)
 	}
 
-	/// Converts the amount in dot to btc, based on the current set exchange rate.
+	/// Converts the amount of collateral currency to the specified wrapped asset, based on the
+	/// current set exchange rate.
 	async fn collateral_to_wrapped(
 		&self,
 		amount: u128,
@@ -950,7 +954,7 @@ pub trait IssuePallet {
 		vault_id: &VaultId,
 	) -> Result<RequestIssueEvent, Error>;
 
-	/// Execute a issue request by providing a Bitcoin transaction inclusion proof
+	/// Execute a issue request by providing a Stellar transaction inclusion proof
 	async fn execute_issue(
 		&self,
 		issue_id: H256,
@@ -1072,7 +1076,7 @@ pub trait RedeemPallet {
 		vault_id: &VaultId,
 	) -> Result<H256, Error>;
 
-	/// Execute a redeem request by providing a Bitcoin transaction inclusion proof
+	/// Execute a redeem request by providing a Stellar transaction inclusion proof
 	async fn execute_redeem(
 		&self,
 		redeem_id: H256,
@@ -1193,26 +1197,24 @@ pub trait ReplacePallet {
 	///
 	/// * `&self` - the initiator of the transaction: the new vault
 	/// * `old_vault` - the vault to replace
-	/// * `amount_btc` - the amount of [Wrapped] to replace
+	/// * `amount_wrapped` - the amount of [Wrapped] to replace
 	/// * `collateral` - the collateral for replacement
 	/// * `stellar_address` - the address to send funds to
 	async fn accept_replace(
 		&self,
 		new_vault: &VaultId,
 		old_vault: &VaultId,
-		amount_btc: u128,
+		amount_wrapped: u128,
 		collateral: u128,
 		stellar_address: StellarPublicKeyRaw,
 	) -> Result<(), Error>;
-	//
-	/// Execute vault replacement
+
+	/// Execute vault replacement by providing a Stellar inclusion proof
 	///
 	/// # Arguments
 	///
 	/// * `&self` - sender of the transaction: the old vault
 	/// * `replace_id` - the ID of the replacement request
-	/// * 'merkle_proof' - the merkle root of the block
-	/// * `raw_tx` - the transaction id in bytes
 	async fn execute_replace(
 		&self,
 		replace_id: H256,
@@ -1249,7 +1251,7 @@ pub trait ReplacePallet {
 	async fn get_replace_request(&self, replace_id: H256)
 		-> Result<SpacewalkReplaceRequest, Error>;
 
-	/// Gets the minimum btc amount for replace requests
+	/// Gets the minimum amount of a wrapped Stellar asset for replace requests
 	async fn get_replace_dust_amount(&self) -> Result<u128, Error>;
 }
 
@@ -1275,14 +1277,14 @@ impl ReplacePallet for SpacewalkParachain {
 		&self,
 		new_vault: &VaultId,
 		old_vault: &VaultId,
-		amount_btc: u128,
+		amount_wrapped: u128,
 		collateral: u128,
 		stellar_address: StellarPublicKeyRaw,
 	) -> Result<(), Error> {
 		self.with_retry(metadata::tx().replace().accept_replace(
 			new_vault.currencies.clone(),
 			old_vault.clone(),
-			amount_btc,
+			amount_wrapped,
 			collateral,
 			stellar_address,
 		))
@@ -1364,8 +1366,10 @@ impl ReplacePallet for SpacewalkParachain {
 	}
 
 	async fn get_replace_dust_amount(&self) -> Result<u128, Error> {
-		self.query_finalized_or_error(metadata::storage().replace().replace_btc_dust_value())
-			.await
+		self.query_finalized_or_error(
+			metadata::storage().replace().replace_minimum_transfer_amount(),
+		)
+		.await
 	}
 }
 
@@ -1438,7 +1442,7 @@ impl SudoPallet for SpacewalkParachain {
 
 	/// Set the global security parameter for stable parachain confirmations
 	async fn set_parachain_confirmations(&self, value: BlockNumber) -> Result<(), Error> {
-		self.set_storage(crate::BTC_RELAY_MODULE, crate::STABLE_PARACHAIN_CONFIRMATIONS, value)
+		self.set_storage(crate::STELLAR_RELAY_MODULE, crate::STABLE_PARACHAIN_CONFIRMATIONS, value)
 			.await
 	}
 

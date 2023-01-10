@@ -3,9 +3,7 @@
   "id": "beta_testnet",
   "chainType": "Live",
   "bootNodes": [
-    "/dns4/lb-ams3.do.polkabtc.io/tcp/30347/p2p/12D3KooWQgh9z6TuD7H5ixMPsa2RR6FoKp35SToCD1c2DNJqyEjU",
-    "/dns4/lb-ams3.do.polkabtc.io/tcp/30348/p2p/12D3KooWFxfTef4uTR98jKrGueQkjth4RutuvrpB2hHUpHoYX6fd",
-    "/dns4/lb-ams3.do.polkabtc.io/tcp/30349/p2p/12D3KooWKNFAxB7b19JDfdyDnTKHMmTJqhDD5jqXUysWN27Nnz2R"
+    
   ],
   "telemetryEndpoints": null,
   "protocolId": null,
@@ -20,11 +18,9 @@
     ],
     "tokenSymbol": [
       "DOT",
-      "INTERBTC",
-      "INTR",
+      "PEN",
       "KSM",
-      "KBTC",
-      "KINT"
+      "AMPE"
     ]
   },
   "consensusEngine": null,

@@ -204,10 +204,6 @@ impl staking::Config for Test {
 }
 
 parameter_types! {
-	pub const ParachainBlocksPerBitcoinBlock: BlockNumber = 100;
-}
-
-parameter_types! {
 	pub const OrganizationLimit: u32 = 255;
 	pub const ValidatorLimit: u32 = 255;
 }
@@ -336,7 +332,7 @@ impl ExtBuilder {
 		.assimilate_storage(&mut storage)
 		.unwrap();
 
-		replace::GenesisConfig::<Test> { replace_period: 10, replace_btc_dust_value: 2 }
+		replace::GenesisConfig::<Test> { replace_period: 10, replace_minimum_transfer_amount: 2 }
 			.assimilate_storage(&mut storage)
 			.unwrap();
 

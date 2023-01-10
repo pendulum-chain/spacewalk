@@ -17,7 +17,7 @@ use crate::{
 };
 
 /// Listen for AcceptReplaceEvent directed at this vault and continue the replacement
-/// procedure by transferring the corresponding stellar assets and calling execute_replace
+/// procedure by transferring the corresponding Stellar assets and calling execute_replace.
 ///
 /// # Arguments
 ///
@@ -41,8 +41,6 @@ pub async fn listen_for_accept_replace(
 					None => return, // event not directed at this vault
 				};
 				tracing::info!("Received accept replace event: {:?}", event);
-
-				// let _ = publish_expected_bitcoin_balance(&vault, parachain_rpc.clone()).await;
 
 				// within this event callback, we captured the arguments of
 				// listen_for_redeem_requests by reference. Since spawn requires static lifetimes,
@@ -191,7 +189,7 @@ pub async fn handle_replace_request<
 }
 
 /// Listen for ExecuteReplaceEvent directed at this vault and continue the replacement
-/// procedure by transferring bitcoin and calling execute_replace
+/// procedure by transferring the corresponding Stellar asset and calling execute_replace.
 ///
 /// # Arguments
 ///
@@ -212,7 +210,7 @@ pub async fn listen_for_execute_replace(
 					let _ = event_channel.clone().send(Event::Executed(event.replace_id)).await;
 				}
 			},
-			|error| tracing::error!("Error reading redeem event: {}", error.to_string()),
+			|error| tracing::error!("Error reading replace event: {}", error.to_string()),
 		)
 		.await?;
 	Ok(())

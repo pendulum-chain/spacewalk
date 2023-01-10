@@ -226,7 +226,7 @@ pub mod redeem {
 		#[cfg_attr(feature = "std", serde(deserialize_with = "deserialize_from_string"))]
 		#[cfg_attr(feature = "std", serde(bound(serialize = "Balance: std::fmt::Display")))]
 		#[cfg_attr(feature = "std", serde(serialize_with = "serialize_as_string"))]
-		/// amount the vault should spend on the bitcoin inclusion fee - taken from request amount
+		/// amount the vault should spend on the Stellar inclusion fee - taken from request amount
 		pub transfer_fee: Balance,
 		#[cfg_attr(feature = "std", serde(bound(deserialize = "Balance: std::str::FromStr")))]
 		#[cfg_attr(feature = "std", serde(deserialize_with = "deserialize_from_string"))]
@@ -241,7 +241,7 @@ pub mod redeem {
 		#[cfg_attr(feature = "std", serde(serialize_with = "serialize_as_string"))]
 		/// premium redeem amount in collateral
 		pub premium: Balance,
-		/// the account redeeming tokens (for BTC)
+		/// the account redeeming tokens (for Stellar assets)
 		pub redeemer: AccountId,
 		/// the user's Stellar address for payment verification
 		pub stellar_address: StellarPublicKeyRaw,
@@ -303,7 +303,7 @@ pub mod replace {
 		pub accept_time: BlockNumber,
 		/// the replace period when this request was opened
 		pub period: BlockNumber,
-		/// the Bitcoin address of the new vault
+		/// the Stellar address of the new vault
 		pub stellar_address: StellarPublicKeyRaw,
 		/// the status of this replace request
 		pub status: ReplaceRequestStatus,
@@ -656,14 +656,21 @@ impl Convert<(Vec<u8>, Vec<u8>), Result<CurrencyId, ()>> for StringCurrencyConve
 	}
 }
 
+// This struct can be used to convert from a 'Spacewalk' balance to a 'Stellar' balance.
+// It converts the native balance of the chain to the stroop representation of the asset on Stellar.
 pub struct BalanceConversion;
+
+// We set the conversion rate to 1:1 for now.
+const CONVERSION_RATE: u128 = 1;
 
 impl StaticLookup for BalanceConversion {
 	type Source = u128;
+	// The type of stroop amounts is i64
+	// see [here](https://github.com/pendulum-chain/substrate-stellar-sdk/blob/f659041c6643f80f4e1f6e9e35268dba3ae2d313/src/amount.rs#L7)
 	type Target = i64;
 
 	fn lookup(pendulum_balance: Self::Source) -> Result<Self::Target, LookupError> {
-		let stroops128: u128 = pendulum_balance / 100000;
+		let stroops128: u128 = pendulum_balance / CONVERSION_RATE;
 
 		if stroops128 > i64::MAX as u128 {
 			Err(LookupError)
@@ -673,7 +680,7 @@ impl StaticLookup for BalanceConversion {
 	}
 
 	fn unlookup(stellar_stroops: Self::Target) -> Self::Source {
-		(stellar_stroops * 100000) as u128
+		(stellar_stroops * CONVERSION_RATE as i64) as u128
 	}
 }
 
@@ -747,7 +754,6 @@ impl TransactionEnvelopeExt for TransactionEnvelope {
 		}
 
 		// `transferred_amount` is in stroops, so we need to convert it
-
 		BalanceConversion::unlookup(transferred_amount)
 	}
 }

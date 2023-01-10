@@ -33,7 +33,7 @@ pub enum Error {
 	VaultNotFound,
 	#[error("Vault has been liquidated")]
 	VaultLiquidated,
-	#[error("Vault has stolen BTC")]
+	#[error("Vault has stolen Stellar assets")]
 	VaultCommittedTheft,
 	#[error("Channel closed unexpectedly")]
 	ChannelClosed,
