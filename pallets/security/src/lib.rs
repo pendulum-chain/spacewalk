@@ -26,7 +26,7 @@ pub use pallet::*;
 pub use crate::types::{ErrorCode, StatusCode};
 
 pub mod types;
-pub use default_weights::WeightInfo;
+pub use default_weights::{WeightInfo, SubstrateWeight};
 
 #[cfg(test)]
 mod mock;

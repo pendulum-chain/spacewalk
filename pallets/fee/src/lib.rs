@@ -23,7 +23,7 @@ use sp_std::{
 };
 
 use currency::{Amount, CurrencyId, OnSweep};
-pub use default_weights::WeightInfo;
+pub use default_weights::{WeightInfo, SubstrateWeight};
 pub use pallet::*;
 use reward::Rewards;
 use types::{BalanceOf, DefaultVaultId, SignedFixedPoint, UnsignedFixedPoint};

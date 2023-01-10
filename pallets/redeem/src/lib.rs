@@ -28,7 +28,7 @@ use substrate_stellar_sdk::{
 };
 
 use currency::Amount;
-pub use default_weights::WeightInfo;
+pub use default_weights::{WeightInfo, SubstrateWeight};
 
 pub use pallet::*;
 use primitives::StellarPublicKeyRaw;

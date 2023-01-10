@@ -147,7 +147,7 @@ substrate-prometheus-endpoint = { git = "https://github.com/paritytech//substrat
 substrate-wasm-builder = { git = "https://github.com/paritytech//substrate", branch = "polkadot-v0.9.36" }
 
 [patch."https://github.com/paritytech/polkadot"]
-xcm = { git = "https://github.com/paritytech//polkadot", branch = "release-v0.9.35" }
+xcm = { git = "https://github.com/paritytech//polkadot", branch = "release-v0.9.36" }
 
 [patch.crates-io]
 sp-core = { git = "https://github.com/paritytech//substrate", branch = "polkadot-v0.9.36" }

@@ -22,7 +22,7 @@ mod ext;
 mod benchmarking;
 
 mod default_weights;
-pub use default_weights::WeightInfo;
+pub use default_weights::{WeightInfo, SubstrateWeight};
 
 use currency::Amount;
 use frame_support::{

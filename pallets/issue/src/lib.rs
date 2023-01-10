@@ -24,7 +24,7 @@ use substrate_stellar_sdk::{
 use std::str::FromStr;
 
 use currency::Amount;
-pub use default_weights::WeightInfo;
+pub use default_weights::{WeightInfo, SubstrateWeight};
 pub use pallet::*;
 use types::IssueRequestExt;
 use vault_registry::{CurrencySource, VaultStatus};

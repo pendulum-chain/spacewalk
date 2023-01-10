@@ -24,6 +24,8 @@ pub mod types;
 
 mod default_weights;
 
+pub use default_weights::SubstrateWeight;
+
 #[frame_support::pallet]
 pub mod pallet {
 	use codec::FullCodec;
