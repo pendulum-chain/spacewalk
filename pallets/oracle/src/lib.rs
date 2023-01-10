@@ -1,7 +1,7 @@
 //! # Oracle Pallet
 //! Based on the [specification](https://spec.interlay.io/spec/oracle.html).
 
-#![deny(warnings)]
+// #![deny(warnings)]
 #![cfg_attr(test, feature(proc_macro_hygiene))]
 #![cfg_attr(not(feature = "std"), no_std)]
 
@@ -12,6 +12,7 @@ use codec::{Decode, Encode, MaxEncodedLen};
 #[cfg(feature = "testing-utils")]
 use frame_support::dispatch::DispatchResult;
 use frame_support::{dispatch::DispatchError, transactional};
+use frame_support::traits::Time;
 #[cfg(test)]
 use mocktopus::macros::mockable;
 use scale_info::TypeInfo;
@@ -26,6 +27,7 @@ pub use default_weights::{SubstrateWeight, WeightInfo};
 pub use pallet::*;
 pub use primitives::{oracle::Key as OracleKey, CurrencyId, TruncateFixedPointToInt};
 use security::{ErrorCode, StatusCode};
+use orml_oracle::{DataProviderExtended, TimestampedValue};
 
 use crate::types::{BalanceOf, UnsignedFixedPoint, Version};
 
@@ -43,11 +45,15 @@ mod mock;
 
 pub mod types;
 
-#[derive(Encode, Decode, Eq, PartialEq, Clone, Copy, Ord, PartialOrd, TypeInfo, MaxEncodedLen)]
-pub struct TimestampedValue<Value, Moment> {
-	pub value: Value,
-	pub timestamp: Moment,
-}
+
+pub(crate) type MomentOf<T> = <<T as Config>::Time as Time>::Moment;
+pub(crate) type TimestampedValueOf<T> = TimestampedValue<<T as Config>::OracleValue, MomentOf<T>>;
+
+// #[derive(Encode, Decode, Eq, PartialEq, Clone, Copy, Ord, PartialOrd, TypeInfo, MaxEncodedLen)]
+// pub struct TimestampedValue<Value, Moment> {
+// 	pub value: Value,
+// 	pub timestamp: Moment,
+// }
 
 #[frame_support::pallet]
 pub mod pallet {
@@ -70,6 +76,15 @@ pub mod pallet {
 
 		/// Weight information for the extrinsics in this module.
 		type WeightInfo: WeightInfo;
+
+		type Time: Time;
+
+		type OracleKey: Parameter + Member;
+
+		/// The data value type
+		type OracleValue: Parameter + Member + Ord;
+
+		type DataProvider: DataProviderExtended<Self::OracleKey, TimestampedValueOf<Self>>;
 	}
 
 	#[pallet::event]

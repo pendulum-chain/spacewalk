@@ -4652,6 +4652,7 @@ dependencies = [
  "frame-support",
  "frame-system",
  "mocktopus",
+ "orml-oracle",
  "orml-tokens",
  "orml-traits",
  "pallet-timestamp",
@@ -4679,6 +4680,24 @@ dependencies = [
  "parity-scale-codec",
  "scale-info",
  "serde",
+ "sp-io",
+ "sp-runtime",
+ "sp-std",
+]
+
+[[package]]
+name = "orml-oracle"
+version = "0.4.1-dev"
+source = "git+https://github.com/open-web3-stack/open-runtime-module-library?branch=polkadot-v0.9.33#dc39cfddefb10ef0de23655e2c3dcdab66a19404"
+dependencies = [
+ "frame-support",
+ "frame-system",
+ "orml-traits",
+ "orml-utilities",
+ "parity-scale-codec",
+ "scale-info",
+ "serde",
+ "sp-application-crypto",
  "sp-io",
  "sp-runtime",
  "sp-std",
