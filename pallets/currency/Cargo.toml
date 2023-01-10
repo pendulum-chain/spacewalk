@@ -1,8 +1,8 @@
 [package]
-authors = ["Interlay Ltd"]
+authors = ["Pendulum"]
 description = "Currency module"
 edition = "2021"
-homepage = "https://spec.interlay.io/spec/collateral.html"
+homepage = "https://pendulumchain.org"
 name = "currency"
 version = "1.2.0"
 

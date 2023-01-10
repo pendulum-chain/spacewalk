@@ -1,5 +1,5 @@
 [package]
-authors = ["Interlay Ltd"]
+authors = ["Interlay <contact@interlay.io>"]
 edition = "2021"
 name = "module-vault-registry-rpc-runtime-api"
 version = '0.3.0'
