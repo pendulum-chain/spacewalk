@@ -32,6 +32,14 @@ where
 	u128::from_str(s).map_err(serde::de::Error::custom)
 }
 
+pub fn de_string_to_u64<'de, D>(de: D) -> Result<u64, D::Error>
+where
+	D: Deserializer<'de>,
+{
+	let s: &str = Deserialize::deserialize(de)?;
+	u64::from_str(s).map_err(serde::de::Error::custom)
+}
+
 pub fn de_string_to_i64<'de, D>(de: D) -> Result<i64, D::Error>
 where
 	D: Deserializer<'de>,
@@ -87,8 +95,8 @@ pub struct TransactionResponse {
 	pub source_account_sequence: Vec<u8>,
 	#[serde(deserialize_with = "de_string_to_bytes")]
 	pub fee_account: Vec<u8>,
-	#[serde(deserialize_with = "de_string_to_bytes")]
-	pub fee_charged: Vec<u8>,
+	#[serde(deserialize_with = "de_string_to_u64")]
+	pub fee_charged: u64,
 	#[serde(deserialize_with = "de_string_to_bytes")]
 	pub max_fee: Vec<u8>,
 	operation_count: u32,
@@ -152,13 +160,15 @@ pub struct HorizonAccountResponse {
 #[derive(Deserialize, Encode, Decode, Default, Debug)]
 pub struct Balance {
 	#[serde(deserialize_with = "de_string_to_f64")]
-	pub balance : f64,
+	pub balance: f64,
 	#[serde(default)]
 	#[serde(deserialize_with = "de_string_to_optional_bytes")]
 	pub asset_code: Option<Vec<u8>>,
 	#[serde(default)]
 	#[serde(deserialize_with = "de_string_to_optional_bytes")]
-	pub asset_issuer: Option<Vec<u8>>
+	pub asset_issuer: Option<Vec<u8>>,
+	#[serde(deserialize_with = "de_string_to_bytes")]
+	pub asset_type: Vec<u8>,
 }
 
 #[derive(Deserialize, Debug)]
