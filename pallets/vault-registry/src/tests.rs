@@ -902,7 +902,7 @@ fn can_withdraw_only_up_to_custom_threshold() {
 fn is_collateral_below_threshold_true_succeeds() {
 	run_test(|| {
 		let collateral = DEFAULT_COLLATERAL;
-		let xlm_amount = DEFAULT_COLLATERAL / 2;
+		let wrapped_amount = DEFAULT_COLLATERAL / 2;
 		let threshold = FixedU128::checked_from_rational(201, 100).unwrap(); // 201%
 
 		convert_to.mock_safe(move |_, _| MockResult::Return(Ok(wrapped(collateral))));
@@ -910,7 +910,7 @@ fn is_collateral_below_threshold_true_succeeds() {
 		assert_eq!(
 			VaultRegistry::is_collateral_below_threshold(
 				&amount(collateral),
-				&wrapped(xlm_amount),
+				&wrapped(wrapped_amount),
 				threshold
 			),
 			Ok(true)
@@ -922,7 +922,7 @@ fn is_collateral_below_threshold_true_succeeds() {
 fn is_collateral_below_threshold_false_succeeds() {
 	run_test(|| {
 		let collateral = DEFAULT_COLLATERAL;
-		let xlm_amount = 50;
+		let wrapped_amount = 50;
 		let threshold = FixedU128::checked_from_rational(200, 100).unwrap(); // 200%
 
 		convert_to.mock_safe(move |_, _| MockResult::Return(Ok(wrapped(collateral))));
@@ -930,7 +930,7 @@ fn is_collateral_below_threshold_false_succeeds() {
 		assert_eq!(
 			VaultRegistry::is_collateral_below_threshold(
 				&amount(collateral),
-				&wrapped(xlm_amount),
+				&wrapped(wrapped_amount),
 				threshold
 			),
 			Ok(false)

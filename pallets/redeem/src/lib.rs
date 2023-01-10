@@ -8,6 +8,9 @@
 #[cfg(test)]
 extern crate mocktopus;
 
+#[cfg(feature = "std")]
+use std::str::FromStr;
+
 use frame_support::{
 	dispatch::{DispatchError, DispatchResult},
 	ensure, transactional,
@@ -15,11 +18,7 @@ use frame_support::{
 #[cfg(test)]
 use mocktopus::macros::mockable;
 use sp_core::H256;
-
 use sp_runtime::traits::{CheckedDiv, Saturating, Zero};
-#[cfg(feature = "std")]
-use std::str::FromStr;
-
 use sp_std::{convert::TryInto, vec::Vec};
 use substrate_stellar_sdk::{
 	compound_types::UnlimitedVarArray,
@@ -29,7 +28,6 @@ use substrate_stellar_sdk::{
 
 use currency::Amount;
 pub use default_weights::WeightInfo;
-
 pub use pallet::*;
 use primitives::StellarPublicKeyRaw;
 use types::DefaultVaultId;
@@ -162,7 +160,8 @@ pub mod pallet {
 
 	/// The time difference in number of blocks between a redeem request is created and required
 	/// completion time by a vault. The redeem period has an upper limit to ensure the user gets
-	/// their XLM in time and to potentially punish a vault for inactivity or stealing XLM.
+	/// their Stellar assets in time and to potentially punish a vault for inactivity or stealing
+	/// Stellar assets.
 	#[pallet::storage]
 	#[pallet::getter(fn redeem_period)]
 	pub(super) type RedeemPeriod<T: Config> = StorageValue<_, T::BlockNumber, ValueQuery>;
@@ -565,7 +564,7 @@ impl<T: Config> Pallet<T> {
 
 		// this can overflow for small requested values. As such return
 		// AmountBelowMinimumTransferAmount when this happens
-		let user_to_be_received_xlm = vault_to_be_burned_tokens
+		let user_to_be_received_stellar_asset = vault_to_be_burned_tokens
 			.checked_sub(&inclusion_fee)
 			.map_err(|_| Error::<T>::AmountBelowMinimumTransferAmount)?;
 
@@ -574,7 +573,7 @@ impl<T: Config> Pallet<T> {
 		// only allow requests of amount above above the minimum
 		ensure!(
 			// this is the amount the vault will send (minus fee)
-			user_to_be_received_xlm
+			user_to_be_received_stellar_asset
 				.ge(&Self::get_minimum_transfer_amount(vault_id.wrapped_currency()))?,
 			Error::<T>::AmountBelowMinimumTransferAmount
 		);
@@ -595,7 +594,7 @@ impl<T: Config> Pallet<T> {
 
 		let premium_collateral = if below_premium_redeem {
 			let redeem_amount_wrapped_in_collateral =
-				user_to_be_received_xlm.convert_to(currency_id)?;
+				user_to_be_received_stellar_asset.convert_to(currency_id)?;
 			ext::fee::get_premium_redeem_fee::<T>(&redeem_amount_wrapped_in_collateral)?
 		} else {
 			Amount::zero(currency_id)
@@ -610,8 +609,8 @@ impl<T: Config> Pallet<T> {
 				opentime: ext::security::active_block_number::<T>(),
 				fee: fee_wrapped.amount(),
 				transfer_fee: inclusion_fee.amount(),
-				amount: user_to_be_received_xlm.amount(),
-				asset: user_to_be_received_xlm.currency(),
+				amount: user_to_be_received_stellar_asset.amount(),
+				asset: user_to_be_received_stellar_asset.currency(),
 				premium: premium_collateral.amount(),
 				period: Self::redeem_period(),
 				redeemer: redeemer.clone(),
@@ -623,8 +622,8 @@ impl<T: Config> Pallet<T> {
 		Self::deposit_event(Event::<T>::RequestRedeem {
 			redeem_id,
 			redeemer,
-			amount: user_to_be_received_xlm.amount(),
-			asset: user_to_be_received_xlm.currency(),
+			amount: user_to_be_received_stellar_asset.amount(),
+			asset: user_to_be_received_stellar_asset.currency(),
 			fee: fee_wrapped.amount(),
 			premium: premium_collateral.amount(),
 			vault_id,

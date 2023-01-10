@@ -96,7 +96,7 @@ pub mod pallet {
 		}
 	}
 
-	/// Integer/Enum defining the current state of the Stellar-Parachain.
+	/// Integer/Enum defining the current state of the Spacewalk-Parachain.
 	#[pallet::storage]
 	#[pallet::getter(fn parachain_status)]
 	pub type ParachainStatus<T: Config> = StorageValue<_, StatusCode, ValueQuery>;
@@ -107,7 +107,7 @@ pub mod pallet {
 	pub type Errors<T: Config> = StorageValue<_, BTreeSet<ErrorCode>, ValueQuery>;
 
 	/// Integer increment-only counter, used to prevent collisions when generating identifiers
-	/// for e.g. issue, redeem or replace requests (Stellar).
+	/// for e.g. issue, redeem or replace requests.
 	#[pallet::storage]
 	pub type Nonce<T: Config> = StorageValue<_, U256, ValueQuery>;
 
@@ -269,7 +269,7 @@ impl<T: Config> Pallet<T> {
 		});
 	}
 
-	/// Recovers the Stellar Parachain state from an `ORACLE_OFFLINE` error
+	/// Recovers the Spacewalk Parachain state from an `ORACLE_OFFLINE` error
 	/// and sets ParachainStatus to `RUNNING` if there are no other errors.
 	pub fn recover_from_oracle_offline() {
 		Self::recover_from_(vec![ErrorCode::OracleOffline])

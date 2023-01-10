@@ -510,7 +510,7 @@ pub trait VaultRegistryPallet {
 
 	async fn get_required_collateral_for_wrapped(
 		&self,
-		amount_xlm: u128,
+		amount_wrapped_asset: u128,
 		collateral_currency: CurrencyId,
 	) -> Result<u128, Error>;
 
@@ -650,10 +650,10 @@ impl VaultRegistryPallet for SpacewalkParachain {
 	/// Custom RPC that calculates the exact collateral required to cover the Stellar amount.
 	///
 	/// # Arguments
-	/// * `amount_xlm` - amount of stellar to cover
+	/// * `amount_wrapped_asset` - amount of the wrapped Stellar asset to convert
 	async fn get_required_collateral_for_wrapped(
 		&self,
-		amount_xlm: u128,
+		amount_wrapped_asset: u128,
 		collateral_currency: CurrencyId,
 	) -> Result<u128, Error> {
 		let head = self.get_finalized_block_hash().await?;
@@ -662,7 +662,11 @@ impl VaultRegistryPallet for SpacewalkParachain {
 			.rpc()
 			.request(
 				"vaultRegistry_getRequiredCollateralForWrapped",
-				rpc_params![BalanceWrapper { amount: amount_xlm }, collateral_currency, head],
+				rpc_params![
+					BalanceWrapper { amount: amount_wrapped_asset },
+					collateral_currency,
+					head
+				],
 			)
 			.await?;
 
@@ -838,8 +842,7 @@ impl OraclePallet for SpacewalkParachain {
 		Ok(())
 	}
 
-	/// Sets the estimated Satoshis per bytes required to get a Stellar transaction included in
-	/// in the next block (~10 min)
+	/// Sets the estimated fee required to get a Stellar transaction included in the next block.
 	///
 	/// # Arguments
 	/// * `value` - the estimated fee rate
@@ -851,8 +854,7 @@ impl OraclePallet for SpacewalkParachain {
 		Ok(())
 	}
 
-	/// Gets the estimated Satoshis per bytes required to get a Stellar transaction included in
-	/// in the next x blocks
+	/// Gets the estimated fee required to get a Stellar transaction included in the next block.
 	async fn get_stellar_fees(&self) -> Result<FixedU128, Error> {
 		self.query_finalized_or_error(
 			metadata::storage().oracle().aggregate(&OracleKey::FeeEstimation),
@@ -860,7 +862,8 @@ impl OraclePallet for SpacewalkParachain {
 		.await
 	}
 
-	/// Converts the amount in stellar asset to dot, based on the current set exchange rate.
+	/// Converts the amount of wrapped Stellar assets to the collateral currency, based on the
+	/// current set exchange rate.
 	async fn wrapped_to_collateral(
 		&self,
 		amount: u128,
@@ -879,7 +882,8 @@ impl OraclePallet for SpacewalkParachain {
 		Ok(result.amount)
 	}
 
-	/// Converts the amount in dot to stellar asset, based on the current set exchange rate.
+	/// Converts the amount of collateral currency to the specified wrapped asset, based on the
+	/// current set exchange rate.
 	async fn collateral_to_wrapped(
 		&self,
 		amount: u128,
@@ -1193,26 +1197,24 @@ pub trait ReplacePallet {
 	///
 	/// * `&self` - the initiator of the transaction: the new vault
 	/// * `old_vault` - the vault to replace
-	/// * `amount_xlm` - the amount of [Wrapped] to replace
+	/// * `amount_wrapped` - the amount of [Wrapped] to replace
 	/// * `collateral` - the collateral for replacement
 	/// * `stellar_address` - the address to send funds to
 	async fn accept_replace(
 		&self,
 		new_vault: &VaultId,
 		old_vault: &VaultId,
-		amount_xlm: u128,
+		amount_wrapped: u128,
 		collateral: u128,
 		stellar_address: StellarPublicKeyRaw,
 	) -> Result<(), Error>;
-	//
-	/// Execute vault replacement
+
+	/// Execute vault replacement by providing a Stellar inclusion proof
 	///
 	/// # Arguments
 	///
 	/// * `&self` - sender of the transaction: the old vault
 	/// * `replace_id` - the ID of the replacement request
-	/// * 'merkle_proof' - the merkle root of the block
-	/// * `raw_tx` - the transaction id in bytes
 	async fn execute_replace(
 		&self,
 		replace_id: H256,
@@ -1249,7 +1251,7 @@ pub trait ReplacePallet {
 	async fn get_replace_request(&self, replace_id: H256)
 		-> Result<SpacewalkReplaceRequest, Error>;
 
-	/// Gets the minimum xlm amount for replace requests
+	/// Gets the minimum amount of a wrapped Stellar asset for replace requests
 	async fn get_replace_dust_amount(&self) -> Result<u128, Error>;
 }
 
@@ -1275,14 +1277,14 @@ impl ReplacePallet for SpacewalkParachain {
 		&self,
 		new_vault: &VaultId,
 		old_vault: &VaultId,
-		amount_xlm: u128,
+		amount_wrapped: u128,
 		collateral: u128,
 		stellar_address: StellarPublicKeyRaw,
 	) -> Result<(), Error> {
 		self.with_retry(metadata::tx().replace().accept_replace(
 			new_vault.currencies.clone(),
 			old_vault.clone(),
-			amount_xlm,
+			amount_wrapped,
 			collateral,
 			stellar_address,
 		))
@@ -1364,7 +1366,7 @@ impl ReplacePallet for SpacewalkParachain {
 	}
 
 	async fn get_replace_dust_amount(&self) -> Result<u128, Error> {
-		self.query_finalized_or_error(metadata::storage().replace().replace_xlm_dust_value())
+		self.query_finalized_or_error(metadata::storage().replace().replace_dust_value())
 			.await
 	}
 }

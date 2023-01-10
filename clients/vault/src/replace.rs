@@ -17,7 +17,7 @@ use crate::{
 };
 
 /// Listen for AcceptReplaceEvent directed at this vault and continue the replacement
-/// procedure by transferring the corresponding stellar assets and calling execute_replace
+/// procedure by transferring the corresponding Stellar assets and calling execute_replace.
 ///
 /// # Arguments
 ///
@@ -191,7 +191,7 @@ pub async fn handle_replace_request<
 }
 
 /// Listen for ExecuteReplaceEvent directed at this vault and continue the replacement
-/// procedure by transferring wrapped stellar asset and calling execute_replace
+/// procedure by transferring the corresponding Stellar asset and calling execute_replace.
 ///
 /// # Arguments
 ///

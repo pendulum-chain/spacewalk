@@ -226,7 +226,7 @@ pub mod redeem {
 		#[cfg_attr(feature = "std", serde(deserialize_with = "deserialize_from_string"))]
 		#[cfg_attr(feature = "std", serde(bound(serialize = "Balance: std::fmt::Display")))]
 		#[cfg_attr(feature = "std", serde(serialize_with = "serialize_as_string"))]
-		/// amount the vault should spend on the stellar inclusion fee - taken from request amount
+		/// amount the vault should spend on the Stellar inclusion fee - taken from request amount
 		pub transfer_fee: Balance,
 		#[cfg_attr(feature = "std", serde(bound(deserialize = "Balance: std::str::FromStr")))]
 		#[cfg_attr(feature = "std", serde(deserialize_with = "deserialize_from_string"))]
@@ -241,7 +241,7 @@ pub mod redeem {
 		#[cfg_attr(feature = "std", serde(serialize_with = "serialize_as_string"))]
 		/// premium redeem amount in collateral
 		pub premium: Balance,
-		/// the account redeeming tokens (for XLM)
+		/// the account redeeming tokens (for Stellar assets)
 		pub redeemer: AccountId,
 		/// the user's Stellar address for payment verification
 		pub stellar_address: StellarPublicKeyRaw,

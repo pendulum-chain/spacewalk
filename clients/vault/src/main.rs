@@ -38,7 +38,7 @@ pub struct RunVaultOpts {
 	#[clap(flatten)]
 	pub account_info: runtime::cli::ProviderUserOpts,
 
-	/// Connection settings for the Stellar Parachain.
+	/// Connection settings for the Spacewalk Parachain.
 	#[clap(flatten)]
 	pub parachain: runtime::cli::ConnectionOpts,
 

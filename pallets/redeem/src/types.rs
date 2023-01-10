@@ -1,25 +1,11 @@
+use sp_runtime::DispatchError;
+
+use currency::Amount;
 pub use primitives::redeem::{RedeemRequest, RedeemRequestStatus};
 use primitives::VaultId;
-use scale_info::TypeInfo;
-use sp_runtime::DispatchError;
 pub use vault_registry::types::CurrencyId;
 
 use crate::Config;
-use codec::{Decode, Encode, MaxEncodedLen};
-use currency::Amount;
-
-/// Storage version.
-#[derive(Encode, Decode, Eq, PartialEq, TypeInfo, MaxEncodedLen)]
-pub enum Version {
-	/// Initial version.
-	V0,
-	/// StellarAddress type with script format.
-	V1,
-	/// RedeemRequestStatus, removed amount_dot and amount_stellar
-	V2,
-	/// ActiveBlockNumber, xlm_height, transfer_fee_xlm
-	V3,
-}
 
 pub(crate) type BalanceOf<T> = <T as vault_registry::Config>::Balance;
 
