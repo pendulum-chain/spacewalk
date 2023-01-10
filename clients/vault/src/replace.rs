@@ -42,8 +42,6 @@ pub async fn listen_for_accept_replace(
 				};
 				tracing::info!("Received accept replace event: {:?}", event);
 
-				// let _ = publish_expected_bitcoin_balance(&vault, parachain_rpc.clone()).await;
-
 				// within this event callback, we captured the arguments of
 				// listen_for_redeem_requests by reference. Since spawn requires static lifetimes,
 				// we will need to capture the arguments by value rather than by reference, so clone
