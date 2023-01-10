@@ -388,6 +388,7 @@ impl<T: Config> Pallet<T> {
 	/// # Arguments
 	///
 	/// * `exchange_rate` - i.e. planck per satoshi
+	#[cfg(feature = "testing-utils")]
 	pub fn _set_exchange_rate(
 		currency_id: CurrencyId,
 		exchange_rate: UnsignedFixedPoint<T>,
