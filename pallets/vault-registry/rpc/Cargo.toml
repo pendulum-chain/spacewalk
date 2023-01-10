@@ -1,5 +1,5 @@
 [package]
-authors = ["Pendulum"]
+authors = ["Interlay <contact@interlay.io>"]
 edition = "2021"
 name = "module-vault-registry-rpc"
 version = '0.3.0'
