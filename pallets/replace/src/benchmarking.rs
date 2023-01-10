@@ -120,7 +120,7 @@ benchmarks! {
 		initialize_oracle::<T>();
 		let vault_id = get_vault_id::<T>("Vault");
 		mint_collateral::<T>(&vault_id.account_id, (1u32 << 31).into());
-		let amount = Replace::<T>::dust_value(get_wrapped_currency_id()).amount() + 1000u32.into();
+		let amount = Replace::<T>::minimum_transfer_amount(get_wrapped_currency_id()).amount() + 1000u32.into();
 
 		register_public_key::<T>(vault_id.clone());
 
@@ -163,7 +163,7 @@ benchmarks! {
 		let old_vault_id = get_vault_id::<T>("OldVault");
 		mint_collateral::<T>(&old_vault_id.account_id, (1u32 << 31).into());
 		mint_collateral::<T>(&new_vault_id.account_id, (1u32 << 31).into());
-		let dust_value =  Replace::<T>::dust_value(get_wrapped_currency_id());
+		let dust_value =  Replace::<T>::minimum_transfer_amount(get_wrapped_currency_id());
 		let amount = dust_value.checked_add(&wrapped(100u32)).unwrap();
 		let griefing = 1000u32.into();
 

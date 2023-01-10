@@ -155,22 +155,25 @@ pub mod pallet {
 	#[pallet::getter(fn replace_period)]
 	pub(super) type ReplacePeriod<T: Config> = StorageValue<_, T::BlockNumber, ValueQuery>;
 
-	/// The minimum amount of wrapped stellar asset that is accepted for replace requests; any lower
-	/// values would risk the stellar client to reject the payment
+	/// The minimum amount of wrapped assets that is accepted for replace requests
 	#[pallet::storage]
 	#[pallet::getter(fn replace_xlm_dust_value)]
-	pub(super) type ReplaceXlmDustValue<T: Config> = StorageValue<_, BalanceOf<T>, ValueQuery>;
+	pub(super) type ReplaceMinimumTranferAmount<T: Config> =
+		StorageValue<_, BalanceOf<T>, ValueQuery>;
 
 	#[pallet::genesis_config]
 	pub struct GenesisConfig<T: Config> {
 		pub replace_period: T::BlockNumber,
-		pub replace_xlm_dust_value: BalanceOf<T>,
+		pub replace_minimum_transfer_amount: BalanceOf<T>,
 	}
 
 	#[cfg(feature = "std")]
 	impl<T: Config> Default for GenesisConfig<T> {
 		fn default() -> Self {
-			Self { replace_period: Default::default(), replace_xlm_dust_value: Default::default() }
+			Self {
+				replace_period: Default::default(),
+				replace_minimum_transfer_amount: Default::default(),
+			}
 		}
 	}
 
@@ -178,7 +181,7 @@ pub mod pallet {
 	impl<T: Config> GenesisBuild<T> for GenesisConfig<T> {
 		fn build(&self) {
 			ReplacePeriod::<T>::put(self.replace_period);
-			ReplaceXlmDustValue::<T>::put(self.replace_xlm_dust_value);
+			ReplaceMinimumTranferAmount::<T>::put(self.replace_minimum_transfer_amount);
 		}
 	}
 
@@ -357,7 +360,7 @@ impl<T: Config> Pallet<T> {
 
 		// check that total-to-be-replaced is above the minimum
 		ensure!(
-			total_to_be_replaced.ge(&Self::dust_value(vault_id.wrapped_currency()))?,
+			total_to_be_replaced.ge(&Self::minimum_transfer_amount(vault_id.wrapped_currency()))?,
 			Error::<T>::AmountBelowDustAmount
 		);
 
@@ -460,7 +463,8 @@ impl<T: Config> Pallet<T> {
 
 		// check replace_amount is above the minimum
 		ensure!(
-			redeemable_tokens.ge(&Self::dust_value(old_vault_id.wrapped_currency()))?,
+			redeemable_tokens
+				.ge(&Self::minimum_transfer_amount(old_vault_id.wrapped_currency()))?,
 			Error::<T>::AmountBelowDustAmount
 		);
 
@@ -729,7 +733,7 @@ impl<T: Config> Pallet<T> {
 		});
 	}
 
-	pub fn dust_value(currency_id: CurrencyId<T>) -> Amount<T> {
-		Amount::new(ReplaceXlmDustValue::<T>::get(), currency_id)
+	pub fn minimum_transfer_amount(currency_id: CurrencyId<T>) -> Amount<T> {
+		Amount::new(ReplaceMinimumTranferAmount::<T>::get(), currency_id)
 	}
 }

@@ -332,7 +332,7 @@ impl ExtBuilder {
 		.assimilate_storage(&mut storage)
 		.unwrap();
 
-		replace::GenesisConfig::<Test> { replace_period: 10, replace_xlm_dust_value: 2 }
+		replace::GenesisConfig::<Test> { replace_period: 10, replace_minimum_transfer_amount: 2 }
 			.assimilate_storage(&mut storage)
 			.unwrap();
 
