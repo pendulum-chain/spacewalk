@@ -157,8 +157,8 @@ pub mod pallet {
 
 	/// The minimum amount of wrapped assets that is accepted for replace requests
 	#[pallet::storage]
-	#[pallet::getter(fn replace_xlm_dust_value)]
-	pub(super) type ReplaceMinimumTranferAmount<T: Config> =
+	#[pallet::getter(fn replace_minimum_transfer_amount)]
+	pub(super) type ReplaceMinimumTransferAmount<T: Config> =
 		StorageValue<_, BalanceOf<T>, ValueQuery>;
 
 	#[pallet::genesis_config]
@@ -181,7 +181,7 @@ pub mod pallet {
 	impl<T: Config> GenesisBuild<T> for GenesisConfig<T> {
 		fn build(&self) {
 			ReplacePeriod::<T>::put(self.replace_period);
-			ReplaceMinimumTranferAmount::<T>::put(self.replace_minimum_transfer_amount);
+			ReplaceMinimumTransferAmount::<T>::put(self.replace_minimum_transfer_amount);
 		}
 	}
 
@@ -734,6 +734,6 @@ impl<T: Config> Pallet<T> {
 	}
 
 	pub fn minimum_transfer_amount(currency_id: CurrencyId<T>) -> Amount<T> {
-		Amount::new(ReplaceMinimumTranferAmount::<T>::get(), currency_id)
+		Amount::new(ReplaceMinimumTransferAmount::<T>::get(), currency_id)
 	}
 }
