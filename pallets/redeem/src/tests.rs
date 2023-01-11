@@ -712,7 +712,7 @@ fn test_cancel_redeem_succeeds() {
 fn test_mint_tokens_for_reimbursed_redeem() {
 	// PRECONDITION: The vault MUST NOT be banned.
 	// POSTCONDITION: `tryIncreaseToBeIssuedTokens` and `issueTokens` MUST be called,
-	// both with the vault and `redeem.amountBtc + redeem.transferFeeBtc` as arguments.
+	// both with the vault and `redeem.amount + redeem.transferFee` as arguments.
 	run_test(|| {
 		let redeem_request = RedeemRequest {
 			period: 0,

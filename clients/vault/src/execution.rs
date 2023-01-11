@@ -76,7 +76,7 @@ impl Request {
 		Ok(Deadline { parachain: parachain_deadline })
 	}
 
-	/// Constructs a Request for the given InterBtcRedeemRequest
+	/// Constructs a Request for the given SpacewalkRedeemRequest
 	pub fn from_redeem_request(
 		hash: H256,
 		request: SpacewalkRedeemRequest,

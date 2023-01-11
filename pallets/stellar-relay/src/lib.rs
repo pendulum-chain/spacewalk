@@ -24,6 +24,8 @@ pub mod types;
 
 mod default_weights;
 
+pub use default_weights::SubstrateWeight;
+
 #[frame_support::pallet]
 pub mod pallet {
 	use codec::FullCodec;
@@ -422,6 +424,7 @@ pub mod pallet {
 		/// validators possible.
 		///
 		/// It can only be called by the root origin.
+		#[pallet::call_index(0)]
 		#[pallet::weight(<T as Config>::WeightInfo::update_tier_1_validator_set())]
 		#[transactional]
 		pub fn update_tier_1_validator_set(

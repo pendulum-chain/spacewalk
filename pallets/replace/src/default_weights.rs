@@ -41,7 +41,7 @@ pub struct SubstrateWeight<T>(PhantomData<T>);
 impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 	// Storage: VaultRegistry Vaults (r:1 w:1)
 	// Storage: Nomination Vaults (r:1 w:0)
-	// Storage: Replace ReplaceBtcDustValue (r:1 w:0)
+	// Storage: Replace ReplaceMinimumTransferAmount (r:1 w:0)
 	// Storage: Security ParachainStatus (r:1 w:0)
 	// Storage: Oracle Aggregate (r:2 w:0)
 	// Storage: Fee ReplaceGriefingCollateral (r:1 w:0)
@@ -60,7 +60,7 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 			.saturating_add(T::DbWeight::get().writes(1 as u64))
 	}
 	// Storage: VaultRegistry Vaults (r:2 w:2)
-	// Storage: Replace ReplaceBtcDustValue (r:1 w:0)
+	// Storage: Replace ReplaceMinimumTransferAmount (r:1 w:0)
 	// Storage: VaultRegistry TotalUserVaultCollateral (r:1 w:1)
 	// Storage: VaultRegistry SystemCollateralCeiling (r:1 w:0)
 	// Storage: Tokens Accounts (r:1 w:1)
@@ -139,7 +139,7 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 impl WeightInfo for () {
 	// Storage: VaultRegistry Vaults (r:1 w:1)
 	// Storage: Nomination Vaults (r:1 w:0)
-	// Storage: Replace ReplaceBtcDustValue (r:1 w:0)
+	// Storage: Replace ReplaceMinimumTransferAmount (r:1 w:0)
 	// Storage: Security ParachainStatus (r:1 w:0)
 	// Storage: Oracle Aggregate (r:2 w:0)
 	// Storage: Fee ReplaceGriefingCollateral (r:1 w:0)
@@ -158,7 +158,7 @@ impl WeightInfo for () {
 			.saturating_add(RocksDbWeight::get().writes(1 as u64))
 	}
 	// Storage: VaultRegistry Vaults (r:2 w:2)
-	// Storage: Replace ReplaceBtcDustValue (r:1 w:0)
+	// Storage: Replace ReplaceMinimumTransferAmount (r:1 w:0)
 	// Storage: VaultRegistry TotalUserVaultCollateral (r:1 w:1)
 	// Storage: VaultRegistry SystemCollateralCeiling (r:1 w:0)
 	// Storage: Tokens Accounts (r:1 w:1)

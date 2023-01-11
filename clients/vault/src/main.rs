@@ -38,7 +38,7 @@ pub struct RunVaultOpts {
 	#[clap(flatten)]
 	pub account_info: runtime::cli::ProviderUserOpts,
 
-	/// Connection settings for the BTC Parachain.
+	/// Connection settings for the Spacewalk Parachain.
 	#[clap(flatten)]
 	pub parachain: runtime::cli::ConnectionOpts,
 
@@ -151,7 +151,7 @@ mod tests {
 	#[tokio::test]
 	async fn test_vault_pid_file() {
 		let dummy_account_id = AccountId::new(Default::default());
-		let dummy_spec_name = "kintsugi-testnet".to_string();
+		let dummy_spec_name = "testnet".to_string();
 		let termination_signals = &[SIGHUP, SIGTERM, SIGINT, SIGQUIT];
 		let mut sys = System::new_all();
 
