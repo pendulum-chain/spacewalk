@@ -1011,6 +1011,9 @@ async fn test_automatic_issue_execution_succeeds_for_other_vault() {
 				primitives::AssetConversion::lookup(issue.asset).expect("Asset not found");
 			let memo_hash = issue.issue_id.0;
 
+			// Sleep 1 second to give other thread some time to receive the RequestIssue event and
+			// add it to the set
+			sleep(Duration::from_secs(1)).await;
 			let issue_set = issue_set_arc.read().await;
 			assert!(!issue_set.is_empty());
 			drop(issue_set);
