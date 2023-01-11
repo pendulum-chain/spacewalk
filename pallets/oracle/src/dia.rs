@@ -5,7 +5,7 @@ use sp_std::{
 };
 use dia_oracle::DiaOracle;
 
-struct DiaOracleAdapter<DiaPallet : DiaOracle, UnsignedFixedPoint, Moment>(marker::PhantomData<(DiaPallet, UnsignedFixedPoint, Moment)>);
+pub struct DiaOracleAdapter<DiaPallet : DiaOracle, UnsignedFixedPoint, Moment>(marker::PhantomData<(DiaPallet, UnsignedFixedPoint, Moment)>);
 
 impl<T: DiaOracle, UnsignedFixedPoint, Moment> DataProviderExtended<OracleKey, TimestampedValue<UnsignedFixedPoint, Moment>> for DiaOracleAdapter<T, UnsignedFixedPoint, Moment >{
     fn get_no_op(key: &OracleKey) -> Option<TimestampedValue<UnsignedFixedPoint, Moment>> {
@@ -16,4 +16,6 @@ impl<T: DiaOracle, UnsignedFixedPoint, Moment> DataProviderExtended<OracleKey, T
         todo!()
     }
 }
+
+
 
