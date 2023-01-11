@@ -35,8 +35,8 @@ pallet-timestamp = { git = "https://github.com/paritytech/substrate", branch = "
 currency = { path = "../currency", default-features = false, features = ["testing-constants"] }
 
 # Orml dependencies
-orml-tokens = { git = "https://github.com/open-web3-stack/open-runtime-module-library", branch = "polkadot-v0.9.33", default-features = false }
-orml-traits = { git = "https://github.com/open-web3-stack/open-runtime-module-library", branch = "polkadot-v0.9.33", default-features = false }
+orml-tokens = { git = "https://github.com/open-web3-stack/open-runtime-module-library", branch = "polkadot-v0.9.36", default-features = false }
+orml-traits = { git = "https://github.com/open-web3-stack/open-runtime-module-library", branch = "polkadot-v0.9.36", default-features = false }
 
 # Parachain dependencies
 primitives = { package = "spacewalk-primitives", path = "../../primitives" }

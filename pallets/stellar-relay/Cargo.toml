@@ -38,8 +38,8 @@ sp-io = { default-features = false, git = "https://github.com/paritytech/substra
 sp-runtime = { default-features = false, git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.36" }
 
 # Orml dependencies
-orml-tokens = { git = "https://github.com/open-web3-stack/open-runtime-module-library", branch = "polkadot-v0.9.33" }
-orml-traits = { git = "https://github.com/open-web3-stack/open-runtime-module-library", branch = "polkadot-v0.9.33" }
+orml-tokens = { git = "https://github.com/open-web3-stack/open-runtime-module-library", branch = "polkadot-v0.9.36" }
+orml-traits = { git = "https://github.com/open-web3-stack/open-runtime-module-library", branch = "polkadot-v0.9.36" }
 primitives = { package = "spacewalk-primitives", path = "../../primitives" }
 
 # For testing
