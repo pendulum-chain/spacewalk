@@ -1334,6 +1334,24 @@ dependencies = [
 ]
 
 [[package]]
+name = "dia-oracle"
+version = "0.1.0"
+source = "git+https://github.com/TorstenStueber/oracle-pallet?branch=master#daa128082184b4879623d9ae452d7d3605b48608"
+dependencies = [
+ "frame-benchmarking",
+ "frame-support",
+ "frame-system",
+ "log",
+ "parity-scale-codec",
+ "scale-info",
+ "serde",
+ "serde_json",
+ "sp-core",
+ "sp-runtime",
+ "sp-std",
+]
+
+[[package]]
 name = "diff"
 version = "0.1.13"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4648,6 +4666,7 @@ name = "oracle"
 version = "1.2.0"
 dependencies = [
  "currency",
+ "dia-oracle",
  "frame-benchmarking",
  "frame-support",
  "frame-system",

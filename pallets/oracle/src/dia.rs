@@ -3,14 +3,11 @@ pub use primitives::{oracle::Key as OracleKey, CurrencyId, TruncateFixedPointToI
 use sp_std::{
 	marker
 };
+use dia_oracle::DiaOracle;
 
-trait X{
+struct DiaOracleAdapter<DiaPallet : DiaOracle, UnsignedFixedPoint, Moment>(marker::PhantomData<(DiaPallet, UnsignedFixedPoint, Moment)>);
 
-}
-
-struct DiaOracleAdapter<DiaPallet : X, UnsignedFixedPoint, Moment>(marker::PhantomData<(DiaPallet, UnsignedFixedPoint, Moment)>);
-
-impl<T: X, UnsignedFixedPoint, Moment> DataProviderExtended<OracleKey, TimestampedValue<UnsignedFixedPoint, Moment>> for DiaOracleAdapter<T, UnsignedFixedPoint, Moment >{
+impl<T: DiaOracle, UnsignedFixedPoint, Moment> DataProviderExtended<OracleKey, TimestampedValue<UnsignedFixedPoint, Moment>> for DiaOracleAdapter<T, UnsignedFixedPoint, Moment >{
     fn get_no_op(key: &OracleKey) -> Option<TimestampedValue<UnsignedFixedPoint, Moment>> {
         todo!()
     }
