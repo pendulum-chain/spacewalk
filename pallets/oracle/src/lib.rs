@@ -45,6 +45,8 @@ mod mock;
 
 pub mod types;
 
+pub mod dia;
+
 
 // pub(crate) type MomentOf<T> = <<T as Config>::Time as Time>::Moment;
 // pub(crate) type TimestampedValueOf<T> = TimestampedValue<<T as Config>::OracleValue, MomentOf<T>>;
