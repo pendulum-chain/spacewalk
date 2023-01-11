@@ -11,8 +11,7 @@ extern crate mocktopus;
 use codec::{Decode, Encode, MaxEncodedLen};
 #[cfg(feature = "testing-utils")]
 use frame_support::dispatch::DispatchResult;
-use frame_support::{dispatch::DispatchError, transactional};
-use frame_support::traits::Time;
+use frame_support::{dispatch::DispatchError, traits::Time, transactional};
 #[cfg(test)]
 use mocktopus::macros::mockable;
 use scale_info::TypeInfo;
@@ -24,10 +23,10 @@ use sp_std::{convert::TryInto, vec::Vec};
 
 use currency::Amount;
 pub use default_weights::{SubstrateWeight, WeightInfo};
+use orml_oracle::{DataProviderExtended, TimestampedValue};
 pub use pallet::*;
 pub use primitives::{oracle::Key as OracleKey, CurrencyId, TruncateFixedPointToInt};
 use security::{ErrorCode, StatusCode};
-use orml_oracle::{DataProviderExtended, TimestampedValue};
 
 use crate::types::{BalanceOf, UnsignedFixedPoint, Version};
 
@@ -47,9 +46,9 @@ pub mod types;
 
 pub mod dia;
 
-
 // pub(crate) type MomentOf<T> = <<T as Config>::Time as Time>::Moment;
-// pub(crate) type TimestampedValueOf<T> = TimestampedValue<<T as Config>::OracleValue, MomentOf<T>>;
+// pub(crate) type TimestampedValueOf<T> = TimestampedValue<<T as Config>::OracleValue,
+// MomentOf<T>>;
 
 #[frame_support::pallet]
 pub mod pallet {
@@ -78,7 +77,10 @@ pub mod pallet {
 		// type OracleValue: Parameter + Member + Ord;
 		// type DataProvider: DataProviderExtended<Self::OracleKey, TimestampedValueOf<Self>>;
 
-		type DataProvider: DataProviderExtended<OracleKey, TimestampedValue<Self::UnsignedFixedPoint, Self::Moment>>;
+		// type DataProvider: DataProviderExtended<
+		// 	OracleKey,
+		// 	TimestampedValue<Self::UnsignedFixedPoint, Self::Moment>,
+		// >;
 	}
 
 	#[pallet::event]
