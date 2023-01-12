@@ -151,6 +151,11 @@ pub mod pallet {
 
 	// Oracles allowed to set the exchange rate, maps to the name
 	#[pallet::storage]
+	#[pallet::getter(fn oracle_keys)]
+	pub type OracleKeys<T: Config> = StorageValue<_, Vec<OracleKey>, ValueQuery>;
+
+	// Oracles allowed to set the exchange rate, maps to the name
+	#[pallet::storage]
 	#[pallet::getter(fn authorized_oracles)]
 	pub type AuthorizedOracles<T: Config> =
 		StorageMap<_, Blake2_128Concat, T::AccountId, Vec<u8>, ValueQuery>;
