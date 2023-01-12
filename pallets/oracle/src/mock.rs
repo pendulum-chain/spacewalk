@@ -4,7 +4,9 @@ use frame_support::{
 	traits::{ConstU32, Everything, GenesisBuild},
 };
 use mocktopus::mocking::clear_mocks;
+use orml_oracle::{DataFeeder, TimestampedValue, DataProvider};
 use orml_traits::parameter_type_with_key;
+use primitives::oracle::Key;
 use sp_arithmetic::{FixedI128, FixedU128};
 use sp_core::{sr25519::Signature, H256};
 use sp_runtime::{
@@ -22,7 +24,7 @@ pub use primitives::{CurrencyId::Token, TokenSymbol::*};
 use crate::{
 	self as oracle,
 	dia::{DiaOracleAdapter, DiaOracleConvertor},
-	Config, Error,
+	Config, Error, OracleKeys,
 };
 
 type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Test>;
@@ -209,15 +211,24 @@ impl DiaOracle for MockDiaOracle {
 
 struct MockConvertor;
 
-// impl Convert for MockConvertor{
-
-// }
+pub struct DataCollector;
+impl<X,Y> DataProvider<X,Y> for DataCollector{
+    fn get(key: &X) -> Option<Y> {
+        todo!()
+    }
+}
+impl<X,Y,Z> DataFeeder<X,Y,Z> for DataCollector{
+    fn feed_value(who: Z, key: X, value: Y) -> sp_runtime::DispatchResult {
+        todo!()
+    }
+}
 
 impl Config for Test {
 	type RuntimeEvent = TestEvent;
 	type WeightInfo = ();
 	type DataProvider =
 		DiaOracleAdapter<MockDiaOracle, UnsignedFixedPoint, Moment, DiaOracleConvertor, (), ()>;
+	type DataFeedProvider = DataCollector;
 }
 
 parameter_types! {

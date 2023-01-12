@@ -9,7 +9,7 @@
 extern crate mocktopus;
 
 use codec::{Decode, Encode, MaxEncodedLen};
-#[cfg(feature = "testing-utils")]
+// #[cfg(feature = "testing-utils")]
 use frame_support::dispatch::DispatchResult;
 use frame_support::{dispatch::DispatchError, transactional};
 #[cfg(test)]
@@ -210,7 +210,6 @@ impl<T: Config> Pallet<T> {
 				updated_items.push((key.clone(), Some(price.value)));
 			}
 		}
-
 		let updated_items_len = updated_items.len();
 		if !updated_items.is_empty() {
 			Self::deposit_event(Event::<T>::AggregateUpdated { values: updated_items });
@@ -230,7 +229,7 @@ impl<T: Config> Pallet<T> {
 
 	// TODO
 	// public only for testing purposes
-	pub fn _feed_values(oracle: T::AccountId, values: Vec<(OracleKey, T::UnsignedFixedPoint)>) {
+	pub fn _feed_values(oracle: T::AccountId, values: Vec<(OracleKey, T::UnsignedFixedPoint)>) -> DispatchResult {
 		// use orml_oracle::DataFeeder;
 
 		for (k, v) in values.clone() {
@@ -239,6 +238,7 @@ impl<T: Config> Pallet<T> {
 				.expect("Expect store value by key");
 		}
 		Self::deposit_event(Event::<T>::FeedValues { oracle_id: oracle, values });
+		Ok(())
 	}
 
 	/// Public getters
@@ -337,3 +337,5 @@ impl<T: Config> Pallet<T> {
 		<pallet_timestamp::Pallet<T>>::get()
 	}
 }
+
+
