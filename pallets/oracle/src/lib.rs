@@ -175,12 +175,17 @@ pub mod pallet {
 	pub struct GenesisConfig<T: Config> {
 		pub max_delay: u32,
 		pub authorized_oracles: Vec<(T::AccountId, Vec<u8>)>,
+		pub oracle_keys: Vec<OracleKey>,
 	}
 
 	#[cfg(feature = "std")]
 	impl<T: Config> Default for GenesisConfig<T> {
 		fn default() -> Self {
-			Self { max_delay: Default::default(), authorized_oracles: Default::default() }
+			Self {
+				max_delay: Default::default(),
+				authorized_oracles: Default::default(),
+				oracle_keys: Default::default(),
+			}
 		}
 	}
 
@@ -194,6 +199,8 @@ pub mod pallet {
 			for (ref who, name) in self.authorized_oracles.iter() {
 				AuthorizedOracles::<T>::insert(who, name);
 			}
+
+			OracleKeys::<T>::put(self.oracle_keys.clone());
 		}
 	}
 
