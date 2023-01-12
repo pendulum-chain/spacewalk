@@ -45,12 +45,13 @@ mod mock;
 pub mod types;
 
 pub mod dia;
+use orml_oracle::DataFeeder;
 
 #[frame_support::pallet]
 pub mod pallet {
 	use frame_support::pallet_prelude::*;
 	use frame_system::pallet_prelude::*;
-	use orml_oracle::DataFeeder;
+	
 
 	use super::*;
 
@@ -230,7 +231,7 @@ impl<T: Config> Pallet<T> {
 	// TODO
 	// public only for testing purposes
 	pub fn _feed_values(oracle: T::AccountId, values: Vec<(OracleKey, T::UnsignedFixedPoint)>) {
-		use orml_oracle::DataFeeder;
+		// use orml_oracle::DataFeeder;
 
 		for (k, v) in values.clone() {
 			let timestamped = TimestampedValue { timestamp: Self::get_current_time(), value: v };
