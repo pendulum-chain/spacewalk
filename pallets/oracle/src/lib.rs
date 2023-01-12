@@ -216,7 +216,7 @@ impl<T: Config> Pallet<T> {
 		}
 
 		let current_status_is_online = Self::is_oracle_online();
-		let new_status_is_online = updated_items_len == oracle_keys.len();
+		let new_status_is_online = oracle_keys.len() > 0 && updated_items_len == oracle_keys.len();
 
 		if current_status_is_online != new_status_is_online {
 			if new_status_is_online {
@@ -230,13 +230,19 @@ impl<T: Config> Pallet<T> {
 	// TODO
 	// public only for testing purposes
 	pub fn _feed_values(oracle: T::AccountId, values: Vec<(OracleKey, T::UnsignedFixedPoint)>) -> DispatchResult {
-		// use orml_oracle::DataFeeder;
+
+		let mut oracle_keys: Vec<_> = <OracleKeys<T>>::get();
+		
 
 		for (k, v) in values.clone() {
 			let timestamped = TimestampedValue { timestamp: Self::get_current_time(), value: v };
-			T::DataFeedProvider::feed_value(oracle.clone(), k, timestamped)
+			T::DataFeedProvider::feed_value(oracle.clone(), k.clone(), timestamped)
 				.expect("Expect store value by key");
+			if !oracle_keys.contains(&k){
+				oracle_keys.push(k);
+			}
 		}
+		<OracleKeys<T>>::put(oracle_keys.clone());
 		Self::deposit_event(Event::<T>::FeedValues { oracle_id: oracle, values });
 		Ok(())
 	}
