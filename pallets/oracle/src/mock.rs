@@ -1,10 +1,12 @@
+use std::sync::RwLock;
+
 use dia_oracle::DiaOracle;
 use frame_support::{
 	parameter_types,
 	traits::{ConstU32, Everything, GenesisBuild},
 };
 use mocktopus::mocking::clear_mocks;
-use orml_oracle::{DataFeeder, TimestampedValue, DataProvider};
+use orml_oracle::{TimestampedValue, DataProvider};
 use orml_traits::parameter_type_with_key;
 use primitives::oracle::Key;
 use sp_arithmetic::{FixedI128, FixedU128};
@@ -192,12 +194,16 @@ impl currency::Config for Test {
 // 	type WeightInfo = ();
 // }
 
+
+static COINS: RwLock<Vec<(Vec<u8>, Vec<u8>, u128)>> = RwLock::new(vec![]);
+
 pub struct MockDiaOracle;
 impl DiaOracle for MockDiaOracle {
 	fn get_coin_info(
 		blockchain: Vec<u8>,
 		symbol: Vec<u8>,
 	) -> Result<dia_oracle::CoinInfo, sp_runtime::DispatchError> {
+		// let r = &coins[0];
 		todo!()
 	}
 
@@ -209,16 +215,17 @@ impl DiaOracle for MockDiaOracle {
 	}
 }
 
-struct MockConvertor;
-
 pub struct DataCollector;
-impl<X,Y> DataProvider<X,Y> for DataCollector{
-    fn get(key: &X) -> Option<Y> {
+impl DataProvider<Key, TimestampedValue<UnsignedFixedPoint, Moment>> for DataCollector{
+    fn get(key: &Key) -> Option<TimestampedValue<UnsignedFixedPoint, Moment>> {
         todo!()
     }
 }
-impl<X,Y,Z> DataFeeder<X,Y,Z> for DataCollector{
-    fn feed_value(who: Z, key: X, value: Y) -> sp_runtime::DispatchResult {
+impl orml_oracle::DataFeeder<Key, TimestampedValue<UnsignedFixedPoint, Moment>, AccountId> for DataCollector{
+    fn feed_value(who: AccountId, key: Key, value: TimestampedValue<UnsignedFixedPoint, Moment>) -> sp_runtime::DispatchResult {
+		// let key_bytes = key.encode();
+    	// let value_bytes = value.encode();
+    	// COINS.write().unwrap().push((key_bytes, value_bytes, value));
         todo!()
     }
 }

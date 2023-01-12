@@ -77,9 +77,9 @@ pub mod pallet {
 
 		// #[cfg(feature = "testing-utils")]
 		type DataFeedProvider: orml_oracle::DataFeeder<
-			Self::AccountId,
 			OracleKey,
 			TimestampedValue<Self::UnsignedFixedPoint, Self::Moment>,
+			Self::AccountId
 		>;
 	}
 
@@ -234,7 +234,7 @@ impl<T: Config> Pallet<T> {
 
 		for (k, v) in values.clone() {
 			let timestamped = TimestampedValue { timestamp: Self::get_current_time(), value: v };
-			T::DataFeedProvider::feed_value(timestamped, oracle.clone(), k)
+			T::DataFeedProvider::feed_value(oracle.clone(), k, timestamped)
 				.expect("Expect store value by key");
 		}
 		Self::deposit_event(Event::<T>::FeedValues { oracle_id: oracle, values });
