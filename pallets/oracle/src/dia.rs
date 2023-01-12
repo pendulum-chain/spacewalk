@@ -97,14 +97,14 @@ impl Convert<(Vec<u8>, Vec<u8>), Option<OracleKey>> for MockDiaOracleConvertor {
     }
 }
 use sp_arithmetic::{FixedU128};
-struct MockConvertPrice;
+pub struct MockConvertPrice;
 impl Convert<u128, Option<FixedU128>> for MockConvertPrice{
     fn convert(a: u128) -> Option<FixedU128> {
         Some(FixedU128::from_inner(a))
     }
 }
 
-struct MockMoment;
+pub struct MockMoment;
 impl Convert<u64, Option<u64>> for MockMoment{
     fn convert(a: u64) -> Option<u64> {
         Some(a)

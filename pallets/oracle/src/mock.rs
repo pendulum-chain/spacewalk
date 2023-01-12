@@ -23,7 +23,7 @@ pub use primitives::{CurrencyId::Token, TokenSymbol::*};
 
 use crate::{
 	self as oracle,
-	dia::{DiaOracleAdapter, MockDiaOracleConvertor},
+	dia::{DiaOracleAdapter, MockDiaOracleConvertor, MockConvertPrice, MockMoment},
 	Config, Error, OracleKeys,
 };
 
@@ -227,7 +227,7 @@ impl Config for Test {
 	type RuntimeEvent = TestEvent;
 	type WeightInfo = ();
 	type DataProvider =
-		DiaOracleAdapter<MockDiaOracle, UnsignedFixedPoint, Moment, MockDiaOracleConvertor, (), ()>;
+		DiaOracleAdapter<MockDiaOracle, UnsignedFixedPoint, Moment, MockDiaOracleConvertor, MockConvertPrice, MockMoment>;
 	type DataFeedProvider = DataCollector;
 }
 
