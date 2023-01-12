@@ -1,6 +1,6 @@
 use std::sync::RwLock;
 
-use dia_oracle::DiaOracle;
+use dia_oracle::{DiaOracle, CoinInfo};
 use frame_support::{
 	parameter_types,
 	traits::{ConstU32, Everything, GenesisBuild},
@@ -194,8 +194,14 @@ impl currency::Config for Test {
 // 	type WeightInfo = ();
 // }
 
+#[derive(Clone)]
+struct Data{
+	pub key : (Vec<u8>, Vec<u8>),
+	pub price : u128,
+	pub timestamp : u64
+}
 
-static COINS: RwLock<Vec<(Vec<u8>, Vec<u8>, u128)>> = RwLock::new(vec![]);
+static COINS: RwLock<Vec<Data>> = RwLock::new(vec![]);
 
 pub struct MockDiaOracle;
 impl DiaOracle for MockDiaOracle {
@@ -204,7 +210,20 @@ impl DiaOracle for MockDiaOracle {
 		symbol: Vec<u8>,
 	) -> Result<dia_oracle::CoinInfo, sp_runtime::DispatchError> {
 		// let r = &coins[0];
-		todo!()
+		let key = (blockchain, symbol);
+		let i = COINS.read().unwrap();
+		let result: Option<&Data> = i.iter().find(|x| x.key == key.clone());
+		let Some(result) = result else {
+			return Err(sp_runtime::DispatchError::Other(""));
+		};
+		let result = result.clone();
+		drop(i);
+		
+		let mut coin_info = CoinInfo::default();
+		coin_info.price = result.price;
+		coin_info.last_update_timestamp = result.timestamp;
+		
+		Ok(coin_info)
 	}
 
 	fn get_value(
@@ -225,8 +244,13 @@ impl orml_oracle::DataFeeder<Key, TimestampedValue<UnsignedFixedPoint, Moment>, 
     fn feed_value(who: AccountId, key: Key, value: TimestampedValue<UnsignedFixedPoint, Moment>) -> sp_runtime::DispatchResult {
 		// let key_bytes = key.encode();
     	// let value_bytes = value.encode();
-    	// COINS.write().unwrap().push((key_bytes, value_bytes, value));
-        todo!()
+		let key = MockDiaOracleConvertor::convert(key).unwrap();
+		let r = value.value.into_inner();
+
+		let data = Data { key : key, price : r, timestamp : value.timestamp};
+
+    	COINS.write().unwrap().push(data);
+        Ok(())
     }
 }
 
