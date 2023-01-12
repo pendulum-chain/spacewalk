@@ -96,6 +96,13 @@ impl Convert<(Vec<u8>, Vec<u8>), Option<OracleKey>> for MockDiaOracleConvertor {
         }
     }
 }
+use sp_arithmetic::{FixedU128};
+struct MockConvertPrice;
+impl Convert<u128, Option<FixedU128>> for MockConvertPrice{
+    fn convert(a: u128) -> Option<FixedU128> {
+        Some(FixedU128::from_inner(a))
+    }
+}
 
 
 pub struct DiaOracleAdapter<
@@ -124,8 +131,8 @@ where
 	ConvertKey: Convert<OracleKey, Option<(Vec<u8>, Vec<u8>)>>
 		+ Convert<(Vec<u8>, Vec<u8>), Option<OracleKey>>,
 	ConvertPrice:
-		Convert<UnsignedFixedPoint, Option<u128>> + Convert<u128, Option<UnsignedFixedPoint>>,
-	ConvertMoment: Convert<Moment, Option<u64>> + Convert<u64, Option<Moment>>,
+		/*Convert<UnsignedFixedPoint, Option<u128>> + */ Convert<u128, Option<UnsignedFixedPoint>>,
+	ConvertMoment: /*Convert<Moment, Option<u64>> + */ Convert<u64, Option<Moment>>,
 {
 	fn get_no_op(key: &OracleKey) -> Option<TimestampedValue<UnsignedFixedPoint, Moment>> {
 		let dia_key: Option<(Vec<u8>, Vec<u8>)> = ConvertKey::convert(key.clone());
