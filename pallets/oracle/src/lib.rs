@@ -169,13 +169,13 @@ pub mod pallet {
 		#[pallet::call_index(2)]
 		#[pallet::weight(<T as Config>::WeightInfo::remove_authorized_oracle())]
 		#[transactional]
-		pub fn update_oracle_key(
+		pub fn update_oracle_keys(
 			origin: OriginFor<T>,
-			oracle_key: Vec<OracleKey>,
+			oracle_keys: Vec<OracleKey>,
 		) -> DispatchResult {
 			ensure_root(origin)?;
-			<OracleKeys<T>>::put(oracle_key.clone());
-			Self::deposit_event(Event::OracleKeysUpdated { oracle_keys: oracle_key });
+			<OracleKeys<T>>::put(oracle_keys.clone());
+			Self::deposit_event(Event::OracleKeysUpdated { oracle_keys: oracle_keys });
 			Ok(())
 		}
 	}
