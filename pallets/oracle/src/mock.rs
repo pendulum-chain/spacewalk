@@ -6,21 +6,18 @@ use frame_support::{
 use mocktopus::mocking::clear_mocks;
 use orml_traits::parameter_type_with_key;
 use sp_arithmetic::{FixedI128, FixedU128};
+use sp_core::{sr25519::Signature, H256};
 use sp_runtime::{
 	testing::{Header, TestXt},
-	traits::{BlakeTwo256, Extrinsic as ExtrinsicT, IdentifyAccount, IdentityLookup, Verify},
+	traits::{BlakeTwo256, Extrinsic as ExtrinsicT, IdentifyAccount, IdentityLookup, Verify, Convert},
 };
-use sp_core::{sr25519::Signature, H256};
-
-
 
 pub use currency::testing_constants::{
 	DEFAULT_COLLATERAL_CURRENCY, DEFAULT_NATIVE_CURRENCY, DEFAULT_WRAPPED_CURRENCY,
 };
 pub use primitives::{CurrencyId::Token, TokenSymbol::*};
 
-use crate::{self as oracle, dia::DiaOracleAdapter};
-use crate::{Config, Error};
+use crate::{self as oracle, dia::{DiaOracleAdapter, DiaOracleConvertor}, Config, Error};
 
 type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Test>;
 type Block = frame_system::mocking::MockBlock<Test>;
@@ -150,7 +147,6 @@ impl currency::Config for Test {
 	type CurrencyConversion = CurrencyConvert;
 }
 
-
 // type Extrinsic = TestXt<RuntimeCall, ()>;
 // pub type AccountId2 = <<Signature as Verify>::Signer as IdentifyAccount>::AccountId;
 
@@ -181,8 +177,6 @@ impl currency::Config for Test {
 // 	}
 // }
 
-
-
 // impl dia_oracle::Config for Test{
 // 	type RuntimeEvent = RuntimeEvent;
 // 	type RuntimeCall = RuntimeCall;
@@ -191,20 +185,32 @@ impl currency::Config for Test {
 // }
 
 pub struct MockDiaOracle;
-impl DiaOracle for MockDiaOracle{
-    fn get_coin_info(blockchain: Vec<u8>, symbol: Vec<u8>) -> Result<dia_oracle::CoinInfo, sp_runtime::DispatchError> {
-        todo!()
-    }
+impl DiaOracle for MockDiaOracle {
+	fn get_coin_info(
+		blockchain: Vec<u8>,
+		symbol: Vec<u8>,
+	) -> Result<dia_oracle::CoinInfo, sp_runtime::DispatchError> {
+		todo!()
+	}
 
-    fn get_value(blockchain: Vec<u8>, symbol: Vec<u8>) -> Result<dia_oracle::PriceInfo, sp_runtime::DispatchError> {
-        todo!()
-    }
+	fn get_value(
+		blockchain: Vec<u8>,
+		symbol: Vec<u8>,
+	) -> Result<dia_oracle::PriceInfo, sp_runtime::DispatchError> {
+		todo!()
+	}
 }
+
+struct MockConvertor;
+
+// impl Convert for MockConvertor{
+	
+// }
 
 impl Config for Test {
 	type RuntimeEvent = TestEvent;
 	type WeightInfo = ();
-	type DataProvider = DiaOracleAdapter<MockDiaOracle, UnsignedFixedPoint, Moment>;
+	type DataProvider = DiaOracleAdapter<MockDiaOracle, UnsignedFixedPoint, Moment, DiaOracleConvertor, (), ()>;
 }
 
 parameter_types! {
@@ -243,6 +249,7 @@ impl ExtBuilder {
 		oracle::GenesisConfig::<Test> {
 			authorized_oracles: vec![(0, "test".as_bytes().to_vec())],
 			max_delay: 0,
+			oracle_keys : vec![]
 		}
 		.assimilate_storage(&mut storage)
 		.unwrap();

@@ -5,15 +5,15 @@ use sp_std::marker;
 
 use sp_runtime::traits::Convert;
 
-struct X;
+pub struct DiaOracleConvertor;
 
-impl Convert<OracleKey, Option<(Vec<u8>, Vec<u8>)>> for X {
+impl Convert<OracleKey, Option<(Vec<u8>, Vec<u8>)>> for DiaOracleConvertor {
 	fn convert(a: OracleKey) -> Option<(Vec<u8>, Vec<u8>)> {
 		todo!()
 	}
 }
 
-impl Convert<(Vec<u8>, Vec<u8>), Option<OracleKey>> for X {
+impl Convert<(Vec<u8>, Vec<u8>), Option<OracleKey>> for DiaOracleConvertor {
 	fn convert(a: (Vec<u8>, Vec<u8>)) -> Option<OracleKey> {
 		todo!()
 	}

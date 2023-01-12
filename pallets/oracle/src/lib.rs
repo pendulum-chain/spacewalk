@@ -50,6 +50,7 @@ pub mod dia;
 pub mod pallet {
 	use frame_support::pallet_prelude::*;
 	use frame_system::pallet_prelude::*;
+use orml_oracle::DataFeeder;
 
 	use super::*;
 
@@ -72,6 +73,9 @@ pub mod pallet {
 			OracleKey,
 			TimestampedValue<Self::UnsignedFixedPoint, Self::Moment>,
 		>;
+
+		#[cfg(feature = "testing-utils")]
+		type DataFeeder: DataFeeder<Self::AccountId, OracleKey, Self::UnsignedFixedPoint>;
 	}
 
 	#[pallet::event]
