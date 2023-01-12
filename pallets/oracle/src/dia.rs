@@ -104,6 +104,13 @@ impl Convert<u128, Option<FixedU128>> for MockConvertPrice{
     }
 }
 
+struct MockMoment;
+impl Convert<u64, Option<u64>> for MockMoment{
+    fn convert(a: u64) -> Option<u64> {
+        Some(a)
+    }
+}
+
 
 pub struct DiaOracleAdapter<
 	DiaPallet: DiaOracle,
