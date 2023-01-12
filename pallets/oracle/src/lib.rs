@@ -50,7 +50,7 @@ pub mod dia;
 pub mod pallet {
 	use frame_support::pallet_prelude::*;
 	use frame_system::pallet_prelude::*;
-use orml_oracle::DataFeeder;
+	use orml_oracle::DataFeeder;
 
 	use super::*;
 
@@ -74,8 +74,12 @@ use orml_oracle::DataFeeder;
 			TimestampedValue<Self::UnsignedFixedPoint, Self::Moment>,
 		>;
 
-		#[cfg(feature = "testing-utils")]
-		type DataFeeder: DataFeeder<Self::AccountId, OracleKey, Self::UnsignedFixedPoint>;
+		// #[cfg(feature = "testing-utils")]
+		type DataFeedProvider: orml_oracle::DataFeeder<
+			Self::AccountId,
+			OracleKey,
+			TimestampedValue<Self::UnsignedFixedPoint, Self::Moment>,
+		>;
 	}
 
 	#[pallet::event]
@@ -179,7 +183,7 @@ use orml_oracle::DataFeeder;
 		) -> DispatchResult {
 			ensure_root(origin)?;
 			<OracleKeys<T>>::put(oracle_keys.clone());
-			Self::deposit_event(Event::OracleKeysUpdated { oracle_keys: oracle_keys });
+			Self::deposit_event(Event::OracleKeysUpdated { oracle_keys });
 			Ok(())
 		}
 	}
@@ -226,13 +230,13 @@ impl<T: Config> Pallet<T> {
 	// TODO
 	// public only for testing purposes
 	pub fn _feed_values(oracle: T::AccountId, values: Vec<(OracleKey, T::UnsignedFixedPoint)>) {
-		for (key, value) in values.iter() {
-			let timestamped =
-				TimestampedValue { timestamp: Self::get_current_time(), value: *value };
-			// RawValues::<T>::insert(key, &oracle, timestamped);
-			// RawValuesUpdated::<T>::insert(key, true);
-		}
+		use orml_oracle::DataFeeder;
 
+		for (k, v) in values.clone() {
+			let timestamped = TimestampedValue { timestamp: Self::get_current_time(), value: v };
+			T::DataFeedProvider::feed_value(timestamped, oracle.clone(), k)
+				.expect("Expect store value by key");
+		}
 		Self::deposit_event(Event::<T>::FeedValues { oracle_id: oracle, values });
 	}
 

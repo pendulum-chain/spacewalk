@@ -9,7 +9,9 @@ use sp_arithmetic::{FixedI128, FixedU128};
 use sp_core::{sr25519::Signature, H256};
 use sp_runtime::{
 	testing::{Header, TestXt},
-	traits::{BlakeTwo256, Extrinsic as ExtrinsicT, IdentifyAccount, IdentityLookup, Verify, Convert},
+	traits::{
+		BlakeTwo256, Convert, Extrinsic as ExtrinsicT, IdentifyAccount, IdentityLookup, Verify,
+	},
 };
 
 pub use currency::testing_constants::{
@@ -17,7 +19,11 @@ pub use currency::testing_constants::{
 };
 pub use primitives::{CurrencyId::Token, TokenSymbol::*};
 
-use crate::{self as oracle, dia::{DiaOracleAdapter, DiaOracleConvertor}, Config, Error};
+use crate::{
+	self as oracle,
+	dia::{DiaOracleAdapter, DiaOracleConvertor},
+	Config, Error,
+};
 
 type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Test>;
 type Block = frame_system::mocking::MockBlock<Test>;
@@ -204,13 +210,14 @@ impl DiaOracle for MockDiaOracle {
 struct MockConvertor;
 
 // impl Convert for MockConvertor{
-	
+
 // }
 
 impl Config for Test {
 	type RuntimeEvent = TestEvent;
 	type WeightInfo = ();
-	type DataProvider = DiaOracleAdapter<MockDiaOracle, UnsignedFixedPoint, Moment, DiaOracleConvertor, (), ()>;
+	type DataProvider =
+		DiaOracleAdapter<MockDiaOracle, UnsignedFixedPoint, Moment, DiaOracleConvertor, (), ()>;
 }
 
 parameter_types! {
@@ -249,7 +256,7 @@ impl ExtBuilder {
 		oracle::GenesisConfig::<Test> {
 			authorized_oracles: vec![(0, "test".as_bytes().to_vec())],
 			max_delay: 0,
-			oracle_keys : vec![]
+			oracle_keys: vec![],
 		}
 		.assimilate_storage(&mut storage)
 		.unwrap();
