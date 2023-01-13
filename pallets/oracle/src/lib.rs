@@ -39,9 +39,11 @@ mod benchmarking;
 
 mod default_weights;
 #[cfg(test)]
+#[cfg_attr(test,cfg(feature = "testing-utils"))]
 mod tests;
 
 #[cfg(test)]
+#[cfg_attr(test,cfg(feature = "testing-utils"))]
 mod mock;
 
 pub mod types;
@@ -76,7 +78,7 @@ pub mod pallet {
 			TimestampedValue<Self::UnsignedFixedPoint, Self::Moment>,
 		>;
 
-		// #[cfg(feature = "testing-utils")]
+		#[cfg(feature = "testing-utils")]
 		type DataFeedProvider: orml_oracle::DataFeeder<
 			OracleKey,
 			TimestampedValue<Self::UnsignedFixedPoint, Self::Moment>,
@@ -172,6 +174,29 @@ pub mod pallet {
 	// The pallet's dispatchable functions.
 	#[pallet::call]
 	impl<T: Config> Pallet<T> {
+
+
+		/// Feeds data from the oracles, e.g., the exchange rates. This function
+		/// is intended to be API-compatible with orml-oracle.
+		///
+		/// # Arguments
+		///
+		/// * `values` - a vector of (key, value) pairs to submit
+		#[pallet::call_index(0)]
+		#[pallet::weight(<T as Config>::WeightInfo::feed_values(values.len() as u32))]
+		pub fn feed_values(
+			origin: OriginFor<T>,
+			values: Vec<(OracleKey, T::UnsignedFixedPoint)>,
+		) -> DispatchResultWithPostInfo {
+			// let signer = ensure_signed(origin)?;
+
+			// fail if the signer is not an authorized oracle
+			// ensure!(Self::is_authorized(&signer), Error::<T>::InvalidOracleSource);
+
+			// Self::_feed_values(signer, values);
+			Ok(Pays::No.into())
+		}
+
 		/// set oracle keys
 		///
 		/// # Arguments
@@ -202,7 +227,7 @@ impl<T: Config> Pallet<T> {
 		let mut updated_items = Vec::new();
 		let max_delay = Self::get_max_delay();
 		for key in oracle_keys.iter() {
-			let price = T::DataProvider::get_no_op(key);
+			let price = Self::get_timestamped(key);
 			let Some(price) = price else{
 				continue;
 			};
@@ -230,6 +255,7 @@ impl<T: Config> Pallet<T> {
 
 	// TODO
 	// public only for testing purposes
+	#[cfg(feature = "testing-utils")]
 	pub fn _feed_values(
 		oracle: T::AccountId,
 		values: Vec<(OracleKey, T::UnsignedFixedPoint)>,
@@ -323,7 +349,7 @@ impl<T: Config> Pallet<T> {
 		// Aggregate::<T>::insert(OracleKey::ExchangeRate(currency_id), exchange_rate);
 		// this is useful for benchmark tests
 		//TODO for testing get data from DataProvider as DataFeed trait
-		Self::_feed_values(T::AccountId::default(), vec![(currency_id, exchange_rate)]);
+		// Self::_feed_values(T::AccountId::default(), vec![(currency_id, exchange_rate)]);
 		Self::recover_from_oracle_offline();
 		Ok(())
 	}
@@ -345,4 +371,10 @@ impl<T: Config> Pallet<T> {
 	fn get_current_time() -> T::Moment {
 		<pallet_timestamp::Pallet<T>>::get()
 	}
+
+	fn get_timestamped(key: &OracleKey) -> Option<TimestampedValue<T::UnsignedFixedPoint, T::Moment>> {
+		T::DataProvider::get_no_op(key)
+	}
 }
+
+
