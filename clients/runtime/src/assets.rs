@@ -1,6 +1,5 @@
+use primitives::ForeignCurrencyId::{DOT, KSM};
 use std::convert::TryFrom;
-
-use primitives::{CurrencyId::Token, CurrencyInfo, TokenSymbol::*};
 
 use crate::{CurrencyId, Error};
 
@@ -23,10 +22,8 @@ impl TryFromSymbol for CurrencyId {
 
 		// try hardcoded currencies first
 		match uppercase_symbol.as_str() {
-			id if id == DOT.symbol() => Ok(Token(DOT)),
-			id if id == PEN.symbol() => Ok(Token(PEN)),
-			id if id == KSM.symbol() => Ok(Token(KSM)),
-			id if id == AMPE.symbol() => Ok(Token(AMPE)),
+			id if id == DOT.symbol() => Ok(CurrencyId::XCM(DOT)),
+			id if id == KSM.symbol() => Ok(CurrencyId::XCM(KSM)),
 			_ => Err(Error::InvalidCurrency),
 		}
 	}

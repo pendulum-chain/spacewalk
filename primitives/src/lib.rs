@@ -11,7 +11,7 @@ use sp_core::{crypto::AccountId32, ed25519};
 pub use sp_runtime::OpaqueExtrinsic as UncheckedExtrinsic;
 use sp_runtime::{
 	generic,
-	traits::{BlakeTwo256, Convert, IdentifyAccount, StaticLookup, Verify},
+	traits::{BlakeTwo256, Convert, IdentifyAccount, One, StaticLookup, Verify},
 	FixedI128, FixedPointNumber, FixedU128, MultiSignature, MultiSigner, RuntimeDebug,
 };
 use sp_std::{
@@ -487,6 +487,7 @@ create_currency_id! {
 )]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 pub enum ForeignCurrencyId {
+	DOT,   // Polkadot relay chain
 	KSM,   // Kusama relay chain
 	KAR,   // Karura
 	AUSD,  // Karura
@@ -506,13 +507,25 @@ pub enum ForeignCurrencyId {
 	USD,   // Statemine
 }
 
+impl ForeignCurrencyId {
+	pub fn decimal(&self) -> u8 {
+		10
+	}
+
+	pub fn one(&self) -> Balance {
+		match self {
+			ForeignCurrencyId::DOT | ForeignCurrencyId::KSM => 10u128.pow(self.decimal() as u32),
+			_ => Balance::one(),
+		}
+	}
+}
+
 #[derive(
 	Encode, Decode, Eq, Hash, PartialEq, Copy, Clone, PartialOrd, Ord, TypeInfo, MaxEncodedLen,
 )]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 #[cfg_attr(feature = "std", serde(rename_all = "camelCase"))]
 pub enum CurrencyId {
-	Token(TokenSymbol),
 	XCM(ForeignCurrencyId),
 	Native,
 	StellarNative,
@@ -602,7 +615,6 @@ impl TryInto<stellar::Asset> for CurrencyId {
 
 	fn try_into(self) -> Result<stellar::Asset, Self::Error> {
 		match self {
-			Self::Token(_) => Err("Token not defined in the Stellar world."),
 			Self::XCM(_currency_id) => Err("XCM Foreign Asset not defined in the Stellar world."),
 			Self::Native => Err("PEN token not defined in the Stellar world."),
 			Self::StellarNative => Ok(stellar::Asset::native()),
@@ -623,9 +635,6 @@ impl TryInto<stellar::Asset> for CurrencyId {
 impl fmt::Debug for CurrencyId {
 	fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
 		match self {
-			Self::Token(token_symbol) => {
-				write!(f, "{:?} ({:?})", token_symbol.name(), token_symbol.symbol())
-			},
 			Self::XCM(id) => {
 				write!(f, "XCM({:?})", id)
 			},
