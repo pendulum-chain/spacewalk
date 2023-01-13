@@ -4672,7 +4672,7 @@ dependencies = [
  "frame-support",
  "frame-system",
  "mocktopus",
- "orml-oracle",
+ "orml-oracle 0.4.1-dev (git+https://github.com/open-web3-stack/open-runtime-module-library?branch=polkadot-v0.9.33)",
  "orml-tokens",
  "orml-traits",
  "pallet-timestamp",
@@ -4709,6 +4709,24 @@ dependencies = [
 name = "orml-oracle"
 version = "0.4.1-dev"
 source = "git+https://github.com/open-web3-stack/open-runtime-module-library?branch=polkadot-v0.9.33#dc39cfddefb10ef0de23655e2c3dcdab66a19404"
+dependencies = [
+ "frame-support",
+ "frame-system",
+ "orml-traits",
+ "orml-utilities",
+ "parity-scale-codec",
+ "scale-info",
+ "serde",
+ "sp-application-crypto",
+ "sp-io",
+ "sp-runtime",
+ "sp-std",
+]
+
+[[package]]
+name = "orml-oracle"
+version = "0.4.1-dev"
+source = "git+https://github.com/open-web3-stack/open-runtime-module-library?branch=polkadot-v0.9.36#4f5a3f34d8cbd98b7bc2e295219a3e7b99b9ecaf"
 dependencies = [
  "frame-support",
  "frame-system",
@@ -8527,6 +8545,7 @@ name = "spacewalk-runtime-standalone"
 version = "1.2.0"
 dependencies = [
  "currency",
+ "dia-oracle",
  "fee",
  "flate2",
  "frame-benchmarking",
@@ -8548,6 +8567,7 @@ dependencies = [
  "nomination",
  "oracle",
  "orml-currencies",
+ "orml-oracle 0.4.1-dev (git+https://github.com/open-web3-stack/open-runtime-module-library?branch=polkadot-v0.9.36)",
  "orml-tokens",
  "orml-traits",
  "pallet-aura",
