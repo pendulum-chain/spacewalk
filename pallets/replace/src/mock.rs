@@ -4,6 +4,7 @@ use frame_support::{
 	PalletId,
 };
 use mocktopus::{macros::mockable, mocking::clear_mocks};
+use oracle::{dia::{DiaOracleAdapter, MockDiaOracleConvertor, MockConvertPrice, MockMoment}, oracle_mock::{MockDiaOracle, DataCollector}};
 use orml_traits::parameter_type_with_key;
 use sp_arithmetic::{FixedI128, FixedPointNumber, FixedU128};
 use sp_core::H256;
@@ -242,6 +243,15 @@ impl pallet_timestamp::Config for Test {
 impl oracle::Config for Test {
 	type RuntimeEvent = TestEvent;
 	type WeightInfo = ();
+	type DataProvider = DiaOracleAdapter<
+		MockDiaOracle,
+		UnsignedFixedPoint,
+		Moment,
+		MockDiaOracleConvertor,
+		MockConvertPrice,
+		MockMoment,
+	>;
+	type DataFeedProvider = DataCollector;
 }
 
 parameter_types! {
@@ -355,7 +365,7 @@ where
 {
 	clear_mocks();
 	ExtBuilder::build().execute_with(|| {
-		assert_ok!(<oracle::Pallet<Test>>::_set_exchange_rate(
+		assert_ok!(<oracle::Pallet<Test>>::_set_exchange_rate(1,
 			DEFAULT_COLLATERAL_CURRENCY,
 			UnsignedFixedPoint::one()
 		));

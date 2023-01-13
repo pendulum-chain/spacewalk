@@ -129,7 +129,7 @@ benchmarks! {
 
 		mint_wrapped::<T>(&origin, amount);
 
-		assert_ok!(Oracle::<T>::_set_exchange_rate(get_collateral_currency_id::<T>(),
+		assert_ok!(Oracle::<T>::_set_exchange_rate(origin, get_collateral_currency_id::<T>(),
 			UnsignedFixedPoint::<T>::one()
 		));
 	}: _(RawOrigin::Signed(origin), amount, stellar_address, vault_id)
@@ -197,7 +197,7 @@ benchmarks! {
 		let public_network = StellarRelay::<T>::is_public_network();
 		let (tx_env_xdr_encoded, scp_envs_xdr_encoded, tx_set_xdr_encoded) = build_dummy_proof_for::<T>(redeem_id, public_network);
 
-		assert_ok!(Oracle::<T>::_set_exchange_rate(get_collateral_currency_id::<T>(),
+		assert_ok!(Oracle::<T>::_set_exchange_rate(origin, get_collateral_currency_id::<T>(),
 			UnsignedFixedPoint::<T>::one()
 		));
 	}: _(RawOrigin::Signed(vault_id.account_id.clone()), redeem_id, tx_env_xdr_encoded, scp_envs_xdr_encoded, tx_set_xdr_encoded)
@@ -228,7 +228,7 @@ benchmarks! {
 		mint_collateral::<T>(&vault_id.account_id, 1000u32.into());
 		assert_ok!(VaultRegistry::<T>::try_deposit_collateral(&vault_id, &collateral(1000)));
 
-		assert_ok!(Oracle::<T>::_set_exchange_rate(get_collateral_currency_id::<T>(),
+		assert_ok!(Oracle::<T>::_set_exchange_rate(origin, get_collateral_currency_id::<T>(),
 			UnsignedFixedPoint::<T>::one()
 		));
 	}: cancel_redeem(RawOrigin::Signed(origin), redeem_id, true)
@@ -259,7 +259,7 @@ benchmarks! {
 		mint_collateral::<T>(&vault_id.account_id, 1000u32.into());
 		assert_ok!(VaultRegistry::<T>::try_deposit_collateral(&vault_id, &collateral(1000)));
 
-		assert_ok!(Oracle::<T>::_set_exchange_rate(get_collateral_currency_id::<T>(),
+		assert_ok!(Oracle::<T>::_set_exchange_rate(origin, get_collateral_currency_id::<T>(),
 			UnsignedFixedPoint::<T>::one()
 		));
 	}: cancel_redeem(RawOrigin::Signed(origin), redeem_id, false)
