@@ -472,7 +472,18 @@ create_currency_id! {
 }
 
 #[derive(
-Encode, Decode, Eq, Hash, PartialEq, Copy, Clone, PartialOrd, Ord, TypeInfo, MaxEncodedLen, Debug
+	Encode,
+	Decode,
+	Eq,
+	Hash,
+	PartialEq,
+	Copy,
+	Clone,
+	PartialOrd,
+	Ord,
+	TypeInfo,
+	MaxEncodedLen,
+	Debug,
 )]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 pub enum ForeignCurrencyId {
