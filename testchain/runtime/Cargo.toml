@@ -72,6 +72,9 @@ module-vault-registry-rpc-runtime-api = {path = "../../pallets/vault-registry/rp
 
 primitives = {package = "spacewalk-primitives", path = "../../primitives", default-features = false}
 
+orml-oracle = { git = "https://github.com/open-web3-stack/open-runtime-module-library", branch = "polkadot-v0.9.36", default-features = false }
+dia-oracle = { git = "https://github.com/TorstenStueber/oracle-pallet", branch = "master", default-features = false }
+
 [dev-dependencies]
 flate2 = "1.0"
 hex = "0.4.2"
@@ -148,4 +151,6 @@ std = [
   "staking/std",
   "stellar-relay/std",
   "vault-registry/std",
+  "orml-oracle/std",
+  "dia-oracle/std",
 ]
