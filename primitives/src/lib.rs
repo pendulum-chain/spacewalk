@@ -472,20 +472,53 @@ create_currency_id! {
 }
 
 #[derive(
+	Encode,
+	Decode,
+	Eq,
+	Hash,
+	PartialEq,
+	Copy,
+	Clone,
+	PartialOrd,
+	Ord,
+	TypeInfo,
+	MaxEncodedLen,
+	Debug,
+)]
+#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
+pub enum ForeignCurrencyId {
+	KSM,   // Kusama relay chain
+	KAR,   // Karura
+	AUSD,  // Karura
+	BNC,   // Bifrost
+	VsKSM, // Bifrost
+	HKO,   // Heiko
+	MOVR,  // Moonriver
+	SDN,   // Shiden
+	KINT,  // Kintsugi
+	KBTC,  // Kintsugi
+	GENS,  // Genshiro
+	XOR,   // Sora
+	TEER,  // Integritee
+	KILT,  // KILT
+	PHA,   // KHALA
+	ZTG,   // Zeitgeist
+	USD,   // Statemine
+}
+
+#[derive(
 	Encode, Decode, Eq, Hash, PartialEq, Copy, Clone, PartialOrd, Ord, TypeInfo, MaxEncodedLen,
 )]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 #[cfg_attr(feature = "std", serde(rename_all = "camelCase"))]
 pub enum CurrencyId {
 	Token(TokenSymbol),
-	ForeignAsset(ForeignAssetId),
+	XCM(ForeignCurrencyId),
 	Native,
 	StellarNative,
 	AlphaNum4 { code: Bytes4, issuer: AssetIssuer },
 	AlphaNum12 { code: Bytes12, issuer: AssetIssuer },
 }
-
-pub type ForeignAssetId = u32;
 
 #[derive(scale_info::TypeInfo, Encode, Decode, Clone, Eq, PartialEq, Debug)]
 pub struct CustomMetadata {
@@ -570,7 +603,7 @@ impl TryInto<stellar::Asset> for CurrencyId {
 	fn try_into(self) -> Result<stellar::Asset, Self::Error> {
 		match self {
 			Self::Token(_) => Err("Token not defined in the Stellar world."),
-			Self::ForeignAsset(_) => Err("Foreign Asset not defined in the Stellar world."),
+			Self::XCM(_currency_id) => Err("XCM Foreign Asset not defined in the Stellar world."),
 			Self::Native => Err("PEN token not defined in the Stellar world."),
 			Self::StellarNative => Ok(stellar::Asset::native()),
 			Self::AlphaNum4 { code, issuer } =>
@@ -593,8 +626,8 @@ impl fmt::Debug for CurrencyId {
 			Self::Token(token_symbol) => {
 				write!(f, "{:?} ({:?})", token_symbol.name(), token_symbol.symbol())
 			},
-			Self::ForeignAsset(id) => {
-				write!(f, "{:?}", id)
+			Self::XCM(id) => {
+				write!(f, "XCM({:?})", id)
 			},
 			Self::Native => write!(f, "Native"),
 			Self::StellarNative => write!(f, "XLM"),
