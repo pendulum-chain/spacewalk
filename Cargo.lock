@@ -2976,6 +2976,7 @@ version = "1.0.0"
 dependencies = [
  "base64",
  "currency",
+ "dia-oracle",
  "fee",
  "frame-benchmarking",
  "frame-support",

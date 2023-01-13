@@ -39,16 +39,18 @@ mod benchmarking;
 
 mod default_weights;
 #[cfg(test)]
-#[cfg_attr(test,cfg(feature = "testing-utils"))]
+#[cfg_attr(test, cfg(feature = "testing-utils"))]
 mod tests;
 
 #[cfg(test)]
-#[cfg_attr(test,cfg(feature = "testing-utils"))]
-mod mock;
+#[cfg_attr(test, cfg(feature = "testing-utils"))]
+pub mod mock;
 
 pub mod types;
 
 pub mod dia;
+#[cfg(feature = "testing-utils")]
+pub mod oracle_mock;
 use orml_oracle::DataFeeder;
 
 #[frame_support::pallet]
@@ -174,8 +176,6 @@ pub mod pallet {
 	// The pallet's dispatchable functions.
 	#[pallet::call]
 	impl<T: Config> Pallet<T> {
-
-
 		/// Feeds data from the oracles, e.g., the exchange rates. This function
 		/// is intended to be API-compatible with orml-oracle.
 		///
@@ -343,13 +343,14 @@ impl<T: Config> Pallet<T> {
 	/// * `exchange_rate` - i.e. planck per satoshi
 	#[cfg(feature = "testing-utils")]
 	pub fn _set_exchange_rate(
+		oracle: T::AccountId,
 		currency_id: CurrencyId,
 		exchange_rate: UnsignedFixedPoint<T>,
 	) -> DispatchResult {
 		// Aggregate::<T>::insert(OracleKey::ExchangeRate(currency_id), exchange_rate);
 		// this is useful for benchmark tests
 		//TODO for testing get data from DataProvider as DataFeed trait
-		// Self::_feed_values(T::AccountId::default(), vec![(currency_id, exchange_rate)]);
+		Self::_feed_values(oracle, vec![((OracleKey::ExchangeRate(currency_id)), exchange_rate)]);
 		Self::recover_from_oracle_offline();
 		Ok(())
 	}
@@ -372,9 +373,9 @@ impl<T: Config> Pallet<T> {
 		<pallet_timestamp::Pallet<T>>::get()
 	}
 
-	fn get_timestamped(key: &OracleKey) -> Option<TimestampedValue<T::UnsignedFixedPoint, T::Moment>> {
+	fn get_timestamped(
+		key: &OracleKey,
+	) -> Option<TimestampedValue<T::UnsignedFixedPoint, T::Moment>> {
 		T::DataProvider::get_no_op(key)
 	}
 }
-
-
