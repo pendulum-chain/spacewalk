@@ -1,4 +1,4 @@
-use std::sync::RwLock;
+use std::{sync::RwLock, cell::RefCell};
 
 use dia_oracle::{DiaOracle, CoinInfo};
 use frame_support::{
@@ -201,7 +201,9 @@ struct Data{
 	pub timestamp : u64
 }
 
-static COINS: RwLock<Vec<Data>> = RwLock::new(vec![]);
+thread_local! {
+	static COINS: RefCell<Vec<Data>>  = RefCell::new(vec![]);
+}
 
 pub struct MockDiaOracle;
 impl DiaOracle for MockDiaOracle {
@@ -209,16 +211,20 @@ impl DiaOracle for MockDiaOracle {
 		blockchain: Vec<u8>,
 		symbol: Vec<u8>,
 	) -> Result<dia_oracle::CoinInfo, sp_runtime::DispatchError> {
-		// let r = &coins[0];
 		let key = (blockchain, symbol);
-		let i = COINS.read().unwrap();
-		let result: Option<&Data> = i.iter().find(|x| x.key == key.clone());
+		let mut result : Option<Data>  = None;
+		COINS.with(|c| {
+			let r = c.borrow();
+			for i in &*r{
+				if i.key == key.clone(){
+					result = Some(i.clone());
+					break
+				}
+			}
+		});
 		let Some(result) = result else {
 			return Err(sp_runtime::DispatchError::Other(""));
 		};
-		let result = result.clone();
-		drop(i);
-		
 		let mut coin_info = CoinInfo::default();
 		coin_info.price = result.price;
 		coin_info.last_update_timestamp = result.timestamp;
@@ -249,7 +255,10 @@ impl orml_oracle::DataFeeder<Key, TimestampedValue<UnsignedFixedPoint, Moment>, 
 
 		let data = Data { key : key, price : r, timestamp : value.timestamp};
 
-    	COINS.write().unwrap().push(data);
+    	COINS.with(|coins| {
+			let mut r = coins.borrow_mut();
+			r.push(data)
+		});
         Ok(())
     }
 }
@@ -313,8 +322,10 @@ where
 {
 	clear_mocks();
 	ExtBuilder::build().execute_with(|| {
+		
 		Security::set_active_block_number(1);
 		System::set_block_number(1);
 		test();
+		// COINS.write().unwrap().clear();
 	});
 }
