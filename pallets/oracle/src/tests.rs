@@ -62,7 +62,8 @@ mod oracle_offline_detection {
 	}
 
 	fn feed_value(currency_id: CurrencyId, oracle: SubmittingOracle) {
-		assert_ok!(Oracle::_feed_values(1,
+		assert_ok!(Oracle::_feed_values(
+			1,
 			vec![(OracleKey::ExchangeRate(currency_id), FixedU128::from(1))]
 		));
 		mine_block();

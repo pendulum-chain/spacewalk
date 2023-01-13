@@ -1,12 +1,12 @@
-use std::{sync::RwLock, cell::RefCell};
+use std::{cell::RefCell, sync::RwLock};
 
-use dia_oracle::{DiaOracle, CoinInfo};
+use dia_oracle::{CoinInfo, DiaOracle};
 use frame_support::{
 	parameter_types,
 	traits::{ConstU32, Everything, GenesisBuild},
 };
 use mocktopus::mocking::clear_mocks;
-use orml_oracle::{TimestampedValue, DataProvider};
+use orml_oracle::{DataProvider, TimestampedValue};
 use orml_traits::parameter_type_with_key;
 use primitives::oracle::Key;
 use sp_arithmetic::{FixedI128, FixedU128};
@@ -25,7 +25,7 @@ pub use primitives::{CurrencyId::Token, TokenSymbol::*};
 
 use crate::{
 	self as oracle,
-	dia::{DiaOracleAdapter, MockDiaOracleConvertor, MockConvertPrice, MockMoment},
+	dia::{DiaOracleAdapter, MockConvertPrice, MockDiaOracleConvertor, MockMoment},
 	Config, Error, OracleKeys,
 };
 
@@ -157,48 +157,11 @@ impl currency::Config for Test {
 	type CurrencyConversion = CurrencyConvert;
 }
 
-// type Extrinsic = TestXt<RuntimeCall, ()>;
-// pub type AccountId2 = <<Signature as Verify>::Signer as IdentifyAccount>::AccountId;
-
-// impl frame_system::offchain::SigningTypes for Test {
-// 	type Public = <Signature as Verify>::Signer;
-// 	type Signature = Signature;
-// }
-
-// impl<LocalCall> frame_system::offchain::SendTransactionTypes<LocalCall> for Test
-// where
-// 	RuntimeCall: From<LocalCall>,
-// {
-// 	type OverarchingCall = RuntimeCall;
-// 	type Extrinsic = Extrinsic;
-// }
-
-// impl<LocalCall> frame_system::offchain::CreateSignedTransaction<LocalCall> for Test
-// where
-// 	RuntimeCall: From<LocalCall>,
-// {
-// 	fn create_transaction<C: frame_system::offchain::AppCrypto<Self::Public, Self::Signature>>(
-// 		call: RuntimeCall,
-// 		_public: <Signature as Verify>::Signer,
-// 		_account: AccountId,
-// 		nonce: u64,
-// 	) -> Option<(RuntimeCall, <Extrinsic as ExtrinsicT>::SignaturePayload)> {
-// 		Some((call, (nonce, ())))
-// 	}
-// }
-
-// impl dia_oracle::Config for Test{
-// 	type RuntimeEvent = RuntimeEvent;
-// 	type RuntimeCall = RuntimeCall;
-// 	type AuthorityId = dia_oracle::crypto::DiaAuthId;
-// 	type WeightInfo = ();
-// }
-
 #[derive(Clone)]
-struct Data{
-	pub key : (Vec<u8>, Vec<u8>),
-	pub price : u128,
-	pub timestamp : u64
+struct Data {
+	pub key: (Vec<u8>, Vec<u8>),
+	pub price: u128,
+	pub timestamp: u64,
 }
 
 thread_local! {
@@ -212,11 +175,11 @@ impl DiaOracle for MockDiaOracle {
 		symbol: Vec<u8>,
 	) -> Result<dia_oracle::CoinInfo, sp_runtime::DispatchError> {
 		let key = (blockchain, symbol);
-		let mut result : Option<Data>  = None;
+		let mut result: Option<Data> = None;
 		COINS.with(|c| {
 			let r = c.borrow();
-			for i in &*r{
-				if i.key == key.clone(){
+			for i in &*r {
+				if i.key == key.clone() {
 					result = Some(i.clone());
 					break
 				}
@@ -228,7 +191,7 @@ impl DiaOracle for MockDiaOracle {
 		let mut coin_info = CoinInfo::default();
 		coin_info.price = result.price;
 		coin_info.last_update_timestamp = result.timestamp;
-		
+
 		Ok(coin_info)
 	}
 
@@ -241,33 +204,43 @@ impl DiaOracle for MockDiaOracle {
 }
 
 pub struct DataCollector;
-impl DataProvider<Key, TimestampedValue<UnsignedFixedPoint, Moment>> for DataCollector{
-    fn get(key: &Key) -> Option<TimestampedValue<UnsignedFixedPoint, Moment>> {
-        todo!()
-    }
+impl DataProvider<Key, TimestampedValue<UnsignedFixedPoint, Moment>> for DataCollector {
+	fn get(key: &Key) -> Option<TimestampedValue<UnsignedFixedPoint, Moment>> {
+		todo!()
+	}
 }
-impl orml_oracle::DataFeeder<Key, TimestampedValue<UnsignedFixedPoint, Moment>, AccountId> for DataCollector{
-    fn feed_value(who: AccountId, key: Key, value: TimestampedValue<UnsignedFixedPoint, Moment>) -> sp_runtime::DispatchResult {
-		// let key_bytes = key.encode();
-    	// let value_bytes = value.encode();
+impl orml_oracle::DataFeeder<Key, TimestampedValue<UnsignedFixedPoint, Moment>, AccountId>
+	for DataCollector
+{
+	fn feed_value(
+		who: AccountId,
+		key: Key,
+		value: TimestampedValue<UnsignedFixedPoint, Moment>,
+	) -> sp_runtime::DispatchResult {
 		let key = MockDiaOracleConvertor::convert(key).unwrap();
 		let r = value.value.into_inner();
 
-		let data = Data { key : key, price : r, timestamp : value.timestamp};
+		let data = Data { key, price: r, timestamp: value.timestamp };
 
-    	COINS.with(|coins| {
+		COINS.with(|coins| {
 			let mut r = coins.borrow_mut();
 			r.push(data)
 		});
-        Ok(())
-    }
+		Ok(())
+	}
 }
 
 impl Config for Test {
 	type RuntimeEvent = TestEvent;
 	type WeightInfo = ();
-	type DataProvider =
-		DiaOracleAdapter<MockDiaOracle, UnsignedFixedPoint, Moment, MockDiaOracleConvertor, MockConvertPrice, MockMoment>;
+	type DataProvider = DiaOracleAdapter<
+		MockDiaOracle,
+		UnsignedFixedPoint,
+		Moment,
+		MockDiaOracleConvertor,
+		MockConvertPrice,
+		MockMoment,
+	>;
 	type DataFeedProvider = DataCollector;
 }
 
@@ -322,7 +295,6 @@ where
 {
 	clear_mocks();
 	ExtBuilder::build().execute_with(|| {
-		
 		Security::set_active_block_number(1);
 		System::set_block_number(1);
 		test();

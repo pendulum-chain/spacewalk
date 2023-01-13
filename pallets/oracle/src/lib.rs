@@ -10,8 +10,10 @@ extern crate mocktopus;
 
 use codec::{Decode, Encode, MaxEncodedLen};
 // #[cfg(feature = "testing-utils")]
-use frame_support::dispatch::DispatchResult;
-use frame_support::{dispatch::DispatchError, transactional};
+use frame_support::{
+	dispatch::{DispatchError, DispatchResult},
+	transactional,
+};
 #[cfg(test)]
 use mocktopus::macros::mockable;
 use scale_info::TypeInfo;
@@ -51,7 +53,6 @@ use orml_oracle::DataFeeder;
 pub mod pallet {
 	use frame_support::pallet_prelude::*;
 	use frame_system::pallet_prelude::*;
-	
 
 	use super::*;
 
@@ -79,7 +80,7 @@ pub mod pallet {
 		type DataFeedProvider: orml_oracle::DataFeeder<
 			OracleKey,
 			TimestampedValue<Self::UnsignedFixedPoint, Self::Moment>,
-			Self::AccountId
+			Self::AccountId,
 		>;
 	}
 
@@ -229,16 +230,17 @@ impl<T: Config> Pallet<T> {
 
 	// TODO
 	// public only for testing purposes
-	pub fn _feed_values(oracle: T::AccountId, values: Vec<(OracleKey, T::UnsignedFixedPoint)>) -> DispatchResult {
-
+	pub fn _feed_values(
+		oracle: T::AccountId,
+		values: Vec<(OracleKey, T::UnsignedFixedPoint)>,
+	) -> DispatchResult {
 		let mut oracle_keys: Vec<_> = <OracleKeys<T>>::get();
-		
 
 		for (k, v) in values.clone() {
 			let timestamped = TimestampedValue { timestamp: Self::get_current_time(), value: v };
 			T::DataFeedProvider::feed_value(oracle.clone(), k.clone(), timestamped)
 				.expect("Expect store value by key");
-			if !oracle_keys.contains(&k){
+			if !oracle_keys.contains(&k) {
 				oracle_keys.push(k);
 			}
 		}
@@ -344,5 +346,3 @@ impl<T: Config> Pallet<T> {
 		<pallet_timestamp::Pallet<T>>::get()
 	}
 }
-
-
