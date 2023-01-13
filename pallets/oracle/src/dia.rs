@@ -4,6 +4,8 @@ pub use primitives::{oracle::Key as OracleKey, CurrencyId, TruncateFixedPointToI
 use sp_std::marker;
 
 use sp_runtime::traits::Convert;
+use sp_std::{convert::TryInto, vec::Vec};
+use sp_std::vec;
 
 pub struct MockDiaOracleConvertor;
 
