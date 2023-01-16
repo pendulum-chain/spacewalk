@@ -4,13 +4,15 @@ pub use primitives::{oracle::Key as OracleKey, CurrencyId, TruncateFixedPointToI
 use sp_std::marker;
 
 use sp_runtime::traits::Convert;
-use sp_std::{convert::TryInto, vec, vec::Vec};
+use sp_std::{vec, vec::Vec};
+use sp_arithmetic::FixedU128;
+
 
 pub struct MockDiaOracleConvertor;
 
 impl Convert<OracleKey, Option<(Vec<u8>, Vec<u8>)>> for MockDiaOracleConvertor {
-	fn convert(a: OracleKey) -> Option<(Vec<u8>, Vec<u8>)> {
-		match a {
+	fn convert(spacwalk_oracle_key: OracleKey) -> Option<(Vec<u8>, Vec<u8>)> {
+		match spacwalk_oracle_key {
 			OracleKey::ExchangeRate(currency_id) => match currency_id {
 				CurrencyId::Token(token_symbol) => match token_symbol {
 					primitives::TokenSymbol::DOT => return Some((vec![0u8], vec![1u8])),
@@ -31,9 +33,10 @@ impl Convert<OracleKey, Option<(Vec<u8>, Vec<u8>)>> for MockDiaOracleConvertor {
 }
 
 impl Convert<(Vec<u8>, Vec<u8>), Option<OracleKey>> for MockDiaOracleConvertor {
-	fn convert(a: (Vec<u8>, Vec<u8>)) -> Option<OracleKey> {
-		match a.0[0] {
-			0u8 => match a.1[0] {
+	fn convert(dia_oracle_key: (Vec<u8>, Vec<u8>)) -> Option<OracleKey> {
+		let (blockchain, symbol) = dia_oracle_key;
+		match blockchain[0] {
+			0u8 => match symbol[0] {
 				1 =>
 					return Some(OracleKey::ExchangeRate(CurrencyId::Token(
 						primitives::TokenSymbol::DOT,
@@ -53,19 +56,19 @@ impl Convert<(Vec<u8>, Vec<u8>), Option<OracleKey>> for MockDiaOracleConvertor {
 				_ => return None,
 			},
 			1u8 => {
-				let x = [a.1[0], a.1[1], a.1[2], a.1[3]];
+				let x = [symbol[0], symbol[1], symbol[2], symbol[3]];
 				let number = u32::from_le_bytes(x);
 				Some(OracleKey::ExchangeRate(CurrencyId::ForeignAsset(number)))
 			},
 			2u8 => Some(OracleKey::ExchangeRate(CurrencyId::Native)),
 			3u8 => Some(OracleKey::ExchangeRate(CurrencyId::StellarNative)),
 			4u8 => {
-				let vector = a.1;
+				let vector = symbol;
 				let code = [vector[0], vector[1], vector[2], vector[3]];
 				Some(OracleKey::ExchangeRate(CurrencyId::AlphaNum4 { code, issuer: [0u8; 32] }))
 			},
 			5u8 => {
-				let vector = a.1;
+				let vector = symbol;
 				let code = [
 					vector[0], vector[1], vector[2], vector[3], vector[4], vector[5], vector[6],
 					vector[7], vector[8], vector[9], vector[10], vector[11],
@@ -77,18 +80,17 @@ impl Convert<(Vec<u8>, Vec<u8>), Option<OracleKey>> for MockDiaOracleConvertor {
 		}
 	}
 }
-use sp_arithmetic::FixedU128;
 pub struct MockConvertPrice;
 impl Convert<u128, Option<FixedU128>> for MockConvertPrice {
-	fn convert(a: u128) -> Option<FixedU128> {
-		Some(FixedU128::from_inner(a))
+	fn convert(price: u128) -> Option<FixedU128> {
+		Some(FixedU128::from_inner(price))
 	}
 }
 
 pub struct MockMoment;
 impl Convert<u64, Option<u64>> for MockMoment {
-	fn convert(a: u64) -> Option<u64> {
-		Some(a)
+	fn convert(moment: u64) -> Option<u64> {
+		Some(moment)
 	}
 }
 
@@ -140,8 +142,8 @@ where
 		Some(TimestampedValue { value, timestamp })
 	}
 
+	///do not need this funtion implementation
 	fn get_all_values() -> Vec<(OracleKey, Option<TimestampedValue<UnsignedFixedPoint, Moment>>)> {
-		// let r = T::get_coin_info(blockchain, symbol);
-		todo!()
+		panic!("spacewalk oracle extension does not requre implementation of DataProviderExtended get_all_values function")
 	}
 }
