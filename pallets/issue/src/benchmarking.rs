@@ -68,9 +68,9 @@ benchmarks! {
 		let asset = vault_id.wrapped_currency();
 		let relayer_id: T::AccountId = account("Relayer", 0, 0);
 
-		Oracle::<T>::_set_exchange_rate(origin, get_collateral_currency_id::<T>(), <T as currency::Config>::UnsignedFixedPoint::one()).unwrap();
-		Oracle::<T>::_set_exchange_rate(origin, get_wrapped_currency_id(), <T as currency::Config>::UnsignedFixedPoint::one()).unwrap();
-		Oracle::<T>::_set_exchange_rate(origin, <T as vault_registry::Config>::GetGriefingCollateralCurrencyId::get(), <T as currency::Config>::UnsignedFixedPoint::one()).unwrap();
+		Oracle::<T>::_set_exchange_rate(origin.clone(), get_collateral_currency_id::<T>(), <T as currency::Config>::UnsignedFixedPoint::one()).unwrap();
+		Oracle::<T>::_set_exchange_rate(origin.clone(), get_wrapped_currency_id(), <T as currency::Config>::UnsignedFixedPoint::one()).unwrap();
+		Oracle::<T>::_set_exchange_rate(origin.clone(), <T as vault_registry::Config>::GetGriefingCollateralCurrencyId::get(), <T as currency::Config>::UnsignedFixedPoint::one()).unwrap();
 
 		mint_collateral::<T>(&origin, (1u32 << 31).into());
 		mint_collateral::<T>(&vault_id.account_id, (1u32 << 31).into());
@@ -119,8 +119,8 @@ benchmarks! {
 
 		VaultRegistry::<T>::_set_system_collateral_ceiling(get_currency_pair::<T>(), 1_000_000_000u32.into());
 		VaultRegistry::<T>::_set_secure_collateral_threshold(get_currency_pair::<T>(), <T as currency::Config>::UnsignedFixedPoint::checked_from_rational(1, 100000).unwrap());
-		Oracle::<T>::_set_exchange_rate(origin, get_collateral_currency_id::<T>(), <T as currency::Config>::UnsignedFixedPoint::one()).unwrap();
-		Oracle::<T>::_set_exchange_rate(origin, get_wrapped_currency_id(), <T as currency::Config>::UnsignedFixedPoint::one()).unwrap();
+		Oracle::<T>::_set_exchange_rate(origin.clone(), get_collateral_currency_id::<T>(), <T as currency::Config>::UnsignedFixedPoint::one()).unwrap();
+		Oracle::<T>::_set_exchange_rate(origin.clone(), get_wrapped_currency_id(), <T as currency::Config>::UnsignedFixedPoint::one()).unwrap();
 		register_vault::<T>(vault_id.clone());
 
 		VaultRegistry::<T>::try_increase_to_be_issued_tokens(&vault_id, &value).unwrap();
@@ -159,8 +159,8 @@ benchmarks! {
 
 		VaultRegistry::<T>::_set_system_collateral_ceiling(get_currency_pair::<T>(), 1_000_000_000u32.into());
 		VaultRegistry::<T>::_set_secure_collateral_threshold(get_currency_pair::<T>(), <T as currency::Config>::UnsignedFixedPoint::checked_from_rational(1, 100000).unwrap());
-		Oracle::<T>::_set_exchange_rate(origin, get_collateral_currency_id::<T>(), <T as currency::Config>::UnsignedFixedPoint::one()).unwrap();
-		Oracle::<T>::_set_exchange_rate(origin, get_wrapped_currency_id(), <T as currency::Config>::UnsignedFixedPoint::one()).unwrap();
+		Oracle::<T>::_set_exchange_rate(origin.clone(), get_collateral_currency_id::<T>(), <T as currency::Config>::UnsignedFixedPoint::one()).unwrap();
+		Oracle::<T>::_set_exchange_rate(origin.clone(), get_wrapped_currency_id(), <T as currency::Config>::UnsignedFixedPoint::one()).unwrap();
 		register_vault::<T>(vault_id.clone());
 
 		VaultRegistry::<T>::try_increase_to_be_issued_tokens(&vault_id, &value).unwrap();
