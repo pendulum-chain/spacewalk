@@ -13,8 +13,8 @@ use frame_support::{
 	PalletId,
 };
 
-pub use dia_oracle::dia::*;
 use codec::Encode;
+pub use dia_oracle::dia::*;
 pub use frame_system::Call as SystemCall;
 use oracle::{dia::DiaOracleAdapter, OracleKey};
 use orml_currencies::BasicCurrencyAdapter;
@@ -449,30 +449,29 @@ where
 }
 
 pub struct ConvertKey;
-impl Convert<OracleKey, Option<(Vec<u8>, Vec<u8>)>> for ConvertKey{
-    fn convert(a: OracleKey) -> Option<(Vec<u8>, Vec<u8>)> {
-        todo!()
-    }
+impl Convert<OracleKey, Option<(Vec<u8>, Vec<u8>)>> for ConvertKey {
+	fn convert(a: OracleKey) -> Option<(Vec<u8>, Vec<u8>)> {
+		todo!()
+	}
 }
-impl Convert<(Vec<u8>, Vec<u8>), Option<OracleKey>> for ConvertKey{
-    fn convert(a: (Vec<u8>, Vec<u8>)) -> Option<OracleKey> {
-        todo!()
-    }
+impl Convert<(Vec<u8>, Vec<u8>), Option<OracleKey>> for ConvertKey {
+	fn convert(a: (Vec<u8>, Vec<u8>)) -> Option<OracleKey> {
+		todo!()
+	}
 }
 
 pub struct ConvertPrice;
-impl Convert<u128, Option<UnsignedFixedPoint>> for ConvertPrice{
-    fn convert(a: u128) -> Option<UnsignedFixedPoint> {
-        todo!()
-    }
+impl Convert<u128, Option<UnsignedFixedPoint>> for ConvertPrice {
+	fn convert(a: u128) -> Option<UnsignedFixedPoint> {
+		todo!()
+	}
 }
 pub struct ConvertMoment;
-impl Convert<u64, Option<Moment>> for ConvertMoment{
-    fn convert(a: u64) -> Option<Moment> {
-        todo!()
-    }
+impl Convert<u64, Option<Moment>> for ConvertMoment {
+	fn convert(a: u64) -> Option<Moment> {
+		todo!()
+	}
 }
-
 
 impl oracle::Config for Runtime {
 	type RuntimeEvent = RuntimeEvent;

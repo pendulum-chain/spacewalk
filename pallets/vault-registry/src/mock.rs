@@ -4,7 +4,10 @@ use frame_support::{
 	PalletId,
 };
 use mocktopus::{macros::mockable, mocking::clear_mocks};
-use oracle::{dia::{DiaOracleAdapter, MockDiaOracleConvertor, MockConvertPrice, MockMoment}, oracle_mock::{DataCollector, MockDiaOracle}};
+use oracle::{
+	dia::{DiaOracleAdapter, MockConvertPrice, MockDiaOracleConvertor, MockMoment},
+	oracle_mock::{DataCollector, MockDiaOracle},
+};
 use orml_traits::parameter_type_with_key;
 use sp_arithmetic::{FixedI128, FixedPointNumber, FixedU128};
 use sp_core::H256;
@@ -344,12 +347,14 @@ where
 		System::set_block_number(1);
 		Security::set_active_block_number(1);
 		set_default_thresholds();
-		<oracle::Pallet<Test>>::_set_exchange_rate(1,
+		<oracle::Pallet<Test>>::_set_exchange_rate(
+			1,
 			DEFAULT_COLLATERAL_CURRENCY,
 			UnsignedFixedPoint::one(),
 		)
 		.unwrap();
-		<oracle::Pallet<Test>>::_set_exchange_rate(1,
+		<oracle::Pallet<Test>>::_set_exchange_rate(
+			1,
 			DEFAULT_WRAPPED_CURRENCY,
 			UnsignedFixedPoint::one(),
 		)
