@@ -16,9 +16,9 @@ use frame_support::{
 use codec::Encode;
 pub use dia_oracle::dia::*;
 pub use frame_system::Call as SystemCall;
-use oracle::{dia::DiaOracleAdapter, OracleKey};
 #[cfg(feature = "test")]
 use oracle::oracle_mock::DataCollector;
+use oracle::{dia::DiaOracleAdapter, OracleKey};
 use orml_currencies::BasicCurrencyAdapter;
 use orml_traits::{currency::MutationHooks, parameter_type_with_key};
 pub use pallet_balances::Call as BalancesCall;
