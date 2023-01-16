@@ -1,5 +1,5 @@
-use std::{convert::TryFrom, str::FromStr};
 use spacewalk_runtime::{AssetId, DiaOracleModuleConfig};
+use std::{convert::TryFrom, str::FromStr};
 
 use frame_support::BoundedVec;
 use hex_literal::hex;
@@ -311,7 +311,7 @@ fn testnet_genesis(
 		oracle: OracleConfig {
 			authorized_oracles,
 			max_delay: 3600000, // one hour
-			oracle_keys : vec![]
+			oracle_keys: vec![],
 		},
 		vault_registry: VaultRegistryConfig {
 			minimum_collateral_vault: vec![(Token(DOT), 0), (Token(KSM), 0)],
