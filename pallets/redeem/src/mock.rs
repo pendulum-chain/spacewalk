@@ -19,7 +19,7 @@ pub use currency::{
 	Amount,
 };
 pub use oracle::{CurrencyId, OracleKey};
-pub use primitives::{CurrencyId::Token, TokenSymbol::*};
+pub use primitives::ForeignCurrencyId::*;
 use primitives::{VaultCurrencyPair, VaultId};
 
 use crate as redeem;
@@ -367,7 +367,7 @@ where
 		assert_ok!(<oracle::Pallet<Test>>::feed_values(
 			RuntimeOrigin::signed(USER),
 			vec![
-				(OracleKey::ExchangeRate(Token(DOT)), FixedU128::from(1)),
+				(OracleKey::ExchangeRate(CurrencyId::XCM(DOT)), FixedU128::from(1)),
 				(OracleKey::FeeEstimation, FixedU128::from(3)),
 			]
 		));

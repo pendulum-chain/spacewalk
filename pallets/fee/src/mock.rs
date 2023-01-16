@@ -17,7 +17,7 @@ pub use currency::testing_constants::{
 	DEFAULT_COLLATERAL_CURRENCY, DEFAULT_NATIVE_CURRENCY, DEFAULT_WRAPPED_CURRENCY,
 };
 use primitives::VaultId;
-pub use primitives::{CurrencyId, CurrencyId::Token, TokenSymbol::*};
+pub use primitives::{CurrencyId, ForeignCurrencyId::*};
 
 use crate as fee;
 use crate::{Config, Error};

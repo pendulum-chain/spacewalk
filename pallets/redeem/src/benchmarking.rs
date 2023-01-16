@@ -11,7 +11,7 @@ use currency::{
 	testing_constants::get_wrapped_currency_id,
 };
 use oracle::Pallet as Oracle;
-use primitives::{CurrencyId, CurrencyId::Token, TokenSymbol::*, VaultCurrencyPair, VaultId};
+use primitives::{CurrencyId, ForeignCurrencyId::*, VaultCurrencyPair, VaultId};
 use security::Pallet as Security;
 use stellar_relay::{
 	testing_utils::{
@@ -109,7 +109,7 @@ benchmarks! {
 		let origin: T::AccountId = account("Origin", 0, 0);
 		let vault_id = get_vault_id::<T>();
 		let amount = Redeem::<T>::redeem_minimum_transfer_amount() + 1000u32.into();
-		let asset = Token(DOT);
+		let asset = CurrencyId::XCM(DOT);
 		let stellar_address = DEFAULT_STELLAR_PUBLIC_KEY;
 
 		initialize_oracle::<T>();

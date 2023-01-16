@@ -1,4 +1,7 @@
-use primitives::ForeignCurrencyId::{DOT, KSM};
+use primitives::{
+	CurrencyInfo,
+	ForeignCurrencyId::{DOT, KSM},
+};
 use std::convert::TryFrom;
 
 use crate::{CurrencyId, Error};
