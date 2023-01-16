@@ -17,6 +17,8 @@ use codec::Encode;
 pub use dia_oracle::dia::*;
 pub use frame_system::Call as SystemCall;
 use oracle::{dia::DiaOracleAdapter, OracleKey};
+#[cfg(feature = "test")]
+use oracle::oracle_mock::DataCollector;
 use orml_currencies::BasicCurrencyAdapter;
 use orml_traits::{currency::MutationHooks, parameter_type_with_key};
 pub use pallet_balances::Call as BalancesCall;
@@ -484,8 +486,9 @@ impl oracle::Config for Runtime {
 		ConvertPrice,
 		ConvertMoment,
 	>;
-	// #[cfg(feature = "testing-utils")]
-	// type DataFeedProvider = DataCollector;
+
+	#[cfg(feature = "test")]
+	type DataFeedProvider = DataCollector;
 }
 
 impl issue::Config for Runtime {
