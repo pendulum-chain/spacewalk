@@ -3,10 +3,10 @@ use orml_oracle::{DataProviderExtended, TimestampedValue};
 pub use primitives::{oracle::Key as OracleKey, CurrencyId, TruncateFixedPointToInt};
 use sp_std::marker;
 
+use scale_info::prelude::string::String;
 use sp_arithmetic::FixedU128;
 use sp_runtime::traits::Convert;
 use sp_std::{vec, vec::Vec};
-use scale_info::prelude::string::String;
 
 const DOT_DIA_BLOCKCHAIN: &str = "Polkadot";
 const DOT_DIA_SYMBOL: &str = "DOT";
