@@ -5,8 +5,10 @@ use frame_support::{
 };
 use mocktopus::{macros::mockable, mocking::clear_mocks};
 use oracle::{
-	dia::{DiaOracleAdapter, MockConvertPrice, MockOracleKeyConvertor, MockConvertMoment},
-	oracle_mock::{DataCollector, MockDiaOracle},
+	dia::DiaOracleAdapter,
+	oracle_mock::{
+		DataCollector, MockConvertMoment, MockConvertPrice, MockDiaOracle, MockOracleKeyConvertor,
+	},
 };
 use orml_traits::parameter_type_with_key;
 pub use sp_arithmetic::{FixedI128, FixedPointNumber, FixedU128};
@@ -52,7 +54,7 @@ frame_support::construct_runtime!(
 		StellarRelay: stellar_relay::{Pallet, Call, Config<T>, Storage, Event<T>},
 		Security: security::{Pallet, Call, Storage, Event<T>},
 		VaultRegistry: vault_registry::{Pallet, Call, Config<T>, Storage, Event<T>},
-		Oracle: oracle::{Pallet, Call, Config<T>, Storage, Event<T>},
+		Oracle: oracle::{Pallet, Call, Config, Storage, Event<T>},
 		Redeem: redeem::{Pallet, Call, Config<T>, Storage, Event<T>},
 		Fee: fee::{Pallet, Call, Config<T>, Storage},
 		Staking: staking::{Pallet, Storage, Event<T>},
@@ -347,11 +349,10 @@ impl ExtBuilder {
 		.assimilate_storage(&mut storage)
 		.unwrap();
 
-		oracle::GenesisConfig {
-			oracle_keys: vec![],
-			max_delay: 0,
-		}
-		.assimilate_storage(&mut storage)
+		frame_support::traits::GenesisBuild::<Test>::assimilate_storage(
+			&oracle::GenesisConfig { oracle_keys: vec![], max_delay: 0 },
+			&mut storage,
+		)
 		.unwrap();
 
 		storage.into()

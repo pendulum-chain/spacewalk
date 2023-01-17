@@ -554,7 +554,7 @@ construct_runtime! {
 
 		Security: security::{Pallet, Call, Config, Storage, Event<T>} = 19,
 		VaultRegistry: vault_registry::{Pallet, Call, Config<T>, Storage, Event<T>, ValidateUnsigned} = 21,
-		Oracle: oracle::{Pallet, Call, Config<T>, Storage, Event<T>} = 22,
+		Oracle: oracle::{Pallet, Call, Config, Storage, Event<T>} = 22,
 		Issue: issue::{Pallet, Call, Config<T>, Storage, Event<T>} = 23,
 		Redeem: redeem::{Pallet, Call, Config<T>, Storage, Event<T>} = 24,
 		Replace: replace::{Pallet, Call, Config<T>, Storage, Event<T>} = 25,

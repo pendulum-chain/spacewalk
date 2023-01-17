@@ -5,8 +5,10 @@ use frame_support::{
 };
 use mocktopus::{macros::mockable, mocking::clear_mocks};
 use oracle::{
-	dia::{DiaOracleAdapter, MockConvertPrice, MockDiaOracleConvertor, MockMoment},
-	oracle_mock::{DataCollector, MockDiaOracle},
+	dia::DiaOracleAdapter,
+	oracle_mock::{
+		DataCollector, MockConvertMoment, MockConvertPrice, MockDiaOracle, MockOracleKeyConvertor,
+	},
 };
 use orml_traits::parameter_type_with_key;
 use sp_arithmetic::{FixedI128, FixedU128};
@@ -50,7 +52,7 @@ frame_support::construct_runtime!(
 		Security: security::{Pallet, Call, Storage, Event<T>},
 		VaultRegistry: vault_registry::{Pallet, Call, Config<T>, Storage, Event<T>},
 		Fee: fee::{Pallet, Call, Config<T>, Storage},
-		Oracle: oracle::{Pallet, Call, Config<T>, Storage, Event<T>},
+		Oracle: oracle::{Pallet, Call, Config, Storage, Event<T>},
 		Nomination: nomination::{Pallet, Call, Config, Storage, Event<T>},
 		Staking: staking::{Pallet, Storage, Event<T>},
 		Currency: currency::{Pallet},
@@ -251,9 +253,9 @@ impl oracle::Config for Test {
 		MockDiaOracle,
 		UnsignedFixedPoint,
 		Moment,
-		MockDiaOracleConvertor,
+		MockOracleKeyConvertor,
 		MockConvertPrice,
-		MockMoment,
+		MockConvertMoment,
 	>;
 	type DataFeedProvider = DataCollector;
 }
