@@ -25,8 +25,10 @@ pub use primitives::{CurrencyId::Token, TokenSymbol::*};
 
 use crate::{
 	self as oracle,
-	dia::{DiaOracleAdapter, MockConvertPrice, MockDiaOracleConvertor, MockMoment},
-	oracle_mock::{DataCollector, MockDiaOracle},
+	dia::DiaOracleAdapter,
+	oracle_mock::{
+		DataCollector, MockConvertMoment, MockConvertPrice, MockDiaOracle, MockOracleKeyConvertor,
+	},
 	Config, Error, OracleKeys,
 };
 
@@ -47,7 +49,7 @@ frame_support::construct_runtime!(
 
 		// Operational
 		Security: security::{Pallet, Call, Storage, Event<T>},
-		Oracle: oracle::{Pallet, Call, Config<T>, Storage, Event<T>},
+		Oracle: oracle::{Pallet, Call, Config, Storage, Event<T>},
 		Staking: staking::{Pallet, Storage, Event<T>},
 		Currency: currency::{Pallet},
 	}
@@ -165,9 +167,9 @@ impl Config for Test {
 		MockDiaOracle,
 		UnsignedFixedPoint,
 		Moment,
-		MockDiaOracleConvertor,
+		MockOracleKeyConvertor,
 		MockConvertPrice,
-		MockMoment,
+		MockConvertMoment,
 	>;
 	type DataFeedProvider = DataCollector;
 }
@@ -205,12 +207,10 @@ impl ExtBuilder {
 	pub fn build() -> sp_io::TestExternalities {
 		let mut storage = frame_system::GenesisConfig::default().build_storage::<Test>().unwrap();
 
-		oracle::GenesisConfig::<Test> {
-			authorized_oracles: vec![(0, "test".as_bytes().to_vec())],
-			max_delay: 0,
-			oracle_keys: vec![],
-		}
-		.assimilate_storage(&mut storage)
+		frame_support::traits::GenesisBuild::<Test>::assimilate_storage(
+			&oracle::GenesisConfig { oracle_keys: vec![], max_delay: 0 },
+			&mut storage,
+		)
 		.unwrap();
 
 		sp_io::TestExternalities::from(storage)
