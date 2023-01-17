@@ -9,9 +9,11 @@
 extern crate mocktopus;
 
 use codec::{Decode, Encode, MaxEncodedLen};
-#[cfg(feature = "testing-utils")]
-use frame_support::dispatch::DispatchResult;
-use frame_support::{dispatch::DispatchError, transactional};
+// #[cfg(feature = "testing-utils")]
+use frame_support::{
+	dispatch::{DispatchError, DispatchResult},
+	transactional,
+};
 #[cfg(test)]
 use mocktopus::macros::mockable;
 use scale_info::TypeInfo;
@@ -37,14 +39,19 @@ mod benchmarking;
 
 mod default_weights;
 #[cfg(test)]
+#[cfg_attr(test, cfg(feature = "testing-utils"))]
 mod tests;
 
 #[cfg(test)]
-mod mock;
+#[cfg_attr(test, cfg(feature = "testing-utils"))]
+pub mod mock;
 
 pub mod types;
 
 pub mod dia;
+#[cfg(feature = "testing-utils")]
+pub mod oracle_mock;
+use orml_oracle::DataFeeder;
 
 #[frame_support::pallet]
 pub mod pallet {
@@ -71,6 +78,13 @@ pub mod pallet {
 		type DataProvider: DataProviderExtended<
 			OracleKey,
 			TimestampedValue<Self::UnsignedFixedPoint, Self::Moment>,
+		>;
+
+		#[cfg(feature = "testing-utils")]
+		type DataFeedProvider: orml_oracle::DataFeeder<
+			OracleKey,
+			TimestampedValue<Self::UnsignedFixedPoint, Self::Moment>,
+			Self::AccountId,
 		>;
 	}
 
@@ -162,6 +176,27 @@ pub mod pallet {
 	// The pallet's dispatchable functions.
 	#[pallet::call]
 	impl<T: Config> Pallet<T> {
+		/// Feeds data from the oracles, e.g., the exchange rates. This function
+		/// is intended to be API-compatible with orml-oracle.
+		///
+		/// # Arguments
+		///
+		/// * `values` - a vector of (key, value) pairs to submit
+		#[pallet::call_index(0)]
+		#[pallet::weight(<T as Config>::WeightInfo::feed_values(values.len() as u32))]
+		pub fn feed_values(
+			origin: OriginFor<T>,
+			values: Vec<(OracleKey, T::UnsignedFixedPoint)>,
+		) -> DispatchResultWithPostInfo {
+			// let signer = ensure_signed(origin)?;
+
+			// fail if the signer is not an authorized oracle
+			// ensure!(Self::is_authorized(&signer), Error::<T>::InvalidOracleSource);
+
+			// Self::_feed_values(signer, values);
+			Ok(Pays::No.into())
+		}
+
 		/// set oracle keys
 		///
 		/// # Arguments
@@ -175,7 +210,7 @@ pub mod pallet {
 		) -> DispatchResult {
 			ensure_root(origin)?;
 			<OracleKeys<T>>::put(oracle_keys.clone());
-			Self::deposit_event(Event::OracleKeysUpdated { oracle_keys: oracle_keys });
+			Self::deposit_event(Event::OracleKeysUpdated { oracle_keys });
 			Ok(())
 		}
 	}
@@ -192,7 +227,7 @@ impl<T: Config> Pallet<T> {
 		let mut updated_items = Vec::new();
 		let max_delay = Self::get_max_delay();
 		for key in oracle_keys.iter() {
-			let price = T::DataProvider::get_no_op(key);
+			let price = Self::get_timestamped(key);
 			let Some(price) = price else{
 				continue;
 			};
@@ -201,14 +236,13 @@ impl<T: Config> Pallet<T> {
 				updated_items.push((key.clone(), Some(price.value)));
 			}
 		}
-
 		let updated_items_len = updated_items.len();
 		if !updated_items.is_empty() {
 			Self::deposit_event(Event::<T>::AggregateUpdated { values: updated_items });
 		}
 
 		let current_status_is_online = Self::is_oracle_online();
-		let new_status_is_online = updated_items_len == oracle_keys.len();
+		let new_status_is_online = oracle_keys.len() > 0 && updated_items_len == oracle_keys.len();
 
 		if current_status_is_online != new_status_is_online {
 			if new_status_is_online {
@@ -221,15 +255,24 @@ impl<T: Config> Pallet<T> {
 
 	// TODO
 	// public only for testing purposes
-	pub fn _feed_values(oracle: T::AccountId, values: Vec<(OracleKey, T::UnsignedFixedPoint)>) {
-		for (key, value) in values.iter() {
-			let timestamped =
-				TimestampedValue { timestamp: Self::get_current_time(), value: *value };
-			// RawValues::<T>::insert(key, &oracle, timestamped);
-			// RawValuesUpdated::<T>::insert(key, true);
-		}
+	#[cfg(feature = "testing-utils")]
+	pub fn _feed_values(
+		oracle: T::AccountId,
+		values: Vec<(OracleKey, T::UnsignedFixedPoint)>,
+	) -> DispatchResult {
+		let mut oracle_keys: Vec<_> = <OracleKeys<T>>::get();
 
+		for (k, v) in values.clone() {
+			let timestamped = TimestampedValue { timestamp: Self::get_current_time(), value: v };
+			T::DataFeedProvider::feed_value(oracle.clone(), k.clone(), timestamped)
+				.expect("Expect store value by key");
+			if !oracle_keys.contains(&k) {
+				oracle_keys.push(k);
+			}
+		}
+		<OracleKeys<T>>::put(oracle_keys.clone());
 		Self::deposit_event(Event::<T>::FeedValues { oracle_id: oracle, values });
+		Ok(())
 	}
 
 	/// Public getters
@@ -300,12 +343,14 @@ impl<T: Config> Pallet<T> {
 	/// * `exchange_rate` - i.e. planck per satoshi
 	#[cfg(feature = "testing-utils")]
 	pub fn _set_exchange_rate(
+		oracle: T::AccountId,
 		currency_id: CurrencyId,
 		exchange_rate: UnsignedFixedPoint<T>,
 	) -> DispatchResult {
 		// Aggregate::<T>::insert(OracleKey::ExchangeRate(currency_id), exchange_rate);
 		// this is useful for benchmark tests
 		//TODO for testing get data from DataProvider as DataFeed trait
+		Self::_feed_values(oracle, vec![((OracleKey::ExchangeRate(currency_id)), exchange_rate)]);
 		Self::recover_from_oracle_offline();
 		Ok(())
 	}
@@ -326,5 +371,11 @@ impl<T: Config> Pallet<T> {
 	/// Returns the current timestamp
 	fn get_current_time() -> T::Moment {
 		<pallet_timestamp::Pallet<T>>::get()
+	}
+
+	fn get_timestamped(
+		key: &OracleKey,
+	) -> Option<TimestampedValue<T::UnsignedFixedPoint, T::Moment>> {
+		T::DataProvider::get_no_op(key)
 	}
 }

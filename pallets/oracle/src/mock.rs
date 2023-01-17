@@ -1,26 +1,34 @@
-use dia_oracle::DiaOracle;
+use std::{cell::RefCell, sync::RwLock};
+
+use dia_oracle::{CoinInfo, DiaOracle};
 use frame_support::{
 	parameter_types,
 	traits::{ConstU32, Everything, GenesisBuild},
 };
 use mocktopus::mocking::clear_mocks;
+use orml_oracle::{DataProvider, TimestampedValue};
 use orml_traits::parameter_type_with_key;
+use primitives::oracle::Key;
 use sp_arithmetic::{FixedI128, FixedU128};
+use sp_core::{sr25519::Signature, H256};
 use sp_runtime::{
 	testing::{Header, TestXt},
-	traits::{BlakeTwo256, Extrinsic as ExtrinsicT, IdentifyAccount, IdentityLookup, Verify},
+	traits::{
+		BlakeTwo256, Convert, Extrinsic as ExtrinsicT, IdentifyAccount, IdentityLookup, Verify,
+	},
 };
-use sp_core::{sr25519::Signature, H256};
-
-
 
 pub use currency::testing_constants::{
 	DEFAULT_COLLATERAL_CURRENCY, DEFAULT_NATIVE_CURRENCY, DEFAULT_WRAPPED_CURRENCY,
 };
 pub use primitives::{CurrencyId::Token, TokenSymbol::*};
 
-use crate::{self as oracle, dia::DiaOracleAdapter};
-use crate::{Config, Error};
+use crate::{
+	self as oracle,
+	dia::{DiaOracleAdapter, MockConvertPrice, MockDiaOracleConvertor, MockMoment},
+	oracle_mock::{DataCollector, MockDiaOracle},
+	Config, Error, OracleKeys,
+};
 
 type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Test>;
 type Block = frame_system::mocking::MockBlock<Test>;
@@ -150,61 +158,18 @@ impl currency::Config for Test {
 	type CurrencyConversion = CurrencyConvert;
 }
 
-
-// type Extrinsic = TestXt<RuntimeCall, ()>;
-// pub type AccountId2 = <<Signature as Verify>::Signer as IdentifyAccount>::AccountId;
-
-// impl frame_system::offchain::SigningTypes for Test {
-// 	type Public = <Signature as Verify>::Signer;
-// 	type Signature = Signature;
-// }
-
-// impl<LocalCall> frame_system::offchain::SendTransactionTypes<LocalCall> for Test
-// where
-// 	RuntimeCall: From<LocalCall>,
-// {
-// 	type OverarchingCall = RuntimeCall;
-// 	type Extrinsic = Extrinsic;
-// }
-
-// impl<LocalCall> frame_system::offchain::CreateSignedTransaction<LocalCall> for Test
-// where
-// 	RuntimeCall: From<LocalCall>,
-// {
-// 	fn create_transaction<C: frame_system::offchain::AppCrypto<Self::Public, Self::Signature>>(
-// 		call: RuntimeCall,
-// 		_public: <Signature as Verify>::Signer,
-// 		_account: AccountId,
-// 		nonce: u64,
-// 	) -> Option<(RuntimeCall, <Extrinsic as ExtrinsicT>::SignaturePayload)> {
-// 		Some((call, (nonce, ())))
-// 	}
-// }
-
-
-
-// impl dia_oracle::Config for Test{
-// 	type RuntimeEvent = RuntimeEvent;
-// 	type RuntimeCall = RuntimeCall;
-// 	type AuthorityId = dia_oracle::crypto::DiaAuthId;
-// 	type WeightInfo = ();
-// }
-
-pub struct MockDiaOracle;
-impl DiaOracle for MockDiaOracle{
-    fn get_coin_info(blockchain: Vec<u8>, symbol: Vec<u8>) -> Result<dia_oracle::CoinInfo, sp_runtime::DispatchError> {
-        todo!()
-    }
-
-    fn get_value(blockchain: Vec<u8>, symbol: Vec<u8>) -> Result<dia_oracle::PriceInfo, sp_runtime::DispatchError> {
-        todo!()
-    }
-}
-
 impl Config for Test {
 	type RuntimeEvent = TestEvent;
 	type WeightInfo = ();
-	type DataProvider = DiaOracleAdapter<MockDiaOracle, UnsignedFixedPoint, Moment>;
+	type DataProvider = DiaOracleAdapter<
+		MockDiaOracle,
+		UnsignedFixedPoint,
+		Moment,
+		MockDiaOracleConvertor,
+		MockConvertPrice,
+		MockMoment,
+	>;
+	type DataFeedProvider = DataCollector;
 }
 
 parameter_types! {
@@ -243,6 +208,7 @@ impl ExtBuilder {
 		oracle::GenesisConfig::<Test> {
 			authorized_oracles: vec![(0, "test".as_bytes().to_vec())],
 			max_delay: 0,
+			oracle_keys: vec![],
 		}
 		.assimilate_storage(&mut storage)
 		.unwrap();
@@ -260,5 +226,6 @@ where
 		Security::set_active_block_number(1);
 		System::set_block_number(1);
 		test();
+		// COINS.write().unwrap().clear();
 	});
 }

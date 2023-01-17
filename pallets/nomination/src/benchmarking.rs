@@ -34,11 +34,13 @@ fn mint_collateral<T: crate::Config>(account_id: &T::AccountId, amount: BalanceO
 
 fn setup_exchange_rate<T: crate::Config>() {
 	Oracle::<T>::_set_exchange_rate(
+		account("Vault", 0, 0),
 		get_collateral_currency_id::<T>(),
 		<T as currency::Config>::UnsignedFixedPoint::one(),
 	)
 	.unwrap();
 	Oracle::<T>::_set_exchange_rate(
+		account("Vault", 0, 0),
 		get_wrapped_currency_id(),
 		<T as currency::Config>::UnsignedFixedPoint::one(),
 	)

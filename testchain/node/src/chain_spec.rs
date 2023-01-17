@@ -1,3 +1,4 @@
+use spacewalk_runtime::{AssetId, DiaOracleModuleConfig};
 use std::{convert::TryFrom, str::FromStr};
 
 use frame_support::BoundedVec;
@@ -256,7 +257,7 @@ fn testnet_genesis(
 		},
 		sudo: SudoConfig {
 			// Assign network admin rights.
-			key: Some(root_key),
+			key: Some(root_key.clone()),
 		},
 		balances: BalancesConfig {
 			// Configure endowed accounts with initial balance of 1 << 60.
@@ -310,6 +311,7 @@ fn testnet_genesis(
 		oracle: OracleConfig {
 			authorized_oracles,
 			max_delay: 3600000, // one hour
+			oracle_keys: vec![],
 		},
 		vault_registry: VaultRegistryConfig {
 			minimum_collateral_vault: vec![(Token(DOT), 0), (Token(KSM), 0)],
@@ -340,5 +342,11 @@ fn testnet_genesis(
 			replace_griefing_collateral: FixedU128::checked_from_rational(1, 10).unwrap(), // 10%
 		},
 		nomination: NominationConfig { is_nomination_enabled: false },
+		dia_oracle_module: DiaOracleModuleConfig {
+			authorized_accounts: vec![root_key],
+			supported_currencies: vec![AssetId::new(b"Bitcoin".to_vec(), b"BTC".to_vec())],
+			batching_api: b"http://localhost:8070/currencies".to_vec(),
+			coin_infos_map: vec![],
+		},
 	}
 }
