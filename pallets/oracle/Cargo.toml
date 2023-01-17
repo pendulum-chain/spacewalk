@@ -21,7 +21,7 @@ frame-benchmarking = { git = "https://github.com/paritytech/substrate", branch =
 pallet-timestamp = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.36", default-features = false }
 
 orml-oracle = { git = "https://github.com/open-web3-stack/open-runtime-module-library", branch = "polkadot-v0.9.33", default-features = false }
-dia-oracle = { git = "https://github.com/TorstenStueber/oracle-pallet", branch = "master", default-features = false }
+dia-oracle = { git = "https://github.com/diadata-org/oracle-pallet", branch = "master", default-features = false }
 
 # Parachain dependencies
 security = { path = "../security", default-features = false }

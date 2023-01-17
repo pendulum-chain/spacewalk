@@ -127,7 +127,7 @@ pub mod pallet {
 	#[pallet::getter(fn max_delay)]
 	pub type MaxDelay<T: Config> = StorageValue<_, T::Moment, ValueQuery>;
 
-	// Oracles allowed to set the exchange rate, maps to the name
+	// Oracles keys required by runtime
 	#[pallet::storage]
 	#[pallet::getter(fn oracle_keys)]
 	pub type OracleKeys<T: Config> = StorageValue<_, Vec<OracleKey>, ValueQuery>;
@@ -146,18 +146,13 @@ pub mod pallet {
 	#[pallet::genesis_config]
 	pub struct GenesisConfig<T: Config> {
 		pub max_delay: u32,
-		pub authorized_oracles: Vec<(T::AccountId, Vec<u8>)>,
 		pub oracle_keys: Vec<OracleKey>,
 	}
 
 	#[cfg(feature = "std")]
 	impl<T: Config> Default for GenesisConfig<T> {
 		fn default() -> Self {
-			Self {
-				max_delay: Default::default(),
-				authorized_oracles: Default::default(),
-				oracle_keys: Default::default(),
-			}
+			Self { max_delay: Default::default(), oracle_keys: Default::default() }
 		}
 	}
 
@@ -218,7 +213,8 @@ pub mod pallet {
 
 #[cfg_attr(test, mockable)]
 impl<T: Config> Pallet<T> {
-	// public only for testing purposes
+	// the function is public only for testing purposes. function should be use only by this pallet
+	// inside on_initialize hook
 	pub fn begin_block(_height: T::BlockNumber) {
 		let oracle_keys: Vec<_> = OracleKeys::<T>::get();
 
@@ -253,7 +249,6 @@ impl<T: Config> Pallet<T> {
 		}
 	}
 
-	// TODO
 	// public only for testing purposes
 	#[cfg(feature = "testing-utils")]
 	pub fn _feed_values(

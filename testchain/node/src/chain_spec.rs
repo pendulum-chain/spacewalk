@@ -79,10 +79,6 @@ pub fn local_config() -> ChainSpec {
 					get_account_id_from_seed::<sr25519::Public>("Eve//stash"),
 					get_account_id_from_seed::<sr25519::Public>("Ferdie//stash"),
 				],
-				vec![(
-					get_account_id_from_seed::<sr25519::Public>("Bob"),
-					"Bob".as_bytes().to_vec(),
-				)],
 				false,
 			)
 		},
@@ -143,10 +139,6 @@ pub fn beta_testnet_config() -> ChainSpec {
 					get_account_id_from_string("5H8zjSWfzMn86d1meeNrZJDj3QZSvRjKxpTfuVaZ46QJZ4qs"),
 					get_account_id_from_string("5FPBT2BVVaLveuvznZ9A1TUtDcbxK5yvvGcMTJxgFmhcWGwj"),
 				],
-				vec![(
-					get_account_id_from_seed::<sr25519::Public>("Bob"),
-					"Bob".as_bytes().to_vec(),
-				)],
 				false,
 			)
 		},
@@ -182,10 +174,6 @@ pub fn development_config() -> ChainSpec {
 					get_account_id_from_seed::<sr25519::Public>("Eve//stash"),
 					get_account_id_from_seed::<sr25519::Public>("Ferdie//stash"),
 				],
-				vec![(
-					get_account_id_from_seed::<sr25519::Public>("Bob"),
-					"Bob".as_bytes().to_vec(),
-				)],
 				false,
 			)
 		},
@@ -215,7 +203,6 @@ fn testnet_genesis(
 	root_key: AccountId,
 	initial_authorities: Vec<(AuraId, GrandpaId)>,
 	endowed_accounts: Vec<AccountId>,
-	authorized_oracles: Vec<(AccountId, Vec<u8>)>,
 	start_shutdown: bool,
 ) -> GenesisConfig {
 	// Testnet organization
@@ -309,7 +296,6 @@ fn testnet_genesis(
 			phantom: Default::default(),
 		},
 		oracle: OracleConfig {
-			authorized_oracles,
 			max_delay: 3600000, // one hour
 			oracle_keys: vec![],
 		},

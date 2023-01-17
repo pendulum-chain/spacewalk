@@ -120,9 +120,9 @@ where
 	}
 }
 
-pub struct MockDiaOracleConvertor;
+pub struct MockOracleKeyConvertor;
 
-impl Convert<OracleKey, Option<(Vec<u8>, Vec<u8>)>> for MockDiaOracleConvertor {
+impl Convert<OracleKey, Option<(Vec<u8>, Vec<u8>)>> for MockOracleKeyConvertor {
 	fn convert(spacwalk_oracle_key: OracleKey) -> Option<(Vec<u8>, Vec<u8>)> {
 		match spacwalk_oracle_key {
 			OracleKey::ExchangeRate(currency_id) => match currency_id {
@@ -144,7 +144,7 @@ impl Convert<OracleKey, Option<(Vec<u8>, Vec<u8>)>> for MockDiaOracleConvertor {
 	}
 }
 
-impl Convert<(Vec<u8>, Vec<u8>), Option<OracleKey>> for MockDiaOracleConvertor {
+impl Convert<(Vec<u8>, Vec<u8>), Option<OracleKey>> for MockOracleKeyConvertor {
 	fn convert(dia_oracle_key: (Vec<u8>, Vec<u8>)) -> Option<OracleKey> {
 		let (blockchain, symbol) = dia_oracle_key;
 		match blockchain[0] {
@@ -199,8 +199,8 @@ impl Convert<u128, Option<FixedU128>> for MockConvertPrice {
 	}
 }
 
-pub struct MockMoment;
-impl Convert<u64, Option<u64>> for MockMoment {
+pub struct MockConvertMoment;
+impl Convert<u64, Option<u64>> for MockConvertMoment {
 	fn convert(moment: u64) -> Option<u64> {
 		Some(moment)
 	}

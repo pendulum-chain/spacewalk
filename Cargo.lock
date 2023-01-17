@@ -1336,7 +1336,7 @@ dependencies = [
 [[package]]
 name = "dia-oracle"
 version = "0.1.0"
-source = "git+https://github.com/TorstenStueber/oracle-pallet?branch=master#daa128082184b4879623d9ae452d7d3605b48608"
+source = "git+https://github.com/diadata-org/oracle-pallet?branch=master#c838df062d448ee2ef66bce60453d0c3f974a9d7"
 dependencies = [
  "frame-benchmarking",
  "frame-support",
@@ -2976,7 +2976,6 @@ version = "1.0.0"
 dependencies = [
  "base64",
  "currency",
- "dia-oracle",
  "fee",
  "frame-benchmarking",
  "frame-support",
