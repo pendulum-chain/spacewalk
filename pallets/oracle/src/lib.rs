@@ -144,20 +144,20 @@ pub mod pallet {
 		StorageValue<_, Version, ValueQuery, DefaultForStorageVersion>;
 
 	#[pallet::genesis_config]
-	pub struct GenesisConfig<T: Config> {
+	pub struct GenesisConfig {
 		pub max_delay: u32,
 		pub oracle_keys: Vec<OracleKey>,
 	}
 
 	#[cfg(feature = "std")]
-	impl<T: Config> Default for GenesisConfig<T> {
+	impl Default for GenesisConfig {
 		fn default() -> Self {
 			Self { max_delay: Default::default(), oracle_keys: Default::default() }
 		}
 	}
 
 	#[pallet::genesis_build]
-	impl<T: Config> GenesisBuild<T> for GenesisConfig<T> {
+	impl<T: Config> GenesisBuild<T> for GenesisConfig {
 		fn build(&self) {
 			MaxDelay::<T>::put(T::Moment::from(self.max_delay));
 			OracleKeys::<T>::put(self.oracle_keys.clone());

@@ -5,7 +5,7 @@ use frame_support::{
 };
 use mocktopus::{macros::mockable, mocking::clear_mocks};
 use oracle::{
-	dia::{DiaOracleAdapter, MockConvertPrice, MockDiaOracleConvertor, MockMoment},
+	dia::{DiaOracleAdapter, MockConvertPrice, MockOracleKeyConvertor, MockConvertMoment},
 	oracle_mock::{DataCollector, MockDiaOracle},
 };
 use orml_traits::parameter_type_with_key;
@@ -251,9 +251,9 @@ impl oracle::Config for Test {
 		MockDiaOracle,
 		UnsignedFixedPoint,
 		Moment,
-		MockDiaOracleConvertor,
+		MockOracleKeyConvertor,
 		MockConvertPrice,
-		MockMoment,
+		MockConvertMoment,
 	>;
 	type DataFeedProvider = DataCollector;
 }
@@ -347,8 +347,7 @@ impl ExtBuilder {
 		.assimilate_storage(&mut storage)
 		.unwrap();
 
-		oracle::GenesisConfig::<Test> {
-			authorized_oracles: vec![(USER, "test".as_bytes().to_vec())],
+		oracle::GenesisConfig {
 			oracle_keys: vec![],
 			max_delay: 0,
 		}
