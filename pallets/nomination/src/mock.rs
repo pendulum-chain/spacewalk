@@ -7,15 +7,18 @@ use mocktopus::{macros::mockable, mocking::clear_mocks};
 use oracle::{
 	dia::DiaOracleAdapter,
 	oracle_mock::{Data, MockConvertMoment, MockConvertPrice, MockOracleKeyConvertor},
+	CoinInfo, DataFeeder, DataProvider, DiaOracle, PriceInfo, TimestampedValue,
 };
 use orml_traits::parameter_type_with_key;
+use primitives::oracle::Key;
 use sp_arithmetic::{FixedI128, FixedU128};
 use sp_core::H256;
 use sp_runtime::{
 	testing::{Header, TestXt},
-	traits::{BlakeTwo256, IdentityLookup, One, Zero},
+	traits::{BlakeTwo256, Convert, IdentityLookup, One, Zero},
 	FixedPointNumber,
 };
+use std::cell::RefCell;
 
 pub use currency::testing_constants::{
 	DEFAULT_COLLATERAL_CURRENCY, DEFAULT_NATIVE_CURRENCY, DEFAULT_WRAPPED_CURRENCY,
@@ -374,7 +377,7 @@ impl DiaOracle for MockDiaOracle {
 	fn get_coin_info(
 		blockchain: Vec<u8>,
 		symbol: Vec<u8>,
-	) -> Result<dia_oracle::CoinInfo, sp_runtime::DispatchError> {
+	) -> Result<CoinInfo, sp_runtime::DispatchError> {
 		let key = (blockchain, symbol);
 		let mut result: Option<Data> = None;
 		COINS.with(|c| {
@@ -397,24 +400,22 @@ impl DiaOracle for MockDiaOracle {
 	}
 
 	fn get_value(
-		blockchain: Vec<u8>,
-		symbol: Vec<u8>,
-	) -> Result<dia_oracle::PriceInfo, sp_runtime::DispatchError> {
+		_blockchain: Vec<u8>,
+		_symbol: Vec<u8>,
+	) -> Result<PriceInfo, sp_runtime::DispatchError> {
 		todo!()
 	}
 }
 
 pub struct DataCollector;
 impl DataProvider<Key, TimestampedValue<UnsignedFixedPoint, Moment>> for DataCollector {
-	fn get(key: &Key) -> Option<TimestampedValue<UnsignedFixedPoint, Moment>> {
+	fn get(_key: &Key) -> Option<TimestampedValue<UnsignedFixedPoint, Moment>> {
 		todo!()
 	}
 }
-impl orml_oracle::DataFeeder<Key, TimestampedValue<UnsignedFixedPoint, Moment>, AccountId>
-	for DataCollector
-{
+impl DataFeeder<Key, TimestampedValue<UnsignedFixedPoint, Moment>, AccountId> for DataCollector {
 	fn feed_value(
-		who: AccountId,
+		_who: AccountId,
 		key: Key,
 		value: TimestampedValue<UnsignedFixedPoint, Moment>,
 	) -> sp_runtime::DispatchResult {
