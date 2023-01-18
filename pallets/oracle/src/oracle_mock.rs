@@ -8,6 +8,7 @@ use sp_arithmetic::{FixedI128, FixedU128};
 pub type UnsignedFixedPoint = FixedU128;
 use primitives::{oracle::Key, CurrencyId};
 type Moment = u64;
+use sp_std::{vec, vec::Vec};
 
 #[derive(Clone)]
 pub struct Data {
