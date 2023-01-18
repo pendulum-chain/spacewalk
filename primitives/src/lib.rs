@@ -1,4 +1,5 @@
 #![cfg_attr(not(feature = "std"), no_std)]
+#![allow(non_upper_case_globals)]
 
 use bstringify::bstringify;
 use codec::{Decode, Encode, MaxEncodedLen};
@@ -11,7 +12,7 @@ use sp_core::{crypto::AccountId32, ed25519};
 pub use sp_runtime::OpaqueExtrinsic as UncheckedExtrinsic;
 use sp_runtime::{
 	generic,
-	traits::{BlakeTwo256, Convert, IdentifyAccount, One, StaticLookup, Verify},
+	traits::{BlakeTwo256, Convert, IdentifyAccount, StaticLookup, Verify},
 	FixedI128, FixedPointNumber, FixedU128, MultiSignature, MultiSigner, RuntimeDebug,
 };
 use sp_std::{
