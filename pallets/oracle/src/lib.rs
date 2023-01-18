@@ -350,6 +350,7 @@ impl<T: Config> Pallet<T> {
 		// Aggregate::<T>::insert(OracleKey::ExchangeRate(currency_id), exchange_rate);
 		// this is useful for benchmark tests
 		//TODO for testing get data from DataProvider as DataFeed trait
+		use sp_std::vec;
 		Self::_feed_values(oracle, vec![((OracleKey::ExchangeRate(currency_id)), exchange_rate)]);
 		Self::recover_from_oracle_offline();
 		Ok(())
