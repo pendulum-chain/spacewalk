@@ -1,4 +1,5 @@
 #![cfg_attr(not(feature = "std"), no_std)]
+#![allow(non_upper_case_globals)]
 
 use bstringify::bstringify;
 use codec::{Decode, Encode, MaxEncodedLen};
@@ -383,36 +384,36 @@ pub trait CurrencyInfo {
 
 macro_rules! create_currency_id {
     ($(#[$meta:meta])*
-	$vis:vis enum TokenSymbol {
+	$vis:vis enum ForeignCurrencyId {
         $($(#[$vmeta:meta])* $symbol:ident($name:expr, $deci:literal) = $val:literal,)*
     }) => {
 		$(#[$meta])*
-		$vis enum TokenSymbol {
+		$vis enum ForeignCurrencyId {
 			$($(#[$vmeta])* $symbol = $val,)*
 		}
 
-        $(pub const $symbol: TokenSymbol = TokenSymbol::$symbol;)*
+        $(pub const $symbol: ForeignCurrencyId = ForeignCurrencyId::$symbol;)*
 
-        impl TryFrom<u8> for TokenSymbol {
+        impl TryFrom<u8> for ForeignCurrencyId {
 			type Error = ();
 
 			fn try_from(v: u8) -> Result<Self, Self::Error> {
 				match v {
-					$($val => Ok(TokenSymbol::$symbol),)*
+					$($val => Ok(ForeignCurrencyId::$symbol),)*
 					_ => Err(()),
 				}
 			}
 		}
 
-		impl Into<u8> for TokenSymbol {
+		impl Into<u8> for ForeignCurrencyId {
 			fn into(self) -> u8 {
 				match self {
-					$(TokenSymbol::$symbol => ($val),)*
+					$(ForeignCurrencyId::$symbol => ($val),)*
 				}
 			}
 		}
 
-        impl TokenSymbol {
+        impl ForeignCurrencyId {
 			pub fn get_info() -> Vec<(&'static str, u32)> {
 				vec![
 					$((stringify!($symbol), $deci),)*
@@ -425,20 +426,20 @@ macro_rules! create_currency_id {
 
             const fn decimals(&self) -> u8 {
 				match self {
-					$(TokenSymbol::$symbol => $deci,)*
+					$(ForeignCurrencyId::$symbol => $deci,)*
 				}
 			}
 		}
 
-		impl CurrencyInfo for TokenSymbol {
+		impl CurrencyInfo for ForeignCurrencyId {
 			fn name(&self) -> &str {
 				match self {
-					$(TokenSymbol::$symbol => $name,)*
+					$(ForeignCurrencyId::$symbol => $name,)*
 				}
 			}
 			fn symbol(&self) -> &str {
 				match self {
-					$(TokenSymbol::$symbol => stringify!($symbol),)*
+					$(ForeignCurrencyId::$symbol => stringify!($symbol),)*
 				}
 			}
 			fn decimals(&self) -> u8 {
@@ -446,11 +447,11 @@ macro_rules! create_currency_id {
 			}
 		}
 
-		impl TryFrom<Vec<u8>> for TokenSymbol {
+		impl TryFrom<Vec<u8>> for ForeignCurrencyId {
 			type Error = ();
-			fn try_from(v: Vec<u8>) -> Result<TokenSymbol, ()> {
+			fn try_from(v: Vec<u8>) -> Result<ForeignCurrencyId, ()> {
 				match v.as_slice() {
-					$(bstringify!($symbol) => Ok(TokenSymbol::$symbol),)*
+					$(bstringify!($symbol) => Ok(ForeignCurrencyId::$symbol),)*
 					_ => Err(()),
 				}
 			}
@@ -462,48 +463,26 @@ create_currency_id! {
 	#[derive(Encode, Decode, Eq, Hash, PartialEq, Copy, Clone, RuntimeDebug, PartialOrd, Ord, TypeInfo, MaxEncodedLen)]
 	#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 	#[repr(u8)]
-	pub enum TokenSymbol {
+	pub enum ForeignCurrencyId {
 		DOT("Polkadot", 10) = 0,
-		PEN("Pendulum", 10) = 1,
-
-		KSM("Kusama", 10) = 10,
-		AMPE("Amplitude", 12) = 12,
+		KSM("Kusama", 10) = 1,
+		KAR("Karura",10) = 2,
+		AUSD("Acala Karura",10) = 3,
+		BNC("Bifrost",10)= 4,
+		VsKSM("Kusama Bifrost",10) = 5,
+		HKO("Heiko", 10) = 6,
+		MOVR("Moonriver", 10) = 7,
+		SDN("Shiden", 10) = 8,
+		KINT("Kintsugi", 10) = 9,
+		KBTC("Kintsugi BTC", 10) = 10,
+		GENS("Genshiro", 10) = 11,
+		XOR("Sora", 10) = 12,
+		TEER("Integritee", 10) = 13,
+		KILT("Kilt", 10) = 14,
+		PHA("Phala", 10) = 15,
+		ZTG("Zeitgeist", 10) = 16,
+		USD("Statemine", 10) = 17,
 	}
-}
-
-#[derive(
-	Encode,
-	Decode,
-	Eq,
-	Hash,
-	PartialEq,
-	Copy,
-	Clone,
-	PartialOrd,
-	Ord,
-	TypeInfo,
-	MaxEncodedLen,
-	Debug,
-)]
-#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
-pub enum ForeignCurrencyId {
-	KSM,   // Kusama relay chain
-	KAR,   // Karura
-	AUSD,  // Karura
-	BNC,   // Bifrost
-	VsKSM, // Bifrost
-	HKO,   // Heiko
-	MOVR,  // Moonriver
-	SDN,   // Shiden
-	KINT,  // Kintsugi
-	KBTC,  // Kintsugi
-	GENS,  // Genshiro
-	XOR,   // Sora
-	TEER,  // Integritee
-	KILT,  // KILT
-	PHA,   // KHALA
-	ZTG,   // Zeitgeist
-	USD,   // Statemine
 }
 
 #[derive(
@@ -512,7 +491,6 @@ pub enum ForeignCurrencyId {
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 #[cfg_attr(feature = "std", serde(rename_all = "camelCase"))]
 pub enum CurrencyId {
-	Token(TokenSymbol),
 	XCM(ForeignCurrencyId),
 	Native,
 	StellarNative,
@@ -602,7 +580,6 @@ impl TryInto<stellar::Asset> for CurrencyId {
 
 	fn try_into(self) -> Result<stellar::Asset, Self::Error> {
 		match self {
-			Self::Token(_) => Err("Token not defined in the Stellar world."),
 			Self::XCM(_currency_id) => Err("XCM Foreign Asset not defined in the Stellar world."),
 			Self::Native => Err("PEN token not defined in the Stellar world."),
 			Self::StellarNative => Ok(stellar::Asset::native()),
@@ -623,9 +600,6 @@ impl TryInto<stellar::Asset> for CurrencyId {
 impl fmt::Debug for CurrencyId {
 	fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
 		match self {
-			Self::Token(token_symbol) => {
-				write!(f, "{:?} ({:?})", token_symbol.name(), token_symbol.symbol())
-			},
 			Self::XCM(id) => {
 				write!(f, "XCM({:?})", id)
 			},

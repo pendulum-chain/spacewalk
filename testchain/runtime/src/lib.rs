@@ -42,10 +42,9 @@ pub use issue::{Event as IssueEvent, IssueRequest};
 pub use module_oracle_rpc_runtime_api::BalanceWrapper;
 pub use nomination::Event as NominationEvent;
 pub use primitives::{
-	self, AccountId, Balance, BlockNumber, CurrencyId, Hash, Moment, Nonce, Signature,
-	SignedFixedPoint, SignedInner, UnsignedFixedPoint, UnsignedInner,
+	self, AccountId, Balance, BlockNumber, CurrencyId, ForeignCurrencyId, Hash, Moment, Nonce,
+	Signature, SignedFixedPoint, SignedInner, UnsignedFixedPoint, UnsignedInner,
 };
-use primitives::{CurrencyId::Token, TokenSymbol};
 pub use redeem::{Event as RedeemEvent, RedeemRequest};
 pub use replace::{Event as ReplaceEvent, ReplaceRequest};
 pub use security::StatusCode;
@@ -197,9 +196,8 @@ impl pallet_timestamp::Config for Runtime {
 	type WeightInfo = ();
 }
 
-const NATIVE_TOKEN_ID: TokenSymbol = TokenSymbol::PEN;
-const NATIVE_CURRENCY_ID: CurrencyId = Token(NATIVE_TOKEN_ID);
-const PARENT_CURRENCY_ID: CurrencyId = Token(TokenSymbol::DOT);
+const NATIVE_CURRENCY_ID: CurrencyId = CurrencyId::Native;
+const PARENT_CURRENCY_ID: CurrencyId = CurrencyId::XCM(ForeignCurrencyId::DOT);
 // For mainnet USDC issued by centre.io
 // const WRAPPED_CURRENCY_ID: CurrencyId = CurrencyId::AlphaNum4 {
 // 	code: *b"USDC",

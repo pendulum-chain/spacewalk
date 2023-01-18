@@ -1,8 +1,8 @@
-use primitives::{CurrencyId, CurrencyId::Token, DOT, PEN};
+use primitives::{CurrencyId, ForeignCurrencyId};
 
 // These constants best are set to match the definitions in the testchain's runtime
-pub const DEFAULT_COLLATERAL_CURRENCY: CurrencyId = Token(DOT);
-pub const DEFAULT_NATIVE_CURRENCY: CurrencyId = Token(PEN);
+pub const DEFAULT_COLLATERAL_CURRENCY: CurrencyId = CurrencyId::XCM(ForeignCurrencyId::DOT);
+pub const DEFAULT_NATIVE_CURRENCY: CurrencyId = CurrencyId::Native;
 
 // We support many different wrapped currencies but here we return some wrapped currency id for
 // convenience in tests

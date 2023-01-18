@@ -1,4 +1,5 @@
 use frame_support::{assert_err, assert_ok};
+use primitives::ForeignCurrencyId;
 
 /// Tests for Staking
 use crate::mock::*;
@@ -19,7 +20,7 @@ fn reproduce_broken_state() {
         use crate::pallet::*;
         let account = VAULT.account_id;
         let currency = DEFAULT_NATIVE_CURRENCY;
-        let wrong_currency = Token(AMPE);
+        let wrong_currency = CurrencyId::XCM(ForeignCurrencyId::AUSD);
 
         let f = |x: i128| {
             SignedFixedPoint::from_inner(x)

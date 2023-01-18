@@ -222,10 +222,10 @@ mod tests {
 
 	use async_trait::async_trait;
 
-	use primitives::{TokenSymbol::AMPE, DOT};
+	use primitives::DOT;
 	use runtime::{
 		AccountId, Balance, CurrencyId, Error as RuntimeError, SpacewalkReplaceRequest,
-		SpacewalkVault, StellarPublicKeyRaw, Token, VaultId, H256,
+		SpacewalkVault, StellarPublicKeyRaw, VaultId, H256,
 	};
 
 	use super::*;
@@ -291,7 +291,7 @@ mod tests {
 	}
 
 	fn dummy_vault_id() -> VaultId {
-		VaultId::new(AccountId::new([1u8; 32]), Token(DOT), Token(AMPE))
+		VaultId::new(AccountId::new([1u8; 32]), CurrencyId::XCM(DOT), CurrencyId::Native)
 	}
 
 	const STELLAR_VAULT_SECRET_KEY: &str =
