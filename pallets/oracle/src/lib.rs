@@ -25,7 +25,7 @@ use sp_std::{convert::TryInto, vec::Vec};
 
 use currency::Amount;
 pub use default_weights::{SubstrateWeight, WeightInfo};
-use orml_oracle::{DataProviderExtended, TimestampedValue};
+use orml_oracle::DataProviderExtended;
 pub use pallet::*;
 pub use primitives::{oracle::Key as OracleKey, CurrencyId, TruncateFixedPointToInt};
 use security::{ErrorCode, StatusCode};
@@ -42,6 +42,11 @@ mod default_weights;
 #[cfg_attr(test, cfg(feature = "testing-utils"))]
 mod tests;
 
+#[cfg(feature = "testing-utils")]
+pub use dia_oracle::{CoinInfo, DiaOracle, PriceInfo};
+#[cfg(feature = "testing-utils")]
+pub use orml_oracle::{DataFeeder, DataProvider, TimestampedValue};
+
 #[cfg(test)]
 #[cfg_attr(test, cfg(feature = "testing-utils"))]
 pub mod mock;
@@ -51,7 +56,6 @@ pub mod types;
 pub mod dia;
 #[cfg(feature = "testing-utils")]
 pub mod oracle_mock;
-use orml_oracle::DataFeeder;
 
 #[frame_support::pallet]
 pub mod pallet {
@@ -77,13 +81,13 @@ pub mod pallet {
 
 		type DataProvider: DataProviderExtended<
 			OracleKey,
-			TimestampedValue<Self::UnsignedFixedPoint, Self::Moment>,
+			orml_oracle::TimestampedValue<Self::UnsignedFixedPoint, Self::Moment>,
 		>;
 
 		#[cfg(feature = "testing-utils")]
 		type DataFeedProvider: orml_oracle::DataFeeder<
 			OracleKey,
-			TimestampedValue<Self::UnsignedFixedPoint, Self::Moment>,
+			orml_oracle::TimestampedValue<Self::UnsignedFixedPoint, Self::Moment>,
 			Self::AccountId,
 		>;
 	}
@@ -258,7 +262,8 @@ impl<T: Config> Pallet<T> {
 		let mut oracle_keys: Vec<_> = <OracleKeys<T>>::get();
 
 		for (k, v) in values.clone() {
-			let timestamped = TimestampedValue { timestamp: Self::get_current_time(), value: v };
+			let timestamped =
+				orml_oracle::TimestampedValue { timestamp: Self::get_current_time(), value: v };
 			T::DataFeedProvider::feed_value(oracle.clone(), k.clone(), timestamped)
 				.expect("Expect store value by key");
 			if !oracle_keys.contains(&k) {
@@ -345,6 +350,7 @@ impl<T: Config> Pallet<T> {
 		// Aggregate::<T>::insert(OracleKey::ExchangeRate(currency_id), exchange_rate);
 		// this is useful for benchmark tests
 		//TODO for testing get data from DataProvider as DataFeed trait
+		use sp_std::vec;
 		Self::_feed_values(oracle, vec![((OracleKey::ExchangeRate(currency_id)), exchange_rate)]);
 		Self::recover_from_oracle_offline();
 		Ok(())
@@ -370,7 +376,7 @@ impl<T: Config> Pallet<T> {
 
 	fn get_timestamped(
 		key: &OracleKey,
-	) -> Option<TimestampedValue<T::UnsignedFixedPoint, T::Moment>> {
+	) -> Option<orml_oracle::TimestampedValue<T::UnsignedFixedPoint, T::Moment>> {
 		T::DataProvider::get_no_op(key)
 	}
 }

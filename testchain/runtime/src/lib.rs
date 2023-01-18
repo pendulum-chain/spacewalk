@@ -16,9 +16,8 @@ use frame_support::{
 use codec::Encode;
 pub use dia_oracle::dia::*;
 pub use frame_system::Call as SystemCall;
-#[cfg(feature = "test")]
-use oracle::oracle_mock::DataCollector;
-use oracle::{dia::DiaOracleAdapter, OracleKey};
+
+use oracle::{dia::DiaOracleAdapter, OracleKey, TimestampedValue};
 use orml_currencies::BasicCurrencyAdapter;
 use orml_traits::{currency::MutationHooks, parameter_type_with_key};
 pub use pallet_balances::Call as BalancesCall;
@@ -475,6 +474,25 @@ impl Convert<u64, Option<Moment>> for ConvertMoment {
 	}
 }
 
+use oracle::DataProvider;
+pub struct DataCollector;
+impl DataProvider<OracleKey, TimestampedValue<UnsignedFixedPoint, Moment>> for DataCollector {
+	fn get(key: &OracleKey) -> Option<TimestampedValue<UnsignedFixedPoint, Moment>> {
+		todo!()
+	}
+}
+impl orml_oracle::DataFeeder<OracleKey, TimestampedValue<UnsignedFixedPoint, Moment>, AccountId>
+	for DataCollector
+{
+	fn feed_value(
+		who: AccountId,
+		key: OracleKey,
+		value: TimestampedValue<UnsignedFixedPoint, Moment>,
+	) -> sp_runtime::DispatchResult {
+		todo!()
+	}
+}
+
 impl oracle::Config for Runtime {
 	type RuntimeEvent = RuntimeEvent;
 	type WeightInfo = ();
@@ -487,7 +505,7 @@ impl oracle::Config for Runtime {
 		ConvertMoment,
 	>;
 
-	#[cfg(feature = "test")]
+	//#[cfg(test)]
 	type DataFeedProvider = DataCollector;
 }
 
