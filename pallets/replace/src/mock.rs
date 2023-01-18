@@ -6,17 +6,18 @@ use frame_support::{
 use mocktopus::{macros::mockable, mocking::clear_mocks};
 use oracle::{
 	dia::DiaOracleAdapter,
-	oracle_mock::{
-		DataCollector, MockConvertMoment, MockConvertPrice, MockDiaOracle, MockOracleKeyConvertor,
-	},
+	oracle_mock::{Data, MockConvertMoment, MockConvertPrice, MockOracleKeyConvertor},
+	CoinInfo, DataFeeder, DataProvider, DiaOracle, PriceInfo, TimestampedValue,
 };
 use orml_traits::parameter_type_with_key;
+use primitives::oracle::Key;
 use sp_arithmetic::{FixedI128, FixedPointNumber, FixedU128};
 use sp_core::H256;
 use sp_runtime::{
 	testing::{Header, TestXt},
-	traits::{BlakeTwo256, IdentityLookup, One, Zero},
+	traits::{BlakeTwo256, Convert, IdentityLookup, One, Zero},
 };
+use std::cell::RefCell;
 
 pub use currency::{
 	testing_constants::{
@@ -379,4 +380,68 @@ where
 		Security::set_active_block_number(1);
 		test();
 	});
+}
+
+thread_local! {
+	static COINS: std::cell::RefCell<Vec<Data>>  = RefCell::new(vec![]);
+}
+
+pub struct MockDiaOracle;
+impl DiaOracle for MockDiaOracle {
+	fn get_coin_info(
+		blockchain: Vec<u8>,
+		symbol: Vec<u8>,
+	) -> Result<CoinInfo, sp_runtime::DispatchError> {
+		let key = (blockchain, symbol);
+		let mut result: Option<Data> = None;
+		COINS.with(|c| {
+			let r = c.borrow();
+			for i in &*r {
+				if i.key == key.clone() {
+					result = Some(i.clone());
+					break
+				}
+			}
+		});
+		let Some(result) = result else {
+			return Err(sp_runtime::DispatchError::Other(""));
+		};
+		let mut coin_info = CoinInfo::default();
+		coin_info.price = result.price;
+		coin_info.last_update_timestamp = result.timestamp;
+
+		Ok(coin_info)
+	}
+
+	fn get_value(
+		_blockchain: Vec<u8>,
+		_symbol: Vec<u8>,
+	) -> Result<PriceInfo, sp_runtime::DispatchError> {
+		todo!()
+	}
+}
+
+pub struct DataCollector;
+impl DataProvider<Key, TimestampedValue<UnsignedFixedPoint, Moment>> for DataCollector {
+	fn get(_key: &Key) -> Option<TimestampedValue<UnsignedFixedPoint, Moment>> {
+		todo!()
+	}
+}
+impl DataFeeder<Key, TimestampedValue<UnsignedFixedPoint, Moment>, AccountId> for DataCollector {
+	fn feed_value(
+		_who: AccountId,
+		key: Key,
+		value: TimestampedValue<UnsignedFixedPoint, Moment>,
+	) -> sp_runtime::DispatchResult {
+		let key = MockOracleKeyConvertor::convert(key).unwrap();
+		let r = value.value.into_inner();
+
+		let data = Data { key, price: r, timestamp: value.timestamp };
+
+		COINS.with(|coins| {
+			let mut r = coins.borrow_mut();
+			r.push(data)
+		});
+		Ok(())
+	}
 }
