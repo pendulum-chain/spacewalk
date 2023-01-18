@@ -1,6 +1,5 @@
 #[cfg(feature = "testing-utils")]
 // use std::{cell::RefCell, sync::RwLock};
-
 use dia_oracle::{CoinInfo, DiaOracle};
 use orml_oracle::{DataProvider, TimestampedValue};
 use sp_runtime::traits::Convert;

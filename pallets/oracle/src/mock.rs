@@ -26,9 +26,7 @@ pub use primitives::{CurrencyId::Token, TokenSymbol::*};
 use crate::{
 	self as oracle,
 	dia::DiaOracleAdapter,
-	oracle_mock::{
-		MockConvertMoment, MockConvertPrice, MockOracleKeyConvertor, Data,
-	},
+	oracle_mock::{Data, MockConvertMoment, MockConvertPrice, MockOracleKeyConvertor},
 	Config, Error, OracleKeys,
 };
 
@@ -230,9 +228,6 @@ where
 	});
 }
 
-
-
-
 thread_local! {
 	static COINS: RefCell<Vec<Data>> = RefCell::new(vec![]);
 }
@@ -298,4 +293,3 @@ impl orml_oracle::DataFeeder<Key, TimestampedValue<UnsignedFixedPoint, Moment>, 
 		Ok(())
 	}
 }
-
