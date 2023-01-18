@@ -95,18 +95,13 @@ where
 	ConvertMoment: Convert<u64, Option<Moment>>,
 {
 	fn get_no_op(key: &OracleKey) -> Option<TimestampedValue<UnsignedFixedPoint, Moment>> {
-		let dia_key: Option<(Vec<u8>, Vec<u8>)> = ConvertKey::convert(key.clone());
-		let Some((blockchain,symbol)) = dia_key else {
-            return None;
-        };
+		let (blockchain, symbol) = ConvertKey::convert(key.clone())?;
 
 		let Ok(coin_info) = Dia::get_coin_info(blockchain, symbol) else {
             return None;
         };
 
-		let Some(value) = ConvertPrice::convert(coin_info.price) else{
-            return None;
-        };
+		let value = ConvertPrice::convert(coin_info.price)?;
 		let Some(timestamp) = ConvertMoment::convert(coin_info.last_update_timestamp) else{
             return None;
         };
