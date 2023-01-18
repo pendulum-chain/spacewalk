@@ -97,7 +97,7 @@ pub mod pallet {
 			values: Vec<(OracleKey, T::UnsignedFixedPoint)>,
 		},
 		AggregateUpdated {
-			values: Vec<(OracleKey, Option<T::UnsignedFixedPoint>)>,
+			values: Vec<(OracleKey, T::UnsignedFixedPoint)>,
 		},
 		OracleKeysUpdated {
 			oracle_keys: Vec<OracleKey>,
@@ -229,7 +229,7 @@ impl<T: Config> Pallet<T> {
 			};
 			let is_outdated = current_time > price.timestamp + max_delay;
 			if !is_outdated {
-				updated_items.push((key.clone(), Some(price.value)));
+				updated_items.push((key.clone(), price.value));
 			}
 		}
 		let updated_items_len = updated_items.len();
