@@ -81,7 +81,6 @@ hex = "0.4.2"
 mocktopus = "0.8.0"
 pretty_assertions = "0.7.2"
 serde_json = "1.0"
-oracle = {path = "../../pallets/oracle", features = ['testing-utils']}
 
 [build-dependencies]
 substrate-wasm-builder = {git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.36"}
