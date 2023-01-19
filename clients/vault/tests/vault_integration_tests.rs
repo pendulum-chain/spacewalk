@@ -14,9 +14,8 @@ use tokio::{sync::RwLock, time::sleep};
 
 use primitives::H256;
 use runtime::{
-	integration::*, types::*, CurrencyId::Token, FixedPointNumber, FixedU128, IssuePallet,
-	RedeemPallet, ReplacePallet, ShutdownSender, SpacewalkParachain, SudoPallet, UtilFuncs,
-	VaultRegistryPallet,
+	integration::*, types::*, FixedPointNumber, FixedU128, IssuePallet, RedeemPallet,
+	ReplacePallet, ShutdownSender, SpacewalkParachain, SudoPallet, UtilFuncs, VaultRegistryPallet,
 };
 use stellar_relay_lib::sdk::{PublicKey, XdrCodec};
 use vault::{
@@ -28,8 +27,8 @@ const TIMEOUT: Duration = Duration::from_secs(60);
 
 // Be careful when changing these values because they are used in the parachain genesis config
 // and only for some combination of them, secure collateralization thresholds are set.
-const DEFAULT_NATIVE_CURRENCY: CurrencyId = Token(TokenSymbol::PEN);
-const DEFAULT_TESTING_CURRENCY: CurrencyId = Token(TokenSymbol::DOT);
+const DEFAULT_NATIVE_CURRENCY: CurrencyId = CurrencyId::Native;
+const DEFAULT_TESTING_CURRENCY: CurrencyId = CurrencyId::XCM(ForeignCurrencyId::DOT);
 const DEFAULT_WRAPPED_CURRENCY: CurrencyId = CurrencyId::AlphaNum4 {
 	code: *b"USDC",
 	issuer: [
@@ -1011,6 +1010,9 @@ async fn test_automatic_issue_execution_succeeds_for_other_vault() {
 				primitives::AssetConversion::lookup(issue.asset).expect("Asset not found");
 			let memo_hash = issue.issue_id.0;
 
+			// Sleep 1 second to give other thread some time to receive the RequestIssue event and
+			// add it to the set
+			sleep(Duration::from_secs(1)).await;
 			let issue_set = issue_set_arc.read().await;
 			assert!(!issue_set.is_empty());
 			drop(issue_set);

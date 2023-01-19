@@ -10,10 +10,14 @@ use sp_core::{crypto::UncheckedInto, sr25519, Pair, Public};
 use sp_finality_grandpa::AuthorityId as GrandpaId;
 use sp_runtime::traits::{IdentifyAccount, Verify};
 
-use primitives::{CurrencyId::Token, VaultCurrencyPair, AMPE, DOT, KSM, PEN};
+use primitives::{
+	CurrencyId, ForeignCurrencyId,
+	ForeignCurrencyId::{DOT, KSM},
+	VaultCurrencyPair,
+};
 use serde_json::{map::Map, Value};
 use spacewalk_runtime::{
-	AccountId, AuraConfig, BalancesConfig, CurrencyId, FeeConfig, FieldLength, GenesisConfig,
+	AccountId, AuraConfig, BalancesConfig, FeeConfig, FieldLength, GenesisConfig,
 	GetWrappedCurrencyId, GrandpaConfig, IssueConfig, NominationConfig, OracleConfig, Organization,
 	RedeemConfig, ReplaceConfig, SecurityConfig, Signature, StatusCode, StellarRelayConfig,
 	SudoConfig, SystemConfig, TokensConfig, Validator, VaultRegistryConfig, DAYS, WASM_BINARY,
@@ -23,6 +27,10 @@ use spacewalk_runtime::{
 // const STAGING_TELEMETRY_URL: &str = "wss://telemetry.polkadot.io/submit/";
 
 pub type ChainSpec = sc_service::GenericChainSpec<GenesisConfig>;
+
+fn token(currency: ForeignCurrencyId) -> CurrencyId {
+	CurrencyId::XCM(currency)
+}
 
 /// Helper function to generate a crypto pair from seed
 pub fn get_from_seed<TPublic: Public>(seed: &str) -> <TPublic::Pair as Pair>::Public {
@@ -256,10 +264,9 @@ fn testnet_genesis(
 				.iter()
 				.flat_map(|k| {
 					vec![
-						(k.clone(), Token(DOT), 1 << 60),
-						(k.clone(), Token(KSM), 1 << 60),
-						(k.clone(), Token(PEN), 1 << 60),
-						(k.clone(), Token(AMPE), 1 << 60),
+						(k.clone(), token(DOT), 1 << 60),
+						(k.clone(), token(KSM), 1 << 60),
+						(k.clone(), CurrencyId::Native, 1 << 60),
 					]
 				})
 				.collect(),
@@ -268,7 +275,7 @@ fn testnet_genesis(
 			issue_period: DAYS,
 			issue_minimum_transfer_amount: 1000,
 			limit_volume_amount: None,
-			limit_volume_currency_id: Token(DOT),
+			limit_volume_currency_id: token(DOT),
 			current_volume_amount: 0u32.into(),
 			interval_length: (60u32 * 60 * 24).into(),
 			last_interval_index: 0u32.into(),
@@ -277,7 +284,7 @@ fn testnet_genesis(
 			redeem_period: DAYS,
 			redeem_minimum_transfer_amount: 100,
 			limit_volume_amount: None,
-			limit_volume_currency_id: Token(DOT),
+			limit_volume_currency_id: token(DOT),
 			current_volume_amount: 0u32.into(),
 			interval_length: (60u32 * 60 * 24).into(),
 			last_interval_index: 0u32.into(),
@@ -300,23 +307,23 @@ fn testnet_genesis(
 			oracle_keys: vec![],
 		},
 		vault_registry: VaultRegistryConfig {
-			minimum_collateral_vault: vec![(Token(DOT), 0), (Token(KSM), 0)],
+			minimum_collateral_vault: vec![(token(DOT), 0), (token(KSM), 0)],
 			punishment_delay: DAYS,
 			secure_collateral_threshold: vec![
-				(default_pair(Token(DOT)), FixedU128::checked_from_rational(260, 100).unwrap()),
-				(default_pair(Token(KSM)), FixedU128::checked_from_rational(260, 100).unwrap()),
+				(default_pair(token(DOT)), FixedU128::checked_from_rational(260, 100).unwrap()),
+				(default_pair(token(KSM)), FixedU128::checked_from_rational(260, 100).unwrap()),
 			], /* 150% */
 			premium_redeem_threshold: vec![
-				(default_pair(Token(DOT)), FixedU128::checked_from_rational(200, 100).unwrap()),
-				(default_pair(Token(KSM)), FixedU128::checked_from_rational(200, 100).unwrap()),
+				(default_pair(token(DOT)), FixedU128::checked_from_rational(200, 100).unwrap()),
+				(default_pair(token(KSM)), FixedU128::checked_from_rational(200, 100).unwrap()),
 			], /* 135% */
 			liquidation_collateral_threshold: vec![
-				(default_pair(Token(DOT)), FixedU128::checked_from_rational(150, 100).unwrap()),
-				(default_pair(Token(KSM)), FixedU128::checked_from_rational(150, 100).unwrap()),
+				(default_pair(token(DOT)), FixedU128::checked_from_rational(150, 100).unwrap()),
+				(default_pair(token(KSM)), FixedU128::checked_from_rational(150, 100).unwrap()),
 			], /* 110% */
 			system_collateral_ceiling: vec![
-				(default_pair(Token(DOT)), 60_000 * DOT.one()),
-				(default_pair(Token(KSM)), 60_000 * KSM.one()),
+				(default_pair(token(DOT)), 60_000 * DOT.one()),
+				(default_pair(token(KSM)), 60_000 * KSM.one()),
 			],
 		},
 		fee: FeeConfig {

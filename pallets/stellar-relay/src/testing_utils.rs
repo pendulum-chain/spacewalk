@@ -130,7 +130,7 @@ pub fn get_validators_and_organizations<T: crate::Config>(
 }
 
 pub fn build_dummy_proof_for<T: crate::Config>(
-	issue_id: H256,
+	request_id: H256,
 	public_network: bool,
 ) -> (Vec<u8>, Vec<u8>, Vec<u8>) {
 	// Build a transaction
@@ -141,7 +141,7 @@ pub fn build_dummy_proof_for<T: crate::Config>(
 		fee: 0,
 		seq_num: 0,
 		cond: Preconditions::PrecondNone,
-		memo: Memo::MemoHash(Hash::from(issue_id)), // Include the issue id in the memo
+		memo: Memo::MemoHash(Hash::from(request_id.0)), // Include the request id in the memo
 		operations,
 		ext: TransactionExt::V0,
 	};

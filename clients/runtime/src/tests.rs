@@ -4,16 +4,16 @@ use std::time::Duration;
 
 use sp_keyring::AccountKeyring;
 
-use primitives::{StellarPublicKeyRaw, TokenSymbol};
+use primitives::{ForeignCurrencyId, StellarPublicKeyRaw};
 
 use crate::{integration::*, FeedValuesEvent, OracleKey, VaultId};
 
 use super::{
 	CollateralBalancesPallet, CurrencyId, FixedPointNumber, FixedU128, OraclePallet,
-	SecurityPallet, StatusCode, Token, VaultRegistryPallet,
+	SecurityPallet, StatusCode, VaultRegistryPallet,
 };
 
-const DEFAULT_TESTING_CURRENCY: CurrencyId = Token(TokenSymbol::KSM);
+const DEFAULT_TESTING_CURRENCY: CurrencyId = CurrencyId::XCM(ForeignCurrencyId::KSM);
 const DEFAULT_WRAPPED_CURRENCY: CurrencyId = CurrencyId::AlphaNum4 {
 	code: *b"USDC",
 	issuer: [
@@ -93,7 +93,7 @@ async fn test_register_vault() {
 
 	parachain_rpc.register_public_key(dummy_public_key()).await.unwrap();
 	parachain_rpc
-		.register_vault(&vault_id, 3 * TokenSymbol::KSM.one())
+		.register_vault(&vault_id, 3 * ForeignCurrencyId::KSM.one())
 		.await
 		.unwrap();
 	parachain_rpc.get_vault(&vault_id).await.unwrap();

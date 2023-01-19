@@ -3,6 +3,7 @@ use mocktopus::macros::mockable;
 
 #[cfg_attr(test, mockable)]
 pub(crate) mod stellar_relay {
+	use sp_core::H256;
 	use substrate_stellar_sdk::{
 		compound_types::UnlimitedVarArray,
 		types::{ScpEnvelope, TransactionSet},
@@ -23,6 +24,16 @@ pub(crate) mod stellar_relay {
 		)
 	}
 
+	pub fn ensure_transaction_memo_matches_hash<T: crate::Config>(
+		transaction_envelope: &TransactionEnvelope,
+		expected_hash: &H256,
+	) -> Result<(), Error<T>> {
+		<stellar_relay::Pallet<T>>::ensure_transaction_memo_matches_hash(
+			transaction_envelope,
+			expected_hash,
+		)
+	}
+
 	pub fn construct_from_raw_encoded_xdr<T: crate::Config, V: XdrCodec>(
 		raw_encoded_xdr: &[u8],
 	) -> Result<V, Error<T>> {
@@ -32,10 +43,12 @@ pub(crate) mod stellar_relay {
 
 #[cfg_attr(test, mockable)]
 pub(crate) mod vault_registry {
-	use crate::DefaultVaultId;
-	use currency::Amount;
 	use frame_support::dispatch::{DispatchError, DispatchResult};
+
+	use currency::Amount;
 	use vault_registry::types::CurrencySource;
+
+	use crate::DefaultVaultId;
 
 	pub fn transfer_funds<T: crate::Config>(
 		from: CurrencySource<T>,
@@ -166,8 +179,9 @@ pub(crate) mod security {
 
 #[cfg_attr(test, mockable)]
 pub(crate) mod fee {
-	use currency::Amount;
 	use frame_support::dispatch::DispatchError;
+
+	use currency::Amount;
 
 	pub fn get_replace_griefing_collateral<T: crate::Config>(
 		amount: &Amount<T>,
@@ -178,8 +192,9 @@ pub(crate) mod fee {
 
 #[cfg_attr(test, mockable)]
 pub(crate) mod nomination {
-	use crate::DefaultVaultId;
 	use sp_runtime::DispatchError;
+
+	use crate::DefaultVaultId;
 
 	pub fn is_nominatable<T: crate::Config>(
 		vault_id: &DefaultVaultId<T>,

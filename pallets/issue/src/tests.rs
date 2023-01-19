@@ -1,11 +1,11 @@
 use frame_support::{assert_noop, assert_ok, dispatch::DispatchError};
+use mocktopus::mocking::*;
 use orml_traits::MultiCurrency;
 use sp_arithmetic::FixedU128;
 use sp_core::H256;
 use sp_runtime::traits::{One, Zero};
 
 use currency::Amount;
-use mocktopus::mocking::*;
 use primitives::{issue::IssueRequestStatus, StellarPublicKeyRaw};
 use stellar_relay::testing_utils::{DEFAULT_STELLAR_PUBLIC_KEY, RANDOM_STELLAR_PUBLIC_KEY};
 use vault_registry::{DefaultVault, DefaultVaultId, Vault, VaultStatus};
@@ -46,6 +46,9 @@ fn request_issue_ok_with_address(
 	ext::vault_registry::ensure_not_banned::<Test>.mock_safe(|_| MockResult::Return(Ok(())));
 
 	ext::security::get_secure_id::<Test>.mock_safe(|_| MockResult::Return(get_dummy_request_id()));
+
+	ext::stellar_relay::ensure_transaction_memo_matches_hash::<Test>
+		.mock_safe(|_, _| MockResult::Return(Ok(())));
 
 	ext::vault_registry::try_increase_to_be_issued_tokens::<Test>
 		.mock_safe(|_, _| MockResult::Return(Ok(())));

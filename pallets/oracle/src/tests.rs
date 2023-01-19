@@ -28,7 +28,7 @@ fn mine_block() {
 #[test]
 fn feed_values_succeeds() {
 	run_test(|| {
-		let key = OracleKey::ExchangeRate(Token(DOT));
+		let key = OracleKey::ExchangeRate(CurrencyId::XCM(DOT));
 		let rate = FixedU128::checked_from_rational(100, 1).unwrap();
 
 		// Oracle::is_authorized.mock_safe(|_| MockResult::Return(true));
@@ -187,10 +187,16 @@ mod oracle_offline_detection {
 #[test]
 fn getting_exchange_rate_fails_with_missing_exchange_rate() {
 	run_test(|| {
-		let key = OracleKey::ExchangeRate(Token(DOT));
+		let key = OracleKey::ExchangeRate(CurrencyId::XCM(DOT));
 		assert_err!(Oracle::get_price(key), TestError::MissingExchangeRate);
-		assert_err!(Oracle::wrapped_to_collateral(0, Token(DOT)), TestError::MissingExchangeRate);
-		assert_err!(Oracle::collateral_to_wrapped(0, Token(DOT)), TestError::MissingExchangeRate);
+		assert_err!(
+			Oracle::wrapped_to_collateral(0, CurrencyId::XCM(DOT)),
+			TestError::MissingExchangeRate
+		);
+		assert_err!(
+			Oracle::collateral_to_wrapped(0, CurrencyId::XCM(DOT)),
+			TestError::MissingExchangeRate
+		);
 	});
 }
 
@@ -201,7 +207,7 @@ fn wrapped_to_collateral() {
 			.mock_safe(|_| MockResult::Return(Ok(FixedU128::checked_from_rational(2, 1).unwrap())));
 		let test_cases = [(0, 0), (2, 4), (10, 20)];
 		for (input, expected) in test_cases.iter() {
-			let result = Oracle::wrapped_to_collateral(*input, Token(DOT));
+			let result = Oracle::wrapped_to_collateral(*input, CurrencyId::XCM(DOT));
 			assert_ok!(result, *expected);
 		}
 	});
@@ -214,7 +220,7 @@ fn collateral_to_wrapped() {
 			.mock_safe(|_| MockResult::Return(Ok(FixedU128::checked_from_rational(2, 1).unwrap())));
 		let test_cases = [(0, 0), (4, 2), (20, 10), (21, 10)];
 		for (input, expected) in test_cases.iter() {
-			let result = Oracle::collateral_to_wrapped(*input, Token(DOT));
+			let result = Oracle::collateral_to_wrapped(*input, CurrencyId::XCM(DOT));
 			assert_ok!(result, *expected);
 		}
 	});
@@ -227,7 +233,7 @@ fn test_is_invalidated() {
 		Oracle::get_current_time.mock_safe(move || MockResult::Return(now));
 		Oracle::get_max_delay.mock_safe(|| MockResult::Return(3600));
 
-		let key = OracleKey::ExchangeRate(Token(DOT));
+		let key = OracleKey::ExchangeRate(CurrencyId::XCM(DOT));
 		let rate = FixedU128::checked_from_rational(100, 1).unwrap();
 
 		assert_ok!(Oracle::_feed_values(3, vec![(key.clone(), rate)]));
