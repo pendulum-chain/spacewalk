@@ -79,6 +79,9 @@ pub fn local_config() -> ChainSpec {
 					get_account_id_from_seed::<sr25519::Public>("Eve//stash"),
 					get_account_id_from_seed::<sr25519::Public>("Ferdie//stash"),
 				],
+				vec![
+					get_account_id_from_seed::<sr25519::Public>("Bob")
+				],
 				false,
 			)
 		},
@@ -139,6 +142,9 @@ pub fn beta_testnet_config() -> ChainSpec {
 					get_account_id_from_string("5H8zjSWfzMn86d1meeNrZJDj3QZSvRjKxpTfuVaZ46QJZ4qs"),
 					get_account_id_from_string("5FPBT2BVVaLveuvznZ9A1TUtDcbxK5yvvGcMTJxgFmhcWGwj"),
 				],
+				vec![
+					get_account_id_from_seed::<sr25519::Public>("Bob"),
+				],
 				false,
 			)
 		},
@@ -174,6 +180,9 @@ pub fn development_config() -> ChainSpec {
 					get_account_id_from_seed::<sr25519::Public>("Eve//stash"),
 					get_account_id_from_seed::<sr25519::Public>("Ferdie//stash"),
 				],
+				vec![
+					get_account_id_from_seed::<sr25519::Public>("Bob"),
+				],
 				false,
 			)
 		},
@@ -203,6 +212,7 @@ fn testnet_genesis(
 	root_key: AccountId,
 	initial_authorities: Vec<(AuraId, GrandpaId)>,
 	endowed_accounts: Vec<AccountId>,
+	authorized_oracles: Vec<AccountId>,
 	start_shutdown: bool,
 ) -> GenesisConfig {
 	// Testnet organization
@@ -329,7 +339,7 @@ fn testnet_genesis(
 		},
 		nomination: NominationConfig { is_nomination_enabled: false },
 		dia_oracle_module: DiaOracleModuleConfig {
-			authorized_accounts: vec![root_key],
+			authorized_accounts: authorized_oracles,
 			supported_currencies: vec![AssetId::new(b"Bitcoin".to_vec(), b"BTC".to_vec())],
 			batching_api: b"http://localhost:8070/currencies".to_vec(),
 			coin_infos_map: vec![],

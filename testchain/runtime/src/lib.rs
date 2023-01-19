@@ -17,7 +17,7 @@ use codec::Encode;
 pub use dia_oracle::dia::*;
 pub use frame_system::Call as SystemCall;
 
-use oracle::{dia::DiaOracleAdapter, OracleKey, TimestampedValue};
+use oracle::{dia::DiaOracleAdapter, OracleKey};
 use orml_currencies::BasicCurrencyAdapter;
 use orml_traits::{currency::MutationHooks, parameter_type_with_key};
 pub use pallet_balances::Call as BalancesCall;
@@ -37,6 +37,8 @@ use sp_runtime::{
 	transaction_validity::{TransactionSource, TransactionValidity},
 	ApplyExtrinsicResult, DispatchError, FixedPointNumber, Perbill,
 };
+use orml_oracle::TimestampedValue;
+use orml_oracle::DataProvider;
 use sp_std::{marker::PhantomData, prelude::*};
 #[cfg(feature = "std")]
 use sp_version::NativeVersion;
@@ -473,8 +475,6 @@ impl Convert<u64, Option<Moment>> for ConvertMoment {
 		todo!()
 	}
 }
-
-use oracle::DataProvider;
 pub struct DataCollector;
 impl DataProvider<OracleKey, TimestampedValue<UnsignedFixedPoint, Moment>> for DataCollector {
 	fn get(key: &OracleKey) -> Option<TimestampedValue<UnsignedFixedPoint, Moment>> {
