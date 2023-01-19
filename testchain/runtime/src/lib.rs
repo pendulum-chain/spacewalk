@@ -506,7 +506,7 @@ impl oracle::Config for Runtime {
 	>;
 
 	//#[cfg(test)]
-	type DataFeedProvider = DataCollector;
+	// type DataFeedProvider = DataCollector;
 }
 
 impl issue::Config for Runtime {

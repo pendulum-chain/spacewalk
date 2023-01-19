@@ -175,27 +175,6 @@ pub mod pallet {
 	// The pallet's dispatchable functions.
 	#[pallet::call]
 	impl<T: Config> Pallet<T> {
-		/// Feeds data from the oracles, e.g., the exchange rates. This function
-		/// is intended to be API-compatible with orml-oracle.
-		///
-		/// # Arguments
-		///
-		/// * `values` - a vector of (key, value) pairs to submit
-		#[pallet::call_index(0)]
-		#[pallet::weight(<T as Config>::WeightInfo::feed_values(values.len() as u32))]
-		pub fn feed_values(
-			origin: OriginFor<T>,
-			values: Vec<(OracleKey, T::UnsignedFixedPoint)>,
-		) -> DispatchResultWithPostInfo {
-			// let signer = ensure_signed(origin)?;
-
-			// fail if the signer is not an authorized oracle
-			// ensure!(Self::is_authorized(&signer), Error::<T>::InvalidOracleSource);
-
-			// Self::_feed_values(signer, values);
-			Ok(Pays::No.into())
-		}
-
 		/// set oracle keys
 		///
 		/// # Arguments
