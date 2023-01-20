@@ -124,7 +124,6 @@ async fn stellar_overlay_should_receive_tx_set() {
 #[tokio::test]
 #[serial]
 async fn stellar_overlay_disconnect_works() {
-	return
 	let secret =
 		SecretKey::from_encoding("SBLI7RKEJAEFGLZUBSCOFJHQBPFYIIPLBCKN7WVCWT4NEG2UJEW33N73")
 			.unwrap();
