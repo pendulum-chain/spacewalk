@@ -25,6 +25,7 @@ use pallet_grandpa::{
 	fg_primitives, AuthorityId as GrandpaId, AuthorityList as GrandpaAuthorityList,
 };
 pub use pallet_timestamp::Call as TimestampCall;
+use primitives::DiaOracleKeyConvertor;
 use sp_api::impl_runtime_apis;
 use sp_consensus_aura::sr25519::AuthorityId as AuraId;
 use sp_core::{crypto::KeyTypeId, OpaqueMetadata, H256};
@@ -449,28 +450,16 @@ where
 	}
 }
 
-pub struct ConvertKey;
-impl Convert<OracleKey, Option<(Vec<u8>, Vec<u8>)>> for ConvertKey {
-	fn convert(a: OracleKey) -> Option<(Vec<u8>, Vec<u8>)> {
-		todo!()
-	}
-}
-impl Convert<(Vec<u8>, Vec<u8>), Option<OracleKey>> for ConvertKey {
-	fn convert(a: (Vec<u8>, Vec<u8>)) -> Option<OracleKey> {
-		todo!()
-	}
-}
-
 pub struct ConvertPrice;
 impl Convert<u128, Option<UnsignedFixedPoint>> for ConvertPrice {
 	fn convert(a: u128) -> Option<UnsignedFixedPoint> {
-		todo!()
+		Some(UnsignedFixedPoint::from_inner(a))
 	}
 }
 pub struct ConvertMoment;
 impl Convert<u64, Option<Moment>> for ConvertMoment {
 	fn convert(a: u64) -> Option<Moment> {
-		todo!()
+		Some(a)
 	}
 }
 pub struct DataCollector;
@@ -498,7 +487,7 @@ impl oracle::Config for Runtime {
 		DiaOracleModule,
 		UnsignedFixedPoint,
 		Moment,
-		ConvertKey,
+		DiaOracleKeyConvertor,
 		ConvertPrice,
 		ConvertMoment,
 	>;

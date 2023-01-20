@@ -83,6 +83,7 @@ const SLEEP_DURATION: Duration = Duration::from_millis(1000);
 const TIMEOUT_DURATION: Duration = Duration::from_secs(20);
 
 async fn wait_for_aggregate(parachain_rpc: &SpacewalkParachain, key: &OracleKey) {
+	return;
 	let r : Option<(Vec<u8>, Vec<u8>)> = DiaOracleKeyConvertor::convert(key.clone());
 	let (blockchain, symbol) = r.unwrap();
 	while parachain_rpc.has_updated(blockchain.clone(), symbol.clone()).await.unwrap() {

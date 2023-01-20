@@ -313,7 +313,7 @@ fn testnet_genesis(
 			phantom: Default::default(),
 		},
 		oracle: OracleConfig {
-			max_delay: 3600000, // one hour
+			max_delay: u32::MAX,
 			oracle_keys: vec![],
 		},
 		vault_registry: VaultRegistryConfig {

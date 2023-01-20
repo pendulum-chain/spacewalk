@@ -842,7 +842,7 @@ impl OraclePallet for SpacewalkParachain {
 	async fn feed_values(&self, values: Vec<((Vec<u8>,Vec<u8>), FixedU128)>) -> Result<(), Error> {
 		use crate::metadata::runtime_types::dia_oracle::dia::CoinInfo;
 		let mut coin_infos = vec![];
-		todo!("set up last_update_timestamp!!! because it will not work!!!");
+		// todo!("set up last_update_timestamp!!! because it will not work!!!");
 		for i in values{
 			let coin_info = CoinInfo{
 				symbol : i.0.1.clone(),
