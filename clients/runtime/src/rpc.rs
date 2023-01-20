@@ -797,9 +797,13 @@ impl CollateralBalancesPallet for SpacewalkParachain {
 
 #[async_trait]
 pub trait OraclePallet {
-	async fn get_exchange_rate(&self, blockchain: Vec<u8>, symbol: Vec<u8>) -> Result<FixedU128, Error>;
+	async fn get_exchange_rate(
+		&self,
+		blockchain: Vec<u8>,
+		symbol: Vec<u8>,
+	) -> Result<FixedU128, Error>;
 
-	async fn feed_values(&self, values: Vec<((Vec<u8>,Vec<u8>), FixedU128)>) -> Result<(), Error>;
+	async fn feed_values(&self, values: Vec<((Vec<u8>, Vec<u8>), FixedU128)>) -> Result<(), Error>;
 
 	// async fn set_stellar_fees(&self, value: FixedU128) -> Result<(), Error>;
 
@@ -826,48 +830,51 @@ pub trait OraclePallet {
 impl OraclePallet for SpacewalkParachain {
 	/// Returns the last exchange rate in planck per satoshis, the time at which it was set
 	/// and the configured max delay.
-	async fn get_exchange_rate(&self, blockchain: Vec<u8>, symbol: Vec<u8>) -> Result<FixedU128, Error> {
+	async fn get_exchange_rate(
+		&self,
+		blockchain: Vec<u8>,
+		symbol: Vec<u8>,
+	) -> Result<FixedU128, Error> {
 		use crate::metadata::runtime_types::dia_oracle::dia::AssetId;
-		let asset_id = AssetId {blockchain, symbol};
+		let asset_id = AssetId { blockchain, symbol };
 		self.query_finalized_or_error(
 			metadata::storage().dia_oracle_module().coin_infos_map(&asset_id),
 		)
-		.await.map(|coin_info| FixedU128::from_inner(coin_info.price))
+		.await
+		.map(|coin_info| FixedU128::from_inner(coin_info.price))
 	}
 
 	/// Sets the current exchange rate (i.e. DOT/XLM)
 	///
 	/// # Arguments
 	/// * `value` - the current exchange rate
-	async fn feed_values(&self, values: Vec<((Vec<u8>,Vec<u8>), FixedU128)>) -> Result<(), Error> {
+	async fn feed_values(&self, values: Vec<((Vec<u8>, Vec<u8>), FixedU128)>) -> Result<(), Error> {
 		use crate::metadata::runtime_types::dia_oracle::dia::CoinInfo;
 		let mut coin_infos = vec![];
 		// todo!("set up last_update_timestamp!!! because it will not work!!!");
 
-		let timestamp = self.query_finalized_or_error(
-			metadata::storage().timestamp().now(),
-		)
-		.await;
+		let timestamp = self.query_finalized_or_error(metadata::storage().timestamp().now()).await;
 		let mut time = 0;
-		match timestamp{
-			Ok(o) =>{
+		match timestamp {
+			Ok(o) => {
 				time = o as u64;
 			},
-			Err(err) => {}
+			Err(err) => {},
 		}
 
-		for i in values{
-			let coin_info = CoinInfo{
-				symbol : i.0.1.clone(),
+		for i in values {
+			let coin_info = CoinInfo {
+				symbol: i.0 .1.clone(),
 				name: vec![],
-				blockchain: i.0.0.clone(),
+				blockchain: i.0 .0.clone(),
 				supply: 0,
 				last_update_timestamp: time,
 				price: i.1.into_inner(),
 			};
 			coin_infos.push((i.0, coin_info));
 		}
-		self.with_retry(metadata::tx().dia_oracle_module().set_updated_coin_infos(coin_infos)).await?;
+		self.with_retry(metadata::tx().dia_oracle_module().set_updated_coin_infos(coin_infos))
+			.await?;
 		Ok(())
 	}
 
@@ -933,11 +940,12 @@ impl OraclePallet for SpacewalkParachain {
 
 	async fn has_updated(&self, blockchain: Vec<u8>, symbol: Vec<u8>) -> Result<bool, Error> {
 		use crate::metadata::runtime_types::dia_oracle::dia::AssetId;
-		let asset_id = AssetId {blockchain, symbol};
-		let result = self.query_finalized_or_error(
-			metadata::storage().dia_oracle_module().coin_infos_map(&asset_id),
-		)
-		.await;
+		let asset_id = AssetId { blockchain, symbol };
+		let result = self
+			.query_finalized_or_error(
+				metadata::storage().dia_oracle_module().coin_infos_map(&asset_id),
+			)
+			.await;
 		Ok(result.is_ok())
 	}
 

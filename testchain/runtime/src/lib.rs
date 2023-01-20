@@ -19,6 +19,7 @@ pub use frame_system::Call as SystemCall;
 
 use oracle::{dia::DiaOracleAdapter, OracleKey};
 use orml_currencies::BasicCurrencyAdapter;
+use orml_oracle::{DataProvider, TimestampedValue};
 use orml_traits::{currency::MutationHooks, parameter_type_with_key};
 pub use pallet_balances::Call as BalancesCall;
 use pallet_grandpa::{
@@ -38,8 +39,6 @@ use sp_runtime::{
 	transaction_validity::{TransactionSource, TransactionValidity},
 	ApplyExtrinsicResult, DispatchError, FixedPointNumber, Perbill,
 };
-use orml_oracle::TimestampedValue;
-use orml_oracle::DataProvider;
 use sp_std::{marker::PhantomData, prelude::*};
 #[cfg(feature = "std")]
 use sp_version::NativeVersion;

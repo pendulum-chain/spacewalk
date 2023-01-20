@@ -28,7 +28,7 @@ impl Convert<Key, Option<(Vec<u8>, Vec<u8>)>> for MockOracleKeyConvertor {
 					// primitives::ForeignCurrencyId::PEN => return Some((vec![0u8], vec![2u8])),
 					primitives::ForeignCurrencyId::KSM => return Some((vec![0u8], vec![3u8])),
 					// primitives::ForeignCurrencyId::AMPE => return Some((vec![0u8], vec![4u8])),
-					_ => None
+					_ => None,
 				},
 				CurrencyId::Native => Some((vec![2u8], vec![])),
 				CurrencyId::StellarNative => Some((vec![3u8], vec![])),
@@ -46,11 +46,15 @@ impl Convert<(Vec<u8>, Vec<u8>), Option<Key>> for MockOracleKeyConvertor {
 		match blockchain[0] {
 			0u8 => match symbol[0] {
 				1 =>
-					return Some(Key::ExchangeRate(CurrencyId::XCM(primitives::ForeignCurrencyId::DOT))),
+					return Some(Key::ExchangeRate(CurrencyId::XCM(
+						primitives::ForeignCurrencyId::DOT,
+					))),
 				// 2 =>
 				// 	return Some(Key::ExchangeRate(CurrencyId::XCM(primitives::ForeignCurrencyId::PEN))),
 				3 =>
-					return Some(Key::ExchangeRate(CurrencyId::XCM(primitives::ForeignCurrencyId::KSM))),
+					return Some(Key::ExchangeRate(CurrencyId::XCM(
+						primitives::ForeignCurrencyId::KSM,
+					))),
 				// 4 =>
 				// 	return Some(Key::ExchangeRate(CurrencyId::XCM(primitives::ForeignCurrencyId::AMPE))),
 				_ => return None,

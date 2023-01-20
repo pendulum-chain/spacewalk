@@ -4,7 +4,7 @@ use std::time::Duration;
 
 use sp_keyring::AccountKeyring;
 
-use primitives::{ForeignCurrencyId, StellarPublicKeyRaw, DiaOracleKeyConvertor};
+use primitives::{DiaOracleKeyConvertor, ForeignCurrencyId, StellarPublicKeyRaw};
 
 use crate::{integration::*, FeedValuesEvent, OracleKey, VaultId};
 
@@ -26,7 +26,6 @@ const DEFAULT_WRAPPED_CURRENCY: CurrencyId = CurrencyId::AlphaNum4 {
 fn dummy_public_key() -> StellarPublicKeyRaw {
 	[0u8; 32]
 }
-
 
 async fn set_exchange_rate(client: SubxtClient) {
 	let oracle_provider = setup_provider(client, AccountKeyring::Bob).await;

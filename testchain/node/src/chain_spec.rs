@@ -11,9 +11,10 @@ use sp_finality_grandpa::AuthorityId as GrandpaId;
 use sp_runtime::traits::{IdentifyAccount, Verify};
 
 use primitives::{
+	oracle::Key,
 	CurrencyId, ForeignCurrencyId,
 	ForeignCurrencyId::{DOT, KSM},
-	VaultCurrencyPair, oracle::Key,
+	VaultCurrencyPair,
 };
 use serde_json::{map::Map, Value};
 use spacewalk_runtime::{
@@ -87,9 +88,7 @@ pub fn local_config() -> ChainSpec {
 					get_account_id_from_seed::<sr25519::Public>("Eve//stash"),
 					get_account_id_from_seed::<sr25519::Public>("Ferdie//stash"),
 				],
-				vec![
-					get_account_id_from_seed::<sr25519::Public>("Bob")
-				],
+				vec![get_account_id_from_seed::<sr25519::Public>("Bob")],
 				false,
 			)
 		},
@@ -150,9 +149,7 @@ pub fn beta_testnet_config() -> ChainSpec {
 					get_account_id_from_string("5H8zjSWfzMn86d1meeNrZJDj3QZSvRjKxpTfuVaZ46QJZ4qs"),
 					get_account_id_from_string("5FPBT2BVVaLveuvznZ9A1TUtDcbxK5yvvGcMTJxgFmhcWGwj"),
 				],
-				vec![
-					get_account_id_from_seed::<sr25519::Public>("Bob"),
-				],
+				vec![get_account_id_from_seed::<sr25519::Public>("Bob")],
 				false,
 			)
 		},
@@ -188,9 +185,7 @@ pub fn development_config() -> ChainSpec {
 					get_account_id_from_seed::<sr25519::Public>("Eve//stash"),
 					get_account_id_from_seed::<sr25519::Public>("Ferdie//stash"),
 				],
-				vec![
-					get_account_id_from_seed::<sr25519::Public>("Bob"),
-				],
+				vec![get_account_id_from_seed::<sr25519::Public>("Bob")],
 				false,
 			)
 		},
@@ -319,12 +314,12 @@ fn testnet_genesis(
 				Key::ExchangeRate(CurrencyId::AlphaNum4 {
 					code: *b"USDC",
 					issuer: [
-						20, 209, 150, 49, 176, 55, 23, 217, 171, 154, 54, 110, 16, 50, 30, 226, 102, 231, 46, 199,
-						108, 171, 97, 144, 240, 161, 51, 109, 72, 34, 159, 139,
+						20, 209, 150, 49, 176, 55, 23, 217, 171, 154, 54, 110, 16, 50, 30, 226,
+						102, 231, 46, 199, 108, 171, 97, 144, 240, 161, 51, 109, 72, 34, 159, 139,
 					],
 				}),
 				Key::ExchangeRate(CurrencyId::Native),
-				Key::FeeEstimation
+				Key::FeeEstimation,
 			],
 		},
 		vault_registry: VaultRegistryConfig {

@@ -318,7 +318,7 @@ pub mod oracle {
 	#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 	#[cfg_attr(feature = "std", serde(rename_all = "camelCase"))]
 	pub enum Key {
-		ExchangeRate(CurrencyId),		
+		ExchangeRate(CurrencyId),
 		FeeEstimation,
 	}
 }
@@ -765,78 +765,18 @@ impl TransactionEnvelopeExt for TransactionEnvelope {
 	}
 }
 
-use sp_std::{vec};
 use scale_info::prelude::string::String;
+use sp_std::vec;
 
-const DOT_DIA_BLOCKCHAIN: &str = "Polkadot";
-const DOT_DIA_SYMBOL: &str = "DOT";
-const KSM_DIA_BLOCKCHAIN: &str = "Kusama";
-const KSM_DIA_SYMBOL: &str = "KSM";
 pub struct DiaOracleKeyConvertor;
-// impl Convert<oracle::Key, Option<(Vec<u8>, Vec<u8>)>> for DiaOracleKeyConvertor {
-// 	fn convert(spacwalk_oracle_key: oracle::Key) -> Option<(Vec<u8>, Vec<u8>)> {
-// 		match spacwalk_oracle_key {
-// 			oracle::Key::ExchangeRate(currency_id) => match currency_id {
-// 				CurrencyId::XCM(token_symbol) => match token_symbol {
-// 					ForeignCurrencyId::DOT =>
-// 						return Some((
-// 							DOT_DIA_BLOCKCHAIN.as_bytes().to_vec(),
-// 							DOT_DIA_SYMBOL.as_bytes().to_vec(),
-// 						)),
-// 					ForeignCurrencyId::KSM =>
-// 						return Some((
-// 							KSM_DIA_BLOCKCHAIN.as_bytes().to_vec(),
-// 							KSM_DIA_SYMBOL.as_bytes().to_vec(),
-// 						)),
-// 					_ => unimplemented!(),
-// 				},
-// 				CurrencyId::Native => unimplemented!(),
-// 				CurrencyId::StellarNative => unimplemented!(),
-// 				CurrencyId::AlphaNum4 { .. } => unimplemented!(),
-// 				CurrencyId::AlphaNum12 { .. } => unimplemented!(),
-// 			},
-// 			oracle::Key::FeeEstimation => Some((vec![6u8], vec![])),
-// 		}
-// 	}
-// }
-
-// impl Convert<(Vec<u8>, Vec<u8>), Option<oracle::Key>> for DiaOracleKeyConvertor {
-// 	fn convert(dia_oracle_key: (Vec<u8>, Vec<u8>)) -> Option<oracle::Key> {
-// 		let (blockchain, symbol) = dia_oracle_key;
-// 		let blockchain = String::from_utf8(blockchain);
-// 		let symbol = String::from_utf8(symbol);
-// 		match (blockchain, symbol) {
-// 			(Ok(blockchain), Ok(symbol)) => {
-// 				if blockchain == DOT_DIA_BLOCKCHAIN && symbol == DOT_DIA_SYMBOL {
-// 					return Some(oracle::Key::ExchangeRate(CurrencyId::XCM(
-// 						ForeignCurrencyId::DOT,
-// 					)))
-// 				} else if blockchain == KSM_DIA_BLOCKCHAIN && symbol == KSM_DIA_SYMBOL {
-// 					return Some(oracle::Key::ExchangeRate(CurrencyId::XCM(
-// 						ForeignCurrencyId::KSM,
-// 					)))
-// 				} else {
-// 					return None
-// 				}
-// 			},
-// 			(_, _) => return None,
-// 		}
-// 	}
-// }
-
-
-// pub struct MockOracleKeyConvertor;
-
 impl Convert<oracle::Key, Option<(Vec<u8>, Vec<u8>)>> for DiaOracleKeyConvertor {
 	fn convert(spacwalk_oracle_key: oracle::Key) -> Option<(Vec<u8>, Vec<u8>)> {
 		match spacwalk_oracle_key {
 			oracle::Key::ExchangeRate(currency_id) => match currency_id {
 				CurrencyId::XCM(token_symbol) => match token_symbol {
 					ForeignCurrencyId::DOT => return Some((vec![0u8], vec![1u8])),
-					// primitives::ForeignCurrencyId::PEN => return Some((vec![0u8], vec![2u8])),
 					ForeignCurrencyId::KSM => return Some((vec![0u8], vec![3u8])),
-					// primitives::ForeignCurrencyId::AMPE => return Some((vec![0u8], vec![4u8])),
-					_ => None
+					_ => None,
 				},
 				CurrencyId::Native => Some((vec![2u8], vec![])),
 				CurrencyId::StellarNative => Some((vec![3u8], vec![])),
@@ -855,12 +795,8 @@ impl Convert<(Vec<u8>, Vec<u8>), Option<oracle::Key>> for DiaOracleKeyConvertor 
 			0u8 => match symbol[0] {
 				1 =>
 					return Some(oracle::Key::ExchangeRate(CurrencyId::XCM(ForeignCurrencyId::DOT))),
-				// 2 =>
-				// 	return Some(Key::ExchangeRate(CurrencyId::XCM(primitives::ForeignCurrencyId::PEN))),
 				3 =>
 					return Some(oracle::Key::ExchangeRate(CurrencyId::XCM(ForeignCurrencyId::KSM))),
-				// 4 =>
-				// 	return Some(Key::ExchangeRate(CurrencyId::XCM(primitives::ForeignCurrencyId::AMPE))),
 				_ => return None,
 			},
 			2u8 => Some(oracle::Key::ExchangeRate(CurrencyId::Native)),
