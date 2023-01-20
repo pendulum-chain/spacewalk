@@ -2,7 +2,7 @@ use super::{Pallet as Oracle, *};
 use crate::OracleKey;
 use frame_benchmarking::{account, benchmarks, impl_benchmark_test_suite};
 use frame_system::RawOrigin;
-use primitives::{CurrencyId::Token, TokenSymbol::*};
+use primitives::ForeignCurrencyId::*;
 use sp_runtime::FixedPointNumber;
 use sp_std::prelude::*;
 

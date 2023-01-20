@@ -1,9 +1,9 @@
 use frame_support::{assert_err, assert_noop, assert_ok, dispatch::DispatchError};
+use mocktopus::mocking::*;
 use sp_core::H256;
 use sp_runtime::traits::Zero;
 
 use currency::{testing_constants::get_wrapped_currency_id, Amount};
-use mocktopus::mocking::*;
 use security::Pallet as Security;
 use stellar_relay::testing_utils::RANDOM_STELLAR_PUBLIC_KEY;
 use vault_registry::{DefaultVault, VaultStatus};
@@ -422,6 +422,8 @@ fn test_execute_redeem_succeeds_with_another_account() {
 				liquidated_collateral: 0,
 			},
 		);
+		ext::stellar_relay::ensure_transaction_memo_matches_hash::<Test>
+			.mock_safe(move |_, _| MockResult::Return(Ok(())));
 		ext::stellar_relay::validate_stellar_transaction::<Test>
 			.mock_safe(move |_, _, _| MockResult::Return(Ok(())));
 
@@ -511,6 +513,8 @@ fn test_execute_redeem_succeeds() {
 				liquidated_collateral: 0,
 			},
 		);
+		ext::stellar_relay::ensure_transaction_memo_matches_hash::<Test>
+			.mock_safe(move |_, _| MockResult::Return(Ok(())));
 		ext::stellar_relay::validate_stellar_transaction::<Test>
 			.mock_safe(move |_, _, _| MockResult::Return(Ok(())));
 
@@ -877,6 +881,8 @@ mod spec_based_tests {
 					..default_vault()
 				},
 			);
+			ext::stellar_relay::ensure_transaction_memo_matches_hash::<Test>
+				.mock_safe(move |_, _| MockResult::Return(Ok(())));
 			ext::stellar_relay::validate_stellar_transaction::<Test>
 				.mock_safe(move |_, _, _| MockResult::Return(Ok(())));
 
@@ -1227,6 +1233,8 @@ fn test_execute_redeem_within_rate_limit_succeeds() {
 				..default_vault()
 			},
 		);
+		ext::stellar_relay::ensure_transaction_memo_matches_hash::<Test>
+			.mock_safe(move |_, _| MockResult::Return(Ok(())));
 		ext::stellar_relay::validate_stellar_transaction::<Test>
 			.mock_safe(move |_, _, _| MockResult::Return(Ok(())));
 
@@ -1317,6 +1325,8 @@ fn test_execute_redeem_fails_when_exceeds_rate_limit() {
 				..default_vault()
 			},
 		);
+		ext::stellar_relay::ensure_transaction_memo_matches_hash::<Test>
+			.mock_safe(move |_, _| MockResult::Return(Ok(())));
 		ext::stellar_relay::validate_stellar_transaction::<Test>
 			.mock_safe(move |_, _, _| MockResult::Return(Ok(())));
 
@@ -1418,6 +1428,8 @@ fn test_execute_redeem_after_rate_limit_interval_reset_succeeds() {
 				..default_vault()
 			},
 		);
+		ext::stellar_relay::ensure_transaction_memo_matches_hash::<Test>
+			.mock_safe(move |_, _| MockResult::Return(Ok(())));
 		ext::stellar_relay::validate_stellar_transaction::<Test>
 			.mock_safe(move |_, _, _| MockResult::Return(Ok(())));
 

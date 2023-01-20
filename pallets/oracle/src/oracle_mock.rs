@@ -23,14 +23,13 @@ impl Convert<Key, Option<(Vec<u8>, Vec<u8>)>> for MockOracleKeyConvertor {
 	fn convert(spacwalk_oracle_key: Key) -> Option<(Vec<u8>, Vec<u8>)> {
 		match spacwalk_oracle_key {
 			Key::ExchangeRate(currency_id) => match currency_id {
-				CurrencyId::Token(token_symbol) => match token_symbol {
-					primitives::TokenSymbol::DOT => return Some((vec![0u8], vec![1u8])),
-					primitives::TokenSymbol::PEN => return Some((vec![0u8], vec![2u8])),
-					primitives::TokenSymbol::KSM => return Some((vec![0u8], vec![3u8])),
-					primitives::TokenSymbol::AMPE => return Some((vec![0u8], vec![4u8])),
+				CurrencyId::XCM(token_symbol) => match token_symbol {
+					primitives::ForeignCurrencyId::DOT => return Some((vec![0u8], vec![1u8])),
+					// primitives::ForeignCurrencyId::PEN => return Some((vec![0u8], vec![2u8])),
+					primitives::ForeignCurrencyId::KSM => return Some((vec![0u8], vec![3u8])),
+					// primitives::ForeignCurrencyId::AMPE => return Some((vec![0u8], vec![4u8])),
+					_ => None
 				},
-				CurrencyId::ForeignAsset(foreign_asset_id) =>
-					Some((vec![1u8], foreign_asset_id.to_le_bytes().to_vec())),
 				CurrencyId::Native => Some((vec![2u8], vec![])),
 				CurrencyId::StellarNative => Some((vec![3u8], vec![])),
 				CurrencyId::AlphaNum4 { code, .. } => Some((vec![4u8], code.to_vec())),
@@ -47,19 +46,14 @@ impl Convert<(Vec<u8>, Vec<u8>), Option<Key>> for MockOracleKeyConvertor {
 		match blockchain[0] {
 			0u8 => match symbol[0] {
 				1 =>
-					return Some(Key::ExchangeRate(CurrencyId::Token(primitives::TokenSymbol::DOT))),
-				2 =>
-					return Some(Key::ExchangeRate(CurrencyId::Token(primitives::TokenSymbol::PEN))),
+					return Some(Key::ExchangeRate(CurrencyId::XCM(primitives::ForeignCurrencyId::DOT))),
+				// 2 =>
+				// 	return Some(Key::ExchangeRate(CurrencyId::XCM(primitives::ForeignCurrencyId::PEN))),
 				3 =>
-					return Some(Key::ExchangeRate(CurrencyId::Token(primitives::TokenSymbol::KSM))),
-				4 =>
-					return Some(Key::ExchangeRate(CurrencyId::Token(primitives::TokenSymbol::AMPE))),
+					return Some(Key::ExchangeRate(CurrencyId::XCM(primitives::ForeignCurrencyId::KSM))),
+				// 4 =>
+				// 	return Some(Key::ExchangeRate(CurrencyId::XCM(primitives::ForeignCurrencyId::AMPE))),
 				_ => return None,
-			},
-			1u8 => {
-				let x = [symbol[0], symbol[1], symbol[2], symbol[3]];
-				let number = u32::from_le_bytes(x);
-				Some(Key::ExchangeRate(CurrencyId::ForeignAsset(number)))
 			},
 			2u8 => Some(Key::ExchangeRate(CurrencyId::Native)),
 			3u8 => Some(Key::ExchangeRate(CurrencyId::StellarNative)),

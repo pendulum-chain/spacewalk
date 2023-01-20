@@ -3,6 +3,7 @@ use mocktopus::macros::mockable;
 
 #[cfg_attr(test, mockable)]
 pub(crate) mod stellar_relay {
+	use sp_core::H256;
 	use substrate_stellar_sdk::{
 		compound_types::UnlimitedVarArray,
 		types::{ScpEnvelope, TransactionSet},
@@ -20,6 +21,16 @@ pub(crate) mod stellar_relay {
 			transaction_envelope,
 			envelopes,
 			transaction_set,
+		)
+	}
+
+	pub fn ensure_transaction_memo_matches_hash<T: crate::Config>(
+		transaction_envelope: &TransactionEnvelope,
+		expected_hash: &H256,
+	) -> Result<(), Error<T>> {
+		<stellar_relay::Pallet<T>>::ensure_transaction_memo_matches_hash(
+			transaction_envelope,
+			expected_hash,
 		)
 	}
 

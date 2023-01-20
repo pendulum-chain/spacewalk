@@ -101,8 +101,9 @@ mod request_replace_tests {
 }
 
 mod accept_replace_tests {
-	use super::*;
 	use stellar_relay::testing_utils::RANDOM_STELLAR_PUBLIC_KEY;
+
+	use super::*;
 
 	fn setup_mocks() {
 		ext::vault_registry::ensure_not_banned::<Test>.mock_safe(|_| MockResult::Return(Ok(())));
@@ -185,6 +186,8 @@ mod execute_replace_test {
 		});
 
 		Replace::replace_period.mock_safe(|| MockResult::Return(20));
+		ext::stellar_relay::ensure_transaction_memo_matches_hash::<Test>
+			.mock_safe(move |_, _| MockResult::Return(Ok(())));
 		ext::stellar_relay::validate_stellar_transaction::<Test>
 			.mock_safe(move |_, _, _| MockResult::Return(Ok(())));
 		ext::vault_registry::replace_tokens::<Test>
