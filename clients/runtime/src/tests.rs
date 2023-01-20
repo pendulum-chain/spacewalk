@@ -4,7 +4,7 @@ use std::time::Duration;
 
 use sp_keyring::AccountKeyring;
 
-use primitives::{ForeignCurrencyId, StellarPublicKeyRaw};
+use primitives::{DiaOracleKeyConvertor, ForeignCurrencyId, StellarPublicKeyRaw};
 
 use crate::{integration::*, FeedValuesEvent, OracleKey, VaultId};
 
@@ -12,6 +12,7 @@ use super::{
 	CollateralBalancesPallet, CurrencyId, FixedPointNumber, FixedU128, OraclePallet,
 	SecurityPallet, StatusCode, VaultRegistryPallet,
 };
+use sp_runtime::traits::Convert;
 
 const DEFAULT_TESTING_CURRENCY: CurrencyId = CurrencyId::XCM(ForeignCurrencyId::KSM);
 const DEFAULT_WRAPPED_CURRENCY: CurrencyId = CurrencyId::AlphaNum4 {
@@ -28,10 +29,11 @@ fn dummy_public_key() -> StellarPublicKeyRaw {
 
 async fn set_exchange_rate(client: SubxtClient) {
 	let oracle_provider = setup_provider(client, AccountKeyring::Bob).await;
-	let key = OracleKey::ExchangeRate(DEFAULT_TESTING_CURRENCY);
+	let key = primitives::oracle::Key::ExchangeRate(DEFAULT_TESTING_CURRENCY);
+	let t = DiaOracleKeyConvertor::convert(key.clone()).unwrap();
 	let exchange_rate = FixedU128::saturating_from_rational(1u128, 100u128);
 	oracle_provider
-		.feed_values(vec![(key, exchange_rate)])
+		.feed_values(vec![(t, exchange_rate)])
 		.await
 		.expect("Unable to set exchange rate");
 }

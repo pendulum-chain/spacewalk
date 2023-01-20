@@ -381,13 +381,13 @@ where
 {
 	clear_mocks();
 	ExtBuilder::build().execute_with(|| {
-		assert_ok!(<oracle::Pallet<Test>>::feed_values(
-			RuntimeOrigin::signed(USER),
-			vec![
-				(OracleKey::ExchangeRate(CurrencyId::XCM(DOT)), FixedU128::from(1)),
-				(OracleKey::FeeEstimation, FixedU128::from(3)),
-			]
-		));
+		// assert_ok!(<oracle::Pallet<Test>>::feed_values(
+		// 	RuntimeOrigin::signed(USER),
+		// 	vec![
+		// 		(OracleKey::ExchangeRate(Token(DOT)), FixedU128::from(1)),
+		// 		(OracleKey::FeeEstimation, FixedU128::from(3)),
+		// 	]
+		// ));
 
 		assert_ok!(<oracle::Pallet<Test>>::_set_exchange_rate(
 			1,
