@@ -4,6 +4,7 @@
 use bstringify::bstringify;
 use codec::{Decode, Encode, MaxEncodedLen};
 use frame_support::error::LookupError;
+use oracle::Key;
 use scale_info::TypeInfo;
 #[cfg(feature = "std")]
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
@@ -318,7 +319,7 @@ pub mod oracle {
 	#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 	#[cfg_attr(feature = "std", serde(rename_all = "camelCase"))]
 	pub enum Key {
-		ExchangeRate(CurrencyId),
+		ExchangeRate(CurrencyId),		
 		FeeEstimation,
 	}
 }
@@ -762,5 +763,64 @@ impl TransactionEnvelopeExt for TransactionEnvelope {
 
 		// `transferred_amount` is in stroops, so we need to convert it
 		BalanceConversion::unlookup(transferred_amount)
+	}
+}
+
+use sp_std::{vec};
+use scale_info::prelude::string::String;
+
+const DOT_DIA_BLOCKCHAIN: &str = "Polkadot";
+const DOT_DIA_SYMBOL: &str = "DOT";
+const KSM_DIA_BLOCKCHAIN: &str = "Kusama";
+const KSM_DIA_SYMBOL: &str = "KSM";
+pub struct DiaOracleKeyConvertor;
+impl Convert<Key, Option<(Vec<u8>, Vec<u8>)>> for DiaOracleKeyConvertor {
+	fn convert(spacwalk_oracle_key: Key) -> Option<(Vec<u8>, Vec<u8>)> {
+		match spacwalk_oracle_key {
+			Key::ExchangeRate(currency_id) => match currency_id {
+				CurrencyId::XCM(token_symbol) => match token_symbol {
+					ForeignCurrencyId::DOT =>
+						return Some((
+							DOT_DIA_BLOCKCHAIN.as_bytes().to_vec(),
+							DOT_DIA_SYMBOL.as_bytes().to_vec(),
+						)),
+					ForeignCurrencyId::KSM =>
+						return Some((
+							KSM_DIA_BLOCKCHAIN.as_bytes().to_vec(),
+							KSM_DIA_SYMBOL.as_bytes().to_vec(),
+						)),
+					_ => unimplemented!(),
+				},
+				CurrencyId::Native => unimplemented!(),
+				CurrencyId::StellarNative => unimplemented!(),
+				CurrencyId::AlphaNum4 { .. } => unimplemented!(),
+				CurrencyId::AlphaNum12 { .. } => unimplemented!(),
+			},
+			Key::FeeEstimation => Some((vec![6u8], vec![])),
+		}
+	}
+}
+
+impl Convert<(Vec<u8>, Vec<u8>), Option<Key>> for DiaOracleKeyConvertor {
+	fn convert(dia_oracle_key: (Vec<u8>, Vec<u8>)) -> Option<Key> {
+		let (blockchain, symbol) = dia_oracle_key;
+		let blockchain = String::from_utf8(blockchain);
+		let symbol = String::from_utf8(symbol);
+		match (blockchain, symbol) {
+			(Ok(blockchain), Ok(symbol)) => {
+				if blockchain == DOT_DIA_BLOCKCHAIN && symbol == DOT_DIA_SYMBOL {
+					return Some(Key::ExchangeRate(CurrencyId::XCM(
+						ForeignCurrencyId::DOT,
+					)))
+				} else if blockchain == KSM_DIA_BLOCKCHAIN && symbol == KSM_DIA_SYMBOL {
+					return Some(Key::ExchangeRate(CurrencyId::XCM(
+						ForeignCurrencyId::KSM,
+					)))
+				} else {
+					return None
+				}
+			},
+			(_, _) => return None,
+		}
 	}
 }
