@@ -13,7 +13,7 @@ use sp_runtime::traits::{IdentifyAccount, Verify};
 use primitives::{
 	CurrencyId, ForeignCurrencyId,
 	ForeignCurrencyId::{DOT, KSM},
-	VaultCurrencyPair,
+	VaultCurrencyPair, oracle::Key,
 };
 use serde_json::{map::Map, Value};
 use spacewalk_runtime::{
@@ -314,7 +314,18 @@ fn testnet_genesis(
 		},
 		oracle: OracleConfig {
 			max_delay: u32::MAX,
-			oracle_keys: vec![],
+			oracle_keys: vec![
+				Key::ExchangeRate(CurrencyId::XCM(ForeignCurrencyId::DOT)),
+				Key::ExchangeRate(CurrencyId::AlphaNum4 {
+					code: *b"USDC",
+					issuer: [
+						20, 209, 150, 49, 176, 55, 23, 217, 171, 154, 54, 110, 16, 50, 30, 226, 102, 231, 46, 199,
+						108, 171, 97, 144, 240, 161, 51, 109, 72, 34, 159, 139,
+					],
+				}),
+				Key::ExchangeRate(CurrencyId::Native),
+				Key::FeeEstimation
+			],
 		},
 		vault_registry: VaultRegistryConfig {
 			minimum_collateral_vault: vec![(token(DOT), 0), (token(KSM), 0)],

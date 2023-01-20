@@ -843,13 +843,26 @@ impl OraclePallet for SpacewalkParachain {
 		use crate::metadata::runtime_types::dia_oracle::dia::CoinInfo;
 		let mut coin_infos = vec![];
 		// todo!("set up last_update_timestamp!!! because it will not work!!!");
+
+		let timestamp = self.query_finalized_or_error(
+			metadata::storage().timestamp().now(),
+		)
+		.await;
+		let mut time = 0;
+		match timestamp{
+			Ok(o) =>{
+				time = o as u64;
+			},
+			Err(err) => {}
+		}
+
 		for i in values{
 			let coin_info = CoinInfo{
 				symbol : i.0.1.clone(),
 				name: vec![],
 				blockchain: i.0.0.clone(),
 				supply: 0,
-				last_update_timestamp: 0, //TODO!!!
+				last_update_timestamp: time,
 				price: i.1.into_inner(),
 			};
 			coin_infos.push((i.0, coin_info));
