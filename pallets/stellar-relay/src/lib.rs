@@ -2,6 +2,7 @@
 
 extern crate core;
 
+pub use default_weights::SubstrateWeight;
 /// Edit this file to define custom logic or remove it if it is not needed.
 /// Learn more about FRAME and the core library of Substrate FRAME pallets:
 /// <https://docs.substrate.io/v3/runtime/frame>
@@ -24,14 +25,13 @@ pub mod types;
 
 mod default_weights;
 
-pub use default_weights::SubstrateWeight;
-
 #[frame_support::pallet]
 pub mod pallet {
 	use codec::FullCodec;
 	use frame_support::{pallet_prelude::*, transactional};
 	use frame_system::pallet_prelude::*;
 	use sha2::{Digest, Sha256};
+	use sp_core::H256;
 	use sp_std::{collections::btree_map::BTreeMap, fmt::Debug, vec::Vec};
 	use substrate_stellar_sdk::{
 		compound_types::UnlimitedVarArray,
@@ -40,7 +40,7 @@ pub mod pallet {
 			NodeId, ScpEnvelope, ScpStatementExternalize, ScpStatementPledges, StellarValue,
 			TransactionSet,
 		},
-		Hash, TransactionEnvelope, XdrCodec,
+		Hash, Memo, TransactionEnvelope, XdrCodec,
 	};
 
 	use default_weights::WeightInfo;
@@ -112,6 +112,7 @@ pub mod pallet {
 		NoOrganizationsRegistered,
 		NoValidatorsRegistered,
 		OrganizationLimitExceeded,
+		TransactionMemoDoesNotMatch,
 		TransactionNotInTransactionSet,
 		TransactionSetHashCreationFailed,
 		TransactionSetHashMismatch,
@@ -644,6 +645,37 @@ pub mod pallet {
 			let decoded = V::from_xdr(value_xdr).map_err(|_| Error::<T>::InvalidXDR)?;
 			Ok(decoded)
 		}
+
+		pub fn ensure_transaction_memo_matches_hash(
+			transaction_envelope: &TransactionEnvelope,
+			expected_hash: &H256,
+		) -> Result<(), Error<T>> {
+			let tx_memo_hash = get_memo_hash_from_tx_env(transaction_envelope);
+
+			if let Some(included_hash) = tx_memo_hash {
+				ensure!(included_hash == expected_hash.0, Error::TransactionMemoDoesNotMatch);
+			} else {
+				return Err(Error::TransactionMemoDoesNotMatch)
+			}
+
+			Ok(())
+		}
+	}
+
+	fn get_memo_hash_from_tx_env(transaction_envelope: &TransactionEnvelope) -> Option<Hash> {
+		let memo_hash = match transaction_envelope {
+			TransactionEnvelope::EnvelopeTypeTxV0(tx_env) => match tx_env.tx.memo {
+				Memo::MemoHash(hash) => Some(hash),
+				_ => None,
+			},
+			TransactionEnvelope::EnvelopeTypeTx(tx_env) => match tx_env.tx.memo {
+				Memo::MemoHash(hash) => Some(hash),
+				_ => None,
+			},
+			_ => None,
+		};
+
+		memo_hash
 	}
 
 	pub fn compute_non_generic_tx_set_content_hash(tx_set: &TransactionSet) -> [u8; 32] {

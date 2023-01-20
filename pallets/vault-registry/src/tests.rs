@@ -1297,7 +1297,7 @@ mod get_vaults_below_premium_collaterlization_tests {
 			let collateral1 = 49;
 
 			let id2 = vault_id(4);
-			let issue_tokens2: u128 = 50;
+			let issue_tokens2: u128 = 60;
 			let collateral2 = 48;
 
 			add_vault(id1.clone(), issue_tokens1, collateral1);

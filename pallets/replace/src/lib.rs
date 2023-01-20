@@ -558,6 +558,12 @@ impl<T: Config> Pallet<T> {
 			TransactionSet,
 		>(&transaction_set_xdr_encoded)?;
 
+		// Check that the transaction includes the expected memo to mitigate replay attacks
+		ext::stellar_relay::ensure_transaction_memo_matches_hash::<T>(
+			&transaction_envelope,
+			&replace_id,
+		)?;
+
 		// Verify that the transaction is valid
 		ext::stellar_relay::validate_stellar_transaction::<T>(
 			&transaction_envelope,
