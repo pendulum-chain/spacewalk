@@ -82,15 +82,7 @@ pub async fn setup_provider(client: SubxtClient, key: AccountKeyring) -> Spacewa
 const SLEEP_DURATION: Duration = Duration::from_millis(1000);
 const TIMEOUT_DURATION: Duration = Duration::from_secs(20);
 
-async fn wait_for_aggregate(parachain_rpc: &SpacewalkParachain, key: &OracleKey) {
-	return
-	let r: Option<(Vec<u8>, Vec<u8>)> = DiaOracleKeyConvertor::convert(key.clone());
-	let (blockchain, symbol) = r.unwrap();
-	while parachain_rpc.has_updated(blockchain.clone(), symbol.clone()).await.unwrap() {
-		// should be false upon aggregate update
-		sleep(SLEEP_DURATION).await;
-	}
-}
+async fn wait_for_aggregate(parachain_rpc: &SpacewalkParachain, key: &OracleKey) {}
 
 pub async fn set_exchange_rate_and_wait(
 	parachain_rpc: &SpacewalkParachain,

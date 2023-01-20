@@ -805,10 +805,6 @@ pub trait OraclePallet {
 
 	async fn feed_values(&self, values: Vec<((Vec<u8>, Vec<u8>), FixedU128)>) -> Result<(), Error>;
 
-	// async fn set_stellar_fees(&self, value: FixedU128) -> Result<(), Error>;
-
-	// async fn get_stellar_fees(&self) -> Result<FixedU128, Error>;
-
 	async fn wrapped_to_collateral(
 		&self,
 		amount: u128,
@@ -851,8 +847,6 @@ impl OraclePallet for SpacewalkParachain {
 	async fn feed_values(&self, values: Vec<((Vec<u8>, Vec<u8>), FixedU128)>) -> Result<(), Error> {
 		use crate::metadata::runtime_types::dia_oracle::dia::CoinInfo;
 		let mut coin_infos = vec![];
-		// todo!("set up last_update_timestamp!!! because it will not work!!!");
-
 		let timestamp = self.query_finalized_or_error(metadata::storage().timestamp().now()).await;
 		let mut time = 0;
 		match timestamp {
@@ -877,26 +871,6 @@ impl OraclePallet for SpacewalkParachain {
 			.await?;
 		Ok(())
 	}
-
-	// /// Sets the estimated fee required to get a Stellar transaction included in the next block.
-	// ///
-	// /// # Arguments
-	// /// * `value` - the estimated fee rate
-	// async fn set_stellar_fees(&self, value: FixedU128) -> Result<(), Error> {
-	// 	self.with_retry(
-	// 		metadata::tx().oracle().feed_values(vec![(OracleKey::FeeEstimation, value)]),
-	// 	)
-	// 	.await?;
-	// 	Ok(())
-	// }
-
-	// /// Gets the estimated fee required to get a Stellar transaction included in the next block.
-	// async fn get_stellar_fees(&self) -> Result<FixedU128, Error> {
-	// 	self.query_finalized_or_error(
-	// 		metadata::storage().oracle().aggregate(&OracleKey::FeeEstimation),
-	// 	)
-	// 	.await
-	// }
 
 	/// Converts the amount of wrapped Stellar assets to the collateral currency, based on the
 	/// current set exchange rate.
