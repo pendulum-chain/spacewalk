@@ -817,8 +817,6 @@ pub trait OraclePallet {
 		currency_id: CurrencyId,
 	) -> Result<u128, Error>;
 
-	async fn has_updated(&self, blockchain: Vec<u8>, symbol: Vec<u8>) -> Result<bool, Error>;
-
 	fn on_fee_rate_change(&self) -> FeeRateUpdateReceiver;
 }
 
@@ -855,17 +853,17 @@ impl OraclePallet for SpacewalkParachain {
 			},
 			Err(err) => {},
 		}
-
-		for i in values {
+		
+		for ((blockchain, symbol),price) in values {
 			let coin_info = CoinInfo {
-				symbol: i.0 .1.clone(),
+				symbol: symbol.clone(),
 				name: vec![],
-				blockchain: i.0 .0.clone(),
+				blockchain: blockchain.clone(),
 				supply: 0,
 				last_update_timestamp: time,
-				price: i.1.into_inner(),
+				price: price.into_inner(),
 			};
-			coin_infos.push((i.0, coin_info));
+			coin_infos.push(((blockchain, symbol), coin_info));
 		}
 		self.with_retry(metadata::tx().dia_oracle_module().set_updated_coin_infos(coin_infos))
 			.await?;
@@ -910,17 +908,6 @@ impl OraclePallet for SpacewalkParachain {
 			.await?;
 
 		Ok(result.amount)
-	}
-
-	async fn has_updated(&self, blockchain: Vec<u8>, symbol: Vec<u8>) -> Result<bool, Error> {
-		use crate::metadata::runtime_types::dia_oracle::dia::AssetId;
-		let asset_id = AssetId { blockchain, symbol };
-		let result = self
-			.query_finalized_or_error(
-				metadata::storage().dia_oracle_module().coin_infos_map(&asset_id),
-			)
-			.await;
-		Ok(result.is_ok())
 	}
 
 	fn on_fee_rate_change(&self) -> FeeRateUpdateReceiver {

@@ -90,8 +90,8 @@ pub async fn set_exchange_rate_and_wait(
 	value: FixedU128,
 ) {
 	let key = OracleKey::ExchangeRate(currency_id);
-	let t = DiaOracleKeyConvertor::convert(key.clone()).unwrap();
-	assert_ok!(parachain_rpc.feed_values(vec![(t, value)]).await);
+	let converted_key = DiaOracleKeyConvertor::convert(key.clone()).unwrap();
+	assert_ok!(parachain_rpc.feed_values(vec![(converted_key, value)]).await);
 	parachain_rpc.manual_seal().await;
 	// we need a new block to get on_initialize to run
 	assert_ok!(timeout(TIMEOUT_DURATION, wait_for_aggregate(parachain_rpc, &key)).await);
@@ -100,8 +100,8 @@ pub async fn set_exchange_rate_and_wait(
 pub async fn set_stellar_fees(parachain_rpc: &SpacewalkParachain, value: FixedU128) {
 	// assert_ok!(parachain_rpc.set_stellar_fees(value).await);
 	let key = OracleKey::FeeEstimation;
-	let t = DiaOracleKeyConvertor::convert(key.clone()).unwrap();
-	assert_ok!(parachain_rpc.feed_values(vec![(t, value)]).await);
+	let converted_key = DiaOracleKeyConvertor::convert(key.clone()).unwrap();
+	assert_ok!(parachain_rpc.feed_values(vec![(converted_key, value)]).await);
 	parachain_rpc.manual_seal().await;
 	// we need a new block to get on_initialize to run
 	assert_ok!(

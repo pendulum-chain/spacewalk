@@ -30,10 +30,10 @@ fn dummy_public_key() -> StellarPublicKeyRaw {
 async fn set_exchange_rate(client: SubxtClient) {
 	let oracle_provider = setup_provider(client, AccountKeyring::Bob).await;
 	let key = primitives::oracle::Key::ExchangeRate(DEFAULT_TESTING_CURRENCY);
-	let t = DiaOracleKeyConvertor::convert(key.clone()).unwrap();
+	let converted_key = DiaOracleKeyConvertor::convert(key.clone()).unwrap();
 	let exchange_rate = FixedU128::saturating_from_rational(1u128, 100u128);
 	oracle_provider
-		.feed_values(vec![(t, exchange_rate)])
+		.feed_values(vec![(converted_key, exchange_rate)])
 		.await
 		.expect("Unable to set exchange rate");
 }

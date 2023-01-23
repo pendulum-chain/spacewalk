@@ -397,18 +397,20 @@ impl DiaOracle for MockDiaOracle {
 		Ok(coin_info)
 	}
 
+	//Spacewalk DiaOracleAdapter does not use get_value function. There is no need to implement this function.
 	fn get_value(
 		_blockchain: Vec<u8>,
 		_symbol: Vec<u8>,
 	) -> Result<PriceInfo, sp_runtime::DispatchError> {
-		todo!()
+		unimplemented!("DiaOracleAdapter implementation of DataProviderExtended does not use this function.")
 	}
 }
 
 pub struct DataCollector;
+//DataFeeder required to implement DataProvider trait but there no need to implement get function
 impl DataProvider<Key, TimestampedValue<UnsignedFixedPoint, Moment>> for DataCollector {
 	fn get(_key: &Key) -> Option<TimestampedValue<UnsignedFixedPoint, Moment>> {
-		todo!()
+		unimplemented!("Not required to implement DataProvider get function")
 	}
 }
 impl DataFeeder<Key, TimestampedValue<UnsignedFixedPoint, Moment>, AccountId> for DataCollector {
