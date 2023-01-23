@@ -817,8 +817,6 @@ pub trait OraclePallet {
 		currency_id: CurrencyId,
 	) -> Result<u128, Error>;
 
-	async fn has_updated(&self, blockchain: Vec<u8>, symbol: Vec<u8>) -> Result<bool, Error>;
-
 	fn on_fee_rate_change(&self) -> FeeRateUpdateReceiver;
 }
 
@@ -910,17 +908,6 @@ impl OraclePallet for SpacewalkParachain {
 			.await?;
 
 		Ok(result.amount)
-	}
-
-	async fn has_updated(&self, blockchain: Vec<u8>, symbol: Vec<u8>) -> Result<bool, Error> {
-		use crate::metadata::runtime_types::dia_oracle::dia::AssetId;
-		let asset_id = AssetId { blockchain, symbol };
-		let result = self
-			.query_finalized_or_error(
-				metadata::storage().dia_oracle_module().coin_infos_map(&asset_id),
-			)
-			.await;
-		Ok(result.is_ok())
 	}
 
 	fn on_fee_rate_change(&self) -> FeeRateUpdateReceiver {
