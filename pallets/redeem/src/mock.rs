@@ -439,12 +439,15 @@ impl DiaOracle for MockDiaOracle {
 		Ok(coin_info)
 	}
 
-	//Spacewalk DiaOracleAdapter does not use get_value function. There is no need to implement this function.
+	//Spacewalk DiaOracleAdapter does not use get_value function. There is no need to implement
+	// this function.
 	fn get_value(
 		_blockchain: Vec<u8>,
 		_symbol: Vec<u8>,
 	) -> Result<PriceInfo, sp_runtime::DispatchError> {
-		unimplemented!("DiaOracleAdapter implementation of DataProviderExtended does not use this function.")
+		unimplemented!(
+			"DiaOracleAdapter implementation of DataProviderExtended does not use this function."
+		)
 	}
 }
 

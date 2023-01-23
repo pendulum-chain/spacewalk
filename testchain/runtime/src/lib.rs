@@ -461,6 +461,8 @@ impl Convert<u64, Option<Moment>> for ConvertMoment {
 		Some(a)
 	}
 }
+//Integration tests feed_value prices data directly to DIA oracle pallet. Need defatult
+// implementation only for compile this runtime for integration tests inside 'runtime' package.
 pub struct DataCollector;
 //DataFeeder required to implement DataProvider trait but there no need to implement get function
 impl DataProvider<OracleKey, TimestampedValue<UnsignedFixedPoint, Moment>> for DataCollector {
@@ -468,6 +470,7 @@ impl DataProvider<OracleKey, TimestampedValue<UnsignedFixedPoint, Moment>> for D
 		unimplemented!("Not required to implement DataProvider get function")
 	}
 }
+//Integration tests feed_value prices data directly to DIA oracle pallet.
 impl orml_oracle::DataFeeder<OracleKey, TimestampedValue<UnsignedFixedPoint, Moment>, AccountId>
 	for DataCollector
 {
@@ -476,7 +479,7 @@ impl orml_oracle::DataFeeder<OracleKey, TimestampedValue<UnsignedFixedPoint, Mom
 		key: OracleKey,
 		value: TimestampedValue<UnsignedFixedPoint, Moment>,
 	) -> sp_runtime::DispatchResult {
-		todo!()
+		unimplemented!("Not required to implement DataFeeder feed_value function")
 	}
 }
 
@@ -492,7 +495,7 @@ impl oracle::Config for Runtime {
 		ConvertMoment,
 	>;
 
-	//#[cfg(test)]
+	#[cfg(feature = "testing-utils")]
 	type DataFeedProvider = DataCollector;
 }
 
