@@ -131,7 +131,7 @@ pub mod pallet {
 	#[pallet::getter(fn max_delay)]
 	pub type MaxDelay<T: Config> = StorageValue<_, T::Moment, ValueQuery>;
 
-	// Oracles keys required by runtime
+	// Oracle keys indicating the available prices and used to retrieve them
 	#[pallet::storage]
 	#[pallet::getter(fn oracle_keys)]
 	pub type OracleKeys<T: Config> = StorageValue<_, Vec<OracleKey>, ValueQuery>;
