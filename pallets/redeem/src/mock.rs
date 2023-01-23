@@ -384,7 +384,7 @@ where
 		// assert_ok!(<oracle::Pallet<Test>>::feed_values(
 		// 	RuntimeOrigin::signed(USER),
 		// 	vec![
-		// 		(OracleKey::ExchangeRate(Token(DOT)), FixedU128::from(1)),
+		// 		(OracleKey::ExchangeRate(CurrencyId::XCM(DOT)), FixedU128::from(1)),
 		// 		(OracleKey::FeeEstimation, FixedU128::from(3)),
 		// 	]
 		// ));
