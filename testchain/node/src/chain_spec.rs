@@ -353,7 +353,7 @@ fn testnet_genesis(
 		nomination: NominationConfig { is_nomination_enabled: false },
 		dia_oracle_module: DiaOracleModuleConfig {
 			authorized_accounts: authorized_oracles,
-			supported_currencies: vec![AssetId::new(b"Bitcoin".to_vec(), b"BTC".to_vec())],
+			supported_currencies: vec![AssetId::new(b"Polkadot".to_vec(), b"DOT".to_vec())],
 			batching_api: b"http://localhost:8070/currencies".to_vec(),
 			coin_infos_map: vec![],
 		},
