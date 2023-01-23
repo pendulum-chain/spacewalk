@@ -853,8 +853,8 @@ impl OraclePallet for SpacewalkParachain {
 			},
 			Err(err) => {},
 		}
-		
-		for ((blockchain, symbol),price) in values {
+
+		for ((blockchain, symbol), price) in values {
 			let coin_info = CoinInfo {
 				symbol: symbol.clone(),
 				name: vec![],
