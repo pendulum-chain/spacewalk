@@ -263,7 +263,7 @@ impl DiaOracle for MockDiaOracle {
 	fn get_value(
 		_blockchain: Vec<u8>,
 		_symbol: Vec<u8>,
-	) -> Result<PriceInfo, sp_runtime::DispatchError> {
+	) -> Result<dia_oracle::PriceInfo, sp_runtime::DispatchError> {
 		unimplemented!("DiaOracleAdapter implementation of DataProviderExtended does not use this function.")
 	}
 }

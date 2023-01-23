@@ -463,8 +463,8 @@ impl Convert<u64, Option<Moment>> for ConvertMoment {
 }
 pub struct DataCollector;
 //DataFeeder required to implement DataProvider trait but there no need to implement get function
-impl DataProvider<Key, TimestampedValue<UnsignedFixedPoint, Moment>> for DataCollector {
-	fn get(_key: &Key) -> Option<TimestampedValue<UnsignedFixedPoint, Moment>> {
+impl DataProvider<OracleKey, TimestampedValue<UnsignedFixedPoint, Moment>> for DataCollector {
+	fn get(_key: &OracleKey) -> Option<TimestampedValue<UnsignedFixedPoint, Moment>> {
 		unimplemented!("Not required to implement DataProvider get function")
 	}
 }

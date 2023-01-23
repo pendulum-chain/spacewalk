@@ -853,7 +853,7 @@ impl OraclePallet for SpacewalkParachain {
 			},
 			Err(err) => {},
 		}
-		// 
+		
 		for ((blockchain, symbol),price) in values {
 			let coin_info = CoinInfo {
 				symbol: symbol.clone(),
@@ -863,7 +863,7 @@ impl OraclePallet for SpacewalkParachain {
 				last_update_timestamp: time,
 				price: price.into_inner(),
 			};
-			coin_infos.push((i.0, coin_info));
+			coin_infos.push(((blockchain, symbol), coin_info));
 		}
 		self.with_retry(metadata::tx().dia_oracle_module().set_updated_coin_infos(coin_infos))
 			.await?;
