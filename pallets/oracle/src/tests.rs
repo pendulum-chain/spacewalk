@@ -76,11 +76,11 @@ mod oracle_offline_detection {
 	// 		Oracle::get_max_delay.mock_safe(move || MockResult::Return(10));
 
 	// 		set_time(0);
-	// 		feed_value(Token(DOT), OracleA);
+	// 		feed_value(CurrencyId::XCM(DOT), OracleA);
 	// 		assert_eq!(SecurityPallet::parachain_status(), StatusCode::Running);
 
 	// 		set_time(5);
-	// 		feed_value(Token(KSM), OracleA);
+	// 		feed_value(CurrencyId::XCM(KSM), OracleA);
 
 	// 		// DOT expires after block 10
 	// 		set_time(10);
@@ -89,11 +89,11 @@ mod oracle_offline_detection {
 	// 		assert_eq!(SecurityPallet::parachain_status(), StatusCode::Error);
 
 	// 		// feeding KSM makes no difference
-	// 		feed_value(Token(KSM), OracleA);
+	// 		feed_value(CurrencyId::XCM(KSM), OracleA);
 	// 		assert_eq!(SecurityPallet::parachain_status(), StatusCode::Error);
 
 	// 		// feeding DOT makes it running again
-	// 		feed_value(Token(DOT), OracleA);
+	// 		feed_value(CurrencyId::XCM(DOT), OracleA);
 	// 		assert_eq!(SecurityPallet::parachain_status(), StatusCode::Running);
 
 	// 		// KSM expires after t=21 (it was set at t=11)
@@ -105,9 +105,9 @@ mod oracle_offline_detection {
 	// 		// check that status remains ERROR until BOTH currencies have been updated
 	// 		set_time(100);
 	// 		assert_eq!(SecurityPallet::parachain_status(), StatusCode::Error);
-	// 		feed_value(Token(DOT), OracleA);
+	// 		feed_value(CurrencyId::XCM(DOT), OracleA);
 	// 		assert_eq!(SecurityPallet::parachain_status(), StatusCode::Error);
-	// 		feed_value(Token(KSM), OracleA);
+	// 		feed_value(CurrencyId::XCM(KSM), OracleA);
 	// 		assert_eq!(SecurityPallet::parachain_status(), StatusCode::Running);
 	// 	});
 	// }
@@ -151,38 +151,6 @@ mod oracle_offline_detection {
 	// 	});
 	// }
 }
-
-// #[test]
-// fn feed_values_fails_with_invalid_oracle_source() {
-// 	run_test(|| {
-// 		let key = OracleKey::ExchangeRate(Token(DOT));
-// 		let successful_rate = FixedU128::checked_from_rational(20, 1).unwrap();
-// 		let failed_rate = FixedU128::checked_from_rational(100, 1).unwrap();
-
-// 		assert_ok!(Oracle::_feed_values(
-// 			4,
-// 			vec![(key.clone(), successful_rate)]
-// 		));
-
-// 		mine_block();
-
-// 		assert_err!(
-// 			Oracle::_feed_values(3, vec![(key.clone(), failed_rate)]),
-// 			TestError::InvalidOracleSource
-// 		);
-
-// 		mine_block();
-
-// 		let exchange_rate = Oracle::get_price(key.clone()).unwrap();
-// 		assert_eq!(exchange_rate, successful_rate);
-
-// 		assert_not_emitted!(Event::FeedValues {
-// 			oracle_id: 3,
-// 			values: vec![(key.clone(), failed_rate)]
-// 		});
-// 		assert_not_emitted!(Event::FeedValues { oracle_id: 4, values: vec![(key, failed_rate)] });
-// 	});
-// }
 
 #[test]
 fn getting_exchange_rate_fails_with_missing_exchange_rate() {

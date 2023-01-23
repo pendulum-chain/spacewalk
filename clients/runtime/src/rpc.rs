@@ -1399,11 +1399,6 @@ pub trait SudoPallet {
 	async fn set_redeem_period(&self, period: BlockNumber) -> Result<(), Error>;
 	async fn set_parachain_confirmations(&self, value: BlockNumber) -> Result<(), Error>;
 	async fn set_issue_period(&self, period: u32) -> Result<(), Error>;
-	async fn insert_authorized_oracle(
-		&self,
-		account_id: AccountId,
-		name: String,
-	) -> Result<(), Error>;
 	async fn set_replace_period(&self, period: u32) -> Result<(), Error>;
 }
 
@@ -1453,27 +1448,6 @@ impl SudoPallet for SpacewalkParachain {
 				metadata::runtime_types::issue::pallet::Call::set_issue_period { period },
 			))
 			.await?)
-	}
-
-	/// Adds a new authorized oracle with the given name and the signer's AccountId
-	///
-	/// # Arguments
-	/// * `account_id` - The Account ID of the new oracle
-	/// * `name` - The name of the new oracle
-	async fn insert_authorized_oracle(
-		&self,
-		account_id: AccountId,
-		name: String,
-	) -> Result<(), Error> {
-		// Ok(self
-		// 	.sudo(EncodedCall::Oracle(
-		// 		metadata::runtime_types::oracle::pallet::Call::authorize_account {
-		// 			account_id,
-		// 			name: name.into_bytes(),
-		// 		},
-		// 	))
-		// 	.await?)
-		unimplemented!("there is no need to insert_authorized_oracle");
 	}
 
 	async fn set_replace_period(&self, period: u32) -> Result<(), Error> {

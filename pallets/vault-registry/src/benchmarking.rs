@@ -19,10 +19,6 @@ type UnsignedFixedPoint<T> = <T as currency::Config>::UnsignedFixedPoint;
 
 const STELLAR_PUBLIC_KEY_DUMMY: StellarPublicKeyRaw = [0u8; 32];
 
-fn wrapped<T: crate::Config>(amount: u32) -> Amount<T> {
-	Amount::new(amount.into(), get_wrapped_currency_id())
-}
-
 fn deposit_tokens<T: crate::Config>(
 	currency_id: CurrencyId,
 	account_id: &T::AccountId,
@@ -125,22 +121,6 @@ benchmarks! {
 
 	set_liquidation_collateral_threshold {
 	}: _(RawOrigin::Root, get_currency_pair::<T>(), UnsignedFixedPoint::<T>::one())
-
-	report_undercollateralized_vault {
-		let vault_id = get_vault_id::<T>();
-		let origin: T::AccountId = account("Origin", 0, 0);
-		mint_collateral::<T>(&vault_id.account_id, (1u32 << 31).into());
-
-		register_vault_with_collateral::<T>(vault_id.clone(), 10_000);
-		Oracle::<T>::_set_exchange_rate(vault_id.clone().account_id, get_collateral_currency_id::<T>(), UnsignedFixedPoint::<T>::one()).unwrap();
-		Oracle::<T>::_set_exchange_rate(vault_id.clone().account_id, get_wrapped_currency_id(), UnsignedFixedPoint::<T>::checked_from_rational(10, 1).unwrap()).unwrap();
-
-		VaultRegistry::<T>::try_increase_to_be_issued_tokens(&vault_id, &wrapped(5_000)).unwrap();
-		VaultRegistry::<T>::issue_tokens(&vault_id, &wrapped(5_000)).unwrap();
-
-		Oracle::<T>::_set_exchange_rate(vault_id.clone().account_id, get_collateral_currency_id::<T>(), UnsignedFixedPoint::<T>::checked_from_rational(10, 1).unwrap()).unwrap();
-		Oracle::<T>::_set_exchange_rate(vault_id.clone().account_id, get_wrapped_currency_id(), UnsignedFixedPoint::<T>::one()).unwrap();
-	}: _(RawOrigin::Signed(origin), vault_id)
 
 	recover_vault_id {
 		let vault_id = get_vault_id::<T>();
