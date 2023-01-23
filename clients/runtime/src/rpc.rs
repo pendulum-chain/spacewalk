@@ -855,15 +855,15 @@ impl OraclePallet for SpacewalkParachain {
 			},
 			Err(err) => {},
 		}
-
-		for i in values {
+		// 
+		for ((blockchain, symbol),price) in values {
 			let coin_info = CoinInfo {
-				symbol: i.0 .1.clone(),
+				symbol: symbol.clone(),
 				name: vec![],
-				blockchain: i.0 .0.clone(),
+				blockchain: blockchain.clone(),
 				supply: 0,
 				last_update_timestamp: time,
-				price: i.1.into_inner(),
+				price: price.into_inner(),
 			};
 			coin_infos.push((i.0, coin_info));
 		}
