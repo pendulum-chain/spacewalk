@@ -82,8 +82,6 @@ pub async fn setup_provider(client: SubxtClient, key: AccountKeyring) -> Spacewa
 const SLEEP_DURATION: Duration = Duration::from_millis(1000);
 const TIMEOUT_DURATION: Duration = Duration::from_secs(20);
 
-async fn wait_for_aggregate(parachain_rpc: &SpacewalkParachain, key: &OracleKey) {}
-
 pub async fn set_exchange_rate_and_wait(
 	parachain_rpc: &SpacewalkParachain,
 	currency_id: CurrencyId,
@@ -93,8 +91,6 @@ pub async fn set_exchange_rate_and_wait(
 	let converted_key = DiaOracleKeyConvertor::convert(key.clone()).unwrap();
 	assert_ok!(parachain_rpc.feed_values(vec![(converted_key, value)]).await);
 	parachain_rpc.manual_seal().await;
-	// we need a new block to get on_initialize to run
-	assert_ok!(timeout(TIMEOUT_DURATION, wait_for_aggregate(parachain_rpc, &key)).await);
 }
 
 pub async fn set_stellar_fees(parachain_rpc: &SpacewalkParachain, value: FixedU128) {
@@ -103,11 +99,6 @@ pub async fn set_stellar_fees(parachain_rpc: &SpacewalkParachain, value: FixedU1
 	let converted_key = DiaOracleKeyConvertor::convert(key.clone()).unwrap();
 	assert_ok!(parachain_rpc.feed_values(vec![(converted_key, value)]).await);
 	parachain_rpc.manual_seal().await;
-	// we need a new block to get on_initialize to run
-	assert_ok!(
-		timeout(TIMEOUT_DURATION, wait_for_aggregate(parachain_rpc, &OracleKey::FeeEstimation))
-			.await
-	);
 }
 
 /// calculate how much collateral the vault requires to accept an issue of the given size
