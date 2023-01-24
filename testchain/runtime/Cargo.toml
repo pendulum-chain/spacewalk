@@ -154,4 +154,4 @@ std = [
   "orml-oracle/std",
   "dia-oracle/std",
 ]
-testing-utils = []
+testing-utils = ["oracle/testing-utils"]
