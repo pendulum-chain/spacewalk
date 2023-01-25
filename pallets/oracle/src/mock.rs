@@ -228,10 +228,8 @@ where
 	});
 }
 
-use std::collections::HashMap;
-
 thread_local! {
-	static COINS: RefCell<HashMap<DataKey, Data>> = RefCell::new(HashMap::<DataKey, Data>::new());
+	static COINS: RefCell<std::collections::HashMap<DataKey, Data>> = RefCell::new(std::collections::HashMap::<DataKey, Data>::new());
 }
 
 pub struct MockDiaOracle;
@@ -291,9 +289,9 @@ impl orml_oracle::DataFeeder<Key, TimestampedValue<UnsignedFixedPoint, Moment>, 
 		value: TimestampedValue<UnsignedFixedPoint, Moment>,
 	) -> sp_runtime::DispatchResult {
 		let key = MockOracleKeyConvertor::convert(key).unwrap();
-		let data_key = DataKey { blockchain: key.0.clone(), symbol: key.1.clone() };
 		let r = value.value.into_inner();
 
+		let data_key = DataKey { blockchain: key.0.clone(), symbol: key.1.clone() };
 		let data = Data { key: data_key.clone(), price: r, timestamp: value.timestamp };
 
 		COINS.with(|coins| {
