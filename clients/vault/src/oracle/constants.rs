@@ -36,8 +36,8 @@ pub fn get_min_externalized_messages(public_network: bool) -> usize {
 }
 
 /// --- Default values for the stellar overlay connection ---
-pub const OVERLAY_VERSION_PUBNET: u32 = 27;
-pub const MIN_OVERLAY_VERSION_PUBNET: u32 = 24;
+pub const OVERLAY_VERSION_PUBNET: u32 = 26;
+pub const MIN_OVERLAY_VERSION_PUBNET: u32 = 23;
 pub const LEDGER_VERSION_PUBNET: u32 = 19;
 pub const VERSION_STRING_PUBNET: &str =
 	"stellar-core 19.7.0.rc1 (7249363c60e7ddf796187149f6a236f8ad244b2b)";
