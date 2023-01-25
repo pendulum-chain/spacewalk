@@ -88,9 +88,7 @@ async fn wait_for_aggregate(parachain_rpc: &SpacewalkParachain) {
 		let status = parachain_rpc.get_parachain_status().await;
 		match status {
 			Ok(status_code) => match status_code {
-				StatusCode::Running => {
-					return
-				},
+				StatusCode::Running => return,
 				StatusCode::Shutdown => {},
 				StatusCode::Error => {},
 			},
