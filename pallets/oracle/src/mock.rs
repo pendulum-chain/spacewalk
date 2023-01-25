@@ -26,7 +26,7 @@ pub use primitives::ForeignCurrencyId::*;
 use crate::{
 	self as oracle,
 	dia::DiaOracleAdapter,
-	oracle_mock::{Data, MockConvertMoment, MockConvertPrice, MockOracleKeyConvertor},
+	oracle_mock::{Data, DataKey, MockConvertMoment, MockConvertPrice, MockOracleKeyConvertor},
 	Config, Error, OracleKeys,
 };
 
@@ -228,8 +228,10 @@ where
 	});
 }
 
+use std::collections::HashMap;
+
 thread_local! {
-	static COINS: RefCell<Vec<Data>> = RefCell::new(vec![]);
+	static COINS: RefCell<HashMap<DataKey, Data>> = RefCell::new(HashMap::<DataKey, Data>::new());
 }
 
 pub struct MockDiaOracle;
@@ -239,15 +241,17 @@ impl DiaOracle for MockDiaOracle {
 		symbol: Vec<u8>,
 	) -> Result<dia_oracle::CoinInfo, sp_runtime::DispatchError> {
 		let key = (blockchain, symbol);
+		let data_key = DataKey { blockchain: key.0.clone(), symbol: key.1.clone() };
 		let mut result: Option<Data> = None;
 		COINS.with(|c| {
 			let r = c.borrow();
-			for i in &*r {
-				if i.key == key.clone() {
-					result = Some(i.clone());
-					break
-				}
-			}
+
+			let hash_set = &*r;
+			let o = hash_set.get(&data_key);
+			match o {
+				Some(i) => result = Some(i.clone()),
+				None => {},
+			};
 		});
 		let Some(result) = result else {
 			return Err(sp_runtime::DispatchError::Other(""));
@@ -287,13 +291,14 @@ impl orml_oracle::DataFeeder<Key, TimestampedValue<UnsignedFixedPoint, Moment>, 
 		value: TimestampedValue<UnsignedFixedPoint, Moment>,
 	) -> sp_runtime::DispatchResult {
 		let key = MockOracleKeyConvertor::convert(key).unwrap();
+		let data_key = DataKey { blockchain: key.0.clone(), symbol: key.1.clone() };
 		let r = value.value.into_inner();
 
-		let data = Data { key, price: r, timestamp: value.timestamp };
+		let data = Data { key: data_key.clone(), price: r, timestamp: value.timestamp };
 
 		COINS.with(|coins| {
 			let mut r = coins.borrow_mut();
-			r.push(data)
+			r.insert(data_key, data);
 		});
 		Ok(())
 	}

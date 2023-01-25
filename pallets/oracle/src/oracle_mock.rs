@@ -10,9 +10,14 @@ use primitives::{oracle::Key, CurrencyId};
 type Moment = u64;
 use sp_std::{vec, vec::Vec};
 
-#[derive(Clone)]
+#[derive(Clone, Default, PartialEq, Eq, Hash)]
+pub struct DataKey {
+	pub blockchain: Vec<u8>,
+	pub symbol: Vec<u8>,
+}
+#[derive(Clone, Default, PartialEq, Eq, Hash)]
 pub struct Data {
-	pub key: (Vec<u8>, Vec<u8>),
+	pub key: DataKey,
 	pub price: u128,
 	pub timestamp: u64,
 }
