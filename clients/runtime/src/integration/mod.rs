@@ -2,6 +2,7 @@
 
 use std::{sync::Arc, time::Duration};
 
+use crate::metadata::runtime_types::security::types::StatusCode;
 use frame_support::assert_ok;
 use futures::{future::Either, pin_mut, Future, FutureExt, SinkExt, StreamExt};
 use primitives::DiaOracleKeyConvertor;
@@ -24,7 +25,7 @@ use subxt_client::{
 
 use crate::{
 	rpc::{OraclePallet, VaultRegistryPallet},
-	CurrencyId, FixedU128, SpacewalkParachain, SpacewalkSigner,
+	CurrencyId, FixedU128, SecurityPallet, SpacewalkParachain, SpacewalkSigner,
 };
 use primitives::oracle::Key as OracleKey;
 
@@ -82,6 +83,25 @@ pub async fn setup_provider(client: SubxtClient, key: AccountKeyring) -> Spacewa
 const SLEEP_DURATION: Duration = Duration::from_millis(1000);
 const TIMEOUT_DURATION: Duration = Duration::from_secs(20);
 
+async fn wait_for_aggregate(parachain_rpc: &SpacewalkParachain) {
+	while true {
+		let status = parachain_rpc.get_parachain_status().await;
+		match status {
+			Ok(status_code) => match status_code {
+				StatusCode::Running => return,
+				StatusCode::Shutdown => {},
+				StatusCode::Error => {},
+			},
+			Err(e) => {},
+		}
+		sleep(SLEEP_DURATION).await;
+	}
+}
+
+pub async fn wait(parachain_rpc: &SpacewalkParachain) {
+	assert_ok!(timeout(TIMEOUT_DURATION, wait_for_aggregate(parachain_rpc)).await);
+}
+
 pub async fn set_exchange_rate_and_wait(
 	parachain_rpc: &SpacewalkParachain,
 	currency_id: CurrencyId,
@@ -99,6 +119,12 @@ pub async fn set_stellar_fees(parachain_rpc: &SpacewalkParachain, value: FixedU1
 	let converted_key = DiaOracleKeyConvertor::convert(key.clone()).unwrap();
 	assert_ok!(parachain_rpc.feed_values(vec![(converted_key, value)]).await);
 	parachain_rpc.manual_seal().await;
+}
+
+pub async fn get_exchange_rate(parachain_rpc: &SpacewalkParachain, currency_id: CurrencyId) {
+	let key = OracleKey::ExchangeRate(currency_id);
+	let converted_key = DiaOracleKeyConvertor::convert(key.clone()).unwrap();
+	assert_ok!(parachain_rpc.get_exchange_rate(converted_key.0, converted_key.1).await);
 }
 
 /// calculate how much collateral the vault requires to accept an issue of the given size

@@ -803,6 +803,8 @@ pub trait OraclePallet {
 		symbol: Vec<u8>,
 	) -> Result<FixedU128, Error>;
 
+	async fn get_oracle_keys(&self) -> Result<Vec<OracleKey>, Error>;
+
 	async fn feed_values(&self, values: Vec<((Vec<u8>, Vec<u8>), FixedU128)>) -> Result<(), Error>;
 
 	async fn wrapped_to_collateral(
@@ -838,6 +840,17 @@ impl OraclePallet for SpacewalkParachain {
 		.map(|coin_info| FixedU128::from_inner(coin_info.price))
 	}
 
+	/// Returns the last exchange rate in planck per satoshis, the time at which it was set
+	/// and the configured max delay.
+	async fn get_oracle_keys(&self) -> Result<Vec<OracleKey>, Error> {
+		let keys = self.query_finalized_or_error(metadata::storage().oracle().oracle_keys()).await;
+		let result = match keys {
+			Ok(i) => Ok(i),
+			Err(e) => Err(e),
+		};
+		return result
+	}
+
 	/// Sets the current exchange rate (i.e. DOT/XLM)
 	///
 	/// # Arguments
@@ -853,7 +866,11 @@ impl OraclePallet for SpacewalkParachain {
 			},
 			Err(err) => {},
 		}
-
+		if time == 0 {
+			time = u64::MAX / 2 - 10; // by some reason timestamp storage return 0 and thefore spacewalk pallets
+			              // go to offline status because not all OracleKeys has prices during
+			              // begin_block function in oracle spacewalk.
+		}
 		for ((blockchain, symbol), price) in values {
 			let coin_info = CoinInfo {
 				symbol: symbol.clone(),
