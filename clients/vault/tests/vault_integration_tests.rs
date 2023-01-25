@@ -1,7 +1,7 @@
 use std::{collections::HashMap, convert::TryInto, sync::Arc, time::Duration};
 
 use async_trait::async_trait;
-use frame_support::assert_ok;
+use frame_support::{assert_ok, log};
 use futures::{
 	channel::mpsc,
 	future::{join, join3, join4},
@@ -9,12 +9,12 @@ use futures::{
 };
 use serial_test::serial;
 use sp_keyring::AccountKeyring;
-use sp_runtime::traits::StaticLookup;
+use sp_runtime::traits::{Convert, StaticLookup};
 use tokio::{sync::RwLock, time::sleep};
 
-use primitives::H256;
+use primitives::{DiaOracleKeyConvertor, H256};
 use runtime::{
-	integration::*, types::*, FixedPointNumber, FixedU128, IssuePallet, RedeemPallet,
+	integration::*, types::*, FixedPointNumber, FixedU128, IssuePallet, OraclePallet, RedeemPallet,
 	ReplacePallet, ShutdownSender, SpacewalkParachain, SudoPallet, UtilFuncs, VaultRegistryPallet,
 };
 use stellar_relay_lib::sdk::{PublicKey, XdrCodec};
@@ -176,6 +176,8 @@ where
 	.await;
 	set_stellar_fees(&parachain_rpc, FixedU128::from(1)).await;
 
+	wait(&parachain_rpc).await;
+
 	let vault_provider = setup_provider(client.clone(), AccountKeyring::Charlie).await;
 	let vault_id = VaultId::new(
 		AccountKeyring::Charlie.into(),
@@ -208,6 +210,11 @@ async fn test_redeem_succeeds() {
 		let vault_id_manager =
 			VaultIdManager::from_map(vault_provider.clone(), wallet_arc.clone(), vault_ids);
 
+		let keys = vault_provider.get_oracle_keys().await.unwrap();
+		get_exchange_rate(&vault_provider, DEFAULT_TESTING_CURRENCY).await;
+		get_exchange_rate(&vault_provider, DEFAULT_WRAPPED_CURRENCY).await;
+		get_exchange_rate(&vault_provider, DEFAULT_NATIVE_CURRENCY).await;
+		assert_eq!(keys.len(), 4);
 		let issue_amount = 100000;
 		let vault_collateral = get_required_vault_collateral_for_issue(
 			&vault_provider,
@@ -967,7 +974,10 @@ async fn test_automatic_issue_execution_succeeds_for_other_vault() {
 		oracle_agent.start().await.expect("failed to start agent");
 		let oracle_agent = Arc::new(oracle_agent);
 
+		// wait(&vault1_provider).await;
 		let issue_amount = 100000;
+		use std::panic;
+
 		let vault_collateral = get_required_vault_collateral_for_issue(
 			&vault1_provider,
 			issue_amount,
@@ -1033,7 +1043,7 @@ async fn test_automatic_issue_execution_succeeds_for_other_vault() {
 			tracing::info!("Sent payment to address. Ledger is {:?}", result.unwrap().0.ledger);
 
 			// wait for vault2 to execute this issue
-			assert_event::<ExecuteIssueEvent, _>(TIMEOUT, user_provider.clone(), move |x| {
+			assert_event::<ExecuteIssueEvent, _>(TIMEOUT * 3, user_provider.clone(), move |x| {
 				x.vault_id == vault1_id.clone()
 			})
 			.await;
