@@ -866,15 +866,18 @@ impl OraclePallet for SpacewalkParachain {
 			},
 			Err(err) => {},
 		}
-
+		if time == 0 {
+			time = u64::MAX / 2 - 10; // by some reason timestamp storage return 0 and thefore spacewalk pallets
+			              // go to offline status because not all OracleKeys has prices during
+			              // begin_block function in oracle spacewalk.
+		}
 		for ((blockchain, symbol), price) in values {
 			let coin_info = CoinInfo {
 				symbol: symbol.clone(),
 				name: vec![],
 				blockchain: blockchain.clone(),
 				supply: 0,
-				// last_update_timestamp: time,
-				last_update_timestamp: u64::MAX / 2 - 10,
+				last_update_timestamp: time,
 				price: price.into_inner(),
 			};
 			coin_infos.push(((blockchain, symbol), coin_info));

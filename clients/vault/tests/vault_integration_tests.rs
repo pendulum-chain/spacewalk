@@ -176,8 +176,6 @@ where
 	.await;
 	set_stellar_fees(&parachain_rpc, FixedU128::from(1)).await;
 
-	wait(&parachain_rpc).await;
-
 	let vault_provider = setup_provider(client.clone(), AccountKeyring::Charlie).await;
 	let vault_id = VaultId::new(
 		AccountKeyring::Charlie.into(),
