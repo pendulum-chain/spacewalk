@@ -8,7 +8,7 @@ use frame_support::{
 use mocktopus::{macros::mockable, mocking::clear_mocks};
 use oracle::{
 	dia::DiaOracleAdapter,
-	oracle_mock::{Data, MockConvertMoment, MockConvertPrice, MockOracleKeyConvertor},
+	oracle_mock::{Data, DataKey, MockConvertMoment, MockConvertPrice, MockOracleKeyConvertor},
 	CoinInfo, DataFeeder, DataProvider, DiaOracle, PriceInfo, TimestampedValue,
 };
 use orml_traits::parameter_type_with_key;
@@ -398,7 +398,7 @@ where
 }
 
 thread_local! {
-	static COINS: std::cell::RefCell<Vec<Data>>  = RefCell::new(vec![]);
+	static COINS: RefCell<std::collections::HashMap<DataKey, Data>> = RefCell::new(std::collections::HashMap::<DataKey, Data>::new());
 }
 
 pub struct MockDiaOracle;
@@ -408,15 +408,17 @@ impl DiaOracle for MockDiaOracle {
 		symbol: Vec<u8>,
 	) -> Result<CoinInfo, sp_runtime::DispatchError> {
 		let key = (blockchain, symbol);
+		let data_key = DataKey { blockchain: key.0.clone(), symbol: key.1.clone() };
 		let mut result: Option<Data> = None;
 		COINS.with(|c| {
 			let r = c.borrow();
-			for i in &*r {
-				if i.key == key.clone() {
-					result = Some(i.clone());
-					break
-				}
-			}
+
+			let hash_set = &*r;
+			let o = hash_set.get(&data_key);
+			match o {
+				Some(i) => result = Some(i.clone()),
+				None => {},
+			};
 		});
 		let Some(result) = result else {
 			return Err(sp_runtime::DispatchError::Other(""));
@@ -456,11 +458,12 @@ impl DataFeeder<Key, TimestampedValue<UnsignedFixedPoint, Moment>, AccountId> fo
 		let key = MockOracleKeyConvertor::convert(key).unwrap();
 		let r = value.value.into_inner();
 
-		let data = Data { key, price: r, timestamp: value.timestamp };
+		let data_key = DataKey { blockchain: key.0.clone(), symbol: key.1.clone() };
+		let data = Data { key: data_key.clone(), price: r, timestamp: value.timestamp };
 
 		COINS.with(|coins| {
 			let mut r = coins.borrow_mut();
-			r.push(data)
+			r.insert(data_key, data);
 		});
 		Ok(())
 	}
