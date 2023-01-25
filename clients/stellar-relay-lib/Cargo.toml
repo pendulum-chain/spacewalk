@@ -23,7 +23,7 @@ tweetnacl = "0.4.0"
 hmac = "0.12.1"
 sha2 = "0.10.2"
 
-substrate-stellar-sdk = {git = "https://github.com/pendulum-chain/substrate-stellar-sdk", branch = "polkadot-v0.9.36", default-features = false, features = ['all-types']}
+substrate-stellar-sdk = {git = "https://github.com/pendulum-chain/substrate-stellar-sdk", branch = "polkadot-v0.9.37", default-features = false, features = ['all-types']}
 
 err-derive = "0.3.1"
 
