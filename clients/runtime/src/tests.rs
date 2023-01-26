@@ -1,12 +1,10 @@
 #![cfg(test)]
 
-use std::time::Duration;
-
 use sp_keyring::AccountKeyring;
 
 use primitives::{DiaOracleKeyConvertor, ForeignCurrencyId, StellarPublicKeyRaw};
 
-use crate::{integration::*, FeedValuesEvent, OracleKey, VaultId};
+use crate::{integration::*, VaultId};
 
 use super::{
 	CollateralBalancesPallet, CurrencyId, FixedPointNumber, FixedU128, OraclePallet,

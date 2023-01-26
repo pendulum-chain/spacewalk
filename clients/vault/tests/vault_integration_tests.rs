@@ -1,7 +1,7 @@
 use std::{collections::HashMap, convert::TryInto, sync::Arc, time::Duration};
 
 use async_trait::async_trait;
-use frame_support::{assert_ok, log};
+use frame_support::{assert_ok};
 use futures::{
 	channel::mpsc,
 	future::{join, join3, join4},
@@ -9,10 +9,10 @@ use futures::{
 };
 use serial_test::serial;
 use sp_keyring::AccountKeyring;
-use sp_runtime::traits::{Convert, StaticLookup};
+use sp_runtime::traits::{StaticLookup};
 use tokio::{sync::RwLock, time::sleep};
 
-use primitives::{DiaOracleKeyConvertor, H256};
+use primitives::{H256};
 use runtime::{
 	integration::*, types::*, FixedPointNumber, FixedU128, IssuePallet, OraclePallet, RedeemPallet,
 	ReplacePallet, ShutdownSender, SpacewalkParachain, SudoPallet, UtilFuncs, VaultRegistryPallet,
@@ -972,9 +972,7 @@ async fn test_automatic_issue_execution_succeeds_for_other_vault() {
 		oracle_agent.start().await.expect("failed to start agent");
 		let oracle_agent = Arc::new(oracle_agent);
 
-		// wait(&vault1_provider).await;
 		let issue_amount = 100000;
-		use std::panic;
 
 		let vault_collateral = get_required_vault_collateral_for_issue(
 			&vault1_provider,
