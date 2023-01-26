@@ -68,6 +68,7 @@ runtime-benchmarks = [
     "frame-system/runtime-benchmarks",
     "pallet-timestamp/runtime-benchmarks",
     "currency/testing-constants",
-    "security/testing-utils"
+    "security/testing-utils",
+    "testing-utils"
 ]
 testing-utils = []
