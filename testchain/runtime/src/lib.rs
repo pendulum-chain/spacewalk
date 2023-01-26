@@ -481,9 +481,9 @@ cfg_if::cfg_if! {
 					DataKey { blockchain: key.0.clone(), symbol: key.1.clone() };
 				let mut result: Option<Data> = None;
 				let map = COINS.lock();
-				let o = map.get(&data_key);
-				match o {
-					Some(i) => result = Some(i.clone()),
+				let data_option = map.get(&data_key);
+				match data_option {
+					Some(data) => result = Some(data.clone()),
 					None => {},
 				};
 
@@ -529,10 +529,10 @@ cfg_if::cfg_if! {
 				value: TimestampedValue<UnsignedFixedPoint, Moment>,
 			) -> sp_runtime::DispatchResult {
 				let key = MockOracleKeyConvertor::convert(key).unwrap();
-				let r = value.value.into_inner();
+				let price = value.value.into_inner();
 
 				let data_key = DataKey { blockchain: key.0.clone(), symbol: key.1.clone() };
-				let data = Data { key: data_key.clone(), price: r, timestamp: value.timestamp };
+				let data = Data { key: data_key.clone(), price: price, timestamp: value.timestamp };
 
 				COINS.lock().insert(data_key, data);
 				Ok(())
