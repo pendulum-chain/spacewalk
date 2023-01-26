@@ -32,8 +32,6 @@ fn feed_values_succeeds() {
 
 		let exchange_rate = Oracle::get_price(key.clone()).unwrap();
 		assert_eq!(exchange_rate, rate);
-
-		assert_emitted!(Event::FeedValues { oracle_id: 3, values: vec![(key, rate)] });
 	});
 }
 
