@@ -1,5 +1,6 @@
 #[cfg(feature = "testing-utils")]
 use sp_runtime::traits::Convert;
+use sp_std::cmp::Ordering;
 
 use sp_arithmetic::FixedU128;
 pub type UnsignedFixedPoint = FixedU128;
@@ -11,6 +12,19 @@ pub struct DataKey {
 	pub blockchain: Vec<u8>,
 	pub symbol: Vec<u8>,
 }
+
+impl PartialOrd<Self> for DataKey {
+	fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+		self.blockchain.partial_cmp(&other.blockchain)
+	}
+}
+
+impl Ord for DataKey {
+	fn cmp(&self, other: &Self) -> Ordering {
+		self.blockchain.cmp(&other.blockchain)
+	}
+}
+
 #[derive(Clone, Default, PartialEq, Eq, Hash)]
 pub struct Data {
 	pub key: DataKey,
