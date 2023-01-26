@@ -106,8 +106,8 @@ where
 		Some(TimestampedValue { value, timestamp })
 	}
 
-	///do not need this funtion implementation
+	/// We do not need the implementation of this function
 	fn get_all_values() -> Vec<(OracleKey, Option<TimestampedValue<UnsignedFixedPoint, Moment>>)> {
-		panic!("spacewalk oracle extension does not requre implementation of DataProviderExtended get_all_values function")
+		panic!("The Spacewalk oracle extension does not require the implementation of the DataProviderExtended::get_all_values() function")
 	}
 }
