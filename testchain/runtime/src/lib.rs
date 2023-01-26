@@ -542,17 +542,7 @@ cfg_if::cfg_if! {
 }
 
 cfg_if::cfg_if! {
-	if #[cfg(feature = "runtime-benchmarks")] {
-		type DataProviderImpl = DiaOracleAdapter<
-			MockDiaOracle,
-			UnsignedFixedPoint,
-			Moment,
-			oracle::oracle_mock::MockOracleKeyConvertor,
-			oracle::oracle_mock::MockConvertPrice,
-			oracle::oracle_mock::MockConvertMoment,
-		>;
-		type DataFeedProvider = DataCollector;
-	} else if #[cfg(feature = "testing-utils")] {
+	 if #[cfg(feature = "testing-utils")] {
 		type DataProviderImpl = DiaOracleAdapter<
 			DiaOracleModule,
 			UnsignedFixedPoint,
@@ -562,6 +552,15 @@ cfg_if::cfg_if! {
 			ConvertMoment,
 		>;
 		type DataFeedProvider = DataCollector;
+	} else if #[cfg(feature = "runtime-benchmarks")] {
+		type DataProviderImpl = DiaOracleAdapter<
+			MockDiaOracle,
+			UnsignedFixedPoint,
+			Moment,
+			oracle::oracle_mock::MockOracleKeyConvertor,
+			oracle::oracle_mock::MockConvertPrice,
+			oracle::oracle_mock::MockConvertMoment,
+		>;
 	} else {
 		type DataProviderImpl = DiaOracleAdapter<
 			DiaOracleModule,
@@ -571,7 +570,6 @@ cfg_if::cfg_if! {
 			ConvertPrice,
 			ConvertMoment,
 		>;
-		type DataFeedProvider = ();
 	}
 }
 
