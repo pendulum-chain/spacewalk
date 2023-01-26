@@ -1,7 +1,7 @@
 use std::{collections::HashMap, convert::TryInto, sync::Arc, time::Duration};
 
 use async_trait::async_trait;
-use frame_support::{assert_ok};
+use frame_support::assert_ok;
 use futures::{
 	channel::mpsc,
 	future::{join, join3, join4},
@@ -9,10 +9,10 @@ use futures::{
 };
 use serial_test::serial;
 use sp_keyring::AccountKeyring;
-use sp_runtime::traits::{StaticLookup};
+use sp_runtime::traits::StaticLookup;
 use tokio::{sync::RwLock, time::sleep};
 
-use primitives::{H256};
+use primitives::H256;
 use runtime::{
 	integration::*, types::*, FixedPointNumber, FixedU128, IssuePallet, OraclePallet, RedeemPallet,
 	ReplacePallet, ShutdownSender, SpacewalkParachain, SudoPallet, UtilFuncs, VaultRegistryPallet,
