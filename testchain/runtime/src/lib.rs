@@ -551,7 +551,6 @@ cfg_if::cfg_if! {
 			ConvertPrice,
 			ConvertMoment,
 		>;
-		type DataFeedProvider = DataCollector;
 	} else if #[cfg(feature = "runtime-benchmarks")] {
 		type DataProviderImpl = DiaOracleAdapter<
 			MockDiaOracle,
