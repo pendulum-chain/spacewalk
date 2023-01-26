@@ -318,7 +318,6 @@ fn testnet_genesis(
 						102, 231, 46, 199, 108, 171, 97, 144, 240, 161, 51, 109, 72, 34, 159, 139,
 					],
 				}),
-				Key::ExchangeRate(CurrencyId::Native),
 				Key::FeeEstimation,
 			],
 		},
