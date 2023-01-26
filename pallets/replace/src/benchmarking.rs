@@ -59,7 +59,7 @@ fn mint_collateral<T: crate::Config>(account_id: &T::AccountId, amount: BalanceO
 fn initialize_oracle<T: crate::Config>() {
 	let oracle_id: T::AccountId = account("Oracle", 12, 0);
 
-	Oracle::<T>::_feed_values(
+	let result = Oracle::<T>::_feed_values(
 		oracle_id,
 		vec![
 			(
@@ -80,6 +80,7 @@ fn initialize_oracle<T: crate::Config>() {
 			),
 		],
 	);
+	assert_ok!(result);
 	Oracle::<T>::begin_block(0u32.into());
 }
 

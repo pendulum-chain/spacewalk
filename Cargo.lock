@@ -1334,6 +1334,24 @@ dependencies = [
 ]
 
 [[package]]
+name = "dia-oracle"
+version = "0.1.0"
+source = "git+https://github.com/diadata-org/oracle-pallet?branch=master#c838df062d448ee2ef66bce60453d0c3f974a9d7"
+dependencies = [
+ "frame-benchmarking",
+ "frame-support",
+ "frame-system",
+ "log",
+ "parity-scale-codec",
+ "scale-info",
+ "serde",
+ "serde_json",
+ "sp-core",
+ "sp-runtime",
+ "sp-std",
+]
+
+[[package]]
 name = "diff"
 version = "0.1.13"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3299,7 +3317,7 @@ version = "1.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e2abad23fbc42b3700f2f279844dc832adb2b2eb069b2df918f455c4e18cc646"
 dependencies = [
- "spin",
+ "spin 0.5.2",
 ]
 
 [[package]]
@@ -4648,10 +4666,12 @@ name = "oracle"
 version = "1.2.0"
 dependencies = [
  "currency",
+ "dia-oracle",
  "frame-benchmarking",
  "frame-support",
  "frame-system",
  "mocktopus",
+ "orml-oracle",
  "orml-tokens",
  "orml-traits",
  "pallet-timestamp",
@@ -4670,7 +4690,7 @@ dependencies = [
 [[package]]
 name = "orml-currencies"
 version = "0.4.1-dev"
-source = "git+https://github.com/UniqueNetwork/open-runtime-module-library?branch=feature/polkadot-v0.9.36#3f70b9adb6c0599db7b8688abb49d0d459634b68"
+source = "git+https://github.com/open-web3-stack/open-runtime-module-library?branch=polkadot-v0.9.36#db0381f6363e0c8e781082b6f552c092b688fb1c"
 dependencies = [
  "frame-support",
  "frame-system",
@@ -4685,9 +4705,27 @@ dependencies = [
 ]
 
 [[package]]
+name = "orml-oracle"
+version = "0.4.1-dev"
+source = "git+https://github.com/open-web3-stack/open-runtime-module-library?branch=polkadot-v0.9.36#4f5a3f34d8cbd98b7bc2e295219a3e7b99b9ecaf"
+dependencies = [
+ "frame-support",
+ "frame-system",
+ "orml-traits",
+ "orml-utilities",
+ "parity-scale-codec",
+ "scale-info",
+ "serde",
+ "sp-application-crypto",
+ "sp-io",
+ "sp-runtime",
+ "sp-std",
+]
+
+[[package]]
 name = "orml-tokens"
 version = "0.4.1-dev"
-source = "git+https://github.com/UniqueNetwork/open-runtime-module-library?branch=feature/polkadot-v0.9.36#3f70b9adb6c0599db7b8688abb49d0d459634b68"
+source = "git+https://github.com/open-web3-stack/open-runtime-module-library?branch=polkadot-v0.9.36#db0381f6363e0c8e781082b6f552c092b688fb1c"
 dependencies = [
  "frame-support",
  "frame-system",
@@ -4702,7 +4740,7 @@ dependencies = [
 [[package]]
 name = "orml-traits"
 version = "0.4.1-dev"
-source = "git+https://github.com/UniqueNetwork/open-runtime-module-library?branch=feature/polkadot-v0.9.36#3f70b9adb6c0599db7b8688abb49d0d459634b68"
+source = "git+https://github.com/open-web3-stack/open-runtime-module-library?branch=polkadot-v0.9.36#db0381f6363e0c8e781082b6f552c092b688fb1c"
 dependencies = [
  "frame-support",
  "impl-trait-for-tuples",
@@ -4720,7 +4758,7 @@ dependencies = [
 [[package]]
 name = "orml-utilities"
 version = "0.4.1-dev"
-source = "git+https://github.com/UniqueNetwork/open-runtime-module-library?branch=feature/polkadot-v0.9.36#3f70b9adb6c0599db7b8688abb49d0d459634b68"
+source = "git+https://github.com/open-web3-stack/open-runtime-module-library?branch=polkadot-v0.9.36#db0381f6363e0c8e781082b6f552c092b688fb1c"
 dependencies = [
  "frame-support",
  "parity-scale-codec",
@@ -5979,7 +6017,7 @@ dependencies = [
  "cc",
  "libc",
  "once_cell",
- "spin",
+ "spin 0.5.2",
  "untrusted",
  "web-sys",
  "winapi",
@@ -8487,7 +8525,9 @@ dependencies = [
 name = "spacewalk-runtime-standalone"
 version = "1.2.0"
 dependencies = [
+ "cfg-if 1.0.0",
  "currency",
+ "dia-oracle",
  "fee",
  "flate2",
  "frame-benchmarking",
@@ -8500,6 +8540,7 @@ dependencies = [
  "hex",
  "hex-literal 0.3.4",
  "issue",
+ "lazy_static",
  "mocktopus",
  "module-issue-rpc-runtime-api",
  "module-oracle-rpc-runtime-api",
@@ -8509,6 +8550,7 @@ dependencies = [
  "nomination",
  "oracle",
  "orml-currencies",
+ "orml-oracle",
  "orml-tokens",
  "orml-traits",
  "pallet-aura",
@@ -8539,6 +8581,7 @@ dependencies = [
  "sp-transaction-pool",
  "sp-version",
  "spacewalk-primitives",
+ "spin 0.9.4",
  "staking",
  "stellar-relay",
  "substrate-wasm-builder",
@@ -8600,6 +8643,15 @@ name = "spin"
 version = "0.5.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "6e63cff320ae2c57904679ba7cb63280a3dc4613885beafb148ee7bf9aa9042d"
+
+[[package]]
+name = "spin"
+version = "0.9.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7f6002a767bff9e83f8eeecf883ecb8011875a21ae8da43bffb817a57e78cc09"
+dependencies = [
+ "lock_api",
+]
 
 [[package]]
 name = "spki"

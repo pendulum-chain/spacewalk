@@ -6,6 +6,8 @@
 #[macro_use]
 extern crate frame_benchmarking;
 
+use codec::Encode;
+pub use dia_oracle::dia::*;
 use frame_support::{
 	construct_runtime, parameter_types,
 	traits::{ConstU128, ConstU8, Contains, KeyOwnerProofSystem},
@@ -30,7 +32,7 @@ use sp_runtime::{
 		Zero,
 	},
 	transaction_validity::{TransactionSource, TransactionValidity},
-	ApplyExtrinsicResult, DispatchError, FixedPointNumber, Perbill,
+	ApplyExtrinsicResult, DispatchError, FixedPointNumber, Perbill, SaturatedConversion,
 };
 use sp_std::{marker::PhantomData, prelude::*};
 #[cfg(feature = "std")]
@@ -41,6 +43,7 @@ use currency::Amount;
 pub use issue::{Event as IssueEvent, IssueRequest};
 pub use module_oracle_rpc_runtime_api::BalanceWrapper;
 pub use nomination::Event as NominationEvent;
+use oracle::dia::DiaOracleAdapter;
 pub use primitives::{
 	self, AccountId, Balance, BlockNumber, CurrencyId, ForeignCurrencyId, Hash, Moment, Nonce,
 	Signature, SignedFixedPoint, SignedInner, UnsignedFixedPoint, UnsignedInner,
@@ -120,6 +123,7 @@ parameter_types! {
 	pub const SS58Prefix: u8 = 42;
 }
 
+pub type Index = u32;
 impl frame_system::Config for Runtime {
 	type BaseCallFilter = frame_support::traits::Everything;
 	type BlockWeights = BlockWeights;
@@ -129,7 +133,7 @@ impl frame_system::Config for Runtime {
 	/// The aggregated dispatch type that is available for extrinsics.
 	type RuntimeCall = RuntimeCall;
 	/// The index type for storing how many extrinsics an account has signed.
-	type Index = Nonce;
+	type Index = Index;
 	/// The index type for blocks.
 	type BlockNumber = BlockNumber;
 	/// The type for hashing blocks and tries.
@@ -394,9 +398,106 @@ where
 	type Extrinsic = UncheckedExtrinsic;
 }
 
+impl dia_oracle::Config for Runtime {
+	type RuntimeEvent = RuntimeEvent;
+	type RuntimeCall = RuntimeCall;
+	type AuthorityId = dia_oracle::crypto::DiaAuthId;
+	type WeightInfo = ();
+}
+
+impl frame_system::offchain::SigningTypes for Runtime {
+	type Public = <Signature as sp_runtime::traits::Verify>::Signer;
+	type Signature = Signature;
+}
+
+impl<LocalCall> frame_system::offchain::CreateSignedTransaction<LocalCall> for Runtime
+where
+	RuntimeCall: From<LocalCall>,
+{
+	fn create_transaction<C: frame_system::offchain::AppCrypto<Self::Public, Self::Signature>>(
+		call: RuntimeCall,
+		public: <Signature as sp_runtime::traits::Verify>::Signer,
+		account: AccountId,
+		index: Index,
+	) -> Option<(
+		RuntimeCall,
+		<UncheckedExtrinsic as sp_runtime::traits::Extrinsic>::SignaturePayload,
+	)> {
+		let period = BlockHashCount::get() as u64;
+		let current_block = System::block_number().saturated_into::<u64>().saturating_sub(1);
+		let tip = 0;
+		let extra: SignedExtra = (
+			frame_system::CheckSpecVersion::<Runtime>::new(),
+			frame_system::CheckTxVersion::<Runtime>::new(),
+			frame_system::CheckGenesis::<Runtime>::new(),
+			frame_system::CheckEra::<Runtime>::from(generic::Era::mortal(period, current_block)),
+			frame_system::CheckNonce::<Runtime>::from(index),
+			frame_system::CheckWeight::<Runtime>::new(),
+			pallet_transaction_payment::ChargeTransactionPayment::<Runtime>::from(tip),
+		);
+
+		let raw_payload = SignedPayload::new(call, extra).ok()?;
+		let signature = raw_payload.using_encoded(|payload| C::sign(payload, public))?;
+		let address = account;
+		let (call, extra, _) = raw_payload.deconstruct();
+		Some((call, (sp_runtime::MultiAddress::Id(address), signature.into(), extra)))
+	}
+}
+
+pub struct ConvertPrice;
+impl Convert<u128, Option<UnsignedFixedPoint>> for ConvertPrice {
+	fn convert(price: u128) -> Option<UnsignedFixedPoint> {
+		Some(UnsignedFixedPoint::from_inner(price))
+	}
+}
+pub struct ConvertMoment;
+impl Convert<u64, Option<Moment>> for ConvertMoment {
+	fn convert(moment: u64) -> Option<Moment> {
+		Some(moment)
+	}
+}
+
+#[cfg(any(feature = "testing-utils", feature = "runtime-benchmarks"))]
+mod benchmark_utils;
+
+cfg_if::cfg_if! {
+	 if #[cfg(feature = "testing-utils")] {
+		type DataProviderImpl = DiaOracleAdapter<
+			DiaOracleModule,
+			UnsignedFixedPoint,
+			Moment,
+			primitives::DiaOracleKeyConvertor,
+			ConvertPrice,
+			ConvertMoment,
+		>;
+	} else if #[cfg(feature = "runtime-benchmarks")] {
+		type DataProviderImpl = DiaOracleAdapter<
+			benchmark_utils::MockDiaOracle,
+			UnsignedFixedPoint,
+			Moment,
+			benchmark_utils::MockOracleKeyConvertor,
+			benchmark_utils::MockConvertPrice,
+			benchmark_utils::MockConvertMoment,
+		>;
+	} else {
+		type DataProviderImpl = DiaOracleAdapter<
+			DiaOracleModule,
+			UnsignedFixedPoint,
+			Moment,
+			primitives::DiaOracleKeyConvertor,
+			ConvertPrice,
+			ConvertMoment,
+		>;
+	}
+}
+
 impl oracle::Config for Runtime {
 	type RuntimeEvent = RuntimeEvent;
 	type WeightInfo = ();
+	type DataProvider = DataProviderImpl;
+
+	#[cfg(any(feature = "runtime-benchmarks", feature = "testing-utils"))]
+	type DataFeedProvider = benchmark_utils::DataCollector;
 }
 
 impl issue::Config for Runtime {
@@ -462,13 +563,13 @@ construct_runtime! {
 
 		Security: security::{Pallet, Call, Config, Storage, Event<T>} = 19,
 		VaultRegistry: vault_registry::{Pallet, Call, Config<T>, Storage, Event<T>, ValidateUnsigned} = 21,
-		Oracle: oracle::{Pallet, Call, Config<T>, Storage, Event<T>} = 22,
+		Oracle: oracle::{Pallet, Call, Config, Storage, Event<T>} = 22,
 		Issue: issue::{Pallet, Call, Config<T>, Storage, Event<T>} = 23,
 		Redeem: redeem::{Pallet, Call, Config<T>, Storage, Event<T>} = 24,
 		Replace: replace::{Pallet, Call, Config<T>, Storage, Event<T>} = 25,
 		Fee: fee::{Pallet, Call, Config<T>, Storage} = 26,
 		Nomination: nomination::{Pallet, Call, Config, Storage, Event<T>} = 28,
-
+		DiaOracleModule: dia_oracle::{Pallet, Call, Config<T>, Storage, Event<T>} = 29,
 	}
 }
 

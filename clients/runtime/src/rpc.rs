@@ -369,27 +369,6 @@ impl SpacewalkParachain {
 		Ok(())
 	}
 
-	/// Listen to fee_rate changes and broadcast new values on the fee_rate_update_tx channel
-	pub async fn listen_for_fee_rate_changes(&self) -> Result<(), Error> {
-		self.on_event::<FeedValuesEvent, _, _, _>(
-			|event| async move {
-				for (key, value) in event.values {
-					if let OracleKey::FeeEstimation = key {
-						let _ = self.fee_rate_update_tx.send(value);
-					}
-				}
-			},
-			|_error| {
-				// Don't propagate error, it's unlikely to be useful.
-				// We assume critical errors will cause the system to restart.
-				// Note that we can't send the error itself due to the channel requiring
-				// the type to be clonable, which Error isn't
-			},
-		)
-		.await?;
-		Ok(())
-	}
-
 	/// Emulate the POOL_INVALID_TX error using token transfer extrinsics.
 	#[cfg(test)]
 	pub async fn get_invalid_tx_error(&self, recipient: AccountId) -> Error {
@@ -797,13 +776,15 @@ impl CollateralBalancesPallet for SpacewalkParachain {
 
 #[async_trait]
 pub trait OraclePallet {
-	async fn get_exchange_rate(&self, currency_id: CurrencyId) -> Result<FixedU128, Error>;
+	async fn get_exchange_rate(
+		&self,
+		blockchain: Vec<u8>,
+		symbol: Vec<u8>,
+	) -> Result<FixedU128, Error>;
 
-	async fn feed_values(&self, values: Vec<(OracleKey, FixedU128)>) -> Result<(), Error>;
+	async fn get_oracle_keys(&self) -> Result<Vec<OracleKey>, Error>;
 
-	async fn set_stellar_fees(&self, value: FixedU128) -> Result<(), Error>;
-
-	async fn get_stellar_fees(&self) -> Result<FixedU128, Error>;
+	async fn feed_values(&self, values: Vec<((Vec<u8>, Vec<u8>), FixedU128)>) -> Result<(), Error>;
 
 	async fn wrapped_to_collateral(
 		&self,
@@ -817,8 +798,6 @@ pub trait OraclePallet {
 		currency_id: CurrencyId,
 	) -> Result<u128, Error>;
 
-	async fn has_updated(&self, key: &OracleKey) -> Result<bool, Error>;
-
 	fn on_fee_rate_change(&self) -> FeeRateUpdateReceiver;
 }
 
@@ -826,40 +805,65 @@ pub trait OraclePallet {
 impl OraclePallet for SpacewalkParachain {
 	/// Returns the last exchange rate in planck per satoshis, the time at which it was set
 	/// and the configured max delay.
-	async fn get_exchange_rate(&self, currency_id: CurrencyId) -> Result<FixedU128, Error> {
+	async fn get_exchange_rate(
+		&self,
+		blockchain: Vec<u8>,
+		symbol: Vec<u8>,
+	) -> Result<FixedU128, Error> {
+		use crate::metadata::runtime_types::dia_oracle::dia::AssetId;
+		let asset_id = AssetId { blockchain, symbol };
 		self.query_finalized_or_error(
-			metadata::storage().oracle().aggregate(&OracleKey::ExchangeRate(currency_id)),
+			metadata::storage().dia_oracle_module().coin_infos_map(&asset_id),
 		)
 		.await
+		.map(|coin_info| FixedU128::from_inner(coin_info.price))
+	}
+
+	/// Returns the last exchange rate in planck per satoshis, the time at which it was set
+	/// and the configured max delay.
+	async fn get_oracle_keys(&self) -> Result<Vec<OracleKey>, Error> {
+		let keys = self.query_finalized_or_error(metadata::storage().oracle().oracle_keys()).await;
+		let result = match keys {
+			Ok(i) => Ok(i),
+			Err(e) => Err(e),
+		};
+		return result
 	}
 
 	/// Sets the current exchange rate (i.e. DOT/XLM)
 	///
 	/// # Arguments
 	/// * `value` - the current exchange rate
-	async fn feed_values(&self, values: Vec<(OracleKey, FixedU128)>) -> Result<(), Error> {
-		self.with_retry(metadata::tx().oracle().feed_values(values)).await?;
+	async fn feed_values(&self, values: Vec<((Vec<u8>, Vec<u8>), FixedU128)>) -> Result<(), Error> {
+		use crate::metadata::runtime_types::dia_oracle::dia::CoinInfo;
+		let mut coin_infos = vec![];
+		let timestamp = self.query_finalized_or_error(metadata::storage().timestamp().now()).await;
+		let mut time = 0;
+		match timestamp {
+			Ok(o) => {
+				time = o as u64;
+			},
+			Err(_) => {},
+		}
+		if time == 0 {
+			time = u64::MAX / 2 - 10; // by some reason timestamp storage return 0 and thefore spacewalk pallets
+			              // go to offline status because not all OracleKeys has prices during
+			              // begin_block function in oracle spacewalk.
+		}
+		for ((blockchain, symbol), price) in values {
+			let coin_info = CoinInfo {
+				symbol: symbol.clone(),
+				name: vec![],
+				blockchain: blockchain.clone(),
+				supply: 0,
+				last_update_timestamp: time,
+				price: price.into_inner(),
+			};
+			coin_infos.push(((blockchain, symbol), coin_info));
+		}
+		self.with_retry(metadata::tx().dia_oracle_module().set_updated_coin_infos(coin_infos))
+			.await?;
 		Ok(())
-	}
-
-	/// Sets the estimated fee required to get a Stellar transaction included in the next block.
-	///
-	/// # Arguments
-	/// * `value` - the estimated fee rate
-	async fn set_stellar_fees(&self, value: FixedU128) -> Result<(), Error> {
-		self.with_retry(
-			metadata::tx().oracle().feed_values(vec![(OracleKey::FeeEstimation, value)]),
-		)
-		.await?;
-		Ok(())
-	}
-
-	/// Gets the estimated fee required to get a Stellar transaction included in the next block.
-	async fn get_stellar_fees(&self) -> Result<FixedU128, Error> {
-		self.query_finalized_or_error(
-			metadata::storage().oracle().aggregate(&OracleKey::FeeEstimation),
-		)
-		.await
 	}
 
 	/// Converts the amount of wrapped Stellar assets to the collateral currency, based on the
@@ -900,13 +904,6 @@ impl OraclePallet for SpacewalkParachain {
 			.await?;
 
 		Ok(result.amount)
-	}
-
-	async fn has_updated(&self, key: &OracleKey) -> Result<bool, Error> {
-		Ok(self
-			.query_finalized_or_error(metadata::storage().oracle().raw_values_updated(key))
-			.await
-			.unwrap_or(false))
 	}
 
 	fn on_fee_rate_change(&self) -> FeeRateUpdateReceiver {
@@ -1398,11 +1395,6 @@ pub trait SudoPallet {
 	async fn set_redeem_period(&self, period: BlockNumber) -> Result<(), Error>;
 	async fn set_parachain_confirmations(&self, value: BlockNumber) -> Result<(), Error>;
 	async fn set_issue_period(&self, period: u32) -> Result<(), Error>;
-	async fn insert_authorized_oracle(
-		&self,
-		account_id: AccountId,
-		name: String,
-	) -> Result<(), Error>;
 	async fn set_replace_period(&self, period: u32) -> Result<(), Error>;
 }
 
@@ -1450,26 +1442,6 @@ impl SudoPallet for SpacewalkParachain {
 		Ok(self
 			.sudo(EncodedCall::Issue(
 				metadata::runtime_types::issue::pallet::Call::set_issue_period { period },
-			))
-			.await?)
-	}
-
-	/// Adds a new authorized oracle with the given name and the signer's AccountId
-	///
-	/// # Arguments
-	/// * `account_id` - The Account ID of the new oracle
-	/// * `name` - The name of the new oracle
-	async fn insert_authorized_oracle(
-		&self,
-		account_id: AccountId,
-		name: String,
-	) -> Result<(), Error> {
-		Ok(self
-			.sudo(EncodedCall::Oracle(
-				metadata::runtime_types::oracle::pallet::Call::insert_authorized_oracle {
-					account_id,
-					name: name.into_bytes(),
-				},
 			))
 			.await?)
 	}

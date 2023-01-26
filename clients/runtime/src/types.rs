@@ -26,7 +26,6 @@ mod metadata_aliases {
 			CancelIssue as CancelIssueEvent, ExecuteIssue as ExecuteIssueEvent,
 			RequestIssue as RequestIssueEvent,
 		},
-		oracle::events::FeedValues as FeedValuesEvent,
 		redeem::events::{
 			ExecuteRedeem as ExecuteRedeemEvent, RequestRedeem as RequestRedeemEvent,
 		},
@@ -74,7 +73,6 @@ mod metadata_aliases {
 			Balance,
 			CurrencyId,
 		>;
-	// pub use crate::metadata::runtime_types::spacewalk_primitives::CurrencyId;
 
 	pub type SpacewalkIssueRequest =
 		metadata::runtime_types::spacewalk_primitives::issue::IssueRequest<

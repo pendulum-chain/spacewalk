@@ -4,16 +4,14 @@ use std::{sync::Arc, time::Duration};
 
 use frame_support::assert_ok;
 use futures::{future::Either, pin_mut, Future, FutureExt, SinkExt, StreamExt};
-
+use primitives::DiaOracleKeyConvertor;
+use sp_runtime::traits::Convert;
 use subxt::{
 	events::StaticEvent as Event,
 	ext::sp_core::{sr25519::Pair, Pair as _},
 };
 use tempdir::TempDir;
-use tokio::{
-	sync::RwLock,
-	time::{sleep, timeout},
-};
+use tokio::{sync::RwLock, time::timeout};
 
 pub use subxt_client::SubxtClient;
 use subxt_client::{
@@ -23,8 +21,9 @@ use subxt_client::{
 
 use crate::{
 	rpc::{OraclePallet, VaultRegistryPallet},
-	CurrencyId, FixedU128, OracleKey, SpacewalkParachain, SpacewalkSigner,
+	CurrencyId, FixedU128, SpacewalkParachain, SpacewalkSigner,
 };
+use primitives::oracle::Key as OracleKey;
 
 /// Start a new instance of the parachain. The second item in the returned tuple must remain in
 /// scope as long as the parachain is active, since dropping it will remove the temporary directory
@@ -77,36 +76,29 @@ pub async fn setup_provider(client: SubxtClient, key: AccountKeyring) -> Spacewa
 		.expect("Error creating parachain_rpc")
 }
 
-const SLEEP_DURATION: Duration = Duration::from_millis(1000);
-const TIMEOUT_DURATION: Duration = Duration::from_secs(20);
-
-async fn wait_for_aggregate(parachain_rpc: &SpacewalkParachain, key: &OracleKey) {
-	while parachain_rpc.has_updated(key).await.unwrap() {
-		// should be false upon aggregate update
-		sleep(SLEEP_DURATION).await;
-	}
-}
-
 pub async fn set_exchange_rate_and_wait(
 	parachain_rpc: &SpacewalkParachain,
 	currency_id: CurrencyId,
 	value: FixedU128,
 ) {
 	let key = OracleKey::ExchangeRate(currency_id);
-	assert_ok!(parachain_rpc.feed_values(vec![(key.clone(), value)]).await);
+	let converted_key = DiaOracleKeyConvertor::convert(key.clone()).unwrap();
+	assert_ok!(parachain_rpc.feed_values(vec![(converted_key, value)]).await);
 	parachain_rpc.manual_seal().await;
-	// we need a new block to get on_initialize to run
-	assert_ok!(timeout(TIMEOUT_DURATION, wait_for_aggregate(parachain_rpc, &key)).await);
 }
 
 pub async fn set_stellar_fees(parachain_rpc: &SpacewalkParachain, value: FixedU128) {
-	assert_ok!(parachain_rpc.set_stellar_fees(value).await);
+	// assert_ok!(parachain_rpc.set_stellar_fees(value).await);
+	let key = OracleKey::FeeEstimation;
+	let converted_key = DiaOracleKeyConvertor::convert(key.clone()).unwrap();
+	assert_ok!(parachain_rpc.feed_values(vec![(converted_key, value)]).await);
 	parachain_rpc.manual_seal().await;
-	// we need a new block to get on_initialize to run
-	assert_ok!(
-		timeout(TIMEOUT_DURATION, wait_for_aggregate(parachain_rpc, &OracleKey::FeeEstimation))
-			.await
-	);
+}
+
+pub async fn get_exchange_rate(parachain_rpc: &SpacewalkParachain, currency_id: CurrencyId) {
+	let key = OracleKey::ExchangeRate(currency_id);
+	let converted_key = DiaOracleKeyConvertor::convert(key.clone()).unwrap();
+	assert_ok!(parachain_rpc.get_exchange_rate(converted_key.0, converted_key.1).await);
 }
 
 /// calculate how much collateral the vault requires to accept an issue of the given size

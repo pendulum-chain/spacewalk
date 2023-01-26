@@ -7,14 +7,11 @@
 
 #[cfg(test)]
 extern crate mocktopus;
-
-use codec::{Decode, Encode, MaxEncodedLen};
 #[cfg(feature = "testing-utils")]
 use frame_support::dispatch::DispatchResult;
 use frame_support::{dispatch::DispatchError, transactional};
 #[cfg(test)]
 use mocktopus::macros::mockable;
-use scale_info::TypeInfo;
 use sp_runtime::{
 	traits::{UniqueSaturatedInto, *},
 	ArithmeticError, FixedPointNumber,
@@ -23,6 +20,7 @@ use sp_std::{convert::TryInto, vec::Vec};
 
 use currency::Amount;
 pub use default_weights::{SubstrateWeight, WeightInfo};
+use orml_oracle::DataProviderExtended;
 pub use pallet::*;
 pub use primitives::{oracle::Key as OracleKey, CurrencyId, TruncateFixedPointToInt};
 use security::{ErrorCode, StatusCode};
@@ -36,18 +34,23 @@ mod benchmarking;
 
 mod default_weights;
 #[cfg(test)]
+#[cfg_attr(test, cfg(feature = "testing-utils"))]
 mod tests;
 
+#[cfg(feature = "testing-utils")]
+pub use dia_oracle::{CoinInfo, DiaOracle, PriceInfo};
+#[cfg(feature = "testing-utils")]
+pub use orml_oracle::{DataFeeder, DataProvider, TimestampedValue};
+
 #[cfg(test)]
-mod mock;
+#[cfg_attr(test, cfg(feature = "testing-utils"))]
+pub mod mock;
 
 pub mod types;
 
-#[derive(Encode, Decode, Eq, PartialEq, Clone, Copy, Ord, PartialOrd, TypeInfo, MaxEncodedLen)]
-pub struct TimestampedValue<Value, Moment> {
-	pub value: Value,
-	pub timestamp: Moment,
-}
+pub mod dia;
+#[cfg(feature = "testing-utils")]
+pub mod oracle_mock;
 
 #[frame_support::pallet]
 pub mod pallet {
@@ -70,26 +73,25 @@ pub mod pallet {
 
 		/// Weight information for the extrinsics in this module.
 		type WeightInfo: WeightInfo;
+
+		type DataProvider: DataProviderExtended<
+			OracleKey,
+			orml_oracle::TimestampedValue<Self::UnsignedFixedPoint, Self::Moment>,
+		>;
+
+		#[cfg(feature = "testing-utils")]
+		type DataFeedProvider: orml_oracle::DataFeeder<
+			OracleKey,
+			orml_oracle::TimestampedValue<Self::UnsignedFixedPoint, Self::Moment>,
+			Self::AccountId,
+		>;
 	}
 
 	#[pallet::event]
 	#[pallet::generate_deposit(pub(super) fn deposit_event)]
 	pub enum Event<T: Config> {
-		/// Event emitted when exchange rate is set
-		FeedValues {
-			oracle_id: T::AccountId,
-			values: Vec<(OracleKey, T::UnsignedFixedPoint)>,
-		},
-		AggregateUpdated {
-			values: Vec<(OracleKey, Option<T::UnsignedFixedPoint>)>,
-		},
-		OracleAdded {
-			oracle_id: T::AccountId,
-			name: Vec<u8>,
-		},
-		OracleRemoved {
-			oracle_id: T::AccountId,
-		},
+		AggregateUpdated { values: Vec<(OracleKey, T::UnsignedFixedPoint)> },
+		OracleKeysUpdated { oracle_keys: Vec<OracleKey> },
 	}
 
 	#[pallet::error]
@@ -110,39 +112,15 @@ pub mod pallet {
 		}
 	}
 
-	/// Current medianized value for the given key
-	#[pallet::storage]
-	pub type Aggregate<T: Config> =
-		StorageMap<_, Blake2_128Concat, OracleKey, UnsignedFixedPoint<T>>;
-
-	#[pallet::storage]
-	pub type RawValues<T: Config> = StorageDoubleMap<
-		_,
-		Blake2_128Concat,
-		OracleKey,
-		Blake2_128Concat,
-		T::AccountId,
-		TimestampedValue<UnsignedFixedPoint<T>, T::Moment>,
-	>;
-
-	#[pallet::storage]
-	/// if a key is present, it means the values have been updated
-	pub type RawValuesUpdated<T: Config> = StorageMap<_, Blake2_128Concat, OracleKey, bool>;
-
-	/// Time until which the aggregate is valid
-	#[pallet::storage]
-	pub type ValidUntil<T: Config> = StorageMap<_, Blake2_128Concat, OracleKey, T::Moment>;
-
 	/// Maximum delay (milliseconds) for a reported value to be used
 	#[pallet::storage]
 	#[pallet::getter(fn max_delay)]
 	pub type MaxDelay<T: Config> = StorageValue<_, T::Moment, ValueQuery>;
 
-	// Oracles allowed to set the exchange rate, maps to the name
+	// Oracle keys indicating the available prices and used to retrieve them
 	#[pallet::storage]
-	#[pallet::getter(fn authorized_oracles)]
-	pub type AuthorizedOracles<T: Config> =
-		StorageMap<_, Blake2_128Concat, T::AccountId, Vec<u8>, ValueQuery>;
+	#[pallet::getter(fn oracle_keys)]
+	pub type OracleKeys<T: Config> = StorageValue<_, Vec<OracleKey>, ValueQuery>;
 
 	#[pallet::type_value]
 	pub(super) fn DefaultForStorageVersion() -> Version {
@@ -156,28 +134,23 @@ pub mod pallet {
 		StorageValue<_, Version, ValueQuery, DefaultForStorageVersion>;
 
 	#[pallet::genesis_config]
-	pub struct GenesisConfig<T: Config> {
+	pub struct GenesisConfig {
 		pub max_delay: u32,
-		pub authorized_oracles: Vec<(T::AccountId, Vec<u8>)>,
+		pub oracle_keys: Vec<OracleKey>,
 	}
 
 	#[cfg(feature = "std")]
-	impl<T: Config> Default for GenesisConfig<T> {
+	impl Default for GenesisConfig {
 		fn default() -> Self {
-			Self { max_delay: Default::default(), authorized_oracles: Default::default() }
+			Self { max_delay: Default::default(), oracle_keys: Default::default() }
 		}
 	}
 
 	#[pallet::genesis_build]
-	impl<T: Config> GenesisBuild<T> for GenesisConfig<T> {
+	impl<T: Config> GenesisBuild<T> for GenesisConfig {
 		fn build(&self) {
-			// T::Moment doesn't implement serialize so we use
-			// From<u32> as bound by AtLeast32Bit
 			MaxDelay::<T>::put(T::Moment::from(self.max_delay));
-
-			for (ref who, name) in self.authorized_oracles.iter() {
-				AuthorizedOracles::<T>::insert(who, name);
-			}
+			OracleKeys::<T>::put(self.oracle_keys.clone());
 		}
 	}
 
@@ -188,60 +161,20 @@ pub mod pallet {
 	// The pallet's dispatchable functions.
 	#[pallet::call]
 	impl<T: Config> Pallet<T> {
-		/// Feeds data from the oracles, e.g., the exchange rates. This function
-		/// is intended to be API-compatible with orml-oracle.
+		/// set oracle keys
 		///
 		/// # Arguments
-		///
-		/// * `values` - a vector of (key, value) pairs to submit
-		#[pallet::call_index(0)]
-		#[pallet::weight(<T as Config>::WeightInfo::feed_values(values.len() as u32))]
-		pub fn feed_values(
-			origin: OriginFor<T>,
-			values: Vec<(OracleKey, T::UnsignedFixedPoint)>,
-		) -> DispatchResultWithPostInfo {
-			let signer = ensure_signed(origin)?;
-
-			// fail if the signer is not an authorized oracle
-			ensure!(Self::is_authorized(&signer), Error::<T>::InvalidOracleSource);
-
-			Self::_feed_values(signer, values);
-			Ok(Pays::No.into())
-		}
-
-		/// Adds an authorized oracle account (only executable by the Root account)
-		///
-		/// # Arguments
-		/// * `account_id` - the account Id of the oracle
-		/// * `name` - a descriptive name for the oracle
-		#[pallet::call_index(1)]
-		#[pallet::weight(<T as Config>::WeightInfo::insert_authorized_oracle())]
-		#[transactional]
-		pub fn insert_authorized_oracle(
-			origin: OriginFor<T>,
-			account_id: T::AccountId,
-			name: Vec<u8>,
-		) -> DispatchResult {
-			ensure_root(origin)?;
-			Self::insert_oracle(account_id.clone(), name.clone());
-			Self::deposit_event(Event::OracleAdded { oracle_id: account_id, name });
-			Ok(())
-		}
-
-		/// Removes an authorized oracle account (only executable by the Root account)
-		///
-		/// # Arguments
-		/// * `account_id` - the account Id of the oracle
+		/// * `oracle_key` - list of oracle keys
 		#[pallet::call_index(2)]
-		#[pallet::weight(<T as Config>::WeightInfo::remove_authorized_oracle())]
+		#[pallet::weight(<T as Config>::WeightInfo::update_oracle_keys())]
 		#[transactional]
-		pub fn remove_authorized_oracle(
+		pub fn update_oracle_keys(
 			origin: OriginFor<T>,
-			account_id: T::AccountId,
+			oracle_keys: Vec<OracleKey>,
 		) -> DispatchResult {
 			ensure_root(origin)?;
-			<AuthorizedOracles<T>>::remove(account_id.clone());
-			Self::deposit_event(Event::OracleRemoved { oracle_id: account_id });
+			<OracleKeys<T>>::put(oracle_keys.clone());
+			Self::deposit_event(Event::OracleKeysUpdated { oracle_keys });
 			Ok(())
 		}
 	}
@@ -249,28 +182,34 @@ pub mod pallet {
 
 #[cfg_attr(test, mockable)]
 impl<T: Config> Pallet<T> {
-	// public only for testing purposes
+	// the function is public only for testing purposes. function should be use only by this pallet
+	// inside on_initialize hook
 	pub fn begin_block(_height: T::BlockNumber) {
-		// read to a temporary value, because we can't alter the map while we iterate over it
-		let raw_values_updated: Vec<_> = RawValuesUpdated::<T>::iter().collect();
+		let oracle_keys: Vec<_> = OracleKeys::<T>::get();
 
 		let current_time = Self::get_current_time();
 
 		let mut updated_items = Vec::new();
-		for (key, is_updated) in raw_values_updated.iter() {
-			if *is_updated || Self::is_outdated(key, current_time) {
-				let new_value = Self::update_aggregate(key);
-				updated_items.push((key.clone(), new_value));
+		let max_delay = Self::get_max_delay();
+		for key in oracle_keys.iter() {
+			let price = Self::get_timestamped(key);
+			let Some(price) = price else{
+				continue;
+			};
+			let is_outdated = current_time > price.timestamp + max_delay;
+			if !is_outdated {
+				updated_items.push((key.clone(), price.value));
 			}
 		}
-
+		let updated_items_len = updated_items.len();
 		if !updated_items.is_empty() {
 			Self::deposit_event(Event::<T>::AggregateUpdated { values: updated_items });
 		}
 
 		let current_status_is_online = Self::is_oracle_online();
-		let new_status_is_online = !raw_values_updated.is_empty() &&
-			raw_values_updated.iter().all(|(key, _)| Aggregate::<T>::get(key).is_some());
+		let new_status_is_online = oracle_keys.len() > 0 &&
+			updated_items_len > 0 &&
+			updated_items_len == oracle_keys.len();
 
 		if current_status_is_online != new_status_is_online {
 			if new_status_is_online {
@@ -282,15 +221,24 @@ impl<T: Config> Pallet<T> {
 	}
 
 	// public only for testing purposes
-	pub fn _feed_values(oracle: T::AccountId, values: Vec<(OracleKey, T::UnsignedFixedPoint)>) {
-		for (key, value) in values.iter() {
-			let timestamped =
-				TimestampedValue { timestamp: Self::get_current_time(), value: *value };
-			RawValues::<T>::insert(key, &oracle, timestamped);
-			RawValuesUpdated::<T>::insert(key, true);
-		}
+	#[cfg(feature = "testing-utils")]
+	pub fn _feed_values(
+		oracle: T::AccountId,
+		values: Vec<(OracleKey, T::UnsignedFixedPoint)>,
+	) -> DispatchResult {
+		let mut oracle_keys: Vec<_> = <OracleKeys<T>>::get();
 
-		Self::deposit_event(Event::<T>::FeedValues { oracle_id: oracle, values });
+		for (k, v) in values.clone() {
+			let timestamped =
+				orml_oracle::TimestampedValue { timestamp: Self::get_current_time(), value: v };
+			T::DataFeedProvider::feed_value(oracle.clone(), k.clone(), timestamped)
+				.expect("Expect store value by key");
+			if !oracle_keys.contains(&k) {
+				oracle_keys.push(k);
+			}
+		}
+		<OracleKeys<T>>::put(oracle_keys.clone());
+		Ok(())
 	}
 
 	/// Public getters
@@ -299,7 +247,10 @@ impl<T: Config> Pallet<T> {
 	pub fn get_price(key: OracleKey) -> Result<UnsignedFixedPoint<T>, DispatchError> {
 		ext::security::ensure_parachain_status_running::<T>()?;
 
-		Aggregate::<T>::get(key).ok_or_else(|| Error::<T>::MissingExchangeRate.into())
+		let Some(price) = T::DataProvider::get_no_op(&key) else{
+			 return Err(Error::<T>::MissingExchangeRate.into());
+		};
+		Ok(price.value)
 	}
 
 	pub fn convert(
@@ -345,45 +296,12 @@ impl<T: Config> Pallet<T> {
 			.unique_saturated_into())
 	}
 
-	fn update_aggregate(key: &OracleKey) -> Option<T::UnsignedFixedPoint> {
-		RawValuesUpdated::<T>::insert(key, false);
-		let mut raw_values: Vec<_> =
-			RawValues::<T>::iter_prefix(key).map(|(_, value)| value).collect();
-		let min_timestamp = Self::get_current_time().saturating_sub(Self::get_max_delay());
-		raw_values.retain(|value| value.timestamp >= min_timestamp);
-		if raw_values.is_empty() {
-			Aggregate::<T>::remove(key);
-			ValidUntil::<T>::remove(key);
-			None
-		} else {
-			let valid_until = raw_values
-				.iter()
-				.map(|x| x.timestamp)
-				.min()
-				.map(|timestamp| timestamp + Self::get_max_delay())
-				.unwrap_or_default(); // Unwrap will never fail, but if somehow it did, we retry next block
-
-			let mid_index = raw_values.len() / 2;
-			let (_, value, _) =
-				raw_values.select_nth_unstable_by(mid_index as usize, |a, b| a.value.cmp(&b.value));
-
-			Aggregate::<T>::insert(key, value.value);
-			ValidUntil::<T>::insert(key, valid_until);
-			Some(value.value)
-		}
-	}
-
 	/// Private getters and setters
-
-	fn is_outdated(key: &OracleKey, current_time: T::Moment) -> bool {
-		let valid_until = ValidUntil::<T>::get(key);
-		matches!(valid_until, Some(t) if current_time > t)
-	}
-
 	fn get_max_delay() -> T::Moment {
 		<MaxDelay<T>>::get()
 	}
 
+	/// TODO
 	/// Set the current exchange rate. ONLY FOR TESTING.
 	///
 	/// # Arguments
@@ -391,11 +309,15 @@ impl<T: Config> Pallet<T> {
 	/// * `exchange_rate` - i.e. planck per satoshi
 	#[cfg(feature = "testing-utils")]
 	pub fn _set_exchange_rate(
+		oracle: T::AccountId,
 		currency_id: CurrencyId,
 		exchange_rate: UnsignedFixedPoint<T>,
 	) -> DispatchResult {
-		Aggregate::<T>::insert(OracleKey::ExchangeRate(currency_id), exchange_rate);
-		// this is useful for benchmark tests
+		use sp_std::vec;
+		frame_support::assert_ok!(Self::_feed_values(
+			oracle,
+			vec![((OracleKey::ExchangeRate(currency_id)), exchange_rate)]
+		));
 		Self::recover_from_oracle_offline();
 		Ok(())
 	}
@@ -418,13 +340,9 @@ impl<T: Config> Pallet<T> {
 		<pallet_timestamp::Pallet<T>>::get()
 	}
 
-	/// Add a new authorized oracle
-	fn insert_oracle(oracle: T::AccountId, name: Vec<u8>) {
-		<AuthorizedOracles<T>>::insert(oracle, name)
-	}
-
-	/// True if oracle is authorized
-	fn is_authorized(oracle: &T::AccountId) -> bool {
-		<AuthorizedOracles<T>>::contains_key(oracle)
+	fn get_timestamped(
+		key: &OracleKey,
+	) -> Option<orml_oracle::TimestampedValue<T::UnsignedFixedPoint, T::Moment>> {
+		T::DataProvider::get_no_op(key)
 	}
 }

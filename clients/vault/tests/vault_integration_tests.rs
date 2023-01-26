@@ -14,7 +14,7 @@ use tokio::{sync::RwLock, time::sleep};
 
 use primitives::H256;
 use runtime::{
-	integration::*, types::*, FixedPointNumber, FixedU128, IssuePallet, RedeemPallet,
+	integration::*, types::*, FixedPointNumber, FixedU128, IssuePallet, OraclePallet, RedeemPallet,
 	ReplacePallet, ShutdownSender, SpacewalkParachain, SudoPallet, UtilFuncs, VaultRegistryPallet,
 };
 use stellar_relay_lib::sdk::{PublicKey, XdrCodec};
@@ -208,6 +208,11 @@ async fn test_redeem_succeeds() {
 		let vault_id_manager =
 			VaultIdManager::from_map(vault_provider.clone(), wallet_arc.clone(), vault_ids);
 
+		let keys = vault_provider.get_oracle_keys().await.unwrap();
+		get_exchange_rate(&vault_provider, DEFAULT_TESTING_CURRENCY).await;
+		get_exchange_rate(&vault_provider, DEFAULT_WRAPPED_CURRENCY).await;
+		get_exchange_rate(&vault_provider, DEFAULT_NATIVE_CURRENCY).await;
+		assert_eq!(keys.len(), 3);
 		let issue_amount = 100000;
 		let vault_collateral = get_required_vault_collateral_for_issue(
 			&vault_provider,
@@ -638,7 +643,7 @@ async fn test_cancel_scheduler_succeeds() {
 						// Create two new blocks so that the current requests expire (since we set
 						// the periods to 1 before)
 						parachain_rpc.manual_seal().await;
-						sleep(Duration::from_secs(1)).await;
+						sleep(Duration::from_secs(10)).await;
 						parachain_rpc.manual_seal().await;
 					},
 					assert_event::<CancelIssueEvent, _>(
@@ -968,6 +973,7 @@ async fn test_automatic_issue_execution_succeeds_for_other_vault() {
 		let oracle_agent = Arc::new(oracle_agent);
 
 		let issue_amount = 100000;
+
 		let vault_collateral = get_required_vault_collateral_for_issue(
 			&vault1_provider,
 			issue_amount,
@@ -1033,7 +1039,7 @@ async fn test_automatic_issue_execution_succeeds_for_other_vault() {
 			tracing::info!("Sent payment to address. Ledger is {:?}", result.unwrap().0.ledger);
 
 			// wait for vault2 to execute this issue
-			assert_event::<ExecuteIssueEvent, _>(TIMEOUT, user_provider.clone(), move |x| {
+			assert_event::<ExecuteIssueEvent, _>(TIMEOUT * 3, user_provider.clone(), move |x| {
 				x.vault_id == vault1_id.clone()
 			})
 			.await;

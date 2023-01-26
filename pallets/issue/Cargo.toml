@@ -55,6 +55,7 @@ oracle = { path = "../oracle", features = ['testing-utils'] }
 orml-tokens = { git = "https://github.com/open-web3-stack/open-runtime-module-library", branch = "polkadot-v0.9.36" }
 orml-traits = { git = "https://github.com/open-web3-stack/open-runtime-module-library", branch = "polkadot-v0.9.36" }
 
+
 [features]
 default = ["std"]
 std = [

@@ -1,14 +1,19 @@
+use std::cell::RefCell;
+
+use dia_oracle::{CoinInfo, DiaOracle};
 use frame_support::{
 	parameter_types,
-	traits::{ConstU32, Everything, GenesisBuild},
+	traits::{ConstU32, Everything},
 };
 use mocktopus::mocking::clear_mocks;
+use orml_oracle::{DataProvider, TimestampedValue};
 use orml_traits::parameter_type_with_key;
+use primitives::oracle::Key;
 use sp_arithmetic::{FixedI128, FixedU128};
 use sp_core::H256;
 use sp_runtime::{
 	testing::Header,
-	traits::{BlakeTwo256, IdentityLookup},
+	traits::{BlakeTwo256, Convert, IdentityLookup},
 };
 
 pub use currency::testing_constants::{
@@ -16,8 +21,12 @@ pub use currency::testing_constants::{
 };
 pub use primitives::ForeignCurrencyId::*;
 
-use crate as oracle;
-use crate::{Config, Error};
+use crate::{
+	self as oracle,
+	dia::DiaOracleAdapter,
+	oracle_mock::{Data, DataKey, MockConvertMoment, MockConvertPrice, MockOracleKeyConvertor},
+	Config, Error,
+};
 
 type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Test>;
 type Block = frame_system::mocking::MockBlock<Test>;
@@ -36,7 +45,7 @@ frame_support::construct_runtime!(
 
 		// Operational
 		Security: security::{Pallet, Call, Storage, Event<T>},
-		Oracle: oracle::{Pallet, Call, Config<T>, Storage, Event<T>},
+		Oracle: oracle::{Pallet, Call, Config, Storage, Event<T>},
 		Staking: staking::{Pallet, Storage, Event<T>},
 		Currency: currency::{Pallet},
 	}
@@ -150,6 +159,15 @@ impl currency::Config for Test {
 impl Config for Test {
 	type RuntimeEvent = TestEvent;
 	type WeightInfo = ();
+	type DataProvider = DiaOracleAdapter<
+		MockDiaOracle,
+		UnsignedFixedPoint,
+		Moment,
+		MockOracleKeyConvertor,
+		MockConvertPrice,
+		MockConvertMoment,
+	>;
+	type DataFeedProvider = DataCollector;
 }
 
 parameter_types! {
@@ -185,11 +203,10 @@ impl ExtBuilder {
 	pub fn build() -> sp_io::TestExternalities {
 		let mut storage = frame_system::GenesisConfig::default().build_storage::<Test>().unwrap();
 
-		oracle::GenesisConfig::<Test> {
-			authorized_oracles: vec![(0, "test".as_bytes().to_vec())],
-			max_delay: 0,
-		}
-		.assimilate_storage(&mut storage)
+		frame_support::traits::GenesisBuild::<Test>::assimilate_storage(
+			&oracle::GenesisConfig { oracle_keys: vec![], max_delay: 0 },
+			&mut storage,
+		)
 		.unwrap();
 
 		sp_io::TestExternalities::from(storage)
@@ -205,5 +222,80 @@ where
 		Security::set_active_block_number(1);
 		System::set_block_number(1);
 		test();
+		// COINS.write().unwrap().clear();
 	});
+}
+
+thread_local! {
+	static COINS: RefCell<std::collections::HashMap<DataKey, Data>> = RefCell::new(std::collections::HashMap::<DataKey, Data>::new());
+}
+
+pub struct MockDiaOracle;
+impl DiaOracle for MockDiaOracle {
+	fn get_coin_info(
+		blockchain: Vec<u8>,
+		symbol: Vec<u8>,
+	) -> Result<dia_oracle::CoinInfo, sp_runtime::DispatchError> {
+		let key = (blockchain, symbol);
+		let data_key = DataKey { blockchain: key.0.clone(), symbol: key.1.clone() };
+		let mut result: Option<Data> = None;
+		COINS.with(|c| {
+			let r = c.borrow();
+
+			let hash_set = &*r;
+			let o = hash_set.get(&data_key);
+			match o {
+				Some(i) => result = Some(i.clone()),
+				None => {},
+			};
+		});
+		let Some(result) = result else {
+			return Err(sp_runtime::DispatchError::Other(""));
+		};
+		let mut coin_info = CoinInfo::default();
+		coin_info.price = result.price;
+		coin_info.last_update_timestamp = result.timestamp;
+
+		Ok(coin_info)
+	}
+
+	//Spacewalk DiaOracleAdapter does not use get_value function. There is no need to implement
+	// this function.
+	fn get_value(
+		_blockchain: Vec<u8>,
+		_symbol: Vec<u8>,
+	) -> Result<dia_oracle::PriceInfo, sp_runtime::DispatchError> {
+		unimplemented!(
+			"DiaOracleAdapter implementation of DataProviderExtended does not use this function."
+		)
+	}
+}
+
+pub struct DataCollector;
+//DataFeeder required to implement DataProvider trait but there no need to implement get function
+impl DataProvider<Key, TimestampedValue<UnsignedFixedPoint, Moment>> for DataCollector {
+	fn get(_key: &Key) -> Option<TimestampedValue<UnsignedFixedPoint, Moment>> {
+		unimplemented!("Not required to implement DataProvider get function")
+	}
+}
+impl orml_oracle::DataFeeder<Key, TimestampedValue<UnsignedFixedPoint, Moment>, AccountId>
+	for DataCollector
+{
+	fn feed_value(
+		_who: AccountId,
+		key: Key,
+		value: TimestampedValue<UnsignedFixedPoint, Moment>,
+	) -> sp_runtime::DispatchResult {
+		let key = MockOracleKeyConvertor::convert(key).unwrap();
+		let r = value.value.into_inner();
+
+		let data_key = DataKey { blockchain: key.0.clone(), symbol: key.1.clone() };
+		let data = Data { key: data_key.clone(), price: r, timestamp: value.timestamp };
+
+		COINS.with(|coins| {
+			let mut r = coins.borrow_mut();
+			r.insert(data_key, data);
+		});
+		Ok(())
+	}
 }

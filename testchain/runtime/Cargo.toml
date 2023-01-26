@@ -12,6 +12,10 @@ codec = {package = "parity-scale-codec", version = "3.0.0", default-features = f
 getrandom = {version = "0.2.7", default-features = false, features = ["js"]}
 scale-info = {version = "2.1.1", default-features = false, features = ["derive"]}
 
+cfg-if = "1.0.0"
+lazy_static = "1.4.0"
+spin = { version = "0.9.4", features = ["mutex"] }
+
 # Substrate dependencies
 sp-api = {git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.36", default-features = false}
 sp-block-builder = {git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.36", default-features = false}
@@ -71,6 +75,9 @@ module-replace-rpc-runtime-api = {path = "../../pallets/replace/rpc/runtime-api"
 module-vault-registry-rpc-runtime-api = {path = "../../pallets/vault-registry/rpc/runtime-api", default-features = false}
 
 primitives = {package = "spacewalk-primitives", path = "../../primitives", default-features = false}
+
+orml-oracle = { git = "https://github.com/open-web3-stack/open-runtime-module-library", branch = "polkadot-v0.9.36", default-features = false }
+dia-oracle = { git = "https://github.com/diadata-org/oracle-pallet", branch = "master", default-features = false }
 
 [dev-dependencies]
 flate2 = "1.0"
@@ -148,4 +155,7 @@ std = [
   "staking/std",
   "stellar-relay/std",
   "vault-registry/std",
+  "orml-oracle/std",
+  "dia-oracle/std",
 ]
+testing-utils = ["oracle/testing-utils"]

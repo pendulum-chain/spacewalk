@@ -20,6 +20,9 @@ frame-system = { git = "https://github.com/paritytech/substrate", branch = "polk
 frame-benchmarking = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.36", default-features = false, optional = true }
 pallet-timestamp = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.36", default-features = false }
 
+orml-oracle = { git = "https://github.com/open-web3-stack/open-runtime-module-library", branch = "polkadot-v0.9.36", default-features = false }
+dia-oracle = { git = "https://github.com/diadata-org/oracle-pallet", branch = "master", default-features = false }
+
 # Parachain dependencies
 security = { path = "../security", default-features = false }
 primitives = { package = "spacewalk-primitives", path = "../../primitives", default-features = false }
@@ -36,6 +39,7 @@ security = { path = "../security", features = ['testing-utils'] }
 # Orml dependencies
 orml-tokens = { git = "https://github.com/open-web3-stack/open-runtime-module-library", branch = "polkadot-v0.9.36", default-features = false }
 orml-traits = { git = "https://github.com/open-web3-stack/open-runtime-module-library", branch = "polkadot-v0.9.36", default-features = false }
+
 
 [features]
 default = ["std"]
@@ -54,6 +58,9 @@ std = [
     "staking/std",
     "currency/std",
     "primitives/std",
+    "orml-oracle/std",
+    "dia-oracle/std"
+    
 ]
 runtime-benchmarks = [
     "frame-benchmarking",
@@ -61,6 +68,7 @@ runtime-benchmarks = [
     "frame-system/runtime-benchmarks",
     "pallet-timestamp/runtime-benchmarks",
     "currency/testing-constants",
-    "security/testing-utils"
+    "security/testing-utils",
+    "testing-utils"
 ]
 testing-utils = []
