@@ -4,16 +4,6 @@ use mocktopus::mocking::*;
 use sp_arithmetic::FixedU128;
 use sp_runtime::FixedPointNumber;
 
-type Event = crate::Event<Test>;
-
-// use macro to avoid messing up stack trace
-macro_rules! assert_emitted {
-	($event:expr) => {
-		let test_event = TestEvent::Oracle($event);
-		assert!(System::events().iter().any(|a| a.event == test_event));
-	};
-}
-
 fn mine_block() {
 	crate::Pallet::<Test>::begin_block(0);
 }

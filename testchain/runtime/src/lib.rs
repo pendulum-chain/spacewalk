@@ -44,7 +44,6 @@ pub use issue::{Event as IssueEvent, IssueRequest};
 pub use module_oracle_rpc_runtime_api::BalanceWrapper;
 pub use nomination::Event as NominationEvent;
 use oracle::dia::DiaOracleAdapter;
-use primitives::DiaOracleKeyConvertor;
 pub use primitives::{
 	self, AccountId, Balance, BlockNumber, CurrencyId, ForeignCurrencyId, Hash, Moment, Nonce,
 	Signature, SignedFixedPoint, SignedInner, UnsignedFixedPoint, UnsignedInner,
@@ -467,7 +466,7 @@ cfg_if::cfg_if! {
 			DiaOracleModule,
 			UnsignedFixedPoint,
 			Moment,
-			DiaOracleKeyConvertor,
+			primitives::DiaOracleKeyConvertor,
 			ConvertPrice,
 			ConvertMoment,
 		>;
@@ -485,7 +484,7 @@ cfg_if::cfg_if! {
 			DiaOracleModule,
 			UnsignedFixedPoint,
 			Moment,
-			DiaOracleKeyConvertor,
+			primitives::DiaOracleKeyConvertor,
 			ConvertPrice,
 			ConvertMoment,
 		>;
