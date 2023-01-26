@@ -73,7 +73,6 @@ mod metadata_aliases {
 			Balance,
 			CurrencyId,
 		>;
-	// pub use crate::metadata::runtime_types::spacewalk_primitives::CurrencyId;
 
 	pub type SpacewalkIssueRequest =
 		metadata::runtime_types::spacewalk_primitives::issue::IssueRequest<

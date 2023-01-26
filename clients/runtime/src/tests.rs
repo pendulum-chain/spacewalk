@@ -51,9 +51,6 @@ async fn test_getters() {
 		async {
 			assert_eq!(parachain_rpc.get_parachain_status().await.unwrap(), StatusCode::Error);
 		},
-		// async {
-		// 	assert!(parachain_rpc.get_replace_dust_amount().await.unwrap() > 0);
-		// },
 		async {
 			assert!(parachain_rpc.get_current_active_block_number().await.unwrap() == 0);
 		}

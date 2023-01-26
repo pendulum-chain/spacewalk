@@ -4,8 +4,6 @@ use primitives::ForeignCurrencyId;
 /// Tests for Staking
 use crate::mock::*;
 
-// type Event = crate::Event<Test>;
-
 #[macro_export]
 macro_rules! fixed {
 	($amount:expr) => {

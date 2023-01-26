@@ -14,7 +14,6 @@ fn feed_values_succeeds() {
 		let key = OracleKey::ExchangeRate(CurrencyId::XCM(DOT));
 		let rate = FixedU128::checked_from_rational(100, 1).unwrap();
 
-		// Oracle::is_authorized.mock_safe(|_| MockResult::Return(true));
 		let result = Oracle::_feed_values(3, vec![(key.clone(), rate)]);
 		assert_ok!(result);
 
