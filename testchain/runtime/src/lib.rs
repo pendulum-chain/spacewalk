@@ -6,18 +6,16 @@
 #[macro_use]
 extern crate frame_benchmarking;
 
+use cfg_if::cfg_if;
+use codec::Encode;
+pub use dia_oracle::dia::*;
 use frame_support::{
 	construct_runtime, parameter_types,
 	traits::{ConstU128, ConstU8, Contains, KeyOwnerProofSystem},
 	weights::{constants::WEIGHT_REF_TIME_PER_SECOND, ConstantMultiplier, IdentityFee, Weight},
 	PalletId,
 };
-
-use codec::Encode;
-pub use dia_oracle::dia::*;
 pub use frame_system::Call as SystemCall;
-
-use oracle::{dia::DiaOracleAdapter, OracleKey};
 use orml_currencies::BasicCurrencyAdapter;
 use orml_oracle::{DataProvider, TimestampedValue};
 use orml_traits::{currency::MutationHooks, parameter_type_with_key};
@@ -26,7 +24,6 @@ use pallet_grandpa::{
 	fg_primitives, AuthorityId as GrandpaId, AuthorityList as GrandpaAuthorityList,
 };
 pub use pallet_timestamp::Call as TimestampCall;
-use primitives::DiaOracleKeyConvertor;
 use sp_api::impl_runtime_apis;
 use sp_consensus_aura::sr25519::AuthorityId as AuraId;
 use sp_core::{crypto::KeyTypeId, OpaqueMetadata, H256};
@@ -37,7 +34,7 @@ use sp_runtime::{
 		Zero,
 	},
 	transaction_validity::{TransactionSource, TransactionValidity},
-	ApplyExtrinsicResult, DispatchError, FixedPointNumber, Perbill,
+	ApplyExtrinsicResult, DispatchError, FixedPointNumber, Perbill, SaturatedConversion,
 };
 use sp_std::{marker::PhantomData, prelude::*};
 #[cfg(feature = "std")]
@@ -48,6 +45,8 @@ use currency::Amount;
 pub use issue::{Event as IssueEvent, IssueRequest};
 pub use module_oracle_rpc_runtime_api::BalanceWrapper;
 pub use nomination::Event as NominationEvent;
+use oracle::{dia::DiaOracleAdapter, OracleKey};
+use primitives::DiaOracleKeyConvertor;
 pub use primitives::{
 	self, AccountId, Balance, BlockNumber, CurrencyId, ForeignCurrencyId, Hash, Moment, Nonce,
 	Signature, SignedFixedPoint, SignedInner, UnsignedFixedPoint, UnsignedInner,
@@ -414,7 +413,6 @@ impl frame_system::offchain::SigningTypes for Runtime {
 	type Signature = Signature;
 }
 
-use sp_runtime::SaturatedConversion;
 impl<LocalCall> frame_system::offchain::CreateSignedTransaction<LocalCall> for Runtime
 where
 	RuntimeCall: From<LocalCall>,
@@ -461,41 +459,130 @@ impl Convert<u64, Option<Moment>> for ConvertMoment {
 		Some(moment)
 	}
 }
-//Integration tests feed_value prices data directly to DIA oracle pallet. Need defatult
-// implementation only for compile this runtime for integration tests inside 'runtime' package.
-pub struct DataCollector;
-//DataFeeder required to implement DataProvider trait but there no need to implement get function
-impl DataProvider<OracleKey, TimestampedValue<UnsignedFixedPoint, Moment>> for DataCollector {
-	fn get(_key: &OracleKey) -> Option<TimestampedValue<UnsignedFixedPoint, Moment>> {
-		unimplemented!("Not required to implement DataProvider get function")
+
+cfg_if::cfg_if! {
+	if #[cfg(any(feature = "testing-utils", feature = "runtime-benchmarks"))] {
+
+		use sp_std::cell::RefCell;
+		use sp_std::collections::btree_map::BTreeMap as HashMap;
+		use spin::mutex::Mutex;
+
+		lazy_static::lazy_static! {
+			static ref COINS: Mutex<HashMap<DataKey, Data>> = Mutex::new(HashMap::<DataKey, Data>::new());
+		}
+
+		use oracle::oracle_mock::{*};
+
+		pub struct MockDiaOracle;
+		impl DiaOracle for MockDiaOracle {
+			fn get_coin_info(
+				blockchain: Vec<u8>,
+				symbol: Vec<u8>,
+			) -> Result<dia_oracle::CoinInfo, sp_runtime::DispatchError> {
+				let key = (blockchain, symbol);
+				let data_key =
+					DataKey { blockchain: key.0.clone(), symbol: key.1.clone() };
+				let mut result: Option<Data> = None;
+				let map = COINS.lock();
+				let o = map.get(&data_key);
+				match o {
+					Some(i) => result = Some(i.clone()),
+					None => {},
+				};
+
+				let Some(result) = result else {
+					return Err(sp_runtime::DispatchError::Other(""));
+				};
+				let mut coin_info = CoinInfo::default();
+				coin_info.price = result.price;
+				coin_info.last_update_timestamp = result.timestamp;
+
+				Ok(coin_info)
+			}
+
+			//Spacewalk DiaOracleAdapter does not use get_value function. There is no need to implement
+			// this function.
+			fn get_value(
+				_blockchain: Vec<u8>,
+				_symbol: Vec<u8>,
+			) -> Result<dia_oracle::PriceInfo, sp_runtime::DispatchError> {
+				unimplemented!(
+					"DiaOracleAdapter implementation of DataProviderExtended does not use this function."
+				)
+			}
+		}
+
+		// Integration tests feed_value prices data directly to DIA oracle pallet. Need defatult
+		// implementation only for compile this runtime for integration tests inside 'runtime' package.
+		pub struct DataCollector;
+
+		//DataFeeder required to implement DataProvider trait but there no need to implement get function
+		impl DataProvider<OracleKey, TimestampedValue<UnsignedFixedPoint, Moment>> for DataCollector {
+			fn get(_key: &OracleKey) -> Option<TimestampedValue<UnsignedFixedPoint, Moment>> {
+				unimplemented!("Not required to implement DataProvider get function")
+			}
+		}
+
+		impl orml_oracle::DataFeeder<OracleKey, TimestampedValue<UnsignedFixedPoint, Moment>, AccountId>
+		for DataCollector
+		{
+			fn feed_value(
+				_who: AccountId,
+				key: OracleKey,
+				value: TimestampedValue<UnsignedFixedPoint, Moment>,
+			) -> sp_runtime::DispatchResult {
+				let key = MockOracleKeyConvertor::convert(key).unwrap();
+				let r = value.value.into_inner();
+
+				let data_key = DataKey { blockchain: key.0.clone(), symbol: key.1.clone() };
+				let data = Data { key: data_key.clone(), price: r, timestamp: value.timestamp };
+
+				COINS.lock().insert(data_key, data);
+				Ok(())
+			}
+		}
 	}
 }
-//Integration tests feed_value prices data directly to DIA oracle pallet.
-impl orml_oracle::DataFeeder<OracleKey, TimestampedValue<UnsignedFixedPoint, Moment>, AccountId>
-	for DataCollector
-{
-	fn feed_value(
-		_who: AccountId,
-		_key: OracleKey,
-		_value: TimestampedValue<UnsignedFixedPoint, Moment>,
-	) -> sp_runtime::DispatchResult {
-		unimplemented!("Not required to implement DataFeeder feed_value function")
+
+cfg_if::cfg_if! {
+	if #[cfg(feature = "runtime-benchmarks")] {
+		type DataProviderImpl = DiaOracleAdapter<
+			MockDiaOracle,
+			UnsignedFixedPoint,
+			Moment,
+			oracle::oracle_mock::MockOracleKeyConvertor,
+			oracle::oracle_mock::MockConvertPrice,
+			oracle::oracle_mock::MockConvertMoment,
+		>;
+		type DataFeedProvider = DataCollector;
+	} else if #[cfg(feature = "testing-utils")] {
+		type DataProviderImpl = DiaOracleAdapter<
+			DiaOracleModule,
+			UnsignedFixedPoint,
+			Moment,
+			DiaOracleKeyConvertor,
+			ConvertPrice,
+			ConvertMoment,
+		>;
+		type DataFeedProvider = DataCollector;
+	} else {
+		type DataProviderImpl = DiaOracleAdapter<
+			DiaOracleModule,
+			UnsignedFixedPoint,
+			Moment,
+			DiaOracleKeyConvertor,
+			ConvertPrice,
+			ConvertMoment,
+		>;
+		type DataFeedProvider = ();
 	}
 }
 
 impl oracle::Config for Runtime {
 	type RuntimeEvent = RuntimeEvent;
 	type WeightInfo = ();
-	type DataProvider = DiaOracleAdapter<
-		DiaOracleModule,
-		UnsignedFixedPoint,
-		Moment,
-		DiaOracleKeyConvertor,
-		ConvertPrice,
-		ConvertMoment,
-	>;
+	type DataProvider = DataProviderImpl;
 
-	#[cfg(feature = "testing-utils")]
 	type DataFeedProvider = DataCollector;
 }
 

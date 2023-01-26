@@ -12,6 +12,10 @@ codec = {package = "parity-scale-codec", version = "3.0.0", default-features = f
 getrandom = {version = "0.2.7", default-features = false, features = ["js"]}
 scale-info = {version = "2.1.1", default-features = false, features = ["derive"]}
 
+cfg-if = "1.0.0"
+lazy_static = "1.4.0"
+spin = { version = "0.9.4", features = ["mutex"] }
+
 # Substrate dependencies
 sp-api = {git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.36", default-features = false}
 sp-block-builder = {git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.36", default-features = false}
@@ -102,7 +106,8 @@ runtime-benchmarks = [
   "replace/runtime-benchmarks",
   "stellar-relay/runtime-benchmarks",
   "vault-registry/runtime-benchmarks",
-  "testing-utils"
+  "oracle/testing-utils"
+#  "testing-utils"
 ]
 std = [
   "codec/std",
