@@ -369,27 +369,6 @@ impl SpacewalkParachain {
 		Ok(())
 	}
 
-	/// Listen to fee_rate changes and broadcast new values on the fee_rate_update_tx channel
-	pub async fn listen_for_fee_rate_changes(&self) -> Result<(), Error> {
-		self.on_event::<FeedValuesEvent, _, _, _>(
-			|event| async move {
-				for (key, value) in event.values {
-					if let OracleKey::FeeEstimation = key {
-						let _ = self.fee_rate_update_tx.send(value);
-					}
-				}
-			},
-			|_error| {
-				// Don't propagate error, it's unlikely to be useful.
-				// We assume critical errors will cause the system to restart.
-				// Note that we can't send the error itself due to the channel requiring
-				// the type to be clonable, which Error isn't
-			},
-		)
-		.await?;
-		Ok(())
-	}
-
 	/// Emulate the POOL_INVALID_TX error using token transfer extrinsics.
 	#[cfg(test)]
 	pub async fn get_invalid_tx_error(&self, recipient: AccountId) -> Error {
