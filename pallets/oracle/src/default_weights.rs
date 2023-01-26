@@ -45,7 +45,7 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 	// Storage: Oracle OracleKeys (r:0 w:1)
 	fn update_oracle_keys() -> Weight {
 		// Minimum execution time: 8_000 nanoseconds.
-		Weight::from_ref_time(9_000_000 as u64)
+		Weight::from_ref_time(8_000_000 as u64)
 			.saturating_add(T::DbWeight::get().writes(1 as u64))
 	}
 }
@@ -62,7 +62,7 @@ impl WeightInfo for () {
 	// Storage: Oracle OracleKeys (r:0 w:1)
 	fn update_oracle_keys() -> Weight {
 		// Minimum execution time: 8_000 nanoseconds.
-		Weight::from_ref_time(9_000_000 as u64)
+		Weight::from_ref_time(8_000_000 as u64)
 			.saturating_add(RocksDbWeight::get().writes(1 as u64))
 	}
 }
