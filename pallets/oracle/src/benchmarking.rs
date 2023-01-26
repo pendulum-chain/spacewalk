@@ -13,7 +13,6 @@ benchmarks! {
 	}
 
 	update_oracle_keys {
-		let origin: T::AccountId = account("origin", 0, 0);
 		let v : Vec<OracleKey> = vec![OracleKey::ExchangeRate(CurrencyId::Native)];
 	}: _(RawOrigin::Root, v)
 	verify {
