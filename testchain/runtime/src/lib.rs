@@ -462,16 +462,13 @@ impl Convert<u64, Option<Moment>> for ConvertMoment {
 
 cfg_if::cfg_if! {
 	if #[cfg(any(feature = "testing-utils", feature = "runtime-benchmarks"))] {
-
-		use sp_std::cell::RefCell;
 		use sp_std::collections::btree_map::BTreeMap as HashMap;
 		use spin::mutex::Mutex;
+		use oracle::oracle_mock::{*};
 
 		lazy_static::lazy_static! {
 			static ref COINS: Mutex<HashMap<DataKey, Data>> = Mutex::new(HashMap::<DataKey, Data>::new());
 		}
-
-		use oracle::oracle_mock::{*};
 
 		pub struct MockDiaOracle;
 		impl DiaOracle for MockDiaOracle {
@@ -583,6 +580,7 @@ impl oracle::Config for Runtime {
 	type WeightInfo = ();
 	type DataProvider = DataProviderImpl;
 
+	#[cfg(any(feature = "runtime-benchmarks", feature = "testing-utils"))]
 	type DataFeedProvider = DataCollector;
 }
 
