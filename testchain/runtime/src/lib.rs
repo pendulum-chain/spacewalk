@@ -451,14 +451,14 @@ where
 
 pub struct ConvertPrice;
 impl Convert<u128, Option<UnsignedFixedPoint>> for ConvertPrice {
-	fn convert(a: u128) -> Option<UnsignedFixedPoint> {
-		Some(UnsignedFixedPoint::from_inner(a))
+	fn convert(price: u128) -> Option<UnsignedFixedPoint> {
+		Some(UnsignedFixedPoint::from_inner(price))
 	}
 }
 pub struct ConvertMoment;
 impl Convert<u64, Option<Moment>> for ConvertMoment {
-	fn convert(a: u64) -> Option<Moment> {
-		Some(a)
+	fn convert(moment: u64) -> Option<Moment> {
+		Some(moment)
 	}
 }
 //Integration tests feed_value prices data directly to DIA oracle pallet. Need defatult
@@ -475,9 +475,9 @@ impl orml_oracle::DataFeeder<OracleKey, TimestampedValue<UnsignedFixedPoint, Mom
 	for DataCollector
 {
 	fn feed_value(
-		who: AccountId,
-		key: OracleKey,
-		value: TimestampedValue<UnsignedFixedPoint, Moment>,
+		_who: AccountId,
+		_key: OracleKey,
+		_value: TimestampedValue<UnsignedFixedPoint, Moment>,
 	) -> sp_runtime::DispatchResult {
 		unimplemented!("Not required to implement DataFeeder feed_value function")
 	}

@@ -1,21 +1,19 @@
-use std::{cell::RefCell, sync::RwLock};
+use std::cell::RefCell;
 
 use dia_oracle::{CoinInfo, DiaOracle};
 use frame_support::{
 	parameter_types,
-	traits::{ConstU32, Everything, GenesisBuild},
+	traits::{ConstU32, Everything},
 };
 use mocktopus::mocking::clear_mocks;
 use orml_oracle::{DataProvider, TimestampedValue};
 use orml_traits::parameter_type_with_key;
 use primitives::oracle::Key;
 use sp_arithmetic::{FixedI128, FixedU128};
-use sp_core::{sr25519::Signature, H256};
+use sp_core::H256;
 use sp_runtime::{
-	testing::{Header, TestXt},
-	traits::{
-		BlakeTwo256, Convert, Extrinsic as ExtrinsicT, IdentifyAccount, IdentityLookup, Verify,
-	},
+	testing::Header,
+	traits::{BlakeTwo256, Convert, IdentityLookup},
 };
 
 pub use currency::testing_constants::{
@@ -27,7 +25,7 @@ use crate::{
 	self as oracle,
 	dia::DiaOracleAdapter,
 	oracle_mock::{Data, DataKey, MockConvertMoment, MockConvertPrice, MockOracleKeyConvertor},
-	Config, Error, OracleKeys,
+	Config, Error,
 };
 
 type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Test>;
@@ -284,7 +282,7 @@ impl orml_oracle::DataFeeder<Key, TimestampedValue<UnsignedFixedPoint, Moment>, 
 	for DataCollector
 {
 	fn feed_value(
-		who: AccountId,
+		_who: AccountId,
 		key: Key,
 		value: TimestampedValue<UnsignedFixedPoint, Moment>,
 	) -> sp_runtime::DispatchResult {

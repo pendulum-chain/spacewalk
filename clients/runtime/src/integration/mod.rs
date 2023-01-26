@@ -2,7 +2,6 @@
 
 use std::{sync::Arc, time::Duration};
 
-use crate::metadata::runtime_types::security::types::StatusCode;
 use frame_support::assert_ok;
 use futures::{future::Either, pin_mut, Future, FutureExt, SinkExt, StreamExt};
 use primitives::DiaOracleKeyConvertor;
@@ -12,10 +11,7 @@ use subxt::{
 	ext::sp_core::{sr25519::Pair, Pair as _},
 };
 use tempdir::TempDir;
-use tokio::{
-	sync::RwLock,
-	time::{sleep, timeout},
-};
+use tokio::{sync::RwLock, time::timeout};
 
 pub use subxt_client::SubxtClient;
 use subxt_client::{
@@ -25,7 +21,7 @@ use subxt_client::{
 
 use crate::{
 	rpc::{OraclePallet, VaultRegistryPallet},
-	CurrencyId, FixedU128, SecurityPallet, SpacewalkParachain, SpacewalkSigner,
+	CurrencyId, FixedU128, SpacewalkParachain, SpacewalkSigner,
 };
 use primitives::oracle::Key as OracleKey;
 
@@ -78,28 +74,6 @@ pub async fn setup_provider(client: SubxtClient, key: AccountKeyring) -> Spacewa
 	SpacewalkParachain::new(client.into(), signer, shutdown_tx)
 		.await
 		.expect("Error creating parachain_rpc")
-}
-
-const SLEEP_DURATION: Duration = Duration::from_millis(1000);
-const TIMEOUT_DURATION: Duration = Duration::from_secs(20);
-
-async fn wait_for_aggregate(parachain_rpc: &SpacewalkParachain) {
-	while true {
-		let status = parachain_rpc.get_parachain_status().await;
-		match status {
-			Ok(status_code) => match status_code {
-				StatusCode::Running => return,
-				StatusCode::Shutdown => {},
-				StatusCode::Error => {},
-			},
-			Err(e) => {},
-		}
-		sleep(SLEEP_DURATION).await;
-	}
-}
-
-pub async fn wait(parachain_rpc: &SpacewalkParachain) {
-	assert_ok!(timeout(TIMEOUT_DURATION, wait_for_aggregate(parachain_rpc)).await);
 }
 
 pub async fn set_exchange_rate_and_wait(
