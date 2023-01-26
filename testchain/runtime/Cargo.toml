@@ -102,6 +102,7 @@ runtime-benchmarks = [
   "replace/runtime-benchmarks",
   "stellar-relay/runtime-benchmarks",
   "vault-registry/runtime-benchmarks",
+  "testing-utils"
 ]
 std = [
   "codec/std",
