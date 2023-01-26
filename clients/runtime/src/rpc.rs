@@ -864,7 +864,7 @@ impl OraclePallet for SpacewalkParachain {
 			Ok(o) => {
 				time = o as u64;
 			},
-			Err(err) => {},
+			Err(_) => {},
 		}
 		if time == 0 {
 			time = u64::MAX / 2 - 10; // by some reason timestamp storage return 0 and thefore spacewalk pallets

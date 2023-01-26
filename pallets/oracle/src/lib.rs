@@ -1,22 +1,17 @@
 //! # Oracle Pallet
 //! Based on the [specification](https://spec.interlay.io/spec/oracle.html).
 
-// #![deny(warnings)]
+#![deny(warnings)]
 #![cfg_attr(test, feature(proc_macro_hygiene))]
 #![cfg_attr(not(feature = "std"), no_std)]
 
 #[cfg(test)]
 extern crate mocktopus;
-
-use codec::{Decode, Encode, MaxEncodedLen};
-// #[cfg(feature = "testing-utils")]
-use frame_support::{
-	dispatch::{DispatchError, DispatchResult},
-	transactional,
-};
+#[cfg(feature = "testing-utils")]
+use frame_support::dispatch::DispatchResult;
+use frame_support::{dispatch::DispatchError, transactional};
 #[cfg(test)]
 use mocktopus::macros::mockable;
-use scale_info::TypeInfo;
 use sp_runtime::{
 	traits::{UniqueSaturatedInto, *},
 	ArithmeticError, FixedPointNumber,
@@ -328,11 +323,11 @@ impl<T: Config> Pallet<T> {
 		currency_id: CurrencyId,
 		exchange_rate: UnsignedFixedPoint<T>,
 	) -> DispatchResult {
-		// Aggregate::<T>::insert(OracleKey::ExchangeRate(currency_id), exchange_rate);
-		// this is useful for benchmark tests
-		//TODO for testing get data from DataProvider as DataFeed trait
 		use sp_std::vec;
-		Self::_feed_values(oracle, vec![((OracleKey::ExchangeRate(currency_id)), exchange_rate)]);
+		frame_support::assert_ok!(Self::_feed_values(
+			oracle,
+			vec![((OracleKey::ExchangeRate(currency_id)), exchange_rate)]
+		));
 		Self::recover_from_oracle_offline();
 		Ok(())
 	}

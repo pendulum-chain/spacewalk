@@ -1,13 +1,9 @@
 #[cfg(feature = "testing-utils")]
-// use std::{cell::RefCell, sync::RwLock};
-use dia_oracle::{CoinInfo, DiaOracle};
-use orml_oracle::{DataProvider, TimestampedValue};
 use sp_runtime::traits::Convert;
 
-use sp_arithmetic::{FixedI128, FixedU128};
+use sp_arithmetic::FixedU128;
 pub type UnsignedFixedPoint = FixedU128;
 use primitives::{oracle::Key, CurrencyId};
-type Moment = u64;
 use sp_std::{vec, vec::Vec};
 
 #[derive(Clone, Default, PartialEq, Eq, Hash)]

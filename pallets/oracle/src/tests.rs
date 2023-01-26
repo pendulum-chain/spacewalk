@@ -1,5 +1,5 @@
 use crate::{mock::*, CurrencyId, OracleKey};
-use frame_support::{assert_err, assert_ok, dispatch::DispatchError};
+use frame_support::{assert_err, assert_ok};
 use mocktopus::mocking::*;
 use sp_arithmetic::FixedU128;
 use sp_runtime::FixedPointNumber;
@@ -11,13 +11,6 @@ macro_rules! assert_emitted {
 	($event:expr) => {
 		let test_event = TestEvent::Oracle($event);
 		assert!(System::events().iter().any(|a| a.event == test_event));
-	};
-}
-
-macro_rules! assert_not_emitted {
-	($event:expr) => {
-		let test_event = TestEvent::Oracle($event);
-		assert!(!System::events().iter().any(|a| a.event == test_event));
 	};
 }
 
@@ -61,14 +54,14 @@ mod oracle_offline_detection {
 		mine_block();
 	}
 
-	fn feed_value(currency_id: CurrencyId, oracle: SubmittingOracle) {
+	fn feed_value(currency_id: CurrencyId, _oracle: SubmittingOracle) {
 		assert_ok!(Oracle::_feed_values(
 			1,
 			vec![(OracleKey::ExchangeRate(currency_id), FixedU128::from(1))]
 		));
 		mine_block();
 	}
-	fn feed_value_with_value(currency_id: CurrencyId, oracle: SubmittingOracle, value: u128) {
+	fn feed_value_with_value(currency_id: CurrencyId, _oracle: SubmittingOracle, value: u128) {
 		assert_ok!(Oracle::_feed_values(
 			1,
 			vec![(OracleKey::ExchangeRate(currency_id), FixedU128::from(value))]
