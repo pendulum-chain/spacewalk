@@ -76,8 +76,8 @@ module-vault-registry-rpc-runtime-api = {path = "../../pallets/vault-registry/rp
 
 primitives = {package = "spacewalk-primitives", path = "../../primitives", default-features = false}
 
-orml-oracle = { git = "https://github.com/open-web3-stack/open-runtime-module-library", branch = "polkadot-v0.9.36", default-features = false }
-dia-oracle = { git = "https://github.com/diadata-org/oracle-pallet", branch = "master", default-features = false }
+orml-oracle = { git = "https://github.com/open-web3-stack/open-runtime-module-library", branch = "polkadot-v0.9.37", default-features = false }
+dia-oracle = { git = "https://github.com/pendulum-chain/oracle-pallet", branch = "polkadot-v0.9.37", default-features = false }
 
 [dev-dependencies]
 flate2 = "1.0"
