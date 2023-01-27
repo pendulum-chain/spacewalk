@@ -205,7 +205,7 @@ fn test_is_invalidated() {
 #[test]
 fn set_xlm_tx_fees_per_byte_succeeds() {
 	run_test(|| {
-		let keys = vec![OracleKey::FeeEstimation];
+		let keys = vec![OracleKey::ExchangeRate(CurrencyId::XCM(DOT))];
 
 		let values: Vec<_> = keys
 			.iter()

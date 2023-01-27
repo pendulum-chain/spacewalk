@@ -141,7 +141,6 @@ where
 		FixedU128::saturating_from_rational(1u128, 100u128),
 	)
 	.await;
-	set_stellar_fees(&parachain_rpc, FixedU128::from(1)).await;
 
 	execute(client).await
 }
@@ -174,7 +173,6 @@ where
 		FixedU128::saturating_from_rational(1u128, 100u128),
 	)
 	.await;
-	set_stellar_fees(&parachain_rpc, FixedU128::from(1)).await;
 
 	let vault_provider = setup_provider(client.clone(), AccountKeyring::Charlie).await;
 	let vault_id = VaultId::new(
