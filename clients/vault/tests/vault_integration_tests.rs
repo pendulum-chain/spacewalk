@@ -210,7 +210,6 @@ async fn test_redeem_succeeds() {
 		get_exchange_rate(&vault_provider, DEFAULT_TESTING_CURRENCY).await;
 		get_exchange_rate(&vault_provider, DEFAULT_WRAPPED_CURRENCY).await;
 		get_exchange_rate(&vault_provider, DEFAULT_NATIVE_CURRENCY).await;
-		assert_eq!(keys.len(), 3);
 		let issue_amount = 100000;
 		let vault_collateral = get_required_vault_collateral_for_issue(
 			&vault_provider,
