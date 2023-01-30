@@ -213,8 +213,6 @@ mod vault_id {
 }
 
 mod dispatch_error {
-	use sp_runtime::ArithmeticError;
-
 	use crate::metadata::{
 		runtime_types::{
 			sp_arithmetic::ArithmeticError as OtherArithmeticError,
