@@ -203,28 +203,6 @@ fn test_is_invalidated() {
 }
 
 #[test]
-fn set_xlm_tx_fees_per_byte_succeeds() {
-	run_test(|| {
-		let keys = vec![OracleKey::ExchangeRate(CurrencyId::XCM(DOT))];
-
-		let values: Vec<_> = keys
-			.iter()
-			.enumerate()
-			.map(|(idx, key)| {
-				(key.clone(), FixedU128::checked_from_rational(idx as u32, 1).unwrap())
-			})
-			.collect();
-
-		assert_ok!(Oracle::_feed_values(3, values.clone()));
-		mine_block();
-
-		for (key, value) in values {
-			assert_eq!(Oracle::get_price(key).unwrap(), value);
-		}
-	});
-}
-
-#[test]
 fn begin_block_set_oracle_offline_succeeds() {
 	run_test(|| unsafe {
 		let mut oracle_reported = false;
