@@ -215,7 +215,7 @@ mod vault_id {
 mod dispatch_error {
 	use crate::metadata::{
 		runtime_types::{
-			sp_arithmetic::ArithmeticError as OtherArithmeticError,
+			sp_arithmetic::ArithmeticError,
 			sp_runtime::{ModuleError, TokenError, TransactionalError},
 		},
 		DispatchError,
@@ -249,7 +249,7 @@ mod dispatch_error {
 		Unsupported,
 	);
 
-	convert_enum!(RichArithmeticError, OtherArithmeticError, Underflow, Overflow, DivisionByZero,);
+	convert_enum!(RichArithmeticError, ArithmeticError, Underflow, Overflow, DivisionByZero,);
 
 	convert_enum!(RichTransactionalError, TransactionalError, LimitReached, NoLayer,);
 
