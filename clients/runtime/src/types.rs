@@ -213,8 +213,6 @@ mod vault_id {
 }
 
 mod dispatch_error {
-	use sp_runtime::ArithmeticError;
-
 	use crate::metadata::{
 		runtime_types::{
 			sp_arithmetic::ArithmeticError as OtherArithmeticError,
@@ -251,7 +249,7 @@ mod dispatch_error {
 		Unsupported,
 	);
 
-	// convert_enum!(RichArithmeticError, ArithmeticError, Underflow, Overflow, DivisionByZero,);
+	convert_enum!(RichArithmeticError, OtherArithmeticError, Underflow, Overflow, DivisionByZero,);
 
 	convert_enum!(RichTransactionalError, TransactionalError, LimitReached, NoLayer,);
 
@@ -267,14 +265,8 @@ mod dispatch_error {
 				RichDispatchError::NoProviders => DispatchError::NoProviders,
 				RichDispatchError::TooManyConsumers => DispatchError::TooManyConsumers,
 				RichDispatchError::Token(token_error) => DispatchError::Token(token_error.into()),
-				RichDispatchError::Arithmetic(arithmetic_error) => match arithmetic_error {
-					ArithmeticError::Underflow =>
-						DispatchError::Arithmetic(OtherArithmeticError::Underflow),
-					ArithmeticError::Overflow =>
-						DispatchError::Arithmetic(OtherArithmeticError::Overflow),
-					ArithmeticError::DivisionByZero =>
-						DispatchError::Arithmetic(OtherArithmeticError::DivisionByZero),
-				},
+				RichDispatchError::Arithmetic(arithmetic_error) =>
+					DispatchError::Arithmetic(arithmetic_error.into()),
 				RichDispatchError::Transactional(transactional_error) =>
 					DispatchError::Transactional(transactional_error.into()),
 				RichDispatchError::Exhausted |
