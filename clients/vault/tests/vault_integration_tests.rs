@@ -206,7 +206,6 @@ async fn test_redeem_succeeds() {
 		let vault_id_manager =
 			VaultIdManager::from_map(vault_provider.clone(), wallet_arc.clone(), vault_ids);
 
-		let keys = vault_provider.get_oracle_keys().await.unwrap();
 		get_exchange_rate(&vault_provider, DEFAULT_TESTING_CURRENCY).await;
 		get_exchange_rate(&vault_provider, DEFAULT_WRAPPED_CURRENCY).await;
 		get_exchange_rate(&vault_provider, DEFAULT_NATIVE_CURRENCY).await;

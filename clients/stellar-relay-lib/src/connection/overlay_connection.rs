@@ -18,8 +18,6 @@ pub struct StellarOverlayConnection {
 	cfg: ConnConfig,
 	/// Maximum retries for reconnection
 	max_retries: u8,
-
-	is_disconnected: bool,
 }
 
 impl StellarOverlayConnection {
@@ -36,14 +34,10 @@ impl StellarOverlayConnection {
 			local_node,
 			cfg,
 			max_retries,
-			is_disconnected: false,
 		}
 	}
 
 	pub async fn send(&self, message: StellarMessage) -> Result<(), Error> {
-		if self.is_disconnected {
-			return Err(Error::Disconnected)
-		}
 		self.actions_sender
 			.send(ConnectorActions::SendMessage(Box::new(message)))
 			.await
@@ -51,15 +45,10 @@ impl StellarOverlayConnection {
 	}
 
 	pub async fn disconnect(&mut self) -> Result<(), Error> {
-		let result = self
-			.actions_sender
+		self.actions_sender
 			.send(ConnectorActions::Disconnect)
 			.await
-			.map_err(Error::from);
-		if result.is_ok() {
-			self.is_disconnected = true;
-		}
-		result
+			.map_err(Error::from)
 	}
 
 	/// Receives Stellar messages from the connection.
