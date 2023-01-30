@@ -288,8 +288,15 @@ pub(crate) async fn connection_handler(
 		match timeout(Duration::from_secs(connector.timeout_in_secs), actions_receiver.recv()).await
 		{
 			Ok(Some(ConnectorActions::Disconnect)) => {
-				log::info!("Disconnected by dropping the TCP stream");
-				drop(w_stream);
+				log::info!("Disconnecting TCP stream...");
+				w_stream.shutdown().await.map_err(|e| {
+					log::error!("failed to shutdown write half of stream: {:?}", e);
+
+					Error::ConnectionFailed("Failed to disconnect tcp stream".to_string())
+				})?;
+
+				drop(connector);
+				drop(actions_receiver);
 				return Ok(())
 			},
 
@@ -298,10 +305,12 @@ pub(crate) async fn connection_handler(
 				_connection_handler(action, &mut connector, &mut w_stream).await?;
 			},
 
-			Ok(None) => {},
+			Ok(None) => {
+				log::info!("why is it none?");
+			},
 
 			Err(elapsed) => {
-				log::error!("{} for receiving messages.", elapsed.to_string());
+				log::info!("{} for receiving messages.", elapsed.to_string());
 				if timeout_counter >= connector.retries {
 					connector.send_to_user(StellarRelayMessage::Timeout).await?;
 					return Err(Error::ConnectionFailed(format!(
