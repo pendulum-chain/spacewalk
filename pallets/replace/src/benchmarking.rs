@@ -74,10 +74,6 @@ fn initialize_oracle<T: crate::Config>() {
 				OracleKey::ExchangeRate(get_wrapped_currency_id()),
 				UnsignedFixedPoint::<T>::checked_from_rational(1, 1).unwrap(),
 			),
-			(
-				OracleKey::FeeEstimation,
-				UnsignedFixedPoint::<T>::checked_from_rational(3, 1).unwrap(),
-			),
 		],
 	);
 	assert_ok!(result);

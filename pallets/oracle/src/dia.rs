@@ -5,7 +5,7 @@ use sp_std::marker;
 
 use scale_info::prelude::string::String;
 use sp_runtime::traits::Convert;
-use sp_std::{vec, vec::Vec};
+use sp_std::vec::Vec;
 
 const DOT_DIA_BLOCKCHAIN: &str = "Polkadot";
 const DOT_DIA_SYMBOL: &str = "DOT";
@@ -34,7 +34,6 @@ impl Convert<OracleKey, Option<(Vec<u8>, Vec<u8>)>> for DiaOracleKeyConvertor {
 				CurrencyId::AlphaNum4 { .. } => unimplemented!(),
 				CurrencyId::AlphaNum12 { .. } => unimplemented!(),
 			},
-			OracleKey::FeeEstimation => Some((vec![6u8], vec![])),
 		}
 	}
 }

@@ -214,7 +214,10 @@ mod vault_id {
 
 mod dispatch_error {
 	use crate::metadata::{
-		runtime_types::sp_runtime::{ArithmeticError, ModuleError, TokenError, TransactionalError},
+		runtime_types::{
+			sp_arithmetic::ArithmeticError,
+			sp_runtime::{ModuleError, TokenError, TransactionalError},
+		},
 		DispatchError,
 	};
 

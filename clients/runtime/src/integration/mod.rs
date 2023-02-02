@@ -87,14 +87,6 @@ pub async fn set_exchange_rate_and_wait(
 	parachain_rpc.manual_seal().await;
 }
 
-pub async fn set_stellar_fees(parachain_rpc: &SpacewalkParachain, value: FixedU128) {
-	// assert_ok!(parachain_rpc.set_stellar_fees(value).await);
-	let key = OracleKey::FeeEstimation;
-	let converted_key = DiaOracleKeyConvertor::convert(key.clone()).unwrap();
-	assert_ok!(parachain_rpc.feed_values(vec![(converted_key, value)]).await);
-	parachain_rpc.manual_seal().await;
-}
-
 pub async fn get_exchange_rate(parachain_rpc: &SpacewalkParachain, currency_id: CurrencyId) {
 	let key = OracleKey::ExchangeRate(currency_id);
 	let converted_key = DiaOracleKeyConvertor::convert(key.clone()).unwrap();

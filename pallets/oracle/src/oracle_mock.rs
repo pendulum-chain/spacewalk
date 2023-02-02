@@ -50,7 +50,6 @@ impl Convert<Key, Option<(Vec<u8>, Vec<u8>)>> for MockOracleKeyConvertor {
 				CurrencyId::AlphaNum4 { code, .. } => Some((vec![4u8], code.to_vec())),
 				CurrencyId::AlphaNum12 { code, .. } => Some((vec![5u8], code.to_vec())),
 			},
-			Key::FeeEstimation => Some((vec![6u8], vec![])),
 		}
 	}
 }
@@ -89,7 +88,6 @@ impl Convert<(Vec<u8>, Vec<u8>), Option<Key>> for MockOracleKeyConvertor {
 				];
 				Some(Key::ExchangeRate(CurrencyId::AlphaNum12 { code, issuer: [0u8; 32] }))
 			},
-			6u8 => Some(Key::FeeEstimation),
 			_ => None,
 		}
 	}

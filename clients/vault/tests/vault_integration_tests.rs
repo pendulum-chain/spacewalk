@@ -14,7 +14,7 @@ use tokio::{sync::RwLock, time::sleep};
 
 use primitives::H256;
 use runtime::{
-	integration::*, types::*, FixedPointNumber, FixedU128, IssuePallet, OraclePallet, RedeemPallet,
+	integration::*, types::*, FixedPointNumber, FixedU128, IssuePallet, RedeemPallet,
 	ReplacePallet, ShutdownSender, SpacewalkParachain, SudoPallet, UtilFuncs, VaultRegistryPallet,
 };
 use stellar_relay_lib::sdk::{PublicKey, XdrCodec};
@@ -141,7 +141,6 @@ where
 		FixedU128::saturating_from_rational(1u128, 100u128),
 	)
 	.await;
-	set_stellar_fees(&parachain_rpc, FixedU128::from(1)).await;
 
 	execute(client).await
 }
@@ -174,7 +173,6 @@ where
 		FixedU128::saturating_from_rational(1u128, 100u128),
 	)
 	.await;
-	set_stellar_fees(&parachain_rpc, FixedU128::from(1)).await;
 
 	let vault_provider = setup_provider(client.clone(), AccountKeyring::Charlie).await;
 	let vault_id = VaultId::new(
@@ -208,11 +206,6 @@ async fn test_redeem_succeeds() {
 		let vault_id_manager =
 			VaultIdManager::from_map(vault_provider.clone(), wallet_arc.clone(), vault_ids);
 
-		let keys = vault_provider.get_oracle_keys().await.unwrap();
-		get_exchange_rate(&vault_provider, DEFAULT_TESTING_CURRENCY).await;
-		get_exchange_rate(&vault_provider, DEFAULT_WRAPPED_CURRENCY).await;
-		get_exchange_rate(&vault_provider, DEFAULT_NATIVE_CURRENCY).await;
-		assert_eq!(keys.len(), 3);
 		let issue_amount = 100000;
 		let vault_collateral = get_required_vault_collateral_for_issue(
 			&vault_provider,
