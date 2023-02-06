@@ -39,17 +39,6 @@ pub struct Connector {
 	relay_message_sender: mpsc::Sender<StellarRelayMessage>,
 }
 
-impl Drop for Connector {
-	fn drop(&mut self) {
-		log::trace!(
-			"dropped Connector: \n local: {:?} \n remote_info: {:?} \n auth: {:?}",
-			self.local,
-			self.remote_info,
-			self.connection_auth.pub_key_ecdh()
-		);
-	}
-}
-
 impl Connector {
 	/// Verifies the AuthenticatedMessage, received from the Stellar Node
 	pub(crate) fn verify_auth(
