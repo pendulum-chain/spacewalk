@@ -1,4 +1,4 @@
-use std::fmt::Formatter;
+use std::{fmt::Formatter, sync::Arc};
 
 use substrate_stellar_sdk::{
 	network::{Network, PUBLIC_NETWORK, TEST_NETWORK},
@@ -6,6 +6,7 @@ use substrate_stellar_sdk::{
 	Asset, Hash, Memo, Operation, PublicKey, SecretKey, StroopAmount, Transaction,
 	TransactionEnvelope,
 };
+use tokio::sync::Mutex;
 
 use crate::{
 	error::Error,
@@ -13,14 +14,14 @@ use crate::{
 	types::StellarPublicKeyRaw,
 };
 
-#[derive(Clone, PartialEq, Eq)]
+#[derive(Clone)]
 pub struct StellarWallet {
 	secret_key: SecretKey,
 	is_public_network: bool,
-	/// The last used account sequence number. We need this when sending multiple transactions in a
-	/// batch because otherwise the transactions would be rejected since the sequence number is not
-	/// increased on the network.
-	last_account_sequence: i64,
+	/// waits a transaction to be processed by the network before processing a new one.
+	/// Releasing the lock ensures the sequence number of the account
+	/// has been increased on the network.
+	transaction_submission_lock: Arc<Mutex<()>>,
 }
 
 impl StellarWallet {
@@ -31,7 +32,12 @@ impl StellarWallet {
 		let secret_key =
 			SecretKey::from_encoding(secret_key).map_err(|_| Error::InvalidSecretKey)?;
 
-		let wallet = StellarWallet { secret_key, is_public_network, last_account_sequence: 0 };
+		let wallet = StellarWallet {
+			secret_key,
+			is_public_network,
+			transaction_submission_lock: Arc::new(Mutex::new(())),
+		};
+
 		Ok(wallet)
 	}
 
@@ -79,6 +85,13 @@ impl StellarWallet {
 		memo_hash: Hash,
 		stroop_fee_per_operation: u32,
 	) -> Result<(TransactionResponse, TransactionEnvelope), Error> {
+		println!("FUDGE FUDGE FUDGE locking.... secret key: {:?}", self.get_secret_key());
+		let _ = self.transaction_submission_lock.lock().await;
+		println!(
+			"FUDGE FUDGE FUDGE lock was unlocked! now secret key: {:?} can lock this.",
+			self.get_secret_key()
+		);
+
 		let horizon_client = reqwest::Client::new();
 
 		let public_key_encoded = self.get_public_key().to_encoding();
@@ -86,13 +99,7 @@ impl StellarWallet {
 			std::str::from_utf8(&public_key_encoded).map_err(Error::Utf8Error)?;
 		let account = horizon_client.get_account(account_id_string, self.is_public_network).await?;
 		// Either use the local one or the one from the network depending on which one is higher.
-		let next_sequence_number = if self.last_account_sequence > account.sequence {
-			self.last_account_sequence + 1
-		} else {
-			account.sequence + 1
-		};
-
-		self.last_account_sequence = next_sequence_number;
+		let next_sequence_number = account.sequence + 1;
 
 		let mut transaction = Transaction::new(
 			self.get_public_key(),
@@ -154,16 +161,21 @@ impl std::fmt::Debug for StellarWallet {
 
 #[cfg(test)]
 mod test {
+	use serial_test::serial;
 	use substrate_stellar_sdk::PublicKey;
 
 	use crate::StellarWallet;
 
 	const STELLAR_SECRET_ENCODED: &str = "SCV7RZN5XYYMMVSWYCR4XUMB76FFMKKKNHP63UTZQKVM4STWSCIRLWFJ";
+	const STELLAR_SECRET_ENCODED2: &str =
+		"SCV7RZN5XYYMMVSWYCR4XUMB76FFMKKKNHP63UTZQKVM4STWSCIRLWFJ";
 
 	#[tokio::test]
+	#[serial]
 	async fn sending_payment_works() {
 		let mut wallet =
-			StellarWallet::from_secret_encoded(&STELLAR_SECRET_ENCODED.to_string(), false).unwrap();
+			StellarWallet::from_secret_encoded(&STELLAR_SECRET_ENCODED2.to_string(), false)
+				.unwrap();
 
 		let destination =
 			PublicKey::from_encoding("GCENYNAX2UCY5RFUKA7AYEXKDIFITPRAB7UYSISCHVBTIAKPU2YO57OA")
@@ -175,10 +187,61 @@ mod test {
 		let result =
 			wallet.send_payment_to_address(destination, asset, amount, memo_hash, 100).await;
 
-		println!("the result: {:?}", result);
 		assert!(result.is_ok());
 		let (transaction_response, _) = result.unwrap();
 		assert!(!transaction_response.hash.to_vec().is_empty());
 		assert!(transaction_response.ledger() > 0);
+	}
+
+	#[tokio::test]
+	#[serial]
+	async fn sending_correct_payment_after_incorrect_payment_fails() {
+		let mut wallet =
+			StellarWallet::from_secret_encoded(&STELLAR_SECRET_ENCODED.to_string(), false).unwrap();
+
+		let destination =
+			PublicKey::from_encoding("GCENYNAX2UCY5RFUKA7AYEXKDIFITPRAB7UYSISCHVBTIAKPU2YO57OA")
+				.unwrap();
+		let asset = substrate_stellar_sdk::Asset::native();
+		let amount = 1000;
+		let memo_hash = [0u8; 32];
+		let correct_amount_that_should_not_fail = 100;
+		let incorrect_amount_that_should_fail = 0;
+
+		let ok_transaction_sent = wallet
+			.send_payment_to_address(
+				destination.clone(),
+				asset.clone(),
+				amount,
+				memo_hash,
+				correct_amount_that_should_not_fail,
+			)
+			.await;
+
+		assert!(ok_transaction_sent.is_ok());
+
+		let err_insufficient_fee = wallet
+			.send_payment_to_address(
+				destination.clone(),
+				asset.clone(),
+				amount,
+				memo_hash,
+				incorrect_amount_that_should_fail,
+			)
+			.await;
+
+		assert!(!err_insufficient_fee.is_ok());
+
+		let ok_sequence_number = wallet
+			.send_payment_to_address(
+				destination.clone(),
+				asset.clone(),
+				amount,
+				memo_hash,
+				correct_amount_that_should_not_fail,
+			)
+			.await;
+
+		assert!(ok_sequence_number.is_ok());
 	}
 }

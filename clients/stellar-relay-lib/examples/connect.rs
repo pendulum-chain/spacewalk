@@ -1,3 +1,4 @@
+use std::time::Duration;
 use stellar_relay_lib::{
 	node::NodeInfo,
 	sdk::{
@@ -7,6 +8,7 @@ use stellar_relay_lib::{
 	},
 	ConnConfig, StellarOverlayConnection, StellarRelayMessage,
 };
+use tokio::time::sleep;
 
 const TIER_1_VALIDATOR_IP_TESTNET: &str = "34.235.168.98";
 const TIER_1_VALIDATOR_IP_PUBLIC: &str = "51.161.197.48";
@@ -40,7 +42,17 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 	let cfg = ConnConfig::new(tier1_node_ip, 11625, secret, 0, false, true, false);
 	let mut overlay_connection = StellarOverlayConnection::connect(node_info, cfg).await?;
 
+	let mut counter = 0;
 	while let Some(relay_message) = overlay_connection.listen().await {
+		counter += 1;
+		if counter == 50 {
+			log::info!("time to disconnect...");
+			let res = overlay_connection.disconnect().await;
+			log::info!("disconnected: {:?}", res);
+			sleep(Duration::from_secs(1)).await;
+			let res = overlay_connection.send(StellarMessage::GetPeers).await;
+			log::info!("send result: {:?}", res);
+		}
 		match relay_message {
 			StellarRelayMessage::Connect { pub_key, node_info } => {
 				let pub_key_xdr = pub_key.to_xdr();
