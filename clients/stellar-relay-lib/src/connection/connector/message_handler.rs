@@ -20,9 +20,9 @@ impl Connector {
 		log::debug!("proc_id: {} processing {:?}", proc_id, msg_type);
 
 		match msg_type {
-			MessageType::Transaction if !self.receive_tx_messages() => {
+			MessageType::Transaction | MessageType::FloodAdvert if !self.receive_tx_messages() => {
 				self.increment_remote_sequence()?;
-				self.check_to_send_more(msg_type).await?;
+				self.check_to_send_more(MessageType::Transaction).await?;
 			},
 
 			MessageType::ScpMessage if !self.receive_scp_messages() => {

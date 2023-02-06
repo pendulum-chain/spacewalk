@@ -1,6 +1,6 @@
 use substrate_stellar_sdk::types::MessageType;
 
-pub const MAX_FLOOD_MSG_CAP: u32 = 200;
+pub const MAX_FLOOD_MSG_CAP: u32 = 2000;
 
 #[derive(Default)]
 pub struct FlowController {
@@ -33,7 +33,10 @@ impl FlowController {
 
 pub fn is_flood_message(message_type: MessageType) -> bool {
 	match message_type {
-		MessageType::Transaction | MessageType::ScpMessage => true,
+		MessageType::Transaction |
+		MessageType::ScpMessage |
+		MessageType::FloodAdvert |
+		MessageType::FloodDemand => true,
 		_ => false,
 	}
 }
