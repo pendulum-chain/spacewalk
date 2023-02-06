@@ -18,7 +18,8 @@ use crate::{
 pub struct StellarWallet {
 	secret_key: SecretKey,
 	is_public_network: bool,
-	/// waits a transaction to be processed by the network before processing a new one.
+	/// Used to make sure that only one transaction is submitted at a time,
+	/// so that the transaction is not rejected due to an outdated sequence number.
 	/// Releasing the lock ensures the sequence number of the account
 	/// has been increased on the network.
 	transaction_submission_lock: Arc<Mutex<()>>,
@@ -161,15 +162,12 @@ mod test {
 	use crate::StellarWallet;
 
 	const STELLAR_SECRET_ENCODED: &str = "SCV7RZN5XYYMMVSWYCR4XUMB76FFMKKKNHP63UTZQKVM4STWSCIRLWFJ";
-	const STELLAR_SECRET_ENCODED2: &str =
-		"SCV7RZN5XYYMMVSWYCR4XUMB76FFMKKKNHP63UTZQKVM4STWSCIRLWFJ";
 
 	#[tokio::test]
 	#[serial]
 	async fn sending_payment_works() {
 		let mut wallet =
-			StellarWallet::from_secret_encoded(&STELLAR_SECRET_ENCODED2.to_string(), false)
-				.unwrap();
+			StellarWallet::from_secret_encoded(&STELLAR_SECRET_ENCODED.to_string(), false).unwrap();
 
 		let destination =
 			PublicKey::from_encoding("GCENYNAX2UCY5RFUKA7AYEXKDIFITPRAB7UYSISCHVBTIAKPU2YO57OA")
@@ -189,7 +187,7 @@ mod test {
 
 	#[tokio::test]
 	#[serial]
-	async fn sending_correct_payment_after_incorrect_payment_fails() {
+	async fn sending_correct_payment_after_incorrect_payment_works() {
 		let mut wallet =
 			StellarWallet::from_secret_encoded(&STELLAR_SECRET_ENCODED.to_string(), false).unwrap();
 
