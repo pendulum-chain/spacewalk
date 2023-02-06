@@ -222,6 +222,7 @@ mod dispatch_error {
 	};
 
 	type RichTokenError = sp_runtime::TokenError;
+	type RichArithmeticError = sp_runtime::ArithmeticError;
 	type RichDispatchError = sp_runtime::DispatchError;
 	type RichModuleError = sp_runtime::ModuleError;
 	type RichTransactionalError = sp_runtime::TransactionalError;

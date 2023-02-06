@@ -305,12 +305,10 @@ pub(crate) async fn connection_handler(
 				_connection_handler(action, &mut connector, &mut w_stream).await?;
 			},
 
-			Ok(None) => {
-				log::info!("why is it none?");
-			},
+			Ok(None) => {},
 
 			Err(elapsed) => {
-				log::info!("{} for receiving messages.", elapsed.to_string());
+				log::error!("{} for receiving messages.", elapsed.to_string());
 				if timeout_counter >= connector.retries {
 					connector.send_to_user(StellarRelayMessage::Timeout).await?;
 					return Err(Error::ConnectionFailed(format!(
