@@ -85,13 +85,7 @@ impl StellarWallet {
 		memo_hash: Hash,
 		stroop_fee_per_operation: u32,
 	) -> Result<(TransactionResponse, TransactionEnvelope), Error> {
-		println!("FUDGE FUDGE FUDGE locking.... secret key: {:?}", self.get_secret_key());
 		let _ = self.transaction_submission_lock.lock().await;
-		println!(
-			"FUDGE FUDGE FUDGE lock was unlocked! now secret key: {:?} can lock this.",
-			self.get_secret_key()
-		);
-
 		let horizon_client = reqwest::Client::new();
 
 		let public_key_encoded = self.get_public_key().to_encoding();
