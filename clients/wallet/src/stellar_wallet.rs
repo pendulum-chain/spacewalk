@@ -7,6 +7,7 @@ use substrate_stellar_sdk::{
 	TransactionEnvelope,
 };
 use tokio::sync::Mutex;
+use tracing::log;
 
 use crate::{
 	error::Error,
@@ -93,9 +94,13 @@ impl StellarWallet {
 		let account_id_string =
 			std::str::from_utf8(&public_key_encoded).map_err(Error::Utf8Error)?;
 		let account = horizon_client.get_account(account_id_string, self.is_public_network).await?;
-		// Either use the local one or the one from the network depending on which one is higher.
 		let next_sequence_number = account.sequence + 1;
 
+		log::debug!(
+			"Next sequence number: {} for account: {:?}",
+			next_sequence_number,
+			account.account_id
+		);
 		let mut transaction = Transaction::new(
 			self.get_public_key(),
 			next_sequence_number,
@@ -157,11 +162,67 @@ impl std::fmt::Debug for StellarWallet {
 #[cfg(test)]
 mod test {
 	use serial_test::serial;
+	use std::sync::Arc;
 	use substrate_stellar_sdk::PublicKey;
+	use tokio::sync::RwLock;
 
 	use crate::StellarWallet;
 
 	const STELLAR_SECRET_ENCODED: &str = "SCV7RZN5XYYMMVSWYCR4XUMB76FFMKKKNHP63UTZQKVM4STWSCIRLWFJ";
+
+	#[tokio::test]
+	async fn test_lock() {
+		let wallet = Arc::new(RwLock::new(
+			StellarWallet::from_secret_encoded(&STELLAR_SECRET_ENCODED.to_string(), false).unwrap(),
+		));
+
+		let wallet_clone = wallet.clone();
+
+		let first_job = tokio::spawn(async move {
+			let destination = PublicKey::from_encoding(
+				"GCENYNAX2UCY5RFUKA7AYEXKDIFITPRAB7UYSISCHVBTIAKPU2YO57OA",
+			)
+			.unwrap();
+			let asset = substrate_stellar_sdk::Asset::native();
+			let amount = 100;
+			let memo_hash = [0u8; 32];
+
+			let result = wallet_clone
+				.write()
+				.await
+				.send_payment_to_address(destination, asset, amount, memo_hash, 100)
+				.await;
+
+			assert!(result.is_ok());
+			let (transaction_response, _) = result.unwrap();
+			assert!(!transaction_response.hash.to_vec().is_empty());
+			assert!(transaction_response.ledger() > 0);
+		});
+
+		let wallet_clone2 = wallet.clone();
+		let second_job = tokio::spawn(async move {
+			let destination = PublicKey::from_encoding(
+				"GCENYNAX2UCY5RFUKA7AYEXKDIFITPRAB7UYSISCHVBTIAKPU2YO57OA",
+			)
+			.unwrap();
+			let asset = substrate_stellar_sdk::Asset::native();
+			let amount = 50;
+			let memo_hash = [1u8; 32];
+
+			let result = wallet_clone2
+				.write()
+				.await
+				.send_payment_to_address(destination, asset, amount, memo_hash, 100)
+				.await;
+
+			assert!(result.is_ok());
+			let (transaction_response, _) = result.unwrap();
+			assert!(!transaction_response.hash.to_vec().is_empty());
+			assert!(transaction_response.ledger() > 0);
+		});
+
+		let _ = tokio::join!(first_job, second_job);
+	}
 
 	#[tokio::test]
 	#[serial]

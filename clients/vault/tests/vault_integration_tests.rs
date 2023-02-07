@@ -7,6 +7,7 @@ use futures::{
 	future::{join, join3, join4},
 	Future, FutureExt, SinkExt,
 };
+use lazy_static::lazy_static;
 use serial_test::serial;
 use sp_keyring::AccountKeyring;
 use sp_runtime::traits::StaticLookup;
@@ -19,7 +20,8 @@ use runtime::{
 };
 use stellar_relay_lib::sdk::{PublicKey, XdrCodec};
 use vault::{
-	oracle::OracleAgent, service::IssueFilter, Event as CancellationEvent, VaultIdManager,
+	oracle::OracleAgent, service::IssueFilter, ArcRwLock, Event as CancellationEvent,
+	VaultIdManager,
 };
 use wallet::StellarWallet;
 
@@ -38,6 +40,17 @@ const DEFAULT_WRAPPED_CURRENCY: CurrencyId = CurrencyId::AlphaNum4 {
 };
 
 const STELLAR_VAULT_SECRET_KEY: &str = "SB6WHKIU2HGVBRNKNOEOQUY4GFC4ZLG5XPGWLEAHTIZXBXXYACC76VSQ";
+const IS_PUBLIC_NETWORK: bool = false;
+
+lazy_static! {
+	static ref WALLET: ArcRwLock<StellarWallet> = Arc::new(RwLock::new(
+		StellarWallet::from_secret_encoded(
+			&STELLAR_VAULT_SECRET_KEY.to_string(),
+			IS_PUBLIC_NETWORK,
+		)
+		.unwrap()
+	));
+}
 
 type StellarPublicKey = [u8; 32];
 
@@ -190,21 +203,13 @@ async fn test_redeem_succeeds() {
 	test_with_vault(|client, vault_id, vault_provider| async move {
 		let user_provider = setup_provider(client.clone(), AccountKeyring::Dave).await;
 
-		let is_public_network = false;
-		let wallet = StellarWallet::from_secret_encoded(
-			&STELLAR_VAULT_SECRET_KEY.to_string(),
-			is_public_network,
-		)
-		.unwrap();
-		let wallet_arc = Arc::new(RwLock::new(wallet));
-
-		let mut oracle_agent = OracleAgent::new(is_public_network).expect("failed to create agent");
+		let mut oracle_agent = OracleAgent::new(IS_PUBLIC_NETWORK).expect("failed to create agent");
 		oracle_agent.start().await.expect("failed to start agent");
 		let oracle_agent = Arc::new(oracle_agent);
 
 		let vault_ids = vec![vault_id.clone()];
 		let vault_id_manager =
-			VaultIdManager::from_map(vault_provider.clone(), wallet_arc.clone(), vault_ids);
+			VaultIdManager::from_map(vault_provider.clone(), WALLET.clone(), vault_ids);
 
 		let issue_amount = 100000;
 		let vault_collateral = get_required_vault_collateral_for_issue(
@@ -215,7 +220,7 @@ async fn test_redeem_succeeds() {
 		.await;
 		tracing::error!("vault_collateral: {vault_collateral}");
 
-		let wallet = wallet_arc.read().await;
+		let wallet = WALLET.read().await;
 		assert_ok!(
 			vault_provider
 				.register_vault_with_public_key(
@@ -229,14 +234,8 @@ async fn test_redeem_succeeds() {
 
 		let shutdown_tx = ShutdownSender::new();
 
-		assert_issue(
-			&user_provider,
-			wallet_arc.clone(),
-			&vault_id,
-			issue_amount,
-			oracle_agent.clone(),
-		)
-		.await;
+		assert_issue(&user_provider, WALLET.clone(), &vault_id, issue_amount, oracle_agent.clone())
+			.await;
 
 		test_service(
 			vault::service::listen_for_redeem_requests(
@@ -247,7 +246,7 @@ async fn test_redeem_succeeds() {
 				oracle_agent,
 			),
 			async {
-				let wallet = wallet_arc.read().await;
+				let wallet = WALLET.read().await;
 				let address = wallet.get_public_key_raw();
 				drop(wallet);
 				let redeem_id =
@@ -272,24 +271,16 @@ async fn test_replace_succeeds() {
 		);
 		let user_provider = setup_provider(client.clone(), AccountKeyring::Dave).await;
 
-		let is_public_network = false;
-		let wallet = StellarWallet::from_secret_encoded(
-			&STELLAR_VAULT_SECRET_KEY.to_string(),
-			is_public_network,
-		)
-		.unwrap();
-		let wallet_arc = Arc::new(RwLock::new(wallet));
-
-		let mut oracle_agent = OracleAgent::new(is_public_network).expect("failed to create agent");
+		let mut oracle_agent = OracleAgent::new(IS_PUBLIC_NETWORK).expect("failed to create agent");
 		oracle_agent.start().await.expect("failed to start agent");
 		let oracle_agent = Arc::new(oracle_agent);
 
 		let vault_ids = vec![new_vault_id.clone()].into_iter().collect();
 		let _vault_id_manager =
-			VaultIdManager::from_map(new_vault_provider.clone(), wallet_arc.clone(), vault_ids);
+			VaultIdManager::from_map(new_vault_provider.clone(), WALLET.clone(), vault_ids);
 		let vault_ids = vec![old_vault_id.clone(), new_vault_id.clone()].into_iter().collect();
 		let vault_id_manager =
-			VaultIdManager::from_map(old_vault_provider.clone(), wallet_arc.clone(), vault_ids);
+			VaultIdManager::from_map(old_vault_provider.clone(), WALLET.clone(), vault_ids);
 
 		let issue_amount = 100000;
 		let vault_collateral = get_required_vault_collateral_for_issue(
@@ -299,7 +290,7 @@ async fn test_replace_succeeds() {
 		)
 		.await;
 
-		let wallet = wallet_arc.read().await;
+		let wallet = WALLET.read().await;
 		assert_ok!(
 			old_vault_provider
 				.register_vault_with_public_key(
@@ -322,7 +313,7 @@ async fn test_replace_succeeds() {
 
 		assert_issue(
 			&user_provider,
-			wallet_arc.clone(),
+			WALLET.clone(),
 			&old_vault_id,
 			issue_amount,
 			oracle_agent.clone(),
@@ -381,15 +372,7 @@ async fn test_withdraw_replace_succeeds() {
 		);
 		let user_provider = setup_provider(client.clone(), AccountKeyring::Dave).await;
 
-		let is_public_network = false;
-		let wallet = StellarWallet::from_secret_encoded(
-			&STELLAR_VAULT_SECRET_KEY.to_string(),
-			is_public_network,
-		)
-		.unwrap();
-		let wallet_arc = Arc::new(RwLock::new(wallet));
-
-		let mut oracle_agent = OracleAgent::new(is_public_network).expect("failed to create agent");
+		let mut oracle_agent = OracleAgent::new(IS_PUBLIC_NETWORK).expect("failed to create agent");
 		oracle_agent.start().await.expect("failed to start agent");
 		let oracle_agent = Arc::new(oracle_agent);
 
@@ -400,7 +383,7 @@ async fn test_withdraw_replace_succeeds() {
 			old_vault_id.collateral_currency(),
 		)
 		.await;
-		let wallet = wallet_arc.read().await;
+		let wallet = WALLET.read().await;
 		assert_ok!(
 			old_vault_provider
 				.register_vault_with_public_key(
@@ -423,7 +406,7 @@ async fn test_withdraw_replace_succeeds() {
 
 		assert_issue(
 			&user_provider,
-			wallet_arc.clone(),
+			WALLET.clone(),
 			&old_vault_id,
 			issue_amount,
 			oracle_agent.clone(),
@@ -476,15 +459,7 @@ async fn test_cancel_scheduler_succeeds() {
 			DEFAULT_WRAPPED_CURRENCY,
 		);
 
-		let is_public_network = false;
-		let wallet = StellarWallet::from_secret_encoded(
-			&STELLAR_VAULT_SECRET_KEY.to_string(),
-			is_public_network,
-		)
-		.unwrap();
-		let wallet_arc = Arc::new(RwLock::new(wallet));
-
-		let mut oracle_agent = OracleAgent::new(is_public_network).expect("failed to create agent");
+		let mut oracle_agent = OracleAgent::new(IS_PUBLIC_NETWORK).expect("failed to create agent");
 		oracle_agent.start().await.expect("failed to start agent");
 		let oracle_agent = Arc::new(oracle_agent);
 
@@ -496,7 +471,7 @@ async fn test_cancel_scheduler_succeeds() {
 		)
 		.await;
 
-		let wallet = wallet_arc.read().await;
+		let wallet = WALLET.read().await;
 		assert_ok!(
 			old_vault_provider
 				.register_vault_with_public_key(
@@ -519,7 +494,7 @@ async fn test_cancel_scheduler_succeeds() {
 
 		assert_issue(
 			&user_provider,
-			wallet_arc.clone(),
+			WALLET.clone(),
 			&old_vault_id,
 			issue_amount,
 			oracle_agent.clone(),
@@ -539,7 +514,7 @@ async fn test_cancel_scheduler_succeeds() {
 		let block_listener = new_vault_provider.clone();
 		let issue_set = Arc::new(RwLock::new(IssueRequestsMap::new()));
 
-		let wallet = wallet_arc.read().await;
+		let wallet = WALLET.read().await;
 		let issue_request_listener = vault::service::listen_for_issue_requests(
 			new_vault_provider.clone(),
 			wallet.get_public_key(),
@@ -668,13 +643,8 @@ async fn test_issue_cancel_succeeds() {
 		let user_provider = setup_provider(client.clone(), AccountKeyring::Dave).await;
 		let issue_set = Arc::new(RwLock::new(IssueRequestsMap::new()));
 
-		let is_public_network = false;
-		let wallet = StellarWallet::from_secret_encoded(
-			&STELLAR_VAULT_SECRET_KEY.to_string(),
-			is_public_network,
-		)
-		.unwrap();
-		let issue_filter = IssueFilter::new(&wallet.get_public_key()).expect("Invalid filter");
+		let issue_filter =
+			IssueFilter::new(&WALLET.read().await.get_public_key()).expect("Invalid filter");
 
 		let issue_amount = 100000;
 		let vault_collateral = get_required_vault_collateral_for_issue(
@@ -689,7 +659,7 @@ async fn test_issue_cancel_succeeds() {
 				.register_vault_with_public_key(
 					&vault_id,
 					vault_collateral,
-					wallet.get_public_key_raw(),
+					WALLET.read().await.get_public_key_raw(),
 				)
 				.await
 		);
@@ -719,6 +689,7 @@ async fn test_issue_cancel_succeeds() {
 		let slot_tx_env_map = Arc::new(RwLock::new(HashMap::new()));
 
 		let (issue_event_tx, _issue_event_rx) = mpsc::channel::<CancellationEvent>(16);
+		let wallet = WALLET.read().await;
 		let service = join3(
 			vault::service::listen_for_new_transactions(
 				wallet.get_public_key(),
@@ -747,17 +718,11 @@ async fn test_issue_overpayment_succeeds() {
 	test_with_vault(|client, vault_id, vault_provider| async move {
 		let user_provider = setup_provider(client.clone(), AccountKeyring::Dave).await;
 
-		let is_public_network = false;
-		let mut oracle_agent = OracleAgent::new(is_public_network).expect("failed to create agent");
+		let mut oracle_agent = OracleAgent::new(IS_PUBLIC_NETWORK).expect("failed to create agent");
 		oracle_agent.start().await.expect("failed to start agent");
 		let oracle_agent = Arc::new(oracle_agent);
 
-		let mut wallet = StellarWallet::from_secret_encoded(
-			&STELLAR_VAULT_SECRET_KEY.to_string(),
-			is_public_network,
-		)
-		.unwrap();
-		let public_key = wallet.get_public_key_raw();
+		let public_key = WALLET.read().await.get_public_key_raw();
 
 		let issue_amount = 100000;
 		let over_payment_factor = 3;
@@ -788,7 +753,9 @@ async fn test_issue_overpayment_succeeds() {
 			primitives::AssetConversion::lookup(issue.asset).expect("Asset not found");
 		let memo_hash = issue.issue_id.0;
 
-		let (transaction_response, tx_envelope) = wallet
+		let (transaction_response, tx_envelope) = WALLET
+			.write()
+			.await
 			.send_payment_to_address(
 				destination_public_key,
 				stellar_asset,
@@ -838,15 +805,7 @@ async fn test_automatic_issue_execution_succeeds() {
 	test_with_vault(|client, vault_id, vault_provider| async move {
 		let user_provider = setup_provider(client.clone(), AccountKeyring::Dave).await;
 
-		let is_public_network = false;
-		let wallet = StellarWallet::from_secret_encoded(
-			&STELLAR_VAULT_SECRET_KEY.to_string(),
-			is_public_network,
-		)
-		.unwrap();
-		let wallet_arc = Arc::new(RwLock::new(wallet));
-
-		let mut oracle_agent = OracleAgent::new(is_public_network).expect("failed to create agent");
+		let mut oracle_agent = OracleAgent::new(IS_PUBLIC_NETWORK).expect("failed to create agent");
 		oracle_agent.start().await.expect("failed to start agent");
 		let oracle_agent = Arc::new(oracle_agent);
 
@@ -858,7 +817,7 @@ async fn test_automatic_issue_execution_succeeds() {
 		)
 		.await;
 
-		let wallet = wallet_arc.read().await;
+		let wallet = WALLET.read().await;
 		assert_ok!(
 			vault_provider
 				.register_vault_with_public_key(
@@ -881,7 +840,7 @@ async fn test_automatic_issue_execution_succeeds() {
 				primitives::AssetConversion::lookup(issue.asset).expect("Asset not found");
 			let memo_hash = issue.issue_id.0;
 
-			let mut wallet = wallet_arc.write().await;
+			let mut wallet = WALLET.write().await;
 			let result = wallet
 				.send_payment_to_address(
 					destination_public_key,
@@ -903,7 +862,7 @@ async fn test_automatic_issue_execution_succeeds() {
 			.await;
 		};
 
-		let wallet = wallet_arc.read().await;
+		let wallet = WALLET.read().await;
 		let issue_filter = IssueFilter::new(&wallet.get_public_key()).expect("Invalid filter");
 		let slot_tx_env_map = Arc::new(RwLock::new(HashMap::new()));
 
@@ -953,15 +912,7 @@ async fn test_automatic_issue_execution_succeeds_for_other_vault() {
 			DEFAULT_WRAPPED_CURRENCY,
 		);
 
-		let is_public_network = false;
-		let wallet = StellarWallet::from_secret_encoded(
-			&STELLAR_VAULT_SECRET_KEY.to_string(),
-			is_public_network,
-		)
-		.unwrap();
-		let wallet_arc = Arc::new(RwLock::new(wallet));
-
-		let mut oracle_agent = OracleAgent::new(is_public_network).expect("failed to create agent");
+		let mut oracle_agent = OracleAgent::new(IS_PUBLIC_NETWORK).expect("failed to create agent");
 		oracle_agent.start().await.expect("failed to start agent");
 		let oracle_agent = Arc::new(oracle_agent);
 
@@ -974,7 +925,7 @@ async fn test_automatic_issue_execution_succeeds_for_other_vault() {
 		)
 		.await;
 
-		let wallet = wallet_arc.read().await;
+		let wallet = WALLET.read().await;
 		assert_ok!(
 			vault1_provider
 				.register_vault_with_public_key(
@@ -1016,7 +967,7 @@ async fn test_automatic_issue_execution_succeeds_for_other_vault() {
 			assert!(!issue_set.is_empty());
 			drop(issue_set);
 
-			let mut wallet = wallet_arc.write().await;
+			let mut wallet = WALLET.write().await;
 			let result = wallet
 				.send_payment_to_address(
 					destination_public_key,
@@ -1045,7 +996,7 @@ async fn test_automatic_issue_execution_succeeds_for_other_vault() {
 			drop(issue_set);
 		};
 
-		let wallet = wallet_arc.read().await;
+		let wallet = WALLET.read().await;
 		let vault_account_public_key = wallet.get_public_key();
 		drop(wallet);
 		let issue_filter = IssueFilter::new(&vault_account_public_key).expect("Invalid filter");
@@ -1054,7 +1005,7 @@ async fn test_automatic_issue_execution_succeeds_for_other_vault() {
 		let service = join4(
 			vault::service::listen_for_new_transactions(
 				vault_account_public_key.clone(),
-				is_public_network,
+				IS_PUBLIC_NETWORK,
 				slot_tx_env_map.clone(),
 				issue_set_arc.clone(),
 				issue_filter,
@@ -1088,21 +1039,13 @@ async fn test_execute_open_requests_succeeds() {
 	test_with_vault(|client, vault_id, vault_provider| async move {
 		let user_provider = setup_provider(client.clone(), AccountKeyring::Dave).await;
 
-		let is_public_network = false;
-		let wallet = StellarWallet::from_secret_encoded(
-			&STELLAR_VAULT_SECRET_KEY.to_string(),
-			is_public_network,
-		)
-		.unwrap();
-		let wallet_arc = Arc::new(RwLock::new(wallet));
-
-		let mut oracle_agent = OracleAgent::new(is_public_network).expect("failed to create agent");
+		let mut oracle_agent = OracleAgent::new(IS_PUBLIC_NETWORK).expect("failed to create agent");
 		oracle_agent.start().await.expect("failed to start agent");
 		let oracle_agent = Arc::new(oracle_agent);
 
 		let vault_ids = vec![vault_id.clone()];
 		let vault_id_manager =
-			VaultIdManager::from_map(vault_provider.clone(), wallet_arc.clone(), vault_ids);
+			VaultIdManager::from_map(vault_provider.clone(), WALLET.clone(), vault_ids);
 
 		let issue_amount = 100000;
 		let vault_collateral = get_required_vault_collateral_for_issue(
@@ -1112,7 +1055,7 @@ async fn test_execute_open_requests_succeeds() {
 		)
 		.await;
 
-		let wallet = wallet_arc.read().await;
+		let wallet = WALLET.read().await;
 		assert_ok!(
 			vault_provider
 				.register_vault_with_public_key(
@@ -1124,16 +1067,10 @@ async fn test_execute_open_requests_succeeds() {
 		);
 		drop(wallet);
 
-		assert_issue(
-			&user_provider,
-			wallet_arc.clone(),
-			&vault_id,
-			issue_amount,
-			oracle_agent.clone(),
-		)
-		.await;
+		assert_issue(&user_provider, WALLET.clone(), &vault_id, issue_amount, oracle_agent.clone())
+			.await;
 
-		let wallet = wallet_arc.read().await;
+		let wallet = WALLET.read().await;
 		let address = wallet.get_public_key();
 		let address_raw = wallet.get_public_key_raw();
 		drop(wallet);
@@ -1158,7 +1095,7 @@ async fn test_execute_open_requests_succeeds() {
 		let asset = primitives::AssetConversion::lookup(redeems[0].asset).expect("Invalid asset");
 		let memo_hash = redeem_ids[0].0;
 		// do stellar transfer for redeem 0
-		let mut wallet = wallet_arc.write().await;
+		let mut wallet = WALLET.write().await;
 		assert_ok!(
 			wallet
 				.send_payment_to_address(address, asset, stroop_amount, memo_hash, 300)
@@ -1172,7 +1109,7 @@ async fn test_execute_open_requests_succeeds() {
 				shutdown_tx.clone(),
 				vault_provider,
 				vault_id_manager,
-				wallet_arc.clone(),
+				WALLET.clone(),
 				oracle_agent.clone(),
 				Duration::from_secs(0),
 			)
@@ -1197,15 +1134,7 @@ async fn test_off_chain_liquidation() {
 		let authorized_oracle_provider = setup_provider(client.clone(), AccountKeyring::Bob).await;
 		let user_provider = setup_provider(client.clone(), AccountKeyring::Dave).await;
 
-		let is_public_network = false;
-		let wallet = StellarWallet::from_secret_encoded(
-			&STELLAR_VAULT_SECRET_KEY.to_string(),
-			is_public_network,
-		)
-		.unwrap();
-		let wallet_arc = Arc::new(RwLock::new(wallet));
-
-		let mut oracle_agent = OracleAgent::new(is_public_network).expect("failed to create agent");
+		let mut oracle_agent = OracleAgent::new(IS_PUBLIC_NETWORK).expect("failed to create agent");
 		oracle_agent.start().await.expect("failed to start agent");
 		let oracle_agent = Arc::new(oracle_agent);
 
@@ -1217,7 +1146,7 @@ async fn test_off_chain_liquidation() {
 		)
 		.await;
 
-		let wallet = wallet_arc.read().await;
+		let wallet = WALLET.read().await;
 		assert_ok!(
 			vault_provider
 				.register_vault_with_public_key(
@@ -1229,14 +1158,8 @@ async fn test_off_chain_liquidation() {
 		);
 		drop(wallet);
 
-		assert_issue(
-			&user_provider,
-			wallet_arc.clone(),
-			&vault_id,
-			issue_amount,
-			oracle_agent.clone(),
-		)
-		.await;
+		assert_issue(&user_provider, WALLET.clone(), &vault_id, issue_amount, oracle_agent.clone())
+			.await;
 
 		set_exchange_rate_and_wait(
 			&authorized_oracle_provider,
@@ -1262,13 +1185,6 @@ async fn test_shutdown() {
 			DEFAULT_WRAPPED_CURRENCY,
 		);
 
-		let is_public_network = false;
-		let wallet = StellarWallet::from_secret_encoded(
-			&STELLAR_VAULT_SECRET_KEY.to_string(),
-			is_public_network,
-		)
-		.unwrap();
-
 		// register a vault..
 		let issue_amount = 100000;
 		let vault_collateral = get_required_vault_collateral_for_issue(
@@ -1283,7 +1199,7 @@ async fn test_shutdown() {
 				.register_vault_with_public_key(
 					&sudo_vault_id,
 					vault_collateral,
-					wallet.get_public_key_raw(),
+					WALLET.read().await.get_public_key_raw(),
 				)
 				.await
 		);
