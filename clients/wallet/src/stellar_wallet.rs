@@ -7,7 +7,6 @@ use substrate_stellar_sdk::{
 	TransactionEnvelope,
 };
 use tokio::sync::Mutex;
-use tracing::log;
 
 use crate::{
 	error::Error,
@@ -96,7 +95,7 @@ impl StellarWallet {
 		let account = horizon_client.get_account(account_id_string, self.is_public_network).await?;
 		let next_sequence_number = account.sequence + 1;
 
-		log::debug!(
+		tracing::info!(
 			"Next sequence number: {} for account: {:?}",
 			next_sequence_number,
 			account.account_id
