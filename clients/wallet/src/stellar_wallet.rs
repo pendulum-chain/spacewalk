@@ -161,6 +161,7 @@ impl std::fmt::Debug for StellarWallet {
 
 #[cfg(test)]
 mod test {
+	use mockall::lazy_static;
 	use serial_test::serial;
 	use std::sync::Arc;
 	use substrate_stellar_sdk::PublicKey;
@@ -168,16 +169,23 @@ mod test {
 
 	use crate::StellarWallet;
 
-	const STELLAR_SECRET_ENCODED: &str = "SCV7RZN5XYYMMVSWYCR4XUMB76FFMKKKNHP63UTZQKVM4STWSCIRLWFJ";
+	const STELLAR_VAULT_SECRET_KEY: &str =
+		"SCV7RZN5XYYMMVSWYCR4XUMB76FFMKKKNHP63UTZQKVM4STWSCIRLWFJ";
+	const IS_PUBLIC_NETWORK: bool = false;
+
+	lazy_static! {
+		static ref WALLET: Arc<RwLock<StellarWallet>> = Arc::new(RwLock::new(
+			StellarWallet::from_secret_encoded(
+				&STELLAR_VAULT_SECRET_KEY.to_string(),
+				IS_PUBLIC_NETWORK,
+			)
+			.unwrap()
+		));
+	}
 
 	#[tokio::test]
-	async fn test_lock() {
-		let wallet = Arc::new(RwLock::new(
-			StellarWallet::from_secret_encoded(&STELLAR_SECRET_ENCODED.to_string(), false).unwrap(),
-		));
-
-		let wallet_clone = wallet.clone();
-
+	async fn test_locking_submission() {
+		let wallet_clone = WALLET.clone();
 		let first_job = tokio::spawn(async move {
 			let destination = PublicKey::from_encoding(
 				"GCENYNAX2UCY5RFUKA7AYEXKDIFITPRAB7UYSISCHVBTIAKPU2YO57OA",
@@ -199,7 +207,7 @@ mod test {
 			assert!(transaction_response.ledger() > 0);
 		});
 
-		let wallet_clone2 = wallet.clone();
+		let wallet_clone2 = WALLET.clone();
 		let second_job = tokio::spawn(async move {
 			let destination = PublicKey::from_encoding(
 				"GCENYNAX2UCY5RFUKA7AYEXKDIFITPRAB7UYSISCHVBTIAKPU2YO57OA",
@@ -227,9 +235,6 @@ mod test {
 	#[tokio::test]
 	#[serial]
 	async fn sending_payment_works() {
-		let mut wallet =
-			StellarWallet::from_secret_encoded(&STELLAR_SECRET_ENCODED.to_string(), false).unwrap();
-
 		let destination =
 			PublicKey::from_encoding("GCENYNAX2UCY5RFUKA7AYEXKDIFITPRAB7UYSISCHVBTIAKPU2YO57OA")
 				.unwrap();
@@ -237,8 +242,11 @@ mod test {
 		let amount = 100;
 		let memo_hash = [0u8; 32];
 
-		let result =
-			wallet.send_payment_to_address(destination, asset, amount, memo_hash, 100).await;
+		let result = WALLET
+			.write()
+			.await
+			.send_payment_to_address(destination, asset, amount, memo_hash, 100)
+			.await;
 
 		assert!(result.is_ok());
 		let (transaction_response, _) = result.unwrap();
@@ -249,8 +257,8 @@ mod test {
 	#[tokio::test]
 	#[serial]
 	async fn sending_correct_payment_after_incorrect_payment_works() {
-		let mut wallet =
-			StellarWallet::from_secret_encoded(&STELLAR_SECRET_ENCODED.to_string(), false).unwrap();
+		let wallet = WALLET.clone();
+		let mut wallet = wallet.write().await;
 
 		let destination =
 			PublicKey::from_encoding("GCENYNAX2UCY5RFUKA7AYEXKDIFITPRAB7UYSISCHVBTIAKPU2YO57OA")
