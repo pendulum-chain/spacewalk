@@ -3,7 +3,7 @@ use std::{collections::HashMap, convert::TryInto, sync::Arc, time::Duration};
 use futures::try_join;
 use governor::RateLimiter;
 use sp_runtime::traits::StaticLookup;
-use tokio::sync::RwLock;
+use tokio::sync::{Mutex, RwLock};
 
 use primitives::{stellar::PublicKey, TransactionEnvelopeExt};
 use runtime::{
@@ -259,6 +259,38 @@ impl Request {
 	}
 }
 
+/// executes open request based on the transaction
+async fn _execute_open_requests(
+	transaction: TransactionResponse,
+	oracle_agent: Arc<OracleAgent>,
+	parachain_rpc: SpacewalkParachain,
+	request: Request,
+	successful_requests: Arc<Mutex<Vec<H256>>>,
+) {
+	let mut successful_requests = successful_requests.lock().await;
+	match transaction.to_envelope() {
+		Ok(tx_env) => {
+			let slot = transaction.ledger as Slot;
+
+			match oracle_agent.get_proof(slot).await {
+				Ok(proof) => {
+					if let Err(e) = request.execute(parachain_rpc.clone(), tx_env, proof).await {
+						tracing::error!("Failed to execute request #{}: {}", request.hash, e);
+					} else {
+						successful_requests.push(request.hash);
+					}
+				},
+				Err(error) => {
+					tracing::error!("Failed to get proof for slot {}: {:?}", slot, error);
+				},
+			}
+		},
+		Err(_error) => {
+			tracing::error!("Failed to decode transaction envelope");
+		},
+	}
+}
+
 /// Queries the parachain for open requests and executes them. It checks the
 /// stellar blockchain to see if a payment has already been made.
 #[allow(clippy::too_many_arguments)]
@@ -310,6 +342,9 @@ pub async fn execute_open_requests(
 	let transactions_result = wallet.get_latest_transactions(0, 200, false).await;
 	drop(wallet);
 
+	// gathers all successful requests which will be used against the list of open requests.
+	let successful_requests = Arc::new(Mutex::new(vec![]));
+
 	// Check if some of the requests that are open already have a corresponding payment on Stellar
 	// and are just waiting to be executed on the parachain
 	match transactions_result {
@@ -322,9 +357,6 @@ pub async fn execute_open_requests(
 				}
 
 				if let Some(request) = get_request_for_stellar_tx(&transaction, &open_requests) {
-					// remove request from the hashmap
-					open_requests.retain(|&key, _| key != request.hash);
-
 					tracing::info!(
 						"{:?} request #{:?} has valid Stellar payment - processing...",
 						request.request_type,
@@ -336,44 +368,28 @@ pub async fn execute_open_requests(
 					let parachain_rpc = parachain_rpc.clone();
 					let _vault_id_manager = vault_id_manager.clone();
 					let oracle_agent = oracle_agent.clone();
-					spawn_cancelable(shutdown_tx.subscribe(), async move {
-						match transaction.to_envelope() {
-							Ok(tx_env) => {
-								let slot = transaction.ledger as Slot;
-
-								match oracle_agent.get_proof(slot).await {
-									Ok(proof) => {
-										if let Err(e) = request
-											.execute(parachain_rpc.clone(), tx_env, proof)
-											.await
-										{
-											tracing::error!(
-												"Failed to execute request #{}: {}",
-												request.hash,
-												e
-											);
-										}
-									},
-									Err(error) => {
-										tracing::error!(
-											"Failed to get proof for slot {}: {:?}",
-											slot,
-											error
-										);
-									},
-								}
-							},
-							Err(_error) => {
-								tracing::error!("Failed to decode transaction envelope");
-							},
-						}
-					});
+					let successful_requests = successful_requests.clone();
+					spawn_cancelable(
+						shutdown_tx.subscribe(),
+						_execute_open_requests(
+							transaction,
+							oracle_agent,
+							parachain_rpc,
+							request,
+							successful_requests.clone(),
+						),
+					);
 				}
 			}
 		},
 		Err(error) => {
 			tracing::error!("Failed to get transactions from Stellar: {}", error);
 		},
+	}
+
+	// remove all successful requests in the list of open_requests
+	for hash in successful_requests.lock().await.iter() {
+		open_requests.remove(hash);
 	}
 
 	// All requests remaining in the hashmap did not have a Stellar payment yet, so pay
