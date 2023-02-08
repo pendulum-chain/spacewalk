@@ -140,6 +140,8 @@ pub mod pallet {
 		ReplaceIdNotFound,
 		/// Vault cannot replace different currency.
 		InvalidWrappedCurrency,
+		/// Invalid payment amount
+		InvalidPaymentAmount,
 	}
 
 	/// Vaults create replace requests to transfer locked collateral.
@@ -570,6 +572,16 @@ impl<T: Config> Pallet<T> {
 			&envelopes,
 			&transaction_set,
 		)?;
+
+		let paid_amount: Amount<T> = ext::currency::get_amount_from_transaction_envelope::<T>(
+			&transaction_envelope,
+			replace.stellar_address,
+			replace.asset,
+		)?;
+
+		let expected_amount = amount.clone();
+
+		ensure!(paid_amount == expected_amount, Error::<T>::InvalidPaymentAmount);
 
 		// only return griefing collateral if not already slashed
 		let collateral = match replace.status {
