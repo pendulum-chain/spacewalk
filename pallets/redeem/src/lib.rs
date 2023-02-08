@@ -156,6 +156,8 @@ pub mod pallet {
 		AmountBelowMinimumTransferAmount,
 		/// Exceeds the volume limit for an issue request.
 		ExceedLimitVolumeForIssueRequest,
+		/// Invalid payment amount
+		InvalidPaymentAmount,
 	}
 
 	/// The time difference in number of blocks between a redeem request is created and required
@@ -705,6 +707,16 @@ impl<T: Config> Pallet<T> {
 			&envelopes,
 			&transaction_set,
 		)?;
+
+		let paid_amount: Amount<T> = ext::currency::get_amount_from_transaction_envelope::<T>(
+			&transaction_envelope,
+			redeem.stellar_address,
+			redeem.asset,
+		)?;
+
+		let expected_amount = redeem.amount().checked_add(&redeem.fee())?;
+
+		ensure!(paid_amount == expected_amount, Error::<T>::InvalidPaymentAmount);
 
 		// burn amount (without parachain fee, but including transfer fee)
 		let burn_amount = redeem.amount().checked_add(&redeem.transfer_fee())?;
