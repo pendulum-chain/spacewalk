@@ -10442,6 +10442,7 @@ dependencies = [
  "reqwest",
  "serde",
  "serde_json",
+ "serial_test",
  "substrate-stellar-sdk",
  "thiserror",
  "tokio",
