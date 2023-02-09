@@ -458,23 +458,9 @@ pub mod pallet {
 			);
 
 			let current_validators = Validators::<T>::get();
-			// Filter validators for selected network type
-			let current_validators = current_validators.into_iter().collect::<Vec<_>>();
-
-			let current_validators =
-				BoundedVec::<ValidatorOf<T>, T::ValidatorLimit>::try_from(current_validators)
-					.map_err(|_| Error::<T>::BoundedVecCreationFailed)?;
 			OldValidators::<T>::put(current_validators);
 
 			let current_organizations = Organizations::<T>::get();
-			// Filter organizations for selected network type
-			let current_organizations = current_organizations.into_iter().collect::<Vec<_>>();
-
-			let current_organizations =
-				BoundedVec::<OrganizationOf<T>, T::OrganizationLimit>::try_from(
-					current_organizations,
-				)
-				.map_err(|_| Error::<T>::BoundedVecCreationFailed)?;
 			OldOrganizations::<T>::put(current_organizations);
 
 			NewValidatorsEnactmentBlockHeight::<T>::put(enactment_block_height);
