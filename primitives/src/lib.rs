@@ -404,6 +404,15 @@ macro_rules! create_currency_id {
 			}
 		}
 
+		impl TryFrom<u64> for ForeignCurrencyId {
+			type Error = ();
+
+			fn try_from(v: u64) -> Result<Self, Self::Error> {
+				let v_u8:u8 = u8::try_from(v).map_err(|_|())?;
+				v_u8.try_into()
+			}
+		}
+
 		impl Into<u8> for ForeignCurrencyId {
 			fn into(self) -> u8 {
 				match self {
@@ -463,24 +472,25 @@ create_currency_id! {
 	#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 	#[repr(u8)]
 	pub enum ForeignCurrencyId {
-		DOT("Polkadot", 10) = 0,
-		KSM("Kusama", 10) = 1,
-		KAR("Karura",10) = 2,
-		AUSD("Acala Karura",10) = 3,
-		BNC("Bifrost",10)= 4,
-		VsKSM("Kusama Bifrost",10) = 5,
-		HKO("Heiko", 10) = 6,
-		MOVR("Moonriver", 10) = 7,
-		SDN("Shiden", 10) = 8,
-		KINT("Kintsugi", 10) = 9,
-		KBTC("Kintsugi BTC", 10) = 10,
-		GENS("Genshiro", 10) = 11,
-		XOR("Sora", 10) = 12,
-		TEER("Integritee", 10) = 13,
-		KILT("Kilt", 10) = 14,
-		PHA("Phala", 10) = 15,
-		ZTG("Zeitgeist", 10) = 16,
-		USD("Statemine", 10) = 17,
+		KSM("Kusama", 10) = 0,
+		KAR("Karura",10) = 1,
+		AUSD("Acala Karura",10) = 2,
+		BNC("Bifrost",10)= 3,
+		VsKSM("Kusama Bifrost",10) = 4,
+		HKO("Heiko", 10) = 5,
+		MOVR("Moonriver", 10) = 6,
+		SDN("Shiden", 10) = 7,
+		KINT("Kintsugi", 10) = 8,
+		KBTC("Kintsugi BTC", 10) = 9,
+		GENS("Genshiro", 10) = 10,
+		XOR("Sora", 10) = 11,
+		TEER("Integritee", 10) = 12,
+		KILT("Kilt", 10) = 13,
+		PHA("Phala", 10) = 14,
+		ZTG("Zeitgeist", 10) = 15,
+		USD("Statemine", 10) = 16,
+		
+		DOT("Polkadot", 10) = 20,
 	}
 }
 
