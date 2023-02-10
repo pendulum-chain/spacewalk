@@ -408,10 +408,8 @@ macro_rules! create_currency_id {
 			type Error = ();
 
 			fn try_from(v: u64) -> Result<Self, Self::Error> {
-				match v {
-					$($val => Ok(ForeignCurrencyId::$symbol),)*
-					_ => Err(()),
-				}
+				let v_u8:u8 = u8::try_from(v).map_err(|_|())?;
+				v_u8.try_into()
 			}
 		}
 

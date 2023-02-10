@@ -178,10 +178,8 @@ fn test_addr_conversion() {
 
 #[test]
 fn test_foreign_currency_conversion_u64() {
-	let zero: u64 = 0;
-	assert_eq!(zero.try_into(), Ok(ForeignCurrencyId::KSM));
-
-	assert_eq!((14u64).try_into(), Ok(ForeignCurrencyId::PHA));
-
+	assert_eq!(0u64.try_into(), Ok(ForeignCurrencyId::KSM));
+	assert_eq!(14u64.try_into(), Ok(ForeignCurrencyId::PHA));
+	assert_eq!(<u64 as TryInto<ForeignCurrencyId>>::try_into(20), Err(()));
 	assert_eq!(<u64 as TryInto<ForeignCurrencyId>>::try_into(20), Err(()));
 }
