@@ -827,29 +827,3 @@ impl Convert<(Vec<u8>, Vec<u8>), Option<oracle::Key>> for DiaOracleKeyConvertor 
 		}
 	}
 }
-
-// impl TryFrom<u64> for ForeignCurrencyId {
-// 	type Error = ();
-// 	fn try_from(num: u64) -> Result<Self, Self::Error> {
-// 		match num {
-// 			0 => Ok(ForeignCurrencyId::KSM),
-// 			1 => Ok(ForeignCurrencyId::KAR),
-// 			2 => Ok(ForeignCurrencyId::AUSD),
-// 			3 => Ok(ForeignCurrencyId::BNC),
-// 			4 => Ok(ForeignCurrencyId::VsKSM),
-// 			5 => Ok(ForeignCurrencyId::HKO),
-// 			6 => Ok(ForeignCurrencyId::MOVR),
-// 			7 => Ok(ForeignCurrencyId::SDN),
-// 			8 => Ok(ForeignCurrencyId::KINT),
-// 			9 => Ok(ForeignCurrencyId::KBTC),
-// 			10 => Ok(ForeignCurrencyId::GENS),
-// 			11 => Ok(ForeignCurrencyId::XOR),
-// 			12 => Ok(ForeignCurrencyId::TEER),
-// 			13 => Ok(ForeignCurrencyId::KILT),
-// 			14 => Ok(ForeignCurrencyId::PHA),
-// 			15 => Ok(ForeignCurrencyId::ZTG),
-// 			16 => Ok(ForeignCurrencyId::USD),
-// 			_ => Err(()),
-// 		}
-// 	}
-// }
