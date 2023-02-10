@@ -273,16 +273,22 @@ async fn _execute_open_requests(
 	if let Ok(tx_env) = transaction.to_envelope() {
 		let slot = transaction.ledger as Slot;
 		while retry_count < max_retries {
+			if retry_count > 0 {
+				tracing::debug!("{} retry for executing request #{}", retry_count, request.hash);
+			}
+
 			match oracle_agent.get_proof(slot).await {
 				Ok(proof) => {
-					if let Err(e) =
-						request.execute(parachain_rpc.clone(), tx_env.clone(), proof).await
-					{
-						tracing::error!("Failed to execute request #{}: {}", request.hash, e);
-						retry_count += 1; // increase retry count
-						continue
+					match request.execute(parachain_rpc.clone(), tx_env.clone(), proof).await {
+						Ok(_) => {
+							tracing::trace!("Successfully executed request #{}", request.hash);
+							break // There is no need to retry again.
+						},
+						Err(e) => {
+							tracing::error!("Failed to execute request #{}: {}", request.hash, e);
+							retry_count += 1; // increase retry count
+						},
 					}
-					break
 				},
 				Err(error) => {
 					retry_count += 1; // increase retry count
@@ -290,6 +296,15 @@ async fn _execute_open_requests(
 				},
 			}
 		}
+
+		if retry_count >= max_retries {
+			tracing::warn!(
+				"Exceeded max number of retries({}) to execute request #{}.",
+				max_retries,
+				request.hash
+			);
+		}
+		return
 	}
 	// no retries for this type of error
 	tracing::error!("Failed to decode transaction envelope for request #{}", request.hash);
