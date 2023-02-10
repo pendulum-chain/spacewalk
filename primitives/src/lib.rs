@@ -489,7 +489,8 @@ create_currency_id! {
 		PHA("Phala", 10) = 14,
 		ZTG("Zeitgeist", 10) = 15,
 		USD("Statemine", 10) = 16,
-		DOT("Polkadot", 10) = 17,
+		
+		DOT("Polkadot", 10) = 20,
 	}
 }
 
