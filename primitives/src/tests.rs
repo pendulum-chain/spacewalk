@@ -181,5 +181,5 @@ fn test_foreign_currency_conversion_u64() {
 	assert_eq!(0u64.try_into(), Ok(ForeignCurrencyId::KSM));
 	assert_eq!(14u64.try_into(), Ok(ForeignCurrencyId::PHA));
 	assert_eq!(<u64 as TryInto<ForeignCurrencyId>>::try_into(20), Err(()));
-	assert_eq!(<u64 as TryInto<ForeignCurrencyId>>::try_into(20), Err(()));
+	assert_eq!(<u64 as TryInto<ForeignCurrencyId>>::try_into(257), Err(()));
 }
