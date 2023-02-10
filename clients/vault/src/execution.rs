@@ -259,6 +259,57 @@ impl Request {
 	}
 }
 
+/// executes open request based on the transaction
+async fn _execute_open_requests(
+	transaction: TransactionResponse,
+	oracle_agent: Arc<OracleAgent>,
+	parachain_rpc: SpacewalkParachain,
+	request: Request,
+) {
+	// max of 3 retries for failed request execution
+	let max_retries = 3;
+	let mut retry_count = 0;
+
+	if let Ok(tx_env) = transaction.to_envelope() {
+		let slot = transaction.ledger as Slot;
+		while retry_count < max_retries {
+			if retry_count > 0 {
+				tracing::debug!("{} retry for executing request #{}", retry_count, request.hash);
+			}
+
+			match oracle_agent.get_proof(slot).await {
+				Ok(proof) => {
+					match request.execute(parachain_rpc.clone(), tx_env.clone(), proof).await {
+						Ok(_) => {
+							tracing::trace!("Successfully executed request #{}", request.hash);
+							break // There is no need to retry again.
+						},
+						Err(e) => {
+							tracing::error!("Failed to execute request #{}: {}", request.hash, e);
+							retry_count += 1; // increase retry count
+						},
+					}
+				},
+				Err(error) => {
+					retry_count += 1; // increase retry count
+					tracing::error!("Failed to get proof for slot {}: {:?}", slot, error);
+				},
+			}
+		}
+
+		if retry_count >= max_retries {
+			tracing::warn!(
+				"Exceeded max number of retries({}) to execute request #{}.",
+				max_retries,
+				request.hash
+			);
+		}
+		return
+	}
+	// no retries for this type of error
+	tracing::error!("Failed to decode transaction envelope for request #{}", request.hash);
+}
+
 /// Queries the parachain for open requests and executes them. It checks the
 /// stellar blockchain to see if a payment has already been made.
 #[allow(clippy::too_many_arguments)]
@@ -333,41 +384,15 @@ pub async fn execute_open_requests(
 
 					// start a new task to execute on the parachain and make copies of the
 					// variables we move into the task
-					let parachain_rpc = parachain_rpc.clone();
-					let _vault_id_manager = vault_id_manager.clone();
-					let oracle_agent = oracle_agent.clone();
-					spawn_cancelable(shutdown_tx.subscribe(), async move {
-						match transaction.to_envelope() {
-							Ok(tx_env) => {
-								let slot = transaction.ledger as Slot;
-
-								match oracle_agent.get_proof(slot).await {
-									Ok(proof) => {
-										if let Err(e) = request
-											.execute(parachain_rpc.clone(), tx_env, proof)
-											.await
-										{
-											tracing::error!(
-												"Failed to execute request #{}: {}",
-												request.hash,
-												e
-											);
-										}
-									},
-									Err(error) => {
-										tracing::error!(
-											"Failed to get proof for slot {}: {:?}",
-											slot,
-											error
-										);
-									},
-								}
-							},
-							Err(_error) => {
-								tracing::error!("Failed to decode transaction envelope");
-							},
-						}
-					});
+					spawn_cancelable(
+						shutdown_tx.subscribe(),
+						_execute_open_requests(
+							transaction,
+							oracle_agent.clone(),
+							parachain_rpc.clone(),
+							request,
+						),
+					);
 				}
 			}
 		},
