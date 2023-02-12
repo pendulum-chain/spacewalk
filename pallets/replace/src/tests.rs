@@ -173,7 +173,6 @@ mod accept_replace_tests {
 
 mod execute_replace_test {
 	use currency::Amount;
-	use stellar_relay::testing_utils::create_dummy_scp_structs_encoded;
 	use substrate_stellar_sdk::{types::AlphaNum4, Asset, Operation, PublicKey, StroopAmount};
 
 	use super::*;
