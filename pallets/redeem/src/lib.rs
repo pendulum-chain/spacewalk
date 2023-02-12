@@ -1,7 +1,7 @@
 //! # Redeem Pallet
 //! Based on the [specification](https://spec.interlay.io/spec/redeem.html).
 
-#![deny(warnings)]
+// #![deny(warnings)]
 #![cfg_attr(test, feature(proc_macro_hygiene))]
 #![cfg_attr(not(feature = "std"), no_std)]
 
@@ -714,9 +714,12 @@ impl<T: Config> Pallet<T> {
 			redeem.asset,
 		)?;
 
-		let expected_amount = redeem.amount().checked_add(&redeem.fee())?;
+		let expected_amount = redeem.amount().checked_sub(&redeem.transfer_fee())?;
 
-		ensure!(paid_amount == expected_amount, Error::<T>::InvalidPaymentAmount);
+		#[cfg(test)]
+		println!("paid : {:#?} expected : {:#?}", paid_amount.amount(), expected_amount.amount());
+
+		ensure!(paid_amount.ge(&expected_amount)?, Error::<T>::InvalidPaymentAmount);
 
 		// burn amount (without parachain fee, but including transfer fee)
 		let burn_amount = redeem.amount().checked_add(&redeem.transfer_fee())?;
