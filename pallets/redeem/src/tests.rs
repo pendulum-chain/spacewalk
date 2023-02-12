@@ -6,6 +6,7 @@ use sp_runtime::traits::Zero;
 use currency::{testing_constants::get_wrapped_currency_id, Amount};
 use security::Pallet as Security;
 use stellar_relay::testing_utils::RANDOM_STELLAR_PUBLIC_KEY;
+use substrate_stellar_sdk::{types::AlphaNum4, Asset, Operation, PublicKey, StroopAmount};
 use vault_registry::{DefaultVault, VaultStatus};
 
 use crate::{
@@ -463,11 +464,13 @@ fn test_execute_redeem_succeeds_with_another_account() {
 			},
 		);
 
+		let op_amount = 100 - (transfer_fee.amount() as i64);
+		let op = get_operation(op_amount, RANDOM_STELLAR_PUBLIC_KEY);
 		let (
 			transaction_envelope_xdr_encoded,
 			scp_envelopes_xdr_encoded,
 			transaction_set_xdr_encoded,
-		) = stellar_relay::testing_utils::create_dummy_scp_structs_encoded();
+		) = stellar_relay::testing_utils::create_dummy_scp_structs_with_operation_encoded(op);
 
 		assert_ok!(Redeem::execute_redeem(
 			RuntimeOrigin::signed(USER),
@@ -553,12 +556,13 @@ fn test_execute_redeem_succeeds() {
 				MockResult::Return(Ok(()))
 			},
 		);
-
+		let op_amount = 100 - (transfer_fee.amount() as i64);
+		let op = get_operation(op_amount, RANDOM_STELLAR_PUBLIC_KEY);
 		let (
 			transaction_envelope_xdr_encoded,
 			scp_envelopes_xdr_encoded,
 			transaction_set_xdr_encoded,
-		) = stellar_relay::testing_utils::create_dummy_scp_structs_encoded();
+		) = stellar_relay::testing_utils::create_dummy_scp_structs_with_operation_encoded(op);
 
 		assert_ok!(Redeem::execute_redeem(
 			RuntimeOrigin::signed(VAULT.account_id),
@@ -581,6 +585,22 @@ fn test_execute_redeem_succeeds() {
 			TestError::RedeemCompleted,
 		);
 	})
+}
+
+fn get_operation(amount: i64, stellar_address: [u8; 32]) -> Operation {
+	let alpha_num4 = AlphaNum4 {
+		asset_code: *b"USDC",
+		issuer: PublicKey::PublicKeyTypeEd25519([
+			20, 209, 150, 49, 176, 55, 23, 217, 171, 154, 54, 110, 16, 50, 30, 226, 102, 231, 46,
+			199, 108, 171, 97, 144, 240, 161, 51, 109, 72, 34, 159, 139,
+		]),
+	};
+	let stellar_asset = Asset::AssetTypeCreditAlphanum4(alpha_num4);
+	let amount = StroopAmount(amount);
+	let address = PublicKey::PublicKeyTypeEd25519(stellar_address);
+	let op =
+		Operation::new_payment(address, stellar_asset, amount).expect("Should create operation");
+	op
 }
 
 #[test]
@@ -918,11 +938,14 @@ mod spec_based_tests {
 				},
 			);
 
+			let op_amount = 100 - (transfer_fee.amount() as i64);
+			let op = get_operation(op_amount, RANDOM_STELLAR_PUBLIC_KEY);
 			let (
 				transaction_envelope_xdr_encoded,
 				scp_envelopes_xdr_encoded,
 				transaction_set_xdr_encoded,
-			) = stellar_relay::testing_utils::create_dummy_scp_structs_encoded();
+			) = stellar_relay::testing_utils::create_dummy_scp_structs_with_operation_encoded(op);
+
 
 			assert_ok!(Redeem::execute_redeem(
 				RuntimeOrigin::signed(USER),
@@ -1270,11 +1293,14 @@ fn test_execute_redeem_within_rate_limit_succeeds() {
 			},
 		);
 
+		let op_amount = (volume_limit as i64) - (tranfer_fee.amount() as i64);
+		// let op_amount = 10000000;
+		let op = get_operation(op_amount, RANDOM_STELLAR_PUBLIC_KEY);
 		let (
 			transaction_envelope_xdr_encoded,
 			scp_envelopes_xdr_encoded,
 			transaction_set_xdr_encoded,
-		) = stellar_relay::testing_utils::create_dummy_scp_structs_encoded();
+		) = stellar_relay::testing_utils::create_dummy_scp_structs_with_operation_encoded(op);
 
 		assert_ok!(Redeem::execute_redeem(
 			RuntimeOrigin::signed(USER),
@@ -1363,11 +1389,14 @@ fn test_execute_redeem_fails_when_exceeds_rate_limit() {
 			},
 		);
 
+		let op_amount = amount as i64 - (transfer_fee.amount() as i64);
+		let op = get_operation(op_amount, RANDOM_STELLAR_PUBLIC_KEY);
 		let (
 			transaction_envelope_xdr_encoded,
 			scp_envelopes_xdr_encoded,
 			transaction_set_xdr_encoded,
-		) = stellar_relay::testing_utils::create_dummy_scp_structs_encoded();
+		) = stellar_relay::testing_utils::create_dummy_scp_structs_with_operation_encoded(op);
+
 
 		assert_ok!(Redeem::execute_redeem(
 			RuntimeOrigin::signed(USER),
@@ -1466,11 +1495,14 @@ fn test_execute_redeem_after_rate_limit_interval_reset_succeeds() {
 			},
 		);
 
+		let op_amount = (amount as i64) - (transfer_fee.amount() as i64);
+		// let op_amount = 10000000;
+		let op = get_operation(op_amount, RANDOM_STELLAR_PUBLIC_KEY);
 		let (
 			transaction_envelope_xdr_encoded,
 			scp_envelopes_xdr_encoded,
 			transaction_set_xdr_encoded,
-		) = stellar_relay::testing_utils::create_dummy_scp_structs_encoded();
+		) = stellar_relay::testing_utils::create_dummy_scp_structs_with_operation_encoded(op);
 
 		assert_ok!(Redeem::execute_redeem(
 			RuntimeOrigin::signed(USER),
