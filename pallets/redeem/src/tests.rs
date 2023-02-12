@@ -946,7 +946,6 @@ mod spec_based_tests {
 				transaction_set_xdr_encoded,
 			) = stellar_relay::testing_utils::create_dummy_scp_structs_with_operation_encoded(op);
 
-
 			assert_ok!(Redeem::execute_redeem(
 				RuntimeOrigin::signed(USER),
 				H256([0u8; 32]),
@@ -1396,7 +1395,6 @@ fn test_execute_redeem_fails_when_exceeds_rate_limit() {
 			scp_envelopes_xdr_encoded,
 			transaction_set_xdr_encoded,
 		) = stellar_relay::testing_utils::create_dummy_scp_structs_with_operation_encoded(op);
-
 
 		assert_ok!(Redeem::execute_redeem(
 			RuntimeOrigin::signed(USER),
