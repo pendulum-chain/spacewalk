@@ -412,7 +412,6 @@ impl VaultService {
 		self.vault_id_manager.fetch_vault_ids().await?;
 
 		let wallet = self.stellar_wallet.read().await;
-		let secret_key = wallet.get_secret_key();
 		let vault_public_key = wallet.get_public_key();
 		let is_public_network = wallet.is_public_network();
 		drop(wallet);
@@ -445,7 +444,7 @@ impl VaultService {
 		let issue_map: ArcRwLock<IssueRequestsMap> = Arc::new(RwLock::new(IssueRequestsMap::new()));
 		issue::initialize_issue_set(&self.spacewalk_parachain, &issue_map).await?;
 
-		let issue_filter = IssueFilter::new(secret_key.get_public())?;
+		let issue_filter = IssueFilter::new(&vault_public_key)?;
 
 		let ledger_env_map: ArcRwLock<LedgerTxEnvMap> = Arc::new(RwLock::new(HashMap::new()));
 
