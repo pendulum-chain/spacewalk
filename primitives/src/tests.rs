@@ -183,3 +183,17 @@ fn test_foreign_currency_conversion_u64() {
 	assert_eq!(<u64 as TryInto<ForeignCurrencyId>>::try_into(20), Err(()));
 	assert_eq!(<u64 as TryInto<ForeignCurrencyId>>::try_into(257), Err(()));
 }
+
+#[test]
+fn test_currencyid_one() {
+	const USDC_CURRENCY: CurrencyId = CurrencyId::AlphaNum4 {
+		code: *b"USDC",
+		issuer: [
+			20, 209, 150, 49, 176, 55, 23, 217, 171, 154, 54, 110, 16, 50, 30, 226, 102, 231, 46,
+			199, 108, 171, 97, 144, 240, 161, 51, 109, 72, 34, 159, 139,
+		],
+	};
+
+	assert_eq!(USDC_CURRENCY.one(), 10_000_000);
+	assert_eq!(USDC_CURRENCY.one(), CurrencyId::Native.one());
+}

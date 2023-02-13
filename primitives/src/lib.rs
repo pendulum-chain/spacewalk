@@ -489,7 +489,7 @@ create_currency_id! {
 		PHA("Phala", 10) = 14,
 		ZTG("Zeitgeist", 10) = 15,
 		USD("Statemine", 10) = 16,
-		
+
 		DOT("Polkadot", 10) = 20,
 	}
 }
@@ -505,6 +505,20 @@ pub enum CurrencyId {
 	StellarNative,
 	AlphaNum4 { code: Bytes4, issuer: AssetIssuer },
 	AlphaNum12 { code: Bytes12, issuer: AssetIssuer },
+}
+
+impl CurrencyId {
+	fn decimals() -> u8 {
+		// scaling allows for seven decimal places of precision
+		7
+	}
+
+	pub fn one(&self) -> Balance {
+		match self {
+			CurrencyId::XCM(foreign) => foreign.one(),
+			_ => 10u128.pow(Self::decimals().into()),
+		}
+	}
 }
 
 #[derive(scale_info::TypeInfo, Encode, Decode, Clone, Eq, PartialEq, Debug)]
@@ -773,9 +787,6 @@ impl TransactionEnvelopeExt for TransactionEnvelope {
 		BalanceConversion::unlookup(transferred_amount)
 	}
 }
-
-use scale_info::prelude::string::String;
-use sp_std::vec;
 
 pub struct DiaOracleKeyConvertor;
 impl Convert<oracle::Key, Option<(Vec<u8>, Vec<u8>)>> for DiaOracleKeyConvertor {
