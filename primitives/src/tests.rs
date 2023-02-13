@@ -196,4 +196,5 @@ fn test_currencyid_one() {
 
 	assert_eq!(USDC_CURRENCY.one(), 10_000_000);
 	assert_eq!(USDC_CURRENCY.one(), CurrencyId::Native.one());
+	assert_eq!(CurrencyId::StellarNative.one(), 10_000_000);
 }
