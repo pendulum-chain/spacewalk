@@ -37,7 +37,6 @@ pub fn create_dummy_scp_structs(
 		memo: substrate_stellar_sdk::Memo::MemoNone,
 		ext: substrate_stellar_sdk::types::TransactionExt::V0,
 	};
-	// tx.append_operation(Operation::new_payment(destination_address, asset, amount));
 	let tx_env = TransactionV1Envelope { tx, signatures: LimitedVarArray::new_empty() };
 
 	let scp_envelopes: LimitedVarArray<ScpEnvelope, 20> = LimitedVarArray::new_empty();
