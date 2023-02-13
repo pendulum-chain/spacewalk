@@ -47,6 +47,9 @@ pub enum Error {
 	SeqNoParsingError,
 	#[error("OracleError: {0}")]
 	OracleError(#[from] crate::oracle::Error),
+
+	#[error("StdIoError: {0}")]
+	StdIoError(#[from] std::io::Error),
 }
 
 impl From<Error> for service::Error<Error> {
