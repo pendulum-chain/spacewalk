@@ -1,5 +1,6 @@
 use std::{
-	collections::HashMap, convert::TryInto, fs, future::Future, pin::Pin, sync::Arc, time::Duration,str::from_utf8
+	collections::HashMap, convert::TryInto, fs, future::Future, pin::Pin, str::from_utf8,
+	sync::Arc, time::Duration,
 };
 
 use async_trait::async_trait;
@@ -329,9 +330,14 @@ impl VaultService {
 	) -> Result<Self, Error> {
 		let is_public_network = spacewalk_parachain.is_public_network().await?;
 
-		let stellar_vault_secret_key = fs::read_to_string(&config.stellar_vault_secret_key_filepath)?;
-		let stellar_wallet = StellarWallet::from_secret_encoded(&stellar_vault_secret_key, is_public_network)?;
-		tracing::debug!("Vault wallet public key: {}",from_utf8(&stellar_wallet.get_public_key().to_encoding())?);
+		let stellar_vault_secret_key =
+			fs::read_to_string(&config.stellar_vault_secret_key_filepath)?;
+		let stellar_wallet =
+			StellarWallet::from_secret_encoded(&stellar_vault_secret_key, is_public_network)?;
+		tracing::debug!(
+			"Vault wallet public key: {}",
+			from_utf8(&stellar_wallet.get_public_key().to_encoding())?
+		);
 
 		let stellar_wallet = Arc::new(RwLock::new(stellar_wallet));
 
