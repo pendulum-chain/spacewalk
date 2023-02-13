@@ -31,7 +31,7 @@ cargo run --bin vault --features standalone-metadata  -- --keyring alice --stell
 # Run the vault with auto-registering for the USDC asset on mainnet (assuming the issuer is centre.io)
 cargo run --bin vault --features standalone-metadata  -- --keyring alice --stellar-vault-secret-key-filepath <secret_key_file_path> --auto-register "DOT,GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN:USDC,1000000"
 ```
-An example of the secret key file path is at [this directory](./secret_key).  
+An example of the secret key file path is found [here](./secret_key).  
 
 
 
