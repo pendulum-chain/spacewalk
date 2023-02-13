@@ -714,9 +714,8 @@ impl<T: Config> Pallet<T> {
 			redeem.asset,
 		)?;
 
-		let expected_amount = redeem.amount().checked_sub(&redeem.transfer_fee())?;
-
-		ensure!(paid_amount.ge(&expected_amount)?, Error::<T>::InvalidPaymentAmount);
+		// Check that the transaction contains a payment with at least the expected amount
+		ensure!(paid_amount.ge(&redeem.amount())?, Error::<T>::InvalidPaymentAmount);
 
 		// burn amount (without parachain fee, but including transfer fee)
 		let burn_amount = redeem.amount().checked_add(&redeem.transfer_fee())?;
