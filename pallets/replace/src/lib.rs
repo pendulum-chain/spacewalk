@@ -581,9 +581,6 @@ impl<T: Config> Pallet<T> {
 
 		let expected_amount = amount.clone();
 
-		#[cfg(test)]
-		println!("paid : {:#?} expected : {:#?}", paid_amount.amount(), expected_amount.amount());
-
 		ensure!(paid_amount.ge(&expected_amount)?, Error::<T>::InvalidPaymentAmount);
 
 		// only return griefing collateral if not already slashed
