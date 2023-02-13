@@ -161,6 +161,9 @@ fn test_balance_convr() {
 
 	let lookup_orig = BalanceConversion::unlookup(balance_lookup);
 	assert_eq!(lookup_orig, balance);
+
+	let balance_unlookup = BalanceConversion::unlookup(i64::MIN);
+	assert_eq!(balance_unlookup, 0);
 }
 
 #[test]

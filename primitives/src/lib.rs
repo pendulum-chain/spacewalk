@@ -489,7 +489,7 @@ create_currency_id! {
 		PHA("Phala", 10) = 14,
 		ZTG("Zeitgeist", 10) = 15,
 		USD("Statemine", 10) = 16,
-		
+
 		DOT("Polkadot", 10) = 20,
 	}
 }
@@ -696,7 +696,10 @@ impl StaticLookup for BalanceConversion {
 	}
 
 	fn unlookup(stellar_stroops: Self::Target) -> Self::Source {
-		(stellar_stroops * CONVERSION_RATE as i64) as u128
+		let conversion_rate = i64::try_from(CONVERSION_RATE).unwrap_or(i64::MAX);
+
+		let value = stellar_stroops * conversion_rate;
+		u128::try_from(value).unwrap_or(0)
 	}
 }
 
