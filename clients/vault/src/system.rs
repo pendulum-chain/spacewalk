@@ -1,5 +1,6 @@
 use std::{
-	collections::HashMap, convert::TryInto, future::Future, pin::Pin, sync::Arc, time::Duration,
+	collections::HashMap, convert::TryInto, fs, future::Future, pin::Pin, str::from_utf8,
+	sync::Arc, time::Duration,
 };
 
 use async_trait::async_trait;
@@ -196,7 +197,7 @@ fn parse_collateral_and_amount(
 #[derive(Parser, Clone, Debug)]
 pub struct VaultServiceConfig {
 	#[clap(long, help = "The Stellar secret key that is used to sign transactions.")]
-	pub stellar_vault_secret_key: String,
+	pub stellar_vault_secret_key_filepath: String,
 
 	/// Pass the faucet URL for auto-registration.
 	#[clap(long)]
@@ -329,10 +330,15 @@ impl VaultService {
 	) -> Result<Self, Error> {
 		let is_public_network = spacewalk_parachain.is_public_network().await?;
 
-		let stellar_wallet = StellarWallet::from_secret_encoded(
-			&config.stellar_vault_secret_key,
-			is_public_network,
-		)?;
+		let stellar_vault_secret_key =
+			fs::read_to_string(&config.stellar_vault_secret_key_filepath)?;
+		let stellar_wallet =
+			StellarWallet::from_secret_encoded(&stellar_vault_secret_key, is_public_network)?;
+		tracing::debug!(
+			"Vault wallet public key: {}",
+			from_utf8(&stellar_wallet.get_public_key().to_encoding())?
+		);
+
 		let stellar_wallet = Arc::new(RwLock::new(stellar_wallet));
 
 		Ok(Self {
