@@ -2,6 +2,28 @@
 use mocktopus::macros::mockable;
 
 #[cfg_attr(test, mockable)]
+pub(crate) mod currency {
+	use substrate_stellar_sdk::TransactionEnvelope;
+
+	use currency::{Amount, Error};
+	use primitives::StellarPublicKeyRaw;
+
+	use crate::types::CurrencyId;
+
+	pub fn get_amount_from_transaction_envelope<T: crate::Config>(
+		transaction_envelope: &TransactionEnvelope,
+		recipient_stellar_address: StellarPublicKeyRaw,
+		currency: CurrencyId<T>,
+	) -> Result<Amount<T>, Error<T>> {
+		<currency::Pallet<T>>::get_amount_from_transaction_envelope(
+			transaction_envelope,
+			recipient_stellar_address,
+			currency,
+		)
+	}
+}
+
+#[cfg_attr(test, mockable)]
 pub(crate) mod stellar_relay {
 	use sp_core::H256;
 	use substrate_stellar_sdk::{

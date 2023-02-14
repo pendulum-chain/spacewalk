@@ -77,7 +77,7 @@ pub mod pallet {
 	}
 
 	#[pallet::event]
-	#[pallet::generate_deposit(pub(super) fn deposit_event)]
+	#[pallet::generate_deposit(pub (super) fn deposit_event)]
 	pub enum Event<T: Config> {
 		RequestReplace {
 			old_vault_id: DefaultVaultId<T>,
@@ -140,6 +140,8 @@ pub mod pallet {
 		ReplaceIdNotFound,
 		/// Vault cannot replace different currency.
 		InvalidWrappedCurrency,
+		/// Invalid payment amount
+		InvalidPaymentAmount,
 	}
 
 	/// Vaults create replace requests to transfer locked collateral.
@@ -201,7 +203,7 @@ pub mod pallet {
 		/// * `origin` - sender of the transaction
 		/// * `amount` - amount of issued tokens
 		#[pallet::call_index(0)]
-		#[pallet::weight(<T as Config>::WeightInfo::request_replace())]
+		#[pallet::weight(< T as Config >::WeightInfo::request_replace())]
 		#[transactional]
 		pub fn request_replace(
 			origin: OriginFor<T>,
@@ -224,7 +226,7 @@ pub mod pallet {
 		/// * `origin` - sender of the transaction: the old vault
 		/// * `amount` - amount of tokens to be withdrawn from being replaced
 		#[pallet::call_index(1)]
-		#[pallet::weight(<T as Config>::WeightInfo::withdraw_replace())]
+		#[pallet::weight(< T as Config >::WeightInfo::withdraw_replace())]
 		#[transactional]
 		pub fn withdraw_replace(
 			origin: OriginFor<T>,
@@ -251,7 +253,7 @@ pub mod pallet {
 		///   (for backing the transferred tokens)
 		/// * `stellar_address` - the address that old-vault should transfer the wrapped asset to
 		#[pallet::call_index(2)]
-		#[pallet::weight(<T as Config>::WeightInfo::accept_replace())]
+		#[pallet::weight(< T as Config >::WeightInfo::accept_replace())]
 		#[transactional]
 		pub fn accept_replace(
 			origin: OriginFor<T>,
@@ -277,7 +279,7 @@ pub mod pallet {
 		/// * `origin` - sender of the transaction: the new vault
 		/// * `replace_id` - the ID of the replacement request
 		#[pallet::call_index(3)]
-		#[pallet::weight(<T as Config>::WeightInfo::execute_replace())]
+		#[pallet::weight(< T as Config >::WeightInfo::execute_replace())]
 		#[transactional]
 		pub fn execute_replace(
 			origin: OriginFor<T>,
@@ -303,7 +305,7 @@ pub mod pallet {
 		/// * `origin` - sender of the transaction: anyone
 		/// * `replace_id` - the ID of the replacement request
 		#[pallet::call_index(4)]
-		#[pallet::weight(<T as Config>::WeightInfo::cancel_replace())]
+		#[pallet::weight(< T as Config >::WeightInfo::cancel_replace())]
 		#[transactional]
 		pub fn cancel_replace(
 			origin: OriginFor<T>,
@@ -323,7 +325,7 @@ pub mod pallet {
 		///
 		/// # Weight: `O(1)`
 		#[pallet::call_index(5)]
-		#[pallet::weight(<T as Config>::WeightInfo::set_replace_period())]
+		#[pallet::weight(< T as Config >::WeightInfo::set_replace_period())]
 		#[transactional]
 		pub fn set_replace_period(
 			origin: OriginFor<T>,
@@ -570,6 +572,15 @@ impl<T: Config> Pallet<T> {
 			&envelopes,
 			&transaction_set,
 		)?;
+
+		let paid_amount: Amount<T> = ext::currency::get_amount_from_transaction_envelope::<T>(
+			&transaction_envelope,
+			replace.stellar_address,
+			replace.asset,
+		)?;
+
+		// Check that the transaction contains a payment with at least the expected amount
+		ensure!(paid_amount.ge(&amount.clone())?, Error::<T>::InvalidPaymentAmount);
 
 		// only return griefing collateral if not already slashed
 		let collateral = match replace.status {
