@@ -23,15 +23,6 @@ pub struct StellarOverlayConnection {
 }
 
 impl StellarOverlayConnection {
-	pub fn get_actions_sender(&self) -> mpsc::Sender<ConnectorActions> {
-		self.actions_sender.clone()
-	}
-	pub fn disconnect_status(&self) -> ConnectorActions {
-		ConnectorActions::Disconnect
-	}
-}
-
-impl StellarOverlayConnection {
 	fn new(
 		actions_sender: mpsc::Sender<ConnectorActions>,
 		relay_message_receiver: mpsc::Receiver<StellarRelayMessage>,
@@ -139,6 +130,13 @@ impl StellarOverlayConnection {
 		// start the handshake
 		actions_sender.send(ConnectorActions::SendHello).await?;
 		Ok(overlay_connection)
+	}
+
+	pub fn get_actions_sender(&self) -> mpsc::Sender<ConnectorActions> {
+		self.actions_sender.clone()
+	}
+	pub fn get_disconnect_action(&self) -> ConnectorActions {
+		ConnectorActions::Disconnect
 	}
 }
 

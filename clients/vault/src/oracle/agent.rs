@@ -172,7 +172,7 @@ impl OracleAgent {
 
 		let collector = self.collector.clone();
 		let actions_sender = overlay_conn.get_actions_sender();
-		let r = overlay_conn.disconnect_status();
+		let disconnect_action = overlay_conn.get_disconnect_action();
 
 		// handle a message from the overlay network
 		service::spawn_cancelable(self.shutdown_sender.subscribe(), async move {
@@ -195,7 +195,8 @@ impl OracleAgent {
 		});
 
 		tokio::spawn(on_shutdown(self.shutdown_sender.clone(), async move {
-			let result_sending_diconnect = actions_sender.send(r).await.map_err(Error::from);
+			let result_sending_diconnect =
+				actions_sender.send(disconnect_action).await.map_err(Error::from);
 			if let Err(e) = result_sending_diconnect {
 				tracing::error!("Failed to send message to error : {:#?}", e);
 			};
