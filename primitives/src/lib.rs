@@ -698,7 +698,7 @@ impl StaticLookup for BalanceConversion {
 	fn unlookup(stellar_stroops: Self::Target) -> Self::Source {
 		let conversion_rate = i64::try_from(CONVERSION_RATE).unwrap_or(i64::MAX);
 
-		let value = stellar_stroops * conversion_rate;
+		let value = stellar_stroops.saturating_mul(conversion_rate);
 		u128::try_from(value).unwrap_or(0)
 	}
 }
