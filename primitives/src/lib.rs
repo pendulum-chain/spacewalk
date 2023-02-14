@@ -583,17 +583,8 @@ impl TryFrom<(&str, &str)> for CurrencyId {
 		let issuer_pk = stellar::PublicKey::from_encoding(issuer_encoded)
 			.map_err(|_| "Invalid issuer encoding")?;
 		let issuer: AssetIssuer = *issuer_pk.as_binary();
-		if slice.len() <= 4 {
-			let mut code: Bytes4 = [0; 4];
-			code[..slice.len()].copy_from_slice(slice.as_bytes());
-			Ok(CurrencyId::AlphaNum4(code, issuer))
-		} else if slice.len() > 4 && slice.len() <= 12 {
-			let mut code: Bytes12 = [0; 12];
-			code[..slice.len()].copy_from_slice(slice.as_bytes());
-			Ok(CurrencyId::AlphaNum12(code, issuer))
-		} else {
-			Err("More than 12 bytes not supported")
-		}
+
+		CurrencyId::try_from((value.0, issuer))
 	}
 }
 
