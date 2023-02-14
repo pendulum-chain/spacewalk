@@ -311,13 +311,13 @@ fn testnet_genesis(
 			max_delay: u32::MAX,
 			oracle_keys: vec![
 				Key::ExchangeRate(CurrencyId::XCM(ForeignCurrencyId::DOT)),
-				Key::ExchangeRate(CurrencyId::AlphaNum4 {
-					code: *b"USDC",
-					issuer: [
+				Key::ExchangeRate(CurrencyId::AlphaNum4(
+					*b"USDC",
+					[
 						20, 209, 150, 49, 176, 55, 23, 217, 171, 154, 54, 110, 16, 50, 30, 226,
 						102, 231, 46, 199, 108, 171, 97, 144, 240, 161, 51, 109, 72, 34, 159, 139,
 					],
-				}),
+				)),
 			],
 		},
 		vault_registry: VaultRegistryConfig {

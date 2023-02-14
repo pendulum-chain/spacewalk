@@ -31,13 +31,13 @@ const TIMEOUT: Duration = Duration::from_secs(60);
 // and only for some combination of them, secure collateralization thresholds are set.
 const DEFAULT_NATIVE_CURRENCY: CurrencyId = CurrencyId::Native;
 const DEFAULT_TESTING_CURRENCY: CurrencyId = CurrencyId::XCM(ForeignCurrencyId::DOT);
-const DEFAULT_WRAPPED_CURRENCY: CurrencyId = CurrencyId::AlphaNum4 {
-	code: *b"USDC",
-	issuer: [
+const DEFAULT_WRAPPED_CURRENCY: CurrencyId = CurrencyId::AlphaNum4(
+	*b"USDC",
+	[
 		20, 209, 150, 49, 176, 55, 23, 217, 171, 154, 54, 110, 16, 50, 30, 226, 102, 231, 46, 199,
 		108, 171, 97, 144, 240, 161, 51, 109, 72, 34, 159, 139,
 	],
-};
+);
 
 const STELLAR_VAULT_SECRET_KEY: &str = "SB6WHKIU2HGVBRNKNOEOQUY4GFC4ZLG5XPGWLEAHTIZXBXXYACC76VSQ";
 const IS_PUBLIC_NETWORK: bool = false;

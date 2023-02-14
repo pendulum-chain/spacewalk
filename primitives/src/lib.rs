@@ -25,7 +25,7 @@ use sp_std::{
 };
 use stellar::{
 	types::{AlphaNum12, AlphaNum4},
-	Asset, PublicKey,
+	Asset as StellarAsset, PublicKey,
 };
 pub use substrate_stellar_sdk as stellar;
 use substrate_stellar_sdk::{
@@ -489,8 +489,47 @@ create_currency_id! {
 		PHA("Phala", 10) = 14,
 		ZTG("Zeitgeist", 10) = 15,
 		USD("Statemine", 10) = 16,
-		
+		// added lastly
 		DOT("Polkadot", 10) = 20,
+	}
+}
+
+#[derive(
+	Encode, Decode, Eq, Hash, PartialEq, Copy, Clone, PartialOrd, Ord, TypeInfo, MaxEncodedLen,
+)]
+#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
+#[cfg_attr(feature = "std", serde(rename_all = "camelCase"))]
+pub enum Asset {
+	StellarNative,
+	AlphaNum4 { code: Bytes4, issuer: AssetIssuer },
+	AlphaNum12 { code: Bytes12, issuer: AssetIssuer },
+}
+
+impl CurrencyInfo for Asset {
+	fn name(&self) -> &str {
+		match self {
+			Asset::StellarNative => "Stellar",
+			Asset::AlphaNum4 { code, issuer: _ } => from_utf8(code).unwrap_or("unspecified"),
+			Asset::AlphaNum12 { code, issuer: _ } => from_utf8(code).unwrap_or("unspecified"),
+		}
+	}
+
+	fn symbol(&self) -> &str {
+		match self {
+			Asset::StellarNative => "XLM",
+			_ => self.name(),
+		}
+	}
+
+	fn decimals(&self) -> u8 {
+		// scaling allows for seven decimal places of precision
+		7
+	}
+}
+
+impl Asset {
+	pub fn one(&self) -> Balance {
+		10u128.pow(self.decimals().into())
 	}
 }
 
@@ -502,9 +541,21 @@ create_currency_id! {
 pub enum CurrencyId {
 	XCM(ForeignCurrencyId),
 	Native,
-	StellarNative,
-	AlphaNum4 { code: Bytes4, issuer: AssetIssuer },
-	AlphaNum12 { code: Bytes12, issuer: AssetIssuer },
+	Stellar(Asset),
+}
+
+impl CurrencyId {
+	pub const StellarNative: CurrencyId = Self::Stellar(Asset::StellarNative);
+
+	#[allow(non_snake_case)]
+	pub const fn AlphaNum4(code: Bytes4, issuer: AssetIssuer) -> Self {
+		Self::Stellar(Asset::AlphaNum4 { code, issuer })
+	}
+
+	#[allow(non_snake_case)]
+	pub const fn AlphaNum12(code: Bytes12, issuer: AssetIssuer) -> Self {
+		Self::Stellar(Asset::AlphaNum12 { code, issuer })
+	}
 }
 
 #[derive(scale_info::TypeInfo, Encode, Decode, Clone, Eq, PartialEq, Debug)]
@@ -535,11 +586,11 @@ impl TryFrom<(&str, &str)> for CurrencyId {
 		if slice.len() <= 4 {
 			let mut code: Bytes4 = [0; 4];
 			code[..slice.len()].copy_from_slice(slice.as_bytes());
-			Ok(CurrencyId::AlphaNum4 { code, issuer })
+			Ok(CurrencyId::AlphaNum4(code, issuer))
 		} else if slice.len() > 4 && slice.len() <= 12 {
 			let mut code: Bytes12 = [0; 12];
 			code[..slice.len()].copy_from_slice(slice.as_bytes());
-			Ok(CurrencyId::AlphaNum12 { code, issuer })
+			Ok(CurrencyId::AlphaNum12(code, issuer))
 		} else {
 			Err("More than 12 bytes not supported")
 		}
@@ -555,11 +606,11 @@ impl TryFrom<(&str, AssetIssuer)> for CurrencyId {
 		if slice.len() <= 4 {
 			let mut code: Bytes4 = [0; 4];
 			code[..slice.len()].copy_from_slice(slice.as_bytes());
-			Ok(CurrencyId::AlphaNum4 { code, issuer })
+			Ok(CurrencyId::AlphaNum4(code, issuer))
 		} else if slice.len() > 4 && slice.len() <= 12 {
 			let mut code: Bytes12 = [0; 12];
 			code[..slice.len()].copy_from_slice(slice.as_bytes());
-			Ok(CurrencyId::AlphaNum12 { code, issuer })
+			Ok(CurrencyId::AlphaNum12(code, issuer))
 		} else {
 			Err("More than 12 bytes not supported")
 		}
@@ -569,17 +620,16 @@ impl TryFrom<(&str, AssetIssuer)> for CurrencyId {
 impl From<stellar::Asset> for CurrencyId {
 	fn from(asset: stellar::Asset) -> Self {
 		match asset {
-			stellar::Asset::Default(_) => CurrencyId::StellarNative,
-			stellar::Asset::AssetTypeNative => CurrencyId::StellarNative,
-			stellar::Asset::AssetTypeCreditAlphanum4(asset_alpha_num4) => CurrencyId::AlphaNum4 {
-				code: asset_alpha_num4.asset_code,
-				issuer: asset_alpha_num4.issuer.into_binary(),
-			},
-			stellar::Asset::AssetTypeCreditAlphanum12(asset_alpha_num12) =>
-				CurrencyId::AlphaNum12 {
-					code: asset_alpha_num12.asset_code,
-					issuer: asset_alpha_num12.issuer.into_binary(),
-				},
+			StellarAsset::Default(_) => CurrencyId::StellarNative,
+			StellarAsset::AssetTypeNative => CurrencyId::StellarNative,
+			StellarAsset::AssetTypeCreditAlphanum4(asset_alpha_num4) => CurrencyId::AlphaNum4(
+				asset_alpha_num4.asset_code,
+				asset_alpha_num4.issuer.into_binary(),
+			),
+			StellarAsset::AssetTypeCreditAlphanum12(asset_alpha_num12) => CurrencyId::AlphaNum12(
+				asset_alpha_num12.asset_code,
+				asset_alpha_num12.issuer.into_binary(),
+			),
 		}
 	}
 }
@@ -592,12 +642,12 @@ impl TryInto<stellar::Asset> for CurrencyId {
 			Self::XCM(_currency_id) => Err("XCM Foreign Asset not defined in the Stellar world."),
 			Self::Native => Err("PEN token not defined in the Stellar world."),
 			Self::StellarNative => Ok(stellar::Asset::native()),
-			Self::AlphaNum4 { code, issuer } =>
+			Self::Stellar(Asset::AlphaNum4 { code, issuer }) =>
 				Ok(stellar::Asset::AssetTypeCreditAlphanum4(AlphaNum4 {
 					asset_code: code,
 					issuer: PublicKey::PublicKeyTypeEd25519(issuer),
 				})),
-			Self::AlphaNum12 { code, issuer } =>
+			Self::Stellar(Asset::AlphaNum12 { code, issuer }) =>
 				Ok(stellar::Asset::AssetTypeCreditAlphanum12(AlphaNum12 {
 					asset_code: code,
 					issuer: PublicKey::PublicKeyTypeEd25519(issuer),
@@ -613,8 +663,8 @@ impl fmt::Debug for CurrencyId {
 				write!(f, "XCM({:?})", id)
 			},
 			Self::Native => write!(f, "Native"),
-			Self::StellarNative => write!(f, "XLM"),
-			Self::AlphaNum4 { code, issuer } => {
+			&Self::StellarNative => write!(f, "XLM"),
+			Self::Stellar(Asset::AlphaNum4 { code, issuer }) => {
 				write!(
 					f,
 					"{{ code: {}, issuer: {} }}",
@@ -625,7 +675,7 @@ impl fmt::Debug for CurrencyId {
 					.unwrap()
 				)
 			},
-			Self::AlphaNum12 { code, issuer } => {
+			Self::Stellar(Asset::AlphaNum12 { code, issuer }) => {
 				write!(
 					f,
 					"{{ code: {}, issuer: {} }}",
@@ -648,12 +698,12 @@ fn to_look_up_error(_: &'static str) -> LookupError {
 
 impl StaticLookup for AssetConversion {
 	type Source = CurrencyId;
-	type Target = Asset;
+	type Target = StellarAsset;
 
 	fn lookup(
 		currency_id: <Self as StaticLookup>::Source,
 	) -> Result<<Self as StaticLookup>::Target, LookupError> {
-		let asset_conversion_result: Result<Asset, &str> = currency_id.try_into();
+		let asset_conversion_result: Result<StellarAsset, &str> = currency_id.try_into();
 		asset_conversion_result.map_err(to_look_up_error)
 	}
 
@@ -716,20 +766,19 @@ impl StaticLookup for AddressConversion {
 	}
 }
 
-/// Error type for key decoding errors
-#[derive(Debug)]
-pub enum AddressConversionError {
-	//     UnexpectedKeyType
-}
-
 pub trait TransactionEnvelopeExt {
-	fn get_payment_amount_for_asset_to(&self, to: StellarPublicKeyRaw, asset: Asset) -> u128;
+	fn get_payment_amount_for_asset_to(&self, to: StellarPublicKeyRaw, asset: StellarAsset)
+		-> u128;
 }
 
 impl TransactionEnvelopeExt for TransactionEnvelope {
 	/// Returns the amount of the given asset that is being sent to the given address.
 	/// Only considers payment and claimable balance operations.
-	fn get_payment_amount_for_asset_to(&self, to: StellarPublicKeyRaw, asset: Asset) -> u128 {
+	fn get_payment_amount_for_asset_to(
+		&self,
+		to: StellarPublicKeyRaw,
+		asset: StellarAsset,
+	) -> u128 {
 		let recipient_account_muxed = MuxedAccount::KeyTypeEd25519(to);
 		let recipient_account_pk = PublicKey::PublicKeyTypeEd25519(to);
 
@@ -774,9 +823,6 @@ impl TransactionEnvelopeExt for TransactionEnvelope {
 	}
 }
 
-use scale_info::prelude::string::String;
-use sp_std::vec;
-
 pub struct DiaOracleKeyConvertor;
 impl Convert<oracle::Key, Option<(Vec<u8>, Vec<u8>)>> for DiaOracleKeyConvertor {
 	fn convert(spacwalk_oracle_key: oracle::Key) -> Option<(Vec<u8>, Vec<u8>)> {
@@ -789,8 +835,10 @@ impl Convert<oracle::Key, Option<(Vec<u8>, Vec<u8>)>> for DiaOracleKeyConvertor 
 				},
 				CurrencyId::Native => Some((vec![2u8], vec![])),
 				CurrencyId::StellarNative => Some((vec![3u8], vec![])),
-				CurrencyId::AlphaNum4 { code, .. } => Some((vec![4u8], code.to_vec())),
-				CurrencyId::AlphaNum12 { code, .. } => Some((vec![5u8], code.to_vec())),
+				CurrencyId::Stellar(Asset::AlphaNum4 { code, .. }) =>
+					Some((vec![4u8], code.to_vec())),
+				CurrencyId::Stellar(Asset::AlphaNum12 { code, .. }) =>
+					Some((vec![5u8], code.to_vec())),
 			},
 		}
 	}
@@ -812,7 +860,7 @@ impl Convert<(Vec<u8>, Vec<u8>), Option<oracle::Key>> for DiaOracleKeyConvertor 
 			4u8 => {
 				let vector = symbol;
 				let code = [vector[0], vector[1], vector[2], vector[3]];
-				Some(oracle::Key::ExchangeRate(CurrencyId::AlphaNum4 { code, issuer: [0u8; 32] }))
+				Some(oracle::Key::ExchangeRate(CurrencyId::AlphaNum4(code, [0u8; 32])))
 			},
 			5u8 => {
 				let vector = symbol;
@@ -820,7 +868,7 @@ impl Convert<(Vec<u8>, Vec<u8>), Option<oracle::Key>> for DiaOracleKeyConvertor 
 					vector[0], vector[1], vector[2], vector[3], vector[4], vector[5], vector[6],
 					vector[7], vector[8], vector[9], vector[10], vector[11],
 				];
-				Some(oracle::Key::ExchangeRate(CurrencyId::AlphaNum12 { code, issuer: [0u8; 32] }))
+				Some(oracle::Key::ExchangeRate(CurrencyId::AlphaNum12(code, [0u8; 32])))
 			},
 			_ => None,
 		}
