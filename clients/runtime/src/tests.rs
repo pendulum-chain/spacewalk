@@ -13,13 +13,13 @@ use super::{
 use sp_runtime::traits::Convert;
 
 const DEFAULT_TESTING_CURRENCY: CurrencyId = CurrencyId::XCM(ForeignCurrencyId::KSM);
-const DEFAULT_WRAPPED_CURRENCY: CurrencyId = CurrencyId::AlphaNum4 {
-	code: *b"USDC",
-	issuer: [
+const DEFAULT_WRAPPED_CURRENCY: CurrencyId = CurrencyId::AlphaNum4(
+	*b"USDC",
+	[
 		20, 209, 150, 49, 176, 55, 23, 217, 171, 154, 54, 110, 16, 50, 30, 226, 102, 231, 46, 199,
 		108, 171, 97, 144, 240, 161, 51, 109, 72, 34, 159, 139,
 	],
-};
+);
 
 fn dummy_public_key() -> StellarPublicKeyRaw {
 	[0u8; 32]

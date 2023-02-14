@@ -211,13 +211,13 @@ const PARENT_CURRENCY_ID: CurrencyId = CurrencyId::XCM(ForeignCurrencyId::DOT);
 // 	],
 // };
 // For Testnet USDC issued by
-const WRAPPED_CURRENCY_ID: CurrencyId = CurrencyId::AlphaNum4 {
-	code: *b"USDC",
-	issuer: [
+const WRAPPED_CURRENCY_ID: CurrencyId = CurrencyId::AlphaNum4(
+	*b"USDC",
+	[
 		20, 209, 150, 49, 176, 55, 23, 217, 171, 154, 54, 110, 16, 50, 30, 226, 102, 231, 46, 199,
 		108, 171, 97, 144, 240, 161, 51, 109, 72, 34, 159, 139,
 	],
-};
+);
 
 parameter_types! {
 	pub const GetNativeCurrencyId: CurrencyId = NATIVE_CURRENCY_ID;

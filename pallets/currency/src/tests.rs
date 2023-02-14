@@ -20,7 +20,7 @@ fn test_get_amount_from_transaction_envelope_works() {
 	run_test(|| {
 		let code: Bytes4 = *b"USDC";
 		let issuer: AssetIssuer = [0; 32];
-		let currency = CurrencyId::AlphaNum4 { code, issuer };
+		let currency = CurrencyId::AlphaNum4(code, issuer);
 		let asset = <Test as Config>::AssetConversion::lookup(currency).unwrap();
 		let recipient_stellar_address = [1u8; 32];
 		let source_account = MuxedAccount::KeyTypeEd25519(recipient_stellar_address);
@@ -85,11 +85,11 @@ fn test_get_amount_from_transaction_envelope_works_for_mismatching_assets() {
 	run_test(|| {
 		let code: Bytes4 = *b"USDC";
 		let issuer: AssetIssuer = [0; 32];
-		let currency = CurrencyId::AlphaNum4 { code, issuer };
+		let currency = CurrencyId::AlphaNum4(code, issuer);
 
 		// use a different asset when creating the transaction
 		let other_issuer: AssetIssuer = [1; 32];
-		let other_currency = CurrencyId::AlphaNum4 { code, issuer: other_issuer };
+		let other_currency = CurrencyId::AlphaNum4(code, other_issuer);
 		let asset = <Test as Config>::AssetConversion::lookup(other_currency).unwrap();
 		let recipient_stellar_address = [1u8; 32];
 		let source_account = MuxedAccount::KeyTypeEd25519(recipient_stellar_address);

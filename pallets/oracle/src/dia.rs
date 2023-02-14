@@ -31,8 +31,8 @@ impl Convert<OracleKey, Option<(Vec<u8>, Vec<u8>)>> for DiaOracleKeyConvertor {
 				},
 				CurrencyId::Native => unimplemented!(),
 				CurrencyId::StellarNative => unimplemented!(),
-				CurrencyId::AlphaNum4 { .. } => unimplemented!(),
-				CurrencyId::AlphaNum12 { .. } => unimplemented!(),
+				CurrencyId::Stellar(primitives::Asset::AlphaNum4 { .. }) => unimplemented!(),
+				CurrencyId::Stellar(primitives::Asset::AlphaNum12 { .. }) => unimplemented!(),
 			},
 		}
 	}

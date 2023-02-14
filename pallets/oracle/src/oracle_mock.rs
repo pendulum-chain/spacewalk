@@ -4,7 +4,7 @@ use sp_std::cmp::Ordering;
 
 use sp_arithmetic::FixedU128;
 pub type UnsignedFixedPoint = FixedU128;
-use primitives::{oracle::Key, CurrencyId};
+use primitives::{oracle::Key, Asset, CurrencyId};
 use sp_std::{vec, vec::Vec};
 
 #[derive(Clone, Default, PartialEq, Eq, Hash)]
@@ -47,8 +47,10 @@ impl Convert<Key, Option<(Vec<u8>, Vec<u8>)>> for MockOracleKeyConvertor {
 				},
 				CurrencyId::Native => Some((vec![2u8], vec![])),
 				CurrencyId::StellarNative => Some((vec![3u8], vec![])),
-				CurrencyId::AlphaNum4 { code, .. } => Some((vec![4u8], code.to_vec())),
-				CurrencyId::AlphaNum12 { code, .. } => Some((vec![5u8], code.to_vec())),
+				CurrencyId::Stellar(Asset::AlphaNum4 { code, .. }) =>
+					Some((vec![4u8], code.to_vec())),
+				CurrencyId::Stellar(Asset::AlphaNum12 { code, .. }) =>
+					Some((vec![5u8], code.to_vec())),
 			},
 		}
 	}
@@ -78,7 +80,7 @@ impl Convert<(Vec<u8>, Vec<u8>), Option<Key>> for MockOracleKeyConvertor {
 			4u8 => {
 				let vector = symbol;
 				let code = [vector[0], vector[1], vector[2], vector[3]];
-				Some(Key::ExchangeRate(CurrencyId::AlphaNum4 { code, issuer: [0u8; 32] }))
+				Some(Key::ExchangeRate(CurrencyId::AlphaNum4(code, [0u8; 32])))
 			},
 			5u8 => {
 				let vector = symbol;
@@ -86,7 +88,7 @@ impl Convert<(Vec<u8>, Vec<u8>), Option<Key>> for MockOracleKeyConvertor {
 					vector[0], vector[1], vector[2], vector[3], vector[4], vector[5], vector[6],
 					vector[7], vector[8], vector[9], vector[10], vector[11],
 				];
-				Some(Key::ExchangeRate(CurrencyId::AlphaNum12 { code, issuer: [0u8; 32] }))
+				Some(Key::ExchangeRate(CurrencyId::AlphaNum12(code, [0u8; 32])))
 			},
 			_ => None,
 		}
