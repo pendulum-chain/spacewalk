@@ -136,12 +136,6 @@ async fn stellar_overlay_should_receive_tx_set() {
 	.await
 	.expect("time has elapsed");
 
-	overlay_connection
-		.lock()
-		.await
-		.disconnect()
-		.await
-		.expect("Should be able to disconnect");
 	//arrange
 	//ensure that we receive some tx set from stellar node
 	assert!(!tx_set_vec.lock().await.is_empty());

@@ -306,15 +306,15 @@ pub(crate) async fn connection_handler(
 			},
 
 			Ok(None) => {
-				log::info!("why is it none?");
+				log::warn!("Unexpected empty response from receiver");
 			},
 
 			Err(elapsed) => {
-				log::info!("{} for receiving messages.", elapsed.to_string());
+				log::error!("Connection timed out after {} seconds", elapsed.to_string());
 				if timeout_counter >= connector.retries {
 					connector.send_to_user(StellarRelayMessage::Timeout).await?;
 					return Err(Error::ConnectionFailed(format!(
-						"TIMED OUT! elapsed time: {:?}",
+						"Timed out! elapsed time: {:?}",
 						elapsed.to_string()
 					)))
 				}
