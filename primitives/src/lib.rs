@@ -578,7 +578,6 @@ impl TryFrom<(&str, &str)> for CurrencyId {
 	type Error = &'static str;
 
 	fn try_from(value: (&str, &str)) -> Result<Self, Self::Error> {
-		let slice = value.0;
 		let issuer_encoded = value.1;
 		let issuer_pk = stellar::PublicKey::from_encoding(issuer_encoded)
 			.map_err(|_| "Invalid issuer encoding")?;
