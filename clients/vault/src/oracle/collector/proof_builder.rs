@@ -170,7 +170,6 @@ impl ScpMessageCollector {
 		let envelopes = self.get_envelopes(slot, sender).await;
 		// return early if we don't have enough envelopes or the tx_set
 		if envelopes.len() == 0 {
-			println!("No envelopes found for slot {}", slot);
 			return None
 		}
 
