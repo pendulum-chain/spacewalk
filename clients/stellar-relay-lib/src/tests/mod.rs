@@ -99,7 +99,7 @@ async fn stellar_overlay_should_receive_tx_set() {
 	let cfg = ConnConfig::new(TIER_1_VALIDATOR_IP_PUBLIC, 11625, secret, 0, true, true, false);
 
 	let mut overlay_connection = Arc::new(Mutex::new(
-		StellarOverlayConnection::connect(node_info.clone(), cfg).await.unwrap()
+		StellarOverlayConnection::connect(node_info.clone(), cfg).await.unwrap(),
 	));
 
 	let mut ov_conn = overlay_connection.clone();

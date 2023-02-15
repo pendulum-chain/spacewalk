@@ -3,7 +3,7 @@ use std::{sync::Arc, time::Duration};
 use rand::RngCore;
 use service::on_shutdown;
 use tokio::{
-	sync::mpsc,
+	sync::{mpsc, RwLock},
 	time::{sleep, timeout},
 };
 
@@ -27,7 +27,7 @@ use crate::oracle::{
 };
 
 pub struct OracleAgent {
-	collector: Arc<ScpMessageCollector>,
+	collector: Arc<RwLock<ScpMessageCollector>>,
 	pub is_public_network: bool,
 	message_sender: Option<StellarMessageSender>,
 	shutdown_sender: ShutdownSender,
@@ -41,16 +41,16 @@ pub struct OracleAgent {
 /// * `message_sender` - used to send messages to Stellar Node
 async fn handle_message(
 	message: StellarRelayMessage,
-	collector: &Arc<ScpMessageCollector>,
+	collector: Arc<RwLock<ScpMessageCollector>>,
 	message_sender: &StellarMessageSender,
 ) -> Result<(), Error> {
 	match message {
 		StellarRelayMessage::Data { p_id: _, msg_type: _, msg } => match *msg {
 			StellarMessage::ScpMessage(env) => {
-				collector.handle_envelope(env, message_sender).await?;
+				collector.write().await.handle_envelope(env, message_sender).await?;
 			},
 			StellarMessage::TxSet(set) => {
-				collector.handle_tx_set(set);
+				collector.read().await.handle_tx_set(set);
 			},
 			_ => {},
 		},
@@ -68,7 +68,7 @@ async fn handle_message(
 
 impl OracleAgent {
 	pub fn new(is_public_network: bool) -> Result<Self, Error> {
-		let collector = Arc::new(ScpMessageCollector::new(is_public_network));
+		let collector = Arc::new(RwLock::new(ScpMessageCollector::new(is_public_network)));
 		let shutdown_sender = ShutdownSender::default();
 		Ok(Self { collector, is_public_network, message_sender: None, shutdown_sender })
 	}
@@ -128,7 +128,7 @@ impl OracleAgent {
 
 	/// This method returns the proof for a given slot or an error if the proof cannot be provided.
 	/// The agent will try every possible way to get the proof before returning an error.
-	/// Set timeout to 60 seconds; 10 seconds interval.
+	/// Set timeout to 60 seconds; 5 seconds interval.
 	pub async fn get_proof(&self, slot: Slot) -> Result<Proof, Error> {
 		let sender = self
 			.message_sender
@@ -140,7 +140,7 @@ impl OracleAgent {
 		timeout(Duration::from_secs(60), async move {
 			loop {
 				let stellar_sender = sender.clone();
-				match collector.build_proof(slot, &stellar_sender).await {
+				match collector.read().await.build_proof(slot, &stellar_sender).await {
 					None => {
 						sleep(Duration::from_secs(5)).await;
 						continue
@@ -155,12 +155,12 @@ impl OracleAgent {
 		})?
 	}
 
-	pub fn get_last_slot_index(&self) -> Slot {
-		*self.collector.last_slot_index()
+	pub async fn get_last_slot_index(&self) -> Slot {
+		self.collector.read().await.last_slot_index()
 	}
 
-	pub fn remove_data(&mut self, slot: &Slot) {
-		self.collector.remove_data(slot);
+	pub async fn remove_data(&self, slot: &Slot) {
+		self.collector.read().await.remove_data(slot);
 	}
 
 	/// Runs a task to handle messages coming from the Stellar Nodes, and external messages
@@ -177,12 +177,11 @@ impl OracleAgent {
 
 		// handle a message from the overlay network
 		service::spawn_cancelable(self.shutdown_sender.subscribe(), async move {
-			let collector = collector.clone();
 			loop {
 				tokio::select! {
 					// runs the stellar-relay and listens to data to collect the scp messages and txsets.
 					Some(msg) = overlay_conn.listen() => {
-						handle_message(msg, &collector, &sender).await?;
+						handle_message(msg, collector.clone(), &sender).await?;
 					},
 
 					Some(msg) = receiver.recv() => {
@@ -252,6 +251,7 @@ mod tests {
 	}
 
 	#[tokio::test]
+	#[ntest::timeout(1_800_000)] // timeout at 30 minutes
 	async fn test_get_proof_for_current_slot() {
 		let mut agent = OracleAgent::new(true).unwrap();
 		agent.start().await.expect("Failed to start agent");
@@ -260,7 +260,7 @@ mod tests {
 		while agent.get_last_slot_index() == 0 {
 			sleep(Duration::from_secs(1)).await;
 		}
-		let latest_slot = agent.get_last_slot_index();
+		let latest_slot = agent.get_last_slot_index().await;
 		println!("Fetching proof for latest slot: {}", latest_slot);
 
 		let proof_result = agent.get_proof(latest_slot).await;

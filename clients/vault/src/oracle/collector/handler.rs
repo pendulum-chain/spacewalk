@@ -17,7 +17,7 @@ impl ScpMessageCollector {
 	/// * `env` - the ScpEnvelope
 	/// * `message_sender` - used for sending messages to Stellar Node
 	pub(crate) async fn handle_envelope(
-		&self,
+		&mut self,
 		env: ScpEnvelope,
 		message_sender: &StellarMessageSender,
 	) -> Result<(), Error> {

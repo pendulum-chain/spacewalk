@@ -21,7 +21,7 @@ pub struct ScpMessageCollector {
 	/// An entry is removed when a `TransactionSet` is found.
 	txset_and_slot_map: Arc<RwLock<TxSetHashAndSlotMap>>,
 
-	last_slot_index: Arc<RwLock<u64>>,
+	last_slot_index: u64,
 
 	public_network: bool,
 }
@@ -32,7 +32,7 @@ impl ScpMessageCollector {
 			envelopes_map: Default::default(),
 			txset_map: Default::default(),
 			txset_and_slot_map: Arc::new(Default::default()),
-			last_slot_index: Arc::new(Default::default()),
+			last_slot_index: 0,
 			public_network,
 		}
 	}
@@ -76,8 +76,8 @@ impl ScpMessageCollector {
 		self.txset_and_slot_map.read().get_txset_hash(slot).cloned()
 	}
 
-	pub(crate) fn last_slot_index(&self) -> RwLockReadGuard<'_, RawRwLock, u64> {
-		self.last_slot_index.read()
+	pub(crate) fn last_slot_index(&self) -> u64 {
+		self.last_slot_index
 	}
 }
 
@@ -120,10 +120,9 @@ impl ScpMessageCollector {
 		m.insert(txset_hash, slot);
 	}
 
-	pub(super) fn set_last_slot_index(&self, slot: Slot) {
-		let mut last_slot_index = self.last_slot_index.write();
-		if slot > *last_slot_index {
-			*last_slot_index = slot;
+	pub(super) fn set_last_slot_index(&mut self, slot: Slot) {
+		if slot > self.last_slot_index {
+			self.last_slot_index = slot;
 		}
 	}
 }
@@ -234,22 +233,17 @@ mod test {
 
 	#[test]
 	fn set_last_slot_index_works() {
-		let collector = ScpMessageCollector::new(true);
-		{
-			let mut idx = collector.last_slot_index.write();
-			*idx = 10;
-		}
-		{
-			collector.set_last_slot_index(9);
-			// there should be no change.
-			let res = collector.last_slot_index.read();
-			assert_eq!(*res, 10);
-		}
-		{
-			collector.set_last_slot_index(15);
-			let res = collector.last_slot_index.read();
-			assert_eq!(*res, 15);
-		}
+		let mut collector = ScpMessageCollector::new(true);
+		collector.last_slot_index = 10;
+
+		collector.set_last_slot_index(9);
+		// there should be no change.
+		let res = collector.last_slot_index;
+		assert_eq!(res, 10);
+
+		collector.set_last_slot_index(15);
+		let res = collector.last_slot_index;
+		assert_eq!(res, 15);
 	}
 
 	#[test]
