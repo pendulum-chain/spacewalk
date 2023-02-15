@@ -175,7 +175,6 @@ impl ScpMessageCollector {
 		}
 
 		let tx_set = self.get_txset(slot, sender).await?;
-		println!("TXSET FOUND!!!!! {}", tx_set.txes.len());
 		Some(Proof { slot, envelopes, tx_set })
 	}
 
