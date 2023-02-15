@@ -128,7 +128,7 @@ impl OracleAgent {
 
 	/// This method returns the proof for a given slot or an error if the proof cannot be provided.
 	/// The agent will try every possible way to get the proof before returning an error.
-	/// Set timeout to 60 seconds; 5 seconds interval.
+	/// Set timeout to 60 seconds; 10 seconds interval.
 	pub async fn get_proof(&self, slot: Slot) -> Result<Proof, Error> {
 		let sender = self
 			.message_sender
@@ -140,9 +140,11 @@ impl OracleAgent {
 		timeout(Duration::from_secs(60), async move {
 			loop {
 				let stellar_sender = sender.clone();
-				match collector.read().await.build_proof(slot, &stellar_sender).await {
+				let collector = collector.read().await;
+				match collector.build_proof(slot, &stellar_sender).await {
 					None => {
-						sleep(Duration::from_secs(5)).await;
+						drop(collector);
+						sleep(Duration::from_secs(10)).await;
 						continue
 					},
 					Some(proof) => return Ok(proof),
@@ -155,8 +157,8 @@ impl OracleAgent {
 		})?
 	}
 
-	pub async fn get_last_slot_index(&self) -> Slot {
-		self.collector.read().await.last_slot_index()
+	pub async fn get_last_scp_ext_slot(&self) -> Slot {
+		self.collector.read().await.last_scp_ext_slot()
 	}
 
 	pub async fn remove_data(&self, slot: &Slot) {
@@ -257,11 +259,15 @@ mod tests {
 		agent.start().await.expect("Failed to start agent");
 
 		// Wait until agent is caught up with the network.
-		while agent.get_last_slot_index() == 0 {
+
+		let mut latest_slot = 0;
+		while latest_slot == 0 {
 			sleep(Duration::from_secs(1)).await;
+			latest_slot = agent.get_last_scp_ext_slot().await;
 		}
-		let latest_slot = agent.get_last_slot_index().await;
-		println!("Fetching proof for latest slot: {}", latest_slot);
+		// use the next slot to prevent receiving not enough messages for the current slot
+		// because of bad timing when connecting to the network.
+		latest_slot += 1;
 
 		let proof_result = agent.get_proof(latest_slot).await;
 		assert!(proof_result.is_ok(), "Failed to get proof for slot: {}", latest_slot);

@@ -21,7 +21,8 @@ pub struct ScpMessageCollector {
 	/// An entry is removed when a `TransactionSet` is found.
 	txset_and_slot_map: Arc<RwLock<TxSetHashAndSlotMap>>,
 
-	last_slot_index: u64,
+	/// The last slot with an SCPEnvelope(
+	last_scp_ext_slot: u64,
 
 	public_network: bool,
 }
@@ -32,7 +33,7 @@ impl ScpMessageCollector {
 			envelopes_map: Default::default(),
 			txset_map: Default::default(),
 			txset_and_slot_map: Arc::new(Default::default()),
-			last_slot_index: 0,
+			last_scp_ext_slot: 0,
 			public_network,
 		}
 	}
@@ -76,8 +77,8 @@ impl ScpMessageCollector {
 		self.txset_and_slot_map.read().get_txset_hash(slot).cloned()
 	}
 
-	pub(crate) fn last_slot_index(&self) -> u64 {
-		self.last_slot_index
+	pub(crate) fn last_scp_ext_slot(&self) -> u64 {
+		self.last_scp_ext_slot
 	}
 }
 
@@ -85,17 +86,15 @@ impl ScpMessageCollector {
 impl ScpMessageCollector {
 	pub(super) fn add_scp_envelope(&self, slot: Slot, scp_envelope: ScpEnvelope) {
 		// insert/add the externalized message to map.
-		{
-			let mut envelopes_map = self.envelopes_map.write();
+		let mut envelopes_map = self.envelopes_map.write();
 
-			if let Some(value) = envelopes_map.get_with_key(&slot) {
-				let mut value = value.clone();
-				value.push(scp_envelope);
-				envelopes_map.set_with_key(slot, value);
-			} else {
-				tracing::debug!("Adding received SCP envelopes for slot {}", slot);
-				envelopes_map.set_with_key(slot, vec![scp_envelope]);
-			}
+		if let Some(value) = envelopes_map.get_with_key(&slot) {
+			let mut value = value.clone();
+			value.push(scp_envelope);
+			envelopes_map.set_with_key(slot, value);
+		} else {
+			tracing::debug!("Adding received SCP envelopes for slot {}", slot);
+			envelopes_map.set_with_key(slot, vec![scp_envelope]);
 		}
 	}
 
@@ -120,9 +119,9 @@ impl ScpMessageCollector {
 		m.insert(txset_hash, slot);
 	}
 
-	pub(super) fn set_last_slot_index(&mut self, slot: Slot) {
-		if slot > self.last_slot_index {
-			self.last_slot_index = slot;
+	pub(super) fn set_last_scp_ext_slot(&mut self, slot: Slot) {
+		if slot > self.last_scp_ext_slot {
+			self.last_scp_ext_slot = slot;
 		}
 	}
 }
@@ -232,17 +231,17 @@ mod test {
 	}
 
 	#[test]
-	fn set_last_slot_index_works() {
+	fn set_last_scp_ext_slot_works() {
 		let mut collector = ScpMessageCollector::new(true);
-		collector.last_slot_index = 10;
+		collector.last_scp_ext_slot = 10;
 
-		collector.set_last_slot_index(9);
+		collector.set_last_scp_ext_slot(9);
 		// there should be no change.
-		let res = collector.last_slot_index;
+		let res = collector.last_scp_ext_slot;
 		assert_eq!(res, 10);
 
-		collector.set_last_slot_index(15);
-		let res = collector.last_slot_index;
+		collector.set_last_scp_ext_slot(15);
+		let res = collector.last_scp_ext_slot;
 		assert_eq!(res, 15);
 	}
 
