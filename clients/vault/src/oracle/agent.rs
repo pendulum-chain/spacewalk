@@ -171,6 +171,7 @@ impl OracleAgent {
 		self.message_sender = Some(sender.clone());
 
 		let collector = self.collector.clone();
+		// Get action sender and disconnect action before moving `overlay_conn` into the closure
 		let actions_sender = overlay_conn.get_actions_sender();
 		let disconnect_action = overlay_conn.get_disconnect_action();
 
