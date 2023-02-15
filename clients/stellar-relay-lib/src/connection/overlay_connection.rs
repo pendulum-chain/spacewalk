@@ -120,6 +120,13 @@ impl StellarOverlayConnection {
 		actions_sender.send(ConnectorActions::SendHello).await?;
 		Ok(overlay_connection)
 	}
+
+	pub fn get_actions_sender(&self) -> mpsc::Sender<ConnectorActions> {
+		self.actions_sender.clone()
+	}
+	pub fn get_disconnect_action(&self) -> ConnectorActions {
+		ConnectorActions::Disconnect
+	}
 }
 
 #[cfg(test)]

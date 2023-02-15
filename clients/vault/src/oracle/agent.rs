@@ -1,6 +1,7 @@
 use std::{sync::Arc, time::Duration};
 
 use rand::RngCore;
+use service::on_shutdown;
 use tokio::{
 	sync::mpsc,
 	time::{sleep, timeout},
@@ -170,6 +171,9 @@ impl OracleAgent {
 		self.message_sender = Some(sender.clone());
 
 		let collector = self.collector.clone();
+		// Get action sender and disconnect action before moving `overlay_conn` into the closure
+		let actions_sender = overlay_conn.get_actions_sender();
+		let disconnect_action = overlay_conn.get_disconnect_action();
 
 		// handle a message from the overlay network
 		service::spawn_cancelable(self.shutdown_sender.subscribe(), async move {
@@ -190,6 +194,14 @@ impl OracleAgent {
 			#[allow(unreachable_code)]
 			Ok::<(), Error>(())
 		});
+
+		tokio::spawn(on_shutdown(self.shutdown_sender.clone(), async move {
+			let result_sending_diconnect =
+				actions_sender.send(disconnect_action).await.map_err(Error::from);
+			if let Err(e) = result_sending_diconnect {
+				tracing::error!("Failed to send message to error : {:#?}", e);
+			};
+		}));
 
 		Ok(())
 	}
@@ -214,7 +226,6 @@ impl OracleAgent {
 	/// Stops listening for new SCP messages.
 	pub fn stop(&mut self) -> Result<(), Error> {
 		tracing::info!("Stopping agent");
-		// self.overlay_conn.disconnect();
 		if let Err(e) = self.shutdown_sender.send(()) {
 			tracing::error!("Failed to send shutdown signal to the agent: {:?}", e);
 		}
