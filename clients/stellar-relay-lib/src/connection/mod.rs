@@ -42,7 +42,7 @@ pub enum StellarRelayMessage {
 }
 
 /// Config for connecting to Stellar Node
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct ConnConfig {
 	address: String,
 	port: u32,
