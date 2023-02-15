@@ -464,7 +464,6 @@ pub mod pallet {
 			let current_validators =
 				BoundedVec::<ValidatorOf<T>, T::ValidatorLimit>::try_from(current_validators)
 					.map_err(|_| Error::<T>::BoundedVecCreationFailed)?;
-			OldValidators::<T>::put(current_validators);
 
 			let current_organizations = Organizations::<T>::get();
 			// Filter organizations for selected network type
@@ -475,19 +474,26 @@ pub mod pallet {
 					current_organizations,
 				)
 				.map_err(|_| Error::<T>::BoundedVecCreationFailed)?;
-			OldOrganizations::<T>::put(current_organizations);
 
 			NewValidatorsEnactmentBlockHeight::<T>::put(enactment_block_height);
 
 			let new_validator_vec =
 				BoundedVec::<ValidatorOf<T>, T::ValidatorLimit>::try_from(validators)
 					.map_err(|_| Error::<T>::BoundedVecCreationFailed)?;
-			Validators::<T>::put(new_validator_vec);
 
 			let new_organization_vec =
 				BoundedVec::<OrganizationOf<T>, T::OrganizationLimit>::try_from(organizations)
 					.map_err(|_| Error::<T>::BoundedVecCreationFailed)?;
-			Organizations::<T>::put(new_organization_vec);
+
+			//update only when new organization or validators not equal to old organization or validators
+			if new_organization_vec != current_organizations ||
+				new_validator_vec != current_validators
+			{
+				OldValidators::<T>::put(current_validators.clone());
+				OldOrganizations::<T>::put(current_organizations.clone());
+				Validators::<T>::put(new_validator_vec.clone());
+				Organizations::<T>::put(new_organization_vec.clone());
+			}
 
 			Self::deposit_event(Event::<T>::UpdateTier1ValidatorSet {
 				new_validators_enactment_block_height: enactment_block_height,
