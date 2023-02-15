@@ -44,13 +44,13 @@ async fn stellar_overlay_should_receive_scp_messages() {
 	let node_info = NodeInfo::new(19, 25, 23, "v19.5.0".to_string(), &PUBLIC_NETWORK);
 	//act
 	let cfg = ConnConfig::new(TIER_1_VALIDATOR_IP_PUBLIC, 11625, secret, 0, false, true, false);
-	let mut overlay_connection = Arc::new(Mutex::new(
+	let overlay_connection = Arc::new(Mutex::new(
 		StellarOverlayConnection::connect(node_info.clone(), cfg).await.unwrap(),
 	));
-	let mut ov_conn = overlay_connection.clone();
+	let ov_conn = overlay_connection.clone();
 
-	let mut scps_vec = Arc::new(Mutex::new(vec![]));
-	let mut scps_vec_clone = scps_vec.clone();
+	let scps_vec = Arc::new(Mutex::new(vec![]));
+	let scps_vec_clone = scps_vec.clone();
 
 	timeout(Duration::from_secs(300), async move {
 		let mut ov_conn_locked = ov_conn.lock().await;
@@ -98,14 +98,14 @@ async fn stellar_overlay_should_receive_tx_set() {
 	let node_info = NodeInfo::new(19, 25, 23, "v19.5.0".to_string(), &PUBLIC_NETWORK);
 	let cfg = ConnConfig::new(TIER_1_VALIDATOR_IP_PUBLIC, 11625, secret, 0, true, true, false);
 
-	let mut overlay_connection = Arc::new(Mutex::new(
+	let overlay_connection = Arc::new(Mutex::new(
 		StellarOverlayConnection::connect(node_info.clone(), cfg).await.unwrap(),
 	));
 
-	let mut ov_conn = overlay_connection.clone();
+	let ov_conn = overlay_connection.clone();
 	let tx_set_vec = Arc::new(Mutex::new(vec![]));
 
-	let mut tx_set_vec_clone = tx_set_vec.clone();
+	let tx_set_vec_clone = tx_set_vec.clone();
 
 	timeout(Duration::from_secs(300), async move {
 		let mut ov_conn_locked = ov_conn.lock().await;
