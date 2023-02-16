@@ -295,6 +295,48 @@ benchmarks! {
 	set_redeem_period {
 	}: _(RawOrigin::Root, 1u32.into())
 
+	mint_tokens_for_reimbursed_redeem {
+		initialize_oracle::<T>();
+
+		let origin: T::AccountId = account("Origin", 0, 0);
+		let vault_id = get_vault_id::<T>();
+		let relayer_id: T::AccountId = account("Relayer", 0, 0);
+
+		initialize_oracle::<T>();
+
+		let origin_stellar_address = DEFAULT_STELLAR_PUBLIC_KEY;
+
+		let redeem_id = H256::zero();
+		let mut redeem_request = test_request::<T>(&vault_id);
+		redeem_request.status = RedeemRequestStatus::Reimbursed(false);
+		redeem_request.stellar_address = origin_stellar_address;
+		Redeem::<T>::insert_redeem_request(&redeem_id, &redeem_request);
+
+		let vault_id = get_vault_id::<T>();
+		let origin = vault_id.account_id.clone();
+		let amount = 1000;
+
+		register_public_key::<T>(vault_id.clone());
+
+		VaultRegistry::<T>::insert_vault(
+			&vault_id,
+			Vault::new(vault_id.clone())
+		);
+
+		mint_wrapped::<T>(&origin, amount.into());
+
+		mint_collateral::<T>(&vault_id.account_id, 100_000u32.into());
+		assert_ok!(VaultRegistry::<T>::try_deposit_collateral(&vault_id, &collateral(100_000)));
+
+		assert_ok!(VaultRegistry::<T>::try_increase_to_be_issued_tokens(&vault_id, &wrapped(amount)));
+		assert_ok!(VaultRegistry::<T>::issue_tokens(&vault_id, &wrapped(amount)));
+
+		let currency_pair = VaultCurrencyPair {
+			collateral: get_collateral_currency_id::<T>(),
+			wrapped: get_wrapped_currency_id()
+		};
+	}: _(RawOrigin::Signed(origin), currency_pair, redeem_id)
+
 	rate_limit_update {
 		let limit_volume_amount: Option<BalanceOf<T>> = Some(1u32.into());
 		let limit_volume_currency_id: T::CurrencyId = get_wrapped_currency_id();

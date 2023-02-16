@@ -578,22 +578,12 @@ impl TryFrom<(&str, &str)> for CurrencyId {
 	type Error = &'static str;
 
 	fn try_from(value: (&str, &str)) -> Result<Self, Self::Error> {
-		let slice = value.0;
 		let issuer_encoded = value.1;
 		let issuer_pk = stellar::PublicKey::from_encoding(issuer_encoded)
 			.map_err(|_| "Invalid issuer encoding")?;
 		let issuer: AssetIssuer = *issuer_pk.as_binary();
-		if slice.len() <= 4 {
-			let mut code: Bytes4 = [0; 4];
-			code[..slice.len()].copy_from_slice(slice.as_bytes());
-			Ok(CurrencyId::AlphaNum4(code, issuer))
-		} else if slice.len() > 4 && slice.len() <= 12 {
-			let mut code: Bytes12 = [0; 12];
-			code[..slice.len()].copy_from_slice(slice.as_bytes());
-			Ok(CurrencyId::AlphaNum12(code, issuer))
-		} else {
-			Err("More than 12 bytes not supported")
-		}
+
+		CurrencyId::try_from((value.0, issuer))
 	}
 }
 
@@ -746,7 +736,10 @@ impl StaticLookup for BalanceConversion {
 	}
 
 	fn unlookup(stellar_stroops: Self::Target) -> Self::Source {
-		(stellar_stroops * CONVERSION_RATE as i64) as u128
+		let conversion_rate = i64::try_from(CONVERSION_RATE).unwrap_or(i64::MAX);
+
+		let value = stellar_stroops.saturating_mul(conversion_rate);
+		u128::try_from(value).unwrap_or(0)
 	}
 }
 
