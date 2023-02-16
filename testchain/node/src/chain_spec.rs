@@ -310,7 +310,8 @@ fn testnet_genesis(
 		oracle: OracleConfig {
 			max_delay: u32::MAX,
 			oracle_keys: vec![
-				Key::ExchangeRate(CurrencyId::XCM(ForeignCurrencyId::KSM)),
+				// Changing these items means that the integration tests also have to change
+				// because the integration tests insert dummy values for these into the oracle
 				Key::ExchangeRate(CurrencyId::XCM(ForeignCurrencyId::DOT)),
 				Key::ExchangeRate(CurrencyId::AlphaNum4(
 					*b"USDC",
