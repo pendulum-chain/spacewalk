@@ -11,10 +11,22 @@ const DOT_DIA_BLOCKCHAIN: &str = "Polkadot";
 const DOT_DIA_SYMBOL: &str = "DOT";
 const KSM_DIA_BLOCKCHAIN: &str = "Kusama";
 const KSM_DIA_SYMBOL: &str = "KSM";
+const STELLAR_DIA_BLOCKCHAIN: &str = "Stellar";
+const STELLAR_DIA_SYMBOL: &str = "XLM";
+const FIAT_DIA_BLOCKCHAIN: &str = "FIAT";
+
+// We always want to quote against USD
+const TARGET_QUOTE: &str = "USD";
+
+// This constructs a fiat quote symbol for a given base currency
+fn construct_fiat_usd_symbol_for_currency(base: Vec<u8>) -> Vec<u8> {
+	[base, "-".as_bytes().to_vec(), TARGET_QUOTE.as_bytes().to_vec()].concat()
+}
+
 pub struct DiaOracleKeyConvertor;
 impl Convert<OracleKey, Option<(Vec<u8>, Vec<u8>)>> for DiaOracleKeyConvertor {
-	fn convert(spacwalk_oracle_key: OracleKey) -> Option<(Vec<u8>, Vec<u8>)> {
-		match spacwalk_oracle_key {
+	fn convert(spacewalk_oracle_key: OracleKey) -> Option<(Vec<u8>, Vec<u8>)> {
+		match spacewalk_oracle_key {
 			OracleKey::ExchangeRate(currency_id) => match currency_id {
 				CurrencyId::XCM(token_symbol) => match token_symbol {
 					primitives::ForeignCurrencyId::DOT =>
@@ -30,8 +42,16 @@ impl Convert<OracleKey, Option<(Vec<u8>, Vec<u8>)>> for DiaOracleKeyConvertor {
 					_ => unimplemented!(),
 				},
 				CurrencyId::Native => unimplemented!(),
-				CurrencyId::StellarNative => unimplemented!(),
-				CurrencyId::Stellar(primitives::Asset::AlphaNum4 { .. }) => unimplemented!(),
+				CurrencyId::StellarNative => Some((
+					STELLAR_DIA_BLOCKCHAIN.as_bytes().to_vec(),
+					STELLAR_DIA_SYMBOL.as_bytes().to_vec(),
+				)),
+				CurrencyId::Stellar(primitives::Asset::AlphaNum4 { code, .. }) => {
+					let fiat_quote =
+						construct_fiat_usd_symbol_for_currency(code.to_ascii_uppercase());
+
+					Some((FIAT_DIA_BLOCKCHAIN.as_bytes().to_vec(), fiat_quote))
+				},
 				CurrencyId::Stellar(primitives::Asset::AlphaNum12 { .. }) => unimplemented!(),
 			},
 		}
@@ -52,6 +72,13 @@ impl Convert<(Vec<u8>, Vec<u8>), Option<OracleKey>> for DiaOracleKeyConvertor {
 				} else if blockchain == KSM_DIA_BLOCKCHAIN && symbol == KSM_DIA_SYMBOL {
 					return Some(OracleKey::ExchangeRate(CurrencyId::XCM(
 						primitives::ForeignCurrencyId::KSM,
+					)))
+				} else if blockchain == FIAT_DIA_BLOCKCHAIN {
+					return Some(OracleKey::ExchangeRate(CurrencyId::Stellar(
+						primitives::Asset::AlphaNum4 {
+							code: symbol.as_bytes().try_into().unwrap(),
+							issuer: Default::default(),
+						},
 					)))
 				} else {
 					return None
