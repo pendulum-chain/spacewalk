@@ -29,7 +29,6 @@ const TIMEOUT: Duration = Duration::from_secs(60);
 
 // Be careful when changing these values because they are used in the parachain genesis config
 // and only for some combination of them, secure collateralization thresholds are set.
-const DEFAULT_NATIVE_CURRENCY: CurrencyId = CurrencyId::Native;
 const DEFAULT_TESTING_CURRENCY: CurrencyId = CurrencyId::XCM(ForeignCurrencyId::DOT);
 const DEFAULT_WRAPPED_CURRENCY: CurrencyId = CurrencyId::AlphaNum4(
 	*b"USDC",
@@ -148,12 +147,6 @@ where
 		FixedU128::saturating_from_rational(1u128, 1u128),
 	)
 	.await;
-	set_exchange_rate_and_wait(
-		&parachain_rpc,
-		DEFAULT_NATIVE_CURRENCY,
-		FixedU128::saturating_from_rational(1u128, 100u128),
-	)
-	.await;
 
 	execute(client).await
 }
@@ -178,12 +171,6 @@ where
 		&parachain_rpc,
 		DEFAULT_WRAPPED_CURRENCY,
 		FixedU128::saturating_from_rational(1u128, 1u128),
-	)
-	.await;
-	set_exchange_rate_and_wait(
-		&parachain_rpc,
-		DEFAULT_NATIVE_CURRENCY,
-		FixedU128::saturating_from_rational(1u128, 100u128),
 	)
 	.await;
 
