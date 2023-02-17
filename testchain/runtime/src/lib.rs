@@ -387,7 +387,7 @@ impl vault_registry::Config for Runtime {
 	type RuntimeEvent = RuntimeEvent;
 	type Balance = Balance;
 	type WeightInfo = ();
-	type GetGriefingCollateralCurrencyId = GetNativeCurrencyId;
+	type GetGriefingCollateralCurrencyId = GetRelayChainCurrencyId;
 }
 
 impl<C> frame_system::offchain::SendTransactionTypes<C> for Runtime
@@ -453,7 +453,8 @@ impl Convert<u128, Option<UnsignedFixedPoint>> for ConvertPrice {
 pub struct ConvertMoment;
 impl Convert<u64, Option<Moment>> for ConvertMoment {
 	fn convert(moment: u64) -> Option<Moment> {
-		Some(moment)
+		// The provided moment is in seconds, but we need milliseconds
+		Some(moment.saturating_mul(1000))
 	}
 }
 
@@ -466,7 +467,7 @@ cfg_if::cfg_if! {
 			DiaOracleModule,
 			UnsignedFixedPoint,
 			Moment,
-			primitives::DiaOracleKeyConvertor,
+			oracle::dia::DiaOracleKeyConvertor,
 			ConvertPrice,
 			ConvertMoment,
 		>;
@@ -484,7 +485,7 @@ cfg_if::cfg_if! {
 			DiaOracleModule,
 			UnsignedFixedPoint,
 			Moment,
-			primitives::DiaOracleKeyConvertor,
+			oracle::dia::DiaOracleKeyConvertor,
 			ConvertPrice,
 			ConvertMoment,
 		>;

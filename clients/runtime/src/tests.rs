@@ -2,7 +2,8 @@
 
 use sp_keyring::AccountKeyring;
 
-use primitives::{DiaOracleKeyConvertor, ForeignCurrencyId, StellarPublicKeyRaw};
+use oracle::dia::DiaOracleKeyConvertor;
+use primitives::{ForeignCurrencyId, StellarPublicKeyRaw};
 
 use crate::{integration::*, VaultId};
 
