@@ -12,7 +12,7 @@ use crate::{
 	},
 	handshake::HandshakeState,
 	node::{LocalInfo, NodeInfo, RemoteInfo},
-	ConnConfig, ConnectorActions, Error, StellarRelayMessage,
+	ConnectionInfo, ConnectorActions, Error, StellarRelayMessage,
 };
 
 pub struct Connector {
@@ -100,7 +100,7 @@ impl Connector {
 
 	pub fn new(
 		local_node: NodeInfo,
-		cfg: ConnConfig,
+		cfg: ConnectionInfo,
 		actions_sender: mpsc::Sender<ConnectorActions>,
 		relay_message_sender: mpsc::Sender<StellarRelayMessage>,
 	) -> Self {
@@ -116,7 +116,7 @@ impl Connector {
 			retries: cfg.retries,
 			remote_called_us: cfg.remote_called_us,
 			receive_tx_messages: cfg.recv_tx_msgs,
-			receive_scp_messages: cfg.recv_scp_messages,
+			receive_scp_messages: cfg.recv_scp_msgs,
 			handshake_state: HandshakeState::Connecting,
 			flow_controller: FlowController::default(),
 			actions_sender,
@@ -220,7 +220,7 @@ mod test {
 		connection::authentication::{create_auth_cert, ConnectionAuth},
 		helper::time_now,
 		node::NodeInfo,
-		ConnConfig, ConnectorActions, StellarRelayMessage,
+		ConnectionInfo, ConnectorActions, StellarRelayMessage,
 	};
 
 	#[cfg(test)]
@@ -239,15 +239,19 @@ mod test {
 	}
 
 	#[cfg(test)]
-	fn create_connector(
-	) -> (NodeInfo, ConnConfig, Connector, Receiver<ConnectorActions>, Receiver<StellarRelayMessage>)
-	{
+	fn create_connector() -> (
+		NodeInfo,
+		ConnectionInfo,
+		Connector,
+		Receiver<ConnectorActions>,
+		Receiver<StellarRelayMessage>,
+	) {
 		use substrate_stellar_sdk::{network::TEST_NETWORK, SecretKey};
 		let secret =
 			SecretKey::from_encoding("SBLI7RKEJAEFGLZUBSCOFJHQBPFYIIPLBCKN7WVCWT4NEG2UJEW33N73")
 				.unwrap();
 		let node_info = NodeInfo::new(19, 21, 19, "v19.1.0".to_string(), &TEST_NETWORK);
-		let cfg = ConnConfig::new("34.235.168.98", 11625, secret, 0, false, true, false);
+		let cfg = ConnectionInfo::new("34.235.168.98", 11625, secret, 0, false, true, false);
 		// this is a channel to communicate with the connection/config (this needs renaming)
 		let (actions_sender, actions_receiver) = mpsc::channel::<ConnectorActions>(1024);
 		// this is a channel to communicate with the user/caller.
@@ -370,7 +374,7 @@ mod test {
 
 		assert_eq!(connector.remote_called_us(), conn_config.remote_called_us);
 		assert_eq!(connector.receive_tx_messages(), conn_config.recv_tx_msgs);
-		assert_eq!(connector.receive_scp_messages(), conn_config.recv_scp_messages);
+		assert_eq!(connector.receive_scp_messages(), conn_config.recv_scp_msgs);
 
 		connector.got_hello();
 		assert!(connector.is_handshake_created());

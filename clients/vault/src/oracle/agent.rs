@@ -15,7 +15,7 @@ use stellar_relay_lib::{
 		types::StellarMessage,
 		SecretKey,
 	},
-	ConnConfig, StellarOverlayConnection, StellarRelayMessage,
+	ConnectionInfo, StellarOverlayConnection, StellarRelayMessage,
 };
 
 use crate::oracle::{
@@ -73,7 +73,7 @@ impl OracleAgent {
 		Ok(Self { collector, is_public_network, message_sender: None, shutdown_sender })
 	}
 
-	fn get_overlay_conn_config(&self, secret_key: SecretKey) -> (NodeInfo, ConnConfig) {
+	fn get_overlay_conn_config(&self, secret_key: SecretKey) -> (NodeInfo, ConnectionInfo) {
 		if self.is_public_network {
 			let network = &PUBLIC_NETWORK;
 			let node_info = NodeInfo::new(
@@ -84,7 +84,7 @@ impl OracleAgent {
 				network,
 			);
 
-			let cfg = ConnConfig::new(
+			let cfg = ConnectionInfo::new(
 				TIER_1_NODE_IP_PUBNET,
 				TIER_1_NODE_PORT_PUBNET,
 				secret_key,
@@ -104,7 +104,7 @@ impl OracleAgent {
 				network,
 			);
 
-			let cfg = ConnConfig::new(
+			let cfg = ConnectionInfo::new(
 				TIER_1_NODE_IP_TESTNET,
 				TIER_1_NODE_PORT_TESTNET,
 				secret_key,
@@ -117,7 +117,7 @@ impl OracleAgent {
 		}
 	}
 
-	fn get_default_overlay_conn_config(&self) -> (NodeInfo, ConnConfig) {
+	fn get_default_overlay_conn_config(&self) -> (NodeInfo, ConnectionInfo) {
 		// Generate a random keypair for signing messages to the overlay network
 		let mut secret_binary = [0u8; 32];
 		rand::thread_rng().fill_bytes(&mut secret_binary);
@@ -157,8 +157,8 @@ impl OracleAgent {
 		})?
 	}
 
-	pub async fn get_last_scp_ext_slot(&self) -> Slot {
-		self.collector.read().await.last_scp_ext_slot()
+	pub async fn get_last_slot_index(&self) -> Slot {
+		self.collector.read().await.last_slot_index()
 	}
 
 	pub async fn remove_data(&self, slot: &Slot) {
@@ -166,7 +166,7 @@ impl OracleAgent {
 	}
 
 	/// Runs a task to handle messages coming from the Stellar Nodes, and external messages
-	async fn run(&mut self, node_info: NodeInfo, conn_config: ConnConfig) -> Result<(), Error> {
+	async fn run(&mut self, node_info: NodeInfo, conn_config: ConnectionInfo) -> Result<(), Error> {
 		let mut overlay_conn = StellarOverlayConnection::connect(node_info, conn_config).await?;
 
 		let (sender, mut receiver) = mpsc::channel(34);
@@ -270,7 +270,7 @@ mod tests {
 		let mut latest_slot = 0;
 		while latest_slot == 0 {
 			sleep(Duration::from_secs(1)).await;
-			latest_slot = agent.get_last_scp_ext_slot().await;
+			latest_slot = agent.last_slot_index().await;
 		}
 		// use the next slot to prevent receiving not enough messages for the current slot
 		// because of bad timing when connecting to the network.

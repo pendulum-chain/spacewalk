@@ -5,9 +5,12 @@ use substrate_stellar_sdk::{
 	Hash, SecretKey,
 };
 
-use crate::{node::NodeInfo, ConnConfig, StellarOverlayConnection, StellarRelayMessage};
+use crate::{node::NodeInfo, ConnectionInfo, StellarOverlayConnection, StellarRelayMessage};
 use serial_test::serial;
-use tokio::{sync::Mutex, time::timeout};
+use tokio::{
+	sync::{Mutex, RwLock},
+	time::timeout,
+};
 
 const TIER_1_VALIDATOR_IP_PUBLIC: &str = "51.161.197.48";
 
@@ -19,7 +22,7 @@ async fn stellar_overlay_connect_and_listen_connect_message() {
 			.unwrap();
 
 	let node_info = NodeInfo::new(19, 25, 23, "v19.5.0".to_string(), &PUBLIC_NETWORK);
-	let cfg = ConnConfig::new(TIER_1_VALIDATOR_IP_PUBLIC, 11625, secret, 0, false, true, false);
+	let cfg = ConnectionInfo::new(TIER_1_VALIDATOR_IP_PUBLIC, 11625, secret, 0, false, true, false);
 	let mut overlay_connection =
 		StellarOverlayConnection::connect(node_info.clone(), cfg).await.unwrap();
 
@@ -43,7 +46,7 @@ async fn stellar_overlay_should_receive_scp_messages() {
 
 	let node_info = NodeInfo::new(19, 25, 23, "v19.5.0".to_string(), &PUBLIC_NETWORK);
 	//act
-	let cfg = ConnConfig::new(TIER_1_VALIDATOR_IP_PUBLIC, 11625, secret, 0, false, true, false);
+	let cfg = ConnectionInfo::new(TIER_1_VALIDATOR_IP_PUBLIC, 11625, secret, 0, false, true, false);
 	let overlay_connection = Arc::new(Mutex::new(
 		StellarOverlayConnection::connect(node_info.clone(), cfg).await.unwrap(),
 	));
@@ -71,12 +74,6 @@ async fn stellar_overlay_should_receive_scp_messages() {
 	.await
 	.expect("time has elapsed");
 
-	overlay_connection
-		.lock()
-		.await
-		.disconnect()
-		.await
-		.expect("Should be able to disconnect");
 	//assert
 	//ensure that we receive some scp message from stellar node
 	assert!(!scps_vec.lock().await.is_empty());
@@ -96,15 +93,14 @@ async fn stellar_overlay_should_receive_tx_set() {
 			.unwrap();
 
 	let node_info = NodeInfo::new(19, 25, 23, "v19.5.0".to_string(), &PUBLIC_NETWORK);
-	let cfg = ConnConfig::new(TIER_1_VALIDATOR_IP_PUBLIC, 11625, secret, 0, true, true, false);
+	let cfg = ConnectionInfo::new(TIER_1_VALIDATOR_IP_PUBLIC, 11625, secret, 0, true, true, false);
 
 	let overlay_connection = Arc::new(Mutex::new(
-		StellarOverlayConnection::connect(node_info.clone(), cfg).await.unwrap(),
+		StellarOverlayConnection::connect(node_info.clone(), cfg).await.unwrap()
 	));
 
 	let ov_conn = overlay_connection.clone();
 	let tx_set_vec = Arc::new(Mutex::new(vec![]));
-
 	let tx_set_vec_clone = tx_set_vec.clone();
 
 	timeout(Duration::from_secs(300), async move {
@@ -138,7 +134,8 @@ async fn stellar_overlay_should_receive_tx_set() {
 
 	//arrange
 	//ensure that we receive some tx set from stellar node
-	assert!(!tx_set_vec.lock().await.is_empty());
+	assert!(!tx_set_vec.is_empty());
+	overlay_connection.disconnect().await.expect("Should be able to disconnect");
 }
 
 #[tokio::test]
@@ -149,7 +146,8 @@ async fn stellar_overlay_disconnect_works() {
 			.unwrap();
 
 	let node_info = NodeInfo::new(19, 25, 23, "v19.5.0".to_string(), &PUBLIC_NETWORK);
-	let cfg = ConnConfig::new(TIER_1_VALIDATOR_IP_PUBLIC, 11625, secret, 0, false, false, false);
+	let cfg =
+		ConnectionInfo::new(TIER_1_VALIDATOR_IP_PUBLIC, 11625, secret, 0, false, false, false);
 	let mut overlay_connection =
 		StellarOverlayConnection::connect(node_info.clone(), cfg).await.unwrap();
 

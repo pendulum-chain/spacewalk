@@ -5,7 +5,7 @@ The Oracle collects and saves **`SCPStatementExternalize`** SCPMessages and its 
 
 ## Usage
 
-### Provide the `NodeInfo` and `ConnConfig` 
+### Provide the `NodeInfo` and `ConnectionInfo` 
 Refer to [Stellar-Relay readme](../stellar-relay-lib/README.md) on how to initialize these structures.
 
 ### Create the `OracleAgent`

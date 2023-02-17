@@ -4,7 +4,7 @@ use crate::{
 		services::{connection_handler, create_stream, receiving_service},
 	},
 	node::NodeInfo,
-	ConnConfig, Connector, Error, StellarRelayMessage,
+	ConnectionInfo, Connector, Error, StellarRelayMessage,
 };
 use substrate_stellar_sdk::types::StellarMessage;
 use tokio::{sync::mpsc, time::Duration};
@@ -15,7 +15,7 @@ pub struct StellarOverlayConnection {
 	/// For receiving stellar messages
 	relay_message_receiver: mpsc::Receiver<StellarRelayMessage>,
 	local_node: NodeInfo,
-	cfg: ConnConfig,
+	cfg: ConnectionInfo,
 	/// Maximum retries for reconnection
 	max_retries: u8,
 }
@@ -26,7 +26,7 @@ impl StellarOverlayConnection {
 		relay_message_receiver: mpsc::Receiver<StellarRelayMessage>,
 		max_retries: u8,
 		local_node: NodeInfo,
-		cfg: ConnConfig,
+		cfg: ConnectionInfo,
 	) -> Self {
 		StellarOverlayConnection {
 			actions_sender,
@@ -85,9 +85,9 @@ impl StellarOverlayConnection {
 
 	/// Triggers connection to the Stellar Node.
 	/// Returns the UserControls for the user to send and receive Stellar messages.
-	pub async fn connect(
+	pub(crate) async fn connect(
 		local_node: NodeInfo,
-		cfg: ConnConfig,
+		cfg: ConnectionInfo,
 	) -> Result<StellarOverlayConnection, Error> {
 		let retries = cfg.retries;
 		let timeout_in_secs = cfg.timeout_in_secs;
@@ -132,18 +132,18 @@ impl StellarOverlayConnection {
 #[cfg(test)]
 mod test {
 	use crate::{
-		node::NodeInfo, ConnConfig, ConnectorActions, Error, StellarOverlayConnection,
+		node::NodeInfo, ConnectionInfo, ConnectorActions, Error, StellarOverlayConnection,
 		StellarRelayMessage,
 	};
 	use substrate_stellar_sdk::{network::TEST_NETWORK, types::StellarMessage, SecretKey};
 	use tokio::sync::mpsc;
 
-	fn create_node_and_conn() -> (NodeInfo, ConnConfig) {
+	fn create_node_and_conn() -> (NodeInfo, ConnectionInfo) {
 		let secret =
 			SecretKey::from_encoding("SBLI7RKEJAEFGLZUBSCOFJHQBPFYIIPLBCKN7WVCWT4NEG2UJEW33N73")
 				.unwrap();
 		let node_info = NodeInfo::new(19, 21, 19, "v19.1.0".to_string(), &TEST_NETWORK);
-		let cfg = ConnConfig::new("34.235.168.98", 11625, secret, 0, false, true, false);
+		let cfg = ConnectionInfo::new("34.235.168.98", 11625, secret, 0, false, true, false);
 		(node_info, cfg)
 	}
 
@@ -231,7 +231,7 @@ mod test {
 			SecretKey::from_encoding("SBLI7RKEJAEFGLZUBSCOFJHQBPFYIIPLBCKN7WVCWT4NEG2UJEW33N73")
 				.unwrap();
 		let node_info = NodeInfo::new(19, 21, 19, "v19.1.0".to_string(), &TEST_NETWORK);
-		let cfg = ConnConfig::new("incorrect address", 11625, secret, 0, false, true, false);
+		let cfg = ConnectionInfo::new("incorrect address", 11625, secret, 0, false, true, false);
 
 		let stellar_overlay_connection = StellarOverlayConnection::connect(node_info, cfg).await;
 

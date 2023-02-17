@@ -1,11 +1,12 @@
 use stellar_relay_lib::{
+	connect,
 	node::NodeInfo,
 	sdk::{
 		network::{Network, PUBLIC_NETWORK, TEST_NETWORK},
 		types::{ScpStatementPledges, StellarMessage},
 		SecretKey, XdrCodec,
 	},
-	ConnConfig, StellarOverlayConnection, StellarRelayMessage,
+	ConnectionInfo, StellarOverlayConfig, StellarOverlayConnection, StellarRelayMessage,
 };
 
 const TIER_1_VALIDATOR_IP_TESTNET: &str = "34.235.168.98";
@@ -20,25 +21,15 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 	let mut public_network = false;
 	let mut tier1_node_ip = TIER_1_VALIDATOR_IP_TESTNET;
 
-	if arg_network == "mainnet" {
-		public_network = true;
-		tier1_node_ip = TIER_1_VALIDATOR_IP_PUBLIC;
-	}
-	let network: &Network = if public_network { &PUBLIC_NETWORK } else { &TEST_NETWORK };
+	let file_path = if arg_network == "mainnet" {
+		"./clients/stellar-relay-lib/resources/stellar_relay_config_mainnet.json"
+	} else {
+		"./clients/stellar-relay-lib/resources/stellar_relay_config_testnet.json"
+	};
 
-	log::info!(
-		"Connected to {:?} through {:?}",
-		std::str::from_utf8(network.get_passphrase().as_slice()).unwrap(),
-		tier1_node_ip
-	);
+	let cfg = StellarOverlayConfig::try_from_path(file_path)?;
 
-	let secret =
-		SecretKey::from_encoding("SBLI7RKEJAEFGLZUBSCOFJHQBPFYIIPLBCKN7WVCWT4NEG2UJEW33N73")
-			.unwrap();
-
-	let node_info = NodeInfo::new(19, 25, 23, "v19.5.0".to_string(), network);
-	let cfg = ConnConfig::new(tier1_node_ip, 11625, secret, 0, false, true, false);
-	let mut overlay_connection = StellarOverlayConnection::connect(node_info, cfg).await?;
+	let mut overlay_connection = connect(cfg).await?;
 
 	while let Some(relay_message) = overlay_connection.listen().await {
 		match relay_message {

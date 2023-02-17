@@ -13,10 +13,13 @@ pub mod xdr_converter;
 pub(crate) use connector::*;
 pub use errors::Error;
 pub use overlay_connection::*;
+use serde::{Deserialize, Serialize};
+use serde_with::{serde_as, BytesOrString};
+use std::fmt::{Debug, Formatter};
 
 type Xdr = (u32, Vec<u8>);
 
-use crate::node::NodeInfo;
+use crate::{config::ConnectionInfoCfg, node::NodeInfo};
 use substrate_stellar_sdk::{
 	types::{MessageType, StellarMessage},
 	PublicKey, SecretKey,
@@ -42,14 +45,15 @@ pub enum StellarRelayMessage {
 }
 
 /// Config for connecting to Stellar Node
-#[derive(Clone, Debug)]
-pub struct ConnConfig {
+#[derive(Clone, Serialize, PartialEq, Eq)]
+pub struct ConnectionInfo {
 	address: String,
 	port: u32,
+	#[serde(skip_serializing)]
 	secret_key: SecretKey,
 	pub auth_cert_expiration: u64,
 	pub recv_tx_msgs: bool,
-	pub recv_scp_messages: bool,
+	pub recv_scp_msgs: bool,
 	pub remote_called_us: bool,
 	/// how long to wait for the Stellar Node's messages.
 	timeout_in_secs: u64,
@@ -57,48 +61,67 @@ pub struct ConnConfig {
 	retries: u8,
 }
 
-impl ConnConfig {
-	pub fn new(
-		addr: &str,
-		port: u32,
-		secret_key: SecretKey,
-		auth_cert_expiration: u64,
-		recv_tx_msgs: bool,
-		recv_scp_messages: bool,
-		remote_called_us: bool,
-	) -> Self {
-		Self::new_with_timeout_and_retries(
-			addr,
-			port,
-			secret_key,
-			auth_cert_expiration,
-			recv_tx_msgs,
-			recv_scp_messages,
-			remote_called_us,
-			10,
-			3,
-		)
+impl Debug for ConnectionInfo {
+	fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+		f.debug_struct("ConnectionInfo")
+			.field("address", &self.address)
+			.field("port", &self.port)
+			.field("secret_key", &"****")
+			.field("auth_cert_expiration", &self.auth_cert_expiration)
+			.field("receive_tx_messages", &self.recv_tx_msgs)
+			.field("receive_scp_messages", &self.recv_scp_msgs)
+			.field("remote_called_us", &self.remote_called_us)
+			.field("timeout_in_seconds", &self.timeout_in_secs)
+			.field("retries", &self.retries)
+			.finish()
 	}
+}
 
+impl TryFrom<ConnectionInfoCfg> for ConnectionInfo {
+	type Error = Error;
+
+	fn try_from(cfg: ConnectionInfoCfg) -> Result<Self, Self::Error> {
+		let secret_key = std::str::from_utf8(cfg.secret_key())
+			.map_err(|e| Error::ConfigError(format!("Secret Key: {:?}", e)))?;
+		let secret_key = SecretKey::from_encoding(secret_key)?;
+
+		let address = std::str::from_utf8(&cfg.address)
+			.map_err(|e| Error::ConfigError(format!("Address: {:?}", e)))?;
+
+		Ok(ConnectionInfo::new_with_timeout_and_retries(
+			address,
+			cfg.port,
+			secret_key,
+			cfg.auth_cert_expiration,
+			cfg.recv_tx_msgs,
+			cfg.recv_scp_msgs,
+			cfg.remote_called_us,
+			cfg.timeout_in_secs,
+			cfg.retries,
+		))
+	}
+}
+
+impl ConnectionInfo {
 	#[allow(clippy::too_many_arguments)]
-	pub fn new_with_timeout_and_retries(
+	fn new_with_timeout_and_retries(
 		addr: &str,
 		port: u32,
 		secret_key: SecretKey,
 		auth_cert_expiration: u64,
 		recv_tx_msgs: bool,
-		recv_scp_messages: bool,
+		recv_scp_msgs: bool,
 		remote_called_us: bool,
 		timeout_in_secs: u64,
 		retries: u8,
 	) -> Self {
-		ConnConfig {
+		ConnectionInfo {
 			address: addr.to_string(),
 			port,
 			secret_key,
 			auth_cert_expiration,
 			recv_tx_msgs,
-			recv_scp_messages,
+			recv_scp_msgs,
 			remote_called_us,
 			timeout_in_secs,
 			retries,
