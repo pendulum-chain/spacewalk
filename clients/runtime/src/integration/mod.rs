@@ -4,7 +4,7 @@ use std::{sync::Arc, time::Duration};
 
 use frame_support::assert_ok;
 use futures::{future::Either, pin_mut, Future, FutureExt, SinkExt, StreamExt};
-use primitives::DiaOracleKeyConvertor;
+use oracle::dia::DiaOracleKeyConvertor;
 use sp_runtime::traits::Convert;
 use subxt::{
 	events::StaticEvent as Event,
