@@ -233,7 +233,7 @@ pub fn new_full(mut config: Configuration) -> Result<(TaskManager, RpcHandlers),
 		// off-chain worker of the pallet.
 		pub const KEY_TYPE: KeyTypeId = KeyTypeId(*b"dia!");
 		sp_keystore::SyncCryptoStore::sr25519_generate_new(&*keystore, KEY_TYPE, Some("//Bob"))
-			.expect("Creating key with account Alice should succeed.");
+			.expect("Creating key with account Bob should succeed.");
 
 		sc_service::build_offchain_workers(
 			&config,

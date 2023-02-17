@@ -20,10 +20,13 @@ const TARGET_QUOTE: &str = "USD";
 
 // This constructs a fiat quote symbol for a given base currency
 fn construct_fiat_usd_symbol_for_currency(base: Vec<u8>) -> Vec<u8> {
+	// We need to convert USDC to USD
+	// In the future we might have to do this for other currencies as well
 	let base_currency = if base.to_ascii_uppercase().to_vec() == "USDC".as_bytes().to_vec() {
 		"USD".as_bytes().to_vec()
 	} else {
-		base
+		// Ensure we use uppercase
+		base.to_ascii_uppercase().to_vec()
 	};
 
 	[base_currency, "-".as_bytes().to_vec(), TARGET_QUOTE.as_bytes().to_vec()].concat()
@@ -53,8 +56,7 @@ impl Convert<OracleKey, Option<(Vec<u8>, Vec<u8>)>> for DiaOracleKeyConvertor {
 					STELLAR_DIA_SYMBOL.as_bytes().to_vec(),
 				)),
 				CurrencyId::Stellar(primitives::Asset::AlphaNum4 { code, .. }) => {
-					let fiat_quote =
-						construct_fiat_usd_symbol_for_currency(code.to_ascii_uppercase());
+					let fiat_quote = construct_fiat_usd_symbol_for_currency(code.to_vec());
 
 					Some((FIAT_DIA_BLOCKCHAIN.as_bytes().to_vec(), fiat_quote))
 				},
@@ -69,28 +71,28 @@ impl Convert<(Vec<u8>, Vec<u8>), Option<OracleKey>> for DiaOracleKeyConvertor {
 		let (blockchain, symbol) = dia_oracle_key;
 		let blockchain = String::from_utf8(blockchain);
 		let symbol = String::from_utf8(symbol);
-		match (blockchain, symbol) {
+		return match (blockchain, symbol) {
 			(Ok(blockchain), Ok(symbol)) => {
 				if blockchain == DOT_DIA_BLOCKCHAIN && symbol == DOT_DIA_SYMBOL {
-					return Some(OracleKey::ExchangeRate(CurrencyId::XCM(
+					Some(OracleKey::ExchangeRate(CurrencyId::XCM(
 						primitives::ForeignCurrencyId::DOT,
 					)))
 				} else if blockchain == KSM_DIA_BLOCKCHAIN && symbol == KSM_DIA_SYMBOL {
-					return Some(OracleKey::ExchangeRate(CurrencyId::XCM(
+					Some(OracleKey::ExchangeRate(CurrencyId::XCM(
 						primitives::ForeignCurrencyId::KSM,
 					)))
 				} else if blockchain == FIAT_DIA_BLOCKCHAIN {
-					return Some(OracleKey::ExchangeRate(CurrencyId::Stellar(
+					Some(OracleKey::ExchangeRate(CurrencyId::Stellar(
 						primitives::Asset::AlphaNum4 {
 							code: symbol.as_bytes().try_into().unwrap(),
 							issuer: Default::default(),
 						},
 					)))
 				} else {
-					return None
+					None
 				}
 			},
-			(_, _) => return None,
+			(_, _) => None,
 		}
 	}
 }
