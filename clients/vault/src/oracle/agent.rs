@@ -224,8 +224,15 @@ impl OracleAgent {
 		self.run(node_info, conn_config).await
 	}
 
+	pub async fn start_with_address(&mut self, address:&str) -> Result<(), Error> {
+		let (node_info, mut conn_config) = self.get_default_overlay_conn_config();
+		conn_config.set_address(address.to_string());
+
+		self.run(node_info, conn_config).await
+	}
+
 	/// Stops listening for new SCP messages.
-	pub fn stop(&mut self) -> Result<(), Error> {
+	pub fn stop(&self) -> Result<(), Error> {
 		tracing::info!("Stopping agent");
 		if let Err(e) = self.shutdown_sender.send(()) {
 			tracing::error!("Failed to send shutdown signal to the agent: {:?}", e);
@@ -256,8 +263,8 @@ mod tests {
 	#[ntest::timeout(1_800_000)] // timeout at 30 minutes
 	async fn test_get_proof_for_current_slot() {
 		let mut agent = OracleAgent::new(true).unwrap();
-		agent.start().await.expect("Failed to start agent");
-
+		agent.start_with_address("51.161.197.48").await.expect("Failed to start agent");
+		sleep(Duration::from_secs(10)).await;
 		// Wait until agent is caught up with the network.
 
 		let mut latest_slot = 0;
