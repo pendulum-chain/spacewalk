@@ -389,7 +389,7 @@ pub mod pallet {
 		/// * `origin` - the dispatch origin of this call (must be _Root_)
 		/// * `redeem_id` - identifier of redeem request as output from request_redeem
 		#[pallet::call_index(5)]
-		#[pallet::weight(<T as Config>::WeightInfo::set_redeem_period())]
+		#[pallet::weight(<T as Config>::WeightInfo::mint_tokens_for_reimbursed_redeem())]
 		#[transactional]
 		pub fn mint_tokens_for_reimbursed_redeem(
 			origin: OriginFor<T>,
