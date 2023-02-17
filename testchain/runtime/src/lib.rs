@@ -453,7 +453,8 @@ impl Convert<u128, Option<UnsignedFixedPoint>> for ConvertPrice {
 pub struct ConvertMoment;
 impl Convert<u64, Option<Moment>> for ConvertMoment {
 	fn convert(moment: u64) -> Option<Moment> {
-		Some(moment)
+		// The provided moment is in seconds, but we need milliseconds
+		Some(moment.saturating_mul(1000))
 	}
 }
 
