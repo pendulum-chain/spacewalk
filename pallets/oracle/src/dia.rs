@@ -20,7 +20,13 @@ const TARGET_QUOTE: &str = "USD";
 
 // This constructs a fiat quote symbol for a given base currency
 fn construct_fiat_usd_symbol_for_currency(base: Vec<u8>) -> Vec<u8> {
-	[base, "-".as_bytes().to_vec(), TARGET_QUOTE.as_bytes().to_vec()].concat()
+	let base_currency = if base.to_ascii_uppercase().to_vec() == "USDC".as_bytes().to_vec() {
+		"USD".as_bytes().to_vec()
+	} else {
+		base
+	};
+
+	[base_currency, "-".as_bytes().to_vec(), TARGET_QUOTE.as_bytes().to_vec()].concat()
 }
 
 pub struct DiaOracleKeyConvertor;
