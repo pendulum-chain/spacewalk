@@ -387,7 +387,7 @@ impl vault_registry::Config for Runtime {
 	type RuntimeEvent = RuntimeEvent;
 	type Balance = Balance;
 	type WeightInfo = ();
-	type GetGriefingCollateralCurrencyId = GetNativeCurrencyId;
+	type GetGriefingCollateralCurrencyId = GetRelayChainCurrencyId;
 }
 
 impl<C> frame_system::offchain::SendTransactionTypes<C> for Runtime
@@ -466,7 +466,7 @@ cfg_if::cfg_if! {
 			DiaOracleModule,
 			UnsignedFixedPoint,
 			Moment,
-			primitives::DiaOracleKeyConvertor,
+			oracle::dia::DiaOracleKeyConvertor,
 			ConvertPrice,
 			ConvertMoment,
 		>;
@@ -484,7 +484,7 @@ cfg_if::cfg_if! {
 			DiaOracleModule,
 			UnsignedFixedPoint,
 			Moment,
-			primitives::DiaOracleKeyConvertor,
+			oracle::dia::DiaOracleKeyConvertor,
 			ConvertPrice,
 			ConvertMoment,
 		>;
