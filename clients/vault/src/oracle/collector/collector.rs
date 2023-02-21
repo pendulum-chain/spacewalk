@@ -122,6 +122,8 @@ impl ScpMessageCollector {
 		if slot > self.last_slot_index {
 			self.last_slot_index = slot;
 		}
+
+		println!("FUDGE FUDGE SETTING LAST SLOT: {:?}", self.last_slot_index);
 	}
 }
 
