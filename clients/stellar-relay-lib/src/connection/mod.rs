@@ -109,7 +109,7 @@ impl ConnConfig {
 		self.timeout_in_secs = secs;
 	}
 
-	pub fn set_address(&mut self, addr:String) {
+	pub fn set_address(&mut self, addr: String) {
 		self.address = addr;
 	}
 

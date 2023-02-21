@@ -224,7 +224,7 @@ impl OracleAgent {
 		self.run(node_info, conn_config).await
 	}
 
-	pub async fn start_with_address(&mut self, address:&str) -> Result<(), Error> {
+	pub async fn start_with_address(&mut self, address: &str) -> Result<(), Error> {
 		let (node_info, mut conn_config) = self.get_default_overlay_conn_config();
 		conn_config.set_address(address.to_string());
 
