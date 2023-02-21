@@ -1,8 +1,7 @@
-use crate::{connection::Error, ConnectorActions, StellarOverlayConnection, StellarRelayMessage};
+use crate::{connection::Error, StellarOverlayConnection};
 use serde::{Deserialize, Serialize};
 use serde_with::{serde_as, BytesOrString};
-use std::fmt::{Debug, Formatter};
-use tokio::sync::mpsc;
+use std::fmt::Debug;
 
 #[derive(Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct StellarOverlayConfig {
@@ -15,6 +14,14 @@ impl StellarOverlayConfig {
 		let read_file = std::fs::read_to_string(path)
 			.map_err(|e| Error::ConfigError(format!("File: {:?}", e)))?;
 		serde_json::from_str(&read_file).map_err(|e| Error::ConfigError(format!("File: {:?}", e)))
+	}
+
+	pub fn secret_key(&self) -> &[u8] {
+		&self.connection_info.secret_key
+	}
+
+	pub fn is_public_network(&self) -> bool {
+		self.node_info.is_pub_net.clone()
 	}
 }
 
@@ -111,7 +118,7 @@ mod test {
 		 {
              "address":"1.2.3.4",
              "port":11625,
-             "secret_key": "SBLI7RKEJAEFGLZUBSCOFJHQBPFYIIPLBCKN7WVCWT4NEG2UJEW33N73",
+             "secret_key": "SBLI7RKEJAEFGLZUBSCOFJHQBPFYIIPLBCKN7WVCWT4NEG2UJEW33N73"
 		 }
 		 "#;
 
@@ -181,7 +188,7 @@ mod test {
 			"ledger_version":19,
 			"overlay_version":25,
 			"overlay_min_version":23,
-			"version_str":"v19.5.0",
+			"version_str":"v19.5.0"
 		}
         "#;
 
@@ -197,7 +204,7 @@ mod test {
                 "port":11625,
                 "secret_key": "SBLI7RKEJAEFGLZUBSCOFJHQBPFYIIPLBCKN7WVCWT4NEG2UJEW33N73",
                 "auth_cert_expiration":0,
-                "recv_scp_msgs":true,
+                "recv_scp_msgs":true
             },
             "node_info":{
                 "ledger_version":19,
@@ -241,7 +248,7 @@ mod test {
                 "port":11625,
                 "secret_key": "SBLI7RKEJAEFGLZUBSCOFJHQBPFYIIPLBCKN7WVCWT4NEG2UJEW33N73",
                 "auth_cert_expiration":0,
-                "recv_scp_msgs":true,
+                "recv_scp_msgs":true
             },
             "node_info":{
                 "ledger_version":19,

@@ -250,8 +250,25 @@ mod test {
 		let secret =
 			SecretKey::from_encoding("SBLI7RKEJAEFGLZUBSCOFJHQBPFYIIPLBCKN7WVCWT4NEG2UJEW33N73")
 				.unwrap();
-		let node_info = NodeInfo::new(19, 21, 19, "v19.1.0".to_string(), &TEST_NETWORK);
-		let cfg = ConnectionInfo::new("34.235.168.98", 11625, secret, 0, false, true, false);
+		let node_info = NodeInfo {
+			ledger_version: 19,
+			overlay_version: 21,
+			overlay_min_version: 19,
+			version_str: "v19.1.0".to_string().into_bytes(),
+			network_id: *TEST_NETWORK.get_id(),
+		};
+
+		let cfg = ConnectionInfo::new_with_timeout_and_retries(
+			"34.235.168.98",
+			11625,
+			secret,
+			0,
+			false,
+			true,
+			false,
+			10,
+			3,
+		);
 		// this is a channel to communicate with the connection/config (this needs renaming)
 		let (actions_sender, actions_receiver) = mpsc::channel::<ConnectorActions>(1024);
 		// this is a channel to communicate with the user/caller.

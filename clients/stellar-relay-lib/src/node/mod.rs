@@ -1,5 +1,3 @@
-use serde::{Deserialize, Serialize};
-use serde_with::{serde_as, BytesOrString};
 use std::fmt::Debug;
 use substrate_stellar_sdk::network::{Network, PUBLIC_NETWORK, TEST_NETWORK};
 
@@ -21,23 +19,23 @@ pub struct NodeInfo {
 	pub network_id: NetworkId,
 }
 
-// impl NodeInfo {
-// 	pub fn new(
-// 		ledger_version: u32,
-// 		overlay_version: u32,
-// 		overlay_min_version: u32,
-// 		version_str: String,
-// 		network: &Network,
-// 	) -> NodeInfo {
-// 		NodeInfo {
-// 			ledger_version,
-// 			overlay_version,
-// 			overlay_min_version,
-// 			version_str: version_str.into_bytes(),
-// 			network_id: *network.get_id(),
-// 		}
-// 	}
-// }
+impl NodeInfo {
+	pub(crate) fn new(
+		ledger_version: u32,
+		overlay_version: u32,
+		overlay_min_version: u32,
+		version_str: String,
+		network: &Network,
+	) -> NodeInfo {
+		NodeInfo {
+			ledger_version,
+			overlay_version,
+			overlay_min_version,
+			version_str: version_str.into_bytes(),
+			network_id: *network.get_id(),
+		}
+	}
+}
 
 impl From<NodeInfoCfg> for NodeInfo {
 	fn from(value: NodeInfoCfg) -> Self {

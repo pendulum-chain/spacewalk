@@ -22,7 +22,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 	let mut tier1_node_ip = TIER_1_VALIDATOR_IP_TESTNET;
 
 	let file_path = if arg_network == "mainnet" {
-		"./clients/stellar-relay-lib/resources/stellar_relay_config_mainnet.json"
+		"./clients/stellar-relay-lib/resources/stellar_relay_config_mainnet_iowa.json"
 	} else {
 		"./clients/stellar-relay-lib/resources/stellar_relay_config_testnet.json"
 	};

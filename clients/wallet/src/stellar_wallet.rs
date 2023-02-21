@@ -101,7 +101,7 @@ fn create_transaction(
 
 impl StellarWallet {
 	pub fn from_secret_encoded(
-		secret_key: &String,
+		secret_key: &str,
 		is_public_network: bool,
 	) -> Result<Self, Error> {
 		Self::from_secret_encoded_with_cache(secret_key, is_public_network, "./".to_string())
@@ -110,7 +110,7 @@ impl StellarWallet {
 	/// creates a wallet based on the secret key,
 	/// and can specify the path where the cache will be saved.
 	pub fn from_secret_encoded_with_cache(
-		secret_key: &String,
+		secret_key: &str,
 		is_public_network: bool,
 		cache_path: String,
 	) -> Result<Self, Error> {
@@ -303,7 +303,7 @@ mod test {
 			StellarWallet::from_secret_encoded_with_cache(
 				&STELLAR_VAULT_SECRET_KEY.to_string(),
 				IS_PUBLIC_NETWORK,
-				storage.to_string(),
+				storage,
 			)
 			.unwrap(),
 		))

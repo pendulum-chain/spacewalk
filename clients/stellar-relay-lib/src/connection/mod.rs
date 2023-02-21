@@ -13,8 +13,7 @@ pub mod xdr_converter;
 pub(crate) use connector::*;
 pub use errors::Error;
 pub use overlay_connection::*;
-use serde::{Deserialize, Serialize};
-use serde_with::{serde_as, BytesOrString};
+use serde::Serialize;
 use std::fmt::{Debug, Formatter};
 
 type Xdr = (u32, Vec<u8>);
@@ -126,6 +125,28 @@ impl ConnectionInfo {
 			timeout_in_secs,
 			retries,
 		}
+	}
+
+	pub(crate) fn new(
+		addr: &str,
+		port: u32,
+		secret_key: SecretKey,
+		auth_cert_expiration: u64,
+		recv_tx_msgs: bool,
+		recv_scp_msgs: bool,
+		remote_called_us: bool,
+	) -> Self {
+		Self::new_with_timeout_and_retries(
+			addr,
+			port,
+			secret_key,
+			auth_cert_expiration,
+			recv_tx_msgs,
+			recv_scp_msgs,
+			remote_called_us,
+			10,
+			3,
+		)
 	}
 
 	pub fn set_timeout_in_secs(&mut self, secs: u64) {
