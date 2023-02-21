@@ -1,0 +1,14 @@
+{
+  "connection_info":{
+    "address":"15.235.11.99",
+    "port":11625,
+    "secret_key": "SBLI7RKEJAEFGLZUBSCOFJHQBPFYIIPLBCKN7WVCWT4NEG2UJEW33N73"
+  },
+  "node_info":{
+    "ledger_version":19,
+    "overlay_version":26,
+    "overlay_min_version":23,
+    "version_str":"stellar-core 19.6.0 (b3a6bc28116e80bff7889c2f3bcd7c30dd1ac4d6)",
+    "is_pub_net":true
+  }
+}
