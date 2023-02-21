@@ -104,7 +104,6 @@ impl Convert<u128, Option<FixedU128>> for MockConvertPrice {
 pub struct MockConvertMoment;
 impl Convert<u64, Option<u64>> for MockConvertMoment {
 	fn convert(moment: u64) -> Option<u64> {
-		// Convert milliseconds to seconds
-		Some(moment * 1000)
+		Some(moment)
 	}
 }
