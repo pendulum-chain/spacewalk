@@ -4,7 +4,7 @@ use std::{sync::Arc, time::Duration};
 
 use frame_support::assert_ok;
 use futures::{future::Either, pin_mut, Future, FutureExt, SinkExt, StreamExt};
-use oracle::dia::DiaOracleKeyConvertor;
+use oracle::dia::{ChainAndSymbol, DiaOracleKeyConvertor};
 use sp_runtime::traits::Convert;
 use subxt::{
 	events::StaticEvent as Event,
@@ -24,6 +24,18 @@ use crate::{
 	CurrencyId, FixedU128, SpacewalkParachain, SpacewalkSigner,
 };
 use primitives::oracle::Key as OracleKey;
+
+pub struct MockValue;
+
+impl ChainAndSymbol for MockValue {
+	fn native_symbol() -> Vec<u8> {
+		"NativeKey".as_bytes().to_vec()
+	}
+
+	fn native_chain() -> Vec<u8> {
+		"TestChain".as_bytes().to_vec()
+	}
+}
 
 /// Start a new instance of the parachain. The second item in the returned tuple must remain in
 /// scope as long as the parachain is active, since dropping it will remove the temporary directory
@@ -82,14 +94,14 @@ pub async fn set_exchange_rate_and_wait(
 	value: FixedU128,
 ) {
 	let key = OracleKey::ExchangeRate(currency_id);
-	let converted_key = DiaOracleKeyConvertor::convert(key.clone()).unwrap();
+	let converted_key = DiaOracleKeyConvertor::<MockValue>::convert(key.clone()).unwrap();
 	assert_ok!(parachain_rpc.feed_values(vec![(converted_key, value)]).await);
 	parachain_rpc.manual_seal().await;
 }
 
 pub async fn get_exchange_rate(parachain_rpc: &SpacewalkParachain, currency_id: CurrencyId) {
 	let key = OracleKey::ExchangeRate(currency_id);
-	let converted_key = DiaOracleKeyConvertor::convert(key.clone()).unwrap();
+	let converted_key = DiaOracleKeyConvertor::<MockValue>::convert(key.clone()).unwrap();
 	assert_ok!(parachain_rpc.get_exchange_rate(converted_key.0, converted_key.1).await);
 }
 

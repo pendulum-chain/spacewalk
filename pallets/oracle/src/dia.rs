@@ -36,6 +36,7 @@ pub trait ChainAndSymbol {
 	fn native_symbol() -> Vec<u8>;
 	fn native_chain() -> Vec<u8>;
 }
+
 pub struct DiaOracleKeyConvertor<T: ChainAndSymbol>(marker::PhantomData<T>);
 
 impl<T: ChainAndSymbol> Convert<OracleKey, Option<(Vec<u8>, Vec<u8>)>>

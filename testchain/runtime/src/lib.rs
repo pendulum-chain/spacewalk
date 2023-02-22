@@ -465,11 +465,11 @@ pub struct Dummy;
 
 impl ChainAndSymbol for Dummy {
 	fn native_symbol() -> Vec<u8> {
-		vec![0, 0, 0, 0]
+		"NativeKey".as_bytes().to_vec()
 	}
 
 	fn native_chain() -> Vec<u8> {
-		vec![1, 1, 1, 1]
+		"StandAlone-TestChain".as_bytes().to_vec()
 	}
 }
 
