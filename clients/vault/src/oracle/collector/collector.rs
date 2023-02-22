@@ -21,8 +21,7 @@ pub struct ScpMessageCollector {
 	/// An entry is removed when a `TransactionSet` is found.
 	txset_and_slot_map: Arc<RwLock<TxSetHashAndSlotMap>>,
 
-	/// The last slot with an SCPEnvelope(
-	last_scp_ext_slot: u64,
+	last_slot_index: u64,
 
 	public_network: bool,
 }
@@ -33,7 +32,7 @@ impl ScpMessageCollector {
 			envelopes_map: Default::default(),
 			txset_map: Default::default(),
 			txset_and_slot_map: Arc::new(Default::default()),
-			last_scp_ext_slot: 0,
+			last_slot_index: 0,
 			public_network,
 		}
 	}
@@ -77,8 +76,8 @@ impl ScpMessageCollector {
 		self.txset_and_slot_map.read().get_txset_hash(slot).cloned()
 	}
 
-	pub(crate) fn last_scp_ext_slot(&self) -> u64 {
-		self.last_scp_ext_slot
+	pub(crate) fn last_slot_index(&self) -> u64 {
+		self.last_slot_index
 	}
 }
 
@@ -119,12 +118,10 @@ impl ScpMessageCollector {
 		m.insert(txset_hash, slot);
 	}
 
-	pub(super) fn set_last_scp_ext_slot(&mut self, slot: Slot) {
-		if slot > self.last_scp_ext_slot {
-			self.last_scp_ext_slot = slot;
+	pub(super) fn set_last_slot_index(&mut self, slot: Slot) {
+		if slot > self.last_slot_index {
+			self.last_slot_index = slot;
 		}
-
-		println!("FUDGE FUDGE SETTING LAST SLOT: {:?}", self.last_slot_index);
 	}
 }
 
@@ -235,15 +232,15 @@ mod test {
 	#[test]
 	fn set_last_scp_ext_slot_works() {
 		let mut collector = ScpMessageCollector::new(true);
-		collector.last_scp_ext_slot = 10;
+		collector.last_slot_index = 10;
 
-		collector.set_last_scp_ext_slot(9);
+		collector.set_last_slot_index(9);
 		// there should be no change.
-		let res = collector.last_scp_ext_slot;
+		let res = collector.last_slot_index;
 		assert_eq!(res, 10);
 
-		collector.set_last_scp_ext_slot(15);
-		let res = collector.last_scp_ext_slot;
+		collector.set_last_slot_index(15);
+		let res = collector.last_slot_index;
 		assert_eq!(res, 15);
 	}
 

@@ -61,10 +61,8 @@ impl Proof {
 impl ScpMessageCollector {
 	/// fetch envelopes not found in the collector
 	async fn fetch_missing_envelopes(&self, slot: Slot, sender: &StellarMessageSender) {
-		let last_slot_index = *self.last_slot_index();
-
 		// If the current slot is still in the range of 'remembered' slots
-		if check_slot_still_recoverable_from_overlay(last_slot_index, slot) {
+		if check_slot_still_recoverable_from_overlay(self.last_slot_index(), slot) {
 			tracing::trace!("fetching missing envelopes of slot {} from Stellar Node...", slot);
 			self.ask_node_for_envelopes(slot, sender).await;
 		} else {
@@ -137,7 +135,7 @@ impl ScpMessageCollector {
 			Some(res) => Some(res),
 			None => {
 				// If the current slot is still in the range of 'remembered' slots
-				if check_slot_still_recoverable_from_overlay(*self.last_slot_index(), slot) {
+				if check_slot_still_recoverable_from_overlay(self.last_slot_index(), slot) {
 					self.fetch_missing_txset_from_overlay(slot, sender).await;
 				} else {
 					tokio::spawn(self.get_txset_from_horizon_archive(slot));

@@ -96,7 +96,7 @@ async fn stellar_overlay_should_receive_tx_set() {
 	let cfg = ConnectionInfo::new(TIER_1_VALIDATOR_IP_PUBLIC, 11625, secret, 0, true, true, false);
 
 	let overlay_connection = Arc::new(Mutex::new(
-		StellarOverlayConnection::connect(node_info.clone(), cfg).await.unwrap()
+		StellarOverlayConnection::connect(node_info.clone(), cfg).await.unwrap(),
 	));
 
 	let ov_conn = overlay_connection.clone();
@@ -134,8 +134,7 @@ async fn stellar_overlay_should_receive_tx_set() {
 
 	//arrange
 	//ensure that we receive some tx set from stellar node
-	assert!(!tx_set_vec.is_empty());
-	overlay_connection.disconnect().await.expect("Should be able to disconnect");
+	assert!(!tx_set_vec.lock().await.is_empty());
 }
 
 #[tokio::test]

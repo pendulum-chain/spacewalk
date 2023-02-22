@@ -64,25 +64,24 @@ pub async fn start(config: StellarOverlayConfig) -> Result<OracleAgent, Error> {
 	let disconnect_action = overlay_conn.get_disconnect_action();
 
 	let (sender, mut receiver) = mpsc::channel(34);
-	let collector = Arc::new(ScpMessageCollector::new(config.is_public_network()));
+	let collector = Arc::new(RwLock::new(ScpMessageCollector::new(config.is_public_network())));
 	let shutdown_sender = ShutdownSender::default();
 
 	let shut_down_clone = shutdown_sender.clone();
 	// handle a message from the overlay network
 	let sender_clone = sender.clone();
 
+	let collector_clone = collector.clone();
 	service::spawn_cancelable(shut_down_clone.subscribe(), async move {
-		let collector = collector.clone();
 		let sender = sender_clone.clone();
 		loop {
 			tokio::select! {
 				// runs the stellar-relay and listens to data to collect the scp messages and txsets.
 				Some(msg) = overlay_conn.listen() => {
-					handle_message(msg, &collector, &sender).await?;
+					handle_message(msg, collector_clone.clone(), &sender).await?;
 				},
 
 				Some(msg) = receiver.recv() => {
-					println!("FUDGE FUDGE RECEIVE msg {:?} FROM ... USER" , msg);
 					// We received the instruction to send a message to the overlay network by the receiver
 					overlay_conn.send(msg).await?;
 				}
@@ -101,7 +100,7 @@ pub async fn start(config: StellarOverlayConfig) -> Result<OracleAgent, Error> {
 	}));
 
 	Ok(OracleAgent {
-		collector: Arc::new(ScpMessageCollector::new(config.is_public_network())),
+		collector,
 		is_public_network: false,
 		message_sender: Some(sender),
 		shutdown_sender,
