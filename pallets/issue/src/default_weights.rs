@@ -55,9 +55,9 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 	// Storage: Issue IssueRequests (r:0 w:1)
 	fn request_issue() -> Weight {
 		// Minimum execution time: 50_000 nanoseconds.
-		Weight::from_ref_time(51_000_000 as u64)
-			.saturating_add(T::DbWeight::get().reads(14 as u64))
-			.saturating_add(T::DbWeight::get().writes(3 as u64))
+		Weight::from_ref_time(51_000_000u64)
+			.saturating_add(T::DbWeight::get().reads(14u64))
+			.saturating_add(T::DbWeight::get().writes(3u64))
 	}
 	// Storage: Issue IssueRequests (r:1 w:1)
 	// Storage: StellarRelay IsPublicNetwork (r:1 w:0)
@@ -71,9 +71,9 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 	// Storage: VaultRewards TotalStake (r:1 w:0)
 	fn execute_issue() -> Weight {
 		// Minimum execution time: 4_175_000 nanoseconds.
-		Weight::from_ref_time(4_179_000_000 as u64)
-			.saturating_add(T::DbWeight::get().reads(10 as u64))
-			.saturating_add(T::DbWeight::get().writes(2 as u64))
+		Weight::from_ref_time(4_179_000_000u64)
+			.saturating_add(T::DbWeight::get().reads(10u64))
+			.saturating_add(T::DbWeight::get().writes(2u64))
 	}
 	// Storage: Issue IssueRequests (r:1 w:1)
 	// Storage: Issue IssuePeriod (r:1 w:0)
@@ -81,23 +81,23 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 	// Storage: VaultRegistry Vaults (r:1 w:1)
 	fn cancel_issue() -> Weight {
 		// Minimum execution time: 27_000 nanoseconds.
-		Weight::from_ref_time(28_000_000 as u64)
-			.saturating_add(T::DbWeight::get().reads(4 as u64))
-			.saturating_add(T::DbWeight::get().writes(2 as u64))
+		Weight::from_ref_time(28_000_000u64)
+			.saturating_add(T::DbWeight::get().reads(4u64))
+			.saturating_add(T::DbWeight::get().writes(2u64))
 	}
 	// Storage: Issue IssuePeriod (r:0 w:1)
 	fn set_issue_period() -> Weight {
 		// Minimum execution time: 8_000 nanoseconds.
-		Weight::from_ref_time(9_000_000 as u64)
-			.saturating_add(T::DbWeight::get().writes(1 as u64))
+		Weight::from_ref_time(9_000_000u64)
+			.saturating_add(T::DbWeight::get().writes(1u64))
 	}
 	// Storage: Issue LimitVolumeAmount (r:0 w:1)
 	// Storage: Issue LimitVolumeCurrencyId (r:0 w:1)
 	// Storage: Issue IntervalLength (r:0 w:1)
 	fn rate_limit_update() -> Weight {
 		// Minimum execution time: 9_000 nanoseconds.
-		Weight::from_ref_time(10_000_000 as u64)
-			.saturating_add(T::DbWeight::get().writes(3 as u64))
+		Weight::from_ref_time(10_000_000u64)
+			.saturating_add(T::DbWeight::get().writes(3u64))
 	}
 }
 
@@ -120,9 +120,9 @@ impl WeightInfo for () {
 	// Storage: Issue IssueRequests (r:0 w:1)
 	fn request_issue() -> Weight {
 		// Minimum execution time: 50_000 nanoseconds.
-		Weight::from_ref_time(51_000_000 as u64)
-			.saturating_add(RocksDbWeight::get().reads(14 as u64))
-			.saturating_add(RocksDbWeight::get().writes(3 as u64))
+		Weight::from_ref_time(51_000_000u64)
+			.saturating_add(RocksDbWeight::get().reads(14u64))
+			.saturating_add(RocksDbWeight::get().writes(3u64))
 	}
 	// Storage: Issue IssueRequests (r:1 w:1)
 	// Storage: StellarRelay IsPublicNetwork (r:1 w:0)
@@ -136,9 +136,9 @@ impl WeightInfo for () {
 	// Storage: VaultRewards TotalStake (r:1 w:0)
 	fn execute_issue() -> Weight {
 		// Minimum execution time: 4_175_000 nanoseconds.
-		Weight::from_ref_time(4_179_000_000 as u64)
-			.saturating_add(RocksDbWeight::get().reads(10 as u64))
-			.saturating_add(RocksDbWeight::get().writes(2 as u64))
+		Weight::from_ref_time(4_179_000_000u64)
+			.saturating_add(RocksDbWeight::get().reads(10u64))
+			.saturating_add(RocksDbWeight::get().writes(2u64))
 	}
 	// Storage: Issue IssueRequests (r:1 w:1)
 	// Storage: Issue IssuePeriod (r:1 w:0)
@@ -146,22 +146,22 @@ impl WeightInfo for () {
 	// Storage: VaultRegistry Vaults (r:1 w:1)
 	fn cancel_issue() -> Weight {
 		// Minimum execution time: 27_000 nanoseconds.
-		Weight::from_ref_time(28_000_000 as u64)
-			.saturating_add(RocksDbWeight::get().reads(4 as u64))
-			.saturating_add(RocksDbWeight::get().writes(2 as u64))
+		Weight::from_ref_time(28_000_000u64)
+			.saturating_add(RocksDbWeight::get().reads(4u64))
+			.saturating_add(RocksDbWeight::get().writes(2u64))
 	}
 	// Storage: Issue IssuePeriod (r:0 w:1)
 	fn set_issue_period() -> Weight {
 		// Minimum execution time: 8_000 nanoseconds.
-		Weight::from_ref_time(9_000_000 as u64)
-			.saturating_add(RocksDbWeight::get().writes(1 as u64))
+		Weight::from_ref_time(9_000_000u64)
+			.saturating_add(RocksDbWeight::get().writes(1u64))
 	}
 	// Storage: Issue LimitVolumeAmount (r:0 w:1)
 	// Storage: Issue LimitVolumeCurrencyId (r:0 w:1)
 	// Storage: Issue IntervalLength (r:0 w:1)
 	fn rate_limit_update() -> Weight {
 		// Minimum execution time: 9_000 nanoseconds.
-		Weight::from_ref_time(10_000_000 as u64)
-			.saturating_add(RocksDbWeight::get().writes(3 as u64))
+		Weight::from_ref_time(10_000_000u64)
+			.saturating_add(RocksDbWeight::get().writes(3u64))
 	}
 }

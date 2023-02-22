@@ -55,45 +55,45 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 	// Storage: VaultStaking TotalRewards (r:1 w:1)
 	fn withdraw_rewards() -> Weight {
 		// Minimum execution time: 49_000 nanoseconds.
-		Weight::from_ref_time(49_000_000 as u64)
-			.saturating_add(T::DbWeight::get().reads(13 as u64))
-			.saturating_add(T::DbWeight::get().writes(7 as u64))
+		Weight::from_ref_time(49_000_000u64)
+			.saturating_add(T::DbWeight::get().reads(13u64))
+			.saturating_add(T::DbWeight::get().writes(7u64))
 	}
 	// Storage: Fee IssueFee (r:0 w:1)
 	fn set_issue_fee() -> Weight {
 		// Minimum execution time: 3_000 nanoseconds.
-		Weight::from_ref_time(3_000_000 as u64)
-			.saturating_add(T::DbWeight::get().writes(1 as u64))
+		Weight::from_ref_time(3_000_000u64)
+			.saturating_add(T::DbWeight::get().writes(1u64))
 	}
 	// Storage: Fee IssueGriefingCollateral (r:0 w:1)
 	fn set_issue_griefing_collateral() -> Weight {
 		// Minimum execution time: 3_000 nanoseconds.
-		Weight::from_ref_time(4_000_000 as u64)
-			.saturating_add(T::DbWeight::get().writes(1 as u64))
+		Weight::from_ref_time(4_000_000u64)
+			.saturating_add(T::DbWeight::get().writes(1u64))
 	}
 	// Storage: Fee RedeemFee (r:0 w:1)
 	fn set_redeem_fee() -> Weight {
 		// Minimum execution time: 3_000 nanoseconds.
-		Weight::from_ref_time(3_000_000 as u64)
-			.saturating_add(T::DbWeight::get().writes(1 as u64))
+		Weight::from_ref_time(3_000_000u64)
+			.saturating_add(T::DbWeight::get().writes(1u64))
 	}
 	// Storage: Fee PremiumRedeemFee (r:0 w:1)
 	fn set_premium_redeem_fee() -> Weight {
 		// Minimum execution time: 3_000 nanoseconds.
-		Weight::from_ref_time(3_000_000 as u64)
-			.saturating_add(T::DbWeight::get().writes(1 as u64))
+		Weight::from_ref_time(3_000_000u64)
+			.saturating_add(T::DbWeight::get().writes(1u64))
 	}
 	// Storage: Fee PunishmentFee (r:0 w:1)
 	fn set_punishment_fee() -> Weight {
 		// Minimum execution time: 3_000 nanoseconds.
-		Weight::from_ref_time(3_000_000 as u64)
-			.saturating_add(T::DbWeight::get().writes(1 as u64))
+		Weight::from_ref_time(3_000_000u64)
+			.saturating_add(T::DbWeight::get().writes(1u64))
 	}
 	// Storage: Fee ReplaceGriefingCollateral (r:0 w:1)
 	fn set_replace_griefing_collateral() -> Weight {
 		// Minimum execution time: 3_000 nanoseconds.
-		Weight::from_ref_time(3_000_000 as u64)
-			.saturating_add(T::DbWeight::get().writes(1 as u64))
+		Weight::from_ref_time(3_000_000u64)
+			.saturating_add(T::DbWeight::get().writes(1u64))
 	}
 }
 
@@ -114,44 +114,44 @@ impl WeightInfo for () {
 	// Storage: VaultStaking TotalRewards (r:1 w:1)
 	fn withdraw_rewards() -> Weight {
 		// Minimum execution time: 49_000 nanoseconds.
-		Weight::from_ref_time(49_000_000 as u64)
-			.saturating_add(RocksDbWeight::get().reads(13 as u64))
-			.saturating_add(RocksDbWeight::get().writes(7 as u64))
+		Weight::from_ref_time(49_000_000u64)
+			.saturating_add(RocksDbWeight::get().reads(13u64))
+			.saturating_add(RocksDbWeight::get().writes(7u64))
 	}
 	// Storage: Fee IssueFee (r:0 w:1)
 	fn set_issue_fee() -> Weight {
 		// Minimum execution time: 3_000 nanoseconds.
-		Weight::from_ref_time(3_000_000 as u64)
-			.saturating_add(RocksDbWeight::get().writes(1 as u64))
+		Weight::from_ref_time(3_000_000u64)
+			.saturating_add(RocksDbWeight::get().writes(1u64))
 	}
 	// Storage: Fee IssueGriefingCollateral (r:0 w:1)
 	fn set_issue_griefing_collateral() -> Weight {
 		// Minimum execution time: 3_000 nanoseconds.
-		Weight::from_ref_time(4_000_000 as u64)
-			.saturating_add(RocksDbWeight::get().writes(1 as u64))
+		Weight::from_ref_time(4_000_000u64)
+			.saturating_add(RocksDbWeight::get().writes(1u64))
 	}
 	// Storage: Fee RedeemFee (r:0 w:1)
 	fn set_redeem_fee() -> Weight {
 		// Minimum execution time: 3_000 nanoseconds.
-		Weight::from_ref_time(3_000_000 as u64)
-			.saturating_add(RocksDbWeight::get().writes(1 as u64))
+		Weight::from_ref_time(3_000_000u64)
+			.saturating_add(RocksDbWeight::get().writes(1u64))
 	}
 	// Storage: Fee PremiumRedeemFee (r:0 w:1)
 	fn set_premium_redeem_fee() -> Weight {
 		// Minimum execution time: 3_000 nanoseconds.
-		Weight::from_ref_time(3_000_000 as u64)
-			.saturating_add(RocksDbWeight::get().writes(1 as u64))
+		Weight::from_ref_time(3_000_000u64)
+			.saturating_add(RocksDbWeight::get().writes(1u64))
 	}
 	// Storage: Fee PunishmentFee (r:0 w:1)
 	fn set_punishment_fee() -> Weight {
 		// Minimum execution time: 3_000 nanoseconds.
-		Weight::from_ref_time(3_000_000 as u64)
-			.saturating_add(RocksDbWeight::get().writes(1 as u64))
+		Weight::from_ref_time(3_000_000u64)
+			.saturating_add(RocksDbWeight::get().writes(1u64))
 	}
 	// Storage: Fee ReplaceGriefingCollateral (r:0 w:1)
 	fn set_replace_griefing_collateral() -> Weight {
 		// Minimum execution time: 3_000 nanoseconds.
-		Weight::from_ref_time(3_000_000 as u64)
-			.saturating_add(RocksDbWeight::get().writes(1 as u64))
+		Weight::from_ref_time(3_000_000u64)
+			.saturating_add(RocksDbWeight::get().writes(1u64))
 	}
 }

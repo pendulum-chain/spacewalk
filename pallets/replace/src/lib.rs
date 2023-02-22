@@ -580,7 +580,7 @@ impl<T: Config> Pallet<T> {
 		)?;
 
 		// Check that the transaction contains a payment with at least the expected amount
-		ensure!(paid_amount.ge(&amount.clone())?, Error::<T>::InvalidPaymentAmount);
+		ensure!(paid_amount.ge(&amount)?, Error::<T>::InvalidPaymentAmount);
 
 		// only return griefing collateral if not already slashed
 		let collateral = match replace.status {
