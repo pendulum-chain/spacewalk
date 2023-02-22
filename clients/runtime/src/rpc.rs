@@ -822,12 +822,7 @@ impl OraclePallet for SpacewalkParachain {
 	/// Returns the last exchange rate in planck per satoshis, the time at which it was set
 	/// and the configured max delay.
 	async fn get_oracle_keys(&self) -> Result<Vec<OracleKey>, Error> {
-		let keys = self.query_finalized_or_error(metadata::storage().oracle().oracle_keys()).await;
-		let result = match keys {
-			Ok(i) => Ok(i),
-			Err(e) => Err(e),
-		};
-		return result
+		self.query_finalized_or_error(metadata::storage().oracle().oracle_keys()).await
 	}
 
 	/// Sets the current exchange rate (i.e. DOT/XLM)
@@ -836,20 +831,13 @@ impl OraclePallet for SpacewalkParachain {
 	/// * `value` - the current exchange rate
 	async fn feed_values(&self, values: Vec<((Vec<u8>, Vec<u8>), FixedU128)>) -> Result<(), Error> {
 		use crate::metadata::runtime_types::dia_oracle::dia::CoinInfo;
+
+		let now = std::time::SystemTime::now();
+		let since_the_epoch =
+			now.duration_since(std::time::UNIX_EPOCH).expect("Time went backwards");
+		let time = since_the_epoch.as_secs();
+
 		let mut coin_infos = vec![];
-		let timestamp = self.query_finalized_or_error(metadata::storage().timestamp().now()).await;
-		let mut time = 0;
-		match timestamp {
-			Ok(o) => {
-				time = o as u64;
-			},
-			Err(_) => {},
-		}
-		if time == 0 {
-			time = u64::MAX / 2 - 10; // by some reason timestamp storage return 0 and thefore spacewalk pallets
-			              // go to offline status because not all OracleKeys has prices during
-			              // begin_block function in oracle spacewalk.
-		}
 		for ((blockchain, symbol), price) in values {
 			let coin_info = CoinInfo {
 				symbol: symbol.clone(),

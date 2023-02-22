@@ -1,8 +1,9 @@
 use std::{sync::Arc, time::Duration};
 
 use rand::RngCore;
+use service::on_shutdown;
 use tokio::{
-	sync::mpsc,
+	sync::{mpsc, RwLock},
 	time::{sleep, timeout},
 };
 
@@ -26,7 +27,7 @@ use crate::oracle::{
 };
 
 pub struct OracleAgent {
-	collector: Arc<ScpMessageCollector>,
+	collector: Arc<RwLock<ScpMessageCollector>>,
 	pub is_public_network: bool,
 	message_sender: Option<StellarMessageSender>,
 	shutdown_sender: ShutdownSender,
@@ -40,16 +41,16 @@ pub struct OracleAgent {
 /// * `message_sender` - used to send messages to Stellar Node
 async fn handle_message(
 	message: StellarRelayMessage,
-	collector: &Arc<ScpMessageCollector>,
+	collector: Arc<RwLock<ScpMessageCollector>>,
 	message_sender: &StellarMessageSender,
 ) -> Result<(), Error> {
 	match message {
 		StellarRelayMessage::Data { p_id: _, msg_type: _, msg } => match *msg {
 			StellarMessage::ScpMessage(env) => {
-				collector.handle_envelope(env, message_sender).await?;
+				collector.write().await.handle_envelope(env, message_sender).await?;
 			},
 			StellarMessage::TxSet(set) => {
-				collector.handle_tx_set(set);
+				collector.read().await.handle_tx_set(set);
 			},
 			_ => {},
 		},
@@ -67,7 +68,7 @@ async fn handle_message(
 
 impl OracleAgent {
 	pub fn new(is_public_network: bool) -> Result<Self, Error> {
-		let collector = Arc::new(ScpMessageCollector::new(is_public_network));
+		let collector = Arc::new(RwLock::new(ScpMessageCollector::new(is_public_network)));
 		let shutdown_sender = ShutdownSender::default();
 		Ok(Self { collector, is_public_network, message_sender: None, shutdown_sender })
 	}
@@ -139,9 +140,11 @@ impl OracleAgent {
 		timeout(Duration::from_secs(60), async move {
 			loop {
 				let stellar_sender = sender.clone();
+				let collector = collector.read().await;
 				match collector.build_proof(slot, &stellar_sender).await {
 					None => {
-						sleep(Duration::from_secs(5)).await;
+						drop(collector);
+						sleep(Duration::from_secs(10)).await;
 						continue
 					},
 					Some(proof) => return Ok(proof),
@@ -154,12 +157,12 @@ impl OracleAgent {
 		})?
 	}
 
-	pub fn get_last_slot_index(&self) -> Slot {
-		*self.collector.last_slot_index()
+	pub async fn get_last_scp_ext_slot(&self) -> Slot {
+		self.collector.read().await.last_scp_ext_slot()
 	}
 
-	pub fn remove_data(&mut self, slot: &Slot) {
-		self.collector.remove_data(slot);
+	pub async fn remove_data(&self, slot: &Slot) {
+		self.collector.read().await.remove_data(slot);
 	}
 
 	/// Runs a task to handle messages coming from the Stellar Nodes, and external messages
@@ -170,15 +173,17 @@ impl OracleAgent {
 		self.message_sender = Some(sender.clone());
 
 		let collector = self.collector.clone();
+		// Get action sender and disconnect action before moving `overlay_conn` into the closure
+		let actions_sender = overlay_conn.get_actions_sender();
+		let disconnect_action = overlay_conn.get_disconnect_action();
 
 		// handle a message from the overlay network
 		service::spawn_cancelable(self.shutdown_sender.subscribe(), async move {
-			let collector = collector.clone();
 			loop {
 				tokio::select! {
 					// runs the stellar-relay and listens to data to collect the scp messages and txsets.
 					Some(msg) = overlay_conn.listen() => {
-						handle_message(msg, &collector, &sender).await?;
+						handle_message(msg, collector.clone(), &sender).await?;
 					},
 
 					Some(msg) = receiver.recv() => {
@@ -190,6 +195,14 @@ impl OracleAgent {
 			#[allow(unreachable_code)]
 			Ok::<(), Error>(())
 		});
+
+		tokio::spawn(on_shutdown(self.shutdown_sender.clone(), async move {
+			let result_sending_diconnect =
+				actions_sender.send(disconnect_action).await.map_err(Error::from);
+			if let Err(e) = result_sending_diconnect {
+				tracing::error!("Failed to send message to error : {:#?}", e);
+			};
+		}));
 
 		Ok(())
 	}
@@ -211,10 +224,16 @@ impl OracleAgent {
 		self.run(node_info, conn_config).await
 	}
 
+	pub async fn start_with_address(&mut self, address: &str) -> Result<(), Error> {
+		let (node_info, mut conn_config) = self.get_default_overlay_conn_config();
+		conn_config.set_address(address.to_string());
+
+		self.run(node_info, conn_config).await
+	}
+
 	/// Stops listening for new SCP messages.
-	pub fn stop(&mut self) -> Result<(), Error> {
+	pub fn stop(&self) -> Result<(), Error> {
 		tracing::info!("Stopping agent");
-		// self.overlay_conn.disconnect();
 		if let Err(e) = self.shutdown_sender.send(()) {
 			tracing::error!("Failed to send shutdown signal to the agent: {:?}", e);
 		}
@@ -241,16 +260,21 @@ mod tests {
 	}
 
 	#[tokio::test]
+	#[ntest::timeout(1_800_000)] // timeout at 30 minutes
 	async fn test_get_proof_for_current_slot() {
 		let mut agent = OracleAgent::new(true).unwrap();
-		agent.start().await.expect("Failed to start agent");
-
+		agent.start_with_address("51.161.197.48").await.expect("Failed to start agent");
+		sleep(Duration::from_secs(10)).await;
 		// Wait until agent is caught up with the network.
-		while agent.get_last_slot_index() == 0 {
+
+		let mut latest_slot = 0;
+		while latest_slot == 0 {
 			sleep(Duration::from_secs(1)).await;
+			latest_slot = agent.get_last_scp_ext_slot().await;
 		}
-		let latest_slot = agent.get_last_slot_index();
-		println!("Fetching proof for latest slot: {}", latest_slot);
+		// use the next slot to prevent receiving not enough messages for the current slot
+		// because of bad timing when connecting to the network.
+		latest_slot += 1;
 
 		let proof_result = agent.get_proof(latest_slot).await;
 		assert!(proof_result.is_ok(), "Failed to get proof for slot: {}", latest_slot);

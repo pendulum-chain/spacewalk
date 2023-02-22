@@ -578,22 +578,12 @@ impl TryFrom<(&str, &str)> for CurrencyId {
 	type Error = &'static str;
 
 	fn try_from(value: (&str, &str)) -> Result<Self, Self::Error> {
-		let slice = value.0;
 		let issuer_encoded = value.1;
 		let issuer_pk = stellar::PublicKey::from_encoding(issuer_encoded)
 			.map_err(|_| "Invalid issuer encoding")?;
 		let issuer: AssetIssuer = *issuer_pk.as_binary();
-		if slice.len() <= 4 {
-			let mut code: Bytes4 = [0; 4];
-			code[..slice.len()].copy_from_slice(slice.as_bytes());
-			Ok(CurrencyId::AlphaNum4(code, issuer))
-		} else if slice.len() > 4 && slice.len() <= 12 {
-			let mut code: Bytes12 = [0; 12];
-			code[..slice.len()].copy_from_slice(slice.as_bytes());
-			Ok(CurrencyId::AlphaNum12(code, issuer))
-		} else {
-			Err("More than 12 bytes not supported")
-		}
+
+		CurrencyId::try_from((value.0, issuer))
 	}
 }
 
@@ -746,7 +736,10 @@ impl StaticLookup for BalanceConversion {
 	}
 
 	fn unlookup(stellar_stroops: Self::Target) -> Self::Source {
-		(stellar_stroops * CONVERSION_RATE as i64) as u128
+		let conversion_rate = i64::try_from(CONVERSION_RATE).unwrap_or(i64::MAX);
+
+		let value = stellar_stroops.saturating_mul(conversion_rate);
+		u128::try_from(value).unwrap_or(0)
 	}
 }
 
@@ -820,57 +813,5 @@ impl TransactionEnvelopeExt for TransactionEnvelope {
 
 		// `transferred_amount` is in stroops, so we need to convert it
 		BalanceConversion::unlookup(transferred_amount)
-	}
-}
-
-pub struct DiaOracleKeyConvertor;
-impl Convert<oracle::Key, Option<(Vec<u8>, Vec<u8>)>> for DiaOracleKeyConvertor {
-	fn convert(spacwalk_oracle_key: oracle::Key) -> Option<(Vec<u8>, Vec<u8>)> {
-		match spacwalk_oracle_key {
-			oracle::Key::ExchangeRate(currency_id) => match currency_id {
-				CurrencyId::XCM(token_symbol) => match token_symbol {
-					ForeignCurrencyId::DOT => return Some((vec![0u8], vec![1u8])),
-					ForeignCurrencyId::KSM => return Some((vec![0u8], vec![3u8])),
-					_ => None,
-				},
-				CurrencyId::Native => Some((vec![2u8], vec![])),
-				CurrencyId::StellarNative => Some((vec![3u8], vec![])),
-				CurrencyId::Stellar(Asset::AlphaNum4 { code, .. }) =>
-					Some((vec![4u8], code.to_vec())),
-				CurrencyId::Stellar(Asset::AlphaNum12 { code, .. }) =>
-					Some((vec![5u8], code.to_vec())),
-			},
-		}
-	}
-}
-
-impl Convert<(Vec<u8>, Vec<u8>), Option<oracle::Key>> for DiaOracleKeyConvertor {
-	fn convert(dia_oracle_key: (Vec<u8>, Vec<u8>)) -> Option<oracle::Key> {
-		let (blockchain, symbol) = dia_oracle_key;
-		match blockchain[0] {
-			0u8 => match symbol[0] {
-				1 =>
-					return Some(oracle::Key::ExchangeRate(CurrencyId::XCM(ForeignCurrencyId::DOT))),
-				3 =>
-					return Some(oracle::Key::ExchangeRate(CurrencyId::XCM(ForeignCurrencyId::KSM))),
-				_ => return None,
-			},
-			2u8 => Some(oracle::Key::ExchangeRate(CurrencyId::Native)),
-			3u8 => Some(oracle::Key::ExchangeRate(CurrencyId::StellarNative)),
-			4u8 => {
-				let vector = symbol;
-				let code = [vector[0], vector[1], vector[2], vector[3]];
-				Some(oracle::Key::ExchangeRate(CurrencyId::AlphaNum4(code, [0u8; 32])))
-			},
-			5u8 => {
-				let vector = symbol;
-				let code = [
-					vector[0], vector[1], vector[2], vector[3], vector[4], vector[5], vector[6],
-					vector[7], vector[8], vector[9], vector[10], vector[11],
-				];
-				Some(oracle::Key::ExchangeRate(CurrencyId::AlphaNum12(code, [0u8; 32])))
-			},
-			_ => None,
-		}
 	}
 }

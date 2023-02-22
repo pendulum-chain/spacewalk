@@ -47,16 +47,16 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 	// Storage: Tokens Accounts (r:1 w:1)
 	fn request_replace() -> Weight {
 		// Minimum execution time: 38_000 nanoseconds.
-		Weight::from_ref_time(39_000_000 as u64)
-			.saturating_add(T::DbWeight::get().reads(6 as u64))
-			.saturating_add(T::DbWeight::get().writes(2 as u64))
+		Weight::from_ref_time(39_000_000u64)
+			.saturating_add(T::DbWeight::get().reads(6u64))
+			.saturating_add(T::DbWeight::get().writes(2u64))
 	}
 	// Storage: VaultRegistry Vaults (r:1 w:1)
 	fn withdraw_replace() -> Weight {
 		// Minimum execution time: 18_000 nanoseconds.
-		Weight::from_ref_time(19_000_000 as u64)
-			.saturating_add(T::DbWeight::get().reads(1 as u64))
-			.saturating_add(T::DbWeight::get().writes(1 as u64))
+		Weight::from_ref_time(19_000_000u64)
+			.saturating_add(T::DbWeight::get().reads(1u64))
+			.saturating_add(T::DbWeight::get().writes(1u64))
 	}
 	// Storage: VaultRegistry Vaults (r:2 w:2)
 	// Storage: Replace ReplaceMinimumTransferAmount (r:1 w:0)
@@ -84,9 +84,9 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 	// Storage: Replace ReplaceRequests (r:0 w:1)
 	fn accept_replace() -> Weight {
 		// Minimum execution time: 113_000 nanoseconds.
-		Weight::from_ref_time(115_000_000 as u64)
-			.saturating_add(T::DbWeight::get().reads(28 as u64))
-			.saturating_add(T::DbWeight::get().writes(16 as u64))
+		Weight::from_ref_time(115_000_000u64)
+			.saturating_add(T::DbWeight::get().reads(28u64))
+			.saturating_add(T::DbWeight::get().writes(16u64))
 	}
 	// Storage: Replace ReplaceRequests (r:1 w:1)
 	// Storage: StellarRelay IsPublicNetwork (r:1 w:0)
@@ -97,9 +97,9 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 	// Storage: VaultRewards Stake (r:1 w:0)
 	fn execute_replace() -> Weight {
 		// Minimum execution time: 4_170_000 nanoseconds.
-		Weight::from_ref_time(4_190_000_000 as u64)
-			.saturating_add(T::DbWeight::get().reads(8 as u64))
-			.saturating_add(T::DbWeight::get().writes(3 as u64))
+		Weight::from_ref_time(4_190_000_000u64)
+			.saturating_add(T::DbWeight::get().reads(8u64))
+			.saturating_add(T::DbWeight::get().writes(3u64))
 	}
 	// Storage: Replace ReplaceRequests (r:1 w:1)
 	// Storage: Replace ReplacePeriod (r:1 w:0)
@@ -120,15 +120,15 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 	// Storage: VaultStaking TotalStake (r:1 w:1)
 	fn cancel_replace() -> Weight {
 		// Minimum execution time: 75_000 nanoseconds.
-		Weight::from_ref_time(78_000_000 as u64)
-			.saturating_add(T::DbWeight::get().reads(20 as u64))
-			.saturating_add(T::DbWeight::get().writes(11 as u64))
+		Weight::from_ref_time(78_000_000u64)
+			.saturating_add(T::DbWeight::get().reads(20u64))
+			.saturating_add(T::DbWeight::get().writes(11u64))
 	}
 	// Storage: Replace ReplacePeriod (r:0 w:1)
 	fn set_replace_period() -> Weight {
 		// Minimum execution time: 8_000 nanoseconds.
-		Weight::from_ref_time(8_000_000 as u64)
-			.saturating_add(T::DbWeight::get().writes(1 as u64))
+		Weight::from_ref_time(8_000_000u64)
+			.saturating_add(T::DbWeight::get().writes(1u64))
 	}
 }
 
@@ -142,16 +142,16 @@ impl WeightInfo for () {
 	// Storage: Tokens Accounts (r:1 w:1)
 	fn request_replace() -> Weight {
 		// Minimum execution time: 38_000 nanoseconds.
-		Weight::from_ref_time(39_000_000 as u64)
-			.saturating_add(RocksDbWeight::get().reads(6 as u64))
-			.saturating_add(RocksDbWeight::get().writes(2 as u64))
+		Weight::from_ref_time(39_000_000u64)
+			.saturating_add(RocksDbWeight::get().reads(6u64))
+			.saturating_add(RocksDbWeight::get().writes(2u64))
 	}
 	// Storage: VaultRegistry Vaults (r:1 w:1)
 	fn withdraw_replace() -> Weight {
 		// Minimum execution time: 18_000 nanoseconds.
-		Weight::from_ref_time(19_000_000 as u64)
-			.saturating_add(RocksDbWeight::get().reads(1 as u64))
-			.saturating_add(RocksDbWeight::get().writes(1 as u64))
+		Weight::from_ref_time(19_000_000u64)
+			.saturating_add(RocksDbWeight::get().reads(1u64))
+			.saturating_add(RocksDbWeight::get().writes(1u64))
 	}
 	// Storage: VaultRegistry Vaults (r:2 w:2)
 	// Storage: Replace ReplaceMinimumTransferAmount (r:1 w:0)
@@ -179,9 +179,9 @@ impl WeightInfo for () {
 	// Storage: Replace ReplaceRequests (r:0 w:1)
 	fn accept_replace() -> Weight {
 		// Minimum execution time: 113_000 nanoseconds.
-		Weight::from_ref_time(115_000_000 as u64)
-			.saturating_add(RocksDbWeight::get().reads(28 as u64))
-			.saturating_add(RocksDbWeight::get().writes(16 as u64))
+		Weight::from_ref_time(115_000_000u64)
+			.saturating_add(RocksDbWeight::get().reads(28u64))
+			.saturating_add(RocksDbWeight::get().writes(16u64))
 	}
 	// Storage: Replace ReplaceRequests (r:1 w:1)
 	// Storage: StellarRelay IsPublicNetwork (r:1 w:0)
@@ -192,9 +192,9 @@ impl WeightInfo for () {
 	// Storage: VaultRewards Stake (r:1 w:0)
 	fn execute_replace() -> Weight {
 		// Minimum execution time: 4_170_000 nanoseconds.
-		Weight::from_ref_time(4_190_000_000 as u64)
-			.saturating_add(RocksDbWeight::get().reads(8 as u64))
-			.saturating_add(RocksDbWeight::get().writes(3 as u64))
+		Weight::from_ref_time(4_190_000_000u64)
+			.saturating_add(RocksDbWeight::get().reads(8u64))
+			.saturating_add(RocksDbWeight::get().writes(3u64))
 	}
 	// Storage: Replace ReplaceRequests (r:1 w:1)
 	// Storage: Replace ReplacePeriod (r:1 w:0)
@@ -215,14 +215,14 @@ impl WeightInfo for () {
 	// Storage: VaultStaking TotalStake (r:1 w:1)
 	fn cancel_replace() -> Weight {
 		// Minimum execution time: 75_000 nanoseconds.
-		Weight::from_ref_time(78_000_000 as u64)
-			.saturating_add(RocksDbWeight::get().reads(20 as u64))
-			.saturating_add(RocksDbWeight::get().writes(11 as u64))
+		Weight::from_ref_time(78_000_000u64)
+			.saturating_add(RocksDbWeight::get().reads(20u64))
+			.saturating_add(RocksDbWeight::get().writes(11u64))
 	}
 	// Storage: Replace ReplacePeriod (r:0 w:1)
 	fn set_replace_period() -> Weight {
 		// Minimum execution time: 8_000 nanoseconds.
-		Weight::from_ref_time(8_000_000 as u64)
-			.saturating_add(RocksDbWeight::get().writes(1 as u64))
+		Weight::from_ref_time(8_000_000u64)
+			.saturating_add(RocksDbWeight::get().writes(1u64))
 	}
 }

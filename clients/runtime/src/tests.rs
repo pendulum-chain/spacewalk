@@ -2,7 +2,8 @@
 
 use sp_keyring::AccountKeyring;
 
-use primitives::{DiaOracleKeyConvertor, ForeignCurrencyId, StellarPublicKeyRaw};
+use oracle::dia::DiaOracleKeyConvertor;
+use primitives::{ForeignCurrencyId, StellarPublicKeyRaw};
 
 use crate::{integration::*, VaultId};
 
@@ -28,7 +29,7 @@ fn dummy_public_key() -> StellarPublicKeyRaw {
 async fn set_exchange_rate(client: SubxtClient) {
 	let oracle_provider = setup_provider(client, AccountKeyring::Bob).await;
 	let key = primitives::oracle::Key::ExchangeRate(DEFAULT_TESTING_CURRENCY);
-	let converted_key = DiaOracleKeyConvertor::convert(key.clone()).unwrap();
+	let converted_key = DiaOracleKeyConvertor::<MockValue>::convert(key.clone()).unwrap();
 	let exchange_rate = FixedU128::saturating_from_rational(1u128, 100u128);
 	oracle_provider
 		.feed_values(vec![(converted_key, exchange_rate)])
@@ -84,7 +85,7 @@ async fn test_subxt_processing_events_after_dispatch_error() {
 	let invalid_oracle = setup_provider(client, AccountKeyring::Dave).await;
 
 	let key = primitives::oracle::Key::ExchangeRate(DEFAULT_TESTING_CURRENCY);
-	let converted_key = DiaOracleKeyConvertor::convert(key.clone()).unwrap();
+	let converted_key = DiaOracleKeyConvertor::<MockValue>::convert(key.clone()).unwrap();
 	let exchange_rate = FixedU128::saturating_from_rational(1u128, 100u128);
 
 	let result = tokio::join!(

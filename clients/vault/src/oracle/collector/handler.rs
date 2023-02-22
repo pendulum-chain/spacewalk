@@ -17,17 +17,17 @@ impl ScpMessageCollector {
 	/// * `env` - the ScpEnvelope
 	/// * `message_sender` - used for sending messages to Stellar Node
 	pub(crate) async fn handle_envelope(
-		&self,
+		&mut self,
 		env: ScpEnvelope,
 		message_sender: &StellarMessageSender,
 	) -> Result<(), Error> {
 		let slot = env.statement.slot_index;
 
-		// set the last_slot_index
-		self.set_last_slot_index(slot);
-
 		// we are only interested with `ScpStExternalize`. Other messages are ignored.
 		if let ScpStatementPledges::ScpStExternalize(stmt) = &env.statement.pledges {
+			// set the last scpenvenvelope with ScpStExternalize message
+			self.set_last_scp_ext_slot(slot);
+
 			let txset_hash = get_tx_set_hash(stmt)?;
 
 			// Check if collector has a record of this hash.

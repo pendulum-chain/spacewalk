@@ -11,10 +11,44 @@ const DOT_DIA_BLOCKCHAIN: &str = "Polkadot";
 const DOT_DIA_SYMBOL: &str = "DOT";
 const KSM_DIA_BLOCKCHAIN: &str = "Kusama";
 const KSM_DIA_SYMBOL: &str = "KSM";
-pub struct DiaOracleKeyConvertor;
-impl Convert<OracleKey, Option<(Vec<u8>, Vec<u8>)>> for DiaOracleKeyConvertor {
-	fn convert(spacwalk_oracle_key: OracleKey) -> Option<(Vec<u8>, Vec<u8>)> {
-		match spacwalk_oracle_key {
+const STELLAR_DIA_BLOCKCHAIN: &str = "Stellar";
+const STELLAR_DIA_SYMBOL: &str = "XLM";
+const FIAT_DIA_BLOCKCHAIN: &str = "FIAT";
+
+// We always want to quote against USD
+const TARGET_QUOTE: &str = "USD";
+
+// This constructs a fiat quote symbol for a given base currency
+fn construct_fiat_usd_symbol_for_currency(base: Vec<u8>) -> Vec<u8> {
+	// We need to convert USDC to USD
+	// In the future we might have to do this for other currencies as well
+	let base_currency = if base.to_ascii_uppercase().to_vec() == "USDC".as_bytes().to_vec() {
+		"USD".as_bytes().to_vec()
+	} else {
+		// Ensure we use uppercase
+		base.to_ascii_uppercase().to_vec()
+	};
+
+	[base_currency, "-".as_bytes().to_vec(), TARGET_QUOTE.as_bytes().to_vec()].concat()
+}
+
+/// A trait to define the blockchain name and symbol of the native currency.
+/// This is required by the DiaOracleKeyConvertor to be able to derive the key used
+/// for the price information of the native currency.
+pub trait NativeCurrencyKey {
+	/// define the token symbol
+	fn native_symbol() -> Vec<u8>;
+	// define the blockchain name
+	fn native_chain() -> Vec<u8>;
+}
+
+pub struct DiaOracleKeyConvertor<T: NativeCurrencyKey>(marker::PhantomData<T>);
+
+impl<T: NativeCurrencyKey> Convert<OracleKey, Option<(Vec<u8>, Vec<u8>)>>
+	for DiaOracleKeyConvertor<T>
+{
+	fn convert(spacewalk_oracle_key: OracleKey) -> Option<(Vec<u8>, Vec<u8>)> {
+		match spacewalk_oracle_key {
 			OracleKey::ExchangeRate(currency_id) => match currency_id {
 				CurrencyId::XCM(token_symbol) => match token_symbol {
 					primitives::ForeignCurrencyId::DOT =>
@@ -29,35 +63,51 @@ impl Convert<OracleKey, Option<(Vec<u8>, Vec<u8>)>> for DiaOracleKeyConvertor {
 						)),
 					_ => unimplemented!(),
 				},
-				CurrencyId::Native => unimplemented!(),
-				CurrencyId::StellarNative => unimplemented!(),
-				CurrencyId::Stellar(primitives::Asset::AlphaNum4 { .. }) => unimplemented!(),
+				CurrencyId::Native => Some((T::native_chain(), T::native_symbol())),
+				CurrencyId::StellarNative => Some((
+					STELLAR_DIA_BLOCKCHAIN.as_bytes().to_vec(),
+					STELLAR_DIA_SYMBOL.as_bytes().to_vec(),
+				)),
+				CurrencyId::Stellar(primitives::Asset::AlphaNum4 { code, .. }) => {
+					let fiat_quote = construct_fiat_usd_symbol_for_currency(code.to_vec());
+
+					Some((FIAT_DIA_BLOCKCHAIN.as_bytes().to_vec(), fiat_quote))
+				},
 				CurrencyId::Stellar(primitives::Asset::AlphaNum12 { .. }) => unimplemented!(),
 			},
 		}
 	}
 }
 
-impl Convert<(Vec<u8>, Vec<u8>), Option<OracleKey>> for DiaOracleKeyConvertor {
+impl<T: NativeCurrencyKey> Convert<(Vec<u8>, Vec<u8>), Option<OracleKey>>
+	for DiaOracleKeyConvertor<T>
+{
 	fn convert(dia_oracle_key: (Vec<u8>, Vec<u8>)) -> Option<OracleKey> {
 		let (blockchain, symbol) = dia_oracle_key;
 		let blockchain = String::from_utf8(blockchain);
 		let symbol = String::from_utf8(symbol);
-		match (blockchain, symbol) {
+		return match (blockchain, symbol) {
 			(Ok(blockchain), Ok(symbol)) => {
 				if blockchain == DOT_DIA_BLOCKCHAIN && symbol == DOT_DIA_SYMBOL {
-					return Some(OracleKey::ExchangeRate(CurrencyId::XCM(
+					Some(OracleKey::ExchangeRate(CurrencyId::XCM(
 						primitives::ForeignCurrencyId::DOT,
 					)))
 				} else if blockchain == KSM_DIA_BLOCKCHAIN && symbol == KSM_DIA_SYMBOL {
-					return Some(OracleKey::ExchangeRate(CurrencyId::XCM(
+					Some(OracleKey::ExchangeRate(CurrencyId::XCM(
 						primitives::ForeignCurrencyId::KSM,
 					)))
+				} else if blockchain == FIAT_DIA_BLOCKCHAIN {
+					Some(OracleKey::ExchangeRate(CurrencyId::Stellar(
+						primitives::Asset::AlphaNum4 {
+							code: symbol.as_bytes().try_into().unwrap(),
+							issuer: Default::default(),
+						},
+					)))
 				} else {
-					return None
+					None
 				}
 			},
-			(_, _) => return None,
+			(_, _) => None,
 		}
 	}
 }

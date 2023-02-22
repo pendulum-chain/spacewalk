@@ -42,7 +42,7 @@ pub enum StellarRelayMessage {
 }
 
 /// Config for connecting to Stellar Node
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct ConnConfig {
 	address: String,
 	port: u32,
@@ -107,6 +107,10 @@ impl ConnConfig {
 
 	pub fn set_timeout_in_secs(&mut self, secs: u64) {
 		self.timeout_in_secs = secs;
+	}
+
+	pub fn set_address(&mut self, addr: String) {
+		self.address = addr;
 	}
 
 	pub fn set_retries(&mut self, retries: u8) {

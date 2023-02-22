@@ -65,9 +65,9 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 	// Storage: VaultStaking RewardPerToken (r:2 w:0)
 	fn register_vault() -> Weight {
 		// Minimum execution time: 58_000 nanoseconds.
-		Weight::from_ref_time(59_000_000 as u64)
-			.saturating_add(T::DbWeight::get().reads(19 as u64))
-			.saturating_add(T::DbWeight::get().writes(9 as u64))
+		Weight::from_ref_time(59_000_000u64)
+			.saturating_add(T::DbWeight::get().reads(19u64))
+			.saturating_add(T::DbWeight::get().writes(9u64))
 	}
 	// Storage: VaultRegistry Vaults (r:1 w:0)
 	// Storage: VaultRegistry TotalUserVaultCollateral (r:1 w:1)
@@ -85,9 +85,9 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 	// Storage: Security ParachainStatus (r:1 w:0)
 	fn deposit_collateral() -> Weight {
 		// Minimum execution time: 72_000 nanoseconds.
-		Weight::from_ref_time(73_000_000 as u64)
-			.saturating_add(T::DbWeight::get().reads(16 as u64))
-			.saturating_add(T::DbWeight::get().writes(8 as u64))
+		Weight::from_ref_time(73_000_000u64)
+			.saturating_add(T::DbWeight::get().reads(16u64))
+			.saturating_add(T::DbWeight::get().writes(8u64))
 	}
 	// Storage: VaultRegistry Vaults (r:1 w:0)
 	// Storage: VaultStaking Nonce (r:1 w:0)
@@ -105,61 +105,61 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 	// Storage: VaultStaking RewardPerToken (r:2 w:0)
 	fn withdraw_collateral() -> Weight {
 		// Minimum execution time: 72_000 nanoseconds.
-		Weight::from_ref_time(73_000_000 as u64)
-			.saturating_add(T::DbWeight::get().reads(16 as u64))
-			.saturating_add(T::DbWeight::get().writes(8 as u64))
+		Weight::from_ref_time(73_000_000u64)
+			.saturating_add(T::DbWeight::get().reads(16u64))
+			.saturating_add(T::DbWeight::get().writes(8u64))
 	}
 	// Storage: VaultRegistry VaultStellarPublicKey (r:1 w:1)
 	fn register_public_key() -> Weight {
 		// Minimum execution time: 12_000 nanoseconds.
-		Weight::from_ref_time(13_000_000 as u64)
-			.saturating_add(T::DbWeight::get().reads(1 as u64))
-			.saturating_add(T::DbWeight::get().writes(1 as u64))
+		Weight::from_ref_time(13_000_000u64)
+			.saturating_add(T::DbWeight::get().reads(1u64))
+			.saturating_add(T::DbWeight::get().writes(1u64))
 	}
 	// Storage: VaultRegistry Vaults (r:1 w:1)
 	fn accept_new_issues() -> Weight {
 		// Minimum execution time: 8_000 nanoseconds.
-		Weight::from_ref_time(9_000_000 as u64)
-			.saturating_add(T::DbWeight::get().reads(1 as u64))
-			.saturating_add(T::DbWeight::get().writes(1 as u64))
+		Weight::from_ref_time(9_000_000u64)
+			.saturating_add(T::DbWeight::get().reads(1u64))
+			.saturating_add(T::DbWeight::get().writes(1u64))
 	}
 	// Storage: VaultRegistry SecureCollateralThreshold (r:1 w:0)
 	// Storage: VaultRegistry Vaults (r:1 w:1)
 	fn set_custom_secure_threshold() -> Weight {
 		// Minimum execution time: 11_000 nanoseconds.
-		Weight::from_ref_time(11_000_000 as u64)
-			.saturating_add(T::DbWeight::get().reads(2 as u64))
-			.saturating_add(T::DbWeight::get().writes(1 as u64))
+		Weight::from_ref_time(11_000_000u64)
+			.saturating_add(T::DbWeight::get().reads(2u64))
+			.saturating_add(T::DbWeight::get().writes(1u64))
 	}
 	// Storage: VaultRegistry MinimumCollateralVault (r:0 w:1)
 	fn set_minimum_collateral() -> Weight {
 		// Minimum execution time: 3_000 nanoseconds.
-		Weight::from_ref_time(4_000_000 as u64)
-			.saturating_add(T::DbWeight::get().writes(1 as u64))
+		Weight::from_ref_time(4_000_000u64)
+			.saturating_add(T::DbWeight::get().writes(1u64))
 	}
 	// Storage: VaultRegistry SystemCollateralCeiling (r:0 w:1)
 	fn set_system_collateral_ceiling() -> Weight {
 		// Minimum execution time: 3_000 nanoseconds.
-		Weight::from_ref_time(4_000_000 as u64)
-			.saturating_add(T::DbWeight::get().writes(1 as u64))
+		Weight::from_ref_time(4_000_000u64)
+			.saturating_add(T::DbWeight::get().writes(1u64))
 	}
 	// Storage: VaultRegistry SecureCollateralThreshold (r:0 w:1)
 	fn set_secure_collateral_threshold() -> Weight {
 		// Minimum execution time: 3_000 nanoseconds.
-		Weight::from_ref_time(4_000_000 as u64)
-			.saturating_add(T::DbWeight::get().writes(1 as u64))
+		Weight::from_ref_time(4_000_000u64)
+			.saturating_add(T::DbWeight::get().writes(1u64))
 	}
 	// Storage: VaultRegistry PremiumRedeemThreshold (r:0 w:1)
 	fn set_premium_redeem_threshold() -> Weight {
 		// Minimum execution time: 3_000 nanoseconds.
-		Weight::from_ref_time(4_000_000 as u64)
-			.saturating_add(T::DbWeight::get().writes(1 as u64))
+		Weight::from_ref_time(4_000_000u64)
+			.saturating_add(T::DbWeight::get().writes(1u64))
 	}
 	// Storage: VaultRegistry LiquidationCollateralThreshold (r:0 w:1)
 	fn set_liquidation_collateral_threshold() -> Weight {
 		// Minimum execution time: 3_000 nanoseconds.
-		Weight::from_ref_time(4_000_000 as u64)
-			.saturating_add(T::DbWeight::get().writes(1 as u64))
+		Weight::from_ref_time(4_000_000u64)
+			.saturating_add(T::DbWeight::get().writes(1u64))
 	}
 	// Storage: VaultRegistry Vaults (r:1 w:1)
 	// Storage: VaultRegistry LiquidationCollateralThreshold (r:1 w:0)
@@ -183,16 +183,16 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 	// Storage: VaultRewards RewardPerToken (r:2 w:0)
 	fn report_undercollateralized_vault() -> Weight {
 		// Minimum execution time: 132_000 nanoseconds.
-		Weight::from_ref_time(136_000_000 as u64)
-			.saturating_add(T::DbWeight::get().reads(26 as u64))
-			.saturating_add(T::DbWeight::get().writes(16 as u64))
+		Weight::from_ref_time(136_000_000u64)
+			.saturating_add(T::DbWeight::get().reads(26u64))
+			.saturating_add(T::DbWeight::get().writes(16u64))
 	}
 	// Storage: VaultRegistry Vaults (r:1 w:1)
 	fn recover_vault_id() -> Weight {
 		// Minimum execution time: 10_000 nanoseconds.
-		Weight::from_ref_time(10_000_000 as u64)
-			.saturating_add(T::DbWeight::get().reads(1 as u64))
-			.saturating_add(T::DbWeight::get().writes(1 as u64))
+		Weight::from_ref_time(10_000_000u64)
+			.saturating_add(T::DbWeight::get().reads(1u64))
+			.saturating_add(T::DbWeight::get().writes(1u64))
 	}
 }
 
@@ -217,9 +217,9 @@ impl WeightInfo for () {
 	// Storage: VaultStaking RewardPerToken (r:2 w:0)
 	fn register_vault() -> Weight {
 		// Minimum execution time: 58_000 nanoseconds.
-		Weight::from_ref_time(59_000_000 as u64)
-			.saturating_add(RocksDbWeight::get().reads(19 as u64))
-			.saturating_add(RocksDbWeight::get().writes(9 as u64))
+		Weight::from_ref_time(59_000_000u64)
+			.saturating_add(RocksDbWeight::get().reads(19u64))
+			.saturating_add(RocksDbWeight::get().writes(9u64))
 	}
 	// Storage: VaultRegistry Vaults (r:1 w:0)
 	// Storage: VaultRegistry TotalUserVaultCollateral (r:1 w:1)
@@ -237,9 +237,9 @@ impl WeightInfo for () {
 	// Storage: Security ParachainStatus (r:1 w:0)
 	fn deposit_collateral() -> Weight {
 		// Minimum execution time: 72_000 nanoseconds.
-		Weight::from_ref_time(73_000_000 as u64)
-			.saturating_add(RocksDbWeight::get().reads(16 as u64))
-			.saturating_add(RocksDbWeight::get().writes(8 as u64))
+		Weight::from_ref_time(73_000_000u64)
+			.saturating_add(RocksDbWeight::get().reads(16u64))
+			.saturating_add(RocksDbWeight::get().writes(8u64))
 	}
 	// Storage: VaultRegistry Vaults (r:1 w:0)
 	// Storage: VaultStaking Nonce (r:1 w:0)
@@ -257,61 +257,61 @@ impl WeightInfo for () {
 	// Storage: VaultStaking RewardPerToken (r:2 w:0)
 	fn withdraw_collateral() -> Weight {
 		// Minimum execution time: 72_000 nanoseconds.
-		Weight::from_ref_time(73_000_000 as u64)
-			.saturating_add(RocksDbWeight::get().reads(16 as u64))
-			.saturating_add(RocksDbWeight::get().writes(8 as u64))
+		Weight::from_ref_time(73_000_000u64)
+			.saturating_add(RocksDbWeight::get().reads(16u64))
+			.saturating_add(RocksDbWeight::get().writes(8u64))
 	}
 	// Storage: VaultRegistry VaultStellarPublicKey (r:1 w:1)
 	fn register_public_key() -> Weight {
 		// Minimum execution time: 12_000 nanoseconds.
-		Weight::from_ref_time(13_000_000 as u64)
-			.saturating_add(RocksDbWeight::get().reads(1 as u64))
-			.saturating_add(RocksDbWeight::get().writes(1 as u64))
+		Weight::from_ref_time(13_000_000u64)
+			.saturating_add(RocksDbWeight::get().reads(1u64))
+			.saturating_add(RocksDbWeight::get().writes(1u64))
 	}
 	// Storage: VaultRegistry Vaults (r:1 w:1)
 	fn accept_new_issues() -> Weight {
 		// Minimum execution time: 8_000 nanoseconds.
-		Weight::from_ref_time(9_000_000 as u64)
-			.saturating_add(RocksDbWeight::get().reads(1 as u64))
-			.saturating_add(RocksDbWeight::get().writes(1 as u64))
+		Weight::from_ref_time(9_000_000u64)
+			.saturating_add(RocksDbWeight::get().reads(1u64))
+			.saturating_add(RocksDbWeight::get().writes(1u64))
 	}
 	// Storage: VaultRegistry SecureCollateralThreshold (r:1 w:0)
 	// Storage: VaultRegistry Vaults (r:1 w:1)
 	fn set_custom_secure_threshold() -> Weight {
 		// Minimum execution time: 11_000 nanoseconds.
-		Weight::from_ref_time(11_000_000 as u64)
-			.saturating_add(RocksDbWeight::get().reads(2 as u64))
-			.saturating_add(RocksDbWeight::get().writes(1 as u64))
+		Weight::from_ref_time(11_000_000u64)
+			.saturating_add(RocksDbWeight::get().reads(2u64))
+			.saturating_add(RocksDbWeight::get().writes(1u64))
 	}
 	// Storage: VaultRegistry MinimumCollateralVault (r:0 w:1)
 	fn set_minimum_collateral() -> Weight {
 		// Minimum execution time: 3_000 nanoseconds.
-		Weight::from_ref_time(4_000_000 as u64)
-			.saturating_add(RocksDbWeight::get().writes(1 as u64))
+		Weight::from_ref_time(4_000_000u64)
+			.saturating_add(RocksDbWeight::get().writes(1u64))
 	}
 	// Storage: VaultRegistry SystemCollateralCeiling (r:0 w:1)
 	fn set_system_collateral_ceiling() -> Weight {
 		// Minimum execution time: 3_000 nanoseconds.
-		Weight::from_ref_time(4_000_000 as u64)
-			.saturating_add(RocksDbWeight::get().writes(1 as u64))
+		Weight::from_ref_time(4_000_000u64)
+			.saturating_add(RocksDbWeight::get().writes(1u64))
 	}
 	// Storage: VaultRegistry SecureCollateralThreshold (r:0 w:1)
 	fn set_secure_collateral_threshold() -> Weight {
 		// Minimum execution time: 3_000 nanoseconds.
-		Weight::from_ref_time(4_000_000 as u64)
-			.saturating_add(RocksDbWeight::get().writes(1 as u64))
+		Weight::from_ref_time(4_000_000u64)
+			.saturating_add(RocksDbWeight::get().writes(1u64))
 	}
 	// Storage: VaultRegistry PremiumRedeemThreshold (r:0 w:1)
 	fn set_premium_redeem_threshold() -> Weight {
 		// Minimum execution time: 3_000 nanoseconds.
-		Weight::from_ref_time(4_000_000 as u64)
-			.saturating_add(RocksDbWeight::get().writes(1 as u64))
+		Weight::from_ref_time(4_000_000u64)
+			.saturating_add(RocksDbWeight::get().writes(1u64))
 	}
 	// Storage: VaultRegistry LiquidationCollateralThreshold (r:0 w:1)
 	fn set_liquidation_collateral_threshold() -> Weight {
 		// Minimum execution time: 3_000 nanoseconds.
-		Weight::from_ref_time(4_000_000 as u64)
-			.saturating_add(RocksDbWeight::get().writes(1 as u64))
+		Weight::from_ref_time(4_000_000u64)
+			.saturating_add(RocksDbWeight::get().writes(1u64))
 	}
 	// Storage: VaultRegistry Vaults (r:1 w:1)
 	// Storage: VaultRegistry LiquidationCollateralThreshold (r:1 w:0)
@@ -335,15 +335,15 @@ impl WeightInfo for () {
 	// Storage: VaultRewards RewardPerToken (r:2 w:0)
 	fn report_undercollateralized_vault() -> Weight {
 		// Minimum execution time: 132_000 nanoseconds.
-		Weight::from_ref_time(136_000_000 as u64)
-			.saturating_add(RocksDbWeight::get().reads(26 as u64))
-			.saturating_add(RocksDbWeight::get().writes(16 as u64))
+		Weight::from_ref_time(136_000_000u64)
+			.saturating_add(RocksDbWeight::get().reads(26u64))
+			.saturating_add(RocksDbWeight::get().writes(16u64))
 	}
 	// Storage: VaultRegistry Vaults (r:1 w:1)
 	fn recover_vault_id() -> Weight {
 		// Minimum execution time: 10_000 nanoseconds.
-		Weight::from_ref_time(10_000_000 as u64)
-			.saturating_add(RocksDbWeight::get().reads(1 as u64))
-			.saturating_add(RocksDbWeight::get().writes(1 as u64))
+		Weight::from_ref_time(10_000_000u64)
+			.saturating_add(RocksDbWeight::get().reads(1u64))
+			.saturating_add(RocksDbWeight::get().writes(1u64))
 	}
 }

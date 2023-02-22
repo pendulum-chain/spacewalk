@@ -257,7 +257,7 @@ fn testnet_genesis(
 		},
 		sudo: SudoConfig {
 			// Assign network admin rights.
-			key: Some(root_key.clone()),
+			key: Some(root_key),
 		},
 		balances: BalancesConfig {
 			// Configure endowed accounts with initial balance of 1 << 60.
@@ -281,18 +281,18 @@ fn testnet_genesis(
 			issue_minimum_transfer_amount: 1000,
 			limit_volume_amount: None,
 			limit_volume_currency_id: token(DOT),
-			current_volume_amount: 0u32.into(),
-			interval_length: (60u32 * 60 * 24).into(),
-			last_interval_index: 0u32.into(),
+			current_volume_amount: 0u128,
+			interval_length: (60u32 * 60 * 24),
+			last_interval_index: 0u32,
 		},
 		redeem: RedeemConfig {
 			redeem_period: DAYS,
 			redeem_minimum_transfer_amount: 100,
 			limit_volume_amount: None,
 			limit_volume_currency_id: token(DOT),
-			current_volume_amount: 0u32.into(),
-			interval_length: (60u32 * 60 * 24).into(),
-			last_interval_index: 0u32.into(),
+			current_volume_amount: 0u128,
+			interval_length: (60u32 * 60 * 24),
+			last_interval_index: 0u32,
 		},
 		replace: ReplaceConfig { replace_period: DAYS, replace_minimum_transfer_amount: 1000 },
 		security: SecurityConfig {
@@ -310,6 +310,8 @@ fn testnet_genesis(
 		oracle: OracleConfig {
 			max_delay: u32::MAX,
 			oracle_keys: vec![
+				// Changing these items means that the integration tests also have to change
+				// because the integration tests insert dummy values for these into the oracle
 				Key::ExchangeRate(CurrencyId::XCM(ForeignCurrencyId::DOT)),
 				Key::ExchangeRate(CurrencyId::AlphaNum4(
 					*b"USDC",
@@ -326,15 +328,18 @@ fn testnet_genesis(
 			secure_collateral_threshold: vec![
 				(default_pair(token(DOT)), FixedU128::checked_from_rational(260, 100).unwrap()),
 				(default_pair(token(KSM)), FixedU128::checked_from_rational(260, 100).unwrap()),
-			], /* 150% */
+			],
+			/* 150% */
 			premium_redeem_threshold: vec![
 				(default_pair(token(DOT)), FixedU128::checked_from_rational(200, 100).unwrap()),
 				(default_pair(token(KSM)), FixedU128::checked_from_rational(200, 100).unwrap()),
-			], /* 135% */
+			],
+			/* 135% */
 			liquidation_collateral_threshold: vec![
 				(default_pair(token(DOT)), FixedU128::checked_from_rational(150, 100).unwrap()),
 				(default_pair(token(KSM)), FixedU128::checked_from_rational(150, 100).unwrap()),
-			], /* 110% */
+			],
+			/* 110% */
 			system_collateral_ceiling: vec![
 				(default_pair(token(DOT)), 60_000 * DOT.one()),
 				(default_pair(token(KSM)), 60_000 * KSM.one()),
@@ -351,7 +356,14 @@ fn testnet_genesis(
 		nomination: NominationConfig { is_nomination_enabled: false },
 		dia_oracle_module: DiaOracleModuleConfig {
 			authorized_accounts: authorized_oracles,
-			supported_currencies: vec![AssetId::new(b"Polkadot".to_vec(), b"DOT".to_vec())],
+			supported_currencies: vec![
+				AssetId::new(b"Kusama".to_vec(), b"KSM".to_vec()),
+				AssetId::new(b"Polkadot".to_vec(), b"DOT".to_vec()),
+				// The order of currencies in the FIAT symbols matter and USD should always be the
+				// target currency ie the second one in the pair
+				AssetId::new(b"FIAT".to_vec(), b"USD-USD".to_vec()),
+				AssetId::new(b"FIAT".to_vec(), b"MXN-USD".to_vec()),
+			],
 			batching_api: b"http://localhost:8070/currencies".to_vec(),
 			coin_infos_map: vec![],
 		},

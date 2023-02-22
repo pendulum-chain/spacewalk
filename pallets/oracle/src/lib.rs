@@ -1,7 +1,6 @@
 //! # Oracle Pallet
 //! Based on the [specification](https://spec.interlay.io/spec/oracle.html).
 
-#![deny(warnings)]
 #![cfg_attr(test, feature(proc_macro_hygiene))]
 #![cfg_attr(not(feature = "std"), no_std)]
 
@@ -133,17 +132,11 @@ pub mod pallet {
 	pub(super) type StorageVersion<T: Config> =
 		StorageValue<_, Version, ValueQuery, DefaultForStorageVersion>;
 
+	#[derive(Default)]
 	#[pallet::genesis_config]
 	pub struct GenesisConfig {
 		pub max_delay: u32,
 		pub oracle_keys: Vec<OracleKey>,
-	}
-
-	#[cfg(feature = "std")]
-	impl Default for GenesisConfig {
-		fn default() -> Self {
-			Self { max_delay: Default::default(), oracle_keys: Default::default() }
-		}
 	}
 
 	#[pallet::genesis_build]
@@ -228,7 +221,7 @@ impl<T: Config> Pallet<T> {
 	) -> DispatchResult {
 		let mut oracle_keys: Vec<_> = <OracleKeys<T>>::get();
 
-		for (k, v) in values.clone() {
+		for (k, v) in values {
 			let timestamped =
 				orml_oracle::TimestampedValue { timestamp: Self::get_current_time(), value: v };
 			T::DataFeedProvider::feed_value(oracle.clone(), k.clone(), timestamped)

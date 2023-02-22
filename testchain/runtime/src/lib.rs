@@ -43,7 +43,7 @@ use currency::Amount;
 pub use issue::{Event as IssueEvent, IssueRequest};
 pub use module_oracle_rpc_runtime_api::BalanceWrapper;
 pub use nomination::Event as NominationEvent;
-use oracle::dia::DiaOracleAdapter;
+use oracle::dia::{DiaOracleAdapter, NativeCurrencyKey};
 pub use primitives::{
 	self, AccountId, Balance, BlockNumber, CurrencyId, ForeignCurrencyId, Hash, Moment, Nonce,
 	Signature, SignedFixedPoint, SignedInner, UnsignedFixedPoint, UnsignedInner,
@@ -387,7 +387,7 @@ impl vault_registry::Config for Runtime {
 	type RuntimeEvent = RuntimeEvent;
 	type Balance = Balance;
 	type WeightInfo = ();
-	type GetGriefingCollateralCurrencyId = GetNativeCurrencyId;
+	type GetGriefingCollateralCurrencyId = GetRelayChainCurrencyId;
 }
 
 impl<C> frame_system::offchain::SendTransactionTypes<C> for Runtime
@@ -440,7 +440,7 @@ where
 		let signature = raw_payload.using_encoded(|payload| C::sign(payload, public))?;
 		let address = account;
 		let (call, extra, _) = raw_payload.deconstruct();
-		Some((call, (sp_runtime::MultiAddress::Id(address), signature.into(), extra)))
+		Some((call, (sp_runtime::MultiAddress::Id(address), signature, extra)))
 	}
 }
 
@@ -453,12 +453,25 @@ impl Convert<u128, Option<UnsignedFixedPoint>> for ConvertPrice {
 pub struct ConvertMoment;
 impl Convert<u64, Option<Moment>> for ConvertMoment {
 	fn convert(moment: u64) -> Option<Moment> {
-		Some(moment)
+		// The provided moment is in seconds, but we need milliseconds
+		Some(moment.saturating_mul(1000))
 	}
 }
 
 #[cfg(any(feature = "testing-utils", feature = "runtime-benchmarks"))]
 mod benchmark_utils;
+
+pub struct SpacewalkNativeCurrencyKey;
+
+impl NativeCurrencyKey for SpacewalkNativeCurrencyKey {
+	fn native_symbol() -> Vec<u8> {
+		"LOCAL".as_bytes().to_vec()
+	}
+
+	fn native_chain() -> Vec<u8> {
+		"LOCAL".as_bytes().to_vec()
+	}
+}
 
 cfg_if::cfg_if! {
 	 if #[cfg(feature = "testing-utils")] {
@@ -466,7 +479,7 @@ cfg_if::cfg_if! {
 			DiaOracleModule,
 			UnsignedFixedPoint,
 			Moment,
-			primitives::DiaOracleKeyConvertor,
+			oracle::dia::DiaOracleKeyConvertor<SpacewalkNativeCurrencyKey>,
 			ConvertPrice,
 			ConvertMoment,
 		>;
@@ -484,7 +497,7 @@ cfg_if::cfg_if! {
 			DiaOracleModule,
 			UnsignedFixedPoint,
 			Moment,
-			primitives::DiaOracleKeyConvertor,
+			oracle::dia::DiaOracleKeyConvertor<SpacewalkNativeCurrencyKey>,
 			ConvertPrice,
 			ConvertMoment,
 		>;

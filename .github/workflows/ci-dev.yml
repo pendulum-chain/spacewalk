@@ -26,6 +26,10 @@ jobs:
       SCCACHE_DIR: ${{ matrix.sccache-path }}
 
     steps:
+      - name: Freeing up more disk space
+        run: |
+          sudo rm -rf /usr/local/lib/android # will release about 10 GB if you don't need Android
+          sudo rm -rf /usr/share/dotnet # will release about 20GB if you don't need .NET
       - uses: actions/checkout@v2
 
       - name: Install sccache (ubuntu-latest)
