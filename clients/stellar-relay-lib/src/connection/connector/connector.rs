@@ -206,7 +206,7 @@ impl Connector {
 
 #[cfg(test)]
 mod test {
-	use crate::{connection::hmac::HMacKeys, node::RemoteInfo, Connector};
+	use crate::{connection::hmac::HMacKeys, node::RemoteInfo, Connector, StellarOverlayConfig};
 
 	use substrate_stellar_sdk::{
 		compound_types::LimitedString,
@@ -238,40 +238,32 @@ mod test {
 	}
 
 	#[cfg(test)]
-	fn create_connector(
-	) -> (NodeInfo, ConnectionInfo, Conne, Receiver<ConnectorActions>, Receiver<StellarRelayMessage>)
-	{
+	fn create_connector() -> (
+		NodeInfo,
+		ConnectionInfo,
+		Connector,
+		Receiver<ConnectorActions>,
+		Receiver<StellarRelayMessage>,
+	) {
 		use substrate_stellar_sdk::{network::TEST_NETWORK, SecretKey};
-		let secret =
-			SecretKey::from_encoding("SBLI7RKEJAEFGLZUBSCOFJHQBPFYIIPLBCKN7WVCWT4NEG2UJEW33N73")
-				.unwrap();
-		let node_info = NodeInfo {
-			ledger_version: 19,
-			overlay_version: 21,
-			overlay_min_version: 19,
-			version_str: "v19.1.0".to_string().into_bytes(),
-			network_id: *TEST_NETWORK.get_id(),
-		};
 
-		let cfg = ConnectionInfo::new_with_timeout_and_retries(
-			"34.235.168.98",
-			11625,
-			secret,
-			0,
-			false,
-			true,
-			false,
-			10,
-			3,
-		);
+		let file_path = "./resources/stellar_relay_config_testnet.json";
+
+		let cfg = StellarOverlayConfig::try_from_path(file_path).expect("should create a config");
+		let node_info = cfg.node_info();
+		let conn_info = cfg.connection_info().expect("should create a connection info");
 		// this is a channel to communicate with the connection/config (this needs renaming)
 		let (actions_sender, actions_receiver) = mpsc::channel::<ConnectorActions>(1024);
 		// this is a channel to communicate with the user/caller.
 		let (relay_message_sender, relay_message_receiver) =
 			mpsc::channel::<StellarRelayMessage>(1024);
-		let connector =
-			Connector::new(node_info.clone(), cfg.clone(), actions_sender, relay_message_sender);
-		(node_info, cfg, connector, actions_receiver, relay_message_receiver)
+		let connector = Connector::new(
+			node_info.clone(),
+			conn_info.clone(),
+			actions_sender,
+			relay_message_sender,
+		);
+		(node_info, conn_info, connector, actions_receiver, relay_message_receiver)
 	}
 
 	#[test]

@@ -1,4 +1,4 @@
-use crate::{connection::Error, StellarOverlayConnection};
+use crate::{connection::Error, node::NodeInfo, ConnectionInfo, StellarOverlayConnection};
 use serde::{Deserialize, Serialize};
 use serde_with::{serde_as, BytesOrString};
 use std::fmt::Debug;
@@ -22,6 +22,14 @@ impl StellarOverlayConfig {
 
 	pub fn is_public_network(&self) -> bool {
 		self.node_info.is_pub_net.clone()
+	}
+
+	pub(crate) fn node_info(&self) -> NodeInfo {
+		self.node_info.clone().into()
+	}
+
+	pub(crate) fn connection_info(&self) -> Result<ConnectionInfo, Error> {
+		self.connection_info.clone().try_into()
 	}
 }
 

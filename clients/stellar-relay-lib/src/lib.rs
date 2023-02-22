@@ -12,4 +12,4 @@ pub use connection::{helper, xdr_converter, Error, StellarOverlayConnection, Ste
 
 pub use substrate_stellar_sdk as sdk;
 
-pub use config::{connect, ConnectionInfoCfg, NodeInfoCfg, StellarOverlayConfig};
+pub use config::{connect, StellarOverlayConfig};
