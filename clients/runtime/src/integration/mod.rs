@@ -4,7 +4,7 @@ use std::{sync::Arc, time::Duration};
 
 use frame_support::assert_ok;
 use futures::{future::Either, pin_mut, Future, FutureExt, SinkExt, StreamExt};
-use oracle::dia::{ChainAndSymbol, DiaOracleKeyConvertor};
+use oracle::dia::{DiaOracleKeyConvertor, NativeCurrencyKey};
 use sp_runtime::traits::Convert;
 use subxt::{
 	events::StaticEvent as Event,
@@ -27,7 +27,7 @@ use primitives::oracle::Key as OracleKey;
 
 pub struct MockValue;
 
-impl ChainAndSymbol for MockValue {
+impl NativeCurrencyKey for MockValue {
 	fn native_symbol() -> Vec<u8> {
 		"NativeKey".as_bytes().to_vec()
 	}

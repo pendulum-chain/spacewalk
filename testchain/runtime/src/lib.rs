@@ -43,7 +43,7 @@ use currency::Amount;
 pub use issue::{Event as IssueEvent, IssueRequest};
 pub use module_oracle_rpc_runtime_api::BalanceWrapper;
 pub use nomination::Event as NominationEvent;
-use oracle::dia::{ChainAndSymbol, DiaOracleAdapter};
+use oracle::dia::{DiaOracleAdapter, NativeCurrencyKey};
 pub use primitives::{
 	self, AccountId, Balance, BlockNumber, CurrencyId, ForeignCurrencyId, Hash, Moment, Nonce,
 	Signature, SignedFixedPoint, SignedInner, UnsignedFixedPoint, UnsignedInner,
@@ -461,15 +461,15 @@ impl Convert<u64, Option<Moment>> for ConvertMoment {
 #[cfg(any(feature = "testing-utils", feature = "runtime-benchmarks"))]
 mod benchmark_utils;
 
-pub struct Dummy;
+pub struct SpacewalkNativeCurrencyKey;
 
-impl ChainAndSymbol for Dummy {
+impl NativeCurrencyKey for SpacewalkNativeCurrencyKey {
 	fn native_symbol() -> Vec<u8> {
-		"NativeKey".as_bytes().to_vec()
+		"LOCAL".as_bytes().to_vec()
 	}
 
 	fn native_chain() -> Vec<u8> {
-		"StandAlone-TestChain".as_bytes().to_vec()
+		"LOCAL".as_bytes().to_vec()
 	}
 }
 
@@ -479,7 +479,7 @@ cfg_if::cfg_if! {
 			DiaOracleModule,
 			UnsignedFixedPoint,
 			Moment,
-			oracle::dia::DiaOracleKeyConvertor<Dummy>,
+			oracle::dia::DiaOracleKeyConvertor<SpacewalkNativeCurrencyKey>,
 			ConvertPrice,
 			ConvertMoment,
 		>;
@@ -497,7 +497,7 @@ cfg_if::cfg_if! {
 			DiaOracleModule,
 			UnsignedFixedPoint,
 			Moment,
-			oracle::dia::DiaOracleKeyConvertor<Dummy>,
+			oracle::dia::DiaOracleKeyConvertor<SpacewalkNativeCurrencyKey>,
 			ConvertPrice,
 			ConvertMoment,
 		>;
