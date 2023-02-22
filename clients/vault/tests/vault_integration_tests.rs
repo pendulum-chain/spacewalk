@@ -38,7 +38,7 @@ const DEFAULT_WRAPPED_CURRENCY: CurrencyId = CurrencyId::AlphaNum4(
 	],
 );
 
-const CONFIG_ADDR: &str = "./clients/vault/resources/config/stellar_relay_config_testnet.json";
+const CONFIG_ADDR: &str = "./resources/config/stellar_relay_config_testnet.json";
 
 lazy_static! {
 	static ref CFG: StellarOverlayConfig =
