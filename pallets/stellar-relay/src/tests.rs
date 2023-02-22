@@ -13,7 +13,7 @@ use substrate_stellar_sdk::{
 
 use crate::{
 	mock::*,
-	traits::{Organization, Validator},
+	traits::{FieldLength, Organization, Validator},
 	types::{OrganizationOf, ValidatorOf},
 	Error,
 };
@@ -421,8 +421,12 @@ fn update_tier_1_validator_set_works() {
 			public_key: Default::default(),
 			organization_id: organization.id,
 		};
-		let validator_set = vec![validator; 3];
-		let organization_set = vec![organization; 3];
+		let mut validator_1 = validator.clone();
+		validator_1.public_key = BoundedVec::<u8, FieldLength>::try_from(vec![1u8; 128]).unwrap();
+		let mut validator_2 = validator.clone();
+		validator_2.public_key = BoundedVec::<u8, FieldLength>::try_from(vec![2u8; 128]).unwrap();
+		let validator_set = vec![validator, validator_1, validator_2];
+		let organization_set = vec![organization; 1];
 		assert_ok!(SpacewalkRelay::update_tier_1_validator_set(
 			RuntimeOrigin::root(),
 			validator_set.clone(),
@@ -448,8 +452,11 @@ fn update_tier_1_validator_set_works() {
 			public_key: Default::default(),
 			organization_id: organization.id,
 		};
-		let new_validator_set = vec![validator; 2];
-		let new_organization_set = vec![organization; 2];
+
+		let mut validator_1 = validator.clone();
+		validator_1.public_key = BoundedVec::<u8, FieldLength>::try_from(vec![1u8; 128]).unwrap();
+		let new_validator_set = vec![validator, validator_1];
+		let new_organization_set = vec![organization; 1];
 		assert_ne!(validator_set, new_validator_set);
 		assert_ne!(organization_set, new_organization_set);
 
@@ -534,13 +541,14 @@ fn verify_signature_works_for_mock_message() {
 fn update_tier_1_validator_store_old_organization_and_validator_and_block_height_works() {
 	run_test(|_, _, _| {
 		let organization = Organization { id: 0, name: Default::default() };
+
 		let validator = Validator {
 			name: Default::default(),
-			public_key: Default::default(),
+			public_key: BoundedVec::<u8, FieldLength>::try_from(vec![1u8; 128]).unwrap(),
 			organization_id: organization.id,
 		};
-		let validator_set = vec![validator; 3];
-		let organization_set = vec![organization; 3];
+		let validator_set = vec![validator; 1];
+		let organization_set = vec![organization; 1];
 		let new_validators_enactment_block_height = 11;
 		assert_ok!(SpacewalkRelay::update_tier_1_validator_set(
 			RuntimeOrigin::root(),
@@ -569,8 +577,11 @@ fn update_tier_1_validator_store_old_organization_and_validator_and_block_height
 			public_key: Default::default(),
 			organization_id: organization.id,
 		};
-		let new_validator_set = vec![validator; 2];
-		let new_organization_set = vec![organization; 2];
+		let mut validator_2 = validator.clone();
+		validator_2.public_key = BoundedVec::<u8, FieldLength>::try_from(vec![1u8; 128]).unwrap();
+
+		let new_validator_set = vec![validator, validator_2];
+		let new_organization_set = vec![organization; 1];
 		assert_ne!(validator_set, new_validator_set);
 		assert_ne!(organization_set, new_organization_set);
 
