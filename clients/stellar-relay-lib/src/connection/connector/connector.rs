@@ -10,9 +10,8 @@ use crate::{
 		flow_controller::FlowController,
 		hmac::{verify_hmac, HMacKeys},
 	},
-	handshake::HandshakeState,
 	node::{LocalInfo, NodeInfo, RemoteInfo},
-	ConnectionInfo, ConnectorActions, Error, StellarRelayMessage,
+	ConnectionInfo, ConnectorActions, Error, HandshakeState, StellarRelayMessage,
 };
 
 pub struct Connector {
@@ -239,13 +238,9 @@ mod test {
 	}
 
 	#[cfg(test)]
-	fn create_connector() -> (
-		NodeInfo,
-		ConnectionInfo,
-		Connector,
-		Receiver<ConnectorActions>,
-		Receiver<StellarRelayMessage>,
-	) {
+	fn create_connector(
+	) -> (NodeInfo, ConnectionInfo, Conne, Receiver<ConnectorActions>, Receiver<StellarRelayMessage>)
+	{
 		use substrate_stellar_sdk::{network::TEST_NETWORK, SecretKey};
 		let secret =
 			SecretKey::from_encoding("SBLI7RKEJAEFGLZUBSCOFJHQBPFYIIPLBCKN7WVCWT4NEG2UJEW33N73")

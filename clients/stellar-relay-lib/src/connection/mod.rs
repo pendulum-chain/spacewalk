@@ -149,18 +149,6 @@ impl ConnectionInfo {
 		)
 	}
 
-	pub fn set_timeout_in_secs(&mut self, secs: u64) {
-		self.timeout_in_secs = secs;
-	}
-
-	pub fn set_address(&mut self, addr: String) {
-		self.address = addr;
-	}
-
-	pub fn set_retries(&mut self, retries: u8) {
-		self.retries = retries;
-	}
-
 	pub fn address(&self) -> String {
 		format!("{}:{}", self.address, self.port)
 	}

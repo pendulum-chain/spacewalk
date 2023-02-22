@@ -4,7 +4,11 @@ pub mod node;
 #[cfg(test)]
 mod tests;
 
-pub use connection::*;
+pub(crate) use connection::{
+	handshake::{self, HandshakeState},
+	ConnectionInfo, Connector, ConnectorActions,
+};
+pub use connection::{helper, xdr_converter, Error, StellarOverlayConnection, StellarRelayMessage};
 
 pub use substrate_stellar_sdk as sdk;
 
