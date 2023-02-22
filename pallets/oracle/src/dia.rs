@@ -32,8 +32,11 @@ fn construct_fiat_usd_symbol_for_currency(base: Vec<u8>) -> Vec<u8> {
 	[base_currency, "-".as_bytes().to_vec(), TARGET_QUOTE.as_bytes().to_vec()].concat()
 }
 
+/// A trait to define the Chain and Symbol of a Native Currency
 pub trait ChainAndSymbol {
+	/// define the token symbol
 	fn native_symbol() -> Vec<u8>;
+	// define the chain
 	fn native_chain() -> Vec<u8>;
 }
 
