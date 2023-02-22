@@ -119,7 +119,6 @@ pub mod pallet {
 		ValidatorLimitExceeded,
 		DuplicationOrganizationId,
 		DuplicationValidatorPublicKey,
-		OrganizationIdDoesNotExist,
 	}
 
 	#[pallet::storage]
@@ -483,11 +482,6 @@ pub mod pallet {
 						*e += 1;
 					})
 					.or_insert(1);
-
-				ensure!(
-					organization_id_set.contains_key(&validator.organization_id),
-					Error::<T>::OrganizationIdDoesNotExist
-				);
 			}
 
 			ensure!(
