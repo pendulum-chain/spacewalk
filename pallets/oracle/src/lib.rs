@@ -140,13 +140,6 @@ pub mod pallet {
 		pub oracle_keys: Vec<OracleKey>,
 	}
 
-	// #[cfg(feature = "std")]
-	// impl Default for GenesisConfig {
-	// 	fn default() -> Self {
-	// 		Self { max_delay: Default::default(), oracle_keys: Default::default() }
-	// 	}
-	// }
-
 	#[pallet::genesis_build]
 	impl<T: Config> GenesisBuild<T> for GenesisConfig {
 		fn build(&self) {
