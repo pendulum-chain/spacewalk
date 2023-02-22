@@ -117,6 +117,9 @@ pub mod pallet {
 		TransactionSetHashCreationFailed,
 		TransactionSetHashMismatch,
 		ValidatorLimitExceeded,
+		DuplicationOrganizationId,
+		DuplicationValidatorPublicKey,
+		OrganizationIdDoesNotExist,
 	}
 
 	#[pallet::storage]
@@ -457,6 +460,41 @@ pub mod pallet {
 				Error::<T>::OrganizationLimitExceeded
 			);
 
+			let mut organization_id_set = BTreeMap::<T::OrganizationId, u32>::new();
+			for organization in organizations.clone().iter() {
+				organization_id_set
+					.entry(organization.id)
+					.and_modify(|e| {
+						*e += 1;
+					})
+					.or_insert(1);
+			}
+
+			ensure!(
+				organizations.len() == organization_id_set.len(),
+				Error::<T>::DuplicationOrganizationId
+			);
+
+			let mut validators_public_key_set = BTreeMap::<BoundedVec<u8, FieldLength>, u32>::new();
+			for validator in validators.clone().iter() {
+				validators_public_key_set
+					.entry(validator.public_key.clone())
+					.and_modify(|e| {
+						*e += 1;
+					})
+					.or_insert(1);
+
+				ensure!(
+					organization_id_set.contains_key(&validator.organization_id),
+					Error::<T>::OrganizationIdDoesNotExist
+				);
+			}
+
+			ensure!(
+				validators.len() == validators_public_key_set.len(),
+				Error::<T>::DuplicationValidatorPublicKey
+			);
+
 			let current_validators = Validators::<T>::get();
 			// Filter validators for selected network type
 			let current_validators = current_validators.into_iter().collect::<Vec<_>>();
@@ -485,7 +523,8 @@ pub mod pallet {
 				BoundedVec::<OrganizationOf<T>, T::OrganizationLimit>::try_from(organizations)
 					.map_err(|_| Error::<T>::BoundedVecCreationFailed)?;
 
-			//update only when new organization or validators not equal to old organization or validators
+			//update only when new organization or validators not equal to old organization or
+			// validators
 			if new_organization_vec != current_organizations ||
 				new_validator_vec != current_validators
 			{
