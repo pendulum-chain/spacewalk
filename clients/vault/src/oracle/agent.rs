@@ -56,6 +56,9 @@ async fn handle_message(
 	Ok(())
 }
 
+/// Start the connection to the Stellar Node.
+/// Returns an `OracleAgent` that will handle incoming messages from Stellar Node,
+/// and to send messages to Stellar Node
 pub async fn start(config: StellarOverlayConfig) -> Result<OracleAgent, Error> {
 	let mut overlay_conn = stellar_relay_lib::connect(config.clone()).await?;
 
@@ -191,7 +194,7 @@ mod tests {
 	#[tokio::test]
 	#[ntest::timeout(1_800_000)] // timeout at 30 minutes
 	async fn test_get_proof_for_current_slot() {
-		let mut agent = start(create_config()).await.expect("Failed to start agent");
+		let agent = start(create_config()).await.expect("Failed to start agent");
 		sleep(Duration::from_secs(10)).await;
 		// Wait until agent is caught up with the network.
 
@@ -210,7 +213,7 @@ mod tests {
 
 	#[tokio::test]
 	async fn test_get_proof_for_archived_slot() {
-		let mut agent = start(create_config()).await.expect("Failed to start agent");
+		let agent = start(create_config()).await.expect("Failed to start agent");
 
 		// This slot should be archived on the public network
 		let target_slot = 44041116;

@@ -1,12 +1,10 @@
 use stellar_relay_lib::{
 	connect,
-	node::NodeInfo,
 	sdk::{
-		network::{Network, PUBLIC_NETWORK, TEST_NETWORK},
 		types::{ScpStatementPledges, StellarMessage},
-		SecretKey, XdrCodec,
+		XdrCodec,
 	},
-	ConnectionInfo, StellarOverlayConfig, StellarOverlayConnection, StellarRelayMessage,
+	StellarOverlayConfig, StellarOverlayConnection, StellarRelayMessage,
 };
 
 const TIER_1_VALIDATOR_IP_TESTNET: &str = "34.235.168.98";
