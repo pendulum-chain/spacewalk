@@ -27,6 +27,7 @@ mod default_weights;
 
 #[frame_support::pallet]
 pub mod pallet {
+	use crate::traits::{Organization, Validator};
 	use codec::FullCodec;
 	use frame_support::{pallet_prelude::*, transactional};
 	use frame_system::pallet_prelude::*;
@@ -120,6 +121,7 @@ pub mod pallet {
 		DuplicationOrganizationId,
 		DuplicationValidatorPublicKey,
 		OrganizationIdDoesNotExist,
+		NoChangesInOrganizationAndValidationSets,
 	}
 
 	#[pallet::storage]
@@ -528,6 +530,51 @@ pub mod pallet {
 			if new_organization_vec != current_organizations ||
 				new_validator_vec != current_validators
 			{
+				let mut old_validators_btreemap =
+					BTreeMap::<_, Validator<<T as Config>::OrganizationId>>::new();
+				for validator in current_validators.clone().iter() {
+					old_validators_btreemap
+						.entry(validator.public_key.clone())
+						.or_insert(validator.clone());
+				}
+
+				let mut new_or_updated_validators = 0;
+				for validator in new_validator_vec.clone().iter() {
+					let new_validator = old_validators_btreemap.get(&validator.public_key.clone());
+					if let Some(v) = new_validator {
+						if v != validator {
+							new_or_updated_validators = new_or_updated_validators + 1;
+						}
+					} else {
+						new_or_updated_validators = new_or_updated_validators + 1;
+					}
+				}
+
+				let mut old_organization_btreemap =
+					BTreeMap::<_, Organization<<T as Config>::OrganizationId>>::new();
+				for organization in current_organizations.clone().iter() {
+					old_organization_btreemap
+						.entry(organization.id.clone())
+						.or_insert(organization.clone());
+				}
+
+				let mut new_or_updated_organizations = 0;
+				for organization in new_organization_vec.clone().iter() {
+					let new_validator = old_organization_btreemap.get(&organization.id);
+					if let Some(v) = new_validator {
+						if v != organization {
+							new_or_updated_organizations = new_or_updated_organizations + 1;
+						}
+					} else {
+						new_or_updated_organizations = new_or_updated_organizations + 1;
+					}
+				}
+
+				ensure!(
+					new_or_updated_organizations > 0 && new_or_updated_validators > 0,
+					Error::<T>::NoChangesInOrganizationAndValidationSets
+				);
+
 				OldValidators::<T>::put(current_validators.clone());
 				OldOrganizations::<T>::put(current_organizations.clone());
 				Validators::<T>::put(new_validator_vec.clone());
