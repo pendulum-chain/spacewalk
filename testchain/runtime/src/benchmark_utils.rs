@@ -21,7 +21,7 @@ impl DiaOracle for MockDiaOracle {
 		symbol: Vec<u8>,
 	) -> Result<CoinInfo, sp_runtime::DispatchError> {
 		let key = (blockchain, symbol);
-		let data_key = DataKey { blockchain: key.0.clone(), symbol: key.1.clone() };
+		let data_key = DataKey { blockchain: key.0.clone(), symbol: key.1 };
 		let mut result: Option<Data> = None;
 		let map = COINS.lock();
 		let data_option = map.get(&data_key);
@@ -74,7 +74,7 @@ impl orml_oracle::DataFeeder<OracleKey, TimestampedValue<UnsignedFixedPoint, Mom
 		let key = MockOracleKeyConvertor::convert(key).unwrap();
 		let price = value.value.into_inner();
 
-		let data_key = DataKey { blockchain: key.0.clone(), symbol: key.1.clone() };
+		let data_key = DataKey { blockchain: key.0.clone(), symbol: key.1 };
 		let data = Data { key: data_key.clone(), price, timestamp: value.timestamp };
 
 		COINS.lock().insert(data_key, data);

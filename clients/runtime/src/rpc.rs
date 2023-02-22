@@ -822,12 +822,7 @@ impl OraclePallet for SpacewalkParachain {
 	/// Returns the last exchange rate in planck per satoshis, the time at which it was set
 	/// and the configured max delay.
 	async fn get_oracle_keys(&self) -> Result<Vec<OracleKey>, Error> {
-		let keys = self.query_finalized_or_error(metadata::storage().oracle().oracle_keys()).await;
-		let result = match keys {
-			Ok(i) => Ok(i),
-			Err(e) => Err(e),
-		};
-		return result
+		self.query_finalized_or_error(metadata::storage().oracle().oracle_keys()).await
 	}
 
 	/// Sets the current exchange rate (i.e. DOT/XLM)

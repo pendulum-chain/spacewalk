@@ -41,9 +41,9 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 	// Storage: StellarRelay OldOrganizations (r:0 w:1)
 	fn update_tier_1_validator_set() -> Weight {
 		// Minimum execution time: 35_000 nanoseconds.
-		Weight::from_ref_time(36_000_000 as u64)
-			.saturating_add(T::DbWeight::get().reads(2 as u64))
-			.saturating_add(T::DbWeight::get().writes(5 as u64))
+		Weight::from_ref_time(36_000_000u64)
+			.saturating_add(T::DbWeight::get().reads(2u64))
+			.saturating_add(T::DbWeight::get().writes(5u64))
 	}
 }
 
@@ -56,8 +56,8 @@ impl WeightInfo for () {
 	// Storage: StellarRelay OldOrganizations (r:0 w:1)
 	fn update_tier_1_validator_set() -> Weight {
 		// Minimum execution time: 35_000 nanoseconds.
-		Weight::from_ref_time(36_000_000 as u64)
-			.saturating_add(RocksDbWeight::get().reads(2 as u64))
-			.saturating_add(RocksDbWeight::get().writes(5 as u64))
+		Weight::from_ref_time(36_000_000u64)
+			.saturating_add(RocksDbWeight::get().reads(2u64))
+			.saturating_add(RocksDbWeight::get().writes(5u64))
 	}
 }

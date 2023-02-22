@@ -257,7 +257,7 @@ fn testnet_genesis(
 		},
 		sudo: SudoConfig {
 			// Assign network admin rights.
-			key: Some(root_key.clone()),
+			key: Some(root_key),
 		},
 		balances: BalancesConfig {
 			// Configure endowed accounts with initial balance of 1 << 60.
@@ -281,18 +281,18 @@ fn testnet_genesis(
 			issue_minimum_transfer_amount: 1000,
 			limit_volume_amount: None,
 			limit_volume_currency_id: token(DOT),
-			current_volume_amount: 0u32.into(),
-			interval_length: (60u32 * 60 * 24).into(),
-			last_interval_index: 0u32.into(),
+			current_volume_amount: 0u128,
+			interval_length: (60u32 * 60 * 24),
+			last_interval_index: 0u32,
 		},
 		redeem: RedeemConfig {
 			redeem_period: DAYS,
 			redeem_minimum_transfer_amount: 100,
 			limit_volume_amount: None,
 			limit_volume_currency_id: token(DOT),
-			current_volume_amount: 0u32.into(),
-			interval_length: (60u32 * 60 * 24).into(),
-			last_interval_index: 0u32.into(),
+			current_volume_amount: 0u128,
+			interval_length: (60u32 * 60 * 24),
+			last_interval_index: 0u32,
 		},
 		replace: ReplaceConfig { replace_period: DAYS, replace_minimum_transfer_amount: 1000 },
 		security: SecurityConfig {

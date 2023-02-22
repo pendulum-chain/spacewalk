@@ -43,7 +43,7 @@ use currency::Amount;
 pub use issue::{Event as IssueEvent, IssueRequest};
 pub use module_oracle_rpc_runtime_api::BalanceWrapper;
 pub use nomination::Event as NominationEvent;
-use oracle::dia::DiaOracleAdapter;
+use oracle::dia::{ChainAndSymbol, DiaOracleAdapter};
 pub use primitives::{
 	self, AccountId, Balance, BlockNumber, CurrencyId, ForeignCurrencyId, Hash, Moment, Nonce,
 	Signature, SignedFixedPoint, SignedInner, UnsignedFixedPoint, UnsignedInner,
@@ -440,7 +440,7 @@ where
 		let signature = raw_payload.using_encoded(|payload| C::sign(payload, public))?;
 		let address = account;
 		let (call, extra, _) = raw_payload.deconstruct();
-		Some((call, (sp_runtime::MultiAddress::Id(address), signature.into(), extra)))
+		Some((call, (sp_runtime::MultiAddress::Id(address), signature, extra)))
 	}
 }
 
@@ -461,13 +461,25 @@ impl Convert<u64, Option<Moment>> for ConvertMoment {
 #[cfg(any(feature = "testing-utils", feature = "runtime-benchmarks"))]
 mod benchmark_utils;
 
+pub struct Dummy;
+
+impl ChainAndSymbol for Dummy {
+	fn native_symbol() -> Vec<u8> {
+		vec![0, 0, 0, 0]
+	}
+
+	fn native_chain() -> Vec<u8> {
+		vec![1, 1, 1, 1]
+	}
+}
+
 cfg_if::cfg_if! {
 	 if #[cfg(feature = "testing-utils")] {
 		type DataProviderImpl = DiaOracleAdapter<
 			DiaOracleModule,
 			UnsignedFixedPoint,
 			Moment,
-			oracle::dia::DiaOracleKeyConvertor,
+			oracle::dia::DiaOracleKeyConvertor<Dummy>,
 			ConvertPrice,
 			ConvertMoment,
 		>;
@@ -485,7 +497,7 @@ cfg_if::cfg_if! {
 			DiaOracleModule,
 			UnsignedFixedPoint,
 			Moment,
-			oracle::dia::DiaOracleKeyConvertor,
+			oracle::dia::DiaOracleKeyConvertor<Dummy>,
 			ConvertPrice,
 			ConvertMoment,
 		>;

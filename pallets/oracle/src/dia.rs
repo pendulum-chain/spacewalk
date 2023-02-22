@@ -32,8 +32,15 @@ fn construct_fiat_usd_symbol_for_currency(base: Vec<u8>) -> Vec<u8> {
 	[base_currency, "-".as_bytes().to_vec(), TARGET_QUOTE.as_bytes().to_vec()].concat()
 }
 
-pub struct DiaOracleKeyConvertor;
-impl Convert<OracleKey, Option<(Vec<u8>, Vec<u8>)>> for DiaOracleKeyConvertor {
+pub trait ChainAndSymbol {
+	fn native_symbol() -> Vec<u8>;
+	fn native_chain() -> Vec<u8>;
+}
+pub struct DiaOracleKeyConvertor<T: ChainAndSymbol>(marker::PhantomData<T>);
+
+impl<T: ChainAndSymbol> Convert<OracleKey, Option<(Vec<u8>, Vec<u8>)>>
+	for DiaOracleKeyConvertor<T>
+{
 	fn convert(spacewalk_oracle_key: OracleKey) -> Option<(Vec<u8>, Vec<u8>)> {
 		match spacewalk_oracle_key {
 			OracleKey::ExchangeRate(currency_id) => match currency_id {
@@ -50,7 +57,7 @@ impl Convert<OracleKey, Option<(Vec<u8>, Vec<u8>)>> for DiaOracleKeyConvertor {
 						)),
 					_ => unimplemented!(),
 				},
-				CurrencyId::Native => unimplemented!(),
+				CurrencyId::Native => Some((T::native_chain(), T::native_symbol())),
 				CurrencyId::StellarNative => Some((
 					STELLAR_DIA_BLOCKCHAIN.as_bytes().to_vec(),
 					STELLAR_DIA_SYMBOL.as_bytes().to_vec(),
@@ -66,7 +73,9 @@ impl Convert<OracleKey, Option<(Vec<u8>, Vec<u8>)>> for DiaOracleKeyConvertor {
 	}
 }
 
-impl Convert<(Vec<u8>, Vec<u8>), Option<OracleKey>> for DiaOracleKeyConvertor {
+impl<T: ChainAndSymbol> Convert<(Vec<u8>, Vec<u8>), Option<OracleKey>>
+	for DiaOracleKeyConvertor<T>
+{
 	fn convert(dia_oracle_key: (Vec<u8>, Vec<u8>)) -> Option<OracleKey> {
 		let (blockchain, symbol) = dia_oracle_key;
 		let blockchain = String::from_utf8(blockchain);
