@@ -11,5 +11,5 @@ mod stellar_wallet;
 mod task;
 pub mod types;
 
-pub type Ledger = u32;
-pub type LedgerTxEnvMap = HashMap<Ledger, TransactionEnvelope>;
+pub type Slot = u32;
+pub type LedgerTxEnvMap = HashMap<Slot, TransactionEnvelope>;

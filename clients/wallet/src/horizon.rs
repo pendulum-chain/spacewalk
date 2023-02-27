@@ -9,10 +9,12 @@ use tokio::{sync::RwLock, time::sleep};
 use crate::{
 	error::Error,
 	types::{FilterWith, TransactionFilterParam},
-	Ledger, LedgerTxEnvMap,
+	LedgerTxEnvMap,
 };
 
 pub type PagingToken = u128;
+// todo: change to Slot
+pub type Ledger = u32;
 
 const POLL_INTERVAL: u64 = 5000;
 
