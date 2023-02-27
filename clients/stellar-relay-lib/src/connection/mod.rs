@@ -65,6 +65,7 @@ impl Debug for ConnectionInfo {
 		f.debug_struct("ConnectionInfo")
 			.field("address", &self.address)
 			.field("port", &self.port)
+			// do not expose the secret key
 			.field("secret_key", &"****")
 			.field("auth_cert_expiration", &self.auth_cert_expiration)
 			.field("receive_tx_messages", &self.recv_tx_msgs)
@@ -127,6 +128,7 @@ impl ConnectionInfo {
 		}
 	}
 
+	#[cfg(test)]
 	pub(crate) fn new(
 		addr: &str,
 		port: u32,

@@ -334,6 +334,7 @@ impl VaultService {
 			.map_err(|e| Error::ConfigError(format!("{:?}", e)))?;
 
 		let stellar_vault_secret_key = std::str::from_utf8(cfg.secret_key())?;
+		// check if both the config file and the network in the chain are the same.
 		if is_public_network != cfg.is_public_network() {
 			return Err(Error::ConfigError(format!(
 				"Config has set public network to {}, while the runtime is {}",

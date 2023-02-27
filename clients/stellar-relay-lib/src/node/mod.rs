@@ -20,6 +20,7 @@ pub struct NodeInfo {
 }
 
 impl NodeInfo {
+	#[cfg(test)]
 	pub(crate) fn new(
 		ledger_version: u32,
 		overlay_version: u32,

@@ -3,6 +3,8 @@ use serde::{Deserialize, Serialize};
 use serde_with::{serde_as, BytesOrString};
 use std::fmt::Debug;
 
+/// The configuration structure of the StellarOverlay.
+/// It configures both the ConnectionInfo and the NodeInfo.
 #[derive(Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct StellarOverlayConfig {
 	connection_info: ConnectionInfoCfg,
@@ -24,15 +26,18 @@ impl StellarOverlayConfig {
 		self.node_info.is_pub_net.clone()
 	}
 
+	#[allow(dead_code)]
 	pub(crate) fn node_info(&self) -> NodeInfo {
 		self.node_info.clone().into()
 	}
 
+	#[allow(dead_code)]
 	pub(crate) fn connection_info(&self) -> Result<ConnectionInfo, Error> {
 		self.connection_info.clone().try_into()
 	}
 }
 
+/// The config structure for the NodeInfo
 #[serde_as]
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
 pub struct NodeInfoCfg {
@@ -44,6 +49,7 @@ pub struct NodeInfoCfg {
 	pub is_pub_net: bool,
 }
 
+/// The config structure of the ConnectionInfo
 #[serde_as]
 #[derive(Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct ConnectionInfoCfg {
@@ -107,7 +113,7 @@ impl ConnectionInfoCfg {
 }
 
 /// Triggers connection to the Stellar Node.
-/// Returns the UserControls for the user to send and receive Stellar messages.
+/// Returns the `StellarOverlayConnection` if connection is a success, otherwise an Error
 pub async fn connect(cfg: StellarOverlayConfig) -> Result<StellarOverlayConnection, Error> {
 	let local_node = cfg.node_info;
 	let conn_info = cfg.connection_info;
@@ -118,7 +124,6 @@ pub async fn connect(cfg: StellarOverlayConfig) -> Result<StellarOverlayConnecti
 #[cfg(test)]
 mod test {
 	use super::*;
-	use serde::de::Error;
 
 	#[test]
 	fn connection_info_conversion_successful() {

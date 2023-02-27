@@ -4,28 +4,36 @@ A rust implementation of the [js-stellar-node-connector](https://github.com/stel
 
 The Stellar Relay acts as a mediator between the user(you) and the Stellar Node.
 
-## Usage
-### Provide the `NodeInfo` and `ConnectionInfo` with `fn new(...)`
- The `NodeInfo` contains the information of the Stellar Node to connect to. Except the address and the port.
+### The `StellarOverlayConfig`
 ```rust
-pub struct NodeInfo {
+pub struct StellarOverlayConfig {
+	connection_info: ConnectionInfoCfg,
+	node_info: NodeInfoCfg,
+}
+```
+The `StellarOverlayConfig` is a configuration to connect to the Stellar Node. It contains 2 specific configs:
+`ConnectionInfoCfg` and `NodeInfoCfg`.
+
+The `NodeInfoCfg` contains the information of the Stellar Node to connect to. Except the address and the port.
+```rust
+pub struct NodeInfoCfg {
     pub ledger_version: u32,
     pub overlay_version: u32,
     pub overlay_min_version: u32,
     pub version_str: Vec<u8>,
-    pub network_id: NetworkId,
+    pub is_pub_net: NetworkId,
 }
 ```
 Check out [Stellarbeat.io](https://stellarbeat.io/) for examples.
 
-The `ConnectionInfo` is a configuration for connecting to the Stellar Node. It is here where we specify the address and port.
+The `ConnectionInfoCfg` is a configuration for connecting to the Stellar Node. It is here where we specify the address and port.
 ```rust
-pub struct ConnectionInfo {
+pub struct ConnectionInfoCfg {
     /// Stellar Node Address
     address: String,
     /// Stellar Node port
     port: u32,
-    secret_key: SecretKey,
+    secret_key: Vec<u8>,
     pub auth_cert_expiration: u64,
     pub recv_tx_msgs: bool,
     pub recv_scp_msgs: bool,
@@ -36,12 +44,26 @@ pub struct ConnectionInfo {
     retries:u8
 }
 ```
-To specify the _timeout_ and the _# of retries_, use the function `new_with_timeout_and_retries(...)`.
+
+## Usage
+
+### Provide the `StellarOverlayConfig` file path
+```rust
+pub struct StellarOverlayConfig {
+	connection_info: ConnectionInfoCfg,
+	node_info: NodeInfoCfg,
+}
+```
+Start with the config. It can come in a json file (see [here](resources) for example files).
+The config file will be converted to a `StellarOverlayConfig`. using the function:
+```rust 
+let cfg = StellarOverlayConfig::try_from_path(<your_file_path>)?;
+```
 
 ### Create the `StellarOverlayConnection`
-Given the `NodeInfo` and `ConnectionInfo`, connect to the Stellar Node using the `StellarOverlayConnection`.
+Given the `StellarOverlayConfig`, connect to the Stellar Node using the `connect` function.
 ```rust
-     let mut overlay_connection = StellarOverlayConnection::connect(node_info, cfg).await?;
+let mut overlay_connection = stellar_relay_lib::connect(cfg).await?;
 ```
 The `StellarOverlayConnection` has 2 async methods to interact with the Stellar Node:
 * _`send(&self, message: StellarMessage)`_ -> for sending `StellarMessage`s to Stellar Node

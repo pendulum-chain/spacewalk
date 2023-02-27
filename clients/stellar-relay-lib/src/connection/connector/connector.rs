@@ -245,8 +245,6 @@ mod test {
 		Receiver<ConnectorActions>,
 		Receiver<StellarRelayMessage>,
 	) {
-		use substrate_stellar_sdk::{network::TEST_NETWORK, SecretKey};
-
 		let file_path = "./resources/stellar_relay_config_testnet.json";
 
 		let cfg = StellarOverlayConfig::try_from_path(file_path).expect("should create a config");

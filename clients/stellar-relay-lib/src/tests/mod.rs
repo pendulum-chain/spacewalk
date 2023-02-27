@@ -7,10 +7,7 @@ use substrate_stellar_sdk::{
 
 use crate::{node::NodeInfo, ConnectionInfo, StellarOverlayConnection, StellarRelayMessage};
 use serial_test::serial;
-use tokio::{
-	sync::{Mutex, RwLock},
-	time::timeout,
-};
+use tokio::{sync::Mutex, time::timeout};
 
 const TIER_1_VALIDATOR_IP_PUBLIC: &str = "51.161.197.48";
 

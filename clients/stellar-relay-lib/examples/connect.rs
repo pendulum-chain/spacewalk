@@ -4,11 +4,8 @@ use stellar_relay_lib::{
 		types::{ScpStatementPledges, StellarMessage},
 		XdrCodec,
 	},
-	StellarOverlayConfig, StellarOverlayConnection, StellarRelayMessage,
+	StellarOverlayConfig, StellarRelayMessage,
 };
-
-const TIER_1_VALIDATOR_IP_TESTNET: &str = "34.235.168.98";
-const TIER_1_VALIDATOR_IP_PUBLIC: &str = "51.161.197.48";
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -16,8 +13,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
 	let args: Vec<String> = std::env::args().collect();
 	let arg_network = if args.len() > 1 { &args[1] } else { "testnet" };
-	let mut public_network = false;
-	let mut tier1_node_ip = TIER_1_VALIDATOR_IP_TESTNET;
 
 	let file_path = if arg_network == "mainnet" {
 		"./clients/stellar-relay-lib/resources/stellar_relay_config_mainnet_iowa.json"
