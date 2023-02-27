@@ -1,6 +1,4 @@
-use std::{
-	collections::HashMap, convert::TryFrom, num::TryFromIntError, sync::Arc, time::Duration,
-};
+use std::{collections::HashMap, convert::TryFrom, sync::Arc, time::Duration};
 
 use futures::{channel::mpsc::Sender, future, SinkExt};
 use sp_runtime::traits::StaticLookup;
@@ -14,14 +12,13 @@ use service::Error as ServiceError;
 use stellar_relay_lib::sdk::{PublicKey, TransactionEnvelope, XdrCodec};
 use wallet::{
 	types::{FilterWith, TransactionFilterParam},
-	Ledger, LedgerTask, LedgerTxEnvMap, TxEnvTaskStatus,
+	Ledger, LedgerTask, LedgerTaskStatus, LedgerTxEnvMap,
 };
 
 use crate::{
 	oracle::{types::Slot, *},
 	ArcRwLock, Error, Event,
 };
-use tokio::sync::oneshot::error::TryRecvError;
 
 fn is_vault(p1: &PublicKey, p2_raw: [u8; 32]) -> bool {
 	return *p1.as_binary() == p2_raw
@@ -162,55 +159,33 @@ fn get_issue_id_from_tx_env(tx_env: &TransactionEnvelope) -> Option<IssueId> {
 	}
 }
 
-/// Checks from the map if the ledger should be executed/processed.
-/// If true, return a oneshot sender for sending a status.
-fn create_sender(
+// Returns oneshot sender for sending status of a ledger.
+//
+// Checks the map if the ledger should be executed/processed.
+// If not, returns None.
+#[doc(hidden)]
+fn create_task_status_sender(
 	processed_map: &mut HashMap<Ledger, LedgerTask>,
 	ledger: &Ledger,
-) -> Option<tokio::sync::oneshot::Sender<TxEnvTaskStatus>> {
-	match processed_map.get_mut(ledger) {
-		// first time for this task to come in
-		None => {
-			println!("processing ledge {} for the first time", ledger);
-			let (sender, receiver) = tokio::sync::oneshot::channel();
-			let ledger_task = LedgerTask::create(*ledger, receiver);
-			processed_map.insert(*ledger, ledger_task);
-			Some(sender)
-		},
-
-		// there's an existing task already, and we want to retry again.
-		// Only recoverable errors can be processed again.
-		Some(existing) => {
-			if existing.check_status() == TxEnvTaskStatus::RecoverableError {
-				println!("Ledger {} already exists; recover this failed task", existing.ledger());
-				let (sender, receiver) = tokio::sync::oneshot::channel();
-				if existing.set_receiver(receiver) {
-					println!("Ledger {} setting a new receiver", ledger);
-					Some(sender)
-				} else {
-					println!("Ledger {} cannot retry again", ledger);
-					// this task is not allowed to retry again.
-					// continue with the loop
-					None
-				}
-			} else {
-				// For tasks flagged as `NotStarted` , wait for it.
-				// For tasks flagged as `ProcessSuccess`, they will be removed in the for loop
-				// For tasks flagged as `Error`, these will be removed.
-				// continue with the loop
-				println!(
-					"this task {} status is {:?}, and cannot retry again",
-					existing.ledger(),
-					existing.check_status()
-				);
-				None
-			}
-		},
+) -> Option<tokio::sync::oneshot::Sender<LedgerTaskStatus>> {
+	// An existing task is found.
+	if let Some(existing) = processed_map.get_mut(ledger) {
+		// Only recoverable errors can be given a new task.
+		return existing.recover_and_create_sender()
 	}
+
+	// Not finding the ledger in the map means there's no existing task for this ledger.
+	let (sender, receiver) = tokio::sync::oneshot::channel();
+	tracing::trace!("Creating a task for ledger {}", ledger);
+
+	let ledger_task = LedgerTask::create(*ledger, receiver);
+	processed_map.insert(*ledger, ledger_task);
+
+	Some(sender)
 }
 
-/// Remove successful tasks and those that failed (and cannot be retried again) from the map.
-async fn cleanup_map(
+/// Remove successful tasks and failed ones (and cannot be retried again) from the map.
+async fn cleanup_ledger_env_map(
 	processed_map: &mut HashMap<Ledger, LedgerTask>,
 	ledger_env_map: ArcRwLock<LedgerTxEnvMap>,
 ) {
@@ -224,30 +199,26 @@ async fn cleanup_map(
 	//   - there is no chance to process this transaction at all
 	let mut ledger_map = ledger_env_map.write().await;
 
-	// retain only those that is ongoing or is possible to retry processing again
+	// retain only those ongoing or possibly to retry processing again
 	processed_map.retain(|ledger, task| {
-		match task.check_status() {
+		match task.status() {
 			// the task is not yet finished/ hasn't started; let's keep it
-			TxEnvTaskStatus::NotStarted |
+			LedgerTaskStatus::NotStarted |
 			// the task failed, but is possible to retry again
-			TxEnvTaskStatus::RecoverableError => true,
+			LedgerTaskStatus::RecoverableError => true,
 
 			// the task succeeded
-			TxEnvTaskStatus::ProcessSuccess => {
-				println!("PROCESS SUCCESS REMOVING LEDGER: {}", ledger);
+			LedgerTaskStatus::ProcessSuccess => {
 				// we cannot process this again, so remove it from the list.
 				ledger_map.remove(ledger);
-				// done processing, so remove it from the list.
 				false
 
 			}
 			// the task failed and this transaction cannot be executed again
-			TxEnvTaskStatus::Error(e) => {
-				println!("ERROR TRYRECEIVE: {}",e);
+			LedgerTaskStatus::Error(e) => {
 				tracing::error!("{}",e);
 				// we cannot process this again, so remove it from the list.
 				ledger_map.remove(ledger);
-				// done processing, so remove it from the list.
 				false
 			}
 
@@ -255,30 +226,6 @@ async fn cleanup_map(
 	});
 
 	drop(ledger_map);
-}
-
-fn handle_execute_issue_error(
-	sender: tokio::sync::oneshot::Sender<TxEnvTaskStatus>,
-	error: ServiceError<Error>,
-	ledger: &Ledger,
-) {
-	tracing::error!("failed to execute issue for ledger {}:{:?}", ledger, error);
-
-	match error {
-		// todo: do we want to retry OracleErrors?
-		ServiceError::OracleError(e) => {
-			if let Err(status) = sender.send(TxEnvTaskStatus::RecoverableError) {
-				println!("failed to send {:?} for ledger {}", status, ledger);
-				tracing::warn!("failed to send {:?} for ledger {}", status, ledger);
-			}
-		},
-
-		e =>
-			if let Err(status) = sender.send(TxEnvTaskStatus::Error(format!("{:?}", e))) {
-				println!("failed to send {:?} for ledger {}", status, ledger);
-				tracing::warn!("failed to send {:?} for ledger {}", status, ledger);
-			},
-	}
 }
 
 /// Processes all the issue requests
@@ -300,11 +247,11 @@ pub async fn process_issues_requests(
 
 	loop {
 		let ledger_clone = ledger_env_map.clone();
+
 		// iterate over a list of transactions for processing.
 		for (ledger, tx_env) in ledger_env_map.read().await.iter() {
-			let tx_env = tx_env.clone();
 			// create a one shot sender
-			let sender = match create_sender(&mut processed_map, ledger) {
+			let sender = match create_task_status_sender(&mut processed_map, ledger) {
 				None => continue,
 				Some(sender) => sender,
 			};
@@ -315,7 +262,7 @@ pub async fn process_issues_requests(
 
 			tokio::spawn(execute_issue(
 				parachain_rpc_clone,
-				tx_env,
+				tx_env.clone(),
 				issues_clone,
 				oracle_agent_clone,
 				Slot::from(*ledger),
@@ -323,10 +270,11 @@ pub async fn process_issues_requests(
 			));
 		}
 
-		cleanup_map(&mut processed_map, ledger_clone).await;
-
 		// Give 5 seconds interval before starting again.
 		tokio::time::sleep(Duration::from_secs(5)).await;
+
+		// before we loop again, let's make sure to clean the map first.
+		cleanup_ledger_env_map(&mut processed_map, ledger_clone).await;
 	}
 }
 
@@ -345,12 +293,12 @@ pub async fn execute_issue(
 	issues: ArcRwLock<IssueRequestsMap>,
 	oracle_agent: Arc<OracleAgent>,
 	slot: Slot,
-	sender: tokio::sync::oneshot::Sender<TxEnvTaskStatus>,
+	sender: tokio::sync::oneshot::Sender<LedgerTaskStatus>,
 ) {
 	let ledger = match Ledger::try_from(slot) {
 		Ok(ledger) => ledger,
 		Err(e) => {
-			if let Err(e) = sender.send(TxEnvTaskStatus::Error(format!("{:?}", e))) {
+			if let Err(e) = sender.send(LedgerTaskStatus::Error(format!("{:?}", e))) {
 				tracing::error!("Failed to send {:?} status for slot {}", e, slot);
 			}
 			return
@@ -362,7 +310,7 @@ pub async fn execute_issue(
 		Ok(proof) => proof,
 		Err(e) => {
 			tracing::error!("Failed to get proof for ledger {}: {:?}", ledger, e);
-			if let Err(e) = sender.send(TxEnvTaskStatus::RecoverableError) {
+			if let Err(e) = sender.send(LedgerTaskStatus::RecoverableError) {
 				tracing::error!("Failed to send {:?} status for slot {}", e, slot);
 			}
 			return
@@ -392,20 +340,20 @@ pub async fn execute_issue(
 				tracing::info!("Issue request {:?} was executed", issue_id);
 				issues.write().await.remove(&issue_id);
 
-				if let Err(e) = sender.send(TxEnvTaskStatus::ProcessSuccess) {
+				if let Err(e) = sender.send(LedgerTaskStatus::ProcessSuccess) {
 					tracing::error!("Failed to send {:?} status for slot {}", e, slot);
 				}
 				return
 			},
 			Err(err) if err.is_issue_completed() => {
 				tracing::info!("Issue #{} has been completed", issue_id);
-				if let Err(e) = sender.send(TxEnvTaskStatus::ProcessSuccess) {
+				if let Err(e) = sender.send(LedgerTaskStatus::ProcessSuccess) {
 					tracing::error!("Failed to send {:?} status for slot {}", e, slot);
 				}
 				return
 			},
 			Err(e) => {
-				if let Err(e) = sender.send(TxEnvTaskStatus::Error(format!("{:?}", e))) {
+				if let Err(e) = sender.send(LedgerTaskStatus::Error(format!("{:?}", e))) {
 					tracing::error!("Failed to send {:?} status for slot {}", e, slot);
 				}
 				return
@@ -414,7 +362,7 @@ pub async fn execute_issue(
 	}
 
 	if let Err(e) =
-		sender.send(TxEnvTaskStatus::Error(format!("Cannot find issue_id for ledger {}", ledger)))
+		sender.send(LedgerTaskStatus::Error(format!("Cannot find issue_id for ledger {}", ledger)))
 	{
 		tracing::error!("Failed to send {:?} status for slot {}", e, slot);
 	}
