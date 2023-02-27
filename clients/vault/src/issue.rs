@@ -182,7 +182,7 @@ fn create_task_status_sender(
 	let (sender, receiver) = tokio::sync::oneshot::channel();
 	tracing::trace!("Creating a task for ledger {}", ledger);
 
-	let ledger_task = SlotTask::create(*ledger, receiver);
+	let ledger_task = SlotTask::new(*ledger, receiver);
 	processed_map.insert(*ledger, ledger_task);
 
 	Some(sender)
