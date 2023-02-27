@@ -184,7 +184,8 @@ fn create_task_status_sender(
 	Some(sender)
 }
 
-/// Remove successful tasks and failed ones (and cannot be retried again) from the map.
+// Remove successful tasks and failed ones (and cannot be retried again) from the map.
+#[doc(hidden)]
 async fn cleanup_ledger_env_map(
 	processed_map: &mut HashMap<Ledger, LedgerTask>,
 	ledger_env_map: ArcRwLock<LedgerTxEnvMap>,
@@ -336,8 +337,7 @@ pub async fn execute_issue(
 			.await
 		{
 			Ok(_) => {
-				tracing::trace!("Slot {:?} EXECUTED with issue_id: {:?}", ledger, issue_id);
-				tracing::info!("Issue request {:?} was executed", issue_id);
+				tracing::debug!("Slot {:?} executed with issue_id: {:?}", ledger, issue_id);
 				issues.write().await.remove(&issue_id);
 
 				if let Err(e) = sender.send(LedgerTaskStatus::ProcessSuccess) {
@@ -346,7 +346,7 @@ pub async fn execute_issue(
 				return
 			},
 			Err(err) if err.is_issue_completed() => {
-				tracing::info!("Issue #{} has been completed", issue_id);
+				tracing::debug!("Issue #{} has been completed", issue_id);
 				if let Err(e) = sender.send(LedgerTaskStatus::ProcessSuccess) {
 					tracing::error!("Failed to send {:?} status for slot {}", e, slot);
 				}
