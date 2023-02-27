@@ -15,7 +15,6 @@ pub enum LedgerTaskStatus {
 }
 
 pub struct LedgerTask {
-	/// the
 	ledger: Ledger,
 
 	/// receives the status of the task execution

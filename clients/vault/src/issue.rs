@@ -193,14 +193,13 @@ async fn cleanup_ledger_env_map(
 	// check the tasks if:
 	// * processing has finished
 	//   - then remove from the ledger_env_map
-	// * process is ongoing
-	//   - then wait for it
+
 	// * process failed somehow
 	//   - check if we can retry again
 	//   - there is no chance to process this transaction at all
 	let mut ledger_map = ledger_env_map.write().await;
 
-	// retain only those ongoing or possibly to retry processing again
+	// retain only those not yet started or possibly to retry processing again
 	processed_map.retain(|ledger, task| {
 		match task.status() {
 			// the task is not yet finished/ hasn't started; let's keep it
