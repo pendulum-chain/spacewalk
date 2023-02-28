@@ -418,14 +418,14 @@ fn update_tier_1_validator_set_works() {
 		let organization = Organization { id: 0, name: Default::default() };
 		let validator = Validator {
 			name: Default::default(),
-			public_key: Default::default(),
+			public_key: BoundedVec::<u8, FieldLength>::try_from(vec![0u8; 128]).unwrap(),
 			organization_id: organization.id,
 		};
 		let mut validator_1 = validator.clone();
 		validator_1.public_key = BoundedVec::<u8, FieldLength>::try_from(vec![1u8; 128]).unwrap();
 		let mut validator_2 = validator.clone();
 		validator_2.public_key = BoundedVec::<u8, FieldLength>::try_from(vec![2u8; 128]).unwrap();
-		let validator_set = vec![validator, validator_1, validator_2];
+		let validator_set = vec![validator, validator_1.clone(), validator_2];
 		let organization_set = vec![organization; 1];
 		assert_ok!(SpacewalkRelay::update_tier_1_validator_set(
 			RuntimeOrigin::root(),
@@ -449,12 +449,10 @@ fn update_tier_1_validator_set_works() {
 		let organization = Organization { id: 1, name: Default::default() };
 		let validator = Validator {
 			name: Default::default(),
-			public_key: Default::default(),
+			public_key: BoundedVec::<u8, FieldLength>::try_from(vec![0u8; 128]).unwrap(),
 			organization_id: organization.id,
 		};
 
-		let mut validator_1 = validator.clone();
-		validator_1.public_key = BoundedVec::<u8, FieldLength>::try_from(vec![1u8; 128]).unwrap();
 		let new_validator_set = vec![validator, validator_1];
 		let new_organization_set = vec![organization; 1];
 		assert_ne!(validator_set, new_validator_set);
@@ -482,7 +480,7 @@ fn update_tier_1_validator_set_fails_when_set_too_large() {
 		let organization = Organization { id: 0, name: Default::default() };
 		let validator = Validator {
 			name: Default::default(),
-			public_key: Default::default(),
+			public_key: BoundedVec::<u8, FieldLength>::try_from(vec![0u8; 128]).unwrap(),
 			organization_id: organization.id,
 		};
 		// 255 is configured as limit in the test runtime so we try 256
@@ -543,7 +541,7 @@ fn update_tier_1_validator_store_old_organization_and_validator_and_block_height
 		let organization = Organization { id: 0, name: Default::default() };
 
 		let validator = Validator {
-			name: Default::default(),
+			name: BoundedVec::<u8, FieldLength>::try_from(vec![1u8; 128]).unwrap(),
 			public_key: BoundedVec::<u8, FieldLength>::try_from(vec![1u8; 128]).unwrap(),
 			organization_id: organization.id,
 		};
@@ -574,11 +572,11 @@ fn update_tier_1_validator_store_old_organization_and_validator_and_block_height
 		let organization = Organization { id: 1, name: Default::default() };
 		let validator = Validator {
 			name: Default::default(),
-			public_key: Default::default(),
+			public_key: BoundedVec::<u8, FieldLength>::try_from(vec![1u8; 128]).unwrap(),
 			organization_id: organization.id,
 		};
 		let mut validator_2 = validator.clone();
-		validator_2.public_key = BoundedVec::<u8, FieldLength>::try_from(vec![1u8; 128]).unwrap();
+		validator_2.public_key = BoundedVec::<u8, FieldLength>::try_from(vec![2u8; 128]).unwrap();
 
 		let new_validator_set = vec![validator, validator_2];
 		let new_organization_set = vec![organization; 1];

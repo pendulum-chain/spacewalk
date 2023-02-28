@@ -117,8 +117,8 @@ pub mod pallet {
 		TransactionSetHashCreationFailed,
 		TransactionSetHashMismatch,
 		ValidatorLimitExceeded,
-		DuplicationOrganizationId,
-		DuplicationValidatorPublicKey,
+		DuplicateOrganizationId,
+		DuplicateValidatorPublicKey,
 	}
 
 	#[pallet::storage]
@@ -469,9 +469,11 @@ pub mod pallet {
 					.or_insert(1);
 			}
 
+			// If the length of the set does not match the length of the original vector we know
+			// that there was a duplicate
 			ensure!(
 				organizations.len() == organization_id_set.len(),
-				Error::<T>::DuplicationOrganizationId
+				Error::<T>::DuplicateOrganizationId
 			);
 
 			let mut validators_public_key_set = BTreeMap::<BoundedVec<u8, FieldLength>, u32>::new();
@@ -484,9 +486,11 @@ pub mod pallet {
 					.or_insert(1);
 			}
 
+			// If the length of the set does not match the length of the original vector we know
+			// that there was a duplicate
 			ensure!(
 				validators.len() == validators_public_key_set.len(),
-				Error::<T>::DuplicationValidatorPublicKey
+				Error::<T>::DuplicateValidatorPublicKey
 			);
 
 			let current_validators = Validators::<T>::get();
@@ -517,7 +521,7 @@ pub mod pallet {
 				BoundedVec::<OrganizationOf<T>, T::OrganizationLimit>::try_from(organizations)
 					.map_err(|_| Error::<T>::BoundedVecCreationFailed)?;
 
-			//update only when new organization or validators not equal to old organization or
+			// update only when new organization or validators not equal to old organization or
 			// validators
 			if new_organization_vec != current_organizations ||
 				new_validator_vec != current_validators
