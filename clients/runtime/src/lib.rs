@@ -49,13 +49,26 @@ pub const SYSTEM_MODULE: &str = "System";
 
 pub const STABLE_PARACHAIN_CONFIRMATIONS: &str = "StableParachainConfirmations";
 
-// We are using the `metadata-standalone.scale` file here as well because currently the
-// spacewalk pallets are not installed on any parachain but we want to keep this feature for the
-// future.
+// All of the parachain features use the same metadata (from Foucoco) for now.
+// We can change this once the spacewalk pallets were added to the runtimes of the other chains as well.
 #[cfg_attr(
-	feature = "parachain-metadata",
+	feature = "parachain-metadata-pendulum",
 	subxt(
-		runtime_metadata_path = "metadata-standalone.scale",
+		runtime_metadata_path = "metadata-parachain-foucoco.scale",
+		derive_for_all_types = "Clone, PartialEq, Eq",
+	)
+)]
+#[cfg_attr(
+	feature = "parachain-metadata-amplitude",
+	subxt(
+		runtime_metadata_path = "metadata-parachain-foucoco.scale",
+		derive_for_all_types = "Clone, PartialEq, Eq",
+	)
+)]
+#[cfg_attr(
+	feature = "parachain-metadata-foucoco",
+	subxt(
+		runtime_metadata_path = "metadata-parachain-foucoco.scale",
 		derive_for_all_types = "Clone, PartialEq, Eq",
 	)
 )]

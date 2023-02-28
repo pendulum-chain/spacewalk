@@ -100,6 +100,16 @@ mod metadata_aliases {
 
 	#[cfg(feature = "standalone-metadata")]
 	pub type EncodedCall = metadata::runtime_types::spacewalk_runtime_standalone::RuntimeCall;
+	#[cfg(feature = "parachain-metadata-pendulum")]
+	pub type EncodedCall = metadata::runtime_types::foucoco_runtime::RuntimeCall;
+	// Eventually change to
+	// pub type EncodedCall = metadata::runtime_types::pendulum_runtime::RuntimeCall;
+	#[cfg(feature = "parachain-metadata-amplitude")]
+	pub type EncodedCall = metadata::runtime_types::foucoco_runtime::RuntimeCall;
+	// Eventually hange to
+	// pub type EncodedCall = metadata::runtime_types::amplitude_runtime::RuntimeCall;
+	#[cfg(feature = "parachain-metadata-foucoco")]
+	pub type EncodedCall = metadata::runtime_types::foucoco_runtime::RuntimeCall;
 }
 
 pub trait PrettyPrint {

@@ -7,8 +7,10 @@ version = "0.0.1"
 
 [features]
 integration = []
-parachain-metadata = ["runtime/parachain-metadata"]
 standalone-metadata = ["runtime/standalone-metadata"]
+parachain-metadata-pendulum = ["runtime/parachain-metadata-pendulum"]
+parachain-metadata-amplitude = ["runtime/parachain-metadata-amplitude"]
+parachain-metadata-foucoco = ["runtime/parachain-metadata-foucoco"]
 multi-address = ["runtime/multi-address"]
 
 [dependencies]

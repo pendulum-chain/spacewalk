@@ -1,4 +1,4 @@
-use std::{future::Future, ops::RangeInclusive, sync::Arc, time::Duration};
+use std::{future::Future, ops::Range, sync::Arc, time::Duration};
 
 use async_trait::async_trait;
 use codec::Encode;
@@ -30,15 +30,22 @@ pub type UnsignedFixedPoint = FixedU128;
 
 cfg_if::cfg_if! {
 	if #[cfg(feature = "standalone-metadata")] {
-		const DEFAULT_SPEC_VERSION: RangeInclusive<u32> = 1..=1;
+		const DEFAULT_SPEC_VERSION: Range<u32> = 1..100;
 		pub const DEFAULT_SPEC_NAME: &str = "spacewalk-standalone";
 		// The prefix for the testchain is 42
 		pub const SS58_PREFIX: u16 = 42;
-	} else if #[cfg(feature = "parachain-metadata")] {
-		const DEFAULT_SPEC_VERSION: RangeInclusive<u32> = 1..=1;
-		pub const DEFAULT_SPEC_NAME: &str = "pendulum-parachain";
-		// The prefix for pendulum is 56
+	} else if #[cfg(feature = "parachain-metadata-pendulum")] {
+		const DEFAULT_SPEC_VERSION: Range<u32> = 1..100;
+		pub const DEFAULT_SPEC_NAME: &str = "pendulum";
 		pub const SS58_PREFIX: u16 = 56;
+	} else if #[cfg(feature = "parachain-metadata-amplitude")] {
+		const DEFAULT_SPEC_VERSION: Range<u32> = 1..1000;
+		pub const DEFAULT_SPEC_NAME: &str = "amplitude";
+		pub const SS58_PREFIX: u16 = 57;
+	} else if #[cfg(feature = "parachain-metadata-foucoco")] {
+		const DEFAULT_SPEC_VERSION: Range<u32> = 1..1000;
+		pub const DEFAULT_SPEC_NAME: &str = "amplitude";
+		pub const SS58_PREFIX: u16 = 57;
 	}
 }
 
@@ -86,8 +93,8 @@ impl SpacewalkParachain {
 			log::info!("transaction_version={}", runtime_version.transaction_version);
 		} else {
 			return Err(Error::InvalidSpecVersion(
-				*DEFAULT_SPEC_VERSION.start(),
-				*DEFAULT_SPEC_VERSION.end(),
+				DEFAULT_SPEC_VERSION.start,
+				DEFAULT_SPEC_VERSION.end,
 				runtime_version.spec_version,
 			))
 		}
@@ -1371,6 +1378,7 @@ impl StellarRelayPallet for SpacewalkParachain {
 	}
 }
 
+#[cfg(any(feature = "standalone-metadata", feature = "parachain-metadata-foucoco"))]
 #[async_trait]
 pub trait SudoPallet {
 	async fn sudo(&self, call: EncodedCall) -> Result<(), Error>;
