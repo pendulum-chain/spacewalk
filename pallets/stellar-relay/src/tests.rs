@@ -779,3 +779,40 @@ fn validate_stellar_transaction_works_when_enactment_block_height_reached() {
 		));
 	});
 }
+
+#[test]
+fn update_tier_1_validator_set_fails_for_duplicate_values() {
+	run_test(|_, _, _| {
+		let organization = Organization { id: 0, name: Default::default() };
+
+		let validator = Validator {
+			name: BoundedVec::<u8, FieldLength>::try_from(vec![1u8; 128]).unwrap(),
+			public_key: BoundedVec::<u8, FieldLength>::try_from(vec![1u8; 128]).unwrap(),
+			organization_id: organization.id,
+		};
+		let validator_set = vec![validator.clone(); 2];
+		let organization_set = vec![organization.clone(); 1];
+
+		assert_noop!(
+			SpacewalkRelay::update_tier_1_validator_set(
+				RuntimeOrigin::root(),
+				validator_set.clone(),
+				organization_set.clone(),
+				0
+			),
+			Error::<Test>::DuplicateValidatorPublicKey
+		);
+
+		let validator_set = vec![validator; 1];
+		let organization_set = vec![organization; 2];
+		assert_noop!(
+			SpacewalkRelay::update_tier_1_validator_set(
+				RuntimeOrigin::root(),
+				validator_set.clone(),
+				organization_set.clone(),
+				0
+			),
+			Error::<Test>::DuplicateOrganizationId
+		);
+	});
+}
