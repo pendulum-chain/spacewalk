@@ -328,7 +328,19 @@ impl VaultService {
 		config: VaultServiceConfig,
 		shutdown: ShutdownSender,
 	) -> Result<Self, Error> {
-		let is_public_network = spacewalk_parachain.is_public_network().await?;
+		let is_public_network = spacewalk_parachain.is_public_network().await;
+		let is_public_network = match is_public_network {
+			Ok(is_public_network) => is_public_network,
+			Err(error) => {
+				// Sometimes the fetch fails with 'StorageItemNotFound' error.
+				// We assume public network by default
+				tracing::warn!(
+					"Failed to fetch public network status from parachain: {}. Assuming public network.",
+					error
+				);
+				true
+			},
+		};
 
 		let stellar_vault_secret_key =
 			fs::read_to_string(&config.stellar_vault_secret_key_filepath)?;
