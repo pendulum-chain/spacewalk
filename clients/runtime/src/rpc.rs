@@ -28,6 +28,10 @@ use crate::{
 
 pub type UnsignedFixedPoint = FixedU128;
 
+// sanity check to be sure that testing-utils is not accidentally selected
+#[cfg(all(any(test, feature = "testing-utils"), not(feature = "standalone-metadata")))]
+compile_error!("Tests are only supported for the standalone-metadata");
+
 cfg_if::cfg_if! {
 	if #[cfg(feature = "standalone-metadata")] {
 		const DEFAULT_SPEC_VERSION: Range<u32> = 1..100;
