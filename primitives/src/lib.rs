@@ -488,7 +488,7 @@ create_currency_id! {
 		KILT("Kilt", 10) = 13,
 		PHA("Phala", 10) = 14,
 		ZTG("Zeitgeist", 10) = 15,
-		USD("Statemine", 10) = 16,
+		USDT("Statemine", 10) = 16,
 		// added lastly
 		DOT("Polkadot", 10) = 20,
 	}
@@ -539,8 +539,8 @@ impl Asset {
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 #[cfg_attr(feature = "std", serde(rename_all = "camelCase"))]
 pub enum CurrencyId {
-	XCM(ForeignCurrencyId),
 	Native,
+	XCM(ForeignCurrencyId),
 	Stellar(Asset),
 }
 
