@@ -499,8 +499,9 @@ create_currency_id! {
 )]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 #[cfg_attr(feature = "std", serde(rename_all = "camelCase"))]
+#[repr(u8)]
 pub enum Asset {
-	StellarNative,
+	StellarNative = 0,
 	AlphaNum4 { code: Bytes4, issuer: AssetIssuer },
 	AlphaNum12 { code: Bytes12, issuer: AssetIssuer },
 }
@@ -538,9 +539,10 @@ impl Asset {
 )]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 #[cfg_attr(feature = "std", serde(rename_all = "camelCase"))]
+#[repr(u8)]
 pub enum CurrencyId {
-	Native,
-	XCM(ForeignCurrencyId),
+	Native = 0,
+	XCM(ForeignCurrencyId) ,
 	Stellar(Asset),
 }
 
