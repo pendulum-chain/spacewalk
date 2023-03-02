@@ -19,6 +19,9 @@ use tokio::{sync::RwLock, time::timeout};
 
 use module_oracle_rpc_runtime_api::BalanceWrapper;
 
+#[cfg(feature = "testing-utils")]
+use primitives::Hash;
+
 use crate::{
 	conn::{new_websocket_client, new_websocket_client_with_retry},
 	metadata, notify_retry,
