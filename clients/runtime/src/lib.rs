@@ -14,10 +14,12 @@ use subxt::{
 pub use assets::TryFromSymbol;
 pub use error::{Error, SubxtError};
 pub use retry::{notify_retry, RetryPolicy};
+#[cfg(feature = "testing-utils")]
+pub use rpc::SudoPallet;
 pub use rpc::{
 	CollateralBalancesPallet, IssuePallet, OraclePallet, RedeemPallet, ReplacePallet,
-	SecurityPallet, SpacewalkParachain, StellarRelayPallet, SudoPallet, UtilFuncs,
-	VaultRegistryPallet, DEFAULT_SPEC_NAME, SS58_PREFIX,
+	SecurityPallet, SpacewalkParachain, StellarRelayPallet, UtilFuncs, VaultRegistryPallet,
+	DEFAULT_SPEC_NAME, SS58_PREFIX,
 };
 pub use shutdown::{ShutdownReceiver, ShutdownSender};
 pub use types::*;
