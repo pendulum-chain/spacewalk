@@ -62,7 +62,7 @@ impl SlotTask {
 	}
 
 	/// Checks the status of the task
-	pub fn status(&mut self) -> SlotTaskStatus {
+	pub fn update_status(&mut self) -> SlotTaskStatus {
 		match self.latest_status {
 			// These status are considered final, and cannot be updated anymore.
 			SlotTaskStatus::Success |
@@ -120,7 +120,7 @@ impl SlotTask {
 	/// if and only if the status is `RecoverableError`
 	pub fn recover_with_new_sender(&mut self) -> Option<Sender<SlotTaskStatus>> {
 		// Only recoverable errors can be given a new task.
-		if self.status() == SlotTaskStatus::RecoverableError {
+		if self.update_status() == SlotTaskStatus::RecoverableError {
 			let (sender, receiver) = channel();
 
 			if self.set_receiver(receiver) {
@@ -176,7 +176,7 @@ mod test {
 			sender
 				.send(SlotTaskStatus::Success)
 				.expect("should be able to send Success status");
-			assert_eq!(task.status(), SlotTaskStatus::Success);
+			assert_eq!(task.update_status(), SlotTaskStatus::Success);
 		}
 		{
 			let (sender, receiver) = channel();
@@ -185,7 +185,7 @@ mod test {
 			sender
 				.send(SlotTaskStatus::Failed(dummy_error()))
 				.expect("should be able to send Failed status");
-			assert_eq!(task.status(), SlotTaskStatus::Failed(dummy_error()));
+			assert_eq!(task.update_status(), SlotTaskStatus::Failed(dummy_error()));
 		}
 	}
 
@@ -198,7 +198,7 @@ mod test {
 			sender
 				.send(SlotTaskStatus::ReachedMaxRetries)
 				.expect("should be able to send status");
-			assert_ne!(task.status(), SlotTaskStatus::ReachedMaxRetries);
+			assert_ne!(task.update_status(), SlotTaskStatus::ReachedMaxRetries);
 		}
 		{
 			let (sender, receiver) = channel();
@@ -206,7 +206,7 @@ mod test {
 
 			sender.send(SlotTaskStatus::Ready).expect("should be able to send status");
 			// actually the status remains the same. It's just that the "change" was never made.
-			assert_eq!(task.status(), SlotTaskStatus::Ready);
+			assert_eq!(task.update_status(), SlotTaskStatus::Ready);
 		}
 	}
 
@@ -219,16 +219,16 @@ mod test {
 			sender
 				.send(SlotTaskStatus::RecoverableError)
 				.expect("should be able to send a RecoverableError status");
-			assert_eq!(task.status(), SlotTaskStatus::RecoverableError);
+			assert_eq!(task.update_status(), SlotTaskStatus::RecoverableError);
 
 			// let's try to recover:
 			let new_sender = task.recover_with_new_sender().expect("should return a sender");
-			assert_eq!(task.status(), SlotTaskStatus::Ready);
+			assert_eq!(task.update_status(), SlotTaskStatus::Ready);
 
 			new_sender
 				.send(SlotTaskStatus::Success)
 				.expect("should be able to send a status");
-			assert_eq!(task.status(), SlotTaskStatus::Success);
+			assert_eq!(task.update_status(), SlotTaskStatus::Success);
 		}
 
 		{
@@ -238,16 +238,16 @@ mod test {
 			sender
 				.send(SlotTaskStatus::RecoverableError)
 				.expect("should be able to send a status");
-			assert_eq!(task.status(), SlotTaskStatus::RecoverableError);
+			assert_eq!(task.update_status(), SlotTaskStatus::RecoverableError);
 
 			// let's try to recover:
 			let new_sender = task.recover_with_new_sender().expect("should return a sender");
-			assert_eq!(task.status(), SlotTaskStatus::Ready);
+			assert_eq!(task.update_status(), SlotTaskStatus::Ready);
 
 			new_sender
 				.send(SlotTaskStatus::Failed(dummy_error()))
 				.expect("should be able to send a status");
-			assert_ne!(task.status(), SlotTaskStatus::Ready);
+			assert_ne!(task.update_status(), SlotTaskStatus::Ready);
 		}
 	}
 
@@ -277,12 +277,12 @@ mod test {
 			let mut sender = sender;
 			// let's exhaust the retries
 			for _ in 0..max_retries {
-				assert_eq!(task.status(), SlotTaskStatus::Ready);
+				assert_eq!(task.update_status(), SlotTaskStatus::Ready);
 				sender.send(SlotTaskStatus::RecoverableError).expect("should send status");
 				sender = task.recover_with_new_sender().expect("should return a sender");
 			}
 			assert_eq!(task.retries_remaining, 0);
-			assert_eq!(task.status(), SlotTaskStatus::ReachedMaxRetries);
+			assert_eq!(task.update_status(), SlotTaskStatus::ReachedMaxRetries);
 		}
 
 		{

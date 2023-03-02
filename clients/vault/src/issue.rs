@@ -205,7 +205,7 @@ async fn cleanup_ledger_env_map(
 
 	// retain only those not yet started or possibly to retry processing again
 	processed_map.retain(|ledger, task| {
-		match task.status() {
+		match task.update_status() {
 			// the task is not yet finished/ hasn't started; let's keep it
 			SlotTaskStatus::Ready |
 			// the task failed, but is possible to retry again
