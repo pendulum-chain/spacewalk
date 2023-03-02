@@ -1,4 +1,5 @@
 [workspace]
+resolver = "2"
 members = [
     "clients/runtime",
     "clients/runtime/client",
