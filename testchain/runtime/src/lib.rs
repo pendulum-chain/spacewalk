@@ -201,7 +201,7 @@ impl pallet_timestamp::Config for Runtime {
 }
 
 const NATIVE_CURRENCY_ID: CurrencyId = CurrencyId::Native;
-const PARENT_CURRENCY_ID: CurrencyId = CurrencyId::XCM(ForeignCurrencyId::DOT);
+const PARENT_CURRENCY_ID: CurrencyId = CurrencyId::XCM(16);
 // For mainnet USDC issued by centre.io
 // const WRAPPED_CURRENCY_ID: CurrencyId = CurrencyId::AlphaNum4 {
 // 	code: *b"USDC",

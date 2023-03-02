@@ -13,7 +13,7 @@ use super::{
 };
 use sp_runtime::traits::Convert;
 
-const DEFAULT_TESTING_CURRENCY: CurrencyId = CurrencyId::XCM(ForeignCurrencyId::KSM);
+const DEFAULT_TESTING_CURRENCY: CurrencyId = CurrencyId::XCM(16);
 const DEFAULT_WRAPPED_CURRENCY: CurrencyId = CurrencyId::AlphaNum4(
 	*b"USDC",
 	[

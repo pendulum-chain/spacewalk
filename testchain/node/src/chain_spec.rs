@@ -30,7 +30,7 @@ use spacewalk_runtime::{
 pub type ChainSpec = sc_service::GenericChainSpec<GenesisConfig>;
 
 fn token(currency: ForeignCurrencyId) -> CurrencyId {
-	CurrencyId::XCM(currency)
+	CurrencyId::XCM(currency.into())
 }
 
 /// Helper function to generate a crypto pair from seed
@@ -312,7 +312,7 @@ fn testnet_genesis(
 			oracle_keys: vec![
 				// Changing these items means that the integration tests also have to change
 				// because the integration tests insert dummy values for these into the oracle
-				Key::ExchangeRate(CurrencyId::XCM(ForeignCurrencyId::DOT)),
+				Key::ExchangeRate(CurrencyId::XCM(ForeignCurrencyId::DOT.into())),
 				Key::ExchangeRate(CurrencyId::AlphaNum4(
 					*b"USDC",
 					[

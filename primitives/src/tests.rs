@@ -91,7 +91,7 @@ fn test_currency_conversion_native() {
 	let lookup_orig = AssetConversion::unlookup(currency_lookup);
 	assert_eq!(lookup_orig, currency_id);
 
-	let currency_id = CurrencyId::XCM(ForeignCurrencyId::AUSD);
+	let currency_id = CurrencyId::XCM(ForeignCurrencyId::AUSD.into());
 	assert!(AssetConversion::lookup(currency_id).is_err());
 }
 

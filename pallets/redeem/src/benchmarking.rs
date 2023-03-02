@@ -109,7 +109,7 @@ benchmarks! {
 		let origin: T::AccountId = account("Origin", 0, 0);
 		let vault_id = get_vault_id::<T>();
 		let amount = Redeem::<T>::redeem_minimum_transfer_amount() + 1000u32.into();
-		let asset = CurrencyId::XCM(DOT);
+		let asset = CurrencyId::XCM(DOT.into());
 		let stellar_address = DEFAULT_STELLAR_PUBLIC_KEY;
 
 		initialize_oracle::<T>();

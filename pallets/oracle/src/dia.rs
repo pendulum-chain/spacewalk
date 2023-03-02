@@ -50,18 +50,22 @@ impl<T: NativeCurrencyKey> Convert<OracleKey, Option<(Vec<u8>, Vec<u8>)>>
 	fn convert(spacewalk_oracle_key: OracleKey) -> Option<(Vec<u8>, Vec<u8>)> {
 		match spacewalk_oracle_key {
 			OracleKey::ExchangeRate(currency_id) => match currency_id {
-				CurrencyId::XCM(token_symbol) => match token_symbol {
-					primitives::ForeignCurrencyId::DOT =>
+				CurrencyId::XCM(token_symbol) => {
+					let dot:u8 = primitives::ForeignCurrencyId::DOT.into();
+					let ksm:u8 = primitives::ForeignCurrencyId::KSM.into();
+
+					if token_symbol == dot {
 						return Some((
 							DOT_DIA_BLOCKCHAIN.as_bytes().to_vec(),
 							DOT_DIA_SYMBOL.as_bytes().to_vec(),
-						)),
-					primitives::ForeignCurrencyId::KSM =>
+						))
+					} else if token_symbol == ksm {
 						return Some((
 							KSM_DIA_BLOCKCHAIN.as_bytes().to_vec(),
 							KSM_DIA_SYMBOL.as_bytes().to_vec(),
-						)),
-					_ => unimplemented!(),
+						))
+					}
+					unimplemented!()
 				},
 				CurrencyId::Native => Some((T::native_chain(), T::native_symbol())),
 				CurrencyId::StellarNative => Some((
@@ -90,11 +94,11 @@ impl<T: NativeCurrencyKey> Convert<(Vec<u8>, Vec<u8>), Option<OracleKey>>
 			(Ok(blockchain), Ok(symbol)) => {
 				if blockchain == DOT_DIA_BLOCKCHAIN && symbol == DOT_DIA_SYMBOL {
 					Some(OracleKey::ExchangeRate(CurrencyId::XCM(
-						primitives::ForeignCurrencyId::DOT,
+						primitives::ForeignCurrencyId::DOT.into(),
 					)))
 				} else if blockchain == KSM_DIA_BLOCKCHAIN && symbol == KSM_DIA_SYMBOL {
 					Some(OracleKey::ExchangeRate(CurrencyId::XCM(
-						primitives::ForeignCurrencyId::KSM,
+						primitives::ForeignCurrencyId::KSM.into(),
 					)))
 				} else if blockchain == FIAT_DIA_BLOCKCHAIN {
 					Some(OracleKey::ExchangeRate(CurrencyId::Stellar(

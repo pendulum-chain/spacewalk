@@ -38,12 +38,16 @@ impl Convert<Key, Option<(Vec<u8>, Vec<u8>)>> for MockOracleKeyConvertor {
 	fn convert(spacwalk_oracle_key: Key) -> Option<(Vec<u8>, Vec<u8>)> {
 		match spacwalk_oracle_key {
 			Key::ExchangeRate(currency_id) => match currency_id {
-				CurrencyId::XCM(token_symbol) => match token_symbol {
-					primitives::ForeignCurrencyId::DOT => return Some((vec![0u8], vec![1u8])),
-					// primitives::ForeignCurrencyId::PEN => return Some((vec![0u8], vec![2u8])),
-					primitives::ForeignCurrencyId::KSM => return Some((vec![0u8], vec![3u8])),
-					// primitives::ForeignCurrencyId::AMPE => return Some((vec![0u8], vec![4u8])),
-					_ => None,
+				CurrencyId::XCM(token_symbol) => {
+					let dot:u8 = primitives::ForeignCurrencyId::DOT.into();
+					let ksm:u8 = primitives::ForeignCurrencyId::KSM.into();
+
+					if token_symbol == dot {
+						return Some((vec![0u8], vec![1u8]))
+					} else if token_symbol == ksm {
+						return Some((vec![0u8], vec![3u8]))
+					}
+					None
 				},
 				CurrencyId::Native => Some((vec![2u8], vec![])),
 				CurrencyId::StellarNative => Some((vec![3u8], vec![])),
@@ -63,13 +67,13 @@ impl Convert<(Vec<u8>, Vec<u8>), Option<Key>> for MockOracleKeyConvertor {
 			0u8 => match symbol[0] {
 				1 =>
 					return Some(Key::ExchangeRate(CurrencyId::XCM(
-						primitives::ForeignCurrencyId::DOT,
+						primitives::ForeignCurrencyId::DOT.into(),
 					))),
 				// 2 =>
 				// 	return Some(Key::ExchangeRate(CurrencyId::XCM(primitives::ForeignCurrencyId::PEN))),
 				3 =>
 					return Some(Key::ExchangeRate(CurrencyId::XCM(
-						primitives::ForeignCurrencyId::KSM,
+						primitives::ForeignCurrencyId::KSM.into(),
 					))),
 				// 4 =>
 				// 	return Some(Key::ExchangeRate(CurrencyId::XCM(primitives::ForeignCurrencyId::AMPE))),

@@ -542,7 +542,7 @@ impl Asset {
 #[repr(u8)]
 pub enum CurrencyId {
 	Native = 0,
-	XCM(ForeignCurrencyId) ,
+	XCM(u8),
 	Stellar(Asset),
 }
 
