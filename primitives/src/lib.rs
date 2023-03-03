@@ -467,6 +467,8 @@ macro_rules! create_currency_id {
     }
 }
 
+// TODO: remove ForeignCurrencyId, based on this discussion:
+// https://satoshipay.slack.com/archives/C01V1F56RMJ/p1677771323527139?thread_ts=1677766733.852279&cid=C01V1F56RMJ
 create_currency_id! {
 	#[derive(Encode, Decode, Eq, Hash, PartialEq, Copy, Clone, RuntimeDebug, PartialOrd, Ord, TypeInfo, MaxEncodedLen)]
 	#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
