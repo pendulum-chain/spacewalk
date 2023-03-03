@@ -11,7 +11,7 @@ use currency::{
 	testing_constants::get_wrapped_currency_id,
 };
 use oracle::Pallet as Oracle;
-use primitives::{CurrencyId, ForeignCurrencyId::*, VaultCurrencyPair, VaultId};
+use primitives::{CurrencyId, VaultCurrencyPair, VaultId};
 use security::Pallet as Security;
 use stellar_relay::{
 	testing_utils::{

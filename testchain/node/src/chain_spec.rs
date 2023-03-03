@@ -10,12 +10,7 @@ use sp_core::{crypto::UncheckedInto, sr25519, Pair, Public};
 use sp_finality_grandpa::AuthorityId as GrandpaId;
 use sp_runtime::traits::{IdentifyAccount, Verify};
 
-use primitives::{
-	oracle::Key,
-	CurrencyId, ForeignCurrencyId,
-	ForeignCurrencyId::{DOT, KSM},
-	VaultCurrencyPair,
-};
+use primitives::{oracle::Key, CurrencyId, VaultCurrencyPair};
 use serde_json::{map::Map, Value};
 use spacewalk_runtime::{
 	AccountId, AuraConfig, BalancesConfig, FeeConfig, FieldLength, GenesisConfig,
@@ -28,10 +23,6 @@ use spacewalk_runtime::{
 // const STAGING_TELEMETRY_URL: &str = "wss://telemetry.polkadot.io/submit/";
 
 pub type ChainSpec = sc_service::GenericChainSpec<GenesisConfig>;
-
-fn token(currency: ForeignCurrencyId) -> CurrencyId {
-	CurrencyId::XCM(currency.into())
-}
 
 /// Helper function to generate a crypto pair from seed
 pub fn get_from_seed<TPublic: Public>(seed: &str) -> <TPublic::Pair as Pair>::Public {
@@ -312,7 +303,7 @@ fn testnet_genesis(
 			oracle_keys: vec![
 				// Changing these items means that the integration tests also have to change
 				// because the integration tests insert dummy values for these into the oracle
-				Key::ExchangeRate(CurrencyId::XCM(ForeignCurrencyId::DOT.into())),
+				Key::ExchangeRate(CurrencyId::XCM(0)),
 				Key::ExchangeRate(CurrencyId::AlphaNum4(
 					*b"USDC",
 					[

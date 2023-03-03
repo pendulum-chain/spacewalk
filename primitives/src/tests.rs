@@ -91,7 +91,7 @@ fn test_currency_conversion_native() {
 	let lookup_orig = AssetConversion::unlookup(currency_lookup);
 	assert_eq!(lookup_orig, currency_id);
 
-	let currency_id = CurrencyId::XCM(ForeignCurrencyId::KSM.into());
+	let currency_id = CurrencyId::XCM(0);
 	assert!(AssetConversion::lookup(currency_id).is_err());
 }
 
@@ -171,14 +171,6 @@ fn test_addr_conversion() {
 	let lookup_pk = lookup_pk.unwrap();
 	let lookup_acc = AddressConversion::unlookup(lookup_pk);
 	assert_eq!(lookup_acc, account_id);
-}
-
-#[test]
-fn test_foreign_currency_conversion_u64() {
-	assert_eq!(0u64.try_into(), Ok(ForeignCurrencyId::DOT));
-	assert_eq!(1u64.try_into(), Ok(ForeignCurrencyId::KSM));
-	assert_eq!(<u64 as TryInto<ForeignCurrencyId>>::try_into(30), Err(()));
-	assert_eq!(<u64 as TryInto<ForeignCurrencyId>>::try_into(257), Err(()));
 }
 
 #[test]

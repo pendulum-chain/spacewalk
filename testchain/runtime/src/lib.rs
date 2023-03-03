@@ -45,8 +45,8 @@ pub use module_oracle_rpc_runtime_api::BalanceWrapper;
 pub use nomination::Event as NominationEvent;
 use oracle::dia::{DiaOracleAdapter, NativeCurrencyKey, XCMCurrencyConversion};
 pub use primitives::{
-	self, AccountId, Balance, BlockNumber, CurrencyId, ForeignCurrencyId, Hash, Moment, Nonce,
-	Signature, SignedFixedPoint, SignedInner, UnsignedFixedPoint, UnsignedInner,
+	self, AccountId, Balance, BlockNumber, CurrencyId, Hash, Moment, Nonce, Signature,
+	SignedFixedPoint, SignedInner, UnsignedFixedPoint, UnsignedInner,
 };
 pub use redeem::{Event as RedeemEvent, RedeemRequest};
 pub use replace::{Event as ReplaceEvent, ReplaceRequest};
