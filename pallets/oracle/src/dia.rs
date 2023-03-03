@@ -97,12 +97,17 @@ impl<T: NativeCurrencyKey> Convert<(Vec<u8>, Vec<u8>), Option<OracleKey>>
 						primitives::ForeignCurrencyId::KSM,
 					)))
 				} else if blockchain == FIAT_DIA_BLOCKCHAIN {
-					Some(OracleKey::ExchangeRate(CurrencyId::Stellar(
-						primitives::Asset::AlphaNum4 {
-							code: symbol.as_bytes().try_into().unwrap(),
-							issuer: Default::default(),
-						},
-					)))
+					let code = symbol.as_bytes().try_into();
+					match code{
+						Err(_) => None,
+						Ok(code) => Some(OracleKey::ExchangeRate(CurrencyId::Stellar(
+							primitives::Asset::AlphaNum4 {
+								code: code,
+								issuer: Default::default(),
+							},
+						)))
+					}
+					
 				} else {
 					None
 				}
