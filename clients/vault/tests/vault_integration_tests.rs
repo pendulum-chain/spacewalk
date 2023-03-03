@@ -30,7 +30,7 @@ const TIMEOUT: Duration = Duration::from_secs(60);
 // Be careful when changing these values because they are used in the parachain genesis config
 // and only for some combination of them, secure collateralization thresholds are set.
 // 20 is the number for DOT. `const` does not accept `.into()` for RValue, hence the hardcoded 20.
-const DEFAULT_TESTING_CURRENCY: CurrencyId = CurrencyId::XCM(20);
+const DEFAULT_TESTING_CURRENCY: CurrencyId = CurrencyId::XCM(0);
 const DEFAULT_WRAPPED_CURRENCY: CurrencyId = CurrencyId::AlphaNum4(
 	*b"USDC",
 	[

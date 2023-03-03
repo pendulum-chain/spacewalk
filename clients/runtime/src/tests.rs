@@ -13,8 +13,7 @@ use super::{
 };
 use sp_runtime::traits::Convert;
 
-// 20 is the number for DOT. `const` does not accept `.into()` for RValue, hence the hardcoded 20.
-const DEFAULT_TESTING_CURRENCY: CurrencyId = CurrencyId::XCM(20);
+const DEFAULT_TESTING_CURRENCY: CurrencyId = CurrencyId::XCM(0);
 const DEFAULT_WRAPPED_CURRENCY: CurrencyId = CurrencyId::AlphaNum4(
 	*b"USDC",
 	[
