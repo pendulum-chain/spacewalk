@@ -201,7 +201,6 @@ impl pallet_timestamp::Config for Runtime {
 }
 
 const NATIVE_CURRENCY_ID: CurrencyId = CurrencyId::Native;
-// 20 is the number for DOT. `const` does not accept `.into()` for RValue, hence the hardcoded 20.
 const PARENT_CURRENCY_ID: CurrencyId = CurrencyId::XCM(0);
 // For mainnet USDC issued by centre.io
 // const WRAPPED_CURRENCY_ID: CurrencyId = CurrencyId::AlphaNum4 {
