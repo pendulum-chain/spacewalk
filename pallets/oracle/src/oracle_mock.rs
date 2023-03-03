@@ -4,7 +4,7 @@ use sp_std::cmp::Ordering;
 
 use sp_arithmetic::FixedU128;
 pub type UnsignedFixedPoint = FixedU128;
-use primitives::{oracle::Key, Asset, CurrencyId, ForeignCurrencyId};
+use primitives::{oracle::Key, Asset, CurrencyId};
 use sp_std::{vec, vec::Vec};
 
 #[derive(Clone, Default, PartialEq, Eq, Hash)]
@@ -36,20 +36,9 @@ pub struct MockOracleKeyConvertor;
 
 impl Convert<Key, Option<(Vec<u8>, Vec<u8>)>> for MockOracleKeyConvertor {
 	fn convert(spacwalk_oracle_key: Key) -> Option<(Vec<u8>, Vec<u8>)> {
-		fn into_u8(id: ForeignCurrencyId) -> u8 {
-			<ForeignCurrencyId as Into<u8>>::into(id)
-		}
 		match spacwalk_oracle_key {
 			Key::ExchangeRate(currency_id) => match currency_id {
-				CurrencyId::XCM(token_symbol) => match token_symbol {
-					dot if dot == into_u8(ForeignCurrencyId::DOT) =>
-						return Some((vec![0u8], vec![1u8])),
-
-					ksm if ksm == into_u8(ForeignCurrencyId::KSM) =>
-						return Some((vec![0u8], vec![3u8])),
-
-					_ => None,
-				},
+				CurrencyId::XCM(token_symbol) => Some((vec![0u8], vec![token_symbol])),
 				CurrencyId::Native => Some((vec![2u8], vec![])),
 				CurrencyId::StellarNative => Some((vec![3u8], vec![])),
 				CurrencyId::Stellar(Asset::AlphaNum4 { code, .. }) =>
@@ -65,21 +54,7 @@ impl Convert<(Vec<u8>, Vec<u8>), Option<Key>> for MockOracleKeyConvertor {
 	fn convert(dia_oracle_key: (Vec<u8>, Vec<u8>)) -> Option<Key> {
 		let (blockchain, symbol) = dia_oracle_key;
 		match blockchain[0] {
-			0u8 => match symbol[0] {
-				1 =>
-					return Some(Key::ExchangeRate(CurrencyId::XCM(
-						primitives::ForeignCurrencyId::DOT.into(),
-					))),
-				// 2 =>
-				// 	return Some(Key::ExchangeRate(CurrencyId::XCM(primitives::ForeignCurrencyId::PEN))),
-				3 =>
-					return Some(Key::ExchangeRate(CurrencyId::XCM(
-						primitives::ForeignCurrencyId::KSM.into(),
-					))),
-				// 4 =>
-				// 	return Some(Key::ExchangeRate(CurrencyId::XCM(primitives::ForeignCurrencyId::AMPE))),
-				_ => return None,
-			},
+			0u8 => Some(Key::ExchangeRate(CurrencyId::XCM(symbol[0]))),
 			2u8 => Some(Key::ExchangeRate(CurrencyId::Native)),
 			3u8 => Some(Key::ExchangeRate(CurrencyId::StellarNative)),
 			4u8 => {
