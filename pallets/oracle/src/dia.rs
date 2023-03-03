@@ -98,16 +98,12 @@ impl<T: NativeCurrencyKey> Convert<(Vec<u8>, Vec<u8>), Option<OracleKey>>
 					)))
 				} else if blockchain == FIAT_DIA_BLOCKCHAIN {
 					let code = symbol.as_bytes().try_into();
-					match code{
+					match code {
 						Err(_) => None,
 						Ok(code) => Some(OracleKey::ExchangeRate(CurrencyId::Stellar(
-							primitives::Asset::AlphaNum4 {
-								code: code,
-								issuer: Default::default(),
-							},
-						)))
+							primitives::Asset::AlphaNum4 { code, issuer: Default::default() },
+						))),
 					}
-					
 				} else {
 					None
 				}

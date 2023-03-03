@@ -117,6 +117,7 @@ pub mod pallet {
 		TransactionSetHashCreationFailed,
 		TransactionSetHashMismatch,
 		ValidatorLimitExceeded,
+		FailedToComputenonGenericTxSetContentHash,
 	}
 
 	#[pallet::storage]
@@ -531,7 +532,8 @@ pub mod pallet {
 			}
 
 			// Check if transaction set matches tx_set_hash included in the ScpEnvelopes
-			let expected_tx_set_hash = compute_non_generic_tx_set_content_hash(transaction_set);
+			let expected_tx_set_hash = compute_non_generic_tx_set_content_hash(transaction_set)
+				.ok_or(Error::<T>::FailedToComputenonGenericTxSetContentHash)?;
 
 			for envelope in envelopes.get_vec() {
 				match envelope.clone().statement.pledges {
@@ -605,8 +607,9 @@ pub mod pallet {
 			);
 
 			for (organization_id, count) in targeted_organization_map.iter() {
-				let total: &u32 =
-					validator_count_per_organization_map.get(organization_id).unwrap();
+				let total: &u32 = validator_count_per_organization_map
+					.get(organization_id)
+					.ok_or(Error::<T>::NoOrganizationsRegistered)?;
 				// Check that for each of the targeted organizations more than 1/2 of their total
 				// validators were used in the SCP messages
 				ensure!(count * 2 > *total, Error::<T>::InvalidQuorumSetNotEnoughValidators);
@@ -664,7 +667,7 @@ pub mod pallet {
 		memo_hash
 	}
 
-	pub fn compute_non_generic_tx_set_content_hash(tx_set: &TransactionSet) -> [u8; 32] {
+	pub fn compute_non_generic_tx_set_content_hash(tx_set: &TransactionSet) -> Option<[u8; 32]> {
 		let mut hasher = Sha256::new();
 		hasher.update(tx_set.previous_ledger_hash);
 
@@ -672,7 +675,10 @@ pub mod pallet {
 			hasher.update(envelope.to_xdr());
 		});
 
-		hasher.finalize().as_slice().try_into().unwrap()
+		match hasher.finalize().as_slice().try_into() {
+			Ok(data) => Some(data),
+			Err(_) => None,
+		}
 	}
 
 	pub(crate) fn verify_signature(
