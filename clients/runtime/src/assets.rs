@@ -22,8 +22,8 @@ impl TryFromSymbol for CurrencyId {
 
 		// try hardcoded currencies first
 		match uppercase_symbol.as_str() {
-			id if id == DOT.symbol() => Ok(CurrencyId::XCM(DOT.into())),
-			id if id == KSM.symbol() => Ok(CurrencyId::XCM(KSM.into())),
+			id if id == DOT.symbol() => Ok(CurrencyId::XCM(0)),
+			id if id == KSM.symbol() => Ok(CurrencyId::XCM(1)),
 			_ => Err(Error::InvalidCurrency),
 		}
 	}
