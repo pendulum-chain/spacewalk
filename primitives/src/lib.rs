@@ -381,6 +381,7 @@ pub trait CurrencyInfo {
 	fn decimals(&self) -> u8;
 }
 
+#[cfg(any(test, feature = "testing-utils"))]
 macro_rules! create_currency_id {
     ($(#[$meta:meta])*
 	$vis:vis enum ForeignCurrencyId {
@@ -467,32 +468,17 @@ macro_rules! create_currency_id {
     }
 }
 
-// TODO: remove ForeignCurrencyId, based on this discussion:
-// https://satoshipay.slack.com/archives/C01V1F56RMJ/p1677771323527139?thread_ts=1677766733.852279&cid=C01V1F56RMJ
+// The ForeignCurrencyId facilitates the testing of the pallet by providing a set of currencies
+// which would otherwise merely be represented by a u8.
+// This is only used for testing purposes. It is not supposed to be used in production.
+#[cfg(any(test, feature = "testing-utils"))]
 create_currency_id! {
 	#[derive(Encode, Decode, Eq, Hash, PartialEq, Copy, Clone, RuntimeDebug, PartialOrd, Ord, TypeInfo, MaxEncodedLen)]
 	#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 	#[repr(u8)]
 	pub enum ForeignCurrencyId {
-		KSM("Kusama", 10) = 0,
-		KAR("Karura",10) = 1,
-		AUSD("Acala Karura",10) = 2,
-		BNC("Bifrost",10)= 3,
-		VsKSM("Kusama Bifrost",10) = 4,
-		HKO("Heiko", 10) = 5,
-		MOVR("Moonriver", 10) = 6,
-		SDN("Shiden", 10) = 7,
-		KINT("Kintsugi", 10) = 8,
-		KBTC("Kintsugi BTC", 10) = 9,
-		GENS("Genshiro", 10) = 10,
-		XOR("Sora", 10) = 11,
-		TEER("Integritee", 10) = 12,
-		KILT("Kilt", 10) = 13,
-		PHA("Phala", 10) = 14,
-		ZTG("Zeitgeist", 10) = 15,
-		USDT("Statemine", 10) = 16,
-		// added lastly
-		DOT("Polkadot", 10) = 20,
+		DOT("Polkadot", 10) = 0,
+		KSM("Kusama", 10) = 1,
 	}
 }
 
