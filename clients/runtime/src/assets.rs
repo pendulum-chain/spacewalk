@@ -20,11 +20,11 @@ impl TryFromSymbol for CurrencyId {
 			return CurrencyId::try_from((code, issuer)).map_err(|_| Error::InvalidCurrency)
 		}
 
-		// try hardcoded currencies first
-		match uppercase_symbol.as_str() {
-			id if id == DOT.symbol() => Ok(CurrencyId::XCM(0)),
-			id if id == KSM.symbol() => Ok(CurrencyId::XCM(1)),
-			_ => Err(Error::InvalidCurrency),
+		// We assume that it is an XCM currency so we try to parse it as a number
+		if let Ok(id) = uppercase_symbol.parse::<u8>() {
+			return Ok(CurrencyId::XCM(id))
+		} else {
+			return Err(Error::InvalidCurrency)
 		}
 	}
 }
