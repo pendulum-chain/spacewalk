@@ -217,7 +217,7 @@ mod math {
 		pub fn rounded_mul(&self, fraction: UnsignedFixedPoint<T>) -> Result<Self, DispatchError> {
 			// we add 0.5 before we do the final integer division to round the result we return.
 			// note that unwrapping is safe because we use a constant
-			let rounding_addition = UnsignedFixedPoint::<T>::checked_from_rational(1, 2).unwrap();
+			let rounding_addition = UnsignedFixedPoint::<T>::checked_from_rational(1, 2).ok_or(Error::<T>::TryIntoIntError)?;
 
 			let amount = UnsignedFixedPoint::<T>::checked_from_integer(self.amount)
 				.ok_or(ArithmeticError::Overflow)?
