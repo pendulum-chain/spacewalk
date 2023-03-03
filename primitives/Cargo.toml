@@ -20,7 +20,6 @@ substrate-stellar-sdk = { git = "https://github.com/pendulum-chain/substrate-ste
 
 [features]
 default = ["std"]
-testing-utils = []
 std = [
     "serde/std",
     "codec/std",
