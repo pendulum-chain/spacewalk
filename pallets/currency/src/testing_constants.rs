@@ -1,7 +1,8 @@
 use primitives::CurrencyId;
 
 // These constants best are set to match the definitions in the testchain's runtime
-pub const DEFAULT_COLLATERAL_CURRENCY: CurrencyId = CurrencyId::XCM(16);
+// 20 is the number for DOT. `const` does not accept `.into()` for RValue, hence the hardcoded 20.
+pub const DEFAULT_COLLATERAL_CURRENCY: CurrencyId = CurrencyId::XCM(20);
 pub const DEFAULT_NATIVE_CURRENCY: CurrencyId = CurrencyId::Native;
 
 // We support many different wrapped currencies but here we return some wrapped currency id for

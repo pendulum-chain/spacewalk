@@ -1,6 +1,8 @@
 use dia_oracle::DiaOracle;
 use orml_oracle::{DataProviderExtended, TimestampedValue};
-pub use primitives::{oracle::Key as OracleKey, CurrencyId, TruncateFixedPointToInt};
+pub use primitives::{
+	oracle::Key as OracleKey, CurrencyId, ForeignCurrencyId, TruncateFixedPointToInt,
+};
 use sp_std::marker;
 
 use scale_info::prelude::string::String;
@@ -48,24 +50,25 @@ impl<T: NativeCurrencyKey> Convert<OracleKey, Option<(Vec<u8>, Vec<u8>)>>
 	for DiaOracleKeyConvertor<T>
 {
 	fn convert(spacewalk_oracle_key: OracleKey) -> Option<(Vec<u8>, Vec<u8>)> {
+		fn into_u8(id: ForeignCurrencyId) -> u8 {
+			<ForeignCurrencyId as Into<u8>>::into(id)
+		}
+
 		match spacewalk_oracle_key {
 			OracleKey::ExchangeRate(currency_id) => match currency_id {
-				CurrencyId::XCM(token_symbol) => {
-					let dot:u8 = primitives::ForeignCurrencyId::DOT.into();
-					let ksm:u8 = primitives::ForeignCurrencyId::KSM.into();
-
-					if token_symbol == dot {
+				CurrencyId::XCM(token_symbol) => match token_symbol {
+					dot if dot == into_u8(ForeignCurrencyId::DOT) =>
 						return Some((
 							DOT_DIA_BLOCKCHAIN.as_bytes().to_vec(),
 							DOT_DIA_SYMBOL.as_bytes().to_vec(),
-						))
-					} else if token_symbol == ksm {
+						)),
+
+					ksm if ksm == into_u8(ForeignCurrencyId::KSM) =>
 						return Some((
 							KSM_DIA_BLOCKCHAIN.as_bytes().to_vec(),
 							KSM_DIA_SYMBOL.as_bytes().to_vec(),
-						))
-					}
-					unimplemented!()
+						)),
+					_ => unimplemented!(),
 				},
 				CurrencyId::Native => Some((T::native_chain(), T::native_symbol())),
 				CurrencyId::StellarNative => Some((
@@ -93,13 +96,9 @@ impl<T: NativeCurrencyKey> Convert<(Vec<u8>, Vec<u8>), Option<OracleKey>>
 		return match (blockchain, symbol) {
 			(Ok(blockchain), Ok(symbol)) => {
 				if blockchain == DOT_DIA_BLOCKCHAIN && symbol == DOT_DIA_SYMBOL {
-					Some(OracleKey::ExchangeRate(CurrencyId::XCM(
-						primitives::ForeignCurrencyId::DOT.into(),
-					)))
+					Some(OracleKey::ExchangeRate(CurrencyId::XCM(ForeignCurrencyId::DOT.into())))
 				} else if blockchain == KSM_DIA_BLOCKCHAIN && symbol == KSM_DIA_SYMBOL {
-					Some(OracleKey::ExchangeRate(CurrencyId::XCM(
-						primitives::ForeignCurrencyId::KSM.into(),
-					)))
+					Some(OracleKey::ExchangeRate(CurrencyId::XCM(ForeignCurrencyId::KSM.into())))
 				} else if blockchain == FIAT_DIA_BLOCKCHAIN {
 					Some(OracleKey::ExchangeRate(CurrencyId::Stellar(
 						primitives::Asset::AlphaNum4 {
