@@ -35,8 +35,8 @@ pub struct Data {
 pub struct MockOracleKeyConvertor;
 
 impl Convert<Key, Option<(Vec<u8>, Vec<u8>)>> for MockOracleKeyConvertor {
-	fn convert(spacwalk_oracle_key: Key) -> Option<(Vec<u8>, Vec<u8>)> {
-		match spacwalk_oracle_key {
+	fn convert(spacewalk_oracle_key: Key) -> Option<(Vec<u8>, Vec<u8>)> {
+		match spacewalk_oracle_key {
 			Key::ExchangeRate(currency_id) => match currency_id {
 				CurrencyId::XCM(token_symbol) => Some((vec![0u8], vec![token_symbol])),
 				CurrencyId::Native => Some((vec![2u8], vec![])),
