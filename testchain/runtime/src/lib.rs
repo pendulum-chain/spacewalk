@@ -43,7 +43,7 @@ use currency::Amount;
 pub use issue::{Event as IssueEvent, IssueRequest};
 pub use module_oracle_rpc_runtime_api::BalanceWrapper;
 pub use nomination::Event as NominationEvent;
-use oracle::dia::{DiaOracleAdapter, NativeCurrencyKey};
+use oracle::dia::{DiaOracleAdapter, NativeCurrencyKey, XCMCurrencyConversion};
 pub use primitives::{
 	self, AccountId, Balance, BlockNumber, CurrencyId, ForeignCurrencyId, Hash, Moment, Nonce,
 	Signature, SignedFixedPoint, SignedInner, UnsignedFixedPoint, UnsignedInner,
@@ -471,6 +471,29 @@ impl NativeCurrencyKey for SpacewalkNativeCurrencyKey {
 
 	fn native_chain() -> Vec<u8> {
 		"LOCAL".as_bytes().to_vec()
+	}
+}
+
+const DOT_DIA_BLOCKCHAIN: &[u8] = b"Polkadot";
+const DOT_DIA_SYMBOL: &[u8] = b"DOT";
+const KSM_DIA_BLOCKCHAIN: &[u8] = b"Kusama";
+const KSM_DIA_SYMBOL: &[u8] = b"KSM";
+
+impl XCMCurrencyConversion for SpacewalkNativeCurrencyKey {
+	fn convert_to_dia_currency_id(token_symbol: u8) -> Option<(Vec<u8>, Vec<u8>)> {
+		match token_symbol {
+			0 => Some((DOT_DIA_BLOCKCHAIN.to_vec(), DOT_DIA_SYMBOL.to_vec())),
+			1 => Some((KSM_DIA_BLOCKCHAIN.to_vec(), KSM_DIA_SYMBOL.to_vec())),
+			_ => None,
+		}
+	}
+
+	fn convert_from_dia_currency_id(blockchain: Vec<u8>, symbol: Vec<u8>) -> Option<u8> {
+		match (blockchain.as_slice(), symbol.as_slice()) {
+			(DOT_DIA_BLOCKCHAIN, DOT_DIA_SYMBOL) => Some(0),
+			(KSM_DIA_BLOCKCHAIN, KSM_DIA_SYMBOL) => Some(1),
+			_ => None,
+		}
 	}
 }
 
