@@ -7,10 +7,6 @@ use scale_info::prelude::string::String;
 use sp_runtime::traits::Convert;
 use sp_std::vec::Vec;
 
-const DOT_DIA_BLOCKCHAIN: &str = "Polkadot";
-const DOT_DIA_SYMBOL: &str = "DOT";
-const KSM_DIA_BLOCKCHAIN: &str = "Kusama";
-const KSM_DIA_SYMBOL: &str = "KSM";
 const STELLAR_DIA_BLOCKCHAIN: &str = "Stellar";
 const STELLAR_DIA_SYMBOL: &str = "XLM";
 const FIAT_DIA_BLOCKCHAIN: &str = "FIAT";
@@ -49,18 +45,17 @@ pub trait XCMCurrencyConversion {
 	fn convert_from_dia_currency_id(blockchain: Vec<u8>, symbol: Vec<u8>) -> Option<u8>;
 }
 
-pub struct DiaOracleKeyConvertor<T: NativeCurrencyKey, U: XCMCurrencyConversion>(
+pub struct DiaOracleKeyConvertor<T: NativeCurrencyKey + XCMCurrencyConversion>(
 	marker::PhantomData<T>,
-	marker::PhantomData<U>,
 );
 
-impl<T: NativeCurrencyKey, U: XCMCurrencyConversion> Convert<OracleKey, Option<(Vec<u8>, Vec<u8>)>>
-	for DiaOracleKeyConvertor<T, U>
+impl<T: NativeCurrencyKey + XCMCurrencyConversion> Convert<OracleKey, Option<(Vec<u8>, Vec<u8>)>>
+	for DiaOracleKeyConvertor<T>
 {
 	fn convert(spacewalk_oracle_key: OracleKey) -> Option<(Vec<u8>, Vec<u8>)> {
 		match spacewalk_oracle_key {
 			OracleKey::ExchangeRate(currency_id) => match currency_id {
-				CurrencyId::XCM(token_symbol) => U::convert_to_dia_currency_id(token_symbol),
+				CurrencyId::XCM(token_symbol) => T::convert_to_dia_currency_id(token_symbol),
 				CurrencyId::Native => Some((T::native_chain(), T::native_symbol())),
 				CurrencyId::StellarNative => Some((
 					STELLAR_DIA_BLOCKCHAIN.as_bytes().to_vec(),
@@ -77,12 +72,12 @@ impl<T: NativeCurrencyKey, U: XCMCurrencyConversion> Convert<OracleKey, Option<(
 	}
 }
 
-impl<T: NativeCurrencyKey, U: XCMCurrencyConversion> Convert<(Vec<u8>, Vec<u8>), Option<OracleKey>>
-	for DiaOracleKeyConvertor<T, U>
+impl<T: NativeCurrencyKey + XCMCurrencyConversion> Convert<(Vec<u8>, Vec<u8>), Option<OracleKey>>
+	for DiaOracleKeyConvertor<T>
 {
 	fn convert(dia_oracle_key: (Vec<u8>, Vec<u8>)) -> Option<OracleKey> {
 		let (blockchain, symbol) = dia_oracle_key;
-		let xcm_currency_id = U::convert_from_dia_currency_id(blockchain.clone(), symbol.clone());
+		let xcm_currency_id = T::convert_from_dia_currency_id(blockchain.clone(), symbol.clone());
 
 		if let Some(xcm_currency_id) = xcm_currency_id {
 			Some(OracleKey::ExchangeRate(CurrencyId::XCM(xcm_currency_id)))
