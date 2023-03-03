@@ -8,7 +8,7 @@
 extern crate mocktopus;
 #[cfg(feature = "testing-utils")]
 use frame_support::dispatch::DispatchResult;
-use frame_support::{dispatch::DispatchError, transactional};
+use frame_support::{dispatch::DispatchError, log, transactional};
 #[cfg(test)]
 use mocktopus::macros::mockable;
 use sp_runtime::{
@@ -38,6 +38,7 @@ mod tests;
 
 #[cfg(feature = "testing-utils")]
 pub use dia_oracle::{CoinInfo, DiaOracle, PriceInfo};
+use frame_support::log::log;
 #[cfg(feature = "testing-utils")]
 pub use orml_oracle::{DataFeeder, DataProvider, TimestampedValue};
 
@@ -186,10 +187,12 @@ impl<T: Config> Pallet<T> {
 		let max_delay = Self::get_max_delay();
 		for key in oracle_keys.iter() {
 			let price = Self::get_timestamped(key);
+			log::info!("begin_block: key: {:?}, price: {:?}", key, price);
 			let Some(price) = price else{
 				continue;
 			};
 			let is_outdated = current_time > price.timestamp + max_delay;
+			log::info!("begin_block: is_outdated: {:?}", is_outdated);
 			if !is_outdated {
 				updated_items.push((key.clone(), price.value));
 			}
@@ -199,10 +202,22 @@ impl<T: Config> Pallet<T> {
 			Self::deposit_event(Event::<T>::AggregateUpdated { values: updated_items });
 		}
 
+		log::info!(
+			"begin_block: updated_items_len: {:?}, oracle_keys.len(): {:?}",
+			updated_items_len,
+			oracle_keys.len()
+		);
+
 		let current_status_is_online = Self::is_oracle_online();
 		let new_status_is_online = oracle_keys.len() > 0 &&
 			updated_items_len > 0 &&
 			updated_items_len == oracle_keys.len();
+
+		log::info!(
+			"begin_block: current_status_is_online: {:?}, new_status_is_online: {:?}",
+			current_status_is_online,
+			new_status_is_online
+		);
 
 		if current_status_is_online != new_status_is_online {
 			if new_status_is_online {
@@ -222,6 +237,7 @@ impl<T: Config> Pallet<T> {
 		let mut oracle_keys: Vec<_> = <OracleKeys<T>>::get();
 
 		for (k, v) in values {
+			log::info!("feed_values: key: {:?}, value: {:?}", k, v);
 			let timestamped =
 				orml_oracle::TimestampedValue { timestamp: Self::get_current_time(), value: v };
 			T::DataFeedProvider::feed_value(oracle.clone(), k.clone(), timestamped)

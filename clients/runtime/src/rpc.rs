@@ -846,6 +846,7 @@ impl OraclePallet for SpacewalkParachain {
 
 		let mut coin_infos = vec![];
 		for ((blockchain, symbol), price) in values {
+			log::info!("Setting price for {:?}/{:?} to {:?}", blockchain, symbol, price);
 			let coin_info = CoinInfo {
 				symbol: symbol.clone(),
 				name: vec![],
