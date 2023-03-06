@@ -9,7 +9,7 @@ extern crate frame_benchmarking;
 use codec::Encode;
 pub use dia_oracle::dia::*;
 use frame_support::{
-	construct_runtime, parameter_types,
+	construct_runtime, log, parameter_types,
 	traits::{ConstU128, ConstU8, Contains, KeyOwnerProofSystem},
 	weights::{constants::WEIGHT_REF_TIME_PER_SECOND, ConstantMultiplier, IdentityFee, Weight},
 	PalletId,
@@ -473,26 +473,22 @@ impl NativeCurrencyKey for SpacewalkNativeCurrencyKey {
 	}
 }
 
-const DOT_DIA_BLOCKCHAIN: &[u8] = b"Polkadot";
-const DOT_DIA_SYMBOL: &[u8] = b"DOT";
-const KSM_DIA_BLOCKCHAIN: &[u8] = b"Kusama";
-const KSM_DIA_SYMBOL: &[u8] = b"KSM";
-
+// It's important that this is implemented the same way as the MockOracleKeyConvertor
+// because this is used in the benchmark_utils::DataCollector when feeding prices
 impl XCMCurrencyConversion for SpacewalkNativeCurrencyKey {
 	fn convert_to_dia_currency_id(token_symbol: u8) -> Option<(Vec<u8>, Vec<u8>)> {
-		match token_symbol {
-			0 => Some((DOT_DIA_BLOCKCHAIN.to_vec(), DOT_DIA_SYMBOL.to_vec())),
-			1 => Some((KSM_DIA_BLOCKCHAIN.to_vec(), KSM_DIA_SYMBOL.to_vec())),
-			_ => None,
-		}
+		// We assume that the blockchain is always 0 and the symbol represents the token symbol
+		let blockchain = vec![0u8];
+		let symbol = vec![token_symbol];
+		Some((blockchain, symbol))
 	}
 
 	fn convert_from_dia_currency_id(blockchain: Vec<u8>, symbol: Vec<u8>) -> Option<u8> {
-		match (blockchain.as_slice(), symbol.as_slice()) {
-			(DOT_DIA_BLOCKCHAIN, DOT_DIA_SYMBOL) => Some(0),
-			(KSM_DIA_BLOCKCHAIN, KSM_DIA_SYMBOL) => Some(1),
-			_ => None,
+		// We assume that the blockchain is always 0 and the symbol represents the token symbol
+		if blockchain.len() != 1 && blockchain[0] != 0 || symbol.len() != 1 {
+			return None
 		}
+		return Some(symbol[0])
 	}
 }
 
@@ -516,6 +512,8 @@ cfg_if::cfg_if! {
 			benchmark_utils::MockConvertMoment,
 		>;
 	} else {
+		// This implementation will be used when running the testchain locally
+		// as well as for the **vault integration tests**
 		type DataProviderImpl = DiaOracleAdapter<
 			DiaOracleModule,
 			UnsignedFixedPoint,
