@@ -3,7 +3,6 @@ use orml_oracle::{DataProviderExtended, TimestampedValue};
 pub use primitives::{oracle::Key as OracleKey, CurrencyId, TruncateFixedPointToInt};
 use sp_std::marker;
 
-use scale_info::prelude::string::String;
 use sp_runtime::traits::Convert;
 use sp_std::vec::Vec;
 

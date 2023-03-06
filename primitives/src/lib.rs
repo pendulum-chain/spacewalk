@@ -1,7 +1,6 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 #![allow(non_upper_case_globals)]
 
-use bstringify::bstringify;
 use codec::{Decode, Encode, MaxEncodedLen};
 use frame_support::error::LookupError;
 use scale_info::TypeInfo;
@@ -13,7 +12,7 @@ pub use sp_runtime::OpaqueExtrinsic as UncheckedExtrinsic;
 use sp_runtime::{
 	generic,
 	traits::{BlakeTwo256, Convert, IdentifyAccount, StaticLookup, Verify},
-	FixedI128, FixedPointNumber, FixedU128, MultiSignature, MultiSigner, RuntimeDebug,
+	FixedI128, FixedPointNumber, FixedU128, MultiSignature, MultiSigner,
 };
 use sp_std::{
 	convert::{From, TryFrom, TryInto},

@@ -9,7 +9,7 @@ extern crate frame_benchmarking;
 use codec::Encode;
 pub use dia_oracle::dia::*;
 use frame_support::{
-	construct_runtime, log, parameter_types,
+	construct_runtime, parameter_types,
 	traits::{ConstU128, ConstU8, Contains, KeyOwnerProofSystem},
 	weights::{constants::WEIGHT_REF_TIME_PER_SECOND, ConstantMultiplier, IdentityFee, Weight},
 	PalletId,

@@ -38,7 +38,6 @@ mod tests;
 
 #[cfg(feature = "testing-utils")]
 pub use dia_oracle::{CoinInfo, DiaOracle, PriceInfo};
-use frame_support::log::log;
 #[cfg(feature = "testing-utils")]
 pub use orml_oracle::{DataFeeder, DataProvider, TimestampedValue};
 
