@@ -3,7 +3,7 @@
 use sp_keyring::AccountKeyring;
 
 use oracle::dia::DiaOracleKeyConvertor;
-use primitives::{ForeignCurrencyId, StellarPublicKeyRaw};
+use primitives::StellarPublicKeyRaw;
 
 use crate::{integration::*, VaultId};
 
@@ -13,7 +13,7 @@ use super::{
 };
 use sp_runtime::traits::Convert;
 
-const DEFAULT_TESTING_CURRENCY: CurrencyId = CurrencyId::XCM(ForeignCurrencyId::KSM);
+const DEFAULT_TESTING_CURRENCY: CurrencyId = CurrencyId::XCM(0);
 const DEFAULT_WRAPPED_CURRENCY: CurrencyId = CurrencyId::AlphaNum4(
 	*b"USDC",
 	[
@@ -111,10 +111,7 @@ async fn test_register_vault() {
 	);
 
 	parachain_rpc.register_public_key(dummy_public_key()).await.unwrap();
-	parachain_rpc
-		.register_vault(&vault_id, 3 * ForeignCurrencyId::KSM.one())
-		.await
-		.unwrap();
+	parachain_rpc.register_vault(&vault_id, 3 * 10u128.pow(12)).await.unwrap();
 	parachain_rpc.get_vault(&vault_id).await.unwrap();
 	assert_eq!(parachain_rpc.get_public_key().await.unwrap(), Some(dummy_public_key()));
 }

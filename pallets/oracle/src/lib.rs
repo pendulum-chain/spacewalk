@@ -8,7 +8,7 @@
 extern crate mocktopus;
 #[cfg(feature = "testing-utils")]
 use frame_support::dispatch::DispatchResult;
-use frame_support::{dispatch::DispatchError, transactional};
+use frame_support::{dispatch::DispatchError, log, transactional};
 #[cfg(test)]
 use mocktopus::macros::mockable;
 use sp_runtime::{

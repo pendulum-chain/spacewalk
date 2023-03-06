@@ -13,7 +13,7 @@ use sp_runtime::{
 pub use currency::testing_constants::{
 	DEFAULT_COLLATERAL_CURRENCY, DEFAULT_NATIVE_CURRENCY, DEFAULT_WRAPPED_CURRENCY,
 };
-pub use primitives::{CurrencyId, ForeignCurrencyId::*};
+pub use primitives::CurrencyId;
 use primitives::{VaultCurrencyPair, VaultId};
 
 use crate as staking;

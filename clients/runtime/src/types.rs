@@ -1,7 +1,7 @@
 pub use subxt::ext::sp_core::sr25519::Pair as KeyPair;
 
 pub use metadata_aliases::*;
-pub use primitives::{CurrencyId, ForeignCurrencyId};
+pub use primitives::CurrencyId;
 
 use crate::{metadata, Config, SpacewalkRuntime, SS58_PREFIX};
 

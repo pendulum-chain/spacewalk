@@ -16,8 +16,8 @@ use sp_runtime::{
 pub use currency::testing_constants::{
 	DEFAULT_COLLATERAL_CURRENCY, DEFAULT_NATIVE_CURRENCY, DEFAULT_WRAPPED_CURRENCY,
 };
+pub use primitives::CurrencyId;
 use primitives::VaultId;
-pub use primitives::{CurrencyId, ForeignCurrencyId::*};
 
 use crate as fee;
 use crate::{Config, Error};

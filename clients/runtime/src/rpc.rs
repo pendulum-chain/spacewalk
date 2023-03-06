@@ -388,7 +388,7 @@ impl SpacewalkParachain {
 	pub async fn get_invalid_tx_error(&self, recipient: AccountId) -> Error {
 		let call = metadata::tx().tokens().transfer(
 			subxt::ext::sp_runtime::MultiAddress::Id(recipient),
-			CurrencyId::XCM(ForeignCurrencyId::DOT),
+			CurrencyId::XCM(0),
 			100,
 		);
 		let nonce = self.get_fresh_nonce().await;
@@ -420,7 +420,7 @@ impl SpacewalkParachain {
 	pub async fn get_too_low_priority_error(&self, recipient: AccountId) -> Error {
 		let call = metadata::tx().tokens().transfer(
 			subxt::ext::sp_runtime::MultiAddress::Id(recipient),
-			CurrencyId::XCM(ForeignCurrencyId::DOT),
+			CurrencyId::XCM(0),
 			100,
 		);
 
@@ -853,6 +853,7 @@ impl OraclePallet for SpacewalkParachain {
 
 		let mut coin_infos = vec![];
 		for ((blockchain, symbol), price) in values {
+			log::info!("Setting price for {:?}/{:?} to {:?}", blockchain, symbol, price);
 			let coin_info = CoinInfo {
 				symbol: symbol.clone(),
 				name: vec![],

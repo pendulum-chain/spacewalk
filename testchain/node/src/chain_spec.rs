@@ -10,12 +10,7 @@ use sp_core::{crypto::UncheckedInto, sr25519, Pair, Public};
 use sp_finality_grandpa::AuthorityId as GrandpaId;
 use sp_runtime::traits::{IdentifyAccount, Verify};
 
-use primitives::{
-	oracle::Key,
-	CurrencyId, ForeignCurrencyId,
-	ForeignCurrencyId::{DOT, KSM},
-	VaultCurrencyPair,
-};
+use primitives::{oracle::Key, CurrencyId, VaultCurrencyPair};
 use serde_json::{map::Map, Value};
 use spacewalk_runtime::{
 	AccountId, AuraConfig, BalancesConfig, FeeConfig, FieldLength, GenesisConfig,
@@ -28,10 +23,6 @@ use spacewalk_runtime::{
 // const STAGING_TELEMETRY_URL: &str = "wss://telemetry.polkadot.io/submit/";
 
 pub type ChainSpec = sc_service::GenericChainSpec<GenesisConfig>;
-
-fn token(currency: ForeignCurrencyId) -> CurrencyId {
-	CurrencyId::XCM(currency)
-}
 
 /// Helper function to generate a crypto pair from seed
 pub fn get_from_seed<TPublic: Public>(seed: &str) -> <TPublic::Pair as Pair>::Public {
@@ -269,8 +260,8 @@ fn testnet_genesis(
 				.iter()
 				.flat_map(|k| {
 					vec![
-						(k.clone(), token(DOT), 1 << 60),
-						(k.clone(), token(KSM), 1 << 60),
+						(k.clone(), CurrencyId::XCM(0), 1 << 60),
+						(k.clone(), CurrencyId::XCM(1), 1 << 60),
 						(k.clone(), CurrencyId::Native, 1 << 60),
 					]
 				})
@@ -280,7 +271,7 @@ fn testnet_genesis(
 			issue_period: DAYS,
 			issue_minimum_transfer_amount: 1000,
 			limit_volume_amount: None,
-			limit_volume_currency_id: token(DOT),
+			limit_volume_currency_id: CurrencyId::XCM(0),
 			current_volume_amount: 0u128,
 			interval_length: (60u32 * 60 * 24),
 			last_interval_index: 0u32,
@@ -289,7 +280,7 @@ fn testnet_genesis(
 			redeem_period: DAYS,
 			redeem_minimum_transfer_amount: 100,
 			limit_volume_amount: None,
-			limit_volume_currency_id: token(DOT),
+			limit_volume_currency_id: CurrencyId::XCM(0),
 			current_volume_amount: 0u128,
 			interval_length: (60u32 * 60 * 24),
 			last_interval_index: 0u32,
@@ -312,7 +303,7 @@ fn testnet_genesis(
 			oracle_keys: vec![
 				// Changing these items means that the integration tests also have to change
 				// because the integration tests insert dummy values for these into the oracle
-				Key::ExchangeRate(CurrencyId::XCM(ForeignCurrencyId::DOT)),
+				Key::ExchangeRate(CurrencyId::XCM(0)),
 				Key::ExchangeRate(CurrencyId::AlphaNum4(
 					*b"USDC",
 					[
@@ -323,26 +314,44 @@ fn testnet_genesis(
 			],
 		},
 		vault_registry: VaultRegistryConfig {
-			minimum_collateral_vault: vec![(token(DOT), 0), (token(KSM), 0)],
+			minimum_collateral_vault: vec![(CurrencyId::XCM(0), 0), (CurrencyId::XCM(1), 0)],
 			punishment_delay: DAYS,
 			secure_collateral_threshold: vec![
-				(default_pair(token(DOT)), FixedU128::checked_from_rational(260, 100).unwrap()),
-				(default_pair(token(KSM)), FixedU128::checked_from_rational(260, 100).unwrap()),
+				(
+					default_pair(CurrencyId::XCM(0)),
+					FixedU128::checked_from_rational(260, 100).unwrap(),
+				),
+				(
+					default_pair(CurrencyId::XCM(1)),
+					FixedU128::checked_from_rational(260, 100).unwrap(),
+				),
 			],
 			/* 150% */
 			premium_redeem_threshold: vec![
-				(default_pair(token(DOT)), FixedU128::checked_from_rational(200, 100).unwrap()),
-				(default_pair(token(KSM)), FixedU128::checked_from_rational(200, 100).unwrap()),
+				(
+					default_pair(CurrencyId::XCM(0)),
+					FixedU128::checked_from_rational(200, 100).unwrap(),
+				),
+				(
+					default_pair(CurrencyId::XCM(1)),
+					FixedU128::checked_from_rational(200, 100).unwrap(),
+				),
 			],
 			/* 135% */
 			liquidation_collateral_threshold: vec![
-				(default_pair(token(DOT)), FixedU128::checked_from_rational(150, 100).unwrap()),
-				(default_pair(token(KSM)), FixedU128::checked_from_rational(150, 100).unwrap()),
+				(
+					default_pair(CurrencyId::XCM(0)),
+					FixedU128::checked_from_rational(150, 100).unwrap(),
+				),
+				(
+					default_pair(CurrencyId::XCM(1)),
+					FixedU128::checked_from_rational(150, 100).unwrap(),
+				),
 			],
 			/* 110% */
 			system_collateral_ceiling: vec![
-				(default_pair(token(DOT)), 60_000 * DOT.one()),
-				(default_pair(token(KSM)), 60_000 * KSM.one()),
+				(default_pair(CurrencyId::XCM(0)), 60_000 * 10u128.pow(12)),
+				(default_pair(CurrencyId::XCM(1)), 60_000 * 10u128.pow(12)),
 			],
 		},
 		fee: FeeConfig {
