@@ -40,20 +40,20 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 	// Storage: Timestamp DidUpdate (r:0 w:1)
 	fn on_initialize() -> Weight {
 		// Minimum execution time: 0 nanoseconds.
-		Weight::from_ref_time(0 as u64)
-			.saturating_add(T::DbWeight::get().writes(2 as u64))
+		Weight::from_ref_time(0u64)
+			.saturating_add(T::DbWeight::get().writes(2u64))
 	}
 	// Storage: Oracle OracleKeys (r:0 w:1)
 	fn update_oracle_keys() -> Weight {
 		// Minimum execution time: 8_000 nanoseconds.
-		Weight::from_ref_time(9_000_000 as u64)
-			.saturating_add(T::DbWeight::get().writes(1 as u64))
+		Weight::from_ref_time(9_000_000u64)
+			.saturating_add(T::DbWeight::get().writes(1u64))
 	}
 	// Storage: Oracle MaxDelay (r:0 w:1)
 	fn set_max_delay() -> Weight {
 		// Minimum execution time: 8_000 nanoseconds.
-		Weight::from_ref_time(8_000_000 as u64)
-			.saturating_add(T::DbWeight::get().writes(1 as u64))
+		Weight::from_ref_time(8_000_000u64)
+			.saturating_add(T::DbWeight::get().writes(1u64))
 	}
 }
 
@@ -63,19 +63,19 @@ impl WeightInfo for () {
 	// Storage: Timestamp DidUpdate (r:0 w:1)
 	fn on_initialize() -> Weight {
 		// Minimum execution time: 0 nanoseconds.
-		Weight::from_ref_time(0 as u64)
-			.saturating_add(RocksDbWeight::get().writes(2 as u64))
+		Weight::from_ref_time(0u64)
+			.saturating_add(RocksDbWeight::get().writes(2u64))
 	}
 	// Storage: Oracle OracleKeys (r:0 w:1)
 	fn update_oracle_keys() -> Weight {
 		// Minimum execution time: 8_000 nanoseconds.
-		Weight::from_ref_time(9_000_000 as u64)
-			.saturating_add(RocksDbWeight::get().writes(1 as u64))
+		Weight::from_ref_time(9_000_000u64)
+			.saturating_add(RocksDbWeight::get().writes(1u64))
 	}
 	// Storage: Oracle MaxDelay (r:0 w:1)
 	fn set_max_delay() -> Weight {
 		// Minimum execution time: 8_000 nanoseconds.
-		Weight::from_ref_time(8_000_000 as u64)
-			.saturating_add(RocksDbWeight::get().writes(1 as u64))
+		Weight::from_ref_time(8_000_000u64)
+			.saturating_add(RocksDbWeight::get().writes(1u64))
 	}
 }
