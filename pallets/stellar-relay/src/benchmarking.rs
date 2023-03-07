@@ -23,17 +23,21 @@ benchmarks! {
 		let validator: ValidatorOf<T> = Validator {
 			name: bounded_vec.clone(),
 			public_key: bounded_vec.clone(),
-			organization_id: T::OrganizationId::default(),
+			organization_id: 0.into(),
 		};
 
-		let validators = vec![validator; 255];
+		let mut validators = vec![validator; 255];
+
+		for (i, validator) in validators.iter_mut().enumerate() {
+			validator.public_key = BoundedVec::<u8, FieldLength>::try_from(vec![i as u8; 128]).unwrap();
+		}
 
 		let organization: OrganizationOf<T> = Organization {
 			id: T::OrganizationId::default(),
 			name: bounded_vec,
 		};
 
-		let organizations = vec![organization; 255];
+		let organizations = vec![organization; 1];
 		let enactment_block_height = T::BlockNumber::default();
 
 		// After calling the extrinsic, the current validators and organizations will be the old ones
