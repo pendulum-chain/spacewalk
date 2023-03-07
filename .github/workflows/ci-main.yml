@@ -28,6 +28,7 @@ jobs:
       - name: Install package (ubuntu-latest)
         if: matrix.os == 'ubuntu-latest'
         run: |
+          echo 'APT::Get::Always-Include-Phased-Updates "false";' | sudo tee /etc/apt/apt.conf.d/99-phased-updates
           sudo apt-get update && sudo apt-get upgrade -y
           sudo apt-get install -y protobuf-compiler libprotobuf-dev
 

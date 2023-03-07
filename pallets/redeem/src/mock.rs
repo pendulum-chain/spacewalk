@@ -28,7 +28,6 @@ pub use currency::{
 	Amount,
 };
 pub use oracle::{CurrencyId, OracleKey};
-pub use primitives::ForeignCurrencyId::*;
 use primitives::{VaultCurrencyPair, VaultId};
 
 use crate as redeem;

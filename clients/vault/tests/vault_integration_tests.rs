@@ -29,7 +29,7 @@ const TIMEOUT: Duration = Duration::from_secs(60);
 
 // Be careful when changing these values because they are used in the parachain genesis config
 // and only for some combination of them, secure collateralization thresholds are set.
-const DEFAULT_TESTING_CURRENCY: CurrencyId = CurrencyId::XCM(ForeignCurrencyId::DOT);
+const DEFAULT_TESTING_CURRENCY: CurrencyId = CurrencyId::XCM(0);
 const DEFAULT_WRAPPED_CURRENCY: CurrencyId = CurrencyId::AlphaNum4(
 	*b"USDC",
 	[

@@ -14,10 +14,12 @@ use subxt::{
 pub use assets::TryFromSymbol;
 pub use error::{Error, SubxtError};
 pub use retry::{notify_retry, RetryPolicy};
+#[cfg(feature = "testing-utils")]
+pub use rpc::SudoPallet;
 pub use rpc::{
 	CollateralBalancesPallet, IssuePallet, OraclePallet, RedeemPallet, ReplacePallet,
-	SecurityPallet, SpacewalkParachain, StellarRelayPallet, SudoPallet, UtilFuncs,
-	VaultRegistryPallet, DEFAULT_SPEC_NAME, SS58_PREFIX,
+	SecurityPallet, SpacewalkParachain, StellarRelayPallet, UtilFuncs, VaultRegistryPallet,
+	DEFAULT_SPEC_NAME, SS58_PREFIX,
 };
 pub use shutdown::{ShutdownReceiver, ShutdownSender};
 pub use types::*;
@@ -48,6 +50,15 @@ pub const SECURITY_MODULE: &str = "Security";
 pub const SYSTEM_MODULE: &str = "System";
 
 pub const STABLE_PARACHAIN_CONFIRMATIONS: &str = "StableParachainConfirmations";
+
+// Sanity check: Make sure that at least one feature is selected.
+#[cfg(not(any(
+	feature = "standalone-metadata",
+	feature = "parachain-metadata-foucoco",
+	feature = "parachain-metadata-pendulum",
+	feature = "parachain-metadata-amplitude"
+)))]
+compile_error!("You need to select at least one of the metadata features");
 
 // All of the parachain features use the same metadata (from Foucoco) for now.
 // We can change this once the spacewalk pallets were added to the runtimes of the other chains as

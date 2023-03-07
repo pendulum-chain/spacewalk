@@ -11,7 +11,7 @@ fn mine_block() {
 #[test]
 fn feed_values_succeeds() {
 	run_test(|| {
-		let key = OracleKey::ExchangeRate(CurrencyId::XCM(DOT));
+		let key = OracleKey::ExchangeRate(CurrencyId::XCM(0));
 		let rate = FixedU128::checked_from_rational(100, 1).unwrap();
 
 		let result = Oracle::_feed_values(3, vec![(key.clone(), rate)]);
@@ -62,11 +62,11 @@ mod oracle_offline_detection {
 			Oracle::get_max_delay.mock_safe(move || MockResult::Return(10));
 
 			set_time(0);
-			feed_value(CurrencyId::XCM(DOT), OracleA);
+			feed_value(CurrencyId::XCM(0), OracleA);
 			assert_eq!(SecurityPallet::parachain_status(), StatusCode::Running);
 
 			set_time(5);
-			feed_value(CurrencyId::XCM(KSM), OracleA);
+			feed_value(CurrencyId::XCM(1), OracleA);
 
 			// DOT expires after block 10
 			set_time(10);
@@ -75,11 +75,11 @@ mod oracle_offline_detection {
 			assert_eq!(SecurityPallet::parachain_status(), StatusCode::Error);
 
 			// feeding KSM makes no difference
-			feed_value(CurrencyId::XCM(KSM), OracleA);
+			feed_value(CurrencyId::XCM(1), OracleA);
 			assert_eq!(SecurityPallet::parachain_status(), StatusCode::Error);
 
 			// feeding DOT makes it running again
-			feed_value_with_value(CurrencyId::XCM(DOT), OracleA, 7);
+			feed_value_with_value(CurrencyId::XCM(0), OracleA, 7);
 			set_time(15);
 			assert_eq!(SecurityPallet::parachain_status(), StatusCode::Running);
 
@@ -92,9 +92,9 @@ mod oracle_offline_detection {
 			// check that status remains ERROR until BOTH currencies have been updated
 			set_time(100);
 			assert_eq!(SecurityPallet::parachain_status(), StatusCode::Error);
-			feed_value(CurrencyId::XCM(DOT), OracleA);
+			feed_value(CurrencyId::XCM(0), OracleA);
 			assert_eq!(SecurityPallet::parachain_status(), StatusCode::Error);
-			feed_value(CurrencyId::XCM(KSM), OracleA);
+			feed_value(CurrencyId::XCM(1), OracleA);
 			assert_eq!(SecurityPallet::parachain_status(), StatusCode::Running);
 		});
 	}
@@ -105,14 +105,14 @@ mod oracle_offline_detection {
 			Oracle::get_max_delay.mock_safe(move || MockResult::Return(10));
 
 			set_time(0);
-			feed_value(CurrencyId::XCM(DOT), OracleA);
+			feed_value(CurrencyId::XCM(0), OracleA);
 			assert_eq!(SecurityPallet::parachain_status(), StatusCode::Running);
 
 			set_time(5);
-			feed_value(CurrencyId::XCM(KSM), OracleA);
+			feed_value(CurrencyId::XCM(1), OracleA);
 
 			set_time(7);
-			feed_value(CurrencyId::XCM(DOT), OracleB);
+			feed_value(CurrencyId::XCM(0), OracleB);
 
 			// OracleA's DOT submission expires at 10, but OracleB's only at 17. However, KSM
 			// expires at 15:
@@ -122,7 +122,7 @@ mod oracle_offline_detection {
 			assert_eq!(SecurityPallet::parachain_status(), StatusCode::Error);
 
 			// Feeding KSM brings it back online
-			feed_value(CurrencyId::XCM(KSM), OracleA);
+			feed_value(CurrencyId::XCM(1), OracleA);
 			assert_eq!(SecurityPallet::parachain_status(), StatusCode::Running);
 
 			// check that status is set of ERROR when both oracle's DOT submission expired
@@ -132,7 +132,7 @@ mod oracle_offline_detection {
 			assert_eq!(SecurityPallet::parachain_status(), StatusCode::Error);
 
 			// A DOT submission by any oracle brings it back online
-			feed_value(CurrencyId::XCM(DOT), OracleA);
+			feed_value(CurrencyId::XCM(0), OracleA);
 			assert_eq!(SecurityPallet::parachain_status(), StatusCode::Running);
 		});
 	}
@@ -141,14 +141,14 @@ mod oracle_offline_detection {
 #[test]
 fn getting_exchange_rate_fails_with_missing_exchange_rate() {
 	run_test(|| {
-		let key = OracleKey::ExchangeRate(CurrencyId::XCM(DOT));
+		let key = OracleKey::ExchangeRate(CurrencyId::XCM(0));
 		assert_err!(Oracle::get_price(key), TestError::MissingExchangeRate);
 		assert_err!(
-			Oracle::wrapped_to_collateral(0, CurrencyId::XCM(DOT)),
+			Oracle::wrapped_to_collateral(0, CurrencyId::XCM(0)),
 			TestError::MissingExchangeRate
 		);
 		assert_err!(
-			Oracle::collateral_to_wrapped(0, CurrencyId::XCM(DOT)),
+			Oracle::collateral_to_wrapped(0, CurrencyId::XCM(0)),
 			TestError::MissingExchangeRate
 		);
 	});
@@ -161,7 +161,7 @@ fn wrapped_to_collateral() {
 			.mock_safe(|_| MockResult::Return(Ok(FixedU128::checked_from_rational(2, 1).unwrap())));
 		let test_cases = [(0, 0), (2, 4), (10, 20)];
 		for (input, expected) in test_cases.iter() {
-			let result = Oracle::wrapped_to_collateral(*input, CurrencyId::XCM(DOT));
+			let result = Oracle::wrapped_to_collateral(*input, CurrencyId::XCM(0));
 			assert_ok!(result, *expected);
 		}
 	});
@@ -174,7 +174,7 @@ fn collateral_to_wrapped() {
 			.mock_safe(|_| MockResult::Return(Ok(FixedU128::checked_from_rational(2, 1).unwrap())));
 		let test_cases = [(0, 0), (4, 2), (20, 10), (21, 10)];
 		for (input, expected) in test_cases.iter() {
-			let result = Oracle::collateral_to_wrapped(*input, CurrencyId::XCM(DOT));
+			let result = Oracle::collateral_to_wrapped(*input, CurrencyId::XCM(0));
 			assert_ok!(result, *expected);
 		}
 	});
@@ -187,7 +187,7 @@ fn test_is_invalidated() {
 		Oracle::get_current_time.mock_safe(move || MockResult::Return(now));
 		Oracle::get_max_delay.mock_safe(|| MockResult::Return(3600));
 
-		let key = OracleKey::ExchangeRate(CurrencyId::XCM(DOT));
+		let key = OracleKey::ExchangeRate(CurrencyId::XCM(0));
 		let rate = FixedU128::checked_from_rational(100, 1).unwrap();
 
 		assert_ok!(Oracle::_feed_values(3, vec![(key.clone(), rate)]));

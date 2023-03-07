@@ -1,6 +1,7 @@
 use std::{future::Future, ops::Range, sync::Arc, time::Duration};
 
 use async_trait::async_trait;
+#[cfg(any(feature = "standalone-metadata", feature = "parachain-metadata-foucoco"))]
 use codec::Encode;
 use futures::{future::join_all, stream::StreamExt, FutureExt, SinkExt};
 use jsonrpsee::core::{client::Client, JsonValue};
@@ -17,6 +18,8 @@ use subxt::{
 use tokio::{sync::RwLock, time::timeout};
 
 use module_oracle_rpc_runtime_api::BalanceWrapper;
+
+#[cfg(feature = "testing-utils")]
 use primitives::Hash;
 
 use crate::{
@@ -27,6 +30,10 @@ use crate::{
 };
 
 pub type UnsignedFixedPoint = FixedU128;
+
+// sanity check to be sure that testing-utils is not accidentally selected
+#[cfg(all(any(test, feature = "testing-utils"), not(feature = "standalone-metadata")))]
+compile_error!("Tests are only supported for the standalone-metadata");
 
 cfg_if::cfg_if! {
 	if #[cfg(feature = "standalone-metadata")] {
@@ -381,7 +388,7 @@ impl SpacewalkParachain {
 	pub async fn get_invalid_tx_error(&self, recipient: AccountId) -> Error {
 		let call = metadata::tx().tokens().transfer(
 			subxt::ext::sp_runtime::MultiAddress::Id(recipient),
-			CurrencyId::XCM(ForeignCurrencyId::DOT),
+			CurrencyId::XCM(0),
 			100,
 		);
 		let nonce = self.get_fresh_nonce().await;
@@ -413,7 +420,7 @@ impl SpacewalkParachain {
 	pub async fn get_too_low_priority_error(&self, recipient: AccountId) -> Error {
 		let call = metadata::tx().tokens().transfer(
 			subxt::ext::sp_runtime::MultiAddress::Id(recipient),
-			CurrencyId::XCM(ForeignCurrencyId::DOT),
+			CurrencyId::XCM(0),
 			100,
 		);
 
@@ -846,6 +853,7 @@ impl OraclePallet for SpacewalkParachain {
 
 		let mut coin_infos = vec![];
 		for ((blockchain, symbol), price) in values {
+			log::info!("Setting price for {:?}/{:?} to {:?}", blockchain, symbol, price);
 			let coin_info = CoinInfo {
 				symbol: symbol.clone(),
 				name: vec![],
@@ -1394,7 +1402,7 @@ pub trait SudoPallet {
 	async fn set_replace_period(&self, period: u32) -> Result<(), Error>;
 }
 
-#[cfg(feature = "standalone-metadata")]
+#[cfg(any(feature = "standalone-metadata", feature = "parachain-metadata-foucoco"))]
 #[async_trait]
 impl SudoPallet for SpacewalkParachain {
 	async fn sudo(&self, call: EncodedCall) -> Result<(), Error> {
