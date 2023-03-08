@@ -1,7 +1,6 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 #![allow(non_upper_case_globals)]
 
-use bstringify::bstringify;
 use codec::{Decode, Encode, MaxEncodedLen};
 use frame_support::error::LookupError;
 use scale_info::TypeInfo;
@@ -13,7 +12,7 @@ pub use sp_runtime::OpaqueExtrinsic as UncheckedExtrinsic;
 use sp_runtime::{
 	generic,
 	traits::{BlakeTwo256, Convert, IdentifyAccount, StaticLookup, Verify},
-	FixedI128, FixedPointNumber, FixedU128, MultiSignature, MultiSigner, RuntimeDebug,
+	FixedI128, FixedPointNumber, FixedU128, MultiSignature, MultiSigner,
 };
 use sp_std::{
 	convert::{From, TryFrom, TryInto},
@@ -381,126 +380,14 @@ pub trait CurrencyInfo {
 	fn decimals(&self) -> u8;
 }
 
-macro_rules! create_currency_id {
-    ($(#[$meta:meta])*
-	$vis:vis enum ForeignCurrencyId {
-        $($(#[$vmeta:meta])* $symbol:ident($name:expr, $deci:literal) = $val:literal,)*
-    }) => {
-		$(#[$meta])*
-		$vis enum ForeignCurrencyId {
-			$($(#[$vmeta])* $symbol = $val,)*
-		}
-
-        $(pub const $symbol: ForeignCurrencyId = ForeignCurrencyId::$symbol;)*
-
-        impl TryFrom<u8> for ForeignCurrencyId {
-			type Error = ();
-
-			fn try_from(v: u8) -> Result<Self, Self::Error> {
-				match v {
-					$($val => Ok(ForeignCurrencyId::$symbol),)*
-					_ => Err(()),
-				}
-			}
-		}
-
-		impl TryFrom<u64> for ForeignCurrencyId {
-			type Error = ();
-
-			fn try_from(v: u64) -> Result<Self, Self::Error> {
-				let v_u8:u8 = u8::try_from(v).map_err(|_|())?;
-				v_u8.try_into()
-			}
-		}
-
-		impl Into<u8> for ForeignCurrencyId {
-			fn into(self) -> u8 {
-				match self {
-					$(ForeignCurrencyId::$symbol => ($val),)*
-				}
-			}
-		}
-
-        impl ForeignCurrencyId {
-			pub fn get_info() -> Vec<(&'static str, u32)> {
-				vec![
-					$((stringify!($symbol), $deci),)*
-				]
-			}
-
-            pub const fn one(&self) -> Balance {
-                10u128.pow(self.decimals() as u32)
-            }
-
-            const fn decimals(&self) -> u8 {
-				match self {
-					$(ForeignCurrencyId::$symbol => $deci,)*
-				}
-			}
-		}
-
-		impl CurrencyInfo for ForeignCurrencyId {
-			fn name(&self) -> &str {
-				match self {
-					$(ForeignCurrencyId::$symbol => $name,)*
-				}
-			}
-			fn symbol(&self) -> &str {
-				match self {
-					$(ForeignCurrencyId::$symbol => stringify!($symbol),)*
-				}
-			}
-			fn decimals(&self) -> u8 {
-				self.decimals()
-			}
-		}
-
-		impl TryFrom<Vec<u8>> for ForeignCurrencyId {
-			type Error = ();
-			fn try_from(v: Vec<u8>) -> Result<ForeignCurrencyId, ()> {
-				match v.as_slice() {
-					$(bstringify!($symbol) => Ok(ForeignCurrencyId::$symbol),)*
-					_ => Err(()),
-				}
-			}
-		}
-    }
-}
-
-create_currency_id! {
-	#[derive(Encode, Decode, Eq, Hash, PartialEq, Copy, Clone, RuntimeDebug, PartialOrd, Ord, TypeInfo, MaxEncodedLen)]
-	#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
-	#[repr(u8)]
-	pub enum ForeignCurrencyId {
-		KSM("Kusama", 10) = 0,
-		KAR("Karura",10) = 1,
-		AUSD("Acala Karura",10) = 2,
-		BNC("Bifrost",10)= 3,
-		VsKSM("Kusama Bifrost",10) = 4,
-		HKO("Heiko", 10) = 5,
-		MOVR("Moonriver", 10) = 6,
-		SDN("Shiden", 10) = 7,
-		KINT("Kintsugi", 10) = 8,
-		KBTC("Kintsugi BTC", 10) = 9,
-		GENS("Genshiro", 10) = 10,
-		XOR("Sora", 10) = 11,
-		TEER("Integritee", 10) = 12,
-		KILT("Kilt", 10) = 13,
-		PHA("Phala", 10) = 14,
-		ZTG("Zeitgeist", 10) = 15,
-		USD("Statemine", 10) = 16,
-		// added lastly
-		DOT("Polkadot", 10) = 20,
-	}
-}
-
 #[derive(
 	Encode, Decode, Eq, Hash, PartialEq, Copy, Clone, PartialOrd, Ord, TypeInfo, MaxEncodedLen,
 )]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 #[cfg_attr(feature = "std", serde(rename_all = "camelCase"))]
+#[repr(u8)]
 pub enum Asset {
-	StellarNative,
+	StellarNative = 0,
 	AlphaNum4 { code: Bytes4, issuer: AssetIssuer },
 	AlphaNum12 { code: Bytes12, issuer: AssetIssuer },
 }
@@ -538,9 +425,10 @@ impl Asset {
 )]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 #[cfg_attr(feature = "std", serde(rename_all = "camelCase"))]
+#[repr(u8)]
 pub enum CurrencyId {
-	XCM(ForeignCurrencyId),
-	Native,
+	Native = 0,
+	XCM(u8),
 	Stellar(Asset),
 }
 

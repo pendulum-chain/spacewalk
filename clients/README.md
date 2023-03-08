@@ -23,31 +23,25 @@ Be careful with the asset pair you use, as using arbitrary asset pairs will resu
 register itself.
 This is because some thresholds for the vault are set based on the currencies specified in the runtime and these
 thresholds are not set for any currency.
-The auto-register feature takes a string argument with the syntax of `<collateral-currency>,<wrapped-currency-issuer>:<wrapped-currency-code>,<collateral-amount>`.
+The auto-register feature takes a string argument with the syntax
+of `<collateral-currency>,<wrapped-currency-issuer>:<wrapped-currency-code>,<collateral-amount>`.
+The `collateral-currency` is the currency used as collateral for the vault and assumed to be an XCM currency, with the
+number indicating its index for XCM that is configured per runtime.
 
 ```
 # Run the vault with auto-registering for the USDC asset on testnet (assuming GAKNDFRRWA3RPWNLTI3G4EBSD3RGNZZOY5WKWYMQ6CQTG3KIEKPYWAYC as the issuer)
-cargo run --bin vault --features standalone-metadata  -- --keyring alice --stellar-vault-secret-key-filepath <secret_key_file_path> --auto-register "DOT,GAKNDFRRWA3RPWNLTI3G4EBSD3RGNZZOY5WKWYMQ6CQTG3KIEKPYWAYC:USDC,1000000"
+cargo run --bin vault --features standalone-metadata  -- --keyring alice --stellar-vault-secret-key-filepath <secret_key_file_path> --auto-register "0,GAKNDFRRWA3RPWNLTI3G4EBSD3RGNZZOY5WKWYMQ6CQTG3KIEKPYWAYC:USDC,1000000"
 # Run the vault with auto-registering for the USDC asset on mainnet (assuming the issuer is centre.io)
-cargo run --bin vault --features standalone-metadata  -- --keyring alice --stellar-vault-secret-key-filepath <secret_key_file_path> --auto-register "DOT,GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN:USDC,1000000"
+cargo run --bin vault --features standalone-metadata  -- --keyring alice --stellar-vault-secret-key-filepath <secret_key_file_path> --auto-register "0,GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN:USDC,1000000"
 ```
-An example of the secret key file path is found [here](./secret_key).  
 
-
+An example of the secret key file path is found [here](./secret_key).
 
 To run the vault with a parachain (e.g. Pendulum) you need to specify the URL, so use:
+
 ```
 cargo run --bin vault --features parachain-metadata -- --keyring alice --spacewalk-parachain-url ws://localhost:8844 --stellar-vault-secret-key SB6WHKIU2HGVBRNKNOEOQUY4GFC4ZLG5XPGWLEAHTIZXBXXYACC76VSQ
 ```
-
-If you encounter subxt errors when doing RPC api calls, you can change the address types used when compiling the client
-by passing the `multi-address` feature:
-
-```
-cargo run --bin vault --features "parachain-metadata multi-address" -- --keyring alice --spacewalk-parachain-url ws://localhost:8844 --stellar-vault-secret-key SB6WHKIU2HGVBRNKNOEOQUY4GFC4ZLG5XPGWLEAHTIZXBXXYACC76VSQ
-```
-
-If this still does not fix your issue, try changing the types in `runtime/src/types.rs` manually.
 
 ## Tests
 
@@ -135,11 +129,14 @@ When encountering an error with 'validate_transaction() failed' it is likely tha
 correctly.
 
 ### Trait derivations
+
 It might happen that you encounter errors complaining about missing trait derivations.
 There are different ways to derive traits for the automatically generated types.
 You can either implement the traits manually (see the modules in `runtime/src/rpc.rs`) or use the respective
 statements in the `#[subxt::subxt]` macro.
-More documentation can be found [here](https://docs.rs/subxt-macro/latest/subxt_macro/#adding-derives-for-specific-types).
+More documentation can be
+found [here](https://docs.rs/subxt-macro/latest/subxt_macro/#adding-derives-for-specific-types).
+
 ```
 #[subxt::subxt(
     runtime_metadata_path = "polkadot_metadata.scale",
@@ -150,6 +147,8 @@ More documentation can be found [here](https://docs.rs/subxt-macro/latest/subxt_
 ```
 
 ### Type substitutions
-When the compiler complains about mismatched types although the types seem to be the same, you might have to use type substitutions.
+
+When the compiler complains about mismatched types although the types seem to be the same, you might have to use type
+substitutions.
 This is done by adding the `#[subxt(substitute_type = "some type")]` attribute to the metadata module.
 More documentation can be found [here](https://docs.rs/subxt-macro/latest/subxt_macro/#substituting-types).

@@ -4,7 +4,7 @@ use std::{sync::Arc, time::Duration};
 
 use frame_support::assert_ok;
 use futures::{future::Either, pin_mut, Future, FutureExt, SinkExt, StreamExt};
-use oracle::dia::{DiaOracleKeyConvertor, NativeCurrencyKey};
+use oracle::dia::{DiaOracleKeyConvertor, NativeCurrencyKey, XCMCurrencyConversion};
 use sp_runtime::traits::Convert;
 use subxt::{
 	events::StaticEvent as Event,
@@ -34,6 +34,23 @@ impl NativeCurrencyKey for MockValue {
 
 	fn native_chain() -> Vec<u8> {
 		"TestChain".as_bytes().to_vec()
+	}
+}
+
+impl XCMCurrencyConversion for MockValue {
+	fn convert_to_dia_currency_id(token_symbol: u8) -> Option<(Vec<u8>, Vec<u8>)> {
+		// We assume that the blockchain is always 0 and the symbol represents the token symbol
+		let blockchain = vec![0u8];
+		let symbol = vec![token_symbol];
+		Some((blockchain, symbol))
+	}
+
+	fn convert_from_dia_currency_id(blockchain: Vec<u8>, symbol: Vec<u8>) -> Option<u8> {
+		// We assume that the blockchain is always 0 and the symbol represents the token symbol
+		if blockchain.len() != 1 && blockchain[0] != 0 || symbol.len() != 1 {
+			return None
+		}
+		return Some(symbol[0])
 	}
 }
 

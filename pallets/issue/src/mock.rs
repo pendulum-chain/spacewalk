@@ -26,7 +26,7 @@ pub use currency::{
 	},
 	Amount,
 };
-pub use primitives::{CurrencyId, ForeignCurrencyId::*};
+pub use primitives::CurrencyId;
 use primitives::{VaultCurrencyPair, VaultId};
 
 use crate as issue;

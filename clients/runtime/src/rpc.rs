@@ -1,6 +1,7 @@
-use std::{future::Future, ops::RangeInclusive, sync::Arc, time::Duration};
+use std::{future::Future, ops::Range, sync::Arc, time::Duration};
 
 use async_trait::async_trait;
+#[cfg(any(feature = "standalone-metadata", feature = "parachain-metadata-foucoco"))]
 use codec::Encode;
 use futures::{future::join_all, stream::StreamExt, FutureExt, SinkExt};
 use jsonrpsee::core::{client::Client, JsonValue};
@@ -17,6 +18,8 @@ use subxt::{
 use tokio::{sync::RwLock, time::timeout};
 
 use module_oracle_rpc_runtime_api::BalanceWrapper;
+
+#[cfg(feature = "testing-utils")]
 use primitives::Hash;
 
 use crate::{
@@ -28,17 +31,28 @@ use crate::{
 
 pub type UnsignedFixedPoint = FixedU128;
 
+// sanity check to be sure that testing-utils is not accidentally selected
+#[cfg(all(any(test, feature = "testing-utils"), not(feature = "standalone-metadata")))]
+compile_error!("Tests are only supported for the standalone-metadata");
+
 cfg_if::cfg_if! {
 	if #[cfg(feature = "standalone-metadata")] {
-		const DEFAULT_SPEC_VERSION: RangeInclusive<u32> = 1..=1;
+		const DEFAULT_SPEC_VERSION: Range<u32> = 1..100;
 		pub const DEFAULT_SPEC_NAME: &str = "spacewalk-standalone";
 		// The prefix for the testchain is 42
 		pub const SS58_PREFIX: u16 = 42;
-	} else if #[cfg(feature = "parachain-metadata")] {
-		const DEFAULT_SPEC_VERSION: RangeInclusive<u32> = 1..=1;
-		pub const DEFAULT_SPEC_NAME: &str = "pendulum-parachain";
-		// The prefix for pendulum is 56
+	} else if #[cfg(feature = "parachain-metadata-pendulum")] {
+		const DEFAULT_SPEC_VERSION: Range<u32> = 1..100;
+		pub const DEFAULT_SPEC_NAME: &str = "pendulum";
 		pub const SS58_PREFIX: u16 = 56;
+	} else if #[cfg(feature = "parachain-metadata-amplitude")] {
+		const DEFAULT_SPEC_VERSION: Range<u32> = 1..1000;
+		pub const DEFAULT_SPEC_NAME: &str = "amplitude";
+		pub const SS58_PREFIX: u16 = 57;
+	} else if #[cfg(feature = "parachain-metadata-foucoco")] {
+		const DEFAULT_SPEC_VERSION: Range<u32> = 1..1000;
+		pub const DEFAULT_SPEC_NAME: &str = "amplitude";
+		pub const SS58_PREFIX: u16 = 57;
 	}
 }
 
@@ -86,8 +100,8 @@ impl SpacewalkParachain {
 			log::info!("transaction_version={}", runtime_version.transaction_version);
 		} else {
 			return Err(Error::InvalidSpecVersion(
-				*DEFAULT_SPEC_VERSION.start(),
-				*DEFAULT_SPEC_VERSION.end(),
+				DEFAULT_SPEC_VERSION.start,
+				DEFAULT_SPEC_VERSION.end,
 				runtime_version.spec_version,
 			))
 		}
@@ -374,7 +388,7 @@ impl SpacewalkParachain {
 	pub async fn get_invalid_tx_error(&self, recipient: AccountId) -> Error {
 		let call = metadata::tx().tokens().transfer(
 			subxt::ext::sp_runtime::MultiAddress::Id(recipient),
-			CurrencyId::XCM(ForeignCurrencyId::DOT),
+			CurrencyId::XCM(0),
 			100,
 		);
 		let nonce = self.get_fresh_nonce().await;
@@ -406,7 +420,7 @@ impl SpacewalkParachain {
 	pub async fn get_too_low_priority_error(&self, recipient: AccountId) -> Error {
 		let call = metadata::tx().tokens().transfer(
 			subxt::ext::sp_runtime::MultiAddress::Id(recipient),
-			CurrencyId::XCM(ForeignCurrencyId::DOT),
+			CurrencyId::XCM(0),
 			100,
 		);
 
@@ -839,6 +853,7 @@ impl OraclePallet for SpacewalkParachain {
 
 		let mut coin_infos = vec![];
 		for ((blockchain, symbol), price) in values {
+			log::info!("Setting price for {:?}/{:?} to {:?}", blockchain, symbol, price);
 			let coin_info = CoinInfo {
 				symbol: symbol.clone(),
 				name: vec![],
@@ -1371,6 +1386,7 @@ impl StellarRelayPallet for SpacewalkParachain {
 	}
 }
 
+#[cfg(any(feature = "standalone-metadata", feature = "parachain-metadata-foucoco"))]
 #[async_trait]
 pub trait SudoPallet {
 	async fn sudo(&self, call: EncodedCall) -> Result<(), Error>;
@@ -1386,7 +1402,7 @@ pub trait SudoPallet {
 	async fn set_replace_period(&self, period: u32) -> Result<(), Error>;
 }
 
-#[cfg(feature = "standalone-metadata")]
+#[cfg(any(feature = "standalone-metadata", feature = "parachain-metadata-foucoco"))]
 #[async_trait]
 impl SudoPallet for SpacewalkParachain {
 	async fn sudo(&self, call: EncodedCall) -> Result<(), Error> {

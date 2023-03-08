@@ -43,10 +43,10 @@ use currency::Amount;
 pub use issue::{Event as IssueEvent, IssueRequest};
 pub use module_oracle_rpc_runtime_api::BalanceWrapper;
 pub use nomination::Event as NominationEvent;
-use oracle::dia::{DiaOracleAdapter, NativeCurrencyKey};
+use oracle::dia::{DiaOracleAdapter, NativeCurrencyKey, XCMCurrencyConversion};
 pub use primitives::{
-	self, AccountId, Balance, BlockNumber, CurrencyId, ForeignCurrencyId, Hash, Moment, Nonce,
-	Signature, SignedFixedPoint, SignedInner, UnsignedFixedPoint, UnsignedInner,
+	self, AccountId, Balance, BlockNumber, CurrencyId, Hash, Moment, Nonce, Signature,
+	SignedFixedPoint, SignedInner, UnsignedFixedPoint, UnsignedInner,
 };
 pub use redeem::{Event as RedeemEvent, RedeemRequest};
 pub use replace::{Event as ReplaceEvent, ReplaceRequest};
@@ -201,7 +201,7 @@ impl pallet_timestamp::Config for Runtime {
 }
 
 const NATIVE_CURRENCY_ID: CurrencyId = CurrencyId::Native;
-const PARENT_CURRENCY_ID: CurrencyId = CurrencyId::XCM(ForeignCurrencyId::DOT);
+const PARENT_CURRENCY_ID: CurrencyId = CurrencyId::XCM(0);
 // For mainnet USDC issued by centre.io
 // const WRAPPED_CURRENCY_ID: CurrencyId = CurrencyId::AlphaNum4 {
 // 	code: *b"USDC",
@@ -473,6 +473,25 @@ impl NativeCurrencyKey for SpacewalkNativeCurrencyKey {
 	}
 }
 
+// It's important that this is implemented the same way as the MockOracleKeyConvertor
+// because this is used in the benchmark_utils::DataCollector when feeding prices
+impl XCMCurrencyConversion for SpacewalkNativeCurrencyKey {
+	fn convert_to_dia_currency_id(token_symbol: u8) -> Option<(Vec<u8>, Vec<u8>)> {
+		// We assume that the blockchain is always 0 and the symbol represents the token symbol
+		let blockchain = vec![0u8];
+		let symbol = vec![token_symbol];
+		Some((blockchain, symbol))
+	}
+
+	fn convert_from_dia_currency_id(blockchain: Vec<u8>, symbol: Vec<u8>) -> Option<u8> {
+		// We assume that the blockchain is always 0 and the symbol represents the token symbol
+		if blockchain.len() != 1 && blockchain[0] != 0 || symbol.len() != 1 {
+			return None
+		}
+		return Some(symbol[0])
+	}
+}
+
 cfg_if::cfg_if! {
 	 if #[cfg(feature = "testing-utils")] {
 		type DataProviderImpl = DiaOracleAdapter<
@@ -493,6 +512,8 @@ cfg_if::cfg_if! {
 			benchmark_utils::MockConvertMoment,
 		>;
 	} else {
+		// This implementation will be used when running the testchain locally
+		// as well as for the **vault integration tests**
 		type DataProviderImpl = DiaOracleAdapter<
 			DiaOracleModule,
 			UnsignedFixedPoint,

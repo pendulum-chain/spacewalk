@@ -1,7 +1,7 @@
 pub use subxt::ext::sp_core::sr25519::Pair as KeyPair;
 
 pub use metadata_aliases::*;
-pub use primitives::{CurrencyId, ForeignCurrencyId};
+pub use primitives::CurrencyId;
 
 use crate::{metadata, Config, SpacewalkRuntime, SS58_PREFIX};
 
@@ -98,8 +98,21 @@ mod metadata_aliases {
 
 	pub type IssueRequestsMap = HashMap<IssueId, SpacewalkIssueRequest>;
 
-	#[cfg(feature = "standalone-metadata")]
-	pub type EncodedCall = metadata::runtime_types::spacewalk_runtime_standalone::RuntimeCall;
+	cfg_if::cfg_if! {
+		if #[cfg(feature = "standalone-metadata")] {
+			pub type EncodedCall = metadata::runtime_types::spacewalk_runtime_standalone::RuntimeCall;
+		} else if #[cfg(feature = "parachain-metadata-pendulum")] {
+			pub type EncodedCall = metadata::runtime_types::foucoco_runtime::RuntimeCall;
+			// TODO Eventually change to
+			// pub type EncodedCall = metadata::runtime_types::pendulum_runtime::RuntimeCall;
+		} else if #[cfg(feature = "parachain-metadata-amplitude")] {
+			pub type EncodedCall = metadata::runtime_types::foucoco_runtime::RuntimeCall;
+			// TODO Eventually change to
+			// pub type EncodedCall = metadata::runtime_types::amplitude_runtime::RuntimeCall;
+		} else if #[cfg(feature = "parachain-metadata-foucoco")] {
+			pub type EncodedCall = metadata::runtime_types::foucoco_runtime::RuntimeCall;
+		}
+	}
 }
 
 pub trait PrettyPrint {

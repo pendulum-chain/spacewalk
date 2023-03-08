@@ -91,6 +91,7 @@ pub mod pallet {
 	pub enum Event<T: Config> {
 		AggregateUpdated { values: Vec<(OracleKey, T::UnsignedFixedPoint)> },
 		OracleKeysUpdated { oracle_keys: Vec<OracleKey> },
+		MaxDelayUpdated { max_delay: T::Moment },
 	}
 
 	#[pallet::error]
@@ -168,6 +169,21 @@ pub mod pallet {
 			ensure_root(origin)?;
 			<OracleKeys<T>>::put(oracle_keys.clone());
 			Self::deposit_event(Event::OracleKeysUpdated { oracle_keys });
+			Ok(())
+		}
+
+		/// Set the maximum delay (in milliseconds) for a reported value to be used
+		///
+		/// # Arguments
+		/// * `new_max_delay` - new max delay in milliseconds
+		#[pallet::call_index(3)]
+		#[pallet::weight(<T as Config>::WeightInfo::set_max_delay())]
+		#[transactional]
+		pub fn set_max_delay(origin: OriginFor<T>, new_max_delay: T::Moment) -> DispatchResult {
+			ensure_root(origin)?;
+			<MaxDelay<T>>::put(new_max_delay);
+
+			Self::deposit_event(Event::MaxDelayUpdated { max_delay: new_max_delay });
 			Ok(())
 		}
 	}
