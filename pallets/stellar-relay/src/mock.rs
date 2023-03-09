@@ -65,6 +65,7 @@ impl system::Config for Test {
 parameter_types! {
 	pub const OrganizationLimit: u32 = 255;
 	pub const ValidatorLimit: u32 = 255;
+	pub const IsPublicNetwork: bool = false;
 }
 
 pub type OrganizationId = u128;
@@ -74,6 +75,7 @@ impl pallet_spacewalk_relay::Config for Test {
 	type OrganizationId = OrganizationId;
 	type OrganizationLimit = OrganizationLimit;
 	type ValidatorLimit = ValidatorLimit;
+	type IsPublicNetwork = ();
 	type WeightInfo = ();
 }
 
@@ -187,7 +189,6 @@ impl ExtBuilder {
 			old_organizations: vec![],
 			validators,
 			organizations,
-			is_public_network: true,
 			enactment_block_height: 0,
 			phantom: Default::default(),
 		}

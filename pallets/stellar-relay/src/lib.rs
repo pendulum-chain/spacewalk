@@ -79,6 +79,9 @@ pub mod pallet {
 		#[pallet::constant]
 		type ValidatorLimit: Get<u32>;
 
+		#[pallet::constant]
+		type IsPublicNetwork: Get<bool>;
+
 		type WeightInfo: WeightInfo;
 	}
 
@@ -140,10 +143,6 @@ pub mod pallet {
 		StorageValue<_, BoundedVec<ValidatorOf<T>, T::ValidatorLimit>, ValueQuery>;
 
 	#[pallet::storage]
-	#[pallet::getter(fn is_public_network)]
-	pub type IsPublicNetwork<T: Config> = StorageValue<_, bool, ValueQuery>;
-
-	#[pallet::storage]
 	#[pallet::getter(fn new_validators_enactment_block_height)]
 	pub type NewValidatorsEnactmentBlockHeight<T: Config> =
 		StorageValue<_, T::BlockNumber, ValueQuery>;
@@ -154,7 +153,6 @@ pub mod pallet {
 		pub old_organizations: Vec<OrganizationOf<T>>,
 		pub validators: Vec<ValidatorOf<T>>,
 		pub organizations: Vec<OrganizationOf<T>>,
-		pub is_public_network: bool,
 		pub enactment_block_height: T::BlockNumber,
 		pub phantom: PhantomData<T>,
 	}
@@ -372,7 +370,6 @@ pub mod pallet {
 				old_validators,
 				validators,
 				organizations,
-				is_public_network: true,
 				enactment_block_height,
 				phantom: Default::default(),
 			}
@@ -406,7 +403,6 @@ pub mod pallet {
 			assert!(organization_vec.is_ok());
 			Organizations::<T>::put(organization_vec.unwrap());
 
-			IsPublicNetwork::<T>::put(self.is_public_network);
 			NewValidatorsEnactmentBlockHeight::<T>::put(self.enactment_block_height);
 		}
 	}
@@ -497,7 +493,7 @@ pub mod pallet {
 			transaction_set: &TransactionSet,
 		) -> Result<(), Error<T>> {
 			let network: &Network =
-				if Self::is_public_network() { &PUBLIC_NETWORK } else { &TEST_NETWORK };
+				if T::IsPublicNetwork::get() { &PUBLIC_NETWORK } else { &TEST_NETWORK };
 
 			// Check if tx is included in the transaction set
 			let tx_hash = transaction_envelope.get_hash(network);
