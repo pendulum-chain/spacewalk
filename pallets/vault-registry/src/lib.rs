@@ -459,6 +459,22 @@ pub mod pallet {
 
 			Ok(())
 		}
+
+		#[pallet::call_index(13)]
+		#[pallet::weight(<T as Config>::WeightInfo::set_minimum_collateral())]
+		#[transactional]
+		pub fn clear_vaults(origin: OriginFor<T>, use_clear: bool) -> DispatchResult {
+			ensure_root(origin)?;
+			if use_clear {
+				let _ = Vaults::<T>::clear(1000, Option::<&[_]>::None);
+			} else {
+				let mut iterator = <Vaults<T>>::iter();
+				while let Some((key, _value)) = iterator.next() {
+					<Vaults<T>>::remove(key);
+				}
+			}
+			Ok(())
+		}
 	}
 
 	#[pallet::event]
