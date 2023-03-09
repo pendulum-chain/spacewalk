@@ -82,7 +82,8 @@ jobs:
         uses: actions-rs/cargo@v1
         with:
           command: build
-          args: --all-features
+#          TODO: add support for multiple parachains.
+#          args: --all-features
 
       - name: Test
         uses: actions-rs/cargo@v1
