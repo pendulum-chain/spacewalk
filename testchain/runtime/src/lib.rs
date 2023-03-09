@@ -324,11 +324,6 @@ impl pallet_balances::Config for Runtime {
 	type ReserveIdentifier = [u8; 8];
 }
 
-parameter_types! {
-	pub const OrganizationLimit: u32 = 255;
-	pub const ValidatorLimit: u32 = 255;
-}
-
 impl reward::Config for Runtime {
 	type RuntimeEvent = RuntimeEvent;
 	type SignedFixedPoint = SignedFixedPoint;
@@ -374,11 +369,18 @@ impl staking::Config for Runtime {
 
 pub type OrganizationId = u128;
 
+parameter_types! {
+	pub const OrganizationLimit: u32 = 255;
+	pub const ValidatorLimit: u32 = 255;
+	pub const IsPublicNetwork: bool = false;
+}
+
 impl stellar_relay::Config for Runtime {
 	type RuntimeEvent = RuntimeEvent;
 	type OrganizationId = OrganizationId;
 	type OrganizationLimit = OrganizationLimit;
 	type ValidatorLimit = ValidatorLimit;
+	type IsPublicNetwork = IsPublicNetwork;
 	type WeightInfo = ();
 }
 
