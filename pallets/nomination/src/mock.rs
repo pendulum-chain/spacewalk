@@ -326,6 +326,19 @@ impl ExtBuilder {
 
 		balances.assimilate_storage(&mut storage).unwrap();
 
+		pallet_balances::GenesisConfig::<Test> {
+			balances: balances
+				.balances
+				.iter()
+				.filter_map(|(account, currency, balance)| match *currency {
+					DEFAULT_NATIVE_CURRENCY => Some((*account, *balance)),
+					_ => None,
+				})
+				.collect(),
+		}
+		.assimilate_storage(&mut storage)
+		.unwrap();
+
 		frame_support::traits::GenesisBuild::<Test>::assimilate_storage(
 			&nomination::GenesisConfig { is_nomination_enabled: true },
 			&mut storage,

@@ -340,6 +340,19 @@ impl ExtBuilder {
 	pub fn build_with(balances: orml_tokens::GenesisConfig<Test>) -> sp_io::TestExternalities {
 		let mut storage = frame_system::GenesisConfig::default().build_storage::<Test>().unwrap();
 
+		pallet_balances::GenesisConfig::<Test> {
+			balances: balances
+				.balances
+				.iter()
+				.filter_map(|(account, currency, balance)| match *currency {
+					DEFAULT_NATIVE_CURRENCY => Some((*account, *balance)),
+					_ => None,
+				})
+				.collect(),
+		}
+		.assimilate_storage(&mut storage)
+		.unwrap();
+
 		balances.assimilate_storage(&mut storage).unwrap();
 
 		fee::GenesisConfig::<Test> {

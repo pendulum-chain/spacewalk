@@ -341,6 +341,19 @@ impl ExtBuilder {
 
 		balances.assimilate_storage(&mut storage).unwrap();
 
+		pallet_balances::GenesisConfig::<Test> {
+			balances: balances
+				.balances
+				.iter()
+				.filter_map(|(account, currency, balance)| match *currency {
+					DEFAULT_NATIVE_CURRENCY => Some((*account, *balance)),
+					_ => None,
+				})
+				.collect(),
+		}
+		.assimilate_storage(&mut storage)
+		.unwrap();
+
 		fee::GenesisConfig::<Test> {
 			issue_fee: UnsignedFixedPoint::checked_from_rational(5, 1000).unwrap(), // 0.5%
 			issue_griefing_collateral: UnsignedFixedPoint::checked_from_rational(5, 100000)

@@ -1,6 +1,5 @@
 use frame_support::{assert_noop, assert_ok, dispatch::DispatchError};
 use mocktopus::mocking::*;
-use orml_traits::MultiCurrency;
 use sp_arithmetic::FixedU128;
 use sp_core::H256;
 use sp_runtime::traits::{One, Zero};
@@ -382,7 +381,7 @@ fn test_cancel_issue_not_expired_and_requester_succeeds() {
 			// griefing back
 			<security::Pallet<Test>>::set_active_block_number(4);
 
-			let free_before = Tokens::free_balance(DEFAULT_NATIVE_CURRENCY, &USER);
+			let free_before = Balances::free_balance(&USER);
 			ext::vault_registry::transfer_funds::<Test>.mock_raw(|_, _, amount| {
 				transfer_called = true;
 				assert_eq!(amount, &griefing(30));
@@ -392,7 +391,7 @@ fn test_cancel_issue_not_expired_and_requester_succeeds() {
 			assert_ok!(cancel_issue(USER, &issue_id));
 
 			assert_eq!(transfer_called, true);
-			assert_eq!(Tokens::free_balance(DEFAULT_NATIVE_CURRENCY, &USER), free_before + 70);
+			assert_eq!(Balances::free_balance(&USER), free_before + 70);
 			assert_eq!(
 				Issue::issue_requests(&issue_id).unwrap().status,
 				IssueRequestStatus::Cancelled
