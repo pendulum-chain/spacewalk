@@ -9,9 +9,7 @@ pub type CurrencyId<T> = <<T as orml_currencies::Config>::MultiCurrency as Multi
 
 pub type AccountIdOf<T> = <T as frame_system::Config>::AccountId;
 
-pub(crate) type BalanceOf<T> = <<T as orml_currencies::Config>::MultiCurrency as MultiCurrency<
-	<T as frame_system::Config>::AccountId,
->>::Balance;
+pub(crate) type BalanceOf<T> = <T as Config>::Balance;
 
 pub(crate) type SignedFixedPoint<T> = <T as Config>::SignedFixedPoint;
 

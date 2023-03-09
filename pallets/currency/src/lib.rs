@@ -55,7 +55,11 @@ pub mod pallet {
 	/// ## Configuration
 	/// The pallet's configuration trait.
 	#[pallet::config]
-	pub trait Config: frame_system::Config + orml_currencies::Config {
+	pub trait Config:
+		frame_system::Config
+		+ orml_tokens::Config<Balance = BalanceOf<Self>>
+		+ orml_currencies::Config<MultiCurrency = orml_tokens::Pallet<Self>>
+	{
 		type UnsignedFixedPoint: FixedPointNumber<Inner = BalanceOf<Self>>
 			+ TruncateFixedPointToInt
 			+ Encode
@@ -84,10 +88,6 @@ pub mod pallet {
 			+ Copy
 			+ Default
 			+ Debug;
-
-		/// Native currency e.g. PEN/AMPE
-		#[pallet::constant]
-		type GetNativeCurrencyId: Get<CurrencyId<Self>>;
 
 		/// Relay chain currency e.g. DOT/KSM
 		#[pallet::constant]
@@ -174,7 +174,7 @@ pub mod getters {
 	}
 
 	pub fn get_native_currency_id<T: Config>() -> CurrencyId<T> {
-		<T as Config>::GetNativeCurrencyId::get()
+		<T as orml_currencies::Config>::GetNativeCurrencyId::get()
 	}
 }
 

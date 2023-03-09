@@ -177,7 +177,6 @@ impl currency::Config for Test {
 	type SignedInner = SignedInner;
 	type SignedFixedPoint = SignedFixedPoint;
 	type Balance = Balance;
-	type GetNativeCurrencyId = GetNativeCurrencyId;
 	type GetRelayChainCurrencyId = GetRelayChainCurrencyId;
 
 	type AssetConversion = primitives::AssetConversion;
