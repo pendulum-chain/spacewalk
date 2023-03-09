@@ -1381,8 +1381,12 @@ pub trait StellarRelayPallet {
 #[async_trait]
 impl StellarRelayPallet for SpacewalkParachain {
 	async fn is_public_network(&self) -> Result<bool, Error> {
-		self.query_finalized_or_error(metadata::storage().stellar_relay().is_public_network())
-			.await
+		let address = metadata::constants().stellar_relay().is_public_network();
+		let result = self.api.constants().at(&address);
+		match result {
+			Ok(result) => Ok(result),
+			Err(_) => Err(Error::ConstantNotFound("is_public_network".to_string())),
+		}
 	}
 }
 

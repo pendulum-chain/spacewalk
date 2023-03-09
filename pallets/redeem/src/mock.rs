@@ -220,6 +220,7 @@ impl reward::Config for Test {
 parameter_types! {
 	pub const OrganizationLimit: u32 = 255;
 	pub const ValidatorLimit: u32 = 255;
+	pub const IsPublicNetwork: bool = false;
 }
 
 pub type OrganizationId = u128;
@@ -229,6 +230,7 @@ impl stellar_relay::Config for Test {
 	type OrganizationId = OrganizationId;
 	type OrganizationLimit = OrganizationLimit;
 	type ValidatorLimit = ValidatorLimit;
+	type IsPublicNetwork = IsPublicNetwork;
 	type WeightInfo = ();
 }
 
