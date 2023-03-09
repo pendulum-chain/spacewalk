@@ -306,8 +306,8 @@ fn validate_stellar_transaction_fails_for_differing_networks() {
 		let (tx_envelope, tx_set, scp_envelopes) = create_valid_dummy_scp_envelopes(
 			validators,
 			validator_secret_keys,
-			// Create scp messages for the test network although the relay is configured in genesis
-			// to use public network
+			// Create scp messages for the test network although the relay is configured in
+			// genesis to use main network
 			false,
 		);
 
