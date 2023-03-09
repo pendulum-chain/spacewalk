@@ -55,9 +55,7 @@ pub mod pallet {
 	/// ## Configuration
 	/// The pallet's configuration trait.
 	#[pallet::config]
-	pub trait Config:
-		frame_system::Config + orml_tokens::Config<Balance = BalanceOf<Self>>
-	{
+	pub trait Config: frame_system::Config + orml_currencies::Config {
 		type UnsignedFixedPoint: FixedPointNumber<Inner = BalanceOf<Self>>
 			+ TruncateFixedPointToInt
 			+ Encode
@@ -181,18 +179,18 @@ pub mod getters {
 }
 
 pub fn get_free_balance<T: Config>(
-	currency_id: T::CurrencyId,
+	currency_id: CurrencyId<T>,
 	account: &AccountIdOf<T>,
 ) -> Amount<T> {
-	let amount = <orml_tokens::Pallet<T>>::free_balance(currency_id, account);
+	let amount = <orml_currencies::Pallet<T>>::free_balance(currency_id, account);
 	Amount::new(amount, currency_id)
 }
 
 pub fn get_reserved_balance<T: Config>(
-	currency_id: T::CurrencyId,
+	currency_id: CurrencyId<T>,
 	account: &AccountIdOf<T>,
 ) -> Amount<T> {
-	let amount = <orml_tokens::Pallet<T>>::reserved_balance(currency_id, account);
+	let amount = <orml_currencies::Pallet<T>>::reserved_balance(currency_id, account);
 	Amount::new(amount, currency_id)
 }
 

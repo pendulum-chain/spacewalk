@@ -24,7 +24,9 @@ frame_support::construct_runtime!(
 	{
 		// substrate pallets
 		System: frame_system::{Pallet, Call, Storage, Config, Event<T>},
+		Balances: pallet_balances::{Pallet, Call, Storage, Config<T>, Event<T>},
 		Tokens: orml_tokens::{Pallet, Storage, Config<T>, Event<T>},
+		Currencies: orml_currencies::{Pallet, Call, Event<T>},
 
 		// Operational
 		Currency: crate::{Pallet},
@@ -74,6 +76,26 @@ impl frame_system::Config for Test {
 }
 
 parameter_types! {
+	pub const ExistentialDeposit: Balance = EXISTENTIAL_DEPOSIT;
+	pub const MaxLocks: u32 = 50;
+	pub const MaxReserves: u32 = 50;
+}
+
+impl pallet_balances::Config for Runtime {
+	type MaxLocks = MaxLocks;
+	/// The type for recording an account's balance.
+	type Balance = Balance;
+	/// The ubiquitous event type.
+	type RuntimeEvent = RuntimeEvent;
+	type DustRemoval = ();
+	type ExistentialDeposit = ExistentialDeposit;
+	type AccountStore = System;
+	type WeightInfo = pallet_balances::weights::SubstrateWeight<Runtime>;
+	type MaxReserves = MaxReserves;
+	type ReserveIdentifier = ReserveIdentifier;
+}
+
+parameter_types! {
 	pub const GetNativeCurrencyId: CurrencyId = DEFAULT_NATIVE_CURRENCY;
 	pub const GetRelayChainCurrencyId: CurrencyId = DEFAULT_COLLATERAL_CURRENCY;
 	pub const MaxLocks: u32 = 50;
@@ -112,6 +134,16 @@ impl orml_tokens::Config for Test {
 	// we don't use named reserves
 	type ReserveIdentifier = ();
 	type DustRemovalWhitelist = Everything;
+}
+
+pub type Amount = i128;
+
+impl orml_currencies::Config for Test {
+	type MultiCurrency = Tokens;
+	type NativeCurrency =
+		orml_currencies::BasicCurrencyAdapter<Test, Balances, Amount, BlockNumber>;
+	type GetNativeCurrencyId = GetNativeCurrencyId;
+	type WeightInfo = ();
 }
 
 pub struct CurrencyConvert;
