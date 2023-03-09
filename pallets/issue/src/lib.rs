@@ -116,6 +116,9 @@ pub mod pallet {
 			limit_volume_currency_id: T::CurrencyId,
 			interval_length: T::BlockNumber,
 		},
+		IssueMinimumTransferAmountUpdate {
+			new_minimum_amount: BalanceOf<T>,
+		},
 	}
 
 	#[pallet::error]
@@ -335,6 +338,19 @@ pub mod pallet {
 				limit_volume_currency_id,
 				interval_length,
 			});
+			Ok(().into())
+		}
+
+		#[pallet::call_index(5)]
+		#[pallet::weight(<T as Config>::WeightInfo::minimum_transfer_amount_update())]
+		#[transactional]
+		pub fn minimum_transfer_amount_update(
+			origin: OriginFor<T>,
+			new_minimum_amount: BalanceOf<T>,
+		) -> DispatchResultWithPostInfo {
+			ensure_root(origin)?;
+			IssueMinimumTransferAmount::<T>::set(new_minimum_amount);
+			Self::deposit_event(Event::IssueMinimumTransferAmountUpdate { new_minimum_amount });
 			Ok(().into())
 		}
 	}
