@@ -260,6 +260,9 @@ benchmarks! {
 	set_replace_period {
 	}: _(RawOrigin::Root, 1u32.into())
 
+	minimum_transfer_amount_update {
+		let new_minimum_amount: BalanceOf<T> = 1u32.into();
+	}: _(RawOrigin::Root, new_minimum_amount)
 }
 
 impl_benchmark_test_suite!(
