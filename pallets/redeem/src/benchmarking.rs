@@ -342,6 +342,10 @@ benchmarks! {
 		let limit_volume_currency_id: T::CurrencyId = get_wrapped_currency_id();
 		let interval_length: T::BlockNumber = 1u32.into();
 	}: _(RawOrigin::Root, limit_volume_amount, limit_volume_currency_id, interval_length)
+
+	minimum_transfer_amount_update {
+		let new_minimum_amount: BalanceOf<T> = 1u32.into();
+	}: _(RawOrigin::Root, new_minimum_amount)
 }
 
 impl_benchmark_test_suite!(
