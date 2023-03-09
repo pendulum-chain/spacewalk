@@ -48,6 +48,7 @@ std = [
     "pallet-balances/std",
     "pallet-transaction-payment/std",
     "primitives/std",
+    "orml-currencies/std",
     "orml-tokens/std",
     "orml-traits/std",
 ]

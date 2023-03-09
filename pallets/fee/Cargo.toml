@@ -20,6 +20,7 @@ sp-std = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v
 frame-support = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.37", default-features = false }
 frame-system = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.37", default-features = false }
 frame-benchmarking = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.37", default-features = false, optional = true }
+pallet-balances = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.37", default-features = false }
 
 # Parachain dependencies
 currency = { path = "../currency", default-features = false }
@@ -36,6 +37,7 @@ currency = { path = "../currency", default-features = false, features = ["testin
 security = { path = "../security", features = ['testing-utils'] }
 
 # Orml dependencies
+orml-currencies = { git = "https://github.com/open-web3-stack/open-runtime-module-library", branch = "polkadot-v0.9.37", default-features = false }
 orml-tokens = { git = "https://github.com/open-web3-stack/open-runtime-module-library", branch = "polkadot-v0.9.37", default-features = false }
 orml-traits = { git = "https://github.com/open-web3-stack/open-runtime-module-library", branch = "polkadot-v0.9.37", default-features = false }
 
@@ -56,11 +58,15 @@ std = [
     "frame-support/std",
     "frame-system/std",
     "frame-benchmarking/std",
+    "pallet-balances/std",
     "currency/std",
     "security/std",
     "reward/std",
     "staking/std",
     "primitives/std",
+    "orml-currencies/std",
+    "orml-tokens/std",
+    "orml-traits/std",
 ]
 runtime-benchmarks = [
     "frame-benchmarking",
