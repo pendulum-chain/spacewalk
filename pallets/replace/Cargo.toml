@@ -21,6 +21,7 @@ frame-support = { git = "https://github.com/paritytech/substrate", branch = "pol
 frame-system = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.37", default-features = false }
 frame-benchmarking = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.37", default-features = false, optional = true }
 pallet-timestamp = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.37", default-features = false }
+pallet-balances = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.37", default-features = false }
 
 # Parachain dependencies
 currency = { path = "../currency", default-features = false }
@@ -35,6 +36,7 @@ vault-registry = { path = "../vault-registry", default-features = false }
 substrate-stellar-sdk = { git = "https://github.com/pendulum-chain/substrate-stellar-sdk", branch = "polkadot-v0.9.37", default-features = false, features = ['offchain'] }
 
 # Orml dependencies
+orml-currencies = { git = "https://github.com/open-web3-stack/open-runtime-module-library", branch = "polkadot-v0.9.37", default-features = false }
 orml-tokens = { git = "https://github.com/open-web3-stack/open-runtime-module-library", branch = "polkadot-v0.9.37", default-features = false, optional = true }
 orml-traits = { git = "https://github.com/open-web3-stack/open-runtime-module-library", branch = "polkadot-v0.9.37", default-features = false, optional = true }
 
@@ -67,6 +69,7 @@ std = [
     "frame-support/std",
     "frame-system/std",
     "frame-benchmarking/std",
+    "pallet-balances/std",
     "pallet-timestamp/std",
     "currency/std",
     "fee/std",
@@ -77,6 +80,7 @@ std = [
     "vault-registry/std",
     "primitives/std",
     "substrate-stellar-sdk/std",
+    "orml-currencies/std",
     "orml-tokens/std",
     "orml-traits/std",
 ]
