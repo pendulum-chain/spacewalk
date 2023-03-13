@@ -16,8 +16,7 @@ use tokio::{sync::RwLock, time::sleep};
 use primitives::H256;
 use runtime::{
 	integration::*, types::*, FixedPointNumber, FixedU128, IssuePallet, RedeemPallet,
-	ReplacePallet, ShutdownSender, SpacewalkParachain, StellarRelayPallet, SudoPallet, UtilFuncs,
-	VaultRegistryPallet,
+	ReplacePallet, ShutdownSender, SpacewalkParachain, SudoPallet, UtilFuncs, VaultRegistryPallet,
 };
 use stellar_relay_lib::sdk::{PublicKey, XdrCodec};
 use vault::{
