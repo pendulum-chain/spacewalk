@@ -321,7 +321,6 @@ pub async fn execute_open_requests(
 	oracle_agent: Arc<OracleAgent>,
 	payment_margin: Duration,
 ) -> Result<(), ServiceError<Error>> {
-
 	tokio::time::sleep(Duration::from_secs(12)).await;
 
 	let parachain_rpc = &parachain_rpc;
