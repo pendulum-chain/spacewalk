@@ -3,11 +3,13 @@ use substrate_stellar_sdk::TransactionEnvelope;
 
 pub use horizon::{listen_for_new_transactions, TransactionResponse};
 pub use stellar_wallet::StellarWallet;
+pub use task::*;
 
 pub mod error;
 mod horizon;
 mod stellar_wallet;
+mod task;
 pub mod types;
 
-pub type Ledger = u32;
-pub type LedgerTxEnvMap = HashMap<u32, TransactionEnvelope>;
+pub type Slot = u32;
+pub type LedgerTxEnvMap = HashMap<Slot, TransactionEnvelope>;
