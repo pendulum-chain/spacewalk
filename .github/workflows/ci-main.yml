@@ -76,7 +76,7 @@ jobs:
         uses: actions-rs/cargo@v1
         with:
           command: clippy
-          args: -- -W clippy::all -A clippy::style -A clippy::forget_copy -A clippy::forget_ref
+          args: --all-features -- -W clippy::all -A clippy::style -A clippy::forget_copy -A clippy::forget_ref
 
       - name: Clippy -- All Targets
         uses: actions-rs/cargo@v1
