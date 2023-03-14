@@ -41,7 +41,7 @@ benchmarks! {
 		let old_validators = Validators::<T>::get();
 	}: update_tier_1_validator_set(RawOrigin::Root, validators.clone(), organizations.clone(), enactment_block_height)
 	verify {
-		assert_eq!(OldOrganizations::<T>::get(), BoundedVec::<OrganizationOf<T>, T::OrganizationLimit>::try_from(old_organizations).unwrap());
+		assert_eq!(OldOrganizations::<T>::get(), old_organizations);
 		assert_eq!(OldValidators::<T>::get(), old_validators);
 		assert_eq!(Organizations::<T>::get(), BoundedVec::<OrganizationOf<T>, T::OrganizationLimit>::try_from(organizations).unwrap());
 		assert_eq!(Validators::<T>::get(), BoundedVec::<ValidatorOf<T>, T::ValidatorLimit>::try_from(validators).unwrap());
