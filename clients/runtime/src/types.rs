@@ -106,9 +106,7 @@ mod metadata_aliases {
 			// TODO Eventually change to
 			// pub type EncodedCall = metadata::runtime_types::pendulum_runtime::RuntimeCall;
 		} else if #[cfg(feature = "parachain-metadata-amplitude")] {
-			pub type EncodedCall = metadata::runtime_types::foucoco_runtime::RuntimeCall;
-			// TODO Eventually change to
-			// pub type EncodedCall = metadata::runtime_types::amplitude_runtime::RuntimeCall;
+			pub type EncodedCall = metadata::runtime_types::amplitude_runtime::RuntimeCall;
 		} else if #[cfg(feature = "parachain-metadata-foucoco")] {
 			pub type EncodedCall = metadata::runtime_types::foucoco_runtime::RuntimeCall;
 		}
