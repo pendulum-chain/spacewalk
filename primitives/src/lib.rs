@@ -546,22 +546,22 @@ impl fmt::Debug for CurrencyId {
 				write!(
 					f,
 					"{{ code: {}, issuer: {} }}",
-					str::from_utf8(code).unwrap(),
+					str::from_utf8(code).unwrap_or_default(),
 					str::from_utf8(
 						stellar::PublicKey::from_binary(*issuer).to_encoding().as_slice()
 					)
-					.unwrap()
+					.unwrap_or_default()
 				)
 			},
 			Self::Stellar(Asset::AlphaNum12 { code, issuer }) => {
 				write!(
 					f,
 					"{{ code: {}, issuer: {} }}",
-					str::from_utf8(code).unwrap(),
+					str::from_utf8(code).unwrap_or_default(),
 					str::from_utf8(
 						stellar::PublicKey::from_binary(*issuer).to_encoding().as_slice()
 					)
-					.unwrap()
+					.unwrap_or_default()
 				)
 			},
 		}
