@@ -178,7 +178,7 @@ impl Request {
 		wallet: Arc<RwLock<StellarWallet>>,
 	) -> Result<(TransactionEnvelope, Slot), Error> {
 		let destination_public_key = PublicKey::from_binary(self.stellar_address);
-		let stroop_amount = self.amount as i64;
+		let stroop_amount = primitives::BalanceConversion::lookup(self.amount)?;
 		let memo_hash = self.hash.0;
 
 		let mut wallet = wallet.write().await;
