@@ -1,19 +1,21 @@
-pub use jsonrpsee::core::Error as JsonRpseeError;
+use std::{array::TryFromSliceError, fmt::Debug, io::Error as IoError, num::TryFromIntError};
 
-use crate::metadata::DispatchError;
 use codec::Error as CodecError;
+pub use jsonrpsee::core::Error as JsonRpseeError;
 use jsonrpsee::{
-	client_transport::ws::WsHandshakeError, core::error::Error as RequestError,
-	types::error::CallError,
+	client_transport::ws::{InvalidUri as UrlParseError, WsHandshakeError},
+	types::{error::CallError, ErrorObjectOwned},
 };
 use serde_json::Error as SerdeJsonError;
-use std::{array::TryFromSliceError, fmt::Debug, io::Error as IoError, num::TryFromIntError};
-use subxt::{sp_core::crypto::SecretStringError, BasicError, TransactionError};
+pub use subxt::{error::RpcError, Error as SubxtError};
+use subxt::{
+	error::{DispatchError, ModuleError, TransactionError},
+	ext::sp_core::crypto::SecretStringError,
+};
 use thiserror::Error;
 use tokio::time::error::Elapsed;
-use url::ParseError as UrlParseError;
 
-pub type SubxtError = subxt::Error<DispatchError>;
+use crate::{types::*, ISSUE_MODULE, SECURITY_MODULE};
 
 #[derive(Error, Debug)]
 pub enum Error {
@@ -31,7 +33,7 @@ pub enum Error {
 	VaultNotFound,
 	#[error("Vault has been liquidated")]
 	VaultLiquidated,
-	#[error("Vault has stolen BTC")]
+	#[error("Vault has stolen Stellar assets")]
 	VaultCommittedTheft,
 	#[error("Channel closed unexpectedly")]
 	ChannelClosed,
@@ -77,35 +79,45 @@ pub enum Error {
 	TimeElapsed(#[from] Elapsed),
 	#[error("UrlParseError: {0}")]
 	UrlParseError(#[from] UrlParseError),
-}
-
-impl From<BasicError> for Error {
-	fn from(err: BasicError) -> Self {
-		Self::SubxtRuntimeError(SubxtError::from(err))
-	}
+	#[error("Constant not found: {0}")]
+	ConstantNotFound(String),
 }
 
 impl Error {
-	// fn is_module_err(&self, pallet_name: &str, error_name: &str) -> bool {
-	// 	matches!(
-	// 		self,
-	// 		Error::SubxtRuntimeError(SubxtError::Module(ModuleError {
-	// 			pallet, error, ..
-	// 		})) if pallet == pallet_name && error == error_name,
-	// 	)
-	// }
+	fn is_module_err(&self, pallet_name: &str, error_name: &str) -> bool {
+		matches!(
+			self,
+			Error::SubxtRuntimeError(SubxtError::Runtime(DispatchError::Module(ModuleError{
+				pallet, error, ..
+			}))) if pallet == pallet_name && error == error_name,
+		)
+	}
 
-	fn map_call_error<T>(&self, call: impl Fn(&CallError) -> Option<T>) -> Option<T> {
-		match self {
-			Error::SubxtRuntimeError(SubxtError::Rpc(RequestError::Call(err))) => call(err),
-			_ => None,
+	pub fn is_issue_completed(&self) -> bool {
+		self.is_module_err(ISSUE_MODULE, &format!("{:?}", IssuePalletError::IssueCompleted))
+	}
+
+	fn map_custom_error<T>(&self, call: impl Fn(&ErrorObjectOwned) -> Option<T>) -> Option<T> {
+		if let Error::SubxtRuntimeError(SubxtError::Rpc(RpcError::ClientError(e))) = self {
+			match e.downcast_ref::<JsonRpseeError>() {
+				Some(e) => match e {
+					JsonRpseeError::Call(CallError::Custom(err)) => call(err),
+					_ => None,
+				},
+				None => {
+					log::error!("Failed to downcast RPC error; this is a bug please file an issue");
+					None
+				},
+			}
+		} else {
+			None
 		}
 	}
 
 	pub fn is_invalid_transaction(&self) -> Option<String> {
-		self.map_call_error(|call_error| {
-			if let CallError::Custom { code: POOL_INVALID_TX, data, .. } = call_error {
-				Some(data.clone().map(|raw| raw.to_string()).unwrap_or_default())
+		self.map_custom_error(|custom_error| {
+			if custom_error.code() == POOL_INVALID_TX {
+				Some(custom_error.data().map(ToString::to_string).unwrap_or_default())
 			} else {
 				None
 			}
@@ -113,8 +125,8 @@ impl Error {
 	}
 
 	pub fn is_pool_too_low_priority(&self) -> Option<()> {
-		self.map_call_error(|call_error| {
-			if let CallError::Custom { code: POOL_TOO_LOW_PRIORITY, .. } = call_error {
+		self.map_custom_error(|custom_error| {
+			if custom_error.code() == POOL_TOO_LOW_PRIORITY {
 				Some(())
 			} else {
 				None
@@ -123,7 +135,20 @@ impl Error {
 	}
 
 	pub fn is_rpc_disconnect_error(&self) -> bool {
-		matches!(self, Error::SubxtRuntimeError(SubxtError::Rpc(JsonRpseeError::RestartNeeded(_))))
+		match self {
+			Error::SubxtRuntimeError(SubxtError::Rpc(RpcError::ClientError(e))) =>
+				match e.downcast_ref::<JsonRpseeError>() {
+					Some(e) => matches!(e, JsonRpseeError::RestartNeeded(_)),
+					None => {
+						log::error!(
+							"Failed to downcast RPC error; this is a bug please file an issue"
+						);
+						false
+					},
+				},
+			Error::SubxtRuntimeError(SubxtError::Rpc(RpcError::SubscriptionDropped)) => true,
+			_ => false,
+		}
 	}
 
 	pub fn is_rpc_error(&self) -> bool {
@@ -142,6 +167,13 @@ impl Error {
 			self,
 			Error::JsonRpseeError(JsonRpseeError::Transport(err))
 			if matches!(err.downcast_ref::<WsHandshakeError>(), Some(WsHandshakeError::Url(_)))
+		)
+	}
+
+	pub fn is_parachain_shutdown_error(&self) -> bool {
+		self.is_module_err(
+			SECURITY_MODULE,
+			&format!("{:?}", SecurityPalletError::ParachainNotRunning),
 		)
 	}
 }

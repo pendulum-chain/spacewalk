@@ -5,7 +5,7 @@
 To run the tests use:
 
 ```bash
-cargo test --package pallet-stellar-relay --features runtime-benchmarks
+cargo test --package stellar-relay --features runtime-benchmarks
 ```
 
 ## Benchmarking
@@ -17,22 +17,20 @@ cargo build --package spacewalk-standalone --release --features runtime-benchmar
 ```
 
 ```bash
-# Show all available benchmarks
-./target/release/spacewalk-standalone benchmark pallet --list
-
-# Show benchmarks for stellar relay pallet
-./target/release/spacewalk-standalone benchmark pallet -p pallet-stellar_relay -e '*' --list
+# Show benchmarks for this pallet
+./target/release/spacewalk-standalone benchmark pallet -p stellar-relay -e '*' --list
 ```
 
-Run the benchmarking for the `pallet-stellar_relay` pallet:
+Run the benchmarking for a pallet:
 
 ```bash
 ./target/release/spacewalk-standalone benchmark pallet \
---chain dev \
---pallet pallet_stellar_relay \
---extrinsic '*' \
---steps 20 \
---repeat 10 \
---output pallets/stellar-relay/src/weights.rs \
+--chain=dev \
+--pallet=stellar-relay \
+--extrinsic='*' \
+--steps=100 \
+--repeat=10 \
+--wasm-execution=compiled \
+--output=pallets/stellar-relay/src/default_weights.rs \
 --template=./.maintain/frame-weight-template.hbs
 ```

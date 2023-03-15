@@ -1,0 +1,80 @@
+[package]
+name = "oracle"
+version = "1.2.0"
+authors = ["Pendulum"]
+edition = "2021"
+
+[dependencies]
+codec = { package = "parity-scale-codec", version = "3.0.0", default-features = false, features = ["derive", "max-encoded-len"] }
+scale-info = { version = "2.0.0", default-features = false, features = ["derive"] }
+
+# Substrate dependencies
+sp-io = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.37", default-features = false }
+sp-core = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.37", default-features = false }
+sp-std = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.37", default-features = false }
+sp-runtime = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.37", default-features = false }
+sp-arithmetic = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.37", default-features = false }
+
+frame-support = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.37", default-features = false }
+frame-system = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.37", default-features = false }
+frame-benchmarking = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.37", default-features = false, optional = true }
+pallet-balances = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.37", default-features = false }
+pallet-timestamp = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.37", default-features = false }
+
+orml-oracle = { git = "https://github.com/open-web3-stack/open-runtime-module-library", branch = "polkadot-v0.9.37", default-features = false }
+dia-oracle = { git = "https://github.com/pendulum-chain/oracle-pallet", branch = "polkadot-v0.9.37", default-features = false }
+
+# Parachain dependencies
+security = { path = "../security", default-features = false }
+primitives = { package = "spacewalk-primitives", path = "../../primitives", default-features = false }
+staking = { path = "../staking", default-features = false }
+currency = { path = "../currency", default-features = false }
+
+[dev-dependencies]
+mocktopus = "0.8.0"
+frame-benchmarking = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.37", default-features = false }
+
+currency = { path = "../currency", default-features = false, features = ["testing-constants"] }
+security = { path = "../security", features = ['testing-utils'] }
+
+# Orml dependencies
+orml-currencies = { git = "https://github.com/open-web3-stack/open-runtime-module-library", branch = "polkadot-v0.9.37", default-features = false }
+orml-tokens = { git = "https://github.com/open-web3-stack/open-runtime-module-library", branch = "polkadot-v0.9.37", default-features = false }
+orml-traits = { git = "https://github.com/open-web3-stack/open-runtime-module-library", branch = "polkadot-v0.9.37", default-features = false }
+
+
+[features]
+default = ["std"]
+std = [
+    "codec/std",
+    "sp-io/std",
+    "sp-core/std",
+    "sp-std/std",
+    "sp-runtime/std",
+    "sp-arithmetic/std",
+    "frame-support/std",
+    "frame-system/std",
+    "frame-benchmarking/std",
+    "pallet-balances/std",
+    "pallet-timestamp/std",
+    "security/std",
+    "staking/std",
+    "currency/std",
+    "primitives/std",
+    "orml-currencies/std",
+    "orml-tokens/std",
+    "orml-traits/std",
+    "orml-oracle/std",
+    "dia-oracle/std"
+    
+]
+runtime-benchmarks = [
+    "frame-benchmarking",
+    "frame-support/runtime-benchmarks",
+    "frame-system/runtime-benchmarks",
+    "pallet-timestamp/runtime-benchmarks",
+    "currency/testing-constants",
+    "security/testing-utils",
+    "testing-utils"
+]
+testing-utils = []

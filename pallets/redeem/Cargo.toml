@@ -1,0 +1,96 @@
+[package]
+authors = ["Pendulum Chain <https://github.com/pendulum-chain>"]
+description = "Redeem module"
+edition = "2021"
+name = "redeem"
+version = "1.0.0"
+
+[dependencies]
+serde = { version = "1.0.130", default-features = false, features = ['derive'], optional = true }
+codec = { package = "parity-scale-codec", version = "3.0.0", default-features = false, features = ["derive", "max-encoded-len"] }
+scale-info = { version = "2.0.0", default-features = false, features = ["derive"] }
+
+# Substrate dependencies
+sp-io = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.37", default-features = false }
+sp-core = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.37", default-features = false }
+sp-std = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.37", default-features = false }
+sp-arithmetic = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.37", default-features = false }
+sp-runtime = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.37", default-features = false }
+
+frame-support = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.37", default-features = false }
+frame-system = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.37", default-features = false }
+frame-benchmarking = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.37", default-features = false, optional = true }
+pallet-balances = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.37", default-features = false }
+pallet-timestamp = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.37", default-features = false }
+
+# Parachain dependencies
+currency = { path = "../currency", default-features = false }
+fee = { path = "../fee", default-features = false }
+oracle = { path = "../oracle", default-features = false }
+security = { path = "../security", default-features = false }
+stellar-relay = { path = "../stellar-relay", default-features = false }
+vault-registry = { path = "../vault-registry", default-features = false }
+
+primitives = { package = "spacewalk-primitives", path = "../../primitives", default-features = false }
+
+substrate-stellar-sdk = { git = "https://github.com/pendulum-chain/substrate-stellar-sdk", branch = "polkadot-v0.9.37", default-features = false, features = ['offchain'] }
+
+# Orml dependencies
+orml-currencies = { git = "https://github.com/open-web3-stack/open-runtime-module-library", branch = "polkadot-v0.9.37", default-features = false }
+orml-tokens = { git = "https://github.com/open-web3-stack/open-runtime-module-library", branch = "polkadot-v0.9.37", default-features = false, optional = true }
+orml-traits = { git = "https://github.com/open-web3-stack/open-runtime-module-library", branch = "polkadot-v0.9.37", default-features = false, optional = true }
+
+[dev-dependencies]
+mocktopus = "0.8.0"
+frame-benchmarking = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.37" }
+
+# Parachain dependencies
+reward = { path = "../reward" }
+staking = { path = "../staking" }
+currency = { path = "../currency", default-features = false, features = ["testing-constants", "testing-utils"] }
+stellar-relay = { path = "../stellar-relay", features = ["testing-utils"] }
+security = { path = "../security", features = ['testing-utils'] }
+oracle = { path = "../oracle", features = ['testing-utils'] }
+
+# Orml dependencies
+orml-tokens = { git = "https://github.com/open-web3-stack/open-runtime-module-library", branch = "polkadot-v0.9.37" }
+orml-traits = { git = "https://github.com/open-web3-stack/open-runtime-module-library", branch = "polkadot-v0.9.37" }
+
+[features]
+default = ["std"]
+std = [
+    "serde",
+    "codec/std",
+    "sp-io/std",
+    "sp-core/std",
+    "sp-std/std",
+    "sp-arithmetic/std",
+    "sp-runtime/std",
+    "frame-support/std",
+    "frame-system/std",
+    "frame-benchmarking/std",
+    "pallet-balances/std",
+    "pallet-timestamp/std",
+    "currency/std",
+    "fee/std",
+    "oracle/std",
+    "security/std",
+    "stellar-relay/std",
+    "vault-registry/std",
+    "primitives/std",
+    "substrate-stellar-sdk/std",
+    "orml-currencies/std",
+    "orml-tokens/std",
+    "orml-traits/std",
+]
+runtime-benchmarks = [
+    "frame-benchmarking",
+    "frame-support/runtime-benchmarks",
+    "frame-system/runtime-benchmarks",
+    "orml-tokens",
+    "orml-traits",
+    "stellar-relay/testing-utils",
+    "security/testing-utils",
+    "oracle/testing-utils",
+    "currency/testing-constants"
+]

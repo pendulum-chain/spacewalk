@@ -1,0 +1,92 @@
+[package]
+authors = ["Pendulum"]
+edition = "2021"
+name = "vault-registry"
+version = "1.2.0"
+
+[dependencies]
+codec = {package = "parity-scale-codec", version = "3.0.0", default-features = false, features = ["derive", "max-encoded-len"]}
+scale-info = {version = "2.0.0", default-features = false, features = ["derive"]}
+serde = {version = "1.0.130", default-features = false, features = ["derive"], optional = true}
+
+fixed-hash = {version = "0.7.0", default-features = false, features = ["byteorder"]}
+log = {version = "0.4.14", default-features = false}
+
+visibility = {version = "0.0.1", optional = true}
+
+# Substrate dependencies
+sp-arithmetic = {git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.37", default-features = false}
+sp-core = {git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.37", default-features = false}
+sp-io = {git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.37", default-features = false}
+sp-runtime = {git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.37", default-features = false}
+sp-std = {git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.37", default-features = false}
+
+frame-benchmarking = {git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.37", default-features = false, optional = true}
+frame-support = {git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.37", default-features = false}
+frame-system = {git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.37", default-features = false}
+pallet-balances = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.37", default-features = false }
+pallet-timestamp = {git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.37", default-features = false}
+
+substrate-stellar-sdk = {git = "https://github.com/pendulum-chain/substrate-stellar-sdk", branch = "polkadot-v0.9.37", default-features = false, features = ["all-types"]}
+
+# Parachain dependencies
+currency = {path = "../currency", default-features = false}
+fee = {path = "../fee", default-features = false}
+oracle = {path = "../oracle", default-features = false}
+primitives = {package = "spacewalk-primitives", path = "../../primitives", default-features = false}
+reward = {path = "../reward", default-features = false}
+security = {path = "../security", default-features = false}
+staking = {path = "../staking", default-features = false}
+
+# Orml dependencies
+orml-currencies = { git = "https://github.com/open-web3-stack/open-runtime-module-library", branch = "polkadot-v0.9.37", default-features = false }
+orml-tokens = {git = "https://github.com/open-web3-stack/open-runtime-module-library", branch = "polkadot-v0.9.37", default-features = false}
+orml-traits = {git = "https://github.com/open-web3-stack/open-runtime-module-library", branch = "polkadot-v0.9.37", default-features = false}
+
+[dev-dependencies]
+currency = {path = "../currency", default-features = false, features = ["testing-utils", "testing-constants"]}
+security = { path = "../security", features = ['testing-utils'] }
+frame-benchmarking = {git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.37", default-features = false}
+oracle = { path = "../oracle", features = ['testing-utils'] }
+mocktopus = "0.8.0"
+pretty_assertions = "0.7.2"
+
+[features]
+default = ["std"]
+integration-tests = [
+  "visibility",
+]
+runtime-benchmarks = [
+  "frame-benchmarking",
+  "frame-support/runtime-benchmarks",
+  "frame-system/runtime-benchmarks",
+  "currency/testing-constants",
+  "security/testing-utils",
+  "oracle/testing-utils"
+]
+skip-slow-tests = []
+std = [
+  "serde",
+  "codec/std",
+  "sp-runtime/std",
+  "sp-arithmetic/std",
+  "sp-std/std",
+  "sp-io/std",
+  "sp-core/std",
+  "frame-support/std",
+  "frame-system/std",
+  "frame-benchmarking/std",
+  "pallet-balances/std",
+  "pallet-timestamp/std",
+  "orml-currencies/std",
+  "orml-tokens/std",
+  "orml-traits/std",
+  "oracle/std",
+  "fee/std",
+  "security/std",
+  "currency/std",
+  "reward/std",
+  "staking/std",
+  "primitives/std",
+  "substrate-stellar-sdk/std",
+]

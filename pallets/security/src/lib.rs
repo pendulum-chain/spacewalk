@@ -5,10 +5,28 @@
 #![cfg_attr(test, feature(proc_macro_hygiene))]
 #![cfg_attr(not(feature = "std"), no_std)]
 
+#[cfg(test)]
+extern crate mocktopus;
+
+use codec::Encode;
+use frame_support::{
+	dispatch::{DispatchError, DispatchResult},
+	transactional,
+};
+#[cfg(test)]
+use mocktopus::macros::mockable;
+use sha2::{Digest, Sha256};
+use sp_core::{H256, U256};
 use sp_runtime::{traits::*, ArithmeticError};
-use sp_std::convert::TryInto;
+use sp_std::{collections::btree_set::BTreeSet, convert::TryInto, prelude::*, vec};
+
+pub use pallet::*;
+
+#[doc(inline)]
+pub use crate::types::{ErrorCode, StatusCode};
 
 pub mod types;
+pub use default_weights::{SubstrateWeight, WeightInfo};
 
 #[cfg(test)]
 mod mock;
@@ -16,40 +34,24 @@ mod mock;
 #[cfg(test)]
 mod tests;
 
-#[cfg(test)]
-extern crate mocktopus;
-
-#[cfg(test)]
-use mocktopus::macros::mockable;
-
-#[doc(inline)]
-pub use crate::types::{ErrorCode, StatusCode};
-
-use codec::Encode;
-use frame_support::{
-	dispatch::{DispatchError, DispatchResult},
-	transactional,
-	weights::Weight,
-};
-use frame_system::ensure_root;
-use sha2::{Digest, Sha256};
-use sp_core::{H256, U256};
-use sp_std::{collections::btree_set::BTreeSet, prelude::*, vec};
-
-pub use pallet::*;
+mod default_weights;
 
 #[frame_support::pallet]
 pub mod pallet {
-	use super::*;
 	use frame_support::pallet_prelude::*;
 	use frame_system::pallet_prelude::*;
+
+	use super::*;
 
 	/// ## Configuration
 	/// The pallet's configuration trait.
 	#[pallet::config]
 	pub trait Config: frame_system::Config {
 		/// The overarching event type.
-		type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
+		type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
+
+		/// Weight information for the extrinsics in this module.
+		type WeightInfo: WeightInfo;
 	}
 
 	#[pallet::event]
@@ -69,8 +71,7 @@ pub mod pallet {
 	impl<T: Config> Hooks<T::BlockNumber> for Pallet<T> {
 		fn on_initialize(_n: T::BlockNumber) -> Weight {
 			Self::increment_active_block();
-			// TODO: calculate weight
-			0
+			<T as Config>::WeightInfo::on_initialize()
 		}
 	}
 
@@ -95,7 +96,7 @@ pub mod pallet {
 		}
 	}
 
-	/// Integer/Enum defining the current state of the BTC-Parachain.
+	/// Integer/Enum defining the current state of the Spacewalk-Parachain.
 	#[pallet::storage]
 	#[pallet::getter(fn parachain_status)]
 	pub type ParachainStatus<T: Config> = StorageValue<_, StatusCode, ValueQuery>;
@@ -106,7 +107,7 @@ pub mod pallet {
 	pub type Errors<T: Config> = StorageValue<_, BTreeSet<ErrorCode>, ValueQuery>;
 
 	/// Integer increment-only counter, used to prevent collisions when generating identifiers
-	/// for e.g. issue, redeem or replace requests (for OP_RETURN field in Bitcoin).
+	/// for e.g. issue, redeem or replace requests.
 	#[pallet::storage]
 	pub type Nonce<T: Config> = StorageValue<_, U256, ValueQuery>;
 
@@ -134,7 +135,8 @@ pub mod pallet {
 		/// * `status_code` - the status code to set
 		///
 		/// # Weight: `O(1)`
-		#[pallet::weight(0)]
+		#[pallet::call_index(0)]
+		#[pallet::weight(<T as Config>::WeightInfo::set_parachain_status())]
 		#[transactional]
 		pub fn set_parachain_status(
 			origin: OriginFor<T>,
@@ -153,7 +155,8 @@ pub mod pallet {
 		/// * `error_code` - the error code to insert
 		///
 		/// # Weight: `O(1)`
-		#[pallet::weight(0)]
+		#[pallet::call_index(1)]
+		#[pallet::weight(<T as Config>::WeightInfo::insert_parachain_error())]
 		#[transactional]
 		pub fn insert_parachain_error(
 			origin: OriginFor<T>,
@@ -172,7 +175,8 @@ pub mod pallet {
 		/// * `error_code` - the error code to remove
 		///
 		/// # Weight: `O(1)`
-		#[pallet::weight(0)]
+		#[pallet::call_index(2)]
+		#[pallet::weight(<T as Config>::WeightInfo::remove_parachain_error())]
 		#[transactional]
 		pub fn remove_parachain_error(
 			origin: OriginFor<T>,
@@ -186,6 +190,7 @@ pub mod pallet {
 }
 
 // "Internal" functions, callable by code.
+#[allow(clippy::forget_non_drop, clippy::swap_ptr_to_ref, clippy::forget_ref, clippy::forget_copy)]
 #[cfg_attr(test, mockable)]
 impl<T: Config> Pallet<T> {
 	/// Ensures the Parachain is RUNNING
@@ -267,7 +272,7 @@ impl<T: Config> Pallet<T> {
 		});
 	}
 
-	/// Recovers the BTC Parachain state from an `ORACLE_OFFLINE` error
+	/// Recovers the Spacewalk Parachain state from an `ORACLE_OFFLINE` error
 	/// and sets ParachainStatus to `RUNNING` if there are no other errors.
 	pub fn recover_from_oracle_offline() {
 		Self::recover_from_(vec![ErrorCode::OracleOffline])
@@ -311,6 +316,7 @@ impl<T: Config> Pallet<T> {
 	}
 
 	/// for testing purposes only!
+	#[cfg(feature = "testing-utils")]
 	pub fn set_active_block_number(n: T::BlockNumber) {
 		ActiveBlockCount::<T>::set(n);
 	}

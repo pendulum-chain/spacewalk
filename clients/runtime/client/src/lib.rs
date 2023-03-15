@@ -6,18 +6,21 @@ use futures::{
 };
 use jsonrpsee_core::{
 	async_trait,
-	client::{Client as JsonRpcClient, TransportReceiverT, TransportSenderT},
+	client::{
+		Client as JsonRpcClient, ClientBuilder, ReceivedMessage, TransportReceiverT,
+		TransportSenderT,
+	},
 };
-use sc_network::config::TransportConfig;
+use sc_client_db::BlocksPruning;
 pub use sc_service::{
 	config::{DatabaseSource, KeystoreConfig, WasmExecutionMethod, WasmtimeInstantiationStrategy},
 	Error as ServiceError,
 };
 use sc_service::{
-	config::{NetworkConfiguration, TelemetryEndpoints},
-	ChainSpec, Configuration, KeepBlocks, RpcHandlers, TaskManager,
+	config::{NetworkConfiguration, TelemetryEndpoints, TransportConfig},
+	ChainSpec, Configuration, RpcHandlers, TaskManager,
 };
-pub use sp_keyring::Ed25519Keyring;
+pub use sp_keyring::AccountKeyring;
 use thiserror::Error;
 use tokio::task;
 
@@ -46,15 +49,19 @@ impl TransportSenderT for Sender {
 		self.0.send(msg).await?;
 		Ok(())
 	}
+
+	async fn send_ping(&mut self) -> Result<(), Self::Error> {
+		unimplemented!()
+	}
 }
 
 #[async_trait]
 impl TransportReceiverT for Receiver {
 	type Error = SubxtClientError;
 
-	async fn receive(&mut self) -> Result<String, Self::Error> {
+	async fn receive(&mut self) -> Result<ReceivedMessage, Self::Error> {
 		let msg = self.0.next().await.expect("channel should be open");
-		Ok(msg)
+		Ok(ReceivedMessage::Text(msg))
 	}
 }
 
@@ -80,6 +87,7 @@ impl SubxtClient {
 					async move {
 						let (resp, mut stream) = rpc.rpc_query(&message).await.unwrap();
 						to_front.send(resp).await.ok();
+						// read the rest of the stream but don't block
 						task::spawn(async move {
 							while let Some(resp) = stream.next().await {
 								to_front.send(resp).await.ok();
@@ -120,6 +128,7 @@ impl Clone for SubxtClient {
 			async move {
 				let (resp, mut stream) = rpc.rpc_query(&message).await.unwrap();
 				to_front.send(resp).await.ok();
+				// read the rest of the stream but don't block
 				task::spawn(async move {
 					while let Some(resp) = stream.next().await {
 						to_front.send(resp).await.ok();
@@ -134,23 +143,23 @@ impl Clone for SubxtClient {
 
 impl From<SubxtClient> for JsonRpcClient {
 	fn from(client: SubxtClient) -> Self {
-		(client.sender, client.receiver).into()
+		ClientBuilder::default().build_with_tokio(client.sender, client.receiver)
 	}
 }
 
 /// Role of the node.
 #[derive(Clone, Copy, Debug)]
 pub enum Role {
-	/// Light client.
-	Light,
-	/// A full node (mainly used for testing purposes).
-	Authority(Ed25519Keyring),
+	/// Regular full node
+	Full,
+	/// Actual authority
+	Authority(AccountKeyring),
 }
 
 impl From<Role> for sc_service::Role {
 	fn from(role: Role) -> Self {
 		match role {
-			Role::Light => Self::Light,
+			Role::Full => Self::Full,
 			Role::Authority(_) => Self::Authority,
 		}
 	}
@@ -159,7 +168,7 @@ impl From<Role> for sc_service::Role {
 impl From<Role> for Option<String> {
 	fn from(role: Role) -> Self {
 		match role {
-			Role::Light => None,
+			Role::Full => None,
 			Role::Authority(key) => Some(key.to_seed()),
 		}
 	}
@@ -232,7 +241,6 @@ impl<C: ChainSpec + 'static> SubxtClientConfig<C> {
 			disable_grandpa: Default::default(),
 			execution_strategies: Default::default(),
 			force_authoring: Default::default(),
-			keep_blocks: KeepBlocks::All,
 			keystore_remote: Default::default(),
 			offchain_worker: Default::default(),
 			prometheus_config: Default::default(),
@@ -242,8 +250,6 @@ impl<C: ChainSpec + 'static> SubxtClientConfig<C> {
 			rpc_ws: Default::default(),
 			rpc_ws_max_connections: Default::default(),
 			rpc_methods: Default::default(),
-			state_cache_child_ratio: Default::default(),
-			state_cache_size: Default::default(),
 			tracing_receiver: Default::default(),
 			tracing_targets: Default::default(),
 			transaction_pool: Default::default(),
@@ -251,7 +257,6 @@ impl<C: ChainSpec + 'static> SubxtClientConfig<C> {
 			base_path: Default::default(),
 			informant_output_format: Default::default(),
 			state_pruning: Default::default(),
-			// transaction_storage: sc_client_db::TransactionStorageMode::BlockBody,
 			wasm_runtime_overrides: Default::default(),
 			rpc_max_payload: Default::default(),
 			ws_max_out_buffer_capacity: Default::default(),
@@ -260,6 +265,8 @@ impl<C: ChainSpec + 'static> SubxtClientConfig<C> {
 			rpc_max_response_size: None,
 			rpc_id_provider: None,
 			rpc_max_subs_per_conn: None,
+			trie_cache_maximum_size: None,
+			blocks_pruning: BlocksPruning::KeepAll,
 		};
 
 		log::info!("{}", service_config.impl_name);

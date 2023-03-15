@@ -1,25 +1,15 @@
 #![allow(dead_code)]
 
-mod collector;
-mod constants;
-mod errors;
-mod handler;
-pub mod storage;
-mod types;
-
-pub use handler::*;
-pub use storage::prepare_directories;
-
+pub use agent::*;
+pub use collector::Proof;
 use collector::*;
-use errors::Error;
+pub use errors::Error;
 pub use storage::*;
 use types::*;
 
-/// A filter trait to check whether `T` should be processed.
-pub trait FilterWith<T> {
-	/// unique identifier of this filter
-	fn name(&self) -> &'static str;
-
-	/// logic to check whether a given param should be processed.
-	fn check_for_processing(&self, param: &T) -> bool;
-}
+mod agent;
+mod collector;
+mod constants;
+mod errors;
+pub mod storage;
+pub mod types;

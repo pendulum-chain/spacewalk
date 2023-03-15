@@ -6,44 +6,54 @@
 #[macro_use]
 extern crate frame_benchmarking;
 
+use codec::Encode;
+pub use dia_oracle::dia::*;
 use frame_support::{
 	construct_runtime, parameter_types,
 	traits::{ConstU128, ConstU8, Contains, KeyOwnerProofSystem},
-	weights::{constants::WEIGHT_PER_SECOND, ConstantMultiplier, IdentityFee},
+	weights::{constants::WEIGHT_REF_TIME_PER_SECOND, ConstantMultiplier, IdentityFee, Weight},
+	PalletId,
 };
+pub use frame_system::Call as SystemCall;
 use orml_currencies::BasicCurrencyAdapter;
-use orml_traits::parameter_type_with_key;
+use orml_traits::{currency::MutationHooks, parameter_type_with_key};
+pub use pallet_balances::Call as BalancesCall;
 use pallet_grandpa::{
 	fg_primitives, AuthorityId as GrandpaId, AuthorityList as GrandpaAuthorityList,
 };
+pub use pallet_timestamp::Call as TimestampCall;
 use sp_api::impl_runtime_apis;
-use sp_consensus_aura::ed25519::AuthorityId as AuraId;
-use sp_core::{crypto::KeyTypeId, OpaqueMetadata};
+use sp_consensus_aura::sr25519::AuthorityId as AuraId;
+use sp_core::{crypto::KeyTypeId, OpaqueMetadata, H256};
 use sp_runtime::{
 	create_runtime_str, generic, impl_opaque_keys,
-	traits::{AccountIdLookup, BlakeTwo256, Block as BlockT, NumberFor, Zero},
+	traits::{
+		AccountIdConversion, AccountIdLookup, BlakeTwo256, Block as BlockT, Convert, NumberFor,
+		Zero,
+	},
 	transaction_validity::{TransactionSource, TransactionValidity},
-	ApplyExtrinsicResult, Perbill,
+	ApplyExtrinsicResult, DispatchError, FixedPointNumber, Perbill, SaturatedConversion,
 };
-use sp_std::prelude::*;
+use sp_std::{marker::PhantomData, prelude::*};
 #[cfg(feature = "std")]
 use sp_version::NativeVersion;
 use sp_version::RuntimeVersion;
 
-use pallet_spacewalk::{
-	address_conv::AddressConversion as StellarAddressConversion,
-	balance_conv::BalanceConversion as StellarBalanceConversion,
-	currency_conv::{
-		CurrencyConversion as StellarCurrencyConversion,
-		StringCurrencyConversion as StellarStringCurrencyConversion,
-	},
-};
-// A few exports that help ease life for downstream crates.
-pub use pallet_spacewalk::{self, currency::CurrencyId};
+use currency::Amount;
+pub use issue::{Event as IssueEvent, IssueRequest};
+pub use module_oracle_rpc_runtime_api::BalanceWrapper;
+pub use nomination::Event as NominationEvent;
+use oracle::dia::{DiaOracleAdapter, NativeCurrencyKey, XCMCurrencyConversion};
 pub use primitives::{
-	self, AccountId, Balance, BlockNumber, Hash, Moment, Nonce, Signature, SignedFixedPoint,
-	SignedInner, UnsignedFixedPoint, UnsignedInner,
+	self, AccountId, Balance, BlockNumber, CurrencyId, Hash, Moment, Nonce, Signature,
+	SignedFixedPoint, SignedInner, UnsignedFixedPoint, UnsignedInner,
 };
+pub use redeem::{Event as RedeemEvent, RedeemRequest};
+pub use replace::{Event as ReplaceEvent, ReplaceRequest};
+pub use security::StatusCode;
+pub use stellar_relay::traits::{FieldLength, Organization, Validator};
+
+type VaultId = primitives::VaultId<AccountId, CurrencyId>;
 
 // Make the WASM binary available.
 #[cfg(feature = "std")]
@@ -59,6 +69,13 @@ impl_opaque_keys! {
 pub const UNITS: Balance = 10_000_000_000;
 pub const CENTS: Balance = UNITS / 100; // 100_000_000
 pub const MILLICENTS: Balance = CENTS / 1_000; // 100_000
+
+// These time units are defined in number of blocks.
+pub const MINUTES: BlockNumber = 60_000 / (MILLISECS_PER_BLOCK as BlockNumber);
+pub const HOURS: BlockNumber = MINUTES * 60;
+pub const DAYS: BlockNumber = HOURS * 24;
+pub const WEEKS: BlockNumber = DAYS * 7;
+pub const YEARS: BlockNumber = DAYS * 365;
 
 /// This runtime version.
 #[sp_version::runtime_version]
@@ -76,6 +93,14 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
 pub const MILLISECS_PER_BLOCK: u64 = 6000;
 pub const SLOT_DURATION: u64 = MILLISECS_PER_BLOCK;
 
+pub struct BlockNumberToBalance;
+
+impl Convert<BlockNumber, Balance> for BlockNumberToBalance {
+	fn convert(a: BlockNumber) -> Balance {
+		a.into()
+	}
+}
+
 /// The version information used to identify this runtime when compiled natively.
 #[cfg(feature = "std")]
 pub fn native_version() -> NativeVersion {
@@ -88,36 +113,44 @@ parameter_types! {
 	pub const Version: RuntimeVersion = VERSION;
 	pub const BlockHashCount: BlockNumber = 250;
 	/// We allow for 2 seconds of compute with a 6 second average block time.
-	pub BlockWeights: frame_system::limits::BlockWeights = frame_system::limits::BlockWeights
-		::with_sensible_defaults(2 * WEIGHT_PER_SECOND, NORMAL_DISPATCH_RATIO);
+	pub BlockWeights: frame_system::limits::BlockWeights =
+		frame_system::limits::BlockWeights::with_sensible_defaults(
+			(2u64 * Weight::from_ref_time(WEIGHT_REF_TIME_PER_SECOND)).set_proof_size(u64::MAX),
+			NORMAL_DISPATCH_RATIO,
+		);
 	pub BlockLength: frame_system::limits::BlockLength = frame_system::limits::BlockLength
 		::max_with_normal_ratio(5 * 1024 * 1024, NORMAL_DISPATCH_RATIO);
 	pub const SS58Prefix: u8 = 42;
 }
 
+pub type Index = u32;
 impl frame_system::Config for Runtime {
-	/// The identifier used to distinguish between accounts.
-	type AccountId = AccountId;
+	type BaseCallFilter = frame_support::traits::Everything;
+	type BlockWeights = BlockWeights;
+	type BlockLength = BlockLength;
+	/// The ubiquitous origin type.
+	type RuntimeOrigin = RuntimeOrigin;
 	/// The aggregated dispatch type that is available for extrinsics.
-	type Call = Call;
-	/// The lookup mechanism to get account ID from whatever is passed in dispatchers.
-	type Lookup = AccountIdLookup<AccountId, ()>;
+	type RuntimeCall = RuntimeCall;
 	/// The index type for storing how many extrinsics an account has signed.
-	type Index = Nonce;
+	type Index = Index;
 	/// The index type for blocks.
 	type BlockNumber = BlockNumber;
 	/// The type for hashing blocks and tries.
 	type Hash = Hash;
 	/// The hashing algorithm used.
 	type Hashing = BlakeTwo256;
+	/// The identifier used to distinguish between accounts.
+	type AccountId = AccountId;
+	/// The lookup mechanism to get account ID from whatever is passed in dispatchers.
+	type Lookup = AccountIdLookup<AccountId, ()>;
 	/// The header type.
 	type Header = generic::Header<BlockNumber, BlakeTwo256>;
 	/// The ubiquitous event type.
-	type Event = Event;
-	/// The ubiquitous origin type.
-	type Origin = Origin;
+	type RuntimeEvent = RuntimeEvent;
 	/// Maximum number of block number to block hash mappings to keep (oldest pruned first).
 	type BlockHashCount = BlockHashCount;
+	type DbWeight = ();
 	/// Runtime version.
 	type Version = Version;
 	/// Converts a module to an index of this module in the runtime.
@@ -125,11 +158,7 @@ impl frame_system::Config for Runtime {
 	type AccountData = pallet_balances::AccountData<Balance>;
 	type OnNewAccount = ();
 	type OnKilledAccount = ();
-	type DbWeight = ();
-	type BaseCallFilter = frame_support::traits::Everything;
 	type SystemWeightInfo = ();
-	type BlockWeights = BlockWeights;
-	type BlockLength = BlockLength;
 	type SS58Prefix = SS58Prefix;
 	type OnSetCode = ();
 	type MaxConsumers = frame_support::traits::ConstU32<16>;
@@ -146,15 +175,14 @@ impl pallet_aura::Config for Runtime {
 }
 
 impl pallet_grandpa::Config for Runtime {
-	type Event = Event;
-	type Call = Call;
-	type KeyOwnerProofSystem = ();
+	type RuntimeEvent = RuntimeEvent;
 	type KeyOwnerProof =
 		<Self::KeyOwnerProofSystem as KeyOwnerProofSystem<(KeyTypeId, GrandpaId)>>::Proof;
 	type KeyOwnerIdentification = <Self::KeyOwnerProofSystem as KeyOwnerProofSystem<(
 		KeyTypeId,
 		GrandpaId,
 	)>>::IdentificationTuple;
+	type KeyOwnerProofSystem = ();
 	type HandleEquivocation = ();
 	type WeightInfo = ();
 	type MaxAuthorities = MaxAuthorities;
@@ -172,12 +200,34 @@ impl pallet_timestamp::Config for Runtime {
 	type WeightInfo = ();
 }
 
+const NATIVE_CURRENCY_ID: CurrencyId = CurrencyId::Native;
+const PARENT_CURRENCY_ID: CurrencyId = CurrencyId::XCM(0);
+// For mainnet USDC issued by centre.io
+// const WRAPPED_CURRENCY_ID: CurrencyId = CurrencyId::AlphaNum4 {
+// 	code: *b"USDC",
+// 	issuer: [
+// 		59, 153, 17, 56, 14, 254, 152, 139, 160, 168, 144, 14, 177, 207, 228, 79, 54, 111, 125,
+// 		190, 148, 107, 237, 7, 114, 64, 247, 246, 36, 223, 21, 197,
+// 	],
+// };
+// For Testnet USDC issued by
+const WRAPPED_CURRENCY_ID: CurrencyId = CurrencyId::AlphaNum4(
+	*b"USDC",
+	[
+		20, 209, 150, 49, 176, 55, 23, 217, 171, 154, 54, 110, 16, 50, 30, 226, 102, 231, 46, 199,
+		108, 171, 97, 144, 240, 161, 51, 109, 72, 34, 159, 139,
+	],
+);
+
 parameter_types! {
-	pub const GetNativeCurrencyId: CurrencyId = CurrencyId::Native;
+	pub const GetNativeCurrencyId: CurrencyId = NATIVE_CURRENCY_ID;
+	pub const GetRelayChainCurrencyId: CurrencyId = PARENT_CURRENCY_ID;
+	pub const GetWrappedCurrencyId: CurrencyId = WRAPPED_CURRENCY_ID;
 	pub const TransactionByteFee: Balance = MILLICENTS;
 }
 
 impl pallet_transaction_payment::Config for Runtime {
+	type RuntimeEvent = RuntimeEvent;
 	type OnChargeTransaction = pallet_transaction_payment::CurrencyAdapter<Balances, ()>;
 	type OperationalFeeMultiplier = ConstU8<5>;
 	type WeightToFee = IdentityFee<Balance>;
@@ -186,8 +236,25 @@ impl pallet_transaction_payment::Config for Runtime {
 }
 
 impl pallet_sudo::Config for Runtime {
-	type Event = Event;
-	type Call = Call;
+	type RuntimeEvent = RuntimeEvent;
+	type RuntimeCall = RuntimeCall;
+}
+
+// Pallet accounts
+parameter_types! {
+	pub const FeePalletId: PalletId = PalletId(*b"mod/fees");
+	pub const VaultRegistryPalletId: PalletId = PalletId(*b"mod/vreg");
+}
+
+parameter_types! {
+	// 5EYCAe5i8QbRr5WN1PvaAVqPbfXsqazk9ocaxuzcTjgXPM1e
+	pub FeeAccount: AccountId = FeePalletId::get().into_account_truncating();
+	// 5EYCAe5i8QbRra1jndPz1WAuf1q1KHQNfu2cW1EXJ231emTd
+	pub VaultRegistryAccount: AccountId = VaultRegistryPalletId::get().into_account_truncating();
+}
+
+pub fn get_all_module_accounts() -> Vec<AccountId> {
+	vec![FeeAccount::get(), VaultRegistryAccount::get()]
 }
 
 parameter_types! {
@@ -200,16 +267,28 @@ parameter_type_with_key! {
 	};
 }
 
+pub struct CurrencyHooks<T>(PhantomData<T>);
+impl<T: orml_tokens::Config> MutationHooks<T::AccountId, T::CurrencyId, T::Balance>
+	for CurrencyHooks<T>
+{
+	type OnDust = orml_tokens::BurnDust<T>;
+	type OnSlash = ();
+	type PreDeposit = ();
+	type PostDeposit = ();
+	type PreTransfer = ();
+	type PostTransfer = ();
+	type OnNewTokenAccount = ();
+	type OnKilledTokenAccount = ();
+}
+
 impl orml_tokens::Config for Runtime {
-	type Event = Event;
+	type RuntimeEvent = RuntimeEvent;
 	type Balance = Balance;
 	type Amount = primitives::Amount;
 	type CurrencyId = CurrencyId;
 	type WeightInfo = ();
 	type ExistentialDeposits = ExistentialDeposits;
-	type OnDust = orml_tokens::BurnDust<Runtime>;
-	type OnNewTokenAccount = ();
-	type OnKilledTokenAccount = ();
+	type CurrencyHooks = CurrencyHooks<Runtime>;
 	type MaxLocks = MaxLocks;
 	type MaxReserves = ();
 	type ReserveIdentifier = [u8; 8];
@@ -223,16 +302,6 @@ impl Contains<AccountId> for DustRemovalWhitelist {
 	}
 }
 
-impl pallet_spacewalk::Config for Runtime {
-	type Call = Call;
-	type Event = Event;
-	type Currency = Currencies;
-	type AddressConversion = StellarAddressConversion;
-	type BalanceConversion = StellarBalanceConversion;
-	type StringCurrencyConversion = StellarStringCurrencyConversion;
-	type CurrencyConversion = StellarCurrencyConversion;
-}
-
 impl orml_currencies::Config for Runtime {
 	type MultiCurrency = Tokens;
 	type NativeCurrency = BasicCurrencyAdapter<Runtime, Balances, primitives::Amount, BlockNumber>;
@@ -240,11 +309,14 @@ impl orml_currencies::Config for Runtime {
 	type WeightInfo = ();
 }
 
+/// Existential deposit.
+pub const EXISTENTIAL_DEPOSIT: u128 = 500;
+
 impl pallet_balances::Config for Runtime {
 	type Balance = Balance;
 	type DustRemoval = ();
-	type Event = Event;
-	type ExistentialDeposit = ConstU128<500>;
+	type RuntimeEvent = RuntimeEvent;
+	type ExistentialDeposit = ConstU128<EXISTENTIAL_DEPOSIT>;
 	type AccountStore = System;
 	type WeightInfo = pallet_balances::weights::SubstrateWeight<Runtime>;
 	type MaxLocks = MaxLocks;
@@ -252,18 +324,252 @@ impl pallet_balances::Config for Runtime {
 	type ReserveIdentifier = [u8; 8];
 }
 
-parameter_types! {
-	pub const OrganizationLimit: u32 = 255;
-	pub const ValidatorLimit: u32 = 255;
+impl reward::Config for Runtime {
+	type RuntimeEvent = RuntimeEvent;
+	type SignedFixedPoint = SignedFixedPoint;
+	type RewardId = VaultId;
+	type CurrencyId = CurrencyId;
+	type GetNativeCurrencyId = GetNativeCurrencyId;
+}
+
+impl security::Config for Runtime {
+	type RuntimeEvent = RuntimeEvent;
+	type WeightInfo = ();
+}
+
+pub struct CurrencyConvert;
+impl currency::CurrencyConversion<currency::Amount<Runtime>, CurrencyId> for CurrencyConvert {
+	fn convert(
+		amount: &currency::Amount<Runtime>,
+		to: CurrencyId,
+	) -> Result<currency::Amount<Runtime>, DispatchError> {
+		Oracle::convert(amount, to)
+	}
+}
+
+impl currency::Config for Runtime {
+	type SignedInner = SignedInner;
+	type SignedFixedPoint = SignedFixedPoint;
+	type UnsignedFixedPoint = UnsignedFixedPoint;
+	type Balance = Balance;
+	type GetRelayChainCurrencyId = GetRelayChainCurrencyId;
+	type AssetConversion = primitives::AssetConversion;
+	type BalanceConversion = primitives::BalanceConversion;
+	type CurrencyConversion = CurrencyConvert;
+}
+
+impl staking::Config for Runtime {
+	type RuntimeEvent = RuntimeEvent;
+	type SignedFixedPoint = SignedFixedPoint;
+	type SignedInner = SignedInner;
+	type CurrencyId = CurrencyId;
+	type GetNativeCurrencyId = GetNativeCurrencyId;
 }
 
 pub type OrganizationId = u128;
 
-impl pallet_stellar_relay::Config for Runtime {
-	type Event = Event;
+parameter_types! {
+	pub const OrganizationLimit: u32 = 255;
+	pub const ValidatorLimit: u32 = 255;
+	pub const IsPublicNetwork: bool = false;
+}
+
+impl stellar_relay::Config for Runtime {
+	type RuntimeEvent = RuntimeEvent;
 	type OrganizationId = OrganizationId;
 	type OrganizationLimit = OrganizationLimit;
 	type ValidatorLimit = ValidatorLimit;
+	type IsPublicNetwork = IsPublicNetwork;
+	type WeightInfo = ();
+}
+
+impl vault_registry::Config for Runtime {
+	type PalletId = VaultRegistryPalletId;
+	type RuntimeEvent = RuntimeEvent;
+	type Balance = Balance;
+	type WeightInfo = ();
+	type GetGriefingCollateralCurrencyId = GetRelayChainCurrencyId;
+}
+
+impl<C> frame_system::offchain::SendTransactionTypes<C> for Runtime
+where
+	RuntimeCall: From<C>,
+{
+	type OverarchingCall = RuntimeCall;
+	type Extrinsic = UncheckedExtrinsic;
+}
+
+impl dia_oracle::Config for Runtime {
+	type RuntimeEvent = RuntimeEvent;
+	type RuntimeCall = RuntimeCall;
+	type AuthorityId = dia_oracle::crypto::DiaAuthId;
+	type WeightInfo = ();
+}
+
+impl frame_system::offchain::SigningTypes for Runtime {
+	type Public = <Signature as sp_runtime::traits::Verify>::Signer;
+	type Signature = Signature;
+}
+
+impl<LocalCall> frame_system::offchain::CreateSignedTransaction<LocalCall> for Runtime
+where
+	RuntimeCall: From<LocalCall>,
+{
+	fn create_transaction<C: frame_system::offchain::AppCrypto<Self::Public, Self::Signature>>(
+		call: RuntimeCall,
+		public: <Signature as sp_runtime::traits::Verify>::Signer,
+		account: AccountId,
+		index: Index,
+	) -> Option<(
+		RuntimeCall,
+		<UncheckedExtrinsic as sp_runtime::traits::Extrinsic>::SignaturePayload,
+	)> {
+		let period = BlockHashCount::get() as u64;
+		let current_block = System::block_number().saturated_into::<u64>().saturating_sub(1);
+		let tip = 0;
+		let extra: SignedExtra = (
+			frame_system::CheckSpecVersion::<Runtime>::new(),
+			frame_system::CheckTxVersion::<Runtime>::new(),
+			frame_system::CheckGenesis::<Runtime>::new(),
+			frame_system::CheckEra::<Runtime>::from(generic::Era::mortal(period, current_block)),
+			frame_system::CheckNonce::<Runtime>::from(index),
+			frame_system::CheckWeight::<Runtime>::new(),
+			pallet_transaction_payment::ChargeTransactionPayment::<Runtime>::from(tip),
+		);
+
+		let raw_payload = SignedPayload::new(call, extra).ok()?;
+		let signature = raw_payload.using_encoded(|payload| C::sign(payload, public))?;
+		let address = account;
+		let (call, extra, _) = raw_payload.deconstruct();
+		Some((call, (sp_runtime::MultiAddress::Id(address), signature, extra)))
+	}
+}
+
+pub struct ConvertPrice;
+impl Convert<u128, Option<UnsignedFixedPoint>> for ConvertPrice {
+	fn convert(price: u128) -> Option<UnsignedFixedPoint> {
+		Some(UnsignedFixedPoint::from_inner(price))
+	}
+}
+pub struct ConvertMoment;
+impl Convert<u64, Option<Moment>> for ConvertMoment {
+	fn convert(moment: u64) -> Option<Moment> {
+		// The provided moment is in seconds, but we need milliseconds
+		Some(moment.saturating_mul(1000))
+	}
+}
+
+#[cfg(any(feature = "testing-utils", feature = "runtime-benchmarks"))]
+mod benchmark_utils;
+
+pub struct SpacewalkNativeCurrencyKey;
+
+impl NativeCurrencyKey for SpacewalkNativeCurrencyKey {
+	fn native_symbol() -> Vec<u8> {
+		"LOCAL".as_bytes().to_vec()
+	}
+
+	fn native_chain() -> Vec<u8> {
+		"LOCAL".as_bytes().to_vec()
+	}
+}
+
+// It's important that this is implemented the same way as the MockOracleKeyConvertor
+// because this is used in the benchmark_utils::DataCollector when feeding prices
+impl XCMCurrencyConversion for SpacewalkNativeCurrencyKey {
+	fn convert_to_dia_currency_id(token_symbol: u8) -> Option<(Vec<u8>, Vec<u8>)> {
+		// We assume that the blockchain is always 0 and the symbol represents the token symbol
+		let blockchain = vec![0u8];
+		let symbol = vec![token_symbol];
+		Some((blockchain, symbol))
+	}
+
+	fn convert_from_dia_currency_id(blockchain: Vec<u8>, symbol: Vec<u8>) -> Option<u8> {
+		// We assume that the blockchain is always 0 and the symbol represents the token symbol
+		if blockchain.len() != 1 && blockchain[0] != 0 || symbol.len() != 1 {
+			return None
+		}
+		return Some(symbol[0])
+	}
+}
+
+cfg_if::cfg_if! {
+	 if #[cfg(feature = "testing-utils")] {
+		type DataProviderImpl = DiaOracleAdapter<
+			DiaOracleModule,
+			UnsignedFixedPoint,
+			Moment,
+			oracle::dia::DiaOracleKeyConvertor<SpacewalkNativeCurrencyKey>,
+			ConvertPrice,
+			ConvertMoment,
+		>;
+	} else if #[cfg(feature = "runtime-benchmarks")] {
+		type DataProviderImpl = DiaOracleAdapter<
+			benchmark_utils::MockDiaOracle,
+			UnsignedFixedPoint,
+			Moment,
+			benchmark_utils::MockOracleKeyConvertor,
+			benchmark_utils::MockConvertPrice,
+			benchmark_utils::MockConvertMoment,
+		>;
+	} else {
+		// This implementation will be used when running the testchain locally
+		// as well as for the **vault integration tests**
+		type DataProviderImpl = DiaOracleAdapter<
+			DiaOracleModule,
+			UnsignedFixedPoint,
+			Moment,
+			oracle::dia::DiaOracleKeyConvertor<SpacewalkNativeCurrencyKey>,
+			ConvertPrice,
+			ConvertMoment,
+		>;
+	}
+}
+
+impl oracle::Config for Runtime {
+	type RuntimeEvent = RuntimeEvent;
+	type WeightInfo = ();
+	type DataProvider = DataProviderImpl;
+
+	#[cfg(any(feature = "runtime-benchmarks", feature = "testing-utils"))]
+	type DataFeedProvider = benchmark_utils::DataCollector;
+}
+
+impl issue::Config for Runtime {
+	type RuntimeEvent = RuntimeEvent;
+	type BlockNumberToBalance = BlockNumberToBalance;
+	type WeightInfo = ();
+}
+
+impl redeem::Config for Runtime {
+	type RuntimeEvent = RuntimeEvent;
+	type WeightInfo = ();
+}
+
+impl replace::Config for Runtime {
+	type RuntimeEvent = RuntimeEvent;
+	type WeightInfo = ();
+}
+
+parameter_types! {
+	pub const MaxExpectedValue: UnsignedFixedPoint = UnsignedFixedPoint::from_inner(<UnsignedFixedPoint as FixedPointNumber>::DIV);
+}
+
+impl fee::Config for Runtime {
+	type FeePalletId = FeePalletId;
+	type WeightInfo = ();
+	type SignedFixedPoint = SignedFixedPoint;
+	type SignedInner = SignedInner;
+	type UnsignedFixedPoint = UnsignedFixedPoint;
+	type UnsignedInner = UnsignedInner;
+	type VaultRewards = VaultRewards;
+	type VaultStaking = VaultStaking;
+	type OnSweep = currency::SweepFunds<Runtime, FeeAccount>;
+	type MaxExpectedValue = MaxExpectedValue;
+}
+
+impl nomination::Config for Runtime {
+	type RuntimeEvent = RuntimeEvent;
 	type WeightInfo = ();
 }
 
@@ -279,12 +585,26 @@ construct_runtime! {
 		Grandpa: pallet_grandpa::{Pallet, Call, Storage, Config, Event} = 3,
 		Sudo: pallet_sudo::{Pallet, Call, Storage, Config<T>, Event<T>} = 4,
 		Tokens: orml_tokens::{Pallet, Call, Storage, Config<T>, Event<T>} = 5,
-		Spacewalk: pallet_spacewalk::{Pallet, Call, Storage, Event<T>} = 6,
 		Currencies: orml_currencies::{Pallet, Call, Storage} = 7,
 		Balances: pallet_balances::{Pallet, Call, Storage, Config<T>, Event<T>} = 8,
-		TransactionPayment: pallet_transaction_payment::{Pallet, Storage} = 9,
+		TransactionPayment: pallet_transaction_payment::{Pallet, Storage, Event<T>} = 9,
 
-		StellarRelay: pallet_stellar_relay::{Pallet, Call, Storage, Event<T>} = 10,
+		StellarRelay: stellar_relay::{Pallet, Call, Config<T>, Storage, Event<T>} = 10,
+
+		VaultRewards: reward::{Pallet, Storage, Event<T>} = 15,
+		VaultStaking: staking::{Pallet, Storage, Event<T>} = 16,
+
+		Currency: currency::{Pallet} = 17,
+
+		Security: security::{Pallet, Call, Config, Storage, Event<T>} = 19,
+		VaultRegistry: vault_registry::{Pallet, Call, Config<T>, Storage, Event<T>, ValidateUnsigned} = 21,
+		Oracle: oracle::{Pallet, Call, Config, Storage, Event<T>} = 22,
+		Issue: issue::{Pallet, Call, Config<T>, Storage, Event<T>} = 23,
+		Redeem: redeem::{Pallet, Call, Config<T>, Storage, Event<T>} = 24,
+		Replace: replace::{Pallet, Call, Config<T>, Storage, Event<T>} = 25,
+		Fee: fee::{Pallet, Call, Config<T>, Storage} = 26,
+		Nomination: nomination::{Pallet, Call, Config, Storage, Event<T>} = 28,
+		DiaOracleModule: dia_oracle::{Pallet, Call, Config<T>, Storage, Event<T>} = 29,
 	}
 }
 
@@ -309,9 +629,11 @@ pub type SignedExtra = (
 	pallet_transaction_payment::ChargeTransactionPayment<Runtime>,
 );
 /// Unchecked extrinsic type as expected by this runtime.
-pub type UncheckedExtrinsic = generic::UncheckedExtrinsic<Address, Call, Signature, SignedExtra>;
+pub type UncheckedExtrinsic =
+	generic::UncheckedExtrinsic<Address, RuntimeCall, Signature, SignedExtra>;
 /// Extrinsic type that has already been checked.
-pub type CheckedExtrinsic = generic::CheckedExtrinsic<AccountId, Call, SignedExtra>;
+pub type CheckedExtrinsic = generic::CheckedExtrinsic<AccountId, RuntimeCall, SignedExtra>;
+pub type SignedPayload = generic::SignedPayload<RuntimeCall, SignedExtra>;
 /// Executive: handles dispatch to the various modules.
 pub type Executive = frame_executive::Executive<
 	Runtime,
@@ -326,7 +648,14 @@ mod benches {
 	define_benchmarks!(
 		[frame_benchmarking, BaselineBench::<Runtime>]
 		[frame_system, SystemBench::<Runtime>]
-		[pallet_stellar_relay, StellarRelay]
+		[stellar_relay, StellarRelay]
+		[issue, Issue]
+		[fee, Fee]
+		[oracle, Oracle]
+		[redeem, Redeem]
+		[replace, Replace]
+		[vault_registry, VaultRegistry]
+		[nomination, Nomination]
 	);
 }
 
@@ -468,7 +797,7 @@ impl_runtime_apis! {
 			Vec<frame_benchmarking::BenchmarkList>,
 			Vec<frame_support::traits::StorageInfo>,
 		) {
-			use frame_benchmarking::{list_benchmark, baseline, Benchmarking, BenchmarkList};
+			use frame_benchmarking::{baseline, Benchmarking, BenchmarkList};
 			use frame_support::traits::StorageInfoTrait;
 			use frame_system_benchmarking::Pallet as SystemBench;
 			use baseline::Pallet as BaselineBench;
@@ -477,13 +806,13 @@ impl_runtime_apis! {
 			list_benchmarks!(list, extra);
 
 			let storage_info = AllPalletsWithSystem::storage_info();
-			return (list, storage_info)
+			(list, storage_info)
 		}
 
 		fn dispatch_benchmark(
 			config: frame_benchmarking::BenchmarkConfig
 		) -> Result<Vec<frame_benchmarking::BenchmarkBatch>, sp_runtime::RuntimeString> {
-			use frame_benchmarking::{baseline, Benchmarking, BenchmarkBatch, add_benchmark, TrackedStorageKey};
+			use frame_benchmarking::{baseline, Benchmarking, BenchmarkBatch, TrackedStorageKey};
 
 			use frame_system_benchmarking::Pallet as SystemBench;
 			use baseline::Pallet as BaselineBench;
@@ -508,6 +837,114 @@ impl_runtime_apis! {
 			add_benchmarks!(params, batches);
 			if batches.is_empty() { return Err("Benchmark not found for this pallet.".into()) }
 			Ok(batches)
+		}
+	}
+
+	impl module_issue_rpc_runtime_api::IssueApi<
+		Block,
+		AccountId,
+		H256,
+		IssueRequest<AccountId, BlockNumber, Balance, CurrencyId>
+	> for Runtime {
+		fn get_issue_requests(account_id: AccountId) -> Vec<H256> {
+			Issue::get_issue_requests_for_account(account_id)
+		}
+
+		fn get_vault_issue_requests(vault_id: AccountId) -> Vec<H256> {
+			Issue::get_issue_requests_for_vault(vault_id)
+		}
+	}
+
+	impl module_vault_registry_rpc_runtime_api::VaultRegistryApi<
+		Block,
+		VaultId,
+		Balance,
+		UnsignedFixedPoint,
+		CurrencyId,
+		AccountId,
+	> for Runtime {
+		fn get_vault_collateral(vault_id: VaultId) -> Result<BalanceWrapper<Balance>, DispatchError> {
+			let result = VaultRegistry::compute_collateral(&vault_id)?;
+			Ok(BalanceWrapper{amount:result.amount()})
+		}
+
+		fn get_vaults_by_account_id(account_id: AccountId) -> Result<Vec<VaultId>, DispatchError> {
+			VaultRegistry::get_vaults_by_account_id(account_id)
+		}
+
+		fn get_vault_total_collateral(vault_id: VaultId) -> Result<BalanceWrapper<Balance>, DispatchError> {
+			let result = VaultRegistry::get_backing_collateral(&vault_id)?;
+			Ok(BalanceWrapper{amount:result.amount()})
+		}
+
+		fn get_premium_redeem_vaults() -> Result<Vec<(VaultId, BalanceWrapper<Balance>)>, DispatchError> {
+			let result = VaultRegistry::get_premium_redeem_vaults()?;
+			Ok(result.iter().map(|v| (v.0.clone(), BalanceWrapper{amount:v.1.amount()})).collect())
+		}
+
+		fn get_vaults_with_issuable_tokens() -> Result<Vec<(VaultId, BalanceWrapper<Balance>)>, DispatchError> {
+			let result = VaultRegistry::get_vaults_with_issuable_tokens()?;
+			Ok(result.into_iter().map(|v| (v.0, BalanceWrapper{amount:v.1.amount()})).collect())
+		}
+
+		fn get_vaults_with_redeemable_tokens() -> Result<Vec<(VaultId, BalanceWrapper<Balance>)>, DispatchError> {
+			let result = VaultRegistry::get_vaults_with_redeemable_tokens()?;
+			Ok(result.into_iter().map(|v| (v.0, BalanceWrapper{amount:v.1.amount()})).collect())
+		}
+
+		fn get_issuable_tokens_from_vault(vault: VaultId) -> Result<BalanceWrapper<Balance>, DispatchError> {
+			let result = VaultRegistry::get_issuable_tokens_from_vault(&vault)?;
+			Ok(BalanceWrapper{amount:result.amount()})
+		}
+
+		fn get_collateralization_from_vault(vault: VaultId, only_issued: bool) -> Result<UnsignedFixedPoint, DispatchError> {
+			VaultRegistry::get_collateralization_from_vault(vault, only_issued)
+		}
+
+		fn get_collateralization_from_vault_and_collateral(vault: VaultId, collateral: BalanceWrapper<Balance>, only_issued: bool) -> Result<UnsignedFixedPoint, DispatchError> {
+			let amount = Amount::new(collateral.amount, vault.collateral_currency());
+			VaultRegistry::get_collateralization_from_vault_and_collateral(vault, &amount, only_issued)
+		}
+
+		fn get_required_collateral_for_wrapped(amount_wrapped: BalanceWrapper<Balance>, currency_id: CurrencyId) -> Result<BalanceWrapper<Balance>, DispatchError> {
+			let amount_wrapped = Amount::new(amount_wrapped.amount, GetWrappedCurrencyId::get());
+			let result = VaultRegistry::get_required_collateral_for_wrapped(&amount_wrapped, currency_id)?;
+			Ok(BalanceWrapper{amount:result.amount()})
+		}
+
+		fn get_required_collateral_for_vault(vault_id: VaultId) -> Result<BalanceWrapper<Balance>, DispatchError> {
+			let result = VaultRegistry::get_required_collateral_for_vault(vault_id)?;
+			Ok(BalanceWrapper{amount:result.amount()})
+		}
+	}
+
+	impl module_redeem_rpc_runtime_api::RedeemApi<
+		Block,
+		AccountId,
+		H256,
+		RedeemRequest<AccountId, BlockNumber, Balance, CurrencyId>
+	> for Runtime {
+		fn get_redeem_requests(account_id: AccountId) -> Vec<H256> {
+			Redeem::get_redeem_requests_for_account(account_id)
+		}
+
+		fn get_vault_redeem_requests(vault_account_id: AccountId) -> Vec<H256> {
+			Redeem::get_redeem_requests_for_vault(vault_account_id)
+		}
+	}
+
+	impl module_replace_rpc_runtime_api::ReplaceApi<
+		Block,
+		AccountId,
+		H256,
+		ReplaceRequest<AccountId, BlockNumber, Balance, CurrencyId>
+	> for Runtime {
+		fn get_old_vault_replace_requests(vault_id: AccountId) -> Vec<H256> {
+			Replace::get_replace_requests_for_old_vault(vault_id)
+		}
+
+		fn get_new_vault_replace_requests(vault_id: AccountId) -> Vec<H256> {
+			Replace::get_replace_requests_for_new_vault(vault_id)
 		}
 	}
 }

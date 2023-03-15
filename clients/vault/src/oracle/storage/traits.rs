@@ -1,13 +1,3 @@
-use sp_core::hexdisplay::AsBytesRef;
-use stellar_relay::sdk::{
-	compound_types::XdrArchive,
-	types::{ScpEnvelope, ScpHistoryEntry, TransactionHistoryEntry, TransactionSet},
-	XdrCodec,
-};
-
-use flate2::bufread::GzDecoder;
-
-use crate::oracle::{constants::ARCHIVE_NODE_LEDGER_BATCH, Error, Filename, SerializedData, Slot};
 use std::{
 	fs,
 	fs::File,
@@ -15,6 +5,13 @@ use std::{
 	path::PathBuf,
 	str::Split,
 };
+
+use flate2::bufread::GzDecoder;
+use sp_core::hexdisplay::AsBytesRef;
+
+use stellar_relay_lib::sdk::{compound_types::XdrArchive, XdrCodec};
+
+use crate::oracle::{constants::ARCHIVE_NODE_LEDGER_BATCH, Error, Filename, SerializedData, Slot};
 
 pub trait FileHandlerExt<T: Default>: FileHandler<T> {
 	fn create_filename_and_data(data: &T) -> Result<(Filename, SerializedData), Error>;
@@ -37,7 +34,7 @@ pub trait FileHandler<T: Default> {
 
 	fn deserialize_bytes(bytes: Vec<u8>) -> Result<T, Error>;
 
-	fn check_slot_in_splitted_filename(slot_param: Slot, splits: &mut Split<&str>) -> bool;
+	fn check_slot_in_splitted_filename(slot_param: Slot, splits: &mut Split<char>) -> bool;
 
 	fn get_path(filename: &str) -> PathBuf {
 		let mut path = PathBuf::new();
@@ -65,7 +62,7 @@ pub trait FileHandler<T: Default> {
 
 		for path in paths {
 			let filename = path?.file_name().into_string().unwrap();
-			let mut splits = filename.split("_");
+			let mut splits: Split<char> = filename.split('_');
 
 			if Self::check_slot_in_splitted_filename(slot_param, &mut splits) {
 				return Ok(filename)
@@ -85,8 +82,8 @@ pub trait FileHandler<T: Default> {
 pub trait ArchiveStorage {
 	type T: XdrCodec;
 	const STELLAR_HISTORY_BASE_URL: &'static str;
-	const prefix_url: &'static str;
-	const prefix_filename: &'static str = "";
+	const PREFIX_URL: &'static str;
+	const PREFIX_FILENAME: &'static str = "";
 
 	fn try_gz_decode_archive_file(path: &str) -> Result<Vec<u8>, Error> {
 		let bytes = Self::read_file_xdr(path)?;
@@ -96,7 +93,7 @@ pub trait ArchiveStorage {
 		Ok(bytes)
 	}
 
-	fn get_url_and_file_name(slot_index: i32) -> (String, String) {
+	fn get_url_and_file_name(slot_index: u32) -> (String, String) {
 		let slot_index = Self::find_last_slot_index_in_batch(slot_index);
 		let hex_string = format!("0{:x}", slot_index);
 		let file_name = format!("{hex_string}.xdr");
@@ -106,17 +103,17 @@ pub trait ArchiveStorage {
 			&hex_string[..2],
 			&hex_string[2..4],
 			&hex_string[4..6],
-			Self::prefix_url
+			Self::PREFIX_URL
 		);
-		(url, format!("{}{file_name}", Self::prefix_filename))
+		(url, format!("{}{file_name}", Self::PREFIX_FILENAME))
 	}
 
-	fn find_last_slot_index_in_batch(slot_index: i32) -> i32 {
+	fn find_last_slot_index_in_batch(slot_index: u32) -> u32 {
 		let rest = (slot_index + 1) % ARCHIVE_NODE_LEDGER_BATCH;
 		if rest == 0 {
 			return slot_index
 		}
-		return slot_index + ARCHIVE_NODE_LEDGER_BATCH - rest
+		slot_index + ARCHIVE_NODE_LEDGER_BATCH - rest
 	}
 
 	fn read_file_xdr(filename: &str) -> Result<Vec<u8>, Error> {

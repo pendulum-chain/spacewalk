@@ -1,61 +1,74 @@
 [package]
-authors = ["SatoshiPay"]
+authors = ["Pendulum"]
 edition = "2018"
 name = "runtime"
 version = "1.1.0"
 
 [features]
-default = ["standalone-metadata"]
-multi-address = []
-parachain-metadata = []
+default = []
 standalone-metadata = []
+parachain-metadata-pendulum = []
+parachain-metadata-amplitude = []
+parachain-metadata-foucoco = []
 testing-utils = [
-  # "substrate-subxt/client",
-  # "substrate-subxt-client",
-  "tempdir",
-  "rand",
-  "subxt-client",
-  "testchain",
+    "tempdir",
+    "rand",
+    "testchain",
+    "testchain-runtime",
+    "subxt-client",
+    "oracle"
 ]
 
 [dependencies]
 async-trait = "0.1.40"
-backoff = {version = "0.3.0", features = ["tokio"]}
+backoff = { version = "0.3.0", features = ["tokio"] }
 cfg-if = "1.0"
-clap = {version = "3.1", features = ["derive"]}
-codec = {package = "parity-scale-codec", version = "3.0.0", default-features = false, features = ["derive", "full"]}
+clap = { version = "3.1", features = ["derive"] }
+codec = { package = "parity-scale-codec", version = "3.0.0", default-features = false, features = ["derive", "full"] }
 futures = "0.3.5"
 log = "0.4.0"
-serde = {version = "1.0.136", features = ["derive"]}
+serde = { version = "1.0.136", features = ["derive"] }
 serde_json = "1.0.71"
 thiserror = "1.0"
-tokio = {version = "1.0", features = ["full"]}
+tokio = { version = "1.0", features = ["full"] }
+prometheus = { version = "0.12.0", features = ["process"] }
 url = "2"
 
 # Substrate dependencies
-frame-support = {git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.24"}
-sp-arithmetic = {git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.24"}
-sp-keyring = {git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.24"}
-sp-runtime = {git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.24"}
-sp-std = {git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.24"}
-sp-version = {git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.24"}
+frame-support = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.37" }
+sp-arithmetic = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.37" }
+sp-keyring = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.37" }
+sp-runtime = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.37" }
+sp-std = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.37" }
+sp-version = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.37" }
 
 # Subxt dependencies
-# https://github.com/interlay/subxt/tree/polkadot-v0.9.24
-subxt = {package = "subxt", git = "https://github.com/interlay/subxt", rev = "cad1564b487f59c53840894607debf1aaae7a2f7"}
-subxt-client = {package = "subxt-client", path = "./client", optional = true}
+subxt = "0.25.0"
+jsonrpsee = { version = "0.16.0", features = ["macros", "jsonrpsee-types", "client", "jsonrpsee-ws-client", "jsonrpsee-client-transport"] }
+# Used for performing the integration tests
+subxt-client = { path = "./client", optional = true }
 
-jsonrpsee = {version = "0.10.1", features = ["macros", "jsonrpsee-types", "client", "jsonrpsee-ws-client", "jsonrpsee-client-transport"]}
+# Needed for the `BalanceWrapper` struct
+module-oracle-rpc-runtime-api = { path = "../../pallets/oracle/rpc/runtime-api" }
+primitives = { path = "../../primitives", package = "spacewalk-primitives" }
 
 # Dependencies for the testing utils for integration tests
-rand = {version = "0.7", optional = true}
-tempdir = {version = "0.3.7", optional = true}
-testchain = {package = "spacewalk-standalone", path = "../../testchain/node", optional = true}
+oracle = { path = "../../pallets/oracle", optional = true }
+rand = { version = "0.7", optional = true }
+tempdir = { version = "0.3.7", optional = true }
+testchain = { package = "spacewalk-standalone", path = "../../testchain/node", optional = true }
+testchain-runtime = { package = "spacewalk-runtime-standalone", path = "../../testchain/runtime", optional = true }
 
 # Substrate Stellar Dependencies
-substrate-stellar-sdk = {git = "https://github.com/pendulum-chain/substrate-stellar-sdk", branch = "polkadot-v0.9.24"}
+substrate-stellar-sdk = { git = "https://github.com/pendulum-chain/substrate-stellar-sdk", branch = "polkadot-v0.9.37" }
+wallet = { path = "../wallet" }
+
 
 [dev-dependencies]
 env_logger = "0.8.3"
-runtime = {path = ".", features = ["testing-utils"]}
 tempdir = "0.3.7"
+runtime = { path = ".", features = ["testing-utils"] }
+testchain-runtime = { package = "spacewalk-runtime-standalone", path = "../../testchain/runtime", features = ["testing-utils"] }
+
+
+

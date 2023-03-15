@@ -1,0 +1,13 @@
+[package]
+authors = ["Interlay <contact@interlay.io>"]
+edition = "2021"
+name = "module-oracle-rpc"
+version = "1.2.0"
+
+[dependencies]
+codec = {package = "parity-scale-codec", version = "3.0.0", default-features = false, features = ["derive", "max-encoded-len"]}
+jsonrpsee = {version = "0.16.0", features = ["server", "macros"]}
+module-oracle-rpc-runtime-api = {path = "runtime-api"}
+sp-api = {git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.37"}
+sp-blockchain = {git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.37"}
+sp-runtime = {git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.37"}
