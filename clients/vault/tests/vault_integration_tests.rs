@@ -99,7 +99,7 @@ pub async fn assert_issue(
 	let issue = parachain_rpc.request_issue(amount, vault_id).await.unwrap();
 
 	let asset = primitives::AssetConversion::lookup(issue.asset).expect("Invalid asset");
-	let stroop_amount = amount as i64;
+	let stroop_amount = primitives::BalanceConversion::lookup(amount).expect("Invalid amount");
 	let memo_hash = issue.issue_id.0;
 
 	let mut wallet = wallet.write().await;
@@ -828,7 +828,7 @@ async fn test_automatic_issue_execution_succeeds() {
 			let issue = user_provider.request_issue(issue_amount, &vault_id).await.unwrap();
 
 			let destination_public_key = PublicKey::from_binary(issue.vault_stellar_public_key);
-			let stroop_amount = (issue.amount + issue.fee) as i64;
+			let stroop_amount = primitives::BalanceConversion::lookup(issue.amount + issue.fee).expect("Invalid amount");
 			let stellar_asset =
 				primitives::AssetConversion::lookup(issue.asset).expect("Asset not found");
 			let memo_hash = issue.issue_id.0;
@@ -948,7 +948,7 @@ async fn test_automatic_issue_execution_succeeds_for_other_vault() {
 			let issue = user_provider.request_issue(issue_amount, &vault1_id).await.unwrap();
 
 			let destination_public_key = PublicKey::from_binary(issue.vault_stellar_public_key);
-			let stroop_amount = (issue.amount + issue.fee) as i64;
+			let stroop_amount = primitives::BalanceConversion::lookup(issue.amount + issue.fee),expect("Invalid amount");
 			let stellar_asset =
 				primitives::AssetConversion::lookup(issue.asset).expect("Asset not found");
 			let memo_hash = issue.issue_id.0;
@@ -1084,7 +1084,7 @@ async fn test_execute_open_requests_succeeds() {
 		.map(|x| x.unwrap())
 		.collect::<Vec<_>>();
 
-		let stroop_amount = redeems[0].amount as i64;
+		let stroop_amount = primitives::BalanceConversion::lookup(redeems[0].amount).expect("Invalid amount");
 		let asset = primitives::AssetConversion::lookup(redeems[0].asset).expect("Invalid asset");
 		let memo_hash = redeem_ids[0].0;
 		// do stellar transfer for redeem 0
