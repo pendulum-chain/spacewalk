@@ -105,7 +105,8 @@ fn create_valid_dummy_scp_envelopes(
 	txes.push(transaction_envelope.clone()).unwrap();
 	let transaction_set = TransactionSet { previous_ledger_hash: Hash::default(), txes };
 
-	let tx_set_hash = crate::compute_non_generic_tx_set_content_hash(&transaction_set);
+	let tx_set_hash = crate::compute_non_generic_tx_set_content_hash(&transaction_set)
+		.expect("Should compute non generic tx set content hash");
 
 	let network: &Network = if public_network { &PUBLIC_NETWORK } else { &TEST_NETWORK };
 
