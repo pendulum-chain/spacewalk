@@ -145,19 +145,31 @@ fn test_currency_conversion_anum12() {
 
 #[test]
 fn test_balance_convr() {
-	let balance: u128 = 10_000_000;
+	// One 'unit' on our chains
+	let chain_unit = 1_000_000_000_000;
+	// One 'unit' on the stellar chain
+	let stellar_unit = 10_000_000;
 
-	let balance_lookup = BalanceConversion::lookup(balance);
-	assert!(balance_lookup.is_ok());
+	// We check if the conversion between a unit between both chains is correct
+	let stellar_unit_result = BalanceConversion::lookup(chain_unit);
+	assert!(stellar_unit_result.is_ok());
+	assert_eq!(stellar_unit_result.unwrap(), stellar_unit);
+	let chain_unit_result = BalanceConversion::unlookup(stellar_unit);
+	assert_eq!(chain_unit_result, chain_unit);
 
-	let balance_lookup = balance_lookup.unwrap();
-	assert_eq!(balance_lookup, (balance / CONVERSION_RATE) as i64);
+	// We assume that the result is truncated and not rounded
+	let chain_balance = 199_999;
+	let truncated_result = BalanceConversion::lookup(chain_balance);
+	assert!(truncated_result.is_ok());
+	assert_eq!(truncated_result.unwrap(), 1);
 
-	let lookup_orig = BalanceConversion::unlookup(balance_lookup);
-	assert_eq!(lookup_orig, balance);
+	let negative_lookup = BalanceConversion::unlookup(i64::MIN);
+	assert_eq!(negative_lookup, 0);
 
-	let balance_unlookup = BalanceConversion::unlookup(i64::MIN);
-	assert_eq!(balance_unlookup, 0);
+	// We check that the conversion fails if the number is too big and even the reduced value does
+	// not fit into i64
+	let failing_lookup = BalanceConversion::lookup(u128::MAX);
+	assert!(failing_lookup.is_err());
 }
 
 #[test]

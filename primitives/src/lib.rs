@@ -606,8 +606,11 @@ impl Convert<(Vec<u8>, Vec<u8>), Result<CurrencyId, ()>> for StringCurrencyConve
 // It converts the native balance of the chain to the stroop representation of the asset on Stellar.
 pub struct BalanceConversion;
 
-// We set the conversion rate to 1:1 for now.
-const CONVERSION_RATE: u128 = 1;
+const CHAIN_DECIMALS: u32 = 12;
+const STELLAR_DECIMALS: u32 = 7;
+// We derive the conversion rate from the number of decimals of the chain and the number of decimals
+// of the asset on Stellar.
+const DECIMALS_CONVERSION_RATE: u128 = 10u128.pow(CHAIN_DECIMALS - STELLAR_DECIMALS);
 
 impl StaticLookup for BalanceConversion {
 	type Source = u128;
@@ -616,7 +619,7 @@ impl StaticLookup for BalanceConversion {
 	type Target = i64;
 
 	fn lookup(pendulum_balance: Self::Source) -> Result<Self::Target, LookupError> {
-		let stroops128: u128 = pendulum_balance / CONVERSION_RATE;
+		let stroops128: u128 = pendulum_balance / DECIMALS_CONVERSION_RATE;
 
 		if stroops128 > i64::MAX as u128 {
 			Err(LookupError)
@@ -626,7 +629,7 @@ impl StaticLookup for BalanceConversion {
 	}
 
 	fn unlookup(stellar_stroops: Self::Target) -> Self::Source {
-		let conversion_rate = i64::try_from(CONVERSION_RATE).unwrap_or(i64::MAX);
+		let conversion_rate = i64::try_from(DECIMALS_CONVERSION_RATE).unwrap_or(i64::MAX);
 
 		let value = stellar_stroops.saturating_mul(conversion_rate);
 		u128::try_from(value).unwrap_or(0)
