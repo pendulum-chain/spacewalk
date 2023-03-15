@@ -204,7 +204,8 @@ async fn test_redeem_succeeds() {
 		let vault_id_manager =
 			VaultIdManager::from_map(vault_provider.clone(), WALLET.clone(), vault_ids);
 
-		let issue_amount = 100000;
+		// We issue 1 (spacewalk-chain) unit
+		let issue_amount = 1_000_000_000_000;
 		let vault_collateral = get_required_vault_collateral_for_issue(
 			&vault_provider,
 			issue_amount,
@@ -242,8 +243,11 @@ async fn test_redeem_succeeds() {
 				let wallet = WALLET.read().await;
 				let address = wallet.get_public_key_raw();
 				drop(wallet);
-				let redeem_id =
-					user_provider.request_redeem(10000, address, &vault_id).await.unwrap();
+				// We redeem half of what we issued
+				let redeem_id = user_provider
+					.request_redeem(issue_amount / 2, address, &vault_id)
+					.await
+					.unwrap();
 				assert_execute_redeem_event(TIMEOUT, user_provider, redeem_id).await;
 			},
 		)
@@ -828,7 +832,8 @@ async fn test_automatic_issue_execution_succeeds() {
 			let issue = user_provider.request_issue(issue_amount, &vault_id).await.unwrap();
 
 			let destination_public_key = PublicKey::from_binary(issue.vault_stellar_public_key);
-			let stroop_amount = primitives::BalanceConversion::lookup(issue.amount + issue.fee).expect("Invalid amount");
+			let stroop_amount = primitives::BalanceConversion::lookup(issue.amount + issue.fee)
+				.expect("Invalid amount");
 			let stellar_asset =
 				primitives::AssetConversion::lookup(issue.asset).expect("Asset not found");
 			let memo_hash = issue.issue_id.0;
@@ -948,7 +953,8 @@ async fn test_automatic_issue_execution_succeeds_for_other_vault() {
 			let issue = user_provider.request_issue(issue_amount, &vault1_id).await.unwrap();
 
 			let destination_public_key = PublicKey::from_binary(issue.vault_stellar_public_key);
-			let stroop_amount = primitives::BalanceConversion::lookup(issue.amount + issue.fee),expect("Invalid amount");
+			let stroop_amount = primitives::BalanceConversion::lookup(issue.amount + issue.fee)
+				.expect("Invalid amount");
 			let stellar_asset =
 				primitives::AssetConversion::lookup(issue.asset).expect("Asset not found");
 			let memo_hash = issue.issue_id.0;
@@ -1040,7 +1046,8 @@ async fn test_execute_open_requests_succeeds() {
 		let vault_id_manager =
 			VaultIdManager::from_map(vault_provider.clone(), WALLET.clone(), vault_ids);
 
-		let issue_amount = 100000;
+		// We issue 1 (spacewalk-chain) unit
+		let issue_amount = 1_000_000_000_000;
 		let vault_collateral = get_required_vault_collateral_for_issue(
 			&vault_provider,
 			issue_amount,
@@ -1067,9 +1074,9 @@ async fn test_execute_open_requests_succeeds() {
 		let address = wallet.get_public_key();
 		let address_raw = wallet.get_public_key_raw();
 		drop(wallet);
-		// place replace requests
+		// place redeem requests
 		let redeem_ids = futures::future::join_all(
-			(0..3u128).map(|_| user_provider.request_redeem(10000, address_raw, &vault_id)),
+			(0..3u128).map(|_| user_provider.request_redeem(1_000_00000, address_raw, &vault_id)),
 		)
 		.await
 		.into_iter()
@@ -1084,7 +1091,8 @@ async fn test_execute_open_requests_succeeds() {
 		.map(|x| x.unwrap())
 		.collect::<Vec<_>>();
 
-		let stroop_amount = primitives::BalanceConversion::lookup(redeems[0].amount).expect("Invalid amount");
+		let stroop_amount =
+			primitives::BalanceConversion::lookup(redeems[0].amount).expect("Invalid amount");
 		let asset = primitives::AssetConversion::lookup(redeems[0].asset).expect("Invalid asset");
 		let memo_hash = redeem_ids[0].0;
 		// do stellar transfer for redeem 0
