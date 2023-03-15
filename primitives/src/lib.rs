@@ -612,11 +612,13 @@ const STELLAR_DECIMALS: u32 = 7;
 // of the asset on Stellar.
 const DECIMALS_CONVERSION_RATE: u128 = 10u128.pow(CHAIN_DECIMALS - STELLAR_DECIMALS);
 
+// The type of stroop amounts is i64
+// see [here](https://github.com/pendulum-chain/substrate-stellar-sdk/blob/f659041c6643f80f4e1f6e9e35268dba3ae2d313/src/amount.rs#L7)
+type StellarStroops = i64;
+
 impl StaticLookup for BalanceConversion {
 	type Source = u128;
-	// The type of stroop amounts is i64
-	// see [here](https://github.com/pendulum-chain/substrate-stellar-sdk/blob/f659041c6643f80f4e1f6e9e35268dba3ae2d313/src/amount.rs#L7)
-	type Target = i64;
+	type Target = StellarStroops;
 
 	fn lookup(pendulum_balance: Self::Source) -> Result<Self::Target, LookupError> {
 		let stroops128: u128 = pendulum_balance / DECIMALS_CONVERSION_RATE;
