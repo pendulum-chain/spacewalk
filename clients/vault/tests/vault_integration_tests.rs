@@ -1074,7 +1074,8 @@ async fn test_execute_open_requests_succeeds() {
 		let address = wallet.get_public_key();
 		let address_raw = wallet.get_public_key_raw();
 		drop(wallet);
-		// place redeem requests
+		// Place redeem requests. 1_000_00000 is our minimum redeem amount with the current fee
+		// settings defined in the chain spec
 		let redeem_ids = futures::future::join_all(
 			(0..3u128).map(|_| user_provider.request_redeem(1_000_00000, address_raw, &vault_id)),
 		)

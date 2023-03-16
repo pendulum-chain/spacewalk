@@ -145,9 +145,9 @@ fn test_currency_conversion_anum12() {
 
 #[test]
 fn test_balance_convr() {
-	// One 'unit' on our chains
+	// 1 'unit' on our chains
 	let chain_unit = 1_000_000_000_000;
-	// One 'unit' on the stellar chain
+	// 1 'unit' on the stellar chain
 	let stellar_unit = 10_000_000;
 
 	// We check if the conversion between a unit between both chains is correct
