@@ -640,18 +640,18 @@ impl StaticLookup for BalanceConversion {
 
 pub struct StellarCompatibility;
 
-pub trait ChainCompatibility {
+pub trait AmountCompatibility {
 	type UnsignedFixedPoint: FixedPointNumber;
 
 	fn is_compatible_with_target(
-		source_amount: <<Self as ChainCompatibility>::UnsignedFixedPoint as FixedPointNumber>::Inner,
+		source_amount: <<Self as AmountCompatibility>::UnsignedFixedPoint as FixedPointNumber>::Inner,
 	) -> bool;
 	fn round_to_compatible_with_target(
-		source_amount: <<Self as ChainCompatibility>::UnsignedFixedPoint as FixedPointNumber>::Inner,
-	) -> Result<<<Self as ChainCompatibility>::UnsignedFixedPoint as FixedPointNumber>::Inner, ()>;
+		source_amount: <<Self as AmountCompatibility>::UnsignedFixedPoint as FixedPointNumber>::Inner,
+	) -> Result<<<Self as AmountCompatibility>::UnsignedFixedPoint as FixedPointNumber>::Inner, ()>;
 }
 
-impl ChainCompatibility for StellarCompatibility {
+impl AmountCompatibility for StellarCompatibility {
 	// We operate on the inner value of the FixedU128 type.
 	type UnsignedFixedPoint = FixedU128;
 

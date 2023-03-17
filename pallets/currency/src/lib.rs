@@ -46,7 +46,7 @@ mod types;
 #[frame_support::pallet]
 pub mod pallet {
 	use frame_support::pallet_prelude::*;
-	use primitives::ChainCompatibility;
+	use primitives::AmountCompatibility;
 	use sp_runtime::traits::StaticLookup;
 
 	use primitives::stellar::Asset;
@@ -97,7 +97,7 @@ pub mod pallet {
 		type AssetConversion: StaticLookup<Source = CurrencyId<Self>, Target = Asset>;
 		type BalanceConversion: StaticLookup<Source = BalanceOf<Self>, Target = i64>;
 		type CurrencyConversion: types::CurrencyConversion<Amount<Self>, CurrencyId<Self>>;
-		type ChainCompatibility: ChainCompatibility<UnsignedFixedPoint = Self::UnsignedFixedPoint>;
+		type AmountCompatibility: AmountCompatibility<UnsignedFixedPoint = Self::UnsignedFixedPoint>;
 	}
 
 	#[pallet::error]

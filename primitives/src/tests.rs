@@ -241,6 +241,10 @@ fn test_compatibility() {
 		StellarCompatibility::round_to_compatible_with_target(incompatible_amount)
 			.expect("rounding failed");
 	assert_eq!(compatible_amount, 999_999_999_900_000);
+
+	let compatible_amount =
+		StellarCompatibility::round_to_compatible_with_target(0).expect("rounding failed");
+	assert_eq!(compatible_amount, 0);
 }
 
 #[test]

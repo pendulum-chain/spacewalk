@@ -356,7 +356,7 @@ impl currency::Config for Runtime {
 	type AssetConversion = primitives::AssetConversion;
 	type BalanceConversion = primitives::BalanceConversion;
 	type CurrencyConversion = CurrencyConvert;
-	type ChainCompatibility = primitives::StellarCompatibility;
+	type AmountCompatibility = primitives::StellarCompatibility;
 }
 
 impl staking::Config for Runtime {
