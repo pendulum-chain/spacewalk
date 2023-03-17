@@ -377,6 +377,10 @@ impl<T: Config> Pallet<T> {
 	) -> Result<H256, DispatchError> {
 		let amount_requested = Amount::new(amount_requested, vault_id.wrapped_currency());
 
+		// We ensure that the amount requested is compatible with the target chain (ie. it has a
+		// specific amount of trailing zeros)
+		amount_requested.ensure_is_compatible_with_target_chain()?;
+
 		Self::check_volume(amount_requested.clone())?;
 
 		let vault = ext::vault_registry::get_active_vault_from_id::<T>(&vault_id)?;

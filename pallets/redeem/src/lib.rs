@@ -569,6 +569,10 @@ impl<T: Config> Pallet<T> {
 	) -> Result<H256, DispatchError> {
 		let amount_wrapped = Amount::new(amount_wrapped, vault_id.wrapped_currency());
 
+		// We ensure that the amount requested is compatible with the target chain (ie. it has a
+		// specific amount of trailing zeros)
+		amount_wrapped.ensure_is_compatible_with_target_chain()?;
+
 		Self::check_volume(amount_wrapped.clone())?;
 
 		ext::security::ensure_parachain_status_running::<T>()?;
