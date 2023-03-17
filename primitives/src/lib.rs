@@ -3,6 +3,7 @@
 
 use codec::{Decode, Encode, MaxEncodedLen};
 use frame_support::error::LookupError;
+use rust_decimal::{prelude::ToPrimitive, Decimal};
 use scale_info::TypeInfo;
 #[cfg(feature = "std")]
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
@@ -635,6 +636,35 @@ impl StaticLookup for BalanceConversion {
 
 		let value = stellar_stroops.saturating_mul(conversion_rate);
 		u128::try_from(value).unwrap_or(0)
+	}
+}
+
+pub struct StellarCompatibility;
+
+pub trait ChainCompatibility {
+	type Balance;
+
+	fn is_compatible_with_target(source_amount: Self::Balance) -> bool;
+	fn round_to_compatible_with_target(source_amount: Self::Balance) -> Self::Balance;
+}
+
+impl ChainCompatibility for StellarCompatibility {
+	type Balance = u128;
+
+	/// For Stellar we define an spacewalk-chain amount to be compatible with a Stellar amount if
+	/// the amount has 5 trailing 0s. Because in this case the on-chain amounts can be truncated in
+	/// the BalanceConversion functions without any loss of precision.
+	fn is_compatible_with_target(source_amount: Self::Balance) -> bool {
+		source_amount % DECIMALS_CONVERSION_RATE == 0
+	}
+
+	/// We round the amount down to the nearest compatible amount, that is, we round the amount such
+	/// that it has 5 trailing 0s.
+	fn round_to_compatible_with_target(source_amount: Self::Balance) -> Self::Balance {
+		let rounding_dp = CHAIN_DECIMALS - STELLAR_DECIMALS;
+		let decimal = Decimal::from(source_amount);
+		let rounded_result = decimal.round_dp(rounding_dp).to_u128();
+		rounded_result.unwrap_or(0)
 	}
 }
 
