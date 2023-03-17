@@ -303,9 +303,9 @@ impl<T: Config> Pallet<T> {
 	/// # Arguments
 	///
 	/// * `id`: Parachain account identifier.
-	pub fn get_secure_id(id: &T::AccountId) -> H256 {
+	pub fn get_secure_id() -> H256 {
 		let mut hasher = Sha256::default();
-		hasher.input(id.encode());
+		hasher.input(frame_system::Pallet::<T>::extrinsic_index().unwrap_or_default().encode());
 		hasher.input(Self::get_nonce().encode());
 		// supplement with prev block hash to prevent replays
 		// even if the `Nonce` is reset (i.e. purge-chain)

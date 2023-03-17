@@ -612,7 +612,7 @@ impl<T: Config> Pallet<T> {
 
 		// lock full amount (inc. fee)
 		amount_wrapped.lock_on(&redeemer)?;
-		let redeem_id = ext::security::get_secure_id::<T>(&redeemer);
+		let redeem_id = ext::security::get_secure_id::<T>();
 
 		let below_premium_redeem =
 			ext::vault_registry::is_vault_below_premium_threshold::<T>(&vault_id)?;

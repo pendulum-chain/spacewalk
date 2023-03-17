@@ -409,7 +409,7 @@ impl<T: Config> Pallet<T> {
 		// calculate the amount of tokens that will be transferred to the user upon execution
 		let amount_user = amount_requested.checked_sub(&fee)?;
 
-		let issue_id = ext::security::get_secure_id::<T>(&requester);
+		let issue_id = ext::security::get_secure_id::<T>();
 		let stellar_public_key =
 			ext::vault_registry::get_stellar_public_key::<T>(&vault_id.account_id)?;
 

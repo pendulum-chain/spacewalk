@@ -75,8 +75,8 @@ pub(crate) mod security {
 		<security::Pallet<T>>::parachain_block_expired(opentime, period)
 	}
 
-	pub fn get_secure_id<T: crate::Config>(id: &T::AccountId) -> H256 {
-		<security::Pallet<T>>::get_secure_id(id)
+	pub fn get_secure_id<T: crate::Config>() -> H256 {
+		<security::Pallet<T>>::get_secure_id()
 	}
 
 	pub fn active_block_number<T: crate::Config>() -> T::BlockNumber {
