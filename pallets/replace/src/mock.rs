@@ -220,6 +220,7 @@ impl currency::Config for Test {
 	type AssetConversion = primitives::AssetConversion;
 	type BalanceConversion = primitives::BalanceConversion;
 	type CurrencyConversion = CurrencyConvert;
+	type AmountCompatibility = primitives::StellarCompatibility;
 }
 
 impl vault_registry::Config for Test {
