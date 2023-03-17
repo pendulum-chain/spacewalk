@@ -173,6 +173,60 @@ fn test_balance_convr() {
 }
 
 #[test]
+fn test_compatibility() {
+	// Test compatible amounts
+	let compatible_amount = 10_000_000;
+	let is_compatible = StellarCompatibility::is_compatible_with_target(compatible_amount);
+	assert!(is_compatible);
+
+	let compatible_amount = 10_100_000;
+	let is_compatible = StellarCompatibility::is_compatible_with_target(compatible_amount);
+	assert!(is_compatible);
+
+	let compatible_amount = 10_900_000;
+	let is_compatible = StellarCompatibility::is_compatible_with_target(compatible_amount);
+	assert!(is_compatible);
+
+	let incompatible_amount = 10_000_001;
+	let is_compatible = StellarCompatibility::is_compatible_with_target(incompatible_amount);
+	assert!(!is_compatible);
+
+	let incompatible_amount = 10_010_000;
+	let is_compatible = StellarCompatibility::is_compatible_with_target(incompatible_amount);
+	assert!(!is_compatible);
+
+	let incompatible_amount = 10_000;
+	let is_compatible = StellarCompatibility::is_compatible_with_target(incompatible_amount);
+	assert!(!is_compatible);
+
+	// Test rounding
+	let in_compatible_amount = 10_010_000;
+	let compatible_amount =
+		StellarCompatibility::round_to_compatible_with_target(in_compatible_amount);
+	assert_eq!(compatible_amount, 10_000_000);
+
+	let in_compatible_amount = 111_111;
+	let compatible_amount =
+		StellarCompatibility::round_to_compatible_with_target(in_compatible_amount);
+	assert_eq!(compatible_amount, 100_000);
+
+	let in_compatible_amount = 11_111;
+	let compatible_amount =
+		StellarCompatibility::round_to_compatible_with_target(in_compatible_amount);
+	assert_eq!(compatible_amount, 0);
+
+	let in_compatible_amount = 50_000;
+	let compatible_amount =
+		StellarCompatibility::round_to_compatible_with_target(in_compatible_amount);
+	assert_eq!(compatible_amount, 100_000);
+
+	let in_compatible_amount = 50_000;
+	let compatible_amount =
+		StellarCompatibility::round_to_compatible_with_target(in_compatible_amount);
+	assert_eq!(compatible_amount, 100_000);
+}
+
+#[test]
 fn test_addr_conversion() {
 	let account_id =
 		AccountId32::from_str("5G9VdMwXvzza9pS8qE8ZHJk3CheHW9uucBn9ngW4C1gmmzpv").unwrap();
