@@ -23,6 +23,7 @@ use sp_std::{
 	str::from_utf8,
 	vec::Vec,
 };
+use std::ops::Div;
 use stellar::{
 	types::{AlphaNum12, AlphaNum4},
 	Asset as StellarAsset, PublicKey,
@@ -661,10 +662,18 @@ impl ChainCompatibility for StellarCompatibility {
 	/// We round the amount down to the nearest compatible amount, that is, we round the amount such
 	/// that it has 5 trailing 0s.
 	fn round_to_compatible_with_target(source_amount: Self::Balance) -> Self::Balance {
-		let rounding_dp = CHAIN_DECIMALS - STELLAR_DECIMALS;
 		let decimal = Decimal::from(source_amount);
-		let rounded_result = decimal.round_dp(rounding_dp).to_u128();
-		rounded_result.unwrap_or(0)
+
+		// Divide the amount by the conversion rate to create a fractional amount that can be
+		// rounded
+		let conversion_rate = Decimal::from(DECIMALS_CONVERSION_RATE);
+		let decimal = decimal.div(conversion_rate);
+		let rounded_result =
+			decimal.round_dp_with_strategy(0, rust_decimal::RoundingStrategy::MidpointAwayFromZero);
+
+		// Convert the rounded result back to a u128 and multiply it by the conversion rate to get
+		// the rounded amount in the chain's balance type.
+		rounded_result.to_u128().unwrap_or(0) * DECIMALS_CONVERSION_RATE
 	}
 }
 
