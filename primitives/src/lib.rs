@@ -12,7 +12,7 @@ pub use sp_runtime::OpaqueExtrinsic as UncheckedExtrinsic;
 use sp_runtime::{
 	generic,
 	traits::{BlakeTwo256, CheckedDiv, CheckedMul, Convert, IdentifyAccount, StaticLookup, Verify},
-	FixedI128, FixedPointNumber, FixedPointOperand, FixedU128, MultiSignature, MultiSigner,
+	FixedI128, FixedPointNumber, FixedU128, MultiSignature, MultiSigner,
 };
 use sp_std::{
 	convert::{From, TryFrom, TryInto},
@@ -641,28 +641,33 @@ impl StaticLookup for BalanceConversion {
 pub struct StellarCompatibility;
 
 pub trait ChainCompatibility {
-	type Balance: FixedPointOperand;
-	type UnsignedFixedPoint: FixedPointNumber<Inner = Self::Balance>;
+	type UnsignedFixedPoint: FixedPointNumber;
 
-	fn is_compatible_with_target(source_amount: Self::Balance) -> bool;
-	fn round_to_compatible_with_target(source_amount: Self::Balance) -> Result<Self::Balance, ()>;
+	fn is_compatible_with_target(
+		source_amount: <<Self as ChainCompatibility>::UnsignedFixedPoint as FixedPointNumber>::Inner,
+	) -> bool;
+	fn round_to_compatible_with_target(
+		source_amount: <<Self as ChainCompatibility>::UnsignedFixedPoint as FixedPointNumber>::Inner,
+	) -> Result<<<Self as ChainCompatibility>::UnsignedFixedPoint as FixedPointNumber>::Inner, ()>;
 }
 
 impl ChainCompatibility for StellarCompatibility {
-	type Balance = u128;
+	// We operate on the inner value of the FixedU128 type.
 	type UnsignedFixedPoint = FixedU128;
 
 	/// For Stellar we define an spacewalk-chain amount to be compatible with a Stellar amount if
 	/// the amount has 5 trailing 0s. Because in this case the on-chain amounts can be truncated in
 	/// the BalanceConversion functions without any loss of precision.
-	fn is_compatible_with_target(source_amount: Self::Balance) -> bool {
+	fn is_compatible_with_target(source_amount: <FixedU128 as FixedPointNumber>::Inner) -> bool {
 		source_amount % DECIMALS_CONVERSION_RATE == 0
 	}
 
 	/// We round the amount down to the nearest compatible amount, that is, we round the amount such
 	/// that it has 5 trailing 0s. The result is either compatible with the target or an error is
 	/// returned.
-	fn round_to_compatible_with_target(source_amount: Self::Balance) -> Result<Self::Balance, ()> {
+	fn round_to_compatible_with_target(
+		source_amount: <FixedU128 as FixedPointNumber>::Inner,
+	) -> Result<<FixedU128 as FixedPointNumber>::Inner, ()> {
 		let conversion_rate = UnsignedFixedPoint::from_inner(DECIMALS_CONVERSION_RATE);
 		let fixed_amount = UnsignedFixedPoint::from_inner(source_amount);
 
