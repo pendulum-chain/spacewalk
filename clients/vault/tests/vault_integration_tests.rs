@@ -279,7 +279,7 @@ async fn test_replace_succeeds() {
 		let vault_id_manager =
 			VaultIdManager::from_map(old_vault_provider.clone(), WALLET.clone(), vault_ids);
 
-		let issue_amount = 100000;
+		let issue_amount = 100_00000;
 		let vault_collateral = get_required_vault_collateral_for_issue(
 			&old_vault_provider,
 			issue_amount,
@@ -373,7 +373,7 @@ async fn test_withdraw_replace_succeeds() {
 		oracle_agent.start().await.expect("failed to start agent");
 		let oracle_agent = Arc::new(oracle_agent);
 
-		let issue_amount = 100000;
+		let issue_amount = 100_00000;
 		let vault_collateral = get_required_vault_collateral_for_issue(
 			&old_vault_provider,
 			issue_amount,
@@ -460,7 +460,7 @@ async fn test_cancel_scheduler_succeeds() {
 		oracle_agent.start().await.expect("failed to start agent");
 		let oracle_agent = Arc::new(oracle_agent);
 
-		let issue_amount = 100000;
+		let issue_amount = 100_00000;
 		let vault_collateral = get_required_vault_collateral_for_issue(
 			&old_vault_provider,
 			issue_amount * 10,
@@ -574,7 +574,7 @@ async fn test_cancel_scheduler_succeeds() {
 
 				// setup the to-be-cancelled redeem
 				let redeem_id =
-					user_provider.request_redeem(20000, address, &old_vault_id).await.unwrap();
+					user_provider.request_redeem(200_000, address, &old_vault_id).await.unwrap();
 
 				join3(
 					async {
@@ -643,7 +643,7 @@ async fn test_issue_cancel_succeeds() {
 		let issue_filter =
 			IssueFilter::new(&WALLET.read().await.get_public_key()).expect("Invalid filter");
 
-		let issue_amount = 100000;
+		let issue_amount = 100_00000;
 		let vault_collateral = get_required_vault_collateral_for_issue(
 			&vault_provider,
 			issue_amount,
@@ -721,7 +721,7 @@ async fn test_issue_overpayment_succeeds() {
 
 		let public_key = WALLET.read().await.get_public_key_raw();
 
-		let issue_amount = 100000;
+		let issue_amount = 100_00000;
 		let over_payment_factor = 3;
 		let vault_collateral = get_required_vault_collateral_for_issue(
 			&vault_provider,
@@ -806,7 +806,7 @@ async fn test_automatic_issue_execution_succeeds() {
 		oracle_agent.start().await.expect("failed to start agent");
 		let oracle_agent = Arc::new(oracle_agent);
 
-		let issue_amount = 100000;
+		let issue_amount = 100_00000;
 		let vault_collateral = get_required_vault_collateral_for_issue(
 			&vault_provider,
 			issue_amount,
@@ -914,7 +914,7 @@ async fn test_automatic_issue_execution_succeeds_for_other_vault() {
 		oracle_agent.start().await.expect("failed to start agent");
 		let oracle_agent = Arc::new(oracle_agent);
 
-		let issue_amount = 100000;
+		let issue_amount = 100_00000;
 
 		let vault_collateral = get_required_vault_collateral_for_issue(
 			&vault1_provider,
@@ -1074,10 +1074,10 @@ async fn test_execute_open_requests_succeeds() {
 		let address = wallet.get_public_key();
 		let address_raw = wallet.get_public_key_raw();
 		drop(wallet);
-		// Place redeem requests. 1_000_00000 is our minimum redeem amount with the current fee
+		// Place redeem requests. 100_00000 is our minimum redeem amount with the current fee
 		// settings defined in the chain spec
 		let redeem_ids = futures::future::join_all(
-			(0..3u128).map(|_| user_provider.request_redeem(1_000_00000, address_raw, &vault_id)),
+			(0..3u128).map(|_| user_provider.request_redeem(100_00000, address_raw, &vault_id)),
 		)
 		.await
 		.into_iter()
@@ -1140,7 +1140,7 @@ async fn test_off_chain_liquidation() {
 		oracle_agent.start().await.expect("failed to start agent");
 		let oracle_agent = Arc::new(oracle_agent);
 
-		let issue_amount = 100000;
+		let issue_amount = 100_00000;
 		let vault_collateral = get_required_vault_collateral_for_issue(
 			&vault_provider,
 			issue_amount,
@@ -1188,7 +1188,7 @@ async fn test_shutdown() {
 		);
 
 		// register a vault..
-		let issue_amount = 100000;
+		let issue_amount = 100_00000;
 		let vault_collateral = get_required_vault_collateral_for_issue(
 			&sudo_provider,
 			issue_amount,
