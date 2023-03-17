@@ -269,7 +269,7 @@ fn testnet_genesis(
 		},
 		issue: IssueConfig {
 			issue_period: DAYS,
-			issue_minimum_transfer_amount: 1_000_00000, // This is 1000 Stellar stroops
+			issue_minimum_transfer_amount: 100_00000, // This is 100 Stellar stroops
 			limit_volume_amount: None,
 			limit_volume_currency_id: CurrencyId::XCM(0),
 			current_volume_amount: 0u128,
@@ -278,7 +278,7 @@ fn testnet_genesis(
 		},
 		redeem: RedeemConfig {
 			redeem_period: DAYS,
-			redeem_minimum_transfer_amount: 1_000_00000, // This is 1000 Stellar stroops
+			redeem_minimum_transfer_amount: 100_00000, // This is 100 Stellar stroops
 			limit_volume_amount: None,
 			limit_volume_currency_id: CurrencyId::XCM(0),
 			current_volume_amount: 0u128,
@@ -287,7 +287,7 @@ fn testnet_genesis(
 		},
 		replace: ReplaceConfig {
 			replace_period: DAYS,
-			replace_minimum_transfer_amount: 1_000_00000,
+			replace_minimum_transfer_amount: 100_00000, // This is 100 Stellar stroops
 		},
 		security: SecurityConfig {
 			initial_status: if start_shutdown { StatusCode::Shutdown } else { StatusCode::Error },
