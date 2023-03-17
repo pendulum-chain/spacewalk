@@ -412,7 +412,7 @@ impl CurrencyInfo for Asset {
 
 	fn decimals(&self) -> u8 {
 		// scaling allows for seven decimal places of precision
-		7
+		12
 	}
 }
 

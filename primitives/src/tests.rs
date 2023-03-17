@@ -196,6 +196,6 @@ fn test_currencyid_one() {
 	};
 
 	assert_eq!(USDC_ASSET.decimals(), Asset::StellarNative.decimals());
-	assert_eq!(USDC_ASSET.one(), 10_000_000);
+	assert_eq!(USDC_ASSET.one(), 10u128.pow(12));
 	assert_eq!(USDC_ASSET.one(), Asset::StellarNative.one());
 }
