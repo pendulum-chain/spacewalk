@@ -410,6 +410,10 @@ impl<T: Config> Pallet<T> {
 		ext::vault_registry::try_increase_to_be_issued_tokens::<T>(&vault_id, &amount_requested)?;
 
 		let fee = ext::fee::get_issue_fee::<T>(&amount_requested)?;
+		// We round the fee so that the amount of tokens that will be transferred on Stellar are
+		// compatible without loss of precision.
+		let fee = fee.round_to_target_chain()?;
+
 		// calculate the amount of tokens that will be transferred to the user upon execution
 		let amount_user = amount_requested.checked_sub(&fee)?;
 

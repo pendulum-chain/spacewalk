@@ -590,6 +590,9 @@ impl<T: Config> Pallet<T> {
 		};
 		let inclusion_fee = Self::get_current_inclusion_fee(vault_id.wrapped_currency())?;
 
+		// We round the fee so that the amount of tokens that will be transferred on Stellar
+		// are compatible without loss of precision.
+		let fee_wrapped = fee_wrapped.round_to_target_chain()?;
 		let vault_to_be_burned_tokens = amount_wrapped.checked_sub(&fee_wrapped)?;
 
 		// this can overflow for small requested values. As such return
