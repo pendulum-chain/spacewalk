@@ -200,30 +200,47 @@ fn test_compatibility() {
 	assert!(!is_compatible);
 
 	// Test rounding
-	let in_compatible_amount = 10_010_000;
+	let incompatible_amount = 10_010_000;
 	let compatible_amount =
-		StellarCompatibility::round_to_compatible_with_target(in_compatible_amount);
+		StellarCompatibility::round_to_compatible_with_target(incompatible_amount)
+			.expect("rounding failed");
 	assert_eq!(compatible_amount, 10_000_000);
 
-	let in_compatible_amount = 111_111;
+	let incompatible_amount = 111_111;
 	let compatible_amount =
-		StellarCompatibility::round_to_compatible_with_target(in_compatible_amount);
+		StellarCompatibility::round_to_compatible_with_target(incompatible_amount)
+			.expect("rounding failed");
 	assert_eq!(compatible_amount, 100_000);
 
-	let in_compatible_amount = 11_111;
+	let incompatible_amount = 11_111;
 	let compatible_amount =
-		StellarCompatibility::round_to_compatible_with_target(in_compatible_amount);
+		StellarCompatibility::round_to_compatible_with_target(incompatible_amount)
+			.expect("rounding failed");
 	assert_eq!(compatible_amount, 0);
 
-	let in_compatible_amount = 50_000;
+	let incompatible_amount = 50_000;
 	let compatible_amount =
-		StellarCompatibility::round_to_compatible_with_target(in_compatible_amount);
+		StellarCompatibility::round_to_compatible_with_target(incompatible_amount)
+			.expect("rounding failed");
 	assert_eq!(compatible_amount, 100_000);
 
-	let in_compatible_amount = 50_000;
+	let incompatible_amount = 49_999;
 	let compatible_amount =
-		StellarCompatibility::round_to_compatible_with_target(in_compatible_amount);
-	assert_eq!(compatible_amount, 100_000);
+		StellarCompatibility::round_to_compatible_with_target(incompatible_amount)
+			.expect("rounding failed");
+	assert_eq!(compatible_amount, 0);
+
+	let incompatible_amount = 999_999_999_999_999;
+	let compatible_amount =
+		StellarCompatibility::round_to_compatible_with_target(incompatible_amount)
+			.expect("rounding failed");
+	assert_eq!(compatible_amount, 1_000_000_000_000_000);
+
+	let incompatible_amount = 999_999_999_949_999;
+	let compatible_amount =
+		StellarCompatibility::round_to_compatible_with_target(incompatible_amount)
+			.expect("rounding failed");
+	assert_eq!(compatible_amount, 999_999_999_900_000);
 }
 
 #[test]

@@ -3,7 +3,6 @@
 
 use codec::{Decode, Encode, MaxEncodedLen};
 use frame_support::error::LookupError;
-use rust_decimal::{prelude::ToPrimitive, Decimal};
 use scale_info::TypeInfo;
 #[cfg(feature = "std")]
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
@@ -12,8 +11,8 @@ use sp_core::{crypto::AccountId32, ed25519};
 pub use sp_runtime::OpaqueExtrinsic as UncheckedExtrinsic;
 use sp_runtime::{
 	generic,
-	traits::{BlakeTwo256, Convert, IdentifyAccount, StaticLookup, Verify},
-	FixedI128, FixedPointNumber, FixedU128, MultiSignature, MultiSigner,
+	traits::{BlakeTwo256, CheckedDiv, CheckedMul, Convert, IdentifyAccount, StaticLookup, Verify},
+	FixedI128, FixedPointNumber, FixedPointOperand, FixedU128, MultiSignature, MultiSigner,
 };
 use sp_std::{
 	convert::{From, TryFrom, TryInto},
@@ -23,7 +22,6 @@ use sp_std::{
 	str::from_utf8,
 	vec::Vec,
 };
-use std::ops::Div;
 use stellar::{
 	types::{AlphaNum12, AlphaNum4},
 	Asset as StellarAsset, PublicKey,
@@ -643,14 +641,16 @@ impl StaticLookup for BalanceConversion {
 pub struct StellarCompatibility;
 
 pub trait ChainCompatibility {
-	type Balance;
+	type Balance: FixedPointOperand;
+	type UnsignedFixedPoint: FixedPointNumber<Inner = Self::Balance>;
 
 	fn is_compatible_with_target(source_amount: Self::Balance) -> bool;
-	fn round_to_compatible_with_target(source_amount: Self::Balance) -> Self::Balance;
+	fn round_to_compatible_with_target(source_amount: Self::Balance) -> Result<Self::Balance, ()>;
 }
 
 impl ChainCompatibility for StellarCompatibility {
 	type Balance = u128;
+	type UnsignedFixedPoint = FixedU128;
 
 	/// For Stellar we define an spacewalk-chain amount to be compatible with a Stellar amount if
 	/// the amount has 5 trailing 0s. Because in this case the on-chain amounts can be truncated in
@@ -660,20 +660,30 @@ impl ChainCompatibility for StellarCompatibility {
 	}
 
 	/// We round the amount down to the nearest compatible amount, that is, we round the amount such
-	/// that it has 5 trailing 0s.
-	fn round_to_compatible_with_target(source_amount: Self::Balance) -> Self::Balance {
-		let decimal = Decimal::from(source_amount);
+	/// that it has 5 trailing 0s. The result is either compatible with the target or an error is
+	/// returned.
+	fn round_to_compatible_with_target(source_amount: Self::Balance) -> Result<Self::Balance, ()> {
+		let conversion_rate = UnsignedFixedPoint::from_inner(DECIMALS_CONVERSION_RATE);
+		let fixed_amount = UnsignedFixedPoint::from_inner(source_amount);
 
-		// Divide the amount by the conversion rate to create a fractional amount that can be
-		// rounded
-		let conversion_rate = Decimal::from(DECIMALS_CONVERSION_RATE);
-		let decimal = decimal.div(conversion_rate);
-		let rounded_result =
-			decimal.round_dp_with_strategy(0, rust_decimal::RoundingStrategy::MidpointAwayFromZero);
+		let rounded_amount_fixed = fixed_amount
+			// We first divide by the conversion rate to make it have the number of decimals we want
+			// to round to (since we can only round decimals but are dealing with an integer).
+			.checked_div(&conversion_rate)
+			.ok_or(())?
+			// Then we round
+			.round()
+			// Then we scale it back up to the correct number of decimals
+			.checked_mul(&conversion_rate)
+			.ok_or(())?;
 
-		// Convert the rounded result back to a u128 and multiply it by the conversion rate to get
-		// the rounded amount in the chain's balance type.
-		rounded_result.to_u128().unwrap_or(0) * DECIMALS_CONVERSION_RATE
+		let rounded_amount = rounded_amount_fixed.into_inner();
+		// This should always be true, but we check it just in case.
+		if Self::is_compatible_with_target(rounded_amount) {
+			Ok(rounded_amount)
+		} else {
+			Err(())
+		}
 	}
 }
 
