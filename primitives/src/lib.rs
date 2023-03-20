@@ -638,20 +638,21 @@ impl StaticLookup for BalanceConversion {
 	type Target = StellarStroops;
 
 	fn lookup(pendulum_balance: Self::Source) -> Result<Self::Target, LookupError> {
-		let stroops128: u128 = pendulum_balance / DECIMALS_CONVERSION_RATE;
+		let stroops_u128: Self::Source = pendulum_balance / DECIMALS_CONVERSION_RATE;
 
-		if stroops128 > i64::MAX as u128 {
+		if stroops_u128 > Self::Target::MAX as Self::Source {
 			Err(LookupError)
 		} else {
-			Ok(stroops128 as i64)
+			Ok(stroops_u128 as Self::Target)
 		}
 	}
 
 	fn unlookup(stellar_stroops: Self::Target) -> Self::Source {
-		let conversion_rate = i64::try_from(DECIMALS_CONVERSION_RATE).unwrap_or(i64::MAX);
+		let conversion_rate =
+			Self::Target::try_from(DECIMALS_CONVERSION_RATE).unwrap_or(Self::Target::MAX);
 
 		let value = stellar_stroops.saturating_mul(conversion_rate);
-		u128::try_from(value).unwrap_or(0)
+		Self::Source::try_from(value).unwrap_or(0)
 	}
 }
 
