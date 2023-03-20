@@ -410,7 +410,9 @@ impl CurrencyInfo for Asset {
 	}
 
 	fn decimals(&self) -> u8 {
-		// scaling allows for seven decimal places of precision
+		// We assume 12 decimals for all assets. To ensure that Stellar Assets also have 12 decimals
+		// instead of the 7 decimals they have on Stellar, we use the BalanceConversion struct where
+		// necessary, that is, when dealing with amounts contained in Stellar transactions.
 		12
 	}
 }
@@ -436,6 +438,21 @@ pub enum CurrencyId {
 
 impl CurrencyId {
 	pub const StellarNative: CurrencyId = Self::Stellar(Asset::StellarNative);
+
+	pub fn decimals(&self) -> u8 {
+		match self {
+			CurrencyId::Stellar(asset) => asset.decimals(),
+			// We assume that all other assets have 12 decimals
+			CurrencyId::Native | CurrencyId::XCM(_) => 12,
+		}
+	}
+
+	pub fn one(&self) -> Balance {
+		match self {
+			CurrencyId::Stellar(asset) => asset.one(),
+			_ => 10u128.pow(self.decimals().into()),
+		}
+	}
 
 	#[allow(non_snake_case)]
 	pub const fn AlphaNum4(code: Bytes4, issuer: AssetIssuer) -> Self {
@@ -614,7 +631,7 @@ const DECIMALS_CONVERSION_RATE: u128 = 10u128.pow(CHAIN_DECIMALS - STELLAR_DECIM
 
 // The type of stroop amounts is i64
 // see [here](https://github.com/pendulum-chain/substrate-stellar-sdk/blob/f659041c6643f80f4e1f6e9e35268dba3ae2d313/src/amount.rs#L7)
-type StellarStroops = i64;
+pub type StellarStroops = i64;
 
 impl StaticLookup for BalanceConversion {
 	type Source = u128;
