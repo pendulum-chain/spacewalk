@@ -78,6 +78,7 @@ primitives = {package = "spacewalk-primitives", path = "../../primitives", defau
 
 orml-oracle = { git = "https://github.com/open-web3-stack/open-runtime-module-library", branch = "polkadot-v0.9.37", default-features = false }
 dia-oracle = { git = "https://github.com/pendulum-chain/oracle-pallet", branch = "polkadot-v0.9.37", default-features = false }
+orml-currencies-allowance-extension = { git = "https://github.com/pendulum-chain/pendulum", branch = "175-add-weights-to-orml-currencies-allowance-extension", default-features = false }
 
 [dev-dependencies]
 flate2 = "1.0"
@@ -106,6 +107,7 @@ runtime-benchmarks = [
   "replace/runtime-benchmarks",
   "stellar-relay/runtime-benchmarks",
   "vault-registry/runtime-benchmarks",
+  "orml-currencies-allowance-extension/runtime-benchmarks",
 ]
 std = [
   "codec/std",
@@ -157,5 +159,6 @@ std = [
   "vault-registry/std",
   "orml-oracle/std",
   "dia-oracle/std",
+  "orml-currencies-allowance-extension/std"
 ]
 testing-utils = ["oracle/testing-utils"]

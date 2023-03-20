@@ -551,6 +551,10 @@ impl replace::Config for Runtime {
 	type WeightInfo = ();
 }
 
+impl orml_currencies_allowance_extension::Config for Runtime {
+	type RuntimeEvent = RuntimeEvent;
+}
+
 parameter_types! {
 	pub const MaxExpectedValue: UnsignedFixedPoint = UnsignedFixedPoint::from_inner(<UnsignedFixedPoint as FixedPointNumber>::DIV);
 }
@@ -605,6 +609,8 @@ construct_runtime! {
 		Fee: fee::{Pallet, Call, Config<T>, Storage} = 26,
 		Nomination: nomination::{Pallet, Call, Config, Storage, Event<T>} = 28,
 		DiaOracleModule: dia_oracle::{Pallet, Call, Config<T>, Storage, Event<T>} = 29,
+
+		TokenAllowance: orml_currencies_allowance_extension::{Pallet, Storage, Call, Event<T>} = 30,
 	}
 }
 
@@ -656,6 +662,8 @@ mod benches {
 		[replace, Replace]
 		[vault_registry, VaultRegistry]
 		[nomination, Nomination]
+		[orml_currencies_allowance_extension, TokenAllowance]
+		
 	);
 }
 
