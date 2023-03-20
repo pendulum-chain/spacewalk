@@ -1,5 +1,5 @@
 use codec::Decode;
-use frame_support::{assert_err, assert_noop, assert_ok};
+use frame_support::{assert_err, assert_noop, assert_ok, error::BadOrigin};
 use mocktopus::mocking::*;
 use pretty_assertions::assert_eq;
 use sp_arithmetic::{traits::One, FixedPointNumber, FixedU128};
@@ -18,7 +18,7 @@ use crate::{
 	ext,
 	mock::*,
 	types::{BalanceOf, UpdatableVault},
-	CurrencySource, DefaultVaultId, DispatchError, Vault, VaultStatus,
+	CurrencySource, DefaultVaultId, DispatchError, PunishmentDelay, Vault, VaultStatus,
 };
 
 type Event = crate::Event<Test>;
@@ -127,6 +127,26 @@ fn create_vault_and_issue_tokens(
 
 fn create_sample_vault_and_issue_tokens(issue_tokens: u128) -> DefaultVaultId<Test> {
 	create_vault_and_issue_tokens(issue_tokens, DEFAULT_COLLATERAL, DEFAULT_ID)
+}
+
+#[test]
+fn should_set_punishment_delay() {
+	run_test(|| {
+		let punishment_delay = 99;
+		assert_ok!(VaultRegistry::set_punishment_delay(RuntimeOrigin::root(), punishment_delay));
+		assert_eq!(PunishmentDelay::<Test>::get(), punishment_delay);
+	})
+}
+
+#[test]
+fn should_failed_set_punishment_delay() {
+	run_test(|| {
+		let punishment_delay = 99;
+		assert_err!(
+			VaultRegistry::set_punishment_delay(RuntimeOrigin::signed(1), punishment_delay),
+			BadOrigin
+		);
+	})
 }
 
 #[test]
