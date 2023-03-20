@@ -4,7 +4,7 @@ use thiserror::Error;
 
 #[derive(Debug, Error)]
 pub enum Error {
-	#[error("Server returned rpc error")]
+	#[error("Invalid secret key")]
 	InvalidSecretKey,
 	#[error("Error fetching horizon data: {0}")]
 	HttpFetchingError(#[from] FetchError),
