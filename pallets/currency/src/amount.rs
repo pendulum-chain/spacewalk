@@ -217,7 +217,8 @@ mod math {
 		pub fn rounded_mul(&self, fraction: UnsignedFixedPoint<T>) -> Result<Self, DispatchError> {
 			// we add 0.5 before we do the final integer division to round the result we return.
 			// note that unwrapping is safe because we use a constant
-			let rounding_addition = UnsignedFixedPoint::<T>::checked_from_rational(1, 2).unwrap();
+			let rounding_addition = UnsignedFixedPoint::<T>::checked_from_rational(1, 2)
+				.ok_or(Error::<T>::TryIntoIntError)?;
 
 			let amount = UnsignedFixedPoint::<T>::checked_from_integer(self.amount)
 				.ok_or(ArithmeticError::Overflow)?
@@ -243,7 +244,7 @@ mod actions {
 			source: &AccountIdOf<T>,
 			destination: &AccountIdOf<T>,
 		) -> Result<(), DispatchError> {
-			<orml_tokens::Pallet<T> as MultiCurrency<AccountIdOf<T>>>::transfer(
+			<orml_currencies::Pallet<T> as MultiCurrency<AccountIdOf<T>>>::transfer(
 				self.currency_id,
 				source,
 				destination,
@@ -253,30 +254,34 @@ mod actions {
 		}
 
 		pub fn lock_on(&self, account_id: &AccountIdOf<T>) -> Result<(), DispatchError> {
-			<orml_tokens::Pallet<T>>::reserve(self.currency_id, account_id, self.amount)?;
+			<orml_currencies::Pallet<T>>::reserve(self.currency_id, account_id, self.amount)?;
 			Ok(())
 		}
 
 		pub fn unlock_on(&self, account_id: &AccountIdOf<T>) -> Result<(), DispatchError> {
 			ensure!(
-				<orml_tokens::Pallet<T>>::unreserve(self.currency_id, account_id, self.amount)
+				<orml_currencies::Pallet<T>>::unreserve(self.currency_id, account_id, self.amount)
 					.is_zero(),
-				orml_tokens::Error::<T>::BalanceTooLow
+				orml_currencies::Error::<T>::BalanceTooLow
 			);
 			Ok(())
 		}
 
 		pub fn burn_from(&self, account_id: &AccountIdOf<T>) -> DispatchResult {
 			ensure!(
-				<orml_tokens::Pallet<T>>::slash_reserved(self.currency_id, account_id, self.amount)
-					.is_zero(),
-				orml_tokens::Error::<T>::BalanceTooLow
+				<orml_currencies::Pallet<T>>::slash_reserved(
+					self.currency_id,
+					account_id,
+					self.amount
+				)
+				.is_zero(),
+				orml_currencies::Error::<T>::BalanceTooLow
 			);
 			Ok(())
 		}
 
 		pub fn mint_to(&self, account_id: &AccountIdOf<T>) -> DispatchResult {
-			<orml_tokens::Pallet<T>>::deposit(self.currency_id, account_id, self.amount)?;
+			<orml_currencies::Pallet<T>>::deposit(self.currency_id, account_id, self.amount)?;
 			Ok(())
 		}
 

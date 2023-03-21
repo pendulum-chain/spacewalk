@@ -1,4 +1,4 @@
-use std::{convert::TryFrom, sync::Arc, time::Duration};
+use std::{collections::HashMap, sync::Arc, time::Duration};
 
 use futures::{channel::mpsc::Sender, future, SinkExt};
 use sp_runtime::traits::StaticLookup;
@@ -12,11 +12,11 @@ use service::Error as ServiceError;
 use stellar_relay_lib::sdk::{PublicKey, TransactionEnvelope, XdrCodec};
 use wallet::{
 	types::{FilterWith, TransactionFilterParam},
-	Ledger, LedgerTxEnvMap,
+	LedgerTxEnvMap, Slot, SlotTask, SlotTaskStatus,
 };
 
 use crate::{
-	oracle::{types::Slot, *},
+	oracle::{types::Slot as OracleSlot, OracleAgent},
 	ArcRwLock, Error, Event,
 };
 
@@ -159,6 +159,74 @@ fn get_issue_id_from_tx_env(tx_env: &TransactionEnvelope) -> Option<IssueId> {
 	}
 }
 
+// Returns oneshot sender for sending status of a slot.
+//
+// Checks the map if the slot should be executed/processed.
+// If not, returns None.
+#[doc(hidden)]
+fn create_task_status_sender(
+	processed_map: &mut HashMap<Slot, SlotTask>,
+	slot: &Slot,
+) -> Option<tokio::sync::oneshot::Sender<SlotTaskStatus>> {
+	// An existing task is found.
+	if let Some(existing) = processed_map.get_mut(slot) {
+		// Only recoverable errors can be given a new task.
+		return existing.recover_with_new_sender()
+	}
+
+	// Not finding the slot in the map means there's no existing task for it.
+	let (sender, receiver) = tokio::sync::oneshot::channel();
+	tracing::trace!("Creating a task for slot {}", slot);
+
+	let slot_task = SlotTask::new(*slot, receiver);
+	processed_map.insert(*slot, slot_task);
+
+	Some(sender)
+}
+
+// Remove successful tasks and failed ones (and cannot be retried again) from the map.
+#[doc(hidden)]
+async fn cleanup_ledger_env_map(
+	processed_map: &mut HashMap<Slot, SlotTask>,
+	ledger_env_map: ArcRwLock<LedgerTxEnvMap>,
+) {
+	// check the tasks if:
+	// * processing has finished
+	//   - then remove from the ledger_env_map
+
+	// * process failed somehow
+	//   - check if we can retry again
+	//   - there is no chance to process this transaction at all
+	let mut ledger_map = ledger_env_map.write().await;
+
+	// retain only those not yet started or possibly to retry processing again
+	processed_map.retain(|slot, task| {
+		match task.update_status() {
+			// the task is not yet finished/ hasn't started; let's keep it
+			SlotTaskStatus::Ready |
+			// the task failed, but is possible to retry again
+			SlotTaskStatus::RecoverableError => true,
+
+			// the task succeeded
+			SlotTaskStatus::Success |
+			// the task has reached maximum retries, and cannot be executed again.
+			SlotTaskStatus::ReachedMaxRetries => {
+				// we cannot process this again, so remove it from the list.
+				ledger_map.remove(slot);
+				false
+			}
+			// the task failed and this transaction cannot be executed again
+			SlotTaskStatus::Failed(e) => {
+				tracing::error!("{}",e);
+				// we cannot process this again, so remove it from the list.
+				ledger_map.remove(slot);
+				false
+			}
+
+		}
+	});
+}
+
 /// Processes all the issue requests
 ///
 /// # Arguments
@@ -173,18 +241,39 @@ pub async fn process_issues_requests(
 	ledger_env_map: ArcRwLock<LedgerTxEnvMap>,
 	issues: ArcRwLock<IssueRequestsMap>,
 ) -> Result<(), ServiceError<Error>> {
+	// collects all the tasks that are executed or about to be executed.
+	let mut processed_map = HashMap::new();
+
 	loop {
-		for (ledger, _tx_env) in ledger_env_map.read().await.iter() {
+		let ledger_clone = ledger_env_map.clone();
+
+		// iterate over a list of transactions for processing.
+		for (slot, tx_env) in ledger_env_map.read().await.iter() {
+			// create a one shot sender
+			let sender = match create_task_status_sender(&mut processed_map, slot) {
+				None => continue,
+				Some(sender) => sender,
+			};
+
+			let parachain_rpc_clone = parachain_rpc.clone();
+			let issues_clone = issues.clone();
+			let oracle_agent_clone = oracle_agent.clone();
+
 			tokio::spawn(execute_issue(
-				parachain_rpc.clone(),
-				ledger_env_map.clone(),
-				issues.clone(),
-				oracle_agent.clone(),
-				Slot::from(*ledger),
+				parachain_rpc_clone,
+				tx_env.clone(),
+				issues_clone,
+				oracle_agent_clone,
+				*slot,
+				sender,
 			));
 		}
 
+		// Give 5 seconds interval before starting again.
 		tokio::time::sleep(Duration::from_secs(5)).await;
+
+		// before we loop again, let's make sure to clean the map first.
+		cleanup_ledger_env_map(&mut processed_map, ledger_clone).await;
 	}
 }
 
@@ -193,63 +282,79 @@ pub async fn process_issues_requests(
 /// # Arguments
 ///
 /// * `parachain_rpc` - the parachain RPC handle
-/// * `ledger_env_map` -  a list of TransactionEnvelopes and its corresponding ledger it belongs to
+/// * `ledger_env_map` -  a list of TransactionEnvelopes and its corresponding slot it belongs to
 /// * `issues` - a map of all issue requests
 /// * `oracle_agent` - the agent used to get the proofs
 /// * `slot` - the slot of the transaction envelope it belongs to
 pub async fn execute_issue(
 	parachain_rpc: SpacewalkParachain,
-	ledger_env_map: ArcRwLock<LedgerTxEnvMap>,
+	tx_env: TransactionEnvelope,
 	issues: ArcRwLock<IssueRequestsMap>,
 	oracle_agent: Arc<OracleAgent>,
 	slot: Slot,
-) -> Result<(), ServiceError<Error>> {
-	let ledger =
-		Ledger::try_from(slot).map_err(|e| ServiceError::VaultError(Error::TryIntoIntError(e)))?;
-
+	sender: tokio::sync::oneshot::Sender<SlotTaskStatus>,
+) {
+	let slot = OracleSlot::from(slot);
 	// Get the proof of the given slot
-	let proof = oracle_agent
-		.get_proof(slot)
-		.await
-		.map_err(|e| ServiceError::OracleError(Error::OracleError(e)))?;
+	let proof = match oracle_agent.get_proof(slot).await {
+		Ok(proof) => proof,
+		Err(e) => {
+			tracing::error!("Failed to get proof for slot {}: {:?}", slot, e);
+			if let Err(e) = sender.send(SlotTaskStatus::RecoverableError) {
+				tracing::error!("Failed to send {:?} status for slot {}", e, slot);
+			}
+			return
+		},
+	};
 
 	let (envelopes, tx_set) = proof.encode();
 
-	let mut ledger_env_map = ledger_env_map.write().await;
+	let tx_env_encoded = {
+		let tx_env_xdr = tx_env.to_xdr();
+		base64::encode(tx_env_xdr)
+	};
 
-	// Get the transaction envelope where the ledger belongs to
-	if let Some(tx_env) = ledger_env_map.get(&ledger) {
-		let tx_env_encoded = {
-			let tx_env_xdr = tx_env.to_xdr();
-			base64::encode(tx_env_xdr)
-		};
+	if let Some(issue_id) = get_issue_id_from_tx_env(&tx_env) {
+		// calls the execute_issue of the `Issue` Pallet
+		match parachain_rpc
+			.execute_issue(
+				issue_id,
+				tx_env_encoded.as_bytes(),
+				envelopes.as_bytes(),
+				tx_set.as_bytes(),
+			)
+			.await
+		{
+			Ok(_) => {
+				tracing::debug!("Slot {:?} executed with issue_id: {:?}", slot, issue_id);
+				issues.write().await.remove(&issue_id);
 
-		if let Some(issue_id) = get_issue_id_from_tx_env(tx_env) {
-			// calls the execute_issue of the `Issue` Pallet
-			match parachain_rpc
-				.execute_issue(
-					issue_id,
-					tx_env_encoded.as_bytes(),
-					envelopes.as_bytes(),
-					tx_set.as_bytes(),
-				)
-				.await
-			{
-				Ok(_) => {
-					tracing::trace!("Slot {:?} EXECUTED with issue_id: {:?}", ledger, issue_id);
-					tracing::info!("Issue request {:?} was executed", issue_id);
-					ledger_env_map.remove(&ledger);
-					issues.write().await.remove(&issue_id);
-				},
-				Err(err) if err.is_issue_completed() => {
-					tracing::info!("Issue #{} has been completed", issue_id);
-				},
-				Err(err) => return Err(err.into()),
-			}
+				if let Err(e) = sender.send(SlotTaskStatus::Success) {
+					tracing::error!("Failed to send {:?} status for slot {}", e, slot);
+				}
+				return
+			},
+			Err(err) if err.is_issue_completed() => {
+				tracing::debug!("Issue #{} has been completed", issue_id);
+				if let Err(e) = sender.send(SlotTaskStatus::Success) {
+					tracing::error!("Failed to send {:?} status for slot {}", e, slot);
+				}
+				return
+			},
+			Err(e) => {
+				if let Err(e) = sender.send(SlotTaskStatus::Failed(format!("{:?}", e))) {
+					tracing::error!("Failed to send {:?} status for slot {}", e, slot);
+				}
+				return
+			},
 		}
 	}
 
-	Ok(())
+	if let Err(e) =
+		sender.send(SlotTaskStatus::Failed(format!("Cannot find issue_id for slot {}", slot)))
+	{
+		tracing::error!("Failed to send {:?} status for slot {}", e, slot);
+	}
 }
 
 /// The IssueFilter used for

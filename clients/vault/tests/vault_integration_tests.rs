@@ -38,8 +38,10 @@ const DEFAULT_WRAPPED_CURRENCY: CurrencyId = CurrencyId::AlphaNum4(
 	],
 );
 
-const STELLAR_VAULT_SECRET_KEY: &str = "SB6WHKIU2HGVBRNKNOEOQUY4GFC4ZLG5XPGWLEAHTIZXBXXYACC76VSQ";
+// This has to match the definition in the testchain runtime
+// But if it changes to public we need to change the secret key of the vault that is used.
 const IS_PUBLIC_NETWORK: bool = false;
+const STELLAR_VAULT_SECRET_KEY: &str = "SB6WHKIU2HGVBRNKNOEOQUY4GFC4ZLG5XPGWLEAHTIZXBXXYACC76VSQ";
 
 lazy_static! {
 	static ref WALLET: ArcRwLock<StellarWallet> = Arc::new(RwLock::new(

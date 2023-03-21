@@ -79,6 +79,9 @@ pub mod pallet {
 		#[pallet::constant]
 		type ValidatorLimit: Get<u32>;
 
+		#[pallet::constant]
+		type IsPublicNetwork: Get<bool>;
+
 		type WeightInfo: WeightInfo;
 	}
 
@@ -119,6 +122,7 @@ pub mod pallet {
 		ValidatorLimitExceeded,
 		DuplicateOrganizationId,
 		DuplicateValidatorPublicKey,
+		FailedToComputenonGenericTxSetContentHash,
 	}
 
 	#[pallet::storage]
@@ -142,10 +146,6 @@ pub mod pallet {
 		StorageValue<_, BoundedVec<ValidatorOf<T>, T::ValidatorLimit>, ValueQuery>;
 
 	#[pallet::storage]
-	#[pallet::getter(fn is_public_network)]
-	pub type IsPublicNetwork<T: Config> = StorageValue<_, bool, ValueQuery>;
-
-	#[pallet::storage]
 	#[pallet::getter(fn new_validators_enactment_block_height)]
 	pub type NewValidatorsEnactmentBlockHeight<T: Config> =
 		StorageValue<_, T::BlockNumber, ValueQuery>;
@@ -156,7 +156,6 @@ pub mod pallet {
 		pub old_organizations: Vec<OrganizationOf<T>>,
 		pub validators: Vec<ValidatorOf<T>>,
 		pub organizations: Vec<OrganizationOf<T>>,
-		pub is_public_network: bool,
 		pub enactment_block_height: T::BlockNumber,
 		pub phantom: PhantomData<T>,
 	}
@@ -374,7 +373,6 @@ pub mod pallet {
 				old_validators,
 				validators,
 				organizations,
-				is_public_network: true,
 				enactment_block_height,
 				phantom: Default::default(),
 			}
@@ -408,7 +406,6 @@ pub mod pallet {
 			assert!(organization_vec.is_ok());
 			Organizations::<T>::put(organization_vec.unwrap());
 
-			IsPublicNetwork::<T>::put(self.is_public_network);
 			NewValidatorsEnactmentBlockHeight::<T>::put(self.enactment_block_height);
 		}
 	}
@@ -554,7 +551,7 @@ pub mod pallet {
 			transaction_set: &TransactionSet,
 		) -> Result<(), Error<T>> {
 			let network: &Network =
-				if Self::is_public_network() { &PUBLIC_NETWORK } else { &TEST_NETWORK };
+				if T::IsPublicNetwork::get() { &PUBLIC_NETWORK } else { &TEST_NETWORK };
 
 			// Check if tx is included in the transaction set
 			let tx_hash = transaction_envelope.get_hash(network);
@@ -588,7 +585,8 @@ pub mod pallet {
 			}
 
 			// Check if transaction set matches tx_set_hash included in the ScpEnvelopes
-			let expected_tx_set_hash = compute_non_generic_tx_set_content_hash(transaction_set);
+			let expected_tx_set_hash = compute_non_generic_tx_set_content_hash(transaction_set)
+				.ok_or(Error::<T>::FailedToComputenonGenericTxSetContentHash)?;
 
 			for envelope in envelopes.get_vec() {
 				match envelope.clone().statement.pledges {
@@ -662,8 +660,9 @@ pub mod pallet {
 			);
 
 			for (organization_id, count) in targeted_organization_map.iter() {
-				let total: &u32 =
-					validator_count_per_organization_map.get(organization_id).unwrap();
+				let total: &u32 = validator_count_per_organization_map
+					.get(organization_id)
+					.ok_or(Error::<T>::NoOrganizationsRegistered)?;
 				// Check that for each of the targeted organizations more than 1/2 of their total
 				// validators were used in the SCP messages
 				ensure!(count * 2 > *total, Error::<T>::InvalidQuorumSetNotEnoughValidators);
@@ -721,7 +720,7 @@ pub mod pallet {
 		memo_hash
 	}
 
-	pub fn compute_non_generic_tx_set_content_hash(tx_set: &TransactionSet) -> [u8; 32] {
+	pub fn compute_non_generic_tx_set_content_hash(tx_set: &TransactionSet) -> Option<[u8; 32]> {
 		let mut hasher = Sha256::new();
 		hasher.update(tx_set.previous_ledger_hash);
 
@@ -729,7 +728,10 @@ pub mod pallet {
 			hasher.update(envelope.to_xdr());
 		});
 
-		hasher.finalize().as_slice().try_into().unwrap()
+		match hasher.finalize().as_slice().try_into() {
+			Ok(data) => Some(data),
+			Err(_) => None,
+		}
 	}
 
 	pub(crate) fn verify_signature(

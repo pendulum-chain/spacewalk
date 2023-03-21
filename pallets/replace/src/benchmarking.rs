@@ -2,7 +2,7 @@ use frame_benchmarking::{account, benchmarks, impl_benchmark_test_suite};
 use frame_support::assert_ok;
 use frame_system::RawOrigin;
 use orml_traits::MultiCurrency;
-use sp_core::H256;
+use sp_core::{Get, H256};
 use sp_runtime::{traits::One, FixedPointNumber};
 use sp_std::prelude::*;
 
@@ -18,7 +18,7 @@ use stellar_relay::{
 		build_dummy_proof_for, get_validators_and_organizations, DEFAULT_STELLAR_PUBLIC_KEY,
 		RANDOM_STELLAR_PUBLIC_KEY,
 	},
-	Pallet as StellarRelay,
+	Config as StellarRelayConfig, Pallet as StellarRelay,
 };
 use vault_registry::{
 	types::{DefaultVaultCurrencyPair, Vault},
@@ -48,7 +48,7 @@ fn deposit_tokens<T: crate::Config>(
 	account_id: &T::AccountId,
 	amount: BalanceOf<T>,
 ) {
-	assert_ok!(<orml_tokens::Pallet<T>>::deposit(currency_id, account_id, amount));
+	assert_ok!(<orml_currencies::Pallet<T>>::deposit(currency_id, account_id, amount));
 }
 
 fn mint_collateral<T: crate::Config>(account_id: &T::AccountId, amount: BalanceOf<T>) {
@@ -222,7 +222,7 @@ benchmarks! {
 		let (validators, organizations) = get_validators_and_organizations::<T>();
 		let enactment_block_height = T::BlockNumber::default();
 		StellarRelay::<T>::_update_tier_1_validator_set(validators, organizations, enactment_block_height).unwrap();
-		let public_network = StellarRelay::<T>::is_public_network();
+		let public_network = <T as StellarRelayConfig>::IsPublicNetwork::get();
 		let (tx_env_xdr_encoded, scp_envs_xdr_encoded, tx_set_xdr_encoded) = build_dummy_proof_for::<T>(replace_id, public_network);
 
 	}: _(RawOrigin::Signed(old_vault_id.account_id), replace_id, tx_env_xdr_encoded, scp_envs_xdr_encoded, tx_set_xdr_encoded)
@@ -260,6 +260,9 @@ benchmarks! {
 	set_replace_period {
 	}: _(RawOrigin::Root, 1u32.into())
 
+	minimum_transfer_amount_update {
+		let new_minimum_amount: BalanceOf<T> = 1u32.into();
+	}: _(RawOrigin::Root, new_minimum_amount)
 }
 
 impl_benchmark_test_suite!(

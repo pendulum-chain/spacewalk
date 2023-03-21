@@ -2,7 +2,7 @@ use frame_benchmarking::{account, benchmarks, impl_benchmark_test_suite};
 use frame_support::assert_ok;
 use frame_system::RawOrigin;
 use orml_traits::MultiCurrency;
-use sp_core::H256;
+use sp_core::{Get, H256};
 use sp_runtime::{traits::One, FixedPointNumber};
 use sp_std::prelude::*;
 
@@ -17,7 +17,7 @@ use stellar_relay::{
 	testing_utils::{
 		build_dummy_proof_for, get_validators_and_organizations, DEFAULT_STELLAR_PUBLIC_KEY,
 	},
-	Pallet as StellarRelay,
+	Config as StellarRelayConfig, Pallet as StellarRelay,
 };
 use vault_registry::{types::DefaultVaultCurrencyPair, Pallet as VaultRegistry};
 
@@ -114,7 +114,7 @@ benchmarks! {
 		let (validators, organizations) = get_validators_and_organizations::<T>();
 		let enactment_block_height = T::BlockNumber::default();
 		StellarRelay::<T>::_update_tier_1_validator_set(validators, organizations, enactment_block_height).unwrap();
-		let public_network = StellarRelay::<T>::is_public_network();
+		let public_network = <T as StellarRelayConfig>::IsPublicNetwork::get();
 		let (tx_env_xdr_encoded, scp_envs_xdr_encoded, tx_set_xdr_encoded) = build_dummy_proof_for::<T>(issue_id, public_network);
 
 		VaultRegistry::<T>::_set_system_collateral_ceiling(get_currency_pair::<T>(), 1_000_000_000u32.into());
@@ -177,6 +177,10 @@ benchmarks! {
 		let limit_volume_currency_id: T::CurrencyId = get_wrapped_currency_id();
 		let interval_length: T::BlockNumber = 1u32.into();
 	}: _(RawOrigin::Root, limit_volume_amount, limit_volume_currency_id, interval_length)
+
+	minimum_transfer_amount_update {
+		let new_minimum_amount: BalanceOf<T> = 1u32.into();
+	}: _(RawOrigin::Root, new_minimum_amount)
 }
 
 impl_benchmark_test_suite!(

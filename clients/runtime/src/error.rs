@@ -79,6 +79,8 @@ pub enum Error {
 	TimeElapsed(#[from] Elapsed),
 	#[error("UrlParseError: {0}")]
 	UrlParseError(#[from] UrlParseError),
+	#[error("Constant not found: {0}")]
+	ConstantNotFound(String),
 }
 
 impl Error {

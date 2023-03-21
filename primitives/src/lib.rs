@@ -386,8 +386,9 @@ pub trait CurrencyInfo {
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 #[cfg_attr(feature = "std", serde(rename_all = "camelCase"))]
 #[repr(u8)]
+#[allow(clippy::unnecessary_cast)]
 pub enum Asset {
-	StellarNative = 0,
+	StellarNative = 0_u8,
 	AlphaNum4 { code: Bytes4, issuer: AssetIssuer },
 	AlphaNum12 { code: Bytes12, issuer: AssetIssuer },
 }
@@ -426,8 +427,9 @@ impl Asset {
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 #[cfg_attr(feature = "std", serde(rename_all = "camelCase"))]
 #[repr(u8)]
+#[allow(clippy::unnecessary_cast)]
 pub enum CurrencyId {
-	Native = 0,
+	Native = 0_u8,
 	XCM(u8),
 	Stellar(Asset),
 }
@@ -546,22 +548,22 @@ impl fmt::Debug for CurrencyId {
 				write!(
 					f,
 					"{{ code: {}, issuer: {} }}",
-					str::from_utf8(code).unwrap(),
+					str::from_utf8(code).unwrap_or_default(),
 					str::from_utf8(
 						stellar::PublicKey::from_binary(*issuer).to_encoding().as_slice()
 					)
-					.unwrap()
+					.unwrap_or_default()
 				)
 			},
 			Self::Stellar(Asset::AlphaNum12 { code, issuer }) => {
 				write!(
 					f,
 					"{{ code: {}, issuer: {} }}",
-					str::from_utf8(code).unwrap(),
+					str::from_utf8(code).unwrap_or_default(),
 					str::from_utf8(
 						stellar::PublicKey::from_binary(*issuer).to_encoding().as_slice()
 					)
-					.unwrap()
+					.unwrap_or_default()
 				)
 			},
 		}

@@ -80,7 +80,7 @@ compile_error!("You need to select at least one of the metadata features");
 #[cfg_attr(
 	feature = "parachain-metadata-amplitude",
 	subxt(
-		runtime_metadata_path = "metadata-parachain-foucoco.scale",
+		runtime_metadata_path = "metadata-parachain-amplitude.scale",
 		derive_for_all_types = "Clone, PartialEq, Eq",
 	)
 )]

@@ -22,6 +22,7 @@ sp-runtime = { git = "https://github.com/paritytech/substrate", branch = "polkad
 frame-support = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.37", default-features = false }
 frame-system = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.37", default-features = false }
 frame-benchmarking = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.37", default-features = false, optional = true }
+pallet-balances = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.37", default-features = false }
 pallet-timestamp = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.37", default-features = false }
 
 substrate-stellar-sdk = { git = "https://github.com/pendulum-chain/substrate-stellar-sdk", branch = "polkadot-v0.9.37", default-features = false, features = ['offchain'] }
@@ -37,6 +38,7 @@ vault-registry = { path = "../vault-registry", default-features = false }
 primitives = { package = "spacewalk-primitives", path = "../../primitives", default-features = false }
 
 # Orml dependencies
+orml-currencies = { git = "https://github.com/open-web3-stack/open-runtime-module-library", branch = "polkadot-v0.9.37", default-features = false }
 orml-tokens = { git = "https://github.com/open-web3-stack/open-runtime-module-library", branch = "polkadot-v0.9.37", default-features = false, optional = true }
 orml-traits = { git = "https://github.com/open-web3-stack/open-runtime-module-library", branch = "polkadot-v0.9.37", default-features = false, optional = true }
 
@@ -70,6 +72,7 @@ std = [
     "frame-support/std",
     "frame-system/std",
     "frame-benchmarking/std",
+    "pallet-balances/std",
     "pallet-timestamp/std",
     "currency/std",
     "fee/std",
@@ -79,6 +82,7 @@ std = [
     "stellar-relay/std",
     "substrate-stellar-sdk/std",
     "vault-registry/std",
+    "orml-currencies/std",
     "orml-tokens/std",
     "orml-traits/std",
 ]

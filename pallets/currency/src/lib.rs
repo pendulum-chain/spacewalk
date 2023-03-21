@@ -56,7 +56,9 @@ pub mod pallet {
 	/// The pallet's configuration trait.
 	#[pallet::config]
 	pub trait Config:
-		frame_system::Config + orml_tokens::Config<Balance = BalanceOf<Self>>
+		frame_system::Config
+		+ orml_tokens::Config<Balance = BalanceOf<Self>>
+		+ orml_currencies::Config<MultiCurrency = orml_tokens::Pallet<Self>>
 	{
 		type UnsignedFixedPoint: FixedPointNumber<Inner = BalanceOf<Self>>
 			+ TruncateFixedPointToInt
@@ -86,10 +88,6 @@ pub mod pallet {
 			+ Copy
 			+ Default
 			+ Debug;
-
-		/// Native currency e.g. PEN/AMPE
-		#[pallet::constant]
-		type GetNativeCurrencyId: Get<CurrencyId<Self>>;
 
 		/// Relay chain currency e.g. DOT/KSM
 		#[pallet::constant]
@@ -176,23 +174,23 @@ pub mod getters {
 	}
 
 	pub fn get_native_currency_id<T: Config>() -> CurrencyId<T> {
-		<T as Config>::GetNativeCurrencyId::get()
+		<T as orml_currencies::Config>::GetNativeCurrencyId::get()
 	}
 }
 
 pub fn get_free_balance<T: Config>(
-	currency_id: T::CurrencyId,
+	currency_id: CurrencyId<T>,
 	account: &AccountIdOf<T>,
 ) -> Amount<T> {
-	let amount = <orml_tokens::Pallet<T>>::free_balance(currency_id, account);
+	let amount = <orml_currencies::Pallet<T>>::free_balance(currency_id, account);
 	Amount::new(amount, currency_id)
 }
 
 pub fn get_reserved_balance<T: Config>(
-	currency_id: T::CurrencyId,
+	currency_id: CurrencyId<T>,
 	account: &AccountIdOf<T>,
 ) -> Amount<T> {
-	let amount = <orml_tokens::Pallet<T>>::reserved_balance(currency_id, account);
+	let amount = <orml_currencies::Pallet<T>>::reserved_balance(currency_id, account);
 	Amount::new(amount, currency_id)
 }
 

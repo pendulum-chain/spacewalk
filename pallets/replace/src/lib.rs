@@ -114,6 +114,9 @@ pub mod pallet {
 		ReplacePeriodChange {
 			period: T::BlockNumber,
 		},
+		ReplaceMinimumTransferAmountUpdate {
+			new_minimum_amount: BalanceOf<T>,
+		},
 	}
 
 	#[pallet::error]
@@ -334,6 +337,19 @@ pub mod pallet {
 			ensure_root(origin)?;
 			<ReplacePeriod<T>>::set(period);
 			Self::deposit_event(Event::ReplacePeriodChange { period });
+			Ok(().into())
+		}
+
+		#[pallet::call_index(6)]
+		#[pallet::weight(<T as Config>::WeightInfo::minimum_transfer_amount_update())]
+		#[transactional]
+		pub fn minimum_transfer_amount_update(
+			origin: OriginFor<T>,
+			new_minimum_amount: BalanceOf<T>,
+		) -> DispatchResultWithPostInfo {
+			ensure_root(origin)?;
+			ReplaceMinimumTransferAmount::<T>::set(new_minimum_amount);
+			Self::deposit_event(Event::ReplaceMinimumTransferAmountUpdate { new_minimum_amount });
 			Ok(().into())
 		}
 	}

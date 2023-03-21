@@ -9,6 +9,7 @@ name: continuous-integration-dev
 jobs:
   ci:
     strategy:
+      max-parallel: 1
       matrix:
         os: [ ubuntu-latest, macos-latest ]
         include:

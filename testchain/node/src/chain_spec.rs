@@ -295,7 +295,6 @@ fn testnet_genesis(
 			validators,
 			organizations,
 			enactment_block_height: 0,
-			is_public_network: false,
 			phantom: Default::default(),
 		},
 		oracle: OracleConfig {
