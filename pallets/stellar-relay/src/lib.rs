@@ -457,7 +457,7 @@ pub mod pallet {
 			);
 
 			let mut organization_id_set = BTreeMap::<T::OrganizationId, u32>::new();
-			for organization in organizations.clone().iter() {
+			for organization in organizations.iter() {
 				organization_id_set
 					.entry(organization.id)
 					.and_modify(|e| {
@@ -474,7 +474,7 @@ pub mod pallet {
 			);
 
 			let mut validators_public_key_set = BTreeMap::<BoundedVec<u8, FieldLength>, u32>::new();
-			for validator in validators.clone().iter() {
+			for validator in validators.iter() {
 				validators_public_key_set
 					.entry(validator.public_key.clone())
 					.and_modify(|e| {
@@ -508,10 +508,10 @@ pub mod pallet {
 			if new_organization_vec != current_organizations ||
 				new_validator_vec != current_validators
 			{
-				OldValidators::<T>::put(current_validators.clone());
-				OldOrganizations::<T>::put(current_organizations.clone());
-				Validators::<T>::put(new_validator_vec.clone());
-				Organizations::<T>::put(new_organization_vec.clone());
+				OldValidators::<T>::put(current_validators);
+				OldOrganizations::<T>::put(current_organizations);
+				Validators::<T>::put(new_validator_vec);
+				Organizations::<T>::put(new_organization_vec);
 			}
 
 			Self::deposit_event(Event::<T>::UpdateTier1ValidatorSet {
