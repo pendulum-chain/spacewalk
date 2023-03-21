@@ -25,7 +25,7 @@ pub(crate) mod currency {
 
 #[cfg_attr(test, mockable)]
 pub(crate) mod stellar_relay {
-	use sp_core::H256;
+	use sp_std::vec::Vec;
 	use substrate_stellar_sdk::{
 		compound_types::UnlimitedVarArray,
 		types::{ScpEnvelope, TransactionSet},
@@ -46,13 +46,13 @@ pub(crate) mod stellar_relay {
 		)
 	}
 
-	pub fn ensure_transaction_memo_matches_hash<T: crate::Config>(
+	pub fn ensure_transaction_memo_matches<T: crate::Config>(
 		transaction_envelope: &TransactionEnvelope,
-		expected_hash: &H256,
+		expected_memo: &Vec<u8>,
 	) -> Result<(), Error<T>> {
-		<stellar_relay::Pallet<T>>::ensure_transaction_memo_matches_hash(
+		<stellar_relay::Pallet<T>>::ensure_transaction_memo_matches(
 			transaction_envelope,
-			expected_hash,
+			expected_memo,
 		)
 	}
 

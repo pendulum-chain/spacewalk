@@ -1,10 +1,10 @@
 use std::{fmt::Formatter, sync::Arc};
 
 use substrate_stellar_sdk::{
+	compound_types::LimitedString,
 	network::{Network, PUBLIC_NETWORK, TEST_NETWORK},
 	types::Preconditions,
-	Asset, Hash, Memo, Operation, PublicKey, SecretKey, StroopAmount, Transaction,
-	TransactionEnvelope,
+	Asset, Memo, Operation, PublicKey, SecretKey, StroopAmount, Transaction, TransactionEnvelope,
 };
 use tokio::sync::Mutex;
 
@@ -13,6 +13,8 @@ use crate::{
 	horizon::{HorizonClient, PagingToken, TransactionResponse},
 	types::StellarPublicKeyRaw,
 };
+
+use primitives::issue::derive_issue_memo;
 
 #[derive(Clone)]
 pub struct StellarWallet {
@@ -83,7 +85,7 @@ impl StellarWallet {
 		destination_address: PublicKey,
 		asset: Asset,
 		stroop_amount: i64,
-		memo_hash: Hash,
+		memo_hash: [u8; 32],
 		stroop_fee_per_operation: u32,
 	) -> Result<(TransactionResponse, TransactionEnvelope), Error> {
 		let _ = self.transaction_submission_lock.lock().await;
@@ -100,12 +102,18 @@ impl StellarWallet {
 			next_sequence_number,
 			account.account_id
 		);
+
+		let memo_text = Memo::MemoText(
+			LimitedString::new(derive_issue_memo(&memo_hash))
+				.map_err(|_| Error::BuildTransactionError("Invalid hash".to_string()))?,
+		);
+
 		let mut transaction = Transaction::new(
 			self.get_public_key(),
 			next_sequence_number,
 			Some(stroop_fee_per_operation),
 			Preconditions::PrecondNone,
-			Some(Memo::MemoHash(memo_hash)),
+			Some(memo_text),
 		)
 		.map_err(|_e| {
 			Error::BuildTransactionError("Creating new transaction failed".to_string())

@@ -97,6 +97,7 @@ mod metadata_aliases {
 		metadata::runtime_types::spacewalk_primitives::VaultCurrencyPair<CurrencyId>;
 
 	pub type IssueRequestsMap = HashMap<IssueId, SpacewalkIssueRequest>;
+	pub type IssueMemoMap = HashMap<Vec<u8>, IssueId>;
 
 	cfg_if::cfg_if! {
 		if #[cfg(feature = "standalone-metadata")] {

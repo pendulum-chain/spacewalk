@@ -1,6 +1,7 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 #![allow(non_upper_case_globals)]
 
+use base58::ToBase58;
 use codec::{Decode, Encode, MaxEncodedLen};
 use frame_support::error::LookupError;
 use scale_info::TypeInfo;
@@ -178,6 +179,10 @@ pub mod issue {
 		pub stellar_address: StellarPublicKeyRaw,
 		/// the status of this issue request
 		pub status: IssueRequestStatus,
+	}
+
+	pub fn derive_issue_memo(hash: &[u8; 32]) -> Vec<u8> {
+		hash.to_base58().as_bytes()[..28].to_vec()
 	}
 }
 

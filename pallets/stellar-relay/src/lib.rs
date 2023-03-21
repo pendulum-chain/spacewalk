@@ -24,6 +24,7 @@ pub mod traits;
 pub mod types;
 
 mod default_weights;
+use primitives::issue::derive_issue_memo;
 
 #[frame_support::pallet]
 pub mod pallet {
@@ -677,10 +678,18 @@ pub mod pallet {
 			transaction_envelope: &TransactionEnvelope,
 			expected_hash: &H256,
 		) -> Result<(), Error<T>> {
-			let tx_memo_hash = get_memo_hash_from_tx_env(transaction_envelope);
+			let expected_memo = derive_issue_memo(&expected_hash.0);
+			Self::ensure_transaction_memo_matches(transaction_envelope, &expected_memo)
+		}
 
-			if let Some(included_hash) = tx_memo_hash {
-				ensure!(included_hash == expected_hash.0, Error::TransactionMemoDoesNotMatch);
+		pub fn ensure_transaction_memo_matches(
+			transaction_envelope: &TransactionEnvelope,
+			expected_memo: &Vec<u8>,
+		) -> Result<(), Error<T>> {
+			let tx_memo_text = get_text_hash_from_tx_env(transaction_envelope);
+
+			if let Some(included_memo) = tx_memo_text {
+				ensure!(included_memo == expected_memo, Error::TransactionMemoDoesNotMatch);
 			} else {
 				return Err(Error::TransactionMemoDoesNotMatch)
 			}
@@ -689,20 +698,20 @@ pub mod pallet {
 		}
 	}
 
-	fn get_memo_hash_from_tx_env(transaction_envelope: &TransactionEnvelope) -> Option<Hash> {
-		let memo_hash = match transaction_envelope {
-			TransactionEnvelope::EnvelopeTypeTxV0(tx_env) => match tx_env.tx.memo {
-				Memo::MemoHash(hash) => Some(hash),
+	fn get_text_hash_from_tx_env(transaction_envelope: &TransactionEnvelope) -> Option<&Vec<u8>> {
+		let memo_text = match transaction_envelope {
+			TransactionEnvelope::EnvelopeTypeTxV0(tx_env) => match &tx_env.tx.memo {
+				Memo::MemoText(text) => Some(text.get_vec()),
 				_ => None,
 			},
-			TransactionEnvelope::EnvelopeTypeTx(tx_env) => match tx_env.tx.memo {
-				Memo::MemoHash(hash) => Some(hash),
+			TransactionEnvelope::EnvelopeTypeTx(tx_env) => match &tx_env.tx.memo {
+				Memo::MemoText(text) => Some(text.get_vec()),
 				_ => None,
 			},
 			_ => None,
 		};
 
-		memo_hash
+		memo_text
 	}
 
 	pub fn compute_non_generic_tx_set_content_hash(tx_set: &TransactionSet) -> Option<[u8; 32]> {

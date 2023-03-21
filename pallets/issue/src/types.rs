@@ -10,6 +10,8 @@ use crate::Config;
 pub(crate) type BalanceOf<T> = <T as vault_registry::Config>::Balance;
 pub(crate) type DefaultVaultId<T> = VaultId<<T as frame_system::Config>::AccountId, CurrencyId<T>>;
 
+pub type TextMemo = [u8; 28];
+
 pub type DefaultIssueRequest<T> = IssueRequest<
 	<T as frame_system::Config>::AccountId,
 	<T as frame_system::Config>::BlockNumber,

@@ -954,10 +954,10 @@ pub trait IssuePallet {
 		vault_id: &VaultId,
 	) -> Result<RequestIssueEvent, Error>;
 
-	/// Execute a issue request by providing a Stellar transaction inclusion proof
+	/// Execute an issue request by providing a Stellar transaction inclusion proof
 	async fn execute_issue(
 		&self,
-		issue_id: H256,
+		issue_memo: &Vec<u8>,
 		tx_envelope_xdr_encoded: &[u8],
 		envelopes_xdr_encoded: &[u8],
 		tx_set_xdr_encoded: &[u8],
@@ -993,13 +993,13 @@ impl IssuePallet for SpacewalkParachain {
 
 	async fn execute_issue(
 		&self,
-		issue_id: H256,
+		issue_memo: &Vec<u8>,
 		tx_envelope_xdr_encoded: &[u8],
 		envelopes_xdr_encoded: &[u8],
 		tx_set_xdr_encoded: &[u8],
 	) -> Result<(), Error> {
 		self.with_retry(metadata::tx().issue().execute_issue(
-			issue_id,
+			issue_memo.clone(),
 			tx_envelope_xdr_encoded.to_vec(),
 			envelopes_xdr_encoded.to_vec(),
 			tx_set_xdr_encoded.to_vec(),

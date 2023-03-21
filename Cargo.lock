@@ -8998,6 +8998,7 @@ dependencies = [
 name = "spacewalk-primitives"
 version = "1.2.0"
 dependencies = [
+ "base58",
  "bstringify",
  "frame-support",
  "parity-scale-codec",
@@ -10495,6 +10496,7 @@ dependencies = [
  "serde",
  "serde_json",
  "serial_test",
+ "spacewalk-primitives",
  "substrate-stellar-sdk",
  "thiserror",
  "tokio",

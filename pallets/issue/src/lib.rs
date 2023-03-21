@@ -11,6 +11,7 @@ extern crate mocktopus;
 use frame_support::{dispatch::DispatchError, ensure, traits::Get, transactional};
 #[cfg(test)]
 use mocktopus::macros::mockable;
+use primitives::issue::derive_issue_memo;
 use sp_core::H256;
 use sp_runtime::traits::{CheckedDiv, Convert, Saturating, Zero};
 use sp_std::vec::Vec;
@@ -26,7 +27,7 @@ use std::str::FromStr;
 use currency::Amount;
 pub use default_weights::{SubstrateWeight, WeightInfo};
 pub use pallet::*;
-use types::IssueRequestExt;
+use types::{IssueRequestExt, TextMemo};
 use vault_registry::{CurrencySource, VaultStatus};
 
 use crate::types::{BalanceOf, CurrencyId, DefaultVaultId};
@@ -148,6 +149,11 @@ pub mod pallet {
 	pub(super) type IssueRequests<T: Config> =
 		StorageMap<_, Blake2_128Concat, H256, DefaultIssueRequest<T>, OptionQuery>;
 
+	/// Look up an issue id from a transaction memo representation
+	#[pallet::storage]
+	#[pallet::getter(fn issue_memos)]
+	pub(super) type IssueMemos<T: Config> = StorageMap<_, Identity, TextMemo, H256, OptionQuery>;
+
 	/// The time difference in number of blocks between an issue request is created
 	/// and required completion time by a user. The issue period has an upper limit
 	/// to prevent griefing of vault collateral.
@@ -267,7 +273,7 @@ pub mod pallet {
 		#[transactional]
 		pub fn execute_issue(
 			origin: OriginFor<T>,
-			issue_id: H256,
+			issue_memo: Vec<u8>,
 			transaction_envelope_xdr_encoded: Vec<u8>,
 			externalized_envelopes_encoded: Vec<u8>,
 			transaction_set_encoded: Vec<u8>,
@@ -275,7 +281,7 @@ pub mod pallet {
 			let executor = ensure_signed(origin)?;
 			Self::_execute_issue(
 				executor,
-				issue_id,
+				issue_memo,
 				transaction_envelope_xdr_encoded,
 				externalized_envelopes_encoded,
 				transaction_set_encoded,
@@ -374,7 +380,7 @@ impl<T: Config> Pallet<T> {
 		requester: T::AccountId,
 		amount_requested: BalanceOf<T>,
 		vault_id: DefaultVaultId<T>,
-	) -> Result<H256, DispatchError> {
+	) -> Result<(H256, TextMemo), DispatchError> {
 		let amount_requested = Amount::new(amount_requested, vault_id.wrapped_currency());
 
 		Self::check_volume(amount_requested.clone())?;
@@ -425,7 +431,10 @@ impl<T: Config> Pallet<T> {
 			status: IssueRequestStatus::Pending,
 			stellar_address: stellar_public_key,
 		};
-		Self::insert_issue_request(&issue_id, &request);
+
+		let memo: TextMemo =
+			derive_issue_memo(&issue_id.0).try_into().expect("Hash has 32 bytes; qed");
+		Self::insert_issue_request(&issue_id, &memo, &request);
 
 		Self::deposit_event(Event::RequestIssue {
 			issue_id,
@@ -437,18 +446,18 @@ impl<T: Config> Pallet<T> {
 			vault_id: request.vault,
 			vault_stellar_public_key: stellar_public_key,
 		});
-		Ok(issue_id)
+		Ok((issue_id, memo))
 	}
 
 	/// Completes CBA issuance, removing request from storage and minting token.
 	fn _execute_issue(
 		executor: T::AccountId,
-		issue_id: H256,
+		issue_memo: Vec<u8>,
 		transaction_envelope_xdr_encoded: Vec<u8>,
 		externalized_envelopes_encoded: Vec<u8>,
 		transaction_set_encoded: Vec<u8>,
 	) -> Result<(), DispatchError> {
-		let mut issue = Self::get_issue_request_from_id(&issue_id)?;
+		let (issue_id, mut issue) = Self::get_issue_request_from_issue_memo(&issue_memo)?;
 		// allow anyone to complete issue request
 		let requester = issue.requester.clone();
 
@@ -468,9 +477,9 @@ impl<T: Config> Pallet<T> {
 		>(&transaction_set_encoded)?;
 
 		// Check that the transaction includes the expected memo to mitigate replay attacks
-		ext::stellar_relay::ensure_transaction_memo_matches_hash::<T>(
+		ext::stellar_relay::ensure_transaction_memo_matches::<T>(
 			&transaction_envelope,
-			&issue_id,
+			&issue_memo,
 		)?;
 
 		// Verify that the transaction is valid
@@ -717,15 +726,18 @@ impl<T: Config> Pallet<T> {
 			.collect()
 	}
 
-	pub fn get_issue_request_from_id(
-		issue_id: &H256,
-	) -> Result<DefaultIssueRequest<T>, DispatchError> {
+	pub fn get_issue_request_from_issue_memo(
+		issue_memo: &Vec<u8>,
+	) -> Result<(H256, DefaultIssueRequest<T>), DispatchError> {
+		let text_memo: TextMemo =
+			issue_memo.clone().try_into().map_err(|_| Error::<T>::IssueIdNotFound)?;
+		let issue_id = IssueMemos::<T>::try_get(text_memo).or(Err(Error::<T>::IssueIdNotFound))?;
 		let request = IssueRequests::<T>::try_get(issue_id).or(Err(Error::<T>::IssueIdNotFound))?;
 
 		// NOTE: temporary workaround until we delete
 		match request.status {
 			IssueRequestStatus::Completed => Err(Error::<T>::IssueCompleted.into()),
-			_ => Ok(request),
+			_ => Ok((issue_id, request)),
 		}
 	}
 
@@ -771,8 +783,9 @@ impl<T: Config> Pallet<T> {
 		Ok(())
 	}
 
-	fn insert_issue_request(key: &H256, value: &DefaultIssueRequest<T>) {
-		<IssueRequests<T>>::insert(key, value)
+	fn insert_issue_request(key: &H256, memo: &TextMemo, value: &DefaultIssueRequest<T>) {
+		<IssueRequests<T>>::insert(key, value);
+		<IssueMemos<T>>::insert(memo, key);
 	}
 
 	fn set_issue_status(id: H256, status: IssueRequestStatus) {

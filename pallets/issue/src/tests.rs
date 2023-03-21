@@ -9,7 +9,7 @@ use primitives::{issue::IssueRequestStatus, StellarPublicKeyRaw};
 use stellar_relay::testing_utils::{DEFAULT_STELLAR_PUBLIC_KEY, RANDOM_STELLAR_PUBLIC_KEY};
 use vault_registry::{DefaultVault, DefaultVaultId, Vault, VaultStatus};
 
-use crate::{ext, mock::*, BalanceOf, Event, IssueRequest};
+use crate::{ext, mock::*, types::TextMemo, BalanceOf, Event, IssueRequest};
 
 fn griefing(amount: u128) -> Amount<Test> {
 	Amount::new(amount, DEFAULT_NATIVE_CURRENCY)
@@ -23,7 +23,7 @@ fn request_issue(
 	origin: AccountId,
 	amount: Balance,
 	vault: DefaultVaultId<Test>,
-) -> Result<H256, DispatchError> {
+) -> Result<(H256, TextMemo), DispatchError> {
 	ext::security::get_secure_id::<Test>.mock_safe(|| MockResult::Return(get_dummy_request_id()));
 
 	ext::vault_registry::try_increase_to_be_issued_tokens::<Test>
@@ -33,7 +33,9 @@ fn request_issue(
 }
 
 fn request_issue_ok(origin: AccountId, amount: Balance, vault: DefaultVaultId<Test>) -> H256 {
-	request_issue_ok_with_address(origin, amount, vault, RANDOM_STELLAR_PUBLIC_KEY).unwrap()
+	request_issue_ok_with_address(origin, amount, vault, RANDOM_STELLAR_PUBLIC_KEY)
+		.unwrap()
+		.0
 }
 
 fn request_issue_ok_with_address(
@@ -41,12 +43,12 @@ fn request_issue_ok_with_address(
 	amount: Balance,
 	vault: DefaultVaultId<Test>,
 	_address: StellarPublicKeyRaw,
-) -> Result<H256, DispatchError> {
+) -> Result<(H256, TextMemo), DispatchError> {
 	ext::vault_registry::ensure_not_banned::<Test>.mock_safe(|_| MockResult::Return(Ok(())));
 
 	ext::security::get_secure_id::<Test>.mock_safe(|| MockResult::Return(get_dummy_request_id()));
 
-	ext::stellar_relay::ensure_transaction_memo_matches_hash::<Test>
+	ext::stellar_relay::ensure_transaction_memo_matches::<Test>
 		.mock_safe(|_, _| MockResult::Return(Ok(())));
 
 	ext::vault_registry::try_increase_to_be_issued_tokens::<Test>
@@ -57,13 +59,13 @@ fn request_issue_ok_with_address(
 	Issue::_request_issue(origin, amount, vault)
 }
 
-fn execute_issue(origin: AccountId, issue_id: &H256) -> Result<(), DispatchError> {
+fn execute_issue(origin: AccountId, issue_memo: &TextMemo) -> Result<(), DispatchError> {
 	let (tx_env_encoded, scp_envelopes_encoded, transaction_set_encoded) =
 		stellar_relay::testing_utils::create_dummy_scp_structs_encoded();
 
 	Issue::_execute_issue(
 		origin,
-		*issue_id,
+		issue_memo.to_vec(),
 		tx_env_encoded,
 		scp_envelopes_encoded,
 		transaction_set_encoded,
@@ -130,7 +132,7 @@ fn test_request_issue_succeeds() {
 		ext::fee::get_issue_griefing_collateral::<Test>
 			.mock_safe(move |_| MockResult::Return(Ok(griefing(issue_griefing_collateral))));
 
-		let issue_id =
+		let (issue_id, _) =
 			request_issue_ok_with_address(origin, amount, vault.clone(), address).unwrap();
 
 		let request_issue_event = TestEvent::Issue(Event::RequestIssue {
@@ -152,7 +154,7 @@ fn test_execute_issue_not_found_fails() {
 	run_test(|| {
 		ext::vault_registry::get_active_vault_from_id::<Test>
 			.mock_safe(|_| MockResult::Return(Ok(init_zero_vault(VAULT))));
-		assert_noop!(execute_issue(USER, &H256([0; 32])), TestError::IssueIdNotFound);
+		assert_noop!(execute_issue(USER, &[0; 28]), TestError::IssueIdNotFound);
 	})
 }
 
@@ -161,7 +163,7 @@ fn setup_execute(
 	issue_fee: Balance,
 	griefing_collateral: Balance,
 	amount_transferred: Balance,
-) -> Result<H256, DispatchError> {
+) -> Result<(H256, TextMemo), DispatchError> {
 	ext::vault_registry::get_active_vault_from_id::<Test>
 		.mock_safe(|_| MockResult::Return(Ok(init_zero_vault(VAULT))));
 	ext::vault_registry::issue_tokens::<Test>.mock_safe(|_, _| MockResult::Return(Ok(())));
@@ -171,7 +173,7 @@ fn setup_execute(
 	ext::fee::get_issue_griefing_collateral::<Test>
 		.mock_safe(move |_| MockResult::Return(Ok(griefing(griefing_collateral))));
 
-	let issue_id =
+	let (issue_id, memo) =
 		request_issue_ok_with_address(USER, issue_amount, VAULT, RANDOM_STELLAR_PUBLIC_KEY)?;
 	<security::Pallet<Test>>::set_active_block_number(5);
 
@@ -181,7 +183,7 @@ fn setup_execute(
 		MockResult::Return(Ok(Amount::new(amount_transferred, currency)))
 	});
 
-	Ok(issue_id)
+	Ok((issue_id, memo))
 }
 
 #[test]
@@ -192,11 +194,11 @@ fn test_execute_issue_succeeds() {
 		let issue_fee = 1;
 		let griefing_collateral = 1;
 		let amount_transferred = 3;
-		let issue_id =
+		let (issue_id, memo) =
 			setup_execute(issue_amount, issue_fee, griefing_collateral, amount_transferred)
 				.unwrap();
 
-		assert_ok!(execute_issue(USER, &issue_id));
+		assert_ok!(execute_issue(USER, &memo));
 
 		let execute_issue_event = TestEvent::Issue(Event::ExecuteIssue {
 			issue_id,
@@ -226,7 +228,7 @@ fn test_execute_issue_overpayment_succeeds() {
 		let amount_transferred = 5;
 		let issue_fee = 0;
 		let griefing_collateral = 0;
-		let issue_id =
+		let (issue_id, memo) =
 			setup_execute(issue_amount, issue_fee, griefing_collateral, amount_transferred)
 				.unwrap();
 		unsafe {
@@ -240,7 +242,7 @@ fn test_execute_issue_overpayment_succeeds() {
 				MockResult::Return(Ok(()))
 			});
 
-			assert_ok!(execute_issue(USER, &issue_id));
+			assert_ok!(execute_issue(USER, &memo));
 			assert_eq!(increase_tokens_called, true);
 			assert!(matches!(
 				Issue::issue_requests(&issue_id),
@@ -263,7 +265,7 @@ fn test_execute_issue_overpayment_up_to_max_succeeds() {
 		let amount_transferred = 10;
 		let issue_fee = 0;
 		let griefing_collateral = 0;
-		let issue_id =
+		let (issue_id, memo) =
 			setup_execute(issue_amount, issue_fee, griefing_collateral, amount_transferred)
 				.unwrap();
 		unsafe {
@@ -277,7 +279,7 @@ fn test_execute_issue_overpayment_up_to_max_succeeds() {
 				MockResult::Return(Ok(()))
 			});
 
-			assert_ok!(execute_issue(USER, &issue_id));
+			assert_ok!(execute_issue(USER, &memo));
 			assert_eq!(increase_tokens_called, true);
 			assert!(matches!(
 				Issue::issue_requests(&issue_id),
@@ -300,7 +302,7 @@ fn test_execute_issue_underpayment_succeeds() {
 		let amount_transferred = 1;
 		let issue_fee = 0;
 		let griefing_collateral = 20;
-		let issue_id =
+		let (issue_id, memo) =
 			setup_execute(issue_amount, issue_fee, griefing_collateral, amount_transferred)
 				.unwrap();
 		unsafe {
@@ -323,7 +325,7 @@ fn test_execute_issue_underpayment_succeeds() {
 				MockResult::Return(Ok(()))
 			});
 
-			assert_ok!(execute_issue(USER, &issue_id));
+			assert_ok!(execute_issue(USER, &memo));
 			assert_eq!(decrease_to_be_issued_tokens_called, true);
 			assert_eq!(transfer_funds_called, true);
 			assert!(matches!(
@@ -484,9 +486,9 @@ fn test_request_issue_fails_after_execute_issue_exceed_limit_volume_for_issue_re
 			setup_execute(issue_amount, issue_fee, griefing_collateral, amount_transferred);
 
 		assert_ok!(request_issue_result);
-		let issue_id = request_issue_result.unwrap();
+		let (issue_id, memo) = request_issue_result.unwrap();
 
-		assert_ok!(execute_issue(USER, &issue_id));
+		assert_ok!(execute_issue(USER, &memo));
 
 		let execute_issue_event = TestEvent::Issue(Event::ExecuteIssue {
 			issue_id,
@@ -535,9 +537,9 @@ fn test_request_issue_success_with_rate_limit() {
 			setup_execute(issue_amount, issue_fee, griefing_collateral, amount_transferred);
 
 		assert_ok!(request_issue_result);
-		let issue_id = request_issue_result.unwrap();
+		let (issue_id, memo) = request_issue_result.unwrap();
 
-		assert_ok!(execute_issue(USER, &issue_id));
+		assert_ok!(execute_issue(USER, &memo));
 
 		let execute_issue_event = TestEvent::Issue(Event::ExecuteIssue {
 			issue_id,
@@ -578,9 +580,9 @@ fn test_request_issue_reset_interval_and_succeeds_with_rate_limit() {
 			setup_execute(issue_amount, issue_fee, griefing_collateral, amount_transferred);
 
 		assert_ok!(request_issue_result);
-		let issue_id = request_issue_result.unwrap();
+		let (issue_id, memo) = request_issue_result.unwrap();
 
-		assert_ok!(execute_issue(USER, &issue_id));
+		assert_ok!(execute_issue(USER, &memo));
 
 		let execute_issue_event = TestEvent::Issue(Event::ExecuteIssue {
 			issue_id,
