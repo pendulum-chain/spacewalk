@@ -465,7 +465,7 @@ async fn test_cancel_scheduler_succeeds() {
 		oracle_agent.start().await.expect("failed to start agent");
 		let oracle_agent = Arc::new(oracle_agent);
 
-		let issue_amount = upscaled_compatible_amount(100);
+		let issue_amount = upscaled_compatible_amount(200);
 		let vault_collateral = get_required_vault_collateral_for_issue(
 			&old_vault_provider,
 			issue_amount * 10,
@@ -579,7 +579,7 @@ async fn test_cancel_scheduler_succeeds() {
 
 				// setup the to-be-cancelled redeem
 				let redeem_id = user_provider
-					.request_redeem(upscaled_compatible_amount(20), address, &old_vault_id)
+					.request_redeem(upscaled_compatible_amount(100), address, &old_vault_id)
 					.await
 					.unwrap();
 
