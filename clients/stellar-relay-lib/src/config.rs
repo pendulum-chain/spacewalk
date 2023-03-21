@@ -25,7 +25,7 @@ impl StellarOverlayConfig {
 	}
 
 	pub fn is_public_network(&self) -> bool {
-		self.node_info.is_pub_net.clone()
+		self.node_info.is_pub_net
 	}
 
 	#[allow(dead_code)]
