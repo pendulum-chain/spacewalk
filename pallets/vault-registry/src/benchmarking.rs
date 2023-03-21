@@ -153,10 +153,10 @@ benchmarks! {
 	}: _(RawOrigin::Signed(vault_id.account_id), vault_id.currencies.clone())
 
 	set_punishment_delay {
-		let punishment_delay : T::BlockNumber = T::BlockNumber::default();
+		let punishment_delay: T::BlockNumber = T::BlockNumber::default();
 	}: _(RawOrigin::Root, punishment_delay)
 	verify {
-		let punishment_delay : T::BlockNumber = T::BlockNumber::default();
+		let punishment_delay: T::BlockNumber = T::BlockNumber::default();
 		assert_eq!(PunishmentDelay::<T>::get(), punishment_delay);
 	}
 }

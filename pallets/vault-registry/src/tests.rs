@@ -130,7 +130,7 @@ fn create_sample_vault_and_issue_tokens(issue_tokens: u128) -> DefaultVaultId<Te
 }
 
 #[test]
-fn should_set_punishment_delay() {
+fn set_punishment_delay_works() {
 	run_test(|| {
 		let punishment_delay = 99;
 		assert_ok!(VaultRegistry::set_punishment_delay(RuntimeOrigin::root(), punishment_delay));
@@ -139,7 +139,7 @@ fn should_set_punishment_delay() {
 }
 
 #[test]
-fn should_failed_set_punishment_delay() {
+fn set_punishment_delay_fails_for_wrong_origin() {
 	run_test(|| {
 		let punishment_delay = 99;
 		assert_err!(
