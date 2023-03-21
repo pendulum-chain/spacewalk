@@ -15,7 +15,7 @@ pub struct StellarOverlayConnection {
 	/// For receiving stellar messages
 	relay_message_receiver: mpsc::Receiver<StellarRelayMessage>,
 	local_node: NodeInfo,
-	cfg: ConnectionInfo,
+	conn_info: ConnectionInfo,
 	/// Maximum retries for reconnection
 	max_retries: u8,
 }
@@ -26,13 +26,13 @@ impl StellarOverlayConnection {
 		relay_message_receiver: mpsc::Receiver<StellarRelayMessage>,
 		max_retries: u8,
 		local_node: NodeInfo,
-		cfg: ConnectionInfo,
+		conn_info: ConnectionInfo,
 	) -> Self {
 		StellarOverlayConnection {
 			actions_sender,
 			relay_message_receiver,
 			local_node,
-			cfg,
+			conn_info,
 			max_retries,
 		}
 	}
@@ -60,15 +60,20 @@ impl StellarOverlayConnection {
 		if let Some(StellarRelayMessage::Timeout) = &res {
 			let mut retries = 0;
 			while retries < self.max_retries {
-				log::info!("Connection timed out. Reconnecting to {:?}...", &self.cfg.address);
-				if let Ok(new_user) =
-					StellarOverlayConnection::connect(self.local_node.clone(), self.cfg.clone())
-						.await
+				log::info!(
+					"Connection timed out. Reconnecting to {:?}...",
+					&self.conn_info.address
+				);
+				if let Ok(new_user) = StellarOverlayConnection::connect(
+					self.local_node.clone(),
+					self.conn_info.clone(),
+				)
+				.await
 				{
 					self.max_retries = new_user.max_retries;
 					self.actions_sender = new_user.actions_sender;
 					self.relay_message_receiver = new_user.relay_message_receiver;
-					log::info!("Reconnected to {:?}!", &self.cfg.address);
+					log::info!("Reconnected to {:?}!", &self.conn_info.address);
 					return self.relay_message_receiver.recv().await
 				} else {
 					retries += 1;
@@ -87,12 +92,12 @@ impl StellarOverlayConnection {
 	/// Returns the UserControls for the user to send and receive Stellar messages.
 	pub(crate) async fn connect(
 		local_node: NodeInfo,
-		cfg: ConnectionInfo,
+		conn_info: ConnectionInfo,
 	) -> Result<StellarOverlayConnection, Error> {
-		let retries = cfg.retries;
-		let timeout_in_secs = cfg.timeout_in_secs;
+		let retries = conn_info.retries;
+		let timeout_in_secs = conn_info.timeout_in_secs;
 		// split the stream for easy handling of read and write
-		let (rd, wr) = create_stream(&cfg.address()).await?;
+		let (rd, wr) = create_stream(&conn_info.address()).await?;
 		// ------------------ prepare the channels
 		// this is a channel to communicate with the connection/config (this needs renaming)
 		let (actions_sender, actions_receiver) = mpsc::channel::<ConnectorActions>(1024);
@@ -102,13 +107,13 @@ impl StellarOverlayConnection {
 		let overlay_connection = StellarOverlayConnection::new(
 			actions_sender.clone(),
 			relay_message_receiver,
-			cfg.retries,
+			conn_info.retries,
 			local_node,
-			cfg,
+			conn_info,
 		);
 		let connector = Connector::new(
 			overlay_connection.local_node.clone(),
-			overlay_connection.cfg.clone(),
+			overlay_connection.conn_info.clone(),
 			actions_sender.clone(),
 			relay_message_sender,
 		);
@@ -143,13 +148,13 @@ mod test {
 			SecretKey::from_encoding("SBLI7RKEJAEFGLZUBSCOFJHQBPFYIIPLBCKN7WVCWT4NEG2UJEW33N73")
 				.unwrap();
 		let node_info = NodeInfo::new(19, 21, 19, "v19.1.0".to_string(), &TEST_NETWORK);
-		let cfg = ConnectionInfo::new("34.235.168.98", 11625, secret, 0, false, true, false);
-		(node_info, cfg)
+		let conn_info = ConnectionInfo::new("34.235.168.98", 11625, secret, 0, false, true, false);
+		(node_info, conn_info)
 	}
 
 	#[test]
 	fn create_stellar_overlay_connection_works() {
-		let (node_info, cfg) = create_node_and_conn();
+		let (node_info, conn_info) = create_node_and_conn();
 
 		let (actions_sender, _) = mpsc::channel::<ConnectorActions>(1024);
 		let (_, relay_message_receiver) = mpsc::channel::<StellarRelayMessage>(1024);
@@ -157,16 +162,16 @@ mod test {
 		StellarOverlayConnection::new(
 			actions_sender,
 			relay_message_receiver,
-			cfg.retries,
+			conn_info.retries,
 			node_info,
-			cfg,
+			conn_info,
 		);
 	}
 
 	#[tokio::test]
 	async fn stellar_overlay_connection_send_works() {
 		//arrange
-		let (node_info, cfg) = create_node_and_conn();
+		let (node_info, conn_info) = create_node_and_conn();
 
 		let (actions_sender, mut actions_receiver) = mpsc::channel::<ConnectorActions>(1024);
 		let (_, relay_message_receiver) = mpsc::channel::<StellarRelayMessage>(1024);
@@ -174,9 +179,9 @@ mod test {
 		let overlay_connection = StellarOverlayConnection::new(
 			actions_sender.clone(),
 			relay_message_receiver,
-			cfg.retries,
+			conn_info.retries,
 			node_info,
-			cfg,
+			conn_info,
 		);
 		let message_s = StellarMessage::GetPeers;
 
@@ -195,7 +200,7 @@ mod test {
 	#[tokio::test]
 	async fn stellar_overlay_connection_listen_works() {
 		//arrange
-		let (node_info, cfg) = create_node_and_conn();
+		let (node_info, conn_info) = create_node_and_conn();
 
 		let (actions_sender, _actions_receiver) = mpsc::channel::<ConnectorActions>(1024);
 		let (relay_message_sender, relay_message_receiver) =
@@ -204,9 +209,9 @@ mod test {
 		let mut overlay_connection = StellarOverlayConnection::new(
 			actions_sender.clone(),
 			relay_message_receiver,
-			cfg.retries,
+			conn_info.retries,
 			node_info,
-			cfg,
+			conn_info,
 		);
 		let error_message = "error message".to_owned();
 		relay_message_sender
@@ -231,9 +236,11 @@ mod test {
 			SecretKey::from_encoding("SBLI7RKEJAEFGLZUBSCOFJHQBPFYIIPLBCKN7WVCWT4NEG2UJEW33N73")
 				.unwrap();
 		let node_info = NodeInfo::new(19, 21, 19, "v19.1.0".to_string(), &TEST_NETWORK);
-		let cfg = ConnectionInfo::new("incorrect address", 11625, secret, 0, false, true, false);
+		let conn_info =
+			ConnectionInfo::new("incorrect address", 11625, secret, 0, false, true, false);
 
-		let stellar_overlay_connection = StellarOverlayConnection::connect(node_info, cfg).await;
+		let stellar_overlay_connection =
+			StellarOverlayConnection::connect(node_info, conn_info).await;
 
 		assert!(stellar_overlay_connection.is_err());
 		match stellar_overlay_connection.err().unwrap() {
@@ -246,8 +253,9 @@ mod test {
 
 	#[tokio::test]
 	async fn stellar_overlay_connect_works() {
-		let (node_info, cfg) = create_node_and_conn();
-		let stellar_overlay_connection = StellarOverlayConnection::connect(node_info, cfg).await;
+		let (node_info, conn_info) = create_node_and_conn();
+		let stellar_overlay_connection =
+			StellarOverlayConnection::connect(node_info, conn_info).await;
 
 		assert!(stellar_overlay_connection.is_ok());
 	}

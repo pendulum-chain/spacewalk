@@ -63,7 +63,7 @@ let cfg = StellarOverlayConfig::try_from_path(<your_file_path>)?;
 ### Create the `StellarOverlayConnection`
 Given the `StellarOverlayConfig`, connect to the Stellar Node using the `connect` function.
 ```rust
-let mut overlay_connection = stellar_relay_lib::connect(cfg).await?;
+let mut overlay_connection = stellar_relay_lib::connect_to_stellar_overlay_network(cfg).await?;
 ```
 The `StellarOverlayConnection` has 2 async methods to interact with the Stellar Node:
 * _`send(&self, message: StellarMessage)`_ -> for sending `StellarMessage`s to Stellar Node

@@ -7,7 +7,10 @@ use tokio::{
 };
 
 use runtime::ShutdownSender;
-use stellar_relay_lib::{sdk::types::StellarMessage, StellarOverlayConfig, StellarRelayMessage};
+use stellar_relay_lib::{
+	connect_to_stellar_overlay_network, sdk::types::StellarMessage, StellarOverlayConfig,
+	StellarRelayMessage,
+};
 
 use crate::oracle::{
 	collector::ScpMessageCollector,
@@ -59,8 +62,8 @@ async fn handle_message(
 /// Start the connection to the Stellar Node.
 /// Returns an `OracleAgent` that will handle incoming messages from Stellar Node,
 /// and to send messages to Stellar Node
-pub async fn start(config: StellarOverlayConfig) -> Result<OracleAgent, Error> {
-	let mut overlay_conn = stellar_relay_lib::connect(config.clone()).await?;
+pub async fn start_oracle_agent(config: StellarOverlayConfig) -> Result<OracleAgent, Error> {
+	let mut overlay_conn = connect_to_stellar_overlay_network(config.clone()).await?;
 
 	// Get action sender and disconnect action before moving `overlay_conn` into the closure
 	let actions_sender = overlay_conn.get_actions_sender();
@@ -70,12 +73,12 @@ pub async fn start(config: StellarOverlayConfig) -> Result<OracleAgent, Error> {
 	let collector = Arc::new(RwLock::new(ScpMessageCollector::new(config.is_public_network())));
 	let shutdown_sender = ShutdownSender::default();
 
-	let shut_down_clone = shutdown_sender.clone();
+	let shutdown_clone = shutdown_sender.clone();
 	// handle a message from the overlay network
 	let sender_clone = sender.clone();
 
 	let collector_clone = collector.clone();
-	service::spawn_cancelable(shut_down_clone.subscribe(), async move {
+	service::spawn_cancelable(shutdown_clone.subscribe(), async move {
 		let sender = sender_clone.clone();
 		loop {
 			tokio::select! {
@@ -176,9 +179,10 @@ mod tests {
 		let res = stellar_node_points
 			.choose(&mut rand::thread_rng())
 			.expect("should return a value");
-		let rs = format!("./resources/config/stellar_relay_config_mainnet_{res}.json");
+		let path_string = format!("./resources/config/stellar_relay_config_mainnet_{res}.json");
 
-		StellarOverlayConfig::try_from_path(rs.as_str()).expect("should be able to extract config")
+		StellarOverlayConfig::try_from_path(path_string.as_str())
+			.expect("should be able to extract config")
 	}
 
 	fn remove_xdr_files(target_slot: u64) {
@@ -194,7 +198,7 @@ mod tests {
 	#[tokio::test]
 	#[ntest::timeout(1_800_000)] // timeout at 30 minutes
 	async fn test_get_proof_for_current_slot() {
-		let agent = start(create_config()).await.expect("Failed to start agent");
+		let agent = start_oracle_agent(create_config()).await.expect("Failed to start agent");
 		sleep(Duration::from_secs(10)).await;
 		// Wait until agent is caught up with the network.
 
@@ -213,7 +217,7 @@ mod tests {
 
 	#[tokio::test]
 	async fn test_get_proof_for_archived_slot() {
-		let agent = start(create_config()).await.expect("Failed to start agent");
+		let agent = start_oracle_agent(create_config()).await.expect("Failed to start agent");
 
 		// This slot should be archived on the public network
 		let target_slot = 44041116;

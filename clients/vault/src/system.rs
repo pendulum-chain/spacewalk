@@ -243,6 +243,7 @@ pub struct VaultService {
 	spacewalk_parachain: SpacewalkParachain,
 	stellar_wallet: ArcRwLock<StellarWallet>,
 	config: VaultServiceConfig,
+	stellar_overlay_config: StellarOverlayConfig,
 	shutdown: ShutdownSender,
 	vault_id_manager: VaultIdManager,
 }
@@ -329,22 +330,25 @@ impl VaultService {
 		shutdown: ShutdownSender,
 	) -> Result<Self, Error> {
 		let is_public_network = spacewalk_parachain.is_public_network().await?;
-		let cfg_string = fs::read_to_string(&config.stellar_overlay_config_filepath)?;
-		let cfg: StellarOverlayConfig = serde_json::from_str(&cfg_string)
-			.map_err(|e| Error::ConfigError(format!("{:?}", e)))?;
+		let stellar_overlay_cfg_string =
+			fs::read_to_string(&config.stellar_overlay_config_filepath)?;
+		let stellar_overlay_config: StellarOverlayConfig =
+			serde_json::from_str(&stellar_overlay_cfg_string)
+				.map_err(|e| Error::ConfigError(format!("{:?}", e)))?;
 
-		let stellar_vault_secret_key = std::str::from_utf8(cfg.secret_key())?;
 		// check if both the config file and the network in the chain are the same.
-		if is_public_network != cfg.is_public_network() {
+		if is_public_network != stellar_overlay_config.is_public_network() {
 			return Err(Error::ConfigError(format!(
 				"Config has set public network to {}, while the runtime is {}",
-				cfg.is_public_network(),
+				stellar_overlay_config.is_public_network(),
 				is_public_network
 			)))
 		}
 
-		let stellar_wallet =
-			StellarWallet::from_secret_encoded(stellar_vault_secret_key, is_public_network)?;
+		let secret_key = stellar_overlay_config
+			.secret_key()
+			.map_err(|e| Error::ConfigError(format!("{:?}", e)))?;
+		let stellar_wallet = StellarWallet::from_secret_encoded(secret_key, is_public_network)?;
 		tracing::debug!(
 			"Vault wallet public key: {}",
 			from_utf8(&stellar_wallet.get_public_key().to_encoding())?
@@ -356,6 +360,7 @@ impl VaultService {
 			spacewalk_parachain: spacewalk_parachain.clone(),
 			stellar_wallet: stellar_wallet.clone(),
 			config,
+			stellar_overlay_config,
 			shutdown,
 			vault_id_manager: VaultIdManager::new(spacewalk_parachain, stellar_wallet),
 		})
@@ -441,10 +446,9 @@ impl VaultService {
 
 		drop(wallet);
 
-		let cfg_path = fs::read_to_string(&self.config.stellar_overlay_config_filepath)?;
-		let cfg = StellarOverlayConfig::try_from_path(&cfg_path)
-			.map_err(|e| Error::ConfigError(format!("{:?}", e)))?;
-		let oracle_agent = crate::oracle::start(cfg).await.expect("Failed to start oracle agent");
+		let oracle_agent = crate::oracle::start_oracle_agent(self.stellar_overlay_config.clone())
+			.await
+			.expect("Failed to start oracle agent");
 		let oracle_agent = Arc::new(oracle_agent);
 
 		let open_request_executor = execute_open_requests(

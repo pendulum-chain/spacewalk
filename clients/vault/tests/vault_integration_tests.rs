@@ -207,7 +207,7 @@ async fn test_with_vault<F, R>(
 			.unwrap(),
 	));
 
-	let oracle_agent = start(CFG.clone()).await.expect("failed to start agent");
+	let oracle_agent = start_oracle_agent(CFG.clone()).await.expect("failed to start agent");
 	let oracle_agent = Arc::new(oracle_agent);
 
 	execute(client, wallet, oracle_agent, vault_id, vault_provider).await
@@ -820,10 +820,6 @@ async fn test_issue_overpayment_succeeds() {
 async fn test_automatic_issue_execution_succeeds() {
 	test_with_vault(|client, wallet, oracle_agent, vault_id, vault_provider| async move {
 		let user_provider = setup_provider(client.clone(), AccountKeyring::Dave).await;
-
-		let mut oracle_agent = OracleAgent::new(IS_PUBLIC_NETWORK).expect("failed to create agent");
-		oracle_agent.start().await.expect("failed to start agent");
-		let oracle_agent = Arc::new(oracle_agent);
 
 		let issue_amount = upscaled_compatible_amount(1000);
 		let vault_collateral = get_required_vault_collateral_for_issue(

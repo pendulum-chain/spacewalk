@@ -127,6 +127,17 @@ impl StellarWallet {
 			is_public_network,
 			transaction_submission_lock: Arc::new(Mutex::new(())),
 			cache,
+			"./".to_string()
+		};
+
+		Ok(wallet)
+	}
+
+	pub fn from_secret_key(secret_key: SecretKey, is_public_network: bool) -> Result<Self, Error> {
+		let wallet = StellarWallet {
+			secret_key,
+			is_public_network,
+			transaction_submission_lock: Arc::new(Mutex::new(())),
 		};
 
 		Ok(wallet)

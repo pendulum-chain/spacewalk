@@ -1,5 +1,5 @@
 use stellar_relay_lib::{
-	connect,
+	connect_to_stellar_overlay_network,
 	sdk::{
 		types::{ScpStatementPledges, StellarMessage},
 		XdrCodec,
@@ -22,7 +22,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
 	let cfg = StellarOverlayConfig::try_from_path(file_path)?;
 
-	let mut overlay_connection = connect(cfg).await?;
+	let mut overlay_connection = connect_to_stellar_overlay_network(cfg).await?;
 
 	while let Some(relay_message) = overlay_connection.listen().await {
 		match relay_message {
