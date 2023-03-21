@@ -108,10 +108,7 @@ benchmarks! {
 			period: Default::default(),
 			status: Default::default(),
 		};
-
-		let issue_memo = derive_issue_memo(&issue_id.0);
-		let memo: TextMemo = issue_memo.clone().try_into().expect("Hash has 32 bytes; qed");
-		Issue::<T>::insert_issue_request(&issue_id, &memo, &issue_request);
+		Issue::<T>::insert_issue_request(&issue_id, &issue_request);
 		Security::<T>::set_active_block_number(1u32.into());
 
 		let (validators, organizations) = get_validators_and_organizations::<T>();
@@ -129,7 +126,7 @@ benchmarks! {
 		VaultRegistry::<T>::try_increase_to_be_issued_tokens(&vault_id, &value).unwrap();
 		let secure_id = Security::<T>::get_secure_id();
 		VaultRegistry::<T>::register_deposit_address(&vault_id, secure_id).unwrap();
-	}: _(RawOrigin::Signed(origin), issue_memo, tx_env_xdr_encoded, scp_envs_xdr_encoded, tx_set_xdr_encoded)
+	}: _(RawOrigin::Signed(origin), issue_id, tx_env_xdr_encoded, scp_envs_xdr_encoded, tx_set_xdr_encoded)
 
 	cancel_issue {
 		let origin: T::AccountId = account("Origin", 0, 0);
@@ -155,9 +152,7 @@ benchmarks! {
 			status: Default::default(),
 		};
 
-		let memo: TextMemo =
-		derive_issue_memo(&issue_id.0).try_into().expect("Hash has 32 bytes; qed");
-		Issue::<T>::insert_issue_request(&issue_id, &memo, &issue_request);
+		Issue::<T>::insert_issue_request(&issue_id, &issue_request);
 
 		// expire issue request
 		Security::<T>::set_active_block_number(issue_request.opentime + Issue::<T>::issue_period() + 100u32.into());
