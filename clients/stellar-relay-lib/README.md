@@ -21,7 +21,7 @@ pub struct NodeInfoCfg {
     pub overlay_version: u32,
     pub overlay_min_version: u32,
     pub version_str: Vec<u8>,
-    pub is_pub_net: NetworkId,
+    pub is_pub_net: bool,
 }
 ```
 Check out [Stellarbeat.io](https://stellarbeat.io/) for examples.
