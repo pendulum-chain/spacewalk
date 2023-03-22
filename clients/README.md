@@ -24,13 +24,19 @@ register itself.
 This is because some thresholds for the vault are set based on the currencies specified in the runtime and these
 thresholds are not set for any currency.
 The auto-register feature takes a string argument with the syntax
-of `<collateral-currency>,<wrapped-currency-issuer>:<wrapped-currency-code>,<collateral-amount>`.
+of `<collateral-currency>,<wrapped-currency>,<collateral-amount>`.
 The `collateral-currency` is the currency used as collateral for the vault and assumed to be an XCM currency, with the
 number indicating its index for XCM that is configured per runtime.
+The `wrapped-currency` can be either XCM or a Stellar asset, thus the format would be either just `XLM`
+or `<wrapped-currency-issuer>:<wrapped-currency-code>`.
 
 ```
+# Run the vault with auto-registering for XLM
+cargo run --bin vault --features standalone-metadata  -- --keyring alice --stellar-vault-secret-key-filepath <secret_key_file_path> --auto-register "0,XLM,1000000"
+
 # Run the vault with auto-registering for the USDC asset on testnet (assuming GAKNDFRRWA3RPWNLTI3G4EBSD3RGNZZOY5WKWYMQ6CQTG3KIEKPYWAYC as the issuer)
 cargo run --bin vault --features standalone-metadata  -- --keyring alice --stellar-vault-secret-key-filepath <secret_key_file_path> --auto-register "0,GAKNDFRRWA3RPWNLTI3G4EBSD3RGNZZOY5WKWYMQ6CQTG3KIEKPYWAYC:USDC,1000000"
+
 # Run the vault with auto-registering for the USDC asset on mainnet (assuming the issuer is centre.io)
 cargo run --bin vault --features standalone-metadata  -- --keyring alice --stellar-vault-secret-key-filepath <secret_key_file_path> --auto-register "0,GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN:USDC,1000000"
 ```
