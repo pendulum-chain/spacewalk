@@ -14,7 +14,7 @@ use runtime::{
 		Opts, Registry, TextEncoder,
 	},
 	types::currency_id::CurrencyIdExt,
-	CollateralBalancesPallet, CurrencyId, CurrencyInfo, Error as RuntimeError, FeedValuesEvent,
+	CollateralBalancesPallet, CurrencyId, CurrencyInfo, Error as RuntimeError, AggregateUpdatedEvent,
 	FixedU128, IssuePallet, IssueRequestStatus, OracleKey, OraclePallet, RedeemPallet,
 	RedeemRequestStatus, ReplacePallet, SecurityPallet, SpacewalkParachain,
 	SpacewalkReplaceRequest, UtilFuncs, VaultId, VaultRegistryPallet, H256,
@@ -519,7 +519,7 @@ pub async fn monitor_bridge_metrics(
 	let parachain_rpc = &parachain_rpc;
 	let vault_id_manager = &vault_id_manager;
 	parachain_rpc
-		.on_event::<FeedValuesEvent, _, _, _>(
+		.on_event::<AggregateUpdatedEvent, _, _, _>(
 			|event| async move {
 				let updated_currencies =
 					event.values.iter().filter_map(|(key, _value)| match key {

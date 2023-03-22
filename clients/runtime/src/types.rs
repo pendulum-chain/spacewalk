@@ -26,6 +26,7 @@ mod metadata_aliases {
 			CancelIssue as CancelIssueEvent, ExecuteIssue as ExecuteIssueEvent,
 			RequestIssue as RequestIssueEvent,
 		},
+		oracle::events::AggregateUpdated as AggregateUpdatedEvent,
 		redeem::events::{
 			ExecuteRedeem as ExecuteRedeemEvent, RequestRedeem as RequestRedeemEvent,
 		},
