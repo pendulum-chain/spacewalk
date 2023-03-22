@@ -118,13 +118,13 @@ pub mod currency_id {
 	use crate::Error;
 
 	pub trait CurrencyIdExt {
-		fn inner(&self) -> Result<primitives::TokenSymbol, Error>;
+		fn inner(&self) -> Result<u8, Error>;
 	}
 
 	impl CurrencyIdExt for CurrencyId {
-		fn inner(&self) -> Result<primitives::TokenSymbol, Error> {
+		fn inner(&self) -> Result<u8, Error> {
 			match self {
-				Token(x) => Ok(*x),
+				CurrencyId::XCM(x) => Ok(*x),
 				_ => Err(Error::CurrencyNotFound),
 			}
 		}
