@@ -16,7 +16,7 @@ impl TryFromSymbol for CurrencyId {
 	fn try_from_symbol(symbol: String) -> Result<Self, Error> {
 		let uppercase_symbol = symbol.to_uppercase();
 
-		if uppercase_symbol == "XLM" {
+		if uppercase_symbol.trim() == "XLM" {
 			return Ok(CurrencyId::StellarNative)
 		}
 
@@ -44,9 +44,18 @@ mod tests {
 
 	#[test]
 	fn test_try_from_symbol_works_for_native_currency() {
-		assert_eq!(CurrencyId::try_from_symbol("XLM".to_string()), Ok(CurrencyId::StellarNative));
-		assert_eq!(CurrencyId::try_from_symbol("xlm".to_string()), Ok(CurrencyId::StellarNative));
-		assert_eq!(CurrencyId::try_from_symbol("Xlm".to_string()), Ok(CurrencyId::StellarNative));
+		assert_eq!(
+			CurrencyId::try_from_symbol("XLM".to_string()).expect("Conversion should work"),
+			CurrencyId::StellarNative
+		);
+		assert_eq!(
+			CurrencyId::try_from_symbol("xlm".to_string()).expect("Conversion should work"),
+			CurrencyId::StellarNative
+		);
+		assert_eq!(
+			CurrencyId::try_from_symbol("Xlm".to_string()).expect("Conversion should work"),
+			CurrencyId::StellarNative
+		);
 	}
 
 	#[test]
@@ -59,14 +68,32 @@ mod tests {
 		assert_eq!(
 			CurrencyId::try_from_symbol(
 				"GAKNDFRRWA3RPWNLTI3G4EBSD3RGNZZOY5WKWYMQ6CQTG3KIEKPYWAYC:USDC".to_string()
-			),
-			Ok(CurrencyId::Stellar(Asset::AlphaNum4 { code: *b"USDC", issuer: issuer_bytes }))
+			)
+			.expect("Conversion should work"),
+			CurrencyId::Stellar(Asset::AlphaNum4 { code: *b"USDC", issuer: issuer_bytes })
 		);
 		assert_eq!(
 			CurrencyId::try_from_symbol(
-				"gaknDFRRWA3RPWNLTI3G4EBSD3RGNZZOY5WKWYMQ6CQTG3KIEKPYWAYC:USDC".to_string()
-			),
-			Ok(CurrencyId::Stellar(Asset::AlphaNum4 { code: *b"USDC", issuer: issuer_bytes }))
+				"gaknDFRRWA3RPWNLTI3G4EBSD3RGNZZOY5WKWYMQ6CQTG3KIEKPYWAYC:usdc".to_string()
+			)
+			.expect("Conversion should work"),
+			CurrencyId::Stellar(Asset::AlphaNum4 { code: *b"USDC", issuer: issuer_bytes })
+		);
+	}
+
+	#[test]
+	fn test_try_from_symbol_works_for_xcm_currency() {
+		assert_eq!(
+			CurrencyId::try_from_symbol("0".to_string()).expect("Conversion should work"),
+			CurrencyId::XCM(0)
+		);
+		assert_eq!(
+			CurrencyId::try_from_symbol("1".to_string()).expect("Conversion should work"),
+			CurrencyId::XCM(1)
+		);
+		assert_eq!(
+			CurrencyId::try_from_symbol("255".to_string()).expect("Conversion should work"),
+			CurrencyId::XCM(255)
 		);
 	}
 }
