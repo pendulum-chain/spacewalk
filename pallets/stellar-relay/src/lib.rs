@@ -120,6 +120,8 @@ pub mod pallet {
 		TransactionSetHashCreationFailed,
 		TransactionSetHashMismatch,
 		ValidatorLimitExceeded,
+		DuplicateOrganizationId,
+		DuplicateValidatorPublicKey,
 		FailedToComputenonGenericTxSetContentHash,
 	}
 
@@ -454,23 +456,63 @@ pub mod pallet {
 				Error::<T>::OrganizationLimitExceeded
 			);
 
-			let current_validators = Validators::<T>::get();
-			OldValidators::<T>::put(current_validators);
+			let mut organization_id_set = BTreeMap::<T::OrganizationId, u32>::new();
+			for organization in organizations.iter() {
+				organization_id_set
+					.entry(organization.id)
+					.and_modify(|e| {
+						*e += 1;
+					})
+					.or_insert(1);
+			}
 
+			// If the length of the set does not match the length of the original vector we know
+			// that there was a duplicate
+			ensure!(
+				organizations.len() == organization_id_set.len(),
+				Error::<T>::DuplicateOrganizationId
+			);
+
+			let mut validators_public_key_set = BTreeMap::<BoundedVec<u8, FieldLength>, u32>::new();
+			for validator in validators.iter() {
+				validators_public_key_set
+					.entry(validator.public_key.clone())
+					.and_modify(|e| {
+						*e += 1;
+					})
+					.or_insert(1);
+			}
+
+			// If the length of the set does not match the length of the original vector we know
+			// that there was a duplicate
+			ensure!(
+				validators.len() == validators_public_key_set.len(),
+				Error::<T>::DuplicateValidatorPublicKey
+			);
+
+			let current_validators = Validators::<T>::get();
 			let current_organizations = Organizations::<T>::get();
-			OldOrganizations::<T>::put(current_organizations);
 
 			NewValidatorsEnactmentBlockHeight::<T>::put(enactment_block_height);
 
 			let new_validator_vec =
 				BoundedVec::<ValidatorOf<T>, T::ValidatorLimit>::try_from(validators)
 					.map_err(|_| Error::<T>::BoundedVecCreationFailed)?;
-			Validators::<T>::put(new_validator_vec);
 
 			let new_organization_vec =
 				BoundedVec::<OrganizationOf<T>, T::OrganizationLimit>::try_from(organizations)
 					.map_err(|_| Error::<T>::BoundedVecCreationFailed)?;
-			Organizations::<T>::put(new_organization_vec);
+
+			// update only when new organization or validators not equal to old organization or
+			// validators
+			if new_organization_vec != current_organizations ||
+				new_validator_vec != current_validators
+			{
+				OldValidators::<T>::put(current_validators);
+				OldOrganizations::<T>::put(current_organizations);
+				Validators::<T>::put(new_validator_vec);
+				Organizations::<T>::put(new_organization_vec);
+			}
 
 			Self::deposit_event(Event::<T>::UpdateTier1ValidatorSet {
 				new_validators_enactment_block_height: enactment_block_height,

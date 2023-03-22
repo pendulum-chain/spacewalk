@@ -344,8 +344,10 @@ impl VaultService {
 
 		let stellar_vault_secret_key =
 			fs::read_to_string(&config.stellar_vault_secret_key_filepath)?;
-		let stellar_wallet =
-			StellarWallet::from_secret_encoded(&stellar_vault_secret_key, is_public_network)?;
+		let stellar_wallet = StellarWallet::from_secret_encoded(
+			&stellar_vault_secret_key.trim().to_string(),
+			is_public_network,
+		)?;
 		tracing::debug!(
 			"Vault wallet public key: {}",
 			from_utf8(&stellar_wallet.get_public_key().to_encoding())?
