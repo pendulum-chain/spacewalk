@@ -10489,7 +10489,6 @@ name = "wallet"
 version = "1.0.0"
 dependencies = [
  "async-trait",
- "base64",
  "futures 0.3.25",
  "mockall 0.8.3",
  "parity-scale-codec",
