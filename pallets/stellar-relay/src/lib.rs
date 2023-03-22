@@ -125,8 +125,6 @@ pub mod pallet {
 		FailedToComputenonGenericTxSetContentHash,
 	}
 
-	
-
 	#[pallet::storage]
 	#[pallet::getter(fn organizations)]
 	pub type Organizations<T: Config> =
