@@ -109,7 +109,6 @@ impl SpacewalkParachain {
 		}
 
 		let currency_constants = metadata::constants().currency();
-		let native_currency_id = api.constants().at(&currency_constants.get_native_currency_id())?;
 		let relay_chain_currency_id =
 			api.constants().at(&currency_constants.get_relay_chain_currency_id())?;
 		// let wrapped_currency_id =
@@ -125,7 +124,7 @@ impl SpacewalkParachain {
 			signer,
 			account_id,
 			fee_rate_update_tx,
-			native_currency_id,
+			native_currency_id : CurrencyId::Native,
 			relay_chain_currency_id,
 		};
 		Ok(parachain_rpc)

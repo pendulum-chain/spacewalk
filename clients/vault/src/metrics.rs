@@ -160,12 +160,12 @@ impl PerCurrencyMetrics {
 			vault_id
 				.collateral_currency()
 				.inner()
-				.map(|i| i.symbol().to_string())
+				.map(|i| i)
 				.unwrap_or_default(),
 			vault_id
 				.wrapped_currency()
 				.inner()
-				.map(|i| i.symbol().to_string())
+				.map(|i| i)
 				.unwrap_or_default()
 		);
 		Self::new_with_label(label.as_ref())
@@ -298,7 +298,7 @@ pub async fn metrics_handler() -> Result<impl Reply, Rejection> {
 }
 
 fn raw_value_as_currency(value: u128, currency: CurrencyId) -> Result<f64, ServiceError<Error>> {
-	let scaling_factor = currency.inner()?.one() as f64;
+	let scaling_factor = currency.inner().unwrap_or_default() as f64;
 	Ok(value as f64 / scaling_factor)
 }
 
@@ -350,7 +350,7 @@ async fn publish_fee_budget_surplus(vault: &VaultData) -> Result<(), ServiceErro
 		.metrics
 		.fee_budget_surplus
 		.gauge
-		.set(surplus as f64 / vault.vault_id.wrapped_currency().inner()?.one() as f64);
+		.set(surplus as f64 / vault.vault_id.wrapped_currency().inner().unwrap_or_default() as f64);
 	Ok(())
 }
 
@@ -573,7 +573,7 @@ pub async fn publish_expected_bitcoin_balance<P: VaultRegistryPallet>(
 	if let Ok(v) = parachain_rpc.get_vault(&vault.vault_id).await {
 		let lowerbound = v.issued_tokens.saturating_sub(v.to_be_redeemed_tokens);
 		let upperbound = v.issued_tokens.saturating_add(v.to_be_issued_tokens);
-		let scaling_factor = vault.vault_id.wrapped_currency().inner()?.one() as f64;
+		let scaling_factor = vault.vault_id.wrapped_currency().inner().unwrap_or_default() as f64;
 		vault.metrics.asset_balance.lowerbound.set(lowerbound as f64 / scaling_factor);
 		vault.metrics.asset_balance.upperbound.set(upperbound as f64 / scaling_factor);
 	}
