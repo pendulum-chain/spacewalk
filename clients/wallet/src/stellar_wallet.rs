@@ -9,6 +9,7 @@ use substrate_stellar_sdk::{
 use tokio::sync::Mutex;
 
 use crate::{
+	cache::TransactionStorage,
 	error::Error,
 	horizon::{HorizonClient, PagingToken, TransactionResponse},
 	types::StellarPublicKeyRaw,
@@ -25,20 +26,30 @@ pub struct StellarWallet {
 	/// Releasing the lock ensures the sequence number of the account
 	/// has been increased on the network.
 	transaction_submission_lock: Arc<Mutex<()>>,
+	/// Used for caching Stellar transactions before they get submitted.
+	cache: TransactionStorage,
 }
 
 impl StellarWallet {
 	pub fn from_secret_encoded(
 		secret_key: &String,
 		is_public_network: bool,
+		// TODO: we need to define where the cache is stored, but maybe it shouldn't be in this
+		// method.
+		cache_path: String,
 	) -> Result<Self, Error> {
 		let secret_key =
 			SecretKey::from_encoding(secret_key).map_err(|_| Error::InvalidSecretKey)?;
 
+		let pub_key = secret_key.get_public().to_encoding();
+		let pub_key = std::str::from_utf8(&pub_key).map_err(|_| Error::InvalidSecretKey)?;
+
+		let cache = TransactionStorage::new(cache_path, pub_key, is_public_network);
 		let wallet = StellarWallet {
 			secret_key,
 			is_public_network,
 			transaction_submission_lock: Arc::new(Mutex::new(())),
+			cache,
 		};
 
 		Ok(wallet)
@@ -137,6 +148,9 @@ impl StellarWallet {
 				Error::BuildTransactionError("Appending payment operation failed".to_string())
 			})?;
 
+		// caching the transaction before submission
+		self.cache.save_to_local(transaction.clone());
+
 		let mut envelope = transaction.into_transaction_envelope();
 		let network: &Network =
 			if self.is_public_network { &PUBLIC_NETWORK } else { &TEST_NETWORK };
@@ -150,6 +164,13 @@ impl StellarWallet {
 			.await?;
 
 		Ok((transaction_response, envelope))
+	}
+
+	#[doc(hidden)]
+	#[cfg(test)]
+	/// Removing all files is necessary for testing purposes.
+	pub fn remove_local_cache(&self) -> bool {
+		self.cache.remove_all()
 	}
 }
 
@@ -168,7 +189,6 @@ impl std::fmt::Debug for StellarWallet {
 
 #[cfg(test)]
 mod test {
-	use mockall::lazy_static;
 	use serial_test::serial;
 	use std::sync::Arc;
 	use substrate_stellar_sdk::PublicKey;
@@ -180,19 +200,21 @@ mod test {
 		"SCV7RZN5XYYMMVSWYCR4XUMB76FFMKKKNHP63UTZQKVM4STWSCIRLWFJ";
 	const IS_PUBLIC_NETWORK: bool = false;
 
-	lazy_static! {
-		static ref WALLET: Arc<RwLock<StellarWallet>> = Arc::new(RwLock::new(
+	fn wallet() -> Arc<RwLock<StellarWallet>> {
+		Arc::new(RwLock::new(
 			StellarWallet::from_secret_encoded(
 				&STELLAR_VAULT_SECRET_KEY.to_string(),
 				IS_PUBLIC_NETWORK,
+				"./".to_string(),
 			)
-			.unwrap()
-		));
+			.unwrap(),
+		))
 	}
 
 	#[tokio::test]
+	#[serial]
 	async fn test_locking_submission() {
-		let wallet_clone = WALLET.clone();
+		let wallet_clone = wallet().clone();
 		let first_job = tokio::spawn(async move {
 			let destination = PublicKey::from_encoding(
 				"GCENYNAX2UCY5RFUKA7AYEXKDIFITPRAB7UYSISCHVBTIAKPU2YO57OA",
@@ -214,7 +236,7 @@ mod test {
 			assert!(transaction_response.ledger() > 0);
 		});
 
-		let wallet_clone2 = WALLET.clone();
+		let wallet_clone2 = wallet().clone();
 		let second_job = tokio::spawn(async move {
 			let destination = PublicKey::from_encoding(
 				"GCENYNAX2UCY5RFUKA7AYEXKDIFITPRAB7UYSISCHVBTIAKPU2YO57OA",
@@ -237,6 +259,9 @@ mod test {
 		});
 
 		let _ = tokio::join!(first_job, second_job);
+
+		// remove the files to not pollute the project.
+		assert!(wallet().read().await.remove_local_cache());
 	}
 
 	#[tokio::test]
@@ -249,7 +274,7 @@ mod test {
 		let amount = 100;
 		let request_id = [0u8; 32];
 
-		let result = WALLET
+		let result = wallet()
 			.write()
 			.await
 			.send_payment_to_address(destination, asset, amount, request_id, 100)
@@ -259,12 +284,13 @@ mod test {
 		let (transaction_response, _) = result.unwrap();
 		assert!(!transaction_response.hash.to_vec().is_empty());
 		assert!(transaction_response.ledger() > 0);
+		assert!(wallet().read().await.remove_local_cache());
 	}
 
 	#[tokio::test]
 	#[serial]
 	async fn sending_correct_payment_after_incorrect_payment_works() {
-		let wallet = WALLET.clone();
+		let wallet = wallet().clone();
 		let mut wallet = wallet.write().await;
 
 		let destination =
@@ -311,5 +337,7 @@ mod test {
 			.await;
 
 		assert!(ok_sequence_number.is_ok());
+		// remove the files to not pollute the project.
+		assert!(wallet.remove_local_cache());
 	}
 }
