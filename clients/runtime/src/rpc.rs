@@ -111,8 +111,6 @@ impl SpacewalkParachain {
 		let currency_constants = metadata::constants().currency();
 		let relay_chain_currency_id =
 			api.constants().at(&currency_constants.get_relay_chain_currency_id())?;
-		// let wrapped_currency_id =
-		// api.constants().at(&currency_constants.get_wrapped_currency_id())?;
 
 		// low capacity channel since we generally only care about the newest value, so it's ok
 		// if we miss an event
