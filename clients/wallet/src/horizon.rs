@@ -263,7 +263,6 @@ impl HorizonClient for reqwest::Client {
 	}
 
 	async fn submit_transaction(
-		// TODO
 		&self,
 		transaction_envelope: TransactionEnvelope,
 		is_public_network: bool,

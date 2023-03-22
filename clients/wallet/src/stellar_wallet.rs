@@ -81,7 +81,6 @@ impl StellarWallet {
 	}
 
 	pub async fn send_payment_to_address(
-		// TODO
 		&mut self,
 		destination_address: PublicKey,
 		asset: Asset,
