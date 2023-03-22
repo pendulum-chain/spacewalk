@@ -1,35 +1,32 @@
-use std::{collections::HashMap, convert::TryInto, sync::Arc};
+use std::{collections::HashMap, convert::TryInto};
 
 use crate::{
 	system::{VaultData, VaultIdManager},
 	Error,
 };
 use async_trait::async_trait;
-use futures::{try_join, StreamExt, TryFutureExt};
 use lazy_static::lazy_static;
 use primitives::stellar;
 use runtime::{
 	prometheus::{
-		gather, proto::MetricFamily, Encoder, Gauge, GaugeVec, IntCounter, IntGauge, IntGaugeVec,
-		Opts, Registry, TextEncoder,
+		gather, proto::MetricFamily, Encoder, Gauge, GaugeVec, IntCounter, IntGaugeVec, Opts,
+		Registry, TextEncoder,
 	},
 	types::currency_id::CurrencyIdExt,
-	CollateralBalancesPallet, CurrencyId, CurrencyInfo, Error as RuntimeError, AggregateUpdatedEvent,
-	FixedU128, IssuePallet, IssueRequestStatus, OracleKey, OraclePallet, RedeemPallet,
-	RedeemRequestStatus, ReplacePallet, SecurityPallet, SpacewalkParachain,
-	SpacewalkReplaceRequest, UtilFuncs, VaultId, VaultRegistryPallet, H256,
+	AggregateUpdatedEvent, CollateralBalancesPallet, CurrencyId, Error as RuntimeError, FixedU128,
+	IssuePallet, IssueRequestStatus, OracleKey, OraclePallet, RedeemPallet, RedeemRequestStatus,
+	SecurityPallet, SpacewalkParachain, UtilFuncs, VaultId, VaultRegistryPallet, H256,
 };
 use service::{
 	warp::{Rejection, Reply},
 	Error as ServiceError,
 };
-use wallet::{TransactionResponse, Balance};
 use std::time::Duration;
-use tokio::{sync::RwLock, time::sleep};
+use tokio::time::sleep;
 use tokio_metrics::TaskMetrics;
+use wallet::Balance;
 
 const SLEEP_DURATION: Duration = Duration::from_secs(5 * 60);
-const SECONDS_PER_HOUR: f64 = 3600.0;
 
 const CURRENCY_LABEL: &str = "currency";
 const BTC_BALANCE_TYPE_LABEL: &str = "type";
@@ -41,13 +38,8 @@ const TOKIO_POLLING_INTERVAL_MS: u64 = 10000;
 // monitored at the same time.
 lazy_static! {
 	pub static ref REGISTRY: Registry = Registry::new();
-	pub static ref REMAINING_TIME_TO_REDEEM_HOURS: GaugeVec = GaugeVec::new(
-		Opts::new("remaining_time_to_redeem_hours", "Number of hours to redeem deadline"),
-		&[CURRENCY_LABEL]
-	)
-	.expect("Failed to create prometheus metric");
 	pub static ref AVERAGE_BTC_FEE: GaugeVec =
-		GaugeVec::new(Opts::new("avg_btc_fee", "Average Bitcoin Fee"), &[CURRENCY_LABEL])
+		GaugeVec::new(Opts::new("avg_stellar_fee", "Average Bitcoin Fee"), &[CURRENCY_LABEL])
 			.expect("Failed to create prometheus metric");
 	pub static ref LOCKED_COLLATERAL: GaugeVec =
 		GaugeVec::new(Opts::new("locked_collateral", "Locked Collateral"), &[CURRENCY_LABEL])
@@ -69,13 +61,8 @@ lazy_static! {
 		&[TASK_NAME]
 	)
 	.expect("Failed to create prometheus metric");
-	pub static ref UTXO_COUNT: IntGaugeVec = IntGaugeVec::new(
-		Opts::new("utxo_count", "Number of Unspent Bitcoin Outputs"),
-		&[CURRENCY_LABEL]
-	)
-	.expect("Failed to create prometheus metric");
 	pub static ref BTC_BALANCE: GaugeVec = GaugeVec::new(
-		Opts::new("btc_balance", "Bitcoin Balance"),
+		Opts::new("stellar_balance", "Bitcoin Balance"),
 		&[CURRENCY_LABEL, BTC_BALANCE_TYPE_LABEL]
 	)
 	.expect("Failed to create prometheus metric");
@@ -102,18 +89,6 @@ lazy_static! {
 const STELLAR_NATIVE_ASSET_TYPE: [u8; 6] = [110, 97, 116, 105, 118, 101]; //"native"
 
 #[derive(Clone, Debug)]
-struct AverageTracker {
-	total: u64,
-	count: u64,
-}
-
-#[derive(Clone, Debug)]
-struct StatefulGauge<T: Clone> {
-	gauge: Gauge,
-	data: Arc<RwLock<T>>,
-}
-
-#[derive(Clone, Debug)]
 struct XLMBalance {
 	upperbound: Gauge,
 	lowerbound: Gauge,
@@ -132,13 +107,9 @@ pub struct PerCurrencyMetrics {
 	locked_collateral: Gauge,
 	collateralization: Gauge,
 	required_collateral: Gauge,
-	remaining_time_to_redeem_hours: Gauge,
 	asset_balance: XLMBalance,
 	issues: RequestCounter,
 	redeems: RequestCounter,
-	average_btc_fee: StatefulGauge<AverageTracker>,
-	fee_budget_surplus: StatefulGauge<i64>,
-	utxo_count: IntGauge,
 }
 
 #[async_trait]
@@ -157,16 +128,8 @@ impl PerCurrencyMetrics {
 	pub fn new(vault_id: &VaultId) -> Self {
 		let label = format!(
 			"{}_{}",
-			vault_id
-				.collateral_currency()
-				.inner()
-				.map(|i| i)
-				.unwrap_or_default(),
-			vault_id
-				.wrapped_currency()
-				.inner()
-				.map(|i| i)
-				.unwrap_or_default()
+			vault_id.collateral_currency().inner().map(|i| i).unwrap_or_default(),
+			vault_id.wrapped_currency().inner().map(|i| i).unwrap_or_default()
 		);
 		Self::new_with_label(label.as_ref())
 	}
@@ -179,7 +142,7 @@ impl PerCurrencyMetrics {
 	fn new_with_label(label: &str) -> Self {
 		let labels = HashMap::from([(CURRENCY_LABEL, label)]);
 
-		let btc_balance_gauge = |balance_type: &'static str| {
+		let stellar_balance_gauge = |balance_type: &'static str| {
 			let labels = HashMap::<&str, &str>::from([
 				(CURRENCY_LABEL, label),
 				(BTC_BALANCE_TYPE_LABEL, balance_type),
@@ -197,20 +160,10 @@ impl PerCurrencyMetrics {
 			locked_collateral: LOCKED_COLLATERAL.with(&labels),
 			collateralization: COLLATERALIZATION.with(&labels),
 			required_collateral: REQUIRED_COLLATERAL.with(&labels),
-			remaining_time_to_redeem_hours: REMAINING_TIME_TO_REDEEM_HOURS.with(&labels),
-			utxo_count: UTXO_COUNT.with(&labels),
-			fee_budget_surplus: StatefulGauge {
-				gauge: FEE_BUDGET_SURPLUS.with(&labels),
-				data: Arc::new(RwLock::new(0)),
-			},
-			average_btc_fee: StatefulGauge {
-				gauge: AVERAGE_BTC_FEE.with(&labels),
-				data: Arc::new(RwLock::new(AverageTracker { total: 0, count: 0 })),
-			},
 			asset_balance: XLMBalance {
-				upperbound: btc_balance_gauge("required_upperbound"),
-				lowerbound: btc_balance_gauge("required_lowerbound"),
-				actual: btc_balance_gauge("actual"),
+				upperbound: stellar_balance_gauge("required_upperbound"),
+				lowerbound: stellar_balance_gauge("required_lowerbound"),
+				actual: stellar_balance_gauge("actual"),
 			},
 			issues: RequestCounter {
 				open_count: ISSUES.with(&request_type_label("open")),
@@ -226,26 +179,10 @@ impl PerCurrencyMetrics {
 	}
 
 	pub async fn initialize_values(parachain_rpc: SpacewalkParachain, vault: &VaultData) {
-		let stellar_transactions =
-			match vault.stellar_wallet.read().await.get_latest_transactions(0, 200, false).await {
-				Ok(x) => x
-					.into_iter()
-					.collect(),
-				Err(_) => vec![],
-			};
-
-		// update average fee
-		let (total, count) = stellar_transactions
-		    .iter()
-		    .filter_map(|tx| Some(tx.fee_charged))
-		    .fold((0, 0), |(total, count), x| (total + x, count + 1));
-		*vault.metrics.average_btc_fee.data.write().await = AverageTracker { total, count };
-
 		publish_stellar_balance(parachain_rpc.clone(), vault).await;
 
 		let _ = tokio::join!(
-			publish_average_bitcoin_fee(vault),
-			publish_expected_bitcoin_balance(vault, parachain_rpc.clone()),
+			publish_expected_stellar_balance(vault, parachain_rpc.clone()),
 			publish_locked_collateral(vault, parachain_rpc.clone()),
 			publish_required_collateral(vault, parachain_rpc.clone()),
 			publish_collateralization(vault, parachain_rpc.clone()),
@@ -263,11 +200,9 @@ pub fn register_custom_metrics() -> Result<(), RuntimeError> {
 	REGISTRY.register(Box::new(NATIVE_CURRENCY_BALANCE.clone()))?;
 	REGISTRY.register(Box::new(ISSUES.clone()))?;
 	REGISTRY.register(Box::new(REDEEMS.clone()))?;
-	REGISTRY.register(Box::new(UTXO_COUNT.clone()))?;
 	REGISTRY.register(Box::new(MEAN_IDLE_DURATION.clone()))?;
 	REGISTRY.register(Box::new(MEAN_POLL_DURATION.clone()))?;
 	REGISTRY.register(Box::new(MEAN_SCHEDULED_DURATION.clone()))?;
-	REGISTRY.register(Box::new(REMAINING_TIME_TO_REDEEM_HOURS.clone()))?;
 	REGISTRY.register(Box::new(RESTART_COUNT.clone()))?;
 
 	Ok(())
@@ -344,24 +279,6 @@ pub async fn publish_collateralization<P: VaultRegistryPallet>(
 	vault.metrics.collateralization.set(float_collateralization_percentage);
 }
 
-async fn publish_fee_budget_surplus(vault: &VaultData) -> Result<(), ServiceError<Error>> {
-	let surplus = *vault.metrics.fee_budget_surplus.data.read().await;
-	vault
-		.metrics
-		.fee_budget_surplus
-		.gauge
-		.set(surplus as f64 / vault.vault_id.wrapped_currency().inner().unwrap_or_default() as f64);
-	Ok(())
-}
-
-async fn publish_average_bitcoin_fee(vault: &VaultData) {
-	let average = match vault.metrics.average_btc_fee.data.read().await {
-		x if x.count > 0 => x.total as f64 / x.count as f64,
-		_ => Default::default(),
-	};
-	vault.metrics.average_btc_fee.gauge.set(average);
-}
-
 async fn publish_stellar_balance<P: OraclePallet>(parachain_rpc: P, vault: &VaultData) {
 	match vault.stellar_wallet.read().await.get_balance().await {
 		Ok(balance) => {
@@ -394,33 +311,31 @@ async fn publish_stellar_balance<P: OraclePallet>(parachain_rpc: P, vault: &Vaul
 }
 
 fn get_balance_for_asset(asset: stellar::Asset, balance: Vec<Balance>) -> Option<f64> {
-    let asset_balance: Option<f64> = match asset {
-					    stellar::Asset::AssetTypeNative => balance
-						    .iter()
-						    .find(|i| i.asset_type == STELLAR_NATIVE_ASSET_TYPE.to_vec())
-						    .map(|i| i.balance),
-					    stellar::Asset::AssetTypeCreditAlphanum4(a4) => balance
-						    .iter()
-						    .find(|i| {
-							    i.asset_type != STELLAR_NATIVE_ASSET_TYPE.to_vec() &&
-								    i.asset_code.clone().unwrap_or_default() ==
-									    a4.asset_code.to_vec()
-						    })
-						    .map(|i| i.balance),
-					    stellar::Asset::AssetTypeCreditAlphanum12(a12) => balance
-						    .iter()
-						    .find(|i| {
-							    i.asset_type != STELLAR_NATIVE_ASSET_TYPE.to_vec() &&
-								    i.asset_code.clone().unwrap_or_default() ==
-									    a12.asset_code.to_vec()
-						    })
-						    .map(|i| i.balance),
-					    _ => {
-						    tracing::warn!("Unsupported stellar asset type");
-						    None
-					    },
-				    };
-    asset_balance
+	let asset_balance: Option<f64> = match asset {
+		stellar::Asset::AssetTypeNative => balance
+			.iter()
+			.find(|i| i.asset_type == STELLAR_NATIVE_ASSET_TYPE.to_vec())
+			.map(|i| i.balance),
+		stellar::Asset::AssetTypeCreditAlphanum4(a4) => balance
+			.iter()
+			.find(|i| {
+				i.asset_type != STELLAR_NATIVE_ASSET_TYPE.to_vec() &&
+					i.asset_code.clone().unwrap_or_default() == a4.asset_code.to_vec()
+			})
+			.map(|i| i.balance),
+		stellar::Asset::AssetTypeCreditAlphanum12(a12) => balance
+			.iter()
+			.find(|i| {
+				i.asset_type != STELLAR_NATIVE_ASSET_TYPE.to_vec() &&
+					i.asset_code.clone().unwrap_or_default() == a12.asset_code.to_vec()
+			})
+			.map(|i| i.balance),
+		_ => {
+			tracing::warn!("Unsupported stellar asset type");
+			None
+		},
+	};
+	asset_balance
 }
 
 async fn publish_native_currency_balance<P: CollateralBalancesPallet + UtilFuncs>(
@@ -524,7 +439,6 @@ pub async fn monitor_bridge_metrics(
 				let updated_currencies =
 					event.values.iter().filter_map(|(key, _value)| match key {
 						OracleKey::ExchangeRate(currency_id) => Some(currency_id),
-						_ => None,
 					});
 				let vaults = vault_id_manager.get_entries().await;
 				for currency_id in updated_currencies {
@@ -566,7 +480,7 @@ pub async fn poll_metrics<
 	}
 }
 
-pub async fn publish_expected_bitcoin_balance<P: VaultRegistryPallet>(
+pub async fn publish_expected_stellar_balance<P: VaultRegistryPallet>(
 	vault: &VaultData,
 	parachain_rpc: P,
 ) -> Result<(), ServiceError<Error>> {
@@ -600,532 +514,5 @@ pub async fn publish_tokio_metrics(
 			}
 		}
 		tokio::time::sleep(frequency).await;
-	}
-}
-
-#[cfg(all(test, feature = "parachain-metadata-kintsugi-testnet"))]
-mod tests {
-	use super::*;
-	use async_trait::async_trait;
-	use bitcoin::{
-		json, Address, Amount, BitcoinCoreApi, Block, BlockHash, BlockHeader,
-		Error as BitcoinError, Network, PrivateKey, PublicKey, SatPerVbyte, Transaction,
-		TransactionMetadata, Txid,
-	};
-	use jsonrpc_core::serde_json::{Map, Value};
-	use runtime::{
-		AccountId, AssetMetadata, Balance, BlockNumber, BtcAddress, BtcPublicKey, CurrencyId,
-		Error as RuntimeError, ErrorCode, InterBtcIssueRequest, InterBtcReplaceRequest,
-		InterBtcVault, RequestIssueEvent, SpacewalkRedeemRequest, SpacewalkReplaceRequest,
-		StatusCode, Token, VaultId, VaultStatus, DOT, H256, IBTC, INTR,
-	};
-	use service::DynBitcoinCoreApi;
-	use std::collections::BTreeSet;
-
-	mockall::mock! {
-		Provider {}
-
-		#[async_trait]
-		pub trait UtilFuncs {
-			async fn get_current_chain_height(&self) -> Result<u32, RuntimeError>;
-			async fn get_rpc_properties(&self) -> Result<Map<String, Value>, RuntimeError>;
-			fn get_native_currency_id(&self) -> CurrencyId;
-			fn get_account_id(&self) -> &AccountId;
-			fn is_this_vault(&self, vault_id: &VaultId) -> bool;
-			async fn get_foreign_assets_metadata(&self) -> Result<Vec<(u32, AssetMetadata)>, RuntimeError>;
-			async fn get_foreign_asset_metadata(&self, id: u32) -> Result<AssetMetadata, RuntimeError>;
-		}
-
-		#[async_trait]
-		pub trait IssuePallet {
-			async fn request_issue(&self, amount: u128, vault_id: &VaultId) -> Result<RequestIssueEvent, RuntimeError>;
-			async fn execute_issue(&self, issue_id: H256, merkle_proof: &[u8], raw_tx: &[u8]) -> Result<(), RuntimeError>;
-			async fn cancel_issue(&self, issue_id: H256) -> Result<(), RuntimeError>;
-			async fn get_issue_request(&self, issue_id: H256) -> Result<InterBtcIssueRequest, RuntimeError>;
-			async fn get_vault_issue_requests(&self, account_id: AccountId) -> Result<Vec<(H256, InterBtcIssueRequest)>, RuntimeError>;
-			async fn get_issue_period(&self) -> Result<u32, RuntimeError>;
-			async fn get_all_active_issues(&self) -> Result<Vec<(H256, InterBtcIssueRequest)>, RuntimeError>;
-		}
-
-		#[async_trait]
-		pub trait RedeemPallet {
-			async fn request_redeem(&self, amount: u128, btc_address: BtcAddress, vault_id: &VaultId) -> Result<H256, RuntimeError>;
-			async fn execute_redeem(&self, redeem_id: H256, merkle_proof: &[u8], raw_tx: &[u8]) -> Result<(), RuntimeError>;
-			async fn cancel_redeem(&self, redeem_id: H256, reimburse: bool) -> Result<(), RuntimeError>;
-			async fn get_redeem_request(&self, redeem_id: H256) -> Result<SpacewalkReplaceRequest, RuntimeError>;
-			async fn get_vault_redeem_requests(&self, account_id: AccountId) -> Result<Vec<(H256, SpacewalkReplaceRequest)>, RuntimeError>;
-			async fn get_redeem_period(&self) -> Result<BlockNumber, RuntimeError>;
-		}
-
-		#[async_trait]
-		pub trait VaultRegistryPallet {
-			async fn get_vault(&self, vault_id: &VaultId) -> Result<InterBtcVault, RuntimeError>;
-			async fn get_vaults_by_account_id(&self, account_id: &AccountId) -> Result<Vec<VaultId>, RuntimeError>;
-			async fn get_all_vaults(&self) -> Result<Vec<InterBtcVault>, RuntimeError>;
-			async fn register_vault(&self, vault_id: &VaultId, collateral: u128) -> Result<(), RuntimeError>;
-			async fn deposit_collateral(&self, vault_id: &VaultId, amount: u128) -> Result<(), RuntimeError>;
-			async fn withdraw_collateral(&self, vault_id: &VaultId, amount: u128) -> Result<(), RuntimeError>;
-			async fn get_public_key(&self) -> Result<Option<BtcPublicKey>, RuntimeError>;
-			async fn register_public_key(&self, public_key: BtcPublicKey) -> Result<(), RuntimeError>;
-			async fn get_required_collateral_for_wrapped(&self, amount_btc: u128, collateral_currency: CurrencyId) -> Result<u128, RuntimeError>;
-			async fn get_required_collateral_for_vault(&self, vault_id: VaultId) -> Result<u128, RuntimeError>;
-			async fn get_vault_total_collateral(&self, vault_id: VaultId) -> Result<u128, RuntimeError>;
-			async fn get_collateralization_from_vault(&self, vault_id: VaultId, only_issued: bool) -> Result<u128, RuntimeError>;
-			async fn set_current_client_release(&self, uri: &[u8], code_hash: &H256) -> Result<(), RuntimeError>;
-			async fn set_pending_client_release(&self, uri: &[u8], code_hash: &H256) -> Result<(), RuntimeError>;
-		}
-
-		#[async_trait]
-		pub trait CollateralBalancesPallet {
-			async fn get_free_balance(&self, currency_id: CurrencyId) -> Result<Balance, RuntimeError>;
-			async fn get_free_balance_for_id(&self, id: AccountId, currency_id: CurrencyId) -> Result<Balance, RuntimeError>;
-			async fn get_reserved_balance(&self, currency_id: CurrencyId) -> Result<Balance, RuntimeError>;
-			async fn get_reserved_balance_for_id(&self, id: AccountId, currency_id: CurrencyId) -> Result<Balance, RuntimeError>;
-			async fn transfer_to(&self, recipient: &AccountId, amount: u128, currency_id: CurrencyId) -> Result<(), RuntimeError>;
-		}
-
-		#[async_trait]
-		pub trait ReplacePallet {
-			async fn request_replace(&self, vault_id: &VaultId, amount: u128) -> Result<(), RuntimeError>;
-			async fn withdraw_replace(&self, vault_id: &VaultId, amount: u128) -> Result<(), RuntimeError>;
-			async fn accept_replace(&self, new_vault: &VaultId, old_vault: &VaultId, amount_btc: u128, collateral: u128, btc_address: BtcAddress) -> Result<(), RuntimeError>;
-			async fn execute_replace(&self, replace_id: H256, merkle_proof: &[u8], raw_tx: &[u8]) -> Result<(), RuntimeError>;
-			async fn cancel_replace(&self, replace_id: H256) -> Result<(), RuntimeError>;
-			async fn get_new_vault_replace_requests(&self, account_id: AccountId) -> Result<Vec<(H256, InterBtcReplaceRequest)>, RuntimeError>;
-			async fn get_old_vault_replace_requests(&self, account_id: AccountId) -> Result<Vec<(H256, InterBtcReplaceRequest)>, RuntimeError>;
-			async fn get_replace_period(&self) -> Result<u32, RuntimeError>;
-			async fn get_replace_request(&self, replace_id: H256) -> Result<InterBtcReplaceRequest, RuntimeError>;
-			async fn get_replace_dust_amount(&self) -> Result<u128, RuntimeError>;
-		}
-
-		#[async_trait]
-		pub trait SecurityPallet {
-			async fn get_parachain_status(&self) -> Result<StatusCode, RuntimeError>;
-
-			async fn get_error_codes(&self) -> Result<BTreeSet<ErrorCode>, RuntimeError>;
-
-			/// Gets the current active block number of the parachain
-			async fn get_current_active_block_number(&self) -> Result<u32, RuntimeError>;
-		}
-	}
-
-	impl Clone for MockProvider {
-		fn clone(&self) -> Self {
-			// NOTE: expectations dropped
-			Self::default()
-		}
-	}
-
-	mockall::mock! {
-		Bitcoin {}
-
-		#[async_trait]
-		trait BitcoinCoreApi {
-			fn network(&self) -> Network;
-			async fn wait_for_block(&self, height: u32, num_confirmations: u32) -> Result<Block, BitcoinError>;
-			fn get_balance(&self, min_confirmations: Option<u32>) -> Result<Amount, BitcoinError>;
-			fn list_transactions(&self, max_count: Option<usize>) -> Result<Vec<json::ListTransactionResult>, BitcoinError>;
-			async fn get_block_count(&self) -> Result<u64, BitcoinError>;
-			async fn get_raw_tx(&self, txid: &Txid, block_hash: &BlockHash) -> Result<Vec<u8>, BitcoinError>;
-			async fn get_transaction(&self, txid: &Txid, block_hash: Option<BlockHash>) -> Result<Transaction, BitcoinError>;
-			async fn get_proof(&self, txid: Txid, block_hash: &BlockHash) -> Result<Vec<u8>, BitcoinError>;
-			async fn get_block_hash(&self, height: u32) -> Result<BlockHash, BitcoinError>;
-			async fn get_pruned_height(&self) -> Result<u64, BitcoinError>;
-			async fn get_new_address(&self) -> Result<Address, BitcoinError>;
-			async fn get_new_public_key(&self) -> Result<PublicKey, BitcoinError>;
-			fn dump_derivation_key(&self, public_key: &PublicKey) -> Result<PrivateKey, BitcoinError>;
-			fn import_derivation_key(&self, private_key: &PrivateKey) -> Result<(), BitcoinError>;
-			async fn add_new_deposit_key(&self, public_key: PublicKey, secret_key: Vec<u8>) -> Result<(), BitcoinError>;
-			async fn get_best_block_hash(&self) -> Result<BlockHash, BitcoinError>;
-			async fn get_block(&self, hash: &BlockHash) -> Result<Block, BitcoinError>;
-			async fn get_block_header(&self, hash: &BlockHash) -> Result<BlockHeader, BitcoinError>;
-			async fn get_mempool_transactions<'a>(&'a self) -> Result<Box<dyn Iterator<Item = Result<Transaction, BitcoinError>> + Send + 'a>, BitcoinError>;
-			async fn wait_for_transaction_metadata(&self, txid: Txid, num_confirmations: u32) -> Result<TransactionMetadata, BitcoinError>;
-			async fn create_and_send_transaction(&self, address: Address, sat: u64, fee_rate: SatPerVbyte, request_id: Option<H256>) -> Result<Txid, BitcoinError>;
-			async fn send_to_address(&self, address: Address, sat: u64, request_id: Option<H256>, fee_rate: SatPerVbyte, num_confirmations: u32) -> Result<TransactionMetadata, BitcoinError>;
-			async fn create_or_load_wallet(&self) -> Result<(), BitcoinError>;
-			async fn rescan_blockchain(&self, start_height: usize, end_height: usize) -> Result<(), BitcoinError>;
-			async fn rescan_electrs_for_addresses(&self, addresses: Vec<Address>) -> Result<(), BitcoinError>;
-			fn get_utxo_count(&self) -> Result<usize, BitcoinError>;
-			async fn bump_fee(
-				&self,
-				txid: &Txid,
-				address: Address,
-				fee_rate: SatPerVbyte,
-			) -> Result<Txid, BitcoinError>;
-			async fn is_in_mempool(&self, txid: Txid) -> Result<bool, BitcoinError>;
-			async fn fee_rate(&self, txid: Txid) -> Result<SatPerVbyte, BitcoinError>;
-		}
-	}
-
-	mockall::mock! {
-		VaultIdManager {}
-
-		#[async_trait]
-		trait VaultDataReader {
-			async fn get_entries(&self) -> Vec<VaultData>;
-		}
-	}
-
-	impl Clone for MockBitcoin {
-		fn clone(&self) -> Self {
-			// NOTE: expectations dropped
-			Self::default()
-		}
-	}
-
-	fn dummy_vault_id() -> VaultId {
-		VaultId::new(AccountId::new([1u8; 32]), Token(DOT), Token(IBTC))
-	}
-
-	struct MockProviderBuilder {
-		required: u128,
-		actual: u128,
-		max: u128,
-		issued_tokens: u128,
-		to_be_issued_tokens: u128,
-		to_be_redeemed_tokens: u128,
-	}
-
-	impl MockProviderBuilder {
-		pub fn new() -> Self {
-			Self {
-				required: 0,
-				actual: 0,
-				max: 0,
-				issued_tokens: 0,
-				to_be_issued_tokens: 0,
-				to_be_redeemed_tokens: 0,
-			}
-		}
-
-		pub fn set_required_collateral(mut self, required: u128) -> Self {
-			self.required = required;
-			self
-		}
-
-		pub fn set_actual_collateral(mut self, actual: u128) -> Self {
-			self.actual = actual;
-			self
-		}
-
-		pub fn set_max_free_balance(mut self, max: u128) -> Self {
-			self.max = max;
-			self
-		}
-
-		pub fn set_issued_tokens(mut self, issued_tokens: u128) -> Self {
-			self.issued_tokens = issued_tokens;
-			self
-		}
-
-		pub fn set_to_be_issued_tokens(mut self, to_be_issued_tokens: u128) -> Self {
-			self.to_be_issued_tokens = to_be_issued_tokens;
-			self
-		}
-
-		pub fn set_to_be_redeemed_tokens(mut self, to_be_redeemed_tokens: u128) -> Self {
-			self.to_be_redeemed_tokens = to_be_redeemed_tokens;
-			self
-		}
-
-		pub fn build(&self) -> MockProvider {
-			setup_mocks(
-				self.required,
-				self.actual,
-				self.max,
-				self.issued_tokens,
-				self.to_be_issued_tokens,
-				self.to_be_redeemed_tokens,
-			)
-		}
-	}
-
-	fn setup_mocks(
-		required: u128,
-		actual: u128,
-		max: u128,
-		issued_tokens: u128,
-		to_be_issued_tokens: u128,
-		to_be_redeemed_tokens: u128,
-	) -> MockProvider {
-		let mut parachain_rpc = MockProvider::default();
-		parachain_rpc
-			.expect_get_required_collateral_for_vault()
-			.returning(move |_| Ok(required));
-
-		parachain_rpc.expect_get_vault().returning(move |x| {
-			Ok(InterBtcVault {
-				id: x.clone(),
-				status: VaultStatus::Active(true),
-				banned_until: None,
-				secure_collateral_threshold: None,
-				to_be_issued_tokens,
-				issued_tokens,
-				to_be_redeemed_tokens,
-				to_be_replaced_tokens: 0,
-				replace_collateral: 0,
-				liquidated_collateral: 0,
-				active_replace_collateral: 0,
-			})
-		});
-
-		parachain_rpc.expect_get_vault_total_collateral().returning(move |_| Ok(actual));
-
-		parachain_rpc
-			.expect_get_free_balance()
-			.returning(move |_| Ok(if max > actual { max - actual } else { 0 }));
-
-		parachain_rpc
-	}
-
-	fn dummy_issue_request(status: IssueRequestStatus, vault: VaultId) -> InterBtcIssueRequest {
-		InterBtcIssueRequest {
-			amount: Default::default(),
-			btc_address: Default::default(),
-			btc_height: Default::default(),
-			fee: Default::default(),
-			griefing_collateral: Default::default(),
-			opentime: Default::default(),
-			period: Default::default(),
-			requester: AccountId::new([1u8; 32]),
-			btc_public_key: BtcPublicKey { 0: [0; 33] },
-			status,
-			vault,
-		}
-	}
-
-	fn dummy_redeem_request(
-		status: RedeemRequestStatus,
-		vault: VaultId,
-	) -> SpacewalkReplaceRequest {
-		SpacewalkReplaceRequest {
-			amount_btc: Default::default(),
-			btc_address: Default::default(),
-			btc_height: Default::default(),
-			fee: Default::default(),
-			transfer_fee_btc: Default::default(),
-			premium: Default::default(),
-			opentime: Default::default(),
-			period: Default::default(),
-			redeemer: AccountId::new([1u8; 32]),
-			status,
-			vault,
-		}
-	}
-
-	#[tokio::test]
-	async fn test_metrics_average_bitcoin_balance_bounds() {
-		let parachain_rpc = MockProviderBuilder::new()
-			.set_required_collateral(50)
-			.set_actual_collateral(75)
-			.set_max_free_balance(100)
-			.set_issued_tokens(1200000000)
-			.set_to_be_issued_tokens(100000000)
-			.set_to_be_redeemed_tokens(300000000)
-			.build();
-		let mock_bitcoin = MockBitcoin::default();
-		let btc_rpc: DynBitcoinCoreApi = Arc::new(mock_bitcoin);
-
-		let vault_data =
-			VaultData { vault_id: dummy_vault_id(), btc_rpc, metrics: PerCurrencyMetrics::dummy() };
-
-		publish_expected_bitcoin_balance(&vault_data, parachain_rpc).await.unwrap();
-		let bitcoin_lower_bound = vault_data.metrics.btc_balance.lowerbound.get();
-		let bitcoin_upper_bound = vault_data.metrics.btc_balance.upperbound.get();
-
-		assert_eq!(bitcoin_lower_bound, 9.0);
-		assert_eq!(bitcoin_upper_bound, 13.0);
-	}
-
-	#[tokio::test]
-	async fn test_metrics_restart_counter() {
-		assert_eq!(RESTART_COUNT.get(), 0);
-		increment_restart_counter();
-		assert_eq!(RESTART_COUNT.get(), 1);
-	}
-
-	#[tokio::test]
-	async fn test_metrics_total_collateral() {
-		let parachain_rpc = MockProviderBuilder::new()
-			.set_required_collateral(50)
-			.set_actual_collateral(75)
-			.set_max_free_balance(100)
-			.set_issued_tokens(1200000000)
-			.set_to_be_issued_tokens(100000000)
-			.set_to_be_redeemed_tokens(300000000)
-			.build();
-		let mock_bitcoin = MockBitcoin::default();
-		let btc_rpc: DynBitcoinCoreApi = Arc::new(mock_bitcoin);
-
-		let vault_data =
-			VaultData { vault_id: dummy_vault_id(), btc_rpc, metrics: PerCurrencyMetrics::dummy() };
-
-		publish_locked_collateral(&vault_data, parachain_rpc).await.unwrap();
-		let total_collateral = vault_data.metrics.locked_collateral.get();
-
-		assert_eq!(total_collateral, 0.0000000075);
-	}
-
-	#[tokio::test]
-	async fn test_metrics_collateralization() {
-		let collateralization = 150;
-		let mut parachain_rpc = MockProvider::default();
-		parachain_rpc
-			.expect_get_collateralization_from_vault()
-			.returning(move |_, _| Ok(collateralization));
-		let mock_bitcoin = MockBitcoin::default();
-		let btc_rpc: DynBitcoinCoreApi = Arc::new(mock_bitcoin);
-
-		let vault_data =
-			VaultData { vault_id: dummy_vault_id(), btc_rpc, metrics: PerCurrencyMetrics::dummy() };
-
-		publish_collateralization(&vault_data, parachain_rpc).await;
-		let collateralization_metrics = vault_data.metrics.collateralization.get();
-
-		assert_eq!(collateralization_metrics, FixedU128::from_inner(collateralization).to_float());
-	}
-
-	#[tokio::test]
-	async fn test_metrics_required_collateral() {
-		let parachain_rpc = MockProviderBuilder::new()
-			.set_required_collateral(50)
-			.set_actual_collateral(75)
-			.set_max_free_balance(100)
-			.set_issued_tokens(1200000000)
-			.set_to_be_issued_tokens(100000000)
-			.set_to_be_redeemed_tokens(300000000)
-			.build();
-
-		let mock_bitcoin = MockBitcoin::default();
-		let btc_rpc: DynBitcoinCoreApi = Arc::new(mock_bitcoin);
-
-		let vault_data =
-			VaultData { vault_id: dummy_vault_id(), btc_rpc, metrics: PerCurrencyMetrics::dummy() };
-
-		publish_required_collateral(&vault_data, parachain_rpc).await.unwrap();
-		let required_collateral = vault_data.metrics.required_collateral.get();
-
-		assert_eq!(required_collateral, 0.000000005);
-	}
-
-	#[tokio::test]
-	async fn test_metrics_native_currency_balance() {
-		let mut parachain_rpc = MockProviderBuilder::new()
-			.set_required_collateral(50)
-			.set_actual_collateral(75)
-			.set_max_free_balance(100)
-			.set_issued_tokens(1200000000)
-			.set_to_be_issued_tokens(100000000)
-			.set_to_be_redeemed_tokens(300000000)
-			.build();
-
-		parachain_rpc.expect_get_native_currency_id().returning(move || Token(INTR));
-
-		publish_native_currency_balance(&parachain_rpc).await.unwrap();
-
-		let native_currency_balance = NATIVE_CURRENCY_BALANCE.get();
-		assert_eq!(native_currency_balance, 0.0000000025);
-	}
-
-	#[tokio::test]
-	async fn test_metrics_issue_count() {
-		let mut parachain_rpc = MockProviderBuilder::new()
-			.set_required_collateral(50)
-			.set_actual_collateral(75)
-			.set_max_free_balance(100)
-			.set_issued_tokens(1200000000)
-			.set_to_be_issued_tokens(100000000)
-			.set_to_be_redeemed_tokens(300000000)
-			.build();
-		parachain_rpc.expect_get_vault_issue_requests().returning(move |_| {
-			Ok(vec![
-				(
-					H256::default(),
-					dummy_issue_request(IssueRequestStatus::Pending, dummy_vault_id()),
-				),
-				(
-					H256::default(),
-					dummy_issue_request(IssueRequestStatus::Completed, dummy_vault_id()),
-				),
-				(
-					H256::default(),
-					dummy_issue_request(IssueRequestStatus::Cancelled, dummy_vault_id()),
-				),
-			])
-		});
-
-		parachain_rpc.expect_get_account_id().return_const(AccountId::new([1u8; 32]));
-
-		let mock_bitcoin = MockBitcoin::default();
-		let btc_rpc: DynBitcoinCoreApi = Arc::new(mock_bitcoin);
-
-		let vault_data =
-			VaultData { vault_id: dummy_vault_id(), btc_rpc, metrics: PerCurrencyMetrics::dummy() };
-
-		let mut vault_id_manager = MockVaultIdManager::default();
-		let vault_data_clone = vault_data.clone();
-		vault_id_manager
-			.expect_get_entries()
-			.returning(move || vec![vault_data_clone.clone()]);
-
-		publish_issue_count(&parachain_rpc, &vault_id_manager).await;
-
-		let open_issues = vault_data.metrics.issues.open_count.get();
-		assert_eq!(open_issues, 1.0);
-
-		let completed_issues = vault_data.metrics.issues.completed_count.get();
-		assert_eq!(completed_issues, 1.0);
-
-		let cancelled_issues = vault_data.metrics.issues.expired_count.get();
-		assert_eq!(cancelled_issues, 1.0);
-	}
-
-	#[tokio::test]
-	async fn test_metrics_redeem_count() {
-		let mut parachain_rpc = MockProviderBuilder::new()
-			.set_required_collateral(50)
-			.set_actual_collateral(75)
-			.set_max_free_balance(100)
-			.set_issued_tokens(1200000000)
-			.set_to_be_issued_tokens(100000000)
-			.set_to_be_redeemed_tokens(300000000)
-			.build();
-		let redeems = vec![
-			(H256::default(), dummy_redeem_request(RedeemRequestStatus::Pending, dummy_vault_id())),
-			(
-				H256::default(),
-				dummy_redeem_request(RedeemRequestStatus::Completed, dummy_vault_id()),
-			),
-			(
-				H256::default(),
-				dummy_redeem_request(RedeemRequestStatus::Reimbursed(false), dummy_vault_id()),
-			),
-		];
-
-		parachain_rpc.expect_get_account_id().return_const(AccountId::new([1u8; 32]));
-
-		let mock_bitcoin = MockBitcoin::default();
-		let btc_rpc: DynBitcoinCoreApi = Arc::new(mock_bitcoin);
-
-		let vault_data =
-			VaultData { vault_id: dummy_vault_id(), btc_rpc, metrics: PerCurrencyMetrics::dummy() };
-
-		let mut vault_id_manager = MockVaultIdManager::default();
-		let vault_data_clone = vault_data.clone();
-		vault_id_manager
-			.expect_get_entries()
-			.returning(move || vec![vault_data_clone.clone()]);
-
-		publish_redeem_count(&vault_id_manager, &redeems).await;
-
-		let open_redeems = vault_data.metrics.redeems.open_count.get();
-		assert_eq!(open_redeems, 1.0);
-
-		let completed_redeems = vault_data.metrics.redeems.completed_count.get();
-		assert_eq!(completed_redeems, 1.0);
-
-		let cancelled_redeems = vault_data.metrics.redeems.expired_count.get();
-		assert_eq!(cancelled_redeems, 1.0);
 	}
 }

@@ -145,9 +145,7 @@ impl StellarWallet {
 	}
 
 	///return balances for public key
-	pub async fn get_balance(
-		&self,
-	) -> Result<Vec<Balance>, Error> {
+	pub async fn get_balance(&self) -> Result<Vec<Balance>, Error> {
 		let horizon_client = reqwest::Client::new();
 		let public_key_encoded = self.get_public_key().to_encoding();
 		let account_id_string =

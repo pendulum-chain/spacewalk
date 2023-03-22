@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 use substrate_stellar_sdk::TransactionEnvelope;
 
-pub use horizon::{listen_for_new_transactions, TransactionResponse, Balance};
+pub use horizon::{listen_for_new_transactions, Balance, TransactionResponse};
 pub use stellar_wallet::StellarWallet;
 pub use task::*;
 

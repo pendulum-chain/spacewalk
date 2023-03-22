@@ -124,7 +124,7 @@ impl SpacewalkParachain {
 			signer,
 			account_id,
 			fee_rate_update_tx,
-			native_currency_id : CurrencyId::Native,
+			native_currency_id: CurrencyId::Native,
 			relay_chain_currency_id,
 		};
 		Ok(parachain_rpc)
