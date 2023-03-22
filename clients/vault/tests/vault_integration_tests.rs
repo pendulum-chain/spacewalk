@@ -101,7 +101,10 @@ pub async fn assert_issue(
 	amount: u128,
 	oracle_agent: Arc<OracleAgent>,
 ) {
-	let issue = parachain_rpc.request_issue(amount, vault_id).await.unwrap();
+	let issue = parachain_rpc
+		.request_issue(amount, vault_id)
+		.await
+		.expect("Failed to request issue");
 
 	let asset = primitives::AssetConversion::lookup(issue.asset).expect("Invalid asset");
 	let stroop_amount = primitives::BalanceConversion::lookup(amount).expect("Invalid amount");
@@ -217,7 +220,6 @@ async fn test_redeem_succeeds() {
 			vault_id.collateral_currency(),
 		)
 		.await;
-		tracing::error!("vault_collateral: {vault_collateral}");
 
 		let wallet = WALLET.read().await;
 		assert_ok!(
@@ -1235,6 +1237,55 @@ async fn test_shutdown() {
 				.await
 		);
 		assert_ok!(user_provider.request_issue(issue_amount, &sudo_vault_id).await);
+	})
+	.await;
+}
+
+#[tokio::test(flavor = "multi_thread")]
+#[serial]
+async fn test_requests_with_incompatible_amounts_fail() {
+	test_with_vault(|client, vault_id, vault_provider| async move {
+		let user_provider = setup_provider(client.clone(), AccountKeyring::Dave).await;
+
+		// We define an incompatible amount
+		let incompatible_amount = upscaled_compatible_amount(100) + 1;
+		let vault_collateral = get_required_vault_collateral_for_issue(
+			&vault_provider,
+			incompatible_amount,
+			vault_id.collateral_currency(),
+		)
+		.await;
+
+		let wallet = WALLET.read().await;
+		let address = wallet.get_public_key_raw();
+		assert_ok!(
+			vault_provider
+				.register_vault_with_public_key(
+					&vault_id,
+					vault_collateral,
+					wallet.get_public_key_raw()
+				)
+				.await
+		);
+		drop(wallet);
+
+		// We try to request an issue with an incompatible amount
+		let result = user_provider.request_issue(incompatible_amount, &vault_id).await;
+		assert!(result.is_err());
+		let error = result.unwrap_err();
+		assert!(error.is_module_err("Currency", "IncompatibleAmount"));
+
+		// We try to request a redeem with an incompatible amount
+		let result = user_provider.request_redeem(incompatible_amount, address, &vault_id).await;
+		assert!(result.is_err());
+		let error = result.unwrap_err();
+		assert!(error.is_module_err("Currency", "IncompatibleAmount"));
+
+		// We try to request a replace with an incompatible amount
+		let result = vault_provider.request_replace(&vault_id, incompatible_amount).await;
+		assert!(result.is_err());
+		let error = result.unwrap_err();
+		assert!(error.is_module_err("Currency", "IncompatibleAmount"));
 	})
 	.await;
 }
