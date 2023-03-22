@@ -2,7 +2,7 @@ use frame_benchmarking::{account, benchmarks, impl_benchmark_test_suite};
 use frame_support::assert_ok;
 use frame_system::RawOrigin;
 use orml_traits::MultiCurrency;
-use sp_core::H256;
+use sp_core::{Get, H256};
 use sp_runtime::{traits::One, FixedPointNumber};
 use sp_std::prelude::*;
 
@@ -17,7 +17,7 @@ use stellar_relay::{
 	testing_utils::{
 		build_dummy_proof_for, get_validators_and_organizations, DEFAULT_STELLAR_PUBLIC_KEY,
 	},
-	Pallet as StellarRelay,
+	Config as StellarRelayConfig, Pallet as StellarRelay,
 };
 use vault_registry::{types::DefaultVaultCurrencyPair, Pallet as VaultRegistry};
 
@@ -68,8 +68,9 @@ benchmarks! {
 		let asset = vault_id.wrapped_currency();
 		let relayer_id: T::AccountId = account("Relayer", 0, 0);
 
-		Oracle::<T>::_set_exchange_rate(get_collateral_currency_id::<T>(), <T as currency::Config>::UnsignedFixedPoint::one()).unwrap();
-		Oracle::<T>::_set_exchange_rate(<T as vault_registry::Config>::GetGriefingCollateralCurrencyId::get(), <T as currency::Config>::UnsignedFixedPoint::one()).unwrap();
+		Oracle::<T>::_set_exchange_rate(origin.clone(), get_collateral_currency_id::<T>(), <T as currency::Config>::UnsignedFixedPoint::one()).unwrap();
+		Oracle::<T>::_set_exchange_rate(origin.clone(), get_wrapped_currency_id(), <T as currency::Config>::UnsignedFixedPoint::one()).unwrap();
+		Oracle::<T>::_set_exchange_rate(origin.clone(), <T as vault_registry::Config>::GetGriefingCollateralCurrencyId::get(), <T as currency::Config>::UnsignedFixedPoint::one()).unwrap();
 
 		mint_collateral::<T>(&origin, (1u32 << 31).into());
 		mint_collateral::<T>(&vault_id.account_id, (1u32 << 31).into());
@@ -113,12 +114,13 @@ benchmarks! {
 		let (validators, organizations) = get_validators_and_organizations::<T>();
 		let enactment_block_height = T::BlockNumber::default();
 		StellarRelay::<T>::_update_tier_1_validator_set(validators, organizations, enactment_block_height).unwrap();
-		let public_network = StellarRelay::<T>::is_public_network();
+		let public_network = <T as StellarRelayConfig>::IsPublicNetwork::get();
 		let (tx_env_xdr_encoded, scp_envs_xdr_encoded, tx_set_xdr_encoded) = build_dummy_proof_for::<T>(issue_id, public_network);
 
 		VaultRegistry::<T>::_set_system_collateral_ceiling(get_currency_pair::<T>(), 1_000_000_000u32.into());
 		VaultRegistry::<T>::_set_secure_collateral_threshold(get_currency_pair::<T>(), <T as currency::Config>::UnsignedFixedPoint::checked_from_rational(1, 100000).unwrap());
-		Oracle::<T>::_set_exchange_rate(get_collateral_currency_id::<T>(), <T as currency::Config>::UnsignedFixedPoint::one()).unwrap();
+		Oracle::<T>::_set_exchange_rate(origin.clone(), get_collateral_currency_id::<T>(), <T as currency::Config>::UnsignedFixedPoint::one()).unwrap();
+		Oracle::<T>::_set_exchange_rate(origin.clone(), get_wrapped_currency_id(), <T as currency::Config>::UnsignedFixedPoint::one()).unwrap();
 		register_vault::<T>(vault_id.clone());
 
 		VaultRegistry::<T>::try_increase_to_be_issued_tokens(&vault_id, &value).unwrap();
@@ -157,7 +159,8 @@ benchmarks! {
 
 		VaultRegistry::<T>::_set_system_collateral_ceiling(get_currency_pair::<T>(), 1_000_000_000u32.into());
 		VaultRegistry::<T>::_set_secure_collateral_threshold(get_currency_pair::<T>(), <T as currency::Config>::UnsignedFixedPoint::checked_from_rational(1, 100000).unwrap());
-		Oracle::<T>::_set_exchange_rate(get_collateral_currency_id::<T>(), <T as currency::Config>::UnsignedFixedPoint::one()).unwrap();
+		Oracle::<T>::_set_exchange_rate(origin.clone(), get_collateral_currency_id::<T>(), <T as currency::Config>::UnsignedFixedPoint::one()).unwrap();
+		Oracle::<T>::_set_exchange_rate(origin.clone(), get_wrapped_currency_id(), <T as currency::Config>::UnsignedFixedPoint::one()).unwrap();
 		register_vault::<T>(vault_id.clone());
 
 		VaultRegistry::<T>::try_increase_to_be_issued_tokens(&vault_id, &value).unwrap();
@@ -169,6 +172,15 @@ benchmarks! {
 	set_issue_period {
 	}: _(RawOrigin::Root, 1u32.into())
 
+	rate_limit_update {
+		let limit_volume_amount: Option<BalanceOf<T>> = Some(1u32.into());
+		let limit_volume_currency_id: T::CurrencyId = get_wrapped_currency_id();
+		let interval_length: T::BlockNumber = 1u32.into();
+	}: _(RawOrigin::Root, limit_volume_amount, limit_volume_currency_id, interval_length)
+
+	minimum_transfer_amount_update {
+		let new_minimum_amount: BalanceOf<T> = 1u32.into();
+	}: _(RawOrigin::Root, new_minimum_amount)
 }
 
 impl_benchmark_test_suite!(

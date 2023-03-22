@@ -1,5 +1,6 @@
 use std::{
-	collections::HashMap, convert::TryInto, future::Future, pin::Pin, sync::Arc, time::Duration,
+	collections::HashMap, convert::TryInto, fs, future::Future, pin::Pin, str::from_utf8,
+	sync::Arc, time::Duration,
 };
 
 use async_trait::async_trait;
@@ -208,7 +209,7 @@ fn parse_collateral_and_amount(
 #[derive(Parser, Clone, Debug)]
 pub struct VaultServiceConfig {
 	#[clap(long, help = "The Stellar secret key that is used to sign transactions.")]
-	pub stellar_vault_secret_key: String,
+	pub stellar_vault_secret_key_filepath: String,
 
 	/// Pass the faucet URL for auto-registration.
 	#[clap(long)]
@@ -343,12 +344,31 @@ impl VaultService {
 		monitoring_config: MonitoringConfig,
 		shutdown: ShutdownSender,
 	) -> Result<Self, Error> {
-		let is_public_network = spacewalk_parachain.is_public_network().await?;
+		let is_public_network = spacewalk_parachain.is_public_network().await;
+		let is_public_network = match is_public_network {
+			Ok(is_public_network) => is_public_network,
+			Err(error) => {
+				// Sometimes the fetch fails with 'StorageItemNotFound' error.
+				// We assume public network by default
+				tracing::warn!(
+					"Failed to fetch public network status from parachain: {}. Assuming public network.",
+					error
+				);
+				true
+			},
+		};
 
+		let stellar_vault_secret_key =
+			fs::read_to_string(&config.stellar_vault_secret_key_filepath)?;
 		let stellar_wallet = StellarWallet::from_secret_encoded(
-			&config.stellar_vault_secret_key,
+			&stellar_vault_secret_key.trim().to_string(),
 			is_public_network,
 		)?;
+		tracing::debug!(
+			"Vault wallet public key: {}",
+			from_utf8(&stellar_wallet.get_public_key().to_encoding())?
+		);
+
 		let stellar_wallet = Arc::new(RwLock::new(stellar_wallet));
 
 		Ok(Self {
@@ -429,7 +449,6 @@ impl VaultService {
 		self.vault_id_manager.fetch_vault_ids().await?;
 
 		let wallet = self.stellar_wallet.read().await;
-		let secret_key = wallet.get_secret_key();
 		let vault_public_key = wallet.get_public_key();
 		let is_public_network = wallet.is_public_network();
 		drop(wallet);
@@ -460,8 +479,9 @@ impl VaultService {
 		// this vec is passed to the stellar wallet to filter out transactions that are not relevant
 		// this has to be modified every time the issue set changes
 		let issue_map: ArcRwLock<IssueRequestsMap> = Arc::new(RwLock::new(IssueRequestsMap::new()));
+		issue::initialize_issue_set(&self.spacewalk_parachain, &issue_map).await?;
 
-		let issue_filter = IssueFilter::new(secret_key.get_public())?;
+		let issue_filter = IssueFilter::new(&vault_public_key)?;
 
 		let ledger_env_map: ArcRwLock<LedgerTxEnvMap> = Arc::new(RwLock::new(HashMap::new()));
 

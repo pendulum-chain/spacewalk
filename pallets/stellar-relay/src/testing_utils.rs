@@ -8,7 +8,8 @@ use substrate_stellar_sdk::{
 		ScpStatementPledges, Signature, StellarValue, StellarValueExt, TransactionExt,
 		TransactionSet, TransactionV1Envelope, Value,
 	},
-	Hash, Memo, MuxedAccount, PublicKey, SecretKey, Transaction, TransactionEnvelope, XdrCodec,
+	Hash, Memo, MuxedAccount, Operation, PublicKey, SecretKey, Transaction, TransactionEnvelope,
+	XdrCodec,
 };
 
 use primitives::{StellarPublicKeyRaw, H256};
@@ -48,10 +49,48 @@ pub fn create_dummy_scp_structs(
 	(tx_env, scp_envelopes, transaction_set)
 }
 
+pub fn create_dummy_scp_structs_with_operation(
+	operation: Operation,
+) -> (TransactionV1Envelope, LimitedVarArray<ScpEnvelope, 20>, TransactionSet) {
+	let mut tx = Transaction {
+		source_account: MuxedAccount::KeyTypeEd25519(RANDOM_STELLAR_PUBLIC_KEY),
+		fee: 100,
+		seq_num: 1,
+		operations: LimitedVarArray::new_empty(),
+		cond: substrate_stellar_sdk::types::Preconditions::PrecondNone,
+		memo: substrate_stellar_sdk::Memo::MemoNone,
+		ext: substrate_stellar_sdk::types::TransactionExt::V0,
+	};
+	tx.append_operation(operation).expect("Should add operation to transaction");
+	let tx_env = TransactionV1Envelope { tx, signatures: LimitedVarArray::new_empty() };
+
+	let scp_envelopes: LimitedVarArray<ScpEnvelope, 20> = LimitedVarArray::new_empty();
+
+	let transaction_set = TransactionSet {
+		previous_ledger_hash: Default::default(),
+		txes: LimitedVarArray::new_empty(),
+	};
+
+	(tx_env, scp_envelopes, transaction_set)
+}
+
 /// This function is to be used by other crates which mock the validation function
 /// and don't necessarily needs valid scp structs
 pub fn create_dummy_scp_structs_encoded() -> (Vec<u8>, Vec<u8>, Vec<u8>) {
 	let (tx_env, scp_envelopes, transaction_set) = create_dummy_scp_structs();
+	let tx_env_encoded = base64::encode(tx_env.to_xdr()).as_bytes().to_vec();
+	let scp_envelopes_encoded = base64::encode(scp_envelopes.to_xdr()).as_bytes().to_vec();
+	let transaction_set_encoded = base64::encode(transaction_set.to_xdr()).as_bytes().to_vec();
+	(tx_env_encoded, scp_envelopes_encoded, transaction_set_encoded)
+}
+
+/// This function is to be used by other crates which mock the validation function
+/// and don't necessarily needs valid scp structs
+pub fn create_dummy_scp_structs_with_operation_encoded(
+	operation: Operation,
+) -> (Vec<u8>, Vec<u8>, Vec<u8>) {
+	let (tx_env, scp_envelopes, transaction_set) =
+		create_dummy_scp_structs_with_operation(operation);
 	let tx_env_encoded = base64::encode(tx_env.to_xdr()).as_bytes().to_vec();
 	let scp_envelopes_encoded = base64::encode(scp_envelopes.to_xdr()).as_bytes().to_vec();
 	let transaction_set_encoded = base64::encode(transaction_set.to_xdr()).as_bytes().to_vec();
@@ -130,7 +169,7 @@ pub fn get_validators_and_organizations<T: crate::Config>(
 }
 
 pub fn build_dummy_proof_for<T: crate::Config>(
-	issue_id: H256,
+	request_id: H256,
 	public_network: bool,
 ) -> (Vec<u8>, Vec<u8>, Vec<u8>) {
 	// Build a transaction
@@ -141,7 +180,7 @@ pub fn build_dummy_proof_for<T: crate::Config>(
 		fee: 0,
 		seq_num: 0,
 		cond: Preconditions::PrecondNone,
-		memo: Memo::MemoHash(Hash::from(issue_id)), // Include the issue id in the memo
+		memo: Memo::MemoHash(request_id.0), // Include the request id in the memo
 		operations,
 		ext: TransactionExt::V0,
 	};
@@ -158,7 +197,8 @@ pub fn build_dummy_proof_for<T: crate::Config>(
 	txes.push(transaction_envelope.clone()).unwrap();
 	let transaction_set = TransactionSet { previous_ledger_hash: Hash::default(), txes };
 
-	let tx_set_hash = crate::compute_non_generic_tx_set_content_hash(&transaction_set);
+	let tx_set_hash = crate::compute_non_generic_tx_set_content_hash(&transaction_set)
+		.expect("Should compute non generic tx set content hash");
 	let network: &Network = if public_network { &PUBLIC_NETWORK } else { &TEST_NETWORK };
 
 	// Build the scp messages that externalize the transaction set

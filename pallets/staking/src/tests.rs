@@ -3,8 +3,6 @@ use frame_support::{assert_err, assert_ok};
 /// Tests for Staking
 use crate::mock::*;
 
-// type Event = crate::Event<Test>;
-
 #[macro_export]
 macro_rules! fixed {
 	($amount:expr) => {
@@ -19,7 +17,7 @@ fn reproduce_broken_state() {
         use crate::pallet::*;
         let account = VAULT.account_id;
         let currency = DEFAULT_NATIVE_CURRENCY;
-        let wrong_currency = Token(AMPE);
+        let wrong_currency = CurrencyId::XCM(10);
 
         let f = |x: i128| {
             SignedFixedPoint::from_inner(x)

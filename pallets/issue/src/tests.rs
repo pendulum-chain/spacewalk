@@ -1,11 +1,10 @@
 use frame_support::{assert_noop, assert_ok, dispatch::DispatchError};
-use orml_traits::MultiCurrency;
+use mocktopus::mocking::*;
 use sp_arithmetic::FixedU128;
 use sp_core::H256;
 use sp_runtime::traits::{One, Zero};
 
 use currency::Amount;
-use mocktopus::mocking::*;
 use primitives::{issue::IssueRequestStatus, StellarPublicKeyRaw};
 use stellar_relay::testing_utils::{DEFAULT_STELLAR_PUBLIC_KEY, RANDOM_STELLAR_PUBLIC_KEY};
 use vault_registry::{DefaultVault, DefaultVaultId, Vault, VaultStatus};
@@ -47,6 +46,9 @@ fn request_issue_ok_with_address(
 
 	ext::security::get_secure_id::<Test>.mock_safe(|_| MockResult::Return(get_dummy_request_id()));
 
+	ext::stellar_relay::ensure_transaction_memo_matches_hash::<Test>
+		.mock_safe(|_, _| MockResult::Return(Ok(())));
+
 	ext::vault_registry::try_increase_to_be_issued_tokens::<Test>
 		.mock_safe(|_, _| MockResult::Return(Ok(())));
 	ext::vault_registry::get_stellar_public_key::<Test>
@@ -84,6 +86,7 @@ fn get_dummy_request_id() -> H256 {
 fn test_request_issue_banned_fails() {
 	run_test(|| {
 		assert_ok!(<oracle::Pallet<Test>>::_set_exchange_rate(
+			1,
 			DEFAULT_COLLATERAL_CURRENCY,
 			FixedU128::one()
 		));
@@ -378,7 +381,7 @@ fn test_cancel_issue_not_expired_and_requester_succeeds() {
 			// griefing back
 			<security::Pallet<Test>>::set_active_block_number(4);
 
-			let free_before = Tokens::free_balance(DEFAULT_NATIVE_CURRENCY, &USER);
+			let free_before = Balances::free_balance(&USER);
 			ext::vault_registry::transfer_funds::<Test>.mock_raw(|_, _, amount| {
 				transfer_called = true;
 				assert_eq!(amount, &griefing(30));
@@ -388,7 +391,7 @@ fn test_cancel_issue_not_expired_and_requester_succeeds() {
 			assert_ok!(cancel_issue(USER, &issue_id));
 
 			assert_eq!(transfer_called, true);
-			assert_eq!(Tokens::free_balance(DEFAULT_NATIVE_CURRENCY, &USER), free_before + 70);
+			assert_eq!(Balances::free_balance(&USER), free_before + 70);
 			assert_eq!(
 				Issue::issue_requests(&issue_id).unwrap().status,
 				IssueRequestStatus::Cancelled

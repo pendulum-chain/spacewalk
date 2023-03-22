@@ -1,3 +1,4 @@
+use spacewalk_runtime::{AssetId, DiaOracleModuleConfig};
 use std::{convert::TryFrom, str::FromStr};
 
 use frame_support::BoundedVec;
@@ -9,10 +10,10 @@ use sp_core::{crypto::UncheckedInto, sr25519, Pair, Public};
 use sp_finality_grandpa::AuthorityId as GrandpaId;
 use sp_runtime::traits::{IdentifyAccount, Verify};
 
-use primitives::{CurrencyId::Token, VaultCurrencyPair, AMPE, DOT, KSM, PEN};
+use primitives::{oracle::Key, CurrencyId, VaultCurrencyPair};
 use serde_json::{map::Map, Value};
 use spacewalk_runtime::{
-	AccountId, AuraConfig, BalancesConfig, CurrencyId, FeeConfig, FieldLength, GenesisConfig,
+	AccountId, AuraConfig, BalancesConfig, FeeConfig, FieldLength, GenesisConfig,
 	GetWrappedCurrencyId, GrandpaConfig, IssueConfig, NominationConfig, OracleConfig, Organization,
 	RedeemConfig, ReplaceConfig, SecurityConfig, Signature, StatusCode, StellarRelayConfig,
 	SudoConfig, SystemConfig, TokensConfig, Validator, VaultRegistryConfig, DAYS, WASM_BINARY,
@@ -78,10 +79,7 @@ pub fn local_config() -> ChainSpec {
 					get_account_id_from_seed::<sr25519::Public>("Eve//stash"),
 					get_account_id_from_seed::<sr25519::Public>("Ferdie//stash"),
 				],
-				vec![(
-					get_account_id_from_seed::<sr25519::Public>("Bob"),
-					"Bob".as_bytes().to_vec(),
-				)],
+				vec![get_account_id_from_seed::<sr25519::Public>("Bob")],
 				false,
 			)
 		},
@@ -142,10 +140,7 @@ pub fn beta_testnet_config() -> ChainSpec {
 					get_account_id_from_string("5H8zjSWfzMn86d1meeNrZJDj3QZSvRjKxpTfuVaZ46QJZ4qs"),
 					get_account_id_from_string("5FPBT2BVVaLveuvznZ9A1TUtDcbxK5yvvGcMTJxgFmhcWGwj"),
 				],
-				vec![(
-					get_account_id_from_seed::<sr25519::Public>("Bob"),
-					"Bob".as_bytes().to_vec(),
-				)],
+				vec![get_account_id_from_seed::<sr25519::Public>("Bob")],
 				false,
 			)
 		},
@@ -181,10 +176,7 @@ pub fn development_config() -> ChainSpec {
 					get_account_id_from_seed::<sr25519::Public>("Eve//stash"),
 					get_account_id_from_seed::<sr25519::Public>("Ferdie//stash"),
 				],
-				vec![(
-					get_account_id_from_seed::<sr25519::Public>("Bob"),
-					"Bob".as_bytes().to_vec(),
-				)],
+				vec![get_account_id_from_seed::<sr25519::Public>("Bob")],
 				false,
 			)
 		},
@@ -214,7 +206,7 @@ fn testnet_genesis(
 	root_key: AccountId,
 	initial_authorities: Vec<(AuraId, GrandpaId)>,
 	endowed_accounts: Vec<AccountId>,
-	authorized_oracles: Vec<(AccountId, Vec<u8>)>,
+	authorized_oracles: Vec<AccountId>,
 	start_shutdown: bool,
 ) -> GenesisConfig {
 	// Testnet organization
@@ -268,10 +260,9 @@ fn testnet_genesis(
 				.iter()
 				.flat_map(|k| {
 					vec![
-						(k.clone(), Token(DOT), 1 << 60),
-						(k.clone(), Token(KSM), 1 << 60),
-						(k.clone(), Token(PEN), 1 << 60),
-						(k.clone(), Token(AMPE), 1 << 60),
+						(k.clone(), CurrencyId::XCM(0), 1 << 60),
+						(k.clone(), CurrencyId::XCM(1), 1 << 60),
+						(k.clone(), CurrencyId::Native, 1 << 60),
 					]
 				})
 				.collect(),
@@ -280,21 +271,21 @@ fn testnet_genesis(
 			issue_period: DAYS,
 			issue_minimum_transfer_amount: 1000,
 			limit_volume_amount: None,
-			limit_volume_currency_id: Token(DOT),
-			current_volume_amount: 0u32.into(),
-			interval_length: (60u32 * 60 * 24).into(),
-			last_interval_index: 0u32.into(),
+			limit_volume_currency_id: CurrencyId::XCM(0),
+			current_volume_amount: 0u128,
+			interval_length: (60u32 * 60 * 24),
+			last_interval_index: 0u32,
 		},
 		redeem: RedeemConfig {
 			redeem_period: DAYS,
 			redeem_minimum_transfer_amount: 100,
 			limit_volume_amount: None,
-			limit_volume_currency_id: Token(DOT),
-			current_volume_amount: 0u32.into(),
-			interval_length: (60u32 * 60 * 24).into(),
-			last_interval_index: 0u32.into(),
+			limit_volume_currency_id: CurrencyId::XCM(0),
+			current_volume_amount: 0u128,
+			interval_length: (60u32 * 60 * 24),
+			last_interval_index: 0u32,
 		},
-		replace: ReplaceConfig { replace_period: DAYS, replace_btc_dust_value: 1000 },
+		replace: ReplaceConfig { replace_period: DAYS, replace_minimum_transfer_amount: 1000 },
 		security: SecurityConfig {
 			initial_status: if start_shutdown { StatusCode::Shutdown } else { StatusCode::Error },
 		},
@@ -304,31 +295,62 @@ fn testnet_genesis(
 			validators,
 			organizations,
 			enactment_block_height: 0,
-			is_public_network: false,
 			phantom: Default::default(),
 		},
 		oracle: OracleConfig {
-			authorized_oracles,
-			max_delay: 3600000, // one hour
+			max_delay: u32::MAX,
+			oracle_keys: vec![
+				// Changing these items means that the integration tests also have to change
+				// because the integration tests insert dummy values for these into the oracle
+				Key::ExchangeRate(CurrencyId::XCM(0)),
+				Key::ExchangeRate(CurrencyId::AlphaNum4(
+					*b"USDC",
+					[
+						20, 209, 150, 49, 176, 55, 23, 217, 171, 154, 54, 110, 16, 50, 30, 226,
+						102, 231, 46, 199, 108, 171, 97, 144, 240, 161, 51, 109, 72, 34, 159, 139,
+					],
+				)),
+			],
 		},
 		vault_registry: VaultRegistryConfig {
-			minimum_collateral_vault: vec![(Token(DOT), 0), (Token(KSM), 0)],
+			minimum_collateral_vault: vec![(CurrencyId::XCM(0), 0), (CurrencyId::XCM(1), 0)],
 			punishment_delay: DAYS,
 			secure_collateral_threshold: vec![
-				(default_pair(Token(DOT)), FixedU128::checked_from_rational(260, 100).unwrap()),
-				(default_pair(Token(KSM)), FixedU128::checked_from_rational(260, 100).unwrap()),
-			], /* 150% */
+				(
+					default_pair(CurrencyId::XCM(0)),
+					FixedU128::checked_from_rational(260, 100).unwrap(),
+				),
+				(
+					default_pair(CurrencyId::XCM(1)),
+					FixedU128::checked_from_rational(260, 100).unwrap(),
+				),
+			],
+			/* 150% */
 			premium_redeem_threshold: vec![
-				(default_pair(Token(DOT)), FixedU128::checked_from_rational(200, 100).unwrap()),
-				(default_pair(Token(KSM)), FixedU128::checked_from_rational(200, 100).unwrap()),
-			], /* 135% */
+				(
+					default_pair(CurrencyId::XCM(0)),
+					FixedU128::checked_from_rational(200, 100).unwrap(),
+				),
+				(
+					default_pair(CurrencyId::XCM(1)),
+					FixedU128::checked_from_rational(200, 100).unwrap(),
+				),
+			],
+			/* 135% */
 			liquidation_collateral_threshold: vec![
-				(default_pair(Token(DOT)), FixedU128::checked_from_rational(150, 100).unwrap()),
-				(default_pair(Token(KSM)), FixedU128::checked_from_rational(150, 100).unwrap()),
-			], /* 110% */
+				(
+					default_pair(CurrencyId::XCM(0)),
+					FixedU128::checked_from_rational(150, 100).unwrap(),
+				),
+				(
+					default_pair(CurrencyId::XCM(1)),
+					FixedU128::checked_from_rational(150, 100).unwrap(),
+				),
+			],
+			/* 110% */
 			system_collateral_ceiling: vec![
-				(default_pair(Token(DOT)), 60_000 * DOT.one()),
-				(default_pair(Token(KSM)), 60_000 * KSM.one()),
+				(default_pair(CurrencyId::XCM(0)), 60_000 * 10u128.pow(12)),
+				(default_pair(CurrencyId::XCM(1)), 60_000 * 10u128.pow(12)),
 			],
 		},
 		fee: FeeConfig {
@@ -340,5 +362,18 @@ fn testnet_genesis(
 			replace_griefing_collateral: FixedU128::checked_from_rational(1, 10).unwrap(), // 10%
 		},
 		nomination: NominationConfig { is_nomination_enabled: false },
+		dia_oracle_module: DiaOracleModuleConfig {
+			authorized_accounts: authorized_oracles,
+			supported_currencies: vec![
+				AssetId::new(b"Kusama".to_vec(), b"KSM".to_vec()),
+				AssetId::new(b"Polkadot".to_vec(), b"DOT".to_vec()),
+				// The order of currencies in the FIAT symbols matter and USD should always be the
+				// target currency ie the second one in the pair
+				AssetId::new(b"FIAT".to_vec(), b"USD-USD".to_vec()),
+				AssetId::new(b"FIAT".to_vec(), b"MXN-USD".to_vec()),
+			],
+			batching_api: b"http://localhost:8070/currencies".to_vec(),
+			coin_infos_map: vec![],
+		},
 	}
 }

@@ -13,7 +13,7 @@ Run `cargo build` from the root folder of this directory.
 To add this pallet to your runtime, simply include the following to your runtime's `Cargo.toml` file:
 
 ```TOML
-[dependencies.btc-relay]
+[dependencies.stellar-relay]
 default_features = false
 git = '../creates/oracle'
 ```

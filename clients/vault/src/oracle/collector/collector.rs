@@ -21,7 +21,8 @@ pub struct ScpMessageCollector {
 	/// An entry is removed when a `TransactionSet` is found.
 	txset_and_slot_map: Arc<RwLock<TxSetHashAndSlotMap>>,
 
-	last_slot_index: Arc<RwLock<u64>>,
+	/// The last slot with an SCPEnvelope(
+	last_scp_ext_slot: u64,
 
 	public_network: bool,
 }
@@ -32,7 +33,7 @@ impl ScpMessageCollector {
 			envelopes_map: Default::default(),
 			txset_map: Default::default(),
 			txset_and_slot_map: Arc::new(Default::default()),
-			last_slot_index: Arc::new(Default::default()),
+			last_scp_ext_slot: 0,
 			public_network,
 		}
 	}
@@ -76,8 +77,8 @@ impl ScpMessageCollector {
 		self.txset_and_slot_map.read().get_txset_hash(slot).cloned()
 	}
 
-	pub(crate) fn last_slot_index(&self) -> RwLockReadGuard<'_, RawRwLock, u64> {
-		self.last_slot_index.read()
+	pub(crate) fn last_scp_ext_slot(&self) -> u64 {
+		self.last_scp_ext_slot
 	}
 }
 
@@ -85,17 +86,15 @@ impl ScpMessageCollector {
 impl ScpMessageCollector {
 	pub(super) fn add_scp_envelope(&self, slot: Slot, scp_envelope: ScpEnvelope) {
 		// insert/add the externalized message to map.
-		{
-			let mut envelopes_map = self.envelopes_map.write();
+		let mut envelopes_map = self.envelopes_map.write();
 
-			if let Some(value) = envelopes_map.get_with_key(&slot) {
-				let mut value = value.clone();
-				value.push(scp_envelope);
-				envelopes_map.set_with_key(slot, value);
-			} else {
-				tracing::debug!("Adding received SCP envelopes for slot {}", slot);
-				envelopes_map.set_with_key(slot, vec![scp_envelope]);
-			}
+		if let Some(value) = envelopes_map.get_with_key(&slot) {
+			let mut value = value.clone();
+			value.push(scp_envelope);
+			envelopes_map.set_with_key(slot, value);
+		} else {
+			tracing::debug!("Adding received SCP envelopes for slot {}", slot);
+			envelopes_map.set_with_key(slot, vec![scp_envelope]);
 		}
 	}
 
@@ -103,7 +102,7 @@ impl ScpMessageCollector {
 		let slot = {
 			let mut map_write = self.txset_and_slot_map.write();
 			map_write.remove_by_txset_hash(txset_hash).map(|slot| {
-				tracing::info!("saved txset_hash for slot: {:?}", slot);
+				tracing::debug!("saved txset_hash for slot: {:?}", slot);
 				self.txset_map.write().set_with_key(slot, tx_set);
 				slot
 			})
@@ -120,10 +119,9 @@ impl ScpMessageCollector {
 		m.insert(txset_hash, slot);
 	}
 
-	pub(super) fn set_last_slot_index(&self, slot: Slot) {
-		let mut last_slot_index = self.last_slot_index.write();
-		if slot > *last_slot_index {
-			*last_slot_index = slot;
+	pub(super) fn set_last_scp_ext_slot(&mut self, slot: Slot) {
+		if slot > self.last_scp_ext_slot {
+			self.last_scp_ext_slot = slot;
 		}
 	}
 }
@@ -233,23 +231,18 @@ mod test {
 	}
 
 	#[test]
-	fn set_last_slot_index_works() {
-		let collector = ScpMessageCollector::new(true);
-		{
-			let mut idx = collector.last_slot_index.write();
-			*idx = 10;
-		}
-		{
-			collector.set_last_slot_index(9);
-			// there should be no change.
-			let res = collector.last_slot_index.read();
-			assert_eq!(*res, 10);
-		}
-		{
-			collector.set_last_slot_index(15);
-			let res = collector.last_slot_index.read();
-			assert_eq!(*res, 15);
-		}
+	fn set_last_scp_ext_slot_works() {
+		let mut collector = ScpMessageCollector::new(true);
+		collector.last_scp_ext_slot = 10;
+
+		collector.set_last_scp_ext_slot(9);
+		// there should be no change.
+		let res = collector.last_scp_ext_slot;
+		assert_eq!(res, 10);
+
+		collector.set_last_scp_ext_slot(15);
+		let res = collector.last_scp_ext_slot;
+		assert_eq!(res, 15);
 	}
 
 	#[test]

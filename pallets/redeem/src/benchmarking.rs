@@ -2,7 +2,7 @@ use frame_benchmarking::{account, benchmarks, impl_benchmark_test_suite};
 use frame_support::assert_ok;
 use frame_system::RawOrigin;
 use orml_traits::MultiCurrency;
-use sp_core::H256;
+use sp_core::{Get, H256};
 use sp_runtime::{traits::One, FixedPointNumber};
 use sp_std::prelude::*;
 
@@ -11,13 +11,13 @@ use currency::{
 	testing_constants::get_wrapped_currency_id,
 };
 use oracle::Pallet as Oracle;
-use primitives::{CurrencyId, CurrencyId::Token, TokenSymbol::*, VaultCurrencyPair, VaultId};
+use primitives::{CurrencyId, VaultCurrencyPair, VaultId};
 use security::Pallet as Security;
 use stellar_relay::{
 	testing_utils::{
 		build_dummy_proof_for, get_validators_and_organizations, DEFAULT_STELLAR_PUBLIC_KEY,
 	},
-	Pallet as StellarRelay,
+	Config as StellarRelayConfig, Pallet as StellarRelay,
 };
 use vault_registry::{types::Vault, Pallet as VaultRegistry};
 
@@ -63,16 +63,20 @@ fn initialize_oracle<T: crate::Config>() {
 	let oracle_id: T::AccountId = account("Oracle", 12, 0);
 
 	use primitives::oracle::Key;
-	Oracle::<T>::_feed_values(
+	let result = Oracle::<T>::_feed_values(
 		oracle_id,
 		vec![
 			(
-				Key::ExchangeRate(Token(DOT)),
+				Key::ExchangeRate(get_collateral_currency_id::<T>()),
 				UnsignedFixedPoint::<T>::checked_from_rational(1, 1).unwrap(),
 			),
-			(Key::FeeEstimation, UnsignedFixedPoint::<T>::checked_from_rational(3, 1).unwrap()),
+			(
+				Key::ExchangeRate(get_wrapped_currency_id()),
+				UnsignedFixedPoint::<T>::checked_from_rational(1, 1).unwrap(),
+			),
 		],
 	);
+	assert_ok!(result);
 	Oracle::<T>::begin_block(0u32.into());
 }
 
@@ -105,7 +109,7 @@ benchmarks! {
 		let origin: T::AccountId = account("Origin", 0, 0);
 		let vault_id = get_vault_id::<T>();
 		let amount = Redeem::<T>::redeem_minimum_transfer_amount() + 1000u32.into();
-		let asset = Token(DOT);
+		let asset = CurrencyId::XCM(0);
 		let stellar_address = DEFAULT_STELLAR_PUBLIC_KEY;
 
 		initialize_oracle::<T>();
@@ -125,15 +129,13 @@ benchmarks! {
 
 		mint_wrapped::<T>(&origin, amount);
 
-		assert_ok!(Oracle::<T>::_set_exchange_rate(get_collateral_currency_id::<T>(),
+		assert_ok!(Oracle::<T>::_set_exchange_rate(origin.clone(), get_collateral_currency_id::<T>(),
 			UnsignedFixedPoint::<T>::one()
 		));
 	}: _(RawOrigin::Signed(origin), amount, stellar_address, vault_id)
 
 	liquidation_redeem {
-		assert_ok!(Oracle::<T>::_set_exchange_rate(get_collateral_currency_id::<T>(),
-			UnsignedFixedPoint::<T>::one()
-		));
+		initialize_oracle::<T>();
 
 		let origin: T::AccountId = account("Origin", 0, 0);
 		let vault_id = get_vault_id::<T>();
@@ -192,10 +194,10 @@ benchmarks! {
 		let (validators, organizations) = get_validators_and_organizations::<T>();
 		let enactment_block_height = T::BlockNumber::default();
 		StellarRelay::<T>::_update_tier_1_validator_set(validators, organizations, enactment_block_height).unwrap();
-		let public_network = StellarRelay::<T>::is_public_network();
+		let public_network = <T as StellarRelayConfig>::IsPublicNetwork::get();
 		let (tx_env_xdr_encoded, scp_envs_xdr_encoded, tx_set_xdr_encoded) = build_dummy_proof_for::<T>(redeem_id, public_network);
 
-		assert_ok!(Oracle::<T>::_set_exchange_rate(get_collateral_currency_id::<T>(),
+		assert_ok!(Oracle::<T>::_set_exchange_rate(origin, get_collateral_currency_id::<T>(),
 			UnsignedFixedPoint::<T>::one()
 		));
 	}: _(RawOrigin::Signed(vault_id.account_id.clone()), redeem_id, tx_env_xdr_encoded, scp_envs_xdr_encoded, tx_set_xdr_encoded)
@@ -226,7 +228,7 @@ benchmarks! {
 		mint_collateral::<T>(&vault_id.account_id, 1000u32.into());
 		assert_ok!(VaultRegistry::<T>::try_deposit_collateral(&vault_id, &collateral(1000)));
 
-		assert_ok!(Oracle::<T>::_set_exchange_rate(get_collateral_currency_id::<T>(),
+		assert_ok!(Oracle::<T>::_set_exchange_rate(origin.clone(), get_collateral_currency_id::<T>(),
 			UnsignedFixedPoint::<T>::one()
 		));
 	}: cancel_redeem(RawOrigin::Signed(origin), redeem_id, true)
@@ -257,18 +259,13 @@ benchmarks! {
 		mint_collateral::<T>(&vault_id.account_id, 1000u32.into());
 		assert_ok!(VaultRegistry::<T>::try_deposit_collateral(&vault_id, &collateral(1000)));
 
-		assert_ok!(Oracle::<T>::_set_exchange_rate(get_collateral_currency_id::<T>(),
+		assert_ok!(Oracle::<T>::_set_exchange_rate(origin.clone(), get_collateral_currency_id::<T>(),
 			UnsignedFixedPoint::<T>::one()
 		));
 	}: cancel_redeem(RawOrigin::Signed(origin), redeem_id, false)
 
-	set_redeem_period {
-	}: _(RawOrigin::Root, 1u32.into())
-
 	self_redeem {
-		assert_ok!(Oracle::<T>::_set_exchange_rate(get_collateral_currency_id::<T>(),
-			UnsignedFixedPoint::<T>::one()
-		));
+		initialize_oracle::<T>();
 
 		let vault_id = get_vault_id::<T>();
 		let origin = vault_id.account_id.clone();
@@ -294,6 +291,61 @@ benchmarks! {
 			wrapped: get_wrapped_currency_id()
 		};
 	}: _(RawOrigin::Signed(origin), currency_pair, amount.into())
+
+	set_redeem_period {
+	}: _(RawOrigin::Root, 1u32.into())
+
+	mint_tokens_for_reimbursed_redeem {
+		initialize_oracle::<T>();
+
+		let origin: T::AccountId = account("Origin", 0, 0);
+		let vault_id = get_vault_id::<T>();
+		let relayer_id: T::AccountId = account("Relayer", 0, 0);
+
+		initialize_oracle::<T>();
+
+		let origin_stellar_address = DEFAULT_STELLAR_PUBLIC_KEY;
+
+		let redeem_id = H256::zero();
+		let mut redeem_request = test_request::<T>(&vault_id);
+		redeem_request.status = RedeemRequestStatus::Reimbursed(false);
+		redeem_request.stellar_address = origin_stellar_address;
+		Redeem::<T>::insert_redeem_request(&redeem_id, &redeem_request);
+
+		let vault_id = get_vault_id::<T>();
+		let origin = vault_id.account_id.clone();
+		let amount = 1000;
+
+		register_public_key::<T>(vault_id.clone());
+
+		VaultRegistry::<T>::insert_vault(
+			&vault_id,
+			Vault::new(vault_id.clone())
+		);
+
+		mint_wrapped::<T>(&origin, amount.into());
+
+		mint_collateral::<T>(&vault_id.account_id, 100_000u32.into());
+		assert_ok!(VaultRegistry::<T>::try_deposit_collateral(&vault_id, &collateral(100_000)));
+
+		assert_ok!(VaultRegistry::<T>::try_increase_to_be_issued_tokens(&vault_id, &wrapped(amount)));
+		assert_ok!(VaultRegistry::<T>::issue_tokens(&vault_id, &wrapped(amount)));
+
+		let currency_pair = VaultCurrencyPair {
+			collateral: get_collateral_currency_id::<T>(),
+			wrapped: get_wrapped_currency_id()
+		};
+	}: _(RawOrigin::Signed(origin), currency_pair, redeem_id)
+
+	rate_limit_update {
+		let limit_volume_amount: Option<BalanceOf<T>> = Some(1u32.into());
+		let limit_volume_currency_id: T::CurrencyId = get_wrapped_currency_id();
+		let interval_length: T::BlockNumber = 1u32.into();
+	}: _(RawOrigin::Root, limit_volume_amount, limit_volume_currency_id, interval_length)
+
+	minimum_transfer_amount_update {
+		let new_minimum_amount: BalanceOf<T> = 1u32.into();
+	}: _(RawOrigin::Root, new_minimum_amount)
 }
 
 impl_benchmark_test_suite!(

@@ -6,7 +6,7 @@ use service::{spawn_cancelable, Error as ServiceError};
 use crate::{execution::*, oracle::OracleAgent, system::VaultIdManager, Error};
 
 /// Listen for RequestRedeemEvent directed at this vault; upon reception, transfer
-/// bitcoin and call execute_redeem
+/// the respective Stellar asset and call execute_redeem.
 ///
 /// # Arguments
 ///
@@ -29,8 +29,6 @@ pub async fn listen_for_redeem_requests(
 					Some(x) => x,
 					None => return, // event not directed at this vault
 				};
-
-				// let _ = publish_expected_bitcoin_balance(&vault, parachain_rpc.clone()).await;
 
 				// within this event callback, we captured the arguments of
 				// listen_for_redeem_requests by reference. Since spawn requires static lifetimes,

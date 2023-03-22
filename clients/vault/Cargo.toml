@@ -7,9 +7,10 @@ version = "0.0.1"
 
 [features]
 integration = []
-parachain-metadata = ["runtime/parachain-metadata"]
 standalone-metadata = ["runtime/standalone-metadata"]
-multi-address = ["runtime/multi-address"]
+parachain-metadata-pendulum = ["runtime/parachain-metadata-pendulum"]
+parachain-metadata-amplitude = ["runtime/parachain-metadata-amplitude"]
+parachain-metadata-foucoco = ["runtime/parachain-metadata-foucoco"]
 
 [dependencies]
 async-trait = "0.1.40"
@@ -53,12 +54,12 @@ stellar-relay-lib = { package = "stellar-relay-lib", path = "../stellar-relay-li
 primitives = { path = "../../primitives", package = "spacewalk-primitives" }
 
 # Substrate dependencies
-sp-arithmetic = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.31" }
-sp-core = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.31" }
-sp-io = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.31" }
-sp-keyring = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.31" }
-sp-runtime = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.31" }
-sp-std = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.31" }
+sp-arithmetic = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.37" }
+sp-core = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.37" }
+sp-io = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.37" }
+sp-keyring = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.37" }
+sp-runtime = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.37" }
+sp-std = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.37" }
 
 parking_lot = "0.12.1"
 err-derive = "0.3.1"
@@ -66,6 +67,7 @@ flate2 = "1.0"
 
 [dev-dependencies]
 mockall = "0.8.1"
+ntest = "0.9.0"
 
 env_logger = "0.9.0"
 serial_test = "0.9.0"
@@ -75,4 +77,4 @@ runtime = { path = "../runtime", features = ["testing-utils"] }
 subxt = { version = "0.25.0" }
 
 # Substrate dependencies
-frame-support = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.31" }
+frame-support = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.37" }

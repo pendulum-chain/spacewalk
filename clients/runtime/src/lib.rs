@@ -15,10 +15,12 @@ pub use assets::TryFromSymbol;
 pub use error::{Error, SubxtError};
 pub use primitives::CurrencyInfo;
 pub use retry::{notify_retry, RetryPolicy};
+#[cfg(feature = "testing-utils")]
+pub use rpc::SudoPallet;
 pub use rpc::{
 	CollateralBalancesPallet, IssuePallet, OraclePallet, RedeemPallet, ReplacePallet,
-	SecurityPallet, SpacewalkParachain, StellarRelayPallet, SudoPallet, UtilFuncs,
-	VaultRegistryPallet, DEFAULT_SPEC_NAME, SS58_PREFIX,
+	SecurityPallet, SpacewalkParachain, StellarRelayPallet, UtilFuncs, VaultRegistryPallet,
+	DEFAULT_SPEC_NAME, SS58_PREFIX,
 };
 pub use shutdown::{ShutdownReceiver, ShutdownSender};
 pub use types::*;
@@ -42,30 +44,51 @@ pub mod types;
 pub const TX_FEES: u128 = 2000000000;
 pub const MILLISECS_PER_BLOCK: u64 = 6000;
 
-pub const BTC_RELAY_MODULE: &str = "BTCRelay";
+pub const STELLAR_RELAY_MODULE: &str = "StellarRelay";
 pub const ISSUE_MODULE: &str = "Issue";
 pub const REDEEM_MODULE: &str = "Redeem";
-pub const RELAY_MODULE: &str = "Relay";
 pub const SECURITY_MODULE: &str = "Security";
 pub const SYSTEM_MODULE: &str = "System";
 
-pub const STABLE_BITCOIN_CONFIRMATIONS: &str = "StableBitcoinConfirmations";
 pub const STABLE_PARACHAIN_CONFIRMATIONS: &str = "StableParachainConfirmations";
 
-// We are using the `metadata-standalone.scale` file here as well because currently the
-// spacewalk pallets are not installed on any parachain but we want to keep this feature for the
-// future.
+// Sanity check: Make sure that at least one feature is selected.
+#[cfg(not(any(
+	feature = "standalone-metadata",
+	feature = "parachain-metadata-foucoco",
+	feature = "parachain-metadata-pendulum",
+	feature = "parachain-metadata-amplitude"
+)))]
+compile_error!("You need to select at least one of the metadata features");
+
+// All of the parachain features use the same metadata (from Foucoco) for now.
+// We can change this once the spacewalk pallets were added to the runtimes of the other chains as
+// well.
 #[cfg_attr(
-	feature = "parachain-metadata",
+	feature = "standalone-metadata",
 	subxt(
 		runtime_metadata_path = "metadata-standalone.scale",
 		derive_for_all_types = "Clone, PartialEq, Eq",
 	)
 )]
 #[cfg_attr(
-	feature = "standalone-metadata",
+	feature = "parachain-metadata-pendulum",
 	subxt(
-		runtime_metadata_path = "metadata-standalone.scale",
+		runtime_metadata_path = "metadata-parachain-foucoco.scale",
+		derive_for_all_types = "Clone, PartialEq, Eq",
+	)
+)]
+#[cfg_attr(
+	feature = "parachain-metadata-amplitude",
+	subxt(
+		runtime_metadata_path = "metadata-parachain-amplitude.scale",
+		derive_for_all_types = "Clone, PartialEq, Eq",
+	)
+)]
+#[cfg_attr(
+	feature = "parachain-metadata-foucoco",
+	subxt(
+		runtime_metadata_path = "metadata-parachain-foucoco.scale",
 		derive_for_all_types = "Clone, PartialEq, Eq",
 	)
 )]

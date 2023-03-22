@@ -1,8 +1,12 @@
 use frame_support::dispatch::DispatchError;
+use orml_traits::MultiCurrency;
 
 use crate::Config;
 
-pub type CurrencyId<T> = <T as orml_tokens::Config>::CurrencyId;
+pub type CurrencyId<T> = <<T as orml_currencies::Config>::MultiCurrency as MultiCurrency<
+	<T as frame_system::Config>::AccountId,
+>>::CurrencyId;
+
 pub type AccountIdOf<T> = <T as frame_system::Config>::AccountId;
 
 pub(crate) type BalanceOf<T> = <T as Config>::Balance;

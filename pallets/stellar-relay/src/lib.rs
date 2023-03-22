@@ -2,6 +2,7 @@
 
 extern crate core;
 
+pub use default_weights::SubstrateWeight;
 /// Edit this file to define custom logic or remove it if it is not needed.
 /// Learn more about FRAME and the core library of Substrate FRAME pallets:
 /// <https://docs.substrate.io/v3/runtime/frame>
@@ -30,6 +31,7 @@ pub mod pallet {
 	use frame_support::{pallet_prelude::*, transactional};
 	use frame_system::pallet_prelude::*;
 	use sha2::{Digest, Sha256};
+	use sp_core::H256;
 	use sp_std::{collections::btree_map::BTreeMap, fmt::Debug, vec::Vec};
 	use substrate_stellar_sdk::{
 		compound_types::UnlimitedVarArray,
@@ -38,7 +40,7 @@ pub mod pallet {
 			NodeId, ScpEnvelope, ScpStatementExternalize, ScpStatementPledges, StellarValue,
 			TransactionSet,
 		},
-		Hash, TransactionEnvelope, XdrCodec,
+		Hash, Memo, TransactionEnvelope, XdrCodec,
 	};
 
 	use default_weights::WeightInfo;
@@ -77,6 +79,9 @@ pub mod pallet {
 		#[pallet::constant]
 		type ValidatorLimit: Get<u32>;
 
+		#[pallet::constant]
+		type IsPublicNetwork: Get<bool>;
+
 		type WeightInfo: WeightInfo;
 	}
 
@@ -110,10 +115,14 @@ pub mod pallet {
 		NoOrganizationsRegistered,
 		NoValidatorsRegistered,
 		OrganizationLimitExceeded,
+		TransactionMemoDoesNotMatch,
 		TransactionNotInTransactionSet,
 		TransactionSetHashCreationFailed,
 		TransactionSetHashMismatch,
 		ValidatorLimitExceeded,
+		DuplicateOrganizationId,
+		DuplicateValidatorPublicKey,
+		FailedToComputenonGenericTxSetContentHash,
 	}
 
 	#[pallet::storage]
@@ -137,10 +146,6 @@ pub mod pallet {
 		StorageValue<_, BoundedVec<ValidatorOf<T>, T::ValidatorLimit>, ValueQuery>;
 
 	#[pallet::storage]
-	#[pallet::getter(fn is_public_network)]
-	pub type IsPublicNetwork<T: Config> = StorageValue<_, bool, ValueQuery>;
-
-	#[pallet::storage]
 	#[pallet::getter(fn new_validators_enactment_block_height)]
 	pub type NewValidatorsEnactmentBlockHeight<T: Config> =
 		StorageValue<_, T::BlockNumber, ValueQuery>;
@@ -151,7 +156,6 @@ pub mod pallet {
 		pub old_organizations: Vec<OrganizationOf<T>>,
 		pub validators: Vec<ValidatorOf<T>>,
 		pub organizations: Vec<OrganizationOf<T>>,
-		pub is_public_network: bool,
 		pub enactment_block_height: T::BlockNumber,
 		pub phantom: PhantomData<T>,
 	}
@@ -369,7 +373,6 @@ pub mod pallet {
 				old_validators,
 				validators,
 				organizations,
-				is_public_network: true,
 				enactment_block_height,
 				phantom: Default::default(),
 			}
@@ -403,7 +406,6 @@ pub mod pallet {
 			assert!(organization_vec.is_ok());
 			Organizations::<T>::put(organization_vec.unwrap());
 
-			IsPublicNetwork::<T>::put(self.is_public_network);
 			NewValidatorsEnactmentBlockHeight::<T>::put(self.enactment_block_height);
 		}
 	}
@@ -420,6 +422,7 @@ pub mod pallet {
 		/// validators possible.
 		///
 		/// It can only be called by the root origin.
+		#[pallet::call_index(0)]
 		#[pallet::weight(<T as Config>::WeightInfo::update_tier_1_validator_set())]
 		#[transactional]
 		pub fn update_tier_1_validator_set(
@@ -453,37 +456,63 @@ pub mod pallet {
 				Error::<T>::OrganizationLimitExceeded
 			);
 
+			let mut organization_id_set = BTreeMap::<T::OrganizationId, u32>::new();
+			for organization in organizations.iter() {
+				organization_id_set
+					.entry(organization.id)
+					.and_modify(|e| {
+						*e += 1;
+					})
+					.or_insert(1);
+			}
+
+			// If the length of the set does not match the length of the original vector we know
+			// that there was a duplicate
+			ensure!(
+				organizations.len() == organization_id_set.len(),
+				Error::<T>::DuplicateOrganizationId
+			);
+
+			let mut validators_public_key_set = BTreeMap::<BoundedVec<u8, FieldLength>, u32>::new();
+			for validator in validators.iter() {
+				validators_public_key_set
+					.entry(validator.public_key.clone())
+					.and_modify(|e| {
+						*e += 1;
+					})
+					.or_insert(1);
+			}
+
+			// If the length of the set does not match the length of the original vector we know
+			// that there was a duplicate
+			ensure!(
+				validators.len() == validators_public_key_set.len(),
+				Error::<T>::DuplicateValidatorPublicKey
+			);
+
 			let current_validators = Validators::<T>::get();
-			// Filter validators for selected network type
-			let current_validators = current_validators.into_iter().collect::<Vec<_>>();
-
-			let current_validators =
-				BoundedVec::<ValidatorOf<T>, T::ValidatorLimit>::try_from(current_validators)
-					.map_err(|_| Error::<T>::BoundedVecCreationFailed)?;
-			OldValidators::<T>::put(current_validators);
-
 			let current_organizations = Organizations::<T>::get();
-			// Filter organizations for selected network type
-			let current_organizations = current_organizations.into_iter().collect::<Vec<_>>();
-
-			let current_organizations =
-				BoundedVec::<OrganizationOf<T>, T::OrganizationLimit>::try_from(
-					current_organizations,
-				)
-				.map_err(|_| Error::<T>::BoundedVecCreationFailed)?;
-			OldOrganizations::<T>::put(current_organizations);
 
 			NewValidatorsEnactmentBlockHeight::<T>::put(enactment_block_height);
 
 			let new_validator_vec =
 				BoundedVec::<ValidatorOf<T>, T::ValidatorLimit>::try_from(validators)
 					.map_err(|_| Error::<T>::BoundedVecCreationFailed)?;
-			Validators::<T>::put(new_validator_vec);
 
 			let new_organization_vec =
 				BoundedVec::<OrganizationOf<T>, T::OrganizationLimit>::try_from(organizations)
 					.map_err(|_| Error::<T>::BoundedVecCreationFailed)?;
-			Organizations::<T>::put(new_organization_vec);
+
+			// update only when new organization or validators not equal to old organization or
+			// validators
+			if new_organization_vec != current_organizations ||
+				new_validator_vec != current_validators
+			{
+				OldValidators::<T>::put(current_validators);
+				OldOrganizations::<T>::put(current_organizations);
+				Validators::<T>::put(new_validator_vec);
+				Organizations::<T>::put(new_organization_vec);
+			}
 
 			Self::deposit_event(Event::<T>::UpdateTier1ValidatorSet {
 				new_validators_enactment_block_height: enactment_block_height,
@@ -507,7 +536,7 @@ pub mod pallet {
 			transaction_set: &TransactionSet,
 		) -> Result<(), Error<T>> {
 			let network: &Network =
-				if Self::is_public_network() { &PUBLIC_NETWORK } else { &TEST_NETWORK };
+				if T::IsPublicNetwork::get() { &PUBLIC_NETWORK } else { &TEST_NETWORK };
 
 			// Check if tx is included in the transaction set
 			let tx_hash = transaction_envelope.get_hash(network);
@@ -541,7 +570,8 @@ pub mod pallet {
 			}
 
 			// Check if transaction set matches tx_set_hash included in the ScpEnvelopes
-			let expected_tx_set_hash = compute_non_generic_tx_set_content_hash(transaction_set);
+			let expected_tx_set_hash = compute_non_generic_tx_set_content_hash(transaction_set)
+				.ok_or(Error::<T>::FailedToComputenonGenericTxSetContentHash)?;
 
 			for envelope in envelopes.get_vec() {
 				match envelope.clone().statement.pledges {
@@ -615,8 +645,9 @@ pub mod pallet {
 			);
 
 			for (organization_id, count) in targeted_organization_map.iter() {
-				let total: &u32 =
-					validator_count_per_organization_map.get(organization_id).unwrap();
+				let total: &u32 = validator_count_per_organization_map
+					.get(organization_id)
+					.ok_or(Error::<T>::NoOrganizationsRegistered)?;
 				// Check that for each of the targeted organizations more than 1/2 of their total
 				// validators were used in the SCP messages
 				ensure!(count * 2 > *total, Error::<T>::InvalidQuorumSetNotEnoughValidators);
@@ -641,9 +672,40 @@ pub mod pallet {
 			let decoded = V::from_xdr(value_xdr).map_err(|_| Error::<T>::InvalidXDR)?;
 			Ok(decoded)
 		}
+
+		pub fn ensure_transaction_memo_matches_hash(
+			transaction_envelope: &TransactionEnvelope,
+			expected_hash: &H256,
+		) -> Result<(), Error<T>> {
+			let tx_memo_hash = get_memo_hash_from_tx_env(transaction_envelope);
+
+			if let Some(included_hash) = tx_memo_hash {
+				ensure!(included_hash == expected_hash.0, Error::TransactionMemoDoesNotMatch);
+			} else {
+				return Err(Error::TransactionMemoDoesNotMatch)
+			}
+
+			Ok(())
+		}
 	}
 
-	pub fn compute_non_generic_tx_set_content_hash(tx_set: &TransactionSet) -> [u8; 32] {
+	fn get_memo_hash_from_tx_env(transaction_envelope: &TransactionEnvelope) -> Option<Hash> {
+		let memo_hash = match transaction_envelope {
+			TransactionEnvelope::EnvelopeTypeTxV0(tx_env) => match tx_env.tx.memo {
+				Memo::MemoHash(hash) => Some(hash),
+				_ => None,
+			},
+			TransactionEnvelope::EnvelopeTypeTx(tx_env) => match tx_env.tx.memo {
+				Memo::MemoHash(hash) => Some(hash),
+				_ => None,
+			},
+			_ => None,
+		};
+
+		memo_hash
+	}
+
+	pub fn compute_non_generic_tx_set_content_hash(tx_set: &TransactionSet) -> Option<[u8; 32]> {
 		let mut hasher = Sha256::new();
 		hasher.update(tx_set.previous_ledger_hash);
 
@@ -651,7 +713,10 @@ pub mod pallet {
 			hasher.update(envelope.to_xdr());
 		});
 
-		hasher.finalize().as_slice().try_into().unwrap()
+		match hasher.finalize().as_slice().try_into() {
+			Ok(data) => Some(data),
+			Err(_) => None,
+		}
 	}
 
 	pub(crate) fn verify_signature(

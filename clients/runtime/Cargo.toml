@@ -1,20 +1,22 @@
 [package]
-authors = ["SatoshiPay"]
+authors = ["Pendulum"]
 edition = "2018"
 name = "runtime"
 version = "1.1.0"
 
 [features]
-default = ["standalone-metadata"]
-multi-address = []
-parachain-metadata = []
+default = []
 standalone-metadata = []
+parachain-metadata-pendulum = []
+parachain-metadata-amplitude = []
+parachain-metadata-foucoco = []
 testing-utils = [
     "tempdir",
     "rand",
     "testchain",
     "testchain-runtime",
     "subxt-client",
+    "oracle"
 ]
 
 [dependencies]
@@ -33,12 +35,12 @@ prometheus = { version = "0.12.0", features = ["process"] }
 url = "2"
 
 # Substrate dependencies
-frame-support = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.31" }
-sp-arithmetic = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.31" }
-sp-keyring = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.31" }
-sp-runtime = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.31" }
-sp-std = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.31" }
-sp-version = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.31" }
+frame-support = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.37" }
+sp-arithmetic = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.37" }
+sp-keyring = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.37" }
+sp-runtime = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.37" }
+sp-std = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.37" }
+sp-version = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.37" }
 
 # Subxt dependencies
 subxt = "0.25.0"
@@ -51,13 +53,14 @@ module-oracle-rpc-runtime-api = { path = "../../pallets/oracle/rpc/runtime-api" 
 primitives = { path = "../../primitives", package = "spacewalk-primitives" }
 
 # Dependencies for the testing utils for integration tests
+oracle = { path = "../../pallets/oracle", optional = true }
 rand = { version = "0.7", optional = true }
 tempdir = { version = "0.3.7", optional = true }
 testchain = { package = "spacewalk-standalone", path = "../../testchain/node", optional = true }
 testchain-runtime = { package = "spacewalk-runtime-standalone", path = "../../testchain/runtime", optional = true }
 
 # Substrate Stellar Dependencies
-substrate-stellar-sdk = { git = "https://github.com/pendulum-chain/substrate-stellar-sdk", branch = "polkadot-v0.9.31" }
+substrate-stellar-sdk = { git = "https://github.com/pendulum-chain/substrate-stellar-sdk", branch = "polkadot-v0.9.37" }
 wallet = { path = "../wallet" }
 
 
@@ -65,6 +68,7 @@ wallet = { path = "../wallet" }
 env_logger = "0.8.3"
 tempdir = "0.3.7"
 runtime = { path = ".", features = ["testing-utils"] }
+testchain-runtime = { package = "spacewalk-runtime-standalone", path = "../../testchain/runtime", features = ["testing-utils"] }
 
 
 

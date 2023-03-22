@@ -1,7 +1,7 @@
 pub use subxt::ext::sp_core::sr25519::Pair as KeyPair;
 
 pub use metadata_aliases::*;
-pub use primitives::{CurrencyId, CurrencyId::Token, TokenSymbol};
+pub use primitives::CurrencyId;
 
 use crate::{metadata, Config, SpacewalkRuntime, SS58_PREFIX};
 
@@ -26,7 +26,6 @@ mod metadata_aliases {
 			CancelIssue as CancelIssueEvent, ExecuteIssue as ExecuteIssueEvent,
 			RequestIssue as RequestIssueEvent,
 		},
-		oracle::events::FeedValues as FeedValuesEvent,
 		redeem::events::{
 			ExecuteRedeem as ExecuteRedeemEvent, RequestRedeem as RequestRedeemEvent,
 		},
@@ -74,7 +73,6 @@ mod metadata_aliases {
 			Balance,
 			CurrencyId,
 		>;
-	// pub use crate::metadata::runtime_types::spacewalk_primitives::CurrencyId;
 
 	pub type SpacewalkIssueRequest =
 		metadata::runtime_types::spacewalk_primitives::issue::IssueRequest<
@@ -100,8 +98,19 @@ mod metadata_aliases {
 
 	pub type IssueRequestsMap = HashMap<IssueId, SpacewalkIssueRequest>;
 
-	#[cfg(feature = "standalone-metadata")]
-	pub type EncodedCall = metadata::runtime_types::spacewalk_runtime_standalone::RuntimeCall;
+	cfg_if::cfg_if! {
+		if #[cfg(feature = "standalone-metadata")] {
+			pub type EncodedCall = metadata::runtime_types::spacewalk_runtime_standalone::RuntimeCall;
+		} else if #[cfg(feature = "parachain-metadata-pendulum")] {
+			pub type EncodedCall = metadata::runtime_types::foucoco_runtime::RuntimeCall;
+			// TODO Eventually change to
+			// pub type EncodedCall = metadata::runtime_types::pendulum_runtime::RuntimeCall;
+		} else if #[cfg(feature = "parachain-metadata-amplitude")] {
+			pub type EncodedCall = metadata::runtime_types::amplitude_runtime::RuntimeCall;
+		} else if #[cfg(feature = "parachain-metadata-foucoco")] {
+			pub type EncodedCall = metadata::runtime_types::foucoco_runtime::RuntimeCall;
+		}
+	}
 }
 
 pub mod currency_id {
@@ -234,7 +243,10 @@ mod vault_id {
 
 mod dispatch_error {
 	use crate::metadata::{
-		runtime_types::sp_runtime::{ArithmeticError, ModuleError, TokenError, TransactionalError},
+		runtime_types::{
+			sp_arithmetic::ArithmeticError,
+			sp_runtime::{ModuleError, TokenError, TransactionalError},
+		},
 		DispatchError,
 	};
 

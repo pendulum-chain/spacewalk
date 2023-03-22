@@ -20,7 +20,7 @@ fn test_get_amount_from_transaction_envelope_works() {
 	run_test(|| {
 		let code: Bytes4 = *b"USDC";
 		let issuer: AssetIssuer = [0; 32];
-		let currency = CurrencyId::AlphaNum4 { code, issuer };
+		let currency = CurrencyId::AlphaNum4(code, issuer);
 		let asset = <Test as Config>::AssetConversion::lookup(currency).unwrap();
 		let recipient_stellar_address = [1u8; 32];
 		let source_account = MuxedAccount::KeyTypeEd25519(recipient_stellar_address);
@@ -85,11 +85,11 @@ fn test_get_amount_from_transaction_envelope_works_for_mismatching_assets() {
 	run_test(|| {
 		let code: Bytes4 = *b"USDC";
 		let issuer: AssetIssuer = [0; 32];
-		let currency = CurrencyId::AlphaNum4 { code, issuer };
+		let currency = CurrencyId::AlphaNum4(code, issuer);
 
 		// use a different asset when creating the transaction
 		let other_issuer: AssetIssuer = [1; 32];
-		let other_currency = CurrencyId::AlphaNum4 { code, issuer: other_issuer };
+		let other_currency = CurrencyId::AlphaNum4(code, other_issuer);
 		let asset = <Test as Config>::AssetConversion::lookup(other_currency).unwrap();
 		let recipient_stellar_address = [1u8; 32];
 		let source_account = MuxedAccount::KeyTypeEd25519(recipient_stellar_address);
@@ -197,22 +197,22 @@ fn test_checked_fixed_point_mul() {
 		let currency = CurrencyId::Native;
 		let tests: Vec<(Amount<Test>, UnsignedFixedPoint, Amount<Test>)> = vec![
 			(
-				Amount::new(10u128.pow(8), currency), // 1 BTC
+				Amount::new(10u128.pow(8), currency), // 1 XLM
 				UnsignedFixedPoint::checked_from_rational(1, 2).unwrap(), // 50%
 				Amount::new(50000000, currency),
 			),
 			(
-				Amount::new(50000000, currency),                            // 0.5 BTC
+				Amount::new(50000000, currency),                            // 0.5 XLM
 				UnsignedFixedPoint::checked_from_rational(5, 100).unwrap(), // 5%
 				Amount::new(2500000, currency),
 			),
 			(
-				Amount::new(25000000, currency), // 0.25 BTC
+				Amount::new(25000000, currency), // 0.25 XLM
 				UnsignedFixedPoint::checked_from_rational(5, 1000).unwrap(), // 0.5%
 				Amount::new(125000, currency),
 			),
 			(
-				Amount::new(12500000, currency), // 0.125 BTC
+				Amount::new(12500000, currency), // 0.125 XLM
 				UnsignedFixedPoint::checked_from_rational(5, 100000).unwrap(), // 0.005%
 				Amount::new(625, currency),
 			),

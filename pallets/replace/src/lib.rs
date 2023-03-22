@@ -25,7 +25,7 @@ use substrate_stellar_sdk::{
 };
 
 use currency::Amount;
-pub use default_weights::WeightInfo;
+pub use default_weights::{SubstrateWeight, WeightInfo};
 pub use pallet::*;
 use primitives::StellarPublicKeyRaw;
 use types::DefaultVaultId;
@@ -77,7 +77,7 @@ pub mod pallet {
 	}
 
 	#[pallet::event]
-	#[pallet::generate_deposit(pub(super) fn deposit_event)]
+	#[pallet::generate_deposit(pub (super) fn deposit_event)]
 	pub enum Event<T: Config> {
 		RequestReplace {
 			old_vault_id: DefaultVaultId<T>,
@@ -114,6 +114,9 @@ pub mod pallet {
 		ReplacePeriodChange {
 			period: T::BlockNumber,
 		},
+		ReplaceMinimumTransferAmountUpdate {
+			new_minimum_amount: BalanceOf<T>,
+		},
 	}
 
 	#[pallet::error]
@@ -140,6 +143,8 @@ pub mod pallet {
 		ReplaceIdNotFound,
 		/// Vault cannot replace different currency.
 		InvalidWrappedCurrency,
+		/// Invalid payment amount
+		InvalidPaymentAmount,
 	}
 
 	/// Vaults create replace requests to transfer locked collateral.
@@ -155,22 +160,25 @@ pub mod pallet {
 	#[pallet::getter(fn replace_period)]
 	pub(super) type ReplacePeriod<T: Config> = StorageValue<_, T::BlockNumber, ValueQuery>;
 
-	/// The minimum amount of btc that is accepted for replace requests; any lower values would
-	/// risk the bitcoin client to reject the payment
+	/// The minimum amount of wrapped assets that is accepted for replace requests
 	#[pallet::storage]
-	#[pallet::getter(fn replace_btc_dust_value)]
-	pub(super) type ReplaceBtcDustValue<T: Config> = StorageValue<_, BalanceOf<T>, ValueQuery>;
+	#[pallet::getter(fn replace_minimum_transfer_amount)]
+	pub(super) type ReplaceMinimumTransferAmount<T: Config> =
+		StorageValue<_, BalanceOf<T>, ValueQuery>;
 
 	#[pallet::genesis_config]
 	pub struct GenesisConfig<T: Config> {
 		pub replace_period: T::BlockNumber,
-		pub replace_btc_dust_value: BalanceOf<T>,
+		pub replace_minimum_transfer_amount: BalanceOf<T>,
 	}
 
 	#[cfg(feature = "std")]
 	impl<T: Config> Default for GenesisConfig<T> {
 		fn default() -> Self {
-			Self { replace_period: Default::default(), replace_btc_dust_value: Default::default() }
+			Self {
+				replace_period: Default::default(),
+				replace_minimum_transfer_amount: Default::default(),
+			}
 		}
 	}
 
@@ -178,7 +186,7 @@ pub mod pallet {
 	impl<T: Config> GenesisBuild<T> for GenesisConfig<T> {
 		fn build(&self) {
 			ReplacePeriod::<T>::put(self.replace_period);
-			ReplaceBtcDustValue::<T>::put(self.replace_btc_dust_value);
+			ReplaceMinimumTransferAmount::<T>::put(self.replace_minimum_transfer_amount);
 		}
 	}
 
@@ -197,7 +205,8 @@ pub mod pallet {
 		///
 		/// * `origin` - sender of the transaction
 		/// * `amount` - amount of issued tokens
-		#[pallet::weight(<T as Config>::WeightInfo::request_replace())]
+		#[pallet::call_index(0)]
+		#[pallet::weight(< T as Config >::WeightInfo::request_replace())]
 		#[transactional]
 		pub fn request_replace(
 			origin: OriginFor<T>,
@@ -219,7 +228,8 @@ pub mod pallet {
 		///
 		/// * `origin` - sender of the transaction: the old vault
 		/// * `amount` - amount of tokens to be withdrawn from being replaced
-		#[pallet::weight(<T as Config>::WeightInfo::withdraw_replace())]
+		#[pallet::call_index(1)]
+		#[pallet::weight(< T as Config >::WeightInfo::withdraw_replace())]
 		#[transactional]
 		pub fn withdraw_replace(
 			origin: OriginFor<T>,
@@ -245,7 +255,8 @@ pub mod pallet {
 		/// * `collateral` - the collateral provided by the new vault to match the replace request
 		///   (for backing the transferred tokens)
 		/// * `stellar_address` - the address that old-vault should transfer the wrapped asset to
-		#[pallet::weight(<T as Config>::WeightInfo::accept_replace())]
+		#[pallet::call_index(2)]
+		#[pallet::weight(< T as Config >::WeightInfo::accept_replace())]
 		#[transactional]
 		pub fn accept_replace(
 			origin: OriginFor<T>,
@@ -270,7 +281,8 @@ pub mod pallet {
 		///
 		/// * `origin` - sender of the transaction: the new vault
 		/// * `replace_id` - the ID of the replacement request
-		#[pallet::weight(<T as Config>::WeightInfo::execute_replace())]
+		#[pallet::call_index(3)]
+		#[pallet::weight(< T as Config >::WeightInfo::execute_replace())]
 		#[transactional]
 		pub fn execute_replace(
 			origin: OriginFor<T>,
@@ -295,7 +307,8 @@ pub mod pallet {
 		///
 		/// * `origin` - sender of the transaction: anyone
 		/// * `replace_id` - the ID of the replacement request
-		#[pallet::weight(<T as Config>::WeightInfo::cancel_replace())]
+		#[pallet::call_index(4)]
+		#[pallet::weight(< T as Config >::WeightInfo::cancel_replace())]
 		#[transactional]
 		pub fn cancel_replace(
 			origin: OriginFor<T>,
@@ -314,7 +327,8 @@ pub mod pallet {
 		/// * `period` - default period for new requests
 		///
 		/// # Weight: `O(1)`
-		#[pallet::weight(<T as Config>::WeightInfo::set_replace_period())]
+		#[pallet::call_index(5)]
+		#[pallet::weight(< T as Config >::WeightInfo::set_replace_period())]
 		#[transactional]
 		pub fn set_replace_period(
 			origin: OriginFor<T>,
@@ -323,6 +337,19 @@ pub mod pallet {
 			ensure_root(origin)?;
 			<ReplacePeriod<T>>::set(period);
 			Self::deposit_event(Event::ReplacePeriodChange { period });
+			Ok(().into())
+		}
+
+		#[pallet::call_index(6)]
+		#[pallet::weight(<T as Config>::WeightInfo::minimum_transfer_amount_update())]
+		#[transactional]
+		pub fn minimum_transfer_amount_update(
+			origin: OriginFor<T>,
+			new_minimum_amount: BalanceOf<T>,
+		) -> DispatchResultWithPostInfo {
+			ensure_root(origin)?;
+			ReplaceMinimumTransferAmount::<T>::set(new_minimum_amount);
+			Self::deposit_event(Event::ReplaceMinimumTransferAmountUpdate { new_minimum_amount });
 			Ok(().into())
 		}
 	}
@@ -357,7 +384,7 @@ impl<T: Config> Pallet<T> {
 
 		// check that total-to-be-replaced is above the minimum
 		ensure!(
-			total_to_be_replaced.ge(&Self::dust_value(vault_id.wrapped_currency()))?,
+			total_to_be_replaced.ge(&Self::minimum_transfer_amount(vault_id.wrapped_currency()))?,
 			Error::<T>::AmountBelowDustAmount
 		);
 
@@ -460,7 +487,8 @@ impl<T: Config> Pallet<T> {
 
 		// check replace_amount is above the minimum
 		ensure!(
-			redeemable_tokens.ge(&Self::dust_value(old_vault_id.wrapped_currency()))?,
+			redeemable_tokens
+				.ge(&Self::minimum_transfer_amount(old_vault_id.wrapped_currency()))?,
 			Error::<T>::AmountBelowDustAmount
 		);
 
@@ -548,12 +576,27 @@ impl<T: Config> Pallet<T> {
 			TransactionSet,
 		>(&transaction_set_xdr_encoded)?;
 
+		// Check that the transaction includes the expected memo to mitigate replay attacks
+		ext::stellar_relay::ensure_transaction_memo_matches_hash::<T>(
+			&transaction_envelope,
+			&replace_id,
+		)?;
+
 		// Verify that the transaction is valid
 		ext::stellar_relay::validate_stellar_transaction::<T>(
 			&transaction_envelope,
 			&envelopes,
 			&transaction_set,
 		)?;
+
+		let paid_amount: Amount<T> = ext::currency::get_amount_from_transaction_envelope::<T>(
+			&transaction_envelope,
+			replace.stellar_address,
+			replace.asset,
+		)?;
+
+		// Check that the transaction contains a payment with at least the expected amount
+		ensure!(paid_amount.ge(&amount)?, Error::<T>::InvalidPaymentAmount);
 
 		// only return griefing collateral if not already slashed
 		let collateral = match replace.status {
@@ -729,7 +772,7 @@ impl<T: Config> Pallet<T> {
 		});
 	}
 
-	pub fn dust_value(currency_id: CurrencyId<T>) -> Amount<T> {
-		Amount::new(ReplaceBtcDustValue::<T>::get(), currency_id)
+	pub fn minimum_transfer_amount(currency_id: CurrencyId<T>) -> Amount<T> {
+		Amount::new(ReplaceMinimumTransferAmount::<T>::get(), currency_id)
 	}
 }

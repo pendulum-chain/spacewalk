@@ -9,10 +9,12 @@ use tokio::{sync::RwLock, time::sleep};
 use crate::{
 	error::Error,
 	types::{FilterWith, TransactionFilterParam},
-	Ledger, LedgerTxEnvMap,
+	LedgerTxEnvMap,
 };
 
 pub type PagingToken = u128;
+// todo: change to Slot
+pub type Ledger = u32;
 
 const POLL_INTERVAL: u64 = 5000;
 
@@ -385,7 +387,7 @@ impl<C: HorizonClient> HorizonFetcher<C> {
 		targets: Arc<RwLock<T>>,
 		filter: impl FilterWith<TransactionFilterParam<T>>,
 		last_paging_token: PagingToken,
-	) -> Result<PagingToken, Error> {
+	) -> PagingToken {
 		let res = self.fetch_latest_txs(last_paging_token).await;
 		let transactions = match res {
 			Ok(txs) => txs._embedded.records,
@@ -403,20 +405,20 @@ impl<C: HorizonClient> HorizonFetcher<C> {
 		let targets = targets.read().await;
 		for transaction in transactions {
 			let tx = transaction.clone();
-			let id = tx.id.clone();
 
 			if filter.is_relevant((tx.clone(), targets.clone())) {
 				tracing::info!(
 					"Adding transaction {:?} with slot {} to the ledger_env_map",
-					String::from_utf8(id.clone()),
+					String::from_utf8(tx.id.clone()),
 					tx.ledger
 				);
-				let tx_env = tx.to_envelope()?;
-				ledger_env_map.write().await.insert(tx.ledger, tx_env);
+				if let Ok(tx_env) = tx.to_envelope() {
+					ledger_env_map.write().await.insert(tx.ledger, tx_env);
+				}
 			}
 		}
 
-		Ok(latest_paging_token)
+		latest_paging_token
 	}
 }
 
@@ -447,17 +449,14 @@ where
 	let mut latest_paging_token: PagingToken = 0;
 
 	loop {
-		if let Ok(new_paging_token) = fetcher
+		latest_paging_token = fetcher
 			.fetch_horizon_and_process_new_transactions(
 				ledger_env_map.clone(),
 				targets.clone(),
 				filter.clone(),
 				latest_paging_token,
 			)
-			.await
-		{
-			latest_paging_token = new_paging_token;
-		}
+			.await;
 
 		sleep(Duration::from_millis(POLL_INTERVAL)).await;
 	}
@@ -634,18 +633,14 @@ mod tests {
 
 		assert!(slot_env_map.read().await.is_empty());
 
-		let mut cursor = 0;
-		if let Ok(next_page) = fetcher
+		let cursor = fetcher
 			.fetch_horizon_and_process_new_transactions(
 				slot_env_map.clone(),
 				issue_hashes.clone(),
 				MockFilter,
-				cursor,
+				0u128,
 			)
-			.await
-		{
-			cursor = next_page;
-		}
+			.await;
 
 		fetcher
 			.fetch_horizon_and_process_new_transactions(
@@ -654,8 +649,7 @@ mod tests {
 				MockFilter,
 				cursor,
 			)
-			.await
-			.unwrap();
+			.await;
 
 		assert!(!slot_env_map.read().await.is_empty());
 	}

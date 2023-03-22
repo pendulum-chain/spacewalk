@@ -7,6 +7,7 @@ use futures::{
 	future::{join, join3, join4},
 	Future, FutureExt, SinkExt,
 };
+use lazy_static::lazy_static;
 use serial_test::serial;
 use sp_keyring::AccountKeyring;
 use sp_runtime::traits::StaticLookup;
@@ -14,13 +15,13 @@ use tokio::{sync::RwLock, time::sleep};
 
 use primitives::H256;
 use runtime::{
-	integration::*, types::*, CurrencyId::Token, FixedPointNumber, FixedU128, IssuePallet,
-	RedeemPallet, ReplacePallet, ShutdownSender, SpacewalkParachain, SudoPallet, UtilFuncs,
-	VaultRegistryPallet,
+	integration::*, types::*, FixedPointNumber, FixedU128, IssuePallet, RedeemPallet,
+	ReplacePallet, ShutdownSender, SpacewalkParachain, SudoPallet, UtilFuncs, VaultRegistryPallet,
 };
 use stellar_relay_lib::sdk::{PublicKey, XdrCodec};
 use vault::{
-	oracle::OracleAgent, service::IssueFilter, Event as CancellationEvent, VaultIdManager,
+	oracle::OracleAgent, service::IssueFilter, ArcRwLock, Event as CancellationEvent,
+	VaultIdManager,
 };
 use wallet::StellarWallet;
 
@@ -28,17 +29,29 @@ const TIMEOUT: Duration = Duration::from_secs(60);
 
 // Be careful when changing these values because they are used in the parachain genesis config
 // and only for some combination of them, secure collateralization thresholds are set.
-const DEFAULT_NATIVE_CURRENCY: CurrencyId = Token(TokenSymbol::PEN);
-const DEFAULT_TESTING_CURRENCY: CurrencyId = Token(TokenSymbol::DOT);
-const DEFAULT_WRAPPED_CURRENCY: CurrencyId = CurrencyId::AlphaNum4 {
-	code: *b"USDC",
-	issuer: [
+const DEFAULT_TESTING_CURRENCY: CurrencyId = CurrencyId::XCM(0);
+const DEFAULT_WRAPPED_CURRENCY: CurrencyId = CurrencyId::AlphaNum4(
+	*b"USDC",
+	[
 		20, 209, 150, 49, 176, 55, 23, 217, 171, 154, 54, 110, 16, 50, 30, 226, 102, 231, 46, 199,
 		108, 171, 97, 144, 240, 161, 51, 109, 72, 34, 159, 139,
 	],
-};
+);
 
+// This has to match the definition in the testchain runtime
+// But if it changes to public we need to change the secret key of the vault that is used.
+const IS_PUBLIC_NETWORK: bool = false;
 const STELLAR_VAULT_SECRET_KEY: &str = "SB6WHKIU2HGVBRNKNOEOQUY4GFC4ZLG5XPGWLEAHTIZXBXXYACC76VSQ";
+
+lazy_static! {
+	static ref WALLET: ArcRwLock<StellarWallet> = Arc::new(RwLock::new(
+		StellarWallet::from_secret_encoded(
+			&STELLAR_VAULT_SECRET_KEY.to_string(),
+			IS_PUBLIC_NETWORK,
+		)
+		.unwrap()
+	));
+}
 
 type StellarPublicKey = [u8; 32];
 
@@ -127,22 +140,17 @@ where
 	set_exchange_rate_and_wait(
 		&parachain_rpc,
 		DEFAULT_TESTING_CURRENCY,
-		FixedU128::from(100000000),
-	)
-	.await;
-	set_exchange_rate_and_wait(
-		&parachain_rpc,
-		DEFAULT_WRAPPED_CURRENCY,
+		// Set exchange rate to 1:1 with USD
 		FixedU128::saturating_from_rational(1u128, 1u128),
 	)
 	.await;
 	set_exchange_rate_and_wait(
 		&parachain_rpc,
-		DEFAULT_NATIVE_CURRENCY,
-		FixedU128::saturating_from_rational(1u128, 100u128),
+		DEFAULT_WRAPPED_CURRENCY,
+		// Set exchange rate to 10:1 with USD
+		FixedU128::saturating_from_rational(1u128, 10u128),
 	)
 	.await;
-	set_stellar_fees(&parachain_rpc, FixedU128::from(1)).await;
 
 	execute(client).await
 }
@@ -160,31 +168,24 @@ where
 	set_exchange_rate_and_wait(
 		&parachain_rpc,
 		DEFAULT_TESTING_CURRENCY,
-		FixedU128::from(100000000),
-	)
-	.await;
-	set_exchange_rate_and_wait(
-		&parachain_rpc,
-		DEFAULT_WRAPPED_CURRENCY,
+		// Set exchange rate to 1:1 with USD
 		FixedU128::saturating_from_rational(1u128, 1u128),
 	)
 	.await;
 	set_exchange_rate_and_wait(
 		&parachain_rpc,
-		DEFAULT_NATIVE_CURRENCY,
-		FixedU128::saturating_from_rational(1u128, 100u128),
+		DEFAULT_WRAPPED_CURRENCY,
+		// Set exchange rate to 10:1 with USD
+		FixedU128::saturating_from_rational(1u128, 10u128),
 	)
 	.await;
-	set_stellar_fees(&parachain_rpc, FixedU128::from(1)).await;
 
 	let vault_provider = setup_provider(client.clone(), AccountKeyring::Charlie).await;
-
-	let account_id = AccountKeyring::Charlie.to_raw_public();
-	// Convert to the subxt AccountId type because unfortunately there is a version mismatch between
-	// the sp_xxx dependencies subxt uses and the ones we use
-	let account_id = subxt::ext::sp_runtime::AccountId32::from(account_id);
-
-	let vault_id = VaultId::new(account_id, DEFAULT_TESTING_CURRENCY, DEFAULT_WRAPPED_CURRENCY);
+	let vault_id = VaultId::new(
+		AccountKeyring::Charlie.into(),
+		DEFAULT_TESTING_CURRENCY,
+		DEFAULT_WRAPPED_CURRENCY,
+	);
 
 	execute(client, vault_id, vault_provider).await
 }
@@ -195,21 +196,13 @@ async fn test_redeem_succeeds() {
 	test_with_vault(|client, vault_id, vault_provider| async move {
 		let user_provider = setup_provider(client.clone(), AccountKeyring::Dave).await;
 
-		let is_public_network = false;
-		let wallet = StellarWallet::from_secret_encoded(
-			&STELLAR_VAULT_SECRET_KEY.to_string(),
-			is_public_network,
-		)
-		.unwrap();
-		let wallet_arc = Arc::new(RwLock::new(wallet));
-
-		let mut oracle_agent = OracleAgent::new(is_public_network).expect("failed to create agent");
+		let mut oracle_agent = OracleAgent::new(IS_PUBLIC_NETWORK).expect("failed to create agent");
 		oracle_agent.start().await.expect("failed to start agent");
 		let oracle_agent = Arc::new(oracle_agent);
 
 		let vault_ids = vec![vault_id.clone()];
 		let vault_id_manager =
-			VaultIdManager::from_map(vault_provider.clone(), wallet_arc.clone(), vault_ids);
+			VaultIdManager::from_map(vault_provider.clone(), WALLET.clone(), vault_ids);
 
 		let issue_amount = 100000;
 		let vault_collateral = get_required_vault_collateral_for_issue(
@@ -220,7 +213,7 @@ async fn test_redeem_succeeds() {
 		.await;
 		tracing::error!("vault_collateral: {vault_collateral}");
 
-		let wallet = wallet_arc.read().await;
+		let wallet = WALLET.read().await;
 		assert_ok!(
 			vault_provider
 				.register_vault_with_public_key(
@@ -234,14 +227,8 @@ async fn test_redeem_succeeds() {
 
 		let shutdown_tx = ShutdownSender::new();
 
-		assert_issue(
-			&user_provider,
-			wallet_arc.clone(),
-			&vault_id,
-			issue_amount,
-			oracle_agent.clone(),
-		)
-		.await;
+		assert_issue(&user_provider, WALLET.clone(), &vault_id, issue_amount, oracle_agent.clone())
+			.await;
 
 		test_service(
 			vault::service::listen_for_redeem_requests(
@@ -252,7 +239,7 @@ async fn test_redeem_succeeds() {
 				oracle_agent,
 			),
 			async {
-				let wallet = wallet_arc.read().await;
+				let wallet = WALLET.read().await;
 				let address = wallet.get_public_key_raw();
 				drop(wallet);
 				let redeem_id =
@@ -270,32 +257,23 @@ async fn test_redeem_succeeds() {
 async fn test_replace_succeeds() {
 	test_with_vault(|client, old_vault_id, old_vault_provider| async move {
 		let new_vault_provider = setup_provider(client.clone(), AccountKeyring::Eve).await;
-		// This conversion is necessary for now because subxt uses newer versions of the sp_xxx
-		// dependencies
-		let eve_account =
-			subxt::ext::sp_runtime::AccountId32::from(AccountKeyring::Eve.to_raw_public());
-		let new_vault_id =
-			VaultId::new(eve_account, DEFAULT_TESTING_CURRENCY, DEFAULT_WRAPPED_CURRENCY);
+		let new_vault_id = VaultId::new(
+			AccountKeyring::Eve.into(),
+			DEFAULT_TESTING_CURRENCY,
+			DEFAULT_WRAPPED_CURRENCY,
+		);
 		let user_provider = setup_provider(client.clone(), AccountKeyring::Dave).await;
 
-		let is_public_network = false;
-		let wallet = StellarWallet::from_secret_encoded(
-			&STELLAR_VAULT_SECRET_KEY.to_string(),
-			is_public_network,
-		)
-		.unwrap();
-		let wallet_arc = Arc::new(RwLock::new(wallet));
-
-		let mut oracle_agent = OracleAgent::new(is_public_network).expect("failed to create agent");
+		let mut oracle_agent = OracleAgent::new(IS_PUBLIC_NETWORK).expect("failed to create agent");
 		oracle_agent.start().await.expect("failed to start agent");
 		let oracle_agent = Arc::new(oracle_agent);
 
 		let vault_ids = vec![new_vault_id.clone()].into_iter().collect();
 		let _vault_id_manager =
-			VaultIdManager::from_map(new_vault_provider.clone(), wallet_arc.clone(), vault_ids);
+			VaultIdManager::from_map(new_vault_provider.clone(), WALLET.clone(), vault_ids);
 		let vault_ids = vec![old_vault_id.clone(), new_vault_id.clone()].into_iter().collect();
 		let vault_id_manager =
-			VaultIdManager::from_map(old_vault_provider.clone(), wallet_arc.clone(), vault_ids);
+			VaultIdManager::from_map(old_vault_provider.clone(), WALLET.clone(), vault_ids);
 
 		let issue_amount = 100000;
 		let vault_collateral = get_required_vault_collateral_for_issue(
@@ -305,7 +283,7 @@ async fn test_replace_succeeds() {
 		)
 		.await;
 
-		let wallet = wallet_arc.read().await;
+		let wallet = WALLET.read().await;
 		assert_ok!(
 			old_vault_provider
 				.register_vault_with_public_key(
@@ -328,7 +306,7 @@ async fn test_replace_succeeds() {
 
 		assert_issue(
 			&user_provider,
-			wallet_arc.clone(),
+			WALLET.clone(),
 			&old_vault_id,
 			issue_amount,
 			oracle_agent.clone(),
@@ -380,23 +358,14 @@ async fn test_replace_succeeds() {
 async fn test_withdraw_replace_succeeds() {
 	test_with_vault(|client, old_vault_id, old_vault_provider| async move {
 		let new_vault_provider = setup_provider(client.clone(), AccountKeyring::Eve).await;
-		// This conversion is necessary for now because subxt uses newer versions of the sp_xxx
-		// dependencies
-		let eve_account =
-			subxt::ext::sp_runtime::AccountId32::from(AccountKeyring::Eve.to_raw_public());
-		let new_vault_id =
-			VaultId::new(eve_account, DEFAULT_TESTING_CURRENCY, DEFAULT_WRAPPED_CURRENCY);
+		let new_vault_id = VaultId::new(
+			AccountKeyring::Eve.into(),
+			DEFAULT_TESTING_CURRENCY,
+			DEFAULT_WRAPPED_CURRENCY,
+		);
 		let user_provider = setup_provider(client.clone(), AccountKeyring::Dave).await;
 
-		let is_public_network = false;
-		let wallet = StellarWallet::from_secret_encoded(
-			&STELLAR_VAULT_SECRET_KEY.to_string(),
-			is_public_network,
-		)
-		.unwrap();
-		let wallet_arc = Arc::new(RwLock::new(wallet));
-
-		let mut oracle_agent = OracleAgent::new(is_public_network).expect("failed to create agent");
+		let mut oracle_agent = OracleAgent::new(IS_PUBLIC_NETWORK).expect("failed to create agent");
 		oracle_agent.start().await.expect("failed to start agent");
 		let oracle_agent = Arc::new(oracle_agent);
 
@@ -407,7 +376,7 @@ async fn test_withdraw_replace_succeeds() {
 			old_vault_id.collateral_currency(),
 		)
 		.await;
-		let wallet = wallet_arc.read().await;
+		let wallet = WALLET.read().await;
 		assert_ok!(
 			old_vault_provider
 				.register_vault_with_public_key(
@@ -430,7 +399,7 @@ async fn test_withdraw_replace_succeeds() {
 
 		assert_issue(
 			&user_provider,
-			wallet_arc.clone(),
+			WALLET.clone(),
 			&old_vault_id,
 			issue_amount,
 			oracle_agent.clone(),
@@ -477,22 +446,13 @@ async fn test_cancel_scheduler_succeeds() {
 		let root_provider = setup_provider(client.clone(), AccountKeyring::Alice).await;
 		let user_provider = setup_provider(client.clone(), AccountKeyring::Dave).await;
 		let new_vault_provider = setup_provider(client.clone(), AccountKeyring::Eve).await;
-		// This conversion is necessary for now because subxt uses newer versions of the sp_xxx
-		// dependencies
-		let eve_account =
-			subxt::ext::sp_runtime::AccountId32::from(AccountKeyring::Eve.to_raw_public());
-		let new_vault_id =
-			VaultId::new(eve_account, DEFAULT_TESTING_CURRENCY, DEFAULT_WRAPPED_CURRENCY);
+		let new_vault_id = VaultId::new(
+			AccountKeyring::Eve.into(),
+			DEFAULT_TESTING_CURRENCY,
+			DEFAULT_WRAPPED_CURRENCY,
+		);
 
-		let is_public_network = false;
-		let wallet = StellarWallet::from_secret_encoded(
-			&STELLAR_VAULT_SECRET_KEY.to_string(),
-			is_public_network,
-		)
-		.unwrap();
-		let wallet_arc = Arc::new(RwLock::new(wallet));
-
-		let mut oracle_agent = OracleAgent::new(is_public_network).expect("failed to create agent");
+		let mut oracle_agent = OracleAgent::new(IS_PUBLIC_NETWORK).expect("failed to create agent");
 		oracle_agent.start().await.expect("failed to start agent");
 		let oracle_agent = Arc::new(oracle_agent);
 
@@ -504,7 +464,7 @@ async fn test_cancel_scheduler_succeeds() {
 		)
 		.await;
 
-		let wallet = wallet_arc.read().await;
+		let wallet = WALLET.read().await;
 		assert_ok!(
 			old_vault_provider
 				.register_vault_with_public_key(
@@ -527,7 +487,7 @@ async fn test_cancel_scheduler_succeeds() {
 
 		assert_issue(
 			&user_provider,
-			wallet_arc.clone(),
+			WALLET.clone(),
 			&old_vault_id,
 			issue_amount,
 			oracle_agent.clone(),
@@ -547,7 +507,7 @@ async fn test_cancel_scheduler_succeeds() {
 		let block_listener = new_vault_provider.clone();
 		let issue_set = Arc::new(RwLock::new(IssueRequestsMap::new()));
 
-		let wallet = wallet_arc.read().await;
+		let wallet = WALLET.read().await;
 		let issue_request_listener = vault::service::listen_for_issue_requests(
 			new_vault_provider.clone(),
 			wallet.get_public_key(),
@@ -644,7 +604,7 @@ async fn test_cancel_scheduler_succeeds() {
 						// Create two new blocks so that the current requests expire (since we set
 						// the periods to 1 before)
 						parachain_rpc.manual_seal().await;
-						sleep(Duration::from_secs(1)).await;
+						sleep(Duration::from_secs(10)).await;
 						parachain_rpc.manual_seal().await;
 					},
 					assert_event::<CancelIssueEvent, _>(
@@ -676,13 +636,8 @@ async fn test_issue_cancel_succeeds() {
 		let user_provider = setup_provider(client.clone(), AccountKeyring::Dave).await;
 		let issue_set = Arc::new(RwLock::new(IssueRequestsMap::new()));
 
-		let is_public_network = false;
-		let wallet = StellarWallet::from_secret_encoded(
-			&STELLAR_VAULT_SECRET_KEY.to_string(),
-			is_public_network,
-		)
-		.unwrap();
-		let issue_filter = IssueFilter::new(&wallet.get_public_key()).expect("Invalid filter");
+		let issue_filter =
+			IssueFilter::new(&WALLET.read().await.get_public_key()).expect("Invalid filter");
 
 		let issue_amount = 100000;
 		let vault_collateral = get_required_vault_collateral_for_issue(
@@ -697,7 +652,7 @@ async fn test_issue_cancel_succeeds() {
 				.register_vault_with_public_key(
 					&vault_id,
 					vault_collateral,
-					wallet.get_public_key_raw(),
+					WALLET.read().await.get_public_key_raw(),
 				)
 				.await
 		);
@@ -727,6 +682,7 @@ async fn test_issue_cancel_succeeds() {
 		let slot_tx_env_map = Arc::new(RwLock::new(HashMap::new()));
 
 		let (issue_event_tx, _issue_event_rx) = mpsc::channel::<CancellationEvent>(16);
+		let wallet = WALLET.read().await;
 		let service = join3(
 			vault::service::listen_for_new_transactions(
 				wallet.get_public_key(),
@@ -755,17 +711,11 @@ async fn test_issue_overpayment_succeeds() {
 	test_with_vault(|client, vault_id, vault_provider| async move {
 		let user_provider = setup_provider(client.clone(), AccountKeyring::Dave).await;
 
-		let is_public_network = false;
-		let mut oracle_agent = OracleAgent::new(is_public_network).expect("failed to create agent");
+		let mut oracle_agent = OracleAgent::new(IS_PUBLIC_NETWORK).expect("failed to create agent");
 		oracle_agent.start().await.expect("failed to start agent");
 		let oracle_agent = Arc::new(oracle_agent);
 
-		let mut wallet = StellarWallet::from_secret_encoded(
-			&STELLAR_VAULT_SECRET_KEY.to_string(),
-			is_public_network,
-		)
-		.unwrap();
-		let public_key = wallet.get_public_key_raw();
+		let public_key = WALLET.read().await.get_public_key_raw();
 
 		let issue_amount = 100000;
 		let over_payment_factor = 3;
@@ -796,7 +746,9 @@ async fn test_issue_overpayment_succeeds() {
 			primitives::AssetConversion::lookup(issue.asset).expect("Asset not found");
 		let memo_hash = issue.issue_id.0;
 
-		let (transaction_response, tx_envelope) = wallet
+		let (transaction_response, tx_envelope) = WALLET
+			.write()
+			.await
 			.send_payment_to_address(
 				destination_public_key,
 				stellar_asset,
@@ -846,15 +798,7 @@ async fn test_automatic_issue_execution_succeeds() {
 	test_with_vault(|client, vault_id, vault_provider| async move {
 		let user_provider = setup_provider(client.clone(), AccountKeyring::Dave).await;
 
-		let is_public_network = false;
-		let wallet = StellarWallet::from_secret_encoded(
-			&STELLAR_VAULT_SECRET_KEY.to_string(),
-			is_public_network,
-		)
-		.unwrap();
-		let wallet_arc = Arc::new(RwLock::new(wallet));
-
-		let mut oracle_agent = OracleAgent::new(is_public_network).expect("failed to create agent");
+		let mut oracle_agent = OracleAgent::new(IS_PUBLIC_NETWORK).expect("failed to create agent");
 		oracle_agent.start().await.expect("failed to start agent");
 		let oracle_agent = Arc::new(oracle_agent);
 
@@ -866,7 +810,7 @@ async fn test_automatic_issue_execution_succeeds() {
 		)
 		.await;
 
-		let wallet = wallet_arc.read().await;
+		let wallet = WALLET.read().await;
 		assert_ok!(
 			vault_provider
 				.register_vault_with_public_key(
@@ -889,7 +833,7 @@ async fn test_automatic_issue_execution_succeeds() {
 				primitives::AssetConversion::lookup(issue.asset).expect("Asset not found");
 			let memo_hash = issue.issue_id.0;
 
-			let mut wallet = wallet_arc.write().await;
+			let mut wallet = WALLET.write().await;
 			let result = wallet
 				.send_payment_to_address(
 					destination_public_key,
@@ -911,7 +855,7 @@ async fn test_automatic_issue_execution_succeeds() {
 			.await;
 		};
 
-		let wallet = wallet_arc.read().await;
+		let wallet = WALLET.read().await;
 		let issue_filter = IssueFilter::new(&wallet.get_public_key()).expect("Invalid filter");
 		let slot_tx_env_map = Arc::new(RwLock::new(HashMap::new()));
 
@@ -955,27 +899,18 @@ async fn test_automatic_issue_execution_succeeds_for_other_vault() {
 	test_with_vault(|client, vault1_id, vault1_provider| async move {
 		let user_provider = setup_provider(client.clone(), AccountKeyring::Dave).await;
 		let vault2_provider = setup_provider(client.clone(), AccountKeyring::Eve).await;
+		let vault2_id = VaultId::new(
+			AccountKeyring::Eve.into(),
+			DEFAULT_TESTING_CURRENCY,
+			DEFAULT_WRAPPED_CURRENCY,
+		);
 
-		// This conversion is necessary for now because subxt uses newer versions of the sp_xxx
-		// dependencies
-		let eve_account =
-			subxt::ext::sp_runtime::AccountId32::from(AccountKeyring::Eve.to_raw_public());
-		let vault2_id =
-			VaultId::new(eve_account, DEFAULT_TESTING_CURRENCY, DEFAULT_WRAPPED_CURRENCY);
-
-		let is_public_network = false;
-		let wallet = StellarWallet::from_secret_encoded(
-			&STELLAR_VAULT_SECRET_KEY.to_string(),
-			is_public_network,
-		)
-		.unwrap();
-		let wallet_arc = Arc::new(RwLock::new(wallet));
-
-		let mut oracle_agent = OracleAgent::new(is_public_network).expect("failed to create agent");
+		let mut oracle_agent = OracleAgent::new(IS_PUBLIC_NETWORK).expect("failed to create agent");
 		oracle_agent.start().await.expect("failed to start agent");
 		let oracle_agent = Arc::new(oracle_agent);
 
 		let issue_amount = 100000;
+
 		let vault_collateral = get_required_vault_collateral_for_issue(
 			&vault1_provider,
 			issue_amount,
@@ -983,7 +918,7 @@ async fn test_automatic_issue_execution_succeeds_for_other_vault() {
 		)
 		.await;
 
-		let wallet = wallet_arc.read().await;
+		let wallet = WALLET.read().await;
 		assert_ok!(
 			vault1_provider
 				.register_vault_with_public_key(
@@ -1018,11 +953,14 @@ async fn test_automatic_issue_execution_succeeds_for_other_vault() {
 				primitives::AssetConversion::lookup(issue.asset).expect("Asset not found");
 			let memo_hash = issue.issue_id.0;
 
+			// Sleep 1 second to give other thread some time to receive the RequestIssue event and
+			// add it to the set
+			sleep(Duration::from_secs(1)).await;
 			let issue_set = issue_set_arc.read().await;
 			assert!(!issue_set.is_empty());
 			drop(issue_set);
 
-			let mut wallet = wallet_arc.write().await;
+			let mut wallet = WALLET.write().await;
 			let result = wallet
 				.send_payment_to_address(
 					destination_public_key,
@@ -1038,7 +976,7 @@ async fn test_automatic_issue_execution_succeeds_for_other_vault() {
 			tracing::info!("Sent payment to address. Ledger is {:?}", result.unwrap().0.ledger);
 
 			// wait for vault2 to execute this issue
-			assert_event::<ExecuteIssueEvent, _>(TIMEOUT, user_provider.clone(), move |x| {
+			assert_event::<ExecuteIssueEvent, _>(TIMEOUT * 3, user_provider.clone(), move |x| {
 				x.vault_id == vault1_id.clone()
 			})
 			.await;
@@ -1051,7 +989,7 @@ async fn test_automatic_issue_execution_succeeds_for_other_vault() {
 			drop(issue_set);
 		};
 
-		let wallet = wallet_arc.read().await;
+		let wallet = WALLET.read().await;
 		let vault_account_public_key = wallet.get_public_key();
 		drop(wallet);
 		let issue_filter = IssueFilter::new(&vault_account_public_key).expect("Invalid filter");
@@ -1060,7 +998,7 @@ async fn test_automatic_issue_execution_succeeds_for_other_vault() {
 		let service = join4(
 			vault::service::listen_for_new_transactions(
 				vault_account_public_key.clone(),
-				is_public_network,
+				IS_PUBLIC_NETWORK,
 				slot_tx_env_map.clone(),
 				issue_set_arc.clone(),
 				issue_filter,
@@ -1094,21 +1032,13 @@ async fn test_execute_open_requests_succeeds() {
 	test_with_vault(|client, vault_id, vault_provider| async move {
 		let user_provider = setup_provider(client.clone(), AccountKeyring::Dave).await;
 
-		let is_public_network = false;
-		let wallet = StellarWallet::from_secret_encoded(
-			&STELLAR_VAULT_SECRET_KEY.to_string(),
-			is_public_network,
-		)
-		.unwrap();
-		let wallet_arc = Arc::new(RwLock::new(wallet));
-
-		let mut oracle_agent = OracleAgent::new(is_public_network).expect("failed to create agent");
+		let mut oracle_agent = OracleAgent::new(IS_PUBLIC_NETWORK).expect("failed to create agent");
 		oracle_agent.start().await.expect("failed to start agent");
 		let oracle_agent = Arc::new(oracle_agent);
 
 		let vault_ids = vec![vault_id.clone()];
 		let vault_id_manager =
-			VaultIdManager::from_map(vault_provider.clone(), wallet_arc.clone(), vault_ids);
+			VaultIdManager::from_map(vault_provider.clone(), WALLET.clone(), vault_ids);
 
 		let issue_amount = 100000;
 		let vault_collateral = get_required_vault_collateral_for_issue(
@@ -1118,7 +1048,7 @@ async fn test_execute_open_requests_succeeds() {
 		)
 		.await;
 
-		let wallet = wallet_arc.read().await;
+		let wallet = WALLET.read().await;
 		assert_ok!(
 			vault_provider
 				.register_vault_with_public_key(
@@ -1130,16 +1060,10 @@ async fn test_execute_open_requests_succeeds() {
 		);
 		drop(wallet);
 
-		assert_issue(
-			&user_provider,
-			wallet_arc.clone(),
-			&vault_id,
-			issue_amount,
-			oracle_agent.clone(),
-		)
-		.await;
+		assert_issue(&user_provider, WALLET.clone(), &vault_id, issue_amount, oracle_agent.clone())
+			.await;
 
-		let wallet = wallet_arc.read().await;
+		let wallet = WALLET.read().await;
 		let address = wallet.get_public_key();
 		let address_raw = wallet.get_public_key_raw();
 		drop(wallet);
@@ -1164,7 +1088,7 @@ async fn test_execute_open_requests_succeeds() {
 		let asset = primitives::AssetConversion::lookup(redeems[0].asset).expect("Invalid asset");
 		let memo_hash = redeem_ids[0].0;
 		// do stellar transfer for redeem 0
-		let mut wallet = wallet_arc.write().await;
+		let mut wallet = WALLET.write().await;
 		assert_ok!(
 			wallet
 				.send_payment_to_address(address, asset, stroop_amount, memo_hash, 300)
@@ -1178,7 +1102,7 @@ async fn test_execute_open_requests_succeeds() {
 				shutdown_tx.clone(),
 				vault_provider,
 				vault_id_manager,
-				wallet_arc.clone(),
+				WALLET.clone(),
 				oracle_agent.clone(),
 				Duration::from_secs(0),
 			)
@@ -1203,15 +1127,7 @@ async fn test_off_chain_liquidation() {
 		let authorized_oracle_provider = setup_provider(client.clone(), AccountKeyring::Bob).await;
 		let user_provider = setup_provider(client.clone(), AccountKeyring::Dave).await;
 
-		let is_public_network = false;
-		let wallet = StellarWallet::from_secret_encoded(
-			&STELLAR_VAULT_SECRET_KEY.to_string(),
-			is_public_network,
-		)
-		.unwrap();
-		let wallet_arc = Arc::new(RwLock::new(wallet));
-
-		let mut oracle_agent = OracleAgent::new(is_public_network).expect("failed to create agent");
+		let mut oracle_agent = OracleAgent::new(IS_PUBLIC_NETWORK).expect("failed to create agent");
 		oracle_agent.start().await.expect("failed to start agent");
 		let oracle_agent = Arc::new(oracle_agent);
 
@@ -1223,7 +1139,7 @@ async fn test_off_chain_liquidation() {
 		)
 		.await;
 
-		let wallet = wallet_arc.read().await;
+		let wallet = WALLET.read().await;
 		assert_ok!(
 			vault_provider
 				.register_vault_with_public_key(
@@ -1235,14 +1151,8 @@ async fn test_off_chain_liquidation() {
 		);
 		drop(wallet);
 
-		assert_issue(
-			&user_provider,
-			wallet_arc.clone(),
-			&vault_id,
-			issue_amount,
-			oracle_agent.clone(),
-		)
-		.await;
+		assert_issue(&user_provider, WALLET.clone(), &vault_id, issue_amount, oracle_agent.clone())
+			.await;
 
 		set_exchange_rate_and_wait(
 			&authorized_oracle_provider,
@@ -1262,19 +1172,11 @@ async fn test_shutdown() {
 		let sudo_provider = setup_provider(client.clone(), AccountKeyring::Alice).await;
 		let user_provider = setup_provider(client.clone(), AccountKeyring::Dave).await;
 
-		// This conversion is necessary for now because subxt uses newer versions of the sp_xxx
-		// dependencies
-		let alice_account =
-			subxt::ext::sp_runtime::AccountId32::from(AccountKeyring::Alice.to_raw_public());
-		let sudo_vault_id =
-			VaultId::new(alice_account, DEFAULT_TESTING_CURRENCY, DEFAULT_WRAPPED_CURRENCY);
-
-		let is_public_network = false;
-		let wallet = StellarWallet::from_secret_encoded(
-			&STELLAR_VAULT_SECRET_KEY.to_string(),
-			is_public_network,
-		)
-		.unwrap();
+		let sudo_vault_id = VaultId::new(
+			AccountKeyring::Alice.into(),
+			DEFAULT_TESTING_CURRENCY,
+			DEFAULT_WRAPPED_CURRENCY,
+		);
 
 		// register a vault..
 		let issue_amount = 100000;
@@ -1290,7 +1192,7 @@ async fn test_shutdown() {
 				.register_vault_with_public_key(
 					&sudo_vault_id,
 					vault_collateral,
-					wallet.get_public_key_raw(),
+					WALLET.read().await.get_public_key_raw(),
 				)
 				.await
 		);

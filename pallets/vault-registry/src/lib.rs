@@ -29,7 +29,7 @@ use sp_std::{
 };
 
 pub use currency::Amount;
-pub use default_weights::WeightInfo;
+pub use default_weights::{SubstrateWeight, WeightInfo};
 pub use pallet::*;
 use primitives::{StellarPublicKeyRaw, VaultCurrencyPair};
 
@@ -163,6 +163,7 @@ pub mod pallet {
 		/// * `InsufficientVaultCollateralAmount` - if the collateral is below the minimum threshold
 		/// * `VaultAlreadyRegistered` - if a vault is already registered for the origin account
 		/// * `InsufficientCollateralAvailable` - if the vault does not own enough collateral
+		#[pallet::call_index(0)]
 		#[pallet::weight(<T as Config>::WeightInfo::register_vault())]
 		#[transactional]
 		pub fn register_vault(
@@ -178,10 +179,11 @@ pub mod pallet {
 		}
 
 		/// Deposit collateral as a security against stealing the
-		/// Bitcoin locked with the caller.
+		/// Stellar assets locked with the caller.
 		///
 		/// # Arguments
 		/// * `amount` - the amount of extra collateral to lock
+		#[pallet::call_index(1)]
 		#[pallet::weight(<T as Config>::WeightInfo::deposit_collateral())]
 		#[transactional]
 		pub fn deposit_collateral(
@@ -223,6 +225,7 @@ pub mod pallet {
 		/// # Errors
 		/// * `VaultNotFound` - if no vault exists for the origin account
 		/// * `InsufficientCollateralAvailable` - if the vault does not own enough collateral
+		#[pallet::call_index(2)]
 		#[pallet::weight(<T as Config>::WeightInfo::withdraw_collateral())]
 		#[transactional]
 		pub fn withdraw_collateral(
@@ -250,7 +253,8 @@ pub mod pallet {
 		/// Registers a new Stellar address for the vault.
 		///
 		/// # Arguments
-		/// * `public_key` - the BTC public key of the vault to update
+		/// * `public_key` - the Stellar public key of the vault to update
+		#[pallet::call_index(3)]
 		#[pallet::weight(<T as Config>::WeightInfo::register_public_key())]
 		#[transactional]
 		pub fn register_public_key(
@@ -278,6 +282,7 @@ pub mod pallet {
 		/// * `accept_new_issues` - true indicates that the vault accepts new issues
 		///
 		/// # Weight: `O(1)`
+		#[pallet::call_index(4)]
 		#[pallet::weight(<T as Config>::WeightInfo::accept_new_issues())]
 		#[transactional]
 		pub fn accept_new_issues(
@@ -301,6 +306,7 @@ pub mod pallet {
 		/// * `custom_threshold` - either the threshold, or None to use the systemwide default
 		///
 		/// # Weight: `O(1)`
+		#[pallet::call_index(5)]
 		#[pallet::weight(<T as Config>::WeightInfo::set_custom_secure_threshold())]
 		#[transactional]
 		pub fn set_custom_secure_threshold(
@@ -315,6 +321,7 @@ pub mod pallet {
 			Ok(().into())
 		}
 
+		#[pallet::call_index(6)]
 		#[pallet::weight(<T as Config>::WeightInfo::report_undercollateralized_vault())]
 		#[transactional]
 		pub fn report_undercollateralized_vault(
@@ -341,6 +348,7 @@ pub mod pallet {
 		/// # Arguments
 		/// * `currency_id` - the collateral's currency id
 		/// * `minimum` - the new minimum collateral
+		#[pallet::call_index(7)]
 		#[pallet::weight(<T as Config>::WeightInfo::set_minimum_collateral())]
 		#[transactional]
 		pub fn set_minimum_collateral(
@@ -358,6 +366,7 @@ pub mod pallet {
 		/// # Arguments
 		/// * `currency_pair` - the currency pair to change
 		/// * `ceiling` - the new collateral ceiling
+		#[pallet::call_index(8)]
 		#[pallet::weight(<T as Config>::WeightInfo::set_system_collateral_ceiling())]
 		#[transactional]
 		pub fn set_system_collateral_ceiling(
@@ -375,6 +384,7 @@ pub mod pallet {
 		/// # Arguments
 		/// * `currency_pair` - the currency pair to change
 		/// * `threshold` - the new secure threshold
+		#[pallet::call_index(9)]
 		#[pallet::weight(<T as Config>::WeightInfo::set_secure_collateral_threshold())]
 		#[transactional]
 		pub fn set_secure_collateral_threshold(
@@ -393,6 +403,7 @@ pub mod pallet {
 		/// # Arguments
 		/// * `currency_pair` - the currency pair to change
 		/// * `ceiling` - the new collateral ceiling
+		#[pallet::call_index(10)]
 		#[pallet::weight(<T as Config>::WeightInfo::set_premium_redeem_threshold())]
 		#[transactional]
 		pub fn set_premium_redeem_threshold(
@@ -411,6 +422,7 @@ pub mod pallet {
 		/// # Arguments
 		/// * `currency_pair` - the currency pair to change
 		/// * `ceiling` - the new collateral ceiling
+		#[pallet::call_index(11)]
 		#[pallet::weight(<T as Config>::WeightInfo::set_liquidation_collateral_threshold())]
 		#[transactional]
 		pub fn set_liquidation_collateral_threshold(
@@ -427,6 +439,7 @@ pub mod pallet {
 		///
 		/// # Arguments
 		/// * `currency_pair` - the currency pair to change
+		#[pallet::call_index(12)]
 		#[pallet::weight(<T as Config>::WeightInfo::recover_vault_id())]
 		#[transactional]
 		pub fn recover_vault_id(
@@ -688,7 +701,7 @@ pub mod pallet {
 	pub(super) type VaultStellarPublicKey<T: Config> =
 		StorageMap<_, Blake2_128Concat, T::AccountId, StellarPublicKeyRaw, OptionQuery>;
 
-	/// Mapping of reserved BTC addresses to the registered account
+	/// Mapping of reserved Stellar addresses to the registered account
 	#[pallet::storage]
 	pub(super) type ReservedAddresses<T: Config> =
 		StorageMap<_, Blake2_128Concat, StellarPublicKeyRaw, DefaultVaultId<T>, OptionQuery>;
@@ -1404,8 +1417,8 @@ impl<T: Config> Pallet<T> {
 	/// # Arguments
 	/// * `currency_id` - the currency being redeemed
 	/// * `redeemer_id` - the account of the user redeeming issued tokens
-	/// * `tokens` - the amount of tokens to be redeemed in collateral with the LiquidationVault,
-	///   denominated in BTC
+	/// * `amount_wrapped` - the amount of assets to be redeemed in collateral with the
+	///   LiquidationVault, denominated in the wrapped asset
 	///
 	/// # Errors
 	/// * `InsufficientTokensCommitted` - if the amount of tokens issued by the liquidation vault is
@@ -1910,7 +1923,7 @@ impl<T: Config> Pallet<T> {
 		Self::get_collateralization(&collateral_in_wrapped, &issued_tokens)
 	}
 
-	/// Gets the minimum amount of collateral required for the given amount of btc
+	/// Gets the minimum amount of collateral required for the given amount of Stellar assets
 	/// with the current threshold and exchange rate
 	///
 	/// # Arguments
@@ -2064,19 +2077,19 @@ impl<T: Config> Pallet<T> {
 
 	fn is_collateral_below_threshold(
 		collateral: &Amount<T>,
-		btc_amount: &Amount<T>,
+		wrapped_amount: &Amount<T>,
 		threshold: UnsignedFixedPoint<T>,
 	) -> Result<bool, DispatchError> {
 		let max_tokens = Self::calculate_max_wrapped_from_collateral_for_threshold(
 			collateral,
-			btc_amount.currency(),
+			wrapped_amount.currency(),
 			threshold,
 		)?;
 		// check if the max_tokens are below the issued tokens
-		max_tokens.lt(btc_amount)
+		max_tokens.lt(wrapped_amount)
 	}
 
-	/// Gets the minimum amount of collateral required for the given amount of btc
+	/// Gets the minimum amount of collateral required for the given amount of Stellar assets
 	/// with the current exchange rate and the given threshold. This function is the
 	/// inverse of calculate_max_wrapped_from_collateral_for_threshold
 	///

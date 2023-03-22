@@ -45,11 +45,11 @@ pub const VERSION_STRING_PUBNET: &str =
 pub const TIER_1_NODE_IP_PUBNET: &str = "15.235.11.99";
 pub const TIER_1_NODE_PORT_PUBNET: u32 = 11625;
 
-pub const OVERLAY_VERSION_TESTNET: u32 = 26;
-pub const MIN_OVERLAY_VERSION_TESTNET: u32 = 23;
+pub const OVERLAY_VERSION_TESTNET: u32 = 27;
+pub const MIN_OVERLAY_VERSION_TESTNET: u32 = 24;
 pub const LEDGER_VERSION_TESTNET: u32 = 19;
 pub const VERSION_STRING_TESTNET: &str =
-	"stellar-core 19.6.0 (b3a6bc28116e80bff7889c2f3bcd7c30dd1ac4d6)";
+	"stellar-core 19.7.0.rc1 (7249363c60e7ddf796187149f6a236f8ad244b2b)";
 // For sdftest-1
 pub const TIER_1_NODE_IP_TESTNET: &str = "34.235.168.98";
 pub const TIER_1_NODE_PORT_TESTNET: u32 = 11625;

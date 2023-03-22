@@ -13,7 +13,7 @@ use substrate_stellar_sdk::{
 
 use crate::{
 	mock::*,
-	traits::{Organization, Validator},
+	traits::{FieldLength, Organization, Validator},
 	types::{OrganizationOf, ValidatorOf},
 	Error,
 };
@@ -105,7 +105,8 @@ fn create_valid_dummy_scp_envelopes(
 	txes.push(transaction_envelope.clone()).unwrap();
 	let transaction_set = TransactionSet { previous_ledger_hash: Hash::default(), txes };
 
-	let tx_set_hash = crate::compute_non_generic_tx_set_content_hash(&transaction_set);
+	let tx_set_hash = crate::compute_non_generic_tx_set_content_hash(&transaction_set)
+		.expect("Should compute non generic tx set content hash");
 
 	let network: &Network = if public_network { &PUBLIC_NETWORK } else { &TEST_NETWORK };
 
@@ -306,8 +307,8 @@ fn validate_stellar_transaction_fails_for_differing_networks() {
 		let (tx_envelope, tx_set, scp_envelopes) = create_valid_dummy_scp_envelopes(
 			validators,
 			validator_secret_keys,
-			// Create scp messages for the test network although the relay is configured in genesis
-			// to use public network
+			// Create scp messages for the test network although the relay is configured in
+			// genesis to use main network
 			false,
 		);
 
@@ -418,11 +419,15 @@ fn update_tier_1_validator_set_works() {
 		let organization = Organization { id: 0, name: Default::default() };
 		let validator = Validator {
 			name: Default::default(),
-			public_key: Default::default(),
+			public_key: BoundedVec::<u8, FieldLength>::try_from(vec![0u8; 128]).unwrap(),
 			organization_id: organization.id,
 		};
-		let validator_set = vec![validator; 3];
-		let organization_set = vec![organization; 3];
+		let mut validator_1 = validator.clone();
+		validator_1.public_key = BoundedVec::<u8, FieldLength>::try_from(vec![1u8; 128]).unwrap();
+		let mut validator_2 = validator.clone();
+		validator_2.public_key = BoundedVec::<u8, FieldLength>::try_from(vec![2u8; 128]).unwrap();
+		let validator_set = vec![validator, validator_1.clone(), validator_2];
+		let organization_set = vec![organization; 1];
 		assert_ok!(SpacewalkRelay::update_tier_1_validator_set(
 			RuntimeOrigin::root(),
 			validator_set.clone(),
@@ -445,11 +450,12 @@ fn update_tier_1_validator_set_works() {
 		let organization = Organization { id: 1, name: Default::default() };
 		let validator = Validator {
 			name: Default::default(),
-			public_key: Default::default(),
+			public_key: BoundedVec::<u8, FieldLength>::try_from(vec![0u8; 128]).unwrap(),
 			organization_id: organization.id,
 		};
-		let new_validator_set = vec![validator; 2];
-		let new_organization_set = vec![organization; 2];
+
+		let new_validator_set = vec![validator, validator_1];
+		let new_organization_set = vec![organization; 1];
 		assert_ne!(validator_set, new_validator_set);
 		assert_ne!(organization_set, new_organization_set);
 
@@ -475,7 +481,7 @@ fn update_tier_1_validator_set_fails_when_set_too_large() {
 		let organization = Organization { id: 0, name: Default::default() };
 		let validator = Validator {
 			name: Default::default(),
-			public_key: Default::default(),
+			public_key: BoundedVec::<u8, FieldLength>::try_from(vec![0u8; 128]).unwrap(),
 			organization_id: organization.id,
 		};
 		// 255 is configured as limit in the test runtime so we try 256
@@ -534,13 +540,14 @@ fn verify_signature_works_for_mock_message() {
 fn update_tier_1_validator_store_old_organization_and_validator_and_block_height_works() {
 	run_test(|_, _, _| {
 		let organization = Organization { id: 0, name: Default::default() };
+
 		let validator = Validator {
-			name: Default::default(),
-			public_key: Default::default(),
+			name: BoundedVec::<u8, FieldLength>::try_from(vec![1u8; 128]).unwrap(),
+			public_key: BoundedVec::<u8, FieldLength>::try_from(vec![1u8; 128]).unwrap(),
 			organization_id: organization.id,
 		};
-		let validator_set = vec![validator; 3];
-		let organization_set = vec![organization; 3];
+		let validator_set = vec![validator; 1];
+		let organization_set = vec![organization; 1];
 		let new_validators_enactment_block_height = 11;
 		assert_ok!(SpacewalkRelay::update_tier_1_validator_set(
 			RuntimeOrigin::root(),
@@ -566,11 +573,14 @@ fn update_tier_1_validator_store_old_organization_and_validator_and_block_height
 		let organization = Organization { id: 1, name: Default::default() };
 		let validator = Validator {
 			name: Default::default(),
-			public_key: Default::default(),
+			public_key: BoundedVec::<u8, FieldLength>::try_from(vec![1u8; 128]).unwrap(),
 			organization_id: organization.id,
 		};
-		let new_validator_set = vec![validator; 2];
-		let new_organization_set = vec![organization; 2];
+		let mut validator_2 = validator.clone();
+		validator_2.public_key = BoundedVec::<u8, FieldLength>::try_from(vec![2u8; 128]).unwrap();
+
+		let new_validator_set = vec![validator, validator_2];
+		let new_organization_set = vec![organization; 1];
 		assert_ne!(validator_set, new_validator_set);
 		assert_ne!(organization_set, new_organization_set);
 
@@ -768,5 +778,42 @@ fn validate_stellar_transaction_works_when_enactment_block_height_reached() {
 			&scp_envelopes,
 			&tx_set,
 		));
+	});
+}
+
+#[test]
+fn update_tier_1_validator_set_fails_for_duplicate_values() {
+	run_test(|_, _, _| {
+		let organization = Organization { id: 0, name: Default::default() };
+
+		let validator = Validator {
+			name: BoundedVec::<u8, FieldLength>::try_from(vec![1u8; 128]).unwrap(),
+			public_key: BoundedVec::<u8, FieldLength>::try_from(vec![1u8; 128]).unwrap(),
+			organization_id: organization.id,
+		};
+		let validator_set = vec![validator.clone(); 2];
+		let organization_set = vec![organization.clone(); 1];
+
+		assert_noop!(
+			SpacewalkRelay::update_tier_1_validator_set(
+				RuntimeOrigin::root(),
+				validator_set.clone(),
+				organization_set.clone(),
+				0
+			),
+			Error::<Test>::DuplicateValidatorPublicKey
+		);
+
+		let validator_set = vec![validator; 1];
+		let organization_set = vec![organization; 2];
+		assert_noop!(
+			SpacewalkRelay::update_tier_1_validator_set(
+				RuntimeOrigin::root(),
+				validator_set.clone(),
+				organization_set.clone(),
+				0
+			),
+			Error::<Test>::DuplicateOrganizationId
+		);
 	});
 }

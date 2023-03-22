@@ -26,12 +26,15 @@ pub use pallet::*;
 pub use crate::types::{ErrorCode, StatusCode};
 
 pub mod types;
+pub use default_weights::{SubstrateWeight, WeightInfo};
 
 #[cfg(test)]
 mod mock;
 
 #[cfg(test)]
 mod tests;
+
+mod default_weights;
 
 #[frame_support::pallet]
 pub mod pallet {
@@ -46,6 +49,9 @@ pub mod pallet {
 	pub trait Config: frame_system::Config {
 		/// The overarching event type.
 		type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
+
+		/// Weight information for the extrinsics in this module.
+		type WeightInfo: WeightInfo;
 	}
 
 	#[pallet::event]
@@ -65,8 +71,7 @@ pub mod pallet {
 	impl<T: Config> Hooks<T::BlockNumber> for Pallet<T> {
 		fn on_initialize(_n: T::BlockNumber) -> Weight {
 			Self::increment_active_block();
-			// TODO: calculate weight
-			Weight::from_ref_time(0)
+			<T as Config>::WeightInfo::on_initialize()
 		}
 	}
 
@@ -91,7 +96,7 @@ pub mod pallet {
 		}
 	}
 
-	/// Integer/Enum defining the current state of the BTC-Parachain.
+	/// Integer/Enum defining the current state of the Spacewalk-Parachain.
 	#[pallet::storage]
 	#[pallet::getter(fn parachain_status)]
 	pub type ParachainStatus<T: Config> = StorageValue<_, StatusCode, ValueQuery>;
@@ -102,7 +107,7 @@ pub mod pallet {
 	pub type Errors<T: Config> = StorageValue<_, BTreeSet<ErrorCode>, ValueQuery>;
 
 	/// Integer increment-only counter, used to prevent collisions when generating identifiers
-	/// for e.g. issue, redeem or replace requests (for OP_RETURN field in Bitcoin).
+	/// for e.g. issue, redeem or replace requests.
 	#[pallet::storage]
 	pub type Nonce<T: Config> = StorageValue<_, U256, ValueQuery>;
 
@@ -130,7 +135,8 @@ pub mod pallet {
 		/// * `status_code` - the status code to set
 		///
 		/// # Weight: `O(1)`
-		#[pallet::weight(0)]
+		#[pallet::call_index(0)]
+		#[pallet::weight(<T as Config>::WeightInfo::set_parachain_status())]
 		#[transactional]
 		pub fn set_parachain_status(
 			origin: OriginFor<T>,
@@ -149,7 +155,8 @@ pub mod pallet {
 		/// * `error_code` - the error code to insert
 		///
 		/// # Weight: `O(1)`
-		#[pallet::weight(0)]
+		#[pallet::call_index(1)]
+		#[pallet::weight(<T as Config>::WeightInfo::insert_parachain_error())]
 		#[transactional]
 		pub fn insert_parachain_error(
 			origin: OriginFor<T>,
@@ -168,7 +175,8 @@ pub mod pallet {
 		/// * `error_code` - the error code to remove
 		///
 		/// # Weight: `O(1)`
-		#[pallet::weight(0)]
+		#[pallet::call_index(2)]
+		#[pallet::weight(<T as Config>::WeightInfo::remove_parachain_error())]
 		#[transactional]
 		pub fn remove_parachain_error(
 			origin: OriginFor<T>,
@@ -264,7 +272,7 @@ impl<T: Config> Pallet<T> {
 		});
 	}
 
-	/// Recovers the BTC Parachain state from an `ORACLE_OFFLINE` error
+	/// Recovers the Spacewalk Parachain state from an `ORACLE_OFFLINE` error
 	/// and sets ParachainStatus to `RUNNING` if there are no other errors.
 	pub fn recover_from_oracle_offline() {
 		Self::recover_from_(vec![ErrorCode::OracleOffline])
@@ -308,6 +316,7 @@ impl<T: Config> Pallet<T> {
 	}
 
 	/// for testing purposes only!
+	#[cfg(feature = "testing-utils")]
 	pub fn set_active_block_number(n: T::BlockNumber) {
 		ActiveBlockCount::<T>::set(n);
 	}

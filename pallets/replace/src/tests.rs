@@ -101,8 +101,9 @@ mod request_replace_tests {
 }
 
 mod accept_replace_tests {
-	use super::*;
 	use stellar_relay::testing_utils::RANDOM_STELLAR_PUBLIC_KEY;
+
+	use super::*;
 
 	fn setup_mocks() {
 		ext::vault_registry::ensure_not_banned::<Test>.mock_safe(|_| MockResult::Return(Ok(())));
@@ -172,7 +173,7 @@ mod accept_replace_tests {
 
 mod execute_replace_test {
 	use currency::Amount;
-	use stellar_relay::testing_utils::create_dummy_scp_structs_encoded;
+	use substrate_stellar_sdk::{types::AlphaNum4, Asset, Operation, PublicKey, StroopAmount};
 
 	use super::*;
 
@@ -185,6 +186,8 @@ mod execute_replace_test {
 		});
 
 		Replace::replace_period.mock_safe(|| MockResult::Return(20));
+		ext::stellar_relay::ensure_transaction_memo_matches_hash::<Test>
+			.mock_safe(move |_, _| MockResult::Return(Ok(())));
 		ext::stellar_relay::validate_stellar_transaction::<Test>
 			.mock_safe(move |_, _, _| MockResult::Return(Ok(())));
 		ext::vault_registry::replace_tokens::<Test>
@@ -203,7 +206,11 @@ mod execute_replace_test {
 		run_test(|| {
 			setup_mocks();
 
-			let structs_encoded = create_dummy_scp_structs_encoded();
+			let op_amount = 10;
+			let op = get_operation(op_amount, DEFAULT_STELLAR_PUBLIC_KEY);
+			let structs_encoded =
+				stellar_relay::testing_utils::create_dummy_scp_structs_with_operation_encoded(op);
+
 			assert_ok!(Replace::_execute_replace(
 				H256::zero(),
 				structs_encoded.0,
@@ -216,6 +223,22 @@ mod execute_replace_test {
 				new_vault_id: NEW_VAULT
 			});
 		})
+	}
+
+	fn get_operation(amount: i64, stellar_address: [u8; 32]) -> Operation {
+		let alpha_num4 = AlphaNum4 {
+			asset_code: *b"USDC",
+			issuer: PublicKey::PublicKeyTypeEd25519([
+				20, 209, 150, 49, 176, 55, 23, 217, 171, 154, 54, 110, 16, 50, 30, 226, 102, 231,
+				46, 199, 108, 171, 97, 144, 240, 161, 51, 109, 72, 34, 159, 139,
+			]),
+		};
+		let stellar_asset = Asset::AssetTypeCreditAlphanum4(alpha_num4);
+		let amount = StroopAmount(amount);
+		let address = PublicKey::PublicKeyTypeEd25519(stellar_address);
+		let op = Operation::new_payment(address, stellar_asset, amount)
+			.expect("Should create operation");
+		op
 	}
 
 	#[test]
@@ -231,7 +254,11 @@ mod execute_replace_test {
 				replace
 			});
 
-			let structs_encoded = create_dummy_scp_structs_encoded();
+			let op_amount = 10;
+			let op = get_operation(op_amount, DEFAULT_STELLAR_PUBLIC_KEY);
+			let structs_encoded =
+				stellar_relay::testing_utils::create_dummy_scp_structs_with_operation_encoded(op);
+
 			assert_ok!(Replace::_execute_replace(
 				H256::zero(),
 				structs_encoded.0,

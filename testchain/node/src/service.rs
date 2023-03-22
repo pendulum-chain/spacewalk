@@ -12,6 +12,7 @@ use sc_service::{
 };
 use sc_telemetry::{Telemetry, TelemetryWorker};
 use sp_consensus_aura::sr25519::AuthorityPair as AuraPair;
+use sp_core::crypto::KeyTypeId;
 
 use primitives::Block;
 use spacewalk_runtime::RuntimeApi;
@@ -154,6 +155,7 @@ pub fn new_partial(
 			registry,
 			check_for_equivocation: Default::default(),
 			telemetry: telemetry.as_ref().map(|x| x.handle()),
+			compatibility_mode: Default::default(),
 		})?
 	};
 
@@ -222,6 +224,17 @@ pub fn new_full(mut config: Configuration) -> Result<(TaskManager, RpcHandlers),
 		})?;
 
 	if config.offchain_worker.enabled {
+		// Initialize seed for signing transaction using off-chain workers. This is a convenience
+		// so learners can see the transactions submitted simply running the node.
+		// Typically these keys should be inserted with RPC calls to `author_insertKey`.
+		let keystore = keystore_container.sync_keystore();
+		// Note that the `KeyTypeId` here is very important and the content must match the one
+		// defined in the DIA oracle pallet. Otherwise the signer key is not available for the
+		// off-chain worker of the pallet.
+		pub const KEY_TYPE: KeyTypeId = KeyTypeId(*b"dia!");
+		sp_keystore::SyncCryptoStore::sr25519_generate_new(&*keystore, KEY_TYPE, Some("//Bob"))
+			.expect("Creating key with account Bob should succeed.");
+
 		sc_service::build_offchain_workers(
 			&config,
 			task_manager.spawn_handle(),
@@ -304,6 +317,7 @@ pub fn new_full(mut config: Configuration) -> Result<(TaskManager, RpcHandlers),
 				block_proposal_slot_portion: SlotProportion::new(2f32 / 3f32),
 				max_block_proposal_slot_portion: None,
 				telemetry: telemetry.as_ref().map(|x| x.handle()),
+				compatibility_mode: Default::default(),
 			},
 		)?;
 

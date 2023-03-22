@@ -1,6 +1,6 @@
 #![cfg_attr(not(feature = "std"), no_std)]
+#![allow(non_upper_case_globals)]
 
-use bstringify::bstringify;
 use codec::{Decode, Encode, MaxEncodedLen};
 use frame_support::error::LookupError;
 use scale_info::TypeInfo;
@@ -12,7 +12,7 @@ pub use sp_runtime::OpaqueExtrinsic as UncheckedExtrinsic;
 use sp_runtime::{
 	generic,
 	traits::{BlakeTwo256, Convert, IdentifyAccount, StaticLookup, Verify},
-	FixedI128, FixedPointNumber, FixedU128, MultiSignature, MultiSigner, RuntimeDebug,
+	FixedI128, FixedPointNumber, FixedU128, MultiSignature, MultiSigner,
 };
 use sp_std::{
 	convert::{From, TryFrom, TryInto},
@@ -24,7 +24,7 @@ use sp_std::{
 };
 use stellar::{
 	types::{AlphaNum12, AlphaNum4},
-	Asset, PublicKey,
+	Asset as StellarAsset, PublicKey,
 };
 pub use substrate_stellar_sdk as stellar;
 use substrate_stellar_sdk::{
@@ -226,7 +226,7 @@ pub mod redeem {
 		#[cfg_attr(feature = "std", serde(deserialize_with = "deserialize_from_string"))]
 		#[cfg_attr(feature = "std", serde(bound(serialize = "Balance: std::fmt::Display")))]
 		#[cfg_attr(feature = "std", serde(serialize_with = "serialize_as_string"))]
-		/// amount the vault should spend on the bitcoin inclusion fee - taken from request amount
+		/// amount the vault should spend on the Stellar inclusion fee - taken from request amount
 		pub transfer_fee: Balance,
 		#[cfg_attr(feature = "std", serde(bound(deserialize = "Balance: std::str::FromStr")))]
 		#[cfg_attr(feature = "std", serde(deserialize_with = "deserialize_from_string"))]
@@ -241,7 +241,7 @@ pub mod redeem {
 		#[cfg_attr(feature = "std", serde(serialize_with = "serialize_as_string"))]
 		/// premium redeem amount in collateral
 		pub premium: Balance,
-		/// the account redeeming tokens (for BTC)
+		/// the account redeeming tokens (for Stellar assets)
 		pub redeemer: AccountId,
 		/// the user's Stellar address for payment verification
 		pub stellar_address: StellarPublicKeyRaw,
@@ -303,7 +303,7 @@ pub mod replace {
 		pub accept_time: BlockNumber,
 		/// the replace period when this request was opened
 		pub period: BlockNumber,
-		/// the Bitcoin address of the new vault
+		/// the Stellar address of the new vault
 		pub stellar_address: StellarPublicKeyRaw,
 		/// the status of this replace request
 		pub status: ReplaceRequestStatus,
@@ -318,7 +318,6 @@ pub mod oracle {
 	#[cfg_attr(feature = "std", serde(rename_all = "camelCase"))]
 	pub enum Key {
 		ExchangeRate(CurrencyId),
-		FeeEstimation,
 	}
 }
 
@@ -381,93 +380,44 @@ pub trait CurrencyInfo {
 	fn decimals(&self) -> u8;
 }
 
-macro_rules! create_currency_id {
-    ($(#[$meta:meta])*
-	$vis:vis enum TokenSymbol {
-        $($(#[$vmeta:meta])* $symbol:ident($name:expr, $deci:literal) = $val:literal,)*
-    }) => {
-		$(#[$meta])*
-		$vis enum TokenSymbol {
-			$($(#[$vmeta])* $symbol = $val,)*
-		}
-
-        $(pub const $symbol: TokenSymbol = TokenSymbol::$symbol;)*
-
-        impl TryFrom<u8> for TokenSymbol {
-			type Error = ();
-
-			fn try_from(v: u8) -> Result<Self, Self::Error> {
-				match v {
-					$($val => Ok(TokenSymbol::$symbol),)*
-					_ => Err(()),
-				}
-			}
-		}
-
-		impl Into<u8> for TokenSymbol {
-			fn into(self) -> u8 {
-				match self {
-					$(TokenSymbol::$symbol => ($val),)*
-				}
-			}
-		}
-
-        impl TokenSymbol {
-			pub fn get_info() -> Vec<(&'static str, u32)> {
-				vec![
-					$((stringify!($symbol), $deci),)*
-				]
-			}
-
-            pub const fn one(&self) -> Balance {
-                10u128.pow(self.decimals() as u32)
-            }
-
-            const fn decimals(&self) -> u8 {
-				match self {
-					$(TokenSymbol::$symbol => $deci,)*
-				}
-			}
-		}
-
-		impl CurrencyInfo for TokenSymbol {
-			fn name(&self) -> &str {
-				match self {
-					$(TokenSymbol::$symbol => $name,)*
-				}
-			}
-			fn symbol(&self) -> &str {
-				match self {
-					$(TokenSymbol::$symbol => stringify!($symbol),)*
-				}
-			}
-			fn decimals(&self) -> u8 {
-				self.decimals()
-			}
-		}
-
-		impl TryFrom<Vec<u8>> for TokenSymbol {
-			type Error = ();
-			fn try_from(v: Vec<u8>) -> Result<TokenSymbol, ()> {
-				match v.as_slice() {
-					$(bstringify!($symbol) => Ok(TokenSymbol::$symbol),)*
-					_ => Err(()),
-				}
-			}
-		}
-    }
+#[derive(
+	Encode, Decode, Eq, Hash, PartialEq, Copy, Clone, PartialOrd, Ord, TypeInfo, MaxEncodedLen,
+)]
+#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
+#[cfg_attr(feature = "std", serde(rename_all = "camelCase"))]
+#[repr(u8)]
+#[allow(clippy::unnecessary_cast)]
+pub enum Asset {
+	StellarNative = 0_u8,
+	AlphaNum4 { code: Bytes4, issuer: AssetIssuer },
+	AlphaNum12 { code: Bytes12, issuer: AssetIssuer },
 }
 
-create_currency_id! {
-	#[derive(Encode, Decode, Eq, Hash, PartialEq, Copy, Clone, RuntimeDebug, PartialOrd, Ord, TypeInfo, MaxEncodedLen)]
-	#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
-	#[repr(u8)]
-	pub enum TokenSymbol {
-		DOT("Polkadot", 10) = 0,
-		PEN("Pendulum", 10) = 1,
+impl CurrencyInfo for Asset {
+	fn name(&self) -> &str {
+		match self {
+			Asset::StellarNative => "Stellar",
+			Asset::AlphaNum4 { code, issuer: _ } => from_utf8(code).unwrap_or("unspecified"),
+			Asset::AlphaNum12 { code, issuer: _ } => from_utf8(code).unwrap_or("unspecified"),
+		}
+	}
 
-		KSM("Kusama", 10) = 10,
-		AMPE("Amplitude", 12) = 12,
+	fn symbol(&self) -> &str {
+		match self {
+			Asset::StellarNative => "XLM",
+			_ => self.name(),
+		}
+	}
+
+	fn decimals(&self) -> u8 {
+		// scaling allows for seven decimal places of precision
+		7
+	}
+}
+
+impl Asset {
+	pub fn one(&self) -> Balance {
+		10u128.pow(self.decimals().into())
 	}
 }
 
@@ -476,16 +426,27 @@ create_currency_id! {
 )]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 #[cfg_attr(feature = "std", serde(rename_all = "camelCase"))]
+#[repr(u8)]
+#[allow(clippy::unnecessary_cast)]
 pub enum CurrencyId {
-	Token(TokenSymbol),
-	ForeignAsset(ForeignAssetId),
-	Native,
-	StellarNative,
-	AlphaNum4 { code: Bytes4, issuer: AssetIssuer },
-	AlphaNum12 { code: Bytes12, issuer: AssetIssuer },
+	Native = 0_u8,
+	XCM(u8),
+	Stellar(Asset),
 }
 
-pub type ForeignAssetId = u32;
+impl CurrencyId {
+	pub const StellarNative: CurrencyId = Self::Stellar(Asset::StellarNative);
+
+	#[allow(non_snake_case)]
+	pub const fn AlphaNum4(code: Bytes4, issuer: AssetIssuer) -> Self {
+		Self::Stellar(Asset::AlphaNum4 { code, issuer })
+	}
+
+	#[allow(non_snake_case)]
+	pub const fn AlphaNum12(code: Bytes12, issuer: AssetIssuer) -> Self {
+		Self::Stellar(Asset::AlphaNum12 { code, issuer })
+	}
+}
 
 #[derive(scale_info::TypeInfo, Encode, Decode, Clone, Eq, PartialEq, Debug)]
 pub struct CustomMetadata {
@@ -507,22 +468,12 @@ impl TryFrom<(&str, &str)> for CurrencyId {
 	type Error = &'static str;
 
 	fn try_from(value: (&str, &str)) -> Result<Self, Self::Error> {
-		let slice = value.0;
 		let issuer_encoded = value.1;
 		let issuer_pk = stellar::PublicKey::from_encoding(issuer_encoded)
 			.map_err(|_| "Invalid issuer encoding")?;
 		let issuer: AssetIssuer = *issuer_pk.as_binary();
-		if slice.len() <= 4 {
-			let mut code: Bytes4 = [0; 4];
-			code[..slice.len()].copy_from_slice(slice.as_bytes());
-			Ok(CurrencyId::AlphaNum4 { code, issuer })
-		} else if slice.len() > 4 && slice.len() <= 12 {
-			let mut code: Bytes12 = [0; 12];
-			code[..slice.len()].copy_from_slice(slice.as_bytes());
-			Ok(CurrencyId::AlphaNum12 { code, issuer })
-		} else {
-			Err("More than 12 bytes not supported")
-		}
+
+		CurrencyId::try_from((value.0, issuer))
 	}
 }
 
@@ -535,11 +486,11 @@ impl TryFrom<(&str, AssetIssuer)> for CurrencyId {
 		if slice.len() <= 4 {
 			let mut code: Bytes4 = [0; 4];
 			code[..slice.len()].copy_from_slice(slice.as_bytes());
-			Ok(CurrencyId::AlphaNum4 { code, issuer })
+			Ok(CurrencyId::AlphaNum4(code, issuer))
 		} else if slice.len() > 4 && slice.len() <= 12 {
 			let mut code: Bytes12 = [0; 12];
 			code[..slice.len()].copy_from_slice(slice.as_bytes());
-			Ok(CurrencyId::AlphaNum12 { code, issuer })
+			Ok(CurrencyId::AlphaNum12(code, issuer))
 		} else {
 			Err("More than 12 bytes not supported")
 		}
@@ -549,17 +500,16 @@ impl TryFrom<(&str, AssetIssuer)> for CurrencyId {
 impl From<stellar::Asset> for CurrencyId {
 	fn from(asset: stellar::Asset) -> Self {
 		match asset {
-			stellar::Asset::Default(_) => CurrencyId::StellarNative,
-			stellar::Asset::AssetTypeNative => CurrencyId::StellarNative,
-			stellar::Asset::AssetTypeCreditAlphanum4(asset_alpha_num4) => CurrencyId::AlphaNum4 {
-				code: asset_alpha_num4.asset_code,
-				issuer: asset_alpha_num4.issuer.into_binary(),
-			},
-			stellar::Asset::AssetTypeCreditAlphanum12(asset_alpha_num12) =>
-				CurrencyId::AlphaNum12 {
-					code: asset_alpha_num12.asset_code,
-					issuer: asset_alpha_num12.issuer.into_binary(),
-				},
+			StellarAsset::Default(_) => CurrencyId::StellarNative,
+			StellarAsset::AssetTypeNative => CurrencyId::StellarNative,
+			StellarAsset::AssetTypeCreditAlphanum4(asset_alpha_num4) => CurrencyId::AlphaNum4(
+				asset_alpha_num4.asset_code,
+				asset_alpha_num4.issuer.into_binary(),
+			),
+			StellarAsset::AssetTypeCreditAlphanum12(asset_alpha_num12) => CurrencyId::AlphaNum12(
+				asset_alpha_num12.asset_code,
+				asset_alpha_num12.issuer.into_binary(),
+			),
 		}
 	}
 }
@@ -569,16 +519,15 @@ impl TryInto<stellar::Asset> for CurrencyId {
 
 	fn try_into(self) -> Result<stellar::Asset, Self::Error> {
 		match self {
-			Self::Token(_) => Err("Token not defined in the Stellar world."),
-			Self::ForeignAsset(_) => Err("Foreign Asset not defined in the Stellar world."),
+			Self::XCM(_currency_id) => Err("XCM Foreign Asset not defined in the Stellar world."),
 			Self::Native => Err("PEN token not defined in the Stellar world."),
 			Self::StellarNative => Ok(stellar::Asset::native()),
-			Self::AlphaNum4 { code, issuer } =>
+			Self::Stellar(Asset::AlphaNum4 { code, issuer }) =>
 				Ok(stellar::Asset::AssetTypeCreditAlphanum4(AlphaNum4 {
 					asset_code: code,
 					issuer: PublicKey::PublicKeyTypeEd25519(issuer),
 				})),
-			Self::AlphaNum12 { code, issuer } =>
+			Self::Stellar(Asset::AlphaNum12 { code, issuer }) =>
 				Ok(stellar::Asset::AssetTypeCreditAlphanum12(AlphaNum12 {
 					asset_code: code,
 					issuer: PublicKey::PublicKeyTypeEd25519(issuer),
@@ -590,34 +539,31 @@ impl TryInto<stellar::Asset> for CurrencyId {
 impl fmt::Debug for CurrencyId {
 	fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
 		match self {
-			Self::Token(token_symbol) => {
-				write!(f, "{:?} ({:?})", token_symbol.name(), token_symbol.symbol())
-			},
-			Self::ForeignAsset(id) => {
-				write!(f, "{:?}", id)
+			Self::XCM(id) => {
+				write!(f, "XCM({:?})", id)
 			},
 			Self::Native => write!(f, "Native"),
-			Self::StellarNative => write!(f, "XLM"),
-			Self::AlphaNum4 { code, issuer } => {
+			&Self::StellarNative => write!(f, "XLM"),
+			Self::Stellar(Asset::AlphaNum4 { code, issuer }) => {
 				write!(
 					f,
 					"{{ code: {}, issuer: {} }}",
-					str::from_utf8(code).unwrap(),
+					str::from_utf8(code).unwrap_or_default(),
 					str::from_utf8(
 						stellar::PublicKey::from_binary(*issuer).to_encoding().as_slice()
 					)
-					.unwrap()
+					.unwrap_or_default()
 				)
 			},
-			Self::AlphaNum12 { code, issuer } => {
+			Self::Stellar(Asset::AlphaNum12 { code, issuer }) => {
 				write!(
 					f,
 					"{{ code: {}, issuer: {} }}",
-					str::from_utf8(code).unwrap(),
+					str::from_utf8(code).unwrap_or_default(),
 					str::from_utf8(
 						stellar::PublicKey::from_binary(*issuer).to_encoding().as_slice()
 					)
-					.unwrap()
+					.unwrap_or_default()
 				)
 			},
 		}
@@ -632,12 +578,12 @@ fn to_look_up_error(_: &'static str) -> LookupError {
 
 impl StaticLookup for AssetConversion {
 	type Source = CurrencyId;
-	type Target = Asset;
+	type Target = StellarAsset;
 
 	fn lookup(
 		currency_id: <Self as StaticLookup>::Source,
 	) -> Result<<Self as StaticLookup>::Target, LookupError> {
-		let asset_conversion_result: Result<Asset, &str> = currency_id.try_into();
+		let asset_conversion_result: Result<StellarAsset, &str> = currency_id.try_into();
 		asset_conversion_result.map_err(to_look_up_error)
 	}
 
@@ -656,14 +602,21 @@ impl Convert<(Vec<u8>, Vec<u8>), Result<CurrencyId, ()>> for StringCurrencyConve
 	}
 }
 
+// This struct can be used to convert from a 'Spacewalk' balance to a 'Stellar' balance.
+// It converts the native balance of the chain to the stroop representation of the asset on Stellar.
 pub struct BalanceConversion;
+
+// We set the conversion rate to 1:1 for now.
+const CONVERSION_RATE: u128 = 1;
 
 impl StaticLookup for BalanceConversion {
 	type Source = u128;
+	// The type of stroop amounts is i64
+	// see [here](https://github.com/pendulum-chain/substrate-stellar-sdk/blob/f659041c6643f80f4e1f6e9e35268dba3ae2d313/src/amount.rs#L7)
 	type Target = i64;
 
 	fn lookup(pendulum_balance: Self::Source) -> Result<Self::Target, LookupError> {
-		let stroops128: u128 = pendulum_balance / 100000;
+		let stroops128: u128 = pendulum_balance / CONVERSION_RATE;
 
 		if stroops128 > i64::MAX as u128 {
 			Err(LookupError)
@@ -673,7 +626,10 @@ impl StaticLookup for BalanceConversion {
 	}
 
 	fn unlookup(stellar_stroops: Self::Target) -> Self::Source {
-		(stellar_stroops * 100000) as u128
+		let conversion_rate = i64::try_from(CONVERSION_RATE).unwrap_or(i64::MAX);
+
+		let value = stellar_stroops.saturating_mul(conversion_rate);
+		u128::try_from(value).unwrap_or(0)
 	}
 }
 
@@ -693,20 +649,19 @@ impl StaticLookup for AddressConversion {
 	}
 }
 
-/// Error type for key decoding errors
-#[derive(Debug)]
-pub enum AddressConversionError {
-	//     UnexpectedKeyType
-}
-
 pub trait TransactionEnvelopeExt {
-	fn get_payment_amount_for_asset_to(&self, to: StellarPublicKeyRaw, asset: Asset) -> u128;
+	fn get_payment_amount_for_asset_to(&self, to: StellarPublicKeyRaw, asset: StellarAsset)
+		-> u128;
 }
 
 impl TransactionEnvelopeExt for TransactionEnvelope {
 	/// Returns the amount of the given asset that is being sent to the given address.
 	/// Only considers payment and claimable balance operations.
-	fn get_payment_amount_for_asset_to(&self, to: StellarPublicKeyRaw, asset: Asset) -> u128 {
+	fn get_payment_amount_for_asset_to(
+		&self,
+		to: StellarPublicKeyRaw,
+		asset: StellarAsset,
+	) -> u128 {
 		let recipient_account_muxed = MuxedAccount::KeyTypeEd25519(to);
 		let recipient_account_pk = PublicKey::PublicKeyTypeEd25519(to);
 
@@ -747,7 +702,6 @@ impl TransactionEnvelopeExt for TransactionEnvelope {
 		}
 
 		// `transferred_amount` is in stroops, so we need to convert it
-
 		BalanceConversion::unlookup(transferred_amount)
 	}
 }

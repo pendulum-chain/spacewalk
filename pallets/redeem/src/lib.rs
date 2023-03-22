@@ -8,6 +8,9 @@
 #[cfg(test)]
 extern crate mocktopus;
 
+#[cfg(feature = "std")]
+use std::str::FromStr;
+
 use frame_support::{
 	dispatch::{DispatchError, DispatchResult},
 	ensure, transactional,
@@ -15,11 +18,7 @@ use frame_support::{
 #[cfg(test)]
 use mocktopus::macros::mockable;
 use sp_core::H256;
-
 use sp_runtime::traits::{CheckedDiv, Saturating, Zero};
-#[cfg(feature = "std")]
-use std::str::FromStr;
-
 use sp_std::{convert::TryInto, vec::Vec};
 use substrate_stellar_sdk::{
 	compound_types::UnlimitedVarArray,
@@ -28,8 +27,7 @@ use substrate_stellar_sdk::{
 };
 
 use currency::Amount;
-pub use default_weights::WeightInfo;
-
+pub use default_weights::{SubstrateWeight, WeightInfo};
 pub use pallet::*;
 use primitives::StellarPublicKeyRaw;
 use types::DefaultVaultId;
@@ -134,6 +132,9 @@ pub mod pallet {
 			limit_volume_currency_id: T::CurrencyId,
 			interval_length: T::BlockNumber,
 		},
+		RedeemMinimumTransferAmountUpdate {
+			new_minimum_amount: BalanceOf<T>,
+		},
 	}
 
 	#[pallet::error]
@@ -158,11 +159,14 @@ pub mod pallet {
 		AmountBelowMinimumTransferAmount,
 		/// Exceeds the volume limit for an issue request.
 		ExceedLimitVolumeForIssueRequest,
+		/// Invalid payment amount
+		InvalidPaymentAmount,
 	}
 
 	/// The time difference in number of blocks between a redeem request is created and required
 	/// completion time by a vault. The redeem period has an upper limit to ensure the user gets
-	/// their BTC in time and to potentially punish a vault for inactivity or stealing BTC.
+	/// their Stellar assets in time and to potentially punish a vault for inactivity or stealing
+	/// Stellar assets.
 	#[pallet::storage]
 	#[pallet::getter(fn redeem_period)]
 	pub(super) type RedeemPeriod<T: Config> = StorageValue<_, T::BlockNumber, ValueQuery>;
@@ -259,6 +263,7 @@ pub mod pallet {
 		/// * `asset` - the asset to redeem
 		/// * `stellar_address` - the address to receive assets on Stellar
 		/// * `vault_id` - address of the vault
+		#[pallet::call_index(0)]
 		#[pallet::weight(<T as Config>::WeightInfo::request_redeem())]
 		#[transactional]
 		pub fn request_redeem(
@@ -282,6 +287,7 @@ pub mod pallet {
 		/// * `collateral_currency` - currency to be received
 		/// * `wrapped_currency` - currency of the wrapped token to burn
 		/// * `amount_wrapped` - amount of issued tokens to burn
+		#[pallet::call_index(1)]
 		#[pallet::weight(<T as Config>::WeightInfo::liquidation_redeem())]
 		#[transactional]
 		pub fn liquidation_redeem(
@@ -308,6 +314,7 @@ pub mod pallet {
 		/// * `externalized_envelopes_encoded` - the XDR representation of the externalized
 		///   envelopes
 		/// * `transaction_set_encoded` - the XDR representation of the transaction set
+		#[pallet::call_index(2)]
 		#[pallet::weight(<T as Config>::WeightInfo::execute_redeem())]
 		#[transactional]
 		pub fn execute_redeem(
@@ -343,6 +350,7 @@ pub mod pallet {
 		/// * `reimburse` - specifying if the user wishes to be reimbursed in collateral
 		/// and slash the Vault, or wishes to keep the tokens (and retry
 		/// Redeem with another Vault)
+		#[pallet::call_index(3)]
 		#[pallet::weight(if *reimburse { <T as Config>::WeightInfo::cancel_redeem_reimburse() } else { <T as Config>::WeightInfo::cancel_redeem_retry() })]
 		#[transactional]
 		pub fn cancel_redeem(
@@ -361,6 +369,7 @@ pub mod pallet {
 		///
 		/// * `origin` - the dispatch origin of this call (must be _Root_)
 		/// * `period` - default period for new requests
+		#[pallet::call_index(4)]
 		#[pallet::weight(<T as Config>::WeightInfo::set_redeem_period())]
 		#[transactional]
 		pub fn set_redeem_period(
@@ -382,7 +391,8 @@ pub mod pallet {
 		///
 		/// * `origin` - the dispatch origin of this call (must be _Root_)
 		/// * `redeem_id` - identifier of redeem request as output from request_redeem
-		#[pallet::weight(<T as Config>::WeightInfo::set_redeem_period())]
+		#[pallet::call_index(5)]
+		#[pallet::weight(<T as Config>::WeightInfo::mint_tokens_for_reimbursed_redeem())]
 		#[transactional]
 		pub fn mint_tokens_for_reimbursed_redeem(
 			origin: OriginFor<T>,
@@ -398,6 +408,7 @@ pub mod pallet {
 			Ok(().into())
 		}
 
+		#[pallet::call_index(6)]
 		#[pallet::weight(<T as Config>::WeightInfo::self_redeem())]
 		#[transactional]
 		pub fn self_redeem(
@@ -415,7 +426,8 @@ pub mod pallet {
 			Ok(().into())
 		}
 
-		#[pallet::weight(<T as Config>::WeightInfo::self_redeem())]
+		#[pallet::call_index(7)]
+		#[pallet::weight(<T as Config>::WeightInfo::rate_limit_update())]
 		#[transactional]
 		pub fn rate_limit_update(
 			origin: OriginFor<T>,
@@ -434,6 +446,19 @@ pub mod pallet {
 				limit_volume_currency_id,
 				interval_length,
 			});
+			Ok(().into())
+		}
+
+		#[pallet::call_index(8)]
+		#[pallet::weight(<T as Config>::WeightInfo::minimum_transfer_amount_update())]
+		#[transactional]
+		pub fn minimum_transfer_amount_update(
+			origin: OriginFor<T>,
+			new_minimum_amount: BalanceOf<T>,
+		) -> DispatchResultWithPostInfo {
+			ensure_root(origin)?;
+			RedeemMinimumTransferAmount::<T>::set(new_minimum_amount);
+			Self::deposit_event(Event::RedeemMinimumTransferAmountUpdate { new_minimum_amount });
 			Ok(().into())
 		}
 	}
@@ -565,7 +590,7 @@ impl<T: Config> Pallet<T> {
 
 		// this can overflow for small requested values. As such return
 		// AmountBelowMinimumTransferAmount when this happens
-		let user_to_be_received_btc = vault_to_be_burned_tokens
+		let user_to_be_received_stellar_asset = vault_to_be_burned_tokens
 			.checked_sub(&inclusion_fee)
 			.map_err(|_| Error::<T>::AmountBelowMinimumTransferAmount)?;
 
@@ -574,12 +599,12 @@ impl<T: Config> Pallet<T> {
 		// only allow requests of amount above above the minimum
 		ensure!(
 			// this is the amount the vault will send (minus fee)
-			user_to_be_received_btc
+			user_to_be_received_stellar_asset
 				.ge(&Self::get_minimum_transfer_amount(vault_id.wrapped_currency()))?,
 			Error::<T>::AmountBelowMinimumTransferAmount
 		);
 
-		// vault will get rid of the btc + btc_inclusion_fee
+		// vault will get rid of the xlm + xlm_inclusion_fee
 		ext::vault_registry::try_increase_to_be_redeemed_tokens::<T>(
 			&vault_id,
 			&vault_to_be_burned_tokens,
@@ -595,7 +620,7 @@ impl<T: Config> Pallet<T> {
 
 		let premium_collateral = if below_premium_redeem {
 			let redeem_amount_wrapped_in_collateral =
-				user_to_be_received_btc.convert_to(currency_id)?;
+				user_to_be_received_stellar_asset.convert_to(currency_id)?;
 			ext::fee::get_premium_redeem_fee::<T>(&redeem_amount_wrapped_in_collateral)?
 		} else {
 			Amount::zero(currency_id)
@@ -610,8 +635,8 @@ impl<T: Config> Pallet<T> {
 				opentime: ext::security::active_block_number::<T>(),
 				fee: fee_wrapped.amount(),
 				transfer_fee: inclusion_fee.amount(),
-				amount: user_to_be_received_btc.amount(),
-				asset: user_to_be_received_btc.currency(),
+				amount: user_to_be_received_stellar_asset.amount(),
+				asset: user_to_be_received_stellar_asset.currency(),
 				premium: premium_collateral.amount(),
 				period: Self::redeem_period(),
 				redeemer: redeemer.clone(),
@@ -623,8 +648,8 @@ impl<T: Config> Pallet<T> {
 		Self::deposit_event(Event::<T>::RequestRedeem {
 			redeem_id,
 			redeemer,
-			amount: user_to_be_received_btc.amount(),
-			asset: user_to_be_received_btc.currency(),
+			amount: user_to_be_received_stellar_asset.amount(),
+			asset: user_to_be_received_stellar_asset.currency(),
 			fee: fee_wrapped.amount(),
 			premium: premium_collateral.amount(),
 			vault_id,
@@ -686,12 +711,27 @@ impl<T: Config> Pallet<T> {
 			TransactionSet,
 		>(&transaction_set_encoded)?;
 
+		// Check that the transaction includes the expected memo to mitigate replay attacks
+		ext::stellar_relay::ensure_transaction_memo_matches_hash::<T>(
+			&transaction_envelope,
+			&redeem_id,
+		)?;
+
 		// Verify that the transaction is valid
 		ext::stellar_relay::validate_stellar_transaction::<T>(
 			&transaction_envelope,
 			&envelopes,
 			&transaction_set,
 		)?;
+
+		let paid_amount: Amount<T> = ext::currency::get_amount_from_transaction_envelope::<T>(
+			&transaction_envelope,
+			redeem.stellar_address,
+			redeem.asset,
+		)?;
+
+		// Check that the transaction contains a payment with at least the expected amount
+		ensure!(paid_amount.ge(&redeem.amount())?, Error::<T>::InvalidPaymentAmount);
 
 		// burn amount (without parachain fee, but including transfer fee)
 		let burn_amount = redeem.amount().checked_add(&redeem.transfer_fee())?;

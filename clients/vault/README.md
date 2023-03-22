@@ -50,7 +50,7 @@ pub struct ScpMessageCollector {
 	/// An entry is removed when a `TransactionSet` is found.
 	txset_and_slot_map: Arc<RwLock<TxSetHashAndSlotMap>>,
 
-	last_slot_index: Arc<RwLock<u64>>,
+	last_scp_ext_slot: Arc<RwLock<u64>>,
 
 	public_network: bool,
 }

@@ -34,7 +34,7 @@ pub enum Error {
 	VaultNotFound,
 	#[error("Vault has been liquidated")]
 	VaultLiquidated,
-	#[error("Vault has stolen BTC")]
+	#[error("Vault has stolen Stellar assets")]
 	VaultCommittedTheft,
 	#[error("Channel closed unexpectedly")]
 	ChannelClosed,
@@ -80,6 +80,8 @@ pub enum Error {
 	TimeElapsed(#[from] Elapsed),
 	#[error("UrlParseError: {0}")]
 	UrlParseError(#[from] UrlParseError),
+	#[error("Constant not found: {0}")]
+	ConstantNotFound(String),
 	#[error("Currency not found")]
 	CurrencyNotFound,
 	#[error("PrometheusError: {0}")]

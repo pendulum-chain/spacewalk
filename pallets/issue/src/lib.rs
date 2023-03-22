@@ -24,7 +24,7 @@ use substrate_stellar_sdk::{
 use std::str::FromStr;
 
 use currency::Amount;
-pub use default_weights::WeightInfo;
+pub use default_weights::{SubstrateWeight, WeightInfo};
 pub use pallet::*;
 use types::IssueRequestExt;
 use vault_registry::{CurrencySource, VaultStatus};
@@ -115,6 +115,9 @@ pub mod pallet {
 			limit_volume_amount: Option<BalanceOf<T>>,
 			limit_volume_currency_id: T::CurrencyId,
 			interval_length: T::BlockNumber,
+		},
+		IssueMinimumTransferAmountUpdate {
+			new_minimum_amount: BalanceOf<T>,
 		},
 	}
 
@@ -234,6 +237,7 @@ pub mod pallet {
 		/// * `asset` - the currency id of the stellar asset the user wants to convert to issued
 		///   tokens
 		/// * `vault` - address of the vault
+		#[pallet::call_index(0)]
 		#[pallet::weight(<T as Config>::WeightInfo::request_issue())]
 		#[transactional]
 		pub fn request_issue(
@@ -258,6 +262,7 @@ pub mod pallet {
 		/// * `externalized_envelopes_encoded` - the XDR representation of the externalized
 		///   envelopes
 		/// * `transaction_set_encoded` - the XDR representation of the transaction set
+		#[pallet::call_index(1)]
 		#[pallet::weight(<T as Config>::WeightInfo::execute_issue())]
 		#[transactional]
 		pub fn execute_issue(
@@ -285,6 +290,7 @@ pub mod pallet {
 		///
 		/// * `origin` - sender of the transaction
 		/// * `issue_id` - identifier of issue request as output from request_issue
+		#[pallet::call_index(2)]
 		#[pallet::weight(<T as Config>::WeightInfo::cancel_issue())]
 		#[transactional]
 		pub fn cancel_issue(origin: OriginFor<T>, issue_id: H256) -> DispatchResultWithPostInfo {
@@ -299,6 +305,7 @@ pub mod pallet {
 		///
 		/// * `origin` - the dispatch origin of this call (must be _Root_)
 		/// * `period` - default period for new requests
+		#[pallet::call_index(3)]
 		#[pallet::weight(<T as Config>::WeightInfo::set_issue_period())]
 		#[transactional]
 		pub fn set_issue_period(
@@ -311,7 +318,8 @@ pub mod pallet {
 			Ok(().into())
 		}
 
-		#[pallet::weight(<T as Config>::WeightInfo::set_issue_period())]
+		#[pallet::call_index(4)]
+		#[pallet::weight(<T as Config>::WeightInfo::rate_limit_update())]
 		#[transactional]
 		pub fn rate_limit_update(
 			origin: OriginFor<T>,
@@ -330,6 +338,19 @@ pub mod pallet {
 				limit_volume_currency_id,
 				interval_length,
 			});
+			Ok(().into())
+		}
+
+		#[pallet::call_index(5)]
+		#[pallet::weight(<T as Config>::WeightInfo::minimum_transfer_amount_update())]
+		#[transactional]
+		pub fn minimum_transfer_amount_update(
+			origin: OriginFor<T>,
+			new_minimum_amount: BalanceOf<T>,
+		) -> DispatchResultWithPostInfo {
+			ensure_root(origin)?;
+			IssueMinimumTransferAmount::<T>::set(new_minimum_amount);
+			Self::deposit_event(Event::IssueMinimumTransferAmountUpdate { new_minimum_amount });
 			Ok(().into())
 		}
 	}
@@ -445,6 +466,12 @@ impl<T: Config> Pallet<T> {
 			T,
 			TransactionSet,
 		>(&transaction_set_encoded)?;
+
+		// Check that the transaction includes the expected memo to mitigate replay attacks
+		ext::stellar_relay::ensure_transaction_memo_matches_hash::<T>(
+			&transaction_envelope,
+			&issue_id,
+		)?;
 
 		// Verify that the transaction is valid
 		ext::stellar_relay::validate_stellar_transaction::<T>(
