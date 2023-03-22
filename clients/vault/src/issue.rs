@@ -381,7 +381,7 @@ pub async fn execute_issue(
 				return
 			},
 			Err(err) if err.is_issue_completed() => {
-				tracing::debug!("Issue #{:?} has been completed", issue_memo);
+				tracing::debug!("Issue #{} has been completed", issue_id);
 				if let Err(e) = sender.send(SlotTaskStatus::Success) {
 					tracing::error!("Failed to send {:?} status for slot {}", e, slot);
 				}
