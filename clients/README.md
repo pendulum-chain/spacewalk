@@ -15,7 +15,7 @@ cargo build --features=parachain-metadata
 To run the vault with the provided standalone chain use:
 
 ```
-cargo run --bin vault --features standalone-metadata  -- --keyring alice --stellar-vault-secret-key SB6WHKIU2HGVBRNKNOEOQUY4GFC4ZLG5XPGWLEAHTIZXBXXYACC76VSQ
+cargo run --bin vault --features standalone-metadata  -- --keyring alice --stellar-vault-secret-key-filepath <secret_key_file_path>
 ```
 
 To make the vault auto-register itself with the chain, use the `--auto-register` flag.
@@ -46,7 +46,7 @@ An example of the secret key file path is found [here](./secret_key).
 To run the vault with a parachain (e.g. Pendulum) you need to specify the URL, so use:
 
 ```
-cargo run --bin vault --features parachain-metadata -- --keyring alice --spacewalk-parachain-url ws://localhost:8844 --stellar-vault-secret-key SB6WHKIU2HGVBRNKNOEOQUY4GFC4ZLG5XPGWLEAHTIZXBXXYACC76VSQ
+cargo run --bin vault --features parachain-metadata -- --keyring alice --spacewalk-parachain-url ws://localhost:8844 --stellar-vault-secret-key-filepath <secret_key_file_path>
 ```
 
 ## Tests
