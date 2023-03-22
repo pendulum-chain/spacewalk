@@ -6,13 +6,12 @@ use sp_runtime::traits::StaticLookup;
 use primitives::{issue::derive_issue_memo, stellar::Memo, TransactionEnvelopeExt};
 use runtime::{
 	CancelIssueEvent, ExecuteIssueEvent, IssueMemoMap, IssuePallet, IssueRequestsMap,
-	RequestIssueEvent, SpacewalkParachain, StellarPublicKeyRaw, H256,
+	RequestIssueEvent, SpacewalkParachain, StellarPublicKeyRaw,
 };
 use service::Error as ServiceError;
 use stellar_relay_lib::sdk::{PublicKey, TransactionEnvelope, XdrCodec};
 use wallet::{
-	types::{FilterWith, TransactionFilterParam},
-	LedgerTxEnvMap, Slot, SlotTask, SlotTaskStatus,
+	types::FilterWith, LedgerTxEnvMap, Slot, SlotTask, SlotTaskStatus, TransactionResponse,
 };
 
 use crate::{
@@ -351,11 +350,17 @@ pub async fn execute_issue(
 		base64::encode(tx_env_xdr)
 	};
 
-	if let Some(issue_memo) = get_issue_memo_from_tx_env(&tx_env) {
+	let (issue_id, issue_memo) = match get_issue_memo_from_tx_env(&tx_env) {
+		Some(issue_memo) =>
+			(issue_memos.read().await.get(issue_memo).map(|hash| hash.clone()), Some(issue_memo)),
+		_ => (None, None),
+	};
+
+	if let (Some(issue_id), Some(issue_memo)) = (issue_id, issue_memo) {
 		// calls the execute_issue of the `Issue` Pallet
 		match parachain_rpc
 			.execute_issue(
-				issue_memo,
+				issue_id,
 				tx_env_encoded.as_bytes(),
 				envelopes.as_bytes(),
 				tx_set.as_bytes(),
@@ -365,13 +370,10 @@ pub async fn execute_issue(
 			Ok(_) => {
 				tracing::debug!("Slot {:?} executed with issue memo: {:?}", slot, issue_memo);
 
-				let issue_id = issue_memos.read().await.get(issue_memo).map(|hash| hash.clone());
-				if let Some(issue_id) = issue_id {
-					let (mut issues, mut issue_memos) =
-						future::join(issues.write(), issue_memos.write()).await;
-					issues.remove(&issue_id);
-					issue_memos.remove(issue_memo);
-				}
+				let (mut issues, mut issue_memos) =
+					future::join(issues.write(), issue_memos.write()).await;
+				issues.remove(&issue_id);
+				issue_memos.remove(issue_memo);
 
 				if let Err(e) = sender.send(SlotTaskStatus::Success) {
 					tracing::error!("Failed to send {:?} status for slot {}", e, slot);
@@ -414,19 +416,26 @@ impl IssueFilter {
 	}
 }
 
-impl FilterWith<TransactionFilterParam<IssueRequestsMap>> for IssueFilter {
-	fn is_relevant(&self, param: TransactionFilterParam<IssueRequestsMap>) -> bool {
-		let tx = param.0;
-		let issue_requests = param.1;
-
+impl FilterWith<IssueRequestsMap, IssueMemoMap> for IssueFilter {
+	fn is_relevant(
+		&self,
+		tx: TransactionResponse,
+		issue_requests: &IssueRequestsMap,
+		issue_memos: &IssueMemoMap,
+	) -> bool {
 		// try to convert the contained memo_hash (if any) to a h256
-		let memo_h256 = match &tx.memo_hash() {
+		let issue_id = match tx.memo_text() {
 			None => return false,
-			Some(memo) => H256::from_slice(memo),
+			Some(memo_text) => issue_memos.get(memo_text),
 		};
 
-		// check if the memo id is in the list of issues.
-		match issue_requests.get(&memo_h256) {
+		let issue_id = match issue_id {
+			Some(issue_id) => issue_id,
+			None => return false,
+		};
+
+		// check if the issue id is in the list of issues.
+		match issue_requests.get(issue_id) {
 			None => false,
 			Some(request) => {
 				// Check if the transaction can be used for the issue request by checking if it

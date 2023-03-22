@@ -495,6 +495,7 @@ impl VaultService {
 					is_public_network,
 					ledger_env_map.clone(),
 					issue_map.clone(),
+					issue_memos.clone(),
 					issue_filter,
 				)),
 			),

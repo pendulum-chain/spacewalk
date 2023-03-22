@@ -13,7 +13,7 @@ use sp_keyring::AccountKeyring;
 use sp_runtime::traits::StaticLookup;
 use tokio::{sync::RwLock, time::sleep};
 
-use primitives::{issue::derive_issue_memo, H256};
+use primitives::H256;
 use runtime::{
 	integration::*, types::*, FixedPointNumber, FixedU128, IssuePallet, RedeemPallet,
 	ReplacePallet, ShutdownSender, SpacewalkParachain, SudoPallet, UtilFuncs, VaultRegistryPallet,
@@ -116,11 +116,9 @@ pub async fn assert_issue(
 	let tx_envelope_xdr_encoded = tx_env.to_base64_xdr();
 	let (envelopes_xdr_encoded, tx_set_xdr_encoded) = proof.encode();
 
-	let issue_memo = derive_issue_memo(&issue.issue_id.0);
-
 	parachain_rpc
 		.execute_issue(
-			&issue_memo,
+			issue.issue_id,
 			tx_envelope_xdr_encoded.as_slice(),
 			envelopes_xdr_encoded.as_bytes(),
 			tx_set_xdr_encoded.as_bytes(),
@@ -696,6 +694,7 @@ async fn test_issue_cancel_succeeds() {
 				wallet.is_public_network(),
 				slot_tx_env_map.clone(),
 				issue_set.clone(),
+				issue_memos.clone(),
 				issue_filter,
 			),
 			vault::service::listen_for_issue_requests(
@@ -781,8 +780,6 @@ async fn test_issue_overpayment_succeeds() {
 		let tx_envelope_xdr_encoded = base64::encode(tx_envelope_xdr_encoded);
 		let (envelopes_xdr_encoded, tx_set_xdr_encoded) = proof.encode();
 
-		let issue_memo = derive_issue_memo(&issue.issue_id.0);
-
 		join(
 			assert_event::<EndowedEvent, _>(TIMEOUT, user_provider.clone(), |x| {
 				if &x.who == user_provider.get_account_id() {
@@ -794,7 +791,7 @@ async fn test_issue_overpayment_succeeds() {
 			}),
 			user_provider
 				.execute_issue(
-					&issue_memo,
+					issue.issue_id,
 					tx_envelope_xdr_encoded.as_bytes(),
 					envelopes_xdr_encoded.as_bytes(),
 					tx_set_xdr_encoded.as_bytes(),
@@ -882,6 +879,7 @@ async fn test_automatic_issue_execution_succeeds() {
 				wallet.is_public_network(),
 				slot_tx_env_map.clone(),
 				issue_set.clone(),
+				issue_memos.clone(),
 				issue_filter,
 			),
 			vault::service::listen_for_issue_requests(
@@ -1022,6 +1020,7 @@ async fn test_automatic_issue_execution_succeeds_for_other_vault() {
 				IS_PUBLIC_NETWORK,
 				slot_tx_env_map.clone(),
 				issue_set_arc.clone(),
+				issue_memos.clone(),
 				issue_filter,
 			),
 			vault::service::listen_for_issue_requests(
