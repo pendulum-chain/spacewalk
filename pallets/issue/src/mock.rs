@@ -28,7 +28,7 @@ pub use currency::{
 	Amount,
 };
 pub use primitives::CurrencyId;
-use primitives::{VaultCurrencyPair, VaultId};
+use primitives::{AmountCompatibility, VaultCurrencyPair, VaultId};
 
 use crate as issue;
 use crate::{Config, Error};
@@ -210,6 +210,25 @@ pub fn convert_to(to: CurrencyId, amount: Balance) -> Result<Balance, sp_runtime
 	Ok(amount) // default conversion 1:1 - overwritable with mocktopus
 }
 
+pub struct MockAmountCompatibility;
+/// In this mock, we assume that all amounts are compatible with the target currency.
+impl AmountCompatibility for MockAmountCompatibility {
+	type UnsignedFixedPoint = UnsignedFixedPoint;
+
+	fn is_compatible_with_target(
+		_source_amount: <<Self as AmountCompatibility>::UnsignedFixedPoint as FixedPointNumber>::Inner,
+	) -> bool {
+		true
+	}
+
+	fn round_to_compatible_with_target(
+		source_amount: <<Self as AmountCompatibility>::UnsignedFixedPoint as FixedPointNumber>::Inner,
+	) -> Result<<<Self as AmountCompatibility>::UnsignedFixedPoint as FixedPointNumber>::Inner, ()>
+	{
+		Ok(source_amount)
+	}
+}
+
 impl currency::Config for Test {
 	type UnsignedFixedPoint = UnsignedFixedPoint;
 	type SignedInner = SignedInner;
@@ -220,6 +239,7 @@ impl currency::Config for Test {
 	type AssetConversion = primitives::AssetConversion;
 	type BalanceConversion = primitives::BalanceConversion;
 	type CurrencyConversion = CurrencyConvert;
+	type AmountCompatibility = MockAmountCompatibility;
 }
 
 parameter_types! {

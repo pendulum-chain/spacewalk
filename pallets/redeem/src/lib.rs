@@ -569,6 +569,10 @@ impl<T: Config> Pallet<T> {
 	) -> Result<H256, DispatchError> {
 		let amount_wrapped = Amount::new(amount_wrapped, vault_id.wrapped_currency());
 
+		// We ensure that the amount requested is compatible with the target chain (ie. it has a
+		// specific amount of trailing zeros)
+		amount_wrapped.ensure_is_compatible_with_target_chain()?;
+
 		Self::check_volume(amount_wrapped.clone())?;
 
 		ext::security::ensure_parachain_status_running::<T>()?;
@@ -586,6 +590,9 @@ impl<T: Config> Pallet<T> {
 		};
 		let inclusion_fee = Self::get_current_inclusion_fee(vault_id.wrapped_currency())?;
 
+		// We round the fee so that the amount of tokens that will be transferred on Stellar
+		// are compatible without loss of precision.
+		let fee_wrapped = fee_wrapped.round_to_target_chain()?;
 		let vault_to_be_burned_tokens = amount_wrapped.checked_sub(&fee_wrapped)?;
 
 		// this can overflow for small requested values. As such return
