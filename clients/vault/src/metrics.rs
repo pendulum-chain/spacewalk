@@ -84,7 +84,7 @@ lazy_static! {
 		IntCounter::new("restart_count", "Number of service restarts")
 			.expect("Failed to create prometheus metric");
 }
-const STELLAR_NATIVE_ASSET_TYPE: [u8; 6] = [110, 97, 116, 105, 118, 101]; //"native"
+const STELLAR_NATIVE_ASSET_TYPE: [u8; 6] = *b"native";
 
 #[derive(Clone, Debug)]
 struct XLMBalance {
