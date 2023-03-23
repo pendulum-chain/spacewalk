@@ -80,9 +80,6 @@ lazy_static! {
 	pub static ref NATIVE_CURRENCY_BALANCE: Gauge =
 		Gauge::new("native_currency_balance", "Native Currency Balance")
 			.expect("Failed to create prometheus metric");
-	pub static ref FEE_BUDGET_SURPLUS: GaugeVec =
-		GaugeVec::new(Opts::new("fee_budget_surplus", "Fee Budget Surplus"), &[CURRENCY_LABEL])
-			.expect("Failed to create prometheus metric");
 	pub static ref RESTART_COUNT: IntCounter =
 		IntCounter::new("restart_count", "Number of service restarts")
 			.expect("Failed to create prometheus metric");
@@ -200,7 +197,6 @@ pub fn register_custom_metrics() -> Result<(), RuntimeError> {
 	REGISTRY.register(Box::new(LOCKED_COLLATERAL.clone()))?;
 	REGISTRY.register(Box::new(COLLATERALIZATION.clone()))?;
 	REGISTRY.register(Box::new(REQUIRED_COLLATERAL.clone()))?;
-	REGISTRY.register(Box::new(FEE_BUDGET_SURPLUS.clone()))?;
 	REGISTRY.register(Box::new(XLM_BALANCE.clone()))?;
 	REGISTRY.register(Box::new(NATIVE_CURRENCY_BALANCE.clone()))?;
 	REGISTRY.register(Box::new(ISSUES.clone()))?;
