@@ -753,7 +753,9 @@ async fn test_issue_overpayment_succeeds() {
 
 		// Send a payment to the destination of the issue request (ie the targeted vault's
 		// stellar account)
-		let stroop_amount = (issue.amount + issue.fee) * over_payment_factor;
+		let stroop_amount =
+			primitives::BalanceConversion::lookup((issue.amount + issue.fee) * over_payment_factor)
+				.expect("Conversion should not fail");
 		let destination_public_key = PublicKey::from_binary(issue.vault_stellar_public_key);
 		let stellar_asset =
 			primitives::AssetConversion::lookup(issue.asset).expect("Asset not found");
@@ -785,7 +787,11 @@ async fn test_issue_overpayment_succeeds() {
 		join(
 			assert_event::<EndowedEvent, _>(TIMEOUT, user_provider.clone(), |x| {
 				if &x.who == user_provider.get_account_id() {
-					// assert_eq!(x.amount, issue.amount * over_payment_factor);
+					// Overpaying will make the issue pallet recalculate the amount and fee for the
+					// higher amount. With the up-scaled and overpaid amount of 300_00000, the
+					// resulting fee will be 300_00000 * 0.001 = 30000
+					let fee = 30_000;
+					assert_eq!(x.amount, issue.amount * over_payment_factor - fee);
 					true
 				} else {
 					false
