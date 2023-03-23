@@ -11,6 +11,7 @@ extern crate mocktopus;
 use frame_support::{dispatch::DispatchError, ensure, traits::Get, transactional};
 #[cfg(test)]
 use mocktopus::macros::mockable;
+use primitives::derive_shortened_request_id;
 use sp_core::H256;
 use sp_runtime::traits::{CheckedDiv, Convert, Saturating, Zero};
 use sp_std::vec::Vec;
@@ -377,6 +378,10 @@ impl<T: Config> Pallet<T> {
 	) -> Result<H256, DispatchError> {
 		let amount_requested = Amount::new(amount_requested, vault_id.wrapped_currency());
 
+		// We ensure that the amount requested is compatible with the target chain (ie. it has a
+		// specific amount of trailing zeros)
+		amount_requested.ensure_is_compatible_with_target_chain()?;
+
 		Self::check_volume(amount_requested.clone())?;
 
 		let vault = ext::vault_registry::get_active_vault_from_id::<T>(&vault_id)?;
@@ -406,10 +411,14 @@ impl<T: Config> Pallet<T> {
 		ext::vault_registry::try_increase_to_be_issued_tokens::<T>(&vault_id, &amount_requested)?;
 
 		let fee = ext::fee::get_issue_fee::<T>(&amount_requested)?;
+		// We round the fee so that the amount of tokens that will be transferred on Stellar are
+		// compatible without loss of precision.
+		let fee = fee.round_to_target_chain()?;
+
 		// calculate the amount of tokens that will be transferred to the user upon execution
 		let amount_user = amount_requested.checked_sub(&fee)?;
 
-		let issue_id = ext::security::get_secure_id::<T>(&requester);
+		let issue_id = ext::security::get_secure_id::<T>();
 		let stellar_public_key =
 			ext::vault_registry::get_stellar_public_key::<T>(&vault_id.account_id)?;
 
@@ -467,10 +476,11 @@ impl<T: Config> Pallet<T> {
 			TransactionSet,
 		>(&transaction_set_encoded)?;
 
+		let shortened_request_id = derive_shortened_request_id(&issue_id.0);
 		// Check that the transaction includes the expected memo to mitigate replay attacks
-		ext::stellar_relay::ensure_transaction_memo_matches_hash::<T>(
+		ext::stellar_relay::ensure_transaction_memo_matches::<T>(
 			&transaction_envelope,
-			&issue_id,
+			&shortened_request_id,
 		)?;
 
 		// Verify that the transaction is valid
@@ -772,7 +782,7 @@ impl<T: Config> Pallet<T> {
 	}
 
 	fn insert_issue_request(key: &H256, value: &DefaultIssueRequest<T>) {
-		<IssueRequests<T>>::insert(key, value)
+		<IssueRequests<T>>::insert(key, value);
 	}
 
 	fn set_issue_status(id: H256, status: IssueRequestStatus) {

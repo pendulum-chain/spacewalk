@@ -1,6 +1,7 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 #![allow(non_upper_case_globals)]
 
+use base58::ToBase58;
 use codec::{Decode, Encode, MaxEncodedLen};
 use frame_support::error::LookupError;
 use scale_info::TypeInfo;
@@ -11,7 +12,7 @@ use sp_core::{crypto::AccountId32, ed25519};
 pub use sp_runtime::OpaqueExtrinsic as UncheckedExtrinsic;
 use sp_runtime::{
 	generic,
-	traits::{BlakeTwo256, Convert, IdentifyAccount, StaticLookup, Verify},
+	traits::{BlakeTwo256, CheckedDiv, CheckedMul, Convert, IdentifyAccount, StaticLookup, Verify},
 	FixedI128, FixedPointNumber, FixedU128, MultiSignature, MultiSigner,
 };
 use sp_std::{
@@ -28,7 +29,8 @@ use stellar::{
 };
 pub use substrate_stellar_sdk as stellar;
 use substrate_stellar_sdk::{
-	types::OperationBody, ClaimPredicate, Claimant, MuxedAccount, Operation, TransactionEnvelope,
+	types::OperationBody, ClaimPredicate, Claimant, Memo, MuxedAccount, Operation,
+	TransactionEnvelope,
 };
 
 #[cfg(test)]
@@ -374,6 +376,32 @@ pub type UnsignedFixedPoint = FixedU128;
 /// The `Inner` type of the `UnsignedFixedPoint`.
 pub type UnsignedInner = u128;
 
+/// The type of a Stellar transaction text memo
+pub type TextMemo = Vec<u8>;
+
+/// Shorten the request id so that it fits into a Stellar transaction text memo
+pub fn derive_shortened_request_id(hash: &[u8; 32]) -> TextMemo {
+	hash.to_base58().as_bytes()[..28].to_vec()
+}
+
+/// Returns issue memo of the given TransactionEnvelope, or None if the transaction does
+/// not contain an issue memo
+pub fn get_text_memo_from_tx_env(transaction_envelope: &TransactionEnvelope) -> Option<&TextMemo> {
+	let memo_text = match transaction_envelope {
+		TransactionEnvelope::EnvelopeTypeTxV0(tx_env) => match &tx_env.tx.memo {
+			Memo::MemoText(text) => Some(text.get_vec()),
+			_ => None,
+		},
+		TransactionEnvelope::EnvelopeTypeTx(tx_env) => match &tx_env.tx.memo {
+			Memo::MemoText(text) => Some(text.get_vec()),
+			_ => None,
+		},
+		_ => None,
+	};
+
+	memo_text
+}
+
 pub trait CurrencyInfo {
 	fn name(&self) -> &str;
 	fn symbol(&self) -> &str;
@@ -410,8 +438,10 @@ impl CurrencyInfo for Asset {
 	}
 
 	fn decimals(&self) -> u8 {
-		// scaling allows for seven decimal places of precision
-		7
+		// We assume 12 decimals for all assets. To ensure that Stellar Assets also have 12 decimals
+		// instead of the 7 decimals they have on Stellar, we use the BalanceConversion struct where
+		// necessary, that is, when dealing with amounts contained in Stellar transactions.
+		12
 	}
 }
 
@@ -436,6 +466,21 @@ pub enum CurrencyId {
 
 impl CurrencyId {
 	pub const StellarNative: CurrencyId = Self::Stellar(Asset::StellarNative);
+
+	pub fn decimals(&self) -> u8 {
+		match self {
+			CurrencyId::Stellar(asset) => asset.decimals(),
+			// We assume that all other assets have 12 decimals
+			CurrencyId::Native | CurrencyId::XCM(_) => 12,
+		}
+	}
+
+	pub fn one(&self) -> Balance {
+		match self {
+			CurrencyId::Stellar(asset) => asset.one(),
+			_ => 10u128.pow(self.decimals().into()),
+		}
+	}
 
 	#[allow(non_snake_case)]
 	pub const fn AlphaNum4(code: Bytes4, issuer: AssetIssuer) -> Self {
@@ -606,30 +651,90 @@ impl Convert<(Vec<u8>, Vec<u8>), Result<CurrencyId, ()>> for StringCurrencyConve
 // It converts the native balance of the chain to the stroop representation of the asset on Stellar.
 pub struct BalanceConversion;
 
-// We set the conversion rate to 1:1 for now.
-const CONVERSION_RATE: u128 = 1;
+const CHAIN_DECIMALS: u32 = 12;
+const STELLAR_DECIMALS: u32 = 7;
+// We derive the conversion rate from the number of decimals of the chain and the number of decimals
+// of the asset on Stellar.
+const DECIMALS_CONVERSION_RATE: u128 = 10u128.pow(CHAIN_DECIMALS - STELLAR_DECIMALS);
+
+// The type of stroop amounts is i64
+// see [here](https://github.com/pendulum-chain/substrate-stellar-sdk/blob/f659041c6643f80f4e1f6e9e35268dba3ae2d313/src/amount.rs#L7)
+pub type StellarStroops = i64;
 
 impl StaticLookup for BalanceConversion {
 	type Source = u128;
-	// The type of stroop amounts is i64
-	// see [here](https://github.com/pendulum-chain/substrate-stellar-sdk/blob/f659041c6643f80f4e1f6e9e35268dba3ae2d313/src/amount.rs#L7)
-	type Target = i64;
+	type Target = StellarStroops;
 
 	fn lookup(pendulum_balance: Self::Source) -> Result<Self::Target, LookupError> {
-		let stroops128: u128 = pendulum_balance / CONVERSION_RATE;
+		let stroops_u128: Self::Source = pendulum_balance / DECIMALS_CONVERSION_RATE;
 
-		if stroops128 > i64::MAX as u128 {
+		if stroops_u128 > Self::Target::MAX as Self::Source {
 			Err(LookupError)
 		} else {
-			Ok(stroops128 as i64)
+			Ok(stroops_u128 as Self::Target)
 		}
 	}
 
 	fn unlookup(stellar_stroops: Self::Target) -> Self::Source {
-		let conversion_rate = i64::try_from(CONVERSION_RATE).unwrap_or(i64::MAX);
+		let conversion_rate =
+			Self::Target::try_from(DECIMALS_CONVERSION_RATE).unwrap_or(Self::Target::MAX);
 
 		let value = stellar_stroops.saturating_mul(conversion_rate);
-		u128::try_from(value).unwrap_or(0)
+		Self::Source::try_from(value).unwrap_or(0)
+	}
+}
+
+pub struct StellarCompatibility;
+
+pub trait AmountCompatibility {
+	type UnsignedFixedPoint: FixedPointNumber;
+
+	fn is_compatible_with_target(
+		source_amount: <<Self as AmountCompatibility>::UnsignedFixedPoint as FixedPointNumber>::Inner,
+	) -> bool;
+	fn round_to_compatible_with_target(
+		source_amount: <<Self as AmountCompatibility>::UnsignedFixedPoint as FixedPointNumber>::Inner,
+	) -> Result<<<Self as AmountCompatibility>::UnsignedFixedPoint as FixedPointNumber>::Inner, ()>;
+}
+
+impl AmountCompatibility for StellarCompatibility {
+	// We operate on the inner value of the FixedU128 type.
+	type UnsignedFixedPoint = FixedU128;
+
+	/// For Stellar we define an spacewalk-chain amount to be compatible with a Stellar amount if
+	/// the amount has 5 trailing 0s. Because in this case the on-chain amounts can be truncated in
+	/// the BalanceConversion functions without any loss of precision.
+	fn is_compatible_with_target(source_amount: <FixedU128 as FixedPointNumber>::Inner) -> bool {
+		source_amount % DECIMALS_CONVERSION_RATE == 0
+	}
+
+	/// We round the amount down to the nearest compatible amount, that is, we round the amount such
+	/// that it has 5 trailing 0s. The result is either compatible with the target or an error is
+	/// returned.
+	fn round_to_compatible_with_target(
+		source_amount: <FixedU128 as FixedPointNumber>::Inner,
+	) -> Result<<FixedU128 as FixedPointNumber>::Inner, ()> {
+		let conversion_rate = UnsignedFixedPoint::from_inner(DECIMALS_CONVERSION_RATE);
+		let fixed_amount = UnsignedFixedPoint::from_inner(source_amount);
+
+		let rounded_amount_fixed = fixed_amount
+			// We first divide by the conversion rate to make it have the number of decimals we want
+			// to round to (since we can only round decimals but are dealing with an integer).
+			.checked_div(&conversion_rate)
+			.ok_or(())?
+			// Then we round
+			.round()
+			// Then we scale it back up to the correct number of decimals
+			.checked_mul(&conversion_rate)
+			.ok_or(())?;
+
+		let rounded_amount = rounded_amount_fixed.into_inner();
+		// This should always be true, but we check it just in case.
+		if Self::is_compatible_with_target(rounded_amount) {
+			Ok(rounded_amount)
+		} else {
+			Err(())
+		}
 	}
 }
 

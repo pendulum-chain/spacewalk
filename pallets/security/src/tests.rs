@@ -97,11 +97,12 @@ fn test_recover_from_oracle_offline_succeeds() {
 fn test_get_secure_id() {
 	run_test(|| {
 		frame_system::Pallet::<Test>::set_parent_hash(H256::zero());
+		frame_system::Pallet::<Test>::set_extrinsic_index(1);
 		assert_eq!(
-			Security::get_secure_id(&1),
+			Security::get_secure_id(),
 			H256::from_slice(&[
-				71, 121, 67, 63, 246, 65, 71, 242, 66, 184, 148, 234, 23, 56, 62, 52, 108, 82, 213,
-				33, 160, 200, 214, 1, 13, 46, 37, 138, 95, 245, 117, 109
+				40, 112, 84, 231, 187, 52, 6, 86, 237, 236, 56, 165, 29, 144, 84, 200, 137, 29, 55,
+				76, 146, 12, 6, 38, 134, 82, 234, 213, 80, 192, 222, 92,
 			])
 		);
 	})
@@ -141,16 +142,17 @@ mod spec_based_tests {
 	#[test]
 	fn test_generate_secure_id() {
 		run_test(|| {
-			let get_secure_id_with = |account, nonce: u32, parent| {
+			let get_secure_id_with = |index, nonce: u32, parent| {
 				crate::Nonce::<Test>::set(U256::from(nonce));
 
 				frame_system::Pallet::<Test>::set_parent_hash(H256::from_slice(&[parent; 32]));
-				Security::get_secure_id(&account)
+				frame_system::Pallet::<Test>::set_extrinsic_index(index);
+				Security::get_secure_id()
 			};
 
-			let test_secure_id_with = |account, nonce: u32, parent| {
-				let result1 = get_secure_id_with(account, nonce, parent);
-				let result2 = get_secure_id_with(account, nonce, parent);
+			let test_secure_id_with = |index, nonce: u32, parent| {
+				let result1 = get_secure_id_with(index, nonce, parent);
+				let result2 = get_secure_id_with(index, nonce, parent);
 				// test that the result ONLY depend on account, nonce and parent
 				assert_eq!(result1, result2);
 				result1
@@ -175,7 +177,7 @@ mod spec_based_tests {
 
 			// postcondition: Nonce MUST be incremented by one.
 			let initial = crate::Nonce::<Test>::get();
-			Security::get_secure_id(&1);
+			Security::get_secure_id();
 			assert_eq!(crate::Nonce::<Test>::get(), initial + 1);
 		})
 	}

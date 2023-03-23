@@ -24,7 +24,7 @@ fn request_issue(
 	amount: Balance,
 	vault: DefaultVaultId<Test>,
 ) -> Result<H256, DispatchError> {
-	ext::security::get_secure_id::<Test>.mock_safe(|_| MockResult::Return(get_dummy_request_id()));
+	ext::security::get_secure_id::<Test>.mock_safe(|| MockResult::Return(get_dummy_request_id()));
 
 	ext::vault_registry::try_increase_to_be_issued_tokens::<Test>
 		.mock_safe(|_, _| MockResult::Return(Ok(())));
@@ -44,9 +44,9 @@ fn request_issue_ok_with_address(
 ) -> Result<H256, DispatchError> {
 	ext::vault_registry::ensure_not_banned::<Test>.mock_safe(|_| MockResult::Return(Ok(())));
 
-	ext::security::get_secure_id::<Test>.mock_safe(|_| MockResult::Return(get_dummy_request_id()));
+	ext::security::get_secure_id::<Test>.mock_safe(|| MockResult::Return(get_dummy_request_id()));
 
-	ext::stellar_relay::ensure_transaction_memo_matches_hash::<Test>
+	ext::stellar_relay::ensure_transaction_memo_matches::<Test>
 		.mock_safe(|_, _| MockResult::Return(Ok(())));
 
 	ext::vault_registry::try_increase_to_be_issued_tokens::<Test>

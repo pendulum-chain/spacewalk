@@ -31,7 +31,7 @@ substrate-stellar-sdk = { git = "https://github.com/pendulum-chain/substrate-ste
 
 sha2 = { version = "0.10.6", default-features = false }
 
-primitives = { package = "spacewalk-primitives", path = "../../primitives", default-features = false, optional = true }
+primitives = { package = "spacewalk-primitives", path = "../../primitives", default-features = false }
 
 [dev-dependencies]
 sp-io = { default-features = false, git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.37" }
@@ -40,7 +40,6 @@ sp-runtime = { default-features = false, git = "https://github.com/paritytech/su
 # Orml dependencies
 orml-tokens = { git = "https://github.com/open-web3-stack/open-runtime-module-library", branch = "polkadot-v0.9.37" }
 orml-traits = { git = "https://github.com/open-web3-stack/open-runtime-module-library", branch = "polkadot-v0.9.37" }
-primitives = { package = "spacewalk-primitives", path = "../../primitives" }
 
 # For testing
 rand = "0.8.5"
@@ -57,9 +56,10 @@ std = [
     "sp-std/std",
     "currency/std",
     "substrate-stellar-sdk/std",
-    "sha2/std"
+    "sha2/std",
+    "primitives/std"
 ]
-testing-utils = ["primitives"]
+testing-utils = []
 
 runtime-benchmarks = ["frame-benchmarking/runtime-benchmarks"]
 try-runtime = ["frame-support/try-runtime"]

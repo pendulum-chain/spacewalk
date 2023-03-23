@@ -1,7 +1,9 @@
 use frame_support::BoundedVec;
 use sp_std::{vec, vec::Vec};
 use substrate_stellar_sdk::{
-	compound_types::{LimitedVarArray, LimitedVarOpaque, UnlimitedVarArray, UnlimitedVarOpaque},
+	compound_types::{
+		LimitedString, LimitedVarArray, LimitedVarOpaque, UnlimitedVarArray, UnlimitedVarOpaque,
+	},
 	network::{Network, PUBLIC_NETWORK, TEST_NETWORK},
 	types::{
 		NodeId, Preconditions, ScpBallot, ScpEnvelope, ScpStatement, ScpStatementExternalize,
@@ -12,7 +14,7 @@ use substrate_stellar_sdk::{
 	XdrCodec,
 };
 
-use primitives::{StellarPublicKeyRaw, H256};
+use primitives::{derive_shortened_request_id, StellarPublicKeyRaw, H256};
 
 use crate::{
 	traits::{Organization, Validator},
@@ -175,12 +177,14 @@ pub fn build_dummy_proof_for<T: crate::Config>(
 	// Build a transaction
 	let source_account = MuxedAccount::from(PublicKey::PublicKeyTypeEd25519([0; 32]));
 	let operations = LimitedVarArray::new_empty();
+	let memo =
+		Memo::MemoText(LimitedString::new(derive_shortened_request_id(&request_id.0)).unwrap());
 	let transaction = Transaction {
 		source_account,
 		fee: 0,
 		seq_num: 0,
 		cond: Preconditions::PrecondNone,
-		memo: Memo::MemoHash(request_id.0), // Include the request id in the memo
+		memo, // Include the request id in the memo
 		operations,
 		ext: TransactionExt::V0,
 	};

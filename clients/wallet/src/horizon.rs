@@ -1,16 +1,14 @@
-use std::{convert::TryInto, str::FromStr, sync::Arc, time::Duration};
+use std::{str::FromStr, sync::Arc, time::Duration};
 
 use async_trait::async_trait;
+use futures::future;
 use parity_scale_codec::{Decode, Encode};
+use primitives::TextMemo;
 use serde::{Deserialize, Deserializer};
-use substrate_stellar_sdk::{Hash, PublicKey, TransactionEnvelope, XdrCodec};
+use substrate_stellar_sdk::{PublicKey, TransactionEnvelope, XdrCodec};
 use tokio::{sync::RwLock, time::sleep};
 
-use crate::{
-	error::Error,
-	types::{FilterWith, TransactionFilterParam},
-	LedgerTxEnvMap,
-};
+use crate::{error::Error, types::FilterWith, LedgerTxEnvMap};
 
 pub type PagingToken = u128;
 // todo: change to Slot
@@ -123,18 +121,9 @@ impl TransactionResponse {
 		self.ledger
 	}
 
-	pub fn memo_hash(&self) -> Option<Hash> {
-		self.memo.as_ref()?;
-
-		if self.memo_type == b"hash" {
-			// First decode the base64-encoded memo to a vector of 32 bytes
-			let memo = self.memo.clone().unwrap();
-			let decoded_memo = base64::decode(&memo);
-			if decoded_memo.is_err() {
-				return None
-			}
-			let hash: Result<[u8; 32], _> = decoded_memo.unwrap().as_slice().try_into();
-			hash.ok()
+	pub fn memo_text(&self) -> Option<&TextMemo> {
+		if self.memo_type == b"text" {
+			self.memo.as_ref()
 		} else {
 			None
 		}
@@ -381,11 +370,12 @@ impl<C: HorizonClient> HorizonFetcher<C> {
 	/// * `is_public_network` - the network the transaction belongs to
 	/// * `filter` - logic to save the needed transaction
 	/// * `last_paging_token` - acts as a marker to scroll over sets of transactions
-	pub async fn fetch_horizon_and_process_new_transactions<T: Clone>(
+	pub async fn fetch_horizon_and_process_new_transactions<T: Clone, U: Clone>(
 		&mut self,
 		ledger_env_map: Arc<RwLock<LedgerTxEnvMap>>,
-		targets: Arc<RwLock<T>>,
-		filter: impl FilterWith<TransactionFilterParam<T>>,
+		issue_map: Arc<RwLock<T>>,
+		memos_to_issue_ids: Arc<RwLock<U>>,
+		filter: impl FilterWith<T, U>,
 		last_paging_token: PagingToken,
 	) -> PagingToken {
 		let res = self.fetch_latest_txs(last_paging_token).await;
@@ -402,11 +392,12 @@ impl<C: HorizonClient> HorizonFetcher<C> {
 		let latest_paging_token =
 			transactions.iter().map(|tx| tx.paging_token).max().unwrap_or(last_paging_token);
 
-		let targets = targets.read().await;
+		let (issue_map, memos_to_issue_ids) =
+			future::join(issue_map.read(), memos_to_issue_ids.read()).await;
 		for transaction in transactions {
 			let tx = transaction.clone();
 
-			if filter.is_relevant((tx.clone(), targets.clone())) {
+			if filter.is_relevant(tx.clone(), &issue_map, &memos_to_issue_ids) {
 				tracing::info!(
 					"Adding transaction {:?} with slot {} to the ledger_env_map",
 					String::from_utf8(tx.id.clone()),
@@ -431,16 +422,18 @@ impl<C: HorizonClient> HorizonFetcher<C> {
 /// * `ledger_env_map` -  a list of TransactionEnvelopes and its corresponding ledger it belongs to
 /// * `targets` - helps in filtering out the transactions to save
 /// * `filter` - logic to save the needed transaction
-pub async fn listen_for_new_transactions<T, Filter>(
+pub async fn listen_for_new_transactions<T, U, Filter>(
 	vault_account_public_key: PublicKey,
 	is_public_network: bool,
 	ledger_env_map: Arc<RwLock<LedgerTxEnvMap>>,
-	targets: Arc<RwLock<T>>,
+	issue_map: Arc<RwLock<T>>,
+	memos_to_issue_ids: Arc<RwLock<U>>,
 	filter: Filter,
 ) -> Result<(), Error>
 where
 	T: Clone,
-	Filter: FilterWith<TransactionFilterParam<T>> + Clone,
+	U: Clone,
+	Filter: FilterWith<T, U> + Clone,
 {
 	let horizon_client = reqwest::Client::new();
 	let mut fetcher =
@@ -452,7 +445,8 @@ where
 		latest_paging_token = fetcher
 			.fetch_horizon_and_process_new_transactions(
 				ledger_env_map.clone(),
-				targets.clone(),
+				issue_map.clone(),
+				memos_to_issue_ids.clone(),
 				filter.clone(),
 				latest_paging_token,
 			)
@@ -473,7 +467,7 @@ mod tests {
 		Asset, Operation, SecretKey, StroopAmount, Transaction, TransactionEnvelope,
 	};
 
-	use crate::types::{FilterWith, TransactionFilterParam};
+	use crate::types::{FilterWith, TransactionResponse};
 
 	use super::*;
 
@@ -482,8 +476,13 @@ mod tests {
 	#[derive(Clone)]
 	struct MockFilter;
 
-	impl FilterWith<TransactionFilterParam<Vec<u64>>> for MockFilter {
-		fn is_relevant(&self, _param: TransactionFilterParam<Vec<u64>>) -> bool {
+	impl FilterWith<Vec<u64>, Vec<u64>> for MockFilter {
+		fn is_relevant(
+			&self,
+			_response: TransactionResponse,
+			_param_t: &Vec<u64>,
+			_param_u: &Vec<u64>,
+		) -> bool {
 			// We consider all transactions relevant for the test
 			true
 		}
@@ -625,6 +624,7 @@ mod tests {
 	#[tokio::test(flavor = "multi_thread")]
 	async fn client_test_for_polling() {
 		let issue_hashes = Arc::new(RwLock::new(vec![]));
+		let memos_to_issue_ids = Arc::new(RwLock::new(vec![]));
 		let slot_env_map = Arc::new(RwLock::new(HashMap::new()));
 
 		let horizon_client = reqwest::Client::new();
@@ -637,6 +637,7 @@ mod tests {
 			.fetch_horizon_and_process_new_transactions(
 				slot_env_map.clone(),
 				issue_hashes.clone(),
+				memos_to_issue_ids.clone(),
 				MockFilter,
 				0u128,
 			)
@@ -646,6 +647,7 @@ mod tests {
 			.fetch_horizon_and_process_new_transactions(
 				slot_env_map.clone(),
 				issue_hashes.clone(),
+				memos_to_issue_ids.clone(),
 				MockFilter,
 				cursor,
 			)

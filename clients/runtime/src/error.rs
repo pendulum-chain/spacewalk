@@ -89,7 +89,7 @@ pub enum Error {
 }
 
 impl Error {
-	fn is_module_err(&self, pallet_name: &str, error_name: &str) -> bool {
+	pub fn is_module_err(&self, pallet_name: &str, error_name: &str) -> bool {
 		matches!(
 			self,
 			Error::SubxtRuntimeError(SubxtError::Runtime(DispatchError::Module(ModuleError{

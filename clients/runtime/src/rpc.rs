@@ -975,7 +975,7 @@ pub trait IssuePallet {
 		vault_id: &VaultId,
 	) -> Result<RequestIssueEvent, Error>;
 
-	/// Execute a issue request by providing a Stellar transaction inclusion proof
+	/// Execute an issue request by providing a Stellar transaction inclusion proof
 	async fn execute_issue(
 		&self,
 		issue_id: H256,

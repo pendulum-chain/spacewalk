@@ -269,7 +269,7 @@ fn testnet_genesis(
 		},
 		issue: IssueConfig {
 			issue_period: DAYS,
-			issue_minimum_transfer_amount: 1000,
+			issue_minimum_transfer_amount: 100_00000, // This is 100 Stellar stroops
 			limit_volume_amount: None,
 			limit_volume_currency_id: CurrencyId::XCM(0),
 			current_volume_amount: 0u128,
@@ -278,14 +278,17 @@ fn testnet_genesis(
 		},
 		redeem: RedeemConfig {
 			redeem_period: DAYS,
-			redeem_minimum_transfer_amount: 100,
+			redeem_minimum_transfer_amount: 100_00000, // This is 100 Stellar stroops
 			limit_volume_amount: None,
 			limit_volume_currency_id: CurrencyId::XCM(0),
 			current_volume_amount: 0u128,
 			interval_length: (60u32 * 60 * 24),
 			last_interval_index: 0u32,
 		},
-		replace: ReplaceConfig { replace_period: DAYS, replace_minimum_transfer_amount: 1000 },
+		replace: ReplaceConfig {
+			replace_period: DAYS,
+			replace_minimum_transfer_amount: 100_00000, // This is 100 Stellar stroops
+		},
 		security: SecurityConfig {
 			initial_status: if start_shutdown { StatusCode::Shutdown } else { StatusCode::Error },
 		},
@@ -318,33 +321,33 @@ fn testnet_genesis(
 			secure_collateral_threshold: vec![
 				(
 					default_pair(CurrencyId::XCM(0)),
-					FixedU128::checked_from_rational(260, 100).unwrap(),
+					FixedU128::checked_from_rational(160, 100).unwrap(),
 				),
 				(
 					default_pair(CurrencyId::XCM(1)),
-					FixedU128::checked_from_rational(260, 100).unwrap(),
+					FixedU128::checked_from_rational(160, 100).unwrap(),
 				),
 			],
 			/* 150% */
 			premium_redeem_threshold: vec![
 				(
 					default_pair(CurrencyId::XCM(0)),
-					FixedU128::checked_from_rational(200, 100).unwrap(),
+					FixedU128::checked_from_rational(140, 100).unwrap(),
 				),
 				(
 					default_pair(CurrencyId::XCM(1)),
-					FixedU128::checked_from_rational(200, 100).unwrap(),
+					FixedU128::checked_from_rational(140, 100).unwrap(),
 				),
 			],
 			/* 135% */
 			liquidation_collateral_threshold: vec![
 				(
 					default_pair(CurrencyId::XCM(0)),
-					FixedU128::checked_from_rational(150, 100).unwrap(),
+					FixedU128::checked_from_rational(120, 100).unwrap(),
 				),
 				(
 					default_pair(CurrencyId::XCM(1)),
-					FixedU128::checked_from_rational(150, 100).unwrap(),
+					FixedU128::checked_from_rational(120, 100).unwrap(),
 				),
 			],
 			/* 110% */
@@ -354,9 +357,9 @@ fn testnet_genesis(
 			],
 		},
 		fee: FeeConfig {
-			issue_fee: FixedU128::checked_from_rational(15, 10000).unwrap(), // 0.15%
-			issue_griefing_collateral: FixedU128::checked_from_rational(5, 100000).unwrap(), // 0.005%
-			redeem_fee: FixedU128::checked_from_rational(5, 1000).unwrap(),  // 0.5%
+			issue_fee: FixedU128::checked_from_rational(1, 1000).unwrap(), // 0.1%
+			issue_griefing_collateral: FixedU128::checked_from_rational(5, 1000).unwrap(), // 0.5%
+			redeem_fee: FixedU128::checked_from_rational(1, 1000).unwrap(), // 0.1%
 			premium_redeem_fee: FixedU128::checked_from_rational(5, 100).unwrap(), // 5%
 			punishment_fee: FixedU128::checked_from_rational(1, 10).unwrap(), // 10%
 			replace_griefing_collateral: FixedU128::checked_from_rational(1, 10).unwrap(), // 10%

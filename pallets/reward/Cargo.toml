@@ -31,7 +31,6 @@ frame-benchmarking = { git = "https://github.com/paritytech/substrate", branch =
 pallet-timestamp = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.37", default-features = false }
 
 currency = { path = "../currency", default-features = false, features = ["testing-constants"] }
-primitives = { package = "spacewalk-primitives", path = "../../primitives", default-features = false }
 
 [features]
 default = ["std"]

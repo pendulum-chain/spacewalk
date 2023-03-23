@@ -459,6 +459,18 @@ pub mod pallet {
 
 			Ok(())
 		}
+
+		#[pallet::call_index(13)]
+		#[pallet::weight(<T as Config>::WeightInfo::set_punishment_delay())]
+		#[transactional]
+		pub fn set_punishment_delay(
+			origin: OriginFor<T>,
+			punishment_delay: T::BlockNumber,
+		) -> DispatchResult {
+			ensure_root(origin)?;
+			PunishmentDelay::<T>::put(punishment_delay);
+			Ok(())
+		}
 	}
 
 	#[pallet::event]

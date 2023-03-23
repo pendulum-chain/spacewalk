@@ -165,6 +165,7 @@ impl crate::Config for Test {
 	type AssetConversion = primitives::AssetConversion;
 	type BalanceConversion = primitives::BalanceConversion;
 	type CurrencyConversion = CurrencyConvert;
+	type AmountCompatibility = primitives::StellarCompatibility;
 }
 
 parameter_types! {
