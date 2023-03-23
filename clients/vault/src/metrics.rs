@@ -133,8 +133,8 @@ impl PerCurrencyMetrics {
 	pub fn new(vault_id: &VaultId) -> Self {
 		let label = format!(
 			"{}_{}",
-			vault_id.collateral_currency().inner().map(|i| i).unwrap_or_default(),
-			vault_id.wrapped_currency().inner().map(|i| i).unwrap_or_default()
+			vault_id.collateral_currency().inner().unwrap_or_default(),
+			vault_id.wrapped_currency().inner().unwrap_or_default()
 		);
 		Self::new_with_label(label.as_ref())
 	}
@@ -441,10 +441,9 @@ pub async fn monitor_bridge_metrics(
 	parachain_rpc
 		.on_event::<AggregateUpdatedEvent, _, _, _>(
 			|event| async move {
-				let updated_currencies =
-					event.values.iter().filter_map(|(key, _value)| match key {
-						OracleKey::ExchangeRate(currency_id) => Some(currency_id),
-					});
+				let updated_currencies = event.values.iter().map(|(key, _value)| match key {
+					OracleKey::ExchangeRate(currency_id) => currency_id,
+				});
 				let vaults = vault_id_manager.get_entries().await;
 				for currency_id in updated_currencies {
 					for vault in vaults
