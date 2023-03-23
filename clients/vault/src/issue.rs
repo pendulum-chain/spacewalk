@@ -352,7 +352,7 @@ pub async fn execute_issue(
 
 	let (issue_id, issue_memo) = match get_issue_memo_from_tx_env(&tx_env) {
 		Some(issue_memo) =>
-			(issue_memos.read().await.get(issue_memo).map(|hash| hash.clone()), Some(issue_memo)),
+			(issue_memos.read().await.get(issue_memo).map(|&hash| hash), Some(issue_memo)),
 		_ => (None, None),
 	};
 
