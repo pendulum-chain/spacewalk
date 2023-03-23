@@ -181,7 +181,7 @@ impl Request {
 	) -> Result<(TransactionEnvelope, Slot), Error> {
 		let destination_public_key = PublicKey::from_binary(self.stellar_address);
 		let stroop_amount = 
-    	primitives::BalanceConversion::lookup(self.amount).map_err(|_| Error::LookupError)?;
+			primitives::BalanceConversion::lookup(self.amount).map_err(|_| Error::LookupError)?;
 		let request_id = self.hash.0;
 
 		let mut wallet = wallet.write().await;
