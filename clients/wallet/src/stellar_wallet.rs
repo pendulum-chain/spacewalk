@@ -1,15 +1,16 @@
+use reqwest::Client;
 use std::{fmt::Formatter, sync::Arc};
 
 use substrate_stellar_sdk::{
 	compound_types::LimitedString,
 	network::{Network, PUBLIC_NETWORK, TEST_NETWORK},
-	types::Preconditions,
+	types::{Preconditions, SequenceNumber},
 	Asset, Memo, Operation, PublicKey, SecretKey, StroopAmount, Transaction, TransactionEnvelope,
 };
 use tokio::sync::Mutex;
 
 use crate::{
-	cache::TransactionStorage,
+	cache::{extract_sequence_number, TxEnvelopeStorage},
 	error::Error,
 	horizon::{HorizonClient, PagingToken, TransactionResponse},
 	types::StellarPublicKeyRaw,
@@ -27,7 +28,27 @@ pub struct StellarWallet {
 	/// has been increased on the network.
 	transaction_submission_lock: Arc<Mutex<()>>,
 	/// Used for caching Stellar transactions before they get submitted.
-	cache: TransactionStorage,
+	cache: TxEnvelopeStorage,
+}
+
+impl StellarWallet {
+	async fn submit_transaction(
+		&mut self,
+		sequence: SequenceNumber,
+		envelope: TransactionEnvelope,
+		horizon_client: Client,
+	) -> Result<(TransactionResponse, TransactionEnvelope), Error> {
+		let _ = self.cache.save_to_local(sequence, envelope.clone());
+
+		let client_result = horizon_client
+			.submit_transaction(envelope.clone(), self.is_public_network)
+			.await
+			.map(|response| (response, envelope));
+
+		let _ = self.cache.remove_transaction(sequence);
+
+		client_result
+	}
 }
 
 impl StellarWallet {
@@ -44,7 +65,8 @@ impl StellarWallet {
 		let pub_key = secret_key.get_public().to_encoding();
 		let pub_key = std::str::from_utf8(&pub_key).map_err(|_| Error::InvalidSecretKey)?;
 
-		let cache = TransactionStorage::new(cache_path, pub_key, is_public_network);
+		let cache = TxEnvelopeStorage::new(cache_path, pub_key, is_public_network);
+
 		let wallet = StellarWallet {
 			secret_key,
 			is_public_network,
@@ -83,12 +105,27 @@ impl StellarWallet {
 		let account_id = std::str::from_utf8(&public_key_encoded).map_err(Error::Utf8Error)?;
 
 		let transactions_response = horizon_client
-			.get_transactions(account_id, self.is_public_network, cursor, limit, order_ascending)
+			.get_tx_envelopes(account_id, self.is_public_network, cursor, limit, order_ascending)
 			.await?;
 
 		let transactions = transactions_response._embedded.records;
 
 		Ok(transactions)
+	}
+
+	pub async fn resubmit_transaction(
+		&mut self,
+		transaction: TransactionEnvelope,
+	) -> Result<(TransactionResponse, TransactionEnvelope), Error> {
+		let _ = self.transaction_submission_lock.lock().await;
+		let horizon_client = Client::new();
+
+		match extract_sequence_number(&transaction) {
+			None => Err(Error::HorizonSubmissionError(
+				"Cannot extract sequence number for transaction envelope".to_string(),
+			)),
+			Some(seq) => self.submit_transaction(seq, transaction, horizon_client).await,
+		}
 	}
 
 	pub async fn send_payment_to_address(
@@ -159,18 +196,11 @@ impl StellarWallet {
 			.sign(network, vec![&self.get_secret_key()])
 			.map_err(|_e| Error::SignEnvelopeError)?;
 
-		let transaction_response = horizon_client
-			.submit_transaction(envelope.clone(), self.is_public_network)
-			.await?;
-
-		Ok((transaction_response, envelope))
+		self.submit_transaction(next_sequence_number, envelope, horizon_client).await
 	}
 
-	#[doc(hidden)]
-	#[cfg(test)]
-	/// Removing all files is necessary for testing purposes.
-	pub fn remove_local_cache(&self) -> bool {
-		self.cache.remove_all()
+	pub fn get_cached_transactions(&self) -> Vec<TransactionEnvelope> {
+		self.cache.get_tx_envelopes()
 	}
 }
 
@@ -187,8 +217,19 @@ impl std::fmt::Debug for StellarWallet {
 	}
 }
 
+#[cfg(feature = "testing-utils")]
+impl Drop for StellarWallet {
+	fn drop(&mut self) {
+		tracing::debug!("deleting cache...");
+		if !self.cache.remove_all() {
+			tracing::warn!("the cache was not removed. Please delete manually.");
+		}
+	}
+}
+
 #[cfg(test)]
 mod test {
+	use crate::cache::extract_sequence_number;
 	use serial_test::serial;
 	use std::sync::Arc;
 	use substrate_stellar_sdk::PublicKey;
@@ -261,7 +302,7 @@ mod test {
 		let _ = tokio::join!(first_job, second_job);
 
 		// remove the files to not pollute the project.
-		assert!(wallet().read().await.remove_local_cache());
+		assert!(wallet().read().await.cache.remove_all());
 	}
 
 	#[tokio::test]
@@ -281,10 +322,16 @@ mod test {
 			.await;
 
 		assert!(result.is_ok());
-		let (transaction_response, _) = result.unwrap();
+		let (transaction_response, env) = result.unwrap();
 		assert!(!transaction_response.hash.to_vec().is_empty());
 		assert!(transaction_response.ledger() > 0);
-		assert!(wallet().read().await.remove_local_cache());
+
+		// check if the file was indeed removed.
+		let sequence_number =
+			extract_sequence_number(&env).expect("it should return a sequence number");
+		assert!(wallet().read().await.cache.get_tx_envelope(sequence_number).is_none());
+
+		assert!(wallet().read().await.cache.remove_all());
 	}
 
 	#[tokio::test]
@@ -338,6 +385,6 @@ mod test {
 
 		assert!(ok_sequence_number.is_ok());
 		// remove the files to not pollute the project.
-		assert!(wallet.remove_local_cache());
+		assert!(wallet.cache.remove_all());
 	}
 }
