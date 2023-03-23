@@ -33,7 +33,6 @@ const XLM_BALANCE_TYPE_LABEL: &str = "type";
 const REQUEST_STATUS_LABEL: &str = "status";
 const TASK_NAME: &str = "task";
 const TOKIO_POLLING_INTERVAL_MS: u64 = 10000;
-const ONE: f64 = one();
 
 // Metrics are stored under the [`CURRENCY_LABEL`] key so that multiple vaults can be easily
 // monitored at the same time.
@@ -120,10 +119,6 @@ impl VaultDataReader for VaultIdManager {
 	async fn get_entries(&self) -> Vec<VaultData> {
 		self.get_entries().await
 	}
-}
-
-pub const fn one() -> f64 {
-	10u128.pow(12u32) as f64
 }
 
 impl PerCurrencyMetrics {
@@ -233,8 +228,8 @@ pub async fn metrics_handler() -> Result<impl Reply, Rejection> {
 	Ok(metrics)
 }
 
-fn raw_value_as_currency(value: u128, _currency: CurrencyId) -> Result<f64, ServiceError<Error>> {
-	let scaling_factor = ONE;
+fn raw_value_as_currency(value: u128, currency: CurrencyId) -> Result<f64, ServiceError<Error>> {
+	let scaling_factor = currency.one() as f64;
 	Ok(value as f64 / scaling_factor)
 }
 
