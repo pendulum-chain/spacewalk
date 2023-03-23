@@ -11,7 +11,7 @@ use sp_runtime::{
 };
 use sp_std::{convert::TryInto, fmt::Debug};
 
-use primitives::TruncateFixedPointToInt;
+use primitives::{AmountCompatibility, TruncateFixedPointToInt};
 
 use crate::{
 	pallet::{self, Config, Error},
@@ -83,6 +83,21 @@ mod math {
 
 		pub fn is_zero(&self) -> bool {
 			self.amount.is_zero()
+		}
+
+		pub fn ensure_is_compatible_with_target_chain(&self) -> Result<(), DispatchError> {
+			if !T::AmountCompatibility::is_compatible_with_target(self.amount) {
+				return Err(Error::<T>::IncompatibleAmount.into())
+			}
+			Ok(())
+		}
+
+		pub fn round_to_target_chain(&self) -> Result<Self, DispatchError> {
+			let rounded_amount =
+				T::AmountCompatibility::round_to_compatible_with_target(self.amount)
+					.map_err(|_| Error::<T>::CompatibleRoundingFailed)?;
+
+			Ok(Self::new(rounded_amount, self.currency_id))
 		}
 
 		fn checked_fn<F>(

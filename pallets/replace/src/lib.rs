@@ -363,6 +363,9 @@ impl<T: Config> Pallet<T> {
 		ext::vault_registry::ensure_not_banned::<T>(&vault_id)?;
 
 		let amount_to_replace = Amount::new(amount, vault_id.wrapped_currency());
+		// We ensure that the amount requested is compatible with the target chain (ie. it has a
+		// specific amount of trailing zeros)
+		amount_to_replace.ensure_is_compatible_with_target_chain()?;
 
 		ensure!(
 			!ext::nomination::is_nominatable::<T>(&vault_id)?,
