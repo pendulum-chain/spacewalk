@@ -821,7 +821,7 @@ async fn test_automatic_issue_execution_succeeds() {
 		oracle_agent.start().await.expect("failed to start agent");
 		let oracle_agent = Arc::new(oracle_agent);
 
-		let issue_amount = upscaled_compatible_amount(100);
+		let issue_amount = upscaled_compatible_amount(1000);
 		let vault_collateral = get_required_vault_collateral_for_issue(
 			&vault_provider,
 			issue_amount,
@@ -870,7 +870,7 @@ async fn test_automatic_issue_execution_succeeds() {
 
 			// wait for vault2 to execute this issue
 			assert_event::<ExecuteIssueEvent, _>(TIMEOUT, user_provider.clone(), move |x| {
-				x.vault_id == vault_id.clone()
+				x.vault_id == vault_id.clone() && x.amount == issue_amount
 			})
 			.await;
 		};
