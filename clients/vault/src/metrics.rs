@@ -482,7 +482,7 @@ pub async fn publish_expected_stellar_balance<P: VaultRegistryPallet>(
 	if let Ok(v) = parachain_rpc.get_vault(&vault.vault_id).await {
 		let lowerbound = v.issued_tokens.saturating_sub(v.to_be_redeemed_tokens);
 		let upperbound = v.issued_tokens.saturating_add(v.to_be_issued_tokens);
-		let scaling_factor = vault.vault_id.wrapped_currency().inner().unwrap_or_default() as f64;
+		let scaling_factor = vault.vault_id.wrapped_currency().one() as f64;
 		vault.metrics.asset_balance.lowerbound.set(lowerbound as f64 / scaling_factor);
 		vault.metrics.asset_balance.upperbound.set(upperbound as f64 / scaling_factor);
 	}

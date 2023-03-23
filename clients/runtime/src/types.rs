@@ -120,15 +120,12 @@ pub mod currency_id {
 	use crate::Error;
 
 	pub trait CurrencyIdExt {
-		fn inner(&self) -> Result<u8, Error>;
+		fn inner(&self) -> Result<String, Error>;
 	}
 
 	impl CurrencyIdExt for CurrencyId {
-		fn inner(&self) -> Result<u8, Error> {
-			match self {
-				CurrencyId::XCM(x) => Ok(*x),
-				_ => Err(Error::CurrencyNotFound),
-			}
+		fn inner(&self) -> Result<String, Error> {
+			Ok(format!("{:?}", self))
 		}
 	}
 }
