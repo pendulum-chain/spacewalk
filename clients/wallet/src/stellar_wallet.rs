@@ -6,17 +6,18 @@ use substrate_stellar_sdk::{
 	network::{Network, PUBLIC_NETWORK, TEST_NETWORK},
 	types::{Preconditions, SequenceNumber},
 	Asset, Memo, Operation, PublicKey, SecretKey, StroopAmount, Transaction, TransactionEnvelope,
+	XdrCodec,
 };
 use tokio::sync::Mutex;
 
 use crate::{
-	cache::{extract_sequence_number, TxEnvelopeStorage},
+	cache::TxEnvelopeStorage,
 	error::Error,
 	horizon::{HorizonClient, PagingToken, TransactionResponse},
 	types::StellarPublicKeyRaw,
 };
 
-use primitives::derive_shortened_request_id;
+use primitives::{derive_shortened_request_id, TransactionEnvelopeExt};
 
 #[derive(Clone)]
 pub struct StellarWallet {
@@ -36,7 +37,7 @@ impl StellarWallet {
 		&mut self,
 		sequence: SequenceNumber,
 		envelope: TransactionEnvelope,
-		horizon_client: Client,
+		horizon_client: &Client,
 	) -> Result<(TransactionResponse, TransactionEnvelope), Error> {
 		let _ = self.cache.save_to_local(sequence, envelope.clone());
 
@@ -45,6 +46,8 @@ impl StellarWallet {
 			.await
 			.map(|response| (response, envelope));
 
+		// for unit testing purposes, file won't be removed immediately.
+		#[cfg(not(test))]
 		let _ = self.cache.remove_transaction(sequence);
 
 		client_result
@@ -105,7 +108,7 @@ impl StellarWallet {
 		let account_id = std::str::from_utf8(&public_key_encoded).map_err(Error::Utf8Error)?;
 
 		let transactions_response = horizon_client
-			.get_tx_envelopes(account_id, self.is_public_network, cursor, limit, order_ascending)
+			.get_transactions(account_id, self.is_public_network, cursor, limit, order_ascending)
 			.await?;
 
 		let transactions = transactions_response._embedded.records;
@@ -113,19 +116,26 @@ impl StellarWallet {
 		Ok(transactions)
 	}
 
-	pub async fn resubmit_transaction(
+	/// Returns errors of transactions that were not resubmitted.
+	pub async fn resubmit_transactions_from_cache(
 		&mut self,
-		transaction: TransactionEnvelope,
-	) -> Result<(TransactionResponse, TransactionEnvelope), Error> {
+	) -> (Vec<(TransactionResponse, TransactionEnvelope)>, Vec<Error>) {
 		let _ = self.transaction_submission_lock.lock().await;
 		let horizon_client = Client::new();
 
-		match extract_sequence_number(&transaction) {
-			None => Err(Error::HorizonSubmissionError(
-				"Cannot extract sequence number for transaction envelope".to_string(),
-			)),
-			Some(seq) => self.submit_transaction(seq, transaction, horizon_client).await,
+		let mut errors = vec![];
+		let mut passed = vec![];
+		for (env, seq) in self.cache.get_tx_envelopes() {
+			match self.submit_transaction(seq, env, &horizon_client).await {
+				Ok(res) => passed.push(res),
+				Err(e) => {
+					tracing::warn!("failed to resubmit transaction with sequence number: {}", seq);
+					errors.push(e);
+				},
+			}
 		}
+
+		(passed, errors)
 	}
 
 	pub async fn send_payment_to_address(
@@ -185,9 +195,6 @@ impl StellarWallet {
 				Error::BuildTransactionError("Appending payment operation failed".to_string())
 			})?;
 
-		// caching the transaction before submission
-		self.cache.save_to_local(transaction.clone());
-
 		let mut envelope = transaction.into_transaction_envelope();
 		let network: &Network =
 			if self.is_public_network { &PUBLIC_NETWORK } else { &TEST_NETWORK };
@@ -196,11 +203,7 @@ impl StellarWallet {
 			.sign(network, vec![&self.get_secret_key()])
 			.map_err(|_e| Error::SignEnvelopeError)?;
 
-		self.submit_transaction(next_sequence_number, envelope, horizon_client).await
-	}
-
-	pub fn get_cached_transactions(&self) -> Vec<TransactionEnvelope> {
-		self.cache.get_tx_envelopes()
+		self.submit_transaction(next_sequence_number, envelope, &horizon_client).await
 	}
 }
 
@@ -229,10 +232,10 @@ impl Drop for StellarWallet {
 
 #[cfg(test)]
 mod test {
-	use crate::cache::extract_sequence_number;
+	use primitives::TransactionEnvelopeExt;
 	use serial_test::serial;
 	use std::sync::Arc;
-	use substrate_stellar_sdk::PublicKey;
+	use substrate_stellar_sdk::{Asset, PublicKey, TransactionEnvelope};
 	use tokio::sync::RwLock;
 
 	use crate::StellarWallet;
@@ -246,7 +249,7 @@ mod test {
 			StellarWallet::from_secret_encoded(
 				&STELLAR_VAULT_SECRET_KEY.to_string(),
 				IS_PUBLIC_NETWORK,
-				"./".to_string(),
+				"resources/test_2".to_string(),
 			)
 			.unwrap(),
 		))
@@ -272,9 +275,13 @@ mod test {
 				.await;
 
 			assert!(result.is_ok());
-			let (transaction_response, _) = result.unwrap();
+			let (transaction_response, env) = result.unwrap();
 			assert!(!transaction_response.hash.to_vec().is_empty());
 			assert!(transaction_response.ledger() > 0);
+
+			// remove the files to not pollute the project.
+			let seq = env.sequence_number().expect("to return a sequence number");
+			assert!(wallet().read().await.cache.remove_transaction(seq));
 		});
 
 		let wallet_clone2 = wallet().clone();
@@ -294,15 +301,16 @@ mod test {
 				.await;
 
 			assert!(result.is_ok());
-			let (transaction_response, _) = result.unwrap();
+			let (transaction_response, env) = result.unwrap();
 			assert!(!transaction_response.hash.to_vec().is_empty());
 			assert!(transaction_response.ledger() > 0);
+
+			// remove the files to not pollute the project.
+			let seq = env.sequence_number().expect("to return a sequence number");
+			assert!(wallet().read().await.cache.remove_transaction(seq));
 		});
 
 		let _ = tokio::join!(first_job, second_job);
-
-		// remove the files to not pollute the project.
-		assert!(wallet().read().await.cache.remove_all());
 	}
 
 	#[tokio::test]
@@ -326,12 +334,9 @@ mod test {
 		assert!(!transaction_response.hash.to_vec().is_empty());
 		assert!(transaction_response.ledger() > 0);
 
-		// check if the file was indeed removed.
-		let sequence_number =
-			extract_sequence_number(&env).expect("it should return a sequence number");
-		assert!(wallet().read().await.cache.get_tx_envelope(sequence_number).is_none());
-
-		assert!(wallet().read().await.cache.remove_all());
+		// remove the file to not pollute the project.
+		let seq = env.sequence_number().expect("to return a sequence number");
+		assert!(wallet().read().await.cache.remove_transaction(seq));
 	}
 
 	#[tokio::test]
@@ -349,7 +354,7 @@ mod test {
 		let correct_amount_that_should_not_fail = 100;
 		let incorrect_amount_that_should_fail = 0;
 
-		let ok_transaction_sent = wallet
+		let (_, env) = wallet
 			.send_payment_to_address(
 				destination.clone(),
 				asset.clone(),
@@ -357,9 +362,12 @@ mod test {
 				request_id,
 				correct_amount_that_should_not_fail,
 			)
-			.await;
+			.await
+			.expect("should be ok");
 
-		assert!(ok_transaction_sent.is_ok());
+		// remove the file to not pollute the project.
+		let seq = env.sequence_number().expect("to return a sequence number");
+		assert!(wallet.cache.remove_transaction(seq));
 
 		let err_insufficient_fee = wallet
 			.send_payment_to_address(
@@ -373,7 +381,7 @@ mod test {
 
 		assert!(!err_insufficient_fee.is_ok());
 
-		let ok_sequence_number = wallet
+		let (_, env) = wallet
 			.send_payment_to_address(
 				destination.clone(),
 				asset.clone(),
@@ -381,10 +389,21 @@ mod test {
 				request_id,
 				correct_amount_that_should_not_fail,
 			)
-			.await;
+			.await
+			.expect("this should already work");
 
-		assert!(ok_sequence_number.is_ok());
 		// remove the files to not pollute the project.
-		assert!(wallet.cache.remove_all());
+		let seq = env.sequence_number().expect("to return a sequence number");
+		assert!(wallet.cache.remove_transaction(seq));
+	}
+
+	#[tokio::test]
+	#[serial]
+	async fn resubmit_transactions_works() {
+		// there are 2 acceptable files in the directory, but only 1 will pass; the other should
+		// fail.
+		let (passed, failed) = wallet().write().await.resubmit_transactions_from_cache().await;
+		assert_eq!(passed.len(), 1);
+		assert_eq!(failed.len(), 1);
 	}
 }

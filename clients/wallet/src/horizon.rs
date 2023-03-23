@@ -178,7 +178,7 @@ pub const fn horizon_url(is_public_network: bool) -> &'static str {
 
 #[async_trait]
 pub trait HorizonClient {
-	async fn get_tx_envelopes(
+	async fn get_transactions(
 		&self,
 		account_id: &str,
 		is_public_network: bool,
@@ -200,7 +200,7 @@ pub trait HorizonClient {
 
 #[async_trait]
 impl HorizonClient for reqwest::Client {
-	async fn get_tx_envelopes(
+	async fn get_transactions(
 		&self,
 		account_id: &str,
 		is_public_network: bool,
@@ -312,13 +312,13 @@ impl<C: HorizonClient> HorizonFetcher<C> {
 		if cursor == 0 {
 			// Fetch the first/latest transaction and set it as the new paging token
 			self.client
-				.get_tx_envelopes(account_id, self.is_public_network, 0, 1, false)
+				.get_transactions(account_id, self.is_public_network, 0, 1, false)
 				.await
 		} else {
 			// If we have a paging token, fetch the transactions that occurred after our last stored
 			// paging token
 			self.client
-				.get_tx_envelopes(
+				.get_transactions(
 					account_id,
 					self.is_public_network,
 					cursor,
@@ -558,7 +558,7 @@ mod tests {
 
 		let public_key_encoded = "GAYOLLLUIZE4DZMBB2ZBKGBUBZLIOYU6XFLW37GBP2VZD3ABNXCW4BVA";
 		let limit = 2;
-		match horizon_client.get_tx_envelopes(public_key_encoded, true, 0, limit, false).await {
+		match horizon_client.get_transactions(public_key_encoded, true, 0, limit, false).await {
 			Ok(res) => {
 				let txs = res._embedded.records;
 				assert_eq!(txs.len(), 2);

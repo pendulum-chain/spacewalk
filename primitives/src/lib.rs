@@ -32,6 +32,7 @@ use substrate_stellar_sdk::{
 	types::OperationBody, ClaimPredicate, Claimant, Memo, MuxedAccount, Operation,
 	TransactionEnvelope,
 };
+use substrate_stellar_sdk::types::SequenceNumber;
 
 #[cfg(test)]
 mod tests;
@@ -757,6 +758,8 @@ impl StaticLookup for AddressConversion {
 pub trait TransactionEnvelopeExt {
 	fn get_payment_amount_for_asset_to(&self, to: StellarPublicKeyRaw, asset: StellarAsset)
 		-> u128;
+
+	fn sequence_number(&self) -> Option<SequenceNumber>;
 }
 
 impl TransactionEnvelopeExt for TransactionEnvelope {
@@ -808,5 +811,14 @@ impl TransactionEnvelopeExt for TransactionEnvelope {
 
 		// `transferred_amount` is in stroops, so we need to convert it
 		BalanceConversion::unlookup(transferred_amount)
+	}
+
+
+	fn sequence_number(&self) -> Option<SequenceNumber> {
+		match self {
+			TransactionEnvelope::EnvelopeTypeTxV0(env) => Some(env.tx.seq_num),
+			TransactionEnvelope::EnvelopeTypeTx(env) => Some(env.tx.seq_num),
+			TransactionEnvelope::EnvelopeTypeTxFeeBump(_) | TransactionEnvelope::Default(_) => None,
+		}
 	}
 }

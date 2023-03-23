@@ -1,3 +1,4 @@
+use primitives::TransactionEnvelopeExt;
 use std::{
 	fs::{create_dir_all, read_dir, remove_file, File, OpenOptions},
 	io::{Read, Write},
@@ -37,7 +38,7 @@ macro_rules! unwrap_or_return {
 	};
 }
 
-/// Contains the path where the transaction will be saved.
+/// Contains the path where the transaction envelope will be saved.
 #[derive(Debug, Clone)]
 pub struct TxEnvelopeStorage {
 	path: String,
@@ -101,7 +102,7 @@ impl TxEnvelopeStorage {
 
 	#[doc(hidden)]
 	#[cfg(any(test, feature = "testing-utils"))]
-	/// Removes all transactions
+	/// Removes all transactions, including the directory
 	pub fn remove_all(&self) -> bool {
 		std::fs::remove_dir_all(self.full_path()).is_ok()
 	}
@@ -114,22 +115,27 @@ impl TxEnvelopeStorage {
 		if !path.exists() {
 			return None
 		}
-		read_tx_envelope_from_path(path)
+		read_tx_envelope_from_path(path).map(|(tx, _)| tx)
 	}
 
 	/// Returns all transactions found in local path
-	pub fn get_tx_envelopes(&self) -> Vec<TransactionEnvelope> {
+	pub fn get_tx_envelopes(&self) -> Vec<(TransactionEnvelope, SequenceNumber)> {
 		let path = self.full_path();
 		let directory =
 			unwrap_or_return!(read_dir(&path), vec![], format!("Failed to read directory {path}"));
 
-		directory
+		let mut res: Vec<(TransactionEnvelope, SequenceNumber)> = directory
 			.into_iter()
 			.filter_map(|entry| {
 				let path = entry.ok()?.path();
-				read_tx_envelope_from_path(path)
+				extract_tx_envelope_from_path(path)
 			})
-			.collect()
+			.collect();
+
+		// the envelopes have been filtered out with those having sequence numbers already
+		res.sort_by(|(_, first), (_, next)| first.cmp(&next));
+
+		res
 	}
 }
 
@@ -152,14 +158,34 @@ fn parse_string_to_vec_u8(value: &str) -> Option<Vec<u8>> {
 		.collect()
 }
 
+/// Returns a tuple of `TransactionEnvelope` and its sequence number,
+/// if successfully extracted from the path.
+/// Otherwise returns a None and and the file will be deleted.
+fn extract_tx_envelope_from_path<P: AsRef<Path> + std::fmt::Debug + Clone>(
+	path: P,
+) -> Option<(TransactionEnvelope, SequenceNumber)> {
+	let Some(env) = read_tx_envelope_from_path(&path) else {
+		// do not remove invalid files for unit-testing.
+		#[cfg(not(test))]
+		if !remove_file(&path).is_ok() {
+			tracing::warn!("failed to remove unreadable file: {:?}",path);
+		}
+
+		return None;
+	};
+
+	Some(env)
+}
+
 /// a helper function to parse a content of a file into `Transaction`.
 fn read_tx_envelope_from_path<P: AsRef<Path> + std::fmt::Debug + Clone>(
 	path: P,
-) -> Option<TransactionEnvelope> {
+) -> Option<(TransactionEnvelope, SequenceNumber)> {
 	let content_from_file = unwrap_or_return!(
 		OpenOptions::new().read(true).open(&path).and_then(|mut file: File| {
 			// if the file exists, read the contents as a string.
 			let mut buf = String::new();
+
 			if let Err(e) = file.read_to_string(&mut buf) {
 				tracing::warn!("Failed to read file {:?}: {:?}", path, e);
 			}
@@ -171,26 +197,24 @@ fn read_tx_envelope_from_path<P: AsRef<Path> + std::fmt::Debug + Clone>(
 
 	// convert the content into `Vec<u8>`
 	let content_as_vec_u8 = parse_string_to_vec_u8(&content_from_file)?;
-	// convert the content to Transaction
-	TransactionEnvelope::from_xdr(content_as_vec_u8).ok()
-}
 
-pub fn extract_sequence_number(envelope: &TransactionEnvelope) -> Option<SequenceNumber> {
-	match envelope {
-		TransactionEnvelope::EnvelopeTypeTxV0(env) => Some(env.tx.seq_num),
-		TransactionEnvelope::EnvelopeTypeTx(env) => Some(env.tx.seq_num),
-		TransactionEnvelope::EnvelopeTypeTxFeeBump(_) | TransactionEnvelope::Default(_) => None,
-	}
+	// convert the content to TransactionEnvelope
+	let env = unwrap_or_return!(
+		TransactionEnvelope::from_xdr(content_as_vec_u8),
+		None,
+		format!("cannot decode content in file {:?}", path)
+	);
+
+	// if a sequence number is found, then this transaction envelope is acceptable;
+	// otherwise mark as unacceptable.
+	env.sequence_number().map(|seq| (env, seq))
 }
 
 #[cfg(test)]
 mod test {
 
-	impl TxEnvelopeStorage {}
-	use crate::cache::{
-		extract_sequence_number, parse_string_to_vec_u8, read_tx_envelope_from_path,
-		TxEnvelopeStorage,
-	};
+	use crate::cache::{parse_string_to_vec_u8, read_tx_envelope_from_path, TxEnvelopeStorage};
+	use primitives::TransactionEnvelopeExt;
 	use substrate_stellar_sdk::{
 		types::{Preconditions, SequenceNumber},
 		PublicKey, Transaction, TransactionEnvelope,
@@ -198,10 +222,10 @@ mod test {
 
 	const PUB_KEY: &str = "GCENYNAX2UCY5RFUKA7AYEXKDIFITPRAB7UYSISCHVBTIAKPU2YO57OA";
 	fn storage() -> TxEnvelopeStorage {
-		TxEnvelopeStorage::new("resources".to_string(), PUB_KEY, false)
+		TxEnvelopeStorage::new("resources/test_1".to_string(), PUB_KEY, false)
 	}
 
-	fn dummy_tx(sequence: SequenceNumber) -> TransactionEnvelope {
+	pub fn dummy_tx(sequence: SequenceNumber) -> TransactionEnvelope {
 		let public_key = PublicKey::from_encoding(PUB_KEY).expect("should return a public key");
 
 		// let's create a transaction
@@ -243,11 +267,11 @@ mod test {
 	fn test_read_tx_envelope_from_path() {
 		let path = storage().full_path();
 
-		let test_success = |seq: SequenceNumber| {
-			let file_path = format!("{path}/{seq}");
+		let test_success = |expected_seq: SequenceNumber| {
+			let file_path = format!("{path}/{expected_seq}");
 			match read_tx_envelope_from_path(file_path) {
-				None => assert!(false, "file {} should exist.", seq),
-				Some(tx) => assert_eq!(extract_sequence_number(&tx), Some(seq)),
+				None => assert!(false, "file {} should exist.", expected_seq),
+				Some((_, actual_seq)) => assert_eq!(actual_seq, expected_seq),
 			}
 		};
 
