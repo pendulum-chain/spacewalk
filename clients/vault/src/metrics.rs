@@ -29,7 +29,7 @@ use wallet::Balance;
 const SLEEP_DURATION: Duration = Duration::from_secs(5 * 60);
 
 const CURRENCY_LABEL: &str = "currency";
-const BTC_BALANCE_TYPE_LABEL: &str = "type";
+const XLM_BALANCE_TYPE_LABEL: &str = "type";
 const REQUEST_STATUS_LABEL: &str = "status";
 const TASK_NAME: &str = "task";
 const TOKIO_POLLING_INTERVAL_MS: u64 = 10000;
@@ -38,8 +38,8 @@ const TOKIO_POLLING_INTERVAL_MS: u64 = 10000;
 // monitored at the same time.
 lazy_static! {
 	pub static ref REGISTRY: Registry = Registry::new();
-	pub static ref AVERAGE_BTC_FEE: GaugeVec =
-		GaugeVec::new(Opts::new("avg_stellar_fee", "Average Bitcoin Fee"), &[CURRENCY_LABEL])
+	pub static ref AVERAGE_XLM_FEE: GaugeVec =
+		GaugeVec::new(Opts::new("avg_stellar_fee", "Average Stellar Fee"), &[CURRENCY_LABEL])
 			.expect("Failed to create prometheus metric");
 	pub static ref LOCKED_COLLATERAL: GaugeVec =
 		GaugeVec::new(Opts::new("locked_collateral", "Locked Collateral"), &[CURRENCY_LABEL])
@@ -61,9 +61,9 @@ lazy_static! {
 		&[TASK_NAME]
 	)
 	.expect("Failed to create prometheus metric");
-	pub static ref BTC_BALANCE: GaugeVec = GaugeVec::new(
-		Opts::new("stellar_balance", "Bitcoin Balance"),
-		&[CURRENCY_LABEL, BTC_BALANCE_TYPE_LABEL]
+	pub static ref XLM_BALANCE: GaugeVec = GaugeVec::new(
+		Opts::new("stellar_balance", "Stellar Balance"),
+		&[CURRENCY_LABEL, XLM_BALANCE_TYPE_LABEL]
 	)
 	.expect("Failed to create prometheus metric");
 	pub static ref ISSUES: GaugeVec = GaugeVec::new(
@@ -145,9 +145,9 @@ impl PerCurrencyMetrics {
 		let stellar_balance_gauge = |balance_type: &'static str| {
 			let labels = HashMap::<&str, &str>::from([
 				(CURRENCY_LABEL, label),
-				(BTC_BALANCE_TYPE_LABEL, balance_type),
+				(XLM_BALANCE_TYPE_LABEL, balance_type),
 			]);
-			BTC_BALANCE.with(&labels)
+			XLM_BALANCE.with(&labels)
 		};
 		let request_type_label = |balance_type: &'static str| {
 			HashMap::<&str, &str>::from([
@@ -191,12 +191,12 @@ impl PerCurrencyMetrics {
 }
 
 pub fn register_custom_metrics() -> Result<(), RuntimeError> {
-	REGISTRY.register(Box::new(AVERAGE_BTC_FEE.clone()))?;
+	REGISTRY.register(Box::new(AVERAGE_XLM_FEE.clone()))?;
 	REGISTRY.register(Box::new(LOCKED_COLLATERAL.clone()))?;
 	REGISTRY.register(Box::new(COLLATERALIZATION.clone()))?;
 	REGISTRY.register(Box::new(REQUIRED_COLLATERAL.clone()))?;
 	REGISTRY.register(Box::new(FEE_BUDGET_SURPLUS.clone()))?;
-	REGISTRY.register(Box::new(BTC_BALANCE.clone()))?;
+	REGISTRY.register(Box::new(XLM_BALANCE.clone()))?;
 	REGISTRY.register(Box::new(NATIVE_CURRENCY_BALANCE.clone()))?;
 	REGISTRY.register(Box::new(ISSUES.clone()))?;
 	REGISTRY.register(Box::new(REDEEMS.clone()))?;
