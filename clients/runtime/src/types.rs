@@ -1,7 +1,7 @@
 pub use subxt::ext::sp_core::sr25519::Pair as KeyPair;
 
 pub use metadata_aliases::*;
-pub use primitives::CurrencyId;
+pub use primitives::{CurrencyId, TextMemo};
 
 use crate::{metadata, Config, SpacewalkRuntime, SS58_PREFIX};
 
@@ -97,6 +97,7 @@ mod metadata_aliases {
 		metadata::runtime_types::spacewalk_primitives::VaultCurrencyPair<CurrencyId>;
 
 	pub type IssueRequestsMap = HashMap<IssueId, SpacewalkIssueRequest>;
+	pub type IssueIdLookup = HashMap<TextMemo, IssueId>;
 
 	cfg_if::cfg_if! {
 		if #[cfg(feature = "standalone-metadata")] {

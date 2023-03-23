@@ -218,7 +218,7 @@ fn test_request_redeem_succeeds_with_normal_redeem() {
 			MockResult::Return(Ok(()))
 		});
 
-		ext::security::get_secure_id::<Test>.mock_safe(move |_| MockResult::Return(H256([0; 32])));
+		ext::security::get_secure_id::<Test>.mock_safe(move || MockResult::Return(H256([0; 32])));
 		ext::vault_registry::is_vault_below_premium_threshold::<Test>
 			.mock_safe(move |_| MockResult::Return(Ok(false)));
 		ext::fee::get_redeem_fee::<Test>
@@ -308,7 +308,7 @@ fn test_request_redeem_succeeds_with_self_redeem() {
 			MockResult::Return(Ok(()))
 		});
 
-		ext::security::get_secure_id::<Test>.mock_safe(move |_| MockResult::Return(H256::zero()));
+		ext::security::get_secure_id::<Test>.mock_safe(move || MockResult::Return(H256::zero()));
 		ext::vault_registry::is_vault_below_premium_threshold::<Test>
 			.mock_safe(move |_| MockResult::Return(Ok(false)));
 		let transfer_fee = Redeem::get_current_inclusion_fee(DEFAULT_WRAPPED_CURRENCY).unwrap();
@@ -1154,7 +1154,7 @@ fn test_request_redeem_fails_limits() {
 			MockResult::Return(Ok(()))
 		});
 
-		ext::security::get_secure_id::<Test>.mock_safe(move |_| MockResult::Return(H256([0; 32])));
+		ext::security::get_secure_id::<Test>.mock_safe(move || MockResult::Return(H256([0; 32])));
 		ext::vault_registry::is_vault_below_premium_threshold::<Test>
 			.mock_safe(move |_| MockResult::Return(Ok(false)));
 		ext::fee::get_redeem_fee::<Test>
@@ -1216,7 +1216,7 @@ fn test_request_redeem_limits_succeeds() {
 			MockResult::Return(Ok(()))
 		});
 
-		ext::security::get_secure_id::<Test>.mock_safe(move |_| MockResult::Return(H256([0; 32])));
+		ext::security::get_secure_id::<Test>.mock_safe(move || MockResult::Return(H256([0; 32])));
 		ext::vault_registry::is_vault_below_premium_threshold::<Test>
 			.mock_safe(move |_| MockResult::Return(Ok(false)));
 		ext::fee::get_redeem_fee::<Test>

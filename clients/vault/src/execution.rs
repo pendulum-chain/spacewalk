@@ -5,7 +5,9 @@ use governor::RateLimiter;
 use sp_runtime::traits::StaticLookup;
 use tokio::sync::RwLock;
 
-use primitives::{stellar::PublicKey, TransactionEnvelopeExt};
+use primitives::{
+	derive_shortened_request_id, stellar::PublicKey, TextMemo, TransactionEnvelopeExt,
+};
 use runtime::{
 	CurrencyId, OraclePallet, PrettyPrint, RedeemPallet, RedeemRequestStatus, ReplacePallet,
 	ReplaceRequestStatus, SecurityPallet, ShutdownSender, SpacewalkParachain,
@@ -180,7 +182,7 @@ impl Request {
 		let destination_public_key = PublicKey::from_binary(self.stellar_address);
 		let stroop_amount =
 			primitives::BalanceConversion::lookup(self.amount).map_err(|_| Error::LookupError)?;
-		let memo_hash = self.hash.0;
+		let request_id = self.hash.0;
 
 		let mut wallet = wallet.write().await;
 		tracing::info!(
@@ -195,7 +197,7 @@ impl Request {
 				destination_public_key.clone(),
 				self.asset.clone(),
 				stroop_amount,
-				memo_hash,
+				request_id,
 				DEFAULT_STROOP_FEE_PER_OPERATION,
 			)
 			.await;
@@ -348,7 +350,7 @@ pub async fn execute_open_requests(
 	// collect all requests into a hashmap, indexed by their id
 	let mut open_requests = open_redeems
 		.chain(open_replaces)
-		.map(|x| (x.hash, x))
+		.map(|x| (derive_shortened_request_id(&x.hash.0), x))
 		.collect::<HashMap<_, _>>();
 
 	let rate_limiter = Arc::new(RateLimiter::direct(YIELD_RATE));
@@ -375,7 +377,8 @@ pub async fn execute_open_requests(
 
 				if let Some(request) = get_request_for_stellar_tx(&transaction, &open_requests) {
 					// remove request from the hashmap
-					open_requests.retain(|&key, _| key != request.hash);
+					let hash_as_memo = derive_shortened_request_id(&request.hash.0);
+					open_requests.retain(|key, _| key != &hash_as_memo);
 
 					tracing::info!(
 						"{:?} request #{:?} has valid Stellar payment - processing...",
@@ -458,11 +461,10 @@ pub async fn execute_open_requests(
 /// on the amount of assets that is transferred to the address.
 fn get_request_for_stellar_tx(
 	tx: &TransactionResponse,
-	hash_map: &HashMap<H256, Request>,
+	hash_map: &HashMap<TextMemo, Request>,
 ) -> Option<Request> {
-	let hash = tx.memo_hash()?;
-	let h256 = H256::from_slice(&hash);
-	let request = hash_map.get(&h256)?;
+	let memo_text = tx.memo_text()?;
+	let request = hash_map.get(memo_text)?;
 
 	let envelope = tx.to_envelope().ok()?;
 	let paid_amount =

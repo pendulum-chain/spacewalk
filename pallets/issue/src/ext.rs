@@ -25,7 +25,7 @@ pub(crate) mod currency {
 
 #[cfg_attr(test, mockable)]
 pub(crate) mod stellar_relay {
-	use sp_core::H256;
+	use primitives::TextMemo;
 	use substrate_stellar_sdk::{
 		compound_types::UnlimitedVarArray,
 		types::{ScpEnvelope, TransactionSet},
@@ -46,13 +46,13 @@ pub(crate) mod stellar_relay {
 		)
 	}
 
-	pub fn ensure_transaction_memo_matches_hash<T: crate::Config>(
+	pub fn ensure_transaction_memo_matches<T: crate::Config>(
 		transaction_envelope: &TransactionEnvelope,
-		expected_hash: &H256,
+		expected_memo: &TextMemo,
 	) -> Result<(), Error<T>> {
-		<stellar_relay::Pallet<T>>::ensure_transaction_memo_matches_hash(
+		<stellar_relay::Pallet<T>>::ensure_transaction_memo_matches(
 			transaction_envelope,
-			expected_hash,
+			expected_memo,
 		)
 	}
 
@@ -75,8 +75,8 @@ pub(crate) mod security {
 		<security::Pallet<T>>::parachain_block_expired(opentime, period)
 	}
 
-	pub fn get_secure_id<T: crate::Config>(id: &T::AccountId) -> H256 {
-		<security::Pallet<T>>::get_secure_id(id)
+	pub fn get_secure_id<T: crate::Config>() -> H256 {
+		<security::Pallet<T>>::get_secure_id()
 	}
 
 	pub fn active_block_number<T: crate::Config>() -> T::BlockNumber {

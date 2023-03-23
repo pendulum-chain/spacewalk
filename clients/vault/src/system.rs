@@ -15,9 +15,9 @@ use tokio::{sync::RwLock, time::sleep};
 
 use runtime::{
 	cli::parse_duration_minutes, CollateralBalancesPallet, CurrencyId, Error as RuntimeError,
-	IssueRequestsMap, PrettyPrint, RegisterVaultEvent, ShutdownSender, SpacewalkParachain,
-	StellarRelayPallet, TryFromSymbol, UpdateActiveBlockEvent, UtilFuncs, VaultCurrencyPair,
-	VaultId, VaultRegistryPallet,
+	IssueIdLookup, IssueRequestsMap, PrettyPrint, RegisterVaultEvent, ShutdownSender,
+	SpacewalkParachain, StellarRelayPallet, TryFromSymbol, UpdateActiveBlockEvent, UtilFuncs,
+	VaultCurrencyPair, VaultId, VaultRegistryPallet,
 };
 use service::{wait_or_shutdown, Error as ServiceError, Service};
 use wallet::{LedgerTxEnvMap, StellarWallet};
@@ -462,7 +462,12 @@ impl VaultService {
 		// this vec is passed to the stellar wallet to filter out transactions that are not relevant
 		// this has to be modified every time the issue set changes
 		let issue_map: ArcRwLock<IssueRequestsMap> = Arc::new(RwLock::new(IssueRequestsMap::new()));
-		issue::initialize_issue_set(&self.spacewalk_parachain, &issue_map).await?;
+		// this map resolves issue memo to issue ids
+		let memos_to_issue_ids: ArcRwLock<IssueIdLookup> =
+			Arc::new(RwLock::new(IssueIdLookup::new()));
+
+		issue::initialize_issue_set(&self.spacewalk_parachain, &issue_map, &memos_to_issue_ids)
+			.await?;
 
 		let issue_filter = IssueFilter::new(&vault_public_key)?;
 
@@ -492,6 +497,7 @@ impl VaultService {
 					is_public_network,
 					ledger_env_map.clone(),
 					issue_map.clone(),
+					memos_to_issue_ids.clone(),
 					issue_filter,
 				)),
 			),
@@ -502,6 +508,7 @@ impl VaultService {
 					vault_public_key,
 					issue_event_tx.clone(),
 					issue_map.clone(),
+					memos_to_issue_ids.clone(),
 				)),
 			),
 			(
@@ -509,6 +516,7 @@ impl VaultService {
 				run(issue::listen_for_issue_cancels(
 					self.spacewalk_parachain.clone(),
 					issue_map.clone(),
+					memos_to_issue_ids.clone(),
 				)),
 			),
 			(
@@ -516,6 +524,7 @@ impl VaultService {
 				run(issue::listen_for_executed_issues(
 					self.spacewalk_parachain.clone(),
 					issue_map.clone(),
+					memos_to_issue_ids.clone(),
 				)),
 			),
 			(
@@ -527,6 +536,7 @@ impl VaultService {
 						oracle_agent.clone(),
 						ledger_env_map.clone(),
 						issue_map.clone(),
+						memos_to_issue_ids.clone(),
 					),
 				),
 			),

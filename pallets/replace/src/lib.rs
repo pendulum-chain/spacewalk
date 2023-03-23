@@ -515,7 +515,7 @@ impl<T: Config> Pallet<T> {
 			&griefing_collateral,
 		)?;
 
-		let replace_id = ext::security::get_secure_id::<T>(&old_vault_id.account_id);
+		let replace_id = ext::security::get_secure_id::<T>();
 
 		let replace = ReplaceRequest {
 			old_vault: old_vault_id,

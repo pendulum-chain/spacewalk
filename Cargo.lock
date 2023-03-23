@@ -8998,6 +8998,7 @@ dependencies = [
 name = "spacewalk-primitives"
 version = "1.2.0"
 dependencies = [
+ "base58",
  "bstringify",
  "frame-support",
  "parity-scale-codec",
@@ -10488,13 +10489,14 @@ name = "wallet"
 version = "1.0.0"
 dependencies = [
  "async-trait",
- "base64",
+ "futures 0.3.25",
  "mockall 0.8.3",
  "parity-scale-codec",
  "reqwest",
  "serde",
  "serde_json",
  "serial_test",
+ "spacewalk-primitives",
  "substrate-stellar-sdk",
  "thiserror",
  "tokio",
