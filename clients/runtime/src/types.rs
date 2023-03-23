@@ -116,6 +116,8 @@ mod metadata_aliases {
 }
 
 pub mod currency_id {
+	use primitives::Asset;
+
 	use super::*;
 	use crate::Error;
 
@@ -125,7 +127,18 @@ pub mod currency_id {
 
 	impl CurrencyIdExt for CurrencyId {
 		fn inner(&self) -> Result<String, Error> {
-			Ok(format!("{:?}", self))
+			match self {
+				CurrencyId::Native => Ok("Native".to_owned()),
+				CurrencyId::XCM(foreign_currency_id) =>
+					Ok(format!("XCM {}", foreign_currency_id).to_owned()),
+				CurrencyId::Stellar(stellar_asset) => match stellar_asset {
+					Asset::StellarNative => Ok("Stellar Native".to_owned()),
+					Asset::AlphaNum4 { code, issuer } =>
+						Ok(format!("Stellar asset <{:?}>:<{:?}>", code, issuer)),
+					Asset::AlphaNum12 { code, issuer } =>
+						Ok(format!("Stellar asset <{:?}>:<{:?}>", code, issuer)),
+				},
+			}
 		}
 	}
 }
