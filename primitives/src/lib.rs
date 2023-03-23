@@ -29,7 +29,8 @@ use stellar::{
 };
 pub use substrate_stellar_sdk as stellar;
 use substrate_stellar_sdk::{
-	types::OperationBody, ClaimPredicate, Claimant, MuxedAccount, Operation, TransactionEnvelope,
+	types::OperationBody, ClaimPredicate, Claimant, Memo, MuxedAccount, Operation,
+	TransactionEnvelope,
 };
 
 #[cfg(test)]
@@ -179,10 +180,6 @@ pub mod issue {
 		pub stellar_address: StellarPublicKeyRaw,
 		/// the status of this issue request
 		pub status: IssueRequestStatus,
-	}
-
-	pub fn derive_issue_memo(hash: &[u8; 32]) -> Vec<u8> {
-		hash.to_base58().as_bytes()[..28].to_vec()
 	}
 }
 
@@ -378,6 +375,32 @@ pub type UnsignedFixedPoint = FixedU128;
 
 /// The `Inner` type of the `UnsignedFixedPoint`.
 pub type UnsignedInner = u128;
+
+/// The type of a Stellar transaction text memo
+pub type TextMemo = Vec<u8>;
+
+/// Shorten the request id so that it fits into a Stellar transaction text memo
+pub fn derive_shortened_request_id(hash: &[u8; 32]) -> TextMemo {
+	hash.to_base58().as_bytes()[..28].to_vec()
+}
+
+/// Returns issue memo of the given TransactionEnvelope, or None if the transaction does
+/// not contain an issue memo
+pub fn get_text_memo_from_tx_env(transaction_envelope: &TransactionEnvelope) -> Option<&TextMemo> {
+	let memo_text = match transaction_envelope {
+		TransactionEnvelope::EnvelopeTypeTxV0(tx_env) => match &tx_env.tx.memo {
+			Memo::MemoText(text) => Some(text.get_vec()),
+			_ => None,
+		},
+		TransactionEnvelope::EnvelopeTypeTx(tx_env) => match &tx_env.tx.memo {
+			Memo::MemoText(text) => Some(text.get_vec()),
+			_ => None,
+		},
+		_ => None,
+	};
+
+	memo_text
+}
 
 pub trait CurrencyInfo {
 	fn name(&self) -> &str;

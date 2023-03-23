@@ -100,12 +100,11 @@ pub async fn assert_issue(
 
 	let asset = primitives::AssetConversion::lookup(issue.asset).expect("Invalid asset");
 	let stroop_amount = amount as i64;
-	let memo_hash = issue.issue_id.0;
 
 	let mut wallet = wallet.write().await;
 	let destination_address = wallet.get_public_key();
 	let (response, tx_env) = wallet
-		.send_payment_to_address(destination_address, asset, stroop_amount, memo_hash, 300)
+		.send_payment_to_address(destination_address, asset, stroop_amount, issue.issue_id.0, 300)
 		.await
 		.expect("Failed to send payment");
 
@@ -506,7 +505,7 @@ async fn test_cancel_scheduler_succeeds() {
 
 		let block_listener = new_vault_provider.clone();
 		let issue_set = Arc::new(RwLock::new(IssueRequestsMap::new()));
-		let issue_memos = Arc::new(RwLock::new(IssueMemoMap::new()));
+		let memos_to_issue_ids = Arc::new(RwLock::new(IssueIdLookup::new()));
 
 		let wallet = WALLET.read().await;
 		let issue_request_listener = vault::service::listen_for_issue_requests(
@@ -514,7 +513,7 @@ async fn test_cancel_scheduler_succeeds() {
 			wallet.get_public_key(),
 			issue_cancellation_event_tx.clone(),
 			issue_set.clone(),
-			issue_memos.clone(),
+			memos_to_issue_ids.clone(),
 		);
 		drop(wallet);
 
@@ -637,7 +636,7 @@ async fn test_issue_cancel_succeeds() {
 	test_with_vault(|client, vault_id, vault_provider| async move {
 		let user_provider = setup_provider(client.clone(), AccountKeyring::Dave).await;
 		let issue_set = Arc::new(RwLock::new(IssueRequestsMap::new()));
-		let issue_memos = Arc::new(RwLock::new(IssueMemoMap::new()));
+		let memos_to_issue_ids = Arc::new(RwLock::new(IssueIdLookup::new()));
 
 		let issue_filter =
 			IssueFilter::new(&WALLET.read().await.get_public_key()).expect("Invalid filter");
@@ -667,7 +666,7 @@ async fn test_issue_cancel_succeeds() {
 			// First await the event that the issue has been requested
 			assert_event::<RequestIssueEvent, _>(TIMEOUT, user_provider.clone(), |_| true).await;
 			assert_eq!(issue_set.read().await.len(), 1);
-			assert_eq!(issue_memos.read().await.len(), 1);
+			assert_eq!(memos_to_issue_ids.read().await.len(), 1);
 
 			match user_provider.cancel_issue(issue.issue_id).await {
 				Ok(_) => {
@@ -681,7 +680,7 @@ async fn test_issue_cancel_succeeds() {
 			// wait for the issue to be canceled
 			assert_event::<CancelIssueEvent, _>(TIMEOUT, user_provider.clone(), |_| true).await;
 			assert!(issue_set.read().await.is_empty());
-			assert!(issue_memos.read().await.is_empty());
+			assert!(memos_to_issue_ids.read().await.is_empty());
 		};
 
 		let slot_tx_env_map = Arc::new(RwLock::new(HashMap::new()));
@@ -694,7 +693,7 @@ async fn test_issue_cancel_succeeds() {
 				wallet.is_public_network(),
 				slot_tx_env_map.clone(),
 				issue_set.clone(),
-				issue_memos.clone(),
+				memos_to_issue_ids.clone(),
 				issue_filter,
 			),
 			vault::service::listen_for_issue_requests(
@@ -702,12 +701,12 @@ async fn test_issue_cancel_succeeds() {
 				wallet.get_public_key(),
 				issue_event_tx,
 				issue_set.clone(),
-				issue_memos.clone(),
+				memos_to_issue_ids.clone(),
 			),
 			vault::service::listen_for_issue_cancels(
 				vault_provider.clone(),
 				issue_set.clone(),
-				issue_memos.clone(),
+				memos_to_issue_ids.clone(),
 			),
 		);
 
@@ -755,7 +754,6 @@ async fn test_issue_overpayment_succeeds() {
 		let destination_public_key = PublicKey::from_binary(issue.vault_stellar_public_key);
 		let stellar_asset =
 			primitives::AssetConversion::lookup(issue.asset).expect("Asset not found");
-		let memo_hash = issue.issue_id;
 
 		let (transaction_response, tx_envelope) = WALLET
 			.write()
@@ -764,7 +762,7 @@ async fn test_issue_overpayment_succeeds() {
 				destination_public_key,
 				stellar_asset,
 				stroop_amount.try_into().unwrap(),
-				memo_hash.0,
+				issue.issue_id.0,
 				300,
 			)
 			.await
@@ -842,7 +840,6 @@ async fn test_automatic_issue_execution_succeeds() {
 			let stroop_amount = (issue.amount + issue.fee) as i64;
 			let stellar_asset =
 				primitives::AssetConversion::lookup(issue.asset).expect("Asset not found");
-			let memo_hash = issue.issue_id;
 
 			let mut wallet = WALLET.write().await;
 			let result = wallet
@@ -850,7 +847,7 @@ async fn test_automatic_issue_execution_succeeds() {
 					destination_public_key,
 					stellar_asset,
 					stroop_amount,
-					memo_hash.0,
+					issue.issue_id.0,
 					300,
 				)
 				.await;
@@ -871,7 +868,7 @@ async fn test_automatic_issue_execution_succeeds() {
 		let slot_tx_env_map = Arc::new(RwLock::new(HashMap::new()));
 
 		let issue_set = Arc::new(RwLock::new(IssueRequestsMap::new()));
-		let issue_memos = Arc::new(RwLock::new(IssueMemoMap::new()));
+		let memos_to_issue_ids = Arc::new(RwLock::new(IssueIdLookup::new()));
 		let (issue_event_tx, _issue_event_rx) = mpsc::channel::<CancellationEvent>(16);
 		let service = join3(
 			vault::service::listen_for_new_transactions(
@@ -879,7 +876,7 @@ async fn test_automatic_issue_execution_succeeds() {
 				wallet.is_public_network(),
 				slot_tx_env_map.clone(),
 				issue_set.clone(),
-				issue_memos.clone(),
+				memos_to_issue_ids.clone(),
 				issue_filter,
 			),
 			vault::service::listen_for_issue_requests(
@@ -887,14 +884,14 @@ async fn test_automatic_issue_execution_succeeds() {
 				wallet.get_public_key(),
 				issue_event_tx,
 				issue_set.clone(),
-				issue_memos.clone(),
+				memos_to_issue_ids.clone(),
 			),
 			vault::service::process_issues_requests(
 				vault_provider.clone(),
 				oracle_agent.clone(),
 				slot_tx_env_map.clone(),
 				issue_set.clone(),
-				issue_memos.clone(),
+				memos_to_issue_ids.clone(),
 			),
 		);
 		drop(wallet);
@@ -955,7 +952,7 @@ async fn test_automatic_issue_execution_succeeds_for_other_vault() {
 		drop(wallet);
 
 		let issue_set_arc = Arc::new(RwLock::new(IssueRequestsMap::new()));
-		let issue_memos = Arc::new(RwLock::new(IssueMemoMap::new()));
+		let memos_to_issue_ids = Arc::new(RwLock::new(IssueIdLookup::new()));
 
 		let slot_tx_env_map = Arc::new(RwLock::new(HashMap::new()));
 
@@ -968,7 +965,6 @@ async fn test_automatic_issue_execution_succeeds_for_other_vault() {
 			let stroop_amount = (issue.amount + issue.fee) as i64;
 			let stellar_asset =
 				primitives::AssetConversion::lookup(issue.asset).expect("Asset not found");
-			let memo_hash = issue.issue_id;
 
 			// Sleep 1 second to give other thread some time to receive the RequestIssue event and
 			// add it to the set
@@ -976,7 +972,7 @@ async fn test_automatic_issue_execution_succeeds_for_other_vault() {
 			let issue_set = issue_set_arc.read().await;
 			assert!(!issue_set.is_empty());
 			drop(issue_set);
-			assert!(!issue_memos.read().await.is_empty());
+			assert!(!memos_to_issue_ids.read().await.is_empty());
 
 			let mut wallet = WALLET.write().await;
 			let result = wallet
@@ -984,7 +980,7 @@ async fn test_automatic_issue_execution_succeeds_for_other_vault() {
 					destination_public_key,
 					stellar_asset,
 					stroop_amount,
-					memo_hash.0,
+					issue.issue_id.0,
 					300,
 				)
 				.await;
@@ -1005,7 +1001,7 @@ async fn test_automatic_issue_execution_succeeds_for_other_vault() {
 			let issue_set = issue_set_arc.read().await;
 			assert!(issue_set.is_empty());
 			drop(issue_set);
-			assert!(issue_memos.read().await.is_empty());
+			assert!(memos_to_issue_ids.read().await.is_empty());
 		};
 
 		let wallet = WALLET.read().await;
@@ -1020,7 +1016,7 @@ async fn test_automatic_issue_execution_succeeds_for_other_vault() {
 				IS_PUBLIC_NETWORK,
 				slot_tx_env_map.clone(),
 				issue_set_arc.clone(),
-				issue_memos.clone(),
+				memos_to_issue_ids.clone(),
 				issue_filter,
 			),
 			vault::service::listen_for_issue_requests(
@@ -1028,19 +1024,19 @@ async fn test_automatic_issue_execution_succeeds_for_other_vault() {
 				vault_account_public_key,
 				issue_event_tx,
 				issue_set_arc.clone(),
-				issue_memos.clone(),
+				memos_to_issue_ids.clone(),
 			),
 			vault::service::process_issues_requests(
 				vault2_provider.clone(),
 				oracle_agent.clone(),
 				slot_tx_env_map.clone(),
 				issue_set_arc.clone(),
-				issue_memos.clone(),
+				memos_to_issue_ids.clone(),
 			),
 			vault::service::listen_for_executed_issues(
 				vault2_provider.clone(),
 				issue_set_arc.clone(),
-				issue_memos.clone(),
+				memos_to_issue_ids.clone(),
 			),
 		);
 
@@ -1109,12 +1105,12 @@ async fn test_execute_open_requests_succeeds() {
 
 		let stroop_amount = redeems[0].amount as i64;
 		let asset = primitives::AssetConversion::lookup(redeems[0].asset).expect("Invalid asset");
-		let memo_hash = redeem_ids[0];
+
 		// do stellar transfer for redeem 0
 		let mut wallet = WALLET.write().await;
 		assert_ok!(
 			wallet
-				.send_payment_to_address(address, asset, stroop_amount, memo_hash.0, 300)
+				.send_payment_to_address(address, asset, stroop_amount, redeem_ids[0].0, 300)
 				.await
 		);
 		drop(wallet);

@@ -11,7 +11,7 @@ extern crate mocktopus;
 use frame_support::{dispatch::DispatchError, ensure, traits::Get, transactional};
 #[cfg(test)]
 use mocktopus::macros::mockable;
-use primitives::issue::derive_issue_memo;
+use primitives::derive_shortened_request_id;
 use sp_core::H256;
 use sp_runtime::traits::{CheckedDiv, Convert, Saturating, Zero};
 use sp_std::vec::Vec;
@@ -468,11 +468,11 @@ impl<T: Config> Pallet<T> {
 			TransactionSet,
 		>(&transaction_set_encoded)?;
 
-		let issue_memo = derive_issue_memo(&issue_id.0);
+		let shortened_request_id = derive_shortened_request_id(&issue_id.0);
 		// Check that the transaction includes the expected memo to mitigate replay attacks
 		ext::stellar_relay::ensure_transaction_memo_matches::<T>(
 			&transaction_envelope,
-			&issue_memo,
+			&shortened_request_id,
 		)?;
 
 		// Verify that the transaction is valid

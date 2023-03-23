@@ -3,6 +3,7 @@ use std::{str::FromStr, sync::Arc, time::Duration};
 use async_trait::async_trait;
 use futures::future;
 use parity_scale_codec::{Decode, Encode};
+use primitives::TextMemo;
 use serde::{Deserialize, Deserializer};
 use substrate_stellar_sdk::{PublicKey, TransactionEnvelope, XdrCodec};
 use tokio::{sync::RwLock, time::sleep};
@@ -104,7 +105,7 @@ impl TransactionResponse {
 		self.ledger
 	}
 
-	pub fn memo_text(&self) -> Option<&Vec<u8>> {
+	pub fn memo_text(&self) -> Option<&TextMemo> {
 		if self.memo_type == b"text" {
 			self.memo.as_ref()
 		} else {
@@ -341,7 +342,7 @@ impl<C: HorizonClient> HorizonFetcher<C> {
 		&mut self,
 		ledger_env_map: Arc<RwLock<LedgerTxEnvMap>>,
 		issue_map: Arc<RwLock<T>>,
-		issue_memos: Arc<RwLock<U>>,
+		memos_to_issue_ids: Arc<RwLock<U>>,
 		filter: impl FilterWith<T, U>,
 		last_paging_token: PagingToken,
 	) -> PagingToken {
@@ -359,11 +360,12 @@ impl<C: HorizonClient> HorizonFetcher<C> {
 		let latest_paging_token =
 			transactions.iter().map(|tx| tx.paging_token).max().unwrap_or(last_paging_token);
 
-		let (issue_map, issue_memos) = future::join(issue_map.read(), issue_memos.read()).await;
+		let (issue_map, memos_to_issue_ids) =
+			future::join(issue_map.read(), memos_to_issue_ids.read()).await;
 		for transaction in transactions {
 			let tx = transaction.clone();
 
-			if filter.is_relevant(tx.clone(), &issue_map, &issue_memos) {
+			if filter.is_relevant(tx.clone(), &issue_map, &memos_to_issue_ids) {
 				tracing::info!(
 					"Adding transaction {:?} with slot {} to the ledger_env_map",
 					String::from_utf8(tx.id.clone()),
@@ -393,7 +395,7 @@ pub async fn listen_for_new_transactions<T, U, Filter>(
 	is_public_network: bool,
 	ledger_env_map: Arc<RwLock<LedgerTxEnvMap>>,
 	issue_map: Arc<RwLock<T>>,
-	issue_memos: Arc<RwLock<U>>,
+	memos_to_issue_ids: Arc<RwLock<U>>,
 	filter: Filter,
 ) -> Result<(), Error>
 where
@@ -412,7 +414,7 @@ where
 			.fetch_horizon_and_process_new_transactions(
 				ledger_env_map.clone(),
 				issue_map.clone(),
-				issue_memos.clone(),
+				memos_to_issue_ids.clone(),
 				filter.clone(),
 				latest_paging_token,
 			)
@@ -590,7 +592,7 @@ mod tests {
 	#[tokio::test(flavor = "multi_thread")]
 	async fn client_test_for_polling() {
 		let issue_hashes = Arc::new(RwLock::new(vec![]));
-		let issue_memos = Arc::new(RwLock::new(vec![]));
+		let memos_to_issue_ids = Arc::new(RwLock::new(vec![]));
 		let slot_env_map = Arc::new(RwLock::new(HashMap::new()));
 
 		let horizon_client = reqwest::Client::new();
@@ -603,7 +605,7 @@ mod tests {
 			.fetch_horizon_and_process_new_transactions(
 				slot_env_map.clone(),
 				issue_hashes.clone(),
-				issue_memos.clone(),
+				memos_to_issue_ids.clone(),
 				MockFilter,
 				0u128,
 			)
@@ -613,7 +615,7 @@ mod tests {
 			.fetch_horizon_and_process_new_transactions(
 				slot_env_map.clone(),
 				issue_hashes.clone(),
-				issue_memos.clone(),
+				memos_to_issue_ids.clone(),
 				MockFilter,
 				cursor,
 			)

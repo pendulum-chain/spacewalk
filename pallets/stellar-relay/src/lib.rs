@@ -24,7 +24,7 @@ pub mod traits;
 pub mod types;
 
 mod default_weights;
-use primitives::issue::derive_issue_memo;
+use primitives::{derive_shortened_request_id, get_text_memo_from_tx_env, TextMemo};
 
 #[frame_support::pallet]
 pub mod pallet {
@@ -41,7 +41,7 @@ pub mod pallet {
 			NodeId, ScpEnvelope, ScpStatementExternalize, ScpStatementPledges, StellarValue,
 			TransactionSet,
 		},
-		Hash, Memo, TransactionEnvelope, XdrCodec,
+		Hash, TransactionEnvelope, XdrCodec,
 	};
 
 	use default_weights::WeightInfo;
@@ -678,15 +678,15 @@ pub mod pallet {
 			transaction_envelope: &TransactionEnvelope,
 			expected_hash: &H256,
 		) -> Result<(), Error<T>> {
-			let expected_memo = derive_issue_memo(&expected_hash.0);
+			let expected_memo = derive_shortened_request_id(&expected_hash.0);
 			Self::ensure_transaction_memo_matches(transaction_envelope, &expected_memo)
 		}
 
 		pub fn ensure_transaction_memo_matches(
 			transaction_envelope: &TransactionEnvelope,
-			expected_memo: &Vec<u8>,
+			expected_memo: &TextMemo,
 		) -> Result<(), Error<T>> {
-			let tx_memo_text = get_text_hash_from_tx_env(transaction_envelope);
+			let tx_memo_text = get_text_memo_from_tx_env(transaction_envelope);
 
 			if let Some(included_memo) = tx_memo_text {
 				ensure!(included_memo == expected_memo, Error::TransactionMemoDoesNotMatch);
@@ -696,22 +696,6 @@ pub mod pallet {
 
 			Ok(())
 		}
-	}
-
-	fn get_text_hash_from_tx_env(transaction_envelope: &TransactionEnvelope) -> Option<&Vec<u8>> {
-		let memo_text = match transaction_envelope {
-			TransactionEnvelope::EnvelopeTypeTxV0(tx_env) => match &tx_env.tx.memo {
-				Memo::MemoText(text) => Some(text.get_vec()),
-				_ => None,
-			},
-			TransactionEnvelope::EnvelopeTypeTx(tx_env) => match &tx_env.tx.memo {
-				Memo::MemoText(text) => Some(text.get_vec()),
-				_ => None,
-			},
-			_ => None,
-		};
-
-		memo_text
 	}
 
 	pub fn compute_non_generic_tx_set_content_hash(tx_set: &TransactionSet) -> Option<[u8; 32]> {

@@ -14,7 +14,7 @@ use crate::{
 	types::StellarPublicKeyRaw,
 };
 
-use primitives::issue::derive_issue_memo;
+use primitives::derive_shortened_request_id;
 
 #[derive(Clone)]
 pub struct StellarWallet {
@@ -85,7 +85,7 @@ impl StellarWallet {
 		destination_address: PublicKey,
 		asset: Asset,
 		stroop_amount: i64,
-		memo_hash: [u8; 32],
+		request_id: [u8; 32],
 		stroop_fee_per_operation: u32,
 	) -> Result<(TransactionResponse, TransactionEnvelope), Error> {
 		let _ = self.transaction_submission_lock.lock().await;
@@ -104,7 +104,7 @@ impl StellarWallet {
 		);
 
 		let memo_text = Memo::MemoText(
-			LimitedString::new(derive_issue_memo(&memo_hash))
+			LimitedString::new(derive_shortened_request_id(&request_id))
 				.map_err(|_| Error::BuildTransactionError("Invalid hash".to_string()))?,
 		);
 
@@ -200,12 +200,12 @@ mod test {
 			.unwrap();
 			let asset = substrate_stellar_sdk::Asset::native();
 			let amount = 100;
-			let memo_hash = [0u8; 32];
+			let request_id = [0u8; 32];
 
 			let result = wallet_clone
 				.write()
 				.await
-				.send_payment_to_address(destination, asset, amount, memo_hash, 100)
+				.send_payment_to_address(destination, asset, amount, request_id, 100)
 				.await;
 
 			assert!(result.is_ok());
@@ -222,12 +222,12 @@ mod test {
 			.unwrap();
 			let asset = substrate_stellar_sdk::Asset::native();
 			let amount = 50;
-			let memo_hash = [1u8; 32];
+			let request_id = [1u8; 32];
 
 			let result = wallet_clone2
 				.write()
 				.await
-				.send_payment_to_address(destination, asset, amount, memo_hash, 100)
+				.send_payment_to_address(destination, asset, amount, request_id, 100)
 				.await;
 
 			assert!(result.is_ok());
@@ -247,12 +247,12 @@ mod test {
 				.unwrap();
 		let asset = substrate_stellar_sdk::Asset::native();
 		let amount = 100;
-		let memo_hash = [0u8; 32];
+		let request_id = [0u8; 32];
 
 		let result = WALLET
 			.write()
 			.await
-			.send_payment_to_address(destination, asset, amount, memo_hash, 100)
+			.send_payment_to_address(destination, asset, amount, request_id, 100)
 			.await;
 
 		assert!(result.is_ok());
@@ -272,7 +272,7 @@ mod test {
 				.unwrap();
 		let asset = substrate_stellar_sdk::Asset::native();
 		let amount = 1000;
-		let memo_hash = [0u8; 32];
+		let request_id = [0u8; 32];
 		let correct_amount_that_should_not_fail = 100;
 		let incorrect_amount_that_should_fail = 0;
 
@@ -281,7 +281,7 @@ mod test {
 				destination.clone(),
 				asset.clone(),
 				amount,
-				memo_hash,
+				request_id,
 				correct_amount_that_should_not_fail,
 			)
 			.await;
@@ -293,7 +293,7 @@ mod test {
 				destination.clone(),
 				asset.clone(),
 				amount,
-				memo_hash,
+				request_id,
 				incorrect_amount_that_should_fail,
 			)
 			.await;
@@ -305,7 +305,7 @@ mod test {
 				destination.clone(),
 				asset.clone(),
 				amount,
-				memo_hash,
+				request_id,
 				correct_amount_that_should_not_fail,
 			)
 			.await;

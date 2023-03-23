@@ -14,7 +14,7 @@ use substrate_stellar_sdk::{
 	XdrCodec,
 };
 
-use primitives::{issue::derive_issue_memo, StellarPublicKeyRaw, H256};
+use primitives::{derive_shortened_request_id, StellarPublicKeyRaw, H256};
 
 use crate::{
 	traits::{Organization, Validator},
@@ -177,7 +177,8 @@ pub fn build_dummy_proof_for<T: crate::Config>(
 	// Build a transaction
 	let source_account = MuxedAccount::from(PublicKey::PublicKeyTypeEd25519([0; 32]));
 	let operations = LimitedVarArray::new_empty();
-	let memo = Memo::MemoText(LimitedString::new(derive_issue_memo(&request_id.0)).unwrap());
+	let memo =
+		Memo::MemoText(LimitedString::new(derive_shortened_request_id(&request_id.0)).unwrap());
 	let transaction = Transaction {
 		source_account,
 		fee: 0,

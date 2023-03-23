@@ -3,9 +3,9 @@ use std::{collections::HashMap, sync::Arc, time::Duration};
 use futures::{channel::mpsc::Sender, future, SinkExt};
 use sp_runtime::traits::StaticLookup;
 
-use primitives::{issue::derive_issue_memo, stellar::Memo, TransactionEnvelopeExt};
+use primitives::{derive_shortened_request_id, get_text_memo_from_tx_env, TransactionEnvelopeExt};
 use runtime::{
-	CancelIssueEvent, ExecuteIssueEvent, IssueMemoMap, IssuePallet, IssueRequestsMap,
+	CancelIssueEvent, ExecuteIssueEvent, IssueIdLookup, IssuePallet, IssueRequestsMap,
 	RequestIssueEvent, SpacewalkParachain, StellarPublicKeyRaw,
 };
 use service::Error as ServiceError;
@@ -27,11 +27,11 @@ fn is_vault(p1: &PublicKey, p2_raw: [u8; 32]) -> bool {
 pub(crate) async fn initialize_issue_set(
 	spacewalk_parachain: &SpacewalkParachain,
 	issue_set: &ArcRwLock<IssueRequestsMap>,
-	issue_memos: &ArcRwLock<IssueMemoMap>,
+	memos_to_issue_ids: &ArcRwLock<IssueIdLookup>,
 ) -> Result<(), Error> {
-	let (mut issue_set, mut issue_memos, requests) = future::join3(
+	let (mut issue_set, mut memos_to_issue_ids, requests) = future::join3(
 		issue_set.write(),
-		issue_memos.write(),
+		memos_to_issue_ids.write(),
 		spacewalk_parachain.get_all_active_issues(),
 	)
 	.await;
@@ -40,8 +40,8 @@ pub(crate) async fn initialize_issue_set(
 
 	for (issue_id, request) in requests.into_iter() {
 		issue_set.insert(issue_id, request);
-		let issue_memo = derive_issue_memo(&issue_id.0);
-		issue_memos.insert(issue_memo, issue_id);
+		let shortened_request_id = derive_shortened_request_id(&issue_id.0);
+		memos_to_issue_ids.insert(shortened_request_id, issue_id);
 	}
 
 	Ok(())
@@ -60,13 +60,13 @@ pub async fn listen_for_issue_requests(
 	vault_public_key: PublicKey,
 	event_channel: Sender<Event>,
 	issues: ArcRwLock<IssueRequestsMap>,
-	issue_memos: ArcRwLock<IssueMemoMap>,
+	memos_to_issue_ids: ArcRwLock<IssueIdLookup>,
 ) -> Result<(), ServiceError<Error>> {
 	// Use references to prevent 'moved closure' errors
 	let parachain_rpc = &parachain_rpc;
 	let vault_public_key = &vault_public_key;
 	let issues = &issues;
-	let issue_memos = &issue_memos;
+	let memos_to_issue_ids = &memos_to_issue_ids;
 	let event_channel = &event_channel;
 
 	parachain_rpc
@@ -80,11 +80,11 @@ pub async fn listen_for_issue_requests(
 					if let Ok(issue_request) = issue_request_result {
 						tracing::trace!("Adding issue request to issue map: {:?}", issue_request);
 
-						let (mut issues, mut issue_memos) =
-							future::join(issues.write(), issue_memos.write()).await;
+						let (mut issues, mut memos_to_issue_ids) =
+							future::join(issues.write(), memos_to_issue_ids.write()).await;
 						issues.insert(event.issue_id, issue_request);
-						let issue_memo = derive_issue_memo(&event.issue_id.0);
-						issue_memos.insert(issue_memo, event.issue_id);
+						let shortened_request_id = derive_shortened_request_id(&event.issue_id.0);
+						memos_to_issue_ids.insert(shortened_request_id, event.issue_id);
 
 						// try to send the event, but ignore the returned result since
 						// the only way it can fail is if the channel is closed
@@ -112,19 +112,19 @@ pub async fn listen_for_issue_requests(
 pub async fn listen_for_issue_cancels(
 	parachain_rpc: SpacewalkParachain,
 	issues: ArcRwLock<IssueRequestsMap>,
-	issue_memos: ArcRwLock<IssueMemoMap>,
+	memos_to_issue_ids: ArcRwLock<IssueIdLookup>,
 ) -> Result<(), ServiceError<Error>> {
 	let issues = &issues;
-	let issue_memos = &issue_memos;
+	let memos_to_issue_ids = &memos_to_issue_ids;
 
 	parachain_rpc
 		.on_event::<CancelIssueEvent, _, _, _>(
 			|event| async move {
-				let (mut issues, mut issue_memos) =
-					future::join(issues.write(), issue_memos.write()).await;
+				let (mut issues, mut memos_to_issue_ids) =
+					future::join(issues.write(), memos_to_issue_ids.write()).await;
 				issues.remove(&event.issue_id);
-				let issue_memo = derive_issue_memo(&event.issue_id.0);
-				issue_memos.remove(&issue_memo);
+				let shortened_request_id = derive_shortened_request_id(&event.issue_id.0);
+				memos_to_issue_ids.remove(&shortened_request_id);
 
 				tracing::info!("Received CancelIssueEvent: {:?}", event);
 			},
@@ -144,20 +144,20 @@ pub async fn listen_for_issue_cancels(
 pub async fn listen_for_executed_issues(
 	parachain_rpc: SpacewalkParachain,
 	issues: ArcRwLock<IssueRequestsMap>,
-	issue_memos: ArcRwLock<IssueMemoMap>,
+	memos_to_issue_ids: ArcRwLock<IssueIdLookup>,
 ) -> Result<(), ServiceError<Error>> {
 	let issues = &issues;
-	let issue_memos = &issue_memos;
+	let memos_to_issue_ids = &memos_to_issue_ids;
 
 	parachain_rpc
 		.on_event::<ExecuteIssueEvent, _, _, _>(
 			|event| async move {
 				{
-					let (mut issues, mut issue_memos) =
-						future::join(issues.write(), issue_memos.write()).await;
+					let (mut issues, mut memos_to_issue_ids) =
+						future::join(issues.write(), memos_to_issue_ids.write()).await;
 					issues.remove(&event.issue_id);
-					let issue_memo = derive_issue_memo(&event.issue_id.0);
-					issue_memos.remove(&issue_memo);
+					let shortened_request_id = derive_shortened_request_id(&event.issue_id.0);
+					memos_to_issue_ids.remove(&shortened_request_id);
 				}
 
 				tracing::trace!(
@@ -171,24 +171,6 @@ pub async fn listen_for_executed_issues(
 		.await?;
 
 	Ok(())
-}
-
-/// Returns issue memo of the given TransactionEnvelope, or None if the transaction does
-/// not contain an issue memo
-fn get_issue_memo_from_tx_env(transaction_envelope: &TransactionEnvelope) -> Option<&Vec<u8>> {
-	let memo_text = match transaction_envelope {
-		TransactionEnvelope::EnvelopeTypeTxV0(tx_env) => match &tx_env.tx.memo {
-			Memo::MemoText(text) => Some(text.get_vec()),
-			_ => None,
-		},
-		TransactionEnvelope::EnvelopeTypeTx(tx_env) => match &tx_env.tx.memo {
-			Memo::MemoText(text) => Some(text.get_vec()),
-			_ => None,
-		},
-		_ => None,
-	};
-
-	memo_text
 }
 
 // Returns oneshot sender for sending status of a slot.
@@ -272,7 +254,7 @@ pub async fn process_issues_requests(
 	oracle_agent: Arc<OracleAgent>,
 	ledger_env_map: ArcRwLock<LedgerTxEnvMap>,
 	issues: ArcRwLock<IssueRequestsMap>,
-	issue_memos: ArcRwLock<IssueMemoMap>,
+	memos_to_issue_ids: ArcRwLock<IssueIdLookup>,
 ) -> Result<(), ServiceError<Error>> {
 	// collects all the tasks that are executed or about to be executed.
 	let mut processed_map = HashMap::new();
@@ -290,14 +272,14 @@ pub async fn process_issues_requests(
 
 			let parachain_rpc_clone = parachain_rpc.clone();
 			let issues_clone = issues.clone();
-			let issue_memos_clone = issue_memos.clone();
+			let memos_to_issue_ids_clone = memos_to_issue_ids.clone();
 			let oracle_agent_clone = oracle_agent.clone();
 
 			tokio::spawn(execute_issue(
 				parachain_rpc_clone,
 				tx_env.clone(),
 				issues_clone,
-				issue_memos_clone,
+				memos_to_issue_ids_clone,
 				oracle_agent_clone,
 				*slot,
 				sender,
@@ -325,7 +307,7 @@ pub async fn execute_issue(
 	parachain_rpc: SpacewalkParachain,
 	tx_env: TransactionEnvelope,
 	issues: ArcRwLock<IssueRequestsMap>,
-	issue_memos: ArcRwLock<IssueMemoMap>,
+	memos_to_issue_ids: ArcRwLock<IssueIdLookup>,
 	oracle_agent: Arc<OracleAgent>,
 	slot: Slot,
 	sender: tokio::sync::oneshot::Sender<SlotTaskStatus>,
@@ -350,13 +332,15 @@ pub async fn execute_issue(
 		base64::encode(tx_env_xdr)
 	};
 
-	let (issue_id, issue_memo) = match get_issue_memo_from_tx_env(&tx_env) {
-		Some(issue_memo) =>
-			(issue_memos.read().await.get(issue_memo).map(|&hash| hash), Some(issue_memo)),
+	let (issue_id, text_memo) = match get_text_memo_from_tx_env(&tx_env) {
+		Some(text_memo) => (
+			memos_to_issue_ids.read().await.get(text_memo).map(|&issue_id| issue_id),
+			Some(text_memo),
+		),
 		_ => (None, None),
 	};
 
-	if let (Some(issue_id), Some(issue_memo)) = (issue_id, issue_memo) {
+	if let (Some(issue_id), Some(text_memo)) = (issue_id, text_memo) {
 		// calls the execute_issue of the `Issue` Pallet
 		match parachain_rpc
 			.execute_issue(
@@ -368,12 +352,12 @@ pub async fn execute_issue(
 			.await
 		{
 			Ok(_) => {
-				tracing::debug!("Slot {:?} executed with issue memo: {:?}", slot, issue_memo);
+				tracing::debug!("Slot {:?} executed with issue id: {:?}", slot, issue_id);
 
-				let (mut issues, mut issue_memos) =
-					future::join(issues.write(), issue_memos.write()).await;
+				let (mut issues, mut memos_to_issue_ids) =
+					future::join(issues.write(), memos_to_issue_ids.write()).await;
 				issues.remove(&issue_id);
-				issue_memos.remove(issue_memo);
+				memos_to_issue_ids.remove(text_memo);
 
 				if let Err(e) = sender.send(SlotTaskStatus::Success) {
 					tracing::error!("Failed to send {:?} status for slot {}", e, slot);
@@ -416,22 +400,21 @@ impl IssueFilter {
 	}
 }
 
-impl FilterWith<IssueRequestsMap, IssueMemoMap> for IssueFilter {
+impl FilterWith<IssueRequestsMap, IssueIdLookup> for IssueFilter {
 	fn is_relevant(
 		&self,
 		tx: TransactionResponse,
 		issue_requests: &IssueRequestsMap,
-		issue_memos: &IssueMemoMap,
+		memos_to_issue_ids: &IssueIdLookup,
 	) -> bool {
-		// try to convert the contained memo_hash (if any) to a h256
 		let issue_id = match tx.memo_text() {
 			None => return false,
-			Some(memo_text) => issue_memos.get(memo_text),
-		};
-
-		let issue_id = match issue_id {
-			Some(issue_id) => issue_id,
-			None => return false,
+			Some(memo_text) =>
+				if let Some(issue_id) = memos_to_issue_ids.get(memo_text) {
+					issue_id
+				} else {
+					return false
+				},
 		};
 
 		// check if the issue id is in the list of issues.

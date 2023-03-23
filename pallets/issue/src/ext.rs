@@ -25,7 +25,7 @@ pub(crate) mod currency {
 
 #[cfg_attr(test, mockable)]
 pub(crate) mod stellar_relay {
-	use sp_std::vec::Vec;
+	use primitives::TextMemo;
 	use substrate_stellar_sdk::{
 		compound_types::UnlimitedVarArray,
 		types::{ScpEnvelope, TransactionSet},
@@ -48,7 +48,7 @@ pub(crate) mod stellar_relay {
 
 	pub fn ensure_transaction_memo_matches<T: crate::Config>(
 		transaction_envelope: &TransactionEnvelope,
-		expected_memo: &Vec<u8>,
+		expected_memo: &TextMemo,
 	) -> Result<(), Error<T>> {
 		<stellar_relay::Pallet<T>>::ensure_transaction_memo_matches(
 			transaction_envelope,
