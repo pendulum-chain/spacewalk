@@ -269,15 +269,15 @@ impl<T: Config> Pallet<T> {
 		let converted = match (amount.currency(), currency_id) {
 			(x, y) if x == y => amount.amount(),
 			(_, _) => {
-				// first convert to wrapped, then convert wrapped to the desired currency
-				let base = Self::collateral_to_wrapped(amount.amount(), amount.currency())?; // maybe this does not work?
-				Self::wrapped_to_collateral(base, currency_id)?
+				// first convert to USD, then convert USD to the desired currency
+				let base = Self::currency_to_usd(amount.amount(), amount.currency())?;
+				Self::usd_to_currency(base, currency_id)?
 			},
 		};
 		Ok(Amount::new(converted, currency_id))
 	}
 
-	pub fn wrapped_to_collateral(
+	pub fn currency_to_usd(
 		amount: BalanceOf<T>,
 		currency_id: CurrencyId,
 	) -> Result<BalanceOf<T>, DispatchError> {
@@ -286,7 +286,7 @@ impl<T: Config> Pallet<T> {
 		Ok(converted)
 	}
 
-	pub fn collateral_to_wrapped(
+	pub fn usd_to_currency(
 		amount: BalanceOf<T>,
 		currency_id: CurrencyId,
 	) -> Result<BalanceOf<T>, DispatchError> {

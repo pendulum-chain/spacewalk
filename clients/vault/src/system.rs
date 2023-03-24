@@ -178,7 +178,7 @@ impl VaultIdManager {
 }
 
 /// Expecting an input of the form: `collateral_currency,wrapped_currency,collateral_amount` with
-/// `collateral_currency` being the currency of the collateral (e.g. DOT, KSM, ...),
+/// `collateral_currency` being the XCM index of the currency to be locked (e.g. 0, 1, 2...),
 /// `wrapped_currency` being the currency codes of the wrapped currency (e.g. USDC, EURT...)
 ///  including the issuer and code, ie 'GABC...:USDC'  and
 /// `collateral_amount` being the amount of collateral to be locked.

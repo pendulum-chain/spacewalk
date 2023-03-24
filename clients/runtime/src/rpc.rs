@@ -821,17 +821,9 @@ pub trait OraclePallet {
 
 	async fn feed_values(&self, values: Vec<((Vec<u8>, Vec<u8>), FixedU128)>) -> Result<(), Error>;
 
-	async fn wrapped_to_collateral(
-		&self,
-		amount: u128,
-		currency_id: CurrencyId,
-	) -> Result<u128, Error>;
+	async fn currency_to_usd(&self, amount: u128, currency_id: CurrencyId) -> Result<u128, Error>;
 
-	async fn collateral_to_wrapped(
-		&self,
-		amount: u128,
-		currency_id: CurrencyId,
-	) -> Result<u128, Error>;
+	async fn usd_to_currency(&self, amount: u128, currency_id: CurrencyId) -> Result<u128, Error>;
 
 	fn on_fee_rate_change(&self) -> FeeRateUpdateReceiver;
 }
@@ -892,17 +884,13 @@ impl OraclePallet for SpacewalkParachain {
 
 	/// Converts the amount of wrapped Stellar assets to the collateral currency, based on the
 	/// current set exchange rate.
-	async fn wrapped_to_collateral(
-		&self,
-		amount: u128,
-		currency_id: CurrencyId,
-	) -> Result<u128, Error> {
+	async fn currency_to_usd(&self, amount: u128, currency_id: CurrencyId) -> Result<u128, Error> {
 		let head = self.get_finalized_block_hash().await?;
 		let result: BalanceWrapper<_> = self
 			.api
 			.rpc()
 			.request(
-				"oracle_wrappedToCollateral",
+				"oracle_currencyToUsd",
 				rpc_params![BalanceWrapper { amount }, currency_id, head],
 			)
 			.await?;
@@ -912,17 +900,13 @@ impl OraclePallet for SpacewalkParachain {
 
 	/// Converts the amount of collateral currency to the specified wrapped asset, based on the
 	/// current set exchange rate.
-	async fn collateral_to_wrapped(
-		&self,
-		amount: u128,
-		currency_id: CurrencyId,
-	) -> Result<u128, Error> {
+	async fn usd_to_currency(&self, amount: u128, currency_id: CurrencyId) -> Result<u128, Error> {
 		let head = self.get_finalized_block_hash().await?;
 		let result: BalanceWrapper<_> = self
 			.api
 			.rpc()
 			.request(
-				"oracle_collateralToWrapped",
+				"oracle_usdToCurrency",
 				rpc_params![BalanceWrapper { amount }, currency_id, head],
 			)
 			.await?;
