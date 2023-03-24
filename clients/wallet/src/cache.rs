@@ -107,6 +107,7 @@ impl TxEnvelopeStorage {
 		std::fs::remove_dir_all(self.full_path()).is_ok()
 	}
 
+	#[allow(dead_code)]
 	#[cfg(any(test, feature = "testing-utils"))]
 	/// Returns a transaction if a file was found, given the sequence number
 	pub fn get_tx_envelope(&self, sequence: SequenceNumber) -> Option<TransactionEnvelope> {
