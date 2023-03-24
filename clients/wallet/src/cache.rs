@@ -169,7 +169,7 @@ fn extract_tx_envelope_from_path<P: AsRef<Path> + std::fmt::Debug + Clone>(
 	let Some(env) = read_tx_envelope_from_path(&path) else {
 		// do not remove invalid files for unit-testing.
 		#[cfg(not(test))]
-		if !remove_file(&path).is_ok() {
+		if remove_file(&path).is_err() {
 			tracing::warn!("failed to remove unreadable file: {:?}",path);
 		}
 
@@ -184,14 +184,15 @@ fn read_tx_envelope_from_path<P: AsRef<Path> + std::fmt::Debug + Clone>(
 	path: P,
 ) -> Option<(TransactionEnvelope, SequenceNumber)> {
 	let content_from_file = unwrap_or_return!(
-		OpenOptions::new().read(true).open(&path).and_then(|mut file: File| {
+		OpenOptions::new().read(true).open(&path).map(|mut file: File| {
 			// if the file exists, read the contents as a string.
 			let mut buf = String::new();
 
 			if let Err(e) = file.read_to_string(&mut buf) {
 				tracing::warn!("Failed to read file {:?}: {:?}", path, e);
 			}
-			Ok(buf)
+
+			buf
 		}),
 		None,
 		format!("Failed to open file {:?}", path)
