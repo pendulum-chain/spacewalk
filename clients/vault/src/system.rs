@@ -347,7 +347,10 @@ impl VaultService {
 		let stellar_wallet = StellarWallet::from_secret_encoded(
 			&stellar_vault_secret_key.trim().to_string(),
 			is_public_network,
+			// todo: what should be the location of the cache?
+			"./".to_string(),
 		)?;
+
 		tracing::debug!(
 			"Vault wallet public key: {}",
 			from_utf8(&stellar_wallet.get_public_key().to_encoding())?
@@ -431,9 +434,12 @@ impl VaultService {
 		// purposefully _after_ maybe_register_vault and _before_ other calls
 		self.vault_id_manager.fetch_vault_ids().await?;
 
-		let wallet = self.stellar_wallet.read().await;
+		let mut wallet = self.stellar_wallet.write().await;
 		let vault_public_key = wallet.get_public_key();
 		let is_public_network = wallet.is_public_network();
+
+		// re-submit transactions in the cache
+		wallet.resubmit_transactions_from_cache().await;
 		drop(wallet);
 
 		let mut oracle_agent =

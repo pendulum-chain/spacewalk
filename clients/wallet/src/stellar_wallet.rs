@@ -115,7 +115,8 @@ impl StellarWallet {
 		Ok(transactions)
 	}
 
-	/// Returns errors of transactions that were not resubmitted.
+	/// Submits transactions found in the wallet's cache to Stellar.
+	/// Returns a tuple: (list of txs successfully submitted, list of errors of txs not resubmitted)
 	pub async fn resubmit_transactions_from_cache(
 		&mut self,
 	) -> (Vec<(TransactionResponse, TransactionEnvelope)>, Vec<Error>) {
@@ -234,7 +235,7 @@ mod test {
 	use primitives::TransactionEnvelopeExt;
 	use serial_test::serial;
 	use std::sync::Arc;
-	use substrate_stellar_sdk::PublicKey;
+	use substrate_stellar_sdk::{PublicKey, XdrCodec};
 	use tokio::sync::RwLock;
 
 	use crate::StellarWallet;
@@ -403,6 +404,9 @@ mod test {
 		// fail.
 		let (passed, failed) = wallet().write().await.resubmit_transactions_from_cache().await;
 		assert_eq!(passed.len(), 1);
+		let (resp, env) = &passed[0];
+		assert_eq!(&resp.envelope_xdr, &env.to_base64_xdr());
+
 		assert_eq!(failed.len(), 1);
 	}
 }

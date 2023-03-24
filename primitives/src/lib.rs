@@ -29,10 +29,9 @@ use stellar::{
 };
 pub use substrate_stellar_sdk as stellar;
 use substrate_stellar_sdk::{
-	types::OperationBody, ClaimPredicate, Claimant, Memo, MuxedAccount, Operation,
-	TransactionEnvelope,
+	types::{OperationBody, SequenceNumber},
+	ClaimPredicate, Claimant, Memo, MuxedAccount, Operation, TransactionEnvelope,
 };
-use substrate_stellar_sdk::types::SequenceNumber;
 
 #[cfg(test)]
 mod tests;
@@ -812,7 +811,6 @@ impl TransactionEnvelopeExt for TransactionEnvelope {
 		// `transferred_amount` is in stroops, so we need to convert it
 		BalanceConversion::unlookup(transferred_amount)
 	}
-
 
 	fn sequence_number(&self) -> Option<SequenceNumber> {
 		match self {
