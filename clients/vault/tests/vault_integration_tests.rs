@@ -7,6 +7,7 @@ use futures::{
 	future::{join, join3, join4},
 	Future, FutureExt, SinkExt,
 };
+use lazy_static::lazy_static;
 use serial_test::serial;
 use sp_keyring::AccountKeyring;
 use sp_runtime::traits::StaticLookup;
@@ -17,9 +18,13 @@ use runtime::{
 	integration::*, types::*, FixedPointNumber, FixedU128, IssuePallet, RedeemPallet,
 	ReplacePallet, ShutdownSender, SpacewalkParachain, SudoPallet, UtilFuncs, VaultRegistryPallet,
 };
-use stellar_relay_lib::sdk::{PublicKey, StellarOverlayConfig };
+use stellar_relay_lib::{
+	sdk::{PublicKey, XdrCodec},
+	StellarOverlayConfig,
+};
+
 use vault::{
-	oracle::{start, OracleAgent},
+	oracle::{start_oracle_agent, OracleAgent},
 	service::IssueFilter,
 	ArcRwLock, Event as CancellationEvent, VaultIdManager,
 };
@@ -1249,7 +1254,7 @@ async fn test_shutdown() {
 #[tokio::test(flavor = "multi_thread")]
 #[serial]
 async fn test_requests_with_incompatible_amounts_fail() {
-	test_with_vault(|client, wallet, vault_id, vault_provider| async move {
+	test_with_vault(|client, wallet, _, vault_id, vault_provider| async move {
 		let user_provider = setup_provider(client.clone(), AccountKeyring::Dave).await;
 
 		// We define an incompatible amount
@@ -1292,5 +1297,5 @@ async fn test_requests_with_incompatible_amounts_fail() {
 		let error = result.unwrap_err();
 		assert!(error.is_module_err("Currency", "IncompatibleAmount"));
 	})
-		.await;
+	.await;
 }
