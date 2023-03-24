@@ -23,16 +23,16 @@ where
 	Balance: Codec + MaybeDisplay + MaybeFromStr,
 	CurrencyId: Codec,
 {
-	#[method(name = "oracle_wrappedToCollateral")]
-	fn wrapped_to_collateral(
+	#[method(name = "oracle_currencyToUsd")]
+	fn currency_to_usd(
 		&self,
 		amount: BalanceWrapper<Balance>,
 		currency_id: CurrencyId,
 		at: Option<BlockHash>,
 	) -> RpcResult<BalanceWrapper<Balance>>;
 
-	#[method(name = "oracle_collateralToWrapped")]
-	fn collateral_to_wrapped(
+	#[method(name = "oracle_usdToCurrency")]
+	fn usd_to_currency(
 		&self,
 		amount: BalanceWrapper<Balance>,
 		currency_id: CurrencyId,
@@ -79,7 +79,7 @@ where
 	Balance: Codec + MaybeDisplay + MaybeFromStr,
 	CurrencyId: Codec,
 {
-	fn wrapped_to_collateral(
+	fn currency_to_usd(
 		&self,
 		amount: BalanceWrapper<Balance>,
 		currency_id: CurrencyId,
@@ -88,10 +88,10 @@ where
 		let api = self.client.runtime_api();
 		let at = BlockId::hash(at.unwrap_or_else(|| self.client.info().best_hash));
 
-		handle_response(api.wrapped_to_collateral(&at, amount, currency_id))
+		handle_response(api.currency_to_usd(&at, amount, currency_id))
 	}
 
-	fn collateral_to_wrapped(
+	fn usd_to_currency(
 		&self,
 		amount: BalanceWrapper<Balance>,
 		currency_id: CurrencyId,
@@ -100,6 +100,6 @@ where
 		let api = self.client.runtime_api();
 		let at = BlockId::hash(at.unwrap_or_else(|| self.client.info().best_hash));
 
-		handle_response(api.collateral_to_wrapped(&at, amount, currency_id))
+		handle_response(api.usd_to_currency(&at, amount, currency_id))
 	}
 }

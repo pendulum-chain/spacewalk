@@ -1256,7 +1256,7 @@ fn get_unsettled_collateralization_from_vault_succeeds() {
 #[test]
 fn get_settled_collateralization_from_vault_succeeds() {
 	run_test(|| {
-		// wrapped_to_collateral is / 10 and we issue 2 * amount
+		// currency_to_usd is / 10 and we issue 2 * amount
 		let issue_tokens: u128 = 100000 / 10 / 5; // 2000
 		let id = create_sample_vault_and_issue_tokens(issue_tokens);
 
