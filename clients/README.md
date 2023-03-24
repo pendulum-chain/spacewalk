@@ -15,8 +15,9 @@ cargo build --features=parachain-metadata
 To run the vault with the provided standalone chain use:
 
 ```
-cargo run --bin vault --features standalone-metadata  -- --keyring alice --stellar-vault-secret-key-filepath <secret_key_file_path>
+cargo run --bin vault --features standalone-metadata  -- --keyring alice --stellar-overlay-config-filepath <cfg_file_path>
 ```
+To see examples of the config file, check [here](stellar-relay-lib/resources).
 
 To make the vault auto-register itself with the chain, use the `--auto-register` flag.
 Be careful with the asset pair you use, as using arbitrary asset pairs will result in the vault not being able to
@@ -32,21 +33,19 @@ or `<wrapped-currency-issuer>:<wrapped-currency-code>`.
 
 ```
 # Run the vault with auto-registering for XLM
-cargo run --bin vault --features standalone-metadata  -- --keyring alice --stellar-vault-secret-key-filepath <secret_key_file_path> --auto-register "0,XLM,1000000"
+cargo run --bin vault --features standalone-metadata  -- --keyring alice --stellar-overlay-config-filepath <cfg_file_path> --auto-register "0,XLM,1000000"
 
 # Run the vault with auto-registering for the USDC asset on testnet (assuming GAKNDFRRWA3RPWNLTI3G4EBSD3RGNZZOY5WKWYMQ6CQTG3KIEKPYWAYC as the issuer)
-cargo run --bin vault --features standalone-metadata  -- --keyring alice --stellar-vault-secret-key-filepath <secret_key_file_path> --auto-register "0,GAKNDFRRWA3RPWNLTI3G4EBSD3RGNZZOY5WKWYMQ6CQTG3KIEKPYWAYC:USDC,1000000"
+cargo run --bin vault --features standalone-metadata  -- --keyring alice --stellar-overlay-config-filepath <cfg_file_path> --auto-register "0,GAKNDFRRWA3RPWNLTI3G4EBSD3RGNZZOY5WKWYMQ6CQTG3KIEKPYWAYC:USDC,1000000"
 
 # Run the vault with auto-registering for the USDC asset on mainnet (assuming the issuer is centre.io)
-cargo run --bin vault --features standalone-metadata  -- --keyring alice --stellar-vault-secret-key-filepath <secret_key_file_path> --auto-register "0,GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN:USDC,1000000"
+cargo run --bin vault --features standalone-metadata  -- --keyring alice --stellar-overlay-config-filepath <cfg_file_path> --auto-register "0,GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN:USDC,1000000"
 ```
-
-An example of the secret key file path is found [here](./secret_key).
 
 To run the vault with a parachain (e.g. Pendulum) you need to specify the URL, so use:
 
 ```
-cargo run --bin vault --features parachain-metadata -- --keyring alice --spacewalk-parachain-url ws://localhost:8844 --stellar-vault-secret-key-filepath <secret_key_file_path>
+cargo run --bin vault --features parachain-metadata -- --keyring alice --spacewalk-parachain-url ws://localhost:8844 --stellar-overlay-config-filepath <cfg_file_path>
 ```
 
 ## Tests

@@ -2,11 +2,18 @@ use crate::{connection::Error, node::NodeInfo, ConnectionInfo, StellarOverlayCon
 use serde::{Deserialize, Serialize};
 use serde_with::{serde_as, BytesOrString};
 use std::fmt::Debug;
+use substrate_stellar_sdk::SecretKey;
 
 /// The configuration structure of the StellarOverlay.
 /// It configures both the ConnectionInfo and the NodeInfo.
+#[serde_as]
 #[derive(Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct StellarOverlayConfig {
+
+	#[serde(skip_serializing)]
+	#[serde_as(as = "BytesOrString")]
+	secret_key: Vec<u8>,
+
 	connection_info: ConnectionInfoCfg,
 	node_info: NodeInfoCfg,
 }
@@ -20,7 +27,7 @@ impl StellarOverlayConfig {
 	}
 
 	pub fn secret_key(&self) -> Result<&str, Error> {
-		std::str::from_utf8(&self.connection_info.secret_key)
+		std::str::from_utf8(&self.secret_key)
 			.map_err(|_| Error::ConfigError("invalid secret key".to_string()))
 	}
 
@@ -35,7 +42,23 @@ impl StellarOverlayConfig {
 
 	#[allow(dead_code)]
 	pub(crate) fn connection_info(&self) -> Result<ConnectionInfo, Error> {
-		self.connection_info.clone().try_into()
+		let cfg = &self.connection_info;
+		let secret_key = SecretKey::from_encoding(self.secret_key()?)?;
+
+		let address = std::str::from_utf8(&cfg.address)
+			.map_err(|e| Error::ConfigError(format!("Address: {:?}", e)))?;
+
+		Ok(ConnectionInfo::new_with_timeout_and_retries(
+			address,
+			cfg.port,
+			secret_key,
+			cfg.auth_cert_expiration,
+			cfg.recv_tx_msgs,
+			cfg.recv_scp_msgs,
+			cfg.remote_called_us,
+			cfg.timeout_in_secs,
+			cfg.retries
+		))
 	}
 }
 
@@ -59,10 +82,6 @@ pub struct ConnectionInfoCfg {
 	pub address: Vec<u8>,
 	pub port: u32,
 
-	#[serde(skip_serializing)]
-	#[serde_as(as = "BytesOrString")]
-	secret_key: Vec<u8>,
-
 	#[serde(default = "ConnectionInfoCfg::default_auth_cert_exp")]
 	pub auth_cert_expiration: u64,
 
@@ -83,14 +102,6 @@ pub struct ConnectionInfoCfg {
 	#[serde(default = "ConnectionInfoCfg::default_retries")]
 	pub retries: u8,
 }
-
-// #[proc_macro_derive(Serialize, attributes(default_value))]
-// pub fn derive_serialize(input: TokenStream) -> TokenStream {
-// 	let mut input = parse_macro_input!(input as DeriveInput);
-// 	ser::expand_derive_serialize(&mut input)
-// 		.unwrap_or_else(to_compile_errors)
-// 		.into()
-// }
 
 impl ConnectionInfoCfg {
 	fn default_auth_cert_exp() -> u64 {
@@ -116,10 +127,6 @@ impl ConnectionInfoCfg {
 	fn default_retries() -> u8 {
 		3
 	}
-
-	pub fn secret_key(&self) -> &[u8] {
-		self.secret_key.as_slice()
-	}
 }
 
 /// Triggers connection to the Stellar Node.
@@ -127,10 +134,10 @@ impl ConnectionInfoCfg {
 pub async fn connect_to_stellar_overlay_network(
 	cfg: StellarOverlayConfig,
 ) -> Result<StellarOverlayConnection, Error> {
+	let conn_info = cfg.connection_info()?;
 	let local_node = cfg.node_info;
-	let conn_info = cfg.connection_info;
 
-	StellarOverlayConnection::connect(local_node.into(), conn_info.try_into()?).await
+	StellarOverlayConnection::connect(local_node.into(), conn_info).await
 }
 
 #[cfg(test)]

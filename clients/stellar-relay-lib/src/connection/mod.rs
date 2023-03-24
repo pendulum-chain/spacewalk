@@ -18,7 +18,7 @@ use std::fmt::{Debug, Formatter};
 
 type Xdr = (u32, Vec<u8>);
 
-use crate::{config::ConnectionInfoCfg, node::NodeInfo};
+use crate::node::NodeInfo;
 use substrate_stellar_sdk::{
 	types::{MessageType, StellarMessage},
 	PublicKey, SecretKey,
@@ -77,34 +77,9 @@ impl Debug for ConnectionInfo {
 	}
 }
 
-impl TryFrom<ConnectionInfoCfg> for ConnectionInfo {
-	type Error = Error;
-
-	fn try_from(cfg: ConnectionInfoCfg) -> Result<Self, Self::Error> {
-		let secret_key = std::str::from_utf8(cfg.secret_key())
-			.map_err(|e| Error::ConfigError(format!("Secret Key: {:?}", e)))?;
-		let secret_key = SecretKey::from_encoding(secret_key)?;
-
-		let address = std::str::from_utf8(&cfg.address)
-			.map_err(|e| Error::ConfigError(format!("Address: {:?}", e)))?;
-
-		Ok(ConnectionInfo::new_with_timeout_and_retries(
-			address,
-			cfg.port,
-			secret_key,
-			cfg.auth_cert_expiration,
-			cfg.recv_tx_msgs,
-			cfg.recv_scp_msgs,
-			cfg.remote_called_us,
-			cfg.timeout_in_secs,
-			cfg.retries,
-		))
-	}
-}
-
 impl ConnectionInfo {
 	#[allow(clippy::too_many_arguments)]
-	fn new_with_timeout_and_retries(
+	pub(crate) fn new_with_timeout_and_retries(
 		addr: &str,
 		port: u32,
 		secret_key: SecretKey,

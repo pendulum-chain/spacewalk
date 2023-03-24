@@ -11,7 +11,7 @@ pub struct StellarOverlayConfig {
 	node_info: NodeInfoCfg,
 }
 ```
-The `StellarOverlayConfig` is a configuration to connect to the Stellar Node. It contains 2 specific configs:
+The `StellarOverlayConfig` is a configuration to connect to the Stellar Node. It contains the **`SecretKey`** and 2 specific configs:
 `ConnectionInfoCfg` and `NodeInfoCfg`.
 
 The `NodeInfoCfg` contains the information of the Stellar Node to connect to. Except the address and the port.
@@ -33,7 +33,6 @@ pub struct ConnectionInfoCfg {
     address: String,
     /// Stellar Node port
     port: u32,
-    secret_key: Vec<u8>,
     pub auth_cert_expiration: u64,
     pub recv_tx_msgs: bool,
     pub recv_scp_msgs: bool,
