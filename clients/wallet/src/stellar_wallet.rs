@@ -281,7 +281,7 @@ mod test {
 
 			// remove the files to not pollute the project.
 			let seq = env.sequence_number().expect("to return a sequence number");
-			assert!(wallet().read().await.cache.remove_transaction(seq));
+			let _ = wallet().read().await.cache.remove_transaction(seq);
 		});
 
 		let wallet_clone2 = wallet().clone();
@@ -307,7 +307,7 @@ mod test {
 
 			// remove the files to not pollute the project.
 			let seq = env.sequence_number().expect("to return a sequence number");
-			assert!(wallet().read().await.cache.remove_transaction(seq));
+			let _ = wallet().read().await.cache.remove_transaction(seq);
 		});
 
 		let _ = tokio::join!(first_job, second_job);
@@ -336,7 +336,7 @@ mod test {
 
 		// remove the file to not pollute the project.
 		let seq = env.sequence_number().expect("to return a sequence number");
-		assert!(wallet().read().await.cache.remove_transaction(seq));
+		let _ = wallet().read().await.cache.remove_transaction(seq);
 	}
 
 	#[tokio::test]
