@@ -73,8 +73,8 @@ impl TxEnvelopeStorage {
 		transaction: TransactionEnvelope,
 	) -> bool {
 		let full_file_path = format!("{}/{}", self.full_path(), sequence);
-		let path = Path::new(&full_file_path);
 
+		let path = Path::new(&full_file_path);
 		if path.exists() {
 			return false
 		}
@@ -107,6 +107,7 @@ impl TxEnvelopeStorage {
 		std::fs::remove_dir_all(self.full_path()).is_ok()
 	}
 
+	#[cfg(any(test, feature = "testing-utils"))]
 	/// Returns a transaction if a file was found, given the sequence number
 	pub fn get_tx_envelope(&self, sequence: SequenceNumber) -> Option<TransactionEnvelope> {
 		let full_file_path = format!("{}/{sequence}", self.full_path());
@@ -177,7 +178,7 @@ fn extract_tx_envelope_from_path<P: AsRef<Path> + std::fmt::Debug + Clone>(
 	Some(env)
 }
 
-/// a helper function to parse a content of a file into `Transaction`.
+/// a helper function to parse a content of a file into `TransactionEnvelope`.
 fn read_tx_envelope_from_path<P: AsRef<Path> + std::fmt::Debug + Clone>(
 	path: P,
 ) -> Option<(TransactionEnvelope, SequenceNumber)> {
@@ -212,9 +213,8 @@ fn read_tx_envelope_from_path<P: AsRef<Path> + std::fmt::Debug + Clone>(
 
 #[cfg(test)]
 mod test {
-
 	use crate::cache::{parse_string_to_vec_u8, read_tx_envelope_from_path, TxEnvelopeStorage};
-	use primitives::TransactionEnvelopeExt;
+	use std::fs::read_dir;
 	use substrate_stellar_sdk::{
 		types::{Preconditions, SequenceNumber},
 		PublicKey, Transaction, TransactionEnvelope,
@@ -290,19 +290,30 @@ mod test {
 	#[test]
 	fn test_get_tx_envelopes_from_local() {
 		let storage = storage();
-		// get only 1 transaction
+		// testing getting 1 transaction
 		let res = storage.get_tx_envelope(17373142712632);
 		assert!(res.is_some());
-
-		// get all transactions
-		let res = storage.get_tx_envelopes();
-		assert!(!res.is_empty());
 
 		// file does not exist
 		let res = storage.get_tx_envelope(12);
 		assert!(res.is_none());
 
-		// let's create an empty storage and no transactions are found.
+		// get all transactions
+		{
+			let path = storage.full_path();
+			let directory = read_dir(&path).expect("should be able to read directory");
+
+			// two of these files are invalid.
+			let num_of_files =
+				directory.into_iter().filter_map(|entry| entry.ok()).collect::<Vec<_>>();
+
+			let res = storage.get_tx_envelopes();
+			assert!(!res.is_empty());
+			// it's <= since other tests might be creating files in parallel.
+			assert!(res.len() <= (num_of_files.len() - 2));
+		}
+
+		// Create an empty storage and check that no transactions are found.
 		let storage = TxEnvelopeStorage::new("test".to_string(), "test", true);
 		assert!(storage.get_tx_envelopes().is_empty());
 		assert!(storage.remove_all())

@@ -6,7 +6,6 @@ use substrate_stellar_sdk::{
 	network::{Network, PUBLIC_NETWORK, TEST_NETWORK},
 	types::{Preconditions, SequenceNumber},
 	Asset, Memo, Operation, PublicKey, SecretKey, StroopAmount, Transaction, TransactionEnvelope,
-	XdrCodec,
 };
 use tokio::sync::Mutex;
 
@@ -17,7 +16,7 @@ use crate::{
 	types::StellarPublicKeyRaw,
 };
 
-use primitives::{derive_shortened_request_id, TransactionEnvelopeExt};
+use primitives::derive_shortened_request_id;
 
 #[derive(Clone)]
 pub struct StellarWallet {
@@ -235,7 +234,7 @@ mod test {
 	use primitives::TransactionEnvelopeExt;
 	use serial_test::serial;
 	use std::sync::Arc;
-	use substrate_stellar_sdk::{Asset, PublicKey, TransactionEnvelope};
+	use substrate_stellar_sdk::PublicKey;
 	use tokio::sync::RwLock;
 
 	use crate::StellarWallet;
