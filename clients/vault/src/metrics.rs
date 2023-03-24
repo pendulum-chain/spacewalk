@@ -280,12 +280,12 @@ async fn publish_stellar_balance<P: OraclePallet>(parachain_rpc: P, vault: &Vaul
 		Ok(balance) => {
 			let currency_id = vault.vault_id.wrapped_currency();
 			let asset: Result<stellar::Asset, _> = currency_id.try_into();
-			let mut wrapped_to_collateral: u128 = 0;
+			let mut currency_to_usd: u128 = 0;
 			if let Ok(asset) = asset {
 				let asset_balance = get_balance_for_asset(asset, balance);
 				if let Some(b) = asset_balance {
-					wrapped_to_collateral = parachain_rpc
-						.wrapped_to_collateral(b as u128, currency_id)
+					currency_to_usd = parachain_rpc
+						.currency_to_usd(b as u128, currency_id)
 						.await
 						.unwrap_or_else(|e| {
 							// unexpected error, but not critical so just continue
@@ -296,7 +296,7 @@ async fn publish_stellar_balance<P: OraclePallet>(parachain_rpc: P, vault: &Vaul
 			} else {
 				tracing::warn!("Incorrect stellar asset type");
 			}
-			vault.metrics.asset_balance.actual.set(wrapped_to_collateral as f64);
+			vault.metrics.asset_balance.actual.set(currency_to_usd as f64);
 		},
 		Err(e) => {
 			// unexpected error, but not critical so just continue
