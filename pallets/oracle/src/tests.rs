@@ -143,38 +143,32 @@ fn getting_exchange_rate_fails_with_missing_exchange_rate() {
 	run_test(|| {
 		let key = OracleKey::ExchangeRate(CurrencyId::XCM(0));
 		assert_err!(Oracle::get_price(key), TestError::MissingExchangeRate);
-		assert_err!(
-			Oracle::wrapped_to_collateral(0, CurrencyId::XCM(0)),
-			TestError::MissingExchangeRate
-		);
-		assert_err!(
-			Oracle::collateral_to_wrapped(0, CurrencyId::XCM(0)),
-			TestError::MissingExchangeRate
-		);
+		assert_err!(Oracle::currency_to_usd(0, CurrencyId::XCM(0)), TestError::MissingExchangeRate);
+		assert_err!(Oracle::usd_to_currency(0, CurrencyId::XCM(0)), TestError::MissingExchangeRate);
 	});
 }
 
 #[test]
-fn wrapped_to_collateral() {
+fn currency_to_usd() {
 	run_test(|| {
 		Oracle::get_price
 			.mock_safe(|_| MockResult::Return(Ok(FixedU128::checked_from_rational(2, 1).unwrap())));
 		let test_cases = [(0, 0), (2, 4), (10, 20)];
 		for (input, expected) in test_cases.iter() {
-			let result = Oracle::wrapped_to_collateral(*input, CurrencyId::XCM(0));
+			let result = Oracle::currency_to_usd(*input, CurrencyId::XCM(0));
 			assert_ok!(result, *expected);
 		}
 	});
 }
 
 #[test]
-fn collateral_to_wrapped() {
+fn usd_to_currency() {
 	run_test(|| {
 		Oracle::get_price
 			.mock_safe(|_| MockResult::Return(Ok(FixedU128::checked_from_rational(2, 1).unwrap())));
 		let test_cases = [(0, 0), (4, 2), (20, 10), (21, 10)];
 		for (input, expected) in test_cases.iter() {
-			let result = Oracle::collateral_to_wrapped(*input, CurrencyId::XCM(0));
+			let result = Oracle::usd_to_currency(*input, CurrencyId::XCM(0));
 			assert_ok!(result, *expected);
 		}
 	});
