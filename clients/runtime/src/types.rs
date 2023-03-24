@@ -130,13 +130,11 @@ pub mod currency_id {
 			match self {
 				CurrencyId::Native => Ok("Native".to_owned()),
 				CurrencyId::XCM(foreign_currency_id) =>
-					Ok(format!("XCM {}", foreign_currency_id).to_owned()),
+					Ok(format!("XCM({})", foreign_currency_id).to_owned()),
 				CurrencyId::Stellar(stellar_asset) => match stellar_asset {
-					Asset::StellarNative => Ok("Stellar Native".to_owned()),
-					Asset::AlphaNum4 { code, issuer } =>
-						Ok(format!("Stellar asset <{:?}>:<{:?}>", code, issuer)),
-					Asset::AlphaNum12 { code, issuer } =>
-						Ok(format!("Stellar asset <{:?}>:<{:?}>", code, issuer)),
+					Asset::StellarNative => Ok("XLM".to_owned()),
+					Asset::AlphaNum4 { code, issuer } => Ok(format!("{:?}:{:?}", code, issuer)),
+					Asset::AlphaNum12 { code, issuer } => Ok(format!("{:?}:{:?}", code, issuer)),
 				},
 			}
 		}
