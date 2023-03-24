@@ -954,7 +954,7 @@ impl_runtime_apis! {
 		Balance,
 		CurrencyId
 	> for Runtime {
-		fn currency_to_usd( amount: BalanceWrapper<Balance>, currency_id: CurrencyId) -> Result<BalanceWrapper<Balance>, DispatchError> {
+		fn currency_to_usd(amount: BalanceWrapper<Balance>, currency_id: CurrencyId) -> Result<BalanceWrapper<Balance>, DispatchError> {
 			let result = Oracle::currency_to_usd(amount.amount, currency_id)?;
 			Ok(BalanceWrapper{amount:result})
 		}
