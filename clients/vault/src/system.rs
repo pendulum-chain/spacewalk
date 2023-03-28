@@ -28,7 +28,7 @@ use crate::{
 	execution::execute_open_requests,
 	issue,
 	issue::IssueFilter,
-	metrics::{poll_metrics, publish_tokio_metrics, PerCurrencyMetrics},
+	metrics::{monitor_bridge_metrics, poll_metrics, publish_tokio_metrics, PerCurrencyMetrics},
 	oracle::OracleAgent,
 	redeem::listen_for_redeem_requests,
 	replace::{listen_for_accept_replace, listen_for_execute_replace, listen_for_replace_requests},
@@ -618,6 +618,16 @@ impl VaultService {
 					self.config.payment_margin_minutes,
 					oracle_agent.clone(),
 				)),
+			),
+			(
+				"Bridge Metrics Listener",
+				maybe_run(
+					!self.monitoring_config.no_prometheus,
+					monitor_bridge_metrics(
+						self.spacewalk_parachain.clone(),
+						self.vault_id_manager.clone(),
+					),
+				),
 			),
 			(
 				"Bridge Metrics Poller",
