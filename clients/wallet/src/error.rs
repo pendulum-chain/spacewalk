@@ -33,21 +33,21 @@ pub enum Error {
 	#[error("Cache Error: Failed to create a file for {envelope:?} with path:{path}.")]
 	FileCreationFailed { path: String, envelope: TransactionEnvelope },
 
-	#[error("Failed to write a file for {envelope:?} with path:{path}.")]
+	#[error("Cache Error: Failed to write a file for {envelope:?} with path:{path}.")]
 	WriteToFileFailed { path: String, envelope: TransactionEnvelope },
 
-	#[error("Failed to remove file: {0:?}")]
+	#[error("Cache Error: Failed to remove file: {0:?}")]
 	DeleteFileFailed(String),
 
-	#[error("File: {0:?} does not exist")]
+	#[error("Cache Error: File: {0:?} does not exist")]
 	FileDoesNotExist(String),
 
-	#[error("Cannot read file: {0:?}")]
+	#[error("Cache Error: Cannot read file: {0:?}")]
 	ReadFileFailed(String),
 
-	#[error("Invalid file: {0:?}")]
+	#[error("Cache Error: Invalid file: {0:?}")]
 	InvalidFile(String),
 
-	#[error("Cannot decode xdr format for file: {0:?}")]
+	#[error("Cache Error: Cannot decode xdr format for file: {0:?}")]
 	DecodeFileFailed(String),
 }
