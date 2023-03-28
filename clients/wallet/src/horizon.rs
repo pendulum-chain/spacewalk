@@ -309,11 +309,21 @@ impl HorizonClient for reqwest::Client {
 		let base_url = horizon_url(is_public_network);
 		let url = format!("{}/transactions", base_url);
 
-		let params = [("tx", transaction_xdr)];
+		let params = [("tx", transaction_xdr.clone())];
 		let response =
 			self.post(url).form(&params).send().await.map_err(Error::HttpFetchingError)?;
 
-		interpret_response::<TransactionResponse>(response).await
+		interpret_response::<TransactionResponse>(response).await.map_err(|e| match e {
+			Error::HorizonSubmissionError { title, status, reason, envelope_xdr } => {
+				let envelope_xdr = if envelope_xdr.is_empty() {
+					transaction_xdr.to_string()
+				} else {
+					envelope_xdr
+				};
+				Error::HorizonSubmissionError { title, status, reason, envelope_xdr }
+			},
+			other => other,
+		})
 	}
 }
 

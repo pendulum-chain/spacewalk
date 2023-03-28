@@ -43,8 +43,9 @@ impl StellarWallet {
 			.sequence_number()
 			.ok_or(Error::UnknownSequenceNumber(envelope.clone()))?;
 
-		let submission_result =
-			horizon_client.submit_transaction(envelope, self.is_public_network).await;
+		let submission_result = horizon_client
+			.submit_transaction(envelope.clone(), self.is_public_network)
+			.await;
 
 		let _ = self.cache.remove_transaction(*sequence);
 
