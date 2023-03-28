@@ -298,7 +298,7 @@ mod tests {
 		"SB6WHKIU2HGVBRNKNOEOQUY4GFC4ZLG5XPGWLEAHTIZXBXXYACC76VSQ";
 
 	fn wallet(is_public_network: bool, path: &Path) -> ArcRwLock<StellarWallet> {
-		let wallet = StellarWallet::from_secret_encoded(
+		let wallet = StellarWallet::from_secret_encoded_with_cache(
 			&STELLAR_VAULT_SECRET_KEY.to_string(),
 			is_public_network,
 			path.to_str().expect("should return a string").to_string(),

@@ -100,7 +100,7 @@ pub async fn assert_issue(
 
 	let mut wallet_write = wallet.write().await;
 	let destination_address = wallet_write.get_public_key();
-	let (response, tx_env) = wallet_write
+	let response = wallet_write
 		.send_payment_to_address(destination_address, asset, stroop_amount, issue.issue_id.0, 300)
 		.await
 		.expect("Failed to send payment");
@@ -109,7 +109,7 @@ pub async fn assert_issue(
 
 	// Loop pending proofs until it is ready
 	let proof = oracle_agent.get_proof(slot).await.expect("Proof should be available");
-	let tx_envelope_xdr_encoded = tx_env.to_base64_xdr();
+	let tx_envelope_xdr_encoded = response.envelope_xdr;
 	let (envelopes_xdr_encoded, tx_set_xdr_encoded) = proof.encode();
 
 	parachain_rpc
@@ -150,7 +150,7 @@ where
 
 	let path = tmp_dir.path().to_str().expect("should return a string").to_string();
 	let wallet = Arc::new(RwLock::new(
-		StellarWallet::from_secret_encoded(
+		StellarWallet::from_secret_encoded_with_cache(
 			&STELLAR_VAULT_SECRET_KEY.to_string(),
 			IS_PUBLIC_NETWORK,
 			path,
@@ -195,7 +195,7 @@ where
 
 	let path = tmp_dir.path().to_str().expect("should return a string").to_string();
 	let wallet = Arc::new(RwLock::new(
-		StellarWallet::from_secret_encoded(
+		StellarWallet::from_secret_encoded_with_cache(
 			&STELLAR_VAULT_SECRET_KEY.to_string(),
 			IS_PUBLIC_NETWORK,
 			path,
@@ -779,7 +779,7 @@ async fn test_issue_overpayment_succeeds() {
 		let stellar_asset =
 			primitives::AssetConversion::lookup(issue.asset).expect("Asset not found");
 
-		let (transaction_response, tx_envelope) = wallet
+		let transaction_response = wallet
 			.write()
 			.await
 			.send_payment_to_address(
@@ -798,7 +798,7 @@ async fn test_issue_overpayment_succeeds() {
 
 		// Loop pending proofs until it is ready
 		let proof = oracle_agent.get_proof(slot).await.expect("Proof should be available");
-		let tx_envelope_xdr_encoded = tx_envelope.to_xdr();
+		let tx_envelope_xdr_encoded = transaction_response.envelope_xdr;
 		let tx_envelope_xdr_encoded = base64::encode(tx_envelope_xdr_encoded);
 		let (envelopes_xdr_encoded, tx_set_xdr_encoded) = proof.encode();
 
@@ -883,7 +883,7 @@ async fn test_automatic_issue_execution_succeeds() {
 			assert!(result.is_ok());
 			drop(wallet_write);
 
-			tracing::warn!("Sent payment to address. Ledger is {:?}", result.unwrap().0.ledger);
+			tracing::warn!("Sent payment to address. Ledger is {:?}", result.unwrap().ledger);
 
 			// wait for vault2 to execute this issue
 			assert_event::<ExecuteIssueEvent, _>(TIMEOUT, user_provider.clone(), move |x| {
@@ -1017,7 +1017,7 @@ async fn test_automatic_issue_execution_succeeds_for_other_vault() {
 			assert!(result.is_ok());
 			drop(wallet_write);
 
-			tracing::info!("Sent payment to address. Ledger is {:?}", result.unwrap().0.ledger);
+			tracing::info!("Sent payment to address. Ledger is {:?}", result.unwrap().ledger);
 
 			// wait for vault2 to execute this issue
 			assert_event::<ExecuteIssueEvent, _>(TIMEOUT * 3, user_provider.clone(), move |x| {

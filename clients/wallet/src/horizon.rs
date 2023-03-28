@@ -4,7 +4,7 @@ use async_trait::async_trait;
 use futures::future;
 use parity_scale_codec::{Decode, Encode};
 use primitives::TextMemo;
-use serde::{Deserialize, Deserializer};
+use serde::{de::DeserializeOwned, Deserialize, Deserializer};
 use substrate_stellar_sdk::{PublicKey, TransactionEnvelope, XdrCodec};
 use tokio::{sync::RwLock, time::sleep};
 
@@ -15,6 +15,60 @@ pub type PagingToken = u128;
 pub type Ledger = u32;
 
 const POLL_INTERVAL: u64 = 5000;
+
+/// Interprets the response from Horizon into something easier to read.
+async fn interpret_response<T: DeserializeOwned>(response: reqwest::Response) -> Result<T, Error> {
+	if response.status().is_success() {
+		return response.json::<T>().await.map_err(Error::HttpFetchingError)
+	}
+
+	let error = match response.json::<serde_json::Value>().await {
+		Err(e) => Error::HttpFetchingError(e),
+		Ok(resp) => {
+			let unknown = "unknown";
+			let title = resp["title"].as_str().unwrap_or(unknown);
+			let status = u16::try_from(resp["status"].as_u64().unwrap_or(400)).unwrap_or(400);
+
+			match title {
+				"Transaction Failed" => {
+					let result_code =
+						resp["extras"]["result_codes"]["transaction"].as_str().unwrap_or(unknown);
+					let envelope_xdr = resp["extras"]["envelope_xdr"].as_str().unwrap_or(unknown);
+
+					Error::HorizonSubmissionError {
+						title: title.to_string(),
+						status,
+						reason: result_code.to_string(),
+						envelope_xdr: envelope_xdr.to_string(),
+					}
+				},
+				"Transaction Malformed" => {
+					let detail = resp["detail"].as_str().unwrap_or(unknown);
+					let envelope_xdr = resp["extras"]["envelope_xdr"].as_str().unwrap_or(unknown);
+
+					Error::HorizonSubmissionError {
+						title: title.to_string(),
+						status,
+						reason: detail.to_string(),
+						envelope_xdr: envelope_xdr.to_string(),
+					}
+				},
+				_ => {
+					let detail = resp["detail"].as_str().unwrap_or(unknown);
+
+					Error::HorizonSubmissionError {
+						title: title.to_string(),
+						status,
+						reason: detail.to_string(),
+						envelope_xdr: "".to_string(),
+					}
+				},
+			}
+		},
+	};
+
+	Err(error)
+}
 
 pub fn de_string_to_bytes<'de, D>(de: D) -> Result<Vec<u8>, D::Error>
 where
@@ -228,17 +282,7 @@ impl HorizonClient for reqwest::Client {
 		}
 
 		let response = self.get(url).send().await.map_err(Error::HttpFetchingError)?;
-
-		if response.status().is_success() {
-			response
-				.json::<HorizonTransactionsResponse>()
-				.await
-				.map_err(Error::HttpFetchingError)
-		} else {
-			Err(Error::HorizonSubmissionError(
-				response.text().await.map_err(Error::HttpFetchingError)?,
-			))
-		}
+		interpret_response::<HorizonTransactionsResponse>(response).await
 	}
 
 	async fn get_account(
@@ -251,16 +295,7 @@ impl HorizonClient for reqwest::Client {
 
 		let response = self.get(url).send().await.map_err(Error::HttpFetchingError)?;
 
-		if response.status().is_success() {
-			response
-				.json::<HorizonAccountResponse>()
-				.await
-				.map_err(Error::HttpFetchingError)
-		} else {
-			Err(Error::HorizonSubmissionError(
-				response.text().await.map_err(Error::HttpFetchingError)?,
-			))
-		}
+		interpret_response::<HorizonAccountResponse>(response).await
 	}
 
 	async fn submit_transaction(
@@ -278,13 +313,7 @@ impl HorizonClient for reqwest::Client {
 		let response =
 			self.post(url).form(&params).send().await.map_err(Error::HttpFetchingError)?;
 
-		if response.status().is_success() {
-			response.json::<TransactionResponse>().await.map_err(Error::HttpFetchingError)
-		} else {
-			Err(Error::HorizonSubmissionError(
-				response.text().await.map_err(Error::HttpFetchingError)?,
-			))
-		}
+		interpret_response::<TransactionResponse>(response).await
 	}
 }
 

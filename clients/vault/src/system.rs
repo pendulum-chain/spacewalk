@@ -347,8 +347,6 @@ impl VaultService {
 		let stellar_wallet = StellarWallet::from_secret_encoded(
 			&stellar_vault_secret_key.trim().to_string(),
 			is_public_network,
-			// todo: what should be the location of the cache?
-			"./".to_string(),
 		)?;
 
 		tracing::debug!(
