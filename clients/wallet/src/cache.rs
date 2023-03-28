@@ -97,6 +97,7 @@ impl TxEnvelopeStorage {
 
 	#[doc(hidden)]
 	#[cfg(any(test, feature = "testing-utils"))]
+	#[allow(dead_code)]
 	/// Removes all transactions in the directory.
 	/// User should not be able to do this in production.
 	pub fn remove_all_transactions(&self) {

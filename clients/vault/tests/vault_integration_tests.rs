@@ -17,7 +17,7 @@ use runtime::{
 	integration::*, types::*, FixedPointNumber, FixedU128, IssuePallet, RedeemPallet,
 	ReplacePallet, ShutdownSender, SpacewalkParachain, SudoPallet, UtilFuncs, VaultRegistryPallet,
 };
-use stellar_relay_lib::sdk::{PublicKey, XdrCodec};
+use stellar_relay_lib::sdk::PublicKey;
 use vault::{
 	oracle::OracleAgent, service::IssueFilter, ArcRwLock, Event as CancellationEvent,
 	VaultIdManager,
