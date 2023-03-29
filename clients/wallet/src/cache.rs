@@ -111,11 +111,9 @@ impl TxEnvelopeStorage {
 			return;
 		};
 
-		for entry_result in directory {
-			if let Ok(entry) = entry_result {
-				if let Err(e) = remove_file(entry.path()) {
-					tracing::warn!("Failed to remove {full_path}: {:?}", e);
-				}
+		for entry in directory.flatten() {
+			if let Err(e) = remove_file(entry.path()) {
+				tracing::warn!("Failed to remove {full_path}: {:?}", e);
 			}
 		}
 	}
