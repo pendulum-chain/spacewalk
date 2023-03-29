@@ -132,8 +132,7 @@ pub mod currency_id {
 		fn inner(&self) -> Result<String, Error> {
 			match self {
 				CurrencyId::Native => Ok("Native".to_owned()),
-				CurrencyId::XCM(foreign_currency_id) =>
-					Ok(format!("XCM({})", foreign_currency_id).to_owned()),
+				CurrencyId::XCM(foreign_currency_id) => Ok(format!("XCM({})", foreign_currency_id)),
 				CurrencyId::Stellar(stellar_asset) => match stellar_asset {
 					Asset::StellarNative => Ok("XLM".to_owned()),
 					Asset::AlphaNum4 { code, issuer } => Ok(format!(
