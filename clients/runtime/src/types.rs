@@ -15,6 +15,8 @@ pub type H256 = subxt::ext::sp_core::H256;
 pub type SpacewalkSigner = subxt::tx::PairSigner<SpacewalkRuntime, KeyPair>;
 pub type FixedU128 = sp_arithmetic::FixedU128;
 
+pub use substrate_stellar_sdk as stellar;
+
 pub type IssueId = H256;
 
 pub type StellarPublicKeyRaw = [u8; 32];
@@ -134,10 +136,22 @@ pub mod currency_id {
 					Ok(format!("XCM({})", foreign_currency_id).to_owned()),
 				CurrencyId::Stellar(stellar_asset) => match stellar_asset {
 					Asset::StellarNative => Ok("XLM".to_owned()),
-					Asset::AlphaNum4 { code, issuer } =>
-						Ok(format!("{:?}:{:?}", from_utf8(&code[..]), from_utf8(&issuer[..]))),
-					Asset::AlphaNum12 { code, issuer } =>
-						Ok(format!("{:?}:{:?}", from_utf8(&code[..]), from_utf8(&issuer[..]))),
+					Asset::AlphaNum4 { code, issuer } => Ok(format!(
+						"{:?}:{:?}",
+						from_utf8(code).unwrap_or_default(),
+						from_utf8(
+							stellar::PublicKey::from_binary(*issuer).to_encoding().as_slice()
+						)
+						.unwrap_or_default()
+					)),
+					Asset::AlphaNum12 { code, issuer } => Ok(format!(
+						"{:?}:{:?}",
+						from_utf8(code).unwrap_or_default(),
+						from_utf8(
+							stellar::PublicKey::from_binary(*issuer).to_encoding().as_slice()
+						)
+						.unwrap_or_default()
+					)),
 				},
 			}
 		}
