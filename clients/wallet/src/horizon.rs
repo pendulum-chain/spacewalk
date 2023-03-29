@@ -310,7 +310,7 @@ impl HorizonClient for reqwest::Client {
 		let base_url = horizon_url(is_public_network);
 		let url = format!("{}/transactions", base_url);
 
-		let params = [("tx", transaction_xdr.clone())];
+		let params = [("tx", &transaction_xdr)];
 		let response =
 			self.post(url).form(&params).send().await.map_err(Error::HttpFetchingError)?;
 

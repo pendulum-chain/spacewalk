@@ -437,10 +437,12 @@ impl VaultService {
 		let is_public_network = wallet.is_public_network();
 
 		// re-submit transactions in the cache
-		if let Err(errors) = wallet.resubmit_transactions_from_cache().await {
+		let (_, errors) = wallet.resubmit_transactions_from_cache().await;
+		if !errors.is_empty() {
 			// todo: handle timeouts
 			tracing::error!("Failed to resubmit: {:?}", errors);
 		}
+
 		drop(wallet);
 
 		let mut oracle_agent =
