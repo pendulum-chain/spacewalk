@@ -1197,10 +1197,11 @@ async fn test_off_chain_liquidation() {
 		assert_issue(&user_provider, WALLET.clone(), &vault_id, issue_amount, oracle_agent.clone())
 			.await;
 
+		// Reduce price of testing currency from 1:1 to 100:1 to trigger liquidation
 		set_exchange_rate_and_wait(
 			&authorized_oracle_provider,
 			DEFAULT_TESTING_CURRENCY,
-			FixedU128::from(1000000000),
+			FixedU128::saturating_from_rational(1, 100),
 		)
 		.await;
 
