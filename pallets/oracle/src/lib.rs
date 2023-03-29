@@ -269,8 +269,9 @@ impl<T: Config> Pallet<T> {
 		let converted = match (amount.currency(), currency_id) {
 			(x, y) if x == y => amount.amount(),
 			(_, _) => {
-				let base = Self::usd_to_currency(amount.amount(), amount.currency())?;
-				Self::currency_to_usd(base, currency_id)?
+				// First convert to USD, then convert USD to the desired currency
+				let base = Self::currency_to_usd(amount.amount(), amount.currency())?;
+				Self::usd_to_currency(base, currency_id)?
 			},
 		};
 		Ok(Amount::new(converted, currency_id))
