@@ -1,4 +1,4 @@
-use crate::error::Error;
+use crate::error::{CacheErrorKind, Error};
 use primitives::TransactionEnvelopeExt;
 use std::{
 	fs::{create_dir_all, read_dir, remove_file, File, OpenOptions},
@@ -51,30 +51,31 @@ impl TxEnvelopeStorage {
 	/// Saves the transaction envelope to a local folder.
 	/// The filename will be the transaction's sequence number.
 	pub fn save_to_local(&self, tx_envelope: TransactionEnvelope) -> Result<(), Error> {
-		let sequence = tx_envelope
-			.sequence_number()
-			.ok_or(Error::UnknownSequenceNumber(tx_envelope.clone()))?;
+		let sequence = tx_envelope.sequence_number().ok_or(Error::cache_error_with_env(
+			CacheErrorKind::UnknownSequenceNumber,
+			tx_envelope.clone(),
+		))?;
 
 		let full_file_path = format!("{}/{sequence}", self.full_path());
 
 		let path = Path::new(&full_file_path);
 		if path.exists() {
-			return Err(Error::SequenceNumberAlreadyUsed(sequence))
+			return Err(Error::cache_error_with_seq(
+				CacheErrorKind::SequenceNumberAlreadyUsed,
+				sequence,
+			))
 		}
 
 		let mut file = OpenOptions::new().write(true).create(true).open(path).map_err(|e| {
 			tracing::error!("Failed to create file: {:?}", e);
 
-			Error::FileCreationFailed {
-				path: full_file_path.clone(),
-				envelope: tx_envelope.clone(),
-			}
+			Error::cache_error_with_env(CacheErrorKind::FileCreationFailed, tx_envelope.clone())
 		})?;
 
 		write!(file, "{:?}", tx_envelope.to_xdr()).map_err(|e| {
 			tracing::error!("Failed to write file: {tx_envelope:?}: {e:?}");
 
-			Error::WriteToFileFailed { path: full_file_path, envelope: tx_envelope }
+			Error::cache_error_with_env(CacheErrorKind::WriteToFileFailed, tx_envelope)
 		})
 	}
 
@@ -83,7 +84,7 @@ impl TxEnvelopeStorage {
 		let full_file_path = format!("{}/{sequence}", self.full_path());
 		remove_file(&full_file_path).map_err(|e| {
 			tracing::error!("Failed to delete file: {:?}", e);
-			Error::DeleteFileFailed(full_file_path)
+			Error::cache_error_with_seq(CacheErrorKind::DeleteFileFailed, sequence)
 		})
 	}
 
@@ -127,7 +128,7 @@ impl TxEnvelopeStorage {
 		let path = Path::new(&full_file_path);
 
 		if !path.exists() {
-			return Err(Error::FileDoesNotExist(full_file_path))
+			return Err(Error::cache_error_with_seq(CacheErrorKind::FileDoesNotExist, sequence))
 		}
 
 		extract_tx_envelope_from_path(path).map(|(tx, _)| tx)
@@ -138,7 +139,7 @@ impl TxEnvelopeStorage {
 		let path = self.full_path();
 		let directory = read_dir(&path).map_err(|e| {
 			tracing::error!("Could not read path: {path:?}: {e:?}");
-			vec![Error::ReadFileFailed(format!("{path:?}"))]
+			vec![Error::cache_error_with_path(CacheErrorKind::ReadFileFailed, format!("{path:?}"))]
 		})?;
 
 		let mut errors = vec![];
@@ -221,35 +222,38 @@ fn extract_tx_envelope_from_path<P: AsRef<Path> + std::fmt::Debug + Clone>(
 		})
 		.map_err(|e| {
 			tracing::error!("Failed to read file {:?}", e);
-			Error::ReadFileFailed(format!("{path:?}"))
+			Error::cache_error_with_path(CacheErrorKind::ReadFileFailed, format!("{path:?}"))
 		})?;
 
 	// convert the content into `Vec<u8>`
 	let Some(content_as_vec_u8) = parse_xdr_string_to_vec_u8(&content_from_file) else {
-		return Err(Error::InvalidFile(format!("{path:?}")));
+		return Err(Error::cache_error_with_path(CacheErrorKind::InvalidFile, format!("{path:?}")));
 	};
 
 	// convert the content to TransactionEnvelope
 	let env = TransactionEnvelope::from_xdr(content_as_vec_u8).map_err(|e| {
 		tracing::error!("Cannot decode file: {e:?}");
 
-		Error::DecodeFileFailed(format!("{path:?}"))
+		Error::cache_error_with_path(CacheErrorKind::DecodeFileFailed, format!("{path:?}"))
 	})?;
 
 	// if a sequence number is found, then this transaction envelope is acceptable;
 	// otherwise mark as unacceptable.
 	env.sequence_number()
 		.map(|seq| (env.clone(), seq))
-		.ok_or(Error::UnknownSequenceNumber(env))
+		.ok_or(Error::cache_error_with_env(CacheErrorKind::UnknownSequenceNumber, env))
 }
 
 #[cfg(test)]
 mod test {
-	use crate::cache::{
-		extract_tx_envelope_from_path, parse_xdr_string_to_vec_u8, Error, TxEnvelopeStorage,
+	use crate::{
+		cache::{
+			extract_tx_envelope_from_path, parse_xdr_string_to_vec_u8, Error, TxEnvelopeStorage,
+		},
+		error::CacheErrorKind,
 	};
 	use primitives::TransactionEnvelopeExt;
-	use std::fs::read_dir;
+	use std::{fmt::Debug, fs::read_dir};
 	use substrate_stellar_sdk::{
 		types::{Preconditions, SequenceNumber},
 		PublicKey, Transaction, TransactionEnvelope,
@@ -257,7 +261,7 @@ mod test {
 
 	const PUB_KEY: &str = "GCENYNAX2UCY5RFUKA7AYEXKDIFITPRAB7UYSISCHVBTIAKPU2YO57OA";
 	fn storage() -> TxEnvelopeStorage {
-		TxEnvelopeStorage::new("resources/test_1".to_string(), PUB_KEY, false)
+		TxEnvelopeStorage::new("resources/examples".to_string(), PUB_KEY, false)
 	}
 
 	pub fn dummy_tx(sequence: SequenceNumber) -> TransactionEnvelope {
@@ -268,6 +272,14 @@ mod test {
 			.expect("should be able to create a tx");
 
 		tx.into_transaction_envelope()
+	}
+
+	fn assert_error<T: Debug>(result: Result<T, Error>, expected_errorkind: CacheErrorKind) {
+		assert!(result.is_err());
+		match result.unwrap_err() {
+			Error::CacheError(actual_error) => assert_eq!(actual_error.kind, expected_errorkind),
+			_ => assert!(false),
+		};
 	}
 
 	#[test]
@@ -321,8 +333,7 @@ mod test {
 		// file 406 Not Acceptable
 		let seq: SequenceNumber = 406;
 		let file_path = format!("{path}/{seq}");
-
-		assert!(matches!(extract_tx_envelope_from_path(&file_path), Err(Error::InvalidFile(_))));
+		assert_error(extract_tx_envelope_from_path(&file_path), CacheErrorKind::InvalidFile);
 	}
 
 	#[test]
@@ -337,8 +348,7 @@ mod test {
 
 		// file does not exist
 		let seq = 12;
-		let res = storage.get_tx_envelope(seq);
-		assert!(matches!(res, Err(Error::FileDoesNotExist(_))));
+		assert_error(storage.get_tx_envelope(seq), CacheErrorKind::FileDoesNotExist);
 
 		// get all transactions
 		let path = storage.full_path();
@@ -386,18 +396,16 @@ mod test {
 		assert_eq!(actual_tx, expected_tx);
 
 		assert!(new_storage.remove_transaction(sequence).is_ok());
+
 		// removing a tx again will return an error.
-		assert!(matches!(
-			new_storage.remove_transaction(sequence),
-			Err(Error::DeleteFileFailed(_))
-		));
+		assert_error(new_storage.remove_transaction(sequence), CacheErrorKind::DeleteFileFailed);
 
 		// let's remove the entire directory
 		assert!(new_storage.remove_dir());
 
 		// file already exists
-		let tx = dummy_tx(17373142712630);
-		let result = storage().save_to_local(tx);
-		assert!(matches!(result, Err(Error::SequenceNumberAlreadyUsed(_))));
+		let seq = 17373142712630;
+		let tx = dummy_tx(seq);
+		assert_error(storage().save_to_local(tx), CacheErrorKind::SequenceNumberAlreadyUsed);
 	}
 }

@@ -39,7 +39,7 @@ async fn interpret_response<T: DeserializeOwned>(response: reqwest::Response) ->
 						title: title.to_string(),
 						status,
 						reason: result_code.to_string(),
-						envelope_xdr: envelope_xdr.to_string(),
+						envelope_xdr: Some(envelope_xdr.to_string()),
 					}
 				},
 				"Transaction Malformed" => {
@@ -50,7 +50,7 @@ async fn interpret_response<T: DeserializeOwned>(response: reqwest::Response) ->
 						title: title.to_string(),
 						status,
 						reason: detail.to_string(),
-						envelope_xdr: envelope_xdr.to_string(),
+						envelope_xdr: Some(envelope_xdr.to_string()),
 					}
 				},
 				_ => {
@@ -60,13 +60,14 @@ async fn interpret_response<T: DeserializeOwned>(response: reqwest::Response) ->
 						title: title.to_string(),
 						status,
 						reason: detail.to_string(),
-						envelope_xdr: "".to_string(),
+						envelope_xdr: None,
 					}
 				},
 			}
 		},
 	};
 
+	tracing::error!("Response returned error: {:?}", &error);
 	Err(error)
 }
 
@@ -314,13 +315,16 @@ impl HorizonClient for reqwest::Client {
 			self.post(url).form(&params).send().await.map_err(Error::HttpFetchingError)?;
 
 		interpret_response::<TransactionResponse>(response).await.map_err(|e| match e {
-			Error::HorizonSubmissionError { title, status, reason, envelope_xdr } => {
-				let envelope_xdr = if envelope_xdr.is_empty() {
-					transaction_xdr.to_string()
-				} else {
-					envelope_xdr
-				};
-				Error::HorizonSubmissionError { title, status, reason, envelope_xdr }
+			Error::HorizonSubmissionError { title, status, reason, envelope_xdr }
+				if envelope_xdr.is_none() =>
+			{
+				// let's add a transaction envelope, if possible
+				Error::HorizonSubmissionError {
+					title,
+					status,
+					reason,
+					envelope_xdr: Some(transaction_xdr.to_string()),
+				}
 			},
 			other => other,
 		})

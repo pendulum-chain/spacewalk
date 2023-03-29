@@ -16,6 +16,7 @@ use crate::{
 	types::StellarPublicKeyRaw,
 };
 
+use crate::error::CacheErrorKind;
 use primitives::{derive_shortened_request_id, TransactionEnvelopeExt};
 
 #[derive(Clone)]
@@ -39,9 +40,10 @@ impl StellarWallet {
 		envelope: TransactionEnvelope,
 		horizon_client: &Client,
 	) -> Result<TransactionResponse, Error> {
-		let sequence = &envelope
-			.sequence_number()
-			.ok_or(Error::UnknownSequenceNumber(envelope.clone()))?;
+		let sequence = &envelope.sequence_number().ok_or(Error::cache_error_with_env(
+			CacheErrorKind::UnknownSequenceNumber,
+			envelope.clone(),
+		))?;
 
 		let submission_result = horizon_client
 			.submit_transaction(envelope.clone(), self.is_public_network)

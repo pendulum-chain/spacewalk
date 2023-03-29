@@ -799,7 +799,6 @@ async fn test_issue_overpayment_succeeds() {
 		// Loop pending proofs until it is ready
 		let proof = oracle_agent.get_proof(slot).await.expect("Proof should be available");
 		let tx_envelope_xdr_encoded = transaction_response.envelope_xdr;
-		let tx_envelope_xdr_encoded = base64::encode(tx_envelope_xdr_encoded);
 		let (envelopes_xdr_encoded, tx_set_xdr_encoded) = proof.encode();
 
 		join(
@@ -818,7 +817,7 @@ async fn test_issue_overpayment_succeeds() {
 			user_provider
 				.execute_issue(
 					issue.issue_id,
-					tx_envelope_xdr_encoded.as_bytes(),
+					&tx_envelope_xdr_encoded,
 					envelopes_xdr_encoded.as_bytes(),
 					tx_set_xdr_encoded.as_bytes(),
 				)
