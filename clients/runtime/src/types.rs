@@ -129,14 +129,15 @@ pub mod currency_id {
 	impl CurrencyIdExt for CurrencyId {
 		fn inner(&self) -> Result<String, Error> {
 			match self {
-				&bytes)
 				CurrencyId::Native => Ok("Native".to_owned()),
 				CurrencyId::XCM(foreign_currency_id) =>
 					Ok(format!("XCM({})", foreign_currency_id).to_owned()),
 				CurrencyId::Stellar(stellar_asset) => match stellar_asset {
 					Asset::StellarNative => Ok("XLM".to_owned()),
-					Asset::AlphaNum4 { code, issuer } => Ok(format!("{:?}:{:?}", from_utf8(&code), from_utf8(&issuer))),
-					Asset::AlphaNum12 { code, issuer } => Ok(format!("{:?}:{:?}", from_utf8(&code), from_utf8(&issuer))),
+					Asset::AlphaNum4 { code, issuer } =>
+						Ok(format!("{:?}:{:?}", from_utf8(&code), from_utf8(&issuer))),
+					Asset::AlphaNum12 { code, issuer } =>
+						Ok(format!("{:?}:{:?}", from_utf8(&code), from_utf8(&issuer))),
 				},
 			}
 		}
