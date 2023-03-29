@@ -135,9 +135,9 @@ pub mod currency_id {
 				CurrencyId::Stellar(stellar_asset) => match stellar_asset {
 					Asset::StellarNative => Ok("XLM".to_owned()),
 					Asset::AlphaNum4 { code, issuer } =>
-						Ok(format!("{:?}:{:?}", from_utf8(&code), from_utf8(&issuer))),
+						Ok(format!("{:?}:{:?}", from_utf8(&code[..]), from_utf8(&issuer[..]))),
 					Asset::AlphaNum12 { code, issuer } =>
-						Ok(format!("{:?}:{:?}", from_utf8(&code), from_utf8(&issuer))),
+						Ok(format!("{:?}:{:?}", from_utf8(&code[..]), from_utf8(&issuer[..]))),
 				},
 			}
 		}
