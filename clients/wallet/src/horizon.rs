@@ -22,29 +22,21 @@ async fn interpret_response<T: DeserializeOwned>(response: reqwest::Response) ->
 		return response.json::<T>().await.map_err(Error::HttpFetchingError)
 	}
 
-	let error = match response.json::<serde_json::Value>().await {
-		Err(e) => Error::HttpFetchingError(e),
-		Ok(resp) => {
-			let unknown = "unknown";
-			let title = resp["title"].as_str().unwrap_or(unknown);
-			let status = u16::try_from(resp["status"].as_u64().unwrap_or(400)).unwrap_or(400);
+	let resp = response.json::<serde_json::Value>().await.map_err(Error::HttpFetchingError)?;
 
-			match title {
-				"Transaction Failed" => {
-					let result_code =
-						resp["extras"]["result_codes"]["transaction"].as_str().unwrap_or(unknown);
-					let envelope_xdr = resp["extras"]["envelope_xdr"].as_str().unwrap_or(unknown);
+	let unknown = "unknown";
+	let title = resp["title"].as_str().unwrap_or(unknown);
+	let status = u16::try_from(resp["status"].as_u64().unwrap_or(400)).unwrap_or(400);
 
-					Error::HorizonSubmissionError {
-						title: title.to_string(),
-						status,
-						reason: result_code.to_string(),
-						envelope_xdr: Some(envelope_xdr.to_string()),
-					}
-				},
-				"Transaction Malformed" => {
+	let error = match status {
+		400 => {
+			let envelope_xdr = resp["extras"]["envelope_xdr"].as_str().unwrap_or(unknown);
+
+			match title.to_lowercase().as_str() {
+				// this particular status does not have the "result_code",
+				// so the "detail" portion will be used for "reason".
+				"transaction malformed" => {
 					let detail = resp["detail"].as_str().unwrap_or(unknown);
-					let envelope_xdr = resp["extras"]["envelope_xdr"].as_str().unwrap_or(unknown);
 
 					Error::HorizonSubmissionError {
 						title: title.to_string(),
@@ -54,15 +46,26 @@ async fn interpret_response<T: DeserializeOwned>(response: reqwest::Response) ->
 					}
 				},
 				_ => {
-					let detail = resp["detail"].as_str().unwrap_or(unknown);
+					let result_code =
+						resp["extras"]["result_codes"]["transaction"].as_str().unwrap_or(unknown);
 
 					Error::HorizonSubmissionError {
 						title: title.to_string(),
 						status,
-						reason: detail.to_string(),
-						envelope_xdr: None,
+						reason: result_code.to_string(),
+						envelope_xdr: Some(envelope_xdr.to_string()),
 					}
 				},
+			}
+		},
+		_ => {
+			let detail = resp["detail"].as_str().unwrap_or(unknown);
+
+			Error::HorizonSubmissionError {
+				title: title.to_string(),
+				status,
+				reason: detail.to_string(),
+				envelope_xdr: None,
 			}
 		},
 	};
