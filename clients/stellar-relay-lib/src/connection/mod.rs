@@ -1,4 +1,4 @@
-mod errors;
+mod error;
 mod flow_controller;
 pub(crate) mod handshake;
 mod hmac;
@@ -11,7 +11,7 @@ mod services;
 pub mod xdr_converter;
 
 pub(crate) use connector::*;
-pub use errors::Error;
+pub use error::Error;
 pub use overlay_connection::*;
 use serde::Serialize;
 use std::fmt::{Debug, Formatter};

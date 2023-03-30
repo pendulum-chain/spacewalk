@@ -9,6 +9,7 @@ use stellar_relay_lib::sdk::{
 
 use crate::oracle::{
 	constants::{get_min_externalized_messages, MAX_SLOT_TO_REMEMBER},
+	traits::ArchiveStorage,
 	types::{LifoMap, StellarMessageSender},
 	ScpArchiveStorage, ScpMessageCollector, Slot, TransactionsArchiveStorage,
 };
@@ -184,16 +185,14 @@ impl ScpMessageCollector {
 	fn get_envelopes_from_horizon_archive(&self, slot: Slot) -> impl Future<Output = ()> {
 		tracing::debug!("Fetching SCP envelopes for slot {} from horizon archive", slot);
 		let envelopes_map_arc = self.envelopes_map_clone();
-		async move {
-			let slot_index: u32 = slot.try_into().unwrap();
-			let scp_archive_result =
-				ScpArchiveStorage::get_scp_archive(slot.try_into().unwrap()).await;
 
+		let stellar_history_base = self.stellar_history_base_url();
+		async move {
+			let scp_archive_storage = ScpArchiveStorage(stellar_history_base);
+			let scp_archive_result = scp_archive_storage.get_archive(slot).await;
 			if let Err(e) = scp_archive_result {
 				tracing::error!(
-					"Could not get SCPArchive for slot {:?} from Horizon Archive: {:?}",
-					slot_index,
-					e
+					"Could not get SCPArchive for slot {slot:?} from Horizon Archive: {e:?}"
 				);
 				return
 			}
@@ -201,7 +200,7 @@ impl ScpMessageCollector {
 
 			let value = scp_archive.get_vec().iter().find(|&scp_entry| {
 				if let ScpHistoryEntry::V0(scp_entry_v0) = scp_entry {
-					scp_entry_v0.ledger_messages.ledger_seq == slot_index
+					Slot::from(scp_entry_v0.ledger_messages.ledger_seq) == slot
 				} else {
 					false
 				}
@@ -232,17 +231,14 @@ impl ScpMessageCollector {
 	fn get_txset_from_horizon_archive(&self, slot: Slot) -> impl Future<Output = ()> {
 		tracing::warn!("Fetching TxSet for slot {} from horizon archive", slot);
 		let txset_map_arc = self.txset_map_clone();
+		let stellar_history_base = self.stellar_history_base_url();
 		async move {
-			let slot_index: u32 = slot.try_into().unwrap();
-			let transactions_archive =
-				TransactionsArchiveStorage::get_transactions_archive(slot.try_into().unwrap())
-					.await;
+			let tx_archive_storage = TransactionsArchiveStorage(stellar_history_base);
+			let transactions_archive = tx_archive_storage.get_archive(slot).await;
 
 			if let Err(e) = transactions_archive {
 				tracing::error!(
-					"Could not get TransactionsArchive for slot {:?} from horizon archive: {:?}",
-					slot_index,
-					e
+					"Could not get TransactionsArchive for slot {slot:?} from horizon archive: {e:?}"
 				);
 				return
 			}
@@ -252,7 +248,7 @@ impl ScpMessageCollector {
 			let value = transactions_archive
 				.get_vec()
 				.iter()
-				.find(|&entry| entry.ledger_seq == slot_index);
+				.find(|&entry| Slot::from(entry.ledger_seq) == slot);
 
 			if let Some(target_history_entry) = value {
 				tracing::debug!("Adding archived tx set for slot {}", slot);

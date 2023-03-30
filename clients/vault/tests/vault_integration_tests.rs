@@ -43,7 +43,8 @@ const DEFAULT_WRAPPED_CURRENCY: CurrencyId = CurrencyId::AlphaNum4(
 	],
 );
 
-const CONFIG_ADDR: &str = "./resources/config/stellar_relay_config_testnet.json";
+const CONFIG_ADDR: &str = "./resources/config/testnet/stellar_relay_config_sdftest1.json";
+const SECRET_KEY: &str = "./resources/secretkey/stellar_secretkey_testnet.json";
 
 lazy_static! {
 	static ref CFG: StellarOverlayConfig =
@@ -212,7 +213,9 @@ async fn test_with_vault<F, R>(
 			.unwrap(),
 	));
 
-	let oracle_agent = start_oracle_agent(CFG.clone()).await.expect("failed to start agent");
+	let oracle_agent = start_oracle_agent(CFG.clone(), SECRET_KEY)
+		.await
+		.expect("failed to start agent");
 	let oracle_agent = Arc::new(oracle_agent);
 
 	execute(client, wallet, oracle_agent, vault_id, vault_provider).await

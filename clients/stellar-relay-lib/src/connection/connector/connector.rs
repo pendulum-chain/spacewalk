@@ -245,11 +245,15 @@ mod test {
 		Receiver<ConnectorActions>,
 		Receiver<StellarRelayMessage>,
 	) {
-		let file_path = "./resources/stellar_relay_config_testnet.json";
+		let cfg_file_path = "./resources/config/testnet/stellar_relay_config_sdftest1.json";
+		let secret_key_path = "./resources/secretkey/stellar_secretkey_testnet";
+		let secret_key =
+			std::fs::read_to_string(secret_key_path).expect("should be able to read file");
 
-		let cfg = StellarOverlayConfig::try_from_path(file_path).expect("should create a config");
+		let cfg =
+			StellarOverlayConfig::try_from_path(cfg_file_path).expect("should create a config");
 		let node_info = cfg.node_info();
-		let conn_info = cfg.connection_info().expect("should create a connection info");
+		let conn_info = cfg.connection_info(&secret_key).expect("should create a connection info");
 		// this is a channel to communicate with the connection/config (this needs renaming)
 		let (actions_sender, actions_receiver) = mpsc::channel::<ConnectorActions>(1024);
 		// this is a channel to communicate with the user/caller.

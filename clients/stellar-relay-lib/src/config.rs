@@ -6,14 +6,9 @@ use substrate_stellar_sdk::SecretKey;
 
 /// The configuration structure of the StellarOverlay.
 /// It configures both the ConnectionInfo and the NodeInfo.
-#[serde_as]
 #[derive(Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct StellarOverlayConfig {
-
-	#[serde(skip_serializing)]
-	#[serde_as(as = "BytesOrString")]
-	secret_key: Vec<u8>,
-
+	stellar_history_base_url: String,
 	connection_info: ConnectionInfoCfg,
 	node_info: NodeInfoCfg,
 }
@@ -26,13 +21,12 @@ impl StellarOverlayConfig {
 			.map_err(|e| Error::ConfigError(format!("File: {:?} contains error: {:?}", path, e)))
 	}
 
-	pub fn secret_key(&self) -> Result<&str, Error> {
-		std::str::from_utf8(&self.secret_key)
-			.map_err(|_| Error::ConfigError("invalid secret key".to_string()))
-	}
-
 	pub fn is_public_network(&self) -> bool {
 		self.node_info.is_pub_net
+	}
+
+	pub fn stellar_history_base_url(&self) -> String {
+		self.stellar_history_base_url.clone()
 	}
 
 	#[allow(dead_code)]
@@ -41,9 +35,9 @@ impl StellarOverlayConfig {
 	}
 
 	#[allow(dead_code)]
-	pub(crate) fn connection_info(&self) -> Result<ConnectionInfo, Error> {
+	pub(crate) fn connection_info(&self, secret_key: &str) -> Result<ConnectionInfo, Error> {
 		let cfg = &self.connection_info;
-		let secret_key = SecretKey::from_encoding(self.secret_key()?)?;
+		let secret_key = SecretKey::from_encoding(secret_key)?;
 
 		let address = std::str::from_utf8(&cfg.address)
 			.map_err(|e| Error::ConfigError(format!("Address: {:?}", e)))?;
@@ -57,7 +51,7 @@ impl StellarOverlayConfig {
 			cfg.recv_scp_msgs,
 			cfg.remote_called_us,
 			cfg.timeout_in_secs,
-			cfg.retries
+			cfg.retries,
 		))
 	}
 }
@@ -133,8 +127,9 @@ impl ConnectionInfoCfg {
 /// Returns the `StellarOverlayConnection` if connection is a success, otherwise an Error
 pub async fn connect_to_stellar_overlay_network(
 	cfg: StellarOverlayConfig,
+	secret_key: &str,
 ) -> Result<StellarOverlayConnection, Error> {
-	let conn_info = cfg.connection_info()?;
+	let conn_info = cfg.connection_info(secret_key)?;
 	let local_node = cfg.node_info;
 
 	StellarOverlayConnection::connect(local_node.into(), conn_info).await
@@ -149,8 +144,7 @@ mod test {
 		let json = r#"
 			{
 			  "address": "1.2.3.4",
-			  "port": 11625,
-			  "secret_key": "SBLI7RKEJAEFGLZUBSCOFJHQBPFYIIPLBCKN7WVCWT4NEG2UJEW33N73"
+			  "port": 11625
 			}
 			"#;
 
@@ -163,8 +157,7 @@ mod test {
 		// missing port
 		let json = r#"
 			{
-			  "address": "1.2.3.4",
-			  "secret_key": "SBLI7RKEJAEFGLZUBSCOFJHQBPFYIIPLBCKN7WVCWT4NEG2UJEW33N73",
+			  "address": "1.2.3.4"
 			  "recv_scp_msgs": true,
 			  "remote_called_us": false
 			}
@@ -172,10 +165,9 @@ mod test {
 
 		assert!(serde_json::from_str::<ConnectionInfoCfg>(json).is_err());
 
-		// missing secret key
+		// missing address
 		let json = r#"
 			{
-			  "address": "1.2.3.4",
 			  "port": 11625,
 			  "auth_cert_expiration": 0,
 			  "recv_tx_msgs": false,
@@ -234,7 +226,6 @@ mod test {
 			  "connection_info": {
 				"address": "1.2.3.4",
 				"port": 11625,
-				"secret_key": "SBLI7RKEJAEFGLZUBSCOFJHQBPFYIIPLBCKN7WVCWT4NEG2UJEW33N73",
 				"auth_cert_expiration": 0,
 				"recv_scp_msgs": true
 			  },
@@ -244,12 +235,13 @@ mod test {
 				"overlay_min_version": 23,
 				"version_str": "v19.5.0",
 				"is_pub_net": false
-			  }
+			  },
+			  "stellar_history_base_url": "sample"
 			}
 			"#;
 
 		let _: StellarOverlayConfig =
-			serde_json::from_str(json).expect("should return a NodeInfoCfg");
+			serde_json::from_str(json).expect("should return a StellarRelayConfig");
 	}
 
 	#[test]
@@ -258,8 +250,7 @@ mod test {
 		let json = r#"
 			{
 			  "connection_info": {
-				"port": 11625,
-				"secret_key": "SBLI7RKEJAEFGLZUBSCOFJHQBPFYIIPLBCKN7WVCWT4NEG2UJEW33N73"
+				"port": 11625
 			  },
 			  "node_info": {
 				"ledger_version": 19,
@@ -277,13 +268,33 @@ mod test {
 			{
 			  "connection_info": {
 				"address": "1.2.3.4",
-				"port": 11625,
-				"secret_key": "SBLI7RKEJAEFGLZUBSCOFJHQBPFYIIPLBCKN7WVCWT4NEG2UJEW33N73",
+				"port": 11625
 				"auth_cert_expiration": 0,
 				"recv_scp_msgs": true
 			  },
 			  "node_info": {
 				"ledger_version": 19,
+				"overlay_min_version": 23,
+				"version_str": "v19.5.0",
+				"is_pub_net": false
+			  }
+			}
+			"#;
+
+		assert!(serde_json::from_str::<StellarOverlayConfig>(json).is_err());
+
+		// missing stellar_history_base_url
+		let json = r#"
+			{
+			  "connection_info": {
+				"address": "1.2.3.4",
+				"port": 11625,
+				"auth_cert_expiration": 0,
+				"recv_scp_msgs": true
+			  },
+			  "node_info": {
+				"ledger_version": 19,
+				"overlay_version": 25,
 				"overlay_min_version": 23,
 				"version_str": "v19.5.0",
 				"is_pub_net": false

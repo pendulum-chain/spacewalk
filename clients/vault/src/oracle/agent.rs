@@ -62,15 +62,21 @@ async fn handle_message(
 /// Start the connection to the Stellar Node.
 /// Returns an `OracleAgent` that will handle incoming messages from Stellar Node,
 /// and to send messages to Stellar Node
-pub async fn start_oracle_agent(config: StellarOverlayConfig) -> Result<OracleAgent, Error> {
-	let mut overlay_conn = connect_to_stellar_overlay_network(config.clone()).await?;
+pub async fn start_oracle_agent(
+	config: StellarOverlayConfig,
+	secret_key: &str,
+) -> Result<OracleAgent, Error> {
+	let mut overlay_conn = connect_to_stellar_overlay_network(config.clone(), secret_key).await?;
 
 	// Get action sender and disconnect action before moving `overlay_conn` into the closure
 	let actions_sender = overlay_conn.get_actions_sender();
 	let disconnect_action = overlay_conn.get_disconnect_action();
 
 	let (sender, mut receiver) = mpsc::channel(34);
-	let collector = Arc::new(RwLock::new(ScpMessageCollector::new(config.is_public_network())));
+	let collector = Arc::new(RwLock::new(ScpMessageCollector::new(
+		config.is_public_network(),
+		config.stellar_history_base_url(),
+	)));
 	let shutdown_sender = ShutdownSender::default();
 
 	let shutdown_clone = shutdown_sender.clone();
@@ -165,40 +171,20 @@ impl OracleAgent {
 
 #[cfg(test)]
 mod tests {
-	use std::fs;
 
-	use crate::oracle::{traits::ArchiveStorage, ScpArchiveStorage, TransactionsArchiveStorage};
+	use crate::oracle::{
+		test_secret_key, test_stellar_relay_config, traits::ArchiveStorage, ScpArchiveStorage,
+		TransactionsArchiveStorage,
+	};
 
 	use super::*;
-
-	use rand::seq::SliceRandom;
-
-	fn create_config() -> StellarOverlayConfig {
-		let stellar_node_points: Vec<&str> = vec!["iowa", "frankfurt", "singapore"];
-
-		let res = stellar_node_points
-			.choose(&mut rand::thread_rng())
-			.expect("should return a value");
-		let path_string = format!("./resources/config/stellar_relay_config_mainnet_{res}.json");
-
-		StellarOverlayConfig::try_from_path(path_string.as_str())
-			.expect("should be able to extract config")
-	}
-
-	fn remove_xdr_files(target_slot: u64) {
-		let (_, file) = <TransactionsArchiveStorage as ArchiveStorage>::get_url_and_file_name(
-			target_slot as u32,
-		);
-		fs::remove_file(file).expect("should be able to remove the newly added file.");
-		let (_, file) =
-			<ScpArchiveStorage as ArchiveStorage>::get_url_and_file_name(target_slot as u32);
-		fs::remove_file(file).expect("should be able to remove the newly added file.");
-	}
 
 	#[tokio::test]
 	#[ntest::timeout(1_800_000)] // timeout at 30 minutes
 	async fn test_get_proof_for_current_slot() {
-		let agent = start_oracle_agent(create_config()).await.expect("Failed to start agent");
+		let agent = start_oracle_agent(test_stellar_relay_config(), &test_secret_key())
+			.await
+			.expect("Failed to start agent");
 		sleep(Duration::from_secs(10)).await;
 		// Wait until agent is caught up with the network.
 
@@ -217,7 +203,12 @@ mod tests {
 
 	#[tokio::test]
 	async fn test_get_proof_for_archived_slot() {
-		let agent = start_oracle_agent(create_config()).await.expect("Failed to start agent");
+		let scp_archive_storage = ScpArchiveStorage::default();
+		let tx_archive_storage = TransactionsArchiveStorage::default();
+
+		let agent = start_oracle_agent(test_stellar_relay_config(), &test_secret_key())
+			.await
+			.expect("Failed to start agent");
 
 		// This slot should be archived on the public network
 		let target_slot = 44041116;
@@ -225,7 +216,8 @@ mod tests {
 
 		assert_eq!(proof.slot(), 44041116);
 
-		remove_xdr_files(target_slot);
+		scp_archive_storage.remove_file(target_slot);
+		tx_archive_storage.remove_file(target_slot);
 
 		agent.stop().expect("Failed to stop the agent");
 	}

@@ -6,13 +6,16 @@ The Stellar Relay acts as a mediator between the user(you) and the Stellar Node.
 
 ### The `StellarOverlayConfig`
 ```rust
-pub struct StellarOverlayConfig {
-	connection_info: ConnectionInfoCfg,
-	node_info: NodeInfoCfg,
+pub struct StellarOverlayConfig { 
+    stellar_history_base_url: String, 
+    connection_info: ConnectionInfoCfg, 
+    node_info: NodeInfoCfg,
 }
 ```
-The `StellarOverlayConfig` is a configuration to connect to the Stellar Node. It contains the **`SecretKey`** and 2 specific configs:
-`ConnectionInfoCfg` and `NodeInfoCfg`.
+The `StellarOverlayConfig` is a configuration to connect to the Stellar Node. It contains the following:
+ * `stellar history base url` - to access the archive
+ * `ConnectionInfoCfg`
+ * `NodeInfoCfg`.
 
 The `NodeInfoCfg` contains the information of the Stellar Node to connect to. Except the address and the port.
 ```rust
@@ -47,22 +50,21 @@ pub struct ConnectionInfoCfg {
 ## Usage
 
 ### Provide the `StellarOverlayConfig` file path
-```rust
-pub struct StellarOverlayConfig {
-	connection_info: ConnectionInfoCfg,
-	node_info: NodeInfoCfg,
-}
-```
-Start with the config. It can come in a json file (see [here](resources) for example files).
+
+Start with the creating a **json** config file (see [here](resources) for example files).
 The config file will be converted to a `StellarOverlayConfig`. using the function:
 ```rust 
 let cfg = StellarOverlayConfig::try_from_path(<your_file_path>)?;
 ```
 
 ### Create the `StellarOverlayConnection`
-Given the `StellarOverlayConfig`, connect to the Stellar Node using the `connect` function.
+Two things are needed to create a connection:
+* **_secret key_**
+* And given the `StellarOverlayConfig`  
+
+Create a connection using the `connect_to_stellar_overlay_network` function:
 ```rust
-let mut overlay_connection = stellar_relay_lib::connect_to_stellar_overlay_network(cfg).await?;
+let mut overlay_connection = stellar_relay_lib::connect_to_stellar_overlay_network(cfg, secret_key).await?;
 ```
 The `StellarOverlayConnection` has 2 async methods to interact with the Stellar Node:
 * _`send(&self, message: StellarMessage)`_ -> for sending `StellarMessage`s to Stellar Node
