@@ -284,14 +284,16 @@ async fn publish_stellar_balance<P: OraclePallet>(parachain_rpc: P, vault: &Vaul
 			if let Ok(asset) = asset {
 				let asset_balance = get_balance_for_asset(asset, balance);
 				if let Some(b) = asset_balance {
+					let actual_balance = b * currency_id.one() as f64;
 					currency_to_usd = parachain_rpc
-						.currency_to_usd(b as u128, currency_id)
+						.currency_to_usd(actual_balance as u128, currency_id)
 						.await
 						.unwrap_or_else(|e| {
 							// unexpected error, but not critical so just continue
 							tracing::warn!("Failed to get balance: {}", e);
 							0
 						});
+					
 				};
 			} else {
 				tracing::warn!("Incorrect stellar asset type");
