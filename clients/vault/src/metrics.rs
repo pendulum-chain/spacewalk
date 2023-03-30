@@ -295,7 +295,6 @@ async fn publish_stellar_balance<P: OraclePallet>(parachain_rpc: P, vault: &Vaul
 							tracing::warn!("Failed to get balance: {}", e);
 							0
 						});
-					
 				};
 			} else {
 				tracing::warn!("Incorrect stellar asset type");
@@ -486,8 +485,16 @@ pub async fn publish_expected_stellar_balance<P: VaultRegistryPallet>(
 	if let Ok(v) = parachain_rpc.get_vault(&vault.vault_id).await {
 		let lowerbound = v.issued_tokens.saturating_sub(v.to_be_redeemed_tokens);
 		let upperbound = v.issued_tokens.saturating_add(v.to_be_issued_tokens);
-		vault.metrics.asset_balance.lowerbound.set(BalanceConversion::lookup(lowerbound).unwrap_or_default() as f64);
-		vault.metrics.asset_balance.upperbound.set(BalanceConversion::lookup(upperbound).unwrap_or_default() as f64);
+		vault
+			.metrics
+			.asset_balance
+			.lowerbound
+			.set(BalanceConversion::lookup(lowerbound).unwrap_or_default() as f64);
+		vault
+			.metrics
+			.asset_balance
+			.upperbound
+			.set(BalanceConversion::lookup(upperbound).unwrap_or_default() as f64);
 	}
 	Ok(())
 }
