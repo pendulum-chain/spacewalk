@@ -342,15 +342,6 @@ impl VaultService {
 				true
 			});
 
-		// check if both the config file and the network in the chain are the same.
-		// if is_public_network != stellar_overlay_config.is_public_network() {
-		// 	return Err(Error::ConfigError(format!(
-		// 		"Config has set public network to {}, while the runtime is {}",
-		// 		stellar_overlay_config.is_public_network(),
-		// 		is_public_network
-		// 	)))
-		// }
-
 		let secret_key = fs::read_to_string(&config.stellar_vault_secret_key_filepath)?
 			.trim()
 			.to_string();
@@ -455,6 +446,11 @@ impl VaultService {
 		let cfg_path = &self.config.stellar_overlay_config_filepath;
 		let stellar_overlay_cfg =
 			StellarOverlayConfig::try_from_path(cfg_path).map_err(Error::StellarRelayError)?;
+
+		// check if both the config file and the wallet are the same.
+		if is_public_network != stellar_overlay_cfg.is_public_network() {
+			return Err(ServiceError::IncompatibleNetwork)
+		}
 
 		let oracle_agent = crate::oracle::start_oracle_agent(stellar_overlay_cfg, &self.secret_key)
 			.await

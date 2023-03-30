@@ -20,12 +20,6 @@ pub const MAX_SLOT_TO_REMEMBER: Slot = 12;
 
 pub const ARCHIVE_NODE_LEDGER_BATCH: Slot = 64;
 
-// pub const STELLAR_HISTORY_BASE_URL: &str =
-// 	"http://history.stellar.org/prd/core-live/core_live_002/scp/";
-//
-// pub const STELLAR_HISTORY_BASE_URL_TRANSACTIONS: &str =
-//	"http://history.stellar.org/prd/core-live/core_live_002/transactions/";
-
 /// Returns the minimum amount of SCP messages that are required to build a valid proof per network
 pub fn get_min_externalized_messages(public_network: bool) -> usize {
 	let validator_count =
