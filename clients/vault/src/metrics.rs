@@ -6,7 +6,7 @@ use crate::{
 };
 use async_trait::async_trait;
 use lazy_static::lazy_static;
-use primitives::stellar;
+use primitives::{stellar, BalanceConversion};
 use runtime::{
 	prometheus::{
 		gather, proto::MetricFamily, Encoder, Gauge, GaugeVec, IntCounter, IntGaugeVec, Opts,
@@ -21,6 +21,7 @@ use service::{
 	warp::{Rejection, Reply},
 	Error as ServiceError,
 };
+use sp_runtime::traits::StaticLookup;
 use std::time::Duration;
 use tokio::time::sleep;
 use tokio_metrics::TaskMetrics;
@@ -284,7 +285,8 @@ async fn publish_stellar_balance<P: OraclePallet>(parachain_rpc: P, vault: &Vaul
 			if let Ok(asset) = asset {
 				let asset_balance = get_balance_for_asset(asset, balance);
 				if let Some(b) = asset_balance {
-					let actual_balance = b * currency_id.one() as f64;
+					let currency_one = currency_id.one();
+					let actual_balance = b * currency_one as f64;
 					currency_to_usd = parachain_rpc
 						.currency_to_usd(actual_balance as u128, currency_id)
 						.await
@@ -484,9 +486,8 @@ pub async fn publish_expected_stellar_balance<P: VaultRegistryPallet>(
 	if let Ok(v) = parachain_rpc.get_vault(&vault.vault_id).await {
 		let lowerbound = v.issued_tokens.saturating_sub(v.to_be_redeemed_tokens);
 		let upperbound = v.issued_tokens.saturating_add(v.to_be_issued_tokens);
-		let scaling_factor = vault.vault_id.wrapped_currency().one() as f64;
-		vault.metrics.asset_balance.lowerbound.set(lowerbound as f64 / scaling_factor);
-		vault.metrics.asset_balance.upperbound.set(upperbound as f64 / scaling_factor);
+		vault.metrics.asset_balance.lowerbound.set(BalanceConversion::lookup(lowerbound).unwrap_or_default() as f64);
+		vault.metrics.asset_balance.upperbound.set(BalanceConversion::lookup(upperbound).unwrap_or_default() as f64);
 	}
 	Ok(())
 }
