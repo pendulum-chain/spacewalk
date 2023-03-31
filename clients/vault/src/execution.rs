@@ -203,7 +203,9 @@ impl Request {
 			.await;
 
 		match result {
-			Ok((response, tx_env)) => {
+			Ok(response) => {
+				let tx_env = TransactionEnvelope::from_base64_xdr(response.envelope_xdr)
+					.map_err(|_| Error::StellarSdkError)?;
 				let slot: Slot = response.ledger as Slot;
 				tracing::info!(
 					"Successfully sent stellar payment to {:?} for {}",
