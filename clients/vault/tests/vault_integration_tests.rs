@@ -18,7 +18,7 @@ use runtime::{
 	integration::*, types::*, FixedPointNumber, FixedU128, IssuePallet, RedeemPallet,
 	ReplacePallet, ShutdownSender, SpacewalkParachain, SudoPallet, UtilFuncs, VaultRegistryPallet,
 };
-use stellar_relay_lib::{ sdk::PublicKey, StellarOverlayConfig, };
+use stellar_relay_lib::{sdk::PublicKey, StellarOverlayConfig};
 
 use vault::{
 	oracle::{start_oracle_agent, OracleAgent},
@@ -44,11 +44,11 @@ const CONFIG_ADDR: &str = "./resources/config/testnet/stellar_relay_config_sdfte
 const SECRET_KEY_PATH: &str = "./resources/secretkey/stellar_secretkey_testnet";
 
 lazy_static! {
-	static ref CFG: StellarOverlayConfig = StellarOverlayConfig::try_from_path(CONFIG_ADDR).unwrap();
-	static ref SECRET_KEY: String = std::fs::read_to_string(SECRET_KEY_PATH).expect("should return a string");
-	
+	static ref CFG: StellarOverlayConfig =
+		StellarOverlayConfig::try_from_path(CONFIG_ADDR).unwrap();
+	static ref SECRET_KEY: String =
+		std::fs::read_to_string(SECRET_KEY_PATH).expect("should return a string");
 }
-
 
 // A simple helper function to convert StellarStroops (i64) to the up-scaled u128
 fn upscaled_compatible_amount(amount: StellarStroops) -> u128 {
@@ -132,8 +132,8 @@ pub async fn assert_issue(
 }
 
 async fn test_with<F, R>(execute: impl FnOnce(SubxtClient, ArcRwLock<StellarWallet>) -> F) -> R
-	where
-		F: Future<Output = R>,
+where
+	F: Future<Output = R>,
 {
 	service::init_subscriber();
 	let (client, tmp_dir) = default_provider_client(AccountKeyring::Alice).await;
@@ -147,22 +147,18 @@ async fn test_with<F, R>(execute: impl FnOnce(SubxtClient, ArcRwLock<StellarWall
 		// Set exchange rate to 1:1 with USD
 		FixedU128::saturating_from_rational(1u128, 1u128),
 	)
-		.await;
+	.await;
 	set_exchange_rate_and_wait(
 		&parachain_rpc,
 		DEFAULT_WRAPPED_CURRENCY,
 		// Set exchange rate to 10:1 with USD
 		FixedU128::saturating_from_rational(1u128, 10u128),
 	)
-		.await;
+	.await;
 
 	let path = tmp_dir.path().to_str().expect("should return a string").to_string();
 	let wallet = Arc::new(RwLock::new(
-		StellarWallet::from_secret_encoded_with_cache(
-			&SECRET_KEY,
-			CFG.is_public_network(),
-			path,
-		)
+		StellarWallet::from_secret_encoded_with_cache(&SECRET_KEY, CFG.is_public_network(), path)
 			.unwrap(),
 	));
 
@@ -170,10 +166,16 @@ async fn test_with<F, R>(execute: impl FnOnce(SubxtClient, ArcRwLock<StellarWall
 }
 
 async fn test_with_vault<F, R>(
-	execute: impl FnOnce(SubxtClient, ArcRwLock<StellarWallet>, Arc<OracleAgent>, VaultId, SpacewalkParachain) -> F,
+	execute: impl FnOnce(
+		SubxtClient,
+		ArcRwLock<StellarWallet>,
+		Arc<OracleAgent>,
+		VaultId,
+		SpacewalkParachain,
+	) -> F,
 ) -> R
-	where
-		F: Future<Output = R>,
+where
+	F: Future<Output = R>,
 {
 	service::init_subscriber();
 	let (client, tmp_dir) = default_provider_client(AccountKeyring::Alice).await;
@@ -185,14 +187,14 @@ async fn test_with_vault<F, R>(
 		// Set exchange rate to 1:1 with USD
 		FixedU128::saturating_from_rational(1u128, 1u128),
 	)
-		.await;
+	.await;
 	set_exchange_rate_and_wait(
 		&parachain_rpc,
 		DEFAULT_WRAPPED_CURRENCY,
 		// Set exchange rate to 10:1 with USD
 		FixedU128::saturating_from_rational(1u128, 10u128),
 	)
-		.await;
+	.await;
 
 	let vault_provider = setup_provider(client.clone(), AccountKeyring::Charlie).await;
 	let vault_id = VaultId::new(
@@ -203,11 +205,7 @@ async fn test_with_vault<F, R>(
 
 	let path = tmp_dir.path().to_str().expect("should return a string").to_string();
 	let wallet = Arc::new(RwLock::new(
-		StellarWallet::from_secret_encoded_with_cache(
-			&SECRET_KEY,
-			CFG.is_public_network(),
-			path,
-		)
+		StellarWallet::from_secret_encoded_with_cache(&SECRET_KEY, CFG.is_public_network(), path)
 			.unwrap(),
 	));
 
@@ -236,7 +234,7 @@ async fn test_redeem_succeeds() {
 			issue_amount,
 			vault_id.collateral_currency(),
 		)
-			.await;
+		.await;
 
 		let wallet_read = wallet.read().await;
 		assert_ok!(
@@ -275,9 +273,9 @@ async fn test_redeem_succeeds() {
 				assert_execute_redeem_event(TIMEOUT, user_provider, redeem_id).await;
 			},
 		)
-			.await;
-	})
 		.await;
+	})
+	.await;
 }
 
 #[tokio::test(flavor = "multi_thread")]
@@ -305,7 +303,7 @@ async fn test_replace_succeeds() {
 			issue_amount,
 			old_vault_id.collateral_currency(),
 		)
-			.await;
+		.await;
 
 		let wallet_read = wallet.read().await;
 		assert_ok!(
@@ -335,7 +333,7 @@ async fn test_replace_succeeds() {
 			issue_amount,
 			oracle_agent.clone(),
 		)
-			.await;
+		.await;
 
 		let shutdown_tx = ShutdownSender::new();
 		let (replace_event_tx, _) = mpsc::channel::<CancellationEvent>(16);
@@ -363,18 +361,18 @@ async fn test_replace_succeeds() {
 					assert_eq!(e.new_vault_id, new_vault_id);
 					true
 				})
-					.await;
+				.await;
 				assert_event::<ExecuteReplaceEvent, _>(TIMEOUT, old_vault_provider.clone(), |e| {
 					assert_eq!(e.old_vault_id, old_vault_id);
 					assert_eq!(e.new_vault_id, new_vault_id);
 					true
 				})
-					.await;
+				.await;
 			},
 		)
-			.await;
-	})
 		.await;
+	})
+	.await;
 }
 
 #[tokio::test(flavor = "multi_thread")]
@@ -395,7 +393,7 @@ async fn test_withdraw_replace_succeeds() {
 			issue_amount,
 			old_vault_id.collateral_currency(),
 		)
-			.await;
+		.await;
 		let wallet_read = wallet.read().await;
 		assert_ok!(
 			old_vault_provider
@@ -424,7 +422,7 @@ async fn test_withdraw_replace_succeeds() {
 			issue_amount,
 			oracle_agent.clone(),
 		)
-			.await;
+		.await;
 
 		join(
 			old_vault_provider
@@ -432,7 +430,7 @@ async fn test_withdraw_replace_succeeds() {
 				.map(Result::unwrap),
 			assert_event::<RequestReplaceEvent, _>(TIMEOUT, old_vault_provider.clone(), |_| true),
 		)
-			.await;
+		.await;
 
 		join(
 			old_vault_provider
@@ -443,7 +441,7 @@ async fn test_withdraw_replace_succeeds() {
 				true
 			}),
 		)
-			.await;
+		.await;
 
 		let address = [2u8; 32];
 		assert!(new_vault_provider
@@ -451,7 +449,7 @@ async fn test_withdraw_replace_succeeds() {
 			.await
 			.is_err());
 	})
-		.await;
+	.await;
 }
 
 #[tokio::test(flavor = "multi_thread")]
@@ -478,7 +476,7 @@ async fn test_cancel_scheduler_succeeds() {
 			issue_amount * 10,
 			old_vault_id.collateral_currency(),
 		)
-			.await;
+		.await;
 
 		let wallet_read = wallet.read().await;
 		assert_ok!(
@@ -508,7 +506,7 @@ async fn test_cancel_scheduler_succeeds() {
 			issue_amount,
 			oracle_agent.clone(),
 		)
-			.await;
+		.await;
 
 		// set low timeout periods
 		assert_ok!(root_provider.set_issue_period(1).await);
@@ -638,21 +636,21 @@ async fn test_cancel_scheduler_succeeds() {
 						|_| true,
 					),
 				)
-					.await;
+				.await;
 
 				// now make sure we can cancel the redeem
 				assert_ok!(user_provider.cancel_redeem(redeem_id, true).await);
 			},
 		)
-			.await;
-	})
 		.await;
+	})
+	.await;
 }
 
 #[tokio::test(flavor = "multi_thread")]
 #[serial]
 async fn test_issue_cancel_succeeds() {
-	test_with_vault(|client, wallet, oracle_agent, vault_id, vault_provider| async move {
+	test_with_vault(|client, wallet, _, vault_id, vault_provider| async move {
 		let user_provider = setup_provider(client.clone(), AccountKeyring::Dave).await;
 		let issue_set = Arc::new(RwLock::new(IssueRequestsMap::new()));
 		let memos_to_issue_ids = Arc::new(RwLock::new(IssueIdLookup::new()));
@@ -666,7 +664,7 @@ async fn test_issue_cancel_succeeds() {
 			issue_amount,
 			vault_id.collateral_currency(),
 		)
-			.await;
+		.await;
 
 		assert_ok!(
 			vault_provider
@@ -731,7 +729,7 @@ async fn test_issue_cancel_succeeds() {
 
 		test_service(service, fut_user).await;
 	})
-		.await;
+	.await;
 }
 
 #[tokio::test(flavor = "multi_thread")]
@@ -749,7 +747,7 @@ async fn test_issue_overpayment_succeeds() {
 			issue_amount * over_payment_factor,
 			vault_id.collateral_currency(),
 		)
-			.await;
+		.await;
 
 		assert_ok!(
 			vault_provider
@@ -816,9 +814,9 @@ async fn test_issue_overpayment_succeeds() {
 				)
 				.map(Result::unwrap),
 		)
-			.await;
-	})
 		.await;
+	})
+	.await;
 }
 
 #[tokio::test(flavor = "multi_thread")]
@@ -833,7 +831,7 @@ async fn test_automatic_issue_execution_succeeds() {
 			issue_amount,
 			vault_id.collateral_currency(),
 		)
-			.await;
+		.await;
 
 		let wallet_read = wallet.read().await;
 		assert_ok!(
@@ -877,7 +875,7 @@ async fn test_automatic_issue_execution_succeeds() {
 			assert_event::<ExecuteIssueEvent, _>(TIMEOUT, user_provider.clone(), move |x| {
 				x.vault_id == vault_id.clone() && x.amount == issue_amount
 			})
-				.await;
+			.await;
 		};
 
 		let wallet_read = wallet.read().await;
@@ -915,7 +913,7 @@ async fn test_automatic_issue_execution_succeeds() {
 
 		test_service(service, fut_user).await;
 	})
-		.await;
+	.await;
 }
 
 /// This test demonstrates that a vault can execute an issue request even if it is not the original
@@ -941,7 +939,7 @@ async fn test_automatic_issue_execution_succeeds_for_other_vault() {
 			issue_amount,
 			vault1_id.collateral_currency(),
 		)
-			.await;
+		.await;
 
 		let wallet_read = wallet.read().await;
 		assert_ok!(
@@ -1007,7 +1005,7 @@ async fn test_automatic_issue_execution_succeeds_for_other_vault() {
 			assert_event::<ExecuteIssueEvent, _>(TIMEOUT * 3, user_provider.clone(), move |x| {
 				x.vault_id == vault1_id.clone()
 			})
-				.await;
+			.await;
 
 			// wait a second to give the `listen_for_executed_issues()` service time to update the
 			// issue set
@@ -1056,7 +1054,7 @@ async fn test_automatic_issue_execution_succeeds_for_other_vault() {
 
 		test_service(service, fut_user).await;
 	})
-		.await;
+	.await;
 }
 
 #[tokio::test(flavor = "multi_thread")]
@@ -1076,7 +1074,7 @@ async fn test_execute_open_requests_succeeds() {
 			issue_amount,
 			vault_id.collateral_currency(),
 		)
-			.await;
+		.await;
 
 		let wallet_read = wallet.read().await;
 		assert_ok!(
@@ -1102,18 +1100,18 @@ async fn test_execute_open_requests_succeeds() {
 		let redeem_ids = futures::future::join_all((0..3u128).map(|_| {
 			user_provider.request_redeem(upscaled_compatible_amount(100), address_raw, &vault_id)
 		}))
-			.await
-			.into_iter()
-			.map(|x| x.unwrap())
-			.collect::<Vec<_>>();
+		.await
+		.into_iter()
+		.map(|x| x.unwrap())
+		.collect::<Vec<_>>();
 
 		let redeems: Vec<SpacewalkRedeemRequest> = futures::future::join_all(
 			redeem_ids.iter().map(|id| user_provider.get_redeem_request(*id)),
 		)
-			.await
-			.into_iter()
-			.map(|x| x.unwrap())
-			.collect::<Vec<_>>();
+		.await
+		.into_iter()
+		.map(|x| x.unwrap())
+		.collect::<Vec<_>>();
 
 		let stroop_amount =
 			primitives::BalanceConversion::lookup(redeems[0].amount).expect("Invalid amount");
@@ -1138,7 +1136,7 @@ async fn test_execute_open_requests_succeeds() {
 				oracle_agent.clone(),
 				Duration::from_secs(0),
 			)
-				.map(Result::unwrap),
+			.map(Result::unwrap),
 			// Redeem 0 should be executed without creating an extra payment since we already sent
 			// one just before
 			assert_execute_redeem_event(TIMEOUT, user_provider.clone(), redeem_ids[0]),
@@ -1146,9 +1144,9 @@ async fn test_execute_open_requests_succeeds() {
 			assert_execute_redeem_event(TIMEOUT, user_provider.clone(), redeem_ids[1]),
 			assert_execute_redeem_event(TIMEOUT, user_provider.clone(), redeem_ids[2]),
 		)
-			.await;
-	})
 		.await;
+	})
+	.await;
 }
 
 #[tokio::test(flavor = "multi_thread")]
@@ -1165,7 +1163,7 @@ async fn test_off_chain_liquidation() {
 			issue_amount,
 			vault_id.collateral_currency(),
 		)
-			.await;
+		.await;
 
 		let wallet_read = wallet.read().await;
 		assert_ok!(
@@ -1188,11 +1186,11 @@ async fn test_off_chain_liquidation() {
 			DEFAULT_TESTING_CURRENCY,
 			FixedU128::saturating_from_rational(1, 100),
 		)
-			.await;
+		.await;
 
 		assert_event::<LiquidateVaultEvent, _>(TIMEOUT, vault_provider.clone(), |_| true).await;
 	})
-		.await;
+	.await;
 }
 
 #[tokio::test(flavor = "multi_thread")]
@@ -1214,7 +1212,7 @@ async fn test_shutdown() {
 			issue_amount,
 			sudo_vault_id.collateral_currency(),
 		)
-			.await;
+		.await;
 
 		assert_ok!(
 			sudo_provider
@@ -1249,7 +1247,7 @@ async fn test_shutdown() {
 		);
 		assert_ok!(user_provider.request_issue(issue_amount, &sudo_vault_id).await);
 	})
-		.await;
+	.await;
 }
 
 #[tokio::test(flavor = "multi_thread")]
@@ -1265,7 +1263,7 @@ async fn test_requests_with_incompatible_amounts_fail() {
 			incompatible_amount,
 			vault_id.collateral_currency(),
 		)
-			.await;
+		.await;
 
 		let wallet_read = wallet.read().await;
 		let address = wallet_read.get_public_key_raw();

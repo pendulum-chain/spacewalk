@@ -19,7 +19,8 @@ async fn stellar_overlay_connect_and_listen_connect_message() {
 			.unwrap();
 
 	let node_info = NodeInfo::new(19, 25, 23, "v19.5.0".to_string(), &PUBLIC_NETWORK);
-	let conn_info = ConnectionInfo::new(TIER_1_VALIDATOR_IP_PUBLIC, 11625, secret, 0, false, true, false);
+	let conn_info =
+		ConnectionInfo::new(TIER_1_VALIDATOR_IP_PUBLIC, 11625, secret, 0, false, true, false);
 	let mut overlay_connection =
 		StellarOverlayConnection::connect(node_info.clone(), conn_info).await.unwrap();
 
@@ -90,7 +91,8 @@ async fn stellar_overlay_should_receive_tx_set() {
 			.unwrap();
 
 	let node_info = NodeInfo::new(19, 25, 23, "v19.5.0".to_string(), &PUBLIC_NETWORK);
-	let conn_info = ConnectionInfo::new(TIER_1_VALIDATOR_IP_PUBLIC, 11625, secret, 0, true, true, false);
+	let conn_info =
+		ConnectionInfo::new(TIER_1_VALIDATOR_IP_PUBLIC, 11625, secret, 0, true, true, false);
 
 	let overlay_connection = Arc::new(Mutex::new(
 		StellarOverlayConnection::connect(node_info.clone(), conn_info).await.unwrap(),

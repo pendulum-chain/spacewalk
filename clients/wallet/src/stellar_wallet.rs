@@ -100,10 +100,7 @@ fn create_transaction(
 }
 
 impl StellarWallet {
-	pub fn from_secret_encoded(
-		secret_key: &str,
-		is_public_network: bool,
-	) -> Result<Self, Error> {
+	pub fn from_secret_encoded(secret_key: &str, is_public_network: bool) -> Result<Self, Error> {
 		Self::from_secret_encoded_with_cache(secret_key, is_public_network, "./".to_string())
 	}
 
@@ -117,14 +114,18 @@ impl StellarWallet {
 		let secret_key =
 			SecretKey::from_encoding(secret_key).map_err(|_| Error::InvalidSecretKey)?;
 
-		Self::from_secret_key_with_cache(secret_key,is_public_network,cache_path)
+		Self::from_secret_key_with_cache(secret_key, is_public_network, cache_path)
 	}
 
 	pub fn from_secret_key(secret_key: SecretKey, is_public_network: bool) -> Result<Self, Error> {
-		Self::from_secret_key_with_cache(secret_key,is_public_network, "./".to_string())
+		Self::from_secret_key_with_cache(secret_key, is_public_network, "./".to_string())
 	}
 
-	pub fn from_secret_key_with_cache(secret_key: SecretKey, is_public_network: bool, cache_path: String) -> Result<Self, Error> {
+	pub fn from_secret_key_with_cache(
+		secret_key: SecretKey,
+		is_public_network: bool,
+		cache_path: String,
+	) -> Result<Self, Error> {
 		let pub_key = secret_key.get_public().to_encoding();
 		let pub_key = std::str::from_utf8(&pub_key).map_err(|_| Error::InvalidSecretKey)?;
 
@@ -134,7 +135,7 @@ impl StellarWallet {
 			secret_key,
 			is_public_network,
 			transaction_submission_lock: Arc::new(Mutex::new(())),
-			cache
+			cache,
 		})
 	}
 

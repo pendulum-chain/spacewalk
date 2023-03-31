@@ -103,8 +103,11 @@ impl Connector {
 		actions_sender: mpsc::Sender<ConnectorActions>,
 		relay_message_sender: mpsc::Sender<StellarRelayMessage>,
 	) -> Self {
-		let connection_auth =
-			ConnectionAuth::new(&local_node.network_id, conn_info.keypair(), conn_info.auth_cert_expiration);
+		let connection_auth = ConnectionAuth::new(
+			&local_node.network_id,
+			conn_info.keypair(),
+			conn_info.auth_cert_expiration,
+		);
 
 		Connector {
 			local: LocalInfo::new(local_node),
