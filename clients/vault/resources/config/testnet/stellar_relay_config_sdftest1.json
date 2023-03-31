@@ -5,9 +5,9 @@
   },
   "node_info": {
     "ledger_version": 19,
-    "overlay_version": 25,
-    "overlay_min_version": 23,
-    "version_str": "v19.5.0",
+    "overlay_version": 27,
+    "overlay_min_version": 24,
+    "version_str": "stellar-core 19.9.0.rc1 (064a2787acb9e98c70567523785333581ee1ffa4)",
     "is_pub_net": false
   },
   "stellar_history_base_url": "http://history.stellar.org/prd/core-live/core_live_002/"

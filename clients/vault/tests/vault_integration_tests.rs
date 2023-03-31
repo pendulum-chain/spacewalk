@@ -18,10 +18,7 @@ use runtime::{
 	integration::*, types::*, FixedPointNumber, FixedU128, IssuePallet, RedeemPallet,
 	ReplacePallet, ShutdownSender, SpacewalkParachain, SudoPallet, UtilFuncs, VaultRegistryPallet,
 };
-use stellar_relay_lib::{
-	sdk::{PublicKey, XdrCodec},
-	StellarOverlayConfig,
-};
+use stellar_relay_lib::{ sdk::PublicKey, StellarOverlayConfig, };
 
 use vault::{
 	oracle::{start_oracle_agent, OracleAgent},
@@ -44,13 +41,14 @@ const DEFAULT_WRAPPED_CURRENCY: CurrencyId = CurrencyId::AlphaNum4(
 );
 
 const CONFIG_ADDR: &str = "./resources/config/testnet/stellar_relay_config_sdftest1.json";
-const SECRET_KEY: &str = "./resources/secretkey/stellar_secretkey_testnet.json";
+const SECRET_KEY_PATH: &str = "./resources/secretkey/stellar_secretkey_testnet";
 
 lazy_static! {
-	static ref CFG: StellarOverlayConfig =
-		StellarOverlayConfig::try_from_path(CONFIG_ADDR).unwrap();
-	));
+	static ref CFG: StellarOverlayConfig = StellarOverlayConfig::try_from_path(CONFIG_ADDR).unwrap();
+	static ref SECRET_KEY: String = std::fs::read_to_string(SECRET_KEY_PATH).expect("should return a string");
+	
 }
+
 
 // A simple helper function to convert StellarStroops (i64) to the up-scaled u128
 fn upscaled_compatible_amount(amount: StellarStroops) -> u128 {
@@ -161,8 +159,8 @@ async fn test_with<F, R>(execute: impl FnOnce(SubxtClient, ArcRwLock<StellarWall
 	let path = tmp_dir.path().to_str().expect("should return a string").to_string();
 	let wallet = Arc::new(RwLock::new(
 		StellarWallet::from_secret_encoded_with_cache(
-			&STELLAR_VAULT_SECRET_KEY.to_string(),
-			IS_PUBLIC_NETWORK,
+			&SECRET_KEY,
+			CFG.is_public_network(),
 			path,
 		)
 			.unwrap(),
@@ -206,14 +204,14 @@ async fn test_with_vault<F, R>(
 	let path = tmp_dir.path().to_str().expect("should return a string").to_string();
 	let wallet = Arc::new(RwLock::new(
 		StellarWallet::from_secret_encoded_with_cache(
-			&STELLAR_VAULT_SECRET_KEY.to_string(),
-			IS_PUBLIC_NETWORK,
+			&SECRET_KEY,
+			CFG.is_public_network(),
 			path,
 		)
 			.unwrap(),
 	));
 
-	let oracle_agent = start_oracle_agent(CFG.clone(), SECRET_KEY)
+	let oracle_agent = start_oracle_agent(CFG.clone(), &SECRET_KEY)
 		.await
 		.expect("failed to start agent");
 	let oracle_agent = Arc::new(oracle_agent);

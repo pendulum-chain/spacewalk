@@ -1,4 +1,4 @@
-use std::fmt::Debug;
+use std::fmt::{Debug, Formatter};
 use substrate_stellar_sdk::network::{Network, PUBLIC_NETWORK, TEST_NETWORK};
 
 use crate::config::NodeInfoCfg;
@@ -10,13 +10,27 @@ mod remote;
 
 pub type NetworkId = [u8; 32];
 
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, PartialEq, Eq)]
 pub struct NodeInfo {
 	pub ledger_version: u32,
 	pub overlay_version: u32,
 	pub overlay_min_version: u32,
 	pub version_str: Vec<u8>,
 	pub network_id: NetworkId,
+}
+
+impl Debug for NodeInfo {
+	fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+		write!(
+			f,
+			"NodeInfo {{ ledger_version: {}, overlay_version: {}, overlay_min_version: {}, \
+			version_str: {} }}",
+			self.ledger_version,
+			self.overlay_version,
+			self.overlay_min_version,
+			String::from_utf8_lossy(&self.version_str),
+		)
+	}
 }
 
 impl NodeInfo {

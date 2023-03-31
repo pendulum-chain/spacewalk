@@ -99,23 +99,23 @@ impl Connector {
 
 	pub fn new(
 		local_node: NodeInfo,
-		cfg: ConnectionInfo,
+		conn_info: ConnectionInfo,
 		actions_sender: mpsc::Sender<ConnectorActions>,
 		relay_message_sender: mpsc::Sender<StellarRelayMessage>,
 	) -> Self {
 		let connection_auth =
-			ConnectionAuth::new(&local_node.network_id, cfg.keypair(), cfg.auth_cert_expiration);
+			ConnectionAuth::new(&local_node.network_id, conn_info.keypair(), conn_info.auth_cert_expiration);
 
 		Connector {
 			local: LocalInfo::new(local_node),
 			remote_info: None,
 			hmac_keys: None,
 			connection_auth,
-			timeout_in_secs: cfg.timeout_in_secs,
-			retries: cfg.retries,
-			remote_called_us: cfg.remote_called_us,
-			receive_tx_messages: cfg.recv_tx_msgs,
-			receive_scp_messages: cfg.recv_scp_msgs,
+			timeout_in_secs: conn_info.timeout_in_secs,
+			retries: conn_info.retries,
+			remote_called_us: conn_info.remote_called_us,
+			receive_tx_messages: conn_info.recv_tx_msgs,
+			receive_scp_messages: conn_info.recv_scp_msgs,
 			handshake_state: HandshakeState::Connecting,
 			flow_controller: FlowController::default(),
 			actions_sender,

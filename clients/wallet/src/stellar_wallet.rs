@@ -117,30 +117,25 @@ impl StellarWallet {
 		let secret_key =
 			SecretKey::from_encoding(secret_key).map_err(|_| Error::InvalidSecretKey)?;
 
+		Self::from_secret_key_with_cache(secret_key,is_public_network,cache_path)
+	}
+
+	pub fn from_secret_key(secret_key: SecretKey, is_public_network: bool) -> Result<Self, Error> {
+		Self::from_secret_key_with_cache(secret_key,is_public_network, "./".to_string())
+	}
+
+	pub fn from_secret_key_with_cache(secret_key: SecretKey, is_public_network: bool, cache_path: String) -> Result<Self, Error> {
 		let pub_key = secret_key.get_public().to_encoding();
 		let pub_key = std::str::from_utf8(&pub_key).map_err(|_| Error::InvalidSecretKey)?;
 
 		let cache = TxEnvelopeStorage::new(cache_path, pub_key, is_public_network);
 
-		let wallet = StellarWallet {
+		Ok(StellarWallet {
 			secret_key,
 			is_public_network,
 			transaction_submission_lock: Arc::new(Mutex::new(())),
-			cache,
-			"./".to_string()
-		};
-
-		Ok(wallet)
-	}
-
-	pub fn from_secret_key(secret_key: SecretKey, is_public_network: bool) -> Result<Self, Error> {
-		let wallet = StellarWallet {
-			secret_key,
-			is_public_network,
-			transaction_submission_lock: Arc::new(Mutex::new(())),
-		};
-
-		Ok(wallet)
+			cache
+		})
 	}
 
 	pub fn get_public_key_raw(&self) -> StellarPublicKeyRaw {
@@ -314,7 +309,7 @@ mod test {
 			StellarWallet::from_secret_encoded_with_cache(
 				&STELLAR_VAULT_SECRET_KEY.to_string(),
 				IS_PUBLIC_NETWORK,
-				storage,
+				storage.to_string(),
 			)
 			.unwrap(),
 		))

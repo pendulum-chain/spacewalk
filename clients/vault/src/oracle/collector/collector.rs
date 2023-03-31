@@ -21,7 +21,8 @@ pub struct ScpMessageCollector {
 	/// An entry is removed when a `TransactionSet` is found.
 	txset_and_slot_map: Arc<RwLock<TxSetHashAndSlotMap>>,
 
-	last_slot_index: Slot,
+	/// The last slot with an SCPEnvelope
+	last_slot_index: u64,
 
 	public_network: bool,
 
@@ -83,7 +84,7 @@ impl ScpMessageCollector {
 		self.txset_and_slot_map.read().get_txset_hash(slot).cloned()
 	}
 
-	pub(crate) fn last_slot_index(&self) -> Slot {
+	pub(crate) fn last_slot_index(&self) -> u64 {
 		self.last_slot_index
 	}
 }
@@ -241,7 +242,7 @@ mod test {
 	}
 
 	#[test]
-	fn set_last_scp_ext_slot_works() {
+	fn set_last_slot_index_works() {
 		let mut collector = ScpMessageCollector::new(true, stellar_history_base_url());
 		collector.last_slot_index = 10;
 

@@ -23,7 +23,7 @@ pub fn test_stellar_relay_config() -> stellar_relay_lib::StellarOverlayConfig {
 	let res = stellar_node_points
 		.choose(&mut rand::thread_rng())
 		.expect("should return a value");
-	let path_string = format!("./resources/config/stellar_relay_config_mainnet_{res}.json");
+	let path_string = format!("./resources/config/mainnet/stellar_relay_config_mainnet_{res}.json");
 
 	stellar_relay_lib::StellarOverlayConfig::try_from_path(path_string.as_str())
 		.expect("should be able to extract config")
