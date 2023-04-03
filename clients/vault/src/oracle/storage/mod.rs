@@ -9,6 +9,6 @@ pub struct EnvelopesFileHandler;
 /// A handler to save tx sets map to a file.
 pub struct TxSetsFileHandler;
 
-pub struct ScpArchiveStorage;
+pub struct ScpArchiveStorage(pub(crate) String);
 
-pub struct TransactionsArchiveStorage;
+pub struct TransactionsArchiveStorage(pub(crate) String);

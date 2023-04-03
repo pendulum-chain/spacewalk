@@ -21,20 +21,23 @@ pub struct ScpMessageCollector {
 	/// An entry is removed when a `TransactionSet` is found.
 	txset_and_slot_map: Arc<RwLock<TxSetHashAndSlotMap>>,
 
-	/// The last slot with an SCPEnvelope(
-	last_scp_ext_slot: u64,
+	/// The last slot with an SCPEnvelope
+	last_slot_index: u64,
 
 	public_network: bool,
+
+	stellar_history_base_url: String,
 }
 
 impl ScpMessageCollector {
-	pub(crate) fn new(public_network: bool) -> Self {
+	pub(crate) fn new(public_network: bool, stellar_history_base_url: String) -> Self {
 		ScpMessageCollector {
 			envelopes_map: Default::default(),
 			txset_map: Default::default(),
 			txset_and_slot_map: Arc::new(Default::default()),
-			last_scp_ext_slot: 0,
+			last_slot_index: 0,
 			public_network,
+			stellar_history_base_url,
 		}
 	}
 
@@ -52,6 +55,10 @@ impl ScpMessageCollector {
 
 	pub fn is_public(&self) -> bool {
 		self.public_network
+	}
+
+	pub fn stellar_history_base_url(&self) -> String {
+		self.stellar_history_base_url.clone()
 	}
 }
 
@@ -77,8 +84,8 @@ impl ScpMessageCollector {
 		self.txset_and_slot_map.read().get_txset_hash(slot).cloned()
 	}
 
-	pub(crate) fn last_scp_ext_slot(&self) -> u64 {
-		self.last_scp_ext_slot
+	pub(crate) fn last_slot_index(&self) -> u64 {
+		self.last_slot_index
 	}
 }
 
@@ -119,9 +126,9 @@ impl ScpMessageCollector {
 		m.insert(txset_hash, slot);
 	}
 
-	pub(super) fn set_last_scp_ext_slot(&mut self, slot: Slot) {
-		if slot > self.last_scp_ext_slot {
-			self.last_scp_ext_slot = slot;
+	pub(super) fn set_last_slot_index(&mut self, slot: Slot) {
+		if slot > self.last_slot_index {
+			self.last_slot_index = slot;
 		}
 	}
 }
@@ -150,13 +157,17 @@ mod test {
 	use stellar_relay_lib::sdk::network::{PUBLIC_NETWORK, TEST_NETWORK};
 
 	use crate::oracle::{
-		collector::ScpMessageCollector, traits::FileHandler, types::LifoMap, EnvelopesFileHandler,
-		TxSetsFileHandler,
+		collector::ScpMessageCollector, test_stellar_relay_config, traits::FileHandler,
+		types::LifoMap, EnvelopesFileHandler, TxSetsFileHandler,
 	};
+
+	fn stellar_history_base_url() -> String {
+		test_stellar_relay_config().stellar_history_base_url()
+	}
 
 	#[test]
 	fn envelopes_map_len_works() {
-		let collector = ScpMessageCollector::new(true);
+		let collector = ScpMessageCollector::new(true, stellar_history_base_url());
 
 		assert_eq!(collector.envelopes_map_len(), 0);
 
@@ -171,19 +182,19 @@ mod test {
 
 	#[test]
 	fn network_and_is_public_works() {
-		let collector = ScpMessageCollector::new(true);
+		let collector = ScpMessageCollector::new(true, stellar_history_base_url());
 		assert_eq!(&collector.network().get_passphrase(), &PUBLIC_NETWORK.get_passphrase());
 
 		assert!(collector.is_public());
 
-		let collector = ScpMessageCollector::new(false);
+		let collector = ScpMessageCollector::new(false, stellar_history_base_url());
 		assert_eq!(&collector.network().get_passphrase(), &TEST_NETWORK.get_passphrase());
 		assert!(!collector.is_public());
 	}
 
 	#[test]
 	fn add_scp_envelope_works() {
-		let collector = ScpMessageCollector::new(true);
+		let collector = ScpMessageCollector::new(true, stellar_history_base_url());
 
 		let first_slot = 578291;
 		let env_map =
@@ -215,7 +226,7 @@ mod test {
 
 	#[test]
 	fn add_txset_works() {
-		let collector = ScpMessageCollector::new(false);
+		let collector = ScpMessageCollector::new(false, stellar_history_base_url());
 
 		let slot = 42867088;
 		let dummy_hash = [0; 32];
@@ -231,23 +242,23 @@ mod test {
 	}
 
 	#[test]
-	fn set_last_scp_ext_slot_works() {
-		let mut collector = ScpMessageCollector::new(true);
-		collector.last_scp_ext_slot = 10;
+	fn set_last_slot_index_works() {
+		let mut collector = ScpMessageCollector::new(true, stellar_history_base_url());
+		collector.last_slot_index = 10;
 
-		collector.set_last_scp_ext_slot(9);
+		collector.set_last_slot_index(9);
 		// there should be no change.
-		let res = collector.last_scp_ext_slot;
+		let res = collector.last_slot_index;
 		assert_eq!(res, 10);
 
-		collector.set_last_scp_ext_slot(15);
-		let res = collector.last_scp_ext_slot;
+		collector.set_last_slot_index(15);
+		let res = collector.last_slot_index;
 		assert_eq!(res, 15);
 	}
 
 	#[test]
 	fn remove_data_works() {
-		let collector = ScpMessageCollector::new(false);
+		let collector = ScpMessageCollector::new(false, stellar_history_base_url());
 
 		let env_slot = 578391;
 		let mut env_map =
@@ -274,7 +285,7 @@ mod test {
 
 	#[test]
 	fn is_txset_new_works() {
-		let collector = ScpMessageCollector::new(false);
+		let collector = ScpMessageCollector::new(false, stellar_history_base_url());
 
 		let txset_slot = 42867088;
 		let mut txsets_map =

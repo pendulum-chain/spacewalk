@@ -79,11 +79,30 @@ pub trait FileHandler<T: Default> {
 	}
 }
 
+#[async_trait::async_trait]
 pub trait ArchiveStorage {
 	type T: XdrCodec;
-	const STELLAR_HISTORY_BASE_URL: &'static str;
 	const PREFIX_URL: &'static str;
 	const PREFIX_FILENAME: &'static str = "";
+
+	fn stellar_history_base_url(&self) -> String;
+
+	async fn get_archive(
+		&self,
+		slot_index: Slot,
+	) -> Result<XdrArchive<<Self as ArchiveStorage>::T>, Error> {
+		let (url, file_name) = self.get_url_and_file_name(slot_index);
+		//try to find xdr.gz file and decode. if error then download archive from horizon archive
+		// node and save
+		let mut result = Self::try_gz_decode_archive_file(&file_name);
+
+		if result.is_err() {
+			download_file_and_save(&url, &file_name).await?;
+			result = Self::try_gz_decode_archive_file(&file_name);
+		}
+		let data = result.unwrap();
+		Ok(Self::decode_xdr(data))
+	}
 
 	fn try_gz_decode_archive_file(path: &str) -> Result<Vec<u8>, Error> {
 		let bytes = Self::read_file_xdr(path)?;
@@ -93,13 +112,14 @@ pub trait ArchiveStorage {
 		Ok(bytes)
 	}
 
-	fn get_url_and_file_name(slot_index: u32) -> (String, String) {
-		let slot_index = Self::find_last_slot_index_in_batch(slot_index);
+	fn get_url_and_file_name(&self, slot_index: Slot) -> (String, String) {
+		let slot_index = self.find_last_slot_index_in_batch(slot_index);
 		let hex_string = format!("0{:x}", slot_index);
 		let file_name = format!("{hex_string}.xdr");
-		let base_url = Self::STELLAR_HISTORY_BASE_URL;
+		let base_url = self.stellar_history_base_url();
 		let url = format!(
-			"{base_url}{}/{}/{}/{}-{file_name}.gz",
+			"{base_url}{}/{}/{}/{}/{}-{file_name}.gz",
+			Self::PREFIX_URL,
 			&hex_string[..2],
 			&hex_string[2..4],
 			&hex_string[4..6],
@@ -108,12 +128,17 @@ pub trait ArchiveStorage {
 		(url, format!("{}{file_name}", Self::PREFIX_FILENAME))
 	}
 
-	fn find_last_slot_index_in_batch(slot_index: u32) -> u32 {
+	fn find_last_slot_index_in_batch(&self, slot_index: Slot) -> Slot {
 		let rest = (slot_index + 1) % ARCHIVE_NODE_LEDGER_BATCH;
 		if rest == 0 {
 			return slot_index
 		}
 		slot_index + ARCHIVE_NODE_LEDGER_BATCH - rest
+	}
+
+	fn remove_file(&self, target_slot: Slot) {
+		let (_, file) = self.get_url_and_file_name(target_slot);
+		fs::remove_file(file).expect("should be able to remove the newly added file.");
 	}
 
 	fn read_file_xdr(filename: &str) -> Result<Vec<u8>, Error> {

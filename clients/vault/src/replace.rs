@@ -218,10 +218,11 @@ pub async fn listen_for_execute_replace(
 
 #[cfg(all(test, feature = "standalone-metadata"))]
 mod tests {
-	use std::sync::Arc;
+	use std::{path::Path, sync::Arc};
 
 	use async_trait::async_trait;
 
+	use crate::ArcRwLock;
 	use runtime::{
 		AccountId, Balance, CurrencyId, Error as RuntimeError, SpacewalkReplaceRequest,
 		SpacewalkVault, StellarPublicKeyRaw, VaultId, H256,
@@ -296,15 +297,21 @@ mod tests {
 	const STELLAR_VAULT_SECRET_KEY: &str =
 		"SB6WHKIU2HGVBRNKNOEOQUY4GFC4ZLG5XPGWLEAHTIZXBXXYACC76VSQ";
 
+	fn wallet(is_public_network: bool, path: &Path) -> ArcRwLock<StellarWallet> {
+		let wallet = StellarWallet::from_secret_encoded_with_cache(
+			&STELLAR_VAULT_SECRET_KEY.to_string(),
+			is_public_network,
+			path.to_str().expect("should return a string").to_string(),
+		)
+		.unwrap();
+		Arc::new(RwLock::new(wallet))
+	}
+
 	#[tokio::test]
 	async fn test_handle_replace_request_with_insufficient_balance() {
 		let is_public_network = false;
-		let wallet = StellarWallet::from_secret_encoded(
-			&STELLAR_VAULT_SECRET_KEY.to_string(),
-			is_public_network,
-		)
-		.unwrap();
-		let wallet_arc = Arc::new(RwLock::new(wallet));
+		let tmp = tempdir::TempDir::new("spacewalk-parachain-").expect("failed to create tempdir");
+		let wallet_arc = wallet(is_public_network, tmp.path());
 
 		let mut parachain_rpc = MockProvider::default();
 		parachain_rpc
@@ -328,12 +335,8 @@ mod tests {
 	#[tokio::test]
 	async fn test_handle_replace_request_with_sufficient_balance() {
 		let is_public_network = false;
-		let wallet = StellarWallet::from_secret_encoded(
-			&STELLAR_VAULT_SECRET_KEY.to_string(),
-			is_public_network,
-		)
-		.unwrap();
-		let wallet_arc = Arc::new(RwLock::new(wallet));
+		let tmp = tempdir::TempDir::new("spacewalk-parachain-").expect("failed to create tempdir");
+		let wallet_arc = wallet(is_public_network, tmp.path());
 
 		let mut parachain_rpc = MockProvider::default();
 		parachain_rpc

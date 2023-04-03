@@ -4,31 +4,41 @@ A rust implementation of the [js-stellar-node-connector](https://github.com/stel
 
 The Stellar Relay acts as a mediator between the user(you) and the Stellar Node.
 
-## Usage
-### Provide the `NodeInfo` and `ConnConfig` with `fn new(...)`
- The `NodeInfo` contains the information of the Stellar Node to connect to. Except the address and the port.
+### The `StellarOverlayConfig`
 ```rust
-pub struct NodeInfo {
+pub struct StellarOverlayConfig { 
+    stellar_history_base_url: String, 
+    connection_info: ConnectionInfoCfg, 
+    node_info: NodeInfoCfg,
+}
+```
+The `StellarOverlayConfig` is a configuration to connect to the Stellar Node. It contains the following:
+ * `stellar history base url` - to access the archive
+ * `ConnectionInfoCfg`
+ * `NodeInfoCfg`.
+
+The `NodeInfoCfg` contains the information of the Stellar Node to connect to. Except the address and the port.
+```rust
+pub struct NodeInfoCfg {
     pub ledger_version: u32,
     pub overlay_version: u32,
     pub overlay_min_version: u32,
     pub version_str: Vec<u8>,
-    pub network_id: NetworkId,
+    pub is_pub_net: bool,
 }
 ```
 Check out [Stellarbeat.io](https://stellarbeat.io/) for examples.
 
-The `ConnConfig` is a configuration for connecting to the Stellar Node. It is here where we specify the address and port.
+The `ConnectionInfoCfg` is a configuration for connecting to the Stellar Node. It is here where we specify the address and port.
 ```rust
-pub struct ConnConfig {
+pub struct ConnectionInfoCfg {
     /// Stellar Node Address
     address: String,
     /// Stellar Node port
     port: u32,
-    secret_key: SecretKey,
     pub auth_cert_expiration: u64,
     pub recv_tx_msgs: bool,
-    pub recv_scp_messages: bool,
+    pub recv_scp_msgs: bool,
     pub remote_called_us: bool,
     /// how long to wait for the Stellar Node's messages.
     timeout_in_secs: u64,
@@ -36,12 +46,25 @@ pub struct ConnConfig {
     retries:u8
 }
 ```
-To specify the _timeout_ and the _# of retries_, use the function `new_with_timeout_and_retries(...)`.
+
+## Usage
+
+### Provide the `StellarOverlayConfig` file path
+
+Start with the creating a **json** config file (see [here](resources) for example files).
+The config file will be converted to a `StellarOverlayConfig`. using the function:
+```rust 
+let cfg = StellarOverlayConfig::try_from_path(<your_file_path>)?;
+```
 
 ### Create the `StellarOverlayConnection`
-Given the `NodeInfo` and `ConnConfig`, connect to the Stellar Node using the `StellarOverlayConnection`.
+Two things are needed to create a connection:
+* **_secret key_**
+* And given the `StellarOverlayConfig`  
+
+Create a connection using the `connect_to_stellar_overlay_network` function:
 ```rust
-     let mut overlay_connection = StellarOverlayConnection::connect(node_info, cfg).await?;
+let mut overlay_connection = stellar_relay_lib::connect_to_stellar_overlay_network(cfg, secret_key).await?;
 ```
 The `StellarOverlayConnection` has 2 async methods to interact with the Stellar Node:
 * _`send(&self, message: StellarMessage)`_ -> for sending `StellarMessage`s to Stellar Node
@@ -51,7 +74,7 @@ The `StellarOverlayConnection` has 2 async methods to interact with the Stellar 
 The `StellarRelayMessage` is an enum with the following variants:
 * _`Connect`_ -> interprets a successful connection to Stellar Node. It contains the `PublicKey` and the `NodeInfo`
 * _`Data`_ -> a wrapper of a `StellarMessage` and additional fields: the _message type_ and the unique `p_id`(process id) 
-* _`Timeout`_ -> Depends on the `timeout_in_secs` and `retries` defined in the `ConnConfig` (**10** and **3** by default). This message is returned after multiple retries have been done.
+* _`Timeout`_ -> Depends on the `timeout_in_secs` and `retries` defined in the `ConnectionInfo` (**10** and **3** by default). This message is returned after multiple retries have been done.
 For example, Stellar Relay will wait for 10 seconds to read from the existing tcp stream before retrying again. After the 3rd retry, StellarRelay will create a new stream in 3 attempts, with an interval of 3 seconds.
 * _`Error`_ -> a todo
 

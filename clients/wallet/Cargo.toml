@@ -4,6 +4,10 @@ edition = "2021"
 name = "wallet"
 version = "1.0.0"
 
+[features]
+default = []
+testing-utils = []
+
 [dependencies]
 async-trait = "0.1.40"
 futures = "0.3.5"
@@ -20,7 +24,7 @@ tracing-futures = { version = "0.2.5" }
 tracing-subscriber = { version = "0.2.12", features = ["registry", "env-filter", "fmt"] }
 
 substrate-stellar-sdk = { git = "https://github.com/pendulum-chain/substrate-stellar-sdk", branch = "polkadot-v0.9.37" }
-primitives = { package = "spacewalk-primitives", path = "../../primitives", default-features = false }
+primitives = { package = "spacewalk-primitives", path = "../../primitives"}
 
 [dev-dependencies]
 mockall = "0.8.1"

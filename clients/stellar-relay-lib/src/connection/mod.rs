@@ -1,4 +1,4 @@
-mod errors;
+mod error;
 mod flow_controller;
 pub(crate) mod handshake;
 mod hmac;
@@ -11,8 +11,10 @@ mod services;
 pub mod xdr_converter;
 
 pub(crate) use connector::*;
-pub use errors::Error;
+pub use error::Error;
 pub use overlay_connection::*;
+use serde::Serialize;
+use std::fmt::{Debug, Formatter};
 
 type Xdr = (u32, Vec<u8>);
 
@@ -42,14 +44,15 @@ pub enum StellarRelayMessage {
 }
 
 /// Config for connecting to Stellar Node
-#[derive(Clone, Debug)]
-pub struct ConnConfig {
+#[derive(Clone, Serialize, PartialEq, Eq)]
+pub struct ConnectionInfo {
 	address: String,
 	port: u32,
+	#[serde(skip_serializing)]
 	secret_key: SecretKey,
 	pub auth_cert_expiration: u64,
 	pub recv_tx_msgs: bool,
-	pub recv_scp_messages: bool,
+	pub recv_scp_msgs: bool,
 	pub remote_called_us: bool,
 	/// how long to wait for the Stellar Node's messages.
 	timeout_in_secs: u64,
@@ -57,14 +60,57 @@ pub struct ConnConfig {
 	retries: u8,
 }
 
-impl ConnConfig {
-	pub fn new(
+impl Debug for ConnectionInfo {
+	fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+		f.debug_struct("ConnectionInfo")
+			.field("address", &self.address)
+			.field("port", &self.port)
+			// do not expose the secret key
+			.field("secret_key", &"****")
+			.field("auth_cert_expiration", &self.auth_cert_expiration)
+			.field("receive_tx_messages", &self.recv_tx_msgs)
+			.field("receive_scp_messages", &self.recv_scp_msgs)
+			.field("remote_called_us", &self.remote_called_us)
+			.field("timeout_in_seconds", &self.timeout_in_secs)
+			.field("retries", &self.retries)
+			.finish()
+	}
+}
+
+impl ConnectionInfo {
+	#[allow(clippy::too_many_arguments)]
+	pub(crate) fn new_with_timeout_and_retries(
 		addr: &str,
 		port: u32,
 		secret_key: SecretKey,
 		auth_cert_expiration: u64,
 		recv_tx_msgs: bool,
-		recv_scp_messages: bool,
+		recv_scp_msgs: bool,
+		remote_called_us: bool,
+		timeout_in_secs: u64,
+		retries: u8,
+	) -> Self {
+		ConnectionInfo {
+			address: addr.to_string(),
+			port,
+			secret_key,
+			auth_cert_expiration,
+			recv_tx_msgs,
+			recv_scp_msgs,
+			remote_called_us,
+			timeout_in_secs,
+			retries,
+		}
+	}
+
+	#[cfg(test)]
+	pub(crate) fn new(
+		addr: &str,
+		port: u32,
+		secret_key: SecretKey,
+		auth_cert_expiration: u64,
+		recv_tx_msgs: bool,
+		recv_scp_msgs: bool,
 		remote_called_us: bool,
 	) -> Self {
 		Self::new_with_timeout_and_retries(
@@ -73,48 +119,11 @@ impl ConnConfig {
 			secret_key,
 			auth_cert_expiration,
 			recv_tx_msgs,
-			recv_scp_messages,
+			recv_scp_msgs,
 			remote_called_us,
 			10,
 			3,
 		)
-	}
-
-	#[allow(clippy::too_many_arguments)]
-	pub fn new_with_timeout_and_retries(
-		addr: &str,
-		port: u32,
-		secret_key: SecretKey,
-		auth_cert_expiration: u64,
-		recv_tx_msgs: bool,
-		recv_scp_messages: bool,
-		remote_called_us: bool,
-		timeout_in_secs: u64,
-		retries: u8,
-	) -> Self {
-		ConnConfig {
-			address: addr.to_string(),
-			port,
-			secret_key,
-			auth_cert_expiration,
-			recv_tx_msgs,
-			recv_scp_messages,
-			remote_called_us,
-			timeout_in_secs,
-			retries,
-		}
-	}
-
-	pub fn set_timeout_in_secs(&mut self, secs: u64) {
-		self.timeout_in_secs = secs;
-	}
-
-	pub fn set_address(&mut self, addr: String) {
-		self.address = addr;
-	}
-
-	pub fn set_retries(&mut self, retries: u8) {
-		self.retries = retries;
 	}
 
 	pub fn address(&self) -> String {

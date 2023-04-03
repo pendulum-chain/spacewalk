@@ -71,9 +71,11 @@ ntest = "0.9.0"
 
 env_logger = "0.9.0"
 serial_test = "0.9.0"
+tempdir = "0.3.7"
 
 # Workspace dependencies
 runtime = { path = "../runtime", features = ["testing-utils"] }
+wallet = { path = "../wallet", features = ["testing-utils"] }
 subxt = { version = "0.25.0" }
 
 # Substrate dependencies

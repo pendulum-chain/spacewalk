@@ -50,6 +50,9 @@ pub enum Error {
 
 	#[error(display = "Stellar overlay disconnected")]
 	Disconnected,
+
+	#[error(display = "Config Error: {}", _0)]
+	ConfigError(String),
 }
 
 impl From<XDRError> for Error {
