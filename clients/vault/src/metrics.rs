@@ -14,7 +14,7 @@ use runtime::{
 	},
 	types::currency_id::CurrencyIdExt,
 	AggregateUpdatedEvent, CollateralBalancesPallet, CurrencyId, Error as RuntimeError, FixedU128,
-	IssuePallet, IssueRequestStatus, OracleKey, OraclePallet, RedeemPallet, RedeemRequestStatus,
+	IssuePallet, IssueRequestStatus, OracleKey, PrettyPrint, RedeemPallet, RedeemRequestStatus,
 	SecurityPallet, SpacewalkParachain, UtilFuncs, VaultId, VaultRegistryPallet, H256,
 };
 use service::{
@@ -267,15 +267,27 @@ pub async fn publish_collateralization<P: VaultRegistryPallet>(
 ) {
 	// if the collateralization is infinite, return 0 rather than logging an error, so
 	// the metrics do change in case of a replacement
-	let collateralization = parachain_rpc
+	let result = parachain_rpc
 		.get_collateralization_from_vault(vault.vault_id.clone(), false)
-		.await
-		.unwrap_or(0u128);
+		.await;
+
+	let collateralization = match result {
+		Ok(collateralization) => collateralization,
+		Err(e) => {
+			tracing::error!(
+				"Failed to get collateralization for vault {:?}: {:?}",
+				vault.vault_id.pretty_print(),
+				e
+			);
+			0
+		},
+	};
+
 	let float_collateralization_percentage = FixedU128::from_inner(collateralization).to_float();
 	vault.metrics.collateralization.set(float_collateralization_percentage);
 }
 
-async fn publish_stellar_balance<P: OraclePallet>(vault: &VaultData) {
+async fn publish_stellar_balance(vault: &VaultData) {
 	match vault.stellar_wallet.read().await.get_balance().await {
 		Ok(balance) => {
 			let currency_id = vault.vault_id.wrapped_currency();
