@@ -734,6 +734,8 @@ impl VaultRegistryPallet for SpacewalkParachain {
 pub trait CollateralBalancesPallet {
 	async fn get_free_balance(&self, currency_id: CurrencyId) -> Result<Balance, Error>;
 
+	async fn get_native_balance_for_id(&self, id: &AccountId) -> Result<Balance, Error>;
+
 	async fn get_free_balance_for_id(
 		&self,
 		id: AccountId,
@@ -760,6 +762,14 @@ pub trait CollateralBalancesPallet {
 impl CollateralBalancesPallet for SpacewalkParachain {
 	async fn get_free_balance(&self, currency_id: CurrencyId) -> Result<Balance, Error> {
 		Ok(Self::get_free_balance_for_id(self, self.account_id.clone(), currency_id).await?)
+	}
+
+	async fn get_native_balance_for_id(&self, id: &AccountId) -> Result<Balance, Error> {
+		let head = self.get_finalized_block_hash().await?;
+		let query = metadata::storage().system().account(id);
+
+		let result = self.api.storage().fetch(&query, head).await?;
+		Ok(result.map(|x| x.data.free).unwrap_or_default())
 	}
 
 	async fn get_free_balance_for_id(

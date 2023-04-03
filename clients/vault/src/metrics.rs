@@ -6,7 +6,7 @@ use crate::{
 };
 use async_trait::async_trait;
 use lazy_static::lazy_static;
-use primitives::{stellar, BalanceConversion};
+use primitives::stellar;
 use runtime::{
 	prometheus::{
 		gather, proto::MetricFamily, Encoder, Gauge, GaugeVec, IntCounter, IntGaugeVec, Opts,
@@ -21,7 +21,6 @@ use service::{
 	warp::{Rejection, Reply},
 	Error as ServiceError,
 };
-use sp_runtime::traits::StaticLookup;
 use std::time::Duration;
 use tokio::time::sleep;
 use tokio_metrics::TaskMetrics;
@@ -177,7 +176,7 @@ impl PerCurrencyMetrics {
 	}
 
 	pub async fn initialize_values(parachain_rpc: SpacewalkParachain, vault: &VaultData) {
-		publish_stellar_balance(parachain_rpc.clone(), vault).await;
+		publish_stellar_balance(vault).await;
 
 		let _ = tokio::join!(
 			publish_expected_stellar_balance(vault, parachain_rpc.clone()),
@@ -276,7 +275,7 @@ pub async fn publish_collateralization<P: VaultRegistryPallet>(
 	vault.metrics.collateralization.set(float_collateralization_percentage);
 }
 
-async fn publish_stellar_balance<P: OraclePallet>(parachain_rpc: P, vault: &VaultData) {
+async fn publish_stellar_balance<P: OraclePallet>(vault: &VaultData) {
 	match vault.stellar_wallet.read().await.get_balance().await {
 		Ok(balance) => {
 			let currency_id = vault.vault_id.wrapped_currency();
@@ -334,7 +333,8 @@ async fn publish_native_currency_balance<P: CollateralBalancesPallet + UtilFuncs
 	parachain_rpc: &P,
 ) -> Result<(), ServiceError<Error>> {
 	let native_currency = parachain_rpc.get_native_currency_id();
-	if let Ok(balance) = parachain_rpc.get_free_balance(native_currency).await {
+	let account_id = parachain_rpc.get_account_id();
+	if let Ok(balance) = parachain_rpc.get_native_balance_for_id(account_id).await {
 		let balance = raw_value_as_currency(balance, native_currency)?;
 		NATIVE_CURRENCY_BALANCE.set(balance);
 	}
@@ -479,10 +479,6 @@ pub async fn publish_expected_stellar_balance<P: VaultRegistryPallet>(
 		let lowerbound = v.issued_tokens.saturating_sub(v.to_be_redeemed_tokens);
 		let upperbound = v.issued_tokens.saturating_add(v.to_be_issued_tokens);
 		let scaling_factor = vault.vault_id.wrapped_currency().one() as f64;
-
-		tracing::info!("issued_tokens: {}", v.issued_tokens);
-		tracing::info!("to_be_redeemed_tokens: {}", v.to_be_redeemed_tokens);
-		tracing::info!("to_be_issued_tokens: {}", v.to_be_issued_tokens);
 
 		vault.metrics.asset_balance.lowerbound.set(lowerbound as f64 / scaling_factor);
 		vault.metrics.asset_balance.upperbound.set(upperbound as f64 / scaling_factor);
