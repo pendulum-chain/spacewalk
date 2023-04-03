@@ -281,25 +281,18 @@ async fn publish_stellar_balance<P: OraclePallet>(parachain_rpc: P, vault: &Vaul
 		Ok(balance) => {
 			let currency_id = vault.vault_id.wrapped_currency();
 			let asset: Result<stellar::Asset, _> = currency_id.try_into();
-			let mut currency_to_usd: u128 = 0;
-			if let Ok(asset) = asset {
-				let asset_balance = get_balance_for_asset(asset, balance);
-				if let Some(b) = asset_balance {
-					let currency_one = currency_id.one();
-					let actual_balance = b * currency_one as f64;
-					currency_to_usd = parachain_rpc
-						.currency_to_usd(actual_balance as u128, currency_id)
-						.await
-						.unwrap_or_else(|e| {
-							// unexpected error, but not critical so just continue
-							tracing::warn!("Failed to get balance: {}", e);
-							0
-						});
-				};
-			} else {
-				tracing::warn!("Incorrect stellar asset type");
-			}
-			vault.metrics.asset_balance.actual.set(currency_to_usd as f64);
+			let actual_balance = match asset {
+				Ok(asset) => {
+					let asset_balance = get_balance_for_asset(asset, balance).unwrap_or(0_f64);
+					asset_balance as f64
+				},
+				Err(e) => {
+					// unexpected error, but not critical so just continue
+					tracing::warn!("Failed to get balance: {}", e);
+					0_f64
+				},
+			};
+			vault.metrics.asset_balance.actual.set(actual_balance);
 		},
 		Err(e) => {
 			// unexpected error, but not critical so just continue
@@ -318,14 +311,14 @@ fn get_balance_for_asset(asset: stellar::Asset, balance: Vec<Balance>) -> Option
 		stellar::Asset::AssetTypeCreditAlphanum4(a4) => balance
 			.iter()
 			.find(|i| {
-				i.asset_type != STELLAR_NATIVE_ASSET_TYPE.to_vec() &&
+				i.asset_issuer.clone().unwrap_or_default() == a4.issuer.to_encoding() &&
 					i.asset_code.clone().unwrap_or_default() == a4.asset_code.to_vec()
 			})
 			.map(|i| i.balance),
 		stellar::Asset::AssetTypeCreditAlphanum12(a12) => balance
 			.iter()
 			.find(|i| {
-				i.asset_type != STELLAR_NATIVE_ASSET_TYPE.to_vec() &&
+				i.asset_issuer.clone().unwrap_or_default() == a12.issuer.to_encoding() &&
 					i.asset_code.clone().unwrap_or_default() == a12.asset_code.to_vec()
 			})
 			.map(|i| i.balance),
@@ -485,16 +478,14 @@ pub async fn publish_expected_stellar_balance<P: VaultRegistryPallet>(
 	if let Ok(v) = parachain_rpc.get_vault(&vault.vault_id).await {
 		let lowerbound = v.issued_tokens.saturating_sub(v.to_be_redeemed_tokens);
 		let upperbound = v.issued_tokens.saturating_add(v.to_be_issued_tokens);
-		vault
-			.metrics
-			.asset_balance
-			.lowerbound
-			.set(BalanceConversion::lookup(lowerbound).unwrap_or_default() as f64);
-		vault
-			.metrics
-			.asset_balance
-			.upperbound
-			.set(BalanceConversion::lookup(upperbound).unwrap_or_default() as f64);
+		let scaling_factor = vault.vault_id.wrapped_currency().one() as f64;
+
+		tracing::info!("issued_tokens: {}", v.issued_tokens);
+		tracing::info!("to_be_redeemed_tokens: {}", v.to_be_redeemed_tokens);
+		tracing::info!("to_be_issued_tokens: {}", v.to_be_issued_tokens);
+
+		vault.metrics.asset_balance.lowerbound.set(lowerbound as f64 / scaling_factor);
+		vault.metrics.asset_balance.upperbound.set(upperbound as f64 / scaling_factor);
 	}
 	Ok(())
 }
