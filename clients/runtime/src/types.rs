@@ -143,7 +143,7 @@ pub mod currency_id {
 						)
 						.unwrap_or_default()
 					)
-					.replace("\"", "")),
+					.replace('\"', "")),
 					Asset::AlphaNum12 { code, issuer } => Ok(format!(
 						"Stellar({:?}:{:?})",
 						from_utf8(code).unwrap_or_default(),
@@ -152,7 +152,7 @@ pub mod currency_id {
 						)
 						.unwrap_or_default()
 					)
-					.replace("\"", "")),
+					.replace('\"', "")),
 				},
 			}
 		}

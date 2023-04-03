@@ -277,6 +277,7 @@ mod tests {
 	#[async_trait]
 	pub trait CollateralBalancesPallet {
 		async fn get_free_balance(&self, currency_id: CurrencyId) -> Result<Balance, RuntimeError>;
+		async fn get_native_balance_for_id(&self, id: &AccountId) -> Result<Balance, RuntimeError>;
 		async fn get_free_balance_for_id(&self, id: AccountId, currency_id: CurrencyId) -> Result<Balance, RuntimeError>;
 		async fn get_reserved_balance(&self, currency_id: CurrencyId) -> Result<Balance, RuntimeError>;
 		async fn get_reserved_balance_for_id(&self, id: AccountId, currency_id: CurrencyId) -> Result<Balance, RuntimeError>;

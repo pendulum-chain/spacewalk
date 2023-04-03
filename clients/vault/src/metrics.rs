@@ -293,10 +293,7 @@ async fn publish_stellar_balance(vault: &VaultData) {
 			let currency_id = vault.vault_id.wrapped_currency();
 			let asset: Result<stellar::Asset, _> = currency_id.try_into();
 			let actual_balance = match asset {
-				Ok(asset) => {
-					let asset_balance = get_balance_for_asset(asset, balance).unwrap_or(0_f64);
-					asset_balance as f64
-				},
+				Ok(asset) => get_balance_for_asset(asset, balance).unwrap_or(0_f64),
 				Err(e) => {
 					// unexpected error, but not critical so just continue
 					tracing::warn!("Failed to get balance: {}", e);
