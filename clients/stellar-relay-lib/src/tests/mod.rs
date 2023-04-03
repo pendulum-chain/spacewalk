@@ -1,26 +1,35 @@
 use std::{sync::Arc, time::Duration};
 use substrate_stellar_sdk::{
-	network::PUBLIC_NETWORK,
 	types::{ScpStatementExternalize, ScpStatementPledges, StellarMessage},
-	Hash, SecretKey,
+	Hash,
 };
 
-use crate::{node::NodeInfo, ConnectionInfo, StellarOverlayConnection, StellarRelayMessage};
+use crate::{
+	node::NodeInfo, ConnectionInfo, StellarOverlayConfig, StellarOverlayConnection,
+	StellarRelayMessage,
+};
 use serial_test::serial;
 use tokio::{sync::Mutex, time::timeout};
 
-const TIER_1_VALIDATOR_IP_PUBLIC: &str = "51.161.197.48";
+fn secret_key() -> String {
+	std::fs::read_to_string("./resources/secretkey/stellar_secretkey_testnet")
+		.expect("should be able to read file")
+}
+
+fn overlay_infos() -> (NodeInfo, ConnectionInfo) {
+	let cfg = StellarOverlayConfig::try_from_path(
+		"./resources/config/testnet/stellar_relay_config_sdftest1.json",
+	)
+	.expect("should be able to extract config");
+
+	(cfg.node_info(), cfg.connection_info(&secret_key()).expect("should return conn info"))
+}
 
 #[tokio::test]
 #[serial]
 async fn stellar_overlay_connect_and_listen_connect_message() {
-	let secret =
-		SecretKey::from_encoding("SBLI7RKEJAEFGLZUBSCOFJHQBPFYIIPLBCKN7WVCWT4NEG2UJEW33N73")
-			.unwrap();
+	let (node_info, conn_info) = overlay_infos();
 
-	let node_info = NodeInfo::new(19, 25, 23, "v19.5.0".to_string(), &PUBLIC_NETWORK);
-	let conn_info =
-		ConnectionInfo::new(TIER_1_VALIDATOR_IP_PUBLIC, 11625, secret, 0, false, true, false);
 	let mut overlay_connection =
 		StellarOverlayConnection::connect(node_info.clone(), conn_info).await.unwrap();
 
@@ -37,16 +46,10 @@ async fn stellar_overlay_connect_and_listen_connect_message() {
 #[tokio::test]
 #[serial]
 async fn stellar_overlay_should_receive_scp_messages() {
-	//arrange
-	let secret =
-		SecretKey::from_encoding("SBLI7RKEJAEFGLZUBSCOFJHQBPFYIIPLBCKN7WVCWT4NEG2UJEW33N73")
-			.unwrap();
+	let (node_info, conn_info) = overlay_infos();
 
-	let node_info = NodeInfo::new(19, 25, 23, "v19.5.0".to_string(), &PUBLIC_NETWORK);
-	//act
-	let cfg = ConnectionInfo::new(TIER_1_VALIDATOR_IP_PUBLIC, 11625, secret, 0, false, true, false);
 	let overlay_connection = Arc::new(Mutex::new(
-		StellarOverlayConnection::connect(node_info.clone(), cfg).await.unwrap(),
+		StellarOverlayConnection::connect(node_info, conn_info).await.unwrap(),
 	));
 	let ov_conn = overlay_connection.clone();
 
@@ -81,21 +84,14 @@ async fn stellar_overlay_should_receive_scp_messages() {
 #[serial]
 async fn stellar_overlay_should_receive_tx_set() {
 	//arrange
-	pub fn get_tx_set_hash(x: &ScpStatementExternalize) -> Hash {
+	fn get_tx_set_hash(x: &ScpStatementExternalize) -> Hash {
 		let scp_value = x.commit.value.get_vec();
 		scp_value[0..32].try_into().unwrap()
 	}
 
-	let secret =
-		SecretKey::from_encoding("SBLI7RKEJAEFGLZUBSCOFJHQBPFYIIPLBCKN7WVCWT4NEG2UJEW33N73")
-			.unwrap();
-
-	let node_info = NodeInfo::new(19, 25, 23, "v19.5.0".to_string(), &PUBLIC_NETWORK);
-	let conn_info =
-		ConnectionInfo::new(TIER_1_VALIDATOR_IP_PUBLIC, 11625, secret, 0, true, true, false);
-
+	let (node_info, conn_info) = overlay_infos();
 	let overlay_connection = Arc::new(Mutex::new(
-		StellarOverlayConnection::connect(node_info.clone(), conn_info).await.unwrap(),
+		StellarOverlayConnection::connect(node_info, conn_info).await.unwrap(),
 	));
 
 	let ov_conn = overlay_connection.clone();
@@ -139,15 +135,10 @@ async fn stellar_overlay_should_receive_tx_set() {
 #[tokio::test]
 #[serial]
 async fn stellar_overlay_disconnect_works() {
-	let secret =
-		SecretKey::from_encoding("SBLI7RKEJAEFGLZUBSCOFJHQBPFYIIPLBCKN7WVCWT4NEG2UJEW33N73")
-			.unwrap();
+	let (node_info, conn_info) = overlay_infos();
 
-	let node_info = NodeInfo::new(19, 25, 23, "v19.5.0".to_string(), &PUBLIC_NETWORK);
-	let cfg =
-		ConnectionInfo::new(TIER_1_VALIDATOR_IP_PUBLIC, 11625, secret, 0, false, false, false);
 	let mut overlay_connection =
-		StellarOverlayConnection::connect(node_info.clone(), cfg).await.unwrap();
+		StellarOverlayConnection::connect(node_info.clone(), conn_info).await.unwrap();
 
 	let message = overlay_connection.listen().await.unwrap();
 	if let StellarRelayMessage::Connect { pub_key: _x, node_info: y } = message {
