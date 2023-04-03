@@ -45,4 +45,6 @@ pub enum Error<InnerError> {
 
 	#[error("Could not start oracle agent")]
 	StartOracleAgentError,
+	#[error("The network in the config is not the same with the wallet")]
+	IncompatibleNetwork,
 }

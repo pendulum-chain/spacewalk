@@ -16,15 +16,9 @@ pub const MAX_DISTANCE_FROM_CURRENT_SLOT: Slot = 3;
 pub const VALIDATOR_COUNT_TEST_NETWORK: usize = 3;
 pub const VALIDATOR_COUNT_PUBLIC_NETWORK: usize = 23;
 
-pub const MAX_SLOT_TO_REMEMBER: u64 = 12;
+pub const MAX_SLOT_TO_REMEMBER: Slot = 12;
 
-pub const ARCHIVE_NODE_LEDGER_BATCH: u32 = 64;
-
-pub const STELLAR_HISTORY_BASE_URL: &str =
-	"http://history.stellar.org/prd/core-live/core_live_002/scp/";
-
-pub const STELLAR_HISTORY_BASE_URL_TRANSACTIONS: &str =
-	"http://history.stellar.org/prd/core-live/core_live_002/transactions/";
+pub const ARCHIVE_NODE_LEDGER_BATCH: Slot = 64;
 
 /// Returns the minimum amount of SCP messages that are required to build a valid proof per network
 pub fn get_min_externalized_messages(public_network: bool) -> usize {
@@ -34,22 +28,3 @@ pub fn get_min_externalized_messages(public_network: bool) -> usize {
 	// This value is likely higher than the actual minimum but it's a good approximation
 	validator_count * 2 / 3
 }
-
-/// --- Default values for the stellar overlay connection ---
-pub const OVERLAY_VERSION_PUBNET: u32 = 26;
-pub const MIN_OVERLAY_VERSION_PUBNET: u32 = 23;
-pub const LEDGER_VERSION_PUBNET: u32 = 19;
-pub const VERSION_STRING_PUBNET: &str =
-	"stellar-core 19.6.0 (b3a6bc28116e80bff7889c2f3bcd7c30dd1ac4d6)";
-// For SatoshiPay (DE, Frankfurt)
-pub const TIER_1_NODE_IP_PUBNET: &str = "15.235.11.99";
-pub const TIER_1_NODE_PORT_PUBNET: u32 = 11625;
-
-pub const OVERLAY_VERSION_TESTNET: u32 = 27;
-pub const MIN_OVERLAY_VERSION_TESTNET: u32 = 24;
-pub const LEDGER_VERSION_TESTNET: u32 = 19;
-pub const VERSION_STRING_TESTNET: &str =
-	"stellar-core 19.7.0.rc1 (7249363c60e7ddf796187149f6a236f8ad244b2b)";
-// For sdftest-1
-pub const TIER_1_NODE_IP_TESTNET: &str = "34.235.168.98";
-pub const TIER_1_NODE_PORT_TESTNET: u32 = 11625;

@@ -20,6 +20,7 @@ use runtime::{
 	VaultCurrencyPair, VaultId, VaultRegistryPallet,
 };
 use service::{wait_or_shutdown, Error as ServiceError, Service};
+use stellar_relay_lib::StellarOverlayConfig;
 use wallet::{LedgerTxEnvMap, StellarWallet};
 
 use crate::{
@@ -28,7 +29,6 @@ use crate::{
 	execution::execute_open_requests,
 	issue,
 	issue::IssueFilter,
-	oracle::OracleAgent,
 	redeem::listen_for_redeem_requests,
 	replace::{listen_for_accept_replace, listen_for_execute_replace, listen_for_replace_requests},
 	service::{CancellationScheduler, IssueCanceller},
@@ -199,6 +199,9 @@ pub struct VaultServiceConfig {
 	#[clap(long, help = "The Stellar secret key that is used to sign transactions.")]
 	pub stellar_vault_secret_key_filepath: String,
 
+	#[clap(long, help = "The filepath where the json config for StellarOverlay is located")]
+	pub stellar_overlay_config_filepath: String,
+
 	/// Pass the faucet URL for auto-registration.
 	#[clap(long)]
 	pub faucet_url: Option<String>,
@@ -245,6 +248,7 @@ pub struct VaultService {
 	config: VaultServiceConfig,
 	shutdown: ShutdownSender,
 	vault_id_manager: VaultIdManager,
+	secret_key: String,
 }
 
 #[async_trait]
@@ -328,27 +332,20 @@ impl VaultService {
 		config: VaultServiceConfig,
 		shutdown: ShutdownSender,
 	) -> Result<Self, Error> {
-		let is_public_network = spacewalk_parachain.is_public_network().await;
-		let is_public_network = match is_public_network {
-			Ok(is_public_network) => is_public_network,
-			Err(error) => {
+		let is_public_network =
+			spacewalk_parachain.is_public_network().await.unwrap_or_else(|error| {
 				// Sometimes the fetch fails with 'StorageItemNotFound' error.
 				// We assume public network by default
 				tracing::warn!(
-					"Failed to fetch public network status from parachain: {}. Assuming public network.",
-					error
+					"Failed to fetch public network status from parachain: {error}. Assuming public network."
 				);
 				true
-			},
-		};
+			});
 
-		let stellar_vault_secret_key =
-			fs::read_to_string(&config.stellar_vault_secret_key_filepath)?;
-		let stellar_wallet = StellarWallet::from_secret_encoded(
-			&stellar_vault_secret_key.trim().to_string(),
-			is_public_network,
-		)?;
-
+		let secret_key = fs::read_to_string(&config.stellar_vault_secret_key_filepath)?
+			.trim()
+			.to_string();
+		let stellar_wallet = StellarWallet::from_secret_encoded(&secret_key, is_public_network)?;
 		tracing::debug!(
 			"Vault wallet public key: {}",
 			from_utf8(&stellar_wallet.get_public_key().to_encoding())?
@@ -362,6 +359,7 @@ impl VaultService {
 			config,
 			shutdown,
 			vault_id_manager: VaultIdManager::new(spacewalk_parachain, stellar_wallet),
+			secret_key,
 		})
 	}
 
@@ -445,9 +443,18 @@ impl VaultService {
 
 		drop(wallet);
 
-		let mut oracle_agent =
-			OracleAgent::new(is_public_network).expect("Failed to create oracle agent");
-		oracle_agent.start().await.expect("Failed to start oracle agent");
+		let cfg_path = &self.config.stellar_overlay_config_filepath;
+		let stellar_overlay_cfg =
+			StellarOverlayConfig::try_from_path(cfg_path).map_err(Error::StellarRelayError)?;
+
+		// check if both the config file and the wallet are the same.
+		if is_public_network != stellar_overlay_cfg.is_public_network() {
+			return Err(ServiceError::IncompatibleNetwork)
+		}
+
+		let oracle_agent = crate::oracle::start_oracle_agent(stellar_overlay_cfg, &self.secret_key)
+			.await
+			.expect("Failed to start oracle agent");
 		let oracle_agent = Arc::new(oracle_agent);
 
 		let open_request_executor = execute_open_requests(

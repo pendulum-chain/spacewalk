@@ -48,6 +48,9 @@ pub enum Error {
 	#[error("OracleError: {0}")]
 	OracleError(#[from] crate::oracle::Error),
 
+	#[error("StellarRelayError: {0}")]
+	StellarRelayError(stellar_relay_lib::Error),
+
 	#[error("StdIoError: {0}")]
 	StdIoError(#[from] std::io::Error),
 }

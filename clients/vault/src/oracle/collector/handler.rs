@@ -26,7 +26,7 @@ impl ScpMessageCollector {
 		// we are only interested with `ScpStExternalize`. Other messages are ignored.
 		if let ScpStatementPledges::ScpStExternalize(stmt) = &env.statement.pledges {
 			// set the last scpenvenvelope with ScpStExternalize message
-			self.set_last_scp_ext_slot(slot);
+			self.set_last_slot_index(slot);
 
 			let txset_hash = get_tx_set_hash(stmt)?;
 

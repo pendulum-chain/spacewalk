@@ -5,23 +5,13 @@ The Oracle collects and saves **`SCPStatementExternalize`** SCPMessages and its 
 
 ## Usage
 
-### Provide the `NodeInfo` and `ConnConfig` 
-Refer to [Stellar-Relay readme](../stellar-relay-lib/README.md) on how to initialize these structures.
+### Provide the `StellarRelayConfig` and _secret key_
+Refer to [Stellar-Relay readme](../stellar-relay-lib/README.md#the-stellaroverlayconfig) for the `StellarRelayConfig`.
 
-### Create the `OracleAgent`
-Simply call the _`new()`_ function of `OracleAgent`:
-```rust
-let mut oracle_agent = OracleAgent::new(is_public_network)?;
-```
 ### Start the `OracleAgent`
-Starting the `OracleAgent` means creating a `StellarOverlayConnection` and
-To start, call the async method:
+Simply call the _async_ _`start_oracle_agent()`_ function of `OracleAgent` with the config and secret key as parameters:
 ```rust
-oracle_agent.start().await?
-```
-or if you can provide the vault's secret key:
-```rust
-oracle_agent.start_with_secret_key(<secret_key>).await?
+let mut oracle_agent = start_oracle_agent(<stellar_relay_config>,<secret_key>).await;
 ```
 Note: starting the agent means listening to messages coming from  the `StellarOverlayConnection`.
 ### Building a proof
@@ -55,7 +45,7 @@ pub struct ScpMessageCollector {
 	public_network: bool,
 }
 ```
-The `ScpMessageCollector` have methods such as `add_scp_envelopes` and `add_txset` to store the ScpMessages and TransactionSet.
+The `ScpMessageCollector` has methods such as `add_scp_envelopes` and `add_txset` to store the ScpMessages and TransactionSet respectively.
 
 ### How `ScpMessageCollector` handles `ScpEnvelopes` and `TransactionSet` 
 Found in [handler.rs](src/oracle/collector/handler.rs) contains 2 methods:

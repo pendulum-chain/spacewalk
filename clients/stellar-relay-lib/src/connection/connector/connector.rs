@@ -10,9 +10,8 @@ use crate::{
 		flow_controller::FlowController,
 		hmac::{verify_hmac, HMacKeys},
 	},
-	handshake::HandshakeState,
 	node::{LocalInfo, NodeInfo, RemoteInfo},
-	ConnConfig, ConnectorActions, Error, StellarRelayMessage,
+	ConnectionInfo, ConnectorActions, Error, HandshakeState, StellarRelayMessage,
 };
 
 pub struct Connector {
@@ -100,23 +99,26 @@ impl Connector {
 
 	pub fn new(
 		local_node: NodeInfo,
-		cfg: ConnConfig,
+		conn_info: ConnectionInfo,
 		actions_sender: mpsc::Sender<ConnectorActions>,
 		relay_message_sender: mpsc::Sender<StellarRelayMessage>,
 	) -> Self {
-		let connection_auth =
-			ConnectionAuth::new(&local_node.network_id, cfg.keypair(), cfg.auth_cert_expiration);
+		let connection_auth = ConnectionAuth::new(
+			&local_node.network_id,
+			conn_info.keypair(),
+			conn_info.auth_cert_expiration,
+		);
 
 		Connector {
 			local: LocalInfo::new(local_node),
 			remote_info: None,
 			hmac_keys: None,
 			connection_auth,
-			timeout_in_secs: cfg.timeout_in_secs,
-			retries: cfg.retries,
-			remote_called_us: cfg.remote_called_us,
-			receive_tx_messages: cfg.recv_tx_msgs,
-			receive_scp_messages: cfg.recv_scp_messages,
+			timeout_in_secs: conn_info.timeout_in_secs,
+			retries: conn_info.retries,
+			remote_called_us: conn_info.remote_called_us,
+			receive_tx_messages: conn_info.recv_tx_msgs,
+			receive_scp_messages: conn_info.recv_scp_msgs,
 			handshake_state: HandshakeState::Connecting,
 			flow_controller: FlowController::default(),
 			actions_sender,
@@ -207,7 +209,7 @@ impl Connector {
 
 #[cfg(test)]
 mod test {
-	use crate::{connection::hmac::HMacKeys, node::RemoteInfo, Connector};
+	use crate::{connection::hmac::HMacKeys, node::RemoteInfo, Connector, StellarOverlayConfig};
 
 	use substrate_stellar_sdk::{
 		compound_types::LimitedString,
@@ -220,7 +222,7 @@ mod test {
 		connection::authentication::{create_auth_cert, ConnectionAuth},
 		helper::time_now,
 		node::NodeInfo,
-		ConnConfig, ConnectorActions, StellarRelayMessage,
+		ConnectionInfo, ConnectorActions, StellarRelayMessage,
 	};
 
 	#[cfg(test)]
@@ -239,23 +241,34 @@ mod test {
 	}
 
 	#[cfg(test)]
-	fn create_connector(
-	) -> (NodeInfo, ConnConfig, Connector, Receiver<ConnectorActions>, Receiver<StellarRelayMessage>)
-	{
-		use substrate_stellar_sdk::{network::TEST_NETWORK, SecretKey};
-		let secret =
-			SecretKey::from_encoding("SBLI7RKEJAEFGLZUBSCOFJHQBPFYIIPLBCKN7WVCWT4NEG2UJEW33N73")
-				.unwrap();
-		let node_info = NodeInfo::new(19, 21, 19, "v19.1.0".to_string(), &TEST_NETWORK);
-		let cfg = ConnConfig::new("34.235.168.98", 11625, secret, 0, false, true, false);
+	fn create_connector() -> (
+		NodeInfo,
+		ConnectionInfo,
+		Connector,
+		Receiver<ConnectorActions>,
+		Receiver<StellarRelayMessage>,
+	) {
+		let cfg_file_path = "./resources/config/testnet/stellar_relay_config_sdftest1.json";
+		let secret_key_path = "./resources/secretkey/stellar_secretkey_testnet";
+		let secret_key =
+			std::fs::read_to_string(secret_key_path).expect("should be able to read file");
+
+		let cfg =
+			StellarOverlayConfig::try_from_path(cfg_file_path).expect("should create a config");
+		let node_info = cfg.node_info();
+		let conn_info = cfg.connection_info(&secret_key).expect("should create a connection info");
 		// this is a channel to communicate with the connection/config (this needs renaming)
 		let (actions_sender, actions_receiver) = mpsc::channel::<ConnectorActions>(1024);
 		// this is a channel to communicate with the user/caller.
 		let (relay_message_sender, relay_message_receiver) =
 			mpsc::channel::<StellarRelayMessage>(1024);
-		let connector =
-			Connector::new(node_info.clone(), cfg.clone(), actions_sender, relay_message_sender);
-		(node_info, cfg, connector, actions_receiver, relay_message_receiver)
+		let connector = Connector::new(
+			node_info.clone(),
+			conn_info.clone(),
+			actions_sender,
+			relay_message_sender,
+		);
+		(node_info, conn_info, connector, actions_receiver, relay_message_receiver)
 	}
 
 	#[test]
@@ -370,7 +383,7 @@ mod test {
 
 		assert_eq!(connector.remote_called_us(), conn_config.remote_called_us);
 		assert_eq!(connector.receive_tx_messages(), conn_config.recv_tx_msgs);
-		assert_eq!(connector.receive_scp_messages(), conn_config.recv_scp_messages);
+		assert_eq!(connector.receive_scp_messages(), conn_config.recv_scp_msgs);
 
 		connector.got_hello();
 		assert!(connector.is_handshake_created());

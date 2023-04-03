@@ -7,6 +7,7 @@ use futures::{
 	future::{join, join3, join4},
 	Future, FutureExt, SinkExt,
 };
+use lazy_static::lazy_static;
 use serial_test::serial;
 use sp_keyring::AccountKeyring;
 use sp_runtime::traits::StaticLookup;
@@ -17,10 +18,12 @@ use runtime::{
 	integration::*, types::*, FixedPointNumber, FixedU128, IssuePallet, RedeemPallet,
 	ReplacePallet, ShutdownSender, SpacewalkParachain, SudoPallet, UtilFuncs, VaultRegistryPallet,
 };
-use stellar_relay_lib::sdk::PublicKey;
+use stellar_relay_lib::{sdk::PublicKey, StellarOverlayConfig};
+
 use vault::{
-	oracle::OracleAgent, service::IssueFilter, ArcRwLock, Event as CancellationEvent,
-	VaultIdManager,
+	oracle::{start_oracle_agent, OracleAgent},
+	service::IssueFilter,
+	ArcRwLock, Event as CancellationEvent, VaultIdManager,
 };
 use wallet::StellarWallet;
 
@@ -37,10 +40,15 @@ const DEFAULT_WRAPPED_CURRENCY: CurrencyId = CurrencyId::AlphaNum4(
 	],
 );
 
-// This has to match the definition in the testchain runtime
-// But if it changes to public we need to change the secret key of the vault that is used.
-const IS_PUBLIC_NETWORK: bool = false;
-const STELLAR_VAULT_SECRET_KEY: &str = "SB6WHKIU2HGVBRNKNOEOQUY4GFC4ZLG5XPGWLEAHTIZXBXXYACC76VSQ";
+const CONFIG_ADDR: &str = "./resources/config/testnet/stellar_relay_config_sdftest1.json";
+const SECRET_KEY_PATH: &str = "./resources/secretkey/stellar_secretkey_testnet";
+
+lazy_static! {
+	static ref CFG: StellarOverlayConfig =
+		StellarOverlayConfig::try_from_path(CONFIG_ADDR).unwrap();
+	static ref SECRET_KEY: String =
+		std::fs::read_to_string(SECRET_KEY_PATH).expect("should return a string");
+}
 
 // A simple helper function to convert StellarStroops (i64) to the up-scaled u128
 fn upscaled_compatible_amount(amount: StellarStroops) -> u128 {
@@ -150,19 +158,21 @@ where
 
 	let path = tmp_dir.path().to_str().expect("should return a string").to_string();
 	let wallet = Arc::new(RwLock::new(
-		StellarWallet::from_secret_encoded_with_cache(
-			&STELLAR_VAULT_SECRET_KEY.to_string(),
-			IS_PUBLIC_NETWORK,
-			path,
-		)
-		.unwrap(),
+		StellarWallet::from_secret_encoded_with_cache(&SECRET_KEY, CFG.is_public_network(), path)
+			.unwrap(),
 	));
 
 	execute(client, wallet).await
 }
 
 async fn test_with_vault<F, R>(
-	execute: impl FnOnce(SubxtClient, ArcRwLock<StellarWallet>, VaultId, SpacewalkParachain) -> F,
+	execute: impl FnOnce(
+		SubxtClient,
+		ArcRwLock<StellarWallet>,
+		Arc<OracleAgent>,
+		VaultId,
+		SpacewalkParachain,
+	) -> F,
 ) -> R
 where
 	F: Future<Output = R>,
@@ -195,26 +205,23 @@ where
 
 	let path = tmp_dir.path().to_str().expect("should return a string").to_string();
 	let wallet = Arc::new(RwLock::new(
-		StellarWallet::from_secret_encoded_with_cache(
-			&STELLAR_VAULT_SECRET_KEY.to_string(),
-			IS_PUBLIC_NETWORK,
-			path,
-		)
-		.unwrap(),
+		StellarWallet::from_secret_encoded_with_cache(&SECRET_KEY, CFG.is_public_network(), path)
+			.unwrap(),
 	));
 
-	execute(client, wallet, vault_id, vault_provider).await
+	let oracle_agent = start_oracle_agent(CFG.clone(), &SECRET_KEY)
+		.await
+		.expect("failed to start agent");
+	let oracle_agent = Arc::new(oracle_agent);
+
+	execute(client, wallet, oracle_agent, vault_id, vault_provider).await
 }
 
 #[tokio::test(flavor = "multi_thread")]
 #[serial]
 async fn test_redeem_succeeds() {
-	test_with_vault(|client, wallet, vault_id, vault_provider| async move {
+	test_with_vault(|client, wallet, oracle_agent, vault_id, vault_provider| async move {
 		let user_provider = setup_provider(client.clone(), AccountKeyring::Dave).await;
-
-		let mut oracle_agent = OracleAgent::new(IS_PUBLIC_NETWORK).expect("failed to create agent");
-		oracle_agent.start().await.expect("failed to start agent");
-		let oracle_agent = Arc::new(oracle_agent);
 
 		let vault_ids = vec![vault_id.clone()];
 		let vault_id_manager =
@@ -274,7 +281,7 @@ async fn test_redeem_succeeds() {
 #[tokio::test(flavor = "multi_thread")]
 #[serial]
 async fn test_replace_succeeds() {
-	test_with_vault(|client, wallet, old_vault_id, old_vault_provider| async move {
+	test_with_vault(|client, wallet, oracle_agent, old_vault_id, old_vault_provider| async move {
 		let new_vault_provider = setup_provider(client.clone(), AccountKeyring::Eve).await;
 		let new_vault_id = VaultId::new(
 			AccountKeyring::Eve.into(),
@@ -282,10 +289,6 @@ async fn test_replace_succeeds() {
 			DEFAULT_WRAPPED_CURRENCY,
 		);
 		let user_provider = setup_provider(client.clone(), AccountKeyring::Dave).await;
-
-		let mut oracle_agent = OracleAgent::new(IS_PUBLIC_NETWORK).expect("failed to create agent");
-		oracle_agent.start().await.expect("failed to start agent");
-		let oracle_agent = Arc::new(oracle_agent);
 
 		let vault_ids = vec![new_vault_id.clone()].into_iter().collect();
 		let _vault_id_manager =
@@ -375,7 +378,7 @@ async fn test_replace_succeeds() {
 #[tokio::test(flavor = "multi_thread")]
 #[serial]
 async fn test_withdraw_replace_succeeds() {
-	test_with_vault(|client, wallet, old_vault_id, old_vault_provider| async move {
+	test_with_vault(|client, wallet, oracle_agent, old_vault_id, old_vault_provider| async move {
 		let new_vault_provider = setup_provider(client.clone(), AccountKeyring::Eve).await;
 		let new_vault_id = VaultId::new(
 			AccountKeyring::Eve.into(),
@@ -383,10 +386,6 @@ async fn test_withdraw_replace_succeeds() {
 			DEFAULT_WRAPPED_CURRENCY,
 		);
 		let user_provider = setup_provider(client.clone(), AccountKeyring::Dave).await;
-
-		let mut oracle_agent = OracleAgent::new(IS_PUBLIC_NETWORK).expect("failed to create agent");
-		oracle_agent.start().await.expect("failed to start agent");
-		let oracle_agent = Arc::new(oracle_agent);
 
 		let issue_amount = upscaled_compatible_amount(100);
 		let vault_collateral = get_required_vault_collateral_for_issue(
@@ -459,7 +458,7 @@ async fn test_cancel_scheduler_succeeds() {
 	// tests cancellation of issue, redeem and replace.
 	// issue and replace cancellation is tested through the vault's cancellation service.
 	// cancel_redeem is called manually
-	test_with_vault(|client, wallet, old_vault_id, old_vault_provider| async move {
+	test_with_vault(|client, wallet, oracle_agent, old_vault_id, old_vault_provider| async move {
 		let parachain_rpc = setup_provider(client.clone(), AccountKeyring::Bob).await;
 
 		let root_provider = setup_provider(client.clone(), AccountKeyring::Alice).await;
@@ -470,10 +469,6 @@ async fn test_cancel_scheduler_succeeds() {
 			DEFAULT_TESTING_CURRENCY,
 			DEFAULT_WRAPPED_CURRENCY,
 		);
-
-		let mut oracle_agent = OracleAgent::new(IS_PUBLIC_NETWORK).expect("failed to create agent");
-		oracle_agent.start().await.expect("failed to start agent");
-		let oracle_agent = Arc::new(oracle_agent);
 
 		let issue_amount = upscaled_compatible_amount(200);
 		let vault_collateral = get_required_vault_collateral_for_issue(
@@ -655,7 +650,7 @@ async fn test_cancel_scheduler_succeeds() {
 #[tokio::test(flavor = "multi_thread")]
 #[serial]
 async fn test_issue_cancel_succeeds() {
-	test_with_vault(|client, wallet, vault_id, vault_provider| async move {
+	test_with_vault(|client, wallet, _, vault_id, vault_provider| async move {
 		let user_provider = setup_provider(client.clone(), AccountKeyring::Dave).await;
 		let issue_set = Arc::new(RwLock::new(IssueRequestsMap::new()));
 		let memos_to_issue_ids = Arc::new(RwLock::new(IssueIdLookup::new()));
@@ -740,12 +735,8 @@ async fn test_issue_cancel_succeeds() {
 #[tokio::test(flavor = "multi_thread")]
 #[serial]
 async fn test_issue_overpayment_succeeds() {
-	test_with_vault(|client, wallet, vault_id, vault_provider| async move {
+	test_with_vault(|client, wallet, oracle_agent, vault_id, vault_provider| async move {
 		let user_provider = setup_provider(client.clone(), AccountKeyring::Dave).await;
-
-		let mut oracle_agent = OracleAgent::new(IS_PUBLIC_NETWORK).expect("failed to create agent");
-		oracle_agent.start().await.expect("failed to start agent");
-		let oracle_agent = Arc::new(oracle_agent);
 
 		let public_key = wallet.read().await.get_public_key_raw();
 
@@ -831,12 +822,8 @@ async fn test_issue_overpayment_succeeds() {
 #[tokio::test(flavor = "multi_thread")]
 #[serial]
 async fn test_automatic_issue_execution_succeeds() {
-	test_with_vault(|client, wallet, vault_id, vault_provider| async move {
+	test_with_vault(|client, wallet, oracle_agent, vault_id, vault_provider| async move {
 		let user_provider = setup_provider(client.clone(), AccountKeyring::Dave).await;
-
-		let mut oracle_agent = OracleAgent::new(IS_PUBLIC_NETWORK).expect("failed to create agent");
-		oracle_agent.start().await.expect("failed to start agent");
-		let oracle_agent = Arc::new(oracle_agent);
 
 		let issue_amount = upscaled_compatible_amount(1000);
 		let vault_collateral = get_required_vault_collateral_for_issue(
@@ -936,7 +923,7 @@ async fn test_automatic_issue_execution_succeeds() {
 #[tokio::test(flavor = "multi_thread")]
 #[serial]
 async fn test_automatic_issue_execution_succeeds_for_other_vault() {
-	test_with_vault(|client, wallet, vault1_id, vault1_provider| async move {
+	test_with_vault(|client, wallet, oracle_agent, vault1_id, vault1_provider| async move {
 		let user_provider = setup_provider(client.clone(), AccountKeyring::Dave).await;
 		let vault2_provider = setup_provider(client.clone(), AccountKeyring::Eve).await;
 		let vault2_id = VaultId::new(
@@ -944,10 +931,6 @@ async fn test_automatic_issue_execution_succeeds_for_other_vault() {
 			DEFAULT_TESTING_CURRENCY,
 			DEFAULT_WRAPPED_CURRENCY,
 		);
-
-		let mut oracle_agent = OracleAgent::new(IS_PUBLIC_NETWORK).expect("failed to create agent");
-		oracle_agent.start().await.expect("failed to start agent");
-		let oracle_agent = Arc::new(oracle_agent);
 
 		let issue_amount = upscaled_compatible_amount(100);
 
@@ -1042,7 +1025,7 @@ async fn test_automatic_issue_execution_succeeds_for_other_vault() {
 		let service = join4(
 			vault::service::listen_for_new_transactions(
 				vault_account_public_key.clone(),
-				IS_PUBLIC_NETWORK,
+				CFG.is_public_network(),
 				slot_tx_env_map.clone(),
 				issue_set_arc.clone(),
 				memos_to_issue_ids.clone(),
@@ -1077,12 +1060,8 @@ async fn test_automatic_issue_execution_succeeds_for_other_vault() {
 #[tokio::test(flavor = "multi_thread")]
 #[serial]
 async fn test_execute_open_requests_succeeds() {
-	test_with_vault(|client, wallet, vault_id, vault_provider| async move {
+	test_with_vault(|client, wallet, oracle_agent, vault_id, vault_provider| async move {
 		let user_provider = setup_provider(client.clone(), AccountKeyring::Dave).await;
-
-		let mut oracle_agent = OracleAgent::new(IS_PUBLIC_NETWORK).expect("failed to create agent");
-		oracle_agent.start().await.expect("failed to start agent");
-		let oracle_agent = Arc::new(oracle_agent);
 
 		let vault_ids = vec![vault_id.clone()];
 		let vault_id_manager =
@@ -1173,14 +1152,10 @@ async fn test_execute_open_requests_succeeds() {
 #[tokio::test(flavor = "multi_thread")]
 #[serial]
 async fn test_off_chain_liquidation() {
-	test_with_vault(|client, wallet, vault_id, vault_provider| async move {
+	test_with_vault(|client, wallet, oracle_agent, vault_id, vault_provider| async move {
 		// Bob is set as an authorized oracle in the chain_spec
 		let authorized_oracle_provider = setup_provider(client.clone(), AccountKeyring::Bob).await;
 		let user_provider = setup_provider(client.clone(), AccountKeyring::Dave).await;
-
-		let mut oracle_agent = OracleAgent::new(IS_PUBLIC_NETWORK).expect("failed to create agent");
-		oracle_agent.start().await.expect("failed to start agent");
-		let oracle_agent = Arc::new(oracle_agent);
 
 		let issue_amount = upscaled_compatible_amount(100);
 		let vault_collateral = get_required_vault_collateral_for_issue(
@@ -1278,7 +1253,7 @@ async fn test_shutdown() {
 #[tokio::test(flavor = "multi_thread")]
 #[serial]
 async fn test_requests_with_incompatible_amounts_fail() {
-	test_with_vault(|client, wallet, vault_id, vault_provider| async move {
+	test_with_vault(|client, wallet, _, vault_id, vault_provider| async move {
 		let user_provider = setup_provider(client.clone(), AccountKeyring::Dave).await;
 
 		// We define an incompatible amount
