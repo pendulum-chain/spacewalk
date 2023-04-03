@@ -16,6 +16,7 @@ use thiserror::Error;
 use tokio::time::error::Elapsed;
 
 use crate::{types::*, ISSUE_MODULE, SECURITY_MODULE};
+use prometheus::Error as PrometheusError;
 
 #[derive(Error, Debug)]
 pub enum Error {
@@ -81,6 +82,10 @@ pub enum Error {
 	UrlParseError(#[from] UrlParseError),
 	#[error("Constant not found: {0}")]
 	ConstantNotFound(String),
+	#[error("Currency not found")]
+	CurrencyNotFound,
+	#[error("PrometheusError: {0}")]
+	PrometheusError(#[from] PrometheusError),
 }
 
 impl Error {

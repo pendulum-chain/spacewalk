@@ -75,6 +75,6 @@ pub struct MonitoringConfig {
 	pub prometheus_external: bool,
 
 	/// Specify Prometheus exporter TCP Port.
-	#[clap(long, default_value = "9615")]
+	#[clap(long, default_value = "9616")]
 	pub prometheus_port: u16,
 }

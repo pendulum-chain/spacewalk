@@ -7,7 +7,7 @@ use async_trait::async_trait;
 use clap::Parser;
 use futures::{
 	channel::{mpsc, mpsc::Sender},
-	future::join_all,
+	future::{join, join_all},
 	SinkExt, TryFutureExt,
 };
 use git_version::git_version;
@@ -19,7 +19,7 @@ use runtime::{
 	SpacewalkParachain, StellarRelayPallet, TryFromSymbol, UpdateActiveBlockEvent, UtilFuncs,
 	VaultCurrencyPair, VaultId, VaultRegistryPallet,
 };
-use service::{wait_or_shutdown, Error as ServiceError, Service};
+use service::{wait_or_shutdown, Error as ServiceError, MonitoringConfig, Service};
 use stellar_relay_lib::StellarOverlayConfig;
 use wallet::{LedgerTxEnvMap, StellarWallet};
 
@@ -29,6 +29,7 @@ use crate::{
 	execution::execute_open_requests,
 	issue,
 	issue::IssueFilter,
+	metrics::{monitor_bridge_metrics, poll_metrics, publish_tokio_metrics, PerCurrencyMetrics},
 	redeem::listen_for_redeem_requests,
 	replace::{listen_for_accept_replace, listen_for_execute_replace, listen_for_replace_requests},
 	service::{CancellationScheduler, IssueCanceller},
@@ -46,6 +47,7 @@ const RESTART_INTERVAL: Duration = Duration::from_secs(10800); // restart every 
 pub struct VaultData {
 	pub vault_id: VaultId,
 	pub stellar_wallet: ArcRwLock<StellarWallet>,
+	pub metrics: PerCurrencyMetrics,
 }
 
 #[derive(Clone)]
@@ -78,7 +80,11 @@ impl VaultIdManager {
 			.map(|key| {
 				(
 					key.clone(),
-					VaultData { vault_id: key.clone(), stellar_wallet: stellar_wallet.clone() },
+					VaultData {
+						vault_id: key.clone(),
+						stellar_wallet: stellar_wallet.clone(),
+						metrics: PerCurrencyMetrics::dummy(),
+					},
 				)
 			})
 			.collect();
@@ -86,8 +92,14 @@ impl VaultIdManager {
 	}
 
 	async fn add_vault_id(&self, vault_id: VaultId) -> Result<(), Error> {
-		let data =
-			VaultData { vault_id: vault_id.clone(), stellar_wallet: self.stellar_wallet.clone() };
+		tracing::info!("Initializing metrics...");
+		let metrics = PerCurrencyMetrics::new(&vault_id);
+		let data = VaultData {
+			vault_id: vault_id.clone(),
+			stellar_wallet: self.stellar_wallet.clone(),
+			metrics,
+		};
+		PerCurrencyMetrics::initialize_values(self.spacewalk_parachain.clone(), &data).await;
 
 		self.vault_data.write().await.insert(vault_id, data.clone());
 
@@ -246,6 +258,7 @@ pub struct VaultService {
 	spacewalk_parachain: SpacewalkParachain,
 	stellar_wallet: ArcRwLock<StellarWallet>,
 	config: VaultServiceConfig,
+	monitoring_config: MonitoringConfig,
 	shutdown: ShutdownSender,
 	vault_id_manager: VaultIdManager,
 	secret_key: String,
@@ -259,9 +272,10 @@ impl Service<VaultServiceConfig, Error> for VaultService {
 	async fn new_service(
 		spacewalk_parachain: SpacewalkParachain,
 		config: VaultServiceConfig,
+		monitoring_config: MonitoringConfig,
 		shutdown: ShutdownSender,
 	) -> Result<Self, Error> {
-		VaultService::new(spacewalk_parachain, config, shutdown).await
+		VaultService::new(spacewalk_parachain, config, monitoring_config, shutdown).await
 	}
 
 	async fn start(&mut self) -> Result<(), ServiceError<Error>> {
@@ -273,7 +287,7 @@ async fn run_and_monitor_tasks(
 	shutdown_tx: ShutdownSender,
 	items: Vec<(&str, ServiceTask)>,
 ) -> Result<(), ServiceError<Error>> {
-	let (_metrics_iterators, tasks): (HashMap<String, _>, Vec<_>) = items
+	let (metrics_iterators, tasks): (HashMap<String, _>, Vec<_>) = items
 		.into_iter()
 		.filter_map(|(name, task)| {
 			let monitor = tokio_metrics::TaskMonitor::new();
@@ -289,18 +303,19 @@ async fn run_and_monitor_tasks(
 		})
 		.unzip();
 
-	// We don't use metrics for now
-	// let tokio_metrics = tokio::spawn(wait_or_shutdown(
-	// 	shutdown_tx.clone(),
-	// 	publish_tokio_metrics(metrics_iterators),
-	// ));
+	let tokio_metrics = tokio::spawn(wait_or_shutdown(
+		shutdown_tx.clone(),
+		publish_tokio_metrics(metrics_iterators),
+	));
 
-	let results = join_all(tasks).await;
-	results
-		.into_iter()
-		.find(|res| matches!(res, Ok(Err(_))))
-		.and_then(|res| res.ok())
-		.unwrap_or(Ok(()))
+	match join(tokio_metrics, join_all(tasks)).await {
+		(Ok(Err(err)), _) => Err(err),
+		(_, results) => results
+			.into_iter()
+			.find(|res| matches!(res, Ok(Err(_))))
+			.and_then(|res| res.ok())
+			.unwrap_or(Ok(())),
+	}
 }
 
 type Task = Pin<Box<dyn Future<Output = Result<(), ServiceError<Error>>> + Send + 'static>>;
@@ -330,6 +345,7 @@ impl VaultService {
 	async fn new(
 		spacewalk_parachain: SpacewalkParachain,
 		config: VaultServiceConfig,
+		monitoring_config: MonitoringConfig,
 		shutdown: ShutdownSender,
 	) -> Result<Self, Error> {
 		let is_public_network =
@@ -357,6 +373,7 @@ impl VaultService {
 			spacewalk_parachain: spacewalk_parachain.clone(),
 			stellar_wallet: stellar_wallet.clone(),
 			config,
+			monitoring_config,
 			shutdown,
 			vault_id_manager: VaultIdManager::new(spacewalk_parachain, stellar_wallet),
 			secret_key,
@@ -617,6 +634,23 @@ impl VaultService {
 					self.config.payment_margin_minutes,
 					oracle_agent.clone(),
 				)),
+			),
+			(
+				"Bridge Metrics Listener",
+				maybe_run(
+					!self.monitoring_config.no_prometheus,
+					monitor_bridge_metrics(
+						self.spacewalk_parachain.clone(),
+						self.vault_id_manager.clone(),
+					),
+				),
+			),
+			(
+				"Bridge Metrics Poller",
+				maybe_run(
+					!self.monitoring_config.no_prometheus,
+					poll_metrics(self.spacewalk_parachain.clone(), self.vault_id_manager.clone()),
+				),
 			),
 		];
 

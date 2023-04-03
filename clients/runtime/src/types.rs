@@ -2,6 +2,7 @@ pub use subxt::ext::sp_core::sr25519::Pair as KeyPair;
 
 pub use metadata_aliases::*;
 pub use primitives::{CurrencyId, TextMemo};
+use std::str::from_utf8;
 
 use crate::{metadata, Config, SpacewalkRuntime, SS58_PREFIX};
 
@@ -13,6 +14,8 @@ pub type Index = u32;
 pub type H256 = subxt::ext::sp_core::H256;
 pub type SpacewalkSigner = subxt::tx::PairSigner<SpacewalkRuntime, KeyPair>;
 pub type FixedU128 = sp_arithmetic::FixedU128;
+
+pub use substrate_stellar_sdk as stellar;
 
 pub type IssueId = H256;
 
@@ -26,6 +29,7 @@ mod metadata_aliases {
 			CancelIssue as CancelIssueEvent, ExecuteIssue as ExecuteIssueEvent,
 			RequestIssue as RequestIssueEvent,
 		},
+		oracle::events::AggregateUpdated as AggregateUpdatedEvent,
 		redeem::events::{
 			ExecuteRedeem as ExecuteRedeemEvent, RequestRedeem as RequestRedeemEvent,
 		},
@@ -110,6 +114,47 @@ mod metadata_aliases {
 			pub type EncodedCall = metadata::runtime_types::amplitude_runtime::RuntimeCall;
 		} else if #[cfg(feature = "parachain-metadata-foucoco")] {
 			pub type EncodedCall = metadata::runtime_types::foucoco_runtime::RuntimeCall;
+		}
+	}
+}
+
+pub mod currency_id {
+	use primitives::Asset;
+
+	use super::*;
+	use crate::Error;
+
+	pub trait CurrencyIdExt {
+		fn inner(&self) -> Result<String, Error>;
+	}
+
+	impl CurrencyIdExt for CurrencyId {
+		fn inner(&self) -> Result<String, Error> {
+			match self {
+				CurrencyId::Native => Ok("Native".to_owned()),
+				CurrencyId::XCM(foreign_currency_id) => Ok(format!("XCM({})", foreign_currency_id)),
+				CurrencyId::Stellar(stellar_asset) => match stellar_asset {
+					Asset::StellarNative => Ok("XLM".to_owned()),
+					Asset::AlphaNum4 { code, issuer } => Ok(format!(
+						"Stellar({:?}:{:?})",
+						from_utf8(code).unwrap_or_default(),
+						from_utf8(
+							stellar::PublicKey::from_binary(*issuer).to_encoding().as_slice()
+						)
+						.unwrap_or_default()
+					)
+					.replace('\"', "")),
+					Asset::AlphaNum12 { code, issuer } => Ok(format!(
+						"Stellar({:?}:{:?})",
+						from_utf8(code).unwrap_or_default(),
+						from_utf8(
+							stellar::PublicKey::from_binary(*issuer).to_encoding().as_slice()
+						)
+						.unwrap_or_default()
+					)
+					.replace('\"', "")),
+				},
+			}
 		}
 	}
 }

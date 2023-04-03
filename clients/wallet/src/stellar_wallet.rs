@@ -12,7 +12,7 @@ use tokio::sync::Mutex;
 use crate::{
 	cache::TxEnvelopeStorage,
 	error::Error,
-	horizon::{HorizonClient, PagingToken, TransactionResponse},
+	horizon::{Balance, HorizonClient, PagingToken, TransactionResponse},
 	types::StellarPublicKeyRaw,
 };
 
@@ -264,6 +264,16 @@ impl StellarWallet {
 
 		let _ = self.cache.save_to_local(envelope.clone())?;
 		self.submit_transaction(envelope, &horizon_client).await
+	}
+
+	///return balances for public key
+	pub async fn get_balance(&self) -> Result<Vec<Balance>, Error> {
+		let horizon_client = reqwest::Client::new();
+		let public_key_encoded = self.get_public_key().to_encoding();
+		let account_id_string =
+			std::str::from_utf8(&public_key_encoded).map_err(Error::Utf8Error)?;
+		let account = horizon_client.get_account(account_id_string, self.is_public_network).await?;
+		Ok(account.balances)
 	}
 }
 
