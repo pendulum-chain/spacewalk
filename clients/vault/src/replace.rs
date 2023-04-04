@@ -162,9 +162,14 @@ pub async fn handle_replace_request<
 	vault_id: &'a VaultId,
 ) -> Result<(), Error> {
 	let collateral_currency = vault_id.collateral_currency();
+	let wrapped_currency = vault_id.wrapped_currency();
 
 	let (required_replace_collateral, current_collateral, used_collateral) = try_join3(
-		parachain_rpc.get_required_collateral_for_wrapped(event.amount, collateral_currency),
+		parachain_rpc.get_required_collateral_for_wrapped(
+			event.amount,
+			wrapped_currency,
+			collateral_currency,
+		),
 		parachain_rpc.get_vault_total_collateral(vault_id.clone()),
 		parachain_rpc.get_required_collateral_for_vault(vault_id.clone()),
 	)
@@ -253,7 +258,7 @@ mod tests {
 		async fn withdraw_collateral(&self, vault_id: &VaultId, amount: u128) -> Result<(), RuntimeError>;
 		async fn get_public_key(&self) -> Result<Option<StellarPublicKeyRaw>, RuntimeError>;
 		async fn register_public_key(&self, public_key: StellarPublicKeyRaw) -> Result<(), RuntimeError>;
-		async fn get_required_collateral_for_wrapped(&self, amount: u128, collateral_currency: CurrencyId) -> Result<u128, RuntimeError>;
+		async fn get_required_collateral_for_wrapped(&self, amount: u128, wrapped_currency: CurrencyId, collateral_currency: CurrencyId) -> Result<u128, RuntimeError>;
 		async fn get_required_collateral_for_vault(&self, vault_id: VaultId) -> Result<u128, RuntimeError>;
 		async fn get_vault_total_collateral(&self, vault_id: VaultId) -> Result<u128, RuntimeError>;
 		async fn get_collateralization_from_vault(&self, vault_id: VaultId, only_issued: bool) -> Result<u128, RuntimeError>;
@@ -317,7 +322,7 @@ mod tests {
 		let mut parachain_rpc = MockProvider::default();
 		parachain_rpc
 			.expect_get_required_collateral_for_wrapped()
-			.returning(|_, _| Ok(51));
+			.returning(|_, _, _| Ok(51));
 		parachain_rpc.expect_get_required_collateral_for_vault().returning(|_| Ok(50));
 		parachain_rpc.expect_get_vault_total_collateral().returning(|_| Ok(100));
 
@@ -342,7 +347,7 @@ mod tests {
 		let mut parachain_rpc = MockProvider::default();
 		parachain_rpc
 			.expect_get_required_collateral_for_wrapped()
-			.returning(|_, _| Ok(50));
+			.returning(|_, _, _| Ok(50));
 		parachain_rpc.expect_get_required_collateral_for_vault().returning(|_| Ok(50));
 		parachain_rpc.expect_get_vault_total_collateral().returning(|_| Ok(100));
 		parachain_rpc.expect_accept_replace().returning(|_, _, _, _, _| Ok(()));
