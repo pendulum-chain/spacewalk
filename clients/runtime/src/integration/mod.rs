@@ -126,10 +126,11 @@ pub async fn get_exchange_rate(parachain_rpc: &SpacewalkParachain, currency_id: 
 pub async fn get_required_vault_collateral_for_issue(
 	parachain_rpc: &SpacewalkParachain,
 	amount: u128,
+	wrapped_currency: CurrencyId,
 	collateral_currency: CurrencyId,
 ) -> u128 {
 	parachain_rpc
-		.get_required_collateral_for_wrapped(amount, collateral_currency)
+		.get_required_collateral_for_wrapped(amount, wrapped_currency, collateral_currency)
 		.await
 		.unwrap()
 }
