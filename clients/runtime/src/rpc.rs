@@ -525,6 +525,7 @@ pub trait VaultRegistryPallet {
 	async fn get_required_collateral_for_wrapped(
 		&self,
 		amount_wrapped_asset: u128,
+		wrapped_currency_id: CurrencyId,
 		collateral_currency: CurrencyId,
 	) -> Result<u128, Error>;
 
@@ -668,6 +669,7 @@ impl VaultRegistryPallet for SpacewalkParachain {
 	async fn get_required_collateral_for_wrapped(
 		&self,
 		amount_wrapped_asset: u128,
+		wrapped_currency_id: CurrencyId,
 		collateral_currency: CurrencyId,
 	) -> Result<u128, Error> {
 		let head = self.get_finalized_block_hash().await?;
@@ -678,6 +680,7 @@ impl VaultRegistryPallet for SpacewalkParachain {
 				"vaultRegistry_getRequiredCollateralForWrapped",
 				rpc_params![
 					BalanceWrapper { amount: amount_wrapped_asset },
+					wrapped_currency_id,
 					collateral_currency,
 					head
 				],

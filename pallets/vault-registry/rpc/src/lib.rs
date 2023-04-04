@@ -92,8 +92,9 @@ where
 	#[method(name = "vaultRegistry_getRequiredCollateralForWrapped")]
 	fn get_required_collateral_for_wrapped(
 		&self,
-		amount: BalanceWrapper<Balance>,
-		currency_id: CurrencyId,
+		amount_wrapped: BalanceWrapper<Balance>,
+		wrapped_currency_id: CurrencyId,
+		collateral_currency_id: CurrencyId,
 		at: Option<BlockHash>,
 	) -> RpcResult<BalanceWrapper<Balance>>;
 
@@ -289,15 +290,21 @@ where
 
 	fn get_required_collateral_for_wrapped(
 		&self,
-		amount: BalanceWrapper<Balance>,
-		currency_id: CurrencyId,
+		amount_wrapped: BalanceWrapper<Balance>,
+		wrapped_currency_id: CurrencyId,
+		collateral_currency_id: CurrencyId,
 		at: Option<<Block as BlockT>::Hash>,
 	) -> RpcResult<BalanceWrapper<Balance>> {
 		let api = self.client.runtime_api();
 		let at = BlockId::hash(at.unwrap_or_else(|| self.client.info().best_hash));
 
 		handle_response(
-			api.get_required_collateral_for_wrapped(&at, amount, currency_id),
+			api.get_required_collateral_for_wrapped(
+				&at,
+				amount_wrapped,
+				wrapped_currency_id,
+				collateral_currency_id,
+			),
 			"Unable to get required collateral for amount".into(),
 		)
 	}
