@@ -14,8 +14,8 @@ use runtime::{
 	},
 	types::currency_id::CurrencyIdExt,
 	AggregateUpdatedEvent, CollateralBalancesPallet, CurrencyId, Error as RuntimeError, FixedU128,
-	IssuePallet, IssueRequestStatus, OracleKey, PrettyPrint, RedeemPallet, RedeemRequestStatus,
-	SecurityPallet, SpacewalkParachain, UtilFuncs, VaultId, VaultRegistryPallet, H256,
+	IssuePallet, IssueRequestStatus, OracleKey, RedeemPallet, RedeemRequestStatus, SecurityPallet,
+	SpacewalkParachain, UtilFuncs, VaultId, VaultRegistryPallet, H256,
 };
 use service::{
 	warp::{Rejection, Reply},
@@ -273,14 +273,7 @@ pub async fn publish_collateralization<P: VaultRegistryPallet>(
 
 	let collateralization = match result {
 		Ok(collateralization) => collateralization,
-		Err(e) => {
-			tracing::error!(
-				"Failed to get collateralization for vault {:?}: {:?}",
-				vault.vault_id.pretty_print(),
-				e
-			);
-			0
-		},
+		Err(_) => 0, // We don't want to log an error here, because it would be too noisy
 	};
 
 	let float_collateralization_percentage = FixedU128::from_inner(collateralization).to_float();
@@ -488,7 +481,7 @@ pub async fn poll_metrics<
 		}
 
 		for vault in vault_id_manager.get_entries().await {
-			update_stellar_metrics(&vault, parachain_rpc.clone()).await;
+			update_stellar_metrics(&vault, parachain_rpc).await;
 		}
 
 		sleep(SLEEP_DURATION).await;
