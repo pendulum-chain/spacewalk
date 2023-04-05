@@ -202,27 +202,10 @@ impl pallet_timestamp::Config for Runtime {
 
 const NATIVE_CURRENCY_ID: CurrencyId = CurrencyId::Native;
 const PARENT_CURRENCY_ID: CurrencyId = CurrencyId::XCM(0);
-// For mainnet USDC issued by centre.io
-// const WRAPPED_CURRENCY_ID: CurrencyId = CurrencyId::AlphaNum4 {
-// 	code: *b"USDC",
-// 	issuer: [
-// 		59, 153, 17, 56, 14, 254, 152, 139, 160, 168, 144, 14, 177, 207, 228, 79, 54, 111, 125,
-// 		190, 148, 107, 237, 7, 114, 64, 247, 246, 36, 223, 21, 197,
-// 	],
-// };
-// For Testnet USDC issued by
-const WRAPPED_CURRENCY_ID: CurrencyId = CurrencyId::AlphaNum4(
-	*b"USDC",
-	[
-		20, 209, 150, 49, 176, 55, 23, 217, 171, 154, 54, 110, 16, 50, 30, 226, 102, 231, 46, 199,
-		108, 171, 97, 144, 240, 161, 51, 109, 72, 34, 159, 139,
-	],
-);
 
 parameter_types! {
 	pub const GetNativeCurrencyId: CurrencyId = NATIVE_CURRENCY_ID;
 	pub const GetRelayChainCurrencyId: CurrencyId = PARENT_CURRENCY_ID;
-	pub const GetWrappedCurrencyId: CurrencyId = WRAPPED_CURRENCY_ID;
 	pub const TransactionByteFee: Balance = MILLICENTS;
 }
 
@@ -907,8 +890,8 @@ impl_runtime_apis! {
 			VaultRegistry::get_collateralization_from_vault_and_collateral(vault, &amount, only_issued)
 		}
 
-		fn get_required_collateral_for_wrapped(amount_wrapped: BalanceWrapper<Balance>, _wrapped_currency_id: CurrencyId,  collateral_currency_id: CurrencyId) -> Result<BalanceWrapper<Balance>, DispatchError> {
-			let amount_wrapped = Amount::new(amount_wrapped.amount, GetWrappedCurrencyId::get());
+		fn get_required_collateral_for_wrapped(amount_wrapped: BalanceWrapper<Balance>, wrapped_currency_id: CurrencyId,  collateral_currency_id: CurrencyId) -> Result<BalanceWrapper<Balance>, DispatchError> {
+			let amount_wrapped = Amount::new(amount_wrapped.amount, wrapped_currency_id);
 			let result = VaultRegistry::get_required_collateral_for_wrapped(&amount_wrapped, collateral_currency_id)?;
 			Ok(BalanceWrapper{amount:result.amount()})
 		}
