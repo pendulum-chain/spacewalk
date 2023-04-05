@@ -44,7 +44,7 @@ sp_api::decl_runtime_apis! {
 
 		/// Get the minimum amount of collateral required for the given amount of token
 		/// with the current threshold and exchange rate
-		fn get_required_collateral_for_wrapped(amount_wrapped: BalanceWrapper<Balance>, wrapped_currency_id: CurrencyId,  collateral_currency_id: CurrencyId) -> Result<BalanceWrapper<Balance>, DispatchError>;
+		fn get_required_collateral_for_wrapped(amount_wrapped: BalanceWrapper<Balance>, wrapped_currency_id: CurrencyId, collateral_currency_id: CurrencyId) -> Result<BalanceWrapper<Balance>, DispatchError>;
 
 		/// Get the amount of collateral required for the given vault to be at the
 		/// current SecureCollateralThreshold with the current exchange rate
