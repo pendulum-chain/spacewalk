@@ -13,10 +13,10 @@ use sp_runtime::traits::{IdentifyAccount, Verify};
 use primitives::{oracle::Key, CurrencyId, VaultCurrencyPair};
 use serde_json::{map::Map, Value};
 use spacewalk_runtime::{
-	AccountId, AuraConfig, BalancesConfig, FeeConfig, FieldLength, GenesisConfig,
-	GetWrappedCurrencyId, GrandpaConfig, IssueConfig, NominationConfig, OracleConfig, Organization,
-	RedeemConfig, ReplaceConfig, SecurityConfig, Signature, StatusCode, StellarRelayConfig,
-	SudoConfig, SystemConfig, TokensConfig, Validator, VaultRegistryConfig, DAYS, WASM_BINARY,
+	AccountId, AuraConfig, BalancesConfig, FeeConfig, FieldLength, GenesisConfig, GrandpaConfig,
+	IssueConfig, NominationConfig, OracleConfig, Organization, RedeemConfig, ReplaceConfig,
+	SecurityConfig, Signature, StatusCode, StellarRelayConfig, SudoConfig, SystemConfig,
+	TokensConfig, Validator, VaultRegistryConfig, DAYS, WASM_BINARY,
 };
 
 // The URL for the telemetry server.
@@ -30,6 +30,23 @@ pub fn get_from_seed<TPublic: Public>(seed: &str) -> <TPublic::Pair as Pair>::Pu
 		.expect("static values are valid; qed")
 		.public()
 }
+
+// For mainnet USDC issued by centre.io
+// const WRAPPED_CURRENCY_ID: CurrencyId = CurrencyId::AlphaNum4 {
+// 	code: *b"USDC",
+// 	issuer: [
+// 		59, 153, 17, 56, 14, 254, 152, 139, 160, 168, 144, 14, 177, 207, 228, 79, 54, 111, 125,
+// 		190, 148, 107, 237, 7, 114, 64, 247, 246, 36, 223, 21, 197,
+// 	],
+// };
+// For Testnet USDC issued by
+const WRAPPED_CURRENCY_ID: CurrencyId = CurrencyId::AlphaNum4(
+	*b"USDC",
+	[
+		20, 209, 150, 49, 176, 55, 23, 217, 171, 154, 54, 110, 16, 50, 30, 226, 102, 231, 46, 199,
+		108, 171, 97, 144, 240, 161, 51, 109, 72, 34, 159, 139,
+	],
+);
 
 /// Generate an Aura authority key.
 pub fn authority_keys_from_seed(s: &str) -> (AuraId, GrandpaId) {
@@ -190,7 +207,7 @@ pub fn development_config() -> ChainSpec {
 }
 
 fn default_pair(currency_id: CurrencyId) -> VaultCurrencyPair<CurrencyId> {
-	VaultCurrencyPair { collateral: currency_id, wrapped: GetWrappedCurrencyId::get() }
+	VaultCurrencyPair { collateral: currency_id, wrapped: WRAPPED_CURRENCY_ID }
 }
 
 // Used to create bounded vecs for genesis config
