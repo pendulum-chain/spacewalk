@@ -20,6 +20,7 @@ use wallet::{StellarWallet, TransactionResponse};
 
 use crate::{
 	error::Error,
+	metrics::update_stellar_metrics,
 	oracle::{types::Slot, OracleAgent, Proof},
 	system::VaultData,
 	VaultIdManager, YIELD_RATE,
@@ -159,10 +160,11 @@ impl Request {
 			}
 		}
 
-		let (tx_env, slot) = self.transfer_stellar_asset(vault.stellar_wallet).await?;
+		let (tx_env, slot) = self.transfer_stellar_asset(vault.stellar_wallet.clone()).await?;
 
 		let proof = oracle_agent.get_proof(slot).await?;
 
+		let _ = update_stellar_metrics(&vault, &parachain_rpc).await;
 		self.execute(parachain_rpc, tx_env, proof).await
 	}
 
