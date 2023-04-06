@@ -14,8 +14,8 @@ use runtime::{
 	},
 	types::currency_id::CurrencyIdExt,
 	AggregateUpdatedEvent, CollateralBalancesPallet, CurrencyId, Error as RuntimeError, FixedU128,
-	IssuePallet, IssueRequestStatus, OracleKey, PrettyPrint, RedeemPallet, RedeemRequestStatus,
-	SecurityPallet, SpacewalkParachain, UtilFuncs, VaultId, VaultRegistryPallet, H256,
+	IssuePallet, IssueRequestStatus, OracleKey, RedeemPallet, RedeemRequestStatus, SecurityPallet,
+	SpacewalkParachain, UtilFuncs, VaultId, VaultRegistryPallet, H256,
 };
 use service::{
 	warp::{Rejection, Reply},
@@ -179,7 +179,7 @@ impl PerCurrencyMetrics {
 		publish_stellar_balance(vault).await;
 
 		let _ = tokio::join!(
-			publish_expected_stellar_balance(vault, parachain_rpc.clone()),
+			publish_expected_stellar_balance(vault, &parachain_rpc),
 			publish_locked_collateral(vault, parachain_rpc.clone()),
 			publish_required_collateral(vault, parachain_rpc.clone()),
 			publish_collateralization(vault, parachain_rpc.clone()),
@@ -271,20 +271,14 @@ pub async fn publish_collateralization<P: VaultRegistryPallet>(
 		.get_collateralization_from_vault(vault.vault_id.clone(), false)
 		.await;
 
-	let collateralization = match result {
-		Ok(collateralization) => collateralization,
-		Err(e) => {
-			tracing::error!(
-				"Failed to get collateralization for vault {:?}: {:?}",
-				vault.vault_id.pretty_print(),
-				e
-			);
-			0
-		},
-	};
-
+	let collateralization = result.unwrap_or(0);
 	let float_collateralization_percentage = FixedU128::from_inner(collateralization).to_float();
 	vault.metrics.collateralization.set(float_collateralization_percentage);
+}
+
+pub async fn update_stellar_metrics<P: VaultRegistryPallet>(vault: &VaultData, parachain_rpc: &P) {
+	publish_stellar_balance(vault).await;
+	let _ = publish_expected_stellar_balance(vault, parachain_rpc).await;
 }
 
 async fn publish_stellar_balance(vault: &VaultData) {
@@ -459,7 +453,12 @@ pub async fn monitor_bridge_metrics(
 }
 
 pub async fn poll_metrics<
-	P: CollateralBalancesPallet + RedeemPallet + IssuePallet + SecurityPallet + UtilFuncs,
+	P: CollateralBalancesPallet
+		+ RedeemPallet
+		+ IssuePallet
+		+ SecurityPallet
+		+ VaultRegistryPallet
+		+ UtilFuncs,
 >(
 	parachain_rpc: P,
 	vault_id_manager: VaultIdManager,
@@ -476,13 +475,18 @@ pub async fn poll_metrics<
 		{
 			publish_redeem_count(vault_id_manager, &redeems).await;
 		}
+
+		for vault in vault_id_manager.get_entries().await {
+			update_stellar_metrics(&vault, parachain_rpc).await;
+		}
+
 		sleep(SLEEP_DURATION).await;
 	}
 }
 
 pub async fn publish_expected_stellar_balance<P: VaultRegistryPallet>(
 	vault: &VaultData,
-	parachain_rpc: P,
+	parachain_rpc: &P,
 ) -> Result<(), ServiceError<Error>> {
 	if let Ok(v) = parachain_rpc.get_vault(&vault.vault_id).await {
 		let lowerbound = v.issued_tokens.saturating_sub(v.to_be_redeemed_tokens);
