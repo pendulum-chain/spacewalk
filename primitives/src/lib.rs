@@ -676,8 +676,8 @@ impl StaticLookup for BalanceConversion {
 	}
 
 	fn unlookup(stellar_stroops: Self::Target) -> Self::Source {
-		let valut = Self::Source::try_from(stellar_stroops).unwrap_or(0);
-		valut.saturating_mul(DECIMALS_CONVERSION_RATE)
+		let value = Self::Source::try_from(stellar_stroops).unwrap_or(0);
+		value.saturating_mul(DECIMALS_CONVERSION_RATE)
 	}
 }
 
