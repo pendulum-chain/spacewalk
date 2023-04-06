@@ -232,6 +232,7 @@ async fn test_redeem_succeeds() {
 		let vault_collateral = get_required_vault_collateral_for_issue(
 			&vault_provider,
 			issue_amount,
+			vault_id.wrapped_currency(),
 			vault_id.collateral_currency(),
 		)
 		.await;
@@ -301,6 +302,7 @@ async fn test_replace_succeeds() {
 		let vault_collateral = get_required_vault_collateral_for_issue(
 			&old_vault_provider,
 			issue_amount,
+			old_vault_id.wrapped_currency(),
 			old_vault_id.collateral_currency(),
 		)
 		.await;
@@ -391,6 +393,7 @@ async fn test_withdraw_replace_succeeds() {
 		let vault_collateral = get_required_vault_collateral_for_issue(
 			&old_vault_provider,
 			issue_amount,
+			old_vault_id.wrapped_currency(),
 			old_vault_id.collateral_currency(),
 		)
 		.await;
@@ -474,6 +477,7 @@ async fn test_cancel_scheduler_succeeds() {
 		let vault_collateral = get_required_vault_collateral_for_issue(
 			&old_vault_provider,
 			issue_amount * 10,
+			old_vault_id.wrapped_currency(),
 			old_vault_id.collateral_currency(),
 		)
 		.await;
@@ -662,6 +666,7 @@ async fn test_issue_cancel_succeeds() {
 		let vault_collateral = get_required_vault_collateral_for_issue(
 			&vault_provider,
 			issue_amount,
+			vault_id.wrapped_currency(),
 			vault_id.collateral_currency(),
 		)
 		.await;
@@ -745,6 +750,7 @@ async fn test_issue_overpayment_succeeds() {
 		let vault_collateral = get_required_vault_collateral_for_issue(
 			&vault_provider,
 			issue_amount * over_payment_factor,
+			vault_id.wrapped_currency(),
 			vault_id.collateral_currency(),
 		)
 		.await;
@@ -829,6 +835,7 @@ async fn test_automatic_issue_execution_succeeds() {
 		let vault_collateral = get_required_vault_collateral_for_issue(
 			&vault_provider,
 			issue_amount,
+			vault_id.wrapped_currency(),
 			vault_id.collateral_currency(),
 		)
 		.await;
@@ -937,6 +944,7 @@ async fn test_automatic_issue_execution_succeeds_for_other_vault() {
 		let vault_collateral = get_required_vault_collateral_for_issue(
 			&vault1_provider,
 			issue_amount,
+			vault1_id.wrapped_currency(),
 			vault1_id.collateral_currency(),
 		)
 		.await;
@@ -1072,6 +1080,7 @@ async fn test_execute_open_requests_succeeds() {
 		let vault_collateral = get_required_vault_collateral_for_issue(
 			&vault_provider,
 			issue_amount,
+			vault_id.wrapped_currency(),
 			vault_id.collateral_currency(),
 		)
 		.await;
@@ -1161,6 +1170,7 @@ async fn test_off_chain_liquidation() {
 		let vault_collateral = get_required_vault_collateral_for_issue(
 			&vault_provider,
 			issue_amount,
+			vault_id.wrapped_currency(),
 			vault_id.collateral_currency(),
 		)
 		.await;
@@ -1210,6 +1220,7 @@ async fn test_shutdown() {
 		let vault_collateral = get_required_vault_collateral_for_issue(
 			&sudo_provider,
 			issue_amount,
+			sudo_vault_id.wrapped_currency(),
 			sudo_vault_id.collateral_currency(),
 		)
 		.await;
@@ -1261,6 +1272,7 @@ async fn test_requests_with_incompatible_amounts_fail() {
 		let vault_collateral = get_required_vault_collateral_for_issue(
 			&vault_provider,
 			incompatible_amount,
+			vault_id.wrapped_currency(),
 			vault_id.collateral_currency(),
 		)
 		.await;
