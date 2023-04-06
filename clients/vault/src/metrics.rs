@@ -271,11 +271,7 @@ pub async fn publish_collateralization<P: VaultRegistryPallet>(
 		.get_collateralization_from_vault(vault.vault_id.clone(), false)
 		.await;
 
-	let collateralization = match result {
-		Ok(collateralization) => collateralization,
-		Err(_) => 0, // We don't want to log an error here, because it would be too noisy
-	};
-
+	let collateralization = result.unwrap_or(0);
 	let float_collateralization_percentage = FixedU128::from_inner(collateralization).to_float();
 	vault.metrics.collateralization.set(float_collateralization_percentage);
 }
