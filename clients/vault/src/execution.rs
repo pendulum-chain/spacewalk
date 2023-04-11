@@ -365,7 +365,7 @@ pub async fn execute_open_requests(
 	// transactions until one is found that is older than this period but limiting it to 200 should
 	// be fine for now.
 	let wallet = wallet.read().await;
-	let transactions_result = wallet.get_latest_transactions(0, 200, false).await;
+	let transactions_result = wallet.get_latest_transactions(false).await;
 	drop(wallet);
 
 	// Check if some of the requests that are open already have a corresponding payment on Stellar

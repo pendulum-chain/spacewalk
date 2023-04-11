@@ -8,13 +8,17 @@ use serde::{de::DeserializeOwned, Deserialize, Deserializer};
 use substrate_stellar_sdk::{PublicKey, TransactionEnvelope, XdrCodec};
 use tokio::{sync::RwLock, time::sleep};
 
-use crate::{error::Error, types::FilterWith, LedgerTxEnvMap};
+use crate::{
+	error::Error,
+	types::{FilterWith, PagingToken},
+	LedgerTxEnvMap, StellarWallet,
+};
 
-pub type PagingToken = u128;
 // todo: change to Slot
 pub type Ledger = u32;
 
 const POLL_INTERVAL: u64 = 5000;
+pub const TXS_LIMIT_PER_PAGE: i64 = 500;
 
 /// Interprets the response from Horizon into something easier to read.
 async fn interpret_response<T: DeserializeOwned>(response: reqwest::Response) -> Result<T, Error> {
@@ -469,8 +473,7 @@ impl<C: HorizonClient> HorizonFetcher<C> {
 /// * `targets` - helps in filtering out the transactions to save
 /// * `filter` - logic to save the needed transaction
 pub async fn listen_for_new_transactions<T, U, Filter>(
-	vault_account_public_key: PublicKey,
-	is_public_network: bool,
+	stellar_wallet: Arc<RwLock<StellarWallet>>,
 	ledger_env_map: Arc<RwLock<LedgerTxEnvMap>>,
 	issue_map: Arc<RwLock<T>>,
 	memos_to_issue_ids: Arc<RwLock<U>>,
@@ -481,11 +484,15 @@ where
 	U: Clone,
 	Filter: FilterWith<T, U> + Clone,
 {
+	let wallet = stellar_wallet.read().await;
+	let vault_account_public_key = wallet.get_public_key();
+	let is_public_network = wallet.is_public_network();
+
 	let horizon_client = reqwest::Client::new();
 	let mut fetcher =
 		HorizonFetcher::new(horizon_client, vault_account_public_key, is_public_network);
 
-	let mut latest_paging_token: PagingToken = 0;
+	let mut latest_paging_token: PagingToken = wallet.get_last_cursor();
 
 	loop {
 		latest_paging_token = fetcher
@@ -497,6 +504,11 @@ where
 				latest_paging_token,
 			)
 			.await;
+
+		// do not throw an error if it fails to save.
+		if let Err(e) = wallet.save_cursor(latest_paging_token) {
+			tracing::warn!("failed to save paging token {} as cursor:{e:?}", latest_paging_token);
+		}
 
 		sleep(Duration::from_millis(POLL_INTERVAL)).await;
 	}

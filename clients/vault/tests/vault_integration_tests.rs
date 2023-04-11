@@ -711,8 +711,7 @@ async fn test_issue_cancel_succeeds() {
 		let wallet_read = wallet.read().await;
 		let service = join3(
 			vault::service::listen_for_new_transactions(
-				wallet_read.get_public_key(),
-				wallet_read.is_public_network(),
+				wallet.clone(),
 				slot_tx_env_map.clone(),
 				issue_set.clone(),
 				memos_to_issue_ids.clone(),
@@ -894,8 +893,7 @@ async fn test_automatic_issue_execution_succeeds() {
 		let (issue_event_tx, _issue_event_rx) = mpsc::channel::<CancellationEvent>(16);
 		let service = join3(
 			vault::service::listen_for_new_transactions(
-				wallet_read.get_public_key(),
-				wallet_read.is_public_network(),
+				wallet.clone(),
 				slot_tx_env_map.clone(),
 				issue_set.clone(),
 				memos_to_issue_ids.clone(),
@@ -1032,8 +1030,7 @@ async fn test_automatic_issue_execution_succeeds_for_other_vault() {
 		let (issue_event_tx, _issue_event_rx) = mpsc::channel::<CancellationEvent>(16);
 		let service = join4(
 			vault::service::listen_for_new_transactions(
-				vault_account_public_key.clone(),
-				CFG.is_public_network(),
+				wallet.clone(),
 				slot_tx_env_map.clone(),
 				issue_set_arc.clone(),
 				memos_to_issue_ids.clone(),

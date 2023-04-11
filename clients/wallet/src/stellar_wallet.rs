@@ -10,13 +10,13 @@ use substrate_stellar_sdk::{
 use tokio::sync::Mutex;
 
 use crate::{
-	cache::TxEnvelopeStorage,
+	cache::Cache,
 	error::Error,
-	horizon::{Balance, HorizonClient, PagingToken, TransactionResponse},
+	horizon::{Balance, HorizonClient, TransactionResponse},
 	types::StellarPublicKeyRaw,
 };
 
-use crate::error::CacheErrorKind;
+use crate::{error::CacheErrorKind, horizon::TXS_LIMIT_PER_PAGE, types::PagingToken};
 use primitives::{derive_shortened_request_id, TransactionEnvelopeExt};
 
 #[derive(Clone)]
@@ -29,14 +29,15 @@ pub struct StellarWallet {
 	/// has been increased on the network.
 	transaction_submission_lock: Arc<Mutex<()>>,
 	/// Used for caching Stellar transactions before they get submitted.
-	cache: TxEnvelopeStorage,
+	/// Also used for caching the latest cursor to page through Stellar transactions in horizon
+	cache: Cache,
 }
 
 impl StellarWallet {
 	/// Returns a TransactionResponse after submitting transaction envelope to Stellar,
 	/// Else an Error.
 	async fn submit_transaction(
-		&mut self,
+		&self,
 		envelope: TransactionEnvelope,
 		horizon_client: &Client,
 	) -> Result<TransactionResponse, Error> {
@@ -49,7 +50,7 @@ impl StellarWallet {
 			.submit_transaction(envelope.clone(), self.is_public_network)
 			.await;
 
-		let _ = self.cache.remove_transaction(*sequence);
+		let _ = self.cache.remove_tx_envelope(*sequence);
 
 		submission_result
 	}
@@ -129,7 +130,7 @@ impl StellarWallet {
 		let pub_key = secret_key.get_public().to_encoding();
 		let pub_key = std::str::from_utf8(&pub_key).map_err(|_| Error::InvalidSecretKey)?;
 
-		let cache = TxEnvelopeStorage::new(cache_path, pub_key, is_public_network);
+		let cache = Cache::new(cache_path.clone(), pub_key, is_public_network);
 
 		Ok(StellarWallet {
 			secret_key,
@@ -155,10 +156,16 @@ impl StellarWallet {
 		self.is_public_network
 	}
 
+	pub fn get_last_cursor(&self) -> PagingToken {
+		self.cache.get_last_cursor()
+	}
+
+	pub fn save_cursor(&self, paging_token: PagingToken) -> Result<(), Error> {
+		self.cache.save_cursor(paging_token)
+	}
+
 	pub async fn get_latest_transactions(
 		&self,
-		cursor: PagingToken,
-		limit: i64,
 		order_ascending: bool,
 	) -> Result<Vec<TransactionResponse>, Error> {
 		let horizon_client = reqwest::Client::new();
@@ -166,8 +173,15 @@ impl StellarWallet {
 		let public_key_encoded = self.get_public_key().to_encoding();
 		let account_id = std::str::from_utf8(&public_key_encoded).map_err(Error::Utf8Error)?;
 
+		let cursor = self.cache.get_last_cursor();
 		let transactions_response = horizon_client
-			.get_transactions(account_id, self.is_public_network, cursor, limit, order_ascending)
+			.get_transactions(
+				account_id,
+				self.is_public_network,
+				cursor,
+				TXS_LIMIT_PER_PAGE,
+				order_ascending,
+			)
 			.await?;
 
 		let transactions = transactions_response._embedded.records;
@@ -177,9 +191,7 @@ impl StellarWallet {
 
 	/// Submits transactions found in the wallet's cache to Stellar.
 	/// Returns a tuple: (list of txs successfully submitted, list of errors of txs not resubmitted)
-	pub async fn resubmit_transactions_from_cache(
-		&mut self,
-	) -> (Vec<TransactionResponse>, Vec<Error>) {
+	pub async fn resubmit_transactions_from_cache(&self) -> (Vec<TransactionResponse>, Vec<Error>) {
 		let _ = self.transaction_submission_lock.lock().await;
 		let horizon_client = Client::new();
 
@@ -194,6 +206,17 @@ impl StellarWallet {
 			match self.submit_transaction(env, &horizon_client).await {
 				Ok(response) => passed.push(response),
 				Err(e) => errors.push(e),
+			}
+		}
+
+		// get the last response that passed, and save its paging token as the latest cursor.
+		if let Some(response) = passed.last() {
+			if let Err(e) = self.cache.save_cursor(response.paging_token) {
+				// don't throw an error for failure to save the cursor.
+				tracing::warn!(
+					"failed to save paging token {} as the latest cursor: {e:?}",
+					response.paging_token
+				);
 			}
 		}
 
@@ -231,7 +254,7 @@ impl StellarWallet {
 	}
 
 	pub async fn send_payment_to_address(
-		&mut self,
+		&self,
 		destination_address: PublicKey,
 		asset: Asset,
 		stroop_amount: i64,
@@ -262,7 +285,7 @@ impl StellarWallet {
 			next_sequence_number,
 		)?;
 
-		let _ = self.cache.save_to_local(envelope.clone())?;
+		let _ = self.cache.save_tx_envelope(envelope.clone())?;
 		self.submit_transaction(envelope, &horizon_client).await
 	}
 
@@ -342,7 +365,7 @@ mod test {
 			let request_id = [0u8; 32];
 
 			let response = wallet_clone
-				.write()
+				.read()
 				.await
 				.send_payment_to_address(destination, asset, amount, request_id, 100)
 				.await
@@ -363,7 +386,7 @@ mod test {
 			let request_id = [1u8; 32];
 
 			let result = wallet_clone2
-				.write()
+				.read()
 				.await
 				.send_payment_to_address(destination, asset, amount, request_id, 100)
 				.await;
@@ -375,7 +398,7 @@ mod test {
 
 		let _ = tokio::join!(first_job, second_job);
 
-		assert!(wallet.write().await.cache.remove_dir());
+		assert!(wallet.read().await.cache.remove_dir());
 	}
 
 	#[tokio::test]
@@ -390,7 +413,7 @@ mod test {
 		let request_id = [0u8; 32];
 
 		let result = wallet
-			.write()
+			.read()
 			.await
 			.send_payment_to_address(destination, asset, amount, request_id, 100)
 			.await;
@@ -399,7 +422,7 @@ mod test {
 		let transaction_response = result.unwrap();
 		assert!(!transaction_response.hash.to_vec().is_empty());
 		assert!(transaction_response.ledger() > 0);
-		assert!(wallet.write().await.cache.remove_dir());
+		assert!(wallet.read().await.cache.remove_dir());
 	}
 
 	#[tokio::test]
@@ -407,10 +430,10 @@ mod test {
 	async fn sending_correct_payment_after_incorrect_payment_works() {
 		let wallet =
 			wallet("resources/sending_correct_payment_after_incorrect_payment_works").clone();
-		let mut wallet = wallet.write().await;
+		let mut wallet = wallet.read().await;
 
 		// let's cleanup, just to make sure.
-		wallet.cache.remove_all_transactions();
+		wallet.cache.remove_all_tx_envelopes();
 
 		let destination =
 			PublicKey::from_encoding("GCENYNAX2UCY5RFUKA7AYEXKDIFITPRAB7UYSISCHVBTIAKPU2YO57OA")
@@ -470,7 +493,7 @@ mod test {
 	#[serial]
 	async fn resubmit_transactions_works() {
 		let wallet = wallet("resources/resubmit_transactions_works").clone();
-		let mut wallet = wallet.write().await;
+		let mut wallet = wallet.read().await;
 
 		// let's send a successful transaction first
 		let destination =
@@ -511,7 +534,7 @@ mod test {
 			.expect("should return an envelope");
 
 		// let's save this in storage
-		let _ = wallet.cache.save_to_local(bad_envelope.clone()).expect("should save.");
+		let _ = wallet.cache.save_tx_envelope(bad_envelope.clone()).expect("should save.");
 
 		// create a successful transaction
 		let request_id = [1u8; 32];
@@ -520,7 +543,7 @@ mod test {
 			.expect("should return an envelope");
 
 		// let's save this in storage
-		let _ = wallet.cache.save_to_local(good_envelope.clone()).expect("should save");
+		let _ = wallet.cache.save_tx_envelope(good_envelope.clone()).expect("should save");
 
 		// 1 should pass, and 1 should fail.
 		let (passed, failed) = wallet.resubmit_transactions_from_cache().await;

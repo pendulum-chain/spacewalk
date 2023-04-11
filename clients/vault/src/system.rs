@@ -447,7 +447,7 @@ impl VaultService {
 		// purposefully _after_ maybe_register_vault and _before_ other calls
 		self.vault_id_manager.fetch_vault_ids().await?;
 
-		let mut wallet = self.stellar_wallet.write().await;
+		let wallet = self.stellar_wallet.read().await;
 		let vault_public_key = wallet.get_public_key();
 		let is_public_network = wallet.is_public_network();
 
@@ -526,8 +526,7 @@ impl VaultService {
 			(
 				"Stellar Transaction Listener",
 				run(wallet::listen_for_new_transactions(
-					vault_public_key.clone(),
-					is_public_network,
+					self.stellar_wallet.clone(),
 					ledger_env_map.clone(),
 					issue_map.clone(),
 					memos_to_issue_ids.clone(),
