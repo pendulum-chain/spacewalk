@@ -1,0 +1,17 @@
+name: Build binaries
+on:
+  push:
+    branches:
+      spacewalk-release
+
+jobs:
+  build:
+    name: Build
+    runs-on: ubuntu-latest
+    steps:
+      - name: trigger job
+        uses: appleboy/gitlab-ci-action@master
+        with:
+          url: "https://gitlab.com"
+          token: ${{ secrets.GITLABAPI }}
+          project_id: 43970950
