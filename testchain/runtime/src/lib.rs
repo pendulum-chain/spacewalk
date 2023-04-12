@@ -460,20 +460,47 @@ impl NativeCurrencyKey for SpacewalkNativeCurrencyKey {
 
 // It's important that this is implemented the same way as the MockOracleKeyConvertor
 // because this is used in the benchmark_utils::DataCollector when feeding prices
-impl XCMCurrencyConversion for SpacewalkNativeCurrencyKey {
-	fn convert_to_dia_currency_id(token_symbol: u8) -> Option<(Vec<u8>, Vec<u8>)> {
-		// We assume that the blockchain is always 0 and the symbol represents the token symbol
-		let blockchain = vec![0u8];
-		let symbol = vec![token_symbol];
-		Some((blockchain, symbol))
-	}
+cfg_if::cfg_if! {
+	if #[cfg(feature = "testing-utils")] {
+		impl XCMCurrencyConversion for SpacewalkNativeCurrencyKey {
+			fn convert_to_dia_currency_id(token_symbol: u8) -> Option<(Vec<u8>, Vec<u8>)> {
+				// We assume that the blockchain is always 0 and the symbol represents the token symbol
+				let blockchain = vec![0u8];
+				let symbol = vec![token_symbol];
+				Some((blockchain, symbol))
+			}
 
-	fn convert_from_dia_currency_id(blockchain: Vec<u8>, symbol: Vec<u8>) -> Option<u8> {
-		// We assume that the blockchain is always 0 and the symbol represents the token symbol
-		if blockchain.len() != 1 && blockchain[0] != 0 || symbol.len() != 1 {
-			return None
+			fn convert_from_dia_currency_id(blockchain: Vec<u8>, symbol: Vec<u8>) -> Option<u8> {
+				// We assume that the blockchain is always 0 and the symbol represents the token symbol
+				if blockchain.len() != 1 && blockchain[0] != 0 || symbol.len() != 1 {
+					return None
+				}
+				return Some(symbol[0])
+			}
 		}
-		return Some(symbol[0])
+	}
+	else{
+		impl XCMCurrencyConversion for SpacewalkNativeCurrencyKey {
+			fn convert_to_dia_currency_id(token_symbol: u8) -> Option<(Vec<u8>, Vec<u8>)> {
+				if token_symbol == 0 {
+					return Some((b"Kusama".to_vec(), b"KSM".to_vec()))
+				}
+
+				// We assume that the blockchain is always 0 and the symbol represents the token symbol
+				let blockchain = vec![0u8];
+				let symbol = vec![token_symbol];
+
+				Some((blockchain, symbol))
+			}
+
+			fn convert_from_dia_currency_id(blockchain: Vec<u8>, symbol: Vec<u8>) -> Option<u8> {
+				// We assume that the blockchain is always 0 and the symbol represents the token symbol
+				if blockchain.len() != 1 && blockchain[0] != 0 || symbol.len() != 1 {
+					return None
+				}
+				return Some(symbol[0])
+			}
+		}
 	}
 }
 
