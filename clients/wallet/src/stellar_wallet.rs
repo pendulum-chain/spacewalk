@@ -142,7 +142,7 @@ impl StellarWallet {
 		let pub_key = secret_key.get_public().to_encoding();
 		let pub_key = std::str::from_utf8(&pub_key).map_err(|_| Error::InvalidSecretKey)?;
 
-		let cache = Cache::new(cache_path.clone(), pub_key, is_public_network);
+		let cache = Cache::new(cache_path, pub_key, is_public_network);
 
 		Ok(StellarWallet {
 			secret_key,
