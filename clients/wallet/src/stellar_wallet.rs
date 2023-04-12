@@ -10,7 +10,7 @@ use substrate_stellar_sdk::{
 use tokio::sync::Mutex;
 
 use crate::{
-	cache::Cache,
+	cache::WalletStateStorage,
 	error::Error,
 	horizon::{Balance, HorizonClient, TransactionResponse},
 	types::StellarPublicKeyRaw,
@@ -30,7 +30,7 @@ pub struct StellarWallet {
 	transaction_submission_lock: Arc<Mutex<()>>,
 	/// Used for caching Stellar transactions before they get submitted.
 	/// Also used for caching the latest cursor to page through Stellar transactions in horizon
-	cache: Cache,
+	cache: WalletStateStorage,
 }
 
 impl StellarWallet {
@@ -142,7 +142,7 @@ impl StellarWallet {
 		let pub_key = secret_key.get_public().to_encoding();
 		let pub_key = std::str::from_utf8(&pub_key).map_err(|_| Error::InvalidSecretKey)?;
 
-		let cache = Cache::new(cache_path, pub_key, is_public_network);
+		let cache = WalletStateStorage::new(cache_path, pub_key, is_public_network);
 
 		Ok(StellarWallet {
 			secret_key,

@@ -26,19 +26,19 @@ macro_rules! unwrap_or_return {
 
 /// Contains the path where the transaction envelope and the cursor/paging token will be saved.
 #[derive(Debug, Clone)]
-pub struct Cache {
+pub struct WalletStateStorage {
 	path: String,
 	inner_path: String,
 }
 
-impl Cache {
+impl WalletStateStorage {
 	fn root_path(&self) -> String {
 		format!("{}/{}", self.path, self.inner_path)
 	}
 
 	pub fn new(path: String, public_key: &str, is_public_network: bool) -> Self {
 		let inner_path = format!("{public_key}_{is_public_network}");
-		let cache = Cache { path, inner_path };
+		let cache = WalletStateStorage { path, inner_path };
 
 		let txs_full_path = cache.txs_inner_dir();
 		if let Err(e) = create_dir_all(&txs_full_path) {
@@ -52,14 +52,14 @@ impl Cache {
 }
 
 // methods for saving/retrieving the cursor / paging_token
-impl Cache {
+impl WalletStateStorage {
 	const CURSOR_FILENAME: &'static str = "cursor";
 
 	fn cursor_path(&self) -> String {
 		format!("{}/{}", self.root_path(), Self::CURSOR_FILENAME)
 	}
 
-	/// returns the last cursor of the given wallet
+	/// returns the latest cursor  of the given wallet
 	pub fn get_last_cursor(&self) -> PagingToken {
 		let path = self.cursor_path();
 		let path = Path::new(&path);
@@ -106,7 +106,7 @@ impl Cache {
 }
 
 // methods for tx envelope
-impl Cache {
+impl WalletStateStorage {
 	const TXS_INNER_DIR: &'static str = "txs";
 
 	fn txs_inner_dir(&self) -> String {
