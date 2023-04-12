@@ -318,7 +318,9 @@ fn read_content_from_path<P: AsRef<Path> + std::fmt::Debug + Clone>(
 #[cfg(test)]
 mod test {
 	use crate::{
-		cache::{extract_tx_envelope_from_path, parse_xdr_string_to_vec_u8, Cache, Error},
+		cache::{
+			extract_tx_envelope_from_path, parse_xdr_string_to_vec_u8, Error, WalletStateStorage,
+		},
 		error::CacheErrorKind,
 	};
 	use primitives::TransactionEnvelopeExt;
@@ -329,8 +331,8 @@ mod test {
 	};
 
 	const PUB_KEY: &str = "GCENYNAX2UCY5RFUKA7AYEXKDIFITPRAB7UYSISCHVBTIAKPU2YO57OA";
-	fn storage() -> Cache {
-		Cache::new("resources/examples".to_string(), PUB_KEY, false)
+	fn storage() -> WalletStateStorage {
+		WalletStateStorage::new("resources/examples".to_string(), PUB_KEY, false)
 	}
 
 	pub fn dummy_tx(sequence: SequenceNumber) -> TransactionEnvelope {
@@ -436,7 +438,7 @@ mod test {
 		assert!(actual_envelopes.len() <= (num_of_files.len() - actual_errors.len()));
 
 		// Create an empty storage and check that no transactions are found.
-		let storage = Cache::new("test".to_string(), "test", true);
+		let storage = WalletStateStorage::new("test".to_string(), "test", true);
 		let (actual_envelopes, actual_errors) =
 			storage.get_tx_envelopes().expect("should return ok");
 		assert!(actual_envelopes.is_empty());
@@ -450,8 +452,11 @@ mod test {
 		let expected_tx = dummy_tx(sequence);
 
 		// let's create a new storage
-		let new_storage =
-			Cache::new("resources/test_save_tx_envelope_and_remove".to_string(), PUB_KEY, false);
+		let new_storage = WalletStateStorage::new(
+			"resources/test_save_tx_envelope_and_remove".to_string(),
+			PUB_KEY,
+			false,
+		);
 
 		// clear it first
 		new_storage.remove_all_tx_envelopes();
