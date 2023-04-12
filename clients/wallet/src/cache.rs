@@ -24,6 +24,7 @@ macro_rules! unwrap_or_return {
 	};
 }
 
+/// Contains the path where the transaction envelope and the cursor/paging token will be saved.
 #[derive(Debug, Clone)]
 pub struct Cache {
 	path: String,
@@ -39,7 +40,7 @@ impl Cache {
 		let inner_path = format!("{public_key}_{is_public_network}");
 		let cache = Cache { path, inner_path };
 
-		let txs_full_path = cache.txs_directory();
+		let txs_full_path = cache.txs_inner_dir();
 		if let Err(e) = create_dir_all(&txs_full_path) {
 			tracing::warn!("Failed to create directory of {txs_full_path}: {:?}", e);
 		} else {
@@ -50,12 +51,12 @@ impl Cache {
 	}
 }
 
-// methods for pagination
+// methods for saving/retrieving the cursor / paging_token
 impl Cache {
-	const CURSOR_PATH: &'static str = "cursor";
+	const CURSOR_FILENAME: &'static str = "cursor";
 
 	fn cursor_path(&self) -> String {
-		format!("{}/{}", self.root_path(), Self::CURSOR_PATH)
+		format!("{}/{}", self.root_path(), Self::CURSOR_FILENAME)
 	}
 
 	/// returns the last cursor of the given wallet
@@ -90,6 +91,7 @@ impl Cache {
 		})
 	}
 
+	#[allow(dead_code)]
 	#[doc(hidden)]
 	#[cfg(any(test, feature = "testing-utils"))]
 	/// Necessary for testing.
@@ -105,10 +107,10 @@ impl Cache {
 
 // methods for tx envelope
 impl Cache {
-	const TXS_DIRECTORY: &'static str = "txs";
+	const TXS_INNER_DIR: &'static str = "txs";
 
-	fn txs_directory(&self) -> String {
-		format!("{}/{}", self.root_path(), Self::TXS_DIRECTORY)
+	fn txs_inner_dir(&self) -> String {
+		format!("{}/{}", self.root_path(), Self::TXS_INNER_DIR)
 	}
 
 	/// Saves the transaction envelope to a local folder.
@@ -119,7 +121,7 @@ impl Cache {
 			tx_envelope.clone(),
 		))?;
 
-		let full_file_path = format!("{}/{sequence}", self.txs_directory());
+		let full_file_path = format!("{}/{sequence}", self.txs_inner_dir());
 
 		let path = Path::new(&full_file_path);
 		if path.exists() {
@@ -144,7 +146,7 @@ impl Cache {
 
 	/// Removes a transaction from the local folder
 	pub fn remove_tx_envelope(&self, sequence: SequenceNumber) -> Result<(), Error> {
-		let full_file_path = format!("{}/{sequence}", self.txs_directory());
+		let full_file_path = format!("{}/{sequence}", self.txs_inner_dir());
 		remove_file(&full_file_path).map_err(|e| {
 			tracing::error!("Failed to delete file: {:?}", e);
 			Error::cache_error_with_seq(CacheErrorKind::DeleteFileFailed, sequence)
@@ -165,7 +167,7 @@ impl Cache {
 	/// Removes all transactions in the directory.
 	/// User should not be able to do this in production.
 	pub fn remove_all_tx_envelopes(&self) {
-		let full_path = self.txs_directory();
+		let full_path = self.txs_inner_dir();
 		let Ok(directory) = read_dir(&full_path) else {
 			// create a new one
 			if let Err(e) = create_dir_all(&full_path) {
@@ -185,7 +187,7 @@ impl Cache {
 	#[cfg(any(test, feature = "testing-utils"))]
 	/// Returns a transaction if a file was found, given the sequence number
 	pub fn get_tx_envelope(&self, sequence: SequenceNumber) -> Result<TransactionEnvelope, Error> {
-		let full_file_path = format!("{}/{sequence}", self.txs_directory());
+		let full_file_path = format!("{}/{sequence}", self.txs_inner_dir());
 		let path = Path::new(&full_file_path);
 
 		if !path.exists() {
@@ -197,7 +199,7 @@ impl Cache {
 
 	/// Returns a list of transactions found in the local path, else a list of errors.
 	pub fn get_tx_envelopes(&self) -> Result<(Vec<TransactionEnvelope>, Vec<Error>), Vec<Error>> {
-		let path = self.txs_directory();
+		let path = self.txs_inner_dir();
 		let directory = read_dir(&path).map_err(|e| {
 			tracing::error!("Could not read path: {path:?}: {e:?}");
 			vec![Error::cache_error_with_path(CacheErrorKind::ReadFileFailed, format!("{path:?}"))]
@@ -289,6 +291,8 @@ fn extract_tx_envelope_from_path<P: AsRef<Path> + std::fmt::Debug + Clone>(
 		.ok_or(Error::cache_error_with_env(CacheErrorKind::UnknownSequenceNumber, env))
 }
 
+#[doc(hidden)]
+/// A helper function to read the content of the file as string, given the path.
 fn read_content_from_path<P: AsRef<Path> + std::fmt::Debug + Clone>(
 	path: P,
 ) -> Result<String, Error> {
@@ -377,7 +381,7 @@ mod test {
 
 	#[test]
 	fn test_extract_tx_envelope_from_path() {
-		let path = storage().txs_directory();
+		let path = storage().txs_inner_dir();
 
 		let test_success = |expected_seq: SequenceNumber| {
 			let file_path = format!("{path}/{expected_seq}");
@@ -416,7 +420,7 @@ mod test {
 		assert_error(storage.get_tx_envelope(seq), CacheErrorKind::FileDoesNotExist);
 
 		// get all transactions
-		let path = storage.txs_directory();
+		let path = storage.txs_inner_dir();
 		let directory = read_dir(&path).expect("should be able to read directory");
 
 		// two of these files are invalid.
@@ -475,7 +479,6 @@ mod test {
 	fn test_cursors() {
 		// empty cursor file
 		let storage = storage();
-		storage.remove_cursor().expect("should remove file");
 		assert_eq!(storage.get_last_cursor(), 0);
 
 		// save a cursor

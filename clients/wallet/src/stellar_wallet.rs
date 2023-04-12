@@ -48,7 +48,19 @@ impl StellarWallet {
 
 		let submission_result = horizon_client
 			.submit_transaction(envelope.clone(), self.is_public_network)
-			.await;
+			.await
+			.map(|resp| {
+				// use the paging token to save the latest cursor
+				if let Err(e) = self.cache.save_cursor(resp.paging_token) {
+					// don't throw an error for failure to save the cursor.
+					tracing::warn!(
+						"failed to save paging token {} as the latest cursor: {e:?}",
+						resp.paging_token
+					);
+				}
+
+				resp
+			});
 
 		let _ = self.cache.remove_tx_envelope(*sequence);
 
@@ -209,17 +221,6 @@ impl StellarWallet {
 			}
 		}
 
-		// get the last response that passed, and save its paging token as the latest cursor.
-		if let Some(response) = passed.last() {
-			if let Err(e) = self.cache.save_cursor(response.paging_token) {
-				// don't throw an error for failure to save the cursor.
-				tracing::warn!(
-					"failed to save paging token {} as the latest cursor: {e:?}",
-					response.paging_token
-				);
-			}
-		}
-
 		(passed, errors)
 	}
 
@@ -254,7 +255,7 @@ impl StellarWallet {
 	}
 
 	pub async fn send_payment_to_address(
-		&self,
+		&mut self,
 		destination_address: PublicKey,
 		asset: Asset,
 		stroop_amount: i64,
@@ -365,7 +366,7 @@ mod test {
 			let request_id = [0u8; 32];
 
 			let response = wallet_clone
-				.read()
+				.write()
 				.await
 				.send_payment_to_address(destination, asset, amount, request_id, 100)
 				.await
@@ -386,7 +387,7 @@ mod test {
 			let request_id = [1u8; 32];
 
 			let result = wallet_clone2
-				.read()
+				.write()
 				.await
 				.send_payment_to_address(destination, asset, amount, request_id, 100)
 				.await;
@@ -413,7 +414,7 @@ mod test {
 		let request_id = [0u8; 32];
 
 		let result = wallet
-			.read()
+			.write()
 			.await
 			.send_payment_to_address(destination, asset, amount, request_id, 100)
 			.await;
@@ -430,7 +431,7 @@ mod test {
 	async fn sending_correct_payment_after_incorrect_payment_works() {
 		let wallet =
 			wallet("resources/sending_correct_payment_after_incorrect_payment_works").clone();
-		let mut wallet = wallet.read().await;
+		let mut wallet = wallet.write().await;
 
 		// let's cleanup, just to make sure.
 		wallet.cache.remove_all_tx_envelopes();
@@ -493,7 +494,7 @@ mod test {
 	#[serial]
 	async fn resubmit_transactions_works() {
 		let wallet = wallet("resources/resubmit_transactions_works").clone();
-		let mut wallet = wallet.read().await;
+		let mut wallet = wallet.write().await;
 
 		// let's send a successful transaction first
 		let destination =
