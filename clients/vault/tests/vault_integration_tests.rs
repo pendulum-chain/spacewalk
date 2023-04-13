@@ -879,6 +879,10 @@ async fn test_automatic_issue_execution_succeeds() {
 
 			tracing::warn!("Sent payment to address. Ledger is {:?}", result.unwrap().ledger);
 
+			// Sleep 3 seconds to give other thread some time to receive the RequestIssue event and
+			// add it to the set
+			sleep(Duration::from_secs(5)).await;
+
 			// wait for vault2 to execute this issue
 			assert_event::<ExecuteIssueEvent, _>(TIMEOUT, user_provider.clone(), move |x| {
 				x.vault_id == vault_id.clone() && x.amount == issue_amount
@@ -1011,6 +1015,10 @@ async fn test_automatic_issue_execution_succeeds_for_other_vault() {
 
 			tracing::info!("Sent payment to address. Ledger is {:?}", result.unwrap().ledger);
 
+			// Sleep 3 seconds to give other thread some time to receive the RequestIssue event and
+			// add it to the set
+			sleep(Duration::from_secs(3)).await;
+
 			// wait for vault2 to execute this issue
 			assert_event::<ExecuteIssueEvent, _>(TIMEOUT * 3, user_provider.clone(), move |x| {
 				x.vault_id == vault1_id.clone()
@@ -1138,6 +1146,8 @@ async fn test_execute_open_requests_succeeds() {
 		);
 		drop(wallet_write);
 
+		sleep(Duration::from_secs(3)).await;
+
 		let shutdown_tx = ShutdownSender::new();
 		join4(
 			vault::service::execute_open_requests(
@@ -1149,6 +1159,9 @@ async fn test_execute_open_requests_succeeds() {
 				Duration::from_secs(0),
 			)
 			.map(Result::unwrap),
+			// Sleep 5 second to give other thread some time to receive the RequestIssue event and
+			// add it to the set
+
 			// Redeem 0 should be executed without creating an extra payment since we already sent
 			// one just before
 			assert_execute_redeem_event(TIMEOUT, user_provider.clone(), redeem_ids[0]),

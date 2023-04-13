@@ -465,6 +465,8 @@ pub(crate) struct HorizonFetcher<C: HorizonClient> {
 }
 
 impl<C: HorizonClient + Clone> HorizonFetcher<C> {
+
+	#[allow(dead_code)]
 	pub fn new(client: C, vault_account_public_key: PublicKey, is_public_network: bool) -> Self {
 		Self::new_with_last_known_cursor(client, vault_account_public_key, is_public_network, 0, 0)
 	}
