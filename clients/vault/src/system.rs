@@ -222,7 +222,7 @@ pub struct VaultServiceConfig {
 	#[clap(long, value_parser = parse_collateral_and_amount)]
 	pub auto_register: Vec<(String, String, Option<u128>)>,
 
-	/// Minimum time to the the redeem/replace execution deadline to make the stellar payment.
+	/// Minimum time to the redeem/replace execution deadline to make the stellar payment.
 	#[clap(long, value_parser = parse_duration_minutes, default_value = "1")]
 	pub payment_margin_minutes: Duration,
 
@@ -457,6 +457,7 @@ impl VaultService {
 			// todo: handle timeouts
 			tracing::error!("Failed to resubmit: {:?}", errors);
 		}
+		let last_cursor = wallet.get_last_cursor();
 
 		drop(wallet);
 
@@ -528,6 +529,7 @@ impl VaultService {
 				run(wallet::listen_for_new_transactions(
 					vault_public_key.clone(),
 					is_public_network,
+					last_cursor,
 					ledger_env_map.clone(),
 					issue_map.clone(),
 					memos_to_issue_ids.clone(),

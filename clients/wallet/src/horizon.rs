@@ -5,7 +5,7 @@ use futures::future;
 use parity_scale_codec::{Decode, Encode};
 use primitives::TextMemo;
 use serde::{de::DeserializeOwned, Deserialize, Deserializer};
-use substrate_stellar_sdk::{PublicKey, TransactionEnvelope, XdrCodec};
+use substrate_stellar_sdk::{types::SequenceNumber, PublicKey, TransactionEnvelope, XdrCodec};
 use tokio::{sync::RwLock, time::sleep};
 
 use crate::{
@@ -18,7 +18,8 @@ use crate::{
 pub type Ledger = u32;
 
 const POLL_INTERVAL: u64 = 5000;
-pub const TXS_LIMIT_PER_PAGE: i64 = 500;
+/// See [Stellar doc](https://developers.stellar.org/api/introduction/pagination/page-arguments)
+pub const DEFAULT_PAGE_SIZE: i64 = 200;
 
 /// Interprets the response from Horizon into something easier to read.
 async fn interpret_response<T: DeserializeOwned>(response: reqwest::Response) -> Result<T, Error> {
@@ -131,6 +132,33 @@ where
 #[derive(Deserialize, Debug)]
 pub struct HorizonTransactionsResponse {
 	pub _embedded: EmbeddedTransactions,
+	_links: HorizonLinks,
+}
+
+#[allow(dead_code)]
+impl HorizonTransactionsResponse {
+	fn previous_page(&self) -> String {
+		self._links.prev.href.clone()
+	}
+
+	pub(crate) fn next_page(&self) -> String {
+		self._links.next.href.clone()
+	}
+
+	pub(crate) fn records(self) -> Vec<TransactionResponse> {
+		self._embedded.records
+	}
+}
+
+#[derive(Deserialize, Debug)]
+pub struct HorizonLinks {
+	next: HrefPage,
+	prev: HrefPage,
+}
+
+#[derive(Deserialize, Debug)]
+pub struct HrefPage {
+	pub href: String,
 }
 
 #[derive(Deserialize, Debug)]
@@ -194,6 +222,13 @@ impl TransactionResponse {
 	pub fn to_envelope(&self) -> Result<TransactionEnvelope, Error> {
 		TransactionEnvelope::from_base64_xdr(self.envelope_xdr.clone())
 			.map_err(|_| Error::DecodeError)
+	}
+
+	pub fn source_account_sequence(&self) -> Result<SequenceNumber, Error> {
+		let res = String::from_utf8(self.source_account_sequence.clone())
+			.map_err(|_| Error::DecodeError)?;
+
+		res.parse::<SequenceNumber>().map_err(|_| Error::DecodeError)
 	}
 }
 
@@ -270,8 +305,53 @@ pub const fn horizon_url(is_public_network: bool) -> &'static str {
 	}
 }
 
+/// An iter structure equivalent to a list of TransactionResponse
+pub struct TransactionsResponseIter<C> {
+	/// holds a maximum of 200 items
+	pub(crate) records: Vec<TransactionResponse>,
+	/// the url for the next page
+	pub(crate) next_page: String,
+	/// a client capaable to do get operation
+	pub(crate) client: C,
+}
+
+impl<C: HorizonClient> TransactionsResponseIter<C> {
+	fn is_empty(&self) -> bool {
+		self.records.is_empty()
+	}
+
+	#[doc(hidden)]
+	// returns the first record of the list
+	fn get_top_record(&mut self) -> Option<TransactionResponse> {
+		if !self.is_empty() {
+			return Some(self.records.remove(0))
+		}
+		None
+	}
+
+	/// returns the next TransactionResponse in the list
+	pub async fn next(&mut self) -> Option<TransactionResponse> {
+		match self.get_top_record() {
+			Some(record) => Some(record),
+			None => {
+				// call the next page
+				tracing::debug!("calling next page: {}", &self.next_page);
+
+				let response: HorizonTransactionsResponse =
+					self.client.get_from_url(&self.next_page).await.ok()?;
+				self.next_page = response.next_page();
+				self.records = response.records();
+
+				self.get_top_record()
+			},
+		}
+	}
+}
+
 #[async_trait]
 pub trait HorizonClient {
+	async fn get_from_url<R: DeserializeOwned>(&self, url: &str) -> Result<R, Error>;
+
 	async fn get_transactions(
 		&self,
 		account_id: &str,
@@ -280,11 +360,13 @@ pub trait HorizonClient {
 		limit: i64,
 		order_ascending: bool,
 	) -> Result<HorizonTransactionsResponse, Error>;
+
 	async fn get_account(
 		&self,
 		account_encoded: &str,
 		is_public_network: bool,
 	) -> Result<HorizonAccountResponse, Error>;
+
 	async fn submit_transaction(
 		&self,
 		transaction: TransactionEnvelope,
@@ -294,6 +376,11 @@ pub trait HorizonClient {
 
 #[async_trait]
 impl HorizonClient for reqwest::Client {
+	async fn get_from_url<R: DeserializeOwned>(&self, url: &str) -> Result<R, Error> {
+		let response = self.get(url).send().await.map_err(Error::HttpFetchingError)?;
+		interpret_response::<R>(response).await
+	}
+
 	async fn get_transactions(
 		&self,
 		account_id: &str,
@@ -321,8 +408,7 @@ impl HorizonClient for reqwest::Client {
 			url = format!("{}&order=desc", url);
 		}
 
-		let response = self.get(url).send().await.map_err(Error::HttpFetchingError)?;
-		interpret_response::<HorizonTransactionsResponse>(response).await
+		self.get_from_url(&url).await
 	}
 
 	async fn get_account(
@@ -333,9 +419,7 @@ impl HorizonClient for reqwest::Client {
 		let base_url = horizon_url(is_public_network);
 		let url = format!("{}/accounts/{}", base_url, account_encoded);
 
-		let response = self.get(url).send().await.map_err(Error::HttpFetchingError)?;
-
-		interpret_response::<HorizonAccountResponse>(response).await
+		self.get_from_url(&url).await
 	}
 
 	async fn submit_transaction(
@@ -374,79 +458,71 @@ pub(crate) struct HorizonFetcher<C: HorizonClient> {
 	client: C,
 	is_public_network: bool,
 	vault_account_public_key: PublicKey,
+	/// keeps track of the latest sequence number
+	last_sequence: SequenceNumber,
+	/// records the last known cursor
+	last_cursor: PagingToken,
 }
 
-const DEFAULT_PAGE_SIZE: i64 = 200;
-
-impl<C: HorizonClient> HorizonFetcher<C> {
+impl<C: HorizonClient + Clone> HorizonFetcher<C> {
 	pub fn new(client: C, vault_account_public_key: PublicKey, is_public_network: bool) -> Self {
-		Self { client, vault_account_public_key, is_public_network }
+		Self::new_with_last_known_cursor(client, vault_account_public_key, is_public_network, 0, 0)
 	}
 
-	/// Fetch recent transactions from remote and deserialize to HorizonResponse
-	async fn fetch_latest_txs(
-		&self,
-		cursor: PagingToken,
-	) -> Result<HorizonTransactionsResponse, Error> {
+	pub fn new_with_last_known_cursor(
+		client: C,
+		vault_account_public_key: PublicKey,
+		is_public_network: bool,
+		last_sequence: SequenceNumber,
+		last_cursor: PagingToken,
+	) -> Self {
+		Self { client, vault_account_public_key, is_public_network, last_sequence, last_cursor }
+	}
+
+	/// Returns an iter for a list of transactions.
+	/// This method is LOOKING FORWARD, so the list is in ASCENDING order:
+	/// starting from the oldest ones, or depending on the last cursor
+	async fn fetch_transactions_iter(&self) -> Result<TransactionsResponseIter<C>, Error> {
 		let public_key_encoded = self.vault_account_public_key.to_encoding();
 		let account_id = std::str::from_utf8(&public_key_encoded).map_err(Error::Utf8Error)?;
 
-		if cursor == 0 {
-			// Fetch the first/latest transaction and set it as the new paging token
-			self.client
-				.get_transactions(account_id, self.is_public_network, 0, 1, false)
-				.await
-		} else {
-			// If we have a paging token, fetch the transactions that occurred after our last stored
-			// paging token
-			self.client
-				.get_transactions(
-					account_id,
-					self.is_public_network,
-					cursor,
-					DEFAULT_PAGE_SIZE,
-					true,
-				)
-				.await
-		}
+		let transactions_response = self
+			.client
+			.get_transactions(
+				account_id,
+				self.is_public_network,
+				self.last_cursor,
+				DEFAULT_PAGE_SIZE,
+				true,
+			)
+			.await?;
+
+		let next_page = transactions_response.next_page();
+		let records = transactions_response.records();
+
+		Ok(TransactionsResponseIter { records, next_page, client: self.client.clone() })
 	}
 
 	/// Fetches the transactions from horizon
 	///
 	/// # Arguments
-	/// * `ledger_env_map` -  a list of TransactionEnvelopes and its corresponding ledger it belongs
-	///   to
+	/// * `ledger_env_map` -  list of TransactionEnvelopes and the ledger it belongs to
 	/// * `targets` - helps in filtering out the transactions to save
 	/// * `is_public_network` - the network the transaction belongs to
 	/// * `filter` - logic to save the needed transaction
-	/// * `last_paging_token` - acts as a marker to scroll over sets of transactions
 	pub async fn fetch_horizon_and_process_new_transactions<T: Clone, U: Clone>(
 		&mut self,
 		ledger_env_map: Arc<RwLock<LedgerTxEnvMap>>,
 		issue_map: Arc<RwLock<T>>,
 		memos_to_issue_ids: Arc<RwLock<U>>,
 		filter: impl FilterWith<T, U>,
-		last_paging_token: PagingToken,
-	) -> PagingToken {
-		let res = self.fetch_latest_txs(last_paging_token).await;
-		let transactions = match res {
-			Ok(txs) => txs._embedded.records,
-			Err(e) => {
-				tracing::warn!("Failed to fetch transactions: {:?}", e);
-				Vec::new()
-			},
-		};
-
-		// Define the new latest paging token as the highest paging token of the transactions we
-		// received or the last paging token if we didn't receive any transactions
-		let latest_paging_token =
-			transactions.iter().map(|tx| tx.paging_token).max().unwrap_or(last_paging_token);
+	) -> Result<(), Error> {
+		let mut response_iter = self.fetch_transactions_iter().await?;
 
 		let (issue_map, memos_to_issue_ids) =
 			future::join(issue_map.read(), memos_to_issue_ids.read()).await;
-		for transaction in transactions {
-			let tx = transaction.clone();
 
+		while let Some(tx) = response_iter.next().await {
 			if filter.is_relevant(tx.clone(), &issue_map, &memos_to_issue_ids) {
 				tracing::info!(
 					"Adding transaction {:?} with slot {} to the ledger_env_map",
@@ -457,9 +533,15 @@ impl<C: HorizonClient> HorizonFetcher<C> {
 					ledger_env_map.write().await.insert(tx.ledger, tx_env);
 				}
 			}
+
+			if response_iter.is_empty() {
+				// save the last cursor and the last sequence found.
+				self.last_cursor = tx.paging_token;
+				self.last_sequence = tx.source_account_sequence()?;
+			}
 		}
 
-		latest_paging_token
+		Ok(())
 	}
 }
 
@@ -469,12 +551,14 @@ impl<C: HorizonClient> HorizonFetcher<C> {
 ///
 /// * `vault_account_public_key` - used to get the transaction
 /// * `is_public_network` - the network the transaction belongs to
+/// * `last_cursor` - the last page known, containing the latest transactions
 /// * `ledger_env_map` -  a list of TransactionEnvelopes and its corresponding ledger it belongs to
 /// * `targets` - helps in filtering out the transactions to save
 /// * `filter` - logic to save the needed transaction
 pub async fn listen_for_new_transactions<T, U, Filter>(
 	vault_account_public_key: PublicKey,
 	is_public_network: bool,
+	last_cursor: PagingToken,
 	ledger_env_map: Arc<RwLock<LedgerTxEnvMap>>,
 	issue_map: Arc<RwLock<T>>,
 	memos_to_issue_ids: Arc<RwLock<U>>,
@@ -486,21 +570,23 @@ where
 	Filter: FilterWith<T, U> + Clone,
 {
 	let horizon_client = reqwest::Client::new();
-	let mut fetcher =
-		HorizonFetcher::new(horizon_client, vault_account_public_key, is_public_network);
-
-	let mut latest_paging_token: PagingToken = 0;
+	let mut fetcher = HorizonFetcher::new_with_last_known_cursor(
+		horizon_client,
+		vault_account_public_key,
+		is_public_network,
+		0,
+		last_cursor,
+	);
 
 	loop {
-		latest_paging_token = fetcher
+		fetcher
 			.fetch_horizon_and_process_new_transactions(
 				ledger_env_map.clone(),
 				issue_map.clone(),
 				memos_to_issue_ids.clone(),
 				filter.clone(),
-				latest_paging_token,
 			)
-			.await;
+			.await?;
 
 		sleep(Duration::from_millis(POLL_INTERVAL)).await;
 	}
@@ -652,27 +738,29 @@ mod tests {
 	}
 
 	#[tokio::test(flavor = "multi_thread")]
-	async fn horizon_fetch_txs_cursor() {
+	async fn fetch_transactions_iter_success() {
 		let horizon_client = reqwest::Client::new();
 		let secret = SecretKey::from_encoding(SECRET).unwrap();
 		let fetcher = HorizonFetcher::new(horizon_client, secret.get_public().clone(), false);
 
-		let res = fetcher.fetch_latest_txs(0).await.expect("should return a response");
-		let txs = res._embedded.records;
-		let latest_paging_token = txs.iter().map(|tx| tx.paging_token).max().unwrap_or(0);
+		let mut response_iter =
+			fetcher.fetch_transactions_iter().await.expect("should return a response");
 
-		assert_ne!(latest_paging_token, 0);
-		let res = fetcher
-			.fetch_latest_txs(latest_paging_token)
-			.await
-			.expect("should return a response");
-		// assert that when using the latest paging token for fetching we don't get any new
-		// transactions
-		assert_eq!(res._embedded.records.len(), 0);
+		let next_page = response_iter.next_page.clone();
+		assert!(!next_page.is_empty());
+
+		for _ in 0..response_iter.records.len() {
+			assert!(response_iter.next().await.is_some());
+		}
+
+		// the list should be empty, as the last record was returned.
+		assert_eq!(response_iter.records.len(), 0);
+
+		// todo: when this account's # of transactions is more than 200, add a test case for it.
 	}
 
 	#[tokio::test(flavor = "multi_thread")]
-	async fn client_test_for_polling() {
+	async fn fetch_horizon_and_process_new_transactions_success() {
 		let issue_hashes = Arc::new(RwLock::new(vec![]));
 		let memos_to_issue_ids = Arc::new(RwLock::new(vec![]));
 		let slot_env_map = Arc::new(RwLock::new(HashMap::new()));
@@ -683,25 +771,15 @@ mod tests {
 
 		assert!(slot_env_map.read().await.is_empty());
 
-		let cursor = fetcher
-			.fetch_horizon_and_process_new_transactions(
-				slot_env_map.clone(),
-				issue_hashes.clone(),
-				memos_to_issue_ids.clone(),
-				MockFilter,
-				0u128,
-			)
-			.await;
-
 		fetcher
 			.fetch_horizon_and_process_new_transactions(
 				slot_env_map.clone(),
 				issue_hashes.clone(),
 				memos_to_issue_ids.clone(),
 				MockFilter,
-				cursor,
 			)
-			.await;
+			.await
+			.expect("should fetch fine");
 
 		assert!(!slot_env_map.read().await.is_empty());
 	}

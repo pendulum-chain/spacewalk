@@ -713,6 +713,7 @@ async fn test_issue_cancel_succeeds() {
 			vault::service::listen_for_new_transactions(
 				wallet_read.get_public_key(),
 				wallet_read.is_public_network(),
+				0,
 				slot_tx_env_map.clone(),
 				issue_set.clone(),
 				memos_to_issue_ids.clone(),
@@ -896,6 +897,7 @@ async fn test_automatic_issue_execution_succeeds() {
 			vault::service::listen_for_new_transactions(
 				wallet_read.get_public_key(),
 				wallet_read.is_public_network(),
+				0,
 				slot_tx_env_map.clone(),
 				issue_set.clone(),
 				memos_to_issue_ids.clone(),
@@ -1034,6 +1036,7 @@ async fn test_automatic_issue_execution_succeeds_for_other_vault() {
 			vault::service::listen_for_new_transactions(
 				vault_account_public_key.clone(),
 				CFG.is_public_network(),
+				0,
 				slot_tx_env_map.clone(),
 				issue_set_arc.clone(),
 				memos_to_issue_ids.clone(),

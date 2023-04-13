@@ -16,7 +16,11 @@ use crate::{
 	types::StellarPublicKeyRaw,
 };
 
-use crate::{error::CacheErrorKind, horizon::TXS_LIMIT_PER_PAGE, types::PagingToken};
+use crate::{
+	error::CacheErrorKind,
+	horizon::{TransactionsResponseIter, DEFAULT_PAGE_SIZE},
+	types::PagingToken,
+};
 use primitives::{derive_shortened_request_id, TransactionEnvelopeExt};
 
 #[derive(Clone)]
@@ -48,19 +52,7 @@ impl StellarWallet {
 
 		let submission_result = horizon_client
 			.submit_transaction(envelope.clone(), self.is_public_network)
-			.await
-			.map(|resp| {
-				// use the paging token to save the latest cursor
-				if let Err(e) = self.cache.save_cursor(resp.paging_token) {
-					// don't throw an error for failure to save the cursor.
-					tracing::warn!(
-						"failed to save paging token {} as the latest cursor: {e:?}",
-						resp.paging_token
-					);
-				}
-
-				resp
-			});
+			.await;
 
 		let _ = self.cache.remove_tx_envelope(*sequence);
 
@@ -176,29 +168,25 @@ impl StellarWallet {
 		self.cache.save_cursor(paging_token)
 	}
 
-	pub async fn get_latest_transactions(
+	/// Returns an iter for all transactions.
+	/// This method is looking BACKWARDS, so the transactions are in DESCENDING order:
+	/// starting from the LATEST ones, at the time of the call.
+	pub async fn get_all_transactions_iter(
 		&self,
-		order_ascending: bool,
-	) -> Result<Vec<TransactionResponse>, Error> {
-		let horizon_client = reqwest::Client::new();
+	) -> Result<TransactionsResponseIter<Client>, Error> {
+		let horizon_client = Client::new();
 
 		let public_key_encoded = self.get_public_key().to_encoding();
 		let account_id = std::str::from_utf8(&public_key_encoded).map_err(Error::Utf8Error)?;
 
-		let cursor = self.cache.get_last_cursor();
 		let transactions_response = horizon_client
-			.get_transactions(
-				account_id,
-				self.is_public_network,
-				cursor,
-				TXS_LIMIT_PER_PAGE,
-				order_ascending,
-			)
+			.get_transactions(account_id, self.is_public_network, 0, DEFAULT_PAGE_SIZE, false)
 			.await?;
 
-		let transactions = transactions_response._embedded.records;
+		let next_page = transactions_response.next_page();
+		let records = transactions_response.records();
 
-		Ok(transactions)
+		Ok(TransactionsResponseIter { records, next_page, client: horizon_client })
 	}
 
 	/// Submits transactions found in the wallet's cache to Stellar.
