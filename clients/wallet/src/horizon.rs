@@ -311,7 +311,7 @@ pub struct TransactionsResponseIter<C> {
 	pub(crate) records: Vec<TransactionResponse>,
 	/// the url for the next page
 	pub(crate) next_page: String,
-	/// a client capaable to do get operation
+	/// a client capable to do GET operation
 	pub(crate) client: C,
 }
 
@@ -465,7 +465,6 @@ pub(crate) struct HorizonFetcher<C: HorizonClient> {
 }
 
 impl<C: HorizonClient + Clone> HorizonFetcher<C> {
-
 	#[allow(dead_code)]
 	pub fn new(client: C, vault_account_public_key: PublicKey, is_public_network: bool) -> Self {
 		Self::new_with_last_known_cursor(client, vault_account_public_key, is_public_network, 0, 0)
@@ -519,12 +518,12 @@ impl<C: HorizonClient + Clone> HorizonFetcher<C> {
 		memos_to_issue_ids: Arc<RwLock<U>>,
 		filter: impl FilterWith<T, U>,
 	) -> Result<(), Error> {
-		let mut response_iter = self.fetch_transactions_iter().await?;
+		let mut txs_iter = self.fetch_transactions_iter().await?;
 
 		let (issue_map, memos_to_issue_ids) =
 			future::join(issue_map.read(), memos_to_issue_ids.read()).await;
 
-		while let Some(tx) = response_iter.next().await {
+		while let Some(tx) = txs_iter.next().await {
 			if filter.is_relevant(tx.clone(), &issue_map, &memos_to_issue_ids) {
 				tracing::info!(
 					"Adding transaction {:?} with slot {} to the ledger_env_map",
@@ -536,7 +535,7 @@ impl<C: HorizonClient + Clone> HorizonFetcher<C> {
 				}
 			}
 
-			if response_iter.is_empty() {
+			if txs_iter.is_empty() {
 				// save the last cursor and the last sequence found.
 				self.last_cursor = tx.paging_token;
 				self.last_sequence = tx.source_account_sequence()?;
@@ -745,18 +744,18 @@ mod tests {
 		let secret = SecretKey::from_encoding(SECRET).unwrap();
 		let fetcher = HorizonFetcher::new(horizon_client, secret.get_public().clone(), false);
 
-		let mut response_iter =
+		let mut txs_iter =
 			fetcher.fetch_transactions_iter().await.expect("should return a response");
 
-		let next_page = response_iter.next_page.clone();
+		let next_page = txs_iter.next_page.clone();
 		assert!(!next_page.is_empty());
 
-		for _ in 0..response_iter.records.len() {
-			assert!(response_iter.next().await.is_some());
+		for _ in 0..txs_iter.records.len() {
+			assert!(txs_iter.next().await.is_some());
 		}
 
 		// the list should be empty, as the last record was returned.
-		assert_eq!(response_iter.records.len(), 0);
+		assert_eq!(txs_iter.records.len(), 0);
 
 		// todo: when this account's # of transactions is more than 200, add a test case for it.
 	}
