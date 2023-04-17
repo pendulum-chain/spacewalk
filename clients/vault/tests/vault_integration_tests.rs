@@ -21,7 +21,7 @@ use runtime::{
 use stellar_relay_lib::{sdk::PublicKey, StellarOverlayConfig};
 
 use vault::{
-	oracle::{start_oracle_agent, test_secret_key, test_stellar_relay_config, OracleAgent},
+	oracle::{get_test_secret_key, get_test_stellar_relay_config, start_oracle_agent, OracleAgent},
 	service::IssueFilter,
 	ArcRwLock, Event as CancellationEvent, VaultIdManager,
 };
@@ -41,8 +41,8 @@ const DEFAULT_WRAPPED_CURRENCY: CurrencyId = CurrencyId::AlphaNum4(
 );
 
 lazy_static! {
-	static ref CFG: StellarOverlayConfig = test_stellar_relay_config(false);
-	static ref SECRET_KEY: String = test_secret_key(false);
+	static ref CFG: StellarOverlayConfig = get_test_stellar_relay_config(false);
+	static ref SECRET_KEY: String = get_test_secret_key(false);
 }
 
 // A simple helper function to convert StellarStroops (i64) to the up-scaled u128

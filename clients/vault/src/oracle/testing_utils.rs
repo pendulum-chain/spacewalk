@@ -1,4 +1,4 @@
-pub fn test_stellar_relay_config(is_mainnet: bool) -> stellar_relay_lib::StellarOverlayConfig {
+pub fn get_test_stellar_relay_config(is_mainnet: bool) -> stellar_relay_lib::StellarOverlayConfig {
 	use rand::seq::SliceRandom;
 
 	let stellar_node_points: Vec<&str> = if is_mainnet {
@@ -17,7 +17,7 @@ pub fn test_stellar_relay_config(is_mainnet: bool) -> stellar_relay_lib::Stellar
 		.expect("should be able to extract config")
 }
 
-pub fn test_secret_key(is_mainnet: bool) -> String {
+pub fn get_test_secret_key(is_mainnet: bool) -> String {
 	let file_name = if is_mainnet { "mainnet" } else { "testnet" };
 	let path = format!("./resources/secretkey/stellar_secretkey_{file_name}");
 	std::fs::read_to_string(path).expect("should return a string")
