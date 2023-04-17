@@ -51,9 +51,9 @@ pallet-grandpa = {git = "https://github.com/paritytech/substrate", branch = "pol
 sp-consensus-aura = {git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.37", default-features = false}
 
 # Orml dependencies
-orml-currencies = { version = "0.4.1-dev", default-features = false}
-orml-tokens = { version = "0.4.1-dev", default-features = false}
-orml-traits = { version = "0.4.1-dev", default-features = false}
+orml-currencies = {git = "https://github.com/open-web3-stack/open-runtime-module-library", branch = "polkadot-v0.9.37", default-features = false}
+orml-tokens = {git = "https://github.com/open-web3-stack/open-runtime-module-library", branch = "polkadot-v0.9.37", default-features = false}
+orml-traits = {git = "https://github.com/open-web3-stack/open-runtime-module-library", branch = "polkadot-v0.9.37", default-features = false}
 
 currency = {path = "../../pallets/currency", default-features = false}
 fee = {path = "../../pallets/fee", default-features = false}

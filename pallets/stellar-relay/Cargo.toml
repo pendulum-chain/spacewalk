@@ -38,8 +38,8 @@ sp-io = { default-features = false, git = "https://github.com/paritytech/substra
 sp-runtime = { default-features = false, git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.37" }
 
 # Orml dependencies
-orml-tokens = { version = "0.4.1-dev" }
-orml-traits = { version = "0.4.1-dev" }
+orml-tokens = { git = "https://github.com/open-web3-stack/open-runtime-module-library", branch = "polkadot-v0.9.37" }
+orml-traits = { git = "https://github.com/open-web3-stack/open-runtime-module-library", branch = "polkadot-v0.9.37" }
 
 # For testing
 rand = "0.8.5"

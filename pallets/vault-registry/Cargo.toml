@@ -39,9 +39,9 @@ security = {path = "../security", default-features = false}
 staking = {path = "../staking", default-features = false}
 
 # Orml dependencies
-orml-currencies = { version = "0.4.1-dev", default-features = false }
-orml-tokens = { version = "0.4.1-dev", default-features = false}
-orml-traits = { version = "0.4.1-dev", default-features = false}
+orml-currencies = { git = "https://github.com/open-web3-stack/open-runtime-module-library", branch = "polkadot-v0.9.37", default-features = false }
+orml-tokens = {git = "https://github.com/open-web3-stack/open-runtime-module-library", branch = "polkadot-v0.9.37", default-features = false}
+orml-traits = {git = "https://github.com/open-web3-stack/open-runtime-module-library", branch = "polkadot-v0.9.37", default-features = false}
 
 [dev-dependencies]
 currency = {path = "../currency", default-features = false, features = ["testing-utils", "testing-constants"]}

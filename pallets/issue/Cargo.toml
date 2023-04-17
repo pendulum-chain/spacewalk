@@ -38,9 +38,9 @@ vault-registry = { path = "../vault-registry", default-features = false }
 primitives = { package = "spacewalk-primitives", path = "../../primitives", default-features = false }
 
 # Orml dependencies
-orml-currencies = { version = "0.4.1-dev", default-features = false }
-orml-tokens = { version = "0.4.1-dev", default-features = false, optional = true }
-orml-traits = { version = "0.4.1-dev", default-features = false, optional = true }
+orml-currencies = { git = "https://github.com/open-web3-stack/open-runtime-module-library", branch = "polkadot-v0.9.37", default-features = false }
+orml-tokens = { git = "https://github.com/open-web3-stack/open-runtime-module-library", branch = "polkadot-v0.9.37", default-features = false, optional = true }
+orml-traits = { git = "https://github.com/open-web3-stack/open-runtime-module-library", branch = "polkadot-v0.9.37", default-features = false, optional = true }
 
 [dev-dependencies]
 mocktopus = "0.8.0"
@@ -54,8 +54,8 @@ security = { path = "../security", features = ['testing-utils'] }
 oracle = { path = "../oracle", features = ['testing-utils'] }
 
 # Orml dependencies
-orml-tokens = { version = "0.4.1-dev" }
-orml-traits = { version = "0.4.1-dev" }
+orml-tokens = { git = "https://github.com/open-web3-stack/open-runtime-module-library", branch = "polkadot-v0.9.37" }
+orml-traits = { git = "https://github.com/open-web3-stack/open-runtime-module-library", branch = "polkadot-v0.9.37" }
 
 
 [features]
