@@ -875,7 +875,7 @@ async fn test_automatic_issue_execution_succeeds() {
 
 			// Sleep 3 seconds to give other thread some time to receive the RequestIssue event and
 			// add it to the set
-			sleep(Duration::from_secs(5)).await;
+			sleep(Duration::from_secs(3)).await;
 
 			// wait for vault2 to execute this issue
 			assert_event::<ExecuteIssueEvent, _>(TIMEOUT, user_provider.clone(), move |x| {
