@@ -162,7 +162,7 @@ mod test {
 	};
 
 	fn stellar_history_base_url() -> String {
-		test_stellar_relay_config().stellar_history_base_url()
+		test_stellar_relay_config(true).stellar_history_base_url()
 	}
 
 	#[test]

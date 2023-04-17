@@ -458,32 +458,21 @@ pub(crate) struct HorizonFetcher<C: HorizonClient> {
 	client: C,
 	is_public_network: bool,
 	vault_account_public_key: PublicKey,
-	/// keeps track of the latest sequence number
-	last_sequence: SequenceNumber,
-	/// records the last known cursor
-	last_cursor: PagingToken,
 }
 
 impl<C: HorizonClient + Clone> HorizonFetcher<C> {
 	#[allow(dead_code)]
 	pub fn new(client: C, vault_account_public_key: PublicKey, is_public_network: bool) -> Self {
-		Self::new_with_last_known_cursor(client, vault_account_public_key, is_public_network, 0, 0)
-	}
-
-	pub fn new_with_last_known_cursor(
-		client: C,
-		vault_account_public_key: PublicKey,
-		is_public_network: bool,
-		last_sequence: SequenceNumber,
-		last_cursor: PagingToken,
-	) -> Self {
-		Self { client, vault_account_public_key, is_public_network, last_sequence, last_cursor }
+		Self { client, vault_account_public_key, is_public_network }
 	}
 
 	/// Returns an iter for a list of transactions.
 	/// This method is LOOKING FORWARD, so the list is in ASCENDING order:
 	/// starting from the oldest ones, or depending on the last cursor
-	async fn fetch_transactions_iter(&self) -> Result<TransactionsResponseIter<C>, Error> {
+	async fn fetch_transactions_iter(
+		&self,
+		last_cursor: PagingToken,
+	) -> Result<TransactionsResponseIter<C>, Error> {
 		let public_key_encoded = self.vault_account_public_key.to_encoding();
 		let account_id = std::str::from_utf8(&public_key_encoded).map_err(Error::Utf8Error)?;
 
@@ -492,7 +481,7 @@ impl<C: HorizonClient + Clone> HorizonFetcher<C> {
 			.get_transactions(
 				account_id,
 				self.is_public_network,
-				self.last_cursor,
+				last_cursor,
 				DEFAULT_PAGE_SIZE,
 				true,
 			)
@@ -517,8 +506,11 @@ impl<C: HorizonClient + Clone> HorizonFetcher<C> {
 		issue_map: Arc<RwLock<T>>,
 		memos_to_issue_ids: Arc<RwLock<U>>,
 		filter: impl FilterWith<T, U>,
-	) -> Result<(), Error> {
-		let mut txs_iter = self.fetch_transactions_iter().await?;
+		last_cursor: PagingToken,
+	) -> Result<PagingToken, Error> {
+		let mut last_cursor = last_cursor;
+
+		let mut txs_iter = self.fetch_transactions_iter(last_cursor).await?;
 
 		let (issue_map, memos_to_issue_ids) =
 			future::join(issue_map.read(), memos_to_issue_ids.read()).await;
@@ -537,12 +529,11 @@ impl<C: HorizonClient + Clone> HorizonFetcher<C> {
 
 			if txs_iter.is_empty() {
 				// save the last cursor and the last sequence found.
-				self.last_cursor = tx.paging_token;
-				self.last_sequence = tx.source_account_sequence()?;
+				last_cursor = tx.paging_token;
 			}
 		}
 
-		Ok(())
+		Ok(last_cursor)
 	}
 }
 
@@ -559,7 +550,6 @@ impl<C: HorizonClient + Clone> HorizonFetcher<C> {
 pub async fn listen_for_new_transactions<T, U, Filter>(
 	vault_account_public_key: PublicKey,
 	is_public_network: bool,
-	last_cursor: PagingToken,
 	ledger_env_map: Arc<RwLock<LedgerTxEnvMap>>,
 	issue_map: Arc<RwLock<T>>,
 	memos_to_issue_ids: Arc<RwLock<U>>,
@@ -571,21 +561,19 @@ where
 	Filter: FilterWith<T, U> + Clone,
 {
 	let horizon_client = reqwest::Client::new();
-	let mut fetcher = HorizonFetcher::new_with_last_known_cursor(
-		horizon_client,
-		vault_account_public_key,
-		is_public_network,
-		0,
-		last_cursor,
-	);
+	let mut fetcher =
+		HorizonFetcher::new(horizon_client, vault_account_public_key, is_public_network);
+
+	let mut last_cursor = 0;
 
 	loop {
-		fetcher
+		last_cursor = fetcher
 			.fetch_horizon_and_process_new_transactions(
 				ledger_env_map.clone(),
 				issue_map.clone(),
 				memos_to_issue_ids.clone(),
 				filter.clone(),
+				last_cursor,
 			)
 			.await?;
 
@@ -745,7 +733,7 @@ mod tests {
 		let fetcher = HorizonFetcher::new(horizon_client, secret.get_public().clone(), false);
 
 		let mut txs_iter =
-			fetcher.fetch_transactions_iter().await.expect("should return a response");
+			fetcher.fetch_transactions_iter(0).await.expect("should return a response");
 
 		let next_page = txs_iter.next_page.clone();
 		assert!(!next_page.is_empty());
@@ -778,6 +766,7 @@ mod tests {
 				issue_hashes.clone(),
 				memos_to_issue_ids.clone(),
 				MockFilter,
+				0,
 			)
 			.await
 			.expect("should fetch fine");

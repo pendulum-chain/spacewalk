@@ -457,7 +457,6 @@ impl VaultService {
 			// todo: handle timeouts
 			tracing::error!("Failed to resubmit: {:?}", errors);
 		}
-		let last_cursor = wallet.get_last_cursor();
 
 		drop(wallet);
 
@@ -529,7 +528,6 @@ impl VaultService {
 				run(wallet::listen_for_new_transactions(
 					vault_public_key.clone(),
 					is_public_network,
-					last_cursor,
 					ledger_env_map.clone(),
 					issue_map.clone(),
 					memos_to_issue_ids.clone(),

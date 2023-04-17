@@ -182,7 +182,7 @@ mod tests {
 	#[tokio::test]
 	#[ntest::timeout(1_800_000)] // timeout at 30 minutes
 	async fn test_get_proof_for_current_slot() {
-		let agent = start_oracle_agent(test_stellar_relay_config(), &test_secret_key())
+		let agent = start_oracle_agent(test_stellar_relay_config(false), &test_secret_key(false))
 			.await
 			.expect("Failed to start agent");
 		sleep(Duration::from_secs(10)).await;
@@ -206,7 +206,7 @@ mod tests {
 		let scp_archive_storage = ScpArchiveStorage::default();
 		let tx_archive_storage = TransactionsArchiveStorage::default();
 
-		let agent = start_oracle_agent(test_stellar_relay_config(), &test_secret_key())
+		let agent = start_oracle_agent(test_stellar_relay_config(true), &test_secret_key(true))
 			.await
 			.expect("Failed to start agent");
 
