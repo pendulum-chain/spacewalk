@@ -157,12 +157,12 @@ mod test {
 	use stellar_relay_lib::sdk::network::{PUBLIC_NETWORK, TEST_NETWORK};
 
 	use crate::oracle::{
-		collector::ScpMessageCollector, test_stellar_relay_config, traits::FileHandler,
+		collector::ScpMessageCollector, get_test_stellar_relay_config, traits::FileHandler,
 		types::LifoMap, EnvelopesFileHandler, TxSetsFileHandler,
 	};
 
 	fn stellar_history_base_url() -> String {
-		test_stellar_relay_config().stellar_history_base_url()
+		get_test_stellar_relay_config(true).stellar_history_base_url()
 	}
 
 	#[test]

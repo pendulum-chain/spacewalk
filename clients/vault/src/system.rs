@@ -222,7 +222,7 @@ pub struct VaultServiceConfig {
 	#[clap(long, value_parser = parse_collateral_and_amount)]
 	pub auto_register: Vec<(String, String, Option<u128>)>,
 
-	/// Minimum time to the the redeem/replace execution deadline to make the stellar payment.
+	/// Minimum time to the redeem/replace execution deadline to make the stellar payment.
 	#[clap(long, value_parser = parse_duration_minutes, default_value = "1")]
 	pub payment_margin_minutes: Duration,
 
@@ -447,7 +447,7 @@ impl VaultService {
 		// purposefully _after_ maybe_register_vault and _before_ other calls
 		self.vault_id_manager.fetch_vault_ids().await?;
 
-		let mut wallet = self.stellar_wallet.write().await;
+		let wallet = self.stellar_wallet.write().await;
 		let vault_public_key = wallet.get_public_key();
 		let is_public_network = wallet.is_public_network();
 

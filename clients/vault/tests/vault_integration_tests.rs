@@ -21,7 +21,7 @@ use runtime::{
 use stellar_relay_lib::{sdk::PublicKey, StellarOverlayConfig};
 
 use vault::{
-	oracle::{start_oracle_agent, OracleAgent},
+	oracle::{get_test_secret_key, get_test_stellar_relay_config, start_oracle_agent, OracleAgent},
 	service::IssueFilter,
 	ArcRwLock, Event as CancellationEvent, VaultIdManager,
 };
@@ -40,14 +40,9 @@ const DEFAULT_WRAPPED_CURRENCY: CurrencyId = CurrencyId::AlphaNum4(
 	],
 );
 
-const CONFIG_ADDR: &str = "./resources/config/testnet/stellar_relay_config_sdftest1.json";
-const SECRET_KEY_PATH: &str = "./resources/secretkey/stellar_secretkey_testnet";
-
 lazy_static! {
-	static ref CFG: StellarOverlayConfig =
-		StellarOverlayConfig::try_from_path(CONFIG_ADDR).unwrap();
-	static ref SECRET_KEY: String =
-		std::fs::read_to_string(SECRET_KEY_PATH).expect("should return a string");
+	static ref CFG: StellarOverlayConfig = get_test_stellar_relay_config(false);
+	static ref SECRET_KEY: String = get_test_secret_key(false);
 }
 
 // A simple helper function to convert StellarStroops (i64) to the up-scaled u128
@@ -878,6 +873,10 @@ async fn test_automatic_issue_execution_succeeds() {
 
 			tracing::warn!("Sent payment to address. Ledger is {:?}", result.unwrap().ledger);
 
+			// Sleep 3 seconds to give other thread some time to receive the RequestIssue event and
+			// add it to the set
+			sleep(Duration::from_secs(3)).await;
+
 			// wait for vault2 to execute this issue
 			assert_event::<ExecuteIssueEvent, _>(TIMEOUT, user_provider.clone(), move |x| {
 				x.vault_id == vault_id.clone() && x.amount == issue_amount
@@ -1009,6 +1008,10 @@ async fn test_automatic_issue_execution_succeeds_for_other_vault() {
 
 			tracing::info!("Sent payment to address. Ledger is {:?}", result.unwrap().ledger);
 
+			// Sleep 3 seconds to give other thread some time to receive the RequestIssue event and
+			// add it to the set
+			sleep(Duration::from_secs(3)).await;
+
 			// wait for vault2 to execute this issue
 			assert_event::<ExecuteIssueEvent, _>(TIMEOUT * 3, user_provider.clone(), move |x| {
 				x.vault_id == vault1_id.clone()
@@ -1134,6 +1137,10 @@ async fn test_execute_open_requests_succeeds() {
 				.await
 		);
 		drop(wallet_write);
+
+		// Sleep 3 seconds to give other thread some time to receive the RequestIssue event and
+		// add it to the set
+		sleep(Duration::from_secs(3)).await;
 
 		let shutdown_tx = ShutdownSender::new();
 		join4(

@@ -1,4 +1,7 @@
-use crate::error::{CacheErrorKind, Error};
+use crate::{
+	error::{CacheErrorKind, Error},
+	types::PagingToken,
+};
 use primitives::TransactionEnvelopeExt;
 use std::{
 	fs::{create_dir_all, read_dir, remove_file, File, OpenOptions},
@@ -21,42 +24,104 @@ macro_rules! unwrap_or_return {
 	};
 }
 
-/// Contains the path where the transaction envelope will be saved.
+/// Contains the path where the transaction envelope and the cursor/paging token will be saved.
 #[derive(Debug, Clone)]
-pub struct TxEnvelopeStorage {
+pub struct WalletStateStorage {
 	path: String,
 	inner_path: String,
 }
 
-impl TxEnvelopeStorage {
-	/// returns the full directory path
-	fn full_path(&self) -> String {
+impl WalletStateStorage {
+	fn root_path(&self) -> String {
 		format!("{}/{}", self.path, self.inner_path)
+	}
+
+	pub fn new(path: String, public_key: &str, is_public_network: bool) -> Self {
+		let inner_path = format!("{public_key}_{is_public_network}");
+		let cache = WalletStateStorage { path, inner_path };
+
+		let txs_full_path = cache.txs_inner_dir();
+		if let Err(e) = create_dir_all(&txs_full_path) {
+			tracing::warn!("Failed to create directory of {txs_full_path}: {:?}", e);
+		} else {
+			tracing::info!("path for caching stellar transactions: {txs_full_path}");
+		}
+
+		cache
 	}
 }
 
-impl TxEnvelopeStorage {
-	pub fn new(path: String, public_key: &str, is_public_network: bool) -> Self {
-		let inner_path = format!("{public_key}_{is_public_network}");
-		let full_path = format!("{path}/{public_key}_{is_public_network}");
+// methods for saving/retrieving the cursor / paging_token
+impl WalletStateStorage {
+	const CURSOR_FILENAME: &'static str = "cursor";
 
-		if let Err(e) = create_dir_all(&full_path) {
-			tracing::warn!("Failed to create directory of {full_path}: {:?}", e);
+	fn cursor_path(&self) -> String {
+		format!("{}/{}", self.root_path(), Self::CURSOR_FILENAME)
+	}
+
+	/// returns the latest cursor  of the given wallet
+	pub fn get_last_cursor(&self) -> PagingToken {
+		let path = self.cursor_path();
+		let path = Path::new(&path);
+		if !path.exists() {
+			return 0
 		}
-		tracing::info!("path for caching stellar transactions: {full_path}");
 
-		TxEnvelopeStorage { path, inner_path }
+		let Ok(content_from_file) = read_content_from_path(path) else {
+			return 0;
+		};
+
+		content_from_file.parse::<u128>().unwrap_or(0)
+	}
+
+	/// saves the paging token as a cursor
+	pub fn save_cursor(&self, paging_token: PagingToken) -> Result<(), Error> {
+		let path = self.cursor_path();
+
+		let mut file = OpenOptions::new().write(true).create(true).open(&path).map_err(|e| {
+			tracing::error!("Failed to create file: {:?}", e);
+
+			Error::cache_error_with_path(CacheErrorKind::FileCreationFailed, path.clone())
+		})?;
+
+		write!(file, "{}", paging_token).map_err(|e| {
+			tracing::error!("Failed to write file: {paging_token:?}: {e:?}");
+
+			Error::cache_error_with_path(CacheErrorKind::WriteToFileFailed, path)
+		})
+	}
+
+	#[allow(dead_code)]
+	#[doc(hidden)]
+	#[cfg(any(test, feature = "testing-utils"))]
+	/// Necessary for testing.
+	/// User should not be able to do this in production.
+	pub fn remove_cursor(&self) -> Result<(), Error> {
+		let full_file_path = self.cursor_path();
+		remove_file(&full_file_path).map_err(|e| {
+			tracing::error!("Failed to delete file: {:?}", e);
+			Error::cache_error_with_path(CacheErrorKind::DeleteFileFailed, full_file_path)
+		})
+	}
+}
+
+// methods for tx envelope
+impl WalletStateStorage {
+	const TXS_INNER_DIR: &'static str = "txs";
+
+	fn txs_inner_dir(&self) -> String {
+		format!("{}/{}", self.root_path(), Self::TXS_INNER_DIR)
 	}
 
 	/// Saves the transaction envelope to a local folder.
 	/// The filename will be the transaction's sequence number.
-	pub fn save_to_local(&self, tx_envelope: TransactionEnvelope) -> Result<(), Error> {
+	pub fn save_tx_envelope(&self, tx_envelope: TransactionEnvelope) -> Result<(), Error> {
 		let sequence = tx_envelope.sequence_number().ok_or(Error::cache_error_with_env(
 			CacheErrorKind::UnknownSequenceNumber,
 			tx_envelope.clone(),
 		))?;
 
-		let full_file_path = format!("{}/{sequence}", self.full_path());
+		let full_file_path = format!("{}/{sequence}", self.txs_inner_dir());
 
 		let path = Path::new(&full_file_path);
 		if path.exists() {
@@ -80,8 +145,8 @@ impl TxEnvelopeStorage {
 	}
 
 	/// Removes a transaction from the local folder
-	pub fn remove_transaction(&self, sequence: SequenceNumber) -> Result<(), Error> {
-		let full_file_path = format!("{}/{sequence}", self.full_path());
+	pub fn remove_tx_envelope(&self, sequence: SequenceNumber) -> Result<(), Error> {
+		let full_file_path = format!("{}/{sequence}", self.txs_inner_dir());
 		remove_file(&full_file_path).map_err(|e| {
 			tracing::error!("Failed to delete file: {:?}", e);
 			Error::cache_error_with_seq(CacheErrorKind::DeleteFileFailed, sequence)
@@ -101,8 +166,8 @@ impl TxEnvelopeStorage {
 	#[allow(dead_code)]
 	/// Removes all transactions in the directory.
 	/// User should not be able to do this in production.
-	pub fn remove_all_transactions(&self) {
-		let full_path = self.full_path();
+	pub fn remove_all_tx_envelopes(&self) {
+		let full_path = self.txs_inner_dir();
 		let Ok(directory) = read_dir(&full_path) else {
 			// create a new one
 			if let Err(e) = create_dir_all(&full_path) {
@@ -122,7 +187,7 @@ impl TxEnvelopeStorage {
 	#[cfg(any(test, feature = "testing-utils"))]
 	/// Returns a transaction if a file was found, given the sequence number
 	pub fn get_tx_envelope(&self, sequence: SequenceNumber) -> Result<TransactionEnvelope, Error> {
-		let full_file_path = format!("{}/{sequence}", self.full_path());
+		let full_file_path = format!("{}/{sequence}", self.txs_inner_dir());
 		let path = Path::new(&full_file_path);
 
 		if !path.exists() {
@@ -134,7 +199,7 @@ impl TxEnvelopeStorage {
 
 	/// Returns a list of transactions found in the local path, else a list of errors.
 	pub fn get_tx_envelopes(&self) -> Result<(Vec<TransactionEnvelope>, Vec<Error>), Vec<Error>> {
-		let path = self.full_path();
+		let path = self.txs_inner_dir();
 		let directory = read_dir(&path).map_err(|e| {
 			tracing::error!("Could not read path: {path:?}: {e:?}");
 			vec![Error::cache_error_with_path(CacheErrorKind::ReadFileFailed, format!("{path:?}"))]
@@ -205,23 +270,7 @@ fn parse_xdr_string_to_vec_u8(value: &str) -> Option<Vec<u8>> {
 fn extract_tx_envelope_from_path<P: AsRef<Path> + std::fmt::Debug + Clone>(
 	path: P,
 ) -> Result<(TransactionEnvelope, SequenceNumber), Error> {
-	let content_from_file = OpenOptions::new()
-		.read(true)
-		.open(&path)
-		.map(|mut file: File| {
-			// if the file exists, read the contents as a string.
-			let mut buf = String::new();
-
-			if let Err(e) = file.read_to_string(&mut buf) {
-				tracing::error!("Failed to read file {path:?}: {e:?}");
-			}
-
-			buf
-		})
-		.map_err(|e| {
-			tracing::error!("Failed to read file {:?}", e);
-			Error::cache_error_with_path(CacheErrorKind::ReadFileFailed, format!("{path:?}"))
-		})?;
+	let content_from_file = read_content_from_path(&path)?;
 
 	// convert the content into `Vec<u8>`
 	let Some(content_as_vec_u8) = parse_xdr_string_to_vec_u8(&content_from_file) else {
@@ -242,11 +291,35 @@ fn extract_tx_envelope_from_path<P: AsRef<Path> + std::fmt::Debug + Clone>(
 		.ok_or(Error::cache_error_with_env(CacheErrorKind::UnknownSequenceNumber, env))
 }
 
+#[doc(hidden)]
+/// A helper function to read the content of the file as string, given the path.
+fn read_content_from_path<P: AsRef<Path> + std::fmt::Debug + Clone>(
+	path: P,
+) -> Result<String, Error> {
+	OpenOptions::new()
+		.read(true)
+		.open(&path)
+		.map(|mut file: File| {
+			// if the file exists, read the contents as a string.
+			let mut buf = String::new();
+
+			if let Err(e) = file.read_to_string(&mut buf) {
+				tracing::error!("Failed to read file {path:?}: {e:?}");
+			}
+
+			buf
+		})
+		.map_err(|e| {
+			tracing::error!("Failed to read file {:?}", e);
+			Error::cache_error_with_path(CacheErrorKind::ReadFileFailed, format!("{path:?}"))
+		})
+}
+
 #[cfg(test)]
 mod test {
 	use crate::{
 		cache::{
-			extract_tx_envelope_from_path, parse_xdr_string_to_vec_u8, Error, TxEnvelopeStorage,
+			extract_tx_envelope_from_path, parse_xdr_string_to_vec_u8, Error, WalletStateStorage,
 		},
 		error::CacheErrorKind,
 	};
@@ -258,8 +331,8 @@ mod test {
 	};
 
 	const PUB_KEY: &str = "GCENYNAX2UCY5RFUKA7AYEXKDIFITPRAB7UYSISCHVBTIAKPU2YO57OA";
-	fn storage() -> TxEnvelopeStorage {
-		TxEnvelopeStorage::new("resources/examples".to_string(), PUB_KEY, false)
+	fn storage() -> WalletStateStorage {
+		WalletStateStorage::new("resources/examples".to_string(), PUB_KEY, false)
 	}
 
 	pub fn dummy_tx(sequence: SequenceNumber) -> TransactionEnvelope {
@@ -310,7 +383,7 @@ mod test {
 
 	#[test]
 	fn test_extract_tx_envelope_from_path() {
-		let path = storage().full_path();
+		let path = storage().txs_inner_dir();
 
 		let test_success = |expected_seq: SequenceNumber| {
 			let file_path = format!("{path}/{expected_seq}");
@@ -335,7 +408,7 @@ mod test {
 	}
 
 	#[test]
-	fn test_get_tx_envelopes_from_local() {
+	fn test_get_tx_envelopes() {
 		let storage = storage();
 		let expected_seq = 17373142712632;
 		// testing getting 1 transaction
@@ -349,7 +422,7 @@ mod test {
 		assert_error(storage.get_tx_envelope(seq), CacheErrorKind::FileDoesNotExist);
 
 		// get all transactions
-		let path = storage.full_path();
+		let path = storage.txs_inner_dir();
 		let directory = read_dir(&path).expect("should be able to read directory");
 
 		// two of these files are invalid.
@@ -365,7 +438,7 @@ mod test {
 		assert!(actual_envelopes.len() <= (num_of_files.len() - actual_errors.len()));
 
 		// Create an empty storage and check that no transactions are found.
-		let storage = TxEnvelopeStorage::new("test".to_string(), "test", true);
+		let storage = WalletStateStorage::new("test".to_string(), "test", true);
 		let (actual_envelopes, actual_errors) =
 			storage.get_tx_envelopes().expect("should return ok");
 		assert!(actual_envelopes.is_empty());
@@ -374,29 +447,29 @@ mod test {
 	}
 
 	#[test]
-	fn test_save_to_local_and_remove_transaction() {
+	fn test_save_tx_envelope_and_remove() {
 		let sequence = 10;
 		let expected_tx = dummy_tx(sequence);
 
 		// let's create a new storage
-		let new_storage = TxEnvelopeStorage::new(
-			"resources/test_save_to_local_and_remove_transaction".to_string(),
+		let new_storage = WalletStateStorage::new(
+			"resources/test_save_tx_envelope_and_remove".to_string(),
 			PUB_KEY,
 			false,
 		);
 
 		// clear it first
-		new_storage.remove_all_transactions();
+		new_storage.remove_all_tx_envelopes();
 
-		assert!(new_storage.save_to_local(expected_tx.clone()).is_ok());
+		assert!(new_storage.save_tx_envelope(expected_tx.clone()).is_ok());
 
 		let actual_tx = new_storage.get_tx_envelope(sequence).expect("a tx should be found");
 		assert_eq!(actual_tx, expected_tx);
 
-		assert!(new_storage.remove_transaction(sequence).is_ok());
+		assert!(new_storage.remove_tx_envelope(sequence).is_ok());
 
 		// removing a tx again will return an error.
-		assert_error(new_storage.remove_transaction(sequence), CacheErrorKind::DeleteFileFailed);
+		assert_error(new_storage.remove_tx_envelope(sequence), CacheErrorKind::DeleteFileFailed);
 
 		// let's remove the entire directory
 		assert!(new_storage.remove_dir());
@@ -404,6 +477,21 @@ mod test {
 		// file already exists
 		let seq = 17373142712630;
 		let tx = dummy_tx(seq);
-		assert_error(storage().save_to_local(tx), CacheErrorKind::SequenceNumberAlreadyUsed);
+		assert_error(storage().save_tx_envelope(tx), CacheErrorKind::SequenceNumberAlreadyUsed);
+	}
+
+	#[test]
+	fn test_cursors() {
+		// empty cursor file
+		let storage = storage();
+		assert_eq!(storage.get_last_cursor(), 0);
+
+		// save a cursor
+		let expected_cursor = 10;
+		storage.save_cursor(expected_cursor).expect("should save alright");
+
+		// cursor should return a non-zero value
+		assert_eq!(storage.get_last_cursor(), expected_cursor);
+		assert!(storage.remove_cursor().is_ok());
 	}
 }

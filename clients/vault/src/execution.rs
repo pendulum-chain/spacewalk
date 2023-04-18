@@ -359,24 +359,25 @@ pub async fn execute_open_requests(
 
 	let rate_limiter = Arc::new(RateLimiter::direct(YIELD_RATE));
 
-	// Query the latest 200 transactions for the targeted vault account and check if any of
-	// them is targeted. This assumes that not more than 200 transactions are sent to the vault in
-	// the period where redeem/replace requests are valid. It would be better to query all
-	// transactions until one is found that is older than this period but limiting it to 200 should
-	// be fine for now.
+	// Queries all known transactions for the targeted vault account and check if any of
+	// them is targeted.
 	let wallet = wallet.read().await;
-	let transactions_result = wallet.get_latest_transactions(0, 200, false).await;
+	let transactions_result = wallet.get_all_transactions_iter().await;
 	drop(wallet);
 
 	// Check if some of the requests that are open already have a corresponding payment on Stellar
 	// and are just waiting to be executed on the parachain
 	match transactions_result {
-		Ok(transactions) => {
-			tracing::info!("Checking {} transactions for payments", transactions.len());
-			for transaction in transactions {
+		Ok(mut transactions) => {
+			while let Some(transaction) = transactions.next().await {
 				if rate_limiter.check().is_ok() {
 					// give the outer `select` a chance to check the shutdown signal
 					tokio::task::yield_now().await;
+				}
+
+				// stop the loop
+				if open_requests.is_empty() {
+					break
 				}
 
 				if let Some(request) = get_request_for_stellar_tx(&transaction, &open_requests) {

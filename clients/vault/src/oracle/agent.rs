@@ -173,8 +173,8 @@ impl OracleAgent {
 mod tests {
 
 	use crate::oracle::{
-		test_secret_key, test_stellar_relay_config, traits::ArchiveStorage, ScpArchiveStorage,
-		TransactionsArchiveStorage,
+		get_test_secret_key, get_test_stellar_relay_config, traits::ArchiveStorage,
+		ScpArchiveStorage, TransactionsArchiveStorage,
 	};
 
 	use super::*;
@@ -182,9 +182,10 @@ mod tests {
 	#[tokio::test]
 	#[ntest::timeout(1_800_000)] // timeout at 30 minutes
 	async fn test_get_proof_for_current_slot() {
-		let agent = start_oracle_agent(test_stellar_relay_config(), &test_secret_key())
-			.await
-			.expect("Failed to start agent");
+		let agent =
+			start_oracle_agent(get_test_stellar_relay_config(false), &get_test_secret_key(false))
+				.await
+				.expect("Failed to start agent");
 		sleep(Duration::from_secs(10)).await;
 		// Wait until agent is caught up with the network.
 
@@ -206,9 +207,10 @@ mod tests {
 		let scp_archive_storage = ScpArchiveStorage::default();
 		let tx_archive_storage = TransactionsArchiveStorage::default();
 
-		let agent = start_oracle_agent(test_stellar_relay_config(), &test_secret_key())
-			.await
-			.expect("Failed to start agent");
+		let agent =
+			start_oracle_agent(get_test_stellar_relay_config(true), &get_test_secret_key(true))
+				.await
+				.expect("Failed to start agent");
 
 		// This slot should be archived on the public network
 		let target_slot = 44041116;
