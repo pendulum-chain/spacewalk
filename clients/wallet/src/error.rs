@@ -31,6 +31,36 @@ pub enum Error {
 }
 
 impl Error {
+	pub fn is_recoverable(&self) -> bool {
+		match self {
+			Error::HttpFetchingError(e) if e.is_timeout() => true,
+			Error::HorizonSubmissionError { title:_, status, reason:_, envelope_xdr:_ } if *status == 504 =>
+					true,
+			Error::CacheError(e) => {
+				match e.kind {
+					CacheErrorKind::CreateDirectoryFailed |
+					CacheErrorKind::FileCreationFailed |
+					CacheErrorKind::WriteToFileFailed |
+					CacheErrorKind::DeleteFileFailed |
+					CacheErrorKind::FileDoesNotExist => { true }
+					_ => false
+				}
+			}
+			_ => false
+		}
+	}
+
+	pub fn is_server_error(&self) -> bool {
+		match self {
+			Error::HttpFetchingError(e) if e.status() == Some(reqwest::StatusCode::INTERNAL_SERVER_ERROR) =>
+				true,
+			Error::HorizonSubmissionError { title:_, status, reason:_, envelope_xdr:_ } if *status == 500 =>
+				true,
+			_ => false
+		}
+
+	}
+
 	pub fn cache_error(kind: CacheErrorKind) -> Self {
 		Self::CacheError(CacheError { kind, path: None, envelope: None, sequence_number: None })
 	}

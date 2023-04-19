@@ -222,21 +222,19 @@ async fn cleanup_ledger_env_map(
 			SlotTaskStatus::RecoverableError => true,
 
 			// the task succeeded
-			SlotTaskStatus::Success |
-			// the task has reached maximum retries, and cannot be executed again.
-			SlotTaskStatus::ReachedMaxRetries => {
+			SlotTaskStatus::Success => {
 				// we cannot process this again, so remove it from the list.
+				tracing::trace!("Task with slot {slot} succeeded.");
 				ledger_map.remove(slot);
 				false
 			}
 			// the task failed and this transaction cannot be executed again
 			SlotTaskStatus::Failed(e) => {
-				tracing::error!("{}",e);
+				tracing::error!("Task with slot {slot} has failed: {e:?}");
 				// we cannot process this again, so remove it from the list.
 				ledger_map.remove(slot);
 				false
 			}
-
 		}
 	});
 }
@@ -265,22 +263,17 @@ pub async fn process_issues_requests(
 		// iterate over a list of transactions for processing.
 		for (slot, tx_env) in ledger_env_map.read().await.iter() {
 			// create a one shot sender
-			let sender = match create_task_status_sender(&mut processed_map, slot) {
-				None => continue,
-				Some(sender) => sender,
+			let Some(sender) = create_task_status_sender(&mut processed_map, slot) else {
+				// for ongoing tasks, move on
+				continue
 			};
 
-			let parachain_rpc_clone = parachain_rpc.clone();
-			let issues_clone = issues.clone();
-			let memos_to_issue_ids_clone = memos_to_issue_ids.clone();
-			let oracle_agent_clone = oracle_agent.clone();
-
 			tokio::spawn(execute_issue(
-				parachain_rpc_clone,
+				parachain_rpc.clone(),
 				tx_env.clone(),
-				issues_clone,
-				memos_to_issue_ids_clone,
-				oracle_agent_clone,
+				issues.clone(),
+				memos_to_issue_ids.clone(),
+				oracle_agent.clone(),
 				*slot,
 				sender,
 			));

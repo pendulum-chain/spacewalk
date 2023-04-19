@@ -3,7 +3,7 @@ use std::{str::FromStr, sync::Arc, time::Duration};
 use async_trait::async_trait;
 use futures::future;
 use parity_scale_codec::{Decode, Encode};
-use primitives::TextMemo;
+use primitives::{TextMemo, TransactionEnvelopeExt};
 use serde::{de::DeserializeOwned, Deserialize, Deserializer};
 use substrate_stellar_sdk::{types::SequenceNumber, PublicKey, TransactionEnvelope, XdrCodec};
 use tokio::{sync::RwLock, time::sleep};
@@ -297,9 +297,16 @@ pub struct Claimant {
 	// pub predicate: serde_json::Value,
 }
 
-pub const fn horizon_url(is_public_network: bool) -> &'static str {
+pub const fn horizon_url(is_public_network: bool, is_need_fallback:bool) -> &'static str {
 	if is_public_network {
+		if is_need_fallback {
+			//todo: what's the fallback address?
+			return "fallback domain name";
+		}
+
 		"https://horizon.stellar.org"
+	} else if is_need_fallback {
+		"fallback domain for testnet"
 	} else {
 		"https://horizon-testnet.stellar.org"
 	}
@@ -389,7 +396,7 @@ impl HorizonClient for reqwest::Client {
 		limit: i64,
 		order_ascending: bool,
 	) -> Result<HorizonTransactionsResponse, Error> {
-		let base_url = horizon_url(is_public_network);
+		let base_url = horizon_url(is_public_network, false);
 		let mut url = format!("{}/accounts/{}/transactions", base_url, account_id);
 
 		if limit != 0 {
@@ -416,7 +423,7 @@ impl HorizonClient for reqwest::Client {
 		account_encoded: &str,
 		is_public_network: bool,
 	) -> Result<HorizonAccountResponse, Error> {
-		let base_url = horizon_url(is_public_network);
+		let base_url = horizon_url(is_public_network, false);
 		let url = format!("{}/accounts/{}", base_url, account_encoded);
 
 		self.get_from_url(&url).await
@@ -427,30 +434,75 @@ impl HorizonClient for reqwest::Client {
 		transaction_envelope: TransactionEnvelope,
 		is_public_network: bool,
 	) -> Result<TransactionResponse, Error> {
+		let seq_no = transaction_envelope.sequence_number();
 		let transaction_xdr = transaction_envelope.to_base64_xdr();
 		let transaction_xdr = std::str::from_utf8(&transaction_xdr).map_err(Error::Utf8Error)?;
 
-		let base_url = horizon_url(is_public_network);
-		let url = format!("{}/transactions", base_url);
-
 		let params = [("tx", &transaction_xdr)];
-		let response =
-			self.post(url).form(&params).send().await.map_err(Error::HttpFetchingError)?;
 
-		interpret_response::<TransactionResponse>(response).await.map_err(|e| match e {
-			Error::HorizonSubmissionError { title, status, reason, envelope_xdr }
-				if envelope_xdr.is_none() =>
-			{
-				// let's add a transaction envelope, if possible
-				Error::HorizonSubmissionError {
-					title,
-					status,
-					reason,
-					envelope_xdr: Some(transaction_xdr.to_string()),
+		let mut server_error_count = 3;
+		loop {
+			let need_fallback = if server_error_count == 0 {
+				server_error_count = 3;
+				true
+			}
+			else {
+				false
+			};
+
+			let base_url = horizon_url(is_public_network, need_fallback);
+			let url = format!("{}/transactions", base_url);
+
+			let response = match self.post(url).form(&params).send().await.map_err(Error::HttpFetchingError) {
+				Ok(response) => interpret_response::<TransactionResponse>(response).await,
+				Err(e) => {
+					if e.is_recoverable() || e.is_server_error() {
+						if e.is_server_error() {
+							server_error_count -=1;
+						}
+
+						// let's wait awhile before resubmitting.
+						tracing::warn!("submission failed for transaction with sequence number {:?}: {e:?}", seq_no);
+						sleep(Duration::from_secs(3)).await;
+						tracing::debug!("resubmitting transaction with sequence number {:?}...", seq_no);
+
+						// retry/resubmit again
+						continue;
+					}
+
+					return Err(e);
+				},
+			};
+
+			match response {
+				Err(e) if e.is_recoverable() || e.is_server_error() => {
+					if e.is_server_error() {
+						server_error_count -=1;
+					}
+
+					// let's wait awhile before resubmitting.
+					tracing::warn!("submission failed for transaction with sequence number {:?}: {e:?}", seq_no);
+					sleep(Duration::from_secs(3)).await;
+					tracing::debug!("resubmitting transaction with sequence number {:?}...", seq_no);
+
+					// retry/resubmit again
+					continue;
+				},
+				Err(Error::HorizonSubmissionError { title, status, reason, envelope_xdr }) => {
+					let envelope_xdr = envelope_xdr.or(Some(transaction_xdr.to_string()));
+					// let's add a transaction envelope, if possible
+					let error = Error::HorizonSubmissionError {
+						title,
+						status,
+						reason,
+						envelope_xdr
+					};
+					return Err(error);
 				}
-			},
-			other => other,
-		})
+				other => return other
+			}
+
+		}
 	}
 }
 

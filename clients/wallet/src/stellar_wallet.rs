@@ -43,7 +43,7 @@ impl StellarWallet {
 	async fn submit_transaction(
 		&self,
 		envelope: TransactionEnvelope,
-		horizon_client: &Client,
+		horizon_client: Client,
 	) -> Result<TransactionResponse, Error> {
 		let sequence = &envelope.sequence_number().ok_or(Error::cache_error_with_env(
 			CacheErrorKind::UnknownSequenceNumber,
@@ -191,25 +191,37 @@ impl StellarWallet {
 
 	/// Submits transactions found in the wallet's cache to Stellar.
 	/// Returns a tuple: (list of txs successfully submitted, list of errors of txs not resubmitted)
-	pub async fn resubmit_transactions_from_cache(&self) -> (Vec<TransactionResponse>, Vec<Error>) {
+	pub async fn resubmit_transactions_from_cache(&self) -> Vec<Error> {
 		let _ = self.transaction_submission_lock.lock().await;
 		let horizon_client = Client::new();
 
-		let mut passed = vec![];
-
-		let (envs, mut errors) = match self.cache.get_tx_envelopes() {
-			Ok(x) => x,
-			Err(errors) => return (passed, errors),
+		let mut errors = vec![];
+		let envs = match self.cache.get_tx_envelopes() {
+			Ok((envs,errs)) => {
+				errors = errs;
+				envs
+			},
+			Err(errors) => return errors,
 		};
 
+		let me = Arc::new(self.clone());
 		for env in envs.into_iter() {
-			match self.submit_transaction(env, &horizon_client).await {
-				Ok(response) => passed.push(response),
-				Err(e) => errors.push(e),
-			}
+			let me_clone = Arc::clone(&me);
+			let horizon_clone = horizon_client.clone();
+			let seq_no = env.sequence_number();
+			tokio::spawn(async move {
+				match me_clone.submit_transaction(env, horizon_clone).await {
+					Ok(response) => {
+						tracing::trace!("successfully resubmitted: {:?}", response);
+					},
+					Err(e) => {
+						tracing::error!("failed to resubmit tx {seq_no:?}: {e:?}");
+					},
+				}
+			});
 		}
 
-		(passed, errors)
+		errors
 	}
 
 	fn create_envelope(
@@ -275,7 +287,7 @@ impl StellarWallet {
 		)?;
 
 		let _ = self.cache.save_tx_envelope(envelope.clone())?;
-		self.submit_transaction(envelope, &horizon_client).await
+		self.submit_transaction(envelope, horizon_client).await
 	}
 
 	///return balances for public key
@@ -535,11 +547,9 @@ mod test {
 		let _ = wallet.cache.save_tx_envelope(good_envelope.clone()).expect("should save");
 
 		// 1 should pass, and 1 should fail.
-		let (passed, failed) = wallet.resubmit_transactions_from_cache().await;
-		assert_eq!(passed.len(), 1);
+		let failed = wallet.resubmit_transactions_from_cache().await;
 		assert_eq!(failed.len(), 1);
 
-		assert_eq!(passed[0].envelope_xdr, good_envelope.to_base64_xdr());
 
 		match &failed[0] {
 			Error::HorizonSubmissionError { title: _, status: _, reason, envelope_xdr: _ } => {
