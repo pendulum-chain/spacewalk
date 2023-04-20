@@ -164,9 +164,7 @@ mod test {
 			let mut task = SlotTask::new(40, receiver);
 			task.latest_status = SlotTaskStatus::Failed(dummy_error());
 
-			sender
-				.send(SlotTaskStatus::Success)
-				.expect("should be able to send status");
+			sender.send(SlotTaskStatus::Success).expect("should be able to send status");
 			assert_ne!(task.update_status(), SlotTaskStatus::Success);
 		}
 		{

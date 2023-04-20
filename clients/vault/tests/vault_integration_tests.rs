@@ -873,9 +873,9 @@ async fn test_automatic_issue_execution_succeeds() {
 
 			tracing::warn!("Sent payment to address. Ledger is {:?}", result.unwrap().ledger);
 
-			// Sleep 3 seconds to give other thread some time to receive the RequestIssue event and
+			// Sleep 5 seconds to give other thread some time to receive the RequestIssue event and
 			// add it to the set
-			sleep(Duration::from_secs(3)).await;
+			sleep(Duration::from_secs(5)).await;
 
 			// wait for vault2 to execute this issue
 			assert_event::<ExecuteIssueEvent, _>(TIMEOUT, user_provider.clone(), move |x| {

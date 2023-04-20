@@ -452,10 +452,8 @@ impl VaultService {
 		let is_public_network = wallet.is_public_network();
 
 		// re-submit transactions in the cache
-		let errors = wallet.resubmit_transactions_from_cache().await;
-		if !errors.is_empty() {
-			tracing::error!("Failed to resubmit: {:?}", errors);
-		}
+		let receivers = wallet.resubmit_transactions_from_cache().await;
+		//todo: handle errors from the receivers
 
 		drop(wallet);
 

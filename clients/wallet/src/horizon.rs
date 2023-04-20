@@ -297,15 +297,16 @@ pub struct Claimant {
 	// pub predicate: serde_json::Value,
 }
 
-pub const fn horizon_url(is_public_network: bool, is_need_fallback:bool) -> &'static str {
+pub const fn horizon_url(is_public_network: bool, is_need_fallback: bool) -> &'static str {
 	if is_public_network {
 		if is_need_fallback {
 			//todo: what's the fallback address?
-			return "fallback domain name";
+			return "fallback domain name"
 		}
 
 		"https://horizon.stellar.org"
 	} else if is_need_fallback {
+		//todo: what's the fallback address?
 		"fallback domain for testnet"
 	} else {
 		"https://horizon-testnet.stellar.org"
@@ -443,65 +444,67 @@ impl HorizonClient for reqwest::Client {
 		let mut server_error_count = 3;
 		loop {
 			let need_fallback = if server_error_count == 0 {
+				// reset the count, in case the fallback fails but the original url is back running.
 				server_error_count = 3;
 				true
-			}
-			else {
+			} else {
 				false
 			};
 
 			let base_url = horizon_url(is_public_network, need_fallback);
 			let url = format!("{}/transactions", base_url);
 
-			let response = match self.post(url).form(&params).send().await.map_err(Error::HttpFetchingError) {
-				Ok(response) => interpret_response::<TransactionResponse>(response).await,
-				Err(e) => {
-					if e.is_recoverable() || e.is_server_error() {
-						if e.is_server_error() {
-							server_error_count -=1;
+			let response =
+				match self.post(url).form(&params).send().await.map_err(Error::HttpFetchingError) {
+					Ok(response) => interpret_response::<TransactionResponse>(response).await,
+					Err(e) => {
+						if e.is_recoverable() || e.is_server_error() {
+							if e.is_server_error() {
+								server_error_count -= 1;
+							}
+
+							// let's wait awhile before resubmitting.
+							tracing::warn!(
+								"submission failed for transaction with sequence number {seq_no:?}: {e:?}"
+							);
+							sleep(Duration::from_secs(3)).await;
+							tracing::debug!(
+								"resubmitting transaction with sequence number {seq_no:?}..."
+							);
+
+							// retry/resubmit again
+							continue
 						}
 
-						// let's wait awhile before resubmitting.
-						tracing::warn!("submission failed for transaction with sequence number {:?}: {e:?}", seq_no);
-						sleep(Duration::from_secs(3)).await;
-						tracing::debug!("resubmitting transaction with sequence number {:?}...", seq_no);
-
-						// retry/resubmit again
-						continue;
-					}
-
-					return Err(e);
-				},
-			};
+						return Err(e)
+					},
+				};
 
 			match response {
 				Err(e) if e.is_recoverable() || e.is_server_error() => {
 					if e.is_server_error() {
-						server_error_count -=1;
+						server_error_count -= 1;
 					}
 
 					// let's wait awhile before resubmitting.
-					tracing::warn!("submission failed for transaction with sequence number {:?}: {e:?}", seq_no);
+					tracing::warn!(
+						"submission failed for transaction with sequence number {seq_no:?}: {e:?}"
+					);
 					sleep(Duration::from_secs(3)).await;
-					tracing::debug!("resubmitting transaction with sequence number {:?}...", seq_no);
+					tracing::debug!("resubmitting transaction with sequence number {seq_no:?}...");
 
 					// retry/resubmit again
-					continue;
+					continue
 				},
 				Err(Error::HorizonSubmissionError { title, status, reason, envelope_xdr }) => {
 					let envelope_xdr = envelope_xdr.or(Some(transaction_xdr.to_string()));
 					// let's add a transaction envelope, if possible
-					let error = Error::HorizonSubmissionError {
-						title,
-						status,
-						reason,
-						envelope_xdr
-					};
-					return Err(error);
-				}
-				other => return other
+					let error =
+						Error::HorizonSubmissionError { title, status, reason, envelope_xdr };
+					return Err(error)
+				},
+				other => return other,
 			}
-
 		}
 	}
 }

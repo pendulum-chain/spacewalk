@@ -7,7 +7,7 @@ use substrate_stellar_sdk::{
 	types::{Preconditions, SequenceNumber},
 	Asset, Memo, Operation, PublicKey, SecretKey, StroopAmount, Transaction, TransactionEnvelope,
 };
-use tokio::sync::Mutex;
+use tokio::sync::{oneshot, Mutex};
 
 use crate::{
 	cache::WalletStateStorage,
@@ -191,37 +191,52 @@ impl StellarWallet {
 
 	/// Submits transactions found in the wallet's cache to Stellar.
 	/// Returns a tuple: (list of txs successfully submitted, list of errors of txs not resubmitted)
-	pub async fn resubmit_transactions_from_cache(&self) -> Vec<Error> {
+	pub async fn resubmit_transactions_from_cache(
+		&self,
+	) -> Vec<oneshot::Receiver<Result<TransactionResponse, Error>>> {
 		let _ = self.transaction_submission_lock.lock().await;
 		let horizon_client = Client::new();
 
-		let mut errors = vec![];
+		let mut return_val = vec![];
+
+		let mut collect_errors = |errors: Vec<Error>| {
+			for error in errors {
+				let (sender, receiver) = oneshot::channel();
+				return_val.push(receiver);
+
+				if let Err(e) = sender.send(Err(error)) {
+					tracing::error!("failed to send error to list: {e:?}");
+				}
+			}
+		};
+
 		let envs = match self.cache.get_tx_envelopes() {
-			Ok((envs,errs)) => {
-				errors = errs;
+			Ok((envs, errors)) => {
+				collect_errors(errors);
 				envs
 			},
-			Err(errors) => return errors,
+			Err(errors) => {
+				collect_errors(errors);
+				return return_val
+			},
 		};
 
 		let me = Arc::new(self.clone());
 		for env in envs.into_iter() {
 			let me_clone = Arc::clone(&me);
 			let horizon_clone = horizon_client.clone();
-			let seq_no = env.sequence_number();
+
+			let (sender, receiver) = oneshot::channel();
+			return_val.push(receiver);
+
 			tokio::spawn(async move {
-				match me_clone.submit_transaction(env, horizon_clone).await {
-					Ok(response) => {
-						tracing::trace!("successfully resubmitted: {:?}", response);
-					},
-					Err(e) => {
-						tracing::error!("failed to resubmit tx {seq_no:?}: {e:?}");
-					},
-				}
+				if let Err(e) = sender.send(me_clone.submit_transaction(env, horizon_clone).await) {
+					tracing::error!("failed to send message: {e:?}");
+				};
 			});
 		}
 
-		errors
+		return_val
 	}
 
 	fn create_envelope(
@@ -538,7 +553,7 @@ mod test {
 		let _ = wallet.cache.save_tx_envelope(bad_envelope.clone()).expect("should save.");
 
 		// create a successful transaction
-		let request_id = [1u8; 32];
+		let request_id = [2u8; 32];
 		let good_envelope = wallet
 			.create_envelope(destination, asset, amount, request_id, stroop_fee, seq_number + 1)
 			.expect("should return an envelope");
@@ -546,17 +561,38 @@ mod test {
 		// let's save this in storage
 		let _ = wallet.cache.save_tx_envelope(good_envelope.clone()).expect("should save");
 
-		// 1 should pass, and 1 should fail.
-		let failed = wallet.resubmit_transactions_from_cache().await;
-		assert_eq!(failed.len(), 1);
+		// let's resubmit these 2 transactions
+		let receivers = wallet.resubmit_transactions_from_cache().await;
+		assert_eq!(receivers.len(), 2);
 
+		// a count on how many txs passed, and how many failed.
+		let mut passed_count = 0;
+		let mut failed_count = 0;
 
-		match &failed[0] {
-			Error::HorizonSubmissionError { title: _, status: _, reason, envelope_xdr: _ } => {
-				assert_eq!(reason, "tx_bad_seq");
-			},
-			_ => assert!(false),
+		for receiver in receivers {
+			match &receiver.await {
+				Ok(Ok(env)) => {
+					assert_eq!(env.envelope_xdr, good_envelope.to_base64_xdr());
+					passed_count += 1;
+				},
+				Ok(Err(Error::HorizonSubmissionError {
+					title: _,
+					status: _,
+					reason,
+					envelope_xdr: _,
+				})) => {
+					assert_eq!(reason, "tx_bad_seq");
+					failed_count += 1;
+				},
+				other => {
+					panic!("other result was received: {other:?}")
+				},
+			}
 		}
+
+		// 1 should pass, and 1 should fail.
+		assert_eq!(passed_count, 1);
+		assert_eq!(failed_count, 1);
 
 		assert!(wallet.cache.remove_dir());
 	}
