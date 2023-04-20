@@ -452,7 +452,7 @@ impl VaultService {
 		let is_public_network = wallet.is_public_network();
 
 		// re-submit transactions in the cache
-		let receivers = wallet.resubmit_transactions_from_cache().await;
+		let _receivers = wallet.resubmit_transactions_from_cache().await;
 		//todo: handle errors from the receivers
 
 		drop(wallet);
