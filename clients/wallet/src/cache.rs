@@ -158,8 +158,7 @@ impl WalletStateStorage {
 	/// Removes the directory itself.
 	/// User should not be able to do this in production.
 	pub fn remove_dir(&self) -> bool {
-		std::fs::remove_dir_all(&self.path).is_ok() ||
-			!Path::new(&self.path).is_dir()
+		std::fs::remove_dir_all(&self.path).is_ok() || !Path::new(&self.path).is_dir()
 	}
 
 	#[doc(hidden)]

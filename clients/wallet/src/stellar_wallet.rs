@@ -35,9 +35,16 @@ pub struct StellarWallet {
 	/// Used for caching Stellar transactions before they get submitted.
 	/// Also used for caching the latest cursor to page through Stellar transactions in horizon
 	cache: WalletStateStorage,
+
+	/// maximum retry attempts for submitting a transaction before switching to a fallback url
+	max_retry_attempt: u8,
 }
 
 impl StellarWallet {
+	/// if the user doesn't define the maximum number of retry attempts for 500 internal server
+	/// error, this will be the default.
+	const MAX_RETRY_ATTEMPT: u8 = 3;
+
 	/// Returns a TransactionResponse after submitting transaction envelope to Stellar,
 	/// Else an Error.
 	async fn submit_transaction(
@@ -51,7 +58,7 @@ impl StellarWallet {
 		))?;
 
 		let submission_result = horizon_client
-			.submit_transaction(envelope.clone(), self.is_public_network)
+			.submit_transaction(envelope.clone(), self.is_public_network, self.max_retry_attempt)
 			.await;
 
 		let _ = self.cache.remove_tx_envelope(*sequence);
@@ -141,7 +148,14 @@ impl StellarWallet {
 			is_public_network,
 			transaction_submission_lock: Arc::new(Mutex::new(())),
 			cache,
+			max_retry_attempt: Self::MAX_RETRY_ATTEMPT,
 		})
+	}
+
+	pub fn with_max_retry_attempt(mut self, max_retries: u8) -> Self {
+		self.max_retry_attempt = max_retries;
+
+		self
 	}
 
 	pub fn get_public_key_raw(&self) -> StellarPublicKeyRaw {
@@ -363,6 +377,22 @@ mod test {
 			)
 			.unwrap(),
 		))
+	}
+
+	#[test]
+	fn test_add_retry_max_attempt() {
+		let wallet = StellarWallet::from_secret_encoded_with_cache(
+			&STELLAR_VAULT_SECRET_KEY.to_string(),
+			IS_PUBLIC_NETWORK,
+			"resources/test_add_retry_max_attempt".to_owned(),
+		)
+		.unwrap();
+
+		assert_eq!(wallet.max_retry_attempt, StellarWallet::MAX_RETRY_ATTEMPT);
+
+		let expected_max_retries = 5;
+		let new_wallet = wallet.with_max_retry_attempt(expected_max_retries);
+		assert_eq!(new_wallet.max_retry_attempt, expected_max_retries);
 	}
 
 	#[tokio::test]
