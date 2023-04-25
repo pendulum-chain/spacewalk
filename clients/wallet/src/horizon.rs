@@ -8,6 +8,7 @@ use futures::{
 
 use parity_scale_codec::{Decode, Encode};
 use primitives::{TextMemo, TransactionEnvelopeExt};
+use rand::seq::SliceRandom;
 use serde::{de::DeserializeOwned, Deserialize, Deserializer};
 use substrate_stellar_sdk::{types::SequenceNumber, PublicKey, TransactionEnvelope, XdrCodec};
 use tokio::{sync::RwLock, time::sleep};
@@ -301,17 +302,18 @@ pub struct Claimant {
 	// pub predicate: serde_json::Value,
 }
 
-pub const fn horizon_url(is_public_network: bool, is_need_fallback: bool) -> &'static str {
+pub fn horizon_url(is_public_network: bool, is_need_fallback: bool) -> &'static str {
 	if is_public_network {
 		if is_need_fallback {
-			//todo: what's the fallback address?
-			return "fallback domain name"
+			let other_urls =
+				vec!["https://horizon.stellarx.com", "https://horizon.stellar.lobstr.co"];
+
+			return other_urls
+				.choose(&mut rand::thread_rng())
+				.unwrap_or(&"https://horizon.stellar.org")
 		}
 
 		"https://horizon.stellar.org"
-	} else if is_need_fallback {
-		//todo: what's the fallback address?
-		"fallback domain for testnet"
 	} else {
 		"https://horizon-testnet.stellar.org"
 	}
@@ -384,6 +386,7 @@ pub trait HorizonClient {
 		transaction: TransactionEnvelope,
 		is_public_network: bool,
 		max_retries: u8,
+		max_backoff_delay: u8,
 	) -> Result<TransactionResponse, Error>;
 }
 
@@ -440,6 +443,7 @@ impl HorizonClient for reqwest::Client {
 		transaction_envelope: TransactionEnvelope,
 		is_public_network: bool,
 		max_retries: u8,
+		max_backoff_delay: u8,
 	) -> Result<TransactionResponse, Error> {
 		let seq_no = transaction_envelope.sequence_number();
 		let transaction_xdr = transaction_envelope.to_base64_xdr();
@@ -448,7 +452,7 @@ impl HorizonClient for reqwest::Client {
 		let params = [("tx", &transaction_xdr)];
 
 		let mut server_error_count = 0;
-		let mut counter = 1;
+		let mut exponent_counter = 1;
 
 		loop {
 			let need_fallback = if server_error_count == max_retries {
@@ -480,11 +484,15 @@ impl HorizonClient for reqwest::Client {
 						"submission failed for transaction with sequence number {seq_no:?}: {e:?}"
 					);
 					// exponentially sleep before retrying again
-					sleep(Duration::from_secs(2u64.pow(counter))).await;
+					sleep(Duration::from_secs(2u64.pow(exponent_counter))).await;
 					tracing::debug!("resubmitting transaction with sequence number {seq_no:?}...");
 
 					// retry/resubmit again
-					counter += 1;
+					if exponent_counter > u32::from(max_backoff_delay) {
+						exponent_counter = 1;
+					} else {
+						exponent_counter += 1;
+					}
 					continue
 				},
 
@@ -732,7 +740,7 @@ mod tests {
 			.await
 			.expect("Failed to build transaction");
 
-		match horizon_client.submit_transaction(tx_env, false, 3).await {
+		match horizon_client.submit_transaction(tx_env, false, 3, 2).await {
 			Ok(res) => {
 				assert!(res.successful);
 				assert!(res.ledger > 0);

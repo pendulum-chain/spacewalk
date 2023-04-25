@@ -37,13 +37,17 @@ pub struct StellarWallet {
 	cache: WalletStateStorage,
 
 	/// maximum retry attempts for submitting a transaction before switching to a fallback url
-	max_retry_attempt: u8,
+	max_retry_attempts_before_fallback: u8,
+
+	max_backoff_delay: u8,
 }
 
 impl StellarWallet {
 	/// if the user doesn't define the maximum number of retry attempts for 500 internal server
 	/// error, this will be the default.
-	const MAX_RETRY_ATTEMPT: u8 = 3;
+	const MAX_RETRY_ATTEMPTS_BEFORE_FALLBACK: u8 = 3;
+
+	const MAX_BACKOFF_DELAY: u8 = 9;
 
 	/// Returns a TransactionResponse after submitting transaction envelope to Stellar,
 	/// Else an Error.
@@ -58,7 +62,12 @@ impl StellarWallet {
 		))?;
 
 		let submission_result = horizon_client
-			.submit_transaction(envelope.clone(), self.is_public_network, self.max_retry_attempt)
+			.submit_transaction(
+				envelope.clone(),
+				self.is_public_network,
+				self.max_retry_attempts_before_fallback,
+				self.max_backoff_delay,
+			)
 			.await;
 
 		let _ = self.cache.remove_tx_envelope(*sequence);
@@ -148,12 +157,22 @@ impl StellarWallet {
 			is_public_network,
 			transaction_submission_lock: Arc::new(Mutex::new(())),
 			cache,
-			max_retry_attempt: Self::MAX_RETRY_ATTEMPT,
+			max_retry_attempts_before_fallback: Self::MAX_RETRY_ATTEMPTS_BEFORE_FALLBACK,
+			max_backoff_delay: Self::MAX_BACKOFF_DELAY,
 		})
 	}
 
-	pub fn with_max_retry_attempt(mut self, max_retries: u8) -> Self {
-		self.max_retry_attempt = max_retries;
+	pub fn with_max_retry_attempt_before_fallback(mut self, max_retries: u8) -> Self {
+		self.max_retry_attempts_before_fallback = max_retries;
+
+		self
+	}
+
+	pub fn with_max_backoff_delay(mut self, max_backoff_delay: u8) -> Self {
+		// a number more than the default max would be too large
+		if max_backoff_delay < Self::MAX_BACKOFF_DELAY {
+			self.max_backoff_delay = max_backoff_delay;
+		}
 
 		self
 	}
@@ -380,19 +399,47 @@ mod test {
 	}
 
 	#[test]
-	fn test_add_retry_max_attempt() {
+	fn test_add_backoff_delay() {
 		let wallet = StellarWallet::from_secret_encoded_with_cache(
 			&STELLAR_VAULT_SECRET_KEY.to_string(),
 			IS_PUBLIC_NETWORK,
-			"resources/test_add_retry_max_attempt".to_owned(),
+			"resources/test_add_backoff_delay".to_owned(),
 		)
 		.unwrap();
 
-		assert_eq!(wallet.max_retry_attempt, StellarWallet::MAX_RETRY_ATTEMPT);
+		assert_eq!(wallet.max_backoff_delay, StellarWallet::MAX_BACKOFF_DELAY);
+
+		// 10 is too big
+		let expected_max_backoff_delay = 10;
+		let new_wallet = wallet.with_max_backoff_delay(expected_max_backoff_delay);
+		assert_ne!(new_wallet.max_backoff_delay, expected_max_backoff_delay);
+
+		let expected_max_backoff_delay = 3;
+		let new_wallet = new_wallet.with_max_backoff_delay(expected_max_backoff_delay);
+		assert_eq!(new_wallet.max_backoff_delay, expected_max_backoff_delay);
+
+		assert!(new_wallet.cache.remove_dir());
+	}
+
+	#[test]
+	fn test_add_retry_attempt() {
+		let wallet = StellarWallet::from_secret_encoded_with_cache(
+			&STELLAR_VAULT_SECRET_KEY.to_string(),
+			IS_PUBLIC_NETWORK,
+			"resources/test_add_retry_attempt".to_owned(),
+		)
+		.unwrap();
+
+		assert_eq!(
+			wallet.max_retry_attempts_before_fallback,
+			StellarWallet::MAX_RETRY_ATTEMPTS_BEFORE_FALLBACK
+		);
 
 		let expected_max_retries = 5;
-		let new_wallet = wallet.with_max_retry_attempt(expected_max_retries);
-		assert_eq!(new_wallet.max_retry_attempt, expected_max_retries);
+		let new_wallet = wallet.with_max_retry_attempt_before_fallback(expected_max_retries);
+		assert_eq!(new_wallet.max_retry_attempts_before_fallback, expected_max_retries);
+
+		assert!(new_wallet.cache.remove_dir());
 	}
 
 	#[tokio::test]

@@ -50,13 +50,24 @@ impl Error {
 	}
 
 	pub fn is_server_error(&self) -> bool {
+		// error  500
+		let internal_server_error = reqwest::StatusCode::INTERNAL_SERVER_ERROR.as_u16();
+		// error 511
+		let net_auth_required = reqwest::StatusCode::NETWORK_AUTHENTICATION_REQUIRED.as_u16();
+
+		let check_status =
+			|status: u16| status >= internal_server_error && status <= net_auth_required;
+
 		match self {
-			Error::HttpFetchingError(e)
-				if e.status() == Some(reqwest::StatusCode::INTERNAL_SERVER_ERROR) =>
-				true,
-			Error::HorizonSubmissionError { title: _, status, reason: _, envelope_xdr: _ }
-				if *status == 500 =>
-				true,
+			Error::HttpFetchingError(e) => {
+				if let Some(status) = e.status() {
+					return check_status(status.as_u16())
+				}
+				false
+			},
+			Error::HorizonSubmissionError { title: _, status, reason: _, envelope_xdr: _ } =>
+				check_status(*status),
+
 			_ => false,
 		}
 	}

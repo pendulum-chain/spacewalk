@@ -10526,6 +10526,7 @@ dependencies = [
  "futures 0.3.25",
  "mockall 0.8.3",
  "parity-scale-codec",
+ "rand 0.8.5",
  "reqwest",
  "serde",
  "serde_json",
