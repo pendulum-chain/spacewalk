@@ -7,7 +7,7 @@ use stellar_relay_lib::sdk::{
 	types::{ScpEnvelope, TransactionSet},
 };
 
-use crate::oracle::types::{EnvelopesMap, LifoMap, Slot, TxSetHash, TxSetHashAndSlotMap, TxSetMap};
+use crate::oracle::types::{EnvelopesMap, Slot, TxSetHash, TxSetHashAndSlotMap, TxSetMap};
 
 /// Collects all ScpMessages and the TxSets.
 pub struct ScpMessageCollector {
@@ -95,13 +95,13 @@ impl ScpMessageCollector {
 		// insert/add the externalized message to map.
 		let mut envelopes_map = self.envelopes_map.write();
 
-		if let Some(value) = envelopes_map.get_with_key(&slot) {
+		if let Some(value) = envelopes_map.get(&slot) {
 			let mut value = value.clone();
 			value.push(scp_envelope);
-			envelopes_map.set_with_key(slot, value);
+			envelopes_map.insert(slot, value);
 		} else {
 			tracing::debug!("Adding received SCP envelopes for slot {}", slot);
-			envelopes_map.set_with_key(slot, vec![scp_envelope]);
+			envelopes_map.insert(slot, vec![scp_envelope]);
 		}
 	}
 
@@ -110,7 +110,7 @@ impl ScpMessageCollector {
 			let mut map_write = self.txset_and_slot_map.write();
 			map_write.remove_by_txset_hash(txset_hash).map(|slot| {
 				tracing::debug!("saved txset_hash for slot: {:?}", slot);
-				self.txset_map.write().set_with_key(slot, tx_set);
+				self.txset_map.write().insert(slot, tx_set);
 				slot
 			})
 		};
@@ -137,8 +137,8 @@ impl ScpMessageCollector {
 impl ScpMessageCollector {
 	/// Clear out data related to this slot.
 	pub(crate) fn remove_data(&self, slot: &Slot) {
-		self.envelopes_map.write().remove_with_key(slot);
-		self.txset_map.write().remove_with_key(slot);
+		self.envelopes_map.write().remove(slot);
+		self.txset_map.write().remove(slot);
 	}
 }
 
@@ -148,17 +148,18 @@ impl ScpMessageCollector {
 	pub(super) fn is_txset_new(&self, txset_hash: &TxSetHash, slot: &Slot) -> bool {
 		self.txset_and_slot_map.read().get_slot(txset_hash).is_none() &&
             // also check whether this is a delayed message
-            !self.txset_map.read().contains_key(slot)
+            !self.txset_map.read().contains(slot)
 	}
 }
 
 #[cfg(test)]
 mod test {
+	use std::collections::{HashMap, VecDeque};
 	use stellar_relay_lib::sdk::network::{PUBLIC_NETWORK, TEST_NETWORK};
 
 	use crate::oracle::{
 		collector::ScpMessageCollector, get_test_stellar_relay_config, traits::FileHandler,
-		types::LifoMap, EnvelopesFileHandler, TxSetsFileHandler,
+		EnvelopesFileHandler, TxSetsFileHandler,
 	};
 
 	fn stellar_history_base_url() -> String {
@@ -176,7 +177,7 @@ mod test {
 			.expect("should return a map");
 		let env_map_len = env_map.len();
 
-		collector.envelopes_map.write().append(&mut env_map);
+		collector.envelopes_map.write().append(env_map);
 		assert_eq!(collector.envelopes_map_len(), env_map_len);
 	}
 
@@ -200,14 +201,12 @@ mod test {
 		let env_map =
 			EnvelopesFileHandler::get_map_from_archives(first_slot).expect("should return a map");
 
-		let _slot = 1234;
-
-		let (slot, value) = env_map.get(0).expect("should return a tuple");
+		let (slot, value) = env_map.first().expect("should return a tuple");
 		let one_scp_env = value[0].clone();
 		collector.add_scp_envelope(*slot, one_scp_env.clone());
 
 		assert_eq!(collector.envelopes_map_len(), 1);
-		assert!(collector.envelopes_map.read().contains_key(slot));
+		assert!(collector.envelopes_map.read().contains(slot));
 
 		// let's try to add again.
 		let two_scp_env = value[1].clone();
@@ -215,9 +214,7 @@ mod test {
 		assert_eq!(collector.envelopes_map_len(), 1); // length shouldn't change, since we're insertin to the same key.
 
 		let collctr_env_map = collector.envelopes_map.read();
-		let res = collctr_env_map
-			.get_with_key(slot)
-			.expect("should return a vector of scpenvelopes");
+		let res = collctr_env_map.get(slot).expect("should return a vector of scpenvelopes");
 
 		assert_eq!(res.len(), 2);
 		assert_eq!(&res[0], &one_scp_env);
@@ -232,13 +229,13 @@ mod test {
 		let dummy_hash = [0; 32];
 		let txsets_map =
 			TxSetsFileHandler::get_map_from_archives(slot).expect("should return a map");
-		let value = txsets_map.get_with_key(&slot).expect("should return a transaction set");
+		let value = txsets_map.get(&slot).expect("should return a transaction set");
 
 		collector.save_txset_hash_and_slot(dummy_hash, slot);
 
 		collector.add_txset(&dummy_hash, value.clone());
 
-		assert!(collector.txset_map.read().contains_key(&slot));
+		assert!(collector.txset_map.read().contains(&slot));
 	}
 
 	#[test]
@@ -269,18 +266,18 @@ mod test {
 			TxSetsFileHandler::get_map_from_archives(txset_slot).expect("should return a map");
 
 		// collector.watch_slot(env_slot);
-		collector.envelopes_map.write().append(&mut env_map);
+		collector.envelopes_map.write().append(env_map);
 
-		let txset = txsets_map.get_with_key(&txset_slot).expect("should return a tx set");
-		collector.txset_map.write().set_with_key(env_slot, txset.clone());
+		let txset = txsets_map.get(&txset_slot).expect("should return a tx set");
+		collector.txset_map.write().insert(env_slot, txset.clone());
 
-		assert!(collector.envelopes_map.read().contains_key(&env_slot));
-		assert!(collector.txset_map.read().contains_key(&env_slot));
+		assert!(collector.envelopes_map.read().contains(&env_slot));
+		assert!(collector.txset_map.read().contains(&env_slot));
 		// assert!(collector.slot_watchlist.read().contains_key(&env_slot));
 
 		collector.remove_data(&env_slot);
-		assert!(!collector.envelopes_map.read().contains_key(&env_slot));
-		assert!(!collector.txset_map.read().contains_key(&env_slot));
+		assert!(!collector.envelopes_map.read().contains(&env_slot));
+		assert!(!collector.txset_map.read().contains(&env_slot));
 	}
 
 	#[test]
@@ -290,7 +287,7 @@ mod test {
 		let txset_slot = 42867088;
 		let mut txsets_map =
 			TxSetsFileHandler::get_map_from_archives(txset_slot).expect("should return a map");
-		collector.txset_map.write().append(&mut txsets_map);
+		collector.txset_map.write().append(txsets_map);
 
 		collector.txset_and_slot_map.write().insert([0; 32], 0);
 

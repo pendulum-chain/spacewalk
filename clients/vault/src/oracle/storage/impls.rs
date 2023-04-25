@@ -26,11 +26,7 @@ impl FileHandler<EnvelopesMap> for EnvelopesFileHandler {
 		let mut m: EnvelopesMap = EnvelopesMap::new();
 		for (key, value) in inside.into_iter() {
 			if let Ok(envelopes) = UnlimitedVarArray::<ScpEnvelope>::from_xdr(value) {
-				m.push_back((key, envelopes.get_vec().to_vec()));
-
-				if m.len() > MAX_ITEMS_IN_QUEUE {
-					m.pop_front();
-				}
+				m.insert(key, envelopes.get_vec().to_vec());
 			}
 		}
 
@@ -91,11 +87,7 @@ impl FileHandler<TxSetMap> for TxSetsFileHandler {
 
 		for (key, value) in inside.into_iter() {
 			if let Ok(set) = TransactionSet::from_xdr(value) {
-				m.push_back((key, set));
-
-				if m.len() > MAX_ITEMS_IN_QUEUE {
-					m.pop_front();
-				}
+				m.insert(key, set);
 			}
 		}
 
@@ -172,7 +164,7 @@ mod test {
 			traits::{FileHandler, FileHandlerExt},
 			EnvelopesFileHandler, TxSetsFileHandler,
 		},
-		types::{LifoMap, Slot},
+		types::Slot,
 		TransactionsArchiveStorage,
 	};
 
@@ -277,8 +269,7 @@ mod test {
 				assert_eq!(slot, &expected_slot_num);
 			}
 
-			let scp_envelopes =
-				envelopes_map.get_with_key(&last_slot).expect("should have scp envelopes");
+			let scp_envelopes = envelopes_map.get(&last_slot).expect("should have scp envelopes");
 			for x in scp_envelopes {
 				assert_eq!(x.statement.slot_index, last_slot);
 			}
@@ -291,7 +282,7 @@ mod test {
 			let txsets_map = TxSetsFileHandler::get_map_from_archives(find_slot)
 				.expect("should return txsets map");
 
-			assert!(txsets_map.get_with_key(&find_slot).is_some());
+			assert!(txsets_map.get(&find_slot).is_some());
 		}
 	}
 
@@ -341,8 +332,8 @@ mod test {
 				EnvelopesFileHandler::deserialize_bytes(bytes).expect("should generate a map");
 
 			// let's remove the first_slot and last_slot in the map, so we can create a new file.
-			env_map.remove_with_key(&first_slot);
-			env_map.remove_with_key(&last_slot);
+			env_map.remove(&first_slot);
+			env_map.remove(&last_slot);
 
 			let expected_filename = format!("{}_{}", first_slot + 1, last_slot - 1);
 			let actual_filename = EnvelopesFileHandler::write_to_file(&env_map)
@@ -374,8 +365,8 @@ mod test {
 				TxSetsFileHandler::deserialize_bytes(bytes).expect("should generate a map");
 
 			// let's remove the first_slot and last_slot in the map, so we can create a new file.
-			txset_map.remove_with_key(&first_slot);
-			txset_map.remove_with_key(&last_slot);
+			txset_map.remove(&first_slot);
+			txset_map.remove(&last_slot);
 
 			let expected_filename = format!("{}_{}", first_slot + 1, last_slot - 1);
 			let actual_filename = TxSetsFileHandler::write_to_file(&txset_map)
