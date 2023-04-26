@@ -123,6 +123,7 @@ impl ScpMessageCollector {
 	pub(super) fn save_txset_hash_and_slot(&self, txset_hash: TxSetHash, slot: Slot) {
 		// save the mapping of the hash of the txset and the slot.
 		let mut m = self.txset_and_slot_map.write();
+		tracing::debug!("saving txset_hash of slot: {slot}");
 		m.insert(txset_hash, slot);
 	}
 
@@ -154,7 +155,6 @@ impl ScpMessageCollector {
 
 #[cfg(test)]
 mod test {
-	use std::collections::{HashMap, VecDeque};
 	use stellar_relay_lib::sdk::network::{PUBLIC_NETWORK, TEST_NETWORK};
 
 	use crate::oracle::{
@@ -173,7 +173,7 @@ mod test {
 		assert_eq!(collector.envelopes_map_len(), 0);
 
 		let first_slot = 578291;
-		let mut env_map = EnvelopesFileHandler::get_map_from_archives(first_slot + 3)
+		let env_map = EnvelopesFileHandler::get_map_from_archives(first_slot + 3)
 			.expect("should return a map");
 		let env_map_len = env_map.len();
 
@@ -258,7 +258,7 @@ mod test {
 		let collector = ScpMessageCollector::new(false, stellar_history_base_url());
 
 		let env_slot = 578391;
-		let mut env_map =
+		let env_map =
 			EnvelopesFileHandler::get_map_from_archives(env_slot).expect("should return a map");
 
 		let txset_slot = 42867088;
@@ -285,7 +285,7 @@ mod test {
 		let collector = ScpMessageCollector::new(false, stellar_history_base_url());
 
 		let txset_slot = 42867088;
-		let mut txsets_map =
+		let txsets_map =
 			TxSetsFileHandler::get_map_from_archives(txset_slot).expect("should return a map");
 		collector.txset_map.write().append(txsets_map);
 

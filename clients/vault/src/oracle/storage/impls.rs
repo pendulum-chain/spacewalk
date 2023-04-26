@@ -7,8 +7,8 @@ use stellar_relay_lib::sdk::{
 };
 
 use crate::oracle::{
-	constants::MAX_ITEMS_IN_QUEUE, storage::traits::*, EnvelopesFileHandler, EnvelopesMap, Error,
-	Filename, SerializedData, Slot, SlotEncodedMap, TxSetMap, TxSetsFileHandler,
+	storage::traits::*, EnvelopesFileHandler, EnvelopesMap, Error, Filename, SerializedData, Slot,
+	SlotEncodedMap, TxSetMap, TxSetsFileHandler,
 };
 
 use super::{ScpArchiveStorage, TransactionsArchiveStorage};

@@ -1,7 +1,7 @@
 #![allow(non_snake_case)]
 
 use std::{
-	collections::{hash_map::Iter, BTreeMap, HashMap, VecDeque},
+	collections::{BTreeMap, HashMap, VecDeque},
 	fmt::Debug,
 };
 
@@ -91,7 +91,6 @@ where
 		// remove the oldest entry if the queue reached its limit
 		if self.queue.len() == self.limit {
 			if let Some(oldest_entry) = self.queue.pop_front() {
-				println!("removing old entry with key: {:?}", oldest_entry.0);
 				tracing::debug!("removing old entry with key: {:?}", oldest_entry.0);
 			}
 		}
@@ -197,9 +196,7 @@ mod test {
 			let key = u32::try_from(x).expect("should return ok");
 			let value = char::from_u32(key).unwrap_or('x');
 
-			println!("insert: {} {}", key, value);
 			assert_eq!(sample_map.insert(key, value), None);
-			println!("value of x: {} and len {}", x, sample_map.len());
 			assert_eq!(sample_map.len(), x + 1);
 		}
 
@@ -236,37 +233,30 @@ mod test {
 		assert_eq!(sample_map.remove(&key), Some(char::from_u32(key).unwrap_or('x')));
 		assert_eq!(sample_map.len(), sample_map.limit() - 2);
 
-
 		// --------- test append ---------
 
 		// let's populate the 2nd map first
 		let limit = 300;
-		let mut second_map =  LimitedFifoMap::<u32, char>::new().with_limit(limit);
+		let sample_map_limit = sample_map.limit();
+		let mut second_map = LimitedFifoMap::<u32, char>::new().with_limit(limit);
 
 		let first_len = sample_map.len();
-		for x in 0..sample_map.limit() {
+		for x in 0..sample_map_limit {
 			let key = u32::try_from(x + first_len).expect("should return ok");
-			let value = char::from_u32(
-				u32::try_from(x).expect("should return ok")
-			).unwrap_or('x');
+			let value = char::from_u32(u32::try_from(x).expect("should return ok")).unwrap_or('x');
 
-			println!("insert: {} {}", key, value);
 			assert_eq!(second_map.insert(key, value), None);
-			println!("value of x: {} and len {}", x, second_map.len());
 		}
 
-		let first_limit = sample_map.limit();
 		let second_len = second_map.len();
 		let remaining_space = limit - second_len;
 
-		let remaining_first = second_map.append(sample_map.clone());
+		let remainder = second_map.append(sample_map.clone());
+		assert_eq!(second_map.len(), limit);
 
-
-
-
-
-
-
+		let first_remainder = remainder[0];
+		let expected = sample_map.queue[remaining_space];
+		assert_eq!(first_remainder, expected);
 	}
 
 	#[test]
