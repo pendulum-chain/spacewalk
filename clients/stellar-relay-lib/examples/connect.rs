@@ -21,7 +21,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 		)
 	} else {
 		(
-			"./clients/stellar-relay-lib/resources/config/testnet/stellar_relay_config_sdftest1.json",
+			"./clients/stellar-relay-lib/resources/config/testnet/stellar_relay_config_sdftest2.json",
 			"./clients/stellar-relay-lib/resources/secretkey/stellar_secretkey_testnet",
 		)
 	};
