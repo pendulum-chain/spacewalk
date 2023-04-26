@@ -224,7 +224,7 @@ impl StellarWallet {
 	}
 
 	/// Submits transactions found in the wallet's cache to Stellar.
-	/// Returns a tuple: (list of txs successfully submitted, list of errors of txs not resubmitted)
+	/// Returns a list of oneshot receivers to send back the result of resubmission.
 	pub async fn resubmit_transactions_from_cache(
 		&self,
 	) -> Vec<oneshot::Receiver<Result<TransactionResponse, Error>>> {
