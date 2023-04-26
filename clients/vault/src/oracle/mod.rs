@@ -17,4 +17,5 @@ pub mod types;
 #[cfg(any(test, feature = "integration"))]
 mod testing_utils;
 
+#[cfg(any(test, feature = "integration"))]
 pub use testing_utils::*;
