@@ -386,7 +386,7 @@ pub trait HorizonClient {
 		transaction: TransactionEnvelope,
 		is_public_network: bool,
 		max_retries: u8,
-		max_backoff_delay: u8,
+		max_backoff_delay_in_secs: u16,
 	) -> Result<TransactionResponse, Error>;
 }
 
@@ -443,7 +443,7 @@ impl HorizonClient for reqwest::Client {
 		transaction_envelope: TransactionEnvelope,
 		is_public_network: bool,
 		max_retries: u8,
-		max_backoff_delay: u8,
+		max_backoff_delay_in_secs: u16,
 	) -> Result<TransactionResponse, Error> {
 		let seq_no = transaction_envelope.sequence_number();
 		let transaction_xdr = transaction_envelope.to_base64_xdr();
@@ -484,13 +484,12 @@ impl HorizonClient for reqwest::Client {
 						"submission failed for transaction with sequence number {seq_no:?}: {e:?}"
 					);
 					// exponentially sleep before retrying again
-					sleep(Duration::from_secs(2u64.pow(exponent_counter))).await;
+					let sleep_duration = 2u64.pow(exponent_counter);
+					sleep(Duration::from_secs(sleep_duration)).await;
 					tracing::debug!("resubmitting transaction with sequence number {seq_no:?}...");
 
 					// retry/resubmit again
-					if exponent_counter > u32::from(max_backoff_delay) {
-						exponent_counter = 1;
-					} else {
+					if sleep_duration < u64::from(max_backoff_delay_in_secs) {
 						exponent_counter += 1;
 					}
 					continue
