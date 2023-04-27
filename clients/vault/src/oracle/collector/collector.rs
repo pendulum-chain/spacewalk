@@ -41,6 +41,21 @@ impl ScpMessageCollector {
 		}
 	}
 
+	pub(crate) fn new_with_size_limit(
+		public_network: bool,
+		stellar_history_base_url: String,
+		size_limit: usize,
+	) -> Self {
+		ScpMessageCollector {
+			envelopes_map: Arc::new(RwLock::new(EnvelopesMap::new().with_limit(size_limit))),
+			txset_map: Default::default(),
+			txset_and_slot_map: Arc::new(RwLock::new(TxSetMap::new().with_limit(size_limit))),
+			last_slot_index: 0,
+			public_network,
+			stellar_history_base_url,
+		}
+	}
+
 	pub fn envelopes_map_len(&self) -> usize {
 		self.envelopes_map.read().len()
 	}
@@ -287,6 +302,10 @@ mod test {
 		let txset_slot = 42867088;
 		let txsets_map =
 			TxSetsFileHandler::get_map_from_archives(txset_slot).expect("should return a map");
+
+		let txsets_size = txsets_map.len();
+		println!("txsets size: {}", txsets_size);
+
 		collector.txset_map.write().append(txsets_map);
 
 		collector.txset_and_slot_map.write().insert([0; 32], 0);

@@ -5,6 +5,10 @@ use crate::oracle::types::Slot;
 /// NOT the "values" of the map
 pub const MAX_SLOTS_PER_FILE: usize = 200;
 
+/// A default limit of number of items the `TxSetMap` and `EnvelopesMap` can hold before
+/// dropping some.
+pub const DEFAULT_MAX_ITEMS_IN_QUEUE: usize = MAX_SLOTS_PER_FILE;
+
 // the maximum distance of the selected slot from the current slot.
 // this is primarily used when deciding to move maps to a file.
 pub const MAX_DISTANCE_FROM_CURRENT_SLOT: Slot = 3;

@@ -8,6 +8,7 @@ use std::{
 use itertools::Itertools;
 use tokio::sync::mpsc;
 
+use crate::oracle::constants::DEFAULT_MAX_ITEMS_IN_QUEUE;
 use stellar_relay_lib::sdk::types::{Hash, ScpEnvelope, StellarMessage, TransactionSet, Uint64};
 
 pub type Slot = Uint64;
@@ -30,8 +31,6 @@ pub(crate) type TxSetMap = LimitedFifoMap<Slot, TransactionSet>;
 
 pub(crate) type SlotList = BTreeMap<Slot, ()>;
 
-const FIFOMAP_MIN_LIMIT: usize = 200;
-
 #[derive(Debug, Clone)]
 pub struct LimitedFifoMap<K, T> {
 	limit: usize,
@@ -43,12 +42,13 @@ where
 	K: Debug + PartialEq,
 {
 	pub fn new() -> Self {
-		LimitedFifoMap { limit: FIFOMAP_MIN_LIMIT, queue: VecDeque::new() }
+		LimitedFifoMap { limit: DEFAULT_MAX_ITEMS_IN_QUEUE, queue: VecDeque::new() }
 	}
 
 	pub fn with_limit(mut self, limit: usize) -> Self {
-		if limit < FIFOMAP_MIN_LIMIT {
-			self.limit = FIFOMAP_MIN_LIMIT
+		// cannot set a number smaller than the default.
+		if limit < DEFAULT_MAX_ITEMS_IN_QUEUE {
+			self.limit = DEFAULT_MAX_ITEMS_IN_QUEUE
 		} else {
 			self.limit = limit;
 		}
@@ -106,7 +106,13 @@ where
 		let allowable_size = self.limit - self.len();
 
 		let mut other_queue = other.queue;
-		let last_partition = other_queue.split_off(allowable_size);
+
+		let last_partition = if allowable_size < other_queue.len() {
+			// split off the 'other' map, since it's too big to append all of its elements
+			other_queue.split_off(allowable_size)
+		} else {
+			VecDeque::new()
+		};
 
 		self.queue.append(&mut other_queue);
 
@@ -168,7 +174,7 @@ impl TxSetHashAndSlotMap {
 
 #[cfg(test)]
 mod test {
-	use crate::oracle::types::{LimitedFifoMap, TxSetHashAndSlotMap, FIFOMAP_MIN_LIMIT};
+	use crate::oracle::types::{LimitedFifoMap, TxSetHashAndSlotMap, DEFAULT_MAX_ITEMS_IN_QUEUE};
 	use std::convert::TryFrom;
 
 	#[test]
@@ -176,7 +182,7 @@ mod test {
 		let sample = LimitedFifoMap::<u32, char>::new();
 
 		// --------- test limit ---------
-		assert_eq!(sample.limit(), FIFOMAP_MIN_LIMIT);
+		assert_eq!(sample.limit(), DEFAULT_MAX_ITEMS_IN_QUEUE);
 
 		// change limit success
 		let expected_limit = 500;
@@ -187,7 +193,7 @@ mod test {
 		let expected_limit = 199;
 		let mut sample_map = new_sample.with_limit(expected_limit);
 		assert_ne!(sample_map.limit(), expected_limit);
-		assert_eq!(sample_map.limit(), FIFOMAP_MIN_LIMIT);
+		assert_eq!(sample_map.limit(), DEFAULT_MAX_ITEMS_IN_QUEUE);
 
 		// --------- test insert and len methods ---------
 		let fill_size = sample_map.limit();
