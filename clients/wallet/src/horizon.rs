@@ -1,9 +1,14 @@
 use std::{str::FromStr, sync::Arc, time::Duration};
 
 use async_trait::async_trait;
-use futures::future;
+use futures::{
+	future::{self, ready},
+	TryFutureExt,
+};
+
 use parity_scale_codec::{Decode, Encode};
-use primitives::TextMemo;
+use primitives::{TextMemo, TransactionEnvelopeExt};
+use rand::seq::SliceRandom;
 use serde::{de::DeserializeOwned, Deserialize, Deserializer};
 use substrate_stellar_sdk::{types::SequenceNumber, PublicKey, TransactionEnvelope, XdrCodec};
 use tokio::{sync::RwLock, time::sleep};
@@ -297,8 +302,17 @@ pub struct Claimant {
 	// pub predicate: serde_json::Value,
 }
 
-pub const fn horizon_url(is_public_network: bool) -> &'static str {
+pub fn horizon_url(is_public_network: bool, is_need_fallback: bool) -> &'static str {
 	if is_public_network {
+		if is_need_fallback {
+			let other_urls =
+				vec!["https://horizon.stellarx.com", "https://horizon.stellar.lobstr.co"];
+
+			return other_urls
+				.choose(&mut rand::thread_rng())
+				.unwrap_or(&"https://horizon.stellar.org")
+		}
+
 		"https://horizon.stellar.org"
 	} else {
 		"https://horizon-testnet.stellar.org"
@@ -371,6 +385,8 @@ pub trait HorizonClient {
 		&self,
 		transaction: TransactionEnvelope,
 		is_public_network: bool,
+		max_retries: u8,
+		max_backoff_delay_in_secs: u16,
 	) -> Result<TransactionResponse, Error>;
 }
 
@@ -389,7 +405,7 @@ impl HorizonClient for reqwest::Client {
 		limit: i64,
 		order_ascending: bool,
 	) -> Result<HorizonTransactionsResponse, Error> {
-		let base_url = horizon_url(is_public_network);
+		let base_url = horizon_url(is_public_network, false);
 		let mut url = format!("{}/accounts/{}/transactions", base_url, account_id);
 
 		if limit != 0 {
@@ -416,7 +432,7 @@ impl HorizonClient for reqwest::Client {
 		account_encoded: &str,
 		is_public_network: bool,
 	) -> Result<HorizonAccountResponse, Error> {
-		let base_url = horizon_url(is_public_network);
+		let base_url = horizon_url(is_public_network, false);
 		let url = format!("{}/accounts/{}", base_url, account_encoded);
 
 		self.get_from_url(&url).await
@@ -426,31 +442,73 @@ impl HorizonClient for reqwest::Client {
 		&self,
 		transaction_envelope: TransactionEnvelope,
 		is_public_network: bool,
+		max_retries: u8,
+		max_backoff_delay_in_secs: u16,
 	) -> Result<TransactionResponse, Error> {
+		let seq_no = transaction_envelope.sequence_number();
 		let transaction_xdr = transaction_envelope.to_base64_xdr();
 		let transaction_xdr = std::str::from_utf8(&transaction_xdr).map_err(Error::Utf8Error)?;
 
-		let base_url = horizon_url(is_public_network);
-		let url = format!("{}/transactions", base_url);
-
 		let params = [("tx", &transaction_xdr)];
-		let response =
-			self.post(url).form(&params).send().await.map_err(Error::HttpFetchingError)?;
 
-		interpret_response::<TransactionResponse>(response).await.map_err(|e| match e {
-			Error::HorizonSubmissionError { title, status, reason, envelope_xdr }
-				if envelope_xdr.is_none() =>
-			{
-				// let's add a transaction envelope, if possible
-				Error::HorizonSubmissionError {
-					title,
-					status,
-					reason,
-					envelope_xdr: Some(transaction_xdr.to_string()),
-				}
-			},
-			other => other,
-		})
+		let mut server_error_count = 0;
+		let mut exponent_counter = 1;
+
+		loop {
+			let need_fallback = if server_error_count == max_retries {
+				// reset in case the fallback fails but original url could be running again.
+				server_error_count = 0;
+				true
+			} else {
+				false
+			};
+
+			let base_url = horizon_url(is_public_network, need_fallback);
+			let url = format!("{}/transactions", base_url);
+
+			let response =
+				ready(self.post(url).form(&params).send().await.map_err(Error::HttpFetchingError))
+					.and_then(|response| async move {
+						interpret_response::<TransactionResponse>(response).await
+					})
+					.await;
+
+			match response {
+				Err(e) if e.is_recoverable() || e.is_server_error() => {
+					if e.is_server_error() {
+						server_error_count += 1;
+					}
+
+					// let's wait awhile before resubmitting.
+					tracing::warn!(
+						"submission failed for transaction with sequence number {seq_no:?}: {e:?}"
+					);
+					// exponentially sleep before retrying again
+					let sleep_duration = 2u64.pow(exponent_counter);
+					sleep(Duration::from_secs(sleep_duration)).await;
+					tracing::debug!("resubmitting transaction with sequence number {seq_no:?}...");
+
+					// retry/resubmit again
+					if sleep_duration < u64::from(max_backoff_delay_in_secs) {
+						exponent_counter += 1;
+					}
+					continue
+				},
+
+				Err(Error::HorizonSubmissionError { title, status, reason, envelope_xdr }) => {
+					let envelope_xdr = envelope_xdr.or(Some(transaction_xdr.to_string()));
+					// let's add a transaction envelope, if possible
+					return Err(Error::HorizonSubmissionError {
+						title,
+						status,
+						reason,
+						envelope_xdr,
+					})
+				},
+
+				other => return other,
+			}
+		}
 	}
 }
 
@@ -681,7 +739,7 @@ mod tests {
 			.await
 			.expect("Failed to build transaction");
 
-		match horizon_client.submit_transaction(tx_env, false).await {
+		match horizon_client.submit_transaction(tx_env, false, 3, 2).await {
 			Ok(res) => {
 				assert!(res.successful);
 				assert!(res.ledger > 0);

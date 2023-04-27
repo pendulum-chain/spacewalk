@@ -157,8 +157,13 @@ impl WalletStateStorage {
 	#[cfg(any(test, feature = "testing-utils"))]
 	/// Removes the directory itself.
 	/// User should not be able to do this in production.
-	pub fn remove_dir(&self) -> bool {
-		std::fs::remove_dir_all(&self.path).is_ok()
+	pub fn remove_dir(&self) {
+		if Path::new(&self.path).is_dir() {
+			let path = &self.path;
+			if let Err(e) = std::fs::remove_dir_all(path) {
+				tracing::warn!("failed to delete {path}: {e:?}. Please delete manually");
+			}
+		}
 	}
 
 	#[doc(hidden)]
@@ -443,7 +448,7 @@ mod test {
 			storage.get_tx_envelopes().expect("should return ok");
 		assert!(actual_envelopes.is_empty());
 		assert!(actual_errors.is_empty());
-		assert!(storage.remove_dir());
+		storage.remove_dir();
 	}
 
 	#[test]
@@ -472,7 +477,7 @@ mod test {
 		assert_error(new_storage.remove_tx_envelope(sequence), CacheErrorKind::DeleteFileFailed);
 
 		// let's remove the entire directory
-		assert!(new_storage.remove_dir());
+		new_storage.remove_dir();
 
 		// file already exists
 		let seq = 17373142712630;

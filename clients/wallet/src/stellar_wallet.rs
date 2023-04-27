@@ -7,7 +7,7 @@ use substrate_stellar_sdk::{
 	types::{Preconditions, SequenceNumber},
 	Asset, Memo, Operation, PublicKey, SecretKey, StroopAmount, Transaction, TransactionEnvelope,
 };
-use tokio::sync::Mutex;
+use tokio::sync::{oneshot, Mutex};
 
 use crate::{
 	cache::WalletStateStorage,
@@ -35,15 +35,27 @@ pub struct StellarWallet {
 	/// Used for caching Stellar transactions before they get submitted.
 	/// Also used for caching the latest cursor to page through Stellar transactions in horizon
 	cache: WalletStateStorage,
+
+	/// maximum retry attempts for submitting a transaction before switching to a fallback url
+	max_retry_attempts_before_fallback: u8,
+
+	/// the waiting time (in seconds) for retrying.
+	max_backoff_delay: u16,
 }
 
 impl StellarWallet {
+	/// if the user doesn't define the maximum number of retry attempts for 500 internal server
+	/// error, this will be the default.
+	const DEFAULT_MAX_RETRY_ATTEMPTS_BEFORE_FALLBACK: u8 = 3;
+
+	const DEFAULT_MAX_BACKOFF_DELAY_IN_SECS: u16 = 600;
+
 	/// Returns a TransactionResponse after submitting transaction envelope to Stellar,
 	/// Else an Error.
 	async fn submit_transaction(
 		&self,
 		envelope: TransactionEnvelope,
-		horizon_client: &Client,
+		horizon_client: Client,
 	) -> Result<TransactionResponse, Error> {
 		let sequence = &envelope.sequence_number().ok_or(Error::cache_error_with_env(
 			CacheErrorKind::UnknownSequenceNumber,
@@ -51,7 +63,12 @@ impl StellarWallet {
 		))?;
 
 		let submission_result = horizon_client
-			.submit_transaction(envelope.clone(), self.is_public_network)
+			.submit_transaction(
+				envelope.clone(),
+				self.is_public_network,
+				self.max_retry_attempts_before_fallback,
+				self.max_backoff_delay,
+			)
 			.await;
 
 		let _ = self.cache.remove_tx_envelope(*sequence);
@@ -141,7 +158,24 @@ impl StellarWallet {
 			is_public_network,
 			transaction_submission_lock: Arc::new(Mutex::new(())),
 			cache,
+			max_retry_attempts_before_fallback: Self::DEFAULT_MAX_RETRY_ATTEMPTS_BEFORE_FALLBACK,
+			max_backoff_delay: Self::DEFAULT_MAX_BACKOFF_DELAY_IN_SECS,
 		})
+	}
+
+	pub fn with_max_retry_attempts_before_fallback(mut self, max_retries: u8) -> Self {
+		self.max_retry_attempts_before_fallback = max_retries;
+
+		self
+	}
+
+	pub fn with_max_backoff_delay(mut self, max_backoff_delay_in_secs: u16) -> Self {
+		// a number more than the default max would be too large
+		if max_backoff_delay_in_secs < Self::DEFAULT_MAX_BACKOFF_DELAY_IN_SECS {
+			self.max_backoff_delay = max_backoff_delay_in_secs;
+		}
+
+		self
 	}
 
 	pub fn get_public_key_raw(&self) -> StellarPublicKeyRaw {
@@ -190,26 +224,55 @@ impl StellarWallet {
 	}
 
 	/// Submits transactions found in the wallet's cache to Stellar.
-	/// Returns a tuple: (list of txs successfully submitted, list of errors of txs not resubmitted)
-	pub async fn resubmit_transactions_from_cache(&self) -> (Vec<TransactionResponse>, Vec<Error>) {
+	/// Returns a list of oneshot receivers to send back the result of resubmission.
+	pub async fn resubmit_transactions_from_cache(
+		&self,
+	) -> Vec<oneshot::Receiver<Result<TransactionResponse, Error>>> {
 		let _ = self.transaction_submission_lock.lock().await;
 		let horizon_client = Client::new();
 
-		let mut passed = vec![];
+		// Iterates over all errors and creates channels that are used to send errors back to the
+		// caller of this function.
+		let mut error_receivers = vec![];
 
-		let (envs, mut errors) = match self.cache.get_tx_envelopes() {
-			Ok(x) => x,
-			Err(errors) => return (passed, errors),
+		let mut collect_errors = |errors: Vec<Error>| {
+			for error in errors {
+				let (sender, receiver) = oneshot::channel();
+				error_receivers.push(receiver);
+
+				if let Err(e) = sender.send(Err(error)) {
+					tracing::error!("failed to send error to list: {e:?}");
+				}
+			}
 		};
 
+		let envs = match self.cache.get_tx_envelopes() {
+			Ok((envs, errors)) => {
+				collect_errors(errors);
+				envs
+			},
+			Err(errors) => {
+				collect_errors(errors);
+				return error_receivers
+			},
+		};
+
+		let me = Arc::new(self.clone());
 		for env in envs.into_iter() {
-			match self.submit_transaction(env, &horizon_client).await {
-				Ok(response) => passed.push(response),
-				Err(e) => errors.push(e),
-			}
+			let me_clone = Arc::clone(&me);
+			let horizon_clone = horizon_client.clone();
+
+			let (sender, receiver) = oneshot::channel();
+			error_receivers.push(receiver);
+
+			tokio::spawn(async move {
+				if let Err(e) = sender.send(me_clone.submit_transaction(env, horizon_clone).await) {
+					tracing::error!("failed to send message: {e:?}");
+				};
+			});
 		}
 
-		(passed, errors)
+		error_receivers
 	}
 
 	fn create_envelope(
@@ -275,7 +338,7 @@ impl StellarWallet {
 		)?;
 
 		let _ = self.cache.save_tx_envelope(envelope.clone())?;
-		self.submit_transaction(envelope, &horizon_client).await
+		self.submit_transaction(envelope, horizon_client).await
 	}
 
 	///return balances for public key
@@ -305,10 +368,7 @@ impl std::fmt::Debug for StellarWallet {
 #[cfg(feature = "testing-utils")]
 impl Drop for StellarWallet {
 	fn drop(&mut self) {
-		tracing::debug!("deleting cache...");
-		if !self.cache.remove_dir() {
-			tracing::warn!("the cache was not removed. Please delete manually.");
-		}
+		self.cache.remove_dir();
 	}
 }
 
@@ -336,6 +396,50 @@ mod test {
 			)
 			.unwrap(),
 		))
+	}
+
+	#[test]
+	fn test_add_backoff_delay() {
+		let wallet = StellarWallet::from_secret_encoded_with_cache(
+			&STELLAR_VAULT_SECRET_KEY.to_string(),
+			IS_PUBLIC_NETWORK,
+			"resources/test_add_backoff_delay".to_owned(),
+		)
+		.unwrap();
+
+		assert_eq!(wallet.max_backoff_delay, StellarWallet::DEFAULT_MAX_BACKOFF_DELAY_IN_SECS);
+
+		// too big backoff delay
+		let expected_max_backoff_delay = 800;
+		let new_wallet = wallet.with_max_backoff_delay(expected_max_backoff_delay);
+		assert_ne!(new_wallet.max_backoff_delay, expected_max_backoff_delay);
+
+		let expected_max_backoff_delay = 300;
+		let new_wallet = new_wallet.with_max_backoff_delay(expected_max_backoff_delay);
+		assert_eq!(new_wallet.max_backoff_delay, expected_max_backoff_delay);
+
+		new_wallet.cache.remove_dir();
+	}
+
+	#[test]
+	fn test_add_retry_attempt() {
+		let wallet = StellarWallet::from_secret_encoded_with_cache(
+			&STELLAR_VAULT_SECRET_KEY.to_string(),
+			IS_PUBLIC_NETWORK,
+			"resources/test_add_retry_attempt".to_owned(),
+		)
+		.unwrap();
+
+		assert_eq!(
+			wallet.max_retry_attempts_before_fallback,
+			StellarWallet::DEFAULT_MAX_RETRY_ATTEMPTS_BEFORE_FALLBACK
+		);
+
+		let expected_max_retries = 5;
+		let new_wallet = wallet.with_max_retry_attempts_before_fallback(expected_max_retries);
+		assert_eq!(new_wallet.max_retry_attempts_before_fallback, expected_max_retries);
+
+		new_wallet.cache.remove_dir();
 	}
 
 	#[tokio::test]
@@ -387,7 +491,7 @@ mod test {
 
 		let _ = tokio::join!(first_job, second_job);
 
-		assert!(wallet.read().await.cache.remove_dir());
+		wallet.read().await.cache.remove_dir();
 	}
 
 	#[tokio::test]
@@ -411,7 +515,7 @@ mod test {
 		let transaction_response = result.unwrap();
 		assert!(!transaction_response.hash.to_vec().is_empty());
 		assert!(transaction_response.ledger() > 0);
-		assert!(wallet.read().await.cache.remove_dir());
+		wallet.read().await.cache.remove_dir();
 	}
 
 	#[tokio::test]
@@ -475,7 +579,7 @@ mod test {
 
 		assert!(tx_response.is_ok());
 
-		assert!(wallet.cache.remove_dir());
+		wallet.cache.remove_dir();
 	}
 
 	#[tokio::test]
@@ -526,7 +630,7 @@ mod test {
 		let _ = wallet.cache.save_tx_envelope(bad_envelope.clone()).expect("should save.");
 
 		// create a successful transaction
-		let request_id = [1u8; 32];
+		let request_id = [2u8; 32];
 		let good_envelope = wallet
 			.create_envelope(destination, asset, amount, request_id, stroop_fee, seq_number + 1)
 			.expect("should return an envelope");
@@ -534,20 +638,39 @@ mod test {
 		// let's save this in storage
 		let _ = wallet.cache.save_tx_envelope(good_envelope.clone()).expect("should save");
 
-		// 1 should pass, and 1 should fail.
-		let (passed, failed) = wallet.resubmit_transactions_from_cache().await;
-		assert_eq!(passed.len(), 1);
-		assert_eq!(failed.len(), 1);
+		// let's resubmit these 2 transactions
+		let receivers = wallet.resubmit_transactions_from_cache().await;
+		assert_eq!(receivers.len(), 2);
 
-		assert_eq!(passed[0].envelope_xdr, good_envelope.to_base64_xdr());
+		// a count on how many txs passed, and how many failed.
+		let mut passed_count = 0;
+		let mut failed_count = 0;
 
-		match &failed[0] {
-			Error::HorizonSubmissionError { title: _, status: _, reason, envelope_xdr: _ } => {
-				assert_eq!(reason, "tx_bad_seq");
-			},
-			_ => assert!(false),
+		for receiver in receivers {
+			match &receiver.await {
+				Ok(Ok(env)) => {
+					assert_eq!(env.envelope_xdr, good_envelope.to_base64_xdr());
+					passed_count += 1;
+				},
+				Ok(Err(Error::HorizonSubmissionError {
+					title: _,
+					status: _,
+					reason,
+					envelope_xdr: _,
+				})) => {
+					assert_eq!(reason, "tx_bad_seq");
+					failed_count += 1;
+				},
+				other => {
+					panic!("other result was received: {other:?}")
+				},
+			}
 		}
 
-		assert!(wallet.cache.remove_dir());
+		// 1 should pass, and 1 should fail.
+		assert_eq!(passed_count, 1);
+		assert_eq!(failed_count, 1);
+
+		wallet.cache.remove_dir();
 	}
 }
