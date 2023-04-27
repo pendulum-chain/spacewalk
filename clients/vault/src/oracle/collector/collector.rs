@@ -48,8 +48,8 @@ impl ScpMessageCollector {
 	) -> Self {
 		ScpMessageCollector {
 			envelopes_map: Arc::new(RwLock::new(EnvelopesMap::new().with_limit(size_limit))),
-			txset_map: Default::default(),
-			txset_and_slot_map: Arc::new(RwLock::new(TxSetMap::new().with_limit(size_limit))),
+			txset_map: Arc::new(RwLock::new(TxSetMap::new().with_limit(size_limit))),
+			txset_and_slot_map: Arc::new(Default::default()),
 			last_slot_index: 0,
 			public_network,
 			stellar_history_base_url,
