@@ -204,6 +204,10 @@ pub mod pallet {
 	#[pallet::storage]
 	pub(super) type LastIntervalIndex<T: Config> = StorageValue<_, T::BlockNumber, ValueQuery>;
 
+	#[pallet::storage]
+	pub(super) type CancelledRedeemAmount<T: Config> =
+		StorageMap<_, Blake2_128Concat, H256, (BalanceOf<T>, T::CurrencyId), OptionQuery>;
+
 	#[pallet::genesis_config]
 	pub struct GenesisConfig<T: Config> {
 		pub redeem_period: T::BlockNumber,
@@ -837,11 +841,16 @@ impl<T: Config> Pallet<T> {
 				punishment_fee_in_collateral
 			};
 
-			ext::vault_registry::transfer_funds_saturated::<T>(
+			let transferred_amount = ext::vault_registry::transfer_funds_saturated::<T>(
 				CurrencySource::Collateral(vault_id.clone()),
 				CurrencySource::FreeBalance(redeemer.clone()),
 				&amount_to_slash,
 			)?;
+
+			CancelledRedeemAmount::<T>::insert(
+				redeem_id,
+				(transferred_amount.amount(), transferred_amount.currency()),
+			);
 
 			let _ = ext::vault_registry::ban_vault::<T>(&vault_id);
 
@@ -917,7 +926,12 @@ impl<T: Config> Pallet<T> {
 
 		ensure!(redeem.vault == vault_id, Error::<T>::UnauthorizedVault);
 
-		let reimbursed_amount = redeem.amount().checked_add(&redeem.transfer_fee())?;
+		//let reimbursed_amount = redeem.amount().checked_add(&redeem.transfer_fee())?;
+
+		let Some((amount,currency_id)) = CancelledRedeemAmount::<T>::take(redeem_id) else {
+			return Err(DispatchError::from(Error::<T>::RedeemIdNotFound));
+		};
+		let reimbursed_amount = Amount::new(amount, currency_id);
 
 		ext::vault_registry::try_increase_to_be_issued_tokens::<T>(&vault_id, &reimbursed_amount)?;
 		ext::vault_registry::issue_tokens::<T>(&vault_id, &reimbursed_amount)?;
