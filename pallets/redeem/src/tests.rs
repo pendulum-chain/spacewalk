@@ -736,6 +736,10 @@ fn test_mint_tokens_for_reimbursed_redeem() {
 	// POSTCONDITION: `tryIncreaseToBeIssuedTokens` and `issueTokens` MUST be called,
 	// both with the vault and `redeem.amount + redeem.transferFee` as arguments.
 	run_test(|| {
+		// a redeem request of `RedeemRequestStatus::Reimbursed(false)` is not enough to to
+		// reimburse.
+
+		let redeem_id = H256([0u8; 32]);
 		let redeem_request = RedeemRequest {
 			period: 0,
 			vault: VAULT,
@@ -749,8 +753,8 @@ fn test_mint_tokens_for_reimbursed_redeem() {
 			status: RedeemRequestStatus::Reimbursed(false),
 			transfer_fee: 1,
 		};
-		let redeem_request_clone = redeem_request.clone();
-		inject_redeem_request(H256([0u8; 32]), redeem_request.clone());
+
+		inject_redeem_request(redeem_id.clone(), redeem_request.clone());
 		<vault_registry::Pallet<Test>>::insert_vault(
 			&VAULT,
 			vault_registry::Vault {
@@ -761,34 +765,48 @@ fn test_mint_tokens_for_reimbursed_redeem() {
 			},
 		);
 		Security::<Test>::set_active_block_number(100);
+
+		// a `cancel_redeem` was not called, thereby reimbursement should not exist.
 		assert_noop!(
 			Redeem::mint_tokens_for_reimbursed_redeem(
 				RuntimeOrigin::signed(VAULT.account_id),
 				VAULT.currencies.clone(),
-				H256([0u8; 32])
+				redeem_id.clone()
+			),
+			TestError::RedeemIdNotFound
+		);
+
+		//Redeem::CancelledRedeemAmount
+		let new_amount = redeem_request.amount - 2;
+		let reimburse_amt = Amount::new(new_amount, redeem_request.asset);
+		Redeem::insert_cancelled_redeem_amount(redeem_id.clone(), reimburse_amt.clone());
+
+		assert_noop!(
+			Redeem::mint_tokens_for_reimbursed_redeem(
+				RuntimeOrigin::signed(VAULT.account_id),
+				VAULT.currencies.clone(),
+				redeem_id.clone()
 			),
 			VaultRegistryError::ExceedingVaultLimit
 		);
+
 		Security::<Test>::set_active_block_number(101);
 		ext::vault_registry::try_increase_to_be_issued_tokens::<Test>.mock_safe(
 			move |vault_id, amount| {
 				assert_eq!(vault_id, &VAULT);
-				assert_eq!(amount, &wrapped(redeem_request.amount + redeem_request.transfer_fee));
+				assert_eq!(amount, &wrapped(reimburse_amt.amount()));
 				MockResult::Return(Ok(()))
 			},
 		);
 		ext::vault_registry::issue_tokens::<Test>.mock_safe(move |vault_id, amount| {
 			assert_eq!(vault_id, &VAULT);
-			assert_eq!(
-				amount,
-				&wrapped(redeem_request_clone.amount + redeem_request_clone.transfer_fee)
-			);
+			assert_eq!(amount, &wrapped(reimburse_amt.amount()));
 			MockResult::Return(Ok(()))
 		});
 		assert_ok!(Redeem::mint_tokens_for_reimbursed_redeem(
 			RuntimeOrigin::signed(VAULT.account_id),
 			VAULT.currencies.clone(),
-			H256([0u8; 32])
+			redeem_id
 		));
 	});
 }

@@ -826,6 +826,11 @@ impl<T: Config> Pallet<T> {
 				&confiscated_collateral,
 			)?;
 
+			CancelledRedeemAmount::<T>::insert(
+				redeem_id,
+				(confiscated_collateral.amount(), confiscated_collateral.currency()),
+			);
+
 			confiscated_collateral
 		} else {
 			// not liquidated
@@ -977,6 +982,13 @@ impl<T: Config> Pallet<T> {
 	/// * `value` - the redeem request
 	fn insert_redeem_request(key: &H256, value: &DefaultRedeemRequest<T>) {
 		<RedeemRequests<T>>::insert(key, value)
+	}
+
+	#[cfg(any(test, feature = "runtime-benchmarks"))]
+	fn insert_cancelled_redeem_amount(redeem_id: H256, amount: Amount<T>) {
+		let bal = amount.amount();
+		let curr_id = amount.currency();
+		<CancelledRedeemAmount<T>>::insert(redeem_id, (bal, curr_id));
 	}
 
 	fn set_redeem_status(id: H256, status: RedeemRequestStatus) -> RedeemRequestStatus {

@@ -312,6 +312,10 @@ benchmarks! {
 		redeem_request.stellar_address = origin_stellar_address;
 		Redeem::<T>::insert_redeem_request(&redeem_id, &redeem_request);
 
+		let new_amount = redeem_request.amount - 2;
+		let reimburse_amt = Amount::new(new_amount, redeem_request.asset);
+		Redeem::<T>::insert_cancelled_redeem_amount(redeem_id.clone(),reimburse_amt.clone());
+
 		let vault_id = get_vault_id::<T>();
 		let origin = vault_id.account_id.clone();
 		let amount = 1000;
