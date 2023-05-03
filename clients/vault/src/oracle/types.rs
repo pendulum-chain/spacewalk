@@ -110,17 +110,18 @@ where
 		let mut other_queue = other.queue;
 		let other_queue_len = other_queue.len();
 
-		let mut last_partition = if other_queue_len > allowable_size {
+		if other_queue_len > allowable_size {
 			let split_index = other_queue_len - allowable_size;
 			// split off the 'other' map, since it's too big to append all of its elements
-			other_queue.split_off(split_index)
+			let mut last_partition = other_queue.split_off(split_index);
+
+			self.queue.append(&mut last_partition);
+
+			other_queue
 		} else {
+			self.queue.append(&mut other_queue);
 			VecDeque::new()
-		};
-
-		self.queue.append(&mut last_partition);
-
-		other_queue
+		}
 	}
 }
 
