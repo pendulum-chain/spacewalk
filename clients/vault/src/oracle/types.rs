@@ -46,7 +46,9 @@ where
 	}
 
 	pub fn with_limit(mut self, limit: usize) -> Self {
-		// cannot set a number smaller than the default.
+		// cannot set a number smaller than the default, because if the limit is too small,
+		// restoring SPC messages from an archive might have issues
+		// since the archived data is inserted in large batches.
 		if limit < DEFAULT_MAX_ITEMS_IN_QUEUE {
 			self.limit = DEFAULT_MAX_ITEMS_IN_QUEUE
 		} else {
@@ -91,7 +93,7 @@ where
 		// remove the oldest entry if the queue reached its limit
 		if self.queue.len() == self.limit {
 			if let Some(oldest_entry) = self.queue.pop_front() {
-				tracing::debug!("removing old entry with key: {:?}", oldest_entry.0);
+				tracing::info!("removing old entry with key: {:?}", oldest_entry.0);
 			}
 		}
 
@@ -106,17 +108,19 @@ where
 		let allowable_size = self.limit - self.len();
 
 		let mut other_queue = other.queue;
+		let other_queue_len = other_queue.len();
 
-		let last_partition = if allowable_size < other_queue.len() {
+		let mut last_partition = if other_queue_len > allowable_size {
+			let split_index = other_queue_len - allowable_size;
 			// split off the 'other' map, since it's too big to append all of its elements
-			other_queue.split_off(allowable_size)
+			other_queue.split_off(split_index)
 		} else {
 			VecDeque::new()
 		};
 
-		self.queue.append(&mut other_queue);
+		self.queue.append(&mut last_partition);
 
-		last_partition
+		other_queue
 	}
 }
 
@@ -198,6 +202,7 @@ mod test {
 		// --------- test insert and len methods ---------
 		let fill_size = sample_map.limit();
 
+		// inserts a char value of the index.
 		for x in 0..fill_size {
 			let key = u32::try_from(x).expect("should return ok");
 			let value = char::from_u32(key).unwrap_or('x');
@@ -257,12 +262,22 @@ mod test {
 		let second_len = second_map.len();
 		let remaining_space = limit - second_len;
 
+		// the remainder should be the old elements of `sample_map`.
 		let remainder = second_map.append(sample_map.clone());
+		let remainder_len = remainder.len();
 		assert_eq!(second_map.len(), limit);
+		assert_eq!(remainder_len, sample_map.len() - remaining_space);
+
+		// check that the elements of the remainder list, is the same with the elements
+		// of the original sample map.
 
 		let first_remainder = remainder[0];
-		let expected = sample_map.queue[remaining_space];
+		let expected = sample_map.queue[0];
 		assert_eq!(first_remainder, expected);
+
+		let last_remainder = remainder[remainder_len - 1];
+		let expected = sample_map.queue[remainder_len - 1];
+		assert_eq!(last_remainder, expected);
 	}
 
 	#[test]

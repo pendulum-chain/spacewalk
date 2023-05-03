@@ -248,7 +248,7 @@ mod test {
 		Receiver<ConnectorActions>,
 		Receiver<StellarRelayMessage>,
 	) {
-		let cfg_file_path = "./resources/config/testnet/stellar_relay_config_sdftest2.json";
+		let cfg_file_path = "./resources/config/testnet/stellar_relay_config_sdftest1.json";
 		let secret_key_path = "./resources/secretkey/stellar_secretkey_testnet";
 		let secret_key =
 			std::fs::read_to_string(secret_key_path).expect("should be able to read file");
