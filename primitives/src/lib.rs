@@ -529,11 +529,13 @@ impl TryFrom<(&str, AssetIssuer)> for CurrencyId {
 		let slice = value.0;
 		let issuer = value.1;
 		if slice.len() <= 4 {
-			let mut code: Bytes4 = [0; 4];
+			// We pad with space characters to make it more convenient in the UI
+			let mut code: Bytes4 = [b' '; 4];
 			code[..slice.len()].copy_from_slice(slice.as_bytes());
 			Ok(CurrencyId::AlphaNum4(code, issuer))
 		} else if slice.len() > 4 && slice.len() <= 12 {
-			let mut code: Bytes12 = [0; 12];
+			// We pad with space characters to make it more convenient in the UI
+			let mut code: Bytes12 = [b' '; 12];
 			code[..slice.len()].copy_from_slice(slice.as_bytes());
 			Ok(CurrencyId::AlphaNum12(code, issuer))
 		} else {
