@@ -314,7 +314,7 @@ benchmarks! {
 
 		let new_amount = redeem_request.amount;
 		let reimburse_amt = Amount::new(new_amount, redeem_request.asset);
-		Redeem::<T>::insert_cancelled_redeem_amount(redeem_id,reimburse_amt.clone());
+		Redeem::<T>::insert_cancelled_redeem_amount(redeem_id,reimburse_amt);
 
 		let vault_id = get_vault_id::<T>();
 		let origin = vault_id.account_id.clone();
