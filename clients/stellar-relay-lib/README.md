@@ -79,7 +79,7 @@ For example, Stellar Relay will wait for 10 seconds to read from the existing tc
 * _`Error`_ -> a todo
 
 ## Example
-In the `stellar-relay` directory, run this command:
+In the `stellar-relay-lib` directory, run this command:
 ```
  RUST_LOG=info cargo run --example connect
 ```

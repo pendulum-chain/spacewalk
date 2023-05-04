@@ -10,7 +10,7 @@ use stellar_relay_lib::sdk::{
 use crate::oracle::{
 	constants::{get_min_externalized_messages, MAX_SLOT_TO_REMEMBER},
 	traits::ArchiveStorage,
-	types::{LifoMap, StellarMessageSender},
+	types::StellarMessageSender,
 	ScpArchiveStorage, ScpMessageCollector, Slot, TransactionsArchiveStorage,
 };
 
@@ -107,7 +107,7 @@ impl ScpMessageCollector {
 	) -> UnlimitedVarArray<ScpEnvelope> {
 		let empty = UnlimitedVarArray::new_empty();
 
-		if let Some(envelopes) = self.envelopes_map().get_with_key(&slot) {
+		if let Some(envelopes) = self.envelopes_map().get(&slot) {
 			// lacking envelopes
 			if envelopes.len() < get_min_externalized_messages(self.is_public()) {
 				tracing::warn!("not enough envelopes to build proof for slot {}", slot);
@@ -130,7 +130,7 @@ impl ScpMessageCollector {
 	/// * `sender` - used to send messages to Stellar Node
 	async fn get_txset(&self, slot: Slot, sender: &StellarMessageSender) -> Option<TransactionSet> {
 		let txset_map = self.txset_map().clone();
-		let tx_set = txset_map.get_with_key(&slot).cloned();
+		let tx_set = txset_map.get(&slot).cloned();
 
 		match tx_set {
 			Some(res) => Some(res),
@@ -213,9 +213,9 @@ impl ScpMessageCollector {
 
 					let mut envelopes_map = envelopes_map_arc.write();
 
-					if envelopes_map.get_with_key(&slot).is_none() {
+					if envelopes_map.get(&slot).is_none() {
 						tracing::debug!("Adding archived SCP envelopes for slot {}", slot);
-						envelopes_map.set_with_key(slot, vec_scp);
+						envelopes_map.insert(slot, vec_scp);
 					}
 				}
 			}
@@ -253,7 +253,7 @@ impl ScpMessageCollector {
 			if let Some(target_history_entry) = value {
 				tracing::debug!("Adding archived tx set for slot {}", slot);
 				let mut tx_set_map = txset_map_arc.write();
-				tx_set_map.set_with_key(slot, target_history_entry.tx_set.clone());
+				tx_set_map.insert(slot, target_history_entry.tx_set.clone());
 			}
 		}
 	}

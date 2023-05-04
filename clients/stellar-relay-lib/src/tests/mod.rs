@@ -18,7 +18,7 @@ fn secret_key() -> String {
 
 fn overlay_infos() -> (NodeInfo, ConnectionInfo) {
 	let cfg = StellarOverlayConfig::try_from_path(
-		"./resources/config/testnet/stellar_relay_config_sdftest1.json",
+		"./resources/config/testnet/stellar_relay_config_sdftest2.json",
 	)
 	.expect("should be able to extract config");
 
