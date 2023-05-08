@@ -330,6 +330,13 @@ fn testnet_genesis(
 						102, 231, 46, 199, 108, 171, 97, 144, 240, 161, 51, 109, 72, 34, 159, 139,
 					],
 				)),
+				Key::ExchangeRate(CurrencyId::AlphaNum4(
+					*b"MXN\0",
+					[
+						20, 209, 150, 49, 176, 55, 23, 217, 171, 154, 54, 110, 16, 50, 30, 226,
+						102, 231, 46, 199, 108, 171, 97, 144, 240, 161, 51, 109, 72, 34, 159, 139,
+					]
+				))
 			],
 		},
 		vault_registry: VaultRegistryConfig {
@@ -391,6 +398,7 @@ fn testnet_genesis(
 				// target currency ie the second one in the pair
 				AssetId::new(b"FIAT".to_vec(), b"USD-USD".to_vec()),
 				AssetId::new(b"FIAT".to_vec(), b"MXN-USD".to_vec()),
+				AssetId::new(b"Stellar".to_vec(), b"XLM".to_vec())
 			],
 			batching_api: b"http://localhost:8070/currencies".to_vec(),
 			coin_infos_map: vec![],

@@ -40,6 +40,14 @@ const DEFAULT_WRAPPED_CURRENCY: CurrencyId = CurrencyId::AlphaNum4(
 	],
 );
 
+const LESS_THAN_4_CURRENCY_CODE: CurrencyId = CurrencyId::AlphaNum4(
+	*b"MXN\0",
+	[
+		20, 209, 150, 49, 176, 55, 23, 217, 171, 154, 54, 110, 16, 50, 30, 226,
+		102, 231, 46, 199, 108, 171, 97, 144, 240, 161, 51, 109, 72, 34, 159, 139,
+	]
+);
+
 lazy_static! {
 	static ref CFG: StellarOverlayConfig = get_test_stellar_relay_config(false);
 	static ref SECRET_KEY: String = get_test_secret_key(false);
@@ -151,6 +159,13 @@ where
 	)
 	.await;
 
+	set_exchange_rate_and_wait(
+		&parachain_rpc,
+		LESS_THAN_4_CURRENCY_CODE,
+		// Set exchange rate to 100:1 with USD
+		FixedU128::saturating_from_rational(1u128, 10u128),
+	).await;
+
 	let path = tmp_dir.path().to_str().expect("should return a string").to_string();
 	let wallet = Arc::new(RwLock::new(
 		StellarWallet::from_secret_encoded_with_cache(&SECRET_KEY, CFG.is_public_network(), path)
@@ -190,6 +205,13 @@ where
 		FixedU128::saturating_from_rational(1u128, 10u128),
 	)
 	.await;
+
+	set_exchange_rate_and_wait(
+		&parachain_rpc,
+		LESS_THAN_4_CURRENCY_CODE,
+		// Set exchange rate to 100:1 with USD
+		FixedU128::saturating_from_rational(1u128, 10u128),
+	).await;
 
 	let vault_provider = setup_provider(client.clone(), AccountKeyring::Charlie).await;
 	let vault_id = VaultId::new(
