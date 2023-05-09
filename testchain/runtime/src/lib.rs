@@ -8,12 +8,7 @@ extern crate frame_benchmarking;
 
 use codec::Encode;
 pub use dia_oracle::dia::*;
-use frame_support::{
-	construct_runtime, parameter_types,
-	traits::{ConstU128, ConstU8, Contains, KeyOwnerProofSystem},
-	weights::{constants::WEIGHT_REF_TIME_PER_SECOND, ConstantMultiplier, IdentityFee, Weight},
-	PalletId,
-};
+use frame_support::{construct_runtime, parameter_types, traits::{ConstU128, ConstU8, Contains, KeyOwnerProofSystem}, weights::{constants::WEIGHT_REF_TIME_PER_SECOND, ConstantMultiplier, IdentityFee, Weight}, PalletId, log};
 pub use frame_system::Call as SystemCall;
 use orml_currencies::BasicCurrencyAdapter;
 use orml_traits::{currency::MutationHooks, parameter_type_with_key};
@@ -326,6 +321,7 @@ impl currency::CurrencyConversion<currency::Amount<Runtime>, CurrencyId> for Cur
 		amount: &currency::Amount<Runtime>,
 		to: CurrencyId,
 	) -> Result<currency::Amount<Runtime>, DispatchError> {
+		log::info!("WHAT DA FAAAAAAACXKKKK runtime: convert amount: {amount:?} to {to:?}");
 		Oracle::convert(amount, to)
 	}
 }

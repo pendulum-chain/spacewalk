@@ -8,7 +8,7 @@
 extern crate mocktopus;
 #[cfg(feature = "testing-utils")]
 use frame_support::dispatch::DispatchResult;
-use frame_support::{dispatch::DispatchError, transactional};
+use frame_support::{dispatch::DispatchError, log, transactional};
 #[cfg(test)]
 use mocktopus::macros::mockable;
 use sp_runtime::{
@@ -255,10 +255,14 @@ impl<T: Config> Pallet<T> {
 	/// Get the exchange rate in planck per satoshi
 	pub fn get_price(key: OracleKey) -> Result<UnsignedFixedPoint<T>, DispatchError> {
 		ext::security::ensure_parachain_status_running::<T>()?;
+		log::info!("WHAT DA FAAAAAAACXKKKK ORACLE: parachain is running?");
 
 		let Some(price) = T::DataProvider::get_no_op(&key) else{
-			 return Err(Error::<T>::MissingExchangeRate.into());
+			log::info!("WHAT DA FAAAAAAACXKKKK ORACLE, missing exchange rate {:?} ",key);
+			return Err(Error::<T>::MissingExchangeRate.into());
 		};
+		log::info!("WHAT DA FAAAAAAACXKKKK ORACLE: return price: {:?}", price.value);
+
 		Ok(price.value)
 	}
 
@@ -266,12 +270,30 @@ impl<T: Config> Pallet<T> {
 		amount: &Amount<T>,
 		currency_id: T::CurrencyId,
 	) -> Result<Amount<T>, DispatchError> {
+		log::info!("WHAT DA FAAAAAAACXKKKK ORACLE: CONVERT amount with currency: {:?} to {currency_id:?}", amount.currency());
 		let converted = match (amount.currency(), currency_id) {
 			(x, y) if x == y => amount.amount(),
 			(_, _) => {
 				// First convert to USD, then convert USD to the desired currency
-				let base = Self::currency_to_usd(amount.amount(), amount.currency())?;
-				Self::usd_to_currency(base, currency_id)?
+				match Self::currency_to_usd(amount.amount(), amount.currency()) {
+					Ok(base) => {
+						log::info!("WHAT DA FAAAAAAACXKKKK ORACLE: base: {:?}",base);
+						match Self::usd_to_currency(base, currency_id) {
+							Ok(x) => { x }
+							Err(e) => {
+								log::info!("WHAT DA FAAAAAAACXKKKK ORACLE: usd_to_currency: {e:?}");
+								return Err(e);
+							}
+						}
+					}
+					Err(e) => {
+						log::error!("WHAT DA FAAAAAAACXKKKK ORACLE: base: {e:?}");
+						return Err(e);
+					}
+				}
+
+
+
 			},
 		};
 		Ok(Amount::new(converted, currency_id))
@@ -282,7 +304,10 @@ impl<T: Config> Pallet<T> {
 		currency_id: CurrencyId,
 	) -> Result<BalanceOf<T>, DispatchError> {
 		let rate = Self::get_price(OracleKey::ExchangeRate(currency_id))?;
+		log::info!("WHAT DA FAAAAAAACXKKKK ORACLE: RATE: {rate:?}");
 		let converted = rate.checked_mul_int(amount).ok_or(ArithmeticError::Overflow)?;
+		log::info!("WHAT DA FAAAAAAACXKKKK ORACLE: CONVERTED BALANCE: {converted:?}");
+
 		Ok(converted)
 	}
 
@@ -292,8 +317,11 @@ impl<T: Config> Pallet<T> {
 	) -> Result<BalanceOf<T>, DispatchError> {
 		let rate = Self::get_price(OracleKey::ExchangeRate(currency_id))?;
 		if amount.is_zero() {
+			log::info!("WHAT DA FAAAAAAACXKKKK ORACLE, amount is zero, so return zero");
+
 			return Ok(Zero::zero())
 		}
+		log::info!("WHAT DA FAAAAAAACXKKKK ORACLE usd_to_currency type conversion");
 
 		// The code below performs `amount/rate`, plus necessary type conversions
 		Ok(T::UnsignedFixedPoint::checked_from_integer(amount)

@@ -238,6 +238,14 @@ where
 #[serial]
 async fn test_redeem_succeeds() {
 	test_with_vault(|client, wallet, oracle_agent, vault_id, vault_provider| async move {
+		// let sudo_provider = setup_provider(client.clone(), AccountKeyring::Alice).await;
+		//
+		// sudo_provider
+		// 	.sudo(EncodedCall::Security(SecurityCall::set_parachain_status {
+		// 		status_code: StatusCode::Running,
+		// 	}))
+		// 	.await;
+
 		let user_provider = setup_provider(client.clone(), AccountKeyring::Dave).await;
 
 		let vault_ids = vec![vault_id.clone()];

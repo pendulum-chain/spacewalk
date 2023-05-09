@@ -1,7 +1,7 @@
 // We allow these lints because they are only caused by the 'mockable' attribute.
 #![allow(clippy::forget_non_drop, clippy::swap_ptr_to_ref, clippy::forget_ref, clippy::forget_copy)]
 use frame_support::{
-	dispatch::{DispatchError, DispatchResult},
+	dispatch::{DispatchError, DispatchResult}, log,
 	ensure,
 };
 use orml_traits::{MultiCurrency, MultiReservableCurrency};
@@ -154,17 +154,25 @@ mod math {
 			let self_fixed_point = UnsignedFixedPoint::<T>::checked_from_integer(self.amount)
 				.ok_or(Error::<T>::TryIntoIntError)?;
 
+			log::info!("WHAT DA FAAAAAAACXKKKK PALLET-CURRENCY: SELF_FIXED_POINT: {:?} ",self_fixed_point);
+
 			// do the multiplication
 			let product = self_fixed_point.checked_mul(scalar).ok_or(ArithmeticError::Overflow)?;
+
+			log::info!("WHAT DA FAAAAAAACXKKKK PALLET-CURRENCY: PRODUCT: {:?} ",product);
+
 
 			// convert to inner
 			let product_inner =
 				UniqueSaturatedInto::<u128>::unique_saturated_into(product.into_inner());
 
+			log::info!("WHAT DA FAAAAAAACXKKKK PALLET-CURRENCY: PRODUCT TO U128 {}",product_inner);
+
 			// convert to u128 by dividing by a rounded up division by accuracy
 			let accuracy = UniqueSaturatedInto::<u128>::unique_saturated_into(
 				UnsignedFixedPoint::<T>::accuracy(),
 			);
+
 			let amount = product_inner
 				.checked_add(accuracy)
 				.ok_or(ArithmeticError::Overflow)?
@@ -174,6 +182,9 @@ mod math {
 				.ok_or(ArithmeticError::Underflow)?
 				.try_into()
 				.map_err(|_| Error::<T>::TryIntoIntError)?;
+
+			log::info!("WHAT DA FAAAAAAACXKKKK PALLET-CURRENCY: new amount {:?}", amount);
+
 
 			Ok(Self { amount, currency_id: self.currency_id })
 		}

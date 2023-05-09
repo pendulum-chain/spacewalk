@@ -41,8 +41,11 @@ impl Convert<Key, Option<(Vec<u8>, Vec<u8>)>> for MockOracleKeyConvertor {
 				CurrencyId::XCM(token_symbol) => Some((vec![0u8], vec![token_symbol])),
 				CurrencyId::Native => Some((vec![2u8], vec![])),
 				CurrencyId::StellarNative => Some((vec![3u8], vec![])),
-				CurrencyId::Stellar(Asset::AlphaNum4 { code, .. }) =>
-					Some((vec![4u8], code.to_vec())),
+				CurrencyId::Stellar(Asset::AlphaNum4 { code, .. }) => {
+					//log::info!("WHAT DA FAAAAAAACXKKKK ORACLE DIA THIS IS MOCK!: {code:?}");
+
+					Some((vec![4u8], code.to_vec()))
+				},
 				CurrencyId::Stellar(Asset::AlphaNum12 { code, .. }) =>
 					Some((vec![5u8], code.to_vec())),
 			},

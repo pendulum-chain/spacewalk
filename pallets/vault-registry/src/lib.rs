@@ -1949,17 +1949,17 @@ impl<T: Config> Pallet<T> {
 			VaultCurrencyPair { collateral: currency_id, wrapped: amount_wrapped.currency() };
 		let threshold = Self::secure_collateral_threshold(&currency_pair)
 			.ok_or(Error::<T>::SecureCollateralThresholdNotSet)?;
-		log::info!("WHAT DA FAAAAAAACXKKKK THRESHOLD: {threshold:?} ");
-		log::info!("WHAT DA FAAAAAAACXKKKK CURRENCY id: {currency_id:?}");
-		log::info!("WHAT DA FAAAAAAACXKKKK AMOUNT_WRAPPED AMOUNT: {:?}", amount_wrapped.amount());
-		log::info!("WHAT DA FAAAAAAACXKKKK AMOUNT_WRAPPED CURRENCY: {:?}", amount_wrapped.currency());
+		log::info!("WHAT DA FAAAAAAACXKKKK VAULT-REGISTRY: THRESHOLD: {threshold:?} ");
+		log::info!("WHAT DA FAAAAAAACXKKKK VAULT-REGISTRY: CURRENCY id: {currency_id:?}");
+		log::info!("WHAT DA FAAAAAAACXKKKK VAULT-REGISTRY: AMOUNT_WRAPPED AMOUNT: {:?}", amount_wrapped.amount());
+		log::info!("WHAT DA FAAAAAAACXKKKK VAULT-REGISTRY: AMOUNT_WRAPPED CURRENCY: {:?}", amount_wrapped.currency());
 
 		let collateral = Self::get_required_collateral_for_wrapped_with_threshold(
 			amount_wrapped,
 			threshold,
 			currency_id,
 		)?;
-		log::info!("WHAT DA FAAAAAAACXKKKK COLLATERAL passed");
+		log::info!("WHAT DA FAAAAAAACXKKKK VAULT-REGISTRY: COLLATERAL passed");
 		Ok(collateral)
 	}
 
@@ -2119,7 +2119,11 @@ impl<T: Config> Pallet<T> {
 		threshold: UnsignedFixedPoint<T>,
 		currency_id: CurrencyId<T>,
 	) -> Result<Amount<T>, DispatchError> {
-		wrapped.checked_fixed_point_mul_rounded_up(&threshold)?.convert_to(currency_id)
+		let res = wrapped.checked_fixed_point_mul_rounded_up(&threshold)?;
+
+		log::info!("WHAT DA FAAAAAAACXKKKK VAULT-REGISTRY: CHECKED_FIXED_POINT_MUL_ROUNDED_UP currency: {:?}",res.currency());
+		log::info!("WHAT DA FAAAAAAACXKKKK VAULT-REGISTRY: CHECKED_FIXED_POINT_MUL_ROUNDED_UP amount: {:?}",res.amount());
+		res.convert_to(currency_id)
 	}
 
 	fn calculate_max_wrapped_from_collateral_for_threshold(

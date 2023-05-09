@@ -5,6 +5,7 @@ use sp_std::marker;
 
 use sp_runtime::traits::Convert;
 use sp_std::vec::Vec;
+use crate::log;
 
 const STELLAR_DIA_BLOCKCHAIN: &str = "Stellar";
 const STELLAR_DIA_SYMBOL: &str = "XLM";
@@ -63,6 +64,7 @@ impl<T: NativeCurrencyKey + XCMCurrencyConversion> Convert<OracleKey, Option<(Ve
 				CurrencyId::Stellar(primitives::Asset::AlphaNum4 { code, .. }) => {
 					let fiat_quote = construct_fiat_usd_symbol_for_currency(code.to_vec());
 
+					log::info!("WHAT DA FAAAAAAACXKKKK ORACLE DIA: {fiat_quote:?}");
 					Some((FIAT_DIA_BLOCKCHAIN.as_bytes().to_vec(), fiat_quote))
 				},
 				CurrencyId::Stellar(primitives::Asset::AlphaNum12 { .. }) => unimplemented!(),
@@ -127,16 +129,21 @@ where
 {
 	fn get_no_op(key: &OracleKey) -> Option<TimestampedValue<UnsignedFixedPoint, Moment>> {
 		let (blockchain, symbol) = ConvertKey::convert(key.clone())?;
-
+		log::info!("WHAT DA FAAAAAAACXKKKK DIA: symbol: {symbol:?} of chain: {blockchain:?}");
 		let Ok(coin_info) = Dia::get_coin_info(blockchain, symbol) else {
+			log::info!("WHAT DA FAAAAAAACXKKKK DIA: NO COIN INFO ");
             return None;
         };
 
 		let value = ConvertPrice::convert(coin_info.price)?;
+		log::info!("WHAT DA FAAAAAAACXKKKK DIA: converted price value succeeded");
+
 		let Some(timestamp) = ConvertMoment::convert(coin_info.last_update_timestamp) else{
-            return None;
+			log::info!("WHAT DA FAAAAAAACXKKKK DIA: NO TIMESTAMP FOUND FOR {coin_info:?}");
+			return None;
         };
 
+		log::info!("WHAT DA FAAAAAAACXKKKK DIA: return!!!!!");
 		Some(TimestampedValue { value, timestamp })
 	}
 
