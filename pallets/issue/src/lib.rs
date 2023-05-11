@@ -282,7 +282,10 @@ pub mod pallet {
 				transaction_set_encoded,
 			)?;
 
-			Ok(().into())
+			// Don't take tx fees on success. If the vault had to pay for this function, it would
+			// have been vulnerable to a griefing attack where users would issue amounts just
+			// above the minimum transfer value.
+			Ok(Pays::No.into())
 		}
 
 		/// Cancel the issuance of tokens if expired
