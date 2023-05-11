@@ -8,6 +8,20 @@ use crate::CurrencyInfo;
 use std::str::FromStr;
 
 #[test]
+fn test_trailing_non_alphanum() {
+	let test = b"ZerO";
+	assert_eq!(remove_trailing_non_alphanum_bytes(test).len(), test.len());
+
+	let test = b"Zer0";
+	assert_eq!(remove_trailing_non_alphanum_bytes(test).len(), test.len());
+
+	let test = b"Zer\0";
+	assert_ne!(remove_trailing_non_alphanum_bytes(test).len(), test.len());
+
+	let test = b"Zero ";
+	assert_eq!(remove_trailing_non_alphanum_bytes(test).len(), test.len() - 1);
+}
+#[test]
 fn test_from() {
 	let account =
 		PublicKey::from_encoding("GAKNDFRRWA3RPWNLTI3G4EBSD3RGNZZOY5WKWYMQ6CQTG3KIEKPYWAYC")
