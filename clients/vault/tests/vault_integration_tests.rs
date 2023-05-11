@@ -526,8 +526,8 @@ async fn test_cancel_scheduler_succeeds() {
 		let _ = register_vault(
 			wallet.clone(),
 			vec![
-				(&new_vault_provider, &new_vault_id, issue_amount),
-				(&old_vault_provider, &old_vault_id, issue_amount),
+				(&new_vault_provider, &new_vault_id, issue_amount * 2),
+				(&old_vault_provider, &old_vault_id, issue_amount * 2),
 			],
 		)
 		.await;
