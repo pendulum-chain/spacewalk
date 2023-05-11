@@ -1951,8 +1951,14 @@ impl<T: Config> Pallet<T> {
 			.ok_or(Error::<T>::SecureCollateralThresholdNotSet)?;
 		log::info!("WHAT DA FAAAAAAACXKKKK VAULT-REGISTRY: THRESHOLD: {threshold:?} ");
 		log::info!("WHAT DA FAAAAAAACXKKKK VAULT-REGISTRY: CURRENCY id: {currency_id:?}");
-		log::info!("WHAT DA FAAAAAAACXKKKK VAULT-REGISTRY: AMOUNT_WRAPPED AMOUNT: {:?}", amount_wrapped.amount());
-		log::info!("WHAT DA FAAAAAAACXKKKK VAULT-REGISTRY: AMOUNT_WRAPPED CURRENCY: {:?}", amount_wrapped.currency());
+		log::info!(
+			"WHAT DA FAAAAAAACXKKKK VAULT-REGISTRY: AMOUNT_WRAPPED AMOUNT: {:?}",
+			amount_wrapped.amount()
+		);
+		log::info!(
+			"WHAT DA FAAAAAAACXKKKK VAULT-REGISTRY: AMOUNT_WRAPPED CURRENCY: {:?}",
+			amount_wrapped.currency()
+		);
 
 		let collateral = Self::get_required_collateral_for_wrapped_with_threshold(
 			amount_wrapped,

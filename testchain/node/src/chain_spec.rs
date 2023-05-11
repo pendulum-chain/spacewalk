@@ -48,6 +48,14 @@ const WRAPPED_CURRENCY_ID: CurrencyId = CurrencyId::AlphaNum4(
 	],
 );
 
+const MXN_CURRENCY_ID: CurrencyId = CurrencyId::AlphaNum4(
+	*b"MXN\0",
+	[
+		20, 209, 150, 49, 176, 55, 23, 217, 171, 154, 54, 110, 16, 50, 30, 226, 102, 231, 46, 199,
+		108, 171, 97, 144, 240, 161, 51, 109, 72, 34, 159, 139,
+	],
+);
+
 /// Generate an Aura authority key.
 pub fn authority_keys_from_seed(s: &str) -> (AuraId, GrandpaId) {
 	(get_from_seed::<AuraId>(s), get_from_seed::<GrandpaId>(s))
@@ -323,24 +331,16 @@ fn testnet_genesis(
 				// Changing these items means that the integration tests also have to change
 				// because the integration tests insert dummy values for these into the oracle
 				Key::ExchangeRate(CurrencyId::XCM(0)),
-				Key::ExchangeRate(CurrencyId::AlphaNum4(
-					*b"USDC",
-					[
-						20, 209, 150, 49, 176, 55, 23, 217, 171, 154, 54, 110, 16, 50, 30, 226,
-						102, 231, 46, 199, 108, 171, 97, 144, 240, 161, 51, 109, 72, 34, 159, 139,
-					],
-				)),
-				Key::ExchangeRate(CurrencyId::AlphaNum4(
-					*b"MXN\0",
-					[
-						20, 209, 150, 49, 176, 55, 23, 217, 171, 154, 54, 110, 16, 50, 30, 226,
-						102, 231, 46, 199, 108, 171, 97, 144, 240, 161, 51, 109, 72, 34, 159, 139,
-					]
-				))
+				Key::ExchangeRate(WRAPPED_CURRENCY_ID),
+				Key::ExchangeRate(MXN_CURRENCY_ID),
 			],
 		},
 		vault_registry: VaultRegistryConfig {
-			minimum_collateral_vault: vec![(CurrencyId::XCM(0), 0), (CurrencyId::XCM(1), 0)],
+			minimum_collateral_vault: vec![
+				(CurrencyId::XCM(0), 0),
+				(CurrencyId::XCM(1), 0),
+				(CurrencyId::StellarNative, 0),
+			],
 			punishment_delay: DAYS,
 			secure_collateral_threshold: vec![
 				(
@@ -349,6 +349,17 @@ fn testnet_genesis(
 				),
 				(
 					default_pair(CurrencyId::XCM(1)),
+					FixedU128::checked_from_rational(160, 100).unwrap(),
+				),
+				(
+					VaultCurrencyPair { collateral: CurrencyId::XCM(0), wrapped: MXN_CURRENCY_ID },
+					FixedU128::checked_from_rational(160, 100).unwrap(),
+				),
+				(
+					VaultCurrencyPair {
+						collateral: CurrencyId::XCM(0),
+						wrapped: CurrencyId::StellarNative,
+					},
 					FixedU128::checked_from_rational(160, 100).unwrap(),
 				),
 			],
@@ -362,6 +373,24 @@ fn testnet_genesis(
 					default_pair(CurrencyId::XCM(1)),
 					FixedU128::checked_from_rational(140, 100).unwrap(),
 				),
+				(
+					VaultCurrencyPair {
+						collateral: CurrencyId::StellarNative,
+						wrapped: MXN_CURRENCY_ID,
+					},
+					FixedU128::checked_from_rational(140, 100).unwrap(),
+				),
+				(
+					VaultCurrencyPair { collateral: CurrencyId::XCM(0), wrapped: MXN_CURRENCY_ID },
+					FixedU128::checked_from_rational(140, 100).unwrap(),
+				),
+				(
+					VaultCurrencyPair {
+						collateral: CurrencyId::XCM(0),
+						wrapped: CurrencyId::StellarNative,
+					},
+					FixedU128::checked_from_rational(140, 100).unwrap(),
+				),
 			],
 			/* 135% */
 			liquidation_collateral_threshold: vec![
@@ -373,11 +402,33 @@ fn testnet_genesis(
 					default_pair(CurrencyId::XCM(1)),
 					FixedU128::checked_from_rational(120, 100).unwrap(),
 				),
+				(
+					VaultCurrencyPair { collateral: CurrencyId::XCM(0), wrapped: MXN_CURRENCY_ID },
+					FixedU128::checked_from_rational(160, 100).unwrap(),
+				),
+				(
+					VaultCurrencyPair {
+						collateral: CurrencyId::XCM(0),
+						wrapped: CurrencyId::StellarNative,
+					},
+					FixedU128::checked_from_rational(160, 100).unwrap(),
+				),
 			],
 			/* 110% */
 			system_collateral_ceiling: vec![
 				(default_pair(CurrencyId::XCM(0)), 60_000 * 10u128.pow(12)),
 				(default_pair(CurrencyId::XCM(1)), 60_000 * 10u128.pow(12)),
+				(
+					VaultCurrencyPair { collateral: CurrencyId::XCM(0), wrapped: MXN_CURRENCY_ID },
+					60_000 * 10u128.pow(12),
+				),
+				(
+					VaultCurrencyPair {
+						collateral: CurrencyId::XCM(0),
+						wrapped: CurrencyId::StellarNative,
+					},
+					60_000 * 10u128.pow(12),
+				),
 			],
 		},
 		fee: FeeConfig {
@@ -398,9 +449,9 @@ fn testnet_genesis(
 				// target currency ie the second one in the pair
 				AssetId::new(b"FIAT".to_vec(), b"USD-USD".to_vec()),
 				AssetId::new(b"FIAT".to_vec(), b"MXN-USD".to_vec()),
-				AssetId::new(b"Stellar".to_vec(), b"XLM".to_vec())
+				AssetId::new(b"Stellar".to_vec(), b"XLM".to_vec()),
 			],
-			batching_api: b"http://localhost:8070/currencies".to_vec(),
+			batching_api: b"http://dia-00.pendulumchain.tech:8070/currencies".to_vec(),
 			coin_infos_map: vec![],
 		},
 	}

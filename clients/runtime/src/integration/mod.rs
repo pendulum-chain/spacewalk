@@ -129,6 +129,8 @@ pub async fn get_required_vault_collateral_for_issue(
 	wrapped_currency: CurrencyId,
 	collateral_currency: CurrencyId,
 ) -> u128 {
+	log::info!("----------------- CALL get_required_vault_collateral_for_wrapped: wrapped_currency: {wrapped_currency:?}");
+	log::info!("----------------- CALL get_required_vault_collateral_for_wrapped: collateral_currency: {collateral_currency:?}");
 	parachain_rpc
 		.get_required_collateral_for_wrapped(amount, wrapped_currency, collateral_currency)
 		.await

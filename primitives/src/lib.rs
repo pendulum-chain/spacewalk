@@ -408,10 +408,10 @@ pub trait CurrencyInfo {
 	fn decimals(&self) -> u8;
 }
 
-pub fn remove_trailing_zeroes(input:&[u8]) -> &[u8] {
-	for (idx,elem) in input.iter().enumerate().rev() {
+pub fn remove_trailing_zeroes(input: &[u8]) -> &[u8] {
+	for (idx, elem) in input.iter().enumerate().rev() {
 		if *elem != b'\0' {
-			return &input[..idx+1];
+			return &input[..idx + 1]
 		}
 	}
 	b""
@@ -434,8 +434,10 @@ impl CurrencyInfo for Asset {
 	fn name(&self) -> &str {
 		match self {
 			Asset::StellarNative => "Stellar",
-			Asset::AlphaNum4 { code, issuer: _ } => from_utf8(&remove_trailing_zeroes(code)).unwrap_or("unspecified"),
-			Asset::AlphaNum12 { code, issuer: _ } => from_utf8(&remove_trailing_zeroes(code)).unwrap_or("unspecified"),
+			Asset::AlphaNum4 { code, issuer: _ } =>
+				from_utf8(&remove_trailing_zeroes(code)).unwrap_or("unspecified"),
+			Asset::AlphaNum12 { code, issuer: _ } =>
+				from_utf8(&remove_trailing_zeroes(code)).unwrap_or("unspecified"),
 		}
 	}
 

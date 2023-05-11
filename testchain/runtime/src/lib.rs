@@ -8,7 +8,12 @@ extern crate frame_benchmarking;
 
 use codec::Encode;
 pub use dia_oracle::dia::*;
-use frame_support::{construct_runtime, parameter_types, traits::{ConstU128, ConstU8, Contains, KeyOwnerProofSystem}, weights::{constants::WEIGHT_REF_TIME_PER_SECOND, ConstantMultiplier, IdentityFee, Weight}, PalletId, log};
+use frame_support::{
+	construct_runtime, log, parameter_types,
+	traits::{ConstU128, ConstU8, Contains, KeyOwnerProofSystem},
+	weights::{constants::WEIGHT_REF_TIME_PER_SECOND, ConstantMultiplier, IdentityFee, Weight},
+	PalletId,
+};
 pub use frame_system::Call as SystemCall;
 use orml_currencies::BasicCurrencyAdapter;
 use orml_traits::{currency::MutationHooks, parameter_type_with_key};

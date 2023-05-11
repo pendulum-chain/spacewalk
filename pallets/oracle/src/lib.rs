@@ -270,30 +270,30 @@ impl<T: Config> Pallet<T> {
 		amount: &Amount<T>,
 		currency_id: T::CurrencyId,
 	) -> Result<Amount<T>, DispatchError> {
-		log::info!("WHAT DA FAAAAAAACXKKKK ORACLE: CONVERT amount with currency: {:?} to {currency_id:?}", amount.currency());
+		log::info!(
+			"WHAT DA FAAAAAAACXKKKK ORACLE: CONVERT amount with currency: {:?} to {currency_id:?}",
+			amount.currency()
+		);
 		let converted = match (amount.currency(), currency_id) {
 			(x, y) if x == y => amount.amount(),
 			(_, _) => {
 				// First convert to USD, then convert USD to the desired currency
 				match Self::currency_to_usd(amount.amount(), amount.currency()) {
 					Ok(base) => {
-						log::info!("WHAT DA FAAAAAAACXKKKK ORACLE: base: {:?}",base);
+						log::info!("WHAT DA FAAAAAAACXKKKK ORACLE: base: {:?}", base);
 						match Self::usd_to_currency(base, currency_id) {
-							Ok(x) => { x }
+							Ok(x) => x,
 							Err(e) => {
 								log::info!("WHAT DA FAAAAAAACXKKKK ORACLE: usd_to_currency: {e:?}");
-								return Err(e);
-							}
+								return Err(e)
+							},
 						}
-					}
+					},
 					Err(e) => {
 						log::error!("WHAT DA FAAAAAAACXKKKK ORACLE: base: {e:?}");
-						return Err(e);
-					}
+						return Err(e)
+					},
 				}
-
-
-
 			},
 		};
 		Ok(Amount::new(converted, currency_id))
