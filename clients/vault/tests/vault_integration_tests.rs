@@ -523,7 +523,7 @@ async fn test_cancel_scheduler_succeeds() {
 
 		let issue_amount = upscaled_compatible_amount(200);
 
-		let vault_collateral = register_vault(
+		let _ = register_vault(
 			wallet.clone(),
 			vec![
 				(&new_vault_provider, &new_vault_id, issue_amount),
