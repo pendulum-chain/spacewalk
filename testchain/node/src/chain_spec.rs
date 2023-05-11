@@ -451,7 +451,7 @@ fn testnet_genesis(
 				AssetId::new(b"FIAT".to_vec(), b"MXN-USD".to_vec()),
 				AssetId::new(b"Stellar".to_vec(), b"XLM".to_vec()),
 			],
-			batching_api: b"http://dia-00.pendulumchain.tech:8070/currencies".to_vec(),
+			batching_api: b"http://localhost:8070/currencies".to_vec(),
 			coin_infos_map: vec![],
 		},
 	}

@@ -12,7 +12,6 @@ use serial_test::serial;
 use sp_keyring::AccountKeyring;
 use sp_runtime::traits::StaticLookup;
 use tokio::{sync::RwLock, time::sleep};
-use tracing::log;
 
 use primitives::{StellarStroops, H256};
 use runtime::{
