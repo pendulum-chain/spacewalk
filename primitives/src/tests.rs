@@ -16,11 +16,18 @@ fn test_trailing_non_alphanum() {
 	assert_eq!(remove_trailing_non_alphanum_bytes(test).len(), test.len());
 
 	let test = b"Zer\0";
-	assert_ne!(remove_trailing_non_alphanum_bytes(test).len(), test.len());
+	assert_eq!(remove_trailing_non_alphanum_bytes(test).len(), test.len() - 1);
 
 	let test = b"Zero ";
 	assert_eq!(remove_trailing_non_alphanum_bytes(test).len(), test.len() - 1);
+
+	let test = b"Zero?$";
+	assert_eq!(remove_trailing_non_alphanum_bytes(test).len(), test.len() - 2);
+
+	let test = b"Zero\n\t";
+	assert_eq!(remove_trailing_non_alphanum_bytes(test).len(), test.len() - 2);
 }
+
 #[test]
 fn test_from() {
 	let account =
