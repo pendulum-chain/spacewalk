@@ -40,6 +40,14 @@ const DEFAULT_WRAPPED_CURRENCY: CurrencyId = CurrencyId::AlphaNum4(
 	],
 );
 
+const LESS_THAN_4_CURRENCY_CODE: CurrencyId = CurrencyId::AlphaNum4(
+	*b"MXN\0",
+	[
+		20, 209, 150, 49, 176, 55, 23, 217, 171, 154, 54, 110, 16, 50, 30, 226, 102, 231, 46, 199,
+		108, 171, 97, 144, 240, 161, 51, 109, 72, 34, 159, 139,
+	],
+);
+
 lazy_static! {
 	static ref CFG: StellarOverlayConfig = get_test_stellar_relay_config(false);
 	static ref SECRET_KEY: String = get_test_secret_key(false);
@@ -151,6 +159,22 @@ where
 	)
 	.await;
 
+	set_exchange_rate_and_wait(
+		&parachain_rpc,
+		LESS_THAN_4_CURRENCY_CODE,
+		// Set exchange rate to 10:1 with USD
+		FixedU128::saturating_from_rational(1u128, 10u128),
+	)
+	.await;
+
+	set_exchange_rate_and_wait(
+		&parachain_rpc,
+		CurrencyId::StellarNative,
+		// Set exchange rate to 10:1 with USD
+		FixedU128::saturating_from_rational(1u128, 10u128),
+	)
+	.await;
+
 	let path = tmp_dir.path().to_str().expect("should return a string").to_string();
 	let wallet = Arc::new(RwLock::new(
 		StellarWallet::from_secret_encoded_with_cache(&SECRET_KEY, CFG.is_public_network(), path)
@@ -191,6 +215,22 @@ where
 	)
 	.await;
 
+	set_exchange_rate_and_wait(
+		&parachain_rpc,
+		LESS_THAN_4_CURRENCY_CODE,
+		// Set exchange rate to 100:1 with USD
+		FixedU128::saturating_from_rational(1u128, 10u128),
+	)
+	.await;
+
+	set_exchange_rate_and_wait(
+		&parachain_rpc,
+		CurrencyId::StellarNative,
+		// Set exchange rate to 10:1 with USD
+		FixedU128::saturating_from_rational(1u128, 10u128),
+	)
+	.await;
+
 	let vault_provider = setup_provider(client.clone(), AccountKeyring::Charlie).await;
 	let vault_id = VaultId::new(
 		AccountKeyring::Charlie.into(),
@@ -210,6 +250,67 @@ where
 	let oracle_agent = Arc::new(oracle_agent);
 
 	execute(client, wallet, oracle_agent, vault_id, vault_provider).await
+}
+
+async fn create_vault(
+	client: SubxtClient,
+	account: AccountKeyring,
+	wrapped_currency: CurrencyId,
+) -> (VaultId, SpacewalkParachain) {
+	let vault_id = VaultId::new(account.clone().into(), DEFAULT_TESTING_CURRENCY, wrapped_currency);
+
+	let vault_provider = setup_provider(client, account).await;
+
+	(vault_id, vault_provider)
+}
+
+async fn register_vault(
+	wallet: ArcRwLock<StellarWallet>,
+	items: Vec<(&SpacewalkParachain, &VaultId, u128)>,
+) -> u128 {
+	let wallet_read = wallet.read().await;
+	let public_key = wallet_read.get_public_key_raw();
+
+	let mut vault_collateral = 0;
+	for (provider, vault_id, issue_amount) in items {
+		vault_collateral = get_required_vault_collateral_for_issue(
+			provider,
+			issue_amount,
+			vault_id.wrapped_currency(),
+			vault_id.collateral_currency(),
+		)
+		.await;
+
+		assert_ok!(
+			provider
+				.register_vault_with_public_key(vault_id, vault_collateral, public_key.clone())
+				.await
+		);
+	}
+
+	drop(wallet_read);
+
+	vault_collateral
+}
+
+#[tokio::test(flavor = "multi_thread")]
+#[serial]
+async fn test_register() {
+	test_with(|client, wallet| async move {
+		let (eve_id, eve_provider) =
+			create_vault(client.clone(), AccountKeyring::Eve, CurrencyId::StellarNative).await;
+		let (dave_id, dave_provider) =
+			create_vault(client.clone(), AccountKeyring::Dave, LESS_THAN_4_CURRENCY_CODE).await;
+
+		let issue_amount = upscaled_compatible_amount(100);
+
+		register_vault(
+			wallet.clone(),
+			vec![(&eve_provider, &eve_id, issue_amount), (&dave_provider, &dave_id, issue_amount)],
+		)
+		.await;
+	})
+	.await;
 }
 
 #[tokio::test(flavor = "multi_thread")]
@@ -278,50 +379,26 @@ async fn test_redeem_succeeds() {
 #[serial]
 async fn test_replace_succeeds() {
 	test_with_vault(|client, wallet, oracle_agent, old_vault_id, old_vault_provider| async move {
-		let new_vault_provider = setup_provider(client.clone(), AccountKeyring::Eve).await;
-		let new_vault_id = VaultId::new(
-			AccountKeyring::Eve.into(),
-			DEFAULT_TESTING_CURRENCY,
-			DEFAULT_WRAPPED_CURRENCY,
-		);
+		let (new_vault_id, new_vault_provider) =
+			create_vault(client.clone(), AccountKeyring::Eve, DEFAULT_WRAPPED_CURRENCY).await;
+
 		let user_provider = setup_provider(client.clone(), AccountKeyring::Dave).await;
 
-		let vault_ids = vec![new_vault_id.clone()].into_iter().collect();
-		let _vault_id_manager =
-			VaultIdManager::from_map(new_vault_provider.clone(), wallet.clone(), vault_ids);
 		let vault_ids = vec![old_vault_id.clone(), new_vault_id.clone()].into_iter().collect();
+
 		let vault_id_manager =
 			VaultIdManager::from_map(old_vault_provider.clone(), wallet.clone(), vault_ids);
 
 		let issue_amount = upscaled_compatible_amount(100);
-		let vault_collateral = get_required_vault_collateral_for_issue(
-			&old_vault_provider,
-			issue_amount,
-			old_vault_id.wrapped_currency(),
-			old_vault_id.collateral_currency(),
+
+		register_vault(
+			wallet.clone(),
+			vec![
+				(&old_vault_provider, &old_vault_id, issue_amount),
+				(&new_vault_provider, &new_vault_id, issue_amount),
+			],
 		)
 		.await;
-
-		let wallet_read = wallet.read().await;
-		assert_ok!(
-			old_vault_provider
-				.register_vault_with_public_key(
-					&old_vault_id,
-					vault_collateral,
-					wallet_read.get_public_key_raw()
-				)
-				.await
-		);
-		assert_ok!(
-			new_vault_provider
-				.register_vault_with_public_key(
-					&new_vault_id,
-					vault_collateral,
-					wallet_read.get_public_key_raw()
-				)
-				.await
-		);
-		drop(wallet_read);
 
 		assert_issue(
 			&user_provider,
@@ -376,42 +453,21 @@ async fn test_replace_succeeds() {
 #[serial]
 async fn test_withdraw_replace_succeeds() {
 	test_with_vault(|client, wallet, oracle_agent, old_vault_id, old_vault_provider| async move {
-		let new_vault_provider = setup_provider(client.clone(), AccountKeyring::Eve).await;
-		let new_vault_id = VaultId::new(
-			AccountKeyring::Eve.into(),
-			DEFAULT_TESTING_CURRENCY,
-			DEFAULT_WRAPPED_CURRENCY,
-		);
+		let (new_vault_id, new_vault_provider) =
+			create_vault(client.clone(), AccountKeyring::Eve, DEFAULT_WRAPPED_CURRENCY).await;
+
 		let user_provider = setup_provider(client.clone(), AccountKeyring::Dave).await;
 
 		let issue_amount = upscaled_compatible_amount(100);
-		let vault_collateral = get_required_vault_collateral_for_issue(
-			&old_vault_provider,
-			issue_amount,
-			old_vault_id.wrapped_currency(),
-			old_vault_id.collateral_currency(),
+
+		let vault_collateral = register_vault(
+			wallet.clone(),
+			vec![
+				(&old_vault_provider, &old_vault_id, issue_amount),
+				(&new_vault_provider, &new_vault_id, issue_amount),
+			],
 		)
 		.await;
-		let wallet_read = wallet.read().await;
-		assert_ok!(
-			old_vault_provider
-				.register_vault_with_public_key(
-					&old_vault_id,
-					vault_collateral,
-					wallet_read.get_public_key_raw()
-				)
-				.await
-		);
-		assert_ok!(
-			new_vault_provider
-				.register_vault_with_public_key(
-					&new_vault_id,
-					vault_collateral,
-					wallet_read.get_public_key_raw()
-				)
-				.await
-		);
-		drop(wallet_read);
 
 		assert_issue(
 			&user_provider,
@@ -461,42 +517,20 @@ async fn test_cancel_scheduler_succeeds() {
 
 		let root_provider = setup_provider(client.clone(), AccountKeyring::Alice).await;
 		let user_provider = setup_provider(client.clone(), AccountKeyring::Dave).await;
-		let new_vault_provider = setup_provider(client.clone(), AccountKeyring::Eve).await;
-		let new_vault_id = VaultId::new(
-			AccountKeyring::Eve.into(),
-			DEFAULT_TESTING_CURRENCY,
-			DEFAULT_WRAPPED_CURRENCY,
-		);
+
+		let (new_vault_id, new_vault_provider) =
+			create_vault(client.clone(), AccountKeyring::Eve, DEFAULT_WRAPPED_CURRENCY).await;
 
 		let issue_amount = upscaled_compatible_amount(200);
-		let vault_collateral = get_required_vault_collateral_for_issue(
-			&old_vault_provider,
-			issue_amount * 10,
-			old_vault_id.wrapped_currency(),
-			old_vault_id.collateral_currency(),
+
+		let _ = register_vault(
+			wallet.clone(),
+			vec![
+				(&new_vault_provider, &new_vault_id, issue_amount * 2),
+				(&old_vault_provider, &old_vault_id, issue_amount * 2),
+			],
 		)
 		.await;
-
-		let wallet_read = wallet.read().await;
-		assert_ok!(
-			old_vault_provider
-				.register_vault_with_public_key(
-					&old_vault_id,
-					vault_collateral,
-					wallet_read.get_public_key_raw()
-				)
-				.await
-		);
-		assert_ok!(
-			new_vault_provider
-				.register_vault_with_public_key(
-					&new_vault_id,
-					vault_collateral,
-					wallet_read.get_public_key_raw()
-				)
-				.await
-		);
-		drop(wallet_read);
 
 		assert_issue(
 			&user_provider,

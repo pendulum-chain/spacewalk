@@ -1,6 +1,9 @@
 use dia_oracle::DiaOracle;
 use orml_oracle::{DataProviderExtended, TimestampedValue};
-pub use primitives::{oracle::Key as OracleKey, CurrencyId, TruncateFixedPointToInt};
+pub use primitives::{
+	oracle::Key as OracleKey, remove_trailing_non_alphanum_bytes, CurrencyId,
+	TruncateFixedPointToInt,
+};
 use sp_std::marker;
 
 use sp_runtime::traits::Convert;
@@ -21,7 +24,7 @@ fn construct_fiat_usd_symbol_for_currency(base: Vec<u8>) -> Vec<u8> {
 		"USD".as_bytes().to_vec()
 	} else {
 		// Ensure we use uppercase
-		base.to_ascii_uppercase().to_vec()
+		remove_trailing_non_alphanum_bytes(&base.to_ascii_uppercase()).to_vec()
 	};
 
 	[base_currency, "-".as_bytes().to_vec(), TARGET_QUOTE.as_bytes().to_vec()].concat()
