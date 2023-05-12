@@ -411,7 +411,7 @@ pub trait CurrencyInfo {
 pub fn remove_trailing_non_alphanum_bytes(input: &[u8]) -> &[u8] {
 	for (idx, elem) in input.iter().enumerate().rev() {
 		if elem.is_ascii_alphanumeric() {
-			return &input[..idx + 1]
+			return &input[..=idx]
 		}
 	}
 	b""
