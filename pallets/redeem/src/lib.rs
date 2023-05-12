@@ -826,11 +826,6 @@ impl<T: Config> Pallet<T> {
 				&confiscated_collateral,
 			)?;
 
-			CancelledRedeemAmount::<T>::insert(
-				redeem_id,
-				(confiscated_collateral.amount(), confiscated_collateral.currency()),
-			);
-
 			confiscated_collateral
 		} else {
 			// not liquidated
@@ -931,12 +926,9 @@ impl<T: Config> Pallet<T> {
 
 		ensure!(redeem.vault == vault_id, Error::<T>::UnauthorizedVault);
 
-		//let reimbursed_amount = redeem.amount().checked_add(&redeem.transfer_fee())?;
-
-		let Some((amount,currency_id)) = CancelledRedeemAmount::<T>::take(redeem_id) else {
-			return Err(DispatchError::from(Error::<T>::RedeemIdNotFound));
-		};
-		let reimbursed_amount = Amount::new(amount, currency_id);
+		let reimbursed_amount = CancelledRedeemAmount::<T>::take(redeem_id)
+			.map(|(amount, currency_id)| Amount::new(amount, currency_id))
+			.unwrap_or(redeem.amount().checked_add(&redeem.transfer_fee())?);
 
 		ext::vault_registry::try_increase_to_be_issued_tokens::<T>(&vault_id, &reimbursed_amount)?;
 		ext::vault_registry::issue_tokens::<T>(&vault_id, &reimbursed_amount)?;

@@ -766,17 +766,6 @@ fn test_mint_tokens_for_reimbursed_redeem() {
 		);
 		Security::<Test>::set_active_block_number(100);
 
-		// a `cancel_redeem` was not called, thereby reimbursement should not exist.
-		assert_noop!(
-			Redeem::mint_tokens_for_reimbursed_redeem(
-				RuntimeOrigin::signed(VAULT.account_id),
-				VAULT.currencies.clone(),
-				redeem_id.clone()
-			),
-			TestError::RedeemIdNotFound
-		);
-
-		//Redeem::CancelledRedeemAmount
 		let new_amount = redeem_request.amount - 2;
 		let reimburse_amt = Amount::new(new_amount, redeem_request.asset);
 		Redeem::insert_cancelled_redeem_amount(redeem_id.clone(), reimburse_amt.clone());
