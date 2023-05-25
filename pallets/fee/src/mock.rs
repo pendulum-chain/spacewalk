@@ -223,7 +223,7 @@ parameter_types! {
 
 impl Config for Test {
 	type FeePalletId = FeePalletId;
-	type WeightInfo = ();
+	type WeightInfo = fee::SubstrateWeight<Test>;
 	type SignedFixedPoint = SignedFixedPoint;
 	type SignedInner = SignedInner;
 	type UnsignedFixedPoint = UnsignedFixedPoint;

@@ -246,7 +246,7 @@ impl vault_registry::Config for Test {
 	type PalletId = VaultPalletId;
 	type RuntimeEvent = TestEvent;
 	type Balance = Balance;
-	type WeightInfo = ();
+	type WeightInfo = vault_registry::SubstrateWeight<Test>;
 	type GetGriefingCollateralCurrencyId = GetNativeCurrencyId;
 }
 
@@ -272,7 +272,7 @@ impl stellar_relay::Config for Test {
 	type OrganizationLimit = OrganizationLimit;
 	type ValidatorLimit = ValidatorLimit;
 	type IsPublicNetwork = IsPublicNetwork;
-	type WeightInfo = ();
+	type WeightInfo = stellar_relay::SubstrateWeight<Test>;
 }
 
 impl security::Config for Test {
@@ -282,7 +282,7 @@ impl security::Config for Test {
 
 impl nomination::Config for Test {
 	type RuntimeEvent = TestEvent;
-	type WeightInfo = ();
+	type WeightInfo = nomination::SubstrateWeight<Test>;
 }
 
 parameter_types! {
@@ -298,7 +298,7 @@ impl pallet_timestamp::Config for Test {
 
 impl oracle::Config for Test {
 	type RuntimeEvent = TestEvent;
-	type WeightInfo = ();
+	type WeightInfo = oracle::SubstrateWeight<Test>;
 	type DataProvider = DiaOracleAdapter<
 		MockDiaOracle,
 		UnsignedFixedPoint,
@@ -317,7 +317,7 @@ parameter_types! {
 
 impl fee::Config for Test {
 	type FeePalletId = FeePalletId;
-	type WeightInfo = ();
+	type WeightInfo = fee::SubstrateWeight<Test>;
 	type SignedFixedPoint = SignedFixedPoint;
 	type SignedInner = SignedInner;
 	type UnsignedFixedPoint = UnsignedFixedPoint;
@@ -330,7 +330,7 @@ impl fee::Config for Test {
 
 impl Config for Test {
 	type RuntimeEvent = TestEvent;
-	type WeightInfo = ();
+	type WeightInfo = crate::SubstrateWeight<Test>;
 }
 
 pub type TestEvent = RuntimeEvent;

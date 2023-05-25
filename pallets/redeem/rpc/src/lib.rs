@@ -8,7 +8,7 @@ use jsonrpsee::{
 };
 use sp_api::ProvideRuntimeApi;
 use sp_blockchain::HeaderBackend;
-use sp_runtime::{generic::BlockId, traits::Block as BlockT};
+use sp_runtime::traits::Block as BlockT;
 use std::sync::Arc;
 
 pub use module_redeem_rpc_runtime_api::RedeemApi as RedeemRuntimeApi;
@@ -68,9 +68,9 @@ where
 		at: Option<<Block as BlockT>::Hash>,
 	) -> RpcResult<Vec<H256>> {
 		let api = self.client.runtime_api();
-		let at = BlockId::hash(at.unwrap_or_else(|| self.client.info().best_hash));
+		let at = at.unwrap_or_else(|| self.client.info().best_hash);
 
-		api.get_redeem_requests(&at, account_id)
+		api.get_redeem_requests(at, account_id)
 			.map_err(|e| internal_err(format!("Unable to fetch redeem requests: {:?}", e)))
 	}
 
@@ -80,9 +80,9 @@ where
 		at: Option<<Block as BlockT>::Hash>,
 	) -> RpcResult<Vec<H256>> {
 		let api = self.client.runtime_api();
-		let at = BlockId::hash(at.unwrap_or_else(|| self.client.info().best_hash));
+		let at = at.unwrap_or_else(|| self.client.info().best_hash);
 
-		api.get_vault_redeem_requests(&at, vault_id)
+		api.get_vault_redeem_requests(at, vault_id)
 			.map_err(|e| internal_err(format!("Unable to fetch redeem requests: {:?}", e)))
 	}
 }

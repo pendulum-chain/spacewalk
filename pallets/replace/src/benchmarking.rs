@@ -117,7 +117,7 @@ benchmarks! {
 		initialize_oracle::<T>();
 		let vault_id = get_vault_id::<T>("Vault");
 		mint_collateral::<T>(&vault_id.account_id, (1u32 << 31).into());
-		let amount = Replace::<T>::minimum_transfer_amount(get_wrapped_currency_id()).amount() + 1000u32.into();
+		let amount = Replace::<T>::minimum_transfer_amount(get_wrapped_currency_id()).amount() + 1000_0000u32.into();
 
 		register_public_key::<T>(vault_id.clone());
 

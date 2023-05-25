@@ -6,8 +6,8 @@ use hex_literal::hex;
 use sc_service::ChainType;
 use sp_arithmetic::{FixedPointNumber, FixedU128};
 use sp_consensus_aura::sr25519::AuthorityId as AuraId;
+use sp_consensus_grandpa::AuthorityId as GrandpaId;
 use sp_core::{crypto::UncheckedInto, sr25519, Pair, Public};
-use sp_finality_grandpa::AuthorityId as GrandpaId;
 use sp_runtime::traits::{IdentifyAccount, Verify};
 
 use primitives::{oracle::Key, CurrencyId, VaultCurrencyPair};
@@ -451,7 +451,7 @@ fn testnet_genesis(
 				AssetId::new(b"FIAT".to_vec(), b"MXN-USD".to_vec()),
 				AssetId::new(b"Stellar".to_vec(), b"XLM".to_vec()),
 			],
-			batching_api: b"http://localhost:8070/currencies".to_vec(),
+			batching_api: b"http://dia-00.pendulumchain.tech:8070/currencies",
 			coin_infos_map: vec![],
 		},
 	}

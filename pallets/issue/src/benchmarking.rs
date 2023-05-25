@@ -64,6 +64,8 @@ benchmarks! {
 	request_issue {
 		let origin: T::AccountId = account("Origin", 0, 0);
 		let vault_id = get_vault_id::<T>();
+		// this amount is when running the benchmark with the testchain
+		// let amount = 1000_0000u32.into();
 		let amount = 1000u32.into();
 		let asset = vault_id.wrapped_currency();
 		let relayer_id: T::AccountId = account("Relayer", 0, 0);

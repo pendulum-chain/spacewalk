@@ -127,7 +127,7 @@ pub fn run() -> Result<()> {
 				let PartialComponents { client, task_manager, backend, .. } =
 					spacewalk_service::new_partial(&config, false)?;
 				let aux_revert = Box::new(|client, _, blocks| {
-					sc_finality_grandpa::revert(client, blocks)?;
+					sc_consensus_grandpa::revert(client, blocks)?;
 					Ok(())
 				});
 				Ok((cmd.run(client, backend, Some(aux_revert)), task_manager))
