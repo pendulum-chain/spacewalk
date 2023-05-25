@@ -182,7 +182,7 @@ impl pallet_grandpa::Config for Runtime {
 	// 	KeyTypeId,
 	// 	GrandpaId,
 	// )>>::IdentificationTuple;
-	type KeyOwnerProof = sp_core::Vid;
+	type KeyOwnerProof = sp_core::Void;
 	type WeightInfo = ();
 	type MaxAuthorities = MaxAuthorities;
 	type MaxSetIdSessionEntries = ConstU64<0>;
