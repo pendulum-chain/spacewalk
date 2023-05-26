@@ -92,6 +92,8 @@ pub trait ArchiveStorage {
 		slot_index: Slot,
 	) -> Result<XdrArchive<<Self as ArchiveStorage>::T>, Error> {
 		let (url, file_name) = self.get_url_and_file_name(slot_index);
+		println!("url: {url:?},  file_name: {file_name:?}");
+
 		//try to find xdr.gz file and decode. if error then download archive from horizon archive
 		// node and save
 		let mut result = Self::try_gz_decode_archive_file(&file_name);

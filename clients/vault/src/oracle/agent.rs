@@ -131,7 +131,7 @@ impl OracleAgent {
 
 		let collector = self.collector.clone();
 
-		timeout(Duration::from_secs(60), async move {
+		timeout(Duration::from_secs(360), async move {
 			loop {
 				let stellar_sender = sender.clone();
 				let collector = collector.read().await;
@@ -203,7 +203,7 @@ mod tests {
 	}
 
 	#[tokio::test]
-	async fn test_get_proof_for_archived_slot() {
+	async fn  test_get_proof_for_archived_slot() {
 		let scp_archive_storage = ScpArchiveStorage::default();
 		let tx_archive_storage = TransactionsArchiveStorage::default();
 
@@ -213,10 +213,11 @@ mod tests {
 				.expect("Failed to start agent");
 
 		// This slot should be archived on the public network
-		let target_slot = 44041116;
+		let target_slot = 46462154;
 		let proof = agent.get_proof(target_slot).await.expect("should return a proof");
 
-		assert_eq!(proof.slot(), 44041116);
+		println!("hello hello hello");
+		assert_eq!(proof.slot(), 46462154);
 
 		scp_archive_storage.remove_file(target_slot);
 		tx_archive_storage.remove_file(target_slot);

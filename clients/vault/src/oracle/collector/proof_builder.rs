@@ -64,9 +64,11 @@ impl ScpMessageCollector {
 	async fn fetch_missing_envelopes(&self, slot: Slot, sender: &StellarMessageSender) {
 		// If the current slot is still in the range of 'remembered' slots
 		if check_slot_still_recoverable_from_overlay(self.last_slot_index(), slot) {
+			println!("fetching missing envelopes of slot {} from Stellar Node...", slot);
 			tracing::trace!("fetching missing envelopes of slot {} from Stellar Node...", slot);
 			self.ask_node_for_envelopes(slot, sender).await;
 		} else {
+			println!("fetching missing envelopes of slot {} from Archive Node...", slot);
 			tracing::trace!("fetching missing envelopes of slot {} from Archive Node...", slot);
 			self.ask_archive_for_envelopes(slot).await;
 		}
@@ -110,6 +112,7 @@ impl ScpMessageCollector {
 		if let Some(envelopes) = self.envelopes_map().get(&slot) {
 			// lacking envelopes
 			if envelopes.len() < get_min_externalized_messages(self.is_public()) {
+				println!("not enough envelopes to build proof for slot {}", slot);
 				tracing::warn!("not enough envelopes to build proof for slot {}", slot);
 			} else {
 				return UnlimitedVarArray::new(envelopes.clone()).unwrap_or(empty)
@@ -137,8 +140,10 @@ impl ScpMessageCollector {
 			None => {
 				// If the current slot is still in the range of 'remembered' slots
 				if check_slot_still_recoverable_from_overlay(self.last_slot_index(), slot) {
+					println!("fetch from overlay get_txset");
 					self.fetch_missing_txset_from_overlay(slot, sender).await;
 				} else {
+					println!("fetch from archive get_txset");
 					tokio::spawn(self.get_txset_from_horizon_archive(slot));
 				}
 
@@ -169,6 +174,7 @@ impl ScpMessageCollector {
 		let envelopes = self.get_envelopes(slot, sender).await;
 		// return early if we don't have enough envelopes or the tx_set
 		if envelopes.len() == 0 {
+			println!("envelopes empty!!!");
 			return None
 		}
 
@@ -184,6 +190,8 @@ impl ScpMessageCollector {
 	/// * `slot` - the slot where the envelopes belong to
 	fn get_envelopes_from_horizon_archive(&self, slot: Slot) -> impl Future<Output = ()> {
 		tracing::debug!("Fetching SCP envelopes for slot {} from horizon archive", slot);
+		println!("Fetching SCP envelopes for slot {} from horizon archive", slot);
+
 		let envelopes_map_arc = self.envelopes_map_clone();
 
 		let stellar_history_base = self.stellar_history_base_url();
@@ -194,10 +202,14 @@ impl ScpMessageCollector {
 				tracing::error!(
 					"Could not get SCPArchive for slot {slot:?} from Horizon Archive: {e:?}"
 				);
+				println!(
+					"Could not get SCPArchive for slot {slot:?} from Horizon Archive: {e:?}"
+				);
 				return
 			}
 			let scp_archive: XdrArchive<ScpHistoryEntry> = scp_archive_result.unwrap();
 
+			println!("scp xdr archive found. go ahead ");
 			let value = scp_archive.get_vec().iter().find(|&scp_entry| {
 				if let ScpHistoryEntry::V0(scp_entry_v0) = scp_entry {
 					Slot::from(scp_entry_v0.ledger_messages.ledger_seq) == slot
@@ -206,10 +218,12 @@ impl ScpMessageCollector {
 				}
 			});
 
+			println!("value: is some: {}",value.is_some() );
+
 			if let Some(i) = value {
 				if let ScpHistoryEntry::V0(scp_entry_v0) = i {
 					let slot_scp_envelopes = scp_entry_v0.clone().ledger_messages.messages;
-					let vec_scp = slot_scp_envelopes
+					let vec_scp: Vec<ScpEnvelope> = slot_scp_envelopes
 						.get_vec()
 						.clone()
 						.into_iter()
@@ -222,13 +236,20 @@ impl ScpMessageCollector {
 							}
 						})
 						.collect();
+					println!("num of envelopes: {}", vec_scp.len());
 
 					let mut envelopes_map = envelopes_map_arc.write();
 
 					if envelopes_map.get(&slot).is_none() {
 						tracing::debug!("Adding archived SCP envelopes for slot {}", slot);
+						println!("Adding archived SCP envelopes for slot {}", slot);
 						envelopes_map.insert(slot, vec_scp);
+					} else {
+						println!("nope, cannot insert to map for slot {slot}");
 					}
+				} else {
+					println!("ho ho ho, it failed");
+
 				}
 			}
 		}
