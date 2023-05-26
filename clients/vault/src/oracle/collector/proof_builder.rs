@@ -3,7 +3,7 @@ use std::{convert::TryInto, future::Future};
 use primitives::stellar::types::TransactionHistoryEntry;
 use stellar_relay_lib::sdk::{
 	compound_types::{UnlimitedVarArray, XdrArchive},
-	types::{ScpEnvelope, ScpHistoryEntry, StellarMessage, TransactionSet},
+	types::{ScpEnvelope, ScpHistoryEntry, ScpStatementPledges, StellarMessage, TransactionSet},
 	XdrCodec,
 };
 
@@ -209,7 +209,18 @@ impl ScpMessageCollector {
 			if let Some(i) = value {
 				if let ScpHistoryEntry::V0(scp_entry_v0) = i {
 					let slot_scp_envelopes = scp_entry_v0.clone().ledger_messages.messages;
-					let vec_scp = slot_scp_envelopes.get_vec().clone();
+					let vec_scp = slot_scp_envelopes
+						.get_vec()
+						.iter()
+						.filter(|env| {
+							match env.statement.pledges {
+								// we are only interested with `ScpStExternalize`. Other messages
+								// are ignored.
+								ScpStatementPledges::ScpStExternalize(_) => true,
+								_ => false,
+							}
+						})
+						.collect();
 
 					let mut envelopes_map = envelopes_map_arc.write();
 
