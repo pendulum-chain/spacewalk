@@ -211,7 +211,8 @@ impl ScpMessageCollector {
 					let slot_scp_envelopes = scp_entry_v0.clone().ledger_messages.messages;
 					let vec_scp = slot_scp_envelopes
 						.get_vec()
-						.iter()
+						.clone()
+						.into_iter()
 						.filter(|env| {
 							match env.statement.pledges {
 								// we are only interested with `ScpStExternalize`. Other messages
