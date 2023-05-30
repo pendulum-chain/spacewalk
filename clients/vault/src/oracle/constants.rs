@@ -16,7 +16,7 @@ pub const MAX_DISTANCE_FROM_CURRENT_SLOT: Slot = 3;
 pub const VALIDATOR_COUNT_TEST_NETWORK: usize = 3;
 pub const VALIDATOR_COUNT_PUBLIC_NETWORK: usize = 23;
 
-pub const MAX_SLOT_TO_REMEMBER: Slot = 12;
+pub const MAX_SLOTS_TO_REMEMBER: Slot = 100;
 
 pub const ARCHIVE_NODE_LEDGER_BATCH: Slot = 64;
 
