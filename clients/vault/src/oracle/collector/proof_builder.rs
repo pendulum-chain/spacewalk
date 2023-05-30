@@ -8,7 +8,7 @@ use stellar_relay_lib::sdk::{
 };
 
 use crate::oracle::{
-	constants::{get_min_externalized_messages, MAX_SLOT_TO_REMEMBER},
+	constants::{get_min_externalized_messages, MAX_SLOTS_TO_REMEMBER},
 	traits::ArchiveStorage,
 	types::StellarMessageSender,
 	ScpArchiveStorage, ScpMessageCollector, Slot, TransactionsArchiveStorage,
@@ -17,7 +17,7 @@ use crate::oracle::{
 /// Returns true if the SCP messages for a given slot are still recoverable from the overlay
 /// because the slot is not too far back.
 fn check_slot_still_recoverable_from_overlay(last_slot_index: Slot, slot: Slot) -> bool {
-	last_slot_index != 0 && slot > (last_slot_index.saturating_sub(MAX_SLOT_TO_REMEMBER))
+	last_slot_index != 0 && slot > (last_slot_index.saturating_sub(MAX_SLOTS_TO_REMEMBER))
 }
 
 /// The Proof of Transactions that needed to be processed
