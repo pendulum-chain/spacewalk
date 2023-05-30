@@ -64,9 +64,7 @@ benchmarks! {
 	request_issue {
 		let origin: T::AccountId = account("Origin", 0, 0);
 		let vault_id = get_vault_id::<T>();
-		// this amount is when running the benchmark with the testchain
-		// let amount = 1000_0000u32.into();
-		let amount = 1000u32.into();
+		let amount = 10_000_000u32.into();
 		let asset = vault_id.wrapped_currency();
 		let relayer_id: T::AccountId = account("Relayer", 0, 0);
 
@@ -187,6 +185,19 @@ benchmarks! {
 
 impl_benchmark_test_suite!(
 	Issue,
-	crate::mock::ExtBuilder::build_with(Default::default()),
+	crate::mock::ExtBuilder::build_with(orml_tokens::GenesisConfig::<crate::mock::Test> {
+		balances: vec![
+			currency::testing_constants::DEFAULT_COLLATERAL_CURRENCY,
+			currency::testing_constants::DEFAULT_NATIVE_CURRENCY
+		]
+		.into_iter()
+		.flat_map(|currency_id| {
+			vec![
+				(crate::mock::USER, currency_id, 1_000_000_000_000),
+				(crate::mock::VAULT.account_id, currency_id, 1_000_000_000_000),
+			]
+		})
+		.collect(),
+	}),
 	crate::mock::Test
 );

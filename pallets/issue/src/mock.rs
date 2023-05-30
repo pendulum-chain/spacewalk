@@ -376,7 +376,7 @@ impl ExtBuilder {
 
 		fee::GenesisConfig::<Test> {
 			issue_fee: UnsignedFixedPoint::checked_from_rational(5, 1000).unwrap(), // 0.5%
-			issue_griefing_collateral: UnsignedFixedPoint::checked_from_rational(5, 100000)
+			issue_griefing_collateral: UnsignedFixedPoint::checked_from_rational(5, 1_000_000_000)
 				.unwrap(), // 0.005%
 			redeem_fee: UnsignedFixedPoint::checked_from_rational(5, 1000).unwrap(), // 0.5%
 			premium_redeem_fee: UnsignedFixedPoint::checked_from_rational(5, 100).unwrap(), // 5%
