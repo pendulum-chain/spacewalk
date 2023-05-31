@@ -119,7 +119,7 @@ pub fn new_partial(
 	);
 
 	let (grandpa_block_import, grandpa_link) = sc_consensus_grandpa::block_import(
-		client.clone(),
+		client,
 		&(client.clone() as Arc<_>),
 		select_chain.clone(),
 		telemetry.as_ref().map(|x| x.handle()),
@@ -489,7 +489,7 @@ pub async fn start_instant(
 		tx_handler_controller,
 		config,
 		telemetry: telemetry.as_mut(),
-		sync_service: sync_service.clone(),
+		sync_service,
 	})?;
 
 	network_starter.start_network();
