@@ -43,6 +43,7 @@ pub type FullBackend = TFullBackend<Block>;
 type FullSelectChain = sc_consensus::LongestChain<FullBackend, Block>;
 
 #[allow(clippy::type_complexity)]
+#[allow(clippy::redundant_clone)]
 pub fn new_partial(
 	config: &Configuration,
 	instant_seal: bool,
@@ -120,7 +121,7 @@ pub fn new_partial(
 
 	let (grandpa_block_import, grandpa_link) = sc_consensus_grandpa::block_import(
 		client.clone(),
-		&(client as Arc<_>),
+		&(client.clone() as Arc<_>),
 		select_chain.clone(),
 		telemetry.as_ref().map(|x| x.handle()),
 	)?;
