@@ -213,7 +213,7 @@ impl<C: ChainSpec + 'static> SubxtClientConfig<C> {
 		network.boot_nodes = self.chain_spec.boot_nodes().to_vec();
 		network.transport = TransportConfig::Normal {
 			enable_mdns: true,
-			allow_private_ipv4: true,
+			allow_private_ip: true,
 			// wasm_external_transport: None,
 		};
 		let telemetry_endpoints = if let Some(port) = self.telemetry {

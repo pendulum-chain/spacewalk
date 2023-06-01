@@ -21,19 +21,19 @@ pub struct SubstrateWeight<T>(PhantomData<T>);
 impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 	fn on_initialize() -> Weight {
 		// Minimum execution time: 1_000 nanoseconds.
-		Weight::from_ref_time(1_000_000_u64)
+		Weight::from_parts(1_000_000_u64,0)
 			.saturating_add(T::DbWeight::get().writes(1_u64))
 	}
 	fn set_parachain_status() -> Weight {
-		Weight::from_ref_time(0_u64)
+		Weight::from_parts(0_u64,0)
 			.saturating_add(T::DbWeight::get().writes(1_u64))
 	}
 	fn insert_parachain_error() -> Weight {
-		Weight::from_ref_time(0_u64)
+		Weight::from_parts(0_u64,0)
 			.saturating_add(T::DbWeight::get().writes(1_u64))
 	}
 	fn remove_parachain_error() -> Weight {
-		Weight::from_ref_time(0_u64)
+		Weight::from_parts(0_u64,0)
 			.saturating_add(T::DbWeight::get().writes(1_u64))
 	}
 }
@@ -42,19 +42,19 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 impl WeightInfo for () {
 	fn on_initialize() -> Weight {
 		// Minimum execution time: 1_000 nanoseconds.
-		Weight::from_ref_time(1_000_000_u64)
+		Weight::from_parts(1_000_000_u64,0)
 			.saturating_add(RocksDbWeight::get().writes(1_u64))
 	}
 	fn set_parachain_status() -> Weight {
-		Weight::from_ref_time(0_u64)
+		Weight::from_parts(0_u64,0)
 			.saturating_add(RocksDbWeight::get().writes(1_u64))
 	}
 	fn insert_parachain_error() -> Weight {
-		Weight::from_ref_time(0_u64)
+		Weight::from_parts(0_u64,0)
 			.saturating_add(RocksDbWeight::get().writes(1_u64))
 	}
 	fn remove_parachain_error() -> Weight {
-		Weight::from_ref_time(0_u64)
+		Weight::from_parts(0_u64,0)
 			.saturating_add(RocksDbWeight::get().writes(1_u64))
 	}
 	

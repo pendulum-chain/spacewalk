@@ -3,8 +3,8 @@ use std::{sync::Arc, time::Duration};
 use futures::StreamExt;
 use sc_client_api::BlockBackend;
 use sc_consensus_aura::{ImportQueueParams, SlotProportion, StartAuraParams};
+use sc_consensus_grandpa::SharedVoterState;
 use sc_executor::NativeElseWasmExecutor;
-use sc_finality_grandpa::SharedVoterState;
 use sc_keystore::LocalKeystore;
 use sc_service::{
 	error::Error as ServiceError, Configuration, RpcHandlers, TFullBackend, TFullClient,
@@ -43,6 +43,7 @@ pub type FullBackend = TFullBackend<Block>;
 type FullSelectChain = sc_consensus::LongestChain<FullBackend, Block>;
 
 #[allow(clippy::type_complexity)]
+#[allow(clippy::redundant_clone)]
 pub fn new_partial(
 	config: &Configuration,
 	instant_seal: bool,
@@ -54,13 +55,13 @@ pub fn new_partial(
 		sc_consensus::DefaultImportQueue<Block, FullClient>,
 		sc_transaction_pool::FullPool<Block, FullClient>,
 		(
-			sc_finality_grandpa::GrandpaBlockImport<
+			sc_consensus_grandpa::GrandpaBlockImport<
 				FullBackend,
 				Block,
 				FullClient,
 				FullSelectChain,
 			>,
-			sc_finality_grandpa::LinkHalf<Block, FullClient, FullSelectChain>,
+			sc_consensus_grandpa::LinkHalf<Block, FullClient, FullSelectChain>,
 			Option<Telemetry>,
 		),
 	>,
@@ -118,7 +119,7 @@ pub fn new_partial(
 		client.clone(),
 	);
 
-	let (grandpa_block_import, grandpa_link) = sc_finality_grandpa::block_import(
+	let (grandpa_block_import, grandpa_link) = sc_consensus_grandpa::block_import(
 		client.clone(),
 		&(client.clone() as Arc<_>),
 		select_chain.clone(),
@@ -202,7 +203,7 @@ pub fn new_full(mut config: Configuration) -> Result<(TaskManager, RpcHandlers),
 		};
 	}
 
-	let grandpa_protocol_name = sc_finality_grandpa::protocol_standard_name(
+	let grandpa_protocol_name = sc_consensus_grandpa::protocol_standard_name(
 		&client.block_hash(0).ok().flatten().expect("Genesis block exists; qed"),
 		&config.chain_spec,
 	);
@@ -210,9 +211,9 @@ pub fn new_full(mut config: Configuration) -> Result<(TaskManager, RpcHandlers),
 	config
 		.network
 		.extra_sets
-		.push(sc_finality_grandpa::grandpa_peers_set_config(grandpa_protocol_name.clone()));
+		.push(sc_consensus_grandpa::grandpa_peers_set_config(grandpa_protocol_name.clone()));
 
-	let (network, system_rpc_tx, tx_handler_controller, network_starter) =
+	let (network, system_rpc_tx, tx_handler_controller, network_starter, sync_service) =
 		sc_service::build_network(sc_service::BuildNetworkParams {
 			config: &config,
 			client: client.clone(),
@@ -220,7 +221,7 @@ pub fn new_full(mut config: Configuration) -> Result<(TaskManager, RpcHandlers),
 			spawn_handle: task_manager.spawn_handle(),
 			import_queue,
 			block_announce_validator_builder: None,
-			warp_sync: None,
+			warp_sync_params: None,
 		})?;
 
 	if config.offchain_worker.enabled {
@@ -275,9 +276,10 @@ pub fn new_full(mut config: Configuration) -> Result<(TaskManager, RpcHandlers),
 		rpc_builder,
 		backend,
 		system_rpc_tx,
+		tx_handler_controller,
 		config,
 		telemetry: telemetry.as_mut(),
-		tx_handler_controller,
+		sync_service: sync_service.clone(),
 	})?;
 
 	if role.is_authority() {
@@ -312,8 +314,8 @@ pub fn new_full(mut config: Configuration) -> Result<(TaskManager, RpcHandlers),
 				force_authoring,
 				backoff_authoring_blocks,
 				keystore: keystore_container.sync_keystore(),
-				sync_oracle: network.clone(),
-				justification_sync_link: network.clone(),
+				sync_oracle: sync_service.clone(),
+				justification_sync_link: sync_service.clone(),
 				block_proposal_slot_portion: SlotProportion::new(2f32 / 3f32),
 				max_block_proposal_slot_portion: None,
 				telemetry: telemetry.as_ref().map(|x| x.handle()),
@@ -331,7 +333,7 @@ pub fn new_full(mut config: Configuration) -> Result<(TaskManager, RpcHandlers),
 	let keystore =
 		if role.is_authority() { Some(keystore_container.sync_keystore()) } else { None };
 
-	let grandpa_config = sc_finality_grandpa::Config {
+	let grandpa_config = sc_consensus_grandpa::Config {
 		// FIXME #1578 make this available through chainspec
 		gossip_duration: Duration::from_millis(333),
 		justification_period: 512,
@@ -350,11 +352,12 @@ pub fn new_full(mut config: Configuration) -> Result<(TaskManager, RpcHandlers),
 		// and vote data availability than the observer. The observer has not
 		// been tested extensively yet and having most nodes in a network run it
 		// could lead to finality stalls.
-		let grandpa_config = sc_finality_grandpa::GrandpaParams {
+		let grandpa_config = sc_consensus_grandpa::GrandpaParams {
 			config: grandpa_config,
 			link: grandpa_link,
 			network,
-			voting_rule: sc_finality_grandpa::VotingRulesBuilder::default().build(),
+			sync: Arc::new(sync_service),
+			voting_rule: sc_consensus_grandpa::VotingRulesBuilder::default().build(),
 			prometheus_registry,
 			shared_voter_state: SharedVoterState::empty(),
 			telemetry: telemetry.as_ref().map(|x| x.handle()),
@@ -365,7 +368,7 @@ pub fn new_full(mut config: Configuration) -> Result<(TaskManager, RpcHandlers),
 		task_manager.spawn_essential_handle().spawn_blocking(
 			"grandpa-voter",
 			None,
-			sc_finality_grandpa::run_grandpa_voter(grandpa_config)?,
+			sc_consensus_grandpa::run_grandpa_voter(grandpa_config)?,
 		);
 	}
 
@@ -388,7 +391,7 @@ pub async fn start_instant(
 		other: (_, _, mut telemetry),
 	} = new_partial(&config, true)?;
 
-	let (network, system_rpc_tx, tx_handler_controller, network_starter) =
+	let (network, system_rpc_tx, tx_handler_controller, network_starter, sync_service) =
 		sc_service::build_network(sc_service::BuildNetworkParams {
 			config: &config,
 			client: client.clone(),
@@ -396,7 +399,7 @@ pub async fn start_instant(
 			spawn_handle: task_manager.spawn_handle(),
 			import_queue,
 			block_announce_validator_builder: None,
-			warp_sync: None,
+			warp_sync_params: None,
 		})?;
 
 	if config.offchain_worker.enabled {
@@ -476,17 +479,18 @@ pub async fn start_instant(
 	};
 
 	let rpc_handlers = sc_service::spawn_tasks(sc_service::SpawnTasksParams {
-		rpc_builder: Box::new(rpc_builder),
-		client,
-		transaction_pool,
-		task_manager: &mut task_manager,
-		config,
-		keystore: keystore_container.sync_keystore(),
-		backend,
 		network,
+		client,
+		keystore: keystore_container.sync_keystore(),
+		task_manager: &mut task_manager,
+		transaction_pool,
+		rpc_builder: Box::new(rpc_builder),
+		backend,
 		system_rpc_tx,
 		tx_handler_controller,
+		config,
 		telemetry: telemetry.as_mut(),
+		sync_service,
 	})?;
 
 	network_starter.start_network();

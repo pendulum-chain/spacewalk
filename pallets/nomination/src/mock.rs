@@ -201,7 +201,7 @@ impl vault_registry::Config for Test {
 	type PalletId = VaultPalletId;
 	type RuntimeEvent = TestEvent;
 	type Balance = Balance;
-	type WeightInfo = ();
+	type WeightInfo = vault_registry::SubstrateWeight<Test>;
 	type GetGriefingCollateralCurrencyId = GetNativeCurrencyId;
 }
 
@@ -265,7 +265,7 @@ parameter_types! {
 
 impl fee::Config for Test {
 	type FeePalletId = FeePalletId;
-	type WeightInfo = ();
+	type WeightInfo = fee::SubstrateWeight<Test>;
 	type SignedFixedPoint = SignedFixedPoint;
 	type SignedInner = SignedInner;
 	type UnsignedFixedPoint = UnsignedFixedPoint;
@@ -278,7 +278,7 @@ impl fee::Config for Test {
 
 impl oracle::Config for Test {
 	type RuntimeEvent = TestEvent;
-	type WeightInfo = ();
+	type WeightInfo = oracle::SubstrateWeight<Test>;
 	type DataProvider = DiaOracleAdapter<
 		MockDiaOracle,
 		UnsignedFixedPoint,
@@ -292,7 +292,7 @@ impl oracle::Config for Test {
 
 impl Config for Test {
 	type RuntimeEvent = TestEvent;
-	type WeightInfo = ();
+	type WeightInfo = crate::SubstrateWeight<Test>;
 }
 
 pub type TestEvent = RuntimeEvent;

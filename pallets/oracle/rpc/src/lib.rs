@@ -9,7 +9,6 @@ use jsonrpsee::{
 use sp_api::ProvideRuntimeApi;
 use sp_blockchain::HeaderBackend;
 use sp_runtime::{
-	generic::BlockId,
 	traits::{Block as BlockT, MaybeDisplay, MaybeFromStr},
 	DispatchError,
 };
@@ -86,9 +85,9 @@ where
 		at: Option<<Block as BlockT>::Hash>,
 	) -> RpcResult<BalanceWrapper<Balance>> {
 		let api = self.client.runtime_api();
-		let at = BlockId::hash(at.unwrap_or_else(|| self.client.info().best_hash));
+		let at = at.unwrap_or_else(|| self.client.info().best_hash);
 
-		handle_response(api.currency_to_usd(&at, amount, currency_id))
+		handle_response(api.currency_to_usd(at, amount, currency_id))
 	}
 
 	fn usd_to_currency(
@@ -98,8 +97,8 @@ where
 		at: Option<<Block as BlockT>::Hash>,
 	) -> RpcResult<BalanceWrapper<Balance>> {
 		let api = self.client.runtime_api();
-		let at = BlockId::hash(at.unwrap_or_else(|| self.client.info().best_hash));
+		let at = at.unwrap_or_else(|| self.client.info().best_hash);
 
-		handle_response(api.usd_to_currency(&at, amount, currency_id))
+		handle_response(api.usd_to_currency(at, amount, currency_id))
 	}
 }

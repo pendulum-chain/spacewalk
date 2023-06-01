@@ -190,7 +190,7 @@ impl vault_registry::Config for Test {
 	type PalletId = VaultPalletId;
 	type RuntimeEvent = TestEvent;
 	type Balance = Balance;
-	type WeightInfo = ();
+	type WeightInfo = vault_registry::SubstrateWeight<Test>;
 	type GetGriefingCollateralCurrencyId = GetNativeCurrencyId;
 }
 
@@ -256,7 +256,7 @@ impl stellar_relay::Config for Test {
 	type OrganizationLimit = OrganizationLimit;
 	type ValidatorLimit = ValidatorLimit;
 	type IsPublicNetwork = IsPublicNetwork;
-	type WeightInfo = ();
+	type WeightInfo = stellar_relay::SubstrateWeight<Test>;
 }
 
 impl security::Config for Test {
@@ -282,7 +282,7 @@ impl staking::Config for Test {
 
 impl oracle::Config for Test {
 	type RuntimeEvent = TestEvent;
-	type WeightInfo = ();
+	type WeightInfo = oracle::SubstrateWeight<Test>;
 	type DataProvider = DiaOracleAdapter<
 		MockDiaOracle,
 		UnsignedFixedPoint,
@@ -301,7 +301,7 @@ parameter_types! {
 
 impl fee::Config for Test {
 	type FeePalletId = FeePalletId;
-	type WeightInfo = ();
+	type WeightInfo = fee::SubstrateWeight<Test>;
 	type SignedFixedPoint = SignedFixedPoint;
 	type SignedInner = SignedInner;
 	type UnsignedFixedPoint = UnsignedFixedPoint;
@@ -334,7 +334,7 @@ impl Convert<BlockNumber, Balance> for BlockNumberToBalance {
 impl Config for Test {
 	type RuntimeEvent = TestEvent;
 	type BlockNumberToBalance = BlockNumberToBalance;
-	type WeightInfo = ();
+	type WeightInfo = crate::SubstrateWeight<Test>;
 }
 
 pub type TestEvent = RuntimeEvent;
@@ -376,7 +376,7 @@ impl ExtBuilder {
 
 		fee::GenesisConfig::<Test> {
 			issue_fee: UnsignedFixedPoint::checked_from_rational(5, 1000).unwrap(), // 0.5%
-			issue_griefing_collateral: UnsignedFixedPoint::checked_from_rational(5, 100000)
+			issue_griefing_collateral: UnsignedFixedPoint::checked_from_rational(5, 1_000_000_000)
 				.unwrap(), // 0.005%
 			redeem_fee: UnsignedFixedPoint::checked_from_rational(5, 1000).unwrap(), // 0.5%
 			premium_redeem_fee: UnsignedFixedPoint::checked_from_rational(5, 100).unwrap(), // 5%

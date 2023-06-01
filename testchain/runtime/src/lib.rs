@@ -10,7 +10,7 @@ use codec::Encode;
 pub use dia_oracle::dia::*;
 use frame_support::{
 	construct_runtime, parameter_types,
-	traits::{ConstU128, ConstU8, Contains, KeyOwnerProofSystem},
+	traits::{ConstU128, ConstU64, ConstU8, Contains},
 	weights::{constants::WEIGHT_REF_TIME_PER_SECOND, ConstantMultiplier, IdentityFee, Weight},
 	PalletId,
 };
@@ -24,7 +24,7 @@ use pallet_grandpa::{
 pub use pallet_timestamp::Call as TimestampCall;
 use sp_api::impl_runtime_apis;
 use sp_consensus_aura::sr25519::AuthorityId as AuraId;
-use sp_core::{crypto::KeyTypeId, OpaqueMetadata, H256};
+use sp_core::{OpaqueMetadata, H256};
 use sp_runtime::{
 	create_runtime_str, generic, impl_opaque_keys,
 	traits::{
@@ -115,7 +115,7 @@ parameter_types! {
 	/// We allow for 2 seconds of compute with a 6 second average block time.
 	pub BlockWeights: frame_system::limits::BlockWeights =
 		frame_system::limits::BlockWeights::with_sensible_defaults(
-			(2u64 * Weight::from_ref_time(WEIGHT_REF_TIME_PER_SECOND)).set_proof_size(u64::MAX),
+			(2u64 * Weight::from_parts(WEIGHT_REF_TIME_PER_SECOND,0)).set_proof_size(u64::MAX),
 			NORMAL_DISPATCH_RATIO,
 		);
 	pub BlockLength: frame_system::limits::BlockLength = frame_system::limits::BlockLength
@@ -176,16 +176,11 @@ impl pallet_aura::Config for Runtime {
 
 impl pallet_grandpa::Config for Runtime {
 	type RuntimeEvent = RuntimeEvent;
-	type KeyOwnerProof =
-		<Self::KeyOwnerProofSystem as KeyOwnerProofSystem<(KeyTypeId, GrandpaId)>>::Proof;
-	type KeyOwnerIdentification = <Self::KeyOwnerProofSystem as KeyOwnerProofSystem<(
-		KeyTypeId,
-		GrandpaId,
-	)>>::IdentificationTuple;
-	type KeyOwnerProofSystem = ();
-	type HandleEquivocation = ();
+	type KeyOwnerProof = sp_core::Void;
 	type WeightInfo = ();
 	type MaxAuthorities = MaxAuthorities;
+	type MaxSetIdSessionEntries = ConstU64<0>;
+	type EquivocationReportSystem = ();
 }
 
 parameter_types! {
@@ -317,7 +312,7 @@ impl reward::Config for Runtime {
 
 impl security::Config for Runtime {
 	type RuntimeEvent = RuntimeEvent;
-	type WeightInfo = ();
+	type WeightInfo = security::SubstrateWeight<Runtime>;
 }
 
 pub struct CurrencyConvert;
@@ -364,14 +359,14 @@ impl stellar_relay::Config for Runtime {
 	type OrganizationLimit = OrganizationLimit;
 	type ValidatorLimit = ValidatorLimit;
 	type IsPublicNetwork = IsPublicNetwork;
-	type WeightInfo = ();
+	type WeightInfo = stellar_relay::SubstrateWeight<Runtime>;
 }
 
 impl vault_registry::Config for Runtime {
 	type PalletId = VaultRegistryPalletId;
 	type RuntimeEvent = RuntimeEvent;
 	type Balance = Balance;
-	type WeightInfo = ();
+	type WeightInfo = vault_registry::SubstrateWeight<Runtime>;
 	type GetGriefingCollateralCurrencyId = GetRelayChainCurrencyId;
 }
 
@@ -387,7 +382,7 @@ impl dia_oracle::Config for Runtime {
 	type RuntimeEvent = RuntimeEvent;
 	type RuntimeCall = RuntimeCall;
 	type AuthorityId = dia_oracle::crypto::DiaAuthId;
-	type WeightInfo = ();
+	type WeightInfo = dia_oracle::weights::DiaWeightInfo<Runtime>;
 }
 
 impl frame_system::offchain::SigningTypes for Runtime {
@@ -520,7 +515,7 @@ cfg_if::cfg_if! {
 
 impl oracle::Config for Runtime {
 	type RuntimeEvent = RuntimeEvent;
-	type WeightInfo = ();
+	type WeightInfo = oracle::SubstrateWeight<Runtime>;
 	type DataProvider = DataProviderImpl;
 
 	#[cfg(any(feature = "runtime-benchmarks", feature = "testing-utils"))]
@@ -530,17 +525,17 @@ impl oracle::Config for Runtime {
 impl issue::Config for Runtime {
 	type RuntimeEvent = RuntimeEvent;
 	type BlockNumberToBalance = BlockNumberToBalance;
-	type WeightInfo = ();
+	type WeightInfo = issue::SubstrateWeight<Runtime>;
 }
 
 impl redeem::Config for Runtime {
 	type RuntimeEvent = RuntimeEvent;
-	type WeightInfo = ();
+	type WeightInfo = redeem::SubstrateWeight<Runtime>;
 }
 
 impl replace::Config for Runtime {
 	type RuntimeEvent = RuntimeEvent;
-	type WeightInfo = ();
+	type WeightInfo = replace::SubstrateWeight<Runtime>;
 }
 
 parameter_types! {
@@ -549,7 +544,7 @@ parameter_types! {
 
 impl fee::Config for Runtime {
 	type FeePalletId = FeePalletId;
-	type WeightInfo = ();
+	type WeightInfo = fee::SubstrateWeight<Runtime>;
 	type SignedFixedPoint = SignedFixedPoint;
 	type SignedInner = SignedInner;
 	type UnsignedFixedPoint = UnsignedFixedPoint;
@@ -562,7 +557,7 @@ impl fee::Config for Runtime {
 
 impl nomination::Config for Runtime {
 	type RuntimeEvent = RuntimeEvent;
-	type WeightInfo = ();
+	type WeightInfo = nomination::SubstrateWeight<Runtime>;
 }
 
 construct_runtime! {
@@ -780,6 +775,14 @@ impl_runtime_apis! {
 			len: u32,
 		) -> pallet_transaction_payment_rpc_runtime_api::FeeDetails<Balance> {
 			TransactionPayment::query_fee_details(uxt, len)
+		}
+
+		fn query_weight_to_fee(weight: Weight) -> Balance {
+			TransactionPayment::weight_to_fee(weight)
+		}
+
+		fn query_length_to_fee(length: u32) -> Balance {
+			TransactionPayment::length_to_fee(length)
 		}
 	}
 

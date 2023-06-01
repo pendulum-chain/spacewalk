@@ -76,7 +76,7 @@ impl pallet_spacewalk_relay::Config for Test {
 	type OrganizationLimit = OrganizationLimit;
 	type ValidatorLimit = ValidatorLimit;
 	type IsPublicNetwork = IsPublicNetwork;
-	type WeightInfo = ();
+	type WeightInfo = pallet_spacewalk_relay::SubstrateWeight<Test>;
 }
 
 fn create_bounded_vec<T: Clone>(input: &[T]) -> Result<BoundedVec<T, FieldLength>, Error<Test>> {

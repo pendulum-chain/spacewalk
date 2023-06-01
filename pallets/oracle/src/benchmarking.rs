@@ -1,7 +1,7 @@
 #![allow(warnings)]
 use super::{Pallet as Oracle, *};
 use crate::OracleKey;
-use frame_benchmarking::{account, benchmarks, impl_benchmark_test_suite};
+use frame_benchmarking::{benchmarks, impl_benchmark_test_suite};
 use frame_system::RawOrigin;
 use sp_std::prelude::*;
 

@@ -265,12 +265,12 @@ mod test {
 
 	#[test]
 	fn test_check_slot_position() {
-		let last_slot = 100;
+		let last_slot = 50_000;
 
 		assert!(!check_slot_still_recoverable_from_overlay(last_slot, 50));
-		assert!(!check_slot_still_recoverable_from_overlay(last_slot, 75));
-		assert!(check_slot_still_recoverable_from_overlay(last_slot, 90));
-		assert!(check_slot_still_recoverable_from_overlay(last_slot, 100));
-		assert!(check_slot_still_recoverable_from_overlay(last_slot, 101));
+		assert!(!check_slot_still_recoverable_from_overlay(last_slot, 100));
+		assert!(!check_slot_still_recoverable_from_overlay(last_slot, 30_000));
+		assert!(check_slot_still_recoverable_from_overlay(last_slot, 40_500));
+		assert!(check_slot_still_recoverable_from_overlay(last_slot, 49_500));
 	}
 }

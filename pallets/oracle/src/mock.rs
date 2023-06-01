@@ -186,7 +186,7 @@ impl currency::Config for Test {
 
 impl Config for Test {
 	type RuntimeEvent = TestEvent;
-	type WeightInfo = ();
+	type WeightInfo = oracle::SubstrateWeight<Test>;
 	type DataProvider = DiaOracleAdapter<
 		MockDiaOracle,
 		UnsignedFixedPoint,
