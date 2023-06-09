@@ -19,7 +19,6 @@ frame-support = { git = "https://github.com/paritytech/substrate", default-featu
 
 substrate-stellar-sdk = { git = "https://github.com/pendulum-chain/substrate-stellar-sdk", branch = "polkadot-v0.9.40", default-features = false, features = ['offchain'] }
 
-
 [features]
 default = ["std"]
 std = [
