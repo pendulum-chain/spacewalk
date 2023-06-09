@@ -18,6 +18,8 @@ sp-std = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v
 frame-support = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.40" }
 
 substrate-stellar-sdk = { git = "https://github.com/pendulum-chain/substrate-stellar-sdk", branch = "polkadot-v0.9.40", default-features = false, features = ['offchain'] }
+zenlink-protocol = { version = "*", default-features = false }
+
 
 [features]
 default = ["std"]
@@ -29,4 +31,5 @@ std = [
     "sp-runtime/std",
     "frame-support/std",
     "substrate-stellar-sdk/std",
+    "zenlink-protocol/std",
 ]

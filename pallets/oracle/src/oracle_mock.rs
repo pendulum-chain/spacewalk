@@ -45,6 +45,7 @@ impl Convert<Key, Option<(Vec<u8>, Vec<u8>)>> for MockOracleKeyConvertor {
 					Some((vec![4u8], code.to_vec())),
 				CurrencyId::Stellar(Asset::AlphaNum12 { code, .. }) =>
 					Some((vec![5u8], code.to_vec())),
+				CurrencyId::ZenlinkLPToken(_, _) => Some((vec![], vec![]))
 			},
 		}
 	}

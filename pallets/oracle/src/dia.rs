@@ -68,7 +68,7 @@ impl<T: NativeCurrencyKey + XCMCurrencyConversion> Convert<OracleKey, Option<(Ve
 
 					Some((FIAT_DIA_BLOCKCHAIN.as_bytes().to_vec(), fiat_quote))
 				},
-				CurrencyId::Stellar(primitives::Asset::AlphaNum12 { .. }) => unimplemented!(),
+				CurrencyId::Stellar(primitives::Asset::AlphaNum12 { .. }) | CurrencyId::ZenlinkLPToken(_, _) => unimplemented!(),
 			},
 		}
 	}
