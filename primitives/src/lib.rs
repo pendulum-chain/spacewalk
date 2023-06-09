@@ -33,11 +33,6 @@ use substrate_stellar_sdk::{
 	ClaimPredicate, Claimant, Memo, MuxedAccount, Operation, TransactionEnvelope,
 };
 
-use zenlink_protocol::{
-	AssetId, Config as ZenlinkConfig, LocalAssetHandler, PairLpGenerate, ZenlinkMultiAssets, LOCAL,
-	NATIVE,
-};
-
 #[cfg(test)]
 mod tests;
 
@@ -555,68 +550,6 @@ impl TryFrom<(&str, AssetIssuer)> for CurrencyId {
 			Ok(CurrencyId::AlphaNum12(code, issuer))
 		} else {
 			Err("More than 12 bytes not supported")
-		}
-	}
-}
-
-pub type ZenlinkAssetId = zenlink_protocol::AssetId;
-const LP_DISCRIMINANT: u64 = 6u64;
-const PARA_CHAIN_ID: u32 = 1000;
-
-impl TryFrom<CurrencyId> for ZenlinkAssetId {
-	type Error = ();
-
-	fn try_from(currency_id: CurrencyId) -> Result<Self, Self::Error> {
-		match currency_id {
-			CurrencyId::Native =>
-				Ok(ZenlinkAssetId { chain_id: PARA_CHAIN_ID, asset_type: 0, asset_index: 0 as u64 }),
-			CurrencyId::XCM(symbol) => Ok(ZenlinkAssetId {
-				chain_id: PARA_CHAIN_ID,
-				asset_type: LOCAL,
-				asset_index: symbol as u64,
-			}),
-			CurrencyId::ZenlinkLPToken(symbol0, symbol1) => Ok(ZenlinkAssetId {
-				chain_id: PARA_CHAIN_ID,
-				asset_type: LOCAL,
-				asset_index: (LP_DISCRIMINANT << 8) +
-					((symbol0 as u64 & 0xffff) << 16) +
-					((symbol1 as u64 & 0xffff) << 32),
-			}),
-			_ => Err(()),
-		}
-	}
-}
-
-impl TryFrom<ZenlinkAssetId> for CurrencyId {
-	type Error = ();
-
-	fn try_from(asset_id: ZenlinkAssetId) -> Result<Self, Self::Error> {
-		match asset_id.asset_type {
-			NATIVE => return Ok(CurrencyId::Native),
-			LOCAL => {
-				if asset_id.asset_index & 0x0000_0000_0000_ff00 == 0 {
-					let foreign_id: u8 = asset_id.asset_index.try_into().map_err(|_| {
-						// log::error!("{} has no Foreign Currency Id match.",
-						// asset_id.asset_index);
-						()
-					})?;
-
-					return Ok(CurrencyId::XCM(foreign_id))
-				} else {
-					let discriminant = (asset_id.asset_index & 0x0000_0000_0000_ff00) >> 8;
-					return if discriminant == LP_DISCRIMINANT {
-						let token0_id =
-							((asset_id.asset_index & 0x0000_0000_ffff_0000) >> 16) as u8;
-						let token1_id =
-							((asset_id.asset_index & 0x0000_ffff_0000_0000) >> 32) as u8; // Should it be >> 32? It was a 16 bits right shift in the example, but i
-															  // think it was wrong.
-						Ok(CurrencyId::ZenlinkLPToken(token0_id, token1_id))
-					} else {
-						Err(())
-					}
-				}
-			},
-			_ => Err(()),
 		}
 	}
 }

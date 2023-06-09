@@ -153,5 +153,3 @@ xcm = { git = "https://github.com/paritytech//polkadot", branch = "release-v0.9.
 [patch.crates-io]
 sp-core = { git = "https://github.com/paritytech//substrate", branch = "polkadot-v0.9.40" }
 sp-runtime = { git = "https://github.com/paritytech//substrate", branch = "polkadot-v0.9.40" }
-zenlink-protocol = { git = "https://github.com/pendulum-chain/Zenlink-DEX-Module", branch = "polkadot-v0.9.40-protocol" }
-zenlink-protocol-runtime-api = { git = "https://github.com/pendulum-chain/Zenlink-DEX-Module", branch = "polkadot-v0.9.40-protocol" }
