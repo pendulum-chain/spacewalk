@@ -102,23 +102,27 @@ pub mod pallet {
 	pub enum Error<T> {
 		Base64DecodeError,
 		BoundedVecCreationFailed,
+		DuplicateOrganizationId,
+		DuplicateValidatorPublicKey,
 		EmptyEnvelopeSet,
 		EnvelopeSignedByUnknownValidator,
 		EnvelopeSlotIndexMismatch,
+		ExternalizedNHMismatch,
 		ExternalizedValueMismatch,
 		ExternalizedValueNotFound,
+		FailedToComputenonGenericTxSetContentHash,
+		InvalidEnvelopeSignature,
 		InvalidQuorumSetNotEnoughOrganizations,
 		InvalidQuorumSetNotEnoughValidators,
-		InvalidEnvelopeSignature,
 		InvalidScpPledge,
 		InvalidTransactionSet,
 		InvalidTransactionXDR,
 		InvalidXDR,
 		MissingExternalizedMessage,
-		NoOrganizationsRegisteredForNetwork,
-		NoValidatorsRegisteredForNetwork,
 		NoOrganizationsRegistered,
+		NoOrganizationsRegisteredForNetwork,
 		NoValidatorsRegistered,
+		NoValidatorsRegisteredForNetwork,
 		OrganizationLimitExceeded,
 		SlotIndexIsNone,
 		TransactionMemoDoesNotMatch,
@@ -126,9 +130,6 @@ pub mod pallet {
 		TransactionSetHashCreationFailed,
 		TransactionSetHashMismatch,
 		ValidatorLimitExceeded,
-		DuplicateOrganizationId,
-		DuplicateValidatorPublicKey,
-		FailedToComputenonGenericTxSetContentHash,
 	}
 
 	#[pallet::storage]
@@ -604,16 +605,19 @@ pub mod pallet {
 			// for all envelopes. We don't distinguish between externalized and confirmed values as
 			// it should be the same value regardless.
 			let mut externalized_value: Option<Value> = None;
-			let mut nH: Option<u64> = None;
+			let mut externalized_nh: Option<u32> = None;
 
 			for envelope in envelopes.get_vec() {
-				let value = match envelope.clone().statement.pledges {
+				let ballot = match envelope.clone().statement.pledges {
 					ScpStatementPledges::ScpStExternalize(externalized_statement) =>
-						externalized_statement.commit.value,
+						externalized_statement.commit,
 					ScpStatementPledges::ScpStConfirm(confirmed_statement) =>
-						confirmed_statement.ballot.value,
+						confirmed_statement.ballot,
 					_ => return Err(Error::<T>::InvalidScpPledge),
 				};
+
+				let value = ballot.value;
+				let nh = ballot.counter;
 
 				// Check if the tx_set_hash matches the one included in the envelope
 				let tx_set_hash = Self::get_tx_set_hash(&value)?;
@@ -626,7 +630,14 @@ pub mod pallet {
 				if let Some(externalized_value) = &externalized_value {
 					ensure!(externalized_value == &value, Error::<T>::ExternalizedValueMismatch);
 				} else {
-					externalized_value = Some(confirmed_statement.ballot.value);
+					externalized_value = Some(value);
+				}
+
+				// Check if the externalized nh is the same for all envelopes
+				if let Some(externalized_nh) = &externalized_nh {
+					ensure!(externalized_nh == &nh, Error::<T>::ExternalizedNHMismatch);
+				} else {
+					externalized_nh = Some(nh);
 				}
 			}
 
