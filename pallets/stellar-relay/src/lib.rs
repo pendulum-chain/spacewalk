@@ -608,16 +608,13 @@ pub mod pallet {
 			let mut externalized_nh: Option<u32> = None;
 
 			for envelope in envelopes.get_vec() {
-				let ballot = match envelope.clone().statement.pledges {
+				let (value, nh) = match envelope.clone().statement.pledges {
 					ScpStatementPledges::ScpStExternalize(externalized_statement) =>
-						externalized_statement.commit,
+						(externalized_statement.commit.value, externalized_statement.n_h),
 					ScpStatementPledges::ScpStConfirm(confirmed_statement) =>
-						confirmed_statement.ballot,
+						(confirmed_statement.ballot.value, confirmed_statement.n_h),
 					_ => return Err(Error::<T>::InvalidScpPledge),
 				};
-
-				let value = ballot.value;
-				let nh = ballot.counter;
 
 				// Check if the tx_set_hash matches the one included in the envelope
 				let tx_set_hash = Self::get_tx_set_hash(&value)?;
