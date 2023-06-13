@@ -110,7 +110,7 @@ pub mod pallet {
 		ExternalizedNHMismatch,
 		ExternalizedValueMismatch,
 		ExternalizedValueNotFound,
-		FailedToComputenonGenericTxSetContentHash,
+		FailedToComputeNonGenericTxSetContentHash,
 		InvalidEnvelopeSignature,
 		InvalidQuorumSetNotEnoughOrganizations,
 		InvalidQuorumSetNotEnoughValidators,
@@ -599,7 +599,7 @@ pub mod pallet {
 
 			// Check if transaction set matches tx_set_hash included in the ScpEnvelopes
 			let expected_tx_set_hash = compute_non_generic_tx_set_content_hash(transaction_set)
-				.ok_or(Error::<T>::FailedToComputenonGenericTxSetContentHash)?;
+				.ok_or(Error::<T>::FailedToComputeNonGenericTxSetContentHash)?;
 
 			// We store the externalized value in a variable so that we can check if it's the same
 			// for all envelopes. We don't distinguish between externalized and confirmed values as
