@@ -39,7 +39,7 @@ pub mod pallet {
 		network::{Network, PUBLIC_NETWORK, TEST_NETWORK},
 		types::{
 			NodeId, ScpEnvelope, ScpStatementExternalize, ScpStatementPledges, StellarValue,
-			TransactionSet,
+			TransactionSet, Value,
 		},
 		Hash, TransactionEnvelope, XdrCodec,
 	};
@@ -102,19 +102,25 @@ pub mod pallet {
 	pub enum Error<T> {
 		Base64DecodeError,
 		BoundedVecCreationFailed,
+		EmptyEnvelopeSet,
 		EnvelopeSignedByUnknownValidator,
+		EnvelopeSlotIndexMismatch,
+		ExternalizedValueMismatch,
+		ExternalizedValueNotFound,
 		InvalidQuorumSetNotEnoughOrganizations,
 		InvalidQuorumSetNotEnoughValidators,
-		InvalidScpPledge,
 		InvalidEnvelopeSignature,
-		InvalidXDR,
-		NoOrganizationsRegisteredForNetwork,
-		NoValidatorsRegisteredForNetwork,
+		InvalidScpPledge,
 		InvalidTransactionSet,
 		InvalidTransactionXDR,
+		InvalidXDR,
+		MissingExternalizedMessage,
+		NoOrganizationsRegisteredForNetwork,
+		NoValidatorsRegisteredForNetwork,
 		NoOrganizationsRegistered,
 		NoValidatorsRegistered,
 		OrganizationLimitExceeded,
+		SlotIndexIsNone,
 		TransactionMemoDoesNotMatch,
 		TransactionNotInTransactionSet,
 		TransactionSetHashCreationFailed,
@@ -557,6 +563,21 @@ pub mod pallet {
 			// Make sure that at least one validator is registered
 			ensure!(!validators.is_empty(), Error::<T>::NoValidatorsRegistered);
 
+			// Make sure that the envelope set is not empty
+			ensure!(!envelopes.is_empty(), Error::<T>::EmptyEnvelopeSet);
+
+			let externalized_envelope = envelopes
+				.get_vec()
+				.iter()
+				.find(|envelope| match envelope.statement.pledges {
+					StatementPledges::Externalize(_) => true,
+					_ => false,
+				})
+				.ok_or(Error::<T>::MissingExternalizedMessage)?;
+
+			// Variable used to check if all envelopes are using the same slot index
+			let slot_index: u64 = externalized_envelope.statement.slot_index;
+
 			for envelope in envelopes.get_vec() {
 				let node_id = envelope.statement.node_id.clone();
 				let node_id_found = validators
@@ -567,24 +588,50 @@ pub mod pallet {
 
 				let signature_valid = verify_signature(envelope, &node_id, network);
 				ensure!(signature_valid, Error::<T>::InvalidEnvelopeSignature);
+
+				// Check if all envelopes are using the same slot index
+				ensure!(
+					slot_index == envelope.statement.slot_index,
+					Error::<T>::EnvelopeSlotIndexMismatch
+				);
 			}
 
 			// Check if transaction set matches tx_set_hash included in the ScpEnvelopes
 			let expected_tx_set_hash = compute_non_generic_tx_set_content_hash(transaction_set)
 				.ok_or(Error::<T>::FailedToComputenonGenericTxSetContentHash)?;
 
+			// We store the externalized value in a variable so that we can check if it's the same
+			// for all envelopes. We don't distinguish between externalized and confirmed values as
+			// it should be the same value regardless.
+			let mut externalized_value: Option<Value> = None;
+			let mut nH: Option<u64> = None;
+
 			for envelope in envelopes.get_vec() {
-				match envelope.clone().statement.pledges {
-					ScpStatementPledges::ScpStExternalize(externalized_statement) => {
-						let tx_set_hash = Self::get_tx_set_hash(&externalized_statement)?;
-						ensure!(
-							tx_set_hash == expected_tx_set_hash,
-							Error::<T>::TransactionSetHashMismatch
-						);
-					},
+				let value = match envelope.clone().statement.pledges {
+					ScpStatementPledges::ScpStExternalize(externalized_statement) =>
+						externalized_statement.commit.value,
+					ScpStatementPledges::ScpStConfirm(confirmed_statement) =>
+						confirmed_statement.ballot.value,
 					_ => return Err(Error::<T>::InvalidScpPledge),
+				};
+
+				// Check if the tx_set_hash matches the one included in the envelope
+				let tx_set_hash = Self::get_tx_set_hash(&value)?;
+				ensure!(
+					tx_set_hash == expected_tx_set_hash,
+					Error::<T>::TransactionSetHashMismatch
+				);
+
+				// Check if the externalized value is the same for all envelopes
+				if let Some(externalized_value) = &externalized_value {
+					ensure!(externalized_value == &value, Error::<T>::ExternalizedValueMismatch);
+				} else {
+					externalized_value = Some(confirmed_statement.ballot.value);
 				}
 			}
+
+			// Make sure that the externalized value is not None
+			ensure!(externalized_value.is_some(), Error::<T>::ExternalizedValueNotFound);
 
 			// ---- Check that externalized messages build valid quorum set ----
 			// Find the validators that are targeted by the SCP messages
@@ -656,8 +703,7 @@ pub mod pallet {
 			Ok(())
 		}
 
-		fn get_tx_set_hash(x: &ScpStatementExternalize) -> Result<Hash, Error<T>> {
-			let scp_value = x.commit.value.get_vec();
+		fn get_tx_set_hash(scp_value: &Value) -> Result<Hash, Error<T>> {
 			let tx_set_hash = StellarValue::from_xdr(scp_value)
 				.map(|stellar_value| stellar_value.tx_set_hash)
 				.map_err(|_| Error::<T>::TransactionSetHashCreationFailed)?;
