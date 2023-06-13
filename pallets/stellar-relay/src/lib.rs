@@ -605,10 +605,10 @@ pub mod pallet {
 			// for all envelopes. We don't distinguish between externalized and confirmed values as
 			// it should be the same value regardless.
 			let mut externalized_value: Option<Value> = None;
-			let mut externalized_nh: Option<u32> = None;
+			let mut externalized_n_h: Option<u32> = None;
 
 			for envelope in envelopes.get_vec() {
-				let (value, nh) = match envelope.clone().statement.pledges {
+				let (value, n_h) = match envelope.clone().statement.pledges {
 					ScpStatementPledges::ScpStExternalize(externalized_statement) =>
 						(externalized_statement.commit.value, externalized_statement.n_h),
 					ScpStatementPledges::ScpStConfirm(confirmed_statement) =>
@@ -631,10 +631,10 @@ pub mod pallet {
 				}
 
 				// Check if the externalized nh is the same for all envelopes
-				if let Some(externalized_nh) = &externalized_nh {
-					ensure!(externalized_nh == &nh, Error::<T>::ExternalizedNHMismatch);
+				if let Some(externalized_nh) = &externalized_n_h {
+					ensure!(externalized_nh == &n_h, Error::<T>::ExternalizedNHMismatch);
 				} else {
-					externalized_nh = Some(nh);
+					externalized_n_h = Some(n_h);
 				}
 			}
 
