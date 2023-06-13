@@ -154,8 +154,11 @@ pub mod currency_id {
 					)
 					.replace('\"', "")),
 				},
-				CurrencyId::ZenlinkLPToken(token1_id, token2_id) =>
-					Ok(format!("ZenlinkLPToken({},{})", token1_id, token2_id)),
+				CurrencyId::ZenlinkLPToken(token1_id, token1_type, token2_id, token2_type) =>
+					Ok(format!(
+						"ZenlinkLPToken({},{},{},{})",
+						token1_id, token1_type, token2_id, token2_type
+					)),
 			}
 		}
 	}
