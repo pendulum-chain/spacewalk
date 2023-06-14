@@ -37,10 +37,7 @@ pub mod pallet {
 	use substrate_stellar_sdk::{
 		compound_types::UnlimitedVarArray,
 		network::{Network, PUBLIC_NETWORK, TEST_NETWORK},
-		types::{
-			NodeId, ScpEnvelope, ScpStatementExternalize, ScpStatementPledges, StellarValue,
-			TransactionSet, Value,
-		},
+		types::{NodeId, ScpEnvelope, ScpStatementPledges, StellarValue, TransactionSet, Value},
 		Hash, TransactionEnvelope, XdrCodec,
 	};
 
@@ -565,13 +562,13 @@ pub mod pallet {
 			ensure!(!validators.is_empty(), Error::<T>::NoValidatorsRegistered);
 
 			// Make sure that the envelope set is not empty
-			ensure!(!envelopes.is_empty(), Error::<T>::EmptyEnvelopeSet);
+			ensure!(!envelopes.len() > 0, Error::<T>::EmptyEnvelopeSet);
 
 			let externalized_envelope = envelopes
 				.get_vec()
 				.iter()
 				.find(|envelope| match envelope.statement.pledges {
-					StatementPledges::Externalize(_) => true,
+					ScpStatementPledges::ScpStExternalize(_) => true,
 					_ => false,
 				})
 				.ok_or(Error::<T>::MissingExternalizedMessage)?;
@@ -712,7 +709,7 @@ pub mod pallet {
 		}
 
 		fn get_tx_set_hash(scp_value: &Value) -> Result<Hash, Error<T>> {
-			let tx_set_hash = StellarValue::from_xdr(scp_value)
+			let tx_set_hash = StellarValue::from_xdr(scp_value.to_xdr())
 				.map(|stellar_value| stellar_value.tx_set_hash)
 				.map_err(|_| Error::<T>::TransactionSetHashCreationFailed)?;
 			Ok(tx_set_hash)
