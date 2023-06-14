@@ -782,6 +782,48 @@ fn validate_stellar_transaction_works_when_enactment_block_height_reached() {
 }
 
 #[test]
+fn validate_stellar_transaction_fails_for_differing_slot_index() {
+	run_test(|_, validators, validator_secret_keys| {
+		let public_network = true;
+
+		let (tx_envelope, tx_set, scp_envelopes) =
+			create_valid_dummy_scp_envelopes(validators, validator_secret_keys, public_network);
+
+		// Change sequence number for the second envelope (we have to use at least the second
+		// because the first envelope determines the expected slot index)
+		let mut changed_envs = scp_envelopes.get_vec().clone();
+		changed_envs[1].statement.slot_index += 1;
+		let scp_envelopes: UnlimitedVarArray<ScpEnvelope> =
+			LimitedVarArray::new(changed_envs).expect("Failed to create modified SCP envelopes");
+
+		let result =
+			SpacewalkRelay::validate_stellar_transaction(&tx_envelope, &scp_envelopes, &tx_set);
+		assert!(matches!(result, Err(Error::<Test>::EnvelopeSlotIndexMismatch)));
+	});
+}
+
+#[test]
+fn validate_stellar_transaction_fails_with_only_confirm_statements() {
+	run_test(|_, validators, validator_secret_keys| {
+		let public_network = true;
+
+		let (tx_envelope, tx_set, scp_envelopes) =
+			create_valid_dummy_scp_envelopes(validators, validator_secret_keys, public_network);
+
+		// Change sequence number for the second envelope (we have to use at least the second
+		// because the first envelope determines the expected slot index)
+		let mut changed_envs = scp_envelopes.get_vec().clone();
+		changed_envs[1].statement.slot_index += 1;
+		let scp_envelopes: UnlimitedVarArray<ScpEnvelope> =
+			LimitedVarArray::new(changed_envs).expect("Failed to create modified SCP envelopes");
+
+		let result =
+			SpacewalkRelay::validate_stellar_transaction(&tx_envelope, &scp_envelopes, &tx_set);
+		assert!(matches!(result, Err(Error::<Test>::EnvelopeSlotIndexMismatch)));
+	});
+}
+
+#[test]
 fn update_tier_1_validator_set_fails_for_duplicate_values() {
 	run_test(|_, _, _| {
 		let organization = Organization { id: 0, name: Default::default() };

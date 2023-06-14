@@ -584,14 +584,14 @@ pub mod pallet {
 
 				ensure!(node_id_found, Error::<T>::EnvelopeSignedByUnknownValidator);
 
-				let signature_valid = verify_signature(envelope, &node_id, network);
-				ensure!(signature_valid, Error::<T>::InvalidEnvelopeSignature);
-
 				// Check if all envelopes are using the same slot index
 				ensure!(
 					slot_index == envelope.statement.slot_index,
 					Error::<T>::EnvelopeSlotIndexMismatch
 				);
+
+				let signature_valid = verify_signature(envelope, &node_id, network);
+				ensure!(signature_valid, Error::<T>::InvalidEnvelopeSignature);
 			}
 
 			// Check if transaction set matches tx_set_hash included in the ScpEnvelopes
