@@ -836,6 +836,54 @@ fn validate_stellar_transaction_fails_with_only_confirm_statements() {
 }
 
 #[test]
+fn validate_stellar_transaction_fails_with_mismatching_n_h() {
+	run_test(|_, validators, validator_secret_keys| {
+		let public_network = true;
+
+		let (tx_envelope, tx_set, scp_envelopes) = create_valid_dummy_scp_envelopes(
+			validators,
+			validator_secret_keys.clone(),
+			public_network,
+			1,
+		);
+
+		// Change the n_h of the second envelope
+		let mut second_env = scp_envelopes.get_vec()[1].clone();
+		let changed_pledges: ScpStatementPledges = match second_env.statement.pledges {
+			ScpStatementPledges::ScpStExternalize(mut ext) => {
+				ext.n_h += 1;
+				ScpStatementPledges::ScpStExternalize(ext)
+			},
+			ScpStatementPledges::ScpStConfirm(mut confirm) => {
+				confirm.n_h += 1;
+				ScpStatementPledges::ScpStConfirm(confirm)
+			},
+			_ => panic!("Expected externalize or confirm statement"),
+		};
+		second_env.statement.pledges = changed_pledges;
+
+		// Create new signature
+		let network = PUBLIC_NETWORK.get_id();
+		let envelope_type_scp = [0, 0, 0, 1].to_vec(); // xdr representation of SCP envelope type
+		let body: Vec<u8> =
+			[network.to_vec(), envelope_type_scp, second_env.statement.to_xdr()].concat();
+		let signature_result = validator_secret_keys[1].clone().create_signature(body);
+		let signature: Signature = LimitedVarOpaque::new(signature_result.to_vec()).unwrap();
+		second_env.signature = signature;
+
+		let mut changed_envs = scp_envelopes.get_vec().clone();
+		changed_envs[1] = second_env;
+
+		let scp_envelopes: UnlimitedVarArray<ScpEnvelope> =
+			LimitedVarArray::new(changed_envs).expect("Failed to create modified SCP envelopes");
+
+		let result =
+			SpacewalkRelay::validate_stellar_transaction(&tx_envelope, &scp_envelopes, &tx_set);
+		assert!(matches!(result, Err(Error::<Test>::ExternalizedNHMismatch)));
+	});
+}
+
+#[test]
 fn validate_stellar_transaction_works_with_exactly_one_externalized_message() {
 	run_test(|_, validators, validator_secret_keys| {
 		let public_network = true;
