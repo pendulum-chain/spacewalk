@@ -709,7 +709,7 @@ pub mod pallet {
 		}
 
 		fn get_tx_set_hash(scp_value: &Value) -> Result<Hash, Error<T>> {
-			let tx_set_hash = StellarValue::from_xdr(scp_value.to_xdr())
+			let tx_set_hash = StellarValue::from_xdr(scp_value.get_vec())
 				.map(|stellar_value| stellar_value.tx_set_hash)
 				.map_err(|_| Error::<T>::TransactionSetHashCreationFailed)?;
 			Ok(tx_set_hash)
