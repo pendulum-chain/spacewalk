@@ -4,9 +4,9 @@ use substrate_stellar_sdk::{
 	compound_types::{LimitedVarArray, LimitedVarOpaque, UnlimitedVarArray, UnlimitedVarOpaque},
 	network::{Network, PUBLIC_NETWORK, TEST_NETWORK},
 	types::{
-		NodeId, Preconditions, ScpBallot, ScpEnvelope, ScpStatement, ScpStatementExternalize,
-		ScpStatementPledges, Signature, StellarValue, StellarValueExt, TransactionExt,
-		TransactionSet, TransactionV1Envelope, Value,
+		NodeId, Preconditions, ScpBallot, ScpEnvelope, ScpStatement, ScpStatementConfirm,
+		ScpStatementExternalize, ScpStatementPledges, Signature, StellarValue, StellarValueExt,
+		TransactionExt, TransactionSet, TransactionV1Envelope, Value,
 	},
 	Hash, Memo, MuxedAccount, PublicKey, SecretKey, Transaction, TransactionEnvelope, XdrCodec,
 };
@@ -40,31 +40,14 @@ fn create_dummy_externalize_message(keypair: &SecretKey, network: &Network) -> S
 }
 
 fn create_scp_envelope(
-	tx_set_hash: Hash,
 	validator: &ValidatorOf<Test>,
 	validator_secret_key: &SecretKey,
 	network: &Network,
+	pledges: ScpStatementPledges,
 ) -> ScpEnvelope {
-	let stellar_value: StellarValue = StellarValue {
-		tx_set_hash,
-		close_time: 0,
-		ext: StellarValueExt::StellarValueBasic,
-		upgrades: LimitedVarArray::new_empty(),
-	};
-	let stellar_value_xdr = stellar_value.to_xdr();
-	let value: Value = UnlimitedVarOpaque::new(stellar_value_xdr).unwrap();
-
 	let node_id = NodeId::from_encoding(validator.public_key.clone()).unwrap();
 
-	let statement: ScpStatement = ScpStatement {
-		node_id,
-		slot_index: 0,
-		pledges: ScpStatementPledges::ScpStExternalize(ScpStatementExternalize {
-			commit: ScpBallot { counter: 0, value },
-			n_h: 0,
-			commit_quorum_set_hash: Hash::default(),
-		}),
-	};
+	let statement: ScpStatement = ScpStatement { node_id, slot_index: 0, pledges };
 
 	let network = network.get_id();
 	let envelope_type_scp = [0, 0, 0, 1].to_vec(); // xdr representation
@@ -79,6 +62,7 @@ fn create_valid_dummy_scp_envelopes(
 	validators: Vec<ValidatorOf<Test>>,
 	validator_secret_keys: Vec<SecretKey>,
 	public_network: bool,
+	num_externalized: usize, // number of externalized envelopes vs confirmed envelopes
 ) -> (TransactionEnvelope, TransactionSet, LimitedVarArray<ScpEnvelope, { i32::MAX }>) {
 	// Build a transaction
 	let source_account = MuxedAccount::from(PublicKey::PublicKeyTypeEd25519([0; 32]));
@@ -113,10 +97,41 @@ fn create_valid_dummy_scp_envelopes(
 	// Build the scp messages that externalize the transaction set
 	// The scp messages have to be externalized by nodes that build a valid quorum set
 	let mut envelopes = UnlimitedVarArray::<ScpEnvelope>::new_empty();
+
+	// Build the value that is to be externalized
+	let stellar_value: StellarValue = StellarValue {
+		tx_set_hash,
+		close_time: 0,
+		ext: StellarValueExt::StellarValueBasic,
+		upgrades: LimitedVarArray::new_empty(),
+	};
+	let stellar_value_xdr = stellar_value.to_xdr();
+	let value: Value = UnlimitedVarOpaque::new(stellar_value_xdr).unwrap();
+
 	for (i, validator_secret_key) in validator_secret_keys.iter().enumerate() {
 		let validator = validators.get(i).unwrap();
-		let envelope = create_scp_envelope(tx_set_hash, validator, validator_secret_key, network);
-		envelopes.push(envelope).unwrap();
+
+		// We build the pledge depending on the number of externalized envelopes vs confirmed
+		// envelopes
+		let pledges = if i < num_externalized {
+			// Build an externalize pledge
+			ScpStatementPledges::ScpStExternalize(ScpStatementExternalize {
+				commit: ScpBallot { counter: 0, value: value.clone() },
+				n_h: 0,
+				commit_quorum_set_hash: Hash::default(),
+			})
+		} else {
+			// Build a confirmed pledge
+			ScpStatementPledges::ScpStConfirm(ScpStatementConfirm {
+				ballot: ScpBallot { counter: 0, value: value.clone() },
+				n_prepared: 0,
+				n_commit: 0,
+				n_h: 0,
+				quorum_set_hash: Hash::default(),
+			})
+		};
+		let envelope = create_scp_envelope(validator, validator_secret_key, network, pledges);
+		envelopes.push(envelope).expect("Should push envelope");
 	}
 
 	(transaction_envelope, transaction_set, envelopes)
