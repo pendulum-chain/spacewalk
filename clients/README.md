@@ -76,7 +76,9 @@ The withdrawal execution is tested in the `test_execute_withdrawal` unit test in
 
 ## Updating the metadata
 
-```
+When any changes are made to elements associated with the pallets, such as extrinsic names or parameters, it is necessary to regenerate the metadata. Subxt is employed specifically for this purpose.
+
+```bash
 cargo install subxt-cli
 
 // fetching from an automatically detected local chain
@@ -84,6 +86,18 @@ subxt metadata -f bytes > runtime/metadata-{your-chain-name}.scale
 
 // fetching from a specific chain
 subxt metadata -f bytes --url http://{chain-url} > runtime/metadata-{your-chain-name}.scale
+```
+
+After making the changes, the first step is to run the local node.
+
+```bash
+cargo run --bin spacewalk-standalone --release -- --dev
+```
+
+Once the local node is running, run this command:
+
+```bash
+subxt metadata -f bytes > runtime/metadata-{your-chain-name}.scale
 ```
 
 ## Troubleshooting
