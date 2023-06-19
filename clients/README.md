@@ -88,6 +88,8 @@ subxt metadata -f bytes > runtime/metadata-{your-chain-name}.scale
 subxt metadata -f bytes --url http://{chain-url} > runtime/metadata-{your-chain-name}.scale
 ```
 
+### Updating the standalone-metadata file
+
 After making the changes, the first step is to run the local node.
 
 ```
