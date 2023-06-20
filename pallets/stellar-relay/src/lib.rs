@@ -601,15 +601,21 @@ pub mod pallet {
 			// We store the externalized value in a variable so that we can check if it's the same
 			// for all envelopes. We don't distinguish between externalized and confirmed values as
 			// it should be the same value regardless.
-			let mut externalized_value: Option<Value> = None;
-			let mut externalized_n_h: Option<u32> = None;
+			let (externalized_value, externalized_n_h) =
+				match &externalized_envelope.statement.pledges {
+					ScpStatementPledges::ScpStExternalize(externalized_statement) =>
+						(&externalized_statement.commit.value, externalized_statement.n_h),
+					ScpStatementPledges::ScpStConfirm(confirmed_statement) =>
+						(&confirmed_statement.ballot.value, confirmed_statement.n_h),
+					_ => return Err(Error::<T>::ExternalizedValueNotFound),
+				};
 
 			for envelope in envelopes.get_vec() {
-				let (value, n_h) = match envelope.clone().statement.pledges {
+				let (value, n_h) = match &envelope.statement.pledges {
 					ScpStatementPledges::ScpStExternalize(externalized_statement) =>
-						(externalized_statement.commit.value, externalized_statement.n_h),
+						(&externalized_statement.commit.value, externalized_statement.n_h),
 					ScpStatementPledges::ScpStConfirm(confirmed_statement) =>
-						(confirmed_statement.ballot.value, confirmed_statement.n_h),
+						(&confirmed_statement.ballot.value, confirmed_statement.n_h),
 					_ => return Err(Error::<T>::InvalidScpPledge),
 				};
 
@@ -621,22 +627,9 @@ pub mod pallet {
 				);
 
 				// Check if the externalized value is the same for all envelopes
-				if let Some(externalized_value) = &externalized_value {
-					ensure!(externalized_value == &value, Error::<T>::ExternalizedValueMismatch);
-				} else {
-					externalized_value = Some(value);
-				}
-
-				// Check if the externalized nh is the same for all envelopes
-				if let Some(externalized_nh) = &externalized_n_h {
-					ensure!(externalized_nh == &n_h, Error::<T>::ExternalizedNHMismatch);
-				} else {
-					externalized_n_h = Some(n_h);
-				}
+				ensure!(externalized_value == value, Error::<T>::ExternalizedValueMismatch);
+				ensure!(externalized_n_h == n_h, Error::<T>::ExternalizedNHMismatch);
 			}
-
-			// Make sure that the externalized value is not None
-			ensure!(externalized_value.is_some(), Error::<T>::ExternalizedValueNotFound);
 
 			// ---- Check that externalized messages build valid quorum set ----
 			// Find the validators that are targeted by the SCP messages
