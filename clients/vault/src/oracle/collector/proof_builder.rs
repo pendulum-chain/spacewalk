@@ -186,7 +186,8 @@ impl ScpMessageCollector {
 		tracing::debug!("Fetching SCP envelopes for slot {} from horizon archive", slot);
 		let envelopes_map_arc = self.envelopes_map_clone();
 
-		let stellar_history_base = self.stellar_history_base_url();
+		let archive_urls = self.stellar_history_archive_urls();
+		let stellar_history_base = archive_urls.first().unwrap().clone();
 		async move {
 			let scp_archive_storage = ScpArchiveStorage(stellar_history_base);
 			let scp_archive_result = scp_archive_storage.get_archive(slot).await;

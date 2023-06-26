@@ -75,7 +75,7 @@ pub async fn start_oracle_agent(
 	let (sender, mut receiver) = mpsc::channel(34);
 	let collector = Arc::new(RwLock::new(ScpMessageCollector::new(
 		config.is_public_network(),
-		config.stellar_history_base_url(),
+		config.stellar_history_archive_urls(),
 	)));
 	let shutdown_sender = ShutdownSender::default();
 

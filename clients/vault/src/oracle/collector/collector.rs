@@ -26,24 +26,25 @@ pub struct ScpMessageCollector {
 
 	public_network: bool,
 
-	stellar_history_base_url: String,
+	// A (possibly empty) list of URLs to use to fetch the stellar history archive entries.
+	stellar_history_archive_urls: Vec<String>,
 }
 
 impl ScpMessageCollector {
-	pub(crate) fn new(public_network: bool, stellar_history_base_url: String) -> Self {
+	pub(crate) fn new(public_network: bool, stellar_history_archive_urls: Vec<String>) -> Self {
 		ScpMessageCollector {
 			envelopes_map: Default::default(),
 			txset_map: Default::default(),
 			txset_and_slot_map: Arc::new(Default::default()),
 			last_slot_index: 0,
 			public_network,
-			stellar_history_base_url,
+			stellar_history_archive_urls,
 		}
 	}
 
 	pub(crate) fn new_with_size_limit(
 		public_network: bool,
-		stellar_history_base_url: String,
+		stellar_history_archive_urls: Vec<String>,
 		size_limit: usize,
 	) -> Self {
 		ScpMessageCollector {
@@ -52,7 +53,7 @@ impl ScpMessageCollector {
 			txset_and_slot_map: Arc::new(Default::default()),
 			last_slot_index: 0,
 			public_network,
-			stellar_history_base_url,
+			stellar_history_archive_urls,
 		}
 	}
 
@@ -72,8 +73,8 @@ impl ScpMessageCollector {
 		self.public_network
 	}
 
-	pub fn stellar_history_base_url(&self) -> String {
-		self.stellar_history_base_url.clone()
+	pub fn stellar_history_archive_urls(&self) -> Vec<String> {
+		self.stellar_history_archive_urls.clone()
 	}
 }
 

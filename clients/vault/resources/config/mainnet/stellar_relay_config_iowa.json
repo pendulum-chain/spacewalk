@@ -10,5 +10,9 @@
     "version_str": "stellar-core 19.8.0 (040a29c5123fcdd8d8c4dc4f3f7a3d496627f4b2)",
     "is_pub_net": true
   },
-  "stellar_history_base_url": "http://history.stellar.org/prd/core-live/core_live_002/"
+  "stellar_history_archive_urls": [
+    "https://stellar-history-us-iowa.satoshipay.io",
+    "https://stellar-history-de-fra.satoshipay.io",
+    "https://stellar-history-sg-sin.satoshipay.io"
+  ]
 }
