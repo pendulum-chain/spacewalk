@@ -1,12 +1,7 @@
 use reqwest::Client;
 use std::{fmt::Formatter, sync::Arc};
 
-use substrate_stellar_sdk::{
-	compound_types::LimitedString,
-	network::{Network, PUBLIC_NETWORK, TEST_NETWORK},
-	types::{Preconditions, SequenceNumber},
-	Asset, Memo, Operation, PublicKey, SecretKey, StroopAmount, Transaction, TransactionEnvelope,
-};
+use substrate_stellar_sdk::{compound_types::LimitedString, network::{Network, PUBLIC_NETWORK, TEST_NETWORK}, types::{Preconditions, SequenceNumber}, Asset, Memo, Operation, PublicKey, SecretKey, StroopAmount, Transaction, TransactionEnvelope, StellarSdkError};
 use tokio::sync::{oneshot, Mutex};
 
 use crate::{
@@ -22,6 +17,7 @@ use crate::{
 	types::PagingToken,
 };
 use primitives::{derive_shortened_request_id, TransactionEnvelopeExt};
+use crate::operations::{AppendExt, create_basic_transaction, create_payment_operation};
 
 #[derive(Clone)]
 pub struct StellarWallet {
@@ -75,50 +71,6 @@ impl StellarWallet {
 
 		submission_result
 	}
-}
-
-#[doc(hidden)]
-/// Creates and returns a Transaction
-fn create_transaction(
-	destination_address: PublicKey,
-	asset: Asset,
-	stroop_amount: i64,
-	request_id: [u8; 32],
-	stroop_fee_per_operation: u32,
-	public_key: PublicKey,
-	next_sequence_number: SequenceNumber,
-) -> Result<Transaction, Error> {
-	let memo_text = Memo::MemoText(
-		LimitedString::new(derive_shortened_request_id(&request_id))
-			.map_err(|_| Error::BuildTransactionError("Invalid hash".to_string()))?,
-	);
-
-	let mut transaction = Transaction::new(
-		public_key.clone(),
-		next_sequence_number,
-		Some(stroop_fee_per_operation),
-		Preconditions::PrecondNone,
-		Some(memo_text),
-	)
-	.map_err(|_e| Error::BuildTransactionError("Creating new transaction failed".to_string()))?;
-
-	let amount = StroopAmount(stroop_amount);
-	transaction
-		.append_operation(
-			Operation::new_payment(destination_address, asset, amount)
-				.map_err(|_e| {
-					Error::BuildTransactionError("Creation of payment operation failed".to_string())
-				})?
-				.set_source_account(public_key)
-				.map_err(|_e| {
-					Error::BuildTransactionError("Setting source account failed".to_string())
-				})?,
-		)
-		.map_err(|_e| {
-			Error::BuildTransactionError("Appending payment operation failed".to_string())
-		})?;
-
-	Ok(transaction)
 }
 
 impl StellarWallet {
@@ -275,7 +227,7 @@ impl StellarWallet {
 		error_receivers
 	}
 
-	fn create_envelope(
+	fn create_payment_envelope(
 		&self,
 		destination_address: PublicKey,
 		asset: Asset,
@@ -283,17 +235,25 @@ impl StellarWallet {
 		request_id: [u8; 32],
 		stroop_fee_per_operation: u32,
 		next_sequence_number: SequenceNumber,
+		extra_operations: Vec<Operation>,
 	) -> Result<TransactionEnvelope, Error> {
-		let transaction = create_transaction(
-			destination_address,
-			asset,
-			stroop_amount,
-			request_id,
-			stroop_fee_per_operation,
-			self.get_public_key(),
-			next_sequence_number,
+		// create payment operation
+		let payment_op = create_payment_operation(
+			destination_address, asset, stroop_amount, public_key.clone(),
 		)?;
 
+		// create the transaction
+		let mut transaction = create_basic_transaction(
+			request_id,stroop_fee_per_operation,
+			public_key.clone(),
+			next_sequence_number
+		)?;
+
+		// append all operations
+		transaction.append(payment_op)?;
+		transaction.append_multiple(extra_operations)?;
+
+		// convert to envelope
 		let mut envelope = transaction.into_transaction_envelope();
 		let network: &Network =
 			if self.is_public_network { &PUBLIC_NETWORK } else { &TEST_NETWORK };
@@ -305,18 +265,20 @@ impl StellarWallet {
 		Ok(envelope)
 	}
 
-	pub async fn send_payment_to_address(
+	pub async fn send_payment_to_address_with_extra_operations(
 		&mut self,
 		destination_address: PublicKey,
 		asset: Asset,
 		stroop_amount: i64,
 		request_id: [u8; 32],
 		stroop_fee_per_operation: u32,
+		extra_operations: Vec<Operation>
 	) -> Result<TransactionResponse, Error> {
 		let _ = self.transaction_submission_lock.lock().await;
 		let horizon_client = reqwest::Client::new();
 
-		let public_key_encoded = self.get_public_key().to_encoding();
+		let public_key = self.get_public_key();
+		let public_key_encoded = public_key.to_encoding();
 		let account_id_string =
 			std::str::from_utf8(&public_key_encoded).map_err(Error::Utf8Error)?;
 		let account = horizon_client.get_account(account_id_string, self.is_public_network).await?;
@@ -328,17 +290,36 @@ impl StellarWallet {
 			account.account_id
 		);
 
-		let envelope = self.create_envelope(
+		let envelope = self.create_payment_envelope(
 			destination_address,
 			asset,
 			stroop_amount,
 			request_id,
 			stroop_fee_per_operation,
 			next_sequence_number,
+			extra_operations
 		)?;
 
 		let _ = self.cache.save_tx_envelope(envelope.clone())?;
 		self.submit_transaction(envelope, horizon_client).await
+	}
+
+	pub async fn send_payment_to_address(
+		&mut self,
+		destination_address: PublicKey,
+		asset: Asset,
+		stroop_amount: i64,
+		request_id: [u8; 32],
+		stroop_fee_per_operation: u32
+	) -> Result<TransactionResponse, Error> {
+		self.send_payment_to_address_with_extra_operations(
+			destination_address: PublicKey,
+			asset: Asset,
+			stroop_amount: i64,
+			request_id: [u8; 32],
+			stroop_fee_per_operation: u32,
+			vec![]
+		).await
 	}
 
 	///return balances for public key
@@ -616,7 +597,7 @@ mod test {
 		// creating a `tx_bad_seq` envelope.
 		let request_id = [1u8; 32];
 		let bad_envelope = wallet
-			.create_envelope(
+			.create_payment_envelope(
 				destination.clone(),
 				asset.clone(),
 				amount,
@@ -632,7 +613,7 @@ mod test {
 		// create a successful transaction
 		let request_id = [2u8; 32];
 		let good_envelope = wallet
-			.create_envelope(destination, asset, amount, request_id, stroop_fee, seq_number + 1)
+			.create_payment_envelope(destination, asset, amount, request_id, stroop_fee, seq_number + 1)
 			.expect("should return an envelope");
 
 		// let's save this in storage

@@ -11,6 +11,7 @@ mod horizon;
 mod stellar_wallet;
 mod task;
 pub mod types;
+pub mod operations;
 
 pub type Slot = u32;
 pub type LedgerTxEnvMap = HashMap<Slot, TransactionEnvelope>;

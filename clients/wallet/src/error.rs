@@ -1,6 +1,6 @@
 use reqwest::Error as FetchError;
 use std::fmt::{Debug, Display, Formatter};
-use substrate_stellar_sdk::{types::SequenceNumber, TransactionEnvelope};
+use substrate_stellar_sdk::{types::SequenceNumber, TransactionEnvelope, StellarSdkError};
 
 use thiserror::Error;
 
@@ -28,6 +28,12 @@ pub enum Error {
 
 	#[error(transparent)]
 	CacheError(CacheError),
+}
+
+impl <T,X> From<X> for Result<T,StellarSdkError> {
+	fn from(value: X) -> Self {
+		todo!()
+	}
 }
 
 impl Error {
@@ -90,6 +96,12 @@ impl Error {
 			envelope: Some(tx_envelope),
 			sequence_number: None,
 		})
+	}
+}
+
+impl From<StellarSdkError> for Error {
+	fn from(value: StellarSdkError) -> Self {
+		todo!()
 	}
 }
 
