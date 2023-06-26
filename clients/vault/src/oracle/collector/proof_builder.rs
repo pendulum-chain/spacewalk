@@ -3,7 +3,7 @@ use std::{convert::TryInto, future::Future};
 use primitives::stellar::types::TransactionHistoryEntry;
 use stellar_relay_lib::sdk::{
 	compound_types::{UnlimitedVarArray, XdrArchive},
-	types::{ScpEnvelope, ScpHistoryEntry, StellarMessage, TransactionSet},
+	types::{ScpEnvelope, ScpHistoryEntry, ScpStatementPledges, StellarMessage, TransactionSet},
 	XdrCodec,
 };
 
@@ -211,11 +211,41 @@ impl ScpMessageCollector {
 					let slot_scp_envelopes = scp_entry_v0.clone().ledger_messages.messages;
 					let vec_scp = slot_scp_envelopes.get_vec().clone();
 
+					// Filter out any envelopes that are not externalize or confirm statements
+					let relevant_envelopes = vec_scp
+						.into_iter()
+						.filter(|scp| match scp.statement.pledges {
+							ScpStatementPledges::ScpStExternalize(_) |
+							ScpStatementPledges::ScpStConfirm(_) => true,
+							_ => false,
+						})
+						.collect::<Vec<_>>();
+
+					let externalized_envelopes = relevant_envelopes
+						.iter()
+						.filter(|scp| match scp.statement.pledges {
+							ScpStatementPledges::ScpStExternalize(_) => true,
+							_ => false,
+						})
+						.collect::<Vec<_>>();
+
+					// Ensure that at least one envelope is externalized
+					if externalized_envelopes.len() == 0 {
+						tracing::error!(
+							"The contained archive entry for slot {slot:?}, fetched from {stellar_history_base:?}, is invalid because it does not contain any externalized envelopes."
+						);
+						return
+					}
+
 					let mut envelopes_map = envelopes_map_arc.write();
 
 					if envelopes_map.get(&slot).is_none() {
-						tracing::debug!("Adding archived SCP envelopes for slot {}", slot);
-						envelopes_map.insert(slot, vec_scp);
+						tracing::debug!(
+							"Adding {} archived SCP envelopes for slot {slot:?}. {} are externalized",
+							relevant_envelopes.len(),
+							externalized_envelopes.len()
+						);
+						envelopes_map.insert(slot, relevant_envelopes);
 					}
 				}
 			}
