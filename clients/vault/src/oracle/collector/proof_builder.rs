@@ -1,3 +1,4 @@
+use futures::future;
 use std::{convert::TryInto, future::Future};
 
 use primitives::stellar::types::TransactionHistoryEntry;
@@ -182,74 +183,88 @@ impl ScpMessageCollector {
 	///
 	/// * `envelopes_map_lock` - the map to insert the envelopes to.
 	/// * `slot` - the slot where the envelopes belong to
-	fn get_envelopes_from_horizon_archive(&self, slot: Slot) -> impl Future<Output = ()> {
+	fn get_envelopes_from_horizon_archive(
+		&self,
+		slot: Slot,
+	) -> impl Future<Output = Result<(), String>> {
 		tracing::debug!("Fetching SCP envelopes for slot {} from horizon archive", slot);
 		let envelopes_map_arc = self.envelopes_map_clone();
 
 		let archive_urls = self.stellar_history_archive_urls();
-		let stellar_history_base = archive_urls.first().unwrap().clone();
+		if archive_urls.is_empty() {
+			tracing::debug!("Can't get envelopes from horizon archive for slot {slot:?}: no archive URLs configured");
+			return future::err("No archive URLs configured".to_string())
+		}
+
 		async move {
-			let scp_archive_storage = ScpArchiveStorage(stellar_history_base);
-			let scp_archive_result = scp_archive_storage.get_archive(slot).await;
-			if let Err(e) = scp_archive_result {
-				tracing::error!(
-					"Could not get SCPArchive for slot {slot:?} from Horizon Archive: {e:?}"
-				);
-				return
-			}
-			let scp_archive: XdrArchive<ScpHistoryEntry> = scp_archive_result.unwrap();
-
-			let value = scp_archive.get_vec().iter().find(|&scp_entry| {
-				if let ScpHistoryEntry::V0(scp_entry_v0) = scp_entry {
-					Slot::from(scp_entry_v0.ledger_messages.ledger_seq) == slot
-				} else {
-					false
+			for archive_url in archive_urls {
+				let scp_archive_storage = ScpArchiveStorage(archive_url);
+				let scp_archive_result = scp_archive_storage.get_archive(slot).await;
+				if let Err(e) = scp_archive_result {
+					tracing::error!(
+						"Could not get SCPArchive for slot {slot:?} from Horizon Archive: {e:?}"
+					);
+					continue
 				}
-			});
+				let scp_archive: XdrArchive<ScpHistoryEntry> =
+					scp_archive_result.expect("Should unwrap SCPArchive");
 
-			if let Some(i) = value {
-				if let ScpHistoryEntry::V0(scp_entry_v0) = i {
-					let slot_scp_envelopes = scp_entry_v0.clone().ledger_messages.messages;
-					let vec_scp = slot_scp_envelopes.get_vec().clone();
-
-					// Filter out any envelopes that are not externalize or confirm statements
-					let relevant_envelopes = vec_scp
-						.into_iter()
-						.filter(|scp| match scp.statement.pledges {
-							ScpStatementPledges::ScpStExternalize(_) |
-							ScpStatementPledges::ScpStConfirm(_) => true,
-							_ => false,
-						})
-						.collect::<Vec<_>>();
-
-					let externalized_envelopes = relevant_envelopes
-						.iter()
-						.filter(|scp| match scp.statement.pledges {
-							ScpStatementPledges::ScpStExternalize(_) => true,
-							_ => false,
-						})
-						.collect::<Vec<_>>();
-
-					// Ensure that at least one envelope is externalized
-					if externalized_envelopes.len() == 0 {
-						tracing::error!(
-							"The contained archive entry for slot {slot:?}, fetched from {stellar_history_base:?}, is invalid because it does not contain any externalized envelopes."
-						);
-						return
+				let value = scp_archive.get_vec().iter().find(|&scp_entry| {
+					if let ScpHistoryEntry::V0(scp_entry_v0) = scp_entry {
+						Slot::from(scp_entry_v0.ledger_messages.ledger_seq) == slot
+					} else {
+						false
 					}
+				});
 
-					let mut envelopes_map = envelopes_map_arc.write();
+				if let Some(i) = value {
+					if let ScpHistoryEntry::V0(scp_entry_v0) = i {
+						let slot_scp_envelopes = scp_entry_v0.clone().ledger_messages.messages;
+						let vec_scp = slot_scp_envelopes.get_vec().clone();
 
-					if envelopes_map.get(&slot).is_none() {
-						tracing::debug!(
-							"Adding {} archived SCP envelopes for slot {slot:?}. {} are externalized",
+						// Filter out any envelopes that are not externalize or confirm statements
+						let relevant_envelopes = vec_scp
+							.into_iter()
+							.filter(|scp| match scp.statement.pledges {
+								ScpStatementPledges::ScpStExternalize(_) |
+								ScpStatementPledges::ScpStConfirm(_) => true,
+								_ => false,
+							})
+							.collect::<Vec<_>>();
+
+						let externalized_envelopes = relevant_envelopes
+							.iter()
+							.filter(|scp| match scp.statement.pledges {
+								ScpStatementPledges::ScpStExternalize(_) => true,
+								_ => false,
+							})
+							.collect::<Vec<_>>();
+
+						// Ensure that at least one envelope is externalized
+						if externalized_envelopes.len() == 0 {
+							tracing::error!(
+							"The contained archive entry for slot {slot:?}, fetched from {}, is invalid because it does not contain any externalized envelopes.",
+								scp_archive_storage.0
+						);
+							continue
+						}
+
+						let mut envelopes_map = envelopes_map_arc.write();
+
+						if envelopes_map.get(&slot).is_none() {
+							tracing::debug!(
+							"Adding {} archived SCP envelopes for slot {slot:?} to envelopes map. {} are externalized",
 							relevant_envelopes.len(),
 							externalized_envelopes.len()
 						);
-						envelopes_map.insert(slot, relevant_envelopes);
+							envelopes_map.insert(slot, relevant_envelopes);
+							break
+						}
 					}
 				}
 			}
+			// If we get here, we failed to get the envelopes from any archive
+			return Err("Could not get envelopes from any archive".to_string())
 		}
 	}
 
@@ -262,29 +277,33 @@ impl ScpMessageCollector {
 	fn get_txset_from_horizon_archive(&self, slot: Slot) -> impl Future<Output = ()> {
 		tracing::warn!("Fetching TxSet for slot {} from horizon archive", slot);
 		let txset_map_arc = self.txset_map_clone();
-		let stellar_history_base = self.stellar_history_base_url();
-		async move {
-			let tx_archive_storage = TransactionsArchiveStorage(stellar_history_base);
-			let transactions_archive = tx_archive_storage.get_archive(slot).await;
+		let archive_urls = self.stellar_history_archive_urls();
 
-			if let Err(e) = transactions_archive {
-				tracing::error!(
+		async move {
+			for archive_url in archive_urls {
+				let tx_archive_storage = TransactionsArchiveStorage(archive_url);
+				let transactions_archive = tx_archive_storage.get_archive(slot).await;
+
+				if let Err(e) = transactions_archive {
+					tracing::error!(
 					"Could not get TransactionsArchive for slot {slot:?} from horizon archive: {e:?}"
 				);
-				return
-			}
-			let transactions_archive: XdrArchive<TransactionHistoryEntry> =
-				transactions_archive.unwrap();
+					return
+				}
+				let transactions_archive: XdrArchive<TransactionHistoryEntry> =
+					transactions_archive.unwrap();
 
-			let value = transactions_archive
-				.get_vec()
-				.iter()
-				.find(|&entry| Slot::from(entry.ledger_seq) == slot);
+				let value = transactions_archive
+					.get_vec()
+					.iter()
+					.find(|&entry| Slot::from(entry.ledger_seq) == slot);
 
-			if let Some(target_history_entry) = value {
-				tracing::debug!("Adding archived tx set for slot {}", slot);
-				let mut tx_set_map = txset_map_arc.write();
-				tx_set_map.insert(slot, target_history_entry.tx_set.clone());
+				if let Some(target_history_entry) = value {
+					tracing::debug!("Adding archived tx set for slot {}", slot);
+					let mut tx_set_map = txset_map_arc.write();
+					tx_set_map.insert(slot, target_history_entry.tx_set.clone());
+					break
+				}
 			}
 		}
 	}

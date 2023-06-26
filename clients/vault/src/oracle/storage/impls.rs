@@ -173,14 +173,18 @@ mod test {
 	impl Default for ScpArchiveStorage {
 		fn default() -> Self {
 			let cfg = get_test_stellar_relay_config(true);
-			ScpArchiveStorage(cfg.stellar_history_base_url())
+			let archive_urls = cfg.stellar_history_archive_urls();
+			let archive_url = archive_urls.first().expect("should have an archive url");
+			ScpArchiveStorage(archive_url.clone())
 		}
 	}
 
 	impl Default for TransactionsArchiveStorage {
 		fn default() -> Self {
 			let cfg = get_test_stellar_relay_config(true);
-			TransactionsArchiveStorage(cfg.stellar_history_base_url())
+			let archive_urls = cfg.stellar_history_archive_urls();
+			let archive_url = archive_urls.first().expect("should have an archive url");
+			TransactionsArchiveStorage(archive_url.clone())
 		}
 	}
 
