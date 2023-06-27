@@ -28,12 +28,12 @@ jobs:
           sudo rm -rf /usr/local/share/boost
           sudo rm -rf /opt/hostedtoolcache/CodeQL
           sudo rm -rf "$AGENT_TOOLSDIRECTORY"
-          sudo docker image prune --all --force
       - uses: actions/checkout@v2
 
       - name: Install package (ubuntu-latest)
         if: matrix.os == 'ubuntu-latest'
         run: |
+          sudo docker image prune --all --force
           echo 'APT::Get::Always-Include-Phased-Updates "false";' | sudo tee /etc/apt/apt.conf.d/99-phased-updates
           sudo apt-get update && sudo apt-get upgrade -y
           sudo apt-get install -y protobuf-compiler libprotobuf-dev
