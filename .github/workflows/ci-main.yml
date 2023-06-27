@@ -26,8 +26,6 @@ jobs:
           sudo rm -rf /usr/share/dotnet # will release about 20GB if you don't need .NET
           sudo rm -rf /opt/ghc
           sudo rm -rf /usr/local/share/boost
-          sudo rm -rf /opt/hostedtoolcache/CodeQL
-          sudo docker image prune --all --force
           sudo rm -rf "$AGENT_TOOLSDIRECTORY"
       - uses: actions/checkout@v2
 
