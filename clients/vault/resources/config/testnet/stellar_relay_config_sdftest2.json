@@ -10,5 +10,5 @@
     "version_str": "stellar-core 19.9.0.rc1 (064a2787acb9e98c70567523785333581ee1ffa4)",
     "is_pub_net": false
   },
-  "stellar_history_archive_urls": []
+  "stellar_history_archive_urls": [""]
 }

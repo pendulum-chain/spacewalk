@@ -236,7 +236,7 @@ mod test {
 				"version_str": "v19.5.0",
 				"is_pub_net": false
 			  },
-			  "stellar_history_base_url": "sample"
+			  "stellar_history_archive_urls": []
 			}
 			"#;
 
