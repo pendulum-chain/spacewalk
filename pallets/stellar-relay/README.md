@@ -31,6 +31,7 @@ Run the benchmarking for a pallet:
 --steps=100 \
 --repeat=10 \
 --wasm-execution=compiled \
+--execution=wasm \
 --output=pallets/stellar-relay/src/default_weights.rs \
 --template=./.maintain/frame-weight-template.hbs
 ```
