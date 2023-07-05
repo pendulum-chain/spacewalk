@@ -1,4 +1,3 @@
-use futures::future;
 use std::{convert::TryInto, future::Future};
 
 use primitives::stellar::types::TransactionHistoryEntry;
@@ -191,12 +190,14 @@ impl ScpMessageCollector {
 		let envelopes_map_arc = self.envelopes_map_clone();
 
 		let archive_urls = self.stellar_history_archive_urls();
-		if archive_urls.is_empty() {
-			tracing::debug!("Can't get envelopes from horizon archive for slot {slot:?}: no archive URLs configured");
-			return future::err("No archive URLs configured".to_string())
-		}
-
 		async move {
+			if archive_urls.is_empty() {
+				tracing::debug!("Can't get envelopes from horizon archive for slot {slot:?}: no archive URLs configured");
+				return Err("No archive URLs configured".to_string())
+			}
+
+			// We try to get the SCPArchive from each archive URL until we succeed or run out of
+			// URLs
 			for archive_url in archive_urls {
 				let scp_archive_storage = ScpArchiveStorage(archive_url);
 				let scp_archive_result = scp_archive_storage.get_archive(slot).await;
