@@ -78,7 +78,7 @@ The handling of redeem events is implemented in `clients/vault/src/redeem.rs`.
 ## Run all tests
 
 ```
-cargo test
+cargo test --lib --features standalone-metadata -- --nocapture
 ```
 
 ## Compile and run the testchain
