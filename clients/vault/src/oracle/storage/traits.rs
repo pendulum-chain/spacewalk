@@ -118,8 +118,8 @@ pub trait ArchiveStorage {
 		let file_name = format!("{hex_string}.xdr");
 		let base_url = self.stellar_history_base_url();
 		let url = format!(
-			"{base_url}{}/{}/{}/{}/{}-{file_name}.gz",
-			Self::PREFIX_URL,
+			"{base_url}/{}/{}/{}/{}/{}-{file_name}.gz",
+			Self::PREFIX_URL.trim_end_matches('/'),
 			&hex_string[..2],
 			&hex_string[2..4],
 			&hex_string[4..6],
