@@ -2,7 +2,7 @@ pub fn get_test_stellar_relay_config(is_mainnet: bool) -> stellar_relay_lib::Ste
 	use rand::seq::SliceRandom;
 
 	let stellar_node_points: Vec<&str> = if is_mainnet {
-		vec!["iowa", "singapore"]
+		vec!["frankfurt", "iowa", "singapore"]
 	} else {
 		vec!["sdftest1", "sdftest2", "sdftest3"]
 	};

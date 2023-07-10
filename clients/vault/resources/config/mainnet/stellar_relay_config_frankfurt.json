@@ -1,6 +1,6 @@
 {
   "connection_info": {
-    "address": "154.12.251.105",
+    "address": "85.190.254.217",
     "port": 11625
   },
   "node_info": {
@@ -10,5 +10,5 @@
     "version_str": "stellar-core 19.11.0 (7fb6d5e8858fed6ea365f8717b0266635f578477)",
     "is_pub_net": true
   },
-  "stellar_history_base_url": "https://stellar-history-us-iowa.satoshipay.io/"
+  "stellar_history_base_url": "https://stellar-history-de-fra.satoshipay.io/"
 }
