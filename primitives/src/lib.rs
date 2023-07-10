@@ -28,10 +28,7 @@ use stellar::{
 	Asset as StellarAsset, PublicKey,
 };
 pub use substrate_stellar_sdk as stellar;
-use substrate_stellar_sdk::{
-	types::{OperationBody, SequenceNumber},
-	ClaimPredicate, Claimant, Memo, MuxedAccount, Operation, TransactionEnvelope,
-};
+use substrate_stellar_sdk::{types::{OperationBody, SequenceNumber}, ClaimPredicate, Claimant, Memo, MuxedAccount, Operation, TransactionEnvelope, IntoAmount, StellarSdkError};
 
 #[cfg(test)]
 mod tests;
@@ -494,6 +491,13 @@ impl CurrencyId {
 		}
 	}
 
+	pub fn is_stellar_native(&self) -> bool {
+		match self {
+			CurrencyId::Stellar(Asset::StellarNative) => true,
+			_ => false
+		}
+	}
+
 	#[allow(non_snake_case)]
 	pub const fn AlphaNum4(code: Bytes4, issuer: AssetIssuer) -> Self {
 		Self::Stellar(Asset::AlphaNum4 { code, issuer })
@@ -797,7 +801,7 @@ impl TransactionEnvelopeExt for TransactionEnvelope {
 			TransactionEnvelope::Default(_) => Vec::new(),
 		};
 
-		let mut transferred_amount: i64 = 0;
+		let mut transferred_amount: StellarStroops = 0;
 		for x in tx_operations {
 			match x.body {
 				OperationBody::Payment(payment) => {

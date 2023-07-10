@@ -1,7 +1,7 @@
 use reqwest::Client;
 use std::{fmt::Formatter, sync::Arc};
 
-use substrate_stellar_sdk::{compound_types::LimitedString, network::{Network, PUBLIC_NETWORK, TEST_NETWORK}, types::{Preconditions, SequenceNumber}, Asset, Memo, Operation, PublicKey, SecretKey, StroopAmount, Transaction, TransactionEnvelope, StellarSdkError};
+use substrate_stellar_sdk::{network::{Network, PUBLIC_NETWORK, TEST_NETWORK}, types::{ SequenceNumber}, Asset, Operation, PublicKey, SecretKey, TransactionEnvelope};
 use tokio::sync::{oneshot, Mutex};
 
 use crate::{
@@ -16,7 +16,7 @@ use crate::{
 	horizon::{TransactionsResponseIter, DEFAULT_PAGE_SIZE},
 	types::PagingToken,
 };
-use primitives::{derive_shortened_request_id, TransactionEnvelopeExt};
+use primitives::{StellarStroops, TransactionEnvelopeExt};
 use crate::operations::{AppendExt, create_basic_transaction, create_payment_operation};
 
 #[derive(Clone)]
@@ -231,12 +231,13 @@ impl StellarWallet {
 		&self,
 		destination_address: PublicKey,
 		asset: Asset,
-		stroop_amount: i64,
+		stroop_amount: StellarStroops,
 		request_id: [u8; 32],
 		stroop_fee_per_operation: u32,
 		next_sequence_number: SequenceNumber,
 		extra_operations: Vec<Operation>,
 	) -> Result<TransactionEnvelope, Error> {
+		let public_key = self.get_public_key();
 		// create payment operation
 		let payment_op = create_payment_operation(
 			destination_address, asset, stroop_amount, public_key.clone(),
@@ -245,7 +246,7 @@ impl StellarWallet {
 		// create the transaction
 		let mut transaction = create_basic_transaction(
 			request_id,stroop_fee_per_operation,
-			public_key.clone(),
+			public_key,
 			next_sequence_number
 		)?;
 
@@ -269,7 +270,7 @@ impl StellarWallet {
 		&mut self,
 		destination_address: PublicKey,
 		asset: Asset,
-		stroop_amount: i64,
+		stroop_amount: StellarStroops,
 		request_id: [u8; 32],
 		stroop_fee_per_operation: u32,
 		extra_operations: Vec<Operation>
@@ -308,16 +309,16 @@ impl StellarWallet {
 		&mut self,
 		destination_address: PublicKey,
 		asset: Asset,
-		stroop_amount: i64,
+		stroop_amount: StellarStroops,
 		request_id: [u8; 32],
 		stroop_fee_per_operation: u32
 	) -> Result<TransactionResponse, Error> {
 		self.send_payment_to_address_with_extra_operations(
-			destination_address: PublicKey,
-			asset: Asset,
-			stroop_amount: i64,
-			request_id: [u8; 32],
-			stroop_fee_per_operation: u32,
+			destination_address,
+			asset,
+			stroop_amount,
+			request_id,
+			stroop_fee_per_operation,
 			vec![]
 		).await
 	}
@@ -604,6 +605,7 @@ mod test {
 				request_id,
 				stroop_fee,
 				seq_number,
+				vec![]
 			)
 			.expect("should return an envelope");
 
@@ -613,7 +615,7 @@ mod test {
 		// create a successful transaction
 		let request_id = [2u8; 32];
 		let good_envelope = wallet
-			.create_payment_envelope(destination, asset, amount, request_id, stroop_fee, seq_number + 1)
+			.create_payment_envelope(destination, asset, amount, request_id, stroop_fee, seq_number + 1, vec![])
 			.expect("should return an envelope");
 
 		// let's save this in storage

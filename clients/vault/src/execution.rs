@@ -5,9 +5,7 @@ use governor::RateLimiter;
 use sp_runtime::traits::StaticLookup;
 use tokio::sync::RwLock;
 
-use primitives::{
-	derive_shortened_request_id, stellar::PublicKey, TextMemo, TransactionEnvelopeExt,
-};
+use primitives::{Amount, derive_shortened_request_id, stellar::PublicKey, TextMemo, TransactionEnvelopeExt};
 use runtime::{
 	CurrencyId, OraclePallet, PrettyPrint, RedeemPallet, RedeemRequestStatus, ReplacePallet,
 	ReplaceRequestStatus, SecurityPallet, ShutdownSender, SpacewalkParachain,
@@ -186,6 +184,9 @@ impl Request {
 			primitives::BalanceConversion::lookup(self.amount).map_err(|_| Error::LookupError)?;
 		let request_id = self.hash.0;
 
+		// only for redeem requests, check if we need extra operations
+		wallet::is_claimable_balance_op_required()
+
 		let mut wallet = wallet.write().await;
 		tracing::info!(
 			"Sending {:?} stroops of {:?} to {:?} from {:?}",
@@ -194,6 +195,8 @@ impl Request {
 			destination_public_key,
 			wallet,
 		);
+
+
 		let result = wallet
 			.send_payment_to_address(
 				destination_public_key.clone(),
@@ -265,6 +268,7 @@ impl Request {
 		Ok(())
 	}
 }
+
 
 /// executes open request based on the transaction
 async fn _execute_open_requests(

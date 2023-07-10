@@ -10,7 +10,7 @@ use parity_scale_codec::{Decode, Encode};
 use primitives::{TextMemo, TransactionEnvelopeExt};
 use rand::seq::SliceRandom;
 use serde::{de::DeserializeOwned, Deserialize, Deserializer};
-use substrate_stellar_sdk::{types::SequenceNumber, PublicKey, TransactionEnvelope, XdrCodec};
+use substrate_stellar_sdk::{types::SequenceNumber, PublicKey, TransactionEnvelope, XdrCodec, Asset};
 use tokio::{sync::RwLock, time::sleep};
 
 use crate::{
@@ -249,6 +249,20 @@ pub struct HorizonAccountResponse {
 	// ...
 }
 
+impl HorizonAccountResponse {
+	pub fn is_trustline_exist(&self, asset:&Asset) -> bool {
+		for bal in &self.balances {
+			if let Some(bal_asset) = bal.get_asset() {
+				if &bal_asset == asset {
+					return true
+				}
+			}
+		}
+
+		false
+	}
+}
+
 // This represents a Claimant
 #[derive(Deserialize, Encode, Decode, Default, Debug)]
 pub struct Balance {
@@ -262,6 +276,31 @@ pub struct Balance {
 	pub asset_issuer: Option<Vec<u8>>,
 	#[serde(deserialize_with = "de_string_to_bytes")]
 	pub asset_type: Vec<u8>,
+}
+
+impl Balance {
+	/// checks if the Balance type is Stellar native.
+	pub fn is_xlm(&self) -> bool {
+		 &self.asset_type == "native".as_bytes()
+	}
+
+	/// returns what kind of asset the Balance is
+	pub fn get_asset(&self) -> Option<Asset> {
+		if &self.asset_type == "native".as_bytes() {
+			return Some(Asset::AssetTypeNative);
+		}
+
+		match Asset::from_asset_code(
+			&self.asset_code.clone()?,
+			&self.asset_issuer.clone()?
+		) {
+			Ok(asset) => Some(asset),
+			Err(e) => {
+				tracing::warn!("failed to convert to asset: {e:?}");
+				None
+			}
+		}
+	}
 }
 
 #[derive(Deserialize, Debug)]
@@ -394,6 +433,7 @@ pub trait HorizonClient {
 impl HorizonClient for reqwest::Client {
 	async fn get_from_url<R: DeserializeOwned>(&self, url: &str) -> Result<R, Error> {
 		let response = self.get(url).send().await.map_err(Error::HttpFetchingError)?;
+		println!("RESPONSE: {response:?}");
 		interpret_response::<R>(response).await
 	}
 
@@ -724,6 +764,8 @@ mod tests {
 
 		Ok(envelope)
 	}
+
+
 
 	#[tokio::test(flavor = "multi_thread")]
 	async fn horizon_submit_transaction_success() {

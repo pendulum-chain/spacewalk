@@ -1,6 +1,6 @@
 use reqwest::Error as FetchError;
 use std::fmt::{Debug, Display, Formatter};
-use substrate_stellar_sdk::{types::SequenceNumber, TransactionEnvelope, StellarSdkError};
+use substrate_stellar_sdk::{types::SequenceNumber, TransactionEnvelope};
 
 use thiserror::Error;
 
@@ -30,11 +30,6 @@ pub enum Error {
 	CacheError(CacheError),
 }
 
-impl <T,X> From<X> for Result<T,StellarSdkError> {
-	fn from(value: X) -> Self {
-		todo!()
-	}
-}
 
 impl Error {
 	pub fn is_recoverable(&self) -> bool {
@@ -99,11 +94,11 @@ impl Error {
 	}
 }
 
-impl From<StellarSdkError> for Error {
-	fn from(value: StellarSdkError) -> Self {
-		todo!()
-	}
-}
+// impl From<StellarSdkError> for Error {
+// 	fn from(value: StellarSdkError) -> Self {
+// 		todo!()
+// 	}
+// }
 
 #[derive(Error, PartialEq, Eq)]
 pub struct CacheError {
