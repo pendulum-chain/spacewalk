@@ -1,64 +1,148 @@
 use crate::horizon::{HorizonClient};
 use crate::error::Error;
 use async_trait::async_trait;
-use substrate_stellar_sdk::{Asset, Claimant, ClaimPredicate, IntoAmount, Memo, Operation, PublicKey, StellarSdkError, StroopAmount, Transaction};
+use substrate_stellar_sdk::{Asset, Claimant, ClaimPredicate, Memo, Operation, PublicKey, StellarSdkError, StroopAmount, Transaction};
 use substrate_stellar_sdk::compound_types::LimitedString;
 use substrate_stellar_sdk::types::{Preconditions, SequenceNumber};
-use primitives::{Amount, derive_shortened_request_id, StellarStroops};
+use primitives::{stellar_stroops_to_u128, derive_shortened_request_id, StellarStroops};
 
-#[async_trait]
-pub trait HorizonClientExt : HorizonClient {
+pub mod redeem {
+    use super::*;
 
-    async fn is_claimable_balance_op_required(&self,
-                          destination_address:PublicKey,
-                          is_public_network:bool,
-                          to_be_redeemed_asset:Asset,
-                          to_be_redeemed_amount: StellarStroops,
-    ) -> Option<Vec<Operation>> {
-        // convert pubkey to string
-        let dest_addr_encoded = destination_address.to_encoding();
-        let dest_addr_str =
-            std::str::from_utf8(&dest_addr_encoded).unwrap();
+    fn create_account_ops_required(
+        destination_address:PublicKey,
+        to_be_redeemed_asset:Asset,
+        to_be_redeemed_amount: StellarStroops,
+    ) -> Option<Operation> {
+        // create an account for the destination ONLY if redeeming >= 1 XLM.
+        let to_be_redeemed_amount_u128 = stellar_stroops_to_u128(to_be_redeemed_amount);
 
-        // check if account exists
-        let mut ops = match self.get_account(dest_addr_str, is_public_network).await {
-            Ok(account)  if account.is_trustline_exist(&to_be_redeemed_asset) => {
-                // normal operation
-                return None;
-            }
-            Err(Error::HorizonSubmissionError { title:_, status, reason: _, envelope_xdr:_ })
-            if status == 404  => {
-                // create an account for the destination
-                let create_account_op = create_account_operation(
-                    destination_address.clone(),0
-                        ).unwrap();
-                let ops = vec![create_account_op];
+        if to_be_redeemed_asset == Asset::AssetTypeNative &&
+            to_be_redeemed_amount_u128 >= primitives::CurrencyId::StellarNative.one() {
 
-                // check if we need to create a claimable balance
-                let to_be_redeemed_amount = primitives::Balance::try_from(to_be_redeemed_amount).unwrap();
-                if &to_be_redeemed_asset == &Asset::AssetTypeNative &&
-                    to_be_redeemed_amount >= primitives::CurrencyId::StellarNative.one() {
-                    // normal payment operation, then return
-                    return Some(ops);
-                } else {
-                    ops
+            match create_account_operation(
+                destination_address.clone(),to_be_redeemed_amount
+            ) {
+                Ok(op) => {
+                    return Some(op); }
+                Err(e) => {
+                    tracing::warn!("Failed to create CreateAccount operation: {e:?}");
                 }
             }
-            _ => { vec![] }
-        };
+        }
+        None
+    }
 
-        let claimant = Claimant::new(
-            destination_address,ClaimPredicate::ClaimPredicateUnconditional
-        ).unwrap();
-        // create claimable balance operation
-        // let to_be_redeemed_amount = i64::try_from(to_be_redeemed_amount).unwrap();
-        let create_claim_bal_op = create_claimable_balance_operation(
-            to_be_redeemed_asset,to_be_redeemed_amount,vec![claimant]
-        ).unwrap();
+    #[async_trait]
+    pub trait RedeemOps : HorizonClient {
 
-        ops.push(create_claim_bal_op);
+        async fn claimable_balance_ops_required(&self,
+                                                destination_address:PublicKey,
+                                                is_public_network:bool,
+                                                to_be_redeemed_asset:Asset,
+                                                to_be_redeemed_amount: StellarStroops,
+        ) -> Result<Operation,Vec<Operation>> {
+            // convert pubkey to string
+            let dest_addr_encoded = destination_address.to_encoding();
+            let dest_addr_str =
+                std::str::from_utf8(&dest_addr_encoded).unwrap();
 
-        Some(ops)
+            // check if account exists
+            match self.get_account(dest_addr_str, is_public_network).await {
+                Ok(account)  if account.is_trustline_exist(&to_be_redeemed_asset) => {
+                    // normal operation
+                    return Err(vec![]);
+                }
+                Err(Error::HorizonSubmissionError { title:_, status, reason: _, envelope_xdr:_ })
+                if status == 404  =>
+                    if let Some(op) = create_account_ops_required(
+                        destination_address.clone(),
+                        to_be_redeemed_asset.clone(),
+                        to_be_redeemed_amount
+                    ) {
+                        return Err(vec![op]);
+                    },
+                _ => {}
+            };
+
+            let claimant = Claimant::new(
+                destination_address,ClaimPredicate::ClaimPredicateUnconditional
+            ).unwrap();
+            // create claimable balance operation
+            let create_claim_bal_op = create_claimable_balance_operation(
+                to_be_redeemed_asset,to_be_redeemed_amount,vec![claimant]
+            ).unwrap();
+
+            Ok(create_claim_bal_op)
+        }
+    }
+
+    #[async_trait]
+    impl RedeemOps for reqwest::Client {}
+
+
+    #[cfg(test)]
+    mod tests {
+        use substrate_stellar_sdk::SecretKey;
+        use substrate_stellar_sdk::types::AlphaNum4;
+        use primitives::CurrencyId;
+        use super::*;
+
+        const STELLAR_VAULT_SECRET_KEY: &str =
+            "SCV7RZN5XYYMMVSWYCR4XUMB76FFMKKKNHP63UTZQKVM4STWSCIRLWFJ";
+        const IS_PUBLIC_NETWORK: bool = false;
+
+        #[test]
+        fn create_account_ops_required_test() {
+            let secret_key = SecretKey::from_encoding(STELLAR_VAULT_SECRET_KEY)
+                .expect("should return secret key");
+
+            let pub_key =  secret_key.get_public().clone();
+
+            // asset is XLM and value is >= 1
+            assert!(
+                create_account_ops_required(
+                    pub_key.clone(),
+                    Asset::AssetTypeNative,
+                    10_000_000
+                ).is_some()
+            );
+
+            // asset is XLM but value < 1
+            assert!(
+                create_account_ops_required(
+                    pub_key.clone(),
+                    Asset::AssetTypeNative,
+                    10_000
+                ).is_none()
+            );
+
+            // asset is NOT XLM
+            let asset = CurrencyId::try_from(("USDC","GAKNDFRRWA3RPWNLTI3G4EBSD3RGNZZOY5WKWYMQ6CQTG3KIEKPYWAYC"))
+                .expect("should conver ok");
+            let asset = asset.try_into().expect("should convert to Asset");
+
+            assert!(
+                create_account_ops_required(
+                    pub_key.clone(),
+                    asset,
+                    10_000_000
+                ).is_none()
+            );
+        }
+
+        #[test]
+        fn claimable_balance_ops_required_test() {
+            let secret_key = SecretKey::from_encoding(STELLAR_VAULT_SECRET_KEY)
+                .expect("should return secret key");
+
+            let destination_pubkey = secret_key.get_public().clone();
+
+            //
+
+
+
+        }
     }
 }
 
@@ -123,7 +207,6 @@ pub fn create_basic_transaction(
     Ok(transaction)
 }
 
-
 pub trait AppendExt<T> {
     fn append_multiple(&mut self, items:Vec<T>) -> Result<(),Error>;
     fn append(&mut self, item:T) -> Result<(),Error>;
@@ -134,7 +217,6 @@ impl AppendExt<Operation> for Transaction {
         for operation in items {
             self.append(operation)?;
         }
-
         Ok(())
     }
 
@@ -144,7 +226,6 @@ impl AppendExt<Operation> for Transaction {
                 Error::BuildTransactionError(
                     format!("Appending payment operation failed: {e:?}"))
             })?;
-
         Ok(())
     }
 }

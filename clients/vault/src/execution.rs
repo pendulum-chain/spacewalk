@@ -5,7 +5,7 @@ use governor::RateLimiter;
 use sp_runtime::traits::StaticLookup;
 use tokio::sync::RwLock;
 
-use primitives::{Amount, derive_shortened_request_id, stellar::PublicKey, TextMemo, TransactionEnvelopeExt};
+use primitives::{derive_shortened_request_id, stellar::PublicKey, TextMemo, TransactionEnvelopeExt};
 use runtime::{
 	CurrencyId, OraclePallet, PrettyPrint, RedeemPallet, RedeemRequestStatus, ReplacePallet,
 	ReplaceRequestStatus, SecurityPallet, ShutdownSender, SpacewalkParachain,
@@ -14,7 +14,7 @@ use runtime::{
 };
 use service::{spawn_cancelable, Error as ServiceError};
 use stellar_relay_lib::sdk::{Asset, TransactionEnvelope, XdrCodec};
-use wallet::{StellarWallet, TransactionResponse};
+use wallet::{is_claimable_balance_op_required, StellarWallet, TransactionResponse};
 
 use crate::{
 	error::Error,
@@ -184,28 +184,56 @@ impl Request {
 			primitives::BalanceConversion::lookup(self.amount).map_err(|_| Error::LookupError)?;
 		let request_id = self.hash.0;
 
-		// only for redeem requests, check if we need extra operations
-		wallet::is_claimable_balance_op_required()
-
 		let mut wallet = wallet.write().await;
+
+		// only for redeem requests, check if we need extra operations
+		let result = match self.request_type {
+			RequestType::Redeem => match is_claimable_balance_op_required(
+				destination_public_key.clone(),
+				wallet.is_public_network(),
+				self.asset.clone(),
+				stroop_amount
+			).await {
+				Ok(other_op) => {
+					wallet.send_to_address(
+						request_id,
+						DEFAULT_STROOP_FEE_PER_OPERATION,
+						vec![other_op]
+					).await
+				}
+				Err(extra_op) => {
+					wallet
+						.send_payment_to_address_with_extra_operations(
+							destination_public_key.clone(),
+							self.asset.clone(),
+							stroop_amount,
+							request_id,
+							DEFAULT_STROOP_FEE_PER_OPERATION,
+							extra_op
+						)
+						.await
+				}
+			},
+			RequestType::Replace => wallet
+				.send_payment_to_address(
+					destination_public_key.clone(),
+					self.asset.clone(),
+					stroop_amount,
+					request_id,
+					DEFAULT_STROOP_FEE_PER_OPERATION
+				)
+				.await
+		};
+
+
 		tracing::info!(
-			"Sending {:?} stroops of {:?} to {:?} from {:?}",
+			"Sent {:?} stroops of {:?} to {:?} from {:?}",
 			stroop_amount,
 			self.asset.clone(),
 			destination_public_key,
 			wallet,
 		);
 
-
-		let result = wallet
-			.send_payment_to_address(
-				destination_public_key.clone(),
-				self.asset.clone(),
-				stroop_amount,
-				request_id,
-				DEFAULT_STROOP_FEE_PER_OPERATION,
-			)
-			.await;
 
 		match result {
 			Ok(response) => {

@@ -28,7 +28,7 @@ use stellar::{
 	Asset as StellarAsset, PublicKey,
 };
 pub use substrate_stellar_sdk as stellar;
-use substrate_stellar_sdk::{types::{OperationBody, SequenceNumber}, ClaimPredicate, Claimant, Memo, MuxedAccount, Operation, TransactionEnvelope, IntoAmount, StellarSdkError};
+use substrate_stellar_sdk::{types::{OperationBody, SequenceNumber}, ClaimPredicate, Claimant, Memo, MuxedAccount, Operation, TransactionEnvelope};
 
 #[cfg(test)]
 mod tests;
@@ -686,6 +686,11 @@ const DECIMALS_CONVERSION_RATE: u128 = 10u128.pow(CHAIN_DECIMALS - STELLAR_DECIM
 // see [here](https://github.com/pendulum-chain/substrate-stellar-sdk/blob/f659041c6643f80f4e1f6e9e35268dba3ae2d313/src/amount.rs#L7)
 pub type StellarStroops = i64;
 
+pub fn stellar_stroops_to_u128(stellar_stroops:StellarStroops) -> u128 {
+	let value = u128::try_from(stellar_stroops).unwrap_or(0);
+	value.saturating_mul(DECIMALS_CONVERSION_RATE)
+}
+
 impl StaticLookup for BalanceConversion {
 	type Source = u128;
 	type Target = StellarStroops;
@@ -701,8 +706,7 @@ impl StaticLookup for BalanceConversion {
 	}
 
 	fn unlookup(stellar_stroops: Self::Target) -> Self::Source {
-		let value = Self::Source::try_from(stellar_stroops).unwrap_or(0);
-		value.saturating_mul(DECIMALS_CONVERSION_RATE)
+		stellar_stroops_to_u128(stellar_stroops)
 	}
 }
 
