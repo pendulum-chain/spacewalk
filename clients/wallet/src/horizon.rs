@@ -427,7 +427,6 @@ pub trait HorizonClient {
 impl HorizonClient for reqwest::Client {
 	async fn get_from_url<R: DeserializeOwned>(&self, url: &str) -> Result<R, Error> {
 		let response = self.get(url).send().await.map_err(Error::HttpFetchingError)?;
-		println!("RESPONSE: {response:?}");
 		interpret_response::<R>(response).await
 	}
 

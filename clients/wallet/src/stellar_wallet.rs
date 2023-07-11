@@ -2,7 +2,6 @@ use reqwest::Client;
 use std::{fmt::Formatter, sync::Arc};
 
 use substrate_stellar_sdk::{
-	compound_types::LimitedString,
 	network::{Network, PUBLIC_NETWORK, TEST_NETWORK},
 	types::SequenceNumber,
 	Asset, Operation, PublicKey, SecretKey, TransactionEnvelope,
