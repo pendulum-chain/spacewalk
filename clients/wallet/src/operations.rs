@@ -11,7 +11,7 @@ use substrate_stellar_sdk::{
 pub mod redeem {
 	use super::*;
 
-	pub async fn is_claimable_balance_op_required(
+	pub async fn is_claimable_balance_ops_required(
 		destination_address: PublicKey,
 		is_public_network: bool,
 		to_be_redeemed_asset: Asset,
