@@ -10,7 +10,9 @@ use parity_scale_codec::{Decode, Encode};
 use primitives::{TextMemo, TransactionEnvelopeExt};
 use rand::seq::SliceRandom;
 use serde::{de::DeserializeOwned, Deserialize, Deserializer};
-use substrate_stellar_sdk::{types::SequenceNumber, PublicKey, TransactionEnvelope, XdrCodec, Asset};
+use substrate_stellar_sdk::{
+	types::SequenceNumber, Asset, PublicKey, TransactionEnvelope, XdrCodec,
+};
 use tokio::{sync::RwLock, time::sleep};
 
 use crate::{
@@ -250,7 +252,7 @@ pub struct HorizonAccountResponse {
 }
 
 impl HorizonAccountResponse {
-	pub fn is_trustline_exist(&self, asset:&Asset) -> bool {
+	pub fn is_trustline_exist(&self, asset: &Asset) -> bool {
 		for bal in &self.balances {
 			if let Some(bal_asset) = bal.get_asset() {
 				if &bal_asset == asset {
@@ -279,26 +281,18 @@ pub struct Balance {
 }
 
 impl Balance {
-	/// checks if the Balance type is Stellar native.
-	pub fn is_xlm(&self) -> bool {
-		 &self.asset_type == "native".as_bytes()
-	}
-
 	/// returns what kind of asset the Balance is
 	pub fn get_asset(&self) -> Option<Asset> {
 		if &self.asset_type == "native".as_bytes() {
-			return Some(Asset::AssetTypeNative);
+			return Some(Asset::AssetTypeNative)
 		}
 
-		match Asset::from_asset_code(
-			&self.asset_code.clone()?,
-			&self.asset_issuer.clone()?
-		) {
+		match Asset::from_asset_code(&self.asset_code.clone()?, &self.asset_issuer.clone()?) {
 			Ok(asset) => Some(asset),
 			Err(e) => {
 				tracing::warn!("failed to convert to asset: {e:?}");
 				None
-			}
+			},
 		}
 	}
 }
@@ -764,8 +758,6 @@ mod tests {
 
 		Ok(envelope)
 	}
-
-
 
 	#[tokio::test(flavor = "multi_thread")]
 	async fn horizon_submit_transaction_success() {

@@ -1,7 +1,12 @@
 use reqwest::Client;
 use std::{fmt::Formatter, sync::Arc};
 
-use substrate_stellar_sdk::{network::{Network, PUBLIC_NETWORK, TEST_NETWORK}, types::{ SequenceNumber}, Asset, Operation, PublicKey, SecretKey, TransactionEnvelope};
+use substrate_stellar_sdk::{
+	compound_types::LimitedString,
+	network::{Network, PUBLIC_NETWORK, TEST_NETWORK},
+	types::SequenceNumber,
+	Asset, Operation, PublicKey, SecretKey, TransactionEnvelope,
+};
 use tokio::sync::{oneshot, Mutex};
 
 use crate::{
@@ -14,10 +19,10 @@ use crate::{
 use crate::{
 	error::CacheErrorKind,
 	horizon::{TransactionsResponseIter, DEFAULT_PAGE_SIZE},
+	operations::{create_basic_transaction, create_payment_operation, AppendExt},
 	types::PagingToken,
 };
 use primitives::{StellarStroops, TransactionEnvelopeExt};
-use crate::operations::{AppendExt, create_basic_transaction, create_payment_operation};
 
 #[derive(Clone)]
 pub struct StellarWallet {
@@ -240,19 +245,21 @@ impl StellarWallet {
 		error_receivers
 	}
 
-	fn create_envelope(&self,
-					   request_id: [u8; 32],
-					   stroop_fee_per_operation: u32,
-					   next_sequence_number: SequenceNumber,
-					   operations: Vec<Operation>
+	fn create_envelope(
+		&self,
+		request_id: [u8; 32],
+		stroop_fee_per_operation: u32,
+		next_sequence_number: SequenceNumber,
+		operations: Vec<Operation>,
 	) -> Result<TransactionEnvelope, Error> {
 		let public_key = self.get_public_key();
 
 		// create the transaction
 		let mut transaction = create_basic_transaction(
-			request_id,stroop_fee_per_operation,
+			request_id,
+			stroop_fee_per_operation,
 			public_key,
-			next_sequence_number
+			next_sequence_number,
 		)?;
 
 		// add operations
@@ -277,18 +284,20 @@ impl StellarWallet {
 		stroop_amount: StellarStroops,
 		request_id: [u8; 32],
 		stroop_fee_per_operation: u32,
-		extra_operations: Vec<Operation>
+		extra_operations: Vec<Operation>,
 	) -> Result<TransactionResponse, Error> {
-
 		// create payment operation
 		let payment_op = create_payment_operation(
-			destination_address, asset, stroop_amount, self.get_public_key(),
+			destination_address,
+			asset,
+			stroop_amount,
+			self.get_public_key(),
 		)?;
 
 		let mut operations = extra_operations;
 		operations.push(payment_op);
 
-		self.send_to_address(request_id,stroop_fee_per_operation,operations).await
+		self.send_to_address(request_id, stroop_fee_per_operation, operations).await
 	}
 
 	pub async fn send_payment_to_address(
@@ -297,7 +306,7 @@ impl StellarWallet {
 		asset: Asset,
 		stroop_amount: StellarStroops,
 		request_id: [u8; 32],
-		stroop_fee_per_operation: u32
+		stroop_fee_per_operation: u32,
 	) -> Result<TransactionResponse, Error> {
 		self.send_payment_to_address_with_extra_operations(
 			destination_address,
@@ -305,15 +314,16 @@ impl StellarWallet {
 			stroop_amount,
 			request_id,
 			stroop_fee_per_operation,
-			vec![]
-		).await
+			vec![],
+		)
+		.await
 	}
 
 	pub async fn send_to_address(
 		&mut self,
 		request_id: [u8; 32],
 		stroop_fee_per_operation: u32,
-		operations: Vec<Operation>
+		operations: Vec<Operation>,
 	) -> Result<TransactionResponse, Error> {
 		let _ = self.transaction_submission_lock.lock().await;
 		let horizon_client = reqwest::Client::new();
@@ -331,15 +341,17 @@ impl StellarWallet {
 			account.account_id
 		);
 
-		let envelope = self.create_envelope(request_id,stroop_fee_per_operation,next_sequence_number,operations)?;
-
+		let envelope = self.create_envelope(
+			request_id,
+			stroop_fee_per_operation,
+			next_sequence_number,
+			operations,
+		)?;
 
 		let _ = self.cache.save_tx_envelope(envelope.clone())?;
 		self.submit_transaction(envelope, horizon_client).await
 	}
-
 }
-
 
 impl std::fmt::Debug for StellarWallet {
 	fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
@@ -363,14 +375,14 @@ impl Drop for StellarWallet {
 
 #[cfg(test)]
 mod test {
-	use crate::error::Error;
+	use crate::{error::Error, operations::create_payment_operation};
 	use primitives::{StellarStroops, TransactionEnvelopeExt};
 	use serial_test::serial;
 	use std::sync::Arc;
-	use substrate_stellar_sdk::{Asset, Operation, PublicKey, TransactionEnvelope, XdrCodec};
-	use substrate_stellar_sdk::types::SequenceNumber;
+	use substrate_stellar_sdk::{
+		types::SequenceNumber, Asset, Operation, PublicKey, TransactionEnvelope, XdrCodec,
+	};
 	use tokio::sync::RwLock;
-	use crate::operations::create_payment_operation;
 
 	use crate::StellarWallet;
 
@@ -392,13 +404,21 @@ mod test {
 			let public_key = self.get_public_key();
 			// create payment operation
 			let payment_op = create_payment_operation(
-				destination_address, asset, stroop_amount, public_key.clone(),
+				destination_address,
+				asset,
+				stroop_amount,
+				public_key.clone(),
 			)?;
 
 			let mut operations = extra_operations.clone();
 			operations.push(payment_op);
 
-			self.create_envelope(request_id,stroop_fee_per_operation,next_sequence_number,operations)
+			self.create_envelope(
+				request_id,
+				stroop_fee_per_operation,
+				next_sequence_number,
+				operations,
+			)
 		}
 	}
 
@@ -638,7 +658,7 @@ mod test {
 				request_id,
 				stroop_fee,
 				seq_number,
-				vec![]
+				vec![],
 			)
 			.expect("should return an envelope");
 
@@ -648,7 +668,15 @@ mod test {
 		// create a successful transaction
 		let request_id = [2u8; 32];
 		let good_envelope = wallet
-			.create_payment_envelope(destination, asset, amount, request_id, stroop_fee, seq_number + 1, vec![])
+			.create_payment_envelope(
+				destination,
+				asset,
+				amount,
+				request_id,
+				stroop_fee,
+				seq_number + 1,
+				vec![],
+			)
 			.expect("should return an envelope");
 
 		// let's save this in storage

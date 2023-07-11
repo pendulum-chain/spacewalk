@@ -30,7 +30,6 @@ pub enum Error {
 	CacheError(CacheError),
 }
 
-
 impl Error {
 	pub fn is_recoverable(&self) -> bool {
 		match self {
@@ -93,12 +92,6 @@ impl Error {
 		})
 	}
 }
-
-// impl From<StellarSdkError> for Error {
-// 	fn from(value: StellarSdkError) -> Self {
-// 		todo!()
-// 	}
-// }
 
 #[derive(Error, PartialEq, Eq)]
 pub struct CacheError {

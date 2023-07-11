@@ -28,7 +28,10 @@ use stellar::{
 	Asset as StellarAsset, PublicKey,
 };
 pub use substrate_stellar_sdk as stellar;
-use substrate_stellar_sdk::{types::{OperationBody, SequenceNumber}, ClaimPredicate, Claimant, Memo, MuxedAccount, Operation, TransactionEnvelope};
+use substrate_stellar_sdk::{
+	types::{OperationBody, SequenceNumber},
+	ClaimPredicate, Claimant, Memo, MuxedAccount, Operation, TransactionEnvelope,
+};
 
 #[cfg(test)]
 mod tests;
@@ -491,13 +494,6 @@ impl CurrencyId {
 		}
 	}
 
-	pub fn is_stellar_native(&self) -> bool {
-		match self {
-			CurrencyId::Stellar(Asset::StellarNative) => true,
-			_ => false
-		}
-	}
-
 	#[allow(non_snake_case)]
 	pub const fn AlphaNum4(code: Bytes4, issuer: AssetIssuer) -> Self {
 		Self::Stellar(Asset::AlphaNum4 { code, issuer })
@@ -686,7 +682,7 @@ const DECIMALS_CONVERSION_RATE: u128 = 10u128.pow(CHAIN_DECIMALS - STELLAR_DECIM
 // see [here](https://github.com/pendulum-chain/substrate-stellar-sdk/blob/f659041c6643f80f4e1f6e9e35268dba3ae2d313/src/amount.rs#L7)
 pub type StellarStroops = i64;
 
-pub fn stellar_stroops_to_u128(stellar_stroops:StellarStroops) -> u128 {
+pub fn stellar_stroops_to_u128(stellar_stroops: StellarStroops) -> u128 {
 	let value = u128::try_from(stellar_stroops).unwrap_or(0);
 	value.saturating_mul(DECIMALS_CONVERSION_RATE)
 }
