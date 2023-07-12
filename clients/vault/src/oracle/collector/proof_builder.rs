@@ -233,16 +233,16 @@ impl ScpMessageCollector {
 							})
 							.collect::<Vec<_>>();
 
-						let externalized_envelopes = relevant_envelopes
+						let externalized_envelopes_count = relevant_envelopes
 							.iter()
 							.filter(|scp| match scp.statement.pledges {
 								ScpStatementPledges::ScpStExternalize(_) => true,
 								_ => false,
 							})
-							.collect::<Vec<_>>();
+							.count();
 
 						// Ensure that at least one envelope is externalized
-						if externalized_envelopes.len() == 0 {
+						if externalized_envelopes_count == 0 {
 							tracing::error!(
 							"The contained archive entry for slot {slot:?}, fetched from {}, is invalid because it does not contain any externalized envelopes.",
 								scp_archive_storage.0
@@ -256,7 +256,7 @@ impl ScpMessageCollector {
 							tracing::debug!(
 							"Adding {} archived SCP envelopes for slot {slot:?} to envelopes map. {} are externalized",
 							relevant_envelopes.len(),
-							externalized_envelopes.len()
+							externalized_envelopes_count
 						);
 							envelopes_map.insert(slot, relevant_envelopes);
 							break
@@ -289,7 +289,7 @@ impl ScpMessageCollector {
 					tracing::error!(
 					"Could not get TransactionsArchive for slot {slot:?} from horizon archive: {e:?}"
 				);
-					return
+					continue
 				}
 				let transactions_archive: XdrArchive<TransactionHistoryEntry> =
 					transactions_archive.unwrap();
