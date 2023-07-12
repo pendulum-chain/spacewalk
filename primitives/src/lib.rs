@@ -107,6 +107,14 @@ impl<AccountId, CurrencyId: Copy> VaultId<AccountId, CurrencyId> {
 pub type StellarPublicKeyRaw = [u8; 32];
 
 #[cfg(feature = "std")]
+pub fn convert_stellar_public_key_to_encoded(
+	public_key: &PublicKey,
+) -> Result<String, std::str::Utf8Error> {
+	let encoded = public_key.to_encoding();
+	std::str::from_utf8(&encoded).map(|x| x.to_string())
+}
+
+#[cfg(feature = "std")]
 fn serialize_as_string<S: Serializer, T: std::fmt::Display>(
 	t: &T,
 	serializer: S,

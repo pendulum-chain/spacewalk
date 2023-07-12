@@ -282,12 +282,12 @@ pub async fn update_stellar_metrics<P: VaultRegistryPallet>(vault: &VaultData, p
 }
 
 async fn publish_stellar_balance(vault: &VaultData) {
-	match vault.stellar_wallet.read().await.get_balance().await {
+	match vault.stellar_wallet.read().await.get_balances().await {
 		Ok(balance) => {
 			let currency_id = vault.vault_id.wrapped_currency();
 			let asset: Result<stellar::Asset, _> = currency_id.try_into();
 			let actual_balance = match asset {
-				Ok(asset) => get_balance_for_asset(asset, balance).unwrap_or(0_f64),
+				Ok(asset) => get_balances_for_asset(asset, balance).unwrap_or(0_f64),
 				Err(e) => {
 					// unexpected error, but not critical so just continue
 					tracing::warn!("Failed to get balance: {}", e);
@@ -304,20 +304,20 @@ async fn publish_stellar_balance(vault: &VaultData) {
 	}
 }
 
-fn get_balance_for_asset(asset: stellar::Asset, balance: Vec<Balance>) -> Option<f64> {
+fn get_balances_for_asset(asset: stellar::Asset, balances: Vec<Balance>) -> Option<f64> {
 	let asset_balance: Option<f64> = match asset {
-		stellar::Asset::AssetTypeNative => balance
+		stellar::Asset::AssetTypeNative => balances
 			.iter()
 			.find(|i| i.asset_type == STELLAR_NATIVE_ASSET_TYPE.to_vec())
 			.map(|i| i.balance),
-		stellar::Asset::AssetTypeCreditAlphanum4(a4) => balance
+		stellar::Asset::AssetTypeCreditAlphanum4(a4) => balances
 			.iter()
 			.find(|i| {
 				i.asset_issuer.clone().unwrap_or_default() == a4.issuer.to_encoding() &&
 					i.asset_code.clone().unwrap_or_default() == a4.asset_code.to_vec()
 			})
 			.map(|i| i.balance),
-		stellar::Asset::AssetTypeCreditAlphanum12(a12) => balance
+		stellar::Asset::AssetTypeCreditAlphanum12(a12) => balances
 			.iter()
 			.find(|i| {
 				i.asset_issuer.clone().unwrap_or_default() == a12.issuer.to_encoding() &&

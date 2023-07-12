@@ -18,10 +18,12 @@ use crate::{
 use crate::{
 	error::CacheErrorKind,
 	horizon::{TransactionsResponseIter, DEFAULT_PAGE_SIZE},
-	operations::{create_basic_transaction, create_payment_operation, AppendExt},
+	operations::{
+		create_basic_transaction, create_payment_operation, AppendExt, RedeemOperationsExt,
+	},
 	types::PagingToken,
 };
-use primitives::{StellarStroops, TransactionEnvelopeExt};
+use primitives::{convert_stellar_public_key_to_encoded, StellarStroops, TransactionEnvelopeExt};
 
 #[derive(Clone)]
 pub struct StellarWallet {
@@ -41,6 +43,10 @@ pub struct StellarWallet {
 
 	/// the waiting time (in seconds) for retrying.
 	max_backoff_delay: u16,
+
+	/// a client to connect to Horizon
+	// todo: it's probably better that this is of generic type C, to remove dependency from reqwest
+	client: reqwest::Client,
 }
 
 impl StellarWallet {
@@ -55,15 +61,13 @@ impl StellarWallet {
 	async fn submit_transaction(
 		&self,
 		envelope: TransactionEnvelope,
-		horizon_client: Client,
 	) -> Result<TransactionResponse, Error> {
 		let sequence = &envelope.sequence_number().ok_or(Error::cache_error_with_env(
 			CacheErrorKind::UnknownSequenceNumber,
 			envelope.clone(),
 		))?;
 
-		let submission_result = horizon_client
-			.submit_transaction(
+		let submission_result = self.client.submit_transaction(
 				envelope.clone(),
 				self.is_public_network,
 				self.max_retry_attempts_before_fallback,
@@ -104,8 +108,8 @@ impl StellarWallet {
 		is_public_network: bool,
 		cache_path: String,
 	) -> Result<Self, Error> {
-		let pub_key = secret_key.get_public().to_encoding();
-		let pub_key = std::str::from_utf8(&pub_key).map_err(|_| Error::InvalidSecretKey)?;
+		let pub_key_encoded = secret_key.get_encoded_public();
+		let pub_key = std::str::from_utf8(&pub_key_encoded).map_err(|_| Error::InvalidSecretKey)?;
 
 		let cache = WalletStateStorage::new(cache_path, pub_key, is_public_network);
 
@@ -116,6 +120,7 @@ impl StellarWallet {
 			cache,
 			max_retry_attempts_before_fallback: Self::DEFAULT_MAX_RETRY_ATTEMPTS_BEFORE_FALLBACK,
 			max_backoff_delay: Self::DEFAULT_MAX_BACKOFF_DELAY_IN_SECS,
+			client: reqwest::Client::new(),
 		})
 	}
 
@@ -142,6 +147,11 @@ impl StellarWallet {
 		self.secret_key.get_public().clone()
 	}
 
+	pub fn get_public_key_encoded(&self) -> Result<String, Error> {
+		let encoded = self.secret_key.get_encoded_public();
+		std::str::from_utf8(&encoded).map(|pk| pk.to_string()).map_err(Error::Utf8Error)
+	}
+
 	pub fn get_secret_key(&self) -> SecretKey {
 		self.secret_key.clone()
 	}
@@ -166,11 +176,9 @@ impl StellarWallet {
 	) -> Result<TransactionsResponseIter<Client>, Error> {
 		let horizon_client = Client::new();
 
-		let public_key_encoded = self.get_public_key().to_encoding();
-		let account_id = std::str::from_utf8(&public_key_encoded).map_err(Error::Utf8Error)?;
-
+		let account_id = self.get_public_key_encoded()?;
 		let transactions_response = horizon_client
-			.get_transactions(account_id, self.is_public_network, 0, DEFAULT_PAGE_SIZE, false)
+			.get_transactions(&account_id, self.is_public_network, 0, DEFAULT_PAGE_SIZE, false)
 			.await?;
 
 		let next_page = transactions_response.next_page();
@@ -179,13 +187,10 @@ impl StellarWallet {
 		Ok(TransactionsResponseIter { records, next_page, client: horizon_client })
 	}
 
-	///return balances for public key
-	pub async fn get_balance(&self) -> Result<Vec<Balance>, Error> {
-		let horizon_client = reqwest::Client::new();
-		let public_key_encoded = self.get_public_key().to_encoding();
-		let account_id_string =
-			std::str::from_utf8(&public_key_encoded).map_err(Error::Utf8Error)?;
-		let account = horizon_client.get_account(account_id_string, self.is_public_network).await?;
+	/// Returns the balances of this wallet's Stellar account
+	pub async fn get_balances(&self) -> Result<Vec<Balance>, Error> {
+		let account_id_string = self.get_public_key_encoded()?;
+		let account = self.client.get_account(&account_id_string, self.is_public_network).await?;
 		Ok(account.balances)
 	}
 }
@@ -198,7 +203,6 @@ impl StellarWallet {
 		&self,
 	) -> Vec<oneshot::Receiver<Result<TransactionResponse, Error>>> {
 		let _ = self.transaction_submission_lock.lock().await;
-		let horizon_client = Client::new();
 
 		// Iterates over all errors and creates channels that are used to send errors back to the
 		// caller of this function.
@@ -229,13 +233,12 @@ impl StellarWallet {
 		let me = Arc::new(self.clone());
 		for env in envs.into_iter() {
 			let me_clone = Arc::clone(&me);
-			let horizon_clone = horizon_client.clone();
 
 			let (sender, receiver) = oneshot::channel();
 			error_receivers.push(receiver);
 
 			tokio::spawn(async move {
-				if let Err(e) = sender.send(me_clone.submit_transaction(env, horizon_clone).await) {
+				if let Err(e) = sender.send(me_clone.submit_transaction(env).await) {
 					tracing::error!("failed to send message: {e:?}");
 				};
 			});
@@ -276,27 +279,26 @@ impl StellarWallet {
 		Ok(envelope)
 	}
 
-	pub async fn send_payment_to_address_with_extra_operations(
+	pub async fn send_payment_to_address_for_redeem_request(
 		&mut self,
 		destination_address: PublicKey,
 		asset: Asset,
 		stroop_amount: StellarStroops,
 		request_id: [u8; 32],
 		stroop_fee_per_operation: u32,
-		extra_operations: Vec<Operation>,
 	) -> Result<TransactionResponse, Error> {
-		// create payment operation
-		let payment_op = create_payment_operation(
-			destination_address,
-			asset,
-			stroop_amount,
-			self.get_public_key(),
-		)?;
+		let op = self
+			.client
+			.create_payment_op_for_redeem_request(
+				self.get_public_key(),
+				destination_address,
+				self.is_public_network,
+				asset,
+				stroop_amount,
+			)
+			.await?;
 
-		let mut operations = extra_operations;
-		operations.push(payment_op);
-
-		self.send_to_address(request_id, stroop_fee_per_operation, operations).await
+		self.send_to_address(request_id, stroop_fee_per_operation, vec![op]).await
 	}
 
 	pub async fn send_payment_to_address(
@@ -307,31 +309,28 @@ impl StellarWallet {
 		request_id: [u8; 32],
 		stroop_fee_per_operation: u32,
 	) -> Result<TransactionResponse, Error> {
-		self.send_payment_to_address_with_extra_operations(
+		// create payment operation
+		let payment_op = create_payment_operation(
 			destination_address,
 			asset,
 			stroop_amount,
-			request_id,
-			stroop_fee_per_operation,
-			vec![],
-		)
-		.await
+			self.get_public_key(),
+		)?;
+
+		self.send_to_address(request_id, stroop_fee_per_operation, vec![payment_op])
+			.await
 	}
 
-	pub async fn send_to_address(
+	async fn send_to_address(
 		&mut self,
 		request_id: [u8; 32],
 		stroop_fee_per_operation: u32,
 		operations: Vec<Operation>,
 	) -> Result<TransactionResponse, Error> {
 		let _ = self.transaction_submission_lock.lock().await;
-		let horizon_client = reqwest::Client::new();
 
-		let public_key = self.get_public_key();
-		let public_key_encoded = public_key.to_encoding();
-		let account_id_string =
-			std::str::from_utf8(&public_key_encoded).map_err(Error::Utf8Error)?;
-		let account = horizon_client.get_account(account_id_string, self.is_public_network).await?;
+		let account_id_string = self.get_public_key_encoded()?;
+		let account = self.client.get_account(&account_id_string, self.is_public_network).await?;
 		let next_sequence_number = account.sequence + 1;
 
 		tracing::info!(
@@ -348,15 +347,15 @@ impl StellarWallet {
 		)?;
 
 		let _ = self.cache.save_tx_envelope(envelope.clone())?;
-		self.submit_transaction(envelope, horizon_client).await
+		self.submit_transaction(envelope).await
 	}
 }
 
 impl std::fmt::Debug for StellarWallet {
 	fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-		let public_key_encoded = self.get_public_key().to_encoding();
-		let account_id_string =
-			std::str::from_utf8(&public_key_encoded).map_err(|_e| std::fmt::Error)?;
+		let account_id_string = convert_stellar_public_key_to_encoded(self.secret_key.get_public())
+			.map_err(|_e| std::fmt::Error)?;
+
 		write!(
 			f,
 			"StellarWallet [public key: {}, public network: {}]",
@@ -374,12 +373,12 @@ impl Drop for StellarWallet {
 
 #[cfg(test)]
 mod test {
-	use crate::{error::Error, operations::create_payment_operation};
-	use primitives::{StellarStroops, TransactionEnvelopeExt};
+	use crate::{error::Error, operations::create_payment_operation, TransactionResponse};
+	use primitives::{CurrencyId, StellarStroops, TransactionEnvelopeExt};
 	use serial_test::serial;
 	use std::sync::Arc;
 	use substrate_stellar_sdk::{
-		types::SequenceNumber, Asset, Operation, PublicKey, TransactionEnvelope, XdrCodec,
+		types::SequenceNumber, Asset, PublicKey, TransactionEnvelope, XdrCodec,
 	};
 	use tokio::sync::RwLock;
 
@@ -398,7 +397,6 @@ mod test {
 			request_id: [u8; 32],
 			stroop_fee_per_operation: u32,
 			next_sequence_number: SequenceNumber,
-			extra_operations: Vec<Operation>,
 		) -> Result<TransactionEnvelope, Error> {
 			let public_key = self.get_public_key();
 			// create payment operation
@@ -409,14 +407,11 @@ mod test {
 				public_key.clone(),
 			)?;
 
-			let mut operations = extra_operations.clone();
-			operations.push(payment_op);
-
 			self.create_envelope(
 				request_id,
 				stroop_fee_per_operation,
 				next_sequence_number,
-				operations,
+				vec![payment_op],
 			)
 		}
 	}
@@ -527,6 +522,43 @@ mod test {
 
 		wallet.read().await.cache.remove_dir();
 	}
+
+	// #[tokio::test]
+	// #[serial]
+	// async fn sending_payment_using_claimable_balance_works() {
+	// 	let wallet =
+	// 		wallet("resources/sending_payment_using_claimable_balance_works").clone();
+	// 	let mut wallet = wallet.write().await;
+	//
+	// 	// let's cleanup, just to make sure.
+	// 	wallet.cache.remove_all_tx_envelopes();
+	//
+	// 	let destination = PublicKey::from_encoding("GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN")
+	// 		.expect("should return a public key");
+	//
+	// 	let asset =
+	// 		CurrencyId::try_from(("USDC", "GAKNDFRRWA3RPWNLTI3G4EBSD3RGNZZOY5WKWYMQ6CQTG3KIEKPYWAYC")).expect("should convert ok");
+	// 	let asset: Asset = asset.try_into().expect("should convert to Asset");
+	//
+	// 	let amount = 1000;
+	// 	let request_id = [0u8; 32];
+	//
+	// 	let result = wallet.send_payment_to_address_for_redeem_request(
+	// 		destination,asset,amount,request_id,100
+	// 	).await;
+	//
+	// 	match result {
+	// 		Ok(res) => {
+	// 			println!("success! {res:?}");
+	// 		}
+	// 		Err(e) => {
+	// 			println!("damn it failed. {e:?}");
+	//
+	// 		}
+	// 	};
+	//
+	// 	wallet.cache.remove_dir();
+	// }
 
 	#[tokio::test]
 	#[serial]
@@ -657,7 +689,6 @@ mod test {
 				request_id,
 				stroop_fee,
 				seq_number,
-				vec![],
 			)
 			.expect("should return an envelope");
 
@@ -674,7 +705,6 @@ mod test {
 				request_id,
 				stroop_fee,
 				seq_number + 1,
-				vec![],
 			)
 			.expect("should return an envelope");
 

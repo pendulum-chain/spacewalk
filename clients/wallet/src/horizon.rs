@@ -7,7 +7,7 @@ use futures::{
 };
 
 use parity_scale_codec::{Decode, Encode};
-use primitives::{TextMemo, TransactionEnvelopeExt};
+use primitives::{convert_stellar_public_key_to_encoded, TextMemo, TransactionEnvelopeExt};
 use rand::seq::SliceRandom;
 use serde::{de::DeserializeOwned, Deserialize, Deserializer};
 use substrate_stellar_sdk::{
@@ -253,9 +253,9 @@ pub struct HorizonAccountResponse {
 
 impl HorizonAccountResponse {
 	pub fn is_trustline_exist(&self, asset: &Asset) -> bool {
-		for bal in &self.balances {
-			if let Some(bal_asset) = bal.get_asset() {
-				if &bal_asset == asset {
+		for balance in &self.balances {
+			if let Some(balance_asset) = balance.get_asset() {
+				if &balance_asset == asset {
 					return true
 				}
 			}
@@ -265,7 +265,6 @@ impl HorizonAccountResponse {
 	}
 }
 
-// This represents a Claimant
 #[derive(Deserialize, Encode, Decode, Default, Debug)]
 pub struct Balance {
 	#[serde(deserialize_with = "de_string_to_f64")]
@@ -401,7 +400,7 @@ pub trait HorizonClient {
 
 	async fn get_transactions(
 		&self,
-		account_id: &str,
+		account_id_encoded: &str,
 		is_public_network: bool,
 		cursor: PagingToken,
 		limit: i64,
@@ -410,7 +409,7 @@ pub trait HorizonClient {
 
 	async fn get_account(
 		&self,
-		account_encoded: &str,
+		account_id_encoded: &str,
 		is_public_network: bool,
 	) -> Result<HorizonAccountResponse, Error>;
 
@@ -432,14 +431,14 @@ impl HorizonClient for reqwest::Client {
 
 	async fn get_transactions(
 		&self,
-		account_id: &str,
+		account_id_encoded: &str,
 		is_public_network: bool,
 		cursor: PagingToken,
 		limit: i64,
 		order_ascending: bool,
 	) -> Result<HorizonTransactionsResponse, Error> {
 		let base_url = horizon_url(is_public_network, false);
-		let mut url = format!("{}/accounts/{}/transactions", base_url, account_id);
+		let mut url = format!("{}/accounts/{}/transactions", base_url, account_id_encoded);
 
 		if limit != 0 {
 			url = format!("{}?limit={}", url, limit);
@@ -462,11 +461,11 @@ impl HorizonClient for reqwest::Client {
 
 	async fn get_account(
 		&self,
-		account_encoded: &str,
+		account_id_encoded: &str,
 		is_public_network: bool,
 	) -> Result<HorizonAccountResponse, Error> {
 		let base_url = horizon_url(is_public_network, false);
-		let url = format!("{}/accounts/{}", base_url, account_encoded);
+		let url = format!("{}/accounts/{}", base_url, account_id_encoded);
 
 		self.get_from_url(&url).await
 	}
@@ -564,13 +563,13 @@ impl<C: HorizonClient + Clone> HorizonFetcher<C> {
 		&self,
 		last_cursor: PagingToken,
 	) -> Result<TransactionsResponseIter<C>, Error> {
-		let public_key_encoded = self.vault_account_public_key.to_encoding();
-		let account_id = std::str::from_utf8(&public_key_encoded).map_err(Error::Utf8Error)?;
+		let account_id = convert_stellar_public_key_to_encoded(&self.vault_account_public_key)
+			.map_err(Error::Utf8Error)?;
 
 		let transactions_response = self
 			.client
 			.get_transactions(
-				account_id,
+				&account_id,
 				self.is_public_network,
 				last_cursor,
 				DEFAULT_PAGE_SIZE,
@@ -712,10 +711,10 @@ mod tests {
 	) -> Result<TransactionEnvelope, Error> {
 		let horizon_client = reqwest::Client::new();
 
-		let public_key_encoded = source.get_encoded_public();
 		let account_id_string =
-			std::str::from_utf8(&public_key_encoded).map_err(Error::Utf8Error)?;
-		let account = horizon_client.get_account(account_id_string, is_public_network).await?;
+			convert_stellar_public_key_to_encoded(source.get_public()).map_err(Error::Utf8Error)?;
+
+		let account = horizon_client.get_account(&account_id_string, is_public_network).await?;
 		let next_sequence_number = account.sequence + 1;
 
 		let fee_per_operation = 100;

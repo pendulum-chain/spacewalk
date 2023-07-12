@@ -16,7 +16,7 @@ use runtime::{
 };
 use service::{spawn_cancelable, Error as ServiceError};
 use stellar_relay_lib::sdk::{Asset, TransactionEnvelope, XdrCodec};
-use wallet::{is_claimable_balance_op_required, StellarWallet, TransactionResponse};
+use wallet::{StellarWallet, TransactionResponse};
 
 use crate::{
 	error::Error,
@@ -187,41 +187,25 @@ impl Request {
 		let request_id = self.hash.0;
 
 		let mut wallet = wallet.write().await;
+		tracing::info!(
+			"Sending {:?} stroops of {:?} to {:?} from {:?}",
+			stroop_amount,
+			self.asset.clone(),
+			destination_public_key,
+			wallet,
+		);
 
-		let result = match self.request_type {
-			// only for redeem requests, check if we need extra operations
-			RequestType::Redeem => match is_claimable_balance_op_required(
-				destination_public_key.clone(),
-				wallet.is_public_network(),
-				self.asset.clone(),
-				stroop_amount,
-			)
-			.await
-			{
-				// claimablebalance op is required
-				Ok(other_op) =>
-					wallet
-						.send_to_address(
-							request_id,
-							DEFAULT_STROOP_FEE_PER_OPERATION,
-							vec![other_op],
-						)
-						.await,
-				// normal payment op is required
-				Err(extra_op) =>
-					wallet
-						.send_payment_to_address_with_extra_operations(
-							destination_public_key.clone(),
-							self.asset.clone(),
-							stroop_amount,
-							request_id,
-							DEFAULT_STROOP_FEE_PER_OPERATION,
-							// this can either be empty, or 1 operation (CreateAccount) extra
-							// on top of the normal payment op
-							extra_op,
-						)
-						.await,
-			},
+		let response = match self.request_type {
+			RequestType::Redeem =>
+				wallet
+					.send_payment_to_address_for_redeem_request(
+						destination_public_key.clone(),
+						self.asset.clone(),
+						stroop_amount,
+						request_id,
+						DEFAULT_STROOP_FEE_PER_OPERATION,
+					)
+					.await,
 			RequestType::Replace =>
 				wallet
 					.send_payment_to_address(
@@ -232,30 +216,18 @@ impl Request {
 						DEFAULT_STROOP_FEE_PER_OPERATION,
 					)
 					.await,
-		};
-
-		tracing::info!(
-			"Sent {:?} stroops of {:?} to {:?} from {:?}",
-			stroop_amount,
-			self.asset.clone(),
-			destination_public_key,
-			wallet,
-		);
-
-		match result {
-			Ok(response) => {
-				let tx_env = TransactionEnvelope::from_base64_xdr(response.envelope_xdr)
-					.map_err(|_| Error::StellarSdkError)?;
-				let slot: Slot = response.ledger as Slot;
-				tracing::info!(
-					"Successfully sent stellar payment to {:?} for {}",
-					destination_public_key,
-					self.amount
-				);
-				Ok((tx_env, slot))
-			},
-			Err(e) => Err(Error::StellarWalletError(e)),
 		}
+		.map_err(|e| Error::StellarWalletError(e))?;
+
+		let tx_env = TransactionEnvelope::from_base64_xdr(response.envelope_xdr)
+			.map_err(|_| Error::StellarSdkError)?;
+		let slot: Slot = response.ledger as Slot;
+		tracing::info!(
+			"Successfully sent stellar payment to {:?} for {}",
+			destination_public_key,
+			self.amount
+		);
+		Ok((tx_env, slot))
 	}
 
 	/// Executes the request. Upon failure it will retry
