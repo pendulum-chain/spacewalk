@@ -32,6 +32,9 @@ pub enum Error {
 
 	#[error(display = "{} is not initialized", _0)]
 	Uninitialized(String),
+
+	#[error(display = "{}", _0)]
+	ArchiveError(String),
 }
 
 impl From<StellarSdkError> for Error {

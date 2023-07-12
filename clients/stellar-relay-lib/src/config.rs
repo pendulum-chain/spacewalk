@@ -8,9 +8,9 @@ use substrate_stellar_sdk::SecretKey;
 /// It configures both the ConnectionInfo and the NodeInfo.
 #[derive(Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct StellarOverlayConfig {
-	stellar_history_archive_urls: Vec<String>,
-	connection_info: ConnectionInfoCfg,
-	node_info: NodeInfoCfg,
+	pub stellar_history_archive_urls: Vec<String>,
+	pub connection_info: ConnectionInfoCfg,
+	pub node_info: NodeInfoCfg,
 }
 
 impl StellarOverlayConfig {

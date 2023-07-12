@@ -218,8 +218,73 @@ mod tests {
 
 		assert_eq!(proof.slot(), 44041116);
 
-		scp_archive_storage.remove_file(target_slot);
-		tx_archive_storage.remove_file(target_slot);
+		scp_archive_storage
+			.remove_file(target_slot)
+			.expect("Should be able to remove file");
+		tx_archive_storage
+			.remove_file(target_slot)
+			.expect("Should be able to remove file");
+
+		agent.stop().expect("Failed to stop the agent");
+	}
+
+	#[tokio::test]
+	async fn test_get_proof_for_archived_slot_with_fallback() {
+		let scp_archive_storage = ScpArchiveStorage::default();
+		let tx_archive_storage = TransactionsArchiveStorage::default();
+
+		let base_config = get_test_stellar_relay_config(true);
+		// We add two fake archive urls to the config to make sure that the agent will actually fall
+		// back to other archives.
+		let mut archive_urls = base_config.stellar_history_archive_urls().clone();
+		archive_urls.push("https://my-fake-archive.org".to_string());
+		archive_urls.push("https://my-fake-archive-2.org".to_string());
+		archive_urls.reverse();
+		let modified_config =
+			StellarOverlayConfig { stellar_history_archive_urls: archive_urls, ..base_config };
+
+		let agent = start_oracle_agent(modified_config, &get_test_secret_key(true))
+			.await
+			.expect("Failed to start agent");
+
+		// This slot should be archived on the public network
+		let target_slot = 44041116;
+		let proof = agent.get_proof(target_slot).await.expect("should return a proof");
+
+		assert_eq!(proof.slot(), 44041116);
+
+		scp_archive_storage
+			.remove_file(target_slot)
+			.expect("Should be able to remove file");
+		tx_archive_storage
+			.remove_file(target_slot)
+			.expect("Should be able to remove file");
+
+		agent.stop().expect("Failed to stop the agent");
+	}
+
+	#[tokio::test]
+	async fn test_get_proof_for_archived_slot_fails_without_archives() {
+		let scp_archive_storage = ScpArchiveStorage::default();
+		let tx_archive_storage = TransactionsArchiveStorage::default();
+
+		let base_config = get_test_stellar_relay_config(true);
+		let modified_config: StellarOverlayConfig =
+			StellarOverlayConfig { stellar_history_archive_urls: vec![], ..base_config };
+
+		let agent = start_oracle_agent(modified_config, &get_test_secret_key(true))
+			.await
+			.expect("Failed to start agent");
+
+		// This slot should be archived on the public network
+		let target_slot = 44041116;
+		let proof_result = agent.get_proof(target_slot).await;
+
+		assert!(matches!(proof_result, Err(Error::ProofTimeout(_))));
+
+		// These might return an error if the file does not exist, but that's fine.
+		let _ = scp_archive_storage.remove_file(target_slot);
+		let _ = tx_archive_storage.remove_file(target_slot);
 
 		agent.stop().expect("Failed to stop the agent");
 	}
