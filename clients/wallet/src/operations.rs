@@ -165,13 +165,7 @@ impl AppendExt<Operation> for Transaction {
 mod tests {
 	use super::*;
 	use primitives::CurrencyId;
-	use substrate_stellar_sdk::{
-		types::{
-			CreateClaimableBalanceResult, OperationResult, OperationResultTr,
-			TransactionResultResult,
-		},
-		SecretKey, XdrCodec,
-	};
+	use substrate_stellar_sdk::SecretKey;
 
 	const INACTIVE_STELLAR_SECRET_KEY: &str =
 		"SAOZUYCGHAHAHUN75JDPAEH7M42N64RN3AATZYB4X2MTXB6V7WV7O2IO";

@@ -559,8 +559,8 @@ mod test {
 		.expect("should convert ok");
 		let asset: Asset = asset.try_into().expect("should convert to Asset");
 
-		let amount = 1; // in the response, value is 0.0000001.
-		let amount = 10_000;
+		// let amount = 1;  // in the response, value is 0.0000001.
+		let amount = 10_000; // in the response, value is 0.0010000.
 		let request_id = [1u8; 32];
 
 		let result = wallet
@@ -593,6 +593,8 @@ mod test {
 							claimable_balance.sponsor,
 							wallet.get_public_key().to_encoding()
 						);
+
+						assert_eq!(&claimable_balance.amount, "0.0010000".as_bytes());
 
 						assert_eq!(claimable_balance.claimants.len(), 1);
 

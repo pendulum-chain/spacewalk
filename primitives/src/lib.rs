@@ -1,8 +1,6 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 #![allow(non_upper_case_globals)]
 
-extern crate core;
-
 use base58::ToBase58;
 use codec::{Decode, Encode, MaxEncodedLen};
 use frame_support::error::LookupError;
@@ -32,7 +30,7 @@ use stellar::{
 pub use substrate_stellar_sdk as stellar;
 use substrate_stellar_sdk::{
 	types::{OperationBody, SequenceNumber},
-	ClaimPredicate, ClaimableBalanceId, Claimant, Memo, MuxedAccount, Operation, StellarSdkError,
+	ClaimPredicate, ClaimableBalanceId, Claimant, Memo, MuxedAccount, Operation,
 	TransactionEnvelope, XdrCodec,
 };
 
@@ -109,11 +107,15 @@ impl<AccountId, CurrencyId: Copy> VaultId<AccountId, CurrencyId> {
 
 pub type StellarPublicKeyRaw = [u8; 32];
 
+/// A trait used to convert any Stellar specific type `T` as a String
+/// This also immediately converts the standard Error to a user-defined Error `E`
+/// Helpful for functions that will accept:
+///  * the Stellar type itself;
+///  * encoded &str version of the Stellar type;
+///  * a `Vec<u8>` version of th Stellar type
 #[cfg(feature = "std")]
 pub trait StellarTypeToString<T, E: From<std::str::Utf8Error>> {
 	fn as_encoded_string(&self) -> Result<String, E>;
-
-	fn as_a(&self) -> Result<T, StellarSdkError>;
 }
 
 #[cfg(feature = "std")]
@@ -123,20 +125,12 @@ impl<E: From<std::str::Utf8Error>> StellarTypeToString<Self, E> for PublicKey {
 		let str = std::str::from_utf8(&x).map_err(E::from)?;
 		Ok(str.to_string())
 	}
-
-	fn as_a(&self) -> Result<PublicKey, StellarSdkError> {
-		Ok(self.clone())
-	}
 }
 
 #[cfg(feature = "std")]
 impl<E: From<std::str::Utf8Error>> StellarTypeToString<PublicKey, E> for &str {
 	fn as_encoded_string(&self) -> Result<String, E> {
 		Ok(self.to_string())
-	}
-
-	fn as_a(&self) -> Result<PublicKey, StellarSdkError> {
-		PublicKey::from_encoding(self)
 	}
 }
 
@@ -146,10 +140,6 @@ impl<E: From<std::str::Utf8Error>> StellarTypeToString<PublicKey, E> for Vec<u8>
 		let str = std::str::from_utf8(self).map_err(E::from)?;
 		Ok(str.to_string())
 	}
-
-	fn as_a(&self) -> Result<PublicKey, StellarSdkError> {
-		PublicKey::from_encoding(self)
-	}
 }
 
 #[cfg(feature = "std")]
@@ -158,20 +148,12 @@ impl<E: From<std::str::Utf8Error>> StellarTypeToString<Self, E> for ClaimableBal
 		let xdr = self.to_xdr();
 		Ok(hex::encode(xdr))
 	}
-
-	fn as_a(&self) -> Result<Self, StellarSdkError> {
-		Ok(self.clone())
-	}
 }
 
 #[cfg(feature = "std")]
 impl<E: From<std::str::Utf8Error>> StellarTypeToString<ClaimableBalanceId, E> for &str {
 	fn as_encoded_string(&self) -> Result<String, E> {
 		Ok(self.to_string())
-	}
-
-	fn as_a(&self) -> Result<ClaimableBalanceId, StellarSdkError> {
-		todo!()
 	}
 }
 
