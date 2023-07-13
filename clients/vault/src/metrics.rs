@@ -24,7 +24,7 @@ use service::{
 use std::time::Duration;
 use tokio::time::sleep;
 use tokio_metrics::TaskMetrics;
-use wallet::Balance;
+use wallet::HorizonBalance;
 
 const SLEEP_DURATION: Duration = Duration::from_secs(5 * 60);
 
@@ -304,7 +304,7 @@ async fn publish_stellar_balance(vault: &VaultData) {
 	}
 }
 
-fn get_balances_for_asset(asset: stellar::Asset, balances: Vec<Balance>) -> Option<f64> {
+fn get_balances_for_asset(asset: stellar::Asset, balances: Vec<HorizonBalance>) -> Option<f64> {
 	let asset_balance: Option<f64> = match asset {
 		stellar::Asset::AssetTypeNative => balances
 			.iter()
