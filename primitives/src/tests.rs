@@ -295,3 +295,9 @@ fn test_currencyid_one() {
 	assert_eq!(USDC_ASSET.one(), 10u128.pow(12));
 	assert_eq!(USDC_ASSET.one(), Asset::StellarNative.one());
 }
+
+#[test]
+fn test_stellar_public_key_conversion() {
+	let x = "GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN";
+	let key = x.as_public_key().expect("should work");
+}

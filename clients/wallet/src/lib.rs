@@ -1,14 +1,17 @@
 use std::collections::HashMap;
 use substrate_stellar_sdk::TransactionEnvelope;
 
-pub use horizon::{listen_for_new_transactions, Balance, TransactionResponse};
+pub use horizon::{
+	listen_for_new_transactions,
+	responses::{HorizonBalance, TransactionResponse},
+};
 pub use stellar_wallet::StellarWallet;
 pub use task::*;
 
 mod cache;
 pub mod error;
 mod horizon;
-mod operations;
+pub mod operations;
 mod stellar_wallet;
 mod task;
 pub mod types;

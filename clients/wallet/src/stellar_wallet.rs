@@ -11,19 +11,23 @@ use tokio::sync::{oneshot, Mutex};
 use crate::{
 	cache::WalletStateStorage,
 	error::Error,
-	horizon::{Balance, HorizonClient, TransactionResponse},
-	types::StellarPublicKeyRaw,
+	horizon::{
+		responses::{HorizonBalance, TransactionResponse},
+		HorizonClient,
+	},
 };
 
 use crate::{
 	error::CacheErrorKind,
-	horizon::{TransactionsResponseIter, DEFAULT_PAGE_SIZE},
+	horizon::{responses::TransactionsResponseIter, DEFAULT_PAGE_SIZE},
 	operations::{
 		create_basic_transaction, create_payment_operation, AppendExt, RedeemOperationsExt,
 	},
 	types::PagingToken,
 };
-use primitives::{convert_stellar_public_key_to_encoded, StellarStroops, TransactionEnvelopeExt};
+use primitives::{
+	StellarPublicKeyRaw, StellarStroops, StellarTypeToString, TransactionEnvelopeExt,
+};
 
 #[derive(Clone)]
 pub struct StellarWallet {
@@ -67,7 +71,9 @@ impl StellarWallet {
 			envelope.clone(),
 		))?;
 
-		let submission_result = self.client.submit_transaction(
+		let submission_result = self
+			.client
+			.submit_transaction(
 				envelope.clone(),
 				self.is_public_network,
 				self.max_retry_attempts_before_fallback,
@@ -108,10 +114,12 @@ impl StellarWallet {
 		is_public_network: bool,
 		cache_path: String,
 	) -> Result<Self, Error> {
-		let pub_key_encoded = secret_key.get_encoded_public();
-		let pub_key = std::str::from_utf8(&pub_key_encoded).map_err(|_| Error::InvalidSecretKey)?;
+		let pub_key = secret_key.get_public().as_encoded_string().map_err(|e: Error| {
+			tracing::error!("encoding public key failed: {e:?}");
+			Error::InvalidSecretKey
+		})?;
 
-		let cache = WalletStateStorage::new(cache_path, pub_key, is_public_network);
+		let cache = WalletStateStorage::new(cache_path, &pub_key, is_public_network);
 
 		Ok(StellarWallet {
 			secret_key,
@@ -147,11 +155,6 @@ impl StellarWallet {
 		self.secret_key.get_public().clone()
 	}
 
-	pub fn get_public_key_encoded(&self) -> Result<String, Error> {
-		let encoded = self.secret_key.get_encoded_public();
-		std::str::from_utf8(&encoded).map(|pk| pk.to_string()).map_err(Error::Utf8Error)
-	}
-
 	pub fn get_secret_key(&self) -> SecretKey {
 		self.secret_key.clone()
 	}
@@ -176,9 +179,14 @@ impl StellarWallet {
 	) -> Result<TransactionsResponseIter<Client>, Error> {
 		let horizon_client = Client::new();
 
-		let account_id = self.get_public_key_encoded()?;
 		let transactions_response = horizon_client
-			.get_transactions(&account_id, self.is_public_network, 0, DEFAULT_PAGE_SIZE, false)
+			.get_transactions(
+				self.get_public_key(),
+				self.is_public_network,
+				0,
+				DEFAULT_PAGE_SIZE,
+				false,
+			)
 			.await?;
 
 		let next_page = transactions_response.next_page();
@@ -188,9 +196,9 @@ impl StellarWallet {
 	}
 
 	/// Returns the balances of this wallet's Stellar account
-	pub async fn get_balances(&self) -> Result<Vec<Balance>, Error> {
-		let account_id_string = self.get_public_key_encoded()?;
-		let account = self.client.get_account(&account_id_string, self.is_public_network).await?;
+	pub async fn get_balances(&self) -> Result<Vec<HorizonBalance>, Error> {
+		let account =
+			self.client.get_account(self.get_public_key(), self.is_public_network).await?;
 		Ok(account.balances)
 	}
 }
@@ -329,8 +337,8 @@ impl StellarWallet {
 	) -> Result<TransactionResponse, Error> {
 		let _ = self.transaction_submission_lock.lock().await;
 
-		let account_id_string = self.get_public_key_encoded()?;
-		let account = self.client.get_account(&account_id_string, self.is_public_network).await?;
+		let account =
+			self.client.get_account(self.get_public_key(), self.is_public_network).await?;
 		let next_sequence_number = account.sequence + 1;
 
 		tracing::info!(
@@ -353,8 +361,11 @@ impl StellarWallet {
 
 impl std::fmt::Debug for StellarWallet {
 	fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-		let account_id_string = convert_stellar_public_key_to_encoded(self.secret_key.get_public())
-			.map_err(|_e| std::fmt::Error)?;
+		let account_id_string = self
+			.secret_key
+			.get_public()
+			.as_encoded_string()
+			.map_err(|_: Error| std::fmt::Error)?;
 
 		write!(
 			f,
@@ -373,12 +384,17 @@ impl Drop for StellarWallet {
 
 #[cfg(test)]
 mod test {
-	use crate::{error::Error, operations::create_payment_operation, TransactionResponse};
+	use crate::{
+		error::Error,
+		horizon::{responses::HorizonClaimableBalanceResponse, HorizonClient},
+		operations::create_payment_operation,
+	};
 	use primitives::{CurrencyId, StellarStroops, TransactionEnvelopeExt};
 	use serial_test::serial;
 	use std::sync::Arc;
 	use substrate_stellar_sdk::{
-		types::SequenceNumber, Asset, PublicKey, TransactionEnvelope, XdrCodec,
+		types::{CreateClaimableBalanceResult, OperationResult, OperationResultTr, SequenceNumber},
+		Asset, PublicKey, TransactionEnvelope, XdrCodec,
 	};
 	use tokio::sync::RwLock;
 
@@ -523,42 +539,80 @@ mod test {
 		wallet.read().await.cache.remove_dir();
 	}
 
-	// #[tokio::test]
-	// #[serial]
-	// async fn sending_payment_using_claimable_balance_works() {
-	// 	let wallet =
-	// 		wallet("resources/sending_payment_using_claimable_balance_works").clone();
-	// 	let mut wallet = wallet.write().await;
-	//
-	// 	// let's cleanup, just to make sure.
-	// 	wallet.cache.remove_all_tx_envelopes();
-	//
-	// 	let destination = PublicKey::from_encoding("GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN")
-	// 		.expect("should return a public key");
-	//
-	// 	let asset =
-	// 		CurrencyId::try_from(("USDC", "GAKNDFRRWA3RPWNLTI3G4EBSD3RGNZZOY5WKWYMQ6CQTG3KIEKPYWAYC")).expect("should convert ok");
-	// 	let asset: Asset = asset.try_into().expect("should convert to Asset");
-	//
-	// 	let amount = 1000;
-	// 	let request_id = [0u8; 32];
-	//
-	// 	let result = wallet.send_payment_to_address_for_redeem_request(
-	// 		destination,asset,amount,request_id,100
-	// 	).await;
-	//
-	// 	match result {
-	// 		Ok(res) => {
-	// 			println!("success! {res:?}");
-	// 		}
-	// 		Err(e) => {
-	// 			println!("damn it failed. {e:?}");
-	//
-	// 		}
-	// 	};
-	//
-	// 	wallet.cache.remove_dir();
-	// }
+	#[tokio::test]
+	#[serial]
+	async fn sending_payment_using_claimable_balance_works() {
+		let wallet = wallet("resources/sending_payment_using_claimable_balance_works").clone();
+		let mut wallet = wallet.write().await;
+
+		// let's cleanup, just to make sure.
+		wallet.cache.remove_all_tx_envelopes();
+
+		let destination =
+			PublicKey::from_encoding("GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN")
+				.expect("should return a public key");
+
+		let asset = CurrencyId::try_from((
+			"USDC",
+			"GAKNDFRRWA3RPWNLTI3G4EBSD3RGNZZOY5WKWYMQ6CQTG3KIEKPYWAYC",
+		))
+		.expect("should convert ok");
+		let asset: Asset = asset.try_into().expect("should convert to Asset");
+
+		let amount = 1; // in the response, value is 0.0000001.
+		let amount = 10_000;
+		let request_id = [1u8; 32];
+
+		let result = wallet
+			.send_payment_to_address_for_redeem_request(
+				destination.clone(),
+				asset,
+				amount,
+				request_id,
+				100,
+			)
+			.await;
+
+		match result {
+			Ok(res) => {
+				let result = res.get_successful_operations_result().expect("should return a value");
+				// since only 1 operation was performed
+				assert_eq!(result.len(), 1);
+
+				match result.first().expect("should return 1") {
+					OperationResult::OpInner(OperationResultTr::CreateClaimableBalance(
+						CreateClaimableBalanceResult::CreateClaimableBalanceSuccess(id),
+					)) => {
+						let HorizonClaimableBalanceResponse { claimable_balance } = wallet
+							.client
+							.get_claimable_balance(id.clone(), wallet.is_public_network)
+							.await
+							.expect("should return a response");
+
+						assert_eq!(
+							claimable_balance.sponsor,
+							wallet.get_public_key().to_encoding()
+						);
+
+						assert_eq!(claimable_balance.claimants.len(), 1);
+
+						let claimant =
+							claimable_balance.claimants.first().expect("should return a claimant");
+
+						assert_eq!(claimant.destination, destination.to_encoding());
+					},
+					other => {
+						panic!("wrong result: {other:?}");
+					},
+				}
+			},
+			Err(e) => {
+				panic!("failed. {e:?}");
+			},
+		};
+
+		wallet.cache.remove_dir();
+	}
 
 	#[tokio::test]
 	#[serial]

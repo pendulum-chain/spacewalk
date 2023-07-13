@@ -9415,6 +9415,7 @@ dependencies = [
  "base58",
  "bstringify",
  "frame-support",
+ "hex",
  "parity-scale-codec",
  "scale-info",
  "serde",
@@ -10913,6 +10914,7 @@ version = "1.0.0"
 dependencies = [
  "async-trait",
  "futures 0.3.28",
+ "hex",
  "mockall 0.8.3",
  "parity-scale-codec",
  "rand 0.8.5",

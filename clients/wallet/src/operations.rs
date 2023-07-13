@@ -19,8 +19,6 @@ pub trait RedeemOperationsExt: HorizonClient {
 		to_be_redeemed_amount: StellarStroops,
 	) -> Result<Operation, Error> {
 		// convert pubkey to string
-		let dest_addr_encoded = destination_address.to_encoding();
-		let dest_addr_str = std::str::from_utf8(&dest_addr_encoded)?;
 
 		let claimable_balance_operation = || {
 			create_unconditional_claimable_balance_operation(
@@ -31,7 +29,7 @@ pub trait RedeemOperationsExt: HorizonClient {
 		};
 
 		// check if account exists
-		match self.get_account(dest_addr_str, is_public_network).await {
+		match self.get_account(destination_address.clone(), is_public_network).await {
 			// if account exists and trustline exists, use normal payment operation
 			Ok(account) if account.is_trustline_exist(&to_be_redeemed_asset) =>
 			// normal operation
@@ -167,7 +165,13 @@ impl AppendExt<Operation> for Transaction {
 mod tests {
 	use super::*;
 	use primitives::CurrencyId;
-	use substrate_stellar_sdk::SecretKey;
+	use substrate_stellar_sdk::{
+		types::{
+			CreateClaimableBalanceResult, OperationResult, OperationResultTr,
+			TransactionResultResult,
+		},
+		SecretKey, XdrCodec,
+	};
 
 	const INACTIVE_STELLAR_SECRET_KEY: &str =
 		"SAOZUYCGHAHAHUN75JDPAEH7M42N64RN3AATZYB4X2MTXB6V7WV7O2IO";

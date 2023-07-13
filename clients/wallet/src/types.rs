@@ -1,6 +1,4 @@
-pub use crate::horizon::TransactionResponse;
-
-pub type StellarPublicKeyRaw = [u8; 32];
+use crate::horizon::responses::TransactionResponse;
 
 pub type PagingToken = u128;
 
