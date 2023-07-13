@@ -218,12 +218,9 @@ mod tests {
 
 		assert_eq!(proof.slot(), 44041116);
 
-		scp_archive_storage
-			.remove_file(target_slot)
-			.expect("Should be able to remove file");
-		tx_archive_storage
-			.remove_file(target_slot)
-			.expect("Should be able to remove file");
+		// These might return an error if the file does not exist, but that's fine.
+		let _ = scp_archive_storage.remove_file(target_slot);
+		let _ = tx_archive_storage.remove_file(target_slot);
 
 		agent.stop().expect("Failed to stop the agent");
 	}
@@ -253,12 +250,9 @@ mod tests {
 
 		assert_eq!(proof.slot(), 44041116);
 
-		scp_archive_storage
-			.remove_file(target_slot)
-			.expect("Should be able to remove file");
-		tx_archive_storage
-			.remove_file(target_slot)
-			.expect("Should be able to remove file");
+		// These might return an error if the file does not exist, but that's fine.
+		let _ = scp_archive_storage.remove_file(target_slot);
+		let _ = tx_archive_storage.remove_file(target_slot);
 
 		agent.stop().expect("Failed to stop the agent");
 	}
