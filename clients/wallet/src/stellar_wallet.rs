@@ -387,14 +387,18 @@ mod test {
 	use crate::{
 		error::Error,
 		horizon::{responses::HorizonClaimableBalanceResponse, HorizonClient},
-		operations::create_payment_operation,
+		operations::{create_payment_operation, tests::account_merge_operation},
+		TransactionResponse,
 	};
 	use primitives::{CurrencyId, StellarStroops, TransactionEnvelopeExt};
 	use serial_test::serial;
 	use std::sync::Arc;
 	use substrate_stellar_sdk::{
-		types::{CreateClaimableBalanceResult, OperationResult, OperationResultTr, SequenceNumber},
-		Asset, PublicKey, TransactionEnvelope, XdrCodec,
+		types::{
+			CreateAccountResult, CreateClaimableBalanceResult, OperationResult, OperationResultTr,
+			SequenceNumber,
+		},
+		Asset, PublicKey, SecretKey, TransactionEnvelope, XdrCodec,
 	};
 	use tokio::sync::RwLock;
 
@@ -404,7 +408,30 @@ mod test {
 		"SCV7RZN5XYYMMVSWYCR4XUMB76FFMKKKNHP63UTZQKVM4STWSCIRLWFJ";
 	const IS_PUBLIC_NETWORK: bool = false;
 
+	const DEFAULT_STROOP_FEE_PER_OPERATION: u32 = 100;
+
 	impl StellarWallet {
+		async fn is_account_exist(&self) -> bool {
+			self.client
+				.get_account(self.get_public_key(), self.is_public_network)
+				.await
+				.is_ok()
+		}
+		
+		/// merges the wallet's account with the specified destination.
+		/// Exercise prudence when using this method, as it automatically removes the source account
+		/// once operation is successful.
+		async fn merge_account(
+			&mut self,
+			destination_address: PublicKey,
+		) -> Result<TransactionResponse, Error> {
+			let account_merge_op =
+				account_merge_operation(destination_address, self.secret_key.get_public().clone())?;
+
+			self.send_to_address([9u8; 32], DEFAULT_STROOP_FEE_PER_OPERATION, vec![account_merge_op])
+				.await
+		}
+
 		fn create_payment_envelope(
 			&self,
 			destination_address: PublicKey,
@@ -433,9 +460,13 @@ mod test {
 	}
 
 	fn wallet(storage: &str) -> Arc<RwLock<StellarWallet>> {
+		wallet_with_secret_key(storage, STELLAR_VAULT_SECRET_KEY)
+	}
+
+	fn wallet_with_secret_key(storage: &str, secret_key: &str) -> Arc<RwLock<StellarWallet>> {
 		Arc::new(RwLock::new(
 			StellarWallet::from_secret_encoded_with_cache(
-				&STELLAR_VAULT_SECRET_KEY.to_string(),
+				secret_key,
 				IS_PUBLIC_NETWORK,
 				storage.to_string(),
 			)
@@ -505,7 +536,13 @@ mod test {
 			let response = wallet_clone
 				.write()
 				.await
-				.send_payment_to_address(destination, asset, amount, request_id, 100)
+				.send_payment_to_address(
+					destination,
+					asset,
+					amount,
+					request_id,
+					DEFAULT_STROOP_FEE_PER_OPERATION,
+				)
 				.await
 				.expect("it should return a success");
 
@@ -526,7 +563,13 @@ mod test {
 			let result = wallet_clone2
 				.write()
 				.await
-				.send_payment_to_address(destination, asset, amount, request_id, 100)
+				.send_payment_to_address(
+					destination,
+					asset,
+					amount,
+					request_id,
+					DEFAULT_STROOP_FEE_PER_OPERATION,
+				)
 				.await;
 
 			let transaction_response = result.expect("should return a transaction response");
@@ -569,7 +612,7 @@ mod test {
 				asset,
 				amount,
 				request_id,
-				100,
+				DEFAULT_STROOP_FEE_PER_OPERATION,
 			)
 			.await;
 
@@ -618,6 +661,75 @@ mod test {
 
 	#[tokio::test]
 	#[serial]
+	async fn sending_payment_using_create_account_works() {
+		let inactive_secret_key = "SARVWH4LUAR3K5URYJY7DQLXURZUPEBNJYYPMZDRAZWNCQGYIKHPYXC7";
+		let destination_secret_key =
+			SecretKey::from_encoding(inactive_secret_key).expect("should return a secret key");
+
+		let storage_path = "resources/sending_payment_using_claimable_balance_works";
+
+		let wallet = wallet(storage_path);
+		let mut wallet = wallet.write().await;
+
+		// let's cleanup, just to make sure.
+		wallet.cache.remove_all_tx_envelopes();
+
+		// sending enough amount to be able to perform account merge.
+		let amount = 200_000_000;
+		let request_id = [1u8; 32];
+
+		let result = wallet
+			.send_payment_to_address_for_redeem_request(
+				destination_secret_key.get_public().clone(),
+				Asset::AssetTypeNative,
+				amount,
+				request_id,
+				DEFAULT_STROOP_FEE_PER_OPERATION,
+			)
+			.await
+			.expect("should return a transaction response");
+
+		let result = result.get_successful_operations_result().expect("should return a value");
+		// since only 1 operation was performed
+		assert_eq!(result.len(), 1);
+
+		match result.first().expect("should return 1") {
+			OperationResult::OpInner(OperationResultTr::CreateAccount(
+				CreateAccountResult::CreateAccountSuccess,
+			)) => {
+				// since the createaccount operation is a success, make sure to delete the same
+				// account to be able to reuse it once this test runs again.
+				// DO NOT EDIT THIS PORTION unless necessary.
+
+				// new wallet created, with the previous destination address acting as "SOURCE".
+				let temp_wallet = wallet_with_secret_key(storage_path, inactive_secret_key);
+				let mut temp_wallet = temp_wallet.write().await;
+
+				// returning back stellar stroops to `wallet`
+				let secret_key = SecretKey::from_encoding(STELLAR_VAULT_SECRET_KEY)
+					.expect("should return alright");
+
+				// merging the `temp_wallet` to `wallet`
+				let _ = temp_wallet
+					.merge_account(secret_key.get_public().clone())
+					.await
+					.expect("should return a response");
+
+				// temp wallet should not exist anymore, as it merged to `STELLAR_VAULT_SECRET_KEY`.
+				assert!(!temp_wallet.is_account_exist().await);
+
+				temp_wallet.cache.remove_dir();
+			},
+			other => {
+				panic!("wrong result: {other:?}");
+			},
+		}
+
+		wallet.cache.remove_dir();
+	}
+
+	#[tokio::test]
+	#[serial]
 	async fn sending_payment_works() {
 		let wallet = wallet("resources/sending_payment_works");
 		let destination =
@@ -630,7 +742,13 @@ mod test {
 		let result = wallet
 			.write()
 			.await
-			.send_payment_to_address(destination, asset, amount, request_id, 100)
+			.send_payment_to_address(
+				destination,
+				asset,
+				amount,
+				request_id,
+				DEFAULT_STROOP_FEE_PER_OPERATION,
+			)
 			.await;
 
 		assert!(result.is_ok());
@@ -716,7 +834,6 @@ mod test {
 				.unwrap();
 		let asset = substrate_stellar_sdk::Asset::native();
 		let amount = 1001;
-		let stroop_fee = 100;
 		let request_id = [0u8; 32];
 
 		let response = wallet
@@ -725,7 +842,7 @@ mod test {
 				asset.clone(),
 				amount,
 				request_id,
-				stroop_fee,
+				DEFAULT_STROOP_FEE_PER_OPERATION,
 			)
 			.await
 			.expect("should be ok");
@@ -743,7 +860,7 @@ mod test {
 				asset.clone(),
 				amount,
 				request_id,
-				stroop_fee,
+				DEFAULT_STROOP_FEE_PER_OPERATION,
 				seq_number,
 			)
 			.expect("should return an envelope");
@@ -759,7 +876,7 @@ mod test {
 				asset,
 				amount,
 				request_id,
-				stroop_fee,
+				DEFAULT_STROOP_FEE_PER_OPERATION,
 				seq_number + 1,
 			)
 			.expect("should return an envelope");

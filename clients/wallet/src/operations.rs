@@ -109,12 +109,12 @@ pub fn create_payment_operation(
 	destination_address: PublicKey,
 	asset: Asset,
 	stroop_amount: StellarStroops,
-	public_key: PublicKey,
+	source_address: PublicKey,
 ) -> Result<Operation, Error> {
 	let stroop_amount = StroopAmount(stroop_amount);
 
 	change_error_type(Operation::new_payment(destination_address, asset, stroop_amount))?
-		.set_source_account(public_key)
+		.set_source_account(source_address)
 		.map_err(|e| Error::BuildTransactionError(format!("Setting source account failed: {e:?}")))
 }
 
@@ -130,7 +130,7 @@ pub fn create_basic_transaction(
 	);
 
 	let transaction = change_error_type(Transaction::new(
-		public_key.clone(),
+		public_key,
 		next_sequence_number,
 		Some(stroop_fee_per_operation),
 		Preconditions::PrecondNone,
@@ -162,7 +162,7 @@ impl AppendExt<Operation> for Transaction {
 }
 
 #[cfg(test)]
-mod tests {
+pub mod tests {
 	use super::*;
 	use primitives::CurrencyId;
 	use substrate_stellar_sdk::SecretKey;
@@ -172,6 +172,17 @@ mod tests {
 
 	const USDC_ISSUER: &str = "GAKNDFRRWA3RPWNLTI3G4EBSD3RGNZZOY5WKWYMQ6CQTG3KIEKPYWAYC";
 	const IS_PUBLIC_NETWORK: bool = false;
+
+	pub fn account_merge_operation(
+		destination_address: PublicKey,
+		source_address: PublicKey,
+	) -> Result<Operation, Error> {
+		change_error_type(Operation::new_account_merge(destination_address))?
+			.set_source_account(source_address)
+			.map_err(|e| {
+				Error::BuildTransactionError(format!("Setting source account failed: {e:?}"))
+			})
+	}
 
 	#[tokio::test]
 	async fn create_payment_op_for_redeem_request() {
