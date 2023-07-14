@@ -137,7 +137,7 @@ pub fn create_payment_operation(
 		.map_err_as_build_tx_error()
 }
 
-pub fn create_basic_stellar_transaction(
+pub fn create_basic_spacewalk_stellar_transaction(
 	request_id: [u8; 32],
 	stroop_fee_per_operation: u32,
 	public_key: PublicKey,

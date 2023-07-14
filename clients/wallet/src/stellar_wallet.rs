@@ -21,7 +21,7 @@ use crate::{
 	error::CacheErrorKind,
 	horizon::{responses::TransactionsResponseIter, DEFAULT_PAGE_SIZE},
 	operations::{
-		create_basic_stellar_transaction, create_payment_operation, AppendExt, RedeemOperationsExt,
+		create_basic_spacewalk_stellar_transaction, create_payment_operation, AppendExt, RedeemOperationsExt,
 	},
 	types::PagingToken,
 };
@@ -49,7 +49,6 @@ pub struct StellarWallet {
 	max_backoff_delay: u16,
 
 	/// a client to connect to Horizon
-	// todo: it's probably better that this is of generic type C, to remove dependency from reqwest
 	client: reqwest::Client,
 }
 
@@ -265,7 +264,7 @@ impl StellarWallet {
 		let public_key = self.get_public_key();
 
 		// create the transaction
-		let mut transaction = create_basic_stellar_transaction(
+		let mut transaction = create_basic_spacewalk_stellar_transaction(
 			request_id,
 			stroop_fee_per_operation,
 			public_key,
