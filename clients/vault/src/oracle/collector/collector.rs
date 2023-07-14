@@ -26,24 +26,25 @@ pub struct ScpMessageCollector {
 
 	public_network: bool,
 
-	stellar_history_base_url: String,
+	// A (possibly empty) list of URLs to use to fetch the stellar history archive entries.
+	stellar_history_archive_urls: Vec<String>,
 }
 
 impl ScpMessageCollector {
-	pub(crate) fn new(public_network: bool, stellar_history_base_url: String) -> Self {
+	pub(crate) fn new(public_network: bool, stellar_history_archive_urls: Vec<String>) -> Self {
 		ScpMessageCollector {
 			envelopes_map: Default::default(),
 			txset_map: Default::default(),
 			txset_and_slot_map: Arc::new(Default::default()),
 			last_slot_index: 0,
 			public_network,
-			stellar_history_base_url,
+			stellar_history_archive_urls,
 		}
 	}
 
 	pub(crate) fn new_with_size_limit(
 		public_network: bool,
-		stellar_history_base_url: String,
+		stellar_history_archive_urls: Vec<String>,
 		size_limit: usize,
 	) -> Self {
 		ScpMessageCollector {
@@ -52,7 +53,7 @@ impl ScpMessageCollector {
 			txset_and_slot_map: Arc::new(Default::default()),
 			last_slot_index: 0,
 			public_network,
-			stellar_history_base_url,
+			stellar_history_archive_urls,
 		}
 	}
 
@@ -72,8 +73,8 @@ impl ScpMessageCollector {
 		self.public_network
 	}
 
-	pub fn stellar_history_base_url(&self) -> String {
-		self.stellar_history_base_url.clone()
+	pub fn stellar_history_archive_urls(&self) -> Vec<String> {
+		self.stellar_history_archive_urls.clone()
 	}
 }
 
@@ -177,13 +178,13 @@ mod test {
 		EnvelopesFileHandler, TxSetsFileHandler,
 	};
 
-	fn stellar_history_base_url() -> String {
-		get_test_stellar_relay_config(true).stellar_history_base_url()
+	fn stellar_history_archive_urls() -> Vec<String> {
+		get_test_stellar_relay_config(true).stellar_history_archive_urls()
 	}
 
 	#[test]
 	fn envelopes_map_len_works() {
-		let collector = ScpMessageCollector::new(true, stellar_history_base_url());
+		let collector = ScpMessageCollector::new(true, stellar_history_archive_urls());
 
 		assert_eq!(collector.envelopes_map_len(), 0);
 
@@ -198,19 +199,19 @@ mod test {
 
 	#[test]
 	fn network_and_is_public_works() {
-		let collector = ScpMessageCollector::new(true, stellar_history_base_url());
+		let collector = ScpMessageCollector::new(true, stellar_history_archive_urls());
 		assert_eq!(&collector.network().get_passphrase(), &PUBLIC_NETWORK.get_passphrase());
 
 		assert!(collector.is_public());
 
-		let collector = ScpMessageCollector::new(false, stellar_history_base_url());
+		let collector = ScpMessageCollector::new(false, stellar_history_archive_urls());
 		assert_eq!(&collector.network().get_passphrase(), &TEST_NETWORK.get_passphrase());
 		assert!(!collector.is_public());
 	}
 
 	#[test]
 	fn add_scp_envelope_works() {
-		let collector = ScpMessageCollector::new(true, stellar_history_base_url());
+		let collector = ScpMessageCollector::new(true, stellar_history_archive_urls());
 
 		let first_slot = 578291;
 		let env_map =
@@ -238,7 +239,7 @@ mod test {
 
 	#[test]
 	fn add_txset_works() {
-		let collector = ScpMessageCollector::new(false, stellar_history_base_url());
+		let collector = ScpMessageCollector::new(false, stellar_history_archive_urls());
 
 		let slot = 42867088;
 		let dummy_hash = [0; 32];
@@ -255,7 +256,7 @@ mod test {
 
 	#[test]
 	fn set_last_slot_index_works() {
-		let mut collector = ScpMessageCollector::new(true, stellar_history_base_url());
+		let mut collector = ScpMessageCollector::new(true, stellar_history_archive_urls());
 		collector.last_slot_index = 10;
 
 		collector.set_last_slot_index(9);
@@ -270,7 +271,7 @@ mod test {
 
 	#[test]
 	fn remove_data_works() {
-		let collector = ScpMessageCollector::new(false, stellar_history_base_url());
+		let collector = ScpMessageCollector::new(false, stellar_history_archive_urls());
 
 		let env_slot = 578391;
 		let env_map =
@@ -297,7 +298,7 @@ mod test {
 
 	#[test]
 	fn is_txset_new_works() {
-		let collector = ScpMessageCollector::new(false, stellar_history_base_url());
+		let collector = ScpMessageCollector::new(false, stellar_history_archive_urls());
 
 		let txset_slot = 42867088;
 		let txsets_map =

@@ -118,8 +118,8 @@ pub trait ArchiveStorage {
 		let file_name = format!("{hex_string}.xdr");
 		let base_url = self.stellar_history_base_url();
 		let url = format!(
-			"{base_url}{}/{}/{}/{}/{}-{file_name}.gz",
-			Self::PREFIX_URL,
+			"{base_url}/{}/{}/{}/{}/{}-{file_name}.gz",
+			Self::PREFIX_URL.trim_end_matches('/'),
 			&hex_string[..2],
 			&hex_string[2..4],
 			&hex_string[4..6],
@@ -136,9 +136,9 @@ pub trait ArchiveStorage {
 		slot_index + ARCHIVE_NODE_LEDGER_BATCH - rest
 	}
 
-	fn remove_file(&self, target_slot: Slot) {
+	fn remove_file(&self, target_slot: Slot) -> std::io::Result<()> {
 		let (_, file) = self.get_url_and_file_name(target_slot);
-		fs::remove_file(file).expect("should be able to remove the newly added file.");
+		fs::remove_file(file)
 	}
 
 	fn read_file_xdr(filename: &str) -> Result<Vec<u8>, Error> {
@@ -154,13 +154,11 @@ pub trait ArchiveStorage {
 }
 
 pub(crate) async fn download_file_and_save(url: &str, file_name: &str) -> Result<(), Error> {
-	let response = reqwest::get(url).await.unwrap();
-	let content = response.bytes().await.unwrap();
+	let response = reqwest::get(url).await.map_err(|e| Error::ArchiveError(e.to_string()))?;
+	let content = response.bytes().await.map_err(|e| Error::ArchiveError(e.to_string()))?;
 
-	let mut file = match File::create(&file_name) {
-		Err(why) => panic!("couldn't create {}: {}", &file_name, why),
-		Ok(file) => file,
-	};
-	file.write_all(content.as_bytes_ref())?;
+	let mut file = File::create(&file_name).map_err(|e| Error::ArchiveError(e.to_string()))?;
+	file.write_all(content.as_bytes_ref())
+		.map_err(|e| Error::ArchiveError(e.to_string()))?;
 	Ok(())
 }
