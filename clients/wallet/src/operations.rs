@@ -212,8 +212,6 @@ pub mod redeem_request_tests {
 			.map_err_as_build_tx_error()
 	}
 
-	mod redeem_request_tests {}
-
 	#[tokio::test]
 	async fn test_active_account_and_xlm_asset() {
 		let client = reqwest::Client::new();
