@@ -287,7 +287,7 @@ impl StellarWallet {
 		Ok(envelope)
 	}
 
-	/// Sends a 'Payment' Operation transaction specifically for redeem requests.
+	/// Sends a 'Payment' transaction specifically for redeem requests.
 	/// Possible operations are the ff:
 	/// * `Payment` operation
 	/// * `CreateClaimableBalance` operation

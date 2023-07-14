@@ -11,6 +11,44 @@ use primitives::{
 	stellar_stroops_to_u128, StellarStroops,
 };
 
+pub trait AppendExt<T> {
+	fn append_multiple(&mut self, items: Vec<T>) -> Result<(), Error>;
+	fn append(&mut self, item: T) -> Result<(), Error>;
+}
+
+impl AppendExt<Operation> for Transaction {
+	fn append_multiple(&mut self, items: Vec<Operation>) -> Result<(), Error> {
+		for operation in items {
+			self.append(operation)?;
+		}
+		Ok(())
+	}
+
+	fn append(&mut self, item: Operation) -> Result<(), Error> {
+		self.append_operation(item)
+			.map_err_as_build_tx_error_with_text("Appending payment operation failed")
+	}
+}
+
+/// Converts external error into wallet's `BuildTransactionError`.
+trait BuildTransactionErrorExt<T> {
+	fn map_err_as_build_tx_error(self) -> Result<T, Error>;
+
+	fn map_err_as_build_tx_error_with_text(self, text: &str) -> Result<T, Error>;
+}
+
+impl<T> BuildTransactionErrorExt<T> for Result<T, StellarSdkError> {
+	fn map_err_as_build_tx_error(self) -> Result<T, Error> {
+		self.map_err(|e| {
+			Error::BuildTransactionError(format!("Failed to build transaction: {e:?}"))
+		})
+	}
+
+	fn map_err_as_build_tx_error_with_text(self, text: &str) -> Result<T, Error> {
+		self.map_err(|e| Error::BuildTransactionError(format!("{text}: {e:?}")))
+	}
+}
+
 #[async_trait]
 pub trait RedeemOperationsExt: HorizonClient {
 	/// Creates an appropriate payment operation for redeem requests.
@@ -84,24 +122,10 @@ fn create_unconditional_claimable_balance_operation(
 	to_be_redeemed_asset: Asset,
 	to_be_redeemed_amount: StellarStroops,
 ) -> Result<Operation, Error> {
-	let claimant =
-		Claimant::new(destination_address.clone(), ClaimPredicate::ClaimPredicateUnconditional)
-			.map_err_as_build_tx_error()?;
+	let claimant = Claimant::new(destination_address, ClaimPredicate::ClaimPredicateUnconditional)
+		.map_err_as_build_tx_error_with_text("failed to create claimant")?;
 
 	create_claimable_balance_operation(to_be_redeemed_asset, to_be_redeemed_amount, vec![claimant])
-}
-
-/// Converts external error into wallet's `BuildTransactionError`.
-trait BuildTransactionErrorExt<T> {
-	fn map_err_as_build_tx_error(self) -> Result<T, Error>;
-}
-
-impl<T> BuildTransactionErrorExt<T> for Result<T, StellarSdkError> {
-	fn map_err_as_build_tx_error(self) -> Result<T, Error> {
-		self.map_err(|e| {
-			Error::BuildTransactionError(format!("Failed to build transaction: {e:?}"))
-		})
-	}
 }
 
 pub fn create_claimable_balance_operation(
@@ -134,7 +158,7 @@ pub fn create_payment_operation(
 	Operation::new_payment(destination_address, asset, stroop_amount)
 		.map_err_as_build_tx_error()?
 		.set_source_account(source_address)
-		.map_err_as_build_tx_error()
+		.map_err_as_build_tx_error_with_text("failed to set source account")
 }
 
 pub fn create_basic_spacewalk_stellar_transaction(
@@ -144,7 +168,8 @@ pub fn create_basic_spacewalk_stellar_transaction(
 	next_sequence_number: SequenceNumber,
 ) -> Result<Transaction, Error> {
 	let memo_text = Memo::MemoText(
-		LimitedString::new(derive_shortened_request_id(&request_id)).map_err_as_build_tx_error()?,
+		LimitedString::new(derive_shortened_request_id(&request_id))
+			.map_err_as_build_tx_error_with_text("Invalid Hash")?,
 	);
 
 	Transaction::new(
@@ -156,25 +181,6 @@ pub fn create_basic_spacewalk_stellar_transaction(
 	)
 	.map_err_as_build_tx_error()
 }
-
-pub trait AppendExt<T> {
-	fn append_multiple(&mut self, items: Vec<T>) -> Result<(), Error>;
-	fn append(&mut self, item: T) -> Result<(), Error>;
-}
-
-impl AppendExt<Operation> for Transaction {
-	fn append_multiple(&mut self, items: Vec<Operation>) -> Result<(), Error> {
-		for operation in items {
-			self.append(operation)?;
-		}
-		Ok(())
-	}
-
-	fn append(&mut self, item: Operation) -> Result<(), Error> {
-		self.append_operation(item).map_err_as_build_tx_error()
-	}
-}
-
 #[cfg(test)]
 pub mod redeem_request_tests {
 	use super::*;
