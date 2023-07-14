@@ -21,7 +21,8 @@ use crate::{
 	error::CacheErrorKind,
 	horizon::{responses::TransactionsResponseIter, DEFAULT_PAGE_SIZE},
 	operations::{
-		create_basic_spacewalk_stellar_transaction, create_payment_operation, AppendExt, RedeemOperationsExt,
+		create_basic_spacewalk_stellar_transaction, create_payment_operation, AppendExt,
+		RedeemOperationsExt,
 	},
 	types::PagingToken,
 };
@@ -636,13 +637,13 @@ mod test {
 			.await
 			.expect("payment should work");
 
-		let operation_result = response
+		let operation_results = response
 			.get_successful_operations_result()
 			.expect("should return a vec of size 1");
 		// since only 1 operation was performed
-		assert_eq!(operation_result.len(), 1);
+		assert_eq!(operation_results.len(), 1);
 
-		match operation_result.first().expect("should return 1") {
+		match operation_results.first().expect("should return 1") {
 			OperationResult::OpInner(OperationResultTr::CreateClaimableBalance(
 				CreateClaimableBalanceResult::CreateClaimableBalanceSuccess(id),
 			)) => {
@@ -691,7 +692,7 @@ mod test {
 		let amount = 200_000_000;
 		let request_id = [1u8; 32];
 
-		let result = wallet
+		let response = wallet
 			.send_payment_to_address_for_redeem_request(
 				destination_secret_key.get_public().clone(),
 				StellarAsset::AssetTypeNative,
@@ -702,11 +703,12 @@ mod test {
 			.await
 			.expect("should return a transaction response");
 
-		let result = result.get_successful_operations_result().expect("should return a value");
+		let operations_results =
+			response.get_successful_operations_result().expect("should return a value");
 		// since only 1 operation was performed
-		assert_eq!(result.len(), 1);
+		assert_eq!(operations_results.len(), 1);
 
-		match result.first().expect("should return 1") {
+		match operations_results.first().expect("should return 1") {
 			OperationResult::OpInner(OperationResultTr::CreateAccount(
 				CreateAccountResult::CreateAccountSuccess,
 			)) => {
@@ -729,7 +731,8 @@ mod test {
 					.await
 					.expect("should return a response");
 
-				// temp wallet should not exist anymore, as it merged to `STELLAR_VAULT_SECRET_KEY`.
+				// the account of temp wallet should not exist anymore, as it merged to
+				// `STELLAR_VAULT_SECRET_KEY`.
 				assert!(!temp_wallet.is_account_exist().await);
 
 				temp_wallet.cache.remove_dir();
