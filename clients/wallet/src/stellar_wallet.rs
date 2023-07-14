@@ -1,10 +1,10 @@
 use reqwest::Client;
 use std::{fmt::Formatter, sync::Arc};
 
-use substrate_stellar_sdk::{
+use primitives::stellar::{
 	network::{Network, PUBLIC_NETWORK, TEST_NETWORK},
 	types::SequenceNumber,
-	Asset, Operation, PublicKey, SecretKey, TransactionEnvelope,
+	Asset as StellarAsset, Operation, PublicKey, SecretKey, TransactionEnvelope,
 };
 use tokio::sync::{oneshot, Mutex};
 
@@ -21,7 +21,7 @@ use crate::{
 	error::CacheErrorKind,
 	horizon::{responses::TransactionsResponseIter, DEFAULT_PAGE_SIZE},
 	operations::{
-		create_basic_transaction, create_payment_operation, AppendExt, RedeemOperationsExt,
+		create_basic_stellar_transaction, create_payment_operation, AppendExt, RedeemOperationsExt,
 	},
 	types::PagingToken,
 };
@@ -265,7 +265,7 @@ impl StellarWallet {
 		let public_key = self.get_public_key();
 
 		// create the transaction
-		let mut transaction = create_basic_transaction(
+		let mut transaction = create_basic_stellar_transaction(
 			request_id,
 			stroop_fee_per_operation,
 			public_key,
@@ -287,15 +287,28 @@ impl StellarWallet {
 		Ok(envelope)
 	}
 
+	/// Sends a 'Payment' Operation transaction specifically for redeem requests.
+	/// Possible operations are the ff:
+	/// * `Payment` operation
+	/// * `CreateClaimableBalance` operation
+	/// * `CreateAccount` operation
+	///
+	/// # Arguments
+	/// * `destination_address` - receiver of the payment
+	/// * `asset` - Stellar Asset type of the payment
+	/// * `stroop_amount` - Amount of the payment
+	/// * `request_id` - information to be added in the tx's memo
+	/// * `stroop_fee_per_operation` - base fee to pay for the payment operation
 	pub async fn send_payment_to_address_for_redeem_request(
 		&mut self,
 		destination_address: PublicKey,
-		asset: Asset,
+		asset: StellarAsset,
 		stroop_amount: StellarStroops,
 		request_id: [u8; 32],
 		stroop_fee_per_operation: u32,
 	) -> Result<TransactionResponse, Error> {
-		let op = self
+		// payment can be
+		let payment_like_op = self
 			.client
 			.create_payment_op_for_redeem_request(
 				self.get_public_key(),
@@ -306,13 +319,14 @@ impl StellarWallet {
 			)
 			.await?;
 
-		self.send_to_address(request_id, stroop_fee_per_operation, vec![op]).await
+		self.send_to_address(request_id, stroop_fee_per_operation, vec![payment_like_op])
+			.await
 	}
 
 	pub async fn send_payment_to_address(
 		&mut self,
 		destination_address: PublicKey,
-		asset: Asset,
+		asset: StellarAsset,
 		stroop_amount: StellarStroops,
 		request_id: [u8; 32],
 		stroop_fee_per_operation: u32,
@@ -387,22 +401,26 @@ mod test {
 	use crate::{
 		error::Error,
 		horizon::{responses::HorizonClaimableBalanceResponse, HorizonClient},
-		operations::{create_payment_operation, tests::account_merge_operation},
+		operations::{
+			create_payment_operation, redeem_request_tests::create_account_merge_operation,
+		},
 		TransactionResponse,
 	};
-	use primitives::{CurrencyId, StellarStroops, TransactionEnvelopeExt};
+	use primitives::{
+		stellar::{
+			types::{
+				CreateAccountResult, CreateClaimableBalanceResult, OperationResult,
+				OperationResultTr, SequenceNumber,
+			},
+			Asset as StellarAsset, PublicKey, SecretKey, TransactionEnvelope, XdrCodec,
+		},
+		StellarStroops, TransactionEnvelopeExt,
+	};
 	use serial_test::serial;
 	use std::sync::Arc;
-	use substrate_stellar_sdk::{
-		types::{
-			CreateAccountResult, CreateClaimableBalanceResult, OperationResult, OperationResultTr,
-			SequenceNumber,
-		},
-		Asset, PublicKey, SecretKey, TransactionEnvelope, XdrCodec,
-	};
 	use tokio::sync::RwLock;
 
-	use crate::StellarWallet;
+	use crate::{test_helper::default_usdc_asset, StellarWallet};
 
 	const STELLAR_VAULT_SECRET_KEY: &str =
 		"SCV7RZN5XYYMMVSWYCR4XUMB76FFMKKKNHP63UTZQKVM4STWSCIRLWFJ";
@@ -417,7 +435,7 @@ mod test {
 				.await
 				.is_ok()
 		}
-		
+
 		/// merges the wallet's account with the specified destination.
 		/// Exercise prudence when using this method, as it automatically removes the source account
 		/// once operation is successful.
@@ -425,17 +443,23 @@ mod test {
 			&mut self,
 			destination_address: PublicKey,
 		) -> Result<TransactionResponse, Error> {
-			let account_merge_op =
-				account_merge_operation(destination_address, self.secret_key.get_public().clone())?;
+			let account_merge_op = create_account_merge_operation(
+				destination_address,
+				self.secret_key.get_public().clone(),
+			)?;
 
-			self.send_to_address([9u8; 32], DEFAULT_STROOP_FEE_PER_OPERATION, vec![account_merge_op])
-				.await
+			self.send_to_address(
+				[9u8; 32],
+				DEFAULT_STROOP_FEE_PER_OPERATION,
+				vec![account_merge_op],
+			)
+			.await
 		}
 
 		fn create_payment_envelope(
 			&self,
 			destination_address: PublicKey,
-			asset: Asset,
+			asset: StellarAsset,
 			stroop_amount: StellarStroops,
 			request_id: [u8; 32],
 			stroop_fee_per_operation: u32,
@@ -459,11 +483,14 @@ mod test {
 		}
 	}
 
-	fn wallet(storage: &str) -> Arc<RwLock<StellarWallet>> {
-		wallet_with_secret_key(storage, STELLAR_VAULT_SECRET_KEY)
+	fn wallet_with_storage(storage: &str) -> Arc<RwLock<StellarWallet>> {
+		wallet_with_secret_key_for_storage(storage, STELLAR_VAULT_SECRET_KEY)
 	}
 
-	fn wallet_with_secret_key(storage: &str, secret_key: &str) -> Arc<RwLock<StellarWallet>> {
+	fn wallet_with_secret_key_for_storage(
+		storage: &str,
+		secret_key: &str,
+	) -> Arc<RwLock<StellarWallet>> {
 		Arc::new(RwLock::new(
 			StellarWallet::from_secret_encoded_with_cache(
 				secret_key,
@@ -521,7 +548,7 @@ mod test {
 	#[tokio::test]
 	#[serial]
 	async fn test_locking_submission() {
-		let wallet = wallet("resources/test_locking_submission").clone();
+		let wallet = wallet_with_storage("resources/test_locking_submission").clone();
 		let wallet_clone = wallet.clone();
 
 		let first_job = tokio::spawn(async move {
@@ -529,7 +556,7 @@ mod test {
 				"GCENYNAX2UCY5RFUKA7AYEXKDIFITPRAB7UYSISCHVBTIAKPU2YO57OA",
 			)
 			.unwrap();
-			let asset = substrate_stellar_sdk::Asset::native();
+			let asset = StellarAsset::native();
 			let amount = 100;
 			let request_id = [0u8; 32];
 
@@ -556,7 +583,7 @@ mod test {
 				"GCENYNAX2UCY5RFUKA7AYEXKDIFITPRAB7UYSISCHVBTIAKPU2YO57OA",
 			)
 			.unwrap();
-			let asset = substrate_stellar_sdk::Asset::native();
+			let asset = StellarAsset::native();
 			let amount = 50;
 			let request_id = [1u8; 32];
 
@@ -585,7 +612,8 @@ mod test {
 	#[tokio::test]
 	#[serial]
 	async fn sending_payment_using_claimable_balance_works() {
-		let wallet = wallet("resources/sending_payment_using_claimable_balance_works").clone();
+		let wallet =
+			wallet_with_storage("resources/sending_payment_using_claimable_balance_works").clone();
 		let mut wallet = wallet.write().await;
 
 		// let's cleanup, just to make sure.
@@ -595,66 +623,52 @@ mod test {
 			PublicKey::from_encoding("GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN")
 				.expect("should return a public key");
 
-		let asset = CurrencyId::try_from((
-			"USDC",
-			"GAKNDFRRWA3RPWNLTI3G4EBSD3RGNZZOY5WKWYMQ6CQTG3KIEKPYWAYC",
-		))
-		.expect("should convert ok");
-		let asset: Asset = asset.try_into().expect("should convert to Asset");
-
-		// let amount = 1;  // in the response, value is 0.0000001.
 		let amount = 10_000; // in the response, value is 0.0010000.
 		let request_id = [1u8; 32];
 
-		let result = wallet
+		let response = wallet
 			.send_payment_to_address_for_redeem_request(
 				destination.clone(),
-				asset,
+				default_usdc_asset(),
 				amount,
 				request_id,
 				DEFAULT_STROOP_FEE_PER_OPERATION,
 			)
-			.await;
+			.await
+			.expect("payment should work");
 
-		match result {
-			Ok(res) => {
-				let result = res.get_successful_operations_result().expect("should return a value");
-				// since only 1 operation was performed
-				assert_eq!(result.len(), 1);
+		let operation_result = response
+			.get_successful_operations_result()
+			.expect("should return a vec of size 1");
+		// since only 1 operation was performed
+		assert_eq!(operation_result.len(), 1);
 
-				match result.first().expect("should return 1") {
-					OperationResult::OpInner(OperationResultTr::CreateClaimableBalance(
-						CreateClaimableBalanceResult::CreateClaimableBalanceSuccess(id),
-					)) => {
-						let HorizonClaimableBalanceResponse { claimable_balance } = wallet
-							.client
-							.get_claimable_balance(id.clone(), wallet.is_public_network)
-							.await
-							.expect("should return a response");
+		match operation_result.first().expect("should return 1") {
+			OperationResult::OpInner(OperationResultTr::CreateClaimableBalance(
+				CreateClaimableBalanceResult::CreateClaimableBalanceSuccess(id),
+			)) => {
+				// check existence of claimable balance.
+				let HorizonClaimableBalanceResponse { claimable_balance } = wallet
+					.client
+					.get_claimable_balance(id.clone(), wallet.is_public_network)
+					.await
+					.expect("should return a response");
 
-						assert_eq!(
-							claimable_balance.sponsor,
-							wallet.get_public_key().to_encoding()
-						);
+				assert_eq!(claimable_balance.sponsor, wallet.get_public_key().to_encoding());
 
-						assert_eq!(&claimable_balance.amount, "0.0010000".as_bytes());
+				assert_eq!(&claimable_balance.amount, "0.0010000".as_bytes());
 
-						assert_eq!(claimable_balance.claimants.len(), 1);
+				assert_eq!(claimable_balance.claimants.len(), 1);
 
-						let claimant =
-							claimable_balance.claimants.first().expect("should return a claimant");
+				let claimant =
+					claimable_balance.claimants.first().expect("should return a claimant");
 
-						assert_eq!(claimant.destination, destination.to_encoding());
-					},
-					other => {
-						panic!("wrong result: {other:?}");
-					},
-				}
+				assert_eq!(claimant.destination, destination.to_encoding());
 			},
-			Err(e) => {
-				panic!("failed. {e:?}");
+			other => {
+				panic!("wrong operation result: {other:?}");
 			},
-		};
+		}
 
 		wallet.cache.remove_dir();
 	}
@@ -668,7 +682,7 @@ mod test {
 
 		let storage_path = "resources/sending_payment_using_claimable_balance_works";
 
-		let wallet = wallet(storage_path);
+		let wallet = wallet_with_storage(storage_path);
 		let mut wallet = wallet.write().await;
 
 		// let's cleanup, just to make sure.
@@ -681,7 +695,7 @@ mod test {
 		let result = wallet
 			.send_payment_to_address_for_redeem_request(
 				destination_secret_key.get_public().clone(),
-				Asset::AssetTypeNative,
+				StellarAsset::AssetTypeNative,
 				amount,
 				request_id,
 				DEFAULT_STROOP_FEE_PER_OPERATION,
@@ -702,7 +716,8 @@ mod test {
 				// DO NOT EDIT THIS PORTION unless necessary.
 
 				// new wallet created, with the previous destination address acting as "SOURCE".
-				let temp_wallet = wallet_with_secret_key(storage_path, inactive_secret_key);
+				let temp_wallet =
+					wallet_with_secret_key_for_storage(storage_path, inactive_secret_key);
 				let mut temp_wallet = temp_wallet.write().await;
 
 				// returning back stellar stroops to `wallet`
@@ -731,11 +746,11 @@ mod test {
 	#[tokio::test]
 	#[serial]
 	async fn sending_payment_works() {
-		let wallet = wallet("resources/sending_payment_works");
+		let wallet = wallet_with_storage("resources/sending_payment_works");
 		let destination =
 			PublicKey::from_encoding("GCENYNAX2UCY5RFUKA7AYEXKDIFITPRAB7UYSISCHVBTIAKPU2YO57OA")
 				.unwrap();
-		let asset = substrate_stellar_sdk::Asset::native();
+		let asset = StellarAsset::native();
 		let amount = 100;
 		let request_id = [0u8; 32];
 
@@ -762,7 +777,8 @@ mod test {
 	#[serial]
 	async fn sending_correct_payment_after_incorrect_payment_works() {
 		let wallet =
-			wallet("resources/sending_correct_payment_after_incorrect_payment_works").clone();
+			wallet_with_storage("resources/sending_correct_payment_after_incorrect_payment_works")
+				.clone();
 		let mut wallet = wallet.write().await;
 
 		// let's cleanup, just to make sure.
@@ -771,7 +787,7 @@ mod test {
 		let destination =
 			PublicKey::from_encoding("GCENYNAX2UCY5RFUKA7AYEXKDIFITPRAB7UYSISCHVBTIAKPU2YO57OA")
 				.unwrap();
-		let asset = substrate_stellar_sdk::Asset::native();
+		let asset = StellarAsset::native();
 		let amount = 1000;
 		let request_id = [0u8; 32];
 		let correct_amount_that_should_not_fail = 100;
@@ -825,14 +841,14 @@ mod test {
 	#[tokio::test]
 	#[serial]
 	async fn resubmit_transactions_works() {
-		let wallet = wallet("resources/resubmit_transactions_works").clone();
+		let wallet = wallet_with_storage("resources/resubmit_transactions_works").clone();
 		let mut wallet = wallet.write().await;
 
 		// let's send a successful transaction first
 		let destination =
 			PublicKey::from_encoding("GCENYNAX2UCY5RFUKA7AYEXKDIFITPRAB7UYSISCHVBTIAKPU2YO57OA")
 				.unwrap();
-		let asset = substrate_stellar_sdk::Asset::native();
+		let asset = StellarAsset::native();
 		let amount = 1001;
 		let request_id = [0u8; 32];
 

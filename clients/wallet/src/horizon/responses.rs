@@ -4,12 +4,14 @@ use crate::{
 	types::PagingToken,
 };
 use parity_scale_codec::{Decode, Encode};
-use primitives::TextMemo;
-use serde::{de::DeserializeOwned, Deserialize};
-use substrate_stellar_sdk::{
-	types::{OperationResult, SequenceNumber, TransactionResult, TransactionResultResult},
-	Asset, TransactionEnvelope, XdrCodec,
+use primitives::{
+	stellar::{
+		types::{OperationResult, SequenceNumber, TransactionResult, TransactionResultResult},
+		Asset, TransactionEnvelope, XdrCodec,
+	},
+	TextMemo,
 };
+use serde::{de::DeserializeOwned, Deserialize};
 
 /// Interprets the response from Horizon into something easier to read.
 pub(crate) async fn interpret_response<T: DeserializeOwned>(

@@ -1,6 +1,6 @@
+use primitives::stellar::{types::SequenceNumber, TransactionEnvelope};
 use reqwest::Error as FetchError;
 use std::fmt::{Debug, Display, Formatter};
-use substrate_stellar_sdk::{types::SequenceNumber, TransactionEnvelope};
 
 use thiserror::Error;
 

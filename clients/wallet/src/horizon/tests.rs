@@ -8,7 +8,7 @@ use crate::{
 	},
 };
 use mockall::predicate::*;
-use substrate_stellar_sdk::{
+use primitives::stellar::{
 	network::{Network, PUBLIC_NETWORK, TEST_NETWORK},
 	types::Preconditions,
 	Asset, Operation, PublicKey, SecretKey, StroopAmount, Transaction, TransactionEnvelope,

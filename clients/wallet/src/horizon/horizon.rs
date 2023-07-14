@@ -6,10 +6,12 @@ use futures::{
 	TryFutureExt,
 };
 
-use primitives::{StellarTypeToString, TransactionEnvelopeExt};
+use primitives::{
+	stellar::{ClaimableBalanceId, PublicKey, TransactionEnvelope, XdrCodec},
+	StellarTypeToString, TransactionEnvelopeExt,
+};
 use rand::seq::SliceRandom;
 use serde::de::DeserializeOwned;
-use substrate_stellar_sdk::{ClaimableBalanceId, PublicKey, TransactionEnvelope, XdrCodec};
 use tokio::{sync::RwLock, time::sleep};
 
 use crate::{

@@ -1,15 +1,30 @@
 use crate::{error::Error, horizon::HorizonClient};
 use async_trait::async_trait;
-use primitives::{derive_shortened_request_id, stellar_stroops_to_u128, StellarStroops};
-use substrate_stellar_sdk::{
-	compound_types::LimitedString,
-	types::{Preconditions, SequenceNumber},
-	Asset, ClaimPredicate, Claimant, Memo, Operation, PublicKey, StellarSdkError, StroopAmount,
-	Transaction,
+use primitives::{
+	derive_shortened_request_id,
+	stellar::{
+		compound_types::LimitedString,
+		types::{Preconditions, SequenceNumber},
+		Asset, ClaimPredicate, Claimant, Memo, Operation, PublicKey, StellarSdkError, StroopAmount,
+		Transaction,
+	},
+	stellar_stroops_to_u128, StellarStroops,
 };
 
 #[async_trait]
 pub trait RedeemOperationsExt: HorizonClient {
+	/// Creates an appropriate payment operation for redeem requests.
+	/// Possible operations are the ff:
+	/// * `Payment` operation
+	/// * `CreateClaimableBalance` operation
+	/// * `CreateAccount` operation
+	///
+	/// # Arguments
+	/// * `source_address` - the account executing the payment
+	/// * `destination_address` - receiver of the payment
+	/// * `is_public_network` - the network where the query should be executed
+	/// * `to_be_redeemed_asset` - Stellar Asset type of the payment
+	/// * `to_be_redeemed_amount` - Amount of the payment
 	async fn create_payment_op_for_redeem_request(
 		&self,
 		source_address: PublicKey,
@@ -18,8 +33,6 @@ pub trait RedeemOperationsExt: HorizonClient {
 		to_be_redeemed_asset: Asset,
 		to_be_redeemed_amount: StellarStroops,
 	) -> Result<Operation, Error> {
-		// convert pubkey to string
-
 		let claimable_balance_operation = || {
 			create_unconditional_claimable_balance_operation(
 				destination_address.clone(),
@@ -66,10 +79,6 @@ pub trait RedeemOperationsExt: HorizonClient {
 #[async_trait]
 impl RedeemOperationsExt for reqwest::Client {}
 
-fn change_error_type<T>(item: Result<T, StellarSdkError>) -> Result<T, Error> {
-	item.map_err(|e| Error::BuildTransactionError(format!("Failed to create operation: {e:?}")))
-}
-
 fn create_unconditional_claimable_balance_operation(
 	destination_address: PublicKey,
 	to_be_redeemed_asset: Asset,
@@ -77,15 +86,22 @@ fn create_unconditional_claimable_balance_operation(
 ) -> Result<Operation, Error> {
 	let claimant =
 		Claimant::new(destination_address.clone(), ClaimPredicate::ClaimPredicateUnconditional)
-			.map_err(|e| {
-				tracing::error!("cannot create claimant: {e:?}");
-
-				Error::BuildTransactionError(
-					format!("Failed to create ClaimableBalance operation for claimant {destination_address:?}")
-				)
-			})?;
+			.map_err_as_build_tx_error()?;
 
 	create_claimable_balance_operation(to_be_redeemed_asset, to_be_redeemed_amount, vec![claimant])
+}
+
+/// Converts external error into wallet's `BuildTransactionError`.
+trait BuildTransactionErrorExt<T> {
+	fn map_err_as_build_tx_error(self) -> Result<T, Error>;
+}
+
+impl<T> BuildTransactionErrorExt<T> for Result<T, StellarSdkError> {
+	fn map_err_as_build_tx_error(self) -> Result<T, Error> {
+		self.map_err(|e| {
+			Error::BuildTransactionError(format!("Failed to build transaction: {e:?}"))
+		})
+	}
 }
 
 pub fn create_claimable_balance_operation(
@@ -94,7 +110,8 @@ pub fn create_claimable_balance_operation(
 	claimants: Vec<Claimant>,
 ) -> Result<Operation, Error> {
 	let amount = StroopAmount(stroop_amount);
-	change_error_type(Operation::new_create_claimable_balance(asset, amount, claimants))
+
+	Operation::new_create_claimable_balance(asset, amount, claimants).map_err_as_build_tx_error()
 }
 
 pub fn create_account_operation(
@@ -102,7 +119,8 @@ pub fn create_account_operation(
 	starting_stroop_amount: StellarStroops,
 ) -> Result<Operation, Error> {
 	let amount = StroopAmount(starting_stroop_amount);
-	change_error_type(Operation::new_create_account(destination_address, amount))
+
+	Operation::new_create_account(destination_address, amount).map_err_as_build_tx_error()
 }
 
 pub fn create_payment_operation(
@@ -113,31 +131,30 @@ pub fn create_payment_operation(
 ) -> Result<Operation, Error> {
 	let stroop_amount = StroopAmount(stroop_amount);
 
-	change_error_type(Operation::new_payment(destination_address, asset, stroop_amount))?
+	Operation::new_payment(destination_address, asset, stroop_amount)
+		.map_err_as_build_tx_error()?
 		.set_source_account(source_address)
-		.map_err(|e| Error::BuildTransactionError(format!("Setting source account failed: {e:?}")))
+		.map_err_as_build_tx_error()
 }
 
-pub fn create_basic_transaction(
+pub fn create_basic_stellar_transaction(
 	request_id: [u8; 32],
 	stroop_fee_per_operation: u32,
 	public_key: PublicKey,
 	next_sequence_number: SequenceNumber,
 ) -> Result<Transaction, Error> {
 	let memo_text = Memo::MemoText(
-		LimitedString::new(derive_shortened_request_id(&request_id))
-			.map_err(|_| Error::BuildTransactionError("Invalid hash".to_string()))?,
+		LimitedString::new(derive_shortened_request_id(&request_id)).map_err_as_build_tx_error()?,
 	);
 
-	let transaction = change_error_type(Transaction::new(
+	Transaction::new(
 		public_key,
 		next_sequence_number,
 		Some(stroop_fee_per_operation),
 		Preconditions::PrecondNone,
 		Some(memo_text),
-	))?;
-
-	Ok(transaction)
+	)
+	.map_err_as_build_tx_error()
 }
 
 pub trait AppendExt<T> {
@@ -154,47 +171,53 @@ impl AppendExt<Operation> for Transaction {
 	}
 
 	fn append(&mut self, item: Operation) -> Result<(), Error> {
-		self.append_operation(item).map_err(|e| {
-			Error::BuildTransactionError(format!("Appending payment operation failed: {e:?}"))
-		})?;
-		Ok(())
+		self.append_operation(item).map_err_as_build_tx_error()
 	}
 }
 
 #[cfg(test)]
-pub mod tests {
+pub mod redeem_request_tests {
 	use super::*;
-	use primitives::CurrencyId;
-	use substrate_stellar_sdk::SecretKey;
+	use crate::test_helper::default_usdc_asset;
+	use primitives::{stellar::SecretKey, CurrencyId};
 
 	const INACTIVE_STELLAR_SECRET_KEY: &str =
 		"SAOZUYCGHAHAHUN75JDPAEH7M42N64RN3AATZYB4X2MTXB6V7WV7O2IO";
 
-	const USDC_ISSUER: &str = "GAKNDFRRWA3RPWNLTI3G4EBSD3RGNZZOY5WKWYMQ6CQTG3KIEKPYWAYC";
+	fn inactive_stellar_secretkey() -> SecretKey {
+		SecretKey::from_encoding(INACTIVE_STELLAR_SECRET_KEY).expect("should return a secret key")
+	}
+
 	const IS_PUBLIC_NETWORK: bool = false;
 
-	pub fn account_merge_operation(
+	const DEFAULT_SOURCE_PUBLIC_KEY: &str =
+		"GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN";
+	const DEFAULT_DEST_PUBLIC_KEY: &str =
+		"GBWYDOKJT5BEYJCCBJRHL54AMLRWDALR2NLEY7CKMPSOUKWVJTCFQFYI";
+
+	fn default_testing_stellar_pubkeys() -> (PublicKey, PublicKey) {
+		(
+			PublicKey::from_encoding(DEFAULT_SOURCE_PUBLIC_KEY).expect("should return public key"),
+			PublicKey::from_encoding(DEFAULT_DEST_PUBLIC_KEY).expect("should return public key"),
+		)
+	}
+
+	pub fn create_account_merge_operation(
 		destination_address: PublicKey,
 		source_address: PublicKey,
 	) -> Result<Operation, Error> {
-		change_error_type(Operation::new_account_merge(destination_address))?
+		Operation::new_account_merge(destination_address)
+			.map_err_as_build_tx_error()?
 			.set_source_account(source_address)
-			.map_err(|e| {
-				Error::BuildTransactionError(format!("Setting source account failed: {e:?}"))
-			})
+			.map_err_as_build_tx_error()
 	}
 
+	mod redeem_request_tests {}
+
 	#[tokio::test]
-	async fn create_payment_op_for_redeem_request() {
+	async fn test_active_account_and_xlm_asset() {
 		let client = reqwest::Client::new();
-
-		let source_pub_key =
-			PublicKey::from_encoding("GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN")
-				.expect("should return public key");
-
-		let destination_pub_key =
-			PublicKey::from_encoding("GBWYDOKJT5BEYJCCBJRHL54AMLRWDALR2NLEY7CKMPSOUKWVJTCFQFYI")
-				.expect("should return public key");
+		let (source_pub_key, destination_pub_key) = default_testing_stellar_pubkeys();
 
 		// existing account with XLM asset, use normal op
 		assert_eq!(
@@ -209,47 +232,55 @@ pub mod tests {
 				.await
 				.expect("should not fail"),
 			create_payment_operation(
-				destination_pub_key.clone(),
+				destination_pub_key,
 				Asset::AssetTypeNative,
 				10_000_000,
-				source_pub_key.clone()
+				source_pub_key
 			)
 			.expect("should not fail")
 		);
+	}
+
+	#[tokio::test]
+	async fn test_active_account_and_usdc_asset_with_trustline() {
+		let client = reqwest::Client::new();
+		let (source_pub_key, destination_pub_key) = default_testing_stellar_pubkeys();
 
 		// existing account with non-XLM asset and has a trustline, use normal op
-		let existing_asset =
-			CurrencyId::try_from(("USDC", USDC_ISSUER)).expect("should convert ok");
-		let existing_asset: Asset = existing_asset.try_into().expect("should convert to Asset");
-
 		assert_eq!(
 			client
 				.create_payment_op_for_redeem_request(
 					source_pub_key.clone(),
 					destination_pub_key.clone(),
 					IS_PUBLIC_NETWORK,
-					existing_asset.clone(),
+					default_usdc_asset(),
 					10_000_000
 				)
 				.await
 				.expect("should not fail"),
 			create_payment_operation(
-				destination_pub_key.clone(),
-				existing_asset.clone(),
+				destination_pub_key,
+				default_usdc_asset(),
 				10_000_000,
-				source_pub_key.clone()
+				source_pub_key
 			)
 			.expect("should not fail")
 		);
+	}
 
-		// existing account with non-XLM asset BUT has NO trustline, use claimable balance
+	#[tokio::test]
+	async fn test_active_account_and_usdc_asset_no_trustline() {
+		let client = reqwest::Client::new();
+		let (source_pub_key, destination_pub_key) = default_testing_stellar_pubkeys();
+
 		let unknown_asset = CurrencyId::try_from((
 			"USDC",
 			"GCXQXD3EDC7YILNAHRJLYR53MGQU4V5RXB7JHGPVS3HQHLBJDWCJHVIB",
 		))
 		.expect("should convert ok");
 		let unknown_asset: Asset = unknown_asset.try_into().expect("should convert to Asset");
-		let to_be_redeemed_amount = 10_000_000;
+
+		// existing account with non-XLM asset BUT has NO trustline, use claimable balance
 		assert_eq!(
 			client
 				.create_payment_op_for_redeem_request(
@@ -257,57 +288,83 @@ pub mod tests {
 					destination_pub_key.clone(),
 					IS_PUBLIC_NETWORK,
 					unknown_asset.clone(),
-					to_be_redeemed_amount
+					10_000_000
 				)
 				.await
 				.expect("should not fail"),
 			create_unconditional_claimable_balance_operation(
-				destination_pub_key.clone(),
-				unknown_asset.clone(),
-				to_be_redeemed_amount,
+				destination_pub_key,
+				unknown_asset,
+				10_000_000,
 			)
 			.expect("should not fail")
 		);
+	}
+
+	#[tokio::test]
+	async fn test_inactive_account_and_xlm_asset_greater_than_equal_one() {
+		let client = reqwest::Client::new();
+		let source_pub_key =
+			PublicKey::from_encoding(DEFAULT_SOURCE_PUBLIC_KEY).expect("should return public key");
+		let destination_pub_key = inactive_stellar_secretkey().get_public().clone();
 
 		// INactive account and XLM asset of value >=1, use create account op
-		let secret_key = SecretKey::from_encoding(INACTIVE_STELLAR_SECRET_KEY)
-			.expect("should return secret key");
-		let destination_pub_key = secret_key.get_public().clone();
-
 		assert_eq!(
 			client
 				.create_payment_op_for_redeem_request(
-					source_pub_key.clone(),
+					source_pub_key,
 					destination_pub_key.clone(),
 					IS_PUBLIC_NETWORK,
 					Asset::AssetTypeNative,
-					to_be_redeemed_amount
+					10_000_000
 				)
 				.await
 				.expect("should not fail"),
-			create_account_operation(destination_pub_key.clone(), to_be_redeemed_amount)
-				.expect("should not fail")
+			create_account_operation(destination_pub_key, 10_000_000).expect("should not fail")
 		);
+	}
+
+	#[tokio::test]
+	async fn test_inactive_account_and_xlm_asset_less_than_one() {
+		let client = reqwest::Client::new();
+		let source_pub_key =
+			PublicKey::from_encoding(DEFAULT_SOURCE_PUBLIC_KEY).expect("should return public key");
+		let destination_pub_key = inactive_stellar_secretkey().get_public().clone();
 
 		// INactive account but XLM asset of value < 1, use claimable balance
 		assert_eq!(
 			client
 				.create_payment_op_for_redeem_request(
-					source_pub_key.clone(),
+					source_pub_key,
 					destination_pub_key.clone(),
 					IS_PUBLIC_NETWORK,
 					Asset::AssetTypeNative,
-					to_be_redeemed_amount - 1000
+					9_999_000
 				)
 				.await
 				.expect("should not fail"),
 			create_unconditional_claimable_balance_operation(
-				destination_pub_key.clone(),
+				destination_pub_key,
 				Asset::AssetTypeNative,
-				to_be_redeemed_amount - 1000,
+				9_999_000,
 			)
 			.expect("should not fail")
 		);
+	}
+
+	#[tokio::test]
+	async fn test_inactive_account_and_usdc_asset() {
+		let client = reqwest::Client::new();
+		let source_pub_key =
+			PublicKey::from_encoding(DEFAULT_SOURCE_PUBLIC_KEY).expect("should return public key");
+		let destination_pub_key = inactive_stellar_secretkey().get_public().clone();
+
+		let unknown_asset = CurrencyId::try_from((
+			"USDC",
+			"GCXQXD3EDC7YILNAHRJLYR53MGQU4V5RXB7JHGPVS3HQHLBJDWCJHVIB",
+		))
+		.expect("should convert ok");
+		let unknown_asset: Asset = unknown_asset.try_into().expect("should convert to Asset");
 
 		// INactive account and asset is NOT XLM, use claimable balance
 		assert_eq!(
@@ -317,14 +374,14 @@ pub mod tests {
 					destination_pub_key.clone(),
 					IS_PUBLIC_NETWORK,
 					unknown_asset.clone(),
-					to_be_redeemed_amount
+					1_000_000
 				)
 				.await
 				.expect("should not fail"),
 			create_unconditional_claimable_balance_operation(
 				destination_pub_key,
 				unknown_asset,
-				to_be_redeemed_amount,
+				1_000_000,
 			)
 			.expect("should not fail")
 		);

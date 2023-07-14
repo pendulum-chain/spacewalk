@@ -10922,7 +10922,6 @@ dependencies = [
  "serde_json",
  "serial_test",
  "spacewalk-primitives",
- "substrate-stellar-sdk",
  "thiserror",
  "tokio",
  "tokio-metrics",

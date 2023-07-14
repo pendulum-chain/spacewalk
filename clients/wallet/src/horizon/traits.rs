@@ -7,9 +7,11 @@ use crate::{
 	types::PagingToken,
 };
 use async_trait::async_trait;
-use primitives::StellarTypeToString;
+use primitives::{
+	stellar::{ClaimableBalanceId, PublicKey, TransactionEnvelope},
+	StellarTypeToString,
+};
 use serde::de::DeserializeOwned;
-use substrate_stellar_sdk::{ClaimableBalanceId, PublicKey, TransactionEnvelope};
 
 #[async_trait]
 pub trait HorizonClient {
