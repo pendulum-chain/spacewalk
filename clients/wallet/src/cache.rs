@@ -2,13 +2,15 @@ use crate::{
 	error::{CacheErrorKind, Error},
 	types::PagingToken,
 };
-use primitives::TransactionEnvelopeExt;
+use primitives::{
+	stellar::{types::SequenceNumber, TransactionEnvelope, XdrCodec},
+	TransactionEnvelopeExt,
+};
 use std::{
 	fs::{create_dir_all, read_dir, remove_file, File, OpenOptions},
 	io::{Read, Write},
 	path::Path,
 };
-use substrate_stellar_sdk::{types::SequenceNumber, TransactionEnvelope, XdrCodec};
 
 /// a helpful macro to unwrap an `Ok` or return immediately.
 macro_rules! unwrap_or_return {
@@ -328,12 +330,14 @@ mod test {
 		},
 		error::CacheErrorKind,
 	};
-	use primitives::TransactionEnvelopeExt;
-	use std::{fmt::Debug, fs::read_dir};
-	use substrate_stellar_sdk::{
-		types::{Preconditions, SequenceNumber},
-		PublicKey, Transaction, TransactionEnvelope,
+	use primitives::{
+		stellar::{
+			types::{Preconditions, SequenceNumber},
+			PublicKey, Transaction, TransactionEnvelope,
+		},
+		TransactionEnvelopeExt,
 	};
+	use std::{fmt::Debug, fs::read_dir};
 
 	const PUB_KEY: &str = "GCENYNAX2UCY5RFUKA7AYEXKDIFITPRAB7UYSISCHVBTIAKPU2YO57OA";
 	fn storage() -> WalletStateStorage {

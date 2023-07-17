@@ -194,30 +194,40 @@ impl Request {
 			destination_public_key,
 			wallet,
 		);
-		let result = wallet
-			.send_payment_to_address(
-				destination_public_key.clone(),
-				self.asset.clone(),
-				stroop_amount,
-				request_id,
-				DEFAULT_STROOP_FEE_PER_OPERATION,
-			)
-			.await;
 
-		match result {
-			Ok(response) => {
-				let tx_env = TransactionEnvelope::from_base64_xdr(response.envelope_xdr)
-					.map_err(|_| Error::StellarSdkError)?;
-				let slot: Slot = response.ledger as Slot;
-				tracing::info!(
-					"Successfully sent stellar payment to {:?} for {}",
-					destination_public_key,
-					self.amount
-				);
-				Ok((tx_env, slot))
-			},
-			Err(e) => Err(Error::StellarWalletError(e)),
+		let response = match self.request_type {
+			RequestType::Redeem =>
+				wallet
+					.send_payment_to_address_for_redeem_request(
+						destination_public_key.clone(),
+						self.asset.clone(),
+						stroop_amount,
+						request_id,
+						DEFAULT_STROOP_FEE_PER_OPERATION,
+					)
+					.await,
+			RequestType::Replace =>
+				wallet
+					.send_payment_to_address(
+						destination_public_key.clone(),
+						self.asset.clone(),
+						stroop_amount,
+						request_id,
+						DEFAULT_STROOP_FEE_PER_OPERATION,
+					)
+					.await,
 		}
+		.map_err(|e| Error::StellarWalletError(e))?;
+
+		let tx_env = TransactionEnvelope::from_base64_xdr(response.envelope_xdr)
+			.map_err(|_| Error::StellarSdkError)?;
+		let slot: Slot = response.ledger as Slot;
+		tracing::info!(
+			"Successfully sent stellar payment to {:?} for {}",
+			destination_public_key,
+			self.amount
+		);
+		Ok((tx_env, slot))
 	}
 
 	/// Executes the request. Upon failure it will retry
