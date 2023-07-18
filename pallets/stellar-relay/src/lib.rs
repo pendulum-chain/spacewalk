@@ -174,8 +174,10 @@ pub mod pallet {
 			};
 			let organization_satoshipay =
 				OrganizationOf::<T> { name: create_bounded_vec("SatoshiPay"), id: 1.into() };
-			let organization_wirex =
-				OrganizationOf::<T> { name: create_bounded_vec("Wirex"), id: 2.into() };
+			let organization_franklin_templeton = OrganizationOf::<T> {
+				name: create_bounded_vec("Franklin Templeton"),
+				id: 2.into(),
+			};
 			let organization_coinqvest =
 				OrganizationOf::<T> { name: create_bounded_vec("Coinqvest"), id: 3.into() };
 			let organization_blockdaemon =
@@ -230,27 +232,27 @@ pub mod pallet {
 					),
 					organization_id: organization_sdf.id,
 				},
-				// Wirex validators
+				// Franklin Templeton validators
 				ValidatorOf::<T> {
-					name: create_bounded_vec("$wirex-sg"),
+					name: create_bounded_vec("FTSCV1"),
 					public_key: create_bounded_vec(
-						"GAB3GZIE6XAYWXGZUDM4GMFFLJBFMLE2JDPUCWUZXMOMT3NHXDHEWXAS",
+						"GARYGQ5F2IJEBCZJCBNPWNWVDOFK7IBOHLJKKSG2TMHDQKEEC6P4PE4V",
 					),
-					organization_id: organization_wirex.id,
+					organization_id: organization_franklin_templeton.id,
 				},
 				ValidatorOf::<T> {
-					name: create_bounded_vec("$wirex-us"),
+					name: create_bounded_vec("FTSCV2"),
 					public_key: create_bounded_vec(
-						"GDXUKFGG76WJC7ACEH3JUPLKM5N5S76QSMNDBONREUXPCZYVPOLFWXUS",
+						"GCMSM2VFZGRPTZKPH5OABHGH4F3AVS6XTNJXDGCZ3MKCOSUBH3FL6DOB",
 					),
-					organization_id: organization_wirex.id,
+					organization_id: organization_franklin_templeton.id,
 				},
 				ValidatorOf::<T> {
-					name: create_bounded_vec("$wirex-uk"),
+					name: create_bounded_vec("FTSCV3"),
 					public_key: create_bounded_vec(
-						"GBBQQT3EIUSXRJC6TGUCGVA3FVPXVZLGG3OJYACWBEWYBHU46WJLWXEU",
+						"GA7DV63PBUUWNUFAF4GAZVXU2OZMYRATDLKTC7VTCG7AU4XUPN5VRX4A",
 					),
-					organization_id: organization_wirex.id,
+					organization_id: organization_franklin_templeton.id,
 				},
 				// Coinqvest validators
 				ValidatorOf::<T> {
@@ -341,7 +343,7 @@ pub mod pallet {
 					organization_id: organization_public_node.id,
 				},
 				ValidatorOf::<T> {
-					name: create_bounded_vec("$boötes"),
+					name: create_bounded_vec("$bootes"),
 					public_key: create_bounded_vec(
 						"GCVJ4Z6TI6Z2SOGENSPXDQ2U4RKH3CNQKYUHNSSPYFPNWTLGS6EBH7I2",
 					),
@@ -359,7 +361,7 @@ pub mod pallet {
 			let organizations: Vec<OrganizationOf<T>> = vec![
 				organization_satoshipay,
 				organization_sdf,
-				organization_wirex,
+				organization_franklin_templeton,
 				organization_coinqvest,
 				organization_blockdaemon,
 				organization_lobstr,
