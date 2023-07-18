@@ -307,7 +307,7 @@ pub mod pallet {
 				ValidatorOf::<T> {
 					name: create_bounded_vec("$lobstr2"),
 					public_key: create_bounded_vec(
-						"GDXQB3OMMQ6MGG43PWFBZWBFKBBDUZIVSUDAZZTRAWQZKES2CDSE5HKJ",
+						"GCB2VSADESRV2DDTIVTFLBDI562K6KE3KMKILBHUHUWFXCUBHGQDI7VL",
 					),
 					organization_id: organization_lobstr.id,
 				},
