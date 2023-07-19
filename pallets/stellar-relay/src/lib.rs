@@ -174,42 +174,20 @@ pub mod pallet {
 			};
 			let organization_satoshipay =
 				OrganizationOf::<T> { name: create_bounded_vec("SatoshiPay"), id: 1.into() };
+			let organization_coinqvest =
+				OrganizationOf::<T> { name: create_bounded_vec("Coinqvest"), id: 2.into() };
+			let organization_blockdaemon =
+				OrganizationOf::<T> { name: create_bounded_vec("Blockdaemon"), id: 3.into() };
+			let organization_lobstr =
+				OrganizationOf::<T> { name: create_bounded_vec("LOBSTR"), id: 4.into() };
+			let organization_public_node =
+				OrganizationOf::<T> { name: create_bounded_vec("Public Node"), id: 5.into() };
 			let organization_franklin_templeton = OrganizationOf::<T> {
 				name: create_bounded_vec("Franklin Templeton"),
-				id: 2.into(),
+				id: 6.into(),
 			};
-			let organization_coinqvest =
-				OrganizationOf::<T> { name: create_bounded_vec("Coinqvest"), id: 3.into() };
-			let organization_blockdaemon =
-				OrganizationOf::<T> { name: create_bounded_vec("Blockdaemon"), id: 4.into() };
-			let organization_lobstr =
-				OrganizationOf::<T> { name: create_bounded_vec("LOBSTR"), id: 5.into() };
-			let organization_public_node =
-				OrganizationOf::<T> { name: create_bounded_vec("Public Node"), id: 6.into() };
 
 			let validators: Vec<ValidatorOf<T>> = vec![
-				// Satoshipay validators
-				ValidatorOf::<T> {
-					name: create_bounded_vec("$satoshipay-us"),
-					public_key: create_bounded_vec(
-						"GAK6Z5UVGUVSEK6PEOCAYJISTT5EJBB34PN3NOLEQG2SUKXRVV2F6HZY",
-					),
-					organization_id: organization_satoshipay.id,
-				},
-				ValidatorOf::<T> {
-					name: create_bounded_vec("$satoshipay-de"),
-					public_key: create_bounded_vec(
-						"GC5SXLNAM3C4NMGK2PXK4R34B5GNZ47FYQ24ZIBFDFOCU6D4KBN4POAE",
-					),
-					organization_id: organization_satoshipay.id,
-				},
-				ValidatorOf::<T> {
-					name: create_bounded_vec("$satoshipay-sg"),
-					public_key: create_bounded_vec(
-						"GBJQUIXUO4XSNPAUT6ODLZUJRV2NPXYASKUBY4G5MYP3M47PCVI55MNT",
-					),
-					organization_id: organization_satoshipay.id,
-				},
 				// SDF validators
 				ValidatorOf::<T> {
 					name: create_bounded_vec("$sdf1"),
@@ -232,27 +210,27 @@ pub mod pallet {
 					),
 					organization_id: organization_sdf.id,
 				},
-				// Franklin Templeton validators
+				// Satoshipay validators
 				ValidatorOf::<T> {
-					name: create_bounded_vec("FTSCV1"),
+					name: create_bounded_vec("$satoshipay-us"),
 					public_key: create_bounded_vec(
-						"GARYGQ5F2IJEBCZJCBNPWNWVDOFK7IBOHLJKKSG2TMHDQKEEC6P4PE4V",
+						"GAK6Z5UVGUVSEK6PEOCAYJISTT5EJBB34PN3NOLEQG2SUKXRVV2F6HZY",
 					),
-					organization_id: organization_franklin_templeton.id,
+					organization_id: organization_satoshipay.id,
 				},
 				ValidatorOf::<T> {
-					name: create_bounded_vec("FTSCV2"),
+					name: create_bounded_vec("$satoshipay-de"),
 					public_key: create_bounded_vec(
-						"GCMSM2VFZGRPTZKPH5OABHGH4F3AVS6XTNJXDGCZ3MKCOSUBH3FL6DOB",
+						"GC5SXLNAM3C4NMGK2PXK4R34B5GNZ47FYQ24ZIBFDFOCU6D4KBN4POAE",
 					),
-					organization_id: organization_franklin_templeton.id,
+					organization_id: organization_satoshipay.id,
 				},
 				ValidatorOf::<T> {
-					name: create_bounded_vec("FTSCV3"),
+					name: create_bounded_vec("$satoshipay-sg"),
 					public_key: create_bounded_vec(
-						"GA7DV63PBUUWNUFAF4GAZVXU2OZMYRATDLKTC7VTCG7AU4XUPN5VRX4A",
+						"GBJQUIXUO4XSNPAUT6ODLZUJRV2NPXYASKUBY4G5MYP3M47PCVI55MNT",
 					),
-					organization_id: organization_franklin_templeton.id,
+					organization_id: organization_satoshipay.id,
 				},
 				// Coinqvest validators
 				ValidatorOf::<T> {
@@ -355,6 +333,28 @@ pub mod pallet {
 						"GCIXVKNFPKWVMKJKVK2V4NK7D4TC6W3BUMXSIJ365QUAXWBRPPJXIR2Z",
 					),
 					organization_id: organization_public_node.id,
+				},
+				// Franklin Templeton validators
+				ValidatorOf::<T> {
+					name: create_bounded_vec("FTSCV1"),
+					public_key: create_bounded_vec(
+						"GARYGQ5F2IJEBCZJCBNPWNWVDOFK7IBOHLJKKSG2TMHDQKEEC6P4PE4V",
+					),
+					organization_id: organization_franklin_templeton.id,
+				},
+				ValidatorOf::<T> {
+					name: create_bounded_vec("FTSCV2"),
+					public_key: create_bounded_vec(
+						"GCMSM2VFZGRPTZKPH5OABHGH4F3AVS6XTNJXDGCZ3MKCOSUBH3FL6DOB",
+					),
+					organization_id: organization_franklin_templeton.id,
+				},
+				ValidatorOf::<T> {
+					name: create_bounded_vec("FTSCV3"),
+					public_key: create_bounded_vec(
+						"GA7DV63PBUUWNUFAF4GAZVXU2OZMYRATDLKTC7VTCG7AU4XUPN5VRX4A",
+					),
+					organization_id: organization_franklin_templeton.id,
 				},
 			];
 
