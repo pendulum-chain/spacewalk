@@ -51,6 +51,7 @@ pub fn horizon_url(is_public_network: bool, is_need_fallback: bool) -> &'static 
 #[async_trait]
 impl HorizonClient for reqwest::Client {
 	async fn get_from_url<R: DeserializeOwned>(&self, url: &str) -> Result<R, Error> {
+		tracing::debug!("accessing url: {url:?}");
 		let response = self.get(url).send().await.map_err(Error::HttpFetchingError)?;
 		interpret_response::<R>(response).await
 	}

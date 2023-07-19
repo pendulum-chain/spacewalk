@@ -1,3 +1,4 @@
+use std::fmt::{Debug, Formatter};
 use crate::Error;
 use hmac::{Hmac, Mac};
 use sha2::Sha256;

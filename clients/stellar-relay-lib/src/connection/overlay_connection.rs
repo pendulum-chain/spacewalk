@@ -1,3 +1,4 @@
+use std::future::Future;
 use crate::{
 	connection::{
 		connector::ConnectorActions,
@@ -64,24 +65,26 @@ impl StellarOverlayConnection {
 					"Connection timed out. Reconnecting to {:?}...",
 					&self.conn_info.address
 				);
-				if let Ok(new_user) = StellarOverlayConnection::connect(
+
+				match StellarOverlayConnection::connect(
 					self.local_node.clone(),
 					self.conn_info.clone(),
-				)
-				.await
-				{
-					self.max_retries = new_user.max_retries;
-					self.actions_sender = new_user.actions_sender;
-					self.relay_message_receiver = new_user.relay_message_receiver;
-					log::info!("Reconnected to {:?}!", &self.conn_info.address);
-					return self.relay_message_receiver.recv().await
-				} else {
-					retries += 1;
-					log::error!(
-						"Failed to reconnect! # of retries left: {}. Retrying in 3 seconds...",
+				).await {
+					Ok(new_user) => {
+						self.max_retries = new_user.max_retries;
+						self.actions_sender = new_user.actions_sender;
+						self.relay_message_receiver = new_user.relay_message_receiver;
+						log::info!("Reconnected to {:?}!", &self.conn_info.address);
+						return self.relay_message_receiver.recv().await
+					}
+					Err(e) => {
+						retries += 1;
+						log::error!(
+						"Failed to reconnect: {e:?}\n # of retries left: {}. Retrying in 3 seconds...",
 						self.max_retries
 					);
-					tokio::time::sleep(Duration::from_secs(3)).await;
+						tokio::time::sleep(Duration::from_secs(3)).await;
+					}
 				}
 			}
 		}
@@ -94,6 +97,9 @@ impl StellarOverlayConnection {
 		local_node: NodeInfo,
 		conn_info: ConnectionInfo,
 	) -> Result<StellarOverlayConnection, Error> {
+		log::info!("Connect using: {local_node:?}");
+		log::info!("Connecting to: {conn_info:?}");
+
 		let retries = conn_info.retries;
 		let timeout_in_secs = conn_info.timeout_in_secs;
 		// split the stream for easy handling of read and write

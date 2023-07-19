@@ -1,3 +1,4 @@
+use std::fmt::{Debug, Formatter};
 use substrate_stellar_sdk::{
 	types::{AuthenticatedMessageV0, Curve25519Public, HmacSha256Mac, MessageType},
 	XdrCodec,
@@ -38,14 +39,27 @@ pub struct Connector {
 	relay_message_sender: mpsc::Sender<StellarRelayMessage>,
 }
 
+impl Debug for Connector {
+	fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+		let is_hmac_keys_filled  = self.hmac_keys.is_some();
+		f.debug_struct("Connector")
+			.field("local", &self.local)
+			.field("remote", &self.remote_info)
+			.field("hmac_keys_exist",&is_hmac_keys_filled)
+			.field("connection_auth", &self.connection_auth)
+			.field("timeout_in_secs", &self.timeout_in_secs)
+			.field("retries", &self.retries)
+			.field("receive_tx_messages", &self.receive_tx_messages)
+			.field("receive_scp_messages", &self.receive_scp_messages)
+			.field("handshake_state", &self.handshake_state)
+			.field("flow_controller", &self.flow_controller)
+			.finish()
+	}
+}
+
 impl Drop for Connector {
 	fn drop(&mut self) {
-		log::trace!(
-			"dropped Connector: \n local: {:?} \n remote_info: {:?} \n auth: {:?}",
-			self.local,
-			self.remote_info,
-			self.connection_auth.pub_key_ecdh()
-		);
+		log::trace!("dropped Connector: {:?}",self);
 	}
 }
 
@@ -57,7 +71,7 @@ impl Connector {
 		body: &[u8],
 	) -> Result<(), Error> {
 		let remote_info = self.remote_info.as_ref().ok_or(Error::NoRemoteInfo)?;
-		log::debug!(
+		log::trace!(
 			"remote sequence: {}, auth message sequence: {}",
 			remote_info.sequence(),
 			auth_msg.sequence

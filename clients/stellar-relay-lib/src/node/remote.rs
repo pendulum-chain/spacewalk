@@ -1,16 +1,39 @@
+use std::fmt::{Debug, Formatter};
 use crate::node::NodeInfo;
 use substrate_stellar_sdk::{
 	types::{Curve25519Public, Hello, Uint256},
 	PublicKey,
 };
 
-#[derive(Debug, Clone)]
+#[derive(Clone)]
 pub struct RemoteInfo {
 	sequence: u64,
 	pub_key_ecdh: Curve25519Public,
 	pub_key: PublicKey,
 	nonce: Uint256,
 	node: NodeInfo,
+}
+
+impl Debug for RemoteInfo {
+	fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+		let pub_key_ecdh = &self.pub_key_ecdh;
+		let pub_key_ecdh = hex::encode(pub_key_ecdh.key);
+
+		let pub_key = &self.pub_key.to_encoding();
+		let pub_key = std::str::from_utf8(pub_key).unwrap_or("****");
+
+		let nonce = &self.nonce;
+		let nonce = hex::encode(nonce);
+
+		f.debug_struct("RemoteInfo")
+			.field("sequence", &self.sequence)
+			.field("pub_key_ecdh", &pub_key_ecdh)
+			.field("pub_key", &pub_key)
+			.field("nonce", &nonce)
+			.field("node", &self.node)
+			.finish()
+
+	}
 }
 
 impl RemoteInfo {

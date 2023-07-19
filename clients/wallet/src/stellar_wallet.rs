@@ -7,6 +7,7 @@ use primitives::stellar::{
 	Asset as StellarAsset, Operation, PublicKey, SecretKey, TransactionEnvelope,
 };
 use tokio::sync::{oneshot, Mutex};
+use tracing::log;
 
 use crate::{
 	cache::WalletStateStorage,
@@ -66,6 +67,7 @@ impl StellarWallet {
 		&self,
 		envelope: TransactionEnvelope,
 	) -> Result<TransactionResponse, Error> {
+		tracing::debug!("submitting transaction: {envelope:?}");
 		let sequence = &envelope.sequence_number().ok_or(Error::cache_error_with_env(
 			CacheErrorKind::UnknownSequenceNumber,
 			envelope.clone(),
@@ -355,7 +357,7 @@ impl StellarWallet {
 			self.client.get_account(self.get_public_key(), self.is_public_network).await?;
 		let next_sequence_number = account.sequence + 1;
 
-		tracing::info!(
+		tracing::trace!(
 			"Next sequence number: {} for account: {:?}",
 			next_sequence_number,
 			account.account_id

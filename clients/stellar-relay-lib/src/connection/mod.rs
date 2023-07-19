@@ -5,6 +5,7 @@ mod hmac;
 
 mod authentication;
 mod connector;
+
 pub mod helper;
 mod overlay_connection;
 mod services;
@@ -12,6 +13,7 @@ pub mod xdr_converter;
 
 pub(crate) use connector::*;
 pub use error::Error;
+pub use helper::*;
 pub use overlay_connection::*;
 use serde::Serialize;
 use std::fmt::{Debug, Formatter};

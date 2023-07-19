@@ -17,7 +17,7 @@ impl Connector {
 		let (proc_id, data) = xdr;
 		let (auth_msg, msg_type) = parse_authenticated_message(&data)?;
 
-		log::debug!("proc_id: {} processing {:?}", proc_id, msg_type);
+		log::trace!("proc_id: {} processing {:?}", proc_id, msg_type);
 
 		match msg_type {
 			MessageType::Transaction | MessageType::FloodAdvert if !self.receive_tx_messages() => {
@@ -62,17 +62,14 @@ impl Connector {
 				} else {
 					self.send_auth_message().await?;
 				}
-				log::info!("Hello message processed successfully");
 			},
 
-			StellarMessage::Auth(_) => {
+			StellarMessage::Auth(x) => {
 				self.process_auth_message().await?;
 			},
 
-			StellarMessage::SendMore(_) => {
-				log::info!("SendMore message received from overlay");
-			},
 			other => {
+				log::trace!("proc_id: {p_id}: message received from overlay: {other:?}");
 				self.send_to_user(StellarRelayMessage::Data {
 					p_id,
 					msg_type,
@@ -92,8 +89,8 @@ impl Connector {
 
 		self.handshake_completed();
 
-		log::info!("Handshake completed");
 		if let Some(remote) = self.remote() {
+			log::debug!("sending connect message: {remote:?}");
 			self.send_to_user(StellarRelayMessage::Connect {
 				pub_key: remote.pub_key().clone(),
 				node_info: remote.node().clone(),
