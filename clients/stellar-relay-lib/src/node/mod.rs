@@ -21,15 +21,12 @@ pub struct NodeInfo {
 
 impl Debug for NodeInfo {
 	fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-		write!(
-			f,
-			"NodeInfo {{ ledger_version: {}, overlay_version: {}, overlay_min_version: {}, \
-			version_str: {} }}",
-			self.ledger_version,
-			self.overlay_version,
-			self.overlay_min_version,
-			String::from_utf8_lossy(&self.version_str),
-		)
+		f.debug_struct("NodeInfo")
+			.field("ledger_version", &self.ledger_version)
+			.field("overlay_version", &self.overlay_version)
+			.field("overlay_min_version", &self.overlay_min_version)
+			.field("version_str", &String::from_utf8_lossy(&self.version_str))
+			.finish()
 	}
 }
 

@@ -370,6 +370,7 @@ pub async fn execute_open_requests(
 	oracle_agent: Arc<OracleAgent>,
 	payment_margin: Duration,
 ) -> Result<(), ServiceError<Error>> {
+	let mut processed_requests_count = 0;
 	let parachain_rpc = &parachain_rpc;
 	let vault_id = parachain_rpc.get_account_id().clone();
 
@@ -428,10 +429,11 @@ pub async fn execute_open_requests(
 					open_requests.retain(|key, _| key != &hash_as_memo);
 
 					tracing::info!(
-						"Open Request {:?} #{}: processing valid Stellar payment...",
+						"Open Request {:?} request #{}: processing valid Stellar payment...",
 						request.request_type,
 						request.hash
 					);
+					processed_requests_count += 1;
 
 					// start a new task to execute on the parachain and make copies of the
 					// variables we move into the task
@@ -451,6 +453,7 @@ pub async fn execute_open_requests(
 			tracing::error!("Open Requests: Failed to get transactions from Stellar: {error}");
 		},
 	}
+	tracing::info!("Open Requests: Processed {processed_requests_count} requests");
 
 	// All requests remaining in the hashmap did not have a Stellar payment yet, so pay
 	// and execute all of these
@@ -464,11 +467,12 @@ pub async fn execute_open_requests(
 		let oracle_agent = oracle_agent.clone();
 		let rate_limiter = rate_limiter.clone();
 		spawn_cancelable(shutdown_tx.subscribe(), async move {
+			let mut processed_requests_count: u8 = 0; // revert back
 			let vault = match vault_id_manager.get_vault(&request.vault_id).await {
 				Some(x) => x,
 				None => {
 					tracing::error!(
-						"{:?} request #{:?}: Failed to fetch vault data for vault {}",
+						"Open Requests: {:?} request #{:?}: Failed to fetch vault data for vault {}",
 						request.request_type,
 						request.hash,
 						request.vault_id.pretty_print()
@@ -478,7 +482,7 @@ pub async fn execute_open_requests(
 			};
 
 			tracing::info!(
-				"{:?} request #{:?} found without Stellar payment - processing...",
+				"Open Requests: {:?} request #{:?} found without Stellar payment - processing...",
 				request.request_type,
 				request.hash
 			);
@@ -488,18 +492,23 @@ pub async fn execute_open_requests(
 			// error.
 			rate_limiter.until_ready().await;
 			match request.pay_and_execute(parachain_rpc, vault, oracle_agent).await {
-				Ok(_) => tracing::info!(
-					"{:?} request #{:?} successfully executed",
-					request.request_type,
-					request.hash
-				),
+				Ok(_) => {
+					tracing::info!(
+						"Open Requests: {:?} request #{:?} successfully executed",
+						request.request_type,
+						request.hash
+					);
+					processed_requests_count += 1;
+				},
 				Err(e) => tracing::info!(
-					"{:?} request #{:?} failed to process: {}",
+					"Open Requests: {:?} request #{:?} failed to process: {}",
 					request.request_type,
 					request.hash,
 					e
 				),
 			}
+
+			tracing::info!("Open Requests: Processed extra {} requests", processed_requests_count);
 		});
 	}
 

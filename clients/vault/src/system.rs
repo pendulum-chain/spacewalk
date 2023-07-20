@@ -483,12 +483,10 @@ impl VaultService {
 			self.config.payment_margin_minutes,
 		);
 		service::spawn_cancelable(self.shutdown.subscribe(), async move {
-			tracing::info!("Checking for open requests...");
 			// TODO: kill task on shutdown signal to prevent double payment
-			match open_request_executor.await {
-				Ok(_) => tracing::info!("Done processing open requests"),
-				Err(e) => tracing::error!("Failed to process open requests: {}", e),
-			}
+			if let Err(e) = open_request_executor.await {
+				tracing::error!("Failed to process open requests: {}", e)
+			};
 		});
 
 		// issue handling
@@ -663,9 +661,13 @@ impl VaultService {
 		}
 
 		if self.spacewalk_parachain.get_public_key().await?.is_none() {
-			let public_key = self.stellar_wallet.read().await.get_public_key_raw();
-			tracing::info!("Registering public key to the parachain... {:?}", public_key);
-			self.spacewalk_parachain.register_public_key(public_key).await?;
+			let public_key = self.stellar_wallet.read().await.get_public_key();
+			let pub_key_encoded = public_key.to_encoding();
+			tracing::info!(
+				"Registering public key to the parachain...{}",
+				from_utf8(&pub_key_encoded)?
+			);
+			self.spacewalk_parachain.register_public_key(public_key.into_binary()).await?;
 		} else {
 			tracing::info!("Public key already registered");
 		}
@@ -727,12 +729,11 @@ impl VaultService {
 	async fn await_parachain_block(&self) -> Result<u32, Error> {
 		// wait for a new block to arrive, to prevent processing an event that potentially
 		// has been processed already prior to restarting
-		tracing::info!("Waiting for new block...");
 		let startup_height = self.spacewalk_parachain.get_current_chain_height().await?;
 		while startup_height == self.spacewalk_parachain.get_current_chain_height().await? {
 			sleep(CHAIN_HEIGHT_POLLING_INTERVAL).await;
 		}
-		tracing::info!("Got new block...");
+		tracing::info!("Got new block at height {startup_height}");
 		Ok(startup_height)
 	}
 }

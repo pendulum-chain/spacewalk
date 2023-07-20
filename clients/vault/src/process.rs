@@ -106,7 +106,7 @@ impl PidFile {
 
 	pub fn remove(&mut self) -> Result<(), ServiceError<Error>> {
 		if self.created_pidfile {
-			tracing::info!(
+			tracing::debug!(
 				"Removing PID file at: {}",
 				self.path
 					.clone()
@@ -117,7 +117,7 @@ impl PidFile {
 			fs::remove_file(&self.path)?;
 			self.path = PathBuf::default();
 		} else {
-			tracing::info!("No PID file created - no clean up required");
+			tracing::debug!("No PID file created - no clean up required");
 		}
 		Ok(())
 	}
