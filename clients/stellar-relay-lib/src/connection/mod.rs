@@ -5,7 +5,6 @@ mod hmac;
 
 mod authentication;
 mod connector;
-
 pub mod helper;
 mod overlay_connection;
 mod services;

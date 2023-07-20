@@ -6,7 +6,6 @@ use crate::{
 	node::NodeInfo,
 	ConnectionInfo, Connector, Error, StellarRelayMessage,
 };
-
 use substrate_stellar_sdk::types::StellarMessage;
 use tokio::{sync::mpsc, time::Duration};
 
