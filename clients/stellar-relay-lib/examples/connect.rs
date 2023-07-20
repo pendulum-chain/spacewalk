@@ -1,9 +1,6 @@
 use stellar_relay_lib::{
 	connect_to_stellar_overlay_network,
-	sdk::{
-		types::{ScpStatementPledges, StellarMessage},
-		XdrCodec,
-	},
+	sdk::types::{ScpStatementPledges, StellarMessage},
 	StellarOverlayConfig, StellarRelayMessage,
 };
 
@@ -34,9 +31,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 		match relay_message {
 			StellarRelayMessage::Connect { pub_key, node_info } => {
 				let pub_key = pub_key.to_encoding();
-				// //let x = base64::encode(pub_key_xdr);
-				let x = std::str::from_utf8(&pub_key).expect("should work?");
-				log::info!("Connected to Stellar Node: {:?}", x);
+				let pub_key = std::str::from_utf8(&pub_key).expect("should work?");
+				log::info!("Connected to Stellar Node: {pub_key}");
 				log::info!("{:?}", node_info);
 			},
 			StellarRelayMessage::Data { p_id: _, msg_type, msg } => match *msg {

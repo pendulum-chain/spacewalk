@@ -62,6 +62,7 @@ impl Connector {
 				} else {
 					self.send_auth_message().await?;
 				}
+				log::info!("Hello message processed successfully");
 			},
 
 			StellarMessage::Auth(_) => {
