@@ -64,7 +64,7 @@ impl Connector {
 				}
 			},
 
-			StellarMessage::Auth(x) => {
+			StellarMessage::Auth(_) => {
 				self.process_auth_message().await?;
 			},
 

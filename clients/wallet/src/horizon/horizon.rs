@@ -186,9 +186,7 @@ impl HorizonClient for reqwest::Client {
 					})
 				},
 
-				other => {
-					return other
-				},
+				other => return other,
 			}
 		}
 	}

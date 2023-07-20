@@ -179,7 +179,6 @@ impl ScpMessageCollector {
 	/// * `slot` - the slot where the txset is  to get.
 	/// * `sender` - used to send messages to Stellar Node
 	pub async fn build_proof(&self, slot: Slot, sender: &StellarMessageSender) -> Option<Proof> {
-		tracing::info!("Proof Building for slot {slot}: started");
 		let envelopes = self.get_envelopes(slot, sender).await;
 		// return early if we don't have enough envelopes or the tx_set
 		if envelopes.len() == 0 {

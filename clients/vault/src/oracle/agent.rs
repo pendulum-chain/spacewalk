@@ -50,7 +50,7 @@ async fn handle_message(
 		StellarRelayMessage::Connect { pub_key, node_info } => {
 			let pub_key = pub_key.to_encoding();
 			let pub_key = std::str::from_utf8(&pub_key).unwrap_or("****");
-			tracing::info!("Successfully connected to stellar via public key: {pub_key}");
+			tracing::info!("Connected: {:#?}\n via public key: {pub_key}", node_info);
 		},
 		StellarRelayMessage::Timeout => {
 			tracing::error!("The Stellar Relay timed out. Failed to process message: {message:?}");
@@ -94,7 +94,7 @@ pub async fn start_oracle_agent(
 			tokio::select! {
 				// runs the stellar-relay and listens to data to collect the scp messages and txsets.
 				Some(msg) = overlay_conn.listen() => {
-					 handle_message(msg, collector_clone.clone(), &sender).await?;
+					handle_message(msg, collector_clone.clone(), &sender).await?;
 				},
 
 				Some(msg) = receiver.recv() => {
@@ -103,7 +103,6 @@ pub async fn start_oracle_agent(
 				}
 			}
 		}
-
 		#[allow(unreachable_code)]
 		Ok::<(), Error>(())
 	});

@@ -7,7 +7,6 @@ use primitives::stellar::{
 	Asset as StellarAsset, Operation, PublicKey, SecretKey, TransactionEnvelope,
 };
 use tokio::sync::{oneshot, Mutex};
-use tracing::log;
 
 use crate::{
 	cache::WalletStateStorage,
