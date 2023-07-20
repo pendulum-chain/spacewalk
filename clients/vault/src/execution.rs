@@ -188,7 +188,9 @@ impl Request {
 
 		let mut wallet = wallet.write().await;
 		tracing::info!(
-			"Sending {:?} stroops of {:?} to {:?} from {:?}",
+			"Request {:?} #{}: Sending {:?} stroops of {:?} to {:?} from {:?}",
+			self.request_type,
+			self.hash,
 			stroop_amount,
 			self.asset.clone(),
 			destination_public_key,
@@ -223,7 +225,9 @@ impl Request {
 			.map_err(|_| Error::StellarSdkError)?;
 		let slot: Slot = response.ledger as Slot;
 		tracing::info!(
-			"Successfully sent stellar payment to {:?} for {}",
+			"Request {:?} #{}: Successfully sent stellar payment to {:?} for {}",
+			self.request_type,
+			self.hash,
 			destination_public_key,
 			self.amount
 		);
@@ -270,7 +274,7 @@ impl Request {
 		)
 		.await?;
 
-		tracing::info!("Executed request #{:?}", self.hash);
+		tracing::info!("Request {:?} #{}: successfully executed", self.request_type, self.hash);
 
 		Ok(())
 	}
@@ -287,44 +291,72 @@ async fn _execute_open_requests(
 	let max_retries = 3;
 	let mut retry_count = 0;
 
-	if let Ok(tx_env) = transaction.to_envelope() {
-		let slot = transaction.ledger as Slot;
-		while retry_count < max_retries {
-			if retry_count > 0 {
-				tracing::debug!("{} retry for executing request #{}", retry_count, request.hash);
-			}
-
-			match oracle_agent.get_proof(slot).await {
-				Ok(proof) => {
-					match request.execute(parachain_rpc.clone(), tx_env.clone(), proof).await {
-						Ok(_) => {
-							tracing::trace!("Successfully executed request #{}", request.hash);
-							break // There is no need to retry again.
-						},
-						Err(e) => {
-							tracing::error!("Failed to execute request #{}: {}", request.hash, e);
-							retry_count += 1; // increase retry count
-						},
-					}
-				},
-				Err(error) => {
-					retry_count += 1; // increase retry count
-					tracing::error!("Failed to get proof for slot {}: {:?}", slot, error);
-				},
-			}
-		}
-
-		if retry_count >= max_retries {
-			tracing::warn!(
-				"Exceeded max number of retries({}) to execute request #{}.",
-				max_retries,
+	match transaction.to_envelope() {
+		Err(e) => {
+			// no retries for this type of error
+			tracing::error!(
+				"Request {:?} #{}: Failed to decode transaction envelope: {e:?}",
+				request.request_type,
 				request.hash
 			);
-		}
-		return
+		},
+		Ok(tx_env) => {
+			let slot = transaction.ledger as Slot;
+			while retry_count < max_retries {
+				if retry_count > 0 {
+					tracing::debug!(
+						"Request {:?} #{}: {retry_count} retries out of {max_retries}",
+						request.request_type,
+						request.hash
+					);
+				}
+
+				match oracle_agent.get_proof(slot).await {
+					Ok(proof) => {
+						match request.execute(parachain_rpc.clone(), tx_env.clone(), proof).await {
+							Ok(_) => {
+								tracing::info!(
+									"Request {:?} #{}: successfully executed",
+									request.request_type,
+									request.hash
+								);
+								break // There is no need to retry again.
+							},
+							Err(e) => {
+								tracing::error!(
+									"Request {:?} #{}: failed to execute: {}",
+									request.request_type,
+									request.hash,
+									e
+								);
+								retry_count += 1; // increase retry count
+							},
+						}
+					},
+					Err(error) => {
+						retry_count += 1; // increase retry count
+						tracing::error!(
+							"Request {:?} #{}: failed to get proof for slot {}: {:?}",
+							request.request_type,
+							request.hash,
+							slot,
+							error
+						);
+					},
+				}
+			}
+
+			if retry_count >= max_retries {
+				tracing::warn!(
+					"Request {:?} #{}: Exceeded max number of retries({}) to execute",
+					request.request_type,
+					request.hash,
+					max_retries
+				);
+			}
+			return
+		},
 	}
-	// no retries for this type of error
-	tracing::error!("Failed to decode transaction envelope for request #{}", request.hash);
 }
 
 /// Queries the parachain for open requests and executes them. It checks the
@@ -396,7 +428,7 @@ pub async fn execute_open_requests(
 					open_requests.retain(|key, _| key != &hash_as_memo);
 
 					tracing::info!(
-						"{:?} request #{:?} has valid Stellar payment - processing...",
+						"Open Request {:?} #{}: processing valid Stellar payment...",
 						request.request_type,
 						request.hash
 					);
@@ -416,7 +448,7 @@ pub async fn execute_open_requests(
 			}
 		},
 		Err(error) => {
-			tracing::error!("Failed to get transactions from Stellar: {}", error);
+			tracing::error!("Open Requests: Failed to get transactions from Stellar: {error}");
 		},
 	}
 
@@ -436,7 +468,9 @@ pub async fn execute_open_requests(
 				Some(x) => x,
 				None => {
 					tracing::error!(
-						"Failed to fetch vault data for vault {}",
+						"{:?} request #{:?}: Failed to fetch vault data for vault {}",
+						request.request_type,
+						request.hash,
 						request.vault_id.pretty_print()
 					);
 					return // nothing we can do - bail

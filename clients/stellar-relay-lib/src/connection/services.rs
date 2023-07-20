@@ -2,6 +2,7 @@ use crate::{
 	connection::{
 		connector::{Connector, ConnectorActions},
 		helper::time_now,
+		log_error,
 		xdr_converter::get_xdr_message_length,
 	},
 	Error, StellarRelayMessage,
@@ -12,7 +13,6 @@ use tokio::{
 	sync::mpsc,
 	time::{timeout, Duration},
 };
-use crate::connection::log_error;
 
 /// For connecting to the StellarNode
 pub(crate) async fn create_stream(
@@ -203,7 +203,8 @@ pub(crate) async fn receiving_service(
 						&mut proc_id,
 						&mut readbuf,
 						expect_msg_len,
-					).await,
+					)
+					.await,
 					format!("proc_id: {proc_id} Failed to read message")
 				);
 			},
@@ -251,9 +252,8 @@ async fn _connection_handler(
 		// start the connection to Stellar node with a 'hello'
 		ConnectorActions::SendHello => {
 			let msg = connector.create_hello_message(time_now())?;
-			log::trace!("Sending Hello Message...{:?}",msg);
+			log::trace!("Sending Hello Message...{:?}", msg);
 			w_stream.write_all(&msg).await.map_err(|e| Error::WriteFailed(e.to_string()))?;
-
 		},
 
 		// write message to the stream

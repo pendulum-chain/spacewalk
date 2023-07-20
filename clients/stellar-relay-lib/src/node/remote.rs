@@ -1,5 +1,5 @@
-use std::fmt::{Debug, Formatter};
 use crate::node::NodeInfo;
+use std::fmt::{Debug, Formatter};
 use substrate_stellar_sdk::{
 	types::{Curve25519Public, Hello, Uint256},
 	PublicKey,
@@ -32,7 +32,6 @@ impl Debug for RemoteInfo {
 			.field("nonce", &nonce)
 			.field("node", &self.node)
 			.finish()
-
 	}
 }
 

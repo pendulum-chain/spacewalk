@@ -1,7 +1,7 @@
-use std::fmt::{Debug, Formatter};
 use crate::Error;
 use hmac::{Hmac, Mac};
 use sha2::Sha256;
+use std::fmt::{Debug, Formatter};
 use substrate_stellar_sdk::types::{HmacSha256Mac, Uint256};
 
 pub struct HMacKeys {

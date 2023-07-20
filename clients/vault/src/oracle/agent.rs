@@ -48,10 +48,12 @@ async fn handle_message(
 			_ => {},
 		},
 		StellarRelayMessage::Connect { pub_key, node_info } => {
-			tracing::info!("Connected: {:#?}\n via public key: {:?}", node_info, pub_key);
+			let pub_key = pub_key.to_encoding();
+			let pub_key = std::str::from_utf8(&pub_key).unwrap_or("****");
+			tracing::info!("Successfully connected to stellar via public key: {pub_key}");
 		},
 		StellarRelayMessage::Timeout => {
-			tracing::error!("The Stellar Relay timed out.");
+			tracing::error!("The Stellar Relay timed out. Failed to process message: {message:?}");
 		},
 		_ => {},
 	}
@@ -66,6 +68,8 @@ pub async fn start_oracle_agent(
 	config: StellarOverlayConfig,
 	secret_key: &str,
 ) -> Result<OracleAgent, Error> {
+	tracing::info!("OracleAgent: start connection to stellar...");
+
 	let mut overlay_conn = connect_to_stellar_overlay_network(config.clone(), secret_key).await?;
 
 	// Get action sender and disconnect action before moving `overlay_conn` into the closure
@@ -90,7 +94,7 @@ pub async fn start_oracle_agent(
 			tokio::select! {
 				// runs the stellar-relay and listens to data to collect the scp messages and txsets.
 				Some(msg) = overlay_conn.listen() => {
-					handle_message(msg, collector_clone.clone(), &sender).await?;
+					 handle_message(msg, collector_clone.clone(), &sender).await?;
 				},
 
 				Some(msg) = receiver.recv() => {
@@ -99,15 +103,16 @@ pub async fn start_oracle_agent(
 				}
 			}
 		}
+
 		#[allow(unreachable_code)]
 		Ok::<(), Error>(())
 	});
 
 	tokio::spawn(on_shutdown(shutdown_sender.clone(), async move {
-		let result_sending_diconnect =
+		let result_sending_disconnect =
 			actions_sender.send(disconnect_action).await.map_err(Error::from);
-		if let Err(e) = result_sending_diconnect {
-			tracing::error!("Failed to send message to error : {:#?}", e);
+		if let Err(e) = result_sending_disconnect {
+			tracing::error!("OracleAgent: Failed to send disconnect message: {:#?}", e);
 		};
 	}));
 
@@ -137,11 +142,18 @@ impl OracleAgent {
 				let collector = collector.read().await;
 				match collector.build_proof(slot, &stellar_sender).await {
 					None => {
+						tracing::warn!(
+							"OracleAgent: Proof Building for slot {slot}: Failed to build proof."
+						);
 						drop(collector);
 						sleep(Duration::from_secs(10)).await;
 						continue
 					},
-					Some(proof) => return Ok(proof),
+					Some(proof) => {
+						tracing::info!("OracleAgent: Proof Building for slot {slot}: success");
+						tracing::trace!("OracleAgent: Proof Building for slot {slot}: successful proof built: {proof:?}");
+						return Ok(proof)
+					},
 				}
 			}
 		})
@@ -161,9 +173,9 @@ impl OracleAgent {
 
 	/// Stops listening for new SCP messages.
 	pub fn stop(&self) -> Result<(), Error> {
-		tracing::info!("Stopping agent");
+		tracing::debug!("OracleAgent: shutting down...");
 		if let Err(e) = self.shutdown_sender.send(()) {
-			tracing::error!("Failed to send shutdown signal to the agent: {:?}", e);
+			tracing::error!("OracleAgent: Failed to send shutdown signal: {:?}", e);
 		}
 		Ok(())
 	}

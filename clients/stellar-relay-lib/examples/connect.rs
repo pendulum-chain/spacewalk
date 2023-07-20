@@ -33,9 +33,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 	while let Some(relay_message) = overlay_connection.listen().await {
 		match relay_message {
 			StellarRelayMessage::Connect { pub_key, node_info } => {
-				 let pub_key = pub_key.to_encoding();
+				let pub_key = pub_key.to_encoding();
 				// //let x = base64::encode(pub_key_xdr);
-				 let x = std::str::from_utf8(&pub_key).expect("should work?");
+				let x = std::str::from_utf8(&pub_key).expect("should work?");
 				log::info!("Connected to Stellar Node: {:?}", x);
 				log::info!("{:?}", node_info);
 			},

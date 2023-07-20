@@ -92,7 +92,6 @@ impl VaultIdManager {
 	}
 
 	async fn add_vault_id(&self, vault_id: VaultId) -> Result<(), Error> {
-		tracing::info!("Initializing metrics...");
 		let metrics = PerCurrencyMetrics::new(&vault_id);
 		let data = VaultData {
 			vault_id: vault_id.clone(),
@@ -100,6 +99,8 @@ impl VaultIdManager {
 			metrics,
 		};
 		PerCurrencyMetrics::initialize_values(self.spacewalk_parachain.clone(), &data).await;
+
+		tracing::info!("adding vault {vault_id:?}");
 
 		self.vault_data.write().await.insert(vault_id, data.clone());
 
@@ -397,6 +398,8 @@ impl VaultService {
 	}
 
 	async fn run_service(&mut self) -> Result<(), ServiceError<Error>> {
+		tracing::info!("Client Service: starting service...");
+
 		let startup_height = self.await_parachain_block().await?;
 		let account_id = self.spacewalk_parachain.get_account_id().clone();
 
@@ -428,7 +431,7 @@ impl VaultService {
 		let err_provider = self.spacewalk_parachain.clone();
 		let err_listener = wait_or_shutdown(self.shutdown.clone(), async move {
 			err_provider
-				.on_event_error(|e| tracing::debug!("Received error event: {}", e))
+				.on_event_error(|e| tracing::debug!("Client Service: Received error event: {}", e))
 				.await?;
 			Ok::<_, Error>(())
 		});

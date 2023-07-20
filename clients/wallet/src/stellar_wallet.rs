@@ -67,7 +67,6 @@ impl StellarWallet {
 		&self,
 		envelope: TransactionEnvelope,
 	) -> Result<TransactionResponse, Error> {
-		tracing::debug!("submitting transaction: {envelope:?}");
 		let sequence = &envelope.sequence_number().ok_or(Error::cache_error_with_env(
 			CacheErrorKind::UnknownSequenceNumber,
 			envelope.clone(),
@@ -117,7 +116,9 @@ impl StellarWallet {
 		cache_path: String,
 	) -> Result<Self, Error> {
 		let pub_key = secret_key.get_public().as_encoded_string().map_err(|e: Error| {
-			tracing::error!("encoding public key failed: {e:?}");
+			tracing::error!(
+				"StellarWallet: failed to create with invalid encoding public key: {e:?}"
+			);
 			Error::InvalidSecretKey
 		})?;
 
@@ -224,7 +225,9 @@ impl StellarWallet {
 				error_receivers.push(receiver);
 
 				if let Err(e) = sender.send(Err(error)) {
-					tracing::error!("failed to send error to list: {e:?}");
+					tracing::error!(
+						"transaction resubmission: failed to send error to list: {e:?}"
+					);
 				}
 			}
 		};
@@ -249,7 +252,7 @@ impl StellarWallet {
 
 			tokio::spawn(async move {
 				if let Err(e) = sender.send(me_clone.submit_transaction(env).await) {
-					tracing::error!("failed to send message: {e:?}");
+					tracing::error!("transaction resubmission: failed to send message: {e:?}");
 				};
 			});
 		}
@@ -358,7 +361,7 @@ impl StellarWallet {
 		let next_sequence_number = account.sequence + 1;
 
 		tracing::trace!(
-			"Next sequence number: {} for account: {:?}",
+			"submitting transaction: Next sequence number: {} for account: {:?}",
 			next_sequence_number,
 			account.account_id
 		);
@@ -371,6 +374,7 @@ impl StellarWallet {
 		)?;
 
 		let _ = self.cache.save_tx_envelope(envelope.clone())?;
+
 		self.submit_transaction(envelope).await
 	}
 }

@@ -93,7 +93,10 @@ where
 		// remove the oldest entry if the queue reached its limit
 		if self.queue.len() == self.limit {
 			if let Some(oldest_entry) = self.queue.pop_front() {
-				tracing::info!("removing old entry with key: {:?}", oldest_entry.0);
+				tracing::trace!(
+					"LimitedFifoMap: removing old entry with key: {:?}",
+					oldest_entry.0
+				);
 			}
 		}
 

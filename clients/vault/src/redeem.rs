@@ -23,8 +23,6 @@ pub async fn listen_for_redeem_requests(
 	parachain_rpc
 		.on_event::<RequestRedeemEvent, _, _, _>(
 			|event| async {
-				tracing::info!("Received redeem request: {:?}", event);
-
 				let vault = match vault_id_manager.get_vault(&event.vault_id).await {
 					Some(x) => x,
 					None => return, // event not directed at this vault
@@ -38,7 +36,7 @@ pub async fn listen_for_redeem_requests(
 				// Spawn a new task so that we handle these events concurrently
 				let oracle_agent = oracle_agent.clone();
 				spawn_cancelable(shutdown_tx.subscribe(), async move {
-					tracing::info!("Executing redeem #{:?}", event.redeem_id);
+					tracing::info!("Request Redeem #{}: Executing {:?}", event.redeem_id, event);
 					let result = async {
 						let request = Request::from_redeem_request(
 							event.redeem_id,
@@ -51,12 +49,12 @@ pub async fn listen_for_redeem_requests(
 
 					match result {
 						Ok(_) => tracing::info!(
-							"Completed redeem request #{} with amount {}",
+							"Request Redeem #{}: Completed with amount {}",
 							event.redeem_id,
 							event.amount
 						),
 						Err(e) => tracing::error!(
-							"Failed to process redeem request #{}: {}",
+							"Request Redeem #{}: Failed to process: {}",
 							event.redeem_id,
 							e.to_string()
 						),

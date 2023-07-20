@@ -1,6 +1,8 @@
 use rand::Rng;
-use std::collections::HashMap;
-use std::fmt::{Debug, Formatter};
+use std::{
+	collections::HashMap,
+	fmt::{Debug, Formatter},
+};
 use substrate_stellar_sdk::{
 	types::{AuthCert, Curve25519Public, HmacSha256Mac},
 	Curve25519Secret, SecretKey,
@@ -22,7 +24,6 @@ pub struct ConnectionAuth {
 
 impl Debug for ConnectionAuth {
 	fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-
 		let pub_key = &self.pub_key_ecdh;
 		let pub_key = hex::encode(&pub_key.key);
 

@@ -6,7 +6,6 @@ use substrate_stellar_sdk::{
 	SecretKey, XdrCodec,
 };
 
-
 /// a helpful macro to unwrap an `Ok` or return immediately.
 macro_rules! log_error {
 	// expression, return value, extra log

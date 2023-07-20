@@ -40,8 +40,6 @@ pub async fn listen_for_accept_replace(
 					Some(x) => x,
 					None => return, // event not directed at this vault
 				};
-				tracing::info!("Received accept replace event: {:?}", event);
-
 				// within this event callback, we captured the arguments of
 				// listen_for_redeem_requests by reference. Since spawn requires static lifetimes,
 				// we will need to capture the arguments by value rather than by reference, so clone
@@ -50,7 +48,7 @@ pub async fn listen_for_accept_replace(
 				let oracle_agent = oracle_agent.clone();
 				// Spawn a new task so that we handle these events concurrently
 				spawn_cancelable(shutdown_tx.subscribe(), async move {
-					tracing::info!("Executing accept replace #{:?}", event.replace_id);
+					tracing::info!("Request Replace #{}: Executing {:?}", event.replace_id, event);
 
 					let result = async {
 						let request = Request::from_replace_request(
@@ -64,12 +62,12 @@ pub async fn listen_for_accept_replace(
 
 					match result {
 						Ok(_) => tracing::info!(
-							"Completed accept replace request #{} with amount {}",
+							"Request Replace #{}: Completed with amount {}",
 							event.replace_id,
 							event.amount
 						),
 						Err(e) => tracing::error!(
-							"Failed to process accept replace request #{}: {}",
+							"Request Replace #{}: Failed to process: {}",
 							event.replace_id,
 							e.to_string()
 						),
@@ -107,7 +105,7 @@ pub async fn listen_for_replace_requests(
 				}
 
 				tracing::info!(
-					"Received replace request from {} for amount {}",
+					"Request Replace from {}: Received for amount {}",
 					event.old_vault_id.pretty_print(),
 					event.amount
 				);
@@ -124,9 +122,9 @@ pub async fn listen_for_replace_requests(
 						{
 							Ok(_) => {
 								tracing::info!(
-									"[{}] Accepted replace request from {}",
+									"Request Replace from {}: [{}] Accepted",
+									event.old_vault_id.pretty_print(),
 									vault_id.pretty_print(),
-									event.old_vault_id.pretty_print()
 								);
 								// try to send the event, but ignore the returned result since
 								// the only way it can fail is if the channel is closed
@@ -135,16 +133,16 @@ pub async fn listen_for_replace_requests(
 								return // no need to iterate over the rest of the vault ids
 							},
 							Err(e) => tracing::error!(
-								"[{}] Failed to accept replace request from {}: {}",
-								vault_id.pretty_print(),
+								"Request Replace from {}: [{}] Failed with {}",
 								event.old_vault_id.pretty_print(),
+								vault_id.pretty_print(),
 								e.to_string()
 							),
 						}
 					}
 				}
 			},
-			|error| tracing::error!("Error reading replace event: {}", error.to_string()),
+			|error| tracing::error!("Request Replace: Failed reading replace event: {error:?}"),
 		)
 		.await?;
 	Ok(())
@@ -209,13 +207,13 @@ pub async fn listen_for_execute_replace(
 		.on_event::<ExecuteReplaceEvent, _, _, _>(
 			|event| async move {
 				if &event.new_vault_id.account_id == parachain_rpc.get_account_id() {
-					tracing::info!("Received event: execute replace #{:?}", event.replace_id);
+					tracing::info!("Request Replace #{}: Received.", event.replace_id);
 					// try to send the event, but ignore the returned result since
 					// the only way it can fail is if the channel is closed
 					let _ = event_channel.clone().send(Event::Executed(event.replace_id)).await;
 				}
 			},
-			|error| tracing::error!("Error reading replace event: {}", error.to_string()),
+			|error| tracing::error!("Request Replace : Error reading event: {}", error.to_string()),
 		)
 		.await?;
 	Ok(())

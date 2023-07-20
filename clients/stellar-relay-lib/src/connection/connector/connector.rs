@@ -41,11 +41,11 @@ pub struct Connector {
 
 impl Debug for Connector {
 	fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-		let is_hmac_keys_filled  = self.hmac_keys.is_some();
+		let is_hmac_keys_filled = self.hmac_keys.is_some();
 		f.debug_struct("Connector")
 			.field("local", &self.local)
 			.field("remote", &self.remote_info)
-			.field("hmac_keys_exist",&is_hmac_keys_filled)
+			.field("hmac_keys_exist", &is_hmac_keys_filled)
 			.field("connection_auth", &self.connection_auth)
 			.field("timeout_in_secs", &self.timeout_in_secs)
 			.field("retries", &self.retries)
@@ -59,7 +59,7 @@ impl Debug for Connector {
 
 impl Drop for Connector {
 	fn drop(&mut self) {
-		log::trace!("dropped Connector: {:?}",self);
+		log::trace!("dropped Connector: {:?}", self);
 	}
 }
 
@@ -72,7 +72,7 @@ impl Connector {
 	) -> Result<(), Error> {
 		let remote_info = self.remote_info.as_ref().ok_or(Error::NoRemoteInfo)?;
 		log::trace!(
-			"remote sequence: {}, auth message sequence: {}",
+			"Auth Verification: remote sequence: {}, auth message sequence: {}",
 			remote_info.sequence(),
 			auth_msg.sequence
 		);
