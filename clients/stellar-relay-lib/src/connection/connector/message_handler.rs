@@ -33,7 +33,7 @@ impl Connector {
 					self.verify_auth(&auth_msg, &data[4..(data.len() - 32)])?;
 					self.increment_remote_sequence()?;
 					log::trace!(
-						"proc_id: {proc_id} Processing {msg_type:?} message: auth verified"
+						"proc_id: {proc_id}. Processing {msg_type:?} message: auth verified"
 					);
 				}
 
@@ -71,7 +71,7 @@ impl Connector {
 
 			other => {
 				log::trace!(
-					"proc_id: {p_id} Processing {msg_type:?} message: received from overlay"
+					"proc_id: {p_id}. Processing {msg_type:?} message: received from overlay"
 				);
 				self.send_to_user(StellarRelayMessage::Data {
 					p_id,

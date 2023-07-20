@@ -184,11 +184,11 @@ pub(crate) async fn receiving_service(
 				// then check the size of next stellar message.
 				// If it's not enough, skip it.
 				let expect_msg_len = next_message_length(&mut r_stream).await;
-				log::trace!("proc_id: {proc_id} The next message length: {expect_msg_len}");
+				log::trace!("proc_id: {proc_id}. The next message length is {expect_msg_len}");
 
 				if expect_msg_len == 0 {
 					// there's nothing to read; wait for the next iteration
-					log::trace!("proc_id: {proc_id} nothing left to read; wait for next loop");
+					log::trace!("proc_id: {proc_id}. Nothing left to read; waiting for next loop");
 					continue
 				}
 
@@ -205,7 +205,7 @@ pub(crate) async fn receiving_service(
 						expect_msg_len,
 					)
 					.await,
-					format!("proc_id: {proc_id} Failed to read message")
+					format!("proc_id: {proc_id}. Failed to read message")
 				);
 			},
 
@@ -223,12 +223,12 @@ pub(crate) async fn receiving_service(
 				.await?;
 			},
 			Ok(Err(e)) => {
-				log::error!("proc_id: {proc_id} Error occurred when reading the stream: {e:?}");
+				log::error!("proc_id: {proc_id}. Error occurred while reading the stream: {e:?}");
 				return Err(Error::ConnectionFailed(e.to_string()))
 			},
 			Err(elapsed) => {
 				log::error!(
-					"proc_id: {proc_id} {} for reading messages from Stellar Node. Retry: {retry}",
+					"proc_id: {proc_id}. Timeout of {} seconds elapesd for reading messages from Stellar Node. Retry: #{retry}",
 					elapsed.to_string()
 				);
 
@@ -306,7 +306,7 @@ pub(crate) async fn connection_handler(
 				timeout_counter = 0;
 				log_error!(
 					_connection_handler(action, &mut connector, &mut w_stream).await,
-					format!("connection failed")
+					format!("Handling the connection failed")
 				);
 			},
 

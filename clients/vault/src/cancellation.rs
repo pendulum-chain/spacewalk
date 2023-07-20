@@ -45,7 +45,7 @@ impl Debug for UnconvertedOpenTime {
 		let id = hex::encode(self.id);
 		return write!(
 			f,
-			"OpenRequest:{{ id: {}, parachain_open_height: {}, period: {} }}",
+			"UnconvertedOpenTime:{{ id: {}, parachain_open_height: {}, period: {} }}",
 			id, self.parachain_open_height, self.period
 		)
 	}
@@ -224,21 +224,20 @@ impl<P: IssuePallet + ReplacePallet + UtilFuncs + SecurityPallet + Clone> Cancel
 			match T::cancel_request(&self.parachain_rpc, request.id).await {
 				Ok(_) => {
 					tracing::info!(
-						"Request {} with request id #{:?}: cancelled successfully.",
+						"Successfully cancelled {} request {} with id #{:?}.",
 						T::TYPE_NAME,
 						request.id
 					);
 					tracing::debug!(
-						"Request {} with request id #{:?}: info of the cancelled request:{:#?}",
+						"Info of the cancelled {} request: {:#?}",
 						T::TYPE_NAME,
-						request.id,
 						request
 					);
 				},
 				Err(e) => {
 					// failed to cancel; get up-to-date request list in next iteration
 					tracing::error!(
-						"Request {} with request id #{:?}: cancellation failed with error {e:?}",
+						"Cancellation of {} request with id #{:?} failed with error {e:?}",
 						T::TYPE_NAME,
 						request.id
 					);
@@ -265,10 +264,7 @@ impl<P: IssuePallet + ReplacePallet + UtilFuncs + SecurityPallet + Clone> Cancel
 				},
 				Err(e) => {
 					active_requests.clear();
-					tracing::error!(
-						"Request {}: Failed to query open request: {e:?}",
-						T::TYPE_NAME
-					);
+					tracing::error!("Failed to query open {} request: {e:?}", T::TYPE_NAME);
 				},
 			}
 		}
@@ -276,7 +272,7 @@ impl<P: IssuePallet + ReplacePallet + UtilFuncs + SecurityPallet + Clone> Cancel
 		match event {
 			Event::ParachainBlock(height) => {
 				tracing::trace!(
-					"Request {}: Received parachain block at active height {}",
+					"Received parachain block at active height {} in process_events for {} requests",
 					T::TYPE_NAME,
 					height
 				);
@@ -284,12 +280,12 @@ impl<P: IssuePallet + ReplacePallet + UtilFuncs + SecurityPallet + Clone> Cancel
 				Ok(self.cancel_requests::<T>(active_requests).await)
 			},
 			Event::Executed(id) => {
-				tracing::debug!("Request {}: Received event: executed #{}", T::TYPE_NAME, id);
+				tracing::debug!("Received execution event for {} request #{}", T::TYPE_NAME, id);
 				active_requests.retain(|x| x.id != id);
 				Ok(ListState::Valid)
 			},
 			Event::Opened => {
-				tracing::debug!("Request {}: Received event: opened.", T::TYPE_NAME);
+				tracing::debug!("Received 'opened' event for {} request.", T::TYPE_NAME);
 				Ok(ListState::Invalid)
 			},
 		}
@@ -300,7 +296,7 @@ impl<P: IssuePallet + ReplacePallet + UtilFuncs + SecurityPallet + Clone> Cancel
 		let open_requests =
 			T::get_open_requests(&self.parachain_rpc, self.vault_id.clone()).await?;
 
-		tracing::trace!("Request {} list of open_requests: {open_requests:?}", T::TYPE_NAME);
+		tracing::trace!("List of open {} requests: {open_requests:?}", T::TYPE_NAME);
 
 		if open_requests.is_empty() {
 			return Ok(vec![])
