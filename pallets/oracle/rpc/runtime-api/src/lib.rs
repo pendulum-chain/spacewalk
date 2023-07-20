@@ -6,6 +6,7 @@ use codec::{Codec, Decode, Encode};
 use frame_support::dispatch::DispatchError;
 #[cfg(feature = "std")]
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
+use serde_json::Value;
 
 #[derive(Eq, PartialEq, Encode, Decode, Default)]
 #[cfg_attr(feature = "std", derive(Debug, Serialize, Deserialize))]
@@ -28,12 +29,18 @@ fn serialize_as_string<S: Serializer, T: std::fmt::Display>(
 	serializer.serialize_str(&t.to_string())
 }
 
+// Adapted from https://www.reddit.com/r/rust/comments/fcz4yb/how_do_you_deserialize_strings_integers_to_float/
 #[cfg(feature = "std")]
 fn deserialize_from_string<'de, D: Deserializer<'de>, T: std::str::FromStr>(
 	deserializer: D,
 ) -> Result<T, D::Error> {
-	let s = String::deserialize(deserializer)?;
-	s.parse::<T>().map_err(|_| serde::de::Error::custom("Parse from string failed"))
+	Ok(match Value::deserialize(deserializer)? {
+		Value::String(s) => s.parse().map_err(|_| serde::de::Error::custom("Parse from string failed"))?,
+		Value::Number(num) => {
+			num.to_string().parse().map_err(|_| serde::de::Error::custom("Parse from number failed"))?
+		},
+		_ => return Err(serde::de::Error::custom("Type must be string or integer."))
+	})
 }
 
 sp_api::decl_runtime_apis! {
