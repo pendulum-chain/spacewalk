@@ -46,7 +46,7 @@ impl WalletStateStorage {
 		if let Err(e) = create_dir_all(&txs_full_path) {
 			tracing::warn!("Failed to create directory of {txs_full_path}: {:?}", e);
 		} else {
-			tracing::info!("path for caching stellar transactions: {txs_full_path}");
+			tracing::info!("Caching stellar transactions at {txs_full_path}");
 		}
 
 		cache

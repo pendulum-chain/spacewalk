@@ -304,7 +304,7 @@ async fn _execute_open_requests(
 			let slot = transaction.ledger as Slot;
 			while retry_count < max_retries {
 				if retry_count > 0 {
-					tracing::debug!(
+					tracing::info!(
 						"Performing retry #{retry_count} out of {max_retries} retries for {:?} request #{}",
 						request.request_type,
 						request.hash
@@ -336,7 +336,7 @@ async fn _execute_open_requests(
 					Err(error) => {
 						retry_count += 1; // increase retry count
 						tracing::error!(
-							"Failed to get proof for slot {} for {:?} request #{} due to error: {:?}",
+							"Failed to get proof for slot {} for {:?} request #{:?} due to error: {:?}",
 							slot,
 							request.request_type,
 							request.hash,
@@ -347,8 +347,8 @@ async fn _execute_open_requests(
 			}
 
 			if retry_count >= max_retries {
-				tracing::warn!(
-					"Exceeded max number of retries({}) to execute {:?} request #{}",
+				tracing::error!(
+					"Exceeded max number of retries ({}) to execute {:?} request #{:?}. Giving up...",
 					max_retries,
 					request.request_type,
 					request.hash,
@@ -455,7 +455,9 @@ pub async fn execute_open_requests(
 			);
 		},
 	}
-	tracing::info!("Processed {processed_requests_count} open requests");
+	tracing::info!(
+		"Processed {processed_requests_count} open requests that already had a Stellar payment"
+	);
 
 	// All requests remaining in the hashmap did not have a Stellar payment yet, so pay
 	// and execute all of these
@@ -510,7 +512,10 @@ pub async fn execute_open_requests(
 				),
 			}
 
-			tracing::info!("Processed {} open requests", processed_requests_count);
+			tracing::info!(
+				"Processed {} open requests that did not have a Stellar payment",
+				processed_requests_count
+			);
 		});
 	}
 

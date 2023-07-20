@@ -70,7 +70,7 @@ pub async fn start_oracle_agent(
 	config: StellarOverlayConfig,
 	secret_key: &str,
 ) -> Result<OracleAgent, Error> {
-	tracing::info!("OracleAgent: start connection to stellar...");
+	tracing::info!("Starting connection to Stellar overlay network...");
 
 	let mut overlay_conn = connect_to_stellar_overlay_network(config.clone(), secret_key).await?;
 
@@ -143,16 +143,16 @@ impl OracleAgent {
 				let collector = collector.read().await;
 				match collector.build_proof(slot, &stellar_sender).await {
 					None => {
-						tracing::warn!(
-							"OracleAgent: Proof Building for slot {slot}: Failed to build proof."
-						);
+						tracing::warn!("Failed to build proof for slot {slot}.");
 						drop(collector);
 						sleep(Duration::from_secs(10)).await;
 						continue
 					},
 					Some(proof) => {
-						tracing::info!("OracleAgent: Proof Building for slot {slot}: success");
-						tracing::trace!("OracleAgent: Proof Building for slot {slot}: successful proof built: {proof:?}");
+						tracing::info!("Successfully build proof for slot {slot}");
+						tracing::trace!(
+							"Successfully build proof for slot {slot}, proof: {proof:?}"
+						);
 						return Ok(proof)
 					},
 				}
@@ -174,9 +174,9 @@ impl OracleAgent {
 
 	/// Stops listening for new SCP messages.
 	pub fn stop(&self) -> Result<(), Error> {
-		tracing::debug!("OracleAgent: shutting down...");
+		tracing::debug!("Shutting down OracleAgent...");
 		if let Err(e) = self.shutdown_sender.send(()) {
-			tracing::error!("OracleAgent: Failed to send shutdown signal: {:?}", e);
+			tracing::error!("Failed to send shutdown signal in OracleAgent: {:?}", e);
 		}
 		Ok(())
 	}

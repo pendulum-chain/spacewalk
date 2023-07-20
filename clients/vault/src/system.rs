@@ -100,7 +100,7 @@ impl VaultIdManager {
 		};
 		PerCurrencyMetrics::initialize_values(self.spacewalk_parachain.clone(), &data).await;
 
-		tracing::info!("adding vault {vault_id:?}");
+		tracing::info!("Adding vault with ID: {vault_id:?}");
 
 		self.vault_data.write().await.insert(vault_id, data.clone());
 
@@ -398,7 +398,7 @@ impl VaultService {
 	}
 
 	async fn run_service(&mut self) -> Result<(), ServiceError<Error>> {
-		tracing::info!("Client Service: starting service...");
+		tracing::info!("Starting client service...");
 
 		let startup_height = self.await_parachain_block().await?;
 		let account_id = self.spacewalk_parachain.get_account_id().clone();

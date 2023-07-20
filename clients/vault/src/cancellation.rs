@@ -224,7 +224,7 @@ impl<P: IssuePallet + ReplacePallet + UtilFuncs + SecurityPallet + Clone> Cancel
 			match T::cancel_request(&self.parachain_rpc, request.id).await {
 				Ok(_) => {
 					tracing::info!(
-						"Successfully cancelled {} request {} with id #{:?}.",
+						"Successfully cancelled {} request with id #{:?}.",
 						T::TYPE_NAME,
 						request.id
 					);

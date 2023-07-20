@@ -69,7 +69,10 @@ impl<Config: Clone + Send + 'static, F: Fn()> ConnectionManager<Config, F> {
 	) -> Result<(), Error<InnerError>> {
 		loop {
 			tracing::info!("Version: {}", S::VERSION);
-			tracing::info!("AccountId: {}", self.signer.read().await.account_id().pretty_print());
+			tracing::info!(
+				"Vault uses Substrate account with ID: {}",
+				self.signer.read().await.account_id().pretty_print()
+			);
 
 			let config = self.config.clone();
 			let shutdown_tx = ShutdownSender::new();
