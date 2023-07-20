@@ -669,7 +669,7 @@ impl VaultService {
 			);
 			self.spacewalk_parachain.register_public_key(public_key.into_binary()).await?;
 		} else {
-			tracing::info!("Public key already registered");
+			tracing::info!("Not registering public key -- already registered");
 		}
 
 		Ok(())

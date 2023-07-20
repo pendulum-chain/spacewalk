@@ -116,7 +116,7 @@ impl StellarWallet {
 	) -> Result<Self, Error> {
 		let pub_key = secret_key.get_public().as_encoded_string().map_err(|e: Error| {
 			tracing::error!(
-				"StellarWallet: failed to create with invalid encoding public key: {e:?}"
+				"Failed to create StellarWallet due to invalid encoding public key: {e:?}"
 			);
 			Error::InvalidSecretKey
 		})?;
@@ -225,7 +225,7 @@ impl StellarWallet {
 
 				if let Err(e) = sender.send(Err(error)) {
 					tracing::error!(
-						"transaction resubmission: failed to send error to list: {e:?}"
+						"Failed to send error to list during transaction resubmission: {e:?}"
 					);
 				}
 			}
@@ -251,7 +251,9 @@ impl StellarWallet {
 
 			tokio::spawn(async move {
 				if let Err(e) = sender.send(me_clone.submit_transaction(env).await) {
-					tracing::error!("transaction resubmission: failed to send message: {e:?}");
+					tracing::error!(
+						"Failed to send message during transaction resubmission: {e:?}"
+					);
 				};
 			});
 		}

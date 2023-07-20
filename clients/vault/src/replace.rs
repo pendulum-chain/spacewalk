@@ -48,7 +48,11 @@ pub async fn listen_for_accept_replace(
 				let oracle_agent = oracle_agent.clone();
 				// Spawn a new task so that we handle these events concurrently
 				spawn_cancelable(shutdown_tx.subscribe(), async move {
-					tracing::info!("Request Replace #{}: Executing {:?}", event.replace_id, event);
+					tracing::info!(
+						"Received AcceptReplaceEvent {:?} for vault {:?}. Trying to execute...",
+						event,
+						vault
+					);
 
 					let result = async {
 						let request = Request::from_replace_request(
@@ -62,12 +66,12 @@ pub async fn listen_for_accept_replace(
 
 					match result {
 						Ok(_) => tracing::info!(
-							"Request Replace #{}: Completed with amount {}",
+							"Completed Replace request #{:?} with amount {}",
 							event.replace_id,
 							event.amount
 						),
 						Err(e) => tracing::error!(
-							"Request Replace #{}: Failed to process: {}",
+							"Failed to process Replace request #{:?} due to error: {}",
 							event.replace_id,
 							e.to_string()
 						),
@@ -105,7 +109,7 @@ pub async fn listen_for_replace_requests(
 				}
 
 				tracing::info!(
-					"Request Replace from {}: Received for amount {}",
+					"Received RequestReplaceEvent from {} for amount {}",
 					event.old_vault_id.pretty_print(),
 					event.amount
 				);
@@ -122,7 +126,7 @@ pub async fn listen_for_replace_requests(
 						{
 							Ok(_) => {
 								tracing::info!(
-									"Request Replace from {}: [{}] Accepted",
+									"Accepted Replace from {} with [{}]",
 									event.old_vault_id.pretty_print(),
 									vault_id.pretty_print(),
 								);
@@ -133,7 +137,7 @@ pub async fn listen_for_replace_requests(
 								return // no need to iterate over the rest of the vault ids
 							},
 							Err(e) => tracing::error!(
-								"Request Replace from {}: [{}] Failed with {}",
+								"Failed to accept Replace from {} with [{}] due to error: {}",
 								event.old_vault_id.pretty_print(),
 								vault_id.pretty_print(),
 								e.to_string()
@@ -207,7 +211,7 @@ pub async fn listen_for_execute_replace(
 		.on_event::<ExecuteReplaceEvent, _, _, _>(
 			|event| async move {
 				if &event.new_vault_id.account_id == parachain_rpc.get_account_id() {
-					tracing::info!("Request Replace #{}: Received.", event.replace_id);
+					tracing::info!("Received ExecuteReplaceEvent for this vault: {:?}", event);
 					// try to send the event, but ignore the returned result since
 					// the only way it can fail is if the channel is closed
 					let _ = event_channel.clone().send(Event::Executed(event.replace_id)).await;

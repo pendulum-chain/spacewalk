@@ -36,7 +36,10 @@ pub async fn listen_for_redeem_requests(
 				// Spawn a new task so that we handle these events concurrently
 				let oracle_agent = oracle_agent.clone();
 				spawn_cancelable(shutdown_tx.subscribe(), async move {
-					tracing::info!("Request Redeem #{}: Executing {:?}", event.redeem_id, event);
+					tracing::info!(
+						"Received new RequestRedeemEvent {:?}. Trying to execute...",
+						event
+					);
 					let result = async {
 						let request = Request::from_redeem_request(
 							event.redeem_id,
@@ -49,12 +52,12 @@ pub async fn listen_for_redeem_requests(
 
 					match result {
 						Ok(_) => tracing::info!(
-							"Request Redeem #{}: Completed with amount {}",
+							"Completed Redeem request #{:?} with amount {}",
 							event.redeem_id,
 							event.amount
 						),
 						Err(e) => tracing::error!(
-							"Request Redeem #{}: Failed to process: {}",
+							"Failed to process Redeem request #{} due to error: {}",
 							event.redeem_id,
 							e.to_string()
 						),
