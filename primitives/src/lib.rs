@@ -557,12 +557,9 @@ impl CurrencyId {
 }
 
 /// This struct defines the custom metadata for an asset registered on an asset registry pallet.
+/// It's a unit struct because we don't need to store any metadata at the moment.
 #[derive(scale_info::TypeInfo, Encode, Decode, Clone, Eq, PartialEq, Debug)]
-pub struct CustomMetadata {
-	/// The fee charged for every second that an XCM message takes to execute.
-	/// When `None`, the `default_per_second` will be used instead.
-	pub fee_per_second: Option<Balance>,
-}
+pub struct CustomMetadata;
 
 pub type Bytes4 = [u8; 4];
 pub type Bytes12 = [u8; 12];
