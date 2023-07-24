@@ -43,7 +43,7 @@ pub const ABOUT: &str = env!("CARGO_PKG_DESCRIPTION");
 
 const RESTART_INTERVAL: Duration = Duration::from_secs(10800); // restart every 3 hours
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct VaultData {
 	pub vault_id: VaultId,
 	pub stellar_wallet: ArcRwLock<StellarWallet>,
@@ -92,7 +92,6 @@ impl VaultIdManager {
 	}
 
 	async fn add_vault_id(&self, vault_id: VaultId) -> Result<(), Error> {
-		tracing::info!("Initializing metrics...");
 		let metrics = PerCurrencyMetrics::new(&vault_id);
 		let data = VaultData {
 			vault_id: vault_id.clone(),
@@ -100,6 +99,8 @@ impl VaultIdManager {
 			metrics,
 		};
 		PerCurrencyMetrics::initialize_values(self.spacewalk_parachain.clone(), &data).await;
+
+		tracing::info!("Adding vault with ID: {vault_id:?}");
 
 		self.vault_data.write().await.insert(vault_id, data.clone());
 
@@ -397,6 +398,8 @@ impl VaultService {
 	}
 
 	async fn run_service(&mut self) -> Result<(), ServiceError<Error>> {
+		tracing::info!("Starting client service...");
+
 		let startup_height = self.await_parachain_block().await?;
 		let account_id = self.spacewalk_parachain.get_account_id().clone();
 
@@ -428,7 +431,7 @@ impl VaultService {
 		let err_provider = self.spacewalk_parachain.clone();
 		let err_listener = wait_or_shutdown(self.shutdown.clone(), async move {
 			err_provider
-				.on_event_error(|e| tracing::debug!("Received error event: {}", e))
+				.on_event_error(|e| tracing::debug!("Client Service: Received error event: {}", e))
 				.await?;
 			Ok::<_, Error>(())
 		});
@@ -480,12 +483,10 @@ impl VaultService {
 			self.config.payment_margin_minutes,
 		);
 		service::spawn_cancelable(self.shutdown.subscribe(), async move {
-			tracing::info!("Checking for open requests...");
 			// TODO: kill task on shutdown signal to prevent double payment
-			match open_request_executor.await {
-				Ok(_) => tracing::info!("Done processing open requests"),
-				Err(e) => tracing::error!("Failed to process open requests: {}", e),
-			}
+			if let Err(e) = open_request_executor.await {
+				tracing::error!("Failed to process open requests: {}", e)
+			};
 		});
 
 		// issue handling
@@ -660,11 +661,15 @@ impl VaultService {
 		}
 
 		if self.spacewalk_parachain.get_public_key().await?.is_none() {
-			let public_key = self.stellar_wallet.read().await.get_public_key_raw();
-			tracing::info!("Registering public key to the parachain... {:?}", public_key);
-			self.spacewalk_parachain.register_public_key(public_key).await?;
+			let public_key = self.stellar_wallet.read().await.get_public_key();
+			let pub_key_encoded = public_key.to_encoding();
+			tracing::info!(
+				"Registering public key to the parachain...{}",
+				from_utf8(&pub_key_encoded)?
+			);
+			self.spacewalk_parachain.register_public_key(public_key.into_binary()).await?;
 		} else {
-			tracing::info!("Public key already registered");
+			tracing::info!("Not registering public key -- already registered");
 		}
 
 		Ok(())
@@ -724,12 +729,11 @@ impl VaultService {
 	async fn await_parachain_block(&self) -> Result<u32, Error> {
 		// wait for a new block to arrive, to prevent processing an event that potentially
 		// has been processed already prior to restarting
-		tracing::info!("Waiting for new block...");
 		let startup_height = self.spacewalk_parachain.get_current_chain_height().await?;
 		while startup_height == self.spacewalk_parachain.get_current_chain_height().await? {
 			sleep(CHAIN_HEIGHT_POLLING_INTERVAL).await;
 		}
-		tracing::info!("Got new block...");
+		tracing::info!("Got new block at height {startup_height}");
 		Ok(startup_height)
 	}
 }

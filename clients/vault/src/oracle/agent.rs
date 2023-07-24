@@ -48,10 +48,14 @@ async fn handle_message(
 			_ => {},
 		},
 		StellarRelayMessage::Connect { pub_key, node_info } => {
-			tracing::info!("Connected: {:#?}\n via public key: {:?}", node_info, pub_key);
+			let pub_key = pub_key.to_encoding();
+			let pub_key = std::str::from_utf8(&pub_key).unwrap_or("****");
+
+			tracing::info!("Connected: via public key: {pub_key}");
+			tracing::info!("Connected: with {:#?}", node_info)
 		},
 		StellarRelayMessage::Timeout => {
-			tracing::error!("The Stellar Relay timed out.");
+			tracing::error!("The Stellar Relay timed out. Failed to process message: {message:?}");
 		},
 		_ => {},
 	}
@@ -66,6 +70,8 @@ pub async fn start_oracle_agent(
 	config: StellarOverlayConfig,
 	secret_key: &str,
 ) -> Result<OracleAgent, Error> {
+	tracing::info!("Starting connection to Stellar overlay network...");
+
 	let mut overlay_conn = connect_to_stellar_overlay_network(config.clone(), secret_key).await?;
 
 	// Get action sender and disconnect action before moving `overlay_conn` into the closure
@@ -104,10 +110,10 @@ pub async fn start_oracle_agent(
 	});
 
 	tokio::spawn(on_shutdown(shutdown_sender.clone(), async move {
-		let result_sending_diconnect =
+		let result_sending_disconnect =
 			actions_sender.send(disconnect_action).await.map_err(Error::from);
-		if let Err(e) = result_sending_diconnect {
-			tracing::error!("Failed to send message to error : {:#?}", e);
+		if let Err(e) = result_sending_disconnect {
+			tracing::error!("OracleAgent: Failed to send disconnect message: {:#?}", e);
 		};
 	}));
 
@@ -137,11 +143,18 @@ impl OracleAgent {
 				let collector = collector.read().await;
 				match collector.build_proof(slot, &stellar_sender).await {
 					None => {
+						tracing::warn!("Failed to build proof for slot {slot}.");
 						drop(collector);
 						sleep(Duration::from_secs(10)).await;
 						continue
 					},
-					Some(proof) => return Ok(proof),
+					Some(proof) => {
+						tracing::info!("Successfully build proof for slot {slot}");
+						tracing::trace!(
+							"Successfully build proof for slot {slot}, proof: {proof:?}"
+						);
+						return Ok(proof)
+					},
 				}
 			}
 		})
@@ -161,9 +174,9 @@ impl OracleAgent {
 
 	/// Stops listening for new SCP messages.
 	pub fn stop(&self) -> Result<(), Error> {
-		tracing::info!("Stopping agent");
+		tracing::debug!("Shutting down OracleAgent...");
 		if let Err(e) = self.shutdown_sender.send(()) {
-			tracing::error!("Failed to send shutdown signal to the agent: {:?}", e);
+			tracing::error!("Failed to send shutdown signal in OracleAgent: {:?}", e);
 		}
 		Ok(())
 	}

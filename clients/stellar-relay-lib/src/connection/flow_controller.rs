@@ -2,7 +2,7 @@ use substrate_stellar_sdk::types::MessageType;
 
 pub const MAX_FLOOD_MSG_CAP: u32 = 2000;
 
-#[derive(Default)]
+#[derive(Debug, Default)]
 pub struct FlowController {
 	enabled: bool,
 	flood_msg_cap: u32,

@@ -25,6 +25,9 @@ impl ScpMessageCollector {
 
 		// we are only interested with `ScpStExternalize`. Other messages are ignored.
 		if let ScpStatementPledges::ScpStExternalize(stmt) = &env.statement.pledges {
+			tracing::trace!(
+				"Handling Incoming ScpEnvelopes for slot {slot}: SCPStExternalize found: {stmt:?}"
+			);
 			// set the last scpenvenvelope with ScpStExternalize message
 			self.set_last_slot_index(slot);
 
@@ -33,7 +36,9 @@ impl ScpMessageCollector {
 			// Check if collector has a record of this hash.
 			if self.is_txset_new(&txset_hash, &slot) {
 				// if it doesn't exist, let's request from the Stellar Node.
-				tracing::debug!("requesting TxSet for slot {}...", slot);
+				tracing::debug!(
+					"Handling Incoming ScpEnvelopes for slot {slot}: requesting TxSet..."
+				);
 				message_sender.send(StellarMessage::GetTxSet(txset_hash)).await?;
 
 				// let's save this for creating the proof later on.

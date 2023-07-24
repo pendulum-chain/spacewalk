@@ -1,4 +1,7 @@
-use std::marker::{Send, Sync};
+use std::{
+	fmt::{Debug, Formatter},
+	marker::{Send, Sync},
+};
 
 use async_trait::async_trait;
 use futures::{channel::mpsc::Receiver, *};
@@ -35,6 +38,17 @@ pub struct UnconvertedOpenTime {
 	id: H256,
 	parachain_open_height: u32,
 	period: u32,
+}
+
+impl Debug for UnconvertedOpenTime {
+	fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+		let id = hex::encode(self.id);
+		return write!(
+			f,
+			"UnconvertedOpenTime:{{ id: {}, parachain_open_height: {}, period: {} }}",
+			id, self.parachain_open_height, self.period
+		)
+	}
 }
 
 #[derive(PartialEq, Debug)]
@@ -208,10 +222,25 @@ impl<P: IssuePallet + ReplacePallet + UtilFuncs + SecurityPallet + Clone> Cancel
 
 		for request in cancellable_requests {
 			match T::cancel_request(&self.parachain_rpc, request.id).await {
-				Ok(_) => tracing::info!("Canceled {} #{:?}", T::TYPE_NAME, request.id),
+				Ok(_) => {
+					tracing::info!(
+						"Successfully cancelled {} request with id #{:?}.",
+						T::TYPE_NAME,
+						request.id
+					);
+					tracing::debug!(
+						"Info of the cancelled {} request: {:#?}",
+						T::TYPE_NAME,
+						request
+					);
+				},
 				Err(e) => {
 					// failed to cancel; get up-to-date request list in next iteration
-					tracing::error!("Failed to cancel {}: {}", T::TYPE_NAME, e);
+					tracing::error!(
+						"Cancellation of {} request with id #{:?} failed with error {e:?}",
+						T::TYPE_NAME,
+						request.id
+					);
 					return ListState::Invalid
 				},
 			}
@@ -235,7 +264,7 @@ impl<P: IssuePallet + ReplacePallet + UtilFuncs + SecurityPallet + Clone> Cancel
 				},
 				Err(e) => {
 					active_requests.clear();
-					tracing::error!("Failed to query open {}s: {}", T::TYPE_NAME, e);
+					tracing::error!("Failed to query open {} request: {e:?}", T::TYPE_NAME);
 				},
 			}
 		}
@@ -243,20 +272,20 @@ impl<P: IssuePallet + ReplacePallet + UtilFuncs + SecurityPallet + Clone> Cancel
 		match event {
 			Event::ParachainBlock(height) => {
 				tracing::trace!(
-					"Received parachain block at active height {} for {}",
-					height,
-					T::TYPE_NAME
+					"Received parachain block at active height {} in process_events for {} requests",
+					T::TYPE_NAME,
+					height
 				);
 				self.parachain_height = height;
 				Ok(self.cancel_requests::<T>(active_requests).await)
 			},
 			Event::Executed(id) => {
-				tracing::debug!("Received event: executed {} #{}", T::TYPE_NAME, id);
+				tracing::debug!("Received execution event for {} request #{}", T::TYPE_NAME, id);
 				active_requests.retain(|x| x.id != id);
 				Ok(ListState::Valid)
 			},
 			Event::Opened => {
-				tracing::debug!("Received event: opened {}", T::TYPE_NAME);
+				tracing::debug!("Received 'opened' event for {} request.", T::TYPE_NAME);
 				Ok(ListState::Invalid)
 			},
 		}
@@ -266,6 +295,8 @@ impl<P: IssuePallet + ReplacePallet + UtilFuncs + SecurityPallet + Clone> Cancel
 	async fn get_open_requests<T: Canceller<P>>(&mut self) -> Result<Vec<ActiveRequest>, Error> {
 		let open_requests =
 			T::get_open_requests(&self.parachain_rpc, self.vault_id.clone()).await?;
+
+		tracing::trace!("List of open {} requests: {open_requests:?}", T::TYPE_NAME);
 
 		if open_requests.is_empty() {
 			return Ok(vec![])

@@ -17,8 +17,6 @@ impl Connector {
 		let (proc_id, data) = xdr;
 		let (auth_msg, msg_type) = parse_authenticated_message(&data)?;
 
-		log::debug!("proc_id: {} processing {:?}", proc_id, msg_type);
-
 		match msg_type {
 			MessageType::Transaction | MessageType::FloodAdvert if !self.receive_tx_messages() => {
 				self.increment_remote_sequence()?;
@@ -34,7 +32,9 @@ impl Connector {
 				if self.is_handshake_created() {
 					self.verify_auth(&auth_msg, &data[4..(data.len() - 32)])?;
 					self.increment_remote_sequence()?;
-					log::trace!("proc_id: {}, auth message verified", proc_id);
+					log::trace!(
+						"proc_id: {proc_id}. Processing {msg_type:?} message: auth verified"
+					);
 				}
 
 				self.process_stellar_message(proc_id, auth_msg.message, msg_type).await?;
@@ -69,10 +69,10 @@ impl Connector {
 				self.process_auth_message().await?;
 			},
 
-			StellarMessage::SendMore(_) => {
-				log::info!("SendMore message received from overlay");
-			},
 			other => {
+				log::trace!(
+					"proc_id: {p_id}. Processing {msg_type:?} message: received from overlay"
+				);
 				self.send_to_user(StellarRelayMessage::Data {
 					p_id,
 					msg_type,
@@ -92,8 +92,8 @@ impl Connector {
 
 		self.handshake_completed();
 
-		log::info!("Handshake completed");
 		if let Some(remote) = self.remote() {
+			log::debug!("Processing auth message: sending connect message: {remote:?}");
 			self.send_to_user(StellarRelayMessage::Connect {
 				pub_key: remote.pub_key().clone(),
 				node_info: remote.node().clone(),
@@ -105,7 +105,7 @@ impl Connector {
 				remote.node().overlay_version,
 			);
 		} else {
-			log::warn!("No remote overlay version after handshake.");
+			log::warn!("Processing auth message: No remote overlay version after handshake.");
 		}
 
 		self.check_to_send_more(MessageType::Auth).await
