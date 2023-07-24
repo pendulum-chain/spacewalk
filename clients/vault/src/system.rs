@@ -43,7 +43,7 @@ pub const ABOUT: &str = env!("CARGO_PKG_DESCRIPTION");
 
 const RESTART_INTERVAL: Duration = Duration::from_secs(10800); // restart every 3 hours
 
-#[derive(Clone,Debug)]
+#[derive(Clone, Debug)]
 pub struct VaultData {
 	pub vault_id: VaultId,
 	pub stellar_wallet: ArcRwLock<StellarWallet>,
