@@ -51,7 +51,7 @@ cfg_if::cfg_if! {
 		pub const SS58_PREFIX: u16 = 57;
 	} else if #[cfg(feature = "parachain-metadata-foucoco")] {
 		const DEFAULT_SPEC_VERSION: Range<u32> = 1..1000;
-		pub const DEFAULT_SPEC_NAME: &str = "amplitude";
+		pub const DEFAULT_SPEC_NAME: &str = "foucoco";
 		pub const SS58_PREFIX: u16 = 57;
 	}
 }
