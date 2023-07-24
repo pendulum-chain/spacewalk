@@ -19,7 +19,6 @@ impl Connector {
 			return Ok(())
 		}
 
-		log::debug!("Sending Send More message...");
 		let msg = StellarMessage::SendMore(SendMore { num_messages: MAX_FLOOD_MSG_CAP });
 		self.send_stellar_message(msg).await
 	}

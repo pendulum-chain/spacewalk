@@ -116,30 +116,38 @@ impl ScpMessageCollector {
 			value.push(scp_envelope);
 			envelopes_map.insert(slot, value);
 		} else {
-			tracing::debug!("Adding received SCP envelopes for slot {}", slot);
+			tracing::debug!("Collecting SCPEnvelopes for slot {slot}: success");
+			tracing::trace!(
+				"Collecting SCPEnvelopes for slot {slot}: the scp envelope: {scp_envelope:#?}"
+			);
 			envelopes_map.insert(slot, vec![scp_envelope]);
 		}
 	}
 
 	pub(super) fn add_txset(&self, txset_hash: &TxSetHash, tx_set: TransactionSet) {
+		let hash_str = hex::encode(&txset_hash);
+
 		let slot = {
 			let mut map_write = self.txset_and_slot_map.write();
 			map_write.remove_by_txset_hash(txset_hash).map(|slot| {
-				tracing::debug!("saved txset_hash for slot: {:?}", slot);
+				tracing::debug!("Collecting TxSet for slot {slot}: txset saved.");
+				tracing::trace!("Collecting TxSet for slot {slot}: {tx_set:?}");
 				self.txset_map.write().insert(slot, tx_set);
 				slot
 			})
 		};
 
 		if slot.is_none() {
-			tracing::warn!("WARNING! tx_set_hash: {:?} has no slot.", txset_hash);
+			tracing::warn!("Collecting TxSet for slot: tx_set_hash: {hash_str} has no slot.");
 		}
 	}
 
 	pub(super) fn save_txset_hash_and_slot(&self, txset_hash: TxSetHash, slot: Slot) {
 		// save the mapping of the hash of the txset and the slot.
 		let mut m = self.txset_and_slot_map.write();
-		tracing::debug!("saving txset_hash of slot: {slot}");
+		tracing::debug!("Collecting TxSet for slot {slot}: saving a map of txset_hash...");
+		let hash = hex::encode(&txset_hash);
+		tracing::trace!("Collecting TxSet for slot {slot}: the txset_hash: {hash}");
 		m.insert(txset_hash, slot);
 	}
 

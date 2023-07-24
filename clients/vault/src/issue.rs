@@ -72,13 +72,17 @@ pub async fn listen_for_issue_requests(
 	parachain_rpc
 		.on_event::<RequestIssueEvent, _, _, _>(
 			|event| async move {
-				tracing::info!("Received RequestIssueEvent: {:?}", event.issue_id);
+				tracing::info!("RequestIssueEvent received for ID #{:?}:", event.issue_id);
 				if is_vault(vault_public_key, event.vault_stellar_public_key) {
 					// let's get the IssueRequest
 					let issue_request_result =
 						parachain_rpc.get_issue_request(event.issue_id).await;
 					if let Ok(issue_request) = issue_request_result {
-						tracing::trace!("Adding issue request to issue map: {:?}", issue_request);
+						tracing::trace!(
+							"Request Issue #{:?}: adding issue request to issue map: {:?}",
+							event.issue_id,
+							issue_request
+						);
 
 						let (mut issues, mut memos_to_issue_ids) =
 							future::join(issues.write(), memos_to_issue_ids.write()).await;
@@ -90,10 +94,7 @@ pub async fn listen_for_issue_requests(
 						// the only way it can fail is if the channel is closed
 						let _ = event_channel.clone().send(Event::Opened).await;
 					} else {
-						tracing::error!(
-							"Failed to get issue request for issue id: {:?}",
-							event.issue_id
-						);
+						tracing::error!("Failed to get issue request #{:?}", event.issue_id);
 					}
 				}
 			},
@@ -126,7 +127,7 @@ pub async fn listen_for_issue_cancels(
 				let shortened_request_id = derive_shortened_request_id(&event.issue_id.0);
 				memos_to_issue_ids.remove(&shortened_request_id);
 
-				tracing::info!("Received CancelIssueEvent: {:?}", event);
+				tracing::info!("Received CancelIssueEvent #{:?}", event);
 			},
 			|error| tracing::error!("Error reading CancelIssueEvent: {:?}", error.to_string()),
 		)
@@ -161,7 +162,7 @@ pub async fn listen_for_executed_issues(
 				}
 
 				tracing::trace!(
-					"issue id {:?} was executed and will be removed. issues size: {}",
+					"Received ExecuteIssueEvent for #{:?}, Remaining issues size: {}",
 					event.issue_id,
 					issues.read().await.len()
 				);
@@ -190,7 +191,7 @@ fn create_task_status_sender(
 
 	// Not finding the slot in the map means there's no existing task for it.
 	let (sender, receiver) = tokio::sync::oneshot::channel();
-	tracing::trace!("Creating a task for slot {}", slot);
+	tracing::trace!("Created new issue task for slot {slot}");
 
 	let slot_task = SlotTask::new(*slot, receiver);
 	processed_map.insert(*slot, slot_task);
@@ -224,13 +225,13 @@ async fn cleanup_ledger_env_map(
 			// the task succeeded
 			SlotTaskStatus::Success => {
 				// we cannot process this again, so remove it from the list.
-				tracing::trace!("Task with slot {slot} succeeded.");
+				tracing::trace!("Issue task for slot {slot} succeeded");
 				ledger_map.remove(slot);
 				false
 			}
 			// the task failed and this transaction cannot be executed again
 			SlotTaskStatus::Failed(e) => {
-				tracing::error!("Task with slot {slot} has failed: {e:?}");
+				tracing::error!("Issue task for slot {slot} failed with error: {e:?}");
 				// we cannot process this again, so remove it from the list.
 				ledger_map.remove(slot);
 				false
@@ -307,16 +308,17 @@ pub async fn execute_issue(
 ) {
 	let slot = OracleSlot::from(slot);
 	// Get the proof of the given slot
-	let proof = match oracle_agent.get_proof(slot).await {
-		Ok(proof) => proof,
-		Err(e) => {
-			tracing::error!("Failed to get proof for slot {}: {:?}", slot, e);
-			if let Err(e) = sender.send(SlotTaskStatus::RecoverableError) {
-				tracing::error!("Failed to send {:?} status for slot {}", e, slot);
-			}
-			return
-		},
-	};
+	let proof =
+		match oracle_agent.get_proof(slot).await {
+			Ok(proof) => proof,
+			Err(e) => {
+				tracing::error!("Could not execute Issue for slot {slot} due to error with proof building: {e:?}");
+				if let Err(e) = sender.send(SlotTaskStatus::RecoverableError) {
+					tracing::error!("Execute Issue for slot {slot}: Failed to send {e:?} status.");
+				}
+				return
+			},
+		};
 
 	let (envelopes, tx_set) = proof.encode();
 
@@ -345,7 +347,7 @@ pub async fn execute_issue(
 			.await
 		{
 			Ok(_) => {
-				tracing::debug!("Slot {:?} executed with issue id: {:?}", slot, issue_id);
+				tracing::info!("Successfully executed Issue #{issue_id:?} for slot {slot}");
 
 				let (mut issues, mut memos_to_issue_ids) =
 					future::join(issues.write(), memos_to_issue_ids.write()).await;
@@ -353,20 +355,28 @@ pub async fn execute_issue(
 				memos_to_issue_ids.remove(text_memo);
 
 				if let Err(e) = sender.send(SlotTaskStatus::Success) {
-					tracing::error!("Failed to send {:?} status for slot {}", e, slot);
+					tracing::error!(
+						"Execute Issue #{issue_id:?} for slot {slot}: Failed to send {e:?} status"
+					);
 				}
 				return
 			},
 			Err(err) if err.is_issue_completed() => {
-				tracing::debug!("Issue #{} has been completed", issue_id);
+				tracing::debug!(
+					"Execute Issue #{issue_id:?} for slot {slot} was completed previously."
+				);
 				if let Err(e) = sender.send(SlotTaskStatus::Success) {
-					tracing::error!("Failed to send {:?} status for slot {}", e, slot);
+					tracing::error!(
+						"Execute Issue #{issue_id:?} for slot {slot}: Failed to send {e:?} status"
+					);
 				}
 				return
 			},
 			Err(e) => {
 				if let Err(e) = sender.send(SlotTaskStatus::Failed(format!("{:?}", e))) {
-					tracing::error!("Failed to send {:?} status for slot {}", e, slot);
+					tracing::error!(
+						"Execute Issue #{issue_id:?} for slot {slot}: Failed to send {e:?} status"
+					);
 				}
 				return
 			},
@@ -376,7 +386,7 @@ pub async fn execute_issue(
 	if let Err(e) =
 		sender.send(SlotTaskStatus::Failed(format!("Cannot find issue memo for slot {}", slot)))
 	{
-		tracing::error!("Failed to send {:?} status for slot {}", e, slot);
+		tracing::error!("Execute Issue #{issue_id:?} for slot {slot}:Failed to send {e:?} status");
 	}
 }
 

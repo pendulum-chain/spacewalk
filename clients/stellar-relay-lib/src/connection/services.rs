@@ -2,6 +2,7 @@ use crate::{
 	connection::{
 		connector::{Connector, ConnectorActions},
 		helper::time_now,
+		log_error,
 		xdr_converter::get_xdr_message_length,
 	},
 	Error, StellarRelayMessage,
@@ -183,26 +184,29 @@ pub(crate) async fn receiving_service(
 				// then check the size of next stellar message.
 				// If it's not enough, skip it.
 				let expect_msg_len = next_message_length(&mut r_stream).await;
-				log::trace!("proc_id: {} The next message length: {}", proc_id, expect_msg_len);
+				log::trace!("proc_id: {proc_id}. The next message length is {expect_msg_len}");
 
 				if expect_msg_len == 0 {
 					// there's nothing to read; wait for the next iteration
-					log::info!("WARNING!!! NOTHING TO READ!!!!");
+					log::trace!("proc_id: {proc_id}. Nothing left to read; waiting for next loop");
 					continue
 				}
 
 				// let's start reading the actual stellar message.
 				readbuf = vec![0; expect_msg_len];
 
-				read_message(
-					&mut r_stream,
-					&actions_sender,
-					&mut lack_bytes_from_prev,
-					&mut proc_id,
-					&mut readbuf,
-					expect_msg_len,
-				)
-				.await?;
+				log_error!(
+					read_message(
+						&mut r_stream,
+						&actions_sender,
+						&mut lack_bytes_from_prev,
+						&mut proc_id,
+						&mut readbuf,
+						expect_msg_len,
+					)
+					.await,
+					format!("proc_id: {proc_id}. Failed to read message")
+				);
 			},
 
 			Ok(Ok(_)) => {
@@ -219,14 +223,13 @@ pub(crate) async fn receiving_service(
 				.await?;
 			},
 			Ok(Err(e)) => {
-				log::error!("read ERROR! {:?}", e);
+				log::error!("proc_id: {proc_id}. Error occurred while reading the stream: {e:?}");
 				return Err(Error::ConnectionFailed(e.to_string()))
 			},
 			Err(elapsed) => {
 				log::error!(
-					"{} for reading messages from Stellar Node. Retry: {}",
-					elapsed.to_string(),
-					retry
+					"proc_id: {proc_id}. Timeout of {} seconds elapesd for reading messages from Stellar Node. Retry: #{retry}",
+					elapsed.to_string()
 				);
 
 				if retry >= retries {
@@ -248,8 +251,8 @@ async fn _connection_handler(
 	match actions {
 		// start the connection to Stellar node with a 'hello'
 		ConnectorActions::SendHello => {
-			log::info!("Starting Handshake with Hello.");
 			let msg = connector.create_hello_message(time_now())?;
+			log::trace!("Sending Hello Message...{:?}", msg);
 			w_stream.write_all(&msg).await.map_err(|e| Error::WriteFailed(e.to_string()))?;
 		},
 
@@ -288,9 +291,8 @@ pub(crate) async fn connection_handler(
 		match timeout(Duration::from_secs(connector.timeout_in_secs), actions_receiver.recv()).await
 		{
 			Ok(Some(ConnectorActions::Disconnect)) => {
-				log::info!("Disconnecting TCP stream...");
 				w_stream.shutdown().await.map_err(|e| {
-					log::error!("failed to shutdown write half of stream: {:?}", e);
+					log::error!("Failed to shutdown write half of stream: {:?}", e);
 
 					Error::ConnectionFailed("Failed to disconnect tcp stream".to_string())
 				})?;
@@ -302,7 +304,10 @@ pub(crate) async fn connection_handler(
 
 			Ok(Some(action)) => {
 				timeout_counter = 0;
-				_connection_handler(action, &mut connector, &mut w_stream).await?;
+				log_error!(
+					_connection_handler(action, &mut connector, &mut w_stream).await,
+					format!("Handling the connection failed")
+				);
 			},
 
 			Ok(None) => {

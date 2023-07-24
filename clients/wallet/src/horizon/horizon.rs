@@ -51,6 +51,7 @@ pub fn horizon_url(is_public_network: bool, is_need_fallback: bool) -> &'static 
 #[async_trait]
 impl HorizonClient for reqwest::Client {
 	async fn get_from_url<R: DeserializeOwned>(&self, url: &str) -> Result<R, Error> {
+		tracing::debug!("accessing url: {url:?}");
 		let response = self.get(url).send().await.map_err(Error::HttpFetchingError)?;
 		interpret_response::<R>(response).await
 	}
@@ -119,6 +120,11 @@ impl HorizonClient for reqwest::Client {
 		max_backoff_delay_in_secs: u16,
 	) -> Result<TransactionResponse, Error> {
 		let seq_no = transaction_envelope.sequence_number();
+
+		tracing::debug!(
+			"submitting transaction with seq no: {seq_no:?}: {transaction_envelope:#?}"
+		);
+
 		let transaction_xdr = transaction_envelope.to_base64_xdr();
 		let transaction_xdr = std::str::from_utf8(&transaction_xdr).map_err(Error::Utf8Error)?;
 
@@ -154,12 +160,11 @@ impl HorizonClient for reqwest::Client {
 
 					// let's wait awhile before resubmitting.
 					tracing::warn!(
-						"submission failed for transaction with sequence number {seq_no:?}: {e:?}"
+						"submitting transaction with seq no: {seq_no:?} failed with {e:?}"
 					);
 					// exponentially sleep before retrying again
 					let sleep_duration = 2u64.pow(exponent_counter);
 					sleep(Duration::from_secs(sleep_duration)).await;
-					tracing::debug!("resubmitting transaction with sequence number {seq_no:?}...");
 
 					// retry/resubmit again
 					if sleep_duration < u64::from(max_backoff_delay_in_secs) {
@@ -169,6 +174,8 @@ impl HorizonClient for reqwest::Client {
 				},
 
 				Err(Error::HorizonSubmissionError { title, status, reason, envelope_xdr }) => {
+					tracing::error!("submitting transaction with seq no: {seq_no:?}: failed with {title}, {reason}");
+					tracing::debug!("submitting transaction with seq no: {seq_no:?}: the envelope: {envelope_xdr:?}");
 					let envelope_xdr = envelope_xdr.or(Some(transaction_xdr.to_string()));
 					// let's add a transaction envelope, if possible
 					return Err(Error::HorizonSubmissionError {

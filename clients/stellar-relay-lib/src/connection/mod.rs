@@ -12,6 +12,7 @@ pub mod xdr_converter;
 
 pub(crate) use connector::*;
 pub use error::Error;
+pub use helper::*;
 pub use overlay_connection::*;
 use serde::Serialize;
 use std::fmt::{Debug, Formatter};

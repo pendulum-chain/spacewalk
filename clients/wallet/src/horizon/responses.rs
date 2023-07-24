@@ -320,7 +320,7 @@ impl<C: HorizonClient> TransactionsResponseIter<C> {
 			Some(record) => Some(record),
 			None => {
 				// call the next page
-				tracing::debug!("calling next page: {}", &self.next_page);
+				tracing::trace!("calling next page: {}", &self.next_page);
 
 				let response: HorizonTransactionsResponse =
 					self.client.get_from_url(&self.next_page).await.ok()?;
