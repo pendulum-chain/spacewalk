@@ -556,11 +556,10 @@ impl CurrencyId {
 	}
 }
 
+/// This struct defines the custom metadata for an asset registered on an asset registry pallet.
+/// It's a unit struct because we don't need to store any metadata at the moment.
 #[derive(scale_info::TypeInfo, Encode, Decode, Clone, Eq, PartialEq, Debug)]
-pub struct CustomMetadata {
-	pub fee_per_second: u128,
-	pub coingecko_id: Vec<u8>,
-}
+pub struct CustomMetadata;
 
 pub type Bytes4 = [u8; 4];
 pub type Bytes12 = [u8; 12];
