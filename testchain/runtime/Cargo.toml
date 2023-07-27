@@ -36,6 +36,7 @@ pallet-balances = {git = "https://github.com/paritytech/substrate", branch = "po
 pallet-sudo = {git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.40", default-features = false}
 pallet-timestamp = {git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.40", default-features = false}
 pallet-transaction-payment = {git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.40", default-features = false}
+pallet-asset-tx-payment = {git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.40", default-features = false}
 
 frame-system-rpc-runtime-api = {git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.40", default-features = false}
 pallet-transaction-payment-rpc-runtime-api = {git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.40", default-features = false}
@@ -134,6 +135,7 @@ std = [
   "pallet-timestamp/std",
   "pallet-transaction-payment-rpc-runtime-api/std",
   "pallet-transaction-payment/std",
+  "pallet-asset-tx-payment/std",
   "primitives/std",
   "redeem/std",
   "replace/std",

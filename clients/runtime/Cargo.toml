@@ -66,6 +66,7 @@ wallet = { path = "../wallet" }
 
 [dev-dependencies]
 env_logger = "0.8.3"
+subxt-signer = "0.30.0"
 tempdir = "0.3.7"
 runtime = { path = ".", features = ["testing-utils"] }
 testchain-runtime = { package = "spacewalk-runtime-standalone", path = "../../testchain/runtime", features = ["testing-utils"] }

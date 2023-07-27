@@ -6,7 +6,7 @@
 #[macro_use]
 extern crate frame_benchmarking;
 
-use codec::Encode;
+use codec::{Encode, FullCodec};
 pub use dia_oracle::dia::*;
 use frame_support::{
 	construct_runtime, parameter_types,
@@ -14,27 +14,31 @@ use frame_support::{
 	weights::{constants::WEIGHT_REF_TIME_PER_SECOND, ConstantMultiplier, IdentityFee, Weight},
 	PalletId,
 };
+use frame_support::traits::{ExistenceRequirement, Imbalance, WithdrawReasons};
+use frame_support::traits::fungibles::CreditOf;
+use frame_support::traits::tokens::{BalanceConversion, WithdrawConsequence};
 pub use frame_system::Call as SystemCall;
 use orml_currencies::BasicCurrencyAdapter;
-use orml_traits::{currency::MutationHooks, parameter_type_with_key};
+use orml_tokens::{ConvertBalance, PositiveImbalance as ORMLPositiveImbalance};
+use orml_tokens::NegativeImbalance as ORMLNegativeImbalance;
+use orml_traits::{currency::MutationHooks, MultiCurrency, parameter_type_with_key};
+use pallet_asset_tx_payment::{FungiblesAdapter, HandleCredit, OnChargeAssetTransaction};
 pub use pallet_balances::Call as BalancesCall;
 use pallet_grandpa::{
 	fg_primitives, AuthorityId as GrandpaId, AuthorityList as GrandpaAuthorityList,
 };
 pub use pallet_timestamp::Call as TimestampCall;
+use scale_info::TypeInfo;
 use sp_api::impl_runtime_apis;
 use sp_consensus_aura::sr25519::AuthorityId as AuraId;
 use sp_core::{OpaqueMetadata, H256};
-use sp_runtime::{
-	create_runtime_str, generic, impl_opaque_keys,
-	traits::{
-		AccountIdConversion, AccountIdLookup, BlakeTwo256, Block as BlockT, Convert, NumberFor,
-		Zero,
-	},
-	transaction_validity::{TransactionSource, TransactionValidity},
-	ApplyExtrinsicResult, DispatchError, FixedPointNumber, Perbill, SaturatedConversion,
-};
-use sp_std::{marker::PhantomData, prelude::*};
+use sp_runtime::{create_runtime_str, generic, impl_opaque_keys, traits::{
+	AccountIdConversion, AccountIdLookup, BlakeTwo256, Block as BlockT, Convert, NumberFor,
+	Zero, One
+}, transaction_validity::{TransactionSource, TransactionValidity}, ApplyExtrinsicResult, DispatchError, FixedPointNumber, Perbill, SaturatedConversion, DispatchResult, Saturating};
+use sp_runtime::traits::{CheckedDiv, CheckedMul, DispatchInfoOf, MaybeSerializeDeserialize, PostDispatchInfoOf};
+use sp_runtime::transaction_validity::{InvalidTransaction, TransactionValidityError};
+use sp_std::{marker::PhantomData, prelude::*, fmt::Debug};
 #[cfg(feature = "std")]
 use sp_version::NativeVersion;
 use sp_version::RuntimeVersion;
@@ -211,6 +215,36 @@ impl pallet_transaction_payment::Config for Runtime {
 	type WeightToFee = IdentityFee<Balance>;
 	type LengthToFee = ConstantMultiplier<Balance, TransactionByteFee>;
 	type FeeMultiplierUpdate = ();
+}
+
+impl pallet_asset_tx_payment::Config for Runtime {
+	type RuntimeEvent = RuntimeEvent;
+	type Fungibles = Tokens;
+	type OnChargeAssetTransaction = FungiblesAdapter<X<Runtime>,CreditToNoOne<Runtime>>;
+}
+
+pub struct CreditToNoOne<T>(PhantomData<T>);
+impl <T: pallet_asset_tx_payment::Config> HandleCredit<T::AccountId, T::Fungibles> for CreditToNoOne<T> {
+	fn handle_credit(credit: CreditOf<T::AccountId, T::Fungibles>) {
+		// if let Some(author) = pallet_authorship::Pallet::<Runtime>::author() {
+		// 		// What to do in case paying the author fails (e.g. because `fee < min_balance`)
+		// 		// default: drop the result which will trigger the `OnDrop` of the imbalance.
+		// 		let _ = <Assets as Balanced<AccountId>>::resolve(&author, credit);
+		// }
+	}
+}
+
+pub struct X<T>(PhantomData<T>);
+
+type AssetIdOf<T> =
+<<T as pallet_asset_tx_payment::Config>::Fungibles as frame_support::traits::fungibles::Inspect<<T as frame_system::Config>::AccountId>>::AssetId;
+
+impl <T: pallet_asset_tx_payment::Config> BalanceConversion<Balance,AssetIdOf<T>,Balance> for X<T> {
+	type Error = ();
+
+	fn to_asset_balance(balance: Balance, asset_id: AssetIdOf<T>) -> Result<Balance, Self::Error> {
+		Ok(balance * 10)
+	}
 }
 
 impl pallet_sudo::Config for Runtime {
@@ -413,7 +447,8 @@ where
 			frame_system::CheckEra::<Runtime>::from(generic::Era::mortal(period, current_block)),
 			frame_system::CheckNonce::<Runtime>::from(index),
 			frame_system::CheckWeight::<Runtime>::new(),
-			pallet_transaction_payment::ChargeTransactionPayment::<Runtime>::from(tip),
+			pallet_asset_tx_payment::ChargeAssetTxPayment::<Runtime>::from(tip,None)
+			// pallet_transaction_payment::ChargeTransactionPayment::<Runtime>::from(tip,None)
 		);
 
 		let raw_payload = SignedPayload::new(call, extra).ok()?;
@@ -575,6 +610,7 @@ construct_runtime! {
 		Currencies: orml_currencies::{Pallet, Call, Storage} = 7,
 		Balances: pallet_balances::{Pallet, Call, Storage, Config<T>, Event<T>} = 8,
 		TransactionPayment: pallet_transaction_payment::{Pallet, Storage, Event<T>} = 9,
+		AssetTxPayment: pallet_asset_tx_payment::{Pallet, Storage, Event<T>} = 30,
 
 		StellarRelay: stellar_relay::{Pallet, Call, Config<T>, Storage, Event<T>} = 10,
 
@@ -613,7 +649,7 @@ pub type SignedExtra = (
 	frame_system::CheckEra<Runtime>,
 	frame_system::CheckNonce<Runtime>,
 	frame_system::CheckWeight<Runtime>,
-	pallet_transaction_payment::ChargeTransactionPayment<Runtime>,
+	pallet_asset_tx_payment::ChargeAssetTxPayment<Runtime>,
 );
 /// Unchecked extrinsic type as expected by this runtime.
 pub type UncheckedExtrinsic =

@@ -10,6 +10,7 @@ use subxt::{
 	ext::sp_runtime::{generic::Header, traits::BlakeTwo256, MultiSignature},
 	subxt, Config,
 };
+use subxt::tx::{BaseExtrinsicParams, ExtrinsicParams};
 
 pub use assets::TryFromSymbol;
 pub use error::{Error, SubxtError};
@@ -40,6 +41,7 @@ mod retry;
 mod rpc;
 mod shutdown;
 pub mod types;
+pub mod params;
 
 pub const TX_FEES: u128 = 2000000000;
 pub const MILLISECS_PER_BLOCK: u64 = 6000;
@@ -119,5 +121,6 @@ impl Config for SpacewalkRuntime {
 	type Address = Address;
 	type Header = Header<Self::BlockNumber, BlakeTwo256>;
 	type Signature = MultiSignature;
-	type ExtrinsicParams = subxt::tx::PolkadotExtrinsicParams<Self>;
+	type ExtrinsicParams = params::SpacewalkExtrinsicParams;
+	// type ExtrinsicParams = subxt::tx::PolkadotExtrinsicParams<Self>;
 }
