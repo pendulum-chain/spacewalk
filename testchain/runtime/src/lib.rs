@@ -8,12 +8,7 @@ extern crate frame_benchmarking;
 
 use codec::{Encode, FullCodec};
 pub use dia_oracle::dia::*;
-use frame_support::{
-	construct_runtime, parameter_types,
-	traits::{ConstU128, ConstU64, ConstU8, Contains},
-	weights::{constants::WEIGHT_REF_TIME_PER_SECOND, ConstantMultiplier, IdentityFee, Weight},
-	PalletId,
-};
+use frame_support::{construct_runtime, parameter_types, traits::{ConstU128, ConstU64, ConstU8, Contains}, weights::{constants::WEIGHT_REF_TIME_PER_SECOND, ConstantMultiplier, IdentityFee, Weight}, PalletId, log};
 use frame_support::traits::{ExistenceRequirement, Imbalance, WithdrawReasons};
 use frame_support::traits::fungibles::CreditOf;
 use frame_support::traits::tokens::{BalanceConversion, WithdrawConsequence};
@@ -243,6 +238,8 @@ impl <T: pallet_asset_tx_payment::Config> BalanceConversion<Balance,AssetIdOf<T>
 	type Error = ();
 
 	fn to_asset_balance(balance: Balance, asset_id: AssetIdOf<T>) -> Result<Balance, Self::Error> {
+		log::info!("FAAAAAAAAAAAAAAAAAK BALANCE: {balance} of asset_id: {asset_id:?}");
+
 		Ok(balance * 10)
 	}
 }
@@ -448,7 +445,7 @@ where
 			frame_system::CheckNonce::<Runtime>::from(index),
 			frame_system::CheckWeight::<Runtime>::new(),
 			pallet_asset_tx_payment::ChargeAssetTxPayment::<Runtime>::from(tip,None)
-			// pallet_transaction_payment::ChargeTransactionPayment::<Runtime>::from(tip,None)
+			// pallet_transaction_payment::ChargeTransactionPayment::<Runtime>::from(tip)
 		);
 
 		let raw_payload = SignedPayload::new(call, extra).ok()?;

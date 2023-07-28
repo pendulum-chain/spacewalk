@@ -1,8 +1,7 @@
 use codec::Encode;
 use sp_runtime::app_crypto::sp_core;
 use subxt::tx::ExtrinsicParams;
-use primitives::CurrencyId;
-use runtime::H256;
+use primitives::{CurrencyId, };
 
 #[derive(Encode, Debug, Clone, Eq, PartialEq)]
 pub struct ChargeAssetTxPayment {
@@ -13,7 +12,7 @@ pub struct ChargeAssetTxPayment {
 #[derive(Encode, Debug, Clone, Eq, PartialEq)]
 pub struct SpacewalkExtraParams {
     pub era: sp_runtime::generic::Era,
-    pub nonce: u64,
+    pub nonce: u32,
     pub charge: ChargeAssetTxPayment
 }
 
@@ -31,15 +30,14 @@ pub struct SpacewalkExtrinsicParams {
     pub additional_params: SpacewalkAdditionalParams
 }
 
-impl ExtrinsicParams<u64,sp_core::H256> for SpacewalkExtrinsicParams {
+impl ExtrinsicParams<u32,sp_core::H256> for SpacewalkExtrinsicParams {
     type OtherParams = (
         sp_core::H256,
         sp_runtime::generic::Era,
         ChargeAssetTxPayment
     );
 
-    fn new(spec_version: u32, tx_version: u32, nonce: u64, genesis_hash: primitives::H256, other_params: Self::OtherParams) -> Self {
-
+    fn new(spec_version: u32, tx_version: u32, nonce: u32, genesis_hash: sp_core::H256, other_params: Self::OtherParams) -> Self {
         let (mortality_hash, era, charge) = other_params;
 
         let extra_params = SpacewalkExtraParams {

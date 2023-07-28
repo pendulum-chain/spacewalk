@@ -5,6 +5,7 @@ use async_trait::async_trait;
 use codec::Encode;
 use futures::{future::join_all, stream::StreamExt, FutureExt, SinkExt};
 use jsonrpsee::core::{client::Client, JsonValue};
+use sp_runtime::generic::Era;
 use subxt::{
 	blocks::ExtrinsicEvents,
 	client::OnlineClient,
@@ -28,6 +29,7 @@ use crate::{
 	types::*,
 	AccountId, Error, RetryPolicy, ShutdownSender, SpacewalkRuntime, SpacewalkSigner, SubxtError,
 };
+use crate::params::ChargeAssetTxPayment;
 
 pub type UnsignedFixedPoint = FixedU128;
 
@@ -217,8 +219,15 @@ impl SpacewalkParachain {
 			|| async {
 				let signer = self.signer.read().await;
 				match timeout(TRANSACTION_TIMEOUT, async {
+					let charge = ChargeAssetTxPayment { tip: 10, asset_id: None };
+
+					let extra_params = (
+							self.api.genesis_hash(),
+						Era::Immortal,
+						charge
+						);
 					let tx_progress =
-						self.api.tx().sign_and_submit_then_watch_default(&call, &*signer).await?;
+						self.api.tx().sign_and_submit_then_watch(&call, &*signer, extra_params).await?;
 					tx_progress.wait_for_finalized_success().await
 				})
 				.await
@@ -817,7 +826,15 @@ impl CollateralBalancesPallet for SpacewalkParachain {
 
 		let signer = self.signer.read().await;
 
-		self.api.tx().sign_and_submit_then_watch_default(&transfer_tx, &*signer).await?;
+		let charge = ChargeAssetTxPayment { tip: 10, asset_id: None };
+
+		let extra_params = (
+			self.api.genesis_hash(),
+			Era::Immortal,
+			charge
+		);
+
+		self.api.tx().sign_and_submit_then_watch(&transfer_tx, &*signer,extra_params).await?;
 		Ok(())
 	}
 }
