@@ -1,4 +1,5 @@
 use std::str::FromStr;
+use jsonrpsee::async_client::ClientBuilder;
 use sp_keyring::AccountKeyring;
 use sp_runtime::generic::Era;
 use subxt::ext::sp_core::crypto::SecretUri;
@@ -7,20 +8,25 @@ use subxt::ext::sp_core::sr25519::Pair as SR25519Pair;
 use sp_runtime::app_crypto::sp_core;
 use subxt::ext::sp_core::Pair;
 use subxt::ext::sp_runtime::MultiAddress;
+use subxt::tx::TxPayload;
 
 
 use primitives::CurrencyId;
 use runtime::params::{ChargeAssetTxPayment, SpacewalkAdditionalParams, SpacewalkExtraParams, SpacewalkExtrinsicParams};
+use subxt_client::SubxtClient;
 
 #[tokio::main]
 async fn main() {
     let api = subxt::OnlineClient::<SpacewalkRuntime>::new().await.expect("should work");
 
-    let dest = subxt::ext::sp_runtime::MultiAddress::Id(AccountKeyring::Bob.into());
+    let dest =  SR25519Pair::from_string("//Bob", None).unwrap();
+    let dest_pub = subxt::ext::sp_runtime::MultiAddress::Id(AccountKeyring::Bob.into());
 
     // Build a balance transfer extrinsic.
-
-    let balance_transfer_tx = metadata::tx().balances().transfer(dest, 10_000);
+    let balance_transfer_tx = metadata::tx().balances().transfer(
+        dest_pub,
+        10_000,
+    );
 
     let alice_pair = SR25519Pair::from_string("//Alice", None).unwrap();
     let from = SpacewalkSigner::new(alice_pair);

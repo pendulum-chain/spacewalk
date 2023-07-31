@@ -238,8 +238,6 @@ impl <T: pallet_asset_tx_payment::Config> BalanceConversion<Balance,AssetIdOf<T>
 	type Error = ();
 
 	fn to_asset_balance(balance: Balance, asset_id: AssetIdOf<T>) -> Result<Balance, Self::Error> {
-		log::info!("FAAAAAAAAAAAAAAAAAK BALANCE: {balance} of asset_id: {asset_id:?}");
-
 		Ok(balance * 10)
 	}
 }

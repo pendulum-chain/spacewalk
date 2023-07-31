@@ -1,22 +1,25 @@
-use codec::Encode;
+use codec::{Encode, Decode};
 use sp_runtime::app_crypto::sp_core;
-use subxt::tx::ExtrinsicParams;
+use sp_runtime::generic::Era;
+
+use subxt::{tx::ExtrinsicParams};
 use primitives::{CurrencyId, };
 
-#[derive(Encode, Debug, Clone, Eq, PartialEq)]
+#[derive(Encode, Decode, Debug, Clone, Eq, PartialEq)]
 pub struct ChargeAssetTxPayment {
+    #[codec(compact)]
     pub tip: u128,
     pub asset_id:Option<CurrencyId>
 }
 
-#[derive(Encode, Debug, Clone, Eq, PartialEq)]
+#[derive(Encode, Decode, Debug, Clone, Eq, PartialEq)]
 pub struct SpacewalkExtraParams {
-    pub era: sp_runtime::generic::Era,
+    pub era: Era,
     pub nonce: u32,
     pub charge: ChargeAssetTxPayment
 }
 
-#[derive(Encode, Debug, Clone, Eq, PartialEq)]
+#[derive(Encode, Decode, Debug, Clone, Eq, PartialEq)]
 pub struct SpacewalkAdditionalParams {
     pub spec_version: u32,
     pub tx_version: u32,
@@ -24,7 +27,7 @@ pub struct SpacewalkAdditionalParams {
     pub mortality_hash: sp_core::H256,
 }
 
-#[derive(Encode, Debug, Clone, Eq, PartialEq)]
+#[derive(Encode, Decode, Debug, Clone, Eq, PartialEq)]
 pub struct SpacewalkExtrinsicParams {
     pub extra_params: SpacewalkExtraParams,
     pub additional_params: SpacewalkAdditionalParams
