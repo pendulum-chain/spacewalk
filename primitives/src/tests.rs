@@ -6,6 +6,7 @@ use substrate_stellar_sdk::{
 use super::{CurrencyId, *};
 use crate::CurrencyInfo;
 use std::str::FromStr;
+use hex::encode;
 
 #[test]
 fn test_trailing_non_alphanum() {
@@ -296,3 +297,9 @@ fn test_currencyid_one() {
 	assert_eq!(USDC_ASSET.one(), Asset::StellarNative.one());
 }
 
+#[test]
+fn test_encoding() {
+	let currency = CurrencyId::Native;
+	let x = currency.encode();
+	println!("")
+}

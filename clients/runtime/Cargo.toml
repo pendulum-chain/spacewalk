@@ -67,6 +67,7 @@ wallet = { path = "../wallet" }
 
 [dev-dependencies]
 env_logger = "0.8.3"
+reqwest = { version = "0.11", features = ["json"] }
 
 tempdir = "0.3.7"
 runtime = { path = ".", features = ["testing-utils"] }

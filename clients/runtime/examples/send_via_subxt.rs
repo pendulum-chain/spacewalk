@@ -12,7 +12,7 @@ use subxt::tx::TxPayload;
 
 
 use primitives::CurrencyId;
-use runtime::params::{ChargeAssetTxPayment, SpacewalkAdditionalParams, SpacewalkExtraParams, SpacewalkExtrinsicParams};
+use runtime::params::{ChargeAssetTxPayment, SpacewalkExtrinsicParams, SpacewalkOtherParams};
 use subxt_client::SubxtClient;
 
 #[tokio::main]
@@ -20,7 +20,7 @@ async fn main() {
     let api = subxt::OnlineClient::<SpacewalkRuntime>::new().await.expect("should work");
 
     let dest =  SR25519Pair::from_string("//Bob", None).unwrap();
-    let dest_pub = subxt::ext::sp_runtime::MultiAddress::Id(AccountKeyring::Bob.into());
+    let dest_pub = MultiAddress::Id(AccountKeyring::Bob.into());
 
     // Build a balance transfer extrinsic.
     let balance_transfer_tx = metadata::tx().balances().transfer(
@@ -31,12 +31,12 @@ async fn main() {
     let alice_pair = SR25519Pair::from_string("//Alice", None).unwrap();
     let from = SpacewalkSigner::new(alice_pair);
 
-    let charge = ChargeAssetTxPayment { tip: 10, asset_id: Some(CurrencyId::XCM(0)) };
-    let extra_params = (
-        api.genesis_hash(),
-        Era::Immortal,
-        charge
-        );
+    let charge = ChargeAssetTxPayment { tip: 10, asset_id: Some(CurrencyId::XCM(1)) };
+    let extra_params = SpacewalkOtherParams {
+        era: Era::Immortal,
+        mortality_checkpoint: None,
+        charge,
+    };
 
     let events = api.tx()
         .sign_and_submit_then_watch(&balance_transfer_tx, &from, extra_params)

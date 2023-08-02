@@ -10,7 +10,7 @@ use subxt::{
 	ext::sp_runtime::{generic::Header, traits::BlakeTwo256, MultiSignature},
 	subxt, Config,
 };
-use subxt::tx::{BaseExtrinsicParams, ExtrinsicParams};
+use subxt::tx::{BaseExtrinsicParams, ExtrinsicParams, PolkadotExtrinsicParams};
 
 pub use assets::TryFromSymbol;
 pub use error::{Error, SubxtError};
@@ -121,6 +121,5 @@ impl Config for SpacewalkRuntime {
 	type Address = Address;
 	type Header = Header<Self::BlockNumber, BlakeTwo256>;
 	type Signature = MultiSignature;
-	type ExtrinsicParams = params::SpacewalkExtrinsicParams;
-	// type ExtrinsicParams = subxt::tx::PolkadotExtrinsicParams<Self>;
+	type ExtrinsicParams = params::SpacewalkExtrinsicParams<Self>;
 }

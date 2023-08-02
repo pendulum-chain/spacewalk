@@ -9,6 +9,7 @@ extern crate frame_benchmarking;
 use codec::{Encode, FullCodec};
 pub use dia_oracle::dia::*;
 use frame_support::{construct_runtime, parameter_types, traits::{ConstU128, ConstU64, ConstU8, Contains}, weights::{constants::WEIGHT_REF_TIME_PER_SECOND, ConstantMultiplier, IdentityFee, Weight}, PalletId, log};
+use frame_support::log::log;
 use frame_support::traits::{ExistenceRequirement, Imbalance, WithdrawReasons};
 use frame_support::traits::fungibles::CreditOf;
 use frame_support::traits::tokens::{BalanceConversion, WithdrawConsequence};
@@ -225,21 +226,24 @@ impl <T: pallet_asset_tx_payment::Config> HandleCredit<T::AccountId, T::Fungible
 		// 		// What to do in case paying the author fails (e.g. because `fee < min_balance`)
 		// 		// default: drop the result which will trigger the `OnDrop` of the imbalance.
 		// 		let _ = <Assets as Balanced<AccountId>>::resolve(&author, credit);
-		// }
 	}
 }
 
 pub struct X<T>(PhantomData<T>);
 
-type AssetIdOf<T> =
-<<T as pallet_asset_tx_payment::Config>::Fungibles as frame_support::traits::fungibles::Inspect<<T as frame_system::Config>::AccountId>>::AssetId;
+// type AssetIdOf<T> =
+// <<T as pallet_asset_tx_payment::Config>::Fungibles as frame_support::traits::fungibles::Inspect<<T as frame_system::Config>::AccountId>>::AssetId;
 
-impl <T: pallet_asset_tx_payment::Config> BalanceConversion<Balance,AssetIdOf<T>,Balance> for X<T> {
+impl <T: pallet_asset_tx_payment::Config + orml_tokens::Config> BalanceConversion<Balance,T::CurrencyId,Balance> for X<T> {
 	type Error = ();
 
-	fn to_asset_balance(balance: Balance, asset_id: AssetIdOf<T>) -> Result<Balance, Self::Error> {
+	fn to_asset_balance(balance: Balance, asset_id: T::CurrencyId) -> Result<Balance, Self::Error> {
 		Ok(balance * 10)
 	}
+
+	// fn to_asset_balance(balance: Balance, asset_id: AssetIdOf<T>) -> Result<Balance, Self::Error> {
+	// 	Ok(balance * 10)
+	// }
 }
 
 impl pallet_sudo::Config for Runtime {
@@ -443,7 +447,7 @@ where
 			frame_system::CheckNonce::<Runtime>::from(index),
 			frame_system::CheckWeight::<Runtime>::new(),
 			pallet_asset_tx_payment::ChargeAssetTxPayment::<Runtime>::from(tip,None)
-			// pallet_transaction_payment::ChargeTransactionPayment::<Runtime>::from(tip)
+			//pallet_transaction_payment::ChargeTransactionPayment::<Runtime>::from(tip)
 		);
 
 		let raw_payload = SignedPayload::new(call, extra).ok()?;
@@ -644,8 +648,10 @@ pub type SignedExtra = (
 	frame_system::CheckEra<Runtime>,
 	frame_system::CheckNonce<Runtime>,
 	frame_system::CheckWeight<Runtime>,
+	// pallet_transaction_payment::ChargeTransactionPayment<Runtime>,
 	pallet_asset_tx_payment::ChargeAssetTxPayment<Runtime>,
 );
+
 /// Unchecked extrinsic type as expected by this runtime.
 pub type UncheckedExtrinsic =
 	generic::UncheckedExtrinsic<Address, RuntimeCall, Signature, SignedExtra>;

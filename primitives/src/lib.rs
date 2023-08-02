@@ -2,7 +2,7 @@
 #![allow(non_upper_case_globals)]
 
 use base58::ToBase58;
-use codec::{Decode, Encode, MaxEncodedLen};
+use codec::{Decode, Encode, EncodeLike, Error, FullCodec, FullEncode, Input, MaxEncodedLen};
 use frame_support::error::LookupError;
 use scale_info::TypeInfo;
 #[cfg(feature = "std")]
@@ -473,10 +473,9 @@ pub fn remove_trailing_non_alphanum_bytes(input: &[u8]) -> &[u8] {
 )]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 #[cfg_attr(feature = "std", serde(rename_all = "camelCase"))]
-#[repr(u8)]
 #[allow(clippy::unnecessary_cast)]
 pub enum Asset {
-	StellarNative = 0_u8,
+	StellarNative,
 	AlphaNum4 { code: Bytes4, issuer: AssetIssuer },
 	AlphaNum12 { code: Bytes12, issuer: AssetIssuer },
 }
@@ -518,10 +517,10 @@ impl Asset {
 )]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 #[cfg_attr(feature = "std", serde(rename_all = "camelCase"))]
-#[repr(u8)]
+
 #[allow(clippy::unnecessary_cast)]
 pub enum CurrencyId {
-	Native = 0_u8,
+	Native,
 	XCM(u8),
 	Stellar(Asset),
 	ZenlinkLPToken(u8, u8, u8, u8),

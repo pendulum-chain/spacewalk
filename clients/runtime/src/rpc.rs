@@ -29,7 +29,7 @@ use crate::{
 	types::*,
 	AccountId, Error, RetryPolicy, ShutdownSender, SpacewalkRuntime, SpacewalkSigner, SubxtError,
 };
-use crate::params::ChargeAssetTxPayment;
+use crate::params::{ChargeAssetTxPayment, SpacewalkOtherParams};
 
 pub type UnsignedFixedPoint = FixedU128;
 
@@ -219,13 +219,12 @@ impl SpacewalkParachain {
 			|| async {
 				let signer = self.signer.read().await;
 				match timeout(TRANSACTION_TIMEOUT, async {
-					let charge = ChargeAssetTxPayment { tip: 10, asset_id: None };
 
-					let extra_params = (
-							self.api.genesis_hash(),
-						Era::Immortal,
-						charge
-						);
+					let extra_params = SpacewalkOtherParams {
+						era: Era::Immortal,
+						mortality_checkpoint: None,
+						charge: ChargeAssetTxPayment::default(),
+					};
 					let tx_progress =
 						self.api.tx().sign_and_submit_then_watch(&call, &*signer, extra_params).await?;
 					tx_progress.wait_for_finalized_success().await
@@ -826,13 +825,11 @@ impl CollateralBalancesPallet for SpacewalkParachain {
 
 		let signer = self.signer.read().await;
 
-		let charge = ChargeAssetTxPayment { tip: 10, asset_id: None };
-
-		let extra_params = (
-			self.api.genesis_hash(),
-			Era::Immortal,
-			charge
-		);
+		let extra_params = SpacewalkOtherParams {
+			era: Era::Immortal,
+			mortality_checkpoint: Some(self.api.genesis_hash()),
+			charge: ChargeAssetTxPayment::default(),
+		};
 
 		self.api.tx().sign_and_submit_then_watch(&transfer_tx, &*signer,extra_params).await?;
 		Ok(())
