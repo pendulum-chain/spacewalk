@@ -491,12 +491,14 @@ impl<T: Config> Pallet<T> {
 			&transaction_envelope,
 			&envelopes,
 			&transaction_set,
-		).map_err(|e| {
-
-			log::error!("failed to validate transaction of id: {}", hex::encode(issue_id.as_bytes()));
+		)
+		.map_err(|e| {
+			log::error!(
+				"failed to validate transaction of id: {}",
+				hex::encode(issue_id.as_bytes())
+			);
 			e
-		}
-		)?;
+		})?;
 
 		let amount_transferred: Amount<T> = ext::currency::get_amount_from_transaction_envelope::<T>(
 			&transaction_envelope,

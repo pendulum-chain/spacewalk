@@ -8,7 +8,12 @@
 #[cfg(test)]
 extern crate mocktopus;
 
-use frame_support::{dispatch::{DispatchError, DispatchResult}, ensure, log, traits::Get, transactional};
+use frame_support::{
+	dispatch::{DispatchError, DispatchResult},
+	ensure, log,
+	traits::Get,
+	transactional,
+};
 #[cfg(test)]
 use mocktopus::macros::mockable;
 use sp_core::H256;
@@ -585,11 +590,14 @@ impl<T: Config> Pallet<T> {
 			&transaction_envelope,
 			&envelopes,
 			&transaction_set,
-		).map_err(|e| {
-			log::error!("failed to validate transaction of id: {}", hex::encode(replace_id.as_bytes()) );
+		)
+		.map_err(|e| {
+			log::error!(
+				"failed to validate transaction of id: {}",
+				hex::encode(replace_id.as_bytes())
+			);
 
 			e
-
 		})?;
 
 		let paid_amount: Amount<T> = ext::currency::get_amount_from_transaction_envelope::<T>(

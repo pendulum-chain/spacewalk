@@ -11,7 +11,10 @@ extern crate mocktopus;
 #[cfg(feature = "std")]
 use std::str::FromStr;
 
-use frame_support::{dispatch::{DispatchError, DispatchResult}, ensure, log, transactional};
+use frame_support::{
+	dispatch::{DispatchError, DispatchResult},
+	ensure, log, transactional,
+};
 #[cfg(test)]
 use mocktopus::macros::mockable;
 
@@ -728,8 +731,12 @@ impl<T: Config> Pallet<T> {
 			&transaction_envelope,
 			&envelopes,
 			&transaction_set,
-		).map_err(|e| {
-			log::error!("failed to validate transaction of id: {}", hex::encode(redeem_id.as_bytes()) );
+		)
+		.map_err(|e| {
+			log::error!(
+				"failed to validate transaction of id: {}",
+				hex::encode(redeem_id.as_bytes())
+			);
 
 			e
 		})?;
