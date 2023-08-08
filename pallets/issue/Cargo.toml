@@ -7,6 +7,7 @@ version = "1.0.0"
 
 [dependencies]
 base64 = { version = '0.13.0', default-features = false, features = ['alloc'] }
+hex = { version = "0.4.3", default-features = false, features = ['alloc'] }
 serde = { version = "1.0.130", default-features = false, features = ['derive'], optional = true }
 codec = { package = "parity-scale-codec", version = "3.0.0", default-features = false, features = ["derive", "max-encoded-len"] }
 scale-info = { version = "2.0.0", default-features = false, features = ["derive"] }
@@ -62,6 +63,7 @@ orml-traits = { git = "https://github.com/open-web3-stack/open-runtime-module-li
 default = ["std"]
 std = [
     "base64/std",
+    "hex/std",
     "serde",
     "codec/std",
     "sp-io/std",

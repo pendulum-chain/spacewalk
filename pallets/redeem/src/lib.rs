@@ -14,7 +14,7 @@ use std::str::FromStr;
 use frame_support::{dispatch::{DispatchError, DispatchResult}, ensure, log, transactional};
 #[cfg(test)]
 use mocktopus::macros::mockable;
-use sp_core::bytes::to_hex;
+
 use sp_core::H256;
 use sp_runtime::traits::{CheckedDiv, Saturating, Zero};
 use sp_std::{convert::TryInto, vec::Vec};
@@ -729,7 +729,7 @@ impl<T: Config> Pallet<T> {
 			&envelopes,
 			&transaction_set,
 		).map_err(|e| {
-			log::error!("failed to validate transaction of id: {}", to_hex(redeem_id.as_bytes()) );
+			log::error!("failed to validate transaction of id: {}", hex::encode(redeem_id.as_bytes()) );
 
 			e
 		})?;

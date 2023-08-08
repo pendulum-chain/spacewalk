@@ -1,9 +1,8 @@
 use std::{collections::HashMap, convert::TryInto, sync::Arc, time::Duration};
-use frame_support::log;
+
 
 use futures::try_join;
 use governor::RateLimiter;
-use sp_core::bytes::to_hex;
 use sp_runtime::traits::StaticLookup;
 use tokio::sync::RwLock;
 
@@ -255,7 +254,8 @@ impl Request {
 		// where the redeem has expired or the rpc has disconnected
 
 		let g = self.hash.as_bytes();
-		log::info!("execute hash: {} with proof: {proof:#?}", to_hex(g));
+
+		tracing::info!("execute hash: {} with proof: {proof:#?}",hex::encode(g));
 
 		// Encode the proof components
 		let tx_env_encoded = tx_env.to_base64_xdr();

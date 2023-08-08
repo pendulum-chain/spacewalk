@@ -586,7 +586,7 @@ impl<T: Config> Pallet<T> {
 			&envelopes,
 			&transaction_set,
 		).map_err(|e| {
-			log::error!("failed to validate transaction of id: {}", to_hex(replace_id.as_bytes()) );
+			log::error!("failed to validate transaction of id: {}", hex::encode(replace_id.as_bytes()) );
 
 			e
 
