@@ -23,6 +23,7 @@ use substrate_stellar_sdk::{
 
 #[cfg(feature = "std")]
 use std::str::FromStr;
+use sp_core::bytes::to_hex;
 
 use currency::Amount;
 pub use default_weights::{SubstrateWeight, WeightInfo};
@@ -491,6 +492,10 @@ impl<T: Config> Pallet<T> {
 			&transaction_envelope,
 			&envelopes,
 			&transaction_set,
+		).map_err(|e| {
+			log::error!("failed to validate transaction of id: {}", to_hex(issue_id.as_bytes()));
+			e
+		}
 		)?;
 
 		let amount_transferred: Amount<T> = ext::currency::get_amount_from_transaction_envelope::<T>(

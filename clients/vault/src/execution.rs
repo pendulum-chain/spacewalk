@@ -1,7 +1,9 @@
 use std::{collections::HashMap, convert::TryInto, sync::Arc, time::Duration};
+use frame_support::log;
 
 use futures::try_join;
 use governor::RateLimiter;
+use sp_core::bytes::to_hex;
 use sp_runtime::traits::StaticLookup;
 use tokio::sync::RwLock;
 
@@ -162,6 +164,7 @@ impl Request {
 
 		let (tx_env, slot) = self.transfer_stellar_asset(vault.stellar_wallet.clone()).await?;
 
+
 		let proof = oracle_agent.get_proof(slot).await?;
 
 		let _ = update_stellar_metrics(&vault, &parachain_rpc).await;
@@ -241,18 +244,23 @@ impl Request {
 		tx_env: TransactionEnvelope,
 		proof: Proof,
 	) -> Result<(), Error> {
+
 		// select the execute function based on request_type
 		let execute = match self.request_type {
 			RequestType::Redeem => RedeemPallet::execute_redeem,
 			RequestType::Replace => ReplacePallet::execute_replace,
 		};
 
+		// Retry until success or timeout, explicitly handle the cases
+		// where the redeem has expired or the rpc has disconnected
+
+		let g = self.hash.as_bytes();
+		log::info!("execute hash: {} with proof: {proof:#?}", to_hex(g));
+
 		// Encode the proof components
 		let tx_env_encoded = tx_env.to_base64_xdr();
 		let (scp_envelopes_encoded, tx_set_encoded) = proof.encode();
 
-		// Retry until success or timeout, explicitly handle the cases
-		// where the redeem has expired or the rpc has disconnected
 		runtime::notify_retry(
 			|| {
 				(execute)(

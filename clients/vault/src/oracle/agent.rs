@@ -155,8 +155,7 @@ impl OracleAgent {
 						continue
 					},
 					Some(proof) => {
-						tracing::info!("Successfully build proof for slot {slot}");
-						tracing::trace!(
+						tracing::info!(
 							"Successfully build proof for slot {slot}, proof: {proof:?}"
 						);
 						return Ok(proof)

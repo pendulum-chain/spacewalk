@@ -29,7 +29,7 @@ use primitives::{derive_shortened_request_id, get_text_memo_from_tx_env, TextMem
 #[frame_support::pallet]
 pub mod pallet {
 	use codec::FullCodec;
-	use frame_support::{pallet_prelude::*, transactional};
+	use frame_support::{log, pallet_prelude::*, transactional};
 	use frame_system::pallet_prelude::*;
 	use sha2::{Digest, Sha256};
 	use sp_core::H256;
@@ -575,9 +575,6 @@ pub mod pallet {
 				})
 				.ok_or(Error::<T>::MissingExternalizedMessage)?;
 
-			#[cfg(test)]
-			frame_support::log::info!("Found Externalized Envelope: {externalized_envelope:?}");
-
 			// Variable used to check if all envelopes are using the same slot index
 			let slot_index: u64 = externalized_envelope.statement.slot_index;
 
@@ -606,19 +603,26 @@ pub mod pallet {
 			// We store the externalized value in a variable so that we can check if it's the same
 			// for all envelopes. We don't distinguish between externalized and confirmed values as
 			// it should be the same value regardless.
+			let mut is_scpstexternalize = false;
 			let (externalized_value, externalized_n_h) =
 				match &externalized_envelope.statement.pledges {
-					ScpStatementPledges::ScpStExternalize(externalized_statement) =>
-						(&externalized_statement.commit.value, externalized_statement.n_h),
+					ScpStatementPledges::ScpStExternalize(externalized_statement) => {
+						is_scpstexternalize = true;
+						(&externalized_statement.commit.value, externalized_statement.n_h)
+					},
 					ScpStatementPledges::ScpStConfirm(confirmed_statement) =>
 						(&confirmed_statement.ballot.value, confirmed_statement.n_h),
 					_ => return Err(Error::<T>::ExternalizedValueNotFound),
 				};
 
+
+			let mut is_scpstexternalize_envelope = false;
 			for envelope in envelopes.get_vec() {
 				let (value, n_h) = match &envelope.statement.pledges {
-					ScpStatementPledges::ScpStExternalize(externalized_statement) =>
-						(&externalized_statement.commit.value, externalized_statement.n_h),
+					ScpStatementPledges::ScpStExternalize(externalized_statement) => {
+						is_scpstexternalize_envelope = true;
+						(&externalized_statement.commit.value, externalized_statement.n_h)
+					},
 					ScpStatementPledges::ScpStConfirm(confirmed_statement) =>
 						(&confirmed_statement.ballot.value, confirmed_statement.n_h),
 					_ => return Err(Error::<T>::InvalidScpPledge),
@@ -630,6 +634,13 @@ pub mod pallet {
 					tx_set_hash == expected_tx_set_hash,
 					Error::<T>::TransactionSetHashMismatch
 				);
+
+				if externalized_n_h != n_h {
+					log::error!("externalized_n_h: {externalized_n_h} is from ScpStExternalize: {is_scpstexternalize}");
+					log::error!("envelope_n_h: {n_h} is from ScpStExternalize: {is_scpstexternalize_envelope}");
+					log::error!("The externalized envelope: {:#?}",externalized_envelope);
+					log::error!("The envelope: {:#?}",envelope);
+				}
 
 				// Check if the externalized value is the same for all envelopes
 				ensure!(externalized_value == value, Error::<T>::ExternalizedValueMismatch);
