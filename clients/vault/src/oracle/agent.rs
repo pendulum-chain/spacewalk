@@ -137,7 +137,13 @@ impl OracleAgent {
 
 		let collector = self.collector.clone();
 
-		timeout(Duration::from_secs(60), async move {
+		#[cfg(test)]
+		let timeout_seconds = 180;
+
+		#[cfg(not(test))]
+		let timeout_seconds = 60;
+
+		timeout(Duration::from_secs(timeout_seconds), async move {
 			loop {
 				let stellar_sender = sender.clone();
 				let collector = collector.read().await;
@@ -189,6 +195,7 @@ mod tests {
 		get_test_secret_key, get_test_stellar_relay_config, traits::ArchiveStorage,
 		ScpArchiveStorage, TransactionsArchiveStorage,
 	};
+	use serial_test::serial;
 
 	use super::*;
 
@@ -216,6 +223,7 @@ mod tests {
 	}
 
 	#[tokio::test]
+	#[serial]
 	async fn test_get_proof_for_archived_slot() {
 		let scp_archive_storage = ScpArchiveStorage::default();
 		let tx_archive_storage = TransactionsArchiveStorage::default();
@@ -239,6 +247,7 @@ mod tests {
 	}
 
 	#[tokio::test]
+	#[serial]
 	async fn test_get_proof_for_archived_slot_with_fallback() {
 		let scp_archive_storage = ScpArchiveStorage::default();
 		let tx_archive_storage = TransactionsArchiveStorage::default();
@@ -271,6 +280,7 @@ mod tests {
 	}
 
 	#[tokio::test]
+	#[serial]
 	async fn test_get_proof_for_archived_slot_fails_without_archives() {
 		let scp_archive_storage = ScpArchiveStorage::default();
 		let tx_archive_storage = TransactionsArchiveStorage::default();

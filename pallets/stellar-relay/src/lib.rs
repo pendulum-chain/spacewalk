@@ -575,6 +575,10 @@ pub mod pallet {
 				})
 				.ok_or(Error::<T>::MissingExternalizedMessage)?;
 
+			#[cfg(test)]
+			frame_support::log::info!("Found Externalized Envelope: {externalized_envelope:?}");
+
+
 			// Variable used to check if all envelopes are using the same slot index
 			let slot_index: u64 = externalized_envelope.statement.slot_index;
 
