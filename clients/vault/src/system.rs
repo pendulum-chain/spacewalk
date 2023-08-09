@@ -386,10 +386,8 @@ impl VaultService {
 		collateral_currency: CurrencyId,
 		wrapped_currency: CurrencyId,
 	) -> VaultId {
-		let account_id = self.spacewalk_parachain.get_account_id();
-
 		VaultId {
-			account_id: account_id.clone(),
+			account_id: self.spacewalk_parachain.get_account_id().clone(),
 			currencies: VaultCurrencyPair {
 				collateral: collateral_currency,
 				wrapped: wrapped_currency,
