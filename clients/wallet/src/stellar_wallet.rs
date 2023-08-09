@@ -337,6 +337,11 @@ impl StellarWallet {
 		request_id: [u8; 32],
 		stroop_fee_per_operation: u32,
 	) -> Result<TransactionResponse, Error> {
+		// user must not send to self
+		if self.secret_key.get_public() == &destination_address {
+			return Err(Error::SelfPaymentError)
+		}
+
 		// create payment operation
 		let payment_op = create_payment_operation(
 			destination_address,
@@ -429,6 +434,8 @@ mod test {
 
 	use crate::{test_helper::default_usdc_asset, StellarWallet};
 
+	const DEFAULT_DEST_PUBLIC_KEY: &str =
+		"GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN";
 	const STELLAR_VAULT_SECRET_KEY: &str =
 		"SCV7RZN5XYYMMVSWYCR4XUMB76FFMKKKNHP63UTZQKVM4STWSCIRLWFJ";
 	const IS_PUBLIC_NETWORK: bool = false;
@@ -508,6 +515,10 @@ mod test {
 		))
 	}
 
+	fn default_destination() -> PublicKey {
+		PublicKey::from_encoding(DEFAULT_DEST_PUBLIC_KEY).expect("Should return a public key")
+	}
+
 	#[test]
 	fn test_add_backoff_delay() {
 		let wallet = StellarWallet::from_secret_encoded_with_cache(
@@ -559,10 +570,6 @@ mod test {
 		let wallet_clone = wallet.clone();
 
 		let first_job = tokio::spawn(async move {
-			let destination = PublicKey::from_encoding(
-				"GCENYNAX2UCY5RFUKA7AYEXKDIFITPRAB7UYSISCHVBTIAKPU2YO57OA",
-			)
-			.unwrap();
 			let asset = StellarAsset::native();
 			let amount = 100;
 			let request_id = [0u8; 32];
@@ -571,7 +578,7 @@ mod test {
 				.write()
 				.await
 				.send_payment_to_address(
-					destination,
+					default_destination(),
 					asset,
 					amount,
 					request_id,
@@ -586,10 +593,6 @@ mod test {
 
 		let wallet_clone2 = wallet.clone();
 		let second_job = tokio::spawn(async move {
-			let destination = PublicKey::from_encoding(
-				"GCENYNAX2UCY5RFUKA7AYEXKDIFITPRAB7UYSISCHVBTIAKPU2YO57OA",
-			)
-			.unwrap();
 			let asset = StellarAsset::native();
 			let amount = 50;
 			let request_id = [1u8; 32];
@@ -598,7 +601,7 @@ mod test {
 				.write()
 				.await
 				.send_payment_to_address(
-					destination,
+					default_destination(),
 					asset,
 					amount,
 					request_id,
@@ -626,16 +629,12 @@ mod test {
 		// let's cleanup, just to make sure.
 		wallet.cache.remove_all_tx_envelopes();
 
-		let destination =
-			PublicKey::from_encoding("GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN")
-				.expect("should return a public key");
-
 		let amount = 10_000; // in the response, value is 0.0010000.
 		let request_id = [1u8; 32];
 
 		let response = wallet
 			.send_payment_to_address_for_redeem_request(
-				destination.clone(),
+				default_destination(),
 				default_usdc_asset(),
 				amount,
 				request_id,
@@ -670,7 +669,7 @@ mod test {
 				let claimant =
 					claimable_balance.claimants.first().expect("should return a claimant");
 
-				assert_eq!(claimant.destination, destination.to_encoding());
+				assert_eq!(claimant.destination, default_destination().to_encoding());
 			},
 			other => {
 				panic!("wrong operation result: {other:?}");
@@ -756,9 +755,6 @@ mod test {
 	#[serial]
 	async fn sending_payment_works() {
 		let wallet = wallet_with_storage("resources/sending_payment_works");
-		let destination =
-			PublicKey::from_encoding("GCENYNAX2UCY5RFUKA7AYEXKDIFITPRAB7UYSISCHVBTIAKPU2YO57OA")
-				.unwrap();
 		let asset = StellarAsset::native();
 		let amount = 100;
 		let request_id = [0u8; 32];
@@ -767,7 +763,7 @@ mod test {
 			.write()
 			.await
 			.send_payment_to_address(
-				destination,
+				default_destination(),
 				asset,
 				amount,
 				request_id,
@@ -784,6 +780,36 @@ mod test {
 
 	#[tokio::test]
 	#[serial]
+	async fn sending_payment_to_self_not_valid() {
+		let wallet = wallet_with_storage("resources/sending_payment_to_self_not_valid").clone();
+		let mut wallet = wallet.write().await;
+
+		// let's cleanup, just to make sure.
+		wallet.cache.remove_all_tx_envelopes();
+
+		let destination = wallet.secret_key.get_public().clone();
+
+		match wallet
+			.send_payment_to_address(
+				destination,
+				StellarAsset::native(),
+				10,
+				[0u8; 32],
+				DEFAULT_STROOP_FEE_PER_OPERATION,
+			)
+			.await
+		{
+			Err(Error::SelfPaymentError) => {
+				assert!(true);
+			},
+			other => {
+				panic!("failed to return SelfPaymentError: {other:?}");
+			},
+		}
+	}
+
+	#[tokio::test]
+	#[serial]
 	async fn sending_correct_payment_after_incorrect_payment_works() {
 		let wallet =
 			wallet_with_storage("resources/sending_correct_payment_after_incorrect_payment_works")
@@ -793,9 +819,6 @@ mod test {
 		// let's cleanup, just to make sure.
 		wallet.cache.remove_all_tx_envelopes();
 
-		let destination =
-			PublicKey::from_encoding("GCENYNAX2UCY5RFUKA7AYEXKDIFITPRAB7UYSISCHVBTIAKPU2YO57OA")
-				.unwrap();
 		let asset = StellarAsset::native();
 		let amount = 1000;
 		let request_id = [0u8; 32];
@@ -804,7 +827,7 @@ mod test {
 
 		let response = wallet
 			.send_payment_to_address(
-				destination.clone(),
+				default_destination(),
 				asset.clone(),
 				amount,
 				request_id,
@@ -816,7 +839,7 @@ mod test {
 
 		let err_insufficient_fee = wallet
 			.send_payment_to_address(
-				destination.clone(),
+				default_destination(),
 				asset.clone(),
 				amount,
 				request_id,
@@ -834,7 +857,7 @@ mod test {
 
 		let tx_response = wallet
 			.send_payment_to_address(
-				destination.clone(),
+				default_destination(),
 				asset.clone(),
 				amount,
 				request_id,
@@ -854,16 +877,14 @@ mod test {
 		let mut wallet = wallet.write().await;
 
 		// let's send a successful transaction first
-		let destination =
-			PublicKey::from_encoding("GCENYNAX2UCY5RFUKA7AYEXKDIFITPRAB7UYSISCHVBTIAKPU2YO57OA")
-				.unwrap();
+
 		let asset = StellarAsset::native();
 		let amount = 1001;
 		let request_id = [0u8; 32];
 
 		let response = wallet
 			.send_payment_to_address(
-				destination.clone(),
+				default_destination(),
 				asset.clone(),
 				amount,
 				request_id,
@@ -881,7 +902,7 @@ mod test {
 		let request_id = [1u8; 32];
 		let bad_envelope = wallet
 			.create_payment_envelope(
-				destination.clone(),
+				default_destination(),
 				asset.clone(),
 				amount,
 				request_id,
@@ -897,7 +918,7 @@ mod test {
 		let request_id = [2u8; 32];
 		let good_envelope = wallet
 			.create_payment_envelope(
-				destination,
+				default_destination(),
 				asset,
 				amount,
 				request_id,

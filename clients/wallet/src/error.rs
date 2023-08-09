@@ -28,6 +28,9 @@ pub enum Error {
 
 	#[error(transparent)]
 	CacheError(CacheError),
+
+	#[error("Cannot send payment to self")]
+	SelfPaymentError,
 }
 
 impl Error {
