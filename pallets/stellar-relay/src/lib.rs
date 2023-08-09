@@ -637,8 +637,8 @@ pub mod pallet {
 				if externalized_n_h != n_h {
 					log::error!("externalized_n_h: {externalized_n_h} is from ScpStExternalize: {is_scpstexternalize}");
 					log::error!("envelope_n_h: {n_h} is from ScpStExternalize: {is_scpstexternalize_envelope}");
-					log::error!("The externalized envelope: {:#?}", externalized_envelope);
-					log::error!("The envelope: {:#?}", envelope);
+					log::error!("The externalized envelope: {:?}", externalized_envelope);
+					log::error!("The envelope: {:?}", envelope);
 				}
 
 				// Check if the externalized value is the same for all envelopes

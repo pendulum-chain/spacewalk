@@ -252,7 +252,7 @@ impl Request {
 
 		let g = self.hash.as_bytes();
 
-		tracing::info!("execute hash: {} with proof: {proof:#?}", hex::encode(g));
+		tracing::info!("execute hash: {} with proof: {proof:?}", hex::encode(g));
 
 		// Encode the proof components
 		let tx_env_encoded = tx_env.to_base64_xdr();

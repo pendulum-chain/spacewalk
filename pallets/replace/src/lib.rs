@@ -593,7 +593,7 @@ impl<T: Config> Pallet<T> {
 		)
 		.map_err(|e| {
 			log::error!(
-				"failed to validate transaction of id: {}",
+				"failed to validate transaction of replace id: {} with transaction envelope: {transaction_envelope:?}",
 				hex::encode(replace_id.as_bytes())
 			);
 
