@@ -544,8 +544,9 @@ pub mod pallet {
 			let network: &Network =
 				if T::IsPublicNetwork::get() { &PUBLIC_NETWORK } else { &TEST_NETWORK };
 
-			// Check if tx is included in the transaction set
 			let tx_hash = transaction_envelope.get_hash(network);
+
+			// Check if tx is included in the transaction set
 			let tx_included =
 				transaction_set.txes.get_vec().iter().any(|tx| tx.get_hash(network) == tx_hash);
 			ensure!(tx_included, Error::<T>::TransactionNotInTransactionSet);
@@ -639,6 +640,7 @@ pub mod pallet {
 					log::error!("envelope_n_h: {n_h} is from ScpStExternalize: {is_scpstexternalize_envelope}");
 					log::error!("The externalized envelope: {:?}", externalized_envelope);
 					log::error!("The envelope: {:?}", envelope);
+					log::error!("The transaction_envelope: {:?}", transaction_envelope);
 				}
 
 				// Check if the externalized value is the same for all envelopes
