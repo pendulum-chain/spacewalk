@@ -26,7 +26,6 @@ pub mod types;
 mod default_weights;
 use primitives::{derive_shortened_request_id, get_text_memo_from_tx_env, TextMemo};
 
-
 #[frame_support::pallet]
 pub mod pallet {
 	use codec::FullCodec;
@@ -568,18 +567,14 @@ pub mod pallet {
 			// Make sure that the envelope set is not empty
 			ensure!(!envelopes.len() > 0, Error::<T>::EmptyEnvelopeSet);
 
-			let mut envelopes = envelopes.get_vec().clone();
-
-			// check whether an externalize message exist.
-			let externalized_envelope = {
-				let pos = envelopes.iter().position(|envelope| match &envelope.statement.pledges {
-					ScpStatementPledges::ScpStExternalize(_) =>true,
+			let externalized_envelope = envelopes
+				.get_vec()
+				.iter()
+				.find(|envelope| match envelope.statement.pledges {
+					ScpStatementPledges::ScpStExternalize(_) => true,
 					_ => false,
-				}).ok_or(Error::<T>::MissingExternalizedMessage)?;
-
-				// removing this envelope, as it will be the basis for comparison.
-				envelopes.remove(pos)
-			};
+				})
+				.ok_or(Error::<T>::MissingExternalizedMessage)?;
 
 			// Variable used to check if all envelopes are using the same slot index
 			let slot_index = externalized_envelope.statement.slot_index;
@@ -598,7 +593,7 @@ pub mod pallet {
 			let expected_tx_set_hash = compute_non_generic_tx_set_content_hash(transaction_set)
 				.ok_or(Error::<T>::FailedToComputeNonGenericTxSetContentHash)?;
 
-			for envelope in &envelopes {
+			for envelope in envelopes.get_vec() {
 				let node_id = envelope.statement.node_id.clone();
 				let node_id_found = validators
 					.iter()
@@ -630,6 +625,9 @@ pub mod pallet {
 					Error::<T>::TransactionSetHashMismatch
 				);
 
+				// Check if the externalized value is the same for all envelopes
+				ensure!(externalized_value == value, Error::<T>::ExternalizedValueMismatch);
+
 				// use this envelopes's n_h as comparison for the succeeding envelopes
 				if externalized_n_h == u32::MAX {
 					externalized_n_h = n_h;
@@ -645,20 +643,14 @@ pub mod pallet {
 
 					ensure!(externalized_n_h == n_h, Error::<T>::ExternalizedNHMismatch);
 				}
-
-				// Check if the externalized value is the same for all envelopes
-				ensure!(externalized_value == value, Error::<T>::ExternalizedValueMismatch);
 			}
-
-			// put back the externalized_envelope in the list
-			envelopes.push(externalized_envelope);
 
 			// ---- Check that externalized messages build valid quorum set ----
 			// Find the validators that are targeted by the SCP messages
 			let targeted_validators = validators
 				.iter()
 				.filter(|validator| {
-					envelopes.iter().any(|envelope| {
+					envelopes.get_vec().iter().any(|envelope| {
 						envelope.statement.node_id.to_encoding() == validator.public_key.to_vec()
 					})
 				})
