@@ -26,6 +26,7 @@ pub mod types;
 mod default_weights;
 use primitives::{derive_shortened_request_id, get_text_memo_from_tx_env, TextMemo};
 
+
 #[frame_support::pallet]
 pub mod pallet {
 	use codec::FullCodec;
@@ -567,19 +568,37 @@ pub mod pallet {
 			// Make sure that the envelope set is not empty
 			ensure!(!envelopes.len() > 0, Error::<T>::EmptyEnvelopeSet);
 
-			let externalized_envelope = envelopes
-				.get_vec()
-				.iter()
-				.find(|envelope| match envelope.statement.pledges {
-					ScpStatementPledges::ScpStExternalize(_) => true,
+			let mut envelopes = envelopes.get_vec().clone();
+
+			// check whether an externalize message exist.
+			let externalized_envelope = {
+				let pos = envelopes.iter().position(|envelope| match &envelope.statement.pledges {
+					ScpStatementPledges::ScpStExternalize(_) =>true,
 					_ => false,
-				})
-				.ok_or(Error::<T>::MissingExternalizedMessage)?;
+				}).ok_or(Error::<T>::MissingExternalizedMessage)?;
+
+				// removing this envelope, as it will be the basis for comparison.
+				envelopes.remove(pos)
+			};
 
 			// Variable used to check if all envelopes are using the same slot index
-			let slot_index: u64 = externalized_envelope.statement.slot_index;
+			let slot_index = externalized_envelope.statement.slot_index;
 
-			for envelope in envelopes.get_vec() {
+			// We store the externalized value in a variable so that we can check if it's the same
+			// for all envelopes. We don't distinguish between externalized and confirmed values as
+			// it should be the same value regardless.
+			let (externalized_value, mut externalized_n_h) =
+				match &externalized_envelope.statement.pledges {
+					ScpStatementPledges::ScpStExternalize(externalized_statement) =>
+						(&externalized_statement.commit.value, externalized_statement.n_h),
+					_ => return Err(Error::<T>::ExternalizedValueNotFound),
+				};
+
+			// Check if transaction set matches tx_set_hash included in the ScpEnvelopes
+			let expected_tx_set_hash = compute_non_generic_tx_set_content_hash(transaction_set)
+				.ok_or(Error::<T>::FailedToComputeNonGenericTxSetContentHash)?;
+
+			for envelope in &envelopes {
 				let node_id = envelope.statement.node_id.clone();
 				let node_id_found = validators
 					.iter()
@@ -595,34 +614,10 @@ pub mod pallet {
 
 				let signature_valid = verify_signature(envelope, &node_id, network);
 				ensure!(signature_valid, Error::<T>::InvalidEnvelopeSignature);
-			}
 
-			// Check if transaction set matches tx_set_hash included in the ScpEnvelopes
-			let expected_tx_set_hash = compute_non_generic_tx_set_content_hash(transaction_set)
-				.ok_or(Error::<T>::FailedToComputeNonGenericTxSetContentHash)?;
-
-			// We store the externalized value in a variable so that we can check if it's the same
-			// for all envelopes. We don't distinguish between externalized and confirmed values as
-			// it should be the same value regardless.
-			let mut is_scpstexternalize = false;
-			let (externalized_value, externalized_n_h) =
-				match &externalized_envelope.statement.pledges {
-					ScpStatementPledges::ScpStExternalize(externalized_statement) => {
-						is_scpstexternalize = true;
-						(&externalized_statement.commit.value, externalized_statement.n_h)
-					},
-					ScpStatementPledges::ScpStConfirm(confirmed_statement) =>
-						(&confirmed_statement.ballot.value, confirmed_statement.n_h),
-					_ => return Err(Error::<T>::ExternalizedValueNotFound),
-				};
-
-			let mut is_scpstexternalize_envelope = false;
-			for envelope in envelopes.get_vec() {
 				let (value, n_h) = match &envelope.statement.pledges {
-					ScpStatementPledges::ScpStExternalize(externalized_statement) => {
-						is_scpstexternalize_envelope = true;
-						(&externalized_statement.commit.value, externalized_statement.n_h)
-					},
+					ScpStatementPledges::ScpStExternalize(externalized_statement) =>
+						(&externalized_statement.commit.value, externalized_statement.n_h),
 					ScpStatementPledges::ScpStConfirm(confirmed_statement) =>
 						(&confirmed_statement.ballot.value, confirmed_statement.n_h),
 					_ => return Err(Error::<T>::InvalidScpPledge),
@@ -635,25 +630,35 @@ pub mod pallet {
 					Error::<T>::TransactionSetHashMismatch
 				);
 
-				if externalized_n_h != n_h {
-					log::error!("externalized_n_h: {externalized_n_h} is from ScpStExternalize: {is_scpstexternalize}");
-					log::error!("envelope_n_h: {n_h} is from ScpStExternalize: {is_scpstexternalize_envelope}");
-					log::error!("The externalized envelope: {:?}", externalized_envelope);
-					log::error!("The envelope: {:?}", envelope);
-					log::error!("The transaction_envelope: {:?}", transaction_envelope);
+				// use this envelopes's n_h as comparison for the succeeding envelopes
+				if externalized_n_h == u32::MAX {
+					externalized_n_h = n_h;
+				}
+				// we only want to compare n_h values not reaching 4_294_967_295
+				else if n_h < u32::MAX {
+					if externalized_n_h != n_h {
+						log::error!("externalized_n_h: {externalized_n_h}");
+						log::error!("envelope_n_h: {n_h}");
+						log::error!("The envelope: {:?}", envelope);
+						log::error!("The transaction_envelope: {:?}", transaction_envelope);
+					}
+
+					ensure!(externalized_n_h == n_h, Error::<T>::ExternalizedNHMismatch);
 				}
 
 				// Check if the externalized value is the same for all envelopes
 				ensure!(externalized_value == value, Error::<T>::ExternalizedValueMismatch);
-				ensure!(externalized_n_h == n_h, Error::<T>::ExternalizedNHMismatch);
 			}
+
+			// put back the externalized_envelope in the list
+			envelopes.push(externalized_envelope);
 
 			// ---- Check that externalized messages build valid quorum set ----
 			// Find the validators that are targeted by the SCP messages
 			let targeted_validators = validators
 				.iter()
 				.filter(|validator| {
-					envelopes.get_vec().iter().any(|envelope| {
+					envelopes.iter().any(|envelope| {
 						envelope.statement.node_id.to_encoding() == validator.public_key.to_vec()
 					})
 				})
