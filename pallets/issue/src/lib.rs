@@ -47,6 +47,11 @@ mod tests;
 mod ext;
 pub mod types;
 
+const SECONDS_PER_BLOCK:u32 = 12;
+const MINUTE:u32 = 60; // in seconds
+const HOUR:u32 = MINUTE * 60;
+const DAY:u32 = HOUR * 24;
+
 #[frame_support::pallet]
 pub mod pallet {
 	use frame_support::pallet_prelude::*;
@@ -201,7 +206,7 @@ pub mod pallet {
 				limit_volume_amount: None,
 				limit_volume_currency_id: T::CurrencyId::default(),
 				current_volume_amount: BalanceOf::<T>::zero(),
-				interval_length: T::BlockNumber::from_str(&(24 * 60 * 60 / 12).to_string())
+				interval_length: T::BlockNumber::from_str(&(DAY / SECONDS_PER_BLOCK).to_string())
 					.unwrap_or_default(),
 				last_interval_index: T::BlockNumber::zero(),
 			}
