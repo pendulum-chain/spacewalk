@@ -823,10 +823,10 @@ impl<T: Config> Pallet<T> {
 			ext::vault_registry::transfer_funds::<T>(
 				CurrencySource::LiquidatedCollateral(vault_id.clone()),
 				slashing_destination,
-				&confiscated_collateral,
+				&vault_to_be_burned_tokens,
 			)?;
 
-			confiscated_collateral
+			vault_to_be_burned_tokens.clone()
 		} else {
 			// not liquidated
 
@@ -838,7 +838,7 @@ impl<T: Config> Pallet<T> {
 				// 100% + punishment fee on reimburse
 				amount_wrapped_in_collateral.checked_add(&punishment_fee_in_collateral)?
 			} else {
-				punishment_fee_in_collateral
+				punishment_fee_in_collateral.clone()
 			};
 
 			let transferred_amount = ext::vault_registry::transfer_funds_saturated::<T>(
@@ -847,9 +847,15 @@ impl<T: Config> Pallet<T> {
 				&amount_to_slash,
 			)?;
 
+			// Subtract the punishment fee to avoid overpaying the vault when reclaiming tokens
+			let retrievable_amount_in_collateral =
+				transferred_amount.saturating_sub(&punishment_fee_in_collateral)?;
+			let retrievable_amount_in_wrapped =
+				retrievable_amount_in_collateral.convert_to(vault_id.wrapped_currency())?;
+
 			CancelledRedeemAmount::<T>::insert(
 				redeem_id,
-				(transferred_amount.amount(), transferred_amount.currency()),
+				(retrievable_amount_in_wrapped.amount(), retrievable_amount_in_wrapped.currency()),
 			);
 
 			let _ = ext::vault_registry::ban_vault::<T>(&vault_id);
