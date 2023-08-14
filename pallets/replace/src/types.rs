@@ -20,7 +20,7 @@ pub type DefaultReplaceRequest<T> = ReplaceRequest<
 pub trait ReplaceRequestExt<T: Config> {
 	fn amount(&self) -> Amount<T>;
 	fn griefing_collateral(&self) -> Amount<T>;
-	fn collateral(&self) -> Result<Amount<T>, DispatchError>;
+	fn collateral(&self) -> Amount<T>;
 }
 
 impl<T: Config> ReplaceRequestExt<T> for DefaultReplaceRequest<T> {
@@ -30,7 +30,7 @@ impl<T: Config> ReplaceRequestExt<T> for DefaultReplaceRequest<T> {
 	fn griefing_collateral(&self) -> Amount<T> {
 		Amount::new(self.griefing_collateral, T::GetGriefingCollateralCurrencyId::get())
 	}
-	fn collateral(&self) -> Result<Amount<T>, DispatchError> {
-		Ok(Amount::new(self.collateral, self.new_vault.collateral_currency()))
+	fn collateral(&self) -> Amount<T> {
+		Amount::new(self.collateral, self.new_vault.collateral_currency())
 	}
 }
