@@ -29,7 +29,7 @@ use primitives::{derive_shortened_request_id, get_text_memo_from_tx_env, TextMem
 #[frame_support::pallet]
 pub mod pallet {
 	use codec::FullCodec;
-	use frame_support::{log, pallet_prelude::*, transactional};
+	use frame_support::{pallet_prelude::*, transactional};
 	use frame_system::pallet_prelude::*;
 	use sha2::{Digest, Sha256};
 	use sp_core::H256;
@@ -628,19 +628,14 @@ pub mod pallet {
 				// Check if the externalized value is the same for all envelopes
 				ensure!(externalized_value == value, Error::<T>::ExternalizedValueMismatch);
 
-				// use this envelopes's n_h as comparison for the succeeding envelopes
+				// use this envelopes's n_h as basis for the comparison with the succeeding
+				// envelopes
 				if externalized_n_h == u32::MAX {
 					externalized_n_h = n_h;
 				}
-				// we only want to compare n_h values not reaching 4_294_967_295
+				// check for equality of n_h values
+				// that are not 'infinity' (represented internally by `u32::MAX`)
 				else if n_h < u32::MAX {
-					if externalized_n_h != n_h {
-						log::error!("externalized_n_h: {externalized_n_h}");
-						log::error!("envelope_n_h: {n_h}");
-						log::error!("The envelope: {:?}", envelope);
-						log::error!("The transaction_envelope: {:?}", transaction_envelope);
-					}
-
 					ensure!(externalized_n_h == n_h, Error::<T>::ExternalizedNHMismatch);
 				}
 			}

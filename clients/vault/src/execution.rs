@@ -247,17 +247,12 @@ impl Request {
 			RequestType::Replace => ReplacePallet::execute_replace,
 		};
 
-		// Retry until success or timeout, explicitly handle the cases
-		// where the redeem has expired or the rpc has disconnected
-
-		let g = self.hash.as_bytes();
-
-		tracing::info!("execute hash: {} with proof: {proof:?}", hex::encode(g));
-
 		// Encode the proof components
 		let tx_env_encoded = tx_env.to_base64_xdr();
 		let (scp_envelopes_encoded, tx_set_encoded) = proof.encode();
 
+		// Retry until success or timeout, explicitly handle the cases
+		// where the redeem has expired or the rpc has disconnected
 		runtime::notify_retry(
 			|| {
 				(execute)(

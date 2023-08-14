@@ -241,6 +241,7 @@ pub mod pallet {
 			)?;
 			Ok(().into())
 		}
+
 		/// Changes the issue fee percentage (only executable by the Root account)
 		///
 		/// # Arguments
