@@ -235,7 +235,9 @@ mod test {
 		// let's try to add again.
 		let two_scp_env = value[1].clone();
 		collector.add_scp_envelope(*slot, two_scp_env.clone());
-		assert_eq!(collector.envelopes_map_len(), 1); // length shouldn't change, since we're insertin to the same key.
+
+		// length shouldn't change, since we're inserting to the same key.
+		assert_eq!(collector.envelopes_map_len(), 1);
 
 		let collctr_env_map = collector.envelopes_map.read();
 		let res = collctr_env_map.get(slot).expect("should return a vector of scpenvelopes");
