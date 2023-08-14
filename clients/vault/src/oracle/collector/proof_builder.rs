@@ -138,7 +138,7 @@ impl ScpMessageCollector {
 	///
 	/// # Arguments
 	///
-	/// * `slot` - the slot where the txset is  to get.
+	/// * `slot` - the slot from where we get the txset
 	/// * `sender` - used to send messages to Stellar Node
 	async fn get_txset(&self, slot: Slot, sender: &StellarMessageSender) -> Option<TransactionSet> {
 		let txset_map = self.txset_map().clone();

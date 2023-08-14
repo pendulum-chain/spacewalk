@@ -89,7 +89,7 @@ pub(crate) async fn interpret_response<T: DeserializeOwned>(
 		},
 	};
 
-	tracing::error!("Response returned error: {:?}", &error);
+	tracing::error!("Response returned an error: {:?}", &error);
 	Err(error)
 }
 
