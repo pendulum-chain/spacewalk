@@ -558,7 +558,7 @@ impl<T: Config> Pallet<T> {
 
 		let griefing_collateral: Amount<T> = replace.griefing_collateral();
 		let amount = replace.amount();
-		let collateral = replace.collateral()?;
+		let collateral = replace.collateral();
 
 		// NOTE: anyone can call this method provided the proof is correct
 		let new_vault_id = replace.new_vault;
@@ -659,7 +659,7 @@ impl<T: Config> Pallet<T> {
 
 		let griefing_collateral: Amount<T> = replace.griefing_collateral();
 		let amount = replace.amount();
-		let collateral = replace.collateral()?;
+		let collateral = replace.collateral();
 
 		// only cancellable after the request has expired
 		ensure!(

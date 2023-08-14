@@ -54,10 +54,10 @@ mod tests;
 mod ext;
 pub mod types;
 
-const SECONDS_PER_BLOCK:u32 = 12;
-const MINUTE:u32 = 60; // in seconds
-const HOUR:u32 = MINUTE * 60;
-const DAY:u32 = HOUR * 24;
+const SECONDS_PER_BLOCK: u32 = 12;
+const MINUTE: u32 = 60; // in seconds
+const HOUR: u32 = MINUTE * 60;
+const DAY: u32 = HOUR * 24;
 
 #[frame_support::pallet]
 pub mod pallet {
@@ -775,7 +775,7 @@ impl<T: Config> Pallet<T> {
 		ext::vault_registry::redeem_tokens::<T>(
 			&redeem.vault,
 			&burn_amount,
-			&redeem.premium()?,
+			&redeem.premium(),
 			&redeem.redeemer,
 		)?;
 
