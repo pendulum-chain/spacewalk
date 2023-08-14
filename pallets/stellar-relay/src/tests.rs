@@ -63,7 +63,7 @@ fn create_valid_dummy_scp_envelopes(
 	validator_secret_keys: Vec<SecretKey>,
 	public_network: bool,
 	num_externalized: usize, // number of externalized envelopes vs confirmed envelopes
-	add_infinity_n_h: bool, // set n_h value to infinity, in 1 of the ScpEnvelopes.
+	add_infinity_n_h: bool,  // set n_h value to infinity, in 1 of the ScpEnvelopes.
 ) -> (TransactionEnvelope, TransactionSet, LimitedVarArray<ScpEnvelope, { i32::MAX }>) {
 	// Build a transaction
 	let source_account = MuxedAccount::from(PublicKey::PublicKeyTypeEd25519([0; 32]));
