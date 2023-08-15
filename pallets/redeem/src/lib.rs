@@ -823,7 +823,7 @@ impl<T: Config> Pallet<T> {
 			ext::vault_registry::transfer_funds::<T>(
 				CurrencySource::LiquidatedCollateral(vault_id.clone()),
 				slashing_destination,
-				&vault_to_be_burned_tokens,
+				&confiscated_collateral,
 			)?;
 
 			confiscated_collateral
