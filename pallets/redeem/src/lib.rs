@@ -826,7 +826,7 @@ impl<T: Config> Pallet<T> {
 				&vault_to_be_burned_tokens,
 			)?;
 
-			vault_to_be_burned_tokens.clone()
+			confiscated_collateral
 		} else {
 			// not liquidated
 
