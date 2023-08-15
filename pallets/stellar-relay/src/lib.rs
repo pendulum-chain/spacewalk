@@ -106,7 +106,6 @@ pub mod pallet {
 		EnvelopeSlotIndexMismatch,
 		ExternalizedNHMismatch,
 		ExternalizedValueMismatch,
-		ExternalizedValueNotFound,
 		FailedToComputeNonGenericTxSetContentHash,
 		InvalidEnvelopeSignature,
 		InvalidQuorumSetNotEnoughOrganizations,
@@ -586,7 +585,7 @@ pub mod pallet {
 				match &externalized_envelope.statement.pledges {
 					ScpStatementPledges::ScpStExternalize(externalized_statement) =>
 						(&externalized_statement.commit.value, externalized_statement.n_h),
-					_ => return Err(Error::<T>::ExternalizedValueNotFound),
+					_ => return Err(Error::<T>::MissingExternalizedMessage),
 				};
 
 			// Check if transaction set matches tx_set_hash included in the ScpEnvelopes
