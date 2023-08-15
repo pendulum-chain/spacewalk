@@ -118,7 +118,7 @@ impl ScpMessageCollector {
 		} else {
 			tracing::debug!("Collecting SCPEnvelopes for slot {slot}: success");
 			tracing::trace!(
-				"Collecting SCPEnvelopes for slot {slot}: the scp envelope: {scp_envelope:#?}"
+				"Collecting SCPEnvelopes for slot {slot}: the scp envelope: {scp_envelope:?}"
 			);
 			envelopes_map.insert(slot, vec![scp_envelope]);
 		}

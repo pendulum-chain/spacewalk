@@ -63,6 +63,7 @@ fn create_valid_dummy_scp_envelopes(
 	validator_secret_keys: Vec<SecretKey>,
 	public_network: bool,
 	num_externalized: usize, // number of externalized envelopes vs confirmed envelopes
+	add_infinity_n_h: bool,  // set n_h value to infinity, in 1 of the ScpEnvelopes.
 ) -> (TransactionEnvelope, TransactionSet, LimitedVarArray<ScpEnvelope, { i32::MAX }>) {
 	// Build a transaction
 	let source_account = MuxedAccount::from(PublicKey::PublicKeyTypeEd25519([0; 32]));
@@ -111,13 +112,16 @@ fn create_valid_dummy_scp_envelopes(
 	for (i, validator_secret_key) in validator_secret_keys.iter().enumerate() {
 		let validator = validators.get(i).unwrap();
 
+		// set n_h value to infinity, or the max value of datatype u32
+		let n_h = if i == 0 && add_infinity_n_h { u32::MAX } else { 0 };
+
 		// We build the pledge depending on the number of externalized envelopes vs confirmed
 		// envelopes
 		let pledges = if i < num_externalized {
 			// Build an externalize pledge
 			ScpStatementPledges::ScpStExternalize(ScpStatementExternalize {
 				commit: ScpBallot { counter: 0, value: value.clone() },
-				n_h: 0,
+				n_h,
 				commit_quorum_set_hash: Hash::default(),
 			})
 		} else {
@@ -126,7 +130,7 @@ fn create_valid_dummy_scp_envelopes(
 				ballot: ScpBallot { counter: 0, value: value.clone() },
 				n_prepared: 0,
 				n_commit: 0,
-				n_h: 0,
+				n_h,
 				quorum_set_hash: Hash::default(),
 			})
 		};
@@ -145,8 +149,13 @@ fn validate_stellar_transaction_fails_for_wrong_signature() {
 		// Change one of the secret keys, so that the signature is invalid
 		validator_secret_keys[0] = SecretKey::from_binary([1; 32]);
 
-		let (tx_envelope, tx_set, scp_envelopes) =
-			create_valid_dummy_scp_envelopes(validators, validator_secret_keys, public_network, 2);
+		let (tx_envelope, tx_set, scp_envelopes) = create_valid_dummy_scp_envelopes(
+			validators,
+			validator_secret_keys,
+			public_network,
+			2,
+			false,
+		);
 
 		let result =
 			SpacewalkRelay::validate_stellar_transaction(&tx_envelope, &scp_envelopes, &tx_set);
@@ -182,8 +191,13 @@ fn validate_stellar_transaction_fails_for_unknown_validator() {
 		validators.push(validator);
 		validator_secret_keys.push(validator_secret);
 
-		let (tx_envelope, tx_set, scp_envelopes) =
-			create_valid_dummy_scp_envelopes(validators, validator_secret_keys, public_network, 2);
+		let (tx_envelope, tx_set, scp_envelopes) = create_valid_dummy_scp_envelopes(
+			validators,
+			validator_secret_keys,
+			public_network,
+			2,
+			false,
+		);
 
 		let result =
 			SpacewalkRelay::validate_stellar_transaction(&tx_envelope, &scp_envelopes, &tx_set);
@@ -196,8 +210,13 @@ fn validate_stellar_transaction_fails_for_wrong_transaction() {
 	run_test(|_, validators, validator_secret_keys| {
 		let public_network = true;
 
-		let (_tx_envelope, mut tx_set, scp_envelopes) =
-			create_valid_dummy_scp_envelopes(validators, validator_secret_keys, public_network, 2);
+		let (_tx_envelope, mut tx_set, scp_envelopes) = create_valid_dummy_scp_envelopes(
+			validators,
+			validator_secret_keys,
+			public_network,
+			2,
+			false,
+		);
 
 		// Change tx_envelope that was used to create scp_envelopes
 		let changed_tx_envelope = TransactionEnvelope::EnvelopeTypeTx(TransactionV1Envelope {
@@ -254,8 +273,13 @@ fn validate_stellar_transaction_fails_when_using_the_same_validator_multiple_tim
 		validators.push(reused_validator.clone());
 		validator_secret_keys.push(reused_validator_secret_key.clone());
 
-		let (tx_envelope, tx_set, scp_envelopes) =
-			create_valid_dummy_scp_envelopes(validators, validator_secret_keys, public_network, 2);
+		let (tx_envelope, tx_set, scp_envelopes) = create_valid_dummy_scp_envelopes(
+			validators,
+			validator_secret_keys,
+			public_network,
+			2,
+			false,
+		);
 
 		// This should be invalid because the quorum thresholds are based on distinct validators
 		let result =
@@ -283,6 +307,7 @@ fn validate_stellar_transaction_fails_for_invalid_quorum() {
 			drained_validator_secret_keys.clone(),
 			public_network,
 			2,
+			false,
 		);
 
 		// This should be an invalid quorum set because only 50% of the total organizations are in
@@ -307,6 +332,7 @@ fn validate_stellar_transaction_fails_for_invalid_quorum() {
 			drained_validator_secret_keys,
 			public_network,
 			2,
+			false,
 		);
 
 		// This should be an invalid quorum set because 1/2 of the organizations only have 1/3 of
@@ -328,6 +354,7 @@ fn validate_stellar_transaction_fails_for_differing_networks() {
 			// genesis to use main network
 			false,
 			2,
+			false,
 		);
 
 		let result =
@@ -354,6 +381,7 @@ fn validate_stellar_transaction_fails_without_validators() {
 			validator_secret_keys,
 			public_network,
 			2,
+			false,
 		);
 
 		let result =
@@ -391,8 +419,13 @@ fn validate_stellar_transaction_works_with_barely_enough_validators() {
 
 		// This should still be valid because 3 out of 4 organizations are still present
 		// and all organizations still have more than 1/2 of its validators in the quorum set
-		let (tx_envelope, tx_set, scp_envelopes) =
-			create_valid_dummy_scp_envelopes(validators, validator_secret_keys, public_network, 2);
+		let (tx_envelope, tx_set, scp_envelopes) = create_valid_dummy_scp_envelopes(
+			validators,
+			validator_secret_keys,
+			public_network,
+			2,
+			false,
+		);
 
 		assert_ok!(SpacewalkRelay::validate_stellar_transaction(
 			&tx_envelope,
@@ -406,8 +439,13 @@ fn validate_stellar_transaction_works_with_barely_enough_validators() {
 fn validate_stellar_transaction_works_with_all_validators() {
 	run_test(|_, validators, validator_secret_keys| {
 		let public_network = true;
-		let (tx_envelope, tx_set, scp_envelopes) =
-			create_valid_dummy_scp_envelopes(validators, validator_secret_keys, public_network, 2);
+		let (tx_envelope, tx_set, scp_envelopes) = create_valid_dummy_scp_envelopes(
+			validators,
+			validator_secret_keys,
+			public_network,
+			2,
+			false,
+		);
 
 		assert_ok!(SpacewalkRelay::validate_stellar_transaction(
 			&tx_envelope,
@@ -632,8 +670,13 @@ fn validate_stellar_transaction_fails_no_validators_registered_when_new_validato
 ) {
 	run_test(|_, validators, validator_secret_keys| {
 		let public_network = true;
-		let (tx_envelope, tx_set, scp_envelopes) =
-			create_valid_dummy_scp_envelopes(validators, validator_secret_keys, public_network, 2);
+		let (tx_envelope, tx_set, scp_envelopes) = create_valid_dummy_scp_envelopes(
+			validators,
+			validator_secret_keys,
+			public_network,
+			2,
+			false,
+		);
 
 		assert_ok!(SpacewalkRelay::validate_stellar_transaction(
 			&tx_envelope,
@@ -671,8 +714,13 @@ fn validate_stellar_transaction_fails_no_organizations_registered_when_new_valid
 	run_test(|_, validators, validator_secret_keys| {
 		let validators_cloned = validators.clone();
 		let public_network = true;
-		let (tx_envelope, tx_set, scp_envelopes) =
-			create_valid_dummy_scp_envelopes(validators, validator_secret_keys, public_network, 2);
+		let (tx_envelope, tx_set, scp_envelopes) = create_valid_dummy_scp_envelopes(
+			validators,
+			validator_secret_keys,
+			public_network,
+			2,
+			false,
+		);
 
 		assert_ok!(SpacewalkRelay::validate_stellar_transaction(
 			&tx_envelope,
@@ -724,12 +772,37 @@ fn validate_stellar_transaction_fails_no_organizations_registered_when_new_valid
 }
 
 #[test]
+fn validate_stellar_transaction_works_ignoring_n_h_infinity_value() {
+	run_test(|_, validators, validator_secret_keys| {
+		let public_network = true;
+		let (tx_envelope, tx_set, scp_envelopes) = create_valid_dummy_scp_envelopes(
+			validators,
+			validator_secret_keys,
+			public_network,
+			3,
+			true,
+		);
+
+		assert_ok!(SpacewalkRelay::validate_stellar_transaction(
+			&tx_envelope,
+			&scp_envelopes,
+			&tx_set,
+		));
+	})
+}
+
+#[test]
 fn validate_stellar_transaction_works_when_enactment_block_height_reached() {
 	run_test(|organizations, validators, validator_secret_keys| {
 		let validators_cloned = validators.clone();
 		let public_network = true;
-		let (tx_envelope, tx_set, scp_envelopes) =
-			create_valid_dummy_scp_envelopes(validators, validator_secret_keys, public_network, 2);
+		let (tx_envelope, tx_set, scp_envelopes) = create_valid_dummy_scp_envelopes(
+			validators,
+			validator_secret_keys,
+			public_network,
+			2,
+			false,
+		);
 
 		assert_ok!(SpacewalkRelay::validate_stellar_transaction(
 			&tx_envelope,
@@ -805,8 +878,13 @@ fn validate_stellar_transaction_fails_for_differing_slot_index() {
 	run_test(|_, validators, validator_secret_keys| {
 		let public_network = true;
 
-		let (tx_envelope, tx_set, scp_envelopes) =
-			create_valid_dummy_scp_envelopes(validators, validator_secret_keys, public_network, 2);
+		let (tx_envelope, tx_set, scp_envelopes) = create_valid_dummy_scp_envelopes(
+			validators,
+			validator_secret_keys,
+			public_network,
+			2,
+			false,
+		);
 
 		// Change sequence number for the second envelope (we have to use at least the second
 		// because the first envelope determines the expected slot index)
@@ -826,8 +904,13 @@ fn validate_stellar_transaction_fails_with_only_confirm_statements() {
 	run_test(|_, validators, validator_secret_keys| {
 		let public_network = true;
 
-		let (tx_envelope, tx_set, scp_envelopes) =
-			create_valid_dummy_scp_envelopes(validators, validator_secret_keys, public_network, 0);
+		let (tx_envelope, tx_set, scp_envelopes) = create_valid_dummy_scp_envelopes(
+			validators,
+			validator_secret_keys,
+			public_network,
+			0,
+			false,
+		);
 
 		let result =
 			SpacewalkRelay::validate_stellar_transaction(&tx_envelope, &scp_envelopes, &tx_set);
@@ -845,6 +928,7 @@ fn validate_stellar_transaction_fails_with_mismatching_n_h() {
 			validator_secret_keys.clone(),
 			public_network,
 			1,
+			false,
 		);
 
 		// Change the n_h of the second envelope
@@ -888,8 +972,13 @@ fn validate_stellar_transaction_works_with_exactly_one_externalized_message() {
 	run_test(|_, validators, validator_secret_keys| {
 		let public_network = true;
 
-		let (tx_envelope, tx_set, scp_envelopes) =
-			create_valid_dummy_scp_envelopes(validators, validator_secret_keys, public_network, 1);
+		let (tx_envelope, tx_set, scp_envelopes) = create_valid_dummy_scp_envelopes(
+			validators,
+			validator_secret_keys,
+			public_network,
+			1,
+			false,
+		);
 
 		assert_ok!(SpacewalkRelay::validate_stellar_transaction(
 			&tx_envelope,

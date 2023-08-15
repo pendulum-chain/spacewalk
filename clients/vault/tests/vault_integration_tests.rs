@@ -1174,7 +1174,7 @@ async fn test_execute_open_requests_succeeds() {
 
 		// Sleep 3 seconds to give other thread some time to receive the RequestIssue event and
 		// add it to the set
-		sleep(Duration::from_secs(3)).await;
+		sleep(Duration::from_secs(5)).await;
 
 		let shutdown_tx = ShutdownSender::new();
 		join4(

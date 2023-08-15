@@ -13,10 +13,11 @@ use std::str::FromStr;
 
 use frame_support::{
 	dispatch::{DispatchError, DispatchResult},
-	ensure, transactional,
+	ensure, log, transactional,
 };
 #[cfg(test)]
 use mocktopus::macros::mockable;
+
 use sp_core::H256;
 use sp_runtime::traits::{CheckedDiv, Saturating, Zero};
 use sp_std::{convert::TryInto, vec::Vec};
@@ -725,11 +726,20 @@ impl<T: Config> Pallet<T> {
 		)?;
 
 		// Verify that the transaction is valid
+
 		ext::stellar_relay::validate_stellar_transaction::<T>(
 			&transaction_envelope,
 			&envelopes,
 			&transaction_set,
-		)?;
+		)
+		.map_err(|e| {
+			log::error!(
+				"failed to validate transaction of redeem id: {} with transaction envelope: {transaction_envelope:?}",
+				hex::encode(redeem_id.as_bytes())
+			);
+
+			e
+		})?;
 
 		let paid_amount: Amount<T> = ext::currency::get_amount_from_transaction_envelope::<T>(
 			&transaction_envelope,

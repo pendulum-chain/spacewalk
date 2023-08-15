@@ -10,7 +10,7 @@ extern crate mocktopus;
 
 use frame_support::{
 	dispatch::{DispatchError, DispatchResult},
-	ensure,
+	ensure, log,
 	traits::Get,
 	transactional,
 };
@@ -590,7 +590,15 @@ impl<T: Config> Pallet<T> {
 			&transaction_envelope,
 			&envelopes,
 			&transaction_set,
-		)?;
+		)
+		.map_err(|e| {
+			log::error!(
+				"failed to validate transaction of replace id: {} with transaction envelope: {transaction_envelope:?}",
+				hex::encode(replace_id.as_bytes())
+			);
+
+			e
+		})?;
 
 		let paid_amount: Amount<T> = ext::currency::get_amount_from_transaction_envelope::<T>(
 			&transaction_envelope,
