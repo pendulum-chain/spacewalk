@@ -205,6 +205,10 @@ pub mod pallet {
 	#[pallet::storage]
 	pub(super) type LastIntervalIndex<T: Config> = StorageValue<_, T::BlockNumber, ValueQuery>;
 
+	#[pallet::storage]
+	pub(super) type CancelledRedeemAmount<T: Config> =
+		StorageMap<_, Blake2_128Concat, H256, (BalanceOf<T>, T::CurrencyId), OptionQuery>;
+
 	#[pallet::genesis_config]
 	pub struct GenesisConfig<T: Config> {
 		pub redeem_period: T::BlockNumber,
@@ -844,14 +848,25 @@ impl<T: Config> Pallet<T> {
 				// 100% + punishment fee on reimburse
 				amount_wrapped_in_collateral.checked_add(&punishment_fee_in_collateral)?
 			} else {
-				punishment_fee_in_collateral
+				punishment_fee_in_collateral.clone()
 			};
 
-			ext::vault_registry::transfer_funds_saturated::<T>(
+			let transferred_amount = ext::vault_registry::transfer_funds_saturated::<T>(
 				CurrencySource::Collateral(vault_id.clone()),
 				CurrencySource::FreeBalance(redeemer.clone()),
 				&amount_to_slash,
 			)?;
+
+			// Subtract the punishment fee to avoid overpaying the vault when reclaiming tokens
+			let retrievable_amount_in_collateral =
+				transferred_amount.saturating_sub(&punishment_fee_in_collateral)?;
+			let retrievable_amount_in_wrapped =
+				retrievable_amount_in_collateral.convert_to(vault_id.wrapped_currency())?;
+
+			CancelledRedeemAmount::<T>::insert(
+				redeem_id,
+				(retrievable_amount_in_wrapped.amount(), retrievable_amount_in_wrapped.currency()),
+			);
 
 			let _ = ext::vault_registry::ban_vault::<T>(&vault_id);
 
@@ -927,7 +942,9 @@ impl<T: Config> Pallet<T> {
 
 		ensure!(redeem.vault == vault_id, Error::<T>::UnauthorizedVault);
 
-		let reimbursed_amount = redeem.amount().checked_add(&redeem.transfer_fee())?;
+		let reimbursed_amount = CancelledRedeemAmount::<T>::take(redeem_id)
+			.map(|(amount, currency_id)| Amount::new(amount, currency_id))
+			.unwrap_or(redeem.amount().checked_add(&redeem.transfer_fee())?);
 
 		ext::vault_registry::try_increase_to_be_issued_tokens::<T>(&vault_id, &reimbursed_amount)?;
 		ext::vault_registry::issue_tokens::<T>(&vault_id, &reimbursed_amount)?;
@@ -973,6 +990,13 @@ impl<T: Config> Pallet<T> {
 	/// * `value` - the redeem request
 	fn insert_redeem_request(key: &H256, value: &DefaultRedeemRequest<T>) {
 		<RedeemRequests<T>>::insert(key, value)
+	}
+
+	#[cfg(any(test, feature = "runtime-benchmarks"))]
+	fn insert_cancelled_redeem_amount(redeem_id: H256, amount: Amount<T>) {
+		let bal = amount.amount();
+		let curr_id = amount.currency();
+		<CancelledRedeemAmount<T>>::insert(redeem_id, (bal, curr_id));
 	}
 
 	fn set_redeem_status(id: H256, status: RedeemRequestStatus) -> RedeemRequestStatus {
