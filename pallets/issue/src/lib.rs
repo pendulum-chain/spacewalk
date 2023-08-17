@@ -47,11 +47,6 @@ mod tests;
 mod ext;
 pub mod types;
 
-const SECONDS_PER_BLOCK:u32 = 12;
-const MINUTE:u32 = 60; // in seconds
-const HOUR:u32 = MINUTE * 60;
-const DAY:u32 = HOUR * 24;
-
 #[frame_support::pallet]
 pub mod pallet {
 	use frame_support::pallet_prelude::*;
@@ -200,6 +195,11 @@ pub mod pallet {
 	#[cfg(feature = "std")]
 	impl<T: Config> Default for GenesisConfig<T> {
 		fn default() -> Self {
+			const SECONDS_PER_BLOCK:u32 = 12;
+			const MINUTE:u32 = 60; // in seconds
+			const HOUR:u32 = MINUTE * 60;
+			const DAY:u32 = HOUR * 24;
+
 			Self {
 				issue_period: Default::default(),
 				issue_minimum_transfer_amount: Default::default(),
