@@ -1,5 +1,3 @@
-use sp_runtime::DispatchError;
-
 use currency::Amount;
 pub use primitives::redeem::{RedeemRequest, RedeemRequestStatus};
 use primitives::VaultId;
