@@ -3,7 +3,6 @@ use currency::Amount;
 use frame_support::traits::Get;
 pub use primitives::replace::{ReplaceRequest, ReplaceRequestStatus};
 use primitives::VaultId;
-use sp_runtime::DispatchError;
 pub use vault_registry::types::CurrencyId;
 
 pub(crate) type BalanceOf<T> = <T as vault_registry::Config>::Balance;
