@@ -48,7 +48,7 @@ pub mod mock;
 pub mod types;
 
 pub mod dia;
-#[cfg(feature = "testing-utils")]
+#[cfg_attr(test, cfg(feature = "testing-utils"))]
 pub mod oracle_mock;
 
 #[frame_support::pallet]
