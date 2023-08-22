@@ -26,12 +26,13 @@ use wallet::{StellarWallet, TransactionResponse};
 // max of 3 retries for failed request execution
 const MAX_EXECUTION_RETRIES: u32 = 3;
 
-/// Spawns cancelable tasks to execute the open requests;
+/// Spawns cancelable task for each open request.
+/// The task performs the `execute` function of the request.
 ///
 /// # Arguments
 ///
-/// * `wallet` - the vault's wallet
-/// * `requests` - all open/pending requests
+/// * `wallet` - the vault's wallet; used to retrieve a list of stellar transactions
+/// * `requests` - a list of all open/pending requests
 /// * `shutdown_tx` - for sending and receiving shutdown signals
 /// * `parachain_rpc` - the parachain RPC handle
 /// * `oracle_agent` - the agent used to get the proofs
@@ -71,19 +72,19 @@ async fn spawn_tasks_to_execute_open_requests_async<S, C, MW>(
 					oracle_agent.clone(),
 				);
 
-				// remove request from the hashmap
+				// remove request from the hashmap, using the memo
 				requests.retain(|key, _| key != &hash_as_memo);
 			}
 		}
 	}
 }
 
-/// Spawns a task to execute the request.
+/// Spawns a cancelable task to execute an open request.
 /// Returns the memo of the request.
 ///
 /// # Arguments
 ///
-/// * `request` - the open request
+/// * `request` - the open/pending request
 /// * `transaction` - the transaction that the request is based from
 /// * `shutdown_tx` - for sending and receiving shutdown signals
 /// * `parachain_rpc` - the parachain RPC handle
@@ -96,6 +97,7 @@ fn spawn_task_to_execute_open_request(
 	oracle_agent: Arc<OracleAgent>,
 ) -> TextMemo {
 	let hash_as_memo = derive_shortened_request_id(&request.hash_inner());
+
 	tracing::info!(
 		"Processing valid Stellar payment for open {:?} request #{}: ",
 		request.request_type(),
@@ -128,7 +130,8 @@ fn spawn_task_to_execute_open_request(
 	hash_as_memo
 }
 
-/// Executes open request based on the transaction envelope
+/// Executes the open request based on the transaction envelope and the proof.
+/// The proof is obtained using the slot.
 ///
 ///  # Arguments
 ///
@@ -187,7 +190,8 @@ async fn execute_open_request_async(
 	}
 }
 
-/// Spawns cancelable tasks to pay and execute open requests
+/// Spawns cancelable task for each open request.
+/// The task performs payment and execution of the open request.
 ///
 ///  # Arguments
 ///
@@ -196,6 +200,7 @@ async fn execute_open_request_async(
 /// * `shutdown_tx` - for sending and receiving shutdown signals
 /// * `parachain_rpc` - the parachain RPC handle
 /// * `oracle_agent` - the agent used to get the proofs
+/// * `rate_limiter` - rate limiter
 fn spawn_tasks_to_pay_and_execute_open_requests<S, C, MW>(
 	requests: HashMap<TextMemo, Request>,
 	vault_id_manager: VaultIdManager,
@@ -230,12 +235,15 @@ fn spawn_tasks_to_pay_and_execute_open_requests<S, C, MW>(
 	}
 }
 
-/// Perform payment and execution of the open request
+/// Performs payment and execution of the open request.
+/// The stellar address of the open request receives the payment; and
+/// the vault id of the open request sends the payment.
+/// However, the vault id MUST exist in the vault_id_manager.
 ///
 ///  # Arguments
 ///
 /// * `request` - the open request
-/// * `vault_id_manager` - contains all the vault ids and their data
+/// * `vault_id_manager` - contains all the vault ids and their data.
 /// * `parachain_rpc` - the parachain RPC handle
 /// * `oracle_agent` - the agent used to get the proofs
 /// * `rate_limiter` - rate limiter
@@ -286,6 +294,16 @@ async fn pay_and_execute_open_request_async<S, C, MW>(
 
 /// Queries the parachain for open requests and executes them. It checks the
 /// stellar blockchain to see if a payment has already been made.
+///
+///  # Arguments
+///
+/// * `shutdown_tx` - for sending and receiving shutdown signals
+/// * `parachain_rpc` - the parachain RPC handle
+/// * `vault_id_manager` - contains all the vault ids and their data.
+/// * `wallet` - the vault's wallet; used to retrieve a list of stellar transactions
+/// * `oracle_agent` - the agent used to get the proofs
+/// * `payment_margin` - minimum time to the the redeem execution deadline to make the stellar
+/// payment.
 #[allow(clippy::too_many_arguments)]
 pub async fn execute_open_requests(
 	shutdown_tx: ShutdownSender,

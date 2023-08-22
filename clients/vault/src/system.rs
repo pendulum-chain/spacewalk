@@ -453,6 +453,8 @@ impl VaultService {
 		let wallet = self.stellar_wallet.write().await;
 		let vault_public_key = wallet.get_public_key();
 		let is_public_network = wallet.is_public_network();
+
+		#[cfg(any(test, feature = "integration"))]
 		let last_known_cursor = wallet.get_last_cursor();
 
 		// re-submit transactions in the cache
