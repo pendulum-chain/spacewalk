@@ -26,12 +26,12 @@ use wallet::{LedgerTxEnvMap, StellarWallet};
 use crate::{
 	cancellation::ReplaceCanceller,
 	error::Error,
-	execution::execute_open_requests,
 	issue,
 	issue::IssueFilter,
 	metrics::{monitor_bridge_metrics, poll_metrics, publish_tokio_metrics, PerCurrencyMetrics},
 	redeem::listen_for_redeem_requests,
 	replace::{listen_for_accept_replace, listen_for_execute_replace, listen_for_replace_requests},
+	requests::execution::execute_open_requests,
 	service::{CancellationScheduler, IssueCanceller},
 	ArcRwLock, Event, CHAIN_HEIGHT_POLLING_INTERVAL,
 };
@@ -453,6 +453,7 @@ impl VaultService {
 		let wallet = self.stellar_wallet.write().await;
 		let vault_public_key = wallet.get_public_key();
 		let is_public_network = wallet.is_public_network();
+		let last_known_cursor = wallet.get_last_cursor();
 
 		// re-submit transactions in the cache
 		let _receivers = wallet.resubmit_transactions_from_cache().await;
@@ -530,6 +531,8 @@ impl VaultService {
 					issue_map.clone(),
 					memos_to_issue_ids.clone(),
 					issue_filter,
+					#[cfg(any(test, feature = "integration"))]
+					last_known_cursor,
 				)),
 			),
 			(

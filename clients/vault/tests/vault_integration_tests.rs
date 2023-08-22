@@ -1,297 +1,26 @@
 use std::{collections::HashMap, convert::TryInto, sync::Arc, time::Duration};
 
-use async_trait::async_trait;
 use frame_support::assert_ok;
 use futures::{
 	channel::mpsc,
 	future::{join, join3, join4},
-	Future, FutureExt, SinkExt,
+	FutureExt, SinkExt,
 };
-use lazy_static::lazy_static;
 use serial_test::serial;
 use sp_keyring::AccountKeyring;
 use sp_runtime::traits::StaticLookup;
 use tokio::{sync::RwLock, time::sleep};
 
-use primitives::{StellarStroops, H256};
 use runtime::{
 	integration::*, types::*, FixedPointNumber, FixedU128, IssuePallet, RedeemPallet,
-	ReplacePallet, ShutdownSender, SpacewalkParachain, SudoPallet, UtilFuncs, VaultRegistryPallet,
+	ReplacePallet, ShutdownSender, SudoPallet, UtilFuncs,
 };
-use stellar_relay_lib::{sdk::PublicKey, StellarOverlayConfig};
+use stellar_relay_lib::sdk::PublicKey;
 
-use vault::{
-	oracle::{get_test_secret_key, get_test_stellar_relay_config, start_oracle_agent, OracleAgent},
-	service::IssueFilter,
-	ArcRwLock, Event as CancellationEvent, VaultIdManager,
-};
-use wallet::StellarWallet;
+use vault::{service::IssueFilter, Event as CancellationEvent, VaultIdManager};
 
-const TIMEOUT: Duration = Duration::from_secs(60);
-
-// Be careful when changing these values because they are used in the parachain genesis config
-// and only for some combination of them, secure collateralization thresholds are set.
-const DEFAULT_TESTING_CURRENCY: CurrencyId = CurrencyId::XCM(0);
-const DEFAULT_WRAPPED_CURRENCY: CurrencyId = CurrencyId::AlphaNum4(
-	*b"USDC",
-	[
-		20, 209, 150, 49, 176, 55, 23, 217, 171, 154, 54, 110, 16, 50, 30, 226, 102, 231, 46, 199,
-		108, 171, 97, 144, 240, 161, 51, 109, 72, 34, 159, 139,
-	],
-);
-
-const LESS_THAN_4_CURRENCY_CODE: CurrencyId = CurrencyId::AlphaNum4(
-	*b"MXN\0",
-	[
-		20, 209, 150, 49, 176, 55, 23, 217, 171, 154, 54, 110, 16, 50, 30, 226, 102, 231, 46, 199,
-		108, 171, 97, 144, 240, 161, 51, 109, 72, 34, 159, 139,
-	],
-);
-
-lazy_static! {
-	static ref CFG: StellarOverlayConfig = get_test_stellar_relay_config(false);
-	static ref SECRET_KEY: String = get_test_secret_key(false);
-}
-
-// A simple helper function to convert StellarStroops (i64) to the up-scaled u128
-fn upscaled_compatible_amount(amount: StellarStroops) -> u128 {
-	primitives::BalanceConversion::unlookup(amount)
-}
-
-type StellarPublicKey = [u8; 32];
-
-#[async_trait]
-trait SpacewalkParachainExt {
-	async fn register_vault_with_public_key(
-		&self,
-		vault_id: &VaultId,
-		collateral: u128,
-		public_key: StellarPublicKey,
-	) -> Result<(), runtime::Error>;
-}
-
-#[async_trait]
-impl SpacewalkParachainExt for SpacewalkParachain {
-	async fn register_vault_with_public_key(
-		&self,
-		vault_id: &VaultId,
-		collateral: u128,
-		public_key: StellarPublicKey,
-	) -> Result<(), runtime::Error> {
-		self.register_public_key(public_key).await.unwrap();
-		self.register_vault(vault_id, collateral).await.unwrap();
-		Ok(())
-	}
-}
-
-async fn assert_execute_redeem_event(
-	duration: Duration,
-	parachain_rpc: SpacewalkParachain,
-	redeem_id: H256,
-) -> ExecuteRedeemEvent {
-	assert_event::<ExecuteRedeemEvent, _>(duration, parachain_rpc, |x| x.redeem_id == redeem_id)
-		.await
-}
-
-/// request, pay and execute an issue
-pub async fn assert_issue(
-	parachain_rpc: &SpacewalkParachain,
-	wallet: Arc<RwLock<StellarWallet>>,
-	vault_id: &VaultId,
-	amount: u128,
-	oracle_agent: Arc<OracleAgent>,
-) {
-	let issue = parachain_rpc
-		.request_issue(amount, vault_id)
-		.await
-		.expect("Failed to request issue");
-
-	let asset = primitives::AssetConversion::lookup(issue.asset).expect("Invalid asset");
-	let stroop_amount = primitives::BalanceConversion::lookup(amount).expect("Invalid amount");
-
-	let mut wallet_write = wallet.write().await;
-	let destination_address = wallet_write.get_public_key();
-	let response = wallet_write
-		.send_payment_to_address(destination_address, asset, stroop_amount, issue.issue_id.0, 300)
-		.await
-		.expect("Failed to send payment");
-
-	let slot = response.ledger as u64;
-
-	// Loop pending proofs until it is ready
-	let proof = oracle_agent.get_proof(slot).await.expect("Proof should be available");
-	let tx_envelope_xdr_encoded = response.envelope_xdr;
-	let (envelopes_xdr_encoded, tx_set_xdr_encoded) = proof.encode();
-
-	parachain_rpc
-		.execute_issue(
-			issue.issue_id,
-			tx_envelope_xdr_encoded.as_slice(),
-			envelopes_xdr_encoded.as_bytes(),
-			tx_set_xdr_encoded.as_bytes(),
-		)
-		.await
-		.expect("Failed to execute issue");
-}
-
-async fn test_with<F, R>(execute: impl FnOnce(SubxtClient, ArcRwLock<StellarWallet>) -> F) -> R
-where
-	F: Future<Output = R>,
-{
-	service::init_subscriber();
-	let (client, tmp_dir) = default_provider_client(AccountKeyring::Alice).await;
-
-	// Has to be Bob because he is set as `authorized_oracle` in the genesis config
-	let parachain_rpc = setup_provider(client.clone(), AccountKeyring::Bob).await;
-
-	set_exchange_rate_and_wait(
-		&parachain_rpc,
-		DEFAULT_TESTING_CURRENCY,
-		// Set exchange rate to 1:1 with USD
-		FixedU128::saturating_from_rational(1u128, 1u128),
-	)
-	.await;
-	set_exchange_rate_and_wait(
-		&parachain_rpc,
-		DEFAULT_WRAPPED_CURRENCY,
-		// Set exchange rate to 10:1 with USD
-		FixedU128::saturating_from_rational(1u128, 10u128),
-	)
-	.await;
-
-	set_exchange_rate_and_wait(
-		&parachain_rpc,
-		LESS_THAN_4_CURRENCY_CODE,
-		// Set exchange rate to 10:1 with USD
-		FixedU128::saturating_from_rational(1u128, 10u128),
-	)
-	.await;
-
-	set_exchange_rate_and_wait(
-		&parachain_rpc,
-		CurrencyId::StellarNative,
-		// Set exchange rate to 10:1 with USD
-		FixedU128::saturating_from_rational(1u128, 10u128),
-	)
-	.await;
-
-	let path = tmp_dir.path().to_str().expect("should return a string").to_string();
-	let wallet = Arc::new(RwLock::new(
-		StellarWallet::from_secret_encoded_with_cache(&SECRET_KEY, CFG.is_public_network(), path)
-			.unwrap(),
-	));
-
-	execute(client, wallet).await
-}
-
-async fn test_with_vault<F, R>(
-	execute: impl FnOnce(
-		SubxtClient,
-		ArcRwLock<StellarWallet>,
-		Arc<OracleAgent>,
-		VaultId,
-		SpacewalkParachain,
-	) -> F,
-) -> R
-where
-	F: Future<Output = R>,
-{
-	service::init_subscriber();
-	let (client, tmp_dir) = default_provider_client(AccountKeyring::Alice).await;
-
-	let parachain_rpc = setup_provider(client.clone(), AccountKeyring::Bob).await;
-	set_exchange_rate_and_wait(
-		&parachain_rpc,
-		DEFAULT_TESTING_CURRENCY,
-		// Set exchange rate to 1:1 with USD
-		FixedU128::saturating_from_rational(1u128, 1u128),
-	)
-	.await;
-	set_exchange_rate_and_wait(
-		&parachain_rpc,
-		DEFAULT_WRAPPED_CURRENCY,
-		// Set exchange rate to 10:1 with USD
-		FixedU128::saturating_from_rational(1u128, 10u128),
-	)
-	.await;
-
-	set_exchange_rate_and_wait(
-		&parachain_rpc,
-		LESS_THAN_4_CURRENCY_CODE,
-		// Set exchange rate to 100:1 with USD
-		FixedU128::saturating_from_rational(1u128, 10u128),
-	)
-	.await;
-
-	set_exchange_rate_and_wait(
-		&parachain_rpc,
-		CurrencyId::StellarNative,
-		// Set exchange rate to 10:1 with USD
-		FixedU128::saturating_from_rational(1u128, 10u128),
-	)
-	.await;
-
-	let vault_provider = setup_provider(client.clone(), AccountKeyring::Charlie).await;
-	let vault_id = VaultId::new(
-		AccountKeyring::Charlie.into(),
-		DEFAULT_TESTING_CURRENCY,
-		DEFAULT_WRAPPED_CURRENCY,
-	);
-
-	let path = tmp_dir.path().to_str().expect("should return a string").to_string();
-	let wallet = Arc::new(RwLock::new(
-		StellarWallet::from_secret_encoded_with_cache(&SECRET_KEY, CFG.is_public_network(), path)
-			.unwrap(),
-	));
-
-	let oracle_agent = start_oracle_agent(CFG.clone(), &SECRET_KEY)
-		.await
-		.expect("failed to start agent");
-	let oracle_agent = Arc::new(oracle_agent);
-
-	execute(client, wallet, oracle_agent, vault_id, vault_provider).await
-}
-
-async fn create_vault(
-	client: SubxtClient,
-	account: AccountKeyring,
-	wrapped_currency: CurrencyId,
-) -> (VaultId, SpacewalkParachain) {
-	let vault_id = VaultId::new(account.clone().into(), DEFAULT_TESTING_CURRENCY, wrapped_currency);
-
-	let vault_provider = setup_provider(client, account).await;
-
-	(vault_id, vault_provider)
-}
-
-async fn register_vault(
-	wallet: ArcRwLock<StellarWallet>,
-	items: Vec<(&SpacewalkParachain, &VaultId, u128)>,
-) -> u128 {
-	let wallet_read = wallet.read().await;
-	let public_key = wallet_read.get_public_key_raw();
-
-	let mut vault_collateral = 0;
-	for (provider, vault_id, issue_amount) in items {
-		vault_collateral = get_required_vault_collateral_for_issue(
-			provider,
-			issue_amount,
-			vault_id.wrapped_currency(),
-			vault_id.collateral_currency(),
-		)
-		.await;
-
-		assert_ok!(
-			provider
-				.register_vault_with_public_key(vault_id, vault_collateral, public_key.clone())
-				.await
-		);
-	}
-
-	drop(wallet_read);
-
-	vault_collateral
-}
+mod helper;
+use helper::*;
 
 #[tokio::test(flavor = "multi_thread")]
 #[serial]
@@ -304,7 +33,7 @@ async fn test_register() {
 
 		let issue_amount = upscaled_compatible_amount(100);
 
-		register_vault(
+		register_vault_with_wallet(
 			wallet.clone(),
 			vec![(&eve_provider, &eve_id, issue_amount), (&dave_provider, &dave_id, issue_amount)],
 		)
@@ -333,17 +62,15 @@ async fn test_redeem_succeeds() {
 		)
 		.await;
 
-		let wallet_read = wallet.read().await;
 		assert_ok!(
 			vault_provider
 				.register_vault_with_public_key(
 					&vault_id,
 					vault_collateral,
-					wallet_read.get_public_key_raw()
+					default_destination_as_binary()
 				)
 				.await
 		);
-		drop(wallet_read);
 
 		let shutdown_tx = ShutdownSender::new();
 
@@ -391,7 +118,7 @@ async fn test_replace_succeeds() {
 
 		let issue_amount = upscaled_compatible_amount(100);
 
-		register_vault(
+		register_vault_with_wallet(
 			wallet.clone(),
 			vec![
 				(&old_vault_provider, &old_vault_id, issue_amount),
@@ -460,13 +187,10 @@ async fn test_withdraw_replace_succeeds() {
 
 		let issue_amount = upscaled_compatible_amount(100);
 
-		let vault_collateral = register_vault(
-			wallet.clone(),
-			vec![
-				(&old_vault_provider, &old_vault_id, issue_amount),
-				(&new_vault_provider, &new_vault_id, issue_amount),
-			],
-		)
+		let vault_collateral = register_vault_with_default_destination(vec![
+			(&old_vault_provider, &old_vault_id, issue_amount),
+			(&new_vault_provider, &new_vault_id, issue_amount),
+		])
 		.await;
 
 		assert_issue(
@@ -523,7 +247,7 @@ async fn test_cancel_scheduler_succeeds() {
 
 		let issue_amount = upscaled_compatible_amount(200);
 
-		let _ = register_vault(
+		let _ = register_vault_with_wallet(
 			wallet.clone(),
 			vec![
 				(&new_vault_provider, &new_vault_id, issue_amount * 2),
@@ -746,6 +470,7 @@ async fn test_issue_cancel_succeeds() {
 				issue_set.clone(),
 				memos_to_issue_ids.clone(),
 				issue_filter,
+				LAST_KNOWN_CURSOR,
 			),
 			vault::service::listen_for_issue_requests(
 				vault_provider.clone(),
@@ -772,7 +497,7 @@ async fn test_issue_overpayment_succeeds() {
 	test_with_vault(|client, wallet, oracle_agent, vault_id, vault_provider| async move {
 		let user_provider = setup_provider(client.clone(), AccountKeyring::Dave).await;
 
-		let public_key = wallet.read().await.get_public_key_raw();
+		let public_key = default_destination_as_binary();
 
 		let issue_amount = upscaled_compatible_amount(100);
 		let over_payment_factor = 3;
@@ -856,7 +581,7 @@ async fn test_issue_overpayment_succeeds() {
 
 #[tokio::test(flavor = "multi_thread")]
 #[serial]
-async fn test_automatic_issue_execution_succeeds() {
+async fn test_automatic_issue_execution_succeeds_hoho() {
 	test_with_vault(|client, wallet, oracle_agent, vault_id, vault_provider| async move {
 		let user_provider = setup_provider(client.clone(), AccountKeyring::Dave).await;
 
@@ -901,11 +626,12 @@ async fn test_automatic_issue_execution_succeeds() {
 					issue.issue_id.0,
 					300,
 				)
-				.await;
-			assert!(result.is_ok());
+				.await
+				.expect("should return a result");
+
 			drop(wallet_write);
 
-			tracing::warn!("Sent payment to address. Ledger is {:?}", result.unwrap().ledger);
+			tracing::warn!("Sent payment successfully: {:?}", result);
 
 			// Sleep 5 seconds to give other thread some time to receive the RequestIssue event and
 			// add it to the set
@@ -933,6 +659,7 @@ async fn test_automatic_issue_execution_succeeds() {
 				issue_set.clone(),
 				memos_to_issue_ids.clone(),
 				issue_filter,
+				LAST_KNOWN_CURSOR,
 			),
 			vault::service::listen_for_issue_requests(
 				vault_provider.clone(),
@@ -1075,6 +802,7 @@ async fn test_automatic_issue_execution_succeeds_for_other_vault() {
 				issue_set_arc.clone(),
 				memos_to_issue_ids.clone(),
 				issue_filter,
+				LAST_KNOWN_CURSOR,
 			),
 			vault::service::listen_for_issue_requests(
 				vault2_provider.clone(),
@@ -1222,7 +950,7 @@ async fn test_off_chain_liquidation() {
 				.register_vault_with_public_key(
 					&vault_id,
 					vault_collateral,
-					wallet_read.get_public_key_raw()
+					default_destination_as_binary()
 				)
 				.await
 		);

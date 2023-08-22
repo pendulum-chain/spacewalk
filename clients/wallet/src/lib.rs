@@ -15,6 +15,8 @@ pub mod types;
 
 pub use types::{LedgerTxEnvMap, Slot};
 
+pub type TransactionsResponseIter = horizon::responses::TransactionsResponseIter<reqwest::Client>;
+
 #[cfg(test)]
 pub mod test_helper {
 	use primitives::{stellar::Asset, CurrencyId};

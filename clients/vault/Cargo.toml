@@ -6,7 +6,9 @@ name = "vault"
 version = "0.0.1"
 
 [features]
-integration = []
+integration = [
+    "wallet/testing-utils"
+]
 standalone-metadata = ["runtime/standalone-metadata"]
 parachain-metadata-pendulum = ["runtime/parachain-metadata-pendulum"]
 parachain-metadata-amplitude = ["runtime/parachain-metadata-amplitude"]

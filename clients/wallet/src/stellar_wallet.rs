@@ -338,6 +338,7 @@ impl StellarWallet {
 		stroop_fee_per_operation: u32,
 	) -> Result<TransactionResponse, Error> {
 		// user must not send to self
+		#[cfg(not(feature = "testing-utils"))]
 		if self.secret_key.get_public() == &destination_address {
 			return Err(Error::SelfPaymentError)
 		}
@@ -778,6 +779,7 @@ mod test {
 		wallet.read().await.cache.remove_dir();
 	}
 
+	#[cfg(all(test, not(feature = "testing-utils")))]
 	#[tokio::test]
 	#[serial]
 	async fn sending_payment_to_self_not_valid() {

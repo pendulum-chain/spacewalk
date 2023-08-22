@@ -14,6 +14,7 @@ use primitives::{
 	MemoTypeExt, TextMemo,
 };
 use serde::{de::DeserializeOwned, Deserialize};
+use std::fmt::{Debug, Formatter};
 
 const ASSET_TYPE_NATIVE: &str = "native";
 const VALUE_UNKNOWN: &str = "unknown";
@@ -25,9 +26,21 @@ const RESPONSE_FIELD_ENVELOPE_XDR: &str = "envelope_xdr";
 const RESPONSE_FIELD_DETAIL: &str = "detail";
 const RESPONSE_FIELD_RESULT_CODES: &str = "result_codes";
 const RESPONSE_FIELD_TRANSACTION: &str = "transaction";
+const RESPONSE_FIELD_OPERATIONS: &str = "operations";
 
 const ERROR_STATUS_400: u16 = 400;
 const ERROR_RESULT_TX_MALFORMED: &str = "transaction malformed";
+
+/// a helpful macro to return either the str equivalent or the original array of u8
+macro_rules! debug_str_or_vec_u8 {
+	// should be &[u8]
+	($res:expr) => {
+		match std::str::from_utf8($res) {
+			Ok(res) => format!("{}", res),
+			Err(_) => format!("{:?}", $res),
+		}
+	};
+}
 
 /// Interprets the response from Horizon into something easier to read.
 pub(crate) async fn interpret_response<T: DeserializeOwned>(
@@ -63,15 +76,23 @@ pub(crate) async fn interpret_response<T: DeserializeOwned>(
 					}
 				},
 				_ => {
-					let result_code = resp[RESPONSE_FIELD_EXTRAS][RESPONSE_FIELD_RESULT_CODES]
+					let result_code_tx = resp[RESPONSE_FIELD_EXTRAS][RESPONSE_FIELD_RESULT_CODES]
 						[RESPONSE_FIELD_TRANSACTION]
 						.as_str()
 						.unwrap_or(VALUE_UNKNOWN);
 
+					let result_code_op: Vec<String> = resp[RESPONSE_FIELD_EXTRAS]
+						[RESPONSE_FIELD_RESULT_CODES][RESPONSE_FIELD_OPERATIONS]
+						.as_array()
+						.unwrap_or(&vec![])
+						.iter()
+						.map(|v| v.as_str().unwrap_or(VALUE_UNKNOWN).to_string())
+						.collect();
+
 					Error::HorizonSubmissionError {
 						title: title.to_string(),
 						status,
-						reason: result_code.to_string(),
+						reason: format!("{result_code_tx}: {result_code_op:?}"),
 						envelope_xdr: Some(envelope_xdr.to_string()),
 					}
 				},
@@ -134,7 +155,7 @@ pub struct EmbeddedTransactions {
 }
 
 // This represents each record for a transaction in the Horizon API response
-#[derive(Clone, Deserialize, Encode, Decode, Default, Debug)]
+#[derive(Clone, Deserialize, Encode, Decode, Default)]
 pub struct TransactionResponse {
 	#[serde(deserialize_with = "de_string_to_bytes")]
 	pub id: Vec<u8>,
@@ -170,6 +191,37 @@ pub struct TransactionResponse {
 	#[serde(default)]
 	#[serde(deserialize_with = "de_string_to_optional_bytes")]
 	pub memo: Option<Vec<u8>>,
+}
+
+impl Debug for TransactionResponse {
+	fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+		let memo = match &self.memo {
+			None => "".to_string(),
+			Some(memo) => {
+				debug_str_or_vec_u8!(memo)
+			},
+		};
+
+		f.debug_struct("TransactionResponse")
+			.field("id", &debug_str_or_vec_u8!(&self.id))
+			.field("paging_token", &self.paging_token)
+			.field("successful", &self.successful)
+			.field("hash", &debug_str_or_vec_u8!(&self.hash))
+			.field("ledger", &self.ledger)
+			.field("created_at", &debug_str_or_vec_u8!(&self.created_at))
+			.field("source_account", &debug_str_or_vec_u8!(&self.source_account))
+			.field("source_account_sequence", &debug_str_or_vec_u8!(&self.source_account_sequence))
+			.field("fee_account", &debug_str_or_vec_u8!(&self.fee_account))
+			.field("fee_charged", &self.fee_charged)
+			.field("max_fee", &debug_str_or_vec_u8!(&self.max_fee))
+			.field("operation_count", &self.operation_count)
+			.field("envelope_xdr", &debug_str_or_vec_u8!(&self.envelope_xdr))
+			.field("result_xdr", &debug_str_or_vec_u8!(&self.result_xdr))
+			.field("result_meta_xdr", &debug_str_or_vec_u8!(&self.result_meta_xdr))
+			.field("memo_type", &debug_str_or_vec_u8!(&self.memo_type))
+			.field("memo", &memo)
+			.finish()
+	}
 }
 
 #[allow(dead_code)]
@@ -208,6 +260,10 @@ impl TransactionResponse {
 		}
 
 		Ok(vec![])
+	}
+
+	pub fn transaction_hash(&self) -> String {
+		debug_str_or_vec_u8!(&self.hash)
 	}
 }
 
