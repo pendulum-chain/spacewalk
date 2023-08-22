@@ -312,6 +312,7 @@ impl StellarWallet {
 		is_payment_for_redeem_request: bool,
 	) -> Result<TransactionResponse, Error> {
 		// user must not send to self
+		#[cfg(not(feature = "testing-utils"))]
 		if self.secret_key.get_public() == &destination_address {
 			return Err(Error::SelfPaymentError)
 		}

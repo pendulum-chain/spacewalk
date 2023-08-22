@@ -394,9 +394,9 @@ impl<T: Config> Pallet<T> {
 
 		Self::check_volume(amount_requested.clone())?;
 
-		// ensure that the vault is accepting new issues (vault is active)
 		let vault = ext::vault_registry::get_active_vault_from_id::<T>(&vault_id)?;
 
+		// ensure that the vault is accepting new issues
 		ensure!(vault.status == VaultStatus::Active(true), Error::<T>::VaultNotAcceptingNewIssues);
 
 		// Check that the vault is currently not banned
@@ -411,7 +411,7 @@ impl<T: Config> Pallet<T> {
 		);
 		griefing_collateral.lock_on(&requester)?;
 
-		// only continue if the payment is above or equal to the minimum transfer amount
+		// only continue if the payment is above the minimum transfer amount
 		ensure!(
 			amount_requested
 				.ge(&Self::issue_minimum_transfer_amount(vault_id.wrapped_currency()))?,
@@ -425,7 +425,7 @@ impl<T: Config> Pallet<T> {
 		// compatible without loss of precision.
 		let fee = fee.round_to_target_chain()?;
 
-		// calculate the amount of tokens that will be transferred to the user
+		// calculate the amount of tokens that will be transferred to the user upon execution
 		let amount_user = amount_requested.checked_sub(&fee)?;
 
 		let issue_id = ext::security::get_secure_id::<T>();

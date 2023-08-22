@@ -70,6 +70,13 @@ pub(crate) async fn get_all_transactions_of_wallet_async(
 	match transactions_result {
 		Err(e) => {
 			tracing::error!("Failed to get transactions from Stellar: {e}");
+	// Check if some of the requests that are open already have a corresponding payment on Stellar
+	// and are just waiting to be executed on the parachain
+	match transactions_result {
+		Err(e) => {
+			tracing::error!(
+				"Failed to get transactions from Stellar while processing open requests: {e}"
+			);
 			None
 		},
 		Ok(transactions) => Some(transactions),

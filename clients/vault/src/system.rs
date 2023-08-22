@@ -117,14 +117,17 @@ impl VaultIdManager {
 			.get_vaults_by_account_id(self.spacewalk_parachain.get_account_id())
 			.await?
 		{
-			// check if vault is registered
-			match self.spacewalk_parachain.get_vault(&vault_id).await {
-				Ok(_) => self.add_vault_id(vault_id.clone()).await?,
-				Err(RuntimeError::VaultLiquidated) => tracing::error!(
-					"[{}] Vault is liquidated -- not going to process events for this vault.",
-					vault_id.pretty_print()
-				),
-				Err(e) => return Err(e.into()),
+			match is_vault_registered(&self.spacewalk_parachain, &vault_id).await {
+				Err(Error::RuntimeError(RuntimeError::VaultLiquidated)) => {
+					tracing::error!(
+						"[{}] Vault is liquidated -- not going to process events for this vault.",
+						vault_id.pretty_print()
+					);
+				},
+				Ok(_) => {
+					self.add_vault_id(vault_id.clone()).await?;
+				},
+				Err(x) => return Err(x),
 			}
 		}
 		Ok(())
@@ -801,7 +804,7 @@ impl VaultService {
 		run_and_monitor_tasks(self.shutdown.clone(), tasks).await
 	}
 
-	async fn register_public_key_if_not_present(&mut self) -> Result<(), Error> {
+	async fn maybe_register_public_key(&mut self) -> Result<(), Error> {
 		if let Some(_faucet_url) = &self.config.faucet_url {
 			// TODO fund account with faucet
 		}
