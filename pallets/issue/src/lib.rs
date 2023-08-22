@@ -195,10 +195,10 @@ pub mod pallet {
 	#[cfg(feature = "std")]
 	impl<T: Config> Default for GenesisConfig<T> {
 		fn default() -> Self {
-			const SECONDS_PER_BLOCK:u32 = 12;
-			const MINUTE:u32 = 60; // in seconds
-			const HOUR:u32 = MINUTE * 60;
-			const DAY:u32 = HOUR * 24;
+			const SECONDS_PER_BLOCK: u32 = 12;
+			const MINUTE: u32 = 60; // in seconds
+			const HOUR: u32 = MINUTE * 60;
+			const DAY: u32 = HOUR * 24;
 
 			Self {
 				issue_period: Default::default(),
