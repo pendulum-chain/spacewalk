@@ -155,9 +155,8 @@ impl OracleAgent {
 						continue
 					},
 					Some(proof) => {
-						tracing::debug!(
-							"Successfully build proof for slot {slot}, proof: {proof:?}"
-						);
+						tracing::info!("Successfully build proof for slot {slot}");
+						tracing::trace!("  with proof: {proof:?}");
 						return Ok(proof)
 					},
 				}
@@ -194,7 +193,6 @@ mod tests {
 		get_test_secret_key, get_test_stellar_relay_config, traits::ArchiveStorage,
 		ScpArchiveStorage, TransactionsArchiveStorage,
 	};
-	use serial_test::serial;
 
 	use super::*;
 	use serial_test::serial;

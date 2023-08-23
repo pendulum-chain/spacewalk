@@ -7,7 +7,7 @@ use runtime::{
 		assert_event, get_required_vault_collateral_for_issue, setup_provider, SubxtClient,
 	},
 	stellar::SecretKey,
-	ExecuteRedeemEvent, IssuePallet, SpacewalkParachain, VaultId,
+	ExecuteRedeemEvent, IssuePallet, SpacewalkParachain, VaultId, VaultRegistryPallet,
 };
 use sp_keyring::AccountKeyring;
 use sp_runtime::traits::StaticLookup;
@@ -30,13 +30,17 @@ pub fn upscaled_compatible_amount(amount: StellarStroops) -> u128 {
 }
 
 #[async_trait]
-pub trait SpacewalkParachainExt {
+pub trait SpacewalkParachainExt: VaultRegistryPallet {
 	async fn register_vault_with_public_key(
 		&self,
 		vault_id: &VaultId,
 		collateral: u128,
 		public_key: crate::StellarPublicKey,
-	) -> Result<(), runtime::Error>;
+	) -> Result<(), runtime::Error> {
+		self.register_public_key(public_key).await.unwrap();
+		self.register_vault(vault_id, collateral).await.unwrap();
+		Ok(())
+	}
 }
 
 pub async fn create_vault(

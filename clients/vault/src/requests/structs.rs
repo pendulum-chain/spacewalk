@@ -302,3 +302,5 @@ impl Request {
 		Ok(response)
 	}
 }
+
+pub struct PayAndExecute;

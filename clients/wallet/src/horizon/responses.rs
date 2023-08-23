@@ -1,7 +1,7 @@
 use crate::{
 	error::Error,
 	horizon::{serde::*, traits::HorizonClient, Ledger},
-	types::PagingToken,
+	types::{PagingToken, StatusCode},
 };
 use parity_scale_codec::{Decode, Encode};
 use primitives::{
@@ -28,7 +28,6 @@ const RESPONSE_FIELD_RESULT_CODES: &str = "result_codes";
 const RESPONSE_FIELD_TRANSACTION: &str = "transaction";
 const RESPONSE_FIELD_OPERATIONS: &str = "operations";
 
-const ERROR_STATUS_400: u16 = 400;
 const ERROR_RESULT_TX_MALFORMED: &str = "transaction malformed";
 
 /// a helpful macro to return either the str equivalent or the original array of u8
@@ -54,11 +53,10 @@ pub(crate) async fn interpret_response<T: DeserializeOwned>(
 
 	let title = resp[RESPONSE_FIELD_TITLE].as_str().unwrap_or(VALUE_UNKNOWN);
 	let status =
-		u16::try_from(resp[RESPONSE_FIELD_STATUS].as_u64().unwrap_or(ERROR_STATUS_400 as u64))
-			.unwrap_or(ERROR_STATUS_400);
+		StatusCode::try_from(resp[RESPONSE_FIELD_STATUS].as_u64().unwrap_or(400)).unwrap_or(400);
 
 	let error = match status {
-		ERROR_STATUS_400 => {
+		400 => {
 			let envelope_xdr = resp[RESPONSE_FIELD_EXTRAS][RESPONSE_FIELD_ENVELOPE_XDR]
 				.as_str()
 				.unwrap_or(VALUE_UNKNOWN);

@@ -439,8 +439,8 @@ pub trait MemoTypeExt {
 }
 
 impl MemoTypeExt for Memo {
-	const TYPE_MEMOTEXT: &'static str = "Text";
-	const TYPE_MEMOHASH: &'static str = "Hash";
+	const TYPE_MEMOTEXT: &'static str = "text";
+	const TYPE_MEMOHASH: &'static str = "hash";
 
 	fn is_type_text(memo_type_as_ref: &[u8]) -> bool {
 		memo_type_as_ref == Self::TYPE_MEMOTEXT.as_bytes()

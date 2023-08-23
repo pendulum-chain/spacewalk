@@ -4,12 +4,14 @@ use crate::{
 	requests::{
 		helper::{
 			get_all_transactions_of_wallet_async, get_request_for_stellar_tx,
-			retrieve_open_requests_async,
+			retrieve_open_redeem_replace_requests_async, PayAndExecuteExt,
 		},
 		structs::Request,
+		PayAndExecute,
 	},
 	VaultIdManager, YIELD_RATE,
 };
+use async_trait::async_trait;
 use governor::{
 	clock::{Clock, ReasonablyRealtime},
 	middleware::RateLimitingMiddleware,
@@ -190,25 +192,9 @@ async fn execute_open_request_async(
 	}
 }
 
-/// Spawns cancelable task for each open request.
-/// The task performs payment and execution of the open request.
-///
-///  # Arguments
-///
-/// * `requests` - open/pending requests that requires Stellar payment before execution
-/// * `vault_id_manager` - contains all the vault ids and their data
-/// * `shutdown_tx` - for sending and receiving shutdown signals
-/// * `parachain_rpc` - the parachain RPC handle
-/// * `oracle_agent` - the agent used to get the proofs
-/// * `rate_limiter` - rate limiter
-fn spawn_tasks_to_pay_and_execute_open_requests<S, C, MW>(
-	requests: HashMap<TextMemo, Request>,
-	vault_id_manager: VaultIdManager,
-	shutdown_tx: ShutdownSender,
-	parachain_rpc: &SpacewalkParachain,
-	oracle_agent: Arc<OracleAgent>,
-	rate_limiter: Arc<RateLimiter<NotKeyed, S, C, MW>>,
-) where
+#[async_trait]
+impl<S, C, MW> PayAndExecuteExt<RateLimiter<NotKeyed, S, C, MW>> for PayAndExecute
+where
 	S: DirectStateStore + Send + Sync + 'static,
 	C: ReasonablyRealtime + Send + Sync + 'static,
 	MW: RateLimitingMiddleware<C::Instant, NegativeOutcome = NotUntil<C::Instant>>
@@ -217,78 +203,67 @@ fn spawn_tasks_to_pay_and_execute_open_requests<S, C, MW>(
 		+ 'static,
 	<MW as RateLimitingMiddleware<<C as Clock>::Instant>>::PositiveOutcome: Send,
 {
-	for (_, request) in requests {
-		// there are potentially a large number of open requests - pay and execute each
-		// in a separate task to ensure that awaiting confirmations does not significantly
-		// delay other requests
-		// make copies of the variables we move into the task
-		spawn_cancelable(
-			shutdown_tx.subscribe(),
-			pay_and_execute_open_request_async(
-				request,
-				vault_id_manager.clone(),
-				parachain_rpc.clone(),
-				oracle_agent.clone(),
-				rate_limiter.clone(),
-			),
-		);
+	fn spawn_tasks_to_pay_and_execute_open_requests(
+		requests: HashMap<TextMemo, Request>,
+		vault_id_manager: VaultIdManager,
+		shutdown_tx: ShutdownSender,
+		parachain_rpc: &SpacewalkParachain,
+		oracle_agent: Arc<OracleAgent>,
+		rate_limiter: Arc<RateLimiter<NotKeyed, S, C, MW>>,
+	) {
+		for (_, request) in requests {
+			// there are potentially a large number of open requests - pay and execute each
+			// in a separate task to ensure that awaiting confirmations does not significantly
+			// delay other requests
+			// make copies of the variables we move into the task
+			spawn_cancelable(
+				shutdown_tx.subscribe(),
+				Self::pay_and_execute_open_request_async(
+					request,
+					vault_id_manager.clone(),
+					parachain_rpc.clone(),
+					oracle_agent.clone(),
+					rate_limiter.clone(),
+				),
+			);
+		}
 	}
-}
 
-/// Performs payment and execution of the open request.
-/// The stellar address of the open request receives the payment; and
-/// the vault id of the open request sends the payment.
-/// However, the vault id MUST exist in the vault_id_manager.
-///
-///  # Arguments
-///
-/// * `request` - the open request
-/// * `vault_id_manager` - contains all the vault ids and their data.
-/// * `parachain_rpc` - the parachain RPC handle
-/// * `oracle_agent` - the agent used to get the proofs
-/// * `rate_limiter` - rate limiter
-async fn pay_and_execute_open_request_async<S, C, MW>(
-	request: Request,
-	vault_id_manager: VaultIdManager,
-	parachain_rpc: SpacewalkParachain,
-	oracle_agent: Arc<OracleAgent>,
-	rate_limiter: Arc<RateLimiter<NotKeyed, S, C, MW>>,
-) where
-	S: DirectStateStore + Send + Sync + 'static,
-	C: ReasonablyRealtime + Send + Sync + 'static,
-	MW: RateLimitingMiddleware<C::Instant, NegativeOutcome = NotUntil<C::Instant>>
-		+ Send
-		+ Sync
-		+ 'static,
-	<MW as RateLimitingMiddleware<<C as Clock>::Instant>>::PositiveOutcome: Send,
-{
-	let Some(vault) = vault_id_manager.get_vault(request.vault_id()).await else {
-        tracing::error!(
+	async fn pay_and_execute_open_request_async(
+		request: Request,
+		vault_id_manager: VaultIdManager,
+		parachain_rpc: SpacewalkParachain,
+		oracle_agent: Arc<OracleAgent>,
+		rate_limiter: Arc<RateLimiter<NotKeyed, S, C, MW>>,
+	) {
+		let Some(vault) = vault_id_manager.get_vault(request.vault_id()).await else {
+			tracing::error!(
             "Couldn't process open {:?} request #{:?}: Failed to fetch vault data for vault {}",
             request.request_type(),
             request.hash(),
             request.vault_id().pretty_print()
         );
 
-        return; // nothing we can do - bail
-    };
+			return; // nothing we can do - bail
+		};
 
-	// We rate limit the number of transactions we pay and execute simultaneously because
-	// sending too many at once might cause the Stellar network to respond with a timeout
-	// error.
-	rate_limiter.until_ready().await;
+		// We rate limit the number of transactions we pay and execute simultaneously because
+		// sending too many at once might cause the Stellar network to respond with a timeout
+		// error.
+		rate_limiter.until_ready().await;
 
-	match request.pay_and_execute(parachain_rpc, vault, oracle_agent).await {
-		Ok(_) => tracing::info!(
-			"Successfully executed open {:?} request #{:?}",
-			request.request_type(),
-			request.hash()
-		),
-		Err(e) => tracing::info!(
-			"Failed to process open {:?} request #{:?} due to error: {e}",
-			request.request_type(),
-			request.hash(),
-		),
+		match request.pay_and_execute(parachain_rpc, vault, oracle_agent).await {
+			Ok(_) => tracing::info!(
+				"Successfully executed open {:?} request #{:?}",
+				request.request_type(),
+				request.hash()
+			),
+			Err(e) => tracing::info!(
+				"Failed to process open {:?} request #{:?} due to error: {e}",
+				request.request_type(),
+				request.hash(),
+			),
+		}
 	}
 }
 
@@ -316,7 +291,7 @@ pub async fn execute_open_requests(
 	let parachain_rpc_ref = &parachain_rpc;
 
 	// get all redeem and replace requests
-	let mut open_requests = retrieve_open_requests_async(
+	let mut open_requests = retrieve_open_redeem_replace_requests_async(
 		parachain_rpc_ref,
 		parachain_rpc.get_account_id().clone(),
 		payment_margin,
@@ -339,7 +314,7 @@ pub async fn execute_open_requests(
 
 	// Remaining requests in the hashmap did not have a Stellar payment yet,
 	// so pay and execute all of these
-	spawn_tasks_to_pay_and_execute_open_requests(
+	PayAndExecute::spawn_tasks_to_pay_and_execute_open_requests(
 		open_requests,
 		vault_id_manager,
 		shutdown_tx,
