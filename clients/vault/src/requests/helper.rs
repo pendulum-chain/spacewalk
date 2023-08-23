@@ -69,9 +69,7 @@ pub(crate) async fn get_all_transactions_of_wallet_async(
 
 	match transactions_result {
 		Err(e) => {
-			tracing::error!(
-				"Failed to get transactions from Stellar while processing open requests: {e}"
-			);
+			tracing::error!("Failed to get transactions from Stellar: {e}");
 			None
 		},
 		Ok(transactions) => Some(transactions),
