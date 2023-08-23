@@ -30,12 +30,16 @@ pub type StellarPublicKey = [u8; 32];
 lazy_static! {
 	pub static ref CFG: StellarOverlayConfig = get_test_stellar_relay_config(false);
 	pub static ref SECRET_KEY: String = get_test_secret_key(false);
+	// TODO clean this up by extending the `get_test_secret_key()` function
+	pub static ref DESTINATION_SECRET_KEY: String = "SDNQJEIRSA6YF5JNS6LQLCBF2XVWZ2NJV3YLC322RGIBJIJRIRGWKLEF".to_string();
 }
 
 #[async_trait]
 impl SpacewalkParachainExt for SpacewalkParachain {}
 
-pub async fn test_with<F, R>(execute: impl FnOnce(SubxtClient, ArcRwLock<StellarWallet>) -> F) -> R
+pub async fn test_with<F, R>(
+	execute: impl FnOnce(SubxtClient, ArcRwLock<StellarWallet>, ArcRwLock<StellarWallet>) -> F,
+) -> R
 where
 	F: Future<Output = R>,
 {
@@ -77,17 +81,31 @@ where
 	.await;
 
 	let path = tmp_dir.path().to_str().expect("should return a string").to_string();
-	let wallet = Arc::new(RwLock::new(
-		StellarWallet::from_secret_encoded_with_cache(&SECRET_KEY, CFG.is_public_network(), path)
-			.unwrap(),
+	let vault_wallet = Arc::new(RwLock::new(
+		StellarWallet::from_secret_encoded_with_cache(
+			&SECRET_KEY,
+			CFG.is_public_network(),
+			path.clone(),
+		)
+		.unwrap(),
 	));
 
-	execute(client, wallet).await
+	let user_wallet = Arc::new(RwLock::new(
+		StellarWallet::from_secret_encoded_with_cache(
+			&DESTINATION_SECRET_KEY,
+			CFG.is_public_network(),
+			path,
+		)
+		.unwrap(),
+	));
+
+	execute(client, vault_wallet, user_wallet).await
 }
 
 pub async fn test_with_vault<F, R>(
 	execute: impl FnOnce(
 		SubxtClient,
+		ArcRwLock<StellarWallet>,
 		ArcRwLock<StellarWallet>,
 		Arc<OracleAgent>,
 		VaultId,
@@ -139,9 +157,22 @@ where
 	);
 
 	let path = tmp_dir.path().to_str().expect("should return a string").to_string();
-	let wallet = Arc::new(RwLock::new(
-		StellarWallet::from_secret_encoded_with_cache(&SECRET_KEY, CFG.is_public_network(), path)
-			.unwrap(),
+	let vault_wallet = Arc::new(RwLock::new(
+		StellarWallet::from_secret_encoded_with_cache(
+			&SECRET_KEY,
+			CFG.is_public_network(),
+			path.clone(),
+		)
+		.unwrap(),
+	));
+
+	let user_wallet = Arc::new(RwLock::new(
+		StellarWallet::from_secret_encoded_with_cache(
+			&DESTINATION_SECRET_KEY,
+			CFG.is_public_network(),
+			path,
+		)
+		.unwrap(),
 	));
 
 	let oracle_agent = start_oracle_agent(CFG.clone(), &SECRET_KEY)
@@ -149,5 +180,5 @@ where
 		.expect("failed to start agent");
 	let oracle_agent = Arc::new(oracle_agent);
 
-	execute(client, wallet, oracle_agent, vault_id, vault_provider).await
+	execute(client, vault_wallet, user_wallet, oracle_agent, vault_id, vault_provider).await
 }
