@@ -1,7 +1,7 @@
+use crate::types::StatusCode;
 use primitives::stellar::{types::SequenceNumber, TransactionEnvelope};
 use reqwest::Error as FetchError;
 use std::fmt::{Debug, Display, Formatter};
-
 use thiserror::Error;
 
 #[derive(Debug, Error)]
@@ -15,7 +15,7 @@ pub enum Error {
 	#[error("Transaction submission failed. Title: {title}, Status: {status}, Reason: {reason}, Envelope XDR: {envelope_xdr:?}")]
 	HorizonSubmissionError {
 		title: String,
-		status: u16,
+		status: StatusCode,
 		reason: String,
 		envelope_xdr: Option<String>,
 	},

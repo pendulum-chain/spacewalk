@@ -224,9 +224,9 @@ pub mod pallet {
 	impl<T: Config> Default for GenesisConfig<T> {
 		fn default() -> Self {
 			const SECONDS_PER_BLOCK: u32 = 12;
-			const MINUTE: u32 = 60; // in seconds
-			const HOUR: u32 = MINUTE * 60;
-			const DAY: u32 = HOUR * 24;
+			const MINUTE_IN_SECONDS: u32 = 60; // in seconds
+			const HOUR_IN_SECONDS: u32 = MINUTE_IN_SECONDS * 60;
+			const DAY_IN_SECONDS: u32 = HOUR_IN_SECONDS * 24;
 
 			Self {
 				redeem_period: Default::default(),
@@ -234,8 +234,10 @@ pub mod pallet {
 				limit_volume_amount: None,
 				limit_volume_currency_id: T::CurrencyId::default(),
 				current_volume_amount: BalanceOf::<T>::zero(),
-				interval_length: T::BlockNumber::from_str(&(DAY / SECONDS_PER_BLOCK).to_string())
-					.unwrap_or_default(),
+				interval_length: T::BlockNumber::from_str(
+					&(DAY_IN_SECONDS / SECONDS_PER_BLOCK).to_string(),
+				)
+				.unwrap_or_default(),
 				last_interval_index: T::BlockNumber::zero(),
 			}
 		}

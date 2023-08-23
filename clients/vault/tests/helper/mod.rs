@@ -12,7 +12,7 @@ use runtime::{
 		default_provider_client, set_exchange_rate_and_wait, setup_provider, SubxtClient,
 	},
 	types::FixedU128,
-	SpacewalkParachain, VaultId, VaultRegistryPallet,
+	SpacewalkParachain, VaultId,
 };
 use sp_arithmetic::FixedPointNumber;
 use sp_keyring::AccountKeyring;
@@ -33,18 +33,7 @@ lazy_static! {
 }
 
 #[async_trait]
-impl SpacewalkParachainExt for SpacewalkParachain {
-	async fn register_vault_with_public_key(
-		&self,
-		vault_id: &VaultId,
-		collateral: u128,
-		public_key: StellarPublicKey,
-	) -> Result<(), runtime::Error> {
-		self.register_public_key(public_key).await.unwrap();
-		self.register_vault(vault_id, collateral).await.unwrap();
-		Ok(())
-	}
-}
+impl SpacewalkParachainExt for SpacewalkParachain {}
 
 pub async fn test_with<F, R>(execute: impl FnOnce(SubxtClient, ArcRwLock<StellarWallet>) -> F) -> R
 where
