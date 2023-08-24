@@ -1,17 +1,15 @@
-use dia_oracle::DiaOracle;
 use frame_support::{
 	parameter_types,
 	traits::{ConstU32, Everything},
 };
 use mocktopus::mocking::clear_mocks;
 use orml_currencies::BasicCurrencyAdapter;
-use orml_oracle::DataProvider;
 use orml_traits::parameter_type_with_key;
 use sp_arithmetic::{FixedI128, FixedU128};
 use sp_core::H256;
 use sp_runtime::{
 	testing::Header,
-	traits::{BlakeTwo256, Convert, IdentityLookup},
+	traits::{BlakeTwo256, IdentityLookup},
 };
 
 pub use currency::testing_constants::{
@@ -226,6 +224,7 @@ pub struct ExtBuilder;
 
 impl ExtBuilder {
 	pub fn build() -> sp_io::TestExternalities {
+		frame_support::sp_tracing::try_init_simple();
 		let mut storage = frame_system::GenesisConfig::default().build_storage::<Test>().unwrap();
 
 		frame_support::traits::GenesisBuild::<Test>::assimilate_storage(
@@ -243,6 +242,7 @@ where
 	T: FnOnce(),
 {
 	clear_mocks();
+	let _ = Oracle::_clear_values();
 	ExtBuilder::build().execute_with(|| {
 		Security::set_active_block_number(1);
 		System::set_block_number(1);

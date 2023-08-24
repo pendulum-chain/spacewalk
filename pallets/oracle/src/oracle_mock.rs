@@ -1,5 +1,5 @@
 use sp_runtime::traits::Convert;
-use sp_std::{cmp::Ordering, sync::Arc};
+use sp_std::sync::Arc;
 
 use sp_arithmetic::FixedU128;
 pub type UnsignedFixedPoint = FixedU128;
@@ -7,29 +7,28 @@ use primitives::{oracle::Key, Asset, CurrencyId};
 use sp_std::{collections::btree_map::BTreeMap, vec, vec::Vec};
 use spin::RwLock;
 
-#[derive(Clone, Default, PartialEq, Eq, Hash)]
-pub struct DataKey {
-	pub blockchain: Vec<u8>,
-	pub symbol: Vec<u8>,
-}
-
-impl PartialOrd<Self> for DataKey {
-	fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
-		self.blockchain.partial_cmp(&other.blockchain)
-	}
-}
-
-impl Ord for DataKey {
-	fn cmp(&self, other: &Self) -> Ordering {
-		self.blockchain.cmp(&other.blockchain)
-	}
+// Extends the orml_oracle::DataFeeder trait with a clear_all_values function.
+pub trait DataFeederExtended<Key, Value, AccountId>: DataFeeder<Key, Value, AccountId> {
+	fn clear_all_values() -> sp_runtime::DispatchResult;
 }
 
 #[derive(Clone, Default, PartialEq, Eq, Hash)]
 pub struct Data {
-	pub key: DataKey,
+	pub key: u128,
 	pub price: u128,
 	pub timestamp: u64,
+}
+
+type MapKey = u128;
+
+fn derive_key(blockchain: Vec<u8>, symbol: Vec<u8>) -> MapKey {
+	// Set symbol and blockchain to 0 if it is not provided
+	let symbol = if symbol.is_empty() { vec![0u8; 32] } else { symbol };
+	let blockchain = if blockchain.is_empty() { vec![0u8; 32] } else { blockchain };
+
+	// Use bitshift operation to combine blockchain and symbol into a single u128 key
+	let key: u128 = (blockchain[0] as u128) << 64 | (symbol[0] as u128);
+	key
 }
 
 pub struct MockOracleKeyConvertor;
@@ -96,7 +95,7 @@ impl<Moment> Convert<Moment, Option<Moment>> for MockConvertMoment<Moment> {
 // Implementation of re-usable mock DiaOracle
 
 lazy_static::lazy_static! {
-	static ref COINS: Arc<RwLock<BTreeMap<DataKey, Data>>> = Arc::new(RwLock::new(BTreeMap::<DataKey, Data>::new()));
+	static ref COINS: Arc<RwLock<BTreeMap<u128, Data>>> = Arc::new(RwLock::new(BTreeMap::<u128, Data>::new()));
 }
 
 pub struct MockDiaOracle;
@@ -105,22 +104,33 @@ impl dia_oracle::DiaOracle for MockDiaOracle {
 		blockchain: Vec<u8>,
 		symbol: Vec<u8>,
 	) -> Result<dia_oracle::CoinInfo, sp_runtime::DispatchError> {
-		let key = (blockchain, symbol);
-		let data_key = DataKey { blockchain: key.0.clone(), symbol: key.1.clone() };
-		let mut result: Option<Data> = None;
+		frame_support::log::error!(
+			"get_coin_info: blockchain: {:?}, symbol: {:?}",
+			blockchain.clone(),
+			symbol.clone()
+		);
+		let key: u128 = derive_key(blockchain, symbol);
 
 		let coins = COINS.read();
-		let o = coins.get(&data_key);
-		match o {
-			Some(i) => result = Some(i.clone()),
-			None => {},
-		};
-		let Some(result) = result else {
+		let coin_data = coins.get(&key);
+		let Some(result) = coin_data else {
 			return Err(sp_runtime::DispatchError::Other(""));
 		};
+		frame_support::log::error!(
+			"get_coin_info: coin_data: {:?}, {:?}, {:?}",
+			result.key,
+			result.price,
+			result.timestamp
+		);
 		let mut coin_info = dia_oracle::CoinInfo::default();
 		coin_info.price = result.price;
 		coin_info.last_update_timestamp = result.timestamp;
+
+		frame_support::log::error!(
+			"get_coin_info: data_key: {:?}, coin_info: {:?}",
+			key,
+			coin_info
+		);
 
 		Ok(coin_info)
 	}
@@ -138,6 +148,7 @@ impl dia_oracle::DiaOracle for MockDiaOracle {
 }
 
 use orml_oracle::{DataFeeder, DataProvider, TimestampedValue};
+use sp_runtime::DispatchResult;
 
 pub struct MockDataCollector<AccountId, Moment>(
 	sp_std::marker::PhantomData<AccountId>,
@@ -152,6 +163,7 @@ impl<AccountId, Moment> DataProvider<Key, TimestampedValue<UnsignedFixedPoint, M
 		unimplemented!("Not required to implement DataProvider get function")
 	}
 }
+
 impl<AccountId, Moment: Into<u64>>
 	DataFeeder<Key, TimestampedValue<UnsignedFixedPoint, Moment>, AccountId>
 	for MockDataCollector<AccountId, Moment>
@@ -160,16 +172,44 @@ impl<AccountId, Moment: Into<u64>>
 		_who: AccountId,
 		key: Key,
 		value: TimestampedValue<UnsignedFixedPoint, Moment>,
-	) -> sp_runtime::DispatchResult {
-		let key = MockOracleKeyConvertor::convert(key).unwrap();
-		let r = value.value.into_inner();
+	) -> DispatchResult {
+		let (blockchain, symbol) = MockOracleKeyConvertor::convert(key.clone()).unwrap();
+		let price = value.value.into_inner();
 
-		let data_key = DataKey { blockchain: key.0.clone(), symbol: key.1.clone() };
-		let data = Data { key: data_key.clone(), price: r, timestamp: value.timestamp.into() };
+		let key: u128 = derive_key(blockchain, symbol);
+		let data = Data { key, price, timestamp: value.timestamp.into().clone() };
+
+		frame_support::log::error!(
+			"feed_value: key: {:?}, data timestamp: {:?}, data price {:?}",
+			key,
+			data.timestamp,
+			data.price
+		);
 
 		let mut coins = COINS.write();
-		coins.insert(data_key, data);
+		coins.insert(key, data);
 
+		// iterate over coins and log all values
+		for (key, value) in coins.iter() {
+			frame_support::log::error!(
+				"feed_value: coins: key: {:?}, value: {:?}",
+				key,
+				value.price
+			);
+		}
+
+		Ok(())
+	}
+}
+
+impl<AccountId, Moment: Into<u64>>
+	DataFeederExtended<Key, TimestampedValue<UnsignedFixedPoint, Moment>, AccountId>
+	for MockDataCollector<AccountId, Moment>
+{
+	fn clear_all_values() -> DispatchResult {
+		frame_support::log::error!("clear_all_values");
+		let mut coins = COINS.write();
+		coins.clear();
 		Ok(())
 	}
 }

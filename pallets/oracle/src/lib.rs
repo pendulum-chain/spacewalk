@@ -81,9 +81,9 @@ pub mod pallet {
 		>;
 
 		#[cfg(feature = "testing-utils")]
-		type DataFeedProvider: orml_oracle::DataFeeder<
+		type DataFeedProvider: oracle_mock::DataFeederExtended<
 			OracleKey,
-			orml_oracle::TimestampedValue<Self::UnsignedFixedPoint, Self::Moment>,
+			TimestampedValue<Self::UnsignedFixedPoint, Self::Moment>,
 			Self::AccountId,
 		>;
 	}
@@ -207,6 +207,7 @@ impl<T: Config> Pallet<T> {
 			let Some(price) = price else{
 				continue;
 			};
+			// Here, no outdated values are found although one price should be expired in the test
 			let is_outdated = current_time > price.timestamp + max_delay;
 			if !is_outdated {
 				updated_items.push((key.clone(), price.value));
@@ -239,17 +240,24 @@ impl<T: Config> Pallet<T> {
 	) -> DispatchResult {
 		let mut oracle_keys: Vec<_> = <OracleKeys<T>>::get();
 
-		for (k, v) in values {
+		for (key, value) in values {
 			let timestamped =
-				orml_oracle::TimestampedValue { timestamp: Self::get_current_time(), value: v };
-			T::DataFeedProvider::feed_value(oracle.clone(), k.clone(), timestamped)
+				orml_oracle::TimestampedValue { timestamp: Self::get_current_time(), value };
+			T::DataFeedProvider::feed_value(oracle.clone(), key.clone(), timestamped)
 				.expect("Expect store value by key");
-			if !oracle_keys.contains(&k) {
-				oracle_keys.push(k);
+			if !oracle_keys.contains(&key) {
+				oracle_keys.push(key);
 			}
 		}
 		<OracleKeys<T>>::put(oracle_keys.clone());
 		Ok(())
+	}
+
+	// public only for testing purposes
+	#[cfg(feature = "testing-utils")]
+	pub fn _clear_values() -> DispatchResult {
+		use crate::oracle_mock::DataFeederExtended;
+		T::DataFeedProvider::clear_all_values()
 	}
 
 	/// Public getters

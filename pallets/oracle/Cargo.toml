@@ -34,6 +34,8 @@ currency = { path = "../currency", default-features = false }
 spin = { version = "0.9.4", features = ["mutex"] }
 lazy_static = { version = "1.4.0", features = ["spin_no_std"] }
 
+sp-tracing = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.40", default-features = false }
+
 [dev-dependencies]
 mocktopus = "0.8.0"
 frame-benchmarking = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.40", default-features = false }
@@ -46,6 +48,7 @@ orml-currencies = { git = "https://github.com/open-web3-stack/open-runtime-modul
 orml-tokens = { git = "https://github.com/open-web3-stack/open-runtime-module-library", branch = "polkadot-v0.9.40", default-features = false }
 orml-traits = { git = "https://github.com/open-web3-stack/open-runtime-module-library", branch = "polkadot-v0.9.40", default-features = false }
 
+serial_test = "0.9.0"
 
 [features]
 default = ["std"]

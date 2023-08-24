@@ -438,9 +438,12 @@ impl Convert<u64, Option<Moment>> for ConvertMoment {
 	}
 }
 
-#[cfg(any(feature = "runtime-benchmarks", feature = "testing-utils"))]
+// TODO move this into the corresponding sections
+#[cfg(feature = "testing-utils")]
+use oracle::oracle_mock::MockDataCollector;
+#[cfg(feature = "runtime-benchmarks")]
 use oracle::oracle_mock::{
-	MockConvertMoment, MockConvertPrice, MockDataCollector, MockDiaOracle, MockOracleKeyConvertor,
+	MockConvertMoment, MockConvertPrice, MockDiaOracle, MockOracleKeyConvertor,
 };
 
 pub struct SpacewalkNativeCurrencyKey;

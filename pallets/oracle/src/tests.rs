@@ -1,6 +1,7 @@
 use crate::{mock::*, CurrencyId, OracleKey};
 use frame_support::{assert_err, assert_ok};
 use mocktopus::mocking::*;
+use serial_test::serial;
 use sp_arithmetic::FixedU128;
 use sp_runtime::FixedPointNumber;
 
@@ -9,6 +10,7 @@ fn mine_block() {
 }
 
 #[test]
+#[serial]
 fn feed_values_succeeds() {
 	run_test(|| {
 		let key = OracleKey::ExchangeRate(CurrencyId::AlphaNum4(
@@ -63,6 +65,7 @@ mod oracle_offline_detection {
 	}
 
 	#[test]
+	#[serial]
 	fn basic_oracle_offline_logic() {
 		run_test(|| {
 			Oracle::get_max_delay.mock_safe(move || MockResult::Return(10));
@@ -106,19 +109,20 @@ mod oracle_offline_detection {
 	}
 
 	#[test]
+	#[serial]
 	fn oracle_offline_logic_with_multiple_oracles() {
 		run_test(|| {
 			Oracle::get_max_delay.mock_safe(move || MockResult::Return(10));
 
 			set_time(0);
-			feed_value(CurrencyId::XCM(0), OracleA);
+			feed_value_with_value(CurrencyId::XCM(0), OracleA, 3);
 			assert_eq!(SecurityPallet::parachain_status(), StatusCode::Running);
 
 			set_time(5);
 			feed_value(CurrencyId::XCM(1), OracleA);
 
 			set_time(7);
-			feed_value(CurrencyId::XCM(0), OracleB);
+			feed_value_with_value(CurrencyId::XCM(0), OracleB, 2);
 
 			// OracleA's DOT submission expires at 10, but OracleB's only at 17. However, KSM
 			// expires at 15:
@@ -145,8 +149,11 @@ mod oracle_offline_detection {
 }
 
 #[test]
+#[serial]
 fn getting_exchange_rate_fails_with_missing_exchange_rate() {
 	run_test(|| {
+		let _ = Oracle::_clear_values();
+
 		let key = OracleKey::ExchangeRate(CurrencyId::XCM(0));
 		assert_err!(Oracle::get_price(key), TestError::MissingExchangeRate);
 		assert_err!(Oracle::currency_to_usd(0, CurrencyId::XCM(0)), TestError::MissingExchangeRate);
@@ -155,6 +162,7 @@ fn getting_exchange_rate_fails_with_missing_exchange_rate() {
 }
 
 #[test]
+#[serial]
 fn currency_to_usd() {
 	run_test(|| {
 		Oracle::get_price
@@ -168,6 +176,7 @@ fn currency_to_usd() {
 }
 
 #[test]
+#[serial]
 fn usd_to_currency() {
 	run_test(|| {
 		Oracle::get_price
@@ -181,6 +190,7 @@ fn usd_to_currency() {
 }
 
 #[test]
+#[serial]
 fn test_is_invalidated() {
 	run_test(|| {
 		let now = 1585776145;
@@ -203,6 +213,7 @@ fn test_is_invalidated() {
 }
 
 #[test]
+#[serial]
 fn begin_block_set_oracle_offline_succeeds() {
 	run_test(|| unsafe {
 		let mut oracle_reported = false;
