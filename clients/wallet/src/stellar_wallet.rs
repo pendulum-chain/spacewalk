@@ -293,11 +293,7 @@ impl StellarWallet {
 		Ok(envelope)
 	}
 
-	/// Sends a 'Payment' transaction specifically for redeem requests.
-	/// Possible operations are the ff:
-	/// * `Payment` operation
-	/// * `CreateClaimableBalance` operation
-	/// * `CreateAccount` operation
+	/// Sends a 'Payment' transaction.
 	///
 	/// # Arguments
 	/// * `destination_address` - receiver of the payment
@@ -305,30 +301,7 @@ impl StellarWallet {
 	/// * `stroop_amount` - Amount of the payment
 	/// * `request_id` - information to be added in the tx's memo
 	/// * `stroop_fee_per_operation` - base fee to pay for the payment operation
-	pub async fn send_payment_to_address_for_redeem_request(
-		&mut self,
-		destination_address: PublicKey,
-		asset: StellarAsset,
-		stroop_amount: StellarStroops,
-		request_id: [u8; 32],
-		stroop_fee_per_operation: u32,
-	) -> Result<TransactionResponse, Error> {
-		// payment can be
-		let payment_like_op = self
-			.client
-			.create_payment_op_for_redeem_request(
-				self.get_public_key(),
-				destination_address,
-				self.is_public_network,
-				asset,
-				stroop_amount,
-			)
-			.await?;
-
-		self.send_to_address(request_id, stroop_fee_per_operation, vec![payment_like_op])
-			.await
-	}
-
+	/// * `is_payment_for_redeem_request` - true if the operation is for redeem request
 	pub async fn send_payment_to_address(
 		&mut self,
 		destination_address: PublicKey,
@@ -336,6 +309,7 @@ impl StellarWallet {
 		stroop_amount: StellarStroops,
 		request_id: [u8; 32],
 		stroop_fee_per_operation: u32,
+		is_payment_for_redeem_request: bool,
 	) -> Result<TransactionResponse, Error> {
 		// user must not send to self
 		if self.secret_key.get_public() == &destination_address {
@@ -343,12 +317,24 @@ impl StellarWallet {
 		}
 
 		// create payment operation
-		let payment_op = create_payment_operation(
-			destination_address,
-			asset,
-			stroop_amount,
-			self.get_public_key(),
-		)?;
+		let payment_op = if is_payment_for_redeem_request {
+			self.client
+				.create_payment_op_for_redeem_request(
+					self.get_public_key(),
+					destination_address,
+					self.is_public_network,
+					asset,
+					stroop_amount,
+				)
+				.await?
+		} else {
+			create_payment_operation(
+				destination_address,
+				asset,
+				stroop_amount,
+				self.get_public_key(),
+			)?
+		};
 
 		self.send_to_address(request_id, stroop_fee_per_operation, vec![payment_op])
 			.await
@@ -576,6 +562,7 @@ mod test {
 					amount,
 					request_id,
 					DEFAULT_STROOP_FEE_PER_OPERATION,
+					false,
 				)
 				.await
 				.expect("it should return a success");
@@ -599,6 +586,7 @@ mod test {
 					amount,
 					request_id,
 					DEFAULT_STROOP_FEE_PER_OPERATION,
+					false,
 				)
 				.await;
 
@@ -626,12 +614,13 @@ mod test {
 		let request_id = [1u8; 32];
 
 		let response = wallet
-			.send_payment_to_address_for_redeem_request(
+			.send_payment_to_address(
 				default_destination(),
 				default_usdc_asset(),
 				amount,
 				request_id,
 				DEFAULT_STROOP_FEE_PER_OPERATION,
+				true,
 			)
 			.await
 			.expect("payment should work");
@@ -692,12 +681,13 @@ mod test {
 		let request_id = [1u8; 32];
 
 		let response = wallet
-			.send_payment_to_address_for_redeem_request(
+			.send_payment_to_address(
 				destination_secret_key.get_public().clone(),
 				StellarAsset::AssetTypeNative,
 				amount,
 				request_id,
 				DEFAULT_STROOP_FEE_PER_OPERATION,
+				true,
 			)
 			.await
 			.expect("should return a transaction response");
@@ -761,6 +751,7 @@ mod test {
 				amount,
 				request_id,
 				DEFAULT_STROOP_FEE_PER_OPERATION,
+				false,
 			)
 			.await;
 
@@ -790,6 +781,7 @@ mod test {
 				10,
 				[0u8; 32],
 				DEFAULT_STROOP_FEE_PER_OPERATION,
+				false,
 			)
 			.await
 		{
@@ -826,6 +818,7 @@ mod test {
 				amount,
 				request_id,
 				correct_amount_that_should_not_fail,
+				false,
 			)
 			.await;
 
@@ -838,6 +831,7 @@ mod test {
 				amount,
 				request_id,
 				incorrect_amount_that_should_fail,
+				false,
 			)
 			.await;
 
@@ -856,6 +850,7 @@ mod test {
 				amount,
 				request_id,
 				correct_amount_that_should_not_fail,
+				false,
 			)
 			.await;
 
@@ -883,6 +878,7 @@ mod test {
 				amount,
 				request_id,
 				DEFAULT_STROOP_FEE_PER_OPERATION,
+				false,
 			)
 			.await
 			.expect("should be ok");

@@ -137,6 +137,7 @@ pub async fn assert_issue(
 			stroop_amount,
 			issue.issue_id.0,
 			300,
+			false,
 		)
 		.await
 		.expect("Failed to send payment");
