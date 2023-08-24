@@ -65,8 +65,8 @@ std = [
     "orml-tokens/std",
     "orml-traits/std",
     "orml-oracle/std",
-    "dia-oracle/std"
-    
+    "dia-oracle/std",
+
 ]
 runtime-benchmarks = [
     "frame-benchmarking",

@@ -438,7 +438,7 @@ impl Convert<u64, Option<Moment>> for ConvertMoment {
 	}
 }
 
-#[cfg(all(std, any(feature = "runtime-benchmarks", feature = "testing-utils")))]
+#[cfg(any(feature = "runtime-benchmarks", feature = "testing-utils"))]
 use oracle::oracle_mock::{
 	MockConvertMoment, MockConvertPrice, MockDataCollector, MockDiaOracle, MockOracleKeyConvertor,
 };
@@ -520,8 +520,8 @@ impl oracle::Config for Runtime {
 	type WeightInfo = oracle::SubstrateWeight<Runtime>;
 	type DataProvider = DataProviderImpl;
 
-	#[cfg(all(std, any(feature = "runtime-benchmarks", feature = "testing-utils")))]
-	type DataFeedProvider = MockDataCollector;
+	#[cfg(feature = "testing-utils")]
+	type DataFeedProvider = MockDataCollector<AccountId, Moment>;
 }
 
 impl issue::Config for Runtime {

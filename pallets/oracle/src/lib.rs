@@ -42,7 +42,8 @@ pub use orml_oracle::{DataFeeder, DataProvider, TimestampedValue};
 
 #[cfg(test)]
 pub mod mock;
-#[cfg(all(std, feature = "testing-utils"))]
+
+#[cfg(any(test, feature = "testing-utils"))]
 pub mod oracle_mock;
 
 pub mod types;
