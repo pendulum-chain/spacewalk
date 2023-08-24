@@ -33,7 +33,6 @@ mod benchmarking;
 
 mod default_weights;
 #[cfg(test)]
-#[cfg_attr(test, cfg(feature = "testing-utils"))]
 mod tests;
 
 #[cfg(feature = "testing-utils")]
@@ -42,14 +41,13 @@ pub use dia_oracle::{CoinInfo, DiaOracle, PriceInfo};
 pub use orml_oracle::{DataFeeder, DataProvider, TimestampedValue};
 
 #[cfg(test)]
-#[cfg_attr(test, cfg(feature = "testing-utils"))]
 pub mod mock;
+#[cfg_attr(test, cfg(feature = "testing-utils"))]
+pub mod oracle_mock;
 
 pub mod types;
 
 pub mod dia;
-#[cfg_attr(test, cfg(feature = "testing-utils"))]
-pub mod oracle_mock;
 
 #[frame_support::pallet]
 pub mod pallet {
