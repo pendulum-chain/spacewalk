@@ -9518,7 +9518,6 @@ dependencies = [
  "sp-transaction-pool",
  "sp-version",
  "spacewalk-primitives",
- "spin 0.9.8",
  "staking",
  "stellar-relay",
  "substrate-wasm-builder",
