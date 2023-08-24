@@ -520,7 +520,7 @@ impl oracle::Config for Runtime {
 	type WeightInfo = oracle::SubstrateWeight<Runtime>;
 	type DataProvider = DataProviderImpl;
 
-	#[cfg(feature = "testing-utils")]
+	#[cfg(any(feature = "runtime-benchmarks", feature = "testing-utils"))]
 	type DataFeedProvider = MockDataCollector<AccountId, Moment>;
 }
 
