@@ -576,6 +576,7 @@ async fn test_issue_overpayment_succeeds() {
 					stroop_amount.try_into().unwrap(),
 					issue.issue_id.0,
 					300,
+					false,
 				)
 				.await
 				.expect("Sending payment failed");
@@ -664,6 +665,7 @@ async fn test_automatic_issue_execution_succeeds_hoho() {
 						stroop_amount,
 						issue.issue_id.0,
 						300,
+						false,
 					)
 					.await
 					.expect("should return a result");
@@ -804,6 +806,7 @@ async fn test_automatic_issue_execution_succeeds_for_other_vault() {
 						stroop_amount,
 						issue.issue_id.0,
 						300,
+						false,
 					)
 					.await;
 				assert!(result.is_ok());
@@ -952,7 +955,14 @@ async fn test_execute_open_requests_succeeds() {
 			let mut wallet_write = vault_wallet.write().await;
 			assert_ok!(
 				wallet_write
-					.send_payment_to_address(address, asset, stroop_amount, redeem_ids[0].0, 300)
+					.send_payment_to_address(
+						address,
+						asset,
+						stroop_amount,
+						redeem_ids[0].0,
+						300,
+						false
+					)
 					.await
 			);
 			drop(wallet_write);

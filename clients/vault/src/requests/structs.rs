@@ -271,12 +271,13 @@ impl Request {
 		let response = match self.request_type {
 			RequestType::Redeem =>
 				wallet
-					.send_payment_to_address_for_redeem_request(
+					.send_payment_to_address(
 						destination_public_key.clone(),
 						self.asset.clone(),
 						stroop_amount,
 						request_id,
 						DEFAULT_STROOP_FEE_PER_OPERATION,
+						true,
 					)
 					.await,
 			RequestType::Replace =>
@@ -287,6 +288,7 @@ impl Request {
 						stroop_amount,
 						request_id,
 						DEFAULT_STROOP_FEE_PER_OPERATION,
+						false,
 					)
 					.await,
 		}
