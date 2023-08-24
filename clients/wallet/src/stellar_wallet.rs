@@ -401,13 +401,6 @@ impl std::fmt::Debug for StellarWallet {
 	}
 }
 
-#[cfg(feature = "testing-utils")]
-impl Drop for StellarWallet {
-	fn drop(&mut self) {
-		self.cache.remove_dir();
-	}
-}
-
 #[cfg(test)]
 mod test {
 	use crate::{
