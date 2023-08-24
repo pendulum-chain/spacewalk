@@ -5362,6 +5362,7 @@ dependencies = [
  "frame-benchmarking",
  "frame-support",
  "frame-system",
+ "lazy_static",
  "mocktopus",
  "orml-currencies",
  "orml-oracle",
@@ -5378,6 +5379,7 @@ dependencies = [
  "sp-runtime",
  "sp-std",
  "spacewalk-primitives",
+ "spin 0.9.8",
  "staking",
 ]
 

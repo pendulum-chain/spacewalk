@@ -1,11 +1,11 @@
-#[cfg(feature = "testing-utils")]
 use sp_runtime::traits::Convert;
-use sp_std::cmp::Ordering;
+use sp_std::{cmp::Ordering, sync::Arc};
 
 use sp_arithmetic::FixedU128;
 pub type UnsignedFixedPoint = FixedU128;
 use primitives::{oracle::Key, Asset, CurrencyId};
-use sp_std::{vec, vec::Vec};
+use sp_std::{collections::btree_map::BTreeMap, vec, vec::Vec};
+use spin::RwLock;
 
 #[derive(Clone, Default, PartialEq, Eq, Hash)]
 pub struct DataKey {
@@ -95,8 +95,8 @@ impl<Moment> Convert<Moment, Option<Moment>> for MockConvertMoment<Moment> {
 
 // Implementation of re-usable mock DiaOracle
 
-thread_local! {
-	static COINS: RefCell<std::collections::HashMap<DataKey, Data>> = RefCell::new(std::collections::HashMap::<DataKey, Data>::new());
+lazy_static::lazy_static! {
+	static ref COINS: Arc<RwLock<BTreeMap<DataKey, Data>>> = Arc::new(RwLock::new(BTreeMap::<DataKey, Data>::new()));
 }
 
 pub struct MockDiaOracle;
@@ -108,16 +108,13 @@ impl dia_oracle::DiaOracle for MockDiaOracle {
 		let key = (blockchain, symbol);
 		let data_key = DataKey { blockchain: key.0.clone(), symbol: key.1.clone() };
 		let mut result: Option<Data> = None;
-		COINS.with(|c| {
-			let r = c.borrow();
 
-			let hash_set = &*r;
-			let o = hash_set.get(&data_key);
-			match o {
-				Some(i) => result = Some(i.clone()),
-				None => {},
-			};
-		});
+		let coins = COINS.read();
+		let o = coins.get(&data_key);
+		match o {
+			Some(i) => result = Some(i.clone()),
+			None => {},
+		};
 		let Some(result) = result else {
 			return Err(sp_runtime::DispatchError::Other(""));
 		};
@@ -141,7 +138,6 @@ impl dia_oracle::DiaOracle for MockDiaOracle {
 }
 
 use orml_oracle::{DataFeeder, DataProvider, TimestampedValue};
-use std::cell::RefCell;
 
 pub struct MockDataCollector<AccountId, Moment>(
 	sp_std::marker::PhantomData<AccountId>,
@@ -171,10 +167,9 @@ impl<AccountId, Moment: Into<u64>>
 		let data_key = DataKey { blockchain: key.0.clone(), symbol: key.1.clone() };
 		let data = Data { key: data_key.clone(), price: r, timestamp: value.timestamp.into() };
 
-		COINS.with(|coins| {
-			let mut r = coins.borrow_mut();
-			r.insert(data_key, data);
-		});
+		let mut coins = COINS.write();
+		coins.insert(data_key, data);
+
 		Ok(())
 	}
 }
