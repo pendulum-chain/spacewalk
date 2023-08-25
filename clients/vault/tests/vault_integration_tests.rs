@@ -201,7 +201,7 @@ async fn test_replace_succeeds() {
 #[serial]
 async fn test_withdraw_replace_succeeds() {
 	test_with_vault(
-		|client, vault_wallet, user_wallet, oracle_agent, old_vault_id, old_vault_provider| async move {
+		|client, _vault_wallet, user_wallet, oracle_agent, old_vault_id, old_vault_provider| async move {
 			let (new_vault_id, new_vault_provider) =
 				create_vault(client.clone(), AccountKeyring::Eve, DEFAULT_WRAPPED_CURRENCY).await;
 
@@ -442,7 +442,7 @@ async fn test_cancel_scheduler_succeeds() {
 #[tokio::test(flavor = "multi_thread")]
 #[serial]
 async fn test_issue_cancel_succeeds() {
-	test_with_vault(|client, vault_wallet, user_wallet, _, vault_id, vault_provider| async move {
+	test_with_vault(|client, vault_wallet, _user_wallet, _, vault_id, vault_provider| async move {
 		let user_provider = setup_provider(client.clone(), AccountKeyring::Dave).await;
 		let issue_set = Arc::new(RwLock::new(IssueRequestsMap::new()));
 		let memos_to_issue_ids = Arc::new(RwLock::new(IssueIdLookup::new()));
@@ -529,7 +529,7 @@ async fn test_issue_cancel_succeeds() {
 #[serial]
 async fn test_issue_overpayment_succeeds() {
 	test_with_vault(
-		|client, vault_wallet, user_wallet, oracle_agent, vault_id, vault_provider| async move {
+		|client, _vault_wallet, user_wallet, oracle_agent, vault_id, vault_provider| async move {
 			let user_provider = setup_provider(client.clone(), AccountKeyring::Dave).await;
 
 			let public_key = default_destination_as_binary();
@@ -1107,7 +1107,7 @@ async fn test_shutdown() {
 #[tokio::test(flavor = "multi_thread")]
 #[serial]
 async fn test_requests_with_incompatible_amounts_fail() {
-	test_with_vault(|client, vault_wallet, user_wallet, _, vault_id, vault_provider| async move {
+	test_with_vault(|client, vault_wallet, _user_wallet, _, vault_id, vault_provider| async move {
 		let user_provider = setup_provider(client.clone(), AccountKeyring::Dave).await;
 
 		// We define an incompatible amount

@@ -155,6 +155,7 @@ impl WalletStateStorage {
 		})
 	}
 
+	#[allow(dead_code)]
 	#[doc(hidden)]
 	#[cfg(any(test, feature = "testing-utils"))]
 	/// Removes the directory itself.
