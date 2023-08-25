@@ -287,7 +287,6 @@ pub async fn listen_for_new_transactions<T, U, Filter>(
 	issue_map: Arc<RwLock<T>>,
 	memos_to_issue_ids: Arc<RwLock<U>>,
 	filter: Filter,
-	#[cfg(any(test, feature = "testing-utils"))] last_cursor: PagingToken,
 ) -> Result<(), Error>
 where
 	T: Clone,
@@ -298,11 +297,7 @@ where
 	let mut fetcher =
 		HorizonFetcher::new(horizon_client, vault_account_public_key, is_public_network);
 
-	#[cfg(not(any(test, feature = "testing-utils")))]
 	let mut last_cursor = 0;
-
-	#[cfg(any(test, feature = "testing-utils"))]
-	let mut last_cursor = last_cursor;
 
 	loop {
 		last_cursor = fetcher

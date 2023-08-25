@@ -459,8 +459,8 @@ impl XCMCurrencyConversion for SpacewalkNativeCurrencyKey {
 	fn convert_to_dia_currency_id(token_symbol: u8) -> Option<(Vec<u8>, Vec<u8>)> {
 		// todo: this code results in Execution error:
 		// todo: \"Unable to get required collateral for amount\":
-		// todo: Module(ModuleError { index: 19, error: [0, 0, 0, 0], message: None })", data: None }
-		// cfg_if::cfg_if! {
+		// todo: Module(ModuleError { index: 19, error: [0, 0, 0, 0], message: None })", data: None
+		// } cfg_if::cfg_if! {
 		// 	if #[cfg(not(feature = "testing-utils"))] {
 		// 		if token_symbol == 0 {
 		// 			return Some((b"Kusama".to_vec(), b"KSM".to_vec()))

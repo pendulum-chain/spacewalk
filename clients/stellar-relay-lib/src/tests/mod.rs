@@ -17,9 +17,15 @@ fn secret_key() -> String {
 }
 
 fn overlay_infos() -> (NodeInfo, ConnectionInfo) {
-	let cfg = StellarOverlayConfig::try_from_path(
-		"./resources/config/testnet/stellar_relay_config_sdftest2.json",
-	)
+	use rand::seq::SliceRandom;
+
+	let stellar_node_points = [1, 2, 3];
+	let node_point = stellar_node_points
+		.choose(&mut rand::thread_rng())
+		.expect("should return a value");
+	let cfg = StellarOverlayConfig::try_from_path(&format!(
+		"./resources/config/testnet/stellar_relay_config_sdftest{node_point}.json"
+	))
 	.expect("should be able to extract config");
 
 	(cfg.node_info(), cfg.connection_info(&secret_key()).expect("should return conn info"))
