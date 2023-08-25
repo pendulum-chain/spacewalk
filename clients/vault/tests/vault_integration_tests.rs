@@ -505,7 +505,6 @@ async fn test_issue_cancel_succeeds() {
 				issue_set.clone(),
 				memos_to_issue_ids.clone(),
 				issue_filter,
-				LAST_KNOWN_CURSOR,
 			),
 			vault::service::listen_for_issue_requests(
 				vault_provider.clone(),
@@ -701,7 +700,6 @@ async fn test_automatic_issue_execution_succeeds_hoho() {
 					issue_set.clone(),
 					memos_to_issue_ids.clone(),
 					issue_filter,
-					LAST_KNOWN_CURSOR,
 				),
 				vault::service::listen_for_issue_requests(
 					vault_provider.clone(),
@@ -849,7 +847,6 @@ async fn test_automatic_issue_execution_succeeds_for_other_vault() {
 					issue_set_arc.clone(),
 					memos_to_issue_ids.clone(),
 					issue_filter,
-					LAST_KNOWN_CURSOR,
 				),
 				vault::service::listen_for_issue_requests(
 					vault2_provider.clone(),

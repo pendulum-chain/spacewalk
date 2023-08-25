@@ -1,0 +1,14 @@
+{
+  "connection_info": {
+    "address": "3.239.7.78",
+    "port": 11625
+  },
+  "node_info": {
+    "ledger_version": 19,
+    "overlay_version": 28,
+    "overlay_min_version": 27,
+    "version_str": "stellar-core 19.12.0.rc2 (2109a168a895349f87b502ae3d182380b378fa47)",
+    "is_pub_net": false
+  },
+  "stellar_history_archive_urls": []
+}
