@@ -24,6 +24,8 @@ pub mod traits;
 pub mod types;
 
 mod default_weights;
+mod validation;
+
 use primitives::{derive_shortened_request_id, get_text_memo_from_tx_env, TextMemo};
 
 #[frame_support::pallet]
@@ -37,7 +39,7 @@ pub mod pallet {
 	use substrate_stellar_sdk::{
 		compound_types::UnlimitedVarArray,
 		network::{Network, PUBLIC_NETWORK, TEST_NETWORK},
-		types::{NodeId, ScpEnvelope, ScpStatementPledges, StellarValue, TransactionSet, Value},
+		types::{NodeId, ScpEnvelope, StellarValue, TransactionSet, Value},
 		Hash, TransactionEnvelope, XdrCodec,
 	};
 
@@ -46,6 +48,10 @@ pub mod pallet {
 	use crate::{
 		traits::FieldLength,
 		types::{OrganizationOf, ValidatorOf},
+		validation::{
+			check_targets, find_externalized_envelope, get_externalized_info, validate_envelopes,
+			validators_and_orgs,
+		},
 	};
 
 	use super::*;
@@ -536,6 +542,9 @@ pub mod pallet {
 			envelopes: &UnlimitedVarArray<ScpEnvelope>,
 			transaction_set: &TransactionSet,
 		) -> Result<(), Error<T>> {
+			// Make sure that the envelope set is not empty
+			ensure!(!envelopes.len() > 0, Error::<T>::EmptyEnvelopeSet);
+
 			let network: &Network =
 				if T::IsPublicNetwork::get() { &PUBLIC_NETWORK } else { &TEST_NETWORK };
 
@@ -546,166 +555,37 @@ pub mod pallet {
 				transaction_set.txes.get_vec().iter().any(|tx| tx.get_hash(network) == tx_hash);
 			ensure!(tx_included, Error::<T>::TransactionNotInTransactionSet);
 
-			// Choose the set of validators to use for validation based on the enactment block
-			// height and the current block number
-			let should_use_new_validator_set = <frame_system::Pallet<T>>::block_number() >=
-				NewValidatorsEnactmentBlockHeight::<T>::get();
-			let validators = if should_use_new_validator_set {
-				Validators::<T>::get()
-			} else {
-				OldValidators::<T>::get()
-			};
+			let (validators, organizations) = validators_and_orgs()?;
 
-			// Make sure that at least one validator is registered
-			ensure!(!validators.is_empty(), Error::<T>::NoValidatorsRegistered);
-
-			// Make sure that the envelope set is not empty
-			ensure!(!envelopes.len() > 0, Error::<T>::EmptyEnvelopeSet);
-
-			let externalized_envelope = envelopes
-				.get_vec()
-				.iter()
-				.find(|envelope| match envelope.statement.pledges {
-					ScpStatementPledges::ScpStExternalize(_) => true,
-					_ => false,
-				})
-				.ok_or(Error::<T>::MissingExternalizedMessage)?;
-
-			// Variable used to check if all envelopes are using the same slot index
-			let slot_index = externalized_envelope.statement.slot_index;
+			let externalized_envelope = find_externalized_envelope(envelopes)?;
 
 			// We store the externalized value in a variable so that we can check if it's the same
 			// for all envelopes. We don't distinguish between externalized and confirmed values as
 			// it should be the same value regardless.
-			let (externalized_value, mut externalized_n_h) =
-				match &externalized_envelope.statement.pledges {
-					ScpStatementPledges::ScpStExternalize(externalized_statement) =>
-						(&externalized_statement.commit.value, externalized_statement.n_h),
-					_ => return Err(Error::<T>::MissingExternalizedMessage),
-				};
+			let (externalized_value, externalized_n_h) =
+				get_externalized_info::<T>(externalized_envelope)
+					.map_err(|_| Error::<T>::MissingExternalizedMessage)?;
 
 			// Check if transaction set matches tx_set_hash included in the ScpEnvelopes
 			let expected_tx_set_hash = compute_non_generic_tx_set_content_hash(transaction_set)
 				.ok_or(Error::<T>::FailedToComputeNonGenericTxSetContentHash)?;
 
-			for envelope in envelopes.get_vec() {
-				let node_id = envelope.statement.node_id.clone();
-				let node_id_found = validators
-					.iter()
-					.any(|validator| validator.public_key.to_vec() == node_id.to_encoding());
-
-				ensure!(node_id_found, Error::<T>::EnvelopeSignedByUnknownValidator);
-
-				// Check if all envelopes are using the same slot index
-				ensure!(
-					slot_index == envelope.statement.slot_index,
-					Error::<T>::EnvelopeSlotIndexMismatch
-				);
-
-				let signature_valid = verify_signature(envelope, &node_id, network);
-				ensure!(signature_valid, Error::<T>::InvalidEnvelopeSignature);
-
-				let (value, n_h) = match &envelope.statement.pledges {
-					ScpStatementPledges::ScpStExternalize(externalized_statement) =>
-						(&externalized_statement.commit.value, externalized_statement.n_h),
-					ScpStatementPledges::ScpStConfirm(confirmed_statement) =>
-						(&confirmed_statement.ballot.value, confirmed_statement.n_h),
-					_ => return Err(Error::<T>::InvalidScpPledge),
-				};
-
-				// Check if the tx_set_hash matches the one included in the envelope
-				let tx_set_hash = Self::get_tx_set_hash(&value)?;
-				ensure!(
-					tx_set_hash == expected_tx_set_hash,
-					Error::<T>::TransactionSetHashMismatch
-				);
-
-				// Check if the externalized value is the same for all envelopes
-				ensure!(externalized_value == value, Error::<T>::ExternalizedValueMismatch);
-
-				// use this envelopes's n_h as basis for the comparison with the succeeding
-				// envelopes
-				if externalized_n_h == u32::MAX {
-					externalized_n_h = n_h;
-				}
-				// check for equality of n_h values
-				// that are not 'infinity' (represented internally by `u32::MAX`)
-				else if n_h < u32::MAX {
-					ensure!(externalized_n_h == n_h, Error::<T>::ExternalizedNHMismatch);
-				}
-			}
+			validate_envelopes(
+				envelopes,
+				&validators,
+				&network,
+				externalized_value,
+				externalized_n_h,
+				expected_tx_set_hash,
+				// used to check if all envelopes are using the same slot index
+				externalized_envelope.statement.slot_index,
+			)?;
 
 			// ---- Check that externalized messages build valid quorum set ----
-			// Find the validators that are targeted by the SCP messages
-			let targeted_validators = validators
-				.iter()
-				.filter(|validator| {
-					envelopes.get_vec().iter().any(|envelope| {
-						envelope.statement.node_id.to_encoding() == validator.public_key.to_vec()
-					})
-				})
-				.collect::<Vec<&ValidatorOf<T>>>();
-
-			// Choose the set of organizations to use for validation based on the enactment block
-			// height and the current block number
-			let organizations = if should_use_new_validator_set {
-				Organizations::<T>::get()
-			} else {
-				OldOrganizations::<T>::get()
-			};
-			// Make sure that at least one organization is registered
-			ensure!(!organizations.is_empty(), Error::<T>::NoOrganizationsRegistered);
-
-			// Map organizationID to the number of validators that belongs to it
-			let mut validator_count_per_organization_map =
-				BTreeMap::<T::OrganizationId, u32>::new();
-			for validator in validators.iter() {
-				validator_count_per_organization_map
-					.entry(validator.organization_id)
-					.and_modify(|e| {
-						*e += 1;
-					})
-					.or_insert(1);
-			}
-
-			// Build a map used to identify the targeted organizations
-			// A map is used to avoid duplicates and simultaneously track the number of validators
-			// that were targeted
-			let mut targeted_organization_map = BTreeMap::<T::OrganizationId, u32>::new();
-			for validator in targeted_validators {
-				targeted_organization_map
-					.entry(validator.organization_id)
-					.and_modify(|e| {
-						*e += 1;
-					})
-					.or_insert(1);
-			}
-
-			// Count the number of distinct organizations that are targeted by the SCP messages
-			let targeted_organization_count = targeted_organization_map.len();
-
-			// Check that the distinct organizations occurring in the validator structs related to
-			// the externalized messages are more than 2/3 of the total amount of organizations in
-			// the tier 1 validator set.
-			// Use multiplication to avoid floating point numbers.
-			ensure!(
-				targeted_organization_count * 3 > organizations.len() * 2,
-				Error::<T>::InvalidQuorumSetNotEnoughOrganizations
-			);
-
-			for (organization_id, count) in targeted_organization_map.iter() {
-				let total: &u32 = validator_count_per_organization_map
-					.get(organization_id)
-					.ok_or(Error::<T>::NoOrganizationsRegistered)?;
-				// Check that for each of the targeted organizations more than 1/2 of their total
-				// validators were used in the SCP messages
-				ensure!(count * 2 > *total, Error::<T>::InvalidQuorumSetNotEnoughValidators);
-			}
-
-			Ok(())
+			check_targets(envelopes, validators, organizations.len())
 		}
 
-		fn get_tx_set_hash(scp_value: &Value) -> Result<Hash, Error<T>> {
+		pub(crate) fn get_tx_set_hash(scp_value: &Value) -> Result<Hash, Error<T>> {
 			let tx_set_hash = StellarValue::from_xdr(scp_value.get_vec())
 				.map(|stellar_value| stellar_value.tx_set_hash)
 				.map_err(|_| Error::<T>::TransactionSetHashCreationFailed)?;
