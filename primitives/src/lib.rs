@@ -853,34 +853,38 @@ impl TransactionEnvelopeExt for TransactionEnvelope {
 			TransactionEnvelope::Default(_) => return BalanceConversion::unlookup(transferred_amount),
 		};
 
-		
-		for x in tx_operations {
-			match x.body {
-				OperationBody::Payment(payment) => {
-					if payment.destination.eq(&recipient_account_muxed) && payment.asset == asset {
-						transferred_amount = transferred_amount.saturating_add(payment.amount);
-					}
-				},
-				OperationBody::CreateClaimableBalance(payment) => {
-					// for security reasons, we only count operations that have the
-					// recipient as a single claimer and unconditional claim predicate
-					if payment.claimants.len() == 1 {
-						let Claimant::ClaimantTypeV0(claimant) =
-							payment.claimants.get_vec()[0].clone();
-
-						if claimant.destination.eq(&recipient_account_pk) &&
-							payment.asset == asset && claimant.predicate ==
-							ClaimPredicate::ClaimPredicateUnconditional
-						{
-							transferred_amount = transferred_amount.saturating_add(payment.amount);
+		transferred_amount = tx_operations
+			.iter()
+			.fold(0i64, |acc, x| {
+				match &x.body {
+					OperationBody::Payment(payment) => {
+						if payment.destination.eq(&recipient_account_muxed) && payment.asset == asset {
+							acc.saturating_add(payment.amount)
+						} else {
+							acc
 						}
-					}
-				},
-				_ => {
-					// ignore other operations
-				},
-			}
-		}
+					},
+					OperationBody::CreateClaimableBalance(payment) => {
+						// for security reasons, we only count operations that have the
+						// recipient as a single claimer and unconditional claim predicate
+						if payment.claimants.len() == 1 {
+							let Claimant::ClaimantTypeV0(claimant) = &payment.claimants.get_vec()[0];
+
+							if claimant.destination.eq(&recipient_account_pk) &&
+								payment.asset == asset && claimant.predicate ==
+								ClaimPredicate::ClaimPredicateUnconditional
+							{
+								acc.saturating_add(payment.amount)
+							} else {
+								acc
+							}
+						} else {
+							acc
+						}
+					},
+					_ => acc,  // ignore other operations
+				}
+			});
 
 		// `transferred_amount` is in stroops, so we need to convert it
 		BalanceConversion::unlookup(transferred_amount)

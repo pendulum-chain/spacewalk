@@ -168,18 +168,9 @@ impl<P: IssuePallet + ReplacePallet + Send + Sync> Canceller<P> for ReplaceCance
 
 // verbose drain_filter
 fn drain_expired(requests: &mut Vec<ActiveRequest>, current_height: u32) -> Vec<ActiveRequest> {
-	let mut expired = Vec::new();
-	let has_expired = |request: &ActiveRequest| current_height > request.parachain_deadline_height;
-	let mut i = 0;
-	while i != requests.len() {
-		if has_expired(&requests[i]) {
-			let req = requests.remove(i);
-			expired.push(req);
-		} else {
-			i += 1;
-		}
-	}
-	expired
+
+	requests.drain(..).filter(|active_req| current_height > active_req.parachain_deadline_height).collect()
+	
 }
 
 /// The actual cancellation scheduling and handling
