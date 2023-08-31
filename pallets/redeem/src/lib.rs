@@ -486,7 +486,6 @@ mod self_redeem {
 		// ensure that vault is not liquidated and not banned
 		ext::vault_registry::ensure_not_banned::<T>(&vault_id)?;
 
-		// for self-redeem, dustAmount is effectively 1 satoshi
 		ensure!(!amount_wrapped.is_zero(), Error::<T>::AmountBelowMinimumTransferAmount);
 
 		let (fees, consumed_issued_tokens) =

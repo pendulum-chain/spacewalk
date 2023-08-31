@@ -134,7 +134,7 @@ impl ScpMessageCollector {
 		empty
 	}
 
-	/// Returns either a TransactionSet or a ProofStatus saying it failed to retrieve the set.
+	/// Returns a TransactionSet if a txset is found; None if the slot does not have a txset
 	///
 	/// # Arguments
 	///

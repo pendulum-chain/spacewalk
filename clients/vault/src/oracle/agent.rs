@@ -128,7 +128,6 @@ pub async fn start_oracle_agent(
 impl OracleAgent {
 	/// This method returns the proof for a given slot or an error if the proof cannot be provided.
 	/// The agent will try every possible way to get the proof before returning an error.
-	/// Set timeout to 60 seconds; 10 seconds interval.
 	pub async fn get_proof(&self, slot: Slot) -> Result<Proof, Error> {
 		let sender = self
 			.message_sender
@@ -151,6 +150,7 @@ impl OracleAgent {
 					None => {
 						tracing::warn!("Failed to build proof for slot {slot}.");
 						drop(collector);
+						// give 10 seconds interval for every retry
 						sleep(Duration::from_secs(10)).await;
 						continue
 					},
