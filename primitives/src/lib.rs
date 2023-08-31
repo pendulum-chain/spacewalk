@@ -593,11 +593,11 @@ impl TryFrom<(&str, AssetIssuer)> for CurrencyId {
 		if slice.len() <= 4 {
 			let mut code: Bytes4 = [0; 4];
 			code[..slice.len()].copy_from_slice(slice.as_bytes());
-			Ok(CurrencyId::AlphaNum4(code, issuer))
-		} else if slice.len() > 4 && slice.len() <= 12 {
+			return Ok(CurrencyId::AlphaNum4(code, issuer))
+		} else if  slice.len() <= 12 {
 			let mut code: Bytes12 = [0; 12];
 			code[..slice.len()].copy_from_slice(slice.as_bytes());
-			Ok(CurrencyId::AlphaNum12(code, issuer))
+			return Ok(CurrencyId::AlphaNum12(code, issuer))
 		} else {
 			Err("More than 12 bytes not supported")
 		}
