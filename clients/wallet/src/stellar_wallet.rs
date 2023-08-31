@@ -70,6 +70,8 @@ impl StellarWallet {
 			envelope.clone(),
 		))?;
 
+		let _ = self.cache.save_tx_envelope(envelope.clone())?;
+
 		let submission_result = self
 			.client
 			.submit_transaction(
@@ -363,8 +365,6 @@ impl StellarWallet {
 			next_sequence_number,
 			operations,
 		)?;
-
-		let _ = self.cache.save_tx_envelope(envelope.clone())?;
 
 		self.submit_transaction(envelope).await
 	}
