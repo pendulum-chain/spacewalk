@@ -6,17 +6,24 @@ use std::{
 use async_trait::async_trait;
 use clap::Parser;
 use futures::{
-	channel::{mpsc, mpsc::{Sender, Receiver}},
+	channel::{
+		mpsc,
+		mpsc::{Receiver, Sender},
+	},
 	future::{join, join_all},
 	SinkExt, TryFutureExt,
 };
 use git_version::git_version;
 use tokio::{sync::RwLock, time::sleep};
 
-use runtime::{AccountId, BlockNumber, cli::parse_duration_minutes, CollateralBalancesPallet, CurrencyId, Error as RuntimeError, IssueIdLookup, IssueRequestsMap, PrettyPrint, RegisterVaultEvent, ShutdownSender, SpacewalkParachain, StellarRelayPallet, TryFromSymbol, UpdateActiveBlockEvent, UtilFuncs, VaultCurrencyPair, VaultId, VaultRegistryPallet};
+use runtime::{
+	cli::parse_duration_minutes, AccountId, BlockNumber, CollateralBalancesPallet, CurrencyId,
+	Error as RuntimeError, IssueIdLookup, IssueRequestsMap, PrettyPrint, RegisterVaultEvent,
+	ShutdownSender, SpacewalkParachain, StellarRelayPallet, TryFromSymbol, UpdateActiveBlockEvent,
+	UtilFuncs, VaultCurrencyPair, VaultId, VaultRegistryPallet,
+};
 use service::{wait_or_shutdown, Error as ServiceError, MonitoringConfig, Service};
-use stellar_relay_lib::sdk::PublicKey;
-use stellar_relay_lib::StellarOverlayConfig;
+use stellar_relay_lib::{sdk::PublicKey, StellarOverlayConfig};
 use wallet::{LedgerTxEnvMap, StellarWallet};
 
 use crate::{
@@ -25,13 +32,13 @@ use crate::{
 	issue,
 	issue::IssueFilter,
 	metrics::{monitor_bridge_metrics, poll_metrics, publish_tokio_metrics, PerCurrencyMetrics},
+	oracle::OracleAgent,
 	redeem::listen_for_redeem_requests,
 	replace::{listen_for_accept_replace, listen_for_execute_replace, listen_for_replace_requests},
 	requests::execution::execute_open_requests,
 	service::{CancellationScheduler, IssueCanceller},
 	ArcRwLock, Event, CHAIN_HEIGHT_POLLING_INTERVAL,
 };
-use crate::oracle::OracleAgent;
 
 pub const VERSION: &str = git_version!(args = ["--tags"], fallback = "unknown");
 pub const AUTHORS: &str = env!("CARGO_PKG_AUTHORS");
@@ -339,10 +346,11 @@ where
 	ServiceTask::Essential(Box::pin(task.map_err(|x| x.into())))
 }
 
-
 // dedicated for running the service
 impl VaultService {
-	fn auto_register(&self) -> Result<Vec<(CurrencyId, CurrencyId, Option<u128>)>, ServiceError<Error>> {
+	fn auto_register(
+		&self,
+	) -> Result<Vec<(CurrencyId, CurrencyId, Option<u128>)>, ServiceError<Error>> {
 		let parsed_auto_register = self
 			.config
 			.auto_register
@@ -384,7 +392,10 @@ impl VaultService {
 		Ok(())
 	}
 
-	async fn create_oracle_agent(&self, is_public_network:bool) -> Result<Arc<OracleAgent>, ServiceError<Error>> {
+	async fn create_oracle_agent(
+		&self,
+		is_public_network: bool,
+	) -> Result<Arc<OracleAgent>, ServiceError<Error>> {
 		let cfg_path = &self.config.stellar_overlay_config_filepath;
 		let stellar_overlay_cfg =
 			StellarOverlayConfig::try_from_path(cfg_path).map_err(Error::StellarRelayError)?;
@@ -418,17 +429,18 @@ impl VaultService {
 		});
 	}
 
-	fn create_issue_tasks(&self,
-						  issue_event_tx: Sender<Event>,
-						  issue_event_rx: Receiver<Event>,
-						  startup_height: BlockNumber,
-						  account_id: AccountId,
-						  vault_public_key:PublicKey,
-						  oracle_agent: Arc<OracleAgent>,
-						  issue_map:  ArcRwLock<IssueRequestsMap>,
-						  ledger_env_map: ArcRwLock<LedgerTxEnvMap>,
-						  memos_to_issue_ids: ArcRwLock<IssueIdLookup>
-	) -> Vec<(&str,ServiceTask)> {
+	fn create_issue_tasks(
+		&self,
+		issue_event_tx: Sender<Event>,
+		issue_event_rx: Receiver<Event>,
+		startup_height: BlockNumber,
+		account_id: AccountId,
+		vault_public_key: PublicKey,
+		oracle_agent: Arc<OracleAgent>,
+		issue_map: ArcRwLock<IssueRequestsMap>,
+		ledger_env_map: ArcRwLock<LedgerTxEnvMap>,
+		memos_to_issue_ids: ArcRwLock<IssueIdLookup>,
+	) -> Vec<(&str, ServiceTask)> {
 		vec![
 			(
 				"Issue Request Listener",
@@ -476,18 +488,19 @@ impl VaultService {
 					startup_height,
 					account_id,
 				)
-					.handle_cancellation::<IssueCanceller>(issue_event_rx)),
-			)
+				.handle_cancellation::<IssueCanceller>(issue_event_rx)),
+			),
 		]
 	}
 
-	fn create_replace_tasks(&self,
-							replace_event_tx: Sender<Event>,
-							replace_event_rx: Receiver<Event>,
-							startup_height: BlockNumber,
-							account_id: AccountId,
-							oracle_agent: Arc<OracleAgent>,
-	) -> Vec<(&str,ServiceTask)> {
+	fn create_replace_tasks(
+		&self,
+		replace_event_tx: Sender<Event>,
+		replace_event_rx: Receiver<Event>,
+		startup_height: BlockNumber,
+		account_id: AccountId,
+		oracle_agent: Arc<OracleAgent>,
+	) -> Vec<(&str, ServiceTask)> {
 		vec![
 			(
 				"Request Replace Listener",
@@ -510,10 +523,7 @@ impl VaultService {
 			),
 			(
 				"Execute Replace Listener",
-				run(listen_for_execute_replace(
-					self.spacewalk_parachain.clone(),
-					replace_event_tx,
-				)),
+				run(listen_for_execute_replace(self.spacewalk_parachain.clone(), replace_event_tx)),
 			),
 			(
 				"Replace Cancellation Scheduler",
@@ -522,8 +532,8 @@ impl VaultService {
 					startup_height,
 					account_id,
 				)
-					.handle_cancellation::<ReplaceCanceller>(replace_event_rx)),
-			)
+				.handle_cancellation::<ReplaceCanceller>(replace_event_rx)),
+			),
 		]
 	}
 
@@ -549,15 +559,16 @@ impl VaultService {
 		]
 	}
 
-	fn create_initial_tasks(&self,
-							is_public_network: bool,
-							issue_event_tx: Sender<Event>,
-							replace_event_tx: Sender<Event>,
-							vault_public_key:PublicKey,
-							issue_map:  ArcRwLock<IssueRequestsMap>,
-							ledger_env_map: ArcRwLock<LedgerTxEnvMap>,
-							memos_to_issue_ids: ArcRwLock<IssueIdLookup>
-	) -> Result<Vec<(&str,ServiceTask)>,ServiceError<Error>> {
+	fn create_initial_tasks(
+		&self,
+		is_public_network: bool,
+		issue_event_tx: Sender<Event>,
+		replace_event_tx: Sender<Event>,
+		vault_public_key: PublicKey,
+		issue_map: ArcRwLock<IssueRequestsMap>,
+		ledger_env_map: ArcRwLock<LedgerTxEnvMap>,
+		memos_to_issue_ids: ArcRwLock<IssueIdLookup>,
+	) -> Result<Vec<(&str, ServiceTask)>, ServiceError<Error>> {
 		let issue_filter = IssueFilter::new(&vault_public_key)?;
 
 		Ok(vec![
@@ -591,20 +602,21 @@ impl VaultService {
 					issue_event_tx,
 					replace_event_tx,
 				)),
-			)
+			),
 		])
 	}
 
-	fn create_tasks(&self,
-					startup_height: BlockNumber,
-					account_id:AccountId,
-					is_public_network:bool,
-					vault_public_key:PublicKey,
-					oracle_agent: Arc<OracleAgent>,
-					issue_map:  ArcRwLock<IssueRequestsMap>,
-					ledger_env_map: ArcRwLock<LedgerTxEnvMap>,
-					memos_to_issue_ids: ArcRwLock<IssueIdLookup>
-	) -> Result<Vec<(&str,ServiceTask)>,ServiceError<Error>> {
+	fn create_tasks(
+		&self,
+		startup_height: BlockNumber,
+		account_id: AccountId,
+		is_public_network: bool,
+		vault_public_key: PublicKey,
+		oracle_agent: Arc<OracleAgent>,
+		issue_map: ArcRwLock<IssueRequestsMap>,
+		ledger_env_map: ArcRwLock<LedgerTxEnvMap>,
+		memos_to_issue_ids: ArcRwLock<IssueIdLookup>,
+	) -> Result<Vec<(&str, ServiceTask)>, ServiceError<Error>> {
 		let (issue_event_tx, issue_event_rx) = mpsc::channel::<Event>(32);
 		let (replace_event_tx, replace_event_rx) = mpsc::channel::<Event>(16);
 
@@ -615,30 +627,29 @@ impl VaultService {
 			vault_public_key.clone(),
 			issue_map.clone(),
 			ledger_env_map.clone(),
-			memos_to_issue_ids.clone()
+			memos_to_issue_ids.clone(),
 		)?;
-
 
 		let mut issue_tasks = self.create_issue_tasks(
 			issue_event_tx.clone(),
-			issue_event_rx.clone(),
+			issue_event_rx,
 			startup_height,
 			account_id.clone(),
 			vault_public_key.clone(),
 			oracle_agent.clone(),
 			issue_map.clone(),
 			ledger_env_map.clone(),
-			memos_to_issue_ids.clone()
+			memos_to_issue_ids.clone(),
 		);
 
 		tasks.append(&mut issue_tasks);
 
 		let mut replace_tasks = self.create_replace_tasks(
 			replace_event_tx.clone(),
-			replace_event_rx.clone(),
+			replace_event_rx,
 			startup_height,
-			account_id.clone(),
-			oracle_agent.clone()
+			account_id,
+			oracle_agent.clone(),
 		);
 
 		tasks.append(&mut replace_tasks);
@@ -647,9 +658,9 @@ impl VaultService {
 			"Parachain Block Listener",
 			run(active_block_listener(
 				self.spacewalk_parachain.clone(),
-				issue_event_tx.clone(),
-				replace_event_tx.clone(),
-			))
+				issue_event_tx,
+				replace_event_tx,
+			)),
 		));
 
 		tasks.push((
@@ -660,7 +671,7 @@ impl VaultService {
 				self.vault_id_manager.clone(),
 				self.config.payment_margin_minutes,
 				oracle_agent,
-			))
+			)),
 		));
 
 		let mut bridge_metrics_tasks = self.create_bridge_metrics_tasks();
@@ -669,9 +680,7 @@ impl VaultService {
 
 		Ok(tasks)
 	}
-
 }
-
 
 impl VaultService {
 	async fn new(
@@ -726,39 +735,6 @@ impl VaultService {
 		}
 	}
 
-
-
-	fn create_tasks(&self,
-					is_public_network: bool,
-					vault_public_key:PublicKey,
-					issue_filter: IssueFilter,
-					issue_map:  ArcRwLock<IssueRequestsMap>,
-					ledger_env_map: ArcRwLock<LedgerTxEnvMap>,
-					memos_to_issue_ids: ArcRwLock<IssueIdLookup>
-	) {
-		let tasks = vec![
-		(
-			"Parachain Block Listener",
-			run(active_block_listener(
-				self.spacewalk_parachain.clone(),
-				issue_event_tx.clone(),
-				replace_event_tx.clone(),
-			)),
-		),
-		(
-			"Redeem Request Listener",
-			run(listen_for_redeem_requests(
-				self.shutdown.clone(),
-				self.spacewalk_parachain.clone(),
-				self.vault_id_manager.clone(),
-				self.config.payment_margin_minutes,
-				oracle_agent.clone(),
-			)),
-		)
-		];
-
-	}
-
 	async fn run_service(&mut self) -> Result<(), ServiceError<Error>> {
 		let startup_height = self.await_parachain_block().await?;
 		let account_id = self.spacewalk_parachain.get_account_id().clone();
@@ -793,7 +769,7 @@ impl VaultService {
 
 		drop(wallet);
 
-		let oracle_agent = self.create_oracle_agent(is_public_network)?;
+		let oracle_agent = self.create_oracle_agent(is_public_network).await?;
 
 		self.execute_open_requests(oracle_agent.clone());
 
@@ -819,7 +795,7 @@ impl VaultService {
 			oracle_agent,
 			issue_map,
 			ledger_env_map,
-			memos_to_issue_ids
+			memos_to_issue_ids,
 		)?;
 
 		run_and_monitor_tasks(self.shutdown.clone(), tasks).await
