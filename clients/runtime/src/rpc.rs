@@ -29,6 +29,7 @@ use crate::{
 	AccountId, Error, RetryPolicy, ShutdownSender, SpacewalkRuntime, SpacewalkSigner, SubxtError,
 };
 
+
 pub type UnsignedFixedPoint = FixedU128;
 
 // sanity check to be sure that testing-utils is not accidentally selected
@@ -1109,10 +1110,11 @@ pub trait RedeemPallet {
 	async fn get_redeem_request(&self, redeem_id: H256) -> Result<SpacewalkRedeemRequest, Error>;
 
 	/// Get all redeem requests requested of the given vault
-	async fn get_vault_redeem_requests(
+	async fn get_vault_redeem_requests<T>(
 		&self,
 		account_id: AccountId,
-	) -> Result<Vec<(H256, SpacewalkRedeemRequest)>, Error>;
+		filter: impl Fn((H256, SpacewalkRedeemRequest)) -> Option<T> + std::marker::Send
+	) -> Result<Vec<T>, Error>;
 
 	async fn get_redeem_period(&self) -> Result<BlockNumber, Error>;
 }
@@ -1165,25 +1167,40 @@ impl RedeemPallet for SpacewalkParachain {
 			.await
 	}
 
-	async fn get_vault_redeem_requests(
+	
+	async fn get_vault_redeem_requests<T>(
 		&self,
 		account_id: AccountId,
-	) -> Result<Vec<(H256, SpacewalkRedeemRequest)>, Error> {
+		filter: impl Fn((H256, SpacewalkRedeemRequest)) -> Option<T> + Send,
+	) -> Result<Vec<T>, Error> {
 		let head = self.get_finalized_block_hash().await?;
 		let result: Vec<H256> = self
 			.api
 			.rpc()
 			.request("redeem_getVaultRedeemRequests", rpc_params![account_id, head])
 			.await?;
-		join_all(
+	
+		let redeem_requests: Result<Vec<(H256, SpacewalkRedeemRequest)>, Error> = join_all(
 			result.into_iter().map(|key| async move {
 				self.get_redeem_request(key).await.map(|value| (key, value))
-			}),
+			})
 		)
 		.await
 		.into_iter()
-		.collect()
+		.collect();
+	
+		match redeem_requests {
+			Ok(redeem_requests) => {
+				let filtered_results: Vec<_> = redeem_requests
+					.into_iter()
+					.filter_map(|item| filter(item.clone()))
+					.collect();
+				Ok(filtered_results)
+			}
+			Err(e) => Err(e),
+		}
 	}
+	
 
 	async fn get_redeem_period(&self) -> Result<BlockNumber, Error> {
 		self.query_finalized_or_error(metadata::storage().redeem().redeem_period())
@@ -1256,10 +1273,12 @@ pub trait ReplacePallet {
 	) -> Result<Vec<(H256, SpacewalkReplaceRequest)>, Error>;
 
 	/// Get all replace requests made by the given vault
+	/// 
 	async fn get_old_vault_replace_requests(
 		&self,
 		account_id: AccountId,
 	) -> Result<Vec<(H256, SpacewalkReplaceRequest)>, Error>;
+
 
 	/// Get the time difference in number of blocks between when a replace
 	/// request is created and required completion time by a vault
@@ -1388,6 +1407,42 @@ impl ReplacePallet for SpacewalkParachain {
 			metadata::storage().replace().replace_minimum_transfer_amount(),
 		)
 		.await
+	}
+}
+
+impl SpacewalkParachain {
+	/// Get all replace requests made by the given vault accepting filter
+	pub async fn get_old_vault_replace_requests_filter<T>(
+		&self,
+		account_id: AccountId,
+		filter: impl Fn((H256, SpacewalkReplaceRequest)) -> Option<T> + std::marker::Send
+	) -> Result<Vec<T>, Error> {
+		let head = self.get_finalized_block_hash().await?;
+		let result: Vec<H256> = self
+			.api
+			.rpc()
+			.request("replace_getOldVaultReplaceRequests", rpc_params![account_id, head])
+			.await?;
+
+		let replace_requests: Result<Vec<(H256, SpacewalkReplaceRequest)>, Error> = join_all(
+			result.into_iter().map(|key| async move {
+				self.get_replace_request(key).await.map(|value| (key, value))
+			})
+		)
+		.await
+		.into_iter()
+		.collect();
+
+		match replace_requests {
+			Ok(replace_requests) => {
+				let filtered_results: Vec<_> = replace_requests
+					.into_iter()
+					.filter_map(|item| filter(item.clone()))
+					.collect();
+				Ok(filtered_results)
+			}
+			Err(e) => Err(e),
+		}
 	}
 }
 
