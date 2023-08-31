@@ -912,6 +912,9 @@ impl<T: Config> Pallet<T> {
 		amount: &Amount<T>,
 	) -> DispatchResult {
 
+		// ensure the vault is active
+		let _vault = Self::get_active_rich_vault_from_id(vault_id)?;
+
 		// will fail if collateral ceiling exceeded
 		Self::try_increase_total_backing_collateral(&vault_id.currencies, amount)?;
 		// will fail if free_balance is insufficient
@@ -1070,8 +1073,6 @@ impl<T: Config> Pallet<T> {
 					vault_id.currencies.collateral == amount.currency(),
 					Error::<T>::InvalidCurrency
 				);
-				//ensure vault is active
-				let _vault = Self::get_active_rich_vault_from_id(vault_id)?;
 				Self::try_deposit_collateral(vault_id, amount)?;
 			},
 			CurrencySource::AvailableReplaceCollateral(ref vault_id) => {
