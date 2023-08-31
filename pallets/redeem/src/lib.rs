@@ -158,8 +158,8 @@ pub mod pallet {
 		TryIntoIntError,
 		/// Redeem amount is too small.
 		AmountBelowMinimumTransferAmount,
-		/// Exceeds the volume limit for an issue request.
-		ExceedLimitVolumeForIssueRequest,
+		/// Exceeds the volume limit for a redeem request.
+		ExceedLimitVolumeForRedeemRequest,
 		/// Invalid payment amount
 		InvalidPaymentAmount,
 	}
@@ -1094,23 +1094,23 @@ impl<T: Config> Pallet<T> {
 		Ok(request)
 	}
 
-	fn increase_interval_volume(issue_amount: Amount<T>) -> Result<(), DispatchError> {
+	fn increase_interval_volume(burn_amount: Amount<T>) -> Result<(), DispatchError> {
 		if let Some(_limit_volume) = LimitVolumeAmount::<T>::get() {
-			let issue_volume = Self::convert_into_limit_currency_id_amount(issue_amount)?;
+			let burn_volume = Self::convert_into_limit_currency_id_amount(burn_amount)?;
 			let current_volume = CurrentVolumeAmount::<T>::get();
-			let new_volume = current_volume.saturating_add(issue_volume.amount());
+			let new_volume = current_volume.saturating_add(burn_volume.amount());
 			CurrentVolumeAmount::<T>::put(new_volume);
 		}
 		Ok(())
 	}
 
 	fn convert_into_limit_currency_id_amount(
-		issue_amount: Amount<T>,
+		burn_amount: Amount<T>,
 	) -> Result<Amount<T>, DispatchError> {
-		let issue_volume =
-			oracle::Pallet::<T>::convert(&issue_amount, LimitVolumeCurrencyId::<T>::get())
+		let burn_volume =
+			oracle::Pallet::<T>::convert(&burn_amount, LimitVolumeCurrencyId::<T>::get())
 				.map_err(|_| DispatchError::Other("Missing Exchange Rate"))?;
-		Ok(issue_volume)
+		Ok(burn_volume)
 	}
 
 	fn check_volume(amount_requested: Amount<T>) -> Result<(), DispatchError> {
@@ -1127,11 +1127,11 @@ impl<T: Config> Pallet<T> {
 			} else {
 				current_volume = CurrentVolumeAmount::<T>::get();
 			}
-			let new_issue_request_amount =
+			let new_redeem_request_amount =
 				Self::convert_into_limit_currency_id_amount(amount_requested)?;
 			ensure!(
-				new_issue_request_amount.amount().saturating_add(current_volume) <= limit_volume,
-				Error::<T>::ExceedLimitVolumeForIssueRequest
+				new_redeem_request_amount.amount().saturating_add(current_volume) <= limit_volume,
+				Error::<T>::ExceedLimitVolumeForRedeemRequest
 			);
 		}
 		Ok(())
