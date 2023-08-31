@@ -34,7 +34,6 @@ pub async fn listen_for_accept_replace(
 	let shutdown_tx = &shutdown_tx;
 	let oracle_agent = &oracle_agent;
 
-	tracing::info!("CARLA CARLA CARLA listen_for_accept_replace");
 	parachain_rpc
 		.on_event::<AcceptReplaceEvent, _, _, _>(
 			|event| async move {
