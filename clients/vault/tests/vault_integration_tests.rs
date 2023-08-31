@@ -114,34 +114,48 @@ async fn test_redeem_succeeds() {
 #[serial]
 async fn test_replace_succeeds() {
 	test_with_vault(
-		|client, vault_wallet, user_wallet, oracle_agent, old_vault_id, old_vault_provider| async move {
+		|client,
+		 old_vault_wallet,
+		 new_vault_wallet,
+		 oracle_agent,
+		 old_vault_id,
+		 old_vault_provider| async move {
 			let (new_vault_id, new_vault_provider) =
 				create_vault(client.clone(), AccountKeyring::Eve, DEFAULT_WRAPPED_CURRENCY).await;
 
 			let user_provider = setup_provider(client.clone(), AccountKeyring::Dave).await;
 
-			let vault_ids = vec![old_vault_id.clone(), new_vault_id.clone()].into_iter().collect();
+			let vault_ids: Vec<VaultId> =
+				vec![new_vault_id.clone(), old_vault_id.clone()].into_iter().collect();
 
-			let vault_id_manager = VaultIdManager::from_map(
+			let old_vault_id_manager = VaultIdManager::from_map(
 				old_vault_provider.clone(),
-				vault_wallet.clone(),
+				old_vault_wallet.clone(),
+				vault_ids.clone(),
+			);
+			let new_vault_id_manager = VaultIdManager::from_map(
+				new_vault_provider.clone(),
+				new_vault_wallet.clone(),
 				vault_ids,
 			);
 
 			let issue_amount = upscaled_compatible_amount(100);
 
 			register_vault_with_wallet(
-				vault_wallet.clone(),
-				vec![
-					(&old_vault_provider, &old_vault_id, issue_amount),
-					(&new_vault_provider, &new_vault_id, issue_amount),
-				],
+				old_vault_wallet.clone(),
+				vec![(&old_vault_provider, &old_vault_id, issue_amount)],
+			)
+			.await;
+
+			register_vault_with_wallet(
+				new_vault_wallet.clone(),
+				vec![(&new_vault_provider, &new_vault_id, issue_amount)],
 			)
 			.await;
 
 			assert_issue(
 				&user_provider,
-				user_wallet.clone(),
+				new_vault_wallet.clone(),
 				&old_vault_id,
 				issue_amount,
 				oracle_agent.clone(),
@@ -154,14 +168,14 @@ async fn test_replace_succeeds() {
 				join(
 					vault::service::listen_for_replace_requests(
 						new_vault_provider.clone(),
-						vault_id_manager.clone(),
+						new_vault_id_manager.clone(),
 						replace_event_tx.clone(),
 						true,
 					),
 					vault::service::listen_for_accept_replace(
 						shutdown_tx.clone(),
 						old_vault_provider.clone(),
-						vault_id_manager.clone(),
+						old_vault_id_manager.clone(),
 						Duration::from_secs(0),
 						oracle_agent.clone(),
 					),
