@@ -844,14 +844,16 @@ impl TransactionEnvelopeExt for TransactionEnvelope {
 		let recipient_account_muxed = MuxedAccount::KeyTypeEd25519(to);
 		let recipient_account_pk = PublicKey::PublicKeyTypeEd25519(to);
 
+		let mut transferred_amount: StellarStroops = 0;
+
 		let tx_operations: Vec<Operation> = match self {
 			TransactionEnvelope::EnvelopeTypeTxV0(env) => env.tx.operations.get_vec().clone(),
 			TransactionEnvelope::EnvelopeTypeTx(env) => env.tx.operations.get_vec().clone(),
-			TransactionEnvelope::EnvelopeTypeTxFeeBump(_) => Vec::new(),
-			TransactionEnvelope::Default(_) => Vec::new(),
+			TransactionEnvelope::EnvelopeTypeTxFeeBump(_) => return BalanceConversion::unlookup(transferred_amount),
+			TransactionEnvelope::Default(_) => return BalanceConversion::unlookup(transferred_amount),
 		};
 
-		let mut transferred_amount: StellarStroops = 0;
+		
 		for x in tx_operations {
 			match x.body {
 				OperationBody::Payment(payment) => {
