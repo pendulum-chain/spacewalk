@@ -198,7 +198,7 @@ pub mod pallet {
 			let vault = Self::get_active_rich_vault_from_id(&vault_id)?;
 
 			let amount = Amount::new(amount, currency_pair.collateral);
-
+			
 			Self::try_deposit_collateral(&vault_id, &amount)?;
 
 			Self::deposit_event(Event::<T>::DepositCollateral {
@@ -911,8 +911,6 @@ impl<T: Config> Pallet<T> {
 		vault_id: &DefaultVaultId<T>,
 		amount: &Amount<T>,
 	) -> DispatchResult {
-		// ensure the vault is active
-		let _vault = Self::get_active_rich_vault_from_id(vault_id)?;
 
 		// will fail if collateral ceiling exceeded
 		Self::try_increase_total_backing_collateral(&vault_id.currencies, amount)?;
@@ -1072,6 +1070,8 @@ impl<T: Config> Pallet<T> {
 					vault_id.currencies.collateral == amount.currency(),
 					Error::<T>::InvalidCurrency
 				);
+				//ensure vault is active
+				let _vault = Self::get_active_rich_vault_from_id(vault_id)?;
 				Self::try_deposit_collateral(vault_id, amount)?;
 			},
 			CurrencySource::AvailableReplaceCollateral(ref vault_id) => {
