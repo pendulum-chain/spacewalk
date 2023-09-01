@@ -870,6 +870,10 @@ impl OraclePallet for SpacewalkParachain {
 	/// # Arguments
 	/// * `value` - the current exchange rate
 	async fn feed_values(&self, values: Vec<((Vec<u8>, Vec<u8>), FixedU128)>) -> Result<(), Error> {
+		if values.is_empty() {
+			return Err(Error::FeedingEmptyExchangeRate);
+		}
+
 		use crate::metadata::runtime_types::dia_oracle::dia::CoinInfo;
 
 		let now = std::time::SystemTime::now();

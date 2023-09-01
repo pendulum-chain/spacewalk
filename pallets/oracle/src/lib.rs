@@ -235,6 +235,8 @@ impl<T: Config> Pallet<T> {
 		oracle: T::AccountId,
 		values: Vec<(OracleKey, T::UnsignedFixedPoint)>,
 	) -> DispatchResult {
+		frame_support::ensure!(!values.is_empty(), "the values fed is empty.");
+
 		let mut oracle_keys: Vec<_> = <OracleKeys<T>>::get();
 
 		for (k, v) in values {
