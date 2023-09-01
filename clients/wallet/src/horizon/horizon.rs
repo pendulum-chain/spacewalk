@@ -56,7 +56,7 @@ impl HorizonClient for reqwest::Client {
 		interpret_response::<R>(response).await
 	}
 
-	async fn get_transactions<A: StellarTypeToString<PublicKey, Error> + Send>(
+	async fn get_account_transactions<A: StellarTypeToString<PublicKey, Error> + Send>(
 		&self,
 		account_id: A,
 		is_public_network: bool,
@@ -211,7 +211,7 @@ impl<C: HorizonClient + Clone> HorizonFetcher<C> {
 	) -> Result<TransactionsResponseIter<C>, Error> {
 		let transactions_response = self
 			.client
-			.get_transactions(
+			.get_account_transactions(
 				self.vault_account_public_key.to_encoding(),
 				self.is_public_network,
 				last_cursor,
@@ -298,6 +298,7 @@ where
 		HorizonFetcher::new(horizon_client, vault_account_public_key, is_public_network);
 
 	let mut last_cursor = 0;
+	tracing::info!("CARLA CARLA CARLA listen_for_new_transactions");
 
 	loop {
 		last_cursor = fetcher

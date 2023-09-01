@@ -182,7 +182,7 @@ impl StellarWallet {
 		let horizon_client = Client::new();
 
 		let transactions_response = horizon_client
-			.get_transactions(
+			.get_account_transactions(
 				self.get_public_key(),
 				self.is_public_network,
 				0,

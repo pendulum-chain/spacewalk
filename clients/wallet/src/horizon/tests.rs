@@ -152,7 +152,7 @@ async fn horizon_get_transaction_success() {
 
 	let public_key_encoded = "GAYOLLLUIZE4DZMBB2ZBKGBUBZLIOYU6XFLW37GBP2VZD3ABNXCW4BVA";
 	let limit = 2;
-	match horizon_client.get_transactions(public_key_encoded, true, 0, limit, false).await {
+	match horizon_client.get_acount_transactions(public_key_encoded, true, 0, limit, false).await {
 		Ok(res) => {
 			let txs = res._embedded.records;
 			assert_eq!(txs.len(), 2);

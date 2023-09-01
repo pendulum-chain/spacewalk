@@ -745,18 +745,18 @@ impl VaultService {
 
 		self.maintain_connection()?;
 
-		self.maybe_register_public_key().await?;
+		self.register_public_key_if_not_present().await?;
 
 		join_all(parsed_auto_register.iter().map(
 			|(collateral_currency, wrapped_currency, amount)| {
-				self.maybe_register_vault(collateral_currency, wrapped_currency, amount)
+				self.register_vault_if_not_present(collateral_currency, wrapped_currency, amount)
 			},
 		))
 		.await
 		.into_iter()
 		.collect::<Result<_, Error>>()?;
 
-		// purposefully _after_ maybe_register_vault and _before_ other calls
+		// purposefully _after_ register_vault_if_not_present and _before_ other calls
 		self.vault_id_manager.fetch_vault_ids().await?;
 
 		let wallet = self.stellar_wallet.write().await;
@@ -801,7 +801,7 @@ impl VaultService {
 		run_and_monitor_tasks(self.shutdown.clone(), tasks).await
 	}
 
-	async fn maybe_register_public_key(&mut self) -> Result<(), Error> {
+	async fn register_public_key_if_not_present(&mut self) -> Result<(), Error> {
 		if let Some(_faucet_url) = &self.config.faucet_url {
 			// TODO fund account with faucet
 		}
@@ -821,7 +821,7 @@ impl VaultService {
 		Ok(())
 	}
 
-	async fn maybe_register_vault(
+	async fn register_vault_if_not_present(
 		&self,
 		collateral_currency: &CurrencyId,
 		wrapped_currency: &CurrencyId,
