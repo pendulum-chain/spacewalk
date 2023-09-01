@@ -838,7 +838,7 @@ mod test {
 		assert!(err_insufficient_fee.is_err());
 		match err_insufficient_fee.unwrap_err() {
 			Error::HorizonSubmissionError { title: _, status: _, reason, envelope_xdr: _ } => {
-				assert_eq!(reason, "tx_insufficient_fee");
+				assert_eq!(reason, "tx_insufficient_fee: []");
 			},
 			_ => assert!(false),
 		}
@@ -940,7 +940,7 @@ mod test {
 					reason,
 					envelope_xdr: _,
 				})) => {
-					assert_eq!(reason, "tx_bad_seq");
+					assert_eq!(reason, "tx_bad_seq: []");
 					failed_count += 1;
 				},
 				other => {
