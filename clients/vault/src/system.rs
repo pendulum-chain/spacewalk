@@ -331,17 +331,17 @@ enum ServiceTask {
 }
 
 fn maybe_run<F, E>(should_run: bool, task: F) -> ServiceTask
-where
-	F: Future<Output = Result<(), E>> + Send + 'static,
-	E: Into<ServiceError<Error>>,
+	where
+		F: Future<Output = Result<(), E>> + Send + 'static,
+		E: Into<ServiceError<Error>>,
 {
 	ServiceTask::Optional(should_run, Box::pin(task.map_err(|x| x.into())))
 }
 
 fn run<F, E>(task: F) -> ServiceTask
-where
-	F: Future<Output = Result<(), E>> + Send + 'static,
-	E: Into<ServiceError<Error>>,
+	where
+		F: Future<Output = Result<(), E>> + Send + 'static,
+		E: Into<ServiceError<Error>>,
 {
 	ServiceTask::Essential(Box::pin(task.map_err(|x| x.into())))
 }
@@ -491,7 +491,7 @@ impl VaultService {
 					startup_height,
 					account_id,
 				)
-				.handle_cancellation::<IssueCanceller>(issue_event_rx)),
+					.handle_cancellation::<IssueCanceller>(issue_event_rx)),
 			),
 		]
 	}
@@ -535,7 +535,7 @@ impl VaultService {
 					startup_height,
 					account_id,
 				)
-				.handle_cancellation::<ReplaceCanceller>(replace_event_rx)),
+					.handle_cancellation::<ReplaceCanceller>(replace_event_rx)),
 			),
 		]
 	}
@@ -755,9 +755,9 @@ impl VaultService {
 				self.register_vault_if_not_present(collateral_currency, wrapped_currency, amount)
 			},
 		))
-		.await
-		.into_iter()
-		.collect::<Result<_, Error>>()?;
+			.await
+			.into_iter()
+			.collect::<Result<_, Error>>()?;
 
 		// purposefully _after_ register_vault_if_not_present and _before_ other calls
 		self.vault_id_manager.fetch_vault_ids().await?;
