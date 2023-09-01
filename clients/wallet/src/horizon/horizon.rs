@@ -301,6 +301,7 @@ where
 
 	#[cfg(not(any(test, feature = "testing-utils")))]
 	let mut last_cursor = 0;
+	tracing::info!("CARLA CARLA CARLA listen_for_new_transactions");
 
 	#[cfg(any(test, feature = "testing-utils"))]
 	let mut last_cursor = last_cursor;
