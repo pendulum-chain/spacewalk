@@ -6,7 +6,10 @@ use std::{
 use async_trait::async_trait;
 use clap::Parser;
 use futures::{
-	channel::{mpsc, mpsc::Sender},
+	channel::{
+		mpsc,
+		mpsc::{Receiver, Sender},
+	},
 	future::{join, join_all},
 	SinkExt, TryFutureExt,
 };
@@ -14,13 +17,13 @@ use git_version::git_version;
 use tokio::{sync::RwLock, time::sleep};
 
 use runtime::{
-	cli::parse_duration_minutes, CollateralBalancesPallet, CurrencyId, Error as RuntimeError,
-	IssueIdLookup, IssueRequestsMap, PrettyPrint, RegisterVaultEvent, ShutdownSender,
-	SpacewalkParachain, StellarRelayPallet, TryFromSymbol, UpdateActiveBlockEvent, UtilFuncs,
-	VaultCurrencyPair, VaultId, VaultRegistryPallet,
+	cli::parse_duration_minutes, AccountId, BlockNumber, CollateralBalancesPallet, CurrencyId,
+	Error as RuntimeError, IssueIdLookup, IssueRequestsMap, PrettyPrint, RegisterVaultEvent,
+	ShutdownSender, SpacewalkParachain, StellarRelayPallet, TryFromSymbol, UpdateActiveBlockEvent,
+	UtilFuncs, VaultCurrencyPair, VaultId, VaultRegistryPallet,
 };
 use service::{wait_or_shutdown, Error as ServiceError, MonitoringConfig, Service};
-use stellar_relay_lib::StellarOverlayConfig;
+use stellar_relay_lib::{sdk::PublicKey, StellarOverlayConfig};
 use wallet::{LedgerTxEnvMap, StellarWallet};
 
 use crate::{
@@ -29,6 +32,7 @@ use crate::{
 	issue,
 	issue::IssueFilter,
 	metrics::{monitor_bridge_metrics, poll_metrics, publish_tokio_metrics, PerCurrencyMetrics},
+	oracle::OracleAgent,
 	redeem::listen_for_redeem_requests,
 	replace::{listen_for_accept_replace, listen_for_execute_replace, listen_for_replace_requests},
 	requests::execution::execute_open_requests,
@@ -327,19 +331,355 @@ enum ServiceTask {
 }
 
 fn maybe_run<F, E>(should_run: bool, task: F) -> ServiceTask
-where
-	F: Future<Output = Result<(), E>> + Send + 'static,
-	E: Into<ServiceError<Error>>,
+	where
+		F: Future<Output = Result<(), E>> + Send + 'static,
+		E: Into<ServiceError<Error>>,
 {
 	ServiceTask::Optional(should_run, Box::pin(task.map_err(|x| x.into())))
 }
 
 fn run<F, E>(task: F) -> ServiceTask
-where
-	F: Future<Output = Result<(), E>> + Send + 'static,
-	E: Into<ServiceError<Error>>,
+	where
+		F: Future<Output = Result<(), E>> + Send + 'static,
+		E: Into<ServiceError<Error>>,
 {
 	ServiceTask::Essential(Box::pin(task.map_err(|x| x.into())))
+}
+
+// dedicated for running the service
+impl VaultService {
+	fn auto_register(
+		&self,
+	) -> Result<Vec<(CurrencyId, CurrencyId, Option<u128>)>, ServiceError<Error>> {
+		let parsed_auto_register = self
+			.config
+			.auto_register
+			.clone()
+			.into_iter()
+			.map(|(collateral, wrapped, amount)| {
+				Ok((
+					CurrencyId::try_from_symbol(collateral)?,
+					CurrencyId::try_from_symbol(wrapped)?,
+					amount,
+				))
+			})
+			.into_iter()
+			.collect::<Result<Vec<_>, Error>>()
+			.map_err(ServiceError::Abort)?;
+
+		// exit if auto-register uses faucet and faucet url not set
+		if parsed_auto_register.iter().any(|(_, _, o)| o.is_none()) &&
+			self.config.faucet_url.is_none()
+		{
+			return Err(ServiceError::Abort(Error::FaucetUrlNotSet))
+		}
+
+		Ok(parsed_auto_register)
+	}
+
+	fn maintain_connection(&self) -> Result<(), ServiceError<Error>> {
+		// Subscribe to an event (any event will do) so that a period of inactivity does not close
+		// the jsonrpsee connection
+		let err_provider = self.spacewalk_parachain.clone();
+		let err_listener = wait_or_shutdown(self.shutdown.clone(), async move {
+			err_provider
+				.on_event_error(|e| tracing::debug!("Client Service: Received error event: {}", e))
+				.await?;
+			Ok::<_, Error>(())
+		});
+		tokio::task::spawn(err_listener);
+
+		Ok(())
+	}
+
+	async fn create_oracle_agent(
+		&self,
+		is_public_network: bool,
+	) -> Result<Arc<OracleAgent>, ServiceError<Error>> {
+		let cfg_path = &self.config.stellar_overlay_config_filepath;
+		let stellar_overlay_cfg =
+			StellarOverlayConfig::try_from_path(cfg_path).map_err(Error::StellarRelayError)?;
+
+		// check if both the config file and the wallet are the same.
+		if is_public_network != stellar_overlay_cfg.is_public_network() {
+			return Err(ServiceError::IncompatibleNetwork)
+		}
+
+		let oracle_agent = crate::oracle::start_oracle_agent(stellar_overlay_cfg, &self.secret_key)
+			.await
+			.expect("Failed to start oracle agent");
+
+		Ok(Arc::new(oracle_agent))
+	}
+
+	fn execute_open_requests(&self, oracle_agent: Arc<OracleAgent>) {
+		let open_request_executor = execute_open_requests(
+			self.shutdown.clone(),
+			self.spacewalk_parachain.clone(),
+			self.vault_id_manager.clone(),
+			self.stellar_wallet.clone(),
+			oracle_agent,
+			self.config.payment_margin_minutes,
+		);
+		service::spawn_cancelable(self.shutdown.subscribe(), async move {
+			// TODO: kill task on shutdown signal to prevent double payment
+			if let Err(e) = open_request_executor.await {
+				tracing::error!("Failed to process open requests: {}", e)
+			};
+		});
+	}
+
+	fn create_issue_tasks(
+		&self,
+		issue_event_tx: Sender<Event>,
+		issue_event_rx: Receiver<Event>,
+		startup_height: BlockNumber,
+		account_id: AccountId,
+		vault_public_key: PublicKey,
+		oracle_agent: Arc<OracleAgent>,
+		issue_map: ArcRwLock<IssueRequestsMap>,
+		ledger_env_map: ArcRwLock<LedgerTxEnvMap>,
+		memos_to_issue_ids: ArcRwLock<IssueIdLookup>,
+	) -> Vec<(&str, ServiceTask)> {
+		vec![
+			(
+				"Issue Request Listener",
+				run(issue::listen_for_issue_requests(
+					self.spacewalk_parachain.clone(),
+					vault_public_key,
+					issue_event_tx.clone(),
+					issue_map.clone(),
+					memos_to_issue_ids.clone(),
+				)),
+			),
+			(
+				"Issue Cancel Listener",
+				run(issue::listen_for_issue_cancels(
+					self.spacewalk_parachain.clone(),
+					issue_map.clone(),
+					memos_to_issue_ids.clone(),
+				)),
+			),
+			(
+				"Issue Execute Listener",
+				run(issue::listen_for_executed_issues(
+					self.spacewalk_parachain.clone(),
+					issue_map.clone(),
+					memos_to_issue_ids.clone(),
+				)),
+			),
+			(
+				"Issue Executor",
+				maybe_run(
+					!self.config.no_issue_execution,
+					issue::process_issues_requests(
+						self.spacewalk_parachain.clone(),
+						oracle_agent,
+						ledger_env_map,
+						issue_map,
+						memos_to_issue_ids,
+					),
+				),
+			),
+			(
+				"Issue Cancel Scheduler",
+				run(CancellationScheduler::new(
+					self.spacewalk_parachain.clone(),
+					startup_height,
+					account_id,
+				)
+					.handle_cancellation::<IssueCanceller>(issue_event_rx)),
+			),
+		]
+	}
+
+	fn create_replace_tasks(
+		&self,
+		replace_event_tx: Sender<Event>,
+		replace_event_rx: Receiver<Event>,
+		startup_height: BlockNumber,
+		account_id: AccountId,
+		oracle_agent: Arc<OracleAgent>,
+	) -> Vec<(&str, ServiceTask)> {
+		vec![
+			(
+				"Request Replace Listener",
+				run(listen_for_replace_requests(
+					self.spacewalk_parachain.clone(),
+					self.vault_id_manager.clone(),
+					replace_event_tx.clone(),
+					!self.config.no_auto_replace,
+				)),
+			),
+			(
+				"Accept Replace Listener",
+				run(listen_for_accept_replace(
+					self.shutdown.clone(),
+					self.spacewalk_parachain.clone(),
+					self.vault_id_manager.clone(),
+					self.config.payment_margin_minutes,
+					oracle_agent,
+				)),
+			),
+			(
+				"Execute Replace Listener",
+				run(listen_for_execute_replace(self.spacewalk_parachain.clone(), replace_event_tx)),
+			),
+			(
+				"Replace Cancellation Scheduler",
+				run(CancellationScheduler::new(
+					self.spacewalk_parachain.clone(),
+					startup_height,
+					account_id,
+				)
+					.handle_cancellation::<ReplaceCanceller>(replace_event_rx)),
+			),
+		]
+	}
+
+	fn create_bridge_metrics_tasks(&self) -> Vec<(&str, ServiceTask)> {
+		vec![
+			(
+				"Bridge Metrics Listener",
+				maybe_run(
+					!self.monitoring_config.no_prometheus,
+					monitor_bridge_metrics(
+						self.spacewalk_parachain.clone(),
+						self.vault_id_manager.clone(),
+					),
+				),
+			),
+			(
+				"Bridge Metrics Poller",
+				maybe_run(
+					!self.monitoring_config.no_prometheus,
+					poll_metrics(self.spacewalk_parachain.clone(), self.vault_id_manager.clone()),
+				),
+			),
+		]
+	}
+
+	fn create_initial_tasks(
+		&self,
+		is_public_network: bool,
+		issue_event_tx: Sender<Event>,
+		replace_event_tx: Sender<Event>,
+		vault_public_key: PublicKey,
+		issue_map: ArcRwLock<IssueRequestsMap>,
+		ledger_env_map: ArcRwLock<LedgerTxEnvMap>,
+		memos_to_issue_ids: ArcRwLock<IssueIdLookup>,
+	) -> Result<Vec<(&str, ServiceTask)>, ServiceError<Error>> {
+		let issue_filter = IssueFilter::new(&vault_public_key)?;
+
+		Ok(vec![
+			(
+				"VaultId Registration Listener",
+				run(self.vault_id_manager.clone().listen_for_vault_id_registrations()),
+			),
+			(
+				"Restart Timer",
+				run(async move {
+					tokio::time::sleep(RESTART_INTERVAL).await;
+					tracing::info!("Initiating periodic restart...");
+					Err(ServiceError::ClientShutdown)
+				}),
+			),
+			(
+				"Stellar Transaction Listener",
+				run(wallet::listen_for_new_transactions(
+					vault_public_key,
+					is_public_network,
+					ledger_env_map,
+					issue_map,
+					memos_to_issue_ids,
+					issue_filter,
+				)),
+			),
+			(
+				"Parachain Block Listener",
+				run(active_block_listener(
+					self.spacewalk_parachain.clone(),
+					issue_event_tx,
+					replace_event_tx,
+				)),
+			),
+		])
+	}
+
+	fn create_tasks(
+		&self,
+		startup_height: BlockNumber,
+		account_id: AccountId,
+		is_public_network: bool,
+		vault_public_key: PublicKey,
+		oracle_agent: Arc<OracleAgent>,
+		issue_map: ArcRwLock<IssueRequestsMap>,
+		ledger_env_map: ArcRwLock<LedgerTxEnvMap>,
+		memos_to_issue_ids: ArcRwLock<IssueIdLookup>,
+	) -> Result<Vec<(&str, ServiceTask)>, ServiceError<Error>> {
+		let (issue_event_tx, issue_event_rx) = mpsc::channel::<Event>(32);
+		let (replace_event_tx, replace_event_rx) = mpsc::channel::<Event>(16);
+
+		let mut tasks = self.create_initial_tasks(
+			is_public_network,
+			issue_event_tx.clone(),
+			replace_event_tx.clone(),
+			vault_public_key.clone(),
+			issue_map.clone(),
+			ledger_env_map.clone(),
+			memos_to_issue_ids.clone(),
+		)?;
+
+		let mut issue_tasks = self.create_issue_tasks(
+			issue_event_tx.clone(),
+			issue_event_rx,
+			startup_height,
+			account_id.clone(),
+			vault_public_key.clone(),
+			oracle_agent.clone(),
+			issue_map.clone(),
+			ledger_env_map.clone(),
+			memos_to_issue_ids.clone(),
+		);
+
+		tasks.append(&mut issue_tasks);
+
+		let mut replace_tasks = self.create_replace_tasks(
+			replace_event_tx.clone(),
+			replace_event_rx,
+			startup_height,
+			account_id,
+			oracle_agent.clone(),
+		);
+
+		tasks.append(&mut replace_tasks);
+
+		tasks.push((
+			"Parachain Block Listener",
+			run(active_block_listener(
+				self.spacewalk_parachain.clone(),
+				issue_event_tx,
+				replace_event_tx,
+			)),
+		));
+
+		tasks.push((
+			"Redeem Request Listener",
+			run(listen_for_redeem_requests(
+				self.shutdown.clone(),
+				self.spacewalk_parachain.clone(),
+				self.vault_id_manager.clone(),
+				self.config.payment_margin_minutes,
+				oracle_agent,
+			)),
+		));
+
+		let mut bridge_metrics_tasks = self.create_bridge_metrics_tasks();
+
+		tasks.append(&mut bridge_metrics_tasks);
+
+		Ok(tasks)
+	}
 }
 
 impl VaultService {
@@ -396,56 +736,25 @@ impl VaultService {
 	}
 
 	async fn run_service(&mut self) -> Result<(), ServiceError<Error>> {
-		tracing::info!("Starting client service...");
-
 		let startup_height = self.await_parachain_block().await?;
 		let account_id = self.spacewalk_parachain.get_account_id().clone();
 
-		let mut amount_is_none: bool = false;
-		let parsed_auto_register = self
-			.config
-			.auto_register
-			.clone()
-			.into_iter()
-			.map(|(collateral, wrapped, amount)| {
-				if amount.is_none() {
-					amount_is_none = true;
-				}
-				Ok((
-					CurrencyId::try_from_symbol(collateral)?,
-					CurrencyId::try_from_symbol(wrapped)?,
-					amount,
-				))
-			})
-			.into_iter()
-			.collect::<Result<Vec<_>, Error>>()
-			.map_err(ServiceError::Abort)?;
+		tracing::info!("Starting client service...");
 
-		// exit if auto-register uses faucet and faucet url not set
-		if amount_is_none && self.config.faucet_url.is_none() {
-			return Err(ServiceError::Abort(Error::FaucetUrlNotSet))
-		}
+		let parsed_auto_register = self.auto_register()?;
 
-		// Subscribe to an event (any event will do) so that a period of inactivity does not close
-		// the jsonrpsee connection
-		let err_provider = self.spacewalk_parachain.clone();
-		let err_listener = wait_or_shutdown(self.shutdown.clone(), async move {
-			err_provider
-				.on_event_error(|e| tracing::debug!("Client Service: Received error event: {}", e))
-				.await?;
-			Ok::<_, Error>(())
-		});
-		tokio::task::spawn(err_listener);
+		self.maintain_connection()?;
 
 		self.maybe_register_public_key().await?;
+
 		join_all(parsed_auto_register.iter().map(
 			|(collateral_currency, wrapped_currency, amount)| {
 				self.maybe_register_vault(collateral_currency, wrapped_currency, amount)
 			},
 		))
-		.await
-		.into_iter()
-		.collect::<Result<_, Error>>()?;
+			.await
+			.into_iter()
+			.collect::<Result<_, Error>>()?;
 
 		// purposefully _after_ maybe_register_vault and _before_ other calls
 		self.vault_id_manager.fetch_vault_ids().await?;
@@ -460,34 +769,9 @@ impl VaultService {
 
 		drop(wallet);
 
-		let cfg_path = &self.config.stellar_overlay_config_filepath;
-		let stellar_overlay_cfg =
-			StellarOverlayConfig::try_from_path(cfg_path).map_err(Error::StellarRelayError)?;
+		let oracle_agent = self.create_oracle_agent(is_public_network).await?;
 
-		// check if both the config file and the wallet are the same.
-		if is_public_network != stellar_overlay_cfg.is_public_network() {
-			return Err(ServiceError::IncompatibleNetwork)
-		}
-
-		let oracle_agent = crate::oracle::start_oracle_agent(stellar_overlay_cfg, &self.secret_key)
-			.await
-			.expect("Failed to start oracle agent");
-		let oracle_agent = Arc::new(oracle_agent);
-
-		let open_request_executor = execute_open_requests(
-			self.shutdown.clone(),
-			self.spacewalk_parachain.clone(),
-			self.vault_id_manager.clone(),
-			self.stellar_wallet.clone(),
-			oracle_agent.clone(),
-			self.config.payment_margin_minutes,
-		);
-		service::spawn_cancelable(self.shutdown.subscribe(), async move {
-			// TODO: kill task on shutdown signal to prevent double payment
-			if let Err(e) = open_request_executor.await {
-				tracing::error!("Failed to process open requests: {}", e)
-			};
-		});
+		self.execute_open_requests(oracle_agent.clone());
 
 		// issue handling
 		// this vec is passed to the stellar wallet to filter out transactions that are not relevant
@@ -500,157 +784,19 @@ impl VaultService {
 		issue::initialize_issue_set(&self.spacewalk_parachain, &issue_map, &memos_to_issue_ids)
 			.await?;
 
-		let issue_filter = IssueFilter::new(&vault_public_key)?;
-
 		let ledger_env_map: ArcRwLock<LedgerTxEnvMap> = Arc::new(RwLock::new(HashMap::new()));
 
-		let (issue_event_tx, issue_event_rx) = mpsc::channel::<Event>(32);
-		let (replace_event_tx, replace_event_rx) = mpsc::channel::<Event>(16);
-
 		tracing::info!("Starting all services...");
-		let tasks = vec![
-			(
-				"VaultId Registration Listener",
-				run(self.vault_id_manager.clone().listen_for_vault_id_registrations()),
-			),
-			(
-				"Restart Timer",
-				run(async move {
-					tokio::time::sleep(RESTART_INTERVAL).await;
-					tracing::info!("Initiating periodic restart...");
-					Err(ServiceError::ClientShutdown)
-				}),
-			),
-			(
-				"Stellar Transaction Listener",
-				run(wallet::listen_for_new_transactions(
-					vault_public_key.clone(),
-					is_public_network,
-					ledger_env_map.clone(),
-					issue_map.clone(),
-					memos_to_issue_ids.clone(),
-					issue_filter,
-				)),
-			),
-			(
-				"Issue Request Listener",
-				run(issue::listen_for_issue_requests(
-					self.spacewalk_parachain.clone(),
-					vault_public_key,
-					issue_event_tx.clone(),
-					issue_map.clone(),
-					memos_to_issue_ids.clone(),
-				)),
-			),
-			(
-				"Issue Cancel Listener",
-				run(issue::listen_for_issue_cancels(
-					self.spacewalk_parachain.clone(),
-					issue_map.clone(),
-					memos_to_issue_ids.clone(),
-				)),
-			),
-			(
-				"Issue Execute Listener",
-				run(issue::listen_for_executed_issues(
-					self.spacewalk_parachain.clone(),
-					issue_map.clone(),
-					memos_to_issue_ids.clone(),
-				)),
-			),
-			(
-				"Issue Executor",
-				maybe_run(
-					!self.config.no_issue_execution,
-					issue::process_issues_requests(
-						self.spacewalk_parachain.clone(),
-						oracle_agent.clone(),
-						ledger_env_map.clone(),
-						issue_map.clone(),
-						memos_to_issue_ids.clone(),
-					),
-				),
-			),
-			(
-				"Issue Cancel Scheduler",
-				run(CancellationScheduler::new(
-					self.spacewalk_parachain.clone(),
-					startup_height,
-					account_id.clone(),
-				)
-				.handle_cancellation::<IssueCanceller>(issue_event_rx)),
-			),
-			(
-				"Request Replace Listener",
-				run(listen_for_replace_requests(
-					self.spacewalk_parachain.clone(),
-					self.vault_id_manager.clone(),
-					replace_event_tx.clone(),
-					!self.config.no_auto_replace,
-				)),
-			),
-			(
-				"Accept Replace Listener",
-				run(listen_for_accept_replace(
-					self.shutdown.clone(),
-					self.spacewalk_parachain.clone(),
-					self.vault_id_manager.clone(),
-					self.config.payment_margin_minutes,
-					oracle_agent.clone(),
-				)),
-			),
-			(
-				"Execute Replace Listener",
-				run(listen_for_execute_replace(
-					self.spacewalk_parachain.clone(),
-					replace_event_tx.clone(),
-				)),
-			),
-			(
-				"Replace Cancellation Scheduler",
-				run(CancellationScheduler::new(
-					self.spacewalk_parachain.clone(),
-					startup_height,
-					account_id.clone(),
-				)
-				.handle_cancellation::<ReplaceCanceller>(replace_event_rx)),
-			),
-			(
-				"Parachain Block Listener",
-				run(active_block_listener(
-					self.spacewalk_parachain.clone(),
-					issue_event_tx.clone(),
-					replace_event_tx.clone(),
-				)),
-			),
-			(
-				"Redeem Request Listener",
-				run(listen_for_redeem_requests(
-					self.shutdown.clone(),
-					self.spacewalk_parachain.clone(),
-					self.vault_id_manager.clone(),
-					self.config.payment_margin_minutes,
-					oracle_agent.clone(),
-				)),
-			),
-			(
-				"Bridge Metrics Listener",
-				maybe_run(
-					!self.monitoring_config.no_prometheus,
-					monitor_bridge_metrics(
-						self.spacewalk_parachain.clone(),
-						self.vault_id_manager.clone(),
-					),
-				),
-			),
-			(
-				"Bridge Metrics Poller",
-				maybe_run(
-					!self.monitoring_config.no_prometheus,
-					poll_metrics(self.spacewalk_parachain.clone(), self.vault_id_manager.clone()),
-				),
-			),
-		];
+		let tasks = self.create_tasks(
+			startup_height,
+			account_id,
+			is_public_network,
+			vault_public_key,
+			oracle_agent,
+			issue_map,
+			ledger_env_map,
+			memos_to_issue_ids,
+		)?;
 
 		run_and_monitor_tasks(self.shutdown.clone(), tasks).await
 	}
