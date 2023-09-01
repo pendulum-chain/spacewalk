@@ -247,7 +247,6 @@ mod tests {
 		}};
 	}
 
-	type CustomFilter = Box<dyn Fn((H256, SpacewalkReplaceRequest)) -> bool + Send>;
 
 	mockall::mock! {
 		Provider {}
@@ -278,7 +277,11 @@ mod tests {
 			async fn execute_replace(&self, replace_id: H256, tx_env: &[u8], scp_envs: &[u8], tx_set: &[u8]) -> Result<(), RuntimeError>;
 			async fn cancel_replace(&self, replace_id: H256) -> Result<(), RuntimeError>;
 			async fn get_new_vault_replace_requests(&self, account_id: AccountId) -> Result<Vec<(H256, SpacewalkReplaceRequest)>, RuntimeError>;
-			async fn get_old_vault_replace_requests(&self, account_id: AccountId, filter: CustomFilter) -> Result<Vec<(H256, SpacewalkReplaceRequest)>, RuntimeError>;
+			async fn get_old_vault_replace_requests<T: 'static>(
+				&self,
+				account_id: AccountId,
+				filter: Box<dyn Fn((H256, SpacewalkReplaceRequest)) -> Option<T> + Send>,
+			) -> Result<Vec<T>, RuntimeError>;
 			async fn get_replace_period(&self) -> Result<u32, RuntimeError>;
 			async fn get_replace_request(&self, replace_id: H256) -> Result<SpacewalkReplaceRequest, RuntimeError>;
 			async fn get_replace_dust_amount(&self) -> Result<u128, RuntimeError>;

@@ -374,31 +374,31 @@ pub async fn execute_open_requests(
 	let parachain_rpc = &parachain_rpc;
 	let vault_id = parachain_rpc.get_account_id().clone();
 
-	//closure to filter redeem_requests
-	let filter_redeem_reqs = |(hash, request): (H256, SpacewalkRedeemRequest)| {
+	//closure to filter and transform redeem_requests
+	let filter_redeem_reqs = move |(hash, request): (H256, SpacewalkRedeemRequest)| {
 		if request.status == RedeemRequestStatus::Pending {
-			true
+			Request::from_redeem_request(hash, request, payment_margin).ok()
 		} else {
-			false
+			None
 		}
 	};
-
-	//closure to filter replace_requests
-	let filter_replace_reqs = |(hash, request): (H256, SpacewalkReplaceRequest)| {
+	
+	//closure to filter and transform replace_requests
+	let filter_replace_reqs = move |(hash, request): (H256, SpacewalkReplaceRequest)| {
 		if request.status == ReplaceRequestStatus::Pending {
-			true
+			Request::from_replace_request(hash, request, payment_margin).ok()
 		} else {
-			false
+			None
 		}
 	};
 
 	// get all redeem and replace requests
 	let (open_redeems, open_replaces) = try_join!(
-		parachain_rpc.get_vault_redeem_requests(vault_id.clone(), Box::new(filter_redeem_reqs)),
+		parachain_rpc.get_vault_redeem_requests::<Request>(vault_id.clone(), Box::new(filter_redeem_reqs)),
 		parachain_rpc
-			.get_old_vault_replace_requests(vault_id.clone(), Box::new(filter_replace_reqs)),
+			.get_old_vault_replace_requests::<Request>(vault_id.clone(), Box::new(filter_replace_reqs)),
 	)?;
-
+	
 	// collect all requests into a hashmap, indexed by their id
 	let mut open_requests = open_redeems
 		.into_iter()
