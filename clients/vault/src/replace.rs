@@ -33,7 +33,6 @@ pub async fn listen_for_accept_replace(
 	let vault_id_manager = &vault_id_manager;
 	let shutdown_tx = &shutdown_tx;
 	let oracle_agent = &oracle_agent;
-
 	parachain_rpc
 		.on_event::<AcceptReplaceEvent, _, _, _>(
 			|event| async move {
