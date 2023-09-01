@@ -152,8 +152,6 @@ mod oracle_offline_detection {
 #[serial]
 fn getting_exchange_rate_fails_with_missing_exchange_rate() {
 	run_test(|| {
-		let _ = Oracle::_clear_values();
-
 		let key = OracleKey::ExchangeRate(CurrencyId::XCM(0));
 		assert_err!(Oracle::get_price(key), TestError::MissingExchangeRate);
 		assert_err!(Oracle::currency_to_usd(0, CurrencyId::XCM(0)), TestError::MissingExchangeRate);

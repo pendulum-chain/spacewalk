@@ -375,6 +375,7 @@ where
 	T: FnOnce(),
 {
 	clear_mocks();
+	let _ = <oracle::Pallet<Test>>::_clear_values();
 	ExtBuilder::build().execute_with(|| {
 		System::set_block_number(1);
 		Security::set_active_block_number(1);
@@ -388,6 +389,12 @@ where
 		<oracle::Pallet<Test>>::_set_exchange_rate(
 			1,
 			DEFAULT_WRAPPED_CURRENCY,
+			UnsignedFixedPoint::one(),
+		)
+		.unwrap();
+		<oracle::Pallet<Test>>::_set_exchange_rate(
+			1,
+			DEFAULT_NATIVE_CURRENCY,
 			UnsignedFixedPoint::one(),
 		)
 		.unwrap();
