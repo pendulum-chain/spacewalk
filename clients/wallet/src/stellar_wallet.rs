@@ -61,7 +61,7 @@ impl StellarWallet {
 
 	/// Returns a TransactionResponse after submitting transaction envelope to Stellar,
 	/// Else an Error.
-	pub async fn submit_transaction(
+	async fn submit_transaction(
 		&self,
 		envelope: TransactionEnvelope,
 	) -> Result<TransactionResponse, Error> {
