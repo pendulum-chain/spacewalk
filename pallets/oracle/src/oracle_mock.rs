@@ -1,11 +1,13 @@
 use sp_runtime::traits::Convert;
 use sp_std::sync::Arc;
 
-use sp_arithmetic::FixedU128;
-pub type UnsignedFixedPoint = FixedU128;
 use primitives::{oracle::Key, Asset, CurrencyId};
+use sp_arithmetic::FixedU128;
 use sp_std::{collections::btree_map::BTreeMap, vec, vec::Vec};
 use spin::RwLock;
+
+use orml_oracle::{DataFeeder, DataProvider, TimestampedValue};
+use sp_runtime::DispatchResult;
 
 // Extends the orml_oracle::DataFeeder trait with a clear_all_values function.
 pub trait DataFeederExtended<Key, Value, AccountId>: DataFeeder<Key, Value, AccountId> {
@@ -19,6 +21,7 @@ pub struct Data {
 	pub timestamp: u64,
 }
 
+pub type UnsignedFixedPoint = FixedU128;
 type MapKey = u128;
 
 fn derive_key(blockchain: Vec<u8>, symbol: Vec<u8>) -> MapKey {
@@ -95,7 +98,7 @@ impl<Moment> Convert<Moment, Option<Moment>> for MockConvertMoment<Moment> {
 // Implementation of re-usable mock DiaOracle
 
 lazy_static::lazy_static! {
-	static ref COINS: Arc<RwLock<BTreeMap<u128, Data>>> = Arc::new(RwLock::new(BTreeMap::<u128, Data>::new()));
+	static ref COINS: Arc<RwLock<BTreeMap<MapKey, Data>>> = Arc::new(RwLock::new(BTreeMap::<MapKey, Data>::new()));
 }
 
 pub struct MockDiaOracle;
@@ -109,7 +112,7 @@ impl dia_oracle::DiaOracle for MockDiaOracle {
 			blockchain.clone(),
 			symbol.clone()
 		);
-		let key: u128 = derive_key(blockchain, symbol);
+		let key = derive_key(blockchain, symbol);
 
 		let coins = COINS.read();
 		let coin_data = coins.get(&key);
@@ -146,19 +149,16 @@ impl dia_oracle::DiaOracle for MockDiaOracle {
 		)
 	}
 }
-
-use orml_oracle::{DataFeeder, DataProvider, TimestampedValue};
-use sp_runtime::DispatchResult;
-
 pub struct MockDataCollector<AccountId, Moment>(
 	sp_std::marker::PhantomData<AccountId>,
 	sp_std::marker::PhantomData<Moment>,
 );
 
-//DataFeeder required to implement DataProvider trait but there no need to implement get function
 impl<AccountId, Moment> DataProvider<Key, TimestampedValue<UnsignedFixedPoint, Moment>>
 	for MockDataCollector<AccountId, Moment>
 {
+	// We need to implement the DataFeeder trait to the MockDataCollector but this function is never
+	// used
 	fn get(_key: &Key) -> Option<TimestampedValue<UnsignedFixedPoint, Moment>> {
 		unimplemented!("Not required to implement DataProvider get function")
 	}
@@ -176,7 +176,7 @@ impl<AccountId, Moment: Into<u64>>
 		let (blockchain, symbol) = MockOracleKeyConvertor::convert(key.clone()).unwrap();
 		let price = value.value.into_inner();
 
-		let key: u128 = derive_key(blockchain, symbol);
+		let key = derive_key(blockchain, symbol);
 		let data = Data { key, price, timestamp: value.timestamp.into().clone() };
 
 		frame_support::log::error!(
