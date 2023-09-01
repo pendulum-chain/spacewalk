@@ -1109,14 +1109,16 @@ pub trait RedeemPallet {
 	async fn get_redeem_request(&self, redeem_id: H256) -> Result<SpacewalkRedeemRequest, Error>;
 
 	/// Get all redeem requests requested of the given vault
-	async fn get_vault_redeem_requests<T>(
+	async fn get_vault_redeem_requests(
 		&self,
 		account_id: AccountId,
-		filter: impl Fn((H256, SpacewalkRedeemRequest)) -> Option<T> + std::marker::Send,
-	) -> Result<Vec<T>, Error>;
+		filter: CustomRedeemFilter,
+	) -> Result<Vec<(H256, SpacewalkRedeemRequest)>, Error>;
 
 	async fn get_redeem_period(&self) -> Result<BlockNumber, Error>;
 }
+
+type CustomRedeemFilter = Box<dyn Fn((H256, SpacewalkRedeemRequest)) -> bool + Send>;
 
 #[async_trait]
 impl RedeemPallet for SpacewalkParachain {
@@ -1166,11 +1168,11 @@ impl RedeemPallet for SpacewalkParachain {
 			.await
 	}
 
-	async fn get_vault_redeem_requests<T>(
+	async fn get_vault_redeem_requests(
 		&self,
 		account_id: AccountId,
-		filter: impl Fn((H256, SpacewalkRedeemRequest)) -> Option<T> + Send,
-	) -> Result<Vec<T>, Error> {
+		filter: CustomRedeemFilter,
+	) -> Result<Vec<(H256, SpacewalkRedeemRequest)>, Error> {
 		let head = self.get_finalized_block_hash().await?;
 		let result: Vec<H256> = self
 			.api
@@ -1184,16 +1186,13 @@ impl RedeemPallet for SpacewalkParachain {
 			}))
 			.await
 			.into_iter()
+			.filter(|result| match result {
+				Ok(item) => filter(item.clone()),
+				Err(_) => false,
+			})
 			.collect();
 
-		match redeem_requests {
-			Ok(redeem_requests) => {
-				let filtered_results: Vec<_> =
-					redeem_requests.into_iter().filter_map(|item| filter(item.clone())).collect();
-				Ok(filtered_results)
-			},
-			Err(e) => Err(e),
-		}
+		redeem_requests
 	}
 
 	async fn get_redeem_period(&self) -> Result<BlockNumber, Error> {
