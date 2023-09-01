@@ -46,10 +46,10 @@ pub(crate) async fn interpret_response<T: DeserializeOwned>(
 	response: reqwest::Response,
 ) -> Result<T, Error> {
 	if response.status().is_success() {
-		return response.json::<T>().await.map_err(Error::HttpFetchingError)
+		return response.json::<T>().await.map_err(Error::HorizonResponseError)
 	}
 
-	let resp = response.json::<serde_json::Value>().await.map_err(Error::HttpFetchingError)?;
+	let resp = response.json::<serde_json::Value>().await.map_err(Error::HorizonResponseError)?;
 
 	let title = resp[RESPONSE_FIELD_TITLE].as_str().unwrap_or(VALUE_UNKNOWN);
 	let status =

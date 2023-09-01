@@ -34,7 +34,7 @@ pub enum Error {
 	StellarWalletError(#[from] WalletError),
 
 	#[error("Error returned when fetching remote info")]
-	HttpFetchingError,
+	HorizonResponseError,
 	#[error("Lookup Error")]
 	LookupError,
 	#[error("Stellar SDK Error")]
