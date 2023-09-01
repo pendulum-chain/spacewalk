@@ -386,16 +386,16 @@ pub async fn execute_open_requests(
 	//closure to filter replace_requests
 	let filter_replace_reqs = |(hash, request): (H256, SpacewalkReplaceRequest)| {
 		if request.status == ReplaceRequestStatus::Pending {
-			Request::from_replace_request(hash, request, payment_margin).ok()
+			true
 		} else {
-			None
+			false
 		}
 	};
 
 	// get all redeem and replace requests
 	let (open_redeems, open_replaces) = try_join!(
 		parachain_rpc.get_vault_redeem_requests::<Request>(vault_id.clone(), filter_redeem_reqs),
-		parachain_rpc.get_old_vault_replace_requests_filter::<Request>(vault_id.clone(), filter_replace_reqs),
+		parachain_rpc.get_old_vault_replace_requests(vault_id.clone(), filter_replace_reqs),
 	)?;
 
 	// collect all requests into a hashmap, indexed by their id
