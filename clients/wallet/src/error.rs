@@ -99,9 +99,9 @@ impl Error {
 #[derive(Error, PartialEq, Eq)]
 pub struct CacheError {
 	pub(crate) kind: CacheErrorKind,
-	path: Option<String>,
-	envelope: Option<TransactionEnvelope>,
-	sequence_number: Option<SequenceNumber>,
+	pub(crate) path: Option<String>,
+	pub(crate) envelope: Option<TransactionEnvelope>,
+	pub(crate) sequence_number: Option<SequenceNumber>,
 }
 impl Display for CacheError {
 	fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
