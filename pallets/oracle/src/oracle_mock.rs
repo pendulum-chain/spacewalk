@@ -24,13 +24,18 @@ pub struct Data {
 pub type UnsignedFixedPoint = FixedU128;
 type MapKey = u128;
 
+// A function to uniquely derive a key from blockchain and symbol
 fn derive_key(blockchain: Vec<u8>, symbol: Vec<u8>) -> MapKey {
 	// Set symbol and blockchain to 0 if it is not provided
 	let symbol = if symbol.is_empty() { vec![0u8; 32] } else { symbol };
 	let blockchain = if blockchain.is_empty() { vec![0u8; 32] } else { blockchain };
 
+	// Sum up the blockchain and symbol vectors
+	let blockchain_sum: u128 = blockchain.iter().fold(0u128, |acc, x| acc + (*x as u128));
+	let symbol_sum: u128 = symbol.iter().fold(0u128, |acc, x| acc + (*x as u128));
+
 	// Use bitshift operation to combine blockchain and symbol into a single u128 key
-	let key: u128 = (blockchain[0] as u128) << 64 | (symbol[0] as u128);
+	let key: u128 = (blockchain_sum) << 64 | symbol_sum;
 	key
 }
 
@@ -41,8 +46,8 @@ impl Convert<Key, Option<(Vec<u8>, Vec<u8>)>> for MockOracleKeyConvertor {
 		match spacewalk_oracle_key {
 			Key::ExchangeRate(currency_id) => match currency_id {
 				CurrencyId::XCM(token_symbol) => Some((vec![0u8], vec![token_symbol])),
-				CurrencyId::Native => Some((vec![2u8], vec![])),
-				CurrencyId::StellarNative => Some((vec![3u8], vec![])),
+				CurrencyId::Native => Some((vec![2u8], vec![0])),
+				CurrencyId::StellarNative => Some((vec![3u8], vec![0])),
 				CurrencyId::Stellar(Asset::AlphaNum4 { code, .. }) =>
 					Some((vec![4u8], code.to_vec())),
 				CurrencyId::Stellar(Asset::AlphaNum12 { code, .. }) =>
@@ -107,11 +112,6 @@ impl dia_oracle::DiaOracle for MockDiaOracle {
 		blockchain: Vec<u8>,
 		symbol: Vec<u8>,
 	) -> Result<dia_oracle::CoinInfo, sp_runtime::DispatchError> {
-		frame_support::log::error!(
-			"get_coin_info: blockchain: {:?}, symbol: {:?}",
-			blockchain.clone(),
-			symbol.clone()
-		);
 		let key = derive_key(blockchain, symbol);
 
 		let coins = COINS.read();
@@ -119,21 +119,10 @@ impl dia_oracle::DiaOracle for MockDiaOracle {
 		let Some(result) = coin_data else {
 			return Err(sp_runtime::DispatchError::Other(""));
 		};
-		frame_support::log::error!(
-			"get_coin_info: coin_data: {:?}, {:?}, {:?}",
-			result.key,
-			result.price,
-			result.timestamp
-		);
+
 		let mut coin_info = dia_oracle::CoinInfo::default();
 		coin_info.price = result.price;
 		coin_info.last_update_timestamp = result.timestamp;
-
-		frame_support::log::error!(
-			"get_coin_info: data_key: {:?}, coin_info: {:?}",
-			key,
-			coin_info
-		);
 
 		Ok(coin_info)
 	}
@@ -173,30 +162,14 @@ impl<AccountId, Moment: Into<u64>>
 		key: Key,
 		value: TimestampedValue<UnsignedFixedPoint, Moment>,
 	) -> DispatchResult {
-		let (blockchain, symbol) = MockOracleKeyConvertor::convert(key.clone()).unwrap();
+		let (blockchain, symbol) = MockOracleKeyConvertor::convert(key).unwrap();
 		let price = value.value.into_inner();
 
 		let key = derive_key(blockchain, symbol);
 		let data = Data { key, price, timestamp: value.timestamp.into().clone() };
 
-		frame_support::log::error!(
-			"feed_value: key: {:?}, data timestamp: {:?}, data price {:?}",
-			key,
-			data.timestamp,
-			data.price
-		);
-
 		let mut coins = COINS.write();
 		coins.insert(key, data);
-
-		// iterate over coins and log all values
-		for (key, value) in coins.iter() {
-			frame_support::log::error!(
-				"feed_value: coins: key: {:?}, value: {:?}",
-				key,
-				value.price
-			);
-		}
 
 		Ok(())
 	}
@@ -207,7 +180,6 @@ impl<AccountId, Moment: Into<u64>>
 	for MockDataCollector<AccountId, Moment>
 {
 	fn clear_all_values() -> DispatchResult {
-		frame_support::log::error!("clear_all_values");
 		let mut coins = COINS.write();
 		coins.clear();
 		Ok(())
