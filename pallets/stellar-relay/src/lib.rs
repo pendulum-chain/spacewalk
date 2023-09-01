@@ -49,8 +49,8 @@ pub mod pallet {
 		traits::FieldLength,
 		types::{OrganizationOf, ValidatorOf},
 		validation::{
-			check_targets, find_externalized_envelope, get_externalized_info, validate_envelopes,
-			validators_and_orgs,
+			check_for_valid_quorum_set, find_externalized_envelope, get_externalized_info,
+			validate_envelopes, validators_and_orgs,
 		},
 	};
 
@@ -582,7 +582,7 @@ pub mod pallet {
 			)?;
 
 			// ---- Check that externalized messages build valid quorum set ----
-			check_targets(envelopes, validators, organizations.len())
+			check_for_valid_quorum_set(envelopes, validators, organizations.len())
 		}
 
 		pub(crate) fn get_tx_set_hash(scp_value: &Value) -> Result<Hash, Error<T>> {

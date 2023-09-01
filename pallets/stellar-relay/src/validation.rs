@@ -37,8 +37,7 @@ fn validator_count_per_org<T: Config>(
 fn targeted_organization_map<T: Config>(
 	envelopes: &UnlimitedVarArray<ScpEnvelope>,
 	validators: &BoundedVec<ValidatorOf<T>, T::ValidatorLimit>,
-	orgs_length: usize,
-) -> Result<BTreeMap<T::OrganizationId, u32>, Error<T>> {
+) -> BTreeMap<T::OrganizationId, u32> {
 	// Find the validators that are targeted by the SCP messages
 	let targeted_validators = validators
 		.iter()
@@ -61,19 +60,7 @@ fn targeted_organization_map<T: Config>(
 			.or_insert(1);
 	}
 
-	// Count the number of distinct organizations that are targeted by the SCP messages
-	let targeted_organization_count = targeted_organization_map.len();
-
-	// Check that the distinct organizations occurring in the validator structs related to
-	// the externalized messages are more than 2/3 of the total amount of organizations in
-	// the tier 1 validator set.
-	// Use multiplication to avoid floating point numbers.
-	ensure!(
-		targeted_organization_count * 3 > orgs_length * 2,
-		Error::<T>::InvalidQuorumSetNotEnoughOrganizations
-	);
-
-	Ok(targeted_organization_map)
+	targeted_organization_map
 }
 
 /// Returns a tuple of Externalized Value and Externalized n_h
@@ -102,14 +89,26 @@ fn get_node_id<T: Config>(
 	Ok(node_id)
 }
 
-pub fn check_targets<T: Config>(
+pub fn check_for_valid_quorum_set<T: Config>(
 	envelopes: &UnlimitedVarArray<ScpEnvelope>,
 	validators: BoundedVec<ValidatorOf<T>, T::ValidatorLimit>,
 	orgs_length: usize,
 ) -> Result<(), Error<T>> {
 	let validator_count_per_organization_map = validator_count_per_org::<T>(&validators);
 
-	let targeted_organization_map = targeted_organization_map(envelopes, &validators, orgs_length)?;
+	let targeted_organization_map = targeted_organization_map::<T>(envelopes, &validators);
+
+	// Count the number of distinct organizations that are targeted by the SCP messages
+	let targeted_organization_count = targeted_organization_map.len();
+
+	// Check that the distinct organizations occurring in the validator structs related to
+	// the externalized messages are more than 2/3 of the total amount of organizations in
+	// the tier 1 validator set.
+	// Use multiplication to avoid floating point numbers.
+	ensure!(
+		targeted_organization_count * 3 > orgs_length * 2,
+		Error::<T>::InvalidQuorumSetNotEnoughOrganizations
+	);
 
 	for (organization_id, count) in targeted_organization_map.iter() {
 		let total: &u32 = validator_count_per_organization_map
