@@ -1202,6 +1202,8 @@ impl RedeemPallet for SpacewalkParachain {
 	}
 }
 
+type CustomFilter = Box<dyn Fn((H256, SpacewalkReplaceRequest)) -> bool + Send>;
+
 #[async_trait]
 pub trait ReplacePallet {
 	/// Request the replacement of a new vault ownership
@@ -1270,7 +1272,7 @@ pub trait ReplacePallet {
 	async fn get_old_vault_replace_requests(
 		&self,
 		account_id: AccountId,
-		filter: impl Fn((H256, SpacewalkReplaceRequest)) -> bool + Send,
+		filter: CustomFilter,
 	) -> Result<Vec<(H256, SpacewalkReplaceRequest)>, Error>;
 
 	/// Get the time difference in number of blocks between when a replace
@@ -1367,7 +1369,7 @@ impl ReplacePallet for SpacewalkParachain {
 	async fn get_old_vault_replace_requests(
 		&self,
 		account_id: AccountId,
-		filter: impl Fn((H256, SpacewalkReplaceRequest)) -> bool + Send,
+		filter: CustomFilter,
 	) -> Result<Vec<(H256, SpacewalkReplaceRequest)>, Error> {
 		let head = self.get_finalized_block_hash().await?;
 		let result: Vec<H256> = self
