@@ -117,17 +117,14 @@ impl VaultIdManager {
 			.get_vaults_by_account_id(self.spacewalk_parachain.get_account_id())
 			.await?
 		{
-			match is_vault_registered(&self.spacewalk_parachain, &vault_id).await {
-				Err(Error::RuntimeError(RuntimeError::VaultLiquidated)) => {
-					tracing::error!(
-						"[{}] Vault is liquidated -- not going to process events for this vault.",
-						vault_id.pretty_print()
-					);
-				},
-				Ok(_) => {
-					self.add_vault_id(vault_id.clone()).await?;
-				},
-				Err(x) => return Err(x),
+			// check if vault is registered
+			match self.spacewalk_parachain.get_vault(&vault_id).await {
+				Ok(_) => self.add_vault_id(vault_id.clone()).await?,
+				Err(RuntimeError::VaultLiquidated) => tracing::error!(
+					"[{}] Vault is liquidated -- not going to process events for this vault.",
+					vault_id.pretty_print()
+				),
+				Err(e) => return Err(e.into()),
 			}
 		}
 		Ok(())
@@ -821,6 +818,51 @@ impl VaultService {
 		Ok(())
 	}
 
+	async fn register_vault_with_collateral(
+		&self,
+		vault_id: VaultId,
+		collateral_amount: &Option<u128>,
+	) -> Result<(), Error> {
+		if let Some(collateral) = collateral_amount {
+			tracing::info!("[{}] Automatically registering...", vault_id.pretty_print());
+			let free_balance = self
+				.spacewalk_parachain
+				.get_free_balance(vault_id.collateral_currency())
+				.await?;
+			return self
+				.spacewalk_parachain
+				.register_vault(
+					&vault_id,
+					if collateral.gt(&free_balance) {
+						tracing::warn!(
+							"Cannot register with {}, using the available free balance: {}",
+							collateral,
+							free_balance
+						);
+						free_balance
+					} else {
+						*collateral
+					},
+				)
+				.await
+				.map_err(|e| Error::RuntimeError(e))
+		}
+
+		if let Some(_faucet_url) = &self.config.faucet_url {
+			tracing::info!("[{}] Automatically registering...", vault_id.pretty_print());
+			// TODO
+			// faucet::fund_and_register(&self.spacewalk_parachain, faucet_url, &vault_id)
+			// 	.await?;
+			Ok(())
+		} else {
+			tracing::error!(
+				"[{}] Cannot register a vault: no collateral and no faucet url",
+				vault_id.pretty_print()
+			);
+			Err(Error::FaucetUrlNotSet)
+		}
+	}
+
 	async fn register_vault_if_not_present(
 		&self,
 		collateral_currency: &CurrencyId,
@@ -829,47 +871,21 @@ impl VaultService {
 	) -> Result<(), Error> {
 		let vault_id = self.get_vault_id(*collateral_currency, *wrapped_currency);
 
-		match is_vault_registered(&self.spacewalk_parachain, &vault_id).await {
-			Err(Error::RuntimeError(RuntimeError::VaultLiquidated)) | Ok(true) => {
+		// check if a vault is registered
+		match self.spacewalk_parachain.get_vault(&vault_id).await {
+			Ok(_) | Err(RuntimeError::VaultLiquidated) => {
 				tracing::info!(
 					"[{}] Not registering vault -- already registered",
 					vault_id.pretty_print()
 				);
+				Ok(())
 			},
-			Ok(false) => {
+			Err(RuntimeError::VaultNotFound) => {
 				tracing::info!("[{}] Not registered", vault_id.pretty_print());
-				if let Some(collateral) = maybe_collateral_amount {
-					tracing::info!("[{}] Automatically registering...", vault_id.pretty_print());
-					let free_balance = self
-						.spacewalk_parachain
-						.get_free_balance(vault_id.collateral_currency())
-						.await?;
-					self.spacewalk_parachain
-						.register_vault(
-							&vault_id,
-							if collateral.gt(&free_balance) {
-								tracing::warn!(
-									"Cannot register with {}, using the available free balance: {}",
-									collateral,
-									free_balance
-								);
-								free_balance
-							} else {
-								*collateral
-							},
-						)
-						.await?;
-				} else if let Some(_faucet_url) = &self.config.faucet_url {
-					tracing::info!("[{}] Automatically registering...", vault_id.pretty_print());
-					// TODO
-					// faucet::fund_and_register(&self.spacewalk_parachain, faucet_url, &vault_id)
-					// 	.await?;
-				}
+				self.register_vault_with_collateral(vault_id, maybe_collateral_amount).await
 			},
-			Err(x) => return Err(x),
+			Err(e) => Err(Error::RuntimeError(e)),
 		}
-
-		Ok(())
 	}
 
 	async fn await_parachain_block(&self) -> Result<u32, Error> {
@@ -881,16 +897,5 @@ impl VaultService {
 		}
 		tracing::info!("Got new block at height {startup_height}");
 		Ok(startup_height)
-	}
-}
-
-pub(crate) async fn is_vault_registered(
-	parachain_rpc: &SpacewalkParachain,
-	vault_id: &VaultId,
-) -> Result<bool, Error> {
-	match parachain_rpc.get_vault(vault_id).await {
-		Ok(_) => Ok(true),
-		Err(RuntimeError::VaultNotFound) => Ok(false),
-		Err(err) => Err(err.into()),
 	}
 }
