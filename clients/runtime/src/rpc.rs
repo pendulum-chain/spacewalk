@@ -1417,25 +1417,11 @@ impl SpacewalkParachain {
 		account_id: AccountId,
 		filter: impl Fn((H256, SpacewalkReplaceRequest)) -> Option<T> + std::marker::Send
 	) -> Result<Vec<T>, Error> {
-		let head = self.get_finalized_block_hash().await?;
-		let result: Vec<H256> = self
-			.api
-			.rpc()
-			.request("replace_getOldVaultReplaceRequests", rpc_params![account_id, head])
-			.await?;
-
-		let replace_requests: Result<Vec<(H256, SpacewalkReplaceRequest)>, Error> = join_all(
-			result.into_iter().map(|key| async move {
-				self.get_replace_request(key).await.map(|value| (key, value))
-			})
-		)
-		.await
-		.into_iter()
-		.collect();
-
-		match replace_requests {
-			Ok(replace_requests) => {
-				let filtered_results: Vec<_> = replace_requests
+		
+		let replace_requests_unfiltered = self.get_old_vault_replace_requests(account_id).await;
+		match replace_requests_unfiltered {
+			Ok(replace_requests_unfiltered) => {
+				let filtered_results: Vec<_> = replace_requests_unfiltered
 					.into_iter()
 					.filter_map(|item| filter(item.clone()))
 					.collect();
