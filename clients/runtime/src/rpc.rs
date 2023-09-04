@@ -871,7 +871,7 @@ impl OraclePallet for SpacewalkParachain {
 	/// * `value` - the current exchange rate
 	async fn feed_values(&self, values: Vec<((Vec<u8>, Vec<u8>), FixedU128)>) -> Result<(), Error> {
 		if values.is_empty() {
-			return Err(Error::FeedingEmptyExchangeRate);
+			return Err(Error::FeedingEmptyList);
 		}
 
 		use crate::metadata::runtime_types::dia_oracle::dia::CoinInfo;
