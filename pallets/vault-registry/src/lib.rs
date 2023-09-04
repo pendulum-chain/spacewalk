@@ -911,7 +911,6 @@ impl<T: Config> Pallet<T> {
 		vault_id: &DefaultVaultId<T>,
 		amount: &Amount<T>,
 	) -> DispatchResult {
-
 		// ensure the vault is active
 		let _vault = Self::get_active_rich_vault_from_id(vault_id)?;
 
