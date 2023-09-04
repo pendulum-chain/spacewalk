@@ -6,6 +6,7 @@ use crate::{
 		responses::{HorizonClaimableBalanceResponse, TransactionResponse},
 		traits::HorizonClient,
 	},
+	test_helper::secret_key_from_encoding,
 };
 use mockall::predicate::*;
 use primitives::stellar::{
@@ -88,7 +89,7 @@ async fn build_simple_transaction(
 async fn horizon_submit_transaction_success() {
 	let horizon_client = reqwest::Client::new();
 
-	let source = SecretKey::from_encoding(SECRET).unwrap();
+	let source = secret_key_from_encoding(SECRET);
 	// The destination is the same account as the source
 	let destination = source.get_public().clone();
 	let amount = 100;
@@ -169,7 +170,7 @@ async fn horizon_get_transaction_success() {
 #[tokio::test(flavor = "multi_thread")]
 async fn fetch_transactions_iter_success() {
 	let horizon_client = reqwest::Client::new();
-	let secret = SecretKey::from_encoding(SECRET).unwrap();
+	let secret = secret_key_from_encoding(SECRET);
 	let fetcher = HorizonFetcher::new(horizon_client, secret.get_public().clone(), false);
 
 	let mut txs_iter = fetcher.fetch_transactions_iter(0).await.expect("should return a response");
@@ -194,7 +195,7 @@ async fn fetch_horizon_and_process_new_transactions_success() {
 	let slot_env_map = Arc::new(RwLock::new(HashMap::new()));
 
 	let horizon_client = reqwest::Client::new();
-	let secret = SecretKey::from_encoding(SECRET).unwrap();
+	let secret = secret_key_from_encoding(SECRET);
 	let mut fetcher = HorizonFetcher::new(horizon_client, secret.get_public().clone(), false);
 
 	assert!(slot_env_map.read().await.is_empty());
