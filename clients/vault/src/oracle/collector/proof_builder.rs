@@ -115,7 +115,6 @@ impl ScpMessageCollector {
 		slot: Slot,
 		sender: &StellarMessageSender,
 	) -> Option<UnlimitedVarArray<ScpEnvelope>> {
-		let empty = UnlimitedVarArray::new_empty();
 
 		if let Some(envelopes) = self.envelopes_map().get(&slot) {
 			// lacking envelopes
@@ -124,7 +123,7 @@ impl ScpMessageCollector {
 					"Proof Building for slot {slot}: not enough envelopes to build proof "
 				);
 			} else {
-				return Some(UnlimitedVarArray::new(envelopes.clone()).unwrap_or(empty))
+				return UnlimitedVarArray::new(envelopes.clone()).ok()
 			}
 		}
 
