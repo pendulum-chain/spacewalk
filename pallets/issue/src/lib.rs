@@ -28,7 +28,7 @@ use currency::Amount;
 pub use default_weights::{SubstrateWeight, WeightInfo};
 pub use pallet::*;
 use types::IssueRequestExt;
-use vault_registry::{CurrencySource};
+use vault_registry::{CurrencySource, VaultStatus};
 
 use crate::types::{BalanceOf, CurrencyId, DefaultVaultId};
 #[doc(inline)]
@@ -388,7 +388,9 @@ impl<T: Config> Pallet<T> {
 		Self::check_volume(amount_requested.clone())?;
 
 		// ensure that the vault is accepting new issues (vault is active)
-		let _vault = ext::vault_registry::get_active_vault_from_id::<T>(&vault_id).map_err(|_| Error::<T>::VaultNotAcceptingNewIssues)?;
+		let vault = ext::vault_registry::get_active_vault_from_id::<T>(&vault_id)?;
+
+		ensure!(vault.status == VaultStatus::Active(true), Error::<T>::VaultNotAcceptingNewIssues);
 
 		// Check that the vault is currently not banned
 		ext::vault_registry::ensure_not_banned::<T>(&vault_id)?;
