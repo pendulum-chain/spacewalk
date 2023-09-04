@@ -849,9 +849,13 @@ impl TransactionEnvelopeExt for TransactionEnvelope {
 		let tx_operations: Vec<Operation> = match self {
 			TransactionEnvelope::EnvelopeTypeTxV0(env) => env.tx.operations.get_vec().clone(),
 			TransactionEnvelope::EnvelopeTypeTx(env) => env.tx.operations.get_vec().clone(),
-			TransactionEnvelope::EnvelopeTypeTxFeeBump(_) => return BalanceConversion::unlookup(transferred_amount),
-			TransactionEnvelope::Default(_) => return BalanceConversion::unlookup(transferred_amount),
+			TransactionEnvelope::EnvelopeTypeTxFeeBump(_) => Vec::new(),
+			TransactionEnvelope::Default(_) => Vec::new(),
 		};
+
+		if tx_operations.len() == 0 {
+			return BalanceConversion::unlookup(transferred_amount);
+		}
 
 		transferred_amount = tx_operations
 			.iter()
