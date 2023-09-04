@@ -214,7 +214,7 @@ impl StellarWallet {
 	) -> Vec<oneshot::Receiver<Result<TransactionResponse, Error>>> {
 		let _ = self.transaction_submission_lock.lock().await;
 
-		// Iterates over all errors and creates channels that are used to send errors back to the
+		// Iterates over all errors and creates channels to send errors back to the
 		// caller of this function.
 		let mut error_receivers = vec![];
 
@@ -403,7 +403,7 @@ mod test {
 				CreateAccountResult, CreateClaimableBalanceResult, OperationResult,
 				OperationResultTr, SequenceNumber,
 			},
-			Asset as StellarAsset, PublicKey, SecretKey, TransactionEnvelope, XdrCodec,
+			Asset as StellarAsset, PublicKey, TransactionEnvelope, XdrCodec,
 		},
 		StellarStroops, TransactionEnvelopeExt,
 	};
@@ -411,7 +411,10 @@ mod test {
 	use std::sync::Arc;
 	use tokio::sync::RwLock;
 
-	use crate::{test_helper::default_usdc_asset, StellarWallet};
+	use crate::{
+		test_helper::{default_usdc_asset, public_key_from_encoding, secret_key_from_encoding},
+		StellarWallet,
+	};
 
 	const DEFAULT_DEST_PUBLIC_KEY: &str =
 		"GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN";
@@ -495,7 +498,7 @@ mod test {
 	}
 
 	fn default_destination() -> PublicKey {
-		PublicKey::from_encoding(DEFAULT_DEST_PUBLIC_KEY).expect("Should return a public key")
+		public_key_from_encoding(DEFAULT_DEST_PUBLIC_KEY)
 	}
 
 	#[test]
@@ -665,9 +668,7 @@ mod test {
 	#[serial]
 	async fn sending_payment_using_create_account_works() {
 		let inactive_secret_key = "SARVWH4LUAR3K5URYJY7DQLXURZUPEBNJYYPMZDRAZWNCQGYIKHPYXC7";
-		let destination_secret_key =
-			SecretKey::from_encoding(inactive_secret_key).expect("should return a secret key");
-
+		let destination_secret_key = secret_key_from_encoding(inactive_secret_key);
 		let storage_path = "resources/sending_payment_using_claimable_balance_works";
 
 		let wallet = wallet_with_storage(storage_path);
@@ -711,8 +712,7 @@ mod test {
 				let mut temp_wallet = temp_wallet.write().await;
 
 				// returning back stellar stroops to `wallet`
-				let secret_key = SecretKey::from_encoding(STELLAR_VAULT_SECRET_KEY)
-					.expect("should return alright");
+				let secret_key = secret_key_from_encoding(STELLAR_VAULT_SECRET_KEY);
 
 				// merging the `temp_wallet` to `wallet`
 				let _ = temp_wallet
@@ -762,7 +762,6 @@ mod test {
 		wallet.read().await.cache.remove_dir();
 	}
 
-	#[cfg(all(test, not(feature = "testing-utils")))]
 	#[tokio::test]
 	#[serial]
 	async fn sending_payment_to_self_not_valid() {
@@ -792,6 +791,8 @@ mod test {
 				panic!("failed to return SelfPaymentError: {other:?}");
 			},
 		}
+
+		wallet.cache.remove_dir();
 	}
 
 	#[tokio::test]
