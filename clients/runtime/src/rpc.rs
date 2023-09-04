@@ -1179,24 +1179,29 @@ impl RedeemPallet for SpacewalkParachain {
 				.request("redeem_getVaultRedeemRequests", rpc_params![account_id, head])
 				.await?;
 		
-			let redeem_requests: Result<Vec<(H256, SpacewalkRedeemRequest)>, Error> = join_all(
+			let redeem_requests = join_all(
 				result.into_iter().map(|key| async move {
 					self.get_redeem_request(key).await.map(|value| (key, value))
 				})
 			)
-			.await
-			.into_iter()
-			.collect();
-		
-			match redeem_requests {
-				Ok(redeem_requests) => {
-					let filtered_results: Vec<_> = redeem_requests
-						.into_iter()
-						.filter_map(|item| filter(item))
-						.collect();
-					Ok(filtered_results)
-				}
-				Err(e) => Err(e),
+			.await;
+
+			let mut some_error: Option<Error> = None;
+			let filtered_results: Vec<_> = redeem_requests
+				.into_iter()
+				.filter_map(|item_maybe| 
+					match item_maybe {
+						Ok(item) => filter(item),
+						Err(e) => {
+							some_error.get_or_insert(e);
+							None
+						},
+					}
+				)
+				.collect();
+			match some_error {
+				Some(err) => Err(err),
+				None => Ok(filtered_results),
 			}
 		}
 
@@ -1382,21 +1387,29 @@ impl ReplacePallet for SpacewalkParachain {
 			.request("replace_getOldVaultReplaceRequests", rpc_params![account_id, head])
 			.await?;
 		
-		let redeem_requests: Result<Vec<(H256, SpacewalkReplaceRequest)>, Error> =
+		let replace_requests =
 			join_all(result.into_iter().map(|key| async move {
 				self.get_replace_request(key).await.map(|value| (key, value))
 			}))
-			.await
+			.await;
+
+		let mut some_error: Option<Error> = None;
+		let filtered_results: Vec<_> = replace_requests
 			.into_iter()
+			.filter_map(|item_maybe| 
+				match item_maybe {
+					Ok(item) => filter(item),
+					Err(e) => {
+						some_error.get_or_insert(e);
+						None
+					},
+				}
+			)
 			.collect();
 
-		match redeem_requests {
-			Ok(redeem_requests) => {
-				let filtered_results: Vec<_> =
-					redeem_requests.into_iter().filter_map(|item| filter(item)).collect();
-					Ok(filtered_results)
-				},
-			Err(e) => Err(e),
+		match some_error {
+			Some(err) => Err(err),
+			None => Ok(filtered_results),
 		}
 			
 	}
