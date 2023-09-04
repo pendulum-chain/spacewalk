@@ -22,8 +22,8 @@ use prometheus::Error as PrometheusError;
 pub enum Error {
 	#[error("Could not get exchange rate info")]
 	ExchangeRateInfo,
-	#[error("Exchange Rate list is empty")]
-	FeedingEmptyExchangeRate,
+	#[error("The list is empty. At least one element is required.")]
+	FeedingEmptyList,
 	#[error("Could not get issue id")]
 	RequestIssueIDNotFound,
 	#[error("Could not get redeem id")]

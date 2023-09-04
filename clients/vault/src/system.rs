@@ -846,9 +846,7 @@ impl VaultService {
 				)
 				.await
 				.map_err(|e| Error::RuntimeError(e))
-		}
-
-		if let Some(_faucet_url) = &self.config.faucet_url {
+		} else if let Some(_faucet_url) = &self.config.faucet_url {
 			tracing::info!("[{}] Automatically registering...", vault_id.pretty_print());
 			// TODO
 			// faucet::fund_and_register(&self.spacewalk_parachain, faucet_url, &vault_id)

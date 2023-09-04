@@ -298,7 +298,6 @@ where
 		HorizonFetcher::new(horizon_client, vault_account_public_key, is_public_network);
 
 	let mut last_cursor = 0;
-	tracing::info!("CARLA CARLA CARLA listen_for_new_transactions");
 
 	loop {
 		last_cursor = fetcher
