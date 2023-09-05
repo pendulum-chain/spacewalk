@@ -1,6 +1,6 @@
 use crate::types::StatusCode;
 use primitives::stellar::{types::SequenceNumber, TransactionEnvelope};
-use reqwest::Error as FetchError;
+use reqwest::Error as ReqwestError;
 use std::fmt::{Debug, Display, Formatter};
 use thiserror::Error;
 
@@ -9,7 +9,7 @@ pub enum Error {
 	#[error("Invalid secret key")]
 	InvalidSecretKey,
 	#[error("Error fetching horizon data: {0}")]
-	HttpFetchingError(#[from] FetchError),
+	HorizonResponseError(#[from] ReqwestError),
 	#[error("Could not build transaction: {0}")]
 	BuildTransactionError(String),
 	#[error("Transaction submission failed. Title: {title}, Status: {status}, Reason: {reason}, Envelope XDR: {envelope_xdr:?}")]
@@ -36,7 +36,7 @@ pub enum Error {
 impl Error {
 	pub fn is_recoverable(&self) -> bool {
 		match self {
-			Error::HttpFetchingError(e) if e.is_timeout() => true,
+			Error::HorizonResponseError(e) if e.is_timeout() => true,
 			Error::HorizonSubmissionError { title: _, status, reason: _, envelope_xdr: _ }
 				if *status == 504 =>
 				true,
@@ -56,7 +56,7 @@ impl Error {
 		let server_errors = 500u16..599;
 
 		match self {
-			Error::HttpFetchingError(e) =>
+			Error::HorizonResponseError(e) =>
 				e.status().map(|code| server_errors.contains(&code.as_u16())).unwrap_or(false),
 			Error::HorizonSubmissionError { title: _, status, reason: _, envelope_xdr: _ } =>
 				server_errors.contains(status),
