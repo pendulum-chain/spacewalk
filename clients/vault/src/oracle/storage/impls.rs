@@ -55,11 +55,12 @@ impl FileHandlerExt<EnvelopesMap> for EnvelopesFileHandler {
 		let len = data.len();
 
 		for (idx, (key, value)) in data.iter().enumerate() {
+			// writes the first slot as the beginning of the filename
 			if idx == 0 {
 				let _ = write!(filename, "{}_", key);
 			}
-
-			if idx == (len - 1) {
+			// writes the last slot as the ending of the filename
+			else if idx == (len - 1) {
 				let _ = write!(filename, "{}", key);
 			}
 
@@ -106,11 +107,12 @@ impl FileHandlerExt<TxSetMap> for TxSetsFileHandler {
 		let len = data.len();
 
 		for (idx, (key, set)) in data.iter().enumerate() {
+			// writes the first slot as the beginning of the filename
 			if idx == 0 {
 				let _ = write!(filename, "{}_", key);
 			}
-
-			if idx == (len - 1) {
+			// writes the last slot as the ending of the filename
+			else if idx == (len - 1) {
 				let _ = write!(filename, "{}", key);
 			}
 
@@ -220,7 +222,6 @@ mod test {
 		{
 			let slot = 578490;
 			let expected_name = format!("{}_{}", slot - *M_SLOTS_FILE, slot);
-
 			let file_name =
 				EnvelopesFileHandler::find_file_by_slot(slot).expect("should return a file");
 			assert_eq!(&file_name, &expected_name);
@@ -360,6 +361,7 @@ mod test {
 			let mut path = PathBuf::new();
 			path.push("./resources/test/tx_sets_for_testing");
 			path.push(&format!("{}_{}", first_slot, last_slot));
+			println!("find file: {:?}", path);
 
 			let mut file = File::open(path).expect("file should exist");
 			let mut bytes: Vec<u8> = vec![];

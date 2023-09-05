@@ -1169,7 +1169,7 @@ fn test_request_redeem_fails_limits() {
 
 		assert_err!(
 			Redeem::request_redeem(RuntimeOrigin::signed(redeemer), amount, stellar_address, VAULT),
-			TestError::ExceedLimitVolumeForIssueRequest
+			TestError::ExceedLimitVolumeForRedeemRequest
 		);
 	})
 }
@@ -1432,7 +1432,7 @@ fn test_execute_redeem_fails_when_exceeds_rate_limit() {
 		let stellar_address = RANDOM_STELLAR_PUBLIC_KEY;
 		assert_err!(
 			Redeem::request_redeem(RuntimeOrigin::signed(redeemer), amount, stellar_address, VAULT),
-			TestError::ExceedLimitVolumeForIssueRequest
+			TestError::ExceedLimitVolumeForRedeemRequest
 		);
 	})
 }
@@ -1535,7 +1535,7 @@ fn test_execute_redeem_after_rate_limit_interval_reset_succeeds() {
 		let stellar_address = RANDOM_STELLAR_PUBLIC_KEY;
 		assert_err!(
 			Redeem::request_redeem(RuntimeOrigin::signed(redeemer), amount, stellar_address, VAULT),
-			TestError::ExceedLimitVolumeForIssueRequest
+			TestError::ExceedLimitVolumeForRedeemRequest
 		);
 
 		System::set_block_number(7200 + 20);
