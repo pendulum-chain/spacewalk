@@ -469,7 +469,7 @@ pub async fn poll_metrics<
 	loop {
 		publish_native_currency_balance(parachain_rpc).await?;
 		publish_issue_count(parachain_rpc, vault_id_manager).await;
-		
+
 		let pass_all_filter = |item: (H256, SpacewalkRedeemRequest)| Some(item);
 
 		if let Ok(redeems) = parachain_rpc

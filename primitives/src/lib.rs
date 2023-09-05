@@ -594,7 +594,7 @@ impl TryFrom<(&str, AssetIssuer)> for CurrencyId {
 			let mut code: Bytes4 = [0; 4];
 			code[..slice.len()].copy_from_slice(slice.as_bytes());
 			return Ok(CurrencyId::AlphaNum4(code, issuer))
-		} else if  slice.len() <= 12 {
+		} else if slice.len() <= 12 {
 			let mut code: Bytes12 = [0; 12];
 			code[..slice.len()].copy_from_slice(slice.as_bytes());
 			return Ok(CurrencyId::AlphaNum12(code, issuer))
@@ -854,41 +854,39 @@ impl TransactionEnvelopeExt for TransactionEnvelope {
 		};
 
 		if tx_operations.len() == 0 {
-			return BalanceConversion::unlookup(transferred_amount);
+			return BalanceConversion::unlookup(transferred_amount)
 		}
 
-		transferred_amount = tx_operations
-			.iter()
-			.fold(0i64, |acc, x| {
-				match &x.body {
-					OperationBody::Payment(payment) => {
-						if payment.destination.eq(&recipient_account_muxed) && payment.asset == asset {
+		transferred_amount = tx_operations.iter().fold(0i64, |acc, x| {
+			match &x.body {
+				OperationBody::Payment(payment) => {
+					if payment.destination.eq(&recipient_account_muxed) && payment.asset == asset {
+						acc.saturating_add(payment.amount)
+					} else {
+						acc
+					}
+				},
+				OperationBody::CreateClaimableBalance(payment) => {
+					// for security reasons, we only count operations that have the
+					// recipient as a single claimer and unconditional claim predicate
+					if payment.claimants.len() == 1 {
+						let Claimant::ClaimantTypeV0(claimant) = &payment.claimants.get_vec()[0];
+
+						if claimant.destination.eq(&recipient_account_pk) &&
+							payment.asset == asset && claimant.predicate ==
+							ClaimPredicate::ClaimPredicateUnconditional
+						{
 							acc.saturating_add(payment.amount)
 						} else {
 							acc
 						}
-					},
-					OperationBody::CreateClaimableBalance(payment) => {
-						// for security reasons, we only count operations that have the
-						// recipient as a single claimer and unconditional claim predicate
-						if payment.claimants.len() == 1 {
-							let Claimant::ClaimantTypeV0(claimant) = &payment.claimants.get_vec()[0];
-
-							if claimant.destination.eq(&recipient_account_pk) &&
-								payment.asset == asset && claimant.predicate ==
-								ClaimPredicate::ClaimPredicateUnconditional
-							{
-								acc.saturating_add(payment.amount)
-							} else {
-								acc
-							}
-						} else {
-							acc
-						}
-					},
-					_ => acc,  // ignore other operations
-				}
-			});
+					} else {
+						acc
+					}
+				},
+				_ => acc, // ignore other operations
+			}
+		});
 
 		// `transferred_amount` is in stroops, so we need to convert it
 		BalanceConversion::unlookup(transferred_amount)

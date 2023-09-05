@@ -247,7 +247,6 @@ mod tests {
 		}};
 	}
 
-
 	mockall::mock! {
 		Provider {}
 

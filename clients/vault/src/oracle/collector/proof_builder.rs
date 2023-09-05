@@ -115,7 +115,6 @@ impl ScpMessageCollector {
 		slot: Slot,
 		sender: &StellarMessageSender,
 	) -> Option<UnlimitedVarArray<ScpEnvelope>> {
-
 		if let Some(envelopes) = self.envelopes_map().get(&slot) {
 			// lacking envelopes
 			if envelopes.len() < get_min_externalized_messages(self.is_public()) {
@@ -185,7 +184,7 @@ impl ScpMessageCollector {
 			return Some(Proof { slot, envelopes, tx_set })
 		} else {
 			tracing::debug!("Couldn't build proof for slot {slot} due to missing envelopes");
-			return None;
+			return None
 		}
 	}
 

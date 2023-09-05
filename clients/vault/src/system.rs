@@ -402,7 +402,7 @@ impl VaultService {
 
 		let startup_height = self.await_parachain_block().await?;
 		let account_id = self.spacewalk_parachain.get_account_id().clone();
-		
+
 		let mut amount_is_none: bool = false;
 		let parsed_auto_register = self
 			.config
@@ -425,7 +425,7 @@ impl VaultService {
 
 		// exit if auto-register uses faucet and faucet url not set
 		if amount_is_none && self.config.faucet_url.is_none() {
-			return Err(ServiceError::Abort(Error::FaucetUrlNotSet));
+			return Err(ServiceError::Abort(Error::FaucetUrlNotSet))
 		}
 
 		// Subscribe to an event (any event will do) so that a period of inactivity does not close

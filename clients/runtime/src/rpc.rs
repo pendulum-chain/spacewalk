@@ -1118,7 +1118,6 @@ pub trait RedeemPallet {
 	async fn get_redeem_period(&self) -> Result<BlockNumber, Error>;
 }
 
-
 #[async_trait]
 impl RedeemPallet for SpacewalkParachain {
 	async fn request_redeem(
@@ -1172,46 +1171,40 @@ impl RedeemPallet for SpacewalkParachain {
 		account_id: AccountId,
 		filter: Box<dyn Fn((H256, SpacewalkRedeemRequest)) -> Option<T> + Send>,
 	) -> Result<Vec<T>, Error> {
-			let head = self.get_finalized_block_hash().await?;
-			let result: Vec<H256> = self
-				.api
-				.rpc()
-				.request("redeem_getVaultRedeemRequests", rpc_params![account_id, head])
-				.await?;
-		
-			let redeem_requests = join_all(
-				result.into_iter().map(|key| async move {
-					self.get_redeem_request(key).await.map(|value| (key, value))
-				})
-			)
-			.await;
+		let head = self.get_finalized_block_hash().await?;
+		let result: Vec<H256> = self
+			.api
+			.rpc()
+			.request("redeem_getVaultRedeemRequests", rpc_params![account_id, head])
+			.await?;
 
-			let mut some_error: Option<Error> = None;
-			let filtered_results: Vec<_> = redeem_requests
-				.into_iter()
-				.filter_map(|item_maybe| 
-					match item_maybe {
-						Ok(item) => filter(item),
-						Err(e) => {
-							some_error.get_or_insert(e);
-							None
-						},
-					}
-				)
-				.collect();
-			match some_error {
-				Some(err) => Err(err),
-				None => Ok(filtered_results),
-			}
+		let redeem_requests = join_all(result.into_iter().map(|key| async move {
+			self.get_redeem_request(key).await.map(|value| (key, value))
+		}))
+		.await;
+
+		let mut some_error: Option<Error> = None;
+		let filtered_results: Vec<_> = redeem_requests
+			.into_iter()
+			.filter_map(|item_maybe| match item_maybe {
+				Ok(item) => filter(item),
+				Err(e) => {
+					some_error.get_or_insert(e);
+					None
+				},
+			})
+			.collect();
+		match some_error {
+			Some(err) => Err(err),
+			None => Ok(filtered_results),
 		}
+	}
 
 	async fn get_redeem_period(&self) -> Result<BlockNumber, Error> {
 		self.query_finalized_or_error(metadata::storage().redeem().redeem_period())
 			.await
 	}
 }
-
-
 
 #[async_trait]
 pub trait ReplacePallet {
@@ -1386,32 +1379,28 @@ impl ReplacePallet for SpacewalkParachain {
 			.rpc()
 			.request("replace_getOldVaultReplaceRequests", rpc_params![account_id, head])
 			.await?;
-		
-		let replace_requests =
-			join_all(result.into_iter().map(|key| async move {
-				self.get_replace_request(key).await.map(|value| (key, value))
-			}))
-			.await;
+
+		let replace_requests = join_all(result.into_iter().map(|key| async move {
+			self.get_replace_request(key).await.map(|value| (key, value))
+		}))
+		.await;
 
 		let mut some_error: Option<Error> = None;
 		let filtered_results: Vec<_> = replace_requests
 			.into_iter()
-			.filter_map(|item_maybe| 
-				match item_maybe {
-					Ok(item) => filter(item),
-					Err(e) => {
-						some_error.get_or_insert(e);
-						None
-					},
-				}
-			)
+			.filter_map(|item_maybe| match item_maybe {
+				Ok(item) => filter(item),
+				Err(e) => {
+					some_error.get_or_insert(e);
+					None
+				},
+			})
 			.collect();
 
 		match some_error {
 			Some(err) => Err(err),
 			None => Ok(filtered_results),
 		}
-			
 	}
 
 	async fn get_replace_period(&self) -> Result<u32, Error> {
