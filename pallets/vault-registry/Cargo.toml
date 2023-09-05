@@ -51,6 +51,8 @@ oracle = { path = "../oracle", features = ['testing-utils'] }
 mocktopus = "0.8.0"
 pretty_assertions = "0.7.2"
 
+serial_test = "2.0.0"
+
 [features]
 default = ["std"]
 integration-tests = [

@@ -5373,7 +5373,7 @@ dependencies = [
  "parity-scale-codec",
  "scale-info",
  "security",
- "serial_test",
+ "serial_test 0.9.0",
  "sp-arithmetic",
  "sp-core",
  "sp-io",
@@ -8504,7 +8504,21 @@ dependencies = [
  "lazy_static",
  "log",
  "parking_lot 0.12.1",
- "serial_test_derive",
+ "serial_test_derive 0.9.0",
+]
+
+[[package]]
+name = "serial_test"
+version = "2.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "0e56dd856803e253c8f298af3f4d7eb0ae5e23a737252cd90bb4f3b435033b2d"
+dependencies = [
+ "dashmap",
+ "futures 0.3.28",
+ "lazy_static",
+ "log",
+ "parking_lot 0.12.1",
+ "serial_test_derive 2.0.0",
 ]
 
 [[package]]
@@ -8517,6 +8531,17 @@ dependencies = [
  "proc-macro2",
  "quote",
  "syn 1.0.109",
+]
+
+[[package]]
+name = "serial_test_derive"
+version = "2.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "91d129178576168c589c9ec973feedf7d3126c01ac2bf08795109aa35b69fb8f"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn 2.0.27",
 ]
 
 [[package]]
@@ -9719,7 +9744,7 @@ dependencies = [
  "serde",
  "serde_json",
  "serde_with",
- "serial_test",
+ "serial_test 0.9.0",
  "sha2 0.10.7",
  "substrate-stellar-sdk",
  "tokio",
@@ -10802,7 +10827,7 @@ dependencies = [
  "scale-info",
  "serde",
  "serde_json",
- "serial_test",
+ "serial_test 0.9.0",
  "service",
  "sha2 0.8.2",
  "signal-hook",
@@ -10852,6 +10877,7 @@ dependencies = [
  "scale-info",
  "security",
  "serde",
+ "serial_test 2.0.0",
  "sp-arithmetic",
  "sp-core",
  "sp-io",
@@ -10929,7 +10955,7 @@ dependencies = [
  "reqwest",
  "serde",
  "serde_json",
- "serial_test",
+ "serial_test 0.9.0",
  "spacewalk-primitives",
  "thiserror",
  "tokio",
