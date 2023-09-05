@@ -143,12 +143,13 @@ impl HorizonClient for reqwest::Client {
 			let base_url = horizon_url(is_public_network, need_fallback);
 			let url = format!("{}/transactions", base_url);
 
-			let response =
-				ready(self.post(url).form(&params).send().await.map_err(Error::HorizonResponseError))
-					.and_then(|response| async move {
-						interpret_response::<TransactionResponse>(response).await
-					})
-					.await;
+			let response = ready(
+				self.post(url).form(&params).send().await.map_err(Error::HorizonResponseError),
+			)
+			.and_then(|response| async move {
+				interpret_response::<TransactionResponse>(response).await
+			})
+			.await;
 
 			match response {
 				Err(e) if e.is_recoverable() || e.is_server_error() => {

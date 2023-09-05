@@ -49,7 +49,10 @@ pub(crate) async fn interpret_response<T: DeserializeOwned>(
 		return response.json::<T>().await.map_err(Error::HorizonResponseError)
 	}
 
-	let resp = response.json::<serde_json::Value>().await.map_err(Error::HorizonResponseError)?;
+	let resp = response
+		.json::<serde_json::Value>()
+		.await
+		.map_err(Error::HorizonResponseError)?;
 
 	let title = resp[RESPONSE_FIELD_TITLE].as_str().unwrap_or(VALUE_UNKNOWN);
 	let status =
