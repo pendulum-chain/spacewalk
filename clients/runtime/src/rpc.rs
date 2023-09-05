@@ -205,7 +205,6 @@ impl SpacewalkParachain {
 			connection_timeout,
 		)
 		.await?;
-		// let ws_client = new_websocket_client(url, None, None).await?;
 		Self::new(ws_client, signer, shutdown_tx).await
 	}
 
