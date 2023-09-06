@@ -7,12 +7,14 @@ use frame_support::{
 #[cfg(test)]
 use mocktopus::macros::mockable;
 use scale_info::TypeInfo;
+use sp_core::H256;
 use sp_runtime::{
 	traits::{CheckedAdd, CheckedSub, Zero},
 	ArithmeticError,
 };
 
 use currency::Amount;
+use primitives::StellarPublicKeyRaw;
 pub use primitives::{VaultCurrencyPair, VaultId};
 
 use crate::{ext, Config, Error, Pallet};
