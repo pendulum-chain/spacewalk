@@ -22,6 +22,10 @@ use sp_core::{H256, U256};
 #[cfg(feature = "std")]
 use sp_runtime::traits::AtLeast32BitUnsigned;
 use sp_runtime::{traits::*, ArithmeticError, FixedPointOperand};
+
+#[cfg(feature = "runtime-benchmarks")]
+use sp_runtime::FixedPointNumber;
+
 use sp_std::{
 	convert::{TryFrom, TryInto},
 	fmt::Debug,
