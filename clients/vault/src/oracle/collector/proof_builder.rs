@@ -167,7 +167,7 @@ impl ScpMessageCollector {
 	/// hash for it. If we don't have the hash, we can't fetch it from the overlay network.
 	async fn fetch_missing_txset_from_overlay(&self, slot: Slot, sender: &StellarMessageSender) {
 		// we need the txset hash to create the message.
-		if let Some(txset_hash) = self.get_txset_hash(&slot) {
+		if let Some(txset_hash) = self.get_txset_hash_by_slot(&slot) {
 			tracing::debug!("Proof Building for slot {slot}: Fetching TxSet from overlay...");
 			if let Err(error) = sender.send(StellarMessage::GetTxSet(txset_hash)).await {
 				tracing::error!("Proof Building for slot {slot}: failed to send GetTxSet message to overlay {:?}", error);
