@@ -663,9 +663,9 @@ pub mod pallet {
 	// Does not return a result but panics because the genesis config is hardcoded
 	#[cfg(feature = "std")]
 	fn create_bounded_vec(input: &str) -> BoundedVec<u8, FieldLength> {
-		let bounded_vec =
-			BoundedVec::try_from(input.as_bytes().to_vec()).expect("Failed to create bounded vec");
+		let bounded_vec = BoundedVec::try_from(input.as_bytes().to_vec());
 
-		bounded_vec
+		assert!(bounded_vec.is_ok());
+		bounded_vec.unwrap()
 	}
 }
