@@ -1,7 +1,7 @@
 //! # Vault Registry Module
 //! Based on the [specification](https://spec.interlay.io/spec/vault-registry.html).
 
-// #![deny(warnings)]
+#![deny(warnings)]
 #![cfg_attr(test, feature(proc_macro_hygiene))]
 #![cfg_attr(not(feature = "std"), no_std)]
 
@@ -18,7 +18,7 @@ use frame_support::{
 use frame_system::offchain::{SendTransactionTypes, SubmitTransaction};
 #[cfg(test)]
 use mocktopus::macros::mockable;
-use sp_core::U256;
+use sp_core::{H256, U256};
 #[cfg(feature = "std")]
 use sp_runtime::traits::AtLeast32BitUnsigned;
 use sp_runtime::{traits::*, ArithmeticError, FixedPointOperand};
