@@ -376,6 +376,8 @@ where
 {
 	clear_mocks();
 	let _ = <oracle::Pallet<Test>>::_clear_values();
+	// Acquire lock to prevent other tests from changing the exchange rates during the test
+	let _ = <oracle::Pallet<Test>>::_acquire_lock();
 	ExtBuilder::build().execute_with(|| {
 		System::set_block_number(1);
 		Security::set_active_block_number(1);
