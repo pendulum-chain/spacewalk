@@ -2,7 +2,6 @@ use codec::Decode;
 use frame_support::{assert_err, assert_noop, assert_ok, error::BadOrigin};
 use mocktopus::mocking::*;
 use pretty_assertions::assert_eq;
-use serial_test::serial;
 use sp_arithmetic::{traits::One, FixedPointNumber, FixedU128};
 use sp_core::U256;
 use sp_runtime::{
@@ -131,7 +130,6 @@ fn create_sample_vault_and_issue_tokens(issue_tokens: u128) -> DefaultVaultId<Te
 }
 
 #[test]
-#[serial]
 fn set_punishment_delay_works() {
 	run_test(|| {
 		let punishment_delay = 99;
@@ -141,7 +139,6 @@ fn set_punishment_delay_works() {
 }
 
 #[test]
-#[serial]
 fn set_punishment_delay_fails_for_wrong_origin() {
 	run_test(|| {
 		let punishment_delay = 99;
@@ -153,7 +150,6 @@ fn set_punishment_delay_fails_for_wrong_origin() {
 }
 
 #[test]
-#[serial]
 fn register_vault_succeeds() {
 	run_test(|| {
 		let id = create_sample_vault();
@@ -162,7 +158,6 @@ fn register_vault_succeeds() {
 }
 
 #[test]
-#[serial]
 fn registering_public_key_twice_fails() {
 	run_test(|| {
 		let origin = RuntimeOrigin::signed(DEFAULT_ID.account_id);
@@ -177,7 +172,6 @@ fn registering_public_key_twice_fails() {
 }
 
 #[test]
-#[serial]
 fn register_vault_fails_when_given_collateral_too_low() {
 	run_test(|| {
 		VaultRegistry::get_minimum_collateral_vault
@@ -195,7 +189,6 @@ fn register_vault_fails_when_given_collateral_too_low() {
 }
 
 #[test]
-#[serial]
 fn register_vault_fails_when_account_funds_too_low() {
 	run_test(|| {
 		let collateral = DEFAULT_COLLATERAL + 1;
@@ -210,7 +203,6 @@ fn register_vault_fails_when_account_funds_too_low() {
 }
 
 #[test]
-#[serial]
 fn register_vault_fails_when_already_registered() {
 	run_test(|| {
 		let id = create_sample_vault();
@@ -225,7 +217,6 @@ fn register_vault_fails_when_already_registered() {
 }
 
 #[test]
-#[serial]
 fn deposit_collateral_succeeds() {
 	run_test(|| {
 		let id = create_vault(RICH_ID);
@@ -251,7 +242,6 @@ fn deposit_collateral_succeeds() {
 }
 
 #[test]
-#[serial]
 fn deposit_collateral_fails_when_vault_does_not_exist() {
 	run_test(|| {
 		let res =
@@ -261,7 +251,6 @@ fn deposit_collateral_fails_when_vault_does_not_exist() {
 }
 
 #[test]
-#[serial]
 fn withdraw_collateral_succeeds() {
 	run_test(|| {
 		let id = create_sample_vault();
@@ -285,7 +274,6 @@ fn withdraw_collateral_succeeds() {
 }
 
 #[test]
-#[serial]
 fn withdraw_collateral_fails_when_vault_does_not_exist() {
 	run_test(|| {
 		let res =
@@ -295,7 +283,6 @@ fn withdraw_collateral_fails_when_vault_does_not_exist() {
 }
 
 #[test]
-#[serial]
 fn withdraw_collateral_fails_when_not_enough_collateral() {
 	run_test(|| {
 		let id = create_sample_vault();
@@ -309,7 +296,6 @@ fn withdraw_collateral_fails_when_not_enough_collateral() {
 }
 
 #[test]
-#[serial]
 fn try_increase_to_be_issued_tokens_succeeds() {
 	run_test(|| {
 		let id = create_sample_vault();
@@ -322,7 +308,6 @@ fn try_increase_to_be_issued_tokens_succeeds() {
 }
 
 #[test]
-#[serial]
 fn try_increase_to_be_issued_tokens_fails_with_insufficient_collateral() {
 	run_test(|| {
 		let id = create_sample_vault();
@@ -337,7 +322,6 @@ fn try_increase_to_be_issued_tokens_fails_with_insufficient_collateral() {
 }
 
 #[test]
-#[serial]
 fn decrease_to_be_issued_tokens_succeeds() {
 	run_test(|| {
 		let id = create_sample_vault();
@@ -351,7 +335,6 @@ fn decrease_to_be_issued_tokens_succeeds() {
 }
 
 #[test]
-#[serial]
 fn decrease_to_be_issued_tokens_fails_with_insufficient_tokens() {
 	run_test(|| {
 		let id = create_sample_vault();
@@ -362,7 +345,6 @@ fn decrease_to_be_issued_tokens_fails_with_insufficient_tokens() {
 }
 
 #[test]
-#[serial]
 fn issue_tokens_succeeds() {
 	run_test(|| {
 		let id = create_sample_vault();
@@ -377,7 +359,6 @@ fn issue_tokens_succeeds() {
 }
 
 #[test]
-#[serial]
 fn issue_tokens_fails_with_insufficient_tokens() {
 	run_test(|| {
 		let id = create_sample_vault();
@@ -387,7 +368,6 @@ fn issue_tokens_fails_with_insufficient_tokens() {
 }
 
 #[test]
-#[serial]
 fn try_increase_to_be_replaced_tokens_succeeds() {
 	run_test(|| {
 		let id = create_sample_vault();
@@ -403,7 +383,6 @@ fn try_increase_to_be_replaced_tokens_succeeds() {
 }
 
 #[test]
-#[serial]
 fn try_increase_to_be_replaced_tokens_fails_with_insufficient_tokens() {
 	run_test(|| {
 		let id = create_sample_vault();
@@ -417,7 +396,6 @@ fn try_increase_to_be_replaced_tokens_fails_with_insufficient_tokens() {
 }
 
 #[test]
-#[serial]
 fn try_increase_to_be_redeemed_tokens_succeeds() {
 	run_test(|| {
 		let id = create_sample_vault();
@@ -434,7 +412,6 @@ fn try_increase_to_be_redeemed_tokens_succeeds() {
 }
 
 #[test]
-#[serial]
 fn try_increase_to_be_redeemed_tokens_fails_with_insufficient_tokens() {
 	run_test(|| {
 		let id = create_sample_vault();
@@ -447,7 +424,6 @@ fn try_increase_to_be_redeemed_tokens_fails_with_insufficient_tokens() {
 }
 
 #[test]
-#[serial]
 fn decrease_to_be_redeemed_tokens_succeeds() {
 	run_test(|| {
 		let id = create_sample_vault();
@@ -464,7 +440,6 @@ fn decrease_to_be_redeemed_tokens_succeeds() {
 }
 
 #[test]
-#[serial]
 fn decrease_to_be_redeemed_tokens_fails_with_insufficient_tokens() {
 	run_test(|| {
 		let id = create_sample_vault();
@@ -475,7 +450,6 @@ fn decrease_to_be_redeemed_tokens_fails_with_insufficient_tokens() {
 }
 
 #[test]
-#[serial]
 fn decrease_tokens_succeeds() {
 	run_test(|| {
 		let id = create_sample_vault();
@@ -493,7 +467,6 @@ fn decrease_tokens_succeeds() {
 }
 
 #[test]
-#[serial]
 fn decrease_tokens_fails_with_insufficient_tokens() {
 	run_test(|| {
 		let id = create_sample_vault();
@@ -506,7 +479,6 @@ fn decrease_tokens_fails_with_insufficient_tokens() {
 }
 
 #[test]
-#[serial]
 fn redeem_tokens_succeeds() {
 	run_test(|| {
 		let id = create_sample_vault();
@@ -523,7 +495,6 @@ fn redeem_tokens_succeeds() {
 }
 
 #[test]
-#[serial]
 fn redeem_tokens_fails_with_insufficient_tokens() {
 	run_test(|| {
 		let id = create_sample_vault();
@@ -535,7 +506,6 @@ fn redeem_tokens_fails_with_insufficient_tokens() {
 }
 
 #[test]
-#[serial]
 fn redeem_tokens_premium_succeeds() {
 	run_test(|| {
 		let id = create_sample_vault();
@@ -566,7 +536,6 @@ fn redeem_tokens_premium_succeeds() {
 }
 
 #[test]
-#[serial]
 fn redeem_tokens_premium_fails_with_insufficient_tokens() {
 	run_test(|| {
 		let id = create_sample_vault();
@@ -585,7 +554,6 @@ fn redeem_tokens_premium_fails_with_insufficient_tokens() {
 }
 
 #[test]
-#[serial]
 fn redeem_tokens_liquidation_succeeds() {
 	run_test(|| {
 		let mut liquidation_vault =
@@ -622,7 +590,6 @@ fn redeem_tokens_liquidation_succeeds() {
 }
 
 #[test]
-#[serial]
 fn redeem_tokens_liquidation_does_not_call_recover_when_unnecessary() {
 	run_test(|| {
 		let mut liquidation_vault =
@@ -658,7 +625,6 @@ fn redeem_tokens_liquidation_does_not_call_recover_when_unnecessary() {
 }
 
 #[test]
-#[serial]
 fn redeem_tokens_liquidation_fails_with_insufficient_tokens() {
 	run_test(|| {
 		let user_id = 5;
@@ -677,7 +643,6 @@ fn redeem_tokens_liquidation_fails_with_insufficient_tokens() {
 }
 
 #[test]
-#[serial]
 fn replace_tokens_liquidation_succeeds() {
 	run_test(|| {
 		let old_id = create_sample_vault();
@@ -713,7 +678,6 @@ fn replace_tokens_liquidation_succeeds() {
 }
 
 #[test]
-#[serial]
 fn cancel_replace_tokens_succeeds() {
 	run_test(|| {
 		let old_id = create_sample_vault();
@@ -743,7 +707,6 @@ fn cancel_replace_tokens_succeeds() {
 }
 
 #[test]
-#[serial]
 fn liquidate_at_most_liquidation_threshold() {
 	run_test(|| {
 		let vault_id = DEFAULT_ID;
@@ -878,7 +841,6 @@ fn liquidate_at_most_liquidation_threshold() {
 }
 
 #[test]
-#[serial]
 fn can_withdraw_only_up_to_custom_threshold() {
 	run_test(|| {
 		let vault_id = DEFAULT_ID;
@@ -957,7 +919,6 @@ fn can_withdraw_only_up_to_custom_threshold() {
 }
 
 #[test]
-#[serial]
 fn is_collateral_below_threshold_true_succeeds() {
 	run_test(|| {
 		let collateral = DEFAULT_COLLATERAL;
@@ -978,7 +939,6 @@ fn is_collateral_below_threshold_true_succeeds() {
 }
 
 #[test]
-#[serial]
 fn is_collateral_below_threshold_false_succeeds() {
 	run_test(|| {
 		let collateral = DEFAULT_COLLATERAL;
@@ -999,7 +959,6 @@ fn is_collateral_below_threshold_false_succeeds() {
 }
 
 #[test]
-#[serial]
 fn calculate_max_wrapped_from_collateral_for_threshold_succeeds() {
 	run_test(|| {
 		let collateral: u128 = u64::MAX as u128;
@@ -1019,7 +978,6 @@ fn calculate_max_wrapped_from_collateral_for_threshold_succeeds() {
 }
 
 #[test]
-#[serial]
 #[cfg_attr(feature = "skip-slow-tests", ignore)]
 fn test_threshold_equivalent_to_legacy_calculation() {
 	/// old version
@@ -1060,7 +1018,6 @@ fn test_threshold_equivalent_to_legacy_calculation() {
 }
 
 #[test]
-#[serial]
 #[cfg_attr(feature = "skip-slow-tests", ignore)]
 fn test_get_required_collateral_threshold_equivalent_to_legacy_calculation_() {
 	// old version
@@ -1106,7 +1063,6 @@ fn test_get_required_collateral_threshold_equivalent_to_legacy_calculation_() {
 }
 
 #[test]
-#[serial]
 fn get_required_collateral_for_wrapped_with_threshold_succeeds() {
 	run_test(|| {
 		let threshold = FixedU128::checked_from_rational(19999, 10000).unwrap(); // 199.99%
@@ -1149,7 +1105,6 @@ mod custom_secure_threshold_tests {
 	use super::{assert_eq, *};
 
 	#[test]
-	#[serial]
 	fn set_custom_secure_threshold_succeeds() {
 		run_test(|| {
 			let id = vault_id(4);
@@ -1184,7 +1139,6 @@ mod custom_secure_threshold_tests {
 	}
 
 	#[test]
-	#[serial]
 	fn set_custom_secure_threshold_sets_issuable_tokens() {
 		run_test(|| {
 			let id = vault_id(4);
@@ -1230,7 +1184,6 @@ mod liquidation_threshold_tests {
 	}
 
 	#[test]
-	#[serial]
 	fn is_vault_below_liquidation_threshold_false_succeeds() {
 		run_test(|| {
 			let vault = setup();
@@ -1245,7 +1198,6 @@ mod liquidation_threshold_tests {
 	}
 
 	#[test]
-	#[serial]
 	fn is_vault_below_liquidation_threshold_true_succeeds() {
 		run_test(|| {
 			let vault = setup();
@@ -1261,7 +1213,6 @@ mod liquidation_threshold_tests {
 }
 
 #[test]
-#[serial]
 fn get_collateralization_from_vault_fails_with_no_tokens_issued() {
 	run_test(|| {
 		// vault has no tokens issued yet
@@ -1275,7 +1226,6 @@ fn get_collateralization_from_vault_fails_with_no_tokens_issued() {
 }
 
 #[test]
-#[serial]
 fn get_collateralization_from_vault_succeeds() {
 	run_test(|| {
 		let issue_tokens: u128 = DEFAULT_COLLATERAL / 10 / 2; // = 5
@@ -1289,7 +1239,6 @@ fn get_collateralization_from_vault_succeeds() {
 }
 
 #[test]
-#[serial]
 fn get_unsettled_collateralization_from_vault_succeeds() {
 	run_test(|| {
 		let issue_tokens: u128 = DEFAULT_COLLATERAL / 10 / 5; // = 2
@@ -1305,7 +1254,6 @@ fn get_unsettled_collateralization_from_vault_succeeds() {
 }
 
 #[test]
-#[serial]
 fn get_settled_collateralization_from_vault_succeeds() {
 	run_test(|| {
 		// currency_to_usd is / 10 and we issue 2 * amount
@@ -1350,7 +1298,6 @@ mod get_vaults_below_premium_collaterlization_tests {
 	}
 
 	#[test]
-	#[serial]
 	fn get_vaults_below_premium_collateralization_fails() {
 		run_test(|| {
 			add_vault(vault_id(4), 50, 100);
@@ -1363,7 +1310,6 @@ mod get_vaults_below_premium_collaterlization_tests {
 	}
 
 	#[test]
-	#[serial]
 	fn get_vaults_below_premium_collateralization_succeeds() {
 		run_test(|| {
 			let id1 = vault_id(3);
@@ -1385,7 +1331,6 @@ mod get_vaults_below_premium_collaterlization_tests {
 	}
 
 	#[test]
-	#[serial]
 	fn get_vaults_below_premium_collateralization_filters_banned_and_sufficiently_collateralized_vaults(
 	) {
 		run_test(|| {
@@ -1422,7 +1367,6 @@ mod get_vaults_with_issuable_tokens_tests {
 	use super::{assert_eq, *};
 
 	#[test]
-	#[serial]
 	fn get_vaults_with_issuable_tokens_succeeds() {
 		run_test(|| {
 			let id1 = vault_id(3);
@@ -1447,7 +1391,6 @@ mod get_vaults_with_issuable_tokens_tests {
 	}
 
 	#[test]
-	#[serial]
 	fn get_vaults_with_issuable_tokens_succeeds_with_custom_vault_secure_thresholds() {
 		run_test(|| {
 			let id1 = vault_id(3);
@@ -1473,7 +1416,6 @@ mod get_vaults_with_issuable_tokens_tests {
 	}
 
 	#[test]
-	#[serial]
 	fn get_vaults_with_issuable_tokens_succeeds_when_there_are_liquidated_vaults() {
 		run_test(|| {
 			let id1 = vault_id(3);
@@ -1497,7 +1439,6 @@ mod get_vaults_with_issuable_tokens_tests {
 	}
 
 	#[test]
-	#[serial]
 	fn get_vaults_with_issuable_tokens_filters_out_banned_vaults() {
 		run_test(|| {
 			let id1 = vault_id(3);
@@ -1528,7 +1469,6 @@ mod get_vaults_with_issuable_tokens_tests {
 	}
 
 	#[test]
-	#[serial]
 	fn get_vaults_with_issuable_tokens_filters_out_vault_that_do_not_accept_new_issues() {
 		run_test(|| {
 			let id1 = vault_id(3);
@@ -1556,7 +1496,6 @@ mod get_vaults_with_issuable_tokens_tests {
 	}
 
 	#[test]
-	#[serial]
 	fn get_vaults_with_issuable_tokens_returns_empty() {
 		run_test(|| {
 			let issue_tokens: u128 = DEFAULT_COLLATERAL / 2;
@@ -1594,7 +1533,6 @@ mod get_vaults_with_redeemable_tokens_test {
 	}
 
 	#[test]
-	#[serial]
 	fn get_vaults_with_redeemable_tokens_returns_empty() {
 		run_test(|| {
 			// create a vault with no redeemable tokens
@@ -1605,7 +1543,6 @@ mod get_vaults_with_redeemable_tokens_test {
 	}
 
 	#[test]
-	#[serial]
 	fn get_vaults_with_redeemable_tokens_succeeds() {
 		run_test(|| {
 			let id1 = vault_id(3);
@@ -1626,7 +1563,6 @@ mod get_vaults_with_redeemable_tokens_test {
 	}
 
 	#[test]
-	#[serial]
 	fn get_vaults_with_redeemable_tokens_filters_out_banned_vaults() {
 		run_test(|| {
 			let id1 = vault_id(3);
@@ -1650,7 +1586,6 @@ mod get_vaults_with_redeemable_tokens_test {
 	}
 
 	#[test]
-	#[serial]
 	fn get_vaults_with_issuable_tokens_filters_out_liquidated_vaults() {
 		run_test(|| {
 			let id1 = vault_id(3);
@@ -1673,7 +1608,6 @@ mod get_vaults_with_redeemable_tokens_test {
 }
 
 #[test]
-#[serial]
 fn test_try_increase_to_be_replaced_tokens() {
 	run_test(|| {
 		let issue_tokens: u128 = 4;
@@ -1710,7 +1644,6 @@ fn test_try_increase_to_be_replaced_tokens() {
 }
 
 #[test]
-#[serial]
 fn test_decrease_to_be_replaced_tokens_over_capacity() {
 	run_test(|| {
 		let issue_tokens: u128 = 4;
@@ -1728,7 +1661,6 @@ fn test_decrease_to_be_replaced_tokens_over_capacity() {
 }
 
 #[test]
-#[serial]
 fn test_decrease_to_be_replaced_tokens_below_capacity() {
 	run_test(|| {
 		let issue_tokens: u128 = 4;
@@ -1746,7 +1678,6 @@ fn test_decrease_to_be_replaced_tokens_below_capacity() {
 }
 
 #[test]
-#[serial]
 fn test_offchain_worker_unsigned_transaction_submission() {
 	let mut externalities = crate::mock::ExtBuilder::build();
 	let (pool, pool_state) = TestTransactionPoolExt::new();
