@@ -4,7 +4,7 @@ use sp_std::sync::Arc;
 use primitives::{oracle::Key, Asset, CurrencyId};
 use sp_arithmetic::FixedU128;
 use sp_std::{collections::btree_map::BTreeMap, vec, vec::Vec};
-use spin::RwLock;
+use spin::{Mutex, MutexGuard, RwLock};
 
 use orml_oracle::{DataFeeder, DataProvider, TimestampedValue};
 use sp_runtime::DispatchResult;
@@ -12,6 +12,7 @@ use sp_runtime::DispatchResult;
 // Extends the orml_oracle::DataFeeder trait with a clear_all_values function.
 pub trait DataFeederExtended<Key, Value, AccountId>: DataFeeder<Key, Value, AccountId> {
 	fn clear_all_values() -> sp_runtime::DispatchResult;
+	fn acquire_lock() -> Arc<MutexGuard<'static, ()>>;
 }
 
 #[derive(Clone, Default, PartialEq, Eq, Hash)]
@@ -104,6 +105,8 @@ impl<Moment> Convert<Moment, Option<Moment>> for MockConvertMoment<Moment> {
 
 lazy_static::lazy_static! {
 	static ref COINS: Arc<RwLock<BTreeMap<MapKey, Data>>> = Arc::new(RwLock::new(BTreeMap::<MapKey, Data>::new()));
+	// This lock can be used to synchronize access to the DIA mock. It is used to prevent race conditions when running tests in parallel.
+	static ref LOCK: Arc<Mutex<()>> = Arc::new(Mutex::new(()));
 }
 
 pub struct MockDiaOracle;
@@ -183,5 +186,9 @@ impl<AccountId, Moment: Into<u64>>
 		let mut coins = COINS.write();
 		coins.clear();
 		Ok(())
+	}
+
+	fn acquire_lock() -> Arc<MutexGuard<'static, ()>> {
+		Arc::new(LOCK.lock())
 	}
 }

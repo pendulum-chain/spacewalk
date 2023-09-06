@@ -6,6 +6,7 @@
 
 #[cfg(test)]
 extern crate mocktopus;
+
 #[cfg(feature = "testing-utils")]
 use frame_support::dispatch::DispatchResult;
 use frame_support::{dispatch::DispatchError, transactional};
@@ -15,7 +16,7 @@ use sp_runtime::{
 	traits::{UniqueSaturatedInto, *},
 	ArithmeticError, FixedPointNumber,
 };
-use sp_std::{convert::TryInto, vec::Vec};
+use sp_std::{convert::TryInto, sync::Arc, vec::Vec};
 
 use currency::Amount;
 pub use default_weights::{SubstrateWeight, WeightInfo};
@@ -41,6 +42,7 @@ mod tests;
 pub use dia_oracle::{CoinInfo, DiaOracle, PriceInfo};
 #[cfg(feature = "testing-utils")]
 pub use orml_oracle::{DataFeeder, DataProvider, TimestampedValue};
+use spin::MutexGuard;
 
 #[cfg(test)]
 #[cfg_attr(test, cfg(feature = "testing-utils"))]
@@ -258,6 +260,13 @@ impl<T: Config> Pallet<T> {
 	pub fn _clear_values() -> DispatchResult {
 		use crate::oracle_mock::DataFeederExtended;
 		T::DataFeedProvider::clear_all_values()
+	}
+
+	// public only for testing purposes
+	#[cfg(feature = "testing-utils")]
+	pub fn _acquire_lock() -> Arc<MutexGuard<'static, ()>> {
+		use crate::oracle_mock::DataFeederExtended;
+		T::DataFeedProvider::acquire_lock()
 	}
 
 	/// Public getters
