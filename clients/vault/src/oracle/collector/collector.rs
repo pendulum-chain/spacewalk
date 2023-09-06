@@ -96,8 +96,8 @@ impl ScpMessageCollector {
 		self.txset_map.clone()
 	}
 
-	pub(super) fn get_txset_hash(&self, slot: &Slot) -> Option<TxSetHash> {
-		self.txset_and_slot_map.read().get_txset_hash(slot).cloned()
+	pub(super) fn get_txset_hash_by_slot(&self, slot: &Slot) -> Option<TxSetHash> {
+		self.txset_and_slot_map.read().get_txset_hash_by_slot(slot).cloned()
 	}
 
 	pub(crate) fn last_slot_index(&self) -> u64 {
@@ -171,7 +171,7 @@ impl ScpMessageCollector {
 impl ScpMessageCollector {
 	/// checks whether the txset hash and slot tandem is already recorded/noted/flagged.
 	pub(super) fn is_txset_new(&self, txset_hash: &TxSetHash, slot: &Slot) -> bool {
-		self.txset_and_slot_map.read().get_slot(txset_hash).is_none() &&
+		self.txset_and_slot_map.read().get_slot_by_txset_hash(txset_hash).is_none() &&
             // also check whether this is a delayed message
             !self.txset_map.read().contains(slot)
 	}
