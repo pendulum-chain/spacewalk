@@ -18,7 +18,7 @@ use frame_support::{
 use frame_system::offchain::{SendTransactionTypes, SubmitTransaction};
 #[cfg(test)]
 use mocktopus::macros::mockable;
-use sp_core::{H256, U256};
+use sp_core::U256;
 #[cfg(feature = "std")]
 use sp_runtime::traits::AtLeast32BitUnsigned;
 use sp_runtime::{traits::*, ArithmeticError, FixedPointOperand};
@@ -1134,7 +1134,7 @@ impl<T: Config> Pallet<T> {
 	#[cfg(feature = "runtime-benchmarks")]
 	pub fn register_deposit_address(
 		vault_id: &DefaultVaultId<T>,
-		issue_id: H256,
+		issue_id: sp_core::H256,
 	) -> Result<StellarPublicKeyRaw, DispatchError> {
 		let mut vault = Self::get_active_rich_vault_from_id(vault_id)?;
 		let stellar_address = vault.new_deposit_address(issue_id)?;

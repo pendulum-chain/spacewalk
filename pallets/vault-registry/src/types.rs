@@ -7,14 +7,13 @@ use frame_support::{
 #[cfg(test)]
 use mocktopus::macros::mockable;
 use scale_info::TypeInfo;
-use sp_core::H256;
+
 use sp_runtime::{
 	traits::{CheckedAdd, CheckedSub, Zero},
 	ArithmeticError,
 };
 
 use currency::Amount;
-use primitives::StellarPublicKeyRaw;
 pub use primitives::{VaultCurrencyPair, VaultId};
 
 use crate::{ext, Config, Error, Pallet};
@@ -660,8 +659,8 @@ impl<T: Config> RichVault<T> {
 	#[cfg(feature = "runtime-benchmarks")]
 	fn new_deposit_public_key(
 		&self,
-		_secure_id: H256,
-	) -> Result<StellarPublicKeyRaw, DispatchError> {
+		_secure_id: sp_core::H256,
+	) -> Result<primitives::StellarPublicKeyRaw, DispatchError> {
 		// The new deposit public key will always be the same Vault Public key.
 		Pallet::<T>::get_stellar_public_key(&self.data.id.account_id)
 	}
@@ -669,8 +668,8 @@ impl<T: Config> RichVault<T> {
 	#[cfg(feature = "runtime-benchmarks")]
 	pub(crate) fn new_deposit_address(
 		&mut self,
-		secure_id: H256,
-	) -> Result<StellarPublicKeyRaw, DispatchError> {
+		secure_id: sp_core::H256,
+	) -> Result<primitives::StellarPublicKeyRaw, DispatchError> {
 		self.new_deposit_public_key(secure_id)
 	}
 
