@@ -33,7 +33,7 @@ currency = { path = "../currency", default-features = false }
 # Testing dependencies
 spin = { version = "0.9.4", features = ["mutex"] }
 lazy_static = { version = "1.4.0", features = ["spin_no_std"] }
-once_cell = {version = "1.18.0", features = []}
+once_cell = { version = "1.18.0", default-features = false, features = ["alloc", "race"] }
 
 sp-tracing = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.40", default-features = false }
 
@@ -74,6 +74,7 @@ std = [
     "orml-traits/std",
     "orml-oracle/std",
     "dia-oracle/std",
+    "once_cell/std"
 
 ]
 runtime-benchmarks = [
