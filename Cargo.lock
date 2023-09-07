@@ -5378,7 +5378,6 @@ dependencies = [
  "sp-io",
  "sp-runtime",
  "sp-std",
- "sp-tracing",
  "spacewalk-primitives",
  "spin 0.9.8",
  "staking",

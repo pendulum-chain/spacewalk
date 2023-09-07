@@ -190,7 +190,7 @@ impl Config for Test {
 		MockConvertPrice,
 		MockConvertMoment<Moment>,
 	>;
-	type DataFeedProvider = crate::testing_utils::MockDataCollector<AccountId, Moment>;
+	type DataFeeder = crate::testing_utils::MockDataFeeder<AccountId, Moment>;
 }
 
 parameter_types! {

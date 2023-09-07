@@ -49,6 +49,8 @@ pub struct Data {
 	pub timestamp: u64,
 }
 
+/// This struct is used to mock the DIA oracle. It implements the `DiaOracle` trait and uses the
+/// static `COINS` variable to store the mock data.
 pub struct MockDiaOracle;
 impl dia_oracle::DiaOracle for MockDiaOracle {
 	fn get_coin_info(
@@ -83,15 +85,17 @@ impl dia_oracle::DiaOracle for MockDiaOracle {
 	}
 }
 
-pub struct MockDataCollector<AccountId, Moment>(
+/// This struct is used to make it possible to feed values to the mock oracle. It implements the
+/// `DataFeederExtended` trait and uses the static `COINS` variable to store the mock data.
+pub struct MockDataFeeder<AccountId, Moment>(
 	sp_std::marker::PhantomData<AccountId>,
 	sp_std::marker::PhantomData<Moment>,
 );
 
 impl<AccountId, Moment> DataProvider<Key, TimestampedValue<UnsignedFixedPoint, Moment>>
-	for MockDataCollector<AccountId, Moment>
+	for MockDataFeeder<AccountId, Moment>
 {
-	// We need to implement the DataFeeder trait to the MockDataCollector but this function is never
+	// We need to implement the DataFeeder trait to the MockDataFeeder but this function is never
 	// used
 	fn get(_key: &Key) -> Option<TimestampedValue<UnsignedFixedPoint, Moment>> {
 		unimplemented!("Not required to implement DataProvider get function")
@@ -100,7 +104,7 @@ impl<AccountId, Moment> DataProvider<Key, TimestampedValue<UnsignedFixedPoint, M
 
 impl<AccountId, Moment: Into<u64>>
 	DataFeeder<Key, TimestampedValue<UnsignedFixedPoint, Moment>, AccountId>
-	for MockDataCollector<AccountId, Moment>
+	for MockDataFeeder<AccountId, Moment>
 {
 	fn feed_value(
 		_who: AccountId,
@@ -124,7 +128,7 @@ impl<AccountId, Moment: Into<u64>>
 
 impl<AccountId, Moment: Into<u64>>
 	DataFeederExtended<Key, TimestampedValue<UnsignedFixedPoint, Moment>, AccountId>
-	for MockDataCollector<AccountId, Moment>
+	for MockDataFeeder<AccountId, Moment>
 {
 	fn clear_all_values() -> DispatchResult {
 		let mut coins = COINS

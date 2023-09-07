@@ -22,8 +22,7 @@ pub use currency::{
 use oracle::{
 	dia::DiaOracleAdapter,
 	testing_utils::{
-		MockConvertMoment, MockConvertPrice, MockDataCollector, MockDiaOracle,
-		MockOracleKeyConvertor,
+		MockConvertMoment, MockConvertPrice, MockDataFeeder, MockDiaOracle, MockOracleKeyConvertor,
 	},
 };
 pub use oracle::{CurrencyId, OracleKey};
@@ -307,7 +306,7 @@ impl oracle::Config for Test {
 		MockConvertPrice,
 		MockConvertMoment<Moment>,
 	>;
-	type DataFeedProvider = MockDataCollector<AccountId, Moment>;
+	type DataFeeder = MockDataFeeder<AccountId, Moment>;
 }
 
 parameter_types! {

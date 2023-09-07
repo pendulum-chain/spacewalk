@@ -84,7 +84,7 @@ pub mod pallet {
 		>;
 
 		#[cfg(feature = "testing-utils")]
-		type DataFeedProvider: testing_utils::DataFeederExtended<
+		type DataFeeder: testing_utils::DataFeederExtended<
 			OracleKey,
 			TimestampedValue<Self::UnsignedFixedPoint, Self::Moment>,
 			Self::AccountId,
@@ -245,7 +245,7 @@ impl<T: Config> Pallet<T> {
 		for (key, value) in values {
 			let timestamped =
 				orml_oracle::TimestampedValue { timestamp: Self::get_current_time(), value };
-			T::DataFeedProvider::feed_value(oracle.clone(), key.clone(), timestamped)
+			T::DataFeeder::feed_value(oracle.clone(), key.clone(), timestamped)
 				.expect("Expect store value by key");
 			if !oracle_keys.contains(&key) {
 				oracle_keys.push(key);
@@ -259,14 +259,14 @@ impl<T: Config> Pallet<T> {
 	#[cfg(feature = "testing-utils")]
 	pub fn _clear_values() -> DispatchResult {
 		use crate::testing_utils::DataFeederExtended;
-		T::DataFeedProvider::clear_all_values()
+		T::DataFeeder::clear_all_values()
 	}
 
 	// public only for testing purposes
 	#[cfg(feature = "testing-utils")]
 	pub fn _acquire_lock() -> MutexGuard<'static, ()> {
 		use crate::testing_utils::DataFeederExtended;
-		T::DataFeedProvider::acquire_lock()
+		T::DataFeeder::acquire_lock()
 	}
 
 	/// Public getters

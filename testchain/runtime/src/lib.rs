@@ -514,7 +514,7 @@ cfg_if::cfg_if! {
 }
 
 #[cfg(any(feature = "runtime-benchmarks", feature = "testing-utils"))]
-use oracle::testing_utils::MockDataCollector;
+use oracle::testing_utils::MockDataFeeder;
 
 impl oracle::Config for Runtime {
 	type RuntimeEvent = RuntimeEvent;
@@ -522,7 +522,7 @@ impl oracle::Config for Runtime {
 	type DataProvider = DataProviderImpl;
 
 	#[cfg(any(feature = "runtime-benchmarks", feature = "testing-utils"))]
-	type DataFeedProvider = MockDataCollector<AccountId, Moment>;
+	type DataFeeder = MockDataFeeder<AccountId, Moment>;
 }
 
 impl issue::Config for Runtime {
