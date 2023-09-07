@@ -11,6 +11,7 @@ standalone-metadata = ["runtime/standalone-metadata"]
 parachain-metadata-pendulum = ["runtime/parachain-metadata-pendulum"]
 parachain-metadata-amplitude = ["runtime/parachain-metadata-amplitude"]
 parachain-metadata-foucoco = ["runtime/parachain-metadata-foucoco"]
+integration-test = ["runtime/standalone-metadata", "integration"]
 
 [dependencies]
 async-trait = "0.1.40"
