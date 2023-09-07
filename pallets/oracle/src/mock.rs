@@ -242,10 +242,12 @@ where
 	T: FnOnce(),
 {
 	clear_mocks();
+	let oracle_mock_lock = Oracle::_acquire_lock();
 	let _ = Oracle::_clear_values();
 	ExtBuilder::build().execute_with(|| {
 		Security::set_active_block_number(1);
 		System::set_block_number(1);
 		test();
 	});
+	drop(oracle_mock_lock);
 }

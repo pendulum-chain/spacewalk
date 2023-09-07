@@ -48,8 +48,6 @@ orml-currencies = { git = "https://github.com/open-web3-stack/open-runtime-modul
 orml-tokens = { git = "https://github.com/open-web3-stack/open-runtime-module-library", branch = "polkadot-v0.9.40", default-features = false }
 orml-traits = { git = "https://github.com/open-web3-stack/open-runtime-module-library", branch = "polkadot-v0.9.40", default-features = false }
 
-serial_test = "0.9.0"
-
 [features]
 default = ["std"]
 std = [
