@@ -5364,6 +5364,7 @@ dependencies = [
  "frame-system",
  "lazy_static",
  "mocktopus",
+ "once_cell",
  "orml-currencies",
  "orml-oracle",
  "orml-tokens",

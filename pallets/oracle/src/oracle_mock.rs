@@ -1,5 +1,4 @@
 use sp_runtime::traits::Convert;
-use sp_std::sync::Arc;
 
 use once_cell::race::OnceBox;
 use primitives::{oracle::Key, Asset, CurrencyId};
@@ -13,7 +12,7 @@ use sp_runtime::DispatchResult;
 // Extends the orml_oracle::DataFeeder trait with a clear_all_values function.
 pub trait DataFeederExtended<Key, Value, AccountId>: DataFeeder<Key, Value, AccountId> {
 	fn clear_all_values() -> sp_runtime::DispatchResult;
-	fn acquire_lock() -> &'static Mutex<()>;
+	fn acquire_lock() -> MutexGuard<'static, ()>;
 }
 
 #[derive(Clone, Default, PartialEq, Eq, Hash)]
@@ -194,7 +193,8 @@ impl<AccountId, Moment: Into<u64>>
 		Ok(())
 	}
 
-	fn acquire_lock() -> &'static Mutex<()> {
-		LOCK.get_or_init(|| Box::new(Mutex::new(())))
+	fn acquire_lock() -> MutexGuard<'static, ()> {
+		let mutex = LOCK.get_or_init(|| Box::new(Mutex::new(())));
+		mutex.lock()
 	}
 }

@@ -16,7 +16,7 @@ use sp_runtime::{
 	traits::{UniqueSaturatedInto, *},
 	ArithmeticError, FixedPointNumber,
 };
-use sp_std::{convert::TryInto, sync::Arc, vec::Vec};
+use sp_std::{convert::TryInto, vec::Vec};
 
 use currency::Amount;
 pub use default_weights::{SubstrateWeight, WeightInfo};
@@ -42,7 +42,7 @@ mod tests;
 pub use dia_oracle::{CoinInfo, DiaOracle, PriceInfo};
 #[cfg(feature = "testing-utils")]
 pub use orml_oracle::{DataFeeder, DataProvider, TimestampedValue};
-use spin::{Mutex, MutexGuard};
+use spin::MutexGuard;
 
 #[cfg(test)]
 #[cfg_attr(test, cfg(feature = "testing-utils"))]
@@ -264,7 +264,7 @@ impl<T: Config> Pallet<T> {
 
 	// public only for testing purposes
 	#[cfg(feature = "testing-utils")]
-	pub fn _acquire_lock() -> &'static Mutex<()> {
+	pub fn _acquire_lock() -> MutexGuard<'static, ()> {
 		use crate::oracle_mock::DataFeederExtended;
 		T::DataFeedProvider::acquire_lock()
 	}
