@@ -42,6 +42,7 @@ mod tests;
 pub use dia_oracle::{CoinInfo, DiaOracle, PriceInfo};
 #[cfg(feature = "testing-utils")]
 pub use orml_oracle::{DataFeeder, DataProvider, TimestampedValue};
+#[cfg(feature = "testing-utils")]
 use spin::MutexGuard;
 
 #[cfg(test)]
