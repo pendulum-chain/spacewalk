@@ -224,7 +224,6 @@ pub struct ExtBuilder;
 
 impl ExtBuilder {
 	pub fn build() -> sp_io::TestExternalities {
-		frame_support::sp_tracing::try_init_simple();
 		let mut storage = frame_system::GenesisConfig::default().build_storage::<Test>().unwrap();
 
 		frame_support::traits::GenesisBuild::<Test>::assimilate_storage(
@@ -242,6 +241,7 @@ where
 	T: FnOnce(),
 {
 	clear_mocks();
+	// This is used to prevent race conditions on the mock data of the oracle.
 	let oracle_mock_lock = Oracle::_acquire_lock();
 	let _ = Oracle::_clear_values();
 	ExtBuilder::build().execute_with(|| {
