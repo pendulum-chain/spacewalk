@@ -70,7 +70,7 @@ impl StellarWallet {
 			envelope.clone(),
 		))?;
 
-		let _ = self.cache.save_tx_envelope(envelope.clone())?;
+		let _ = self.cache.save_tx_envelope(envelope.clone());
 
 		let submission_result = self
 			.client
