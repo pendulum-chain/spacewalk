@@ -42,7 +42,7 @@ mod tests;
 pub use dia_oracle::{CoinInfo, DiaOracle, PriceInfo};
 #[cfg(feature = "testing-utils")]
 pub use orml_oracle::{DataFeeder, DataProvider, TimestampedValue};
-use spin::MutexGuard;
+use spin::{Mutex, MutexGuard};
 
 #[cfg(test)]
 #[cfg_attr(test, cfg(feature = "testing-utils"))]
@@ -264,7 +264,7 @@ impl<T: Config> Pallet<T> {
 
 	// public only for testing purposes
 	#[cfg(feature = "testing-utils")]
-	pub fn _acquire_lock() -> Arc<MutexGuard<'static, ()>> {
+	pub fn _acquire_lock() -> Arc<Mutex<()>> {
 		use crate::oracle_mock::DataFeederExtended;
 		T::DataFeedProvider::acquire_lock()
 	}

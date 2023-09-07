@@ -374,10 +374,15 @@ pub fn run_test<T>(test: T)
 where
 	T: FnOnce(),
 {
+	sp_tracing::try_init_simple();
 	clear_mocks();
 	let _ = <oracle::Pallet<Test>>::_clear_values();
 	// Acquire lock to prevent other tests from changing the exchange rates during the test
-	let _ = <oracle::Pallet<Test>>::_acquire_lock();
+	frame_support::log::error!("before acquire lock");
+	let mutex = <oracle::Pallet<Test>>::_acquire_lock();
+	let lock = mutex.lock();
+	frame_support::log::error!("after acquire lock");
+
 	ExtBuilder::build().execute_with(|| {
 		System::set_block_number(1);
 		Security::set_active_block_number(1);
@@ -400,6 +405,8 @@ where
 			UnsignedFixedPoint::one(),
 		)
 		.unwrap();
-		test()
-	})
+		test();
+	});
+
+	drop(lock);
 }

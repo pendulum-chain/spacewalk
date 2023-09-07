@@ -12,7 +12,7 @@ use sp_runtime::DispatchResult;
 // Extends the orml_oracle::DataFeeder trait with a clear_all_values function.
 pub trait DataFeederExtended<Key, Value, AccountId>: DataFeeder<Key, Value, AccountId> {
 	fn clear_all_values() -> sp_runtime::DispatchResult;
-	fn acquire_lock() -> Arc<MutexGuard<'static, ()>>;
+	fn acquire_lock() -> Arc<Mutex<()>>;
 }
 
 #[derive(Clone, Default, PartialEq, Eq, Hash)]
@@ -188,7 +188,7 @@ impl<AccountId, Moment: Into<u64>>
 		Ok(())
 	}
 
-	fn acquire_lock() -> Arc<MutexGuard<'static, ()>> {
-		Arc::new(LOCK.lock())
+	fn acquire_lock() -> Arc<Mutex<()>> {
+		LOCK.clone()
 	}
 }
