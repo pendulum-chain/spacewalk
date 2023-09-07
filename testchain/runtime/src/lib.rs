@@ -488,7 +488,7 @@ cfg_if::cfg_if! {
 			ConvertMoment,
 		>;
 	} else if #[cfg(feature = "runtime-benchmarks")] {
-		use oracle::oracle_mock::{
+		use oracle::testing_utils::{
 			MockConvertMoment, MockConvertPrice, MockDiaOracle, MockOracleKeyConvertor,
 		};
 		type DataProviderImpl = DiaOracleAdapter<
@@ -514,7 +514,7 @@ cfg_if::cfg_if! {
 }
 
 #[cfg(any(feature = "runtime-benchmarks", feature = "testing-utils"))]
-use oracle::oracle_mock::MockDataCollector;
+use oracle::testing_utils::MockDataCollector;
 
 impl oracle::Config for Runtime {
 	type RuntimeEvent = RuntimeEvent;

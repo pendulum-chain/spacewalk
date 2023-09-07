@@ -20,7 +20,7 @@ pub use currency::testing_constants::{
 use currency::Amount;
 use oracle::{
 	dia::DiaOracleAdapter,
-	oracle_mock::{
+	testing_utils::{
 		MockConvertMoment, MockConvertPrice, MockDataCollector, MockDiaOracle,
 		MockOracleKeyConvertor,
 	},

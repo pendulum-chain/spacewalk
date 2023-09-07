@@ -49,7 +49,7 @@ use spin::MutexGuard;
 pub mod mock;
 
 #[cfg(feature = "testing-utils")]
-pub mod oracle_mock;
+pub mod testing_utils;
 
 pub mod types;
 
@@ -83,7 +83,7 @@ pub mod pallet {
 		>;
 
 		#[cfg(feature = "testing-utils")]
-		type DataFeedProvider: oracle_mock::DataFeederExtended<
+		type DataFeedProvider: testing_utils::DataFeederExtended<
 			OracleKey,
 			TimestampedValue<Self::UnsignedFixedPoint, Self::Moment>,
 			Self::AccountId,
@@ -258,14 +258,14 @@ impl<T: Config> Pallet<T> {
 	// public only for testing purposes
 	#[cfg(feature = "testing-utils")]
 	pub fn _clear_values() -> DispatchResult {
-		use crate::oracle_mock::DataFeederExtended;
+		use crate::testing_utils::DataFeederExtended;
 		T::DataFeedProvider::clear_all_values()
 	}
 
 	// public only for testing purposes
 	#[cfg(feature = "testing-utils")]
 	pub fn _acquire_lock() -> MutexGuard<'static, ()> {
-		use crate::oracle_mock::DataFeederExtended;
+		use crate::testing_utils::DataFeederExtended;
 		T::DataFeedProvider::acquire_lock()
 	}
 

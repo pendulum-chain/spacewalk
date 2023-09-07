@@ -21,7 +21,7 @@ pub use currency::{
 };
 use oracle::{
 	dia::DiaOracleAdapter,
-	oracle_mock::{
+	testing_utils::{
 		MockConvertMoment, MockConvertPrice, MockDataCollector, MockDiaOracle,
 		MockOracleKeyConvertor,
 	},

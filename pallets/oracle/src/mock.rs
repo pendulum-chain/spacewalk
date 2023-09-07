@@ -19,7 +19,7 @@ pub use currency::testing_constants::{
 use crate::{
 	self as oracle,
 	dia::DiaOracleAdapter,
-	oracle_mock::{MockConvertMoment, MockConvertPrice, MockOracleKeyConvertor},
+	testing_utils::{MockConvertMoment, MockConvertPrice, MockOracleKeyConvertor},
 	Config, Error,
 };
 
@@ -183,14 +183,14 @@ impl Config for Test {
 	type RuntimeEvent = TestEvent;
 	type WeightInfo = oracle::SubstrateWeight<Test>;
 	type DataProvider = DiaOracleAdapter<
-		crate::oracle_mock::MockDiaOracle,
+		crate::testing_utils::MockDiaOracle,
 		UnsignedFixedPoint,
 		Moment,
 		MockOracleKeyConvertor,
 		MockConvertPrice,
 		MockConvertMoment<Moment>,
 	>;
-	type DataFeedProvider = crate::oracle_mock::MockDataCollector<AccountId, Moment>;
+	type DataFeedProvider = crate::testing_utils::MockDataCollector<AccountId, Moment>;
 }
 
 parameter_types! {

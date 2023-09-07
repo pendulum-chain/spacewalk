@@ -1,29 +1,31 @@
-use sp_runtime::traits::Convert;
-
 use once_cell::race::OnceBox;
-use primitives::{oracle::Key, Asset, CurrencyId};
+use orml_oracle::{DataFeeder, DataProvider, TimestampedValue};
 use sp_arithmetic::FixedU128;
+use sp_runtime::{traits::Convert, DispatchResult};
 use sp_std::{boxed::Box, collections::btree_map::BTreeMap, vec, vec::Vec};
 use spin::{Mutex, MutexGuard, RwLock};
 
-use orml_oracle::{DataFeeder, DataProvider, TimestampedValue};
-use sp_runtime::DispatchResult;
+use primitives::oracle::Key;
 
-// Extends the orml_oracle::DataFeeder trait with a clear_all_values function.
+use crate::testing_utils::mock_convertors::MockOracleKeyConvertor;
+
+type UnsignedFixedPoint = FixedU128;
+type MapKey = u128;
+
+// This is a global variable that stores the mock data.
+// A `OnceBox` is used to ensure that the mock data is only initialized once.
+static COINS: OnceBox<RwLock<BTreeMap<MapKey, Data>>> = OnceBox::new();
+// This lock can be used to synchronize access to the DIA mock. It is used to prevent race
+// conditions when running tests in parallel.
+static LOCK: OnceBox<Mutex<()>> = OnceBox::new();
+
+// Extends the orml_oracle::DataFeeder trait with other functions
 pub trait DataFeederExtended<Key, Value, AccountId>: DataFeeder<Key, Value, AccountId> {
-	fn clear_all_values() -> sp_runtime::DispatchResult;
+	fn clear_all_values() -> DispatchResult;
+	/// This function is used to acquire a lock on the static `LOCK` variable. This can be used to
+	/// prevent race conditions when running tests in parallel.
 	fn acquire_lock() -> MutexGuard<'static, ()>;
 }
-
-#[derive(Clone, Default, PartialEq, Eq, Hash)]
-pub struct Data {
-	pub key: u128,
-	pub price: u128,
-	pub timestamp: u64,
-}
-
-pub type UnsignedFixedPoint = FixedU128;
-type MapKey = u128;
 
 // A function to uniquely derive a key from blockchain and symbol
 fn derive_key(blockchain: Vec<u8>, symbol: Vec<u8>) -> MapKey {
@@ -40,73 +42,12 @@ fn derive_key(blockchain: Vec<u8>, symbol: Vec<u8>) -> MapKey {
 	key
 }
 
-pub struct MockOracleKeyConvertor;
-
-impl Convert<Key, Option<(Vec<u8>, Vec<u8>)>> for MockOracleKeyConvertor {
-	fn convert(spacewalk_oracle_key: Key) -> Option<(Vec<u8>, Vec<u8>)> {
-		match spacewalk_oracle_key {
-			Key::ExchangeRate(currency_id) => match currency_id {
-				CurrencyId::XCM(token_symbol) => Some((vec![0u8], vec![token_symbol])),
-				CurrencyId::Native => Some((vec![2u8], vec![0])),
-				CurrencyId::StellarNative => Some((vec![3u8], vec![0])),
-				CurrencyId::Stellar(Asset::AlphaNum4 { code, .. }) =>
-					Some((vec![4u8], code.to_vec())),
-				CurrencyId::Stellar(Asset::AlphaNum12 { code, .. }) =>
-					Some((vec![5u8], code.to_vec())),
-				CurrencyId::ZenlinkLPToken(token1_id, token1_type, token2_id, token2_type) =>
-					Some((vec![6], vec![token1_id, token1_type, token2_id, token2_type])),
-			},
-		}
-	}
+#[derive(Clone, Default, PartialEq, Eq, Hash)]
+pub struct Data {
+	pub key: MapKey,
+	pub price: u128,
+	pub timestamp: u64,
 }
-
-impl Convert<(Vec<u8>, Vec<u8>), Option<Key>> for MockOracleKeyConvertor {
-	fn convert(dia_oracle_key: (Vec<u8>, Vec<u8>)) -> Option<Key> {
-		let (blockchain, symbol) = dia_oracle_key;
-		match blockchain[0] {
-			0u8 => Some(Key::ExchangeRate(CurrencyId::XCM(symbol[0]))),
-			2u8 => Some(Key::ExchangeRate(CurrencyId::Native)),
-			3u8 => Some(Key::ExchangeRate(CurrencyId::StellarNative)),
-			4u8 => {
-				let vector = symbol;
-				let code = [vector[0], vector[1], vector[2], vector[3]];
-				Some(Key::ExchangeRate(CurrencyId::AlphaNum4(code, [0u8; 32])))
-			},
-			5u8 => {
-				let vector = symbol;
-				let code = [
-					vector[0], vector[1], vector[2], vector[3], vector[4], vector[5], vector[6],
-					vector[7], vector[8], vector[9], vector[10], vector[11],
-				];
-				Some(Key::ExchangeRate(CurrencyId::AlphaNum12(code, [0u8; 32])))
-			},
-			6u8 => Some(Key::ExchangeRate(CurrencyId::ZenlinkLPToken(
-				symbol[0], symbol[1], symbol[2], symbol[3],
-			))),
-			_ => None,
-		}
-	}
-}
-pub struct MockConvertPrice;
-impl Convert<u128, Option<FixedU128>> for MockConvertPrice {
-	fn convert(price: u128) -> Option<FixedU128> {
-		Some(FixedU128::from_inner(price))
-	}
-}
-
-pub struct MockConvertMoment<Moment>(sp_std::marker::PhantomData<Moment>);
-impl<Moment> Convert<Moment, Option<Moment>> for MockConvertMoment<Moment> {
-	fn convert(moment: Moment) -> Option<Moment> {
-		Some(moment)
-	}
-}
-
-// Implementation of re-usable mock DiaOracle
-
-static COINS: OnceBox<RwLock<BTreeMap<MapKey, Data>>> = OnceBox::new();
-// This lock can be used to synchronize access to the DIA mock. It is used to prevent race
-// conditions when running tests in parallel.
-static LOCK: OnceBox<Mutex<()>> = OnceBox::new();
 
 pub struct MockDiaOracle;
 impl dia_oracle::DiaOracle for MockDiaOracle {
@@ -131,17 +72,17 @@ impl dia_oracle::DiaOracle for MockDiaOracle {
 		Ok(coin_info)
 	}
 
-	//Spacewalk DiaOracleAdapter does not use get_value function. There is no need to implement
-	// this function.
 	fn get_value(
 		_blockchain: Vec<u8>,
 		_symbol: Vec<u8>,
 	) -> Result<dia_oracle::PriceInfo, sp_runtime::DispatchError> {
+		// We don't need to implement this function for the mock
 		unimplemented!(
 			"DiaOracleAdapter implementation of DataProviderExtended does not use this function."
 		)
 	}
 }
+
 pub struct MockDataCollector<AccountId, Moment>(
 	sp_std::marker::PhantomData<AccountId>,
 	sp_std::marker::PhantomData<Moment>,
