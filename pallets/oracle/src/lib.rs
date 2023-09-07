@@ -264,7 +264,7 @@ impl<T: Config> Pallet<T> {
 
 	// public only for testing purposes
 	#[cfg(feature = "testing-utils")]
-	pub fn _acquire_lock() -> Arc<Mutex<()>> {
+	pub fn _acquire_lock() -> &'static Mutex<()> {
 		use crate::oracle_mock::DataFeederExtended;
 		T::DataFeedProvider::acquire_lock()
 	}

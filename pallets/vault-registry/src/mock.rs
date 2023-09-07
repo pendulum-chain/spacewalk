@@ -375,13 +375,13 @@ where
 	T: FnOnce(),
 {
 	sp_tracing::try_init_simple();
-	clear_mocks();
-	let _ = <oracle::Pallet<Test>>::_clear_values();
 	// Acquire lock to prevent other tests from changing the exchange rates during the test
 	frame_support::log::error!("before acquire lock");
 	let mutex = <oracle::Pallet<Test>>::_acquire_lock();
 	let lock = mutex.lock();
 	frame_support::log::error!("after acquire lock");
+	clear_mocks();
+	let _ = <oracle::Pallet<Test>>::_clear_values();
 
 	ExtBuilder::build().execute_with(|| {
 		System::set_block_number(1);

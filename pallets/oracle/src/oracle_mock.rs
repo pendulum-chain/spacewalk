@@ -1,6 +1,7 @@
 use sp_runtime::traits::Convert;
 use sp_std::sync::Arc;
 
+use once_cell::race::OnceBox;
 use primitives::{oracle::Key, Asset, CurrencyId};
 use sp_arithmetic::FixedU128;
 use sp_std::{collections::btree_map::BTreeMap, vec, vec::Vec};
@@ -12,7 +13,7 @@ use sp_runtime::DispatchResult;
 // Extends the orml_oracle::DataFeeder trait with a clear_all_values function.
 pub trait DataFeederExtended<Key, Value, AccountId>: DataFeeder<Key, Value, AccountId> {
 	fn clear_all_values() -> sp_runtime::DispatchResult;
-	fn acquire_lock() -> Arc<Mutex<()>>;
+	fn acquire_lock() -> &'static Mutex<()>;
 }
 
 #[derive(Clone, Default, PartialEq, Eq, Hash)]
@@ -103,11 +104,10 @@ impl<Moment> Convert<Moment, Option<Moment>> for MockConvertMoment<Moment> {
 
 // Implementation of re-usable mock DiaOracle
 
-lazy_static::lazy_static! {
-	static ref COINS: Arc<RwLock<BTreeMap<MapKey, Data>>> = Arc::new(RwLock::new(BTreeMap::<MapKey, Data>::new()));
-	// This lock can be used to synchronize access to the DIA mock. It is used to prevent race conditions when running tests in parallel.
-	static ref LOCK: Arc<Mutex<()>> = Arc::new(Mutex::new(()));
-}
+static COINS: OnceBox<RwLock<BTreeMap<MapKey, Data>>> = OnceBox::new();
+// This lock can be used to synchronize access to the DIA mock. It is used to prevent race
+// conditions when running tests in parallel.
+static LOCK: OnceBox<Mutex<()>> = OnceBox::new();
 
 pub struct MockDiaOracle;
 impl dia_oracle::DiaOracle for MockDiaOracle {
@@ -117,7 +117,9 @@ impl dia_oracle::DiaOracle for MockDiaOracle {
 	) -> Result<dia_oracle::CoinInfo, sp_runtime::DispatchError> {
 		let key = derive_key(blockchain, symbol);
 
-		let coins = COINS.read();
+		let coins = COINS
+			.get_or_init(|| Box::new(RwLock::new(BTreeMap::<MapKey, Data>::new())))
+			.read();
 		let coin_data = coins.get(&key);
 		let Some(result) = coin_data else {
 			return Err(sp_runtime::DispatchError::Other(""));
@@ -171,7 +173,9 @@ impl<AccountId, Moment: Into<u64>>
 		let key = derive_key(blockchain, symbol);
 		let data = Data { key, price, timestamp: value.timestamp.into().clone() };
 
-		let mut coins = COINS.write();
+		let mut coins = COINS
+			.get_or_init(|| Box::new(RwLock::new(BTreeMap::<MapKey, Data>::new())))
+			.write();
 		coins.insert(key, data);
 
 		Ok(())
@@ -183,12 +187,14 @@ impl<AccountId, Moment: Into<u64>>
 	for MockDataCollector<AccountId, Moment>
 {
 	fn clear_all_values() -> DispatchResult {
-		let mut coins = COINS.write();
+		let mut coins = COINS
+			.get_or_init(|| Box::new(RwLock::new(BTreeMap::<MapKey, Data>::new())))
+			.write();
 		coins.clear();
 		Ok(())
 	}
 
-	fn acquire_lock() -> Arc<Mutex<()>> {
-		LOCK.clone()
+	fn acquire_lock() -> &'static Mutex<()> {
+		LOCK.get_or_init(|| Box::new(Mutex::new(())))
 	}
 }
