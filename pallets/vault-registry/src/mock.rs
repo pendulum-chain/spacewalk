@@ -396,12 +396,6 @@ where
 			UnsignedFixedPoint::one(),
 		)
 		.unwrap();
-		<oracle::Pallet<Test>>::_set_exchange_rate(
-			1,
-			DEFAULT_NATIVE_CURRENCY,
-			UnsignedFixedPoint::one(),
-		)
-		.unwrap();
 		test();
 	});
 

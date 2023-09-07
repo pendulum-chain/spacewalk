@@ -210,7 +210,6 @@ impl<T: Config> Pallet<T> {
 			let Some(price) = price else{
 				continue;
 			};
-			// Here, no outdated values are found although one price should be expired in the test
 			let is_outdated = current_time > price.timestamp + max_delay;
 			if !is_outdated {
 				updated_items.push((key.clone(), price.value));

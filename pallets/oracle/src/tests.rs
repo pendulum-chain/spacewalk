@@ -111,14 +111,14 @@ mod oracle_offline_detection {
 			Oracle::get_max_delay.mock_safe(move || MockResult::Return(10));
 
 			set_time(0);
-			feed_value_with_value(CurrencyId::XCM(0), OracleA, 3);
+			feed_value(CurrencyId::XCM(0), OracleA);
 			assert_eq!(SecurityPallet::parachain_status(), StatusCode::Running);
 
 			set_time(5);
 			feed_value(CurrencyId::XCM(1), OracleA);
 
 			set_time(7);
-			feed_value_with_value(CurrencyId::XCM(0), OracleB, 2);
+			feed_value(CurrencyId::XCM(0), OracleB);
 
 			// OracleA's DOT submission expires at 10, but OracleB's only at 17. However, KSM
 			// expires at 15:
