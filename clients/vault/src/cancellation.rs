@@ -172,7 +172,7 @@ fn drain_expired(requests: &mut Vec<ActiveRequest>, current_height: u32) -> Vec<
 
 	requests.retain(|req| {
 		if current_height > req.parachain_deadline_height {
-			expired.push(req.clone());
+			expired.push(*req);
 			false
 		} else {
 			true
