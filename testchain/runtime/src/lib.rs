@@ -438,14 +438,6 @@ impl Convert<u64, Option<Moment>> for ConvertMoment {
 	}
 }
 
-// TODO move this into the corresponding sections
-#[cfg(feature = "testing-utils")]
-use oracle::oracle_mock::MockDataCollector;
-#[cfg(feature = "runtime-benchmarks")]
-use oracle::oracle_mock::{
-	MockConvertMoment, MockConvertPrice, MockDiaOracle, MockOracleKeyConvertor,
-};
-
 pub struct SpacewalkNativeCurrencyKey;
 
 impl NativeCurrencyKey for SpacewalkNativeCurrencyKey {
@@ -496,6 +488,9 @@ cfg_if::cfg_if! {
 			ConvertMoment,
 		>;
 	} else if #[cfg(feature = "runtime-benchmarks")] {
+		use oracle::oracle_mock::{
+			MockConvertMoment, MockConvertPrice, MockDiaOracle, MockOracleKeyConvertor,
+		};
 		type DataProviderImpl = DiaOracleAdapter<
 			MockDiaOracle,
 			UnsignedFixedPoint,
@@ -517,6 +512,9 @@ cfg_if::cfg_if! {
 		>;
 	}
 }
+
+#[cfg(any(feature = "runtime-benchmarks", feature = "testing-utils"))]
+use oracle::oracle_mock::MockDataCollector;
 
 impl oracle::Config for Runtime {
 	type RuntimeEvent = RuntimeEvent;

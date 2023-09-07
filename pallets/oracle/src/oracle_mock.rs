@@ -3,7 +3,7 @@ use sp_runtime::traits::Convert;
 use once_cell::race::OnceBox;
 use primitives::{oracle::Key, Asset, CurrencyId};
 use sp_arithmetic::FixedU128;
-use sp_std::{collections::btree_map::BTreeMap, vec, vec::Vec};
+use sp_std::{boxed::Box, collections::btree_map::BTreeMap, vec, vec::Vec};
 use spin::{Mutex, MutexGuard, RwLock};
 
 use orml_oracle::{DataFeeder, DataProvider, TimestampedValue};
