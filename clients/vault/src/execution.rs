@@ -374,29 +374,38 @@ pub async fn execute_open_requests(
 	let parachain_rpc = &parachain_rpc;
 	let vault_id = parachain_rpc.get_account_id().clone();
 
-	// get all redeem and replace requests
-	let (redeem_requests, replace_requests) = try_join!(
-		parachain_rpc.get_vault_redeem_requests(vault_id.clone()),
-		parachain_rpc.get_old_vault_replace_requests(vault_id.clone()),
-	)?;
-
-	let open_redeems = redeem_requests
-		.into_iter()
-		.filter(|(_, request)| request.status == RedeemRequestStatus::Pending)
-		.filter_map(|(hash, request)| {
+	//closure to filter and transform redeem_requests
+	let filter_redeem_reqs = move |(hash, request): (H256, SpacewalkRedeemRequest)| {
+		if request.status == RedeemRequestStatus::Pending {
 			Request::from_redeem_request(hash, request, payment_margin).ok()
-		});
+		} else {
+			None
+		}
+	};
 
-	let open_replaces = replace_requests
-		.into_iter()
-		.filter(|(_, request)| request.status == ReplaceRequestStatus::Pending)
-		.filter_map(|(hash, request)| {
+	//closure to filter and transform replace_requests
+	let filter_replace_reqs = move |(hash, request): (H256, SpacewalkReplaceRequest)| {
+		if request.status == ReplaceRequestStatus::Pending {
 			Request::from_replace_request(hash, request, payment_margin).ok()
-		});
+		} else {
+			None
+		}
+	};
+
+	// get all redeem and replace requests
+	let (open_redeems, open_replaces) = try_join!(
+		parachain_rpc
+			.get_vault_redeem_requests::<Request>(vault_id.clone(), Box::new(filter_redeem_reqs)),
+		parachain_rpc.get_old_vault_replace_requests::<Request>(
+			vault_id.clone(),
+			Box::new(filter_replace_reqs)
+		),
+	)?;
 
 	// collect all requests into a hashmap, indexed by their id
 	let mut open_requests = open_redeems
-		.chain(open_replaces)
+		.into_iter()
+		.chain(open_replaces.into_iter())
 		.map(|x| (derive_shortened_request_id(&x.hash.0), x))
 		.collect::<HashMap<_, _>>();
 
@@ -461,7 +470,7 @@ pub async fn execute_open_requests(
 
 	// All requests remaining in the hashmap did not have a Stellar payment yet, so pay
 	// and execute all of these
-	for (_, request) in open_requests {
+	for (_, request) in open_requests.into_iter() {
 		// there are potentially a large number of open requests - pay and execute each
 		// in a separate task to ensure that awaiting confirmations does not significantly
 		// delay other requests

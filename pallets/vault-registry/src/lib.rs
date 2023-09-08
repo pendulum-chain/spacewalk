@@ -198,7 +198,6 @@ pub mod pallet {
 			let vault = Self::get_active_rich_vault_from_id(&vault_id)?;
 
 			let amount = Amount::new(amount, currency_pair.collateral);
-
 			Self::try_deposit_collateral(&vault_id, &amount)?;
 
 			Self::deposit_event(Event::<T>::DepositCollateral {

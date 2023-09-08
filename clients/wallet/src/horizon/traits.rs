@@ -22,7 +22,7 @@ pub trait HorizonClient {
 		account_id: A,
 		is_public_network: bool,
 		cursor: PagingToken,
-		limit: i64,
+		limit: u8,
 		order_ascending: bool,
 	) -> Result<HorizonTransactionsResponse, Error>;
 

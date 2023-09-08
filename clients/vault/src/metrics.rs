@@ -15,7 +15,7 @@ use runtime::{
 	types::currency_id::CurrencyIdExt,
 	AggregateUpdatedEvent, CollateralBalancesPallet, CurrencyId, Error as RuntimeError, FixedU128,
 	IssuePallet, IssueRequestStatus, OracleKey, RedeemPallet, RedeemRequestStatus, SecurityPallet,
-	SpacewalkParachain, UtilFuncs, VaultId, VaultRegistryPallet, H256,
+	SpacewalkParachain, SpacewalkRedeemRequest, UtilFuncs, VaultId, VaultRegistryPallet, H256,
 };
 use service::{
 	warp::{Rejection, Reply},
@@ -469,8 +469,14 @@ pub async fn poll_metrics<
 	loop {
 		publish_native_currency_balance(parachain_rpc).await?;
 		publish_issue_count(parachain_rpc, vault_id_manager).await;
+
+		let pass_all_filter = |item: (H256, SpacewalkRedeemRequest)| Some(item);
+
 		if let Ok(redeems) = parachain_rpc
-			.get_vault_redeem_requests(parachain_rpc.get_account_id().clone())
+			.get_vault_redeem_requests::<(H256, SpacewalkRedeemRequest)>(
+				parachain_rpc.get_account_id().clone(),
+				Box::new(pass_all_filter),
+			)
 			.await
 		{
 			publish_redeem_count(vault_id_manager, &redeems).await;
