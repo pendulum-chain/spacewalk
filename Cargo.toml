@@ -7,6 +7,7 @@ members = [
     "clients/wallet",
     "clients/service",
     "clients/stellar-relay-lib",
+    "pallets/client-info",
     "pallets/currency",
     "pallets/fee",
     "pallets/nomination",
