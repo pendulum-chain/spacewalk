@@ -362,7 +362,7 @@ pub struct ClaimableBalance {
 #[derive(Deserialize, Encode, Decode, Default, Debug)]
 pub struct Claimant {
 	#[serde(deserialize_with = "de_string_to_bytes")]
-	pub destination: Vec<u8>
+	pub destination: Vec<u8>,
 }
 
 /// An iter structure equivalent to a list of TransactionResponse
