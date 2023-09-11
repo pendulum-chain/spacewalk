@@ -162,6 +162,9 @@ impl Runner {
 
     async fn download_binary(runner: &mut impl RunnerExt, release: ClientRelease) -> Result<DownloadedRelease, Error> {
         
+        let (bin_name, bin_path) = runner.get_bin_path(&release.uri)?;
+        log::info!("Downloading {} at: {:?}", bin_name, bin_path);
+        
         //recheck checksum to see if binary is the one we have
         if let Some(downloaded_release) = runner.downloaded_release() {
             if downloaded_release.checksum.eq(&release.checksum) {
@@ -171,14 +174,14 @@ impl Runner {
         }
         
         // if not, try get the binary
-        // let _ = retry_with_log_async(
-        //     || runner.do_download_binary(runner ,release.clone()).into_future().boxed(),
-        //     "Error fetching executable".to_string(),
-        // )
-        // .await?;
-        Runner::do_download_binary(runner ,release.clone()).await?;
+        let _ = retry_with_log_async(
+            || Runner::do_download_binary(bin_path.clone() ,release.clone()).into_future().boxed(),
+            "Error fetching executable".to_string(),
+        )
+        .await?;
+        //Runner::do_download_binary(runner ,release.clone()).await?;
 
-        let (bin_name, bin_path) = runner.get_bin_path(&release.uri)?;
+       
         let downloaded_release = DownloadedRelease {
             checksum: release.checksum,
             path: bin_path,
@@ -188,9 +191,9 @@ impl Runner {
         Ok(downloaded_release)
     }
 
-    async fn do_download_binary( runner: &mut impl RunnerExt, release: ClientRelease) -> Result<(), Error>  {
-        let (bin_name, bin_path) = runner.get_bin_path(&release.uri)?;
-        log::info!("Downloading {} at: {:?}", bin_name, bin_path);
+    async fn do_download_binary( bin_path: PathBuf, release: ClientRelease) -> Result<&'static str, Error>  {
+        
+        
         let mut file = OpenOptions::new()
             .read(true)
             .write(true)
@@ -201,7 +204,7 @@ impl Runner {
             .open(bin_path.clone())?;
 
         let bytes = retry_with_log_async(
-            || runner.get_request_bytes(release.uri.clone()).into_future().boxed(),
+            || Runner::get_request_bytes2(release.uri.clone()).into_future().boxed(),
             "Error fetching executable".to_string(),
         )
         .await?;
@@ -225,7 +228,14 @@ impl Runner {
         if checksum != release.checksum {
             return Err(Error::IncorrectChecksum);
         }
-        Ok(())
+        Ok("success")
+    }
+
+     // Testing
+     async fn get_request_bytes2( url: String) -> Result<Bytes, Error> {
+        log::info!("Fetching executable from {}", url);
+        let response = reqwest::get(url.clone()).await?;
+        Ok(response.bytes().await?)
     }
 
     fn get_bin_path(runner: &impl RunnerExt, uri: &str) -> Result<(String, PathBuf), Error> {
@@ -572,6 +582,8 @@ impl RunnerExt for Runner {
         let response = reqwest::get(url.clone()).await?;
         Ok(response.bytes().await?)
     }
+
+   
 
     fn auto_update(&mut self) -> BoxFuture<'_, Result<(), Error>> {
         Runner::auto_update(self).into_future().boxed()
