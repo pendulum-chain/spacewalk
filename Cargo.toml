@@ -18,6 +18,7 @@ members = [
     "pallets/vault-registry",
     "primitives",
     "rpc",
+    "runner",
     "pallets/*/rpc",
     "testchain/node",
     "testchain/runtime",
