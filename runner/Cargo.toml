@@ -25,3 +25,8 @@ futures = "0.3.21"
 backoff = { version = "0.3.0", features = ["tokio"] }
 subxt = { version = "0.29.0", default_features = false,  features = ["jsonrpsee-ws"] }
 sha2 = "0.8.2"
+
+[dev-dependencies]
+sysinfo = "0.25.1"
+tempdir = "0.3.7"
+mockall = "0.8.1"

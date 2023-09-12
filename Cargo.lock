@@ -5180,6 +5180,15 @@ checksum = "61807f77802ff30975e01f4f071c8ba10c022052f98b3294119f3e615d13e5be"
 
 [[package]]
 name = "ntapi"
+version = "0.3.7"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "c28774a7fd2fbb4f0babd8237ce554b73af68021b5f695a3cebd6c59bac0980f"
+dependencies = [
+ "winapi",
+]
+
+[[package]]
+name = "ntapi"
 version = "0.4.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e8a3895c6391c39d7fe7ebc444a87eb2991b2a0bc718fdabd071eec617fc68e4"
@@ -6969,6 +6978,7 @@ dependencies = [
  "futures 0.3.28",
  "hex",
  "log",
+ "mockall 0.8.3",
  "nix",
  "parity-scale-codec",
  "reqwest",
@@ -6977,6 +6987,8 @@ dependencies = [
  "signal-hook-tokio",
  "sp-core",
  "subxt 0.29.0",
+ "sysinfo 0.25.3",
+ "tempdir",
  "thiserror",
  "tokio",
  "url 2.4.0",
@@ -10240,6 +10252,21 @@ dependencies = [
 
 [[package]]
 name = "sysinfo"
+version = "0.25.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "71eb43e528fdc239f08717ec2a378fdb017dddbc3412de15fff527554591a66c"
+dependencies = [
+ "cfg-if 1.0.0",
+ "core-foundation-sys",
+ "libc",
+ "ntapi 0.3.7",
+ "once_cell",
+ "rayon",
+ "winapi",
+]
+
+[[package]]
+name = "sysinfo"
 version = "0.26.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "5c18a6156d1f27a9592ee18c1a846ca8dd5c258b7179fc193ae87c74ebb666f5"
@@ -10247,7 +10274,7 @@ dependencies = [
  "cfg-if 1.0.0",
  "core-foundation-sys",
  "libc",
- "ntapi",
+ "ntapi 0.4.1",
  "once_cell",
  "rayon",
  "winapi",
@@ -11052,7 +11079,7 @@ dependencies = [
  "spacewalk-primitives",
  "stellar-relay-lib",
  "subxt 0.25.0",
- "sysinfo",
+ "sysinfo 0.26.9",
  "tempdir",
  "thiserror",
  "tokio",
