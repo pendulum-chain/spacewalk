@@ -106,10 +106,10 @@ After making the changes, the first step is to run the local node.
 cargo run --bin spacewalk-standalone --release -- --dev
 ```
 
-Once the local node is running, run this command:
+Once the local node is running, run this command from the clients directory:
 
 ```
-subxt metadata -f bytes > runtime/metadata-standalone.scale
+subxt metadata -f bytes > runtime/metadata-standalone.scale --version 14
 ```
 
 ## Troubleshooting
