@@ -1,5 +1,5 @@
 [package]
-name = "client-info"
+name = "clients-info"
 authors = ["Pendulum Chain <https://github.com/pendulum-chain>"]
 version = "0.1.0"
 edition = "2021"

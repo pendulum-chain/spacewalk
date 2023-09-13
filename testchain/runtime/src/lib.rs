@@ -560,9 +560,9 @@ impl nomination::Config for Runtime {
 	type WeightInfo = nomination::SubstrateWeight<Runtime>;
 }
 
-impl client_info::Config for Runtime {
+impl clients_info::Config for Runtime {
     type RuntimeEvent = RuntimeEvent;
-    type WeightInfo = client_info::SubstrateWeight<Runtime>;
+    type WeightInfo = clients_info::SubstrateWeight<Runtime>;
     type MaxNameLength = ConstU32<255>;
     type MaxUriLength = ConstU32<255>;
 }
@@ -599,7 +599,7 @@ construct_runtime! {
 		Fee: fee::{Pallet, Call, Config<T>, Storage} = 26,
 		Nomination: nomination::{Pallet, Call, Config, Storage, Event<T>} = 28,
 		DiaOracleModule: dia_oracle::{Pallet, Call, Config<T>, Storage, Event<T>} = 29,
-		ClientInfo: client_info::{Pallet, Call, Storage, Event<T>} = 30,
+		ClientsInfo: clients_info::{Pallet, Call, Storage, Event<T>} = 30,
 	}
 }
 
@@ -641,7 +641,7 @@ pub type Executive = frame_executive::Executive<
 #[cfg(feature = "runtime-benchmarks")]
 mod benches {
 	define_benchmarks!(
-		[client_info, ClientsInfo]
+		[clients_info, ClientsInfo]
 		[frame_benchmarking, BaselineBench::<Runtime>]
 		[frame_system, SystemBench::<Runtime>]
 		[stellar_relay, StellarRelay]
