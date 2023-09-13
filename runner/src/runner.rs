@@ -31,9 +31,7 @@ use async_trait::async_trait;
 /// Also used as the name of the downloaded executable.
 #[derive(Debug, Clone)]
 pub enum ClientType {
-	Vault,
-	Oracle,
-	Faucet,
+	Vault
 }
 
 impl FromStr for ClientType {
@@ -42,8 +40,6 @@ impl FromStr for ClientType {
 	fn from_str(s: &str) -> Result<Self, Self::Err> {
 		let client_type = match s {
 			"vault" => ClientType::Vault,
-			"oracle" => ClientType::Oracle,
-			"faucet" => ClientType::Faucet,
 			_ => return Err(Error::ClientTypeParsingError),
 		};
 		Ok(client_type)
@@ -54,8 +50,6 @@ impl Display for ClientType {
 	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
 		let s = match self {
 			ClientType::Vault => "vault",
-			ClientType::Oracle => "oracle",
-			ClientType::Faucet => "faucet",
 		};
 		write!(f, "{s}")
 	}
