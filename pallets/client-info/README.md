@@ -6,7 +6,7 @@ This pallet contains storage items regarding the vault client info, and 2 extrin
 To run the tests use:
 
 ```bash
-cargo test --package redeem --features runtime-benchmarks
+cargo test --package clients-info --features runtime-benchmarks
 ```
 
 
