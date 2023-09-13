@@ -10,7 +10,7 @@ use codec::Encode;
 pub use dia_oracle::dia::*;
 use frame_support::{
 	construct_runtime, parameter_types,
-	traits::{ConstU128, ConstU64, ConstU32, ConstU8, Contains},
+	traits::{ConstU128, ConstU32, ConstU64, ConstU8, Contains},
 	weights::{constants::WEIGHT_REF_TIME_PER_SECOND, ConstantMultiplier, IdentityFee, Weight},
 	PalletId,
 };
@@ -561,10 +561,10 @@ impl nomination::Config for Runtime {
 }
 
 impl clients_info::Config for Runtime {
-    type RuntimeEvent = RuntimeEvent;
-    type WeightInfo = clients_info::SubstrateWeight<Runtime>;
-    type MaxNameLength = ConstU32<255>;
-    type MaxUriLength = ConstU32<255>;
+	type RuntimeEvent = RuntimeEvent;
+	type WeightInfo = clients_info::SubstrateWeight<Runtime>;
+	type MaxNameLength = ConstU32<255>;
+	type MaxUriLength = ConstU32<255>;
 }
 
 construct_runtime! {
