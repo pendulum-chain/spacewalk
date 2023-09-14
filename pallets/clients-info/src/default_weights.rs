@@ -41,26 +41,32 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 	/// Proof: ClientsInfo CurrentClientReleases (max_values: None, max_size: Some(562), added: 3037, mode: MaxEncodedLen)
 	/// The range of component `n` is `[0, 255]`.
 	/// The range of component `u` is `[0, 255]`.
-	fn set_current_client_release(_n: u32, _u: u32, ) -> Weight {
+	fn set_current_client_release(n: u32, u: u32, ) -> Weight {
 		// Proof Size summary in bytes:
 		//  Measured:  `0`
 		//  Estimated: `0`
-		// Minimum execution time: 7_708_000 picoseconds.
-		Weight::from_parts(10_840_321, 0)
+		// Minimum execution time: 7_607_000 picoseconds.
+		Weight::from_parts(9_560_259, 0)
+			// Standard Error: 845
+			.saturating_add(Weight::from_parts(2_586, 0).saturating_mul(n.into()))
+			// Standard Error: 845
+			.saturating_add(Weight::from_parts(689, 0).saturating_mul(u.into()))
 			.saturating_add(T::DbWeight::get().writes(1_u64))
 	}
 	/// Storage: ClientsInfo PendingClientReleases (r:0 w:1)
 	/// Proof: ClientsInfo PendingClientReleases (max_values: None, max_size: Some(562), added: 3037, mode: MaxEncodedLen)
 	/// The range of component `n` is `[0, 255]`.
 	/// The range of component `u` is `[0, 255]`.
-	fn set_pending_client_release(n: u32, _u: u32, ) -> Weight {
+	fn set_pending_client_release(n: u32, u: u32, ) -> Weight {
 		// Proof Size summary in bytes:
 		//  Measured:  `0`
 		//  Estimated: `0`
-		// Minimum execution time: 7_604_000 picoseconds.
-		Weight::from_parts(9_645_041, 0)
-			// Standard Error: 790
-			.saturating_add(Weight::from_parts(3_495, 0).saturating_mul(n.into()))
+		// Minimum execution time: 7_557_000 picoseconds.
+		Weight::from_parts(9_238_573, 0)
+			// Standard Error: 840
+			.saturating_add(Weight::from_parts(3_011, 0).saturating_mul(n.into()))
+			// Standard Error: 840
+			.saturating_add(Weight::from_parts(892, 0).saturating_mul(u.into()))
 			.saturating_add(T::DbWeight::get().writes(1_u64))
 	}
 }
@@ -71,26 +77,32 @@ impl WeightInfo for () {
 	/// Proof: ClientsInfo CurrentClientReleases (max_values: None, max_size: Some(562), added: 3037, mode: MaxEncodedLen)
 	/// The range of component `n` is `[0, 255]`.
 	/// The range of component `u` is `[0, 255]`.
-	fn set_current_client_release(_n: u32, _u: u32, ) -> Weight {
+	fn set_current_client_release(n: u32, u: u32, ) -> Weight {
 		// Proof Size summary in bytes:
 		//  Measured:  `0`
 		//  Estimated: `0`
-		// Minimum execution time: 7_708_000 picoseconds.
-		Weight::from_parts(10_840_321, 0)
+		// Minimum execution time: 7_607_000 picoseconds.
+		Weight::from_parts(9_560_259, 0)
+			// Standard Error: 845
+			.saturating_add(Weight::from_parts(2_586, 0).saturating_mul(n.into()))
+			// Standard Error: 845
+			.saturating_add(Weight::from_parts(689, 0).saturating_mul(u.into()))
 			.saturating_add(RocksDbWeight::get().writes(1_u64))
 	}
 	/// Storage: ClientsInfo PendingClientReleases (r:0 w:1)
 	/// Proof: ClientsInfo PendingClientReleases (max_values: None, max_size: Some(562), added: 3037, mode: MaxEncodedLen)
 	/// The range of component `n` is `[0, 255]`.
 	/// The range of component `u` is `[0, 255]`.
-	fn set_pending_client_release(n: u32, _u: u32, ) -> Weight {
+	fn set_pending_client_release(n: u32, u: u32, ) -> Weight {
 		// Proof Size summary in bytes:
 		//  Measured:  `0`
 		//  Estimated: `0`
-		// Minimum execution time: 7_604_000 picoseconds.
-		Weight::from_parts(9_645_041, 0)
-			// Standard Error: 790
-			.saturating_add(Weight::from_parts(3_495, 0).saturating_mul(n.into()))
+		// Minimum execution time: 7_557_000 picoseconds.
+		Weight::from_parts(9_238_573, 0)
+			// Standard Error: 840
+			.saturating_add(Weight::from_parts(3_011, 0).saturating_mul(n.into()))
+			// Standard Error: 840
+			.saturating_add(Weight::from_parts(892, 0).saturating_mul(u.into()))
 			.saturating_add(RocksDbWeight::get().writes(1_u64))
 	}
 }
