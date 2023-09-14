@@ -10,7 +10,7 @@ use codec::Encode;
 pub use dia_oracle::dia::*;
 use frame_support::{
 	construct_runtime, parameter_types,
-	traits::{ConstU128, ConstU64, ConstU8, Contains},
+	traits::{ConstU128, ConstU32, ConstU64, ConstU8, Contains},
 	weights::{constants::WEIGHT_REF_TIME_PER_SECOND, ConstantMultiplier, IdentityFee, Weight},
 	PalletId,
 };
@@ -560,6 +560,13 @@ impl nomination::Config for Runtime {
 	type WeightInfo = nomination::SubstrateWeight<Runtime>;
 }
 
+impl clients_info::Config for Runtime {
+	type RuntimeEvent = RuntimeEvent;
+	type WeightInfo = clients_info::SubstrateWeight<Runtime>;
+	type MaxNameLength = ConstU32<255>;
+	type MaxUriLength = ConstU32<255>;
+}
+
 construct_runtime! {
 	pub enum Runtime where
 		Block = Block,
@@ -592,6 +599,7 @@ construct_runtime! {
 		Fee: fee::{Pallet, Call, Config<T>, Storage} = 26,
 		Nomination: nomination::{Pallet, Call, Config, Storage, Event<T>} = 28,
 		DiaOracleModule: dia_oracle::{Pallet, Call, Config<T>, Storage, Event<T>} = 29,
+		ClientsInfo: clients_info::{Pallet, Call, Storage, Event<T>} = 30,
 	}
 }
 
@@ -633,6 +641,7 @@ pub type Executive = frame_executive::Executive<
 #[cfg(feature = "runtime-benchmarks")]
 mod benches {
 	define_benchmarks!(
+		[clients_info, ClientsInfo]
 		[frame_benchmarking, BaselineBench::<Runtime>]
 		[frame_system, SystemBench::<Runtime>]
 		[stellar_relay, StellarRelay]
