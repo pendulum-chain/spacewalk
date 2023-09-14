@@ -31,7 +31,7 @@ use async_trait::async_trait;
 /// Also used as the name of the downloaded executable.
 #[derive(Debug, Clone)]
 pub enum ClientType {
-	Vault
+	Vault,
 }
 
 impl FromStr for ClientType {
@@ -175,10 +175,7 @@ impl Runner {
 		Ok(downloaded_release)
 	}
 
-	async fn do_download_binary(
-		bin_path: PathBuf,
-		release: ClientRelease,
-	) -> Result<(), Error> {
+	async fn do_download_binary(bin_path: PathBuf, release: ClientRelease) -> Result<(), Error> {
 		let mut file = OpenOptions::new()
 			.read(true)
 			.write(true)
@@ -707,7 +704,7 @@ mod tests {
 		}
 	}
 
-    //Before running this test, ensure uri and checksum of the test file match!
+	//Before running this test, ensure uri and checksum of the test file match!
 	#[tokio::test]
 	async fn test_runner_download_binary() {
 		let mut runner = MockRunner::default();
@@ -758,7 +755,6 @@ mod tests {
 			// (`700`).
 			fs::Permissions::from_mode(0o0100700)
 		);
-
 	}
 
 	#[tokio::test]
@@ -792,10 +788,10 @@ mod tests {
 			runner.expect_download_path().return_const(mock_path.clone());
 			runner.expect_client_type().return_const(client.clone());
 			let (bin_name, bin_path) = Runner::get_bin_path(
-                &runner,
-                "https://downloads.pendulumchain.tech/spacewalk/vault-rococo",
-            )
-                .unwrap();
+				&runner,
+				"https://downloads.pendulumchain.tech/spacewalk/vault-rococo",
+			)
+			.unwrap();
 			assert_eq!(bin_name, "vault-rococo");
 			assert_eq!(bin_path, mock_path.join(bin_name));
 		}
@@ -874,7 +870,6 @@ mod tests {
 		.iter()
 		.map(|s| s.to_string())
 		.collect();
-	    
 
 		let mock_downloaded_release = DownloadedRelease {
 			checksum: H256::default(),
