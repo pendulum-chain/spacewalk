@@ -1,6 +1,7 @@
 [workspace]
 resolver = "2"
 members = [
+    "clients/runner",
     "clients/runtime",
     "clients/runtime/client",
     "clients/vault",
@@ -18,7 +19,6 @@ members = [
     "pallets/vault-registry",
     "primitives",
     "rpc",
-    "runner",
     "pallets/*/rpc",
     "testchain/node",
     "testchain/runtime",

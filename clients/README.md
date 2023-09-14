@@ -12,7 +12,13 @@ cargo build --features=parachain-metadata
 
 ## Running the vault
 
-To run the vault with the provided standalone chain use:
+To run the vault with the auto-updater service:
+
+```
+cargo run --bin runner -- --parachain-ws <parachain-ws> -- --keyring alice  --stellar-vault-secret-key-filepath <secret_key_file_path> --stellar-overlay-config-filepath <cfg_file_path>```
+```
+
+To run the vault directly with the provided standalone chain use:
 
 ```
 cargo run --bin vault --features standalone-metadata  -- --keyring alice --stellar-vault-secret-key-filepath <secret_key_file_path> --stellar-overlay-config-filepath <cfg_file_path>
@@ -89,7 +95,7 @@ cargo test --test '*' --package vault --features integration-test
 When any changes are made to elements associated with the pallets, such as extrinsic names or parameters, it is necessary to regenerate the metadata. Subxt is employed specifically for this purpose.
 
 ```
-cargo install subxt-cli
+cargo install subxt-cli@0.31.0
 
 // fetching from an automatically detected local chain
 subxt metadata -f bytes > runtime/metadata-{your-chain-name}.scale
