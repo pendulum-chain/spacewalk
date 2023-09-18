@@ -15,7 +15,7 @@ use std::{
 	convert::TryInto,
 	fmt::{Debug, Display},
 	fs::{self, OpenOptions},
-	io::{Read, Seek, SeekFrom, Write},
+	io::{Read, Seek, Write},
 	os::unix::prelude::OpenOptionsExt,
 	path::PathBuf,
 	process::{Child, Command, Stdio},
@@ -195,7 +195,7 @@ impl Runner {
 		file.sync_all()?;
 
 		//checksum check
-		file.seek(SeekFrom::Start(0))?;
+		file.rewind()?;
 
 		// Read the content of the file
 		let mut file_content = Vec::new();
