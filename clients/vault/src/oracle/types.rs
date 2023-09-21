@@ -141,55 +141,55 @@ impl<K: PartialEq + Debug, T> Default for LimitedFifoMap<K, T> {
 }
 
 #[derive(Clone)]
-pub struct DoubleSidedHashMap<T1, T2> {
-	t1_to_t2_map: HashMap<T1, T2>,
-	t2_to_t1_map: HashMap<T2, T1>,
+pub struct DoubleSidedHashMap<K, V> {
+	k_to_v_map: HashMap<K, V>,
+	v_to_k_map: HashMap<V, K>,
 }
 
-impl<T1, T2> Default for DoubleSidedHashMap<T1, T2>
+impl<K, V> Default for DoubleSidedHashMap<K, V>
 where
-	T1: Clone + Eq + std::hash::Hash,
-	T2: Clone + Eq + std::hash::Hash,
+	K: Clone + Eq + std::hash::Hash,
+	V: Clone + Eq + std::hash::Hash,
 {
 	fn default() -> Self {
 		DoubleSidedHashMap::new()
 	}
 }
 
-impl<T1, T2> DoubleSidedHashMap<T1, T2>
+impl<K, V> DoubleSidedHashMap<K, V>
 where
-	T1: Clone + Eq + std::hash::Hash,
-	T2: Clone + Eq + std::hash::Hash,
+	K: Clone + Eq + std::hash::Hash,
+	V: Clone + Eq + std::hash::Hash,
 {
 	pub fn new() -> Self {
-		DoubleSidedHashMap { t1_to_t2_map: Default::default(), t2_to_t1_map: Default::default() }
+		DoubleSidedHashMap { k_to_v_map: Default::default(), v_to_k_map: Default::default() }
 	}
 
-	pub fn insert(&mut self, t1: T1, t2: T2) {
-		self.t1_to_t2_map.insert(t1.clone(), t2.clone());
-		self.t2_to_t1_map.insert(t2, t1);
+	pub fn insert(&mut self, K: K, V: V) {
+		self.k_to_v_map.insert(K.clone(), V.clone());
+		self.v_to_k_map.insert(V, K);
 	}
 }
 
 impl DoubleSidedHashMap<TxSetHash, Slot> {
 	pub fn get_slot_by_txset_hash(&self, hash: &TxSetHash) -> Option<&Slot> {
-		self.t1_to_t2_map.get(hash)
+		self.k_to_v_map.get(hash)
 	}
 
 	pub fn get_txset_hash_by_slot(&self, slot: &Slot) -> Option<&TxSetHash> {
-		self.t2_to_t1_map.get(slot)
+		self.v_to_k_map.get(slot)
 	}
 
 	pub fn remove_by_slot(&mut self, slot: &Slot) -> Option<TxSetHash> {
-		let hash = self.t2_to_t1_map.remove(slot)?;
-		self.t1_to_t2_map.remove(&hash)?;
+		let hash = self.v_to_k_map.remove(slot)?;
+		self.k_to_v_map.remove(&hash)?;
 
 		Some(hash)
 	}
 
 	pub fn remove_by_txset_hash(&mut self, txset_hash: &TxSetHash) -> Option<Slot> {
-		let slot = self.t1_to_t2_map.remove(txset_hash)?;
-		self.t2_to_t1_map.remove(&slot)?;
+		let slot = self.k_to_v_map.remove(txset_hash)?;
+		self.v_to_k_map.remove(&slot)?;
 		Some(slot)
 	}
 }
