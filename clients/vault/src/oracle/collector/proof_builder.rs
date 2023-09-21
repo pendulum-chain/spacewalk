@@ -1,7 +1,6 @@
-use std::{convert::TryInto, future::Future};
+use std::{convert::TryFrom, future::Future};
 use tracing::log;
 
-use primitives::stellar::types::TransactionHistoryEntry;
 use stellar_relay_lib::sdk::{
 	compound_types::{UnlimitedVarArray, XdrArchive},
 	types::{ScpEnvelope, ScpHistoryEntry, ScpStatementPledges, StellarMessage, TransactionSet},
@@ -84,7 +83,18 @@ impl ScpMessageCollector {
 	/// fetches envelopes from the stellar node
 	async fn ask_node_for_envelopes(&self, slot: Slot, sender: &StellarMessageSender) {
 		// for this slot to be processed, we must put this in our watch list.
-		if let Err(e) = sender.send(StellarMessage::GetScpState(slot.try_into().unwrap())).await {
+
+		let slot = match u32::try_from(slot) {
+			Ok(slot) => slot,
+			Err(e) => {
+				tracing::error!(
+					"Proof Building for slot {slot:} failed to convert slot value into u32 datatype: {e:?}"
+				);
+				return
+			},
+		};
+
+		if let Err(e) = sender.send(StellarMessage::GetScpState(slot)).await {
 			tracing::error!(
 				"Proof Building for slot {slot}: failed to send `GetScpState` message: {e:?}"
 			);
@@ -299,14 +309,15 @@ impl ScpMessageCollector {
 				let tx_archive_storage = TransactionsArchiveStorage(archive_url);
 				let transactions_archive = tx_archive_storage.get_archive(slot).await;
 
-				if let Err(e) = transactions_archive {
-					tracing::error!(
-					"Could not get TransactionsArchive for slot {slot} from horizon archive: {e:?}"
-				);
-					continue
-				}
-				let transactions_archive: XdrArchive<TransactionHistoryEntry> =
-					transactions_archive.unwrap();
+				let transactions_archive = match transactions_archive {
+					Ok(value) => value,
+					Err(e) => {
+						tracing::error!(
+							"Could not get TransactionsArchive for slot {slot} from horizon archive: {e:?}"
+						);
+						continue
+					},
+				};
 
 				let value = transactions_archive
 					.get_vec()
