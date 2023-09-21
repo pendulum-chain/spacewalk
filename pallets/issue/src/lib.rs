@@ -471,64 +471,20 @@ impl<T: Config> Pallet<T> {
 		// allow anyone to complete issue request
 		let requester = issue.requester.clone();
 
-		let amount_transferred: Amount<T> = Self::validate_stellar_transaction(
+		let transaction_envelope = Self::validate_stellar_transaction(
 			&issue_id,
-			&issue,
 			&transaction_envelope_xdr_encoded,
 			&externalized_envelopes_encoded,
 			&transaction_set_encoded,
 		)?;
 
-		let expected_total_amount = issue.amount().checked_add(&issue.fee())?;
+		let amount_transferred: Amount<T> = ext::currency::get_amount_from_transaction_envelope::<T>(
+			&transaction_envelope,
+			issue.stellar_address,
+			issue.asset,
+		)?;
 
-		match issue.status {
-			IssueRequestStatus::Completed => return Err(Error::<T>::IssueCompleted.into()),
-			IssueRequestStatus::Cancelled => {
-				// first try to increase the to-be-issued tokens - if the vault does not
-				// have sufficient collateral then this aborts
-				ext::vault_registry::try_increase_to_be_issued_tokens::<T>(
-					&issue.vault,
-					&amount_transferred,
-				)?;
-
-				if amount_transferred.lt(&expected_total_amount)? {
-					ensure!(requester == executor, Error::<T>::InvalidExecutor);
-				}
-				if amount_transferred.ne(&expected_total_amount)? {
-					// griefing collateral and to_be_issued already decreased in cancel
-					let slashed = Amount::zero(T::GetGriefingCollateralCurrencyId::get());
-					Self::set_issue_amount(&issue_id, &mut issue, amount_transferred, slashed)?;
-				}
-			},
-			IssueRequestStatus::Pending => {
-				let to_release_griefing_collateral =
-					if amount_transferred.lt(&expected_total_amount)? {
-						// only the requester of the issue can execute payments with insufficient
-						// amounts
-						ensure!(requester == executor, Error::<T>::InvalidExecutor);
-						Self::decrease_issue_amount(
-							&issue_id,
-							&mut issue,
-							amount_transferred,
-							expected_total_amount,
-						)?
-					} else {
-						if amount_transferred.gt(&expected_total_amount)? &&
-							!ext::vault_registry::is_vault_liquidated::<T>(&issue.vault)?
-						{
-							Self::try_increase_issue_amount(
-								&issue_id,
-								&mut issue,
-								amount_transferred,
-								expected_total_amount,
-							)?;
-						}
-						issue.griefing_collateral()
-					};
-
-				to_release_griefing_collateral.unlock_on(&requester)?;
-			},
-		}
+		Self::_handle_issue_requests(executor, &issue_id, &mut issue, amount_transferred)?;
 
 		// issue struct may have been update above; recalculate the total
 		let issue_amount = issue.amount();
@@ -824,13 +780,13 @@ impl<T: Config> Pallet<T> {
 		Ok(())
 	}
 
+	// ------------------- execute_issue helpers ------------
 	fn validate_stellar_transaction(
 		issue_id: &H256,
-		issue: &DefaultIssueRequest<T>,
 		transaction_envelope_xdr_encoded: &[u8],
 		externalized_envelopes_encoded: &[u8],
 		transaction_set_encoded: &[u8],
-	) -> Result<Amount<T>, DispatchError> {
+	) -> Result<TransactionEnvelope, DispatchError> {
 		let transaction_envelope = ext::stellar_relay::construct_from_raw_encoded_xdr::<
 			T,
 			TransactionEnvelope,
@@ -867,12 +823,67 @@ impl<T: Config> Pallet<T> {
 				e
 			})?;
 
-		let amount_transferred: Amount<T> = ext::currency::get_amount_from_transaction_envelope::<T>(
-			&transaction_envelope,
-			issue.stellar_address,
-			issue.asset,
-		)?;
+		Ok(transaction_envelope)
+	}
 
-		Ok(amount_transferred)
+	fn _handle_issue_requests(
+		executor: T::AccountId,
+		issue_id: &H256,
+		issue: &mut DefaultIssueRequest<T>,
+		amount_transferred: Amount<T>,
+	) -> Result<(), DispatchError> {
+		let requester = issue.requester.clone();
+		let expected_total_amount = issue.amount().checked_add(&issue.fee())?;
+
+		match issue.status {
+			IssueRequestStatus::Completed => return Err(Error::<T>::IssueCompleted.into()),
+			IssueRequestStatus::Cancelled => {
+				// first try to increase the to-be-issued tokens - if the vault does not
+				// have sufficient collateral then this aborts
+				ext::vault_registry::try_increase_to_be_issued_tokens::<T>(
+					&issue.vault,
+					&amount_transferred,
+				)?;
+
+				if amount_transferred.lt(&expected_total_amount)? {
+					ensure!(requester == executor, Error::<T>::InvalidExecutor);
+				}
+				if amount_transferred.ne(&expected_total_amount)? {
+					// griefing collateral and to_be_issued already decreased in cancel
+					let slashed = Amount::zero(T::GetGriefingCollateralCurrencyId::get());
+					Self::set_issue_amount(issue_id, issue, amount_transferred, slashed)?;
+				}
+			},
+			IssueRequestStatus::Pending => {
+				let to_release_griefing_collateral =
+					if amount_transferred.lt(&expected_total_amount)? {
+						// only the requester of the issue can execute payments with insufficient
+						// amounts
+						ensure!(requester == executor, Error::<T>::InvalidExecutor);
+						Self::decrease_issue_amount(
+							issue_id,
+							issue,
+							amount_transferred,
+							expected_total_amount,
+						)?
+					} else {
+						if amount_transferred.gt(&expected_total_amount)? &&
+							!ext::vault_registry::is_vault_liquidated::<T>(&issue.vault)?
+						{
+							Self::try_increase_issue_amount(
+								issue_id,
+								issue,
+								amount_transferred,
+								expected_total_amount,
+							)?;
+						}
+						issue.griefing_collateral()
+					};
+
+				to_release_griefing_collateral.unlock_on(&requester)?;
+			},
+		}
+
+		Ok(())
 	}
 }
