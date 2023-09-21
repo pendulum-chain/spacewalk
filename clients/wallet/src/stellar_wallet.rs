@@ -480,22 +480,19 @@ mod test {
 		}
 	}
 
-	fn wallet_with_storage(storage: &str) -> Arc<RwLock<StellarWallet>> {
+	fn wallet_with_storage(storage: &str) -> Result<Arc<RwLock<StellarWallet>>, Error> {
 		wallet_with_secret_key_for_storage(storage, STELLAR_VAULT_SECRET_KEY)
 	}
 
 	fn wallet_with_secret_key_for_storage(
 		storage: &str,
 		secret_key: &str,
-	) -> Arc<RwLock<StellarWallet>> {
-		Arc::new(RwLock::new(
-			StellarWallet::from_secret_encoded_with_cache(
-				secret_key,
-				IS_PUBLIC_NETWORK,
-				storage.to_string(),
-			)
-			.unwrap(),
-		))
+	) -> Result<Arc<RwLock<StellarWallet>>, Error> {
+		Ok(Arc::new(RwLock::new(StellarWallet::from_secret_encoded_with_cache(
+			secret_key,
+			IS_PUBLIC_NETWORK,
+			storage.to_string(),
+		)?)))
 	}
 
 	fn default_destination() -> PublicKey {
@@ -509,7 +506,7 @@ mod test {
 			IS_PUBLIC_NETWORK,
 			"resources/test_add_backoff_delay".to_owned(),
 		)
-		.unwrap();
+		.expect("should return a wallet");
 
 		assert_eq!(wallet.max_backoff_delay, StellarWallet::DEFAULT_MAX_BACKOFF_DELAY_IN_SECS);
 
@@ -532,7 +529,7 @@ mod test {
 			IS_PUBLIC_NETWORK,
 			"resources/test_add_retry_attempt".to_owned(),
 		)
-		.unwrap();
+		.expect("should return an arc rwlock wallet");
 
 		assert_eq!(
 			wallet.max_retry_attempts_before_fallback,
@@ -549,7 +546,9 @@ mod test {
 	#[tokio::test]
 	#[serial]
 	async fn test_locking_submission() {
-		let wallet = wallet_with_storage("resources/test_locking_submission").clone();
+		let wallet = wallet_with_storage("resources/test_locking_submission")
+			.expect("should return an arc rwlock wallet")
+			.clone();
 		let wallet_clone = wallet.clone();
 
 		let first_job = tokio::spawn(async move {
@@ -607,8 +606,9 @@ mod test {
 	#[tokio::test]
 	#[serial]
 	async fn sending_payment_using_claimable_balance_works() {
-		let wallet =
-			wallet_with_storage("resources/sending_payment_using_claimable_balance_works").clone();
+		let wallet = wallet_with_storage("resources/sending_payment_using_claimable_balance_works")
+			.expect("should return an arc rwlock wallet")
+			.clone();
 		let mut wallet = wallet.write().await;
 
 		// let's cleanup, just to make sure.
@@ -672,7 +672,7 @@ mod test {
 		let destination_secret_key = secret_key_from_encoding(inactive_secret_key);
 		let storage_path = "resources/sending_payment_using_claimable_balance_works";
 
-		let wallet = wallet_with_storage(storage_path);
+		let wallet = wallet_with_storage(storage_path).expect("should return an arc rwlock wallet");
 		let mut wallet = wallet.write().await;
 
 		// let's cleanup, just to make sure.
@@ -709,7 +709,8 @@ mod test {
 
 				// new wallet created, with the previous destination address acting as "SOURCE".
 				let temp_wallet =
-					wallet_with_secret_key_for_storage(storage_path, inactive_secret_key);
+					wallet_with_secret_key_for_storage(storage_path, inactive_secret_key)
+						.expect("should return an arc rwlock wallet");
 				let mut temp_wallet = temp_wallet.write().await;
 
 				// returning back stellar stroops to `wallet`
@@ -738,12 +739,13 @@ mod test {
 	#[tokio::test]
 	#[serial]
 	async fn sending_payment_works() {
-		let wallet = wallet_with_storage("resources/sending_payment_works");
+		let wallet = wallet_with_storage("resources/sending_payment_works")
+			.expect("should return an arc rwlock wallet");
 		let asset = StellarAsset::native();
 		let amount = 100;
 		let request_id = [0u8; 32];
 
-		let result = wallet
+		let transaction_response = wallet
 			.write()
 			.await
 			.send_payment_to_address(
@@ -754,10 +756,9 @@ mod test {
 				DEFAULT_STROOP_FEE_PER_OPERATION,
 				false,
 			)
-			.await;
+			.await
+			.expect("should return ok");
 
-		assert!(result.is_ok());
-		let transaction_response = result.unwrap();
 		assert!(!transaction_response.hash.to_vec().is_empty());
 		assert!(transaction_response.ledger() > 0);
 		wallet.read().await.cache.remove_dir();
@@ -766,7 +767,9 @@ mod test {
 	#[tokio::test]
 	#[serial]
 	async fn sending_payment_to_self_not_valid() {
-		let wallet = wallet_with_storage("resources/sending_payment_to_self_not_valid").clone();
+		let wallet = wallet_with_storage("resources/sending_payment_to_self_not_valid")
+			.expect("should return an arc rwlock wallet")
+			.clone();
 		let mut wallet = wallet.write().await;
 
 		// let's cleanup, just to make sure.
@@ -801,6 +804,7 @@ mod test {
 	async fn sending_correct_payment_after_incorrect_payment_works() {
 		let wallet =
 			wallet_with_storage("resources/sending_correct_payment_after_incorrect_payment_works")
+				.expect("should return an arc rwlock wallet")
 				.clone();
 		let mut wallet = wallet.write().await;
 
@@ -864,7 +868,9 @@ mod test {
 	#[tokio::test]
 	#[serial]
 	async fn resubmit_transactions_works() {
-		let wallet = wallet_with_storage("resources/resubmit_transactions_works").clone();
+		let wallet = wallet_with_storage("resources/resubmit_transactions_works")
+			.expect("should return an arc rwlock wallet")
+			.clone();
 		let mut wallet = wallet.write().await;
 
 		// let's send a successful transaction first
