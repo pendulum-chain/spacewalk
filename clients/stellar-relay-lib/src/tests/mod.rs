@@ -10,6 +10,7 @@ use crate::{
 };
 use serial_test::serial;
 use tokio::{sync::Mutex, time::timeout};
+use tokio::time::sleep;
 
 fn secret_key() -> String {
 	std::fs::read_to_string("./resources/secretkey/stellar_secretkey_testnet")
@@ -104,7 +105,7 @@ async fn stellar_overlay_should_receive_tx_set() {
 	let tx_set_vec = Arc::new(Mutex::new(vec![]));
 	let tx_set_vec_clone = tx_set_vec.clone();
 
-	timeout(Duration::from_secs(300), async move {
+	timeout(Duration::from_secs(500), async move {
 		let mut ov_conn_locked = ov_conn.lock().await;
 
 		while let Some(relay_message) = ov_conn_locked.listen().await {
@@ -118,6 +119,8 @@ async fn stellar_overlay_should_receive_tx_set() {
 								.send(StellarMessage::GetTxSet(txset_hash))
 								.await
 								.unwrap();
+							// let it sleep to wait for the `TxSet` message to appear
+							sleep(Duration::from_secs(5)).await;
 						},
 					StellarMessage::TxSet(set) => {
 						tx_set_vec_clone.lock().await.push(set);
