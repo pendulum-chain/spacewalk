@@ -9,33 +9,47 @@ use crate::{
 	StellarRelayMessage,
 };
 use serial_test::serial;
-use tokio::{sync::Mutex, time::timeout};
-use tokio::time::sleep;
+use tokio::{
+	sync::Mutex,
+	time::{sleep, timeout},
+};
 
-fn secret_key() -> String {
-	std::fs::read_to_string("./resources/secretkey/stellar_secretkey_testnet")
-		.expect("should be able to read file")
+fn secret_key(is_mainnet: bool) -> String {
+	let path = if is_mainnet {
+		"./resources/secretkey/stellar_secretkey_mainnet"
+	} else {
+		"./resources/secretkey/stellar_secretkey_testnet"
+	};
+
+	std::fs::read_to_string(path).expect("should be able to read file")
 }
 
-fn overlay_infos() -> (NodeInfo, ConnectionInfo) {
+fn overlay_infos(is_mainnet: bool) -> (NodeInfo, ConnectionInfo) {
 	use rand::seq::SliceRandom;
 
-	let stellar_node_points = [1, 2, 3];
-	let node_point = stellar_node_points
-		.choose(&mut rand::thread_rng())
-		.expect("should return a value");
-	let cfg = StellarOverlayConfig::try_from_path(&format!(
-		"./resources/config/testnet/stellar_relay_config_sdftest{node_point}.json"
-	))
-	.expect("should be able to extract config");
+	let path = if is_mainnet {
+		"./resources/config/mainnet/stellar_relay_config_mainnet_iowa.json".to_string()
+	} else {
+		let stellar_node_points = [1, 2, 3];
+		let node_point = stellar_node_points
+			.choose(&mut rand::thread_rng())
+			.expect("should return a value");
 
-	(cfg.node_info(), cfg.connection_info(&secret_key()).expect("should return conn info"))
+		format!("./resources/config/testnet/stellar_relay_config_sdftest{node_point}.json")
+	};
+
+	let cfg = StellarOverlayConfig::try_from_path(&path).expect("should be able to extract config");
+
+	(
+		cfg.node_info(),
+		cfg.connection_info(&secret_key(is_mainnet)).expect("should return conn info"),
+	)
 }
 
 #[tokio::test]
 #[serial]
 async fn stellar_overlay_connect_and_listen_connect_message() {
-	let (node_info, conn_info) = overlay_infos();
+	let (node_info, conn_info) = overlay_infos(false);
 
 	let mut overlay_connection =
 		StellarOverlayConnection::connect(node_info.clone(), conn_info).await.unwrap();
@@ -53,7 +67,7 @@ async fn stellar_overlay_connect_and_listen_connect_message() {
 #[tokio::test]
 #[serial]
 async fn stellar_overlay_should_receive_scp_messages() {
-	let (node_info, conn_info) = overlay_infos();
+	let (node_info, conn_info) = overlay_infos(false);
 
 	let overlay_connection = Arc::new(Mutex::new(
 		StellarOverlayConnection::connect(node_info, conn_info).await.unwrap(),
@@ -96,7 +110,7 @@ async fn stellar_overlay_should_receive_tx_set() {
 		scp_value[0..32].try_into().unwrap()
 	}
 
-	let (node_info, conn_info) = overlay_infos();
+	let (node_info, conn_info) = overlay_infos(true);
 	let overlay_connection = Arc::new(Mutex::new(
 		StellarOverlayConnection::connect(node_info, conn_info).await.unwrap(),
 	));
@@ -120,7 +134,7 @@ async fn stellar_overlay_should_receive_tx_set() {
 								.await
 								.unwrap();
 							// let it sleep to wait for the `TxSet` message to appear
-							sleep(Duration::from_secs(5)).await;
+							sleep(Duration::from_secs(10)).await;
 						},
 					StellarMessage::TxSet(set) => {
 						tx_set_vec_clone.lock().await.push(set);
@@ -144,7 +158,7 @@ async fn stellar_overlay_should_receive_tx_set() {
 #[tokio::test]
 #[serial]
 async fn stellar_overlay_disconnect_works() {
-	let (node_info, conn_info) = overlay_infos();
+	let (node_info, conn_info) = overlay_infos(false);
 
 	let mut overlay_connection =
 		StellarOverlayConnection::connect(node_info.clone(), conn_info).await.unwrap();
