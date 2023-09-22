@@ -202,7 +202,7 @@ mod tests {
 	#[serial]
 	async fn test_get_proof_for_current_slot() {
 		let agent =
-			start_oracle_agent(get_test_stellar_relay_config(false), &get_test_secret_key(false))
+			start_oracle_agent(get_test_stellar_relay_config(true), &get_test_secret_key(true))
 				.await
 				.expect("Failed to start agent");
 		sleep(Duration::from_secs(10)).await;
