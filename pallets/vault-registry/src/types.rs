@@ -656,23 +656,6 @@ impl<T: Config> RichVault<T> {
 		});
 	}
 
-	#[cfg(feature = "runtime-benchmarks")]
-	fn new_deposit_public_key(
-		&self,
-		_secure_id: sp_core::H256,
-	) -> Result<primitives::StellarPublicKeyRaw, DispatchError> {
-		// The new deposit public key will always be the same Vault Public key.
-		Pallet::<T>::get_stellar_public_key(&self.data.id.account_id)
-	}
-
-	#[cfg(feature = "runtime-benchmarks")]
-	pub(crate) fn new_deposit_address(
-		&mut self,
-		secure_id: sp_core::H256,
-	) -> Result<primitives::StellarPublicKeyRaw, DispatchError> {
-		self.new_deposit_public_key(secure_id)
-	}
-
 	fn update<F>(&mut self, func: F) -> DispatchResult
 	where
 		F: Fn(&mut DefaultVault<T>) -> DispatchResult,
