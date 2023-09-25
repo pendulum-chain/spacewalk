@@ -23,9 +23,6 @@ use sp_core::U256;
 use sp_runtime::traits::AtLeast32BitUnsigned;
 use sp_runtime::{traits::*, ArithmeticError, FixedPointOperand};
 
-#[cfg(feature = "runtime-benchmarks")]
-use sp_runtime::FixedPointNumber;
-
 use sp_std::{
 	convert::{TryFrom, TryInto},
 	fmt::Debug,
@@ -1124,25 +1121,6 @@ impl<T: Config> Pallet<T> {
 			increase: tokens.amount(),
 		});
 		Ok(())
-	}
-
-	/// Registers a stellar address. Actually does nothing because we don't use deposit addresses on
-	/// Stellar.
-	///
-	/// # Arguments
-	/// * `issue_id` - secure id for generating deposit address
-	#[cfg(feature = "runtime-benchmarks")]
-	pub fn register_deposit_address(
-		vault_id: &DefaultVaultId<T>,
-		issue_id: sp_core::H256,
-	) -> Result<StellarPublicKeyRaw, DispatchError> {
-		let mut vault = Self::get_active_rich_vault_from_id(vault_id)?;
-		let stellar_address = vault.new_deposit_address(issue_id)?;
-		Self::deposit_event(Event::<T>::RegisterAddress {
-			vault_id: vault.id(),
-			address: stellar_address,
-		});
-		Ok(stellar_address)
 	}
 
 	/// returns the amount of tokens that a vault can request to be replaced on top of the
