@@ -348,12 +348,17 @@ impl VaultService {
 	fn auto_register(
 		&self,
 	) -> Result<Vec<(CurrencyId, CurrencyId, Option<u128>)>, ServiceError<Error>> {
+		let mut amount_is_none: bool = false;
 		let parsed_auto_register = self
 			.config
 			.auto_register
 			.clone()
 			.into_iter()
 			.map(|(collateral, wrapped, amount)| {
+				if amount.is_none() {
+					amount_is_none = true;
+				}
+
 				Ok((
 					CurrencyId::try_from_symbol(collateral)?,
 					CurrencyId::try_from_symbol(wrapped)?,
@@ -365,9 +370,7 @@ impl VaultService {
 			.map_err(ServiceError::Abort)?;
 
 		// exit if auto-register uses faucet and faucet url not set
-		if parsed_auto_register.iter().any(|(_, _, o)| o.is_none()) &&
-			self.config.faucet_url.is_none()
-		{
+		if amount_is_none && self.config.faucet_url.is_none() {
 			return Err(ServiceError::Abort(Error::FaucetUrlNotSet))
 		}
 
