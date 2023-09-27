@@ -9,7 +9,7 @@ use crate::oracle::OracleAgent;
 use primitives::{derive_shortened_request_id, TextMemo, TransactionEnvelopeExt};
 use runtime::{
 	AccountId, RedeemPallet, RedeemRequestStatus, ReplacePallet, ReplaceRequestStatus,
-	ShutdownSender, SpacewalkParachain,
+	ShutdownSender, SpacewalkParachain, SpacewalkRedeemRequest, SpacewalkReplaceRequest, H256,
 };
 use service::Error as ServiceError;
 use wallet::{StellarWallet, TransactionResponse, TransactionsResponseIter};
@@ -109,29 +109,38 @@ pub(crate) async fn retrieve_open_redeem_replace_requests_async(
 	vault_id: AccountId,
 	payment_margin: Duration,
 ) -> Result<HashMap<TextMemo, Request>, ServiceError<Error>> {
-	// get all redeem and replace requests
-	let (redeem_requests, replace_requests) = try_join!(
-		parachain_rpc.get_vault_redeem_requests(vault_id.clone()),
-		parachain_rpc.get_old_vault_replace_requests(vault_id),
-	)?;
-
-	let open_redeems = redeem_requests
-		.into_iter()
-		.filter(|(_, request)| request.status == RedeemRequestStatus::Pending)
-		.filter_map(|(hash, request)| {
+	//closure to filter and transform redeem_requests
+	let filter_redeem_reqs = move |(hash, request): (H256, SpacewalkRedeemRequest)| {
+		if request.status == RedeemRequestStatus::Pending {
 			Request::from_redeem_request(hash, request, payment_margin).ok()
-		});
+		} else {
+			None
+		}
+	};
 
-	let open_replaces = replace_requests
-		.into_iter()
-		.filter(|(_, request)| request.status == ReplaceRequestStatus::Pending)
-		.filter_map(|(hash, request)| {
+	//closure to filter and transform replace_requests
+	let filter_replace_reqs = move |(hash, request): (H256, SpacewalkReplaceRequest)| {
+		if request.status == ReplaceRequestStatus::Pending {
 			Request::from_replace_request(hash, request, payment_margin).ok()
-		});
+		} else {
+			None
+		}
+	};
+
+	// get all redeem and replace requests
+	let (open_redeems, open_replaces) = try_join!(
+		parachain_rpc
+			.get_vault_redeem_requests::<Request>(vault_id.clone(), Box::new(filter_redeem_reqs)),
+		parachain_rpc.get_old_vault_replace_requests::<Request>(
+			vault_id.clone(),
+			Box::new(filter_replace_reqs)
+		),
+	)?;
 
 	// collect all requests into a hashmap, indexed by their id
 	Ok(open_redeems
-		.chain(open_replaces)
+		.into_iter()
+		.chain(open_replaces.into_iter())
 		.map(|x| (derive_shortened_request_id(&x.hash_inner()), x))
 		.collect::<HashMap<_, _>>())
 }
