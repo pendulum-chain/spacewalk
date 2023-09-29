@@ -305,6 +305,13 @@ impl<T: Config> Pallet<T> {
 			.unique_saturated_into())
 	}
 
+	pub fn get_exchange_rate(
+		currency_id: CurrencyId,
+	) -> Result<T::UnsignedFixedPoint, DispatchError> {
+		let rate = Self::get_price(OracleKey::ExchangeRate(currency_id))?;
+		Ok(rate)
+	}
+
 	/// Private getters and setters
 	fn get_max_delay() -> T::Moment {
 		<MaxDelay<T>>::get()

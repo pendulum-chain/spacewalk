@@ -10,6 +10,8 @@ frame-support = {git = "https://github.com/paritytech/substrate", branch = "polk
 serde = {version = "1.0.130", default-features = false, optional = true, features = ["derive"]}
 sp-api = {git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.40", default-features = false}
 sp-std = {git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.40", default-features = false}
+primitives = { package = "spacewalk-primitives", path = "../../../../primitives", default-features = false }
+
 
 [features]
 default = ["std"]

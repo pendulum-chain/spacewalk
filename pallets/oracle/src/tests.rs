@@ -151,6 +151,7 @@ fn getting_exchange_rate_fails_with_missing_exchange_rate() {
 		assert_err!(Oracle::get_price(key), TestError::MissingExchangeRate);
 		assert_err!(Oracle::currency_to_usd(0, CurrencyId::XCM(0)), TestError::MissingExchangeRate);
 		assert_err!(Oracle::usd_to_currency(0, CurrencyId::XCM(0)), TestError::MissingExchangeRate);
+		assert_err!(Oracle::get_exchange_rate(CurrencyId::XCM(0)), TestError::MissingExchangeRate);
 	});
 }
 
@@ -177,6 +178,18 @@ fn usd_to_currency() {
 			let result = Oracle::usd_to_currency(*input, CurrencyId::XCM(0));
 			assert_ok!(result, *expected);
 		}
+	});
+}
+
+#[test]
+fn get_exchange_rate() {
+	run_test(|| {
+		Oracle::get_price
+			.mock_safe(|_| MockResult::Return(Ok(FixedU128::checked_from_rational(9, 4).unwrap())));
+
+		let result = Oracle::get_exchange_rate(CurrencyId::XCM(0));
+		println!("{:?}", result);
+		assert_ok!(result, FixedPointNumber::checked_from_rational(9, 4).unwrap());
 	});
 }
 
