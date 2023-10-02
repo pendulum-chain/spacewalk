@@ -17,7 +17,7 @@ The `StellarOverlayConfig` is a configuration to connect to the Stellar Node. It
  * `ConnectionInfoCfg`
  * `NodeInfoCfg`.
 
-The `NodeInfoCfg` contains the information of the Stellar Node to connect to. Except the address and the port.
+The `NodeInfoCfg` contains the Stellar Node information to connect to, except the address and the port.
 ```rust
 pub struct NodeInfoCfg {
     pub ledger_version: u32,
@@ -74,7 +74,7 @@ The `StellarOverlayConnection` has 2 async methods to interact with the Stellar 
 The `StellarRelayMessage` is an enum with the following variants:
 * _`Connect`_ -> interprets a successful connection to Stellar Node. It contains the `PublicKey` and the `NodeInfo`
 * _`Data`_ -> a wrapper of a `StellarMessage` and additional fields: the _message type_ and the unique `p_id`(process id) 
-* _`Timeout`_ -> Depends on the `timeout_in_secs` and `retries` defined in the `ConnectionInfo` (**10** and **3** by default). This message is returned after multiple retries have been done.
+* _`Timeout`_ -> Depends on the `timeout_in_secs` and `retries` defined in the `ConnectionInfoCfg` (**10** and **3** by default). This message is returned after multiple retries have been done.
 For example, Stellar Relay will wait for 10 seconds to read from the existing tcp stream before retrying again. After the 3rd retry, StellarRelay will create a new stream in 3 attempts, with an interval of 3 seconds.
 * _`Error`_ -> a todo
 
