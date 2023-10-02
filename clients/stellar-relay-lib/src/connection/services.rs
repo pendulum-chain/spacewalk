@@ -152,7 +152,7 @@ pub(crate) async fn receiving_service(
 	actions_sender: mpsc::Sender<ConnectorActions>,
 	timeout_in_secs: u64,
 	retries: u8,
-) -> Result<(), Error> {
+) {
 	let mut retry = 0;
 	let mut retry_read = 0;
 	let mut proc_id = 0;
@@ -171,9 +171,8 @@ pub(crate) async fn receiving_service(
 		{
 			Ok(Ok(0)) => {
 				if retry_read >= retries {
-					return Err(Error::ReadFailed(format!(
-						"Failed to read messages from the stream. Received 0 size more than {retries} times"
-					)))
+					log::error!("proc_id: {proc_id}. Failed to read messages from the stream. Received 0 size more than {retries} times");
+					return
 				}
 				retry_read += 1;
 			},
@@ -213,18 +212,21 @@ pub(crate) async fn receiving_service(
 				retry = 0;
 				retry_read = 0;
 				// let's read the continuation number of bytes from the previous message.
-				read_unfinished_message(
-					&mut r_stream,
-					&actions_sender,
-					&mut lack_bytes_from_prev,
-					&mut proc_id,
-					&mut readbuf,
-				)
-				.await?;
+				log_error!(
+					read_unfinished_message(
+						&mut r_stream,
+						&actions_sender,
+						&mut lack_bytes_from_prev,
+						&mut proc_id,
+						&mut readbuf,
+					).await,
+					format!("proc_id:{proc_id}. Error occurred while reading unfinished stellar message")
+				);
+
 			},
 			Ok(Err(e)) => {
 				log::error!("proc_id: {proc_id}. Error occurred while reading the stream: {e:?}");
-				return Err(Error::ConnectionFailed(e.to_string()))
+				return
 			},
 			Err(elapsed) => {
 				log::error!(
@@ -233,9 +235,8 @@ pub(crate) async fn receiving_service(
 				);
 
 				if retry >= retries {
-					return Err(Error::ConnectionFailed(
-						"TIMED OUT reading for messages from the stream".to_string(),
-					))
+					log::error!("proc_id: {proc_id}. Exhausted maximum retries for reading messages from Stellar Node.");
+					return
 				}
 				retry += 1;
 			},
@@ -285,21 +286,19 @@ pub(crate) async fn connection_handler(
 	mut connector: Connector,
 	mut actions_receiver: mpsc::Receiver<ConnectorActions>,
 	mut w_stream: tcp::OwnedWriteHalf,
-) -> Result<(), Error> {
+) {
 	let mut timeout_counter = 0;
 	loop {
 		match timeout(Duration::from_secs(connector.timeout_in_secs), actions_receiver.recv()).await
 		{
 			Ok(Some(ConnectorActions::Disconnect)) => {
-				w_stream.shutdown().await.map_err(|e| {
-					log::error!("Failed to shutdown write half of stream: {:?}", e);
-
-					Error::ConnectionFailed("Failed to disconnect tcp stream".to_string())
-				})?;
-
+				log_error!(
+					w_stream.shutdown().await,
+					format!("Failed to shutdown write half of stream:")
+				);
 				drop(connector);
 				drop(actions_receiver);
-				return Ok(())
+				return
 			},
 
 			Ok(Some(action)) => {
@@ -317,14 +316,15 @@ pub(crate) async fn connection_handler(
 			Err(elapsed) => {
 				log::error!("Connection timed out after {} seconds", elapsed.to_string());
 				if timeout_counter >= connector.retries {
-					connector.send_to_user(StellarRelayMessage::Timeout).await?;
-					return Err(Error::ConnectionFailed(format!(
-						"Timed out! elapsed time: {:?}",
-						elapsed.to_string()
-					)))
+					log_error!(
+						connector.send_to_user(StellarRelayMessage::Timeout).await,
+						format!("Connection Timed out:")
+					);
+					return;
 				}
 				timeout_counter += 1;
 			},
 		}
 	}
 }
+

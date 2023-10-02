@@ -6,14 +6,14 @@ use substrate_stellar_sdk::{
 	SecretKey, XdrCodec,
 };
 
-/// a helpful macro to unwrap an `Ok` or return immediately.
+/// a helpful macro to log an error (if it occurs) and return immediately.
 macro_rules! log_error {
 	// expression, return value, extra log
 	($res:expr, $log:expr) => {
-		$res.map_err(|e| {
+		if let Err(e) = $res {
 			log::error!("{:?}: {e:?}", $log);
-			e
-		})?;
+			return
+		}
 	};
 }
 

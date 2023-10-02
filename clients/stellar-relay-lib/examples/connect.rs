@@ -1,8 +1,18 @@
+use substrate_stellar_sdk::Hash;
+use substrate_stellar_sdk::types::ScpStatementExternalize;
 use stellar_relay_lib::{
 	connect_to_stellar_overlay_network,
 	sdk::types::{ScpStatementPledges, StellarMessage},
 	StellarOverlayConfig, StellarRelayMessage,
+	ConnectorActions
+
 };
+
+//arrange
+fn get_tx_set_hash(x: &ScpStatementExternalize) -> Hash {
+	let scp_value = x.commit.value.get_vec();
+	scp_value[0..32].try_into().unwrap()
+}
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -13,7 +23,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
 	let (cfg_file_path, sk_file_path) = if arg_network == "mainnet" {
 		(
-			"./clients/stellar-relay-lib/resources/config/mainnet/stellar_relay_config_iowa.json",
+			"./clients/stellar-relay-lib/resources/config/mainnet/stellar_relay_config_mainnet_iowa.json",
 			"./clients/stellar-relay-lib/resources/secretkey/stellar_secretkey_mainnet",
 		)
 	} else {
@@ -27,6 +37,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
 	let mut overlay_connection = connect_to_stellar_overlay_network(cfg, &secret_key).await?;
 
+	let mut is_sent = false;
+	let actions_sender = overlay_connection.get_actions_sender();
 	while let Some(relay_message) = overlay_connection.listen().await {
 		match relay_message {
 			StellarRelayMessage::Connect { pub_key, node_info } => {
@@ -44,7 +56,20 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 					let stmt_type = match msg.statement.pledges {
 						ScpStatementPledges::ScpStPrepare(_) => "ScpStPrepare",
 						ScpStatementPledges::ScpStConfirm(_) => "ScpStConfirm",
-						ScpStatementPledges::ScpStExternalize(_) => "ScpStExternalize",
+						ScpStatementPledges::ScpStExternalize(stmt) => {
+							if !is_sent {
+								let txset_hash = get_tx_set_hash(&stmt);
+								println!("Found ScpStExternalize! sending txsethash: {}", hex::encode(txset_hash));
+								actions_sender.send(
+									ConnectorActions::SendMessage(Box::new(StellarMessage::GetTxSet(txset_hash)))
+								).await
+									.expect("should be able to send message");
+
+								is_sent = true;
+							}
+
+							"ScpStExternalize"
+						},
 						ScpStatementPledges::ScpStNominate(_) => "ScpStNominate ",
 					};
 					log::info!(
@@ -54,7 +79,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 						slot
 					);
 				},
-				_ => {
+				other => {
 					log::info!("rcv StellarMessage of type: {:?}", msg_type);
 				},
 			},

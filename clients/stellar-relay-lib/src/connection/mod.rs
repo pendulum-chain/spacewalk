@@ -10,7 +10,8 @@ mod overlay_connection;
 mod services;
 pub mod xdr_converter;
 
-pub(crate) use connector::*;
+pub(crate) use connector::Connector;
+pub use connector::ConnectorActions;
 pub use error::Error;
 pub use helper::*;
 pub use overlay_connection::*;
