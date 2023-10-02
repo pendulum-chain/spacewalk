@@ -128,7 +128,6 @@ benchmarks! {
 	}: _(RawOrigin::Root, get_currency_pair::<T>(), UnsignedFixedPoint::<T>::one())
 
 	report_undercollateralized_vault {
-
 		let vault_id = get_vault_id::<T>();
 		let origin: T::AccountId = account("Origin", 0, 0);
 		mint_collateral::<T>(&vault_id.account_id, (1u32 << 31).into());

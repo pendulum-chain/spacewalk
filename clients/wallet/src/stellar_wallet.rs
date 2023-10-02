@@ -312,7 +312,6 @@ impl StellarWallet {
 		is_payment_for_redeem_request: bool,
 	) -> Result<TransactionResponse, Error> {
 		// user must not send to self
-		#[cfg(not(feature = "testing-utils"))]
 		if self.secret_key.get_public() == &destination_address {
 			return Err(Error::SelfPaymentError)
 		}
@@ -710,7 +709,7 @@ mod test {
 				// new wallet created, with the previous destination address acting as "SOURCE".
 				let temp_wallet =
 					wallet_with_secret_key_for_storage(storage_path, inactive_secret_key)
-						.expect("should return an arc rwlock wallet");
+						.expect("should return a wallet instance");
 				let mut temp_wallet = temp_wallet.write().await;
 
 				// returning back stellar stroops to `wallet`

@@ -83,7 +83,6 @@ impl ScpMessageCollector {
 	/// fetches envelopes from the stellar node
 	async fn ask_node_for_envelopes(&self, slot: Slot, sender: &StellarMessageSender) {
 		// for this slot to be processed, we must put this in our watch list.
-
 		let slot = match u32::try_from(slot) {
 			Ok(slot) => slot,
 			Err(e) => {
