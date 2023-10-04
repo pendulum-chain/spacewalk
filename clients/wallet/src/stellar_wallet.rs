@@ -27,7 +27,7 @@ use crate::{
 	types::PagingToken,
 };
 use primitives::{
-	StellarPublicKeyRaw, StellarStroops, StellarTypeToString, TransactionEnvelopeExt,
+	stellar::StellarTypeToString, StellarPublicKeyRaw, StellarStroops, TransactionEnvelopeExt,
 };
 
 #[derive(Clone)]

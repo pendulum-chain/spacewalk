@@ -1,7 +1,7 @@
 use std::{sync::Arc, time::Duration};
 use substrate_stellar_sdk::{
 	types::{ScpStatementExternalize, ScpStatementPledges, StellarMessage},
-	Hash,
+	Hash, IntoHash,
 };
 
 use crate::{
@@ -9,10 +9,7 @@ use crate::{
 	StellarRelayMessage,
 };
 use serial_test::serial;
-use tokio::{
-	sync::Mutex,
-	time::{sleep, timeout},
-};
+use tokio::{sync::Mutex, time::timeout};
 
 fn secret_key(is_mainnet: bool) -> String {
 	let path = if is_mainnet {
@@ -110,14 +107,16 @@ async fn stellar_overlay_should_receive_tx_set() {
 		scp_value[0..32].try_into().unwrap()
 	}
 
-	let (node_info, conn_info) = overlay_infos(true);
+	let (node_info, conn_info) = overlay_infos(false);
 	let overlay_connection = Arc::new(Mutex::new(
 		StellarOverlayConnection::connect(node_info, conn_info).await.unwrap(),
 	));
 
 	let ov_conn = overlay_connection.clone();
-	let tx_set_vec = Arc::new(Mutex::new(vec![]));
-	let tx_set_vec_clone = tx_set_vec.clone();
+	let tx_set_hashes = Arc::new(Mutex::new(vec![]));
+	let actual_tx_set_hashes = Arc::new(Mutex::new(vec![]));
+	let tx_set_hashes_clone = tx_set_hashes.clone();
+	let actual_tx_set_hashes_clone = actual_tx_set_hashes.clone();
 
 	timeout(Duration::from_secs(500), async move {
 		let mut ov_conn_locked = ov_conn.lock().await;
@@ -128,16 +127,24 @@ async fn stellar_overlay_should_receive_tx_set() {
 					StellarMessage::ScpMessage(msg) =>
 						if let ScpStatementPledges::ScpStExternalize(stmt) = &msg.statement.pledges
 						{
-							let txset_hash = get_tx_set_hash(stmt);
+							let tx_set_hash = get_tx_set_hash(stmt);
+							tx_set_hashes_clone.lock().await.push(tx_set_hash.clone());
 							ov_conn_locked
-								.send(StellarMessage::GetTxSet(txset_hash))
+								.send(StellarMessage::GetTxSet(tx_set_hash))
 								.await
 								.unwrap();
-							// let it sleep to wait for the `TxSet` message to appear
-							sleep(Duration::from_secs(10)).await;
 						},
 					StellarMessage::TxSet(set) => {
-						tx_set_vec_clone.lock().await.push(set);
+						let tx_set_hash = set.into_hash().expect("should return a hash");
+						actual_tx_set_hashes_clone.lock().await.push(tx_set_hash);
+
+						ov_conn_locked.disconnect().await.expect("failed to disconnect");
+						break
+					},
+					StellarMessage::GeneralizedTxSet(set) => {
+						let tx_set_hash = set.into_hash().expect("should return a hash");
+						actual_tx_set_hashes_clone.lock().await.push(tx_set_hash);
+
 						ov_conn_locked.disconnect().await.expect("failed to disconnect");
 						break
 					},
@@ -150,9 +157,14 @@ async fn stellar_overlay_should_receive_tx_set() {
 	.await
 	.expect("time has elapsed");
 
-	//arrange
 	//ensure that we receive some tx set from stellar node
-	assert!(!tx_set_vec.lock().await.is_empty());
+	let expected_hashes = tx_set_hashes.lock().await;
+	assert!(!expected_hashes.is_empty());
+
+	let actual_hashes = actual_tx_set_hashes.lock().await;
+	assert!(!actual_hashes.is_empty());
+
+	assert!(expected_hashes.contains(&actual_hashes[0]))
 }
 
 #[tokio::test]

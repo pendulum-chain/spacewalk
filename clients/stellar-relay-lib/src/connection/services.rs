@@ -222,7 +222,6 @@ pub(crate) async fn receiving_service(
 					).await,
 					format!("proc_id:{proc_id}. Error occurred while reading unfinished stellar message")
 				);
-
 			},
 			Ok(Err(e)) => {
 				log::error!("proc_id: {proc_id}. Error occurred while reading the stream: {e:?}");
@@ -320,11 +319,10 @@ pub(crate) async fn connection_handler(
 						connector.send_to_user(StellarRelayMessage::Timeout).await,
 						format!("Connection Timed out:")
 					);
-					return;
+					return
 				}
 				timeout_counter += 1;
 			},
 		}
 	}
 }
-
