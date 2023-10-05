@@ -387,9 +387,9 @@ impl<T: Config> Pallet<T> {
 
 		Self::check_volume(amount_requested.clone())?;
 
+		// ensure that the vault is accepting new issues (vault is active)
 		let vault = ext::vault_registry::get_active_vault_from_id::<T>(&vault_id)?;
 
-		// ensure that the vault is accepting new issues
 		ensure!(vault.status == VaultStatus::Active(true), Error::<T>::VaultNotAcceptingNewIssues);
 
 		// Check that the vault is currently not banned

@@ -114,9 +114,7 @@ impl ScpMessageCollector {
 		&self,
 		slot: Slot,
 		sender: &StellarMessageSender,
-	) -> UnlimitedVarArray<ScpEnvelope> {
-		let empty = UnlimitedVarArray::new_empty();
-
+	) -> Option<UnlimitedVarArray<ScpEnvelope>> {
 		if let Some(envelopes) = self.envelopes_map().get(&slot) {
 			// lacking envelopes
 			if envelopes.len() < get_min_externalized_messages(self.is_public()) {
@@ -124,14 +122,14 @@ impl ScpMessageCollector {
 					"Proof Building for slot {slot}: not enough envelopes to build proof "
 				);
 			} else {
-				return UnlimitedVarArray::new(envelopes.clone()).unwrap_or(empty)
+				return UnlimitedVarArray::new(envelopes.clone()).ok()
 			}
 		}
 
 		// forcefully retrieve envelopes
 		self.fetch_missing_envelopes(slot, sender).await;
 
-		empty
+		return None
 	}
 
 	/// Returns either a TransactionSet or a ProofStatus saying it failed to retrieve the set.
@@ -179,15 +177,15 @@ impl ScpMessageCollector {
 	/// * `slot` - the slot where the txset is  to get.
 	/// * `sender` - used to send messages to Stellar Node
 	pub async fn build_proof(&self, slot: Slot, sender: &StellarMessageSender) -> Option<Proof> {
-		let envelopes = self.get_envelopes(slot, sender).await;
+		let envelopes_maybe = self.get_envelopes(slot, sender).await;
 		// return early if we don't have enough envelopes or the tx_set
-		if envelopes.len() == 0 {
-			tracing::debug!("Couldn't built proof for slot {slot} due to missing envelopes");
+		if let Some(envelopes) = envelopes_maybe {
+			let tx_set = self.get_txset(slot, sender).await?;
+			return Some(Proof { slot, envelopes, tx_set })
+		} else {
+			tracing::debug!("Couldn't build proof for slot {slot} due to missing envelopes");
 			return None
 		}
-
-		let tx_set = self.get_txset(slot, sender).await?;
-		Some(Proof { slot, envelopes, tx_set })
 	}
 
 	/// Insert envelopes fetched from the archive to the map

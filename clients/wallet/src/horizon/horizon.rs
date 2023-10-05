@@ -29,7 +29,7 @@ use crate::{
 
 const POLL_INTERVAL: u64 = 5000;
 /// See [Stellar doc](https://developers.stellar.org/api/introduction/pagination/page-arguments)
-pub const DEFAULT_PAGE_SIZE: i64 = 200;
+pub const DEFAULT_PAGE_SIZE: u8 = 200;
 
 pub fn horizon_url(is_public_network: bool, is_need_fallback: bool) -> &'static str {
 	if is_public_network {
@@ -61,7 +61,7 @@ impl HorizonClient for reqwest::Client {
 		account_id: A,
 		is_public_network: bool,
 		cursor: PagingToken,
-		limit: i64,
+		limit: u8,
 		order_ascending: bool,
 	) -> Result<HorizonTransactionsResponse, Error> {
 		let account_id_encoded = account_id.as_encoded_string()?;

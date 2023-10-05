@@ -593,11 +593,11 @@ impl TryFrom<(&str, AssetIssuer)> for CurrencyId {
 		if slice.len() <= 4 {
 			let mut code: Bytes4 = [0; 4];
 			code[..slice.len()].copy_from_slice(slice.as_bytes());
-			Ok(CurrencyId::AlphaNum4(code, issuer))
-		} else if slice.len() > 4 && slice.len() <= 12 {
+			return Ok(CurrencyId::AlphaNum4(code, issuer))
+		} else if slice.len() <= 12 {
 			let mut code: Bytes12 = [0; 12];
 			code[..slice.len()].copy_from_slice(slice.as_bytes());
-			Ok(CurrencyId::AlphaNum12(code, issuer))
+			return Ok(CurrencyId::AlphaNum12(code, issuer))
 		} else {
 			Err("More than 12 bytes not supported")
 		}
@@ -844,6 +844,8 @@ impl TransactionEnvelopeExt for TransactionEnvelope {
 		let recipient_account_muxed = MuxedAccount::KeyTypeEd25519(to);
 		let recipient_account_pk = PublicKey::PublicKeyTypeEd25519(to);
 
+		let mut transferred_amount: StellarStroops = 0;
+
 		let tx_operations: Vec<Operation> = match self {
 			TransactionEnvelope::EnvelopeTypeTxV0(env) => env.tx.operations.get_vec().clone(),
 			TransactionEnvelope::EnvelopeTypeTx(env) => env.tx.operations.get_vec().clone(),
@@ -851,34 +853,40 @@ impl TransactionEnvelopeExt for TransactionEnvelope {
 			TransactionEnvelope::Default(_) => Vec::new(),
 		};
 
-		let mut transferred_amount: StellarStroops = 0;
-		for x in tx_operations {
-			match x.body {
+		if tx_operations.len() == 0 {
+			return BalanceConversion::unlookup(transferred_amount)
+		}
+
+		transferred_amount = tx_operations.iter().fold(0i64, |acc, x| {
+			match &x.body {
 				OperationBody::Payment(payment) => {
 					if payment.destination.eq(&recipient_account_muxed) && payment.asset == asset {
-						transferred_amount = transferred_amount.saturating_add(payment.amount);
+						acc.saturating_add(payment.amount)
+					} else {
+						acc
 					}
 				},
 				OperationBody::CreateClaimableBalance(payment) => {
 					// for security reasons, we only count operations that have the
 					// recipient as a single claimer and unconditional claim predicate
 					if payment.claimants.len() == 1 {
-						let Claimant::ClaimantTypeV0(claimant) =
-							payment.claimants.get_vec()[0].clone();
+						let Claimant::ClaimantTypeV0(claimant) = &payment.claimants.get_vec()[0];
 
 						if claimant.destination.eq(&recipient_account_pk) &&
 							payment.asset == asset && claimant.predicate ==
 							ClaimPredicate::ClaimPredicateUnconditional
 						{
-							transferred_amount = transferred_amount.saturating_add(payment.amount);
+							acc.saturating_add(payment.amount)
+						} else {
+							acc
 						}
+					} else {
+						acc
 					}
 				},
-				_ => {
-					// ignore other operations
-				},
+				_ => acc, // ignore other operations
 			}
-		}
+		});
 
 		// `transferred_amount` is in stroops, so we need to convert it
 		BalanceConversion::unlookup(transferred_amount)

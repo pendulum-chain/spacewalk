@@ -54,6 +54,7 @@ orml-currencies = {git = "https://github.com/open-web3-stack/open-runtime-module
 orml-tokens = {git = "https://github.com/open-web3-stack/open-runtime-module-library", branch = "polkadot-v0.9.40", default-features = false}
 orml-traits = {git = "https://github.com/open-web3-stack/open-runtime-module-library", branch = "polkadot-v0.9.40", default-features = false}
 
+clients-info = {path = "../../pallets/clients-info", default-features = false}
 currency = {path = "../../pallets/currency", default-features = false}
 fee = {path = "../../pallets/fee", default-features = false}
 issue = {path = "../../pallets/issue", default-features = false}
@@ -105,6 +106,7 @@ runtime-benchmarks = [
   "replace/runtime-benchmarks",
   "stellar-relay/runtime-benchmarks",
   "vault-registry/runtime-benchmarks",
+  "clients-info/runtime-benchmarks"
 ]
 std = [
   "codec/std",
