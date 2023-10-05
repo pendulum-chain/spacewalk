@@ -236,7 +236,7 @@ impl<T: Config> Pallet<T> {
 
 	// public only for testing purposes
 	#[cfg(feature = "testing-utils")]
-	pub fn _feed_values(
+	pub fn feed_values(
 		oracle: T::AccountId,
 		values: Vec<(OracleKey, T::UnsignedFixedPoint)>,
 	) -> DispatchResult {
@@ -342,7 +342,7 @@ impl<T: Config> Pallet<T> {
 		exchange_rate: UnsignedFixedPoint<T>,
 	) -> DispatchResult {
 		use sp_std::vec;
-		frame_support::assert_ok!(Self::_feed_values(
+		frame_support::assert_ok!(Self::feed_values(
 			oracle,
 			vec![((OracleKey::ExchangeRate(currency_id)), exchange_rate)]
 		));
