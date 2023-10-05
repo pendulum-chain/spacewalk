@@ -188,7 +188,6 @@ fn get_exchange_rate() {
 			.mock_safe(|_| MockResult::Return(Ok(FixedU128::checked_from_rational(9, 4).unwrap())));
 
 		let result = Oracle::get_exchange_rate(CurrencyId::XCM(0));
-		println!("{:?}", result);
 		assert_ok!(result, FixedPointNumber::checked_from_rational(9, 4).unwrap());
 	});
 }
