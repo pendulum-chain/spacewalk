@@ -243,7 +243,7 @@ where
 	clear_mocks();
 	// This is used to prevent race conditions on the mock data of the oracle.
 	let oracle_mock_lock = Oracle::_acquire_lock();
-	let _ = Oracle::_clear_values();
+	let _ = Oracle::clear_values();
 	ExtBuilder::build().execute_with(|| {
 		Security::set_active_block_number(1);
 		System::set_block_number(1);

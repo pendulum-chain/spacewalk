@@ -257,7 +257,7 @@ impl<T: Config> Pallet<T> {
 
 	// public only for testing purposes
 	#[cfg(feature = "testing-utils")]
-	pub fn _clear_values() -> DispatchResult {
+	pub fn clear_values() -> DispatchResult {
 		use crate::testing_utils::DataFeederExtended;
 		T::DataFeeder::clear_all_values()
 	}
