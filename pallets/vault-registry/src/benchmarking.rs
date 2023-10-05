@@ -74,7 +74,7 @@ benchmarks! {
 		let amount = 100u32.into();
 		register_vault_with_collateral::<T>(vault_id.clone(), 100000000);
 
-		let oracle_mock_lock = Oracle::<T>::_acquire_lock();
+		let oracle_mock_lock = Oracle::<T>::acquire_lock();
 		Oracle::<T>::_set_exchange_rate(vault_id.clone().account_id, get_collateral_currency_id::<T>(),
 			UnsignedFixedPoint::<T>::one()
 		).unwrap();
@@ -91,7 +91,7 @@ benchmarks! {
 		let amount = 100u32.into();
 		register_vault_with_collateral::<T>(vault_id.clone(), 100000000);
 
-		let oracle_mock_lock = Oracle::<T>::_acquire_lock();
+		let oracle_mock_lock = Oracle::<T>::acquire_lock();
 		Oracle::<T>::_set_exchange_rate(vault_id.clone().account_id, get_collateral_currency_id::<T>(),
 			UnsignedFixedPoint::<T>::one()
 		).unwrap();
@@ -143,7 +143,7 @@ benchmarks! {
 
 		register_vault_with_collateral::<T>(vault_id.clone(), 10_000);
 
-		let oracle_mock_lock = Oracle::<T>::_acquire_lock();
+		let oracle_mock_lock = Oracle::<T>::acquire_lock();
 		Oracle::<T>::_set_exchange_rate(vault_id.clone().account_id, get_collateral_currency_id::<T>(), UnsignedFixedPoint::<T>::one()).unwrap();
 		Oracle::<T>::_set_exchange_rate(vault_id.clone().account_id, get_wrapped_currency_id(), UnsignedFixedPoint::<T>::checked_from_rational(1, 10).unwrap()).unwrap();
 
@@ -163,7 +163,7 @@ benchmarks! {
 		mint_collateral::<T>(&vault_id.account_id, (1u32 << 31).into());
 		register_vault_with_collateral::<T>(vault_id.clone(), 100000000);
 
-		let oracle_mock_lock = Oracle::<T>::_acquire_lock();
+		let oracle_mock_lock = Oracle::<T>::acquire_lock();
 		Oracle::<T>::_set_exchange_rate(vault_id.clone().account_id, get_collateral_currency_id::<T>(), UnsignedFixedPoint::<T>::checked_from_rational(1, 10).unwrap()).unwrap();
 		Oracle::<T>::_set_exchange_rate(vault_id.clone().account_id, get_wrapped_currency_id(), UnsignedFixedPoint::<T>::checked_from_rational(1, 10).unwrap()).unwrap();
 		VaultRegistry::<T>::liquidate_vault(&vault_id).unwrap();

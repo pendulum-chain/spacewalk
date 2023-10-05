@@ -264,7 +264,7 @@ impl<T: Config> Pallet<T> {
 
 	// public only for testing purposes
 	#[cfg(feature = "testing-utils")]
-	pub fn _acquire_lock() -> MutexGuard<'static, ()> {
+	pub fn acquire_lock() -> MutexGuard<'static, ()> {
 		use crate::testing_utils::DataFeederExtended;
 		T::DataFeeder::acquire_lock()
 	}
