@@ -45,6 +45,9 @@ async fn handle_message(
 			StellarMessage::TxSet(set) => {
 				collector.read().await.handle_tx_set(set);
 			},
+			// StellarMessage::GeneralizedTxSet(set) => {
+			// 	collector.read().await.handle_generalized_set(set)?;
+			// },
 			_ => {},
 		},
 		StellarRelayMessage::Connect { pub_key, node_info } => {

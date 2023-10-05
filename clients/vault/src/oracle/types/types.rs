@@ -10,7 +10,7 @@ use std::{
 use itertools::Itertools;
 use tokio::sync::mpsc;
 
-use crate::oracle::constants::DEFAULT_MAX_ITEMS_IN_QUEUE;
+use crate::oracle::types::constants::DEFAULT_MAX_ITEMS_IN_QUEUE;
 use stellar_relay_lib::sdk::types::{Hash, ScpEnvelope, StellarMessage, TransactionSet, Uint64};
 
 pub type Slot = Uint64;
@@ -196,8 +196,9 @@ impl DoubleSidedHashMap<TxSetHash, Slot> {
 
 #[cfg(test)]
 mod test {
-	use crate::oracle::types::{LimitedFifoMap, TxSetHashAndSlotMap, DEFAULT_MAX_ITEMS_IN_QUEUE};
+	use crate::oracle::types::{LimitedFifoMap, TxSetHashAndSlotMap};
 	use std::convert::TryFrom;
+	use crate::oracle::types::constants::DEFAULT_MAX_ITEMS_IN_QUEUE;
 
 	#[test]
 	fn test_LimitedFifoMap() {

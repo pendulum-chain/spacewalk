@@ -1,14 +1,14 @@
 use std::{fmt::Write, str::Split};
 
 use stellar_relay_lib::sdk::{
-	compound_types::UnlimitedVarArray,
-	types::{ScpEnvelope, ScpHistoryEntry, TransactionHistoryEntry, TransactionSet},
-	XdrCodec,
+    compound_types::UnlimitedVarArray,
+    types::{ScpEnvelope, ScpHistoryEntry, TransactionHistoryEntry, TransactionSet},
+    XdrCodec,
 };
 
 use crate::oracle::{
-	storage::traits::*, EnvelopesFileHandler, EnvelopesMap, Error, Filename, SerializedData, Slot,
-	SlotEncodedMap, TxSetMap, TxSetsFileHandler,
+    EnvelopesFileHandler, EnvelopesMap, Error, Filename, SerializedData, Slot, SlotEncodedMap,
+    storage::traits::*, TxSetMap, TxSetsFileHandler,
 };
 
 use super::{ScpArchiveStorage, TransactionsArchiveStorage};
@@ -146,11 +146,11 @@ impl ArchiveStorage for TransactionsArchiveStorage {
 #[cfg(test)]
 mod test {
 	use std::{
-		convert::{TryFrom, TryInto},
-		fs,
-		fs::File,
-		io::Read,
-		path::PathBuf,
+        convert::{TryFrom, TryInto},
+        fs,
+        fs::File,
+        io::Read,
+        path::PathBuf,
 	};
 
 	use mockall::lazy_static;
@@ -158,19 +158,19 @@ mod test {
 	use stellar_relay_lib::sdk::types::ScpHistoryEntry;
 
 	use crate::oracle::{
-		constants::MAX_SLOTS_PER_FILE,
-		errors::Error,
-		get_test_stellar_relay_config,
-		impls::ArchiveStorage,
-		storage::{
-			traits::{FileHandler, FileHandlerExt},
-			EnvelopesFileHandler, TxSetsFileHandler,
-		},
-		types::Slot,
-		TransactionsArchiveStorage,
+        errors::Error,
+        get_test_stellar_relay_config,
+        impls::ArchiveStorage,
+        storage::{
+            EnvelopesFileHandler,
+            traits::{FileHandler, FileHandlerExt}, TxSetsFileHandler,
+        },
+        TransactionsArchiveStorage,
+        types::Slot,
 	};
+    use crate::oracle::types::constants::MAX_SLOTS_PER_FILE;
 
-	use super::ScpArchiveStorage;
+    use super::ScpArchiveStorage;
 
 	impl Default for ScpArchiveStorage {
 		fn default() -> Self {

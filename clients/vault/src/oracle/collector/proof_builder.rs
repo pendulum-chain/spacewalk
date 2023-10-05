@@ -2,17 +2,17 @@ use std::{convert::TryFrom, future::Future};
 use tracing::log;
 
 use stellar_relay_lib::sdk::{
-	compound_types::{UnlimitedVarArray, XdrArchive},
-	types::{ScpEnvelope, ScpHistoryEntry, ScpStatementPledges, StellarMessage, TransactionSet},
-	XdrCodec,
+    compound_types::{UnlimitedVarArray, XdrArchive},
+    types::{ScpEnvelope, ScpHistoryEntry, ScpStatementPledges, StellarMessage, TransactionSet},
+    XdrCodec,
 };
 
 use crate::oracle::{
-	constants::{get_min_externalized_messages, MAX_SLOTS_TO_REMEMBER},
-	traits::ArchiveStorage,
-	types::StellarMessageSender,
-	ScpArchiveStorage, ScpMessageCollector, Slot, TransactionsArchiveStorage,
+    ScpArchiveStorage,
+    ScpMessageCollector,
+    Slot, traits::ArchiveStorage, TransactionsArchiveStorage, types::StellarMessageSender,
 };
+use crate::oracle::types::constants::{get_min_externalized_messages, MAX_SLOTS_TO_REMEMBER};
 
 /// Returns true if the SCP messages for a given slot are still recoverable from the overlay
 /// because the slot is not too far back.
