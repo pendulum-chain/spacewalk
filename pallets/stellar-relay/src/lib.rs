@@ -39,7 +39,9 @@ pub mod pallet {
 	use substrate_stellar_sdk::{
 		compound_types::UnlimitedVarArray,
 		network::{Network, PUBLIC_NETWORK, TEST_NETWORK},
-		types::{NodeId, ScpEnvelope, StellarValue, TransactionSet, Value},
+		types::{
+			GeneralizedTransactionSet, NodeId, ScpEnvelope, StellarValue, TransactionSet, Value,
+		},
 		Hash, TransactionEnvelope, XdrCodec,
 	};
 
@@ -117,6 +119,7 @@ pub mod pallet {
 		InvalidQuorumSetNotEnoughOrganizations,
 		InvalidQuorumSetNotEnoughValidators,
 		InvalidScpPledge,
+		InvalidTransactionSetPrefix,
 		InvalidXDR,
 		MissingExternalizedMessage,
 		NoOrganizationsRegistered,
@@ -592,6 +595,37 @@ pub mod pallet {
 			Ok(tx_set_hash)
 		}
 
+		// Decide the type of the transaction set from the raw encoding and return it
+		pub fn get_transaction_set_from_raw_encoded_xdr(
+			raw_encoded_xdr: &[u8],
+		) -> Result<TransactionSetType<T>, Error<T>> {
+			let decoded =
+				base64::decode(raw_encoded_xdr).map_err(|_| Error::<T>::Base64DecodeError)?;
+
+			// The first byte determines the type of the transaction set
+			// 0 = TransactionSet
+			// 1 = GeneralizedTransactionSet
+			let first_byte = decoded[0];
+			ensure!(first_byte == 0 || first_byte == 1, Error::<T>::InvalidTransactionSetPrefix);
+
+			// Remove the first byte
+			let value_xdr = &decoded[1..];
+
+			match first_byte {
+				0 => {
+					let tx_set =
+						TransactionSet::from_xdr(value_xdr).map_err(|_| Error::<T>::InvalidXDR)?;
+					Ok(TransactionSetType::TransactionSet(tx_set))
+				},
+				1 => {
+					let generalized_tx_set = GeneralizedTransactionSet::from_xdr(value_xdr)
+						.map_err(|_| Error::<T>::InvalidXDR)?;
+					Ok(TransactionSetType::GeneralizedTransactionSet(generalized_tx_set))
+				},
+				_ => Err(Error::<T>::InvalidTransactionSetPrefix),
+			}
+		}
+
 		pub fn construct_from_raw_encoded_xdr<V: XdrCodec>(
 			raw_encoded_xdr: &[u8],
 		) -> Result<V, Error<T>> {
@@ -622,6 +656,29 @@ pub mod pallet {
 			}
 
 			Ok(())
+		}
+	}
+
+	pub enum TransactionSetType<T> {
+		TransactionSet(TransactionSet),
+		GeneralizedTransactionSet(GeneralizedTransactionSet),
+		PhantomData(sp_std::marker::PhantomData<T>),
+	}
+
+	impl<T: Config> TransactionSetType<T> {
+		pub fn get_tx_set_hash(&self) -> Result<Hash, Error<T>> {
+			use substrate_stellar_sdk::IntoHash;
+			match self {
+				TransactionSetType::TransactionSet(tx_set) => tx_set
+					.clone()
+					.into_hash()
+					.map_err(|_| Error::<T>::TransactionSetHashCreationFailed),
+				TransactionSetType::GeneralizedTransactionSet(tx_set) => tx_set
+					.clone()
+					.into_hash()
+					.map_err(|_| Error::<T>::TransactionSetHashCreationFailed),
+				_ => Err(Error::<T>::TransactionSetHashCreationFailed),
+			}
 		}
 	}
 
