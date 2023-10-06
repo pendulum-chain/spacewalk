@@ -5130,6 +5130,7 @@ dependencies = [
  "pallet-balances",
  "pallet-timestamp",
  "parity-scale-codec",
+ "pooled-rewards",
  "reward",
  "scale-info",
  "security",
@@ -6035,6 +6036,29 @@ dependencies = [
  "cpufeatures",
  "opaque-debug 0.3.0",
  "universal-hash 0.5.1",
+]
+
+[[package]]
+name = "pooled-rewards"
+version = "1.0.0"
+dependencies = [
+ "currency",
+ "frame-benchmarking",
+ "frame-support",
+ "frame-system",
+ "log",
+ "mocktopus",
+ "pallet-timestamp",
+ "parity-scale-codec",
+ "rand 0.8.5",
+ "scale-info",
+ "serde",
+ "sp-arithmetic",
+ "sp-core",
+ "sp-io",
+ "sp-runtime",
+ "sp-std",
+ "spacewalk-primitives",
 ]
 
 [[package]]
@@ -10862,6 +10886,7 @@ dependencies = [
  "pallet-balances",
  "pallet-timestamp",
  "parity-scale-codec",
+ "pooled-rewards",
  "pretty_assertions",
  "reward",
  "scale-info",

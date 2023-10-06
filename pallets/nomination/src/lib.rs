@@ -47,9 +47,15 @@ pub mod pallet {
 
 	/// ## Configuration
 	/// The pallet's configuration trait.
+	///
+	/// TODO is it okay to do tight coupling also for pooled-rewards??
 	#[pallet::config]
 	pub trait Config:
-		frame_system::Config + security::Config + vault_registry::Config + fee::Config
+		frame_system::Config
+		+ security::Config
+		+ vault_registry::Config
+		+ fee::Config
+		+ pooled_rewards::Config
 	{
 		/// The overarching event type.
 		type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
@@ -286,6 +292,13 @@ impl<T: Config> Pallet<T> {
 		amount.transfer(nominator_id, &vault_id.account_id)?;
 		amount.lock_on(&vault_id.account_id)?;
 		ext::vault_registry::try_increase_total_backing_collateral(&vault_id.currencies, &amount)?;
+
+		// deposit into pool rewards
+		ext::pooled_rewards::deposit_stake::<T>(
+			&vault_id.currencies.collateral,
+			nominator_id,
+			amount,
+		)?;
 
 		Self::deposit_event(Event::<T>::DepositCollateral {
 			vault_id: vault_id.clone(),

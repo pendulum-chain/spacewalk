@@ -115,3 +115,34 @@ pub(crate) mod staking {
 		T::VaultStaking::force_refund(vault_id)
 	}
 }
+
+#[cfg_attr(test, mockable)]
+pub(crate) mod pooled_rewards {
+	use crate::BalanceOf;
+	use frame_support::dispatch::DispatchResult;
+	use pooled_rewards::RewardsApi;
+	use primitives::BalanceToFixedPoint;
+	use sp_arithmetic::FixedPointNumber;
+
+	type VaultBalance<T> = BalanceOf<T>;
+	type RewardsFixedPoint<T> = <T as pooled_rewards::Config>::SignedFixedPoint;
+	type InnerRewardsFixedPoint<T> =
+		<<T as pooled_rewards::Config>::SignedFixedPoint as FixedPointNumber>::Inner;
+
+	pub fn deposit_stake<T: crate::Config>(
+		pool_id: &<T as pooled_rewards::Config>::CurrencyId,
+		stake_id: &<T as frame_system::Config>::AccountId,
+		amount: BalanceOf<T>,
+	) -> DispatchResult
+	where
+		BalanceOf<T>: From<InnerRewardsFixedPoint<T>>,
+
+		BalanceOf<T>: BalanceToFixedPoint<RewardsFixedPoint<T>>,
+	{
+		<pooled_rewards::Pallet<T> as RewardsApi<
+			<T as pooled_rewards::Config>::CurrencyId,
+			<T as frame_system::Config>::AccountId,
+			BalanceOf<T>,
+		>>::deposit_stake(pool_id.into(), stake_id.into(), amount)
+	}
+}

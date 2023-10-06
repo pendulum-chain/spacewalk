@@ -30,6 +30,7 @@ fee = { path = "../fee", default-features = false }
 oracle = { path = "../oracle", default-features = false }
 reward = { path = "../reward", default-features = false }
 staking = { path = "../staking", default-features = false }
+pooled-rewards = { path = "../pooled-rewards", default-features = false }
 
 primitives = { package = "spacewalk-primitives", path = "../../primitives", default-features = false }
 

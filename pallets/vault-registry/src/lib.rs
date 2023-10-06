@@ -31,7 +31,8 @@ use sp_std::{
 pub use currency::Amount;
 pub use default_weights::{SubstrateWeight, WeightInfo};
 pub use pallet::*;
-use primitives::{StellarPublicKeyRaw, VaultCurrencyPair};
+
+use primitives::{BalanceToFixedPoint, StellarPublicKeyRaw, VaultCurrencyPair};
 
 use crate::types::{
 	BalanceOf, CurrencyId, DefaultSystemVault, DefaultVaultCurrencyPair, RichSystemVault,
@@ -80,6 +81,7 @@ pub mod pallet {
 		+ security::Config
 		+ currency::Config<Balance = BalanceOf<Self>>
 		+ fee::Config<UnsignedInner = BalanceOf<Self>, SignedInner = SignedInner<Self>>
+		+ pooled_rewards::Config
 	{
 		/// The vault module id, used for deriving its sovereign account ID.
 		#[pallet::constant] // put the constant in metadata
@@ -103,7 +105,9 @@ pub mod pallet {
 			+ Default
 			+ Debug
 			+ TypeInfo
-			+ MaxEncodedLen;
+			+ MaxEncodedLen
+			+ From<<<Self as pooled_rewards::Config>::SignedFixedPoint as FixedPointNumber>::Inner>
+			+ BalanceToFixedPoint<<Self as pooled_rewards::Config>::SignedFixedPoint>;
 
 		/// Weight information for the extrinsics in this module.
 		type WeightInfo: WeightInfo;

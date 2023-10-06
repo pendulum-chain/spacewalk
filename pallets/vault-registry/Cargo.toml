@@ -38,6 +38,8 @@ reward = {path = "../reward", default-features = false}
 security = {path = "../security", default-features = false}
 staking = {path = "../staking", default-features = false}
 
+pooled-rewards = { path = "../pooled-rewards", default-features = false }
+
 # Orml dependencies
 orml-currencies = { git = "https://github.com/open-web3-stack/open-runtime-module-library", branch = "polkadot-v0.9.40", default-features = false }
 orml-tokens = {git = "https://github.com/open-web3-stack/open-runtime-module-library", branch = "polkadot-v0.9.40", default-features = false}
