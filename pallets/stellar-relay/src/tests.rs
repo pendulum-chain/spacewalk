@@ -8,12 +8,13 @@ use substrate_stellar_sdk::{
 		ScpStatementExternalize, ScpStatementPledges, Signature, StellarValue, StellarValueExt,
 		TransactionExt, TransactionSet, TransactionV1Envelope, Value,
 	},
-	Hash, Memo, MuxedAccount, PublicKey, SecretKey, Transaction, TransactionEnvelope, XdrCodec,
+	Hash, IntoHash, Memo, MuxedAccount, PublicKey, SecretKey, Transaction, TransactionEnvelope,
+	XdrCodec,
 };
 
 use crate::{
 	mock::*,
-	traits::{FieldLength, Organization, Validator},
+	traits::{FieldLength, Organization, TransactionSetType, Validator},
 	types::{OrganizationOf, ValidatorOf},
 	Error,
 };
@@ -64,7 +65,7 @@ fn create_valid_dummy_scp_envelopes(
 	public_network: bool,
 	num_externalized: usize, // number of externalized envelopes vs confirmed envelopes
 	add_infinity_n_h: bool,  // set n_h value to infinity, in 1 of the ScpEnvelopes.
-) -> (TransactionEnvelope, TransactionSet, LimitedVarArray<ScpEnvelope, { i32::MAX }>) {
+) -> (TransactionEnvelope, TransactionSetType, LimitedVarArray<ScpEnvelope, { i32::MAX }>) {
 	// Build a transaction
 	let source_account = MuxedAccount::from(PublicKey::PublicKeyTypeEd25519([0; 32]));
 	let operations = LimitedVarArray::new(vec![]).unwrap();
@@ -90,8 +91,12 @@ fn create_valid_dummy_scp_envelopes(
 	txes.push(transaction_envelope.clone()).unwrap();
 	let transaction_set = TransactionSet { previous_ledger_hash: Hash::default(), txes };
 
-	let tx_set_hash = crate::compute_non_generic_tx_set_content_hash(&transaction_set)
+	let tx_set_hash = transaction_set
+		.clone()
+		.into_hash()
 		.expect("Should compute non generic tx set content hash");
+
+	let transaction_set_type = TransactionSetType::TransactionSet(transaction_set);
 
 	let network: &Network = if public_network { &PUBLIC_NETWORK } else { &TEST_NETWORK };
 
@@ -138,7 +143,7 @@ fn create_valid_dummy_scp_envelopes(
 		envelopes.push(envelope).expect("Should push envelope");
 	}
 
-	(transaction_envelope, transaction_set, envelopes)
+	(transaction_envelope, transaction_set_type, envelopes)
 }
 
 #[test]
@@ -240,7 +245,7 @@ fn validate_stellar_transaction_fails_for_wrong_transaction() {
 		assert!(matches!(result, Err(Error::<Test>::TransactionNotInTransactionSet)));
 
 		// Add transaction to transaction set
-		tx_set.txes.push(changed_tx_envelope.clone()).unwrap();
+		tx_set.txes().push(changed_tx_envelope.clone()).unwrap();
 		let result = SpacewalkRelay::validate_stellar_transaction(
 			&changed_tx_envelope,
 			&scp_envelopes,

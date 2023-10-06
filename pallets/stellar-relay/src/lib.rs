@@ -48,7 +48,7 @@ pub mod pallet {
 	use default_weights::WeightInfo;
 
 	use crate::{
-		traits::FieldLength,
+		traits::{FieldLength, TransactionSetType},
 		types::{OrganizationOf, ValidatorOf},
 		validation::{
 			check_for_valid_quorum_set, find_externalized_envelope, get_externalized_info,
@@ -543,7 +543,7 @@ pub mod pallet {
 		pub fn validate_stellar_transaction(
 			transaction_envelope: &TransactionEnvelope,
 			envelopes: &UnlimitedVarArray<ScpEnvelope>,
-			transaction_set: &TransactionSet,
+			transaction_set_type: &TransactionSetType,
 		) -> Result<(), Error<T>> {
 			// Make sure that the envelope set is not empty
 			ensure!(!envelopes.len() > 0, Error::<T>::EmptyEnvelopeSet);
@@ -554,8 +554,11 @@ pub mod pallet {
 			let tx_hash = transaction_envelope.get_hash(network);
 
 			// Check if tx is included in the transaction set
-			let tx_included =
-				transaction_set.txes.get_vec().iter().any(|tx| tx.get_hash(network) == tx_hash);
+			let tx_included = transaction_set_type
+				.txes()
+				.get_vec()
+				.iter()
+				.any(|tx| tx.get_hash(network) == tx_hash);
 			ensure!(tx_included, Error::<T>::TransactionNotInTransactionSet);
 
 			let (validators, organizations) = validators_and_orgs()?;
@@ -570,8 +573,9 @@ pub mod pallet {
 					.map_err(|_| Error::<T>::MissingExternalizedMessage)?;
 
 			// Check if transaction set matches tx_set_hash included in the ScpEnvelopes
-			let expected_tx_set_hash = compute_non_generic_tx_set_content_hash(transaction_set)
-				.ok_or(Error::<T>::FailedToComputeNonGenericTxSetContentHash)?;
+			let expected_tx_set_hash = transaction_set_type
+				.get_tx_set_hash()
+				.map_err(|_| Error::<T>::FailedToComputeNonGenericTxSetContentHash)?;
 
 			validate_envelopes(
 				envelopes,
@@ -598,7 +602,7 @@ pub mod pallet {
 		// Decide the type of the transaction set from the raw encoding and return it
 		pub fn get_transaction_set_from_raw_encoded_xdr(
 			raw_encoded_xdr: &[u8],
-		) -> Result<TransactionSetType<T>, Error<T>> {
+		) -> Result<TransactionSetType, Error<T>> {
 			let decoded =
 				base64::decode(raw_encoded_xdr).map_err(|_| Error::<T>::Base64DecodeError)?;
 
@@ -656,43 +660,6 @@ pub mod pallet {
 			}
 
 			Ok(())
-		}
-	}
-
-	pub enum TransactionSetType<T> {
-		TransactionSet(TransactionSet),
-		GeneralizedTransactionSet(GeneralizedTransactionSet),
-		PhantomData(sp_std::marker::PhantomData<T>),
-	}
-
-	impl<T: Config> TransactionSetType<T> {
-		pub fn get_tx_set_hash(&self) -> Result<Hash, Error<T>> {
-			use substrate_stellar_sdk::IntoHash;
-			match self {
-				TransactionSetType::TransactionSet(tx_set) => tx_set
-					.clone()
-					.into_hash()
-					.map_err(|_| Error::<T>::TransactionSetHashCreationFailed),
-				TransactionSetType::GeneralizedTransactionSet(tx_set) => tx_set
-					.clone()
-					.into_hash()
-					.map_err(|_| Error::<T>::TransactionSetHashCreationFailed),
-				_ => Err(Error::<T>::TransactionSetHashCreationFailed),
-			}
-		}
-	}
-
-	pub fn compute_non_generic_tx_set_content_hash(tx_set: &TransactionSet) -> Option<[u8; 32]> {
-		let mut hasher = Sha256::new();
-		hasher.update(tx_set.previous_ledger_hash);
-
-		tx_set.txes.get_vec().iter().for_each(|envelope| {
-			hasher.update(envelope.to_xdr());
-		});
-
-		match hasher.finalize().as_slice().try_into() {
-			Ok(data) => Some(data),
-			Err(_) => None,
 		}
 	}
 
