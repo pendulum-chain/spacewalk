@@ -1,18 +1,17 @@
 use crate::oracle::{
 	collector::{get_tx_set_hash, ScpMessageCollector},
 	errors::Error,
-	types::StellarMessageSender,
+	types::{StellarMessageSender, TxSetBase64Codec},
 };
 use primitives::stellar::types::TransactionSetV1;
-use runtime::stellar::{
-	compound_types::UnlimitedVarArray,
-};
-use stellar_relay_lib::{
-	sdk::types::{
+use runtime::stellar::compound_types::UnlimitedVarArray;
+use std::fmt::Debug;
+use stellar_relay_lib::sdk::{
+	types::{
 		GeneralizedTransactionSet, ScpEnvelope, ScpStatementPledges, StellarMessage, TransactionSet,
 	},
+	IntoHash,
 };
-use stellar_relay_lib::sdk::IntoHash;
 
 // Handling SCPEnvelopes
 impl ScpMessageCollector {
@@ -61,7 +60,10 @@ impl ScpMessageCollector {
 	}
 
 	/// handles incoming TransactionSet.
-	pub(crate) fn handle_tx_set(&self, set: TransactionSet) -> Result<(), Error> {
+	pub(crate) fn handle_tx_set<T: IntoHash + TxSetBase64Codec + Clone + Debug>(
+		&self,
+		set: T,
+	) -> Result<(), Error> {
 		// compute the tx_set_hash, to check what slot this set belongs too.
 		let tx_set_hash = set.clone().into_hash()?;
 
@@ -69,20 +71,4 @@ impl ScpMessageCollector {
 		self.add_txset(&tx_set_hash, set);
 		Ok(())
 	}
-
-	// pub(crate) fn handle_generalized_set(
-	// 	&self,
-	// 	set: GeneralizedTransactionSet,
-	// ) -> Result<(), Error> {
-	// 	let Some(tx_set_hash) = set.into_hash()?;
-	//
-	// 	// generate a simple TxSet out of GeneralizedTransactionSet
-	// 	let Some(tx_set) = set.txes() else {
-	// 		return Err(Error::Other(format!("Failed to extract txset from {set:?}")));
-	// 	};
-	//
-	// 	// save this txset.
-	// 	self.add_txset(&tx_set_hash, tx_set);
-	// 	Ok(())
-	// }
 }

@@ -2,17 +2,19 @@ use std::{convert::TryFrom, future::Future};
 use tracing::log;
 
 use stellar_relay_lib::sdk::{
-    compound_types::{UnlimitedVarArray, XdrArchive},
-    types::{ScpEnvelope, ScpHistoryEntry, ScpStatementPledges, StellarMessage, TransactionSet},
-    XdrCodec,
+	compound_types::{UnlimitedVarArray, XdrArchive},
+	types::{ScpEnvelope, ScpHistoryEntry, ScpStatementPledges, StellarMessage},
+	XdrCodec,
 };
 
 use crate::oracle::{
-    ScpArchiveStorage,
-    ScpMessageCollector,
-    Slot, traits::ArchiveStorage, TransactionsArchiveStorage, types::StellarMessageSender,
+	traits::ArchiveStorage,
+	types::{
+		constants::{get_min_externalized_messages, MAX_SLOTS_TO_REMEMBER},
+		AddExt, Base64EncodedTxSet, StellarMessageSender,
+	},
+	ScpArchiveStorage, ScpMessageCollector, Slot, TransactionsArchiveStorage,
 };
-use crate::oracle::types::constants::{get_min_externalized_messages, MAX_SLOTS_TO_REMEMBER};
 
 /// Returns true if the SCP messages for a given slot are still recoverable from the overlay
 /// because the slot is not too far back.
@@ -34,7 +36,7 @@ pub struct Proof {
 	envelopes: UnlimitedVarArray<ScpEnvelope>,
 
 	/// the transaction set belonging to the slot
-	tx_set: TransactionSet,
+	tx_set: Base64EncodedTxSet,
 }
 
 impl Proof {
@@ -43,10 +45,7 @@ impl Proof {
 		let envelopes_xdr = self.envelopes.to_xdr();
 		let envelopes_encoded = base64::encode(envelopes_xdr);
 
-		let tx_set_xdr = self.tx_set.to_xdr();
-		let tx_set_encoded = base64::encode(tx_set_xdr);
-
-		(envelopes_encoded, tx_set_encoded)
+		(envelopes_encoded, self.tx_set.clone())
 	}
 
 	pub fn slot(&self) -> Slot {
@@ -57,7 +56,7 @@ impl Proof {
 		self.envelopes.get_vec()
 	}
 
-	pub fn tx_set(&self) -> &TransactionSet {
+	pub fn tx_set_base64_xdr_as_str(&self) -> &Base64EncodedTxSet {
 		&self.tx_set
 	}
 }
@@ -146,13 +145,16 @@ impl ScpMessageCollector {
 		return None
 	}
 
-	/// Returns a TransactionSet if a txset is found; None if the slot does not have a txset
-	///
+	/// Returns a Base64EncodedTxSet if a txset is found; None if the slot does not have a txset
 	/// # Arguments
 	///
 	/// * `slot` - the slot from where we get the txset
 	/// * `sender` - used to send messages to Stellar Node
-	async fn get_txset(&self, slot: Slot, sender: &StellarMessageSender) -> Option<TransactionSet> {
+	async fn get_txset(
+		&self,
+		slot: Slot,
+		sender: &StellarMessageSender,
+	) -> Option<Base64EncodedTxSet> {
 		let txset_map = self.txset_map().clone();
 		let tx_set = txset_map.get(&slot).cloned();
 

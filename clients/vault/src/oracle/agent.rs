@@ -43,11 +43,11 @@ async fn handle_message(
 				collector.write().await.handle_envelope(env, message_sender).await?;
 			},
 			StellarMessage::TxSet(set) => {
-				collector.read().await.handle_tx_set(set);
+				collector.read().await.handle_tx_set(set)?;
 			},
-			// StellarMessage::GeneralizedTxSet(set) => {
-			// 	collector.read().await.handle_generalized_set(set)?;
-			// },
+			StellarMessage::GeneralizedTxSet(set) => {
+				collector.read().await.handle_tx_set(set)?;
+			},
 			_ => {},
 		},
 		StellarRelayMessage::Connect { pub_key, node_info } => {

@@ -8,7 +8,9 @@ pub(crate) use connection::{
 	handshake::{self, HandshakeState},
 	ConnectionInfo, Connector,
 };
-pub use connection::{ConnectorActions, helper, xdr_converter, Error, StellarOverlayConnection, StellarRelayMessage};
+pub use connection::{
+	helper, xdr_converter, ConnectorActions, Error, StellarOverlayConnection, StellarRelayMessage,
+};
 
 pub use substrate_stellar_sdk as sdk;
 

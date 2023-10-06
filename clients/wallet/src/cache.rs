@@ -70,7 +70,7 @@ impl WalletStateStorage {
 		}
 
 		let Ok(content_from_file) = read_content_from_path(path) else {
-			return 0;
+			return 0
 		};
 
 		content_from_file.parse::<u128>().unwrap_or(0)
@@ -181,7 +181,7 @@ impl WalletStateStorage {
 			if let Err(e) = create_dir_all(&full_path) {
 				tracing::warn!("Failed to create directory of {full_path}: {:?}", e);
 			}
-			return;
+			return
 		};
 
 		for entry in directory.flatten() {
@@ -282,7 +282,7 @@ fn extract_tx_envelope_from_path<P: AsRef<Path> + std::fmt::Debug + Clone>(
 
 	// convert the content into `Vec<u8>`
 	let Some(content_as_vec_u8) = parse_xdr_string_to_vec_u8(&content_from_file) else {
-		return Err(Error::cache_error_with_path(CacheErrorKind::InvalidFile, format!("{path:?}")));
+		return Err(Error::cache_error_with_path(CacheErrorKind::InvalidFile, format!("{path:?}")))
 	};
 
 	// convert the content to TransactionEnvelope

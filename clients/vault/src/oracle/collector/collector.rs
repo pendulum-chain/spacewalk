@@ -1,4 +1,4 @@
-use std::sync::Arc;
+use std::{fmt::Debug, sync::Arc};
 
 use parking_lot::{lock_api::RwLockReadGuard, RawRwLock, RwLock};
 
@@ -7,18 +7,20 @@ use stellar_relay_lib::sdk::{
 	types::{ScpEnvelope, TransactionSet},
 };
 
-use crate::oracle::types::{EnvelopesMap, Slot, TxSetHash, TxSetHashAndSlotMap, TxSetMap};
+use crate::oracle::types::{
+	AddExt, EnvelopesMap, Slot, TxSetBase64Codec, TxSetHash, TxSetHashAndSlotMap, TxSetMap,
+};
 
 /// Collects all ScpMessages and the TxSets.
 pub struct ScpMessageCollector {
 	/// holds the mapping of the Slot Number(key) and the ScpEnvelopes(value)
 	envelopes_map: Arc<RwLock<EnvelopesMap>>,
 
-	/// holds the mapping of the Slot Number(key) and the TransactionSet(value)
+	/// holds the mapping of the Slot Number(key) and the TransactionSet (in Base64 xdr String)
 	txset_map: Arc<RwLock<TxSetMap>>,
 
 	/// Mapping between the txset's hash and its corresponding slot.
-	/// An entry is removed when a `TransactionSet` is found.
+	/// An entry is removed when a `TransactionSet` or `GeneralizedTransactionSet` is found.
 	txset_and_slot_map: Arc<RwLock<TxSetHashAndSlotMap>>,
 
 	/// The last slot with an SCPEnvelope
@@ -124,7 +126,7 @@ impl ScpMessageCollector {
 		}
 	}
 
-	pub(super) fn add_txset(&self, txset_hash: &TxSetHash, tx_set: TransactionSet) {
+	pub(super) fn add_txset<T: TxSetBase64Codec + Debug>(&self, txset_hash: &TxSetHash, tx_set: T) {
 		let hash_str = hex::encode(&txset_hash);
 
 		let slot = {
@@ -179,10 +181,19 @@ impl ScpMessageCollector {
 
 #[cfg(test)]
 mod test {
-	use stellar_relay_lib::sdk::network::{PUBLIC_NETWORK, TEST_NETWORK};
+	use stellar_relay_lib::sdk::{
+		network::{PUBLIC_NETWORK, TEST_NETWORK},
+		IntoHash,
+	};
 
 	use crate::oracle::{
-		collector::ScpMessageCollector, get_test_stellar_relay_config, traits::FileHandler,
+		collector::ScpMessageCollector,
+		get_test_stellar_relay_config,
+		traits::FileHandler,
+		types::{
+			tests::{sample_gen_txset, sample_txset},
+			AddExt,
+		},
 		EnvelopesFileHandler, TxSetsFileHandler,
 	};
 
@@ -253,13 +264,11 @@ mod test {
 
 		let slot = 42867088;
 		let dummy_hash = [0; 32];
-		let txsets_map =
-			TxSetsFileHandler::get_map_from_archives(slot).expect("should return a map");
-		let value = txsets_map.get(&slot).expect("should return a transaction set");
 
+		let sample_txset = sample_txset();
 		collector.save_txset_hash_and_slot(dummy_hash, slot);
 
-		collector.add_txset(&dummy_hash, value.clone());
+		collector.add_txset(&dummy_hash, sample_txset);
 
 		assert!(collector.txset_map.read().contains(&slot));
 	}

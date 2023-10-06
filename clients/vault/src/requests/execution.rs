@@ -158,14 +158,17 @@ async fn execute_open_request_async(
 
 		match oracle_agent.get_proof(slot).await {
 			Ok(proof) => {
-				let Err(e) = request.execute(parachain_rpc.clone(), tx_envelope.clone(), proof).await else {
-                    tracing::info!("Successfully executed {:?} request #{}",
-                        request.request_type()
-                        ,request.hash()
-                    );
+				let Err(e) =
+					request.execute(parachain_rpc.clone(), tx_envelope.clone(), proof).await
+				else {
+					tracing::info!(
+						"Successfully executed {:?} request #{}",
+						request.request_type(),
+						request.hash()
+					);
 
-                    break;  // There is no need to retry again, so exit from while loop
-                };
+					break // There is no need to retry again, so exit from while loop
+				};
 
 				tracing::error!(
 					"Failed to execute {:?} request #{} because of error: {e:?}",
@@ -238,13 +241,13 @@ where
 	) {
 		let Some(vault) = vault_id_manager.get_vault(request.vault_id()).await else {
 			tracing::error!(
-            "Couldn't process open {:?} request #{:?}: Failed to fetch vault data for vault {}",
-            request.request_type(),
-            request.hash(),
-            request.vault_id().pretty_print()
-        );
+				"Couldn't process open {:?} request #{:?}: Failed to fetch vault data for vault {}",
+				request.request_type(),
+				request.hash(),
+				request.vault_id().pretty_print()
+			);
 
-			return; // nothing we can do - bail
+			return // nothing we can do - bail
 		};
 
 		// We rate limit the number of transactions we pay and execute simultaneously because

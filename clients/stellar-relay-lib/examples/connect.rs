@@ -1,11 +1,11 @@
-use substrate_stellar_sdk::Hash;
-use substrate_stellar_sdk::types::ScpStatementExternalize;
 use stellar_relay_lib::{
 	connect_to_stellar_overlay_network,
 	sdk::types::{ScpStatementPledges, StellarMessage},
-	StellarOverlayConfig, StellarRelayMessage,
-	ConnectorActions
-
+	ConnectorActions, StellarOverlayConfig, StellarRelayMessage,
+};
+use substrate_stellar_sdk::{
+	types::{MessageType, ScpStatementExternalize},
+	Hash, IntoHash, XdrCodec,
 };
 
 //arrange
@@ -59,10 +59,15 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 						ScpStatementPledges::ScpStExternalize(stmt) => {
 							if !is_sent {
 								let txset_hash = get_tx_set_hash(&stmt);
-								println!("Found ScpStExternalize! sending txsethash: {}", hex::encode(txset_hash));
-								actions_sender.send(
-									ConnectorActions::SendMessage(Box::new(StellarMessage::GetTxSet(txset_hash)))
-								).await
+								println!(
+									"Found ScpStExternalize! sending txsethash: {}",
+									hex::encode(txset_hash)
+								);
+								actions_sender
+									.send(ConnectorActions::SendMessage(Box::new(
+										StellarMessage::GetTxSet(txset_hash),
+									)))
+									.await
 									.expect("should be able to send message");
 
 								is_sent = true;
@@ -79,8 +84,18 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 						slot
 					);
 				},
-				other => {
-					log::info!("rcv StellarMessage of type: {:?}", msg_type);
+				StellarMessage::GeneralizedTxSet(set) => {
+					println!("CARLA CARLA CARLA set: {:?}", set.to_base64_encoded_xdr_string());
+				},
+				StellarMessage::TxSet(set) => {
+					let x = set.to_base64_xdr();
+					println!(
+						"CARLA CARLA CARLA CARLA!!! set txset!!!!!: {:?}",
+						std::str::from_utf8(&x)
+					);
+				},
+				_ => {
+					println!("the type: {:?}", msg_type)
 				},
 			},
 			StellarRelayMessage::Error(e) => {
