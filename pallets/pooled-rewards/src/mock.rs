@@ -11,8 +11,9 @@ pub use currency::testing_constants::{
 };
 pub use primitives::{CurrencyId, VaultCurrencyPair, VaultId};
 
-use crate as reward;
+use crate as pooled_rewards;
 use crate::{Config, Error};
+
 
 type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Test>;
 type Block = frame_system::mocking::MockBlock<Test>;
@@ -25,7 +26,7 @@ frame_support::construct_runtime!(
 		UncheckedExtrinsic = UncheckedExtrinsic,
 	{
 		System: frame_system::{Pallet, Call, Storage, Config, Event<T>},
-		Reward: reward::{Pallet, Call, Storage, Event<T>},
+		Reward: pooled_rewards::{Pallet, Call, Storage, Event<T>},
 	}
 );
 
@@ -39,6 +40,30 @@ parameter_types! {
 	pub const SS58Prefix: u8 = 42;
 	pub const MaxRewardCurrencies: u32= 10;
 }
+
+pub const DEFAULT_WRAPPED_CURRENCY2: CurrencyId = CurrencyId::AlphaNum4(
+	*b"USDT",
+	[
+		20, 209, 150, 49, 176, 55, 23, 217, 171, 154, 54, 110, 16, 50, 30, 226, 102, 231, 46, 199,
+		108, 171, 97, 144, 240, 161, 51, 109, 72, 34, 159, 139,
+	],
+);
+pub const DEFAULT_WRAPPED_CURRENCY3: CurrencyId = CurrencyId::AlphaNum4(
+	*b"MXN\0",
+	[
+		20, 209, 150, 49, 176, 55, 23, 217, 171, 154, 54, 110, 16, 50, 30, 226, 102, 231, 46, 199,
+		108, 171, 97, 144, 240, 161, 51, 109, 72, 34, 159, 139,
+	],
+);
+
+pub const DEFAULT_WRAPPED_CURRENCY4: CurrencyId = CurrencyId::AlphaNum4(
+	*b"ARST",
+	[
+		20, 209, 150, 49, 176, 55, 23, 217, 171, 154, 54, 110, 16, 50, 30, 226, 102, 231, 46, 199,
+		108, 171, 97, 144, 240, 161, 51, 109, 72, 34, 159, 139,
+	],
+);
+
 
 impl frame_system::Config for Test {
 	type BaseCallFilter = Everything;
@@ -71,35 +96,13 @@ parameter_types! {
 	pub const GetNativeCurrencyId: CurrencyId = DEFAULT_NATIVE_CURRENCY;
 }
 
-pub const DEFAULT_WRAPPED_CURRENCY2: CurrencyId = CurrencyId::AlphaNum4(
-	*b"USDT",
-	[
-		20, 209, 150, 49, 176, 55, 23, 217, 171, 154, 54, 110, 16, 50, 30, 226, 102, 231, 46, 199,
-		108, 171, 97, 144, 240, 161, 51, 109, 72, 34, 159, 139,
-	],
-);
-pub const DEFAULT_WRAPPED_CURRENCY3: CurrencyId = CurrencyId::AlphaNum4(
-	*b"MXN\0",
-	[
-		20, 209, 150, 49, 176, 55, 23, 217, 171, 154, 54, 110, 16, 50, 30, 226, 102, 231, 46, 199,
-		108, 171, 97, 144, 240, 161, 51, 109, 72, 34, 159, 139,
-	],
-);
-
-pub const DEFAULT_WRAPPED_CURRENCY4: CurrencyId = CurrencyId::AlphaNum4(
-	*b"ARST",
-	[
-		20, 209, 150, 49, 176, 55, 23, 217, 171, 154, 54, 110, 16, 50, 30, 226, 102, 231, 46, 199,
-		108, 171, 97, 144, 240, 161, 51, 109, 72, 34, 159, 139,
-	],
-);
 
 impl Config for Test {
 	type RuntimeEvent = TestEvent;
 	type SignedFixedPoint = SignedFixedPoint;
 	type PoolId = CurrencyId;
-	type CurrencyId = CurrencyId;
 	type StakeId = AccountId;
+	type CurrencyId = CurrencyId;
 	type MaxRewardCurrencies = MaxRewardCurrencies;
 }
 

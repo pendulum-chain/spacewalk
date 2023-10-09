@@ -32,7 +32,7 @@ pub use currency::Amount;
 pub use default_weights::{SubstrateWeight, WeightInfo};
 pub use pallet::*;
 
-use primitives::{BalanceToFixedPoint, StellarPublicKeyRaw, VaultCurrencyPair};
+use primitives::{StellarPublicKeyRaw, VaultCurrencyPair};
 
 use crate::types::{
 	BalanceOf, CurrencyId, DefaultSystemVault, DefaultVaultCurrencyPair, RichSystemVault,
@@ -105,10 +105,7 @@ pub mod pallet {
 			+ Default
 			+ Debug
 			+ TypeInfo
-			+ MaxEncodedLen
-			+ From<<<Self as pooled_rewards::Config>::SignedFixedPoint as FixedPointNumber>::Inner>
-			+ BalanceToFixedPoint<<Self as pooled_rewards::Config>::SignedFixedPoint>;
-
+			+ MaxEncodedLen;
 		/// Weight information for the extrinsics in this module.
 		type WeightInfo: WeightInfo;
 

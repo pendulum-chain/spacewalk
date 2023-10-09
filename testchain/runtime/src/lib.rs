@@ -558,6 +558,7 @@ impl fee::Config for Runtime {
 impl nomination::Config for Runtime {
 	type RuntimeEvent = RuntimeEvent;
 	type WeightInfo = nomination::SubstrateWeight<Runtime>;
+	type PoolRewards = PooledRewards;
 }
 
 impl clients_info::Config for Runtime {
@@ -565,6 +566,19 @@ impl clients_info::Config for Runtime {
 	type WeightInfo = clients_info::SubstrateWeight<Runtime>;
 	type MaxNameLength = ConstU32<255>;
 	type MaxUriLength = ConstU32<255>;
+}
+
+parameter_types! {
+	pub const MaxRewardCurrencies: u32= 10;
+}
+
+impl pooled_rewards::Config for Runtime {
+	type RuntimeEvent = RuntimeEvent;
+	type SignedFixedPoint = SignedFixedPoint;
+	type PoolId = CurrencyId;
+	type CurrencyId=CurrencyId;
+	type StakeId = AccountId;
+	type MaxRewardCurrencies = MaxRewardCurrencies;
 }
 
 construct_runtime! {
@@ -600,6 +614,7 @@ construct_runtime! {
 		Nomination: nomination::{Pallet, Call, Config, Storage, Event<T>} = 28,
 		DiaOracleModule: dia_oracle::{Pallet, Call, Config<T>, Storage, Event<T>} = 29,
 		ClientsInfo: clients_info::{Pallet, Call, Storage, Event<T>} = 30,
+		PooledRewards: pooled_rewards::{Pallet, Call, Storage, Event<T>} = 31,
 	}
 }
 

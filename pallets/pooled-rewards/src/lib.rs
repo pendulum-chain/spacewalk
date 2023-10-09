@@ -35,12 +35,12 @@ pub use pallet::*;
 #[frame_support::pallet]
 pub mod pallet {
 	use super::*;
-	use frame_support::{pallet_prelude::*, BoundedBTreeSet};
-
+	use frame_support::{pallet_prelude::*, BoundedBTreeSet}; 
+	
 	/// ## Configuration
 	/// The pallet's configuration trait.
 	#[pallet::config]
-	pub trait Config<I: 'static = ()>: frame_system::Config {
+	pub trait Config<I: 'static = ()>: frame_system::Config  {
 		/// The overarching event type.
 		type RuntimeEvent: From<Event<Self, I>>
 			+ IsType<<Self as frame_system::Config>::RuntimeEvent>;
@@ -53,17 +53,20 @@ pub mod pallet {
 			+ Decode
 			+ TypeInfo
 			+ MaxEncodedLen;
-
+		
 		/// The pool identifier type.
-		type PoolId: Parameter + Member + MaybeSerializeDeserialize + Debug + MaxEncodedLen;
+		type PoolId: Parameter
+			+ Member
+			+ MaybeSerializeDeserialize
+			+ Debug
+			+ MaxEncodedLen;
 
 		/// The stake identifier type.
 		type StakeId: Parameter
 			+ Member
 			+ MaybeSerializeDeserialize
 			+ Debug
-			+ MaxEncodedLen
-			+ From<T::AccountId>;
+			+ MaxEncodedLen;
 
 		/// The currency ID type.
 		type CurrencyId: Parameter + Member + Copy + MaybeSerializeDeserialize + Ord + MaxEncodedLen;
@@ -437,6 +440,18 @@ where
 	}
 }
 
+pub trait ModifyStakePool<PoolId, StakeId, Balance>
+where
+	Balance: Saturating + PartialOrd + Copy,
+{
+	/// Deposit stake for an account.
+	fn deposit_stake(pool_id: &PoolId, stake_id: &StakeId, amount: Balance) -> DispatchResult;
+
+	/// Withdraw stake for an account.
+	fn withdraw_stake(pool_id: &PoolId, stake_id: &StakeId, amount: Balance) -> DispatchResult;
+
+}
+
 impl<T, I, Balance> RewardsApi<T::PoolId, T::StakeId, Balance> for Pallet<T, I>
 where
 	T: Config<I>,
@@ -521,6 +536,39 @@ where
 			amount.to_fixed().ok_or(Error::<T, I>::TryIntoIntError)?,
 		)
 	}
+}
+
+impl<T, I, Balance> ModifyStakePool<T::PoolId, T::StakeId, Balance> for Pallet<T, I>
+where
+	T: Config<I>,
+	I: 'static,
+	Balance: BalanceToFixedPoint<SignedFixedPoint<T, I>> + Saturating + PartialOrd + Copy,
+	
+{
+	fn deposit_stake(
+		pool_id: &T::PoolId,
+		stake_id: &T::StakeId,
+		amount: Balance,
+	) -> DispatchResult {
+		Pallet::<T, I>::deposit_stake(
+			pool_id,
+			stake_id,
+			amount.to_fixed().ok_or(Error::<T, I>::TryIntoIntError)?,
+		)
+	}
+
+	fn withdraw_stake(
+		pool_id: &T::PoolId,
+		stake_id: &T::StakeId,
+		amount: Balance,
+	) -> DispatchResult {
+		Pallet::<T, I>::withdraw_stake(
+			pool_id,
+			stake_id,
+			amount.to_fixed().ok_or(Error::<T, I>::TryIntoIntError)?,
+		)
+	}
+
 }
 
 impl<PoolId, StakeId, Balance> RewardsApi<PoolId, StakeId, Balance> for ()

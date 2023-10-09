@@ -118,31 +118,26 @@ pub(crate) mod staking {
 
 #[cfg_attr(test, mockable)]
 pub(crate) mod pooled_rewards {
-	use crate::BalanceOf;
+
+	use currency::{CurrencyId, Amount};
 	use frame_support::dispatch::DispatchResult;
 	use pooled_rewards::RewardsApi;
-	use primitives::BalanceToFixedPoint;
-	use sp_arithmetic::FixedPointNumber;
-
-	type VaultBalance<T> = BalanceOf<T>;
-	type RewardsFixedPoint<T> = <T as pooled_rewards::Config>::SignedFixedPoint;
-	type InnerRewardsFixedPoint<T> =
-		<<T as pooled_rewards::Config>::SignedFixedPoint as FixedPointNumber>::Inner;
 
 	pub fn deposit_stake<T: crate::Config>(
-		pool_id: &<T as pooled_rewards::Config>::CurrencyId,
-		stake_id: &<T as frame_system::Config>::AccountId,
-		amount: BalanceOf<T>,
+		currency_id: &CurrencyId<T>,
+		account_id: &<T as frame_system::Config>::AccountId,
+		amount: Amount<T>,
 	) -> DispatchResult
-	where
-		BalanceOf<T>: From<InnerRewardsFixedPoint<T>>,
-
-		BalanceOf<T>: BalanceToFixedPoint<RewardsFixedPoint<T>>,
 	{
-		<pooled_rewards::Pallet<T> as RewardsApi<
-			<T as pooled_rewards::Config>::CurrencyId,
-			<T as frame_system::Config>::AccountId,
-			BalanceOf<T>,
-		>>::deposit_stake(pool_id.into(), stake_id.into(), amount)
+		T::PoolRewards::deposit_stake(currency_id, account_id,amount.amount())		
+	}
+
+	pub fn withdraw_stake<T: crate::Config>(
+		currency_id: &CurrencyId<T>,
+		account_id: &<T as frame_system::Config>::AccountId,
+		amount: Amount<T>,
+	) -> DispatchResult
+	{
+		T::PoolRewards::withdraw_stake(currency_id, account_id,amount.amount())
 	}
 }

@@ -44,6 +44,7 @@ pub mod pallet {
 	use frame_support::pallet_prelude::*;
 	use frame_system::pallet_prelude::*;
 	use vault_registry::types::DefaultVaultCurrencyPair;
+	use currency::{CurrencyId};
 
 	/// ## Configuration
 	/// The pallet's configuration trait.
@@ -62,6 +63,9 @@ pub mod pallet {
 
 		/// Weight information for the extrinsics in this module.
 		type WeightInfo: WeightInfo;
+
+		type PoolRewards: pooled_rewards::RewardsApi<CurrencyId<Self>, Self::AccountId, BalanceOf<Self>>;
+
 	}
 
 	#[pallet::event]
@@ -251,6 +255,14 @@ impl<T: Config> Pallet<T> {
 		ext::fee::withdraw_all_vault_rewards::<T>(vault_id)?;
 		// withdraw `amount` of stake from the vault staking pool
 		ext::staking::withdraw_stake::<T>(vault_id, nominator_id, amount.amount(), Some(index))?;
+
+		//withdraw from the pooled reward 
+		ext::pooled_rewards::withdraw_stake::<T>(
+			&vault_id.collateral_currency(),
+			nominator_id,
+			amount.clone(),
+		)?;
+
 		amount.unlock_on(&vault_id.account_id)?;
 		amount.transfer(&vault_id.account_id, nominator_id)?;
 
@@ -295,9 +307,9 @@ impl<T: Config> Pallet<T> {
 
 		// deposit into pool rewards
 		ext::pooled_rewards::deposit_stake::<T>(
-			&vault_id.currencies.collateral,
+			&vault_id.collateral_currency(),
 			nominator_id,
-			amount,
+			amount.clone(),
 		)?;
 
 		Self::deposit_event(Event::<T>::DepositCollateral {

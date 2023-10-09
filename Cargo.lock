@@ -6043,6 +6043,7 @@ name = "pooled-rewards"
 version = "1.0.0"
 dependencies = [
  "currency",
+ "fee",
  "frame-benchmarking",
  "frame-support",
  "frame-system",
@@ -9538,6 +9539,7 @@ dependencies = [
  "pallet-transaction-payment",
  "pallet-transaction-payment-rpc-runtime-api",
  "parity-scale-codec",
+ "pooled-rewards",
  "pretty_assertions",
  "redeem",
  "replace",
