@@ -34,8 +34,12 @@ use substrate_stellar_sdk::{
 	TransactionEnvelope, XdrCodec,
 };
 
+
+
+
 #[cfg(test)]
 mod tests;
+
 
 pub trait BalanceToFixedPoint<FixedPoint> {
 	fn to_fixed(self) -> Option<FixedPoint>;

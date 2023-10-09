@@ -1,18 +1,13 @@
 use frame_support::BoundedVec;
 use sp_std::{vec, vec::Vec};
-use substrate_stellar_sdk::{
-	compound_types::{
-		LimitedString, LimitedVarArray, LimitedVarOpaque, UnlimitedVarArray, UnlimitedVarOpaque,
-	},
-	network::{Network, PUBLIC_NETWORK, TEST_NETWORK},
-	types::{
-		NodeId, Preconditions, ScpBallot, ScpEnvelope, ScpStatement, ScpStatementExternalize,
-		ScpStatementPledges, Signature, StellarValue, StellarValueExt, TransactionExt,
-		TransactionSet, TransactionV1Envelope, Value,
-	},
-	Hash, Memo, MuxedAccount, Operation, PublicKey, SecretKey, Transaction, TransactionEnvelope,
-	XdrCodec,
-};
+use primitives::stellar::{compound_types::{
+	LimitedString, LimitedVarArray, LimitedVarOpaque, UnlimitedVarArray, UnlimitedVarOpaque,
+}, network::{Network, PUBLIC_NETWORK, TEST_NETWORK}, types::{
+	NodeId, Preconditions, ScpBallot, ScpEnvelope, ScpStatement, ScpStatementExternalize,
+	ScpStatementPledges, Signature, StellarValue, StellarValueExt, TransactionExt,
+	TransactionV1Envelope, Value,
+}, Hash, Memo, MuxedAccount, Operation, PublicKey, SecretKey, Transaction, TransactionEnvelope, TransactionSetType, XdrCodec, IntoHash,InitExt};
+use primitives::stellar::types::TransactionSet;
 
 use primitives::{derive_shortened_request_id, StellarPublicKeyRaw, H256};
 
@@ -35,9 +30,9 @@ pub fn create_dummy_scp_structs(
 		fee: 100,
 		seq_num: 1,
 		operations: LimitedVarArray::new_empty(),
-		cond: substrate_stellar_sdk::types::Preconditions::PrecondNone,
-		memo: substrate_stellar_sdk::Memo::MemoNone,
-		ext: substrate_stellar_sdk::types::TransactionExt::V0,
+		cond: Preconditions::PrecondNone,
+		memo: Memo::MemoNone,
+		ext: TransactionExt::V0,
 	};
 	let tx_env = TransactionV1Envelope { tx, signatures: LimitedVarArray::new_empty() };
 
@@ -53,15 +48,15 @@ pub fn create_dummy_scp_structs(
 
 pub fn create_dummy_scp_structs_with_operation(
 	operation: Operation,
-) -> (TransactionV1Envelope, LimitedVarArray<ScpEnvelope, 20>, TransactionSet) {
+) -> (TransactionV1Envelope, LimitedVarArray<ScpEnvelope, 20>, TransactionSetType) {
 	let mut tx = Transaction {
 		source_account: MuxedAccount::KeyTypeEd25519(RANDOM_STELLAR_PUBLIC_KEY),
 		fee: 100,
 		seq_num: 1,
 		operations: LimitedVarArray::new_empty(),
-		cond: substrate_stellar_sdk::types::Preconditions::PrecondNone,
-		memo: substrate_stellar_sdk::Memo::MemoNone,
-		ext: substrate_stellar_sdk::types::TransactionExt::V0,
+		cond: Preconditions::PrecondNone,
+		memo: Memo::MemoNone,
+		ext: TransactionExt::V0,
 	};
 	tx.append_operation(operation).expect("Should add operation to transaction");
 	let tx_env = TransactionV1Envelope { tx, signatures: LimitedVarArray::new_empty() };
@@ -73,7 +68,7 @@ pub fn create_dummy_scp_structs_with_operation(
 		txes: LimitedVarArray::new_empty(),
 	};
 
-	(tx_env, scp_envelopes, transaction_set)
+	(tx_env, scp_envelopes, TransactionSetType::new(transaction_set))
 }
 
 /// This function is to be used by other crates which mock the validation function
@@ -82,6 +77,8 @@ pub fn create_dummy_scp_structs_encoded() -> (Vec<u8>, Vec<u8>, Vec<u8>) {
 	let (tx_env, scp_envelopes, transaction_set) = create_dummy_scp_structs();
 	let tx_env_encoded = base64::encode(tx_env.to_xdr()).as_bytes().to_vec();
 	let scp_envelopes_encoded = base64::encode(scp_envelopes.to_xdr()).as_bytes().to_vec();
+
+	let transaction_set = TransactionSetType::new(transaction_set);
 	let transaction_set_encoded = base64::encode(transaction_set.to_xdr()).as_bytes().to_vec();
 	(tx_env_encoded, scp_envelopes_encoded, transaction_set_encoded)
 }
@@ -201,7 +198,8 @@ pub fn build_dummy_proof_for<T: crate::Config>(
 	txes.push(transaction_envelope.clone()).unwrap();
 	let transaction_set = TransactionSet { previous_ledger_hash: Hash::default(), txes };
 
-	let tx_set_hash = crate::compute_non_generic_tx_set_content_hash(&transaction_set)
+	let tx_set_hash = transaction_set.clone()
+		.into_hash()
 		.expect("Should compute non generic tx set content hash");
 	let network: &Network = if public_network { &PUBLIC_NETWORK } else { &TEST_NETWORK };
 

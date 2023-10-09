@@ -11,7 +11,7 @@ use sp_runtime::{
 	testing::Header,
 	traits::{BlakeTwo256, IdentityLookup},
 };
-use substrate_stellar_sdk::SecretKey;
+use primitives::stellar::SecretKey;
 
 use crate as pallet_spacewalk_relay;
 use crate::{

@@ -1,15 +1,10 @@
 use frame_support::{assert_noop, assert_ok, BoundedVec};
 use sp_runtime::DispatchError::BadOrigin;
-use substrate_stellar_sdk::{
-	compound_types::{LimitedVarArray, LimitedVarOpaque, UnlimitedVarArray, UnlimitedVarOpaque},
-	network::{Network, PUBLIC_NETWORK, TEST_NETWORK},
-	types::{
-		NodeId, Preconditions, ScpBallot, ScpEnvelope, ScpStatement, ScpStatementConfirm,
-		ScpStatementExternalize, ScpStatementPledges, Signature, StellarValue, StellarValueExt,
-		TransactionExt, TransactionSet, TransactionV1Envelope, Value,
-	},
-	Hash, Memo, MuxedAccount, PublicKey, SecretKey, Transaction, TransactionEnvelope, XdrCodec,
-};
+use primitives::stellar::{compound_types::{LimitedVarArray, LimitedVarOpaque, UnlimitedVarArray, UnlimitedVarOpaque}, network::{Network, PUBLIC_NETWORK, TEST_NETWORK}, types::{
+	NodeId, Preconditions, ScpBallot, ScpEnvelope, ScpStatement, ScpStatementConfirm,
+	ScpStatementExternalize, ScpStatementPledges, Signature, StellarValue, StellarValueExt,
+	TransactionExt, TransactionSet, TransactionV1Envelope, Value,
+}, Hash, IntoHash, Memo, MuxedAccount, PublicKey, SecretKey, Transaction, TransactionEnvelope, XdrCodec, TransactionSetType, InitExt};
 
 use crate::{
 	mock::*,
@@ -64,7 +59,7 @@ fn create_valid_dummy_scp_envelopes(
 	public_network: bool,
 	num_externalized: usize, // number of externalized envelopes vs confirmed envelopes
 	add_infinity_n_h: bool,  // set n_h value to infinity, in 1 of the ScpEnvelopes.
-) -> (TransactionEnvelope, TransactionSet, LimitedVarArray<ScpEnvelope, { i32::MAX }>) {
+) -> (TransactionEnvelope, TransactionSetType, LimitedVarArray<ScpEnvelope, { i32::MAX }>) {
 	// Build a transaction
 	let source_account = MuxedAccount::from(PublicKey::PublicKeyTypeEd25519([0; 32]));
 	let operations = LimitedVarArray::new(vec![]).unwrap();
@@ -89,8 +84,7 @@ fn create_valid_dummy_scp_envelopes(
 	// Add the transaction that is to be verified to the transaction set
 	txes.push(transaction_envelope.clone()).unwrap();
 	let transaction_set = TransactionSet { previous_ledger_hash: Hash::default(), txes };
-
-	let tx_set_hash = crate::compute_non_generic_tx_set_content_hash(&transaction_set)
+	let tx_set_hash = transaction_set.clone().into_hash()
 		.expect("Should compute non generic tx set content hash");
 
 	let network: &Network = if public_network { &PUBLIC_NETWORK } else { &TEST_NETWORK };
@@ -138,7 +132,7 @@ fn create_valid_dummy_scp_envelopes(
 		envelopes.push(envelope).expect("Should push envelope");
 	}
 
-	(transaction_envelope, transaction_set, envelopes)
+	(transaction_envelope, TransactionSetType::new(transaction_set), envelopes)
 }
 
 #[test]
@@ -210,7 +204,7 @@ fn validate_stellar_transaction_fails_for_wrong_transaction() {
 	run_test(|_, validators, validator_secret_keys| {
 		let public_network = true;
 
-		let (_tx_envelope, mut tx_set, scp_envelopes) = create_valid_dummy_scp_envelopes(
+		let (_tx_envelope, tx_set, scp_envelopes) = create_valid_dummy_scp_envelopes(
 			validators,
 			validator_secret_keys,
 			public_network,
@@ -240,11 +234,16 @@ fn validate_stellar_transaction_fails_for_wrong_transaction() {
 		assert!(matches!(result, Err(Error::<Test>::TransactionNotInTransactionSet)));
 
 		// Add transaction to transaction set
-		tx_set.txes.push(changed_tx_envelope.clone()).unwrap();
+		let TransactionSetType::TransactionSet(mut set) = tx_set else {
+			panic!("must be of type `TransactionSet`")
+		};
+
+		set.txes.push(changed_tx_envelope.clone()).unwrap();
+
 		let result = SpacewalkRelay::validate_stellar_transaction(
 			&changed_tx_envelope,
 			&scp_envelopes,
-			&tx_set,
+			&TransactionSetType::new(set),
 		);
 		assert!(matches!(result, Err(Error::<Test>::TransactionSetHashMismatch)));
 	});

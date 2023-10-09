@@ -3,7 +3,7 @@ use mocktopus::macros::mockable;
 
 #[cfg_attr(test, mockable)]
 pub(crate) mod currency {
-	use substrate_stellar_sdk::TransactionEnvelope;
+	use primitives::stellar::TransactionEnvelope;
 
 	use currency::{Amount, Error};
 	use primitives::StellarPublicKeyRaw;
@@ -26,18 +26,14 @@ pub(crate) mod currency {
 #[cfg_attr(test, mockable)]
 pub(crate) mod stellar_relay {
 	use sp_core::H256;
-	use substrate_stellar_sdk::{
-		compound_types::UnlimitedVarArray,
-		types::{ScpEnvelope, TransactionSet},
-		TransactionEnvelope, XdrCodec,
-	};
+	use primitives::stellar::{compound_types::UnlimitedVarArray, types::{ScpEnvelope}, TransactionEnvelope, XdrCodec, TransactionSetType};
 
 	use stellar_relay::Error;
 
 	pub fn validate_stellar_transaction<T: crate::Config>(
 		transaction_envelope: &TransactionEnvelope,
 		envelopes: &UnlimitedVarArray<ScpEnvelope>,
-		transaction_set: &TransactionSet,
+		transaction_set: &TransactionSetType,
 	) -> Result<(), Error<T>> {
 		<stellar_relay::Pallet<T>>::validate_stellar_transaction(
 			transaction_envelope,
