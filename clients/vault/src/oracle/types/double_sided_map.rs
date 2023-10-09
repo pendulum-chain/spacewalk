@@ -1,8 +1,8 @@
 use crate::oracle::types::{Slot, TxSetHash};
 use std::collections::HashMap;
 
-/// The slot is not found in the `StellarMessage::TxSet(...)`, therefore this map
-/// serves as a holder of the slot when we hash the txset.
+/// The slot is not found in the `StellarMessage::TxSet(...)` and `StellarMessage::GeneralizedTxSet(...)`,
+/// therefore this map serves as a holder of the slot when we hash the txset.
 pub type TxSetHashAndSlotMap = DoubleSidedHashMap<TxSetHash, Slot>;
 
 #[derive(Clone)]

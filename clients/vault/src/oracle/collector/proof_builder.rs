@@ -3,16 +3,15 @@ use tracing::log;
 
 use stellar_relay_lib::sdk::{
 	compound_types::{UnlimitedVarArray, XdrArchive},
-	types::{ScpEnvelope, ScpHistoryEntry, ScpStatementPledges, StellarMessage},
+	InitExt, TransactionSetType,
+	types::{ScpEnvelope, ScpHistoryEntry, ScpStatementPledges, StellarMessage, TransactionSet},
 	XdrCodec,
 };
 
 use crate::oracle::{
+	constants::{get_min_externalized_messages, MAX_SLOTS_TO_REMEMBER},
 	traits::ArchiveStorage,
-	types::{
-		constants::{get_min_externalized_messages, MAX_SLOTS_TO_REMEMBER},
-		AddExt, Base64EncodedTxSet, StellarMessageSender,
-	},
+	types::StellarMessageSender,
 	ScpArchiveStorage, ScpMessageCollector, Slot, TransactionsArchiveStorage,
 };
 
@@ -36,7 +35,7 @@ pub struct Proof {
 	envelopes: UnlimitedVarArray<ScpEnvelope>,
 
 	/// the transaction set belonging to the slot
-	tx_set: Base64EncodedTxSet,
+	tx_set: TransactionSetType,
 }
 
 impl Proof {
@@ -45,7 +44,10 @@ impl Proof {
 		let envelopes_xdr = self.envelopes.to_xdr();
 		let envelopes_encoded = base64::encode(envelopes_xdr);
 
-		(envelopes_encoded, self.tx_set.clone())
+		let tx_set_xdr = self.tx_set.to_xdr();
+		let tx_set_encoded = base64::encode(tx_set_xdr);
+
+		(envelopes_encoded, tx_set_encoded)
 	}
 
 	pub fn slot(&self) -> Slot {
@@ -56,7 +58,7 @@ impl Proof {
 		self.envelopes.get_vec()
 	}
 
-	pub fn tx_set_base64_xdr_as_str(&self) -> &Base64EncodedTxSet {
+	pub fn tx_set(&self) -> &TransactionSetType {
 		&self.tx_set
 	}
 }
@@ -145,16 +147,13 @@ impl ScpMessageCollector {
 		return None
 	}
 
-	/// Returns a Base64EncodedTxSet if a txset is found; None if the slot does not have a txset
+	/// Returns a TransactionSet if a txset is found; None if the slot does not have a txset
+	///
 	/// # Arguments
 	///
 	/// * `slot` - the slot from where we get the txset
 	/// * `sender` - used to send messages to Stellar Node
-	async fn get_txset(
-		&self,
-		slot: Slot,
-		sender: &StellarMessageSender,
-	) -> Option<Base64EncodedTxSet> {
+	async fn get_txset(&self, slot: Slot, sender: &StellarMessageSender) -> Option<TransactionSetType> {
 		let txset_map = self.txset_map().clone();
 		let tx_set = txset_map.get(&slot).cloned();
 
@@ -328,7 +327,10 @@ impl ScpMessageCollector {
 				if let Some(target_history_entry) = value {
 					tracing::debug!("Adding archived tx set for slot {slot}");
 					let mut tx_set_map = txset_map_arc.write();
-					tx_set_map.insert(slot, target_history_entry.tx_set.clone());
+					tx_set_map.insert(slot,
+									  TransactionSetType::new(
+										  target_history_entry.tx_set.clone()
+									  ));
 					break
 				} else {
 					tracing::warn!(

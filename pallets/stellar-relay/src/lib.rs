@@ -36,19 +36,12 @@ pub mod pallet {
 	use sha2::{Digest, Sha256};
 	use sp_core::H256;
 	use sp_std::{collections::btree_map::BTreeMap, fmt::Debug, vec::Vec};
-	use substrate_stellar_sdk::{
-		compound_types::UnlimitedVarArray,
-		network::{Network, PUBLIC_NETWORK, TEST_NETWORK},
-		types::{
-			GeneralizedTransactionSet, NodeId, ScpEnvelope, StellarValue, TransactionSet, Value,
-		},
-		Hash, TransactionEnvelope, XdrCodec,
-	};
+	use substrate_stellar_sdk::{compound_types::UnlimitedVarArray, network::{Network, PUBLIC_NETWORK, TEST_NETWORK}, types::{NodeId, ScpEnvelope, StellarValue, Value}, Hash, TransactionEnvelope, XdrCodec, TransactionSetType};
 
 	use default_weights::WeightInfo;
 
 	use crate::{
-		traits::{FieldLength, TransactionSetType},
+		traits::FieldLength,
 		types::{OrganizationOf, ValidatorOf},
 		validation::{
 			check_for_valid_quorum_set, find_externalized_envelope, get_externalized_info,
@@ -539,11 +532,11 @@ pub mod pallet {
 		/// Parameters:
 		/// - `transaction_envelope`: The transaction envelope of the tx to be verified
 		/// - `envelopes`: The set of SCP envelopes that were externalized on the Stellar network
-		/// - `transaction_set`: The set of transactions that belong to the envelopes
+		/// - `transaction_set`: The set of transactions that belong to the envelopes.
 		pub fn validate_stellar_transaction(
 			transaction_envelope: &TransactionEnvelope,
 			envelopes: &UnlimitedVarArray<ScpEnvelope>,
-			transaction_set_type: &TransactionSetType,
+			transaction_set: &TransactionSetType,
 		) -> Result<(), Error<T>> {
 			// Make sure that the envelope set is not empty
 			ensure!(!envelopes.len() > 0, Error::<T>::EmptyEnvelopeSet);
@@ -554,7 +547,7 @@ pub mod pallet {
 			let tx_hash = transaction_envelope.get_hash(network);
 
 			// Check if tx is included in the transaction set
-			let tx_included = transaction_set_type
+			let tx_included = transaction_set
 				.txes()
 				.get_vec()
 				.iter()
@@ -573,7 +566,7 @@ pub mod pallet {
 					.map_err(|_| Error::<T>::MissingExternalizedMessage)?;
 
 			// Check if transaction set matches tx_set_hash included in the ScpEnvelopes
-			let expected_tx_set_hash = transaction_set_type
+			let expected_tx_set_hash = transaction_set
 				.get_tx_set_hash()
 				.map_err(|_| Error::<T>::FailedToComputeNonGenericTxSetContentHash)?;
 
@@ -597,37 +590,6 @@ pub mod pallet {
 				.map(|stellar_value| stellar_value.tx_set_hash)
 				.map_err(|_| Error::<T>::TransactionSetHashCreationFailed)?;
 			Ok(tx_set_hash)
-		}
-
-		// Decide the type of the transaction set from the raw encoding and return it
-		pub fn get_transaction_set_from_raw_encoded_xdr(
-			raw_encoded_xdr: &[u8],
-		) -> Result<TransactionSetType, Error<T>> {
-			let decoded =
-				base64::decode(raw_encoded_xdr).map_err(|_| Error::<T>::Base64DecodeError)?;
-
-			// The first byte determines the type of the transaction set
-			// 0 = TransactionSet
-			// 1 = GeneralizedTransactionSet
-			let first_byte = decoded[0];
-			ensure!(first_byte == 0 || first_byte == 1, Error::<T>::InvalidTransactionSetPrefix);
-
-			// Remove the first byte
-			let value_xdr = &decoded[1..];
-
-			match first_byte {
-				0 => {
-					let tx_set =
-						TransactionSet::from_xdr(value_xdr).map_err(|_| Error::<T>::InvalidXDR)?;
-					Ok(TransactionSetType::TransactionSet(tx_set))
-				},
-				1 => {
-					let generalized_tx_set = GeneralizedTransactionSet::from_xdr(value_xdr)
-						.map_err(|_| Error::<T>::InvalidXDR)?;
-					Ok(TransactionSetType::GeneralizedTransactionSet(generalized_tx_set))
-				},
-				_ => Err(Error::<T>::InvalidTransactionSetPrefix),
-			}
 		}
 
 		pub fn construct_from_raw_encoded_xdr<V: XdrCodec>(

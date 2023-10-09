@@ -1,12 +1,11 @@
 use crate::oracle::{
 	constants::DEFAULT_MAX_ITEMS_IN_QUEUE,
-	types::{transaction_set::TxSetBase64Codec, Base64EncodedTxSet, Slot},
+	types::Slot,
 	TransactionsArchiveStorage,
 };
 use itertools::Itertools;
-use primitives::stellar::types::{GeneralizedTransactionSet, TransactionSet};
 use std::{collections::VecDeque, fmt::Debug};
-use stellar_relay_lib::sdk::types::ScpEnvelope;
+use stellar_relay_lib::sdk::{TransactionSetType, types::{GeneralizedTransactionSet, TransactionSet, ScpEnvelope}};
 
 /// Sometimes not enough `StellarMessage::ScpMessage(...)` are sent per slot;
 /// or that the `StellarMessage::TxSet(...)` or `StellarMessage::GeneralizedTxSet(...)`
@@ -17,7 +16,7 @@ pub(crate) type EnvelopesMap = LimitedFifoMap<Slot, Vec<ScpEnvelope>>;
 
 /// This map uses the slot as the key and the txset as the value.
 /// The txset here can either be the `TransactionSet` or `GeneralizedTransactionSet`
-pub(crate) type TxSetMap = LimitedFifoMap<Slot, Base64EncodedTxSet>;
+pub(crate) type TxSetMap = LimitedFifoMap<Slot, TransactionSetType>;
 
 #[derive(Debug, Clone)]
 pub struct LimitedFifoMap<K, T> {
@@ -100,17 +99,8 @@ where
 			VecDeque::new()
 		}
 	}
-}
 
-pub trait AddExt<K, V, T> {
-	fn insert(&mut self, key: K, value: V) -> Option<T>;
-}
-
-impl<K, T> AddExt<K, T, T> for LimitedFifoMap<K, T>
-where
-	K: Debug + PartialEq,
-{
-	fn insert(&mut self, key: K, value: T) -> Option<T> {
+	pub(crate) fn insert(&mut self, key: K, value: T) -> Option<T> {
 		let old_value = self.remove(&key);
 
 		// remove the oldest entry if the queue reached its limit
@@ -129,20 +119,9 @@ where
 	}
 }
 
-impl<V> AddExt<Slot, V, Base64EncodedTxSet> for TxSetMap
-where
-	V: TxSetBase64Codec,
-{
-	fn insert(&mut self, key: Slot, value: V) -> Option<Base64EncodedTxSet> {
-		let encoded = value.to_base64_encoded_xdr_string_for_mapping();
-		<Self as AddExt<Slot, Base64EncodedTxSet, Base64EncodedTxSet>>::insert(self, key, encoded)
-	}
-}
-
 #[cfg(test)]
 mod test {
 	use super::*;
-	use crate::oracle::types::transaction_set::tests::*;
 	use std::convert::TryFrom;
 	use stellar_relay_lib::sdk::TransactionEnvelope;
 

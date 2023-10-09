@@ -11,9 +11,7 @@ use sp_core::hexdisplay::AsBytesRef;
 
 use stellar_relay_lib::sdk::{compound_types::XdrArchive, XdrCodec};
 
-use crate::oracle::{
-	types::constants::ARCHIVE_NODE_LEDGER_BATCH, Error, Filename, SerializedData, Slot,
-};
+use crate::oracle::{constants::ARCHIVE_NODE_LEDGER_BATCH, Error, Filename, SerializedData, Slot};
 
 pub trait FileHandlerExt<T: Default>: FileHandler<T> {
 	fn create_filename_and_data(data: &T) -> Result<(Filename, SerializedData), Error>;

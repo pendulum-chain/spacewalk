@@ -1,18 +1,13 @@
 use frame_support::BoundedVec;
 use sp_std::{vec, vec::Vec};
-use substrate_stellar_sdk::{
-	compound_types::{
-		LimitedString, LimitedVarArray, LimitedVarOpaque, UnlimitedVarArray, UnlimitedVarOpaque,
-	},
-	network::{Network, PUBLIC_NETWORK, TEST_NETWORK},
-	types::{
-		NodeId, Preconditions, ScpBallot, ScpEnvelope, ScpStatement, ScpStatementExternalize,
-		ScpStatementPledges, Signature, StellarValue, StellarValueExt, TransactionExt,
-		TransactionSet, TransactionV1Envelope, Value,
-	},
-	Hash, Memo, MuxedAccount, Operation, PublicKey, SecretKey, Transaction, TransactionEnvelope,
-	XdrCodec,
-};
+use substrate_stellar_sdk::{compound_types::{
+	LimitedString, LimitedVarArray, LimitedVarOpaque, UnlimitedVarArray, UnlimitedVarOpaque,
+}, network::{Network, PUBLIC_NETWORK, TEST_NETWORK}, types::{
+	NodeId, Preconditions, ScpBallot, ScpEnvelope, ScpStatement, ScpStatementExternalize,
+	ScpStatementPledges, Signature, StellarValue, StellarValueExt, TransactionExt,
+	TransactionV1Envelope, Value,
+}, Hash, Memo, MuxedAccount, Operation, PublicKey, SecretKey, Transaction, TransactionEnvelope, XdrCodec, IntoHash};
+use substrate_stellar_sdk::types::TransactionSet;
 
 use primitives::{derive_shortened_request_id, StellarPublicKeyRaw, H256};
 
@@ -201,7 +196,7 @@ pub fn build_dummy_proof_for<T: crate::Config>(
 	txes.push(transaction_envelope.clone()).unwrap();
 	let transaction_set = TransactionSet { previous_ledger_hash: Hash::default(), txes };
 
-	let tx_set_hash = &transaction_set
+	let tx_set_hash = transaction_set.clone()
 		.into_hash()
 		.expect("Should compute non generic tx set content hash");
 	let network: &Network = if public_network { &PUBLIC_NETWORK } else { &TEST_NETWORK };

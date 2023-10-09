@@ -1,17 +1,12 @@
 use crate::oracle::{
 	collector::{get_tx_set_hash, ScpMessageCollector},
 	errors::Error,
-	types::{StellarMessageSender, TxSetBase64Codec},
+	types::StellarMessageSender,
 };
-use primitives::stellar::types::TransactionSetV1;
-use runtime::stellar::compound_types::UnlimitedVarArray;
-use std::fmt::Debug;
-use stellar_relay_lib::sdk::{
-	types::{
-		GeneralizedTransactionSet, ScpEnvelope, ScpStatementPledges, StellarMessage, TransactionSet,
-	},
-	IntoHash,
+use stellar_relay_lib::{
+	sdk::types::{ScpEnvelope, ScpStatementPledges, StellarMessage, TransactionSet},
 };
+use crate::oracle::collector::collector::AddTxSet;
 
 // Handling SCPEnvelopes
 impl ScpMessageCollector {
@@ -56,19 +51,6 @@ impl ScpMessageCollector {
 			self.remove_data(&slot);
 		}
 
-		Ok(())
-	}
-
-	/// handles incoming TransactionSet.
-	pub(crate) fn handle_tx_set<T: IntoHash + TxSetBase64Codec + Clone + Debug>(
-		&self,
-		set: T,
-	) -> Result<(), Error> {
-		// compute the tx_set_hash, to check what slot this set belongs too.
-		let tx_set_hash = set.clone().into_hash()?;
-
-		// save this txset.
-		self.add_txset(&tx_set_hash, set);
 		Ok(())
 	}
 }

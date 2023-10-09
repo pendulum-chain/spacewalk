@@ -348,7 +348,7 @@ pub async fn execute_issue(
 			.await
 		{
 			Ok(_) => {
-				tracing::info!("Successfully executed Issue #{issue_id:?} for slot {slot}");
+				tracing::info!("KEVIN STUART AND BOB Successfully executed Issue #{issue_id:?} for slot {slot}");
 
 				let (mut issues, mut memos_to_issue_ids) =
 					future::join(issues.write(), memos_to_issue_ids.write()).await;

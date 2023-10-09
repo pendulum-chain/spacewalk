@@ -1,20 +1,14 @@
 use frame_support::{assert_noop, assert_ok, BoundedVec};
 use sp_runtime::DispatchError::BadOrigin;
-use substrate_stellar_sdk::{
-	compound_types::{LimitedVarArray, LimitedVarOpaque, UnlimitedVarArray, UnlimitedVarOpaque},
-	network::{Network, PUBLIC_NETWORK, TEST_NETWORK},
-	types::{
-		NodeId, Preconditions, ScpBallot, ScpEnvelope, ScpStatement, ScpStatementConfirm,
-		ScpStatementExternalize, ScpStatementPledges, Signature, StellarValue, StellarValueExt,
-		TransactionExt, TransactionSet, TransactionV1Envelope, Value,
-	},
-	Hash, IntoHash, Memo, MuxedAccount, PublicKey, SecretKey, Transaction, TransactionEnvelope,
-	XdrCodec,
-};
+use substrate_stellar_sdk::{compound_types::{LimitedVarArray, LimitedVarOpaque, UnlimitedVarArray, UnlimitedVarOpaque}, network::{Network, PUBLIC_NETWORK, TEST_NETWORK}, types::{
+	NodeId, Preconditions, ScpBallot, ScpEnvelope, ScpStatement, ScpStatementConfirm,
+	ScpStatementExternalize, ScpStatementPledges, Signature, StellarValue, StellarValueExt,
+	TransactionExt, TransactionSet, TransactionV1Envelope, Value,
+}, Hash, IntoHash, Memo, MuxedAccount, PublicKey, SecretKey, Transaction, TransactionEnvelope, XdrCodec, TransactionSetType, InitExt};
 
 use crate::{
 	mock::*,
-	traits::{FieldLength, Organization, TransactionSetType, Validator},
+	traits::{FieldLength, Organization, Validator},
 	types::{OrganizationOf, ValidatorOf},
 	Error,
 };
@@ -96,7 +90,7 @@ fn create_valid_dummy_scp_envelopes(
 		.into_hash()
 		.expect("Should compute non generic tx set content hash");
 
-	let transaction_set_type = TransactionSetType::TransactionSet(transaction_set);
+	let transaction_set_type = TransactionSetType::new(transaction_set);
 
 	let network: &Network = if public_network { &PUBLIC_NETWORK } else { &TEST_NETWORK };
 

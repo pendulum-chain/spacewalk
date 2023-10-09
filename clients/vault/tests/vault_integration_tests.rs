@@ -633,7 +633,7 @@ async fn test_issue_overpayment_succeeds() {
 
 #[tokio::test(flavor = "multi_thread")]
 #[serial]
-async fn test_automatic_issue_execution_succeeds_hoho() {
+async fn test_automatic_issue_execution_succeeds() {
 	test_with_vault(
 		|client, vault_wallet, user_wallet, oracle_agent, vault_id, vault_provider| async move {
 			let user_provider = setup_provider(client.clone(), AccountKeyring::Dave).await;

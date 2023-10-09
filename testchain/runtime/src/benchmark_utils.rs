@@ -31,8 +31,8 @@ impl DiaOracle for MockDiaOracle {
 		};
 
 		let Some(result) = result else {
-            return Err(sp_runtime::DispatchError::Other(""));
-        };
+			return Err(sp_runtime::DispatchError::Other(""))
+		};
 		let mut coin_info = CoinInfo::default();
 		coin_info.price = result.price;
 		coin_info.last_update_timestamp = result.timestamp;
