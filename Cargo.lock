@@ -3497,7 +3497,7 @@ dependencies = [
  "spacewalk-primitives",
  "staking",
  "stellar-relay",
- "substrate-stellar-sdk 0.2.4 (git+https://github.com/pendulum-chain/substrate-stellar-sdk?branch=401-spacewalk-fix-issues-of-connecting-to-stellar-overlay-network-on-testnet)",
+ "substrate-stellar-sdk",
  "vault-registry",
 ]
 
@@ -6604,7 +6604,7 @@ dependencies = [
  "spacewalk-primitives",
  "staking",
  "stellar-relay",
- "substrate-stellar-sdk 0.2.4 (git+https://github.com/pendulum-chain/substrate-stellar-sdk?branch=401-spacewalk-fix-issues-of-connecting-to-stellar-overlay-network-on-testnet)",
+ "substrate-stellar-sdk",
  "vault-registry",
 ]
 
@@ -6765,7 +6765,7 @@ dependencies = [
  "spacewalk-primitives",
  "staking",
  "stellar-relay",
- "substrate-stellar-sdk 0.2.4 (git+https://github.com/pendulum-chain/substrate-stellar-sdk?branch=401-spacewalk-fix-issues-of-connecting-to-stellar-overlay-network-on-testnet)",
+ "substrate-stellar-sdk",
  "vault-registry",
 ]
 
@@ -6964,7 +6964,7 @@ dependencies = [
  "spacewalk-primitives",
  "spacewalk-runtime-standalone",
  "spacewalk-standalone",
- "substrate-stellar-sdk 0.2.4 (git+https://github.com/pendulum-chain/substrate-stellar-sdk?branch=polkadot-v0.9.40)",
+ "substrate-stellar-sdk",
  "subxt",
  "subxt-client",
  "tempdir",
@@ -9445,7 +9445,7 @@ dependencies = [
  "sp-core",
  "sp-runtime",
  "sp-std",
- "substrate-stellar-sdk 0.2.4 (git+https://github.com/pendulum-chain/substrate-stellar-sdk?branch=401-spacewalk-fix-issues-of-connecting-to-stellar-overlay-network-on-testnet)",
+ "substrate-stellar-sdk",
 ]
 
 [[package]]
@@ -9589,7 +9589,7 @@ dependencies = [
  "spacewalk-rpc",
  "spacewalk-runtime-standalone",
  "substrate-build-script-utils",
- "substrate-stellar-sdk 0.2.4 (git+https://github.com/pendulum-chain/substrate-stellar-sdk?branch=401-spacewalk-fix-issues-of-connecting-to-stellar-overlay-network-on-testnet)",
+ "substrate-stellar-sdk",
 ]
 
 [[package]]
@@ -9717,7 +9717,7 @@ dependencies = [
  "sp-runtime",
  "sp-std",
  "spacewalk-primitives",
- "substrate-stellar-sdk 0.2.4 (git+https://github.com/pendulum-chain/substrate-stellar-sdk?branch=401-spacewalk-fix-issues-of-connecting-to-stellar-overlay-network-on-testnet)",
+ "substrate-stellar-sdk",
 ]
 
 [[package]]
@@ -9736,7 +9736,7 @@ dependencies = [
  "serde_with",
  "serial_test",
  "sha2 0.10.7",
- "substrate-stellar-sdk 0.2.4 (git+https://github.com/pendulum-chain/substrate-stellar-sdk?branch=401-spacewalk-fix-issues-of-connecting-to-stellar-overlay-network-on-testnet)",
+ "substrate-stellar-sdk",
  "tokio",
  "tweetnacl",
 ]
@@ -9843,25 +9843,7 @@ dependencies = [
 [[package]]
 name = "substrate-stellar-sdk"
 version = "0.2.4"
-source = "git+https://github.com/pendulum-chain/substrate-stellar-sdk?branch=401-spacewalk-fix-issues-of-connecting-to-stellar-overlay-network-on-testnet#e0f3ace16eff78a99a7a6988291dfefa781f64ec"
-dependencies = [
- "base64 0.13.1",
- "hex",
- "lazy_static",
- "num-rational",
- "serde",
- "serde_json",
- "sha2 0.9.9",
- "sodalite",
- "sp-io",
- "sp-runtime",
- "sp-std",
-]
-
-[[package]]
-name = "substrate-stellar-sdk"
-version = "0.2.4"
-source = "git+https://github.com/pendulum-chain/substrate-stellar-sdk?branch=polkadot-v0.9.40#f306b44f22216e43809e96ad96ae24cf62f6325f"
+source = "git+https://github.com/pendulum-chain/substrate-stellar-sdk?branch=401-spacewalk-fix-issues-of-connecting-to-stellar-overlay-network-on-testnet#5b886fa0efdb3f70eb0fcbcf91e365b69008e2a8"
 dependencies = [
  "base64 0.13.1",
  "hex",
@@ -10892,7 +10874,7 @@ dependencies = [
  "sp-std",
  "spacewalk-primitives",
  "staking",
- "substrate-stellar-sdk 0.2.4 (git+https://github.com/pendulum-chain/substrate-stellar-sdk?branch=401-spacewalk-fix-issues-of-connecting-to-stellar-overlay-network-on-testnet)",
+ "substrate-stellar-sdk",
  "visibility",
 ]
 
