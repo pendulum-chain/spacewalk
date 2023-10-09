@@ -6845,6 +6845,7 @@ dependencies = [
  "frame-benchmarking",
  "frame-support",
  "frame-system",
+ "pallet-balances",
  "parity-scale-codec",
  "scale-info",
  "security",
@@ -6854,6 +6855,7 @@ dependencies = [
  "sp-io",
  "sp-runtime",
  "sp-std",
+ "vault-registry",
 ]
 
 [[package]]

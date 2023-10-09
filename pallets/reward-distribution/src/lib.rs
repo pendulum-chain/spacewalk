@@ -5,8 +5,7 @@
 #![cfg_attr(test, feature(proc_macro_hygiene))]
 #![cfg_attr(not(feature = "std"), no_std)]
 
-use codec::{Decode, Encode, MaxEncodedLen};
-use scale_info::TypeInfo;
+use codec::Encode;
 
 mod default_weights;
 
@@ -16,7 +15,7 @@ use crate::types::{AccountIdOf, BalanceOf};
 use frame_support::{
 	dispatch::DispatchResult,
 	traits::{Currency, Get},
-	transactional, BoundedVec,
+	transactional,
 };
 use sp_arithmetic::Perquintill;
 
@@ -44,7 +43,7 @@ pub mod pallet {
 	pub struct Pallet<T>(_);
 
 	#[pallet::config]
-	pub trait Config: frame_system::Config + security::Config {
+	pub trait Config: frame_system::Config + security::Config + vault_registry::Config {
 		/// The overarching event type.
 		type RuntimeEvent: From<Event<Self>>
 			+ Into<<Self as frame_system::Config>::RuntimeEvent>

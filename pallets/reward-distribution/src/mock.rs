@@ -1,13 +1,14 @@
-use crate as clients_info;
+use crate as reward_distribution;
 use crate::Config;
 use frame_support::{
 	parameter_types,
-	traits::{ConstU32, Everything},
+	traits::{ConstU32, Everything, Get},
 };
 use sp_core::H256;
 use sp_runtime::{
 	generic::Header as GenericHeader,
 	traits::{BlakeTwo256, IdentityLookup},
+	Perquintill,
 };
 
 type Header = GenericHeader<BlockNumber, BlakeTwo256>;
@@ -22,13 +23,18 @@ frame_support::construct_runtime!(
 		UncheckedExtrinsic = UncheckedExtrinsic,
 	{
 		System: frame_system::{Pallet, Call, Storage, Config, Event<T>},
-		ClientsInfo: clients_info::{Pallet, Call, Storage, Event<T>}
+		Balances: pallet_balances::{Pallet, Call, Storage, Config<T>, Event<T>},
+		Security: security::{Pallet, Call, Storage, Event<T>},
+		VaultRegistry: vault_registry::{Pallet, Call, Storage, Event<T>},
+		RewardDistribution: reward_distribution::{Pallet, Call, Storage, Event<T>},
 	}
 );
 
 pub type AccountId = u64;
+pub type Balance = u128;
 pub type BlockNumber = u64;
 pub type Index = u64;
+pub type Currency = u64;
 
 parameter_types! {
 	pub const BlockHashCount: u64 = 250;
@@ -62,11 +68,59 @@ impl frame_system::Config for Test {
 	type MaxConsumers = ConstU32<16>;
 }
 
+parameter_types! {
+	pub const ExistentialDeposit: Balance = 1000;
+	pub const MaxReserves: u32 = 50;
+	pub const MaxLocks: u32 = 50;
+}
+
+parameter_type_with_key! {
+	pub ExistentialDeposits: |_currency_id: CurrencyId| -> Balance {
+		0
+	};
+}
+
+impl pallet_balances::Config for Test {
+	type MaxLocks = MaxLocks;
+	/// The type for recording an account's balance.
+	type Balance = Balance;
+	/// The ubiquitous event type.
+	type RuntimeEvent = RuntimeEvent;
+	type DustRemoval = ();
+	type ExistentialDeposit = ExistentialDeposit;
+	type AccountStore = System;
+	type WeightInfo = pallet_balances::weights::SubstrateWeight<Test>;
+	type MaxReserves = MaxReserves;
+	type ReserveIdentifier = ();
+}
+
+impl security::Config for Test {
+	type RuntimeEvent = ();
+	type WeightInfo = ();
+}
+
+parameter_types! {
+	pub const VaultPalletId: PalletId = PalletId(*b"mod/vreg");
+}
+
+impl vault_registry::Config for Test {
+	type PalletId = VaultPalletId;
+	type RuntimeEvent = TestEvent;
+	type Balance = Balance;
+	type WeightInfo = vault_registry::SubstrateWeight<Test>;
+	type GetGriefingCollateralCurrencyId = GetNativeCurrencyId;
+}
+
+parameter_types! {
+	pub const DecayRate: Perquintill = Perquintill::from_percent(5);
+}
+
 impl Config for Test {
 	type RuntimeEvent = RuntimeEvent;
 	type WeightInfo = ();
-	type MaxNameLength = ConstU32<255>;
-	type MaxUriLength = ConstU32<255>;
+	type Currency = Currency;
+	type DecayInterval = ConstU32<100>;
+	type DecayRate = DecayRate;
 }
 
 pub struct ExtBuilder;
