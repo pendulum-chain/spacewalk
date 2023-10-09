@@ -5,9 +5,9 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-codec = {package = "parity-scale-codec", version = "3.1.5", default-features = false, features = ["derive", "max-encoded-len"]}
-scale-info = {version = "2.2.0", default-features = false, features = ["derive"]}
-serde = {version = "1.0.130", default-features = false, features = ["derive"], optional = true}
+codec = { package = "parity-scale-codec", version = "3.1.5", default-features = false, features = ["derive", "max-encoded-len"] }
+scale-info = { version = "2.2.0", default-features = false, features = ["derive"] }
+serde = { version = "1.0.130", default-features = false, features = ["derive"], optional = true }
 
 # Substrate dependencies
 sp-runtime = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.40", default-features = false }
@@ -19,6 +19,8 @@ sp-core = { git = "https://github.com/paritytech/substrate", branch = "polkadot-
 frame-support = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.40", default-features = false }
 frame-system = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.40", default-features = false }
 frame-benchmarking = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.40", default-features = false, optional = true }
+
+security = { path = "../security", default-features = false }
 
 [features]
 default = ["std"]
@@ -34,6 +36,7 @@ std = [
     "frame-support/std",
     "frame-system/std",
     "frame-benchmarking/std",
+    "security/std",
 ]
 runtime-benchmarks = [
     "frame-benchmarking",
