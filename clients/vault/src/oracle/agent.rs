@@ -13,6 +13,7 @@ use stellar_relay_lib::{
 };
 
 use crate::oracle::{
+	AddTxSet,
 	collector::ScpMessageCollector,
 	errors::Error,
 	types::{Slot, StellarMessageSender},
@@ -43,8 +44,17 @@ async fn handle_message(
 				collector.write().await.handle_envelope(env, message_sender).await?;
 			},
 			StellarMessage::TxSet(set) => {
-				collector.read().await.handle_tx_set(set);
+				tracing::info!("KEVIN STUART AND BOB: FOUND TXSET!!");
+				if let Err(e)  = collector.read().await.add_txset(set) {
+					tracing::error!(e);
+				}
+
 			},
+			StellarMessage::GeneralizedTxSet(set) => {
+				if let Err(e)  = collector.read().await.add_txset(set) {
+					tracing::error!(e);
+				}
+			}
 			_ => {},
 		},
 		StellarRelayMessage::Connect { pub_key, node_info } => {

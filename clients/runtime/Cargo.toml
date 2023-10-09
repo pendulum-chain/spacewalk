@@ -60,7 +60,7 @@ testchain = { package = "spacewalk-standalone", path = "../../testchain/node", o
 testchain-runtime = { package = "spacewalk-runtime-standalone", path = "../../testchain/runtime", optional = true }
 
 # Substrate Stellar Dependencies
-substrate-stellar-sdk = { git = "https://github.com/pendulum-chain/substrate-stellar-sdk", branch = "polkadot-v0.9.40" }
+substrate-stellar-sdk = { git = "https://github.com/pendulum-chain/substrate-stellar-sdk", branch = "401-spacewalk-fix-issues-of-connecting-to-stellar-overlay-network-on-testnet" }
 wallet = { path = "../wallet" }
 
 

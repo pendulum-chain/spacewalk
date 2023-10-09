@@ -41,15 +41,3 @@ pub fn time_now() -> u64 {
 		u64::MAX
 	})
 }
-
-//todo: this has to be moved somewhere.
-pub fn compute_non_generic_tx_set_content_hash(tx_set: &TransactionSet) -> [u8; 32] {
-	let mut hasher = Sha256::new();
-	hasher.update(tx_set.previous_ledger_hash);
-
-	tx_set.txes.get_vec().iter().for_each(|envlp| {
-		hasher.update(envlp.to_xdr());
-	});
-
-	hasher.finalize().as_slice().try_into().unwrap()
-}

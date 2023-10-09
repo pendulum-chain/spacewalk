@@ -15,11 +15,7 @@ use primitives::derive_shortened_request_id;
 use sp_core::H256;
 use sp_runtime::traits::{CheckedDiv, Convert, Saturating, Zero};
 use sp_std::vec::Vec;
-use substrate_stellar_sdk::{
-	compound_types::UnlimitedVarArray,
-	types::{ScpEnvelope, TransactionSet},
-	TransactionEnvelope,
-};
+use substrate_stellar_sdk::{compound_types::UnlimitedVarArray, types::ScpEnvelope, TransactionEnvelope, TransactionSetType};
 
 #[cfg(feature = "std")]
 use std::str::FromStr;
@@ -505,6 +501,7 @@ impl<T: Config> Pallet<T> {
 
 		Self::set_issue_status(issue_id, IssueRequestStatus::Completed);
 
+		log::info!("KEVIN STUART AND BOB EXECUTE ISSUE READY TO BROADCAST!");
 		Self::deposit_event(Event::ExecuteIssue {
 			issue_id,
 			requester,
@@ -799,8 +796,11 @@ impl<T: Config> Pallet<T> {
 
 		let transaction_set = ext::stellar_relay::construct_from_raw_encoded_xdr::<
 			T,
-			TransactionSet,
+			TransactionSetType,
 		>(&transaction_set_encoded)?;
+
+		let hash = transaction_set.get_tx_set_hash().expect("should return a hash");
+		log::info!("KEVIN STUART AND BOB THE THE  TRANSACTIONSET: {:?}", hex::encode(hash));
 
 		let shortened_request_id = derive_shortened_request_id(&issue_id.0);
 		// Check that the transaction includes the expected memo to mitigate replay attacks
