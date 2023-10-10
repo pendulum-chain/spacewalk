@@ -52,6 +52,7 @@ currency = { path = "../currency", default-features = false, features = ["testin
 stellar-relay = { path = "../stellar-relay", features = ["testing-utils"] }
 security = { path = "../security", features = ['testing-utils'] }
 oracle = { path = "../oracle", features = ['testing-utils'] }
+pooled-rewards = { path = "../pooled-rewards", default-features = false }
 
 # Orml dependencies
 orml-tokens = { git = "https://github.com/open-web3-stack/open-runtime-module-library", branch = "polkadot-v0.9.40" }
@@ -73,6 +74,7 @@ std = [
     "frame-benchmarking/std",
     "pallet-balances/std",
     "pallet-timestamp/std",
+    "pooled-rewards/std",
     "currency/std",
     "fee/std",
     "nomination/std",

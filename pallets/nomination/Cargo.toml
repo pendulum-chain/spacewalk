@@ -66,6 +66,7 @@ std = [
     "frame-benchmarking/std",
     "pallet-balances/std",
     "pallet-timestamp/std",
+    "pooled-rewards/std",
     "currency/std",
     "security/std",
     "vault-registry/std",

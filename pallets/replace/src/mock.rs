@@ -52,7 +52,7 @@ frame_support::construct_runtime!(
 		Currencies: orml_currencies::{Pallet, Call},
 
 		Rewards: reward::{Pallet, Call, Storage, Event<T>},
-
+		PooledRewards: pooled_rewards::{Pallet, Call, Storage, Event<T>},
 		// Operational
 		StellarRelay: stellar_relay::{Pallet, Call, Config<T>, Storage, Event<T>},
 		Security: security::{Pallet, Call, Storage, Event<T>},
@@ -279,9 +279,22 @@ impl security::Config for Test {
 	type RuntimeEvent = TestEvent;
 	type WeightInfo = ();
 }
+parameter_types! {
+	pub const MaxRewardCurrencies: u32= 10;
+}
+
+impl pooled_rewards::Config for Test {
+	type RuntimeEvent = TestEvent;
+	type SignedFixedPoint = SignedFixedPoint;
+	type PoolId = CurrencyId;
+	type PoolRewardsCurrencyId = CurrencyId;
+	type StakeId = AccountId;
+	type MaxRewardCurrencies = MaxRewardCurrencies;
+}
 
 impl nomination::Config for Test {
 	type RuntimeEvent = TestEvent;
+	type PoolRewards = PooledRewards;
 	type WeightInfo = nomination::SubstrateWeight<Test>;
 }
 
