@@ -23,7 +23,6 @@ frame-benchmarking = { git = "https://github.com/paritytech/substrate", branch =
 pallet-balances = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.40", default-features = false }
 
 security = { path = "../security", default-features = false }
-vault-registry = { path = "../vault-registry", default-features = false }
 
 [features]
 default = ["std"]
@@ -41,7 +40,6 @@ std = [
     "frame-benchmarking/std",
     "pallet-balances/std",
     "security/std",
-    "vault-registry/std",
 ]
 runtime-benchmarks = [
     "frame-benchmarking",

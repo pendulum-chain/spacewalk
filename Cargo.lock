@@ -6855,7 +6855,6 @@ dependencies = [
  "sp-io",
  "sp-runtime",
  "sp-std",
- "vault-registry",
 ]
 
 [[package]]

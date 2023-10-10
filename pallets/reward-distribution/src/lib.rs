@@ -5,8 +5,6 @@
 #![cfg_attr(test, feature(proc_macro_hygiene))]
 #![cfg_attr(not(feature = "std"), no_std)]
 
-use codec::Encode;
-
 mod default_weights;
 
 pub use default_weights::{SubstrateWeight, WeightInfo};
@@ -43,7 +41,7 @@ pub mod pallet {
 	pub struct Pallet<T>(_);
 
 	#[pallet::config]
-	pub trait Config: frame_system::Config + security::Config + vault_registry::Config {
+	pub trait Config: frame_system::Config + security::Config {
 		/// The overarching event type.
 		type RuntimeEvent: From<Event<Self>>
 			+ Into<<Self as frame_system::Config>::RuntimeEvent>
@@ -68,7 +66,7 @@ pub mod pallet {
 	#[pallet::generate_deposit(pub(super) fn deposit_event)]
 	pub enum Event<T: Config> {
 		/// A new RewardPerBlock value has been set.
-		RewardsPerBlockAdapted(BalanceOf<T>),
+		RewardPerBlockAdapted(BalanceOf<T>),
 	}
 
 	#[pallet::error]
@@ -87,18 +85,18 @@ pub mod pallet {
 	impl<T: Config> Pallet<T> {
 		/// Sets the reward per block.
 		#[pallet::call_index(0)]
-		#[pallet::weight(<T as Config>::WeightInfo::set_rewards_per_block())]
+		#[pallet::weight(<T as Config>::WeightInfo::set_reward_per_block())]
 		#[transactional]
-		pub fn set_rewards_per_block(
+		pub fn set_reward_per_block(
 			origin: OriginFor<T>,
-			new_rewards_per_block: BalanceOf<T>,
+			new_reward_per_block: BalanceOf<T>,
 		) -> DispatchResult {
 			ensure_root(origin)?;
 
-			RewardPerBlock::<T>::put(new_rewards_per_block);
+			RewardPerBlock::<T>::put(new_reward_per_block);
 			RewardsAdaptedAt::<T>::put(frame_system::Pallet::<T>::block_number());
 
-			Self::deposit_event(Event::<T>::RewardsPerBlockAdapted(new_rewards_per_block));
+			Self::deposit_event(Event::<T>::RewardPerBlockAdapted(new_reward_per_block));
 			Ok(())
 		}
 	}

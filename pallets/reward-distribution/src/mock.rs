@@ -2,7 +2,7 @@ use crate as reward_distribution;
 use crate::Config;
 use frame_support::{
 	parameter_types,
-	traits::{ConstU32, Everything, Get},
+	traits::{ConstU32, ConstU64, Everything},
 };
 use sp_core::H256;
 use sp_runtime::{
@@ -25,7 +25,6 @@ frame_support::construct_runtime!(
 		System: frame_system::{Pallet, Call, Storage, Config, Event<T>},
 		Balances: pallet_balances::{Pallet, Call, Storage, Config<T>, Event<T>},
 		Security: security::{Pallet, Call, Storage, Event<T>},
-		VaultRegistry: vault_registry::{Pallet, Call, Storage, Event<T>},
 		RewardDistribution: reward_distribution::{Pallet, Call, Storage, Event<T>},
 	}
 );
@@ -34,7 +33,6 @@ pub type AccountId = u64;
 pub type Balance = u128;
 pub type BlockNumber = u64;
 pub type Index = u64;
-pub type Currency = u64;
 
 parameter_types! {
 	pub const BlockHashCount: u64 = 250;
@@ -59,7 +57,7 @@ impl frame_system::Config for Test {
 	type BlockHashCount = BlockHashCount;
 	type Version = ();
 	type PalletInfo = PalletInfo;
-	type AccountData = ();
+	type AccountData = pallet_balances::AccountData<Balance>;
 	type OnNewAccount = ();
 	type OnKilledAccount = ();
 	type SystemWeightInfo = ();
@@ -72,12 +70,6 @@ parameter_types! {
 	pub const ExistentialDeposit: Balance = 1000;
 	pub const MaxReserves: u32 = 50;
 	pub const MaxLocks: u32 = 50;
-}
-
-parameter_type_with_key! {
-	pub ExistentialDeposits: |_currency_id: CurrencyId| -> Balance {
-		0
-	};
 }
 
 impl pallet_balances::Config for Test {
@@ -95,20 +87,8 @@ impl pallet_balances::Config for Test {
 }
 
 impl security::Config for Test {
-	type RuntimeEvent = ();
+	type RuntimeEvent = RuntimeEvent;
 	type WeightInfo = ();
-}
-
-parameter_types! {
-	pub const VaultPalletId: PalletId = PalletId(*b"mod/vreg");
-}
-
-impl vault_registry::Config for Test {
-	type PalletId = VaultPalletId;
-	type RuntimeEvent = TestEvent;
-	type Balance = Balance;
-	type WeightInfo = vault_registry::SubstrateWeight<Test>;
-	type GetGriefingCollateralCurrencyId = GetNativeCurrencyId;
 }
 
 parameter_types! {
@@ -117,9 +97,9 @@ parameter_types! {
 
 impl Config for Test {
 	type RuntimeEvent = RuntimeEvent;
-	type WeightInfo = ();
-	type Currency = Currency;
-	type DecayInterval = ConstU32<100>;
+	type WeightInfo = crate::default_weights::SubstrateWeight<Test>;
+	type Currency = Balances;
+	type DecayInterval = ConstU64<100>;
 	type DecayRate = DecayRate;
 }
 
