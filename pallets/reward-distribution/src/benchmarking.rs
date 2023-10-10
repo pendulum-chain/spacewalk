@@ -1,38 +1,27 @@
 use super::*;
-use frame_benchmarking::v2::{benchmarks, impl_benchmark_test_suite, Linear};
+use frame_benchmarking::v2::{benchmarks, impl_benchmark_test_suite};
 use frame_system::RawOrigin;
-use sp_std::vec;
 
 #[allow(unused)]
-use super::Pallet as ClientsInfo;
+use super::Pallet as RewardDistribution;
 
 #[benchmarks]
 pub mod benchmarks {
 	use super::*;
 
 	#[benchmark]
-	fn set_current_client_release(n: Linear<0, 255>, u: Linear<0, 255>) {
-		let name = BoundedVec::try_from(vec![0; n as usize]).unwrap();
-		let uri = BoundedVec::try_from(vec![0; u as usize]).unwrap();
-		let client_release = ClientRelease { uri, checksum: Default::default() };
+	fn set_reward_per_block() {
+		let new_reward_per_block = Default::default();
 
 		#[extrinsic_call]
-		_(RawOrigin::Root, name.clone(), client_release.clone());
+		_(RawOrigin::Root, new_reward_per_block);
 
-		assert_eq!(CurrentClientReleases::<T>::get(name), Some(client_release));
+		assert_eq!(RewardDistribution::<T>::reward_per_block(), Some(new_reward_per_block));
 	}
 
-	#[benchmark]
-	fn set_pending_client_release(n: Linear<0, 255>, u: Linear<0, 255>) {
-		let name = BoundedVec::try_from(vec![0; n as usize]).unwrap();
-		let uri = BoundedVec::try_from(vec![0; u as usize]).unwrap();
-		let client_release = ClientRelease { uri, checksum: Default::default() };
-
-		#[extrinsic_call]
-		_(RawOrigin::Root, name.clone(), client_release.clone());
-
-		assert_eq!(PendingClientReleases::<T>::get(name), Some(client_release));
-	}
-
-	impl_benchmark_test_suite!(ClientsInfo, crate::mock::ExtBuilder::build(), crate::mock::Test);
+	impl_benchmark_test_suite!(
+		RewardDistribution,
+		crate::mock::ExtBuilder::build(),
+		crate::mock::Test
+	);
 }
