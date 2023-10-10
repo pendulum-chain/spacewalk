@@ -49,6 +49,7 @@ frame_support::construct_runtime!(
 		Currencies: orml_currencies::{Pallet, Call},
 
 		Rewards: reward::{Pallet, Call, Storage, Event<T>},
+		PooledRewards: pooled_rewards::{Pallet, Call, Storage, Event<T>},
 
 		// Operational
 		Security: security::{Pallet, Call, Storage, Event<T>},
@@ -258,6 +259,19 @@ impl fee::Config for Test {
 }
 
 parameter_types! {
+	pub const MaxRewardCurrencies: u32= 10;
+}
+
+impl pooled_rewards::Config for Test {
+	type RuntimeEvent = TestEvent;
+	type SignedFixedPoint = SignedFixedPoint;
+	type PoolId = CurrencyId;
+	type PoolRewardsCurrencyId = CurrencyId;
+	type StakeId = AccountId;
+	type MaxRewardCurrencies = MaxRewardCurrencies;
+}
+
+parameter_types! {
 	pub const VaultPalletId: PalletId = PalletId(*b"mod/vreg");
 }
 
@@ -266,6 +280,7 @@ impl Config for Test {
 	type RuntimeEvent = TestEvent;
 	type Balance = Balance;
 	type WeightInfo = vault_registry::SubstrateWeight<Test>;
+	type PoolRewards = PooledRewards;
 	type GetGriefingCollateralCurrencyId = GetNativeCurrencyId;
 }
 
