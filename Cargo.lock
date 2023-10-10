@@ -9537,6 +9537,7 @@ dependencies = [
  "redeem",
  "replace",
  "reward",
+ "reward-distribution",
  "scale-info",
  "security",
  "serde_json",

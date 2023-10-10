@@ -1,6 +1,7 @@
 use super::*;
 use frame_benchmarking::v2::{benchmarks, impl_benchmark_test_suite};
 use frame_system::RawOrigin;
+use sp_std::vec;
 
 #[allow(unused)]
 use super::Pallet as RewardDistribution;

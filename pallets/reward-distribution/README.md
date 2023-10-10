@@ -16,12 +16,12 @@ Build the node with the `runtime-benchmarks` feature:
 
 ```bash
 cargo build --package spacewalk-standalone --release --features runtime-benchmarks
-```bash
+```
 
 ```bash
 # Show benchmarks for this pallet
 ./target/release/spacewalk-standalone benchmark pallet -p reward-distribution -e '*' --list
-```bash
+```
 
 Run the benchmarking for a pallet:
 
@@ -35,5 +35,5 @@ Run the benchmarking for a pallet:
 --wasm-execution=compiled \
 --output=pallets/reward-distribution/src/default_weights.rs \
 --template=./.maintain/frame-weight-template.hbs
-```bash
+```
 
