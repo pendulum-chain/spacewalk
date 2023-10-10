@@ -21,11 +21,15 @@ fn test_set_rewards_per_block() {
 			BadOrigin
 		);
 
+		assert_eq!(RewardDistribution::reward_per_block(), None);
+		assert_eq!(RewardDistribution::rewards_adapted_at(), None);
+
 		assert_ok!(RewardDistribution::set_reward_per_block(
 			RuntimeOrigin::root(),
 			new_rewards_per_block
 		));
 
 		assert_eq!(RewardDistribution::reward_per_block(), Some(new_rewards_per_block));
+		assert_eq!(RewardDistribution::rewards_adapted_at(), Some(1));
 	});
 }
