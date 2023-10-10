@@ -3,10 +3,7 @@ use crate::oracle::{
 	errors::Error,
 	types::StellarMessageSender,
 };
-use stellar_relay_lib::{
-	sdk::types::{ScpEnvelope, ScpStatementPledges, StellarMessage, TransactionSet},
-};
-use crate::oracle::collector::collector::AddTxSet;
+use stellar_relay_lib::sdk::types::{ScpEnvelope, ScpStatementPledges, StellarMessage};
 
 // Handling SCPEnvelopes
 impl ScpMessageCollector {

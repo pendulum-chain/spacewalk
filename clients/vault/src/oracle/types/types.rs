@@ -1,17 +1,10 @@
 #![allow(non_snake_case)]
 
-use std::{
-	clone::Clone,
-	cmp::Eq,
-	collections::{BTreeMap, HashMap, VecDeque},
-	fmt::Debug,
-};
+use std::collections::BTreeMap;
 
-use itertools::Itertools;
 use tokio::sync::mpsc;
 
-use crate::oracle::types::constants::DEFAULT_MAX_ITEMS_IN_QUEUE;
-use stellar_relay_lib::sdk::types::{Hash, ScpEnvelope, StellarMessage, TransactionSet, Uint64};
+use stellar_relay_lib::sdk::types::{Hash, StellarMessage, Uint64};
 
 pub type Slot = Uint64;
 pub type TxHash = Hash;

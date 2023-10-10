@@ -5,13 +5,13 @@ use frame_support::{
 	BoundedVec,
 };
 use frame_system as system;
+use primitives::stellar::SecretKey;
 use rand::Rng;
 use sp_core::H256;
 use sp_runtime::{
 	testing::Header,
 	traits::{BlakeTwo256, IdentityLookup},
 };
-use primitives::stellar::SecretKey;
 
 use crate as pallet_spacewalk_relay;
 use crate::{

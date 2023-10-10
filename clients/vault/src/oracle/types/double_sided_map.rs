@@ -1,8 +1,11 @@
+#![allow(non_snake_case)]
+
 use crate::oracle::types::{Slot, TxSetHash};
 use std::collections::HashMap;
 
-/// The slot is not found in the `StellarMessage::TxSet(...)` and `StellarMessage::GeneralizedTxSet(...)`,
-/// therefore this map serves as a holder of the slot when we hash the txset.
+/// The slot is not found in the `StellarMessage::TxSet(...)` and
+/// `StellarMessage::GeneralizedTxSet(...)`, therefore this map serves as a holder of the slot when
+/// we hash the txset.
 pub type TxSetHashAndSlotMap = DoubleSidedHashMap<TxSetHash, Slot>;
 
 #[derive(Clone)]
@@ -30,9 +33,9 @@ where
 		DoubleSidedHashMap { k_to_v_map: Default::default(), v_to_k_map: Default::default() }
 	}
 
-	pub fn insert(&mut self, K: K, V: V) {
-		self.k_to_v_map.insert(K.clone(), V.clone());
-		self.v_to_k_map.insert(V, K);
+	pub fn insert(&mut self, k: K, v: V) {
+		self.k_to_v_map.insert(k.clone(), v.clone());
+		self.v_to_k_map.insert(v, k);
 	}
 }
 
@@ -61,10 +64,7 @@ impl DoubleSidedHashMap<TxSetHash, Slot> {
 
 #[cfg(test)]
 mod test {
-	use crate::oracle::types::{
-		constants::DEFAULT_MAX_ITEMS_IN_QUEUE, LimitedFifoMap, TxSetHashAndSlotMap,
-	};
-	use std::convert::TryFrom;
+	use crate::oracle::types::TxSetHashAndSlotMap;
 
 	#[test]
 	fn get_TxSetHashAndSlotMap_tests_works() {

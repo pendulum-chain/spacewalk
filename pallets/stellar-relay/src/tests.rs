@@ -1,10 +1,16 @@
 use frame_support::{assert_noop, assert_ok, BoundedVec};
+use primitives::stellar::{
+	compound_types::{LimitedVarArray, LimitedVarOpaque, UnlimitedVarArray, UnlimitedVarOpaque},
+	network::{Network, PUBLIC_NETWORK, TEST_NETWORK},
+	types::{
+		NodeId, Preconditions, ScpBallot, ScpEnvelope, ScpStatement, ScpStatementConfirm,
+		ScpStatementExternalize, ScpStatementPledges, Signature, StellarValue, StellarValueExt,
+		TransactionExt, TransactionSet, TransactionV1Envelope, Value,
+	},
+	Hash, InitExt, IntoHash, Memo, MuxedAccount, PublicKey, SecretKey, Transaction,
+	TransactionEnvelope, TransactionSetType, XdrCodec,
+};
 use sp_runtime::DispatchError::BadOrigin;
-use primitives::stellar::{compound_types::{LimitedVarArray, LimitedVarOpaque, UnlimitedVarArray, UnlimitedVarOpaque}, network::{Network, PUBLIC_NETWORK, TEST_NETWORK}, types::{
-	NodeId, Preconditions, ScpBallot, ScpEnvelope, ScpStatement, ScpStatementConfirm,
-	ScpStatementExternalize, ScpStatementPledges, Signature, StellarValue, StellarValueExt,
-	TransactionExt, TransactionSet, TransactionV1Envelope, Value,
-}, Hash, IntoHash, Memo, MuxedAccount, PublicKey, SecretKey, Transaction, TransactionEnvelope, XdrCodec, TransactionSetType, InitExt};
 
 use crate::{
 	mock::*,
@@ -84,7 +90,9 @@ fn create_valid_dummy_scp_envelopes(
 	// Add the transaction that is to be verified to the transaction set
 	txes.push(transaction_envelope.clone()).unwrap();
 	let transaction_set = TransactionSet { previous_ledger_hash: Hash::default(), txes };
-	let tx_set_hash = transaction_set.clone().into_hash()
+	let tx_set_hash = transaction_set
+		.clone()
+		.into_hash()
 		.expect("Should compute non generic tx set content hash");
 
 	let network: &Network = if public_network { &PUBLIC_NETWORK } else { &TEST_NETWORK };

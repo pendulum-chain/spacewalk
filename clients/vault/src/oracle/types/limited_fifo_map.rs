@@ -1,11 +1,7 @@
-use crate::oracle::{
-	constants::DEFAULT_MAX_ITEMS_IN_QUEUE,
-	types::Slot,
-	TransactionsArchiveStorage,
-};
+use crate::oracle::{constants::DEFAULT_MAX_ITEMS_IN_QUEUE, types::Slot};
 use itertools::Itertools;
 use std::{collections::VecDeque, fmt::Debug};
-use stellar_relay_lib::sdk::{TransactionSetType, types::{GeneralizedTransactionSet, TransactionSet, ScpEnvelope}};
+use stellar_relay_lib::sdk::{types::ScpEnvelope, TransactionSetType};
 
 /// Sometimes not enough `StellarMessage::ScpMessage(...)` are sent per slot;
 /// or that the `StellarMessage::TxSet(...)` or `StellarMessage::GeneralizedTxSet(...)`
@@ -123,7 +119,6 @@ where
 mod test {
 	use super::*;
 	use std::convert::TryFrom;
-	use stellar_relay_lib::sdk::TransactionEnvelope;
 
 	#[test]
 	fn test_LimitedFifoMap_newone() {

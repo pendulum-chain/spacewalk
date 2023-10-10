@@ -4,9 +4,9 @@ use sp_core::H256;
 use sp_runtime::traits::Zero;
 
 use currency::{testing_constants::get_wrapped_currency_id, Amount};
+use primitives::stellar::{types::AlphaNum4, Asset, Operation, PublicKey, StroopAmount};
 use security::Pallet as Security;
 use stellar_relay::testing_utils::RANDOM_STELLAR_PUBLIC_KEY;
-use primitives::stellar::{types::AlphaNum4, Asset, Operation, PublicKey, StroopAmount};
 use vault_registry::{DefaultVault, VaultStatus};
 
 use crate::{

@@ -25,8 +25,11 @@ pub(crate) mod currency {
 
 #[cfg_attr(test, mockable)]
 pub(crate) mod stellar_relay {
+	use primitives::stellar::{
+		compound_types::UnlimitedVarArray, types::ScpEnvelope, TransactionEnvelope,
+		TransactionSetType, XdrCodec,
+	};
 	use sp_core::H256;
-	use primitives::stellar::{compound_types::UnlimitedVarArray, types::{ScpEnvelope}, TransactionEnvelope, XdrCodec, TransactionSetType};
 
 	use stellar_relay::Error;
 

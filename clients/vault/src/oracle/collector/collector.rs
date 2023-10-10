@@ -1,11 +1,14 @@
-use std::default::Default;
-use std::sync::Arc;
+use std::{default::Default, sync::Arc};
 
 use parking_lot::{lock_api::RwLockReadGuard, RawRwLock, RwLock};
 
 use runtime::stellar::types::GeneralizedTransactionSet;
 
-use stellar_relay_lib::sdk::{ network::{Network, PUBLIC_NETWORK, TEST_NETWORK}, types::{ScpEnvelope, TransactionSet}, TransactionSetType };
+use stellar_relay_lib::sdk::{
+	network::{Network, PUBLIC_NETWORK, TEST_NETWORK},
+	types::{ScpEnvelope, TransactionSet},
+	TransactionSetType,
+};
 
 use crate::oracle::types::{EnvelopesMap, Slot, TxSetHash, TxSetHashAndSlotMap, TxSetMap};
 
@@ -106,11 +109,11 @@ impl ScpMessageCollector {
 }
 
 pub trait AddTxSet<T> {
-	fn add_txset(&self, tx_set:T) -> Result<(),String>;
+	fn add_txset(&self, tx_set: T) -> Result<(), String>;
 }
 
 impl AddTxSet<TransactionSet> for ScpMessageCollector {
-	fn add_txset(&self, tx_set: TransactionSet) -> Result<(),String> {
+	fn add_txset(&self, tx_set: TransactionSet) -> Result<(), String> {
 		let tx_set = TransactionSetType::TransactionSet(tx_set);
 		self.add_txset(tx_set)
 	}
@@ -123,10 +126,11 @@ impl AddTxSet<GeneralizedTransactionSet> for ScpMessageCollector {
 	}
 }
 
-
 impl AddTxSet<TransactionSetType> for ScpMessageCollector {
 	fn add_txset(&self, tx_set: TransactionSetType) -> Result<(), String> {
-		let hash = tx_set.get_tx_set_hash().map_err(|e| format!("failed to get hash of txset"))?;
+		let hash = tx_set
+			.get_tx_set_hash()
+			.map_err(|e| format!("failed to get hash of txset:{e:?}"))?;
 		let hash_str = hex::encode(&hash);
 
 		let slot = {
@@ -141,11 +145,10 @@ impl AddTxSet<TransactionSetType> for ScpMessageCollector {
 
 		if slot.is_none() {
 			tracing::warn!("Collecting TxSet for slot: tx_set_hash: {hash_str} has no slot.");
-			return Err(format!("TxSetHash {hash_str} has no slot."));
+			return Err(format!("TxSetHash {hash_str} has no slot."))
 		}
 
 		Ok(())
-
 	}
 }
 
@@ -205,23 +208,21 @@ impl ScpMessageCollector {
 
 #[cfg(test)]
 mod test {
-	use std::env;
-	use std::fs::File;
-	use std::io::Read;
-	use std::path::PathBuf;
-	use stellar_relay_lib::sdk::network::{PUBLIC_NETWORK, TEST_NETWORK};
-	use stellar_relay_lib::sdk::types::{GeneralizedTransactionSet, TransactionSet};
-	use stellar_relay_lib::sdk::{IntoHash, XdrCodec};
+	use std::{fs::File, io::Read, path::PathBuf};
+	use stellar_relay_lib::sdk::{
+		network::{PUBLIC_NETWORK, TEST_NETWORK},
+		types::{GeneralizedTransactionSet, TransactionSet},
+		IntoHash, XdrCodec,
+	};
 
 	use crate::oracle::{
-		collector::ScpMessageCollector, get_test_stellar_relay_config, traits::FileHandler,
-		EnvelopesFileHandler, TxSetsFileHandler,
+		collector::{collector::AddTxSet, ScpMessageCollector},
+		get_test_stellar_relay_config,
+		traits::FileHandler,
+		EnvelopesFileHandler,
 	};
-	use crate::oracle::collector::collector::AddTxSet;
 
 	fn open_file(file_name: &str) -> Vec<u8> {
-		let x = env::current_dir();
-
 		let mut path = PathBuf::new();
 		let path_str = format!("./resources/samples/{file_name}");
 		path.push(&path_str);
@@ -322,7 +323,10 @@ mod test {
 		let value = sample_txset();
 
 		let slot = 578391;
-		collector.save_txset_hash_and_slot(value.clone().into_hash().expect("it should return a hash"), slot);
+		collector.save_txset_hash_and_slot(
+			value.clone().into_hash().expect("it should return a hash"),
+			slot,
+		);
 
 		assert!(collector.add_txset(value).is_ok());
 
@@ -343,7 +347,6 @@ mod test {
 		let res = collector.last_slot_index;
 		assert_eq!(res, 15);
 	}
-
 
 	// todo: update this with a new txset sample
 	#[test]

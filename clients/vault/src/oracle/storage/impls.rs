@@ -2,9 +2,8 @@ use std::{fmt::Write, str::Split};
 
 use stellar_relay_lib::sdk::{
 	compound_types::UnlimitedVarArray,
-	TransactionSetType,
 	types::{ScpEnvelope, ScpHistoryEntry, TransactionHistoryEntry},
-	XdrCodec,
+	TransactionSetType, XdrCodec,
 };
 
 use crate::oracle::{
@@ -165,7 +164,7 @@ mod test {
 		impls::ArchiveStorage,
 		storage::{
 			traits::{FileHandler, FileHandlerExt},
-			EnvelopesFileHandler, TxSetsFileHandler,
+			EnvelopesFileHandler,
 		},
 		types::Slot,
 		TransactionsArchiveStorage,

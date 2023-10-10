@@ -11,11 +11,16 @@ extern crate mocktopus;
 use frame_support::{dispatch::DispatchError, ensure, traits::Get, transactional};
 #[cfg(test)]
 use mocktopus::macros::mockable;
-use primitives::derive_shortened_request_id;
+use primitives::{
+	derive_shortened_request_id,
+	stellar::{
+		compound_types::UnlimitedVarArray, types::ScpEnvelope, TransactionEnvelope,
+		TransactionSetType,
+	},
+};
 use sp_core::H256;
 use sp_runtime::traits::{CheckedDiv, Convert, Saturating, Zero};
 use sp_std::vec::Vec;
-use primitives::stellar::{compound_types::UnlimitedVarArray, types::ScpEnvelope, TransactionEnvelope, TransactionSetType};
 
 #[cfg(feature = "std")]
 use std::str::FromStr;
