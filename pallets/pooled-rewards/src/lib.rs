@@ -35,12 +35,12 @@ pub use pallet::*;
 #[frame_support::pallet]
 pub mod pallet {
 	use super::*;
-	use frame_support::{pallet_prelude::*, BoundedBTreeSet}; 
-	
+	use frame_support::{pallet_prelude::*, BoundedBTreeSet};
+
 	/// ## Configuration
 	/// The pallet's configuration trait.
 	#[pallet::config]
-	pub trait Config<I: 'static = ()>: frame_system::Config  {
+	pub trait Config<I: 'static = ()>: frame_system::Config {
 		/// The overarching event type.
 		type RuntimeEvent: From<Event<Self, I>>
 			+ IsType<<Self as frame_system::Config>::RuntimeEvent>;
@@ -53,23 +53,20 @@ pub mod pallet {
 			+ Decode
 			+ TypeInfo
 			+ MaxEncodedLen;
-		
+
 		/// The pool identifier type.
-		type PoolId: Parameter
-			+ Member
-			+ MaybeSerializeDeserialize
-			+ Debug
-			+ MaxEncodedLen;
+		type PoolId: Parameter + Member + MaybeSerializeDeserialize + Debug + MaxEncodedLen;
 
 		/// The stake identifier type.
-		type StakeId: Parameter
-			+ Member
-			+ MaybeSerializeDeserialize
-			+ Debug
-			+ MaxEncodedLen;
+		type StakeId: Parameter + Member + MaybeSerializeDeserialize + Debug + MaxEncodedLen;
 
 		/// The currency ID type.
-		type CurrencyId: Parameter + Member + Copy + MaybeSerializeDeserialize + Ord + MaxEncodedLen;
+		type PoolRewardsCurrencyId: Parameter
+			+ Member
+			+ Copy
+			+ MaybeSerializeDeserialize
+			+ Ord
+			+ MaxEncodedLen;
 
 		/// The maximum number of reward currencies.
 		#[pallet::constant]
@@ -86,7 +83,7 @@ pub mod pallet {
 			amount: T::SignedFixedPoint,
 		},
 		DistributeReward {
-			currency_id: T::CurrencyId,
+			currency_id: T::PoolRewardsCurrencyId,
 			amount: T::SignedFixedPoint,
 		},
 		WithdrawStake {
@@ -97,7 +94,7 @@ pub mod pallet {
 		WithdrawReward {
 			pool_id: T::PoolId,
 			stake_id: T::StakeId,
-			currency_id: T::CurrencyId,
+			currency_id: T::PoolRewardsCurrencyId,
 			amount: T::SignedFixedPoint,
 		},
 	}
@@ -127,8 +124,13 @@ pub mod pallet {
 	/// NOTE: this is currently only used for integration tests.
 	#[pallet::storage]
 	#[pallet::getter(fn total_rewards)]
-	pub type TotalRewards<T: Config<I>, I: 'static = ()> =
-		StorageMap<_, Blake2_128Concat, T::CurrencyId, SignedFixedPoint<T, I>, ValueQuery>;
+	pub type TotalRewards<T: Config<I>, I: 'static = ()> = StorageMap<
+		_,
+		Blake2_128Concat,
+		T::PoolRewardsCurrencyId,
+		SignedFixedPoint<T, I>,
+		ValueQuery,
+	>;
 
 	/// Used to compute the rewards for a participant's stake.
 	#[pallet::storage]
@@ -136,7 +138,7 @@ pub mod pallet {
 	pub type RewardPerToken<T: Config<I>, I: 'static = ()> = StorageDoubleMap<
 		_,
 		Blake2_128Concat,
-		T::CurrencyId,
+		T::PoolRewardsCurrencyId,
 		Blake2_128Concat,
 		T::PoolId,
 		SignedFixedPoint<T, I>,
@@ -158,7 +160,7 @@ pub mod pallet {
 	pub type RewardTally<T: Config<I>, I: 'static = ()> = StorageDoubleMap<
 		_,
 		Blake2_128Concat,
-		T::CurrencyId,
+		T::PoolRewardsCurrencyId,
 		Blake2_128Concat,
 		(T::PoolId, T::StakeId),
 		SignedFixedPoint<T, I>,
@@ -171,7 +173,7 @@ pub mod pallet {
 		_,
 		Blake2_128Concat,
 		T::PoolId,
-		BoundedBTreeSet<T::CurrencyId, T::MaxRewardCurrencies>,
+		BoundedBTreeSet<T::PoolRewardsCurrencyId, T::MaxRewardCurrencies>,
 		ValueQuery,
 	>;
 
@@ -233,7 +235,7 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 	}
 
 	pub fn get_total_rewards(
-		currency_id: T::CurrencyId,
+		currency_id: T::PoolRewardsCurrencyId,
 	) -> Result<<T::SignedFixedPoint as FixedPointNumber>::Inner, DispatchError> {
 		Ok(Self::total_rewards(currency_id)
 			.truncate_to_inner()
@@ -271,7 +273,7 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 
 	pub fn distribute_reward(
 		pool_id: &T::PoolId,
-		currency_id: T::CurrencyId,
+		currency_id: T::PoolRewardsCurrencyId,
 		reward: SignedFixedPoint<T, I>,
 	) -> DispatchResult {
 		if reward.is_zero() {
@@ -299,7 +301,7 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 	pub fn compute_reward(
 		pool_id: &T::PoolId,
 		stake_id: &T::StakeId,
-		currency_id: T::CurrencyId,
+		currency_id: T::PoolRewardsCurrencyId,
 	) -> Result<<SignedFixedPoint<T, I> as FixedPointNumber>::Inner, DispatchError> {
 		let stake = Self::stake(pool_id, stake_id);
 		let reward_per_token = Self::reward_per_token(currency_id, pool_id);
@@ -352,7 +354,7 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 	pub fn withdraw_reward(
 		pool_id: &T::PoolId,
 		stake_id: &T::StakeId,
-		currency_id: T::CurrencyId,
+		currency_id: T::PoolRewardsCurrencyId,
 	) -> Result<<SignedFixedPoint<T, I> as FixedPointNumber>::Inner, DispatchError> {
 		let reward = Self::compute_reward(pool_id, stake_id, currency_id)?;
 		let reward_as_fixed = SignedFixedPoint::<T, I>::checked_from_integer(reward)
@@ -381,14 +383,14 @@ pub trait RewardsApi<PoolId, StakeId, Balance>
 where
 	Balance: Saturating + PartialOrd + Copy,
 {
-	type CurrencyId;
+	type PoolRewardsCurrencyId;
 
 	fn reward_currencies_len(pool_id: &PoolId) -> u32;
 
 	/// Distribute the `amount` to all participants OR error if zero total stake.
 	fn distribute_reward(
 		pool_id: &PoolId,
-		currency_id: Self::CurrencyId,
+		currency_id: Self::PoolRewardsCurrencyId,
 		amount: Balance,
 	) -> DispatchResult;
 
@@ -396,14 +398,14 @@ where
 	fn compute_reward(
 		pool_id: &PoolId,
 		stake_id: &StakeId,
-		currency_id: Self::CurrencyId,
+		currency_id: Self::PoolRewardsCurrencyId,
 	) -> Result<Balance, DispatchError>;
 
 	/// Withdraw all rewards from the `stake_id`.
 	fn withdraw_reward(
 		pool_id: &PoolId,
 		stake_id: &StakeId,
-		currency_id: Self::CurrencyId,
+		currency_id: Self::PoolRewardsCurrencyId,
 	) -> Result<Balance, DispatchError>;
 
 	/// Deposit stake for an account.
@@ -440,18 +442,6 @@ where
 	}
 }
 
-pub trait ModifyStakePool<PoolId, StakeId, Balance>
-where
-	Balance: Saturating + PartialOrd + Copy,
-{
-	/// Deposit stake for an account.
-	fn deposit_stake(pool_id: &PoolId, stake_id: &StakeId, amount: Balance) -> DispatchResult;
-
-	/// Withdraw stake for an account.
-	fn withdraw_stake(pool_id: &PoolId, stake_id: &StakeId, amount: Balance) -> DispatchResult;
-
-}
-
 impl<T, I, Balance> RewardsApi<T::PoolId, T::StakeId, Balance> for Pallet<T, I>
 where
 	T: Config<I>,
@@ -459,7 +449,7 @@ where
 	Balance: BalanceToFixedPoint<SignedFixedPoint<T, I>> + Saturating + PartialOrd + Copy,
 	<T::SignedFixedPoint as FixedPointNumber>::Inner: TryInto<Balance>,
 {
-	type CurrencyId = T::CurrencyId;
+	type PoolRewardsCurrencyId = T::PoolRewardsCurrencyId;
 
 	fn reward_currencies_len(pool_id: &T::PoolId) -> u32 {
 		RewardCurrencies::<T, I>::get(pool_id).len() as u32
@@ -467,7 +457,7 @@ where
 
 	fn distribute_reward(
 		pool_id: &T::PoolId,
-		currency_id: T::CurrencyId,
+		currency_id: T::PoolRewardsCurrencyId,
 		amount: Balance,
 	) -> DispatchResult {
 		Pallet::<T, I>::distribute_reward(
@@ -480,7 +470,7 @@ where
 	fn compute_reward(
 		pool_id: &T::PoolId,
 		stake_id: &T::StakeId,
-		currency_id: T::CurrencyId,
+		currency_id: T::PoolRewardsCurrencyId,
 	) -> Result<Balance, DispatchError> {
 		Pallet::<T, I>::compute_reward(pool_id, stake_id, currency_id)?
 			.try_into()
@@ -490,7 +480,7 @@ where
 	fn withdraw_reward(
 		pool_id: &T::PoolId,
 		stake_id: &T::StakeId,
-		currency_id: T::CurrencyId,
+		currency_id: T::PoolRewardsCurrencyId,
 	) -> Result<Balance, DispatchError> {
 		Pallet::<T, I>::withdraw_reward(pool_id, stake_id, currency_id)?
 			.try_into()
@@ -538,57 +528,24 @@ where
 	}
 }
 
-impl<T, I, Balance> ModifyStakePool<T::PoolId, T::StakeId, Balance> for Pallet<T, I>
-where
-	T: Config<I>,
-	I: 'static,
-	Balance: BalanceToFixedPoint<SignedFixedPoint<T, I>> + Saturating + PartialOrd + Copy,
-	
-{
-	fn deposit_stake(
-		pool_id: &T::PoolId,
-		stake_id: &T::StakeId,
-		amount: Balance,
-	) -> DispatchResult {
-		Pallet::<T, I>::deposit_stake(
-			pool_id,
-			stake_id,
-			amount.to_fixed().ok_or(Error::<T, I>::TryIntoIntError)?,
-		)
-	}
-
-	fn withdraw_stake(
-		pool_id: &T::PoolId,
-		stake_id: &T::StakeId,
-		amount: Balance,
-	) -> DispatchResult {
-		Pallet::<T, I>::withdraw_stake(
-			pool_id,
-			stake_id,
-			amount.to_fixed().ok_or(Error::<T, I>::TryIntoIntError)?,
-		)
-	}
-
-}
-
 impl<PoolId, StakeId, Balance> RewardsApi<PoolId, StakeId, Balance> for ()
 where
 	Balance: Saturating + PartialOrd + Default + Copy,
 {
-	type CurrencyId = ();
+	type PoolRewardsCurrencyId = ();
 
 	fn reward_currencies_len(_: &PoolId) -> u32 {
 		Default::default()
 	}
 
-	fn distribute_reward(_: &PoolId, _: Self::CurrencyId, _: Balance) -> DispatchResult {
+	fn distribute_reward(_: &PoolId, _: Self::PoolRewardsCurrencyId, _: Balance) -> DispatchResult {
 		Ok(())
 	}
 
 	fn compute_reward(
 		_: &PoolId,
 		_: &StakeId,
-		_: Self::CurrencyId,
+		_: Self::PoolRewardsCurrencyId,
 	) -> Result<Balance, DispatchError> {
 		Ok(Default::default())
 	}
@@ -596,7 +553,7 @@ where
 	fn withdraw_reward(
 		_: &PoolId,
 		_: &StakeId,
-		_: Self::CurrencyId,
+		_: Self::PoolRewardsCurrencyId,
 	) -> Result<Balance, DispatchError> {
 		Ok(Default::default())
 	}

@@ -51,7 +51,7 @@ frame_support::construct_runtime!(
 		Currencies: orml_currencies::{Pallet, Call},
 
 		Rewards: reward::{Pallet, Call, Storage, Event<T>},
-		PooledRewards: pooled_rewards::{Pallet, Call, Storage, Event<T>},	
+		PooledRewards: pooled_rewards::{Pallet, Call, Storage, Event<T>},
 		// Operational
 		Security: security::{Pallet, Call, Storage, Event<T>},
 		VaultRegistry: vault_registry::{Pallet, Call, Config<T>, Storage, Event<T>},
@@ -299,7 +299,7 @@ impl pooled_rewards::Config for Test {
 	type RuntimeEvent = TestEvent;
 	type SignedFixedPoint = SignedFixedPoint;
 	type PoolId = CurrencyId;
-	type CurrencyId= CurrencyId;
+	type PoolRewardsCurrencyId = CurrencyId;
 	type StakeId = AccountId;
 	type MaxRewardCurrencies = MaxRewardCurrencies;
 }

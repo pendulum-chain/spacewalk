@@ -14,7 +14,6 @@ pub use primitives::{CurrencyId, VaultCurrencyPair, VaultId};
 use crate as pooled_rewards;
 use crate::{Config, Error};
 
-
 type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Test>;
 type Block = frame_system::mocking::MockBlock<Test>;
 
@@ -59,11 +58,10 @@ pub const DEFAULT_WRAPPED_CURRENCY3: CurrencyId = CurrencyId::AlphaNum4(
 pub const DEFAULT_WRAPPED_CURRENCY4: CurrencyId = CurrencyId::AlphaNum4(
 	*b"ARST",
 	[
-		20, 209, 150, 49, 176, 55, 23, 217, 171, 154, 54, 110, 16, 50, 30, 226, 102, 231, 46, 199,
-		108, 171, 97, 144, 240, 161, 51, 109, 72, 34, 159, 139,
+		44, 123, 1, 49, 176, 55, 23, 123, 171, 123, 54, 155, 16, 50, 30, 226, 155, 231, 46, 199, 1,
+		11, 4, 144, 240, 123, 51, 33, 72, 34, 159, 33,
 	],
 );
-
 
 impl frame_system::Config for Test {
 	type BaseCallFilter = Everything;
@@ -96,13 +94,12 @@ parameter_types! {
 	pub const GetNativeCurrencyId: CurrencyId = DEFAULT_NATIVE_CURRENCY;
 }
 
-
 impl Config for Test {
 	type RuntimeEvent = TestEvent;
 	type SignedFixedPoint = SignedFixedPoint;
 	type PoolId = CurrencyId;
 	type StakeId = AccountId;
-	type CurrencyId = CurrencyId;
+	type PoolRewardsCurrencyId = CurrencyId;
 	type MaxRewardCurrencies = MaxRewardCurrencies;
 }
 

@@ -576,7 +576,7 @@ impl pooled_rewards::Config for Runtime {
 	type RuntimeEvent = RuntimeEvent;
 	type SignedFixedPoint = SignedFixedPoint;
 	type PoolId = CurrencyId;
-	type CurrencyId=CurrencyId;
+	type PoolRewardsCurrencyId = CurrencyId;
 	type StakeId = AccountId;
 	type MaxRewardCurrencies = MaxRewardCurrencies;
 }
