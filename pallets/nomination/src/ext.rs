@@ -119,7 +119,7 @@ pub(crate) mod staking {
 #[cfg_attr(test, mockable)]
 pub(crate) mod pooled_rewards {
 
-	use currency::{CurrencyId, Amount};
+	use currency::{Amount, CurrencyId};
 	use frame_support::dispatch::DispatchResult;
 	use pooled_rewards::RewardsApi;
 
@@ -127,17 +127,15 @@ pub(crate) mod pooled_rewards {
 		currency_id: &CurrencyId<T>,
 		account_id: &<T as frame_system::Config>::AccountId,
 		amount: Amount<T>,
-	) -> DispatchResult
-	{
-		T::PoolRewards::deposit_stake(currency_id, account_id,amount.amount())		
+	) -> DispatchResult {
+		T::PoolRewards::deposit_stake(currency_id, account_id, amount.amount())
 	}
 
 	pub fn withdraw_stake<T: crate::Config>(
 		currency_id: &CurrencyId<T>,
 		account_id: &<T as frame_system::Config>::AccountId,
 		amount: Amount<T>,
-	) -> DispatchResult
-	{
-		T::PoolRewards::withdraw_stake(currency_id, account_id,amount.amount())
+	) -> DispatchResult {
+		T::PoolRewards::withdraw_stake(currency_id, account_id, amount.amount())
 	}
 }
