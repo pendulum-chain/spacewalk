@@ -81,7 +81,6 @@ pub mod pallet {
 		+ security::Config
 		+ currency::Config<Balance = BalanceOf<Self>>
 		+ fee::Config<UnsignedInner = BalanceOf<Self>, SignedInner = SignedInner<Self>>
-		+ pooled_rewards::Config
 	{
 		/// The vault module id, used for deriving its sovereign account ID.
 		#[pallet::constant] // put the constant in metadata
