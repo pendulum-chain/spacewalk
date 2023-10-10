@@ -41,22 +41,16 @@ pub(crate) type DefaultVaultId<T> =
 #[frame_support::pallet]
 pub mod pallet {
 	use super::*;
+	use currency::CurrencyId;
 	use frame_support::pallet_prelude::*;
 	use frame_system::pallet_prelude::*;
 	use vault_registry::types::DefaultVaultCurrencyPair;
-	use currency::{CurrencyId};
 
 	/// ## Configuration
 	/// The pallet's configuration trait.
-	///
-	/// TODO is it okay to do tight coupling also for pooled-rewards??
 	#[pallet::config]
 	pub trait Config:
-		frame_system::Config
-		+ security::Config
-		+ vault_registry::Config
-		+ fee::Config
-		+ pooled_rewards::Config
+		frame_system::Config + security::Config + vault_registry::Config + fee::Config
 	{
 		/// The overarching event type.
 		type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
@@ -64,8 +58,11 @@ pub mod pallet {
 		/// Weight information for the extrinsics in this module.
 		type WeightInfo: WeightInfo;
 
-		type PoolRewards: pooled_rewards::RewardsApi<CurrencyId<Self>, Self::AccountId, BalanceOf<Self>>;
-
+		type PoolRewards: pooled_rewards::RewardsApi<
+			CurrencyId<Self>,
+			Self::AccountId,
+			BalanceOf<Self>,
+		>;
 	}
 
 	#[pallet::event]
@@ -256,7 +253,7 @@ impl<T: Config> Pallet<T> {
 		// withdraw `amount` of stake from the vault staking pool
 		ext::staking::withdraw_stake::<T>(vault_id, nominator_id, amount.amount(), Some(index))?;
 
-		//withdraw from the pooled reward 
+		//withdraw from the pooled reward
 		ext::pooled_rewards::withdraw_stake::<T>(
 			&vault_id.collateral_currency(),
 			nominator_id,
