@@ -545,7 +545,14 @@ impl<T: Config> RichVault<T> {
 	pub(crate) fn slash_for_to_be_redeemed(&mut self, amount: &Amount<T>) -> DispatchResult {
 		let vault_id = self.id();
 		let collateral = self.get_vault_collateral()?.min(amount)?;
-		ext::staking::withdraw_stake::<T>(&vault_id, &vault_id.account_id, &collateral)?;
+		ext::staking::withdraw_stake::<T>(&vault_id, &vault_id.account_id, &collateral.clone())?;
+
+		ext::pooled_rewards::withdraw_stake::<T>(
+			&vault_id.collateral_currency(),
+			&vault_id.account_id,
+			collateral.clone(),
+		)?;
+
 		self.increase_liquidated_collateral(&collateral)?;
 		Ok(())
 	}
@@ -561,7 +568,14 @@ impl<T: Config> RichVault<T> {
 			.unwrap_or((amount.clone(), None));
 
 		// "slash" vault first
-		ext::staking::withdraw_stake::<T>(&vault_id, &vault_id.account_id, &to_withdraw)?;
+		ext::staking::withdraw_stake::<T>(&vault_id, &vault_id.account_id, &to_withdraw.clone())?;
+
+		ext::pooled_rewards::withdraw_stake::<T>(
+			&vault_id.collateral_currency(),
+			&vault_id.account_id,
+			to_withdraw,
+		)?;
+
 		// take remainder from nominators
 		if let Some(to_slash) = to_slash {
 			ext::staking::slash_stake::<T>(&vault_id, &to_slash)?;

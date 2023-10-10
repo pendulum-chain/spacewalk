@@ -108,6 +108,13 @@ pub mod pallet {
 		/// Weight information for the extrinsics in this module.
 		type WeightInfo: WeightInfo;
 
+		//Pool rewards interface
+		type PoolRewards: pooled_rewards::RewardsApi<
+			CurrencyId<Self>,
+			Self::AccountId,
+			BalanceOf<Self>,
+		>;
+
 		/// Currency used for griefing collateral, e.g. DOT.
 		#[pallet::constant]
 		type GetGriefingCollateralCurrencyId: Get<CurrencyId<Self>>;
@@ -919,7 +926,13 @@ impl<T: Config> Pallet<T> {
 		amount.lock_on(&vault_id.account_id)?;
 
 		// Deposit `amount` of stake in the pool
-		ext::staking::deposit_stake::<T>(vault_id, &vault_id.account_id, amount)?;
+		ext::staking::deposit_stake::<T>(vault_id, &vault_id.account_id, &amount.clone())?;
+
+		ext::pooled_rewards::deposit_stake::<T>(
+			&vault_id.collateral_currency(),
+			&vault_id.account_id,
+			amount.clone(),
+		)?;
 
 		Ok(())
 	}
@@ -938,7 +951,12 @@ impl<T: Config> Pallet<T> {
 		Self::decrease_total_backing_collateral(&vault_id.currencies, amount)?;
 
 		// Withdraw `amount` of stake from the pool
-		ext::staking::withdraw_stake::<T>(vault_id, &vault_id.account_id, amount)?;
+		ext::staking::withdraw_stake::<T>(vault_id, &vault_id.account_id, &amount.clone())?;
+		ext::pooled_rewards::withdraw_stake::<T>(
+			&vault_id.collateral_currency(),
+			&vault_id.account_id,
+			amount.clone(),
+		)?;
 
 		Ok(())
 	}
@@ -1512,6 +1530,12 @@ impl<T: Config> Pallet<T> {
 				old_vault_id,
 				&old_vault_id.account_id,
 				&to_be_released,
+			)?;
+
+			ext::pooled_rewards::deposit_stake::<T>(
+				&old_vault_id.collateral_currency(),
+				&old_vault_id.account_id,
+				to_be_released,
 			)?;
 		}
 

@@ -80,6 +80,7 @@ std = [
   "frame-benchmarking/std",
   "pallet-balances/std",
   "pallet-timestamp/std",
+  "pooled-rewards/std",
   "orml-currencies/std",
   "orml-tokens/std",
   "orml-traits/std",
