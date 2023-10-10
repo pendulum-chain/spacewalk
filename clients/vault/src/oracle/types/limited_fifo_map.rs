@@ -1,3 +1,5 @@
+#![allow(non_snake_case)]
+
 use crate::oracle::{constants::DEFAULT_MAX_ITEMS_IN_QUEUE, types::Slot};
 use itertools::Itertools;
 use std::{collections::VecDeque, fmt::Debug};
@@ -7,7 +9,6 @@ use stellar_relay_lib::sdk::{types::ScpEnvelope, TransactionSetType};
 /// or that the `StellarMessage::TxSet(...)` or `StellarMessage::GeneralizedTxSet(...)`
 /// took too long to arrive (may not even arrive at all)
 /// So I've kept both of them separate: the `EnvelopesMap` and the `TxSetMap`
-//pub(crate) type EnvelopesMap = LimitedFifoMap<Slot, Vec<ScpEnvelope>>;
 pub(crate) type EnvelopesMap = LimitedFifoMap<Slot, Vec<ScpEnvelope>>;
 
 /// This map uses the slot as the key and the txset as the value.
@@ -121,7 +122,7 @@ mod test {
 	use std::convert::TryFrom;
 
 	#[test]
-	fn test_LimitedFifoMap_newone() {
+	fn test_LimitedFifoMap() {
 		let sample = LimitedFifoMap::<u32, char>::new();
 
 		// --------- test limit ---------

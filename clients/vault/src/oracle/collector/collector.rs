@@ -115,40 +115,14 @@ pub trait AddTxSet<T> {
 impl AddTxSet<TransactionSet> for ScpMessageCollector {
 	fn add_txset(&self, tx_set: TransactionSet) -> Result<(), String> {
 		let tx_set = TransactionSetType::TransactionSet(tx_set);
-		self.add_txset(tx_set)
+		self.add_txset_type(tx_set)
 	}
 }
 
 impl AddTxSet<GeneralizedTransactionSet> for ScpMessageCollector {
 	fn add_txset(&self, tx_set: GeneralizedTransactionSet) -> Result<(), String> {
 		let tx_set = TransactionSetType::GeneralizedTransactionSet(tx_set);
-		self.add_txset(tx_set)
-	}
-}
-
-impl AddTxSet<TransactionSetType> for ScpMessageCollector {
-	fn add_txset(&self, tx_set: TransactionSetType) -> Result<(), String> {
-		let hash = tx_set
-			.get_tx_set_hash()
-			.map_err(|e| format!("failed to get hash of txset:{e:?}"))?;
-		let hash_str = hex::encode(&hash);
-
-		let slot = {
-			let mut map_write = self.txset_and_slot_map.write();
-			map_write.remove_by_txset_hash(&hash).map(|slot| {
-				tracing::debug!("Collecting TxSet for slot {slot}: txset saved.");
-				tracing::trace!("Collecting TxSet for slot {slot}: {tx_set:?}");
-				self.txset_map.write().insert(slot, tx_set);
-				slot
-			})
-		};
-
-		if slot.is_none() {
-			tracing::warn!("Collecting TxSet for slot: tx_set_hash: {hash_str} has no slot.");
-			return Err(format!("TxSetHash {hash_str} has no slot."))
-		}
-
-		Ok(())
+		self.add_txset_type(tx_set)
 	}
 }
 
@@ -184,6 +158,30 @@ impl ScpMessageCollector {
 		if slot > self.last_slot_index {
 			self.last_slot_index = slot;
 		}
+	}
+
+	fn add_txset_type(&self, tx_set: TransactionSetType) -> Result<(), String> {
+		let hash = tx_set
+			.get_tx_set_hash()
+			.map_err(|e| format!("failed to get hash of txset:{e:?}"))?;
+		let hash_str = hex::encode(&hash);
+
+		let slot = {
+			let mut map_write = self.txset_and_slot_map.write();
+			map_write.remove_by_txset_hash(&hash).map(|slot| {
+				tracing::debug!("Collecting TxSet for slot {slot}: txset saved.");
+				tracing::trace!("Collecting TxSet for slot {slot}: {tx_set:?}");
+				self.txset_map.write().insert(slot, tx_set);
+				slot
+			})
+		};
+
+		if slot.is_none() {
+			tracing::warn!("Collecting TxSet for slot: tx_set_hash: {hash_str} has no slot.");
+			return Err(format!("TxSetHash {hash_str} has no slot."))
+		}
+
+		Ok(())
 	}
 }
 
