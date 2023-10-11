@@ -27,8 +27,6 @@ frame-system = {git = "https://github.com/paritytech/substrate", branch = "polka
 pallet-balances = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.40", default-features = false }
 pallet-timestamp = {git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.40", default-features = false}
 
-substrate-stellar-sdk = {git = "https://github.com/pendulum-chain/substrate-stellar-sdk", branch = "polkadot-v0.9.40", default-features = false, features = ["all-types"]}
-
 # Parachain dependencies
 currency = {path = "../currency", default-features = false}
 fee = {path = "../fee", default-features = false}
@@ -88,5 +86,4 @@ std = [
   "reward/std",
   "staking/std",
   "primitives/std",
-  "substrate-stellar-sdk/std",
 ]

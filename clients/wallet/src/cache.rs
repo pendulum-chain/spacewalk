@@ -330,11 +330,12 @@ mod test {
 			extract_tx_envelope_from_path, parse_xdr_string_to_vec_u8, Error, WalletStateStorage,
 		},
 		error::CacheErrorKind,
+		test_helper::public_key_from_encoding,
 	};
 	use primitives::{
 		stellar::{
 			types::{Preconditions, SequenceNumber},
-			PublicKey, Transaction, TransactionEnvelope,
+			Transaction, TransactionEnvelope,
 		},
 		TransactionEnvelopeExt,
 	};
@@ -346,7 +347,7 @@ mod test {
 	}
 
 	pub fn dummy_tx(sequence: SequenceNumber) -> TransactionEnvelope {
-		let public_key = PublicKey::from_encoding(PUB_KEY).expect("should return a public key");
+		let public_key = public_key_from_encoding(PUB_KEY);
 
 		// let's create a transaction
 		let tx = Transaction::new(public_key, sequence, None, Preconditions::PrecondNone, None)

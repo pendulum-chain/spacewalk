@@ -2,7 +2,7 @@ mod collector;
 mod handler;
 mod proof_builder;
 
-pub use collector::ScpMessageCollector;
+pub use collector::*;
 pub use proof_builder::*;
 use std::convert::TryInto;
 use stellar_relay_lib::sdk::types::ScpStatementExternalize;

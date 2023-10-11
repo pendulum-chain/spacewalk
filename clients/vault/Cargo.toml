@@ -6,6 +6,10 @@ name = "vault"
 version = "0.0.1"
 
 [features]
+std = [
+    "stellar-relay-lib/std"
+]
+
 integration = [
     "wallet/testing-utils"
 ]
@@ -53,8 +57,8 @@ jsonrpc-core-client = { version = "18.0.0", features = ["http", "tls"] }
 runtime = { path = "../runtime" }
 service = { path = "../service" }
 wallet = { path = "../wallet" }
-stellar-relay-lib = { package = "stellar-relay-lib", path = "../stellar-relay-lib" }
-primitives = { path = "../../primitives", package = "spacewalk-primitives" }
+stellar-relay-lib = { package = "stellar-relay-lib", path = "../stellar-relay-lib", default-features = false }
+primitives = { path = "../../primitives", package = "spacewalk-primitives", default-features = false }
 
 # Substrate dependencies
 sp-arithmetic = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.40" }

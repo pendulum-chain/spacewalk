@@ -635,11 +635,11 @@ impl VaultService {
 			issue_event_rx,
 			startup_height,
 			account_id.clone(),
-			vault_public_key.clone(),
+			vault_public_key,
 			oracle_agent.clone(),
-			issue_map.clone(),
-			ledger_env_map.clone(),
-			memos_to_issue_ids.clone(),
+			issue_map,
+			ledger_env_map,
+			memos_to_issue_ids,
 		);
 
 		tasks.append(&mut issue_tasks);

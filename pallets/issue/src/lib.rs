@@ -11,15 +11,16 @@ extern crate mocktopus;
 use frame_support::{dispatch::DispatchError, ensure, traits::Get, transactional};
 #[cfg(test)]
 use mocktopus::macros::mockable;
-use primitives::derive_shortened_request_id;
+use primitives::{
+	derive_shortened_request_id,
+	stellar::{
+		compound_types::UnlimitedVarArray, types::ScpEnvelope, TransactionEnvelope,
+		TransactionSetType,
+	},
+};
 use sp_core::H256;
 use sp_runtime::traits::{CheckedDiv, Convert, Saturating, Zero};
 use sp_std::vec::Vec;
-use substrate_stellar_sdk::{
-	compound_types::UnlimitedVarArray,
-	types::{ScpEnvelope, TransactionSet},
-	TransactionEnvelope,
-};
 
 #[cfg(feature = "std")]
 use std::str::FromStr;
@@ -394,9 +395,9 @@ impl<T: Config> Pallet<T> {
 
 		Self::check_volume(amount_requested.clone())?;
 
-		// ensure that the vault is accepting new issues (vault is active)
 		let vault = ext::vault_registry::get_active_vault_from_id::<T>(&vault_id)?;
 
+		// ensure that the vault is accepting new issues
 		ensure!(vault.status == VaultStatus::Active(true), Error::<T>::VaultNotAcceptingNewIssues);
 
 		// Check that the vault is currently not banned
@@ -467,45 +468,16 @@ impl<T: Config> Pallet<T> {
 		externalized_envelopes_encoded: Vec<u8>,
 		transaction_set_encoded: Vec<u8>,
 	) -> Result<(), DispatchError> {
-		let mut issue = Self::get_issue_request_from_id(&issue_id)?;
+		let mut issue = Self::get_executable_issue_request_from_id(&issue_id)?;
 		// allow anyone to complete issue request
 		let requester = issue.requester.clone();
 
-		let transaction_envelope = ext::stellar_relay::construct_from_raw_encoded_xdr::<
-			T,
-			TransactionEnvelope,
-		>(&transaction_envelope_xdr_encoded)?;
-
-		let envelopes = ext::stellar_relay::construct_from_raw_encoded_xdr::<
-			T,
-			UnlimitedVarArray<ScpEnvelope>,
-		>(&externalized_envelopes_encoded)?;
-
-		let transaction_set = ext::stellar_relay::construct_from_raw_encoded_xdr::<
-			T,
-			TransactionSet,
-		>(&transaction_set_encoded)?;
-
-		let shortened_request_id = derive_shortened_request_id(&issue_id.0);
-		// Check that the transaction includes the expected memo to mitigate replay attacks
-		ext::stellar_relay::ensure_transaction_memo_matches::<T>(
-			&transaction_envelope,
-			&shortened_request_id,
+		let transaction_envelope = Self::validate_stellar_transaction(
+			&issue_id,
+			&transaction_envelope_xdr_encoded,
+			&externalized_envelopes_encoded,
+			&transaction_set_encoded,
 		)?;
-
-		// Verify that the transaction is valid
-		ext::stellar_relay::validate_stellar_transaction::<T>(
-			&transaction_envelope,
-			&envelopes,
-			&transaction_set,
-		)
-		.map_err(|e| {
-			log::error!(
-				"failed to validate transaction of issue id: {} with transaction envelope: {transaction_envelope:?}",
-				hex::encode(issue_id.as_bytes())
-			);
-			e
-		})?;
 
 		let amount_transferred: Amount<T> = ext::currency::get_amount_from_transaction_envelope::<T>(
 			&transaction_envelope,
@@ -513,60 +485,7 @@ impl<T: Config> Pallet<T> {
 			issue.asset,
 		)?;
 
-		let expected_total_amount = issue.amount().checked_add(&issue.fee())?;
-
-		match issue.status {
-			IssueRequestStatus::Completed => return Err(Error::<T>::IssueCompleted.into()),
-			IssueRequestStatus::Cancelled => {
-				// if vault is not accepting new issues, we don't allow the execution of cancelled
-				// issues, since this would drop the collateralization rate unexpectedly
-				ext::vault_registry::ensure_accepting_new_issues::<T>(&issue.vault)?;
-
-				// first try to increase the to-be-issued tokens - if the vault does not
-				// have sufficient collateral then this aborts
-				ext::vault_registry::try_increase_to_be_issued_tokens::<T>(
-					&issue.vault,
-					&amount_transferred,
-				)?;
-
-				if amount_transferred.lt(&expected_total_amount)? {
-					ensure!(requester == executor, Error::<T>::InvalidExecutor);
-				}
-				if amount_transferred.ne(&expected_total_amount)? {
-					// griefing collateral and to_be_issued already decreased in cancel
-					let slashed = Amount::zero(T::GetGriefingCollateralCurrencyId::get());
-					Self::set_issue_amount(&issue_id, &mut issue, amount_transferred, slashed)?;
-				}
-			},
-			IssueRequestStatus::Pending => {
-				let to_release_griefing_collateral =
-					if amount_transferred.lt(&expected_total_amount)? {
-						// only the requester of the issue can execute payments with insufficient
-						// amounts
-						ensure!(requester == executor, Error::<T>::InvalidExecutor);
-						Self::decrease_issue_amount(
-							&issue_id,
-							&mut issue,
-							amount_transferred,
-							expected_total_amount,
-						)?
-					} else {
-						if amount_transferred.gt(&expected_total_amount)? &&
-							!ext::vault_registry::is_vault_liquidated::<T>(&issue.vault)?
-						{
-							Self::try_increase_issue_amount(
-								&issue_id,
-								&mut issue,
-								amount_transferred,
-								expected_total_amount,
-							)?;
-						}
-						issue.griefing_collateral()
-					};
-
-				to_release_griefing_collateral.unlock_on(&requester)?;
-			},
-		}
+		Self::_handle_issue_requests(executor, &issue_id, &mut issue, amount_transferred)?;
 
 		// issue struct may have been update above; recalculate the total
 		let issue_amount = issue.amount();
@@ -744,7 +663,7 @@ impl<T: Config> Pallet<T> {
 			.collect()
 	}
 
-	pub fn get_issue_request_from_id(
+	pub fn get_executable_issue_request_from_id(
 		issue_id: &H256,
 	) -> Result<DefaultIssueRequest<T>, DispatchError> {
 		let request = IssueRequests::<T>::try_get(issue_id).or(Err(Error::<T>::IssueIdNotFound))?;
@@ -752,7 +671,13 @@ impl<T: Config> Pallet<T> {
 		// NOTE: temporary workaround until we delete
 		match request.status {
 			IssueRequestStatus::Completed => Err(Error::<T>::IssueCompleted.into()),
-			_ => Ok(request),
+			IssueRequestStatus::Cancelled => {
+				// if vault is not accepting new issues, we don't allow the execution of cancelled
+				// issues, since this would drop the collateralization rate unexpectedly
+				ext::vault_registry::ensure_accepting_new_issues::<T>(&request.vault)?;
+				Ok(request)
+			},
+			IssueRequestStatus::Pending => Ok(request),
 		}
 	}
 
@@ -853,6 +778,113 @@ impl<T: Config> Pallet<T> {
 				Error::<T>::ExceedLimitVolumeForIssueRequest
 			);
 		}
+		Ok(())
+	}
+
+	// ------------------- execute_issue helpers ------------
+	fn validate_stellar_transaction(
+		issue_id: &H256,
+		transaction_envelope_xdr_encoded: &[u8],
+		externalized_envelopes_encoded: &[u8],
+		transaction_set_encoded: &[u8],
+	) -> Result<TransactionEnvelope, DispatchError> {
+		let transaction_envelope = ext::stellar_relay::construct_from_raw_encoded_xdr::<
+			T,
+			TransactionEnvelope,
+		>(&transaction_envelope_xdr_encoded)?;
+
+		let envelopes = ext::stellar_relay::construct_from_raw_encoded_xdr::<
+			T,
+			UnlimitedVarArray<ScpEnvelope>,
+		>(&externalized_envelopes_encoded)?;
+
+		let transaction_set = ext::stellar_relay::construct_from_raw_encoded_xdr::<
+			T,
+			TransactionSetType,
+		>(&transaction_set_encoded)?;
+
+		let shortened_request_id = derive_shortened_request_id(&issue_id.0);
+		// Check that the transaction includes the expected memo to mitigate replay attacks
+		ext::stellar_relay::ensure_transaction_memo_matches::<T>(
+			&transaction_envelope,
+			&shortened_request_id,
+		)?;
+
+		// Verify that the transaction is valid
+		ext::stellar_relay::validate_stellar_transaction::<T>(
+			&transaction_envelope,
+			&envelopes,
+			&transaction_set,
+		)
+			.map_err(|e| {
+				log::error!(
+                "failed to validate transaction of issue id: {} with transaction envelope: {transaction_envelope:?}",
+                hex::encode(issue_id.as_bytes())
+            );
+				e
+			})?;
+
+		Ok(transaction_envelope)
+	}
+
+	fn _handle_issue_requests(
+		executor: T::AccountId,
+		issue_id: &H256,
+		issue: &mut DefaultIssueRequest<T>,
+		amount_transferred: Amount<T>,
+	) -> Result<(), DispatchError> {
+		let requester = issue.requester.clone();
+		let expected_total_amount = issue.amount().checked_add(&issue.fee())?;
+
+		match issue.status {
+			IssueRequestStatus::Completed => return Err(Error::<T>::IssueCompleted.into()),
+			IssueRequestStatus::Cancelled => {
+				// first try to increase the to-be-issued tokens - if the vault does not
+				// have sufficient collateral then this aborts
+				ext::vault_registry::try_increase_to_be_issued_tokens::<T>(
+					&issue.vault,
+					&amount_transferred,
+				)?;
+
+				if amount_transferred.lt(&expected_total_amount)? {
+					ensure!(requester == executor, Error::<T>::InvalidExecutor);
+				}
+				if amount_transferred.ne(&expected_total_amount)? {
+					// griefing collateral and to_be_issued already decreased in cancel
+					let slashed = Amount::zero(T::GetGriefingCollateralCurrencyId::get());
+					Self::set_issue_amount(issue_id, issue, amount_transferred, slashed)?;
+				}
+			},
+			IssueRequestStatus::Pending => {
+				let to_release_griefing_collateral =
+					if amount_transferred.lt(&expected_total_amount)? {
+						// only the requester of the issue can execute payments with insufficient
+						// amounts
+						ensure!(requester == executor, Error::<T>::InvalidExecutor);
+						Self::decrease_issue_amount(
+							issue_id,
+							issue,
+							amount_transferred,
+							expected_total_amount,
+						)?
+					} else {
+						if amount_transferred.gt(&expected_total_amount)? &&
+							!ext::vault_registry::is_vault_liquidated::<T>(&issue.vault)?
+						{
+							Self::try_increase_issue_amount(
+								issue_id,
+								issue,
+								amount_transferred,
+								expected_total_amount,
+							)?;
+						}
+						issue.griefing_collateral()
+					};
+
+				to_release_griefing_collateral.unlock_on(&requester)?;
+			},
+		}
+
 		Ok(())
 	}
 }
