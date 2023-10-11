@@ -16,7 +16,7 @@ use crate::oracle::{
 	collector::ScpMessageCollector,
 	errors::Error,
 	types::{Slot, StellarMessageSender},
-	Proof,
+	AddTxSet, Proof,
 };
 
 pub struct OracleAgent {
@@ -42,8 +42,14 @@ async fn handle_message(
 			StellarMessage::ScpMessage(env) => {
 				collector.write().await.handle_envelope(env, message_sender).await?;
 			},
-			StellarMessage::TxSet(set) => {
-				collector.read().await.handle_tx_set(set);
+			StellarMessage::TxSet(set) =>
+				if let Err(e) = collector.read().await.add_txset(set) {
+					tracing::error!(e);
+				},
+			StellarMessage::GeneralizedTxSet(set) => {
+				if let Err(e) = collector.read().await.add_txset(set) {
+					tracing::error!(e);
+				}
 			},
 			_ => {},
 		},

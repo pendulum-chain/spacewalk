@@ -33,15 +33,14 @@ pub mod pallet {
 	use codec::FullCodec;
 	use frame_support::{pallet_prelude::*, transactional};
 	use frame_system::pallet_prelude::*;
-	use sha2::{Digest, Sha256};
-	use sp_core::H256;
-	use sp_std::{collections::btree_map::BTreeMap, fmt::Debug, vec::Vec};
-	use substrate_stellar_sdk::{
+	use primitives::stellar::{
 		compound_types::UnlimitedVarArray,
 		network::{Network, PUBLIC_NETWORK, TEST_NETWORK},
-		types::{NodeId, ScpEnvelope, StellarValue, TransactionSet, Value},
-		Hash, TransactionEnvelope, XdrCodec,
+		types::{NodeId, ScpEnvelope, StellarValue, Value},
+		Hash, TransactionEnvelope, TransactionSetType, XdrCodec,
 	};
+	use sp_core::H256;
+	use sp_std::{collections::btree_map::BTreeMap, fmt::Debug, vec::Vec};
 
 	use default_weights::WeightInfo;
 
@@ -117,6 +116,7 @@ pub mod pallet {
 		InvalidQuorumSetNotEnoughOrganizations,
 		InvalidQuorumSetNotEnoughValidators,
 		InvalidScpPledge,
+		InvalidTransactionSetPrefix,
 		InvalidXDR,
 		MissingExternalizedMessage,
 		NoOrganizationsRegistered,
@@ -536,11 +536,11 @@ pub mod pallet {
 		/// Parameters:
 		/// - `transaction_envelope`: The transaction envelope of the tx to be verified
 		/// - `envelopes`: The set of SCP envelopes that were externalized on the Stellar network
-		/// - `transaction_set`: The set of transactions that belong to the envelopes
+		/// - `transaction_set`: The set of transactions that belong to the envelopes.
 		pub fn validate_stellar_transaction(
 			transaction_envelope: &TransactionEnvelope,
 			envelopes: &UnlimitedVarArray<ScpEnvelope>,
-			transaction_set: &TransactionSet,
+			transaction_set: &TransactionSetType,
 		) -> Result<(), Error<T>> {
 			// Make sure that the envelope set is not empty
 			ensure!(!envelopes.len() > 0, Error::<T>::EmptyEnvelopeSet);
@@ -551,8 +551,11 @@ pub mod pallet {
 			let tx_hash = transaction_envelope.get_hash(network);
 
 			// Check if tx is included in the transaction set
-			let tx_included =
-				transaction_set.txes.get_vec().iter().any(|tx| tx.get_hash(network) == tx_hash);
+			let tx_included = transaction_set
+				.txes()
+				.get_vec()
+				.iter()
+				.any(|tx| tx.get_hash(network) == tx_hash);
 			ensure!(tx_included, Error::<T>::TransactionNotInTransactionSet);
 
 			let (validators, organizations) = validators_and_orgs()?;
@@ -567,8 +570,9 @@ pub mod pallet {
 					.map_err(|_| Error::<T>::MissingExternalizedMessage)?;
 
 			// Check if transaction set matches tx_set_hash included in the ScpEnvelopes
-			let expected_tx_set_hash = compute_non_generic_tx_set_content_hash(transaction_set)
-				.ok_or(Error::<T>::FailedToComputeNonGenericTxSetContentHash)?;
+			let expected_tx_set_hash = transaction_set
+				.get_tx_set_hash()
+				.map_err(|_| Error::<T>::FailedToComputeNonGenericTxSetContentHash)?;
 
 			validate_envelopes(
 				envelopes,
@@ -625,20 +629,6 @@ pub mod pallet {
 		}
 	}
 
-	pub fn compute_non_generic_tx_set_content_hash(tx_set: &TransactionSet) -> Option<[u8; 32]> {
-		let mut hasher = Sha256::new();
-		hasher.update(tx_set.previous_ledger_hash);
-
-		tx_set.txes.get_vec().iter().for_each(|envelope| {
-			hasher.update(envelope.to_xdr());
-		});
-
-		match hasher.finalize().as_slice().try_into() {
-			Ok(data) => Some(data),
-			Err(_) => None,
-		}
-	}
-
 	pub(crate) fn verify_signature(
 		envelope: &ScpEnvelope,
 		node_id: &NodeId,
@@ -646,7 +636,7 @@ pub mod pallet {
 	) -> bool {
 		let mut vec: [u8; 64] = [0; 64];
 		vec.copy_from_slice(envelope.signature.get_vec());
-		let signature: &substrate_stellar_sdk::Signature = &vec;
+		let signature: &primitives::stellar::Signature = &vec;
 
 		// Envelope_Type_SCP = 1, see https://github.dev/stellar/stellar-core/blob/d3b80614cb92f44b789ac79f3dee29ca09de6fdb/src/protocol-curr/xdr/Stellar-ledger-entries.x#L586
 		let envelope_type_scp: Vec<u8> = [0, 0, 0, 1].to_vec(); // xdr representation

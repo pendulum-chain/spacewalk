@@ -11,15 +11,16 @@ extern crate mocktopus;
 use frame_support::{dispatch::DispatchError, ensure, traits::Get, transactional};
 #[cfg(test)]
 use mocktopus::macros::mockable;
-use primitives::derive_shortened_request_id;
+use primitives::{
+	derive_shortened_request_id,
+	stellar::{
+		compound_types::UnlimitedVarArray, types::ScpEnvelope, TransactionEnvelope,
+		TransactionSetType,
+	},
+};
 use sp_core::H256;
 use sp_runtime::traits::{CheckedDiv, Convert, Saturating, Zero};
 use sp_std::vec::Vec;
-use substrate_stellar_sdk::{
-	compound_types::UnlimitedVarArray,
-	types::{ScpEnvelope, TransactionSet},
-	TransactionEnvelope,
-};
 
 #[cfg(feature = "std")]
 use std::str::FromStr;
@@ -799,7 +800,7 @@ impl<T: Config> Pallet<T> {
 
 		let transaction_set = ext::stellar_relay::construct_from_raw_encoded_xdr::<
 			T,
-			TransactionSet,
+			TransactionSetType,
 		>(&transaction_set_encoded)?;
 
 		let shortened_request_id = derive_shortened_request_id(&issue_id.0);

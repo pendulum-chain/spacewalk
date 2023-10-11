@@ -1,7 +1,7 @@
 use frame_support::{ensure, BoundedVec};
 use sp_std::{collections::btree_map::BTreeMap, vec::Vec};
 
-use substrate_stellar_sdk::{
+use primitives::stellar::{
 	compound_types::UnlimitedVarArray,
 	network::Network,
 	types::{NodeId, ScpEnvelope, ScpStatementPledges, Value},

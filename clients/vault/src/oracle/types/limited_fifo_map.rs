@@ -1,46 +1,30 @@
 #![allow(non_snake_case)]
 
-use std::{
-	clone::Clone,
-	cmp::Eq,
-	collections::{BTreeMap, HashMap, VecDeque},
-	fmt::Debug,
-};
-
+use crate::oracle::{constants::DEFAULT_MAX_ITEMS_IN_QUEUE, types::Slot};
 use itertools::Itertools;
-use tokio::sync::mpsc;
-
-use crate::oracle::constants::DEFAULT_MAX_ITEMS_IN_QUEUE;
-use stellar_relay_lib::sdk::types::{Hash, ScpEnvelope, StellarMessage, TransactionSet, Uint64};
-
-pub type Slot = Uint64;
-pub type TxHash = Hash;
-pub type TxSetHash = Hash;
-pub type Filename = String;
-
-pub type SerializedData = Vec<u8>;
-
-pub type StellarMessageSender = mpsc::Sender<StellarMessage>;
-
-/// The slot is not found in the `StellarMessage::TxSet(...)`, therefore this map
-/// serves as a holder of the slot when we hash the txset.
-pub type TxSetHashAndSlotMap = DoubleSidedHashMap<TxSetHash, Slot>;
-
-/// For easy writing to file. BTreeMap to preserve order of the slots.
-pub(crate) type SlotEncodedMap = BTreeMap<Slot, SerializedData>;
+use std::{collections::VecDeque, fmt::Debug};
+use stellar_relay_lib::sdk::{types::ScpEnvelope, TransactionSetType};
 
 /// Sometimes not enough `StellarMessage::ScpMessage(...)` are sent per slot;
-/// or that the `Stellar:message::TxSet(...)` took too long to arrive (may not even arrive at all)
+/// or that the `StellarMessage::TxSet(...)` or `StellarMessage::GeneralizedTxSet(...)`
+/// took too long to arrive (may not even arrive at all)
 /// So I've kept both of them separate: the `EnvelopesMap` and the `TxSetMap`
 pub(crate) type EnvelopesMap = LimitedFifoMap<Slot, Vec<ScpEnvelope>>;
-pub(crate) type TxSetMap = LimitedFifoMap<Slot, TransactionSet>;
 
-pub(crate) type SlotList = BTreeMap<Slot, ()>;
+/// This map uses the slot as the key and the txset as the value.
+/// The txset here can either be the `TransactionSet` or `GeneralizedTransactionSet`
+pub(crate) type TxSetMap = LimitedFifoMap<Slot, TransactionSetType>;
 
 #[derive(Debug, Clone)]
 pub struct LimitedFifoMap<K, T> {
 	limit: usize,
 	queue: VecDeque<(K, T)>,
+}
+
+impl<K: PartialEq + Debug, T> Default for LimitedFifoMap<K, T> {
+	fn default() -> Self {
+		LimitedFifoMap::new()
+	}
 }
 
 impl<K, T> LimitedFifoMap<K, T>
@@ -76,14 +60,6 @@ where
 		self.queue.iter().any(|(k, _)| k == key)
 	}
 
-	pub fn get(&self, key: &K) -> Option<&T> {
-		self.queue.iter().find(|(k, _)| k == key).map(|(_, v)| v)
-	}
-
-	pub fn first(&self) -> Option<&(K, T)> {
-		self.queue.get(0)
-	}
-
 	pub fn iter(&self) -> std::collections::vec_deque::Iter<'_, (K, T)> {
 		self.queue.iter()
 	}
@@ -92,26 +68,14 @@ where
 		let (index, _) = self.queue.iter().find_position(|(k, _)| k == key)?;
 		self.queue.remove(index).map(|(_, v)| v)
 	}
-
-	pub fn insert(&mut self, key: K, value: T) -> Option<T> {
-		let old_value = self.remove(&key);
-
-		// remove the oldest entry if the queue reached its limit
-		if self.queue.len() == self.limit {
-			if let Some(oldest_entry) = self.queue.pop_front() {
-				tracing::trace!(
-					"LimitedFifoMap: removing old entry with key: {:?}",
-					oldest_entry.0
-				);
-			}
-		}
-
-		self.queue.push_back((key, value));
-
-		old_value
+	pub fn get(&self, key: &K) -> Option<&T> {
+		self.queue.iter().find(|(k, _)| k == key).map(|(_, v)| v)
 	}
 
-	/// Consumes the other and returns the excess of it. The limit will be based on self.
+	pub fn first(&self) -> Option<&(K, T)> {
+		self.queue.get(0)
+	}
+
 	pub fn append(&mut self, other: Self) -> VecDeque<(K, T)> {
 		// check the remaining size available for this map.
 		let allowable_size = self.limit - self.len();
@@ -132,71 +96,29 @@ where
 			VecDeque::new()
 		}
 	}
-}
 
-impl<K: PartialEq + Debug, T> Default for LimitedFifoMap<K, T> {
-	fn default() -> Self {
-		LimitedFifoMap::new()
-	}
-}
+	pub(crate) fn insert(&mut self, key: K, value: T) -> Option<T> {
+		let old_value = self.remove(&key);
 
-#[derive(Clone)]
-pub struct DoubleSidedHashMap<K, V> {
-	k_to_v_map: HashMap<K, V>,
-	v_to_k_map: HashMap<V, K>,
-}
+		// remove the oldest entry if the queue reached its limit
+		if self.queue.len() == self.limit {
+			if let Some(oldest_entry) = self.queue.pop_front() {
+				tracing::trace!(
+					"LimitedFifoMap: removing old entry with key: {:?}",
+					oldest_entry.0
+				);
+			}
+		}
 
-impl<K, V> Default for DoubleSidedHashMap<K, V>
-where
-	K: Clone + Eq + std::hash::Hash,
-	V: Clone + Eq + std::hash::Hash,
-{
-	fn default() -> Self {
-		DoubleSidedHashMap::new()
-	}
-}
+		self.queue.push_back((key, value));
 
-impl<K, V> DoubleSidedHashMap<K, V>
-where
-	K: Clone + Eq + std::hash::Hash,
-	V: Clone + Eq + std::hash::Hash,
-{
-	pub fn new() -> Self {
-		DoubleSidedHashMap { k_to_v_map: Default::default(), v_to_k_map: Default::default() }
-	}
-
-	pub fn insert(&mut self, K: K, V: V) {
-		self.k_to_v_map.insert(K.clone(), V.clone());
-		self.v_to_k_map.insert(V, K);
-	}
-}
-
-impl DoubleSidedHashMap<TxSetHash, Slot> {
-	pub fn get_slot_by_txset_hash(&self, hash: &TxSetHash) -> Option<&Slot> {
-		self.k_to_v_map.get(hash)
-	}
-
-	pub fn get_txset_hash_by_slot(&self, slot: &Slot) -> Option<&TxSetHash> {
-		self.v_to_k_map.get(slot)
-	}
-
-	pub fn remove_by_slot(&mut self, slot: &Slot) -> Option<TxSetHash> {
-		let hash = self.v_to_k_map.remove(slot)?;
-		self.k_to_v_map.remove(&hash)?;
-
-		Some(hash)
-	}
-
-	pub fn remove_by_txset_hash(&mut self, txset_hash: &TxSetHash) -> Option<Slot> {
-		let slot = self.k_to_v_map.remove(txset_hash)?;
-		self.v_to_k_map.remove(&slot)?;
-		Some(slot)
+		old_value
 	}
 }
 
 #[cfg(test)]
 mod test {
-	use crate::oracle::types::{LimitedFifoMap, TxSetHashAndSlotMap, DEFAULT_MAX_ITEMS_IN_QUEUE};
+	use super::*;
 	use std::convert::TryFrom;
 
 	#[test]
@@ -296,45 +218,5 @@ mod test {
 		let last_remainder = remainder[remainder_len - 1];
 		let expected = sample_map.queue[remainder_len - 1];
 		assert_eq!(last_remainder, expected);
-	}
-
-	#[test]
-	fn get_TxSetHashAndSlotMap_tests_works() {
-		let mut x = TxSetHashAndSlotMap::new();
-
-		x.insert([0; 32], 0);
-		x.insert([1; 32], 1);
-
-		let zero_hash = x
-			.get_txset_hash_by_slot(&0)
-			.expect("should return an array of 32 zeroes inside");
-		assert_eq!(*zero_hash, [0; 32]);
-
-		let one_hash =
-			x.get_txset_hash_by_slot(&1).expect("should return an array of 32 ones inside");
-		assert_eq!(*one_hash, [1; 32]);
-
-		let zero_slot = x.get_slot_by_txset_hash(&[0; 32]).expect("should return a zero slot");
-		assert_eq!(*zero_slot, 0);
-
-		let one_slot = x.get_slot_by_txset_hash(&[1; 32]).expect("should return the one slot");
-		assert_eq!(*one_slot, 1);
-	}
-
-	#[test]
-	fn remove_TxSetHashAndSlotMap_tests_works() {
-		let mut x = TxSetHashAndSlotMap::new();
-
-		x.insert([0; 32], 0);
-		x.insert([1; 32], 1);
-		x.insert([2; 32], 2);
-
-		x.remove_by_slot(&1);
-		assert_eq!(x.get_txset_hash_by_slot(&1), None);
-		assert_eq!(x.get_slot_by_txset_hash(&[1; 32]), None);
-
-		x.remove_by_txset_hash(&[2; 32]);
-		assert_eq!(x.get_slot_by_txset_hash(&[2; 32]), None);
-		assert_eq!(x.get_txset_hash_by_slot(&2), None);
 	}
 }

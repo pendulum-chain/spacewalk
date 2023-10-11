@@ -16,13 +16,11 @@ use frame_support::{
 };
 #[cfg(test)]
 use mocktopus::macros::mockable;
+use primitives::stellar::{
+	compound_types::UnlimitedVarArray, types::ScpEnvelope, TransactionEnvelope, TransactionSetType,
+};
 use sp_core::H256;
 use sp_std::vec::Vec;
-use substrate_stellar_sdk::{
-	compound_types::UnlimitedVarArray,
-	types::{ScpEnvelope, TransactionSet},
-	TransactionEnvelope,
-};
 
 use currency::Amount;
 pub use default_weights::{SubstrateWeight, WeightInfo};
@@ -576,7 +574,7 @@ impl<T: Config> Pallet<T> {
 
 		let transaction_set = ext::stellar_relay::construct_from_raw_encoded_xdr::<
 			T,
-			TransactionSet,
+			TransactionSetType,
 		>(&transaction_set_xdr_encoded)?;
 
 		// Check that the transaction includes the expected memo to mitigate replay attacks
