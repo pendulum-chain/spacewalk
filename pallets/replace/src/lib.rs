@@ -628,6 +628,8 @@ impl<T: Config> Pallet<T> {
 				Amount::zero(collateral.currency())
 			},
 			ReplaceRequestStatus::Completed => {
+				// We should never enter this branch as completed requests are filtered
+				// but handle it just in case
 				return Err(Error::<T>::ReplaceCompleted.into())
 			},
 		};
