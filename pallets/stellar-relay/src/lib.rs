@@ -500,8 +500,6 @@ pub mod pallet {
 			let current_validators = Validators::<T>::get();
 			let current_organizations = Organizations::<T>::get();
 
-			NewValidatorsEnactmentBlockHeight::<T>::put(enactment_block_height);
-
 			let new_validator_vec =
 				BoundedVec::<ValidatorOf<T>, T::ValidatorLimit>::try_from(validators)
 					.map_err(|_| Error::<T>::BoundedVecCreationFailed)?;
@@ -509,6 +507,8 @@ pub mod pallet {
 			let new_organization_vec =
 				BoundedVec::<OrganizationOf<T>, T::OrganizationLimit>::try_from(organizations)
 					.map_err(|_| Error::<T>::BoundedVecCreationFailed)?;
+
+			NewValidatorsEnactmentBlockHeight::<T>::put(enactment_block_height);
 
 			// update only when new organization or validators not equal to old organization or
 			// validators
