@@ -355,3 +355,13 @@ impl<T: Config> Pallet<T> {
 		T::DataProvider::get_no_op(key)
 	}
 }
+
+
+// pub trait CurrencyToUsd<CurrencyId>
+// {
+// 	pub fn currency_to_usd(
+// 		amount: BalanceOf<T>,
+// 		currency_id: CurrencyId,
+// 	)-> Result<BalanceOf<T>, DispatchError>;
+
+// }

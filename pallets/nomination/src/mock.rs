@@ -50,8 +50,7 @@ frame_support::construct_runtime!(
 		Tokens: orml_tokens::{Pallet, Storage, Config<T>, Event<T>},
 		Currencies: orml_currencies::{Pallet, Call},
 
-		Rewards: reward::{Pallet, Call, Storage, Event<T>},
-		PooledRewards: pooled_rewards::{Pallet, Call, Storage, Event<T>},
+		Rewards: pooled_rewards::{Pallet, Call, Storage, Event<T>},
 		// Operational
 		Security: security::{Pallet, Call, Storage, Event<T>},
 		VaultRegistry: vault_registry::{Pallet, Call, Config<T>, Storage, Event<T>},
@@ -178,13 +177,7 @@ impl orml_tokens::Config for Test {
 	type DustRemovalWhitelist = Everything;
 }
 
-impl reward::Config for Test {
-	type RuntimeEvent = TestEvent;
-	type SignedFixedPoint = SignedFixedPoint;
-	type RewardId = VaultId<AccountId, CurrencyId>;
-	type CurrencyId = CurrencyId;
-	type GetNativeCurrencyId = GetNativeCurrencyId;
-}
+
 
 parameter_types! {
 	pub const VaultPalletId: PalletId = PalletId(*b"mod/vreg");
@@ -259,10 +252,14 @@ impl pallet_timestamp::Config for Test {
 	type WeightInfo = ();
 }
 
+const USD: CurrencyId = CurrencyId::XCM(2);
+
 parameter_types! {
 	pub const FeePalletId: PalletId = PalletId(*b"mod/fees");
 	pub const MaxExpectedValue: UnsignedFixedPoint = UnsignedFixedPoint::from_inner(<UnsignedFixedPoint as FixedPointNumber>::DIV);
+	pub const GetBaseCurrency: CurrencyId = USD;
 }
+
 
 impl fee::Config for Test {
 	type FeePalletId = FeePalletId;
@@ -275,6 +272,7 @@ impl fee::Config for Test {
 	type VaultStaking = Staking;
 	type OnSweep = ();
 	type MaxExpectedValue = MaxExpectedValue;
+	type BaseCurrency = GetBaseCurrency;
 }
 
 impl oracle::Config for Test {
@@ -300,14 +298,13 @@ impl pooled_rewards::Config for Test {
 	type SignedFixedPoint = SignedFixedPoint;
 	type PoolId = CurrencyId;
 	type PoolRewardsCurrencyId = CurrencyId;
-	type StakeId = AccountId;
+	type StakeId = VaultId<AccountId, CurrencyId>;
 	type MaxRewardCurrencies = MaxRewardCurrencies;
 }
 
 impl Config for Test {
 	type RuntimeEvent = TestEvent;
 	type WeightInfo = crate::SubstrateWeight<Test>;
-	type PoolRewards = PooledRewards;
 }
 
 pub type TestEvent = RuntimeEvent;

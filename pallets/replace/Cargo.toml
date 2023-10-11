@@ -33,6 +33,7 @@ primitives = { package = "spacewalk-primitives", path = "../../primitives", defa
 security = { path = "../security", default-features = false }
 stellar-relay = { path = "../stellar-relay", default-features = false }
 vault-registry = { path = "../vault-registry", default-features = false }
+pooled-rewards = { path = "../pooled-rewards", default-features = false }
 
 substrate-stellar-sdk = { git = "https://github.com/pendulum-chain/substrate-stellar-sdk", branch = "polkadot-v0.9.40", default-features = false, features = ['offchain'] }
 
@@ -46,13 +47,13 @@ mocktopus = "0.8.0"
 frame-benchmarking = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.40" }
 
 # Parachain dependencies
-reward = { path = "../reward" }
+pooled-rewards = { path = "../pooled-rewards", default-features = false }
 staking = { path = "../staking" }
 currency = { path = "../currency", default-features = false, features = ["testing-constants"] }
 stellar-relay = { path = "../stellar-relay", features = ["testing-utils"] }
 security = { path = "../security", features = ['testing-utils'] }
 oracle = { path = "../oracle", features = ['testing-utils'] }
-pooled-rewards = { path = "../pooled-rewards", default-features = false }
+
 
 # Orml dependencies
 orml-tokens = { git = "https://github.com/open-web3-stack/open-runtime-module-library", branch = "polkadot-v0.9.40" }

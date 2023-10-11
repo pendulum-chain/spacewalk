@@ -108,12 +108,6 @@ pub mod pallet {
 		/// Weight information for the extrinsics in this module.
 		type WeightInfo: WeightInfo;
 
-		//Pool rewards interface
-		type PoolRewards: pooled_rewards::RewardsApi<
-			CurrencyId<Self>,
-			Self::AccountId,
-			BalanceOf<Self>,
-		>;
 
 		/// Currency used for griefing collateral, e.g. DOT.
 		#[pallet::constant]
@@ -928,12 +922,6 @@ impl<T: Config> Pallet<T> {
 		// Deposit `amount` of stake in the pool
 		ext::staking::deposit_stake::<T>(vault_id, &vault_id.account_id, &amount.clone())?;
 
-		ext::pooled_rewards::deposit_stake::<T>(
-			&vault_id.collateral_currency(),
-			&vault_id.account_id,
-			amount.clone(),
-		)?;
-
 		Ok(())
 	}
 
@@ -952,11 +940,6 @@ impl<T: Config> Pallet<T> {
 
 		// Withdraw `amount` of stake from the pool
 		ext::staking::withdraw_stake::<T>(vault_id, &vault_id.account_id, &amount.clone())?;
-		ext::pooled_rewards::withdraw_stake::<T>(
-			&vault_id.collateral_currency(),
-			&vault_id.account_id,
-			amount.clone(),
-		)?;
 
 		Ok(())
 	}
@@ -1532,11 +1515,6 @@ impl<T: Config> Pallet<T> {
 				&to_be_released,
 			)?;
 
-			ext::pooled_rewards::deposit_stake::<T>(
-				&old_vault_id.collateral_currency(),
-				&old_vault_id.account_id,
-				to_be_released,
-			)?;
 		}
 
 		old_vault.execute_redeem_tokens(tokens)?;
@@ -2198,7 +2176,7 @@ impl<T: Config> Pallet<T> {
 			let rich_vault: RichVault<T> = vault.clone().into();
 			let rewarding_tokens = rich_vault.issued_tokens() - rich_vault.to_be_redeemed_tokens();
 
-			assert_eq!(ext::reward::get_stake::<T>(&vault_id).unwrap(), rewarding_tokens.amount());
+			assert_eq!(ext::pooled_rewards::get_stake::<T>(&vault_id).unwrap(), rewarding_tokens.amount());
 		}
 	}
 

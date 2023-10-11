@@ -41,7 +41,7 @@ frame_support::construct_runtime!(
 		Tokens: orml_tokens::{Pallet, Storage, Config<T>, Event<T>},
 		Currencies: orml_currencies::{Pallet, Call},
 
-		Rewards: reward::{Pallet, Call, Storage, Event<T>},
+		Rewards: pooled_rewards::{Pallet, Call, Storage, Event<T>},
 		Staking: staking::{Pallet, Storage, Event<T>},
 
 		// Operational
@@ -161,12 +161,17 @@ impl orml_tokens::Config for Test {
 	type DustRemovalWhitelist = Everything;
 }
 
-impl reward::Config for Test {
+parameter_types! {
+	pub const MaxRewardCurrencies: u32= 10;
+}
+
+impl pooled_rewards::Config for Test {
 	type RuntimeEvent = TestEvent;
 	type SignedFixedPoint = SignedFixedPoint;
-	type RewardId = VaultId<AccountId, CurrencyId>;
-	type CurrencyId = CurrencyId;
-	type GetNativeCurrencyId = GetNativeCurrencyId;
+	type PoolId = CurrencyId;
+	type PoolRewardsCurrencyId = CurrencyId;
+	type StakeId = VaultId<AccountId, CurrencyId>;
+	type MaxRewardCurrencies = MaxRewardCurrencies;
 }
 
 impl staking::Config for Test {
@@ -216,10 +221,15 @@ impl currency::Config for Test {
 	type AmountCompatibility = primitives::StellarCompatibility;
 }
 
+
+const USD: CurrencyId = CurrencyId::XCM(2);
+
 parameter_types! {
 	pub const FeePalletId: PalletId = PalletId(*b"mod/fees");
 	pub const MaxExpectedValue: UnsignedFixedPoint = UnsignedFixedPoint::from_inner(<UnsignedFixedPoint as FixedPointNumber>::DIV);
+	pub const GetBaseCurrency: CurrencyId = USD;
 }
+
 
 impl Config for Test {
 	type FeePalletId = FeePalletId;
@@ -232,6 +242,7 @@ impl Config for Test {
 	type VaultStaking = Staking;
 	type OnSweep = ();
 	type MaxExpectedValue = MaxExpectedValue;
+	type BaseCurrency = GetBaseCurrency;
 }
 
 pub type TestEvent = RuntimeEvent;

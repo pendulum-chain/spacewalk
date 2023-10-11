@@ -13,7 +13,7 @@ scale-info = { version = "2.0.0", default-features = false, features = ["derive"
 
 # Parachain dependencies
 primitives = { package = "spacewalk-primitives", path = "../../primitives", default-features = false }
-fee = { path = "../fee", default-features = false }
+
 
 
 # Substrate dependencies
@@ -22,6 +22,7 @@ sp-core = { git = "https://github.com/paritytech/substrate", branch = "polkadot-
 sp-io = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.40", default-features = false }
 sp-runtime = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.40", default-features = false }
 sp-std = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.40", default-features = false }
+currency = { path = "../currency", default-features = false, features = ["testing-constants"] }
 
 frame-support = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.40", default-features = false }
 frame-system = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.40", default-features = false }
@@ -40,7 +41,6 @@ std = [
     "serde",
     "codec/std",
     "currency/std",
-    "fee/std",
     "primitives/std",
     "sp-arithmetic/std",
     "sp-core/std",

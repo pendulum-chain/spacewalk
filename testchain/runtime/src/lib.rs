@@ -302,13 +302,6 @@ impl pallet_balances::Config for Runtime {
 	type ReserveIdentifier = [u8; 8];
 }
 
-impl reward::Config for Runtime {
-	type RuntimeEvent = RuntimeEvent;
-	type SignedFixedPoint = SignedFixedPoint;
-	type RewardId = VaultId;
-	type CurrencyId = CurrencyId;
-	type GetNativeCurrencyId = GetNativeCurrencyId;
-}
 
 impl security::Config for Runtime {
 	type RuntimeEvent = RuntimeEvent;
@@ -538,8 +531,11 @@ impl replace::Config for Runtime {
 	type WeightInfo = replace::SubstrateWeight<Runtime>;
 }
 
+
+const BASE_CURRENCY_ID: CurrencyId = CurrencyId::XCM(2);
 parameter_types! {
 	pub const MaxExpectedValue: UnsignedFixedPoint = UnsignedFixedPoint::from_inner(<UnsignedFixedPoint as FixedPointNumber>::DIV);
+	pub const GetBaseCurrency: CurrencyId = BASE_CURRENCY_ID;
 }
 
 impl fee::Config for Runtime {
@@ -551,6 +547,7 @@ impl fee::Config for Runtime {
 	type UnsignedInner = UnsignedInner;
 	type VaultRewards = VaultRewards;
 	type VaultStaking = VaultStaking;
+	type BaseCurrency = GetBaseCurrency;
 	type OnSweep = currency::SweepFunds<Runtime, FeeAccount>;
 	type MaxExpectedValue = MaxExpectedValue;
 }
@@ -558,7 +555,6 @@ impl fee::Config for Runtime {
 impl nomination::Config for Runtime {
 	type RuntimeEvent = RuntimeEvent;
 	type WeightInfo = nomination::SubstrateWeight<Runtime>;
-	type PoolRewards = PooledRewards;
 }
 
 impl clients_info::Config for Runtime {
@@ -577,7 +573,7 @@ impl pooled_rewards::Config for Runtime {
 	type SignedFixedPoint = SignedFixedPoint;
 	type PoolId = CurrencyId;
 	type PoolRewardsCurrencyId = CurrencyId;
-	type StakeId = AccountId;
+	type StakeId = VaultId;
 	type MaxRewardCurrencies = MaxRewardCurrencies;
 }
 
@@ -599,7 +595,7 @@ construct_runtime! {
 
 		StellarRelay: stellar_relay::{Pallet, Call, Config<T>, Storage, Event<T>} = 10,
 
-		VaultRewards: reward::{Pallet, Storage, Event<T>} = 15,
+		VaultRewards: pooled_rewards::{Pallet, Storage, Event<T>} = 15,
 		VaultStaking: staking::{Pallet, Storage, Event<T>} = 16,
 
 		Currency: currency::{Pallet} = 17,
@@ -614,7 +610,6 @@ construct_runtime! {
 		Nomination: nomination::{Pallet, Call, Config, Storage, Event<T>} = 28,
 		DiaOracleModule: dia_oracle::{Pallet, Call, Config<T>, Storage, Event<T>} = 29,
 		ClientsInfo: clients_info::{Pallet, Call, Storage, Event<T>} = 30,
-		PooledRewards: pooled_rewards::{Pallet, Call, Storage, Event<T>} = 31,
 	}
 }
 

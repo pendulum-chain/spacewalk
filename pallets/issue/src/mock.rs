@@ -60,7 +60,7 @@ frame_support::construct_runtime!(
 		Oracle: oracle::{Pallet, Call, Config, Storage, Event<T>},
 		Fee: fee::{Pallet, Call, Config<T>, Storage},
 		Staking: staking::{Pallet, Storage, Event<T>},
-		Rewards: reward::{Pallet, Call, Storage, Event<T>},
+		Rewards: pooled_rewards::{Pallet, Call, Storage, Event<T>},
 		VaultRegistry: vault_registry::{Pallet, Call, Config<T>, Storage, Event<T>},
 	}
 );
@@ -264,14 +264,6 @@ impl security::Config for Test {
 	type WeightInfo = ();
 }
 
-impl reward::Config for Test {
-	type RuntimeEvent = TestEvent;
-	type SignedFixedPoint = SignedFixedPoint;
-	type RewardId = VaultId<AccountId, CurrencyId>;
-	type CurrencyId = CurrencyId;
-	type GetNativeCurrencyId = GetNativeCurrencyId;
-}
-
 impl staking::Config for Test {
 	type RuntimeEvent = TestEvent;
 	type SignedFixedPoint = SignedFixedPoint;
@@ -294,9 +286,13 @@ impl oracle::Config for Test {
 	type DataFeedProvider = DataCollector;
 }
 
+
+const USD: CurrencyId = CurrencyId::XCM(2);
+
 parameter_types! {
 	pub const FeePalletId: PalletId = PalletId(*b"mod/fees");
 	pub const MaxExpectedValue: UnsignedFixedPoint = UnsignedFixedPoint::from_inner(<UnsignedFixedPoint as FixedPointNumber>::DIV);
+	pub const GetBaseCurrency: CurrencyId = USD;
 }
 
 impl fee::Config for Test {
@@ -308,8 +304,22 @@ impl fee::Config for Test {
 	type UnsignedInner = UnsignedInner;
 	type VaultRewards = Rewards;
 	type VaultStaking = Staking;
+	type BaseCurrency = GetBaseCurrency;
 	type OnSweep = ();
 	type MaxExpectedValue = MaxExpectedValue;
+}
+
+parameter_types! {
+	pub const MaxRewardCurrencies: u32= 10;
+}
+
+impl pooled_rewards::Config for Test {
+	type RuntimeEvent = TestEvent;
+	type SignedFixedPoint = SignedFixedPoint;
+	type PoolId = CurrencyId;
+	type PoolRewardsCurrencyId = CurrencyId;
+	type StakeId = VaultId<AccountId, CurrencyId>;
+	type MaxRewardCurrencies = MaxRewardCurrencies;
 }
 
 parameter_types! {

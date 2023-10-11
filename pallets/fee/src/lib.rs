@@ -15,7 +15,7 @@ use frame_support::{
 };
 #[cfg(test)]
 use mocktopus::macros::mockable;
-use sp_arithmetic::{traits::*, FixedPointNumber, FixedPointOperand};
+use sp_arithmetic::{traits::*, FixedPointNumber, FixedPointOperand, Perquintill};
 use sp_runtime::traits::{AccountIdConversion, AtLeast32BitUnsigned};
 use sp_std::{
 	convert::{TryFrom, TryInto},
@@ -25,8 +25,9 @@ use sp_std::{
 use currency::{Amount, CurrencyId, OnSweep};
 pub use default_weights::{SubstrateWeight, WeightInfo};
 pub use pallet::*;
-use reward::Rewards;
+pub use pooled_rewards::RewardsApi;
 use types::{BalanceOf, DefaultVaultId, SignedFixedPoint, UnsignedFixedPoint};
+
 
 #[cfg(feature = "runtime-benchmarks")]
 mod benchmarking;
@@ -57,6 +58,7 @@ pub mod pallet {
 			UnsignedFixedPoint = UnsignedFixedPoint<Self>,
 			SignedFixedPoint = SignedFixedPoint<Self>,
 		>
+		
 	{
 		/// The fee module id, used for deriving its sovereign account ID.
 		#[pallet::constant]
@@ -101,7 +103,12 @@ pub mod pallet {
 			+ TypeInfo;
 
 		/// Vault reward pool.
-		type VaultRewards: reward::Rewards<DefaultVaultId<Self>, BalanceOf<Self>, CurrencyId<Self>>;
+		type VaultRewards: pooled_rewards::RewardsApi<
+			CurrencyId<Self>,
+			DefaultVaultId<Self>,
+			BalanceOf<Self>,
+			CurrencyId<Self>,
+		>;
 
 		/// Vault staking pool.
 		type VaultStaking: staking::Staking<
@@ -115,6 +122,9 @@ pub mod pallet {
 		/// Handler to transfer undistributed rewards.
 		type OnSweep: OnSweep<Self::AccountId, Amount<Self>>;
 
+		//currency to usd interface
+		type BaseCurrency: Get<CurrencyId<Self>>;
+
 		/// Maximum expected value to set the storage fields to.
 		#[pallet::constant]
 		type MaxExpectedValue: Get<UnsignedFixedPoint<Self>>;
@@ -126,6 +136,7 @@ pub mod pallet {
 		TryIntoIntError,
 		/// Value exceeds the expected upper bound for storage fields in this pallet.
 		AboveMaxExpectedValue,
+		Overflow,
 	}
 
 	#[pallet::hooks]
@@ -459,10 +470,9 @@ impl<T: Config> Pallet<T> {
 	}
 
 	// Private functions internal to this pallet
-
 	/// Withdraw rewards from a pool and transfer to `account_id`.
 	fn withdraw_from_reward_pool<
-		Rewards: reward::Rewards<DefaultVaultId<T>, BalanceOf<T>, CurrencyId<T>>,
+		Rewards: pooled_rewards::RewardsApi<CurrencyId<T>, DefaultVaultId<T>, BalanceOf<T>, CurrencyId<T>>,
 		Staking: staking::Staking<DefaultVaultId<T>, T::AccountId, T::Index, BalanceOf<T>, CurrencyId<T>>,
 	>(
 		vault_id: &DefaultVaultId<T>,
@@ -480,21 +490,46 @@ impl<T: Config> Pallet<T> {
 	}
 
 	fn distribute(reward: &Amount<T>) -> Result<Amount<T>, DispatchError> {
-		Ok(if T::VaultRewards::distribute_reward(reward.amount(), reward.currency()).is_err() {
-			reward.clone()
-		} else {
-			Amount::<T>::zero(reward.currency())
-		})
+
+		//fetch total stake (all), and calulate total usd stake across pools
+		//distribute the rewards into each reward pool for each collateral,
+		//taking into account it's value in usd
+
+		let total_stakes = T::VaultRewards::get_total_stake_all_pools()?;
+		let total_stake_in_usd=  BalanceOf::<T>::default();
+		for (currency_id, stake) in total_stakes.clone().into_iter(){
+
+			let stake_in_amount = Amount::<T>::new(stake,currency_id);
+			let stake_in_usd = stake_in_amount.convert_to(<T as Config>::BaseCurrency::get())?;
+			total_stake_in_usd.checked_add(&stake_in_usd.amount()).ok_or(Error::<T>::Overflow)?;
+		}
+
+		let error_reward_accum = Amount::<T>::zero(reward.currency());
+
+		for (currency_id, stake) in total_stakes.into_iter(){
+
+			let stake_in_amount = Amount::<T>::new(stake,currency_id);
+			let stake_in_usd = stake_in_amount.convert_to(<T as Config>::BaseCurrency::get())?;
+			let percentage = Perquintill::from_rational(stake_in_usd.amount(),total_stake_in_usd);
+			
+			//TODO multiply with floor or ceil?
+			let reward_for_pool = percentage.mul_floor(reward.amount());
+
+			if T::VaultRewards::distribute_reward(&currency_id, reward.currency(),reward_for_pool).is_err() {
+				error_reward_accum.checked_add(&reward)?;
+			} 
+		}
+		Ok(error_reward_accum)
 	}
 
 	pub fn distribute_from_reward_pool<
-		Rewards: reward::Rewards<DefaultVaultId<T>, BalanceOf<T>, CurrencyId<T>>,
+		Rewards: pooled_rewards::RewardsApi<CurrencyId<T>, DefaultVaultId<T>, BalanceOf<T>, CurrencyId<T>>,
 		Staking: staking::Staking<DefaultVaultId<T>, T::AccountId, T::Index, BalanceOf<T>, CurrencyId<T>>,
 	>(
 		vault_id: &DefaultVaultId<T>,
 	) -> DispatchResult {
 		for currency_id in [vault_id.wrapped_currency(), T::GetNativeCurrencyId::get()] {
-			let reward = Rewards::withdraw_reward(vault_id, currency_id)?;
+			let reward = Rewards::withdraw_reward(&vault_id.collateral_currency(), &vault_id, currency_id)?;
 			Staking::distribute_reward(vault_id, reward, currency_id)?;
 		}
 

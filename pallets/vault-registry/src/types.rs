@@ -352,7 +352,7 @@ impl<T: Config> RichVault<T> {
 			Ok(())
 		} else {
 			let stake = self.freely_redeemable_tokens()?;
-			ext::reward::set_stake(&self.id(), &stake)
+			ext::pooled_rewards::set_stake(&self.id(), &stake)
 		}
 	}
 
@@ -547,12 +547,6 @@ impl<T: Config> RichVault<T> {
 		let collateral = self.get_vault_collateral()?.min(amount)?;
 		ext::staking::withdraw_stake::<T>(&vault_id, &vault_id.account_id, &collateral.clone())?;
 
-		ext::pooled_rewards::withdraw_stake::<T>(
-			&vault_id.collateral_currency(),
-			&vault_id.account_id,
-			collateral.clone(),
-		)?;
-
 		self.increase_liquidated_collateral(&collateral)?;
 		Ok(())
 	}
@@ -569,12 +563,6 @@ impl<T: Config> RichVault<T> {
 
 		// "slash" vault first
 		ext::staking::withdraw_stake::<T>(&vault_id, &vault_id.account_id, &to_withdraw.clone())?;
-
-		ext::pooled_rewards::withdraw_stake::<T>(
-			&vault_id.collateral_currency(),
-			&vault_id.account_id,
-			to_withdraw,
-		)?;
 
 		// take remainder from nominators
 		if let Some(to_slash) = to_slash {
@@ -636,7 +624,7 @@ impl<T: Config> RichVault<T> {
 		// todo: clear replace collateral?
 		// withdraw stake from the reward pool
 
-		ext::reward::set_stake::<T>(&vault_id, &Amount::zero(vault_id.wrapped_currency()))?;
+		ext::pooled_rewards::set_stake::<T>(&vault_id, &Amount::zero(vault_id.wrapped_currency()))?;
 
 		// Update vault: clear to_be_issued & issued_tokens, but don't touch to_be_redeemed
 		let _ = self.update(|v| {

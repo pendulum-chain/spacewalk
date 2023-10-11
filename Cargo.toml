@@ -13,7 +13,6 @@ members = [
     "pallets/nomination",
     "pallets/oracle",
     "pallets/pooled-rewards",
-    "pallets/reward",
     "pallets/staking",
     "pallets/stellar-relay",
     "pallets/vault-registry",

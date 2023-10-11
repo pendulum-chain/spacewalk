@@ -51,8 +51,8 @@ frame_support::construct_runtime!(
 		Tokens: orml_tokens::{Pallet, Storage, Config<T>, Event<T>},
 		Currencies: orml_currencies::{Pallet, Call},
 
-		Rewards: reward::{Pallet, Call, Storage, Event<T>},
-		PooledRewards: pooled_rewards::{Pallet, Call, Storage, Event<T>},
+		Rewards: pooled_rewards::{Pallet, Call, Storage, Event<T>},
+
 		// Operational
 		StellarRelay: stellar_relay::{Pallet, Call, Config<T>, Storage, Event<T>},
 		Security: security::{Pallet, Call, Storage, Event<T>},
@@ -175,13 +175,7 @@ impl orml_tokens::Config for Test {
 	type DustRemovalWhitelist = Everything;
 }
 
-impl reward::Config for Test {
-	type RuntimeEvent = TestEvent;
-	type SignedFixedPoint = SignedFixedPoint;
-	type RewardId = VaultId<AccountId, CurrencyId>;
-	type CurrencyId = CurrencyId;
-	type GetNativeCurrencyId = GetNativeCurrencyId;
-}
+
 
 parameter_types! {
 	pub const VaultPalletId: PalletId = PalletId(*b"mod/vreg");
@@ -288,13 +282,12 @@ impl pooled_rewards::Config for Test {
 	type SignedFixedPoint = SignedFixedPoint;
 	type PoolId = CurrencyId;
 	type PoolRewardsCurrencyId = CurrencyId;
-	type StakeId = AccountId;
+	type StakeId = VaultId<AccountId, CurrencyId>;
 	type MaxRewardCurrencies = MaxRewardCurrencies;
 }
 
 impl nomination::Config for Test {
 	type RuntimeEvent = TestEvent;
-	type PoolRewards = PooledRewards;
 	type WeightInfo = nomination::SubstrateWeight<Test>;
 }
 
@@ -323,9 +316,12 @@ impl oracle::Config for Test {
 	type DataFeedProvider = DataCollector;
 }
 
+const USD: CurrencyId = CurrencyId::XCM(2);
+
 parameter_types! {
 	pub const FeePalletId: PalletId = PalletId(*b"mod/fees");
 	pub const MaxExpectedValue: UnsignedFixedPoint = UnsignedFixedPoint::from_inner(<UnsignedFixedPoint as FixedPointNumber>::DIV);
+	pub const GetBaseCurrency: CurrencyId = USD;
 }
 
 impl fee::Config for Test {
@@ -337,6 +333,7 @@ impl fee::Config for Test {
 	type UnsignedInner = UnsignedInner;
 	type VaultRewards = Rewards;
 	type VaultStaking = Staking;
+	type BaseCurrency = GetBaseCurrency;
 	type OnSweep = ();
 	type MaxExpectedValue = MaxExpectedValue;
 }

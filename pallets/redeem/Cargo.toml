@@ -46,7 +46,7 @@ mocktopus = "0.8.0"
 frame-benchmarking = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.40" }
 
 # Parachain dependencies
-reward = { path = "../reward" }
+pooled-rewards = { path = "../pooled-rewards", default-features = false }
 staking = { path = "../staking" }
 currency = { path = "../currency", default-features = false, features = ["testing-constants", "testing-utils"] }
 stellar-relay = { path = "../stellar-relay", features = ["testing-utils"] }
@@ -73,6 +73,7 @@ std = [
     "frame-benchmarking/std",
     "pallet-balances/std",
     "pallet-timestamp/std",
+    "pooled-rewards/std",
     "currency/std",
     "fee/std",
     "oracle/std",

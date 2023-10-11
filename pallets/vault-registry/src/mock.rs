@@ -48,8 +48,7 @@ frame_support::construct_runtime!(
 		Tokens: orml_tokens::{Pallet, Storage, Config<T>, Event<T>},
 		Currencies: orml_currencies::{Pallet, Call},
 
-		Rewards: reward::{Pallet, Call, Storage, Event<T>},
-		PooledRewards: pooled_rewards::{Pallet, Call, Storage, Event<T>},
+		Rewards: pooled_rewards::{Pallet, Call, Storage, Event<T>},
 
 		// Operational
 		Security: security::{Pallet, Call, Storage, Event<T>},
@@ -176,14 +175,6 @@ impl orml_tokens::Config for Test {
 	type DustRemovalWhitelist = Everything;
 }
 
-impl reward::Config for Test {
-	type RuntimeEvent = TestEvent;
-	type SignedFixedPoint = SignedFixedPoint;
-	type RewardId = VaultId<AccountId, CurrencyId>;
-	type CurrencyId = CurrencyId;
-	type GetNativeCurrencyId = GetNativeCurrencyId;
-}
-
 parameter_types! {
 	pub const MinimumPeriod: Moment = 5;
 }
@@ -240,10 +231,15 @@ impl currency::Config for Test {
 	type AmountCompatibility = primitives::StellarCompatibility;
 }
 
+
+const BASE_CURRENCY_ID: CurrencyId = CurrencyId::XCM(2);
 parameter_types! {
 	pub const FeePalletId: PalletId = PalletId(*b"mod/fees");
 	pub const MaxExpectedValue: UnsignedFixedPoint = UnsignedFixedPoint::from_inner(<UnsignedFixedPoint as FixedPointNumber>::DIV);
+	pub const GetBaseCurrency: CurrencyId = BASE_CURRENCY_ID;
 }
+
+
 
 impl fee::Config for Test {
 	type FeePalletId = FeePalletId;
@@ -254,6 +250,7 @@ impl fee::Config for Test {
 	type UnsignedInner = Balance;
 	type VaultRewards = Rewards;
 	type VaultStaking = Staking;
+	type BaseCurrency = GetBaseCurrency;
 	type OnSweep = ();
 	type MaxExpectedValue = MaxExpectedValue;
 }
@@ -262,12 +259,13 @@ parameter_types! {
 	pub const MaxRewardCurrencies: u32= 10;
 }
 
+
 impl pooled_rewards::Config for Test {
 	type RuntimeEvent = TestEvent;
 	type SignedFixedPoint = SignedFixedPoint;
 	type PoolId = CurrencyId;
 	type PoolRewardsCurrencyId = CurrencyId;
-	type StakeId = AccountId;
+	type StakeId = VaultId<AccountId, CurrencyId>;
 	type MaxRewardCurrencies = MaxRewardCurrencies;
 }
 
@@ -280,7 +278,6 @@ impl Config for Test {
 	type RuntimeEvent = TestEvent;
 	type Balance = Balance;
 	type WeightInfo = vault_registry::SubstrateWeight<Test>;
-	type PoolRewards = PooledRewards;
 	type GetGriefingCollateralCurrencyId = GetNativeCurrencyId;
 }
 

@@ -26,7 +26,9 @@ use sp_runtime::{
 	},
 	ArithmeticError,
 };
-use sp_std::{cmp::PartialOrd, convert::TryInto, fmt::Debug};
+
+//use currency::Amount;
+use sp_std::{cmp::PartialOrd, convert::TryInto, fmt::Debug, vec::Vec};
 
 pub(crate) type SignedFixedPoint<T, I = ()> = <T as Config<I>>::SignedFixedPoint;
 
@@ -377,20 +379,22 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 		});
 		Ok(reward)
 	}
+
+	
 }
 
-pub trait RewardsApi<PoolId, StakeId, Balance>
+pub trait RewardsApi<PoolId, StakeId, Balance, CurrencyId>
 where
 	Balance: Saturating + PartialOrd + Copy,
 {
-	type PoolRewardsCurrencyId;
+	//type PoolRewardsCurrencyId = CurrencyId;
 
 	fn reward_currencies_len(pool_id: &PoolId) -> u32;
 
 	/// Distribute the `amount` to all participants OR error if zero total stake.
 	fn distribute_reward(
 		pool_id: &PoolId,
-		currency_id: Self::PoolRewardsCurrencyId,
+		currency_id: CurrencyId,
 		amount: Balance,
 	) -> DispatchResult;
 
@@ -398,14 +402,14 @@ where
 	fn compute_reward(
 		pool_id: &PoolId,
 		stake_id: &StakeId,
-		currency_id: Self::PoolRewardsCurrencyId,
+		currency_id: CurrencyId,
 	) -> Result<Balance, DispatchError>;
 
 	/// Withdraw all rewards from the `stake_id`.
 	fn withdraw_reward(
 		pool_id: &PoolId,
 		stake_id: &StakeId,
-		currency_id: Self::PoolRewardsCurrencyId,
+		currency_id: CurrencyId,
 	) -> Result<Balance, DispatchError>;
 
 	/// Deposit stake for an account.
@@ -440,16 +444,21 @@ where
 			Ok(())
 		}
 	}
+
+	//get total stake for each `pool_id` in the pallet
+	fn get_total_stake_all_pools()-> Result<Vec<(PoolId, Balance)>, DispatchError>;
+
+
 }
 
-impl<T, I, Balance> RewardsApi<T::PoolId, T::StakeId, Balance> for Pallet<T, I>
+impl<T, I, Balance> RewardsApi<T::PoolId, T::StakeId, Balance, T::PoolRewardsCurrencyId> for Pallet<T, I>
 where
 	T: Config<I>,
 	I: 'static,
 	Balance: BalanceToFixedPoint<SignedFixedPoint<T, I>> + Saturating + PartialOrd + Copy,
 	<T::SignedFixedPoint as FixedPointNumber>::Inner: TryInto<Balance>,
 {
-	type PoolRewardsCurrencyId = T::PoolRewardsCurrencyId;
+	//type PoolRewardsCurrencyId = CurrencyId;
 
 	fn reward_currencies_len(pool_id: &T::PoolId) -> u32 {
 		RewardCurrencies::<T, I>::get(pool_id).len() as u32
@@ -457,7 +466,7 @@ where
 
 	fn distribute_reward(
 		pool_id: &T::PoolId,
-		currency_id: T::PoolRewardsCurrencyId,
+		currency_id:T::PoolRewardsCurrencyId,
 		amount: Balance,
 	) -> DispatchResult {
 		Pallet::<T, I>::distribute_reward(
@@ -526,26 +535,40 @@ where
 			amount.to_fixed().ok_or(Error::<T, I>::TryIntoIntError)?,
 		)
 	}
+
+	fn get_total_stake_all_pools()-> Result<Vec<(T::PoolId, Balance)>, DispatchError>{
+		let mut pool_vec: Vec<(T::PoolId,Balance)> = Vec::new();
+		for (pool_id, pool_total_stake) in TotalStake::<T, I>::iter(){
+
+			let pool_stake_as_balance: Balance = pool_total_stake.truncate_to_inner()
+															.ok_or(Error::<T, I>::TryIntoIntError)?
+															.try_into()
+															.map_err(|_| Error::<T, I>::TryIntoIntError)?;
+			
+			pool_vec.push((pool_id,pool_stake_as_balance));
+		}
+		return Ok(pool_vec);
+	}
 }
 
-impl<PoolId, StakeId, Balance> RewardsApi<PoolId, StakeId, Balance> for ()
+impl<PoolId, StakeId, Balance, CurrencyId> RewardsApi<PoolId, StakeId, Balance, CurrencyId> for ()
 where
 	Balance: Saturating + PartialOrd + Default + Copy,
 {
-	type PoolRewardsCurrencyId = ();
+	//type PoolRewardsCurrencyId = ();
 
 	fn reward_currencies_len(_: &PoolId) -> u32 {
 		Default::default()
 	}
 
-	fn distribute_reward(_: &PoolId, _: Self::PoolRewardsCurrencyId, _: Balance) -> DispatchResult {
+	fn distribute_reward(_: &PoolId, _: CurrencyId, _: Balance) -> DispatchResult {
 		Ok(())
 	}
 
 	fn compute_reward(
 		_: &PoolId,
 		_: &StakeId,
-		_: Self::PoolRewardsCurrencyId,
+		_: CurrencyId,
 	) -> Result<Balance, DispatchError> {
 		Ok(Default::default())
 	}
@@ -553,7 +576,7 @@ where
 	fn withdraw_reward(
 		_: &PoolId,
 		_: &StakeId,
-		_: Self::PoolRewardsCurrencyId,
+		_: CurrencyId,
 	) -> Result<Balance, DispatchError> {
 		Ok(Default::default())
 	}
@@ -572,5 +595,9 @@ where
 
 	fn withdraw_stake(_: &PoolId, _: &StakeId, _: Balance) -> DispatchResult {
 		Ok(())
+	}
+
+	fn get_total_stake_all_pools()-> Result<Vec<(PoolId,Balance)>, DispatchError>{
+		Ok(Default::default())
 	}
 }

@@ -53,7 +53,7 @@ frame_support::construct_runtime!(
 		Tokens: orml_tokens::{Pallet, Storage, Config<T>, Event<T>},
 		Currencies: orml_currencies::{Pallet, Call},
 
-		Rewards: reward::{Pallet, Call, Storage, Event<T>},
+		Rewards: pooled_rewards::{Pallet, Call, Storage, Event<T>},
 
 		// Operational
 		StellarRelay: stellar_relay::{Pallet, Call, Config<T>, Storage, Event<T>},
@@ -257,12 +257,17 @@ impl staking::Config for Test {
 	type GetNativeCurrencyId = GetNativeCurrencyId;
 }
 
-impl reward::Config for Test {
+parameter_types! {
+	pub const MaxRewardCurrencies: u32= 10;
+}
+
+impl pooled_rewards::Config for Test {
 	type RuntimeEvent = TestEvent;
 	type SignedFixedPoint = SignedFixedPoint;
-	type RewardId = VaultId<AccountId, CurrencyId>;
-	type CurrencyId = CurrencyId;
-	type GetNativeCurrencyId = GetNativeCurrencyId;
+	type PoolId = CurrencyId;
+	type PoolRewardsCurrencyId = CurrencyId;
+	type StakeId = VaultId<AccountId, CurrencyId>;
+	type MaxRewardCurrencies = MaxRewardCurrencies;
 }
 
 parameter_types! {
@@ -312,9 +317,12 @@ impl oracle::Config for Test {
 	type DataFeedProvider = DataCollector;
 }
 
+const USD: CurrencyId = CurrencyId::XCM(2);
+
 parameter_types! {
 	pub const FeePalletId: PalletId = PalletId(*b"mod/fees");
 	pub const MaxExpectedValue: UnsignedFixedPoint = UnsignedFixedPoint::from_inner(<UnsignedFixedPoint as FixedPointNumber>::DIV);
+	pub const GetBaseCurrency: CurrencyId = USD;
 }
 
 impl fee::Config for Test {
@@ -326,6 +334,7 @@ impl fee::Config for Test {
 	type UnsignedInner = UnsignedInner;
 	type VaultRewards = Rewards;
 	type VaultStaking = Staking;
+	type BaseCurrency = GetBaseCurrency;
 	type OnSweep = ();
 	type MaxExpectedValue = MaxExpectedValue;
 }
