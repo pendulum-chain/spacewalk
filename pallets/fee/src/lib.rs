@@ -485,39 +485,6 @@ impl<T: Config> Pallet<T> {
 	}
 
 	fn distribute(reward: &Amount<T>) -> Result<Amount<T>, DispatchError> {
-		//TODO commented logic will go to the reward-distribution pallet most likely
-
-		//fetch total stake (all), and calulate total usd stake across pools
-		//distribute the rewards into each reward pool for each collateral,
-		//taking into account it's value in usd
-
-		// let total_stakes = T::VaultRewards::get_total_stake_all_pools()?;
-		// let total_stake_in_usd = BalanceOf::<T>::default();
-		// for (currency_id, stake) in total_stakes.clone().into_iter() {
-		// 	let stake_in_amount = Amount::<T>::new(stake, currency_id);
-		// 	let stake_in_usd = stake_in_amount.convert_to(<T as Config>::BaseCurrency::get())?;
-		// 	total_stake_in_usd
-		// 		.checked_add(&stake_in_usd.amount())
-		// 		.ok_or(Error::<T>::Overflow)?;
-		// }
-
-		// let error_reward_accum = Amount::<T>::zero(reward.currency());
-
-		// for (currency_id, stake) in total_stakes.into_iter() {
-		// 	let stake_in_amount = Amount::<T>::new(stake, currency_id);
-		// 	let stake_in_usd = stake_in_amount.convert_to(<T as Config>::BaseCurrency::get())?;
-		// 	let percentage = Perquintill::from_rational(stake_in_usd.amount(), total_stake_in_usd);
-
-		// 	// multiply with floor or ceil?
-		// 	let reward_for_pool = percentage.mul_floor(reward.amount());
-		// 	let error_reward_accum = Amount::<T>::zero(reward.currency());
-		// 	if T::VaultRewards::distribute_reward(&currency_id, reward.currency(), reward_for_pool)
-		// 		.is_err()
-		// 	{
-		// 		error_reward_accum.checked_add(&reward)?;
-		// 	}
-		// }
-
 		//TODO INTERFACE REQUIRED
 		//From reward-distribution pallet we will pass the reward in wrapped token and
 		//it will be in charge of distributing to all pools by it's stake in usd

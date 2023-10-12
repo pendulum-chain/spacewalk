@@ -368,3 +368,6 @@ impl<T: Config> Pallet<T> {
 	}
 }
 
+pub trait OracleApi<Balance, CurrencyId> {
+	fn currency_to_usd(amount: Balance, currency_id: CurrencyId) -> Result<Balance, DispatchError>;
+}

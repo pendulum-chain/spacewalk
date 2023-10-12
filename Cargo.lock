@@ -6865,11 +6865,13 @@ dependencies = [
 name = "reward-distribution"
 version = "0.1.0"
 dependencies = [
+ "currency",
  "frame-benchmarking",
  "frame-support",
  "frame-system",
  "pallet-balances",
  "parity-scale-codec",
+ "pooled-rewards",
  "scale-info",
  "security",
  "serde",
@@ -6878,6 +6880,7 @@ dependencies = [
  "sp-io",
  "sp-runtime",
  "sp-std",
+ "spacewalk-primitives",
 ]
 
 [[package]]

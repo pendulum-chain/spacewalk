@@ -31,6 +31,7 @@ use core::marker::PhantomData;
 /// Weight functions needed for reward_distribution.
 pub trait WeightInfo {
 	fn set_reward_per_block() -> Weight;
+	fn on_initialize() -> Weight;
 }
 
 /// Weights for reward_distribution using the Substrate node and recommended hardware.
@@ -48,20 +49,13 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 		Weight::from_parts(4_000_000, 0)
 			.saturating_add(T::DbWeight::get().writes(2_u64))
 	}
-}
-
-// For backwards compatibility and tests
-impl WeightInfo for () {
-	/// Storage: RewardDistribution RewardsAdaptedAt (r:0 w:1)
-	/// Proof: RewardDistribution RewardsAdaptedAt (max_values: Some(1), max_size: Some(4), added: 499, mode: MaxEncodedLen)
-	/// Storage: RewardDistribution RewardPerBlock (r:0 w:1)
-	/// Proof: RewardDistribution RewardPerBlock (max_values: Some(1), max_size: Some(16), added: 511, mode: MaxEncodedLen)
-	fn set_reward_per_block() -> Weight {
+	fn on_initialize() -> Weight {
 		// Proof Size summary in bytes:
 		//  Measured:  `0`
 		//  Estimated: `0`
-		// Minimum execution time: 3_000_000 picoseconds.
-		Weight::from_parts(4_000_000, 0)
-			.saturating_add(RocksDbWeight::get().writes(2_u64))
+		// Minimum execution time: 1_000_000 picoseconds.
+		Weight::from_parts(2_000_000, 0)
+			.saturating_add(Weight::from_parts(0, 0))
+			.saturating_add(T::DbWeight::get().writes(2))
 	}
 }

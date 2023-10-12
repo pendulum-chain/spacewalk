@@ -20,6 +20,11 @@ pub mod benchmarks {
 		assert_eq!(RewardDistribution::<T>::reward_per_block(), Some(new_reward_per_block));
 	}
 
+	#[benchmark]
+	fn on_initialize() {
+		Timestamp::<T>::set_timestamp(1000u32.into());
+	}
+
 	impl_benchmark_test_suite!(
 		RewardDistribution,
 		crate::mock::ExtBuilder::build(),
