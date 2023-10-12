@@ -115,7 +115,7 @@ impl<AccountId, Moment: Into<u64>>
 		let price = value.value.into_inner();
 
 		let key = derive_key(blockchain, symbol);
-		let data = Data { key, price, timestamp: value.timestamp.into().clone() };
+		let data = Data { key, price, timestamp: value.timestamp.into() };
 
 		let mut coins = COINS
 			.get_or_init(|| Box::new(RwLock::new(BTreeMap::<MapKey, Data>::new())))
