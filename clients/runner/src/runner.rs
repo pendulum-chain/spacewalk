@@ -709,8 +709,8 @@ mod tests {
 	async fn test_runner_download_binary() {
 		let mut runner = MockRunner::default();
 		let tmp = TempDir::new("runner-tests").expect("failed to create tempdir");
-		let mock_path = tmp.path().clone().join("vault-rococo");
-		let moved_mock_path = tmp.path().clone().join("vault-rococo");
+		let mock_path = tmp.path().to_path_buf().join("vault-rococo");
+		let moved_mock_path = tmp.path().to_path_buf().join("vault-rococo");
 		let mock_bin_name = "vault-rococo".to_string();
 
 		let client_release = ClientRelease {
@@ -962,8 +962,8 @@ mod tests {
 	#[tokio::test]
 	async fn test_runner_loading_existing_binary_works() {
 		let tmp = TempDir::new("runner-tests").expect("failed to create tempdir");
-		let mock_path = tmp.path().clone().join("client");
-		let moved_mock_path = tmp.path().clone().join("client");
+		let mock_path = tmp.path().to_path_buf().join("client");
+		let moved_mock_path = tmp.path().to_path_buf().join("client");
 		let mut runner = MockRunner::default();
 
 		{
@@ -1001,8 +1001,8 @@ mod tests {
 	#[tokio::test]
 	async fn test_try_load_downloaded_binary_checks_checksum() {
 		let tmp = TempDir::new("runner-tests").expect("failed to create tempdir");
-		let mock_path = tmp.path().clone().join("client");
-		let moved_mock_path = tmp.path().clone().join("client");
+		let mock_path = tmp.path().to_path_buf().join("client");
+		let moved_mock_path = tmp.path().to_path_buf().join("client");
 		let mut runner = MockRunner::default();
 
 		{
@@ -1029,7 +1029,7 @@ mod tests {
 	#[tokio::test]
 	async fn test_runner_invalid_binary_prompts_download() {
 		let tmp = TempDir::new("runner-tests").expect("failed to create tempdir");
-		let mock_path = tmp.path().clone().join("client");
+		let mock_path = tmp.path().to_path_buf().join("client");
 		let mut runner = MockRunner::default();
 
 		runner.expect_download_path().return_const(mock_path.clone());
@@ -1058,7 +1058,7 @@ mod tests {
 	#[tokio::test]
 	async fn test_runner_nonexistent_binary_prompts_download() {
 		let tmp = TempDir::new("runner-tests").expect("failed to create tempdir");
-		let mock_path = tmp.path().clone().join("client");
+		let mock_path = tmp.path().to_path_buf().join("client");
 		let mut runner = MockRunner::default();
 
 		runner.expect_download_path().return_const(mock_path.clone());
@@ -1087,7 +1087,7 @@ mod tests {
 	#[tokio::test]
 	async fn test_runner_different_checksum_prompts_download() {
 		let tmp = TempDir::new("runner-tests").expect("failed to create tempdir");
-		let mock_path = tmp.path().clone().join("client");
+		let mock_path = tmp.path().to_path_buf().join("client");
 		let mut runner = MockRunner::default();
 
 		runner.expect_download_path().return_const(mock_path.clone());
