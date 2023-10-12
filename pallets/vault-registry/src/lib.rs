@@ -1527,8 +1527,8 @@ impl<T: Config> Pallet<T> {
 			)?;
 
 			//update staking reward of new
-			let new_total_stake = ext::staking::total_current_stake_as_amount::<T>(new_vault_id)?;
-			ext::pooled_rewards::set_stake::<T>(&new_vault_id, &new_total_stake)?;
+			let new_total_stake = ext::staking::total_current_stake_as_amount::<T>(old_vault_id)?;
+			ext::pooled_rewards::set_stake::<T>(&old_vault_id, &new_total_stake)?;
 		}
 
 		old_vault.execute_redeem_tokens(tokens)?;
