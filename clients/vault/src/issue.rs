@@ -52,9 +52,10 @@ pub(crate) async fn initialize_issue_set(
 /// # Arguments
 ///
 /// * `parachain_rpc` - the parachain RPC handle
-/// * `vault_secret_key` - The secret key of this vault
+/// * `vault_public_key` - The public key of this vault
 /// * `event_channel` - the channel over which to signal events
 /// * `issues` - a map to save all the new issue requests
+/// * `memos_to_issue_ids` - map of issue memo to issue id
 pub async fn listen_for_issue_requests(
 	parachain_rpc: SpacewalkParachain,
 	vault_public_key: PublicKey,

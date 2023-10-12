@@ -173,7 +173,7 @@ mod accept_replace_tests {
 
 mod execute_replace_test {
 	use currency::Amount;
-	use substrate_stellar_sdk::{types::AlphaNum4, Asset, Operation, PublicKey, StroopAmount};
+	use primitives::stellar::{types::AlphaNum4, Asset, Operation, PublicKey, StroopAmount};
 
 	use super::*;
 

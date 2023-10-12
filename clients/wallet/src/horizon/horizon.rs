@@ -52,11 +52,11 @@ pub fn horizon_url(is_public_network: bool, is_need_fallback: bool) -> &'static 
 impl HorizonClient for reqwest::Client {
 	async fn get_from_url<R: DeserializeOwned>(&self, url: &str) -> Result<R, Error> {
 		tracing::debug!("accessing url: {url:?}");
-		let response = self.get(url).send().await.map_err(Error::HttpFetchingError)?;
+		let response = self.get(url).send().await.map_err(Error::HorizonResponseError)?;
 		interpret_response::<R>(response).await
 	}
 
-	async fn get_transactions<A: StellarTypeToString<PublicKey, Error> + Send>(
+	async fn get_account_transactions<A: StellarTypeToString<PublicKey, Error> + Send>(
 		&self,
 		account_id: A,
 		is_public_network: bool,
@@ -143,12 +143,13 @@ impl HorizonClient for reqwest::Client {
 			let base_url = horizon_url(is_public_network, need_fallback);
 			let url = format!("{}/transactions", base_url);
 
-			let response =
-				ready(self.post(url).form(&params).send().await.map_err(Error::HttpFetchingError))
-					.and_then(|response| async move {
-						interpret_response::<TransactionResponse>(response).await
-					})
-					.await;
+			let response = ready(
+				self.post(url).form(&params).send().await.map_err(Error::HorizonResponseError),
+			)
+			.and_then(|response| async move {
+				interpret_response::<TransactionResponse>(response).await
+			})
+			.await;
 
 			match response {
 				Err(e) if e.is_recoverable() || e.is_server_error() => {
@@ -211,7 +212,7 @@ impl<C: HorizonClient + Clone> HorizonFetcher<C> {
 	) -> Result<TransactionsResponseIter<C>, Error> {
 		let transactions_response = self
 			.client
-			.get_transactions(
+			.get_account_transactions(
 				self.vault_account_public_key.to_encoding(),
 				self.is_public_network,
 				last_cursor,
