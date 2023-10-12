@@ -1,5 +1,3 @@
-use sp_runtime::DispatchError;
-
 use currency::Amount;
 pub use primitives::redeem::{RedeemRequest, RedeemRequestStatus};
 use primitives::VaultId;
@@ -21,7 +19,7 @@ pub type DefaultRedeemRequest<T> = RedeemRequest<
 pub trait RedeemRequestExt<T: Config> {
 	fn amount(&self) -> Amount<T>;
 	fn fee(&self) -> Amount<T>;
-	fn premium(&self) -> Result<Amount<T>, DispatchError>;
+	fn premium(&self) -> Amount<T>;
 	fn transfer_fee(&self) -> Amount<T>;
 }
 
@@ -34,8 +32,8 @@ impl<T: Config> RedeemRequestExt<T>
 	fn fee(&self) -> Amount<T> {
 		Amount::new(self.fee, self.asset)
 	}
-	fn premium(&self) -> Result<Amount<T>, DispatchError> {
-		Ok(Amount::new(self.premium, self.vault.collateral_currency()))
+	fn premium(&self) -> Amount<T> {
+		Amount::new(self.premium, self.vault.collateral_currency())
 	}
 	fn transfer_fee(&self) -> Amount<T> {
 		Amount::new(self.transfer_fee, self.asset)

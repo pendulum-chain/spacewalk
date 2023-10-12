@@ -91,6 +91,7 @@ pub(crate) mod reward {
 		T::VaultRewards::set_stake(vault_id, amount.amount(), amount.currency())
 	}
 
+	#[allow(dead_code)]
 	#[cfg(feature = "integration-tests")]
 	pub fn get_stake<T: crate::Config>(
 		vault_id: &DefaultVaultId<T>,

@@ -16,7 +16,7 @@ use crate::oracle::{
 	collector::ScpMessageCollector,
 	errors::Error,
 	types::{Slot, StellarMessageSender},
-	Proof,
+	AddTxSet, Proof,
 };
 
 pub struct OracleAgent {
@@ -42,8 +42,14 @@ async fn handle_message(
 			StellarMessage::ScpMessage(env) => {
 				collector.write().await.handle_envelope(env, message_sender).await?;
 			},
-			StellarMessage::TxSet(set) => {
-				collector.read().await.handle_tx_set(set);
+			StellarMessage::TxSet(set) =>
+				if let Err(e) = collector.read().await.add_txset(set) {
+					tracing::error!(e);
+				},
+			StellarMessage::GeneralizedTxSet(set) => {
+				if let Err(e) = collector.read().await.add_txset(set) {
+					tracing::error!(e);
+				}
 			},
 			_ => {},
 		},
@@ -128,7 +134,6 @@ pub async fn start_oracle_agent(
 impl OracleAgent {
 	/// This method returns the proof for a given slot or an error if the proof cannot be provided.
 	/// The agent will try every possible way to get the proof before returning an error.
-	/// Set timeout to 60 seconds; 10 seconds interval.
 	pub async fn get_proof(&self, slot: Slot) -> Result<Proof, Error> {
 		let sender = self
 			.message_sender
@@ -151,13 +156,13 @@ impl OracleAgent {
 					None => {
 						tracing::warn!("Failed to build proof for slot {slot}.");
 						drop(collector);
+						// give 10 seconds interval for every retry
 						sleep(Duration::from_secs(10)).await;
 						continue
 					},
 					Some(proof) => {
-						tracing::debug!(
-							"Successfully build proof for slot {slot}, proof: {proof:?}"
-						);
+						tracing::info!("Successfully build proof for slot {slot}");
+						tracing::trace!("  with proof: {proof:?}");
 						return Ok(proof)
 					},
 				}
@@ -194,15 +199,16 @@ mod tests {
 		get_test_secret_key, get_test_stellar_relay_config, traits::ArchiveStorage,
 		ScpArchiveStorage, TransactionsArchiveStorage,
 	};
-	use serial_test::serial;
 
 	use super::*;
+	use serial_test::serial;
 
 	#[tokio::test]
 	#[ntest::timeout(1_800_000)] // timeout at 30 minutes
+	#[serial]
 	async fn test_get_proof_for_current_slot() {
 		let agent =
-			start_oracle_agent(get_test_stellar_relay_config(false), &get_test_secret_key(false))
+			start_oracle_agent(get_test_stellar_relay_config(true), &get_test_secret_key(true))
 				.await
 				.expect("Failed to start agent");
 		sleep(Duration::from_secs(10)).await;

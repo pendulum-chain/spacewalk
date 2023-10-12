@@ -2,7 +2,7 @@ use std::sync::{Arc, RwLock};
 
 use tokio::sync::broadcast::error::{RecvError, SendError};
 
-/// A wrapper arround a tokio broadcast channel that makes sure that
+/// A wrapper around a tokio broadcast channel that makes sure that
 /// listeners created after a shutdown signal has already been sent
 /// also receive the shutdown signal.
 #[derive(Clone)]

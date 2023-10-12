@@ -61,7 +61,9 @@ pub trait FileHandler<T: Default> {
 		let paths = fs::read_dir(Self::PATH)?;
 
 		for path in paths {
-			let filename = path?.file_name().into_string().unwrap();
+			let filename = path?.file_name().into_string().map_err(|e| {
+				Error::Other(format!("Failed to convert filename to string: {e:?}"))
+			})?;
 			let mut splits: Split<char> = filename.split('_');
 
 			if Self::check_slot_in_splitted_filename(slot_param, &mut splits) {
@@ -100,8 +102,7 @@ pub trait ArchiveStorage {
 			download_file_and_save(&url, &file_name).await?;
 			result = Self::try_gz_decode_archive_file(&file_name);
 		}
-		let data = result.unwrap();
-		Ok(Self::decode_xdr(data))
+		Ok(Self::decode_xdr(result?)?)
 	}
 
 	fn try_gz_decode_archive_file(path: &str) -> Result<Vec<u8>, Error> {
@@ -148,8 +149,9 @@ pub trait ArchiveStorage {
 		Ok(bytes)
 	}
 
-	fn decode_xdr(xdr_data: Vec<u8>) -> XdrArchive<Self::T> {
-		XdrArchive::<Self::T>::from_xdr(xdr_data).unwrap()
+	fn decode_xdr(xdr_data: Vec<u8>) -> Result<XdrArchive<Self::T>, Error> {
+		XdrArchive::<Self::T>::from_xdr(xdr_data)
+			.map_err(|e| Error::Other(format!("Decode Error: {e:?}")))
 	}
 }
 

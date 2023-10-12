@@ -18,10 +18,11 @@ use frame_support::{
 use frame_system::offchain::{SendTransactionTypes, SubmitTransaction};
 #[cfg(test)]
 use mocktopus::macros::mockable;
-use sp_core::{H256, U256};
+use sp_core::U256;
 #[cfg(feature = "std")]
 use sp_runtime::traits::AtLeast32BitUnsigned;
-use sp_runtime::{traits::*, ArithmeticError, FixedPointNumber, FixedPointOperand};
+use sp_runtime::{traits::*, ArithmeticError, FixedPointOperand};
+
 use sp_std::{
 	convert::{TryFrom, TryInto},
 	fmt::Debug,
@@ -711,11 +712,6 @@ pub mod pallet {
 	pub(super) type VaultStellarPublicKey<T: Config> =
 		StorageMap<_, Blake2_128Concat, T::AccountId, StellarPublicKeyRaw, OptionQuery>;
 
-	/// Mapping of reserved Stellar addresses to the registered account
-	#[pallet::storage]
-	pub(super) type ReservedAddresses<T: Config> =
-		StorageMap<_, Blake2_128Concat, StellarPublicKeyRaw, DefaultVaultId<T>, OptionQuery>;
-
 	/// Total collateral used for collateral tokens issued by active vaults, excluding the
 	/// liquidation vault
 	#[pallet::storage]
@@ -1125,24 +1121,6 @@ impl<T: Config> Pallet<T> {
 			increase: tokens.amount(),
 		});
 		Ok(())
-	}
-
-	/// Registers a stellar address. Actually does nothing because we don't use deposit addresses on
-	/// Stellar.
-	///
-	/// # Arguments
-	/// * `issue_id` - secure id for generating deposit address
-	pub fn register_deposit_address(
-		vault_id: &DefaultVaultId<T>,
-		issue_id: H256,
-	) -> Result<StellarPublicKeyRaw, DispatchError> {
-		let mut vault = Self::get_active_rich_vault_from_id(vault_id)?;
-		let stellar_address = vault.new_deposit_address(issue_id)?;
-		Self::deposit_event(Event::<T>::RegisterAddress {
-			vault_id: vault.id(),
-			address: stellar_address,
-		});
-		Ok(stellar_address)
 	}
 
 	/// returns the amount of tokens that a vault can request to be replaced on top of the
@@ -2120,114 +2098,5 @@ impl<T: Config> Pallet<T> {
 		threshold: UnsignedFixedPoint<T>,
 	) -> Result<Amount<T>, DispatchError> {
 		collateral.convert_to(wrapped_currency)?.checked_div(&threshold)
-	}
-
-	pub fn new_vault_deposit_address(
-		vault_id: &DefaultVaultId<T>,
-		secure_id: H256,
-	) -> Result<StellarPublicKeyRaw, DispatchError> {
-		let mut vault = Self::get_active_rich_vault_from_id(vault_id)?;
-		let stellar_address = vault.new_deposit_address(secure_id)?;
-		Ok(stellar_address)
-	}
-
-	#[cfg(feature = "integration-tests")]
-	pub fn collateral_integrity_check() {
-		let griefing_currency = T::GetGriefingCollateralCurrencyId::get();
-		for (vault_id, vault) in
-			Vaults::<T>::iter().filter(|(_, vault)| matches!(vault.status, VaultStatus::Active(_)))
-		{
-			// check that there is enough griefing collateral
-			let active_griefing = CurrencySource::<T>::ActiveReplaceCollateral(vault_id.clone())
-				.current_balance(griefing_currency)
-				.unwrap();
-			let available_replace_collateral =
-				CurrencySource::<T>::AvailableReplaceCollateral(vault_id.clone())
-					.current_balance(griefing_currency)
-					.unwrap();
-			let total_replace_collateral = active_griefing + available_replace_collateral.clone();
-			let reserved_balance =
-				ext::currency::get_reserved_balance(griefing_currency, &vault_id.account_id);
-			assert!(reserved_balance.ge(&total_replace_collateral).unwrap());
-
-			if available_replace_collateral.is_zero() {
-				// we can't have reserved collateral for to_be_replaced tokens if there are no
-				// to-be-replaced tokens
-				assert!(vault.to_be_replaced_tokens.is_zero());
-			}
-
-			let liquidated_collateral = CurrencySource::<T>::LiquidatedCollateral(vault_id.clone())
-				.current_balance(vault_id.collateral_currency())
-				.unwrap();
-			let backing_collateral = CurrencySource::<T>::Collateral(vault_id.clone())
-				.current_balance(vault_id.collateral_currency())
-				.unwrap()
-				.checked_add(&liquidated_collateral)
-				.unwrap();
-
-			let reserved = ext::currency::get_reserved_balance(
-				vault_id.collateral_currency(),
-				&vault_id.account_id,
-			);
-			assert!(reserved.ge(&backing_collateral).unwrap());
-
-			let rich_vault: RichVault<T> = vault.clone().into();
-			let rewarding_tokens = rich_vault.issued_tokens() - rich_vault.to_be_redeemed_tokens();
-
-			assert_eq!(ext::reward::get_stake::<T>(&vault_id).unwrap(), rewarding_tokens.amount());
-		}
-	}
-
-	#[cfg(feature = "integration-tests")]
-	pub fn total_user_vault_collateral_integrity_check() {
-		for (currency_pair, amount) in TotalUserVaultCollateral::<T>::iter() {
-			let total_in_vaults = Vaults::<T>::iter()
-				.filter_map(|(vault_id, vault)| {
-					if vault.id.currencies != currency_pair {
-						None
-					} else {
-						Some(
-							Self::get_backing_collateral(&vault_id).unwrap().amount() +
-								vault.liquidated_collateral,
-						)
-					}
-				})
-				.fold(0u32.into(), |acc: BalanceOf<T>, elem| acc + elem);
-			let total = total_in_vaults +
-				CurrencySource::<T>::LiquidationVault(currency_pair.clone())
-					.current_balance(currency_pair.collateral)
-					.unwrap()
-					.amount();
-			assert_eq!(total, amount);
-		}
-	}
-}
-
-trait CheckedMulIntRoundedUp {
-	/// Like checked_mul_int, but this version rounds the result up instead of down.
-	fn checked_mul_int_rounded_up<N: TryFrom<u128> + TryInto<u128>>(self, n: N) -> Option<N>;
-}
-
-impl<T: FixedPointNumber> CheckedMulIntRoundedUp for T {
-	fn checked_mul_int_rounded_up<N: TryFrom<u128> + TryInto<u128>>(self, n: N) -> Option<N> {
-		// convert n into fixed_point
-		let n_inner = TryInto::<T::Inner>::try_into(n.try_into().ok()?).ok()?;
-		let n_fixed_point = T::checked_from_integer(n_inner)?;
-
-		// do the multiplication
-		let product = self.checked_mul(&n_fixed_point)?;
-
-		// convert to inner
-		let product_inner =
-			UniqueSaturatedInto::<u128>::unique_saturated_into(product.into_inner());
-
-		// convert to u128 by dividing by a rounded up division by accuracy
-		let accuracy = UniqueSaturatedInto::<u128>::unique_saturated_into(T::accuracy());
-		product_inner
-			.checked_add(accuracy)?
-			.checked_sub(1)?
-			.checked_div(accuracy)?
-			.try_into()
-			.ok()
 	}
 }
