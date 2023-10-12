@@ -4749,6 +4749,7 @@ dependencies = [
  "sp-api",
  "sp-blockchain",
  "sp-runtime",
+ "spacewalk-primitives",
 ]
 
 [[package]]
@@ -4760,6 +4761,7 @@ dependencies = [
  "serde",
  "sp-api",
  "sp-std",
+ "spacewalk-primitives",
 ]
 
 [[package]]
