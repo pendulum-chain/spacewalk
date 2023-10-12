@@ -39,6 +39,7 @@ pub use pallet::*;
 #[frame_support::pallet]
 pub mod pallet {
 	use crate::*;
+	use frame_support::dispatch::RawOrigin;
 
 	use frame_support::pallet_prelude::*;
 	use frame_system::pallet_prelude::*;
@@ -69,6 +70,26 @@ pub mod pallet {
 	impl<T: Config> Hooks<BlockNumberFor<T>> for Pallet<T> {
 		fn on_runtime_upgrade() -> frame_support::weights::Weight {
 			crate::upgrade_client_releases::try_upgrade_current_client_releases::<T>()
+		}
+	}
+
+	impl<T: Config> Pallet<T> {
+		fn check_non_root_rights(origin: OriginFor<T>) -> Result<T::AccountId, DispatchError> {
+			let origin_account_id = ensure_signed(origin)?;
+			ensure!(
+				<AuthorizedAccounts<T>>::contains_key(&origin_account_id),
+				Error::<T>::ThisAccountIdIsNotAuthorized
+			);
+
+			Ok(origin_account_id)
+		}
+
+		fn check_origin_rights(origin: OriginFor<T>) -> DispatchResult {
+			if let Err(_) = ensure_root(origin.clone()) {
+				let _ = Pallet::<T>::check_non_root_rights(origin)?;
+			};
+
+			Ok(())
 		}
 	}
 
@@ -108,9 +129,54 @@ pub mod pallet {
 			client_name: NameOf<T>,
 			release: ClientRelease<UriOf<T>, T::Hash>,
 		) -> DispatchResult {
-			ensure_root(origin)?;
+			Pallet::<T>::check_origin_rights(origin)?;
 			PendingClientReleases::<T>::insert(client_name, release.clone());
 			Self::deposit_event(Event::<T>::NotifyClientRelease { release });
+			Ok(())
+		}
+
+		#[pallet::call_index(2)]
+		#[pallet::weight(<T as Config>::WeightInfo::authorize_account())]
+		#[transactional]
+		pub fn authorize_account(origin: OriginFor<T>, account_id: T::AccountId) -> DispatchResult {
+			Pallet::<T>::check_origin_rights(origin)?;
+
+			if !<AuthorizedAccounts<T>>::contains_key(&account_id) {
+				Self::deposit_event(Event::<T>::AccountIdAuthorized(account_id.clone()));
+				<AuthorizedAccounts<T>>::insert(account_id, ());
+			}
+
+			Ok(())
+		}
+
+		#[pallet::call_index(3)]
+		#[pallet::weight(<T as Config>::WeightInfo::deauthorize_account())]
+		#[transactional]
+		pub fn deauthorize_account(
+			origin: OriginFor<T>,
+			account_id: T::AccountId,
+		) -> DispatchResult {
+			if let Ok(origin_account_id) = ensure_signed(origin.clone()) {
+				Pallet::<T>::check_non_root_rights(origin.clone())?;
+				ensure!(
+					account_id != origin_account_id,
+					Error::<T>::UserUnableToDeauthorizeThemself
+				);
+
+				// do not deauthorize the root account
+				let account_id_to_origin =
+					OriginFor::<T>::from(RawOrigin::Signed(account_id.clone()));
+				ensure!(
+					ensure_root(account_id_to_origin).is_err(),
+					Error::<T>::UserUnableToDeauthorizeRootAccount
+				);
+			}
+
+			if <AuthorizedAccounts<T>>::contains_key(&account_id) {
+				Self::deposit_event(Event::<T>::AccountIdDeauthorized(account_id.clone()));
+				<AuthorizedAccounts<T>>::remove(account_id);
+			}
+
 			Ok(())
 		}
 	}
@@ -120,10 +186,16 @@ pub mod pallet {
 	pub enum Event<T: Config> {
 		NotifyClientRelease { release: ClientRelease<UriOf<T>, T::Hash> },
 		ApplyClientRelease { release: ClientRelease<UriOf<T>, T::Hash> },
+		AccountIdAuthorized(T::AccountId),
+		AccountIdDeauthorized(T::AccountId),
 	}
 
 	#[pallet::error]
-	pub enum Error<T> {}
+	pub enum Error<T> {
+		ThisAccountIdIsNotAuthorized,
+		UserUnableToDeauthorizeThemself,
+		UserUnableToDeauthorizeRootAccount,
+	}
 
 	/// Mapping of client name (string literal represented as bytes) to its release details.
 	#[pallet::storage]
@@ -136,6 +208,12 @@ pub mod pallet {
 	#[pallet::getter(fn pending_client_release)]
 	pub(super) type PendingClientReleases<T: Config> =
 		StorageMap<_, Blake2_128Concat, NameOf<T>, ClientRelease<UriOf<T>, T::Hash>, OptionQuery>;
+
+	/// List of all authorized accounts
+	#[pallet::storage]
+	#[pallet::getter(fn authorized_accounts)]
+	pub(super) type AuthorizedAccounts<T: Config> =
+		StorageMap<_, Blake2_128Concat, T::AccountId, ()>;
 }
 
 pub mod upgrade_client_releases {

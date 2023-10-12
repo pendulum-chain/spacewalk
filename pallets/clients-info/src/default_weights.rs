@@ -32,6 +32,8 @@ use core::marker::PhantomData;
 pub trait WeightInfo {
 	fn set_current_client_release(n: u32, u: u32, ) -> Weight;
 	fn set_pending_client_release(n: u32, u: u32, ) -> Weight;
+	fn authorize_account() -> Weight;
+	fn deauthorize_account() -> Weight;
 }
 
 /// Weights for clients_info using the Substrate node and recommended hardware.
@@ -69,6 +71,14 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 			.saturating_add(Weight::from_parts(892, 0).saturating_mul(u.into()))
 			.saturating_add(T::DbWeight::get().writes(1_u64))
 	}
+
+	fn authorize_account() -> Weight {
+		Weight::from_parts(9_238_573, 0)
+	}
+
+	fn deauthorize_account() -> Weight {
+		Weight::from_parts(9_238_573, 0)
+	}
 }
 
 // For backwards compatibility and tests
@@ -104,5 +114,13 @@ impl WeightInfo for () {
 			// Standard Error: 840
 			.saturating_add(Weight::from_parts(892, 0).saturating_mul(u.into()))
 			.saturating_add(RocksDbWeight::get().writes(1_u64))
+	}
+
+	fn authorize_account() -> Weight {
+		Weight::from_parts(9_238_573, 0)
+	}
+
+	fn deauthorize_account() -> Weight {
+		Weight::from_parts(9_238_573, 0)
 	}
 }
