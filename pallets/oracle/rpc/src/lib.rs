@@ -6,6 +6,7 @@ use jsonrpsee::{
 	proc_macros::rpc,
 	types::error::{CallError, ErrorCode, ErrorObject},
 };
+use primitives::UnsignedFixedPoint;
 use sp_api::ProvideRuntimeApi;
 use sp_blockchain::HeaderBackend;
 use sp_runtime::{
@@ -37,6 +38,13 @@ where
 		currency_id: CurrencyId,
 		at: Option<BlockHash>,
 	) -> RpcResult<BalanceWrapper<Balance>>;
+
+	#[method(name = "oracle_getExchangeRate")]
+	fn get_exchange_rate(
+		&self,
+		currency: CurrencyId,
+		at: Option<BlockHash>,
+	) -> RpcResult<UnsignedFixedPoint>;
 }
 
 fn internal_err<T: ToString>(message: T) -> JsonRpseeError {
@@ -100,5 +108,16 @@ where
 		let at = at.unwrap_or_else(|| self.client.info().best_hash);
 
 		handle_response(api.usd_to_currency(at, amount, currency_id))
+	}
+
+	fn get_exchange_rate(
+		&self,
+		currency_id: CurrencyId,
+		at: Option<<Block as BlockT>::Hash>,
+	) -> RpcResult<UnsignedFixedPoint> {
+		let api = self.client.runtime_api();
+		let at = at.unwrap_or_else(|| self.client.info().best_hash);
+
+		handle_response(api.get_exchange_rate(at, currency_id))
 	}
 }
