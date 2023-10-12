@@ -1,8 +1,13 @@
-use crate::mock::*;
+use crate::{
+	mock::*,
+	pallet::{CurrentClientReleases, PendingClientReleases},
+	upgrade_client_releases::*,
+	ClientRelease, UriOf,
+};
+use frame_support::BoundedVec;
 use sp_core::H256;
 use sp_std::vec;
 use std::collections::HashMap;
-use upgrade_client_releases::*;
 
 #[cfg(test)]
 #[test]
@@ -63,15 +68,20 @@ fn test_client_pending_release_migration() {
 #[test]
 fn test_decode_bounded_vec() {
 	run_test(|| {
-		let key = vec![0; 255];
+		let key = BoundedVec::try_from(b"vault".to_vec()).expect("should be able to convert");
 
-		CurrentClientReleases::<Test>::insert(
-			key.clone(),
-			ClientRelease { uri: vec![1; 255], checksum: H256::default() },
-		);
+		let uri_vec = b"http:://localhost:8080".to_vec();
+		let uri: UriOf<Test> =
+			BoundedVec::try_from(uri_vec.clone()).expect("should be able to convert");
 
-		let client_release =
-			crate::CurrentClientReleases::<Test>::get(BoundedVec::try_from(key).unwrap());
-		assert_eq!(client_release.map(|c| c.uri.to_vec()), Some(vec![1; 255]));
+		let checksum: <Test as frame_system::Config>::Hash = H256::default();
+
+		let client_release: ClientRelease<UriOf<Test>, <Test as frame_system::Config>::Hash> =
+			ClientRelease { uri, checksum };
+
+		CurrentClientReleases::<Test>::insert(key.clone(), client_release);
+
+		let client_release = CurrentClientReleases::<Test>::get(key.clone());
+		assert_eq!(client_release.map(|c| c.uri.to_vec()), Some(uri_vec));
 	});
 }
