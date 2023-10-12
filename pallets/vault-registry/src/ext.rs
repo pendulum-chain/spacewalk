@@ -98,6 +98,7 @@ pub(crate) mod pooled_rewards {
 		T::VaultRewards::set_stake(&vault_id.collateral_currency(), &vault_id, amount.amount())
 	}
 
+	#[allow(dead_code)]
 	#[cfg(feature = "integration-tests")]
 	pub fn get_stake<T: crate::Config>(
 		vault_id: &DefaultVaultId<T>,

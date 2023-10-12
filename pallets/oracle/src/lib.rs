@@ -235,6 +235,11 @@ impl<T: Config> Pallet<T> {
 		oracle: T::AccountId,
 		values: Vec<(OracleKey, T::UnsignedFixedPoint)>,
 	) -> DispatchResult {
+		frame_support::ensure!(
+			!values.is_empty(),
+			"The provided vector of fed values cannot be empty."
+		);
+
 		let mut oracle_keys: Vec<_> = <OracleKeys<T>>::get();
 
 		for (k, v) in values {
@@ -303,6 +308,13 @@ impl<T: Config> Pallet<T> {
 			.truncate_to_inner()
 			.ok_or(Error::<T>::TryIntoIntError)?
 			.unique_saturated_into())
+	}
+
+	pub fn get_exchange_rate(
+		currency_id: CurrencyId,
+	) -> Result<T::UnsignedFixedPoint, DispatchError> {
+		let rate = Self::get_price(OracleKey::ExchangeRate(currency_id))?;
+		Ok(rate)
 	}
 
 	/// Private getters and setters

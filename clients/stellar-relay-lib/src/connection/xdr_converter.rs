@@ -37,6 +37,7 @@ pub(crate) fn from_authenticated_message(message: &AuthenticatedMessage) -> Resu
 	message_to_bytes(message)
 }
 
+// todo: move to substrate-stellar-sdk
 /// To easily convert any bytes to a Stellar type.
 ///
 /// # Examples

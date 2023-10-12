@@ -17,7 +17,7 @@ use serde::de::DeserializeOwned;
 pub trait HorizonClient {
 	async fn get_from_url<R: DeserializeOwned>(&self, url: &str) -> Result<R, Error>;
 
-	async fn get_transactions<A: StellarTypeToString<PublicKey, Error> + Send>(
+	async fn get_account_transactions<A: StellarTypeToString<PublicKey, Error> + Send>(
 		&self,
 		account_id: A,
 		is_public_network: bool,

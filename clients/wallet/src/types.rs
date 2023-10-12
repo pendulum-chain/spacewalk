@@ -4,6 +4,7 @@ use std::collections::HashMap;
 
 pub type PagingToken = u128;
 pub type Slot = u32;
+pub type StatusCode = u16;
 pub type LedgerTxEnvMap = HashMap<Slot, TransactionEnvelope>;
 
 /// A filter trait to check whether `T` should be processed.

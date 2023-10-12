@@ -81,7 +81,7 @@ impl WalletStateStorage {
 		let path = self.cursor_path();
 
 		let mut file = OpenOptions::new().write(true).create(true).open(&path).map_err(|e| {
-			tracing::error!("Failed to create file: {:?}", e);
+			tracing::error!("Failed to create file {path:?}: {e:?}");
 
 			Error::cache_error_with_path(CacheErrorKind::FileCreationFailed, path.clone())
 		})?;
@@ -134,7 +134,7 @@ impl WalletStateStorage {
 		}
 
 		let mut file = OpenOptions::new().write(true).create(true).open(path).map_err(|e| {
-			tracing::error!("Failed to create file: {:?}", e);
+			tracing::error!("Failed to create file {path:?}: {e:?}");
 
 			Error::cache_error_with_env(CacheErrorKind::FileCreationFailed, tx_envelope.clone())
 		})?;
@@ -155,6 +155,7 @@ impl WalletStateStorage {
 		})
 	}
 
+	#[allow(dead_code)]
 	#[doc(hidden)]
 	#[cfg(any(test, feature = "testing-utils"))]
 	/// Removes the directory itself.
@@ -329,11 +330,12 @@ mod test {
 			extract_tx_envelope_from_path, parse_xdr_string_to_vec_u8, Error, WalletStateStorage,
 		},
 		error::CacheErrorKind,
+		test_helper::public_key_from_encoding,
 	};
 	use primitives::{
 		stellar::{
 			types::{Preconditions, SequenceNumber},
-			PublicKey, Transaction, TransactionEnvelope,
+			Transaction, TransactionEnvelope,
 		},
 		TransactionEnvelopeExt,
 	};
@@ -345,7 +347,7 @@ mod test {
 	}
 
 	pub fn dummy_tx(sequence: SequenceNumber) -> TransactionEnvelope {
-		let public_key = PublicKey::from_encoding(PUB_KEY).expect("should return a public key");
+		let public_key = public_key_from_encoding(PUB_KEY);
 
 		// let's create a transaction
 		let tx = Transaction::new(public_key, sequence, None, Preconditions::PrecondNone, None)

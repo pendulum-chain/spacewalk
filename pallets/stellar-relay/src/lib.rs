@@ -24,6 +24,8 @@ pub mod traits;
 pub mod types;
 
 mod default_weights;
+mod validation;
+
 use primitives::{derive_shortened_request_id, get_text_memo_from_tx_env, TextMemo};
 
 #[frame_support::pallet]
@@ -31,21 +33,24 @@ pub mod pallet {
 	use codec::FullCodec;
 	use frame_support::{pallet_prelude::*, transactional};
 	use frame_system::pallet_prelude::*;
-	use sha2::{Digest, Sha256};
-	use sp_core::H256;
-	use sp_std::{collections::btree_map::BTreeMap, fmt::Debug, vec::Vec};
-	use substrate_stellar_sdk::{
+	use primitives::stellar::{
 		compound_types::UnlimitedVarArray,
 		network::{Network, PUBLIC_NETWORK, TEST_NETWORK},
-		types::{NodeId, ScpEnvelope, ScpStatementPledges, StellarValue, TransactionSet, Value},
-		Hash, TransactionEnvelope, XdrCodec,
+		types::{NodeId, ScpEnvelope, StellarValue, Value},
+		Hash, TransactionEnvelope, TransactionSetType, XdrCodec,
 	};
+	use sp_core::H256;
+	use sp_std::{collections::btree_map::BTreeMap, fmt::Debug, vec::Vec};
 
 	use default_weights::WeightInfo;
 
 	use crate::{
 		traits::FieldLength,
 		types::{OrganizationOf, ValidatorOf},
+		validation::{
+			check_for_valid_quorum_set, find_externalized_envelope, get_externalized_info,
+			validate_envelopes, validators_and_orgs,
+		},
 	};
 
 	use super::*;
@@ -111,14 +116,11 @@ pub mod pallet {
 		InvalidQuorumSetNotEnoughOrganizations,
 		InvalidQuorumSetNotEnoughValidators,
 		InvalidScpPledge,
-		InvalidTransactionSet,
-		InvalidTransactionXDR,
+		InvalidTransactionSetPrefix,
 		InvalidXDR,
 		MissingExternalizedMessage,
 		NoOrganizationsRegistered,
-		NoOrganizationsRegisteredForNetwork,
 		NoValidatorsRegistered,
-		NoValidatorsRegisteredForNetwork,
 		OrganizationLimitExceeded,
 		SlotIndexIsNone,
 		TransactionMemoDoesNotMatch,
@@ -498,8 +500,6 @@ pub mod pallet {
 			let current_validators = Validators::<T>::get();
 			let current_organizations = Organizations::<T>::get();
 
-			NewValidatorsEnactmentBlockHeight::<T>::put(enactment_block_height);
-
 			let new_validator_vec =
 				BoundedVec::<ValidatorOf<T>, T::ValidatorLimit>::try_from(validators)
 					.map_err(|_| Error::<T>::BoundedVecCreationFailed)?;
@@ -507,6 +507,8 @@ pub mod pallet {
 			let new_organization_vec =
 				BoundedVec::<OrganizationOf<T>, T::OrganizationLimit>::try_from(organizations)
 					.map_err(|_| Error::<T>::BoundedVecCreationFailed)?;
+
+			NewValidatorsEnactmentBlockHeight::<T>::put(enactment_block_height);
 
 			// update only when new organization or validators not equal to old organization or
 			// validators
@@ -534,182 +536,60 @@ pub mod pallet {
 		/// Parameters:
 		/// - `transaction_envelope`: The transaction envelope of the tx to be verified
 		/// - `envelopes`: The set of SCP envelopes that were externalized on the Stellar network
-		/// - `transaction_set`: The set of transactions that belong to the envelopes
+		/// - `transaction_set`: The set of transactions that belong to the envelopes.
 		pub fn validate_stellar_transaction(
 			transaction_envelope: &TransactionEnvelope,
 			envelopes: &UnlimitedVarArray<ScpEnvelope>,
-			transaction_set: &TransactionSet,
+			transaction_set: &TransactionSetType,
 		) -> Result<(), Error<T>> {
+			// Make sure that the envelope set is not empty
+			ensure!(!envelopes.len() > 0, Error::<T>::EmptyEnvelopeSet);
+
 			let network: &Network =
 				if T::IsPublicNetwork::get() { &PUBLIC_NETWORK } else { &TEST_NETWORK };
 
 			let tx_hash = transaction_envelope.get_hash(network);
 
 			// Check if tx is included in the transaction set
-			let tx_included =
-				transaction_set.txes.get_vec().iter().any(|tx| tx.get_hash(network) == tx_hash);
-			ensure!(tx_included, Error::<T>::TransactionNotInTransactionSet);
-
-			// Choose the set of validators to use for validation based on the enactment block
-			// height and the current block number
-			let should_use_new_validator_set = <frame_system::Pallet<T>>::block_number() >=
-				NewValidatorsEnactmentBlockHeight::<T>::get();
-			let validators = if should_use_new_validator_set {
-				Validators::<T>::get()
-			} else {
-				OldValidators::<T>::get()
-			};
-
-			// Make sure that at least one validator is registered
-			ensure!(!validators.is_empty(), Error::<T>::NoValidatorsRegistered);
-
-			// Make sure that the envelope set is not empty
-			ensure!(!envelopes.len() > 0, Error::<T>::EmptyEnvelopeSet);
-
-			let externalized_envelope = envelopes
+			let tx_included = transaction_set
+				.txes()
 				.get_vec()
 				.iter()
-				.find(|envelope| match envelope.statement.pledges {
-					ScpStatementPledges::ScpStExternalize(_) => true,
-					_ => false,
-				})
-				.ok_or(Error::<T>::MissingExternalizedMessage)?;
+				.any(|tx| tx.get_hash(network) == tx_hash);
+			ensure!(tx_included, Error::<T>::TransactionNotInTransactionSet);
 
-			// Variable used to check if all envelopes are using the same slot index
-			let slot_index = externalized_envelope.statement.slot_index;
+			let (validators, organizations) = validators_and_orgs()?;
+
+			let externalized_envelope = find_externalized_envelope(envelopes)?;
 
 			// We store the externalized value in a variable so that we can check if it's the same
 			// for all envelopes. We don't distinguish between externalized and confirmed values as
 			// it should be the same value regardless.
-			let (externalized_value, mut externalized_n_h) =
-				match &externalized_envelope.statement.pledges {
-					ScpStatementPledges::ScpStExternalize(externalized_statement) =>
-						(&externalized_statement.commit.value, externalized_statement.n_h),
-					_ => return Err(Error::<T>::MissingExternalizedMessage),
-				};
+			let (externalized_value, externalized_n_h) =
+				get_externalized_info::<T>(externalized_envelope)
+					.map_err(|_| Error::<T>::MissingExternalizedMessage)?;
 
 			// Check if transaction set matches tx_set_hash included in the ScpEnvelopes
-			let expected_tx_set_hash = compute_non_generic_tx_set_content_hash(transaction_set)
-				.ok_or(Error::<T>::FailedToComputeNonGenericTxSetContentHash)?;
+			let expected_tx_set_hash = transaction_set
+				.get_tx_set_hash()
+				.map_err(|_| Error::<T>::FailedToComputeNonGenericTxSetContentHash)?;
 
-			for envelope in envelopes.get_vec() {
-				let node_id = envelope.statement.node_id.clone();
-				let node_id_found = validators
-					.iter()
-					.any(|validator| validator.public_key.to_vec() == node_id.to_encoding());
-
-				ensure!(node_id_found, Error::<T>::EnvelopeSignedByUnknownValidator);
-
-				// Check if all envelopes are using the same slot index
-				ensure!(
-					slot_index == envelope.statement.slot_index,
-					Error::<T>::EnvelopeSlotIndexMismatch
-				);
-
-				let signature_valid = verify_signature(envelope, &node_id, network);
-				ensure!(signature_valid, Error::<T>::InvalidEnvelopeSignature);
-
-				let (value, n_h) = match &envelope.statement.pledges {
-					ScpStatementPledges::ScpStExternalize(externalized_statement) =>
-						(&externalized_statement.commit.value, externalized_statement.n_h),
-					ScpStatementPledges::ScpStConfirm(confirmed_statement) =>
-						(&confirmed_statement.ballot.value, confirmed_statement.n_h),
-					_ => return Err(Error::<T>::InvalidScpPledge),
-				};
-
-				// Check if the tx_set_hash matches the one included in the envelope
-				let tx_set_hash = Self::get_tx_set_hash(&value)?;
-				ensure!(
-					tx_set_hash == expected_tx_set_hash,
-					Error::<T>::TransactionSetHashMismatch
-				);
-
-				// Check if the externalized value is the same for all envelopes
-				ensure!(externalized_value == value, Error::<T>::ExternalizedValueMismatch);
-
-				// use this envelopes's n_h as basis for the comparison with the succeeding
-				// envelopes
-				if externalized_n_h == u32::MAX {
-					externalized_n_h = n_h;
-				}
-				// check for equality of n_h values
-				// that are not 'infinity' (represented internally by `u32::MAX`)
-				else if n_h < u32::MAX {
-					ensure!(externalized_n_h == n_h, Error::<T>::ExternalizedNHMismatch);
-				}
-			}
+			validate_envelopes(
+				envelopes,
+				&validators,
+				&network,
+				externalized_value,
+				externalized_n_h,
+				expected_tx_set_hash,
+				// used to check if all envelopes are using the same slot index
+				externalized_envelope.statement.slot_index,
+			)?;
 
 			// ---- Check that externalized messages build valid quorum set ----
-			// Find the validators that are targeted by the SCP messages
-			let targeted_validators = validators
-				.iter()
-				.filter(|validator| {
-					envelopes.get_vec().iter().any(|envelope| {
-						envelope.statement.node_id.to_encoding() == validator.public_key.to_vec()
-					})
-				})
-				.collect::<Vec<&ValidatorOf<T>>>();
-
-			// Choose the set of organizations to use for validation based on the enactment block
-			// height and the current block number
-			let organizations = if should_use_new_validator_set {
-				Organizations::<T>::get()
-			} else {
-				OldOrganizations::<T>::get()
-			};
-			// Make sure that at least one organization is registered
-			ensure!(!organizations.is_empty(), Error::<T>::NoOrganizationsRegistered);
-
-			// Map organizationID to the number of validators that belongs to it
-			let mut validator_count_per_organization_map =
-				BTreeMap::<T::OrganizationId, u32>::new();
-			for validator in validators.iter() {
-				validator_count_per_organization_map
-					.entry(validator.organization_id)
-					.and_modify(|e| {
-						*e += 1;
-					})
-					.or_insert(1);
-			}
-
-			// Build a map used to identify the targeted organizations
-			// A map is used to avoid duplicates and simultaneously track the number of validators
-			// that were targeted
-			let mut targeted_organization_map = BTreeMap::<T::OrganizationId, u32>::new();
-			for validator in targeted_validators {
-				targeted_organization_map
-					.entry(validator.organization_id)
-					.and_modify(|e| {
-						*e += 1;
-					})
-					.or_insert(1);
-			}
-
-			// Count the number of distinct organizations that are targeted by the SCP messages
-			let targeted_organization_count = targeted_organization_map.len();
-
-			// Check that the distinct organizations occurring in the validator structs related to
-			// the externalized messages are more than 2/3 of the total amount of organizations in
-			// the tier 1 validator set.
-			// Use multiplication to avoid floating point numbers.
-			ensure!(
-				targeted_organization_count * 3 > organizations.len() * 2,
-				Error::<T>::InvalidQuorumSetNotEnoughOrganizations
-			);
-
-			for (organization_id, count) in targeted_organization_map.iter() {
-				let total: &u32 = validator_count_per_organization_map
-					.get(organization_id)
-					.ok_or(Error::<T>::NoOrganizationsRegistered)?;
-				// Check that for each of the targeted organizations more than 1/2 of their total
-				// validators were used in the SCP messages
-				ensure!(count * 2 > *total, Error::<T>::InvalidQuorumSetNotEnoughValidators);
-			}
-
-			Ok(())
+			check_for_valid_quorum_set(envelopes, validators, organizations.len())
 		}
 
-		fn get_tx_set_hash(scp_value: &Value) -> Result<Hash, Error<T>> {
+		pub(crate) fn get_tx_set_hash(scp_value: &Value) -> Result<Hash, Error<T>> {
 			let tx_set_hash = StellarValue::from_xdr(scp_value.get_vec())
 				.map(|stellar_value| stellar_value.tx_set_hash)
 				.map_err(|_| Error::<T>::TransactionSetHashCreationFailed)?;
@@ -749,20 +629,6 @@ pub mod pallet {
 		}
 	}
 
-	pub fn compute_non_generic_tx_set_content_hash(tx_set: &TransactionSet) -> Option<[u8; 32]> {
-		let mut hasher = Sha256::new();
-		hasher.update(tx_set.previous_ledger_hash);
-
-		tx_set.txes.get_vec().iter().for_each(|envelope| {
-			hasher.update(envelope.to_xdr());
-		});
-
-		match hasher.finalize().as_slice().try_into() {
-			Ok(data) => Some(data),
-			Err(_) => None,
-		}
-	}
-
 	pub(crate) fn verify_signature(
 		envelope: &ScpEnvelope,
 		node_id: &NodeId,
@@ -770,7 +636,7 @@ pub mod pallet {
 	) -> bool {
 		let mut vec: [u8; 64] = [0; 64];
 		vec.copy_from_slice(envelope.signature.get_vec());
-		let signature: &substrate_stellar_sdk::Signature = &vec;
+		let signature: &primitives::stellar::Signature = &vec;
 
 		// Envelope_Type_SCP = 1, see https://github.dev/stellar/stellar-core/blob/d3b80614cb92f44b789ac79f3dee29ca09de6fdb/src/protocol-curr/xdr/Stellar-ledger-entries.x#L586
 		let envelope_type_scp: Vec<u8> = [0, 0, 0, 1].to_vec(); // xdr representation
@@ -785,10 +651,11 @@ pub mod pallet {
 
 	// Used to create bounded vecs for genesis config
 	// Does not return a result but panics because the genesis config is hardcoded
+	#[cfg(feature = "std")]
 	fn create_bounded_vec(input: &str) -> BoundedVec<u8, FieldLength> {
-		let bounded_vec =
-			BoundedVec::try_from(input.as_bytes().to_vec()).expect("Failed to create bounded vec");
+		let bounded_vec = BoundedVec::try_from(input.as_bytes().to_vec());
 
-		bounded_vec
+		assert!(bounded_vec.is_ok());
+		bounded_vec.unwrap()
 	}
 }

@@ -32,7 +32,8 @@ use sp_runtime::{
 		Zero,
 	},
 	transaction_validity::{TransactionSource, TransactionValidity},
-	ApplyExtrinsicResult, DispatchError, FixedPointNumber, Perbill, SaturatedConversion,
+	ApplyExtrinsicResult, DispatchError, FixedPointNumber, Perbill, Perquintill,
+	SaturatedConversion,
 };
 use sp_std::{marker::PhantomData, prelude::*};
 #[cfg(feature = "std")]
@@ -449,13 +450,16 @@ impl NativeCurrencyKey for SpacewalkNativeCurrencyKey {
 // because this is used in the benchmark_utils::DataCollector when feeding prices
 impl XCMCurrencyConversion for SpacewalkNativeCurrencyKey {
 	fn convert_to_dia_currency_id(token_symbol: u8) -> Option<(Vec<u8>, Vec<u8>)> {
-		cfg_if::cfg_if! {
-			if #[cfg(not(feature = "testing-utils"))] {
-				if token_symbol == 0 {
-					return Some((b"Kusama".to_vec(), b"KSM".to_vec()))
-				}
-			}
-		}
+		// todo: this code results in Execution error:
+		// todo: \"Unable to get required collateral for amount\":
+		// todo: Module(ModuleError { index: 19, error: [0, 0, 0, 0], message: None })", data: None
+		// } cfg_if::cfg_if! {
+		// 	if #[cfg(not(feature = "testing-utils"))] {
+		// 		if token_symbol == 0 {
+		// 			return Some((b"Kusama".to_vec(), b"KSM".to_vec()))
+		// 		}
+		// 	}
+		// }
 		// We assume that the blockchain is always 0 and the symbol represents the token symbol
 		let blockchain = vec![0u8];
 		let symbol = vec![token_symbol];
@@ -560,6 +564,18 @@ impl clients_info::Config for Runtime {
 }
 
 parameter_types! {
+	pub const DecayRate: Perquintill = Perquintill::from_percent(5);
+}
+
+impl reward_distribution::Config for Runtime {
+	type RuntimeEvent = RuntimeEvent;
+	type WeightInfo = reward_distribution::SubstrateWeight<Runtime>;
+	type Currency = Balances;
+	type DecayInterval = ConstU32<100>;
+	type DecayRate = DecayRate;
+}
+
+parameter_types! {
 	pub const MaxRewardCurrencies: u32= 10;
 }
 
@@ -605,6 +621,7 @@ construct_runtime! {
 		Nomination: nomination::{Pallet, Call, Config, Storage, Event<T>} = 28,
 		DiaOracleModule: dia_oracle::{Pallet, Call, Config<T>, Storage, Event<T>} = 29,
 		ClientsInfo: clients_info::{Pallet, Call, Storage, Event<T>} = 30,
+		RewardDistribution: reward_distribution::{Pallet, Call, Storage, Event<T>} = 31,
 	}
 }
 
@@ -657,6 +674,7 @@ mod benches {
 		[replace, Replace]
 		[vault_registry, VaultRegistry]
 		[nomination, Nomination]
+		[reward_distribution, RewardDistribution]
 	);
 }
 
@@ -970,6 +988,11 @@ impl_runtime_apis! {
 		fn usd_to_currency(amount: BalanceWrapper<Balance>, currency_id: CurrencyId) -> Result<BalanceWrapper<Balance>, DispatchError> {
 			let result = Oracle::usd_to_currency(amount.amount, currency_id)?;
 			Ok(BalanceWrapper{amount:result})
+		}
+
+		fn get_exchange_rate(currency_id: CurrencyId) -> Result<UnsignedFixedPoint, DispatchError> {
+			let result = Oracle::get_exchange_rate(currency_id)?;
+			Ok(result)
 		}
 	}
 

@@ -20,6 +20,9 @@ mod benchmarking;
 #[cfg(test)]
 mod mock;
 
+#[cfg(test)]
+mod tests;
+
 type NameOf<T> = BoundedVec<u8, <T as pallet::Config>::MaxNameLength>;
 type UriOf<T> = BoundedVec<u8, <T as pallet::Config>::MaxUriLength>;
 

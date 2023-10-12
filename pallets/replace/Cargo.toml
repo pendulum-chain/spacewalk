@@ -35,8 +35,6 @@ stellar-relay = { path = "../stellar-relay", default-features = false }
 vault-registry = { path = "../vault-registry", default-features = false }
 pooled-rewards = { path = "../pooled-rewards", default-features = false }
 
-substrate-stellar-sdk = { git = "https://github.com/pendulum-chain/substrate-stellar-sdk", branch = "polkadot-v0.9.40", default-features = false, features = ['offchain'] }
-
 # Orml dependencies
 orml-currencies = { git = "https://github.com/open-web3-stack/open-runtime-module-library", branch = "polkadot-v0.9.40", default-features = false }
 orml-tokens = { git = "https://github.com/open-web3-stack/open-runtime-module-library", branch = "polkadot-v0.9.40", default-features = false, optional = true }
@@ -84,7 +82,6 @@ std = [
     "stellar-relay/std",
     "vault-registry/std",
     "primitives/std",
-    "substrate-stellar-sdk/std",
     "orml-currencies/std",
     "orml-tokens/std",
     "orml-traits/std",
