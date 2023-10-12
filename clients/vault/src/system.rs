@@ -347,9 +347,7 @@ where
 type RegistrationData = Vec<(CurrencyId, CurrencyId, Option<u128>)>;
 // dedicated for running the service
 impl VaultService {
-	fn auto_register(
-		&self,
-	) -> Result<RegistrationData, ServiceError<Error>> {
+	fn auto_register(&self) -> Result<RegistrationData, ServiceError<Error>> {
 		let mut amount_is_none: bool = false;
 		let parsed_auto_register = self
 			.config
