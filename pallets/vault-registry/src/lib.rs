@@ -1518,7 +1518,6 @@ impl<T: Config> Pallet<T> {
 			)?;
 			old_vault.decrease_liquidated_collateral(&to_be_released)?;
 
-			//TODO why old_vault_id?
 			// deposit old-vault's collateral (this was withdrawn on liquidation)
 			ext::staking::deposit_stake::<T>(
 				old_vault_id,
