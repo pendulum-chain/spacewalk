@@ -1,8 +1,8 @@
-use frame_support::BoundedVec;
 use crate::{
 	traits::{Organization, Validator},
 	Config,
 };
+use frame_support::BoundedVec;
 
 pub type OrganizationIdOf<T> = <T as Config>::OrganizationId;
 pub type ValidatorOf<T> = Validator<OrganizationIdOf<T>>;

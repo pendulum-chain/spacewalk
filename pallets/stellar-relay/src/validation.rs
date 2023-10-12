@@ -10,10 +10,10 @@ use primitives::stellar::{
 
 use crate::{
 	pallet::{verify_signature, Config},
+	types::{OrganizationsList, ValidatorOf, ValidatorsList},
 	Error, NewValidatorsEnactmentBlockHeight, OldOrganizations, OldValidators, Organizations,
 	Pallet, Validators,
 };
-use crate::types::{OrganizationsList, ValidatorOf, ValidatorsList};
 
 /// Returns a map of organizationID to the number of validators that belongs to it
 fn validator_count_per_org<T: Config>(
@@ -189,13 +189,8 @@ pub fn find_externalized_envelope<T: Config>(
 		.ok_or(Error::<T>::MissingExternalizedMessage)
 }
 
-pub fn validators_and_orgs<T: Config>() -> Result<
-	(
-		ValidatorsList<T>,
-		OrganizationsList<T>,
-	),
-	Error<T>,
-> {
+pub fn validators_and_orgs<T: Config>(
+) -> Result<(ValidatorsList<T>, OrganizationsList<T>), Error<T>> {
 	// Choose the set of validators to use for validation based on the enactment block
 	// height and the current block number
 	let should_use_new_validator_set =
