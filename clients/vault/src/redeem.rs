@@ -3,7 +3,7 @@ use std::{sync::Arc, time::Duration};
 use runtime::{RedeemPallet, RequestRedeemEvent, ShutdownSender, SpacewalkParachain};
 use service::{spawn_cancelable, Error as ServiceError};
 
-use crate::{execution::*, oracle::OracleAgent, system::VaultIdManager, Error};
+use crate::{oracle::OracleAgent, requests::*, system::VaultIdManager, Error};
 
 /// Listen for RequestRedeemEvent directed at this vault; upon reception, transfer
 /// the respective Stellar asset and call execute_redeem.

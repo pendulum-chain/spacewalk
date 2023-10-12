@@ -430,6 +430,27 @@ pub type UnsignedInner = u128;
 /// The type of a Stellar transaction text memo
 pub type TextMemo = Vec<u8>;
 
+pub trait MemoTypeExt {
+	const TYPE_MEMOTEXT: &'static str;
+	const TYPE_MEMOHASH: &'static str;
+
+	fn is_type_text(memo_type_as_ref: &[u8]) -> bool;
+	fn is_type_hash(memo_type_as_ref: &[u8]) -> bool;
+}
+
+impl MemoTypeExt for Memo {
+	const TYPE_MEMOTEXT: &'static str = "text";
+	const TYPE_MEMOHASH: &'static str = "hash";
+
+	fn is_type_text(memo_type_as_ref: &[u8]) -> bool {
+		memo_type_as_ref == Self::TYPE_MEMOTEXT.as_bytes()
+	}
+
+	fn is_type_hash(memo_type_as_ref: &[u8]) -> bool {
+		memo_type_as_ref == Self::TYPE_MEMOHASH.as_bytes()
+	}
+}
+
 /// Shorten the request id so that it fits into a Stellar transaction text memo
 pub fn derive_shortened_request_id(hash: &[u8; 32]) -> TextMemo {
 	hash.to_base58().as_bytes()[..28].to_vec()

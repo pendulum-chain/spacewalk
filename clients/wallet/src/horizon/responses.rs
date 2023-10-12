@@ -1,42 +1,74 @@
 use crate::{
 	error::Error,
 	horizon::{serde::*, traits::HorizonClient, Ledger},
-	types::PagingToken,
+	types::{PagingToken, StatusCode},
 };
 use parity_scale_codec::{Decode, Encode};
 use primitives::{
 	stellar::{
-		types::{OperationResult, SequenceNumber, TransactionResult, TransactionResultResult},
+		types::{
+			Memo, OperationResult, SequenceNumber, TransactionResult, TransactionResultResult,
+		},
 		Asset, TransactionEnvelope, XdrCodec,
 	},
-	TextMemo,
+	MemoTypeExt, TextMemo,
 };
 use serde::{de::DeserializeOwned, Deserialize};
+use std::fmt::{Debug, Formatter};
+
+const ASSET_TYPE_NATIVE: &str = "native";
+const VALUE_UNKNOWN: &str = "unknown";
+
+const RESPONSE_FIELD_TITLE: &str = "title";
+const RESPONSE_FIELD_STATUS: &str = "status";
+const RESPONSE_FIELD_EXTRAS: &str = "extras";
+const RESPONSE_FIELD_ENVELOPE_XDR: &str = "envelope_xdr";
+const RESPONSE_FIELD_DETAIL: &str = "detail";
+const RESPONSE_FIELD_RESULT_CODES: &str = "result_codes";
+const RESPONSE_FIELD_TRANSACTION: &str = "transaction";
+const RESPONSE_FIELD_OPERATIONS: &str = "operations";
+
+const ERROR_RESULT_TX_MALFORMED: &str = "transaction malformed";
+
+/// a helpful macro to return either the str equivalent or the original array of u8
+macro_rules! debug_str_or_vec_u8 {
+	// should be &[u8]
+	($res:expr) => {
+		match std::str::from_utf8($res) {
+			Ok(res) => format!("{}", res),
+			Err(_) => format!("{:?}", $res),
+		}
+	};
+}
 
 /// Interprets the response from Horizon into something easier to read.
 pub(crate) async fn interpret_response<T: DeserializeOwned>(
 	response: reqwest::Response,
 ) -> Result<T, Error> {
 	if response.status().is_success() {
-		return response.json::<T>().await.map_err(Error::HttpFetchingError)
+		return response.json::<T>().await.map_err(Error::HorizonResponseError)
 	}
 
-	let resp = response.json::<serde_json::Value>().await.map_err(Error::HttpFetchingError)?;
+	let resp = response
+		.json::<serde_json::Value>()
+		.await
+		.map_err(Error::HorizonResponseError)?;
 
-	let unknown = "unknown";
-	let title = resp["title"].as_str().unwrap_or(unknown);
-	let status = u16::try_from(resp["status"].as_u64().unwrap_or(400)).unwrap_or(400);
+	let title = resp[RESPONSE_FIELD_TITLE].as_str().unwrap_or(VALUE_UNKNOWN);
+	let status =
+		StatusCode::try_from(resp[RESPONSE_FIELD_STATUS].as_u64().unwrap_or(400)).unwrap_or(400);
 
 	let error = match status {
 		400 => {
-			let envelope_xdr = resp["extras"]["envelope_xdr"].as_str().unwrap_or(unknown);
+			let envelope_xdr = resp[RESPONSE_FIELD_EXTRAS][RESPONSE_FIELD_ENVELOPE_XDR]
+				.as_str()
+				.unwrap_or(VALUE_UNKNOWN);
 
 			match title.to_lowercase().as_str() {
 				// this particular status does not have the "result_code",
 				// so the "detail" portion will be used for "reason".
-				"transaction malformed" => {
-					let detail = resp["detail"].as_str().unwrap_or(unknown);
-
+				ERROR_RESULT_TX_MALFORMED => {
+					let detail = resp[RESPONSE_FIELD_DETAIL].as_str().unwrap_or(VALUE_UNKNOWN);
 					Error::HorizonSubmissionError {
 						title: title.to_string(),
 						status,
@@ -45,20 +77,30 @@ pub(crate) async fn interpret_response<T: DeserializeOwned>(
 					}
 				},
 				_ => {
-					let result_code =
-						resp["extras"]["result_codes"]["transaction"].as_str().unwrap_or(unknown);
+					let result_code_tx = resp[RESPONSE_FIELD_EXTRAS][RESPONSE_FIELD_RESULT_CODES]
+						[RESPONSE_FIELD_TRANSACTION]
+						.as_str()
+						.unwrap_or(VALUE_UNKNOWN);
+
+					let result_code_op: Vec<String> = resp[RESPONSE_FIELD_EXTRAS]
+						[RESPONSE_FIELD_RESULT_CODES][RESPONSE_FIELD_OPERATIONS]
+						.as_array()
+						.unwrap_or(&vec![])
+						.iter()
+						.map(|v| v.as_str().unwrap_or(VALUE_UNKNOWN).to_string())
+						.collect();
 
 					Error::HorizonSubmissionError {
 						title: title.to_string(),
 						status,
-						reason: result_code.to_string(),
+						reason: format!("{result_code_tx}: {result_code_op:?}"),
 						envelope_xdr: Some(envelope_xdr.to_string()),
 					}
 				},
 			}
 		},
 		_ => {
-			let detail = resp["detail"].as_str().unwrap_or(unknown);
+			let detail = resp[RESPONSE_FIELD_DETAIL].as_str().unwrap_or(VALUE_UNKNOWN);
 
 			Error::HorizonSubmissionError {
 				title: title.to_string(),
@@ -69,7 +111,7 @@ pub(crate) async fn interpret_response<T: DeserializeOwned>(
 		},
 	};
 
-	tracing::error!("Response returned error: {:?}", &error);
+	tracing::error!("Response returned an error: {:?}", &error);
 	Err(error)
 }
 
@@ -114,7 +156,7 @@ pub struct EmbeddedTransactions {
 }
 
 // This represents each record for a transaction in the Horizon API response
-#[derive(Clone, Deserialize, Encode, Decode, Default, Debug)]
+#[derive(Clone, Deserialize, Encode, Decode, Default)]
 pub struct TransactionResponse {
 	#[serde(deserialize_with = "de_string_to_bytes")]
 	pub id: Vec<u8>,
@@ -152,6 +194,37 @@ pub struct TransactionResponse {
 	pub memo: Option<Vec<u8>>,
 }
 
+impl Debug for TransactionResponse {
+	fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+		let memo = match &self.memo {
+			None => "".to_string(),
+			Some(memo) => {
+				debug_str_or_vec_u8!(memo)
+			},
+		};
+
+		f.debug_struct("TransactionResponse")
+			.field("id", &debug_str_or_vec_u8!(&self.id))
+			.field("paging_token", &self.paging_token)
+			.field("successful", &self.successful)
+			.field("hash", &debug_str_or_vec_u8!(&self.hash))
+			.field("ledger", &self.ledger)
+			.field("created_at", &debug_str_or_vec_u8!(&self.created_at))
+			.field("source_account", &debug_str_or_vec_u8!(&self.source_account))
+			.field("source_account_sequence", &debug_str_or_vec_u8!(&self.source_account_sequence))
+			.field("fee_account", &debug_str_or_vec_u8!(&self.fee_account))
+			.field("fee_charged", &self.fee_charged)
+			.field("max_fee", &debug_str_or_vec_u8!(&self.max_fee))
+			.field("operation_count", &self.operation_count)
+			.field("envelope_xdr", &debug_str_or_vec_u8!(&self.envelope_xdr))
+			.field("result_xdr", &debug_str_or_vec_u8!(&self.result_xdr))
+			.field("result_meta_xdr", &debug_str_or_vec_u8!(&self.result_meta_xdr))
+			.field("memo_type", &debug_str_or_vec_u8!(&self.memo_type))
+			.field("memo", &memo)
+			.finish()
+	}
+}
+
 #[allow(dead_code)]
 impl TransactionResponse {
 	pub(crate) fn ledger(&self) -> Ledger {
@@ -159,7 +232,7 @@ impl TransactionResponse {
 	}
 
 	pub fn memo_text(&self) -> Option<&TextMemo> {
-		if self.memo_type == b"text" {
+		if Memo::is_type_text(&self.memo_type) {
 			self.memo.as_ref()
 		} else {
 			None
@@ -188,6 +261,10 @@ impl TransactionResponse {
 		}
 
 		Ok(vec![])
+	}
+
+	pub fn transaction_hash(&self) -> String {
+		debug_str_or_vec_u8!(&self.hash)
 	}
 }
 
@@ -234,7 +311,7 @@ pub struct HorizonBalance {
 impl HorizonBalance {
 	/// returns what kind of asset the Balance is
 	pub fn get_asset(&self) -> Option<Asset> {
-		if &self.asset_type == "native".as_bytes() {
+		if &self.asset_type == ASSET_TYPE_NATIVE.as_bytes() {
 			return Some(Asset::AssetTypeNative)
 		}
 
@@ -287,7 +364,12 @@ pub struct Claimant {
 	#[serde(deserialize_with = "de_string_to_bytes")]
 	pub destination: Vec<u8>,
 	// For now we assume that the predicate is always unconditional
-	// pub predicate: serde_json::Value,
+	pub predicate: ClaimantPredicate,
+}
+
+#[derive(Deserialize, Encode, Decode, Default, Debug)]
+pub struct ClaimantPredicate {
+	pub unconditional: Option<bool>,
 }
 
 /// An iter structure equivalent to a list of TransactionResponse
