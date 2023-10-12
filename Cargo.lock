@@ -6838,6 +6838,25 @@ dependencies = [
 ]
 
 [[package]]
+name = "reward-distribution"
+version = "0.1.0"
+dependencies = [
+ "frame-benchmarking",
+ "frame-support",
+ "frame-system",
+ "pallet-balances",
+ "parity-scale-codec",
+ "scale-info",
+ "security",
+ "serde",
+ "sp-arithmetic",
+ "sp-core",
+ "sp-io",
+ "sp-runtime",
+ "sp-std",
+]
+
+[[package]]
 name = "rfc6979"
 version = "0.3.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -9517,6 +9536,7 @@ dependencies = [
  "redeem",
  "replace",
  "reward",
+ "reward-distribution",
  "scale-info",
  "security",
  "serde_json",

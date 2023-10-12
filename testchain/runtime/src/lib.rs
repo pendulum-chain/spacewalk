@@ -32,7 +32,8 @@ use sp_runtime::{
 		Zero,
 	},
 	transaction_validity::{TransactionSource, TransactionValidity},
-	ApplyExtrinsicResult, DispatchError, FixedPointNumber, Perbill, SaturatedConversion,
+	ApplyExtrinsicResult, DispatchError, FixedPointNumber, Perbill, Perquintill,
+	SaturatedConversion,
 };
 use sp_std::{marker::PhantomData, prelude::*};
 #[cfg(feature = "std")]
@@ -570,6 +571,18 @@ impl clients_info::Config for Runtime {
 	type MaxUriLength = ConstU32<255>;
 }
 
+parameter_types! {
+	pub const DecayRate: Perquintill = Perquintill::from_percent(5);
+}
+
+impl reward_distribution::Config for Runtime {
+	type RuntimeEvent = RuntimeEvent;
+	type WeightInfo = reward_distribution::SubstrateWeight<Runtime>;
+	type Currency = Balances;
+	type DecayInterval = ConstU32<100>;
+	type DecayRate = DecayRate;
+}
+
 construct_runtime! {
 	pub enum Runtime where
 		Block = Block,
@@ -603,6 +616,7 @@ construct_runtime! {
 		Nomination: nomination::{Pallet, Call, Config, Storage, Event<T>} = 28,
 		DiaOracleModule: dia_oracle::{Pallet, Call, Config<T>, Storage, Event<T>} = 29,
 		ClientsInfo: clients_info::{Pallet, Call, Storage, Event<T>} = 30,
+		RewardDistribution: reward_distribution::{Pallet, Call, Storage, Event<T>} = 31,
 	}
 }
 
@@ -655,6 +669,7 @@ mod benches {
 		[replace, Replace]
 		[vault_registry, VaultRegistry]
 		[nomination, Nomination]
+		[reward_distribution, RewardDistribution]
 	);
 }
 

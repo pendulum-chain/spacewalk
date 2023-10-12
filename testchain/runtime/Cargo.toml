@@ -64,6 +64,7 @@ oracle = {path = "../../pallets/oracle", default-features = false}
 redeem = {path = "../../pallets/redeem", default-features = false}
 replace = {path = "../../pallets/replace", default-features = false}
 reward = {path = "../../pallets/reward", default-features = false}
+reward-distribution = {path = "../../pallets/reward-distribution", default-features = false}
 security = {path = "../../pallets/security", default-features = false}
 staking = {path = "../../pallets/staking", default-features = false}
 stellar-relay = {path = "../../pallets/stellar-relay", default-features = false}
@@ -99,19 +100,21 @@ runtime-benchmarks = [
   "frame-system/runtime-benchmarks",
   "frame-system-benchmarking/runtime-benchmarks",
   "hex-literal",
+  "clients-info/runtime-benchmarks",
   "fee/runtime-benchmarks",
   "issue/runtime-benchmarks",
   "nomination/runtime-benchmarks",
   "oracle/runtime-benchmarks",
   "redeem/runtime-benchmarks",
   "replace/runtime-benchmarks",
+  "reward-distribution/runtime-benchmarks",
   "stellar-relay/runtime-benchmarks",
   "vault-registry/runtime-benchmarks",
-  "clients-info/runtime-benchmarks"
 ]
 std = [
   "codec/std",
   "currency/std",
+  "clients-info/std",
   "fee/std",
   "frame-executive/std",
   "frame-support/std",
@@ -140,6 +143,7 @@ std = [
   "redeem/std",
   "replace/std",
   "reward/std",
+  "reward-distribution/std",
   "scale-info/std",
   "security/std",
   "sp-api/std",
