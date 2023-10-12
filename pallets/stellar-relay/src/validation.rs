@@ -10,14 +10,14 @@ use primitives::stellar::{
 
 use crate::{
 	pallet::{verify_signature, Config},
-	types::{OrganizationOf, ValidatorOf},
 	Error, NewValidatorsEnactmentBlockHeight, OldOrganizations, OldValidators, Organizations,
 	Pallet, Validators,
 };
+use crate::types::{OrganizationsList, ValidatorOf, ValidatorsList};
 
 /// Returns a map of organizationID to the number of validators that belongs to it
 fn validator_count_per_org<T: Config>(
-	validators: &BoundedVec<ValidatorOf<T>, T::ValidatorLimit>,
+	validators: &ValidatorsList<T>,
 ) -> BTreeMap<T::OrganizationId, u32> {
 	let mut validator_count_per_organization_map = BTreeMap::<T::OrganizationId, u32>::new();
 
@@ -36,7 +36,7 @@ fn validator_count_per_org<T: Config>(
 /// Builds a map used to identify the targeted organizations
 fn targeted_organization_map<T: Config>(
 	envelopes: &UnlimitedVarArray<ScpEnvelope>,
-	validators: &BoundedVec<ValidatorOf<T>, T::ValidatorLimit>,
+	validators: &ValidatorsList<T>,
 ) -> BTreeMap<T::OrganizationId, u32> {
 	// Find the validators that are targeted by the SCP messages
 	let targeted_validators = validators
@@ -191,8 +191,8 @@ pub fn find_externalized_envelope<T: Config>(
 
 pub fn validators_and_orgs<T: Config>() -> Result<
 	(
-		BoundedVec<ValidatorOf<T>, T::ValidatorLimit>,
-		BoundedVec<OrganizationOf<T>, T::OrganizationLimit>,
+		ValidatorsList<T>,
+		OrganizationsList<T>,
 	),
 	Error<T>,
 > {
