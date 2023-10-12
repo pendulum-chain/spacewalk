@@ -302,7 +302,6 @@ impl pallet_balances::Config for Runtime {
 	type ReserveIdentifier = [u8; 8];
 }
 
-
 impl security::Config for Runtime {
 	type RuntimeEvent = RuntimeEvent;
 	type WeightInfo = security::SubstrateWeight<Runtime>;
@@ -531,11 +530,8 @@ impl replace::Config for Runtime {
 	type WeightInfo = replace::SubstrateWeight<Runtime>;
 }
 
-
-const BASE_CURRENCY_ID: CurrencyId = CurrencyId::XCM(2);
 parameter_types! {
 	pub const MaxExpectedValue: UnsignedFixedPoint = UnsignedFixedPoint::from_inner(<UnsignedFixedPoint as FixedPointNumber>::DIV);
-	pub const GetBaseCurrency: CurrencyId = BASE_CURRENCY_ID;
 }
 
 impl fee::Config for Runtime {
@@ -547,7 +543,6 @@ impl fee::Config for Runtime {
 	type UnsignedInner = UnsignedInner;
 	type VaultRewards = VaultRewards;
 	type VaultStaking = VaultStaking;
-	type BaseCurrency = GetBaseCurrency;
 	type OnSweep = currency::SweepFunds<Runtime, FeeAccount>;
 	type MaxExpectedValue = MaxExpectedValue;
 }

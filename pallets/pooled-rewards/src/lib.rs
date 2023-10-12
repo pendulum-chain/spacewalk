@@ -379,8 +379,6 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 		});
 		Ok(reward)
 	}
-
-	
 }
 
 pub trait RewardsApi<PoolId, StakeId, Balance, CurrencyId>
@@ -446,12 +444,11 @@ where
 	}
 
 	//get total stake for each `pool_id` in the pallet
-	fn get_total_stake_all_pools()-> Result<Vec<(PoolId, Balance)>, DispatchError>;
-
-
+	fn get_total_stake_all_pools() -> Result<Vec<(PoolId, Balance)>, DispatchError>;
 }
 
-impl<T, I, Balance> RewardsApi<T::PoolId, T::StakeId, Balance, T::PoolRewardsCurrencyId> for Pallet<T, I>
+impl<T, I, Balance> RewardsApi<T::PoolId, T::StakeId, Balance, T::PoolRewardsCurrencyId>
+	for Pallet<T, I>
 where
 	T: Config<I>,
 	I: 'static,
@@ -466,7 +463,7 @@ where
 
 	fn distribute_reward(
 		pool_id: &T::PoolId,
-		currency_id:T::PoolRewardsCurrencyId,
+		currency_id: T::PoolRewardsCurrencyId,
 		amount: Balance,
 	) -> DispatchResult {
 		Pallet::<T, I>::distribute_reward(
@@ -536,18 +533,18 @@ where
 		)
 	}
 
-	fn get_total_stake_all_pools()-> Result<Vec<(T::PoolId, Balance)>, DispatchError>{
-		let mut pool_vec: Vec<(T::PoolId,Balance)> = Vec::new();
-		for (pool_id, pool_total_stake) in TotalStake::<T, I>::iter(){
+	fn get_total_stake_all_pools() -> Result<Vec<(T::PoolId, Balance)>, DispatchError> {
+		let mut pool_vec: Vec<(T::PoolId, Balance)> = Vec::new();
+		for (pool_id, pool_total_stake) in TotalStake::<T, I>::iter() {
+			let pool_stake_as_balance: Balance = pool_total_stake
+				.truncate_to_inner()
+				.ok_or(Error::<T, I>::TryIntoIntError)?
+				.try_into()
+				.map_err(|_| Error::<T, I>::TryIntoIntError)?;
 
-			let pool_stake_as_balance: Balance = pool_total_stake.truncate_to_inner()
-															.ok_or(Error::<T, I>::TryIntoIntError)?
-															.try_into()
-															.map_err(|_| Error::<T, I>::TryIntoIntError)?;
-			
-			pool_vec.push((pool_id,pool_stake_as_balance));
+			pool_vec.push((pool_id, pool_stake_as_balance));
 		}
-		return Ok(pool_vec);
+		return Ok(pool_vec)
 	}
 }
 
@@ -565,19 +562,11 @@ where
 		Ok(())
 	}
 
-	fn compute_reward(
-		_: &PoolId,
-		_: &StakeId,
-		_: CurrencyId,
-	) -> Result<Balance, DispatchError> {
+	fn compute_reward(_: &PoolId, _: &StakeId, _: CurrencyId) -> Result<Balance, DispatchError> {
 		Ok(Default::default())
 	}
 
-	fn withdraw_reward(
-		_: &PoolId,
-		_: &StakeId,
-		_: CurrencyId,
-	) -> Result<Balance, DispatchError> {
+	fn withdraw_reward(_: &PoolId, _: &StakeId, _: CurrencyId) -> Result<Balance, DispatchError> {
 		Ok(Default::default())
 	}
 
@@ -597,7 +586,7 @@ where
 		Ok(())
 	}
 
-	fn get_total_stake_all_pools()-> Result<Vec<(PoolId,Balance)>, DispatchError>{
+	fn get_total_stake_all_pools() -> Result<Vec<(PoolId, Balance)>, DispatchError> {
 		Ok(Default::default())
 	}
 }

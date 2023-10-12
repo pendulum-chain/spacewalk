@@ -89,7 +89,7 @@ pub mod pallet {
 			+ Copy
 			+ Default
 			+ Debug
-			+From<u64>;
+			+ From<u64>;
 
 		/// Relay chain currency e.g. DOT/KSM
 		#[pallet::constant]

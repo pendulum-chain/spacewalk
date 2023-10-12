@@ -177,8 +177,6 @@ impl orml_tokens::Config for Test {
 	type DustRemovalWhitelist = Everything;
 }
 
-
-
 parameter_types! {
 	pub const VaultPalletId: PalletId = PalletId(*b"mod/vreg");
 }
@@ -252,14 +250,10 @@ impl pallet_timestamp::Config for Test {
 	type WeightInfo = ();
 }
 
-const USD: CurrencyId = CurrencyId::XCM(2);
-
 parameter_types! {
 	pub const FeePalletId: PalletId = PalletId(*b"mod/fees");
 	pub const MaxExpectedValue: UnsignedFixedPoint = UnsignedFixedPoint::from_inner(<UnsignedFixedPoint as FixedPointNumber>::DIV);
-	pub const GetBaseCurrency: CurrencyId = USD;
 }
-
 
 impl fee::Config for Test {
 	type FeePalletId = FeePalletId;
@@ -272,7 +266,6 @@ impl fee::Config for Test {
 	type VaultStaking = Staking;
 	type OnSweep = ();
 	type MaxExpectedValue = MaxExpectedValue;
-	type BaseCurrency = GetBaseCurrency;
 }
 
 impl oracle::Config for Test {

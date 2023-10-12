@@ -286,13 +286,9 @@ impl oracle::Config for Test {
 	type DataFeedProvider = DataCollector;
 }
 
-
-const USD: CurrencyId = CurrencyId::XCM(2);
-
 parameter_types! {
 	pub const FeePalletId: PalletId = PalletId(*b"mod/fees");
 	pub const MaxExpectedValue: UnsignedFixedPoint = UnsignedFixedPoint::from_inner(<UnsignedFixedPoint as FixedPointNumber>::DIV);
-	pub const GetBaseCurrency: CurrencyId = USD;
 }
 
 impl fee::Config for Test {
@@ -304,7 +300,6 @@ impl fee::Config for Test {
 	type UnsignedInner = UnsignedInner;
 	type VaultRewards = Rewards;
 	type VaultStaking = Staking;
-	type BaseCurrency = GetBaseCurrency;
 	type OnSweep = ();
 	type MaxExpectedValue = MaxExpectedValue;
 }

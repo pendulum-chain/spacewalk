@@ -231,15 +231,10 @@ impl currency::Config for Test {
 	type AmountCompatibility = primitives::StellarCompatibility;
 }
 
-
-const BASE_CURRENCY_ID: CurrencyId = CurrencyId::XCM(2);
 parameter_types! {
 	pub const FeePalletId: PalletId = PalletId(*b"mod/fees");
 	pub const MaxExpectedValue: UnsignedFixedPoint = UnsignedFixedPoint::from_inner(<UnsignedFixedPoint as FixedPointNumber>::DIV);
-	pub const GetBaseCurrency: CurrencyId = BASE_CURRENCY_ID;
 }
-
-
 
 impl fee::Config for Test {
 	type FeePalletId = FeePalletId;
@@ -250,7 +245,6 @@ impl fee::Config for Test {
 	type UnsignedInner = Balance;
 	type VaultRewards = Rewards;
 	type VaultStaking = Staking;
-	type BaseCurrency = GetBaseCurrency;
 	type OnSweep = ();
 	type MaxExpectedValue = MaxExpectedValue;
 }
@@ -258,7 +252,6 @@ impl fee::Config for Test {
 parameter_types! {
 	pub const MaxRewardCurrencies: u32= 10;
 }
-
 
 impl pooled_rewards::Config for Test {
 	type RuntimeEvent = TestEvent;
