@@ -4,9 +4,9 @@ use sp_core::H256;
 use sp_runtime::traits::Zero;
 
 use currency::{testing_constants::get_wrapped_currency_id, Amount};
+use primitives::stellar::{types::AlphaNum4, Asset, Operation, PublicKey, StroopAmount};
 use security::Pallet as Security;
 use stellar_relay::testing_utils::RANDOM_STELLAR_PUBLIC_KEY;
-use substrate_stellar_sdk::{types::AlphaNum4, Asset, Operation, PublicKey, StroopAmount};
 use vault_registry::{DefaultVault, VaultStatus};
 
 use crate::{
@@ -1169,7 +1169,7 @@ fn test_request_redeem_fails_limits() {
 
 		assert_err!(
 			Redeem::request_redeem(RuntimeOrigin::signed(redeemer), amount, stellar_address, VAULT),
-			TestError::ExceedLimitVolumeForIssueRequest
+			TestError::ExceedLimitVolumeForRedeemRequest
 		);
 	})
 }
@@ -1432,7 +1432,7 @@ fn test_execute_redeem_fails_when_exceeds_rate_limit() {
 		let stellar_address = RANDOM_STELLAR_PUBLIC_KEY;
 		assert_err!(
 			Redeem::request_redeem(RuntimeOrigin::signed(redeemer), amount, stellar_address, VAULT),
-			TestError::ExceedLimitVolumeForIssueRequest
+			TestError::ExceedLimitVolumeForRedeemRequest
 		);
 	})
 }
@@ -1535,7 +1535,7 @@ fn test_execute_redeem_after_rate_limit_interval_reset_succeeds() {
 		let stellar_address = RANDOM_STELLAR_PUBLIC_KEY;
 		assert_err!(
 			Redeem::request_redeem(RuntimeOrigin::signed(redeemer), amount, stellar_address, VAULT),
-			TestError::ExceedLimitVolumeForIssueRequest
+			TestError::ExceedLimitVolumeForRedeemRequest
 		);
 
 		System::set_block_number(7200 + 20);

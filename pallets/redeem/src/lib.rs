@@ -18,14 +18,12 @@ use frame_support::{
 #[cfg(test)]
 use mocktopus::macros::mockable;
 
+use primitives::stellar::{
+	compound_types::UnlimitedVarArray, types::ScpEnvelope, TransactionEnvelope, TransactionSetType,
+};
 use sp_core::H256;
 use sp_runtime::traits::{CheckedDiv, Saturating, Zero};
 use sp_std::{convert::TryInto, vec::Vec};
-use substrate_stellar_sdk::{
-	compound_types::UnlimitedVarArray,
-	types::{ScpEnvelope, TransactionSet},
-	TransactionEnvelope,
-};
 
 use currency::Amount;
 pub use default_weights::{SubstrateWeight, WeightInfo};
@@ -158,8 +156,8 @@ pub mod pallet {
 		TryIntoIntError,
 		/// Redeem amount is too small.
 		AmountBelowMinimumTransferAmount,
-		/// Exceeds the volume limit for an issue request.
-		ExceedLimitVolumeForIssueRequest,
+		/// Exceeds the volume limit for a redeem request.
+		ExceedLimitVolumeForRedeemRequest,
 		/// Invalid payment amount
 		InvalidPaymentAmount,
 	}
@@ -223,14 +221,21 @@ pub mod pallet {
 	#[cfg(feature = "std")]
 	impl<T: Config> Default for GenesisConfig<T> {
 		fn default() -> Self {
+			const SECONDS_PER_BLOCK: u32 = 12;
+			const MINUTE_IN_SECONDS: u32 = 60; // in seconds
+			const HOUR_IN_SECONDS: u32 = MINUTE_IN_SECONDS * 60;
+			const DAY_IN_SECONDS: u32 = HOUR_IN_SECONDS * 24;
+
 			Self {
 				redeem_period: Default::default(),
 				redeem_minimum_transfer_amount: Default::default(),
 				limit_volume_amount: None,
 				limit_volume_currency_id: T::CurrencyId::default(),
 				current_volume_amount: BalanceOf::<T>::zero(),
-				interval_length: T::BlockNumber::from_str(&(24 * 60 * 60 / 12).to_string())
-					.unwrap_or_default(),
+				interval_length: T::BlockNumber::from_str(
+					&(DAY_IN_SECONDS / SECONDS_PER_BLOCK).to_string(),
+				)
+				.unwrap_or_default(),
 				last_interval_index: T::BlockNumber::zero(),
 			}
 		}
@@ -479,7 +484,6 @@ mod self_redeem {
 		// ensure that vault is not liquidated and not banned
 		ext::vault_registry::ensure_not_banned::<T>(&vault_id)?;
 
-		// for self-redeem, dustAmount is effectively 1 satoshi
 		ensure!(!amount_wrapped.is_zero(), Error::<T>::AmountBelowMinimumTransferAmount);
 
 		let (fees, consumed_issued_tokens) =
@@ -720,7 +724,7 @@ impl<T: Config> Pallet<T> {
 
 		let transaction_set = ext::stellar_relay::construct_from_raw_encoded_xdr::<
 			T,
-			TransactionSet,
+			TransactionSetType,
 		>(&transaction_set_encoded)?;
 
 		// Check that the transaction includes the expected memo to mitigate replay attacks
@@ -770,7 +774,7 @@ impl<T: Config> Pallet<T> {
 		ext::vault_registry::redeem_tokens::<T>(
 			&redeem.vault,
 			&burn_amount,
-			&redeem.premium()?,
+			&redeem.premium(),
 			&redeem.redeemer,
 		)?;
 
@@ -1087,23 +1091,23 @@ impl<T: Config> Pallet<T> {
 		Ok(request)
 	}
 
-	fn increase_interval_volume(issue_amount: Amount<T>) -> Result<(), DispatchError> {
+	fn increase_interval_volume(burn_amount: Amount<T>) -> Result<(), DispatchError> {
 		if let Some(_limit_volume) = LimitVolumeAmount::<T>::get() {
-			let issue_volume = Self::convert_into_limit_currency_id_amount(issue_amount)?;
+			let burn_volume = Self::convert_into_limit_currency_id_amount(burn_amount)?;
 			let current_volume = CurrentVolumeAmount::<T>::get();
-			let new_volume = current_volume.saturating_add(issue_volume.amount());
+			let new_volume = current_volume.saturating_add(burn_volume.amount());
 			CurrentVolumeAmount::<T>::put(new_volume);
 		}
 		Ok(())
 	}
 
 	fn convert_into_limit_currency_id_amount(
-		issue_amount: Amount<T>,
+		burn_amount: Amount<T>,
 	) -> Result<Amount<T>, DispatchError> {
-		let issue_volume =
-			oracle::Pallet::<T>::convert(&issue_amount, LimitVolumeCurrencyId::<T>::get())
+		let burn_volume =
+			oracle::Pallet::<T>::convert(&burn_amount, LimitVolumeCurrencyId::<T>::get())
 				.map_err(|_| DispatchError::Other("Missing Exchange Rate"))?;
-		Ok(issue_volume)
+		Ok(burn_volume)
 	}
 
 	fn check_volume(amount_requested: Amount<T>) -> Result<(), DispatchError> {
@@ -1120,11 +1124,11 @@ impl<T: Config> Pallet<T> {
 			} else {
 				current_volume = CurrentVolumeAmount::<T>::get();
 			}
-			let new_issue_request_amount =
+			let new_redeem_request_amount =
 				Self::convert_into_limit_currency_id_amount(amount_requested)?;
 			ensure!(
-				new_issue_request_amount.amount().saturating_add(current_volume) <= limit_volume,
-				Error::<T>::ExceedLimitVolumeForIssueRequest
+				new_redeem_request_amount.amount().saturating_add(current_volume) <= limit_volume,
+				Error::<T>::ExceedLimitVolumeForRedeemRequest
 			);
 		}
 		Ok(())

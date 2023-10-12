@@ -1,11 +1,10 @@
-use std::{convert::TryInto, future::Future};
+use std::{convert::TryFrom, future::Future};
 use tracing::log;
 
-use primitives::stellar::types::TransactionHistoryEntry;
 use stellar_relay_lib::sdk::{
 	compound_types::{UnlimitedVarArray, XdrArchive},
-	types::{ScpEnvelope, ScpHistoryEntry, ScpStatementPledges, StellarMessage, TransactionSet},
-	XdrCodec,
+	types::{ScpEnvelope, ScpHistoryEntry, ScpStatementPledges, StellarMessage},
+	InitExt, TransactionSetType, XdrCodec,
 };
 
 use crate::oracle::{
@@ -35,7 +34,7 @@ pub struct Proof {
 	envelopes: UnlimitedVarArray<ScpEnvelope>,
 
 	/// the transaction set belonging to the slot
-	tx_set: TransactionSet,
+	tx_set: TransactionSetType,
 }
 
 impl Proof {
@@ -58,7 +57,7 @@ impl Proof {
 		self.envelopes.get_vec()
 	}
 
-	pub fn tx_set(&self) -> &TransactionSet {
+	pub fn tx_set(&self) -> &TransactionSetType {
 		&self.tx_set
 	}
 }
@@ -84,7 +83,22 @@ impl ScpMessageCollector {
 	/// fetches envelopes from the stellar node
 	async fn ask_node_for_envelopes(&self, slot: Slot, sender: &StellarMessageSender) {
 		// for this slot to be processed, we must put this in our watch list.
-		let _ = sender.send(StellarMessage::GetScpState(slot.try_into().unwrap())).await;
+		let slot = match u32::try_from(slot) {
+			Ok(slot) => slot,
+			Err(e) => {
+				tracing::error!(
+					"Proof Building for slot {slot:} failed to convert slot value into u32 datatype: {e:?}"
+				);
+				return
+			},
+		};
+
+		if let Err(e) = sender.send(StellarMessage::GetScpState(slot)).await {
+			tracing::error!(
+				"Proof Building for slot {slot}: failed to send `GetScpState` message: {e:?}"
+			);
+			return
+		}
 		tracing::debug!(
 			"Proof Building for slot {slot}: requesting to StellarNode for messages..."
 		);
@@ -132,13 +146,17 @@ impl ScpMessageCollector {
 		return None
 	}
 
-	/// Returns either a TransactionSet or a ProofStatus saying it failed to retrieve the set.
+	/// Returns a TransactionSet if a txset is found; None if the slot does not have a txset
 	///
 	/// # Arguments
 	///
-	/// * `slot` - the slot where the txset is  to get.
+	/// * `slot` - the slot from where we get the txset
 	/// * `sender` - used to send messages to Stellar Node
-	async fn get_txset(&self, slot: Slot, sender: &StellarMessageSender) -> Option<TransactionSet> {
+	async fn get_txset(
+		&self,
+		slot: Slot,
+		sender: &StellarMessageSender,
+	) -> Option<TransactionSetType> {
 		let txset_map = self.txset_map().clone();
 		let tx_set = txset_map.get(&slot).cloned();
 
@@ -162,7 +180,7 @@ impl ScpMessageCollector {
 	/// hash for it. If we don't have the hash, we can't fetch it from the overlay network.
 	async fn fetch_missing_txset_from_overlay(&self, slot: Slot, sender: &StellarMessageSender) {
 		// we need the txset hash to create the message.
-		if let Some(txset_hash) = self.get_txset_hash(&slot) {
+		if let Some(txset_hash) = self.get_txset_hash_by_slot(&slot) {
 			tracing::debug!("Proof Building for slot {slot}: Fetching TxSet from overlay...");
 			if let Err(error) = sender.send(StellarMessage::GetTxSet(txset_hash)).await {
 				tracing::error!("Proof Building for slot {slot}: failed to send GetTxSet message to overlay {:?}", error);
@@ -194,18 +212,15 @@ impl ScpMessageCollector {
 	///
 	/// * `envelopes_map_lock` - the map to insert the envelopes to.
 	/// * `slot` - the slot where the envelopes belong to
-	fn get_envelopes_from_horizon_archive(
-		&self,
-		slot: Slot,
-	) -> impl Future<Output = Result<(), String>> {
+	fn get_envelopes_from_horizon_archive(&self, slot: Slot) -> impl Future<Output = ()> {
 		tracing::debug!("Fetching SCP envelopes from horizon archive for slot {slot}...");
 		let envelopes_map_arc = self.envelopes_map_clone();
 
 		let archive_urls = self.stellar_history_archive_urls();
 		async move {
 			if archive_urls.is_empty() {
-				tracing::debug!("Cannot get envelopes from horizon archive for slot {slot}: no archive URLs configured");
-				return Err("No archive URLs configured".to_string())
+				tracing::error!("Cannot get envelopes from horizon archive for slot {slot}: no archive URLs configured");
+				return
 			}
 
 			// We try to get the SCPArchive from each archive URL until we succeed or run out of
@@ -215,7 +230,7 @@ impl ScpMessageCollector {
 				let scp_archive_result = scp_archive_storage.get_archive(slot).await;
 				if let Err(e) = scp_archive_result {
 					tracing::error!(
-						"Could not get SCPArchive for slot {slot:?} from Horizon Archive: {e:?}"
+						"Could not get SCPArchive for slot {slot} from Horizon Archive: {e:?}"
 					);
 					continue
 				}
@@ -266,18 +281,18 @@ impl ScpMessageCollector {
 
 						if envelopes_map.get(&slot).is_none() {
 							tracing::debug!(
-							"Adding {} archived SCP envelopes for slot {slot} to envelopes map. {} are externalized",
-							relevant_envelopes.len(),
-							externalized_envelopes_count
-						);
+								"Adding {} archived SCP envelopes for slot {slot} to envelopes map. {} are externalized",
+								relevant_envelopes.len(),
+								externalized_envelopes_count
+							);
 							envelopes_map.insert(slot, relevant_envelopes);
 							break
 						}
 					}
+				} else {
+					tracing::warn!("Could not get ScpHistory entry from archive for slot {slot}");
 				}
 			}
-			// If we get here, we failed to get the envelopes from any archive
-			return Err("Could not get envelopes from any archive".to_string())
 		}
 	}
 
@@ -297,14 +312,15 @@ impl ScpMessageCollector {
 				let tx_archive_storage = TransactionsArchiveStorage(archive_url);
 				let transactions_archive = tx_archive_storage.get_archive(slot).await;
 
-				if let Err(e) = transactions_archive {
-					tracing::error!(
-					"Could not get TransactionsArchive for slot {slot} from horizon archive: {e:?}"
-				);
-					continue
-				}
-				let transactions_archive: XdrArchive<TransactionHistoryEntry> =
-					transactions_archive.unwrap();
+				let transactions_archive = match transactions_archive {
+					Ok(value) => value,
+					Err(e) => {
+						tracing::error!(
+							"Could not get TransactionsArchive for slot {slot} from horizon archive: {e:?}"
+						);
+						continue
+					},
+				};
 
 				let value = transactions_archive
 					.get_vec()
@@ -314,8 +330,13 @@ impl ScpMessageCollector {
 				if let Some(target_history_entry) = value {
 					tracing::debug!("Adding archived tx set for slot {slot}");
 					let mut tx_set_map = txset_map_arc.write();
-					tx_set_map.insert(slot, target_history_entry.tx_set.clone());
+					tx_set_map
+						.insert(slot, TransactionSetType::new(target_history_entry.tx_set.clone()));
 					break
+				} else {
+					tracing::warn!(
+						"Could not get TransactionHistory entry from archive for slot {slot}"
+					);
 				}
 			}
 		}

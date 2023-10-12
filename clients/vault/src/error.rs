@@ -33,18 +33,14 @@ pub enum Error {
 	#[error("StellarWalletError: {0}")]
 	StellarWalletError(#[from] WalletError),
 
-	#[error("Error returned when fetching remote info")]
-	HttpFetchingError,
-	#[error("Failed to post http request")]
-	HttpPostError,
+	#[error("Error fetching remote info from a Stellar Horizon server")]
+	HorizonResponseError,
 	#[error("Lookup Error")]
 	LookupError,
 	#[error("Stellar SDK Error")]
 	StellarSdkError,
 	#[error("Utf8Error: {0}")]
 	Utf8Error(#[from] Utf8Error),
-	#[error("Failed to parse sequence number")]
-	SeqNoParsingError,
 	#[error("OracleError: {0}")]
 	OracleError(#[from] crate::oracle::Error),
 

@@ -184,14 +184,16 @@ pub fn create_basic_spacewalk_stellar_transaction(
 #[cfg(test)]
 pub mod redeem_request_tests {
 	use super::*;
-	use crate::test_helper::default_usdc_asset;
+	use crate::test_helper::{
+		default_usdc_asset, public_key_from_encoding, secret_key_from_encoding,
+	};
 	use primitives::{stellar::SecretKey, CurrencyId};
 
 	const INACTIVE_STELLAR_SECRET_KEY: &str =
 		"SAOZUYCGHAHAHUN75JDPAEH7M42N64RN3AATZYB4X2MTXB6V7WV7O2IO";
 
 	fn inactive_stellar_secretkey() -> SecretKey {
-		SecretKey::from_encoding(INACTIVE_STELLAR_SECRET_KEY).expect("should return a secret key")
+		secret_key_from_encoding(INACTIVE_STELLAR_SECRET_KEY)
 	}
 
 	const IS_PUBLIC_NETWORK: bool = false;
@@ -203,8 +205,8 @@ pub mod redeem_request_tests {
 
 	fn default_testing_stellar_pubkeys() -> (PublicKey, PublicKey) {
 		(
-			PublicKey::from_encoding(DEFAULT_SOURCE_PUBLIC_KEY).expect("should return public key"),
-			PublicKey::from_encoding(DEFAULT_DEST_PUBLIC_KEY).expect("should return public key"),
+			public_key_from_encoding(DEFAULT_SOURCE_PUBLIC_KEY),
+			public_key_from_encoding(DEFAULT_DEST_PUBLIC_KEY),
 		)
 	}
 
@@ -308,8 +310,7 @@ pub mod redeem_request_tests {
 	#[tokio::test]
 	async fn test_inactive_account_and_xlm_asset_greater_than_equal_one() {
 		let client = reqwest::Client::new();
-		let source_pub_key =
-			PublicKey::from_encoding(DEFAULT_SOURCE_PUBLIC_KEY).expect("should return public key");
+		let source_pub_key = public_key_from_encoding(DEFAULT_SOURCE_PUBLIC_KEY);
 		let destination_pub_key = inactive_stellar_secretkey().get_public().clone();
 
 		// INactive account and XLM asset of value >=1, use create account op
@@ -331,8 +332,7 @@ pub mod redeem_request_tests {
 	#[tokio::test]
 	async fn test_inactive_account_and_xlm_asset_less_than_one() {
 		let client = reqwest::Client::new();
-		let source_pub_key =
-			PublicKey::from_encoding(DEFAULT_SOURCE_PUBLIC_KEY).expect("should return public key");
+		let source_pub_key = public_key_from_encoding(DEFAULT_SOURCE_PUBLIC_KEY);
 		let destination_pub_key = inactive_stellar_secretkey().get_public().clone();
 
 		// INactive account but XLM asset of value < 1, use claimable balance
@@ -359,8 +359,7 @@ pub mod redeem_request_tests {
 	#[tokio::test]
 	async fn test_inactive_account_and_usdc_asset() {
 		let client = reqwest::Client::new();
-		let source_pub_key =
-			PublicKey::from_encoding(DEFAULT_SOURCE_PUBLIC_KEY).expect("should return public key");
+		let source_pub_key = public_key_from_encoding(DEFAULT_SOURCE_PUBLIC_KEY);
 		let destination_pub_key = inactive_stellar_secretkey().get_public().clone();
 
 		let unknown_asset = CurrencyId::try_from((
