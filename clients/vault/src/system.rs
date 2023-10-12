@@ -1,3 +1,4 @@
+#![allow(clippy::too_many_arguments)]
 use std::{
 	collections::HashMap, convert::TryInto, fs, future::Future, pin::Pin, str::from_utf8,
 	sync::Arc, time::Duration,
@@ -343,11 +344,12 @@ where
 	ServiceTask::Essential(Box::pin(task.map_err(|x| x.into())))
 }
 
+type RegistrationData = Vec<(CurrencyId, CurrencyId, Option<u128>)>;
 // dedicated for running the service
 impl VaultService {
 	fn auto_register(
 		&self,
-	) -> Result<Vec<(CurrencyId, CurrencyId, Option<u128>)>, ServiceError<Error>> {
+	) -> Result<RegistrationData, ServiceError<Error>> {
 		let mut amount_is_none: bool = false;
 		let parsed_auto_register = self
 			.config
@@ -447,7 +449,7 @@ impl VaultService {
 				run(issue::listen_for_issue_requests(
 					self.spacewalk_parachain.clone(),
 					vault_public_key,
-					issue_event_tx.clone(),
+					issue_event_tx,
 					issue_map.clone(),
 					memos_to_issue_ids.clone(),
 				)),
