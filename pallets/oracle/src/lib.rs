@@ -356,20 +356,3 @@ impl<T: Config> Pallet<T> {
 	}
 }
 
-// pub trait CurrencyToUsd<CurrencyId>
-// {
-// 	pub fn currency_to_usd(
-// 		amount: BalanceOf<T>,
-// 		currency_id: CurrencyId,
-// 	)-> Result<BalanceOf<T>, DispatchError>;
-
-// }
-
-// pub trait CurrencyToUsd<CurrencyId>
-// {
-// 	pub fn currency_to_usd(
-// 		amount: BalanceOf<T>,
-// 		currency_id: CurrencyId,
-// 	)-> Result<BalanceOf<T>, DispatchError>;
-
-// }
