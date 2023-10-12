@@ -108,7 +108,6 @@ pub mod pallet {
 		/// Weight information for the extrinsics in this module.
 		type WeightInfo: WeightInfo;
 
-
 		/// Currency used for griefing collateral, e.g. DOT.
 		#[pallet::constant]
 		type GetGriefingCollateralCurrencyId: Get<CurrencyId<Self>>;
@@ -922,6 +921,9 @@ impl<T: Config> Pallet<T> {
 		// Deposit `amount` of stake in the pool
 		ext::staking::deposit_stake::<T>(vault_id, &vault_id.account_id, &amount.clone())?;
 
+		//update staking reward
+		let new_total_stake = ext::staking::total_current_stake_as_amount::<T>(vault_id)?;
+		ext::pooled_rewards::set_stake::<T>(&vault_id, &new_total_stake)?;
 		Ok(())
 	}
 
@@ -940,6 +942,10 @@ impl<T: Config> Pallet<T> {
 
 		// Withdraw `amount` of stake from the pool
 		ext::staking::withdraw_stake::<T>(vault_id, &vault_id.account_id, &amount.clone())?;
+
+		//update staking reward
+		let new_total_stake = ext::staking::total_current_stake_as_amount::<T>(vault_id)?;
+		ext::pooled_rewards::set_stake::<T>(&vault_id, &new_total_stake)?;
 
 		Ok(())
 	}
@@ -1017,6 +1023,10 @@ impl<T: Config> Pallet<T> {
 		amount.unlock_on(&vault_id.account_id)?;
 		Self::decrease_total_backing_collateral(&vault_id.currencies, amount)?;
 		ext::staking::slash_stake::<T>(vault_id, amount)?;
+
+		//update staking reward
+		let new_total_stake = ext::staking::total_current_stake_as_amount::<T>(vault_id)?;
+		ext::pooled_rewards::set_stake::<T>(&vault_id, &new_total_stake)?;
 		Ok(())
 	}
 
@@ -1508,6 +1518,7 @@ impl<T: Config> Pallet<T> {
 			)?;
 			old_vault.decrease_liquidated_collateral(&to_be_released)?;
 
+			//TODO why old_vault_id?
 			// deposit old-vault's collateral (this was withdrawn on liquidation)
 			ext::staking::deposit_stake::<T>(
 				old_vault_id,
@@ -1515,6 +1526,9 @@ impl<T: Config> Pallet<T> {
 				&to_be_released,
 			)?;
 
+			//update staking reward of new
+			let new_total_stake = ext::staking::total_current_stake_as_amount::<T>(new_vault_id)?;
+			ext::pooled_rewards::set_stake::<T>(&new_vault_id, &new_total_stake)?;
 		}
 
 		old_vault.execute_redeem_tokens(tokens)?;
@@ -2176,7 +2190,10 @@ impl<T: Config> Pallet<T> {
 			let rich_vault: RichVault<T> = vault.clone().into();
 			let rewarding_tokens = rich_vault.issued_tokens() - rich_vault.to_be_redeemed_tokens();
 
-			assert_eq!(ext::pooled_rewards::get_stake::<T>(&vault_id).unwrap(), rewarding_tokens.amount());
+			assert_eq!(
+				ext::pooled_rewards::get_stake::<T>(&vault_id).unwrap(),
+				rewarding_tokens.amount()
+			);
 		}
 	}
 

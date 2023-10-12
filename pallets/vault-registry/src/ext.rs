@@ -73,8 +73,14 @@ pub(crate) mod staking {
 	) -> Result<BalanceOf<T>, DispatchError> {
 		T::VaultStaking::total_stake(vault_id)
 	}
-}
 
+	pub fn total_current_stake_as_amount<T: crate::Config>(
+		vault_id: &DefaultVaultId<T>,
+	) -> Result<Amount<T>, DispatchError> {
+		let vault_total_stake = T::VaultStaking::total_stake(vault_id)?;
+		Ok(Amount::<T>::new(vault_total_stake, vault_id.collateral_currency()))
+	}
+}
 
 #[cfg_attr(test, mockable)]
 pub(crate) mod pooled_rewards {
@@ -82,34 +88,14 @@ pub(crate) mod pooled_rewards {
 	use currency::Amount;
 	use frame_support::dispatch::DispatchError;
 	use pooled_rewards::RewardsApi;
-	use sp_core::Get;
 
 	use crate::DefaultVaultId;
-
-	// pub fn deposit_stake<T: crate::Config>(
-	// 	currency_id: &CurrencyId<T>,
-	// 	vault_id: &DefaultVaultId<T>,
-	// 	amount: Amount<T>,
-	// ) -> DispatchResult {
-	// 	T::VaultRewards::deposit_stake(currency_id, vault_id, amount.amount())
-	// }
-
-	// pub fn withdraw_stake<T: crate::Config>(
-	// 	currency_id: &CurrencyId<T>,
-	// 	vault_id: &DefaultVaultId<T>,
-	// 	amount: Amount<T>,
-	// ) -> DispatchResult {
-	// 	T::VaultRewards::withdraw_stake(currency_id, vault_id, amount.amount())
-	// }
 
 	pub fn set_stake<T: crate::Config>(
 		vault_id: &DefaultVaultId<T>,
 		amount: &Amount<T>,
 	) -> Result<(), DispatchError> {
-		//we need to normalize the amount into base currency, to handle vaults with same collateral
-		//but different issue tokens.
-		let stake = amount.convert_to(<T as fee::Config>::BaseCurrency::get())?; 
-		T::VaultRewards::set_stake(&vault_id.collateral_currency(), &vault_id, stake.amount())
+		T::VaultRewards::set_stake(&vault_id.collateral_currency(), &vault_id, amount.amount())
 	}
 
 	#[cfg(feature = "integration-tests")]

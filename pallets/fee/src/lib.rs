@@ -28,7 +28,6 @@ pub use pallet::*;
 pub use pooled_rewards::RewardsApi;
 use types::{BalanceOf, DefaultVaultId, SignedFixedPoint, UnsignedFixedPoint};
 
-
 #[cfg(feature = "runtime-benchmarks")]
 mod benchmarking;
 
@@ -58,7 +57,6 @@ pub mod pallet {
 			UnsignedFixedPoint = UnsignedFixedPoint<Self>,
 			SignedFixedPoint = SignedFixedPoint<Self>,
 		>
-		
 	{
 		/// The fee module id, used for deriving its sovereign account ID.
 		#[pallet::constant]
@@ -490,34 +488,37 @@ impl<T: Config> Pallet<T> {
 	}
 
 	fn distribute(reward: &Amount<T>) -> Result<Amount<T>, DispatchError> {
-
 		//fetch total stake (all), and calulate total usd stake across pools
 		//distribute the rewards into each reward pool for each collateral,
 		//taking into account it's value in usd
 
-		let total_stakes = T::VaultRewards::get_total_stake_all_pools()?;
-		let total_stake_in_usd=  BalanceOf::<T>::default();
-		for (currency_id, stake) in total_stakes.clone().into_iter(){
+		//TODO this logic will go to the reward-distribution pallet most likely
 
-			let stake_in_amount = Amount::<T>::new(stake,currency_id);
+		let total_stakes = T::VaultRewards::get_total_stake_all_pools()?;
+		let total_stake_in_usd = BalanceOf::<T>::default();
+		for (currency_id, stake) in total_stakes.clone().into_iter() {
+			let stake_in_amount = Amount::<T>::new(stake, currency_id);
 			let stake_in_usd = stake_in_amount.convert_to(<T as Config>::BaseCurrency::get())?;
-			total_stake_in_usd.checked_add(&stake_in_usd.amount()).ok_or(Error::<T>::Overflow)?;
+			total_stake_in_usd
+				.checked_add(&stake_in_usd.amount())
+				.ok_or(Error::<T>::Overflow)?;
 		}
 
 		let error_reward_accum = Amount::<T>::zero(reward.currency());
 
-		for (currency_id, stake) in total_stakes.into_iter(){
-
-			let stake_in_amount = Amount::<T>::new(stake,currency_id);
+		for (currency_id, stake) in total_stakes.into_iter() {
+			let stake_in_amount = Amount::<T>::new(stake, currency_id);
 			let stake_in_usd = stake_in_amount.convert_to(<T as Config>::BaseCurrency::get())?;
-			let percentage = Perquintill::from_rational(stake_in_usd.amount(),total_stake_in_usd);
-			
+			let percentage = Perquintill::from_rational(stake_in_usd.amount(), total_stake_in_usd);
+
 			//TODO multiply with floor or ceil?
 			let reward_for_pool = percentage.mul_floor(reward.amount());
 
-			if T::VaultRewards::distribute_reward(&currency_id, reward.currency(),reward_for_pool).is_err() {
+			if T::VaultRewards::distribute_reward(&currency_id, reward.currency(), reward_for_pool)
+				.is_err()
+			{
 				error_reward_accum.checked_add(&reward)?;
-			} 
+			}
 		}
 		Ok(error_reward_accum)
 	}
@@ -529,7 +530,8 @@ impl<T: Config> Pallet<T> {
 		vault_id: &DefaultVaultId<T>,
 	) -> DispatchResult {
 		for currency_id in [vault_id.wrapped_currency(), T::GetNativeCurrencyId::get()] {
-			let reward = Rewards::withdraw_reward(&vault_id.collateral_currency(), &vault_id, currency_id)?;
+			let reward =
+				Rewards::withdraw_reward(&vault_id.collateral_currency(), &vault_id, currency_id)?;
 			Staking::distribute_reward(vault_id, reward, currency_id)?;
 		}
 
