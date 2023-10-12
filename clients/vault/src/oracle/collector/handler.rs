@@ -3,10 +3,7 @@ use crate::oracle::{
 	errors::Error,
 	types::StellarMessageSender,
 };
-use stellar_relay_lib::{
-	helper::compute_non_generic_tx_set_content_hash,
-	sdk::types::{ScpEnvelope, ScpStatementPledges, StellarMessage, TransactionSet},
-};
+use stellar_relay_lib::sdk::types::{ScpEnvelope, ScpStatementPledges, StellarMessage};
 
 // Handling SCPEnvelopes
 impl ScpMessageCollector {
@@ -52,14 +49,5 @@ impl ScpMessageCollector {
 		}
 
 		Ok(())
-	}
-
-	/// handles incoming TransactionSet.
-	pub(crate) fn handle_tx_set(&self, set: TransactionSet) {
-		// compute the tx_set_hash, to check what slot this set belongs too.
-		let tx_set_hash = compute_non_generic_tx_set_content_hash(&set);
-
-		// save this txset.
-		self.add_txset(&tx_set_hash, set);
 	}
 }

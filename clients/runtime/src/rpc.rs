@@ -205,7 +205,6 @@ impl SpacewalkParachain {
 			connection_timeout,
 		)
 		.await?;
-		// let ws_client = new_websocket_client(url, None, None).await?;
 		Self::new(ws_client, signer, shutdown_tx).await
 	}
 
@@ -870,6 +869,10 @@ impl OraclePallet for SpacewalkParachain {
 	/// # Arguments
 	/// * `value` - the current exchange rate
 	async fn feed_values(&self, values: Vec<((Vec<u8>, Vec<u8>), FixedU128)>) -> Result<(), Error> {
+		if values.is_empty() {
+			return Err(Error::FeedingEmptyList)
+		}
+
 		use crate::metadata::runtime_types::dia_oracle::dia::CoinInfo;
 
 		let now = std::time::SystemTime::now();

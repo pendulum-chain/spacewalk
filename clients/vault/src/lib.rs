@@ -12,7 +12,6 @@ pub use crate::{cancellation::Event, error::Error};
 
 mod cancellation;
 mod error;
-mod execution;
 pub mod metrics;
 pub mod process;
 mod redeem;
@@ -21,13 +20,13 @@ mod system;
 
 mod issue;
 pub mod oracle;
+mod requests;
 
 pub mod service {
 	pub use wallet::listen_for_new_transactions;
 
 	pub use crate::{
 		cancellation::{CancellationScheduler, IssueCanceller, ReplaceCanceller},
-		execution::execute_open_requests,
 		issue::{
 			listen_for_executed_issues, listen_for_issue_cancels, listen_for_issue_requests,
 			process_issues_requests, IssueFilter,
@@ -36,6 +35,7 @@ pub mod service {
 		replace::{
 			listen_for_accept_replace, listen_for_execute_replace, listen_for_replace_requests,
 		},
+		requests::execution::execute_open_requests,
 	};
 }
 

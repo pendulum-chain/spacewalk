@@ -12,7 +12,7 @@ use service::{spawn_cancelable, Error as ServiceError};
 use wallet::StellarWallet;
 
 use crate::{
-	cancellation::Event, error::Error, execution::Request, oracle::OracleAgent,
+	cancellation::Event, error::Error, oracle::OracleAgent, requests::Request,
 	system::VaultIdManager,
 };
 

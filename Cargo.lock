@@ -3497,7 +3497,6 @@ dependencies = [
  "spacewalk-primitives",
  "staking",
  "stellar-relay",
- "substrate-stellar-sdk",
  "vault-registry",
 ]
 
@@ -6606,7 +6605,6 @@ dependencies = [
  "spacewalk-primitives",
  "staking",
  "stellar-relay",
- "substrate-stellar-sdk",
  "vault-registry",
 ]
 
@@ -6767,7 +6765,6 @@ dependencies = [
  "spacewalk-primitives",
  "staking",
  "stellar-relay",
- "substrate-stellar-sdk",
  "vault-registry",
 ]
 
@@ -9719,7 +9716,6 @@ dependencies = [
  "sp-runtime",
  "sp-std",
  "spacewalk-primitives",
- "substrate-stellar-sdk",
 ]
 
 [[package]]
@@ -9845,7 +9841,7 @@ dependencies = [
 [[package]]
 name = "substrate-stellar-sdk"
 version = "0.2.4"
-source = "git+https://github.com/pendulum-chain/substrate-stellar-sdk?branch=polkadot-v0.9.40#f306b44f22216e43809e96ad96ae24cf62f6325f"
+source = "git+https://github.com/pendulum-chain/substrate-stellar-sdk?branch=polkadot-v0.9.40#dc4212fc0b9c29d9fd370cde7ba666172de8fb7b"
 dependencies = [
  "base64 0.13.1",
  "hex",
@@ -10876,7 +10872,6 @@ dependencies = [
  "sp-std",
  "spacewalk-primitives",
  "staking",
- "substrate-stellar-sdk",
  "visibility",
 ]
 
