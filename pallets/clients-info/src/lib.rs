@@ -85,7 +85,7 @@ pub mod pallet {
 		}
 
 		fn check_origin_rights(origin: OriginFor<T>) -> DispatchResult {
-			if let Err(_) = ensure_root(origin.clone()) {
+			if ensure_root(origin.clone()).is_err() {
 				let _ = Pallet::<T>::check_non_root_rights(origin)?;
 			};
 
@@ -108,7 +108,7 @@ pub mod pallet {
 			client_name: NameOf<T>,
 			release: ClientRelease<UriOf<T>, T::Hash>,
 		) -> DispatchResult {
-			ensure_root(origin)?;
+			Pallet::<T>::check_origin_rights(origin)?;
 			CurrentClientReleases::<T>::insert(client_name, release.clone());
 			Self::deposit_event(Event::<T>::ApplyClientRelease { release });
 			Ok(())

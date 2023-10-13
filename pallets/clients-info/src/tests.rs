@@ -1,11 +1,11 @@
 #![deny(warnings)]
 use crate::{
-	mock::{run_test, Test},
-	pallet::{CurrentClientReleases, PendingClientReleases},
+	mock::{run_test, ClientsInfo, RuntimeOrigin, Test, TestError},
+	pallet::{AuthorizedAccounts, CurrentClientReleases, PendingClientReleases},
 	upgrade_client_releases::try_upgrade_current_client_releases,
 	ClientRelease,
 };
-use frame_support::BoundedVec;
+use frame_support::{assert_err, BoundedVec};
 use sp_runtime::testing::H256;
 use std::collections::HashMap;
 
@@ -63,8 +63,78 @@ fn test_client_pending_release_migration() {
 	});
 }
 
-fn test_authorize_accounts() {
-	run_test(|| {})
+#[test]
+fn authorize_account_should_work() {
+	run_test(|| {
+		<AuthorizedAccounts<Test>>::insert(1, ());
+
+		let _test1 = ClientsInfo::authorize_account(RuntimeOrigin::signed(1), 2);
+		let _test2 = ClientsInfo::authorize_account(RuntimeOrigin::signed(1), 3);
+		let _test3 = ClientsInfo::authorize_account(RuntimeOrigin::signed(1), 4);
+		assert_eq!(<AuthorizedAccounts<Test>>::contains_key(2), true);
+		assert_eq!(<AuthorizedAccounts<Test>>::contains_key(3), true);
+		assert_eq!(<AuthorizedAccounts<Test>>::contains_key(4), true);
+
+		let client_release = ClientRelease {
+			uri: BoundedVec::try_from(b"https://github.com/pendulum-chain/spacewalk".to_vec())
+				.unwrap(),
+			checksum: H256::default(),
+		};
+
+		let client_name = BoundedVec::try_from(b"vault".to_vec()).expect("should work");
+
+		assert!(ClientsInfo::set_current_client_release(
+			RuntimeOrigin::signed(2),
+			client_name,
+			client_release,
+		)
+		.is_ok());
+	})
+}
+
+#[test]
+fn deauthorize_account_should_work() {
+	run_test(|| {
+		<AuthorizedAccounts<Test>>::insert(1, ());
+		<AuthorizedAccounts<Test>>::insert(2, ());
+		<AuthorizedAccounts<Test>>::insert(3, ());
+
+		assert!(ClientsInfo::deauthorize_account(RuntimeOrigin::root(), 1).is_ok());
+		assert!(ClientsInfo::deauthorize_account(RuntimeOrigin::signed(2), 3).is_ok());
+
+		assert_eq!(<AuthorizedAccounts<Test>>::contains_key(1), false);
+		assert_eq!(<AuthorizedAccounts<Test>>::contains_key(2), true);
+		assert_eq!(<AuthorizedAccounts<Test>>::contains_key(3), false);
+	})
+}
+
+#[test]
+fn test_errors() {
+	run_test(|| {
+		<AuthorizedAccounts<Test>>::insert(1, ());
+		<AuthorizedAccounts<Test>>::insert(2, ());
+		<AuthorizedAccounts<Test>>::insert(3, ());
+
+		assert_err!(
+			ClientsInfo::authorize_account(RuntimeOrigin::signed(4), 4),
+			TestError::ThisAccountIdIsNotAuthorized
+		);
+
+		assert_err!(
+			ClientsInfo::authorize_account(RuntimeOrigin::signed(4), 3),
+			TestError::ThisAccountIdIsNotAuthorized
+		);
+
+		assert_err!(
+			ClientsInfo::deauthorize_account(RuntimeOrigin::signed(1), 1),
+			TestError::UserUnableToDeauthorizeThemself
+		);
+
+		assert_err!(
+			ClientsInfo::deauthorize_account(RuntimeOrigin::signed(4), 1),
+			TestError::ThisAccountIdIsNotAuthorized
+		);
+	})
 }
 
 #[test]
