@@ -168,29 +168,41 @@ pub mod pallet {
 impl<T: Config> Pallet<T> {
 	pub fn execute_on_init(height: T::BlockNumber) {
 		//get reward per block
-		let reward_per_block = RewardPerBlock::<T>::get();
-		if reward_per_block == None {
-			return
-		}
+		let reward_per_block = match RewardPerBlock::<T>::get() {
+			Some(value) => value,
+			None => {
+				log::warn!("Reward per block is None");
+				return
+			},
+		};
 
 		if let Err(_) = ext::security::ensure_parachain_status_running::<T>() {
 			return
 		}
 
-		let mut reward_this_block = reward_per_block.expect("checked for none");
-		//update the reward per block if decay interval passed
-		let rewards_adapted_at = RewardsAdaptedAt::<T>::get();
-		if ext::security::parachain_block_expired::<T>(
-			rewards_adapted_at.expect("should exists"),
-			T::DecayInterval::get() - T::BlockNumber::one(),
-		)
-		.unwrap()
-		{
-			let decay_rate = T::DecayRate::get();
-			reward_this_block = decay_rate.mul_floor(reward_per_block.expect("should exists"));
-			RewardPerBlock::<T>::set(Some(reward_this_block));
+		let rewards_adapted_at = match RewardsAdaptedAt::<T>::get() {
+			Some(value) => value,
+			None => {
+				log::warn!("RewardsAdaptedAt is None");
+				return
+			},
+		};
 
-			RewardsAdaptedAt::<T>::set(Some(height));
+		let mut reward_this_block = reward_per_block;
+
+		//update the reward per block if decay interval passed
+		if let Ok(expired) = ext::security::parachain_block_expired::<T>(
+			rewards_adapted_at,
+			T::DecayInterval::get() - T::BlockNumber::one(),
+		) {
+			if expired {
+				let decay_rate = T::DecayRate::get();
+				reward_this_block = decay_rate.mul_floor(reward_per_block);
+				RewardPerBlock::<T>::set(Some(reward_this_block));
+				RewardsAdaptedAt::<T>::set(Some(height));
+			}
+		} else {
+			log::warn!("Failed to check if the parachain block expired");
 		}
 
 		//TODO how to handle error if on init cannot fail?
