@@ -11225,6 +11225,7 @@ dependencies = [
  "async-trait",
  "futures 0.3.28",
  "mockall 0.8.3",
+ "mocktopus",
  "parity-scale-codec",
  "rand 0.8.5",
  "reqwest",
