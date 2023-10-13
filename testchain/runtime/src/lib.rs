@@ -549,6 +549,7 @@ impl fee::Config for Runtime {
 	type VaultStaking = VaultStaking;
 	type OnSweep = currency::SweepFunds<Runtime, FeeAccount>;
 	type MaxExpectedValue = MaxExpectedValue;
+	type DistributePool = RewardDistribution;
 }
 
 impl nomination::Config for Runtime {
@@ -565,14 +566,34 @@ impl clients_info::Config for Runtime {
 
 parameter_types! {
 	pub const DecayRate: Perquintill = Perquintill::from_percent(5);
+	pub const MaxCurrencies: u32 = 10;
 }
+
+// pub struct OracleApi {}
+// impl reward_distribution::ToUsdApi<Balance, CurrencyId> for OracleApi {
+// 	fn currency_to_usd(
+// 		_amount: &Balance,
+// 		currency_id: &CurrencyId,
+// 	) -> Result<Balance, DispatchError> {
+// 		let _native_currency = GetNativeCurrencyId::get();
+// 		match currency_id {
+// 			_native_currency => return Ok(100),
+// 			//_ => unimplemented!("unimplemented mock conversion for currency"),
+// 		}
+// 	}
+// }
 
 impl reward_distribution::Config for Runtime {
 	type RuntimeEvent = RuntimeEvent;
 	type WeightInfo = reward_distribution::SubstrateWeight<Runtime>;
-	type Currency = Balances;
+	type Currency = CurrencyId;
+	type Balance = Balance;
 	type DecayInterval = ConstU32<100>;
 	type DecayRate = DecayRate;
+	type VaultRewards = VaultRewards;
+	type GetNativeCurrencyId = GetNativeCurrencyId;
+	type MaxCurrencies = MaxCurrencies;
+	type OracleApi = Oracle;
 }
 
 parameter_types! {

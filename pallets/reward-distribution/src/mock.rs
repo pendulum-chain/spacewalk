@@ -8,12 +8,17 @@ use sp_core::H256;
 use sp_runtime::{
 	generic::Header as GenericHeader,
 	traits::{BlakeTwo256, IdentityLookup},
-	Perquintill,
+	DispatchError, Perquintill,
 };
 
+use sp_arithmetic::FixedI128;
+
+use primitives::{Balance, CurrencyId, VaultId};
 type Header = GenericHeader<BlockNumber, BlakeTwo256>;
 type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Test>;
 type Block = frame_system::mocking::MockBlock<Test>;
+
+pub use currency::testing_constants::DEFAULT_NATIVE_CURRENCY;
 
 // Configure a mock runtime to test the pallet.
 frame_support::construct_runtime!(
@@ -26,13 +31,15 @@ frame_support::construct_runtime!(
 		Balances: pallet_balances::{Pallet, Call, Storage, Config<T>, Event<T>},
 		Security: security::{Pallet, Call, Storage, Event<T>},
 		RewardDistribution: reward_distribution::{Pallet, Call, Storage, Event<T>},
+
+		Rewards: pooled_rewards::{Pallet, Call, Storage, Event<T>},
 	}
 );
 
-pub type AccountId = u64;
-pub type Balance = u128;
 pub type BlockNumber = u64;
 pub type Index = u64;
+pub type AccountId = u64;
+pub type SignedFixedPoint = FixedI128;
 
 parameter_types! {
 	pub const BlockHashCount: u64 = 250;
@@ -95,12 +102,48 @@ parameter_types! {
 	pub const DecayRate: Perquintill = Perquintill::from_percent(5);
 }
 
+parameter_types! {
+	pub const GetNativeCurrencyId: CurrencyId = DEFAULT_NATIVE_CURRENCY;
+	pub const MaxCurrencies: u32 = 10;
+}
+
+parameter_types! {
+	pub const MaxRewardCurrencies: u32= 10;
+}
+
+impl pooled_rewards::Config for Test {
+	type RuntimeEvent = RuntimeEvent;
+	type SignedFixedPoint = SignedFixedPoint;
+	type PoolId = CurrencyId;
+	type PoolRewardsCurrencyId = CurrencyId;
+	type StakeId = VaultId<AccountId, CurrencyId>;
+	type MaxRewardCurrencies = MaxRewardCurrencies;
+}
+
+pub struct OracleApiMock {}
+impl oracle::OracleApi<Balance, CurrencyId> for OracleApiMock {
+	fn currency_to_usd(
+		_amount: &Balance,
+		currency_id: &CurrencyId,
+	) -> Result<Balance, DispatchError> {
+		let _native_currency = GetNativeCurrencyId::get();
+		match currency_id {
+			_native_currency => return Ok(100),
+			//_ => unimplemented!("unimplemented mock conversion for currency"),
+		}
+	}
+}
 impl Config for Test {
 	type RuntimeEvent = RuntimeEvent;
 	type WeightInfo = crate::default_weights::SubstrateWeight<Test>;
-	type Currency = Balances;
+	type Currency = CurrencyId;
+	type Balance = Balance;
 	type DecayInterval = ConstU64<100>;
 	type DecayRate = DecayRate;
+	type VaultRewards = Rewards;
+	type GetNativeCurrencyId = GetNativeCurrencyId;
+	type MaxCurrencies = MaxCurrencies;
+	type OracleApi = OracleApiMock;
 }
 
 pub struct ExtBuilder;

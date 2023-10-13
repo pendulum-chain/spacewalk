@@ -1,6 +1,6 @@
 use frame_support::{
 	parameter_types,
-	traits::{ConstU32, Everything, GenesisBuild},
+	traits::{ConstU32, ConstU64, Everything, GenesisBuild},
 	PalletId,
 };
 use mocktopus::{macros::mockable, mocking::clear_mocks};
@@ -17,6 +17,7 @@ use sp_core::H256;
 use sp_runtime::{
 	testing::{Header, TestXt},
 	traits::{BlakeTwo256, Convert, IdentityLookup, One, Zero},
+	DispatchError, Perquintill,
 };
 use std::cell::RefCell;
 
@@ -49,6 +50,7 @@ frame_support::construct_runtime!(
 		Currencies: orml_currencies::{Pallet, Call},
 
 		Rewards: pooled_rewards::{Pallet, Call, Storage, Event<T>},
+		RewardDistribution: reward_distribution::{Pallet, Storage, Event<T>},
 
 		// Operational
 		Security: security::{Pallet, Call, Storage, Event<T>},
@@ -57,6 +59,7 @@ frame_support::construct_runtime!(
 		Staking: staking::{Pallet, Storage, Event<T>},
 		Fee: fee::{Pallet, Call, Config<T>, Storage},
 		Currency: currency::{Pallet},
+
 	}
 );
 
@@ -247,6 +250,39 @@ impl fee::Config for Test {
 	type VaultStaking = Staking;
 	type OnSweep = ();
 	type MaxExpectedValue = MaxExpectedValue;
+	type DistributePool = RewardDistribution;
+}
+
+parameter_types! {
+	pub const DecayRate: Perquintill = Perquintill::from_percent(5);
+	pub const MaxCurrencies: u32 = 10;
+}
+
+pub struct OracleApiMock {}
+impl oracle::OracleApi<Balance, CurrencyId> for OracleApiMock {
+	fn currency_to_usd(
+		_amount: &Balance,
+		currency_id: &CurrencyId,
+	) -> Result<Balance, DispatchError> {
+		let _native_currency = GetNativeCurrencyId::get();
+		match currency_id {
+			_native_currency => return Ok(100),
+			//_ => unimplemented!("unimplemented mock conversion for currency"),
+		}
+	}
+}
+
+impl reward_distribution::Config for Test {
+	type RuntimeEvent = TestEvent;
+	type WeightInfo = reward_distribution::SubstrateWeight<Test>;
+	type Currency = CurrencyId;
+	type Balance = Balance;
+	type DecayInterval = ConstU64<100>;
+	type DecayRate = DecayRate;
+	type VaultRewards = Rewards;
+	type GetNativeCurrencyId = GetNativeCurrencyId;
+	type MaxCurrencies = MaxCurrencies;
+	type OracleApi = OracleApiMock;
 }
 
 parameter_types! {

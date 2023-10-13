@@ -28,6 +28,7 @@ security = { path = "../security", default-features = false }
 pooled-rewards = { path = "../pooled-rewards", default-features = false }
 staking = { path = "../staking", default-features = false }
 reward-distribution = { path = "../reward-distribution", default-features = false }
+oracle = { path = "../oracle", default-features = false }
 
 primitives = { package = "spacewalk-primitives", path = "../../primitives", default-features = false }
 
@@ -67,6 +68,8 @@ std = [
     "orml-currencies/std",
     "orml-tokens/std",
     "orml-traits/std",
+    "reward-distribution/std",
+    "oracle/std",
 ]
 runtime-benchmarks = [
     "frame-benchmarking",

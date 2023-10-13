@@ -1,6 +1,6 @@
 use frame_support::{
 	parameter_types,
-	traits::{ConstU32, Everything},
+	traits::{ConstU32, ConstU64, Everything},
 	PalletId,
 };
 use mocktopus::mocking::clear_mocks;
@@ -11,17 +11,16 @@ use sp_core::H256;
 use sp_runtime::{
 	testing::Header,
 	traits::{BlakeTwo256, IdentityLookup, Zero},
-	FixedPointNumber,
+	DispatchError, FixedPointNumber, Perquintill,
 };
 
+use crate as fee;
+use crate::{Config, Error};
 pub use currency::testing_constants::{
 	DEFAULT_COLLATERAL_CURRENCY, DEFAULT_NATIVE_CURRENCY, DEFAULT_WRAPPED_CURRENCY,
 };
 pub use primitives::CurrencyId;
 use primitives::VaultId;
-
-use crate as fee;
-use crate::{Config, Error};
 
 type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Test>;
 type Block = frame_system::mocking::MockBlock<Test>;
@@ -43,6 +42,7 @@ frame_support::construct_runtime!(
 
 		Rewards: pooled_rewards::{Pallet, Call, Storage, Event<T>},
 		Staking: staking::{Pallet, Storage, Event<T>},
+		RewardDistribution: reward_distribution::{Pallet, Storage, Event<T>},
 
 		// Operational
 		Security: security::{Pallet, Call, Storage, Event<T>},
@@ -226,6 +226,38 @@ parameter_types! {
 	pub const MaxExpectedValue: UnsignedFixedPoint = UnsignedFixedPoint::from_inner(<UnsignedFixedPoint as FixedPointNumber>::DIV);
 }
 
+parameter_types! {
+	pub const DecayRate: Perquintill = Perquintill::from_percent(5);
+	pub const MaxCurrencies: u32 = 10;
+}
+
+pub struct OracleApiMock {}
+impl oracle::OracleApi<Balance, CurrencyId> for OracleApiMock {
+	fn currency_to_usd(
+		_amount: &Balance,
+		currency_id: &CurrencyId,
+	) -> Result<Balance, DispatchError> {
+		let _native_currency = GetNativeCurrencyId::get();
+		match currency_id {
+			_native_currency => return Ok(100),
+			//_ => unimplemented!("unimplemented mock conversion for currency"),
+		}
+	}
+}
+
+impl reward_distribution::Config for Test {
+	type RuntimeEvent = TestEvent;
+	type WeightInfo = reward_distribution::SubstrateWeight<Test>;
+	type Currency = CurrencyId;
+	type Balance = Balance;
+	type DecayInterval = ConstU64<100>;
+	type DecayRate = DecayRate;
+	type VaultRewards = Rewards;
+	type GetNativeCurrencyId = GetNativeCurrencyId;
+	type MaxCurrencies = MaxCurrencies;
+	type OracleApi = OracleApiMock;
+}
+
 impl Config for Test {
 	type FeePalletId = FeePalletId;
 	type WeightInfo = fee::SubstrateWeight<Test>;
@@ -237,6 +269,7 @@ impl Config for Test {
 	type VaultStaking = Staking;
 	type OnSweep = ();
 	type MaxExpectedValue = MaxExpectedValue;
+	type DistributePool = RewardDistribution;
 }
 
 pub type TestEvent = RuntimeEvent;

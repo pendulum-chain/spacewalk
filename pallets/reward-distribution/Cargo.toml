@@ -28,6 +28,11 @@ primitives = { package = "spacewalk-primitives", path = "../../primitives", defa
 security = { path = "../security", default-features = false }
 currency = { path = "../currency", default-features = false }
 pooled-rewards = { path = "../pooled-rewards", default-features = false }
+oracle = { path = "../oracle", default-features = false }
+
+[dev-dependencies]
+mocktopus = "0.8.0"
+
 
 [features]
 default = ["std"]
@@ -44,6 +49,10 @@ std = [
     "frame-system/std",
     "frame-benchmarking/std",
     "pallet-balances/std",
+    "currency/std",
+    "pooled-rewards/std",
+    "oracle/std",
+    "primitives/std",
     "security/std",
 ]
 runtime-benchmarks = [

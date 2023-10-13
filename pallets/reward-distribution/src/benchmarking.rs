@@ -1,10 +1,11 @@
-use super::*;
-use frame_benchmarking::v2::{benchmarks, impl_benchmark_test_suite};
-use frame_system::RawOrigin;
-use sp_std::vec;
-
 #[allow(unused)]
 use super::Pallet as RewardDistribution;
+use super::*;
+use frame_benchmarking::{
+	v2::{benchmarks, impl_benchmark_test_suite},
+	vec,
+};
+use frame_system::RawOrigin;
 
 #[benchmarks]
 pub mod benchmarks {
@@ -18,11 +19,6 @@ pub mod benchmarks {
 		_(RawOrigin::Root, new_reward_per_block);
 
 		assert_eq!(RewardDistribution::<T>::reward_per_block(), Some(new_reward_per_block));
-	}
-
-	#[benchmark]
-	fn on_initialize() {
-		Timestamp::<T>::set_timestamp(1000u32.into());
 	}
 
 	impl_benchmark_test_suite!(

@@ -7,18 +7,15 @@
 
 mod default_weights;
 
-use crate::types::{AccountIdOf, BalanceOf, DefaultVaultId};
+use crate::types::{BalanceOf, DefaultVaultId};
 use codec::{FullCodec, FullEncode, MaxEncodedLen};
 pub use default_weights::{SubstrateWeight, WeightInfo};
 use frame_support::{
-	dispatch::DispatchResult,
-	pallet_prelude::DispatchError,
-	traits::{Currency, Get},
-	transactional,
+	dispatch::DispatchResult, pallet_prelude::DispatchError, traits::Get, transactional, BoundedVec,
 };
+use oracle::OracleApi;
 use pooled_rewards::RewardsApi;
 use sp_arithmetic::Perquintill;
-use sp_core::bounded_vec::BoundedVec;
 use sp_runtime::{
 	traits::{AtLeast32BitUnsigned, CheckedAdd, One, Zero},
 	FixedPointOperand,
@@ -59,7 +56,9 @@ pub mod pallet {
 		type WeightInfo: WeightInfo;
 
 		/// The currency trait.
-		type Currency: Currency<AccountIdOf<Self>>
+		type Currency: Parameter
+			+ Member
+			+ Copy
 			+ Clone
 			+ Decode
 			+ FullEncode
@@ -89,7 +88,8 @@ pub mod pallet {
 
 		type MaxCurrencies: Get<u32>;
 
-		type OracleApi: ToUsdApi<Self::Balance, Self::Currency>;
+		//type OracleApi: ToUsdApi<Self::Balance, Self::Currency>;
+		type OracleApi: oracle::OracleApi<Self::Balance, Self::Currency>;
 
 		type GetNativeCurrencyId: Get<Self::Currency>;
 
@@ -162,6 +162,16 @@ pub mod pallet {
 			Self::deposit_event(Event::<T>::RewardPerBlockAdapted(new_reward_per_block));
 			Ok(())
 		}
+
+		// #[pallet::call_index(1)]
+		// #[pallet::weight(<T as Config>::WeightInfo::set_reward_per_block())]
+		// #[transactional]
+		// pub fn collect_rewards(
+		// 	origin: OriginFor<T>,
+		// 	collateral_asset: T::Currency,
+		// ) -> DispatchResult {
+		// 	let nominator_id = ensure_signed(origin)?;
+		// }
 	}
 }
 
@@ -216,10 +226,10 @@ impl<T: Config> Pallet<T> {
 		reward_currency: T::Currency,
 	) -> Result<BalanceOf<T>, DispatchError> {
 		//calculate the total stake across all collateral pools in USD
-		let total_stakes = T::VaultRewards::get_total_stake_all_pools().unwrap();
+		let total_stakes = T::VaultRewards::get_total_stake_all_pools()?;
 		let total_stake_in_usd = BalanceOf::<T>::default();
 		for (currency_id, stake) in total_stakes.clone().into_iter() {
-			let stake_in_usd = T::OracleApi::currency_to_usd(&stake, &currency_id).unwrap();
+			let stake_in_usd = T::OracleApi::currency_to_usd(&stake, &currency_id)?;
 			total_stake_in_usd.checked_add(&stake_in_usd).unwrap();
 		}
 
@@ -255,16 +265,6 @@ impl<T: Config> Pallet<T> {
 		Ok(error_reward_accum)
 	}
 }
-
-//TODO I actually want this api coming form oracle (defined and implemented)
-//but importing oracle gives an unexpected and unrelated error
-pub trait ToUsdApi<Balance, CurrencyId> {
-	fn currency_to_usd(
-		amount: &Balance,
-		currency_id: &CurrencyId,
-	) -> Result<Balance, DispatchError>;
-}
-
 //Distribute Rewards interface
 pub trait DistributeRewardsToPool<Balance, CurrencyId> {
 	fn distribute_rewards(

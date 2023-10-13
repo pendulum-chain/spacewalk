@@ -34,6 +34,7 @@ security = { path = "../security", default-features = false }
 stellar-relay = { path = "../stellar-relay", default-features = false }
 vault-registry = { path = "../vault-registry", default-features = false }
 pooled-rewards = { path = "../pooled-rewards", default-features = false }
+reward-distribution = { path = "../reward-distribution", default-features = false }
 
 # Orml dependencies
 orml-currencies = { git = "https://github.com/open-web3-stack/open-runtime-module-library", branch = "polkadot-v0.9.40", default-features = false }
@@ -85,6 +86,7 @@ std = [
     "orml-currencies/std",
     "orml-tokens/std",
     "orml-traits/std",
+    "reward-distribution/std",
 ]
 runtime-benchmarks = [
     "frame-benchmarking",
