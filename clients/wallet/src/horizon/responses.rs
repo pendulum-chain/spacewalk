@@ -9,7 +9,7 @@ use primitives::{
 		types::{
 			Memo, OperationResult, SequenceNumber, TransactionResult, TransactionResultResult,
 		},
-		Asset, TransactionEnvelope, XdrCodec,
+		Asset, PublicKey, TransactionEnvelope, XdrCodec,
 	},
 	MemoTypeExt, TextMemo,
 };
@@ -249,6 +249,10 @@ impl TransactionResponse {
 			.map_err(|_| Error::DecodeError)?;
 
 		res.parse::<SequenceNumber>().map_err(|_| Error::DecodeError)
+	}
+
+	pub fn source_account(&self) -> Result<PublicKey, Error> {
+		PublicKey::from_encoding(&self.source_account).map_err(|_| Error::DecodeError)
 	}
 
 	pub fn get_successful_operations_result(&self) -> Result<Vec<OperationResult>, Error> {
