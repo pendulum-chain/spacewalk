@@ -14,7 +14,6 @@ use frame_support::{
 	dispatch::DispatchResult, pallet_prelude::DispatchError, traits::Get, transactional, BoundedVec,
 };
 use oracle::OracleApi;
-use pooled_rewards::RewardsApi;
 use sp_arithmetic::Perquintill;
 use sp_runtime::{
 	traits::{AtLeast32BitUnsigned, CheckedAdd, One, Zero},
@@ -172,6 +171,14 @@ pub mod pallet {
 		// ) -> DispatchResult {
 		// 	let nominator_id = ensure_signed(origin)?;
 		// }
+
+		//input (account_id, collateral_asset_id, Optional(reward_currency_id))
+		//Expectation: transfer the value of rewards that an account_id has
+		//
+		//get from new fx the list of vaults per account id
+		//execute withdraw on pool rewards for each vault_id (vault_id.collateral,
+		// vault_id, reward_currency_id)
+		//transfer rewards from stake
 	}
 }
 
@@ -226,25 +233,24 @@ impl<T: Config> Pallet<T> {
 		reward_currency: T::Currency,
 	) -> Result<BalanceOf<T>, DispatchError> {
 		//calculate the total stake across all collateral pools in USD
-		let total_stakes = T::VaultRewards::get_total_stake_all_pools()?;
-		let total_stake_in_usd = BalanceOf::<T>::default();
+		let total_stakes = ext::pooled_rewards::get_total_stake_all_pools::<T>()?;
+		let mut total_stake_in_usd = BalanceOf::<T>::default();
 		for (currency_id, stake) in total_stakes.clone().into_iter() {
 			let stake_in_usd = T::OracleApi::currency_to_usd(&stake, &currency_id)?;
-			total_stake_in_usd.checked_add(&stake_in_usd).unwrap();
+			total_stake_in_usd = total_stake_in_usd.checked_add(&stake_in_usd).unwrap();
 		}
-
+		println!("{:?}", total_stake_in_usd);
 		//distribute the rewards to each collateral pool
 		let mut percentages_vec = Vec::<(T::Currency, Perquintill)>::new();
 		let mut error_reward_accum = BalanceOf::<T>::zero();
 		for (currency_id, stake) in total_stakes.into_iter() {
 			let stake_in_usd = T::OracleApi::currency_to_usd(&stake, &currency_id)?;
 			let percentage = Perquintill::from_rational(stake_in_usd, total_stake_in_usd);
-
 			let reward_for_pool = percentage.mul_floor(reward_amount);
 
-			if T::VaultRewards::distribute_reward(
+			if ext::pooled_rewards::distribute_reward::<T>(
 				&currency_id,
-				reward_currency.clone(),
+				&reward_currency,
 				reward_for_pool,
 			)
 			.is_err()

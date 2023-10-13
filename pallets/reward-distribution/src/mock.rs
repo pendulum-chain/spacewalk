@@ -4,14 +4,14 @@ use frame_support::{
 	parameter_types,
 	traits::{ConstU32, ConstU64, Everything},
 };
+use primitives::CurrencyId::XCM;
+use sp_arithmetic::FixedI128;
 use sp_core::H256;
 use sp_runtime::{
 	generic::Header as GenericHeader,
 	traits::{BlakeTwo256, IdentityLookup},
 	DispatchError, Perquintill,
 };
-
-use sp_arithmetic::FixedI128;
 
 use primitives::{Balance, CurrencyId, VaultId};
 type Header = GenericHeader<BlockNumber, BlakeTwo256>;
@@ -123,14 +123,18 @@ impl pooled_rewards::Config for Test {
 pub struct OracleApiMock {}
 impl oracle::OracleApi<Balance, CurrencyId> for OracleApiMock {
 	fn currency_to_usd(
-		_amount: &Balance,
+		amount: &Balance,
 		currency_id: &CurrencyId,
 	) -> Result<Balance, DispatchError> {
-		let _native_currency = GetNativeCurrencyId::get();
-		match currency_id {
-			_native_currency => return Ok(100),
-			//_ => unimplemented!("unimplemented mock conversion for currency"),
-		}
+		let amount_in_usd = match currency_id {
+			&XCM(0) => amount * 100,
+			&XCM(1) => amount * 10,
+			&XCM(2) => amount * 15,
+			&XCM(3) => amount * 20,
+			&XCM(4) => amount * 35,
+			_ => amount * 50,
+		};
+		Ok(amount_in_usd)
 	}
 }
 impl Config for Test {
