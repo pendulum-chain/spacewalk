@@ -27,6 +27,8 @@ currency = { path = "../currency", default-features = false }
 security = { path = "../security", default-features = false }
 pooled-rewards = { path = "../pooled-rewards", default-features = false }
 staking = { path = "../staking", default-features = false }
+reward-distribution = { path = "../reward-distribution", default-features = false }
+
 primitives = { package = "spacewalk-primitives", path = "../../primitives", default-features = false }
 
 

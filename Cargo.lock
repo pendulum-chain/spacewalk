@@ -2156,6 +2156,7 @@ dependencies = [
  "pallet-timestamp",
  "parity-scale-codec",
  "pooled-rewards",
+ "reward-distribution",
  "scale-info",
  "security",
  "serde",

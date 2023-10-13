@@ -23,7 +23,7 @@ use sp_runtime::{
 	traits::{AtLeast32BitUnsigned, CheckedAdd, One, Zero},
 	FixedPointOperand,
 };
-use sp_std::fmt::Debug;
+use sp_std::{fmt::Debug, vec::Vec};
 #[cfg(feature = "runtime-benchmarks")]
 mod benchmarking;
 
@@ -91,7 +91,7 @@ pub mod pallet {
 
 		type OracleApi: ToUsdApi<Self::Balance, Self::Currency>;
 
-		type NativeToken: Get<Self::Currency>;
+		type GetNativeCurrencyId: Get<Self::Currency>;
 
 		/// Defines the interval (in number of blocks) at which the reward per block decays.
 		#[pallet::constant]
@@ -181,27 +181,29 @@ impl<T: Config> Pallet<T> {
 		//update the reward per block if decay interval passed
 		let rewards_adapted_at = RewardsAdaptedAt::<T>::get();
 		if ext::security::parachain_block_expired::<T>(
-			rewards_adapted_at.expect("HANDLE"),
+			rewards_adapted_at.expect("should exists"),
 			T::DecayInterval::get() - T::BlockNumber::one(),
 		)
 		.unwrap()
 		{
 			let decay_rate = T::DecayRate::get();
-			reward_this_block = decay_rate.mul_floor(reward_per_block.expect("checked for none"));
+			reward_this_block = decay_rate.mul_floor(reward_per_block.expect("should exists"));
 			RewardPerBlock::<T>::set(Some(reward_this_block));
 
 			RewardsAdaptedAt::<T>::set(Some(height));
 		}
 
 		//TODO how to handle error if on init cannot fail?
-		let _ = Self::distribute_rewards(T::NativeToken::get(), reward_this_block);
+		let _ = Self::distribute_rewards(reward_this_block, T::GetNativeCurrencyId::get());
 	}
 
 	//fetch total stake (all), and calulate total usd stake in percentage across pools
+	//distribute the reward accoridigly
 	fn distribute_rewards(
-		reward_currency: T::Currency,
 		reward_amount: BalanceOf<T>,
-	) -> Result<(), DispatchError> {
+		reward_currency: T::Currency,
+	) -> Result<BalanceOf<T>, DispatchError> {
+		//calculate the total stake across all collateral pools in USD
 		let total_stakes = T::VaultRewards::get_total_stake_all_pools().unwrap();
 		let total_stake_in_usd = BalanceOf::<T>::default();
 		for (currency_id, stake) in total_stakes.clone().into_iter() {
@@ -209,13 +211,15 @@ impl<T: Config> Pallet<T> {
 			total_stake_in_usd.checked_add(&stake_in_usd).unwrap();
 		}
 
+		//distribute the rewards to each collateral pool
 		let mut percentages_vec = Vec::<(T::Currency, Perquintill)>::new();
+		let mut error_reward_accum = BalanceOf::<T>::zero();
 		for (currency_id, stake) in total_stakes.into_iter() {
 			let stake_in_usd = T::OracleApi::currency_to_usd(&stake, &currency_id)?;
 			let percentage = Perquintill::from_rational(stake_in_usd, total_stake_in_usd);
 
 			let reward_for_pool = percentage.mul_floor(reward_amount);
-			let error_reward_accum = BalanceOf::<T>::zero();
+
 			if T::VaultRewards::distribute_reward(
 				&currency_id,
 				reward_currency.clone(),
@@ -223,7 +227,8 @@ impl<T: Config> Pallet<T> {
 			)
 			.is_err()
 			{
-				error_reward_accum.checked_add(&reward_for_pool).ok_or(Error::<T>::Overflow)?;
+				error_reward_accum =
+					error_reward_accum.checked_add(&reward_for_pool).ok_or(Error::<T>::Overflow)?;
 			}
 
 			percentages_vec.push((currency_id, percentage))
@@ -235,7 +240,7 @@ impl<T: Config> Pallet<T> {
 			.expect("should not be longer than max currencies");
 		RewardsPercentage::<T>::set(Some(bounded_vec));
 
-		Ok(())
+		Ok(error_reward_accum)
 	}
 }
 
@@ -246,4 +251,21 @@ pub trait ToUsdApi<Balance, CurrencyId> {
 		amount: &Balance,
 		currency_id: &CurrencyId,
 	) -> Result<Balance, DispatchError>;
+}
+
+//Distribute Rewards interface
+pub trait DistributeRewardsToPool<Balance, CurrencyId> {
+	fn distribute_rewards(
+		amount: Balance,
+		currency_id: CurrencyId,
+	) -> Result<Balance, DispatchError>;
+}
+
+impl<T: Config> DistributeRewardsToPool<BalanceOf<T>, T::Currency> for Pallet<T> {
+	fn distribute_rewards(
+		amount: BalanceOf<T>,
+		currency_id: T::Currency,
+	) -> Result<BalanceOf<T>, DispatchError> {
+		Pallet::<T>::distribute_rewards(amount, currency_id)
+	}
 }

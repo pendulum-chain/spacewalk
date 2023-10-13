@@ -6,6 +6,8 @@
 
 #[cfg(test)]
 extern crate mocktopus;
+#[cfg(test)]
+use mocktopus::macros::mockable;
 
 use codec::EncodeLike;
 use frame_support::{
@@ -13,8 +15,6 @@ use frame_support::{
 	traits::Get,
 	transactional, PalletId,
 };
-#[cfg(test)]
-use mocktopus::macros::mockable;
 use sp_arithmetic::{traits::*, FixedPointNumber, FixedPointOperand};
 use sp_runtime::traits::{AccountIdConversion, AtLeast32BitUnsigned};
 use sp_std::{
@@ -39,6 +39,8 @@ mod mock;
 mod tests;
 
 pub mod types;
+
+mod ext;
 
 #[frame_support::pallet]
 pub mod pallet {
@@ -104,6 +106,12 @@ pub mod pallet {
 		type VaultRewards: pooled_rewards::RewardsApi<
 			CurrencyId<Self>,
 			DefaultVaultId<Self>,
+			BalanceOf<Self>,
+			CurrencyId<Self>,
+		>;
+
+		/// Pooled rewards distribution Interface
+		type DistributePool: reward_distribution::DistributeRewardsToPool<
 			BalanceOf<Self>,
 			CurrencyId<Self>,
 		>;
@@ -485,11 +493,7 @@ impl<T: Config> Pallet<T> {
 	}
 
 	fn distribute(reward: &Amount<T>) -> Result<Amount<T>, DispatchError> {
-		//TODO INTERFACE REQUIRED
-		//From reward-distribution pallet we will pass the reward in wrapped token and
-		//it will be in charge of distributing to all pools by it's stake in usd
-
-		Ok(Amount::<T>::zero(reward.currency()))
+		ext::reward_distribution::distribute_rewards::<T>(reward)
 	}
 
 	pub fn distribute_from_reward_pool<
