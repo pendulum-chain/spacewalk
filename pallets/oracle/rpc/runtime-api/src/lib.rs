@@ -1,9 +1,9 @@
 //! Runtime API definition for the Oracle.
 
 #![cfg_attr(not(feature = "std"), no_std)]
-
 use codec::{Codec, Decode, Encode};
 use frame_support::dispatch::DispatchError;
+use primitives::UnsignedFixedPoint;
 #[cfg(feature = "std")]
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 
@@ -50,5 +50,7 @@ sp_api::decl_runtime_apis! {
 			amount: BalanceWrapper<Balance>,
 			currency_id: CurrencyId,
 		) -> Result<BalanceWrapper<Balance>, DispatchError>;
+
+		fn get_exchange_rate(currency: CurrencyId)-> Result<UnsignedFixedPoint, DispatchError>;
 	}
 }
