@@ -1,36 +1,8 @@
-#[cfg(feature = "testing-utils")]
-use sp_runtime::traits::Convert;
-use sp_std::cmp::Ordering;
-
 use sp_arithmetic::FixedU128;
-pub type UnsignedFixedPoint = FixedU128;
-use primitives::{oracle::Key, Asset, CurrencyId};
+use sp_runtime::traits::Convert;
 use sp_std::{vec, vec::Vec};
 
-#[derive(Clone, Default, PartialEq, Eq, Hash)]
-pub struct DataKey {
-	pub blockchain: Vec<u8>,
-	pub symbol: Vec<u8>,
-}
-
-impl PartialOrd<Self> for DataKey {
-	fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
-		self.blockchain.partial_cmp(&other.blockchain)
-	}
-}
-
-impl Ord for DataKey {
-	fn cmp(&self, other: &Self) -> Ordering {
-		self.blockchain.cmp(&other.blockchain)
-	}
-}
-
-#[derive(Clone, Default, PartialEq, Eq, Hash)]
-pub struct Data {
-	pub key: DataKey,
-	pub price: u128,
-	pub timestamp: u64,
-}
+use primitives::{oracle::Key, Asset, CurrencyId};
 
 pub struct MockOracleKeyConvertor;
 
@@ -39,8 +11,8 @@ impl Convert<Key, Option<(Vec<u8>, Vec<u8>)>> for MockOracleKeyConvertor {
 		match spacewalk_oracle_key {
 			Key::ExchangeRate(currency_id) => match currency_id {
 				CurrencyId::XCM(token_symbol) => Some((vec![0u8], vec![token_symbol])),
-				CurrencyId::Native => Some((vec![2u8], vec![])),
-				CurrencyId::StellarNative => Some((vec![3u8], vec![])),
+				CurrencyId::Native => Some((vec![2u8], vec![0])),
+				CurrencyId::StellarNative => Some((vec![3u8], vec![0])),
 				CurrencyId::Stellar(Asset::AlphaNum4 { code, .. }) =>
 					Some((vec![4u8], code.to_vec())),
 				CurrencyId::Stellar(Asset::AlphaNum12 { code, .. }) =>
@@ -79,6 +51,7 @@ impl Convert<(Vec<u8>, Vec<u8>), Option<Key>> for MockOracleKeyConvertor {
 		}
 	}
 }
+
 pub struct MockConvertPrice;
 impl Convert<u128, Option<FixedU128>> for MockConvertPrice {
 	fn convert(price: u128) -> Option<FixedU128> {
@@ -86,9 +59,9 @@ impl Convert<u128, Option<FixedU128>> for MockConvertPrice {
 	}
 }
 
-pub struct MockConvertMoment;
-impl Convert<u64, Option<u64>> for MockConvertMoment {
-	fn convert(moment: u64) -> Option<u64> {
+pub struct MockConvertMoment<Moment>(sp_std::marker::PhantomData<Moment>);
+impl<Moment> Convert<Moment, Option<Moment>> for MockConvertMoment<Moment> {
+	fn convert(moment: Moment) -> Option<Moment> {
 		Some(moment)
 	}
 }

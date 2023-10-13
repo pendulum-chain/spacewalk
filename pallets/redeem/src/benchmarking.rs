@@ -63,7 +63,7 @@ fn initialize_oracle<T: crate::Config>() {
 	let oracle_id: T::AccountId = account("Oracle", 12, 0);
 
 	use primitives::oracle::Key;
-	let result = Oracle::<T>::_feed_values(
+	let result = Oracle::<T>::feed_values(
 		oracle_id,
 		vec![
 			(
