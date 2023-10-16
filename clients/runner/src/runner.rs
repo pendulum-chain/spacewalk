@@ -126,9 +126,7 @@ impl Runner {
 		let file_content = fs::read(bin_path.clone()).map_err(|_| Error::NoDownloadedRelease)?;
 		let checksum = H256::from_slice(&sha256sum(&file_content));
 
-		if checksum != release.checksum {
-			return Err(Error::IncorrectChecksum)
-		}
+		runner.checksum_matches(checksum, release)?;
 
 		let downloaded_release = DownloadedRelease { checksum, path: bin_path.clone(), bin_name };
 
@@ -159,7 +157,7 @@ impl Runner {
 		log::info!("Downloading {} at: {:?}", bin_name, bin_path);
 
 		// if not, try get the binary
-		let _ = retry_with_log_async(
+		let checksum = retry_with_log_async(
 			|| {
 				Runner::do_download_binary(bin_path.clone(), release.clone())
 					.into_future()
@@ -169,13 +167,15 @@ impl Runner {
 		)
 		.await?;
 
+		runner.checksum_matches(checksum, &release)?;
+
 		let downloaded_release =
 			DownloadedRelease { checksum: release.checksum, path: bin_path, bin_name };
 		runner.set_downloaded_release(Some(downloaded_release.clone()));
 		Ok(downloaded_release)
 	}
 
-	async fn do_download_binary(bin_path: PathBuf, release: ClientRelease) -> Result<(), Error> {
+	async fn do_download_binary(bin_path: PathBuf, release: ClientRelease) -> Result<H256, Error> {
 		let mut file = OpenOptions::new()
 			.read(true)
 			.write(true)
@@ -201,18 +201,21 @@ impl Runner {
 		let mut file_content = Vec::new();
 		file.read_to_end(&mut file_content)?;
 
-		let checksum = H256::from_slice(&sha256sum(&file_content));
-
-		if checksum != release.checksum {
-			return Err(Error::IncorrectChecksum)
-		}
-		Ok(())
+		Ok(H256::from_slice(&sha256sum(&file_content)))
 	}
 
 	async fn get_request_bytes(url: String) -> Result<Bytes, Error> {
 		log::info!("Fetching executable from {}", url);
 		let response = reqwest::get(url.clone()).await?;
 		Ok(response.bytes().await?)
+	}
+
+	fn checksum_matches(checksum: H256, client_release: &ClientRelease) -> Result<(), Error> {
+		if checksum != client_release.checksum {
+			return Err(Error::IncorrectChecksum)
+		}
+
+		Ok(())
 	}
 
 	fn get_bin_path(runner: &impl RunnerExt, uri: &str) -> Result<(String, PathBuf), Error> {
@@ -478,6 +481,8 @@ pub trait RunnerExt {
 	fn try_load_downloaded_binary(&mut self, release: &ClientRelease) -> Result<(), Error>;
 	//wrapper arround static method get_bytes
 	async fn get_request_bytes_wrapper(&self, url: String) -> Result<Bytes, Error>;
+
+	fn checksum_matches(&self, checksum: H256, release: &ClientRelease) -> Result<(), Error>;
 }
 
 #[async_trait]
@@ -565,6 +570,10 @@ impl RunnerExt for Runner {
 
 	async fn get_request_bytes_wrapper(&self, url: String) -> Result<Bytes, Error> {
 		Runner::get_request_bytes(url).await
+	}
+
+	fn checksum_matches(&self, checksum: H256, release: &ClientRelease) -> Result<(), Error> {
+		Runner::checksum_matches(checksum, release)
 	}
 }
 
@@ -693,6 +702,7 @@ mod tests {
 			fn maybe_restart_client(&mut self) -> Result<(), Error>;
 			fn try_load_downloaded_binary(&mut self, release: &ClientRelease) -> Result<(), Error>;
 			async fn get_request_bytes_wrapper(&self, url: String) -> Result<Bytes, Error>;
+			fn checksum_matches(&self, checksum:H256, release: &ClientRelease) -> Result<(),Error>;
 		}
 
 		#[async_trait]
@@ -729,6 +739,7 @@ mod tests {
 			.returning(|_| Ok(Bytes::from_static(&[1, 2, 3, 4])));
 		runner.expect_downloaded_release().return_const(None);
 		runner.expect_set_downloaded_release().return_const(());
+		runner.expect_checksum_matches().returning(|_, _| Ok(()));
 
 		let downloaded_release =
 			Runner::download_binary(&mut runner, client_release.clone()).await.unwrap();
