@@ -1,7 +1,6 @@
 //! # ClientsInfo Module
 //! Stores information about clients used for the network.
 
-#![deny(warnings)]
 #![cfg_attr(test, feature(proc_macro_hygiene))]
 #![cfg_attr(not(feature = "std"), no_std)]
 
@@ -39,7 +38,6 @@ pub use pallet::*;
 #[frame_support::pallet]
 pub mod pallet {
 	use crate::*;
-	use frame_support::dispatch::RawOrigin;
 
 	use frame_support::pallet_prelude::*;
 	use frame_system::pallet_prelude::*;
@@ -70,26 +68,6 @@ pub mod pallet {
 	impl<T: Config> Hooks<BlockNumberFor<T>> for Pallet<T> {
 		fn on_runtime_upgrade() -> frame_support::weights::Weight {
 			crate::upgrade_client_releases::try_upgrade_current_client_releases::<T>()
-		}
-	}
-
-	impl<T: Config> Pallet<T> {
-		fn check_non_root_rights(origin: OriginFor<T>) -> Result<T::AccountId, DispatchError> {
-			let origin_account_id = ensure_signed(origin)?;
-			ensure!(
-				<AuthorizedAccounts<T>>::contains_key(&origin_account_id),
-				Error::<T>::ThisAccountIdIsNotAuthorized
-			);
-
-			Ok(origin_account_id)
-		}
-
-		fn check_origin_rights(origin: OriginFor<T>) -> DispatchResult {
-			if ensure_root(origin.clone()).is_err() {
-				let _ = Pallet::<T>::check_non_root_rights(origin)?;
-			};
-
-			Ok(())
 		}
 	}
 
@@ -156,19 +134,11 @@ pub mod pallet {
 			origin: OriginFor<T>,
 			account_id: T::AccountId,
 		) -> DispatchResult {
-			if let Ok(origin_account_id) = ensure_signed(origin.clone()) {
-				Pallet::<T>::check_non_root_rights(origin.clone())?;
+			if let Err(_) = ensure_root(origin.clone()) {
+				let origin_account_id = Pallet::<T>::check_non_root_rights(origin)?;
 				ensure!(
 					account_id != origin_account_id,
 					Error::<T>::UserUnableToDeauthorizeThemself
-				);
-
-				// do not deauthorize the root account
-				let account_id_to_origin =
-					OriginFor::<T>::from(RawOrigin::Signed(account_id.clone()));
-				ensure!(
-					ensure_root(account_id_to_origin).is_err(),
-					Error::<T>::UserUnableToDeauthorizeRootAccount
 				);
 			}
 
@@ -194,7 +164,6 @@ pub mod pallet {
 	pub enum Error<T> {
 		ThisAccountIdIsNotAuthorized,
 		UserUnableToDeauthorizeThemself,
-		UserUnableToDeauthorizeRootAccount,
 	}
 
 	/// Mapping of client name (string literal represented as bytes) to its release details.
@@ -214,6 +183,27 @@ pub mod pallet {
 	#[pallet::getter(fn authorized_accounts)]
 	pub(super) type AuthorizedAccounts<T: Config> =
 		StorageMap<_, Blake2_128Concat, T::AccountId, ()>;
+
+	impl<T: Config> Pallet<T> {
+		fn check_non_root_rights(origin: OriginFor<T>) -> Result<T::AccountId, DispatchError> {
+			let origin_account_id = ensure_signed(origin.clone())?;
+
+			ensure!(
+				<AuthorizedAccounts<T>>::contains_key(&origin_account_id),
+				Error::<T>::ThisAccountIdIsNotAuthorized
+			);
+
+			Ok(origin_account_id)
+		}
+
+		fn check_origin_rights(origin: OriginFor<T>) -> DispatchResult {
+			if ensure_root(origin.clone()).is_err() {
+				Pallet::<T>::check_non_root_rights(origin.clone())?;
+			}
+
+			Ok(())
+		}
+	}
 }
 
 pub mod upgrade_client_releases {
