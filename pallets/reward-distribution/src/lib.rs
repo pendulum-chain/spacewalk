@@ -213,8 +213,9 @@ impl<T: Config> Pallet<T> {
 			T::DecayInterval::get() - T::BlockNumber::one(),
 		) {
 			if expired {
+				println!("updating rewards per block with decay");
 				let decay_rate = T::DecayRate::get();
-				reward_this_block = decay_rate.mul_floor(reward_per_block);
+				reward_this_block = (Perquintill::one() - decay_rate).mul_floor(reward_per_block);
 				RewardPerBlock::<T>::set(Some(reward_this_block));
 				RewardsAdaptedAt::<T>::set(Some(height));
 			}
@@ -234,12 +235,12 @@ impl<T: Config> Pallet<T> {
 	) -> Result<BalanceOf<T>, DispatchError> {
 		//calculate the total stake across all collateral pools in USD
 		let total_stakes = ext::pooled_rewards::get_total_stake_all_pools::<T>()?;
+
 		let mut total_stake_in_usd = BalanceOf::<T>::default();
 		for (currency_id, stake) in total_stakes.clone().into_iter() {
 			let stake_in_usd = T::OracleApi::currency_to_usd(&stake, &currency_id)?;
 			total_stake_in_usd = total_stake_in_usd.checked_add(&stake_in_usd).unwrap();
 		}
-		println!("{:?}", total_stake_in_usd);
 		//distribute the rewards to each collateral pool
 		let mut percentages_vec = Vec::<(T::Currency, Perquintill)>::new();
 		let mut error_reward_accum = BalanceOf::<T>::zero();
