@@ -23,7 +23,7 @@ pub(crate) mod pooled_rewards {
 	use frame_support::pallet_prelude::DispatchResult;
 	use pooled_rewards::RewardsApi;
 	use sp_runtime::DispatchError;
-
+	use sp_std::vec::Vec;
 	pub fn get_total_stake_all_pools<T: crate::Config>(
 	) -> Result<Vec<(T::Currency, T::Balance)>, DispatchError> {
 		T::VaultRewards::get_total_stake_all_pools()
