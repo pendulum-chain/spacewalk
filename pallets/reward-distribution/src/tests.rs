@@ -117,6 +117,9 @@ fn udpate_reward_does_not_trigger_incorrectly() {
 			MockResult::Return(Ok(initial_stakes))
 		});
 
+		ext::security::parachain_block_expired::<Test>
+			.mock_safe(move |_, _| MockResult::Return(Ok(false)));
+
 		let new_rewards_per_block = 100;
 		assert_ok!(RewardDistribution::set_reward_per_block(
 			RuntimeOrigin::root(),

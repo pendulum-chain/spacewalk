@@ -213,7 +213,6 @@ impl<T: Config> Pallet<T> {
 			T::DecayInterval::get() - T::BlockNumber::one(),
 		) {
 			if expired {
-				println!("updating rewards per block with decay");
 				let decay_rate = T::DecayRate::get();
 				reward_this_block = (Perquintill::one() - decay_rate).mul_floor(reward_per_block);
 				RewardPerBlock::<T>::set(Some(reward_this_block));
