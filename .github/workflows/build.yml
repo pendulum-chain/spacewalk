@@ -12,6 +12,7 @@ jobs:
       - name: trigger job
         uses: appleboy/gitlab-ci-action@master
         with:
-          url: "https://gitlab.com"
+          host: "https://gitlab.com"
           token: ${{ secrets.GITLABAPI }}
+          debug: true
           project_id: 43970950
