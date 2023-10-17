@@ -147,7 +147,7 @@ impl Runner {
 	) -> Result<DownloadedRelease, Error> {
 		//recheck checksum to see if binary is the one we have
 		if let Some(downloaded_release) = runner.downloaded_release() {
-			if downloaded_release.checksum.eq(&release.checksum) {
+			if runner.checksum_matches(downloaded_release.checksum, &release).is_ok() {
 				log::info!("The on-chain release is already downloaded, skipping re-download");
 				return Ok(downloaded_release.clone())
 			}
@@ -999,6 +999,8 @@ mod tests {
 			]);
 			assert_eq!(checksum, expected_checksum);
 		});
+		runner.expect_checksum_matches().returning(|_, _| Ok(()));
+
 		let release = ClientRelease {
 			checksum: H256::from_slice(&[
 				81, 216, 24, 152, 19, 116, 164, 71, 240, 135, 102, 16, 253, 43, 174, 235, 145, 29,
@@ -1030,6 +1032,8 @@ mod tests {
 		runner
 			.expect_get_bin_path()
 			.returning(move |_| Ok(("client".to_string(), moved_mock_path.clone())));
+
+		runner.expect_checksum_matches().returning(|_, _| Err(Error::IncorrectChecksum));
 
 		assert_err!(
 			Runner::try_load_downloaded_binary(&mut runner, &Default::default()),
