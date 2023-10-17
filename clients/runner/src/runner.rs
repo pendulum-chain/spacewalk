@@ -783,6 +783,8 @@ mod tests {
 			.times(0)
 			.returning(|_| panic!("Unexpected call"));
 
+		runner.expect_checksum_matches().returning(|_, _| Ok(()));
+
 		// The latest on-chain release matches the currently downloaded one
 		let new_downloaded_release =
 			Runner::download_binary(&mut runner, ClientRelease::default()).await.unwrap();
