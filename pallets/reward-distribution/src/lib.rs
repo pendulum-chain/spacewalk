@@ -17,12 +17,11 @@ use frame_support::{
 	dispatch::DispatchResult,
 	pallet_prelude::DispatchError,
 	traits::{Currency, Get},
-	transactional, BoundedVec,
+	transactional, PalletId,
 };
 use oracle::OracleApi;
 use sp_arithmetic::{traits::AtLeast32BitUnsigned, FixedPointOperand, Perquintill};
-use sp_runtime::traits::{CheckedAdd, One, Zero};
-use sp_std::vec::Vec;
+use sp_runtime::traits::{AccountIdConversion, CheckedAdd, One, Zero};
 #[cfg(feature = "runtime-benchmarks")]
 mod benchmarking;
 
@@ -90,7 +89,7 @@ pub mod pallet {
 
 		type MaxCurrencies: Get<u32>;
 
-		type FeeAccountId: Get<Self::AccountId>;
+		type FeePalletId: Get<PalletId>;
 
 		type OracleApi: oracle::OracleApi<BalanceOf<Self>, CurrencyId<Self>>;
 
@@ -137,14 +136,6 @@ pub mod pallet {
 	#[pallet::storage]
 	#[pallet::getter(fn rewards_adapted_at)]
 	pub(super) type RewardsAdaptedAt<T: Config> = StorageValue<_, BlockNumberFor<T>, OptionQuery>;
-
-	#[pallet::storage]
-	#[pallet::getter(fn rewards_percentage)]
-	pub(super) type RewardsPercentage<T: Config> = StorageValue<
-		_,
-		BoundedVec<(CurrencyId<T>, Perquintill), <T as pallet::Config>::MaxCurrencies>,
-		OptionQuery,
-	>;
 
 	#[pallet::call]
 	impl<T: Config> Pallet<T> {
@@ -200,7 +191,7 @@ pub mod pallet {
 				return Ok(())
 			} else {
 				let amount: currency::Amount<T> = Amount::new(rewards, reward_currency_id);
-				amount.transfer(&T::FeeAccountId::get(), &caller)?;
+				amount.transfer(&Self::fee_pool_account_id(), &caller)?;
 				return Ok(())
 			}
 		}
@@ -266,7 +257,6 @@ impl<T: Config> Pallet<T> {
 			total_stake_in_usd = total_stake_in_usd.checked_add(&stake_in_usd).unwrap();
 		}
 		//distribute the rewards to each collateral pool
-		let mut percentages_vec = Vec::<(CurrencyId<T>, Perquintill)>::new();
 		let mut error_reward_accum = BalanceOf::<T>::zero();
 		for (currency_id, stake) in total_stakes.into_iter() {
 			let stake_in_usd = T::OracleApi::currency_to_usd(&stake, &currency_id)?;
@@ -283,17 +273,13 @@ impl<T: Config> Pallet<T> {
 				error_reward_accum =
 					error_reward_accum.checked_add(&reward_for_pool).ok_or(Error::<T>::Overflow)?;
 			}
-
-			percentages_vec.push((currency_id, percentage))
 		}
 
-		//we store the calculated percentages which are good as long as
-		//prices are unchanged
-		let bounded_vec = BoundedVec::try_from(percentages_vec)
-			.expect("should not be longer than max currencies");
-		RewardsPercentage::<T>::set(Some(bounded_vec));
-
 		Ok(error_reward_accum)
+	}
+
+	pub fn fee_pool_account_id() -> T::AccountId {
+		<T as Config>::FeePalletId::get().into_account_truncating()
 	}
 }
 //Distribute Rewards interface

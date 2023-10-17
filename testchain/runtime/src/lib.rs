@@ -569,31 +569,18 @@ parameter_types! {
 	pub const MaxCurrencies: u32 = 10;
 }
 
-// pub struct OracleApi {}
-// impl reward_distribution::ToUsdApi<Balance, CurrencyId> for OracleApi {
-// 	fn currency_to_usd(
-// 		_amount: &Balance,
-// 		currency_id: &CurrencyId,
-// 	) -> Result<Balance, DispatchError> {
-// 		let _native_currency = GetNativeCurrencyId::get();
-// 		match currency_id {
-// 			_native_currency => return Ok(100),
-// 			//_ => unimplemented!("unimplemented mock conversion for currency"),
-// 		}
-// 	}
-// }
-
 impl reward_distribution::Config for Runtime {
 	type RuntimeEvent = RuntimeEvent;
 	type WeightInfo = reward_distribution::SubstrateWeight<Runtime>;
-	type Currency = CurrencyId;
 	type Balance = Balance;
 	type DecayInterval = ConstU32<100>;
 	type DecayRate = DecayRate;
 	type VaultRewards = VaultRewards;
-	type GetNativeCurrencyId = GetNativeCurrencyId;
 	type MaxCurrencies = MaxCurrencies;
 	type OracleApi = Oracle;
+	type Balances = Balances;
+	type VaultStaking = VaultStaking;
+	type FeePalletId = FeePalletId;
 }
 
 parameter_types! {

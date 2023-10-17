@@ -3,6 +3,7 @@ use crate::Config;
 use frame_support::{
 	parameter_types,
 	traits::{ConstU32, ConstU64, Everything},
+	PalletId,
 };
 use orml_currencies::BasicCurrencyAdapter;
 use primitives::{Balance, CurrencyId, CurrencyId::XCM, VaultId};
@@ -36,6 +37,7 @@ frame_support::construct_runtime!(
 		Currencies: orml_currencies::{Pallet, Call},
 		RewardDistribution: reward_distribution::{Pallet, Call, Storage, Event<T>},
 		Rewards: pooled_rewards::{Pallet, Call, Storage, Event<T>},
+		Staking: staking::{Pallet, Storage, Event<T>},
 
 		//Operational
 		Security: security::{Pallet, Call, Storage, Event<T>},
@@ -47,7 +49,6 @@ pub type BlockNumber = u64;
 pub type Index = u64;
 pub type AccountId = u64;
 pub type SignedFixedPoint = FixedI128;
-pub type UnsignedInner = u128;
 pub type RawAmount = i128;
 pub type SignedInner = i128;
 pub type UnsignedFixedPoint = FixedU128;
@@ -215,6 +216,19 @@ impl oracle::OracleApi<Balance, CurrencyId> for OracleApiMock {
 		Ok(amount_in_usd)
 	}
 }
+
+impl staking::Config for Test {
+	type RuntimeEvent = RuntimeEvent;
+	type SignedFixedPoint = SignedFixedPoint;
+	type SignedInner = SignedInner;
+	type CurrencyId = CurrencyId;
+	type GetNativeCurrencyId = GetNativeCurrencyId;
+}
+
+parameter_types! {
+	pub const FeePalletId: PalletId = PalletId(*b"mod/fees");
+}
+
 impl Config for Test {
 	type RuntimeEvent = RuntimeEvent;
 	type WeightInfo = crate::default_weights::SubstrateWeight<Test>;
@@ -224,6 +238,9 @@ impl Config for Test {
 	type VaultRewards = Rewards;
 	type MaxCurrencies = MaxCurrencies;
 	type OracleApi = OracleApiMock;
+	type Balances = Balances;
+	type VaultStaking = Staking;
+	type FeePalletId = FeePalletId;
 }
 
 pub struct ExtBuilder;

@@ -342,14 +342,15 @@ impl oracle::OracleApi<Balance, CurrencyId> for OracleApiMock {
 impl reward_distribution::Config for Test {
 	type RuntimeEvent = TestEvent;
 	type WeightInfo = reward_distribution::SubstrateWeight<Test>;
-	type Currency = CurrencyId;
 	type Balance = Balance;
 	type DecayInterval = ConstU64<100>;
 	type DecayRate = DecayRate;
 	type VaultRewards = Rewards;
-	type GetNativeCurrencyId = GetNativeCurrencyId;
 	type MaxCurrencies = MaxCurrencies;
 	type OracleApi = OracleApiMock;
+	type Balances = Balances;
+	type VaultStaking = Staking;
+	type FeePalletId = FeePalletId;
 }
 
 parameter_types! {
