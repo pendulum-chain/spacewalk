@@ -5,13 +5,13 @@ use mocktopus::macros::mockable;
 pub(crate) mod reward_distribution {
 	use crate::DispatchError;
 	use currency::Amount;
-	use reward_distribution::DistributeRewardsToPool;
+	use reward_distribution::DistributeRewards;
 
 	pub fn distribute_rewards<T: crate::Config>(
 		reward: &Amount<T>,
 	) -> Result<Amount<T>, DispatchError> {
 		let undistributed_balance =
-			T::DistributePool::distribute_rewards(reward.amount(), reward.currency())?;
+			T::RewardDistribution::distribute_rewards(reward.amount(), reward.currency())?;
 		Ok(Amount::<T>::new(undistributed_balance, reward.currency()))
 	}
 }

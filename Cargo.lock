@@ -6890,6 +6890,7 @@ dependencies = [
  "sp-runtime",
  "sp-std",
  "spacewalk-primitives",
+ "staking",
 ]
 
 [[package]]

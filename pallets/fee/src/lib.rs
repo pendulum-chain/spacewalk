@@ -111,7 +111,7 @@ pub mod pallet {
 		>;
 
 		/// Pooled rewards distribution Interface
-		type DistributePool: reward_distribution::DistributeRewardsToPool<
+		type RewardDistribution: reward_distribution::DistributeRewards<
 			BalanceOf<Self>,
 			CurrencyId<Self>,
 		>;

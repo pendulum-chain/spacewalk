@@ -32,6 +32,7 @@ use core::marker::PhantomData;
 pub trait WeightInfo {
 	fn set_reward_per_block() -> Weight;
 	fn on_initialize() -> Weight;
+	fn collect_reward() -> Weight;
 }
 
 /// Weights for reward_distribution using the Substrate node and recommended hardware.
@@ -57,5 +58,14 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 		Weight::from_parts(2_000_000, 0)
 			.saturating_add(Weight::from_parts(0, 0))
 			.saturating_add(T::DbWeight::get().writes(2))
+	}
+
+	fn collect_reward() -> Weight {
+		// Proof Size summary in bytes:
+		//  Measured:  `0`
+		//  Estimated: `0`
+		// Minimum execution time: 3_000_000 picoseconds.
+		Weight::from_parts(4_000_000, 0)
+			.saturating_add(T::DbWeight::get().writes(2_u64))
 	}
 }

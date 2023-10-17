@@ -267,7 +267,7 @@ impl fee::Config for Test {
 	type VaultStaking = Staking;
 	type OnSweep = ();
 	type MaxExpectedValue = MaxExpectedValue;
-	type DistributePool = RewardDistribution;
+	type RewardDistribution = RewardDistribution;
 }
 
 impl oracle::Config for Test {

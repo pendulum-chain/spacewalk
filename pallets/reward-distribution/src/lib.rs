@@ -8,18 +8,21 @@
 mod default_weights;
 
 use crate::types::{BalanceOf, DefaultVaultId};
-use codec::{FullCodec, FullEncode, MaxEncodedLen};
+use codec::{FullCodec, MaxEncodedLen};
+
+use core::fmt::Debug;
+use currency::{Amount, CurrencyId};
 pub use default_weights::{SubstrateWeight, WeightInfo};
 use frame_support::{
-	dispatch::DispatchResult, pallet_prelude::DispatchError, traits::Get, transactional, BoundedVec,
+	dispatch::DispatchResult,
+	pallet_prelude::DispatchError,
+	traits::{Currency, Get},
+	transactional, BoundedVec,
 };
 use oracle::OracleApi;
-use sp_arithmetic::Perquintill;
-use sp_runtime::{
-	traits::{AtLeast32BitUnsigned, CheckedAdd, One, Zero},
-	FixedPointOperand,
-};
-use sp_std::{fmt::Debug, vec::Vec};
+use sp_arithmetic::{traits::AtLeast32BitUnsigned, FixedPointOperand, Perquintill};
+use sp_runtime::traits::{CheckedAdd, One, Zero};
+use sp_std::vec::Vec;
 #[cfg(feature = "runtime-benchmarks")]
 mod benchmarking;
 
@@ -45,7 +48,9 @@ pub mod pallet {
 	pub struct Pallet<T>(_);
 
 	#[pallet::config]
-	pub trait Config: frame_system::Config + security::Config {
+	pub trait Config:
+		frame_system::Config + security::Config + currency::Config<Balance = BalanceOf<Self>>
+	{
 		/// The overarching event type.
 		type RuntimeEvent: From<Event<Self>>
 			+ Into<<Self as frame_system::Config>::RuntimeEvent>
@@ -53,17 +58,6 @@ pub mod pallet {
 
 		/// Weight information for the extrinsics in this module.
 		type WeightInfo: WeightInfo;
-
-		/// The currency trait.
-		type Currency: Parameter
-			+ Member
-			+ Copy
-			+ Clone
-			+ Decode
-			+ FullEncode
-			+ TypeInfo
-			+ MaxEncodedLen
-			+ Debug;
 
 		//balance
 		type Balance: AtLeast32BitUnsigned
@@ -79,18 +73,28 @@ pub mod pallet {
 			+ From<u64>;
 
 		type VaultRewards: pooled_rewards::RewardsApi<
-			Self::Currency,
+			CurrencyId<Self>,
 			DefaultVaultId<Self>,
 			BalanceOf<Self>,
-			Self::Currency,
+			CurrencyId<Self>,
+		>;
+
+		/// Vault staking pool.
+		type VaultStaking: staking::Staking<
+			DefaultVaultId<Self>,
+			Self::AccountId,
+			Self::Index,
+			BalanceOf<Self>,
+			CurrencyId<Self>,
 		>;
 
 		type MaxCurrencies: Get<u32>;
 
-		//type OracleApi: ToUsdApi<Self::Balance, Self::Currency>;
-		type OracleApi: oracle::OracleApi<Self::Balance, Self::Currency>;
+		type FeeAccountId: Get<Self::AccountId>;
 
-		type GetNativeCurrencyId: Get<Self::Currency>;
+		type OracleApi: oracle::OracleApi<BalanceOf<Self>, CurrencyId<Self>>;
+
+		type Balances: Currency<Self::AccountId, Balance = BalanceOf<Self>>;
 
 		/// Defines the interval (in number of blocks) at which the reward per block decays.
 		#[pallet::constant]
@@ -112,6 +116,8 @@ pub mod pallet {
 	pub enum Error<T> {
 		//Overflow
 		Overflow,
+		//if origin tries to withdraw with 0 rewards
+		NoRewardsForAccount,
 	}
 
 	#[pallet::hooks]
@@ -136,10 +142,7 @@ pub mod pallet {
 	#[pallet::getter(fn rewards_percentage)]
 	pub(super) type RewardsPercentage<T: Config> = StorageValue<
 		_,
-		BoundedVec<
-			(<T as pallet::Config>::Currency, Perquintill),
-			<T as pallet::Config>::MaxCurrencies,
-		>,
+		BoundedVec<(CurrencyId<T>, Perquintill), <T as pallet::Config>::MaxCurrencies>,
 		OptionQuery,
 	>;
 
@@ -162,23 +165,45 @@ pub mod pallet {
 			Ok(())
 		}
 
-		// #[pallet::call_index(1)]
-		// #[pallet::weight(<T as Config>::WeightInfo::set_reward_per_block())]
-		// #[transactional]
-		// pub fn collect_rewards(
-		// 	origin: OriginFor<T>,
-		// 	collateral_asset: T::Currency,
-		// ) -> DispatchResult {
-		// 	let nominator_id = ensure_signed(origin)?;
-		// }
+		#[pallet::call_index(1)]
+		#[pallet::weight(<T as Config>::WeightInfo::collect_reward())]
+		#[transactional]
+		pub fn collect_reward(
+			origin: OriginFor<T>,
+			vault_id: DefaultVaultId<T>,
+			reward_currency_id: CurrencyId<T>,
+			index: Option<T::Index>,
+		) -> DispatchResult {
+			//distribute reward from reward pool to staking pallet store
+			let caller = ensure_signed(origin)?;
+			let reward = ext::pooled_rewards::withdraw_reward::<T>(
+				&vault_id.collateral_currency(),
+				&vault_id,
+				reward_currency_id,
+			)?;
+			ext::staking::distribute_reward::<T>(&vault_id, reward, reward_currency_id)?;
 
-		//input (account_id, collateral_asset_id, Optional(reward_currency_id))
-		//Expectation: transfer the value of rewards that an account_id has
-		//
-		//get from new fx the list of vaults per account id
-		//execute withdraw on pool rewards for each vault_id (vault_id.collateral,
-		// vault_id, reward_currency_id)
-		//transfer rewards from stake
+			//withdraw the reward for specific nominator
+			let rewards =
+				ext::staking::withdraw_reward::<T>(&vault_id, &caller, index, reward_currency_id)?;
+
+			if rewards == (BalanceOf::<T>::zero()) {
+				return Err(Error::<T>::NoRewardsForAccount.into())
+			}
+
+			//either transfer from fee account if the reward is
+			//not the native currency, or just mint it if it is
+
+			let native_currency_id = T::GetNativeCurrencyId::get();
+			if reward_currency_id == native_currency_id {
+				T::Balances::deposit_creating(&caller, rewards);
+				return Ok(())
+			} else {
+				let amount: currency::Amount<T> = Amount::new(rewards, reward_currency_id);
+				amount.transfer(&T::FeeAccountId::get(), &caller)?;
+				return Ok(())
+			}
+		}
 	}
 }
 
@@ -230,7 +255,7 @@ impl<T: Config> Pallet<T> {
 	//distribute the reward accoridigly
 	fn distribute_rewards(
 		reward_amount: BalanceOf<T>,
-		reward_currency: T::Currency,
+		reward_currency: CurrencyId<T>,
 	) -> Result<BalanceOf<T>, DispatchError> {
 		//calculate the total stake across all collateral pools in USD
 		let total_stakes = ext::pooled_rewards::get_total_stake_all_pools::<T>()?;
@@ -241,7 +266,7 @@ impl<T: Config> Pallet<T> {
 			total_stake_in_usd = total_stake_in_usd.checked_add(&stake_in_usd).unwrap();
 		}
 		//distribute the rewards to each collateral pool
-		let mut percentages_vec = Vec::<(T::Currency, Perquintill)>::new();
+		let mut percentages_vec = Vec::<(CurrencyId<T>, Perquintill)>::new();
 		let mut error_reward_accum = BalanceOf::<T>::zero();
 		for (currency_id, stake) in total_stakes.into_iter() {
 			let stake_in_usd = T::OracleApi::currency_to_usd(&stake, &currency_id)?;
@@ -272,17 +297,17 @@ impl<T: Config> Pallet<T> {
 	}
 }
 //Distribute Rewards interface
-pub trait DistributeRewardsToPool<Balance, CurrencyId> {
+pub trait DistributeRewards<Balance, CurrencyId> {
 	fn distribute_rewards(
 		amount: Balance,
 		currency_id: CurrencyId,
 	) -> Result<Balance, DispatchError>;
 }
 
-impl<T: Config> DistributeRewardsToPool<BalanceOf<T>, T::Currency> for Pallet<T> {
+impl<T: Config> DistributeRewards<BalanceOf<T>, CurrencyId<T>> for Pallet<T> {
 	fn distribute_rewards(
 		amount: BalanceOf<T>,
-		currency_id: T::Currency,
+		currency_id: CurrencyId<T>,
 	) -> Result<BalanceOf<T>, DispatchError> {
 		Pallet::<T>::distribute_rewards(amount, currency_id)
 	}

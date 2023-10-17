@@ -269,7 +269,7 @@ impl Config for Test {
 	type VaultStaking = Staking;
 	type OnSweep = ();
 	type MaxExpectedValue = MaxExpectedValue;
-	type DistributePool = RewardDistribution;
+	type RewardDistribution = RewardDistribution;
 }
 
 pub type TestEvent = RuntimeEvent;

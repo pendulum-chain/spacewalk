@@ -549,7 +549,7 @@ impl fee::Config for Runtime {
 	type VaultStaking = VaultStaking;
 	type OnSweep = currency::SweepFunds<Runtime, FeeAccount>;
 	type MaxExpectedValue = MaxExpectedValue;
-	type DistributePool = RewardDistribution;
+	type RewardDistribution = RewardDistribution;
 }
 
 impl nomination::Config for Runtime {
