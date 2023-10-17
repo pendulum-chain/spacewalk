@@ -184,7 +184,6 @@ pub mod pallet {
 
 			//either transfer from fee account if the reward is
 			//not the native currency, or just mint it if it is
-
 			let native_currency_id = T::GetNativeCurrencyId::get();
 			if reward_currency_id == native_currency_id {
 				T::Balances::deposit_creating(&caller, rewards);
@@ -262,7 +261,6 @@ impl<T: Config> Pallet<T> {
 			let stake_in_usd = T::OracleApi::currency_to_usd(&stake, &currency_id)?;
 			let percentage = Perquintill::from_rational(stake_in_usd, total_stake_in_usd);
 			let reward_for_pool = percentage.mul_floor(reward_amount);
-
 			if ext::pooled_rewards::distribute_reward::<T>(
 				&currency_id,
 				&reward_currency,
