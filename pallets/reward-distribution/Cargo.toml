@@ -24,6 +24,12 @@ frame-benchmarking = { git = "https://github.com/paritytech/substrate", branch =
 
 pallet-balances = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.40", default-features = false }
 
+#orml dependencies
+orml-currencies = { git = "https://github.com/open-web3-stack/open-runtime-module-library", branch = "polkadot-v0.9.40", default-features = false }
+orml-tokens= { git = "https://github.com/open-web3-stack/open-runtime-module-library", branch = "polkadot-v0.9.40", default-features = false }
+orml-traits = { git = "https://github.com/open-web3-stack/open-runtime-module-library", branch = "polkadot-v0.9.40", default-features = false }
+
+
 primitives = { package = "spacewalk-primitives", path = "../../primitives", default-features = false }
 security = { path = "../security", default-features = false }
 currency = { path = "../currency", default-features = false }
@@ -54,6 +60,9 @@ std = [
     "pooled-rewards/std",
     "oracle/std",
     "primitives/std",
+    "orml-currencies/std",
+    "orml-tokens/std",
+    "orml-traits/std",
     "security/std",
     "staking/std",
 ]

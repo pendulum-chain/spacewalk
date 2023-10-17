@@ -7,7 +7,7 @@ pub use currency::testing_constants::DEFAULT_COLLATERAL_CURRENCY;
 use primitives::CurrencyId::XCM;
 
 fn build_total_stakes(
-) -> Vec<(<Test as pallet::Config>::Currency, <Test as pallet::Config>::Balance)> {
+) -> Vec<(<Test as orml_tokens::Config>::CurrencyId, <Test as pallet::Config>::Balance)> {
 	//total in usd 215000
 	vec![(DEFAULT_COLLATERAL_CURRENCY, 1000), (XCM(1), 3000), (XCM(2), 5000), (XCM(3), 500)]
 }
@@ -89,7 +89,10 @@ fn on_initialize_hook_distribution_works() {
 					expected_stake_per_pool.next().expect("More calls than expected");
 				assert_eq!(pool_id, &expected_pool_id);
 				assert_eq!(amount, expected_stake_per_this_pool);
-				assert_eq!(reward_currency, &<Test as pallet::Config>::GetNativeCurrencyId::get());
+				assert_eq!(
+					reward_currency,
+					&<Test as orml_currencies::Config>::GetNativeCurrencyId::get()
+				);
 				MockResult::Return(Ok(()))
 			},
 		);

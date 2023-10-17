@@ -4,21 +4,22 @@ use frame_support::{
 	parameter_types,
 	traits::{ConstU32, ConstU64, Everything},
 };
-use primitives::CurrencyId::XCM;
-use sp_arithmetic::FixedI128;
+use orml_currencies::BasicCurrencyAdapter;
+use primitives::{Balance, CurrencyId, CurrencyId::XCM, VaultId};
+use sp_arithmetic::{FixedI128, FixedU128};
 use sp_core::H256;
 use sp_runtime::{
 	generic::Header as GenericHeader,
 	traits::{BlakeTwo256, IdentityLookup},
 	DispatchError, Perquintill,
 };
-
-use primitives::{Balance, CurrencyId, VaultId};
 type Header = GenericHeader<BlockNumber, BlakeTwo256>;
 type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Test>;
 type Block = frame_system::mocking::MockBlock<Test>;
+use orml_traits::parameter_type_with_key;
+use sp_arithmetic::traits::Zero;
 
-pub use currency::testing_constants::DEFAULT_NATIVE_CURRENCY;
+pub use currency::testing_constants::{DEFAULT_COLLATERAL_CURRENCY, DEFAULT_NATIVE_CURRENCY};
 
 // Configure a mock runtime to test the pallet.
 frame_support::construct_runtime!(
@@ -28,11 +29,17 @@ frame_support::construct_runtime!(
 		UncheckedExtrinsic = UncheckedExtrinsic,
 	{
 		System: frame_system::{Pallet, Call, Storage, Config, Event<T>},
-		Balances: pallet_balances::{Pallet, Call, Storage, Config<T>, Event<T>},
-		Security: security::{Pallet, Call, Storage, Event<T>},
-		RewardDistribution: reward_distribution::{Pallet, Call, Storage, Event<T>},
 
+		//Tokens and Balances
+		Balances: pallet_balances::{Pallet, Call, Storage, Config<T>, Event<T>},
+		Tokens: orml_tokens::{Pallet, Storage, Config<T>, Event<T>},
+		Currencies: orml_currencies::{Pallet, Call},
+		RewardDistribution: reward_distribution::{Pallet, Call, Storage, Event<T>},
 		Rewards: pooled_rewards::{Pallet, Call, Storage, Event<T>},
+
+		//Operational
+		Security: security::{Pallet, Call, Storage, Event<T>},
+
 	}
 );
 
@@ -40,6 +47,10 @@ pub type BlockNumber = u64;
 pub type Index = u64;
 pub type AccountId = u64;
 pub type SignedFixedPoint = FixedI128;
+pub type UnsignedInner = u128;
+pub type RawAmount = i128;
+pub type SignedInner = i128;
+pub type UnsignedFixedPoint = FixedU128;
 
 parameter_types! {
 	pub const BlockHashCount: u64 = 250;
@@ -104,6 +115,7 @@ parameter_types! {
 
 parameter_types! {
 	pub const GetNativeCurrencyId: CurrencyId = DEFAULT_NATIVE_CURRENCY;
+	pub const GetRelayChainCurrencyId: CurrencyId = DEFAULT_COLLATERAL_CURRENCY;
 	pub const MaxCurrencies: u32 = 10;
 }
 
@@ -118,6 +130,72 @@ impl pooled_rewards::Config for Test {
 	type PoolRewardsCurrencyId = CurrencyId;
 	type StakeId = VaultId<AccountId, CurrencyId>;
 	type MaxRewardCurrencies = MaxRewardCurrencies;
+}
+
+parameter_type_with_key! {
+	pub ExistentialDeposits: |_currency_id: CurrencyId| -> Balance {
+		Zero::zero()
+	};
+}
+
+pub struct CurrencyHooks<T>(sp_std::marker::PhantomData<T>);
+impl<T: orml_tokens::Config>
+	orml_traits::currency::MutationHooks<T::AccountId, T::CurrencyId, T::Balance> for CurrencyHooks<T>
+{
+	type OnDust = ();
+	type OnSlash = ();
+	type PreDeposit = ();
+	type PostDeposit = ();
+	type PreTransfer = ();
+	type PostTransfer = ();
+	type OnNewTokenAccount = ();
+	type OnKilledTokenAccount = ();
+}
+
+impl orml_tokens::Config for Test {
+	type RuntimeEvent = RuntimeEvent;
+	type Balance = Balance;
+	type Amount = RawAmount;
+	type CurrencyId = CurrencyId;
+	type WeightInfo = ();
+	type ExistentialDeposits = ExistentialDeposits;
+	type CurrencyHooks = CurrencyHooks<Self>;
+	type MaxLocks = MaxLocks;
+	type MaxReserves = ConstU32<0>;
+	type ReserveIdentifier = ();
+	type DustRemovalWhitelist = Everything;
+}
+
+pub type Amount = i128;
+
+impl orml_currencies::Config for Test {
+	type MultiCurrency = Tokens;
+	type NativeCurrency = BasicCurrencyAdapter<Test, Balances, Amount, BlockNumber>;
+	type GetNativeCurrencyId = GetNativeCurrencyId;
+	type WeightInfo = ();
+}
+
+pub struct CurrencyConvert;
+impl currency::CurrencyConversion<currency::Amount<Test>, CurrencyId> for CurrencyConvert {
+	fn convert(
+		_amount: &currency::Amount<Test>,
+		_to: CurrencyId,
+	) -> Result<currency::Amount<Test>, sp_runtime::DispatchError> {
+		unimplemented!()
+	}
+}
+
+impl currency::Config for Test {
+	type UnsignedFixedPoint = UnsignedFixedPoint;
+	type SignedInner = SignedInner;
+	type SignedFixedPoint = SignedFixedPoint;
+	type Balance = Balance;
+	type GetRelayChainCurrencyId = GetRelayChainCurrencyId;
+
+	type AssetConversion = primitives::AssetConversion;
+	type BalanceConversion = primitives::BalanceConversion;
+	type CurrencyConversion = CurrencyConvert;
+	type AmountCompatibility = primitives::StellarCompatibility;
 }
 
 pub struct OracleApiMock {}
@@ -140,12 +218,10 @@ impl oracle::OracleApi<Balance, CurrencyId> for OracleApiMock {
 impl Config for Test {
 	type RuntimeEvent = RuntimeEvent;
 	type WeightInfo = crate::default_weights::SubstrateWeight<Test>;
-	type Currency = CurrencyId;
 	type Balance = Balance;
 	type DecayInterval = ConstU64<100>;
 	type DecayRate = DecayRate;
 	type VaultRewards = Rewards;
-	type GetNativeCurrencyId = GetNativeCurrencyId;
 	type MaxCurrencies = MaxCurrencies;
 	type OracleApi = OracleApiMock;
 }
