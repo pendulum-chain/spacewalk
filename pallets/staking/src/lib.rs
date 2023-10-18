@@ -1030,6 +1030,7 @@ pub mod migration {
 			// withdraw_reward]
 
 			// step 1: initial (normal) flow
+			assert_ok!(Staking::add_reward_currency(DEFAULT_WRAPPED_CURRENCY));
 			assert_ok!(Staking::deposit_stake(&VAULT, &VAULT.account_id, fixed!(50)));
 			assert_ok!(Staking::distribute_reward(DEFAULT_WRAPPED_CURRENCY, &VAULT, fixed!(10000)));
 			assert_ok!(
@@ -1087,6 +1088,7 @@ pub mod migration {
 		}
 
 		fn assert_total_rewards(amount: i128) {
+			assert_ok!(Staking::add_reward_currency(DEFAULT_WRAPPED_CURRENCY));
 			use mock::*;
 			assert_eq!(
 				Staking::total_rewards(DEFAULT_WRAPPED_CURRENCY, (0, VAULT.clone())),
@@ -1098,6 +1100,7 @@ pub mod migration {
 		fn test_total_rewards_tracking_in_buggy_code() {
 			use mock::*;
 			run_test(|| {
+				assert_ok!(Staking::add_reward_currency(DEFAULT_WRAPPED_CURRENCY));
 				setup_broken_state();
 
 				assert_total_rewards(12000);
@@ -1141,6 +1144,7 @@ pub mod migration {
 		fn test_migration() {
 			use mock::*;
 			run_test(|| {
+				assert_ok!(Staking::add_reward_currency(DEFAULT_WRAPPED_CURRENCY));
 				let fee_pool_account_id = 23;
 
 				assert_ok!(<orml_tokens::Pallet<Test> as MultiCurrency<
@@ -1186,7 +1190,7 @@ pub mod migration {
 		/// despite the slash bug (it will withdraw an incorrect but non-zero amount)
 		fn setup_broken_state_with_withdrawable_reward() {
 			use mock::*;
-
+			assert_ok!(Staking::add_reward_currency(DEFAULT_WRAPPED_CURRENCY));
 			setup_broken_state();
 			assert_total_rewards(12000);
 			assert_ok!(Staking::distribute_reward(
@@ -1201,6 +1205,7 @@ pub mod migration {
 		fn test_broken_state_with_withdrawable_amount() {
 			use mock::*;
 			run_test(|| {
+				assert_ok!(Staking::add_reward_currency(DEFAULT_WRAPPED_CURRENCY));
 				setup_broken_state_with_withdrawable_reward();
 				assert_total_rewards(1_012_000);
 
@@ -1222,6 +1227,7 @@ pub mod migration {
 		fn test_migration_of_account_with_withdrawable_amount() {
 			use mock::*;
 			run_test(|| {
+				assert_ok!(Staking::add_reward_currency(DEFAULT_WRAPPED_CURRENCY));
 				let fee_pool_account_id = 23;
 
 				assert_ok!(<orml_tokens::Pallet<Test> as MultiCurrency<
