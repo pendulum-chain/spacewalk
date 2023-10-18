@@ -197,25 +197,27 @@ impl<T: Config> Pallet<T> {
 	) -> DispatchResult {
 		let native_currency_id = T::GetNativeCurrencyId::get();
 		if reward_currency_id == native_currency_id {
-			let available_native_funds = T::Balances::total_balance(&Self::fee_pool_account_id());
+			let available_native_funds = T::Balances::free_balance(&Self::fee_pool_account_id());
 
-			if available_native_funds < reward {
-				//if available native is less than reward we transfer first from fee account,
-				//and mint the rest
-				let remaining =
-					reward.checked_sub(&available_native_funds).ok_or(Error::<T>::Underflow)?;
-				let amount: currency::Amount<T> =
-					Amount::new(available_native_funds, reward_currency_id);
-				amount.transfer(&Self::fee_pool_account_id(), &beneficiary)?;
-				T::Balances::deposit_creating(&beneficiary, remaining);
-				return Ok(())
-			} else {
-				let amount: currency::Amount<T> = Amount::new(reward, reward_currency_id);
-				return amount.transfer(&Self::fee_pool_account_id(), &beneficiary)
+			match reward.checked_sub(&available_native_funds) {
+				None => {
+					// Pay the whole reward from the fee pool
+					let amount: currency::Amount<T> = Amount::new(reward, reward_currency_id);
+					return amount.transfer(&Self::fee_pool_account_id(), &beneficiary)
+				},
+				Some(remaining) => {
+					// Use the available funds from the fee pool
+					let available_amount: currency::Amount<T> =
+						Amount::new(available_native_funds, reward_currency_id);
+					available_amount.transfer(&Self::fee_pool_account_id(), &beneficiary)?;
+					// Mint the rest
+					T::Balances::deposit_creating(&beneficiary, remaining);
+				},
 			}
+			Ok(())
 		} else {
-			//we need no checking of available funds, since fee will ALWAYS have enough collected
-			//fees
+			//we need no checking of available funds, since the fee pool will ALWAYS have enough
+			// collected fees of the wrapped currencies
 			let amount: currency::Amount<T> = Amount::new(reward, reward_currency_id);
 			amount.transfer(&Self::fee_pool_account_id(), &beneficiary)
 		}
@@ -299,7 +301,6 @@ impl<T: Config> Pallet<T> {
 		Ok(error_reward_accum)
 	}
 
-	//TODO loop through all currencies not just these two!!
 	fn withdraw_all_rewards_from_vault(vault_id: DefaultVaultId<T>) -> DispatchResult {
 		let mut all_reward_currencies = ext::staking::get_all_reward_currencies::<T>()?;
 		all_reward_currencies.push(T::GetNativeCurrencyId::get());
