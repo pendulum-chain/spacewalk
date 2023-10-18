@@ -63,18 +63,6 @@ pub(crate) mod vault_registry {
 }
 
 #[cfg_attr(test, mockable)]
-pub(crate) mod fee {
-	use crate::DefaultVaultId;
-	use frame_support::dispatch::DispatchResult;
-
-	pub fn withdraw_all_vault_rewards<T: crate::Config>(
-		vault_id: &DefaultVaultId<T>,
-	) -> DispatchResult {
-		<fee::Pallet<T>>::withdraw_all_vault_rewards(vault_id)
-	}
-}
-
-#[cfg_attr(test, mockable)]
 pub(crate) mod staking {
 	use crate::BalanceOf;
 	use currency::Amount;

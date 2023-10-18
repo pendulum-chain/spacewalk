@@ -234,35 +234,13 @@ pub mod pallet {
 	// The pallet's dispatchable functions.
 	#[pallet::call]
 	impl<T: Config> Pallet<T> {
-		/// Withdraw all rewards from the `origin` account in the `vault_id` staking pool.
-		///
-		/// # Arguments
-		///
-		/// * `origin` - signing account
-		#[pallet::call_index(0)]
-		#[pallet::weight(<T as Config>::WeightInfo::withdraw_rewards())]
-		#[transactional]
-		pub fn withdraw_rewards(
-			origin: OriginFor<T>,
-			vault_id: DefaultVaultId<T>,
-			index: Option<T::Index>,
-		) -> DispatchResultWithPostInfo {
-			let nominator_id = ensure_signed(origin)?;
-			Self::withdraw_from_reward_pool::<T::VaultRewards, T::VaultStaking>(
-				&vault_id,
-				&nominator_id,
-				index,
-			)?;
-			Ok(().into())
-		}
-
 		/// Changes the issue fee percentage (only executable by the Root account)
 		///
 		/// # Arguments
 		///
 		/// * `origin` - signing account
 		/// * `fee` - the new fee
-		#[pallet::call_index(1)]
+		#[pallet::call_index(0)]
 		#[pallet::weight(<T as Config>::WeightInfo::set_issue_fee())]
 		#[transactional]
 		pub fn set_issue_fee(
@@ -281,7 +259,7 @@ pub mod pallet {
 		///
 		/// * `origin` - signing account
 		/// * `griefing_collateral` - the new griefing collateral
-		#[pallet::call_index(2)]
+		#[pallet::call_index(1)]
 		#[pallet::weight(<T as Config>::WeightInfo::set_issue_griefing_collateral())]
 		#[transactional]
 		pub fn set_issue_griefing_collateral(
@@ -303,7 +281,7 @@ pub mod pallet {
 		///
 		/// * `origin` - signing account
 		/// * `fee` - the new fee
-		#[pallet::call_index(3)]
+		#[pallet::call_index(2)]
 		#[pallet::weight(<T as Config>::WeightInfo::set_redeem_fee())]
 		#[transactional]
 		pub fn set_redeem_fee(
@@ -322,7 +300,7 @@ pub mod pallet {
 		///
 		/// * `origin` - signing account
 		/// * `fee` - the new fee
-		#[pallet::call_index(4)]
+		#[pallet::call_index(3)]
 		#[pallet::weight(<T as Config>::WeightInfo::set_premium_redeem_fee())]
 		#[transactional]
 		pub fn set_premium_redeem_fee(
@@ -341,7 +319,7 @@ pub mod pallet {
 		///
 		/// * `origin` - signing account
 		/// * `fee` - the new fee
-		#[pallet::call_index(5)]
+		#[pallet::call_index(4)]
 		#[pallet::weight(<T as Config>::WeightInfo::set_punishment_fee())]
 		#[transactional]
 		pub fn set_punishment_fee(
@@ -360,7 +338,7 @@ pub mod pallet {
 		///
 		/// * `origin` - signing account
 		/// * `griefing_collateral` - the new griefing collateral
-		#[pallet::call_index(6)]
+		#[pallet::call_index(5)]
 		#[pallet::weight(<T as Config>::WeightInfo::set_replace_griefing_collateral())]
 		#[transactional]
 		pub fn set_replace_griefing_collateral(
@@ -467,47 +445,7 @@ impl<T: Config> Pallet<T> {
 		amount.rounded_mul(<ReplaceGriefingCollateral<T>>::get())
 	}
 
-	pub fn withdraw_all_vault_rewards(vault_id: &DefaultVaultId<T>) -> DispatchResult {
-		Self::distribute_from_reward_pool::<T::VaultRewards, T::VaultStaking>(vault_id)?;
-		Ok(())
-	}
-
-	// Private functions internal to this pallet
-	/// Withdraw rewards from a pool and transfer to `account_id`.
-	fn withdraw_from_reward_pool<
-		Rewards: pooled_rewards::RewardsApi<CurrencyId<T>, DefaultVaultId<T>, BalanceOf<T>, CurrencyId<T>>,
-		Staking: staking::Staking<DefaultVaultId<T>, T::AccountId, T::Index, BalanceOf<T>, CurrencyId<T>>,
-	>(
-		vault_id: &DefaultVaultId<T>,
-		nominator_id: &T::AccountId,
-		index: Option<T::Index>,
-	) -> DispatchResult {
-		Self::distribute_from_reward_pool::<Rewards, Staking>(vault_id)?;
-
-		for currency_id in [vault_id.wrapped_currency(), T::GetNativeCurrencyId::get()] {
-			let rewards = Staking::withdraw_reward(vault_id, nominator_id, index, currency_id)?;
-			let amount = Amount::<T>::new(rewards, currency_id);
-			amount.transfer(&Self::fee_pool_account_id(), nominator_id)?;
-		}
-		Ok(())
-	}
-
 	fn distribute(reward: &Amount<T>) -> Result<Amount<T>, DispatchError> {
 		ext::reward_distribution::distribute_rewards::<T>(reward)
-	}
-
-	pub fn distribute_from_reward_pool<
-		Rewards: pooled_rewards::RewardsApi<CurrencyId<T>, DefaultVaultId<T>, BalanceOf<T>, CurrencyId<T>>,
-		Staking: staking::Staking<DefaultVaultId<T>, T::AccountId, T::Index, BalanceOf<T>, CurrencyId<T>>,
-	>(
-		vault_id: &DefaultVaultId<T>,
-	) -> DispatchResult {
-		for currency_id in [vault_id.wrapped_currency(), T::GetNativeCurrencyId::get()] {
-			let reward =
-				Rewards::withdraw_reward(&vault_id.collateral_currency(), &vault_id, currency_id)?;
-			Staking::distribute_reward(vault_id, reward, currency_id)?;
-		}
-
-		Ok(())
 	}
 }
