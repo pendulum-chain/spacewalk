@@ -187,7 +187,7 @@ pub mod pallet {
 
 	impl<T: Config> Pallet<T> {
 		fn check_non_root_rights(origin: OriginFor<T>) -> Result<T::AccountId, DispatchError> {
-			let origin_account_id = ensure_signed(origin.clone())?;
+			let origin_account_id = ensure_signed(origin)?;
 
 			ensure!(
 				<AuthorizedAccounts<T>>::contains_key(&origin_account_id),
@@ -199,7 +199,7 @@ pub mod pallet {
 
 		fn check_origin_rights(origin: OriginFor<T>) -> DispatchResult {
 			if ensure_root(origin.clone()).is_err() {
-				Pallet::<T>::check_non_root_rights(origin.clone())?;
+				Pallet::<T>::check_non_root_rights(origin)?;
 			}
 
 			Ok(())
