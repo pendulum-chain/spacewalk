@@ -280,6 +280,7 @@ impl<T: Config> Pallet<T> {
 			let stake_in_usd = T::OracleApi::currency_to_usd(&stake, &currency_id)?;
 			total_stake_in_usd = total_stake_in_usd.checked_add(&stake_in_usd).unwrap();
 		}
+
 		//distribute the rewards to each collateral pool
 		let mut error_reward_accum = BalanceOf::<T>::zero();
 		for (currency_id, stake) in total_stakes.into_iter() {

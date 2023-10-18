@@ -9,6 +9,7 @@ use oracle::{
 	oracle_mock::{Data, DataKey, MockConvertMoment, MockConvertPrice, MockOracleKeyConvertor},
 	CoinInfo, DataFeeder, DataProvider, DiaOracle, PriceInfo, TimestampedValue,
 };
+
 use orml_currencies::BasicCurrencyAdapter;
 use orml_traits::parameter_type_with_key;
 use primitives::oracle::Key;
@@ -24,7 +25,7 @@ use std::cell::RefCell;
 pub use currency::testing_constants::{
 	DEFAULT_COLLATERAL_CURRENCY, DEFAULT_NATIVE_CURRENCY, DEFAULT_WRAPPED_CURRENCY,
 };
-pub use primitives::CurrencyId;
+pub use primitives::{CurrencyId, CurrencyId::XCM};
 use primitives::{VaultCurrencyPair, VaultId};
 
 use crate as vault_registry;
@@ -135,6 +136,9 @@ pub const DEFAULT_CURRENCY_PAIR: VaultCurrencyPair<CurrencyId> = VaultCurrencyPa
 	collateral: DEFAULT_COLLATERAL_CURRENCY,
 	wrapped: DEFAULT_WRAPPED_CURRENCY,
 };
+
+pub const OTHER_CURRENCY_PAIR: VaultCurrencyPair<CurrencyId> =
+	VaultCurrencyPair { collateral: XCM(1), wrapped: DEFAULT_WRAPPED_CURRENCY };
 
 parameter_types! {
 	pub const GetCollateralCurrencyId: CurrencyId = DEFAULT_COLLATERAL_CURRENCY;
@@ -261,14 +265,19 @@ parameter_types! {
 pub struct OracleApiMock {}
 impl oracle::OracleApi<Balance, CurrencyId> for OracleApiMock {
 	fn currency_to_usd(
-		_amount: &Balance,
+		amount: &Balance,
 		currency_id: &CurrencyId,
 	) -> Result<Balance, DispatchError> {
 		let _native_currency = GetNativeCurrencyId::get();
-		match currency_id {
-			_native_currency => return Ok(100),
-			//_ => unimplemented!("unimplemented mock conversion for currency"),
-		}
+		let amount_in_usd = match currency_id {
+			&XCM(0) => amount * 5,
+			&XCM(1) => amount * 10,
+			&XCM(2) => amount * 15,
+			&XCM(3) => amount * 20,
+			&XCM(4) => amount * 35,
+			_native_currency => amount * 3,
+		};
+		Ok(amount_in_usd)
 	}
 }
 
@@ -360,6 +369,14 @@ pub const RICH_ID: VaultId<AccountId, CurrencyId> = VaultId {
 		wrapped: DEFAULT_WRAPPED_CURRENCY,
 	},
 };
+pub const ID_COLLATERAL_21: VaultId<AccountId, CurrencyId> = VaultId {
+	account_id: 6,
+	currencies: VaultCurrencyPair { collateral: XCM(1), wrapped: DEFAULT_WRAPPED_CURRENCY },
+};
+pub const ID_COLLATERAL_22: VaultId<AccountId, CurrencyId> = VaultId {
+	account_id: 7,
+	currencies: VaultCurrencyPair { collateral: XCM(1), wrapped: DEFAULT_WRAPPED_CURRENCY },
+};
 pub const DEFAULT_COLLATERAL: u128 = 100000;
 pub const RICH_COLLATERAL: u128 = DEFAULT_COLLATERAL + 100000;
 pub const MULTI_VAULT_TEST_IDS: [u64; 4] = [100, 101, 102, 103];
@@ -373,9 +390,12 @@ impl ExtBuilder {
 
 		// Parameters to be set in tests
 		vault_registry::GenesisConfig::<Test> {
-			minimum_collateral_vault: vec![(DEFAULT_COLLATERAL_CURRENCY, 0)],
+			minimum_collateral_vault: vec![(DEFAULT_COLLATERAL_CURRENCY, 0), (XCM(1), 0)],
 			punishment_delay: 0,
-			system_collateral_ceiling: vec![(DEFAULT_CURRENCY_PAIR, 1_000_000_000_000)],
+			system_collateral_ceiling: vec![
+				(DEFAULT_CURRENCY_PAIR, 1_000_000_000_000),
+				(OTHER_CURRENCY_PAIR, 1_000_000_000_000),
+			],
 			secure_collateral_threshold: vec![(DEFAULT_CURRENCY_PAIR, UnsignedFixedPoint::one())],
 			premium_redeem_threshold: vec![(DEFAULT_CURRENCY_PAIR, UnsignedFixedPoint::one())],
 			liquidation_collateral_threshold: vec![(
@@ -394,6 +414,8 @@ impl ExtBuilder {
 				(DEFAULT_ID.account_id, DEFAULT_COLLATERAL_CURRENCY, DEFAULT_COLLATERAL),
 				(OTHER_ID.account_id, DEFAULT_COLLATERAL_CURRENCY, DEFAULT_COLLATERAL),
 				(RICH_ID.account_id, DEFAULT_COLLATERAL_CURRENCY, RICH_COLLATERAL),
+				(ID_COLLATERAL_21.account_id, XCM(1), DEFAULT_COLLATERAL),
+				(ID_COLLATERAL_22.account_id, XCM(1), DEFAULT_COLLATERAL),
 				(MULTI_VAULT_TEST_IDS[0], DEFAULT_COLLATERAL_CURRENCY, MULTI_VAULT_TEST_COLLATERAL),
 				(MULTI_VAULT_TEST_IDS[1], DEFAULT_COLLATERAL_CURRENCY, MULTI_VAULT_TEST_COLLATERAL),
 				(MULTI_VAULT_TEST_IDS[2], DEFAULT_COLLATERAL_CURRENCY, MULTI_VAULT_TEST_COLLATERAL),
@@ -411,6 +433,10 @@ pub(crate) fn set_default_thresholds() {
 	VaultRegistry::_set_secure_collateral_threshold(DEFAULT_CURRENCY_PAIR, secure);
 	VaultRegistry::_set_premium_redeem_threshold(DEFAULT_CURRENCY_PAIR, premium);
 	VaultRegistry::_set_liquidation_collateral_threshold(DEFAULT_CURRENCY_PAIR, liquidation);
+
+	VaultRegistry::_set_secure_collateral_threshold(OTHER_CURRENCY_PAIR, secure);
+	VaultRegistry::_set_premium_redeem_threshold(OTHER_CURRENCY_PAIR, premium);
+	VaultRegistry::_set_liquidation_collateral_threshold(OTHER_CURRENCY_PAIR, liquidation);
 }
 
 pub fn run_test<T>(test: T)

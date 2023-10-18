@@ -1,7 +1,12 @@
 use codec::Decode;
+use currency::{testing_constants::get_wrapped_currency_id, Amount};
 use frame_support::{assert_err, assert_noop, assert_ok, error::BadOrigin};
+use frame_system::RawOrigin;
 use mocktopus::mocking::*;
+use pooled_rewards::RewardsApi;
 use pretty_assertions::assert_eq;
+use primitives::{StellarPublicKeyRaw, VaultCurrencyPair, VaultId};
+use security::Pallet as Security;
 use sp_arithmetic::{traits::One, FixedPointNumber, FixedU128};
 use sp_core::U256;
 use sp_runtime::{
@@ -9,10 +14,6 @@ use sp_runtime::{
 	ArithmeticError,
 };
 use sp_std::convert::TryInto;
-
-use currency::{testing_constants::get_wrapped_currency_id, Amount};
-use primitives::{StellarPublicKeyRaw, VaultCurrencyPair, VaultId};
-use security::Pallet as Security;
 
 use crate::{
 	ext,
@@ -1710,4 +1711,146 @@ fn test_offchain_worker_unsigned_transaction_submission() {
 			)
 		);
 	})
+}
+
+#[test]
+fn integration_single_vault_receives_per_block_reward() {
+	run_test(|| {
+		//set up reward values
+		let reward_per_block: u64 = 1000u64;
+		assert_ok!(ext::staking::add_reward_currency::<Test>(DEFAULT_WRAPPED_CURRENCY));
+		assert_ok!(<reward_distribution::Pallet<Test>>::set_reward_per_block(
+			RawOrigin::Root.into(),
+			reward_per_block.into()
+		));
+		//register vault and issue tokens.
+		let issue_tokens: u128 = DEFAULT_COLLATERAL / 10 / 2; // = 5
+		let id = create_vault_and_issue_tokens(issue_tokens, DEFAULT_COLLATERAL, DEFAULT_ID);
+		assert_eq!(
+			<Test as fee::Config>::VaultRewards::get_stake(&id.collateral_currency(), &id),
+			Ok(DEFAULT_COLLATERAL)
+		);
+		assert_eq!(<pallet_balances::Pallet<Test>>::free_balance(&id.account_id), 0u128);
+
+		//distribute fee rewards
+		<reward_distribution::Pallet<Test>>::execute_on_init(2u32.into());
+		//collect rewards
+		let origin = RuntimeOrigin::signed(id.account_id);
+		assert_ok!(<reward_distribution::Pallet<Test>>::collect_reward(
+			origin.into(),
+			id.clone(),
+			DEFAULT_NATIVE_CURRENCY,
+			None,
+		));
+		assert_eq!(
+			<pallet_balances::Pallet<Test>>::free_balance(&id.account_id),
+			reward_per_block.into()
+		);
+	});
+}
+
+#[test]
+fn integration_multiple_vault_same_collateral_per_block_reward() {
+	run_test(|| {
+		//set up reward values
+		let reward_per_block: u64 = 100000u64;
+		assert_ok!(ext::staking::add_reward_currency::<Test>(DEFAULT_WRAPPED_CURRENCY));
+		assert_ok!(<reward_distribution::Pallet<Test>>::set_reward_per_block(
+			RawOrigin::Root.into(),
+			reward_per_block.into()
+		));
+
+		//register vaults and issue tokens.
+		let issue_tokens: u128 = 5;
+
+		let collateral_vault_1 = 1000u128;
+		let id = create_vault_and_issue_tokens(issue_tokens, collateral_vault_1, DEFAULT_ID);
+		assert_eq!(
+			<Test as fee::Config>::VaultRewards::get_stake(&id.collateral_currency(), &id),
+			Ok(collateral_vault_1)
+		);
+
+		let collateral_vault_2 = 5000u128;
+		let id2 = create_vault_and_issue_tokens(issue_tokens, collateral_vault_2, OTHER_ID);
+		assert_eq!(
+			<Test as fee::Config>::VaultRewards::get_stake(&id2.collateral_currency(), &id2),
+			Ok(collateral_vault_2)
+		);
+
+		//distribute fee rewards
+		<reward_distribution::Pallet<Test>>::execute_on_init(2u32.into());
+		//collect rewards
+		let origin = RuntimeOrigin::signed(id.account_id);
+		assert_ok!(<reward_distribution::Pallet<Test>>::collect_reward(
+			origin.into(),
+			id.clone(),
+			DEFAULT_NATIVE_CURRENCY,
+			None,
+		));
+
+		//expected value  = (1000*5/(5000*5 + 1000*5))*100000 = 16666
+		assert_eq!(<pallet_balances::Pallet<Test>>::free_balance(&id.account_id), 16666u128.into());
+	});
+}
+
+#[test]
+fn integration_multiple_vault_multiple_collateral_per_block_reward() {
+	run_test(|| {
+		//set up reward values and threshold
+		assert_ok!(ext::staking::add_reward_currency::<Test>(DEFAULT_WRAPPED_CURRENCY));
+		let reward_per_block: u64 = 100000u64;
+		assert_ok!(<reward_distribution::Pallet<Test>>::set_reward_per_block(
+			RawOrigin::Root.into(),
+			reward_per_block.into()
+		));
+
+		//register vaults and issue tokens.
+		let issue_tokens: u128 = 5;
+
+		let collateral_vault_1 = 1000u128;
+		let id = create_vault_and_issue_tokens(issue_tokens, collateral_vault_1, DEFAULT_ID);
+		assert_eq!(
+			<Test as fee::Config>::VaultRewards::get_stake(&id.collateral_currency(), &id),
+			Ok(collateral_vault_1)
+		);
+
+		let collateral_vault_2 = 5000u128;
+		let id2 = create_vault_and_issue_tokens(issue_tokens, collateral_vault_2, OTHER_ID);
+		assert_eq!(
+			<Test as fee::Config>::VaultRewards::get_stake(&id2.collateral_currency(), &id2),
+			Ok(collateral_vault_2)
+		);
+
+		let collateral_vault_3 = 3000u128;
+		let id3 = create_vault_and_issue_tokens(issue_tokens, collateral_vault_3, ID_COLLATERAL_21);
+		assert_eq!(
+			<Test as fee::Config>::VaultRewards::get_stake(&id3.collateral_currency(), &id3),
+			Ok(collateral_vault_3)
+		);
+
+		let collateral_vault_4 = 2000u128;
+		let id4 = create_vault_and_issue_tokens(issue_tokens, collateral_vault_4, ID_COLLATERAL_22);
+		assert_eq!(
+			<Test as fee::Config>::VaultRewards::get_stake(&id4.collateral_currency(), &id4),
+			Ok(collateral_vault_4)
+		);
+
+		//distribute fee rewards
+		<reward_distribution::Pallet<Test>>::execute_on_init(2u32.into());
+		//collect rewards
+		let origin = RuntimeOrigin::signed(id4.account_id);
+		assert_ok!(<reward_distribution::Pallet<Test>>::collect_reward(
+			origin.into(),
+			id4.clone(),
+			DEFAULT_NATIVE_CURRENCY,
+			None,
+		));
+
+		//expected value  = ((2000*10 + 3000*10)/(5000*5 + 1000*5 + 2000*10 +
+		// 3000*10))*(2000/(3000+2000))*100000 = 25000
+		assert_eq!(
+			<pallet_balances::Pallet<Test>>::free_balance(&id4.account_id),
+			25000u128.into()
+		);
+	});
 }
