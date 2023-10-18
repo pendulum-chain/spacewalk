@@ -336,6 +336,7 @@ impl staking::Config for Runtime {
 	type SignedInner = SignedInner;
 	type CurrencyId = CurrencyId;
 	type GetNativeCurrencyId = GetNativeCurrencyId;
+	type MaxRewardCurrencies = MaxRewardCurrencies;
 }
 
 pub type OrganizationId = u128;

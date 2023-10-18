@@ -68,7 +68,7 @@ use sp_std::{cmp, convert::TryInto};
 
 pub use pallet::*;
 use primitives::{BalanceToFixedPoint, TruncateFixedPointToInt, VaultCurrencyPair, VaultId};
-
+use sp_std::vec::Vec;
 #[cfg(test)]
 mod mock;
 
@@ -408,7 +408,7 @@ impl<T: Config> Pallet<T> {
 				.ok_or(ArithmeticError::Overflow)?;
 			Ok::<_, DispatchError>(())
 		})?;
-		let mut all_reward_currencies = ext::staking::get_all_reward_currencies::<T>()?;
+		let mut all_reward_currencies = Self::get_all_reward_currencies()?;
 		all_reward_currencies.push(T::GetNativeCurrencyId::get());
 		for currency_id in all_reward_currencies {
 			<RewardTally<T>>::mutate(
@@ -488,7 +488,7 @@ impl<T: Config> Pallet<T> {
 		// A slash means reward per token is no longer representative of the rewards
 		// since `amount * reward_per_token` will be lost from the system. As such,
 		// replenish rewards by the amount of reward lost with this slash
-		let mut all_reward_currencies = ext::staking::get_all_reward_currencies::<T>()?;
+		let mut all_reward_currencies = Self::get_all_reward_currencies()?;
 		all_reward_currencies.push(T::GetNativeCurrencyId::get());
 		for currency_id in all_reward_currencies {
 			Self::increase_rewards(
@@ -680,7 +680,7 @@ impl<T: Config> Pallet<T> {
 			Ok::<_, DispatchError>(())
 		})?;
 
-		let mut all_reward_currencies = ext::staking::get_all_reward_currencies::<T>()?;
+		let mut all_reward_currencies = Self::get_all_reward_currencies()?;
 		all_reward_currencies.push(T::GetNativeCurrencyId::get());
 		for currency_id in all_reward_currencies {
 			<RewardTally<T>>::mutate(

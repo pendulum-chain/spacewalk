@@ -51,11 +51,11 @@ pub(crate) mod pooled_rewards {
 
 #[cfg_attr(test, mockable)]
 pub(crate) mod staking {
+	use crate::{types::BalanceOf, DefaultVaultId};
 	use currency::CurrencyId;
 	use frame_support::dispatch::DispatchError;
+	use sp_std::vec::Vec;
 	use staking::Staking;
-
-	use crate::{types::BalanceOf, DefaultVaultId};
 
 	pub fn distribute_reward<T: crate::Config>(
 		vault_id: &DefaultVaultId<T>,

@@ -233,6 +233,7 @@ impl staking::Config for Test {
 	type SignedInner = SignedInner;
 	type CurrencyId = CurrencyId;
 	type GetNativeCurrencyId = GetNativeCurrencyId;
+	type MaxRewardCurrencies = MaxRewardCurrencies;
 }
 
 impl security::Config for Test {

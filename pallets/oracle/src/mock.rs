@@ -214,12 +214,16 @@ impl security::Config for Test {
 	type WeightInfo = ();
 }
 
+parameter_types! {
+	pub const MaxRewardCurrencies: u32= 10;
+}
 impl staking::Config for Test {
 	type RuntimeEvent = TestEvent;
 	type SignedFixedPoint = SignedFixedPoint;
 	type SignedInner = SignedInner;
 	type CurrencyId = CurrencyId;
 	type GetNativeCurrencyId = GetNativeCurrencyId;
+	type MaxRewardCurrencies = MaxRewardCurrencies;
 }
 
 pub type TestEvent = RuntimeEvent;

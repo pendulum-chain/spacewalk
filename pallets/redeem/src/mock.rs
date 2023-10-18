@@ -251,16 +251,17 @@ impl currency::Config for Test {
 	type AmountCompatibility = MockAmountCompatibility;
 }
 
+parameter_types! {
+	pub const MaxRewardCurrencies: u32= 10;
+}
+
 impl staking::Config for Test {
 	type RuntimeEvent = TestEvent;
 	type SignedFixedPoint = SignedFixedPoint;
 	type SignedInner = SignedInner;
 	type CurrencyId = CurrencyId;
 	type GetNativeCurrencyId = GetNativeCurrencyId;
-}
-
-parameter_types! {
-	pub const MaxRewardCurrencies: u32= 10;
+	type MaxRewardCurrencies = MaxRewardCurrencies;
 }
 
 impl pooled_rewards::Config for Test {

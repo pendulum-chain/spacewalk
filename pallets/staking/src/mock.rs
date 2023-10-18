@@ -75,14 +75,15 @@ impl frame_system::Config for Test {
 
 parameter_types! {
 	pub const GetNativeCurrencyId: CurrencyId = DEFAULT_NATIVE_CURRENCY;
+	pub const MaxRewardCurrencies: u32= 10;
 }
-
 impl Config for Test {
 	type RuntimeEvent = TestEvent;
 	type SignedInner = SignedInner;
 	type SignedFixedPoint = SignedFixedPoint;
 	type CurrencyId = CurrencyId;
 	type GetNativeCurrencyId = GetNativeCurrencyId;
+	type MaxRewardCurrencies = MaxRewardCurrencies;
 }
 
 pub type Balance = u128;
