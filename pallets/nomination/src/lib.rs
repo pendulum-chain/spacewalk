@@ -242,8 +242,7 @@ impl<T: Config> Pallet<T> {
 		}
 
 		// withdraw all vault rewards first, to prevent the nominator from withdrawing past rewards
-		//TODO do with new reward-pallet
-
+		ext::reward_distribution::withdraw_all_rewards_from_vault::<T>(&vault_id)?;
 		// withdraw `amount` of stake from the vault staking pool
 		ext::staking::withdraw_stake::<T>(vault_id, nominator_id, amount.amount(), Some(index))?;
 
@@ -285,8 +284,7 @@ impl<T: Config> Pallet<T> {
 		);
 
 		// Withdraw all vault rewards first, to prevent the nominator from withdrawing past rewards
-		//TODO do with new reward-pallet
-
+		ext::reward_distribution::withdraw_all_rewards_from_vault::<T>(&vault_id)?;
 		// Deposit `amount` of stake into the vault staking pool
 		ext::staking::deposit_stake::<T>(vault_id, nominator_id, amount.amount())?;
 		amount.transfer(nominator_id, &vault_id.account_id)?;

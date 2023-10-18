@@ -9,7 +9,6 @@ mod default_weights;
 
 use crate::types::{BalanceOf, DefaultVaultId};
 use codec::{FullCodec, MaxEncodedLen};
-
 use core::fmt::Debug;
 use currency::{Amount, CurrencyId};
 pub use default_weights::{SubstrateWeight, WeightInfo};
@@ -21,7 +20,7 @@ use frame_support::{
 };
 use oracle::OracleApi;
 use sp_arithmetic::{traits::AtLeast32BitUnsigned, FixedPointOperand, Perquintill};
-use sp_runtime::traits::{AccountIdConversion, CheckedAdd, One, Zero};
+use sp_runtime::traits::{AccountIdConversion, CheckedAdd, CheckedSub, One, Zero};
 #[cfg(feature = "runtime-benchmarks")]
 mod benchmarking;
 
@@ -115,6 +114,8 @@ pub mod pallet {
 	pub enum Error<T> {
 		//Overflow
 		Overflow,
+		//underflow
+		Underflow,
 		//if origin tries to withdraw with 0 rewards
 		NoRewardsForAccount,
 	}
@@ -182,22 +183,44 @@ pub mod pallet {
 				return Err(Error::<T>::NoRewardsForAccount.into())
 			}
 
-			//either transfer from fee account if the reward is
-			//not the native currency, or just mint it if it is
-			let native_currency_id = T::GetNativeCurrencyId::get();
-			if reward_currency_id == native_currency_id {
-				T::Balances::deposit_creating(&caller, rewards);
-				return Ok(())
-			} else {
-				let amount: currency::Amount<T> = Amount::new(rewards, reward_currency_id);
-				amount.transfer(&Self::fee_pool_account_id(), &caller)?;
-				return Ok(())
-			}
+			//transfer rewards
+			Self::transfer_reward(reward_currency_id, reward, caller)
 		}
 	}
 }
 
 impl<T: Config> Pallet<T> {
+	fn transfer_reward(
+		reward_currency_id: CurrencyId<T>,
+		reward: BalanceOf<T>,
+		beneficiary: T::AccountId,
+	) -> DispatchResult {
+		let native_currency_id = T::GetNativeCurrencyId::get();
+		if reward_currency_id == native_currency_id {
+			let available_native_funds = T::Balances::total_balance(&Self::fee_pool_account_id());
+
+			if available_native_funds < reward {
+				//if available native is less than reward we transfer first from fee account,
+				//and mint the rest
+				let remaining =
+					reward.checked_sub(&available_native_funds).ok_or(Error::<T>::Underflow)?;
+				let amount: currency::Amount<T> =
+					Amount::new(available_native_funds, reward_currency_id);
+				amount.transfer(&Self::fee_pool_account_id(), &beneficiary)?;
+				T::Balances::deposit_creating(&beneficiary, remaining);
+				return Ok(())
+			} else {
+				let amount: currency::Amount<T> = Amount::new(reward, reward_currency_id);
+				return amount.transfer(&Self::fee_pool_account_id(), &beneficiary)
+			}
+		} else {
+			//we need no checking of available funds, since fee will ALWAYS have enough collected
+			//fees
+			let amount: currency::Amount<T> = Amount::new(reward, reward_currency_id);
+			amount.transfer(&Self::fee_pool_account_id(), &beneficiary)
+		}
+	}
+
 	pub fn execute_on_init(height: T::BlockNumber) {
 		//get reward per block
 		let reward_per_block = match RewardPerBlock::<T>::get() {
@@ -276,23 +299,42 @@ impl<T: Config> Pallet<T> {
 		Ok(error_reward_accum)
 	}
 
+	//TODO loop through all currencies not just these two!!
+	fn withdraw_all_rewards_from_vault(vault_id: DefaultVaultId<T>) -> DispatchResult {
+		for currency_id in [vault_id.wrapped_currency(), T::GetNativeCurrencyId::get()] {
+			let reward = ext::pooled_rewards::withdraw_reward::<T>(
+				&vault_id.collateral_currency(),
+				&vault_id,
+				currency_id,
+			)?;
+			ext::staking::distribute_reward::<T>(&vault_id, reward, currency_id)?;
+		}
+		Ok(())
+	}
+
 	pub fn fee_pool_account_id() -> T::AccountId {
 		<T as Config>::FeePalletId::get().into_account_truncating()
 	}
 }
 //Distribute Rewards interface
-pub trait DistributeRewards<Balance, CurrencyId> {
+pub trait DistributeRewards<Balance, CurrencyId, VaultId> {
 	fn distribute_rewards(
 		amount: Balance,
 		currency_id: CurrencyId,
 	) -> Result<Balance, DispatchError>;
+
+	fn withdraw_all_rewards_from_vault(vault_id: VaultId) -> DispatchResult;
 }
 
-impl<T: Config> DistributeRewards<BalanceOf<T>, CurrencyId<T>> for Pallet<T> {
+impl<T: Config> DistributeRewards<BalanceOf<T>, CurrencyId<T>, DefaultVaultId<T>> for Pallet<T> {
 	fn distribute_rewards(
 		amount: BalanceOf<T>,
 		currency_id: CurrencyId<T>,
 	) -> Result<BalanceOf<T>, DispatchError> {
 		Pallet::<T>::distribute_rewards(amount, currency_id)
+	}
+
+	fn withdraw_all_rewards_from_vault(vault_id: DefaultVaultId<T>) -> DispatchResult {
+		Pallet::<T>::withdraw_all_rewards_from_vault(vault_id)
 	}
 }

@@ -114,6 +114,7 @@ pub mod pallet {
 		type RewardDistribution: reward_distribution::DistributeRewards<
 			BalanceOf<Self>,
 			CurrencyId<Self>,
+			DefaultVaultId<Self>,
 		>;
 
 		/// Vault staking pool.
