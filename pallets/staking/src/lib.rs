@@ -81,12 +81,11 @@ pub type DefaultVaultId<T> =
 	VaultId<<T as frame_system::Config>::AccountId, <T as Config>::CurrencyId>;
 pub type DefaultVaultCurrencyPair<T> = VaultCurrencyPair<<T as Config>::CurrencyId>;
 pub type NominatorId<T> = <T as frame_system::Config>::AccountId;
-
 #[frame_support::pallet]
 pub mod pallet {
-	use frame_support::pallet_prelude::*;
-
 	use super::*;
+
+	use frame_support::{pallet_prelude::*, BoundedBTreeSet};
 
 	/// ## Configuration
 	/// The pallet's configuration trait.
@@ -111,6 +110,9 @@ pub mod pallet {
 
 		/// The currency ID type.
 		type CurrencyId: Parameter + Member + Copy + MaybeSerializeDeserialize + Ord;
+
+		//
+		type MaxRewardCurrencies: Get<u32>;
 	}
 
 	// The pallet's events
@@ -156,6 +158,8 @@ pub mod pallet {
 		InsufficientFunds,
 		/// Cannot slash zero total stake.
 		SlashZeroTotalStake,
+		/// Max rewards currencies threshold
+		MaxRewardCurrencies,
 	}
 
 	#[pallet::hooks]
@@ -268,6 +272,11 @@ pub mod pallet {
 	#[pallet::storage]
 	pub type Nonce<T: Config> =
 		StorageMap<_, Blake2_128Concat, DefaultVaultId<T>, T::Index, ValueQuery>;
+
+	// store with all the reward currencies in use
+	#[pallet::storage]
+	pub type RewardCurrencies<T: Config> =
+		StorageValue<_, BoundedBTreeSet<T::CurrencyId, T::MaxRewardCurrencies>, ValueQuery>;
 
 	#[pallet::pallet]
 	#[pallet::without_storage_info] // no MaxEncodedLen for <T as frame_system::Config>::Index
@@ -399,8 +408,9 @@ impl<T: Config> Pallet<T> {
 				.ok_or(ArithmeticError::Overflow)?;
 			Ok::<_, DispatchError>(())
 		})?;
-
-		for currency_id in [vault_id.wrapped_currency(), T::GetNativeCurrencyId::get()] {
+		let mut all_reward_currencies = ext::staking::get_all_reward_currencies::<T>()?;
+		all_reward_currencies.push(T::GetNativeCurrencyId::get());
+		for currency_id in all_reward_currencies {
 			<RewardTally<T>>::mutate(
 				currency_id,
 				(nonce, vault_id, nominator_id),
@@ -478,7 +488,9 @@ impl<T: Config> Pallet<T> {
 		// A slash means reward per token is no longer representative of the rewards
 		// since `amount * reward_per_token` will be lost from the system. As such,
 		// replenish rewards by the amount of reward lost with this slash
-		for currency_id in [vault_id.wrapped_currency(), T::GetNativeCurrencyId::get()] {
+		let mut all_reward_currencies = ext::staking::get_all_reward_currencies::<T>()?;
+		all_reward_currencies.push(T::GetNativeCurrencyId::get());
+		for currency_id in all_reward_currencies {
 			Self::increase_rewards(
 				nonce,
 				currency_id,
@@ -668,7 +680,9 @@ impl<T: Config> Pallet<T> {
 			Ok::<_, DispatchError>(())
 		})?;
 
-		for currency_id in [vault_id.wrapped_currency(), T::GetNativeCurrencyId::get()] {
+		let mut all_reward_currencies = ext::staking::get_all_reward_currencies::<T>()?;
+		all_reward_currencies.push(T::GetNativeCurrencyId::get());
+		for currency_id in all_reward_currencies {
 			<RewardTally<T>>::mutate(
 				currency_id,
 				(nonce, vault_id, nominator_id),
@@ -777,6 +791,20 @@ impl<T: Config> Pallet<T> {
 		});
 		Ok(())
 	}
+
+	pub fn add_reward_currency(currency_id: T::CurrencyId) -> DispatchResult {
+		RewardCurrencies::<T>::try_mutate(|reward_currencies| {
+			reward_currencies
+				.try_insert(currency_id)
+				.map_err(|_| Error::<T>::MaxRewardCurrencies)
+		})?;
+		Ok(())
+	}
+
+	pub fn get_all_reward_currencies() -> Result<Vec<T::CurrencyId>, DispatchError> {
+		let values = RewardCurrencies::<T>::get().into_iter().collect::<Vec<_>>();
+		Ok(values)
+	}
 }
 
 pub trait Staking<VaultId, NominatorId, Index, Balance, CurrencyId> {
@@ -834,6 +862,12 @@ pub trait Staking<VaultId, NominatorId, Index, Balance, CurrencyId> {
 
 	/// Force refund the entire nomination to `vault_id`.
 	fn force_refund(vault_id: &VaultId) -> Result<Balance, DispatchError>;
+
+	// set a new reward currency
+
+	fn add_reward_currency(currency: CurrencyId) -> Result<(), DispatchError>;
+
+	fn get_all_reward_currencies() -> Result<Vec<CurrencyId>, DispatchError>;
 }
 
 impl<T, Balance> Staking<DefaultVaultId<T>, T::AccountId, T::Index, Balance, T::CurrencyId>
@@ -935,6 +969,14 @@ where
 		Pallet::<T>::force_refund(vault_id)?
 			.try_into()
 			.map_err(|_| Error::<T>::TryIntoIntError.into())
+	}
+
+	fn add_reward_currency(currency: T::CurrencyId) -> Result<(), DispatchError> {
+		Pallet::<T>::add_reward_currency(currency)
+	}
+
+	fn get_all_reward_currencies() -> Result<Vec<T::CurrencyId>, DispatchError> {
+		Pallet::<T>::get_all_reward_currencies()
 	}
 }
 

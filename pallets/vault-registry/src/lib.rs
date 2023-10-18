@@ -392,7 +392,8 @@ pub mod pallet {
 			threshold: UnsignedFixedPoint<T>,
 		) -> DispatchResult {
 			ensure_root(origin)?;
-			Self::_set_secure_collateral_threshold(currency_pair, threshold);
+			Self::_set_secure_collateral_threshold(currency_pair.clone(), threshold);
+			ext::staking::add_reward_currency::<T>(currency_pair.wrapped)?;
 			Ok(())
 		}
 
@@ -1729,7 +1730,7 @@ impl<T: Config> Pallet<T> {
 		currency_pair: DefaultVaultCurrencyPair<T>,
 		threshold: UnsignedFixedPoint<T>,
 	) {
-		SecureCollateralThreshold::<T>::insert(currency_pair, threshold);
+		SecureCollateralThreshold::<T>::insert(currency_pair.clone(), threshold);
 	}
 
 	pub fn _set_premium_redeem_threshold(

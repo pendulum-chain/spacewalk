@@ -301,7 +301,9 @@ impl<T: Config> Pallet<T> {
 
 	//TODO loop through all currencies not just these two!!
 	fn withdraw_all_rewards_from_vault(vault_id: DefaultVaultId<T>) -> DispatchResult {
-		for currency_id in [vault_id.wrapped_currency(), T::GetNativeCurrencyId::get()] {
+		let mut all_reward_currencies = ext::staking::get_all_reward_currencies::<T>()?;
+		all_reward_currencies.push(T::GetNativeCurrencyId::get());
+		for currency_id in all_reward_currencies {
 			let reward = ext::pooled_rewards::withdraw_reward::<T>(
 				&vault_id.collateral_currency(),
 				&vault_id,

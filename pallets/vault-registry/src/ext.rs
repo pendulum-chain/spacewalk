@@ -31,9 +31,9 @@ pub(crate) mod security {
 
 #[cfg_attr(test, mockable)]
 pub(crate) mod staking {
-	use frame_support::dispatch::{DispatchError, DispatchResult};
-
+	use crate::types::CurrencyId;
 	use currency::Amount;
+	use frame_support::dispatch::{DispatchError, DispatchResult};
 	use staking::Staking;
 
 	use crate::{types::BalanceOf, DefaultVaultId};
@@ -79,6 +79,10 @@ pub(crate) mod staking {
 	) -> Result<Amount<T>, DispatchError> {
 		let vault_total_stake = T::VaultStaking::total_stake(vault_id)?;
 		Ok(Amount::<T>::new(vault_total_stake, vault_id.collateral_currency()))
+	}
+
+	pub fn add_reward_currency<T: crate::Config>(currency: CurrencyId<T>) -> DispatchResult {
+		T::VaultStaking::add_reward_currency(currency)
 	}
 }
 

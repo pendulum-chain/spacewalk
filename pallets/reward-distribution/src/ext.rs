@@ -73,4 +73,9 @@ pub(crate) mod staking {
 	) -> Result<BalanceOf<T>, DispatchError> {
 		T::VaultStaking::withdraw_reward(vault_id, nominator_id, index, currency_id)
 	}
+
+	pub fn get_all_reward_currencies<T: crate::Config>() -> Result<Vec<CurrencyId<T>>, DispatchError>
+	{
+		T::VaultStaking::get_all_reward_currencies()
+	}
 }
