@@ -176,15 +176,15 @@ pub mod pallet {
 			ext::staking::distribute_reward::<T>(&vault_id, reward, reward_currency_id)?;
 
 			//withdraw the reward for specific nominator
-			let rewards =
+			let caller_rewards =
 				ext::staking::withdraw_reward::<T>(&vault_id, &caller, index, reward_currency_id)?;
 
-			if rewards == (BalanceOf::<T>::zero()) {
+			if caller_rewards == (BalanceOf::<T>::zero()) {
 				return Err(Error::<T>::NoRewardsForAccount.into())
 			}
 
 			//transfer rewards
-			Self::transfer_reward(reward_currency_id, reward, caller)
+			Self::transfer_reward(reward_currency_id, caller_rewards, caller)
 		}
 	}
 }
