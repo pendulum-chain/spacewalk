@@ -110,5 +110,6 @@ pub fn verify_hmac(data_buffer: &[u8], mac_key_buffer: &Buffer, mac: &[u8]) -> R
 		HmacSha256::new_from_slice(mac_key_buffer).map_err(|_| Error::HmacInvalidLength)?;
 
 	hmac.update(data_buffer);
+
 	hmac.verify_slice(mac).map_err(Error::HmacError)
 }

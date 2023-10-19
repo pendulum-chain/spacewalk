@@ -2,7 +2,7 @@ use crate::{connection::Error, node::NodeInfo, ConnectionInfo, StellarOverlayCon
 use serde::{Deserialize, Serialize};
 use serde_with::{serde_as, BytesOrString};
 use std::fmt::Debug;
-use substrate_stellar_sdk::SecretKey;
+use substrate_stellar_sdk::{SecretKey, XdrCodec};
 
 /// The configuration structure of the StellarOverlay.
 /// It configures both the ConnectionInfo and the NodeInfo.
@@ -38,6 +38,10 @@ impl StellarOverlayConfig {
 	pub(crate) fn connection_info(&self, secret_key: &str) -> Result<ConnectionInfo, Error> {
 		let cfg = &self.connection_info;
 		let secret_key = SecretKey::from_encoding(secret_key)?;
+
+		let public_key = secret_key.get_public().to_encoding();
+		let public_key = std::str::from_utf8(&public_key).unwrap();
+		log::info!("CONNECTED TO KEY: {public_key}");
 
 		let address = std::str::from_utf8(&cfg.address)
 			.map_err(|e| Error::ConfigError(format!("Address: {:?}", e)))?;

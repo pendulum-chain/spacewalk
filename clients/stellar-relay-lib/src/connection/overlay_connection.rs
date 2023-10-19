@@ -86,8 +86,8 @@ impl StellarOverlayConnection {
 		local_node: NodeInfo,
 		conn_info: ConnectionInfo,
 	) -> Result<StellarOverlayConnection, Error> {
-		log::info!("Connecting to: {}:{}", conn_info.address, conn_info.port);
-		log::trace!("Connecting to: {conn_info:?}");
+		//log::info!("Connecting to: {}:{}", conn_info.address, conn_info.port);
+		log::info!("Connecting to: {conn_info:?}");
 
 		let retries = conn_info.retries;
 		let timeout_in_secs = conn_info.timeout_in_secs;

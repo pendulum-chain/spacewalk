@@ -76,12 +76,18 @@ impl Connector {
 			remote_info.sequence(),
 			auth_msg.sequence
 		);
+
+		let auth_msg_xdr = auth_msg.to_base64_xdr();
+		let auth_msg_xdr = std::str::from_utf8(&auth_msg_xdr).unwrap();
+		log::info!("the auth message: {auth_msg_xdr}");
+
 		if remote_info.sequence() != auth_msg.sequence {
 			// must be handled on main thread because workers could mix up order of messages.
 			return Err(Error::InvalidSequenceNumber)
 		}
 
 		let keys = self.hmac_keys.as_ref().ok_or(Error::MissingHmacKeys)?;
+
 		verify_hmac(body, &keys.receiving().mac, &auth_msg.mac.to_xdr())?;
 
 		Ok(())
