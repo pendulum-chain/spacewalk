@@ -1,5 +1,6 @@
 use std::cell::RefCell;
 
+pub use currency::{testing_constants::*, Amount};
 use frame_support::{
 	assert_ok, parameter_types,
 	traits::{ConstU32, ConstU64, Everything, GenesisBuild},
@@ -13,7 +14,8 @@ use oracle::{
 };
 use orml_currencies::BasicCurrencyAdapter;
 use orml_traits::parameter_type_with_key;
-use primitives::oracle::Key;
+pub use primitives::CurrencyId;
+use primitives::{oracle::Key, AmountCompatibility, CurrencyId::XCM, VaultCurrencyPair, VaultId};
 use sp_arithmetic::{FixedI128, FixedPointNumber, FixedU128};
 use sp_core::H256;
 use sp_runtime::{
@@ -21,15 +23,6 @@ use sp_runtime::{
 	traits::{BlakeTwo256, Convert, IdentityLookup, One, Zero},
 	DispatchError, Perquintill,
 };
-
-pub use currency::{
-	testing_constants::{
-		DEFAULT_COLLATERAL_CURRENCY, DEFAULT_NATIVE_CURRENCY, DEFAULT_WRAPPED_CURRENCY,
-	},
-	Amount,
-};
-pub use primitives::CurrencyId;
-use primitives::{AmountCompatibility, VaultCurrencyPair, VaultId};
 
 use crate as issue;
 use crate::{Config, Error};
@@ -329,17 +322,21 @@ parameter_types! {
 pub struct OracleApiMock {}
 impl oracle::OracleApi<Balance, CurrencyId> for OracleApiMock {
 	fn currency_to_usd(
-		_amount: &Balance,
+		amount: &Balance,
 		currency_id: &CurrencyId,
 	) -> Result<Balance, DispatchError> {
 		let _native_currency = GetNativeCurrencyId::get();
-		match currency_id {
-			_native_currency => return Ok(100),
-			//_ => unimplemented!("unimplemented mock conversion for currency"),
-		}
+		let amount_in_usd = match currency_id {
+			&XCM(0) => amount * 5,
+			&XCM(1) => amount * 10,
+			&XCM(2) => amount * 15,
+			&XCM(3) => amount * 20,
+			&XCM(4) => amount * 35,
+			_native_currency => amount * 3,
+		};
+		Ok(amount_in_usd)
 	}
 }
-
 impl reward_distribution::Config for Test {
 	type RuntimeEvent = TestEvent;
 	type WeightInfo = reward_distribution::SubstrateWeight<Test>;
@@ -391,6 +388,13 @@ pub const VAULT: VaultId<AccountId, CurrencyId> = VaultId {
 		wrapped: DEFAULT_WRAPPED_CURRENCY,
 	},
 };
+pub const VAULT2: VaultId<AccountId, CurrencyId> = VaultId {
+	account_id: 3,
+	currencies: VaultCurrencyPair {
+		collateral: DEFAULT_COLLATERAL_CURRENCY,
+		wrapped: WRAPPED_CURRENCY2,
+	},
+};
 
 pub const ALICE_BALANCE: u128 = 1_000_000;
 pub const BOB_BALANCE: u128 = 1_000_000;
@@ -440,22 +444,26 @@ impl ExtBuilder {
 			collateral: DEFAULT_COLLATERAL_CURRENCY,
 			wrapped: DEFAULT_WRAPPED_CURRENCY,
 		};
+		const PAIR2: VaultCurrencyPair<CurrencyId> = VaultCurrencyPair {
+			collateral: DEFAULT_COLLATERAL_CURRENCY,
+			wrapped: WRAPPED_CURRENCY2,
+		};
 		vault_registry::GenesisConfig::<Test> {
 			minimum_collateral_vault: vec![(DEFAULT_COLLATERAL_CURRENCY, 0)],
 			punishment_delay: 8,
-			system_collateral_ceiling: vec![(PAIR, 1_000_000_000_000)],
-			secure_collateral_threshold: vec![(
-				PAIR,
-				UnsignedFixedPoint::checked_from_rational(200, 100).unwrap(),
-			)],
-			premium_redeem_threshold: vec![(
-				PAIR,
-				UnsignedFixedPoint::checked_from_rational(120, 100).unwrap(),
-			)],
-			liquidation_collateral_threshold: vec![(
-				PAIR,
-				UnsignedFixedPoint::checked_from_rational(110, 100).unwrap(),
-			)],
+			system_collateral_ceiling: vec![(PAIR, 1_000_000_000_000), (PAIR2, 1_000_000_000_000)],
+			secure_collateral_threshold: vec![
+				(PAIR, UnsignedFixedPoint::checked_from_rational(200, 100).unwrap()),
+				(PAIR2, UnsignedFixedPoint::checked_from_rational(200, 100).unwrap()),
+			],
+			premium_redeem_threshold: vec![
+				(PAIR, UnsignedFixedPoint::checked_from_rational(120, 100).unwrap()),
+				(PAIR2, UnsignedFixedPoint::checked_from_rational(120, 100).unwrap()),
+			],
+			liquidation_collateral_threshold: vec![
+				(PAIR, UnsignedFixedPoint::checked_from_rational(110, 100).unwrap()),
+				(PAIR2, UnsignedFixedPoint::checked_from_rational(110, 100).unwrap()),
+			],
 		}
 		.assimilate_storage(&mut storage)
 		.unwrap();
@@ -471,6 +479,7 @@ impl ExtBuilder {
 					vec![
 						(USER, currency_id, ALICE_BALANCE),
 						(VAULT.account_id, currency_id, BOB_BALANCE),
+						(VAULT2.account_id, currency_id, BOB_BALANCE),
 					]
 				})
 				.collect(),

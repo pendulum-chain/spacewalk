@@ -624,3 +624,142 @@ fn test_request_issue_reset_interval_and_succeeds_with_rate_limit() {
 		assert_eq!(<crate::CurrentVolumeAmount<Test>>::get(), BalanceOf::<Test>::zero());
 	})
 }
+mod integration_tests {
+	use super::*;
+	use pooled_rewards::RewardsApi;
+	fn get_reward_for_vault(vault: &DefaultVaultId<Test>, reward_currency: CurrencyId) -> Balance {
+		<<Test as fee::Config>::VaultRewards as RewardsApi<
+			CurrencyId,
+			DefaultVaultId<Test>,
+			Balance,
+			CurrencyId,
+		>>::compute_reward(&vault.collateral_currency(), vault, reward_currency)
+		.unwrap()
+	}
+
+	fn register_vault_with_collateral(vault: &DefaultVaultId<Test>, collateral_amount: Balance) {
+		let origin = RuntimeOrigin::signed(vault.account_id);
+
+		assert_ok!(VaultRegistry::register_public_key(origin.clone(), DEFAULT_STELLAR_PUBLIC_KEY));
+		assert_ok!(VaultRegistry::register_vault(
+			origin,
+			vault.currencies.clone(),
+			collateral_amount
+		));
+	}
+	fn wrapped_with_custom_curr(amount: u128, currency: CurrencyId) -> Amount<Test> {
+		Amount::new(amount, currency)
+	}
+	fn setup_execute_with_vault(
+		issue_amount: Balance,
+		issue_fee: Balance,
+		griefing_collateral: Balance,
+		amount_transferred: Balance,
+		vault: DefaultVaultId<Test>,
+	) -> Result<H256, DispatchError> {
+		let vault_clone = vault.clone();
+		let vault_clone_2 = vault.clone();
+		ext::vault_registry::get_active_vault_from_id::<Test>
+			.mock_safe(move |_| MockResult::Return(Ok(init_zero_vault(vault_clone.clone()))));
+		ext::vault_registry::issue_tokens::<Test>.mock_safe(|_, _| MockResult::Return(Ok(())));
+		ext::vault_registry::is_vault_liquidated::<Test>
+			.mock_safe(|_| MockResult::Return(Ok(false)));
+
+		ext::fee::get_issue_fee::<Test>.mock_safe(move |_| {
+			MockResult::Return(Ok(wrapped_with_custom_curr(
+				issue_fee,
+				vault_clone_2.clone().wrapped_currency(),
+			)))
+		});
+		ext::fee::get_issue_griefing_collateral::<Test>
+			.mock_safe(move |_| MockResult::Return(Ok(griefing(griefing_collateral))));
+
+		let issue_id =
+			request_issue_ok_with_address(USER, issue_amount, vault, RANDOM_STELLAR_PUBLIC_KEY)?;
+		<security::Pallet<Test>>::set_active_block_number(5);
+
+		ext::stellar_relay::validate_stellar_transaction::<Test>
+			.mock_safe(move |_, _, _| MockResult::Return(Ok(())));
+		ext::currency::get_amount_from_transaction_envelope::<Test>.mock_safe(
+			move |_, _, currency| MockResult::Return(Ok(Amount::new(amount_transferred, currency))),
+		);
+
+		Ok(issue_id)
+	}
+
+	//In these tests in particular we are testing that a given fee is distributed to
+	//the pooled-reward pallet depending on the collateral.
+	//These tests WILL NOT test the distribution from pooled-reward to staking.
+	#[test]
+	fn integration_single_vault_gets_fee_rewards_when_issuing() {
+		run_test(|| {
+			//set up vault
+			let collateral: u128 = 1000;
+			register_vault_with_collateral(&VAULT, collateral);
+			//execute the issue
+
+			let issue_asset = VAULT.wrapped_currency();
+			let issue_amount = 30;
+			let issue_fee = 1;
+			let griefing_collateral = 1;
+			let amount_transferred = 30;
+			let issue_id =
+				setup_execute(issue_amount, issue_fee, griefing_collateral, amount_transferred)
+					.unwrap();
+
+			assert_ok!(execute_issue(USER, &issue_id));
+
+			//ensure that the current rewards equal to fee
+			assert_eq!(get_reward_for_vault(&VAULT, issue_asset), issue_fee);
+		})
+	}
+
+	#[test]
+	fn integration_multiple_vaults_same_collateral_gets_fee_rewards_when_issuing() {
+		run_test(|| {
+			//set up the vaults
+			let collateral1: u128 = 1000;
+			register_vault_with_collateral(&VAULT, collateral1);
+
+			let collateral2: u128 = 2000;
+			register_vault_with_collateral(&VAULT2, collateral2);
+
+			//execute the issue
+			let issue_asset = VAULT.wrapped_currency();
+			let issue_amount = 30;
+			let issue_fee = 10;
+			let griefing_collateral = 1;
+			let amount_transferred = 30;
+			let issue_id =
+				setup_execute(issue_amount, issue_fee, griefing_collateral, amount_transferred)
+					.unwrap();
+
+			assert_ok!(execute_issue(USER, &issue_id));
+
+			//execute the issue on the other currency
+			let issue_asset2 = VAULT2.wrapped_currency();
+			let issue_amount2 = 30;
+			let issue_fee2 = 20;
+			let griefing_collateral2 = 1;
+			let amount_transferred2 = 30;
+			let issue_id2 = setup_execute_with_vault(
+				issue_amount2,
+				issue_fee2,
+				griefing_collateral2,
+				amount_transferred2,
+				VAULT2.clone(),
+			)
+			.unwrap();
+
+			assert_ok!(execute_issue(USER, &issue_id2));
+
+			//ensure that the current rewards equal to fee
+			//Example: we expect for reward(vault1, asset1) = floor( 10*(1000/3000) ) = 3
+			assert_eq!(get_reward_for_vault(&VAULT, issue_asset), 3);
+			assert_eq!(get_reward_for_vault(&VAULT2, issue_asset), 6);
+
+			assert_eq!(get_reward_for_vault(&VAULT, issue_asset2), 6);
+			assert_eq!(get_reward_for_vault(&VAULT2, issue_asset2), 13);
+		})
+	}
+}

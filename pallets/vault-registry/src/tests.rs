@@ -1846,6 +1846,7 @@ fn integration_multiple_vault_multiple_collateral_per_block_reward() {
 			None,
 		));
 
+		//Explicit calc for the expected reward on this test for id4
 		//expected value  = ((2000*10 + 3000*10)/(5000*5 + 1000*5 + 2000*10 +
 		// 3000*10))*(2000/(3000+2000))*100000 = 25000
 		assert_eq!(

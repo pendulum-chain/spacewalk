@@ -14,6 +14,22 @@ pub const DEFAULT_WRAPPED_CURRENCY: CurrencyId = CurrencyId::AlphaNum4(
 	],
 );
 
+pub const WRAPPED_CURRENCY2: CurrencyId = CurrencyId::AlphaNum4(
+	*b"USDT",
+	[
+		20, 209, 150, 49, 176, 55, 23, 217, 171, 154, 54, 110, 16, 50, 30, 226, 102, 231, 46, 199,
+		108, 171, 97, 144, 240, 161, 51, 109, 72, 34, 159, 139,
+	],
+);
+
+pub const WRAPPED_CURRENCY3: CurrencyId = CurrencyId::AlphaNum4(
+	*b"EURC",
+	[
+		20, 209, 150, 49, 176, 55, 23, 217, 171, 154, 54, 110, 16, 50, 30, 226, 102, 231, 46, 199,
+		108, 171, 97, 144, 240, 161, 51, 109, 72, 34, 159, 139,
+	],
+);
+
 pub fn get_wrapped_currency_id() -> CurrencyId {
 	DEFAULT_WRAPPED_CURRENCY
 }
