@@ -762,4 +762,115 @@ mod integration_tests {
 			assert_eq!(get_reward_for_vault(&VAULT2, issue_asset2), 13);
 		})
 	}
+
+	#[test]
+	fn integration_multiple_vaults_many_collateral_gets_fee_rewards_when_issuing() {
+		run_test(|| {
+			//set up the vaults
+			let collateral1: u128 = 1000;
+			register_vault_with_collateral(&VAULT, collateral1);
+
+			let collateral2: u128 = 2000;
+			register_vault_with_collateral(&VAULT2, collateral2);
+
+			let collateral3: u128 = 1500;
+			register_vault_with_collateral(&VAULT3, collateral3);
+
+			let collateral4: u128 = 1700;
+			register_vault_with_collateral(&VAULT4, collateral4);
+
+			let collateral5: u128 = 800;
+			register_vault_with_collateral(&VAULT5, collateral5);
+
+			//execute the issue
+			let issue_asset = VAULT.wrapped_currency();
+			let issue_amount = 3000;
+			let issue_fee = 1000;
+			let griefing_collateral = 1;
+			let amount_transferred = 3000;
+			let issue_id =
+				setup_execute(issue_amount, issue_fee, griefing_collateral, amount_transferred)
+					.unwrap();
+			assert_ok!(execute_issue(USER, &issue_id));
+
+			//execute the issue on the other currency
+			let issue_asset2 = VAULT2.wrapped_currency();
+			let issue_amount2 = 3000;
+			let issue_fee2 = 500;
+			let griefing_collateral2 = 1;
+			let amount_transferred2 = 3000;
+			let issue_id2 = setup_execute_with_vault(
+				issue_amount2,
+				issue_fee2,
+				griefing_collateral2,
+				amount_transferred2,
+				VAULT2.clone(),
+			)
+			.unwrap();
+			assert_ok!(execute_issue(USER, &issue_id2));
+
+			let issue_asset3 = VAULT3.wrapped_currency();
+			let issue_amount3 = 3000;
+			let issue_fee3 = 600;
+			let griefing_collateral3 = 1;
+			let amount_transferred3 = 3000;
+			let issue_id3 = setup_execute_with_vault(
+				issue_amount3,
+				issue_fee3,
+				griefing_collateral3,
+				amount_transferred3,
+				VAULT3.clone(),
+			)
+			.unwrap();
+			assert_ok!(execute_issue(USER, &issue_id3));
+
+			let _issue_asset4 = VAULT4.wrapped_currency();
+			let issue_amount4 = 3000;
+			let issue_fee4 = 400;
+			let griefing_collateral4 = 1;
+			let amount_transferred4 = 3000;
+			let issue_id4 = setup_execute_with_vault(
+				issue_amount4,
+				issue_fee4,
+				griefing_collateral4,
+				amount_transferred4,
+				VAULT4.clone(),
+			)
+			.unwrap();
+			assert_ok!(execute_issue(USER, &issue_id4));
+
+			let _issue_asset5 = VAULT5.wrapped_currency();
+			let issue_amount5 = 3000;
+			let issue_fee5 = 700;
+			let griefing_collateral5 = 1;
+			let amount_transferred5 = 3000;
+			let issue_id5 = setup_execute_with_vault(
+				issue_amount5,
+				issue_fee5,
+				griefing_collateral5,
+				amount_transferred5,
+				VAULT5.clone(),
+			)
+			.unwrap();
+			assert_ok!(execute_issue(USER, &issue_id5));
+
+			//ensure that the current rewards equal to fee
+			//Example: we expect for reward(vault1, asset1) = floor(
+			//floor((1000/3000)*floor( 1400*(3000*5/(3000*5+3200*10+800*15)) )) = 118
+			//where asset1 = asset4
+			assert_eq!(get_reward_for_vault(&VAULT, issue_asset), 118);
+
+			//withouth floor(), should actually exactly be 237.25. In this case
+			//it is 236. The discrepancy is due to two consecutive roundings
+			assert_eq!(get_reward_for_vault(&VAULT2, issue_asset), 236);
+			assert_eq!(get_reward_for_vault(&VAULT3, issue_asset), 355);
+			assert_eq!(get_reward_for_vault(&VAULT4, issue_asset), 402);
+			assert_eq!(get_reward_for_vault(&VAULT5, issue_asset), 284);
+
+			assert_eq!(get_reward_for_vault(&VAULT, issue_asset2), 101);
+			//assert_eq!(get_reward_for_vault(&VAULT2, issue_asset2), 13);
+
+			assert_eq!(get_reward_for_vault(&VAULT, issue_asset3), 50);
+		})
+	}
 }

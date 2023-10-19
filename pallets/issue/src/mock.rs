@@ -396,6 +396,34 @@ pub const VAULT2: VaultId<AccountId, CurrencyId> = VaultId {
 	},
 };
 
+pub const VAULT3: VaultId<AccountId, CurrencyId> = VaultId {
+	account_id: 5,
+	currencies: VaultCurrencyPair { collateral: XCM(1), wrapped: WRAPPED_CURRENCY3 },
+};
+
+pub const VAULT4: VaultId<AccountId, CurrencyId> = VaultId {
+	account_id: 6,
+	currencies: VaultCurrencyPair { collateral: XCM(1), wrapped: DEFAULT_WRAPPED_CURRENCY },
+};
+
+pub const VAULT5: VaultId<AccountId, CurrencyId> = VaultId {
+	account_id: 7,
+	currencies: VaultCurrencyPair { collateral: XCM(2), wrapped: WRAPPED_CURRENCY2 },
+};
+
+const PAIR: VaultCurrencyPair<CurrencyId> = VaultCurrencyPair {
+	collateral: DEFAULT_COLLATERAL_CURRENCY,
+	wrapped: DEFAULT_WRAPPED_CURRENCY,
+};
+const PAIR2: VaultCurrencyPair<CurrencyId> =
+	VaultCurrencyPair { collateral: DEFAULT_COLLATERAL_CURRENCY, wrapped: WRAPPED_CURRENCY2 };
+const PAIR3: VaultCurrencyPair<CurrencyId> =
+	VaultCurrencyPair { collateral: XCM(1), wrapped: WRAPPED_CURRENCY3 };
+const PAIR4: VaultCurrencyPair<CurrencyId> =
+	VaultCurrencyPair { collateral: XCM(1), wrapped: DEFAULT_WRAPPED_CURRENCY };
+const PAIR5: VaultCurrencyPair<CurrencyId> =
+	VaultCurrencyPair { collateral: XCM(2), wrapped: WRAPPED_CURRENCY2 };
+
 pub const ALICE_BALANCE: u128 = 1_000_000;
 pub const BOB_BALANCE: u128 = 1_000_000;
 
@@ -440,29 +468,40 @@ impl ExtBuilder {
 		.assimilate_storage(&mut storage)
 		.unwrap();
 
-		const PAIR: VaultCurrencyPair<CurrencyId> = VaultCurrencyPair {
-			collateral: DEFAULT_COLLATERAL_CURRENCY,
-			wrapped: DEFAULT_WRAPPED_CURRENCY,
-		};
-		const PAIR2: VaultCurrencyPair<CurrencyId> = VaultCurrencyPair {
-			collateral: DEFAULT_COLLATERAL_CURRENCY,
-			wrapped: WRAPPED_CURRENCY2,
-		};
 		vault_registry::GenesisConfig::<Test> {
-			minimum_collateral_vault: vec![(DEFAULT_COLLATERAL_CURRENCY, 0)],
+			minimum_collateral_vault: vec![
+				(DEFAULT_COLLATERAL_CURRENCY, 0),
+				(XCM(1), 0),
+				(XCM(2), 0),
+			],
 			punishment_delay: 8,
-			system_collateral_ceiling: vec![(PAIR, 1_000_000_000_000), (PAIR2, 1_000_000_000_000)],
+			system_collateral_ceiling: vec![
+				(PAIR, 1_000_000_000_000),
+				(PAIR2, 1_000_000_000_000),
+				(PAIR3, 1_000_000_000_000),
+				(PAIR4, 1_000_000_000_000),
+				(PAIR5, 1_000_000_000_000),
+			],
 			secure_collateral_threshold: vec![
 				(PAIR, UnsignedFixedPoint::checked_from_rational(200, 100).unwrap()),
 				(PAIR2, UnsignedFixedPoint::checked_from_rational(200, 100).unwrap()),
+				(PAIR3, UnsignedFixedPoint::checked_from_rational(200, 100).unwrap()),
+				(PAIR4, UnsignedFixedPoint::checked_from_rational(200, 100).unwrap()),
+				(PAIR5, UnsignedFixedPoint::checked_from_rational(200, 100).unwrap()),
 			],
 			premium_redeem_threshold: vec![
 				(PAIR, UnsignedFixedPoint::checked_from_rational(120, 100).unwrap()),
 				(PAIR2, UnsignedFixedPoint::checked_from_rational(120, 100).unwrap()),
+				(PAIR3, UnsignedFixedPoint::checked_from_rational(120, 100).unwrap()),
+				(PAIR4, UnsignedFixedPoint::checked_from_rational(120, 100).unwrap()),
+				(PAIR5, UnsignedFixedPoint::checked_from_rational(120, 100).unwrap()),
 			],
 			liquidation_collateral_threshold: vec![
 				(PAIR, UnsignedFixedPoint::checked_from_rational(110, 100).unwrap()),
 				(PAIR2, UnsignedFixedPoint::checked_from_rational(110, 100).unwrap()),
+				(PAIR3, UnsignedFixedPoint::checked_from_rational(110, 100).unwrap()),
+				(PAIR4, UnsignedFixedPoint::checked_from_rational(110, 100).unwrap()),
+				(PAIR5, UnsignedFixedPoint::checked_from_rational(110, 100).unwrap()),
 			],
 		}
 		.assimilate_storage(&mut storage)
@@ -473,13 +512,16 @@ impl ExtBuilder {
 
 	pub fn build() -> sp_io::TestExternalities {
 		ExtBuilder::build_with(orml_tokens::GenesisConfig::<Test> {
-			balances: vec![DEFAULT_COLLATERAL_CURRENCY, DEFAULT_NATIVE_CURRENCY]
+			balances: vec![DEFAULT_COLLATERAL_CURRENCY, DEFAULT_NATIVE_CURRENCY, XCM(1), XCM(2)]
 				.into_iter()
 				.flat_map(|currency_id| {
 					vec![
 						(USER, currency_id, ALICE_BALANCE),
 						(VAULT.account_id, currency_id, BOB_BALANCE),
 						(VAULT2.account_id, currency_id, BOB_BALANCE),
+						(VAULT3.account_id, currency_id, BOB_BALANCE),
+						(VAULT4.account_id, currency_id, BOB_BALANCE),
+						(VAULT5.account_id, currency_id, BOB_BALANCE),
 					]
 				})
 				.collect(),
