@@ -56,6 +56,7 @@ frame_support::construct_runtime!(
 		Oracle: oracle::{Pallet, Call, Config, Storage, Event<T>},
 		Fee: fee::{Pallet, Call, Config<T>, Storage},
 		Staking: staking::{Pallet, Storage, Event<T>},
+		Nomination: nomination::{Pallet, Call, Config, Storage, Event<T>},
 		VaultRegistry: vault_registry::{Pallet, Call, Config<T>, Storage, Event<T>},
 	}
 );
@@ -351,6 +352,11 @@ impl reward_distribution::Config for Test {
 	type FeePalletId = FeePalletId;
 }
 
+impl nomination::Config for Test {
+	type RuntimeEvent = TestEvent;
+	type WeightInfo = nomination::SubstrateWeight<Test>;
+}
+
 parameter_types! {
 	pub const MinimumPeriod: Moment = 5;
 }
@@ -381,6 +387,9 @@ pub type TestError = Error<Test>;
 pub type VaultRegistryError = vault_registry::Error<Test>;
 
 pub const USER: AccountId = 1;
+pub const NOMINATOR1: AccountId = 11;
+pub const NOMINATOR2: AccountId = 12;
+pub const NOMINATOR_INIT_BALANCE: Balance = 10000;
 pub const VAULT: VaultId<AccountId, CurrencyId> = VaultId {
 	account_id: 2,
 	currencies: VaultCurrencyPair {
@@ -446,6 +455,12 @@ impl ExtBuilder {
 				.collect(),
 		}
 		.assimilate_storage(&mut storage)
+		.unwrap();
+
+		frame_support::traits::GenesisBuild::<Test>::assimilate_storage(
+			&nomination::GenesisConfig { is_nomination_enabled: true },
+			&mut storage,
+		)
 		.unwrap();
 
 		fee::GenesisConfig::<Test> {
@@ -522,6 +537,8 @@ impl ExtBuilder {
 						(VAULT3.account_id, currency_id, BOB_BALANCE),
 						(VAULT4.account_id, currency_id, BOB_BALANCE),
 						(VAULT5.account_id, currency_id, BOB_BALANCE),
+						(NOMINATOR1, currency_id, NOMINATOR_INIT_BALANCE),
+						(NOMINATOR2, currency_id, NOMINATOR_INIT_BALANCE),
 					]
 				})
 				.collect(),
