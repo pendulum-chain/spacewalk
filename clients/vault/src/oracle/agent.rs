@@ -208,7 +208,7 @@ mod tests {
 	#[serial]
 	async fn test_get_proof_for_current_slot() {
 		let agent =
-			start_oracle_agent(get_test_stellar_relay_config(false), &get_test_secret_key(false))
+			start_oracle_agent(get_test_stellar_relay_config(true), &get_test_secret_key(true))
 				.await
 				.expect("Failed to start agent");
 		sleep(Duration::from_secs(10)).await;
@@ -219,9 +219,9 @@ mod tests {
 			sleep(Duration::from_secs(1)).await;
 			latest_slot = agent.last_slot_index().await;
 		}
-		// use the next slot to prevent receiving not enough messages for the current slot
-		// because of bad timing when connecting to the network.
-		latest_slot += 1;
+		// use a future slot (2 slots ahead) to ensure enough messages can be collected
+		// and to avoid "missed" messages.
+		latest_slot += 2;
 
 		let proof_result = agent.get_proof(latest_slot).await;
 		assert!(proof_result.is_ok(), "Failed to get proof for slot: {}", latest_slot);
