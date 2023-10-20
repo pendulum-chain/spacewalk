@@ -286,7 +286,6 @@ pub(crate) async fn connection_handler(
 	mut actions_receiver: mpsc::Receiver<ConnectorActions>,
 	mut w_stream: tcp::OwnedWriteHalf,
 ) {
-	let mut timeout_counter = 0;
 	loop {
 		match timeout(Duration::from_secs(connector.timeout_in_secs), actions_receiver.recv()).await
 		{
@@ -301,27 +300,22 @@ pub(crate) async fn connection_handler(
 			},
 
 			Ok(Some(action)) => {
-				timeout_counter = 0;
-				log_error!(
-					_connection_handler(action, &mut connector, &mut w_stream).await,
-					format!("Handling the connection failed")
-				);
+				if let Err(e) = _connection_handler(action, &mut connector, &mut w_stream).await {
+					log::error!("Handling the connection failed: {e:?}");
+				}
 			},
 
 			Ok(None) => {
 				log::warn!("Unexpected empty response from receiver");
 			},
 
-			Err(elapsed) => {
-				log::error!("Connection timed out after {} seconds", elapsed.to_string());
-				if timeout_counter >= connector.retries {
-					log_error!(
-						connector.send_to_user(StellarRelayMessage::Timeout).await,
-						format!("Connection Timed out:")
-					);
-					return
-				}
-				timeout_counter += 1;
+			Err(_) => {
+				// log::error!("Connection timed out after {} seconds", elapsed.to_string());
+				// connector.send_to_user(StellarRelayMessage::Timeout).await;
+				log_error!(
+					connector.send_to_user(StellarRelayMessage::Timeout).await,
+					format!("Connection Timed out:")
+				);
 			},
 		}
 	}

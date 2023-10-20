@@ -1,7 +1,7 @@
 #![allow(dead_code)] //todo: remove after being tested and implemented
 
 use crate::connection::xdr_converter::Error as XDRError;
-use substrate_stellar_sdk::StellarSdkError;
+use substrate_stellar_sdk::{types::ErrorCode, StellarSdkError};
 use tokio::sync;
 
 #[derive(Debug, err_derive::Error)]
@@ -53,6 +53,9 @@ pub enum Error {
 
 	#[error(display = "Config Error: {}", _0)]
 	ConfigError(String),
+
+	#[error(display = "Received Error from Overlay: {:?}", _0)]
+	OverlayError(ErrorCode),
 }
 
 impl From<XDRError> for Error {

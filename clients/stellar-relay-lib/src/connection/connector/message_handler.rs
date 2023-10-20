@@ -1,6 +1,6 @@
 use crate::{
 	connection::{
-		authentication::verify_remote_auth_cert, helper::time_now, hmac::HMacKeys,
+		authentication::verify_remote_auth_cert, error_to_string, helper::time_now, hmac::HMacKeys,
 		xdr_converter::parse_authenticated_message, Connector, Xdr,
 	},
 	node::RemoteInfo,
@@ -25,6 +25,14 @@ impl Connector {
 
 			MessageType::ScpMessage if !self.receive_scp_messages() => {
 				self.increment_remote_sequence()?;
+			},
+
+			MessageType::ErrorMsg => match auth_msg.message {
+				StellarMessage::ErrorMsg(e) => {
+					log::error!("Received Message: {}", error_to_string(e.clone()));
+					return Err(Error::OverlayError(e.code))
+				},
+				other => log::error!("Received Message: {:?}", other),
 			},
 
 			_ => {
@@ -70,10 +78,7 @@ impl Connector {
 			},
 
 			StellarMessage::ErrorMsg(e) => {
-				let msg = e.msg.get_vec();
-				let msg = std::str::from_utf8(msg);
-				let error_message = format!("code: {:?} message: {msg:?}", e.code);
-				self.send_to_user(StellarRelayMessage::Error(error_message)).await?;
+				self.send_to_user(StellarRelayMessage::Error(error_to_string(e))).await?;
 			},
 
 			other => {

@@ -13,13 +13,13 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
 	let (cfg_file_path, sk_file_path) = if arg_network == "mainnet" {
 		(
-			"./clients/stellar-relay-lib/resources/config/mainnet/stellar_relay_config_iowa.json",
+			"./clients/stellar-relay-lib/resources/config/mainnet/stellar_relay_config_mainnet_iowa.json",
 			"./clients/stellar-relay-lib/resources/secretkey/stellar_secretkey_mainnet",
 		)
 	} else {
 		(
 			"./clients/stellar-relay-lib/resources/config/testnet/stellar_relay_config_sdftest1.json",
-			"./clients/stellar-relay-lib/resources/secretkey/stellar_secretkey_testnet",
+			"./clients/stellar-relay-lib/resources/secretkey/stellar_secretkey_testnet_usdc",
 		)
 	};
 	let cfg = StellarOverlayConfig::try_from_path(cfg_file_path)?;
