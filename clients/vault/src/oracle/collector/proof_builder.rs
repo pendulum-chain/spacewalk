@@ -99,9 +99,7 @@ impl ScpMessageCollector {
 			);
 			return
 		}
-		tracing::debug!(
-			"Proof Building for slot {slot}: requesting to StellarNode for messages..."
-		);
+		tracing::info!("Proof Building for slot {slot}: requesting to StellarNode for messages...");
 	}
 
 	/// fetches envelopes from the archive
@@ -132,8 +130,9 @@ impl ScpMessageCollector {
 		if let Some(envelopes) = self.envelopes_map().get(&slot) {
 			// lacking envelopes
 			if envelopes.len() < get_min_externalized_messages(self.is_public()) {
-				tracing::debug!(
-					"Proof Building for slot {slot}: not enough envelopes to build proof "
+				tracing::warn!(
+					"Proof Building for slot {slot}: {:?} envelopes is not enough to build proof",
+					envelopes.len()
 				);
 			} else {
 				return UnlimitedVarArray::new(envelopes.clone()).ok()
@@ -170,7 +169,7 @@ impl ScpMessageCollector {
 					tokio::spawn(self.get_txset_from_horizon_archive(slot));
 				}
 
-				tracing::debug!("Proof Building for slot {slot}: no txset found");
+				tracing::warn!("Proof Building for slot {slot}: no txset found");
 				None
 			},
 		}
@@ -201,7 +200,7 @@ impl ScpMessageCollector {
 			let tx_set = self.get_txset(slot, sender).await?;
 			return Some(Proof { slot, envelopes, tx_set })
 		} else {
-			tracing::debug!("Couldn't build proof for slot {slot} due to missing envelopes");
+			tracing::warn!("Couldn't build proof for slot {slot} due to missing envelopes");
 			return None
 		}
 	}
@@ -280,7 +279,7 @@ impl ScpMessageCollector {
 						let mut envelopes_map = envelopes_map_arc.write();
 
 						if envelopes_map.get(&slot).is_none() {
-							tracing::debug!(
+							tracing::info!(
 								"Adding {} archived SCP envelopes for slot {slot} to envelopes map. {} are externalized",
 								relevant_envelopes.len(),
 								externalized_envelopes_count
@@ -328,7 +327,7 @@ impl ScpMessageCollector {
 					.find(|&entry| Slot::from(entry.ledger_seq) == slot);
 
 				if let Some(target_history_entry) = value {
-					tracing::debug!("Adding archived tx set for slot {slot}");
+					tracing::info!("Adding archived tx set for slot {slot}");
 					let mut tx_set_map = txset_map_arc.write();
 					tx_set_map
 						.insert(slot, TransactionSetType::new(target_history_entry.tx_set.clone()));

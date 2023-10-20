@@ -69,6 +69,13 @@ impl Connector {
 				self.process_auth_message().await?;
 			},
 
+			StellarMessage::ErrorMsg(e) => {
+				let msg = e.msg.get_vec();
+				let msg = std::str::from_utf8(msg);
+				let error_message = format!("code: {:?} message: {msg:?}", e.code);
+				self.send_to_user(StellarRelayMessage::Error(error_message)).await?;
+			},
+
 			other => {
 				log::trace!(
 					"proc_id: {p_id}. Processing {msg_type:?} message: received from overlay"

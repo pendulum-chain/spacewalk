@@ -169,8 +169,8 @@ impl OracleAgent {
 			}
 		})
 		.await
-		.map_err(|elapsed| {
-			Error::ProofTimeout(format!("Timeout elapsed for building proof: {:?}", elapsed))
+		.map_err(|_| {
+			Error::ProofTimeout(format!("Timeout elapsed for building proof of slot {slot}"))
 		})?
 	}
 

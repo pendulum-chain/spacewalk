@@ -401,13 +401,16 @@ impl<T: Config> Pallet<T> {
 			&griefing_collateral,
 		)?;
 
-		// Emit RequestReplace event
-		Self::deposit_event(Event::<T>::RequestReplace {
+		let event = Event::<T>::RequestReplace {
 			old_vault_id: vault_id,
 			amount: to_be_replaced_increase.amount(),
 			asset: to_be_replaced_increase.currency(),
 			griefing_collateral: griefing_collateral.amount(),
-		});
+		};
+		log::info!("broadcasting event: {event:?}");
+		// Emit RequestReplace event
+		Self::deposit_event(event);
+
 		Ok(())
 	}
 
