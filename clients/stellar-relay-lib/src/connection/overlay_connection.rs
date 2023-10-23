@@ -151,7 +151,11 @@ mod test {
 		node::NodeInfo, ConnectionInfo, ConnectorActions, Error, StellarOverlayConnection,
 		StellarRelayMessage,
 	};
-	use substrate_stellar_sdk::{network::TEST_NETWORK, types::StellarMessage, SecretKey};
+	use substrate_stellar_sdk::{
+		network::TEST_NETWORK,
+		types::{MessageType, StellarMessage},
+		SecretKey,
+	};
 	use tokio::sync::mpsc;
 
 	fn create_node_and_conn() -> (NodeInfo, ConnectionInfo) {
@@ -224,9 +228,15 @@ mod test {
 			node_info,
 			conn_info,
 		);
-		let error_message = "error message".to_owned();
+
+		let expected_p_id = 2;
+		let expected_msg_type = MessageType::ErrorMsg;
 		relay_message_sender
-			.send(StellarRelayMessage::Error(error_message.clone()))
+			.send(StellarRelayMessage::Data {
+				p_id: expected_p_id,
+				msg_type: expected_msg_type,
+				msg: Box::new(StellarMessage::GetPeers),
+			})
 			.await
 			.expect("Stellar Relay message should be sent");
 
@@ -234,10 +244,13 @@ mod test {
 		let message = overlay_connection.listen().await.expect("Should receive some message");
 
 		//assert
-		if let StellarRelayMessage::Error(m) = message {
-			assert_eq!(m, error_message);
-		} else {
-			panic!("Incorrect stellar relay message type")
+		match message {
+			StellarRelayMessage::Data { p_id, msg_type, msg } => {
+				assert_eq!(p_id, expected_p_id);
+				assert_eq!(msg_type, expected_msg_type);
+				assert_eq!(msg, Box::new(StellarMessage::GetPeers))
+			},
+			_ => panic!("wrong relay message received"),
 		}
 	}
 
