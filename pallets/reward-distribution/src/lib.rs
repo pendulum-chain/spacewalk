@@ -21,6 +21,7 @@ use frame_support::{
 use oracle::OracleApi;
 use sp_arithmetic::{traits::AtLeast32BitUnsigned, FixedPointOperand, Perquintill};
 use sp_runtime::traits::{AccountIdConversion, CheckedAdd, CheckedSub, One, Zero};
+use sp_std::vec::Vec;
 #[cfg(feature = "runtime-benchmarks")]
 mod benchmarking;
 
@@ -74,7 +75,7 @@ pub mod pallet {
 			CurrencyId<Self>,
 			DefaultVaultId<Self>,
 			BalanceOf<Self>,
-			CurrencyId<Self>,
+			CurrencyId = CurrencyId<Self>,
 		>;
 
 		/// Vault staking pool.
@@ -151,8 +152,7 @@ pub mod pallet {
 			ensure_root(origin)?;
 
 			RewardPerBlock::<T>::put(new_reward_per_block);
-			RewardsAdaptedAt::<T>::put(frame_system::Pallet::<T>::block_number());
-
+			RewardsAdaptedAt::<T>::put(ext::security::get_active_block::<T>());
 			Self::deposit_event(Event::<T>::RewardPerBlockAdapted(new_reward_per_block));
 			Ok(())
 		}
@@ -224,7 +224,7 @@ impl<T: Config> Pallet<T> {
 		}
 	}
 
-	pub fn execute_on_init(height: T::BlockNumber) {
+	pub fn execute_on_init(_height: T::BlockNumber) {
 		//get reward per block
 		let reward_per_block = match RewardPerBlock::<T>::get() {
 			Some(value) => value,
@@ -257,7 +257,8 @@ impl<T: Config> Pallet<T> {
 				let decay_rate = T::DecayRate::get();
 				reward_this_block = (Perquintill::one() - decay_rate).mul_floor(reward_per_block);
 				RewardPerBlock::<T>::set(Some(reward_this_block));
-				RewardsAdaptedAt::<T>::set(Some(height));
+				let active_block = ext::security::get_active_block::<T>();
+				RewardsAdaptedAt::<T>::set(Some(active_block));
 			}
 		} else {
 			log::warn!("Failed to check if the parachain block expired");
@@ -277,15 +278,19 @@ impl<T: Config> Pallet<T> {
 		let total_stakes = ext::pooled_rewards::get_total_stake_all_pools::<T>()?;
 
 		let mut total_stake_in_usd = BalanceOf::<T>::default();
+		let mut stakes_in_usd = Vec::<BalanceOf<T>>::new();
 		for (currency_id, stake) in total_stakes.clone().into_iter() {
 			let stake_in_usd = T::OracleApi::currency_to_usd(&stake, &currency_id)?;
+			stakes_in_usd.push(stake_in_usd);
 			total_stake_in_usd = total_stake_in_usd.checked_add(&stake_in_usd).unwrap();
 		}
 
 		//distribute the rewards to each collateral pool
 		let mut error_reward_accum = BalanceOf::<T>::zero();
-		for (currency_id, stake) in total_stakes.into_iter() {
-			let stake_in_usd = T::OracleApi::currency_to_usd(&stake, &currency_id)?;
+		let mut stakes_in_usd_iter = stakes_in_usd.into_iter();
+		for (currency_id, _stake) in total_stakes.into_iter() {
+			let stake_in_usd =
+				stakes_in_usd_iter.next().expect("cannot be less than previous iteration");
 			let percentage = Perquintill::from_rational(stake_in_usd, total_stake_in_usd);
 			let reward_for_pool = percentage.mul_floor(reward_amount);
 			if ext::pooled_rewards::distribute_reward::<T>(

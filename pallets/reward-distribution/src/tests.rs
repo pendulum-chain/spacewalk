@@ -18,6 +18,8 @@ fn test_set_rewards_per_block() {
 	run_test(|| {
 		let new_rewards_per_block = 100;
 
+		ext::security::get_active_block::<Test>.mock_safe(move || MockResult::Return(1));
+
 		assert_err!(
 			RewardDistribution::set_reward_per_block(
 				RuntimeOrigin::signed(1),
@@ -79,6 +81,7 @@ fn on_initialize_hook_distribution_works() {
 			let initial_stakes = build_total_stakes();
 			MockResult::Return(Ok(initial_stakes))
 		});
+		ext::security::get_active_block::<Test>.mock_safe(move || MockResult::Return(1));
 
 		let mut expected_pool_ids = vec![XCM(0), XCM(1), XCM(2), XCM(3)].into_iter();
 		let mut expected_stake_per_pool = vec![46, 13, 34, 4].into_iter();
@@ -98,6 +101,8 @@ fn on_initialize_hook_distribution_works() {
 		);
 
 		System::set_block_number(100);
+		ext::security::get_active_block::<Test>.mock_safe(move || MockResult::Return(100));
+
 		let new_rewards_per_block = 100;
 		assert_ok!(RewardDistribution::set_reward_per_block(
 			RuntimeOrigin::root(),
