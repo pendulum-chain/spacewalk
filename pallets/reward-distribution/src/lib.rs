@@ -151,8 +151,7 @@ pub mod pallet {
 			ensure_root(origin)?;
 
 			RewardPerBlock::<T>::put(new_reward_per_block);
-			RewardsAdaptedAt::<T>::put(frame_system::Pallet::<T>::block_number());
-
+			RewardsAdaptedAt::<T>::put(ext::security::get_active_block::<T>());
 			Self::deposit_event(Event::<T>::RewardPerBlockAdapted(new_reward_per_block));
 			Ok(())
 		}
@@ -223,7 +222,7 @@ impl<T: Config> Pallet<T> {
 		}
 	}
 
-	pub fn execute_on_init(height: T::BlockNumber) {
+	pub fn execute_on_init(_height: T::BlockNumber) {
 		//get reward per block
 		let reward_per_block = match RewardPerBlock::<T>::get() {
 			Some(value) => value,
@@ -256,7 +255,8 @@ impl<T: Config> Pallet<T> {
 				let decay_rate = T::DecayRate::get();
 				reward_this_block = (Perquintill::one() - decay_rate).mul_floor(reward_per_block);
 				RewardPerBlock::<T>::set(Some(reward_this_block));
-				RewardsAdaptedAt::<T>::set(Some(height));
+				let active_block = ext::security::get_active_block::<T>();
+				RewardsAdaptedAt::<T>::set(Some(active_block));
 			}
 		} else {
 			log::warn!("Failed to check if the parachain block expired");

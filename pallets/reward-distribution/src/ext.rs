@@ -16,6 +16,10 @@ pub(crate) mod security {
 	) -> Result<bool, DispatchError> {
 		<security::Pallet<T>>::parachain_block_expired(opentime, period)
 	}
+
+	pub fn get_active_block<T: crate::Config>() -> T::BlockNumber {
+		<security::Pallet<T>>::active_block_number()
+	}
 }
 
 #[cfg_attr(test, mockable)]
