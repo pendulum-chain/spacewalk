@@ -241,7 +241,7 @@ pub mod pallet {
 		///
 		/// * `origin` - signing account
 		/// * `fee` - the new fee
-		#[pallet::call_index(0)]
+		#[pallet::call_index(1)]
 		#[pallet::weight(<T as Config>::WeightInfo::set_issue_fee())]
 		#[transactional]
 		pub fn set_issue_fee(
@@ -260,7 +260,7 @@ pub mod pallet {
 		///
 		/// * `origin` - signing account
 		/// * `griefing_collateral` - the new griefing collateral
-		#[pallet::call_index(1)]
+		#[pallet::call_index(2)]
 		#[pallet::weight(<T as Config>::WeightInfo::set_issue_griefing_collateral())]
 		#[transactional]
 		pub fn set_issue_griefing_collateral(
@@ -282,7 +282,7 @@ pub mod pallet {
 		///
 		/// * `origin` - signing account
 		/// * `fee` - the new fee
-		#[pallet::call_index(2)]
+		#[pallet::call_index(3)]
 		#[pallet::weight(<T as Config>::WeightInfo::set_redeem_fee())]
 		#[transactional]
 		pub fn set_redeem_fee(
@@ -301,7 +301,7 @@ pub mod pallet {
 		///
 		/// * `origin` - signing account
 		/// * `fee` - the new fee
-		#[pallet::call_index(3)]
+		#[pallet::call_index(4)]
 		#[pallet::weight(<T as Config>::WeightInfo::set_premium_redeem_fee())]
 		#[transactional]
 		pub fn set_premium_redeem_fee(
@@ -320,7 +320,7 @@ pub mod pallet {
 		///
 		/// * `origin` - signing account
 		/// * `fee` - the new fee
-		#[pallet::call_index(4)]
+		#[pallet::call_index(5)]
 		#[pallet::weight(<T as Config>::WeightInfo::set_punishment_fee())]
 		#[transactional]
 		pub fn set_punishment_fee(
@@ -339,7 +339,7 @@ pub mod pallet {
 		///
 		/// * `origin` - signing account
 		/// * `griefing_collateral` - the new griefing collateral
-		#[pallet::call_index(5)]
+		#[pallet::call_index(6)]
 		#[pallet::weight(<T as Config>::WeightInfo::set_replace_griefing_collateral())]
 		#[transactional]
 		pub fn set_replace_griefing_collateral(
