@@ -35,7 +35,7 @@ stellar-relay = { path = "../stellar-relay", default-features = false }
 vault-registry = { path = "../vault-registry", default-features = false }
 pooled-rewards = { path = "../pooled-rewards", default-features = false }
 reward-distribution = { path = "../reward-distribution", default-features = false }
-nomination = {path = "../nomination", default-features = false}
+
 
 primitives = { package = "spacewalk-primitives", path = "../../primitives", default-features = false }
 
@@ -47,6 +47,7 @@ orml-traits = { git = "https://github.com/open-web3-stack/open-runtime-module-li
 [dev-dependencies]
 mocktopus = "0.8.0"
 frame-benchmarking = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.40" }
+nomination = {path = "../nomination", default-features = false}
 
 currency = { path = "../currency", features = ['testing-utils', 'testing-constants'] }
 reward = { path = "../reward" }

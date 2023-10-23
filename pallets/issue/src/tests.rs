@@ -634,7 +634,6 @@ mod integration_tests {
 			CurrencyId,
 			DefaultVaultId<Test>,
 			Balance,
-			CurrencyId,
 		>>::compute_reward(&vault.collateral_currency(), vault, reward_currency)
 		.unwrap()
 	}
