@@ -276,14 +276,18 @@ impl<T: Config> Pallet<T> {
 		let total_stakes = ext::pooled_rewards::get_total_stake_all_pools::<T>()?;
 
 		let mut total_stake_in_usd = BalanceOf::<T>::default();
+		let mut stakes_in_usd = Vec::<BalanceOf<T>>::new();
 		for (currency_id, stake) in total_stakes.clone().into_iter() {
 			let stake_in_usd = T::OracleApi::currency_to_usd(&stake, &currency_id)?;
+			stakes_in_usd.push(stake_in_usd);
 			total_stake_in_usd = total_stake_in_usd.checked_add(&stake_in_usd).unwrap();
 		}
 		//distribute the rewards to each collateral pool
 		let mut error_reward_accum = BalanceOf::<T>::zero();
-		for (currency_id, stake) in total_stakes.into_iter() {
-			let stake_in_usd = T::OracleApi::currency_to_usd(&stake, &currency_id)?;
+		let mut stakes_in_usd_iter = stakes_in_usd.into_iter();
+		for (currency_id, _stake) in total_stakes.into_iter() {
+			let stake_in_usd =
+				stakes_in_usd_iter.next().expect("cannot be less than previous iteration");
 			let percentage = Perquintill::from_rational(stake_in_usd, total_stake_in_usd);
 			let reward_for_pool = percentage.mul_floor(reward_amount);
 			if ext::pooled_rewards::distribute_reward::<T>(
