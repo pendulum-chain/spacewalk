@@ -626,6 +626,7 @@ fn test_request_issue_reset_interval_and_succeeds_with_rate_limit() {
 }
 mod integration_tests {
 	use super::*;
+	use oracle::OracleApi;
 	use orml_traits::MultiCurrency;
 	use pooled_rewards::RewardsApi;
 
@@ -634,7 +635,6 @@ mod integration_tests {
 			CurrencyId,
 			DefaultVaultId<Test>,
 			Balance,
-			CurrencyId,
 		>>::compute_reward(&vault.collateral_currency(), vault, reward_currency)
 		.unwrap()
 	}
@@ -688,7 +688,7 @@ mod integration_tests {
 		ext::fee::get_issue_fee::<Test>.mock_safe(move |_| {
 			MockResult::Return(Ok(wrapped_with_custom_curr(
 				issue_fee,
-				vault_clone_2.clone().wrapped_currency(),
+				vault_clone_2.wrapped_currency(),
 			)))
 		});
 		ext::fee::get_issue_griefing_collateral::<Test>
@@ -705,6 +705,20 @@ mod integration_tests {
 		);
 
 		Ok(issue_id)
+	}
+
+	fn to_usd(amount: &Balance, currency: &CurrencyId) -> Balance {
+		<Test as reward_distribution::Config>::OracleApi::currency_to_usd(amount, currency)
+			.expect("prices have been set in mock configuration")
+	}
+
+	fn assert_approx_eq(a: Balance, b: Balance, epsilon: Balance) {
+		assert!(
+			(a as i128 - b as i128).abs() < epsilon as i128,
+			"Values are not approximately equal: {} != {}",
+			a,
+			b
+		);
 	}
 
 	//In these tests in particular we are testing that a given fee is distributed to
@@ -738,172 +752,317 @@ mod integration_tests {
 	#[test]
 	fn integration_multiple_vaults_same_collateral_gets_fee_rewards_when_issuing() {
 		run_test(|| {
+			//ARRANGE
 			//set up the vaults
-			let collateral1: u128 = 1000;
-			register_vault_with_collateral(&VAULT, collateral1);
+			let collateral_1: u128 = 1000;
+			register_vault_with_collateral(&VAULT, collateral_1);
 
-			let collateral2: u128 = 2000;
-			register_vault_with_collateral(&VAULT2, collateral2);
+			let collateral_2: u128 = 2000;
+			register_vault_with_collateral(&VAULT_2, collateral_2);
 
 			//execute the issue
-			let issue_asset = VAULT.wrapped_currency();
-			let issue_amount = 30;
-			let issue_fee = 10;
-			let griefing_collateral = 1;
-			let amount_transferred = 30;
-			let issue_id =
-				setup_execute(issue_amount, issue_fee, griefing_collateral, amount_transferred)
-					.unwrap();
-
-			assert_ok!(execute_issue(USER, &issue_id));
-
-			//execute the issue on the other currency
-			let issue_asset2 = VAULT2.wrapped_currency();
-			let issue_amount2 = 30;
-			let issue_fee2 = 20;
-			let griefing_collateral2 = 1;
-			let amount_transferred2 = 30;
-			let issue_id2 = setup_execute_with_vault(
-				issue_amount2,
-				issue_fee2,
-				griefing_collateral2,
-				amount_transferred2,
-				VAULT2.clone(),
+			let issue_asset_1 = VAULT.wrapped_currency();
+			let issue_amount_1 = 30;
+			let issue_fee_1 = 10;
+			let griefing_collateral_1 = 1;
+			let amount_transferred_1 = 30;
+			let issue_id_1 = setup_execute(
+				issue_amount_1,
+				issue_fee_1,
+				griefing_collateral_1,
+				amount_transferred_1,
 			)
 			.unwrap();
 
-			assert_ok!(execute_issue(USER, &issue_id2));
+			//ACT
+			assert_ok!(execute_issue(USER, &issue_id_1));
 
+			//execute the issue on the other currency
+			let issue_asset_2 = VAULT_2.wrapped_currency();
+			let issue_amount_2 = 30;
+			let issue_fee_2 = 20;
+			let griefing_collateral_2 = 1;
+			let amount_transferred_2 = 30;
+			let issue_id_2 = setup_execute_with_vault(
+				issue_amount_2,
+				issue_fee_2,
+				griefing_collateral_2,
+				amount_transferred_2,
+				VAULT_2.clone(),
+			)
+			.unwrap();
+
+			assert_ok!(execute_issue(USER, &issue_id_2));
+
+			//ASSERT
 			//ensure that the current rewards equal to fee
 			//Example: we expect for reward(vault1, asset1) = floor( 10*(1000/3000) ) = 3
-			assert_eq!(get_reward_for_vault(&VAULT, issue_asset), 3);
-			assert_eq!(get_reward_for_vault(&VAULT2, issue_asset), 6);
+			let vault_1_collateral_usd = to_usd(&collateral_1, &VAULT.collateral_currency());
+			let vault_2_collateral_usd = to_usd(&collateral_2, &VAULT_2.collateral_currency());
+			let total_amount_usd = vault_1_collateral_usd + vault_2_collateral_usd;
 
-			assert_eq!(get_reward_for_vault(&VAULT, issue_asset2), 6);
-			assert_eq!(get_reward_for_vault(&VAULT2, issue_asset2), 13);
+			let expected_value_vault_1_fee_1: u128 =
+				((vault_1_collateral_usd as f64 / total_amount_usd as f64) * issue_fee_1 as f64)
+					.floor() as u128;
+
+			let expected_value_vault_2_fee_1: u128 =
+				((vault_2_collateral_usd as f64 / total_amount_usd as f64) * issue_fee_1 as f64)
+					.floor() as u128;
+
+			let expected_value_vault_1_fee_2: u128 =
+				((vault_1_collateral_usd as f64 / total_amount_usd as f64) * issue_fee_2 as f64)
+					.floor() as u128;
+
+			let expected_value_vault_2_fee_2: u128 =
+				((vault_2_collateral_usd as f64 / total_amount_usd as f64) * issue_fee_2 as f64)
+					.floor() as u128;
+
+			assert_eq!(get_reward_for_vault(&VAULT, issue_asset_1), expected_value_vault_1_fee_1);
+			assert_eq!(get_reward_for_vault(&VAULT_2, issue_asset_1), expected_value_vault_2_fee_1);
+
+			assert_eq!(get_reward_for_vault(&VAULT, issue_asset_2), expected_value_vault_1_fee_2);
+			assert_eq!(get_reward_for_vault(&VAULT_2, issue_asset_2), expected_value_vault_2_fee_2);
 		})
 	}
 
-	fn execute_multiple_issues() {
+	fn execute_multiple_issues() -> (Balance, Balance, Balance) {
 		//execute the issue
-		let issue_amount = 3000;
-		let issue_fee = 1000;
-		let griefing_collateral = 1;
-		let amount_transferred = 3000;
-		let issue_id =
-			setup_execute(issue_amount, issue_fee, griefing_collateral, amount_transferred)
+		let issue_amount_1 = 3000;
+		let issue_fee_1 = 1000;
+		let griefing_collateral_1 = 1;
+		let amount_transferred_1 = 3000;
+		let issue_id_1 =
+			setup_execute(issue_amount_1, issue_fee_1, griefing_collateral_1, amount_transferred_1)
 				.unwrap();
-		assert_ok!(execute_issue(USER, &issue_id));
+		assert_ok!(execute_issue(USER, &issue_id_1));
 
 		//execute the issue on the other currency
-		let issue_amount2 = 3000;
-		let issue_fee2 = 500;
-		let griefing_collateral2 = 1;
-		let amount_transferred2 = 3000;
-		let issue_id2 = setup_execute_with_vault(
-			issue_amount2,
-			issue_fee2,
-			griefing_collateral2,
-			amount_transferred2,
-			VAULT2.clone(),
+		let issue_amount_2 = 3000;
+		let issue_fee_2 = 500;
+		let griefing_collateral_2 = 1;
+		let amount_transferred_2 = 3000;
+		let issue_id_2 = setup_execute_with_vault(
+			issue_amount_2,
+			issue_fee_2,
+			griefing_collateral_2,
+			amount_transferred_2,
+			VAULT_2.clone(),
 		)
 		.unwrap();
-		assert_ok!(execute_issue(USER, &issue_id2));
+		assert_ok!(execute_issue(USER, &issue_id_2));
 
-		let issue_amount3 = 3000;
-		let issue_fee3 = 600;
-		let griefing_collateral3 = 1;
-		let amount_transferred3 = 3000;
-		let issue_id3 = setup_execute_with_vault(
-			issue_amount3,
-			issue_fee3,
-			griefing_collateral3,
-			amount_transferred3,
-			VAULT3.clone(),
+		let issue_amount_3 = 3000;
+		let issue_fee_3 = 600;
+		let griefing_collateral_3 = 1;
+		let amount_transferred_3 = 3000;
+		let issue_id_3 = setup_execute_with_vault(
+			issue_amount_3,
+			issue_fee_3,
+			griefing_collateral_3,
+			amount_transferred_3,
+			VAULT_3.clone(),
 		)
 		.unwrap();
-		assert_ok!(execute_issue(USER, &issue_id3));
+		assert_ok!(execute_issue(USER, &issue_id_3));
 
-		let issue_amount4 = 3000;
-		let issue_fee4 = 400;
-		let griefing_collateral4 = 1;
-		let amount_transferred4 = 3000;
-		let issue_id4 = setup_execute_with_vault(
-			issue_amount4,
-			issue_fee4,
-			griefing_collateral4,
-			amount_transferred4,
-			VAULT4.clone(),
+		let issue_amount_4 = 3000;
+		let issue_fee_4 = 400;
+		let griefing_collateral_4 = 1;
+		let amount_transferred_4 = 3000;
+		let issue_id_4 = setup_execute_with_vault(
+			issue_amount_4,
+			issue_fee_4,
+			griefing_collateral_4,
+			amount_transferred_4,
+			VAULT_4.clone(),
 		)
 		.unwrap();
-		assert_ok!(execute_issue(USER, &issue_id4));
+		assert_ok!(execute_issue(USER, &issue_id_4));
 
-		let issue_amount5 = 3000;
-		let issue_fee5 = 700;
-		let griefing_collateral5 = 1;
-		let amount_transferred5 = 3000;
-		let issue_id5 = setup_execute_with_vault(
-			issue_amount5,
-			issue_fee5,
-			griefing_collateral5,
-			amount_transferred5,
-			VAULT5.clone(),
+		let issue_amount_5 = 3000;
+		let issue_fee_5 = 700;
+		let griefing_collateral_5 = 1;
+		let amount_transferred_5 = 3000;
+		let issue_id_5 = setup_execute_with_vault(
+			issue_amount_5,
+			issue_fee_5,
+			griefing_collateral_5,
+			amount_transferred_5,
+			VAULT_5.clone(),
 		)
 		.unwrap();
-		assert_ok!(execute_issue(USER, &issue_id5));
+		assert_ok!(execute_issue(USER, &issue_id_5));
+
+		return (issue_fee_1 + issue_fee_4, issue_fee_2 + issue_fee_5, issue_fee_3)
 	}
 
 	#[test]
 	fn integration_multiple_vaults_many_collateral() {
 		run_test(|| {
+			//ARRAGE
 			//set up the vaults
-			let collateral1: u128 = 1000;
-			register_vault_with_collateral(&VAULT, collateral1);
+			let collateral_1: u128 = 1000;
+			register_vault_with_collateral(&VAULT, collateral_1);
 
-			let collateral2: u128 = 2000;
-			register_vault_with_collateral(&VAULT2, collateral2);
+			let collateral_2: u128 = 2000;
+			register_vault_with_collateral(&VAULT_2, collateral_2);
 
-			let collateral3: u128 = 1500;
-			register_vault_with_collateral(&VAULT3, collateral3);
+			let collateral_3: u128 = 1500;
+			register_vault_with_collateral(&VAULT_3, collateral_3);
 
-			let collateral4: u128 = 1700;
-			register_vault_with_collateral(&VAULT4, collateral4);
+			let collateral_4: u128 = 1700;
+			register_vault_with_collateral(&VAULT_4, collateral_4);
 
-			let collateral5: u128 = 800;
-			register_vault_with_collateral(&VAULT5, collateral5);
+			let collateral_5: u128 = 800;
+			register_vault_with_collateral(&VAULT_5, collateral_5);
 
 			//execute issues
-			let issue_asset = VAULT.wrapped_currency();
-			let issue_asset2 = VAULT2.wrapped_currency();
-			let issue_asset3 = VAULT3.wrapped_currency();
-			execute_multiple_issues();
+			let issue_asset_1 = VAULT.wrapped_currency();
+			let issue_asset_2 = VAULT_2.wrapped_currency();
+			let issue_asset_3 = VAULT_3.wrapped_currency();
 
+			//ACT
+			//get issue total for asset1, asset2 and asset3
+			let (issue_fee_1, issue_fee_2, issue_fee_3) = execute_multiple_issues();
+
+			//ASSERT
 			//ensure that the current rewards equal to fee
 			//Example: we expect for reward(vault1, asset1) = floor(
 			//floor((1000/3000)*floor( 1400*(3000*5/(3000*5+3200*10+800*15)) )) = 118
 
+			let vault_1_collateral_usd = to_usd(&collateral_1, &VAULT.collateral_currency());
+			let vault_2_collateral_usd = to_usd(&collateral_2, &VAULT_2.collateral_currency());
+			let vault_3_collateral_usd = to_usd(&collateral_3, &VAULT_3.collateral_currency());
+			let vault_4_collateral_usd = to_usd(&collateral_4, &VAULT_4.collateral_currency());
+			let vault_5_collateral_usd = to_usd(&collateral_5, &VAULT_5.collateral_currency());
+
+			let total_amount_usd = vault_1_collateral_usd +
+				vault_2_collateral_usd +
+				vault_3_collateral_usd +
+				vault_4_collateral_usd +
+				vault_5_collateral_usd;
+
+			let get_expected_value_vault_1 = |fee: Balance| -> Balance {
+				((((vault_1_collateral_usd + vault_2_collateral_usd) as f64 /
+					total_amount_usd as f64) *
+					fee as f64)
+					.floor() * (collateral_1 as f64 / (collateral_2 + collateral_1) as f64))
+					.floor() as u128
+			};
+
+			let get_expected_value_vault_2 = |fee: Balance| -> Balance {
+				((((vault_1_collateral_usd + vault_2_collateral_usd) as f64 /
+					total_amount_usd as f64) *
+					fee as f64)
+					.floor() * (collateral_2 as f64 / (collateral_2 + collateral_1) as f64))
+					.floor() as u128
+			};
+
+			let get_expected_value_vault_3 = |fee: Balance| -> Balance {
+				((((vault_3_collateral_usd + vault_4_collateral_usd) as f64 /
+					total_amount_usd as f64) *
+					fee as f64)
+					.floor() * (collateral_3 as f64 / (collateral_3 + collateral_4) as f64))
+					.floor() as u128
+			};
+
+			let get_expected_value_vault_4 = |fee: Balance| -> Balance {
+				((((vault_3_collateral_usd + vault_4_collateral_usd) as f64 /
+					total_amount_usd as f64) *
+					fee as f64)
+					.floor() * (collateral_4 as f64 / (collateral_3 + collateral_4) as f64))
+					.floor() as u128
+			};
+
+			let get_expected_value_vault_5 = |fee: Balance| -> Balance {
+				(((vault_5_collateral_usd as f64 / total_amount_usd as f64) * fee as f64).floor())
+					as u128
+			};
+
 			//assertions for asset1 = asset4
-			assert_eq!(get_reward_for_vault(&VAULT, issue_asset), 118);
-			//NOTE: withouth floor(), should actually exactly be 237.25. In this case
-			//it is 236. The discrepancy is due to two consecutive roundings
-			assert_eq!(get_reward_for_vault(&VAULT2, issue_asset), 236);
-			assert_eq!(get_reward_for_vault(&VAULT3, issue_asset), 355);
-			assert_eq!(get_reward_for_vault(&VAULT4, issue_asset), 402);
-			assert_eq!(get_reward_for_vault(&VAULT5, issue_asset), 284);
+			assert_approx_eq(
+				get_reward_for_vault(&VAULT, issue_asset_1),
+				get_expected_value_vault_1(issue_fee_1),
+				2,
+			);
+
+			assert_approx_eq(
+				get_reward_for_vault(&VAULT_2, issue_asset_1),
+				get_expected_value_vault_2(issue_fee_1),
+				2,
+			);
+			assert_approx_eq(
+				get_reward_for_vault(&VAULT_3, issue_asset_1),
+				get_expected_value_vault_3(issue_fee_1),
+				2,
+			);
+			//NOTE: withouth floor(), should actually exactly be 403.38. In this case
+			//it is 402. The discrepancy is due to two consecutive roundings, and also
+			//the precision by which the pallet pooled-rewards works.
+			assert_approx_eq(
+				get_reward_for_vault(&VAULT_4, issue_asset_1),
+				get_expected_value_vault_4(issue_fee_1),
+				2,
+			);
+			assert_approx_eq(
+				get_reward_for_vault(&VAULT_5, issue_asset_1),
+				get_expected_value_vault_5(issue_fee_1),
+				2,
+			);
 
 			//assertions for issue asset2 = asset5
-			assert_eq!(get_reward_for_vault(&VAULT, issue_asset2), 101);
-			assert_eq!(get_reward_for_vault(&VAULT2, issue_asset2), 202);
-			assert_eq!(get_reward_for_vault(&VAULT3, issue_asset2), 304);
-			assert_eq!(get_reward_for_vault(&VAULT4, issue_asset2), 345);
-			assert_eq!(get_reward_for_vault(&VAULT5, issue_asset2), 243);
+			assert_approx_eq(
+				get_reward_for_vault(&VAULT, issue_asset_2),
+				get_expected_value_vault_1(issue_fee_2),
+				2,
+			);
+			assert_approx_eq(
+				get_reward_for_vault(&VAULT_2, issue_asset_2),
+				get_expected_value_vault_2(issue_fee_2),
+				2,
+			);
+			assert_approx_eq(
+				get_reward_for_vault(&VAULT_3, issue_asset_2),
+				get_expected_value_vault_3(issue_fee_2),
+				2,
+			);
+			assert_approx_eq(
+				get_reward_for_vault(&VAULT_4, issue_asset_2),
+				get_expected_value_vault_4(issue_fee_2),
+				2,
+			);
+			assert_approx_eq(
+				get_reward_for_vault(&VAULT_5, issue_asset_2),
+				get_expected_value_vault_5(issue_fee_2),
+				2,
+			);
 
 			//assertions for issue asset3
-			assert_eq!(get_reward_for_vault(&VAULT, issue_asset3), 50);
-			assert_eq!(get_reward_for_vault(&VAULT2, issue_asset3), 101);
-			assert_eq!(get_reward_for_vault(&VAULT3, issue_asset3), 152);
-			assert_eq!(get_reward_for_vault(&VAULT4, issue_asset3), 172);
-			assert_eq!(get_reward_for_vault(&VAULT5, issue_asset3), 122);
+			assert_approx_eq(
+				get_reward_for_vault(&VAULT, issue_asset_3),
+				get_expected_value_vault_1(issue_fee_3),
+				2,
+			);
+			assert_approx_eq(
+				get_reward_for_vault(&VAULT_2, issue_asset_3),
+				get_expected_value_vault_2(issue_fee_3),
+				2,
+			);
+			assert_approx_eq(
+				get_reward_for_vault(&VAULT_3, issue_asset_3),
+				get_expected_value_vault_3(issue_fee_3),
+				2,
+			);
+			assert_approx_eq(
+				get_reward_for_vault(&VAULT_4, issue_asset_3),
+				get_expected_value_vault_4(issue_fee_3),
+				2,
+			);
+			assert_approx_eq(
+				get_reward_for_vault(&VAULT_5, issue_asset_3),
+				get_expected_value_vault_5(issue_fee_3),
+				2,
+			);
 		});
 	}
 
@@ -914,20 +1073,20 @@ mod integration_tests {
 	fn integration_multiple_vaults_many_collateral_nominated() {
 		run_test(|| {
 			//set up the vaults
-			let collateral1: u128 = 1000;
-			register_vault_with_collateral(&VAULT, collateral1);
+			let collateral_1: u128 = 1000;
+			register_vault_with_collateral(&VAULT, collateral_1);
 
-			let collateral2: u128 = 2000;
-			register_vault_with_collateral(&VAULT2, collateral2);
+			let collateral_2: u128 = 2000;
+			register_vault_with_collateral(&VAULT_2, collateral_2);
 
-			let collateral3: u128 = 1500;
-			register_vault_with_collateral(&VAULT3, collateral3);
+			let collateral_3: u128 = 1500;
+			register_vault_with_collateral(&VAULT_3, collateral_3);
 
-			let collateral4: u128 = 1700;
-			register_vault_with_collateral(&VAULT4, collateral4);
+			let collateral_4: u128 = 1700;
+			register_vault_with_collateral(&VAULT_4, collateral_4);
 
-			let collateral5: u128 = 800;
-			register_vault_with_collateral(&VAULT5, collateral5);
+			let collateral_5: u128 = 800;
+			register_vault_with_collateral(&VAULT_5, collateral_5);
 
 			//nominate
 			let nominator_amount: u128 = 500;
@@ -935,27 +1094,53 @@ mod integration_tests {
 			nominate_vault(NOMINATOR1, VAULT, nominator_amount);
 
 			//execute issues
-			execute_multiple_issues();
+			let (issue_fee_1, _issue_fee_2, _issue_fee_3) = execute_multiple_issues();
 
 			//assertions for asset1 = asset4
 			assert_eq!(get_reward_for_vault(&VAULT, VAULT.wrapped_currency()), 170);
 
 			//assertions for issue asset2 = asset5
-			assert_eq!(get_reward_for_vault(&VAULT, VAULT2.wrapped_currency()), 146);
+			assert_eq!(get_reward_for_vault(&VAULT, VAULT_2.wrapped_currency()), 146);
 
 			//assertions for issue asset3
-			assert_eq!(get_reward_for_vault(&VAULT, VAULT3.wrapped_currency()), 72);
+			assert_eq!(get_reward_for_vault(&VAULT, VAULT_3.wrapped_currency()), 72);
 
 			//nominator reward withdraw
 			//NOMINATOR collateral = 500, total collateral for vault 1500
 			//we expect balance to increase on asset1 = floor( 170*(500/1500) )
+			let vault_1_collateral_usd = to_usd(&collateral_1, &VAULT.collateral_currency());
+			let nominator_amount_usd = to_usd(&nominator_amount, &VAULT.collateral_currency());
+			let vault_2_collateral_usd = to_usd(&collateral_2, &VAULT_2.collateral_currency());
+			let vault_3_collateral_usd = to_usd(&collateral_3, &VAULT_3.collateral_currency());
+			let vault_4_collateral_usd = to_usd(&collateral_4, &VAULT_4.collateral_currency());
+			let vault_5_collateral_usd = to_usd(&collateral_5, &VAULT_5.collateral_currency());
+
+			let total_amount_usd = vault_1_collateral_usd +
+				nominator_amount_usd +
+				vault_2_collateral_usd +
+				vault_3_collateral_usd +
+				vault_4_collateral_usd +
+				vault_5_collateral_usd;
+
+			let reward_for_pool_1 =
+				((((vault_1_collateral_usd + vault_2_collateral_usd + nominator_amount_usd)
+					as f64 / total_amount_usd as f64) *
+					issue_fee_1 as f64)
+					.floor() * ((collateral_1 + nominator_amount) as f64 /
+					(collateral_1 + collateral_2 + nominator_amount) as f64))
+					.floor();
+
+			let reward_for_nominator = (reward_for_pool_1 *
+				(nominator_amount as f64 / (nominator_amount + collateral_1) as f64))
+				as u128;
+
 			assert_ok!(<reward_distribution::Pallet<Test>>::collect_reward(
 				RuntimeOrigin::signed(NOMINATOR1.clone()).into(),
 				VAULT,
 				VAULT.wrapped_currency(),
 				None,
 			));
-			assert_eq!(get_balance(VAULT.wrapped_currency(), &NOMINATOR1), 56);
+			assert_eq!(get_balance(VAULT.wrapped_currency(), &NOMINATOR1), reward_for_nominator);
 		})
 	}
 }
