@@ -107,7 +107,7 @@ pub mod pallet {
 			CurrencyId<Self>,
 			DefaultVaultId<Self>,
 			BalanceOf<Self>,
-			CurrencyId<Self>,
+			CurrencyId = CurrencyId<Self>,
 		>;
 
 		/// Pooled rewards distribution Interface
