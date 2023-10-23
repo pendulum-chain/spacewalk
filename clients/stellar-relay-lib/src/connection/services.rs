@@ -171,7 +171,7 @@ pub(crate) async fn receiving_service(
 		{
 			Ok(Ok(0)) => {
 				if retry_read >= retries {
-					log::error!("proc_id: {proc_id}. Failed to read messages from the stream. Received 0 size more than {retries} times");
+					log::error!("receiving_service():: proc_id: {proc_id}. Failed to read messages from the stream. Received 0 size more than {retries} times");
 					return
 				}
 				retry_read += 1;
@@ -204,7 +204,7 @@ pub(crate) async fn receiving_service(
 						expect_msg_len,
 					)
 					.await,
-					format!("proc_id: {proc_id}. Failed to read message")
+					format!("receiving_service():: proc_id: {proc_id}. Failed to read message")
 				);
 			},
 
@@ -220,21 +220,21 @@ pub(crate) async fn receiving_service(
 						&mut proc_id,
 						&mut readbuf,
 					).await,
-					format!("proc_id:{proc_id}. Error occurred while reading unfinished stellar message")
+					format!("receiving_service():: proc_id:{proc_id}. Error occurred while reading unfinished stellar message")
 				);
 			},
 			Ok(Err(e)) => {
-				log::error!("proc_id: {proc_id}. Error occurred while reading the stream: {e:?}");
+				log::error!("receiving_service():: proc_id: {proc_id}. Error occurred while reading the stream: {e:?}");
 				return
 			},
 			Err(elapsed) => {
 				log::error!(
-					"proc_id: {proc_id}. Timeout of {} seconds elapesd for reading messages from Stellar Node. Retry: #{retry}",
+					"receiving_service():: proc_id: {proc_id}. Timeout of {} seconds elapesd for reading messages from Stellar Node. Retry: #{retry}",
 					elapsed.to_string()
 				);
 
 				if retry >= retries {
-					log::error!("proc_id: {proc_id}. Exhausted maximum retries for reading messages from Stellar Node.");
+					log::error!("receiving_service():: proc_id: {proc_id}. Exhausted maximum retries for reading messages from Stellar Node.");
 					return
 				}
 				retry += 1;
@@ -252,7 +252,7 @@ async fn _connection_handler(
 		// start the connection to Stellar node with a 'hello'
 		ConnectorActions::SendHello => {
 			let msg = connector.create_hello_message(time_now())?;
-			log::trace!("Sending Hello Message...{:?}", msg);
+			log::info!("_connection_handler():: Sending Hello Message...{:?}", msg);
 			w_stream.write_all(&msg).await.map_err(|e| Error::WriteFailed(e.to_string()))?;
 		},
 
@@ -292,7 +292,7 @@ pub(crate) async fn connection_handler(
 			Ok(Some(ConnectorActions::Disconnect)) => {
 				log_error!(
 					w_stream.shutdown().await,
-					format!("Failed to shutdown write half of stream:")
+					format!("connection_handler():: Failed to shutdown write half of stream:")
 				);
 				drop(connector);
 				drop(actions_receiver);
@@ -301,21 +301,26 @@ pub(crate) async fn connection_handler(
 
 			Ok(Some(action)) => {
 				if let Err(e) = _connection_handler(action, &mut connector, &mut w_stream).await {
-					log::error!("Handling the connection failed: {e:?}");
+					log::error!("connection_handler():: {e:?}");
+
+					log_error!(
+						connector.send_to_user(StellarRelayMessage::Error(e.to_string())).await,
+						format!("connection_handler():: sending error message")
+					);
+					return
 				}
 			},
 
 			Ok(None) => {
-				log::warn!("Unexpected empty response from receiver");
+				log::warn!("connection_handler():: Unexpected empty response from receiver");
 			},
 
 			Err(_) => {
-				// log::error!("Connection timed out after {} seconds", elapsed.to_string());
-				// connector.send_to_user(StellarRelayMessage::Timeout).await;
 				log_error!(
 					connector.send_to_user(StellarRelayMessage::Timeout).await,
-					format!("Connection Timed out:")
+					format!("connection_handler():: Connection Timed out")
 				);
+				return
 			},
 		}
 	}

@@ -57,11 +57,11 @@ async fn handle_message(
 			let pub_key = pub_key.to_encoding();
 			let pub_key = std::str::from_utf8(&pub_key).unwrap_or("****");
 
-			tracing::info!("Connected: via public key: {pub_key}");
-			tracing::info!("Connected: with {:#?}", node_info)
+			tracing::info!("handle_message():: Connected: via public key: {pub_key}");
+			tracing::info!("handle_message():: Connected: with {:#?}", node_info)
 		},
 		StellarRelayMessage::Timeout => {
-			tracing::error!("The Stellar Relay timed out. Failed to process message: {message:?}");
+			tracing::error!("handle_message():: The Stellar Relay timed out. Failed to process message: {message:?}");
 		},
 		_ => {},
 	}

@@ -57,41 +57,42 @@ impl StellarOverlayConnection {
 		let res = self.relay_message_receiver.recv().await;
 
 		// Reconnection only when the maximum number of retries has not been reached.
-		if let Some(StellarRelayMessage::Timeout) = &res {
-			let mut retries = 0;
-			while retries < self.max_retries {
-				log::info!(
-					"Overlay Connection: timed out. Reconnecting to {:?}...",
-					&self.conn_info.address
-				);
+		match &res {
+			Some(StellarRelayMessage::Timeout) | Some(StellarRelayMessage::Error(_)) | None => {
+				let mut retries = 0;
+				while retries < self.max_retries {
+					log::info!("listen():: Reconnecting to {:?}...", &self.conn_info.address);
 
-				match StellarOverlayConnection::connect(
-					self.local_node.clone(),
-					self.conn_info.clone(),
-				)
-				.await
-				{
-					Ok(new_user) => {
-						self.max_retries = new_user.max_retries;
-						self.actions_sender = new_user.actions_sender;
-						self.relay_message_receiver = new_user.relay_message_receiver;
-						log::info!(
-							"Overlay Connection: reconnected to {:?}",
-							&self.conn_info.address
-						);
-						return self.relay_message_receiver.recv().await
-					},
-					Err(e) => {
-						retries += 1;
-						log::error!(
-						"Overlay Connection: failed to reconnect: {e:?}\n # of retries left: {}. Retrying in 3 seconds...",
+					match StellarOverlayConnection::connect(
+						self.local_node.clone(),
+						self.conn_info.clone(),
+					)
+					.await
+					{
+						Ok(new_user) => {
+							self.max_retries = new_user.max_retries;
+							self.actions_sender = new_user.actions_sender;
+							self.relay_message_receiver = new_user.relay_message_receiver;
+							log::info!(
+								"listen():: overlay connection reconnected to {:?}",
+								&self.conn_info.address
+							);
+							return self.relay_message_receiver.recv().await
+						},
+						Err(e) => {
+							retries += 1;
+							log::error!(
+						"listen():: overlay connection failed to reconnect: {e:?}\n # of retries left: {}. Retrying in 3 seconds...",
 						self.max_retries
 					);
-						tokio::time::sleep(Duration::from_secs(3)).await;
-					},
+							tokio::time::sleep(Duration::from_secs(3)).await;
+						},
+					};
 				}
-			}
+			},
+			_ => {},
 		}
+
 		res
 	}
 
