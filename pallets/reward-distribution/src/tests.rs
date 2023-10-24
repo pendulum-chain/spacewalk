@@ -113,6 +113,7 @@ fn on_initialize_hook_distribution_works() {
 
 		System::set_block_number(101);
 		RewardDistribution::execute_on_init(101);
+		assert_eq!(RewardDistribution::native_liability(), Some(100));
 	})
 }
 

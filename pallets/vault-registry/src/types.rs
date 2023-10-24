@@ -560,7 +560,7 @@ impl<T: Config> RichVault<T> {
 			.unwrap_or((amount.clone(), None));
 
 		// "slash" vault first
-		ext::staking::withdraw_stake::<T>(
+		pool_staking_manager::PoolManager::withdraw_collateral(
 			&vault_id,
 			&vault_id.account_id,
 			&to_withdraw.clone(),
