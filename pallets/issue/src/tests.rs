@@ -731,6 +731,7 @@ mod integration_tests {
 			//set up vault
 			let collateral: u128 = 1000;
 			register_vault_with_collateral(&VAULT, collateral);
+			assert_ok!(Staking::add_reward_currency(VAULT.wrapped_currency()));
 			//execute the issue
 
 			let issue_asset = VAULT.wrapped_currency();
@@ -753,6 +754,8 @@ mod integration_tests {
 	fn integration_multiple_vaults_same_collateral_gets_fee_rewards_when_issuing() {
 		run_test(|| {
 			//ARRANGE
+			assert_ok!(Staking::add_reward_currency(VAULT.wrapped_currency()));
+			assert_ok!(Staking::add_reward_currency(VAULT_2.wrapped_currency()));
 			//set up the vaults
 			let collateral_1: u128 = 1000;
 			register_vault_with_collateral(&VAULT, collateral_1);
@@ -900,6 +903,9 @@ mod integration_tests {
 	fn integration_multiple_vaults_many_collateral() {
 		run_test(|| {
 			//ARRAGE
+			assert_ok!(Staking::add_reward_currency(VAULT.wrapped_currency()));
+			assert_ok!(Staking::add_reward_currency(VAULT_2.wrapped_currency()));
+			assert_ok!(Staking::add_reward_currency(VAULT_3.wrapped_currency()));
 			//set up the vaults
 			let collateral_1: u128 = 1000;
 			register_vault_with_collateral(&VAULT, collateral_1);
@@ -1072,6 +1078,10 @@ mod integration_tests {
 	#[test]
 	fn integration_multiple_vaults_many_collateral_nominated() {
 		run_test(|| {
+			//ARRANGE
+			assert_ok!(Staking::add_reward_currency(VAULT.wrapped_currency()));
+			assert_ok!(Staking::add_reward_currency(VAULT_2.wrapped_currency()));
+			assert_ok!(Staking::add_reward_currency(VAULT_3.wrapped_currency()));
 			//set up the vaults
 			let collateral_1: u128 = 1000;
 			register_vault_with_collateral(&VAULT, collateral_1);
@@ -1094,16 +1104,7 @@ mod integration_tests {
 			nominate_vault(NOMINATOR1, VAULT, nominator_amount);
 
 			//execute issues
-			let (issue_fee_1, _issue_fee_2, _issue_fee_3) = execute_multiple_issues();
-
-			//assertions for asset1 = asset4
-			assert_eq!(get_reward_for_vault(&VAULT, VAULT.wrapped_currency()), 170);
-
-			//assertions for issue asset2 = asset5
-			assert_eq!(get_reward_for_vault(&VAULT, VAULT_2.wrapped_currency()), 146);
-
-			//assertions for issue asset3
-			assert_eq!(get_reward_for_vault(&VAULT, VAULT_3.wrapped_currency()), 72);
+			let (issue_fee_1, issue_fee_2, issue_fee_3) = execute_multiple_issues();
 
 			//nominator reward withdraw
 			//NOMINATOR collateral = 500, total collateral for vault 1500
@@ -1122,7 +1123,7 @@ mod integration_tests {
 				vault_4_collateral_usd +
 				vault_5_collateral_usd;
 
-			let reward_for_pool_1 =
+			let reward_for_pool_1_asset_1 =
 				((((vault_1_collateral_usd + vault_2_collateral_usd + nominator_amount_usd)
 					as f64 / total_amount_usd as f64) *
 					issue_fee_1 as f64)
@@ -1130,7 +1131,31 @@ mod integration_tests {
 					(collateral_1 + collateral_2 + nominator_amount) as f64))
 					.floor();
 
-			let reward_for_nominator = (reward_for_pool_1 *
+			let reward_for_nominator_asset_1 = (reward_for_pool_1_asset_1 *
+				(nominator_amount as f64 / (nominator_amount + collateral_1) as f64))
+				as u128;
+
+			let reward_for_pool_1_asset_2 =
+				((((vault_1_collateral_usd + vault_2_collateral_usd + nominator_amount_usd)
+					as f64 / total_amount_usd as f64) *
+					issue_fee_2 as f64)
+					.floor() * ((collateral_1 + nominator_amount) as f64 /
+					(collateral_1 + collateral_2 + nominator_amount) as f64))
+					.floor();
+
+			let reward_for_nominator_asset_2 = (reward_for_pool_1_asset_2 *
+				(nominator_amount as f64 / (nominator_amount + collateral_1) as f64))
+				as u128;
+
+			let reward_for_pool_1_asset_3 =
+				((((vault_1_collateral_usd + vault_2_collateral_usd + nominator_amount_usd)
+					as f64 / total_amount_usd as f64) *
+					issue_fee_3 as f64)
+					.floor() * ((collateral_1 + nominator_amount) as f64 /
+					(collateral_1 + collateral_2 + nominator_amount) as f64))
+					.floor();
+
+			let reward_for_nominator_asset_3 = (reward_for_pool_1_asset_3 *
 				(nominator_amount as f64 / (nominator_amount + collateral_1) as f64))
 				as u128;
 
@@ -1140,7 +1165,102 @@ mod integration_tests {
 				VAULT.wrapped_currency(),
 				None,
 			));
-			assert_eq!(get_balance(VAULT.wrapped_currency(), &NOMINATOR1), reward_for_nominator);
+			assert_eq!(
+				get_balance(VAULT.wrapped_currency(), &NOMINATOR1),
+				reward_for_nominator_asset_1
+			);
+
+			assert_ok!(<reward_distribution::Pallet<Test>>::collect_reward(
+				RuntimeOrigin::signed(NOMINATOR1.clone()).into(),
+				VAULT,
+				VAULT_2.wrapped_currency(),
+				None,
+			));
+			assert_eq!(
+				get_balance(VAULT_2.wrapped_currency(), &NOMINATOR1),
+				reward_for_nominator_asset_2
+			);
+			assert_ok!(<reward_distribution::Pallet<Test>>::collect_reward(
+				RuntimeOrigin::signed(NOMINATOR1.clone()).into(),
+				VAULT,
+				VAULT_3.wrapped_currency(),
+				None,
+			));
+			assert_eq!(
+				get_balance(VAULT_3.wrapped_currency(), &NOMINATOR1),
+				reward_for_nominator_asset_3
+			);
+		})
+	}
+
+	#[test]
+	fn integration_new_nominator_does_not_get_previous_rewards() {
+		run_test(|| {
+			//ARRANGE
+			assert_ok!(Staking::add_reward_currency(VAULT.wrapped_currency()));
+			assert_ok!(Staking::add_reward_currency(VAULT_2.wrapped_currency()));
+			assert_ok!(Staking::add_reward_currency(VAULT_3.wrapped_currency()));
+			//set up the vaults
+			let collateral_1: u128 = 1000;
+			register_vault_with_collateral(&VAULT, collateral_1);
+
+			let collateral_2: u128 = 2000;
+			register_vault_with_collateral(&VAULT_2, collateral_2);
+
+			let collateral_3: u128 = 1500;
+			register_vault_with_collateral(&VAULT_3, collateral_3);
+
+			let collateral_4: u128 = 1700;
+			register_vault_with_collateral(&VAULT_4, collateral_4);
+
+			let collateral_5: u128 = 800;
+			register_vault_with_collateral(&VAULT_5, collateral_5);
+
+			assert_eq!(get_balance(VAULT.wrapped_currency(), &NOMINATOR1), 0);
+			assert_eq!(get_balance(VAULT_2.wrapped_currency(), &NOMINATOR1), 0);
+			assert_eq!(get_balance(VAULT_3.wrapped_currency(), &NOMINATOR1), 0);
+			//execute issues
+			//ACT
+			let (_issue_fee_1, _issue_fee_2, _issue_fee_3) = execute_multiple_issues();
+
+			//nominate after fee issued!
+			let nominator_amount: u128 = 500;
+			nominate_vault(NOMINATOR1, VAULT, nominator_amount);
+
+			assert_noop!(
+				<reward_distribution::Pallet<Test>>::collect_reward(
+					RuntimeOrigin::signed(NOMINATOR1.clone()).into(),
+					VAULT,
+					VAULT.wrapped_currency(),
+					None,
+				),
+				reward_distribution::Error::<Test>::NoRewardsForAccount
+			);
+
+			assert_noop!(
+				<reward_distribution::Pallet<Test>>::collect_reward(
+					RuntimeOrigin::signed(NOMINATOR1.clone()).into(),
+					VAULT,
+					VAULT_2.wrapped_currency(),
+					None,
+				),
+				reward_distribution::Error::<Test>::NoRewardsForAccount
+			);
+
+			assert_noop!(
+				<reward_distribution::Pallet<Test>>::collect_reward(
+					RuntimeOrigin::signed(NOMINATOR1.clone()).into(),
+					VAULT,
+					VAULT_3.wrapped_currency(),
+					None,
+				),
+				reward_distribution::Error::<Test>::NoRewardsForAccount
+			);
+
+			//ASSERT
+			assert_eq!(get_balance(VAULT.wrapped_currency(), &NOMINATOR1), 0);
+			assert_eq!(get_balance(VAULT_2.wrapped_currency(), &NOMINATOR1), 0);
+			assert_eq!(get_balance(VAULT_3.wrapped_currency(), &NOMINATOR1), 0);
 		})
 	}
 }

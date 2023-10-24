@@ -12,6 +12,7 @@ pub(crate) mod security {
 
 #[cfg_attr(test, mockable)]
 pub(crate) mod vault_registry {
+	use crate::BalanceOf;
 	use currency::Amount;
 	pub use frame_support::dispatch::{DispatchError, DispatchResult};
 	pub use vault_registry::{types::CurrencyId, DefaultVault, VaultStatus};
@@ -60,23 +61,43 @@ pub(crate) mod vault_registry {
 	) -> DispatchResult {
 		<vault_registry::Pallet<T>>::decrease_total_backing_collateral(currency_pair, amount)
 	}
+
+	pub mod pool_manager {
+		use super::*;
+
+		pub fn deposit_collateral<T: crate::Config>(
+			vault_id: &DefaultVaultId<T>,
+			nominator_id: &T::AccountId,
+			amount: &Amount<T>,
+		) -> Result<(), DispatchError> {
+			<vault_registry::PoolManager<T>>::deposit_collateral(vault_id, nominator_id, amount)
+		}
+
+		pub fn withdraw_collateral<T: crate::Config>(
+			vault_id: &DefaultVaultId<T>,
+			nominator_id: &T::AccountId,
+			maybe_amount: &Amount<T>,
+			nonce: Option<T::Index>,
+		) -> Result<(), DispatchError> {
+			<vault_registry::PoolManager<T>>::withdraw_collateral(
+				vault_id,
+				nominator_id,
+				maybe_amount,
+				nonce,
+			)
+		}
+
+		pub fn kick_nominators<T: crate::Config>(
+			vault_id: &DefaultVaultId<T>,
+		) -> Result<BalanceOf<T>, DispatchError> {
+			<vault_registry::PoolManager<T>>::kick_nominators(vault_id)
+		}
+	}
 }
 
 #[cfg_attr(test, mockable)]
-pub(crate) mod reward_distribution {
-	use frame_support::pallet_prelude::DispatchResult;
-	use reward_distribution::DistributeRewards;
-	use vault_registry::DefaultVaultId;
-	pub fn withdraw_all_rewards_from_vault<T: crate::Config>(
-		vault_id: &DefaultVaultId<T>,
-	) -> DispatchResult {
-		T::RewardDistribution::withdraw_all_rewards_from_vault(vault_id.clone())
-	}
-}
-#[cfg_attr(test, mockable)]
 pub(crate) mod staking {
 	use crate::BalanceOf;
-	use currency::Amount;
 	use frame_support::dispatch::DispatchError;
 	use staking::Staking;
 	use vault_registry::DefaultVaultId;
@@ -85,57 +106,10 @@ pub(crate) mod staking {
 		T::VaultStaking::nonce(vault_id)
 	}
 
-	pub fn deposit_stake<T: crate::Config>(
-		vault_id: &DefaultVaultId<T>,
-		nominator_id: &T::AccountId,
-		amount: BalanceOf<T>,
-	) -> Result<(), DispatchError> {
-		T::VaultStaking::deposit_stake(vault_id, nominator_id, amount)
-	}
-
-	pub fn withdraw_stake<T: crate::Config>(
-		vault_id: &DefaultVaultId<T>,
-		nominator_id: &T::AccountId,
-		amount: BalanceOf<T>,
-		index: Option<T::Index>,
-	) -> Result<(), DispatchError> {
-		T::VaultStaking::withdraw_stake(vault_id, nominator_id, amount, index)
-	}
-
 	pub fn compute_stake<T: vault_registry::Config>(
 		vault_id: &DefaultVaultId<T>,
 		nominator_id: &T::AccountId,
 	) -> Result<BalanceOf<T>, DispatchError> {
 		T::VaultStaking::compute_stake(vault_id, nominator_id)
-	}
-
-	pub fn force_refund<T: crate::Config>(
-		vault_id: &DefaultVaultId<T>,
-	) -> Result<BalanceOf<T>, DispatchError> {
-		T::VaultStaking::force_refund(vault_id)
-	}
-
-	pub fn total_current_stake_as_amount<T: crate::Config>(
-		vault_id: &DefaultVaultId<T>,
-	) -> Result<Amount<T>, DispatchError> {
-		let vault_total_stake = T::VaultStaking::total_stake(vault_id)?;
-		Ok(Amount::<T>::new(vault_total_stake, vault_id.collateral_currency()))
-	}
-}
-
-#[cfg_attr(test, mockable)]
-pub(crate) mod pooled_rewards {
-
-	use currency::Amount;
-	use frame_support::dispatch::DispatchError;
-	use pooled_rewards::RewardsApi;
-
-	use crate::DefaultVaultId;
-
-	pub fn set_stake<T: crate::Config>(
-		vault_id: &DefaultVaultId<T>,
-		amount: &Amount<T>,
-	) -> Result<(), DispatchError> {
-		T::VaultRewards::set_stake(&vault_id.collateral_currency(), &vault_id, amount.amount())
 	}
 }

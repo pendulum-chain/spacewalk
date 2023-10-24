@@ -119,6 +119,8 @@ pub mod pallet {
 		Underflow,
 		//if origin tries to withdraw with 0 rewards
 		NoRewardsForAccount,
+		//error if amount to be minted is more than rewarded in total
+		NotEnoughRewardsRegistered,
 	}
 
 	#[pallet::hooks]
@@ -138,6 +140,11 @@ pub mod pallet {
 	#[pallet::storage]
 	#[pallet::getter(fn rewards_adapted_at)]
 	pub(super) type RewardsAdaptedAt<T: Config> = StorageValue<_, BlockNumberFor<T>, OptionQuery>;
+
+	//keeps track of the to-be-minted native rewards
+	#[pallet::storage]
+	#[pallet::getter(fn native_liability)]
+	pub(super) type NativeLiability<T: Config> = StorageValue<_, BalanceOf<T>, OptionQuery>;
 
 	#[pallet::call]
 	impl<T: Config> Pallet<T> {
@@ -207,12 +214,23 @@ impl<T: Config> Pallet<T> {
 					return amount.transfer(&Self::fee_pool_account_id(), &beneficiary)
 				},
 				Some(remaining) => {
+					//check if the to-be-minted amount is consistent
+					//with reward tracking
+					let liability = NativeLiability::<T>::get()
+						.ok_or(Error::<T>::NotEnoughRewardsRegistered)?;
+
+					if liability < remaining {
+						return Err(Error::<T>::NotEnoughRewardsRegistered.into())
+					}
+
 					// Use the available funds from the fee pool
 					let available_amount: currency::Amount<T> =
 						Amount::new(available_native_funds, reward_currency_id);
 					available_amount.transfer(&Self::fee_pool_account_id(), &beneficiary)?;
 					// Mint the rest
 					T::Balances::deposit_creating(&beneficiary, remaining);
+
+					NativeLiability::<T>::set(Some(liability - remaining));
 				},
 			}
 			Ok(())
@@ -263,7 +281,11 @@ impl<T: Config> Pallet<T> {
 		} else {
 			log::warn!("Failed to check if the parachain block expired");
 		}
-
+		//keep track of total native currencies to be minted
+		NativeLiability::<T>::mutate(|current_liability| match current_liability {
+			Some(current_liability) => *current_liability += reward_this_block,
+			None => *current_liability = Some(reward_this_block),
+		});
 		//TODO how to handle error if on init cannot fail?
 		let _ = Self::distribute_rewards(reward_this_block, T::GetNativeCurrencyId::get());
 	}

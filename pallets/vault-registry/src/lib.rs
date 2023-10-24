@@ -47,6 +47,9 @@ pub use crate::types::{
 mod ext;
 pub mod types;
 
+mod pool_staking_manager;
+pub use pool_staking_manager::PoolManager;
+
 #[cfg(feature = "runtime-benchmarks")]
 mod benchmarking;
 
@@ -294,6 +297,7 @@ pub mod pallet {
 				VaultId::new(account_id, currency_pair.collateral, currency_pair.wrapped);
 			let mut vault = Self::get_active_rich_vault_from_id(&vault_id)?;
 			vault.set_accept_new_issues(accept_new_issues)?;
+			PoolManager::<T>::on_vault_settings_change(&vault_id)?;
 			Ok(().into())
 		}
 
@@ -916,11 +920,12 @@ impl<T: Config> Pallet<T> {
 		amount.lock_on(&vault_id.account_id)?;
 
 		// Deposit `amount` of stake in the pool
-		ext::staking::deposit_stake::<T>(vault_id, &vault_id.account_id, &amount.clone())?;
+		pool_staking_manager::PoolManager::deposit_collateral(
+			&vault_id,
+			&vault_id.account_id,
+			&amount.clone(),
+		)?;
 
-		//update staking reward
-		let new_total_stake = ext::staking::total_current_stake_as_amount::<T>(vault_id)?;
-		ext::pooled_rewards::set_stake::<T>(&vault_id, &new_total_stake)?;
 		Ok(())
 	}
 
@@ -938,11 +943,12 @@ impl<T: Config> Pallet<T> {
 		Self::decrease_total_backing_collateral(&vault_id.currencies, amount)?;
 
 		// Withdraw `amount` of stake from the pool
-		ext::staking::withdraw_stake::<T>(vault_id, &vault_id.account_id, &amount.clone())?;
-
-		//update staking reward
-		let new_total_stake = ext::staking::total_current_stake_as_amount::<T>(vault_id)?;
-		ext::pooled_rewards::set_stake::<T>(&vault_id, &new_total_stake)?;
+		pool_staking_manager::PoolManager::withdraw_collateral(
+			&vault_id,
+			&vault_id.account_id,
+			&amount,
+			None,
+		)?;
 
 		Ok(())
 	}
@@ -1019,11 +1025,9 @@ impl<T: Config> Pallet<T> {
 	) -> DispatchResult {
 		amount.unlock_on(&vault_id.account_id)?;
 		Self::decrease_total_backing_collateral(&vault_id.currencies, amount)?;
-		ext::staking::slash_stake::<T>(vault_id, amount)?;
 
-		//update staking reward
-		let new_total_stake = ext::staking::total_current_stake_as_amount::<T>(vault_id)?;
-		ext::pooled_rewards::set_stake::<T>(&vault_id, &new_total_stake)?;
+		pool_staking_manager::PoolManager::slash_collateral(&vault_id, &amount)?;
+
 		Ok(())
 	}
 
@@ -1498,15 +1502,11 @@ impl<T: Config> Pallet<T> {
 			old_vault.decrease_liquidated_collateral(&to_be_released)?;
 
 			// deposit old-vault's collateral (this was withdrawn on liquidation)
-			ext::staking::deposit_stake::<T>(
-				old_vault_id,
+			pool_staking_manager::PoolManager::deposit_collateral(
+				&old_vault_id,
 				&old_vault_id.account_id,
 				&to_be_released,
 			)?;
-
-			//update staking reward of new
-			let new_total_stake = ext::staking::total_current_stake_as_amount::<T>(old_vault_id)?;
-			ext::pooled_rewards::set_stake::<T>(&old_vault_id, &new_total_stake)?;
 		}
 
 		old_vault.execute_redeem_tokens(tokens)?;
