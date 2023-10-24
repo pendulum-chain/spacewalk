@@ -1841,6 +1841,7 @@ mod integration {
 	fn integration_multiple_vault_multiple_collateral_per_block_reward() {
 		run_test(|| {
 			//ARRANGE
+			let init_block = 1u32;
 			//set up reward values and threshold
 			assert_ok!(ext::staking::add_reward_currency::<Test>(DEFAULT_WRAPPED_CURRENCY));
 			let reward_per_block: u128 = 100000;
@@ -1882,44 +1883,6 @@ mod integration {
 				Ok(collateral_vault_4)
 			);
 
-			//ACT
-			//distribute fee rewards
-			<reward_distribution::Pallet<Test>>::execute_on_init(2u32.into());
-
-			//collect rewards
-			let origin_1 = RuntimeOrigin::signed(id_1.account_id);
-			assert_ok!(<reward_distribution::Pallet<Test>>::collect_reward(
-				origin_1.into(),
-				id_1.clone(),
-				DEFAULT_NATIVE_CURRENCY,
-				None,
-			));
-
-			let origin_2 = RuntimeOrigin::signed(id_2.account_id);
-			assert_ok!(<reward_distribution::Pallet<Test>>::collect_reward(
-				origin_2.into(),
-				id_2.clone(),
-				DEFAULT_NATIVE_CURRENCY,
-				None,
-			));
-
-			let origin_3 = RuntimeOrigin::signed(id_3.account_id);
-			assert_ok!(<reward_distribution::Pallet<Test>>::collect_reward(
-				origin_3.into(),
-				id_3.clone(),
-				DEFAULT_NATIVE_CURRENCY,
-				None,
-			));
-
-			let origin_4 = RuntimeOrigin::signed(id_4.account_id);
-			assert_ok!(<reward_distribution::Pallet<Test>>::collect_reward(
-				origin_4.into(),
-				id_4.clone(),
-				DEFAULT_NATIVE_CURRENCY,
-				None,
-			));
-
-			//ASSERT
 			let vault_1_collateral_usd =
 				to_usd(&collateral_vault_1, &DEFAULT_ID.collateral_currency());
 			let vault_2_collateral_usd =
@@ -1961,6 +1924,54 @@ mod integration {
 				.floor() * (collateral_vault_4 as f64 /
 				(collateral_vault_3 + collateral_vault_4) as f64))
 				.floor() as u128;
+
+			//ACT
+			//distribute fee rewards
+			<reward_distribution::Pallet<Test>>::execute_on_init((init_block + 1).into());
+			assert_eq!(
+				<reward_distribution::Pallet<Test>>::native_liability(),
+				Some(reward_per_block)
+			);
+
+			//collect rewards
+			let origin_1 = RuntimeOrigin::signed(id_1.account_id);
+			assert_ok!(<reward_distribution::Pallet<Test>>::collect_reward(
+				origin_1.into(),
+				id_1.clone(),
+				DEFAULT_NATIVE_CURRENCY,
+				None,
+			));
+			assert_eq!(
+				<reward_distribution::Pallet<Test>>::native_liability(),
+				Some(reward_per_block - expected_value_vault_1)
+			);
+
+			let origin_2 = RuntimeOrigin::signed(id_2.account_id);
+			assert_ok!(<reward_distribution::Pallet<Test>>::collect_reward(
+				origin_2.into(),
+				id_2.clone(),
+				DEFAULT_NATIVE_CURRENCY,
+				None,
+			));
+
+			let origin_3 = RuntimeOrigin::signed(id_3.account_id);
+			assert_ok!(<reward_distribution::Pallet<Test>>::collect_reward(
+				origin_3.into(),
+				id_3.clone(),
+				DEFAULT_NATIVE_CURRENCY,
+				None,
+			));
+
+			let origin_4 = RuntimeOrigin::signed(id_4.account_id);
+			assert_ok!(<reward_distribution::Pallet<Test>>::collect_reward(
+				origin_4.into(),
+				id_4.clone(),
+				DEFAULT_NATIVE_CURRENCY,
+				None,
+			));
+			assert_eq!(<reward_distribution::Pallet<Test>>::native_liability(), Some(0));
+
+			//ASSERT
 
 			assert_eq!(
 				<pallet_balances::Pallet<Test>>::free_balance(&id_1.account_id),

@@ -241,17 +241,14 @@ impl<T: Config> Pallet<T> {
 			ext::vault_registry::decrease_total_backing_collateral(&vault_id.currencies, &amount)?;
 		}
 
-		// withdraw all vault rewards first, to prevent the nominator from withdrawing past rewards
-		ext::reward_distribution::withdraw_all_rewards_from_vault::<T>(&vault_id)?;
-		// withdraw `amount` of stake from the vault staking pool
-		ext::staking::withdraw_stake::<T>(vault_id, nominator_id, amount.amount(), Some(index))?;
-
+		ext::vault_registry::pool_manager::withdraw_collateral::<T>(
+			&vault_id,
+			&nominator_id,
+			&amount,
+			Some(index),
+		)?;
 		amount.unlock_on(&vault_id.account_id)?;
 		amount.transfer(&vault_id.account_id, nominator_id)?;
-
-		//decrease the stake in the reward pallet based on this updated stake
-		let new_total_stake = ext::staking::total_current_stake_as_amount::<T>(vault_id)?;
-		ext::pooled_rewards::set_stake::<T>(&vault_id, &new_total_stake)?;
 
 		Self::deposit_event(Event::<T>::WithdrawCollateral {
 			vault_id: vault_id.clone(),
@@ -283,19 +280,15 @@ impl<T: Config> Pallet<T> {
 			Error::<T>::DepositViolatesMaxNominationRatio
 		);
 
-		// Withdraw all vault rewards first, to prevent the nominator from withdrawing past rewards
-		ext::reward_distribution::withdraw_all_rewards_from_vault::<T>(&vault_id)?;
-		// Deposit `amount` of stake into the vault staking pool
-		ext::staking::deposit_stake::<T>(vault_id, nominator_id, amount.amount())?;
+		ext::vault_registry::pool_manager::deposit_collateral::<T>(
+			vault_id,
+			nominator_id,
+			&amount,
+		)?;
+
 		amount.transfer(nominator_id, &vault_id.account_id)?;
 		amount.lock_on(&vault_id.account_id)?;
 		ext::vault_registry::try_increase_total_backing_collateral(&vault_id.currencies, &amount)?;
-
-		//increase the stake in the reward pallet based on this updated stake
-		let new_total_stake = ext::staking::total_current_stake_as_amount::<T>(vault_id)?;
-		//TODO Perhaps we should cap it to "some" amount, to prevent
-		//extreme overcollateralization to just get rewards
-		ext::pooled_rewards::set_stake::<T>(&vault_id, &new_total_stake)?;
 
 		Self::deposit_event(Event::<T>::DepositCollateral {
 			vault_id: vault_id.clone(),
@@ -329,7 +322,8 @@ impl<T: Config> Pallet<T> {
 			Error::<T>::CollateralizationTooLow
 		);
 
-		let refunded_collateral = ext::staking::force_refund::<T>(vault_id)?;
+		let refunded_collateral =
+			ext::vault_registry::pool_manager::kick_nominators::<T>(vault_id)?;
 
 		// Update the system-wide total backing collateral
 		let vault_currency_id = vault_id.collateral_currency();
@@ -338,10 +332,6 @@ impl<T: Config> Pallet<T> {
 			&vault_id.currencies,
 			&refunded_collateral,
 		)?;
-
-		//update the reward pool
-		let new_total_stake = ext::staking::total_current_stake_as_amount::<T>(vault_id)?;
-		ext::pooled_rewards::set_stake::<T>(&vault_id, &new_total_stake)?;
 
 		<Vaults<T>>::remove(vault_id);
 		Self::deposit_event(Event::<T>::NominationOptOut { vault_id: vault_id.clone() });
