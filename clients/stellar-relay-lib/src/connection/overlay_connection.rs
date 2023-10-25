@@ -47,7 +47,6 @@ impl StellarOverlayConnection {
 	pub async fn listen(&mut self) -> Option<StellarRelayMessage> {
 		let res = self.relay_message_receiver.recv().await;
 
-		// Reconnection only when the maximum number of retries has not been reached.
 		match &res {
 			Some(StellarRelayMessage::Timeout) | Some(StellarRelayMessage::Error(_)) | None => {
 				log::info!("listen(): Reconnecting to {:?}...", &self.conn_info.address);

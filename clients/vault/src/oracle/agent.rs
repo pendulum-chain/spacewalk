@@ -186,7 +186,7 @@ impl OracleAgent {
 	pub fn stop(&self) -> Result<(), Error> {
 		tracing::debug!("stop(): Shutting down OracleAgent...");
 		if let Err(e) = self.shutdown_sender.send(()) {
-			tracing::error!("stop:() Failed to send shutdown signal in OracleAgent: {:?}", e);
+			tracing::error!("stop(): Failed to send shutdown signal in OracleAgent: {:?}", e);
 		}
 		Ok(())
 	}
