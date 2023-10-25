@@ -30,12 +30,12 @@ impl Connector {
 			MessageType::ErrorMsg => match auth_msg.message {
 				StellarMessage::ErrorMsg(e) => {
 					log::error!(
-						"process_raw_message():: Received ErrorMsg:  {}",
+						"process_raw_message(): Received ErrorMsg:  {}",
 						error_to_string(e.clone())
 					);
 					return Err(Error::OverlayError(e.code))
 				},
-				other => log::error!("process_raw_message():: Received ErroMsg other: {:?}", other),
+				other => log::error!("process_raw_message(): Received ErroMsg other: {:?}", other),
 			},
 
 			_ => {
@@ -44,7 +44,7 @@ impl Connector {
 					self.verify_auth(&auth_msg, &data[4..(data.len() - 32)])?;
 					self.increment_remote_sequence()?;
 					log::trace!(
-						"process_raw_message():: proc_id: {proc_id}. Processing {msg_type:?} message: auth verified"
+						"process_raw_message(): proc_id: {proc_id}. Processing {msg_type:?} message: auth verified"
 					);
 				}
 
@@ -73,7 +73,7 @@ impl Connector {
 				} else {
 					self.send_auth_message().await?;
 				}
-				log::info!("process_stellar_message():: Hello message processed successfully");
+				log::info!("process_stellar_message(): Hello message processed successfully");
 			},
 
 			StellarMessage::Auth(_) => {
@@ -86,7 +86,7 @@ impl Connector {
 
 			other => {
 				log::trace!(
-					"proc_id: {p_id}. Processing {msg_type:?} message: received from overlay"
+					"process_stellar_message(): proc_id: {p_id}. Processing {msg_type:?} message: received from overlay"
 				);
 				self.send_to_user(StellarRelayMessage::Data {
 					p_id,
@@ -108,7 +108,7 @@ impl Connector {
 		self.handshake_completed();
 
 		if let Some(remote) = self.remote() {
-			log::debug!("process_auth_message:: sending connect message: {remote:?}");
+			log::debug!("process_auth_message(): sending connect message: {remote:?}");
 			self.send_to_user(StellarRelayMessage::Connect {
 				pub_key: remote.pub_key().clone(),
 				node_info: remote.node().clone(),
@@ -120,7 +120,7 @@ impl Connector {
 				remote.node().overlay_version,
 			);
 		} else {
-			log::warn!("process_auth_message:: No remote overlay version after handshake.");
+			log::warn!("process_auth_message(): No remote overlay version after handshake.");
 		}
 
 		self.check_to_send_more(MessageType::Auth).await

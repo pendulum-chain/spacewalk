@@ -407,7 +407,6 @@ impl<T: Config> Pallet<T> {
 			asset: to_be_replaced_increase.currency(),
 			griefing_collateral: griefing_collateral.amount(),
 		};
-		log::info!("broadcasting event: {event:?}");
 		// Emit RequestReplace event
 		Self::deposit_event(event);
 

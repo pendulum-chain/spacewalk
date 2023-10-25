@@ -46,7 +46,7 @@ impl Connector {
 	}
 
 	/// The hello message is dependent on the auth cert
-	pub fn create_hello_message(&mut self, valid_at: u64) -> Result<Vec<u8>, Error> {
+	pub fn create_hello_message(&mut self, valid_at: u64) -> Result<StellarMessage, Error> {
 		let auth_cert = match self.connection_auth.auth_cert(valid_at) {
 			Ok(auth_cert) => auth_cert.clone(),
 			Err(_) => {
@@ -66,14 +66,12 @@ impl Connector {
 
 		let local = self.local();
 		let peer_id = self.connection_auth.keypair().get_public();
-		let msg = handshake::create_hello_message(
+		handshake::create_hello_message(
 			peer_id.clone(),
 			local.nonce(),
 			auth_cert,
 			local.port(),
 			local.node(),
-		)?;
-
-		self.create_xdr_message(msg)
+		)
 	}
 }
