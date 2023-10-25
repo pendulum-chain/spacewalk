@@ -230,7 +230,7 @@ pub(crate) async fn receiving_service(
 			},
 			Err(elapsed) => {
 				log::error!(
-					"receiving_service(): proc_id: {proc_id}. Timeout of {} seconds elapesd for reading messages from Stellar Node. Retry: #{retry}",
+					"receiving_service(): proc_id: {proc_id}. Timeout of {} seconds elapsed for reading messages from Stellar Node. Retry: #{retry}",
 					elapsed.to_string()
 				);
 
@@ -299,6 +299,8 @@ pub(crate) async fn connection_handler(
 	mut actions_receiver: mpsc::Receiver<ConnectorActions>,
 	mut w_stream: tcp::OwnedWriteHalf,
 ) {
+	let mut retry = 0;
+
 	loop {
 		match timeout(Duration::from_secs(connector.timeout_in_secs), actions_receiver.recv()).await
 		{
@@ -328,12 +330,20 @@ pub(crate) async fn connection_handler(
 				log::warn!("connection_handler(): Unexpected empty response from receiver");
 			},
 
-			Err(_) => {
-				log_error!(
-					connector.send_to_user(StellarRelayMessage::Timeout).await,
-					format!("connection_handler(): Connection Timed out")
+			Err(elapsed) => {
+				log::error!(
+					"connection_handler(): Timeout of {} seconds elapsed for reading messages from Stellar Node. Retry: #{retry}",
+					elapsed.to_string()
 				);
-				return
+
+				if retry >= connector.retries {
+					log_error!(
+						connector.send_to_user(StellarRelayMessage::Timeout).await,
+						format!("connection_handler(): Exhausted maximum retries for receiving any actions from receiver.")
+					);
+					return
+				}
+				retry += 1;
 			},
 		}
 	}
