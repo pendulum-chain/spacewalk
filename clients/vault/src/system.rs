@@ -764,7 +764,12 @@ impl VaultService {
 
 		// re-submit transactions in the cache
 		let _receivers = wallet.resubmit_transactions_from_cache().await;
-		//todo: handle errors from the receivers
+		for result in _receivers {
+			if let Ok(Err(error)) = result.await {
+				let error = error;
+				let _ = wallet.handle_error(error).await;
+			}
+		}
 
 		drop(wallet);
 

@@ -29,6 +29,10 @@ use crate::{
 };
 use primitives::{StellarPublicKeyRaw, StellarStroops, TransactionEnvelopeExt};
 
+use crate::error::Error::DecodeError;
+#[cfg(test)]
+use mocktopus::macros::mockable;
+
 #[derive(Clone)]
 pub struct StellarWallet {
 	secret_key: SecretKey,
@@ -958,6 +962,69 @@ mod test {
 		// 1 should pass, and 1 should fail.
 		assert_eq!(passed_count, 1);
 		assert_eq!(failed_count, 1);
+
+		wallet.cache.remove_dir();
+	}
+
+	#[tokio::test]
+	async fn handle_error_works() {
+		let wallet = wallet_with_storage("resources/handle_error_works")
+			.expect("should return an arc rwlock wallet")
+			.clone();
+		let mut wallet = wallet.write().await;
+
+		// First let's try to create an envelope with a bad sequence number.
+		let envelope = wallet
+			.create_payment_envelope(
+				default_destination(),
+				StellarAsset::native(),
+				100,
+				[0u8; 32],
+				DEFAULT_STROOP_FEE_PER_OPERATION,
+				1,
+			)
+			.expect("should return an envelope");
+
+		let envelope_xdr = envelope.to_base64_xdr();
+		// Convert vec to string (because the HorizonSubmissionError always returns a string)
+		let envelope_xdr =
+			from_utf8(&envelope_xdr).expect("should create string from vec").to_string();
+
+		// Set this to false so that the wallet will try to resubmit the transaction.
+		// are_memos_eq.mock_safe(move |_, _| MockResult::Return(false));
+
+		// Set this to false so that the wallet will try to resubmit the transaction.
+		StellarWallet::is_transaction_already_submitted
+			.mock_safe(move |_, _| MockResult::Return(Box::pin(async move { false })));
+
+		let submission_error = Error::HorizonSubmissionError {
+			title: "title".to_string(),
+			status: 400,
+			reason: "tx_bad_seq".to_string(),
+			envelope_xdr: Some(envelope_xdr.clone()),
+		};
+
+		let result = wallet.handle_error(submission_error).await;
+
+		// We assume that the transaction was re-created and submitted successfully.
+		assert!(result.is_ok());
+
+		let response = result.unwrap();
+		assert_eq!(response.successful, true);
+
+		// Try to handle the same error but this time the transaction was already submitted.
+		let submission_error = Error::HorizonSubmissionError {
+			title: "title".to_string(),
+			status: 400,
+			reason: "tx_bad_seq".to_string(),
+			envelope_xdr: Some(envelope_xdr),
+		};
+
+		StellarWallet::is_transaction_already_submitted
+			.mock_safe(move |_, _| MockResult::Return(Box::pin(async move { true })));
+
+		let result = wallet.handle_error(submission_error).await;
+		assert!(result.is_err());
 
 		wallet.cache.remove_dir();
 	}
