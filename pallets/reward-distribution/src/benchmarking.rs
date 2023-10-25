@@ -34,7 +34,7 @@ pub mod benchmarks {
 		let nominator = account("Alice", 0, 0);
 		let nominated_amount: u32 = 40000;
 		let reward_to_distribute: u32 = 100;
-
+		NativeLiability::<T>::set(Some(10000u64.into()));
 		//get the vault
 		let vault_id: DefaultVaultId<T> = DefaultVaultId::<T>::new(
 			account("Vault", 0, 0),

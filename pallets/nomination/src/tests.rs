@@ -19,6 +19,8 @@ fn collateral(amount: u128) -> Amount<Test> {
 #[test]
 fn should_deposit_against_valid_vault() {
 	run_test(|| {
+		ext::vault_registry::pool_manager::deposit_collateral::<Test>
+			.mock_safe(|_, _, _| MockResult::Return(Ok(())));
 		ext::vault_registry::vault_exists::<Test>.mock_safe(|_| MockResult::Return(true));
 		ext::vault_registry::get_backing_collateral::<Test>
 			.mock_safe(|_| MockResult::Return(Ok(collateral(10000))));

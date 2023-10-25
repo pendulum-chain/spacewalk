@@ -251,19 +251,19 @@ fn should_distribute_with_different_rewards() {
 		assert_ok!(Reward::deposit_stake(&DEFAULT_COLLATERAL_CURRENCY, &ALICE, fixed!(100)));
 		assert_ok!(Reward::distribute_reward(
 			&DEFAULT_COLLATERAL_CURRENCY,
-			DEFAULT_WRAPPED_CURRENCY2,
+			DEFAULT_WRAPPED_CURRENCY_2,
 			fixed!(1000)
 		));
 		assert_ok!(Reward::deposit_stake(&DEFAULT_COLLATERAL_CURRENCY, &ALICE, fixed!(100)));
 		assert_ok!(Reward::distribute_reward(
 			&DEFAULT_COLLATERAL_CURRENCY,
-			DEFAULT_WRAPPED_CURRENCY3,
+			DEFAULT_WRAPPED_CURRENCY_3,
 			fixed!(1000)
 		));
 		assert_ok!(Reward::deposit_stake(&DEFAULT_COLLATERAL_CURRENCY, &ALICE, fixed!(100)));
 		assert_ok!(Reward::distribute_reward(
 			&DEFAULT_COLLATERAL_CURRENCY,
-			DEFAULT_WRAPPED_CURRENCY4,
+			DEFAULT_WRAPPED_CURRENCY_4,
 			fixed!(1000)
 		));
 
@@ -276,20 +276,32 @@ fn should_distribute_with_different_rewards() {
 			1
 		);
 		assert_approx_eq!(
-			Reward::compute_reward(&DEFAULT_COLLATERAL_CURRENCY, &ALICE, DEFAULT_WRAPPED_CURRENCY2)
-				.unwrap(),
+			Reward::compute_reward(
+				&DEFAULT_COLLATERAL_CURRENCY,
+				&ALICE,
+				DEFAULT_WRAPPED_CURRENCY_2
+			)
+			.unwrap(),
 			1000,
 			1
 		);
 		assert_approx_eq!(
-			Reward::compute_reward(&DEFAULT_COLLATERAL_CURRENCY, &ALICE, DEFAULT_WRAPPED_CURRENCY3)
-				.unwrap(),
+			Reward::compute_reward(
+				&DEFAULT_COLLATERAL_CURRENCY,
+				&ALICE,
+				DEFAULT_WRAPPED_CURRENCY_3
+			)
+			.unwrap(),
 			1000,
 			1
 		);
 		assert_approx_eq!(
-			Reward::compute_reward(&DEFAULT_COLLATERAL_CURRENCY, &ALICE, DEFAULT_WRAPPED_CURRENCY4)
-				.unwrap(),
+			Reward::compute_reward(
+				&DEFAULT_COLLATERAL_CURRENCY,
+				&ALICE,
+				DEFAULT_WRAPPED_CURRENCY_4
+			)
+			.unwrap(),
 			1000,
 			1
 		);

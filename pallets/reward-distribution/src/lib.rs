@@ -7,6 +7,9 @@
 
 mod default_weights;
 
+#[cfg(test)]
+extern crate mocktopus;
+
 use crate::types::{BalanceOf, DefaultVaultId};
 use codec::{FullCodec, MaxEncodedLen};
 use core::fmt::Debug;
@@ -113,13 +116,13 @@ pub mod pallet {
 
 	#[pallet::error]
 	pub enum Error<T> {
-		//Overflow
+		/// Overflow
 		Overflow,
-		//underflow
+		/// Underflow
 		Underflow,
-		//if origin tries to withdraw with 0 rewards
+		/// Origin attempt to withdraw with 0 rewards
 		NoRewardsForAccount,
-		//error if amount to be minted is more than rewarded in total
+		/// Amount to be minted is more than total rewarded
 		NotEnoughRewardsRegistered,
 	}
 
@@ -127,7 +130,6 @@ pub mod pallet {
 	impl<T: Config> Hooks<T::BlockNumber> for Pallet<T> {
 		fn on_initialize(n: T::BlockNumber) -> Weight {
 			Self::execute_on_init(n);
-			//TODO benchmark this weight properly
 			<T as Config>::WeightInfo::on_initialize()
 		}
 	}
@@ -254,7 +256,6 @@ impl<T: Config> Pallet<T> {
 		if let Err(_) = ext::security::ensure_parachain_status_running::<T>() {
 			return
 		}
-
 		let rewards_adapted_at = match RewardsAdaptedAt::<T>::get() {
 			Some(value) => value,
 			None => {
@@ -285,8 +286,10 @@ impl<T: Config> Pallet<T> {
 			Some(current_liability) => *current_liability += reward_this_block,
 			None => *current_liability = Some(reward_this_block),
 		});
-		//TODO how to handle error if on init cannot fail?
-		let _ = Self::distribute_rewards(reward_this_block, T::GetNativeCurrencyId::get());
+
+		if let Err(_) = Self::distribute_rewards(reward_this_block, T::GetNativeCurrencyId::get()) {
+			log::warn!("Rewards distribution failed");
+		}
 	}
 
 	//fetch total stake (all), and calulate total usd stake in percentage across pools

@@ -238,10 +238,10 @@ impl oracle::OracleApi<Balance, CurrencyId> for OracleApiMock {
 		_amount: &Balance,
 		currency_id: &CurrencyId,
 	) -> Result<Balance, DispatchError> {
-		let _native_currency = GetNativeCurrencyId::get();
+		let native_currency = GetNativeCurrencyId::get();
 		match currency_id {
-			_native_currency => return Ok(100),
-			//_ => unimplemented!("unimplemented mock conversion for currency"),
+			id if *id == native_currency => Ok(100),
+			_ => Ok(500),
 		}
 	}
 }

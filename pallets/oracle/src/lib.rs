@@ -48,6 +48,9 @@ pub mod mock;
 pub mod types;
 
 pub mod dia;
+
+pub mod oracle_api;
+pub use crate::oracle_api::*;
 #[cfg(feature = "testing-utils")]
 pub mod oracle_mock;
 
@@ -365,21 +368,5 @@ impl<T: Config> Pallet<T> {
 		key: &OracleKey,
 	) -> Option<orml_oracle::TimestampedValue<T::UnsignedFixedPoint, T::Moment>> {
 		T::DataProvider::get_no_op(key)
-	}
-}
-
-pub trait OracleApi<Balance, CurrencyId> {
-	fn currency_to_usd(
-		amount: &Balance,
-		currency_id: &CurrencyId,
-	) -> Result<Balance, DispatchError>;
-}
-
-impl<T: Config> OracleApi<BalanceOf<T>, CurrencyId> for Pallet<T> {
-	fn currency_to_usd(
-		amount: &BalanceOf<T>,
-		currency_id: &CurrencyId,
-	) -> Result<BalanceOf<T>, DispatchError> {
-		Pallet::<T>::currency_to_usd(amount.clone(), currency_id.clone())
 	}
 }
