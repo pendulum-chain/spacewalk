@@ -42,20 +42,20 @@ pub mod benchmarks {
 			collateral_currency,
 		);
 
-		let _stake =
-			T::VaultStaking::deposit_stake(&vault_id, &nominator, nominated_amount.into()).unwrap();
+		let _stake = T::VaultStaking::deposit_stake(&vault_id, &nominator, nominated_amount.into())
+			.expect("error at deposit stake");
 		let _reward_stake = T::VaultRewards::deposit_stake(
 			&collateral_currency,
 			&vault_id,
 			nominated_amount.into(),
 		)
-		.unwrap();
+		.expect("error at deposit stake into pool rewards");
 		let _distributed = T::VaultRewards::distribute_reward(
 			&collateral_currency,
 			native_currency_id.clone(),
 			reward_to_distribute.clone().into(),
 		)
-		.unwrap();
+		.expect("error at distribute rewards");
 
 		#[extrinsic_call]
 		_(RawOrigin::Signed(nominator.clone()), vault_id, native_currency_id, None);
@@ -75,7 +75,7 @@ pub mod benchmarks {
 			RawOrigin::Root.into(),
 			new_reward_per_block.clone().into(),
 		)
-		.unwrap();
+		.expect("Could no set reward per block");
 		assert_eq!(RewardDistribution::<T>::reward_per_block(), Some(new_reward_per_block.into()));
 
 		//set the vault and nominate it
@@ -85,14 +85,14 @@ pub mod benchmarks {
 			collateral_currency,
 		);
 
-		let _stake =
-			T::VaultStaking::deposit_stake(&vault_id, &nominator, nominated_amount.into()).unwrap();
+		let _stake = T::VaultStaking::deposit_stake(&vault_id, &nominator, nominated_amount.into())
+			.expect("error at deposit stake");
 		let _reward_stake = T::VaultRewards::deposit_stake(
 			&collateral_currency,
 			&vault_id,
 			nominated_amount.into(),
 		)
-		.unwrap();
+		.expect("error at deposit stake into pool rewards");
 
 		// `on_initialize` benchmark call
 		#[block]

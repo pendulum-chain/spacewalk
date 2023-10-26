@@ -397,6 +397,10 @@ pub mod pallet {
 		) -> DispatchResult {
 			ensure_root(origin)?;
 			Self::_set_secure_collateral_threshold(currency_pair.clone(), threshold);
+			// We add each wrapped currency that has a secure threshold to the reward currencies of
+			// our staking pallet
+			// This will ensure that all rewards currencies are taking into account when
+			// collecting those rewards
 			ext::staking::add_reward_currency::<T>(currency_pair.wrapped)?;
 			Ok(())
 		}
