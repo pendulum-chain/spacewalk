@@ -183,6 +183,17 @@ async fn test_replace_succeeds() {
 				async {
 					old_vault_provider.request_replace(&old_vault_id, issue_amount).await.unwrap();
 
+					assert_event::<RequestReplaceEvent, _>(
+						TIMEOUT,
+						old_vault_provider.clone(),
+						|e| {
+							assert_eq!(e.old_vault_id, old_vault_id);
+							assert_eq!(e.amount, issue_amount);
+							true
+						},
+					)
+					.await;
+
 					assert_event::<AcceptReplaceEvent, _>(
 						TIMEOUT,
 						old_vault_provider.clone(),
@@ -193,6 +204,7 @@ async fn test_replace_succeeds() {
 						},
 					)
 					.await;
+
 					assert_event::<ExecuteReplaceEvent, _>(
 						TIMEOUT,
 						old_vault_provider.clone(),

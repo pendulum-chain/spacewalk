@@ -7,9 +7,8 @@ use crate::{
 	types::PagingToken,
 };
 use async_trait::async_trait;
-use primitives::{
-	stellar::{ClaimableBalanceId, PublicKey, TransactionEnvelope},
-	StellarTypeToString,
+use primitives::stellar::{
+	ClaimableBalanceId, PublicKey, StellarTypeToString, TransactionEnvelope,
 };
 use serde::de::DeserializeOwned;
 
