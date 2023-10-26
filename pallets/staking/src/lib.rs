@@ -111,7 +111,7 @@ pub mod pallet {
 		/// The currency ID type.
 		type CurrencyId: Parameter + Member + Copy + MaybeSerializeDeserialize + Ord;
 
-		//
+		/// Maximum reward currencies allowed
 		type MaxRewardCurrencies: Get<u32>;
 	}
 
@@ -273,7 +273,7 @@ pub mod pallet {
 	pub type Nonce<T: Config> =
 		StorageMap<_, Blake2_128Concat, DefaultVaultId<T>, T::Index, ValueQuery>;
 
-	// store with all the reward currencies in use
+	/// store with all the reward currencies in use
 	#[pallet::storage]
 	pub type RewardCurrencies<T: Config> =
 		StorageValue<_, BoundedBTreeSet<T::CurrencyId, T::MaxRewardCurrencies>, ValueQuery>;
@@ -408,8 +408,7 @@ impl<T: Config> Pallet<T> {
 				.ok_or(ArithmeticError::Overflow)?;
 			Ok::<_, DispatchError>(())
 		})?;
-		let mut all_reward_currencies = Self::get_all_reward_currencies()?;
-		all_reward_currencies.push(T::GetNativeCurrencyId::get());
+		let all_reward_currencies = Self::get_all_reward_currencies()?;
 		for currency_id in all_reward_currencies {
 			<RewardTally<T>>::mutate(
 				currency_id,
@@ -488,8 +487,7 @@ impl<T: Config> Pallet<T> {
 		// A slash means reward per token is no longer representative of the rewards
 		// since `amount * reward_per_token` will be lost from the system. As such,
 		// replenish rewards by the amount of reward lost with this slash
-		let mut all_reward_currencies = Self::get_all_reward_currencies()?;
-		all_reward_currencies.push(T::GetNativeCurrencyId::get());
+		let all_reward_currencies = Self::get_all_reward_currencies()?;
 		for currency_id in all_reward_currencies {
 			Self::increase_rewards(
 				nonce,
@@ -680,8 +678,7 @@ impl<T: Config> Pallet<T> {
 			Ok::<_, DispatchError>(())
 		})?;
 
-		let mut all_reward_currencies = Self::get_all_reward_currencies()?;
-		all_reward_currencies.push(T::GetNativeCurrencyId::get());
+		let all_reward_currencies = Self::get_all_reward_currencies()?;
 		for currency_id in all_reward_currencies {
 			<RewardTally<T>>::mutate(
 				currency_id,
@@ -802,7 +799,8 @@ impl<T: Config> Pallet<T> {
 	}
 
 	pub fn get_all_reward_currencies() -> Result<Vec<T::CurrencyId>, DispatchError> {
-		let values = RewardCurrencies::<T>::get().into_iter().collect::<Vec<_>>();
+		let mut values = RewardCurrencies::<T>::get().into_iter().collect::<Vec<_>>();
+		values.push(T::GetNativeCurrencyId::get());
 		Ok(values)
 	}
 }

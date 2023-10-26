@@ -401,13 +401,13 @@ pub const VAULT_2: VaultId<AccountId, CurrencyId> = VaultId {
 	account_id: 3,
 	currencies: VaultCurrencyPair {
 		collateral: DEFAULT_COLLATERAL_CURRENCY,
-		wrapped: WRAPPED_CURRENCY2,
+		wrapped: DEFAULT_WRAPPED_CURRENCY_2,
 	},
 };
 
 pub const VAULT_3: VaultId<AccountId, CurrencyId> = VaultId {
 	account_id: 5,
-	currencies: VaultCurrencyPair { collateral: XCM(1), wrapped: WRAPPED_CURRENCY3 },
+	currencies: VaultCurrencyPair { collateral: XCM(1), wrapped: DEFAULT_WRAPPED_CURRENCY_3 },
 };
 
 pub const VAULT_4: VaultId<AccountId, CurrencyId> = VaultId {
@@ -417,21 +417,23 @@ pub const VAULT_4: VaultId<AccountId, CurrencyId> = VaultId {
 
 pub const VAULT_5: VaultId<AccountId, CurrencyId> = VaultId {
 	account_id: 7,
-	currencies: VaultCurrencyPair { collateral: XCM(2), wrapped: WRAPPED_CURRENCY2 },
+	currencies: VaultCurrencyPair { collateral: XCM(2), wrapped: DEFAULT_WRAPPED_CURRENCY_2 },
 };
 
 const PAIR: VaultCurrencyPair<CurrencyId> = VaultCurrencyPair {
 	collateral: DEFAULT_COLLATERAL_CURRENCY,
 	wrapped: DEFAULT_WRAPPED_CURRENCY,
 };
-const PAIR_2: VaultCurrencyPair<CurrencyId> =
-	VaultCurrencyPair { collateral: DEFAULT_COLLATERAL_CURRENCY, wrapped: WRAPPED_CURRENCY2 };
+const PAIR_2: VaultCurrencyPair<CurrencyId> = VaultCurrencyPair {
+	collateral: DEFAULT_COLLATERAL_CURRENCY,
+	wrapped: DEFAULT_WRAPPED_CURRENCY_2,
+};
 const PAIR_3: VaultCurrencyPair<CurrencyId> =
-	VaultCurrencyPair { collateral: XCM(1), wrapped: WRAPPED_CURRENCY3 };
+	VaultCurrencyPair { collateral: XCM(1), wrapped: DEFAULT_WRAPPED_CURRENCY_3 };
 const PAIR_4: VaultCurrencyPair<CurrencyId> =
 	VaultCurrencyPair { collateral: XCM(1), wrapped: DEFAULT_WRAPPED_CURRENCY };
 const PAIR_5: VaultCurrencyPair<CurrencyId> =
-	VaultCurrencyPair { collateral: XCM(2), wrapped: WRAPPED_CURRENCY2 };
+	VaultCurrencyPair { collateral: XCM(2), wrapped: DEFAULT_WRAPPED_CURRENCY_2 };
 
 pub const ALICE_BALANCE: u128 = 1_000_000;
 pub const BOB_BALANCE: u128 = 1_000_000;

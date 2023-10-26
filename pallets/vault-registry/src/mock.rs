@@ -348,14 +348,14 @@ pub type TokensError = orml_tokens::Error<Test>;
 
 pub struct ExtBuilder;
 
-pub const DEFAULT_ID: VaultId<AccountId, CurrencyId> = VaultId {
+pub const COLLATERAL_1_VAULT_1: VaultId<AccountId, CurrencyId> = VaultId {
 	account_id: 3,
 	currencies: VaultCurrencyPair {
 		collateral: DEFAULT_COLLATERAL_CURRENCY,
 		wrapped: DEFAULT_WRAPPED_CURRENCY,
 	},
 };
-pub const OTHER_ID: VaultId<AccountId, CurrencyId> = VaultId {
+pub const COLLATERAL_1_VAULT_2: VaultId<AccountId, CurrencyId> = VaultId {
 	account_id: 4,
 	currencies: VaultCurrencyPair {
 		collateral: DEFAULT_COLLATERAL_CURRENCY,
@@ -369,11 +369,11 @@ pub const RICH_ID: VaultId<AccountId, CurrencyId> = VaultId {
 		wrapped: DEFAULT_WRAPPED_CURRENCY,
 	},
 };
-pub const ID_COLLATERAL_21: VaultId<AccountId, CurrencyId> = VaultId {
+pub const COLLATERAL_2_VAULT_1: VaultId<AccountId, CurrencyId> = VaultId {
 	account_id: 6,
 	currencies: VaultCurrencyPair { collateral: XCM(1), wrapped: DEFAULT_WRAPPED_CURRENCY },
 };
-pub const ID_COLLATERAL_22: VaultId<AccountId, CurrencyId> = VaultId {
+pub const COLLATERAL_2_VAULT_2: VaultId<AccountId, CurrencyId> = VaultId {
 	account_id: 7,
 	currencies: VaultCurrencyPair { collateral: XCM(1), wrapped: DEFAULT_WRAPPED_CURRENCY },
 };
@@ -411,11 +411,11 @@ impl ExtBuilder {
 	pub fn build() -> sp_io::TestExternalities {
 		ExtBuilder::build_with(orml_tokens::GenesisConfig::<Test> {
 			balances: vec![
-				(DEFAULT_ID.account_id, DEFAULT_COLLATERAL_CURRENCY, DEFAULT_COLLATERAL),
-				(OTHER_ID.account_id, DEFAULT_COLLATERAL_CURRENCY, DEFAULT_COLLATERAL),
+				(COLLATERAL_1_VAULT_1.account_id, DEFAULT_COLLATERAL_CURRENCY, DEFAULT_COLLATERAL),
+				(COLLATERAL_1_VAULT_2.account_id, DEFAULT_COLLATERAL_CURRENCY, DEFAULT_COLLATERAL),
 				(RICH_ID.account_id, DEFAULT_COLLATERAL_CURRENCY, RICH_COLLATERAL),
-				(ID_COLLATERAL_21.account_id, XCM(1), DEFAULT_COLLATERAL),
-				(ID_COLLATERAL_22.account_id, XCM(1), DEFAULT_COLLATERAL),
+				(COLLATERAL_2_VAULT_1.account_id, XCM(1), DEFAULT_COLLATERAL),
+				(COLLATERAL_2_VAULT_2.account_id, XCM(1), DEFAULT_COLLATERAL),
 				(MULTI_VAULT_TEST_IDS[0], DEFAULT_COLLATERAL_CURRENCY, MULTI_VAULT_TEST_COLLATERAL),
 				(MULTI_VAULT_TEST_IDS[1], DEFAULT_COLLATERAL_CURRENCY, MULTI_VAULT_TEST_COLLATERAL),
 				(MULTI_VAULT_TEST_IDS[2], DEFAULT_COLLATERAL_CURRENCY, MULTI_VAULT_TEST_COLLATERAL),

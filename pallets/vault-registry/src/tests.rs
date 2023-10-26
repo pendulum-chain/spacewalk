@@ -86,7 +86,7 @@ fn create_vault(id: DefaultVaultId<Test>) -> DefaultVaultId<Test> {
 }
 
 fn create_sample_vault() -> DefaultVaultId<Test> {
-	create_vault(DEFAULT_ID)
+	create_vault(COLLATERAL_1_VAULT_1)
 }
 
 fn amount(amount: u128) -> Amount<Test> {
@@ -127,7 +127,7 @@ fn create_vault_and_issue_tokens(
 }
 
 fn create_sample_vault_and_issue_tokens(issue_tokens: u128) -> DefaultVaultId<Test> {
-	create_vault_and_issue_tokens(issue_tokens, DEFAULT_COLLATERAL, DEFAULT_ID)
+	create_vault_and_issue_tokens(issue_tokens, DEFAULT_COLLATERAL, COLLATERAL_1_VAULT_1)
 }
 
 #[test]
@@ -161,7 +161,7 @@ fn register_vault_succeeds() {
 #[test]
 fn registering_public_key_twice_fails() {
 	run_test(|| {
-		let origin = RuntimeOrigin::signed(DEFAULT_ID.account_id);
+		let origin = RuntimeOrigin::signed(COLLATERAL_1_VAULT_1.account_id);
 		let public_key_1: StellarPublicKeyRaw = [0u8; 32];
 		let public_key_2: StellarPublicKeyRaw = [1u8; 32];
 		assert_ok!(VaultRegistry::register_public_key(origin.clone(), public_key_1));
@@ -177,7 +177,7 @@ fn register_vault_fails_when_given_collateral_too_low() {
 	run_test(|| {
 		VaultRegistry::get_minimum_collateral_vault
 			.mock_safe(move |currency_id| MockResult::Return(Amount::new(200, currency_id)));
-		let id = DEFAULT_ID;
+		let id = COLLATERAL_1_VAULT_1;
 		let collateral = 100;
 
 		let origin = RuntimeOrigin::signed(id.account_id);
@@ -194,12 +194,13 @@ fn register_vault_fails_when_account_funds_too_low() {
 	run_test(|| {
 		let collateral = DEFAULT_COLLATERAL + 1;
 
-		let origin = RuntimeOrigin::signed(DEFAULT_ID.account_id);
+		let origin = RuntimeOrigin::signed(COLLATERAL_1_VAULT_1.account_id);
 		assert_ok!(VaultRegistry::register_public_key(origin.clone(), STELLAR_PUBLIC_KEY_DUMMY));
 
-		let result = VaultRegistry::register_vault(origin, DEFAULT_ID.currencies, collateral);
+		let result =
+			VaultRegistry::register_vault(origin, COLLATERAL_1_VAULT_1.currencies, collateral);
 		assert_err!(result, TokensError::BalanceTooLow);
-		assert_not_emitted!(Event::RegisterVault { vault_id: DEFAULT_ID, collateral });
+		assert_not_emitted!(Event::RegisterVault { vault_id: COLLATERAL_1_VAULT_1, collateral });
 	});
 }
 
@@ -647,7 +648,7 @@ fn redeem_tokens_liquidation_fails_with_insufficient_tokens() {
 fn replace_tokens_liquidation_succeeds() {
 	run_test(|| {
 		let old_id = create_sample_vault();
-		let new_id = create_vault(OTHER_ID);
+		let new_id = create_vault(COLLATERAL_1_VAULT_2);
 		// let new_id_copy = new_id.clone();
 
 		let new_id_copy = new_id.clone();
@@ -682,7 +683,7 @@ fn replace_tokens_liquidation_succeeds() {
 fn cancel_replace_tokens_succeeds() {
 	run_test(|| {
 		let old_id = create_sample_vault();
-		let new_id = create_vault(OTHER_ID);
+		let new_id = create_vault(COLLATERAL_1_VAULT_2);
 
 		let new_id_copy = new_id.clone();
 		currency::Amount::<Test>::lock_on.mock_safe(move |amount, sender| {
@@ -710,7 +711,7 @@ fn cancel_replace_tokens_succeeds() {
 #[test]
 fn liquidate_at_most_liquidation_threshold() {
 	run_test(|| {
-		let vault_id = DEFAULT_ID;
+		let vault_id = COLLATERAL_1_VAULT_1;
 
 		let issued_tokens = 100;
 		let to_be_issued_tokens = 25;
@@ -844,7 +845,7 @@ fn liquidate_at_most_liquidation_threshold() {
 #[test]
 fn can_withdraw_only_up_to_custom_threshold() {
 	run_test(|| {
-		let vault_id = DEFAULT_ID;
+		let vault_id = COLLATERAL_1_VAULT_1;
 
 		let issued_tokens = 100;
 		let exchange_rate = 10;
@@ -1735,7 +1736,11 @@ mod integration {
 			//register vault and issue tokens.
 			//the number of issue tokens is not relevant for these tests
 			let issue_tokens: u128 = 2;
-			let id = create_vault_and_issue_tokens(issue_tokens, DEFAULT_COLLATERAL, DEFAULT_ID);
+			let id = create_vault_and_issue_tokens(
+				issue_tokens,
+				DEFAULT_COLLATERAL,
+				COLLATERAL_1_VAULT_1,
+			);
 			assert_eq!(
 				<Test as fee::Config>::VaultRewards::get_stake(&id.collateral_currency(), &id),
 				Ok(DEFAULT_COLLATERAL)
@@ -1776,14 +1781,22 @@ mod integration {
 			let issue_tokens: u128 = 2;
 
 			let collateral_vault_1 = 1000u128;
-			let id_1 = create_vault_and_issue_tokens(issue_tokens, collateral_vault_1, DEFAULT_ID);
+			let id_1 = create_vault_and_issue_tokens(
+				issue_tokens,
+				collateral_vault_1,
+				COLLATERAL_1_VAULT_1,
+			);
 			assert_eq!(
 				<Test as fee::Config>::VaultRewards::get_stake(&id_1.collateral_currency(), &id_1),
 				Ok(collateral_vault_1)
 			);
 
 			let collateral_vault_2 = 5000u128;
-			let id_2 = create_vault_and_issue_tokens(issue_tokens, collateral_vault_2, OTHER_ID);
+			let id_2 = create_vault_and_issue_tokens(
+				issue_tokens,
+				collateral_vault_2,
+				COLLATERAL_1_VAULT_2,
+			);
 			assert_eq!(
 				<Test as fee::Config>::VaultRewards::get_stake(&id_2.collateral_currency(), &id_2),
 				Ok(collateral_vault_2)
@@ -1854,43 +1867,57 @@ mod integration {
 			let issue_tokens: u128 = 2;
 
 			let collateral_vault_1 = 1000u128;
-			let id_1 = create_vault_and_issue_tokens(issue_tokens, collateral_vault_1, DEFAULT_ID);
+			let id_1 = create_vault_and_issue_tokens(
+				issue_tokens,
+				collateral_vault_1,
+				COLLATERAL_1_VAULT_1,
+			);
 			assert_eq!(
 				<Test as fee::Config>::VaultRewards::get_stake(&id_1.collateral_currency(), &id_1),
 				Ok(collateral_vault_1)
 			);
 
 			let collateral_vault_2 = 5000u128;
-			let id_2 = create_vault_and_issue_tokens(issue_tokens, collateral_vault_2, OTHER_ID);
+			let id_2 = create_vault_and_issue_tokens(
+				issue_tokens,
+				collateral_vault_2,
+				COLLATERAL_1_VAULT_2,
+			);
 			assert_eq!(
 				<Test as fee::Config>::VaultRewards::get_stake(&id_2.collateral_currency(), &id_2),
 				Ok(collateral_vault_2)
 			);
 
 			let collateral_vault_3 = 3000u128;
-			let id_3 =
-				create_vault_and_issue_tokens(issue_tokens, collateral_vault_3, ID_COLLATERAL_21);
+			let id_3 = create_vault_and_issue_tokens(
+				issue_tokens,
+				collateral_vault_3,
+				COLLATERAL_2_VAULT_1,
+			);
 			assert_eq!(
 				<Test as fee::Config>::VaultRewards::get_stake(&id_3.collateral_currency(), &id_3),
 				Ok(collateral_vault_3)
 			);
 
 			let collateral_vault_4 = 2000u128;
-			let id_4 =
-				create_vault_and_issue_tokens(issue_tokens, collateral_vault_4, ID_COLLATERAL_22);
+			let id_4 = create_vault_and_issue_tokens(
+				issue_tokens,
+				collateral_vault_4,
+				COLLATERAL_2_VAULT_2,
+			);
 			assert_eq!(
 				<Test as fee::Config>::VaultRewards::get_stake(&id_4.collateral_currency(), &id_4),
 				Ok(collateral_vault_4)
 			);
 
 			let vault_1_collateral_usd =
-				to_usd(&collateral_vault_1, &DEFAULT_ID.collateral_currency());
+				to_usd(&collateral_vault_1, &COLLATERAL_1_VAULT_1.collateral_currency());
 			let vault_2_collateral_usd =
-				to_usd(&collateral_vault_2, &OTHER_ID.collateral_currency());
+				to_usd(&collateral_vault_2, &COLLATERAL_1_VAULT_2.collateral_currency());
 			let vault_3_collateral_usd =
-				to_usd(&collateral_vault_3, &ID_COLLATERAL_21.collateral_currency());
+				to_usd(&collateral_vault_3, &COLLATERAL_2_VAULT_1.collateral_currency());
 			let vault_4_collateral_usd =
-				to_usd(&collateral_vault_4, &ID_COLLATERAL_22.collateral_currency());
+				to_usd(&collateral_vault_4, &COLLATERAL_2_VAULT_2.collateral_currency());
 
 			let total_usd_amount = vault_1_collateral_usd +
 				vault_2_collateral_usd +

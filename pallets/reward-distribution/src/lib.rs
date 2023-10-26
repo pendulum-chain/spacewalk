@@ -7,6 +7,9 @@
 
 mod default_weights;
 
+#[cfg(test)]
+extern crate mocktopus;
+
 use crate::types::{BalanceOf, DefaultVaultId};
 use codec::{FullCodec, MaxEncodedLen};
 use core::fmt::Debug;
@@ -58,7 +61,7 @@ pub mod pallet {
 		/// Weight information for the extrinsics in this module.
 		type WeightInfo: WeightInfo;
 
-		//balance
+		/// Balance Type
 		type Balance: AtLeast32BitUnsigned
 			+ TypeInfo
 			+ FixedPointOperand
@@ -71,6 +74,7 @@ pub mod pallet {
 			+ Clone
 			+ From<u64>;
 
+		/// Rewards API interface to connect with pooled-rewards
 		type VaultRewards: pooled_rewards::RewardsApi<
 			CurrencyId<Self>,
 			DefaultVaultId<Self>,
@@ -78,7 +82,7 @@ pub mod pallet {
 			CurrencyId = CurrencyId<Self>,
 		>;
 
-		/// Vault staking pool.
+		/// Rewards API interface to connect with staking pallet
 		type VaultStaking: staking::Staking<
 			DefaultVaultId<Self>,
 			Self::AccountId,
@@ -86,13 +90,16 @@ pub mod pallet {
 			BalanceOf<Self>,
 			CurrencyId<Self>,
 		>;
-
+		/// Maximum allowed currencies
 		type MaxCurrencies: Get<u32>;
 
+		/// Fee pallet id from which fee account is derived
 		type FeePalletId: Get<PalletId>;
 
+		/// Oracle API adaptor
 		type OracleApi: oracle::OracleApi<BalanceOf<Self>, CurrencyId<Self>>;
 
+		/// Currency trait adaptor
 		type Balances: Currency<Self::AccountId, Balance = BalanceOf<Self>>;
 
 		/// Defines the interval (in number of blocks) at which the reward per block decays.
@@ -113,21 +120,23 @@ pub mod pallet {
 
 	#[pallet::error]
 	pub enum Error<T> {
-		//Overflow
+		/// Overflow
 		Overflow,
-		//underflow
+		/// Underflow
 		Underflow,
-		//if origin tries to withdraw with 0 rewards
+		/// Origin attempt to withdraw with 0 rewards
 		NoRewardsForAccount,
-		//error if amount to be minted is more than rewarded in total
+		/// Amount to be minted is more than total rewarded
 		NotEnoughRewardsRegistered,
+		/// If distribution logic reaches an inconsistency with the amount of currencies in the
+		/// system
+		InconsistentRewardCurrencies,
 	}
 
 	#[pallet::hooks]
 	impl<T: Config> Hooks<T::BlockNumber> for Pallet<T> {
 		fn on_initialize(n: T::BlockNumber) -> Weight {
 			Self::execute_on_init(n);
-			//TODO benchmark this weight properly
 			<T as Config>::WeightInfo::on_initialize()
 		}
 	}
@@ -137,11 +146,12 @@ pub mod pallet {
 	#[pallet::getter(fn reward_per_block)]
 	pub type RewardPerBlock<T: Config> = StorageValue<_, BalanceOf<T>, OptionQuery>;
 
+	/// Last Block were rewards per block were modified
 	#[pallet::storage]
 	#[pallet::getter(fn rewards_adapted_at)]
 	pub(super) type RewardsAdaptedAt<T: Config> = StorageValue<_, BlockNumberFor<T>, OptionQuery>;
 
-	//keeps track of the to-be-minted native rewards
+	/// Storage to keep track of the to-be-minted native rewards
 	#[pallet::storage]
 	#[pallet::getter(fn native_liability)]
 	pub(super) type NativeLiability<T: Config> = StorageValue<_, BalanceOf<T>, OptionQuery>;
@@ -164,6 +174,7 @@ pub mod pallet {
 			Ok(())
 		}
 
+		/// Allow users who have staked to collect rewards for a given vault and rewraded currency
 		#[pallet::call_index(1)]
 		#[pallet::weight(<T as Config>::WeightInfo::collect_reward())]
 		#[transactional]
@@ -230,7 +241,9 @@ impl<T: Config> Pallet<T> {
 					// Mint the rest
 					T::Balances::deposit_creating(&beneficiary, remaining);
 
-					NativeLiability::<T>::set(Some(liability - remaining));
+					NativeLiability::<T>::set(Some(
+						liability.checked_sub(&remaining).ok_or(Error::<T>::Underflow)?,
+					));
 				},
 			}
 			Ok(())
@@ -243,6 +256,10 @@ impl<T: Config> Pallet<T> {
 	}
 
 	pub fn execute_on_init(_height: T::BlockNumber) {
+		if let Err(_) = ext::security::ensure_parachain_status_running::<T>() {
+			return
+		}
+
 		//get reward per block
 		let reward_per_block = match RewardPerBlock::<T>::get() {
 			Some(value) => value,
@@ -251,10 +268,6 @@ impl<T: Config> Pallet<T> {
 				return
 			},
 		};
-
-		if let Err(_) = ext::security::ensure_parachain_status_running::<T>() {
-			return
-		}
 
 		let rewards_adapted_at = match RewardsAdaptedAt::<T>::get() {
 			Some(value) => value,
@@ -266,14 +279,27 @@ impl<T: Config> Pallet<T> {
 
 		let mut reward_this_block = reward_per_block;
 
-		//update the reward per block if decay interval passed
-		if let Ok(expired) = ext::security::parachain_block_expired::<T>(
-			rewards_adapted_at,
-			T::DecayInterval::get() - T::BlockNumber::one(),
-		) {
+		let decay_interval_sub = match T::DecayInterval::get().checked_sub(&T::BlockNumber::one()) {
+			Some(value) => value,
+			None => {
+				log::warn!("Decay interval underflow");
+				return
+			},
+		};
+
+		if let Ok(expired) =
+			ext::security::parachain_block_expired::<T>(rewards_adapted_at, decay_interval_sub)
+		{
 			if expired {
 				let decay_rate = T::DecayRate::get();
-				reward_this_block = (Perquintill::one() - decay_rate).mul_floor(reward_per_block);
+				match Perquintill::one().checked_sub(&decay_rate) {
+					Some(value) => reward_this_block = value.mul_floor(reward_per_block),
+					None => {
+						log::warn!("Failed to update reward_this_block due to underflow.");
+						return
+					},
+				}
+
 				RewardPerBlock::<T>::set(Some(reward_this_block));
 				let active_block = ext::security::get_active_block::<T>();
 				RewardsAdaptedAt::<T>::set(Some(active_block));
@@ -286,12 +312,14 @@ impl<T: Config> Pallet<T> {
 			Some(current_liability) => *current_liability += reward_this_block,
 			None => *current_liability = Some(reward_this_block),
 		});
-		//TODO how to handle error if on init cannot fail?
-		let _ = Self::distribute_rewards(reward_this_block, T::GetNativeCurrencyId::get());
+
+		if let Err(_) = Self::distribute_rewards(reward_this_block, T::GetNativeCurrencyId::get()) {
+			log::warn!("Rewards distribution failed");
+		}
 	}
 
-	//fetch total stake (all), and calulate total usd stake in percentage across pools
-	//distribute the reward accoridigly
+	//fetch total stake (of each pool), and calculate total USD stake in percentage across pools
+	//distribute the reward accordingly
 	fn distribute_rewards(
 		reward_amount: BalanceOf<T>,
 		reward_currency: CurrencyId<T>,
@@ -312,7 +340,7 @@ impl<T: Config> Pallet<T> {
 		let mut stakes_in_usd_iter = stakes_in_usd.into_iter();
 		for (currency_id, _stake) in total_stakes.into_iter() {
 			let stake_in_usd =
-				stakes_in_usd_iter.next().expect("cannot be less than previous iteration");
+				stakes_in_usd_iter.next().ok_or(Error::<T>::InconsistentRewardCurrencies)?;
 			let percentage = Perquintill::from_rational(stake_in_usd, total_stake_in_usd);
 			let reward_for_pool = percentage.mul_floor(reward_amount);
 			if ext::pooled_rewards::distribute_reward::<T>(
@@ -331,8 +359,7 @@ impl<T: Config> Pallet<T> {
 	}
 
 	fn withdraw_all_rewards_from_vault(vault_id: DefaultVaultId<T>) -> DispatchResult {
-		let mut all_reward_currencies = ext::staking::get_all_reward_currencies::<T>()?;
-		all_reward_currencies.push(T::GetNativeCurrencyId::get());
+		let all_reward_currencies = ext::staking::get_all_reward_currencies::<T>()?;
 		for currency_id in all_reward_currencies {
 			let reward = ext::pooled_rewards::withdraw_reward::<T>(
 				&vault_id.collateral_currency(),

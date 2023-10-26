@@ -896,13 +896,15 @@ mod integration_tests {
 		.unwrap();
 		assert_ok!(execute_issue(USER, &issue_id_5));
 
+		//Vault 1 and 4 share and vault 2 and 5 share the same wrapped currency
+		//so we must take into account the combined issuance of these pairs
 		return (issue_fee_1 + issue_fee_4, issue_fee_2 + issue_fee_5, issue_fee_3)
 	}
 
 	#[test]
 	fn integration_multiple_vaults_many_collateral() {
 		run_test(|| {
-			//ARRAGE
+			//ARRANGE
 			assert_ok!(Staking::add_reward_currency(VAULT.wrapped_currency()));
 			assert_ok!(Staking::add_reward_currency(VAULT_2.wrapped_currency()));
 			assert_ok!(Staking::add_reward_currency(VAULT_3.wrapped_currency()));
@@ -948,6 +950,9 @@ mod integration_tests {
 				vault_4_collateral_usd +
 				vault_5_collateral_usd;
 
+			// In order to calculate the value corresponding to each vault on the pool,
+			// we must take into account that vault 1 and 2, vault 3 and 4 share the same
+			// collateral, so in the calculations for the pooled rewards, these must be grouped
 			let get_expected_value_vault_1 = |fee: Balance| -> Balance {
 				((((vault_1_collateral_usd + vault_2_collateral_usd) as f64 /
 					total_amount_usd as f64) *
