@@ -4,14 +4,14 @@ use std::{fmt::Formatter, sync::Arc};
 use primitives::stellar::{
 	network::{Network, PUBLIC_NETWORK, TEST_NETWORK},
 	types::SequenceNumber,
-	Asset as StellarAsset, Operation, PublicKey, SecretKey, StellarTypeToString,
-	TransactionEnvelope,
+	Asset as StellarAsset, Memo, Operation, PublicKey, SecretKey, StellarTypeToString, Transaction,
+	TransactionEnvelope, XdrCodec,
 };
 use tokio::sync::{oneshot, Mutex};
 
 use crate::{
 	cache::WalletStateStorage,
-	error::Error,
+	error::{CacheError, Error},
 	horizon::{
 		responses::{HorizonBalance, TransactionResponse},
 		HorizonClient,
@@ -29,7 +29,7 @@ use crate::{
 };
 use primitives::{StellarPublicKeyRaw, StellarStroops, TransactionEnvelopeExt};
 
-use crate::error::Error::DecodeError;
+use crate::error::Error::{DecodeError, ResubmissionError};
 #[cfg(test)]
 use mocktopus::macros::mockable;
 
@@ -208,6 +208,12 @@ impl StellarWallet {
 			self.client.get_account(self.get_public_key(), self.is_public_network).await?;
 		Ok(account.balances)
 	}
+
+	pub async fn get_sequence(&self) -> Result<SequenceNumber, Error> {
+		let account =
+			self.client.get_account(self.get_public_key(), self.is_public_network).await?;
+		Ok(account.sequence)
+	}
 }
 
 // send/submit functions of StellarWallet
@@ -298,6 +304,17 @@ impl StellarWallet {
 		Ok(envelope)
 	}
 
+	fn sign_envelope(&self, envelope: &mut TransactionEnvelope) -> Result<(), Error> {
+		let network: &Network =
+			if self.is_public_network { &PUBLIC_NETWORK } else { &TEST_NETWORK };
+
+		envelope
+			.sign(network, vec![&self.get_secret_key()])
+			.map_err(|_e| Error::SignEnvelopeError)?;
+
+		Ok(())
+	}
+
 	/// Sends a 'Payment' transaction.
 	///
 	/// # Arguments
@@ -374,6 +391,136 @@ impl StellarWallet {
 	}
 }
 
+#[cfg_attr(test, mockable)]
+pub fn are_memos_eq(memo1: &Vec<u8>, memo2: &Vec<u8>) -> bool {
+	memo1 == memo2
+}
+
+// Error handling methods for StellarWallet.
+#[cfg_attr(test, mockable)]
+impl StellarWallet {
+	pub async fn handle_error(&self, error: Error) -> Result<TransactionResponse, Error> {
+		match &error {
+			Error::HorizonSubmissionError { title: _, status: _, reason, envelope_xdr } =>
+				match &reason[..] {
+					"tx_bad_seq" => {
+						if envelope_xdr.is_none() {
+							tracing::warn!("handle_error(): tx_bad_seq error but no envelope_xdr");
+							return Err(ResubmissionError(
+								"tx_bad_seq error but no envelope_xdr".to_string(),
+							))
+						}
+
+						let tx_envelope =
+							TransactionEnvelope::from_base64_xdr(envelope_xdr.as_ref().unwrap())
+								.map_err(|_| DecodeError)?;
+
+						tracing::info!(
+							"handle_error(): tx_bad_seq error. Resubmitting {:?}",
+							tx_envelope.clone()
+						);
+						self.handle_sequence_number_already_used(tx_envelope).await
+					},
+					_ => {
+						tracing::error!(
+							"handle_error(): Unrecoverable HorizonSubmissionError: {:?}",
+							error
+						);
+						Err(error)
+					},
+				},
+
+			Error::CacheError(CacheError {
+				kind: CacheErrorKind::SequenceNumberAlreadyUsed,
+				path: _,
+				envelope,
+				sequence_number: _,
+			}) =>
+				if let Some(transaction_envelope) = envelope {
+					self.handle_sequence_number_already_used(transaction_envelope.clone()).await
+				} else {
+					tracing::warn!(
+						"handle_error(): SequenceNumberAlreadyUsed error but no envelope"
+					);
+					Err(ResubmissionError(
+						"SequenceNumberAlreadyUsed error but no envelope".to_string(),
+					))
+				},
+			_ => {
+				tracing::warn!("handle_error(): Unrecoverable error in Stellar wallet: {error:?}");
+				Err(error)
+			},
+		}
+	}
+
+	pub async fn handle_sequence_number_already_used(
+		&self,
+		tx_envelope: TransactionEnvelope,
+	) -> Result<TransactionResponse, Error> {
+		let tx = tx_envelope.get_transaction().ok_or(DecodeError)?;
+
+		// Check if we already submitted this transaction
+		if !self.is_transaction_already_submitted(&tx).await {
+			return self.bump_sequence_number_and_submit(tx).await
+		} else {
+			tracing::error!("Similar transaction already submitted. Skipping {:?}", tx);
+			Err(ResubmissionError("Transaction already submitted".to_string()))
+		}
+	}
+
+	async fn bump_sequence_number_and_submit(
+		&self,
+		tx: Transaction,
+	) -> Result<TransactionResponse, Error> {
+		let sequence_number = self.get_sequence().await?;
+
+		println!("Old sequence number: {}", tx.seq_num);
+		let mut updated_tx = tx.clone();
+		updated_tx.seq_num = sequence_number + 1;
+
+		println!("New sequence number: {}", updated_tx.seq_num);
+
+		self.submit_transaction(updated_tx.into_transaction_envelope()).await
+	}
+
+	/// This function iterates over all transactions of an account to see if a similar transaction
+	/// i.e. a transaction containing the same memo was already submitted previously.
+	/// TODO: This operation is very costly and we should try to optimize it in the future.
+	async fn is_transaction_already_submitted(&self, tx: &Transaction) -> bool {
+		let mut remaining_page = 10;
+		let own_public_key = self.get_public_key();
+
+		while let Ok(transaction) = self.get_all_transactions_iter().await {
+			if remaining_page == 0 {
+				break
+			}
+
+			for response in transaction.records {
+				// Make sure that we are the sender and not the receiver because otherwise an
+				// attacker could send a transaction to us with the target memo and we'd wrongly
+				// assume that we already submitted this transaction.
+				let Ok(source_account) = response.source_account() else {
+					continue
+				};
+				if !source_account.eq(&own_public_key) {
+					continue
+				}
+
+				// Check that the transaction contains the memo that we want to send.
+				let Some(response_memo) = response.memo_text() else { continue };
+				let Memo::MemoText(tx_memo) = &tx.memo else { continue };
+
+				if are_memos_eq(response_memo, tx_memo.get_vec()) {
+					return true
+				}
+			}
+			remaining_page -= 1;
+		}
+		// We did not find a transaction that matched our criteria
+		false
+	}
+}
+
 impl std::fmt::Debug for StellarWallet {
 	fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
 		let account_id_string = self
@@ -400,6 +547,7 @@ mod test {
 		},
 		TransactionResponse,
 	};
+	use mocktopus::mocking::{MockResult, Mockable};
 	use primitives::{
 		stellar::{
 			types::{
@@ -411,7 +559,7 @@ mod test {
 		StellarStroops, TransactionEnvelopeExt,
 	};
 	use serial_test::serial;
-	use std::sync::Arc;
+	use std::{str::from_utf8, sync::Arc};
 	use tokio::sync::RwLock;
 
 	use crate::{
@@ -967,11 +1115,13 @@ mod test {
 	}
 
 	#[tokio::test]
-	async fn handle_error_works() {
+	async fn handle_error_for_tx_bad_seq() {
 		let wallet = wallet_with_storage("resources/handle_error_works")
 			.expect("should return an arc rwlock wallet")
 			.clone();
-		let mut wallet = wallet.write().await;
+		let wallet = wallet.write().await;
+
+		let sequence = wallet.get_sequence().await.expect("should return a sequence number");
 
 		// First let's try to create an envelope with a bad sequence number.
 		let envelope = wallet
@@ -981,7 +1131,7 @@ mod test {
 				100,
 				[0u8; 32],
 				DEFAULT_STROOP_FEE_PER_OPERATION,
-				1,
+				sequence - 1,
 			)
 			.expect("should return an envelope");
 
@@ -989,9 +1139,6 @@ mod test {
 		// Convert vec to string (because the HorizonSubmissionError always returns a string)
 		let envelope_xdr =
 			from_utf8(&envelope_xdr).expect("should create string from vec").to_string();
-
-		// Set this to false so that the wallet will try to resubmit the transaction.
-		// are_memos_eq.mock_safe(move |_, _| MockResult::Return(false));
 
 		// Set this to false so that the wallet will try to resubmit the transaction.
 		StellarWallet::is_transaction_already_submitted

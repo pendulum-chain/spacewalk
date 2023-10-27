@@ -30,7 +30,7 @@ use stellar::{
 pub use substrate_stellar_sdk as stellar;
 use substrate_stellar_sdk::{
 	types::{OperationBody, SequenceNumber},
-	ClaimPredicate, Claimant, Memo, MuxedAccount, Operation, TransactionEnvelope,
+	ClaimPredicate, Claimant, Memo, MuxedAccount, Operation, Transaction, TransactionEnvelope,
 };
 
 #[cfg(test)]
@@ -801,6 +801,8 @@ pub trait TransactionEnvelopeExt {
 		-> u128;
 
 	fn sequence_number(&self) -> Option<SequenceNumber>;
+
+	fn get_transaction(&self) -> Option<Transaction>;
 }
 
 impl TransactionEnvelopeExt for TransactionEnvelope {
@@ -867,6 +869,15 @@ impl TransactionEnvelopeExt for TransactionEnvelope {
 			TransactionEnvelope::EnvelopeTypeTxV0(env) => Some(env.tx.seq_num),
 			TransactionEnvelope::EnvelopeTypeTx(env) => Some(env.tx.seq_num),
 			TransactionEnvelope::EnvelopeTypeTxFeeBump(_) | TransactionEnvelope::Default(_) => None,
+		}
+	}
+
+	fn get_transaction(&self) -> Option<Transaction> {
+		match self {
+			TransactionEnvelope::EnvelopeTypeTxV0(transaction) =>
+				Some(transaction.tx.clone().into()),
+			TransactionEnvelope::EnvelopeTypeTx(transaction) => Some(transaction.tx.clone()),
+			_ => None,
 		}
 	}
 }
