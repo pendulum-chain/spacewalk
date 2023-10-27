@@ -2,7 +2,7 @@ use crate::{connection::Error, node::NodeInfo, ConnectionInfo, StellarOverlayCon
 use serde::{Deserialize, Serialize};
 use serde_with::{serde_as, BytesOrString};
 use std::fmt::Debug;
-use substrate_stellar_sdk::{SecretKey, XdrCodec};
+use substrate_stellar_sdk::SecretKey;
 
 /// The configuration structure of the StellarOverlay.
 /// It configures both the ConnectionInfo and the NodeInfo.
