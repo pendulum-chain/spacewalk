@@ -22,8 +22,12 @@ use frame_support::{
 	transactional, PalletId,
 };
 use oracle::OracleApi;
+use orml_traits::GetByKey;
 use sp_arithmetic::{traits::AtLeast32BitUnsigned, FixedPointOperand, Perquintill};
-use sp_runtime::traits::{AccountIdConversion, CheckedAdd, CheckedSub, One, Zero};
+use sp_runtime::{
+	traits::{AccountIdConversion, CheckedAdd, CheckedSub, One, Zero},
+	Saturating,
+};
 use sp_std::vec::Vec;
 #[cfg(feature = "runtime-benchmarks")]
 mod benchmarking;
@@ -131,6 +135,8 @@ pub mod pallet {
 		/// If distribution logic reaches an inconsistency with the amount of currencies in the
 		/// system
 		InconsistentRewardCurrencies,
+		/// If amount to withdraw is less than existential deposit
+		CollectAmountTooSmall,
 	}
 
 	#[pallet::hooks]
@@ -193,14 +199,23 @@ pub mod pallet {
 			)?;
 
 			ext::staking::distribute_reward::<T>(&vault_id, reward, reward_currency_id)?;
+			// We check if the amount to transfer is greater than of the existential deposit to
+			// avoid potential losses of reward currency, in case currency is not native
+			let minimum_transfer_amount =
+				<T as orml_tokens::Config>::ExistentialDeposits::get(&reward_currency_id);
+			let expected_rewards =
+				ext::staking::compute_reward::<T>(&vault_id, &caller, reward_currency_id.clone())?;
 
+			if expected_rewards == (BalanceOf::<T>::zero()) {
+				return Err(Error::<T>::NoRewardsForAccount.into())
+			}
+
+			if expected_rewards < minimum_transfer_amount {
+				return Err(Error::<T>::CollectAmountTooSmall.into())
+			}
 			//withdraw the reward for specific nominator
 			let caller_rewards =
 				ext::staking::withdraw_reward::<T>(&vault_id, &caller, index, reward_currency_id)?;
-
-			if caller_rewards == (BalanceOf::<T>::zero()) {
-				return Err(Error::<T>::NoRewardsForAccount.into())
-			}
 
 			//transfer rewards
 			Self::transfer_reward(reward_currency_id, caller_rewards, caller)
@@ -248,8 +263,8 @@ impl<T: Config> Pallet<T> {
 			}
 			Ok(())
 		} else {
-			//we need no checking of available funds, since the fee pool will ALWAYS have enough
-			// collected fees of the wrapped currencies
+			// We need no checking of available funds, since the fee pool will ALWAYS have enough
+			// collected fees of the wrapped currencies.
 			let amount: currency::Amount<T> = Amount::new(reward, reward_currency_id);
 			amount.transfer(&Self::fee_pool_account_id(), &beneficiary)
 		}
@@ -279,31 +294,17 @@ impl<T: Config> Pallet<T> {
 
 		let mut reward_this_block = reward_per_block;
 
-		let decay_interval_sub = match T::DecayInterval::get().checked_sub(&T::BlockNumber::one()) {
-			Some(value) => value,
-			None => {
-				log::warn!("Decay interval underflow");
-				return
-			},
-		};
-
-		if let Ok(expired) =
-			ext::security::parachain_block_expired::<T>(rewards_adapted_at, decay_interval_sub)
-		{
-			if expired {
-				let decay_rate = T::DecayRate::get();
-				match Perquintill::one().checked_sub(&decay_rate) {
-					Some(value) => reward_this_block = value.mul_floor(reward_per_block),
-					None => {
-						log::warn!("Failed to update reward_this_block due to underflow.");
-						return
-					},
-				}
-
-				RewardPerBlock::<T>::set(Some(reward_this_block));
-				let active_block = ext::security::get_active_block::<T>();
-				RewardsAdaptedAt::<T>::set(Some(active_block));
-			}
+		if Ok(true) ==
+			ext::security::parachain_block_expired::<T>(
+				rewards_adapted_at,
+				T::DecayInterval::get().saturating_sub(T::BlockNumber::one()),
+			) {
+			let decay_rate = T::DecayRate::get();
+			reward_this_block =
+				(Perquintill::one().saturating_sub(decay_rate)).mul_floor(reward_per_block);
+			RewardPerBlock::<T>::set(Some(reward_this_block));
+			let active_block = ext::security::get_active_block::<T>();
+			RewardsAdaptedAt::<T>::set(Some(active_block));
 		} else {
 			log::warn!("Failed to check if the parachain block expired");
 		}
