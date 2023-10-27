@@ -29,6 +29,9 @@ pub enum Error {
 	#[error(transparent)]
 	CacheError(CacheError),
 
+	#[error("Transaction resubmission failed: {0}")]
+	ResubmissionError(String),
+
 	#[error("Cannot send payment to self")]
 	SelfPaymentError,
 }
