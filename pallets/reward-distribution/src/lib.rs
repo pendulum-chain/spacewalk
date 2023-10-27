@@ -135,7 +135,7 @@ pub mod pallet {
 		/// If distribution logic reaches an inconsistency with the amount of currencies in the
 		/// system
 		InconsistentRewardCurrencies,
-		/// If amount to withdraw is less than existential deposit
+		/// If the amount to collect is less than existential deposit
 		CollectAmountTooSmall,
 	}
 
@@ -199,6 +199,7 @@ pub mod pallet {
 			)?;
 
 			ext::staking::distribute_reward::<T>(&vault_id, reward, reward_currency_id)?;
+
 			// We check if the amount to transfer is greater than of the existential deposit to
 			// avoid potential losses of reward currency, in case currency is not native
 			let minimum_transfer_amount =
@@ -213,6 +214,7 @@ pub mod pallet {
 			if expected_rewards < minimum_transfer_amount {
 				return Err(Error::<T>::CollectAmountTooSmall.into())
 			}
+
 			//withdraw the reward for specific nominator
 			let caller_rewards =
 				ext::staking::withdraw_reward::<T>(&vault_id, &caller, index, reward_currency_id)?;
