@@ -14,7 +14,6 @@ use futures::{
 	future::{join, join_all},
 	SinkExt, TryFutureExt,
 };
-use git_version::git_version;
 use tokio::{sync::RwLock, time::sleep};
 
 use runtime::{
@@ -41,7 +40,7 @@ use crate::{
 	ArcRwLock, Event, CHAIN_HEIGHT_POLLING_INTERVAL,
 };
 
-pub const VERSION: &str = git_version!(args = ["--tags"], fallback = "unknown");
+pub const VERSION: &str = env!("CARGO_PKG_VERSION");
 pub const AUTHORS: &str = env!("CARGO_PKG_AUTHORS");
 pub const NAME: &str = env!("CARGO_PKG_NAME");
 pub const ABOUT: &str = env!("CARGO_PKG_DESCRIPTION");
