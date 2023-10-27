@@ -1,4 +1,4 @@
-use std::{default::Default, sync::Arc};
+use std::{collections::HashMap, default::Default, sync::Arc};
 
 use parking_lot::{lock_api::RwLockReadGuard, RawRwLock, RwLock};
 
@@ -16,6 +16,10 @@ use crate::oracle::types::{EnvelopesMap, Slot, TxSetHash, TxSetHashAndSlotMap, T
 pub struct ScpMessageCollector {
 	/// holds the mapping of the Slot Number(key) and the ScpEnvelopes(value)
 	envelopes_map: Arc<RwLock<EnvelopesMap>>,
+
+	/// Mapping whether the envelopes data were taken from archive
+	/// This is crucial during proof building
+	env_from_archive_map: Arc<RwLock<HashMap<Slot, ()>>>,
 
 	/// holds the mapping of the Slot Number(key) and the TransactionSet(value)
 	txset_map: Arc<RwLock<TxSetMap>>,
@@ -37,6 +41,7 @@ impl ScpMessageCollector {
 	pub(crate) fn new(public_network: bool, stellar_history_archive_urls: Vec<String>) -> Self {
 		ScpMessageCollector {
 			envelopes_map: Default::default(),
+			env_from_archive_map: Default::default(),
 			txset_map: Default::default(),
 			txset_and_slot_map: Default::default(),
 			last_slot_index: 0,
@@ -52,8 +57,9 @@ impl ScpMessageCollector {
 	) -> Self {
 		ScpMessageCollector {
 			envelopes_map: Arc::new(RwLock::new(EnvelopesMap::new().with_limit(size_limit))),
+			env_from_archive_map: Default::default(),
 			txset_map: Arc::new(RwLock::new(TxSetMap::new().with_limit(size_limit))),
-			txset_and_slot_map: Arc::new(Default::default()),
+			txset_and_slot_map: Default::default(),
 			last_slot_index: 0,
 			public_network,
 			stellar_history_archive_urls,
@@ -89,6 +95,14 @@ impl ScpMessageCollector {
 
 	pub(super) fn envelopes_map_clone(&self) -> Arc<RwLock<EnvelopesMap>> {
 		self.envelopes_map.clone()
+	}
+
+	pub(super) fn is_envelopes_data_from_archive(&self, slot: &Slot) -> bool {
+		self.env_from_archive_map.read().contains_key(slot)
+	}
+
+	pub(super) fn env_from_archive_map_clone(&self) -> Arc<RwLock<HashMap<Slot, ()>>> {
+		self.env_from_archive_map.clone()
 	}
 
 	pub(super) fn txset_map(&self) -> RwLockReadGuard<'_, RawRwLock, TxSetMap> {
@@ -190,6 +204,7 @@ impl ScpMessageCollector {
 	/// Clear out data related to this slot.
 	pub(crate) fn remove_data(&self, slot: &Slot) {
 		self.envelopes_map.write().remove(slot);
+		self.env_from_archive_map.write().remove(slot);
 		self.txset_map.write().remove(slot);
 	}
 }
