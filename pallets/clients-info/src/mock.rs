@@ -1,5 +1,5 @@
 use crate as clients_info;
-use crate::Config;
+use crate::{Config, Error};
 use frame_support::{
 	parameter_types,
 	traits::{ConstU32, Everything},
@@ -29,6 +29,7 @@ frame_support::construct_runtime!(
 pub type AccountId = u64;
 pub type BlockNumber = u64;
 pub type Index = u64;
+pub type TestError = Error<Test>;
 
 parameter_types! {
 	pub const BlockHashCount: u64 = 250;
@@ -64,7 +65,7 @@ impl frame_system::Config for Test {
 
 impl Config for Test {
 	type RuntimeEvent = RuntimeEvent;
-	type WeightInfo = ();
+	type WeightInfo = crate::SubstrateWeight<Test>;
 	type MaxNameLength = ConstU32<255>;
 	type MaxUriLength = ConstU32<255>;
 }

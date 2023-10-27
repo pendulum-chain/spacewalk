@@ -1,7 +1,10 @@
 use rand::Rng;
 use sha2::{Digest, Sha256};
 use std::time::{SystemTime, UNIX_EPOCH};
-use substrate_stellar_sdk::{types::Uint256, SecretKey};
+use substrate_stellar_sdk::{
+	types::{Error, Uint256},
+	SecretKey, XdrCodec,
+};
 
 /// a helpful macro to log an error (if it occurs) and return immediately.
 macro_rules! log_error {
@@ -37,4 +40,16 @@ pub fn time_now() -> u64 {
 		log::warn!("could not convert time at u128 to u64.");
 		u64::MAX
 	})
+}
+
+pub fn error_to_string(e: Error) -> String {
+	let msg = e.msg.get_vec();
+	let msg = String::from_utf8(msg.clone()).unwrap_or(format!("{:?}", e.msg.to_base64_xdr()));
+
+	format!("Error{{ code:{:?} message:{msg} }}", e.code)
+}
+
+pub fn to_base64_xdr_string<T: XdrCodec>(msg: &T) -> String {
+	let xdr = msg.to_base64_xdr();
+	String::from_utf8(xdr.clone()).unwrap_or(format!("{:?}", xdr))
 }

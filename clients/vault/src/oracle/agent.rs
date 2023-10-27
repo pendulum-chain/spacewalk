@@ -57,11 +57,11 @@ async fn handle_message(
 			let pub_key = pub_key.to_encoding();
 			let pub_key = std::str::from_utf8(&pub_key).unwrap_or("****");
 
-			tracing::info!("Connected: via public key: {pub_key}");
-			tracing::info!("Connected: with {:#?}", node_info)
+			tracing::info!("handle_message(): Connected: via public key: {pub_key}");
+			tracing::info!("handle_message(): Connected: with {:#?}", node_info)
 		},
 		StellarRelayMessage::Timeout => {
-			tracing::error!("The Stellar Relay timed out. Failed to process message: {message:?}");
+			tracing::error!("handle_message(): The Stellar Relay timed out. Failed to process message: {message:?}");
 		},
 		_ => {},
 	}
@@ -76,7 +76,7 @@ pub async fn start_oracle_agent(
 	config: StellarOverlayConfig,
 	secret_key: &str,
 ) -> Result<OracleAgent, Error> {
-	tracing::info!("Starting connection to Stellar overlay network...");
+	tracing::info!("start_oracle_agent(): Starting connection to Stellar overlay network...");
 
 	let mut overlay_conn = connect_to_stellar_overlay_network(config.clone(), secret_key).await?;
 
@@ -119,7 +119,7 @@ pub async fn start_oracle_agent(
 		let result_sending_disconnect =
 			actions_sender.send(disconnect_action).await.map_err(Error::from);
 		if let Err(e) = result_sending_disconnect {
-			tracing::error!("OracleAgent: Failed to send disconnect message: {:#?}", e);
+			tracing::error!("start_oracle_agent(): Failed to send disconnect message: {:#?}", e);
 		};
 	}));
 
@@ -154,14 +154,14 @@ impl OracleAgent {
 				let collector = collector.read().await;
 				match collector.build_proof(slot, &stellar_sender).await {
 					None => {
-						tracing::warn!("Failed to build proof for slot {slot}.");
+						tracing::warn!("get_proof(): Failed to build proof for slot {slot}.");
 						drop(collector);
 						// give 10 seconds interval for every retry
 						sleep(Duration::from_secs(10)).await;
 						continue
 					},
 					Some(proof) => {
-						tracing::info!("Successfully build proof for slot {slot}");
+						tracing::info!("get_proof(): Successfully build proof for slot {slot}");
 						tracing::trace!("  with proof: {proof:?}");
 						return Ok(proof)
 					},
@@ -169,8 +169,8 @@ impl OracleAgent {
 			}
 		})
 		.await
-		.map_err(|elapsed| {
-			Error::ProofTimeout(format!("Timeout elapsed for building proof: {:?}", elapsed))
+		.map_err(|_| {
+			Error::ProofTimeout(format!("Timeout elapsed for building proof of slot {slot}"))
 		})?
 	}
 
@@ -184,9 +184,9 @@ impl OracleAgent {
 
 	/// Stops listening for new SCP messages.
 	pub fn stop(&self) -> Result<(), Error> {
-		tracing::debug!("Shutting down OracleAgent...");
+		tracing::debug!("stop(): Shutting down OracleAgent...");
 		if let Err(e) = self.shutdown_sender.send(()) {
-			tracing::error!("Failed to send shutdown signal in OracleAgent: {:?}", e);
+			tracing::error!("stop(): Failed to send shutdown signal in OracleAgent: {:?}", e);
 		}
 		Ok(())
 	}
@@ -219,9 +219,9 @@ mod tests {
 			sleep(Duration::from_secs(1)).await;
 			latest_slot = agent.last_slot_index().await;
 		}
-		// use the next slot to prevent receiving not enough messages for the current slot
-		// because of bad timing when connecting to the network.
-		latest_slot += 1;
+		// use a future slot (2 slots ahead) to ensure enough messages can be collected
+		// and to avoid "missed" messages.
+		latest_slot += 2;
 
 		let proof_result = agent.get_proof(latest_slot).await;
 		assert!(proof_result.is_ok(), "Failed to get proof for slot: {}", latest_slot);

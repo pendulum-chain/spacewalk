@@ -1,6 +1,7 @@
 [workspace]
 resolver = "2"
 members = [
+    "clients/runner",
     "clients/runtime",
     "clients/runtime/client",
     "clients/vault",

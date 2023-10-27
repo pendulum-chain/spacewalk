@@ -20,7 +20,7 @@ fn feed_values_succeeds() {
 		));
 		let rate = FixedU128::checked_from_rational(100, 1).unwrap();
 
-		let result = Oracle::_feed_values(3, vec![(key.clone(), rate)]);
+		let result = Oracle::feed_values(3, vec![(key.clone(), rate)]);
 		assert_ok!(result);
 
 		mine_block();
@@ -48,14 +48,14 @@ mod oracle_offline_detection {
 	}
 
 	fn feed_value(currency_id: CurrencyId, _oracle: SubmittingOracle) {
-		assert_ok!(Oracle::_feed_values(
+		assert_ok!(Oracle::feed_values(
 			1,
 			vec![(OracleKey::ExchangeRate(currency_id), FixedU128::from(1))]
 		));
 		mine_block();
 	}
 	fn feed_value_with_value(currency_id: CurrencyId, _oracle: SubmittingOracle, value: u128) {
-		assert_ok!(Oracle::_feed_values(
+		assert_ok!(Oracle::feed_values(
 			1,
 			vec![(OracleKey::ExchangeRate(currency_id), FixedU128::from(value))]
 		));
@@ -202,7 +202,7 @@ fn test_is_invalidated() {
 		let key = OracleKey::ExchangeRate(CurrencyId::XCM(0));
 		let rate = FixedU128::checked_from_rational(100, 1).unwrap();
 
-		assert_ok!(Oracle::_feed_values(3, vec![(key.clone(), rate)]));
+		assert_ok!(Oracle::feed_values(3, vec![(key.clone(), rate)]));
 		mine_block();
 
 		// max delay is 60 minutes, 60+ passed

@@ -432,9 +432,6 @@ impl Convert<u64, Option<Moment>> for ConvertMoment {
 	}
 }
 
-#[cfg(any(feature = "testing-utils", feature = "runtime-benchmarks"))]
-mod benchmark_utils;
-
 pub struct SpacewalkNativeCurrencyKey;
 
 impl NativeCurrencyKey for SpacewalkNativeCurrencyKey {
@@ -488,13 +485,16 @@ cfg_if::cfg_if! {
 			ConvertMoment,
 		>;
 	} else if #[cfg(feature = "runtime-benchmarks")] {
+		use oracle::testing_utils::{
+			MockConvertMoment, MockConvertPrice, MockDiaOracle, MockOracleKeyConvertor,
+		};
 		type DataProviderImpl = DiaOracleAdapter<
-			benchmark_utils::MockDiaOracle,
+			MockDiaOracle,
 			UnsignedFixedPoint,
 			Moment,
-			benchmark_utils::MockOracleKeyConvertor,
-			benchmark_utils::MockConvertPrice,
-			benchmark_utils::MockConvertMoment,
+			MockOracleKeyConvertor,
+			MockConvertPrice,
+			MockConvertMoment<Moment>,
 		>;
 	} else {
 		// This implementation will be used when running the testchain locally
@@ -510,13 +510,16 @@ cfg_if::cfg_if! {
 	}
 }
 
+#[cfg(any(feature = "runtime-benchmarks", feature = "testing-utils"))]
+use oracle::testing_utils::MockDataFeeder;
+
 impl oracle::Config for Runtime {
 	type RuntimeEvent = RuntimeEvent;
 	type WeightInfo = oracle::SubstrateWeight<Runtime>;
 	type DataProvider = DataProviderImpl;
 
 	#[cfg(any(feature = "runtime-benchmarks", feature = "testing-utils"))]
-	type DataFeedProvider = benchmark_utils::DataCollector;
+	type DataFeeder = MockDataFeeder<AccountId, Moment>;
 }
 
 impl issue::Config for Runtime {

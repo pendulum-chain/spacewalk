@@ -7,8 +7,8 @@ use futures::{
 };
 
 use primitives::{
-	stellar::{ClaimableBalanceId, PublicKey, TransactionEnvelope, XdrCodec},
-	StellarTypeToString, TransactionEnvelopeExt,
+	stellar::{ClaimableBalanceId, PublicKey, StellarTypeToString, TransactionEnvelope, XdrCodec},
+	TransactionEnvelopeExt,
 };
 use rand::seq::SliceRandom;
 use serde::de::DeserializeOwned;
