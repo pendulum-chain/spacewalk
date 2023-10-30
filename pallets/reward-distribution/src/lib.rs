@@ -204,7 +204,7 @@ pub mod pallet {
 			let minimum_transfer_amount =
 				<T as orml_tokens::Config>::ExistentialDeposits::get(&reward_currency_id);
 			let expected_rewards =
-				ext::staking::compute_reward::<T>(&vault_id, &caller, reward_currency_id.clone())?;
+				ext::staking::compute_reward::<T>(&vault_id, &caller, reward_currency_id)?;
 
 			if expected_rewards == (BalanceOf::<T>::zero()) {
 				return Err(Error::<T>::NoRewardsForAccount.into())

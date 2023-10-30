@@ -11,6 +11,6 @@ impl<T: Config> OracleApi<BalanceOf<T>, CurrencyId> for Pallet<T> {
 		amount: &BalanceOf<T>,
 		currency_id: &CurrencyId,
 	) -> Result<BalanceOf<T>, DispatchError> {
-		Pallet::<T>::currency_to_usd(amount.clone(), currency_id.clone())
+		Pallet::<T>::currency_to_usd(*amount, *currency_id)
 	}
 }

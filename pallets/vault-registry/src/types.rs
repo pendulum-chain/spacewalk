@@ -563,7 +563,7 @@ impl<T: Config> RichVault<T> {
 		pool_staking_manager::PoolManager::withdraw_collateral(
 			&vault_id,
 			&vault_id.account_id,
-			&to_withdraw.clone(),
+			&to_withdraw,
 			None,
 		)?;
 
