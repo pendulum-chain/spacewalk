@@ -29,5 +29,5 @@ pub fn get_min_externalized_messages(public_network: bool) -> usize {
 		if public_network { VALIDATOR_COUNT_PUBLIC_NETWORK } else { VALIDATOR_COUNT_TEST_NETWORK };
 	// Return 2/3 of the validator count as minimum amount
 	// This value is likely higher than the actual minimum but it's a good approximation
-	validator_count * 2 / 3 - 1
+	validator_count * 2 / 3
 }
