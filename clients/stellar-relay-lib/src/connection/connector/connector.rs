@@ -78,7 +78,9 @@ impl Connector {
 		);
 
 		let auth_msg_xdr = auth_msg.to_base64_xdr();
-		let auth_msg_xdr = std::str::from_utf8(&auth_msg_xdr)?;
+		let auth_msg_xdr =
+			String::from_utf8(auth_msg_xdr.clone()).unwrap_or(format!("{:?}", auth_msg_xdr));
+
 		log::info!("verify_auth(): received auth message from Stellar Node: {auth_msg_xdr}");
 
 		if remote_info.sequence() != auth_msg.sequence {
