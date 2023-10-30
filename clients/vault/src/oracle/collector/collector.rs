@@ -1,4 +1,4 @@
-use std::{collections::HashMap, default::Default, sync::Arc};
+use std::{default::Default, sync::Arc};
 
 use parking_lot::{lock_api::RwLockReadGuard, RawRwLock, RwLock};
 
@@ -10,7 +10,9 @@ use stellar_relay_lib::sdk::{
 	TransactionSetType,
 };
 
-use crate::oracle::types::{EnvelopesMap, Slot, TxSetHash, TxSetHashAndSlotMap, TxSetMap};
+use crate::oracle::types::{
+	EnvelopesMap, LimitedFifoMap, Slot, TxSetHash, TxSetHashAndSlotMap, TxSetMap,
+};
 
 /// Collects all ScpMessages and the TxSets.
 pub struct ScpMessageCollector {
@@ -19,7 +21,7 @@ pub struct ScpMessageCollector {
 
 	/// Mapping whether the envelopes data were taken from archive
 	/// This is crucial during proof building
-	env_from_archive_map: Arc<RwLock<HashMap<Slot, ()>>>,
+	env_from_archive_map: Arc<RwLock<LimitedFifoMap<Slot, ()>>>,
 
 	/// holds the mapping of the Slot Number(key) and the TransactionSet(value)
 	txset_map: Arc<RwLock<TxSetMap>>,
@@ -57,7 +59,9 @@ impl ScpMessageCollector {
 	) -> Self {
 		ScpMessageCollector {
 			envelopes_map: Arc::new(RwLock::new(EnvelopesMap::new().with_limit(size_limit))),
-			env_from_archive_map: Default::default(),
+			env_from_archive_map: Arc::new(RwLock::new(
+				LimitedFifoMap::new().with_limit(size_limit),
+			)),
 			txset_map: Arc::new(RwLock::new(TxSetMap::new().with_limit(size_limit))),
 			txset_and_slot_map: Default::default(),
 			last_slot_index: 0,
@@ -98,10 +102,10 @@ impl ScpMessageCollector {
 	}
 
 	pub(super) fn is_envelopes_data_from_archive(&self, slot: &Slot) -> bool {
-		self.env_from_archive_map.read().contains_key(slot)
+		self.env_from_archive_map.read().contains(slot)
 	}
 
-	pub(super) fn env_from_archive_map_clone(&self) -> Arc<RwLock<HashMap<Slot, ()>>> {
+	pub(super) fn env_from_archive_map_clone(&self) -> Arc<RwLock<LimitedFifoMap<Slot, ()>>> {
 		self.env_from_archive_map.clone()
 	}
 
