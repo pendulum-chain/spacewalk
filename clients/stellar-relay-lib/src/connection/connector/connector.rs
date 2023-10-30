@@ -72,14 +72,14 @@ impl Connector {
 	) -> Result<(), Error> {
 		let remote_info = self.remote_info.as_ref().ok_or(Error::NoRemoteInfo)?;
 		log::trace!(
-			"Auth Verification: remote sequence: {}, auth message sequence: {}",
+			"verify_auth(): remote sequence: {}, auth message sequence: {}",
 			remote_info.sequence(),
 			auth_msg.sequence
 		);
 
 		let auth_msg_xdr = auth_msg.to_base64_xdr();
-		let auth_msg_xdr = std::str::from_utf8(&auth_msg_xdr).unwrap();
-		log::info!("the auth message: {auth_msg_xdr}");
+		let auth_msg_xdr = std::str::from_utf8(&auth_msg_xdr)?;
+		log::info!("verify_auth(): received auth message from Stellar Node: {auth_msg_xdr}");
 
 		if remote_info.sequence() != auth_msg.sequence {
 			// must be handled on main thread because workers could mix up order of messages.

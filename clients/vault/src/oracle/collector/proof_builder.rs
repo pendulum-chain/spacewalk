@@ -128,8 +128,8 @@ impl ScpMessageCollector {
 		sender: &StellarMessageSender,
 	) -> Option<UnlimitedVarArray<ScpEnvelope>> {
 		if let Some(envelopes) = self.envelopes_map().get(&slot) {
-			// Lacking envelopes.
 			// If the data was provided from the archive, no need to check for the minimum
+			// Otherwise, we are still lacking envelopes.
 			if !self.is_envelopes_data_from_archive(&slot) &&
 				envelopes.len() < get_min_externalized_messages(self.is_public())
 			{
@@ -283,7 +283,7 @@ impl ScpMessageCollector {
 						}
 
 						let mut envelopes_map = envelopes_map_arc.write();
-						let mut from_arc_map = env_from_archive_map.write();
+						let mut from_archive_map = env_from_archive_map.write();
 
 						if envelopes_map.get(&slot).is_none() {
 							tracing::info!(
@@ -293,7 +293,7 @@ impl ScpMessageCollector {
 							);
 							envelopes_map.insert(slot, relevant_envelopes);
 							// indicates that the data was taken from the archive
-							from_arc_map.insert(slot, ());
+							from_archive_map.insert(slot, ());
 
 							break
 						}
