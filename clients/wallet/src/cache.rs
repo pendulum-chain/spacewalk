@@ -330,7 +330,7 @@ mod test {
 			extract_tx_envelope_from_path, parse_xdr_string_to_vec_u8, Error, WalletStateStorage,
 		},
 		error::CacheErrorKind,
-		test_helper::public_key_from_encoding,
+		mock::public_key_from_encoding,
 	};
 	use primitives::{
 		stellar::{

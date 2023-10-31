@@ -94,7 +94,7 @@ async fn test_redeem_succeeds() {
 				),
 				async {
 					let wallet_read = user_wallet.read().await;
-					let address = wallet_read.get_public_key_raw();
+					let address = wallet_read.public_key_raw();
 					drop(wallet_read);
 					// We redeem half of what we issued
 					let redeem_id = user_provider
@@ -340,7 +340,7 @@ async fn test_cancel_scheduler_succeeds() {
 			let wallet_read = vault_wallet.read().await;
 			let issue_request_listener = vault::service::listen_for_issue_requests(
 				new_vault_provider.clone(),
-				wallet_read.get_public_key(),
+				wallet_read.public_key(),
 				issue_cancellation_event_tx.clone(),
 				issue_set.clone(),
 				memos_to_issue_ids.clone(),
@@ -473,7 +473,7 @@ async fn test_issue_cancel_succeeds() {
 		let memos_to_issue_ids = Arc::new(RwLock::new(IssueIdLookup::new()));
 
 		let issue_filter =
-			IssueFilter::new(&vault_wallet.read().await.get_public_key()).expect("Invalid filter");
+			IssueFilter::new(&vault_wallet.read().await.public_key()).expect("Invalid filter");
 
 		let issue_amount = upscaled_compatible_amount(100);
 		let vault_collateral = get_required_vault_collateral_for_issue(
@@ -489,7 +489,7 @@ async fn test_issue_cancel_succeeds() {
 				.register_vault_with_public_key(
 					&vault_id,
 					vault_collateral,
-					vault_wallet.read().await.get_public_key_raw(),
+					vault_wallet.read().await.public_key_raw(),
 				)
 				.await
 		);
@@ -524,7 +524,7 @@ async fn test_issue_cancel_succeeds() {
 		let wallet_read = vault_wallet.read().await;
 		let service = join3(
 			vault::service::listen_for_new_transactions(
-				wallet_read.get_public_key(),
+				wallet_read.public_key(),
 				wallet_read.is_public_network(),
 				slot_tx_env_map.clone(),
 				issue_set.clone(),
@@ -533,7 +533,7 @@ async fn test_issue_cancel_succeeds() {
 			),
 			vault::service::listen_for_issue_requests(
 				vault_provider.clone(),
-				wallet_read.get_public_key(),
+				wallet_read.public_key(),
 				issue_event_tx,
 				issue_set.clone(),
 				memos_to_issue_ids.clone(),
@@ -664,7 +664,7 @@ async fn test_automatic_issue_execution_succeeds() {
 					.register_vault_with_public_key(
 						&vault_id,
 						vault_collateral,
-						wallet_read.get_public_key_raw(),
+						wallet_read.public_key_raw(),
 					)
 					.await
 			);
@@ -711,7 +711,7 @@ async fn test_automatic_issue_execution_succeeds() {
 
 			let wallet_read = vault_wallet.read().await;
 			let issue_filter =
-				IssueFilter::new(&wallet_read.get_public_key()).expect("Invalid filter");
+				IssueFilter::new(&wallet_read.public_key()).expect("Invalid filter");
 			let slot_tx_env_map = Arc::new(RwLock::new(HashMap::new()));
 
 			let issue_set = Arc::new(RwLock::new(IssueRequestsMap::new()));
@@ -719,7 +719,7 @@ async fn test_automatic_issue_execution_succeeds() {
 			let (issue_event_tx, _issue_event_rx) = mpsc::channel::<CancellationEvent>(16);
 			let service = join3(
 				vault::service::listen_for_new_transactions(
-					wallet_read.get_public_key(),
+					wallet_read.public_key(),
 					wallet_read.is_public_network(),
 					slot_tx_env_map.clone(),
 					issue_set.clone(),
@@ -728,7 +728,7 @@ async fn test_automatic_issue_execution_succeeds() {
 				),
 				vault::service::listen_for_issue_requests(
 					vault_provider.clone(),
-					wallet_read.get_public_key(),
+					wallet_read.public_key(),
 					issue_event_tx,
 					issue_set.clone(),
 					memos_to_issue_ids.clone(),
@@ -782,7 +782,7 @@ async fn test_automatic_issue_execution_succeeds_for_other_vault() {
 					.register_vault_with_public_key(
 						&vault1_id,
 						vault_collateral,
-						wallet_read.get_public_key_raw(),
+						wallet_read.public_key_raw(),
 					)
 					.await
 			);
@@ -791,7 +791,7 @@ async fn test_automatic_issue_execution_succeeds_for_other_vault() {
 					.register_vault_with_public_key(
 						&vault2_id,
 						vault_collateral,
-						wallet_read.get_public_key_raw(),
+						wallet_read.public_key_raw(),
 					)
 					.await
 			);
@@ -859,7 +859,7 @@ async fn test_automatic_issue_execution_succeeds_for_other_vault() {
 			};
 
 			let wallet_read = vault_wallet.read().await;
-			let vault_account_public_key = wallet_read.get_public_key();
+			let vault_account_public_key = wallet_read.public_key();
 			drop(wallet_read);
 			let issue_filter = IssueFilter::new(&vault_account_public_key).expect("Invalid filter");
 
@@ -927,7 +927,7 @@ async fn test_execute_open_requests_succeeds() {
 					.register_vault_with_public_key(
 						&vault_id,
 						vault_collateral,
-						wallet_read.get_public_key_raw(),
+						wallet_read.public_key_raw(),
 					)
 					.await
 			);
@@ -943,8 +943,8 @@ async fn test_execute_open_requests_succeeds() {
 			.await;
 
 			let wallet_read = user_wallet.read().await;
-			let address = wallet_read.get_public_key();
-			let address_raw = wallet_read.get_public_key_raw();
+			let address = wallet_read.public_key();
+			let address_raw = wallet_read.public_key_raw();
 			drop(wallet_read);
 			// Place redeem requests. 100_00000 is our minimum redeem amount with the current fee
 			// settings defined in the chain spec
@@ -1098,7 +1098,7 @@ async fn test_shutdown() {
 				.register_vault_with_public_key(
 					&sudo_vault_id,
 					vault_collateral,
-					vault_wallet.read().await.get_public_key_raw(),
+					vault_wallet.read().await.public_key_raw(),
 				)
 				.await
 		);
@@ -1146,13 +1146,13 @@ async fn test_requests_with_incompatible_amounts_fail() {
 		.await;
 
 		let wallet_read = vault_wallet.read().await;
-		let address = wallet_read.get_public_key_raw();
+		let address = wallet_read.public_key_raw();
 		assert_ok!(
 			vault_provider
 				.register_vault_with_public_key(
 					&vault_id,
 					vault_collateral,
-					wallet_read.get_public_key_raw()
+					wallet_read.public_key_raw()
 				)
 				.await
 		);

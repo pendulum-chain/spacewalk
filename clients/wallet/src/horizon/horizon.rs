@@ -14,18 +14,13 @@ use rand::seq::SliceRandom;
 use serde::de::DeserializeOwned;
 use tokio::{sync::RwLock, time::sleep};
 
-use crate::{
-	error::Error,
-	horizon::{
-		responses::{
-			interpret_response, HorizonAccountResponse, HorizonClaimableBalanceResponse,
-			HorizonTransactionsResponse, TransactionResponse, TransactionsResponseIter,
-		},
-		traits::HorizonClient,
+use crate::{error::Error, horizon::{
+	responses::{
+		interpret_response, HorizonAccountResponse, HorizonClaimableBalanceResponse,
+		HorizonTransactionsResponse, TransactionResponse, TransactionsResponseIter,
 	},
-	types::{FilterWith, PagingToken},
-	LedgerTxEnvMap,
-};
+	traits::HorizonClient,
+}, LedgerTxEnvMap, types::{FilterWith, PagingToken}};
 
 const POLL_INTERVAL: u64 = 5000;
 /// See [Stellar doc](https://developers.stellar.org/api/introduction/pagination/page-arguments)
@@ -172,7 +167,7 @@ impl HorizonClient for reqwest::Client {
 					continue
 				},
 
-				Err(Error::HorizonSubmissionError { title, status, reason, envelope_xdr }) => {
+				Err(Error::HorizonSubmissionError { title, status, reason, result_code_op, envelope_xdr }) => {
 					tracing::error!("submitting transaction with seq no: {seq_no:?}: failed with {title}, {reason}");
 					tracing::debug!("submitting transaction with seq no: {seq_no:?}: the envelope: {envelope_xdr:?}");
 					let envelope_xdr = envelope_xdr.or(Some(transaction_xdr.to_string()));
@@ -181,6 +176,7 @@ impl HorizonClient for reqwest::Client {
 						title,
 						status,
 						reason,
+						result_code_op,
 						envelope_xdr,
 					})
 				},

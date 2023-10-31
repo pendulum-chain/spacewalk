@@ -93,7 +93,7 @@ pub trait RedeemOperationsExt: HorizonClient {
 			// if account exists and NO trustline, use claimable balance operation
 			Ok(_) => claimable_balance_operation(),
 			// if INactive account...
-			Err(Error::HorizonSubmissionError { title: _, status, reason: _, envelope_xdr: _ })
+			Err(Error::HorizonSubmissionError { status, .. })
 				if status == 404 =>
 			{
 				let to_be_redeemed_amount_u128 = stellar_stroops_to_u128(to_be_redeemed_amount);
@@ -184,7 +184,7 @@ pub fn create_basic_spacewalk_stellar_transaction(
 #[cfg(test)]
 pub mod redeem_request_tests {
 	use super::*;
-	use crate::test_helper::{
+	use crate::mock::{
 		default_usdc_asset, public_key_from_encoding, secret_key_from_encoding,
 	};
 	use primitives::{stellar::SecretKey, CurrencyId};

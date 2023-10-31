@@ -73,6 +73,7 @@ pub(crate) async fn interpret_response<T: DeserializeOwned>(
 						title: title.to_string(),
 						status,
 						reason: detail.to_string(),
+						result_code_op: vec![],
 						envelope_xdr: Some(envelope_xdr.to_string()),
 					}
 				},
@@ -93,7 +94,8 @@ pub(crate) async fn interpret_response<T: DeserializeOwned>(
 					Error::HorizonSubmissionError {
 						title: title.to_string(),
 						status,
-						reason: format!("{result_code_tx}: {result_code_op:?}"),
+						reason: format!("{result_code_tx}"),
+						result_code_op,
 						envelope_xdr: Some(envelope_xdr.to_string()),
 					}
 				},
@@ -106,6 +108,7 @@ pub(crate) async fn interpret_response<T: DeserializeOwned>(
 				title: title.to_string(),
 				status,
 				reason: detail.to_string(),
+				result_code_op: vec![],
 				envelope_xdr: None,
 			}
 		},

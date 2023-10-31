@@ -93,7 +93,7 @@ pub async fn register_vault_with_wallet(
 	items: Vec<(&SpacewalkParachain, &VaultId, u128)>,
 ) -> u128 {
 	let wallet_read = wallet.read().await;
-	let public_key = wallet_read.get_public_key();
+	let public_key = wallet_read.public_key();
 
 	let vault_collateral = register_vault(public_key, items).await;
 
