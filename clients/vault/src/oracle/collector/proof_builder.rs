@@ -128,8 +128,11 @@ impl ScpMessageCollector {
 		sender: &StellarMessageSender,
 	) -> Option<UnlimitedVarArray<ScpEnvelope>> {
 		if let Some(envelopes) = self.envelopes_map().get(&slot) {
-			// lacking envelopes
-			if envelopes.len() < get_min_externalized_messages(self.is_public()) {
+			// If the data was provided from the archive, no need to check for the minimum
+			// Otherwise, we are still lacking envelopes.
+			if !self.is_envelopes_data_from_archive(&slot) &&
+				envelopes.len() < get_min_externalized_messages(self.is_public())
+			{
 				tracing::warn!(
 					"get_envelopes(): Proof Building for slot {slot}: {:?} envelopes is not enough to build proof",
 					envelopes.len()
@@ -216,6 +219,7 @@ impl ScpMessageCollector {
 	fn get_envelopes_from_horizon_archive(&self, slot: Slot) -> impl Future<Output = ()> {
 		tracing::debug!("get_envelopes_from_horizon_archive(): Fetching SCP envelopes from horizon archive for slot {slot}...");
 		let envelopes_map_arc = self.envelopes_map_clone();
+		let env_from_archive_map = self.env_from_archive_map_clone();
 
 		let archive_urls = self.stellar_history_archive_urls();
 		async move {
@@ -279,6 +283,7 @@ impl ScpMessageCollector {
 						}
 
 						let mut envelopes_map = envelopes_map_arc.write();
+						let mut from_archive_map = env_from_archive_map.write();
 
 						if envelopes_map.get(&slot).is_none() {
 							tracing::info!(
@@ -287,6 +292,9 @@ impl ScpMessageCollector {
 								externalized_envelopes_count
 							);
 							envelopes_map.insert(slot, relevant_envelopes);
+							// indicates that the data was taken from the archive
+							from_archive_map.insert(slot, ());
+
 							break
 						}
 					}

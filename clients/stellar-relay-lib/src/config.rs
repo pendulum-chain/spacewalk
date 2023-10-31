@@ -39,6 +39,12 @@ impl StellarOverlayConfig {
 		let cfg = &self.connection_info;
 		let secret_key = SecretKey::from_encoding(secret_key)?;
 
+		let public_key = secret_key.get_public().to_encoding();
+		let public_key = std::str::from_utf8(&public_key).unwrap();
+		log::info!(
+			"connection_info(): Connected to Stellar overlay network with public key: {public_key}"
+		);
+
 		let address = std::str::from_utf8(&cfg.address)
 			.map_err(|e| Error::ConfigError(format!("Address: {:?}", e)))?;
 
