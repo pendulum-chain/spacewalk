@@ -104,3 +104,24 @@ You can install the hook by running the following commands.
 ```
 .maintain/add-pre-commit.sh
 ```
+
+# Releases
+
+To automatically create a new release for Spacewalk, please follow these steps:
+
+- Create a new release branch with the following command:
+  ```
+  git checkout -b release/vX.Y.Z
+  ```
+- Update the version number of all crates in `Cargo.toml` files. To do this you should use either
+  the `.maintain/create_minor_release.sh` or `.maintain/create_patch_release.sh` script. The script will bump the
+  version number of all crates.
+- Create a new release commit with the following command:
+  ```
+    git commit -a -m "release: Release vX.Y.Z"
+  ```
+- Create a pull request for the release branch and merge it into the `main` branch. The title of this PR **has to
+  contain**
+  the **"release:"** prefix. This indicates that the CI should create a new release.
+
+Once merged, the CI will create a new release and automatically publish it to GitHub.
