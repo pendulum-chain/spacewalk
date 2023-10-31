@@ -81,7 +81,7 @@ impl Connector {
 		let auth_msg_xdr =
 			String::from_utf8(auth_msg_xdr.clone()).unwrap_or(format!("{:?}", auth_msg_xdr));
 
-		log::info!("verify_auth(): received auth message from Stellar Node: {auth_msg_xdr}");
+		log::debug!("verify_auth(): received auth message from Stellar Node: {auth_msg_xdr}");
 
 		if remote_info.sequence() != auth_msg.sequence {
 			// must be handled on main thread because workers could mix up order of messages.
