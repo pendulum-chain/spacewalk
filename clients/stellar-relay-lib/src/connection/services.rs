@@ -1,12 +1,13 @@
 use crate::{
 	connection::{
 		connector::{Connector, ConnectorActions},
-		helper::time_now,
+		helper::{time_now, to_base64_xdr_string},
 		log_error,
 		xdr_converter::get_xdr_message_length,
 	},
 	Error, StellarRelayMessage,
 };
+use substrate_stellar_sdk::types::StellarMessage;
 use tokio::{
 	io::{AsyncReadExt, AsyncWriteExt},
 	net::{tcp, TcpStream},
@@ -76,7 +77,7 @@ async fn read_unfinished_message(
 
 	// this partial message completes the previous message.
 	if actual_msg_len == *lack_bytes_from_prev {
-		log::trace!("proc_id: {} received continuation from the previous message.", proc_id);
+		log::trace!("read_unfinished_message(): proc_id: {} received continuation from the previous message.", proc_id);
 		readbuf.append(&mut cont_buf);
 
 		handle_message(actions_sender, *proc_id, readbuf.clone()).await?;
@@ -94,7 +95,7 @@ async fn read_unfinished_message(
 		cont_buf = cont_buf[0..actual_msg_len].to_owned();
 		readbuf.append(&mut cont_buf);
 		log::trace!(
-            "proc_id: {} not enough bytes to complete the previous message. Need {} bytes to complete.",
+            "read_unfinished_message(): proc_id: {} not enough bytes to complete the previous message. Need {} bytes to complete.",
             proc_id,
             lack_bytes_from_prev
         );
@@ -135,7 +136,7 @@ async fn read_message(
 	*lack_bytes_from_prev = xpect_msg_len - actual_msg_len;
 	*readbuf = readbuf[0..actual_msg_len].to_owned();
 	log::trace!(
-		"proc_id: {} received only partial message. Need {} bytes to complete.",
+		"read_message(): proc_id: {} received only partial message. Need {} bytes to complete.",
 		proc_id,
 		lack_bytes_from_prev
 	);
@@ -171,7 +172,7 @@ pub(crate) async fn receiving_service(
 		{
 			Ok(Ok(0)) => {
 				if retry_read >= retries {
-					log::error!("proc_id: {proc_id}. Failed to read messages from the stream. Received 0 size more than {retries} times");
+					log::error!("receiving_service(): proc_id: {proc_id}. Failed to read messages from the stream. Received 0 size more than {retries} times");
 					return
 				}
 				retry_read += 1;
@@ -183,11 +184,11 @@ pub(crate) async fn receiving_service(
 				// then check the size of next stellar message.
 				// If it's not enough, skip it.
 				let expect_msg_len = next_message_length(&mut r_stream).await;
-				log::trace!("proc_id: {proc_id}. The next message length is {expect_msg_len}");
+				log::trace!("receiving_service(): proc_id: {proc_id}. The next message length is {expect_msg_len}");
 
 				if expect_msg_len == 0 {
 					// there's nothing to read; wait for the next iteration
-					log::trace!("proc_id: {proc_id}. Nothing left to read; waiting for next loop");
+					log::trace!("receiving_service(): proc_id: {proc_id}. Nothing left to read; waiting for next loop");
 					continue
 				}
 
@@ -204,7 +205,7 @@ pub(crate) async fn receiving_service(
 						expect_msg_len,
 					)
 					.await,
-					format!("proc_id: {proc_id}. Failed to read message")
+					format!("receiving_service(): proc_id: {proc_id}. Failed to read message")
 				);
 			},
 
@@ -220,27 +221,39 @@ pub(crate) async fn receiving_service(
 						&mut proc_id,
 						&mut readbuf,
 					).await,
-					format!("proc_id:{proc_id}. Error occurred while reading unfinished stellar message")
+					format!("receiving_service(): proc_id:{proc_id}. Error occurred while reading unfinished stellar message")
 				);
 			},
 			Ok(Err(e)) => {
-				log::error!("proc_id: {proc_id}. Error occurred while reading the stream: {e:?}");
+				log::error!("receiving_service(): proc_id: {proc_id}. Error occurred while reading the stream: {e:?}");
 				return
 			},
 			Err(elapsed) => {
 				log::error!(
-					"proc_id: {proc_id}. Timeout of {} seconds elapesd for reading messages from Stellar Node. Retry: #{retry}",
+					"receiving_service(): proc_id: {proc_id}. Timeout of {} seconds elapsed for reading messages from Stellar Node. Retry: #{retry}",
 					elapsed.to_string()
 				);
 
 				if retry >= retries {
-					log::error!("proc_id: {proc_id}. Exhausted maximum retries for reading messages from Stellar Node.");
+					log::error!("receiving_service(): proc_id: {proc_id}. Exhausted maximum retries for reading messages from Stellar Node.");
 					return
 				}
 				retry += 1;
 			},
 		}
 	}
+}
+
+async fn _write_to_stream(
+	msg: StellarMessage,
+	connector: &mut Connector,
+	w_stream: &mut tcp::OwnedWriteHalf,
+) -> Result<(), Error> {
+	let xdr_msg = connector.create_xdr_message(msg)?;
+	w_stream
+		.write_all(&xdr_msg)
+		.await
+		.map_err(|e| Error::WriteFailed(e.to_string()))
 }
 
 async fn _connection_handler(
@@ -252,17 +265,17 @@ async fn _connection_handler(
 		// start the connection to Stellar node with a 'hello'
 		ConnectorActions::SendHello => {
 			let msg = connector.create_hello_message(time_now())?;
-			log::trace!("Sending Hello Message...{:?}", msg);
-			w_stream.write_all(&msg).await.map_err(|e| Error::WriteFailed(e.to_string()))?;
+
+			log::info!(
+				"_connection_handler(): Sending Hello Message: {}",
+				to_base64_xdr_string(&msg)
+			);
+			_write_to_stream(msg, connector, w_stream).await?;
 		},
 
 		// write message to the stream
 		ConnectorActions::SendMessage(msg) => {
-			let xdr_msg = connector.create_xdr_message(*msg)?;
-			w_stream
-				.write_all(&xdr_msg)
-				.await
-				.map_err(|e| Error::WriteFailed(e.to_string()))?;
+			_write_to_stream(*msg, connector, w_stream).await?;
 		},
 
 		// handle incoming message from the stream
@@ -286,14 +299,15 @@ pub(crate) async fn connection_handler(
 	mut actions_receiver: mpsc::Receiver<ConnectorActions>,
 	mut w_stream: tcp::OwnedWriteHalf,
 ) {
-	let mut timeout_counter = 0;
+	let mut retry = 0;
+
 	loop {
 		match timeout(Duration::from_secs(connector.timeout_in_secs), actions_receiver.recv()).await
 		{
 			Ok(Some(ConnectorActions::Disconnect)) => {
 				log_error!(
 					w_stream.shutdown().await,
-					format!("Failed to shutdown write half of stream:")
+					format!("connection_handler(): Failed to shutdown write half of stream:")
 				);
 				drop(connector);
 				drop(actions_receiver);
@@ -301,27 +315,35 @@ pub(crate) async fn connection_handler(
 			},
 
 			Ok(Some(action)) => {
-				timeout_counter = 0;
-				log_error!(
-					_connection_handler(action, &mut connector, &mut w_stream).await,
-					format!("Handling the connection failed")
-				);
-			},
+				if let Err(e) = _connection_handler(action, &mut connector, &mut w_stream).await {
+					log::error!("connection_handler(): {e:?}");
 
-			Ok(None) => {
-				log::warn!("Unexpected empty response from receiver");
-			},
-
-			Err(elapsed) => {
-				log::error!("Connection timed out after {} seconds", elapsed.to_string());
-				if timeout_counter >= connector.retries {
 					log_error!(
-						connector.send_to_user(StellarRelayMessage::Timeout).await,
-						format!("Connection Timed out:")
+						connector.send_to_user(StellarRelayMessage::Error(e.to_string())).await,
+						format!("connection_handler(): sending error message")
 					);
 					return
 				}
-				timeout_counter += 1;
+			},
+
+			Ok(None) => {
+				log::warn!("connection_handler(): Unexpected empty response from receiver");
+			},
+
+			Err(elapsed) => {
+				log::error!(
+					"connection_handler(): Timeout of {} seconds elapsed for reading messages from Stellar Node. Retry: #{retry}",
+					elapsed.to_string()
+				);
+
+				if retry >= connector.retries {
+					log_error!(
+						connector.send_to_user(StellarRelayMessage::Timeout).await,
+						format!("connection_handler(): Exhausted maximum retries for receiving any actions from receiver.")
+					);
+					return
+				}
+				retry += 1;
 			},
 		}
 	}

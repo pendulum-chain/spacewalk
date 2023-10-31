@@ -13,7 +13,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
 	let (cfg_file_path, sk_file_path) = if arg_network == "mainnet" {
 		(
-			"./clients/stellar-relay-lib/resources/config/mainnet/stellar_relay_config_iowa.json",
+			"./clients/stellar-relay-lib/resources/config/mainnet/stellar_relay_config_mainnet_iowa.json",
 			"./clients/stellar-relay-lib/resources/secretkey/stellar_secretkey_mainnet",
 		)
 	} else {
