@@ -206,7 +206,7 @@ pub mod pallet {
 			let expected_rewards =
 				ext::staking::compute_reward::<T>(&vault_id, &caller, reward_currency_id)?;
 
-			if expected_rewards == (BalanceOf::<T>::zero()) {
+			if expected_rewards == BalanceOf::<T>::zero() {
 				return Err(Error::<T>::NoRewardsForAccount.into())
 			}
 
