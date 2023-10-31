@@ -1,8 +1,10 @@
-name: Build binaries
+# This action triggers a GitLab CI job. The job first builds the project and then runs the tests.
+# If the latest merged commit contains the keyword "release:", the job will also try to create a new release on GitHub.
+name: Test, Build and Release
 on:
   push:
     branches:
-      spacewalk-release
+      - 'main'
 
 jobs:
   build:
