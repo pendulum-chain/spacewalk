@@ -159,6 +159,7 @@ pub mod currency_id {
 						"ZenlinkLPToken({},{},{},{})",
 						token1_id, token1_type, token2_id, token2_type
 					)),
+				CurrencyId::Token(token_id) => Ok(format!("Token({})", token_id)),
 			}
 		}
 	}
