@@ -18,10 +18,7 @@ pub (crate) mod mock;
 
 mod resubmissions;
 
-
-pub use types::{LedgerTxEnvMap, Slot};
 pub use resubmissions::*;
-
+pub use types::{LedgerTxEnvMap, Slot};
 
 pub type TransactionsResponseIter = horizon::responses::TransactionsResponseIter<reqwest::Client>;
-

@@ -59,7 +59,6 @@ impl StellarWallet {
 	pub(crate) const DEFAULT_MAX_RETRY_ATTEMPTS_BEFORE_FALLBACK: u8 = 3;
 
 	pub(crate) const DEFAULT_MAX_BACKOFF_DELAY_IN_SECS: u16 = 600;
-
 }
 
 impl StellarWallet {
@@ -177,22 +176,19 @@ impl StellarWallet {
 
 	/// Returns the balances of this wallet's Stellar account
 	pub async fn get_balances(&self) -> Result<Vec<HorizonBalance>, Error> {
-		let account =
-			self.client.get_account(self.public_key(), self.is_public_network).await?;
+		let account = self.client.get_account(self.public_key(), self.is_public_network).await?;
 		Ok(account.balances)
 	}
 
 	pub async fn get_sequence(&self) -> Result<SequenceNumber, Error> {
-		let account =
-			self.client.get_account(self.public_key(), self.is_public_network).await?;
+		let account = self.client.get_account(self.public_key(), self.is_public_network).await?;
+
 		Ok(account.sequence)
 	}
-
 }
 
 // cache operations
 impl StellarWallet {
-
 	pub fn last_cursor(&self) -> PagingToken {
 		self.cache.get_last_cursor()
 	}
@@ -213,11 +209,13 @@ impl StellarWallet {
 		self.cache.remove_all_tx_envelopes()
 	}
 
-	pub fn get_tx_envelopes_from_cache(&self) -> Result<(Vec<TransactionEnvelope>, Vec<Error>), Vec<Error>> {
+	pub fn get_tx_envelopes_from_cache(
+		&self,
+	) -> Result<(Vec<TransactionEnvelope>, Vec<Error>), Vec<Error>> {
 		self.cache.get_tx_envelopes()
 	}
 
-	pub fn remove_tx_envelope_from_cache(&self, sequence:SequenceNumber) -> Result<(), Error> {
+	pub fn remove_tx_envelope_from_cache(&self, sequence: SequenceNumber) -> Result<(), Error> {
 		self.cache.remove_tx_envelope(sequence)
 	}
 
@@ -226,10 +224,8 @@ impl StellarWallet {
 	}
 }
 
-
 // send/submit functions of StellarWallet
 impl StellarWallet {
-
 	/// Returns a TransactionResponse after submitting transaction envelope to Stellar,
 	/// Else an Error.
 	pub async fn submit_transaction(
@@ -258,7 +254,10 @@ impl StellarWallet {
 		submission_result
 	}
 
-	pub(crate) fn sign_and_create_envelope(&self, tx:Transaction) -> Result<TransactionEnvelope, Error> {
+	pub(crate) fn sign_and_create_envelope(
+		&self,
+		tx: Transaction,
+	) -> Result<TransactionEnvelope, Error> {
 		// convert to envelope
 		let mut envelope = tx.into_transaction_envelope();
 		self.sign_envelope(&mut envelope)?;
@@ -266,7 +265,7 @@ impl StellarWallet {
 		Ok(envelope)
 	}
 
-	pub(crate) fn sign_envelope(&self, envelope:&mut TransactionEnvelope) -> Result<(),Error> {
+	pub(crate) fn sign_envelope(&self, envelope: &mut TransactionEnvelope) -> Result<(), Error> {
 		let network: &Network =
 			if self.is_public_network { &PUBLIC_NETWORK } else { &TEST_NETWORK };
 
@@ -336,12 +335,7 @@ impl StellarWallet {
 				)
 				.await?
 		} else {
-			create_payment_operation(
-				destination_address,
-				asset,
-				stroop_amount,
-				self.public_key(),
-			)?
+			create_payment_operation(destination_address, asset, stroop_amount, self.public_key())?
 		};
 
 		self.send_to_address(request_id, stroop_fee_per_operation, vec![payment_op])
@@ -356,8 +350,7 @@ impl StellarWallet {
 	) -> Result<TransactionResponse, Error> {
 		let _ = self.transaction_submission_lock.lock().await;
 
-		let account =
-			self.client.get_account(self.public_key(), self.is_public_network).await?;
+		let account = self.client.get_account(self.public_key(), self.is_public_network).await?;
 		let next_sequence_number = account.sequence + 1;
 
 		tracing::trace!(
@@ -395,14 +388,19 @@ impl std::fmt::Debug for StellarWallet {
 
 #[cfg(test)]
 mod test {
-	use primitives::stellar::Asset as StellarAsset;
-	use primitives::stellar::types::{CreateAccountResult, CreateClaimableBalanceResult, OperationResult, OperationResultTr};
+	use crate::{
+		error::Error,
+		horizon::{responses::HorizonClaimableBalanceResponse, HorizonClient},
+		mock::*,
+		StellarWallet,
+	};
+	use primitives::stellar::{
+		types::{
+			CreateAccountResult, CreateClaimableBalanceResult, OperationResult, OperationResultTr,
+		},
+		Asset as StellarAsset,
+	};
 	use serial_test::serial;
-	use crate::error::Error;
-	use crate::horizon::HorizonClient;
-	use crate::horizon::responses::HorizonClaimableBalanceResponse;
-	use crate::mock::*;
-	use crate::StellarWallet;
 
 	#[test]
 	fn test_add_backoff_delay() {
@@ -411,7 +409,7 @@ mod test {
 			IS_PUBLIC_NETWORK,
 			"resources/test_add_backoff_delay".to_owned(),
 		)
-			.expect("should return a wallet");
+		.expect("should return a wallet");
 
 		assert_eq!(wallet.max_backoff_delay(), StellarWallet::DEFAULT_MAX_BACKOFF_DELAY_IN_SECS);
 
@@ -434,7 +432,7 @@ mod test {
 			IS_PUBLIC_NETWORK,
 			"resources/test_add_retry_attempt".to_owned(),
 		)
-			.expect("should return an arc rwlock wallet");
+		.expect("should return an arc rwlock wallet");
 
 		assert_eq!(
 			wallet.max_retry_attempts_before_fallback(),
@@ -542,8 +540,8 @@ mod test {
 
 		match operation_results.first().expect("should return 1") {
 			OperationResult::OpInner(OperationResultTr::CreateClaimableBalance(
-										 CreateClaimableBalanceResult::CreateClaimableBalanceSuccess(id),
-									 )) => {
+				CreateClaimableBalanceResult::CreateClaimableBalanceSuccess(id),
+			)) => {
 				// check existence of claimable balance.
 				let HorizonClaimableBalanceResponse { claimable_balance } = wallet
 					.client
@@ -606,8 +604,8 @@ mod test {
 
 		match operations_results.first().expect("should return 1") {
 			OperationResult::OpInner(OperationResultTr::CreateAccount(
-										 CreateAccountResult::CreateAccountSuccess,
-									 )) => {
+				CreateAccountResult::CreateAccountSuccess,
+			)) => {
 				// since the createaccount operation is a success, make sure to delete the same
 				// account to be able to reuse it once this test runs again.
 				// DO NOT EDIT THIS PORTION unless necessary.
@@ -748,7 +746,7 @@ mod test {
 
 		assert!(err_insufficient_fee.is_err());
 		match err_insufficient_fee.unwrap_err() {
-			Error::HorizonSubmissionError {  reason, .. } => {
+			Error::HorizonSubmissionError { reason, .. } => {
 				assert_eq!(reason, "tx_insufficient_fee");
 			},
 			_ => assert!(false),
@@ -769,6 +767,4 @@ mod test {
 
 		wallet.remove_tx_envelopes_from_cache();
 	}
-
-
 }

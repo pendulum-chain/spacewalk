@@ -275,7 +275,7 @@ impl TransactionResponse {
 	}
 }
 
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize)]
 pub struct HorizonAccountResponse {
 	#[serde(deserialize_with = "de_string_to_bytes")]
 	pub id: Vec<u8>,
@@ -285,6 +285,17 @@ pub struct HorizonAccountResponse {
 	pub sequence: i64,
 	pub balances: Vec<HorizonBalance>,
 	// ...
+}
+
+impl Debug for HorizonAccountResponse {
+	fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+		f.debug_struct("HorizonAccountResponse")
+			.field("id", &debug_str_or_vec_u8!(&self.id))
+			.field("account_id", &debug_str_or_vec_u8!(&self.account_id))
+			.field("sequence", &self.sequence)
+			.field("balances", &self.balances)
+			.finish()
+	}
 }
 
 impl HorizonAccountResponse {
