@@ -17,5 +17,4 @@ jobs:
         with:
           host: "https://gitlab.com"
           token: ${{ secrets.GITLABAPI }}
-          debug: true
           project_id: 43970950
