@@ -29,6 +29,8 @@ use crate::{
 };
 use primitives::{StellarPublicKeyRaw, StellarStroops, TransactionEnvelopeExt};
 
+#[cfg(test)]
+use mocktopus::macros::mockable;
 
 #[derive(Clone)]
 pub struct StellarWallet {
@@ -225,6 +227,7 @@ impl StellarWallet {
 }
 
 // send/submit functions of StellarWallet
+#[cfg_attr(test, mockable)]
 impl StellarWallet {
 	/// Returns a TransactionResponse after submitting transaction envelope to Stellar,
 	/// Else an Error.

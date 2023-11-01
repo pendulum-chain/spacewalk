@@ -17,7 +17,7 @@ pub enum Error {
 		title: String,
 		status: StatusCode,
 		reason: String,
-		result_code_op:Vec<String>,
+		result_code_op: Vec<String>,
 		envelope_xdr: Option<String>,
 	},
 	#[error("Could not parse string: {0}")]
@@ -41,9 +41,7 @@ impl Error {
 	pub fn is_recoverable(&self) -> bool {
 		match self {
 			Error::HorizonResponseError(e) if e.is_timeout() => true,
-			Error::HorizonSubmissionError { status, .. }
-				if *status == 504 =>
-				true,
+			Error::HorizonSubmissionError { status, .. } if *status == 504 => true,
 			Error::CacheError(e) => match e.kind {
 				CacheErrorKind::CreateDirectoryFailed |
 				CacheErrorKind::FileCreationFailed |
@@ -62,8 +60,7 @@ impl Error {
 		match self {
 			Error::HorizonResponseError(e) =>
 				e.status().map(|code| server_errors.contains(&code.as_u16())).unwrap_or(false),
-			Error::HorizonSubmissionError { status, .. } =>
-				server_errors.contains(status),
+			Error::HorizonSubmissionError { status, .. } => server_errors.contains(status),
 			_ => false,
 		}
 	}

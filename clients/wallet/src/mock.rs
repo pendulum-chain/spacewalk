@@ -1,7 +1,10 @@
 use crate::{
 	error::Error,
 	horizon::HorizonClient,
-	operations::{create_payment_operation, redeem_request_tests::create_account_merge_operation},
+	operations::{
+		create_basic_spacewalk_stellar_transaction, create_payment_operation,
+		redeem_request_tests::create_account_merge_operation, AppendExt,
+	},
 	StellarWallet, TransactionResponse,
 };
 use primitives::{
@@ -67,6 +70,37 @@ impl StellarWallet {
 			next_sequence_number,
 			vec![payment_op],
 		)
+	}
+
+	pub fn create_payment_envelope_no_signature(
+		&self,
+		destination_address: PublicKey,
+		asset: StellarAsset,
+		stroop_amount: StellarStroops,
+		request_id: [u8; 32],
+		stroop_fee_per_operation: u32,
+		next_sequence_number: SequenceNumber,
+	) -> Result<TransactionEnvelope, Error> {
+		let public_key = self.public_key();
+		// create payment operation
+		let payment_op = create_payment_operation(
+			destination_address,
+			asset,
+			stroop_amount,
+			public_key.clone(),
+		)?;
+
+		// create the transaction
+		let mut transaction = create_basic_spacewalk_stellar_transaction(
+			request_id,
+			stroop_fee_per_operation,
+			public_key,
+			next_sequence_number,
+		)?;
+
+		transaction.append(payment_op)?;
+
+		Ok(transaction.into_transaction_envelope())
 	}
 }
 

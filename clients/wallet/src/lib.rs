@@ -14,7 +14,7 @@ mod task;
 pub mod types;
 
 #[cfg(test)]
-pub (crate) mod mock;
+pub(crate) mod mock;
 
 mod resubmissions;
 
