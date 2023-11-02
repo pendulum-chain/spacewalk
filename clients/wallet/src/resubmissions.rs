@@ -35,20 +35,20 @@ impl StellarWallet {
 		// perform the resubmission
 		self._resubmit_transactions_from_cache(running_tasks.clone(), auto_check).await;
 
-		// // clone the task, to share this in another thread
-		// let running_tasks_clone = running_tasks.clone();
-		//
-		// // clone self, to be able to use this in another thread
-		// let me = Arc::new(self.clone());
-		// // spawn a thread to resubmit envelopes from cache
-		// tokio::spawn(async move {
-		//     let me_clone = Arc::clone(&me);
-		//     loop {
-		//         pause_process_in_secs(300).await;
-		//
-		//         me_clone._resubmit_transactions_from_cache(running_tasks_clone.clone()).await;
-		//     }
-		// });
+		// clone the task, to share this in another thread
+		let running_tasks_clone = running_tasks.clone();
+
+		// clone self, to be able to use this in another thread
+		let me = Arc::new(self.clone());
+		// spawn a thread to resubmit envelopes from cache
+		tokio::spawn(async move {
+		    let me_clone = Arc::clone(&me);
+		    loop {
+		        pause_process_in_secs(300).await;
+
+		        me_clone._resubmit_transactions_from_cache(running_tasks_clone.clone(),auto_check).await;
+		    }
+		});
 
 		// return the list of tasks, to monitor the resubmission
 		running_tasks
@@ -68,7 +68,7 @@ impl StellarWallet {
 	) {
 		let _ = self.transaction_submission_lock.lock().await;
 
-		// Collect all envelopes from cache. Log those with errors.
+		//  Log those with errors.
 		let envelopes = match self.get_tx_envelopes_from_cache() {
 			Ok((envs, errors)) => {
 				tracing::warn!(
@@ -770,7 +770,6 @@ mod test {
 		// let's resubmit these 2 transactions
 		let tasks = wallet.resubmit_transactions_from_cache(false).await;
 
-		println!("DONE WITH RESUBMISSION");
 		pause_process_in_secs(20).await;
 		loop {
 			let mut res = tasks.write().await;
