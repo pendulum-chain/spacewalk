@@ -365,10 +365,6 @@ async fn auto_check_running_tasks(running_tasks: FailedTasks, wallet: Arc<Stella
 
 			let mut res = running_tasks.write().await;
 
-			if res.is_empty() {
-				break
-			}
-
 			let mut receiver = res.pop().expect("should return something");
 
 			// cannot resubmit
