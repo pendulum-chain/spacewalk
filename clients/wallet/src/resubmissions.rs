@@ -131,6 +131,7 @@ impl StellarWallet {
 	/// * `failed_tasks` - a list of receivers that will receive a `TransactionEnvelope`
 	async fn handle_errors(
 		&self,
+		#[allow(unused_mut)]
 		mut errors: Vec<(Error, TransactionEnvelope)>,
 		failed_tasks: FailedTasks,
 	) {
