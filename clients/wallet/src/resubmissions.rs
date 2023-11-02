@@ -70,9 +70,11 @@ impl StellarWallet {
 		//  Log those with errors.
 		let envelopes = match self.get_tx_envelopes_from_cache() {
 			Ok((envs, errors)) => {
-				tracing::warn!(
-					"_resubmit_transactions_from_cache(): errors from cache: {errors:?}"
-				);
+				if !errors.is_empty(){
+					tracing::warn!(
+						"_resubmit_transactions_from_cache(): errors from cache: {errors:?}"
+					);
+				}
 				envs
 			},
 			Err(errors) => {
@@ -92,7 +94,7 @@ impl StellarWallet {
 		if envelopes.is_empty() {
 			return
 		}
-		tracing::info!("resubmitting {:?} envelopes in cache...", envelopes.len());
+		tracing::info!("_resubmit_transactions_from_cache(): resubmitting {:?} envelopes in cache...", envelopes.len());
 
 		let mut error_collector = vec![];
 		// loop through the envelopes and resubmit each one
