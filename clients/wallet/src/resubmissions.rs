@@ -44,7 +44,8 @@ impl StellarWallet {
 		tokio::spawn(async move {
 		    let me_clone = Arc::clone(&me);
 		    loop {
-		        pause_process_in_secs(300).await;
+				// loops every 30 minutes or 1800 seconds
+		        pause_process_in_secs(1800).await;
 
 		        me_clone._resubmit_transactions_from_cache(running_tasks_clone.clone(),auto_check).await;
 		    }
