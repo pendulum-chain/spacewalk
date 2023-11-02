@@ -30,43 +30,41 @@ impl StellarWallet {
 	/// * `auto_check` - creates another thread that does the checking for failed resubmissions
 	pub async fn resubmit_transactions_from_cache(&self, auto_check: bool) -> FailedTasks {
 		// a collection of all tasks currently running
-		let running_tasks = Arc::new(RwLock::new(vec![]));
+		let failed_tasks = Arc::new(RwLock::new(vec![]));
 
 		// perform the resubmission
-		self._resubmit_transactions_from_cache(running_tasks.clone(), auto_check).await;
+		self._resubmit_transactions_from_cache(failed_tasks.clone(), auto_check).await;
 
 		// clone the task, to share this in another thread
-		let running_tasks_clone = running_tasks.clone();
+		let failed_tasks_clone = failed_tasks.clone();
 
 		// clone self, to be able to use this in another thread
 		let me = Arc::new(self.clone());
 		// spawn a thread to resubmit envelopes from cache
 		tokio::spawn(async move {
-		    let me_clone = Arc::clone(&me);
-		    loop {
+			let me_clone = Arc::clone(&me);
+			loop {
 				// loops every 30 minutes or 1800 seconds
-		        pause_process_in_secs(1800).await;
+				pause_process_in_secs(1800).await;
 
-		        me_clone._resubmit_transactions_from_cache(running_tasks_clone.clone(),auto_check).await;
-		    }
+				me_clone
+					._resubmit_transactions_from_cache(failed_tasks_clone.clone(), auto_check)
+					.await;
+			}
 		});
 
 		// return the list of tasks, to monitor the resubmission
-		running_tasks
+		failed_tasks
 	}
 
 	#[doc(hidden)]
 	/// Submits transactions found in the wallet's cache to Stellar.
 	///
 	/// # Arguments
-	/// * `running_tasks` - a list of receivers that will receive a `TransactionEnvelope`
+	/// * `failed_tasks` - a list of receivers that will receive a `TransactionEnvelope`
 	/// if resubmission failed
 	/// * `auto_check` - creates another thread that does the checking for failed resubmissions
-	async fn _resubmit_transactions_from_cache(
-		&self,
-		running_tasks: FailedTasks,
-		auto_check: bool,
-	) {
+	async fn _resubmit_transactions_from_cache(&self, failed_tasks: FailedTasks, auto_check: bool) {
 		let _ = self.transaction_submission_lock.lock().await;
 
 		//  Log those with errors.
@@ -94,6 +92,7 @@ impl StellarWallet {
 		if envelopes.is_empty() {
 			return
 		}
+		tracing::info!("resubmitting {:?} envelopes in cache...", envelopes.len());
 
 		let mut error_collector = vec![];
 		// loop through the envelopes and resubmit each one
@@ -109,16 +108,16 @@ impl StellarWallet {
 		if !error_collector.is_empty() {
 			// clone self, to use in another thread
 			let me = Arc::new(self.clone());
-			let running_tasks_clone = running_tasks.clone();
+			let failed_tasks_clone = failed_tasks.clone();
 			tokio::spawn(async move {
-				me.handle_errors(error_collector, running_tasks_clone).await;
+				me.handle_errors(error_collector, failed_tasks_clone).await;
 			});
 		}
 
 		// auto removes a receiver from the list, if a running task has finished
 		let me = Arc::new(self.clone());
 		if auto_check {
-			auto_check_running_tasks(running_tasks.clone(), me).await;
+			auto_check_failed_tasks(failed_tasks.clone(), me).await;
 		}
 	}
 
@@ -127,11 +126,11 @@ impl StellarWallet {
 	///
 	/// # Arguments
 	/// * `errors` - a list of a tuple containing the error and its transaction envelope
-	/// * `running_tasks` - a list of receivers that will receive a `TransactionEnvelope`
+	/// * `failed_tasks` - a list of receivers that will receive a `TransactionEnvelope`
 	async fn handle_errors(
 		&self,
 		mut errors: Vec<(Error, TransactionEnvelope)>,
-		running_tasks: FailedTasks,
+		failed_tasks: FailedTasks,
 	) {
 		while let Some((error, env)) = errors.pop() {
 			// pause process for 20 minutes
@@ -146,7 +145,7 @@ impl StellarWallet {
 			let (sender, receiver) = tokio::sync::oneshot::channel();
 			// save the receivers, to determine the finished tasks.
 			{
-				let mut writer = running_tasks.write().await;
+				let mut writer = failed_tasks.write().await;
 				writer.push(receiver);
 			}
 
@@ -353,8 +352,8 @@ fn decode_to_envelope(
 }
 
 /// Auto checks failed resubmission tasks and make sure to remove them from cache
-async fn auto_check_running_tasks(running_tasks: FailedTasks, wallet: Arc<StellarWallet>) {
-	let running_tasks = running_tasks.clone();
+async fn auto_check_failed_tasks(failed_tasks: FailedTasks, wallet: Arc<StellarWallet>) {
+	let failed_tasks = failed_tasks.clone();
 	tokio::spawn(async move {
 		loop {
 			#[cfg(not(test))]
@@ -363,26 +362,30 @@ async fn auto_check_running_tasks(running_tasks: FailedTasks, wallet: Arc<Stella
 			#[cfg(test)]
 			pause_process_in_secs(5).await;
 
-			let mut res = running_tasks.write().await;
+			tracing::info!("auto_check_failed_tasks(): check for failed tasks...");
 
-			let mut receiver = res.pop().expect("should return something");
+			let mut tasks = failed_tasks.write().await;
 
-			// cannot resubmit
-			if let Ok(Some(env)) = receiver.try_recv() {
-				let xdr = env.to_base64_xdr();
-				let xdr = String::from_utf8(xdr.clone()).unwrap_or(format!("{xdr:?}"));
+			while let Some(mut receiver) = tasks.pop() {
+				// cannot resubmit
+				if let Ok(Some(env)) = receiver.try_recv() {
+					let xdr = env.to_base64_xdr();
+					let xdr = String::from_utf8(xdr.clone()).unwrap_or(format!("{xdr:?}"));
 
-				match env.sequence_number() {
-					None => tracing::error!(
-						"auto_check_running_tasks(): Failed to remove from cache: {xdr}"
-					),
-					Some(seq) => {
-						tracing::warn!(
-							"auto_check_running_tasks(): Cannot resubmit this envelope: {xdr}"
-						);
-						tracing::debug!("auto_check_running_tasks(): Removing from cache: {xdr}");
-						wallet.remove_tx_envelope_from_cache(seq);
-					},
+					match env.sequence_number() {
+						None => tracing::error!(
+							"auto_check_failed_tasks(): Failed to remove from cache: {xdr}"
+						),
+						Some(seq) => {
+							tracing::warn!(
+								"auto_check_failed_tasks(): Cannot resubmit this envelope: {xdr}"
+							);
+							tracing::debug!(
+								"auto_check_failed_tasks(): Removing from cache: {xdr}"
+							);
+							wallet.remove_tx_envelope_from_cache(seq);
+						},
+					}
 				}
 			}
 		}
