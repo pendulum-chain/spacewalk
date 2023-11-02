@@ -358,7 +358,7 @@ async fn auto_check_running_tasks(running_tasks: FailedTasks, wallet: Arc<Stella
 	tokio::spawn(async move {
 		loop {
 			#[cfg(not(test))]
-			pause_process_in_secs(30).await;
+			pause_process_in_secs(1800).await;
 
 			#[cfg(test)]
 			pause_process_in_secs(5).await;
