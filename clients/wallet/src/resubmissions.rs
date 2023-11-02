@@ -5,7 +5,7 @@ use crate::{
 		CacheError, CacheErrorKind, Error,
 		Error::{DecodeError, ResubmissionError},
 	},
-	StellarWallet,
+	StellarWallet, TransactionResponse,
 };
 use primitives::{
 	stellar::{Memo, Transaction, TransactionEnvelope, XdrCodec},
@@ -18,16 +18,22 @@ use tokio::time::sleep;
 use mocktopus::macros::mockable;
 use tokio::sync::RwLock;
 
+pub type FailedTasks =
+	Arc<RwLock<Vec<tokio::sync::oneshot::Receiver<Option<TransactionEnvelope>>>>>;
+
 #[cfg_attr(test, mockable)]
 impl StellarWallet {
-	pub async fn resubmit_transactions_from_cache(
-		&self,
-	) -> Arc<RwLock<Vec<tokio::sync::oneshot::Receiver<bool>>>> {
+	/// Returns a list of receivers that will receive a `TransactionEnvelope`
+	/// if resubmission failed
+	///
+	/// # Arguments
+	/// * `auto_check` - creates another thread that does the checking for failed resubmissions
+	pub async fn resubmit_transactions_from_cache(&self, auto_check: bool) -> FailedTasks {
 		// a collection of all tasks currently running
 		let running_tasks = Arc::new(RwLock::new(vec![]));
 
 		// perform the resubmission
-		self._resubmit_transactions_from_cache(running_tasks.clone()).await;
+		self._resubmit_transactions_from_cache(running_tasks.clone(), auto_check).await;
 
 		// // clone the task, to share this in another thread
 		// let running_tasks_clone = running_tasks.clone();
@@ -38,10 +44,8 @@ impl StellarWallet {
 		// tokio::spawn(async move {
 		//     let me_clone = Arc::clone(&me);
 		//     loop {
-		//         println!("time for spawning");
 		//         pause_process_in_secs(300).await;
 		//
-		//         println!("let's gooo");
 		//         me_clone._resubmit_transactions_from_cache(running_tasks_clone.clone()).await;
 		//     }
 		// });
@@ -50,10 +54,17 @@ impl StellarWallet {
 		running_tasks
 	}
 
+	#[doc(hidden)]
 	/// Submits transactions found in the wallet's cache to Stellar.
+	///
+	/// # Arguments
+	/// * `running_tasks` - a list of receivers that will receive a `TransactionEnvelope`
+	/// if resubmission failed
+	/// * `auto_check` - creates another thread that does the checking for failed resubmissions
 	async fn _resubmit_transactions_from_cache(
 		&self,
-		running_tasks: Arc<RwLock<Vec<tokio::sync::oneshot::Receiver<bool>>>>,
+		running_tasks: FailedTasks,
+		auto_check: bool,
 	) {
 		let _ = self.transaction_submission_lock.lock().await;
 
@@ -84,36 +95,49 @@ impl StellarWallet {
 		}
 
 		let mut error_collector = vec![];
+		// loop through the envelopes and resubmit each one
 		for envelope in envelopes {
-			if let Err(e) = submit(envelope).await {
+			if let Err(e) = submit(envelope.clone()).await {
 				tracing::debug!("_resubmit_transactions_from_cache(): encountered error: {e:?}");
-				error_collector.push(e);
+				// save the kind of error and the envelope that failed
+				error_collector.push((e, envelope));
 			}
 		}
 
-		// clone self, to use in another thread
-		let me = Arc::new(self.clone());
+		// a few errors happened and must be handled.
+		if !error_collector.is_empty() {
+			// clone self, to use in another thread
+			let me = Arc::new(self.clone());
+			let running_tasks_clone = running_tasks.clone();
+			tokio::spawn(async move {
+				me.handle_errors(error_collector, running_tasks_clone).await;
+			});
+		}
 
-		tokio::spawn(async move {
-			// handle errors found after submission
-			if !error_collector.is_empty() {
-				me.handle_errors(error_collector, running_tasks).await;
-			}
-		});
+		// auto removes a receiver from the list, if a running task has finished
+		let me = Arc::new(self.clone());
+		if auto_check {
+			auto_check_running_tasks(running_tasks.clone(), me).await;
+		}
 	}
 
+	#[doc(hidden)]
 	/// Handle all errors
+	///
+	/// # Arguments
+	/// * `errors` - a list of a tuple containing the error and its transaction envelope
+	/// * `running_tasks` - a list of receivers that will receive a `TransactionEnvelope`
 	async fn handle_errors(
 		&self,
-		mut errors: Vec<Error>,
-		running_tasks: Arc<RwLock<Vec<tokio::sync::oneshot::Receiver<bool>>>>,
+		mut errors: Vec<(Error, TransactionEnvelope)>,
+		running_tasks: FailedTasks,
 	) {
-		while let Some(error) = errors.pop() {
+		while let Some((error, env)) = errors.pop() {
 			// pause process for 20 minutes
 			#[cfg(not(test))]
 			pause_process_in_secs(1200).await;
 
-			// for testig purpose, set to 5 seconds
+			// for testing purpose, set to 5 seconds
 			#[cfg(test)]
 			pause_process_in_secs(5).await;
 
@@ -127,35 +151,50 @@ impl StellarWallet {
 
 			// handle the error
 			match self.handle_error(error).await {
-				// Successful or not, this error is considered "handled".
-				Ok(_) =>
-					if let Err(_) = sender.send(true) {
-						println!("failed to send true message");
-					},
+				// Resubmission failed for this Transaction Envelope
+				Ok(None) => {
+					if let Err(e) = sender.send(Some(env)) {
+						tracing::warn!("handle_errors(): failed to send message: {e:?}");
+					};
+				},
+				// Received response, meaning this transaction envelope was resubmitted successfully
+				Ok(Some(resp)) => {
+					tracing::info!("handle_errors(): Success: {resp:?}");
+
+					if let Err(e) = sender.send(None) {
+						tracing::warn!("handle_errors(): failed to send message: {e:?}");
+					}
+				},
 				// a new kind of error occurred. Process it on the next loop.
 				Err(e) => {
-					println!("handle_errors(): error happened again: {e:?}");
-					errors.push(e);
+					tracing::error!("handle_errors(): new error occurred: {e:?}");
+					// push the transaction that failed, and the corresponding error
+					errors.push((e, env));
 				},
 			}
 		}
 	}
 
-	/// Determines whether an error is up for resubmission or not:
+	/// Returns:
+	/// * `TransactionResponse` for successful resubmission;
+	/// * None for errors that cannot be resubmitted;
+	/// * An error that can be resubmitted again
+	///
+	/// This function determines whether an error is up for resubmission or not:
 	/// `tx_bad_seq` or `SequenceNumberAlreadyUsed` can be resubmitted by updating the sequence
 	/// number `tx_internal_error` should be resubmitted again
 	/// other errors must be logged and removed from cache.
-	async fn handle_error(&self, error: Error) -> Result<(), Error> {
+	async fn handle_error(&self, error: Error) -> Result<Option<TransactionResponse>, Error> {
 		match &error {
 			Error::HorizonSubmissionError { reason, envelope_xdr, .. } => match &reason[..] {
-				"tx_bad_seq" => return self.handle_tx_bad_seq_error_with_xdr(envelope_xdr).await,
-				"tx_internal_error" => return self.handle_tx_internal_error(envelope_xdr).await,
+				"tx_bad_seq" =>
+					return self.handle_tx_bad_seq_error_with_xdr(envelope_xdr).await.map(Some),
+				"tx_internal_error" =>
+					return self.handle_tx_internal_error(envelope_xdr).await.map(Some),
 				_ => {
 					if let Ok(env) = decode_to_envelope(envelope_xdr) {
 						if let Some(sequence) = env.sequence_number() {
-							if let Err(e) = self.remove_tx_envelope_from_cache(sequence) {
-								tracing::warn!("handle_error():: failed to remove transaction with sequence {sequence}: {e:?}");
-							}
+							self.remove_tx_envelope_from_cache(sequence);
 						}
 					};
 
@@ -173,6 +212,7 @@ impl StellarWallet {
 					return self
 						.handle_tx_bad_seq_error_with_envelope(transaction_envelope.clone())
 						.await
+						.map(Some)
 				}
 
 				tracing::warn!("handle_error(): SequenceNumberAlreadyUsed error but no envelope");
@@ -180,20 +220,18 @@ impl StellarWallet {
 			_ => tracing::warn!("handle_error(): Unrecoverable error in Stellar wallet: {error:?}"),
 		}
 
-		Ok(())
+		// the error found is not recoverable, and cannot be resubmitted again.
+		Ok(None)
 	}
 
 	async fn handle_tx_internal_error(
 		&self,
 		envelope_xdr_as_str_opt: &Option<String>,
-	) -> Result<(), Error> {
+	) -> Result<TransactionResponse, Error> {
 		let mut envelope = decode_to_envelope(envelope_xdr_as_str_opt)?;
 		self.sign_envelope(&mut envelope)?;
 
-		self.submit_transaction(envelope).await.map(|resp| {
-			tracing::info!("handle_tx_internal_error(): response: {resp:?}");
-			()
-		})
+		self.submit_transaction(envelope).await
 	}
 }
 
@@ -203,7 +241,7 @@ impl StellarWallet {
 	async fn handle_tx_bad_seq_error_with_xdr(
 		&self,
 		envelope_xdr_as_str_opt: &Option<String>,
-	) -> Result<(), Error> {
+	) -> Result<TransactionResponse, Error> {
 		let tx_envelope = decode_to_envelope(envelope_xdr_as_str_opt)?;
 		self.handle_tx_bad_seq_error_with_envelope(tx_envelope).await
 	}
@@ -211,48 +249,52 @@ impl StellarWallet {
 	async fn handle_tx_bad_seq_error_with_envelope(
 		&self,
 		tx_envelope: TransactionEnvelope,
-	) -> Result<(), Error> {
+	) -> Result<TransactionResponse, Error> {
 		let tx = tx_envelope.get_transaction().ok_or(DecodeError)?;
+
+		// Remove original transaction.
+		// The same envelope will be saved again using a different sequence number
+		self.remove_tx_envelope_from_cache(tx.seq_num);
 
 		// Check if we already submitted this transaction
 		if !self.is_transaction_already_submitted(&tx).await {
-			return self.bump_sequence_number_and_submit(tx).await.map(|resp| {
-				tracing::info!("handle_tx_bad_seq_error_with_envelope(): response: {resp:?}");
-				()
-			})
+			return self.bump_sequence_number_and_submit(tx).await
 		}
 
 		tracing::error!("handle_tx_bad_seq_error_with_envelope(): Similar transaction already submitted. Skipping {:?}", tx);
-		println!("handle_tx_bad_seq_error_with_envelope(): Similar transaction already submitted. Skipping {:?}", tx);
 
-		// remove from cache
-		if let Err(e) = self.remove_tx_envelope_from_cache(tx.seq_num) {
-			tracing::warn!("handle_tx_bad_seq_error_with_envelope(): failed to remove envelope with sequence {} in cache: {e:?}", tx.seq_num);
-		}
+		// Remove from cache
+		self.remove_tx_envelope_from_cache(tx.seq_num);
 
 		Err(ResubmissionError("Transaction already submitted".to_string()))
 	}
 
-	async fn bump_sequence_number_and_submit(&self, tx: Transaction) -> Result<(), Error> {
+	async fn bump_sequence_number_and_submit(
+		&self,
+		tx: Transaction,
+	) -> Result<TransactionResponse, Error> {
 		let sequence_number = self.get_sequence().await?;
-
-		println!("Old sequence number: {}", tx.seq_num);
 		let mut updated_tx = tx.clone();
 		updated_tx.seq_num = sequence_number + 1;
 
-		println!("New sequence number: {}", updated_tx.seq_num);
+		let old_tx_xdr = tx.to_base64_xdr();
+		let old_tx = String::from_utf8(old_tx_xdr.clone()).unwrap_or(format!("{old_tx_xdr:?}"));
+		tracing::trace!("bump_sequence_number_and_submit(): old transaction: {old_tx}");
+
+		let updated_tx_xdr = updated_tx.to_base64_xdr();
+		let updated_tx_xdr =
+			String::from_utf8(updated_tx_xdr.clone()).unwrap_or(format!("{updated_tx_xdr:?}"));
+		tracing::trace!("bump_sequence_number_and_submit(): new transaction: {updated_tx_xdr}");
 
 		let envelope = self.sign_and_create_envelope(updated_tx)?;
-		self.submit_transaction(envelope).await.map(|resp| {
-			tracing::info!("bump_sequence_number_and_submit(): response: {resp:?}");
-			()
-		})
+		self.submit_transaction(envelope).await
 	}
 
 	/// This function iterates over all transactions of an account to see if a similar transaction
 	/// i.e. a transaction containing the same memo was already submitted previously.
 	/// TODO: This operation is very costly and we should try to optimize it in the future.
 	async fn is_transaction_already_submitted(&self, tx: &Transaction) -> bool {
+		// loop through until the 10th page
 		let mut remaining_page = 10;
 		let own_public_key = self.public_key();
 
@@ -309,6 +351,47 @@ fn decode_to_envelope(
 	TransactionEnvelope::from_base64_xdr(envelope_xdr).map_err(|_| DecodeError)
 }
 
+/// Auto checks failed resubmission tasks and make sure to remove them from cache
+async fn auto_check_running_tasks(running_tasks: FailedTasks, wallet: Arc<StellarWallet>) {
+	let running_tasks = running_tasks.clone();
+	tokio::spawn(async move {
+		loop {
+			#[cfg(not(test))]
+			pause_process_in_secs(30).await;
+
+			#[cfg(test)]
+			pause_process_in_secs(5).await;
+
+			let mut res = running_tasks.write().await;
+
+			if res.is_empty() {
+				break
+			}
+
+			let mut receiver = res.pop().expect("should return something");
+
+			// cannot resubmit
+			if let Ok(Some(env)) = receiver.try_recv() {
+				let xdr = env.to_base64_xdr();
+				let xdr = String::from_utf8(xdr.clone()).unwrap_or(format!("{xdr:?}"));
+
+				match env.sequence_number() {
+					None => tracing::error!(
+						"auto_check_running_tasks(): Failed to remove from cache: {xdr}"
+					),
+					Some(seq) => {
+						tracing::warn!(
+							"auto_check_running_tasks(): Cannot resubmit this envelope: {xdr}"
+						);
+						tracing::debug!("auto_check_running_tasks(): Removing from cache: {xdr}");
+						wallet.remove_tx_envelope_from_cache(seq);
+					},
+				}
+			}
+		}
+	});
+}
+
 #[cfg(test)]
 mod test {
 	use crate::{
@@ -317,12 +400,13 @@ mod test {
 	};
 	use mocktopus::mocking::{MockResult, Mockable};
 	use primitives::{
-		stellar::{Asset as StellarAsset, TransactionEnvelope, XdrCodec},
+		stellar::{types::AlphaNum4, Asset as StellarAsset, TransactionEnvelope, XdrCodec},
 		TransactionEnvelopeExt,
 	};
 	use serial_test::serial;
 
 	#[tokio::test]
+	#[serial]
 	async fn check_is_transaction_already_submitted() {
 		let wallet = wallet_with_storage("resources/check_is_transaction_already_submitted")
 			.expect("")
@@ -442,27 +526,15 @@ mod test {
 			.clone();
 		let wallet = wallet.write().await;
 
-		let asset = StellarAsset::native();
-		let amount = 1003;
-
 		let dummy_envelope = wallet
-			.create_payment_envelope(
-				default_destination(),
-				asset.clone(),
-				amount,
-				rand::random(),
-				DEFAULT_STROOP_FEE_PER_OPERATION,
-				1,
-			)
+			.create_dummy_envelope_no_signature(1003)
+			.await
 			.expect("should return an envelope");
 
 		// test handle_tx_bad_seq_error_with_envelope is success
 		{
 			StellarWallet::is_transaction_already_submitted
 				.mock_safe(move |_, _| MockResult::Return(Box::pin(async move { false })));
-
-			StellarWallet::bump_sequence_number_and_submit
-				.mock_safe(move |_, _| MockResult::Return(Box::pin(async move { Ok(()) })));
 
 			assert!(wallet
 				.handle_tx_bad_seq_error_with_envelope(dummy_envelope.clone())
@@ -487,7 +559,7 @@ mod test {
 	#[tokio::test]
 	#[serial]
 	async fn check_handle_tx_internal_error() {
-		let wallet = wallet_with_storage("resources/check_handle_tx_bad_seq_error_with_envelope")
+		let wallet = wallet_with_storage("resources/check_handle_tx_internal_error")
 			.expect("should return a wallet")
 			.clone();
 		let wallet = wallet.write().await;
@@ -533,68 +605,113 @@ mod test {
 
 	#[tokio::test]
 	#[serial]
-	async fn resubmit_transactions_works() {
-		let wallet = wallet_with_storage("resources/resubmit_transactions_works")
+	async fn check_handle_error() {
+		let wallet = wallet_with_storage("resources/check_handle_error")
 			.expect("should return a wallet")
 			.clone();
 		let wallet = wallet.write().await;
 
-		let asset = StellarAsset::native();
-		let amount = 1001;
+		// tx_bad_seq test
+		{
+			let envelope = wallet
+				.create_dummy_envelope_no_signature(1010)
+				.await
+				.expect("returns an envelope");
+			let envelope_xdr = envelope.to_base64_xdr();
+			let envelope_xdr = String::from_utf8(envelope_xdr).ok();
 
-		let seq_number = wallet.get_sequence().await.expect("should return a sequence");
+			// result is success
+			{
+				let error = Error::HorizonSubmissionError {
+					title: "title".to_string(),
+					status: 400,
+					reason: "tx_bad_seq".to_string(),
+					result_code_op: vec![],
+					envelope_xdr,
+				};
 
-		// creating a `tx_bad_seq` envelope.
-		let bad_request_id: [u8; 32] = rand::random();
-		let bad_envelope = wallet
-			.create_payment_envelope(
-				default_destination(),
-				asset.clone(),
-				amount,
-				bad_request_id,
-				DEFAULT_STROOP_FEE_PER_OPERATION,
-				seq_number + 5,
-			)
-			.expect("should return an envelope");
+				StellarWallet::is_transaction_already_submitted
+					.mock_safe(move |_, _| MockResult::Return(Box::pin(async move { false })));
 
-		// let's save this in storage
-		let _ = wallet.save_tx_envelope_to_cache(bad_envelope.clone()).expect("should save.");
-
-		// create a successful transaction
-		let good_request_id: [u8; 32] = rand::random();
-		let good_envelope = wallet
-			.create_payment_envelope(
-				default_destination(),
-				asset,
-				amount,
-				good_request_id,
-				DEFAULT_STROOP_FEE_PER_OPERATION,
-				seq_number + 1,
-			)
-			.expect("should return an envelope");
-
-		StellarWallet::is_transaction_already_submitted
-			.mock_safe(move |_, _| MockResult::Return(Box::pin(async move { false })));
-
-		// let's save this in storage
-		let _ = wallet.save_tx_envelope_to_cache(good_envelope.clone()).expect("should save");
-
-		// let's resubmit these 2 transactions
-		let x = wallet.resubmit_transactions_from_cache().await;
-
-		loop {
-			println!("start the loop");
-			pause_process_in_secs(30).await;
-			let mut res = x.write().await;
-
-			if res.is_empty() {
-				break
+				assert!(wallet.handle_error(error).await.is_ok());
 			}
 
-			let mut receiver = res.pop().expect("should return something");
+			// result is error
+			{
+				let error = Error::HorizonSubmissionError {
+					title: "title".to_string(),
+					status: 400,
+					reason: "tx_bad_seq".to_string(),
+					result_code_op: vec![],
+					envelope_xdr: None,
+				};
 
-			if let Err(_) = receiver.try_recv() {
-				res.push(receiver);
+				match wallet.handle_error(error).await {
+					Err(Error::ResubmissionError(_)) => assert!(true),
+					other => panic!("expecting Error::ResubmissionError, found: {other:?}"),
+				};
+			}
+		}
+
+		// tx_internal_error test
+		{
+			let envelope = wallet
+				.create_dummy_envelope_no_signature(1020)
+				.await
+				.expect("returns an envelope");
+			let envelope_xdr = envelope.to_base64_xdr();
+			let envelope_xdr = String::from_utf8(envelope_xdr).ok();
+
+			// result is success
+			{
+				let error = Error::HorizonSubmissionError {
+					title: "title".to_string(),
+					status: 400,
+					reason: "tx_internal_error".to_string(),
+					result_code_op: vec![],
+					envelope_xdr,
+				};
+
+				assert!(wallet.handle_error(error).await.is_ok());
+			}
+
+			// result is error
+			{
+				let error = Error::HorizonSubmissionError {
+					title: "title".to_string(),
+					status: 400,
+					reason: "tx_internal_error".to_string(),
+					result_code_op: vec![],
+					envelope_xdr: None,
+				};
+
+				match wallet.handle_error(error).await {
+					Err(Error::ResubmissionError(_)) => assert!(true),
+					other => panic!("expecting Error::ResubmissionError, found: {other:?}"),
+				};
+			}
+		}
+
+		// other error
+		{
+			let envelope = wallet
+				.create_dummy_envelope_no_signature(1010)
+				.await
+				.expect("returns an envelope");
+			let envelope_xdr = envelope.to_base64_xdr();
+			let envelope_xdr = String::from_utf8(envelope_xdr).ok();
+
+			let error = Error::HorizonSubmissionError {
+				title: "Transaction Failed".to_string(),
+				status: 400,
+				reason: "tx_bad_auth".to_string(),
+				result_code_op: vec![],
+				envelope_xdr,
+			};
+
+			match wallet.handle_error(error).await {
+				Ok(None) => assert!(true),
+				other => panic!("expect an Ok(None), found: {other:?}"),
 			}
 		}
 
@@ -602,81 +719,74 @@ mod test {
 	}
 
 	#[tokio::test]
-	async fn handle_error_for_tx_bad_seq() {
-		let wallet = wallet_with_storage("resources/handle_error_works")
+	#[serial]
+	async fn resubmit_transactions_works() {
+		let wallet = wallet_with_storage("resources/resubmit_transactions_works")
 			.expect("should return a wallet")
 			.clone();
-		let mut wallet = wallet.write().await;
+		let wallet = wallet.write().await;
 
-		// let's send a successful transaction first
-		let asset = StellarAsset::native();
-		let amount = 1001;
-		let request_id = [0u8; 32];
+		let seq_number = wallet.get_sequence().await.expect("should return a sequence");
 
-		let response = wallet
-			.send_payment_to_address(
-				default_destination(),
-				asset.clone(),
-				amount,
-				request_id,
-				DEFAULT_STROOP_FEE_PER_OPERATION,
-				false,
-			)
-			.await
-			.expect("should be ok");
+		let mut asset_code: [u8; 4] = [0; 4];
+		asset_code.copy_from_slice("EURO".as_bytes());
 
-		// get the sequence number of the previous one.
-		let env =
-			TransactionEnvelope::from_base64_xdr(response.envelope_xdr).expect("should convert ok");
-		let seq_number = env.sequence_number().expect("should return sequence number");
-
-		// creating a `tx_bad_seq` envelope.
-		let bad_request_id: [u8; 32] = rand::random();
+		// creating a bad envelope
 		let bad_envelope = wallet
-			.create_payment_envelope(
-				default_destination(),
-				asset.clone(),
-				amount,
-				bad_request_id,
+			.create_payment_envelope_no_signature(
+				wallet.public_key(),
+				StellarAsset::AssetTypeCreditAlphanum4(AlphaNum4 {
+					asset_code,
+					issuer: default_destination(),
+				}),
+				1001,
+				rand::random(),
 				DEFAULT_STROOP_FEE_PER_OPERATION,
-				seq_number,
+				seq_number + 2,
 			)
 			.expect("should return an envelope");
 
-		let Err(error) = wallet.submit_transaction(bad_envelope).await else {
-            println!("oh my, it passed");
-            panic!("failed!!");
+		// let's save this in storage
+		let _ = wallet.save_tx_envelope_to_cache(bad_envelope.clone()).expect("should save.");
 
-        };
+		// create a good envelope
+		let good_envelope = wallet
+			.create_payment_envelope(
+				default_destination(),
+				StellarAsset::native(),
+				1002,
+				rand::random(),
+				DEFAULT_STROOP_FEE_PER_OPERATION,
+				seq_number + 1,
+			)
+			.expect("should return an envelope");
 
-		println!("The wallet error: {error:?}");
+		// let's save this in storage
+		let _ = wallet.save_tx_envelope_to_cache(good_envelope.clone()).expect("should save.");
 
-		// Set this to false so that the wallet will try to resubmit the transaction.
 		StellarWallet::is_transaction_already_submitted
 			.mock_safe(move |_, _| MockResult::Return(Box::pin(async move { false })));
 
-		let result = wallet.handle_error(error).await;
+		// let's resubmit these 2 transactions
+		let tasks = wallet.resubmit_transactions_from_cache(false).await;
 
-		// We assume that the transaction was re-created and submitted successfully.
-		println!("AND THE RESULT IS: {result:?}");
-		assert!(result.is_ok());
+		println!("DONE WITH RESUBMISSION");
+		pause_process_in_secs(20).await;
+		loop {
+			let mut res = tasks.write().await;
 
-		// let response = result.unwrap();
-		// assert_eq!(response.successful, true);
-		//
-		// // Try to handle the same error but this time the transaction was already submitted.
-		// let submission_error = Error::HorizonSubmissionError {
-		//     title: "title".to_string(),
-		//     status: 400,
-		//     reason: "tx_bad_seq".to_string(),
-		//     envelope_xdr: envelope_xdr,
-		// };
-		//
-		// StellarWallet::is_transaction_already_submitted
-		//     .mock_safe(move |_, _| MockResult::Return(Box::pin(async move { true })));
-		//
-		// let result = wallet.handle_error(submission_error).await;
-		// assert!(result.is_err());
+			if res.is_empty() {
+				break
+			}
+
+			let mut receiver = res.pop().expect("should return something");
+
+			match receiver.try_recv() {
+				Ok(Some(actual_env)) => assert_eq!(actual_env, bad_envelope),
+				Ok(None) => assert!(false),
+				Err(_) => assert!(false),
+			}
+		}
 
 		wallet.remove_cache_dir();
 	}

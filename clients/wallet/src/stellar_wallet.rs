@@ -217,7 +217,7 @@ impl StellarWallet {
 		self.cache.get_tx_envelopes()
 	}
 
-	pub fn remove_tx_envelope_from_cache(&self, sequence: SequenceNumber) -> Result<(), Error> {
+	pub fn remove_tx_envelope_from_cache(&self, sequence: SequenceNumber) {
 		self.cache.remove_tx_envelope(sequence)
 	}
 

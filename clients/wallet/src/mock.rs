@@ -102,6 +102,21 @@ impl StellarWallet {
 
 		Ok(transaction.into_transaction_envelope())
 	}
+
+	pub async fn create_dummy_envelope_no_signature(
+		&self,
+		stroop_amount: StellarStroops,
+	) -> Result<TransactionEnvelope, Error> {
+		let sequence = self.get_sequence().await?;
+		self.create_payment_envelope_no_signature(
+			default_destination(),
+			StellarAsset::native(),
+			stroop_amount,
+			rand::random(),
+			DEFAULT_STROOP_FEE_PER_OPERATION,
+			sequence + 1,
+		)
+	}
 }
 
 pub fn wallet_with_storage(storage: &str) -> Result<Arc<RwLock<StellarWallet>>, Error> {

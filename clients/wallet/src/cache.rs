@@ -147,12 +147,15 @@ impl WalletStateStorage {
 	}
 
 	/// Removes a transaction from the local folder
-	pub fn remove_tx_envelope(&self, sequence: SequenceNumber) -> Result<(), Error> {
+	pub fn remove_tx_envelope(&self, sequence: SequenceNumber) {
 		let full_file_path = format!("{}/{sequence}", self.txs_inner_dir());
-		remove_file(&full_file_path).map_err(|e| {
-			tracing::error!("Failed to delete file: {:?}", e);
-			Error::cache_error_with_seq(CacheErrorKind::DeleteFileFailed, sequence)
-		})
+		match remove_file(&full_file_path) {
+			Ok(_) => tracing::debug!("remove_tx_envelope(): Deleted file with sequence {sequence}"),
+			Err(e) => tracing::error!(
+				"remove_tx_envelope(): Failed to delete file with sequence {sequence}: {e:?}"
+			)
+		}
+
 	}
 
 	#[allow(dead_code)]
@@ -477,10 +480,7 @@ mod test {
 		let actual_tx = new_storage.get_tx_envelope(sequence).expect("a tx should be found");
 		assert_eq!(actual_tx, expected_tx);
 
-		assert!(new_storage.remove_tx_envelope(sequence).is_ok());
-
-		// removing a tx again will return an error.
-		assert_error(new_storage.remove_tx_envelope(sequence), CacheErrorKind::DeleteFileFailed);
+		new_storage.remove_tx_envelope(sequence);
 
 		// let's remove the entire directory
 		new_storage.remove_dir();
