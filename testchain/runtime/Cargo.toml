@@ -60,6 +60,7 @@ fee = {path = "../../pallets/fee", default-features = false}
 issue = {path = "../../pallets/issue", default-features = false}
 nomination = {path = "../../pallets/nomination", default-features = false}
 oracle = {path = "../../pallets/oracle", default-features = false}
+pooled-rewards = {path = "../../pallets/pooled-rewards", default-features = false}
 redeem = {path = "../../pallets/redeem", default-features = false}
 replace = {path = "../../pallets/replace", default-features = false}
 reward = {path = "../../pallets/reward", default-features = false}
@@ -138,6 +139,7 @@ std = [
   "pallet-timestamp/std",
   "pallet-transaction-payment-rpc-runtime-api/std",
   "pallet-transaction-payment/std",
+  "pooled-rewards/std",
   "primitives/std",
   "redeem/std",
   "replace/std",

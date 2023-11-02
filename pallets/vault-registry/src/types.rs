@@ -16,7 +16,7 @@ use sp_runtime::{
 use currency::Amount;
 pub use primitives::{VaultCurrencyPair, VaultId};
 
-use crate::{ext, Config, Error, Pallet};
+use crate::{ext, pool_staking_manager, Config, Error, Pallet};
 
 #[derive(Debug, PartialEq, Eq)]
 pub enum CurrencySource<T: frame_system::Config + orml_tokens::Config> {
@@ -191,6 +191,10 @@ impl<
 	pub fn is_liquidated(&self) -> bool {
 		matches!(self.status, VaultStatus::Liquidated)
 	}
+
+	pub fn accepts_new_issues(&self) -> bool {
+		matches!(self.status, VaultStatus::Active(true))
+	}
 }
 
 pub type DefaultVault<T> = Vault<
@@ -327,32 +331,23 @@ impl<T: Config> RichVault<T> {
 	pub(crate) fn execute_issue_tokens(&mut self, tokens: &Amount<T>) -> DispatchResult {
 		self.decrease_to_be_issued(tokens)?;
 		self.increase_issued(tokens)?;
-		self.update_stake()
+		Ok(())
 	}
 
 	pub(crate) fn request_redeem_tokens(&mut self, tokens: &Amount<T>) -> DispatchResult {
 		self.increase_to_be_redeemed(tokens)?;
-		self.update_stake()
+		Ok(())
 	}
 
 	pub(crate) fn cancel_redeem_tokens(&mut self, tokens: &Amount<T>) -> DispatchResult {
 		self.decrease_to_be_redeemed(tokens)?;
-		self.update_stake()
+		Ok(())
 	}
 
 	pub(crate) fn execute_redeem_tokens(&mut self, tokens: &Amount<T>) -> DispatchResult {
 		// no need to update stake since these two token changes counteract the other's effect
 		self.decrease_to_be_redeemed(tokens)?;
 		self.decrease_issued(tokens)
-	}
-
-	fn update_stake(&self) -> DispatchResult {
-		if self.data.is_liquidated() {
-			Ok(())
-		} else {
-			let stake = self.freely_redeemable_tokens()?;
-			ext::reward::set_stake(&self.id(), &stake)
-		}
 	}
 
 	pub(crate) fn wrapped_currency(&self) -> CurrencyId<T> {
@@ -544,7 +539,12 @@ impl<T: Config> RichVault<T> {
 	pub(crate) fn slash_for_to_be_redeemed(&mut self, amount: &Amount<T>) -> DispatchResult {
 		let vault_id = self.id();
 		let collateral = self.get_vault_collateral()?.min(amount)?;
-		ext::staking::withdraw_stake::<T>(&vault_id, &vault_id.account_id, &collateral)?;
+		pool_staking_manager::PoolManager::withdraw_collateral(
+			&vault_id,
+			&vault_id.account_id,
+			&collateral,
+			None,
+		)?;
 		self.increase_liquidated_collateral(&collateral)?;
 		Ok(())
 	}
@@ -560,11 +560,17 @@ impl<T: Config> RichVault<T> {
 			.unwrap_or((amount.clone(), None));
 
 		// "slash" vault first
-		ext::staking::withdraw_stake::<T>(&vault_id, &vault_id.account_id, &to_withdraw)?;
+		pool_staking_manager::PoolManager::withdraw_collateral(
+			&vault_id,
+			&vault_id.account_id,
+			&to_withdraw,
+			None,
+		)?;
+
 		// take remainder from nominators
 		if let Some(to_slash) = to_slash {
 			ext::staking::slash_stake::<T>(&vault_id, &to_slash)?;
-		}
+		};
 
 		Pallet::<T>::transfer_funds(
 			CurrencySource::LiquidatedCollateral(self.id()),
@@ -620,8 +626,6 @@ impl<T: Config> RichVault<T> {
 		liquidation_vault.increase_to_be_redeemed(&self.to_be_redeemed_tokens())?;
 		// todo: clear replace collateral?
 		// withdraw stake from the reward pool
-
-		ext::reward::set_stake::<T>(&vault_id, &Amount::zero(vault_id.wrapped_currency()))?;
 
 		// Update vault: clear to_be_issued & issued_tokens, but don't touch to_be_redeemed
 		let _ = self.update(|v| {

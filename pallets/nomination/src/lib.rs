@@ -241,10 +241,12 @@ impl<T: Config> Pallet<T> {
 			ext::vault_registry::decrease_total_backing_collateral(&vault_id.currencies, &amount)?;
 		}
 
-		// withdraw all vault rewards first, to prevent the nominator from withdrawing past rewards
-		ext::fee::withdraw_all_vault_rewards::<T>(vault_id)?;
-		// withdraw `amount` of stake from the vault staking pool
-		ext::staking::withdraw_stake::<T>(vault_id, nominator_id, amount.amount(), Some(index))?;
+		ext::vault_registry::pool_manager::withdraw_collateral::<T>(
+			&vault_id,
+			&nominator_id,
+			&amount,
+			Some(index),
+		)?;
 		amount.unlock_on(&vault_id.account_id)?;
 		amount.transfer(&vault_id.account_id, nominator_id)?;
 
@@ -278,11 +280,12 @@ impl<T: Config> Pallet<T> {
 			Error::<T>::DepositViolatesMaxNominationRatio
 		);
 
-		// Withdraw all vault rewards first, to prevent the nominator from withdrawing past rewards
-		ext::fee::withdraw_all_vault_rewards::<T>(vault_id)?;
+		ext::vault_registry::pool_manager::deposit_collateral::<T>(
+			vault_id,
+			nominator_id,
+			&amount,
+		)?;
 
-		// Deposit `amount` of stake into the vault staking pool
-		ext::staking::deposit_stake::<T>(vault_id, nominator_id, amount.amount())?;
 		amount.transfer(nominator_id, &vault_id.account_id)?;
 		amount.lock_on(&vault_id.account_id)?;
 		ext::vault_registry::try_increase_total_backing_collateral(&vault_id.currencies, &amount)?;
@@ -319,7 +322,8 @@ impl<T: Config> Pallet<T> {
 			Error::<T>::CollateralizationTooLow
 		);
 
-		let refunded_collateral = ext::staking::force_refund::<T>(vault_id)?;
+		let refunded_collateral =
+			ext::vault_registry::pool_manager::kick_nominators::<T>(vault_id)?;
 
 		// Update the system-wide total backing collateral
 		let vault_currency_id = vault_id.collateral_currency();

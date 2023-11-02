@@ -35,6 +35,9 @@ primitives = {package = "spacewalk-primitives", path = "../../primitives", defau
 reward = {path = "../reward", default-features = false}
 security = {path = "../security", default-features = false}
 staking = {path = "../staking", default-features = false}
+reward-distribution = {path = "../reward-distribution", default-features = false}
+
+pooled-rewards = { path = "../pooled-rewards", default-features = false }
 
 # Orml dependencies
 orml-currencies = { git = "https://github.com/open-web3-stack/open-runtime-module-library", branch = "polkadot-v0.9.40", default-features = false }
@@ -76,6 +79,7 @@ std = [
   "frame-benchmarking/std",
   "pallet-balances/std",
   "pallet-timestamp/std",
+  "pooled-rewards/std",
   "orml-currencies/std",
   "orml-tokens/std",
   "orml-traits/std",

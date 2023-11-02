@@ -31,9 +31,9 @@ pub(crate) mod security {
 
 #[cfg_attr(test, mockable)]
 pub(crate) mod staking {
-	use frame_support::dispatch::{DispatchError, DispatchResult};
-
+	use crate::types::CurrencyId;
 	use currency::Amount;
+	use frame_support::dispatch::{DispatchError, DispatchResult};
 	use staking::Staking;
 
 	use crate::{types::BalanceOf, DefaultVaultId};
@@ -50,8 +50,9 @@ pub(crate) mod staking {
 		vault_id: &DefaultVaultId<T>,
 		nominator_id: &T::AccountId,
 		amount: &Amount<T>,
-	) -> DispatchResult {
-		T::VaultStaking::withdraw_stake(vault_id, nominator_id, amount.amount(), None)
+		index: Option<T::Index>,
+	) -> Result<(), DispatchError> {
+		T::VaultStaking::withdraw_stake(vault_id, nominator_id, amount.amount(), index)
 	}
 
 	pub fn slash_stake<T: crate::Config>(
@@ -73,14 +74,24 @@ pub(crate) mod staking {
 	) -> Result<BalanceOf<T>, DispatchError> {
 		T::VaultStaking::total_stake(vault_id)
 	}
+
+	pub fn force_refund<T: crate::Config>(
+		vault_id: &DefaultVaultId<T>,
+	) -> Result<BalanceOf<T>, DispatchError> {
+		T::VaultStaking::force_refund(vault_id)
+	}
+
+	pub fn add_reward_currency<T: crate::Config>(currency: CurrencyId<T>) -> DispatchResult {
+		T::VaultStaking::add_reward_currency(currency)
+	}
 }
 
 #[cfg_attr(test, mockable)]
-pub(crate) mod reward {
-	use frame_support::dispatch::DispatchError;
+pub(crate) mod pooled_rewards {
 
 	use currency::Amount;
-	use reward::Rewards;
+	use frame_support::dispatch::DispatchError;
+	use pooled_rewards::RewardsApi;
 
 	use crate::DefaultVaultId;
 
@@ -88,7 +99,7 @@ pub(crate) mod reward {
 		vault_id: &DefaultVaultId<T>,
 		amount: &Amount<T>,
 	) -> Result<(), DispatchError> {
-		T::VaultRewards::set_stake(vault_id, amount.amount(), amount.currency())
+		T::VaultRewards::set_stake(&vault_id.collateral_currency(), &vault_id, amount.amount())
 	}
 
 	#[allow(dead_code)]
@@ -96,6 +107,18 @@ pub(crate) mod reward {
 	pub fn get_stake<T: crate::Config>(
 		vault_id: &DefaultVaultId<T>,
 	) -> Result<crate::BalanceOf<T>, DispatchError> {
-		T::VaultRewards::get_stake(vault_id)
+		T::VaultRewards::get_stake(&vault_id.collateral_currency(), &vault_id)
+	}
+}
+
+#[cfg_attr(test, mockable)]
+pub(crate) mod reward_distribution {
+	use crate::DefaultVaultId;
+	use frame_support::pallet_prelude::DispatchResult;
+	use reward_distribution::DistributeRewards;
+	pub fn withdraw_all_rewards_from_vault<T: crate::Config>(
+		vault_id: &DefaultVaultId<T>,
+	) -> DispatchResult {
+		T::RewardDistribution::withdraw_all_rewards_from_vault(vault_id.clone())
 	}
 }

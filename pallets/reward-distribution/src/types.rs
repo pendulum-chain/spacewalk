@@ -1,6 +1,7 @@
 use crate::Config;
-use frame_support::traits::Currency;
+use currency::CurrencyId;
+use primitives::VaultId;
 
-pub type AccountIdOf<T> = <T as frame_system::Config>::AccountId;
+pub(crate) type BalanceOf<T> = <T as Config>::Balance;
 
-pub(crate) type BalanceOf<T> = <<T as Config>::Currency as Currency<AccountIdOf<T>>>::Balance;
+pub(crate) type DefaultVaultId<T> = VaultId<<T as frame_system::Config>::AccountId, CurrencyId<T>>;

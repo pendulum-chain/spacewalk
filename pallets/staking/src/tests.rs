@@ -22,7 +22,8 @@ fn reproduce_broken_state() {
         let f = |x: i128| {
             SignedFixedPoint::from_inner(x)
         };
-
+		assert_ok!(Staking::add_reward_currency(VAULT.wrapped_currency()));
+		assert_ok!(Staking::add_reward_currency(currency));
         // state at block 0x5aaf4dc2ca1a1043e2c37ba85a1d1487a0e4cc79d3beb30e6e646d2190223851
         RewardPerToken::<Test>::insert(currency, (0, VAULT), f(8328262397106661114));
         RewardTally::<Test>::insert(currency, (0, VAULT, account), f(594980318984627591665452302579139));
@@ -65,7 +66,6 @@ fn slash_stake_does_not_break_state() {
         let f = |x: i128| {
             SignedFixedPoint::from_inner(x)
         };
-
         // state at block 0x5aaf4dc2ca1a1043e2c37ba85a1d1487a0e4cc79d3beb30e6e646d2190223851
         RewardPerToken::<Test>::insert(currency, (0, VAULT), f(8328262397106661114));
         RewardTally::<Test>::insert(currency, (0, VAULT, account), f(594980318984627591665452302579139));
@@ -102,6 +102,8 @@ fn slash_stake_does_not_break_state() {
 #[test]
 fn should_stake_and_earn_rewards() {
 	run_test(|| {
+		assert_ok!(Staking::add_reward_currency(DEFAULT_WRAPPED_CURRENCY));
+
 		assert_ok!(Staking::deposit_stake(&VAULT, &ALICE.account_id, fixed!(50)));
 		assert_ok!(Staking::deposit_stake(&VAULT, &BOB.account_id, fixed!(50)));
 		assert_ok!(Staking::distribute_reward(DEFAULT_WRAPPED_CURRENCY, &VAULT, fixed!(100)));
@@ -127,7 +129,7 @@ fn continues_functioning_after_slash() {
 		// without the `apply_slash` in withdraw_rewards, the following sequence fails in the last
 		// step: [distribute_reward, slash_stake, withdraw_reward, distribute_reward,
 		// withdraw_reward]
-
+		assert_ok!(Staking::add_reward_currency(DEFAULT_WRAPPED_CURRENCY));
 		// step 1: initial (normal) flow
 		assert_ok!(Staking::deposit_stake(&VAULT, &ALICE.account_id, fixed!(50)));
 		assert_ok!(Staking::distribute_reward(DEFAULT_WRAPPED_CURRENCY, &VAULT, fixed!(10000)));
@@ -168,6 +170,7 @@ fn continues_functioning_after_slash() {
 #[test]
 fn should_stake_and_distribute_and_withdraw() {
 	run_test(|| {
+		assert_ok!(Staking::add_reward_currency(DEFAULT_WRAPPED_CURRENCY));
 		assert_ok!(Staking::deposit_stake(&VAULT, &ALICE.account_id, fixed!(10000)));
 		assert_ok!(Staking::deposit_stake(&VAULT, &BOB.account_id, fixed!(10000)));
 
@@ -218,6 +221,7 @@ fn should_stake_and_distribute_and_withdraw() {
 #[test]
 fn should_stake_and_withdraw_rewards() {
 	run_test(|| {
+		assert_ok!(Staking::add_reward_currency(DEFAULT_WRAPPED_CURRENCY));
 		assert_ok!(Staking::deposit_stake(&VAULT, &ALICE.account_id, fixed!(100)));
 		assert_ok!(Staking::distribute_reward(DEFAULT_WRAPPED_CURRENCY, &VAULT, fixed!(100)));
 		assert_ok!(
@@ -235,6 +239,7 @@ fn should_stake_and_withdraw_rewards() {
 #[test]
 fn should_not_withdraw_stake_if_balance_insufficient() {
 	run_test(|| {
+		assert_ok!(Staking::add_reward_currency(DEFAULT_WRAPPED_CURRENCY));
 		assert_ok!(Staking::deposit_stake(&VAULT, &ALICE.account_id, fixed!(100)));
 		assert_ok!(Staking::compute_stake(&VAULT, &ALICE.account_id), 100);
 		assert_err!(
@@ -247,6 +252,7 @@ fn should_not_withdraw_stake_if_balance_insufficient() {
 #[test]
 fn should_not_withdraw_stake_if_balance_insufficient_after_slashing() {
 	run_test(|| {
+		assert_ok!(Staking::add_reward_currency(DEFAULT_WRAPPED_CURRENCY));
 		assert_ok!(Staking::deposit_stake(&VAULT, &ALICE.account_id, fixed!(100)));
 		assert_ok!(Staking::compute_stake(&VAULT, &ALICE.account_id), 100);
 		assert_ok!(Staking::slash_stake(&VAULT, fixed!(100)));
@@ -262,6 +268,7 @@ fn should_not_withdraw_stake_if_balance_insufficient_after_slashing() {
 fn should_force_refund() {
 	run_test(|| {
 		let mut nonce = Staking::nonce(&VAULT);
+		assert_ok!(Staking::add_reward_currency(DEFAULT_WRAPPED_CURRENCY));
 		assert_ok!(Staking::deposit_stake(&VAULT, &VAULT.account_id, fixed!(100)));
 		assert_ok!(Staking::deposit_stake(&VAULT, &ALICE.account_id, fixed!(100)));
 		assert_ok!(Staking::slash_stake(&VAULT, fixed!(100)));
@@ -349,6 +356,7 @@ fn should_compute_stake_after_adjustments() {
 	// this replicates a failing integration test due to repeated
 	// deposits and slashing which led to incorrect stake
 	run_test(|| {
+		assert_ok!(Staking::add_reward_currency(DEFAULT_WRAPPED_CURRENCY));
 		assert_ok!(Staking::deposit_stake(&VAULT, &VAULT.account_id, fixed!(100)));
 		assert_ok!(Staking::deposit_stake(&VAULT, &VAULT.account_id, fixed!(1152923504604516976)));
 		assert_ok!(Staking::slash_stake(&VAULT, fixed!(1152923504604516976 + 100)));
