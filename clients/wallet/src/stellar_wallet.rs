@@ -19,7 +19,6 @@ use crate::{
 };
 
 use crate::{
-	error::CacheErrorKind,
 	horizon::{responses::TransactionsResponseIter, DEFAULT_PAGE_SIZE},
 	operations::{
 		create_basic_spacewalk_stellar_transaction, create_payment_operation, AppendExt,
@@ -217,8 +216,12 @@ impl StellarWallet {
 		self.cache.get_tx_envelopes()
 	}
 
-	pub fn remove_tx_envelope_from_cache(&self, sequence: SequenceNumber) {
-		self.cache.remove_tx_envelope(sequence)
+	pub fn remove_tx_envelope_from_cache(&self, tx_envelope: &TransactionEnvelope) {
+		if let Some(sequence) = tx_envelope.sequence_number() {
+			return self.cache.remove_tx_envelope(sequence)
+		}
+
+		tracing::warn!("remove_tx_envelope_from_cache(): cannot find sequence number in transaction envelope: {tx_envelope:?}");
 	}
 
 	pub fn save_tx_envelope_to_cache(&self, tx_envelope: TransactionEnvelope) -> Result<(), Error> {
@@ -235,11 +238,6 @@ impl StellarWallet {
 		&self,
 		envelope: TransactionEnvelope,
 	) -> Result<TransactionResponse, Error> {
-		let sequence = &envelope.sequence_number().ok_or(Error::cache_error_with_env(
-			CacheErrorKind::UnknownSequenceNumber,
-			envelope.clone(),
-		))?;
-
 		let _ = self.save_tx_envelope_to_cache(envelope.clone());
 
 		let submission_result = self
@@ -252,12 +250,12 @@ impl StellarWallet {
 			)
 			.await;
 
-		let _ = self.remove_tx_envelope_from_cache(*sequence);
+		let _ = self.remove_tx_envelope_from_cache(&envelope);
 
 		submission_result
 	}
 
-	pub(crate) fn sign_and_create_envelope(
+	pub(crate) fn create_and_sign_envelope(
 		&self,
 		tx: Transaction,
 	) -> Result<TransactionEnvelope, Error> {
@@ -300,7 +298,7 @@ impl StellarWallet {
 		transaction.append_multiple(operations)?;
 
 		// convert to envelope
-		self.sign_and_create_envelope(transaction)
+		self.create_and_sign_envelope(transaction)
 	}
 
 	/// Sends a 'Payment' transaction.
