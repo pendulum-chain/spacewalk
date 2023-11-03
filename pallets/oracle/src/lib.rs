@@ -6,6 +6,7 @@
 
 #[cfg(test)]
 extern crate mocktopus;
+
 #[cfg(feature = "testing-utils")]
 use frame_support::dispatch::DispatchResult;
 use frame_support::{dispatch::DispatchError, transactional};
@@ -32,6 +33,7 @@ mod ext;
 mod benchmarking;
 
 mod default_weights;
+
 #[cfg(test)]
 #[cfg_attr(test, cfg(feature = "testing-utils"))]
 mod tests;
@@ -40,10 +42,15 @@ mod tests;
 pub use dia_oracle::{CoinInfo, DiaOracle, PriceInfo};
 #[cfg(feature = "testing-utils")]
 pub use orml_oracle::{DataFeeder, DataProvider, TimestampedValue};
+#[cfg(feature = "testing-utils")]
+use spin::MutexGuard;
 
 #[cfg(test)]
 #[cfg_attr(test, cfg(feature = "testing-utils"))]
 pub mod mock;
+
+#[cfg(feature = "testing-utils")]
+pub mod testing_utils;
 
 pub mod types;
 
@@ -82,9 +89,9 @@ pub mod pallet {
 		>;
 
 		#[cfg(feature = "testing-utils")]
-		type DataFeedProvider: orml_oracle::DataFeeder<
+		type DataFeeder: testing_utils::DataFeederExtended<
 			OracleKey,
-			orml_oracle::TimestampedValue<Self::UnsignedFixedPoint, Self::Moment>,
+			TimestampedValue<Self::UnsignedFixedPoint, Self::Moment>,
 			Self::AccountId,
 		>;
 	}
@@ -234,7 +241,7 @@ impl<T: Config> Pallet<T> {
 
 	// public only for testing purposes
 	#[cfg(feature = "testing-utils")]
-	pub fn _feed_values(
+	pub fn feed_values(
 		oracle: T::AccountId,
 		values: Vec<(OracleKey, T::UnsignedFixedPoint)>,
 	) -> DispatchResult {
@@ -245,17 +252,31 @@ impl<T: Config> Pallet<T> {
 
 		let mut oracle_keys: Vec<_> = <OracleKeys<T>>::get();
 
-		for (k, v) in values {
+		for (key, value) in values {
 			let timestamped =
-				orml_oracle::TimestampedValue { timestamp: Self::get_current_time(), value: v };
-			T::DataFeedProvider::feed_value(oracle.clone(), k.clone(), timestamped)
+				orml_oracle::TimestampedValue { timestamp: Self::get_current_time(), value };
+			T::DataFeeder::feed_value(oracle.clone(), key.clone(), timestamped)
 				.expect("Expect store value by key");
-			if !oracle_keys.contains(&k) {
-				oracle_keys.push(k);
+			if !oracle_keys.contains(&key) {
+				oracle_keys.push(key);
 			}
 		}
 		<OracleKeys<T>>::put(oracle_keys.clone());
 		Ok(())
+	}
+
+	// public only for testing purposes
+	#[cfg(feature = "testing-utils")]
+	pub fn clear_values() -> DispatchResult {
+		use crate::testing_utils::DataFeederExtended;
+		T::DataFeeder::clear_all_values()
+	}
+
+	// public only for testing purposes
+	#[cfg(feature = "testing-utils")]
+	pub fn acquire_lock() -> MutexGuard<'static, ()> {
+		use crate::testing_utils::DataFeederExtended;
+		T::DataFeeder::acquire_lock()
 	}
 
 	/// Public getters
@@ -338,7 +359,7 @@ impl<T: Config> Pallet<T> {
 		exchange_rate: UnsignedFixedPoint<T>,
 	) -> DispatchResult {
 		use sp_std::vec;
-		frame_support::assert_ok!(Self::_feed_values(
+		frame_support::assert_ok!(Self::feed_values(
 			oracle,
 			vec![((OracleKey::ExchangeRate(currency_id)), exchange_rate)]
 		));

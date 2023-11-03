@@ -1,8 +1,11 @@
-name: Build binaries
+# This action triggers a GitLab CI job. The job first builds the project and then runs the tests.
+# If the latest merged commit contains the keyword "release:", the job will also try to create a new release on GitHub.
+# The release will be created with the tag "vX.Y.Z", where X.Y.Z is the version number of the `clients/vault` package.
+name: Test, Build and Release
 on:
   push:
     branches:
-      spacewalk-release
+      - 'main'
 
 jobs:
   build:
@@ -12,6 +15,6 @@ jobs:
       - name: trigger job
         uses: appleboy/gitlab-ci-action@master
         with:
-          url: "https://gitlab.com"
+          host: "https://gitlab.com"
           token: ${{ secrets.GITLABAPI }}
           project_id: 43970950

@@ -2,7 +2,7 @@
 authors = ["Pendulum"]
 edition = "2021"
 name = 'spacewalk-runtime-standalone'
-version = "1.2.0"
+version = "1.0.0"
 
 [package.metadata.docs.rs]
 targets = ['x86_64-unknown-linux-gnu']
@@ -14,7 +14,6 @@ scale-info = {version = "2.1.1", default-features = false, features = ["derive"]
 
 cfg-if = "1.0.0"
 lazy_static = "1.4.0"
-spin = { version = "0.9.4", features = ["mutex"] }
 
 # Substrate dependencies
 sp-api = {git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.40", default-features = false}

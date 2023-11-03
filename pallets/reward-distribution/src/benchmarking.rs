@@ -52,13 +52,13 @@ pub mod benchmarks {
 		.expect("error at deposit stake into pool rewards");
 		let _distributed = T::VaultRewards::distribute_reward(
 			&collateral_currency,
-			native_currency_id.clone(),
-			reward_to_distribute.clone().into(),
+			native_currency_id,
+			reward_to_distribute.into(),
 		)
 		.expect("error at distribute rewards");
 
 		#[extrinsic_call]
-		_(RawOrigin::Signed(nominator.clone()), vault_id, native_currency_id, None);
+		_(RawOrigin::Signed(nominator), vault_id, native_currency_id, None);
 	}
 
 	#[benchmark]
@@ -73,7 +73,7 @@ pub mod benchmarks {
 		let new_reward_per_block: u64 = 5;
 		RewardDistribution::<T>::set_reward_per_block(
 			RawOrigin::Root.into(),
-			new_reward_per_block.clone().into(),
+			new_reward_per_block.into(),
 		)
 		.expect("Could no set reward per block");
 		assert_eq!(RewardDistribution::<T>::reward_per_block(), Some(new_reward_per_block.into()));

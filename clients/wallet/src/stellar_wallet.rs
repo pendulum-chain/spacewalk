@@ -4,7 +4,8 @@ use std::{fmt::Formatter, sync::Arc};
 use primitives::stellar::{
 	network::{Network, PUBLIC_NETWORK, TEST_NETWORK},
 	types::SequenceNumber,
-	Asset as StellarAsset, Operation, PublicKey, SecretKey, TransactionEnvelope,
+	Asset as StellarAsset, Operation, PublicKey, SecretKey, StellarTypeToString,
+	TransactionEnvelope,
 };
 use tokio::sync::{oneshot, Mutex};
 
@@ -26,9 +27,7 @@ use crate::{
 	},
 	types::PagingToken,
 };
-use primitives::{
-	StellarPublicKeyRaw, StellarStroops, StellarTypeToString, TransactionEnvelopeExt,
-};
+use primitives::{StellarPublicKeyRaw, StellarStroops, TransactionEnvelopeExt};
 
 #[derive(Clone)]
 pub struct StellarWallet {

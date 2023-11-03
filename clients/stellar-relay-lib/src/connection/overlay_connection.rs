@@ -16,25 +16,16 @@ pub struct StellarOverlayConnection {
 	relay_message_receiver: mpsc::Receiver<StellarRelayMessage>,
 	local_node: NodeInfo,
 	conn_info: ConnectionInfo,
-	/// Maximum retries for reconnection
-	max_retries: u8,
 }
 
 impl StellarOverlayConnection {
 	fn new(
 		actions_sender: mpsc::Sender<ConnectorActions>,
 		relay_message_receiver: mpsc::Receiver<StellarRelayMessage>,
-		max_retries: u8,
 		local_node: NodeInfo,
 		conn_info: ConnectionInfo,
 	) -> Self {
-		StellarOverlayConnection {
-			actions_sender,
-			relay_message_receiver,
-			local_node,
-			conn_info,
-			max_retries,
-		}
+		StellarOverlayConnection { actions_sender, relay_message_receiver, local_node, conn_info }
 	}
 
 	pub async fn send(&self, message: StellarMessage) -> Result<(), Error> {
@@ -56,14 +47,9 @@ impl StellarOverlayConnection {
 	pub async fn listen(&mut self) -> Option<StellarRelayMessage> {
 		let res = self.relay_message_receiver.recv().await;
 
-		// Reconnection only when the maximum number of retries has not been reached.
-		if let Some(StellarRelayMessage::Timeout) = &res {
-			let mut retries = 0;
-			while retries < self.max_retries {
-				log::info!(
-					"Overlay Connection: timed out. Reconnecting to {:?}...",
-					&self.conn_info.address
-				);
+		match &res {
+			Some(StellarRelayMessage::Timeout) | Some(StellarRelayMessage::Error(_)) | None => {
+				log::info!("listen(): Reconnecting to {:?}...", &self.conn_info.address);
 
 				match StellarOverlayConnection::connect(
 					self.local_node.clone(),
@@ -72,26 +58,25 @@ impl StellarOverlayConnection {
 				.await
 				{
 					Ok(new_user) => {
-						self.max_retries = new_user.max_retries;
 						self.actions_sender = new_user.actions_sender;
 						self.relay_message_receiver = new_user.relay_message_receiver;
 						log::info!(
-							"Overlay Connection: reconnected to {:?}",
+							"listen(): overlay connection reconnected to {:?}",
 							&self.conn_info.address
 						);
 						return self.relay_message_receiver.recv().await
 					},
 					Err(e) => {
-						retries += 1;
 						log::error!(
-						"Overlay Connection: failed to reconnect: {e:?}\n # of retries left: {}. Retrying in 3 seconds...",
-						self.max_retries
-					);
+							"listen(): overlay connection failed to reconnect: {e:?}\n. Retrying in 3 seconds...",
+						);
 						tokio::time::sleep(Duration::from_secs(3)).await;
 					},
-				}
-			}
+				};
+			},
+			_ => {},
 		}
+
 		res
 	}
 
@@ -101,8 +86,7 @@ impl StellarOverlayConnection {
 		local_node: NodeInfo,
 		conn_info: ConnectionInfo,
 	) -> Result<StellarOverlayConnection, Error> {
-		log::info!("Connecting to: {}:{}", conn_info.address, conn_info.port);
-		log::trace!("Connecting to: {conn_info:?}");
+		log::info!("connect(): Connecting to: {conn_info:?}");
 
 		let retries = conn_info.retries;
 		let timeout_in_secs = conn_info.timeout_in_secs;
@@ -117,7 +101,6 @@ impl StellarOverlayConnection {
 		let overlay_connection = StellarOverlayConnection::new(
 			actions_sender.clone(),
 			relay_message_receiver,
-			conn_info.retries,
 			local_node,
 			conn_info,
 		);
@@ -150,7 +133,11 @@ mod test {
 		node::NodeInfo, ConnectionInfo, ConnectorActions, Error, StellarOverlayConnection,
 		StellarRelayMessage,
 	};
-	use substrate_stellar_sdk::{network::TEST_NETWORK, types::StellarMessage, SecretKey};
+	use substrate_stellar_sdk::{
+		network::TEST_NETWORK,
+		types::{MessageType, StellarMessage},
+		SecretKey,
+	};
 	use tokio::sync::mpsc;
 
 	fn create_node_and_conn() -> (NodeInfo, ConnectionInfo) {
@@ -169,13 +156,7 @@ mod test {
 		let (actions_sender, _) = mpsc::channel::<ConnectorActions>(1024);
 		let (_, relay_message_receiver) = mpsc::channel::<StellarRelayMessage>(1024);
 
-		StellarOverlayConnection::new(
-			actions_sender,
-			relay_message_receiver,
-			conn_info.retries,
-			node_info,
-			conn_info,
-		);
+		StellarOverlayConnection::new(actions_sender, relay_message_receiver, node_info, conn_info);
 	}
 
 	#[tokio::test]
@@ -189,7 +170,6 @@ mod test {
 		let overlay_connection = StellarOverlayConnection::new(
 			actions_sender.clone(),
 			relay_message_receiver,
-			conn_info.retries,
 			node_info,
 			conn_info,
 		);
@@ -219,13 +199,18 @@ mod test {
 		let mut overlay_connection = StellarOverlayConnection::new(
 			actions_sender.clone(),
 			relay_message_receiver,
-			conn_info.retries,
 			node_info,
 			conn_info,
 		);
-		let error_message = "error message".to_owned();
+
+		let expected_p_id = 2;
+		let expected_msg_type = MessageType::ErrorMsg;
 		relay_message_sender
-			.send(StellarRelayMessage::Error(error_message.clone()))
+			.send(StellarRelayMessage::Data {
+				p_id: expected_p_id,
+				msg_type: expected_msg_type,
+				msg: Box::new(StellarMessage::GetPeers),
+			})
 			.await
 			.expect("Stellar Relay message should be sent");
 
@@ -233,10 +218,13 @@ mod test {
 		let message = overlay_connection.listen().await.expect("Should receive some message");
 
 		//assert
-		if let StellarRelayMessage::Error(m) = message {
-			assert_eq!(m, error_message);
-		} else {
-			panic!("Incorrect stellar relay message type")
+		match message {
+			StellarRelayMessage::Data { p_id, msg_type, msg } => {
+				assert_eq!(p_id, expected_p_id);
+				assert_eq!(msg_type, expected_msg_type);
+				assert_eq!(msg, Box::new(StellarMessage::GetPeers))
+			},
+			_ => panic!("wrong relay message received"),
 		}
 	}
 

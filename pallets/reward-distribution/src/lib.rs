@@ -197,7 +197,6 @@ pub mod pallet {
 				&vault_id,
 				reward_currency_id,
 			)?;
-
 			ext::staking::distribute_reward::<T>(&vault_id, reward, reward_currency_id)?;
 
 			// We check if the amount to transfer is greater than of the existential deposit to
@@ -205,9 +204,9 @@ pub mod pallet {
 			let minimum_transfer_amount =
 				<T as orml_tokens::Config>::ExistentialDeposits::get(&reward_currency_id);
 			let expected_rewards =
-				ext::staking::compute_reward::<T>(&vault_id, &caller, reward_currency_id.clone())?;
+				ext::staking::compute_reward::<T>(&vault_id, &caller, reward_currency_id)?;
 
-			if expected_rewards == (BalanceOf::<T>::zero()) {
+			if expected_rewards == BalanceOf::<T>::zero() {
 				return Err(Error::<T>::NoRewardsForAccount.into())
 			}
 
@@ -218,6 +217,10 @@ pub mod pallet {
 			//withdraw the reward for specific nominator
 			let caller_rewards =
 				ext::staking::withdraw_reward::<T>(&vault_id, &caller, index, reward_currency_id)?;
+
+			if caller_rewards == (BalanceOf::<T>::zero()) {
+				return Err(Error::<T>::NoRewardsForAccount.into())
+			}
 
 			//transfer rewards
 			Self::transfer_reward(reward_currency_id, caller_rewards, caller)
@@ -265,8 +268,8 @@ impl<T: Config> Pallet<T> {
 			}
 			Ok(())
 		} else {
-			// We need no checking of available funds, since the fee pool will ALWAYS have enough
-			// collected fees of the wrapped currencies.
+			//we need no checking of available funds, since the fee pool will ALWAYS have enough
+			// collected fees of the wrapped currencies
 			let amount: currency::Amount<T> = Amount::new(reward, reward_currency_id);
 			amount.transfer(&Self::fee_pool_account_id(), &beneficiary)
 		}
@@ -337,7 +340,6 @@ impl<T: Config> Pallet<T> {
 			stakes_in_usd.push(stake_in_usd);
 			total_stake_in_usd = total_stake_in_usd.checked_add(&stake_in_usd).unwrap();
 		}
-
 		//distribute the rewards to each collateral pool
 		let mut error_reward_accum = BalanceOf::<T>::zero();
 		let mut stakes_in_usd_iter = stakes_in_usd.into_iter();

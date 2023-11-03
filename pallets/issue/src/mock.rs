@@ -1,6 +1,3 @@
-use std::cell::RefCell;
-
-pub use currency::{testing_constants::*, Amount};
 use frame_support::{
 	assert_ok, parameter_types,
 	traits::{ConstU32, ConstU64, Everything, GenesisBuild},
@@ -9,13 +6,13 @@ use frame_support::{
 use mocktopus::{macros::mockable, mocking::clear_mocks};
 use oracle::{
 	dia::DiaOracleAdapter,
-	oracle_mock::{Data, DataKey, MockConvertMoment, MockConvertPrice, MockOracleKeyConvertor},
-	CoinInfo, DataFeeder, DataProvider, DiaOracle, PriceInfo, TimestampedValue,
+	testing_utils::{
+		MockConvertMoment, MockConvertPrice, MockDataFeeder, MockDiaOracle, MockOracleKeyConvertor,
+	},
 };
 use orml_currencies::BasicCurrencyAdapter;
 use orml_traits::parameter_type_with_key;
-pub use primitives::CurrencyId;
-use primitives::{oracle::Key, AmountCompatibility, CurrencyId::XCM, VaultCurrencyPair, VaultId};
+use primitives::CurrencyId::XCM;
 use sp_arithmetic::{FixedI128, FixedPointNumber, FixedU128};
 use sp_core::H256;
 use sp_runtime::{
@@ -23,6 +20,16 @@ use sp_runtime::{
 	traits::{BlakeTwo256, Convert, IdentityLookup, One, Zero},
 	DispatchError, Perquintill,
 };
+
+pub use currency::{
+	testing_constants::{
+		DEFAULT_COLLATERAL_CURRENCY, DEFAULT_NATIVE_CURRENCY, DEFAULT_WRAPPED_CURRENCY,
+		DEFAULT_WRAPPED_CURRENCY_2, DEFAULT_WRAPPED_CURRENCY_3,
+	},
+	Amount,
+};
+pub use primitives::CurrencyId;
+use primitives::{AmountCompatibility, VaultCurrencyPair, VaultId};
 
 use crate as issue;
 use crate::{Config, Error};
@@ -259,6 +266,18 @@ impl security::Config for Test {
 	type RuntimeEvent = TestEvent;
 	type WeightInfo = ();
 }
+parameter_types! {
+	pub const MaxRewardCurrencies: u32= 10;
+}
+
+impl pooled_rewards::Config for Test {
+	type RuntimeEvent = TestEvent;
+	type SignedFixedPoint = SignedFixedPoint;
+	type PoolId = CurrencyId;
+	type PoolRewardsCurrencyId = CurrencyId;
+	type StakeId = VaultId<AccountId, CurrencyId>;
+	type MaxRewardCurrencies = MaxRewardCurrencies;
+}
 
 impl staking::Config for Test {
 	type RuntimeEvent = TestEvent;
@@ -278,9 +297,9 @@ impl oracle::Config for Test {
 		Moment,
 		MockOracleKeyConvertor,
 		MockConvertPrice,
-		MockConvertMoment,
+		MockConvertMoment<Moment>,
 	>;
-	type DataFeedProvider = DataCollector;
+	type DataFeeder = MockDataFeeder<AccountId, Moment>;
 }
 
 parameter_types! {
@@ -303,16 +322,14 @@ impl fee::Config for Test {
 }
 
 parameter_types! {
-	pub const MaxRewardCurrencies: u32= 10;
+	pub const MinimumPeriod: Moment = 5;
 }
 
-impl pooled_rewards::Config for Test {
-	type RuntimeEvent = TestEvent;
-	type SignedFixedPoint = SignedFixedPoint;
-	type PoolId = CurrencyId;
-	type PoolRewardsCurrencyId = CurrencyId;
-	type StakeId = VaultId<AccountId, CurrencyId>;
-	type MaxRewardCurrencies = MaxRewardCurrencies;
+impl pallet_timestamp::Config for Test {
+	type Moment = Moment;
+	type OnTimestampSet = ();
+	type MinimumPeriod = MinimumPeriod;
+	type WeightInfo = ();
 }
 
 parameter_types! {
@@ -338,6 +355,14 @@ impl oracle::OracleApi<Balance, CurrencyId> for OracleApiMock {
 		Ok(amount_in_usd)
 	}
 }
+pub struct BlockNumberToBalance;
+
+impl Convert<BlockNumber, Balance> for BlockNumberToBalance {
+	fn convert(a: BlockNumber) -> Balance {
+		a.into()
+	}
+}
+
 impl reward_distribution::Config for Test {
 	type RuntimeEvent = TestEvent;
 	type WeightInfo = reward_distribution::SubstrateWeight<Test>;
@@ -355,25 +380,6 @@ impl reward_distribution::Config for Test {
 impl nomination::Config for Test {
 	type RuntimeEvent = TestEvent;
 	type WeightInfo = nomination::SubstrateWeight<Test>;
-}
-
-parameter_types! {
-	pub const MinimumPeriod: Moment = 5;
-}
-
-impl pallet_timestamp::Config for Test {
-	type Moment = Moment;
-	type OnTimestampSet = ();
-	type MinimumPeriod = MinimumPeriod;
-	type WeightInfo = ();
-}
-
-pub struct BlockNumberToBalance;
-
-impl Convert<BlockNumber, Balance> for BlockNumberToBalance {
-	fn convert(a: BlockNumber) -> Balance {
-		a.into()
-	}
 }
 
 impl Config for Test {
@@ -570,76 +576,4 @@ where
 
 		test();
 	});
-}
-
-thread_local! {
-	static COINS: RefCell<std::collections::HashMap<DataKey, Data>> = RefCell::new(std::collections::HashMap::<DataKey, Data>::new());
-}
-
-pub struct MockDiaOracle;
-impl DiaOracle for MockDiaOracle {
-	fn get_coin_info(
-		blockchain: Vec<u8>,
-		symbol: Vec<u8>,
-	) -> Result<CoinInfo, sp_runtime::DispatchError> {
-		let key = (blockchain, symbol);
-		let data_key = DataKey { blockchain: key.0.clone(), symbol: key.1.clone() };
-		let mut result: Option<Data> = None;
-		COINS.with(|c| {
-			let r = c.borrow();
-
-			let hash_set = &*r;
-			let o = hash_set.get(&data_key);
-			match o {
-				Some(i) => result = Some(i.clone()),
-				None => {},
-			};
-		});
-		let Some(result) = result else {
-			return Err(sp_runtime::DispatchError::Other(""));
-		};
-		let mut coin_info = CoinInfo::default();
-		coin_info.price = result.price;
-		coin_info.last_update_timestamp = result.timestamp;
-
-		Ok(coin_info)
-	}
-
-	//Spacewalk DiaOracleAdapter does not use get_value function. There is no need to implement
-	// this function.
-	fn get_value(
-		_blockchain: Vec<u8>,
-		_symbol: Vec<u8>,
-	) -> Result<PriceInfo, sp_runtime::DispatchError> {
-		unimplemented!(
-			"DiaOracleAdapter implementation of DataProviderExtended does not use this function."
-		)
-	}
-}
-
-pub struct DataCollector;
-//DataFeeder required to implement DataProvider trait but there no need to implement get function
-impl DataProvider<Key, TimestampedValue<UnsignedFixedPoint, Moment>> for DataCollector {
-	fn get(_key: &Key) -> Option<TimestampedValue<UnsignedFixedPoint, Moment>> {
-		unimplemented!("Not required to implement DataProvider get function")
-	}
-}
-impl DataFeeder<Key, TimestampedValue<UnsignedFixedPoint, Moment>, AccountId> for DataCollector {
-	fn feed_value(
-		_who: AccountId,
-		key: Key,
-		value: TimestampedValue<UnsignedFixedPoint, Moment>,
-	) -> sp_runtime::DispatchResult {
-		let key = MockOracleKeyConvertor::convert(key).unwrap();
-		let r = value.value.into_inner();
-
-		let data_key = DataKey { blockchain: key.0.clone(), symbol: key.1.clone() };
-		let data = Data { key: data_key.clone(), price: r, timestamp: value.timestamp };
-
-		COINS.with(|coins| {
-			let mut r = coins.borrow_mut();
-			r.insert(data_key, data);
-		});
-		Ok(())
-	}
 }

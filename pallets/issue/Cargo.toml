@@ -36,7 +36,6 @@ vault-registry = { path = "../vault-registry", default-features = false }
 pooled-rewards = { path = "../pooled-rewards", default-features = false }
 reward-distribution = { path = "../reward-distribution", default-features = false }
 
-
 primitives = { package = "spacewalk-primitives", path = "../../primitives", default-features = false }
 
 # Orml dependencies

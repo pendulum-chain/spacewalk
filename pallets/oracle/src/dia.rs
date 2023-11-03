@@ -22,6 +22,12 @@ fn construct_fiat_usd_symbol_for_currency(base: Vec<u8>) -> Vec<u8> {
 	// In the future we might have to do this for other currencies as well
 	let base_currency = if base.to_ascii_uppercase().to_vec() == "USDC".as_bytes().to_vec() {
 		"USD".as_bytes().to_vec()
+	} else if base.to_ascii_uppercase().to_vec() == "EURC".as_bytes().to_vec() {
+		"EUR".as_bytes().to_vec()
+	} else if base.to_ascii_uppercase().to_vec() == "AUDD".as_bytes().to_vec() {
+		"AUD".as_bytes().to_vec()
+	} else if base.to_ascii_uppercase().to_vec() == "NGNC".as_bytes().to_vec() {
+		"NGN".as_bytes().to_vec()
 	} else {
 		// Ensure we use uppercase
 		remove_trailing_non_alphanum_bytes(&base.to_ascii_uppercase()).to_vec()
