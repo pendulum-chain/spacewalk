@@ -140,7 +140,7 @@ impl StellarWallet {
 	/// Returns:
 	/// * `TransactionResponse` for successful resubmission;
 	/// * None for errors that cannot be resubmitted;
-	/// * An error that can be resubmitted again
+	/// * An error that can potentially be resubmitted again
 	///
 	/// This function determines whether an error is up for resubmission or not:
 	/// `tx_bad_seq` or `SequenceNumberAlreadyUsed` can be resubmitted by updating the sequence
@@ -709,7 +709,7 @@ mod test {
 		// let's resubmit these 3 transactions
 		let _ = wallet.resubmit_transactions_from_cache().await;
 
-		// let's pause for awhile, to catch up with the
+		// let's pause for awhile, to catch up with the transactions that need resubmission
 		pause_process_in_secs(10).await;
 
 		loop {
