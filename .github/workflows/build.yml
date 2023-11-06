@@ -18,3 +18,4 @@ jobs:
           host: "https://gitlab.com"
           token: ${{ secrets.GITLABAPI }}
           project_id: 43970950
+          ref: development
