@@ -94,7 +94,7 @@ pub(crate) async fn interpret_response<T: DeserializeOwned>(
 					Error::HorizonSubmissionError {
 						title: title.to_string(),
 						status,
-						reason: format!("{result_code_tx}"),
+						reason: result_code_tx.to_string(),
 						result_code_op,
 						envelope_xdr: Some(envelope_xdr.to_string()),
 					}
