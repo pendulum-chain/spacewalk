@@ -439,7 +439,6 @@ async fn test_cancel_scheduler_succeeds() {
 							// Create two new blocks so that the current requests expire (since we
 							// set the periods to 1 before)
 							parachain_rpc.manual_seal().await;
-							sleep(Duration::from_secs(10)).await;
 							parachain_rpc.manual_seal().await;
 						},
 						assert_event::<CancelIssueEvent, _>(
