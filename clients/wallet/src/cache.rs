@@ -153,9 +153,8 @@ impl WalletStateStorage {
 			Ok(_) => tracing::debug!("remove_tx_envelope(): Deleted file with sequence {sequence}"),
 			Err(e) => tracing::error!(
 				"remove_tx_envelope(): Failed to delete file with sequence {sequence}: {e:?}"
-			)
+			),
 		}
-
 	}
 
 	#[allow(dead_code)]

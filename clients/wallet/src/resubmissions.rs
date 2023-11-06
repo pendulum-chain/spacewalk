@@ -266,11 +266,11 @@ impl StellarWallet {
 				// assume that we already submitted this transaction.
 				match response.source_account() {
 					// no source account was found; move on to the next response
-					Err(_)  => continue,
+					Err(_) => continue,
 					// the wallet's public key is not this response's source account;
 					// move on to the next response
 					Ok(source_account) if !source_account.eq(&own_public_key) => continue,
-					_ => {}
+					_ => {},
 				}
 
 				// Check that the transaction contains the memo that we want to send.

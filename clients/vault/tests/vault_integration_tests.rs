@@ -710,8 +710,8 @@ async fn test_automatic_issue_execution_succeeds() {
 			};
 
 			let wallet_read = vault_wallet.read().await;
-			let issue_filter =
-				IssueFilter::new(&wallet_read.public_key()).expect("Invalid filter");
+			let issue_filter = IssueFilter::new(&wallet_read.public_key()).expect("Invalid filter");
+
 			let slot_tx_env_map = Arc::new(RwLock::new(HashMap::new()));
 
 			let issue_set = Arc::new(RwLock::new(IssueRequestsMap::new()));
