@@ -12,7 +12,6 @@ use runtime::{
 use sp_keyring::AccountKeyring;
 use sp_runtime::traits::StaticLookup;
 use std::{sync::Arc, time::Duration};
-use tokio::sync::RwLockWriteGuard;
 use stellar_relay_lib::sdk::PublicKey;
 use vault::{oracle::OracleAgent, ArcRwLock};
 use wallet::error::Error;

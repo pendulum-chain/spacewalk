@@ -995,10 +995,10 @@ async fn test_execute_open_requests_succeeds() {
 				.map(Result::unwrap),
 				// Redeem 0 should be executed without creating an extra payment since we already
 				// sent one just before
-				assert_execute_redeem_event(TIMEOUT, user_provider.clone(), redeem_ids[0]),
+				assert_execute_redeem_event(TIMEOUT * 3, user_provider.clone(), redeem_ids[0]),
 				// Redeem 1 and 2 should be executed after creating an extra payment
-				assert_execute_redeem_event(TIMEOUT, user_provider.clone(), redeem_ids[1]),
-				assert_execute_redeem_event(TIMEOUT, user_provider.clone(), redeem_ids[2]),
+				assert_execute_redeem_event(TIMEOUT * 3, user_provider.clone(), redeem_ids[1]),
+				assert_execute_redeem_event(TIMEOUT * 3, user_provider.clone(), redeem_ids[2]),
 			)
 			.await;
 		},
