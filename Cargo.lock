@@ -2162,13 +2162,15 @@ dependencies = [
  "frame-support",
  "frame-system",
  "mocktopus",
+ "oracle",
  "orml-currencies",
  "orml-tokens",
  "orml-traits",
  "pallet-balances",
  "pallet-timestamp",
  "parity-scale-codec",
- "reward",
+ "pooled-rewards",
+ "reward-distribution",
  "scale-info",
  "security",
  "serde",
@@ -3485,7 +3487,9 @@ dependencies = [
  "pallet-balances",
  "pallet-timestamp",
  "parity-scale-codec",
+ "pooled-rewards",
  "reward",
+ "reward-distribution",
  "scale-info",
  "security",
  "serde",
@@ -5131,7 +5135,8 @@ dependencies = [
  "pallet-balances",
  "pallet-timestamp",
  "parity-scale-codec",
- "reward",
+ "pooled-rewards",
+ "reward-distribution",
  "scale-info",
  "security",
  "serde",
@@ -6050,6 +6055,29 @@ dependencies = [
 ]
 
 [[package]]
+name = "pooled-rewards"
+version = "1.0.0"
+dependencies = [
+ "currency",
+ "frame-benchmarking",
+ "frame-support",
+ "frame-system",
+ "log",
+ "mocktopus",
+ "pallet-timestamp",
+ "parity-scale-codec",
+ "rand 0.8.5",
+ "scale-info",
+ "serde",
+ "sp-arithmetic",
+ "sp-core",
+ "sp-io",
+ "sp-runtime",
+ "sp-std 5.0.0",
+ "spacewalk-primitives",
+]
+
+[[package]]
 name = "ppv-lite86"
 version = "0.2.17"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -6604,7 +6632,8 @@ dependencies = [
  "pallet-balances",
  "pallet-timestamp",
  "parity-scale-codec",
- "reward",
+ "pooled-rewards",
+ "reward-distribution",
  "scale-info",
  "security",
  "serde",
@@ -6764,7 +6793,8 @@ dependencies = [
  "pallet-balances",
  "pallet-timestamp",
  "parity-scale-codec",
- "reward",
+ "pooled-rewards",
+ "reward-distribution",
  "scale-info",
  "security",
  "serde",
@@ -6852,11 +6882,19 @@ dependencies = [
 name = "reward-distribution"
 version = "1.0.0"
 dependencies = [
+ "currency",
  "frame-benchmarking",
  "frame-support",
  "frame-system",
+ "log",
+ "mocktopus",
+ "oracle",
+ "orml-currencies",
+ "orml-tokens",
+ "orml-traits",
  "pallet-balances",
  "parity-scale-codec",
+ "pooled-rewards",
  "scale-info",
  "security",
  "serde",
@@ -6865,6 +6903,8 @@ dependencies = [
  "sp-io",
  "sp-runtime",
  "sp-std 5.0.0",
+ "spacewalk-primitives",
+ "staking",
 ]
 
 [[package]]
@@ -9668,6 +9708,7 @@ dependencies = [
  "pallet-transaction-payment",
  "pallet-transaction-payment-rpc-runtime-api",
  "parity-scale-codec",
+ "pooled-rewards",
  "pretty_assertions",
  "redeem",
  "replace",
@@ -11106,8 +11147,10 @@ dependencies = [
  "pallet-balances",
  "pallet-timestamp",
  "parity-scale-codec",
+ "pooled-rewards",
  "pretty_assertions",
  "reward",
+ "reward-distribution",
  "scale-info",
  "security",
  "serde",

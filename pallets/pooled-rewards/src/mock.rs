@@ -1,8 +1,4 @@
-use frame_support::{
-	parameter_types,
-	traits::{ConstU32, Everything},
-};
-use orml_traits::parameter_type_with_key;
+use frame_support::{parameter_types, traits::Everything};
 use sp_arithmetic::FixedI128;
 use sp_core::H256;
 use sp_runtime::{
@@ -12,11 +8,11 @@ use sp_runtime::{
 
 pub use currency::testing_constants::{
 	DEFAULT_COLLATERAL_CURRENCY, DEFAULT_NATIVE_CURRENCY, DEFAULT_WRAPPED_CURRENCY,
+	DEFAULT_WRAPPED_CURRENCY_2, DEFAULT_WRAPPED_CURRENCY_3, DEFAULT_WRAPPED_CURRENCY_4,
 };
-pub use primitives::CurrencyId;
-use primitives::{VaultCurrencyPair, VaultId};
+pub use primitives::{CurrencyId, VaultCurrencyPair, VaultId};
 
-use crate as staking;
+use crate as pooled_rewards;
 use crate::{Config, Error};
 
 type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Test>;
@@ -30,8 +26,7 @@ frame_support::construct_runtime!(
 		UncheckedExtrinsic = UncheckedExtrinsic,
 	{
 		System: frame_system::{Pallet, Call, Storage, Config, Event<T>},
-		Staking: staking::{Pallet, Call, Storage, Event<T>},
-		Tokens: orml_tokens::{Pallet, Call, Storage, Event<T>},
+		Reward: pooled_rewards::{Pallet, Call, Storage, Event<T>},
 	}
 );
 
@@ -39,11 +34,11 @@ pub type AccountId = u64;
 pub type BlockNumber = u64;
 pub type Index = u64;
 pub type SignedFixedPoint = FixedI128;
-pub type SignedInner = i128;
 
 parameter_types! {
 	pub const BlockHashCount: u64 = 250;
 	pub const SS58Prefix: u8 = 42;
+	pub const MaxRewardCurrencies: u32= 10;
 }
 
 impl frame_system::Config for Test {
@@ -75,80 +70,22 @@ impl frame_system::Config for Test {
 
 parameter_types! {
 	pub const GetNativeCurrencyId: CurrencyId = DEFAULT_NATIVE_CURRENCY;
-	pub const MaxRewardCurrencies: u32= 10;
 }
+
 impl Config for Test {
 	type RuntimeEvent = TestEvent;
-	type SignedInner = SignedInner;
 	type SignedFixedPoint = SignedFixedPoint;
-	type CurrencyId = CurrencyId;
-	type GetNativeCurrencyId = GetNativeCurrencyId;
+	type PoolId = CurrencyId;
+	type StakeId = AccountId;
+	type PoolRewardsCurrencyId = CurrencyId;
 	type MaxRewardCurrencies = MaxRewardCurrencies;
-}
-
-pub type Balance = u128;
-pub type RawAmount = i128;
-parameter_types! {
-	pub const MaxLocks: u32 = 50;
-}
-parameter_type_with_key! {
-	pub ExistentialDeposits: |_currency_id: CurrencyId| -> Balance {
-		0
-	};
-}
-
-pub struct CurrencyHooks<T>(sp_std::marker::PhantomData<T>);
-impl<T: orml_tokens::Config>
-	orml_traits::currency::MutationHooks<T::AccountId, T::CurrencyId, T::Balance> for CurrencyHooks<T>
-{
-	type OnDust = ();
-	type OnSlash = ();
-	type PreDeposit = ();
-	type PostDeposit = ();
-	type PreTransfer = ();
-	type PostTransfer = ();
-	type OnNewTokenAccount = ();
-	type OnKilledTokenAccount = ();
-}
-
-impl orml_tokens::Config for Test {
-	type RuntimeEvent = TestEvent;
-	type Balance = Balance;
-	type Amount = RawAmount;
-	type CurrencyId = CurrencyId;
-	type WeightInfo = ();
-	type ExistentialDeposits = ExistentialDeposits;
-	type CurrencyHooks = CurrencyHooks<Self>;
-	type MaxLocks = MaxLocks;
-	type MaxReserves = ConstU32<0>;
-	type ReserveIdentifier = ();
-	type DustRemovalWhitelist = Everything;
 }
 
 pub type TestEvent = RuntimeEvent;
 pub type TestError = Error<Test>;
 
-pub const VAULT: VaultId<AccountId, CurrencyId> = VaultId {
-	account_id: 1,
-	currencies: VaultCurrencyPair {
-		collateral: DEFAULT_COLLATERAL_CURRENCY,
-		wrapped: DEFAULT_WRAPPED_CURRENCY,
-	},
-};
-pub const ALICE: VaultId<AccountId, CurrencyId> = VaultId {
-	account_id: 2,
-	currencies: VaultCurrencyPair {
-		collateral: DEFAULT_COLLATERAL_CURRENCY,
-		wrapped: DEFAULT_WRAPPED_CURRENCY,
-	},
-};
-pub const BOB: VaultId<AccountId, CurrencyId> = VaultId {
-	account_id: 3,
-	currencies: VaultCurrencyPair {
-		collateral: DEFAULT_COLLATERAL_CURRENCY,
-		wrapped: DEFAULT_WRAPPED_CURRENCY,
-	},
-};
+pub const ALICE: AccountId = 1;
+pub const BOB: AccountId = 2;
 
 pub struct ExtBuilder;
 

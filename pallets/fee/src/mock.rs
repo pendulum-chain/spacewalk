@@ -1,6 +1,6 @@
 use frame_support::{
 	parameter_types,
-	traits::{ConstU32, Everything},
+	traits::{ConstU32, ConstU64, Everything},
 	PalletId,
 };
 use mocktopus::mocking::clear_mocks;
@@ -11,17 +11,16 @@ use sp_core::H256;
 use sp_runtime::{
 	testing::Header,
 	traits::{BlakeTwo256, IdentityLookup, Zero},
-	FixedPointNumber,
+	DispatchError, FixedPointNumber, Perquintill,
 };
 
+use crate as fee;
+use crate::{Config, Error};
 pub use currency::testing_constants::{
 	DEFAULT_COLLATERAL_CURRENCY, DEFAULT_NATIVE_CURRENCY, DEFAULT_WRAPPED_CURRENCY,
 };
 pub use primitives::CurrencyId;
 use primitives::VaultId;
-
-use crate as fee;
-use crate::{Config, Error};
 
 type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Test>;
 type Block = frame_system::mocking::MockBlock<Test>;
@@ -41,8 +40,9 @@ frame_support::construct_runtime!(
 		Tokens: orml_tokens::{Pallet, Storage, Config<T>, Event<T>},
 		Currencies: orml_currencies::{Pallet, Call},
 
-		Rewards: reward::{Pallet, Call, Storage, Event<T>},
+		Rewards: pooled_rewards::{Pallet, Call, Storage, Event<T>},
 		Staking: staking::{Pallet, Storage, Event<T>},
+		RewardDistribution: reward_distribution::{Pallet, Storage, Event<T>},
 
 		// Operational
 		Security: security::{Pallet, Call, Storage, Event<T>},
@@ -161,12 +161,17 @@ impl orml_tokens::Config for Test {
 	type DustRemovalWhitelist = Everything;
 }
 
-impl reward::Config for Test {
+parameter_types! {
+	pub const MaxRewardCurrencies: u32= 10;
+}
+
+impl pooled_rewards::Config for Test {
 	type RuntimeEvent = TestEvent;
 	type SignedFixedPoint = SignedFixedPoint;
-	type RewardId = VaultId<AccountId, CurrencyId>;
-	type CurrencyId = CurrencyId;
-	type GetNativeCurrencyId = GetNativeCurrencyId;
+	type PoolId = CurrencyId;
+	type PoolRewardsCurrencyId = CurrencyId;
+	type StakeId = VaultId<AccountId, CurrencyId>;
+	type MaxRewardCurrencies = MaxRewardCurrencies;
 }
 
 impl staking::Config for Test {
@@ -175,6 +180,7 @@ impl staking::Config for Test {
 	type SignedInner = SignedInner;
 	type CurrencyId = CurrencyId;
 	type GetNativeCurrencyId = GetNativeCurrencyId;
+	type MaxRewardCurrencies = MaxRewardCurrencies;
 }
 
 parameter_types! {
@@ -221,6 +227,39 @@ parameter_types! {
 	pub const MaxExpectedValue: UnsignedFixedPoint = UnsignedFixedPoint::from_inner(<UnsignedFixedPoint as FixedPointNumber>::DIV);
 }
 
+parameter_types! {
+	pub const DecayRate: Perquintill = Perquintill::from_percent(5);
+	pub const MaxCurrencies: u32 = 10;
+}
+
+pub struct OracleApiMock {}
+impl oracle::OracleApi<Balance, CurrencyId> for OracleApiMock {
+	fn currency_to_usd(
+		_amount: &Balance,
+		currency_id: &CurrencyId,
+	) -> Result<Balance, DispatchError> {
+		let native_currency = GetNativeCurrencyId::get();
+		match currency_id {
+			id if *id == native_currency => Ok(100),
+			_ => Ok(500),
+		}
+	}
+}
+
+impl reward_distribution::Config for Test {
+	type RuntimeEvent = TestEvent;
+	type WeightInfo = reward_distribution::SubstrateWeight<Test>;
+	type Balance = Balance;
+	type DecayInterval = ConstU64<100>;
+	type DecayRate = DecayRate;
+	type VaultRewards = Rewards;
+	type MaxCurrencies = MaxCurrencies;
+	type OracleApi = OracleApiMock;
+	type Balances = Balances;
+	type VaultStaking = Staking;
+	type FeePalletId = FeePalletId;
+}
+
 impl Config for Test {
 	type FeePalletId = FeePalletId;
 	type WeightInfo = fee::SubstrateWeight<Test>;
@@ -232,6 +271,7 @@ impl Config for Test {
 	type VaultStaking = Staking;
 	type OnSweep = ();
 	type MaxExpectedValue = MaxExpectedValue;
+	type RewardDistribution = RewardDistribution;
 }
 
 pub type TestEvent = RuntimeEvent;

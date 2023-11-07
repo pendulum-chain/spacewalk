@@ -303,14 +303,6 @@ impl pallet_balances::Config for Runtime {
 	type ReserveIdentifier = [u8; 8];
 }
 
-impl reward::Config for Runtime {
-	type RuntimeEvent = RuntimeEvent;
-	type SignedFixedPoint = SignedFixedPoint;
-	type RewardId = VaultId;
-	type CurrencyId = CurrencyId;
-	type GetNativeCurrencyId = GetNativeCurrencyId;
-}
-
 impl security::Config for Runtime {
 	type RuntimeEvent = RuntimeEvent;
 	type WeightInfo = security::SubstrateWeight<Runtime>;
@@ -344,6 +336,7 @@ impl staking::Config for Runtime {
 	type SignedInner = SignedInner;
 	type CurrencyId = CurrencyId;
 	type GetNativeCurrencyId = GetNativeCurrencyId;
+	type MaxRewardCurrencies = MaxRewardCurrencies;
 }
 
 pub type OrganizationId = u128;
@@ -560,6 +553,7 @@ impl fee::Config for Runtime {
 	type VaultStaking = VaultStaking;
 	type OnSweep = currency::SweepFunds<Runtime, FeeAccount>;
 	type MaxExpectedValue = MaxExpectedValue;
+	type RewardDistribution = RewardDistribution;
 }
 
 impl nomination::Config for Runtime {
@@ -576,14 +570,34 @@ impl clients_info::Config for Runtime {
 
 parameter_types! {
 	pub const DecayRate: Perquintill = Perquintill::from_percent(5);
+	pub const MaxCurrencies: u32 = 10;
 }
 
 impl reward_distribution::Config for Runtime {
 	type RuntimeEvent = RuntimeEvent;
 	type WeightInfo = reward_distribution::SubstrateWeight<Runtime>;
-	type Currency = Balances;
+	type Balance = Balance;
 	type DecayInterval = ConstU32<100>;
 	type DecayRate = DecayRate;
+	type VaultRewards = VaultRewards;
+	type MaxCurrencies = MaxCurrencies;
+	type OracleApi = Oracle;
+	type Balances = Balances;
+	type VaultStaking = VaultStaking;
+	type FeePalletId = FeePalletId;
+}
+
+parameter_types! {
+	pub const MaxRewardCurrencies: u32= 10;
+}
+
+impl pooled_rewards::Config for Runtime {
+	type RuntimeEvent = RuntimeEvent;
+	type SignedFixedPoint = SignedFixedPoint;
+	type PoolId = CurrencyId;
+	type PoolRewardsCurrencyId = CurrencyId;
+	type StakeId = VaultId;
+	type MaxRewardCurrencies = MaxRewardCurrencies;
 }
 
 construct_runtime! {
@@ -604,7 +618,7 @@ construct_runtime! {
 
 		StellarRelay: stellar_relay::{Pallet, Call, Config<T>, Storage, Event<T>} = 10,
 
-		VaultRewards: reward::{Pallet, Storage, Event<T>} = 15,
+		VaultRewards: pooled_rewards::{Pallet, Storage, Event<T>} = 15,
 		VaultStaking: staking::{Pallet, Storage, Event<T>} = 16,
 
 		Currency: currency::{Pallet} = 17,

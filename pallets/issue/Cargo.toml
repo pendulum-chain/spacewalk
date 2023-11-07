@@ -33,6 +33,8 @@ oracle = { path = "../oracle", default-features = false }
 security = { path = "../security", default-features = false }
 stellar-relay = { path = "../stellar-relay", default-features = false }
 vault-registry = { path = "../vault-registry", default-features = false }
+pooled-rewards = { path = "../pooled-rewards", default-features = false }
+reward-distribution = { path = "../reward-distribution", default-features = false }
 
 primitives = { package = "spacewalk-primitives", path = "../../primitives", default-features = false }
 
@@ -74,6 +76,7 @@ std = [
     "frame-benchmarking/std",
     "pallet-balances/std",
     "pallet-timestamp/std",
+    "pooled-rewards/std", 
     "currency/std",
     "fee/std",
     "oracle/std",
@@ -84,6 +87,7 @@ std = [
     "orml-currencies/std",
     "orml-tokens/std",
     "orml-traits/std",
+    "reward-distribution/std",
 ]
 runtime-benchmarks = [
     "frame-benchmarking",

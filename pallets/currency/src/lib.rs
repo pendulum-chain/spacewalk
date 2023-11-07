@@ -88,7 +88,8 @@ pub mod pallet {
 			+ FullCodec
 			+ Copy
 			+ Default
-			+ Debug;
+			+ Debug
+			+ From<u64>;
 
 		/// Relay chain currency e.g. DOT/KSM
 		#[pallet::constant]

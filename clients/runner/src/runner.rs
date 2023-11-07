@@ -724,9 +724,11 @@ mod tests {
 		let mock_bin_name = "vault-rococo".to_string();
 
 		let client_release = ClientRelease {
-			uri: "https://downloads.pendulumchain.tech/spacewalk/vault-rococo".to_string(),
+			uri:
+				"https://github.com/pendulum-chain/spacewalk/releases/download/v1.0.0/vault-rococo"
+					.to_string(),
 			checksum: H256::from_str(
-				&"0xd2bb3c10424183e65bd36dc964f7d225ba48c5b350558da7e477d22b3f2e9a38".to_string(),
+				&"0x82b24c352f709b10777b3a7da804dc4e15763afdcb4fb212862bdb73d6632d5e".to_string(),
 			)
 			.expect("checksum built from test file"),
 		};

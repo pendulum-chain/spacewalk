@@ -56,6 +56,11 @@ pub mod types;
 
 pub mod dia;
 
+pub mod oracle_api;
+pub use crate::oracle_api::*;
+#[cfg(feature = "testing-utils")]
+pub mod oracle_mock;
+
 #[frame_support::pallet]
 pub mod pallet {
 	use frame_support::pallet_prelude::*;

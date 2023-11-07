@@ -1,14 +1,20 @@
 [package]
 authors = ["Pendulum Chain <https://github.com/pendulum-chain>"]
-description = "Fee module"
+description = "Pooled Reward module"
 edition = "2021"
-name = "fee"
+name = "pooled-rewards"
 version = "1.0.0"
 
 [dependencies]
+log = { version = "0.4.17", default-features = false }
 serde = { version = "1.0.130", default-features = false, features = ["derive"], optional = true }
 codec = { package = "parity-scale-codec", version = "3.0.0", default-features = false, features = ["derive", "max-encoded-len"] }
 scale-info = { version = "2.0.0", default-features = false, features = ["derive"] }
+
+# Parachain dependencies
+primitives = { package = "spacewalk-primitives", path = "../../primitives", default-features = false }
+
+
 
 # Substrate dependencies
 sp-arithmetic = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.40", default-features = false }
@@ -16,41 +22,26 @@ sp-core = { git = "https://github.com/paritytech/substrate", branch = "polkadot-
 sp-io = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.40", default-features = false }
 sp-runtime = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.40", default-features = false }
 sp-std = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.40", default-features = false }
+currency = { path = "../currency", default-features = false, features = ["testing-constants"] }
 
 frame-support = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.40", default-features = false }
 frame-system = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.40", default-features = false }
 frame-benchmarking = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.40", default-features = false, optional = true }
-pallet-balances = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.40", default-features = false }
-
-# Parachain dependencies
-currency = { path = "../currency", default-features = false }
-security = { path = "../security", default-features = false }
-pooled-rewards = { path = "../pooled-rewards", default-features = false }
-staking = { path = "../staking", default-features = false }
-reward-distribution = { path = "../reward-distribution", default-features = false }
-oracle = { path = "../oracle", default-features = false }
-
-primitives = { package = "spacewalk-primitives", path = "../../primitives", default-features = false }
-
 
 [dev-dependencies]
 mocktopus = "0.8.0"
+rand = "0.8.3"
 frame-benchmarking = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.40", default-features = false }
 pallet-timestamp = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.40", default-features = false }
 currency = { path = "../currency", default-features = false, features = ["testing-constants"] }
-security = { path = "../security", features = ['testing-utils'] }
-
-# Orml dependencies
-orml-currencies = { git = "https://github.com/open-web3-stack/open-runtime-module-library", branch = "polkadot-v0.9.40", default-features = false }
-orml-tokens = { git = "https://github.com/open-web3-stack/open-runtime-module-library", branch = "polkadot-v0.9.40", default-features = false }
-orml-traits = { git = "https://github.com/open-web3-stack/open-runtime-module-library", branch = "polkadot-v0.9.40", default-features = false }
 
 [features]
 default = ["std"]
 std = [
     "serde",
     "codec/std",
-    "scale-info/std",
+    "currency/std",
+    "primitives/std",
     "sp-arithmetic/std",
     "sp-core/std",
     "sp-io/std",
@@ -59,21 +50,9 @@ std = [
     "frame-support/std",
     "frame-system/std",
     "frame-benchmarking/std",
-    "pallet-balances/std",
-    "currency/std",
-    "security/std",
-    "staking/std",
-    "primitives/std",
-    "pooled-rewards/std",
-    "orml-currencies/std",
-    "orml-tokens/std",
-    "orml-traits/std",
-    "reward-distribution/std",
-    "oracle/std",
 ]
 runtime-benchmarks = [
     "frame-benchmarking",
     "frame-support/runtime-benchmarks",
     "frame-system/runtime-benchmarks",
-    "currency/testing-constants"
 ]

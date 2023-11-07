@@ -28,8 +28,9 @@ security = { path = "../security", default-features = false }
 vault-registry = { path = "../vault-registry", default-features = false }
 fee = { path = "../fee", default-features = false }
 oracle = { path = "../oracle", default-features = false }
-reward = { path = "../reward", default-features = false }
+pooled-rewards = { path = "../pooled-rewards", default-features = false }
 staking = { path = "../staking", default-features = false }
+reward-distribution = { path = "../reward-distribution", default-features = false }
 
 primitives = { package = "spacewalk-primitives", path = "../../primitives", default-features = false }
 
@@ -69,13 +70,14 @@ std = [
     "security/std",
     "vault-registry/std",
     "fee/std",
-    "reward/std",
+    "pooled-rewards/std",
     "oracle/std",
     "staking/std",
     "primitives/std",
     "orml-currencies/std",
     "orml-tokens/std",
     "orml-traits/std",
+    "reward-distribution/std",
 ]
 runtime-benchmarks = [
     "frame-benchmarking",

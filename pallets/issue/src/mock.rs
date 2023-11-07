@@ -1,6 +1,6 @@
 use frame_support::{
 	assert_ok, parameter_types,
-	traits::{ConstU32, Everything, GenesisBuild},
+	traits::{ConstU32, ConstU64, Everything, GenesisBuild},
 	PalletId,
 };
 use mocktopus::{macros::mockable, mocking::clear_mocks};
@@ -11,6 +11,7 @@ use sp_core::H256;
 use sp_runtime::{
 	testing::{Header, TestXt},
 	traits::{BlakeTwo256, Convert, IdentityLookup, One, Zero},
+	DispatchError, Perquintill,
 };
 
 pub use currency::{
@@ -49,6 +50,8 @@ frame_support::construct_runtime!(
 		Balances: pallet_balances::{Pallet, Call, Storage, Config<T>, Event<T>},
 		Tokens: orml_tokens::{Pallet, Storage, Config<T>, Event<T>},
 		Currencies: orml_currencies::{Pallet, Call},
+		RewardDistribution: reward_distribution::{Pallet, Storage, Event<T>},
+		Rewards: pooled_rewards::{Pallet, Call, Storage, Event<T>},
 
 		// Operational
 		Currency: currency::{Pallet},
@@ -58,7 +61,6 @@ frame_support::construct_runtime!(
 		Oracle: oracle::{Pallet, Call, Config, Storage, Event<T>},
 		Fee: fee::{Pallet, Call, Config<T>, Storage},
 		Staking: staking::{Pallet, Storage, Event<T>},
-		Rewards: reward::{Pallet, Call, Storage, Event<T>},
 		VaultRegistry: vault_registry::{Pallet, Call, Config<T>, Storage, Event<T>},
 	}
 );
@@ -262,20 +264,13 @@ impl security::Config for Test {
 	type WeightInfo = ();
 }
 
-impl reward::Config for Test {
-	type RuntimeEvent = TestEvent;
-	type SignedFixedPoint = SignedFixedPoint;
-	type RewardId = VaultId<AccountId, CurrencyId>;
-	type CurrencyId = CurrencyId;
-	type GetNativeCurrencyId = GetNativeCurrencyId;
-}
-
 impl staking::Config for Test {
 	type RuntimeEvent = TestEvent;
 	type SignedFixedPoint = SignedFixedPoint;
 	type SignedInner = SignedInner;
 	type CurrencyId = CurrencyId;
 	type GetNativeCurrencyId = GetNativeCurrencyId;
+	type MaxRewardCurrencies = MaxRewardCurrencies;
 }
 
 impl oracle::Config for Test {
@@ -308,6 +303,53 @@ impl fee::Config for Test {
 	type VaultStaking = Staking;
 	type OnSweep = ();
 	type MaxExpectedValue = MaxExpectedValue;
+	type RewardDistribution = RewardDistribution;
+}
+
+parameter_types! {
+	pub const MaxRewardCurrencies: u32= 10;
+}
+
+impl pooled_rewards::Config for Test {
+	type RuntimeEvent = TestEvent;
+	type SignedFixedPoint = SignedFixedPoint;
+	type PoolId = CurrencyId;
+	type PoolRewardsCurrencyId = CurrencyId;
+	type StakeId = VaultId<AccountId, CurrencyId>;
+	type MaxRewardCurrencies = MaxRewardCurrencies;
+}
+
+parameter_types! {
+	pub const DecayRate: Perquintill = Perquintill::from_percent(5);
+	pub const MaxCurrencies: u32 = 10;
+}
+
+pub struct OracleApiMock {}
+impl oracle::OracleApi<Balance, CurrencyId> for OracleApiMock {
+	fn currency_to_usd(
+		_amount: &Balance,
+		currency_id: &CurrencyId,
+	) -> Result<Balance, DispatchError> {
+		let native_currency = GetNativeCurrencyId::get();
+		match currency_id {
+			id if *id == native_currency => Ok(100),
+			_ => Ok(500),
+		}
+	}
+}
+
+impl reward_distribution::Config for Test {
+	type RuntimeEvent = TestEvent;
+	type WeightInfo = reward_distribution::SubstrateWeight<Test>;
+	type Balance = Balance;
+	type DecayInterval = ConstU64<100>;
+	type DecayRate = DecayRate;
+	type VaultRewards = Rewards;
+	type MaxCurrencies = MaxCurrencies;
+	type OracleApi = OracleApiMock;
+	type Balances = Balances;
+	type VaultStaking = Staking;
+	type FeePalletId = FeePalletId;
 }
 
 parameter_types! {
