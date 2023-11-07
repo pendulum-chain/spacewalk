@@ -511,7 +511,7 @@
                       "fields": [
                         {
                           "type": 47,
-                          "typeName": "reward::Event<Runtime>"
+                          "typeName": "pooled_rewards::Event<Runtime>"
                         }
                       ],
                       "index": 15
@@ -2206,7 +2206,7 @@
             "id": 47,
             "type": {
               "path": [
-                "reward",
+                "pooled_rewards",
                 "pallet",
                 "Event"
               ],
@@ -2227,9 +2227,14 @@
                       "name": "DepositStake",
                       "fields": [
                         {
-                          "name": "reward_id",
+                          "name": "pool_id",
+                          "type": 39,
+                          "typeName": "T::PoolId"
+                        },
+                        {
+                          "name": "stake_id",
                           "type": 48,
-                          "typeName": "T::RewardId"
+                          "typeName": "T::StakeId"
                         },
                         {
                           "name": "amount",
@@ -2245,7 +2250,7 @@
                         {
                           "name": "currency_id",
                           "type": 39,
-                          "typeName": "T::CurrencyId"
+                          "typeName": "T::PoolRewardsCurrencyId"
                         },
                         {
                           "name": "amount",
@@ -2259,9 +2264,14 @@
                       "name": "WithdrawStake",
                       "fields": [
                         {
-                          "name": "reward_id",
+                          "name": "pool_id",
+                          "type": 39,
+                          "typeName": "T::PoolId"
+                        },
+                        {
+                          "name": "stake_id",
                           "type": 48,
-                          "typeName": "T::RewardId"
+                          "typeName": "T::StakeId"
                         },
                         {
                           "name": "amount",
@@ -2275,14 +2285,19 @@
                       "name": "WithdrawReward",
                       "fields": [
                         {
-                          "name": "reward_id",
+                          "name": "pool_id",
+                          "type": 39,
+                          "typeName": "T::PoolId"
+                        },
+                        {
+                          "name": "stake_id",
                           "type": 48,
-                          "typeName": "T::RewardId"
+                          "typeName": "T::StakeId"
                         },
                         {
                           "name": "currency_id",
                           "type": 39,
-                          "typeName": "T::CurrencyId"
+                          "typeName": "T::PoolRewardsCurrencyId"
                         },
                         {
                           "name": "amount",
@@ -8136,29 +8151,6 @@
                 "variant": {
                   "variants": [
                     {
-                      "name": "withdraw_rewards",
-                      "fields": [
-                        {
-                          "name": "vault_id",
-                          "type": 48,
-                          "typeName": "DefaultVaultId<T>"
-                        },
-                        {
-                          "name": "index",
-                          "type": 108,
-                          "typeName": "Option<T::Index>"
-                        }
-                      ],
-                      "index": 0,
-                      "docs": [
-                        "Withdraw all rewards from the `origin` account in the `vault_id` staking pool.",
-                        "",
-                        "# Arguments",
-                        "",
-                        "* `origin` - signing account"
-                      ]
-                    },
-                    {
                       "name": "set_issue_fee",
                       "fields": [
                         {
@@ -8606,6 +8598,30 @@
                       "index": 0,
                       "docs": [
                         "Sets the reward per block."
+                      ]
+                    },
+                    {
+                      "name": "collect_reward",
+                      "fields": [
+                        {
+                          "name": "vault_id",
+                          "type": 48,
+                          "typeName": "DefaultVaultId<T>"
+                        },
+                        {
+                          "name": "reward_currency_id",
+                          "type": 39,
+                          "typeName": "CurrencyId<T>"
+                        },
+                        {
+                          "name": "index",
+                          "type": 108,
+                          "typeName": "Option<T::Index>"
+                        }
+                      ],
+                      "index": 1,
+                      "docs": [
+                        "Allow users who have staked to collect rewards for a given vault and rewraded currency"
                       ]
                     }
                   ]
@@ -9446,7 +9462,7 @@
               "def": {
                 "tuple": [
                   39,
-                  48
+                  39
                 ]
               }
             }
@@ -9454,8 +9470,93 @@
           {
             "id": 174,
             "type": {
+              "def": {
+                "tuple": [
+                  39,
+                  48
+                ]
+              }
+            }
+          },
+          {
+            "id": 175,
+            "type": {
+              "def": {
+                "tuple": [
+                  39,
+                  174
+                ]
+              }
+            }
+          },
+          {
+            "id": 176,
+            "type": {
               "path": [
-                "reward",
+                "bounded_collections",
+                "bounded_btree_set",
+                "BoundedBTreeSet"
+              ],
+              "params": [
+                {
+                  "name": "T",
+                  "type": 39
+                },
+                {
+                  "name": "S",
+                  "type": null
+                }
+              ],
+              "def": {
+                "composite": {
+                  "fields": [
+                    {
+                      "type": 177,
+                      "typeName": "BTreeSet<T>"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          {
+            "id": 177,
+            "type": {
+              "path": [
+                "BTreeSet"
+              ],
+              "params": [
+                {
+                  "name": "T",
+                  "type": 39
+                }
+              ],
+              "def": {
+                "composite": {
+                  "fields": [
+                    {
+                      "type": 178
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          {
+            "id": 178,
+            "type": {
+              "def": {
+                "sequence": {
+                  "type": 39
+                }
+              }
+            }
+          },
+          {
+            "id": 179,
+            "type": {
+              "path": [
+                "pooled_rewards",
                 "pallet",
                 "Error"
               ],
@@ -9492,6 +9593,13 @@
                       "docs": [
                         "Cannot distribute rewards without stake."
                       ]
+                    },
+                    {
+                      "name": "MaxRewardCurrencies",
+                      "index": 3,
+                      "docs": [
+                        "Maximum rewards currencies reached."
+                      ]
                     }
                   ]
                 }
@@ -9502,7 +9610,7 @@
             }
           },
           {
-            "id": 175,
+            "id": 180,
             "type": {
               "def": {
                 "tuple": [
@@ -9513,40 +9621,7 @@
             }
           },
           {
-            "id": 176,
-            "type": {
-              "def": {
-                "tuple": [
-                  39,
-                  175
-                ]
-              }
-            }
-          },
-          {
-            "id": 177,
-            "type": {
-              "def": {
-                "tuple": [
-                  4,
-                  178
-                ]
-              }
-            }
-          },
-          {
-            "id": 178,
-            "type": {
-              "def": {
-                "tuple": [
-                  48,
-                  0
-                ]
-              }
-            }
-          },
-          {
-            "id": 179,
+            "id": 181,
             "type": {
               "def": {
                 "tuple": [
@@ -9557,7 +9632,40 @@
             }
           },
           {
-            "id": 180,
+            "id": 182,
+            "type": {
+              "def": {
+                "tuple": [
+                  4,
+                  183
+                ]
+              }
+            }
+          },
+          {
+            "id": 183,
+            "type": {
+              "def": {
+                "tuple": [
+                  48,
+                  0
+                ]
+              }
+            }
+          },
+          {
+            "id": 184,
+            "type": {
+              "def": {
+                "tuple": [
+                  39,
+                  185
+                ]
+              }
+            }
+          },
+          {
+            "id": 185,
             "type": {
               "def": {
                 "tuple": [
@@ -9569,7 +9677,7 @@
             }
           },
           {
-            "id": 181,
+            "id": 186,
             "type": {
               "path": [
                 "staking",
@@ -9605,6 +9713,13 @@
                       "docs": [
                         "Cannot slash zero total stake."
                       ]
+                    },
+                    {
+                      "name": "MaxRewardCurrencies",
+                      "index": 3,
+                      "docs": [
+                        "Max rewards currencies threshold"
+                      ]
                     }
                   ]
                 }
@@ -9615,7 +9730,7 @@
             }
           },
           {
-            "id": 182,
+            "id": 187,
             "type": {
               "path": [
                 "currency",
@@ -9664,7 +9779,7 @@
             }
           },
           {
-            "id": 183,
+            "id": 188,
             "type": {
               "path": [
                 "BTreeSet"
@@ -9687,7 +9802,7 @@
             }
           },
           {
-            "id": 184,
+            "id": 189,
             "type": {
               "path": [
                 "primitive_types",
@@ -9697,7 +9812,7 @@
                 "composite": {
                   "fields": [
                     {
-                      "type": 185,
+                      "type": 190,
                       "typeName": "[u64; 4]"
                     }
                   ]
@@ -9706,7 +9821,7 @@
             }
           },
           {
-            "id": 185,
+            "id": 190,
             "type": {
               "def": {
                 "array": {
@@ -9717,7 +9832,7 @@
             }
           },
           {
-            "id": 186,
+            "id": 191,
             "type": {
               "path": [
                 "security",
@@ -9749,7 +9864,7 @@
             }
           },
           {
-            "id": 187,
+            "id": 192,
             "type": {
               "path": [
                 "vault_registry",
@@ -9800,7 +9915,7 @@
             }
           },
           {
-            "id": 188,
+            "id": 193,
             "type": {
               "path": [
                 "vault_registry",
@@ -9893,7 +10008,7 @@
             }
           },
           {
-            "id": 189,
+            "id": 194,
             "type": {
               "path": [
                 "frame_support",
@@ -9912,7 +10027,7 @@
             }
           },
           {
-            "id": 190,
+            "id": 195,
             "type": {
               "path": [
                 "vault_registry",
@@ -10128,7 +10243,7 @@
             }
           },
           {
-            "id": 191,
+            "id": 196,
             "type": {
               "path": [
                 "oracle",
@@ -10148,7 +10263,7 @@
             }
           },
           {
-            "id": 192,
+            "id": 197,
             "type": {
               "path": [
                 "oracle",
@@ -10194,7 +10309,7 @@
             }
           },
           {
-            "id": 193,
+            "id": 198,
             "type": {
               "path": [
                 "spacewalk_primitives",
@@ -10269,7 +10384,7 @@
                     },
                     {
                       "name": "status",
-                      "type": 194,
+                      "type": 199,
                       "typeName": "IssueRequestStatus"
                     }
                   ]
@@ -10278,7 +10393,7 @@
             }
           },
           {
-            "id": 194,
+            "id": 199,
             "type": {
               "path": [
                 "spacewalk_primitives",
@@ -10306,7 +10421,7 @@
             }
           },
           {
-            "id": 195,
+            "id": 200,
             "type": {
               "path": [
                 "issue",
@@ -10387,7 +10502,7 @@
             }
           },
           {
-            "id": 196,
+            "id": 201,
             "type": {
               "path": [
                 "spacewalk_primitives",
@@ -10476,7 +10591,7 @@
             }
           },
           {
-            "id": 197,
+            "id": 202,
             "type": {
               "def": {
                 "tuple": [
@@ -10487,7 +10602,7 @@
             }
           },
           {
-            "id": 198,
+            "id": 203,
             "type": {
               "path": [
                 "redeem",
@@ -10589,7 +10704,7 @@
             }
           },
           {
-            "id": 199,
+            "id": 204,
             "type": {
               "path": [
                 "spacewalk_primitives",
@@ -10664,7 +10779,7 @@
                     },
                     {
                       "name": "status",
-                      "type": 200,
+                      "type": 205,
                       "typeName": "ReplaceRequestStatus"
                     }
                   ]
@@ -10673,7 +10788,7 @@
             }
           },
           {
-            "id": 200,
+            "id": 205,
             "type": {
               "path": [
                 "spacewalk_primitives",
@@ -10701,7 +10816,7 @@
             }
           },
           {
-            "id": 201,
+            "id": 206,
             "type": {
               "path": [
                 "replace",
@@ -10810,7 +10925,7 @@
             }
           },
           {
-            "id": 202,
+            "id": 207,
             "type": {
               "path": [
                 "fee",
@@ -10839,6 +10954,10 @@
                       "docs": [
                         "Value exceeds the expected upper bound for storage fields in this pallet."
                       ]
+                    },
+                    {
+                      "name": "Overflow",
+                      "index": 2
                     }
                   ]
                 }
@@ -10849,7 +10968,7 @@
             }
           },
           {
-            "id": 203,
+            "id": 208,
             "type": {
               "path": [
                 "nomination",
@@ -10923,7 +11042,7 @@
             }
           },
           {
-            "id": 204,
+            "id": 209,
             "type": {
               "path": [
                 "dia_oracle",
@@ -10949,7 +11068,7 @@
             }
           },
           {
-            "id": 205,
+            "id": 210,
             "type": {
               "path": [
                 "dia_oracle",
@@ -11044,7 +11163,7 @@
             }
           },
           {
-            "id": 206,
+            "id": 211,
             "type": {
               "path": [
                 "clients_info",
@@ -11077,7 +11196,7 @@
             }
           },
           {
-            "id": 207,
+            "id": 212,
             "type": {
               "path": [
                 "sp_arithmetic",
@@ -11097,7 +11216,7 @@
             }
           },
           {
-            "id": 208,
+            "id": 213,
             "type": {
               "path": [
                 "reward_distribution",
@@ -11111,7 +11230,53 @@
                 }
               ],
               "def": {
-                "variant": {}
+                "variant": {
+                  "variants": [
+                    {
+                      "name": "Overflow",
+                      "index": 0,
+                      "docs": [
+                        "Overflow"
+                      ]
+                    },
+                    {
+                      "name": "Underflow",
+                      "index": 1,
+                      "docs": [
+                        "Underflow"
+                      ]
+                    },
+                    {
+                      "name": "NoRewardsForAccount",
+                      "index": 2,
+                      "docs": [
+                        "Origin attempt to withdraw with 0 rewards"
+                      ]
+                    },
+                    {
+                      "name": "NotEnoughRewardsRegistered",
+                      "index": 3,
+                      "docs": [
+                        "Amount to be minted is more than total rewarded"
+                      ]
+                    },
+                    {
+                      "name": "InconsistentRewardCurrencies",
+                      "index": 4,
+                      "docs": [
+                        "If distribution logic reaches an inconsistency with the amount of currencies in the",
+                        "system"
+                      ]
+                    },
+                    {
+                      "name": "CollectAmountTooSmall",
+                      "index": 5,
+                      "docs": [
+                        "If the amount to collect is less than existential deposit"
+                      ]
+                    }
+                  ]
+                }
               },
               "docs": [
                 "\n\t\t\tCustom [dispatch errors](https://docs.substrate.io/main-docs/build/events-errors/)\n\t\t\tof this pallet.\n\t\t\t"
@@ -11119,7 +11284,7 @@
             }
           },
           {
-            "id": 209,
+            "id": 214,
             "type": {
               "path": [
                 "sp_runtime",
@@ -11138,11 +11303,11 @@
                 },
                 {
                   "name": "Signature",
-                  "type": 210
+                  "type": 215
                 },
                 {
                   "name": "Extra",
-                  "type": 214
+                  "type": 219
                 }
               ],
               "def": {
@@ -11157,7 +11322,7 @@
             }
           },
           {
-            "id": 210,
+            "id": 215,
             "type": {
               "path": [
                 "sp_runtime",
@@ -11180,7 +11345,7 @@
                       "name": "Sr25519",
                       "fields": [
                         {
-                          "type": 211,
+                          "type": 216,
                           "typeName": "sr25519::Signature"
                         }
                       ],
@@ -11190,7 +11355,7 @@
                       "name": "Ecdsa",
                       "fields": [
                         {
-                          "type": 212,
+                          "type": 217,
                           "typeName": "ecdsa::Signature"
                         }
                       ],
@@ -11202,7 +11367,7 @@
             }
           },
           {
-            "id": 211,
+            "id": 216,
             "type": {
               "path": [
                 "sp_core",
@@ -11222,7 +11387,7 @@
             }
           },
           {
-            "id": 212,
+            "id": 217,
             "type": {
               "path": [
                 "sp_core",
@@ -11233,7 +11398,7 @@
                 "composite": {
                   "fields": [
                     {
-                      "type": 213,
+                      "type": 218,
                       "typeName": "[u8; 65]"
                     }
                   ]
@@ -11242,7 +11407,7 @@
             }
           },
           {
-            "id": 213,
+            "id": 218,
             "type": {
               "def": {
                 "array": {
@@ -11253,23 +11418,23 @@
             }
           },
           {
-            "id": 214,
+            "id": 219,
             "type": {
               "def": {
                 "tuple": [
-                  215,
-                  216,
-                  217,
-                  218,
                   220,
                   221,
-                  222
+                  222,
+                  223,
+                  225,
+                  226,
+                  227
                 ]
               }
             }
           },
           {
-            "id": 215,
+            "id": 220,
             "type": {
               "path": [
                 "frame_system",
@@ -11289,7 +11454,7 @@
             }
           },
           {
-            "id": 216,
+            "id": 221,
             "type": {
               "path": [
                 "frame_system",
@@ -11309,7 +11474,7 @@
             }
           },
           {
-            "id": 217,
+            "id": 222,
             "type": {
               "path": [
                 "frame_system",
@@ -11329,7 +11494,7 @@
             }
           },
           {
-            "id": 218,
+            "id": 223,
             "type": {
               "path": [
                 "frame_system",
@@ -11347,7 +11512,7 @@
                 "composite": {
                   "fields": [
                     {
-                      "type": 219,
+                      "type": 224,
                       "typeName": "Era"
                     }
                   ]
@@ -11356,7 +11521,7 @@
             }
           },
           {
-            "id": 219,
+            "id": 224,
             "type": {
               "path": [
                 "sp_runtime",
@@ -13672,7 +13837,7 @@
             }
           },
           {
-            "id": 220,
+            "id": 225,
             "type": {
               "path": [
                 "frame_system",
@@ -13699,7 +13864,7 @@
             }
           },
           {
-            "id": 221,
+            "id": 226,
             "type": {
               "path": [
                 "frame_system",
@@ -13719,7 +13884,7 @@
             }
           },
           {
-            "id": 222,
+            "id": 227,
             "type": {
               "path": [
                 "pallet_transaction_payment",
@@ -13744,7 +13909,7 @@
             }
           },
           {
-            "id": 223,
+            "id": 228,
             "type": {
               "path": [
                 "spacewalk_runtime_standalone",
@@ -15590,7 +15755,13 @@
                 "name": "TotalStake",
                 "modifier": "Default",
                 "ty": {
-                  "Plain": 50
+                  "Map": {
+                    "hashers": [
+                      "Blake2_128Concat"
+                    ],
+                    "key": 39,
+                    "value": 50
+                  }
                 },
                 "default": [
                   0,
@@ -15655,9 +15826,10 @@
                 "ty": {
                   "Map": {
                     "hashers": [
+                      "Blake2_128Concat",
                       "Blake2_128Concat"
                     ],
-                    "key": 39,
+                    "key": 173,
                     "value": 50
                   }
                 },
@@ -15691,7 +15863,7 @@
                     "hashers": [
                       "Blake2_128Concat"
                     ],
-                    "key": 48,
+                    "key": 174,
                     "value": 50
                   }
                 },
@@ -15726,7 +15898,7 @@
                       "Blake2_128Concat",
                       "Blake2_128Concat"
                     ],
-                    "key": 173,
+                    "key": 175,
                     "value": 50
                   }
                 },
@@ -15751,6 +15923,25 @@
                 "docs": [
                   " Accounts for previous changes in stake size."
                 ]
+              },
+              {
+                "name": "RewardCurrencies",
+                "modifier": "Default",
+                "ty": {
+                  "Map": {
+                    "hashers": [
+                      "Blake2_128Concat"
+                    ],
+                    "key": 39,
+                    "value": 176
+                  }
+                },
+                "default": [
+                  0
+                ],
+                "docs": [
+                  " Track the currencies used for rewards."
+                ]
               }
             ]
           },
@@ -15760,16 +15951,21 @@
           },
           "constants": [
             {
-              "name": "GetNativeCurrencyId",
-              "ty": 39,
+              "name": "MaxRewardCurrencies",
+              "ty": 4,
               "value": [
+                10,
+                0,
+                0,
                 0
               ],
-              "docs": []
+              "docs": [
+                " The maximum number of reward currencies."
+              ]
             }
           ],
           "error": {
-            "ty": 174
+            "ty": 179
           },
           "index": 15
         },
@@ -15787,7 +15983,7 @@
                       "Blake2_128Concat",
                       "Blake2_128Concat"
                     ],
-                    "key": 175,
+                    "key": 180,
                     "value": 50
                   }
                 },
@@ -15822,7 +16018,7 @@
                       "Blake2_128Concat",
                       "Blake2_128Concat"
                     ],
-                    "key": 175,
+                    "key": 180,
                     "value": 50
                   }
                 },
@@ -15857,7 +16053,7 @@
                       "Blake2_128Concat",
                       "Blake2_128Concat"
                     ],
-                    "key": 176,
+                    "key": 181,
                     "value": 50
                   }
                 },
@@ -15893,7 +16089,7 @@
                       "Blake2_128Concat",
                       "Blake2_128Concat"
                     ],
-                    "key": 176,
+                    "key": 181,
                     "value": 50
                   }
                 },
@@ -15928,7 +16124,7 @@
                       "Blake2_128Concat",
                       "Blake2_128Concat"
                     ],
-                    "key": 175,
+                    "key": 180,
                     "value": 50
                   }
                 },
@@ -15963,7 +16159,7 @@
                       "Blake2_128Concat",
                       "Blake2_128Concat"
                     ],
-                    "key": 177,
+                    "key": 182,
                     "value": 50
                   }
                 },
@@ -15998,7 +16194,7 @@
                       "Blake2_128Concat",
                       "Blake2_128Concat"
                     ],
-                    "key": 179,
+                    "key": 184,
                     "value": 50
                   }
                 },
@@ -16033,7 +16229,7 @@
                       "Blake2_128Concat",
                       "Blake2_128Concat"
                     ],
-                    "key": 177,
+                    "key": 182,
                     "value": 50
                   }
                 },
@@ -16081,6 +16277,19 @@
                   " The nonce of the current staking pool, used in force refunds.",
                   " This is a strictly increasing value."
                 ]
+              },
+              {
+                "name": "RewardCurrencies",
+                "modifier": "Default",
+                "ty": {
+                  "Plain": 176
+                },
+                "default": [
+                  0
+                ],
+                "docs": [
+                  " store with all the reward currencies in use"
+                ]
               }
             ]
           },
@@ -16099,7 +16308,7 @@
             }
           ],
           "error": {
-            "ty": 181
+            "ty": 186
           },
           "index": 16
         },
@@ -16122,7 +16331,7 @@
             }
           ],
           "error": {
-            "ty": 182
+            "ty": 187
           },
           "index": 17
         },
@@ -16148,7 +16357,7 @@
                 "name": "Errors",
                 "modifier": "Default",
                 "ty": {
-                  "Plain": 183
+                  "Plain": 188
                 },
                 "default": [
                   0
@@ -16161,7 +16370,7 @@
                 "name": "Nonce",
                 "modifier": "Default",
                 "ty": {
-                  "Plain": 184
+                  "Plain": 189
                 },
                 "default": [
                   0,
@@ -16232,7 +16441,7 @@
           },
           "constants": [],
           "error": {
-            "ty": 186
+            "ty": 191
           },
           "index": 19
         },
@@ -16383,7 +16592,7 @@
                       "Blake2_128Concat"
                     ],
                     "key": 49,
-                    "value": 187
+                    "value": 192
                   }
                 },
                 "default": [
@@ -16400,7 +16609,7 @@
                       "Blake2_128Concat"
                     ],
                     "key": 48,
-                    "value": 188
+                    "value": 193
                   }
                 },
                 "default": [
@@ -16475,7 +16684,7 @@
           "constants": [
             {
               "name": "PalletId",
-              "ty": 189,
+              "ty": 194,
               "value": [
                 109,
                 111,
@@ -16503,7 +16712,7 @@
             }
           ],
           "error": {
-            "ty": 190
+            "ty": 195
           },
           "index": 21
         },
@@ -16547,7 +16756,7 @@
                 "name": "StorageVersion",
                 "modifier": "Default",
                 "ty": {
-                  "Plain": 191
+                  "Plain": 196
                 },
                 "default": [
                   0
@@ -16566,7 +16775,7 @@
           },
           "constants": [],
           "error": {
-            "ty": 192
+            "ty": 197
           },
           "index": 22
         },
@@ -16584,7 +16793,7 @@
                       "Blake2_128Concat"
                     ],
                     "key": 11,
-                    "value": 193
+                    "value": 198
                   }
                 },
                 "default": [
@@ -16734,7 +16943,7 @@
           },
           "constants": [],
           "error": {
-            "ty": 195
+            "ty": 200
           },
           "index": 23
         },
@@ -16771,7 +16980,7 @@
                       "Blake2_128Concat"
                     ],
                     "key": 11,
-                    "value": 196
+                    "value": 201
                   }
                 },
                 "default": [
@@ -16902,7 +17111,7 @@
                       "Blake2_128Concat"
                     ],
                     "key": 11,
-                    "value": 197
+                    "value": 202
                   }
                 },
                 "default": [
@@ -16920,7 +17129,7 @@
           },
           "constants": [],
           "error": {
-            "ty": 198
+            "ty": 203
           },
           "index": 24
         },
@@ -16938,7 +17147,7 @@
                       "Blake2_128Concat"
                     ],
                     "key": 11,
-                    "value": 199
+                    "value": 204
                   }
                 },
                 "default": [
@@ -17005,7 +17214,7 @@
           },
           "constants": [],
           "error": {
-            "ty": 201
+            "ty": 206
           },
           "index": 25
         },
@@ -17201,7 +17410,7 @@
           "constants": [
             {
               "name": "FeePalletId",
-              "ty": 189,
+              "ty": 194,
               "value": [
                 109,
                 111,
@@ -17243,7 +17452,7 @@
             }
           ],
           "error": {
-            "ty": 202
+            "ty": 207
           },
           "index": 26
         },
@@ -17294,7 +17503,7 @@
           },
           "constants": [],
           "error": {
-            "ty": 203
+            "ty": 208
           },
           "index": 28
         },
@@ -17330,7 +17539,7 @@
                     "hashers": [
                       "Blake2_128Concat"
                     ],
-                    "key": 204,
+                    "key": 209,
                     "value": 36
                   }
                 },
@@ -17360,7 +17569,7 @@
                     "hashers": [
                       "Blake2_128Concat"
                     ],
-                    "key": 204,
+                    "key": 209,
                     "value": 76
                   }
                 },
@@ -17423,7 +17632,7 @@
           },
           "constants": [],
           "error": {
-            "ty": 205
+            "ty": 210
           },
           "index": 29
         },
@@ -17526,7 +17735,7 @@
             }
           ],
           "error": {
-            "ty": 206
+            "ty": 211
           },
           "index": 30
         },
@@ -17557,7 +17766,22 @@
                 "default": [
                   0
                 ],
-                "docs": []
+                "docs": [
+                  " Last Block were rewards per block were modified"
+                ]
+              },
+              {
+                "name": "NativeLiability",
+                "modifier": "Optional",
+                "ty": {
+                  "Plain": 6
+                },
+                "default": [
+                  0
+                ],
+                "docs": [
+                  " Storage to keep track of the to-be-minted native rewards"
+                ]
               }
             ]
           },
@@ -17583,7 +17807,7 @@
             },
             {
               "name": "DecayRate",
-              "ty": 207,
+              "ty": 212,
               "value": [
                 0,
                 0,
@@ -17600,53 +17824,53 @@
             }
           ],
           "error": {
-            "ty": 208
+            "ty": 213
           },
           "index": 31
         }
       ],
       "extrinsic": {
-        "ty": 209,
+        "ty": 214,
         "version": 4,
         "signed_extensions": [
           {
             "identifier": "CheckSpecVersion",
-            "ty": 215,
+            "ty": 220,
             "additional_signed": 4
           },
           {
             "identifier": "CheckTxVersion",
-            "ty": 216,
+            "ty": 221,
             "additional_signed": 4
           },
           {
             "identifier": "CheckGenesis",
-            "ty": 217,
+            "ty": 222,
             "additional_signed": 11
           },
           {
             "identifier": "CheckMortality",
-            "ty": 218,
+            "ty": 223,
             "additional_signed": 11
           },
           {
             "identifier": "CheckNonce",
-            "ty": 220,
+            "ty": 225,
             "additional_signed": 36
           },
           {
             "identifier": "CheckWeight",
-            "ty": 221,
+            "ty": 226,
             "additional_signed": 36
           },
           {
             "identifier": "ChargeTransactionPayment",
-            "ty": 222,
+            "ty": 227,
             "additional_signed": 36
           }
         ]
       },
-      "ty": 223
+      "ty": 228
     }
   }
 ]
