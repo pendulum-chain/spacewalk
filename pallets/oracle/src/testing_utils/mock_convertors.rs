@@ -19,7 +19,10 @@ impl Convert<Key, Option<(Vec<u8>, Vec<u8>)>> for MockOracleKeyConvertor {
 					Some((vec![5u8], code.to_vec())),
 				CurrencyId::ZenlinkLPToken(token1_id, token1_type, token2_id, token2_type) =>
 					Some((vec![6u8], vec![token1_id, token1_type, token2_id, token2_type])),
-				CurrencyId::Token(_) => None,
+				CurrencyId::Token(token_symbol) => {
+					let token_symbol = token_symbol.to_be_bytes().to_vec();
+					Some((vec![7], token_symbol))
+				},
 			},
 		}
 	}
@@ -48,7 +51,11 @@ impl Convert<(Vec<u8>, Vec<u8>), Option<Key>> for MockOracleKeyConvertor {
 			6u8 => Some(Key::ExchangeRate(CurrencyId::ZenlinkLPToken(
 				symbol[0], symbol[1], symbol[2], symbol[3],
 			))),
-			7u8 => None,
+			7u8 => {
+				let symbol =
+					u64::from_be_bytes(symbol.try_into().expect("Failed to convert to u64"));
+				Some(Key::ExchangeRate(CurrencyId::Token(symbol)))
+			},
 			_ => None,
 		}
 	}
