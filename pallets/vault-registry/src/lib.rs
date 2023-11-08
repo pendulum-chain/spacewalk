@@ -1734,7 +1734,7 @@ impl<T: Config> Pallet<T> {
 		currency_pair: DefaultVaultCurrencyPair<T>,
 		threshold: UnsignedFixedPoint<T>,
 	) {
-		SecureCollateralThreshold::<T>::insert(currency_pair.clone(), threshold);
+		SecureCollateralThreshold::<T>::insert(currency_pair, threshold);
 	}
 
 	pub fn _set_premium_redeem_threshold(
