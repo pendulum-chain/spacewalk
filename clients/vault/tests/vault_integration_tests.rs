@@ -593,15 +593,15 @@ async fn test_issue_overpayment_succeeds() {
 
 			let transaction_response = send_payment_to_address(
 				user_wallet,
-					destination_public_key,
-					stellar_asset,
-					stroop_amount.try_into().unwrap(),
-					issue.issue_id.0,
-					300,
-					false,
-				)
-				.await
-				.expect("Sending payment failed");
+				destination_public_key,
+				stellar_asset,
+				stroop_amount.try_into().unwrap(),
+				issue.issue_id.0,
+				300,
+				false,
+			)
+			.await
+			.expect("Sending payment failed");
 
 			assert!(transaction_response.successful);
 
@@ -687,9 +687,9 @@ async fn test_automatic_issue_execution_succeeds() {
 					issue.issue_id.0,
 					300,
 					false,
-					)
-					.await
-					.expect("should return a result");
+				)
+				.await
+				.expect("should return a result");
 
 				tracing::warn!("Sent payment successfully: {:?}", result);
 
@@ -818,14 +818,14 @@ async fn test_automatic_issue_execution_succeeds_for_other_vault() {
 
 				let result = send_payment_to_address(
 					user_wallet,
-						destination_public_key,
-						stellar_asset,
-						stroop_amount,
-						issue.issue_id.0,
-						300,
-						false,
-					)
-					.await;
+					destination_public_key,
+					stellar_asset,
+					stroop_amount,
+					issue.issue_id.0,
+					300,
+					false,
+				)
+				.await;
 				assert!(result.is_ok());
 
 				tracing::info!("Sent payment to address. Ledger is {:?}", result.unwrap().ledger);
@@ -976,7 +976,8 @@ async fn test_execute_open_requests_succeeds() {
 					redeem_ids[0].0,
 					300,
 					false
-				).await
+				)
+				.await
 			);
 			// Sleep 3 seconds to give other thread some time to receive the RequestIssue event and
 			// add it to the set

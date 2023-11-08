@@ -1,7 +1,7 @@
 use crate::helper::DEFAULT_TESTING_CURRENCY;
 use async_trait::async_trait;
 use frame_support::assert_ok;
-use primitives::{CurrencyId, StellarStroops, H256, stellar::Asset as StellarAsset };
+use primitives::{stellar::Asset as StellarAsset, CurrencyId, StellarStroops, H256};
 use runtime::{
 	integration::{
 		assert_event, get_required_vault_collateral_for_issue, setup_provider, SubxtClient,
@@ -14,8 +14,7 @@ use sp_runtime::traits::StaticLookup;
 use std::{sync::Arc, time::Duration};
 use stellar_relay_lib::sdk::PublicKey;
 use vault::{oracle::OracleAgent, ArcRwLock};
-use wallet::error::Error;
-use wallet::{StellarWallet, TransactionResponse};
+use wallet::{error::Error, StellarWallet, TransactionResponse};
 
 pub fn default_destination() -> SecretKey {
 	SecretKey::from_encoding(crate::helper::DEFAULT_TESTNET_DEST_SECRET_KEY).expect("Should work")
@@ -112,19 +111,20 @@ pub async fn assert_execute_redeem_event(
 		.await
 }
 
-
 pub async fn send_payment_to_address(
-	wallet:ArcRwLock<StellarWallet>,
+	wallet: ArcRwLock<StellarWallet>,
 	destination_address: PublicKey,
 	asset: StellarAsset,
 	stroop_amount: StellarStroops,
 	request_id: [u8; 32],
 	stroop_fee_per_operation: u32,
 	is_payment_for_redeem_request: bool,
-) -> Result<TransactionResponse,Error> {
+) -> Result<TransactionResponse, Error> {
 	let response;
 	loop {
-		let result = wallet.write().await
+		let result = wallet
+			.write()
+			.await
 			.send_payment_to_address(
 				destination_address.clone(),
 				asset.clone(),
@@ -137,13 +137,12 @@ pub async fn send_payment_to_address(
 
 		match &result {
 			// if the error is `tx_bad_seq` perform the process again
-			Err(Error::HorizonSubmissionError { reason, .. }) if reason.contains("tx_bad_seq")  => {
-				continue
-			},
+			Err(Error::HorizonSubmissionError { reason, .. }) if reason.contains("tx_bad_seq") =>
+				continue,
 			_ => {
 				response = result;
-				break;
-			}
+				break
+			},
 		}
 	}
 
@@ -177,8 +176,10 @@ pub async fn assert_issue(
 		stroop_amount,
 		issue.issue_id.0,
 		300,
-		false
-	).await.expect("should return ok");
+		false,
+	)
+	.await
+	.expect("should return ok");
 
 	let slot = response.ledger as u64;
 
