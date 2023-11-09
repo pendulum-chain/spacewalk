@@ -495,6 +495,7 @@ pub enum CurrencyId {
 	XCM(u8),
 	Stellar(Asset),
 	ZenlinkLPToken(u8, u8, u8, u8),
+	Token(u64),
 }
 
 impl CurrencyId {
@@ -504,7 +505,10 @@ impl CurrencyId {
 		match self {
 			CurrencyId::Stellar(asset) => asset.decimals(),
 			// We assume that all other assets have 12 decimals
-			CurrencyId::Native | CurrencyId::XCM(_) | CurrencyId::ZenlinkLPToken(_, _, _, _) => 12,
+			CurrencyId::Native |
+			CurrencyId::XCM(_) |
+			CurrencyId::ZenlinkLPToken(_, _, _, _) |
+			CurrencyId::Token(_) => 12,
 		}
 	}
 
@@ -611,6 +615,7 @@ impl TryInto<stellar::Asset> for CurrencyId {
 				})),
 			Self::ZenlinkLPToken(_, _, _, _) =>
 				Err("Zenlink LP Token not defined in the Stellar world."),
+			Self::Token(_) => Err("Token not defined in the Stellar world."),
 		}
 	}
 }
@@ -652,6 +657,7 @@ impl fmt::Debug for CurrencyId {
 					token1_id, token1_type, token2_id, token2_type
 				)
 			},
+			Self::Token(id) => write!(f, "Token({})", id),
 		}
 	}
 }
