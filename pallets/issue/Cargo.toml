@@ -46,6 +46,7 @@ orml-traits = { git = "https://github.com/open-web3-stack/open-runtime-module-li
 [dev-dependencies]
 mocktopus = "0.8.0"
 frame-benchmarking = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.40" }
+nomination = {path = "../nomination", default-features = false}
 
 currency = { path = "../currency", features = ['testing-utils', 'testing-constants'] }
 reward = { path = "../reward" }
@@ -88,6 +89,7 @@ std = [
     "orml-tokens/std",
     "orml-traits/std",
     "reward-distribution/std",
+    "nomination/std"
 ]
 runtime-benchmarks = [
     "frame-benchmarking",

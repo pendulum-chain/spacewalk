@@ -4,8 +4,15 @@ use frame_support::{
 	PalletId,
 };
 use mocktopus::{macros::mockable, mocking::clear_mocks};
+use oracle::{
+	dia::DiaOracleAdapter,
+	testing_utils::{
+		MockConvertMoment, MockConvertPrice, MockDataFeeder, MockDiaOracle, MockOracleKeyConvertor,
+	},
+};
 use orml_currencies::BasicCurrencyAdapter;
 use orml_traits::parameter_type_with_key;
+use primitives::CurrencyId::XCM;
 use sp_arithmetic::{FixedI128, FixedPointNumber, FixedU128};
 use sp_core::H256;
 use sp_runtime::{
@@ -17,14 +24,9 @@ use sp_runtime::{
 pub use currency::{
 	testing_constants::{
 		DEFAULT_COLLATERAL_CURRENCY, DEFAULT_NATIVE_CURRENCY, DEFAULT_WRAPPED_CURRENCY,
+		DEFAULT_WRAPPED_CURRENCY_2, DEFAULT_WRAPPED_CURRENCY_3,
 	},
 	Amount,
-};
-use oracle::{
-	dia::DiaOracleAdapter,
-	testing_utils::{
-		MockConvertMoment, MockConvertPrice, MockDataFeeder, MockDiaOracle, MockOracleKeyConvertor,
-	},
 };
 pub use primitives::CurrencyId;
 use primitives::{AmountCompatibility, VaultCurrencyPair, VaultId};
@@ -61,6 +63,7 @@ frame_support::construct_runtime!(
 		Oracle: oracle::{Pallet, Call, Config, Storage, Event<T>},
 		Fee: fee::{Pallet, Call, Config<T>, Storage},
 		Staking: staking::{Pallet, Storage, Event<T>},
+		Nomination: nomination::{Pallet, Call, Config, Storage, Event<T>},
 		VaultRegistry: vault_registry::{Pallet, Call, Config<T>, Storage, Event<T>},
 	}
 );
@@ -263,6 +266,18 @@ impl security::Config for Test {
 	type RuntimeEvent = TestEvent;
 	type WeightInfo = ();
 }
+parameter_types! {
+	pub const MaxRewardCurrencies: u32= 10;
+}
+
+impl pooled_rewards::Config for Test {
+	type RuntimeEvent = TestEvent;
+	type SignedFixedPoint = SignedFixedPoint;
+	type PoolId = CurrencyId;
+	type PoolRewardsCurrencyId = CurrencyId;
+	type StakeId = VaultId<AccountId, CurrencyId>;
+	type MaxRewardCurrencies = MaxRewardCurrencies;
+}
 
 impl staking::Config for Test {
 	type RuntimeEvent = TestEvent;
@@ -307,16 +322,14 @@ impl fee::Config for Test {
 }
 
 parameter_types! {
-	pub const MaxRewardCurrencies: u32= 10;
+	pub const MinimumPeriod: Moment = 5;
 }
 
-impl pooled_rewards::Config for Test {
-	type RuntimeEvent = TestEvent;
-	type SignedFixedPoint = SignedFixedPoint;
-	type PoolId = CurrencyId;
-	type PoolRewardsCurrencyId = CurrencyId;
-	type StakeId = VaultId<AccountId, CurrencyId>;
-	type MaxRewardCurrencies = MaxRewardCurrencies;
+impl pallet_timestamp::Config for Test {
+	type Moment = Moment;
+	type OnTimestampSet = ();
+	type MinimumPeriod = MinimumPeriod;
+	type WeightInfo = ();
 }
 
 parameter_types! {
@@ -327,14 +340,26 @@ parameter_types! {
 pub struct OracleApiMock {}
 impl oracle::OracleApi<Balance, CurrencyId> for OracleApiMock {
 	fn currency_to_usd(
-		_amount: &Balance,
+		amount: &Balance,
 		currency_id: &CurrencyId,
 	) -> Result<Balance, DispatchError> {
-		let native_currency = GetNativeCurrencyId::get();
-		match currency_id {
-			id if *id == native_currency => Ok(100),
-			_ => Ok(500),
-		}
+		let _native_currency = GetNativeCurrencyId::get();
+		let amount_in_usd = match currency_id {
+			&XCM(0) => amount * 5,
+			&XCM(1) => amount * 10,
+			&XCM(2) => amount * 15,
+			&XCM(3) => amount * 20,
+			&XCM(4) => amount * 35,
+			_native_currency => amount * 3,
+		};
+		Ok(amount_in_usd)
+	}
+}
+pub struct BlockNumberToBalance;
+
+impl Convert<BlockNumber, Balance> for BlockNumberToBalance {
+	fn convert(a: BlockNumber) -> Balance {
+		a.into()
 	}
 }
 
@@ -352,23 +377,9 @@ impl reward_distribution::Config for Test {
 	type FeePalletId = FeePalletId;
 }
 
-parameter_types! {
-	pub const MinimumPeriod: Moment = 5;
-}
-
-impl pallet_timestamp::Config for Test {
-	type Moment = Moment;
-	type OnTimestampSet = ();
-	type MinimumPeriod = MinimumPeriod;
-	type WeightInfo = ();
-}
-
-pub struct BlockNumberToBalance;
-
-impl Convert<BlockNumber, Balance> for BlockNumberToBalance {
-	fn convert(a: BlockNumber) -> Balance {
-		a.into()
-	}
+impl nomination::Config for Test {
+	type RuntimeEvent = TestEvent;
+	type WeightInfo = nomination::SubstrateWeight<Test>;
 }
 
 impl Config for Test {
@@ -382,6 +393,9 @@ pub type TestError = Error<Test>;
 pub type VaultRegistryError = vault_registry::Error<Test>;
 
 pub const USER: AccountId = 1;
+pub const NOMINATOR1: AccountId = 11;
+pub const NOMINATOR2: AccountId = 12;
+pub const NOMINATOR_INIT_BALANCE: Balance = 10000;
 pub const VAULT: VaultId<AccountId, CurrencyId> = VaultId {
 	account_id: 2,
 	currencies: VaultCurrencyPair {
@@ -389,6 +403,43 @@ pub const VAULT: VaultId<AccountId, CurrencyId> = VaultId {
 		wrapped: DEFAULT_WRAPPED_CURRENCY,
 	},
 };
+pub const VAULT_2: VaultId<AccountId, CurrencyId> = VaultId {
+	account_id: 3,
+	currencies: VaultCurrencyPair {
+		collateral: DEFAULT_COLLATERAL_CURRENCY,
+		wrapped: DEFAULT_WRAPPED_CURRENCY_2,
+	},
+};
+
+pub const VAULT_3: VaultId<AccountId, CurrencyId> = VaultId {
+	account_id: 5,
+	currencies: VaultCurrencyPair { collateral: XCM(1), wrapped: DEFAULT_WRAPPED_CURRENCY_3 },
+};
+
+pub const VAULT_4: VaultId<AccountId, CurrencyId> = VaultId {
+	account_id: 6,
+	currencies: VaultCurrencyPair { collateral: XCM(1), wrapped: DEFAULT_WRAPPED_CURRENCY },
+};
+
+pub const VAULT_5: VaultId<AccountId, CurrencyId> = VaultId {
+	account_id: 7,
+	currencies: VaultCurrencyPair { collateral: XCM(2), wrapped: DEFAULT_WRAPPED_CURRENCY_2 },
+};
+
+const PAIR: VaultCurrencyPair<CurrencyId> = VaultCurrencyPair {
+	collateral: DEFAULT_COLLATERAL_CURRENCY,
+	wrapped: DEFAULT_WRAPPED_CURRENCY,
+};
+const PAIR_2: VaultCurrencyPair<CurrencyId> = VaultCurrencyPair {
+	collateral: DEFAULT_COLLATERAL_CURRENCY,
+	wrapped: DEFAULT_WRAPPED_CURRENCY_2,
+};
+const PAIR_3: VaultCurrencyPair<CurrencyId> =
+	VaultCurrencyPair { collateral: XCM(1), wrapped: DEFAULT_WRAPPED_CURRENCY_3 };
+const PAIR_4: VaultCurrencyPair<CurrencyId> =
+	VaultCurrencyPair { collateral: XCM(1), wrapped: DEFAULT_WRAPPED_CURRENCY };
+const PAIR_5: VaultCurrencyPair<CurrencyId> =
+	VaultCurrencyPair { collateral: XCM(2), wrapped: DEFAULT_WRAPPED_CURRENCY_2 };
 
 pub const ALICE_BALANCE: u128 = 1_000_000;
 pub const BOB_BALANCE: u128 = 1_000_000;
@@ -414,6 +465,12 @@ impl ExtBuilder {
 		.assimilate_storage(&mut storage)
 		.unwrap();
 
+		frame_support::traits::GenesisBuild::<Test>::assimilate_storage(
+			&nomination::GenesisConfig { is_nomination_enabled: true },
+			&mut storage,
+		)
+		.unwrap();
+
 		fee::GenesisConfig::<Test> {
 			issue_fee: UnsignedFixedPoint::checked_from_rational(5, 1000).unwrap(), // 0.5%
 			issue_griefing_collateral: UnsignedFixedPoint::checked_from_rational(5, 1_000_000_000)
@@ -434,26 +491,41 @@ impl ExtBuilder {
 		.assimilate_storage(&mut storage)
 		.unwrap();
 
-		const PAIR: VaultCurrencyPair<CurrencyId> = VaultCurrencyPair {
-			collateral: DEFAULT_COLLATERAL_CURRENCY,
-			wrapped: DEFAULT_WRAPPED_CURRENCY,
-		};
 		vault_registry::GenesisConfig::<Test> {
-			minimum_collateral_vault: vec![(DEFAULT_COLLATERAL_CURRENCY, 0)],
+			minimum_collateral_vault: vec![
+				(DEFAULT_COLLATERAL_CURRENCY, 0),
+				(XCM(1), 0),
+				(XCM(2), 0),
+			],
 			punishment_delay: 8,
-			system_collateral_ceiling: vec![(PAIR, 1_000_000_000_000)],
-			secure_collateral_threshold: vec![(
-				PAIR,
-				UnsignedFixedPoint::checked_from_rational(200, 100).unwrap(),
-			)],
-			premium_redeem_threshold: vec![(
-				PAIR,
-				UnsignedFixedPoint::checked_from_rational(120, 100).unwrap(),
-			)],
-			liquidation_collateral_threshold: vec![(
-				PAIR,
-				UnsignedFixedPoint::checked_from_rational(110, 100).unwrap(),
-			)],
+			system_collateral_ceiling: vec![
+				(PAIR, 1_000_000_000_000),
+				(PAIR_2, 1_000_000_000_000),
+				(PAIR_3, 1_000_000_000_000),
+				(PAIR_4, 1_000_000_000_000),
+				(PAIR_5, 1_000_000_000_000),
+			],
+			secure_collateral_threshold: vec![
+				(PAIR, UnsignedFixedPoint::checked_from_rational(200, 100).unwrap()),
+				(PAIR_2, UnsignedFixedPoint::checked_from_rational(200, 100).unwrap()),
+				(PAIR_3, UnsignedFixedPoint::checked_from_rational(200, 100).unwrap()),
+				(PAIR_4, UnsignedFixedPoint::checked_from_rational(200, 100).unwrap()),
+				(PAIR_5, UnsignedFixedPoint::checked_from_rational(200, 100).unwrap()),
+			],
+			premium_redeem_threshold: vec![
+				(PAIR, UnsignedFixedPoint::checked_from_rational(120, 100).unwrap()),
+				(PAIR_2, UnsignedFixedPoint::checked_from_rational(120, 100).unwrap()),
+				(PAIR_3, UnsignedFixedPoint::checked_from_rational(120, 100).unwrap()),
+				(PAIR_4, UnsignedFixedPoint::checked_from_rational(120, 100).unwrap()),
+				(PAIR_5, UnsignedFixedPoint::checked_from_rational(120, 100).unwrap()),
+			],
+			liquidation_collateral_threshold: vec![
+				(PAIR, UnsignedFixedPoint::checked_from_rational(110, 100).unwrap()),
+				(PAIR_2, UnsignedFixedPoint::checked_from_rational(110, 100).unwrap()),
+				(PAIR_3, UnsignedFixedPoint::checked_from_rational(110, 100).unwrap()),
+				(PAIR_4, UnsignedFixedPoint::checked_from_rational(110, 100).unwrap()),
+				(PAIR_5, UnsignedFixedPoint::checked_from_rational(110, 100).unwrap()),
+			],
 		}
 		.assimilate_storage(&mut storage)
 		.unwrap();
@@ -463,12 +535,18 @@ impl ExtBuilder {
 
 	pub fn build() -> sp_io::TestExternalities {
 		ExtBuilder::build_with(orml_tokens::GenesisConfig::<Test> {
-			balances: vec![DEFAULT_COLLATERAL_CURRENCY, DEFAULT_NATIVE_CURRENCY]
+			balances: vec![DEFAULT_COLLATERAL_CURRENCY, DEFAULT_NATIVE_CURRENCY, XCM(1), XCM(2)]
 				.into_iter()
 				.flat_map(|currency_id| {
 					vec![
 						(USER, currency_id, ALICE_BALANCE),
 						(VAULT.account_id, currency_id, BOB_BALANCE),
+						(VAULT_2.account_id, currency_id, BOB_BALANCE),
+						(VAULT_3.account_id, currency_id, BOB_BALANCE),
+						(VAULT_4.account_id, currency_id, BOB_BALANCE),
+						(VAULT_5.account_id, currency_id, BOB_BALANCE),
+						(NOMINATOR1, currency_id, NOMINATOR_INIT_BALANCE),
+						(NOMINATOR2, currency_id, NOMINATOR_INIT_BALANCE),
 					]
 				})
 				.collect(),

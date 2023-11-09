@@ -284,10 +284,6 @@ impl oracle::Config for Test {
 	type DataFeeder = MockDataFeeder<AccountId, Moment>;
 }
 
-parameter_types! {
-	pub const MaxRewardCurrencies: u32= 10;
-}
-
 impl pooled_rewards::Config for Test {
 	type RuntimeEvent = TestEvent;
 	type SignedFixedPoint = SignedFixedPoint;
@@ -295,11 +291,6 @@ impl pooled_rewards::Config for Test {
 	type PoolRewardsCurrencyId = CurrencyId;
 	type StakeId = VaultId<AccountId, CurrencyId>;
 	type MaxRewardCurrencies = MaxRewardCurrencies;
-}
-
-parameter_types! {
-	pub const DecayRate: Perquintill = Perquintill::from_percent(5);
-	pub const MaxCurrencies: u32 = 10;
 }
 
 pub struct OracleApiMock {}
@@ -328,6 +319,15 @@ impl reward_distribution::Config for Test {
 	type Balances = Balances;
 	type VaultStaking = Staking;
 	type FeePalletId = FeePalletId;
+}
+
+parameter_types! {
+	pub const MaxRewardCurrencies: u32= 10;
+}
+
+parameter_types! {
+	pub const DecayRate: Perquintill = Perquintill::from_percent(5);
+	pub const MaxCurrencies: u32 = 10;
 }
 
 impl Config for Test {

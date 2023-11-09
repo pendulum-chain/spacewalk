@@ -3480,6 +3480,7 @@ dependencies = [
  "hex",
  "log",
  "mocktopus",
+ "nomination",
  "oracle",
  "orml-currencies",
  "orml-tokens",
