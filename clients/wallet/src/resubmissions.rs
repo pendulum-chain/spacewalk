@@ -17,14 +17,13 @@ use tokio::time::sleep;
 #[cfg(test)]
 use mocktopus::macros::mockable;
 
-#[cfg(not(test))]
-const RESUBMISSION_INTERVAL_IN_SECS: u64 = 1800;
+pub const RESUBMISSION_INTERVAL_IN_SECS: u64 = 1800;
 
 const MAX_LOOK_BACK_PAGES: u8 = 10;
 
 #[cfg_attr(test, mockable)]
 impl StellarWallet {
-	pub async fn resubmit_transactions_from_cache(&self) {
+	pub async fn start_periodic_resubmission_of_transactions_from_cache(&self, interval_in_seconds: u64) {
 		// Perform the resubmission
 		self._resubmit_transactions_from_cache().await;
 
@@ -37,7 +36,7 @@ impl StellarWallet {
 			loop {
 				// Loops every 30 minutes or 1800 seconds
 				#[cfg(not(test))]
-				pause_process_in_secs(RESUBMISSION_INTERVAL_IN_SECS).await;
+				pause_process_in_secs(interval_in_seconds).await;
 
 				me_clone._resubmit_transactions_from_cache().await;
 			}
@@ -112,9 +111,6 @@ impl StellarWallet {
 		#[allow(unused_mut)] mut errors: Vec<(Error, TransactionEnvelope)>,
 	) {
 		while let Some((error, env)) = errors.pop() {
-			// pause process for 30 minutes
-			#[cfg(not(test))]
-			pause_process_in_secs(RESUBMISSION_INTERVAL_IN_SECS).await;
 
 			// handle the error
 			match self.handle_error(error).await {
@@ -126,7 +122,7 @@ impl StellarWallet {
 					errors.push((e, env));
 				},
 
-				// Resubmission failed for this Transaction Envelope
+				// Resubmission failed for this Transaction Envelope and it's a non-recoverable error
 				// Remove from cache
 				Ok(None) => self.remove_tx_envelope_from_cache(&env),
 
@@ -184,6 +180,7 @@ impl StellarWallet {
 		Ok(None)
 	}
 
+	// We encountered an unknown error and try submitting the transaction again as is
 	async fn handle_tx_internal_error(
 		&self,
 		envelope_xdr_as_str_opt: &Option<String>,
@@ -326,6 +323,7 @@ mod test {
 		TransactionEnvelopeExt,
 	};
 	use serial_test::serial;
+	use crate::resubmissions::RESUBMISSION_INTERVAL_IN_SECS;
 
 	#[tokio::test]
 	#[serial]
@@ -630,6 +628,7 @@ mod test {
 			};
 
 			match wallet.handle_error(error).await {
+				// `tx_bad_auth` is not recoverable so we expect `Ok(None)`
 				Ok(None) => assert!(true),
 				other => panic!("expect an Ok(None), found: {other:?}"),
 			}
@@ -707,9 +706,9 @@ mod test {
 			.mock_safe(move |_, _| MockResult::Return(Box::pin(async move { false })));
 
 		// let's resubmit these 3 transactions
-		let _ = wallet.resubmit_transactions_from_cache().await;
+		let _ = wallet.start_periodic_resubmission_of_transactions_from_cache(RESUBMISSION_INTERVAL_IN_SECS).await;
 
-		// let's pause for awhile, to catch up with the transactions that need resubmission
+		// We wait until the whole cache is empty because eventually all transactions should be handled
 		pause_process_in_secs(10).await;
 
 		loop {
