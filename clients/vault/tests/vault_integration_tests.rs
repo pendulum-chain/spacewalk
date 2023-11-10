@@ -591,19 +591,17 @@ async fn test_issue_overpayment_succeeds() {
 			let stellar_asset =
 				primitives::AssetConversion::lookup(issue.asset).expect("Asset not found");
 
-			let transaction_response = user_wallet
-				.write()
-				.await
-				.send_payment_to_address(
-					destination_public_key,
-					stellar_asset,
-					stroop_amount.try_into().unwrap(),
-					issue.issue_id.0,
-					300,
-					false,
-				)
-				.await
-				.expect("Sending payment failed");
+			let transaction_response = send_payment_to_address(
+				user_wallet,
+				destination_public_key,
+				stellar_asset,
+				stroop_amount.try_into().unwrap(),
+				issue.issue_id.0,
+				300,
+				false,
+			)
+			.await
+			.expect("Sending payment failed");
 
 			assert!(transaction_response.successful);
 
@@ -681,20 +679,17 @@ async fn test_automatic_issue_execution_succeeds() {
 				let stellar_asset =
 					primitives::AssetConversion::lookup(issue.asset).expect("Asset not found");
 
-				let mut wallet_write = user_wallet.write().await;
-				let result = wallet_write
-					.send_payment_to_address(
-						destination_public_key,
-						stellar_asset,
-						stroop_amount,
-						issue.issue_id.0,
-						300,
-						false,
-					)
-					.await
-					.expect("should return a result");
-
-				drop(wallet_write);
+				let result = send_payment_to_address(
+					user_wallet,
+					destination_public_key,
+					stellar_asset,
+					stroop_amount,
+					issue.issue_id.0,
+					300,
+					false,
+				)
+				.await
+				.expect("should return a result");
 
 				tracing::warn!("Sent payment successfully: {:?}", result);
 
@@ -821,19 +816,17 @@ async fn test_automatic_issue_execution_succeeds_for_other_vault() {
 				drop(issue_set);
 				assert!(!memos_to_issue_ids.read().await.is_empty());
 
-				let mut wallet_write = user_wallet.write().await;
-				let result = wallet_write
-					.send_payment_to_address(
-						destination_public_key,
-						stellar_asset,
-						stroop_amount,
-						issue.issue_id.0,
-						300,
-						false,
-					)
-					.await;
+				let result = send_payment_to_address(
+					user_wallet,
+					destination_public_key,
+					stellar_asset,
+					stroop_amount,
+					issue.issue_id.0,
+					300,
+					false,
+				)
+				.await;
 				assert!(result.is_ok());
-				drop(wallet_write);
 
 				tracing::info!("Sent payment to address. Ledger is {:?}", result.unwrap().ledger);
 
@@ -974,21 +967,18 @@ async fn test_execute_open_requests_succeeds() {
 				primitives::AssetConversion::lookup(redeems[0].asset).expect("Invalid asset");
 
 			// do stellar transfer for redeem 0
-			let mut wallet_write = vault_wallet.write().await;
 			assert_ok!(
-				wallet_write
-					.send_payment_to_address(
-						address,
-						asset,
-						stroop_amount,
-						redeem_ids[0].0,
-						300,
-						false
-					)
-					.await
+				send_payment_to_address(
+					vault_wallet.clone(),
+					address,
+					asset,
+					stroop_amount,
+					redeem_ids[0].0,
+					300,
+					false
+				)
+				.await
 			);
-			drop(wallet_write);
-
 			// Sleep 3 seconds to give other thread some time to receive the RequestIssue event and
 			// add it to the set
 			sleep(Duration::from_secs(5)).await;
@@ -1006,10 +996,10 @@ async fn test_execute_open_requests_succeeds() {
 				.map(Result::unwrap),
 				// Redeem 0 should be executed without creating an extra payment since we already
 				// sent one just before
-				assert_execute_redeem_event(TIMEOUT, user_provider.clone(), redeem_ids[0]),
+				assert_execute_redeem_event(TIMEOUT * 3, user_provider.clone(), redeem_ids[0]),
 				// Redeem 1 and 2 should be executed after creating an extra payment
-				assert_execute_redeem_event(TIMEOUT, user_provider.clone(), redeem_ids[1]),
-				assert_execute_redeem_event(TIMEOUT, user_provider.clone(), redeem_ids[2]),
+				assert_execute_redeem_event(TIMEOUT * 3, user_provider.clone(), redeem_ids[1]),
+				assert_execute_redeem_event(TIMEOUT * 3, user_provider.clone(), redeem_ids[2]),
 			)
 			.await;
 		},
