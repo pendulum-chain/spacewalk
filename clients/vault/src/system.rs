@@ -24,7 +24,7 @@ use runtime::{
 };
 use service::{wait_or_shutdown, Error as ServiceError, MonitoringConfig, Service};
 use stellar_relay_lib::{sdk::PublicKey, StellarOverlayConfig};
-use wallet::{LedgerTxEnvMap, RESUBMISSION_INTERVAL_IN_SECS, StellarWallet};
+use wallet::{LedgerTxEnvMap, StellarWallet, RESUBMISSION_INTERVAL_IN_SECS};
 
 use crate::{
 	cancellation::ReplaceCanceller,
@@ -763,7 +763,9 @@ impl VaultService {
 		let is_public_network = wallet.is_public_network();
 
 		// re-submit transactions in the cache
-		wallet.start_periodic_resubmission_of_transactions_from_cache(RESUBMISSION_INTERVAL_IN_SECS).await;
+		wallet
+			.start_periodic_resubmission_of_transactions_from_cache(RESUBMISSION_INTERVAL_IN_SECS)
+			.await;
 		drop(wallet);
 
 		let oracle_agent = self.create_oracle_agent(is_public_network).await?;

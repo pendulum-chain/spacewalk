@@ -23,7 +23,10 @@ const MAX_LOOK_BACK_PAGES: u8 = 10;
 
 #[cfg_attr(test, mockable)]
 impl StellarWallet {
-	pub async fn start_periodic_resubmission_of_transactions_from_cache(&self, interval_in_seconds: u64) {
+	pub async fn start_periodic_resubmission_of_transactions_from_cache(
+		&self,
+		interval_in_seconds: u64,
+	) {
 		// Perform the resubmission
 		self._resubmit_transactions_from_cache().await;
 
@@ -110,7 +113,6 @@ impl StellarWallet {
 		#[allow(unused_mut)] mut errors: Vec<(Error, TransactionEnvelope)>,
 	) {
 		while let Some((error, env)) = errors.pop() {
-
 			// handle the error
 			match self.handle_error(error).await {
 				// a new kind of error occurred. Process it on the next loop.
@@ -121,8 +123,8 @@ impl StellarWallet {
 					errors.push((e, env));
 				},
 
-				// Resubmission failed for this Transaction Envelope and it's a non-recoverable error
-				// Remove from cache
+				// Resubmission failed for this Transaction Envelope and it's a non-recoverable
+				// error Remove from cache
 				Ok(None) => self.remove_tx_envelope_from_cache(&env),
 
 				// Resubmission was successful
@@ -706,7 +708,8 @@ mod test {
 		// let's resubmit these 3 transactions
 		let _ = wallet.start_periodic_resubmission_of_transactions_from_cache(60).await;
 
-		// We wait until the whole cache is empty because eventually all transactions should be handled
+		// We wait until the whole cache is empty because eventually all transactions should be
+		// handled
 		pause_process_in_secs(10).await;
 
 		loop {
