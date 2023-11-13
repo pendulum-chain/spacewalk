@@ -322,7 +322,6 @@ mod test {
 		TransactionEnvelopeExt,
 	};
 	use serial_test::serial;
-	use crate::resubmissions::RESUBMISSION_INTERVAL_IN_SECS;
 
 	#[tokio::test]
 	#[serial]
