@@ -17,6 +17,7 @@ pub enum Error {
 		title: String,
 		status: StatusCode,
 		reason: String,
+		result_code_op: Vec<String>,
 		envelope_xdr: Option<String>,
 	},
 	#[error("Could not parse string: {0}")]
@@ -29,6 +30,9 @@ pub enum Error {
 	#[error(transparent)]
 	CacheError(CacheError),
 
+	#[error("Transaction resubmission failed: {0}")]
+	ResubmissionError(String),
+
 	#[error("Cannot send payment to self")]
 	SelfPaymentError,
 }
@@ -37,9 +41,7 @@ impl Error {
 	pub fn is_recoverable(&self) -> bool {
 		match self {
 			Error::HorizonResponseError(e) if e.is_timeout() => true,
-			Error::HorizonSubmissionError { title: _, status, reason: _, envelope_xdr: _ }
-				if *status == 504 =>
-				true,
+			Error::HorizonSubmissionError { status, .. } if *status == 504 => true,
 			Error::CacheError(e) => match e.kind {
 				CacheErrorKind::CreateDirectoryFailed |
 				CacheErrorKind::FileCreationFailed |
@@ -58,8 +60,7 @@ impl Error {
 		match self {
 			Error::HorizonResponseError(e) =>
 				e.status().map(|code| server_errors.contains(&code.as_u16())).unwrap_or(false),
-			Error::HorizonSubmissionError { title: _, status, reason: _, envelope_xdr: _ } =>
-				server_errors.contains(status),
+			Error::HorizonSubmissionError { status, .. } => server_errors.contains(status),
 			_ => false,
 		}
 	}
@@ -99,9 +100,9 @@ impl Error {
 #[derive(Error, PartialEq, Eq)]
 pub struct CacheError {
 	pub(crate) kind: CacheErrorKind,
-	path: Option<String>,
-	envelope: Option<TransactionEnvelope>,
-	sequence_number: Option<SequenceNumber>,
+	pub(crate) path: Option<String>,
+	pub(crate) envelope: Option<TransactionEnvelope>,
+	pub(crate) sequence_number: Option<SequenceNumber>,
 }
 impl Display for CacheError {
 	fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {

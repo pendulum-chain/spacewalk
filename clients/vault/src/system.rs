@@ -24,7 +24,7 @@ use runtime::{
 };
 use service::{wait_or_shutdown, Error as ServiceError, MonitoringConfig, Service};
 use stellar_relay_lib::{sdk::PublicKey, StellarOverlayConfig};
-use wallet::{LedgerTxEnvMap, StellarWallet};
+use wallet::{LedgerTxEnvMap, StellarWallet, RESUBMISSION_INTERVAL_IN_SECS};
 
 use crate::{
 	cancellation::ReplaceCanceller,
@@ -704,7 +704,7 @@ impl VaultService {
 		let stellar_wallet = StellarWallet::from_secret_encoded(&secret_key, is_public_network)?;
 		tracing::debug!(
 			"Vault wallet public key: {}",
-			from_utf8(&stellar_wallet.get_public_key().to_encoding())?
+			from_utf8(&stellar_wallet.public_key().to_encoding())?
 		);
 
 		let stellar_wallet = Arc::new(RwLock::new(stellar_wallet));
@@ -759,13 +759,13 @@ impl VaultService {
 		self.vault_id_manager.fetch_vault_ids().await?;
 
 		let wallet = self.stellar_wallet.write().await;
-		let vault_public_key = wallet.get_public_key();
+		let vault_public_key = wallet.public_key();
 		let is_public_network = wallet.is_public_network();
 
 		// re-submit transactions in the cache
-		let _receivers = wallet.resubmit_transactions_from_cache().await;
-		//todo: handle errors from the receivers
-
+		wallet
+			.start_periodic_resubmission_of_transactions_from_cache(RESUBMISSION_INTERVAL_IN_SECS)
+			.await;
 		drop(wallet);
 
 		let oracle_agent = self.create_oracle_agent(is_public_network).await?;
@@ -806,7 +806,7 @@ impl VaultService {
 		}
 
 		if self.spacewalk_parachain.get_public_key().await?.is_none() {
-			let public_key = self.stellar_wallet.read().await.get_public_key();
+			let public_key = self.stellar_wallet.read().await.public_key();
 			let pub_key_encoded = public_key.to_encoding();
 			tracing::info!(
 				"Registering public key to the parachain...{}",

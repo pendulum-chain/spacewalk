@@ -189,7 +189,7 @@ pub async fn handle_replace_request<
 				&event.old_vault_id,
 				event.amount,
 				0, // do not lock any additional collateral
-				wallet.get_public_key_raw(),
+				wallet.public_key_raw(),
 			)
 			.await?)
 	}

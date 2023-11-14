@@ -6,7 +6,7 @@ use crate::{
 		responses::{HorizonClaimableBalanceResponse, TransactionResponse},
 		traits::HorizonClient,
 	},
-	test_helper::secret_key_from_encoding,
+	mock::secret_key_from_encoding,
 };
 use mockall::predicate::*;
 use primitives::stellar::{

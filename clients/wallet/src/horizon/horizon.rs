@@ -172,7 +172,13 @@ impl HorizonClient for reqwest::Client {
 					continue
 				},
 
-				Err(Error::HorizonSubmissionError { title, status, reason, envelope_xdr }) => {
+				Err(Error::HorizonSubmissionError {
+					title,
+					status,
+					reason,
+					result_code_op,
+					envelope_xdr,
+				}) => {
 					tracing::error!("submitting transaction with seq no: {seq_no:?}: failed with {title}, {reason}");
 					tracing::debug!("submitting transaction with seq no: {seq_no:?}: the envelope: {envelope_xdr:?}");
 					let envelope_xdr = envelope_xdr.or(Some(transaction_xdr.to_string()));
@@ -181,6 +187,7 @@ impl HorizonClient for reqwest::Client {
 						title,
 						status,
 						reason,
+						result_code_op,
 						envelope_xdr,
 					})
 				},

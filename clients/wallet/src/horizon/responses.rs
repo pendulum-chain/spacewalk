@@ -9,7 +9,7 @@ use primitives::{
 		types::{
 			Memo, OperationResult, SequenceNumber, TransactionResult, TransactionResultResult,
 		},
-		Asset, TransactionEnvelope, XdrCodec,
+		Asset, PublicKey, TransactionEnvelope, XdrCodec,
 	},
 	MemoTypeExt, TextMemo,
 };
@@ -73,6 +73,7 @@ pub(crate) async fn interpret_response<T: DeserializeOwned>(
 						title: title.to_string(),
 						status,
 						reason: detail.to_string(),
+						result_code_op: vec![],
 						envelope_xdr: Some(envelope_xdr.to_string()),
 					}
 				},
@@ -93,7 +94,8 @@ pub(crate) async fn interpret_response<T: DeserializeOwned>(
 					Error::HorizonSubmissionError {
 						title: title.to_string(),
 						status,
-						reason: format!("{result_code_tx}: {result_code_op:?}"),
+						reason: result_code_tx.to_string(),
+						result_code_op,
 						envelope_xdr: Some(envelope_xdr.to_string()),
 					}
 				},
@@ -106,6 +108,7 @@ pub(crate) async fn interpret_response<T: DeserializeOwned>(
 				title: title.to_string(),
 				status,
 				reason: detail.to_string(),
+				result_code_op: vec![],
 				envelope_xdr: None,
 			}
 		},
@@ -251,6 +254,10 @@ impl TransactionResponse {
 		res.parse::<SequenceNumber>().map_err(|_| Error::DecodeError)
 	}
 
+	pub fn source_account(&self) -> Result<PublicKey, Error> {
+		PublicKey::from_encoding(&self.source_account).map_err(|_| Error::DecodeError)
+	}
+
 	pub fn get_successful_operations_result(&self) -> Result<Vec<OperationResult>, Error> {
 		if let TransactionResultResult::TxSuccess(res) =
 			TransactionResult::from_base64_xdr(&self.result_xdr)
@@ -268,7 +275,7 @@ impl TransactionResponse {
 	}
 }
 
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize)]
 pub struct HorizonAccountResponse {
 	#[serde(deserialize_with = "de_string_to_bytes")]
 	pub id: Vec<u8>,
@@ -278,6 +285,17 @@ pub struct HorizonAccountResponse {
 	pub sequence: i64,
 	pub balances: Vec<HorizonBalance>,
 	// ...
+}
+
+impl Debug for HorizonAccountResponse {
+	fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+		f.debug_struct("HorizonAccountResponse")
+			.field("id", &debug_str_or_vec_u8!(&self.id))
+			.field("account_id", &debug_str_or_vec_u8!(&self.account_id))
+			.field("sequence", &self.sequence)
+			.field("balances", &self.balances)
+			.finish()
+	}
 }
 
 impl HorizonAccountResponse {
