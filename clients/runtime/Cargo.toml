@@ -15,7 +15,6 @@ testing-utils = [
     "rand",
     "testchain",
     "testchain-runtime",
-    "subxt-client",
     "oracle"
 ]
 
@@ -45,8 +44,6 @@ sp-version = { git = "https://github.com/paritytech/substrate", branch = "polkad
 # Subxt dependencies
 subxt = "0.25.0"
 jsonrpsee = { version = "0.16.0", features = ["macros", "jsonrpsee-types", "client", "jsonrpsee-ws-client", "jsonrpsee-client-transport"] }
-# Used for performing the integration tests
-subxt-client = { path = "./client", optional = true }
 
 # Needed for the `BalanceWrapper` struct
 module-oracle-rpc-runtime-api = { path = "../../pallets/oracle/rpc/runtime-api" }

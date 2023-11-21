@@ -26,8 +26,8 @@ fn dummy_public_key() -> StellarPublicKeyRaw {
 	[0u8; 32]
 }
 
-async fn set_exchange_rate(client: SubxtClient) {
-	let oracle_provider = setup_provider(client, AccountKeyring::Bob).await;
+async fn set_exchange_rate() {
+	let oracle_provider = setup_provider(AccountKeyring::Bob).await;
 	let key = primitives::oracle::Key::ExchangeRate(DEFAULT_TESTING_CURRENCY);
 	let converted_key = DiaOracleKeyConvertor::<MockValue>::convert(key.clone()).unwrap();
 	let exchange_rate = FixedU128::saturating_from_rational(1u128, 100u128);
@@ -39,8 +39,7 @@ async fn set_exchange_rate(client: SubxtClient) {
 
 #[tokio::test(flavor = "multi_thread")]
 async fn test_getters() {
-	let (client, _tmp_dir) = default_provider_client(AccountKeyring::Alice).await;
-	let parachain_rpc = setup_provider(client.clone(), AccountKeyring::Alice).await;
+	let (parachain_rpc, _tmp_dir) = default_root_provider(AccountKeyring::Alice).await;
 
 	tokio::join!(
 		async {
@@ -62,8 +61,7 @@ async fn test_getters() {
 #[ignore]
 #[tokio::test(flavor = "multi_thread")]
 async fn test_invalid_tx_matching() {
-	let (client, _tmp_dir) = default_provider_client(AccountKeyring::Alice).await;
-	let parachain_rpc = setup_provider(client.clone(), AccountKeyring::Alice).await;
+	let (parachain_rpc, _tmp_dir) = default_root_provider(AccountKeyring::Alice).await;
 	let err = parachain_rpc.get_invalid_tx_error(AccountKeyring::Bob.into()).await;
 	assert!(err.is_invalid_transaction().is_some())
 }
@@ -71,18 +69,17 @@ async fn test_invalid_tx_matching() {
 #[ignore]
 #[tokio::test(flavor = "multi_thread")]
 async fn test_too_low_priority_matching() {
-	let (client, _tmp_dir) = default_provider_client(AccountKeyring::Alice).await;
-	let parachain_rpc = setup_provider(client.clone(), AccountKeyring::Alice).await;
+	let (parachain_rpc, _tmp_dir) = default_root_provider(AccountKeyring::Alice).await;
 	let err = parachain_rpc.get_too_low_priority_error(AccountKeyring::Bob.into()).await;
 	assert!(err.is_pool_too_low_priority().is_some())
 }
 
 #[tokio::test(flavor = "multi_thread")]
 async fn test_subxt_processing_events_after_dispatch_error() {
-	let (client, _tmp_dir) = default_provider_client(AccountKeyring::Alice).await;
+	let (_, _tmp_dir) = default_root_provider(AccountKeyring::Alice).await;
 
-	let oracle_provider = setup_provider(client.clone(), AccountKeyring::Bob).await;
-	let invalid_oracle = setup_provider(client, AccountKeyring::Dave).await;
+	let oracle_provider = setup_provider( AccountKeyring::Bob).await;
+	let invalid_oracle = setup_provider(AccountKeyring::Dave).await;
 
 	let key = primitives::oracle::Key::ExchangeRate(DEFAULT_TESTING_CURRENCY);
 	let converted_key = DiaOracleKeyConvertor::<MockValue>::convert(key.clone()).unwrap();
@@ -100,9 +97,8 @@ async fn test_subxt_processing_events_after_dispatch_error() {
 
 #[tokio::test(flavor = "multi_thread")]
 async fn test_register_vault() {
-	let (client, _tmp_dir) = default_provider_client(AccountKeyring::Alice).await;
-	let parachain_rpc = setup_provider(client.clone(), AccountKeyring::Alice).await;
-	set_exchange_rate(client.clone()).await;
+	let (parachain_rpc, _tmp_dir) = default_root_provider(AccountKeyring::Alice).await;
+	set_exchange_rate().await;
 
 	let vault_id = VaultId::new(
 		AccountKeyring::Alice.into(),

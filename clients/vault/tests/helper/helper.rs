@@ -4,7 +4,7 @@ use frame_support::assert_ok;
 use primitives::{stellar::Asset as StellarAsset, CurrencyId, StellarStroops, H256};
 use runtime::{
 	integration::{
-		assert_event, get_required_vault_collateral_for_issue, setup_provider, SubxtClient,
+		assert_event, get_required_vault_collateral_for_issue, setup_provider,
 	},
 	stellar::SecretKey,
 	ExecuteRedeemEvent, IssuePallet, SpacewalkParachain, VaultId, VaultRegistryPallet,
@@ -44,13 +44,12 @@ pub trait SpacewalkParachainExt: VaultRegistryPallet {
 }
 
 pub async fn create_vault(
-	client: SubxtClient,
 	account: AccountKeyring,
 	wrapped_currency: CurrencyId,
 ) -> (VaultId, SpacewalkParachain) {
 	let vault_id = VaultId::new(account.clone().into(), DEFAULT_TESTING_CURRENCY, wrapped_currency);
 
-	let vault_provider = setup_provider(client, account).await;
+	let vault_provider = setup_provider(account).await;
 
 	(vault_id, vault_provider)
 }

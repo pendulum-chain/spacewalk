@@ -1,9 +1,11 @@
 #![cfg(feature = "testing-utils")]
 
 use std::{sync::Arc, time::Duration};
+use std::process::{Child, Command};
 
 use frame_support::assert_ok;
 use futures::{future::Either, pin_mut, Future, FutureExt, SinkExt, StreamExt};
+use sp_keyring::AccountKeyring;
 use oracle::dia::{DiaOracleKeyConvertor, NativeCurrencyKey, XCMCurrencyConversion};
 use sp_runtime::traits::Convert;
 use subxt::{
@@ -13,16 +15,8 @@ use subxt::{
 use tempdir::TempDir;
 use tokio::{sync::RwLock, time::timeout};
 
-pub use subxt_client::SubxtClient;
-use subxt_client::{
-	AccountKeyring, DatabaseSource, KeystoreConfig, Role, SubxtClientConfig, WasmExecutionMethod,
-	WasmtimeInstantiationStrategy,
-};
 
-use crate::{
-	rpc::{OraclePallet, VaultRegistryPallet},
-	CurrencyId, FixedU128, SpacewalkParachain, SpacewalkSigner,
-};
+use crate::{rpc::{OraclePallet, VaultRegistryPallet}, CurrencyId, FixedU128, SpacewalkParachain, SpacewalkSigner, SudoPallet};
 use primitives::oracle::Key as OracleKey;
 
 pub struct MockValue;
@@ -54,56 +48,43 @@ impl XCMCurrencyConversion for MockValue {
 	}
 }
 
-/// Start a new instance of the parachain. The second item in the returned tuple must remain in
-/// scope as long as the parachain is active, since dropping it will remove the temporary directory
-/// that the parachain uses
-pub async fn default_provider_client(key: AccountKeyring) -> (SubxtClient, TempDir) {
-	let tmp = TempDir::new("spacewalk-parachain-").expect("failed to create tempdir");
-	let config = SubxtClientConfig {
-		impl_name: "spacewalk-parachain-full-client",
-		impl_version: "0.0.1",
-		author: "SatoshiPay",
-		copyright_start_year: 2020,
-		db: DatabaseSource::ParityDb { path: tmp.path().join("db") },
-		keystore: KeystoreConfig::Path { path: tmp.path().join("keystore"), password: None },
-		chain_spec: testchain::chain_spec::development_config(),
-		role: Role::Authority(key),
-		telemetry: None,
-		wasm_method: WasmExecutionMethod::Compiled {
-			instantiation_strategy: WasmtimeInstantiationStrategy::LegacyInstanceReuse,
-		},
-		tokio_handle: tokio::runtime::Handle::current(),
-	};
-
-	// enable off chain workers
-	let mut service_config = config.into_service_config();
-	service_config.offchain_worker.enabled = true;
-
-	let (task_manager, rpc_handlers) =
-		testchain::service::start_instant(service_config).await.unwrap();
-
-	let client = SubxtClient::new(task_manager, rpc_handlers);
-
-	(client, tmp)
-}
-
 fn get_pair_from_keyring(keyring: AccountKeyring) -> Result<Pair, String> {
 	let pair = Pair::from_string(keyring.to_seed().as_str(), None)
 		.map_err(|_| "Could not create pair for keyring")?;
 	Ok(pair)
 }
 
+/// Start a new instance of the parachain. The second item in the returned tuple must remain in
+/// scope as long as the parachain is active, since dropping it will remove the temporary directory
+/// that the parachain uses
+pub async fn default_root_provider(key: AccountKeyring) -> (SpacewalkParachain, TempDir) {
+	let tmp = TempDir::new("spacewalk-parachain-").expect("failed to create tempdir");
+	let root_provider = setup_provider(key).await;
+
+	if let Err(e) = root_provider.set_parachain_confirmations(1).await {
+		log::warn!("default_root_provider(): ERROR: {e:?}");
+	}
+
+	(root_provider, tmp)
+}
+
 /// Create a new parachain_rpc with the given keyring
-pub async fn setup_provider(client: SubxtClient, key: AccountKeyring) -> SpacewalkParachain {
+pub async fn setup_provider(key: AccountKeyring) -> SpacewalkParachain {
 	let pair = get_pair_from_keyring(key).unwrap();
 	let signer = SpacewalkSigner::new(pair);
 	let signer = Arc::new(RwLock::new(signer));
 	let shutdown_tx = crate::ShutdownSender::new();
-
-	SpacewalkParachain::new(client.into(), signer, shutdown_tx)
+	let parachain_rpc = SpacewalkParachain::from_url_with_retry(
+		&"ws://127.0.0.1:9944".to_string(),
+		signer.clone(),
+		Duration::from_secs(20),
+		shutdown_tx,
+	)
 		.await
-		.expect("Error creating parachain_rpc")
+		.unwrap();
+	parachain_rpc
 }
+
 
 pub async fn set_exchange_rate_and_wait(
 	parachain_rpc: &SpacewalkParachain,
@@ -184,4 +165,12 @@ pub async fn periodically_produce_blocks(parachain_rpc: SpacewalkParachain) {
 		tokio::time::sleep(Duration::from_millis(500)).await;
 		parachain_rpc.manual_seal().await;
 	}
+}
+
+
+pub async fn start_chain() -> std::io::Result<Child> {
+	let res = std::env::current_dir();
+	println!("HEEEEEEEEEEEEY: {res:?}");
+	let command = Command::new("sh").arg("./scripts/run_parachain_node.sh").spawn();
+	command
 }
