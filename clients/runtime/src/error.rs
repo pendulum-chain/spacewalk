@@ -46,6 +46,8 @@ pub enum Error {
 	BlockHashNotFound,
 	#[error("Transaction is invalid: {0}")]
 	InvalidTransaction(String),
+	#[error("Transaction is invalid and cannot be recovered: {0}")]
+	InvalidTransactionUnrecoverable(String),
 	#[error("Request has timed out")]
 	Timeout,
 	#[error("Block is not in the relay main chain")]
@@ -121,15 +123,27 @@ impl Error {
 		}
 	}
 
-	pub fn is_invalid_transaction(&self) -> Option<String> {
+	pub fn is_invalid_transaction(&self) -> Option<Error>{
+		// TODO define elsewhere
+		let not_recoverable_errors = ["InvalidQuorumSetNotEnoughValidators"];
+	
 		self.map_custom_error(|custom_error| {
 			if custom_error.code() == POOL_INVALID_TX {
-				Some(custom_error.data().map(ToString::to_string).unwrap_or_default())
+				let data_string = custom_error.data().map(ToString::to_string).unwrap_or_default();
+				
+				for error in not_recoverable_errors {
+					if data_string.contains(error) {
+						return Some(Error::InvalidTransactionUnrecoverable(data_string));
+					}
+				}
+				Some(Error::InvalidTransaction(data_string))
 			} else {
 				None
 			}
 		})
 	}
+
+
 
 	pub fn is_pool_too_low_priority(&self) -> Option<()> {
 		self.map_custom_error(|custom_error| {

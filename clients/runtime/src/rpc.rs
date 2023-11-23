@@ -233,17 +233,25 @@ impl SpacewalkParachain {
 			|result| async {
 				match result.map_err(Into::<Error>::into) {
 					Ok(te) => Ok(te),
-					Err(err) =>
-						if let Some(data) = err.is_invalid_transaction() {
+					Err(err) => match err.is_invalid_transaction() {
+						Some(Error::InvalidTransaction(data)) => {
 							Err(RetryPolicy::Skip(Error::InvalidTransaction(data)))
-						} else if err.is_pool_too_low_priority().is_some() {
-							Err(RetryPolicy::Skip(Error::PoolTooLowPriority))
-						} else if err.is_block_hash_not_found_error() {
-							log::info!("Re-sending transaction after apparent fork");
-							Err(RetryPolicy::Skip(Error::BlockHashNotFound))
-						} else {
-							Err(RetryPolicy::Throw(err))
-						},
+						}
+						Some(Error::InvalidTransactionUnrecoverable(data)) => {
+							Err(RetryPolicy::Throw(Error::InvalidTransactionUnrecoverable(data)))
+						}
+						None => {
+							// Handle other errors
+							if err.is_pool_too_low_priority().is_some() {
+								Err(RetryPolicy::Skip(Error::PoolTooLowPriority))
+							} else if err.is_block_hash_not_found_error() {
+								log::info!("Re-sending transaction after apparent fork");
+								Err(RetryPolicy::Skip(Error::BlockHashNotFound))
+							} else {
+								Err(RetryPolicy::Throw(err))
+							}
+						}
+					}
 				}
 			},
 		)
