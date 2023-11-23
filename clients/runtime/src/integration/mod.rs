@@ -167,10 +167,31 @@ pub async fn periodically_produce_blocks(parachain_rpc: SpacewalkParachain) {
 	}
 }
 
+pub struct ChildProcess(pub Child);
 
-pub async fn start_chain() -> std::io::Result<Child> {
+impl Drop for ChildProcess {
+	fn drop(&mut self) {
+		let pid = self.0.id();
+		unsafe {
+			libc::kill(pid as i32, libc::SIGTERM);
+			println!("SUCCESS HEEEEEEEEEEEEY: HEEEEEEEEEEEEY: HEEEEEEEEEEEEY: inside unsafe");
+		}
+		if let Err(e) = self.0.kill() {
+			println!("ERROR HEEEEEEEEEEEEY: HEEEEEEEEEEEEY: HEEEEEEEEEEEEY: drop kill failed: {e:?}");
+		} else {
+			println!("SUCCESS HEEEEEEEEEEEEY: HEEEEEEEEEEEEY: HEEEEEEEEEEEEY: drop kill was called");
+
+		}
+	}
+}
+
+
+pub async fn start_chain() -> std::io::Result<ChildProcess> {
 	let res = std::env::current_dir();
 	println!("HEEEEEEEEEEEEY: {res:?}");
 	let command = Command::new("sh").arg("./scripts/run_parachain_node.sh").spawn();
-	command
+	command.map(|cmd| {
+		println!("HEEEEEEEEEEEEY HEEEEEEEEEEEEY HEEEEEEEEEEEEY the process id {}", cmd.id());
+		ChildProcess(cmd)
+	})
 }

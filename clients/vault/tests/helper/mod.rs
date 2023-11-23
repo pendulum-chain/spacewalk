@@ -20,7 +20,7 @@ use std::{future::Future, sync::Arc};
 use std::process::Child;
 use stellar_relay_lib::StellarOverlayConfig;
 use tokio::sync::RwLock;
-use runtime::integration::{default_root_provider, start_chain};
+use runtime::integration::{ChildProcess, default_root_provider, start_chain};
 use vault::{
 	oracle::{get_test_secret_key, get_test_stellar_relay_config, start_oracle_agent, OracleAgent},
 	ArcRwLock,
@@ -104,6 +104,7 @@ where
 
 pub async fn test_with_vault<F, R>(
 	execute: impl FnOnce(
+		ChildProcess,
 		ArcRwLock<StellarWallet>,
 		ArcRwLock<StellarWallet>,
 		Arc<OracleAgent>,
@@ -114,7 +115,7 @@ pub async fn test_with_vault<F, R>(
 where
 	F: Future<Output = R>,
 {
-	let _parachain_runner: Child = start_chain().await.unwrap();
+	let parachain_runner = start_chain().await.unwrap();
 	service::init_subscriber();
 	let (parachain_rpc, tmp_dir) = default_root_provider(AccountKeyring::Bob).await;
 
@@ -179,5 +180,5 @@ where
 		.expect("failed to start agent");
 	let oracle_agent = Arc::new(oracle_agent);
 
-	execute(vault_wallet, user_wallet, oracle_agent, vault_id, vault_provider).await
+	execute(parachain_runner, vault_wallet, user_wallet, oracle_agent, vault_id, vault_provider).await
 }

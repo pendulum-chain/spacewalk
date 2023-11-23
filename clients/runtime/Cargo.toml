@@ -19,6 +19,7 @@ testing-utils = [
 ]
 
 [dependencies]
+libc = "0.2.150"
 async-trait = "0.1.40"
 backoff = { version = "0.3.0", features = ["tokio"] }
 cfg-if = "1.0"
