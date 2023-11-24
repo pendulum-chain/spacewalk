@@ -281,7 +281,14 @@ impl Service<VaultServiceConfig, Error> for VaultService {
 	}
 
 	async fn start(&mut self) -> Result<(), ServiceError<Error>> {
-		self.run_service().await
+		let result = self.run_service().await;
+		if let Err(error) = result {
+			let _ = self.shutdown.send(());
+			Err(error)
+		} else {
+			result
+		}
+		
 	}
 }
 

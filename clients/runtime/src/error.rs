@@ -46,8 +46,6 @@ pub enum Error {
 	BlockHashNotFound,
 	#[error("Transaction is invalid: {0}")]
 	InvalidTransaction(String),
-	#[error("Transaction is invalid and cannot be recovered: {0}")]
-	InvalidTransactionUnrecoverable(String),
 	#[error("Request has timed out")]
 	Timeout,
 	#[error("Block is not in the relay main chain")]
@@ -92,6 +90,11 @@ pub enum Error {
 	PrometheusError(#[from] PrometheusError),
 }
 
+pub enum Recoverability{
+	Recoverable(String),
+	Unrecoverable(String)
+}
+
 impl Error {
 	pub fn is_module_err(&self, pallet_name: &str, error_name: &str) -> bool {
 		matches!(
@@ -123,9 +126,9 @@ impl Error {
 		}
 	}
 
-	pub fn is_invalid_transaction(&self) -> Option<Error>{
+	pub fn is_invalid_transaction(&self) -> Option<Recoverability>{
 		// TODO define elsewhere
-		let recoverable_errors = [""];
+		let recoverable_errors = ["Inability to pay some fees", "Transaction is outdated"];
 	
 		self.map_custom_error(|custom_error| {
 			if custom_error.code() == POOL_INVALID_TX {
@@ -134,10 +137,10 @@ impl Error {
 				for error in recoverable_errors {
 					if data_string.contains(error) {
 						
-						return Some(Error::InvalidTransaction(data_string))
+						return Some(Recoverability::Recoverable(data_string))
 					}
 				}
-				return Some(Error::InvalidTransactionUnrecoverable(data_string));
+				return Some(Recoverability::Unrecoverable(data_string));
 			} else {
 				None
 			}

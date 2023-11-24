@@ -26,7 +26,7 @@ use crate::{
 	conn::{new_websocket_client, new_websocket_client_with_retry},
 	metadata, notify_retry,
 	types::*,
-	AccountId, Error, RetryPolicy, ShutdownSender, SpacewalkRuntime, SpacewalkSigner, SubxtError,
+	AccountId, Error, RetryPolicy, ShutdownSender, SpacewalkRuntime, SpacewalkSigner, SubxtError, error::Recoverability,
 };
 
 pub type UnsignedFixedPoint = FixedU128;
@@ -234,11 +234,11 @@ impl SpacewalkParachain {
 				match result.map_err(Into::<Error>::into) {
 					Ok(te) => Ok(te),
 					Err(err) => match err.is_invalid_transaction() {
-						Some(Error::InvalidTransaction(data)) => {
+						Some(Recoverability::Recoverable(data)) => {
 							Err(RetryPolicy::Skip(Error::InvalidTransaction(data)))
 						}
-						Some(Error::InvalidTransactionUnrecoverable(data)) => {
-							Err(RetryPolicy::Throw(Error::InvalidTransactionUnrecoverable(data)))
+						Some(Recoverability::Unrecoverable(data)) => {
+							Err(RetryPolicy::Throw(Error::InvalidTransaction(data)))
 						}
 						None => {
 							// Handle other errors
