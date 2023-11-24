@@ -125,18 +125,19 @@ impl Error {
 
 	pub fn is_invalid_transaction(&self) -> Option<Error>{
 		// TODO define elsewhere
-		let not_recoverable_errors = ["InvalidQuorumSetNotEnoughValidators"];
+		let recoverable_errors = [""];
 	
 		self.map_custom_error(|custom_error| {
 			if custom_error.code() == POOL_INVALID_TX {
 				let data_string = custom_error.data().map(ToString::to_string).unwrap_or_default();
 				
-				for error in not_recoverable_errors {
+				for error in recoverable_errors {
 					if data_string.contains(error) {
-						return Some(Error::InvalidTransactionUnrecoverable(data_string));
+						
+						return Some(Error::InvalidTransaction(data_string))
 					}
 				}
-				Some(Error::InvalidTransaction(data_string))
+				return Some(Error::InvalidTransactionUnrecoverable(data_string));
 			} else {
 				None
 			}
