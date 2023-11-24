@@ -247,6 +247,8 @@ impl SpacewalkParachain {
 							} else if err.is_block_hash_not_found_error() {
 								log::info!("Re-sending transaction after apparent fork");
 								Err(RetryPolicy::Skip(Error::BlockHashNotFound))
+							}else if err.is_pool_issue().is_some() {
+								Err(RetryPolicy::Skip(Error::TransactionPoolIssue))
 							} else {
 								Err(RetryPolicy::Throw(err))
 							}
