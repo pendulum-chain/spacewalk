@@ -1,12 +1,16 @@
 #![cfg(feature = "testing-utils")]
 
-use std::{sync::Arc, time::Duration};
-use std::process::{Child, Command};
+use std::{
+	os::unix::process::CommandExt,
+	process::{Child, Command, Stdio},
+	sync::Arc,
+	time::Duration,
+};
 
 use frame_support::assert_ok;
 use futures::{future::Either, pin_mut, Future, FutureExt, SinkExt, StreamExt};
-use sp_keyring::AccountKeyring;
 use oracle::dia::{DiaOracleKeyConvertor, NativeCurrencyKey, XCMCurrencyConversion};
+use sp_keyring::AccountKeyring;
 use sp_runtime::traits::Convert;
 use subxt::{
 	events::StaticEvent as Event,
@@ -15,8 +19,10 @@ use subxt::{
 use tempdir::TempDir;
 use tokio::{sync::RwLock, time::timeout};
 
-
-use crate::{rpc::{OraclePallet, VaultRegistryPallet}, CurrencyId, FixedU128, SpacewalkParachain, SpacewalkSigner, SudoPallet};
+use crate::{
+	rpc::{OraclePallet, VaultRegistryPallet},
+	CurrencyId, FixedU128, SpacewalkParachain, SpacewalkSigner, SudoPallet,
+};
 use primitives::oracle::Key as OracleKey;
 
 pub struct MockValue;
@@ -80,11 +86,10 @@ pub async fn setup_provider(key: AccountKeyring) -> SpacewalkParachain {
 		Duration::from_secs(20),
 		shutdown_tx,
 	)
-		.await
-		.unwrap();
+	.await
+	.unwrap();
 	parachain_rpc
 }
-
 
 pub async fn set_exchange_rate_and_wait(
 	parachain_rpc: &SpacewalkParachain,
@@ -167,31 +172,18 @@ pub async fn periodically_produce_blocks(parachain_rpc: SpacewalkParachain) {
 	}
 }
 
-pub struct ChildProcess(pub Child);
-
-impl Drop for ChildProcess {
-	fn drop(&mut self) {
-		let pid = self.0.id();
-		unsafe {
-			libc::kill(pid as i32, libc::SIGTERM);
-			println!("SUCCESS HEEEEEEEEEEEEY: HEEEEEEEEEEEEY: HEEEEEEEEEEEEY: inside unsafe");
-		}
-		if let Err(e) = self.0.kill() {
-			println!("ERROR HEEEEEEEEEEEEY: HEEEEEEEEEEEEY: HEEEEEEEEEEEEY: drop kill failed: {e:?}");
-		} else {
-			println!("SUCCESS HEEEEEEEEEEEEY: HEEEEEEEEEEEEY: HEEEEEEEEEEEEY: drop kill was called");
-
-		}
+pub async fn start_chain() -> std::io::Result<Child> {
+	unsafe {
+		Command::new("sh")
+			.arg("./scripts/run_parachain_node.sh")
+			.stdout(Stdio::inherit())
+			.stderr(Stdio::inherit())
+			.pre_exec(|| {
+				// Create a new session and set the process group ID
+				// Used for deleting all the processes spawned when starting the chain
+				libc::setsid();
+				Ok(())
+			})
+			.spawn()
 	}
-}
-
-
-pub async fn start_chain() -> std::io::Result<ChildProcess> {
-	let res = std::env::current_dir();
-	println!("HEEEEEEEEEEEEY: {res:?}");
-	let command = Command::new("sh").arg("./scripts/run_parachain_node.sh").spawn();
-	command.map(|cmd| {
-		println!("HEEEEEEEEEEEEY HEEEEEEEEEEEEY HEEEEEEEEEEEEY the process id {}", cmd.id());
-		ChildProcess(cmd)
-	})
 }

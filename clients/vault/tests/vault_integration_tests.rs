@@ -1,5 +1,4 @@
 use std::{collections::HashMap, convert::TryInto, sync::Arc, time::Duration};
-use std::process::Child;
 
 use frame_support::assert_ok;
 use futures::{
@@ -47,8 +46,7 @@ async fn test_register() {
 #[serial]
 async fn test_redeem_succeeds() {
 	test_with_vault(
-		|mut parachain_runner, vault_wallet, user_wallet, oracle_agent, vault_id, vault_provider| async move {
-
+		|vault_wallet, user_wallet, oracle_agent, vault_id, vault_provider| async move {
 			let user_provider = setup_provider(AccountKeyring::Dave).await;
 
 			let vault_ids = vec![vault_id.clone()];
@@ -107,11 +105,6 @@ async fn test_redeem_succeeds() {
 				},
 			)
 			.await;
-
-			let res = parachain_runner.0.kill();
-			println!("HEEEEEEEY THE RESULT: {res:?}");
-
-
 		},
 	)
 	.await;
@@ -121,12 +114,7 @@ async fn test_redeem_succeeds() {
 #[serial]
 async fn test_replace_succeeds() {
 	test_with_vault(
-		|parachain_runner,
-		 old_vault_wallet,
-		 new_vault_wallet,
-		 oracle_agent,
-		 old_vault_id,
-		 old_vault_provider| async move {
+		|old_vault_wallet, new_vault_wallet, oracle_agent, old_vault_id, old_vault_provider| async move {
 			let (new_vault_id, new_vault_provider) =
 				create_vault(AccountKeyring::Eve, DEFAULT_WRAPPED_CURRENCY).await;
 
@@ -234,7 +222,7 @@ async fn test_replace_succeeds() {
 #[serial]
 async fn test_withdraw_replace_succeeds() {
 	test_with_vault(
-		| parachain_runner,_vault_wallet, user_wallet, oracle_agent, old_vault_id, old_vault_provider| async move {
+		|_vault_wallet, user_wallet, oracle_agent, old_vault_id, old_vault_provider| async move {
 			let (new_vault_id, new_vault_provider) =
 				create_vault(AccountKeyring::Eve, DEFAULT_WRAPPED_CURRENCY).await;
 
@@ -301,7 +289,7 @@ async fn test_cancel_scheduler_succeeds() {
 	// issue and replace cancellation is tested through the vault's cancellation service.
 	// cancel_redeem is called manually
 	test_with_vault(
-		|parachain_runner, vault_wallet, user_wallet, oracle_agent, old_vault_id, old_vault_provider| async move {
+		|vault_wallet, user_wallet, oracle_agent, old_vault_id, old_vault_provider| async move {
 			let parachain_rpc = setup_provider(AccountKeyring::Bob).await;
 
 			let root_provider = setup_provider(AccountKeyring::Alice).await;
@@ -474,7 +462,7 @@ async fn test_cancel_scheduler_succeeds() {
 #[tokio::test(flavor = "multi_thread")]
 #[serial]
 async fn test_issue_cancel_succeeds() {
-	test_with_vault(|parachain_runner, vault_wallet, _user_wallet, _, vault_id, vault_provider| async move {
+	test_with_vault(|vault_wallet, _user_wallet, _, vault_id, vault_provider| async move {
 		let user_provider = setup_provider(AccountKeyring::Dave).await;
 		let issue_set = Arc::new(RwLock::new(IssueRequestsMap::new()));
 		let memos_to_issue_ids = Arc::new(RwLock::new(IssueIdLookup::new()));
@@ -561,7 +549,7 @@ async fn test_issue_cancel_succeeds() {
 #[serial]
 async fn test_issue_overpayment_succeeds() {
 	test_with_vault(
-		|parachain_runner, _vault_wallet, user_wallet, oracle_agent, vault_id, vault_provider| async move {
+		|_vault_wallet, user_wallet, oracle_agent, vault_id, vault_provider| async move {
 			let user_provider = setup_provider(AccountKeyring::Dave).await;
 
 			let public_key = default_destination_as_binary();
@@ -651,7 +639,7 @@ async fn test_issue_overpayment_succeeds() {
 #[serial]
 async fn test_automatic_issue_execution_succeeds() {
 	test_with_vault(
-		|parachain_runner, vault_wallet, user_wallet, oracle_agent, vault_id, vault_provider| async move {
+		|vault_wallet, user_wallet, oracle_agent, vault_id, vault_provider| async move {
 			let user_provider = setup_provider(AccountKeyring::Dave).await;
 
 			let issue_amount = upscaled_compatible_amount(1000);
@@ -759,7 +747,7 @@ async fn test_automatic_issue_execution_succeeds() {
 #[serial]
 async fn test_automatic_issue_execution_succeeds_for_other_vault() {
 	test_with_vault(
-		|parachain_runner, vault_wallet, user_wallet, oracle_agent, vault1_id, vault1_provider| async move {
+		|vault_wallet, user_wallet, oracle_agent, vault1_id, vault1_provider| async move {
 			let user_provider = setup_provider(AccountKeyring::Dave).await;
 			let vault2_provider = setup_provider(AccountKeyring::Eve).await;
 			let vault2_id = VaultId::new(
@@ -904,7 +892,7 @@ async fn test_automatic_issue_execution_succeeds_for_other_vault() {
 #[serial]
 async fn test_execute_open_requests_succeeds() {
 	test_with_vault(
-		|parachain_runner, vault_wallet, user_wallet, oracle_agent, vault_id, vault_provider| async move {
+		|vault_wallet, user_wallet, oracle_agent, vault_id, vault_provider| async move {
 			let user_provider = setup_provider(AccountKeyring::Dave).await;
 
 			let vault_ids = vec![vault_id.clone()];
@@ -1018,10 +1006,9 @@ async fn test_execute_open_requests_succeeds() {
 #[serial]
 async fn test_off_chain_liquidation() {
 	test_with_vault(
-		|parachain_runner, vault_wallet, user_wallet, oracle_agent, vault_id, vault_provider| async move {
+		|vault_wallet, user_wallet, oracle_agent, vault_id, vault_provider| async move {
 			// Bob is set as an authorized oracle in the chain_spec
-			let authorized_oracle_provider =
-				setup_provider(AccountKeyring::Bob).await;
+			let authorized_oracle_provider = setup_provider(AccountKeyring::Bob).await;
 			let user_provider = setup_provider(AccountKeyring::Dave).await;
 
 			let issue_amount = upscaled_compatible_amount(100);
@@ -1129,7 +1116,7 @@ async fn test_shutdown() {
 #[tokio::test(flavor = "multi_thread")]
 #[serial]
 async fn test_requests_with_incompatible_amounts_fail() {
-	test_with_vault(|parachain_runner, vault_wallet, _user_wallet, _, vault_id, vault_provider| async move {
+	test_with_vault(|vault_wallet, _user_wallet, _, vault_id, vault_provider| async move {
 		let user_provider = setup_provider(AccountKeyring::Dave).await;
 
 		// We define an incompatible amount

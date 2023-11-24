@@ -3,9 +3,7 @@ use async_trait::async_trait;
 use frame_support::assert_ok;
 use primitives::{stellar::Asset as StellarAsset, CurrencyId, StellarStroops, H256};
 use runtime::{
-	integration::{
-		assert_event, get_required_vault_collateral_for_issue, setup_provider,
-	},
+	integration::{assert_event, get_required_vault_collateral_for_issue, setup_provider},
 	stellar::SecretKey,
 	ExecuteRedeemEvent, IssuePallet, SpacewalkParachain, VaultId, VaultRegistryPallet,
 };
