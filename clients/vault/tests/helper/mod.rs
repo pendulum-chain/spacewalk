@@ -33,12 +33,11 @@ impl SpacewalkParachainExt for SpacewalkParachain {}
 lazy_static! {
 	// TODO clean this up by extending the `get_test_secret_key()` function
 	pub static ref DESTINATION_SECRET_KEY: String = "SDNQJEIRSA6YF5JNS6LQLCBF2XVWZ2NJV3YLC322RGIBJIJRIRGWKLEF".to_string();
+	pub static ref ONE_TO_ONE_RATIO: FixedU128 = FixedU128::saturating_from_rational(1u128, 1u128);
+	pub static ref TEN_TO_ONE_RATIO: FixedU128 = FixedU128::saturating_from_rational(1u128, 10u128);
 }
 
-pub const ONE_TO_ONE_RATIO: FixedU128 = FixedU128::saturating_from_rational(1u128, 1u128);
-pub const TEN_TO_ONE_RATIO: FixedU128 = FixedU128::saturating_from_rational(1u128, 10u128);
-
-async fn set_exchange_rate(client: &SpacewalkParachainExt, currency: CurrencyId, ratio: FixedU128) {
+async fn set_exchange_rate(client: &SpacewalkParachain, currency: CurrencyId, ratio: FixedU128) {
 	set_exchange_rate_and_wait(client, currency, ratio).await;
 }
 
@@ -75,10 +74,10 @@ async fn setup_chain_providers(
 	// Has to be Bob because he is set as `authorized_oracle` in the genesis config
 	let parachain_rpc = setup_provider(client.clone(), AccountKeyring::Bob).await;
 
-	set_exchange_rate(&parachain_rpc, DEFAULT_TESTING_CURRENCY, ONE_TO_ONE_RATIO).await;
-	set_exchange_rate(&parachain_rpc, DEFAULT_WRAPPED_CURRENCY, TEN_TO_ONE_RATIO).await;
-	set_exchange_rate(&parachain_rpc, LESS_THAN_4_CURRENCY_CODE, TEN_TO_ONE_RATIO).await;
-	set_exchange_rate(&parachain_rpc, CurrencyId::StellarNative, TEN_TO_ONE_RATIO).await;
+	set_exchange_rate(&parachain_rpc, DEFAULT_TESTING_CURRENCY, *ONE_TO_ONE_RATIO).await;
+	set_exchange_rate(&parachain_rpc, DEFAULT_WRAPPED_CURRENCY, *TEN_TO_ONE_RATIO).await;
+	set_exchange_rate(&parachain_rpc, LESS_THAN_4_CURRENCY_CODE, *TEN_TO_ONE_RATIO).await;
+	set_exchange_rate(&parachain_rpc, CurrencyId::StellarNative, *TEN_TO_ONE_RATIO).await;
 
 	let path = tmp_dir.path().to_str().expect("should return a string").to_string();
 
