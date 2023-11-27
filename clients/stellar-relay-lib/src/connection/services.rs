@@ -2,7 +2,6 @@ use crate::{
 	connection::{
 		connector::{Connector, ConnectorActions},
 		helper::{time_now, to_base64_xdr_string},
-		log_error,
 		xdr_converter::get_xdr_message_length,
 	},
 	Error, StellarRelayMessage,
@@ -274,7 +273,6 @@ async fn _connection_handler(
 	Ok(())
 }
 
-
 /// Handles actions for the connection.
 /// # Arguments
 /// * `connector` - the Connector that would send/handle messages to/from Stellar Node
@@ -300,10 +298,12 @@ pub(crate) async fn connection_handler(
 				if let Err(e) = _connection_handler(action, &mut connector, &mut w_stream).await {
 					log::error!("connection_handler(): {e:?}");
 
-					log_error!(
-						connector.send_to_user(StellarRelayMessage::Error(e.to_string())).await,
-						format!("connection_handler(): sending error message")
-					);
+					drop(w_stream);
+					if let Err(e) = connector.send_to_user(StellarRelayMessage::Timeout).await {
+						log::error!("connection_handler(): failed to send timeout message");
+					}
+					drop(connector);
+					drop(actions_receiver);
 					return
 				}
 			},
@@ -318,10 +318,9 @@ pub(crate) async fn connection_handler(
 				);
 				drop(w_stream);
 
-				log_error!(
-						connector.send_to_user(StellarRelayMessage::Timeout).await,
-						format!("connection_handler(): Exhausted maximum retries for receiving any actions from receiver.")
-					);
+				if let Err(e) = connector.send_to_user(StellarRelayMessage::Timeout).await {
+					log::error!("connection_handler(): failed to send timeout message");
+				}
 				drop(connector);
 				drop(actions_receiver);
 				return

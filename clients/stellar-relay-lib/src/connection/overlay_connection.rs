@@ -49,9 +49,10 @@ impl StellarOverlayConnection {
 
 		match &res {
 			Some(StellarRelayMessage::Timeout) | Some(StellarRelayMessage::Error(_)) | None =>
-				// we want to keep reconnecting until it succeeds.
+			// we want to keep reconnecting until it succeeds.
 				loop {
-					// Delaying reconnection gives time for the write and read streams to be dropped.
+					// Delaying reconnection gives time for the write and read streams to be
+					// dropped.
 					let timeout = self.conn_info.timeout_in_secs;
 					log::info!(
 						"listen(): Reconnecting to {:?} in {timeout} seconds",
@@ -63,15 +64,15 @@ impl StellarOverlayConnection {
 						self.local_node.clone(),
 						self.conn_info.clone(),
 					)
-						.await
+					.await
 					{
 						Ok(new_user) => {
 							self.actions_sender = new_user.actions_sender;
 							self.relay_message_receiver = new_user.relay_message_receiver;
 							log::info!(
-							"listen(): overlay connection reconnected to {:?}",
-							&self.conn_info.address
-						);
+								"listen(): overlay connection reconnected to {:?}",
+								&self.conn_info.address
+							);
 							// break out of the loop since connection was successful.
 							return self.relay_message_receiver.recv().await
 						},

@@ -6,19 +6,6 @@ use substrate_stellar_sdk::{
 	SecretKey, XdrCodec,
 };
 
-/// a helpful macro to log an error (if it occurs) and return immediately.
-macro_rules! log_error {
-	// expression, return value, extra log
-	($res:expr, $log:expr) => {
-		if let Err(e) = $res {
-			log::error!("{:?}: {e:?}", $log);
-			return
-		}
-	};
-}
-
-pub(crate) use log_error;
-
 /// Returns a new BigNumber with a pseudo-random value equal to or greater than 0 and less than 1.
 pub fn generate_random_nonce() -> Uint256 {
 	let mut rng = rand::thread_rng();
