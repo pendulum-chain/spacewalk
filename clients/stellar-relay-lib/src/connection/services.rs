@@ -289,6 +289,11 @@ pub(crate) async fn connection_handler(
 			Ok(Some(ConnectorActions::Disconnect)) => {
 				log::info!("connection_handler(): Disconnecting....");
 				drop(w_stream);
+
+				if let Err(e) = connector.send_to_user(StellarRelayMessage::Disconnect).await {
+					log::error!("connection_handler(): failed to send Disconnect message: {e:?}");
+				}
+
 				drop(connector);
 				drop(actions_receiver);
 				return
@@ -299,8 +304,10 @@ pub(crate) async fn connection_handler(
 					log::error!("connection_handler(): {e:?}");
 
 					drop(w_stream);
-					if let Err(e) = connector.send_to_user(StellarRelayMessage::Timeout).await {
-						log::error!("connection_handler(): failed to send timeout message");
+					if let Err(e) =
+						connector.send_to_user(StellarRelayMessage::Error(e.to_string())).await
+					{
+						log::error!("connection_handler(): failed to send error message: {e:?}");
 					}
 					drop(connector);
 					drop(actions_receiver);
@@ -318,8 +325,10 @@ pub(crate) async fn connection_handler(
 				);
 				drop(w_stream);
 
-				if let Err(e) = connector.send_to_user(StellarRelayMessage::Timeout).await {
-					log::error!("connection_handler(): failed to send timeout message");
+				if let Err(e) =
+					connector.send_to_user(StellarRelayMessage::Error("Timeout".to_string())).await
+				{
+					log::error!("connection_handler(): failed to send timeout message: {e:?}");
 				}
 				drop(connector);
 				drop(actions_receiver);

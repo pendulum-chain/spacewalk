@@ -415,14 +415,14 @@ mod test {
 	async fn connector_send_to_user_works() {
 		let (_, _, connector, _, mut message_receiver) = create_connector();
 
-		let message = StellarRelayMessage::Timeout;
+		let message = StellarRelayMessage::Error("test".to_string());
 		connector.send_to_user(message).await.unwrap();
 
 		let received_message = message_receiver.recv().await;
 		assert!(received_message.is_some());
 		let message = received_message.unwrap();
 		match message {
-			StellarRelayMessage::Timeout => {},
+			StellarRelayMessage::Error(_) => {},
 			_ => {
 				panic!("Incorrect message received!!!")
 			},

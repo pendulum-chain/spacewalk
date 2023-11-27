@@ -7,7 +7,7 @@ use crate::{
 	ConnectionInfo, Connector, Error, StellarRelayMessage,
 };
 use substrate_stellar_sdk::types::StellarMessage;
-use tokio::{sync::mpsc, time::Duration};
+use tokio::{sync::mpsc, task::JoinHandle, time::Duration};
 
 pub struct StellarOverlayConnection {
 	/// This is when we want to send stellar messages
@@ -16,6 +16,7 @@ pub struct StellarOverlayConnection {
 	relay_message_receiver: mpsc::Receiver<StellarRelayMessage>,
 	local_node: NodeInfo,
 	conn_info: ConnectionInfo,
+	handles: Vec<JoinHandle<()>>,
 }
 
 impl StellarOverlayConnection {
@@ -25,7 +26,13 @@ impl StellarOverlayConnection {
 		local_node: NodeInfo,
 		conn_info: ConnectionInfo,
 	) -> Self {
-		StellarOverlayConnection { actions_sender, relay_message_receiver, local_node, conn_info }
+		StellarOverlayConnection {
+			actions_sender,
+			relay_message_receiver,
+			local_node,
+			conn_info,
+			handles: vec![],
+		}
 	}
 
 	pub async fn send(&self, message: StellarMessage) -> Result<(), Error> {
@@ -48,7 +55,7 @@ impl StellarOverlayConnection {
 		let res = self.relay_message_receiver.recv().await;
 
 		match &res {
-			Some(StellarRelayMessage::Timeout) | Some(StellarRelayMessage::Error(_)) | None =>
+			Some(StellarRelayMessage::Error(_)) | None =>
 			// we want to keep reconnecting until it succeeds.
 				loop {
 					// Delaying reconnection gives time for the write and read streams to be
@@ -82,6 +89,11 @@ impl StellarOverlayConnection {
 						},
 					};
 				},
+			Some(StellarRelayMessage::Disconnect) =>
+				for handle in self.handles.iter() {
+					log::info!("listen(): thread {}", handle.is_finished());
+					drop(handle);
+				},
 			_ => {},
 		}
 		res
@@ -103,7 +115,7 @@ impl StellarOverlayConnection {
 		// this is a channel to communicate with the user/caller.
 		let (relay_message_sender, relay_message_receiver) =
 			mpsc::channel::<StellarRelayMessage>(1024);
-		let overlay_connection = StellarOverlayConnection::new(
+		let mut overlay_connection = StellarOverlayConnection::new(
 			actions_sender.clone(),
 			relay_message_receiver,
 			local_node,
@@ -117,11 +129,12 @@ impl StellarOverlayConnection {
 		);
 
 		// run the connector communication
-		tokio::spawn(connection_handler(connector, actions_receiver, wr));
+		let x = tokio::spawn(connection_handler(connector, actions_receiver, wr));
 
 		// start the receiving_service
-		tokio::spawn(receiving_service(rd, actions_sender.clone()));
+		let y = tokio::spawn(receiving_service(rd, actions_sender.clone()));
 
+		overlay_connection.handles = vec![x, y];
 		// start the handshake
 		actions_sender.send(ConnectorActions::SendHello).await?;
 		Ok(overlay_connection)

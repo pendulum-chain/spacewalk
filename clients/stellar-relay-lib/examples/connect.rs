@@ -61,7 +61,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 			StellarRelayMessage::Error(e) => {
 				log::error!("Error: {:?}", e);
 			},
-			StellarRelayMessage::Timeout => {
+			StellarRelayMessage::Disconnect => {
 				log::error!("timed out");
 			},
 		}

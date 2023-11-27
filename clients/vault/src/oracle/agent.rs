@@ -60,9 +60,6 @@ async fn handle_message(
 			tracing::info!("handle_message(): Connected: via public key: {pub_key}");
 			tracing::info!("handle_message(): Connected: with {:#?}", node_info)
 		},
-		StellarRelayMessage::Timeout => {
-			tracing::error!("handle_message(): The Stellar Relay timed out. Failed to process message: {message:?}");
-		},
 		_ => {},
 	}
 

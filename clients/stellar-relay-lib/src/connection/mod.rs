@@ -40,8 +40,7 @@ pub enum StellarRelayMessage {
 		msg: Box<StellarMessage>,
 	},
 	Error(String),
-	/// The amount of time to wait for Stellar Node messages
-	Timeout,
+	Disconnect,
 }
 
 /// Config for connecting to Stellar Node
