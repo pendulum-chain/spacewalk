@@ -1,4 +1,4 @@
-use spacewalk_runtime::{AssetId, DiaOracleModuleConfig, IsPublicNetwork};
+use spacewalk_runtime::{AssetId, DiaOracleModuleConfig};
 use std::{convert::TryFrom, str::FromStr};
 
 use frame_support::BoundedVec;
@@ -58,10 +58,6 @@ const MXN_CURRENCY_ID: CurrencyId = CurrencyId::AlphaNum4(
 /// Generate an Aura authority key.
 pub fn authority_keys_from_seed(s: &str) -> (AuraId, GrandpaId) {
 	(get_from_seed::<AuraId>(s), get_from_seed::<GrandpaId>(s))
-}
-
-fn get_account_id_from_string(account_id: &str) -> AccountId {
-	AccountId::from_str(account_id).expect("account id is not valid")
 }
 
 type AccountPublic = <Signature as Verify>::Signer;
@@ -369,8 +365,8 @@ fn testnet_genesis(
 }
 
 fn create_stellar_testnet_config() -> StellarRelayConfig {
-	let mut old_validators = Vec::new();
-	let mut old_organizations = Vec::new();
+	let old_validators = Vec::new();
+	let old_organizations = Vec::new();
 
 	// Testnet organization
 	let organization_testnet_sdf = Organization { name: create_bounded_vec("sdftest"), id: 1u128 };

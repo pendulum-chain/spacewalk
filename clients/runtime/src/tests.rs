@@ -39,7 +39,9 @@ async fn set_exchange_rate(client: SubxtClient) {
 
 #[tokio::test(flavor = "multi_thread")]
 async fn test_getters() {
-	let (client, _tmp_dir) = default_provider_client(AccountKeyring::Alice).await;
+	let is_public_network = false;
+	let (client, _tmp_dir) =
+		default_provider_client(AccountKeyring::Alice, is_public_network).await;
 	let parachain_rpc = setup_provider(client.clone(), AccountKeyring::Alice).await;
 
 	tokio::join!(
@@ -62,7 +64,9 @@ async fn test_getters() {
 #[ignore]
 #[tokio::test(flavor = "multi_thread")]
 async fn test_invalid_tx_matching() {
-	let (client, _tmp_dir) = default_provider_client(AccountKeyring::Alice).await;
+	let is_public_network = false;
+	let (client, _tmp_dir) =
+		default_provider_client(AccountKeyring::Alice, is_public_network).await;
 	let parachain_rpc = setup_provider(client.clone(), AccountKeyring::Alice).await;
 	let err = parachain_rpc.get_invalid_tx_error(AccountKeyring::Bob.into()).await;
 	assert!(err.is_invalid_transaction().is_some())
@@ -71,6 +75,7 @@ async fn test_invalid_tx_matching() {
 #[ignore]
 #[tokio::test(flavor = "multi_thread")]
 async fn test_too_low_priority_matching() {
+	let is_public_network = false;
 	let (client, _tmp_dir) = default_provider_client(AccountKeyring::Alice).await;
 	let parachain_rpc = setup_provider(client.clone(), AccountKeyring::Alice).await;
 	let err = parachain_rpc.get_too_low_priority_error(AccountKeyring::Bob.into()).await;
@@ -79,7 +84,9 @@ async fn test_too_low_priority_matching() {
 
 #[tokio::test(flavor = "multi_thread")]
 async fn test_subxt_processing_events_after_dispatch_error() {
-	let (client, _tmp_dir) = default_provider_client(AccountKeyring::Alice).await;
+	let is_public_network = false;
+	let (client, _tmp_dir) =
+		default_provider_client(AccountKeyring::Alice, is_public_network).await;
 
 	let oracle_provider = setup_provider(client.clone(), AccountKeyring::Bob).await;
 	let invalid_oracle = setup_provider(client, AccountKeyring::Dave).await;
@@ -100,7 +107,9 @@ async fn test_subxt_processing_events_after_dispatch_error() {
 
 #[tokio::test(flavor = "multi_thread")]
 async fn test_register_vault() {
-	let (client, _tmp_dir) = default_provider_client(AccountKeyring::Alice).await;
+	let is_public_network = false;
+	let (client, _tmp_dir) =
+		default_provider_client(AccountKeyring::Alice, is_public_network).await;
 	let parachain_rpc = setup_provider(client.clone(), AccountKeyring::Alice).await;
 	set_exchange_rate(client.clone()).await;
 

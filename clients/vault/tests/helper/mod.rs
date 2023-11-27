@@ -69,7 +69,7 @@ async fn initialize_wallets(
 async fn setup_chain_providers(
 	is_public_network: bool,
 ) -> (SubxtClient, ArcRwLock<StellarWallet>, ArcRwLock<StellarWallet>) {
-	let (client, tmp_dir) = default_provider_client(AccountKeyring::Alice).await;
+	let (client, tmp_dir) = default_provider_client(AccountKeyring::Alice, is_public_network).await;
 
 	// Has to be Bob because he is set as `authorized_oracle` in the genesis config
 	let parachain_rpc = setup_provider(client.clone(), AccountKeyring::Bob).await;
