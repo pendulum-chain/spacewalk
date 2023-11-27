@@ -1,5 +1,5 @@
 use spacewalk_runtime::{AssetId, DiaOracleModuleConfig};
-use std::{convert::TryFrom, str::FromStr};
+use std::convert::TryFrom;
 
 use frame_support::BoundedVec;
 use sc_service::ChainType;
@@ -31,15 +31,16 @@ pub fn get_from_seed<TPublic: Public>(seed: &str) -> <TPublic::Pair as Pair>::Pu
 }
 
 // For mainnet USDC issued by centre.io
-// const WRAPPED_CURRENCY_ID: CurrencyId = CurrencyId::AlphaNum4 {
-// 	code: *b"USDC",
-// 	issuer: [
-// 		59, 153, 17, 56, 14, 254, 152, 139, 160, 168, 144, 14, 177, 207, 228, 79, 54, 111, 125,
-// 		190, 148, 107, 237, 7, 114, 64, 247, 246, 36, 223, 21, 197,
-// 	],
-// };
+const WRAPPED_CURRENCY_ID_STELLAR_MAINNET: CurrencyId = CurrencyId::AlphaNum4(
+	*b"USDC",
+	[
+		59, 153, 17, 56, 14, 254, 152, 139, 160, 168, 144, 14, 177, 207, 228, 79, 54, 111, 125,
+		190, 148, 107, 237, 7, 114, 64, 247, 246, 36, 223, 21, 197,
+	],
+);
+
 // For Testnet USDC issued by
-const WRAPPED_CURRENCY_ID: CurrencyId = CurrencyId::AlphaNum4(
+const WRAPPED_CURRENCY_ID_STELLAR_TESTNET: CurrencyId = CurrencyId::AlphaNum4(
 	*b"USDC",
 	[
 		20, 209, 150, 49, 176, 55, 23, 217, 171, 154, 54, 110, 16, 50, 30, 226, 102, 231, 46, 199,
@@ -150,8 +151,13 @@ pub fn testnet_config() -> ChainSpec {
 	)
 }
 
-fn default_pair(currency_id: CurrencyId) -> VaultCurrencyPair<CurrencyId> {
-	VaultCurrencyPair { collateral: currency_id, wrapped: WRAPPED_CURRENCY_ID }
+fn default_pair(currency_id: CurrencyId, is_public_network: bool) -> VaultCurrencyPair<CurrencyId> {
+	let wrapped = if is_public_network {
+		WRAPPED_CURRENCY_ID_STELLAR_MAINNET
+	} else {
+		WRAPPED_CURRENCY_ID_STELLAR_TESTNET
+	};
+	VaultCurrencyPair { collateral: currency_id, wrapped }
 }
 
 // Used to create bounded vecs for genesis config
@@ -171,6 +177,12 @@ fn testnet_genesis(
 	start_shutdown: bool,
 	is_public_network: bool,
 ) -> GenesisConfig {
+	let default_wrapped_currency = if is_public_network {
+		WRAPPED_CURRENCY_ID_STELLAR_MAINNET
+	} else {
+		WRAPPED_CURRENCY_ID_STELLAR_TESTNET
+	};
+
 	GenesisConfig {
 		system: SystemConfig {
 			code: WASM_BINARY.expect("WASM binary was not build, please build it!").to_vec(),
@@ -238,7 +250,7 @@ fn testnet_genesis(
 				// Changing these items means that the integration tests also have to change
 				// because the integration tests insert dummy values for these into the oracle
 				Key::ExchangeRate(CurrencyId::XCM(0)),
-				Key::ExchangeRate(WRAPPED_CURRENCY_ID),
+				Key::ExchangeRate(default_wrapped_currency),
 				Key::ExchangeRate(MXN_CURRENCY_ID),
 			],
 		},
@@ -251,11 +263,11 @@ fn testnet_genesis(
 			punishment_delay: DAYS,
 			secure_collateral_threshold: vec![
 				(
-					default_pair(CurrencyId::XCM(0)),
+					default_pair(CurrencyId::XCM(0), is_public_network),
 					FixedU128::checked_from_rational(160, 100).unwrap(),
 				),
 				(
-					default_pair(CurrencyId::XCM(1)),
+					default_pair(CurrencyId::XCM(1), is_public_network),
 					FixedU128::checked_from_rational(160, 100).unwrap(),
 				),
 				(
@@ -273,11 +285,11 @@ fn testnet_genesis(
 			/* 150% */
 			premium_redeem_threshold: vec![
 				(
-					default_pair(CurrencyId::XCM(0)),
+					default_pair(CurrencyId::XCM(0), is_public_network),
 					FixedU128::checked_from_rational(140, 100).unwrap(),
 				),
 				(
-					default_pair(CurrencyId::XCM(1)),
+					default_pair(CurrencyId::XCM(1), is_public_network),
 					FixedU128::checked_from_rational(140, 100).unwrap(),
 				),
 				(
@@ -302,11 +314,11 @@ fn testnet_genesis(
 			/* 135% */
 			liquidation_collateral_threshold: vec![
 				(
-					default_pair(CurrencyId::XCM(0)),
+					default_pair(CurrencyId::XCM(0), is_public_network),
 					FixedU128::checked_from_rational(120, 100).unwrap(),
 				),
 				(
-					default_pair(CurrencyId::XCM(1)),
+					default_pair(CurrencyId::XCM(1), is_public_network),
 					FixedU128::checked_from_rational(120, 100).unwrap(),
 				),
 				(
@@ -323,8 +335,8 @@ fn testnet_genesis(
 			],
 			/* 110% */
 			system_collateral_ceiling: vec![
-				(default_pair(CurrencyId::XCM(0)), 60_000 * 10u128.pow(12)),
-				(default_pair(CurrencyId::XCM(1)), 60_000 * 10u128.pow(12)),
+				(default_pair(CurrencyId::XCM(0), is_public_network), 60_000 * 10u128.pow(12)),
+				(default_pair(CurrencyId::XCM(1), is_public_network), 60_000 * 10u128.pow(12)),
 				(
 					VaultCurrencyPair { collateral: CurrencyId::XCM(0), wrapped: MXN_CURRENCY_ID },
 					60_000 * 10u128.pow(12),

@@ -74,8 +74,14 @@ async fn setup_chain_providers(
 	// Has to be Bob because he is set as `authorized_oracle` in the genesis config
 	let parachain_rpc = setup_provider(client.clone(), AccountKeyring::Bob).await;
 
+	let default_wrapped_currency = if is_public_network {
+		DEFAULT_WRAPPED_CURRENCY_STELLAR_MAINNET
+	} else {
+		DEFAULT_WRAPPED_CURRENCY_STELLAR_TESTNET
+	};
+
 	set_exchange_rate(&parachain_rpc, DEFAULT_TESTING_CURRENCY, *ONE_TO_ONE_RATIO).await;
-	set_exchange_rate(&parachain_rpc, DEFAULT_WRAPPED_CURRENCY, *TEN_TO_ONE_RATIO).await;
+	set_exchange_rate(&parachain_rpc, default_wrapped_currency, *TEN_TO_ONE_RATIO).await;
 	set_exchange_rate(&parachain_rpc, LESS_THAN_4_CURRENCY_CODE, *TEN_TO_ONE_RATIO).await;
 	set_exchange_rate(&parachain_rpc, CurrencyId::StellarNative, *TEN_TO_ONE_RATIO).await;
 
@@ -124,10 +130,16 @@ where
 	let (client, vault_wallet, user_wallet) = setup_chain_providers(is_public_network).await;
 
 	let vault_provider = setup_provider(client.clone(), AccountKeyring::Charlie).await;
+	let default_wrapped_currency = if is_public_network {
+		DEFAULT_WRAPPED_CURRENCY_STELLAR_MAINNET
+	} else {
+		DEFAULT_WRAPPED_CURRENCY_STELLAR_TESTNET
+	};
+
 	let vault_id = VaultId::new(
 		AccountKeyring::Charlie.into(),
 		DEFAULT_TESTING_CURRENCY,
-		DEFAULT_WRAPPED_CURRENCY,
+		default_wrapped_currency,
 	);
 
 	let stellar_config = get_test_stellar_relay_config(is_public_network);

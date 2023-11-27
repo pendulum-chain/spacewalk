@@ -15,7 +15,7 @@ pub const DEFAULT_WRAPPED_CURRENCY_STELLAR_TESTNET: CurrencyId = CurrencyId::Alp
 	],
 );
 
-const DEFAULT_WRAPPED_CURRENCY_STELLAR_MAINNET: CurrencyId = CurrencyId::AlphaNum4(
+pub const DEFAULT_WRAPPED_CURRENCY_STELLAR_MAINNET: CurrencyId = CurrencyId::AlphaNum4(
 	*b"USDC",
 	[
 		59, 153, 17, 56, 14, 254, 152, 139, 160, 168, 144, 14, 177, 207, 228, 79, 54, 111, 125,
