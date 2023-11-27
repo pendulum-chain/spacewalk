@@ -94,19 +94,20 @@ async fn setup_chain_providers(
 }
 
 pub async fn test_with<F, R>(
+	is_public_network: bool,
 	execute: impl FnOnce(SubxtClient, ArcRwLock<StellarWallet>, ArcRwLock<StellarWallet>) -> F,
 ) -> R
 where
 	F: Future<Output = R>,
 {
 	service::init_subscriber();
-	let is_public_network = false;
 	let (client, vault_wallet, user_wallet) = setup_chain_providers(is_public_network).await;
 
 	execute(client, vault_wallet, user_wallet).await
 }
 
 pub async fn test_with_vault<F, R>(
+	is_public_network: bool,
 	execute: impl FnOnce(
 		SubxtClient,
 		ArcRwLock<StellarWallet>,
@@ -121,11 +122,9 @@ where
 {
 	service::init_subscriber();
 
-	let is_public_network = false;
 	let (client, vault_wallet, user_wallet) = setup_chain_providers(is_public_network).await;
 
 	let vault_provider = setup_provider(client.clone(), AccountKeyring::Charlie).await;
-
 	let vault_id = VaultId::new(
 		AccountKeyring::Charlie.into(),
 		DEFAULT_TESTING_CURRENCY,
