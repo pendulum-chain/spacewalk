@@ -34,6 +34,37 @@ lazy_static! {
 	pub static ref DESTINATION_SECRET_KEY: String = "SDNQJEIRSA6YF5JNS6LQLCBF2XVWZ2NJV3YLC322RGIBJIJRIRGWKLEF".to_string();
 }
 
+pub const ONE_TO_ONE_RATIO: FixedU128 = FixedU128::saturating_from_rational(1u128, 1u128);
+pub const TEN_TO_ONE_RATIO: FixedU128 = FixedU128::saturating_from_rational(1u128, 10u128);
+
+async fn set_exchange_rate(client: &SpacewalkParachainExt, currency: CurrencyId, ratio: FixedU128) {
+	set_exchange_rate_and_wait(client, currency, ratio).await;
+}
+
+async fn initialize_wallets(
+	vault_stellar_secret: &String,
+	user_stellar_secret: &String,
+	path: String,
+) -> (ArcRwLock<StellarWallet>, ArcRwLock<StellarWallet>) {
+	let vault_wallet = Arc::new(RwLock::new(
+		StellarWallet::from_secret_encoded_with_cache(
+			vault_stellar_secret.as_str(),
+			CFG.is_public_network(),
+			path.clone(),
+		)
+		.unwrap(),
+	));
+	let user_wallet = Arc::new(RwLock::new(
+		StellarWallet::from_secret_encoded_with_cache(
+			user_stellar_secret.as_str(),
+			CFG.is_public_network(),
+			path,
+		)
+		.unwrap(),
+	));
+	(vault_wallet, user_wallet)
+}
+
 #[async_trait]
 impl SpacewalkParachainExt for SpacewalkParachain {}
 
@@ -49,55 +80,15 @@ where
 	// Has to be Bob because he is set as `authorized_oracle` in the genesis config
 	let parachain_rpc = setup_provider(client.clone(), AccountKeyring::Bob).await;
 
-	set_exchange_rate_and_wait(
-		&parachain_rpc,
-		DEFAULT_TESTING_CURRENCY,
-		// Set exchange rate to 1:1 with USD
-		FixedU128::saturating_from_rational(1u128, 1u128),
-	)
-	.await;
-	set_exchange_rate_and_wait(
-		&parachain_rpc,
-		DEFAULT_WRAPPED_CURRENCY,
-		// Set exchange rate to 10:1 with USD
-		FixedU128::saturating_from_rational(1u128, 10u128),
-	)
-	.await;
-
-	set_exchange_rate_and_wait(
-		&parachain_rpc,
-		LESS_THAN_4_CURRENCY_CODE,
-		// Set exchange rate to 10:1 with USD
-		FixedU128::saturating_from_rational(1u128, 10u128),
-	)
-	.await;
-
-	set_exchange_rate_and_wait(
-		&parachain_rpc,
-		CurrencyId::StellarNative,
-		// Set exchange rate to 10:1 with USD
-		FixedU128::saturating_from_rational(1u128, 10u128),
-	)
-	.await;
+	set_exchange_rate(&parachain_rpc, DEFAULT_TESTING_CURRENCY, ONE_TO_ONE_RATIO).await;
+	set_exchange_rate(&parachain_rpc, DEFAULT_WRAPPED_CURRENCY, TEN_TO_ONE_RATIO).await;
+	set_exchange_rate(&parachain_rpc, LESS_THAN_4_CURRENCY_CODE, TEN_TO_ONE_RATIO).await;
+	set_exchange_rate(&parachain_rpc, CurrencyId::StellarNative, TEN_TO_ONE_RATIO).await;
 
 	let path = tmp_dir.path().to_str().expect("should return a string").to_string();
-	let vault_wallet = Arc::new(RwLock::new(
-		StellarWallet::from_secret_encoded_with_cache(
-			&SECRET_KEY,
-			CFG.is_public_network(),
-			path.clone(),
-		)
-		.unwrap(),
-	));
 
-	let user_wallet = Arc::new(RwLock::new(
-		StellarWallet::from_secret_encoded_with_cache(
-			&DESTINATION_SECRET_KEY,
-			CFG.is_public_network(),
-			path,
-		)
-		.unwrap(),
-	));
+	let (vault_wallet, user_wallet) =
+		initialize_wallets(&SECRET_KEY, &DESTINATION_SECRET_KEY, path).await;
 
 	execute(client, vault_wallet, user_wallet).await
 }
