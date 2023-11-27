@@ -57,7 +57,16 @@ impl XCMCurrencyConversion for MockValue {
 /// Start a new instance of the parachain. The second item in the returned tuple must remain in
 /// scope as long as the parachain is active, since dropping it will remove the temporary directory
 /// that the parachain uses
-pub async fn default_provider_client(key: AccountKeyring) -> (SubxtClient, TempDir) {
+pub async fn default_provider_client(
+	key: AccountKeyring,
+	is_public_network: bool,
+) -> (SubxtClient, TempDir) {
+	let chain_spec = if is_public_network {
+		testchain::chain_spec::mainnet_config()
+	} else {
+		testchain::chain_spec::testnet_config()
+	};
+
 	let tmp = TempDir::new("spacewalk-parachain-").expect("failed to create tempdir");
 	let config = SubxtClientConfig {
 		impl_name: "spacewalk-parachain-full-client",
@@ -66,7 +75,7 @@ pub async fn default_provider_client(key: AccountKeyring) -> (SubxtClient, TempD
 		copyright_start_year: 2020,
 		db: DatabaseSource::ParityDb { path: tmp.path().join("db") },
 		keystore: KeystoreConfig::Path { path: tmp.path().join("keystore"), password: None },
-		chain_spec: testchain::chain_spec::development_config(),
+		chain_spec,
 		role: Role::Authority(key),
 		telemetry: None,
 		wasm_method: WasmExecutionMethod::Compiled {
