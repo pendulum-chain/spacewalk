@@ -175,8 +175,8 @@ pub mod pallet {
 			};
 			let organization_satoshipay =
 				OrganizationOf::<T> { name: create_bounded_vec("SatoshiPay"), id: 1.into() };
-			let organization_coinqvest =
-				OrganizationOf::<T> { name: create_bounded_vec("Coinqvest"), id: 2.into() };
+			let organization_whalestack =
+				OrganizationOf::<T> { name: create_bounded_vec("Whalestack"), id: 2.into() };
 			let organization_blockdaemon =
 				OrganizationOf::<T> { name: create_bounded_vec("Blockdaemon"), id: 3.into() };
 			let organization_lobstr =
@@ -235,25 +235,25 @@ pub mod pallet {
 				},
 				// Coinqvest validators
 				ValidatorOf::<T> {
-					name: create_bounded_vec("$coinqvest-germany"),
+					name: create_bounded_vec("$whalestack-germany"),
 					public_key: create_bounded_vec(
 						"GD6SZQV3WEJUH352NTVLKEV2JM2RH266VPEM7EH5QLLI7ZZAALMLNUVN",
 					),
-					organization_id: organization_coinqvest.id,
+					organization_id: organization_whalestack.id,
 				},
 				ValidatorOf::<T> {
-					name: create_bounded_vec("$coinqvest-finland"),
+					name: create_bounded_vec("$whalestack-finland"),
 					public_key: create_bounded_vec(
 						"GADLA6BJK6VK33EM2IDQM37L5KGVCY5MSHSHVJA4SCNGNUIEOTCR6J5T",
 					),
-					organization_id: organization_coinqvest.id,
+					organization_id: organization_whalestack.id,
 				},
 				ValidatorOf::<T> {
-					name: create_bounded_vec("$coinqvest-hongkong"),
+					name: create_bounded_vec("$whalestack-hongkong"),
 					public_key: create_bounded_vec(
 						"GAZ437J46SCFPZEDLVGDMKZPLFO77XJ4QVAURSJVRZK2T5S7XUFHXI2Z",
 					),
-					organization_id: organization_coinqvest.id,
+					organization_id: organization_whalestack.id,
 				},
 				// Blockdaemon validators
 				ValidatorOf::<T> {
@@ -363,7 +363,7 @@ pub mod pallet {
 				organization_satoshipay,
 				organization_sdf,
 				organization_franklin_templeton,
-				organization_coinqvest,
+				organization_whalestack,
 				organization_blockdaemon,
 				organization_lobstr,
 				organization_public_node,
