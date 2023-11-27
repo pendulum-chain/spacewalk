@@ -134,8 +134,6 @@ impl Error {
 	}
 
 	pub fn is_invalid_transaction(&self) -> Option<Recoverability> {
-		let recoverable_errors = ["Inability to pay some fees", "Transaction is outdated"];
-
 		self.map_custom_error(|custom_error| {
 			if custom_error.code() == POOL_INVALID_TX {
 				let data_string = custom_error.data().map(ToString::to_string).unwrap_or_default();
@@ -229,7 +227,7 @@ impl RecoverableError {
 	fn is_recoverable(error_message: &str) -> bool {
 		[RecoverableError::InabilityToPayFees, RecoverableError::OutdatedTransaction]
 			.iter()
-			.any(|&error| error_message.contains(error.as_str()))
+			.any(|error| error_message.contains(error.as_str()))
 	}
 }
 
