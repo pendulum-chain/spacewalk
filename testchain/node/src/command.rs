@@ -32,11 +32,7 @@ use crate::{
 fn load_spec(id: &str) -> std::result::Result<Box<dyn sc_service::ChainSpec>, String> {
 	match id {
 		"" => Ok(Box::new(chain_spec::local_config())),
-		"dev" => Ok(Box::new(chain_spec::development_config())),
-		"beta" => Ok(Box::new(chain_spec::beta_testnet_config())),
-		"testnet" => Ok(Box::new(chain_spec::ChainSpec::from_json_bytes(
-			&include_bytes!("../res/testnet.json")[..],
-		)?)),
+		"dev" => Ok(Box::new(chain_spec::testnet_config())),
 		path => Ok(Box::new(chain_spec::ChainSpec::from_json_file(path.into())?)),
 	}
 }
