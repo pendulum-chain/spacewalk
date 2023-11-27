@@ -1,13 +1,12 @@
-use spacewalk_runtime::{AssetId, DiaOracleModuleConfig};
+use spacewalk_runtime::{AssetId, DiaOracleModuleConfig, IsPublicNetwork};
 use std::{convert::TryFrom, str::FromStr};
 
 use frame_support::BoundedVec;
-use hex_literal::hex;
 use sc_service::ChainType;
 use sp_arithmetic::{FixedPointNumber, FixedU128};
 use sp_consensus_aura::sr25519::AuthorityId as AuraId;
 use sp_consensus_grandpa::AuthorityId as GrandpaId;
-use sp_core::{crypto::UncheckedInto, sr25519, Pair, Public};
+use sp_core::{sr25519, Pair, Public};
 use sp_runtime::traits::{IdentifyAccount, Verify};
 
 use primitives::{oracle::Key, CurrencyId, VaultCurrencyPair};
@@ -81,15 +80,15 @@ fn get_properties() -> Map<String, Value> {
 	properties
 }
 
-pub fn local_config() -> ChainSpec {
+pub fn mainnet_config() -> ChainSpec {
 	ChainSpec::from_genesis(
 		"spacewalk",
-		"local_testnet",
-		ChainType::Local,
+		"dev_mainnet",
+		ChainType::Development,
 		move || {
 			testnet_genesis(
 				get_account_id_from_seed::<sr25519::Public>("Alice"),
-				vec![],
+				vec![authority_keys_from_seed("Alice")],
 				vec![
 					get_account_id_from_seed::<sr25519::Public>("Alice"),
 					get_account_id_from_seed::<sr25519::Public>("Bob"),
@@ -106,67 +105,7 @@ pub fn local_config() -> ChainSpec {
 				],
 				vec![get_account_id_from_seed::<sr25519::Public>("Bob")],
 				false,
-			)
-		},
-		vec![],
-		None,
-		None,
-		None,
-		Some(get_properties()),
-		None,
-	)
-}
-
-pub fn beta_testnet_config() -> ChainSpec {
-	ChainSpec::from_genesis(
-		"spacewalk",
-		"beta_testnet",
-		ChainType::Live,
-		move || {
-			testnet_genesis(
-				get_account_id_from_string("5HeVGqvfpabwFqzV1DhiQmjaLQiFcTSmq2sH6f7atsXkgvtt"),
-				vec![
-					(
-						// 5DJ3wbdicFSFFudXndYBuvZKjucTsyxtJX5WPzQM8HysSkFY
-						hex!["366a092a27b4b28199a588b0155a2c9f3f0513d92481de4ee2138273926fa91c"]
-							.unchecked_into(),
-						hex!["dce82040dc0a90843897aee1cc1a96c205fe7c1165b8f46635c2547ed15a3013"]
-							.unchecked_into(),
-					),
-					(
-						// 5HW7ApFamN6ovtDkFyj67tRLRhp8B2kVNjureRUWWYhkTg9j
-						hex!["f08cc7cf45f88e6dbe312a63f6ce639061834b4208415b235f77a67b51435f63"]
-							.unchecked_into(),
-						hex!["5b4651cf045ddf55f0df7bfbb9bb4c45bbeb3c536c6ce4a98275781b8f0f0754"]
-							.unchecked_into(),
-					),
-					(
-						// 5FNbq8zGPZtinsfgyD4w2G3BMh75H3r2Qg3uKudTZkJtRru6
-						hex!["925ad4bdf35945bea91baeb5419a7ffa07002c6a85ba334adfa7cb5b05623c1b"]
-							.unchecked_into(),
-						hex!["8de3db7b51864804d2dd5c5905d571aa34d7161537d5a0045755b72d1ac2062e"]
-							.unchecked_into(),
-					),
-				],
-				vec![
-					// root key
-					get_account_id_from_string("5HeVGqvfpabwFqzV1DhiQmjaLQiFcTSmq2sH6f7atsXkgvtt"),
-					// faucet
-					get_account_id_from_string("5FHy3cvyToZ4ConPXhi43rycAcGYw2R2a8cCjfVMfyuS1Ywg"),
-					// vaults
-					get_account_id_from_string("5F7Q9FqnGwJmjLtsFGymHZXPEx2dWRVE7NW4Sw2jzEhUB5WQ"),
-					get_account_id_from_string("5CJncqjWDkYv4P6nccZHGh8JVoEBXvharMqVpkpJedoYNu4A"),
-					get_account_id_from_string("5GpnEWKTWv7xiQtDFi9Rku7DrvgHj4oqMDev4qBQhfwQE8nx"),
-					get_account_id_from_string("5DttG269R1NTBDWcghYxa9NmV2wHxXpTe4U8pu4jK3LCE9zi"),
-					// relayers
-					get_account_id_from_string("5DNzULM1UJXDM7NUgDL4i8Hrhe9e3vZkB3ByM1eEXMGAs4Bv"),
-					get_account_id_from_string("5GEXRnnv8Qz9rEwMs4TfvHme48HQvVTEDHJECCvKPzFB4pFZ"),
-					// oracles
-					get_account_id_from_string("5H8zjSWfzMn86d1meeNrZJDj3QZSvRjKxpTfuVaZ46QJZ4qs"),
-					get_account_id_from_string("5FPBT2BVVaLveuvznZ9A1TUtDcbxK5yvvGcMTJxgFmhcWGwj"),
-				],
-				vec![get_account_id_from_seed::<sr25519::Public>("Bob")],
-				false,
+				true,
 			)
 		},
 		Vec::new(),
@@ -178,7 +117,7 @@ pub fn beta_testnet_config() -> ChainSpec {
 	)
 }
 
-pub fn development_config() -> ChainSpec {
+pub fn testnet_config() -> ChainSpec {
 	ChainSpec::from_genesis(
 		"spacewalk",
 		"dev_testnet",
@@ -202,6 +141,7 @@ pub fn development_config() -> ChainSpec {
 					get_account_id_from_seed::<sr25519::Public>("Ferdie//stash"),
 				],
 				vec![get_account_id_from_seed::<sr25519::Public>("Bob")],
+				false,
 				false,
 			)
 		},
@@ -233,34 +173,8 @@ fn testnet_genesis(
 	endowed_accounts: Vec<AccountId>,
 	authorized_oracles: Vec<AccountId>,
 	start_shutdown: bool,
+	is_public_network: bool,
 ) -> GenesisConfig {
-	// Testnet organization
-	let organization_testnet_sdf = Organization { name: create_bounded_vec("sdftest"), id: 1u128 };
-	// Testnet validators
-	let validators = vec![
-		Validator {
-			name: create_bounded_vec("$sdftest1"),
-			public_key: create_bounded_vec(
-				"GDKXE2OZMJIPOSLNA6N6F2BVCI3O777I2OOC4BV7VOYUEHYX7RTRYA7Y",
-			),
-			organization_id: organization_testnet_sdf.id,
-		},
-		Validator {
-			name: create_bounded_vec("$sdftest2"),
-			public_key: create_bounded_vec(
-				"GCUCJTIYXSOXKBSNFGNFWW5MUQ54HKRPGJUTQFJ5RQXZXNOLNXYDHRAP",
-			),
-			organization_id: organization_testnet_sdf.id,
-		},
-		Validator {
-			name: create_bounded_vec("$sdftest3"),
-			public_key: create_bounded_vec(
-				"GC2V2EFSXN6SQTWVYA5EPJPBWWIMSD2XQNKUOHGEKB535AQE2I6IXV2Z",
-			),
-			organization_id: organization_testnet_sdf.id,
-		},
-	];
-	let organizations = vec![organization_testnet_sdf];
 	GenesisConfig {
 		system: SystemConfig {
 			code: WASM_BINARY.expect("WASM binary was not build, please build it!").to_vec(),
@@ -317,13 +231,10 @@ fn testnet_genesis(
 		security: SecurityConfig {
 			initial_status: if start_shutdown { StatusCode::Shutdown } else { StatusCode::Error },
 		},
-		stellar_relay: StellarRelayConfig {
-			old_validators: vec![],
-			old_organizations: vec![],
-			validators,
-			organizations,
-			enactment_block_height: 0,
-			phantom: Default::default(),
+		stellar_relay: if !is_public_network {
+			create_stellar_testnet_config()
+		} else {
+			StellarRelayConfig::default()
 		},
 		oracle: OracleConfig {
 			max_delay: u32::MAX,
@@ -454,5 +365,47 @@ fn testnet_genesis(
 			batching_api: b"https://dia-00.pendulumchain.tech:8070/currencies".to_vec(),
 			coin_infos_map: vec![],
 		},
+	}
+}
+
+fn create_stellar_testnet_config() -> StellarRelayConfig {
+	let mut old_validators = Vec::new();
+	let mut old_organizations = Vec::new();
+
+	// Testnet organization
+	let organization_testnet_sdf = Organization { name: create_bounded_vec("sdftest"), id: 1u128 };
+	// Testnet validators
+	let validators = vec![
+		Validator {
+			name: create_bounded_vec("$sdftest1"),
+			public_key: create_bounded_vec(
+				"GDKXE2OZMJIPOSLNA6N6F2BVCI3O777I2OOC4BV7VOYUEHYX7RTRYA7Y",
+			),
+			organization_id: organization_testnet_sdf.id,
+		},
+		Validator {
+			name: create_bounded_vec("$sdftest2"),
+			public_key: create_bounded_vec(
+				"GCUCJTIYXSOXKBSNFGNFWW5MUQ54HKRPGJUTQFJ5RQXZXNOLNXYDHRAP",
+			),
+			organization_id: organization_testnet_sdf.id,
+		},
+		Validator {
+			name: create_bounded_vec("$sdftest3"),
+			public_key: create_bounded_vec(
+				"GC2V2EFSXN6SQTWVYA5EPJPBWWIMSD2XQNKUOHGEKB535AQE2I6IXV2Z",
+			),
+			organization_id: organization_testnet_sdf.id,
+		},
+	];
+	let organizations = vec![organization_testnet_sdf];
+
+	StellarRelayConfig {
+		old_validators,
+		old_organizations,
+		validators,
+		organizations,
+		enactment_block_height: 0,
+		phantom: Default::default(),
 	}
 }
