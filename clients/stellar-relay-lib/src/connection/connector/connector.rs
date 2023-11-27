@@ -23,7 +23,6 @@ pub struct Connector {
 
 	pub(crate) connection_auth: ConnectionAuth,
 	pub(crate) timeout_in_secs: u64,
-	pub(crate) retries: u8,
 
 	remote_called_us: bool,
 	receive_tx_messages: bool,
@@ -48,7 +47,6 @@ impl Debug for Connector {
 			.field("hmac_keys_exist", &is_hmac_keys_filled)
 			.field("connection_auth", &self.connection_auth)
 			.field("timeout_in_secs", &self.timeout_in_secs)
-			.field("retries", &self.retries)
 			.field("receive_tx_messages", &self.receive_tx_messages)
 			.field("receive_scp_messages", &self.receive_scp_messages)
 			.field("handshake_state", &self.handshake_state)
@@ -137,7 +135,6 @@ impl Connector {
 			hmac_keys: None,
 			connection_auth,
 			timeout_in_secs: conn_info.timeout_in_secs,
-			retries: conn_info.retries,
 			remote_called_us: conn_info.remote_called_us,
 			receive_tx_messages: conn_info.recv_tx_msgs,
 			receive_scp_messages: conn_info.recv_scp_msgs,

@@ -48,35 +48,41 @@ impl StellarOverlayConnection {
 		let res = self.relay_message_receiver.recv().await;
 
 		match &res {
-			Some(StellarRelayMessage::Timeout) | Some(StellarRelayMessage::Error(_)) | None => {
-				log::info!("listen(): Reconnecting to {:?}...", &self.conn_info.address);
+			Some(StellarRelayMessage::Timeout) | Some(StellarRelayMessage::Error(_)) | None =>
+				// we want to keep reconnecting until it succeeds.
+				loop {
+					// Delaying reconnection gives time for the write and read streams to be dropped.
+					let timeout = self.conn_info.timeout_in_secs;
+					log::info!(
+						"listen(): Reconnecting to {:?} in {timeout} seconds",
+						&self.conn_info.address
+					);
+					tokio::time::sleep(Duration::from_secs(timeout)).await;
 
-				match StellarOverlayConnection::connect(
-					self.local_node.clone(),
-					self.conn_info.clone(),
-				)
-				.await
-				{
-					Ok(new_user) => {
-						self.actions_sender = new_user.actions_sender;
-						self.relay_message_receiver = new_user.relay_message_receiver;
-						log::info!(
+					match StellarOverlayConnection::connect(
+						self.local_node.clone(),
+						self.conn_info.clone(),
+					)
+						.await
+					{
+						Ok(new_user) => {
+							self.actions_sender = new_user.actions_sender;
+							self.relay_message_receiver = new_user.relay_message_receiver;
+							log::info!(
 							"listen(): overlay connection reconnected to {:?}",
 							&self.conn_info.address
 						);
-						return self.relay_message_receiver.recv().await
-					},
-					Err(e) => {
-						log::error!(
-							"listen(): overlay connection failed to reconnect: {e:?}\n. Retrying in 3 seconds...",
-						);
-						tokio::time::sleep(Duration::from_secs(3)).await;
-					},
-				};
-			},
+							// break out of the loop since connection was successful.
+							return self.relay_message_receiver.recv().await
+						},
+						Err(e) => {
+							log::error!("listen(): overlay connection failed to reconnect: {e:?}",);
+							continue
+						},
+					};
+				},
 			_ => {},
 		}
-
 		res
 	}
 
@@ -88,8 +94,6 @@ impl StellarOverlayConnection {
 	) -> Result<StellarOverlayConnection, Error> {
 		log::info!("connect(): Connecting to: {conn_info:?}");
 
-		let retries = conn_info.retries;
-		let timeout_in_secs = conn_info.timeout_in_secs;
 		// split the stream for easy handling of read and write
 		let (rd, wr) = create_stream(&conn_info.address()).await?;
 		// ------------------ prepare the channels
@@ -110,10 +114,13 @@ impl StellarOverlayConnection {
 			actions_sender.clone(),
 			relay_message_sender,
 		);
-		// start the receiving_service
-		tokio::spawn(receiving_service(rd, actions_sender.clone(), timeout_in_secs, retries));
+
 		// run the connector communication
 		tokio::spawn(connection_handler(connector, actions_receiver, wr));
+
+		// start the receiving_service
+		tokio::spawn(receiving_service(rd, actions_sender.clone()));
+
 		// start the handshake
 		actions_sender.send(ConnectorActions::SendHello).await?;
 		Ok(overlay_connection)

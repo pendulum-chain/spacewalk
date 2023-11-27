@@ -57,8 +57,6 @@ pub struct ConnectionInfo {
 	pub remote_called_us: bool,
 	/// how long to wait for the Stellar Node's messages.
 	timeout_in_secs: u64,
-	/// number of retries to wait for the Stellar Node's messages and/or to connect back to it.
-	retries: u8,
 }
 
 impl Debug for ConnectionInfo {
@@ -73,14 +71,13 @@ impl Debug for ConnectionInfo {
 			.field("receive_scp_messages", &self.recv_scp_msgs)
 			.field("remote_called_us", &self.remote_called_us)
 			.field("timeout_in_seconds", &self.timeout_in_secs)
-			.field("retries", &self.retries)
 			.finish()
 	}
 }
 
 impl ConnectionInfo {
 	#[allow(clippy::too_many_arguments)]
-	pub(crate) fn new_with_timeout_and_retries(
+	pub(crate) fn new_with_timeout(
 		addr: &str,
 		port: u32,
 		secret_key: SecretKey,
@@ -89,7 +86,6 @@ impl ConnectionInfo {
 		recv_scp_msgs: bool,
 		remote_called_us: bool,
 		timeout_in_secs: u64,
-		retries: u8,
 	) -> Self {
 		ConnectionInfo {
 			address: addr.to_string(),
@@ -100,7 +96,6 @@ impl ConnectionInfo {
 			recv_scp_msgs,
 			remote_called_us,
 			timeout_in_secs,
-			retries,
 		}
 	}
 
@@ -114,7 +109,7 @@ impl ConnectionInfo {
 		recv_scp_msgs: bool,
 		remote_called_us: bool,
 	) -> Self {
-		Self::new_with_timeout_and_retries(
+		Self::new_with_timeout(
 			addr,
 			port,
 			secret_key,
@@ -123,7 +118,6 @@ impl ConnectionInfo {
 			recv_scp_msgs,
 			remote_called_us,
 			10,
-			3,
 		)
 	}
 

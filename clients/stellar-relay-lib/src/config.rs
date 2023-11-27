@@ -48,7 +48,7 @@ impl StellarOverlayConfig {
 		let address = std::str::from_utf8(&cfg.address)
 			.map_err(|e| Error::ConfigError(format!("Address: {:?}", e)))?;
 
-		Ok(ConnectionInfo::new_with_timeout_and_retries(
+		Ok(ConnectionInfo::new_with_timeout(
 			address,
 			cfg.port,
 			secret_key,
@@ -57,7 +57,6 @@ impl StellarOverlayConfig {
 			cfg.recv_scp_msgs,
 			cfg.remote_called_us,
 			cfg.timeout_in_secs,
-			cfg.retries,
 		))
 	}
 }
