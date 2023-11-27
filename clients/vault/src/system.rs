@@ -288,7 +288,6 @@ impl Service<VaultServiceConfig, Error> for VaultService {
 		} else {
 			result
 		}
-		
 	}
 }
 

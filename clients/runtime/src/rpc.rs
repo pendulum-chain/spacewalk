@@ -24,9 +24,10 @@ use primitives::Hash;
 
 use crate::{
 	conn::{new_websocket_client, new_websocket_client_with_retry},
+	error::Recoverability,
 	metadata, notify_retry,
 	types::*,
-	AccountId, Error, RetryPolicy, ShutdownSender, SpacewalkRuntime, SpacewalkSigner, SubxtError, error::Recoverability,
+	AccountId, Error, RetryPolicy, ShutdownSender, SpacewalkRuntime, SpacewalkSigner, SubxtError,
 };
 
 pub type UnsignedFixedPoint = FixedU128;
@@ -234,12 +235,10 @@ impl SpacewalkParachain {
 				match result.map_err(Into::<Error>::into) {
 					Ok(te) => Ok(te),
 					Err(err) => match err.is_invalid_transaction() {
-						Some(Recoverability::Recoverable(data)) => {
-							Err(RetryPolicy::Skip(Error::InvalidTransaction(data)))
-						}
-						Some(Recoverability::Unrecoverable(data)) => {
-							Err(RetryPolicy::Throw(Error::InvalidTransaction(data)))
-						}
+						Some(Recoverability::Recoverable(data)) =>
+							Err(RetryPolicy::Skip(Error::InvalidTransaction(data))),
+						Some(Recoverability::Unrecoverable(data)) =>
+							Err(RetryPolicy::Throw(Error::InvalidTransaction(data))),
 						None => {
 							// Handle other errors
 							if err.is_pool_too_low_priority().is_some() {
@@ -247,13 +246,13 @@ impl SpacewalkParachain {
 							} else if err.is_block_hash_not_found_error() {
 								log::info!("Re-sending transaction after apparent fork");
 								Err(RetryPolicy::Skip(Error::BlockHashNotFound))
-							}else if err.is_pool_issue().is_some() {
+							} else if err.is_pool_issue().is_some() {
 								Err(RetryPolicy::Skip(Error::TransactionPoolIssue))
 							} else {
 								Err(RetryPolicy::Throw(err))
 							}
-						}
-					}
+						},
+					},
 				}
 			},
 		)

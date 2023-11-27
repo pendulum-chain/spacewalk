@@ -92,9 +92,14 @@ pub enum Error {
 	TransactionPoolIssue,
 }
 
-pub enum Recoverability{
+pub enum Recoverability {
 	Recoverable(String),
-	Unrecoverable(String)
+	Unrecoverable(String),
+}
+
+enum RecoverableError {
+	InabilityToPayFees,
+	OutdatedTransaction,
 }
 
 impl Error {
@@ -128,21 +133,18 @@ impl Error {
 		}
 	}
 
-	pub fn is_invalid_transaction(&self) -> Option<Recoverability>{
-		// TODO define elsewhere
+	pub fn is_invalid_transaction(&self) -> Option<Recoverability> {
 		let recoverable_errors = ["Inability to pay some fees", "Transaction is outdated"];
-	
+
 		self.map_custom_error(|custom_error| {
 			if custom_error.code() == POOL_INVALID_TX {
 				let data_string = custom_error.data().map(ToString::to_string).unwrap_or_default();
-				
-				for error in recoverable_errors {
-					if data_string.contains(error) {
-						
-						return Some(Recoverability::Recoverable(data_string))
-					}
+
+				if RecoverableError::is_recoverable(&data_string) {
+					return Some(Recoverability::Recoverable(data_string))
 				}
-				return Some(Recoverability::Unrecoverable(data_string));
+
+				return Some(Recoverability::Unrecoverable(data_string))
 			} else {
 				None
 			}
@@ -151,7 +153,9 @@ impl Error {
 
 	pub fn is_pool_issue(&self) -> Option<()> {
 		self.map_custom_error(|custom_error| {
-			if custom_error.code() == POOL_UNACTIONABLE || custom_error.code() == POOL_UNKNOWN_VALIDITY {
+			if custom_error.code() == POOL_UNACTIONABLE ||
+				custom_error.code() == POOL_UNKNOWN_VALIDITY
+			{
 				Some(())
 			} else {
 				None
@@ -210,6 +214,22 @@ impl Error {
 			SECURITY_MODULE,
 			&format!("{:?}", SecurityPalletError::ParachainNotRunning),
 		)
+	}
+}
+
+impl RecoverableError {
+	// The string which is used to match the error type
+	fn as_str(&self) -> &'static str {
+		match self {
+			RecoverableError::InabilityToPayFees => "Inability to pay some fees",
+			RecoverableError::OutdatedTransaction => "Transaction is outdated",
+		}
+	}
+
+	fn is_recoverable(error_message: &str) -> bool {
+		[RecoverableError::InabilityToPayFees, RecoverableError::OutdatedTransaction]
+			.iter()
+			.any(|&error| error_message.contains(error.as_str()))
 	}
 }
 
