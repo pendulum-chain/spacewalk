@@ -55,8 +55,8 @@ async fn test_redeem_succeeds_on_stellar_mainnet() {
 			let vault_id_manager =
 				VaultIdManager::from_map(vault_provider.clone(), vault_wallet.clone(), vault_ids);
 
-			// We issue 1 (spacewalk-chain) unit
-			let issue_amount = CurrencyId::Native.one();
+			// We issue 1/100 (spacewalk-chain) unit
+			let issue_amount = CurrencyId::Native.one() / 100;
 			let vault_collateral = get_required_vault_collateral_for_issue(
 				&vault_provider,
 				issue_amount,
@@ -70,7 +70,7 @@ async fn test_redeem_succeeds_on_stellar_mainnet() {
 					.register_vault_with_public_key(
 						&vault_id,
 						vault_collateral,
-						default_destination_as_binary()
+						default_destination_as_binary(is_public_network)
 					)
 					.await
 			);
@@ -140,7 +140,7 @@ async fn test_redeem_succeeds_on_stellar_testnet() {
 					.register_vault_with_public_key(
 						&vault_id,
 						vault_collateral,
-						default_destination_as_binary()
+						default_destination_as_binary(is_public_network)
 					)
 					.await
 			);
@@ -319,10 +319,13 @@ async fn test_withdraw_replace_succeeds() {
 
 			let issue_amount = upscaled_compatible_amount(100);
 
-			let vault_collateral = register_vault_with_default_destination(vec![
-				(&old_vault_provider, &old_vault_id, issue_amount),
-				(&new_vault_provider, &new_vault_id, issue_amount),
-			])
+			let vault_collateral = register_vault_with_default_destination(
+				vec![
+					(&old_vault_provider, &old_vault_id, issue_amount),
+					(&new_vault_provider, &new_vault_id, issue_amount),
+				],
+				is_public_network,
+			)
 			.await;
 
 			assert_issue(
@@ -653,7 +656,7 @@ async fn test_issue_overpayment_succeeds() {
 		|client, _vault_wallet, user_wallet, oracle_agent, vault_id, vault_provider| async move {
 			let user_provider = setup_provider(client.clone(), AccountKeyring::Dave).await;
 
-			let public_key = default_destination_as_binary();
+			let public_key = default_destination_as_binary(is_public_network);
 
 			let issue_amount = upscaled_compatible_amount(100);
 			let over_payment_factor = 3;
@@ -1136,7 +1139,7 @@ async fn test_off_chain_liquidation() {
 					.register_vault_with_public_key(
 						&vault_id,
 						vault_collateral,
-						default_destination_as_binary()
+						default_destination_as_binary(is_public_network)
 					)
 					.await
 			);

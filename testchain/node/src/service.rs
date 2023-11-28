@@ -91,6 +91,17 @@ pub type FullBackend = TFullBackend<Block>;
 
 type FullSelectChain = sc_consensus::LongestChain<FullBackend, Block>;
 
+type OtherComponents<RuntimeApi, Executor> = (
+	sc_consensus_grandpa::GrandpaBlockImport<
+		FullBackend,
+		Block,
+		FullTestnetClient,
+		FullSelectChain,
+	>,
+	sc_consensus_grandpa::LinkHalf<Block, FullTestnetClient, FullSelectChain>,
+	Option<Telemetry>,
+);
+
 #[allow(clippy::type_complexity)]
 #[allow(clippy::redundant_clone)]
 pub fn new_partial<RuntimeApi, Executor>(
@@ -99,20 +110,11 @@ pub fn new_partial<RuntimeApi, Executor>(
 ) -> Result<
 	sc_service::PartialComponents<
 		TFullClient<Block, RuntimeApi, NativeElseWasmExecutor<Executor>>,
-		FullBackend,
-		FullSelectChain,
-		sc_consensus::DefaultImportQueue<Block, FullTestnetClient>,
-		sc_transaction_pool::FullPool<Block, FullTestnetClient>,
-		(
-			sc_consensus_grandpa::GrandpaBlockImport<
-				FullBackend,
-				Block,
-				FullTestnetClient,
-				FullSelectChain,
-			>,
-			sc_consensus_grandpa::LinkHalf<Block, FullTestnetClient, FullSelectChain>,
-			Option<Telemetry>,
-		),
+		TFullBackend<Block>,
+		(),
+		sc_consensus::DefaultImportQueue<RuntimeApi, Executor>,
+		sc_transaction_pool::FullPool<RuntimeApi, Executor>,
+		OtherComponents<RuntimeApi, Executor>,
 	>,
 	ServiceError,
 >
@@ -120,9 +122,11 @@ where
 	RuntimeApi: ConstructRuntimeApi<Block, TFullClient<Block, RuntimeApi, NativeElseWasmExecutor<Executor>>>
 		+ Send
 		+ Sync
-		+ 'static,
+		+ 'static
+		+ sp_api::BlockT,
 	RuntimeApi::RuntimeApi: ParachainRuntimeApiImpl,
-	Executor: sc_executor::NativeExecutionDispatch + 'static,
+	Executor:
+		sc_executor::NativeExecutionDispatch + 'static + sp_api::ProvideRuntimeApi<RuntimeApi>,
 {
 	if config.keystore_remote.is_some() {
 		return Err(ServiceError::Other("Remote Keystores are not supported.".to_string()))
@@ -434,18 +438,10 @@ pub fn new_full(mut config: Configuration) -> Result<(TaskManager, RpcHandlers),
 }
 
 #[allow(dead_code)]
-pub async fn start_instant<RuntimeApi, Executor>(
+pub async fn start_instant(
 	config: Configuration,
 	is_public_network: bool,
-) -> sc_service::error::Result<(TaskManager, RpcHandlers)>
-where
-	RuntimeApi: ConstructRuntimeApi<Block, TFullClient<Block, RuntimeApi, NativeElseWasmExecutor<Executor>>>
-		+ Send
-		+ Sync
-		+ 'static,
-	RuntimeApi::RuntimeApi: ParachainRuntimeApiImpl,
-	Executor: sc_executor::NativeExecutionDispatch + 'static,
-{
+) -> sc_service::error::Result<(TaskManager, RpcHandlers)> {
 	let sc_service::PartialComponents {
 		client,
 		backend,
@@ -455,7 +451,11 @@ where
 		select_chain,
 		transaction_pool,
 		other: (_, _, mut telemetry),
-	} = new_partial::<RuntimeApi, Executor>(&config, true)?;
+	} = if is_public_network {
+		new_partial::<spacewalk_runtime_mainnet::RuntimeApi, MainnetExecutor>(&config, true)?
+	} else {
+		new_partial::<spacewalk_runtime_testnet::RuntimeApi, TestnetExecutor>(&config, true)?
+	};
 
 	let (network, system_rpc_tx, tx_handler_controller, network_starter, sync_service) =
 		sc_service::build_network(sc_service::BuildNetworkParams {

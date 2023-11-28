@@ -31,7 +31,7 @@ use crate::{
 
 fn load_spec(id: &str) -> std::result::Result<Box<dyn sc_service::ChainSpec>, String> {
 	match id {
-		"" => Ok(Box::new(chain_spec::local_config())),
+		"main" => Ok(Box::new(chain_spec::mainnet_config())),
 		"dev" => Ok(Box::new(chain_spec::testnet_config())),
 		path => Ok(Box::new(chain_spec::ChainSpec::from_json_file(path.into())?)),
 	}
@@ -138,7 +138,7 @@ pub fn run() -> Result<()> {
 				match cmd {
 					BenchmarkCmd::Pallet(cmd) =>
 						if cfg!(feature = "runtime-benchmarks") {
-							cmd.run::<Block, spacewalk_service::Executor>(config)
+							cmd.run::<Block, spacewalk_service::MainnetExecutor>(config)
 						} else {
 							Err("Benchmarking wasn't enabled when building the node. \
                 You can enable it with `--features runtime-benchmarks`."

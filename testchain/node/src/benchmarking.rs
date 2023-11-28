@@ -30,7 +30,7 @@ use sp_keyring::Sr25519Keyring;
 use sp_runtime::{OpaqueExtrinsic, SaturatedConversion};
 use spacewalk_runtime::{AccountId, Balance, BalancesCall, SystemCall};
 
-use crate::service::FullClient;
+use crate::service::FullTestnetClient;
 
 use spacewalk_runtime as runtime;
 
@@ -38,12 +38,12 @@ use spacewalk_runtime as runtime;
 ///
 /// Note: Should only be used for benchmarking.
 pub struct RemarkBuilder {
-	client: Arc<FullClient>,
+	client: Arc<FullTestnetClient>,
 }
 
 impl RemarkBuilder {
 	/// Creates a new [`Self`] from the given client.
-	pub fn new(client: Arc<FullClient>) -> Self {
+	pub fn new(client: Arc<FullTestnetClient>) -> Self {
 		Self { client }
 	}
 }
@@ -75,14 +75,14 @@ impl frame_benchmarking_cli::ExtrinsicBuilder for RemarkBuilder {
 ///
 /// Note: Should only be used for benchmarking.
 pub struct TransferKeepAliveBuilder {
-	client: Arc<FullClient>,
+	client: Arc<FullTestnetClient>,
 	dest: AccountId,
 	value: Balance,
 }
 
 impl TransferKeepAliveBuilder {
 	/// Creates a new [`Self`] from the given client.
-	pub fn new(client: Arc<FullClient>, dest: AccountId, value: Balance) -> Self {
+	pub fn new(client: Arc<FullTestnetClient>, dest: AccountId, value: Balance) -> Self {
 		Self { client, dest, value }
 	}
 }
@@ -115,7 +115,7 @@ impl frame_benchmarking_cli::ExtrinsicBuilder for TransferKeepAliveBuilder {
 ///
 /// Note: Should only be used for benchmarking.
 pub fn create_benchmark_extrinsic(
-	client: &FullClient,
+	client: &FullTestnetClient,
 	sender: sp_core::sr25519::Pair,
 	call: runtime::RuntimeCall,
 	nonce: u32,
