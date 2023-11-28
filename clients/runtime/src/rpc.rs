@@ -241,12 +241,12 @@ impl SpacewalkParachain {
 							Err(RetryPolicy::Throw(Error::InvalidTransaction(data))),
 						None => {
 							// Handle other errors
-							if err.is_pool_too_low_priority().is_some() {
+							if err.is_pool_too_low_priority() {
 								Err(RetryPolicy::Skip(Error::PoolTooLowPriority))
 							} else if err.is_block_hash_not_found_error() {
 								log::info!("Re-sending transaction after apparent fork");
 								Err(RetryPolicy::Skip(Error::BlockHashNotFound))
-							} else if err.is_pool_issue().is_some() {
+							} else if err.is_pool_issue() {
 								Err(RetryPolicy::Skip(Error::TransactionPoolIssue))
 							} else {
 								Err(RetryPolicy::Throw(err))
