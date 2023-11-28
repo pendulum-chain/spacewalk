@@ -81,8 +81,8 @@ pub const YEARS: BlockNumber = DAYS * 365;
 /// This runtime version.
 #[sp_version::runtime_version]
 pub const VERSION: RuntimeVersion = RuntimeVersion {
-	spec_name: create_runtime_str!("spacewalk-standalone"),
-	impl_name: create_runtime_str!("spacewalk-standalone"),
+	spec_name: create_runtime_str!("spacewalk-standalone-mainnet"),
+	impl_name: create_runtime_str!("spacewalk-standalone-mainnet"),
 	authoring_version: 1,
 	spec_version: 1,
 	impl_version: 1,

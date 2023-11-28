@@ -1,4 +1,4 @@
-use spacewalk_runtime::{AssetId, DiaOracleModuleConfig};
+use spacewalk_runtime_testnet::{AssetId, DiaOracleModuleConfig};
 use std::convert::TryFrom;
 
 use frame_support::BoundedVec;
@@ -11,7 +11,7 @@ use sp_runtime::traits::{IdentifyAccount, Verify};
 
 use primitives::{oracle::Key, CurrencyId, VaultCurrencyPair};
 use serde_json::{map::Map, Value};
-use spacewalk_runtime::{
+use spacewalk_runtime_testnet::{
 	AccountId, AuraConfig, BalancesConfig, FeeConfig, FieldLength, GenesisConfig, GrandpaConfig,
 	IssueConfig, NominationConfig, OracleConfig, Organization, RedeemConfig, ReplaceConfig,
 	SecurityConfig, Signature, StatusCode, StellarRelayConfig, SudoConfig, SystemConfig,
@@ -73,7 +73,7 @@ where
 
 fn get_properties() -> Map<String, Value> {
 	let mut properties = Map::new();
-	properties.insert("ss58Format".into(), spacewalk_runtime::SS58Prefix::get().into());
+	properties.insert("ss58Format".into(), spacewalk_runtime_testnet::SS58Prefix::get().into());
 	properties
 }
 

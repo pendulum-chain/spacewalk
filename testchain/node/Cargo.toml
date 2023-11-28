@@ -26,7 +26,8 @@ futures = "0.3.15"
 # Parachain dependencies
 primitives = { package = "spacewalk-primitives", path = "../../primitives" }
 spacewalk-rpc = { path = "../../rpc" }
-spacewalk-runtime = { package = "spacewalk-runtime-standalone-testnet", path = "../runtime/testnet" }
+spacewalk-runtime-testnet = { package = "spacewalk-runtime-standalone-testnet", path = "../runtime/testnet" }
+spacewalk-runtime-mainnet = { package = "spacewalk-runtime-standalone-mainnet", path = "../runtime/mainnet" }
 
 # Substrate dependencies
 sc-basic-authorship = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.40" }
@@ -70,7 +71,8 @@ substrate-stellar-sdk = { git = "https://github.com/pendulum-chain/substrate-ste
 [features]
 default = []
 runtime-benchmarks = [
-    "spacewalk-runtime/runtime-benchmarks",
+    "spacewalk-runtime-testnet/runtime-benchmarks",
+    "spacewalk-runtime-mainnet/runtime-benchmarks",
     "frame-benchmarking/runtime-benchmarks",
     "frame-benchmarking-cli/runtime-benchmarks",
 ]

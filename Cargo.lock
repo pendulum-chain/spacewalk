@@ -9852,6 +9852,7 @@ dependencies = [
  "sp-transaction-pool",
  "spacewalk-primitives",
  "spacewalk-rpc",
+ "spacewalk-runtime-standalone-mainnet",
  "spacewalk-runtime-standalone-testnet",
  "substrate-build-script-utils",
  "substrate-stellar-sdk",
