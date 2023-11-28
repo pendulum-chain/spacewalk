@@ -11,16 +11,19 @@ use sc_service::{
 	TaskManager,
 };
 use sc_telemetry::{Telemetry, TelemetryWorker};
+use sp_api::ConstructRuntimeApi;
 use sp_consensus_aura::sr25519::AuthorityPair as AuraPair;
 use sp_core::crypto::KeyTypeId;
 
 use primitives::Block;
-use spacewalk_runtime::RuntimeApi;
+use spacewalk_runtime_mainnet::RuntimeApi as MainnetRuntimeApi;
+use spacewalk_runtime_testnet::RuntimeApi as TestnetRuntimeApi;
 
 // Native executor instance.
-pub struct Executor;
+pub struct MainnetExecutor;
+pub struct TestnetExecutor;
 
-impl sc_executor::NativeExecutionDispatch for Executor {
+impl sc_executor::NativeExecutionDispatch for MainnetExecutor {
 	/// Only enable the benchmarking host functions when we actually want to benchmark.
 	#[cfg(feature = "runtime-benchmarks")]
 	type ExtendHostFunctions = frame_benchmarking::benchmarking::HostFunctions;
@@ -29,44 +32,98 @@ impl sc_executor::NativeExecutionDispatch for Executor {
 	type ExtendHostFunctions = ();
 
 	fn dispatch(method: &str, data: &[u8]) -> Option<Vec<u8>> {
-		spacewalk_runtime::api::dispatch(method, data)
+		spacewalk_runtime_mainnet::api::dispatch(method, data)
 	}
 
 	fn native_version() -> sc_executor::NativeVersion {
-		spacewalk_runtime::native_version()
+		spacewalk_runtime_mainnet::native_version()
+	}
+}
+impl sc_executor::NativeExecutionDispatch for TestnetExecutor {
+	/// Only enable the benchmarking host functions when we actually want to benchmark.
+	#[cfg(feature = "runtime-benchmarks")]
+	type ExtendHostFunctions = frame_benchmarking::benchmarking::HostFunctions;
+	/// Otherwise we only use the default Substrate host functions.
+	#[cfg(not(feature = "runtime-benchmarks"))]
+	type ExtendHostFunctions = ();
+
+	fn dispatch(method: &str, data: &[u8]) -> Option<Vec<u8>> {
+		spacewalk_runtime_testnet::api::dispatch(method, data)
+	}
+
+	fn native_version() -> sc_executor::NativeVersion {
+		spacewalk_runtime_testnet::native_version()
 	}
 }
 
-pub type FullClient = TFullClient<Block, RuntimeApi, NativeElseWasmExecutor<Executor>>;
+pub type FullMainnetClient =
+	TFullClient<Block, MainnetRuntimeApi, NativeElseWasmExecutor<MainnetExecutor>>;
+pub type FullTestnetClient =
+	TFullClient<Block, TestnetRuntimeApi, NativeElseWasmExecutor<MainnetExecutor>>;
+
+pub trait ParachainRuntimeApiImpl:
+	sp_transaction_pool::runtime_api::TaggedTransactionQueue<Block> + sp_api::Metadata<Block>
+// + sp_session::SessionKeys<Block>
+// + sp_api::ApiExt<Block, StateBackend = sc_client_api::StateBackendFor<TFullBackend<Block>,
+// Block>> + sp_offchain::OffchainWorkerApi<Block>
+// + sp_block_builder::BlockBuilder<Block>
+{
+}
+
+impl ParachainRuntimeApiImpl
+	for spacewalk_runtime_mainnet::RuntimeApiImpl<Block, FullMainnetClient>
+{
+}
+impl ParachainRuntimeApiImpl
+	for spacewalk_runtime_mainnet::RuntimeApiImpl<Block, FullTestnetClient>
+{
+}
+impl ParachainRuntimeApiImpl
+	for spacewalk_runtime_testnet::RuntimeApiImpl<Block, FullTestnetClient>
+{
+}
+impl ParachainRuntimeApiImpl
+	for spacewalk_runtime_testnet::RuntimeApiImpl<Block, FullMainnetClient>
+{
+}
+
 pub type FullBackend = TFullBackend<Block>;
 
 type FullSelectChain = sc_consensus::LongestChain<FullBackend, Block>;
 
 #[allow(clippy::type_complexity)]
 #[allow(clippy::redundant_clone)]
-pub fn new_partial(
+pub fn new_partial<RuntimeApi, Executor>(
 	config: &Configuration,
 	instant_seal: bool,
 ) -> Result<
 	sc_service::PartialComponents<
-		FullClient,
+		TFullClient<Block, RuntimeApi, NativeElseWasmExecutor<Executor>>,
 		FullBackend,
 		FullSelectChain,
-		sc_consensus::DefaultImportQueue<Block, FullClient>,
-		sc_transaction_pool::FullPool<Block, FullClient>,
+		sc_consensus::DefaultImportQueue<Block, FullTestnetClient>,
+		sc_transaction_pool::FullPool<Block, FullTestnetClient>,
 		(
 			sc_consensus_grandpa::GrandpaBlockImport<
 				FullBackend,
 				Block,
-				FullClient,
+				FullTestnetClient,
 				FullSelectChain,
 			>,
-			sc_consensus_grandpa::LinkHalf<Block, FullClient, FullSelectChain>,
+			sc_consensus_grandpa::LinkHalf<Block, FullTestnetClient, FullSelectChain>,
 			Option<Telemetry>,
 		),
 	>,
 	ServiceError,
-> {
+>
+where
+	RuntimeApi: ConstructRuntimeApi<Block, TFullClient<Block, RuntimeApi, NativeElseWasmExecutor<Executor>>>
+		+ Send
+		+ Sync
+		+ 'static,
+	RuntimeApi::RuntimeApi: ParachainRuntimeApiImpl,
+	Executor: sc_executor::NativeExecutionDispatch + 'static,
+{
 	if config.keystore_remote.is_some() {
 		return Err(ServiceError::Other("Remote Keystores are not supported.".to_string()))
 	}
@@ -377,9 +434,18 @@ pub fn new_full(mut config: Configuration) -> Result<(TaskManager, RpcHandlers),
 }
 
 #[allow(dead_code)]
-pub async fn start_instant(
+pub async fn start_instant<RuntimeApi, Executor>(
 	config: Configuration,
-) -> sc_service::error::Result<(TaskManager, RpcHandlers)> {
+	is_public_network: bool,
+) -> sc_service::error::Result<(TaskManager, RpcHandlers)>
+where
+	RuntimeApi: ConstructRuntimeApi<Block, TFullClient<Block, RuntimeApi, NativeElseWasmExecutor<Executor>>>
+		+ Send
+		+ Sync
+		+ 'static,
+	RuntimeApi::RuntimeApi: ParachainRuntimeApiImpl,
+	Executor: sc_executor::NativeExecutionDispatch + 'static,
+{
 	let sc_service::PartialComponents {
 		client,
 		backend,
@@ -389,7 +455,7 @@ pub async fn start_instant(
 		select_chain,
 		transaction_pool,
 		other: (_, _, mut telemetry),
-	} = new_partial(&config, true)?;
+	} = new_partial::<RuntimeApi, Executor>(&config, true)?;
 
 	let (network, system_rpc_tx, tx_handler_controller, network_starter, sync_service) =
 		sc_service::build_network(sc_service::BuildNetworkParams {
