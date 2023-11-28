@@ -151,9 +151,7 @@ impl Error {
 
 	pub fn is_pool_issue(&self) -> bool {
 		self.map_custom_error(|custom_error| {
-			if custom_error.code() == POOL_UNACTIONABLE ||
-				custom_error.code() == POOL_UNKNOWN_VALIDITY
-			{
+			if custom_error.code() == POOL_UNKNOWN_VALIDITY {
 				Some(())
 			} else {
 				None
@@ -252,4 +250,3 @@ const BASE_ERROR: i32 = 1000;
 const POOL_INVALID_TX: i32 = BASE_ERROR + 10;
 const POOL_UNKNOWN_VALIDITY: i32 = POOL_INVALID_TX + 1;
 const POOL_TOO_LOW_PRIORITY: i32 = POOL_INVALID_TX + 4;
-const POOL_UNACTIONABLE: i32 = POOL_INVALID_TX + 8;
