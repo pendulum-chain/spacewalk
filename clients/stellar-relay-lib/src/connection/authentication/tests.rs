@@ -1,5 +1,5 @@
 use crate::{
-	connection::{
+    connection::{
 		authentication::{
 			certificate::{create_auth_cert, verify_remote_auth_cert},
 			shared_key::gen_shared_key,
@@ -8,7 +8,7 @@ use crate::{
 		helper::{generate_random_nonce, time_now},
 		hmac::{create_receiving_mac_key, create_sending_mac_key, create_sha256_hmac, verify_hmac},
 	},
-	Error,
+    Error,
 };
 use substrate_stellar_sdk::{
 	network::Network,

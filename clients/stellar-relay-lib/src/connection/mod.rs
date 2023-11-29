@@ -6,18 +6,15 @@ mod hmac;
 mod authentication;
 mod connector;
 pub mod helper;
-mod overlay_connection;
-mod services;
 pub mod xdr_converter;
 
 pub(crate) use connector::*;
 pub use error::Error;
 pub use helper::*;
-pub use overlay_connection::*;
 use serde::Serialize;
 use std::fmt::{Debug, Formatter};
 
-type Xdr = (u32, Vec<u8>);
+type Xdr = Vec<u8>;
 
 use crate::node::NodeInfo;
 use substrate_stellar_sdk::{
@@ -25,23 +22,6 @@ use substrate_stellar_sdk::{
 	PublicKey, SecretKey,
 };
 
-#[derive(Debug)]
-/// Represents the messages that the connection creates bases on the Stellar Node
-pub enum StellarRelayMessage {
-	/// Successfully connected to the node
-	Connect {
-		pub_key: PublicKey,
-		node_info: NodeInfo,
-	},
-	/// Stellar messages from the node
-	Data {
-		p_id: u32,
-		msg_type: MessageType,
-		msg: Box<StellarMessage>,
-	},
-	Error(String),
-	Disconnect,
-}
 
 /// Config for connecting to Stellar Node
 #[derive(Clone, Serialize, PartialEq, Eq)]

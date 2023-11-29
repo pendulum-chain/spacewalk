@@ -1,6 +1,7 @@
 use crate::{connection::helper::generate_random_nonce, node::NodeInfo};
 use substrate_stellar_sdk::types::Uint256;
 
+
 #[derive(Debug, Clone)]
 pub struct LocalInfo {
 	sequence: u64,

@@ -5,12 +5,13 @@ use tokio::{
 	sync::{mpsc, RwLock},
 	time::{sleep, timeout},
 };
+use tokio::sync::Mutex;
+use tokio::time::error::Elapsed;
+use tokio::time::Timeout;
+use tracing::log;
 
 use runtime::ShutdownSender;
-use stellar_relay_lib::{
-	connect_to_stellar_overlay_network, sdk::types::StellarMessage, StellarOverlayConfig,
-	StellarRelayMessage,
-};
+use stellar_relay_lib::{connect_to_stellar_overlay_network, sdk::types::StellarMessage, StellarOverlayConfig, StellarOverlayConnection};
 
 use crate::oracle::{
 	collector::ScpMessageCollector,
@@ -33,32 +34,22 @@ pub struct OracleAgent {
 /// * `collector` - used to collect envelopes and transaction sets
 /// * `message_sender` - used to send messages to Stellar Node
 async fn handle_message(
-	message: StellarRelayMessage,
+	message: StellarMessage,
 	collector: Arc<RwLock<ScpMessageCollector>>,
 	message_sender: &StellarMessageSender,
 ) -> Result<(), Error> {
 	match message {
-		StellarRelayMessage::Data { p_id: _, msg_type: _, msg } => match *msg {
-			StellarMessage::ScpMessage(env) => {
-				collector.write().await.handle_envelope(env, message_sender).await?;
-			},
-			StellarMessage::TxSet(set) =>
-				if let Err(e) = collector.read().await.add_txset(set) {
-					tracing::error!(e);
-				},
-			StellarMessage::GeneralizedTxSet(set) => {
-				if let Err(e) = collector.read().await.add_txset(set) {
-					tracing::error!(e);
-				}
-			},
-			_ => {},
+		StellarMessage::ScpMessage(env) => {
+			collector.write().await.handle_envelope(env, message_sender).await?;
 		},
-		StellarRelayMessage::Connect { pub_key, node_info } => {
-			let pub_key = pub_key.to_encoding();
-			let pub_key = std::str::from_utf8(&pub_key).unwrap_or("****");
-
-			tracing::info!("handle_message(): Connected: via public key: {pub_key}");
-			tracing::info!("handle_message(): Connected: with {:#?}", node_info)
+		StellarMessage::TxSet(set) =>
+			if let Err(e) = collector.read().await.add_txset(set) {
+				tracing::error!(e);
+			},
+		StellarMessage::GeneralizedTxSet(set) => {
+			if let Err(e) = collector.read().await.add_txset(set) {
+				tracing::error!(e);
+			}
 		},
 		_ => {},
 	}
@@ -73,13 +64,18 @@ pub async fn start_oracle_agent(
 	config: StellarOverlayConfig,
 	secret_key: &str,
 ) -> Result<OracleAgent, Error> {
+	let timeout_in_secs = config.connection_info.timeout_in_secs;
+	let secret_key_copy = secret_key.to_string();
+
 	tracing::info!("start_oracle_agent(): Starting connection to Stellar overlay network...");
 
-	let mut overlay_conn = connect_to_stellar_overlay_network(config.clone(), secret_key).await?;
+	struct ConnectionWrapper (StellarOverlayConnection);
 
-	// Get action sender and disconnect action before moving `overlay_conn` into the closure
-	let actions_sender = overlay_conn.get_actions_sender();
-	let disconnect_action = overlay_conn.get_disconnect_action();
+	let overlay_connection = Arc::new(Mutex::new(
+		ConnectionWrapper(connect_to_stellar_overlay_network(config.clone(), secret_key).await?)
+	));
+
+	let ov_conn = overlay_connection.clone();
 
 	let (sender, mut receiver) = mpsc::channel(34);
 	let collector = Arc::new(RwLock::new(ScpMessageCollector::new(
@@ -95,16 +91,45 @@ pub async fn start_oracle_agent(
 	let collector_clone = collector.clone();
 	service::spawn_cancelable(shutdown_clone.subscribe(), async move {
 		let sender = sender_clone.clone();
+		let mut ov_conn_locked = ov_conn.lock().await;
+
 		loop {
+			if !ov_conn_locked.0.is_alive() {
+				loop {
+					log::info!("start_oracle_agent(): restarting overlay connection in {timeout_in_secs} seconds");
+					sleep(Duration::from_secs(timeout_in_secs)).await;
+
+					match connect_to_stellar_overlay_network(config.clone(), &secret_key_copy).await {
+						Ok(new_ov_conn) => {
+							ov_conn_locked.0 = new_ov_conn;
+							break;
+						},
+						Err(e) => {
+							tracing::error!("start_oracle_agent(): failed to create connection: {e:?}");
+						}
+					}
+				}
+			}
+
 			tokio::select! {
 				// runs the stellar-relay and listens to data to collect the scp messages and txsets.
-				Some(msg) = overlay_conn.listen() => {
-					handle_message(msg, collector_clone.clone(), &sender).await?;
+				result_msg = timeout(Duration::from_secs(timeout_in_secs), ov_conn_locked.0.listen()) =>
+				match result_msg {
+					Ok(Some(stellar_msg)) => handle_message(stellar_msg, collector_clone.clone(), &sender).await?,
+					Ok(_) => {}
+					Err(_) => {
+						tracing::warn!("start_oracle_agent(): time elapsed from listening to Stellar Node.");
+						ov_conn_locked.0.disconnect();
+					}
 				},
 
-				Some(msg) = receiver.recv() => {
-					// We received the instruction to send a message to the overlay network by the receiver
-					overlay_conn.send(msg).await?;
+				result_msg = timeout(Duration::from_secs(timeout_in_secs),receiver.recv())=>
+				match result_msg {
+					Ok(Some(msg)) => ov_conn_locked.0.send_to_node(msg).await?,
+					Ok(_) => {},
+					Err(_) => {
+						tracing::warn!("start_oracle_agent(): time elapsed from listening to Stellar Node (indirectly).");
+					}
 				}
 			}
 		}
@@ -113,11 +138,8 @@ pub async fn start_oracle_agent(
 	});
 
 	tokio::spawn(on_shutdown(shutdown_sender.clone(), async move {
-		let result_sending_disconnect =
-			actions_sender.send(disconnect_action).await.map_err(Error::from);
-		if let Err(e) = result_sending_disconnect {
-			tracing::error!("start_oracle_agent(): Failed to send disconnect message: {:#?}", e);
-		};
+		let mut ov_conn_locked = overlay_connection.lock().await;
+		ov_conn_locked.0.disconnect();
 	}));
 
 	Ok(OracleAgent {

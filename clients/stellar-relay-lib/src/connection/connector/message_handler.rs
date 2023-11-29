@@ -1,151 +1,138 @@
-use crate::{
-	connection::{
-		authentication::verify_remote_auth_cert, error_to_string, helper::time_now, hmac::HMacKeys,
-		xdr_converter::parse_authenticated_message, Connector, Xdr,
-	},
-	node::RemoteInfo,
-	Error, StellarRelayMessage,
-};
-use substrate_stellar_sdk::{
-	types::{Hello, MessageType, StellarMessage},
-	XdrCodec,
-};
+use substrate_stellar_sdk::types::{Hello, MessageType, StellarMessage};
+use substrate_stellar_sdk::XdrCodec;
+
+use crate::connection::{Connector, Xdr, Error, helper::{error_to_string, time_now}, xdr_converter::parse_authenticated_message};
+use crate::connection::authentication::verify_remote_auth_cert;
+use crate::connection::hmac::HMacKeys;
+
+use crate::node::RemoteInfo;
 
 impl Connector {
-	/// Processes the raw bytes from the stream
-	pub(crate) async fn process_raw_message(&mut self, xdr: Xdr) -> Result<(), Error> {
-		let (proc_id, data) = xdr;
-		let (auth_msg, msg_type) = parse_authenticated_message(&data)?;
+    /// Processes the raw bytes from the stream
+    pub(super) async fn process_raw_message(&mut self, data: Xdr) -> Result<Option<StellarMessage>, Error> {
+        let (auth_msg, msg_type) = parse_authenticated_message(&data)?;
 
-		match msg_type {
-			MessageType::Transaction | MessageType::FloodAdvert if !self.receive_tx_messages() => {
-				self.increment_remote_sequence()?;
-				self.check_to_send_more(MessageType::Transaction).await?;
-			},
+        match msg_type {
+            MessageType::Transaction | MessageType::FloodAdvert if !self.receive_tx_messages() => {
+                self.increment_remote_sequence()?;
+                self.check_to_send_more(MessageType::Transaction).await?;
+            },
 
-			MessageType::ScpMessage if !self.receive_scp_messages() => {
-				self.increment_remote_sequence()?;
-			},
+            MessageType::ScpMessage if !self.receive_scp_messages() => {
+                self.increment_remote_sequence()?;
+            },
 
-			MessageType::ErrorMsg => match auth_msg.message {
-				StellarMessage::ErrorMsg(e) => {
-					log::error!(
-						"process_raw_message(): Received ErrorMsg:  {}",
+            MessageType::ErrorMsg => match auth_msg.message {
+                StellarMessage::ErrorMsg(e) => {
+                    log::error!(
+						"process_raw_message(): Received ErrorMsg during authentication: {}",
 						error_to_string(e.clone())
 					);
-					return Err(Error::OverlayError(e.code))
-				},
-				other => log::error!("process_raw_message(): Received ErroMsg other: {:?}", other),
-			},
+                    return Err(Error::OverlayError(e.code))
+                },
+                other => log::error!("process_raw_message(): Received ErroMsg during authentication: {:?}", other),
+            },
 
-			_ => {
-				// we only verify the authenticated message when a handshake has been done.
-				if self.is_handshake_created() {
-					self.verify_auth(&auth_msg, &data[4..(data.len() - 32)])?;
-					self.increment_remote_sequence()?;
-					log::trace!(
-						"process_raw_message(): proc_id: {proc_id}. Processing {msg_type:?} message: auth verified"
+            _ => {
+                // we only verify the authenticated message when a handshake has been done.
+                if self.is_handshake_created() {
+                    self.verify_auth(&auth_msg, &data[4..(data.len() - 32)])?;
+                    self.increment_remote_sequence()?;
+                    log::trace!(
+						"process_raw_message(): Processing {msg_type:?} message: auth verified"
 					);
-				}
+                }
 
-				self.process_stellar_message(proc_id, auth_msg.message, msg_type).await?;
-			},
-		}
-		Ok(())
-	}
+                return self.process_stellar_message( auth_msg.message, msg_type).await;
+            },
+        }
+        Ok(None)
+    }
 
-	/// Handles what to do next with the Stellar message. Mostly it will be sent back to the user
-	async fn process_stellar_message(
-		&mut self,
-		p_id: u32,
-		msg: StellarMessage,
-		msg_type: MessageType,
-	) -> Result<(), Error> {
-		match msg {
-			StellarMessage::Hello(hello) => {
-				// update the node info based on the hello message
-				self.process_hello_message(hello)?;
+    /// Returns a StellarMessage for the user/outsider. Else none if user/outsider do not need it.
+    /// This handles what to do with the Stellar message.
+    async fn process_stellar_message(
+        &mut self,
+        msg: StellarMessage,
+        msg_type: MessageType,
+    ) -> Result<Option<StellarMessage>, Error> {
+        match msg {
+            StellarMessage::Hello(hello) => {
+                // update the node info based on the hello message
+                self.process_hello_message(hello)?;
 
-				self.got_hello();
+                self.got_hello();
 
-				if self.remote_called_us() {
-					self.send_hello_message().await?;
-				} else {
-					self.send_auth_message().await?;
-				}
-				log::info!("process_stellar_message(): Hello message processed successfully");
-			},
+                if self.remote_called_us() {
+                    self.send_hello_message().await?;
+                } else {
+                    self.send_auth_message().await?;
+                }
+                log::info!("process_stellar_message(): Hello message processed successfully");
+            },
 
-			StellarMessage::Auth(_) => {
-				self.process_auth_message().await?;
-			},
+            StellarMessage::Auth(_) => {
+                self.process_auth_message().await?;
+            },
 
-			StellarMessage::ErrorMsg(e) => {
-				self.send_to_user(StellarRelayMessage::Error(error_to_string(e))).await?;
-			},
+            StellarMessage::ErrorMsg(e) => {
+                log::error!("process_stellar_message(): received from overlay: {e:?}");
+                return Ok(Some(StellarMessage::ErrorMsg(e)));
+                // self.send_to_user(StellarMessage::ErrorMsg(e)).await?;
+            },
 
-			other => {
-				log::trace!(
-					"process_stellar_message(): proc_id: {p_id}. Processing {msg_type:?} message: received from overlay"
+            other => {
+                log::trace!(
+					"process_stellar_message():  Processing {other:?} message: received from overlay"
 				);
-				self.send_to_user(StellarRelayMessage::Data {
-					p_id,
-					msg_type,
-					msg: Box::new(other),
-				})
-				.await?;
-				self.check_to_send_more(msg_type).await?;
-			},
-		}
-		Ok(())
-	}
+                self.check_to_send_more(msg_type).await?;
+                return Ok(Some(other));
+            },
+        }
 
-	async fn process_auth_message(&mut self) -> Result<(), Error> {
-		if self.remote_called_us() {
-			self.send_auth_message().await?;
-		}
+        Ok(None)
+    }
 
-		self.handshake_completed();
+    async fn process_auth_message(&mut self) -> Result<(), Error> {
+        if self.remote_called_us() {
+            self.send_auth_message().await?;
+        }
 
-		if let Some(remote) = self.remote() {
-			log::debug!("process_auth_message(): sending connect message: {remote:?}");
-			self.send_to_user(StellarRelayMessage::Connect {
-				pub_key: remote.pub_key().clone(),
-				node_info: remote.node().clone(),
-			})
-			.await?;
+        self.handshake_completed();
 
-			self.enable_flow_controller(
-				self.local().node().overlay_version,
-				remote.node().overlay_version,
-			);
-		} else {
-			log::warn!("process_auth_message(): No remote overlay version after handshake.");
-		}
+        if let Some(remote) = self.remote() {
+            log::debug!("process_auth_message(): sending connect message: {remote:?}");
+            self.enable_flow_controller(
+                self.local().node().overlay_version,
+                remote.node().overlay_version,
+            );
+        } else {
+            log::warn!("process_auth_message(): No remote overlay version after handshake.");
+        }
 
-		self.check_to_send_more(MessageType::Auth).await
-	}
+        self.check_to_send_more(MessageType::Auth).await
+    }
 
-	/// Updates the config based on the hello message that was received from the Stellar Node
-	fn process_hello_message(&mut self, hello: Hello) -> Result<(), Error> {
-		let mut network_id = self.connection_auth.network_id().to_xdr();
+    /// Updates the config based on the hello message that was received from the Stellar Node
+    fn process_hello_message(&mut self, hello: Hello) -> Result<(), Error> {
+        let mut network_id = self.connection_auth.network_id().to_xdr();
 
-		if !verify_remote_auth_cert(time_now(), &hello.peer_id, &hello.cert, &mut network_id) {
-			return Err(Error::AuthCertInvalid)
-		}
+        if !verify_remote_auth_cert(time_now(), &hello.peer_id, &hello.cert, &mut network_id) {
+            return Err(Error::AuthCertInvalid)
+        }
 
-		let remote_info = RemoteInfo::new(&hello);
-		let shared_key = self.get_shared_key(remote_info.pub_key_ecdh());
+        let remote_info = RemoteInfo::new(&hello);
+        let shared_key = self.get_shared_key(remote_info.pub_key_ecdh());
 
-		self.set_hmac_keys(HMacKeys::new(
-			&shared_key,
-			self.local().nonce(),
-			remote_info.nonce(),
-			self.remote_called_us(),
-		));
+        self.set_hmac_keys(HMacKeys::new(
+            &shared_key,
+            self.local().nonce(),
+            remote_info.nonce(),
+            self.remote_called_us(),
+        ));
 
-		self.set_remote(remote_info);
+        self.set_remote(remote_info);
 
-		Ok(())
-	}
+        Ok(())
+    }
 }
