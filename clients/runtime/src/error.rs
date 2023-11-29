@@ -88,8 +88,6 @@ pub enum Error {
 	CurrencyNotFound,
 	#[error("PrometheusError: {0}")]
 	PrometheusError(#[from] PrometheusError),
-	#[error("Unkown transaction pool issue")]
-	TransactionPoolIssue,
 }
 
 pub enum Recoverability {
@@ -147,17 +145,6 @@ impl Error {
 				None
 			}
 		})
-	}
-
-	pub fn is_pool_issue(&self) -> bool {
-		self.map_custom_error(|custom_error| {
-			if custom_error.code() == POOL_UNKNOWN_VALIDITY {
-				Some(())
-			} else {
-				None
-			}
-		})
-		.is_some()
 	}
 
 	pub fn is_pool_too_low_priority(&self) -> bool {
@@ -248,5 +235,4 @@ pub enum KeyLoadingError {
 // https://github.com/paritytech/substrate/blob/e60597dff0aa7ffad623be2cc6edd94c7dc51edd/client/rpc-api/src/author/error.rs#L80
 const BASE_ERROR: i32 = 1000;
 const POOL_INVALID_TX: i32 = BASE_ERROR + 10;
-const POOL_UNKNOWN_VALIDITY: i32 = POOL_INVALID_TX + 1;
 const POOL_TOO_LOW_PRIORITY: i32 = POOL_INVALID_TX + 4;
