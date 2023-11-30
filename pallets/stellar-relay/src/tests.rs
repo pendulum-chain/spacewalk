@@ -315,6 +315,12 @@ fn validate_stellar_transaction_fails_when_using_the_same_validator_multiple_tim
 		let sdf_validators = validators.drain(0..3).collect::<Vec<ValidatorOf<Test>>>();
 		let sdf_validator_secret_keys =
 			validator_secret_keys.drain(0..3).collect::<Vec<SecretKey>>();
+
+		// Remove all keybase validators (otherwise the quorum set would still be valid because the
+		// SDF validators are not required for a valid quorum)
+		validators.drain(0..3);
+		validator_secret_keys.drain(0..3);
+
 		// Pick first removed sdf validator to be re-used
 		let reused_validator = sdf_validators.get(0).unwrap();
 		let reused_validator_secret_key = sdf_validator_secret_keys.get(0).unwrap();
