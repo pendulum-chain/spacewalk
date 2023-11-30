@@ -1,4 +1,4 @@
-use substrate_stellar_sdk::types::{Hello, MessageType, StellarMessage};
+use substrate_stellar_sdk::types::{ErrorCode, Hello, MessageType, StellarMessage};
 use substrate_stellar_sdk::XdrCodec;
 
 use crate::connection::{Connector, Xdr, Error, helper::{error_to_string, time_now}, xdr_converter::parse_authenticated_message};
@@ -28,7 +28,7 @@ impl Connector {
 						"process_raw_message(): Received ErrorMsg during authentication: {}",
 						error_to_string(e.clone())
 					);
-                    return Err(Error::OverlayError(e.code))
+                    return Err(Error::ConnectionFailed(error_to_string(e)))
                 },
                 other => log::error!("process_raw_message(): Received ErroMsg during authentication: {:?}", other),
             },
@@ -77,8 +77,10 @@ impl Connector {
 
             StellarMessage::ErrorMsg(e) => {
                 log::error!("process_stellar_message(): received from overlay: {e:?}");
+                if e.code == ErrorCode::ErrConf || e.code == ErrorCode::ErrAuth {
+                    return Err(Error::ConnectionFailed(error_to_string(e)))
+                }
                 return Ok(Some(StellarMessage::ErrorMsg(e)));
-                // self.send_to_user(StellarMessage::ErrorMsg(e)).await?;
             },
 
             other => {

@@ -29,7 +29,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 	let mut overlay_connection = connect_to_stellar_overlay_network(cfg, &secret_key).await?;
 
 	let mut counter = 0;
-	while let Some(msg) = overlay_connection.listen().await {
+	while let Ok(Some(msg)) = overlay_connection.listen().await {
 		counter+=1;
 
 		match msg {

@@ -12,6 +12,7 @@ use tracing::log;
 
 use runtime::ShutdownSender;
 use stellar_relay_lib::{connect_to_stellar_overlay_network, sdk::types::StellarMessage, StellarOverlayConfig, StellarOverlayConnection};
+use stellar_relay_lib::helper::to_base64_xdr_string;
 
 use crate::oracle::{
 	collector::ScpMessageCollector,
@@ -69,83 +70,69 @@ pub async fn start_oracle_agent(
 
 	tracing::info!("start_oracle_agent(): Starting connection to Stellar overlay network...");
 
-	struct ConnectionWrapper (StellarOverlayConnection);
+	let mut overlay_conn = connect_to_stellar_overlay_network(config.clone(), secret_key).await?;
 
-	let overlay_connection = Arc::new(Mutex::new(
-		ConnectionWrapper(connect_to_stellar_overlay_network(config.clone(), secret_key).await?)
-	));
-
-	let ov_conn = overlay_connection.clone();
-
-	let (sender, mut receiver) = mpsc::channel(34);
 	let collector = Arc::new(RwLock::new(ScpMessageCollector::new(
 		config.is_public_network(),
 		config.stellar_history_archive_urls(),
 	)));
-	let shutdown_sender = ShutdownSender::default();
-
-	let shutdown_clone = shutdown_sender.clone();
-	// handle a message from the overlay network
-	let sender_clone = sender.clone();
-
 	let collector_clone = collector.clone();
-	service::spawn_cancelable(shutdown_clone.subscribe(), async move {
-		let sender = sender_clone.clone();
-		let mut ov_conn_locked = ov_conn.lock().await;
 
+	let shutdown_sender = ShutdownSender::default();
+	let shutdown_sender_clone = shutdown_sender.clone();
+	let shutdown_sender_clone2 = shutdown_sender.clone();
+
+	// disconnect signal sender
+	let (disconnect_signal_sender, mut disconnect_signal_receiver) = mpsc::channel::<()>(2);
+
+	// handle a message from the overlay network
+	let (message_sender, mut message_receiver) = mpsc::channel::<StellarMessage>(34);
+	let message_sender_clone = message_sender.clone();
+
+	service::spawn_cancelable(shutdown_sender_clone.subscribe(), async move {
 		loop {
-			if !ov_conn_locked.0.is_alive() {
-				loop {
-					log::info!("start_oracle_agent(): restarting overlay connection in {timeout_in_secs} seconds");
-					sleep(Duration::from_secs(timeout_in_secs)).await;
-
-					match connect_to_stellar_overlay_network(config.clone(), &secret_key_copy).await {
-						Ok(new_ov_conn) => {
-							ov_conn_locked.0 = new_ov_conn;
-							break;
-						},
-						Err(e) => {
-							tracing::error!("start_oracle_agent(): failed to create connection: {e:?}");
-						}
-					}
-				}
-			}
-
 			tokio::select! {
-				// runs the stellar-relay and listens to data to collect the scp messages and txsets.
-				result_msg = timeout(Duration::from_secs(timeout_in_secs), ov_conn_locked.0.listen()) =>
-				match result_msg {
-					Ok(Some(stellar_msg)) => handle_message(stellar_msg, collector_clone.clone(), &sender).await?,
-					Ok(_) => {}
-					Err(_) => {
-						tracing::warn!("start_oracle_agent(): time elapsed from listening to Stellar Node.");
-						ov_conn_locked.0.disconnect();
+				result_msg= overlay_conn.listen() => match result_msg {
+					Ok(Some(msg)) => {
+						tracing::info!("start_oracle_agent(): handle message: {}", to_base64_xdr_string(&msg));
+						handle_message(
+							msg,
+							collector_clone.clone(),
+							&message_sender_clone
+						).await?;
+					}
+					Ok(None) => {}
+					Err(e) => {
+						overlay_conn.disconnect();
+						let _ = shutdown_sender_clone2.send(());
+						return Ok(());
 					}
 				},
+				Some(msg) = message_receiver.recv() => if let Err(e) = overlay_conn.send_to_node(msg).await {
+					tracing::error!("start_oracle_agent(): failed to send msg to stellar node: {e:?}");
+				},
 
-				result_msg = timeout(Duration::from_secs(timeout_in_secs),receiver.recv())=>
-				match result_msg {
-					Ok(Some(msg)) => ov_conn_locked.0.send_to_node(msg).await?,
-					Ok(_) => {},
-					Err(_) => {
-						tracing::warn!("start_oracle_agent(): time elapsed from listening to Stellar Node (indirectly).");
-					}
+				Some(_) = disconnect_signal_receiver.recv() => {
+					tracing::info!("start_oracle_agent(): disconnect signal received.");
+
+					overlay_conn.disconnect();
 				}
 			}
 		}
-		#[allow(unreachable_code)]
+
 		Ok::<(), Error>(())
 	});
 
+
 	tokio::spawn(on_shutdown(shutdown_sender.clone(), async move {
-		let mut ov_conn_locked = overlay_connection.lock().await;
-		ov_conn_locked.0.disconnect();
+		tracing::info!("start_oracle_agent(): sending signal to shutdown overlay connection...");
+		let _ = disconnect_signal_sender.send(()).await;
 	}));
 
 	Ok(OracleAgent {
 		collector,
 		is_public_network: false,
-		message_sender: Some(sender),
+		message_sender: Some(message_sender),
 		shutdown_sender,
 	})
 }

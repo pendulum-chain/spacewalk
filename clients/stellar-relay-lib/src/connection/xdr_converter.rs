@@ -56,7 +56,7 @@ macro_rules! parse_stellar_type {
 	($ref:ident, $struct_str:ident) => {{
 		use $crate::{
 			sdk::{types::$struct_str, XdrCodec},
-			connection2::xdr_converter::Error,
+			connection::xdr_converter::Error,
 		};
 
 		let ret: Result<$struct_str, Error> = $struct_str::from_xdr($ref).map_err(|e| {
