@@ -2,7 +2,7 @@
 authors = ["Pendulum"]
 edition = "2018"
 name = "spacewalk-rpc"
-version = "1.0.0"
+version = "1.0.1"
 
 [dependencies]
 jsonrpc-core = "18.0.0"
