@@ -110,14 +110,28 @@ pub fn check_for_valid_quorum_set<T: Config>(
 		Error::<T>::InvalidQuorumSetNotEnoughOrganizations
 	);
 
+	// Keep track of the number of organizations that meet the requirement of having more than
+	// 1/2 of their validators used in the SCP messages
+	let mut validator_requirement_reached_count = 0;
+
 	for (organization_id, count) in targeted_organization_map.iter() {
 		let total: &u32 = validator_count_per_organization_map
 			.get(organization_id)
 			.ok_or(Error::<T>::NoOrganizationsRegistered)?;
-		// Check that for each of the targeted organizations more than 1/2 of their total
-		// validators were used in the SCP messages
-		ensure!(count * 2 > *total, Error::<T>::InvalidQuorumSetNotEnoughValidators);
+
+		// Check if the number of validators used in the SCP messages is more than 1/2 of the
+		// total amount of validators in the organization
+		if count * 2 > *total {
+			validator_requirement_reached_count += 1;
+		}
 	}
+
+	// Check that the number of organizations that meet the requirement of having more than
+	// 1/2 of their validators used in the SCP messages is more than 2/3 of the total amount
+	ensure!(
+		validator_requirement_reached_count * 3 > orgs_length * 2,
+		Error::<T>::InvalidQuorumSetNotEnoughValidators
+	);
 
 	Ok(())
 }
