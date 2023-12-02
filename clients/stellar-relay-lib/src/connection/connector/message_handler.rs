@@ -28,7 +28,7 @@ impl Connector {
 						"process_raw_message(): Received ErrorMsg during authentication: {}",
 						error_to_string(e.clone())
 					);
-                    return Err(Error::ConnectionFailed(error_to_string(e)))
+                    return Err(Error::from(e))
                 },
                 other => log::error!("process_raw_message(): Received ErroMsg during authentication: {:?}", other),
             },
@@ -76,9 +76,9 @@ impl Connector {
             },
 
             StellarMessage::ErrorMsg(e) => {
-                log::error!("process_stellar_message(): received from overlay: {e:?}");
+                log::error!("process_stellar_message(): Received ErrorMsg during authentication: {e:?}");
                 if e.code == ErrorCode::ErrConf || e.code == ErrorCode::ErrAuth {
-                    return Err(Error::ConnectionFailed(error_to_string(e)))
+                    return Err(Error::from(e));
                 }
                 return Ok(Some(StellarMessage::ErrorMsg(e)));
             },
