@@ -4,11 +4,16 @@ use substrate_stellar_sdk::{
 	Hash, IntoHash,
 };
 
-use crate::{node::NodeInfo, ConnectionInfo, StellarOverlayConfig, StellarOverlayConnection};
+use crate::{
+	connection::{to_base64_xdr_string, ConnectionInfo},
+	node::NodeInfo,
+	StellarOverlayConfig, StellarOverlayConnection,
+};
 use serial_test::serial;
-use tokio::{sync::Mutex, time::timeout};
-use tokio::time::sleep;
-use crate::connection::to_base64_xdr_string;
+use tokio::{
+	sync::Mutex,
+	time::{sleep, timeout},
+};
 
 fn secret_key(is_mainnet: bool) -> String {
 	let path = if is_mainnet {
@@ -75,7 +80,7 @@ async fn stellar_overlay_should_receive_scp_messages() {
 
 	timeout(Duration::from_secs(300), async move {
 		let mut ov_conn_locked = ov_conn.lock().await;
-		while let Some(msg) = ov_conn_locked.listen().await {
+		while let Ok(Some(msg)) = ov_conn_locked.listen().await {
 			scps_vec_clone.lock().await.push(msg);
 
 			ov_conn_locked.disconnect();
@@ -117,11 +122,10 @@ async fn stellar_overlay_should_receive_tx_set() {
 	timeout(Duration::from_secs(500), async move {
 		let mut ov_conn_locked = ov_conn.lock().await;
 
-		while let Some(msg) = ov_conn_locked.listen().await {
-			 match msg {
+		while let Ok(Some(msg)) = ov_conn_locked.listen().await {
+			match msg {
 				StellarMessage::ScpMessage(msg) =>
-					if let ScpStatementPledges::ScpStExternalize(stmt) = &msg.statement.pledges
-					{
+					if let ScpStatementPledges::ScpStExternalize(stmt) = &msg.statement.pledges {
 						let tx_set_hash = get_tx_set_hash(stmt);
 						tx_set_hashes_clone.lock().await.push(tx_set_hash.clone());
 						ov_conn_locked
@@ -145,7 +149,6 @@ async fn stellar_overlay_should_receive_tx_set() {
 				},
 				_ => {},
 			}
-
 		}
 	})
 	.await
