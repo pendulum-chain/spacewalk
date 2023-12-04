@@ -68,7 +68,7 @@ impl Connector {
                 } else {
                     self.send_auth_message().await?;
                 }
-                log::info!("process_stellar_message(): Hello message processed successfully");
+                log::info!("process_stellar_message(): Hello message processed successfully: {:?}", self.get_handshake_state());
             },
 
             StellarMessage::Auth(_) => {
@@ -101,6 +101,7 @@ impl Connector {
         }
 
         self.handshake_completed();
+        log::info!("process_auth_message(): handshake completed");
 
         if let Some(remote) = self.remote() {
             log::debug!("process_auth_message(): sending connect message: {remote:?}");

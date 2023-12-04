@@ -202,6 +202,10 @@ impl Connector {
 		self.handshake_state = HandshakeState::Completed;
 	}
 
+	pub fn get_handshake_state(&self) -> &HandshakeState {
+		&self.handshake_state
+	}
+
 	pub fn inner_check_to_send_more(&mut self, msg_type: MessageType) -> bool {
 		self.flow_controller.send_more(msg_type)
 	}
@@ -272,12 +276,4 @@ pub(crate) async fn poll_messages_from_stellar(
 	drop(send_to_user_sender);
 
 	log::info!("poll_messages_from_stellar(): stopped.");
-}
-
-async fn restart(connector: &mut Connector, address: &str) -> Result<OwnedReadHalf,Error> {
-	// split the stream for easy handling of read and write
-	let (rd, wr) = create_stream(address).await?;
-
-	connector.wr = wr;
-	Ok(rd)
 }

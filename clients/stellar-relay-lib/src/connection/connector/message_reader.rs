@@ -29,7 +29,7 @@ pub(super) async fn read_message_from_stellar(r_stream: &mut tcp::OwnedReadHalf,
 		// check whether or not we should read the bytes as:
 		// 1. the length of the next stellar message
 		// 2. the remaining bytes of the previous stellar message
-		match timeout(Duration::from_secs(60), r_stream.peek(&mut buff_for_peeking))
+		match timeout(Duration::from_secs(timeout_in_secs), r_stream.peek(&mut buff_for_peeking))
 			.await
 		{
 			Ok(Ok(0)) => {

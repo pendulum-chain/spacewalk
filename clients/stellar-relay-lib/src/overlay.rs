@@ -24,6 +24,10 @@ impl StellarOverlayConnection {
 
     pub async fn listen(&mut self) -> Result<Option<StellarMessage>, Error> {
         loop {
+            if !self.is_alive() {
+                return Err(Error::Disconnected);
+            }
+
             match self.receiver.try_recv() {
                 Ok(StellarMessage::ErrorMsg(e)) => {
                     log::error!("listen(): received error message: {e:?}");
@@ -51,7 +55,7 @@ impl StellarOverlayConnection {
     }
 
     pub fn disconnect(&mut self) {
-        log::info!("disconnect(): closing channel");
+        log::info!("disconnect(): closing the overlay connection");
         self.receiver.close();
     }
 }
@@ -66,7 +70,6 @@ impl StellarOverlayConnection {
     /// Returns an `StellarOverlayConnection` when a connection to Stellar Node is successful.
     pub async fn connect(local_node_info: NodeInfo, conn_info: ConnectionInfo) -> Result<Self,Error> {
         log::info!("connect(): connecting to {conn_info:?}");
-
 
         // this is a channel to communicate with the user/caller.
         let (send_to_user_sender, send_to_user_receiver) =
