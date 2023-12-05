@@ -1,19 +1,19 @@
 use std::time::Duration;
 use substrate_stellar_sdk::types::{MessageType, SendMore, StellarMessage};
-use tokio::{io::AsyncWriteExt, time::timeout};
+use tokio::io::AsyncWriteExt;
+use tokio::time::timeout;
 
-use crate::connection::{
-	flow_controller::MAX_FLOOD_MSG_CAP,
-	handshake::create_auth_message,
-	helper::{time_now, to_base64_xdr_string},
-	Connector, Error,
-};
+use crate::connection::{Connector, Error, flow_controller::MAX_FLOOD_MSG_CAP, handshake::create_auth_message, helper::{time_now, to_base64_xdr_string}};
 
 impl Connector {
 	pub async fn send_to_node(&mut self, msg: StellarMessage) -> Result<(), Error> {
 		let xdr_msg = &self.create_xdr_message(msg)?;
 
-		match timeout(Duration::from_secs(self.timeout_in_secs), self.wr.write_all(&xdr_msg)).await
+		match timeout(
+			Duration::from_secs(self.timeout_in_secs),
+			self.write_stream_overlay.write_all(&xdr_msg),
+		)
+		.await
 		{
 			Ok(res) => res.map_err(|e| Error::WriteFailed(e.to_string())),
 			Err(_) => Err(Error::Timeout),

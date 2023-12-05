@@ -1,24 +1,24 @@
 use std::fmt::{Debug, Formatter};
 use substrate_stellar_sdk::{
-	types::{AuthenticatedMessageV0, Curve25519Public, HmacSha256Mac, MessageType, StellarMessage},
+	types::{AuthenticatedMessageV0, Curve25519Public, HmacSha256Mac, MessageType},
 	XdrCodec,
 };
-use tokio::{
-	net::tcp::{OwnedReadHalf, OwnedWriteHalf},
-	sync::mpsc,
-};
+use substrate_stellar_sdk::types::StellarMessage;
+use tokio::net::tcp::{OwnedReadHalf, OwnedWriteHalf};
+use tokio::sync::mpsc;
 
 use crate::{
 	connection::{
 		authentication::{gen_shared_key, ConnectionAuth},
-		connector::message_reader::read_message_from_stellar,
 		flow_controller::FlowController,
-		handshake::HandshakeState,
 		hmac::{verify_hmac, HMacKeys},
-		ConnectionInfo, Error,
+		ConnectionInfo, handshake::HandshakeState,
+		Error
 	},
 	node::{LocalInfo, NodeInfo, RemoteInfo},
 };
+use crate::connection::connector::message_reader::read_message_from_stellar;
+
 
 pub struct Connector {
 	local: LocalInfo,
@@ -37,7 +37,7 @@ pub struct Connector {
 	flow_controller: FlowController,
 
 	/// for writing xdr messages to stream.
-	pub(crate) wr: OwnedWriteHalf,
+	pub(crate) write_stream_overlay: OwnedWriteHalf,
 }
 
 impl Debug for Connector {
@@ -116,7 +116,7 @@ impl Connector {
 	pub fn new(
 		local_node: NodeInfo,
 		conn_info: ConnectionInfo,
-		write_half_of_stream: OwnedWriteHalf,
+		write_stream_overlay: OwnedWriteHalf,
 	) -> Self {
 		let connection_auth = ConnectionAuth::new(
 			&local_node.network_id,
@@ -135,7 +135,7 @@ impl Connector {
 			receive_scp_messages: conn_info.recv_scp_msgs,
 			handshake_state: HandshakeState::Connecting,
 			flow_controller: FlowController::default(),
-			wr: write_half_of_stream,
+			write_stream_overlay,
 		}
 	}
 
@@ -200,10 +200,6 @@ impl Connector {
 		self.handshake_state = HandshakeState::Completed;
 	}
 
-	pub fn get_handshake_state(&self) -> &HandshakeState {
-		&self.handshake_state
-	}
-
 	pub fn inner_check_to_send_more(&mut self, msg_type: MessageType) -> bool {
 		self.flow_controller.send_more(msg_type)
 	}
@@ -216,17 +212,18 @@ impl Connector {
 	}
 }
 
+
 /// Polls for messages coming from the Stellar Node and communicates it back to the user
 ///
 /// # Arguments
 /// * `connector` - contains the config and necessary info for connecting to Stellar Node
-/// * `r_stream` - the read half of the stream that is connected to Stellar Node
+/// * `read_stream_overlay` - the read half of the stream that is connected to Stellar Node
 /// * `send_to_user_sender` - sends message from Stellar to the user
 /// * `send_to_node_receiver` - receives message from user and writes it to the write half of the
 ///   stream.
 pub(crate) async fn poll_messages_from_stellar(
 	mut connector: Connector,
-	mut r_stream: OwnedReadHalf,
+	mut read_stream_overlay: OwnedReadHalf,
 	send_to_user_sender: mpsc::Sender<StellarMessage>,
 	mut send_to_node_receiver: mpsc::Receiver<StellarMessage>,
 ) {
@@ -240,7 +237,7 @@ pub(crate) async fn poll_messages_from_stellar(
 		}
 
 		tokio::select! {
-			result_msg = read_message_from_stellar(&mut r_stream, connector.timeout_in_secs) => match result_msg {
+			result_msg = read_message_from_stellar(&mut read_stream_overlay, connector.timeout_in_secs) => match result_msg {
 				Err(e) => {
 					log::error!("poll_messages_from_stellar(): {e:?}");
 					break;
@@ -266,8 +263,8 @@ pub(crate) async fn poll_messages_from_stellar(
 		}
 	}
 	// make sure to drop/shutdown the stream
-	connector.wr.forget();
-	drop(r_stream);
+	connector.write_stream_overlay.forget();
+	drop(read_stream_overlay);
 
 	send_to_node_receiver.close();
 	drop(send_to_user_sender);

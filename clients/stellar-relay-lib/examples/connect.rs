@@ -1,8 +1,8 @@
 use stellar_relay_lib::{
 	connect_to_stellar_overlay_network,
+	helper::to_base64_xdr_string,
 	sdk::types::{ScpStatementPledges, StellarMessage},
 	StellarOverlayConfig,
-	helper::to_base64_xdr_string
 };
 
 #[tokio::main]
@@ -30,7 +30,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
 	let mut counter = 0;
 	while let Ok(Some(msg)) = overlay_connection.listen().await {
-		counter+=1;
+		counter += 1;
 
 		match msg {
 			StellarMessage::ScpMessage(msg) => {
@@ -45,11 +45,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 					ScpStatementPledges::ScpStNominate(_) => "ScpStNominate ",
 				};
 				log::info!(
-						"{} sent StellarMessage of type {} for ledger {}",
-						node_id,
-						stmt_type,
-						slot
-					);
+					"{} sent StellarMessage of type {} for ledger {}",
+					node_id,
+					stmt_type,
+					slot
+				);
 			},
 			other => {
 				let msg = StellarMessage::GetPeers;
