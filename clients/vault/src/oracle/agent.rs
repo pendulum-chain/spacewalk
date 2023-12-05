@@ -2,17 +2,16 @@ use std::{sync::Arc, time::Duration};
 
 use service::on_shutdown;
 use tokio::{
-	sync::{mpsc, RwLock},
-	time::{sleep, timeout},
+	sync::{mpsc, Mutex, RwLock},
+	time::{error::Elapsed, sleep, timeout, Timeout},
 };
-use tokio::sync::Mutex;
-use tokio::time::error::Elapsed;
-use tokio::time::Timeout;
 use tracing::log;
 
 use runtime::ShutdownSender;
-use stellar_relay_lib::{connect_to_stellar_overlay_network, sdk::types::StellarMessage, StellarOverlayConfig, StellarOverlayConnection};
-use stellar_relay_lib::helper::to_base64_xdr_string;
+use stellar_relay_lib::{
+	connect_to_stellar_overlay_network, helper::to_base64_xdr_string, sdk::types::StellarMessage,
+	StellarOverlayConfig, StellarOverlayConnection,
+};
 
 use crate::oracle::{
 	collector::ScpMessageCollector,
@@ -64,6 +63,7 @@ async fn handle_message(
 pub async fn start_oracle_agent(
 	config: StellarOverlayConfig,
 	secret_key: &str,
+	shutdown_sender: ShutdownSender,
 ) -> Result<OracleAgent, Error> {
 	let timeout_in_secs = config.connection_info.timeout_in_secs;
 	let secret_key_copy = secret_key.to_string();
@@ -78,7 +78,6 @@ pub async fn start_oracle_agent(
 	)));
 	let collector_clone = collector.clone();
 
-	let shutdown_sender = ShutdownSender::default();
 	let shutdown_sender_clone = shutdown_sender.clone();
 	let shutdown_sender_clone2 = shutdown_sender.clone();
 
@@ -100,7 +99,7 @@ pub async fn start_oracle_agent(
 				message_receiver.close();
 				disconnect_signal_receiver.close();
 
-				return Ok(());
+				return Ok(())
 			}
 
 			tokio::select! {
@@ -171,7 +170,6 @@ pub async fn start_oracle_agent(
 
 		Ok::<(), Error>(())
 	});
-
 
 	tokio::spawn(on_shutdown(shutdown_sender.clone(), async move {
 		tracing::info!("start_oracle_agent(): sending signal to shutdown overlay connection...");
