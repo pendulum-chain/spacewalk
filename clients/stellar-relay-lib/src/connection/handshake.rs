@@ -1,6 +1,6 @@
 use substrate_stellar_sdk::compound_types::LimitedString;
 
-use crate::{node::NodeInfo, connection::Error};
+use crate::{connection::Error, node::NodeInfo};
 use substrate_stellar_sdk::{
 	types::{Auth, AuthCert, Hello, StellarMessage, Uint256},
 	PublicKey,

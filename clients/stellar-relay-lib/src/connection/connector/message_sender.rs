@@ -1,27 +1,28 @@
 use std::time::Duration;
 use substrate_stellar_sdk::types::{MessageType, SendMore, StellarMessage};
-use tokio::io::AsyncWriteExt;
-use tokio::net::tcp::OwnedWriteHalf;
-use tokio::time::{timeout, Timeout};
+use tokio::{io::AsyncWriteExt, time::timeout};
 
-use crate::connection::{Connector, Error, flow_controller::MAX_FLOOD_MSG_CAP, handshake::create_auth_message, helper::{time_now, to_base64_xdr_string}};
+use crate::connection::{
+	flow_controller::MAX_FLOOD_MSG_CAP,
+	handshake::create_auth_message,
+	helper::{time_now, to_base64_xdr_string},
+	Connector, Error,
+};
 
 impl Connector {
 	pub async fn send_to_node(&mut self, msg: StellarMessage) -> Result<(), Error> {
 		let xdr_msg = &self.create_xdr_message(msg)?;
 
-		match timeout(
-			Duration::from_secs(self.timeout_in_secs),
-			self.wr.write_all(&xdr_msg)
-		).await {
-			Ok(res) =>  res.map_err(|e| Error::WriteFailed(e.to_string())),
-			Err(_) => Err(Error::Timeout)
+		match timeout(Duration::from_secs(self.timeout_in_secs), self.wr.write_all(&xdr_msg)).await
+		{
+			Ok(res) => res.map_err(|e| Error::WriteFailed(e.to_string())),
+			Err(_) => Err(Error::Timeout),
 		}
 	}
 
 	pub async fn send_hello_message(&mut self) -> Result<(), Error> {
 		let msg = self.create_hello_message(time_now())?;
-		log::info!("send_hello_message(): Sending Hello Message: {}",to_base64_xdr_string(&msg));
+		log::info!("send_hello_message(): Sending Hello Message: {}", to_base64_xdr_string(&msg));
 
 		self.send_to_node(msg).await
 	}

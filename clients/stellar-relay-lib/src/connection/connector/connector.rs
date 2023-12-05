@@ -1,26 +1,24 @@
 use std::fmt::{Debug, Formatter};
 use substrate_stellar_sdk::{
-	types::{AuthenticatedMessageV0, Curve25519Public, HmacSha256Mac, MessageType},
+	types::{AuthenticatedMessageV0, Curve25519Public, HmacSha256Mac, MessageType, StellarMessage},
 	XdrCodec,
 };
-use substrate_stellar_sdk::types::StellarMessage;
-use tokio::io::AsyncWriteExt;
-use tokio::net::tcp::{OwnedReadHalf, OwnedWriteHalf};
-use tokio::sync::mpsc;
-use tokio::sync::mpsc::Sender;
+use tokio::{
+	net::tcp::{OwnedReadHalf, OwnedWriteHalf},
+	sync::mpsc,
+};
 
 use crate::{
 	connection::{
 		authentication::{gen_shared_key, ConnectionAuth},
+		connector::message_reader::read_message_from_stellar,
 		flow_controller::FlowController,
+		handshake::HandshakeState,
 		hmac::{verify_hmac, HMacKeys},
-		ConnectionInfo, handshake::HandshakeState,
-		Error
+		ConnectionInfo, Error,
 	},
 	node::{LocalInfo, NodeInfo, RemoteInfo},
 };
-use crate::connection::connector::message_reader::read_message_from_stellar;
-use crate::helper::create_stream;
 
 pub struct Connector {
 	local: LocalInfo,
@@ -218,20 +216,19 @@ impl Connector {
 	}
 }
 
-
 /// Polls for messages coming from the Stellar Node and communicates it back to the user
 ///
 /// # Arguments
 /// * `connector` - contains the config and necessary info for connecting to Stellar Node
 /// * `r_stream` - the read half of the stream that is connected to Stellar Node
 /// * `send_to_user_sender` - sends message from Stellar to the user
-/// * `send_to_node_receiver` - receives message from user and writes it to the write half of the stream.
+/// * `send_to_node_receiver` - receives message from user and writes it to the write half of the
+///   stream.
 pub(crate) async fn poll_messages_from_stellar(
 	mut connector: Connector,
 	mut r_stream: OwnedReadHalf,
-	address: String,
 	send_to_user_sender: mpsc::Sender<StellarMessage>,
-	mut send_to_node_receiver: mpsc::Receiver<StellarMessage>
+	mut send_to_node_receiver: mpsc::Receiver<StellarMessage>,
 ) {
 	log::info!("poll_messages_from_stellar(): started.");
 
@@ -239,33 +236,33 @@ pub(crate) async fn poll_messages_from_stellar(
 		if send_to_user_sender.is_closed() {
 			log::info!("poll_messages_from_stellar(): closing receiver during disconnection");
 			// close this channel as communication to user was closed.
-			break;
+			break
 		}
 
 		tokio::select! {
 			result_msg = read_message_from_stellar(&mut r_stream, connector.timeout_in_secs) => match result_msg {
-                Err(e) => {
-                    log::error!("poll_messages_from_stellar(): {e:?}");
-                    break;
-                },
+				Err(e) => {
+					log::error!("poll_messages_from_stellar(): {e:?}");
+					break;
+				},
 				Ok(xdr) =>  match connector.process_raw_message(xdr).await {
-                    Ok(Some(stellar_msg)) =>
-                    // push message to user
-                    if let Err(e) = send_to_user_sender.send(stellar_msg).await {
-                        log::warn!("poll_messages_from_stellar(): Error occurred during sending message to user: {e:?}");
-                    },
-                    Ok(_) => log::info!("poll_messages_from_stellar(): no message for user"),
-                    Err(e) => {
-                        log::error!("poll_messages_from_stellar(): Error occurred during processing xdr message: {e:?}");
-                        break;
-                    }
-                }
+					Ok(Some(stellar_msg)) =>
+					// push message to user
+					if let Err(e) = send_to_user_sender.send(stellar_msg).await {
+						log::warn!("poll_messages_from_stellar(): Error occurred during sending message to user: {e:?}");
+					},
+					Ok(_) => log::info!("poll_messages_from_stellar(): no message for user"),
+					Err(e) => {
+						log::error!("poll_messages_from_stellar(): Error occurred during processing xdr message: {e:?}");
+						break;
+					}
+				}
 			},
 
 			// push message to Stellar Node
 			Some(msg) = send_to_node_receiver.recv() => if let Err(e) = connector.send_to_node(msg).await {
-                log::error!("poll_messages_from_stellar(): Error occurred during sending message to node: {e:?}");
-            }
+				log::error!("poll_messages_from_stellar(): Error occurred during sending message to node: {e:?}");
+			}
 		}
 	}
 	// make sure to drop/shutdown the stream

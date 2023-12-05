@@ -1,25 +1,13 @@
+use crate::connection::{xdr_converter::get_xdr_message_length, Error, Xdr};
 use std::time::Duration;
-use crate::{
-	connection::{
-		authentication::verify_remote_auth_cert, error_to_string, helper::time_now, hmac::HMacKeys,
-		xdr_converter::{parse_authenticated_message, get_xdr_message_length}, Connector, Xdr,Error
-	},
-	node::RemoteInfo
-};
-use substrate_stellar_sdk::{
-	types::{Hello, MessageType, StellarMessage},
-	XdrCodec,
-};
-use substrate_stellar_sdk::types::ErrorCode;
-use tokio::io::{AsyncReadExt, AsyncWriteExt};
-use tokio::net::tcp;
-use tokio::sync::mpsc;
-use tokio::time::timeout;
-use crate::connection::to_base64_xdr_string;
 
+use tokio::{io::AsyncReadExt, net::tcp, time::timeout};
 
 /// Returns Xdr format of the `StellarMessage` sent from the Stellar Node
-pub(super) async fn read_message_from_stellar(r_stream: &mut tcp::OwnedReadHalf, timeout_in_secs:u64) -> Result<Xdr,Error> {
+pub(super) async fn read_message_from_stellar(
+	r_stream: &mut tcp::OwnedReadHalf,
+	timeout_in_secs: u64,
+) -> Result<Xdr, Error> {
 	// holds the number of bytes that were missing from the previous stellar message.
 	let mut lack_bytes_from_prev = 0;
 	let mut readbuf: Vec<u8> = vec![];
@@ -34,19 +22,23 @@ pub(super) async fn read_message_from_stellar(r_stream: &mut tcp::OwnedReadHalf,
 		{
 			Ok(Ok(0)) => {
 				log::trace!("read_message_from_stellar(): ERROR: Received 0 size");
-				return Err(Error::Disconnected);
-			}
+				return Err(Error::Disconnected)
+			},
 
 			Ok(Ok(_)) if lack_bytes_from_prev == 0 => {
 				// if there are no more bytes lacking from the previous message,
 				// then check the size of next stellar message.
 				// If it's not enough, skip it.
 				let expect_msg_len = next_message_length(r_stream).await;
-				log::trace!("read_message_from_stellar(): The next message length is {expect_msg_len}");
+				log::trace!(
+					"read_message_from_stellar(): The next message length is {expect_msg_len}"
+				);
 
 				if expect_msg_len == 0 {
 					// there's nothing to read; wait for the next iteration
-					log::trace!("read_message_from_stellar(): Nothing left to read; waiting for next loop");
+					log::trace!(
+						"read_message_from_stellar(): Nothing left to read; waiting for next loop"
+					);
 					continue
 				}
 
@@ -58,46 +50,43 @@ pub(super) async fn read_message_from_stellar(r_stream: &mut tcp::OwnedReadHalf,
 					&mut lack_bytes_from_prev,
 					&mut readbuf,
 					expect_msg_len,
-				).await {
-					Ok(None) => continue,
-					Ok(Some(xdr)) => return Ok(xdr),
-					Err(e) => {
-						 log::trace!("read_message_from_stellar(): ERROR: {e:?}");
-						return Err(e);
-					}
-				}
-			}
-
-			Ok(Ok(_)) => {
-				// let's read the continuation number of bytes from the previous message.
-				match read_unfinished_message(
-					r_stream,
-					&mut lack_bytes_from_prev,
-					&mut readbuf,
-				).await {
+				)
+				.await
+				{
 					Ok(None) => continue,
 					Ok(Some(xdr)) => return Ok(xdr),
 					Err(e) => {
 						log::trace!("read_message_from_stellar(): ERROR: {e:?}");
-						return Err(e);
-					}
+						return Err(e)
+					},
 				}
-			}
+			},
+
+			Ok(Ok(_)) => {
+				// let's read the continuation number of bytes from the previous message.
+				match read_unfinished_message(r_stream, &mut lack_bytes_from_prev, &mut readbuf)
+					.await
+				{
+					Ok(None) => continue,
+					Ok(Some(xdr)) => return Ok(xdr),
+					Err(e) => {
+						log::trace!("read_message_from_stellar(): ERROR: {e:?}");
+						return Err(e)
+					},
+				}
+			},
 			Ok(Err(e)) => {
 				log::trace!("read_message_from_stellar(): ERROR: {e:?}");
-				return Err(Error::ReadFailed(e.to_string()));
-			}
+				return Err(Error::ReadFailed(e.to_string()))
+			},
 
 			Err(_) => {
 				log::error!("read_message_from_stellar(): timeout elapsed.");
-				return Err(Error::Timeout);
-			}
+				return Err(Error::Timeout)
+			},
 		}
 	}
-
-	Err(Error::ReadFailed("loop for reading has ended".to_string()))
 }
-
 
 /// Returns Xdr when all bytes from the stream have successfully been converted; else None.
 /// This reads a number of bytes based on the expected message length.
@@ -153,7 +142,7 @@ async fn read_unfinished_message(
 		log::trace!("read_unfinished_message(): received continuation from the previous message.");
 		readbuf.append(&mut cont_buf);
 
-		return Ok(Some(readbuf.clone()));
+		return Ok(Some(readbuf.clone()))
 	}
 
 	// this partial message is not enough to complete the previous message.

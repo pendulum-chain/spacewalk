@@ -1,13 +1,12 @@
+use crate::{
+	connection::{ConnectionInfo, Error},
+	node::NodeInfo,
+	StellarOverlayConnection,
+};
 use serde::{Deserialize, Serialize};
 use serde_with::{serde_as, BytesOrString};
 use std::fmt::Debug;
 use substrate_stellar_sdk::SecretKey;
-use substrate_stellar_sdk::types::StellarMessage;
-use tokio::net::TcpStream;
-use tokio::sync::mpsc;
-use crate::connection::{ConnectionInfo, Error};
-use crate::node::NodeInfo;
-use crate::StellarOverlayConnection;
 
 /// The configuration structure of the StellarOverlay.
 /// It configures both the ConnectionInfo and the NodeInfo.

@@ -1,6 +1,6 @@
 use crate::{
-    connection::authentication::{BinarySha256Hash, ConnectionAuth, AUTH_CERT_EXPIRATION_LIMIT},
-    Error,
+	connection::authentication::{BinarySha256Hash, ConnectionAuth, AUTH_CERT_EXPIRATION_LIMIT},
+	Error,
 };
 use sha2::{Digest, Sha256};
 use substrate_stellar_sdk::{

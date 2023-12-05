@@ -58,7 +58,7 @@ pub enum Error {
 	OverlayError(ErrorCode),
 
 	#[error(display = "Timeout elapsed")]
-	Timeout
+	Timeout,
 }
 
 impl From<XDRError> for Error {
@@ -78,5 +78,3 @@ impl From<StellarSdkError> for Error {
 		Error::StellarSdkError(e)
 	}
 }
-
-

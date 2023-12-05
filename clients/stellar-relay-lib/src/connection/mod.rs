@@ -13,15 +13,9 @@ pub use error::Error;
 pub use helper::*;
 use serde::Serialize;
 use std::fmt::{Debug, Formatter};
+use substrate_stellar_sdk::SecretKey;
 
 type Xdr = Vec<u8>;
-
-use crate::node::NodeInfo;
-use substrate_stellar_sdk::{
-	types::{MessageType, StellarMessage},
-	PublicKey, SecretKey,
-};
-
 
 /// Config for connecting to Stellar Node
 #[derive(Clone, Serialize, PartialEq, Eq)]
