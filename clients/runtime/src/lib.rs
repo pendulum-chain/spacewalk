@@ -12,7 +12,7 @@ use subxt::{
 };
 
 pub use assets::TryFromSymbol;
-pub use error::{Error, SubxtError};
+pub use error::{Error, SubxtError, Recoverability};
 pub use primitives::CurrencyInfo;
 pub use retry::{notify_retry, RetryPolicy};
 #[cfg(feature = "testing-utils")]
