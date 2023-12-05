@@ -6,9 +6,9 @@ use crate::{
 };
 use primitives::{stellar::PublicKey, CurrencyId};
 use runtime::{
-	OraclePallet, RedeemPallet, ReplacePallet, SecurityPallet, SpacewalkRedeemRequest,
-	SpacewalkReplaceRequest, StellarPublicKeyRaw, StellarRelayPallet, UtilFuncs, VaultId,
-	VaultRegistryPallet, H256,Recoverability,RetryPolicy, Error as EnrichedError
+	Error as EnrichedError, OraclePallet, Recoverability, RedeemPallet, ReplacePallet, RetryPolicy,
+	SecurityPallet, SpacewalkRedeemRequest, SpacewalkReplaceRequest, StellarPublicKeyRaw,
+	StellarRelayPallet, UtilFuncs, VaultId, VaultRegistryPallet, H256,
 };
 use sp_runtime::traits::StaticLookup;
 use std::{convert::TryInto, sync::Arc, time::Duration};
@@ -210,12 +210,11 @@ impl Request {
 							// Handle other errors
 							if err.is_pool_too_low_priority() {
 								Err(RetryPolicy::Skip(EnrichedError::PoolTooLowPriority))
-							}else if err.is_rpc_disconnect_error() {
+							} else if err.is_rpc_disconnect_error() {
 								Err(RetryPolicy::Throw(err))
 							} else if err.is_block_hash_not_found_error() {
 								Err(RetryPolicy::Skip(EnrichedError::BlockHashNotFound))
-								
-							}else {
+							} else {
 								Err(RetryPolicy::Throw(err))
 							}
 						},
