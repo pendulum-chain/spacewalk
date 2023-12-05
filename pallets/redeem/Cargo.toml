@@ -3,7 +3,7 @@ authors = ["Pendulum Chain <https://github.com/pendulum-chain>"]
 description = "Redeem module"
 edition = "2021"
 name = "redeem"
-version = "1.0.0"
+version = "1.0.1"
 
 [dependencies]
 serde = { version = "1.0.130", default-features = false, features = ['derive'], optional = true }
