@@ -1,6 +1,7 @@
 use substrate_stellar_sdk::types::{ErrorCode, StellarMessage};
 use tokio::sync::mpsc;
 use tokio::sync::mpsc::error::{SendError, TryRecvError};
+use tokio::sync::mpsc::Sender;
 
 use crate::connection::{ConnectionInfo, Connector, poll_messages_from_stellar};
 use crate::Error;
@@ -15,6 +16,10 @@ pub struct StellarOverlayConnection {
 }
 
 impl StellarOverlayConnection {
+    pub fn sender(&self) -> Sender<StellarMessage> {
+        self.sender.clone()
+    }
+
     pub async fn send_to_node(&self, msg:StellarMessage) -> Result<(), SendError<StellarMessage>> {
         self.sender.send(msg).await
     }

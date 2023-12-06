@@ -90,7 +90,7 @@ impl ConnectionInfo {
 			recv_tx_msgs,
 			recv_scp_msgs,
 			remote_called_us,
-			20,
+			10,
 		)
 	}
 

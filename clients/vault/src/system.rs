@@ -394,7 +394,7 @@ impl VaultService {
 	async fn create_oracle_agent(
 		&self,
 		is_public_network: bool,
-		shutdown_sender: ShutdownSender,
+		shutdown_sender: ShutdownSender
 	) -> Result<Arc<OracleAgent>, ServiceError<Error>> {
 		let cfg_path = &self.config.stellar_overlay_config_filepath;
 		let stellar_overlay_cfg =
@@ -408,7 +408,7 @@ impl VaultService {
 		let oracle_agent = crate::oracle::start_oracle_agent(
 			stellar_overlay_cfg,
 			&self.secret_key,
-			shutdown_sender,
+			shutdown_sender
 		)
 		.await
 		.expect("Failed to start oracle agent");
