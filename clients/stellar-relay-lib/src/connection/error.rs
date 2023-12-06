@@ -1,9 +1,8 @@
 #![allow(dead_code)] //todo: remove after being tested and implemented
 
-use crate::connection::xdr_converter::Error as XDRError;
+use crate::{connection::xdr_converter::Error as XDRError, helper::error_to_string};
 use substrate_stellar_sdk::{types::ErrorCode, StellarSdkError};
 use tokio::sync;
-use crate::helper::error_to_string;
 
 #[derive(Debug, err_derive::Error)]
 pub enum Error {
@@ -68,7 +67,7 @@ pub enum Error {
 	Timeout,
 
 	#[error(display = "Config Error: Version String too long")]
-	VersionStrTooLong
+	VersionStrTooLong,
 }
 
 impl From<XDRError> for Error {
@@ -97,7 +96,7 @@ impl From<substrate_stellar_sdk::types::Error> for Error {
 			other => {
 				log::error!("Stellar Node returned error: {}", error_to_string(value));
 				Self::OverlayError(other)
-			}
+			},
 		}
 	}
 }

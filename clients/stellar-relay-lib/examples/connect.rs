@@ -1,6 +1,5 @@
 use stellar_relay_lib::{
 	connect_to_stellar_overlay_network,
-	helper::to_base64_xdr_string,
 	sdk::types::{ScpStatementPledges, StellarMessage},
 	StellarOverlayConfig,
 };
@@ -28,10 +27,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
 	let mut overlay_connection = connect_to_stellar_overlay_network(cfg, &secret_key).await?;
 
-	let mut counter = 0;
 	while let Ok(Some(msg)) = overlay_connection.listen().await {
-		counter += 1;
-
 		match msg {
 			StellarMessage::ScpMessage(msg) => {
 				let node_id = msg.statement.node_id.to_encoding();
@@ -51,8 +47,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 					slot
 				);
 			},
-			other => {
-				let msg = StellarMessage::GetPeers;
+			_ => {
 				let _ = overlay_connection.send_to_node(StellarMessage::GetPeers).await;
 			},
 		}

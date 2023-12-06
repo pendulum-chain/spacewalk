@@ -1,24 +1,24 @@
 use std::fmt::{Debug, Formatter};
 use substrate_stellar_sdk::{
-	types::{AuthenticatedMessageV0, Curve25519Public, HmacSha256Mac, MessageType},
+	types::{AuthenticatedMessageV0, Curve25519Public, HmacSha256Mac, MessageType, StellarMessage},
 	XdrCodec,
 };
-use substrate_stellar_sdk::types::StellarMessage;
-use tokio::net::tcp::{OwnedReadHalf, OwnedWriteHalf};
-use tokio::sync::mpsc;
+use tokio::{
+	net::tcp::{OwnedReadHalf, OwnedWriteHalf},
+	sync::mpsc,
+};
 
 use crate::{
 	connection::{
 		authentication::{gen_shared_key, ConnectionAuth},
+		connector::message_reader::read_message_from_stellar,
 		flow_controller::FlowController,
+		handshake::HandshakeState,
 		hmac::{verify_hmac, HMacKeys},
-		ConnectionInfo, handshake::HandshakeState,
-		Error
+		ConnectionInfo, Error,
 	},
 	node::{LocalInfo, NodeInfo, RemoteInfo},
 };
-use crate::connection::connector::message_reader::read_message_from_stellar;
-
 
 pub struct Connector {
 	local: LocalInfo,
@@ -211,7 +211,6 @@ impl Connector {
 		self.flow_controller.enable(local_overlay_version, remote_overlay_version)
 	}
 }
-
 
 /// Polls for messages coming from the Stellar Node and communicates it back to the user
 ///

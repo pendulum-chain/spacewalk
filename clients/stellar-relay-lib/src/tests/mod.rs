@@ -41,23 +41,27 @@ fn overlay_infos(is_mainnet: bool) -> (NodeInfo, ConnectionInfo) {
 	)
 }
 
-// #[tokio::test]
-// #[serial]
-// async fn stellar_overlay_connect_and_listen_connect_message() {
-// 	let (node_info, conn_info) = overlay_infos(false);
-//
-// 	let mut overlay_connection =
-// 		StellarOverlayConnection::connect(node_info.clone(), conn_info).await.unwrap();
-//
-// 	let message = overlay_connection.listen().await.unwrap();
-// 	if let StellarRelayMessage::Connect { pub_key: _x, node_info: y } = message {
-// 		assert_eq!(y.ledger_version, node_info.ledger_version);
-// 	} else {
-// 		panic!("Incorrect stellar relay message received");
-// 	}
-//
-// 	overlay_connection.disconnect();
-// }
+#[tokio::test]
+#[serial]
+async fn stellar_overlay_connect_and_listen_connect_message() {
+	let (node_info, conn_info) = overlay_infos(false);
+
+	let mut overlay_connection =
+		StellarOverlayConnection::connect(node_info.clone(), conn_info).await.unwrap();
+
+	if let Some(message) =
+		overlay_connection.listen().await.expect("Should return a Stellar Message")
+	{
+		match message {
+			StellarMessage::ErrorMsg(_) => assert!(false),
+			_ => assert!(true),
+		}
+	} else {
+		assert!(false);
+	}
+
+	overlay_connection.disconnect();
+}
 
 #[tokio::test(flavor = "multi_thread")]
 #[serial]

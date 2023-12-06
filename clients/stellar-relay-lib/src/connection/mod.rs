@@ -72,28 +72,6 @@ impl ConnectionInfo {
 		}
 	}
 
-	#[cfg(test)]
-	pub(crate) fn new(
-		addr: &str,
-		port: u32,
-		secret_key: SecretKey,
-		auth_cert_expiration: u64,
-		recv_tx_msgs: bool,
-		recv_scp_msgs: bool,
-		remote_called_us: bool,
-	) -> Self {
-		Self::new_with_timeout(
-			addr,
-			port,
-			secret_key,
-			auth_cert_expiration,
-			recv_tx_msgs,
-			recv_scp_msgs,
-			remote_called_us,
-			10,
-		)
-	}
-
 	pub fn address(&self) -> String {
 		format!("{}:{}", self.address, self.port)
 	}

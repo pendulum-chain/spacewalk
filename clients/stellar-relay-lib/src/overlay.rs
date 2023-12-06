@@ -1,35 +1,40 @@
 use substrate_stellar_sdk::types::{ErrorCode, StellarMessage};
-use tokio::sync::mpsc;
-use tokio::sync::mpsc::error::{SendError, TryRecvError};
-use tokio::sync::mpsc::Sender;
+use tokio::sync::{
+	mpsc,
+	mpsc::{
+		error::{SendError, TryRecvError},
+		Sender,
+	},
+};
 
-use crate::connection::{ConnectionInfo, Connector, poll_messages_from_stellar};
-use crate::Error;
-use crate::helper::{create_stream, error_to_string};
-use crate::node::NodeInfo;
-
+use crate::{
+	connection::{poll_messages_from_stellar, ConnectionInfo, Connector},
+	helper::{create_stream, error_to_string},
+	node::NodeInfo,
+	Error,
+};
 
 /// Used to send/receive messages to/from Stellar Node
 pub struct StellarOverlayConnection {
-    sender: mpsc::Sender<StellarMessage>,
-    receiver: mpsc::Receiver<StellarMessage>
+	sender: mpsc::Sender<StellarMessage>,
+	receiver: mpsc::Receiver<StellarMessage>,
 }
 
 impl StellarOverlayConnection {
-    pub fn sender(&self) -> Sender<StellarMessage> {
-        self.sender.clone()
-    }
+	pub fn sender(&self) -> Sender<StellarMessage> {
+		self.sender.clone()
+	}
 
-    pub async fn send_to_node(&self, msg:StellarMessage) -> Result<(), SendError<StellarMessage>> {
-        self.sender.send(msg).await
-    }
+	pub async fn send_to_node(&self, msg: StellarMessage) -> Result<(), SendError<StellarMessage>> {
+		self.sender.send(msg).await
+	}
 
 	pub async fn listen(&mut self) -> Result<Option<StellarMessage>, Error> {
 		loop {
-            if !self.is_alive() {
-                self.disconnect();
-                return Err(Error::Disconnected)
-            }
+			if !self.is_alive() {
+				self.disconnect();
+				return Err(Error::Disconnected)
+			}
 
 			match self.receiver.try_recv() {
 				Ok(StellarMessage::ErrorMsg(e)) => {
@@ -38,24 +43,24 @@ impl StellarOverlayConnection {
 						return Err(Error::ConnectionFailed(error_to_string(e)))
 					}
 
-                    return Ok(None)
-                },
-                Ok(msg) => return Ok(Some(msg)),
-                Err(TryRecvError::Disconnected) => return Err(Error::Disconnected),
-                Err(TryRecvError::Empty) => continue,
-            }
-        }
-    }
+					return Ok(None)
+				},
+				Ok(msg) => return Ok(Some(msg)),
+				Err(TryRecvError::Disconnected) => return Err(Error::Disconnected),
+				Err(TryRecvError::Empty) => continue,
+			}
+		}
+	}
 
-    pub fn is_alive(&self) -> bool {
-        let result = self.sender.is_closed();
+	pub fn is_alive(&self) -> bool {
+		let result = self.sender.is_closed();
 
-        if result {
-            drop(self);
-        }
+		if result {
+			drop(self);
+		}
 
-        !result
-    }
+		!result
+	}
 
 	pub fn disconnect(&mut self) {
 		log::info!("disconnect(): closing channel");
@@ -64,23 +69,23 @@ impl StellarOverlayConnection {
 }
 
 impl Drop for StellarOverlayConnection {
-    fn drop(&mut self) {
-        self.disconnect();
-    }
+	fn drop(&mut self) {
+		self.disconnect();
+	}
 }
 
 impl StellarOverlayConnection {
-    /// Returns an `StellarOverlayConnection` when a connection to Stellar Node is successful.
-    pub async fn connect(local_node_info: NodeInfo, conn_info: ConnectionInfo) -> Result<Self,Error> {
-        log::info!("connect(): connecting to {conn_info:?}");
+	/// Returns an `StellarOverlayConnection` when a connection to Stellar Node is successful.
+	pub async fn connect(
+		local_node_info: NodeInfo,
+		conn_info: ConnectionInfo,
+	) -> Result<Self, Error> {
+		log::info!("connect(): connecting to {conn_info:?}");
 
+		// this is a channel to communicate with the user/caller.
+		let (send_to_user_sender, send_to_user_receiver) = mpsc::channel::<StellarMessage>(1024);
 
-        // this is a channel to communicate with the user/caller.
-        let (send_to_user_sender, send_to_user_receiver) =
-            mpsc::channel::<StellarMessage>(1024);
-
-        let (send_to_node_sender, send_to_node_receiver) =
-            mpsc::channel::<StellarMessage>(1024);
+		let (send_to_node_sender, send_to_node_receiver) = mpsc::channel::<StellarMessage>(1024);
 
 		// split the stream for easy handling of read and write
 		let (read_stream_overlay, write_stream_overlay) =
@@ -96,9 +101,9 @@ impl StellarOverlayConnection {
 			send_to_node_receiver,
 		));
 
-        Ok(StellarOverlayConnection {
-            sender: send_to_node_sender,
-            receiver: send_to_user_receiver
-        })
-    }
+		Ok(StellarOverlayConnection {
+			sender: send_to_node_sender,
+			receiver: send_to_user_receiver,
+		})
+	}
 }

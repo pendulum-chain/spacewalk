@@ -1,12 +1,14 @@
-use std::{fmt, sync::Arc, time::Duration};
-use std::time::SystemTime;
+use std::{
+	fmt,
+	sync::Arc,
+	time::{Duration, SystemTime},
+};
 
 use async_trait::async_trait;
 use futures::{future::Either, Future, FutureExt};
 use governor::{Quota, RateLimiter};
 use nonzero_ext::*;
-use tokio::sync::RwLock;
-use tokio::time::sleep;
+use tokio::{sync::RwLock, time::sleep};
 pub use warp;
 
 pub use cli::{LoggingFormat, MonitoringConfig, RestartPolicy, ServiceConfig};
@@ -30,7 +32,7 @@ pub trait Service<Config, InnerError> {
 		spacewalk_parachain: SpacewalkParachain,
 		config: Config,
 		monitoring_config: MonitoringConfig,
-		shutdown: ShutdownSender
+		shutdown: ShutdownSender,
 	) -> Result<Self, InnerError>
 	where
 		Self: Sized;
@@ -67,7 +69,7 @@ impl<Config: Clone + Send + 'static, F: Fn()> ConnectionManager<Config, F> {
 	}
 
 	pub async fn start<S: Service<Config, InnerError>, InnerError: fmt::Display>(
-		&self
+		&self,
 	) -> Result<(), Error<InnerError>> {
 		let mut restart_delay_timer_in_secs = 20; // set default to 20 seconds for restart
 		let mut time_as_of_recording = SystemTime::now();
@@ -75,7 +77,8 @@ impl<Config: Clone + Send + 'static, F: Fn()> ConnectionManager<Config, F> {
 		loop {
 			let time_now = SystemTime::now();
 			let _ = time_now.duration_since(time_as_of_recording).map(|duration| {
-				// Revert the counter if the restart happened more than 30 minutes (or 1800 seconds) ago
+				// Revert the counter if the restart happened more than 30 minutes (or 1800 seconds)
+				// ago
 				if duration.as_secs() > 1800 {
 					restart_delay_timer_in_secs = 20;
 				}
@@ -114,7 +117,7 @@ impl<Config: Clone + Send + 'static, F: Fn()> ConnectionManager<Config, F> {
 				spacewalk_parachain,
 				config,
 				self.monitoring_config.clone(),
-				shutdown_tx.clone()
+				shutdown_tx.clone(),
 			)
 			.await
 			.map_err(|e| Error::StartServiceError(e))?;
@@ -154,11 +157,10 @@ impl<Config: Clone + Send + 'static, F: Fn()> ConnectionManager<Config, F> {
 
 					tracing::info!("Restarting in {restart_delay_timer_in_secs} seconds");
 					sleep(Duration::from_secs(restart_delay_timer_in_secs)).await;
-					
+
 					continue
 				},
 			};
-
 		}
 	}
 }

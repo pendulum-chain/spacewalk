@@ -7,9 +7,13 @@ pub use helper::*;
 use async_trait::async_trait;
 use lazy_static::lazy_static;
 use primitives::CurrencyId;
-use runtime::{integration::{
-	default_provider_client, set_exchange_rate_and_wait, setup_provider, SubxtClient,
-}, types::FixedU128, SpacewalkParachain, VaultId, ShutdownSender};
+use runtime::{
+	integration::{
+		default_provider_client, set_exchange_rate_and_wait, setup_provider, SubxtClient,
+	},
+	types::FixedU128,
+	ShutdownSender, SpacewalkParachain, VaultId,
+};
 use sp_arithmetic::FixedPointNumber;
 use sp_keyring::AccountKeyring;
 use std::{future::Future, sync::Arc};
