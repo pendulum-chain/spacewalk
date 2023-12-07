@@ -214,7 +214,7 @@ mod tests {
 	use super::*;
 	use serial_test::serial;
 
-	#[tokio::test]
+	#[tokio::test(flavor = "multi_thread")]
 	#[ntest::timeout(1_800_000)] // timeout at 30 minutes
 	#[serial]
 	async fn test_get_proof_for_current_slot() {
@@ -242,7 +242,7 @@ mod tests {
 		assert!(proof_result.is_ok(), "Failed to get proof for slot: {}", latest_slot);
 	}
 
-	#[tokio::test]
+	#[tokio::test(flavor = "multi_thread")]
 	#[serial]
 	async fn test_get_proof_for_archived_slot() {
 		let scp_archive_storage = ScpArchiveStorage::default();
@@ -257,6 +257,7 @@ mod tests {
 		.await
 		.expect("Failed to start agent");
 
+		sleep(Duration::from_secs(5)).await;
 		// This slot should be archived on the public network
 		let target_slot = 44041116;
 		let proof = agent.get_proof(target_slot).await.expect("should return a proof");
@@ -270,7 +271,7 @@ mod tests {
 		agent.stop().expect("Failed to stop the agent");
 	}
 
-	#[tokio::test]
+	#[tokio::test(flavor = "multi_thread")]
 	#[serial]
 	async fn test_get_proof_for_archived_slot_with_fallback() {
 		let scp_archive_storage = ScpArchiveStorage::default();
@@ -292,6 +293,7 @@ mod tests {
 				.await
 				.expect("Failed to start agent");
 
+		sleep(Duration::from_secs(5)).await;
 		// This slot should be archived on the public network
 		let target_slot = 44041116;
 		let proof = agent.get_proof(target_slot).await.expect("should return a proof");
@@ -305,7 +307,7 @@ mod tests {
 		agent.stop().expect("Failed to stop the agent");
 	}
 
-	#[tokio::test]
+	#[tokio::test(flavor = "multi_thread")]
 	#[serial]
 	async fn test_get_proof_for_archived_slot_fails_without_archives() {
 		let scp_archive_storage = ScpArchiveStorage::default();
@@ -319,6 +321,7 @@ mod tests {
 		let agent = start_oracle_agent(modified_config, &get_test_secret_key(true), shutdown)
 			.await
 			.expect("Failed to start agent");
+		sleep(Duration::from_secs(5)).await;
 
 		// This slot should be archived on the public network
 		let target_slot = 44041116;
