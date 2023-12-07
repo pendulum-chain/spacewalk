@@ -200,7 +200,7 @@ impl Request {
 			},
 			|result| async {
 				match result.map_err(Into::<EnrichedError>::into) {
-					Ok(te) => Ok(te),
+					Ok(ok) => Ok(ok),
 					Err(err) => match err.is_invalid_transaction() {
 						Some(Recoverability::Recoverable(data)) =>
 							Err(RetryPolicy::Skip(EnrichedError::InvalidTransaction(data))),

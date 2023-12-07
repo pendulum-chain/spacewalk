@@ -172,7 +172,7 @@ async fn execute_open_request_async(
 					request.request_type(),
 					request.hash()
 				);
-				retry_count += 1; // increase retry count
+				break; // There is also no need to retry on an unrecoverable error.
 			},
 			Err(error) => {
 				retry_count += 1; // increase retry count
