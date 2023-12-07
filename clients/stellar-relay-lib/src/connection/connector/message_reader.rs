@@ -1,10 +1,80 @@
-use crate::connection::{xdr_converter::get_xdr_message_length, Error, Xdr};
+use crate::connection::{xdr_converter::get_xdr_message_length, Connector, Error, Xdr};
 use std::time::Duration;
+use substrate_stellar_sdk::types::StellarMessage;
 
-use tokio::{io::AsyncReadExt, net::tcp, time::timeout};
+use tokio::{
+	io::AsyncReadExt,
+	net::{tcp, tcp::OwnedReadHalf},
+	sync::{mpsc, mpsc::error::TryRecvError},
+	time::timeout,
+};
+
+/// Polls for messages coming from the Stellar Node and communicates it back to the user
+///
+/// # Arguments
+/// * `connector` - contains the config and necessary info for connecting to Stellar Node
+/// * `read_stream_overlay` - the read half of the stream that is connected to Stellar Node
+/// * `send_to_user_sender` - sends message from Stellar to the user
+/// * `send_to_node_receiver` - receives message from user and writes it to the write half of the
+///   stream.
+pub(crate) async fn poll_messages_from_stellar(
+	mut connector: Connector,
+	mut read_stream_overlay: OwnedReadHalf,
+	send_to_user_sender: mpsc::Sender<StellarMessage>,
+	mut send_to_node_receiver: mpsc::Receiver<StellarMessage>,
+) {
+	log::info!("poll_messages_from_stellar(): started.");
+
+	loop {
+		if send_to_user_sender.is_closed() {
+			log::info!("poll_messages_from_stellar(): closing receiver during disconnection");
+			// close this channel as communication to user was closed.
+			break
+		}
+
+		// check for messages from user.
+		match send_to_node_receiver.try_recv() {
+			Ok(msg) =>
+				if let Err(e) = connector.send_to_node(msg).await {
+					log::error!("poll_messages_from_stellar(): Error occurred during sending message to node: {e:?}");
+				},
+			Err(TryRecvError::Disconnected) => break,
+			Err(TryRecvError::Empty) => {},
+		}
+
+		// check for messages from Stellar Node.
+		match read_message_from_stellar(&mut read_stream_overlay, connector.timeout_in_secs).await {
+			Err(e) => {
+				log::error!("poll_messages_from_stellar(): {e:?}");
+				break
+			},
+			Ok(xdr) => match connector.process_raw_message(xdr).await {
+				Ok(Some(stellar_msg)) =>
+				// push message to user
+					if let Err(e) = send_to_user_sender.send(stellar_msg).await {
+						log::warn!("poll_messages_from_stellar(): Error occurred during sending message to user: {e:?}");
+					},
+				Ok(_) => {},
+				Err(e) => {
+					log::error!("poll_messages_from_stellar(): Error occurred during processing xdr message: {e:?}");
+					break
+				},
+			},
+		}
+	}
+
+	// make sure to drop/shutdown the stream
+	connector.write_stream_overlay.forget();
+	drop(read_stream_overlay);
+
+	send_to_node_receiver.close();
+	drop(send_to_user_sender);
+
+	log::info!("poll_messages_from_stellar(): stopped.");
+}
 
 /// Returns Xdr format of the `StellarMessage` sent from the Stellar Node
-pub(super) async fn read_message_from_stellar(
+async fn read_message_from_stellar(
 	r_stream: &mut tcp::OwnedReadHalf,
 	timeout_in_secs: u64,
 ) -> Result<Xdr, Error> {

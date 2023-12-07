@@ -80,7 +80,8 @@ pub async fn start_oracle_agent(
 	// a clone used to forcefully call a shutdown, when StellarOverlay disconnects.
 	let shutdown_sender_clone2 = shutdown_sender.clone();
 
-	// disconnect signal sender
+	// disconnect signal sender tells the StellarOverlayConnection to close its TcpStream to Stellar
+	// Node
 	let (disconnect_signal_sender, mut disconnect_signal_receiver) = mpsc::channel::<()>(2);
 
 	service::spawn_cancelable(shutdown_sender_clone.subscribe(), async move {

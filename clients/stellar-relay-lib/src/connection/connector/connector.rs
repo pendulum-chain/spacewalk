@@ -1,17 +1,13 @@
 use std::fmt::{Debug, Formatter};
 use substrate_stellar_sdk::{
-	types::{AuthenticatedMessageV0, Curve25519Public, HmacSha256Mac, MessageType, StellarMessage},
+	types::{AuthenticatedMessageV0, Curve25519Public, HmacSha256Mac, MessageType},
 	XdrCodec,
 };
-use tokio::{
-	net::tcp::{OwnedReadHalf, OwnedWriteHalf},
-	sync::{mpsc, mpsc::error::TryRecvError},
-};
+use tokio::net::tcp::OwnedWriteHalf;
 
 use crate::{
 	connection::{
 		authentication::{gen_shared_key, ConnectionAuth},
-		connector::message_reader::read_message_from_stellar,
 		flow_controller::FlowController,
 		handshake::HandshakeState,
 		hmac::{verify_hmac, HMacKeys},
@@ -212,66 +208,215 @@ impl Connector {
 	}
 }
 
-/// Polls for messages coming from the Stellar Node and communicates it back to the user
-///
-/// # Arguments
-/// * `connector` - contains the config and necessary info for connecting to Stellar Node
-/// * `read_stream_overlay` - the read half of the stream that is connected to Stellar Node
-/// * `send_to_user_sender` - sends message from Stellar to the user
-/// * `send_to_node_receiver` - receives message from user and writes it to the write half of the
-///   stream.
-pub(crate) async fn poll_messages_from_stellar(
-	mut connector: Connector,
-	mut read_stream_overlay: OwnedReadHalf,
-	send_to_user_sender: mpsc::Sender<StellarMessage>,
-	mut send_to_node_receiver: mpsc::Receiver<StellarMessage>,
-) {
-	log::info!("poll_messages_from_stellar(): started.");
+#[cfg(test)]
+mod test {
+	use crate::{connection::hmac::HMacKeys, node::RemoteInfo, StellarOverlayConfig};
+	use serial_test::serial;
 
-	loop {
-		if send_to_user_sender.is_closed() {
-			log::info!("poll_messages_from_stellar(): closing receiver during disconnection");
-			// close this channel as communication to user was closed.
-			break
-		}
+	use substrate_stellar_sdk::{
+		compound_types::LimitedString,
+		types::{Hello, MessageType},
+		PublicKey,
+	};
+	use tokio::{io::AsyncWriteExt, net::tcp::OwnedReadHalf};
 
-		// check for messages from user.
-		match send_to_node_receiver.try_recv() {
-			Ok(msg) =>
-				if let Err(e) = connector.send_to_node(msg).await {
-					log::error!("poll_messages_from_stellar(): Error occurred during sending message to node: {e:?}");
-				},
-			Err(TryRecvError::Disconnected) => break,
-			Err(TryRecvError::Empty) => {},
-		}
+	use crate::{
+		connection::{
+			authentication::{create_auth_cert, ConnectionAuth},
+			Connector,
+		},
+		helper::{create_stream, time_now},
+		node::NodeInfo,
+		ConnectionInfo,
+	};
 
-		// check for messages from Stellar Node.
-		match read_message_from_stellar(&mut read_stream_overlay, connector.timeout_in_secs).await {
-			Err(e) => {
-				log::error!("poll_messages_from_stellar(): {e:?}");
-				break
-			},
-			Ok(xdr) => match connector.process_raw_message(xdr).await {
-				Ok(Some(stellar_msg)) =>
-				// push message to user
-					if let Err(e) = send_to_user_sender.send(stellar_msg).await {
-						log::warn!("poll_messages_from_stellar(): Error occurred during sending message to user: {e:?}");
-					},
-				Ok(_) => {},
-				Err(e) => {
-					log::error!("poll_messages_from_stellar(): Error occurred during processing xdr message: {e:?}");
-					break
-				},
-			},
+	fn create_auth_cert_from_connection_auth(
+		connector_auth: &ConnectionAuth,
+	) -> substrate_stellar_sdk::types::AuthCert {
+		let time_now = time_now();
+		let new_auth_cert = create_auth_cert(
+			connector_auth.network_id(),
+			connector_auth.keypair(),
+			time_now,
+			connector_auth.pub_key_ecdh().clone(),
+		)
+		.expect("should successfully create an auth cert");
+		new_auth_cert
+	}
+
+	impl Connector {
+		fn shutdown(&mut self, read_half: OwnedReadHalf) {
+			let _ = self.write_stream_overlay.shutdown();
+
+			drop(read_half);
 		}
 	}
 
-	// make sure to drop/shutdown the stream
-	connector.write_stream_overlay.forget();
-	drop(read_stream_overlay);
+	async fn create_connector() -> (NodeInfo, ConnectionInfo, Connector, OwnedReadHalf) {
+		let cfg_file_path = "./resources/config/testnet/stellar_relay_config_sdftest1.json";
+		let secret_key_path = "./resources/secretkey/stellar_secretkey_testnet";
+		let secret_key =
+			std::fs::read_to_string(secret_key_path).expect("should be able to read file");
 
-	send_to_node_receiver.close();
-	drop(send_to_user_sender);
+		let cfg =
+			StellarOverlayConfig::try_from_path(cfg_file_path).expect("should create a config");
+		let node_info = cfg.node_info();
+		let conn_info = cfg.connection_info(&secret_key).expect("should create a connection info");
+		// this is a channel to communicate with the connection/config (this needs renaming)
 
-	log::info!("poll_messages_from_stellar(): stopped.");
+		let (read_half, write_half) =
+			create_stream(&conn_info.address()).await.expect("should return a stream");
+		let connector = Connector::new(node_info.clone(), conn_info.clone(), write_half);
+		(node_info, conn_info, connector, read_half)
+	}
+
+	#[tokio::test]
+	#[serial]
+	async fn create_new_connector_works() {
+		let (node_info, _, mut connector, read_half) = create_connector().await;
+
+		let connector_local_node = connector.local.node();
+
+		assert_eq!(connector_local_node.ledger_version, node_info.ledger_version);
+		assert_eq!(connector_local_node.overlay_version, node_info.overlay_version);
+		assert_eq!(connector_local_node.overlay_min_version, node_info.overlay_min_version);
+		assert_eq!(connector_local_node.version_str, node_info.version_str);
+		assert_eq!(connector_local_node.network_id, node_info.network_id);
+
+		connector.shutdown(read_half);
+	}
+
+	#[tokio::test]
+	#[serial]
+	async fn connector_local_sequence_works() {
+		let (_, _, mut connector, read_half) = create_connector().await;
+		assert_eq!(connector.local_sequence(), 0);
+		connector.increment_local_sequence();
+		assert_eq!(connector.local_sequence(), 1);
+
+		connector.shutdown(read_half);
+	}
+
+	#[tokio::test]
+	#[serial]
+	async fn connector_set_remote_works() {
+		let (_, _, mut connector, read_half) = create_connector().await;
+
+		let connector_auth = &connector.connection_auth;
+		let new_auth_cert = create_auth_cert_from_connection_auth(connector_auth);
+
+		let hello = Hello {
+			ledger_version: 0,
+			overlay_version: 0,
+			overlay_min_version: 0,
+			network_id: [0; 32],
+			version_str: LimitedString::<100_i32>::new(vec![]).unwrap(),
+			listening_port: 11625,
+			peer_id: PublicKey::PublicKeyTypeEd25519([0; 32]),
+			cert: new_auth_cert,
+			nonce: [0; 32],
+		};
+		connector.set_remote(RemoteInfo::new(&hello));
+
+		assert!(connector.remote().is_some());
+
+		connector.shutdown(read_half);
+	}
+
+	#[tokio::test]
+	#[serial]
+	async fn connector_increment_remote_sequence_works() {
+		let (_, _, mut connector, read_half) = create_connector().await;
+
+		let connector_auth = &connector.connection_auth;
+		let new_auth_cert = create_auth_cert_from_connection_auth(connector_auth);
+
+		let hello = Hello {
+			ledger_version: 0,
+			overlay_version: 0,
+			overlay_min_version: 0,
+			network_id: [0; 32],
+			version_str: LimitedString::<100_i32>::new(vec![]).unwrap(),
+			listening_port: 11625,
+			peer_id: PublicKey::PublicKeyTypeEd25519([0; 32]),
+			cert: new_auth_cert,
+			nonce: [0; 32],
+		};
+		connector.set_remote(RemoteInfo::new(&hello));
+		assert_eq!(connector.remote().unwrap().sequence(), 0);
+
+		connector.increment_remote_sequence().unwrap();
+		connector.increment_remote_sequence().unwrap();
+		connector.increment_remote_sequence().unwrap();
+		assert_eq!(connector.remote().unwrap().sequence(), 3);
+
+		connector.shutdown(read_half);
+	}
+
+	#[tokio::test]
+	#[serial]
+	async fn connector_get_and_set_hmac_keys_works() {
+		//arrange
+		let (_, _, mut connector, read_half) = create_connector().await;
+		let connector_auth = &connector.connection_auth;
+		let new_auth_cert = create_auth_cert_from_connection_auth(connector_auth);
+
+		let hello = Hello {
+			ledger_version: 0,
+			overlay_version: 0,
+			overlay_min_version: 0,
+			network_id: [0; 32],
+			version_str: LimitedString::<100_i32>::new(vec![]).unwrap(),
+			listening_port: 11625,
+			peer_id: PublicKey::PublicKeyTypeEd25519([0; 32]),
+			cert: new_auth_cert,
+			nonce: [0; 32],
+		};
+		let remote = RemoteInfo::new(&hello);
+		let remote_nonce = remote.nonce();
+		connector.set_remote(remote.clone());
+
+		let shared_key = connector.get_shared_key(remote.pub_key_ecdh());
+		assert!(connector.hmac_keys().is_none());
+		//act
+		connector.set_hmac_keys(HMacKeys::new(
+			&shared_key,
+			connector.local().nonce(),
+			remote_nonce,
+			connector.remote_called_us(),
+		));
+		//assert
+		assert!(connector.hmac_keys().is_some());
+
+		connector.shutdown(read_half);
+	}
+
+	#[tokio::test]
+	#[serial]
+	async fn connector_method_works() {
+		let (_, conn_config, mut connector, read_half) = create_connector().await;
+
+		assert_eq!(connector.remote_called_us(), conn_config.remote_called_us);
+		assert_eq!(connector.receive_tx_messages(), conn_config.recv_tx_msgs);
+		assert_eq!(connector.receive_scp_messages(), conn_config.recv_scp_msgs);
+
+		connector.got_hello();
+		assert!(connector.is_handshake_created());
+
+		connector.handshake_completed();
+		assert!(connector.is_handshake_created());
+
+		connector.shutdown(read_half);
+	}
+
+	#[tokio::test]
+	#[serial]
+	async fn enable_flow_controller_works() {
+		let (node_info, _, mut connector, read_half) = create_connector().await;
+
+		assert!(!connector.inner_check_to_send_more(MessageType::ScpMessage));
+		connector.enable_flow_controller(node_info.overlay_version, node_info.overlay_version);
+
+		connector.shutdown(read_half);
+	}
 }

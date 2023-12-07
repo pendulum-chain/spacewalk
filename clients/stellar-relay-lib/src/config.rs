@@ -100,10 +100,6 @@ pub struct ConnectionInfoCfg {
 	/// how long to wait for the Stellar Node's messages.
 	#[serde(default = "ConnectionInfoCfg::default_timeout")]
 	pub timeout_in_secs: u64,
-
-	/// number of retries to wait for the Stellar Node's messages and/or to connect back to it.
-	#[serde(default = "ConnectionInfoCfg::default_retries")]
-	pub retries: u8,
 }
 
 impl ConnectionInfoCfg {
@@ -126,14 +122,10 @@ impl ConnectionInfoCfg {
 	fn default_timeout() -> u64 {
 		10
 	}
-
-	fn default_retries() -> u8 {
-		3
-	}
 }
 
 /// Triggers connection to the Stellar Node.
-/// Returns the `StellarStellarOverlayConnection` if connection is a success, otherwise an Error
+/// Returns the `StellarOverlayConnection` if connection is a success, otherwise an Error
 pub async fn connect_to_stellar_overlay_network(
 	cfg: StellarOverlayConfig,
 	secret_key: &str,

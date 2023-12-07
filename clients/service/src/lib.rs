@@ -23,6 +23,9 @@ mod cli;
 mod error;
 mod trace;
 
+const RESET_RESTART_TIME_IN_SECS: u64 = 1800; // reset the restart time in 30 minutes
+const DEFAULT_RESTART_TIME_IN_SECS: u64 = 20; // default sleep time before restarting everything
+
 #[async_trait]
 pub trait Service<Config, InnerError> {
 	const NAME: &'static str;
@@ -71,7 +74,7 @@ impl<Config: Clone + Send + 'static, F: Fn()> ConnectionManager<Config, F> {
 	pub async fn start<S: Service<Config, InnerError>, InnerError: fmt::Display>(
 		&self,
 	) -> Result<(), Error<InnerError>> {
-		let mut restart_delay_timer_in_secs = 20; // set default to 20 seconds for restart
+		let mut restart_in_secs = DEFAULT_RESTART_TIME_IN_SECS; // set default to 20 seconds for restart
 		let mut time_as_of_recording = SystemTime::now();
 
 		loop {
@@ -79,8 +82,8 @@ impl<Config: Clone + Send + 'static, F: Fn()> ConnectionManager<Config, F> {
 			let _ = time_now.duration_since(time_as_of_recording).map(|duration| {
 				// Revert the counter if the restart happened more than 30 minutes (or 1800 seconds)
 				// ago
-				if duration.as_secs() > 1800 {
-					restart_delay_timer_in_secs = 20;
+				if duration.as_secs() > RESET_RESTART_TIME_IN_SECS {
+					restart_in_secs = DEFAULT_RESTART_TIME_IN_SECS;
 				}
 				// Increase time by 10 seconds if a restart is triggered too frequently.
 				// This waits for delayed packets to be removed in the network,
@@ -88,7 +91,7 @@ impl<Config: Clone + Send + 'static, F: Fn()> ConnectionManager<Config, F> {
 				// Else, these straggler packets will interfere with the new connection.
 				// https://www.rfc-editor.org/rfc/rfc793#page-22
 				else {
-					restart_delay_timer_in_secs += 10;
+					restart_in_secs += 10;
 					time_as_of_recording = time_now;
 				}
 			});
@@ -155,8 +158,8 @@ impl<Config: Clone + Send + 'static, F: Fn()> ConnectionManager<Config, F> {
 				RestartPolicy::Always => {
 					(self.increment_restart_counter)();
 
-					tracing::info!("Restarting in {restart_delay_timer_in_secs} seconds");
-					sleep(Duration::from_secs(restart_delay_timer_in_secs)).await;
+					tracing::info!("Restarting in {restart_in_secs} seconds");
+					sleep(Duration::from_secs(restart_in_secs)).await;
 
 					continue
 				},
