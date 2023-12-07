@@ -5,7 +5,7 @@ use substrate_stellar_sdk::{
 };
 use tokio::{
 	net::tcp::{OwnedReadHalf, OwnedWriteHalf},
-	sync::mpsc,
+	sync::{mpsc, mpsc::error::TryRecvError},
 };
 
 use crate::{
@@ -235,32 +235,37 @@ pub(crate) async fn poll_messages_from_stellar(
 			break
 		}
 
-		tokio::select! {
-			result_msg = read_message_from_stellar(&mut read_stream_overlay, connector.timeout_in_secs) => match result_msg {
-				Err(e) => {
-					log::error!("poll_messages_from_stellar(): {e:?}");
-					break;
+		// check for messages from user.
+		match send_to_node_receiver.try_recv() {
+			Ok(msg) =>
+				if let Err(e) = connector.send_to_node(msg).await {
+					log::error!("poll_messages_from_stellar(): Error occurred during sending message to node: {e:?}");
 				},
-				Ok(xdr) =>  match connector.process_raw_message(xdr).await {
-					Ok(Some(stellar_msg)) =>
-					// push message to user
+			Err(TryRecvError::Disconnected) => break,
+			Err(TryRecvError::Empty) => {},
+		}
+
+		// check for messages from Stellar Node.
+		match read_message_from_stellar(&mut read_stream_overlay, connector.timeout_in_secs).await {
+			Err(e) => {
+				log::error!("poll_messages_from_stellar(): {e:?}");
+				break
+			},
+			Ok(xdr) => match connector.process_raw_message(xdr).await {
+				Ok(Some(stellar_msg)) =>
+				// push message to user
 					if let Err(e) = send_to_user_sender.send(stellar_msg).await {
 						log::warn!("poll_messages_from_stellar(): Error occurred during sending message to user: {e:?}");
 					},
-					Ok(_) => log::info!("poll_messages_from_stellar(): no message for user"),
-					Err(e) => {
-						log::error!("poll_messages_from_stellar(): Error occurred during processing xdr message: {e:?}");
-						break;
-					}
-				}
+				Ok(_) => {},
+				Err(e) => {
+					log::error!("poll_messages_from_stellar(): Error occurred during processing xdr message: {e:?}");
+					break
+				},
 			},
-
-			// push message to Stellar Node
-			Some(msg) = send_to_node_receiver.recv() => if let Err(e) = connector.send_to_node(msg).await {
-				log::error!("poll_messages_from_stellar(): Error occurred during sending message to node: {e:?}");
-			}
 		}
 	}
+
 	// make sure to drop/shutdown the stream
 	connector.write_stream_overlay.forget();
 	drop(read_stream_overlay);

@@ -11,6 +11,7 @@ use crate::connection::{
 
 impl Connector {
 	pub async fn send_to_node(&mut self, msg: StellarMessage) -> Result<(), Error> {
+		log::info!("send_to_node: sending message: {msg:?}");
 		let xdr_msg = &self.create_xdr_message(msg)?;
 
 		match timeout(

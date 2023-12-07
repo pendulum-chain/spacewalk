@@ -165,7 +165,6 @@ impl OracleAgent {
 				let collector = collector.read().await;
 				match collector.build_proof(slot, &stellar_sender).await {
 					None => {
-						tracing::warn!("get_proof(): Failed to build proof for slot {slot}.");
 						drop(collector);
 						// give 10 seconds interval for every retry
 						sleep(Duration::from_secs(10)).await;
