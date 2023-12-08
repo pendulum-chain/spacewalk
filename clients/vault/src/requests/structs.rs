@@ -6,9 +6,9 @@ use crate::{
 };
 use primitives::{stellar::PublicKey, CurrencyId};
 use runtime::{
-	OraclePallet, RedeemPallet, ReplacePallet, SecurityPallet, SpacewalkRedeemRequest,
-	SpacewalkReplaceRequest, StellarPublicKeyRaw, StellarRelayPallet, UtilFuncs, VaultId,
-	VaultRegistryPallet, H256,
+	Error as EnrichedError, OraclePallet, Recoverability, RedeemPallet, ReplacePallet, RetryPolicy,
+	SecurityPallet, SpacewalkRedeemRequest, SpacewalkReplaceRequest, StellarPublicKeyRaw,
+	StellarRelayPallet, UtilFuncs, VaultId, VaultRegistryPallet, H256,
 };
 use sp_runtime::traits::StaticLookup;
 use std::{convert::TryInto, sync::Arc, time::Duration};
@@ -199,11 +199,26 @@ impl Request {
 				)
 			},
 			|result| async {
-				match result {
+				match result.map_err(Into::<EnrichedError>::into) {
 					Ok(ok) => Ok(ok),
-					Err(err) if err.is_rpc_disconnect_error() =>
-						Err(runtime::RetryPolicy::Throw(err)),
-					Err(err) => Err(runtime::RetryPolicy::Skip(err)),
+					Err(err) => match err.is_invalid_transaction() {
+						Some(Recoverability::Recoverable(data)) =>
+							Err(RetryPolicy::Skip(EnrichedError::InvalidTransaction(data))),
+						Some(Recoverability::Unrecoverable(data)) =>
+							Err(RetryPolicy::Throw(EnrichedError::InvalidTransaction(data))),
+						None => {
+							// Handle other errors
+							if err.is_pool_too_low_priority() {
+								Err(RetryPolicy::Skip(EnrichedError::PoolTooLowPriority))
+							} else if err.is_rpc_disconnect_error() {
+								Err(RetryPolicy::Throw(err))
+							} else if err.is_block_hash_not_found_error() {
+								Err(RetryPolicy::Skip(EnrichedError::BlockHashNotFound))
+							} else {
+								Err(RetryPolicy::Throw(err))
+							}
+						},
+					},
 				}
 			},
 		)

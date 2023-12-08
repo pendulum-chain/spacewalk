@@ -90,6 +90,16 @@ pub enum Error {
 	PrometheusError(#[from] PrometheusError),
 }
 
+pub enum Recoverability {
+	Recoverable(String),
+	Unrecoverable(String),
+}
+
+enum RecoverableError {
+	InabilityToPayFees,
+	OutdatedTransaction,
+}
+
 impl Error {
 	pub fn is_module_err(&self, pallet_name: &str, error_name: &str) -> bool {
 		matches!(
@@ -121,17 +131,23 @@ impl Error {
 		}
 	}
 
-	pub fn is_invalid_transaction(&self) -> Option<String> {
+	pub fn is_invalid_transaction(&self) -> Option<Recoverability> {
 		self.map_custom_error(|custom_error| {
 			if custom_error.code() == POOL_INVALID_TX {
-				Some(custom_error.data().map(ToString::to_string).unwrap_or_default())
+				let data_string = custom_error.data().map(ToString::to_string).unwrap_or_default();
+
+				if RecoverableError::is_recoverable(&data_string) {
+					return Some(Recoverability::Recoverable(data_string))
+				}
+
+				return Some(Recoverability::Unrecoverable(data_string))
 			} else {
 				None
 			}
 		})
 	}
 
-	pub fn is_pool_too_low_priority(&self) -> Option<()> {
+	pub fn is_pool_too_low_priority(&self) -> bool {
 		self.map_custom_error(|custom_error| {
 			if custom_error.code() == POOL_TOO_LOW_PRIORITY {
 				Some(())
@@ -139,6 +155,7 @@ impl Error {
 				None
 			}
 		})
+		.is_some()
 	}
 
 	pub fn is_rpc_disconnect_error(&self) -> bool {
@@ -182,6 +199,24 @@ impl Error {
 			SECURITY_MODULE,
 			&format!("{:?}", SecurityPalletError::ParachainNotRunning),
 		)
+	}
+}
+
+impl RecoverableError {
+	// The string which is used to match the error type
+	// For definitions, see: https://github.com/paritytech/substrate/blob/033d4e86cc7eff0066cd376b9375f815761d653c/primitives/runtime/src/transaction_validity.rs#L99
+
+	fn as_str(&self) -> &'static str {
+		match self {
+			RecoverableError::InabilityToPayFees => "Inability to pay some fees",
+			RecoverableError::OutdatedTransaction => "Transaction is outdated",
+		}
+	}
+
+	fn is_recoverable(error_message: &str) -> bool {
+		[RecoverableError::InabilityToPayFees, RecoverableError::OutdatedTransaction]
+			.iter()
+			.any(|error| error_message.contains(error.as_str()))
 	}
 }
 

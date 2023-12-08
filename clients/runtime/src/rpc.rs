@@ -24,6 +24,7 @@ use primitives::Hash;
 
 use crate::{
 	conn::{new_websocket_client, new_websocket_client_with_retry},
+	error::Recoverability,
 	metadata, notify_retry,
 	types::*,
 	AccountId, Error, RetryPolicy, ShutdownSender, SpacewalkRuntime, SpacewalkSigner, SubxtError,
@@ -232,18 +233,24 @@ impl SpacewalkParachain {
 			},
 			|result| async {
 				match result.map_err(Into::<Error>::into) {
-					Ok(te) => Ok(te),
-					Err(err) =>
-						if let Some(data) = err.is_invalid_transaction() {
-							Err(RetryPolicy::Skip(Error::InvalidTransaction(data)))
-						} else if err.is_pool_too_low_priority().is_some() {
-							Err(RetryPolicy::Skip(Error::PoolTooLowPriority))
-						} else if err.is_block_hash_not_found_error() {
-							log::info!("Re-sending transaction after apparent fork");
-							Err(RetryPolicy::Skip(Error::BlockHashNotFound))
-						} else {
-							Err(RetryPolicy::Throw(err))
+					Ok(ok) => Ok(ok),
+					Err(err) => match err.is_invalid_transaction() {
+						Some(Recoverability::Recoverable(data)) =>
+							Err(RetryPolicy::Skip(Error::InvalidTransaction(data))),
+						Some(Recoverability::Unrecoverable(data)) =>
+							Err(RetryPolicy::Throw(Error::InvalidTransaction(data))),
+						None => {
+							// Handle other errors
+							if err.is_pool_too_low_priority() {
+								Err(RetryPolicy::Skip(Error::PoolTooLowPriority))
+							} else if err.is_block_hash_not_found_error() {
+								log::info!("Re-sending transaction after apparent fork");
+								Err(RetryPolicy::Skip(Error::BlockHashNotFound))
+							} else {
+								Err(RetryPolicy::Throw(err))
+							}
 						},
+					},
 				}
 			},
 		)
