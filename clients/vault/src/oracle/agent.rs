@@ -234,7 +234,7 @@ mod tests {
 		}
 		// use a future slot (2 slots ahead) to ensure enough messages can be collected
 		// and to avoid "missed" messages.
-		latest_slot += 3;
+		latest_slot += 2;
 
 		let proof_result = agent.get_proof(latest_slot).await;
 		assert!(proof_result.is_ok(), "Failed to get proof for slot: {}", latest_slot);
