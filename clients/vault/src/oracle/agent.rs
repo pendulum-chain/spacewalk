@@ -216,7 +216,6 @@ mod tests {
 	#[ntest::timeout(1_800_000)] // timeout at 30 minutes
 	#[serial]
 	async fn test_get_proof_for_current_slot() {
-		env_logger::init();
 		let shutdown_sender = ShutdownSender::new();
 		let agent = start_oracle_agent(
 			get_test_stellar_relay_config(true),
