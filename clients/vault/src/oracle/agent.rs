@@ -124,12 +124,10 @@ pub async fn start_oracle_agent(
 				},
 			}
 		}
-
-		tracing::info!("start_oracle_agent(): LOOP STOPPED!");
 	});
 
 	tokio::spawn(on_shutdown(shutdown_sender.clone(), async move {
-		tracing::info!("start_oracle_agent(): sending signal to shutdown overlay connection...");
+		tracing::debug!("start_oracle_agent(): sending signal to shutdown overlay connection...");
 		if let Err(e) = disconnect_signal_sender.send(()).await {
 			tracing::warn!("start_oracle_agent(): failed to send disconnect signal: {e:?}");
 		}
@@ -218,6 +216,7 @@ mod tests {
 	#[ntest::timeout(1_800_000)] // timeout at 30 minutes
 	#[serial]
 	async fn test_get_proof_for_current_slot() {
+		env_logger::init();
 		let shutdown_sender = ShutdownSender::new();
 		let agent = start_oracle_agent(
 			get_test_stellar_relay_config(true),
@@ -236,7 +235,7 @@ mod tests {
 		}
 		// use a future slot (2 slots ahead) to ensure enough messages can be collected
 		// and to avoid "missed" messages.
-		latest_slot += 2;
+		latest_slot += 3;
 
 		let proof_result = agent.get_proof(latest_slot).await;
 		assert!(proof_result.is_ok(), "Failed to get proof for slot: {}", latest_slot);

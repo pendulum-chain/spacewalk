@@ -25,6 +25,7 @@ mod trace;
 
 const RESET_RESTART_TIME_IN_SECS: u64 = 1800; // reset the restart time in 30 minutes
 const DEFAULT_RESTART_TIME_IN_SECS: u64 = 20; // default sleep time before restarting everything
+const RESTART_BACKOFF_DELAY: u64 = 10;
 
 #[async_trait]
 pub trait Service<Config, InnerError> {
@@ -75,11 +76,11 @@ impl<Config: Clone + Send + 'static, F: Fn()> ConnectionManager<Config, F> {
 		&self,
 	) -> Result<(), Error<InnerError>> {
 		let mut restart_in_secs = DEFAULT_RESTART_TIME_IN_SECS; // set default to 20 seconds for restart
-		let mut time_as_of_recording = SystemTime::now();
+		let mut last_start_timestamp = SystemTime::now();
 
 		loop {
 			let time_now = SystemTime::now();
-			let _ = time_now.duration_since(time_as_of_recording).map(|duration| {
+			let _ = time_now.duration_since(last_start_timestamp).map(|duration| {
 				// Revert the counter if the restart happened more than 30 minutes (or 1800 seconds)
 				// ago
 				if duration.as_secs() > RESET_RESTART_TIME_IN_SECS {
@@ -91,8 +92,8 @@ impl<Config: Clone + Send + 'static, F: Fn()> ConnectionManager<Config, F> {
 				// Else, these straggler packets will interfere with the new connection.
 				// https://www.rfc-editor.org/rfc/rfc793#page-22
 				else {
-					restart_in_secs += 10;
-					time_as_of_recording = time_now;
+					restart_in_secs += RESTART_BACKOFF_DELAY;
+					last_start_timestamp = time_now;
 				}
 			});
 

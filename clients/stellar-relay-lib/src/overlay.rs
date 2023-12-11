@@ -29,52 +29,6 @@ impl StellarOverlayConnection {
 		self.sender.send(msg).await
 	}
 
-	pub async fn listen(&mut self) -> Result<Option<StellarMessage>, Error> {
-		loop {
-			if !self.is_alive() {
-				self.disconnect();
-				return Err(Error::Disconnected)
-			}
-
-			match self.receiver.try_recv() {
-				Ok(StellarMessage::ErrorMsg(e)) => {
-					log::error!("listen(): received error message: {e:?}");
-					if e.code == ErrorCode::ErrConf || e.code == ErrorCode::ErrAuth {
-						return Err(Error::ConnectionFailed(error_to_string(e)))
-					}
-
-					return Ok(None)
-				},
-				Ok(msg) => return Ok(Some(msg)),
-				Err(TryRecvError::Disconnected) => return Err(Error::Disconnected),
-				Err(TryRecvError::Empty) => continue,
-			}
-		}
-	}
-
-	pub fn is_alive(&self) -> bool {
-		let result = self.sender.is_closed();
-
-		if result {
-			drop(self);
-		}
-
-		!result
-	}
-
-	pub fn disconnect(&mut self) {
-		log::info!("disconnect(): closing channel");
-		self.receiver.close();
-	}
-}
-
-impl Drop for StellarOverlayConnection {
-	fn drop(&mut self) {
-		self.disconnect();
-	}
-}
-
-impl StellarOverlayConnection {
 	/// Returns an `StellarOverlayConnection` when a connection to Stellar Node is successful.
 	pub async fn connect(
 		local_node_info: NodeInfo,
@@ -105,5 +59,49 @@ impl StellarOverlayConnection {
 			sender: send_to_node_sender,
 			receiver: send_to_user_receiver,
 		})
+	}
+
+	pub async fn listen(&mut self) -> Result<Option<StellarMessage>, Error> {
+		loop {
+			if !self.is_alive() {
+				self.disconnect();
+				return Err(Error::Disconnected)
+			}
+
+			match self.receiver.try_recv() {
+				Ok(StellarMessage::ErrorMsg(e)) => {
+					log::error!("listen(): received error message: {e:?}");
+					if e.code == ErrorCode::ErrConf || e.code == ErrorCode::ErrAuth {
+						return Err(Error::ConnectionFailed(error_to_string(e)))
+					}
+
+					return Ok(None)
+				},
+				Ok(msg) => return Ok(Some(msg)),
+				Err(TryRecvError::Disconnected) => return Err(Error::Disconnected),
+				Err(TryRecvError::Empty) => continue,
+			}
+		}
+	}
+
+	pub fn is_alive(&mut self) -> bool {
+		let is_closed = self.sender.is_closed();
+
+		if is_closed {
+			self.disconnect();
+		}
+
+		!is_closed
+	}
+
+	pub fn disconnect(&mut self) {
+		log::info!("disconnect(): closing connection to overlay network");
+		self.receiver.close();
+	}
+}
+
+impl Drop for StellarOverlayConnection {
+	fn drop(&mut self) {
+		self.disconnect();
 	}
 }

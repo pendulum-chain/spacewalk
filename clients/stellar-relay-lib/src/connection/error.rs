@@ -63,7 +63,7 @@ pub enum Error {
 	#[error(display = "Received Error from Overlay: {:?}", _0)]
 	OverlayError(ErrorCode),
 
-	#[error(display = "Timeout elapsed")]
+	#[error(display = "Encountered timeout")]
 	Timeout,
 
 	#[error(display = "Config Error: Version String too long")]

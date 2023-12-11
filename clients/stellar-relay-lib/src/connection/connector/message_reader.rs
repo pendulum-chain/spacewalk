@@ -70,7 +70,7 @@ pub(crate) async fn poll_messages_from_stellar(
 	send_to_node_receiver.close();
 	drop(send_to_user_sender);
 
-	log::info!("poll_messages_from_stellar(): stopped.");
+	log::debug!("poll_messages_from_stellar(): stopped.");
 }
 
 /// Returns Xdr format of the `StellarMessage` sent from the Stellar Node
