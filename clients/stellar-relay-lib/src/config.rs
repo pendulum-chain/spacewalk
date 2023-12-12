@@ -1,4 +1,8 @@
-use crate::{connection::Error, node::NodeInfo, ConnectionInfo, StellarOverlayConnection};
+use crate::{
+	connection::{ConnectionInfo, Error},
+	node::NodeInfo,
+	StellarOverlayConnection,
+};
 use serde::{Deserialize, Serialize};
 use serde_with::{serde_as, BytesOrString};
 use std::fmt::Debug;
@@ -42,13 +46,13 @@ impl StellarOverlayConfig {
 		let public_key = secret_key.get_public().to_encoding();
 		let public_key = std::str::from_utf8(&public_key).unwrap();
 		log::info!(
-			"connection_info(): Connected to Stellar overlay network with public key: {public_key}"
+			"connection_info(): Connecting to Stellar overlay network using public key: {public_key}"
 		);
 
 		let address = std::str::from_utf8(&cfg.address)
 			.map_err(|e| Error::ConfigError(format!("Address: {:?}", e)))?;
 
-		Ok(ConnectionInfo::new_with_timeout_and_retries(
+		Ok(ConnectionInfo::new_with_timeout(
 			address,
 			cfg.port,
 			secret_key,
@@ -57,7 +61,6 @@ impl StellarOverlayConfig {
 			cfg.recv_scp_msgs,
 			cfg.remote_called_us,
 			cfg.timeout_in_secs,
-			cfg.retries,
 		))
 	}
 }
@@ -97,10 +100,6 @@ pub struct ConnectionInfoCfg {
 	/// how long to wait for the Stellar Node's messages.
 	#[serde(default = "ConnectionInfoCfg::default_timeout")]
 	pub timeout_in_secs: u64,
-
-	/// number of retries to wait for the Stellar Node's messages and/or to connect back to it.
-	#[serde(default = "ConnectionInfoCfg::default_retries")]
-	pub retries: u8,
 }
 
 impl ConnectionInfoCfg {
@@ -122,10 +121,6 @@ impl ConnectionInfoCfg {
 
 	fn default_timeout() -> u64 {
 		10
-	}
-
-	fn default_retries() -> u8 {
-		3
 	}
 }
 

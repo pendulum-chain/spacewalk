@@ -12,7 +12,7 @@ use runtime::{
 		default_provider_client, set_exchange_rate_and_wait, setup_provider, SubxtClient,
 	},
 	types::FixedU128,
-	SpacewalkParachain, VaultId,
+	ShutdownSender, SpacewalkParachain, VaultId,
 };
 use sp_arithmetic::FixedPointNumber;
 use sp_keyring::AccountKeyring;
@@ -175,7 +175,8 @@ where
 		.unwrap(),
 	));
 
-	let oracle_agent = start_oracle_agent(CFG.clone(), &SECRET_KEY)
+	let shutdown_tx = ShutdownSender::new();
+	let oracle_agent = start_oracle_agent(CFG.clone(), &SECRET_KEY, shutdown_tx)
 		.await
 		.expect("failed to start agent");
 	let oracle_agent = Arc::new(oracle_agent);

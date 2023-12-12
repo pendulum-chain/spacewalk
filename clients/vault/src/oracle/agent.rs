@@ -2,14 +2,14 @@ use std::{sync::Arc, time::Duration};
 
 use service::on_shutdown;
 use tokio::{
-	sync::{mpsc, RwLock},
+	sync::{mpsc, mpsc::error::TryRecvError, RwLock},
 	time::{sleep, timeout},
 };
 
 use runtime::ShutdownSender;
 use stellar_relay_lib::{
-	connect_to_stellar_overlay_network, sdk::types::StellarMessage, StellarOverlayConfig,
-	StellarRelayMessage,
+	connect_to_stellar_overlay_network, helper::to_base64_xdr_string, sdk::types::StellarMessage,
+	StellarOverlayConfig,
 };
 
 use crate::oracle::{
@@ -33,35 +33,22 @@ pub struct OracleAgent {
 /// * `collector` - used to collect envelopes and transaction sets
 /// * `message_sender` - used to send messages to Stellar Node
 async fn handle_message(
-	message: StellarRelayMessage,
+	message: StellarMessage,
 	collector: Arc<RwLock<ScpMessageCollector>>,
 	message_sender: &StellarMessageSender,
 ) -> Result<(), Error> {
 	match message {
-		StellarRelayMessage::Data { p_id: _, msg_type: _, msg } => match *msg {
-			StellarMessage::ScpMessage(env) => {
-				collector.write().await.handle_envelope(env, message_sender).await?;
-			},
-			StellarMessage::TxSet(set) =>
-				if let Err(e) = collector.read().await.add_txset(set) {
-					tracing::error!(e);
-				},
-			StellarMessage::GeneralizedTxSet(set) => {
-				if let Err(e) = collector.read().await.add_txset(set) {
-					tracing::error!(e);
-				}
-			},
-			_ => {},
+		StellarMessage::ScpMessage(env) => {
+			collector.write().await.handle_envelope(env, message_sender).await?;
 		},
-		StellarRelayMessage::Connect { pub_key, node_info } => {
-			let pub_key = pub_key.to_encoding();
-			let pub_key = std::str::from_utf8(&pub_key).unwrap_or("****");
-
-			tracing::info!("handle_message(): Connected: via public key: {pub_key}");
-			tracing::info!("handle_message(): Connected: with {:#?}", node_info)
-		},
-		StellarRelayMessage::Timeout => {
-			tracing::error!("handle_message(): The Stellar Relay timed out. Failed to process message: {message:?}");
+		StellarMessage::TxSet(set) =>
+			if let Err(e) = collector.read().await.add_txset(set) {
+				tracing::error!(e);
+			},
+		StellarMessage::GeneralizedTxSet(set) => {
+			if let Err(e) = collector.read().await.add_txset(set) {
+				tracing::error!(e);
+			}
 		},
 		_ => {},
 	}
@@ -75,52 +62,75 @@ async fn handle_message(
 pub async fn start_oracle_agent(
 	config: StellarOverlayConfig,
 	secret_key: &str,
+	shutdown_sender: ShutdownSender,
 ) -> Result<OracleAgent, Error> {
 	tracing::info!("start_oracle_agent(): Starting connection to Stellar overlay network...");
 
 	let mut overlay_conn = connect_to_stellar_overlay_network(config.clone(), secret_key).await?;
+	// use StellarOverlayConnection's sender to send message to Stellar
+	let sender = overlay_conn.sender();
 
-	// Get action sender and disconnect action before moving `overlay_conn` into the closure
-	let actions_sender = overlay_conn.get_actions_sender();
-	let disconnect_action = overlay_conn.get_disconnect_action();
-
-	let (sender, mut receiver) = mpsc::channel(34);
 	let collector = Arc::new(RwLock::new(ScpMessageCollector::new(
 		config.is_public_network(),
 		config.stellar_history_archive_urls(),
 	)));
-	let shutdown_sender = ShutdownSender::default();
-
-	let shutdown_clone = shutdown_sender.clone();
-	// handle a message from the overlay network
-	let sender_clone = sender.clone();
-
 	let collector_clone = collector.clone();
-	service::spawn_cancelable(shutdown_clone.subscribe(), async move {
-		let sender = sender_clone.clone();
-		loop {
-			tokio::select! {
-				// runs the stellar-relay and listens to data to collect the scp messages and txsets.
-				Some(msg) = overlay_conn.listen() => {
-					handle_message(msg, collector_clone.clone(), &sender).await?;
-				},
 
-				Some(msg) = receiver.recv() => {
-					// We received the instruction to send a message to the overlay network by the receiver
-					overlay_conn.send(msg).await?;
-				}
+	let shutdown_sender_clone = shutdown_sender.clone();
+	// a clone used to forcefully call a shutdown, when StellarOverlay disconnects.
+	let shutdown_sender_clone2 = shutdown_sender.clone();
+
+	// disconnect signal sender tells the StellarOverlayConnection to close its TcpStream to Stellar
+	// Node
+	let (disconnect_signal_sender, mut disconnect_signal_receiver) = mpsc::channel::<()>(2);
+
+	service::spawn_cancelable(shutdown_sender_clone.subscribe(), async move {
+		let sender_clone = overlay_conn.sender();
+		loop {
+			match disconnect_signal_receiver.try_recv() {
+				// if a disconnect signal was sent, disconnect from Stellar.
+				Ok(_) | Err(TryRecvError::Disconnected) => {
+					tracing::info!("start_oracle_agent(): disconnect overlay...");
+					overlay_conn.disconnect();
+					break
+				},
+				Err(TryRecvError::Empty) => {},
+			}
+
+			// listen for messages from Stellar
+			match overlay_conn.listen().await {
+				Ok(Some(msg)) => {
+					let msg_as_str = to_base64_xdr_string(&msg);
+					if let Err(e) =
+						handle_message(msg, collector_clone.clone(), &sender_clone).await
+					{
+						tracing::error!(
+							"start_oracle_agent(): failed to handle message: {msg_as_str}: {e:?}"
+						);
+					}
+				},
+				Ok(None) => {},
+				// connection got lost
+				Err(e) => {
+					overlay_conn.disconnect();
+					tracing::error!("start_oracle_agent(): encounter error in overlay: {e:?}");
+
+					if let Err(e) = shutdown_sender_clone2.send(()) {
+						tracing::error!(
+							"start_oracle_agent(): Failed to send shutdown signal in thread: {e:?}"
+						);
+					}
+					break
+				},
 			}
 		}
-		#[allow(unreachable_code)]
-		Ok::<(), Error>(())
 	});
 
 	tokio::spawn(on_shutdown(shutdown_sender.clone(), async move {
-		let result_sending_disconnect =
-			actions_sender.send(disconnect_action).await.map_err(Error::from);
-		if let Err(e) = result_sending_disconnect {
-			tracing::error!("start_oracle_agent(): Failed to send disconnect message: {:#?}", e);
-		};
+		tracing::debug!("start_oracle_agent(): sending signal to shutdown overlay connection...");
+		if let Err(e) = disconnect_signal_sender.send(()).await {
+			tracing::warn!("start_oracle_agent(): failed to send disconnect signal: {e:?}");
+		}
 	}));
 
 	Ok(OracleAgent {
@@ -154,7 +164,6 @@ impl OracleAgent {
 				let collector = collector.read().await;
 				match collector.build_proof(slot, &stellar_sender).await {
 					None => {
-						tracing::warn!("get_proof(): Failed to build proof for slot {slot}.");
 						drop(collector);
 						// give 10 seconds interval for every retry
 						sleep(Duration::from_secs(10)).await;
@@ -203,14 +212,18 @@ mod tests {
 	use super::*;
 	use serial_test::serial;
 
-	#[tokio::test]
+	#[tokio::test(flavor = "multi_thread")]
 	#[ntest::timeout(1_800_000)] // timeout at 30 minutes
 	#[serial]
 	async fn test_get_proof_for_current_slot() {
-		let agent =
-			start_oracle_agent(get_test_stellar_relay_config(true), &get_test_secret_key(true))
-				.await
-				.expect("Failed to start agent");
+		let shutdown_sender = ShutdownSender::new();
+		let agent = start_oracle_agent(
+			get_test_stellar_relay_config(true),
+			&get_test_secret_key(true),
+			shutdown_sender,
+		)
+		.await
+		.expect("Failed to start agent");
 		sleep(Duration::from_secs(10)).await;
 		// Wait until agent is caught up with the network.
 
@@ -227,17 +240,22 @@ mod tests {
 		assert!(proof_result.is_ok(), "Failed to get proof for slot: {}", latest_slot);
 	}
 
-	#[tokio::test]
+	#[tokio::test(flavor = "multi_thread")]
 	#[serial]
 	async fn test_get_proof_for_archived_slot() {
 		let scp_archive_storage = ScpArchiveStorage::default();
 		let tx_archive_storage = TransactionsArchiveStorage::default();
 
-		let agent =
-			start_oracle_agent(get_test_stellar_relay_config(true), &get_test_secret_key(true))
-				.await
-				.expect("Failed to start agent");
+		let shutdown_sender = ShutdownSender::new();
+		let agent = start_oracle_agent(
+			get_test_stellar_relay_config(true),
+			&get_test_secret_key(true),
+			shutdown_sender,
+		)
+		.await
+		.expect("Failed to start agent");
 
+		sleep(Duration::from_secs(5)).await;
 		// This slot should be archived on the public network
 		let target_slot = 44041116;
 		let proof = agent.get_proof(target_slot).await.expect("should return a proof");
@@ -251,7 +269,7 @@ mod tests {
 		agent.stop().expect("Failed to stop the agent");
 	}
 
-	#[tokio::test]
+	#[tokio::test(flavor = "multi_thread")]
 	#[serial]
 	async fn test_get_proof_for_archived_slot_with_fallback() {
 		let scp_archive_storage = ScpArchiveStorage::default();
@@ -267,10 +285,13 @@ mod tests {
 		let modified_config =
 			StellarOverlayConfig { stellar_history_archive_urls: archive_urls, ..base_config };
 
-		let agent = start_oracle_agent(modified_config, &get_test_secret_key(true))
-			.await
-			.expect("Failed to start agent");
+		let shutdown_sender = ShutdownSender::new();
+		let agent =
+			start_oracle_agent(modified_config, &get_test_secret_key(true), shutdown_sender)
+				.await
+				.expect("Failed to start agent");
 
+		sleep(Duration::from_secs(5)).await;
 		// This slot should be archived on the public network
 		let target_slot = 44041116;
 		let proof = agent.get_proof(target_slot).await.expect("should return a proof");
@@ -284,7 +305,7 @@ mod tests {
 		agent.stop().expect("Failed to stop the agent");
 	}
 
-	#[tokio::test]
+	#[tokio::test(flavor = "multi_thread")]
 	#[serial]
 	async fn test_get_proof_for_archived_slot_fails_without_archives() {
 		let scp_archive_storage = ScpArchiveStorage::default();
@@ -294,9 +315,11 @@ mod tests {
 		let modified_config: StellarOverlayConfig =
 			StellarOverlayConfig { stellar_history_archive_urls: vec![], ..base_config };
 
-		let agent = start_oracle_agent(modified_config, &get_test_secret_key(true))
+		let shutdown = ShutdownSender::new();
+		let agent = start_oracle_agent(modified_config, &get_test_secret_key(true), shutdown)
 			.await
 			.expect("Failed to start agent");
+		sleep(Duration::from_secs(5)).await;
 
 		// This slot should be archived on the public network
 		let target_slot = 44041116;

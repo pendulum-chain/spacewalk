@@ -41,9 +41,7 @@ pub struct ConnectionInfoCfg {
     pub recv_scp_msgs: bool,
     pub remote_called_us: bool,
     /// how long to wait for the Stellar Node's messages.
-    timeout_in_secs: u64,
-    /// number of retries to wait for the Stellar Node's messages and/or to connect back to it.
-    retries:u8
+    timeout_in_secs: u64
 }
 ```
 
@@ -66,17 +64,9 @@ Create a connection using the `connect_to_stellar_overlay_network` function:
 ```rust
 let mut overlay_connection = stellar_relay_lib::connect_to_stellar_overlay_network(cfg, secret_key).await?;
 ```
-The `StellarOverlayConnection` has 2 async methods to interact with the Stellar Node:
-* _`send(&self, message: StellarMessage)`_ -> for sending `StellarMessage`s to Stellar Node
-* _`listen(&mut self)`_ -> for receiving `StellarRelayMessage`s from the Stellar Relay.
-
-### Interpreting the `StellarRelayMessage`
-The `StellarRelayMessage` is an enum with the following variants:
-* _`Connect`_ -> interprets a successful connection to Stellar Node. It contains the `PublicKey` and the `NodeInfo`
-* _`Data`_ -> a wrapper of a `StellarMessage` and additional fields: the _message type_ and the unique `p_id`(process id) 
-* _`Timeout`_ -> Depends on the `timeout_in_secs` and `retries` defined in the `ConnectionInfo` (**10** and **3** by default). This message is returned after multiple retries have been done.
-For example, Stellar Relay will wait for 10 seconds to read from the existing tcp stream before retrying again. After the 3rd retry, StellarRelay will create a new stream in 3 attempts, with an interval of 3 seconds.
-* _`Error`_ -> a todo
+The `StellarOverlayConnection` has 2 methods to interact with the Stellar Node:
+* _`sender(&self)`_ -> used to send `StellarMessage`s to Stellar Node
+* _`listen(&mut self)`_ -> async method for receiving `StellarMessage`s from the Stellar Node.
 
 ## Example
 In the `stellar-relay-lib` directory, run this command:
@@ -103,24 +93,3 @@ and you should be able to see in the terminal:
 [2022-10-14T13:16:02Z INFO  connect] R0E1U1RCTVY2UURYRkRHRDYyTUVITExIWlRQREk3N1UzUEZPRDJTRUxVNVJKREhRV0JSNU5OSzc= sent StellarMessage of type ScpStNominate  for ledger 43109751
 [2022-10-14T13:16:02Z INFO  connect] R0NHQjJTMktHWUFSUFZJQTM3SFlaWFZSTTJZWlVFWEE2UzMzWlU1QlVEQzZUSFNCNjJMWlNUWUg= sent StellarMessage of type ScpStPrepare for ledger 43109751
 ```
-
-Here is an example in the terminal when disconnection/reconnection happens:
-```
-[2022-10-17T05:56:47Z ERROR stellar_relay::connection::services] deadline has elapsed for reading messages from Stellar Node. Retry: 0
-[2022-10-17T05:56:47Z ERROR stellar_relay::connection::services] deadline has elapsed for receiving messages. Retry: 0
-[2022-10-17T05:56:57Z ERROR stellar_relay::connection::services] deadline has elapsed for reading messages from Stellar Node. Retry: 1
-[2022-10-17T05:56:57Z ERROR stellar_relay::connection::services] deadline has elapsed for receiving messages. Retry: 1
-[2022-10-17T05:57:07Z ERROR stellar_relay::connection::services] deadline has elapsed for reading messages from Stellar Node. Retry: 2
-[2022-10-17T05:57:07Z ERROR stellar_relay::connection::services] deadline has elapsed for receiving messages. Retry: 2
-[2022-10-17T05:57:17Z ERROR stellar_relay::connection::services] deadline has elapsed for reading messages from Stellar Node. Retry: 3
-[2022-10-17T05:57:17Z ERROR stellar_relay::connection::services] deadline has elapsed for receiving messages. Retry: 3
-[2022-10-17T05:57:17Z INFO  stellar_relay::connection::user_controls] reconnecting to "135.181.16.110".
-[2022-10-17T05:57:17Z ERROR stellar_relay::connection::user_controls] failed to reconnect! # of retries left: 2. Retrying in 3 seconds...
-[2022-10-17T05:57:20Z INFO  stellar_relay::connection::user_controls] reconnecting to "135.181.16.110".
-[2022-10-17T05:57:20Z INFO  stellar_relay::connection::services] Starting Handshake with Hello.
-[2022-10-17T05:57:21Z INFO  stellar_relay::connection::connector::message_handler] Hello message processed successfully
-[2022-10-17T05:57:21Z INFO  stellar_relay::connection::connector::message_handler] Handshake completed
-```
-
-
-todo: add multiple tests
