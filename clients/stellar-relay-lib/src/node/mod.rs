@@ -30,25 +30,6 @@ impl Debug for NodeInfo {
 	}
 }
 
-impl NodeInfo {
-	#[cfg(test)]
-	pub(crate) fn new(
-		ledger_version: u32,
-		overlay_version: u32,
-		overlay_min_version: u32,
-		version_str: String,
-		network: &Network,
-	) -> NodeInfo {
-		NodeInfo {
-			ledger_version,
-			overlay_version,
-			overlay_min_version,
-			version_str: version_str.into_bytes(),
-			network_id: *network.get_id(),
-		}
-	}
-}
-
 impl From<NodeInfoCfg> for NodeInfo {
 	fn from(value: NodeInfoCfg) -> Self {
 		let network: &Network = if value.is_pub_net { &PUBLIC_NETWORK } else { &TEST_NETWORK };

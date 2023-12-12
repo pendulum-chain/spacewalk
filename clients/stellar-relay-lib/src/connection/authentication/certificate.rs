@@ -51,7 +51,11 @@ pub fn create_auth_cert(
 
 	let raw_sig_data = hash.finalize().to_vec();
 
-	let signature: Signature = Signature::new(keypair.create_signature(raw_sig_data).to_vec())?;
+	let signature: Signature = Signature::new(keypair.create_signature(raw_sig_data).to_vec())
+		.map_err(|e| {
+			log::error!("create_auth_cert(): {e:?}");
+			Error::AuthSignatureFailed
+		})?;
 
 	Ok(AuthCert { pubkey: pub_key_ecdh, expiration, sig: signature })
 }

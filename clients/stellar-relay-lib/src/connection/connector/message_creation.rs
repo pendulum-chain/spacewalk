@@ -1,6 +1,6 @@
-use crate::{
-	connection::{authentication::create_auth_cert, handshake, hmac::create_sha256_hmac},
-	xdr_converter, Connector, Error,
+use crate::connection::{
+	authentication::create_auth_cert, handshake, hmac::create_sha256_hmac, xdr_converter,
+	Connector, Error,
 };
 use substrate_stellar_sdk::{
 	types::{AuthenticatedMessage, AuthenticatedMessageV0, HmacSha256Mac, StellarMessage},

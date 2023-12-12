@@ -1,10 +1,14 @@
-use std::{fmt, sync::Arc, time::Duration};
+use std::{
+	fmt,
+	sync::Arc,
+	time::{Duration, SystemTime},
+};
 
 use async_trait::async_trait;
 use futures::{future::Either, Future, FutureExt};
 use governor::{Quota, RateLimiter};
 use nonzero_ext::*;
-use tokio::sync::RwLock;
+use tokio::{sync::RwLock, time::sleep};
 pub use warp;
 
 pub use cli::{LoggingFormat, MonitoringConfig, RestartPolicy, ServiceConfig};
@@ -18,6 +22,10 @@ pub use trace::init_subscriber;
 mod cli;
 mod error;
 mod trace;
+
+const RESET_RESTART_TIME_IN_SECS: u64 = 1800; // reset the restart time in 30 minutes
+const DEFAULT_RESTART_TIME_IN_SECS: u64 = 20; // default sleep time before restarting everything
+const RESTART_BACKOFF_DELAY: u64 = 10;
 
 #[async_trait]
 pub trait Service<Config, InnerError> {
@@ -67,7 +75,28 @@ impl<Config: Clone + Send + 'static, F: Fn()> ConnectionManager<Config, F> {
 	pub async fn start<S: Service<Config, InnerError>, InnerError: fmt::Display>(
 		&self,
 	) -> Result<(), Error<InnerError>> {
+		let mut restart_in_secs = DEFAULT_RESTART_TIME_IN_SECS; // set default to 20 seconds for restart
+		let mut last_start_timestamp = SystemTime::now();
+
 		loop {
+			let time_now = SystemTime::now();
+			let _ = time_now.duration_since(last_start_timestamp).map(|duration| {
+				// Revert the counter if the restart happened more than 30 minutes (or 1800 seconds)
+				// ago
+				if duration.as_secs() > RESET_RESTART_TIME_IN_SECS {
+					restart_in_secs = DEFAULT_RESTART_TIME_IN_SECS;
+				}
+				// Increase time by 10 seconds if a restart is triggered too frequently.
+				// This waits for delayed packets to be removed in the network,
+				// even though the connection on the client side is closed.
+				// Else, these straggler packets will interfere with the new connection.
+				// https://www.rfc-editor.org/rfc/rfc793#page-22
+				else {
+					restart_in_secs += RESTART_BACKOFF_DELAY;
+					last_start_timestamp = time_now;
+				}
+			});
+
 			tracing::info!("Version: {}", S::VERSION);
 			tracing::info!(
 				"Vault uses Substrate account with ID: {}",
@@ -129,6 +158,10 @@ impl<Config: Clone + Send + 'static, F: Fn()> ConnectionManager<Config, F> {
 				RestartPolicy::Never => return Err(Error::ClientShutdown),
 				RestartPolicy::Always => {
 					(self.increment_restart_counter)();
+
+					tracing::info!("Restarting in {restart_in_secs} seconds");
+					sleep(Duration::from_secs(restart_in_secs)).await;
+
 					continue
 				},
 			};

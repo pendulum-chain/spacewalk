@@ -2,7 +2,7 @@
 authors = ["Interlay <contact@interlay.io>"]
 edition = "2021"
 name = "module-vault-registry-rpc"
-version = "1.0.1"
+version = "1.0.2"
 
 [dependencies]
 codec = {package = "parity-scale-codec", version = "3.0.0"}

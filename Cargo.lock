@@ -1048,7 +1048,7 @@ checksum = "2da6da31387c7e4ef160ffab6d5e7f00c42626fe39aea70a7b0f1773f7dd6c1b"
 
 [[package]]
 name = "clients-info"
-version = "1.0.1"
+version = "1.0.2"
 dependencies = [
  "frame-benchmarking",
  "frame-support",
@@ -1429,7 +1429,7 @@ checksum = "b365fabc795046672053e29c954733ec3b05e4be654ab130fe8f1f94d7051f35"
 
 [[package]]
 name = "currency"
-version = "1.0.1"
+version = "1.0.2"
 dependencies = [
  "frame-support",
  "frame-system",
@@ -2223,7 +2223,7 @@ dependencies = [
 
 [[package]]
 name = "fee"
-version = "1.0.1"
+version = "1.0.2"
 dependencies = [
  "currency",
  "frame-benchmarking",
@@ -3570,7 +3570,7 @@ dependencies = [
 
 [[package]]
 name = "issue"
-version = "1.0.1"
+version = "1.0.2"
 dependencies = [
  "base64 0.13.1",
  "currency",
@@ -4826,7 +4826,7 @@ dependencies = [
 
 [[package]]
 name = "module-issue-rpc"
-version = "1.0.1"
+version = "1.0.2"
 dependencies = [
  "jsonrpsee",
  "module-issue-rpc-runtime-api",
@@ -4838,7 +4838,7 @@ dependencies = [
 
 [[package]]
 name = "module-issue-rpc-runtime-api"
-version = "1.0.1"
+version = "1.0.2"
 dependencies = [
  "frame-support",
  "parity-scale-codec",
@@ -4848,7 +4848,7 @@ dependencies = [
 
 [[package]]
 name = "module-oracle-rpc"
-version = "1.0.1"
+version = "1.0.2"
 dependencies = [
  "jsonrpsee",
  "module-oracle-rpc-runtime-api",
@@ -4861,7 +4861,7 @@ dependencies = [
 
 [[package]]
 name = "module-oracle-rpc-runtime-api"
-version = "1.0.1"
+version = "1.0.2"
 dependencies = [
  "frame-support",
  "parity-scale-codec",
@@ -4874,7 +4874,7 @@ dependencies = [
 
 [[package]]
 name = "module-redeem-rpc"
-version = "1.0.1"
+version = "1.0.2"
 dependencies = [
  "jsonrpsee",
  "module-redeem-rpc-runtime-api",
@@ -4886,7 +4886,7 @@ dependencies = [
 
 [[package]]
 name = "module-redeem-rpc-runtime-api"
-version = "1.0.1"
+version = "1.0.2"
 dependencies = [
  "frame-support",
  "parity-scale-codec",
@@ -4896,7 +4896,7 @@ dependencies = [
 
 [[package]]
 name = "module-replace-rpc"
-version = "1.0.1"
+version = "1.0.2"
 dependencies = [
  "jsonrpsee",
  "module-replace-rpc-runtime-api",
@@ -4908,7 +4908,7 @@ dependencies = [
 
 [[package]]
 name = "module-replace-rpc-runtime-api"
-version = "1.0.1"
+version = "1.0.2"
 dependencies = [
  "frame-support",
  "parity-scale-codec",
@@ -4918,7 +4918,7 @@ dependencies = [
 
 [[package]]
 name = "module-vault-registry-rpc"
-version = "1.0.1"
+version = "1.0.2"
 dependencies = [
  "jsonrpsee",
  "module-oracle-rpc-runtime-api",
@@ -4931,7 +4931,7 @@ dependencies = [
 
 [[package]]
 name = "module-vault-registry-rpc-runtime-api"
-version = "1.0.1"
+version = "1.0.2"
 dependencies = [
  "frame-support",
  "module-oracle-rpc-runtime-api",
@@ -5224,7 +5224,7 @@ dependencies = [
 
 [[package]]
 name = "nomination"
-version = "1.0.1"
+version = "1.0.2"
 dependencies = [
  "currency",
  "fee",
@@ -5491,7 +5491,7 @@ dependencies = [
 
 [[package]]
 name = "oracle"
-version = "1.0.1"
+version = "1.0.2"
 dependencies = [
  "currency",
  "dia-oracle",
@@ -6171,7 +6171,7 @@ dependencies = [
 
 [[package]]
 name = "pooled-rewards"
-version = "1.0.1"
+version = "1.0.2"
 dependencies = [
  "currency",
  "frame-benchmarking",
@@ -6742,7 +6742,7 @@ dependencies = [
 
 [[package]]
 name = "redeem"
-version = "1.0.1"
+version = "1.0.2"
 dependencies = [
  "currency",
  "fee",
@@ -6902,7 +6902,7 @@ dependencies = [
 
 [[package]]
 name = "replace"
-version = "1.0.1"
+version = "1.0.2"
 dependencies = [
  "currency",
  "fee",
@@ -6984,7 +6984,7 @@ dependencies = [
 
 [[package]]
 name = "reward"
-version = "1.0.1"
+version = "1.0.2"
 dependencies = [
  "currency",
  "frame-benchmarking",
@@ -7006,7 +7006,7 @@ dependencies = [
 
 [[package]]
 name = "reward-distribution"
-version = "1.0.1"
+version = "1.0.2"
 dependencies = [
  "currency",
  "frame-benchmarking",
@@ -7142,7 +7142,7 @@ dependencies = [
 
 [[package]]
 name = "runner"
-version = "1.0.1"
+version = "1.0.2"
 dependencies = [
  "async-trait",
  "backoff",
@@ -7170,7 +7170,7 @@ dependencies = [
 
 [[package]]
 name = "runtime"
-version = "1.0.1"
+version = "1.0.2"
 dependencies = [
  "async-trait",
  "backoff",
@@ -8688,7 +8688,7 @@ dependencies = [
 
 [[package]]
 name = "security"
-version = "1.0.1"
+version = "1.0.2"
 dependencies = [
  "frame-support",
  "frame-system",
@@ -8864,7 +8864,7 @@ dependencies = [
 
 [[package]]
 name = "service"
-version = "1.0.1"
+version = "1.0.2"
 dependencies = [
  "async-trait",
  "clap 3.2.25",
@@ -9792,7 +9792,7 @@ dependencies = [
 
 [[package]]
 name = "spacewalk-primitives"
-version = "1.0.1"
+version = "1.0.2"
 dependencies = [
  "base58",
  "bstringify",
@@ -9809,7 +9809,7 @@ dependencies = [
 
 [[package]]
 name = "spacewalk-rpc"
-version = "1.0.1"
+version = "1.0.2"
 dependencies = [
  "jsonrpc-core",
  "jsonrpsee",
@@ -9834,7 +9834,7 @@ dependencies = [
 
 [[package]]
 name = "spacewalk-runtime-standalone"
-version = "1.0.1"
+version = "1.0.2"
 dependencies = [
  "cfg-if 1.0.0",
  "clients-info",
@@ -9903,7 +9903,7 @@ dependencies = [
 
 [[package]]
 name = "spacewalk-standalone"
-version = "1.0.1"
+version = "1.0.2"
 dependencies = [
  "clap 4.3.19",
  "frame-benchmarking",
@@ -10010,7 +10010,7 @@ checksum = "a8f112729512f8e442d81f95a8a7ddf2b7c6b8a1a6f509a95864142b30cab2d3"
 
 [[package]]
 name = "staking"
-version = "1.0.1"
+version = "1.0.2"
 dependencies = [
  "currency",
  "frame-benchmarking",
@@ -10068,7 +10068,7 @@ dependencies = [
 
 [[package]]
 name = "stellar-relay"
-version = "1.0.1"
+version = "1.0.2"
 dependencies = [
  "base64 0.13.1",
  "currency",
@@ -10091,7 +10091,7 @@ dependencies = [
 
 [[package]]
 name = "stellar-relay-lib"
-version = "1.0.1"
+version = "1.0.2"
 dependencies = [
  "base64 0.13.1",
  "env_logger 0.9.3",
@@ -10322,7 +10322,7 @@ dependencies = [
 
 [[package]]
 name = "subxt-client"
-version = "1.0.1"
+version = "1.0.2"
 dependencies = [
  "futures 0.1.31",
  "futures 0.3.28",
@@ -11284,7 +11284,7 @@ checksum = "830b7e5d4d90034032940e4ace0d9a9a057e7a45cd94e6c007832e39edb82f6d"
 
 [[package]]
 name = "vault"
-version = "1.0.1"
+version = "1.0.2"
 dependencies = [
  "async-trait",
  "base64 0.13.1",
@@ -11340,7 +11340,7 @@ dependencies = [
 
 [[package]]
 name = "vault-registry"
-version = "1.0.1"
+version = "1.0.2"
 dependencies = [
  "currency",
  "fee",
@@ -11430,7 +11430,7 @@ dependencies = [
 
 [[package]]
 name = "wallet"
-version = "1.0.1"
+version = "1.0.2"
 dependencies = [
  "async-trait",
  "futures 0.3.28",
