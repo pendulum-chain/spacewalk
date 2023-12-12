@@ -4,8 +4,7 @@ use futures::StreamExt;
 use sc_client_api::BlockBackend;
 use sc_consensus_aura::{ImportQueueParams, SlotProportion, StartAuraParams};
 use sc_consensus_grandpa::SharedVoterState;
-use sc_executor::NativeElseWasmExecutor;
-use sc_keystore::LocalKeystore;
+use sc_executor::{NativeElseWasmExecutor, WasmExecutor, DEFAULT_HEAP_ALLOC_STRATEGY, HeapAllocStrategy};
 use sc_service::{
 	error::Error as ServiceError, Configuration, RpcHandlers, TFullBackend, TFullClient,
 	TaskManager,
@@ -67,10 +66,6 @@ pub fn new_partial(
 	>,
 	ServiceError,
 > {
-	if config.keystore_remote.is_some() {
-		return Err(ServiceError::Other("Remote Keystores are not supported.".to_string()))
-	}
-
 	let telemetry = config
 		.telemetry_endpoints
 		.clone()
@@ -82,12 +77,19 @@ pub fn new_partial(
 		})
 		.transpose()?;
 
-	let executor = NativeElseWasmExecutor::<Executor>::new(
-		config.wasm_method,
-		config.default_heap_pages,
-		config.max_runtime_instances,
-		config.runtime_cache_size,
-	);
+	let heap_pages = config
+		.default_heap_pages
+		.map_or(DEFAULT_HEAP_ALLOC_STRATEGY, |h| HeapAllocStrategy::Static { extra_pages: h as _ });
+
+	let wasm = WasmExecutor::builder()
+		.with_execution_method(config.wasm_method)
+		.with_onchain_heap_alloc_strategy(heap_pages)
+		.with_offchain_heap_alloc_strategy(heap_pages)
+		.with_max_runtime_instances(config.max_runtime_instances)
+		.with_runtime_cache_size(config.runtime_cache_size)
+		.build();
+	
+	let executor = NativeElseWasmExecutor::<Executor>::new_with_wasm_executor(wasm);
 
 	let (client, backend, keystore_container, task_manager) =
 		sc_service::new_full_parts::<Block, RuntimeApi, _>(
@@ -172,13 +174,6 @@ pub fn new_partial(
 	})
 }
 
-fn remote_keystore(_url: &String) -> Result<Arc<LocalKeystore>, &'static str> {
-	// FIXME: here would the concrete keystore be built,
-	//        must return a concrete type (NOT `LocalKeystore`) that
-	//        implements `CryptoStore` and `SyncCryptoStore`
-	Err("Remote Keystore not supported.")
-}
-
 /// Builds a new service for a full client.
 pub fn new_full(mut config: Configuration) -> Result<(TaskManager, RpcHandlers), ServiceError> {
 	let sc_service::PartialComponents {
@@ -186,22 +181,11 @@ pub fn new_full(mut config: Configuration) -> Result<(TaskManager, RpcHandlers),
 		backend,
 		mut task_manager,
 		import_queue,
-		mut keystore_container,
+		keystore_container,
 		select_chain,
 		transaction_pool,
 		other: (block_import, grandpa_link, mut telemetry),
 	} = new_partial(&config, false)?;
-
-	if let Some(url) = &config.keystore_remote {
-		match remote_keystore(url) {
-			Ok(k) => keystore_container.set_remote_keystore(k),
-			Err(e) =>
-				return Err(ServiceError::Other(format!(
-					"Error hooking up remote keystore for {}: {}",
-					url, e
-				))),
-		};
-	}
 
 	let grandpa_protocol_name = sc_consensus_grandpa::protocol_standard_name(
 		&client.block_hash(0).ok().flatten().expect("Genesis block exists; qed"),
@@ -228,12 +212,12 @@ pub fn new_full(mut config: Configuration) -> Result<(TaskManager, RpcHandlers),
 		// Initialize seed for signing transaction using off-chain workers. This is a convenience
 		// so learners can see the transactions submitted simply running the node.
 		// Typically these keys should be inserted with RPC calls to `author_insertKey`.
-		let keystore = keystore_container.sync_keystore();
+		let keystore = keystore_container.keystore();
 		// Note that the `KeyTypeId` here is very important and the content must match the one
 		// defined in the DIA oracle pallet. Otherwise the signer key is not available for the
 		// off-chain worker of the pallet.
 		pub const KEY_TYPE: KeyTypeId = KeyTypeId(*b"dia!");
-		sp_keystore::SyncCryptoStore::sr25519_generate_new(&*keystore, KEY_TYPE, Some("//Bob"))
+		sp_keystore::Keystore::sr25519_generate_new(&*keystore, KEY_TYPE, Some("//Bob"))
 			.expect("Creating key with account Bob should succeed.");
 
 		sc_service::build_offchain_workers(
@@ -270,7 +254,7 @@ pub fn new_full(mut config: Configuration) -> Result<(TaskManager, RpcHandlers),
 	let rpc_handlers = sc_service::spawn_tasks(sc_service::SpawnTasksParams {
 		network: network.clone(),
 		client: client.clone(),
-		keystore: keystore_container.sync_keystore(),
+		keystore: keystore_container.keystore(),
 		task_manager: &mut task_manager,
 		transaction_pool: transaction_pool.clone(),
 		rpc_builder,
@@ -313,7 +297,7 @@ pub fn new_full(mut config: Configuration) -> Result<(TaskManager, RpcHandlers),
 				},
 				force_authoring,
 				backoff_authoring_blocks,
-				keystore: keystore_container.sync_keystore(),
+				keystore: keystore_container.keystore(),
 				sync_oracle: sync_service.clone(),
 				justification_sync_link: sync_service.clone(),
 				block_proposal_slot_portion: SlotProportion::new(2f32 / 3f32),
@@ -331,7 +315,7 @@ pub fn new_full(mut config: Configuration) -> Result<(TaskManager, RpcHandlers),
 	// if the node isn't actively participating in consensus then it doesn't
 	// need a keystore, regardless of which protocol we use below.
 	let keystore =
-		if role.is_authority() { Some(keystore_container.sync_keystore()) } else { None };
+		if role.is_authority() { Some(keystore_container.keystore()) } else { None };
 
 	let grandpa_config = sc_consensus_grandpa::Config {
 		// FIXME #1578 make this available through chainspec
@@ -481,7 +465,7 @@ pub async fn start_instant(
 	let rpc_handlers = sc_service::spawn_tasks(sc_service::SpawnTasksParams {
 		network,
 		client,
-		keystore: keystore_container.sync_keystore(),
+		keystore: keystore_container.keystore(),
 		task_manager: &mut task_manager,
 		transaction_pool,
 		rpc_builder: Box::new(rpc_builder),

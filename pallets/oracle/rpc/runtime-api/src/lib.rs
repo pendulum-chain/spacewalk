@@ -2,12 +2,12 @@
 
 #![cfg_attr(not(feature = "std"), no_std)]
 use codec::{Codec, Decode, Encode};
-use frame_support::dispatch::DispatchError;
+use frame_support::{dispatch::DispatchError};
 use primitives::UnsignedFixedPoint;
 #[cfg(feature = "std")]
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
-
-#[derive(Eq, PartialEq, Encode, Decode, Default)]
+use scale_info::TypeInfo;
+#[derive(Eq, PartialEq, Encode, Decode, Default, TypeInfo)]
 #[cfg_attr(feature = "std", derive(Debug, Serialize, Deserialize))]
 #[cfg_attr(feature = "std", serde(rename_all = "camelCase"))]
 /// a wrapper around a balance, used in RPC to workaround a bug where using u128
