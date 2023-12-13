@@ -45,7 +45,8 @@ impl Connector {
 				),
 			},
 
-			_ => {
+			other => {
+				log::info!("process_raw_message(): received {other:?} message.");
 				// we only verify the authenticated message when a handshake has been done.
 				if self.is_handshake_created() {
 					self.verify_auth(&auth_msg, &data[4..(data.len() - 32)])?;
@@ -78,6 +79,7 @@ impl Connector {
 				if self.remote_called_us() {
 					self.send_hello_message().await?;
 				} else {
+					log::info!("process_stellar_message(): sending auth message...");
 					self.send_auth_message().await?;
 				}
 				log::info!("process_stellar_message(): Hello message processed successfully");
@@ -111,13 +113,14 @@ impl Connector {
 
 	async fn process_auth_message(&mut self) -> Result<(), Error> {
 		if self.remote_called_us() {
+			log::info!("process_auth_message(): sending auth message...");
 			self.send_auth_message().await?;
 		}
 
 		self.handshake_completed();
 
 		if let Some(remote) = self.remote() {
-			log::debug!("process_auth_message(): sending connect message: {remote:?}");
+			log::info!("process_auth_message(): sending connect message: {remote:?}");
 			self.enable_flow_controller(
 				self.local().node().overlay_version,
 				remote.node().overlay_version,
