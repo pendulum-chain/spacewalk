@@ -6,16 +6,43 @@ mod hmac;
 mod authentication;
 mod connector;
 pub mod helper;
+mod overlay_connection;
+mod services;
 pub mod xdr_converter;
 
 pub(crate) use connector::*;
 pub use error::Error;
 pub use helper::*;
+pub use overlay_connection::*;
 use serde::Serialize;
 use std::fmt::{Debug, Formatter};
-use substrate_stellar_sdk::SecretKey;
 
-type Xdr = Vec<u8>;
+type Xdr = (u32, Vec<u8>);
+
+use crate::node::NodeInfo;
+use substrate_stellar_sdk::{
+	types::{MessageType, StellarMessage},
+	PublicKey, SecretKey,
+};
+
+#[derive(Debug)]
+/// Represents the messages that the connection creates bases on the Stellar Node
+pub enum StellarRelayMessage {
+	/// Successfully connected to the node
+	Connect {
+		pub_key: PublicKey,
+		node_info: NodeInfo,
+	},
+	/// Stellar messages from the node
+	Data {
+		p_id: u32,
+		msg_type: MessageType,
+		msg: Box<StellarMessage>,
+	},
+	Error(String),
+	/// The amount of time to wait for Stellar Node messages
+	Timeout,
+}
 
 /// Config for connecting to Stellar Node
 #[derive(Clone, Serialize, PartialEq, Eq)]
@@ -30,6 +57,8 @@ pub struct ConnectionInfo {
 	pub remote_called_us: bool,
 	/// how long to wait for the Stellar Node's messages.
 	timeout_in_secs: u64,
+	/// number of retries to wait for the Stellar Node's messages and/or to connect back to it.
+	retries: u8,
 }
 
 impl Debug for ConnectionInfo {
@@ -44,13 +73,14 @@ impl Debug for ConnectionInfo {
 			.field("receive_scp_messages", &self.recv_scp_msgs)
 			.field("remote_called_us", &self.remote_called_us)
 			.field("timeout_in_seconds", &self.timeout_in_secs)
+			.field("retries", &self.retries)
 			.finish()
 	}
 }
 
 impl ConnectionInfo {
 	#[allow(clippy::too_many_arguments)]
-	pub(crate) fn new_with_timeout(
+	pub(crate) fn new_with_timeout_and_retries(
 		addr: &str,
 		port: u32,
 		secret_key: SecretKey,
@@ -59,6 +89,7 @@ impl ConnectionInfo {
 		recv_scp_msgs: bool,
 		remote_called_us: bool,
 		timeout_in_secs: u64,
+		retries: u8,
 	) -> Self {
 		ConnectionInfo {
 			address: addr.to_string(),
@@ -69,7 +100,31 @@ impl ConnectionInfo {
 			recv_scp_msgs,
 			remote_called_us,
 			timeout_in_secs,
+			retries,
 		}
+	}
+
+	#[cfg(test)]
+	pub(crate) fn new(
+		addr: &str,
+		port: u32,
+		secret_key: SecretKey,
+		auth_cert_expiration: u64,
+		recv_tx_msgs: bool,
+		recv_scp_msgs: bool,
+		remote_called_us: bool,
+	) -> Self {
+		Self::new_with_timeout_and_retries(
+			addr,
+			port,
+			secret_key,
+			auth_cert_expiration,
+			recv_tx_msgs,
+			recv_scp_msgs,
+			remote_called_us,
+			10,
+			3,
+		)
 	}
 
 	pub fn address(&self) -> String {

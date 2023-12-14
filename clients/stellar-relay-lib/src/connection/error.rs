@@ -1,25 +1,19 @@
 #![allow(dead_code)] //todo: remove after being tested and implemented
 
-use crate::{connection::xdr_converter::Error as XDRError, helper::error_to_string};
+use crate::connection::xdr_converter::Error as XDRError;
 use substrate_stellar_sdk::{types::ErrorCode, StellarSdkError};
 use tokio::sync;
 
 #[derive(Debug, err_derive::Error)]
 pub enum Error {
-	#[error(display = "Auth Certificate: Expired")]
+	#[error(display = "Authentication Certification: Expired")]
 	AuthCertExpired,
 
-	#[error(display = "Auth Certificate: Not Found")]
+	#[error(display = "Authentication Certification: Not Found")]
 	AuthCertNotFound,
 
-	#[error(display = "Auth Certificate: Invalid")]
+	#[error(display = "Authentication Certification: Invalid")]
 	AuthCertInvalid,
-
-	#[error(display = "Auth Certificate Creation: Signature Failed")]
-	AuthSignatureFailed,
-
-	#[error(display = "Authentication Failed: {}", _0)]
-	AuthFailed(String),
 
 	#[error(display = "Connection: {}", _0)]
 	ConnectionFailed(String),
@@ -62,12 +56,6 @@ pub enum Error {
 
 	#[error(display = "Received Error from Overlay: {:?}", _0)]
 	OverlayError(ErrorCode),
-
-	#[error(display = "Encountered timeout")]
-	Timeout,
-
-	#[error(display = "Config Error: Version String too long")]
-	VersionStrTooLong,
 }
 
 impl From<XDRError> for Error {
@@ -85,18 +73,5 @@ impl<T> From<sync::mpsc::error::SendError<T>> for Error {
 impl From<StellarSdkError> for Error {
 	fn from(e: StellarSdkError) -> Self {
 		Error::StellarSdkError(e)
-	}
-}
-
-impl From<substrate_stellar_sdk::types::Error> for Error {
-	fn from(value: substrate_stellar_sdk::types::Error) -> Self {
-		match value.code {
-			ErrorCode::ErrConf => Self::ConfigError(error_to_string(value)),
-			ErrorCode::ErrAuth => Self::AuthFailed(error_to_string(value)),
-			other => {
-				log::error!("Stellar Node returned error: {}", error_to_string(value));
-				Self::OverlayError(other)
-			},
-		}
 	}
 }
