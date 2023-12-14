@@ -290,8 +290,6 @@ mod dispatch_error {
 	type RichModuleError = sp_runtime::ModuleError;
 	type RichTransactionalError = sp_runtime::TransactionalError;
 
-	// TODO remove the todo!() variant once the metadata is regenerated
-	// and the new TokenError types can be added to convert_enum
 	macro_rules! convert_enum{($src: ident, $dst: ident, $($variant: ident,)*)=> {
         impl From<$src> for $dst {
             fn from(src: $src) -> Self {
