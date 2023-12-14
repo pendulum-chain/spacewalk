@@ -296,7 +296,7 @@ mod dispatch_error {
         impl From<$src> for $dst {
             fn from(src: $src) -> Self {
                 match src {
-                    $($src::$variant => Self::$variant, _ => todo!(),)*
+                    $($src::$variant => Self::$variant,)*
                 }
             }
         }
@@ -310,6 +310,10 @@ mod dispatch_error {
 		UnknownAsset,
 		Frozen,
 		Unsupported,
+		FundsUnavailable,
+		OnlyProvider,
+		CannotCreateHold,
+		NotExpendable,
 	);
 
 	convert_enum!(RichArithmeticError, ArithmeticError, Underflow, Overflow, DivisionByZero,);
