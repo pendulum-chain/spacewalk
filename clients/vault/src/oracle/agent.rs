@@ -203,10 +203,9 @@ impl OracleAgent {
 
 #[cfg(test)]
 mod tests {
-
 	use crate::oracle::{
-		get_test_secret_key, get_test_stellar_relay_config, traits::ArchiveStorage,
-		ScpArchiveStorage, TransactionsArchiveStorage,
+		get_random_secret_key, get_test_secret_key, get_test_stellar_relay_config,
+		traits::ArchiveStorage, ScpArchiveStorage, TransactionsArchiveStorage,
 	};
 
 	use super::*;
@@ -217,9 +216,11 @@ mod tests {
 	#[serial]
 	async fn test_get_proof_for_current_slot() {
 		let shutdown_sender = ShutdownSender::new();
+
+		// We use a random secret key to avoid conflicts with other tests.
 		let agent = start_oracle_agent(
 			get_test_stellar_relay_config(true),
-			&get_test_secret_key(true),
+			&get_random_secret_key(),
 			shutdown_sender,
 		)
 		.await

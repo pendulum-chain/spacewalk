@@ -1,3 +1,5 @@
+use stellar_relay_lib::sdk::SecretKey;
+
 pub fn get_test_stellar_relay_config(is_mainnet: bool) -> stellar_relay_lib::StellarOverlayConfig {
 	use rand::seq::SliceRandom;
 
@@ -21,4 +23,14 @@ pub fn get_test_secret_key(is_mainnet: bool) -> String {
 	let file_name = if is_mainnet { "mainnet" } else { "testnet" };
 	let path = format!("./resources/secretkey/stellar_secretkey_{file_name}");
 	std::fs::read_to_string(path).expect("should return a string")
+}
+
+pub fn get_random_secret_key() -> String {
+	// Generate a new random Stellar keypair
+	let secret = SecretKey::from_binary(rand::random());
+	let secret_encoded = secret.to_encoding();
+	// Convert the secret key to a string
+	let secret_string = std::str::from_utf8(&secret_encoded).expect("Failed to convert to string");
+
+	secret_string.to_string()
 }

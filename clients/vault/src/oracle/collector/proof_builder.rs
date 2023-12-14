@@ -358,7 +358,10 @@ impl ScpMessageCollector {
 
 #[cfg(test)]
 mod test {
-	use crate::oracle::collector::proof_builder::check_slot_still_recoverable_from_overlay;
+	use crate::oracle::{
+		collector::proof_builder::check_slot_still_recoverable_from_overlay,
+		types::constants::MAX_SLOTS_TO_REMEMBER,
+	};
 
 	#[test]
 	fn test_check_slot_position() {
@@ -367,7 +370,14 @@ mod test {
 		assert!(!check_slot_still_recoverable_from_overlay(last_slot, 50));
 		assert!(!check_slot_still_recoverable_from_overlay(last_slot, 100));
 		assert!(!check_slot_still_recoverable_from_overlay(last_slot, 30_000));
-		assert!(check_slot_still_recoverable_from_overlay(last_slot, 40_500));
-		assert!(check_slot_still_recoverable_from_overlay(last_slot, 49_500));
+		assert!(!check_slot_still_recoverable_from_overlay(
+			last_slot,
+			last_slot - MAX_SLOTS_TO_REMEMBER
+		));
+		assert!(check_slot_still_recoverable_from_overlay(last_slot, last_slot - 1));
+		assert!(check_slot_still_recoverable_from_overlay(
+			last_slot,
+			last_slot - MAX_SLOTS_TO_REMEMBER + 1
+		));
 	}
 }
