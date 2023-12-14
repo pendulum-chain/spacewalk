@@ -16,10 +16,9 @@ pub const MAX_DISTANCE_FROM_CURRENT_SLOT: Slot = 3;
 pub const VALIDATOR_COUNT_TEST_NETWORK: usize = 3;
 pub const VALIDATOR_COUNT_PUBLIC_NETWORK: usize = 23;
 
-/// Set the _expected_ `MAX_SLOTS_TO_REMEMBER` parameter to 14400 Slots on Stellar,
-/// ie. 24 hours. This parameter is only correct when connecting to SatoshiPay Stellar validators
-/// as the configuration of these nodes deviates from the default configuration.
-pub const MAX_SLOTS_TO_REMEMBER: Slot = 14400;
+/// The default setting for `MAX_SLOTS_TO_REMEMBER` is 12 Slots, ie. 72 seconds.
+/// See [here](https://github.com/stellar/stellar-core/blob/ca2fb06059c15442cb4c9a8c89de1a8fc3579a39/docs/stellar-core_example.cfg#L478)
+pub const MAX_SLOTS_TO_REMEMBER: Slot = 12;
 
 pub const ARCHIVE_NODE_LEDGER_BATCH: Slot = 64;
 
