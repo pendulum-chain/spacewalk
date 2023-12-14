@@ -8,9 +8,7 @@ use tokio::{
 
 use runtime::ShutdownSender;
 use stellar_relay_lib::{
-	connect_to_stellar_overlay_network,
-	helper::to_base64_xdr_string,
-	sdk::{types::StellarMessage, SecretKey},
+	connect_to_stellar_overlay_network, helper::to_base64_xdr_string, sdk::types::StellarMessage,
 	StellarOverlayConfig,
 };
 
@@ -209,7 +207,6 @@ mod tests {
 		get_random_secret_key, get_test_secret_key, get_test_stellar_relay_config,
 		traits::ArchiveStorage, ScpArchiveStorage, TransactionsArchiveStorage,
 	};
-	use std::str::from_utf8;
 
 	use super::*;
 	use serial_test::serial;
