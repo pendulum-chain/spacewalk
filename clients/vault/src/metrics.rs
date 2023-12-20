@@ -6,7 +6,7 @@ use crate::{
 };
 use async_trait::async_trait;
 use lazy_static::lazy_static;
-use primitives::stellar;
+use primitives::{stellar, Asset};
 use runtime::{
 	prometheus::{
 		gather, proto::MetricFamily, Encoder, Gauge, GaugeVec, IntCounter, IntGaugeVec, Opts,
@@ -33,6 +33,7 @@ const XLM_BALANCE_TYPE_LABEL: &str = "type";
 const REQUEST_STATUS_LABEL: &str = "status";
 const TASK_NAME: &str = "task";
 const TOKIO_POLLING_INTERVAL_MS: u64 = 10000;
+const DISPLAY_NAME_LABEL: &str = "display_name";
 
 // Metrics are stored under the [`CURRENCY_LABEL`] key so that multiple vaults can be easily
 // monitored at the same time.
@@ -63,17 +64,17 @@ lazy_static! {
 	.expect("Failed to create prometheus metric");
 	pub static ref XLM_BALANCE: GaugeVec = GaugeVec::new(
 		Opts::new("stellar_balance", "Stellar Balance"),
-		&[CURRENCY_LABEL, XLM_BALANCE_TYPE_LABEL]
+		&[CURRENCY_LABEL, XLM_BALANCE_TYPE_LABEL, DISPLAY_NAME_LABEL]
 	)
 	.expect("Failed to create prometheus metric");
 	pub static ref ISSUES: GaugeVec = GaugeVec::new(
 		Opts::new("issue_count", "Number of issues"),
-		&[CURRENCY_LABEL, REQUEST_STATUS_LABEL]
+		&[CURRENCY_LABEL, REQUEST_STATUS_LABEL, DISPLAY_NAME_LABEL]
 	)
 	.expect("Failed to create prometheus metric");
 	pub static ref REDEEMS: GaugeVec = GaugeVec::new(
 		Opts::new("redeem_count", "Number of redeems"),
-		&[CURRENCY_LABEL, REQUEST_STATUS_LABEL]
+		&[CURRENCY_LABEL, REQUEST_STATUS_LABEL, DISPLAY_NAME_LABEL]
 	)
 	.expect("Failed to create prometheus metric");
 	pub static ref NATIVE_CURRENCY_BALANCE: Gauge =
@@ -128,21 +129,48 @@ impl PerCurrencyMetrics {
 			vault_id.collateral_currency().inner().unwrap_or_default(),
 			vault_id.wrapped_currency().inner().unwrap_or_default()
 		);
-		Self::new_with_label(label.as_ref())
+
+		let display_label = format!(
+			"{}_{}",
+			Self::format_currency_for_display(vault_id.collateral_currency()),
+			Self::format_currency_for_display(vault_id.wrapped_currency())
+		);
+		Self::new_with_label(label.as_ref(), display_label.as_ref())
 	}
 
 	// construct a dummy metrics struct for testing purposes
 	pub fn dummy() -> Self {
-		Self::new_with_label("dummy")
+		Self::new_with_label("dummy", "dummy")
 	}
 
-	fn new_with_label(label: &str) -> Self {
+	fn format_currency_for_display(currency: CurrencyId) -> String {
+        match currency {
+            CurrencyId::Stellar(asset) => match asset {
+                Asset::AlphaNum4 { code, .. } => {
+                    String::from_utf8(code.to_vec()).unwrap_or_default().replace('\"', "")
+                }
+                Asset::AlphaNum12 { code, .. } => {
+                    String::from_utf8(code.to_vec()).unwrap_or_default().replace('\"', "")
+                },
+				Asset::StellarNative => "XLM".to_owned(),
+            },
+            CurrencyId::Native => "Native".to_owned(),
+            CurrencyId::ZenlinkLPToken(token1_id, token1_type, token2_id, token2_type) => {
+                format!("LP_{}_{}_{}_{}", token1_id, token1_type, token2_id, token2_type)
+            },
+			CurrencyId::XCM(_)=>currency.inner().unwrap_or_default(),
+            _ => "Unknown".to_owned(),
+        }
+    }
+
+	fn new_with_label(label: &str, display_label: &str) -> Self {
 		let labels = HashMap::from([(CURRENCY_LABEL, label)]);
 
 		let stellar_balance_gauge = |balance_type: &'static str| {
 			let labels = HashMap::<&str, &str>::from([
 				(CURRENCY_LABEL, label),
 				(XLM_BALANCE_TYPE_LABEL, balance_type),
+				(DISPLAY_NAME_LABEL, display_label )
 			]);
 			XLM_BALANCE.with(&labels)
 		};
@@ -150,6 +178,7 @@ impl PerCurrencyMetrics {
 			HashMap::<&str, &str>::from([
 				(CURRENCY_LABEL, label),
 				(REQUEST_STATUS_LABEL, balance_type),
+				(DISPLAY_NAME_LABEL,display_label )
 			])
 		};
 
