@@ -122,6 +122,15 @@ impl VaultDataReader for VaultIdManager {
 	}
 }
 
+struct DisplayLabels {
+    upperbound_label: String,
+    lowerbound_label: String,
+    actual_label: String,
+    open_label: String,
+    completed_label: String,
+    expired_label: String,
+}
+
 impl PerCurrencyMetrics {
 	pub fn new(vault_id: &VaultId) -> Self {
 		let label = format!(
@@ -166,21 +175,44 @@ impl PerCurrencyMetrics {
 	fn new_with_label(label: &str, display_label: &str) -> Self {
 		let labels = HashMap::from([(CURRENCY_LABEL, label)]);
 
+		let labels_struct = DisplayLabels {
+            upperbound_label: format!("{} - required_upperbound", display_label),
+            lowerbound_label: format!("{} - required_lowerbound", display_label),
+            actual_label: format!("{} - actual", display_label),
+            open_label: format!("{} - open", display_label),
+            completed_label: format!("{} - completed", display_label),
+            expired_label: format!("{} - expired", display_label),
+        };
+
 		let stellar_balance_gauge = |balance_type: &'static str| {
-			let labels = HashMap::<&str, &str>::from([
-				(CURRENCY_LABEL, label),
-				(XLM_BALANCE_TYPE_LABEL, balance_type),
-				(DISPLAY_NAME_LABEL, display_label )
-			]);
-			XLM_BALANCE.with(&labels)
-		};
-		let request_type_label = |balance_type: &'static str| {
-			HashMap::<&str, &str>::from([
-				(CURRENCY_LABEL, label),
-				(REQUEST_STATUS_LABEL, balance_type),
-				(DISPLAY_NAME_LABEL,display_label )
-			])
-		};
+            let display_name = match balance_type {
+                "required_upperbound" => &labels_struct.upperbound_label,
+                "required_lowerbound" => &labels_struct.lowerbound_label,
+                "actual" => &labels_struct.actual_label,
+                _ => "" 
+            };
+
+            let labels = HashMap::<&str, &str>::from([
+                (CURRENCY_LABEL, label),
+                (XLM_BALANCE_TYPE_LABEL, balance_type),
+                (DISPLAY_NAME_LABEL, display_name)
+            ]);
+            XLM_BALANCE.with(&labels)
+        };
+		let request_type_label = |request_type: &'static str| {
+            let display_name = match request_type {
+                "open" => &labels_struct.open_label,
+                "completed" => &labels_struct.completed_label,
+                "expired" => &labels_struct.expired_label,
+                _ => "" 
+            };
+
+            HashMap::<&str, &str>::from([
+                (CURRENCY_LABEL, label),
+                (REQUEST_STATUS_LABEL, request_type),
+                (DISPLAY_NAME_LABEL, display_name)
+            ])
+        };
 
 		Self {
 			locked_collateral: LOCKED_COLLATERAL.with(&labels),
