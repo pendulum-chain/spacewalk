@@ -5,12 +5,14 @@ info:
   repository_url: https://github.com/pendulum-chain/spacewalk
 options:
   commits:
-    # filters:
-    #   Type: []
   commit_groups:
-    # title_maps: []
   header:
-    pattern: "^(.*)$"
+    pattern: "^(\\w*)[!]?\\:\\s(.*)$"
+    pattern_maps:
+      - Type
+      - Subject
+  merges:
+    pattern: "^.*$"
     pattern_maps:
       - Subject
   notes:
