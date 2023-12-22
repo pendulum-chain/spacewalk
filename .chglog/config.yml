@@ -4,13 +4,6 @@ info:
   title: CHANGELOG
   repository_url: https://github.com/pendulum-chain/spacewalk
 options:
-  commits:
-  commit_groups:
-  header:
-    pattern: "^(\\w*)[!]?\\:\\s(.*)$"
-    pattern_maps:
-      - Type
-      - Subject
   merges:
     pattern: "^.*$"
     pattern_maps:
