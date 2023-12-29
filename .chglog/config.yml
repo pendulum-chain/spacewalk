@@ -1,0 +1,13 @@
+style: github
+template: CHANGELOG.tpl.md
+info:
+  title: CHANGELOG
+  repository_url: https://github.com/pendulum-chain/spacewalk
+options:
+  merges:
+    pattern: "^.*$"
+    pattern_maps:
+      - Subject
+  notes:
+    keywords:
+      - BREAKING CHANGE
