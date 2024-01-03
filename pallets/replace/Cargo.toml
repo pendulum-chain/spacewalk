@@ -3,7 +3,7 @@ authors = ["Pendulum Chain <https://github.com/pendulum-chain>"]
 description = "Replace module"
 edition = "2021"
 name = "replace"
-version = "1.0.2"
+version = "1.0.3"
 
 [dependencies]
 serde = { version = "1.0.130", default-features = false, features = ['derive'], optional = true }
@@ -98,4 +98,22 @@ runtime-benchmarks = [
     "currency/testing-constants",
     "security/testing-utils",
     "oracle/testing-utils"
+]
+
+try-runtime = [
+     "frame-support/try-runtime",
+    "frame-system/try-runtime",
+    "pallet-balances/try-runtime",
+    "pallet-timestamp/try-runtime",
+    "pooled-rewards/try-runtime",
+    "currency/try-runtime",
+    "fee/try-runtime",
+    "nomination/try-runtime",
+    "oracle/try-runtime",
+    "security/try-runtime",
+    "stellar-relay/try-runtime",
+    "vault-registry/try-runtime",
+    "orml-currencies/try-runtime",
+    "orml-tokens/try-runtime",
+    "reward-distribution/try-runtime",
 ]

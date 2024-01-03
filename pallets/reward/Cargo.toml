@@ -3,7 +3,7 @@ authors = ["Pendulum Chain <https://github.com/pendulum-chain>"]
 description = "Reward module"
 edition = "2021"
 name = "reward"
-version = "1.0.2"
+version = "1.0.3"
 
 [dependencies]
 serde = { version = "1.0.130", default-features = false, features = ["derive"], optional = true }
@@ -52,4 +52,9 @@ runtime-benchmarks = [
     "frame-benchmarking",
     "frame-support/runtime-benchmarks",
     "frame-system/runtime-benchmarks",
+]
+
+try-runtime = [
+     "frame-support/try-runtime",
+    "frame-system/try-runtime",
 ]

@@ -3,7 +3,7 @@ authors = ["Pendulum Chain <https://github.com/pendulum-chain>"]
 description = "Pooled Reward module"
 edition = "2021"
 name = "pooled-rewards"
-version = "1.0.2"
+version = "1.0.3"
 
 [dependencies]
 log = { version = "0.4.17", default-features = false }
@@ -55,4 +55,10 @@ runtime-benchmarks = [
     "frame-benchmarking",
     "frame-support/runtime-benchmarks",
     "frame-system/runtime-benchmarks",
+]
+
+try-runtime = [
+    "frame-system/try-runtime",
+     "frame-system/try-runtime",
+     "currency/try-runtime",
 ]

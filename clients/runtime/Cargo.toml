@@ -2,7 +2,7 @@
 authors = ["Pendulum"]
 edition = "2018"
 name = "runtime"
-version = "1.0.2"
+version = "1.0.3"
 
 [features]
 default = []
