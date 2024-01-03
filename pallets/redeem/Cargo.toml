@@ -96,3 +96,20 @@ runtime-benchmarks = [
     "oracle/testing-utils",
     "currency/testing-constants"
 ]
+
+try-runtime = [
+    "frame-support/try-runtime",
+    "frame-system/try-runtime",
+    "pallet-balances/try-runtime",
+    "pallet-timestamp/try-runtime",
+    "pooled-rewards/try-runtime",
+    "currency/try-runtime",
+    "fee/try-runtime",
+    "oracle/try-runtime",
+    "security/try-runtime",
+    "stellar-relay/try-runtime",
+    "vault-registry/try-runtime",
+    "orml-currencies/try-runtime",
+    "orml-tokens/try-runtime",
+    "reward-distribution/try-runtime",
+]

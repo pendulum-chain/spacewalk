@@ -77,3 +77,16 @@ runtime-benchmarks = [
     "frame-system/runtime-benchmarks",
     "currency/testing-constants"
 ]
+
+try-runtime = [
+    "frame-system/try-runtime",
+    "currency/try-runtime",
+    "pallet-balances/try-runtime",
+    "security/try-runtime",
+    "staking/try-runtime",
+    "pooled-rewards/try-runtime",
+    "orml-currencies/try-runtime",
+    "orml-tokens/try-runtime",
+    "reward-distribution/try-runtime",
+    "oracle/try-runtime",
+]
