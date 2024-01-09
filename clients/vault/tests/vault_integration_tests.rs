@@ -597,7 +597,6 @@ async fn test_issue_overpayment_succeeds() {
 				stellar_asset,
 				stroop_amount.try_into().unwrap(),
 				issue.issue_id.0,
-				300,
 				false,
 			)
 			.await
@@ -685,7 +684,6 @@ async fn test_automatic_issue_execution_succeeds() {
 					stellar_asset,
 					stroop_amount,
 					issue.issue_id.0,
-					300,
 					false,
 				)
 				.await
@@ -822,7 +820,6 @@ async fn test_automatic_issue_execution_succeeds_for_other_vault() {
 					stellar_asset,
 					stroop_amount,
 					issue.issue_id.0,
-					300,
 					false,
 				)
 				.await;
@@ -974,7 +971,6 @@ async fn test_execute_open_requests_succeeds() {
 					asset,
 					stroop_amount,
 					redeem_ids[0].0,
-					300,
 					false
 				)
 				.await
