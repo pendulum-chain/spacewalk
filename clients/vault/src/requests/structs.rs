@@ -16,10 +16,6 @@ use stellar_relay_lib::sdk::{Asset, TransactionEnvelope, XdrCodec};
 use tokio::sync::RwLock;
 use wallet::{StellarWallet, TransactionResponse};
 
-/// Determines how much the vault is going to pay for the Stellar transaction fees.
-/// We use a fixed fee of 300 stroops for now but might want to make this dynamic in the future.
-const DEFAULT_STROOP_FEE_PER_OPERATION: u32 = 300;
-
 #[derive(Debug, Clone, PartialEq)]
 struct Deadline {
 	parachain: u32,
@@ -291,7 +287,6 @@ impl Request {
 						self.asset.clone(),
 						stroop_amount,
 						request_id,
-						DEFAULT_STROOP_FEE_PER_OPERATION,
 						true,
 					)
 					.await,
@@ -302,7 +297,6 @@ impl Request {
 						self.asset.clone(),
 						stroop_amount,
 						request_id,
-						DEFAULT_STROOP_FEE_PER_OPERATION,
 						false,
 					)
 					.await,

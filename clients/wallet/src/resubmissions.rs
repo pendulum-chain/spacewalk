@@ -344,7 +344,6 @@ mod test {
 					asset.clone(),
 					amount,
 					rand::random(),
-					DEFAULT_STROOP_FEE_PER_OPERATION,
 					false,
 				)
 				.await

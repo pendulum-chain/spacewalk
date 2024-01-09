@@ -41,6 +41,14 @@ where
 	f64::from_str(s).map_err(serde::de::Error::custom)
 }
 
+pub fn de_string_to_u32<'de, D>(de: D) -> Result<u32, D::Error>
+where
+	D: Deserializer<'de>,
+{
+	let s: &str = Deserialize::deserialize(de)?;
+	u32::from_str(s).map_err(serde::de::Error::custom)
+}
+
 pub fn de_string_to_optional_bytes<'de, D>(de: D) -> Result<Option<Vec<u8>>, D::Error>
 where
 	D: Deserializer<'de>,

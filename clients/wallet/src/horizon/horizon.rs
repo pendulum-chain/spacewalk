@@ -18,7 +18,7 @@ use crate::{
 	error::Error,
 	horizon::{
 		responses::{
-			interpret_response, HorizonAccountResponse, HorizonClaimableBalanceResponse,
+			interpret_response, FeeStats, HorizonAccountResponse, HorizonClaimableBalanceResponse,
 			HorizonTransactionsResponse, TransactionResponse, TransactionsResponseIter,
 		},
 		traits::HorizonClient,
@@ -95,7 +95,7 @@ impl HorizonClient for reqwest::Client {
 	) -> Result<HorizonAccountResponse, Error> {
 		let account_id_encoded = account_id.as_encoded_string()?;
 		let base_url = horizon_url(is_public_network, false);
-		let url = format!("{}/accounts/{}", base_url, account_id_encoded);
+		let url = format!("{base_url}/accounts/{account_id_encoded}");
 
 		self.get_from_url(&url).await
 	}
@@ -107,7 +107,14 @@ impl HorizonClient for reqwest::Client {
 	) -> Result<HorizonClaimableBalanceResponse, Error> {
 		let id_encoded = claimable_balance_id.as_encoded_string()?;
 		let base_url = horizon_url(is_public_network, false);
-		let url = format!("{}/claimable_balances/{}", base_url, id_encoded);
+		let url = format!("{base_url}/claimable_balances/{id_encoded}");
+
+		self.get_from_url(&url).await
+	}
+
+	async fn get_fee_stats(&self, is_public_network: bool) -> Result<FeeStats, Error> {
+		let base_url = horizon_url(is_public_network, false);
+		let url = format!("{base_url}/fee_stats");
 
 		self.get_from_url(&url).await
 	}

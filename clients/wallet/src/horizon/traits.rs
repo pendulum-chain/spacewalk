@@ -1,8 +1,8 @@
 use crate::{
 	error::Error,
 	horizon::responses::{
-		HorizonAccountResponse, HorizonClaimableBalanceResponse, HorizonTransactionsResponse,
-		TransactionResponse,
+		FeeStats, HorizonAccountResponse, HorizonClaimableBalanceResponse,
+		HorizonTransactionsResponse, TransactionResponse,
 	},
 	types::PagingToken,
 };
@@ -36,6 +36,8 @@ pub trait HorizonClient {
 		claimable_balance_id: A,
 		is_public_network: bool,
 	) -> Result<HorizonClaimableBalanceResponse, Error>;
+
+	async fn get_fee_stats(&self, is_public_network: bool) -> Result<FeeStats, Error>;
 
 	async fn submit_transaction(
 		&self,

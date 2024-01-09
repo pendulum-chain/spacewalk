@@ -213,3 +213,9 @@ async fn fetch_horizon_and_process_new_transactions_success() {
 
 	assert!(!slot_env_map.read().await.is_empty());
 }
+
+#[tokio::test(flavor = "multi_thread")]
+async fn horizon_get_fee() {
+	let horizon_client = reqwest::Client::new();
+	assert!(horizon_client.get_fee_stats(false).await.is_ok());
+}
