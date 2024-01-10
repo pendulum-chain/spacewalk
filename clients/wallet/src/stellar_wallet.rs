@@ -234,7 +234,7 @@ impl StellarWallet {
 /// This function will be re-executed after the cache expires (according to `time` seconds) OR
 /// when the result is NOT `Ok`.
 #[cached(result = true, time = 600)]
-async fn get_fee(is_public_network: bool, fee_attr: FeeAttribute) -> Result<u32, String> {
+async fn get_fee_stat_for(is_public_network: bool, fee_attr: FeeAttribute) -> Result<u32, String> {
 	let horizon_client = Client::new();
 	let fee_stats = horizon_client
 		.get_fee_stats(is_public_network)
@@ -360,11 +360,12 @@ impl StellarWallet {
 		request_id: [u8; 32],
 		operations: Vec<Operation>,
 	) -> Result<TransactionResponse, Error> {
-		let stroop_fee_per_operation = get_fee(self.is_public_network, FeeAttribute::default())
-			.await
-			.map_err(|e| Error::FailedToGetFee(e))?;
-
 		let _ = self.transaction_submission_lock.lock().await;
+
+		let stroop_fee_per_operation =
+			get_fee_stat_for(self.is_public_network, FeeAttribute::default())
+				.await
+				.map_err(|e| Error::FailedToGetFee(e))?;
 
 		let account = self.client.get_account(self.public_key(), self.is_public_network).await?;
 		let next_sequence_number = account.sequence + 1;
@@ -716,6 +717,7 @@ mod test {
 
 		assert!(response.is_ok());
 
+		// forcefully fail the transaction
 		let tx_failed = wallet
 			.send_payment_to_address(
 				default_destination(),

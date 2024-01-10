@@ -218,4 +218,5 @@ async fn fetch_horizon_and_process_new_transactions_success() {
 async fn horizon_get_fee() {
 	let horizon_client = reqwest::Client::new();
 	assert!(horizon_client.get_fee_stats(false).await.is_ok());
+	assert!(horizon_client.get_fee_stats(true).await.is_ok());
 }
