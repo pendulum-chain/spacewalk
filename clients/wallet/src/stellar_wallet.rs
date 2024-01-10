@@ -231,8 +231,9 @@ impl StellarWallet {
 }
 
 /// Returns a fee for performing an operation.
-/// This function will be re-executed after the cache expires (according to `time` seconds).
-#[cached(time = 600)]
+/// This function will be re-executed after the cache expires (according to `time` seconds) OR
+/// when the result is NOT `Ok`.
+#[cached(result = true, time = 600)]
 async fn get_fee(is_public_network: bool, fee_attr: FeeAttribute) -> Result<u32, String> {
 	let horizon_client = Client::new();
 	let fee_stats = horizon_client
