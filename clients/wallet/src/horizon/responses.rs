@@ -1,7 +1,7 @@
 use crate::{
 	error::Error,
 	horizon::{serde::*, traits::HorizonClient, Ledger},
-	types::{PagingToken, StatusCode},
+	types::{FeeAttribute, PagingToken, StatusCode},
 };
 use parity_scale_codec::{Decode, Encode};
 use primitives::{
@@ -354,6 +354,71 @@ pub struct EmbeddedClaimableBalance {
 pub struct HorizonClaimableBalanceResponse {
 	#[serde(flatten)]
 	pub claimable_balance: ClaimableBalance,
+}
+
+#[derive(Deserialize, Debug)]
+pub struct FeeDistribution {
+	#[serde(deserialize_with = "de_string_to_u32")]
+	pub max: u32,
+	#[serde(deserialize_with = "de_string_to_u32")]
+	pub min: u32,
+	#[serde(deserialize_with = "de_string_to_u32")]
+	pub mode: u32,
+	#[serde(deserialize_with = "de_string_to_u32")]
+	pub p10: u32,
+	#[serde(deserialize_with = "de_string_to_u32")]
+	pub p20: u32,
+	#[serde(deserialize_with = "de_string_to_u32")]
+	pub p30: u32,
+	#[serde(deserialize_with = "de_string_to_u32")]
+	pub p40: u32,
+	#[serde(deserialize_with = "de_string_to_u32")]
+	pub p50: u32,
+	#[serde(deserialize_with = "de_string_to_u32")]
+	pub p60: u32,
+	#[serde(deserialize_with = "de_string_to_u32")]
+	pub p70: u32,
+	#[serde(deserialize_with = "de_string_to_u32")]
+	pub p80: u32,
+	#[serde(deserialize_with = "de_string_to_u32")]
+	pub p90: u32,
+	#[serde(deserialize_with = "de_string_to_u32")]
+	pub p95: u32,
+	#[serde(deserialize_with = "de_string_to_u32")]
+	pub p99: u32,
+}
+
+#[derive(Deserialize, Debug)]
+pub struct FeeStats {
+	#[serde(deserialize_with = "de_string_to_u32")]
+	pub last_ledger: Ledger,
+	#[serde(deserialize_with = "de_string_to_u32")]
+	pub last_ledger_base_fee: u32,
+	#[serde(deserialize_with = "de_string_to_f64")]
+	pub ledger_capacity_usage: f64,
+	pub fee_charged: FeeDistribution,
+	pub max_fee: FeeDistribution,
+}
+
+impl FeeStats {
+	pub fn fee_charged_by(&self, fee_attr: FeeAttribute) -> u32 {
+		match fee_attr {
+			FeeAttribute::max => self.fee_charged.max,
+			FeeAttribute::min => self.fee_charged.min,
+			FeeAttribute::mode => self.fee_charged.mode,
+			FeeAttribute::p10 => self.fee_charged.p10,
+			FeeAttribute::p20 => self.fee_charged.p20,
+			FeeAttribute::p30 => self.fee_charged.p30,
+			FeeAttribute::p40 => self.fee_charged.p40,
+			FeeAttribute::p50 => self.fee_charged.p50,
+			FeeAttribute::p60 => self.fee_charged.p60,
+			FeeAttribute::p70 => self.fee_charged.p70,
+			FeeAttribute::p80 => self.fee_charged.p80,
+			FeeAttribute::p90 => self.fee_charged.p90,
+			FeeAttribute::p95 => self.fee_charged.p95,
+			FeeAttribute::p99 => self.fee_charged.p99,
+		}
+	}
 }
 
 // This represents each record for a claimable balance in the Horizon API response

@@ -35,6 +35,9 @@ pub enum Error {
 
 	#[error("Cannot send payment to self")]
 	SelfPaymentError,
+
+	#[error("Failed to get fee: {0}")]
+	FailedToGetFee(String),
 }
 
 impl Error {
