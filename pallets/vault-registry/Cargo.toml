@@ -2,7 +2,7 @@
 authors = ["Pendulum"]
 edition = "2021"
 name = "vault-registry"
-version = "1.0.0"
+version = "1.0.3"
 
 [dependencies]
 codec = {package = "parity-scale-codec", version = "3.0.0", default-features = false, features = ["derive", "max-encoded-len"]}
@@ -90,4 +90,21 @@ std = [
   "reward/std",
   "staking/std",
   "primitives/std",
+]
+
+
+try-runtime = [
+  "frame-support/try-runtime",
+  "frame-system/try-runtime",
+  "pallet-balances/try-runtime",
+  "pallet-timestamp/try-runtime",
+  "pooled-rewards/try-runtime",
+  "orml-currencies/try-runtime",
+  "orml-tokens/try-runtime",
+  "oracle/try-runtime",
+  "fee/try-runtime",
+  "security/try-runtime",
+  "currency/try-runtime",
+  "reward/try-runtime",
+  "staking/try-runtime",
 ]

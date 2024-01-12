@@ -281,7 +281,13 @@ impl Service<VaultServiceConfig, Error> for VaultService {
 	}
 
 	async fn start(&mut self) -> Result<(), ServiceError<Error>> {
-		self.run_service().await
+		let result = self.run_service().await;
+		if let Err(error) = result {
+			let _ = self.shutdown.send(());
+			Err(error)
+		} else {
+			result
+		}
 	}
 }
 
@@ -394,6 +400,7 @@ impl VaultService {
 	async fn create_oracle_agent(
 		&self,
 		is_public_network: bool,
+		shutdown_sender: ShutdownSender,
 	) -> Result<Arc<OracleAgent>, ServiceError<Error>> {
 		let cfg_path = &self.config.stellar_overlay_config_filepath;
 		let stellar_overlay_cfg =
@@ -404,9 +411,13 @@ impl VaultService {
 			return Err(ServiceError::IncompatibleNetwork)
 		}
 
-		let oracle_agent = crate::oracle::start_oracle_agent(stellar_overlay_cfg, &self.secret_key)
-			.await
-			.expect("Failed to start oracle agent");
+		let oracle_agent = crate::oracle::start_oracle_agent(
+			stellar_overlay_cfg,
+			&self.secret_key,
+			shutdown_sender,
+		)
+		.await
+		.expect("Failed to start oracle agent");
 
 		Ok(Arc::new(oracle_agent))
 	}
@@ -768,7 +779,8 @@ impl VaultService {
 			.await;
 		drop(wallet);
 
-		let oracle_agent = self.create_oracle_agent(is_public_network).await?;
+		let oracle_agent =
+			self.create_oracle_agent(is_public_network, self.shutdown.clone()).await?;
 
 		self.execute_open_requests(oracle_agent.clone());
 

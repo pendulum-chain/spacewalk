@@ -3,7 +3,7 @@ authors = ["Pendulum"]
 build = "build.rs"
 edition = "2018"
 name = "spacewalk-standalone"
-version = "1.0.0"
+version = "1.0.3"
 
 [package.metadata.docs.rs]
 targets = ["x86_64-unknown-linux-gnu"]

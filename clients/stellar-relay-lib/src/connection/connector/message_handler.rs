@@ -1,20 +1,24 @@
-use crate::{
-	connection::{
-		authentication::verify_remote_auth_cert, error_to_string, helper::time_now, hmac::HMacKeys,
-		xdr_converter::parse_authenticated_message, Connector, Xdr,
-	},
-	node::RemoteInfo,
-	Error, StellarRelayMessage,
-};
 use substrate_stellar_sdk::{
-	types::{Hello, MessageType, StellarMessage},
+	types::{ErrorCode, Hello, MessageType, StellarMessage},
 	XdrCodec,
 };
 
+use crate::connection::{
+	authentication::verify_remote_auth_cert,
+	helper::{error_to_string, time_now},
+	hmac::HMacKeys,
+	xdr_converter::parse_authenticated_message,
+	Connector, Error, Xdr,
+};
+
+use crate::node::RemoteInfo;
+
 impl Connector {
 	/// Processes the raw bytes from the stream
-	pub(crate) async fn process_raw_message(&mut self, xdr: Xdr) -> Result<(), Error> {
-		let (proc_id, data) = xdr;
+	pub(super) async fn process_raw_message(
+		&mut self,
+		data: Xdr,
+	) -> Result<Option<StellarMessage>, Error> {
 		let (auth_msg, msg_type) = parse_authenticated_message(&data)?;
 
 		match msg_type {
@@ -30,12 +34,15 @@ impl Connector {
 			MessageType::ErrorMsg => match auth_msg.message {
 				StellarMessage::ErrorMsg(e) => {
 					log::error!(
-						"process_raw_message(): Received ErrorMsg:  {}",
+						"process_raw_message(): Received ErrorMsg during authentication: {}",
 						error_to_string(e.clone())
 					);
-					return Err(Error::OverlayError(e.code))
+					return Err(Error::from(e))
 				},
-				other => log::error!("process_raw_message(): Received ErroMsg other: {:?}", other),
+				other => log::error!(
+					"process_raw_message(): Received ErroMsg during authentication: {:?}",
+					other
+				),
 			},
 
 			_ => {
@@ -44,23 +51,23 @@ impl Connector {
 					self.verify_auth(&auth_msg, &data[4..(data.len() - 32)])?;
 					self.increment_remote_sequence()?;
 					log::trace!(
-						"process_raw_message(): proc_id: {proc_id}. Processing {msg_type:?} message: auth verified"
+						"process_raw_message(): Processing {msg_type:?} message: auth verified"
 					);
 				}
 
-				self.process_stellar_message(proc_id, auth_msg.message, msg_type).await?;
+				return self.process_stellar_message(auth_msg.message, msg_type).await
 			},
 		}
-		Ok(())
+		Ok(None)
 	}
 
-	/// Handles what to do next with the Stellar message. Mostly it will be sent back to the user
+	/// Returns a StellarMessage for the user/outsider. Else none if user/outsider do not need it.
+	/// This handles what to do with the Stellar message.
 	async fn process_stellar_message(
 		&mut self,
-		p_id: u32,
 		msg: StellarMessage,
 		msg_type: MessageType,
-	) -> Result<(), Error> {
+	) -> Result<Option<StellarMessage>, Error> {
 		match msg {
 			StellarMessage::Hello(hello) => {
 				// update the node info based on the hello message
@@ -81,23 +88,25 @@ impl Connector {
 			},
 
 			StellarMessage::ErrorMsg(e) => {
-				self.send_to_user(StellarRelayMessage::Error(error_to_string(e))).await?;
+				log::error!(
+					"process_stellar_message(): Received ErrorMsg during authentication: {e:?}"
+				);
+				if e.code == ErrorCode::ErrConf || e.code == ErrorCode::ErrAuth {
+					return Err(Error::from(e))
+				}
+				return Ok(Some(StellarMessage::ErrorMsg(e)))
 			},
 
 			other => {
 				log::trace!(
-					"process_stellar_message(): proc_id: {p_id}. Processing {msg_type:?} message: received from overlay"
+					"process_stellar_message():  Processing {other:?} message: received from overlay"
 				);
-				self.send_to_user(StellarRelayMessage::Data {
-					p_id,
-					msg_type,
-					msg: Box::new(other),
-				})
-				.await?;
 				self.check_to_send_more(msg_type).await?;
+				return Ok(Some(other))
 			},
 		}
-		Ok(())
+
+		Ok(None)
 	}
 
 	async fn process_auth_message(&mut self) -> Result<(), Error> {
@@ -109,12 +118,6 @@ impl Connector {
 
 		if let Some(remote) = self.remote() {
 			log::debug!("process_auth_message(): sending connect message: {remote:?}");
-			self.send_to_user(StellarRelayMessage::Connect {
-				pub_key: remote.pub_key().clone(),
-				node_info: remote.node().clone(),
-			})
-			.await?;
-
 			self.enable_flow_controller(
 				self.local().node().overlay_version,
 				remote.node().overlay_version,

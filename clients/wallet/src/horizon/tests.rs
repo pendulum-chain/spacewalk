@@ -130,16 +130,16 @@ async fn horizon_get_account_success() {
 async fn horizon_get_claimable_balance_success() {
 	let horizon_client = reqwest::Client::new();
 	let claimable_balance_id =
-		"000000006f40aa9d28d31c9456fad37cfdc5be330da4c7bd166be92be7621f21075428b7";
-	match horizon_client.get_claimable_balance(claimable_balance_id, false).await {
+		"00000000fc9b9488a083f63086185807ec3f13a8de91a8c7cddc0bd06769a57ac90fb68a";
+	match horizon_client.get_claimable_balance(claimable_balance_id, true).await {
 		Ok(HorizonClaimableBalanceResponse { claimable_balance }) => {
 			let asset =
 				std::str::from_utf8(&claimable_balance.asset).expect("should convert alright");
-			assert_eq!(asset, "USDC:GAKNDFRRWA3RPWNLTI3G4EBSD3RGNZZOY5WKWYMQ6CQTG3KIEKPYWAYC");
+			assert_eq!(asset, "USDC:GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN");
 
 			let sponsor =
 				std::str::from_utf8(&claimable_balance.sponsor).expect("should convert alright");
-			assert_eq!(sponsor, "GCENYNAX2UCY5RFUKA7AYEXKDIFITPRAB7UYSISCHVBTIAKPU2YO57OA");
+			assert_eq!(sponsor, "GCTXXQRZNQPAVBBTVZWC4QYKV3HP5HRSXZ25XDGZBYJ4PU667UGB642R");
 		},
 		Err(e) => {
 			panic!("failed: {e:?}");
@@ -212,4 +212,11 @@ async fn fetch_horizon_and_process_new_transactions_success() {
 		.expect("should fetch fine");
 
 	assert!(!slot_env_map.read().await.is_empty());
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn horizon_get_fee() {
+	let horizon_client = reqwest::Client::new();
+	assert!(horizon_client.get_fee_stats(false).await.is_ok());
+	assert!(horizon_client.get_fee_stats(true).await.is_ok());
 }

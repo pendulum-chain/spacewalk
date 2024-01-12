@@ -4,7 +4,7 @@ description = "Currency module"
 edition = "2021"
 homepage = "https://pendulumchain.org"
 name = "currency"
-version = "1.0.0"
+version = "1.0.3"
 
 [dependencies]
 serde = { version = "1.0.130", default-features = false, features = ["derive"], optional = true }
@@ -58,3 +58,11 @@ testing-utils = [
 # This feature has to be separate from the testing-utils feature because combining them causes the 'duplicate lang item' error
 # when compiling the testchain runtime
 testing-constants = []
+
+try-runtime = [
+    "frame-system/try-runtime",
+    "pallet-balances/try-runtime",
+    "pallet-transaction-payment/try-runtime",
+    "orml-currencies/try-runtime",
+    "orml-tokens/try-runtime",
+]

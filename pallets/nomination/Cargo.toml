@@ -1,6 +1,6 @@
 [package]
 name = "nomination"
-version = "1.0.0"
+version = "1.0.3"
 authors = ["Pendulum"]
 edition = "2021"
 
@@ -88,4 +88,21 @@ runtime-benchmarks = [
     "currency/testing-constants",
     "security/testing-utils",
     "oracle/testing-utils"
+]
+
+try-runtime = [
+    "frame-support/try-runtime",
+    "frame-system/try-runtime",
+    "pallet-balances/try-runtime",
+    "pallet-timestamp/try-runtime",
+    "currency/try-runtime",
+    "security/try-runtime",
+    "vault-registry/try-runtime",
+    "fee/try-runtime",
+    "pooled-rewards/try-runtime",
+    "oracle/try-runtime",
+    "staking/try-runtime",
+    "orml-currencies/try-runtime",
+    "orml-tokens/try-runtime",
+    "reward-distribution/try-runtime",
 ]

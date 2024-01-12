@@ -1,14 +1,12 @@
+use crate::{
+	connection::ConnectionInfo, node::NodeInfo, StellarOverlayConfig, StellarOverlayConnection,
+};
+use serial_test::serial;
 use std::{sync::Arc, time::Duration};
 use substrate_stellar_sdk::{
 	types::{ScpStatementExternalize, ScpStatementPledges, StellarMessage},
 	Hash, IntoHash,
 };
-
-use crate::{
-	node::NodeInfo, ConnectionInfo, StellarOverlayConfig, StellarOverlayConnection,
-	StellarRelayMessage,
-};
-use serial_test::serial;
 use tokio::{sync::Mutex, time::timeout};
 
 fn secret_key(is_mainnet: bool) -> String {
@@ -43,25 +41,7 @@ fn overlay_infos(is_mainnet: bool) -> (NodeInfo, ConnectionInfo) {
 	)
 }
 
-#[tokio::test]
-#[serial]
-async fn stellar_overlay_connect_and_listen_connect_message() {
-	let (node_info, conn_info) = overlay_infos(false);
-
-	let mut overlay_connection =
-		StellarOverlayConnection::connect(node_info.clone(), conn_info).await.unwrap();
-
-	let message = overlay_connection.listen().await.unwrap();
-	if let StellarRelayMessage::Connect { pub_key: _x, node_info: y } = message {
-		assert_eq!(y.ledger_version, node_info.ledger_version);
-	} else {
-		panic!("Incorrect stellar relay message received");
-	}
-
-	overlay_connection.disconnect().await.expect("Should be able to disconnect");
-}
-
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread")]
 #[serial]
 async fn stellar_overlay_should_receive_scp_messages() {
 	let (node_info, conn_info) = overlay_infos(false);
@@ -76,18 +56,10 @@ async fn stellar_overlay_should_receive_scp_messages() {
 
 	timeout(Duration::from_secs(300), async move {
 		let mut ov_conn_locked = ov_conn.lock().await;
-		while let Some(relay_message) = ov_conn_locked.listen().await {
-			match relay_message {
-				StellarRelayMessage::Data { p_id: _, msg_type: _, msg } => match *msg {
-					StellarMessage::ScpMessage(msg) => {
-						scps_vec_clone.lock().await.push(msg);
-						ov_conn_locked.disconnect().await.expect("failed to disconnect");
-						break
-					},
-					_ => {},
-				},
-				_ => {},
-			}
+		if let Ok(Some(msg)) = ov_conn_locked.listen().await {
+			scps_vec_clone.lock().await.push(msg);
+
+			ov_conn_locked.disconnect();
 		}
 	})
 	.await
@@ -98,7 +70,7 @@ async fn stellar_overlay_should_receive_scp_messages() {
 	assert!(!scps_vec.lock().await.is_empty());
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread")]
 #[serial]
 async fn stellar_overlay_should_receive_tx_set() {
 	//arrange
@@ -121,34 +93,30 @@ async fn stellar_overlay_should_receive_tx_set() {
 	timeout(Duration::from_secs(500), async move {
 		let mut ov_conn_locked = ov_conn.lock().await;
 
-		while let Some(relay_message) = ov_conn_locked.listen().await {
-			match relay_message {
-				StellarRelayMessage::Data { p_id: _, msg_type: _, msg } => match *msg {
-					StellarMessage::ScpMessage(msg) =>
-						if let ScpStatementPledges::ScpStExternalize(stmt) = &msg.statement.pledges
-						{
-							let tx_set_hash = get_tx_set_hash(stmt);
-							tx_set_hashes_clone.lock().await.push(tx_set_hash.clone());
-							ov_conn_locked
-								.send(StellarMessage::GetTxSet(tx_set_hash))
-								.await
-								.unwrap();
-						},
-					StellarMessage::TxSet(set) => {
-						let tx_set_hash = set.into_hash().expect("should return a hash");
-						actual_tx_set_hashes_clone.lock().await.push(tx_set_hash);
-
-						ov_conn_locked.disconnect().await.expect("failed to disconnect");
-						break
+		while let Ok(Some(msg)) = ov_conn_locked.listen().await {
+			match msg {
+				StellarMessage::ScpMessage(msg) =>
+					if let ScpStatementPledges::ScpStExternalize(stmt) = &msg.statement.pledges {
+						let tx_set_hash = get_tx_set_hash(stmt);
+						tx_set_hashes_clone.lock().await.push(tx_set_hash.clone());
+						ov_conn_locked
+							.send_to_node(StellarMessage::GetTxSet(tx_set_hash))
+							.await
+							.unwrap();
 					},
-					StellarMessage::GeneralizedTxSet(set) => {
-						let tx_set_hash = set.into_hash().expect("should return a hash");
-						actual_tx_set_hashes_clone.lock().await.push(tx_set_hash);
+				StellarMessage::TxSet(set) => {
+					let tx_set_hash = set.into_hash().expect("should return a hash");
+					actual_tx_set_hashes_clone.lock().await.push(tx_set_hash);
 
-						ov_conn_locked.disconnect().await.expect("failed to disconnect");
-						break
-					},
-					_ => {},
+					ov_conn_locked.disconnect();
+					break
+				},
+				StellarMessage::GeneralizedTxSet(set) => {
+					let tx_set_hash = set.into_hash().expect("should return a hash");
+					actual_tx_set_hashes_clone.lock().await.push(tx_set_hash);
+
+					ov_conn_locked.disconnect();
+					break
 				},
 				_ => {},
 			}
@@ -167,7 +135,7 @@ async fn stellar_overlay_should_receive_tx_set() {
 	assert!(expected_hashes.contains(&actual_hashes[0]))
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread")]
 #[serial]
 async fn stellar_overlay_disconnect_works() {
 	let (node_info, conn_info) = overlay_infos(false);
@@ -175,11 +143,7 @@ async fn stellar_overlay_disconnect_works() {
 	let mut overlay_connection =
 		StellarOverlayConnection::connect(node_info.clone(), conn_info).await.unwrap();
 
-	let message = overlay_connection.listen().await.unwrap();
-	if let StellarRelayMessage::Connect { pub_key: _x, node_info: y } = message {
-		assert_eq!(y.ledger_version, node_info.ledger_version);
-	} else {
-		panic!("Incorrect stellar relay message received");
-	}
-	overlay_connection.disconnect().await.unwrap();
+	let _ = overlay_connection.listen().await.unwrap();
+
+	overlay_connection.disconnect();
 }

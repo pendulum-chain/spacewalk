@@ -1,6 +1,6 @@
 [package]
 name = "oracle"
-version = "1.0.0"
+version = "1.0.3"
 authors = ["Pendulum"]
 edition = "2021"
 
@@ -82,3 +82,16 @@ runtime-benchmarks = [
     "testing-utils"
 ]
 testing-utils = ["spin", "once_cell"]
+
+try-runtime = [
+    "frame-system/try-runtime",
+    "pallet-balances/try-runtime",
+    "pallet-timestamp/try-runtime",
+    "security/try-runtime",
+    "staking/try-runtime",
+    "currency/try-runtime",
+    "orml-currencies/try-runtime",
+    "orml-tokens/try-runtime",
+    "orml-oracle/try-runtime",
+    "dia-oracle/try-runtime",
+]

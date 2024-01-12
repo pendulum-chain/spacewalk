@@ -6,19 +6,15 @@ use crate::{
 };
 use primitives::{stellar::PublicKey, CurrencyId};
 use runtime::{
-	OraclePallet, RedeemPallet, ReplacePallet, SecurityPallet, SpacewalkRedeemRequest,
-	SpacewalkReplaceRequest, StellarPublicKeyRaw, StellarRelayPallet, UtilFuncs, VaultId,
-	VaultRegistryPallet, H256,
+	Error as EnrichedError, OraclePallet, Recoverability, RedeemPallet, ReplacePallet, RetryPolicy,
+	SecurityPallet, SpacewalkRedeemRequest, SpacewalkReplaceRequest, StellarPublicKeyRaw,
+	StellarRelayPallet, UtilFuncs, VaultId, VaultRegistryPallet, H256,
 };
 use sp_runtime::traits::StaticLookup;
 use std::{convert::TryInto, sync::Arc, time::Duration};
 use stellar_relay_lib::sdk::{Asset, TransactionEnvelope, XdrCodec};
 use tokio::sync::RwLock;
 use wallet::{StellarWallet, TransactionResponse};
-
-/// Determines how much the vault is going to pay for the Stellar transaction fees.
-/// We use a fixed fee of 300 stroops for now but might want to make this dynamic in the future.
-const DEFAULT_STROOP_FEE_PER_OPERATION: u32 = 300;
 
 #[derive(Debug, Clone, PartialEq)]
 struct Deadline {
@@ -199,11 +195,26 @@ impl Request {
 				)
 			},
 			|result| async {
-				match result {
+				match result.map_err(Into::<EnrichedError>::into) {
 					Ok(ok) => Ok(ok),
-					Err(err) if err.is_rpc_disconnect_error() =>
-						Err(runtime::RetryPolicy::Throw(err)),
-					Err(err) => Err(runtime::RetryPolicy::Skip(err)),
+					Err(err) => match err.is_invalid_transaction() {
+						Some(Recoverability::Recoverable(data)) =>
+							Err(RetryPolicy::Skip(EnrichedError::InvalidTransaction(data))),
+						Some(Recoverability::Unrecoverable(data)) =>
+							Err(RetryPolicy::Throw(EnrichedError::InvalidTransaction(data))),
+						None => {
+							// Handle other errors
+							if err.is_pool_too_low_priority() {
+								Err(RetryPolicy::Skip(EnrichedError::PoolTooLowPriority))
+							} else if err.is_rpc_disconnect_error() {
+								Err(RetryPolicy::Throw(err))
+							} else if err.is_block_hash_not_found_error() {
+								Err(RetryPolicy::Skip(EnrichedError::BlockHashNotFound))
+							} else {
+								Err(RetryPolicy::Throw(err))
+							}
+						},
+					},
 				}
 			},
 		)
@@ -276,7 +287,6 @@ impl Request {
 						self.asset.clone(),
 						stroop_amount,
 						request_id,
-						DEFAULT_STROOP_FEE_PER_OPERATION,
 						true,
 					)
 					.await,
@@ -287,7 +297,6 @@ impl Request {
 						self.asset.clone(),
 						stroop_amount,
 						request_id,
-						DEFAULT_STROOP_FEE_PER_OPERATION,
 						false,
 					)
 					.await,

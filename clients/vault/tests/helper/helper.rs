@@ -124,7 +124,6 @@ pub async fn send_payment_to_address(
 	asset: StellarAsset,
 	stroop_amount: StellarStroops,
 	request_id: [u8; 32],
-	stroop_fee_per_operation: u32,
 	is_payment_for_redeem_request: bool,
 ) -> Result<TransactionResponse, Error> {
 	let response;
@@ -137,7 +136,6 @@ pub async fn send_payment_to_address(
 				asset.clone(),
 				stroop_amount,
 				request_id,
-				stroop_fee_per_operation,
 				is_payment_for_redeem_request,
 			)
 			.await;
@@ -182,7 +180,6 @@ pub async fn assert_issue(
 		asset,
 		stroop_amount,
 		issue.issue_id.0,
-		300,
 		false,
 	)
 	.await

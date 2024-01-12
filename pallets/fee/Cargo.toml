@@ -3,7 +3,7 @@ authors = ["Pendulum Chain <https://github.com/pendulum-chain>"]
 description = "Fee module"
 edition = "2021"
 name = "fee"
-version = "1.0.0"
+version = "1.0.3"
 
 [dependencies]
 serde = { version = "1.0.130", default-features = false, features = ["derive"], optional = true }
@@ -76,4 +76,17 @@ runtime-benchmarks = [
     "frame-support/runtime-benchmarks",
     "frame-system/runtime-benchmarks",
     "currency/testing-constants"
+]
+
+try-runtime = [
+    "frame-system/try-runtime",
+    "currency/try-runtime",
+    "pallet-balances/try-runtime",
+    "security/try-runtime",
+    "staking/try-runtime",
+    "pooled-rewards/try-runtime",
+    "orml-currencies/try-runtime",
+    "orml-tokens/try-runtime",
+    "reward-distribution/try-runtime",
+    "oracle/try-runtime",
 ]
