@@ -5,6 +5,7 @@ use substrate_stellar_sdk::{
 	types::{Error, Uint256},
 	SecretKey, XdrCodec,
 };
+use tokio::io::Interest;
 use tokio::net::{tcp, TcpStream};
 
 /// Returns a new BigNumber with a pseudo-random value equal to or greater than 0 and less than 1.
@@ -48,6 +49,24 @@ pub async fn create_stream(
 	let stream = TcpStream::connect(address)
 		.await
 		.map_err(|e| crate::Error::ConnectionFailed(e.to_string()))?;
+
+	let res = stream.ready(Interest::READABLE | Interest::WRITABLE).await
+		.map_err(|e| {
+			log::error!("create_stream(): Stream not ready for reading or writing: {e:?}");
+			crate::Error::ConnectionFailed(e.to_string())
+		})?;
+
+	if res.is_readable() {
+		log::trace!("create_stream(): stream is readable");
+	}
+
+	if res.is_writable() {
+		log::trace!("create_stream(): stream is writable");
+	}
+
+	if res.is_empty() {
+		log::trace!("create_stream(): stream is empty");
+	}
 
 	Ok(stream.into_split())
 }

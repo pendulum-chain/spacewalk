@@ -100,7 +100,34 @@ async fn read_message_from_stellar(
 		// check whether or not we should read the bytes as:
 		// 1. the length of the next stellar message
 		// 2. the remaining bytes of the previous stellar message
-		let read_ready = r_stream.ready(tokio::io::Interest::READABLE).await
+		match timeout(Duration::from_secs(timeout_in_secs),
+					  r_stream.ready(
+						  tokio::io::Interest::READABLE |
+							  tokio::io::Interest::WRITABLE)
+		).await {
+			Ok(Ok(res)) => {
+				if res.is_readable() {
+					log::trace!("read_message_from_stellar(): stream is readable");
+				}
+
+				if res.is_writable() {
+					log::trace!("read_message_from_stellar(): stream is writable");
+				}
+
+				if res.is_empty() {
+					log::trace!("read_message_from_stellar(): stream is empty");
+				}
+			}
+			Ok(Err(e)) => {
+				log::error!("read_message_from_stellar(): Error occurred during checking ready status: {e:?}");
+			}
+			Err(_) => {
+				log::error!("read_message_from_stellar(): timeout elapsed for checking ready status");
+				return Err(Error::Timeout)
+			}
+		}
+		let read_ready =
+			r_stream.ready(tokio::io::Interest::READABLE).await
 			.map_err(|e| {
 				log::error!("read_message_from_stellar(): failed to check if stream is ready: {e:?}");
 				Error::ReadFailed(e.to_string())

@@ -40,12 +40,12 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 					ScpStatementPledges::ScpStExternalize(_) => "ScpStExternalize",
 					ScpStatementPledges::ScpStNominate(_) => "ScpStNominate ",
 				};
-				log::info!(
-					"{} sent StellarMessage of type {} for ledger {}",
-					node_id,
-					stmt_type,
-					slot
-				);
+				// log::info!(
+				// 	"{} sent StellarMessage of type {} for ledger {}",
+				// 	node_id,
+				// 	stmt_type,
+				// 	slot
+				// );
 			},
 			_ => {
 				let _ = overlay_connection.send_to_node(StellarMessage::GetPeers).await;

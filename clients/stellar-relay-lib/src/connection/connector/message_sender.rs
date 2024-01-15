@@ -1,6 +1,7 @@
 use std::time::Duration;
 use substrate_stellar_sdk::types::{MessageType, SendMore, StellarMessage};
 use tokio::{io::AsyncWriteExt, time::timeout};
+use tokio::io::Interest;
 
 use crate::connection::{
 	flow_controller::MAX_FLOOD_MSG_CAP,
@@ -19,7 +20,32 @@ impl Connector {
 		)
 		.await
 		{
-			Ok(res) => res.map_err(|e| Error::WriteFailed(e.to_string())),
+			Ok(res) => {
+				let result = res.map_err(|e| {
+					log::error!("send_to_node(): Failed to send message to node: {e:?}");
+					Error::WriteFailed(e.to_string())
+				});
+
+				let ready_status = self.write_stream_overlay.ready(Interest::WRITABLE | Interest::READABLE)
+					.await.map_err(|e| {
+						log::error!("send_to_node(): Stream not ready for reading or writing: {e:?}");
+						Error::ConnectionFailed(e.to_string())
+				})?;
+
+				if ready_status.is_readable() {
+					log::trace!("send_to_node(): stream is readable");
+				}
+
+				if ready_status.is_writable() {
+					log::trace!("send_to_node(): stream is writable");
+				}
+
+				if ready_status.is_empty() {
+					log::trace!("send_to_node(): stream is empty");
+				}
+
+				result
+			},
 			Err(_) => Err(Error::Timeout),
 		}
 	}
