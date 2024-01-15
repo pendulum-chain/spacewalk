@@ -88,8 +88,11 @@ pub async fn default_provider_client(
 	let mut service_config = config.into_service_config();
 	service_config.offchain_worker.enabled = true;
 
-	let (task_manager, rpc_handlers) =
-		testchain::service::start_instant(service_config).await.unwrap();
+	let (task_manager, rpc_handlers) = if is_public_network {
+		testchain::service::start_instant_mainnet(service_config).await.unwrap()
+	} else {
+		testchain::service::start_instant_testnet(service_config).await.unwrap()
+	};
 
 	let client = SubxtClient::new(task_manager, rpc_handlers);
 

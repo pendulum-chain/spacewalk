@@ -520,7 +520,7 @@ pub fn new_full(mut config: Configuration) -> Result<(TaskManager, RpcHandlers),
 }
 
 #[allow(dead_code)]
-pub async fn start_instant(
+pub async fn start_instant_mainnet(
 	config: Configuration,
 ) -> sc_service::error::Result<(TaskManager, RpcHandlers)> {
 	let sc_service::PartialComponents {
@@ -533,6 +533,128 @@ pub async fn start_instant(
 		transaction_pool,
 		other: (_, _, mut telemetry),
 	} = new_partial_mainnet(&config, true)?;
+
+	let (network, system_rpc_tx, tx_handler_controller, network_starter, sync_service) =
+		sc_service::build_network(sc_service::BuildNetworkParams {
+			config: &config,
+			client: client.clone(),
+			transaction_pool: transaction_pool.clone(),
+			spawn_handle: task_manager.spawn_handle(),
+			import_queue,
+			block_announce_validator_builder: None,
+			warp_sync_params: None,
+		})?;
+
+	if config.offchain_worker.enabled {
+		sc_service::build_offchain_workers(
+			&config,
+			task_manager.spawn_handle(),
+			client.clone(),
+			network.clone(),
+		);
+	};
+
+	let prometheus_registry = config.prometheus_registry().cloned();
+
+	let role = config.role.clone();
+
+	let command_sink = if role.is_authority() {
+		let proposer_factory = sc_basic_authorship::ProposerFactory::new(
+			task_manager.spawn_handle(),
+			client.clone(),
+			transaction_pool.clone(),
+			prometheus_registry.as_ref(),
+			telemetry.as_ref().map(|x| x.handle()),
+		);
+
+		// Channel for the rpc handler to communicate with the authorship task.
+		let (command_sink, commands_stream) = futures::channel::mpsc::channel(1024);
+
+		let pool = transaction_pool.pool().clone();
+		let import_stream = pool.validated_pool().import_notification_stream().map(|_| {
+			sc_consensus_manual_seal::rpc::EngineCommand::SealNewBlock {
+				create_empty: true,
+				finalize: true,
+				parent_hash: None,
+				sender: None,
+			}
+		});
+
+		let authorship_future =
+			sc_consensus_manual_seal::run_manual_seal(sc_consensus_manual_seal::ManualSealParams {
+				block_import: client.clone(),
+				env: proposer_factory,
+				client: client.clone(),
+				pool: transaction_pool.clone(),
+				commands_stream: futures::stream_select!(commands_stream, import_stream),
+				select_chain,
+				consensus_data_provider: None,
+				create_inherent_data_providers: move |_, ()| async move {
+					Ok(sp_timestamp::InherentDataProvider::from_system_time())
+				},
+			});
+
+		// we spawn the future on a background thread managed by service.
+		task_manager.spawn_essential_handle().spawn_blocking(
+			"instant-seal",
+			Some("block-authoring"),
+			authorship_future,
+		);
+		Some(command_sink)
+	} else {
+		None
+	};
+
+	let rpc_builder = {
+		let client = client.clone();
+		let transaction_pool = transaction_pool.clone();
+
+		move |deny_unsafe, _| {
+			let deps = spacewalk_rpc::FullDeps {
+				client: client.clone(),
+				pool: transaction_pool.clone(),
+				deny_unsafe,
+				command_sink: command_sink.clone(),
+			};
+
+			spacewalk_rpc::create_full(deps).map_err(Into::into)
+		}
+	};
+
+	let rpc_handlers = sc_service::spawn_tasks(sc_service::SpawnTasksParams {
+		network,
+		client,
+		keystore: keystore_container.sync_keystore(),
+		task_manager: &mut task_manager,
+		transaction_pool,
+		rpc_builder: Box::new(rpc_builder),
+		backend,
+		system_rpc_tx,
+		tx_handler_controller,
+		config,
+		telemetry: telemetry.as_mut(),
+		sync_service,
+	})?;
+
+	network_starter.start_network();
+
+	Ok((task_manager, rpc_handlers))
+}
+
+#[allow(dead_code)]
+pub async fn start_instant_testnet(
+	config: Configuration,
+) -> sc_service::error::Result<(TaskManager, RpcHandlers)> {
+	let sc_service::PartialComponents {
+		client,
+		backend,
+		mut task_manager,
+		import_queue,
+		keystore_container,
+		select_chain,
+		transaction_pool,
+		other: (_, _, mut telemetry),
+	} = new_partial_testnet(&config, true)?;
 
 	let (network, system_rpc_tx, tx_handler_controller, network_starter, sync_service) =
 		sc_service::build_network(sc_service::BuildNetworkParams {
