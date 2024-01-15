@@ -20,7 +20,9 @@ use sc_service::{Configuration, PartialComponents, TaskManager};
 
 use sp_keyring::Sr25519Keyring;
 
+// TODO use something common
 use spacewalk_runtime::{Block, EXISTENTIAL_DEPOSIT};
+use spacewalk_runtime_testnet as spacewalk_runtime;
 
 use crate::{
 	benchmarking::{inherent_benchmark_data, RemarkBuilder, TransferKeepAliveBuilder},

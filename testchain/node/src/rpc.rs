@@ -12,16 +12,9 @@ pub use jsonrpsee;
 use sc_consensus_manual_seal::rpc::{EngineCommand, ManualSeal, ManualSealApiServer};
 pub use sc_rpc_api::DenyUnsafe;
 use sc_transaction_pool_api::TransactionPool;
-use sp_api::ProvideRuntimeApi;
-use sp_arithmetic::FixedU128;
-use sp_block_builder::BlockBuilder;
-use sp_blockchain::{Error as BlockChainError, HeaderBackend, HeaderMetadata};
-use sp_core::H256;
+use sp_blockchain::HeaderMetadata;
 
-use primitives::{
-	issue::IssueRequest, redeem::RedeemRequest, replace::ReplaceRequest, AccountId, Balance, Block,
-	BlockNumber, CurrencyId, Hash, Nonce, VaultId,
-};
+use primitives::Hash;
 
 use crate::service::{FullMainnetClient, FullTestnetClient};
 

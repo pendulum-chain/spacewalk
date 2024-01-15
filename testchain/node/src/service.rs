@@ -19,9 +19,9 @@ use sp_runtime::traits::BlakeTwo256;
 use crate::rpc as spacewalk_rpc;
 use primitives::{AccountId, Balance, Block, Nonce};
 
+use crate::rpc::{create_full_mainnet, create_full_testnet, ResultRpcExtension};
 use spacewalk_runtime_mainnet::RuntimeApi as MainnetRuntimeApi;
 use spacewalk_runtime_testnet::RuntimeApi as TestnetRuntimeApi;
-use spacewalk_standalone::rpc::{create_full_mainnet, create_full_testnet, ResultRpcExtension};
 
 // Native executor instance.
 pub struct MainnetExecutor;
@@ -92,7 +92,7 @@ type FullPool<RuntimeApi, Executor> = sc_transaction_pool::FullPool<
 	TFullClient<Block, RuntimeApi, NativeElseWasmExecutor<Executor>>,
 >;
 
-type FullSelectChain = sc_consensus::LongestChain<FullBackend, Block>;
+type FullSelectChain = Option<sc_consensus::LongestChain<FullBackend, Block>>;
 
 type OtherComponents<RuntimeApi, Executor> = (
 	ParachainBlockImport<RuntimeApi, Executor>,
@@ -107,7 +107,7 @@ type OtherComponents<RuntimeApi, Executor> = (
 type ParachainBlockImport<RuntimeApi, Executor> = sc_consensus_grandpa::GrandpaBlockImport<
 	FullBackend,
 	Block,
-	Arc<TFullClient<Block, RuntimeApi, NativeElseWasmExecutor<Executor>>>,
+	TFullClient<Block, RuntimeApi, NativeElseWasmExecutor<Executor>>,
 	FullSelectChain,
 >;
 
@@ -125,7 +125,7 @@ pub fn new_partial<RuntimeApi, Executor>(
 	sc_service::PartialComponents<
 		TFullClient<Block, RuntimeApi, NativeElseWasmExecutor<Executor>>,
 		TFullBackend<Block>,
-		(),
+		FullSelectChain,
 		sc_consensus::DefaultImportQueue<RuntimeApi, Executor>,
 		FullPool<RuntimeApi, Executor>,
 		OtherComponents<RuntimeApi, Executor>,
@@ -179,14 +179,8 @@ where
 		telemetry
 	});
 
-	let select_chain = sc_consensus::LongestChain::new(backend.clone());
-
-	// TODO check if this is needed
-	// let select_chain = if instant_seal {
-	// 	Some(LongestChain::new(backend.clone()))
-	// } else {
-	// 	None
-	// };
+	let select_chain =
+		if instant_seal { Some(sc_consensus::LongestChain::new(backend.clone())) } else { None };
 
 	let transaction_pool = sc_transaction_pool::BasicPool::new_full(
 		config.transaction_pool.clone(),
@@ -465,7 +459,7 @@ where
 	Ok((task_manager, rpc_handlers))
 }
 
-type FullDepsOf<RuntimeApi, Executor> = FullDeps<
+type FullDepsOf<RuntimeApi, Executor> = crate::rpc::FullDeps<
 	TFullClient<Block, RuntimeApi, NativeElseWasmExecutor<Executor>>,
 	FullPool<RuntimeApi, Executor>,
 >;
@@ -476,9 +470,9 @@ pub async fn start_full(
 	is_public_network: bool,
 ) -> sc_service::error::Result<(TaskManager, RpcHandlers)> {
 	if is_public_network {
-		new_full(config, create_full_mainnet).await
+		new_full(config, create_full_mainnet)
 	} else {
-		new_full(config, create_full_testnet).await
+		new_full(config, create_full_testnet)
 	}
 }
 
@@ -541,6 +535,8 @@ where
 	let prometheus_registry = config.prometheus_registry().cloned();
 
 	let role = config.role.clone();
+
+	let select_chain = select_chain.expect("Will return some `select_chain` for `instant_seal");
 
 	let command_sink = if role.is_authority() {
 		let proposer_factory = sc_basic_authorship::ProposerFactory::new(
