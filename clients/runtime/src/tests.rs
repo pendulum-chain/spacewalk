@@ -76,7 +76,8 @@ async fn test_invalid_tx_matching() {
 #[tokio::test(flavor = "multi_thread")]
 async fn test_too_low_priority_matching() {
 	let is_public_network = false;
-	let (client, _tmp_dir) = default_provider_client(AccountKeyring::Alice).await;
+	let (client, _tmp_dir) =
+		default_provider_client(AccountKeyring::Alice, is_public_network).await;
 	let parachain_rpc = setup_provider(client.clone(), AccountKeyring::Alice).await;
 	let err = parachain_rpc.get_too_low_priority_error(AccountKeyring::Bob.into()).await;
 	assert!(err.is_pool_too_low_priority())

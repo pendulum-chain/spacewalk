@@ -12,7 +12,7 @@ use runtime::{
 		default_provider_client, set_exchange_rate_and_wait, setup_provider, SubxtClient,
 	},
 	types::FixedU128,
-	SpacewalkParachain, VaultId,
+	ShutdownSender, SpacewalkParachain, VaultId,
 };
 use sp_arithmetic::FixedPointNumber;
 use sp_keyring::AccountKeyring;
@@ -145,9 +145,11 @@ where
 	let stellar_config = get_test_stellar_relay_config(is_public_network);
 	let vault_stellar_secret = get_test_secret_key(is_public_network);
 
-	let oracle_agent = start_oracle_agent(stellar_config.clone(), &vault_stellar_secret)
-		.await
-		.expect("failed to start agent");
+	let shutdown_tx = ShutdownSender::new();
+	let oracle_agent =
+		start_oracle_agent(stellar_config.clone(), &vault_stellar_secret, shutdown_tx)
+			.await
+			.expect("failed to start agent");
 	let oracle_agent = Arc::new(oracle_agent);
 
 	execute(client, vault_wallet, user_wallet, oracle_agent, vault_id, vault_provider).await
