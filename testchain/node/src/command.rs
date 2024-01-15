@@ -20,7 +20,6 @@ use sc_service::{Configuration, PartialComponents, TaskManager};
 
 use sp_keyring::Sr25519Keyring;
 
-// TODO use something common
 use spacewalk_runtime::{Block, EXISTENTIAL_DEPOSIT};
 use spacewalk_runtime_testnet as spacewalk_runtime;
 
@@ -33,8 +32,12 @@ use crate::{
 
 fn load_spec(id: &str) -> std::result::Result<Box<dyn sc_service::ChainSpec>, String> {
 	match id {
-		"main" => Ok(Box::new(chain_spec::mainnet_config())),
+		"" => Ok(Box::new(chain_spec::testnet_config())),
 		"dev" => Ok(Box::new(chain_spec::testnet_config())),
+		"main" => Ok(Box::new(chain_spec::mainnet_config())),
+		"testnet" => Ok(Box::new(chain_spec::ChainSpec::from_json_bytes(
+			&include_bytes!("../res/testnet.json")[..],
+		)?)),
 		path => Ok(Box::new(chain_spec::ChainSpec::from_json_file(path.into())?)),
 	}
 }
@@ -140,7 +143,7 @@ pub fn run() -> Result<()> {
 				match cmd {
 					BenchmarkCmd::Pallet(cmd) =>
 						if cfg!(feature = "runtime-benchmarks") {
-							cmd.run::<Block, spacewalk_service::MainnetExecutor>(config)
+							cmd.run::<Block, spacewalk_service::Executor>(config)
 						} else {
 							Err("Benchmarking wasn't enabled when building the node. \
                 You can enable it with `--features runtime-benchmarks`."
@@ -229,7 +232,5 @@ pub fn run() -> Result<()> {
 }
 
 async fn start_node(_: Cli, config: Configuration) -> sc_service::error::Result<TaskManager> {
-	// TODO make public network configurable
-	const is_public_network: bool = false;
-	spacewalk_service::start_full(config, is_public_network).map(|(task_manager, _)| task_manager)
+	spacewalk_service::new_full(config).map(|(task_manager, _)| task_manager)
 }
