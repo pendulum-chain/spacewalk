@@ -9690,31 +9690,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "spacewalk-rpc"
-version = "1.0.3"
-dependencies = [
- "jsonrpc-core",
- "jsonrpsee",
- "module-issue-rpc",
- "module-oracle-rpc",
- "module-redeem-rpc",
- "module-replace-rpc",
- "module-vault-registry-rpc",
- "pallet-transaction-payment-rpc",
- "sc-consensus-manual-seal",
- "sc-rpc",
- "sc-rpc-api",
- "sc-transaction-pool-api",
- "sp-api",
- "sp-arithmetic",
- "sp-block-builder",
- "sp-blockchain",
- "sp-core",
- "spacewalk-primitives",
- "substrate-frame-rpc-system",
-]
-
-[[package]]
 name = "spacewalk-runtime-standalone-mainnet"
 version = "1.0.0"
 dependencies = [
@@ -9863,8 +9838,16 @@ dependencies = [
  "frame-system",
  "futures 0.3.28",
  "hex-literal 0.2.2",
+ "jsonrpc-core",
+ "jsonrpsee",
  "log",
+ "module-issue-rpc",
+ "module-oracle-rpc",
+ "module-redeem-rpc",
+ "module-replace-rpc",
+ "module-vault-registry-rpc",
  "pallet-transaction-payment",
+ "pallet-transaction-payment-rpc",
  "parity-scale-codec",
  "sc-basic-authorship",
  "sc-cli",
@@ -9875,14 +9858,18 @@ dependencies = [
  "sc-consensus-manual-seal",
  "sc-executor",
  "sc-keystore",
+ "sc-rpc",
+ "sc-rpc-api",
  "sc-service",
  "sc-telemetry",
  "sc-transaction-pool",
+ "sc-transaction-pool-api",
  "serde",
  "serde_json",
  "sp-api",
  "sp-arithmetic",
  "sp-block-builder",
+ "sp-blockchain",
  "sp-consensus",
  "sp-consensus-aura",
  "sp-consensus-grandpa",
@@ -9897,10 +9884,10 @@ dependencies = [
  "sp-timestamp",
  "sp-transaction-pool",
  "spacewalk-primitives",
- "spacewalk-rpc",
  "spacewalk-runtime-standalone-mainnet",
  "spacewalk-runtime-standalone-testnet",
  "substrate-build-script-utils",
+ "substrate-frame-rpc-system",
  "substrate-stellar-sdk",
 ]
 

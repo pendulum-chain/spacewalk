@@ -14,10 +14,14 @@ use sc_telemetry::{Telemetry, TelemetryWorker};
 use sp_api::ConstructRuntimeApi;
 use sp_consensus_aura::sr25519::AuthorityPair as AuraPair;
 use sp_core::crypto::KeyTypeId;
+use sp_runtime::traits::BlakeTwo256;
 
-use primitives::Block;
+use crate::rpc as spacewalk_rpc;
+use primitives::{AccountId, Balance, Block, Nonce};
+
 use spacewalk_runtime_mainnet::RuntimeApi as MainnetRuntimeApi;
 use spacewalk_runtime_testnet::RuntimeApi as TestnetRuntimeApi;
+use spacewalk_standalone::rpc::{create_full_mainnet, create_full_testnet, ResultRpcExtension};
 
 // Native executor instance.
 pub struct MainnetExecutor;
@@ -59,14 +63,16 @@ impl sc_executor::NativeExecutionDispatch for TestnetExecutor {
 pub type FullMainnetClient =
 	TFullClient<Block, MainnetRuntimeApi, NativeElseWasmExecutor<MainnetExecutor>>;
 pub type FullTestnetClient =
-	TFullClient<Block, TestnetRuntimeApi, NativeElseWasmExecutor<MainnetExecutor>>;
+	TFullClient<Block, TestnetRuntimeApi, NativeElseWasmExecutor<TestnetExecutor>>;
 
 pub trait ParachainRuntimeApiImpl:
-	sp_transaction_pool::runtime_api::TaggedTransactionQueue<Block> + sp_api::Metadata<Block>
-// + sp_session::SessionKeys<Block>
-// + sp_api::ApiExt<Block, StateBackend = sc_client_api::StateBackendFor<TFullBackend<Block>,
-// Block>> + sp_offchain::OffchainWorkerApi<Block>
-// + sp_block_builder::BlockBuilder<Block>
+	sp_transaction_pool::runtime_api::TaggedTransactionQueue<Block>
+	+ sp_api::Metadata<Block>
+	+ sp_api::ApiExt<Block, StateBackend = sc_client_api::StateBackendFor<TFullBackend<Block>, Block>>
+	+ sp_offchain::OffchainWorkerApi<Block>
+	+ sp_block_builder::BlockBuilder<Block>
+	+ substrate_frame_rpc_system::AccountNonceApi<Block, AccountId, Nonce>
+	+ pallet_transaction_payment_rpc::TransactionPaymentRuntimeApi<Block, Balance>
 {
 }
 
@@ -75,32 +81,40 @@ impl ParachainRuntimeApiImpl
 {
 }
 impl ParachainRuntimeApiImpl
-	for spacewalk_runtime_mainnet::RuntimeApiImpl<Block, FullTestnetClient>
-{
-}
-impl ParachainRuntimeApiImpl
 	for spacewalk_runtime_testnet::RuntimeApiImpl<Block, FullTestnetClient>
-{
-}
-impl ParachainRuntimeApiImpl
-	for spacewalk_runtime_testnet::RuntimeApiImpl<Block, FullMainnetClient>
 {
 }
 
 pub type FullBackend = TFullBackend<Block>;
 
+type FullPool<RuntimeApi, Executor> = sc_transaction_pool::FullPool<
+	Block,
+	TFullClient<Block, RuntimeApi, NativeElseWasmExecutor<Executor>>,
+>;
+
 type FullSelectChain = sc_consensus::LongestChain<FullBackend, Block>;
 
 type OtherComponents<RuntimeApi, Executor> = (
-	sc_consensus_grandpa::GrandpaBlockImport<
-		FullBackend,
+	ParachainBlockImport<RuntimeApi, Executor>,
+	sc_consensus_grandpa::LinkHalf<
 		Block,
-		FullTestnetClient,
+		TFullClient<Block, RuntimeApi, NativeElseWasmExecutor<Executor>>,
 		FullSelectChain,
 	>,
-	sc_consensus_grandpa::LinkHalf<Block, FullTestnetClient, FullSelectChain>,
 	Option<Telemetry>,
 );
+
+type ParachainBlockImport<RuntimeApi, Executor> = sc_consensus_grandpa::GrandpaBlockImport<
+	FullBackend,
+	Block,
+	Arc<TFullClient<Block, RuntimeApi, NativeElseWasmExecutor<Executor>>>,
+	FullSelectChain,
+>;
+
+type DefaultImportQueue<RuntimeApi, Executor> = sc_consensus::DefaultImportQueue<
+	Block,
+	TFullClient<Block, RuntimeApi, NativeElseWasmExecutor<Executor>>,
+>;
 
 #[allow(clippy::type_complexity)]
 #[allow(clippy::redundant_clone)]
@@ -113,7 +127,7 @@ pub fn new_partial<RuntimeApi, Executor>(
 		TFullBackend<Block>,
 		(),
 		sc_consensus::DefaultImportQueue<RuntimeApi, Executor>,
-		sc_transaction_pool::FullPool<RuntimeApi, Executor>,
+		FullPool<RuntimeApi, Executor>,
 		OtherComponents<RuntimeApi, Executor>,
 	>,
 	ServiceError,
@@ -125,8 +139,10 @@ where
 		+ 'static
 		+ sp_api::BlockT,
 	RuntimeApi::RuntimeApi: ParachainRuntimeApiImpl,
-	Executor:
-		sc_executor::NativeExecutionDispatch + 'static + sp_api::ProvideRuntimeApi<RuntimeApi>,
+	Executor: sc_executor::NativeExecutionDispatch
+		+ 'static
+		+ sp_api::ProvideRuntimeApi<RuntimeApi>
+		+ sp_transaction_pool::runtime_api::TaggedTransactionQueue<RuntimeApi>,
 {
 	if config.keystore_remote.is_some() {
 		return Err(ServiceError::Other("Remote Keystores are not supported.".to_string()))
@@ -241,7 +257,19 @@ fn remote_keystore(_url: &String) -> Result<Arc<LocalKeystore>, &'static str> {
 }
 
 /// Builds a new service for a full client.
-pub fn new_full(mut config: Configuration) -> Result<(TaskManager, RpcHandlers), ServiceError> {
+fn new_full<RuntimeApi, Executor>(
+	mut config: Configuration,
+	create_full_rpc: fn(deps: FullDepsOf<RuntimeApi, Executor>) -> ResultRpcExtension,
+) -> Result<(TaskManager, RpcHandlers), ServiceError>
+where
+	RuntimeApi: ConstructRuntimeApi<Block, TFullClient<Block, RuntimeApi, NativeElseWasmExecutor<Executor>>>
+		+ Send
+		+ Sync
+		+ 'static,
+	RuntimeApi::RuntimeApi: ParachainRuntimeApiImpl,
+	sc_client_api::StateBackendFor<TFullBackend<Block>, Block>: sp_api::StateBackend<BlakeTwo256>,
+	Executor: sc_executor::NativeExecutionDispatch + 'static,
+{
 	let sc_service::PartialComponents {
 		client,
 		backend,
@@ -324,7 +352,7 @@ pub fn new_full(mut config: Configuration) -> Result<(TaskManager, RpcHandlers),
 				command_sink: None,
 			};
 
-			spacewalk_rpc::create_full(deps).map_err(Into::into)
+			create_full_rpc(deps).map_err(Into::into)
 		})
 	};
 
@@ -437,11 +465,48 @@ pub fn new_full(mut config: Configuration) -> Result<(TaskManager, RpcHandlers),
 	Ok((task_manager, rpc_handlers))
 }
 
+type FullDepsOf<RuntimeApi, Executor> = FullDeps<
+	TFullClient<Block, RuntimeApi, NativeElseWasmExecutor<Executor>>,
+	FullPool<RuntimeApi, Executor>,
+>;
+
+#[allow(dead_code)]
+pub async fn start_full(
+	config: Configuration,
+	is_public_network: bool,
+) -> sc_service::error::Result<(TaskManager, RpcHandlers)> {
+	if is_public_network {
+		new_full(config, create_full_mainnet).await
+	} else {
+		new_full(config, create_full_testnet).await
+	}
+}
+
 #[allow(dead_code)]
 pub async fn start_instant(
 	config: Configuration,
 	is_public_network: bool,
 ) -> sc_service::error::Result<(TaskManager, RpcHandlers)> {
+	if is_public_network {
+		start_instant_node_impl(config, create_full_mainnet).await
+	} else {
+		start_instant_node_impl(config, create_full_testnet).await
+	}
+}
+
+pub async fn start_instant_node_impl<RuntimeApi, Executor>(
+	config: Configuration,
+	create_full_rpc: fn(deps: FullDepsOf<RuntimeApi, Executor>) -> ResultRpcExtension,
+) -> sc_service::error::Result<(TaskManager, RpcHandlers)>
+where
+	RuntimeApi: ConstructRuntimeApi<Block, TFullClient<Block, RuntimeApi, NativeElseWasmExecutor<Executor>>>
+		+ Send
+		+ Sync
+		+ 'static,
+	RuntimeApi::RuntimeApi: ParachainRuntimeApiImpl,
+	sc_client_api::StateBackendFor<TFullBackend<Block>, Block>: sp_api::StateBackend<BlakeTwo256>,
+	Executor: sc_executor::NativeExecutionDispatch + 'static,
+{
 	let sc_service::PartialComponents {
 		client,
 		backend,
@@ -451,11 +516,7 @@ pub async fn start_instant(
 		select_chain,
 		transaction_pool,
 		other: (_, _, mut telemetry),
-	} = if is_public_network {
-		new_partial::<spacewalk_runtime_mainnet::RuntimeApi, MainnetExecutor>(&config, true)?
-	} else {
-		new_partial::<spacewalk_runtime_testnet::RuntimeApi, TestnetExecutor>(&config, true)?
-	};
+	} = new_partial(&config, true)?;
 
 	let (network, system_rpc_tx, tx_handler_controller, network_starter, sync_service) =
 		sc_service::build_network(sc_service::BuildNetworkParams {
@@ -540,7 +601,7 @@ pub async fn start_instant(
 				command_sink: command_sink.clone(),
 			};
 
-			spacewalk_rpc::create_full(deps).map_err(Into::into)
+			create_full_rpc(deps).map_err(Into::into)
 		}
 	};
 

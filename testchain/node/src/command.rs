@@ -227,5 +227,7 @@ pub fn run() -> Result<()> {
 }
 
 async fn start_node(_: Cli, config: Configuration) -> sc_service::error::Result<TaskManager> {
-	spacewalk_service::new_full(config).map(|(task_manager, _)| task_manager)
+	// TODO make public network configurable
+	const is_public_network: bool = false;
+	spacewalk_service::start_full(config, is_public_network).map(|(task_manager, _)| task_manager)
 }

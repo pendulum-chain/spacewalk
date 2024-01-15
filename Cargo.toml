@@ -19,7 +19,6 @@ members = [
     "pallets/stellar-relay",
     "pallets/vault-registry",
     "primitives",
-    "rpc",
     "pallets/*/rpc",
     "testchain/node",
     "testchain/runtime/mainnet",
