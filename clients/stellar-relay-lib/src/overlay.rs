@@ -1,5 +1,6 @@
 use std::io::{Read, Write};
 use substrate_stellar_sdk::types::{ErrorCode, StellarMessage};
+use tokio::net::TcpStream;
 use tokio::sync::{
 	mpsc,
 	mpsc::{
@@ -45,10 +46,18 @@ impl StellarOverlayConnection {
 		let (send_to_node_sender, send_to_node_receiver) = mpsc::channel::<StellarMessage>(1024);
 
 		// split the stream for easy handling of read and write
-		let ((read_stream_overlay, write_stream_overlay), mut net_stream) =
+		let mut net_stream = std::net::TcpStream::connect(&conn_info.address())
+			.map_err(|e| {
+				log::error!("connect(): net stream failed to connect: {e:?}");
+				Error::ConnectionFailed(e.to_string())
+			})?;
+
+
+		let (read_stream_overlay, write_stream_overlay) =
 			create_stream(&conn_info.address()).await?;
 
 		let mut connector = Connector::new(local_node_info, conn_info, write_stream_overlay);
+		drop(read_stream_overlay);
 
 		let hello = connector.create_hello_message(time_now())?;
 		let hello = connector.create_xdr_message(hello)?;
@@ -59,16 +68,15 @@ impl StellarOverlayConnection {
 		})?;
 		log::trace!("connect(): sent hello message to net tcpstream: {size} bytes");
 
-		let mut buffer = [0; 4];
-		let _ = net_stream.read(&mut buffer[..])
-			.map_err(|e| {
-				log::error!("connect(): Failed to read from net tcpstream: {e:?}");
-				Error::ReadFailed(e.to_string())
-			})?;
-		let xdr_msg_len = get_xdr_message_length(&buffer);
-		log::trace!("connect(): taken from net tcp stream: the xdr msg len is {xdr_msg_len}");
+		let new_stream = TcpStream::from_std(net_stream).map_err(|e| {
+			log::error!("connect(): Failed to convert net tcpstream to tokio tcpstream: {e:?}");
+			Error::ConnectionFailed(e.to_string())
+		})?;
+		let (read_stream_overlay, write_stream_overlay) = new_stream.into_split();
 
-		connector.send_hello_message().await?;
+		connector.set_write_stream_overlay(write_stream_overlay);
+
+		//connector.send_hello_message().await?;
 
 		tokio::spawn(poll_messages_from_stellar(
 			connector,

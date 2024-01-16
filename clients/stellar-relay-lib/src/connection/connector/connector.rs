@@ -135,6 +135,10 @@ impl Connector {
 		}
 	}
 
+	pub fn set_write_stream_overlay(&mut self, write_stream_overlay: OwnedWriteHalf) {
+		self.write_stream_overlay = write_stream_overlay;
+	}
+
 	pub fn local(&self) -> &LocalInfo {
 		&self.local
 	}
