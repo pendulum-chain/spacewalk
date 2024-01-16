@@ -106,6 +106,24 @@ async fn read_message_from_stellar(
 							  tokio::io::Interest::WRITABLE)
 		).await {
 			Ok(Ok(res)) => {
+				match r_stream.peer_addr() {
+					Ok(peer_addr) => {
+						log::trace!("read_message_from_stellar(): peer_addr: {peer_addr}");
+					}
+					Err(e) => {
+						log::error!("read_message_from_stellar(): no peer addresses returned: {e:?}");
+					}
+				}
+
+				match r_stream.local_addr() {
+					Ok(local_addr) => {
+						log::trace!("read_message_from_stellar(): local_addr: {local_addr}");
+					}
+					Err(e) => {
+						log::error!("read_message_from_stellar(): no local addresses returned: {e:?}");
+					}
+				}
+
 				if res.is_readable() {
 					log::trace!("read_message_from_stellar(): stream is readable");
 				}
@@ -117,6 +135,13 @@ async fn read_message_from_stellar(
 				if res.is_empty() {
 					log::trace!("read_message_from_stellar(): stream is empty");
 				}
+
+				if res.is_read_closed() {
+					log::error!("read_message_from_stellar(): stream's read half is closed");
+					drop(r_stream);
+					return Err(Error::Disconnected);
+				}
+
 			}
 			Ok(Err(e)) => {
 				log::error!("read_message_from_stellar(): Error occurred during checking ready status: {e:?}");
@@ -125,26 +150,6 @@ async fn read_message_from_stellar(
 				log::error!("read_message_from_stellar(): timeout elapsed for checking ready status");
 				return Err(Error::Timeout)
 			}
-		}
-		let read_ready =
-			r_stream.ready(tokio::io::Interest::READABLE).await
-			.map_err(|e| {
-				log::error!("read_message_from_stellar(): failed to check if stream is ready: {e:?}");
-				Error::ReadFailed(e.to_string())
-			})?;
-
-		if read_ready.is_empty() {
-			log::trace!("read_message_from_stellar(): reading returned empty.");
-			continue
-		}
-
-		if read_ready.is_read_closed() {
-			log::trace!("read_message_from_stellar(): read stream is closed");
-			return Err(Error::Disconnected);
-		}
-
-		if read_ready.is_readable() {
-			log::trace!("read_message_from_stellar(): stream is read ready");
 		}
 
 		match timeout(Duration::from_secs(timeout_in_secs), r_stream.peek(&mut buff_for_peeking))
