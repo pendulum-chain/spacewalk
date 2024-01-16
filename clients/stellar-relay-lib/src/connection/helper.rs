@@ -45,14 +45,7 @@ pub fn to_base64_xdr_string<T: XdrCodec>(msg: &T) -> String {
 
 pub async fn create_stream(
 	address: &str,
-) -> Result<((tcp::OwnedReadHalf, tcp::OwnedWriteHalf), std::net::TcpStream), crate::Error> {
-	 let net_stream = std::net::TcpStream::connect(address)
-		 .map_err(|e| {
-			 log::error!("create_stream(): net stream failed to connect: {e:?}");
-			 crate::Error::ConnectionFailed(e.to_string())
-		 })?;
-
-
+) -> Result<(tcp::OwnedReadHalf, tcp::OwnedWriteHalf), crate::Error> {
 	let stream = TcpStream::connect(address)
 		.await
 		.map_err(|e| crate::Error::ConnectionFailed(e.to_string()))?;
@@ -79,5 +72,5 @@ pub async fn create_stream(
 		log::trace!("create_strea(): stream's read half is closed.");
 	}
 
-	Ok((stream.into_split(), net_stream))
+	Ok(stream.into_split())
 }
