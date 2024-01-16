@@ -68,5 +68,9 @@ pub async fn create_stream(
 		log::trace!("create_stream(): stream is empty");
 	}
 
+	if res.is_read_closed() {
+		log::trace!("create_strea(): stream's read half is closed.");
+	}
+
 	Ok(stream.into_split())
 }
