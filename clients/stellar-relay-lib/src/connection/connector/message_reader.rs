@@ -1,13 +1,11 @@
 use crate::connection::{xdr_converter::get_xdr_message_length, Connector, Error, Xdr};
-use std::time::Duration;
+use std::{
+	io::Read,
+	net::{Shutdown, TcpStream},
+};
 use substrate_stellar_sdk::types::StellarMessage;
 
-use tokio::{
-	io::AsyncReadExt,
-	net::{tcp, tcp::OwnedReadHalf},
-	sync::{mpsc, mpsc::error::TryRecvError},
-	time::timeout,
-};
+use tokio::sync::{mpsc, mpsc::error::TryRecvError};
 
 /// Polls for messages coming from the Stellar Node and communicates it back to the user
 ///
@@ -19,7 +17,6 @@ use tokio::{
 ///   stream.
 pub(crate) async fn poll_messages_from_stellar(
 	mut connector: Connector,
-	mut read_stream_overlay: OwnedReadHalf,
 	send_to_user_sender: mpsc::Sender<StellarMessage>,
 	mut send_to_node_receiver: mpsc::Receiver<StellarMessage>,
 ) {
@@ -37,46 +34,57 @@ pub(crate) async fn poll_messages_from_stellar(
 		// check for messages from user.
 		match send_to_node_receiver.try_recv() {
 			Ok(msg) =>
-				if let Err(e) = connector.send_to_node(msg).await {
+				if let Err(e) = connector.send_to_node(msg) {
 					log::error!("poll_messages_from_stellar(): Error occurred during sending message to node: {e:?}");
 				},
 			Err(TryRecvError::Disconnected) => {
 				log::trace!("poll_messages_from_stellar(): Recv channel (for sending message to node) got disconnected.");
-				break;
+				break
 			},
 			Err(TryRecvError::Empty) => {
 				log::trace!("poll_messages_from_stellar(): Recv channel (for sending message to node) received empty messages.");
 			},
 		}
 
+		let stream_clone =
+			match connector.tcp_stream.try_clone() {
+				Err(e) => {
+					log::error!("poll_messages_from_stellar(): Error occurred during cloning tcp stream: {e:?}");
+					break
+				},
+				Ok(stream_clone) => stream_clone,
+			};
+
 		log::trace!("poll_messages_from_stellar(): checking for messages from Stellar Node...");
+
 		// check for messages from Stellar Node.
-		match read_message_from_stellar(&mut read_stream_overlay, connector.timeout_in_secs).await {
+		let xdr = match read_message_from_stellar(stream_clone) {
 			Err(e) => {
 				log::error!("poll_messages_from_stellar(): {e:?}");
 				break
 			},
-			Ok(xdr) => match connector.process_raw_message(xdr).await {
-				Ok(Some(stellar_msg)) =>
-				// push message to user
-					if let Err(e) = send_to_user_sender.send(stellar_msg).await {
-						log::warn!("poll_messages_from_stellar(): Error occurred during sending message to user: {e:?}");
-					},
-				Ok(None) => {
-					log::trace!("poll_messages_from_stellar(): No message to send to user.");
+			Ok(xdr) => xdr,
+		};
+
+		match connector.process_raw_message(xdr).await {
+			Ok(Some(stellar_msg)) =>
+			// push message to user
+				if let Err(e) = send_to_user_sender.send(stellar_msg).await {
+					log::warn!("poll_messages_from_stellar(): Error occurred during sending message to user: {e:?}");
 				},
-				Err(e) => {
-					log::error!("poll_messages_from_stellar(): Error occurred during processing xdr message: {e:?}");
-					break
-				},
+			Ok(None) => log::trace!("poll_messages_from_stellar(): No message to send to user."),
+			Err(e) => {
+				log::error!("poll_messages_from_stellar(): Error occurred during processing xdr message: {e:?}");
+				break
 			},
 		}
 	}
 
 	log::trace!("poll_messages_from_stellar(): stop polling for messages...");
 	// make sure to drop/shutdown the stream
-	connector.write_stream_overlay.forget();
-	drop(read_stream_overlay);
+	if let Err(e) = connector.tcp_stream.shutdown(Shutdown::Both) {
+		log::error!("poll_messages_from_stellar(): Failed to shutdown the tcp stream: {e:?}");
+	};
 
 	send_to_node_receiver.close();
 	drop(send_to_user_sender);
@@ -85,10 +93,7 @@ pub(crate) async fn poll_messages_from_stellar(
 }
 
 /// Returns Xdr format of the `StellarMessage` sent from the Stellar Node
-async fn read_message_from_stellar(
-	r_stream: &mut tcp::OwnedReadHalf,
-	timeout_in_secs: u64,
-) -> Result<Xdr, Error> {
+fn read_message_from_stellar(mut stream: TcpStream) -> Result<Xdr, Error> {
 	log::trace!("read_message_from_stellar(): start");
 
 	// holds the number of bytes that were missing from the previous stellar message.
@@ -97,74 +102,18 @@ async fn read_message_from_stellar(
 
 	let mut buff_for_peeking = vec![0; 4];
 	loop {
+		let stream_clone = stream.try_clone()?;
 		// check whether or not we should read the bytes as:
 		// 1. the length of the next stellar message
 		// 2. the remaining bytes of the previous stellar message
-		match timeout(Duration::from_secs(timeout_in_secs),
-					  r_stream.ready(
-						  tokio::io::Interest::READABLE |
-							  tokio::io::Interest::WRITABLE)
-		).await {
-			Ok(Ok(res)) => {
-				match r_stream.peer_addr() {
-					Ok(peer_addr) => {
-						log::trace!("read_message_from_stellar(): peer_addr: {peer_addr}");
-					}
-					Err(e) => {
-						log::error!("read_message_from_stellar(): no peer addresses returned: {e:?}");
-					}
-				}
-
-				match r_stream.local_addr() {
-					Ok(local_addr) => {
-						log::trace!("read_message_from_stellar(): local_addr: {local_addr}");
-					}
-					Err(e) => {
-						log::error!("read_message_from_stellar(): no local addresses returned: {e:?}");
-					}
-				}
-
-				if res.is_readable() {
-					log::trace!("read_message_from_stellar(): stream is readable");
-				}
-
-				if res.is_writable() {
-					log::trace!("read_message_from_stellar(): stream is writable");
-				}
-
-				if res.is_empty() {
-					log::trace!("read_message_from_stellar(): stream is empty");
-				}
-
-				if res.is_read_closed() {
-					log::error!("read_message_from_stellar(): stream's read half is closed");
-					drop(r_stream);
-					return Err(Error::Disconnected);
-				}
-
-			}
-			Ok(Err(e)) => {
-				log::error!("read_message_from_stellar(): Error occurred during checking ready status: {e:?}");
-			}
-			Err(_) => {
-				log::error!("read_message_from_stellar(): timeout elapsed for checking ready status");
-				return Err(Error::Timeout)
-			}
-		}
-
-		match timeout(Duration::from_secs(timeout_in_secs), r_stream.peek(&mut buff_for_peeking))
-			.await
-		{
-			Ok(Ok(0)) => {
-				log::trace!("read_message_from_stellar(): ERROR: Received 0 size");
-				return Err(Error::Disconnected)
-			},
-
-			Ok(Ok(_)) if lack_bytes_from_prev == 0 => {
+		match stream.read(&mut buff_for_peeking) {
+			Ok(size) if size == 0 => continue,
+			Ok(_) if lack_bytes_from_prev == 0 => {
 				// if there are no more bytes lacking from the previous message,
 				// then check the size of next stellar message.
 				// If it's not enough, skip it.
-				let expect_msg_len = next_message_length(r_stream).await;
+				let expect_msg_len = get_xdr_message_length(&buff_for_peeking);
+
 				log::trace!(
 					"read_message_from_stellar(): The next message length is {expect_msg_len}"
 				);
@@ -181,13 +130,11 @@ async fn read_message_from_stellar(
 				readbuf = vec![0; expect_msg_len];
 
 				match read_message(
-					r_stream,
+					stream_clone,
 					&mut lack_bytes_from_prev,
 					&mut readbuf,
 					expect_msg_len,
-				)
-				.await
-				{
+				) {
 					Ok(None) => continue,
 					Ok(Some(xdr)) => return Ok(xdr),
 					Err(e) => {
@@ -196,11 +143,13 @@ async fn read_message_from_stellar(
 					},
 				}
 			},
+			Ok(size) => {
+				// The next few bytes was read. Add it to the readbuf.
+				lack_bytes_from_prev -= size;
+				readbuf.append(&mut buff_for_peeking);
 
-			Ok(Ok(_)) => {
 				// let's read the continuation number of bytes from the previous message.
-				match read_unfinished_message(r_stream, &mut lack_bytes_from_prev, &mut readbuf)
-					.await
+				match read_unfinished_message(stream_clone, &mut lack_bytes_from_prev, &mut readbuf)
 				{
 					Ok(None) => continue,
 					Ok(Some(xdr)) => return Ok(xdr),
@@ -210,14 +159,10 @@ async fn read_message_from_stellar(
 					},
 				}
 			},
-			Ok(Err(e)) => {
-				log::trace!("read_message_from_stellar(): ERROR: {e:?}");
-				return Err(Error::ReadFailed(e.to_string()))
-			},
 
-			Err(_) => {
-				log::error!("read_message_from_stellar(): timeout elapsed.");
-				return Err(Error::Timeout)
+			Err(e) => {
+				log::trace!("read_message_from_stellar(): ERROR peeking for messages: {e:?}");
+				return Err(Error::ReadFailed(e.to_string()))
 			},
 		}
 	}
@@ -231,13 +176,13 @@ async fn read_message_from_stellar(
 /// * `lack_bytes_from_prev` - the number of bytes remaining, to complete the previous message
 /// * `readbuf` - the buffer that holds the bytes of the previous and incomplete message
 /// * `xpect_msg_len` - the expected # of bytes of the Stellar message
-async fn read_message(
-	r_stream: &mut tcp::OwnedReadHalf,
+fn read_message(
+	mut stream: TcpStream,
 	lack_bytes_from_prev: &mut usize,
 	readbuf: &mut Vec<u8>,
 	xpect_msg_len: usize,
 ) -> Result<Option<Xdr>, Error> {
-	let actual_msg_len = read_stream(r_stream, readbuf).await?;
+	let actual_msg_len = stream.read(readbuf).map_err(|e| Error::ReadFailed(e.to_string()))?;
 
 	// only when the message has the exact expected size bytes, should we send to user.
 	if actual_msg_len == xpect_msg_len {
@@ -262,15 +207,16 @@ async fn read_message(
 /// * `r_stream` - the read stream for reading the xdr stellar message
 /// * `lack_bytes_from_prev` - the number of bytes remaining, to complete the previous message
 /// * `readbuf` - the buffer that holds the bytes of the previous and incomplete message
-async fn read_unfinished_message(
-	r_stream: &mut tcp::OwnedReadHalf,
+fn read_unfinished_message(
+	mut stream: TcpStream,
 	lack_bytes_from_prev: &mut usize,
 	readbuf: &mut Vec<u8>,
 ) -> Result<Option<Xdr>, Error> {
 	// let's read the continuation number of bytes from the previous message.
 	let mut cont_buf = vec![0; *lack_bytes_from_prev];
 
-	let actual_msg_len = read_stream(r_stream, &mut cont_buf).await?;
+	let actual_msg_len =
+		stream.read(&mut cont_buf).map_err(|e| Error::ReadFailed(e.to_string()))?;
 
 	// this partial message completes the previous message.
 	if actual_msg_len == *lack_bytes_from_prev {
@@ -291,21 +237,4 @@ async fn read_unfinished_message(
 	}
 
 	Ok(None)
-}
-
-/// checks the length of the next stellar message.
-async fn next_message_length(r_stream: &mut tcp::OwnedReadHalf) -> usize {
-	// let's check for messages.
-	let mut sizebuf = [0; 4];
-
-	if r_stream.read(&mut sizebuf).await.unwrap_or(0) == 0 {
-		return 0
-	}
-
-	get_xdr_message_length(&sizebuf)
-}
-
-/// reads data from the stream and store to buffer
-async fn read_stream(r_stream: &mut tcp::OwnedReadHalf, buffer: &mut [u8]) -> Result<usize, Error> {
-	r_stream.read(buffer).await.map_err(|e| Error::ReadFailed(e.to_string()))
 }
