@@ -9691,7 +9691,7 @@ dependencies = [
 
 [[package]]
 name = "spacewalk-runtime-standalone-mainnet"
-version = "1.0.0"
+version = "1.0.3"
 dependencies = [
  "cfg-if 1.0.0",
  "clients-info",
@@ -9760,7 +9760,7 @@ dependencies = [
 
 [[package]]
 name = "spacewalk-runtime-standalone-testnet"
-version = "1.0.0"
+version = "1.0.3"
 dependencies = [
  "cfg-if 1.0.0",
  "clients-info",
