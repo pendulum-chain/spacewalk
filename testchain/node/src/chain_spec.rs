@@ -83,7 +83,7 @@ pub fn mainnet_config() -> ChainSpec {
 		"dev_mainnet",
 		ChainType::Development,
 		move || {
-			testnet_genesis(
+			genesis(
 				get_account_id_from_seed::<sr25519::Public>("Alice"),
 				vec![authority_keys_from_seed("Alice")],
 				vec![
@@ -120,7 +120,7 @@ pub fn testnet_config() -> ChainSpec {
 		"dev_testnet",
 		ChainType::Development,
 		move || {
-			testnet_genesis(
+			genesis(
 				get_account_id_from_seed::<sr25519::Public>("Alice"),
 				vec![authority_keys_from_seed("Alice")],
 				vec![
@@ -169,7 +169,7 @@ fn create_bounded_vec(input: &str) -> BoundedVec<u8, FieldLength> {
 	bounded_vec
 }
 
-fn testnet_genesis(
+fn genesis(
 	root_key: AccountId,
 	initial_authorities: Vec<(AuraId, GrandpaId)>,
 	endowed_accounts: Vec<AccountId>,
