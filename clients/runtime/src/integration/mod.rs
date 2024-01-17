@@ -69,11 +69,11 @@ pub async fn default_provider_client(
 
 	let tmp = TempDir::new("spacewalk-parachain-").expect("failed to create tempdir");
 	let config = SubxtClientConfig {
-		impl_name: "spacewalk-standalone",
+		impl_name: "spacewalk-standalone", // This has to match the `impl_name` of the runtime
 		impl_version: "0.0.1",
 		author: "SatoshiPay",
 		copyright_start_year: 2020,
-		db: DatabaseSource::RocksDb { path: tmp.path().join("db"), cache_size: 32 },
+		db: DatabaseSource::ParityDb { path: tmp.path().join("db") },
 		keystore: KeystoreConfig::Path { path: tmp.path().join("keystore"), password: None },
 		chain_spec,
 		role: Role::Authority(key),
