@@ -1,6 +1,4 @@
-use std::io::{Read, Write};
 use substrate_stellar_sdk::types::{ErrorCode, StellarMessage};
-use tokio::net::TcpStream;
 use tokio::sync::{
 	mpsc,
 	mpsc::{
@@ -11,12 +9,10 @@ use tokio::sync::{
 
 use crate::{
 	connection::{poll_messages_from_stellar, ConnectionInfo, Connector},
-	helper::{create_stream, error_to_string},
+	helper::error_to_string,
 	node::NodeInfo,
 	Error,
 };
-use crate::helper::time_now;
-use crate::xdr_converter::get_xdr_message_length;
 
 /// Used to send/receive messages to/from Stellar Node
 pub struct StellarOverlayConnection {
@@ -45,42 +41,10 @@ impl StellarOverlayConnection {
 
 		let (send_to_node_sender, send_to_node_receiver) = mpsc::channel::<StellarMessage>(1024);
 
-		// split the stream for easy handling of read and write
-		let mut net_stream = std::net::TcpStream::connect(&conn_info.address())
-			.map_err(|e| {
-				log::error!("connect(): net stream failed to connect: {e:?}");
-				Error::ConnectionFailed(e.to_string())
-			})?;
-
-
-		let (read_stream_overlay, write_stream_overlay) =
-			create_stream(&conn_info.address()).await?;
-
-		let mut connector = Connector::new(local_node_info, conn_info, write_stream_overlay);
-		drop(read_stream_overlay);
-
-		let hello = connector.create_hello_message(time_now())?;
-		let hello = connector.create_xdr_message(hello)?;
-
-		let size = net_stream.write(&hello).map_err(|e| {
-			log::error!("connect(): Failed to send hello message to net tcpstream: {e:?}");
-			Error::WriteFailed(e.to_string())
-		})?;
-		log::trace!("connect(): sent hello message to net tcpstream: {size} bytes");
-
-		let new_stream = TcpStream::from_std(net_stream).map_err(|e| {
-			log::error!("connect(): Failed to convert net tcpstream to tokio tcpstream: {e:?}");
-			Error::ConnectionFailed(e.to_string())
-		})?;
-		let (read_stream_overlay, write_stream_overlay) = new_stream.into_split();
-
-		connector.set_write_stream_overlay(write_stream_overlay);
-
-		//connector.send_hello_message().await?;
+		let connector = Connector::start(local_node_info, conn_info)?;
 
 		tokio::spawn(poll_messages_from_stellar(
 			connector,
-			read_stream_overlay,
 			send_to_user_sender,
 			send_to_node_receiver,
 		));

@@ -2,7 +2,7 @@ use crate::{
 	connection::ConnectionInfo, node::NodeInfo, StellarOverlayConfig, StellarOverlayConnection,
 };
 use serial_test::serial;
-use std::{sync::Arc, time::Duration};
+use std::{sync::Arc, thread::sleep, time::Duration};
 use substrate_stellar_sdk::{
 	types::{ScpStatementExternalize, ScpStatementPledges, StellarMessage},
 	Hash, IntoHash,
@@ -138,12 +138,17 @@ async fn stellar_overlay_should_receive_tx_set() {
 #[tokio::test(flavor = "multi_thread")]
 #[serial]
 async fn stellar_overlay_disconnect_works() {
+	env_logger::init();
 	let (node_info, conn_info) = overlay_infos(false);
 
 	let mut overlay_connection =
 		StellarOverlayConnection::connect(node_info.clone(), conn_info).await.unwrap();
 
-	let _ = overlay_connection.listen().await.unwrap();
-
+	// let it run for a second, before disconnecting.
+	sleep(Duration::from_secs(1));
 	overlay_connection.disconnect();
+
+	// let the disconnection call pass for a few seconds, before checking its status.
+	sleep(Duration::from_secs(3));
+	assert!(!overlay_connection.is_alive());
 }

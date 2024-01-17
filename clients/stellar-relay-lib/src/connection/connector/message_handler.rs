@@ -24,7 +24,7 @@ impl Connector {
 		match msg_type {
 			MessageType::Transaction | MessageType::FloodAdvert if !self.receive_tx_messages() => {
 				self.increment_remote_sequence()?;
-				self.check_to_send_more(MessageType::Transaction).await?;
+				self.check_to_send_more(MessageType::Transaction)?;
 			},
 
 			MessageType::ScpMessage if !self.receive_scp_messages() => {
@@ -76,15 +76,15 @@ impl Connector {
 				self.got_hello();
 
 				if self.remote_called_us() {
-					self.send_hello_message().await?;
+					self.send_hello_message()?;
 				} else {
-					self.send_auth_message().await?;
+					self.send_auth_message()?;
 				}
 				log::info!("process_stellar_message(): Hello message processed successfully");
 			},
 
 			StellarMessage::Auth(_) => {
-				self.process_auth_message().await?;
+				self.process_auth_message()?;
 			},
 
 			StellarMessage::ErrorMsg(e) => {
@@ -101,7 +101,7 @@ impl Connector {
 				log::trace!(
 					"process_stellar_message():  Processing {other:?} message: received from overlay"
 				);
-				self.check_to_send_more(msg_type).await?;
+				self.check_to_send_more(msg_type)?;
 				return Ok(Some(other))
 			},
 		}
@@ -109,9 +109,9 @@ impl Connector {
 		Ok(None)
 	}
 
-	async fn process_auth_message(&mut self) -> Result<(), Error> {
+	fn process_auth_message(&mut self) -> Result<(), Error> {
 		if self.remote_called_us() {
-			self.send_auth_message().await?;
+			self.send_auth_message()?;
 		}
 
 		self.handshake_completed();
@@ -126,7 +126,7 @@ impl Connector {
 			log::warn!("process_auth_message(): No remote overlay version after handshake.");
 		}
 
-		self.check_to_send_more(MessageType::Auth).await
+		self.check_to_send_more(MessageType::Auth)
 	}
 
 	/// Updates the config based on the hello message that was received from the Stellar Node
