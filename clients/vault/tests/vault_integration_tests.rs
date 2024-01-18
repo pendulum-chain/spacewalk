@@ -44,8 +44,19 @@ async fn test_register() {
 
 #[tokio::test(flavor = "multi_thread")]
 #[serial]
-async fn test_redeem_succeeds_on_stellar_mainnet() {
+async fn test_redeem_succeeds_on_mainnet() {
 	let is_public_network = true;
+	test_redeem_succeeds_on_network(is_public_network).await;
+}
+
+#[tokio::test(flavor = "multi_thread")]
+#[serial]
+async fn test_redeem_succeeds_on_testnet() {
+	let is_public_network = false;
+	test_redeem_succeeds_on_network(is_public_network).await;
+}
+
+async fn test_redeem_succeeds_on_network(is_public_network: bool) {
 	test_with_vault(
 		is_public_network,
 		|client, vault_wallet, user_wallet, oracle_agent, vault_id, vault_provider| async move {
@@ -77,6 +88,7 @@ async fn test_redeem_succeeds_on_stellar_mainnet() {
 
 			let shutdown_tx = ShutdownSender::new();
 
+			tracing::info!("Issuing {} tokens", issue_amount);
 			assert_issue(
 				&user_provider,
 				user_wallet.clone(),
@@ -85,6 +97,7 @@ async fn test_redeem_succeeds_on_stellar_mainnet() {
 				oracle_agent.clone(),
 			)
 			.await;
+			tracing::info!("After assert_issue");
 
 			test_service(
 				vault::service::listen_for_redeem_requests(
@@ -740,8 +753,19 @@ async fn test_issue_overpayment_succeeds() {
 
 #[tokio::test(flavor = "multi_thread")]
 #[serial]
-async fn test_automatic_issue_execution_succeeds() {
+async fn test_automatic_issue_execution_succeeds_on_mainnet() {
+	let is_public_network = true;
+	test_automatic_issue_execution_succeeds_on_network(is_public_network).await;
+}
+
+#[tokio::test(flavor = "multi_thread")]
+#[serial]
+async fn test_automatic_issue_execution_succeeds_on_testnet() {
 	let is_public_network = false;
+	test_automatic_issue_execution_succeeds_on_network(is_public_network).await;
+}
+
+async fn test_automatic_issue_execution_succeeds_on_network(is_public_network: bool) {
 	test_with_vault(
 		is_public_network,
 		|client, vault_wallet, user_wallet, oracle_agent, vault_id, vault_provider| async move {
