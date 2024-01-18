@@ -64,6 +64,8 @@ pub async fn start_oracle_agent(
 	secret_key: &str,
 	shutdown_sender: ShutdownSender,
 ) -> Result<OracleAgent, Error> {
+	let is_public_network = config.is_public_network();
+
 	tracing::info!("start_oracle_agent(): Starting connection to Stellar overlay network...");
 
 	let mut overlay_conn = connect_to_stellar_overlay_network(config.clone(), secret_key).await?;
@@ -133,12 +135,7 @@ pub async fn start_oracle_agent(
 		}
 	}));
 
-	Ok(OracleAgent {
-		collector,
-		is_public_network: false,
-		message_sender: Some(sender),
-		shutdown_sender,
-	})
+	Ok(OracleAgent { collector, is_public_network, message_sender: Some(sender), shutdown_sender })
 }
 
 impl OracleAgent {
