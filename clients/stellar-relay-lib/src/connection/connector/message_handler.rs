@@ -40,7 +40,7 @@ impl Connector {
 					return Err(Error::from(e))
 				},
 				other => log::error!(
-					"process_raw_message(): Received ErroMsg during authentication: {:?}",
+					"process_raw_message(): Received ErrorMsg during authentication: {:?}",
 					other
 				),
 			},
@@ -99,8 +99,11 @@ impl Connector {
 
 			other => {
 				log::trace!(
-					"process_stellar_message():  Processing {other:?} message: received from overlay"
+					"process_stellar_message():  Processing {} message: received from overlay",
+					String::from_utf8(other.to_base64_xdr())
+						.unwrap_or(format!("{:?}", other.to_base64_xdr()))
 				);
+
 				self.check_to_send_more(msg_type)?;
 				return Ok(Some(other))
 			},
@@ -117,13 +120,10 @@ impl Connector {
 		self.handshake_completed();
 
 		if let Some(remote) = self.remote() {
-			log::debug!("process_auth_message(): sending connect message: {remote:?}");
 			self.enable_flow_controller(
 				self.local().node().overlay_version,
 				remote.node().overlay_version,
 			);
-		} else {
-			log::warn!("process_auth_message(): No remote overlay version after handshake.");
 		}
 
 		self.check_to_send_more(MessageType::Auth)

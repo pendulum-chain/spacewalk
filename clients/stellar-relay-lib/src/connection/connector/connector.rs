@@ -35,7 +35,7 @@ pub struct Connector {
 	handshake_state: HandshakeState,
 	flow_controller: FlowController,
 
-	/// for writing xdr messages to stream.
+	/// for writing/reading xdr messages to/from Stellar Node.
 	pub(crate) tcp_stream: TcpStream,
 }
 
@@ -120,13 +120,14 @@ impl Connector {
 			conn_info.auth_cert_expiration,
 		);
 
+		// Create the stream
 		let tcp_stream = TcpStream::connect(conn_info.address())
 			.map_err(|e| Error::ConnectionFailed(e.to_string()))?;
 
 		if let Err(e) =
 			tcp_stream.set_read_timeout(Some(Duration::from_secs(conn_info.timeout_in_secs)))
 		{
-			log::warn!("start(): failed to set ttl: {e:?}");
+			log::warn!("start(): failed to set read timeout for the stream: {e:?}");
 		}
 
 		let mut connector = Connector {
@@ -143,6 +144,7 @@ impl Connector {
 			tcp_stream,
 		};
 
+		// To start the handshake, send a hello message to Stellar
 		connector.send_hello_message()?;
 
 		Ok(connector)
@@ -223,6 +225,7 @@ impl Connector {
 		self.flow_controller.enable(local_overlay_version, remote_overlay_version)
 	}
 }
+
 #[cfg(test)]
 mod test {
 	use crate::{connection::hmac::HMacKeys, node::RemoteInfo, StellarOverlayConfig};

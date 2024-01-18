@@ -138,7 +138,6 @@ async fn stellar_overlay_should_receive_tx_set() {
 #[tokio::test(flavor = "multi_thread")]
 #[serial]
 async fn stellar_overlay_disconnect_works() {
-	env_logger::init();
 	let (node_info, conn_info) = overlay_infos(false);
 
 	let mut overlay_connection =
