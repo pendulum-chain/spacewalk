@@ -67,9 +67,12 @@ pub async fn default_provider_client(
 		testchain::chain_spec::testnet_config()
 	};
 
+	// This has to match the `impl_name` of the runtime
+	let impl_name = "spacewalk-standalone";
+
 	let tmp = TempDir::new("spacewalk-parachain-").expect("failed to create tempdir");
 	let config = SubxtClientConfig {
-		impl_name: "spacewalk-standalone", // This has to match the `impl_name` of the runtime
+		impl_name,
 		impl_version: "0.0.1",
 		author: "SatoshiPay",
 		copyright_start_year: 2020,
