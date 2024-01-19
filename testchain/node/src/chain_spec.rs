@@ -15,7 +15,7 @@ use spacewalk_runtime_testnet::{
 	AccountId, AuraConfig, BalancesConfig, FeeConfig, FieldLength, GenesisConfig, GrandpaConfig,
 	IssueConfig, NominationConfig, OracleConfig, Organization, RedeemConfig, ReplaceConfig,
 	SecurityConfig, Signature, StatusCode, StellarRelayConfig, SudoConfig, SystemConfig,
-	TokensConfig, Validator, VaultRegistryConfig, DAYS, WASM_BINARY,
+	TokensConfig, Validator, VaultRegistryConfig, DAYS,
 };
 
 // The URL for the telemetry server.
@@ -183,9 +183,16 @@ fn genesis(
 		WRAPPED_CURRENCY_ID_STELLAR_TESTNET
 	};
 
+	// It's very important that we use the correct wasm binary
+	let wasm_binary = if is_public_network {
+		spacewalk_runtime_mainnet::WASM_BINARY
+	} else {
+		spacewalk_runtime_testnet::WASM_BINARY
+	};
+
 	GenesisConfig {
 		system: SystemConfig {
-			code: WASM_BINARY.expect("WASM binary was not build, please build it!").to_vec(),
+			code: wasm_binary.expect("WASM binary was not build, please build it!").to_vec(),
 		},
 		aura: AuraConfig {
 			authorities: initial_authorities.iter().map(|x| (x.0.clone())).collect(),
