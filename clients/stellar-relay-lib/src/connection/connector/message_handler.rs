@@ -24,7 +24,7 @@ impl Connector {
 		match msg_type {
 			MessageType::Transaction | MessageType::FloodAdvert if !self.receive_tx_messages() => {
 				self.increment_remote_sequence()?;
-				self.check_to_send_more(MessageType::Transaction)?;
+				self.check_to_send_more(MessageType::Transaction).await?;
 			},
 
 			MessageType::ScpMessage if !self.receive_scp_messages() => {
@@ -76,15 +76,15 @@ impl Connector {
 				self.got_hello();
 
 				if self.remote_called_us() {
-					self.send_hello_message()?;
+					self.send_hello_message().await?;
 				} else {
-					self.send_auth_message()?;
+					self.send_auth_message().await?;
 				}
 				log::info!("process_stellar_message(): Hello message processed successfully");
 			},
 
 			StellarMessage::Auth(_) => {
-				self.process_auth_message()?;
+				self.process_auth_message().await?;
 			},
 
 			StellarMessage::ErrorMsg(e) => {
@@ -104,7 +104,7 @@ impl Connector {
 						.unwrap_or(format!("{:?}", other.to_base64_xdr()))
 				);
 
-				self.check_to_send_more(msg_type)?;
+				self.check_to_send_more(msg_type).await?;
 				return Ok(Some(other))
 			},
 		}
@@ -112,9 +112,9 @@ impl Connector {
 		Ok(None)
 	}
 
-	fn process_auth_message(&mut self) -> Result<(), Error> {
+	async fn process_auth_message(&mut self) -> Result<(), Error> {
 		if self.remote_called_us() {
-			self.send_auth_message()?;
+			self.send_auth_message().await?;
 		}
 
 		self.handshake_completed();
@@ -126,7 +126,7 @@ impl Connector {
 			);
 		}
 
-		self.check_to_send_more(MessageType::Auth)
+		self.check_to_send_more(MessageType::Auth).await
 	}
 
 	/// Updates the config based on the hello message that was received from the Stellar Node

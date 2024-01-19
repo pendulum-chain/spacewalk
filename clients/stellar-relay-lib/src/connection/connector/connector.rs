@@ -1,6 +1,7 @@
 use std::{
 	fmt::{Debug, Formatter},
 	net::TcpStream,
+	sync::{Arc, Mutex},
 	time::Duration,
 };
 use substrate_stellar_sdk::{
@@ -36,7 +37,7 @@ pub struct Connector {
 	flow_controller: FlowController,
 
 	/// for writing/reading xdr messages to/from Stellar Node.
-	pub(crate) tcp_stream: TcpStream,
+	pub(crate) tcp_stream: Arc<Mutex<TcpStream>>,
 }
 
 impl Debug for Connector {
@@ -113,7 +114,7 @@ impl Connector {
 	}
 
 	/// returns a Connector and starts creating a connection to Stellar
-	pub fn start(local_node: NodeInfo, conn_info: ConnectionInfo) -> Result<Self, Error> {
+	pub async fn start(local_node: NodeInfo, conn_info: ConnectionInfo) -> Result<Self, Error> {
 		let connection_auth = ConnectionAuth::new(
 			&local_node.network_id,
 			conn_info.keypair(),
@@ -141,11 +142,11 @@ impl Connector {
 			receive_scp_messages: conn_info.recv_scp_msgs,
 			handshake_state: HandshakeState::Connecting,
 			flow_controller: FlowController::default(),
-			tcp_stream,
+			tcp_stream: Arc::new(Mutex::new(tcp_stream)),
 		};
 
 		// To start the handshake, send a hello message to Stellar
-		connector.send_hello_message()?;
+		connector.send_hello_message().await?;
 
 		Ok(connector)
 	}
@@ -265,6 +266,8 @@ mod test {
 	impl Connector {
 		fn shutdown(&mut self) {
 			self.tcp_stream
+				.lock()
+				.unwrap()
 				.shutdown(Shutdown::Both)
 				.expect("should shutdown both read and write of stream");
 		}
@@ -283,6 +286,7 @@ mod test {
 		// this is a channel to communicate with the connection/config (this needs renaming)
 
 		let connector = Connector::start(node_info.clone(), conn_info.clone())
+			.await
 			.expect("should create a connector");
 		(node_info, conn_info, connector)
 	}
