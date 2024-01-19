@@ -6,7 +6,6 @@ use std::{
 };
 use substrate_stellar_sdk::{types::StellarMessage, XdrCodec};
 
-use std::{thread, time::Duration};
 use tokio::sync::{mpsc, mpsc::error::TryRecvError};
 
 /// Polls for messages coming from the Stellar Node and communicates it back to the user
@@ -160,7 +159,7 @@ async fn read_message_from_stellar(stream_clone: Arc<Mutex<TcpStream>>) -> Resul
 					},
 				}
 			},
-			
+
 			Err(e) => {
 				log::trace!("read_message_from_stellar(): ERROR reading messages: {e:?}");
 				return Err(Error::ReadFailed(e.to_string()))
@@ -210,7 +209,7 @@ fn read_message(
 /// * `lack_bytes_from_prev` - the number of bytes remaining, to complete the previous message
 /// * `readbuf` - the buffer that holds the bytes of the previous and incomplete message
 fn read_unfinished_message(
-	mut stream: Arc<Mutex<TcpStream>>,
+	stream: Arc<Mutex<TcpStream>>,
 	lack_bytes_from_prev: &mut usize,
 	readbuf: &mut Vec<u8>,
 ) -> Result<Option<Xdr>, Error> {
