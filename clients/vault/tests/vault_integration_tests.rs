@@ -127,78 +127,18 @@ async fn test_redeem_succeeds_on_network(is_public_network: bool) {
 
 #[tokio::test(flavor = "multi_thread")]
 #[serial]
-async fn test_redeem_succeeds_on_stellar_testnet() {
-	let is_public_network = false;
-	test_with_vault(
-		is_public_network,
-		|client, vault_wallet, user_wallet, oracle_agent, vault_id, vault_provider| async move {
-			let user_provider = setup_provider(client.clone(), AccountKeyring::Dave).await;
-
-			let vault_ids = vec![vault_id.clone()];
-			let vault_id_manager =
-				VaultIdManager::from_map(vault_provider.clone(), vault_wallet.clone(), vault_ids);
-
-			// We issue 1 (spacewalk-chain) unit
-			let issue_amount = CurrencyId::Native.one();
-			let vault_collateral = get_required_vault_collateral_for_issue(
-				&vault_provider,
-				issue_amount,
-				vault_id.wrapped_currency(),
-				vault_id.collateral_currency(),
-			)
-			.await;
-
-			assert_ok!(
-				vault_provider
-					.register_vault_with_public_key(
-						&vault_id,
-						vault_collateral,
-						default_destination_as_binary(is_public_network)
-					)
-					.await
-			);
-
-			let shutdown_tx = ShutdownSender::new();
-
-			assert_issue(
-				&user_provider,
-				user_wallet.clone(),
-				&vault_id,
-				issue_amount,
-				oracle_agent.clone(),
-			)
-			.await;
-
-			test_service(
-				vault::service::listen_for_redeem_requests(
-					shutdown_tx,
-					vault_provider.clone(),
-					vault_id_manager,
-					Duration::from_secs(0),
-					oracle_agent,
-				),
-				async {
-					let wallet_read = user_wallet.read().await;
-					let address = wallet_read.public_key_raw();
-					drop(wallet_read);
-					// We redeem half of what we issued
-					let redeem_id = user_provider
-						.request_redeem(issue_amount / 2, address, &vault_id)
-						.await
-						.unwrap();
-					assert_execute_redeem_event(TIMEOUT, user_provider, redeem_id).await;
-				},
-			)
-			.await;
-		},
-	)
-	.await;
+async fn test_replace_succeeds_on_mainnet() {
+	let is_public_network = true;
+	test_replace_succeeds_on_network(is_public_network).await
 }
-
 #[tokio::test(flavor = "multi_thread")]
 #[serial]
-async fn test_replace_succeeds() {
+async fn test_replace_succeeds_on_testnet() {
 	let is_public_network = false;
+	test_replace_succeeds_on_network(is_public_network).await
+}
+
+async fn test_replace_succeeds_on_network(is_public_network: bool) {
 	test_with_vault(
 		is_public_network,
 		|client,
@@ -210,7 +150,7 @@ async fn test_replace_succeeds() {
 			let (new_vault_id, new_vault_provider) = create_vault(
 				client.clone(),
 				AccountKeyring::Eve,
-				DEFAULT_WRAPPED_CURRENCY_STELLAR_TESTNET,
+				default_wrapped_currency(is_public_network),
 			)
 			.await;
 
@@ -324,7 +264,7 @@ async fn test_withdraw_replace_succeeds() {
 			let (new_vault_id, new_vault_provider) = create_vault(
 				client.clone(),
 				AccountKeyring::Eve,
-				DEFAULT_WRAPPED_CURRENCY_STELLAR_TESTNET,
+				default_wrapped_currency(is_public_network),
 			)
 			.await;
 
@@ -405,7 +345,7 @@ async fn test_cancel_scheduler_succeeds() {
 			let (new_vault_id, new_vault_provider) = create_vault(
 				client.clone(),
 				AccountKeyring::Eve,
-				DEFAULT_WRAPPED_CURRENCY_STELLAR_TESTNET,
+				default_wrapped_currency(is_public_network),
 			)
 			.await;
 
@@ -883,7 +823,7 @@ async fn test_automatic_issue_execution_succeeds_for_other_vault() {
 			let vault2_id = VaultId::new(
 				AccountKeyring::Eve.into(),
 				DEFAULT_TESTING_CURRENCY,
-				DEFAULT_WRAPPED_CURRENCY_STELLAR_TESTNET,
+				default_wrapped_currency(is_public_network),
 			);
 
 			let issue_amount = upscaled_compatible_amount(100);
@@ -1190,6 +1130,7 @@ async fn test_off_chain_liquidation() {
 
 #[tokio::test(flavor = "multi_thread")]
 async fn test_shutdown() {
+	let is_public_network = false;
 	test_with(false, |client, vault_wallet, _| async move {
 		let sudo_provider = setup_provider(client.clone(), AccountKeyring::Alice).await;
 		let user_provider = setup_provider(client.clone(), AccountKeyring::Dave).await;
@@ -1197,7 +1138,7 @@ async fn test_shutdown() {
 		let sudo_vault_id = VaultId::new(
 			AccountKeyring::Alice.into(),
 			DEFAULT_TESTING_CURRENCY,
-			DEFAULT_WRAPPED_CURRENCY_STELLAR_TESTNET,
+			default_wrapped_currency(is_public_network),
 		);
 
 		// register a vault..
