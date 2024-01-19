@@ -56,25 +56,11 @@ async fn stellar_overlay_should_receive_scp_messages() {
 
 	timeout(Duration::from_secs(300), async move {
 		let mut ov_conn_locked = ov_conn.lock().await;
-		match ov_conn_locked.listen().await {
-			Ok(Some(msg)) => {
-				scps_vec_clone.lock().await.push(msg);
-				log::info!("stellar_overlay_should_receive_scp_messages(): msg:");
-				ov_conn_locked.disconnect();
-			},
-			Ok(None) => {
-				log::info!("stellar_overlay_should_receive_scp_messages(): no msg");
-			},
-			Err(e) => {
-				log::error!("stellar_overlay_should_receive_scp_messages(): error: {e:?}");
-				ov_conn_locked.disconnect();
-			},
+		if let Ok(Some(msg)) = ov_conn_locked.listen().await {
+			scps_vec_clone.lock().await.push(msg);
+
+			ov_conn_locked.disconnect();
 		}
-		// if let Ok(Some(msg)) = ov_conn_locked.listen().await {
-		// 	scps_vec_clone.lock().await.push(msg);
-		//
-		// 	ov_conn_locked.disconnect();
-		// }
 	})
 	.await
 	.expect("time has elapsed");
@@ -157,7 +143,7 @@ async fn stellar_overlay_disconnect_works() {
 	let mut overlay_connection =
 		StellarOverlayConnection::connect(node_info.clone(), conn_info).await.unwrap();
 
-	let _ = overlay_connection.listen().await.expect("should return a message");
+	let _ = overlay_connection.listen().await.unwrap();
 
 	overlay_connection.disconnect();
 }
