@@ -55,7 +55,7 @@ impl StellarOverlayConnection {
 		})
 	}
 
-	pub async fn listen(&mut self) -> Result<Option<StellarMessage>, Error> {
+	pub fn listen(&mut self) -> Result<Option<StellarMessage>, Error> {
 		loop {
 			if !self.is_alive() {
 				self.disconnect();

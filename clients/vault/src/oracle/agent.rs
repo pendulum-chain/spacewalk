@@ -98,7 +98,7 @@ pub async fn start_oracle_agent(
 			}
 
 			// listen for messages from Stellar
-			match overlay_conn.listen().await {
+			match overlay_conn.listen() {
 				Ok(Some(msg)) => {
 					let msg_as_str = to_base64_xdr_string(&msg);
 					if let Err(e) =
@@ -127,7 +127,7 @@ pub async fn start_oracle_agent(
 	});
 
 	tokio::spawn(on_shutdown(shutdown_sender.clone(), async move {
-		tracing::debug!("start_oracle_agent(): sending signal to shutdown overlay connection...");
+		tracing::info!("start_oracle_agent(): sending signal to shutdown overlay connection...");
 		if let Err(e) = disconnect_signal_sender.send(()).await {
 			tracing::warn!("start_oracle_agent(): failed to send disconnect signal: {e:?}");
 		}
@@ -193,7 +193,7 @@ impl OracleAgent {
 
 	/// Stops listening for new SCP messages.
 	pub fn stop(&self) -> Result<(), Error> {
-		tracing::debug!("stop(): Shutting down OracleAgent...");
+		tracing::info!("stop(): Shutting down OracleAgent...");
 		if let Err(e) = self.shutdown_sender.send(()) {
 			tracing::error!("stop(): Failed to send shutdown signal in OracleAgent: {:?}", e);
 		}
@@ -309,6 +309,7 @@ mod tests {
 	#[tokio::test(flavor = "multi_thread")]
 	#[serial]
 	async fn test_get_proof_for_archived_slot_fails_without_archives() {
+		env_logger::init();
 		let scp_archive_storage = ScpArchiveStorage::default();
 		let tx_archive_storage = TransactionsArchiveStorage::default();
 
@@ -320,7 +321,6 @@ mod tests {
 		let agent = start_oracle_agent(modified_config, &get_test_secret_key(true), shutdown)
 			.await
 			.expect("Failed to start agent");
-		sleep(Duration::from_secs(5)).await;
 
 		// This slot should be archived on the public network
 		let target_slot = 44041116;
@@ -332,6 +332,7 @@ mod tests {
 		let _ = scp_archive_storage.remove_file(target_slot);
 		let _ = tx_archive_storage.remove_file(target_slot);
 
+		println!("HOY PLEAAASE");
 		agent.stop().expect("Failed to stop the agent");
 	}
 }
