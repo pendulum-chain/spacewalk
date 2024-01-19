@@ -20,7 +20,7 @@ use crate::types::FilterWith;
 
 use super::*;
 
-const SECRET: &str = "SBLI7RKEJAEFGLZUBSCOFJHQBPFYIIPLBCKN7WVCWT4NEG2UJEW33N73";
+const SECRET: &str = "SB6WHKIU2HGVBRNKNOEOQUY4GFC4ZLG5XPGWLEAHTIZXBXXYACC76VSQ";
 
 #[derive(Clone)]
 struct MockFilter;
