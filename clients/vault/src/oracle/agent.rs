@@ -153,7 +153,7 @@ impl OracleAgent {
 		let collector = self.collector.clone();
 
 		#[cfg(test)]
-		let timeout_seconds = 180;
+		let timeout_seconds = 60;
 
 		#[cfg(not(test))]
 		let timeout_seconds = 60;

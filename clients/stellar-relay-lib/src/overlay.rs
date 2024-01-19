@@ -41,7 +41,7 @@ impl StellarOverlayConnection {
 
 		let (send_to_node_sender, send_to_node_receiver) = mpsc::channel::<StellarMessage>(1024);
 
-		let connector = Connector::start(local_node_info, conn_info)?;
+		let connector = Connector::start(local_node_info, conn_info).await?;
 
 		tokio::spawn(poll_messages_from_stellar(
 			connector,
