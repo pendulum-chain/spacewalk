@@ -1,4 +1,7 @@
-use crate::helper::DEFAULT_TESTING_CURRENCY;
+use crate::helper::{
+	DEFAULT_TESTING_CURRENCY, DEFAULT_WRAPPED_CURRENCY_STELLAR_MAINNET,
+	DEFAULT_WRAPPED_CURRENCY_STELLAR_TESTNET,
+};
 use async_trait::async_trait;
 use frame_support::assert_ok;
 use primitives::{stellar::Asset as StellarAsset, CurrencyId, StellarStroops, H256};
@@ -28,6 +31,14 @@ pub fn default_destination(is_public_network: bool) -> SecretKey {
 
 pub fn default_destination_as_binary(is_public_network: bool) -> [u8; 32] {
 	default_destination(is_public_network).get_public().clone().into_binary()
+}
+
+pub fn default_wrapped_currency(is_public_network: bool) -> CurrencyId {
+	if is_public_network {
+		DEFAULT_WRAPPED_CURRENCY_STELLAR_MAINNET
+	} else {
+		DEFAULT_WRAPPED_CURRENCY_STELLAR_TESTNET
+	}
 }
 
 // A simple helper function to convert StellarStroops (i64) to the up-scaled u128

@@ -39,6 +39,7 @@ compile_error!("Tests are only supported for the standalone-metadata");
 cfg_if::cfg_if! {
 	if #[cfg(feature = "standalone-metadata")] {
 		const DEFAULT_SPEC_VERSION: Range<u32> = 1..100;
+		// This has to match the `spec_name` in the runtime, otherwise the runtime will be rejected.
 		pub const DEFAULT_SPEC_NAME: &str = "spacewalk-standalone";
 		// The prefix for the testchain is 42
 		pub const SS58_PREFIX: u16 = 42;
