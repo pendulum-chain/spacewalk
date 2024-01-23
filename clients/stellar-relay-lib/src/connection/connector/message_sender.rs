@@ -1,5 +1,5 @@
-use std::time::Duration;
 use async_std::io::{self, WriteExt};
+use std::time::Duration;
 use substrate_stellar_sdk::types::{MessageType, SendMore, StellarMessage};
 
 use crate::connection::{
@@ -14,14 +14,12 @@ impl Connector {
 		// Create the XDR message outside the closure
 		let xdr_msg = self.create_xdr_message(msg)?;
 
-
-		io::timeout(
-			Duration::from_secs(self.timeout_in_secs),
-				async {
-					self.tcp_stream.write_all(&xdr_msg).await?;
-					Ok(())
-				}
-		).await.map_err(|_| Error::Timeout)
+		io::timeout(Duration::from_secs(self.timeout_in_secs), async {
+			self.tcp_stream.write_all(&xdr_msg).await?;
+			Ok(())
+		})
+		.await
+		.map_err(|_| Error::Timeout)
 	}
 
 	pub async fn send_hello_message(&mut self) -> Result<(), Error> {

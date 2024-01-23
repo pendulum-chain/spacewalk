@@ -82,6 +82,7 @@ impl StellarOverlayConnection {
 		let is_closed = self.sender.is_closed();
 
 		if is_closed {
+			log::info!("is_alive(): not alive anymore");
 			self.disconnect();
 		}
 
@@ -94,8 +95,8 @@ impl StellarOverlayConnection {
 	}
 }
 
-impl Drop for StellarOverlayConnection {
-	fn drop(&mut self) {
-		self.disconnect();
-	}
-}
+// impl Drop for StellarOverlayConnection {
+// 	fn drop(&mut self) {
+// 		self.disconnect();
+// 	}
+// }

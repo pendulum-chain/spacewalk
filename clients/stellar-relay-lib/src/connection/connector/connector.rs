@@ -1,9 +1,8 @@
+use async_std::net::TcpStream;
 use std::{
 	fmt::{Debug, Formatter},
-	// net::TcpStream,
+	net::Shutdown,
 };
-use std::net::Shutdown;
-use async_std::net::TcpStream;
 use substrate_stellar_sdk::{
 	types::{AuthenticatedMessageV0, Curve25519Public, HmacSha256Mac, MessageType},
 	XdrCodec,
@@ -37,7 +36,7 @@ pub struct Connector {
 	flow_controller: FlowController,
 
 	/// for writing/reading xdr messages to/from Stellar Node.
-	pub(crate) tcp_stream: TcpStream
+	pub(crate) tcp_stream: TcpStream,
 }
 
 impl Debug for Connector {
@@ -53,30 +52,36 @@ impl Debug for Connector {
 			.field("receive_scp_messages", &self.receive_scp_messages)
 			.field("handshake_state", &self.handshake_state)
 			.field("flow_controller", &self.flow_controller)
-			.field("local_addr",
-				   &self.tcp_stream.local_addr()
-					   .map(|addr| addr.to_string())
-					   .unwrap_or("cannot provide".to_string())
+			.field(
+				"local_addr",
+				&self
+					.tcp_stream
+					.local_addr()
+					.map(|addr| addr.to_string())
+					.unwrap_or("cannot provide".to_string()),
 			)
-			.field("peer_addr",
-			&self.tcp_stream.peer_addr()
-					   .map(|addr| addr.to_string())
-					   .unwrap_or("cannot provide".to_string())
+			.field(
+				"peer_addr",
+				&self
+					.tcp_stream
+					.peer_addr()
+					.map(|addr| addr.to_string())
+					.unwrap_or("cannot provide".to_string()),
 			)
 			.finish()
 	}
 }
 
-impl Drop for Connector {
-	fn drop(&mut self) {
-		if let Err(e) = self.tcp_stream.shutdown(Shutdown::Both) {
-			log::error!("drop(): failed to shutdown tcp stream: {}", e);
-		} else {
-			log::info!("drop(): tcp stream successfully shutdown");
-		}
+// impl Drop for Connector {
+// 	fn drop(&mut self) {
+// 		if let Err(e) = self.tcp_stream.shutdown(Shutdown::Both) {
+// 			log::error!("drop(): failed to shutdown tcp stream: {}", e);
+// 		} else {
+// 			log::info!("drop(): tcp stream successfully shutdown");
+// 		}
 
-	}
-}
+// 	}
+// }
 
 impl Connector {
 	/// Verifies the AuthenticatedMessage, received from the Stellar Node
@@ -137,7 +142,8 @@ impl Connector {
 	/// returns a Connector and starts creating a connection to Stellar
 	pub async fn start(local_node: NodeInfo, conn_info: ConnectionInfo) -> Result<Self, Error> {
 		// Create the stream
-		let tcp_stream = TcpStream::connect(conn_info.address()).await
+		let tcp_stream = TcpStream::connect(conn_info.address())
+			.await
 			.map_err(|e| Error::ConnectionFailed(e.to_string()))?;
 
 		let connection_auth = ConnectionAuth::new(
@@ -157,7 +163,7 @@ impl Connector {
 			receive_scp_messages: conn_info.recv_scp_msgs,
 			handshake_state: HandshakeState::Connecting,
 			flow_controller: FlowController::default(),
-			tcp_stream
+			tcp_stream,
 		};
 
 		// To start the handshake, send a hello message to Stellar
@@ -324,8 +330,6 @@ mod test {
 		assert_eq!(connector.local_sequence(), 0);
 		connector.increment_local_sequence();
 		assert_eq!(connector.local_sequence(), 1);
-
-		
 	}
 
 	#[tokio::test]
@@ -350,8 +354,6 @@ mod test {
 		connector.set_remote(RemoteInfo::new(&hello));
 
 		assert!(connector.remote().is_some());
-
-		
 	}
 
 	#[tokio::test]
@@ -380,14 +382,11 @@ mod test {
 		connector.increment_remote_sequence().unwrap();
 		connector.increment_remote_sequence().unwrap();
 		assert_eq!(connector.remote().unwrap().sequence(), 3);
-
-		
 	}
 
 	#[tokio::test]
 	#[serial]
 	async fn connector_get_and_set_hmac_keys_works() {
-		
 		//arrange
 		let (_, _, mut connector) = create_connector().await;
 		let connector_auth = &connector.connection_auth;
@@ -419,15 +418,13 @@ mod test {
 		));
 		//assert
 		assert!(connector.hmac_keys().is_some());
-
-		
 	}
 
 	#[tokio::test]
 	#[serial]
 	async fn connector_method_works() {
 		env_logger::init();
-		
+
 		let (_, conn_config, mut connector) = create_connector().await;
 
 		assert_eq!(connector.remote_called_us(), conn_config.remote_called_us);
@@ -444,12 +441,9 @@ mod test {
 	#[tokio::test]
 	#[serial]
 	async fn enable_flow_controller_works() {
-		
 		let (node_info, _, mut connector) = create_connector().await;
 
 		assert!(!connector.inner_check_to_send_more(MessageType::ScpMessage));
 		connector.enable_flow_controller(node_info.overlay_version, node_info.overlay_version);
-
-		
 	}
 }

@@ -2,11 +2,9 @@ use std::{sync::Arc, time::Duration};
 
 use service::on_shutdown;
 use tokio::{
-	sync::{ RwLock},
+	sync::{mpsc, mpsc::error::TryRecvError, RwLock},
 	time::{sleep, timeout},
 };
-use tokio::sync::mpsc;
-use tokio::sync::mpsc::error::TryRecvError;
 
 use runtime::ShutdownSender;
 use stellar_relay_lib::{
@@ -85,28 +83,29 @@ pub async fn start_oracle_agent(
 
 	// disconnect signal sender tells the StellarOverlayConnection to close its TcpStream to Stellar
 	// Node
-	let (disconnect_signal_sender, mut disconnect_signal_receiver) = mpsc::unbounded_channel::<()>();
+	let (disconnect_signal_sender, mut disconnect_signal_receiver) =
+		mpsc::unbounded_channel::<()>();
 	let disconnect_signal_sender_clone = disconnect_signal_sender.clone();
 
-	tokio::spawn(on_shutdown(shutdown_sender.clone(), async move {
-		tracing::info!("start_oracle_agent(): sending signal to shutdown overlay connection...");
-		if let Err(e) = disconnect_signal_sender.send(()) {
-			tracing::warn!("start_oracle_agent(): failed to send disconnect signal: {e:?}");
-		}
-	}));
+	// tokio::spawn(on_shutdown(shutdown_sender.clone(), async move {
+	// 	tracing::info!("start_oracle_agent(): sending signal to shutdown overlay connection...");
+	// 	if let Err(e) = disconnect_signal_sender.send(()) {
+	// 		tracing::warn!("start_oracle_agent(): failed to send disconnect signal: {e:?}");
+	// 	}
+	// }));
 
 	service::spawn_cancelable(shutdown_sender_clone.subscribe(), async move {
 		let sender_clone = overlay_conn.sender();
 		loop {
-			match disconnect_signal_receiver.try_recv() {
-				// if a disconnect signal was sent, disconnect from Stellar.
-				Ok(_) | Err(TryRecvError::Disconnected) => {
-					tracing::info!("start_oracle_agent(): disconnect overlay...");
-					overlay_conn.disconnect();
-					break
-				},
-				Err(TryRecvError::Empty) => {},
-			}
+			// match disconnect_signal_receiver.try_recv() {
+			// 	// if a disconnect signal was sent, disconnect from Stellar.
+			// 	Ok(_) | Err(TryRecvError::Disconnected) => {
+			// 		tracing::info!("start_oracle_agent(): disconnect overlay...");
+			// 		overlay_conn.disconnect();
+			// 		break
+			// 	},
+			// 	Err(TryRecvError::Empty) => {},
+			// }
 
 			// listen for messages from Stellar
 			match overlay_conn.listen() {
@@ -123,19 +122,17 @@ pub async fn start_oracle_agent(
 				Ok(None) => {},
 				// connection got lost
 				Err(e) => {
-					//overlay_conn.disconnect();
+					overlay_conn.disconnect();
 					tracing::error!("start_oracle_agent(): encounter error in overlay: {e:?}");
-
-					if let Err(e) = shutdown_sender_clone2.send(()) {
-						tracing::error!(
-							"start_oracle_agent(): Failed to send shutdown signal in thread: {e:?}"
-						);
-					}
+					// if let Err(e) = shutdown_sender_clone2.send(()) {
+					// 	tracing::error!(
+					// 		"start_oracle_agent(): Failed to send shutdown signal in thread: {e:?}"
+					// 	);
+					// }
 					break
 				},
 			}
 		}
-		overlay_conn.disconnect();
 		tracing::info!("start_oracle_agent(): ------- THE SPAWNED THREAD HAS STOPPED --------");
 	});
 
@@ -144,24 +141,24 @@ pub async fn start_oracle_agent(
 		is_public_network: false,
 		message_sender: Some(sender),
 		shutdown_sender,
-		disconnect_signal_sender: disconnect_signal_sender_clone
+		disconnect_signal_sender: disconnect_signal_sender_clone,
 	})
 }
 
-impl Drop for OracleAgent {
-	fn drop(&mut self) {
-		tracing::info!("OracleAgent: Dropping OracleAgent...");
-		// if let Err(e) = self.shutdown_sender.send(()) {
-		// 	tracing::error!("stop(): Failed to send shutdown signal in OracleAgent: {:?}", e);
-		// }
+// impl Drop for OracleAgent {
+// 	fn drop(&mut self) {
+// 		tracing::info!("OracleAgent: Dropping OracleAgent...");
+// 		if let Err(e) = self.shutdown_sender.send(()) {
+// 			tracing::error!("stop(): Failed to send shutdown signal in OracleAgent: {:?}", e);
+// 		}
 
-		if let Err(e) = self.disconnect_signal_sender.send(()) {
-			tracing::warn!("start_oracle_agent(): failed to send disconnect signal: {e:?}");
-		} else {
-			tracing::info!("start_oracle_agent(): message was sent!!!");
-		}
-	}
-}
+// 		if let Err(e) = self.disconnect_signal_sender.send(()) {
+// 			tracing::warn!("start_oracle_agent(): failed to send disconnect signal: {e:?}");
+// 		} else {
+// 			tracing::info!("start_oracle_agent(): message was sent!!!");
+// 		}
+// 	}
+// }
 
 impl OracleAgent {
 	/// This method returns the proof for a given slot or an error if the proof cannot be provided.
@@ -212,7 +209,6 @@ impl OracleAgent {
 	pub async fn remove_data(&self, slot: &Slot) {
 		self.collector.read().await.remove_data(slot);
 	}
-
 }
 
 #[cfg(test)]
@@ -314,7 +310,6 @@ mod tests {
 		// These might return an error if the file does not exist, but that's fine.
 		let _ = scp_archive_storage.remove_file(target_slot);
 		let _ = tx_archive_storage.remove_file(target_slot);
-
 	}
 
 	#[tokio::test(flavor = "multi_thread")]
@@ -344,6 +339,5 @@ mod tests {
 		// These might return an error if the file does not exist, but that's fine.
 		let _ = scp_archive_storage.remove_file(target_slot);
 		let _ = tx_archive_storage.remove_file(target_slot);
-
 	}
 }

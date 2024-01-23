@@ -1,7 +1,7 @@
 #![allow(dead_code)] //todo: remove after being tested and implemented
 
-use async_std::channel::SendError;
 use crate::{connection::xdr_converter::Error as XDRError, helper::error_to_string};
+use async_std::channel::SendError;
 use substrate_stellar_sdk::{types::ErrorCode, StellarSdkError};
 
 #[derive(Debug, err_derive::Error)]

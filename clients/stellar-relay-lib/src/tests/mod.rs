@@ -1,15 +1,13 @@
 use crate::{
 	connection::ConnectionInfo, node::NodeInfo, StellarOverlayConfig, StellarOverlayConnection,
 };
+use async_std::{future::timeout, sync::Mutex};
 use serial_test::serial;
 use std::{sync::Arc, thread::sleep, time::Duration};
-use async_std::future::timeout;
-use async_std::sync::Mutex;
 use substrate_stellar_sdk::{
 	types::{ScpStatementExternalize, ScpStatementPledges, StellarMessage},
 	Hash, IntoHash,
 };
-
 
 fn secret_key(is_mainnet: bool) -> String {
 	let path = if is_mainnet {
@@ -43,7 +41,7 @@ fn overlay_infos(is_mainnet: bool) -> (NodeInfo, ConnectionInfo) {
 	)
 }
 
-#[async_std::test]
+#[tokio::test]
 #[serial]
 async fn stellar_overlay_should_receive_scp_messages() {
 	// let it run for a second, making sure that the other tests have successfully shutdown
@@ -76,7 +74,7 @@ async fn stellar_overlay_should_receive_scp_messages() {
 	assert!(!scps_vec.lock().await.is_empty());
 }
 
-#[async_std::test]
+#[tokio::test]
 #[serial]
 async fn stellar_overlay_should_receive_tx_set() {
 	env_logger::init();
@@ -146,7 +144,7 @@ async fn stellar_overlay_should_receive_tx_set() {
 	assert!(expected_hashes.contains(&actual_hashes[0]))
 }
 
-#[async_std::test]
+#[tokio::test]
 #[serial]
 async fn stellar_overlay_disconnect_works() {
 	// let it run for a second, making sure that the other tests have successfully shutdown
