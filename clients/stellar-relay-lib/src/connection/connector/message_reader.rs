@@ -25,7 +25,7 @@ pub(crate) async fn poll_messages_from_stellar(
 	let mut counter = 0;
 
 	loop {
-		log::info!("poll loop");
+		
 		if send_to_user_sender.is_closed() {
 			log::info!("poll_messages_from_stellar(): closing receiver during disconnection");
 			// close this channel as communication to user was closed.
@@ -33,7 +33,8 @@ pub(crate) async fn poll_messages_from_stellar(
 		}
 
 		// just for testing, remove me
-		log_counter(&mut counter).await;
+		// log::info!("poll loop");
+		//log_counter(&mut counter).await;
 
 		// check for messages from user.
 		match send_to_node_receiver.try_recv() {
@@ -74,7 +75,6 @@ pub(crate) async fn poll_messages_from_stellar(
 			},
 		}
 	}
-	log::info!("exiting poll messages from stellar loop");
 
 	// make sure to shutdown the stream
 	if let Err(e) = connector.tcp_stream.shutdown(Shutdown::Both) {
@@ -108,7 +108,8 @@ async fn read_message_from_stellar(connector: &mut Connector) -> Result<Xdr, Err
 		// 2. the remaining bytes of the previous stellar message
 		match connector.tcp_stream.read(&mut buff_for_reading).await {
 			Ok(size) if size == 0 => {
-				//log::info!("read_message_from_stellar(): size 0");
+				//if we remove the yield here, we have the risk that the process will become a 
+				// "busy one", never letting other processes handle the exit
 				tokio::task::yield_now().await;
 				sleep(Duration::from_millis(100)).await;
 				continue

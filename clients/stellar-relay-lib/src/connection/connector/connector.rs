@@ -72,16 +72,16 @@ impl Debug for Connector {
 	}
 }
 
-// impl Drop for Connector {
-// 	fn drop(&mut self) {
-// 		if let Err(e) = self.tcp_stream.shutdown(Shutdown::Both) {
-// 			log::error!("drop(): failed to shutdown tcp stream: {}", e);
-// 		} else {
-// 			log::info!("drop(): tcp stream successfully shutdown");
-// 		}
+impl Drop for Connector {
+	fn drop(&mut self) {
+		if let Err(e) = self.tcp_stream.shutdown(Shutdown::Both) {
+			log::error!("drop(): failed to shutdown tcp stream: {}", e);
+		} else {
+			log::info!("drop(): tcp stream successfully shutdown");
+		}
 
-// 	}
-// }
+	}
+}
 
 impl Connector {
 	/// Verifies the AuthenticatedMessage, received from the Stellar Node
