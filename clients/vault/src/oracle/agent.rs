@@ -80,6 +80,7 @@ pub async fn start_oracle_agent(
 	let collector_clone = collector.clone();
 
 	// a clone used to forcefully call a shutdown, when StellarOverlay disconnects.
+	let shutdown_sender_clone = shutdown_sender.clone();
 	let shutdown_sender_clone2 = shutdown_sender.clone();
 
 	// disconnect signal sender tells the StellarOverlayConnection to close its TcpStream to Stellar
@@ -101,7 +102,7 @@ pub async fn start_oracle_agent(
 				// if a disconnect signal was sent, disconnect from Stellar.
 				Ok(_) | Err(TryRecvError::Disconnected) => {
 					tracing::info!("start_oracle_agent(): disconnect overlay...");
-					//overlay_conn.disconnect();
+					overlay_conn.disconnect();
 					break
 				},
 				Err(TryRecvError::Empty) => {},
@@ -150,9 +151,9 @@ pub async fn start_oracle_agent(
 impl Drop for OracleAgent {
 	fn drop(&mut self) {
 		tracing::info!("OracleAgent: Dropping OracleAgent...");
-		if let Err(e) = self.shutdown_sender.send(()) {
-			tracing::error!("stop(): Failed to send shutdown signal in OracleAgent: {:?}", e);
-		}
+		// if let Err(e) = self.shutdown_sender.send(()) {
+		// 	tracing::error!("stop(): Failed to send shutdown signal in OracleAgent: {:?}", e);
+		// }
 
 		if let Err(e) = self.disconnect_signal_sender.send(()) {
 			tracing::warn!("start_oracle_agent(): failed to send disconnect signal: {e:?}");
@@ -174,7 +175,7 @@ impl OracleAgent {
 		let collector = self.collector.clone();
 
 		#[cfg(test)]
-		let timeout_seconds = 180;
+		let timeout_seconds = 60;
 
 		#[cfg(not(test))]
 		let timeout_seconds = 60;

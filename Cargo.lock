@@ -404,6 +404,19 @@ dependencies = [
 ]
 
 [[package]]
+name = "async-compat"
+version = "0.2.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f68a707c1feb095d8c07f8a65b9f506b117d30af431cab89374357de7c11461b"
+dependencies = [
+ "futures-core",
+ "futures-io",
+ "once_cell",
+ "pin-project-lite 0.2.10",
+ "tokio",
+]
+
+[[package]]
 name = "async-executor"
 version = "1.6.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -10076,6 +10089,7 @@ dependencies = [
 name = "stellar-relay-lib"
 version = "1.0.3"
 dependencies = [
+ "async-compat",
  "async-std",
  "base64 0.13.1",
  "env_logger 0.9.3",
@@ -10090,6 +10104,7 @@ dependencies = [
  "serial_test",
  "sha2 0.10.7",
  "substrate-stellar-sdk",
+ "tokio",
  "tweetnacl",
 ]
 

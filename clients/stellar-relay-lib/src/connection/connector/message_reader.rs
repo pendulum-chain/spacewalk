@@ -1,9 +1,12 @@
 use std::net::Shutdown;
-use async_std::channel::{Receiver, Sender, TryRecvError};
+
 use async_std::io::ReadExt;
+use async_compat::{Compat, CompatExt};
 use crate::connection::{xdr_converter::get_xdr_message_length, Connector, Error, Xdr};
 use substrate_stellar_sdk::{types::StellarMessage, XdrCodec};
-
+use tokio::io::AsyncReadExt;
+use tokio::time::{sleep, Duration};
+use tokio::sync::{mpsc, mpsc::error::TryRecvError};
 // use tokio::sync::{mpsc, mpsc::error::TryRecvError};
 
 /// Polls for messages coming from the Stellar Node and communicates it back to the user
@@ -15,12 +18,13 @@ use substrate_stellar_sdk::{types::StellarMessage, XdrCodec};
 ///   stream.
 pub(crate) async fn poll_messages_from_stellar(
 	mut connector: Connector,
-	send_to_user_sender: Sender<StellarMessage>,
-	send_to_node_receiver: Receiver<StellarMessage>,
+	send_to_user_sender: mpsc::Sender<StellarMessage>,
+	mut send_to_node_receiver: mpsc::Receiver<StellarMessage>,
 ) {
 	log::info!("poll_messages_from_stellar(): started.");
 
 	loop {
+		log::info!("poll loop");
 		if send_to_user_sender.is_closed() {
 			log::info!("poll_messages_from_stellar(): closing receiver during disconnection");
 			// close this channel as communication to user was closed.
@@ -33,8 +37,8 @@ pub(crate) async fn poll_messages_from_stellar(
 				if let Err(e) = connector.send_to_node(msg).await {
 					log::error!("poll_messages_from_stellar(): Error occurred during sending message to node: {e:?}");
 				},
-			Err(TryRecvError::Closed) => {
-				log::trace!("poll_messages_from_stellar(): Recv channel (for sending message to node) got disconnected.");
+			Err(TryRecvError::Disconnected) => {
+				log::info!("poll_messages_from_stellar(): Recv channel (for sending message to node) got disconnected.");
 				break
 			},
 			Err(TryRecvError::Empty) => {},
@@ -49,22 +53,29 @@ pub(crate) async fn poll_messages_from_stellar(
 			Ok(xdr) => xdr,
 		};
 
+		log::info!("last message recieved {:?}", xdr);
+
 		match connector.process_raw_message(xdr).await {
 			Ok(Some(stellar_msg)) =>
-			// push message to user
+				{				// push message to user
 				if let Err(e) = send_to_user_sender.send(stellar_msg.clone()).await {
 					log::warn!("poll_messages_from_stellar(): Error occurred during sending message {} to user: {e:?}",
 						String::from_utf8(stellar_msg.to_base64_xdr())
 						.unwrap_or_else(|_| format!("{:?}", stellar_msg.to_base64_xdr()))
 					);
-				},
+				}
+				
+			},
 			Ok(None) => {},
 			Err(e) => {
 				log::error!("poll_messages_from_stellar(): Error occurred during processing xdr message: {e:?}");
-				break
+				break;
 			},
 		}
+
+				
 	}
+	log::info!("exiting poll messages from stellar loop");
 
 	// make sure to shutdown the stream
 	if let Err(e) = connector.tcp_stream.shutdown(Shutdown::Both) {
@@ -82,15 +93,19 @@ async fn read_message_from_stellar(connector: &mut Connector) -> Result<Xdr, Err
 	let mut lack_bytes_from_prev = 0;
 	let mut readbuf: Vec<u8> = vec![];
 	let mut buff_for_reading = vec![0; 4];
+	let mut compat_stream = Compat::new(connector.tcp_stream.clone());
 	loop {
-
+		//log::info!("read loop");
 		// check whether or not we should read the bytes as:
 		// 1. the length of the next stellar message
 		// 2. the remaining bytes of the previous stellar message
-		match connector.tcp_stream.read(&mut buff_for_reading).await {
+		match compat_stream.read(&mut buff_for_reading).await {
 			Ok(size) if size == 0 => {
-				async_std::task::yield_now().await;
-				continue
+				//let empty_vec = vec![];
+				//return Ok(empty_vec);
+				tokio::task::yield_now().await;
+				sleep(Duration::from_millis(100)).await;
+				continue;
 			},
 			Ok(_) if lack_bytes_from_prev == 0 => {
 				// if there are no more bytes lacking from the previous message,
@@ -103,7 +118,8 @@ async fn read_message_from_stellar(connector: &mut Connector) -> Result<Xdr, Err
 					log::trace!(
 						"read_message_from_stellar(): Nothing left to read; waiting for next loop"
 					);
-					async_std::task::yield_now().await;
+					//tokio::task::yield_now().await;
+					sleep(Duration::from_millis(100)).await;
 					continue
 				}
 
@@ -117,7 +133,8 @@ async fn read_message_from_stellar(connector: &mut Connector) -> Result<Xdr, Err
 					expect_msg_len,
 				).await {
 					Ok(None) => {
-						async_std::task::yield_now().await;
+						//tokio::task::yield_now().await;
+						sleep(Duration::from_millis(100)).await;
 						continue
 					},
 					Ok(Some(xdr)) => return Ok(xdr),
@@ -136,7 +153,8 @@ async fn read_message_from_stellar(connector: &mut Connector) -> Result<Xdr, Err
 				match read_unfinished_message(connector, &mut lack_bytes_from_prev, &mut readbuf).await
 				{
 					Ok(None) => {
-						async_std::task::yield_now().await;
+						//tokio::task::yield_now().await;
+						sleep(Duration::from_millis(100)).await;
 						continue
 					},
 					Ok(Some(xdr)) => return Ok(xdr),

@@ -303,7 +303,7 @@ mod test {
 		(node_info, conn_info, connector)
 	}
 
-	#[async_std::test]
+	#[tokio::test]
 	#[serial]
 	async fn create_new_connector_works() {
 		let (node_info, _, connector) = create_connector().await;
@@ -317,7 +317,7 @@ mod test {
 		assert_eq!(connector_local_node.network_id, node_info.network_id);
 	}
 
-	#[async_std::test]
+	#[tokio::test]
 	#[serial]
 	async fn connector_local_sequence_works() {
 		let (_, _, mut connector) = create_connector().await;
@@ -328,7 +328,7 @@ mod test {
 		
 	}
 
-	#[async_std::test]
+	#[tokio::test]
 	#[serial]
 	async fn connector_set_remote_works() {
 		let (_, _, mut connector) = create_connector().await;
@@ -354,7 +354,7 @@ mod test {
 		
 	}
 
-	#[async_std::test]
+	#[tokio::test]
 	#[serial]
 	async fn connector_increment_remote_sequence_works() {
 		let (_, _, mut connector) = create_connector().await;
@@ -384,7 +384,7 @@ mod test {
 		
 	}
 
-	#[async_std::test]
+	#[tokio::test]
 	#[serial]
 	async fn connector_get_and_set_hmac_keys_works() {
 		
@@ -423,7 +423,7 @@ mod test {
 		
 	}
 
-	#[async_std::test]
+	#[tokio::test]
 	#[serial]
 	async fn connector_method_works() {
 		env_logger::init();
@@ -441,7 +441,7 @@ mod test {
 		assert!(connector.is_handshake_created());
 	}
 
-	#[async_std::test]
+	#[tokio::test]
 	#[serial]
 	async fn enable_flow_controller_works() {
 		
