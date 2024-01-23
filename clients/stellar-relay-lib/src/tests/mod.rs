@@ -3,11 +3,13 @@ use crate::{
 };
 use serial_test::serial;
 use std::{sync::Arc, thread::sleep, time::Duration};
+use async_std::future::timeout;
+use async_std::sync::Mutex;
 use substrate_stellar_sdk::{
 	types::{ScpStatementExternalize, ScpStatementPledges, StellarMessage},
 	Hash, IntoHash,
 };
-use tokio::{sync::Mutex, time::timeout};
+
 
 fn secret_key(is_mainnet: bool) -> String {
 	let path = if is_mainnet {
@@ -41,9 +43,13 @@ fn overlay_infos(is_mainnet: bool) -> (NodeInfo, ConnectionInfo) {
 	)
 }
 
-#[tokio::test(flavor = "multi_thread")]
+#[async_std::test]
 #[serial]
 async fn stellar_overlay_should_receive_scp_messages() {
+	// let it run for a second, making sure that the other tests have successfully shutdown
+	// their connection to Stellar Node
+	sleep(Duration::from_secs(3));
+
 	let (node_info, conn_info) = overlay_infos(false);
 
 	let overlay_connection = Arc::new(Mutex::new(
@@ -70,9 +76,14 @@ async fn stellar_overlay_should_receive_scp_messages() {
 	assert!(!scps_vec.lock().await.is_empty());
 }
 
-#[tokio::test(flavor = "multi_thread")]
+#[async_std::test]
 #[serial]
 async fn stellar_overlay_should_receive_tx_set() {
+	env_logger::init();
+	// let it run for a second, making sure that the other tests have successfully shutdown
+	// their connection to Stellar Node
+	sleep(Duration::from_secs(3));
+
 	//arrange
 	fn get_tx_set_hash(x: &ScpStatementExternalize) -> Hash {
 		let scp_value = x.commit.value.get_vec();
@@ -108,14 +119,14 @@ async fn stellar_overlay_should_receive_tx_set() {
 					let tx_set_hash = set.into_hash().expect("should return a hash");
 					actual_tx_set_hashes_clone.lock().await.push(tx_set_hash);
 
-					ov_conn_locked.disconnect();
+					//ov_conn_locked.disconnect();
 					break
 				},
 				StellarMessage::GeneralizedTxSet(set) => {
 					let tx_set_hash = set.into_hash().expect("should return a hash");
 					actual_tx_set_hashes_clone.lock().await.push(tx_set_hash);
 
-					ov_conn_locked.disconnect();
+					//ov_conn_locked.disconnect();
 					break
 				},
 				_ => {},
@@ -135,9 +146,13 @@ async fn stellar_overlay_should_receive_tx_set() {
 	assert!(expected_hashes.contains(&actual_hashes[0]))
 }
 
-#[tokio::test(flavor = "multi_thread")]
+#[async_std::test]
 #[serial]
 async fn stellar_overlay_disconnect_works() {
+	// let it run for a second, making sure that the other tests have successfully shutdown
+	// their connection to Stellar Node
+	sleep(Duration::from_secs(3));
+
 	let (node_info, conn_info) = overlay_infos(false);
 
 	let mut overlay_connection =

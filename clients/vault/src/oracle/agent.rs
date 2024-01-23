@@ -2,9 +2,11 @@ use std::{sync::Arc, time::Duration};
 
 use service::on_shutdown;
 use tokio::{
-	sync::{mpsc, mpsc::error::TryRecvError, RwLock},
+	sync::{ RwLock},
 	time::{sleep, timeout},
 };
+use tokio::sync::mpsc;
+use tokio::sync::mpsc::error::TryRecvError;
 
 use runtime::ShutdownSender;
 use stellar_relay_lib::{
@@ -24,6 +26,7 @@ pub struct OracleAgent {
 	pub is_public_network: bool,
 	message_sender: Option<StellarMessageSender>,
 	shutdown_sender: ShutdownSender,
+	disconnect_signal_sender: mpsc::UnboundedSender<()>,
 }
 
 /// listens to data to collect the scp messages and txsets.
@@ -76,13 +79,20 @@ pub async fn start_oracle_agent(
 	)));
 	let collector_clone = collector.clone();
 
-	let shutdown_sender_clone = shutdown_sender.clone();
 	// a clone used to forcefully call a shutdown, when StellarOverlay disconnects.
 	let shutdown_sender_clone2 = shutdown_sender.clone();
 
 	// disconnect signal sender tells the StellarOverlayConnection to close its TcpStream to Stellar
 	// Node
-	let (disconnect_signal_sender, mut disconnect_signal_receiver) = mpsc::channel::<()>(2);
+	let (disconnect_signal_sender, mut disconnect_signal_receiver) = mpsc::unbounded_channel::<()>();
+	let disconnect_signal_sender_clone = disconnect_signal_sender.clone();
+
+	tokio::spawn(on_shutdown(shutdown_sender.clone(), async move {
+		tracing::info!("start_oracle_agent(): sending signal to shutdown overlay connection...");
+		if let Err(e) = disconnect_signal_sender.send(()) {
+			tracing::warn!("start_oracle_agent(): failed to send disconnect signal: {e:?}");
+		}
+	}));
 
 	service::spawn_cancelable(shutdown_sender_clone.subscribe(), async move {
 		let sender_clone = overlay_conn.sender();
@@ -91,7 +101,7 @@ pub async fn start_oracle_agent(
 				// if a disconnect signal was sent, disconnect from Stellar.
 				Ok(_) | Err(TryRecvError::Disconnected) => {
 					tracing::info!("start_oracle_agent(): disconnect overlay...");
-					overlay_conn.disconnect();
+					//overlay_conn.disconnect();
 					break
 				},
 				Err(TryRecvError::Empty) => {},
@@ -112,7 +122,7 @@ pub async fn start_oracle_agent(
 				Ok(None) => {},
 				// connection got lost
 				Err(e) => {
-					overlay_conn.disconnect();
+					//overlay_conn.disconnect();
 					tracing::error!("start_oracle_agent(): encounter error in overlay: {e:?}");
 
 					if let Err(e) = shutdown_sender_clone2.send(()) {
@@ -124,21 +134,32 @@ pub async fn start_oracle_agent(
 				},
 			}
 		}
+		overlay_conn.disconnect();
+		tracing::info!("start_oracle_agent(): ------- THE SPAWNED THREAD HAS STOPPED --------");
 	});
-
-	tokio::spawn(on_shutdown(shutdown_sender.clone(), async move {
-		tracing::info!("start_oracle_agent(): sending signal to shutdown overlay connection...");
-		if let Err(e) = disconnect_signal_sender.send(()).await {
-			tracing::warn!("start_oracle_agent(): failed to send disconnect signal: {e:?}");
-		}
-	}));
 
 	Ok(OracleAgent {
 		collector,
 		is_public_network: false,
 		message_sender: Some(sender),
 		shutdown_sender,
+		disconnect_signal_sender: disconnect_signal_sender_clone
 	})
+}
+
+impl Drop for OracleAgent {
+	fn drop(&mut self) {
+		tracing::info!("OracleAgent: Dropping OracleAgent...");
+		if let Err(e) = self.shutdown_sender.send(()) {
+			tracing::error!("stop(): Failed to send shutdown signal in OracleAgent: {:?}", e);
+		}
+
+		if let Err(e) = self.disconnect_signal_sender.send(()) {
+			tracing::warn!("start_oracle_agent(): failed to send disconnect signal: {e:?}");
+		} else {
+			tracing::info!("start_oracle_agent(): message was sent!!!");
+		}
+	}
 }
 
 impl OracleAgent {
@@ -191,14 +212,6 @@ impl OracleAgent {
 		self.collector.read().await.remove_data(slot);
 	}
 
-	/// Stops listening for new SCP messages.
-	pub fn stop(&self) -> Result<(), Error> {
-		tracing::info!("stop(): Shutting down OracleAgent...");
-		if let Err(e) = self.shutdown_sender.send(()) {
-			tracing::error!("stop(): Failed to send shutdown signal in OracleAgent: {:?}", e);
-		}
-		Ok(())
-	}
 }
 
 #[cfg(test)]
@@ -266,8 +279,6 @@ mod tests {
 		// These might return an error if the file does not exist, but that's fine.
 		let _ = scp_archive_storage.remove_file(target_slot);
 		let _ = tx_archive_storage.remove_file(target_slot);
-
-		agent.stop().expect("Failed to stop the agent");
 	}
 
 	#[tokio::test(flavor = "multi_thread")]
@@ -303,7 +314,6 @@ mod tests {
 		let _ = scp_archive_storage.remove_file(target_slot);
 		let _ = tx_archive_storage.remove_file(target_slot);
 
-		agent.stop().expect("Failed to stop the agent");
 	}
 
 	#[tokio::test(flavor = "multi_thread")]
@@ -324,6 +334,8 @@ mod tests {
 
 		// This slot should be archived on the public network
 		let target_slot = 44041116;
+		tracing::info!("let's sleep for 3 seconds,to get the network up and running");
+		sleep(Duration::from_secs(3)).await;
 		let proof_result = agent.get_proof(target_slot).await;
 
 		assert!(matches!(proof_result, Err(Error::ProofTimeout(_))));
@@ -332,7 +344,5 @@ mod tests {
 		let _ = scp_archive_storage.remove_file(target_slot);
 		let _ = tx_archive_storage.remove_file(target_slot);
 
-		println!("HOY PLEAAASE");
-		agent.stop().expect("Failed to stop the agent");
 	}
 }

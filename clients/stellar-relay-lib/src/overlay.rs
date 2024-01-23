@@ -1,11 +1,13 @@
+use async_std::channel::{Receiver, Sender, SendError, TryRecvError};
 use substrate_stellar_sdk::types::{ErrorCode, StellarMessage};
-use tokio::sync::{
-	mpsc,
-	mpsc::{
-		error::{SendError, TryRecvError},
-		Sender,
-	},
-};
+// use tokio::sync::{
+// 	mpsc,
+// 	mpsc::{
+// 		error::{SendError, TryRecvError},
+// 		Sender,
+// 	},
+// };
+use async_std::task;
 
 use crate::{
 	connection::{poll_messages_from_stellar, ConnectionInfo, Connector},
@@ -16,8 +18,8 @@ use crate::{
 
 /// Used to send/receive messages to/from Stellar Node
 pub struct StellarOverlayConnection {
-	sender: mpsc::Sender<StellarMessage>,
-	receiver: mpsc::Receiver<StellarMessage>,
+	sender: Sender<StellarMessage>,
+	receiver: Receiver<StellarMessage>,
 }
 
 impl StellarOverlayConnection {
@@ -37,17 +39,24 @@ impl StellarOverlayConnection {
 		log::info!("connect(): connecting to {conn_info:?}");
 
 		// this is a channel to communicate with the user/caller.
-		let (send_to_user_sender, send_to_user_receiver) = mpsc::channel::<StellarMessage>(1024);
+		let (send_to_user_sender, send_to_user_receiver) =
+			async_std::channel::bounded::<StellarMessage>(1024);
 
-		let (send_to_node_sender, send_to_node_receiver) = mpsc::channel::<StellarMessage>(1024);
+		let (send_to_node_sender, send_to_node_receiver) =
+			async_std::channel::bounded::<StellarMessage>(1024);
 
 		let connector = Connector::start(local_node_info, conn_info).await?;
 
-		tokio::spawn(poll_messages_from_stellar(
-			connector,
-			send_to_user_sender,
-			send_to_node_receiver,
-		));
+		task::spawn(async {
+			poll_messages_from_stellar(
+				connector,
+				send_to_user_sender,
+				send_to_node_receiver,
+			).await;
+
+			log::info!("connect(): poll_messages_from_stellar() finished.");
+
+		});
 
 		Ok(StellarOverlayConnection {
 			sender: send_to_node_sender,
@@ -59,8 +68,10 @@ impl StellarOverlayConnection {
 		loop {
 			if !self.is_alive() {
 				self.disconnect();
+				log::info!("listen(): return disconnect message");
 				return Err(Error::Disconnected)
 			}
+
 
 			match self.receiver.try_recv() {
 				Ok(StellarMessage::ErrorMsg(e)) => {
@@ -72,14 +83,20 @@ impl StellarOverlayConnection {
 					return Ok(None)
 				},
 				Ok(msg) => return Ok(Some(msg)),
-				Err(TryRecvError::Disconnected) => return Err(Error::Disconnected),
-				Err(TryRecvError::Empty) => continue,
+				Err(TryRecvError::Closed) => {
+					log::info!("listen(): receiver was closed.");
+					return Err(Error::Disconnected);
+				},
+				Err(TryRecvError::Empty) => {
+					continue;
+				},
 			}
 		}
 	}
 
 	pub fn is_alive(&mut self) -> bool {
-		let is_closed = self.sender.is_closed();
+		let mut is_closed = self.sender.is_closed();
+		is_closed = is_closed || self.receiver.is_closed();
 
 		if is_closed {
 			self.disconnect();

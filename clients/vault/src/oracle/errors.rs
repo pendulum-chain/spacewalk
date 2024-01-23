@@ -30,6 +30,7 @@ pub enum Error {
 	#[error(display = "{:?}", _0)]
 	ProofTimeout(String),
 
+
 	#[error(display = "{} is not initialized", _0)]
 	Uninitialized(String),
 

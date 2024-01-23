@@ -1,4 +1,5 @@
-use std::io::Write;
+use std::time::Duration;
+use async_std::io::{self, WriteExt};
 use substrate_stellar_sdk::types::{MessageType, SendMore, StellarMessage};
 
 use crate::connection::{
@@ -13,26 +14,14 @@ impl Connector {
 		// Create the XDR message outside the closure
 		let xdr_msg = self.create_xdr_message(msg)?;
 
-		// Clone the TcpStream (or its Arc<Mutex<_>> wrapper)
-		let stream_clone = self.tcp_stream.clone();
 
-		// this may really not be necessary
-		let write_result = tokio::task::spawn_blocking(move || {
-			let mut stream = stream_clone.lock().unwrap();
-			stream.write_all(&xdr_msg).map_err(|e| {
-				log::error!("send_to_node(): Failed to send message to node: {e:?}");
-				Error::WriteFailed(e.to_string())
-			})
-		});
-
-		// Await the result of the blocking task
-		match write_result.await {
-			Ok(result) => result,
-			Err(e) => {
-				log::error!("send_to_node(): Error occurred in blocking task: {e:?}");
-				Err(Error::WriteFailed(e.to_string()))
-			},
-		}
+		io::timeout(
+			Duration::from_secs(self.timeout_in_secs),
+				async {
+					self.tcp_stream.write_all(&xdr_msg).await?;
+					Ok(())
+				}
+		).await.map_err(|_| Error::Timeout)
 	}
 
 	pub async fn send_hello_message(&mut self) -> Result<(), Error> {

@@ -1,8 +1,8 @@
 #![allow(dead_code)] //todo: remove after being tested and implemented
 
+use async_std::channel::SendError;
 use crate::{connection::xdr_converter::Error as XDRError, helper::error_to_string};
 use substrate_stellar_sdk::{types::ErrorCode, StellarSdkError};
-use tokio::sync;
 
 #[derive(Debug, err_derive::Error)]
 pub enum Error {
@@ -52,7 +52,7 @@ pub enum Error {
 	XDRConversionError(XDRError),
 
 	#[error(display = "{:?}", _0)]
-	StdIOError(std::io::Error),
+	TcpStreamError(async_std::io::Error),
 
 	#[error(display = "{:?}", _0)]
 	StellarSdkError(StellarSdkError),
@@ -73,9 +73,9 @@ pub enum Error {
 	VersionStrTooLong,
 }
 
-impl From<std::io::Error> for Error {
-	fn from(e: std::io::Error) -> Self {
-		Error::StdIOError(e)
+impl From<async_std::io::Error> for Error {
+	fn from(e: async_std::io::Error) -> Self {
+		Error::TcpStreamError(e)
 	}
 }
 
@@ -85,8 +85,8 @@ impl From<XDRError> for Error {
 	}
 }
 
-impl<T> From<sync::mpsc::error::SendError<T>> for Error {
-	fn from(e: sync::mpsc::error::SendError<T>) -> Self {
+impl<T> From<SendError<T>> for Error {
+	fn from(e: SendError<T>) -> Self {
 		Error::SendFailed(e.to_string())
 	}
 }

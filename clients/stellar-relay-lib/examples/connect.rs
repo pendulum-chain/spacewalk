@@ -4,7 +4,7 @@ use stellar_relay_lib::{
 	StellarOverlayConfig,
 };
 
-#[tokio::main]
+#[async_std::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
 	env_logger::init();
 

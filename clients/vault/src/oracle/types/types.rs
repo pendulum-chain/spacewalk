@@ -1,8 +1,7 @@
 #![allow(non_snake_case)]
 
 use std::collections::BTreeMap;
-
-use tokio::sync::mpsc;
+use async_std::channel::Sender;
 
 use stellar_relay_lib::sdk::types::{Hash, StellarMessage, Uint64};
 
@@ -13,7 +12,7 @@ pub type Filename = String;
 
 pub type SerializedData = Vec<u8>;
 
-pub type StellarMessageSender = mpsc::Sender<StellarMessage>;
+pub type StellarMessageSender = Sender<StellarMessage>;
 
 /// For easy writing to file. BTreeMap to preserve order of the slots.
 pub(crate) type SlotEncodedMap = BTreeMap<Slot, SerializedData>;

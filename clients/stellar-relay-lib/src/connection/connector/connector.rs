@@ -1,9 +1,9 @@
 use std::{
 	fmt::{Debug, Formatter},
-	net::TcpStream,
-	sync::{Arc, Mutex},
-	time::Duration,
+	// net::TcpStream,
 };
+use std::net::Shutdown;
+use async_std::net::TcpStream;
 use substrate_stellar_sdk::{
 	types::{AuthenticatedMessageV0, Curve25519Public, HmacSha256Mac, MessageType},
 	XdrCodec,
@@ -37,7 +37,7 @@ pub struct Connector {
 	flow_controller: FlowController,
 
 	/// for writing/reading xdr messages to/from Stellar Node.
-	pub(crate) tcp_stream: Arc<Mutex<TcpStream>>,
+	pub(crate) tcp_stream: TcpStream
 }
 
 impl Debug for Connector {
@@ -53,7 +53,28 @@ impl Debug for Connector {
 			.field("receive_scp_messages", &self.receive_scp_messages)
 			.field("handshake_state", &self.handshake_state)
 			.field("flow_controller", &self.flow_controller)
+			.field("local_addr",
+				   &self.tcp_stream.local_addr()
+					   .map(|addr| addr.to_string())
+					   .unwrap_or("cannot provide".to_string())
+			)
+			.field("peer_addr",
+			&self.tcp_stream.peer_addr()
+					   .map(|addr| addr.to_string())
+					   .unwrap_or("cannot provide".to_string())
+			)
 			.finish()
+	}
+}
+
+impl Drop for Connector {
+	fn drop(&mut self) {
+		if let Err(e) = self.tcp_stream.shutdown(Shutdown::Both) {
+			log::error!("drop(): failed to shutdown tcp stream: {}", e);
+		} else {
+			log::info!("drop(): tcp stream successfully shutdown");
+		}
+
 	}
 }
 
@@ -115,21 +136,15 @@ impl Connector {
 
 	/// returns a Connector and starts creating a connection to Stellar
 	pub async fn start(local_node: NodeInfo, conn_info: ConnectionInfo) -> Result<Self, Error> {
+		// Create the stream
+		let tcp_stream = TcpStream::connect(conn_info.address()).await
+			.map_err(|e| Error::ConnectionFailed(e.to_string()))?;
+
 		let connection_auth = ConnectionAuth::new(
 			&local_node.network_id,
 			conn_info.keypair(),
 			conn_info.auth_cert_expiration,
 		);
-
-		// Create the stream
-		let tcp_stream = TcpStream::connect(conn_info.address())
-			.map_err(|e| Error::ConnectionFailed(e.to_string()))?;
-
-		if let Err(e) =
-			tcp_stream.set_read_timeout(Some(Duration::from_secs(conn_info.timeout_in_secs)))
-		{
-			log::warn!("start(): failed to set read timeout for the stream: {e:?}");
-		}
 
 		let mut connector = Connector {
 			local: LocalInfo::new(local_node),
@@ -142,7 +157,7 @@ impl Connector {
 			receive_scp_messages: conn_info.recv_scp_msgs,
 			handshake_state: HandshakeState::Connecting,
 			flow_controller: FlowController::default(),
-			tcp_stream: Arc::new(Mutex::new(tcp_stream)),
+			tcp_stream
 		};
 
 		// To start the handshake, send a hello message to Stellar
@@ -225,13 +240,20 @@ impl Connector {
 	) {
 		self.flow_controller.enable(local_overlay_version, remote_overlay_version)
 	}
+
+	// pub fn shutdown(&mut self) {
+	// 	if let Err(e) = self.tcp_stream.shutdown(Shutdown::Both) {
+	// 		log::error!("shutdown(): failed to shutdown tcp stream: {}", e);
+	// 	} else {
+	// 		log::info!("shutdown(): tcp stream successfully shutdown");
+	// 	}
+	// }
 }
 
 #[cfg(test)]
 mod test {
 	use crate::{connection::hmac::HMacKeys, node::RemoteInfo, StellarOverlayConfig};
 	use serial_test::serial;
-	use std::net::Shutdown;
 
 	use substrate_stellar_sdk::{
 		compound_types::LimitedString,
@@ -263,16 +285,6 @@ mod test {
 		new_auth_cert
 	}
 
-	impl Connector {
-		fn shutdown(&mut self) {
-			self.tcp_stream
-				.lock()
-				.unwrap()
-				.shutdown(Shutdown::Both)
-				.expect("should shutdown both read and write of stream");
-		}
-	}
-
 	async fn create_connector() -> (NodeInfo, ConnectionInfo, Connector) {
 		let cfg_file_path = "./resources/config/testnet/stellar_relay_config_sdftest1.json";
 		let secret_key_path = "./resources/secretkey/stellar_secretkey_testnet";
@@ -291,10 +303,10 @@ mod test {
 		(node_info, conn_info, connector)
 	}
 
-	#[tokio::test]
+	#[async_std::test]
 	#[serial]
 	async fn create_new_connector_works() {
-		let (node_info, _, mut connector) = create_connector().await;
+		let (node_info, _, connector) = create_connector().await;
 
 		let connector_local_node = connector.local.node();
 
@@ -303,11 +315,9 @@ mod test {
 		assert_eq!(connector_local_node.overlay_min_version, node_info.overlay_min_version);
 		assert_eq!(connector_local_node.version_str, node_info.version_str);
 		assert_eq!(connector_local_node.network_id, node_info.network_id);
-
-		connector.shutdown();
 	}
 
-	#[tokio::test]
+	#[async_std::test]
 	#[serial]
 	async fn connector_local_sequence_works() {
 		let (_, _, mut connector) = create_connector().await;
@@ -315,10 +325,10 @@ mod test {
 		connector.increment_local_sequence();
 		assert_eq!(connector.local_sequence(), 1);
 
-		connector.shutdown();
+		
 	}
 
-	#[tokio::test]
+	#[async_std::test]
 	#[serial]
 	async fn connector_set_remote_works() {
 		let (_, _, mut connector) = create_connector().await;
@@ -341,10 +351,10 @@ mod test {
 
 		assert!(connector.remote().is_some());
 
-		connector.shutdown();
+		
 	}
 
-	#[tokio::test]
+	#[async_std::test]
 	#[serial]
 	async fn connector_increment_remote_sequence_works() {
 		let (_, _, mut connector) = create_connector().await;
@@ -371,12 +381,13 @@ mod test {
 		connector.increment_remote_sequence().unwrap();
 		assert_eq!(connector.remote().unwrap().sequence(), 3);
 
-		connector.shutdown();
+		
 	}
 
-	#[tokio::test]
+	#[async_std::test]
 	#[serial]
 	async fn connector_get_and_set_hmac_keys_works() {
+		
 		//arrange
 		let (_, _, mut connector) = create_connector().await;
 		let connector_auth = &connector.connection_auth;
@@ -409,12 +420,14 @@ mod test {
 		//assert
 		assert!(connector.hmac_keys().is_some());
 
-		connector.shutdown();
+		
 	}
 
-	#[tokio::test]
+	#[async_std::test]
 	#[serial]
 	async fn connector_method_works() {
+		env_logger::init();
+		
 		let (_, conn_config, mut connector) = create_connector().await;
 
 		assert_eq!(connector.remote_called_us(), conn_config.remote_called_us);
@@ -426,18 +439,17 @@ mod test {
 
 		connector.handshake_completed();
 		assert!(connector.is_handshake_created());
-
-		connector.shutdown();
 	}
 
-	#[tokio::test]
+	#[async_std::test]
 	#[serial]
 	async fn enable_flow_controller_works() {
+		
 		let (node_info, _, mut connector) = create_connector().await;
 
 		assert!(!connector.inner_check_to_send_more(MessageType::ScpMessage));
 		connector.enable_flow_controller(node_info.overlay_version, node_info.overlay_version);
 
-		connector.shutdown();
+		
 	}
 }
