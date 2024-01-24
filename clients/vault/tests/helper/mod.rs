@@ -37,10 +37,6 @@ lazy_static! {
 	pub static ref TEN_TO_ONE_RATIO: FixedU128 = FixedU128::saturating_from_rational(1u128, 10u128);
 }
 
-async fn set_exchange_rate(client: &SpacewalkParachain, currency: CurrencyId, ratio: FixedU128) {
-	set_exchange_rate_and_wait(client, currency, ratio).await;
-}
-
 async fn initialize_wallets(
 	vault_stellar_secret: &String,
 	user_stellar_secret: &String,
@@ -80,10 +76,10 @@ async fn setup_chain_providers(
 		DEFAULT_WRAPPED_CURRENCY_STELLAR_TESTNET
 	};
 
-	set_exchange_rate(&parachain_rpc, DEFAULT_TESTING_CURRENCY, *ONE_TO_ONE_RATIO).await;
-	set_exchange_rate(&parachain_rpc, default_wrapped_currency, *TEN_TO_ONE_RATIO).await;
-	set_exchange_rate(&parachain_rpc, LESS_THAN_4_CURRENCY_CODE, *TEN_TO_ONE_RATIO).await;
-	set_exchange_rate(&parachain_rpc, CurrencyId::StellarNative, *TEN_TO_ONE_RATIO).await;
+	set_exchange_rate_and_wait(&parachain_rpc, DEFAULT_TESTING_CURRENCY, *ONE_TO_ONE_RATIO).await;
+	set_exchange_rate_and_wait(&parachain_rpc, default_wrapped_currency, *TEN_TO_ONE_RATIO).await;
+	set_exchange_rate_and_wait(&parachain_rpc, LESS_THAN_4_CURRENCY_CODE, *TEN_TO_ONE_RATIO).await;
+	set_exchange_rate_and_wait(&parachain_rpc, CurrencyId::StellarNative, *TEN_TO_ONE_RATIO).await;
 
 	let path = tmp_dir.path().to_str().expect("should return a string").to_string();
 
