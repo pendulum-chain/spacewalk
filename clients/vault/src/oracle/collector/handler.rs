@@ -36,10 +36,7 @@ impl ScpMessageCollector {
 				tracing::debug!(
 					"Handling Incoming ScpEnvelopes for slot {slot}: requesting TxSet..."
 				);
-				message_sender
-					.send(StellarMessage::GetTxSet(txset_hash))
-					.await
-					.map_err(|e| Error::Other(format!("Send Error: {e:?}")))?;
+				message_sender.send(StellarMessage::GetTxSet(txset_hash)).await?;
 
 				// let's save this for creating the proof later on.
 				self.save_txset_hash_and_slot(txset_hash, slot);

@@ -4,7 +4,6 @@ use crate::connection::{xdr_converter::get_xdr_message_length, Connector, Error,
 use async_std::io::ReadExt;
 use substrate_stellar_sdk::{types::StellarMessage, XdrCodec};
 use tokio::{
-	io::AsyncReadExt,
 	sync::{mpsc, mpsc::error::TryRecvError},
 	time::{sleep, Duration},
 };
@@ -22,19 +21,13 @@ pub(crate) async fn poll_messages_from_stellar(
 	mut send_to_node_receiver: mpsc::Receiver<StellarMessage>,
 ) {
 	log::info!("poll_messages_from_stellar(): started.");
-	let mut counter = 0;
 
 	loop {
-		
 		if send_to_user_sender.is_closed() {
 			log::info!("poll_messages_from_stellar(): closing receiver during disconnection");
 			// close this channel as communication to user was closed.
 			break
 		}
-
-		// just for testing, remove me
-		// log::info!("poll loop");
-		//log_counter(&mut counter).await;
 
 		// check for messages from user.
 		match send_to_node_receiver.try_recv() {
@@ -43,7 +36,7 @@ pub(crate) async fn poll_messages_from_stellar(
 					log::error!("poll_messages_from_stellar(): Error occurred during sending message to node: {e:?}");
 				},
 			Err(TryRecvError::Disconnected) => {
-				log::info!("poll_messages_from_stellar(): Recv channel (for sending message to node) got disconnected.");
+				log::trace!("poll_messages_from_stellar(): Recv channel (for sending message to node) got disconnected.");
 				break
 			},
 			Err(TryRecvError::Empty) => {},
@@ -59,15 +52,14 @@ pub(crate) async fn poll_messages_from_stellar(
 		};
 
 		match connector.process_raw_message(xdr).await {
-			Ok(Some(stellar_msg)) => {
-				// push message to user
+			Ok(Some(stellar_msg)) =>
+			// push message to user
 				if let Err(e) = send_to_user_sender.send(stellar_msg.clone()).await {
 					log::warn!("poll_messages_from_stellar(): Error occurred during sending message {} to user: {e:?}",
 						String::from_utf8(stellar_msg.to_base64_xdr())
 						.unwrap_or_else(|_| format!("{:?}", stellar_msg.to_base64_xdr()))
 					);
-				}
-			},
+				},
 			Ok(None) => {},
 			Err(e) => {
 				log::error!("poll_messages_from_stellar(): Error occurred during processing xdr message: {e:?}");
@@ -75,7 +67,6 @@ pub(crate) async fn poll_messages_from_stellar(
 			},
 		}
 	}
-
 	// make sure to shutdown the stream
 	if let Err(e) = connector.tcp_stream.shutdown(Shutdown::Both) {
 		log::error!("poll_messages_from_stellar(): Failed to shutdown the tcp stream: {e:?}");
@@ -86,29 +77,20 @@ pub(crate) async fn poll_messages_from_stellar(
 	log::info!("poll_messages_from_stellar(): stopped.");
 }
 
-// just for testing the outer loop is getting polled.
-// If the counter increases, means the yield from read_message_from_stellar
-// is working.
-async fn log_counter(counter: &mut u32) {
-	*counter += 1;
-	log::info!("Outer loop iteration: {}", *counter);
-	tokio::time::sleep(Duration::from_millis(100)).await;
-}
-
 /// Returns Xdr format of the `StellarMessage` sent from the Stellar Node
 async fn read_message_from_stellar(connector: &mut Connector) -> Result<Xdr, Error> {
 	// holds the number of bytes that were missing from the previous stellar message.
 	let mut lack_bytes_from_prev = 0;
 	let mut readbuf: Vec<u8> = vec![];
 	let mut buff_for_reading = vec![0; 4];
+
 	loop {
-		//log::info!("read loop");
 		// check whether or not we should read the bytes as:
 		// 1. the length of the next stellar message
 		// 2. the remaining bytes of the previous stellar message
 		match connector.tcp_stream.read(&mut buff_for_reading).await {
 			Ok(size) if size == 0 => {
-				//if we remove the yield here, we have the risk that the process will become a 
+				// if we remove the yield here, we have the risk that the process will become a
 				// "busy one", never letting other processes handle the exit
 				tokio::task::yield_now().await;
 				sleep(Duration::from_millis(100)).await;
@@ -122,7 +104,7 @@ async fn read_message_from_stellar(connector: &mut Connector) -> Result<Xdr, Err
 				// If it's not enough, skip it.
 				if expect_msg_len == 0 {
 					// there's nothing to read; wait for the next iteration
-					log::info!("read_message_from_stellar(): expect_msg_len == 0");
+					log::trace!("read_message_from_stellar(): expect_msg_len == 0");
 					tokio::task::yield_now().await;
 					sleep(Duration::from_millis(100)).await;
 					continue
@@ -139,12 +121,10 @@ async fn read_message_from_stellar(connector: &mut Connector) -> Result<Xdr, Err
 				)
 				.await
 				{
-					Ok(None) => {
-						continue
-					},
+					Ok(None) => continue,
 					Ok(Some(xdr)) => return Ok(xdr),
 					Err(e) => {
-						log::info!("read_message_from_stellar(): ERROR: {e:?}");
+						log::trace!("read_message_from_stellar(): ERROR: {e:?}");
 						return Err(e)
 					},
 				}
@@ -158,19 +138,17 @@ async fn read_message_from_stellar(connector: &mut Connector) -> Result<Xdr, Err
 				match read_unfinished_message(connector, &mut lack_bytes_from_prev, &mut readbuf)
 					.await
 				{
-					Ok(None) => {
-						continue
-					},
+					Ok(None) => continue,
 					Ok(Some(xdr)) => return Ok(xdr),
 					Err(e) => {
-						log::info!("read_message_from_stellar(): ERROR: {e:?}");
+						log::trace!("read_message_from_stellar(): ERROR: {e:?}");
 						return Err(e)
 					},
 				}
 			},
 
 			Err(e) => {
-				log::info!("read_message_from_stellar(): ERROR reading messages: {e:?}");
+				log::trace!("read_message_from_stellar(): ERROR reading messages: {e:?}");
 				return Err(Error::ReadFailed(e.to_string()))
 			},
 		}

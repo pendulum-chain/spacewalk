@@ -74,12 +74,7 @@ impl Debug for Connector {
 
 impl Drop for Connector {
 	fn drop(&mut self) {
-		if let Err(e) = self.tcp_stream.shutdown(Shutdown::Both) {
-			log::error!("drop(): failed to shutdown tcp stream: {}", e);
-		} else {
-			log::info!("drop(): tcp stream successfully shutdown");
-		}
-
+		self.stop();
 	}
 }
 
@@ -171,6 +166,12 @@ impl Connector {
 
 		Ok(connector)
 	}
+
+	pub fn stop(&mut self) {
+		if let Err(e) = self.tcp_stream.shutdown(Shutdown::Both) {
+			log::error!("stop(): failed to shutdown tcp stream: {}", e);
+		}
+	}
 }
 
 // getters setters
@@ -246,14 +247,6 @@ impl Connector {
 	) {
 		self.flow_controller.enable(local_overlay_version, remote_overlay_version)
 	}
-
-	// pub fn shutdown(&mut self) {
-	// 	if let Err(e) = self.tcp_stream.shutdown(Shutdown::Both) {
-	// 		log::error!("shutdown(): failed to shutdown tcp stream: {}", e);
-	// 	} else {
-	// 		log::info!("shutdown(): tcp stream successfully shutdown");
-	// 	}
-	// }
 }
 
 #[cfg(test)]
@@ -423,8 +416,6 @@ mod test {
 	#[tokio::test]
 	#[serial]
 	async fn connector_method_works() {
-		env_logger::init();
-
 		let (_, conn_config, mut connector) = create_connector().await;
 
 		assert_eq!(connector.remote_called_us(), conn_config.remote_called_us);
