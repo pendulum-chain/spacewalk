@@ -128,7 +128,7 @@ pub async fn start_oracle_agent(
 	});
 
 	tokio::spawn(on_shutdown(shutdown_sender.clone(), async move {
-		tracing::info!("start_oracle_agent(): sending signal to shutdown overlay connection...");
+		tracing::debug!("start_oracle_agent(): sending signal to shutdown overlay connection...");
 		if let Err(e) = disconnect_signal_sender.send(()).await {
 			tracing::warn!("start_oracle_agent(): failed to send disconnect signal: {e:?}");
 		}
@@ -200,7 +200,7 @@ impl OracleAgent {
 
 	/// Stops listening for new SCP messages.
 	pub fn stop(&self) {
-		tracing::info!("stop(): Shutting down OracleAgent...");
+		tracing::debug!("stop(): Shutting down OracleAgent...");
 		if let Err(e) = self.shutdown_sender.send(()) {
 			tracing::error!("stop(): Failed to send shutdown signal in OracleAgent: {:?}", e);
 		}
@@ -221,6 +221,10 @@ mod tests {
 	#[ntest::timeout(1_800_000)] // timeout at 30 minutes
 	#[serial]
 	async fn test_get_proof_for_current_slot() {
+		// let it run for a few seconds, making sure that the other tests have successfully shutdown
+		// their connection to Stellar Node
+		sleep(Duration::from_secs(2)).await;
+
 		env_logger::init();
 		let shutdown_sender = ShutdownSender::new();
 
@@ -240,10 +244,10 @@ mod tests {
 			sleep(Duration::from_secs(1)).await;
 			latest_slot = agent.last_slot_index().await;
 		}
-		// use a future slot (1 slots ahead) to ensure enough messages can be collected
+		// use a future slot (2 slots ahead) to ensure enough messages can be collected
 		// and to avoid "missed" messages.
-		latest_slot += 1;
-		sleep(Duration::from_secs(5)).await;
+		latest_slot += 2;
+
 		let proof_result = agent.get_proof(latest_slot).await;
 		assert!(proof_result.is_ok(), "Failed to get proof for slot: {}", latest_slot);
 	}
@@ -251,6 +255,10 @@ mod tests {
 	#[tokio::test(flavor = "multi_thread")]
 	#[serial]
 	async fn test_get_proof_for_archived_slot() {
+		// let it run for a few seconds, making sure that the other tests have successfully shutdown
+		// their connection to Stellar Node
+		sleep(Duration::from_secs(2)).await;
+
 		let scp_archive_storage = ScpArchiveStorage::default();
 		let tx_archive_storage = TransactionsArchiveStorage::default();
 
@@ -278,6 +286,10 @@ mod tests {
 	#[tokio::test(flavor = "multi_thread")]
 	#[serial]
 	async fn test_get_proof_for_archived_slot_with_fallback() {
+		// let it run for a few seconds, making sure that the other tests have successfully shutdown
+		// their connection to Stellar Node
+		sleep(Duration::from_secs(2)).await;
+
 		let scp_archive_storage = ScpArchiveStorage::default();
 		let tx_archive_storage = TransactionsArchiveStorage::default();
 

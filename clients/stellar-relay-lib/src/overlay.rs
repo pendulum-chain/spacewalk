@@ -58,7 +58,6 @@ impl StellarOverlayConnection {
 	pub fn listen(&mut self) -> Result<Option<StellarMessage>, Error> {
 		loop {
 			if !self.is_alive() {
-				self.stop();
 				return Err(Error::Disconnected)
 			}
 

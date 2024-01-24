@@ -44,10 +44,6 @@ fn overlay_infos(is_mainnet: bool) -> (NodeInfo, ConnectionInfo) {
 #[tokio::test(flavor = "multi_thread")]
 #[serial]
 async fn stellar_overlay_should_receive_scp_messages() {
-	// let it run for a few seconds, making sure that the other tests have successfully shutdown
-	// their connection to Stellar Node
-	sleep(Duration::from_secs(2));
-
 	let (node_info, conn_info) = overlay_infos(false);
 
 	let overlay_connection = Arc::new(Mutex::new(
@@ -77,10 +73,6 @@ async fn stellar_overlay_should_receive_scp_messages() {
 #[tokio::test(flavor = "multi_thread")]
 #[serial]
 async fn stellar_overlay_should_receive_tx_set() {
-	// let it run for a few seconds, making sure that the other tests have successfully shutdown
-	// their connection to Stellar Node
-	sleep(Duration::from_secs(2));
-
 	//arrange
 	fn get_tx_set_hash(x: &ScpStatementExternalize) -> Hash {
 		let scp_value = x.commit.value.get_vec();
@@ -142,10 +134,6 @@ async fn stellar_overlay_should_receive_tx_set() {
 #[tokio::test(flavor = "multi_thread")]
 #[serial]
 async fn stellar_overlay_disconnect_works() {
-	// let it run for a few seconds, making sure that the other tests have successfully shutdown
-	// their connection to Stellar Node
-	sleep(Duration::from_secs(2));
-
 	let (node_info, conn_info) = overlay_infos(false);
 
 	let mut overlay_connection =
