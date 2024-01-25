@@ -20,7 +20,9 @@ use crate::types::FilterWith;
 
 use super::*;
 
-const SECRET: &str = "SBLI7RKEJAEFGLZUBSCOFJHQBPFYIIPLBCKN7WVCWT4NEG2UJEW33N73";
+// const SECRET: &str = "SBLI7RKEJAEFGLZUBSCOFJHQBPFYIIPLBCKN7WVCWT4NEG2UJEW33N73";
+
+const SECRET: &str = "SB6WHKIU2HGVBRNKNOEOQUY4GFC4ZLG5XPGWLEAHTIZXBXXYACC76VSQ";
 
 #[derive(Clone)]
 struct MockFilter;
@@ -196,6 +198,9 @@ async fn fetch_horizon_and_process_new_transactions_success() {
 
 	let horizon_client = reqwest::Client::new();
 	let secret = secret_key_from_encoding(SECRET);
+	let pubkey= secret.get_public().to_encoding();
+	let x = std::str::from_utf8(&pubkey);
+	println!("public key: {x:?}" );
 	let mut fetcher = HorizonFetcher::new(horizon_client, secret.get_public().clone(), false);
 
 	assert!(slot_env_map.read().await.is_empty());
