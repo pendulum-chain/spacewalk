@@ -5,9 +5,9 @@
   },
   "node_info": {
     "ledger_version": 20,
-    "overlay_version": 31,
+    "overlay_version": 30,
     "overlay_min_version": 27,
-    "version_str": "stellar-core 20.1.0 (114b833e755400178a57142f45b7fb892ddb034f)",
+    "version_str": "stellar-core 20.0.0.rc1 (ecb24df104c2453a00fa5097d2e879d7731b9596)",
     "is_pub_net": false
   },
   "stellar_history_archive_urls": []

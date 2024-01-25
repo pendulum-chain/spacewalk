@@ -210,7 +210,7 @@ impl OracleAgent {
 #[cfg(test)]
 mod tests {
 	use crate::oracle::{
-		get_random_secret_key, get_test_secret_key, get_test_stellar_relay_config,
+		get_random_secret_key, get_test_secret_key, specific_stellar_relay_config,
 		traits::ArchiveStorage, ScpArchiveStorage, TransactionsArchiveStorage,
 	};
 
@@ -225,12 +225,11 @@ mod tests {
 		// their connection to Stellar Node
 		sleep(Duration::from_secs(2)).await;
 
-		env_logger::init();
 		let shutdown_sender = ShutdownSender::new();
 
 		// We use a random secret key to avoid conflicts with other tests.
 		let agent = start_oracle_agent(
-			get_test_stellar_relay_config(true),
+			specific_stellar_relay_config(true, 0),
 			&get_random_secret_key(),
 			shutdown_sender,
 		)
@@ -264,7 +263,7 @@ mod tests {
 
 		let shutdown_sender = ShutdownSender::new();
 		let agent = start_oracle_agent(
-			get_test_stellar_relay_config(true),
+			specific_stellar_relay_config(true, 1),
 			&get_test_secret_key(true),
 			shutdown_sender,
 		)
@@ -293,7 +292,7 @@ mod tests {
 		let scp_archive_storage = ScpArchiveStorage::default();
 		let tx_archive_storage = TransactionsArchiveStorage::default();
 
-		let base_config = get_test_stellar_relay_config(true);
+		let base_config = specific_stellar_relay_config(true, 2);
 		// We add two fake archive urls to the config to make sure that the agent will actually fall
 		// back to other archives.
 		let mut archive_urls = base_config.stellar_history_archive_urls().clone();
@@ -327,7 +326,7 @@ mod tests {
 		let scp_archive_storage = ScpArchiveStorage::default();
 		let tx_archive_storage = TransactionsArchiveStorage::default();
 
-		let base_config = get_test_stellar_relay_config(true);
+		let base_config = specific_stellar_relay_config(true, 0);
 		let modified_config: StellarOverlayConfig =
 			StellarOverlayConfig { stellar_history_archive_urls: vec![], ..base_config };
 

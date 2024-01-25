@@ -1,12 +1,7 @@
-use std::net::Shutdown;
-
 use crate::connection::{xdr_converter::get_xdr_message_length, Connector, Error, Xdr};
 use async_std::io::ReadExt;
 use substrate_stellar_sdk::{types::StellarMessage, XdrCodec};
-use tokio::{
-	sync::{mpsc, mpsc::error::TryRecvError},
-	time::{sleep, Duration},
-};
+use tokio::sync::{mpsc, mpsc::error::TryRecvError};
 
 /// Polls for messages coming from the Stellar Node and communicates it back to the user
 ///
@@ -35,10 +30,7 @@ pub(crate) async fn poll_messages_from_stellar(
 				if let Err(e) = connector.send_to_node(msg).await {
 					log::error!("poll_messages_from_stellar(): Error occurred during sending message to node: {e:?}");
 				},
-			Err(TryRecvError::Disconnected) => {
-				log::trace!("poll_messages_from_stellar(): Recv channel (for sending message to node) got disconnected.");
-				break
-			},
+			Err(TryRecvError::Disconnected) => break,
 			Err(TryRecvError::Empty) => {},
 		}
 
@@ -67,14 +59,13 @@ pub(crate) async fn poll_messages_from_stellar(
 			},
 		}
 	}
-	// make sure to shutdown the stream
-	if let Err(e) = connector.tcp_stream.shutdown(Shutdown::Both) {
-		log::error!("poll_messages_from_stellar(): Failed to shutdown the tcp stream: {e:?}");
-	};
+
+	// make sure to shutdown the connector
+	connector.stop();
 	send_to_node_receiver.close();
 	drop(send_to_user_sender);
 
-	log::info!("poll_messages_from_stellar(): stopped.");
+	log::debug!("poll_messages_from_stellar(): stopped.");
 }
 
 /// Returns Xdr format of the `StellarMessage` sent from the Stellar Node
@@ -89,13 +80,7 @@ async fn read_message_from_stellar(connector: &mut Connector) -> Result<Xdr, Err
 		// 1. the length of the next stellar message
 		// 2. the remaining bytes of the previous stellar message
 		match connector.tcp_stream.read(&mut buff_for_reading).await {
-			Ok(size) if size == 0 => {
-				// if we remove the yield here, we have the risk that the process will become a
-				// "busy one", never letting other processes handle the exit
-				tokio::task::yield_now().await;
-				sleep(Duration::from_millis(100)).await;
-				continue
-			},
+			Ok(size) if size == 0 => continue,
 			Ok(_) if lack_bytes_from_prev == 0 => {
 				// if there are no more bytes lacking from the previous message,
 				// then check the size of next stellar message.
@@ -105,8 +90,6 @@ async fn read_message_from_stellar(connector: &mut Connector) -> Result<Xdr, Err
 				if expect_msg_len == 0 {
 					// there's nothing to read; wait for the next iteration
 					log::trace!("read_message_from_stellar(): expect_msg_len == 0");
-					tokio::task::yield_now().await;
-					sleep(Duration::from_millis(100)).await;
 					continue
 				}
 
@@ -133,6 +116,8 @@ async fn read_message_from_stellar(connector: &mut Connector) -> Result<Xdr, Err
 				// The next few bytes was read. Add it to the readbuf.
 				lack_bytes_from_prev -= size;
 				readbuf.append(&mut buff_for_reading);
+				// make sure to cleanup the buffer
+				buff_for_reading = vec![0; 4];
 
 				// let's read the continuation number of bytes from the previous message.
 				match read_unfinished_message(connector, &mut lack_bytes_from_prev, &mut readbuf)
@@ -159,7 +144,8 @@ async fn read_message_from_stellar(connector: &mut Connector) -> Result<Xdr, Err
 /// This reads a number of bytes based on the expected message length.
 ///
 /// # Arguments
-/// * `stream` - the TcpStream for reading the xdr stellar message
+/// * `connector` - a ref struct that contains the config and necessary info for connecting to
+///   Stellar Node
 /// * `lack_bytes_from_prev` - the number of bytes remaining, to complete the previous message
 /// * `readbuf` - the buffer that holds the bytes of the previous and incomplete message
 /// * `xpect_msg_len` - the expected # of bytes of the Stellar message
@@ -195,7 +181,8 @@ async fn read_message(
 /// Reads a continuation of bytes that belong to the previous message
 ///
 /// # Arguments
-/// * `stream` - the TcpStream for reading the xdr stellar message
+/// * `connector` - a ref struct that contains the config and necessary info for connecting to
+///   Stellar Node
 /// * `lack_bytes_from_prev` - the number of bytes remaining, to complete the previous message
 /// * `readbuf` - the buffer that holds the bytes of the previous and incomplete message
 async fn read_unfinished_message(
