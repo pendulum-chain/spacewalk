@@ -52,9 +52,6 @@ pub enum Error {
 	XDRConversionError(XDRError),
 
 	#[error(display = "{:?}", _0)]
-	StdIOError(std::io::Error),
-
-	#[error(display = "{:?}", _0)]
 	StellarSdkError(StellarSdkError),
 
 	#[error(display = "Stellar overlay disconnected")]
@@ -71,12 +68,6 @@ pub enum Error {
 
 	#[error(display = "Config Error: Version String too long")]
 	VersionStrTooLong,
-}
-
-impl From<std::io::Error> for Error {
-	fn from(e: std::io::Error) -> Self {
-		Error::StdIOError(e)
-	}
 }
 
 impl From<XDRError> for Error {

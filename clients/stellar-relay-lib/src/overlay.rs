@@ -58,7 +58,6 @@ impl StellarOverlayConnection {
 	pub fn listen(&mut self) -> Result<Option<StellarMessage>, Error> {
 		loop {
 			if !self.is_alive() {
-				self.disconnect();
 				return Err(Error::Disconnected)
 			}
 
@@ -82,20 +81,20 @@ impl StellarOverlayConnection {
 		let is_closed = self.sender.is_closed();
 
 		if is_closed {
-			self.disconnect();
+			self.stop();
 		}
 
 		!is_closed
 	}
 
-	pub fn disconnect(&mut self) {
-		log::info!("disconnect(): closing connection to overlay network");
+	pub fn stop(&mut self) {
+		log::info!("stop(): closing connection to overlay network");
 		self.receiver.close();
 	}
 }
 
 impl Drop for StellarOverlayConnection {
 	fn drop(&mut self) {
-		self.disconnect();
+		self.stop();
 	}
 }

@@ -1,13 +1,13 @@
 use crate::{
 	connection::ConnectionInfo, node::NodeInfo, StellarOverlayConfig, StellarOverlayConnection,
 };
+use async_std::{future::timeout, sync::Mutex};
 use serial_test::serial;
 use std::{sync::Arc, thread::sleep, time::Duration};
 use substrate_stellar_sdk::{
 	types::{ScpStatementExternalize, ScpStatementPledges, StellarMessage},
 	Hash, IntoHash,
 };
-use tokio::{sync::Mutex, time::timeout};
 
 fn secret_key(is_mainnet: bool) -> String {
 	let path = if is_mainnet {
@@ -59,7 +59,7 @@ async fn stellar_overlay_should_receive_scp_messages() {
 		if let Ok(Some(msg)) = ov_conn_locked.listen() {
 			scps_vec_clone.lock().await.push(msg);
 
-			ov_conn_locked.disconnect();
+			ov_conn_locked.stop();
 		}
 	})
 	.await
@@ -107,15 +107,11 @@ async fn stellar_overlay_should_receive_tx_set() {
 				StellarMessage::TxSet(set) => {
 					let tx_set_hash = set.into_hash().expect("should return a hash");
 					actual_tx_set_hashes_clone.lock().await.push(tx_set_hash);
-
-					ov_conn_locked.disconnect();
 					break
 				},
 				StellarMessage::GeneralizedTxSet(set) => {
 					let tx_set_hash = set.into_hash().expect("should return a hash");
 					actual_tx_set_hashes_clone.lock().await.push(tx_set_hash);
-
-					ov_conn_locked.disconnect();
 					break
 				},
 				_ => {},
@@ -145,7 +141,7 @@ async fn stellar_overlay_disconnect_works() {
 
 	// let it run for a second, before disconnecting.
 	sleep(Duration::from_secs(1));
-	overlay_connection.disconnect();
+	overlay_connection.stop();
 
 	// let the disconnection call pass for a few seconds, before checking its status.
 	sleep(Duration::from_secs(3));

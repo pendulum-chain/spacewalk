@@ -20,7 +20,7 @@ use std::{future::Future, sync::Arc};
 use stellar_relay_lib::StellarOverlayConfig;
 use tokio::sync::RwLock;
 use vault::{
-	oracle::{get_test_secret_key, get_test_stellar_relay_config, start_oracle_agent, OracleAgent},
+	oracle::{get_test_secret_key, random_stellar_relay_config, start_oracle_agent, OracleAgent},
 	ArcRwLock,
 };
 use wallet::StellarWallet;
@@ -28,7 +28,7 @@ use wallet::StellarWallet;
 pub type StellarPublicKey = [u8; 32];
 
 lazy_static! {
-	pub static ref CFG: StellarOverlayConfig = get_test_stellar_relay_config(false);
+	pub static ref CFG: StellarOverlayConfig = random_stellar_relay_config(false);
 	pub static ref SECRET_KEY: String = get_test_secret_key(false);
 	// TODO clean this up by extending the `get_test_secret_key()` function
 	pub static ref DESTINATION_SECRET_KEY: String = "SDNQJEIRSA6YF5JNS6LQLCBF2XVWZ2NJV3YLC322RGIBJIJRIRGWKLEF".to_string();
