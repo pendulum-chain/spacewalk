@@ -210,10 +210,10 @@ fn parse_collateral_and_amount(
 
 #[derive(Parser, Clone, Debug)]
 pub struct VaultServiceConfig {
-	#[clap(long, help = "The Stellar secret key that is used to sign transactions.")]
+	#[clap(long, env = "STELLAR_VAULT_SECRET_KEY_FILEPATH", help = "The Stellar secret key that is used to sign transactions.")]
 	pub stellar_vault_secret_key_filepath: String,
 
-	#[clap(long, help = "The filepath where the json config for StellarOverlay is located")]
+	#[clap(long, env = "STELLAR_OVERLAY_CONFIG_FILEPATH", help = "The filepath where the json config for StellarOverlay is located")]
 	pub stellar_overlay_config_filepath: String,
 
 	/// Pass the faucet URL for auto-registration.
@@ -221,7 +221,7 @@ pub struct VaultServiceConfig {
 	pub faucet_url: Option<String>,
 
 	/// Automatically register the vault with the given amount of collateral
-	#[clap(long, value_parser = parse_collateral_and_amount)]
+	#[clap(long, env = "AUTO_REGISTER", value_parser = parse_collateral_and_amount)]
 	pub auto_register: Vec<(String, String, Option<u128>)>,
 
 	/// Minimum time to the redeem/replace execution deadline to make the stellar payment.
