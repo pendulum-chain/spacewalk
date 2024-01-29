@@ -221,6 +221,7 @@ pub struct VaultServiceConfig {
 	pub faucet_url: Option<String>,
 
 	/// Automatically register the vault with the given amount of collateral
+	/// note: when specifying the env, make sure to enclose it with double quotes.
 	#[clap(long, env = "AUTO_REGISTER", value_parser = parse_collateral_and_amount)]
 	pub auto_register: Vec<(String, String, Option<u128>)>,
 
