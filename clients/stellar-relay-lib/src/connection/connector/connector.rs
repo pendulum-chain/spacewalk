@@ -1,9 +1,12 @@
-use std::fmt::{Debug, Formatter};
+use async_std::net::TcpStream;
+use std::{
+	fmt::{Debug, Formatter},
+	net::Shutdown,
+};
 use substrate_stellar_sdk::{
 	types::{AuthenticatedMessageV0, Curve25519Public, HmacSha256Mac, MessageType},
 	XdrCodec,
 };
-use tokio::net::tcp::OwnedWriteHalf;
 
 use crate::{
 	connection::{
@@ -32,8 +35,8 @@ pub struct Connector {
 	handshake_state: HandshakeState,
 	flow_controller: FlowController,
 
-	/// for writing xdr messages to stream.
-	pub(crate) write_stream_overlay: OwnedWriteHalf,
+	/// for writing/reading xdr messages to/from Stellar Node.
+	pub(crate) tcp_stream: TcpStream,
 }
 
 impl Debug for Connector {
@@ -49,7 +52,29 @@ impl Debug for Connector {
 			.field("receive_scp_messages", &self.receive_scp_messages)
 			.field("handshake_state", &self.handshake_state)
 			.field("flow_controller", &self.flow_controller)
+			.field(
+				"local_addr",
+				&self
+					.tcp_stream
+					.local_addr()
+					.map(|addr| addr.to_string())
+					.unwrap_or("cannot provide".to_string()),
+			)
+			.field(
+				"peer_addr",
+				&self
+					.tcp_stream
+					.peer_addr()
+					.map(|addr| addr.to_string())
+					.unwrap_or("cannot provide".to_string()),
+			)
 			.finish()
+	}
+}
+
+impl Drop for Connector {
+	fn drop(&mut self) {
+		self.stop();
 	}
 }
 
@@ -109,18 +134,20 @@ impl Connector {
 		}
 	}
 
-	pub fn new(
-		local_node: NodeInfo,
-		conn_info: ConnectionInfo,
-		write_stream_overlay: OwnedWriteHalf,
-	) -> Self {
+	/// returns a Connector and starts creating a connection to Stellar
+	pub async fn start(local_node: NodeInfo, conn_info: ConnectionInfo) -> Result<Self, Error> {
+		// Create the stream
+		let tcp_stream = TcpStream::connect(conn_info.address())
+			.await
+			.map_err(|e| Error::ConnectionFailed(e.to_string()))?;
+
 		let connection_auth = ConnectionAuth::new(
 			&local_node.network_id,
 			conn_info.keypair(),
 			conn_info.auth_cert_expiration,
 		);
 
-		Connector {
+		let mut connector = Connector {
 			local: LocalInfo::new(local_node),
 			remote_info: None,
 			hmac_keys: None,
@@ -131,10 +158,24 @@ impl Connector {
 			receive_scp_messages: conn_info.recv_scp_msgs,
 			handshake_state: HandshakeState::Connecting,
 			flow_controller: FlowController::default(),
-			write_stream_overlay,
-		}
+			tcp_stream,
+		};
+
+		// To start the handshake, send a hello message to Stellar
+		connector.send_hello_message().await?;
+
+		Ok(connector)
 	}
 
+	pub fn stop(&mut self) {
+		if let Err(e) = self.tcp_stream.shutdown(Shutdown::Both) {
+			log::error!("stop(): failed to shutdown tcp stream: {}", e);
+		}
+	}
+}
+
+// getters setters
+impl Connector {
 	pub fn local(&self) -> &LocalInfo {
 		&self.local
 	}
@@ -218,14 +259,13 @@ mod test {
 		types::{Hello, MessageType},
 		PublicKey,
 	};
-	use tokio::{io::AsyncWriteExt, net::tcp::OwnedReadHalf};
 
 	use crate::{
 		connection::{
 			authentication::{create_auth_cert, ConnectionAuth},
 			Connector,
 		},
-		helper::{create_stream, time_now},
+		helper::time_now,
 		node::NodeInfo,
 		ConnectionInfo,
 	};
@@ -244,15 +284,7 @@ mod test {
 		new_auth_cert
 	}
 
-	impl Connector {
-		fn shutdown(&mut self, read_half: OwnedReadHalf) {
-			let _ = self.write_stream_overlay.shutdown();
-
-			drop(read_half);
-		}
-	}
-
-	async fn create_connector() -> (NodeInfo, ConnectionInfo, Connector, OwnedReadHalf) {
+	async fn create_connector() -> (NodeInfo, ConnectionInfo, Connector) {
 		let cfg_file_path = "./resources/config/testnet/stellar_relay_config_sdftest1.json";
 		let secret_key_path = "./resources/secretkey/stellar_secretkey_testnet";
 		let secret_key =
@@ -264,16 +296,16 @@ mod test {
 		let conn_info = cfg.connection_info(&secret_key).expect("should create a connection info");
 		// this is a channel to communicate with the connection/config (this needs renaming)
 
-		let (read_half, write_half) =
-			create_stream(&conn_info.address()).await.expect("should return a stream");
-		let connector = Connector::new(node_info.clone(), conn_info.clone(), write_half);
-		(node_info, conn_info, connector, read_half)
+		let connector = Connector::start(node_info.clone(), conn_info.clone())
+			.await
+			.expect("should create a connector");
+		(node_info, conn_info, connector)
 	}
 
 	#[tokio::test]
 	#[serial]
 	async fn create_new_connector_works() {
-		let (node_info, _, mut connector, read_half) = create_connector().await;
+		let (node_info, _, connector) = create_connector().await;
 
 		let connector_local_node = connector.local.node();
 
@@ -282,25 +314,21 @@ mod test {
 		assert_eq!(connector_local_node.overlay_min_version, node_info.overlay_min_version);
 		assert_eq!(connector_local_node.version_str, node_info.version_str);
 		assert_eq!(connector_local_node.network_id, node_info.network_id);
-
-		connector.shutdown(read_half);
 	}
 
 	#[tokio::test]
 	#[serial]
 	async fn connector_local_sequence_works() {
-		let (_, _, mut connector, read_half) = create_connector().await;
+		let (_, _, mut connector) = create_connector().await;
 		assert_eq!(connector.local_sequence(), 0);
 		connector.increment_local_sequence();
 		assert_eq!(connector.local_sequence(), 1);
-
-		connector.shutdown(read_half);
 	}
 
 	#[tokio::test]
 	#[serial]
 	async fn connector_set_remote_works() {
-		let (_, _, mut connector, read_half) = create_connector().await;
+		let (_, _, mut connector) = create_connector().await;
 
 		let connector_auth = &connector.connection_auth;
 		let new_auth_cert = create_auth_cert_from_connection_auth(connector_auth);
@@ -319,14 +347,12 @@ mod test {
 		connector.set_remote(RemoteInfo::new(&hello));
 
 		assert!(connector.remote().is_some());
-
-		connector.shutdown(read_half);
 	}
 
 	#[tokio::test]
 	#[serial]
 	async fn connector_increment_remote_sequence_works() {
-		let (_, _, mut connector, read_half) = create_connector().await;
+		let (_, _, mut connector) = create_connector().await;
 
 		let connector_auth = &connector.connection_auth;
 		let new_auth_cert = create_auth_cert_from_connection_auth(connector_auth);
@@ -349,15 +375,13 @@ mod test {
 		connector.increment_remote_sequence().unwrap();
 		connector.increment_remote_sequence().unwrap();
 		assert_eq!(connector.remote().unwrap().sequence(), 3);
-
-		connector.shutdown(read_half);
 	}
 
 	#[tokio::test]
 	#[serial]
 	async fn connector_get_and_set_hmac_keys_works() {
 		//arrange
-		let (_, _, mut connector, read_half) = create_connector().await;
+		let (_, _, mut connector) = create_connector().await;
 		let connector_auth = &connector.connection_auth;
 		let new_auth_cert = create_auth_cert_from_connection_auth(connector_auth);
 
@@ -387,14 +411,12 @@ mod test {
 		));
 		//assert
 		assert!(connector.hmac_keys().is_some());
-
-		connector.shutdown(read_half);
 	}
 
 	#[tokio::test]
 	#[serial]
 	async fn connector_method_works() {
-		let (_, conn_config, mut connector, read_half) = create_connector().await;
+		let (_, conn_config, mut connector) = create_connector().await;
 
 		assert_eq!(connector.remote_called_us(), conn_config.remote_called_us);
 		assert_eq!(connector.receive_tx_messages(), conn_config.recv_tx_msgs);
@@ -405,18 +427,14 @@ mod test {
 
 		connector.handshake_completed();
 		assert!(connector.is_handshake_created());
-
-		connector.shutdown(read_half);
 	}
 
 	#[tokio::test]
 	#[serial]
 	async fn enable_flow_controller_works() {
-		let (node_info, _, mut connector, read_half) = create_connector().await;
+		let (node_info, _, mut connector) = create_connector().await;
 
 		assert!(!connector.inner_check_to_send_more(MessageType::ScpMessage));
 		connector.enable_flow_controller(node_info.overlay_version, node_info.overlay_version);
-
-		connector.shutdown(read_half);
 	}
 }

@@ -91,14 +91,13 @@ pub async fn start_oracle_agent(
 				// if a disconnect signal was sent, disconnect from Stellar.
 				Ok(_) | Err(TryRecvError::Disconnected) => {
 					tracing::info!("start_oracle_agent(): disconnect overlay...");
-					overlay_conn.disconnect();
 					break
 				},
 				Err(TryRecvError::Empty) => {},
 			}
 
 			// listen for messages from Stellar
-			match overlay_conn.listen().await {
+			match overlay_conn.listen() {
 				Ok(Some(msg)) => {
 					let msg_as_str = to_base64_xdr_string(&msg);
 					if let Err(e) =
@@ -112,7 +111,6 @@ pub async fn start_oracle_agent(
 				Ok(None) => {},
 				// connection got lost
 				Err(e) => {
-					overlay_conn.disconnect();
 					tracing::error!("start_oracle_agent(): encounter error in overlay: {e:?}");
 
 					if let Err(e) = shutdown_sender_clone2.send(()) {
@@ -124,6 +122,9 @@ pub async fn start_oracle_agent(
 				},
 			}
 		}
+
+		// shutdown the overlay connection
+		overlay_conn.stop();
 	});
 
 	tokio::spawn(on_shutdown(shutdown_sender.clone(), async move {
@@ -139,6 +140,12 @@ pub async fn start_oracle_agent(
 		message_sender: Some(sender),
 		shutdown_sender,
 	})
+}
+
+impl Drop for OracleAgent {
+	fn drop(&mut self) {
+		self.stop();
+	}
 }
 
 impl OracleAgent {
@@ -192,19 +199,18 @@ impl OracleAgent {
 	}
 
 	/// Stops listening for new SCP messages.
-	pub fn stop(&self) -> Result<(), Error> {
+	pub fn stop(&self) {
 		tracing::debug!("stop(): Shutting down OracleAgent...");
 		if let Err(e) = self.shutdown_sender.send(()) {
 			tracing::error!("stop(): Failed to send shutdown signal in OracleAgent: {:?}", e);
 		}
-		Ok(())
 	}
 }
 
 #[cfg(test)]
 mod tests {
 	use crate::oracle::{
-		get_random_secret_key, get_test_secret_key, get_test_stellar_relay_config,
+		get_random_secret_key, get_test_secret_key, specific_stellar_relay_config,
 		traits::ArchiveStorage, ScpArchiveStorage, TransactionsArchiveStorage,
 	};
 
@@ -215,11 +221,15 @@ mod tests {
 	#[ntest::timeout(1_800_000)] // timeout at 30 minutes
 	#[serial]
 	async fn test_get_proof_for_current_slot() {
+		// let it run for a few seconds, making sure that the other tests have successfully shutdown
+		// their connection to Stellar Node
+		sleep(Duration::from_secs(2)).await;
+
 		let shutdown_sender = ShutdownSender::new();
 
 		// We use a random secret key to avoid conflicts with other tests.
 		let agent = start_oracle_agent(
-			get_test_stellar_relay_config(true),
+			specific_stellar_relay_config(true, 0),
 			&get_random_secret_key(),
 			shutdown_sender,
 		)
@@ -244,12 +254,16 @@ mod tests {
 	#[tokio::test(flavor = "multi_thread")]
 	#[serial]
 	async fn test_get_proof_for_archived_slot() {
+		// let it run for a few seconds, making sure that the other tests have successfully shutdown
+		// their connection to Stellar Node
+		sleep(Duration::from_secs(2)).await;
+
 		let scp_archive_storage = ScpArchiveStorage::default();
 		let tx_archive_storage = TransactionsArchiveStorage::default();
 
 		let shutdown_sender = ShutdownSender::new();
 		let agent = start_oracle_agent(
-			get_test_stellar_relay_config(true),
+			specific_stellar_relay_config(true, 1),
 			&get_test_secret_key(true),
 			shutdown_sender,
 		)
@@ -266,17 +280,19 @@ mod tests {
 		// These might return an error if the file does not exist, but that's fine.
 		let _ = scp_archive_storage.remove_file(target_slot);
 		let _ = tx_archive_storage.remove_file(target_slot);
-
-		agent.stop().expect("Failed to stop the agent");
 	}
 
 	#[tokio::test(flavor = "multi_thread")]
 	#[serial]
 	async fn test_get_proof_for_archived_slot_with_fallback() {
+		// let it run for a few seconds, making sure that the other tests have successfully shutdown
+		// their connection to Stellar Node
+		sleep(Duration::from_secs(2)).await;
+
 		let scp_archive_storage = ScpArchiveStorage::default();
 		let tx_archive_storage = TransactionsArchiveStorage::default();
 
-		let base_config = get_test_stellar_relay_config(true);
+		let base_config = specific_stellar_relay_config(true, 2);
 		// We add two fake archive urls to the config to make sure that the agent will actually fall
 		// back to other archives.
 		let mut archive_urls = base_config.stellar_history_archive_urls().clone();
@@ -302,8 +318,6 @@ mod tests {
 		// These might return an error if the file does not exist, but that's fine.
 		let _ = scp_archive_storage.remove_file(target_slot);
 		let _ = tx_archive_storage.remove_file(target_slot);
-
-		agent.stop().expect("Failed to stop the agent");
 	}
 
 	#[tokio::test(flavor = "multi_thread")]
@@ -312,7 +326,7 @@ mod tests {
 		let scp_archive_storage = ScpArchiveStorage::default();
 		let tx_archive_storage = TransactionsArchiveStorage::default();
 
-		let base_config = get_test_stellar_relay_config(true);
+		let base_config = specific_stellar_relay_config(true, 0);
 		let modified_config: StellarOverlayConfig =
 			StellarOverlayConfig { stellar_history_archive_urls: vec![], ..base_config };
 
@@ -320,10 +334,11 @@ mod tests {
 		let agent = start_oracle_agent(modified_config, &get_test_secret_key(true), shutdown)
 			.await
 			.expect("Failed to start agent");
-		sleep(Duration::from_secs(5)).await;
 
 		// This slot should be archived on the public network
 		let target_slot = 44041116;
+		tracing::info!("let's sleep for 3 seconds,to get the network up and running");
+		sleep(Duration::from_secs(3)).await;
 		let proof_result = agent.get_proof(target_slot).await;
 
 		assert!(matches!(proof_result, Err(Error::ProofTimeout(_))));
@@ -331,7 +346,5 @@ mod tests {
 		// These might return an error if the file does not exist, but that's fine.
 		let _ = scp_archive_storage.remove_file(target_slot);
 		let _ = tx_archive_storage.remove_file(target_slot);
-
-		agent.stop().expect("Failed to stop the agent");
 	}
 }

@@ -234,7 +234,7 @@ mod test {
 
 	use crate::oracle::{
 		collector::{collector::AddTxSet, ScpMessageCollector},
-		get_test_stellar_relay_config,
+		random_stellar_relay_config,
 		traits::FileHandler,
 		EnvelopesFileHandler,
 	};
@@ -273,7 +273,7 @@ mod test {
 	}
 
 	fn stellar_history_archive_urls() -> Vec<String> {
-		get_test_stellar_relay_config(true).stellar_history_archive_urls()
+		random_stellar_relay_config(true).stellar_history_archive_urls()
 	}
 
 	#[test]
