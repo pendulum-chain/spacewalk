@@ -20,7 +20,7 @@ use std::{future::Future, sync::Arc};
 use stellar_relay_lib::StellarOverlayConfig;
 use tokio::sync::RwLock;
 use vault::{
-	oracle::{get_test_secret_key, get_test_stellar_relay_config, start_oracle_agent, OracleAgent},
+	oracle::{get_test_secret_key, random_stellar_relay_config, start_oracle_agent, OracleAgent},
 	ArcRwLock,
 };
 use wallet::StellarWallet;
@@ -83,7 +83,7 @@ async fn setup_chain_providers(
 
 	let path = tmp_dir.path().to_str().expect("should return a string").to_string();
 
-	let stellar_config = get_test_stellar_relay_config(is_public_network);
+	let stellar_config = random_stellar_relay_config(is_public_network);
 	let vault_stellar_secret = get_test_secret_key(is_public_network);
 	// TODO set destination secret key in a better way
 	let user_stellar_secret = &DESTINATION_SECRET_KEY;
@@ -138,7 +138,7 @@ where
 		default_wrapped_currency,
 	);
 
-	let stellar_config = get_test_stellar_relay_config(is_public_network);
+	let stellar_config = random_stellar_relay_config(is_public_network);
 	let vault_stellar_secret = get_test_secret_key(is_public_network);
 
 	let shutdown_tx = ShutdownSender::new();

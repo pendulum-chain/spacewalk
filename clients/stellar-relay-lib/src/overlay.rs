@@ -9,7 +9,7 @@ use tokio::sync::{
 
 use crate::{
 	connection::{poll_messages_from_stellar, ConnectionInfo, Connector},
-	helper::{create_stream, error_to_string},
+	helper::error_to_string,
 	node::NodeInfo,
 	Error,
 };
@@ -41,16 +41,10 @@ impl StellarOverlayConnection {
 
 		let (send_to_node_sender, send_to_node_receiver) = mpsc::channel::<StellarMessage>(1024);
 
-		// split the stream for easy handling of read and write
-		let (read_stream_overlay, write_stream_overlay) =
-			create_stream(&conn_info.address()).await?;
-
-		let mut connector = Connector::new(local_node_info, conn_info, write_stream_overlay);
-		connector.send_hello_message().await?;
+		let connector = Connector::start(local_node_info, conn_info).await?;
 
 		tokio::spawn(poll_messages_from_stellar(
 			connector,
-			read_stream_overlay,
 			send_to_user_sender,
 			send_to_node_receiver,
 		));
@@ -61,10 +55,9 @@ impl StellarOverlayConnection {
 		})
 	}
 
-	pub async fn listen(&mut self) -> Result<Option<StellarMessage>, Error> {
+	pub fn listen(&mut self) -> Result<Option<StellarMessage>, Error> {
 		loop {
 			if !self.is_alive() {
-				self.disconnect();
 				return Err(Error::Disconnected)
 			}
 
@@ -88,20 +81,20 @@ impl StellarOverlayConnection {
 		let is_closed = self.sender.is_closed();
 
 		if is_closed {
-			self.disconnect();
+			self.stop();
 		}
 
 		!is_closed
 	}
 
-	pub fn disconnect(&mut self) {
-		log::info!("disconnect(): closing connection to overlay network");
+	pub fn stop(&mut self) {
+		log::info!("stop(): closing connection to overlay network");
 		self.receiver.close();
 	}
 }
 
 impl Drop for StellarOverlayConnection {
 	fn drop(&mut self) {
-		self.disconnect();
+		self.stop();
 	}
 }

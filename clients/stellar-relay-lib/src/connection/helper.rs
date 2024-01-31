@@ -5,7 +5,6 @@ use substrate_stellar_sdk::{
 	types::{Error, Uint256},
 	SecretKey, XdrCodec,
 };
-use tokio::net::{tcp, TcpStream};
 
 /// Returns a new BigNumber with a pseudo-random value equal to or greater than 0 and less than 1.
 pub fn generate_random_nonce() -> Uint256 {
@@ -40,14 +39,4 @@ pub fn error_to_string(e: Error) -> String {
 pub fn to_base64_xdr_string<T: XdrCodec>(msg: &T) -> String {
 	let xdr = msg.to_base64_xdr();
 	String::from_utf8(xdr.clone()).unwrap_or(format!("{:?}", xdr))
-}
-
-pub async fn create_stream(
-	address: &str,
-) -> Result<(tcp::OwnedReadHalf, tcp::OwnedWriteHalf), crate::Error> {
-	let stream = TcpStream::connect(address)
-		.await
-		.map_err(|e| crate::Error::ConnectionFailed(e.to_string()))?;
-
-	Ok(stream.into_split())
 }

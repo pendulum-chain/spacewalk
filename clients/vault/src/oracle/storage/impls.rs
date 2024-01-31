@@ -160,8 +160,8 @@ mod test {
 	use crate::oracle::{
 		constants::MAX_SLOTS_PER_FILE,
 		errors::Error,
-		get_test_stellar_relay_config,
 		impls::ArchiveStorage,
+		random_stellar_relay_config,
 		storage::{
 			traits::{FileHandler, FileHandlerExt},
 			EnvelopesFileHandler,
@@ -174,7 +174,7 @@ mod test {
 
 	impl Default for ScpArchiveStorage {
 		fn default() -> Self {
-			let cfg = get_test_stellar_relay_config(true);
+			let cfg = random_stellar_relay_config(true);
 			let archive_urls = cfg.stellar_history_archive_urls();
 			let archive_url = archive_urls.first().expect("should have an archive url");
 			ScpArchiveStorage(archive_url.clone())
@@ -183,7 +183,7 @@ mod test {
 
 	impl Default for TransactionsArchiveStorage {
 		fn default() -> Self {
-			let cfg = get_test_stellar_relay_config(true);
+			let cfg = random_stellar_relay_config(true);
 			let archive_urls = cfg.stellar_history_archive_urls();
 			let archive_url = archive_urls.first().expect("should have an archive url");
 			TransactionsArchiveStorage(archive_url.clone())

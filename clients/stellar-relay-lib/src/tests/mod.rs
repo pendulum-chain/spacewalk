@@ -1,13 +1,13 @@
 use crate::{
 	connection::ConnectionInfo, node::NodeInfo, StellarOverlayConfig, StellarOverlayConnection,
 };
+use async_std::{future::timeout, sync::Mutex};
 use serial_test::serial;
-use std::{sync::Arc, time::Duration};
+use std::{sync::Arc, thread::sleep, time::Duration};
 use substrate_stellar_sdk::{
 	types::{ScpStatementExternalize, ScpStatementPledges, StellarMessage},
 	Hash, IntoHash,
 };
-use tokio::{sync::Mutex, time::timeout};
 
 fn secret_key(is_mainnet: bool) -> String {
 	let path = if is_mainnet {
@@ -56,10 +56,10 @@ async fn stellar_overlay_should_receive_scp_messages() {
 
 	timeout(Duration::from_secs(300), async move {
 		let mut ov_conn_locked = ov_conn.lock().await;
-		if let Ok(Some(msg)) = ov_conn_locked.listen().await {
+		if let Ok(Some(msg)) = ov_conn_locked.listen() {
 			scps_vec_clone.lock().await.push(msg);
 
-			ov_conn_locked.disconnect();
+			ov_conn_locked.stop();
 		}
 	})
 	.await
@@ -93,7 +93,7 @@ async fn stellar_overlay_should_receive_tx_set() {
 	timeout(Duration::from_secs(500), async move {
 		let mut ov_conn_locked = ov_conn.lock().await;
 
-		while let Ok(Some(msg)) = ov_conn_locked.listen().await {
+		while let Ok(Some(msg)) = ov_conn_locked.listen() {
 			match msg {
 				StellarMessage::ScpMessage(msg) =>
 					if let ScpStatementPledges::ScpStExternalize(stmt) = &msg.statement.pledges {
@@ -107,15 +107,11 @@ async fn stellar_overlay_should_receive_tx_set() {
 				StellarMessage::TxSet(set) => {
 					let tx_set_hash = set.into_hash().expect("should return a hash");
 					actual_tx_set_hashes_clone.lock().await.push(tx_set_hash);
-
-					ov_conn_locked.disconnect();
 					break
 				},
 				StellarMessage::GeneralizedTxSet(set) => {
 					let tx_set_hash = set.into_hash().expect("should return a hash");
 					actual_tx_set_hashes_clone.lock().await.push(tx_set_hash);
-
-					ov_conn_locked.disconnect();
 					break
 				},
 				_ => {},
@@ -143,7 +139,11 @@ async fn stellar_overlay_disconnect_works() {
 	let mut overlay_connection =
 		StellarOverlayConnection::connect(node_info.clone(), conn_info).await.unwrap();
 
-	let _ = overlay_connection.listen().await.unwrap();
+	// let it run for a second, before disconnecting.
+	sleep(Duration::from_secs(1));
+	overlay_connection.stop();
 
-	overlay_connection.disconnect();
+	// let the disconnection call pass for a few seconds, before checking its status.
+	sleep(Duration::from_secs(3));
+	assert!(!overlay_connection.is_alive());
 }
