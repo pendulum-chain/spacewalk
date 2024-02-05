@@ -11448,6 +11448,7 @@ version = "1.0.4"
 dependencies = [
  "async-trait",
  "cached",
+ "env_logger 0.7.1",
  "futures 0.3.28",
  "mockall 0.8.3",
  "mocktopus",

@@ -1,5 +1,3 @@
-#![allow(dead_code)] //todo: remove after being tested and implemented
-
 use crate::sdk::types::{
 	AuthenticatedMessage, AuthenticatedMessageV0, HmacSha256Mac, MessageType, StellarMessage,
 };
@@ -135,21 +133,23 @@ pub fn log_decode_error<T: Debug>(source: &str, error: T) -> Error {
 	Error::DecodeError(source.to_string())
 }
 
-// extra function.
-fn is_xdr_complete_message(data: &[u8], message_len: usize) -> bool {
-	data.len() - 4 >= message_len
-}
 
-// extra function
-fn get_message(data: &[u8], message_len: usize) -> (Vec<u8>, Vec<u8>) {
-	(data[4..(message_len + 4)].to_owned(), data[0..(message_len + 4)].to_owned())
-}
 
 #[cfg(test)]
 mod test {
 	use crate::connection::xdr_converter::{
-		get_message, get_xdr_message_length, is_xdr_complete_message, parse_authenticated_message,
+		get_xdr_message_length, parse_authenticated_message,
 	};
+
+	// extra function.
+	fn is_xdr_complete_message(data: &[u8], message_len: usize) -> bool {
+		data.len() - 4 >= message_len
+	}
+
+	// extra function
+	fn get_message(data: &[u8], message_len: usize) -> (Vec<u8>, Vec<u8>) {
+		(data[4..(message_len + 4)].to_owned(), data[0..(message_len + 4)].to_owned())
+	}
 
 	#[test]
 	fn get_xdr_message_length_success() {
@@ -165,8 +165,9 @@ mod test {
             base64::STANDARD
         ).expect("should be able to decode to bytes");
 
-		//todo: once the authenticatedmessagev0 type is solved, continue the test
-		let _ = parse_authenticated_message(&msg);
+		assert!(parse_authenticated_message(&msg).is_ok());
+
+
 	}
 
 	#[test]

@@ -1,5 +1,3 @@
-#![allow(dead_code)] //todo: remove after being tested and implemented
-
 use crate::{connection::xdr_converter::Error as XDRError, helper::error_to_string};
 use substrate_stellar_sdk::{types::ErrorCode, StellarSdkError};
 use tokio::sync;
