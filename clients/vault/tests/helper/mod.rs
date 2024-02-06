@@ -20,7 +20,7 @@ use std::{future::Future, sync::Arc};
 use stellar_relay_lib::StellarOverlayConfig;
 use tokio::sync::RwLock;
 use vault::{
-	oracle::{get_test_secret_key, random_stellar_relay_config, start_oracle_agent, OracleAgent},
+	oracle::{get_testnet_secret_key, random_stellar_relay_config, start_oracle_agent, OracleAgent},
 	ArcRwLock,
 };
 use wallet::StellarWallet;
@@ -31,8 +31,9 @@ pub type StellarPublicKey = [u8; 32];
 impl SpacewalkParachainExt for SpacewalkParachain {}
 
 lazy_static! {
-	// TODO clean this up by extending the `get_test_secret_key()` function
-	pub static ref DESTINATION_SECRET_KEY: String = "SDNQJEIRSA6YF5JNS6LQLCBF2XVWZ2NJV3YLC322RGIBJIJRIRGWKLEF".to_string();
+	pub static ref CFG: StellarOverlayConfig = random_stellar_relay_config(false);
+	pub static ref SECRET_KEY: String = get_testnet_secret_key(true);
+	pub static ref DESTINATION_SECRET_KEY: String = get_testnet_secret_key(false);
 	pub static ref ONE_TO_ONE_RATIO: FixedU128 = FixedU128::saturating_from_rational(1u128, 1u128);
 	pub static ref TEN_TO_ONE_RATIO: FixedU128 = FixedU128::saturating_from_rational(1u128, 10u128);
 }

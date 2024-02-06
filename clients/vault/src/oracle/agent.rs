@@ -207,7 +207,7 @@ impl OracleAgent {
 #[cfg(test)]
 mod tests {
 	use crate::oracle::{
-		get_random_secret_key, get_test_secret_key, specific_stellar_relay_config,
+		get_random_secret_key, get_mainnet_secret_key, specific_stellar_relay_config,
 		traits::ArchiveStorage, ScpArchiveStorage, TransactionsArchiveStorage,
 	};
 
@@ -259,7 +259,7 @@ mod tests {
 		let shutdown_sender = ShutdownSender::new();
 		let agent = start_oracle_agent(
 			specific_stellar_relay_config(true, 1),
-			&get_test_secret_key(true),
+			&get_mainnet_secret_key(),
 			shutdown_sender,
 		)
 		.await
@@ -299,7 +299,7 @@ mod tests {
 
 		let shutdown_sender = ShutdownSender::new();
 		let agent =
-			start_oracle_agent(modified_config, &get_test_secret_key(true), shutdown_sender)
+			start_oracle_agent(modified_config, &get_mainnet_secret_key(), shutdown_sender)
 				.await
 				.expect("Failed to start agent");
 
@@ -326,7 +326,7 @@ mod tests {
 			StellarOverlayConfig { stellar_history_archive_urls: vec![], ..base_config };
 
 		let shutdown = ShutdownSender::new();
-		let agent = start_oracle_agent(modified_config, &get_test_secret_key(true), shutdown)
+		let agent = start_oracle_agent(modified_config, &get_mainnet_secret_key(), shutdown)
 			.await
 			.expect("Failed to start agent");
 

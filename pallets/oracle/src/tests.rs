@@ -303,11 +303,11 @@ fn test_is_invalidated() {
 		mine_block();
 
 		// max delay is 60 minutes, 60+ passed
-		// assert!(Oracle::is_outdated(&key, now + 3601));//TODO
+		assert!(Oracle::is_outdated(&key, now + 3601));
 
 		// max delay is 60 minutes, 30 passed
 		Oracle::get_current_time.mock_safe(move || MockResult::Return(now + 1800));
-		// assert!(!Oracle::is_outdated(&key, now + 3599)); //TODO
+		assert!(!Oracle::is_outdated(&key, now + 3599));
 	});
 }
 

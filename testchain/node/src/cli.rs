@@ -10,7 +10,6 @@ pub struct Cli {
 }
 
 #[derive(Debug, clap::Subcommand)]
-#[allow(clippy::large_enum_variant)] //todo: fix large size difference between variants
 pub enum Subcommand {
 	/// Key management cli utilities
 	#[command(subcommand)]

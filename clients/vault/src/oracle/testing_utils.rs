@@ -43,9 +43,16 @@ fn stellar_relay_config_abs_path(
 		.expect("should be able to extract config")
 }
 
-pub fn get_test_secret_key(is_mainnet: bool) -> String {
-	let file_name = if is_mainnet { "mainnet" } else { "testnet" };
-	let path = format!("./resources/secretkey/stellar_secretkey_{file_name}");
+pub fn get_mainnet_secret_key() -> String {
+	let path = "./resources/secretkey/stellar_secretkey_mainnet";
+	std::fs::read_to_string(path).expect("should return a string")
+}
+
+/// return a secret key for testnet with 2 choices; one has xlm, the other does not
+pub fn get_testnet_secret_key(with_currency:bool) -> String {
+	let num = if with_currency { 0 } else { 1 };
+	let path = format!("./resources/secretkey/testnet/stellar_secretkey_testnet_{num}");
+
 	std::fs::read_to_string(path).expect("should return a string")
 }
 
