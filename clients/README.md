@@ -96,15 +96,17 @@ cargo test --test '*' --package vault --features integration-test
 
 When any changes are made to elements associated with the pallets, such as extrinsic names or parameters, it is
 necessary to regenerate the metadata. Subxt is employed specifically for this purpose.
+Note: The `--version 14` flag is required when connecting to runtime nodes that are running older Substrate
+dependencies.
 
 ```
 cargo install subxt-cli@0.31.0
 
 // fetching from an automatically detected local chain
-subxt metadata -f bytes > runtime/metadata-{your-chain-name}.scale
+subxt metadata -f bytes > runtime/metadata-{your-chain-name}.scale --version 14
 
 // fetching from a specific chain
-subxt metadata -f bytes --url http://{chain-url} > runtime/metadata-{your-chain-name}.scale
+subxt metadata -f bytes --url http://{chain-url} > runtime/metadata-{your-chain-name}.scale --version 14
 ```
 
 ### Updating the standalone-metadata file
@@ -123,7 +125,7 @@ subxt metadata -f bytes > runtime/metadata-standalone.scale --version 14
 
 ### Updating the metadata of the supported runtimes (Pendulum/Amplitude/Foucoco)
 
-Once the local node is running, run this command from the clients directory:
+To update the metadata of the supported parachains, run the following commands:
 
 ```
 subxt metadata -f bytes --url wss://rpc-pendulum.prd.pendulumchain.tech:443 > runtime/metadata-parachain-pendulum.scale --version 14
