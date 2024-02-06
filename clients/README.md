@@ -98,16 +98,21 @@ When any changes are made to elements associated with the pallets, such as extri
 necessary to regenerate the metadata. Subxt is employed specifically for this purpose.
 Note: The `--version 14` flag is required when connecting to runtime nodes that are running older Substrate
 dependencies.
+This is the case for the runtimes using polkadot dependencies below version v1.0.0.
+
+### Installing subxt
+
+To install subxt, run the following command:
 
 ```
 cargo install subxt-cli@0.31.0
-
-// fetching from an automatically detected local chain
-subxt metadata -f bytes > runtime/metadata-{your-chain-name}.scale --version 14
-
-// fetching from a specific chain
-subxt metadata -f bytes --url http://{chain-url} > runtime/metadata-{your-chain-name}.scale --version 14
 ```
+
+You might encounter issues with the installation of subxt, because it needs a more up-to-date version of the rust
+toolchain.
+To bypass this issue, you can change the version of the rust toolchain in the `rust-toolchain` file to the latest
+version and try installing subxt again.
+You need to change the version back however, in order to avoid issues with other dependencies being built.
 
 ### Updating the standalone-metadata file
 
