@@ -210,10 +210,18 @@ fn parse_collateral_and_amount(
 
 #[derive(Parser, Clone, Debug)]
 pub struct VaultServiceConfig {
-	#[clap(long, env = "STELLAR_VAULT_SECRET_KEY_FILEPATH", help = "The Stellar secret key that is used to sign transactions.")]
+	#[clap(
+		long,
+		env = "STELLAR_VAULT_SECRET_KEY_FILEPATH",
+		help = "The Stellar secret key that is used to sign transactions."
+	)]
 	pub stellar_vault_secret_key_filepath: String,
 
-	#[clap(long, env = "STELLAR_OVERLAY_CONFIG_FILEPATH", help = "The filepath where the json config for StellarOverlay is located")]
+	#[clap(
+		long,
+		env = "STELLAR_OVERLAY_CONFIG_FILEPATH",
+		help = "The filepath where the json config for StellarOverlay is located"
+	)]
 	pub stellar_overlay_config_filepath: String,
 
 	/// Pass the faucet URL for auto-registration.
