@@ -101,7 +101,7 @@ pub struct ConnectionOpts {
 	pub max_concurrent_requests: Option<usize>,
 
 	/// Maximum notification capacity for each subscription
-	#[clap(long, env = "S")]
+	#[clap(long, env = "MAX_NOTIFS_PER_SUBSCRIPTION")]
 	pub max_notifs_per_subscription: Option<usize>,
 }
 
