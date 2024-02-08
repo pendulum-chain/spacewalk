@@ -93,7 +93,7 @@ pub struct ConnectionOpts {
 	pub spacewalk_parachain_url: String,
 
 	/// Timeout in milliseconds to wait for connection to spacewalk-parachain.
-	#[clap(long, env = "SPACEWALK_PARACHAIN_CONN_TIMEOUT_MS", parse(try_from_str = parse_duration_ms), default_value = "60000")]
+	#[clap(long, env = "SPACEWALK_PARACHAIN_CONNECTION_TIMEOUT_MS", parse(try_from_str = parse_duration_ms), default_value = "60000")]
 	pub spacewalk_parachain_connection_timeout_ms: Duration,
 
 	/// Maximum number of concurrent requests
