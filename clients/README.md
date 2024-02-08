@@ -23,6 +23,7 @@ To run the vault directly with the provided standalone chain use:
 ```
 cargo run --bin vault --features standalone-metadata  -- --keyring alice --stellar-vault-secret-key-filepath <secret_key_file_path> --stellar-overlay-config-filepath <cfg_file_path>
 ```
+
 To see examples of the config file, check [here](stellar-relay-lib/resources/config).
 An example of the secret key file path is found [here](stellar-relay-lib/resources/secretkey).
 
@@ -80,29 +81,38 @@ cargo test --test '*' --package vault --features integration-test
 * ```
   ERROR vault::redeem: Error while sending request: error sending request for url (https://horizon-testnet.stellar.org/accounts/GA6ZDMRVBTHIISPVD7ZRCVX6TWDXBOH2TE5FAADJXZ52YL4GCFI4HOHU): error trying to connect: dns error: cancelled
   ```
-  * but this does not mean that the test fails.
-    The `test_redeem` integration test only checks if a `RedeemEvent` was emitted and terminates afterwards.
-    This stops the on-going withdrawal execution the vault client started leading to that error.
-    The withdrawal execution is tested in the `test_execute_withdrawal` unit test instead.
+    * but this does not mean that the test fails.
+      The `test_redeem` integration test only checks if a `RedeemEvent` was emitted and terminates afterwards.
+      This stops the on-going withdrawal execution the vault client started leading to that error.
+      The withdrawal execution is tested in the `test_execute_withdrawal` unit test instead.
 
 * ```
     ERROR offchain-worker::http: Requested started id=1630 method=POST uri=https://dia-00.pendulumchain.tech:8070/currencies
     ERROR dia_oracle::pallet: Failed to Update Prices HttpRequestFailed
   ```
-   * these errors can be ignored
+    * these errors can be ignored
+
 ## Updating the metadata
 
-When any changes are made to elements associated with the pallets, such as extrinsic names or parameters, it is necessary to regenerate the metadata. Subxt is employed specifically for this purpose.
+When any changes are made to elements associated with the pallets, such as extrinsic names or parameters, it is
+necessary to regenerate the metadata. Subxt is employed specifically for this purpose.
+Note: The `--version 14` flag is required when connecting to runtime nodes that are running older Substrate
+dependencies.
+This is the case for the runtimes using polkadot dependencies below version v1.0.0.
+
+### Installing subxt
+
+To install subxt, run the following command:
 
 ```
 cargo install subxt-cli@0.31.0
-
-// fetching from an automatically detected local chain
-subxt metadata -f bytes > runtime/metadata-{your-chain-name}.scale
-
-// fetching from a specific chain
-subxt metadata -f bytes --url http://{chain-url} > runtime/metadata-{your-chain-name}.scale
 ```
+
+You might encounter issues with the installation of subxt, because it needs a more up-to-date version of the rust
+toolchain.
+To bypass this issue, you can change the version of the rust toolchain in the `rust-toolchain` file to the latest
+version and try installing subxt again.
+You need to change the version back however, in order to avoid issues with other dependencies being built.
 
 ### Updating the standalone-metadata file
 
@@ -116,6 +126,25 @@ Once the local node is running, run this command from the clients directory:
 
 ```
 subxt metadata -f bytes > runtime/metadata-standalone.scale --version 14
+```
+
+### Updating the metadata of the supported runtimes (Pendulum/Amplitude/Foucoco)
+
+To update the metadata of the supported parachains, run the following commands:
+
+```
+subxt metadata -f bytes --url wss://rpc-pendulum.prd.pendulumchain.tech:443 > runtime/metadata-parachain-pendulum.scale --version 14
+subxt metadata -f bytes --url wss://rpc-amplitude.pendulumchain.tech:443 > runtime/metadata-parachain-amplitude.scale --version 14
+subxt metadata -f bytes --url wss://rpc-foucoco.pendulumchain.tech:443 > runtime/metadata-parachain-foucoco.scale --version 14
+```
+
+To facilitate comparison of changes in metadata, it is recommended to also convert the metadata to JSON format. This can
+be done using the following commands:
+
+```
+subxt metadata -f json --url wss://rpc-pendulum.prd.pendulumchain.tech:443 > runtime/metadata-parachain-pendulum.json --version 14
+subxt metadata -f json --url wss://rpc-amplitude.pendulumchain.tech:443 > runtime/metadata-parachain-amplitude.json --version 14
+subxt metadata -f json --url wss://rpc-foucoco.pendulumchain.tech:443 > runtime/metadata-parachain-foucoco.json --version 14
 ```
 
 ## Troubleshooting
