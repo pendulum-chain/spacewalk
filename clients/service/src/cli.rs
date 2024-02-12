@@ -54,27 +54,27 @@ impl LoggingFormat {
 #[derive(Parser, Debug, Clone)]
 pub struct ServiceConfig {
 	/// Restart or stop on error.
-	#[clap(long, default_value = "always")]
+	#[clap(long, env = "RESTART_POLICY", default_value = "always")]
 	pub restart_policy: RestartPolicy,
 
 	/// Logging output format.
-	#[clap(long, default_value = "full")]
+	#[clap(long, env = "LOGGING_FORMAT", default_value = "full")]
 	pub logging_format: LoggingFormat,
 }
 
 #[derive(Parser, Debug, Clone)]
 pub struct MonitoringConfig {
 	/// Do not expose a Prometheus metric endpoint.
-	#[clap(long)]
+	#[clap(long, env = "NO_PROMETHEUS")]
 	pub no_prometheus: bool,
 
 	/// Expose Prometheus exporter on all interfaces.
 	///
 	/// Default is local.
-	#[clap(long)]
+	#[clap(long, env = "PROMETHEUS_EXTERNAL")]
 	pub prometheus_external: bool,
 
 	/// Specify Prometheus exporter TCP Port.
-	#[clap(long, default_value = "9616")]
+	#[clap(long, env = "PROMETHEUS_PORT", default_value = "9616")]
 	pub prometheus_port: u16,
 }
