@@ -207,7 +207,7 @@ impl OracleAgent {
 #[cfg(test)]
 mod tests {
 	use crate::oracle::{
-		get_random_secret_key, get_mainnet_secret_key, specific_stellar_relay_config,
+		get_mainnet_secret_key, get_random_secret_key, specific_stellar_relay_config,
 		traits::ArchiveStorage, ScpArchiveStorage, TransactionsArchiveStorage,
 	};
 
@@ -298,10 +298,9 @@ mod tests {
 			StellarOverlayConfig { stellar_history_archive_urls: archive_urls, ..base_config };
 
 		let shutdown_sender = ShutdownSender::new();
-		let agent =
-			start_oracle_agent(modified_config, &get_mainnet_secret_key(), shutdown_sender)
-				.await
-				.expect("Failed to start agent");
+		let agent = start_oracle_agent(modified_config, &get_mainnet_secret_key(), shutdown_sender)
+			.await
+			.expect("Failed to start agent");
 
 		sleep(Duration::from_secs(5)).await;
 		// This slot should be archived on the public network

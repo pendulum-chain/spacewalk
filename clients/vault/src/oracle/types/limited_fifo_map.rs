@@ -68,6 +68,12 @@ where
 		let (index, _) = self.queue.iter().find_position(|(k, _)| k == key)?;
 		self.queue.remove(index).map(|(_, v)| v)
 	}
+
+	/// removes all data in the queue
+	pub fn clear(&mut self) {
+		self.queue.drain(..);
+	}
+
 	pub fn get(&self, key: &K) -> Option<&T> {
 		self.queue.iter().find(|(k, _)| k == key).map(|(_, v)| v)
 	}

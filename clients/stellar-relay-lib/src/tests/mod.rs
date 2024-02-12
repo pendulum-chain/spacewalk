@@ -3,10 +3,11 @@ use crate::{
 };
 use async_std::{future::timeout, sync::Mutex};
 use serial_test::serial;
-use std::{sync::Arc, time::Duration};
-use std::thread::sleep;
-use substrate_stellar_sdk::{Hash, IntoHash};
-use substrate_stellar_sdk::types::{ScpStatementExternalize, ScpStatementPledges, StellarMessage};
+use std::{sync::Arc, thread::sleep, time::Duration};
+use substrate_stellar_sdk::{
+	types::{ScpStatementExternalize, ScpStatementPledges, StellarMessage},
+	Hash, IntoHash,
+};
 
 fn secret_key(is_mainnet: bool) -> String {
 	let path = if is_mainnet {

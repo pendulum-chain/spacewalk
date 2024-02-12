@@ -1,7 +1,8 @@
 use crate::{
 	error::Error,
-	horizon::{serde::*, traits::HorizonClient, Ledger},
+	horizon::{serde::*, traits::HorizonClient},
 	types::{FeeAttribute, PagingToken, StatusCode},
+	Slot,
 };
 use parity_scale_codec::{Decode, Encode};
 use primitives::{
@@ -54,9 +55,10 @@ pub(crate) async fn interpret_response<T: DeserializeOwned>(
 		.await
 		.map_err(Error::HorizonResponseError)?;
 
-	let title = resp[RESPONSE_FIELD_TITLE].as_str().unwrap_or(VALUE_UNKNOWN);
 	let status =
 		StatusCode::try_from(resp[RESPONSE_FIELD_STATUS].as_u64().unwrap_or(400)).unwrap_or(400);
+
+	let title = resp[RESPONSE_FIELD_TITLE].as_str().unwrap_or(VALUE_UNKNOWN);
 
 	let error = match status {
 		400 => {
@@ -168,7 +170,7 @@ pub struct TransactionResponse {
 	pub successful: bool,
 	#[serde(deserialize_with = "de_string_to_bytes")]
 	pub hash: Vec<u8>,
-	pub ledger: Ledger,
+	pub ledger: Slot,
 	#[serde(deserialize_with = "de_string_to_bytes")]
 	pub created_at: Vec<u8>,
 	#[serde(deserialize_with = "de_string_to_bytes")]
@@ -230,7 +232,7 @@ impl Debug for TransactionResponse {
 
 #[allow(dead_code)]
 impl TransactionResponse {
-	pub(crate) fn ledger(&self) -> Ledger {
+	pub(crate) fn ledger(&self) -> Slot {
 		self.ledger
 	}
 
@@ -391,7 +393,7 @@ pub struct FeeDistribution {
 #[derive(Deserialize, Debug)]
 pub struct FeeStats {
 	#[serde(deserialize_with = "de_string_to_u32")]
-	pub last_ledger: Ledger,
+	pub last_ledger: Slot,
 	#[serde(deserialize_with = "de_string_to_u32")]
 	pub last_ledger_base_fee: u32,
 	#[serde(deserialize_with = "de_string_to_f64")]
@@ -436,7 +438,7 @@ pub struct ClaimableBalance {
 	pub sponsor: Vec<u8>,
 
 	pub claimants: Vec<Claimant>,
-	pub last_modified_ledger: Ledger,
+	pub last_modified_ledger: Slot,
 	#[serde(deserialize_with = "de_string_to_bytes")]
 	pub last_modified_time: Vec<u8>,
 }

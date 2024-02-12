@@ -4,6 +4,7 @@ use parking_lot::{lock_api::RwLockReadGuard, RawRwLock, RwLock};
 
 use runtime::stellar::types::GeneralizedTransactionSet;
 
+use crate::oracle::{traits::FileHandlerExt, EnvelopesFileHandler, TxSetsFileHandler};
 use stellar_relay_lib::sdk::{
 	network::{Network, PUBLIC_NETWORK, TEST_NETWORK},
 	types::{ScpEnvelope, TransactionSet},
@@ -236,7 +237,7 @@ mod test {
 		collector::{collector::AddTxSet, ScpMessageCollector},
 		random_stellar_relay_config,
 		traits::FileHandler,
-		EnvelopesFileHandler,
+		EnvelopesFileHandler, TxSetsFileHandler,
 	};
 
 	fn open_file(file_name: &str) -> Vec<u8> {
@@ -365,7 +366,6 @@ mod test {
 		assert_eq!(res, 15);
 	}
 
-	// todo: update this with a new txset sample
 	#[test]
 	fn remove_data_works() {
 		let collector = ScpMessageCollector::new(false, stellar_history_archive_urls());
@@ -374,47 +374,45 @@ mod test {
 		let env_map =
 			EnvelopesFileHandler::get_map_from_archives(env_slot).expect("should return a map");
 
-		// let txset_slot = 42867088;
-		// let txsets_map =
-		// 	TxSetsFileHandler::get_map_from_archives(txset_slot).expect("should return a map");
+		let txset_slot = 92910;
+		let txsets_map =
+			TxSetsFileHandler::get_map_from_archives(txset_slot).expect("should return a map");
 
-		// collector.watch_slot(env_slot);
 		collector.envelopes_map.write().append(env_map);
 
-		// let txset = txsets_map.get(&txset_slot).expect("should return a tx set");
-		// collector.txset_map.write().insert(env_slot, txset.clone());
+		let txset = txsets_map.get(&txset_slot).expect("should return a tx set");
+		collector.txset_map.write().insert(env_slot, txset.clone());
 
 		assert!(collector.envelopes_map.read().contains(&env_slot));
-		//assert!(collector.txset_map.read().contains(&env_slot));
-		// assert!(collector.slot_watchlist.read().contains_key(&env_slot));
+		assert!(collector.txset_map.read().contains(&env_slot));
 
 		collector.remove_data(&env_slot);
+		collector.remove_data(&txset_slot);
 		assert!(!collector.envelopes_map.read().contains(&env_slot));
-		//assert!(!collector.txset_map.read().contains(&env_slot));
+		assert!(!collector.txset_map.read().contains(&txset_slot));
 	}
 
-	// todo: update this with a new txset sample
-	// #[test]
-	// fn is_txset_new_works() {
-	// 	let collector = ScpMessageCollector::new(false, stellar_history_archive_urls());
-	//
-	// 	let txset_slot = 42867088;
-	// 	let txsets_map =
-	// 		TxSetsFileHandler::get_map_from_archives(txset_slot).expect("should return a map");
-	//
-	// 	let txsets_size = txsets_map.len();
-	// 	println!("txsets size: {}", txsets_size);
-	//
-	// 	collector.txset_map.write().append(txsets_map);
-	//
-	// 	collector.txset_and_slot_map.write().insert([0; 32], 0);
-	//
-	// 	// these didn't exist yet.
-	// 	assert!(collector.is_txset_new(&[1; 32], &5));
-	//
-	// 	// the hash exists
-	// 	assert!(!collector.is_txset_new(&[0; 32], &6));
-	// 	// the slot exists
-	// 	assert!(!collector.is_txset_new(&[3; 32], &txset_slot));
-	// }
+	#[test]
+	fn is_txset_new_works() {
+		let collector = ScpMessageCollector::new(false, stellar_history_archive_urls());
+
+		let txset_slot = 92900;
+		let txsets_map =
+			TxSetsFileHandler::get_map_from_archives(txset_slot).expect("should return a map");
+
+		let txsets_size = txsets_map.len();
+		println!("txsets size: {}", txsets_size);
+
+		collector.txset_map.write().append(txsets_map);
+
+		collector.txset_and_slot_map.write().insert([0; 32], 0);
+
+		// these didn't exist yet.
+		assert!(collector.is_txset_new(&[1; 32], &5));
+
+		// the hash exists
+		assert!(!collector.is_txset_new(&[0; 32], &6));
+		// the slot exists
+		assert!(!collector.is_txset_new(&[3; 32], &txset_slot));
+	}
 }

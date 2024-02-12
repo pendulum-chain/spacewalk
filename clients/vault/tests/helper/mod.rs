@@ -20,7 +20,9 @@ use std::{future::Future, sync::Arc};
 use stellar_relay_lib::StellarOverlayConfig;
 use tokio::sync::RwLock;
 use vault::{
-	oracle::{get_testnet_secret_key, random_stellar_relay_config, start_oracle_agent, OracleAgent},
+	oracle::{
+		get_testnet_secret_key, random_stellar_relay_config, start_oracle_agent, OracleAgent,
+	},
 	ArcRwLock,
 };
 use wallet::StellarWallet;

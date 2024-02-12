@@ -114,9 +114,7 @@ pub fn log_decode_error<T: Debug>(source: &str, error: T) -> Error {
 
 #[cfg(test)]
 mod test {
-	use crate::connection::xdr_converter::{
-		get_xdr_message_length, parse_authenticated_message,
-	};
+	use crate::connection::xdr_converter::{get_xdr_message_length, parse_authenticated_message};
 
 	// extra function.
 	fn is_xdr_complete_message(data: &[u8], message_len: usize) -> bool {
@@ -143,8 +141,6 @@ mod test {
         ).expect("should be able to decode to bytes");
 
 		assert!(parse_authenticated_message(&msg).is_ok());
-
-
 	}
 
 	#[test]

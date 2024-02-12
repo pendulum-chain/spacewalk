@@ -129,10 +129,10 @@ impl HorizonClient for reqwest::Client {
 	) -> Result<TransactionResponse, Error> {
 		let seq_no = transaction_envelope.sequence_number();
 
-		tracing::debug!("submitting transaction with seq no: {seq_no:?}: {transaction_envelope:?}");
-
 		let transaction_xdr = transaction_envelope.to_base64_xdr();
 		let transaction_xdr = std::str::from_utf8(&transaction_xdr).map_err(Error::Utf8Error)?;
+
+		tracing::debug!("submit_transaction(): with seq no: {seq_no:?}: {transaction_xdr:?}");
 
 		let params = [("tx", &transaction_xdr)];
 

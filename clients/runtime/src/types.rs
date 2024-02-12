@@ -330,8 +330,8 @@ mod dispatch_error {
 					DispatchError::Arithmetic(arithmetic_error.into()),
 				RichDispatchError::Transactional(transactional_error) =>
 					DispatchError::Transactional(transactional_error.into()),
-				RichDispatchError::Exhausted  => DispatchError::Exhausted,
-				sp_runtime::DispatchError::Corruption  => DispatchError::Corruption,
+				RichDispatchError::Exhausted => DispatchError::Exhausted,
+				sp_runtime::DispatchError::Corruption => DispatchError::Corruption,
 				sp_runtime::DispatchError::Unavailable => DispatchError::Unavailable,
 			}
 		}
