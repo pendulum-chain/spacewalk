@@ -498,17 +498,28 @@ pub enum CurrencyId {
 	Token(u64),
 }
 
+pub trait DecimalsLookup {
+	type CurrencyId;
+
+	fn decimals(&self, _currency_id: CurrencyId) -> u8 {
+		// Default implementation is 12 decimals
+		12
+	}
+}
+
 impl CurrencyId {
 	pub const StellarNative: CurrencyId = Self::Stellar(Asset::StellarNative);
 
 	pub fn decimals(&self) -> u8 {
 		match self {
 			CurrencyId::Stellar(asset) => asset.decimals(),
+			CurrencyId::XCM(index) => match index {
+				0 => 12,
+				_ => 0,
+			},
 			// We assume that all other assets have 12 decimals
-			CurrencyId::Native |
-			CurrencyId::XCM(_) |
-			CurrencyId::ZenlinkLPToken(_, _, _, _) |
-			CurrencyId::Token(_) => 12,
+			CurrencyId::Native | CurrencyId::ZenlinkLPToken(_, _, _, _) | CurrencyId::Token(_) =>
+				12,
 		}
 	}
 
