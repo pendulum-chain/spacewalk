@@ -440,11 +440,18 @@ impl VaultService {
 			oracle_agent,
 			self.config.payment_margin_minutes,
 		);
+
+		let shutdown_clone = self.shutdown.clone();
 		service::spawn_cancelable(self.shutdown.subscribe(), async move {
-			// TODO: kill task on shutdown signal to prevent double payment
-			if let Err(e) = open_request_executor.await {
-				tracing::error!("Failed to process open requests: {}", e)
-			};
+			match open_request_executor.await {
+				Ok(_) => tracing::info!("Done processing open requests"),
+				Err(e) => {
+					tracing::error!("Failed to process open requests: {}", e);
+					if let Err(err) = shutdown_clone.send(()) {
+						tracing::error!("Failed to send shutdown signal: {}", err);
+					}
+				}
+			}
 		});
 	}
 
@@ -823,7 +830,7 @@ impl VaultService {
 
 	async fn register_public_key_if_not_present(&mut self) -> Result<(), Error> {
 		if let Some(_faucet_url) = &self.config.faucet_url {
-			crate::fa
+			// todo
 		}
 
 		if self.spacewalk_parachain.get_public_key().await?.is_none() {
