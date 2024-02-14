@@ -501,34 +501,36 @@ pub enum CurrencyId {
 pub trait DecimalsLookup {
 	type CurrencyId;
 
-	fn decimals(&self, _currency_id: CurrencyId) -> u8 {
-		// Default implementation is 12 decimals
-		12
+	fn decimals(currency_id: CurrencyId) -> u32;
+
+	fn one(currency_id: CurrencyId) -> Balance {
+		10u128.pow(Self::decimals(currency_id))
+	}
+}
+
+pub struct DefaultDecimalsLookup;
+// Implement the DecimalsLookup trait for the () type, which is the default implementation.
+impl DecimalsLookup for DefaultDecimalsLookup {
+	type CurrencyId = CurrencyId;
+
+	fn decimals(currency_id: CurrencyId) -> u32 {
+		(match currency_id {
+			CurrencyId::Stellar(asset) => asset.decimals(),
+			CurrencyId::XCM(index) => match index {
+				// This is true on Polkadot but not Kusama. We take the more 'difficult' case in the
+				// default implementation so we catch potential issue in our tests.
+				0 => 10,
+				_ => 12,
+			},
+			// We assume that all other assets have 12 decimals
+			CurrencyId::Native | CurrencyId::ZenlinkLPToken(_, _, _, _) | CurrencyId::Token(_) =>
+				12,
+		}) as u32
 	}
 }
 
 impl CurrencyId {
 	pub const StellarNative: CurrencyId = Self::Stellar(Asset::StellarNative);
-
-	pub fn decimals(&self) -> u8 {
-		match self {
-			CurrencyId::Stellar(asset) => asset.decimals(),
-			CurrencyId::XCM(index) => match index {
-				0 => 12,
-				_ => 0,
-			},
-			// We assume that all other assets have 12 decimals
-			CurrencyId::Native | CurrencyId::ZenlinkLPToken(_, _, _, _) | CurrencyId::Token(_) =>
-				12,
-		}
-	}
-
-	pub fn one(&self) -> Balance {
-		match self {
-			CurrencyId::Stellar(asset) => asset.one(),
-			_ => 10u128.pow(self.decimals().into()),
-		}
-	}
 
 	#[allow(non_snake_case)]
 	pub const fn AlphaNum4(code: Bytes4, issuer: AssetIssuer) -> Self {
