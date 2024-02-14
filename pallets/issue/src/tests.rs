@@ -447,14 +447,24 @@ fn test_set_issue_period_only_root() {
 #[test]
 fn test_request_issue_fails_exceed_limit_volume_for_issue_request() {
 	run_test(|| {
-		let volume_limit = 1u128;
+		let volume_currency = DEFAULT_COLLATERAL_CURRENCY;
+		let volume_limit = 1_000u128;
 		crate::Pallet::<Test>::_rate_limit_update(
 			std::option::Option::<u128>::Some(volume_limit),
-			DEFAULT_COLLATERAL_CURRENCY,
+			volume_currency,
 			7200u64,
 		);
 
-		let issue_amount = volume_limit + 1;
+		let issue_asset = VAULT.wrapped_currency();
+		// First, convert the volume limit to the issue asset
+		let volume_limit_denoted_in_wrapped_asset =
+			Oracle::convert(&Amount::new(volume_limit, volume_currency), issue_asset)
+				.expect("Price conversion should work");
+
+		// We set the issue amount as the volume limit + 100 (we have to use at least 100 because
+		// the issue_amount might get rounded down during the price conversion between assets with
+		// decimals differing by 2)
+		let issue_amount = volume_limit_denoted_in_wrapped_asset.amount() + 100;
 		let issue_fee = 1;
 		let griefing_collateral = 1;
 		let amount_transferred = issue_amount;
@@ -468,15 +478,22 @@ fn test_request_issue_fails_exceed_limit_volume_for_issue_request() {
 #[test]
 fn test_request_issue_fails_after_execute_issue_exceed_limit_volume_for_issue_request() {
 	run_test(|| {
+		let volume_currency = DEFAULT_COLLATERAL_CURRENCY;
 		let volume_limit = 3u128;
 		crate::Pallet::<Test>::_rate_limit_update(
-			std::option::Option::<u128>::Some(volume_limit),
-			DEFAULT_COLLATERAL_CURRENCY,
+			Option::<u128>::Some(volume_limit),
+			volume_currency,
 			7200u64,
 		);
 
 		let issue_asset = VAULT.wrapped_currency();
-		let issue_amount = volume_limit;
+
+		// We set the issue amount as exactly the volume limit
+		// First, convert the volume limit to the issue asset
+		let volume_limit_denoted_in_wrapped_asset =
+			Oracle::convert(&Amount::new(volume_limit, volume_currency), issue_asset)
+				.expect("Price conversion should work");
+		let issue_amount = volume_limit_denoted_in_wrapped_asset.amount();
 		let issue_fee = 1;
 		let griefing_collateral = 1;
 		let amount_transferred = issue_amount;
@@ -519,15 +536,21 @@ fn test_request_issue_fails_after_execute_issue_exceed_limit_volume_for_issue_re
 #[test]
 fn test_request_issue_success_with_rate_limit() {
 	run_test(|| {
+		let volume_currency = DEFAULT_COLLATERAL_CURRENCY;
 		let volume_limit = 3u128;
 		crate::Pallet::<Test>::_rate_limit_update(
 			std::option::Option::<u128>::Some(volume_limit),
-			DEFAULT_COLLATERAL_CURRENCY,
+			volume_currency,
 			7200u64,
 		);
 
 		let issue_asset = VAULT.wrapped_currency();
-		let issue_amount = volume_limit;
+
+		// We set the issue amount as exactly the volume limit
+		let volume_limit_denoted_in_wrapped_asset =
+			Oracle::convert(&Amount::new(volume_limit, volume_currency), issue_asset)
+				.expect("Price conversion should work");
+		let issue_amount = volume_limit_denoted_in_wrapped_asset.amount();
 		let issue_fee = 1;
 		let griefing_collateral = 1;
 		let amount_transferred = issue_amount;
@@ -562,15 +585,20 @@ fn test_request_issue_success_with_rate_limit() {
 #[test]
 fn test_request_issue_reset_interval_and_succeeds_with_rate_limit() {
 	run_test(|| {
+		let volume_currency = DEFAULT_COLLATERAL_CURRENCY;
 		let volume_limit = 3u128;
 		crate::Pallet::<Test>::_rate_limit_update(
 			std::option::Option::<u128>::Some(volume_limit),
-			DEFAULT_COLLATERAL_CURRENCY,
+			volume_currency,
 			7200u64,
 		);
 
 		let issue_asset = VAULT.wrapped_currency();
-		let issue_amount = volume_limit;
+		let volume_limit_denoted_in_wrapped_asset =
+			Oracle::convert(&Amount::new(volume_limit, volume_currency), issue_asset)
+				.expect("Price conversion should work");
+
+		let issue_amount = volume_limit_denoted_in_wrapped_asset.amount();
 		let issue_fee = 1;
 		let griefing_collateral = 1;
 		let amount_transferred = issue_amount;
