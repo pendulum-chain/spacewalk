@@ -27,7 +27,7 @@ use oracle::{
 	},
 };
 pub use oracle::{CurrencyId, OracleKey};
-use primitives::{AmountCompatibility, VaultCurrencyPair, VaultId};
+use primitives::{AmountCompatibility, DefaultDecimalsLookup, VaultCurrencyPair, VaultId};
 
 use crate as redeem;
 use crate::{Config, Error};
@@ -306,6 +306,7 @@ impl pallet_timestamp::Config for Test {
 impl oracle::Config for Test {
 	type RuntimeEvent = TestEvent;
 	type WeightInfo = oracle::SubstrateWeight<Test>;
+	type DecimalsLookup = DefaultDecimalsLookup;
 	type DataProvider = DiaOracleAdapter<
 		MockDiaOracle,
 		UnsignedFixedPoint,

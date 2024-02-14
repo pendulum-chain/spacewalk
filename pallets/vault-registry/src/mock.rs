@@ -25,7 +25,7 @@ pub use currency::testing_constants::{
 	DEFAULT_COLLATERAL_CURRENCY, DEFAULT_NATIVE_CURRENCY, DEFAULT_WRAPPED_CURRENCY,
 };
 pub use primitives::{CurrencyId, CurrencyId::XCM};
-use primitives::{VaultCurrencyPair, VaultId};
+use primitives::{DefaultDecimalsLookup, VaultCurrencyPair, VaultId};
 
 use crate as vault_registry;
 use crate::{Config, Error};
@@ -195,6 +195,7 @@ impl pallet_timestamp::Config for Test {
 impl oracle::Config for Test {
 	type RuntimeEvent = TestEvent;
 	type WeightInfo = oracle::SubstrateWeight<Test>;
+	type DecimalsLookup = DefaultDecimalsLookup;
 	type DataProvider = DiaOracleAdapter<
 		MockDiaOracle,
 		UnsignedFixedPoint,

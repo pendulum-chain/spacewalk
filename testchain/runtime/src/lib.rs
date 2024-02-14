@@ -512,10 +512,12 @@ cfg_if::cfg_if! {
 
 #[cfg(any(feature = "runtime-benchmarks", feature = "testing-utils"))]
 use oracle::testing_utils::MockDataFeeder;
+use primitives::DefaultDecimalsLookup;
 
 impl oracle::Config for Runtime {
 	type RuntimeEvent = RuntimeEvent;
 	type WeightInfo = oracle::SubstrateWeight<Runtime>;
+	type DecimalsLookup = DefaultDecimalsLookup;
 	type DataProvider = DataProviderImpl;
 
 	#[cfg(any(feature = "runtime-benchmarks", feature = "testing-utils"))]
