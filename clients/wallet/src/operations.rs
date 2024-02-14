@@ -8,7 +8,7 @@ use primitives::{
 		Asset, ClaimPredicate, Claimant, Memo, Operation, PublicKey, StellarSdkError, StroopAmount,
 		Transaction,
 	},
-	stellar_stroops_to_u128, StellarStroops,
+	stellar_stroops_to_u128, DecimalsLookup, StellarStroops,
 };
 
 pub trait AppendExt<T> {
@@ -98,8 +98,10 @@ pub trait RedeemOperationsExt: HorizonClient {
 
 				// ... and redeeming amount >= 1 XLM, use create account operation
 				if to_be_redeemed_asset == Asset::AssetTypeNative &&
-					to_be_redeemed_amount_u128 >= primitives::CurrencyId::StellarNative.one()
-				{
+					to_be_redeemed_amount_u128 >=
+						primitives::DefaultDecimalsLookup::one(
+							primitives::CurrencyId::StellarNative,
+						) {
 					create_account_operation(destination_address, to_be_redeemed_amount)
 				}
 				// else use claimable balance
