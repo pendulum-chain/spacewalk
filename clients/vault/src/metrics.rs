@@ -35,18 +35,6 @@ const TASK_NAME: &str = "task";
 const TOKIO_POLLING_INTERVAL_MS: u64 = 10000;
 const DISPLAY_NAME_LABEL: &str = "display_name";
 
-cfg_if::cfg_if! {
-	if #[cfg(feature = "standalone-metadata")] {
-		type DecimalsLookupImpl = primitives::DefaultDecimalsLookup;
-	} else if #[cfg(feature = "parachain-metadata-pendulum")] {
-		type DecimalsLookupImpl = primitives::PendulumDecimalsLookup;
-	} else if #[cfg(feature = "parachain-metadata-amplitude")] {
-		type DecimalsLookupImpl = primitives::AmplitudeDecimalsLookup;
-	} else if #[cfg(feature = "parachain-metadata-foucoco")] {
-		type DecimalsLookupImpl = primitives::AmplitudeDecimalsLookup;
-	}
-}
-
 // Metrics are stored under the [`CURRENCY_LABEL`] key so that multiple vaults can be easily
 // monitored at the same time.
 lazy_static! {

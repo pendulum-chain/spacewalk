@@ -99,6 +99,7 @@ pub trait RedeemOperationsExt: HorizonClient {
 				// ... and redeeming amount >= 1 XLM, use create account operation
 				if to_be_redeemed_asset == Asset::AssetTypeNative &&
 					to_be_redeemed_amount_u128 >=
+						// It's okay to use the default here because the Stellar decimals are the same
 						primitives::DefaultDecimalsLookup::one(
 							primitives::CurrencyId::StellarNative,
 						) {

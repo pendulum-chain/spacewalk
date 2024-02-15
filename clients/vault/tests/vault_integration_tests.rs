@@ -17,7 +17,7 @@ use runtime::{
 };
 use stellar_relay_lib::sdk::PublicKey;
 
-use vault::{service::IssueFilter, Event as CancellationEvent, VaultIdManager};
+use vault::{service::IssueFilter, DecimalsLookupImpl, Event as CancellationEvent, VaultIdManager};
 
 mod helper;
 use helper::*;
@@ -55,7 +55,7 @@ async fn test_redeem_succeeds() {
 				VaultIdManager::from_map(vault_provider.clone(), vault_wallet.clone(), vault_ids);
 
 			// We issue 1 (spacewalk-chain) unit
-			let issue_amount = primitives::DefaultDecimalsLookup::one(CurrencyId::Native);
+			let issue_amount = DecimalsLookupImpl::one(CurrencyId::Native);
 			let vault_collateral = get_required_vault_collateral_for_issue(
 				&vault_provider,
 				issue_amount,
@@ -903,7 +903,7 @@ async fn test_execute_open_requests_succeeds() {
 				VaultIdManager::from_map(vault_provider.clone(), vault_wallet.clone(), vault_ids);
 
 			// We issue 1 (spacewalk-chain) unit
-			let issue_amount = primitives::DefaultDecimalsLookup::one(CurrencyId::Native);
+			let issue_amount = DecimalsLookupImpl::one(CurrencyId::Native);
 			let vault_collateral = get_required_vault_collateral_for_issue(
 				&vault_provider,
 				issue_amount,
