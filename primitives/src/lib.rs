@@ -508,18 +508,53 @@ pub trait DecimalsLookup {
 	}
 }
 
-pub struct DefaultDecimalsLookup;
-// Implement the DecimalsLookup trait for the () type, which is the default implementation.
-impl DecimalsLookup for DefaultDecimalsLookup {
+// We use the PendulumDecimalsLookup as the default implementation in Spacewalk because it
+// is more interesting with the XCM(0) token having 10 decimals vs the default 12 decimals.
+pub type DefaultDecimalsLookup = PendulumDecimalsLookup;
+
+pub struct PendulumDecimalsLookup;
+impl DecimalsLookup for PendulumDecimalsLookup {
 	type CurrencyId = CurrencyId;
 
 	fn decimals(currency_id: CurrencyId) -> u32 {
 		(match currency_id {
 			CurrencyId::Stellar(asset) => asset.decimals(),
 			CurrencyId::XCM(index) => match index {
-				// This is true on Polkadot but not Kusama. We take the more 'difficult' case in the
-				// default implementation so we catch potential issue in our tests.
+				// DOT
 				0 => 10,
+				// Assethub USDT
+				1 => 6,
+				// Assethub USDC
+				2 => 6,
+				// EQD
+				3 => 9,
+				// Moonbeam BRZ
+				4 => 18,
+				// PDEX
+				5 => 12,
+				// GLMR
+				6 => 18,
+				_ => 12,
+			},
+			// We assume that all other assets have 12 decimals
+			CurrencyId::Native | CurrencyId::ZenlinkLPToken(_, _, _, _) | CurrencyId::Token(_) =>
+				12,
+		}) as u32
+	}
+}
+
+pub struct AmplitudeDecimalsLookup;
+impl DecimalsLookup for PendulumDecimalsLookup {
+	type CurrencyId = CurrencyId;
+
+	fn decimals(currency_id: CurrencyId) -> u32 {
+		(match currency_id {
+			CurrencyId::Stellar(asset) => asset.decimals(),
+			CurrencyId::XCM(index) => match index {
+				// KSM
+				0 => 12,
+				// Assethub USDT
+				1 => 6,
 				_ => 12,
 			},
 			// We assume that all other assets have 12 decimals
