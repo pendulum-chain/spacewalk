@@ -10,7 +10,7 @@ use currency::{
 	getters::{get_relay_chain_currency_id as get_collateral_currency_id, *},
 	testing_constants::get_wrapped_currency_id,
 };
-use oracle::{OracleKey, Pallet as Oracle};
+use oracle::Pallet as Oracle;
 use primitives::{CurrencyId, VaultCurrencyPair, VaultId};
 use security::Pallet as Security;
 use stellar_relay::{
@@ -21,7 +21,7 @@ use stellar_relay::{
 	Config as StellarRelayConfig, Pallet as StellarRelay,
 };
 use vault_registry::{
-	types::{DefaultVaultCurrencyPair, Vault},
+	types::{DefaultVault, DefaultVaultCurrencyPair, Vault},
 	Pallet as VaultRegistry,
 };
 
@@ -59,25 +59,26 @@ fn mint_collateral<T: crate::Config>(account_id: &T::AccountId, amount: BalanceO
 fn initialize_oracle<T: crate::Config>() {
 	let oracle_id: T::AccountId = account("Oracle", 12, 0);
 
-	let result = Oracle::<T>::feed_values(
-		oracle_id,
-		vec![
-			(
-				OracleKey::ExchangeRate(get_collateral_currency_id::<T>()),
-				UnsignedFixedPoint::<T>::checked_from_rational(1, 1).unwrap(),
-			),
-			(
-				OracleKey::ExchangeRate(get_native_currency_id::<T>()),
-				UnsignedFixedPoint::<T>::checked_from_rational(1, 1).unwrap(),
-			),
-			(
-				OracleKey::ExchangeRate(get_wrapped_currency_id()),
-				UnsignedFixedPoint::<T>::checked_from_rational(1, 1).unwrap(),
-			),
-		],
-	);
-	assert_ok!(result);
-	Oracle::<T>::begin_block(0u32.into());
+	Oracle::<T>::_set_exchange_rate(
+		oracle_id.clone(),
+		get_collateral_currency_id::<T>(),
+		UnsignedFixedPoint::<T>::checked_from_rational(1, 1).unwrap(),
+	)
+	.unwrap();
+
+	Oracle::<T>::_set_exchange_rate(
+		oracle_id.clone(),
+		get_native_currency_id::<T>(),
+		UnsignedFixedPoint::<T>::checked_from_rational(1, 1).unwrap(),
+	)
+	.unwrap();
+
+	Oracle::<T>::_set_exchange_rate(
+		oracle_id.clone(),
+		get_wrapped_currency_id(),
+		UnsignedFixedPoint::<T>::checked_from_rational(1, 1).unwrap(),
+	)
+	.unwrap();
 }
 
 fn test_request<T: crate::Config>(
@@ -114,11 +115,13 @@ fn register_vault<T: crate::Config>(vault_id: DefaultVaultId<T>) {
 
 benchmarks! {
 	request_replace {
-		initialize_oracle::<T>();
 		let vault_id = get_vault_id::<T>("Vault");
 		mint_collateral::<T>(&vault_id.account_id, (1u32 << 31).into());
 		let amount = Replace::<T>::minimum_transfer_amount(get_wrapped_currency_id()).amount() + 1000_0000u32.into();
 
+		Security::<T>::set_active_block_number(1u32.into());
+
+		initialize_oracle::<T>();
 		register_public_key::<T>(vault_id.clone());
 
 		let vault = Vault {
@@ -136,11 +139,13 @@ benchmarks! {
 	}: _(RawOrigin::Signed(vault_id.account_id.clone()), vault_id.currencies.clone(), amount)
 
 	withdraw_replace {
-		initialize_oracle::<T>();
 		let vault_id = get_vault_id::<T>("OldVault");
 		mint_collateral::<T>(&vault_id.account_id, (1u32 << 31).into());
 		let amount = wrapped(5);
 
+		Security::<T>::set_active_block_number(1u32.into());
+
+		initialize_oracle::<T>();
 		let threshold = UnsignedFixedPoint::<T>::one();
 		VaultRegistry::<T>::_set_secure_collateral_threshold(get_currency_pair::<T>(), threshold);
 		VaultRegistry::<T>::_set_system_collateral_ceiling(get_currency_pair::<T>(), 1_000_000_000u32.into());
@@ -151,8 +156,15 @@ benchmarks! {
 		VaultRegistry::<T>::issue_tokens(&vault_id, &amount).unwrap();
 		VaultRegistry::<T>::try_increase_to_be_replaced_tokens(&vault_id, &amount).unwrap();
 
-		// TODO: check that an amount was actually withdrawn
+		let vault : DefaultVault::<T> = VaultRegistry::<T>::get_vault_from_id(&vault_id).expect("should return a vault");
+		let to_be_replaced_tokens = vault.to_be_replaced_tokens;
 	}: _(RawOrigin::Signed(vault_id.account_id.clone()), vault_id.currencies.clone(), amount.amount())
+	verify {
+		let vault : DefaultVault::<T> = VaultRegistry::<T>::get_vault_from_id(&vault_id).expect("should return a vault");
+		let updated_to_be_replaced_tokens = vault.to_be_replaced_tokens;
+
+		assert!(to_be_replaced_tokens > updated_to_be_replaced_tokens);
+	}
 
 	accept_replace {
 		initialize_oracle::<T>();
