@@ -5,7 +5,7 @@ use frame_system::RawOrigin;
 use mocktopus::mocking::*;
 use pooled_rewards::RewardsApi;
 use pretty_assertions::assert_eq;
-use primitives::{StellarPublicKeyRaw, VaultCurrencyPair, VaultId};
+use primitives::{DecimalsLookup, StellarPublicKeyRaw, VaultCurrencyPair, VaultId};
 use security::Pallet as Security;
 use sp_arithmetic::{traits::One, FixedPointNumber, FixedU128};
 use sp_core::U256;
@@ -989,7 +989,7 @@ fn test_threshold_equivalent_to_legacy_calculation() {
 	) -> Result<BalanceOf<Test>, DispatchError> {
 		let granularity = 5;
 		// convert the collateral to wrapped
-		let collateral_in_wrapped = convert_to(DEFAULT_COLLATERAL_CURRENCY, wrapped(collateral))?;
+		let collateral_in_wrapped = convert_to(DEFAULT_WRAPPED_CURRENCY, amount(collateral))?;
 		let collateral_in_wrapped = U256::from(collateral_in_wrapped.amount());
 
 		// calculate how many tokens should be maximally issued given the threshold
@@ -1005,11 +1005,13 @@ fn test_threshold_equivalent_to_legacy_calculation() {
 	run_test(|| {
 		let threshold = FixedU128::checked_from_rational(199999, 100000).unwrap(); // 199.999%
 		let random_start = 987529462328_u128;
-		for xlm in random_start..random_start + 199999 {
+		for wrapped_amount in random_start..random_start + 199999 {
 			let old =
-				legacy_calculate_max_wrapped_from_collateral_for_threshold(xlm, 199999).unwrap();
+				legacy_calculate_max_wrapped_from_collateral_for_threshold(wrapped_amount, 199999)
+					.unwrap();
+
 			let new = VaultRegistry::calculate_max_wrapped_from_collateral_for_threshold(
-				&amount(xlm),
+				&amount(wrapped_amount),
 				DEFAULT_WRAPPED_CURRENCY,
 				threshold,
 			)
@@ -1067,17 +1069,17 @@ fn test_get_required_collateral_threshold_equivalent_to_legacy_calculation_() {
 #[test]
 fn get_required_collateral_for_wrapped_with_threshold_succeeds() {
 	run_test(|| {
-		let threshold = FixedU128::checked_from_rational(19999, 10000).unwrap(); // 199.99%
+		let threshold = FixedU128::checked_from_rational(20000, 10000).unwrap(); // 199.99%
 		let random_start = 987529387592_u128;
-		for xlm in random_start..random_start + 19999 {
+		for wrapped_amount in random_start..random_start + 19999 {
 			let min_collateral = VaultRegistry::get_required_collateral_for_wrapped_with_threshold(
-				&wrapped(xlm),
+				&wrapped(wrapped_amount),
 				threshold,
 				DEFAULT_COLLATERAL_CURRENCY,
 			)
 			.unwrap();
 
-			let max_xlm_for_min_collateral =
+			let max_wrapped_for_min_collateral =
 				VaultRegistry::calculate_max_wrapped_from_collateral_for_threshold(
 					&min_collateral,
 					DEFAULT_WRAPPED_CURRENCY,
@@ -1085,7 +1087,7 @@ fn get_required_collateral_for_wrapped_with_threshold_succeeds() {
 				)
 				.unwrap();
 
-			let max_xlm_for_below_min_collateral =
+			let max_wrapped_for_below_min_collateral =
 				VaultRegistry::calculate_max_wrapped_from_collateral_for_threshold(
 					&amount(min_collateral.amount() - 1),
 					DEFAULT_WRAPPED_CURRENCY,
@@ -1094,9 +1096,18 @@ fn get_required_collateral_for_wrapped_with_threshold_succeeds() {
 				.unwrap();
 
 			// Check that the amount we found is indeed the lowest amount that is sufficient for
-			// `xlm`
-			assert!(max_xlm_for_min_collateral.amount() >= xlm);
-			assert!(max_xlm_for_below_min_collateral.amount() < xlm);
+			// `wrapped`
+			// We have to be a little generous here, because the conversion from collateral to
+			// wrapped may be rounded. So we give 10^(wrapped_decimals - collateral_decimals) as
+			// tolerance.
+			let tolerance = 10u128.pow(
+				<Test as oracle::Config>::DecimalsLookup::decimals(DEFAULT_WRAPPED_CURRENCY)
+					.saturating_sub(<Test as oracle::Config>::DecimalsLookup::decimals(
+						DEFAULT_COLLATERAL_CURRENCY,
+					)),
+			);
+			assert!(max_wrapped_for_min_collateral.amount() + tolerance >= wrapped_amount);
+			assert!(max_wrapped_for_below_min_collateral.amount() < wrapped_amount);
 		}
 	})
 }
@@ -1173,14 +1184,14 @@ mod liquidation_threshold_tests {
 	fn setup() -> Vault<AccountId, BlockNumber, Balance, CurrencyId, UnsignedFixedPoint> {
 		let id = create_sample_vault();
 
-		assert_ok!(VaultRegistry::try_increase_to_be_issued_tokens(&id, &wrapped(50)),);
-		let res = VaultRegistry::issue_tokens(&id, &wrapped(50));
+		assert_ok!(VaultRegistry::try_increase_to_be_issued_tokens(&id, &wrapped(5_000)),);
+		let res = VaultRegistry::issue_tokens(&id, &wrapped(5_000));
 		assert_ok!(res);
 
 		let mut vault = VaultRegistry::get_vault_from_id(&id).unwrap();
-		vault.issued_tokens = 50;
-		vault.to_be_issued_tokens = 40;
-		vault.to_be_redeemed_tokens = 20;
+		vault.issued_tokens = 5_000;
+		vault.to_be_issued_tokens = 4_000;
+		vault.to_be_redeemed_tokens = 2_000;
 
 		vault
 	}
@@ -1203,7 +1214,11 @@ mod liquidation_threshold_tests {
 	fn is_vault_below_liquidation_threshold_true_succeeds() {
 		run_test(|| {
 			let vault = setup();
-			let backing_collateral = vault.issued_tokens * 2 - 1;
+			let issued_tokens_as_collateral =
+				Oracle::convert(&wrapped(vault.issued_tokens), vault.id.currencies.collateral)
+					.expect("Conversion should work")
+					.amount();
+			let backing_collateral = issued_tokens_as_collateral * 2 - 1;
 			VaultRegistry::get_backing_collateral
 				.mock_safe(move |_| MockResult::Return(Ok(amount(backing_collateral))));
 			assert_eq!(
@@ -1271,7 +1286,7 @@ fn get_settled_collateralization_from_vault_succeeds() {
 	})
 }
 
-mod get_vaults_below_premium_collaterlization_tests {
+mod get_vaults_below_premium_collateralization_tests {
 	use super::{assert_eq, *};
 
 	/// sets premium_redeem threshold to 1
@@ -1315,12 +1330,18 @@ mod get_vaults_below_premium_collaterlization_tests {
 	fn get_vaults_below_premium_collateralization_succeeds() {
 		run_test(|| {
 			let id1 = vault_id(3);
-			let issue_tokens1: u128 = 50;
-			let collateral1 = 49;
+			let issue_tokens1 = 5_000;
+			let collateral1 = Oracle::convert(&wrapped(issue_tokens1), id1.collateral_currency())
+				.expect("Conversion should work")
+				.amount();
+			let collateral1 = collateral1 - 1;
 
 			let id2 = vault_id(4);
-			let issue_tokens2: u128 = 60;
-			let collateral2 = 48;
+			let issue_tokens2: u128 = 6_000;
+			let collateral2 = Oracle::convert(&wrapped(issue_tokens2), id2.collateral_currency())
+				.expect("Conversion should work")
+				.amount();
+			let collateral2 = collateral2 - 12;
 
 			add_vault(id1.clone(), issue_tokens1, collateral1);
 			add_vault(id2.clone(), issue_tokens2, collateral2);
@@ -1336,23 +1357,31 @@ mod get_vaults_below_premium_collaterlization_tests {
 	fn get_vaults_below_premium_collateralization_filters_banned_and_sufficiently_collateralized_vaults(
 	) {
 		run_test(|| {
-			// not returned, because is is not under premium threshold (which is set to 100% for
+			// not returned, because it is not under premium threshold (which is set to 100% for
 			// this test)
 			let id1 = vault_id(3);
-			let issue_tokens1: u128 = 50;
-			let collateral1 = 50;
+			let issue_tokens1 = 5_000;
+			let collateral1 = Oracle::convert(&wrapped(issue_tokens1), id1.collateral_currency())
+				.expect("Conversion should work")
+				.amount();
 			add_vault(id1, issue_tokens1, collateral1);
 
 			// returned
 			let id2 = vault_id(4);
-			let issue_tokens2: u128 = 50;
-			let collateral2 = 49;
+			let issue_tokens2: u128 = 5_000;
+			let collateral2 = Oracle::convert(&wrapped(issue_tokens2), id2.collateral_currency())
+				.expect("Conversion should work")
+				.amount();
+			let collateral2 = collateral2 - 1;
 			add_vault(id2.clone(), issue_tokens2, collateral2);
 
 			// not returned because it's banned
 			let id3 = vault_id(5);
-			let issue_tokens3: u128 = 50;
-			let collateral3 = 49;
+			let issue_tokens3: u128 = 5_000;
+			let collateral3 = Oracle::convert(&wrapped(issue_tokens3), id3.collateral_currency())
+				.expect("Conversion should work")
+				.amount();
+			let collateral3 = collateral3 - 1;
 			add_vault(id3.clone(), issue_tokens3, collateral3);
 			let mut vault3 = VaultRegistry::get_active_rich_vault_from_id(&id3).unwrap();
 			vault3.ban_until(1000);
