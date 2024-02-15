@@ -35,6 +35,18 @@ const TASK_NAME: &str = "task";
 const TOKIO_POLLING_INTERVAL_MS: u64 = 10000;
 const DISPLAY_NAME_LABEL: &str = "display_name";
 
+cfg_if::cfg_if! {
+	if #[cfg(feature = "standalone-metadata")] {
+		type DecimalsLookupImpl = primitives::DefaultDecimalsLookup;
+	} else if #[cfg(feature = "parachain-metadata-pendulum")] {
+		type DecimalsLookupImpl = primitives::PendulumDecimalsLookup;
+	} else if #[cfg(feature = "parachain-metadata-amplitude")] {
+		type DecimalsLookupImpl = primitives::AmplitudeDecimalsLookup;
+	} else if #[cfg(feature = "parachain-metadata-foucoco")] {
+		type DecimalsLookupImpl = primitives::AmplitudeDecimalsLookup;
+	}
+}
+
 // Metrics are stored under the [`CURRENCY_LABEL`] key so that multiple vaults can be easily
 // monitored at the same time.
 lazy_static! {
@@ -288,8 +300,7 @@ pub async fn metrics_handler() -> Result<impl Reply, Rejection> {
 }
 
 fn raw_value_as_currency(value: u128, currency: CurrencyId) -> Result<f64, ServiceError<Error>> {
-	// FIXME: This could also be used for the collateral asset and then turn out wrong
-	let scaling_factor = primitives::DefaultDecimalsLookup::one(currency) as f64;
+	let scaling_factor = DecimalsLookupImpl::one(currency) as f64;
 	Ok(value as f64 / scaling_factor)
 }
 
@@ -557,8 +568,7 @@ pub async fn publish_expected_stellar_balance<P: VaultRegistryPallet>(
 	if let Ok(v) = parachain_rpc.get_vault(&vault.vault_id).await {
 		let lowerbound = v.issued_tokens.saturating_sub(v.to_be_redeemed_tokens);
 		let upperbound = v.issued_tokens.saturating_add(v.to_be_issued_tokens);
-		let scaling_factor =
-			primitives::DefaultDecimalsLookup::one(vault.vault_id.wrapped_currency()) as f64;
+		let scaling_factor = DecimalsLookupImpl::one(vault.vault_id.wrapped_currency()) as f64;
 
 		vault.metrics.asset_balance.lowerbound.set(lowerbound as f64 / scaling_factor);
 		vault.metrics.asset_balance.upperbound.set(upperbound as f64 / scaling_factor);

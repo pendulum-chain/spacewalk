@@ -11245,6 +11245,7 @@ dependencies = [
  "async-trait",
  "base64 0.13.1",
  "bincode",
+ "cfg-if 1.0.0",
  "clap 3.2.25",
  "env_logger 0.9.3",
  "err-derive",

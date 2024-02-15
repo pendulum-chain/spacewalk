@@ -544,7 +544,7 @@ impl DecimalsLookup for PendulumDecimalsLookup {
 }
 
 pub struct AmplitudeDecimalsLookup;
-impl DecimalsLookup for PendulumDecimalsLookup {
+impl DecimalsLookup for AmplitudeDecimalsLookup {
 	type CurrencyId = CurrencyId;
 
 	fn decimals(currency_id: CurrencyId) -> u32 {
