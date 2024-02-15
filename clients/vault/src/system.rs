@@ -210,30 +210,39 @@ fn parse_collateral_and_amount(
 
 #[derive(Parser, Clone, Debug)]
 pub struct VaultServiceConfig {
-	#[clap(long, help = "The Stellar secret key that is used to sign transactions.")]
+	#[clap(
+		long,
+		env = "STELLAR_VAULT_SECRET_KEY_FILEPATH",
+		help = "The Stellar secret key that is used to sign transactions."
+	)]
 	pub stellar_vault_secret_key_filepath: String,
 
-	#[clap(long, help = "The filepath where the json config for StellarOverlay is located")]
+	#[clap(
+		long,
+		env = "STELLAR_OVERLAY_CONFIG_FILEPATH",
+		help = "The filepath where the json config for StellarOverlay is located"
+	)]
 	pub stellar_overlay_config_filepath: String,
 
 	/// Pass the faucet URL for auto-registration.
-	#[clap(long)]
+	#[clap(long, env = "FAUCET_URL")]
 	pub faucet_url: Option<String>,
 
 	/// Automatically register the vault with the given amount of collateral
-	#[clap(long, value_parser = parse_collateral_and_amount)]
+	/// note: when specifying the env, make sure to enclose it with double quotes.
+	#[clap(long, env = "AUTO_REGISTER", value_parser = parse_collateral_and_amount)]
 	pub auto_register: Vec<(String, String, Option<u128>)>,
 
 	/// Minimum time to the redeem/replace execution deadline to make the stellar payment.
-	#[clap(long, value_parser = parse_duration_minutes, default_value = "1")]
+	#[clap(long, env = "PAYMENT_MARGIN_MINUTES", value_parser = parse_duration_minutes, default_value = "1")]
 	pub payment_margin_minutes: Duration,
 
 	/// Opt out of participation in replace requests.
-	#[clap(long)]
+	#[clap(long, env = "NO_AUTO_REPLACE")]
 	pub no_auto_replace: bool,
 
 	/// Don't try to execute issues.
-	#[clap(long)]
+	#[clap(long, env = "NO_ISSUE_EXECUTION")]
 	pub no_issue_execution: bool,
 }
 
