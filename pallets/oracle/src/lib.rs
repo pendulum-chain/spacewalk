@@ -180,7 +180,7 @@ pub mod pallet {
 		/// # Arguments
 		/// * `oracle_key` - list of oracle keys
 		#[pallet::call_index(2)]
-		#[pallet::weight(< T as Config >::WeightInfo::update_oracle_keys())]
+		#[pallet::weight(<T as Config>::WeightInfo::update_oracle_keys())]
 		#[transactional]
 		pub fn update_oracle_keys(
 			origin: OriginFor<T>,

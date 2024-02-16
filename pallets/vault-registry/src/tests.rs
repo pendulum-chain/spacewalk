@@ -1069,7 +1069,7 @@ fn test_get_required_collateral_threshold_equivalent_to_legacy_calculation_() {
 #[test]
 fn get_required_collateral_for_wrapped_with_threshold_succeeds() {
 	run_test(|| {
-		let threshold = FixedU128::checked_from_rational(20000, 10000).unwrap(); // 199.99%
+		let threshold = FixedU128::checked_from_rational(19999, 10000).unwrap(); // 199.99%
 		let random_start = 987529387592_u128;
 		for wrapped_amount in random_start..random_start + 19999 {
 			let min_collateral = VaultRegistry::get_required_collateral_for_wrapped_with_threshold(
