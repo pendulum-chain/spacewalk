@@ -29,36 +29,6 @@ if [ ${#rust_files[@]} -ne 0 ]; then
 else
     echo "No changes, formatting skipped"
 fi
-wait
-
-echo "Running cargo clippy --fix on project"
-before_clippy=$(git diff --name-only)
-$(command -v cargo) clippy --fix --allow-dirty --allow-staged --all-features
-after_clippy=$(git diff --name-only)
-wait
-
-# Files modified by clippy
-readarray -t before_files <<< "$before_clippy"
-readarray -t after_files <<< "$after_clippy"
-clippy_modified_files=()
-for i in "${after_files[@]}"; do
-    skip=
-    for j in "${before_files[@]}"; do
-        [[ $i == $j ]] && { skip=1; break; }
-    done
-    [[ -n $skip ]] || clippy_modified_files+=("$i")
-done
-
-# Add only the files modified by clippy
-if [ ${#clippy_modified_files[@]} -ne 0 ]; then
-    git add ${clippy_modified_files[@]}
-    echo "Clippy modifications added for: ${clippy_modified_files[@]}"
-else
-    echo "No modifications by clippy"
-fi
-
-echo "Pre-commit hook execution completed."
-
 EOF
 
 chmod +x .git/hooks/pre-commit
