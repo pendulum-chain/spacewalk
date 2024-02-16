@@ -1,7 +1,7 @@
 use crate::{mock::*, CurrencyId, OracleKey, USD_DECIMALS};
 use frame_support::{assert_err, assert_ok};
 use mocktopus::mocking::*;
-use primitives::DecimalsLookup;
+use primitives::{Asset, DecimalsLookup};
 use sp_arithmetic::FixedU128;
 use sp_runtime::FixedPointNumber;
 
@@ -202,6 +202,42 @@ fn test_amount_conversion() {
 		let result = Oracle::convert(&result, source_currency).expect("Should convert");
 		assert_eq!(result.amount(), amount.amount());
 		assert_eq!(result.currency(), amount.currency());
+	});
+}
+
+#[test]
+fn test_amount_conversion_limits() {
+	run_test(|| {
+		// We choose two Stellar assets because we know they have the same decimals
+		let source_currency = CurrencyId::StellarNative;
+		let target_currency =
+			CurrencyId::Stellar(Asset::AlphaNum4 { issuer: [0; 32], code: [0; 4] });
+
+		Oracle::get_price.mock_safe(move |key| {
+			match key {
+				OracleKey::ExchangeRate(currency) => {
+					// StellarNative is worth 1 USD
+					if currency == source_currency {
+						MockResult::Return(Ok(FixedU128::from_rational(1, 1)))
+					} else {
+						// Stellar asset is worth 0.5 USD
+						MockResult::Return(Ok(FixedU128::from_rational(1, 2)))
+					}
+				},
+			}
+		});
+
+		// Range of u128 is 0 to 2^128 - 1 (~= 3.4 * 10^38)
+		for i in 0..=38 {
+			let amount = 10u128.pow(i);
+			let amount = currency::Amount::new(amount, source_currency);
+			let result = Oracle::convert(&amount, target_currency).expect("Should convert");
+
+			// We expect the result to be 2 * amount because source is worth twice as much as target
+			let expected = currency::Amount::<Test>::new(amount.amount() * 2, target_currency);
+			assert_eq!(result.amount(), expected.amount());
+			assert_eq!(result.currency(), expected.currency());
+		}
 	});
 }
 
