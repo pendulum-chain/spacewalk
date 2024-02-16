@@ -365,8 +365,7 @@ impl<T: Config> Pallet<T> {
 			return Ok(Zero::zero())
 		}
 
-		let from_amount = T::UnsignedFixedPoint::checked_from_integer(from_amount)
-			.ok_or(Error::<T>::TryIntoIntError)?;
+		let from_amount = T::UnsignedFixedPoint::from_inner(from_amount);
 
 		if from_decimals > to_decimals {
 			// result = from_amount * from_price / to_price / 10^(from_decimals - to_decimals)
@@ -382,8 +381,7 @@ impl<T: Config> Pallet<T> {
 					.ok_or(Error::<T>::TryIntoIntError)?,
 				)
 				.ok_or(ArithmeticError::Underflow)?
-				.truncate_to_inner()
-				.ok_or(Error::<T>::TryIntoIntError)?
+				.into_inner()
 				.unique_saturated_into();
 
 			Ok(to_amount)
@@ -401,8 +399,7 @@ impl<T: Config> Pallet<T> {
 				.ok_or(ArithmeticError::Overflow)?
 				.checked_div(&to_price)
 				.ok_or(ArithmeticError::Underflow)?
-				.truncate_to_inner()
-				.ok_or(Error::<T>::TryIntoIntError)?
+				.into_inner()
 				.unique_saturated_into();
 
 			Ok(to_amount)
