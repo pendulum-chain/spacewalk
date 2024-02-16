@@ -2,7 +2,7 @@ use std::{collections::HashMap, convert::TryInto};
 
 use crate::{
 	system::{VaultData, VaultIdManager},
-	Error,
+	DecimalsLookupImpl, Error,
 };
 use async_trait::async_trait;
 use lazy_static::lazy_static;
