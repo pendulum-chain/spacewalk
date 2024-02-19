@@ -49,7 +49,7 @@ pub fn get_mainnet_secret_key() -> String {
 }
 
 /// return a secret key for testnet with 2 choices; one has xlm, the other does not
-pub fn get_testnet_secret_key(with_currency:bool) -> String {
+pub fn get_testnet_secret_key(with_currency: bool) -> String {
 	let num = if with_currency { 0 } else { 1 };
 	let path = format!("./resources/secretkey/testnet/stellar_secretkey_testnet_{num}");
 

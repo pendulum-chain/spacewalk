@@ -1437,17 +1437,24 @@ impl ReplacePallet for SpacewalkParachain {
 
 #[async_trait]
 pub trait StellarRelayPallet {
-	async fn is_public_network(&self) -> Result<bool, Error>;
+	async fn is_public_network(&self) -> bool;
 }
 
 #[async_trait]
 impl StellarRelayPallet for SpacewalkParachain {
-	async fn is_public_network(&self) -> Result<bool, Error> {
+	async fn is_public_network(&self) -> bool {
 		let address = metadata::constants().stellar_relay().is_public_network();
 		let result = self.api.constants().at(&address);
 		match result {
-			Ok(result) => Ok(result),
-			Err(_) => Err(Error::ConstantNotFound("is_public_network".to_string())),
+			Ok(result) => result,
+			Err(e) => {
+				// Sometimes the fetch fails with 'StorageItemNotFound' error.
+				// We assume public network by default
+				log::warn!(
+					"Failed to fetch public network status from parachain: {e:?}. Assuming public network."
+				);
+				true
+			},
 		}
 	}
 }

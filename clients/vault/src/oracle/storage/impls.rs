@@ -361,7 +361,6 @@ mod test {
 			let mut path = PathBuf::new();
 			path.push("./resources/test/tx_sets_for_testing");
 			path.push(&format!("{}_{}", first_slot, last_slot));
-			println!("find file: {:?}", path);
 
 			let mut file = File::open(path).expect("file should exist");
 			let mut bytes: Vec<u8> = vec![];
