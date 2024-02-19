@@ -175,17 +175,22 @@ async fn fetch_transactions_iter_success() {
 
 	let mut txs_iter = fetcher.fetch_transactions_iter(0).await.expect("should return a response");
 
-	let next_page = txs_iter.next_page.clone();
-	assert!(!next_page.is_empty());
-
 	for _ in 0..txs_iter.records.len() {
 		assert!(txs_iter.next().await.is_some());
 	}
 
-	// the list should be empty, as the last record was returned.
+	// the list should be empty, as the last record of this page was returned.
 	assert_eq!(txs_iter.records.len(), 0);
 
-	// todo: when this account's # of transactions is more than 200, add a test case for it.
+	// if the next page
+	let next_page = txs_iter.next_page.clone();
+	if !next_page.is_empty() {
+		// continue reading for transactions
+		assert!(txs_iter.next().await.is_some());
+
+		// new records can be read
+		assert_ne!(txs_iter.records.len(), 0);
+	}
 }
 
 #[tokio::test(flavor = "multi_thread")]

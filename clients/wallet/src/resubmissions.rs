@@ -16,6 +16,7 @@ use tokio::time::sleep;
 
 #[cfg(test)]
 use mocktopus::macros::mockable;
+use primitives::stellar::types::SequenceNumber;
 
 pub const RESUBMISSION_INTERVAL_IN_SECS: u64 = 1800;
 
@@ -244,10 +245,8 @@ impl StellarWallet {
 		self.submit_transaction(envelope).await
 	}
 
-	/// This function iterates over all transactions of an account to see if a similar transaction
-	/// i.e. a transaction containing the same memo was already submitted previously.
-	/// TODO: This operation is very costly and we should try to optimize it in the future.
 	async fn is_transaction_already_submitted(&self, tx: &Transaction) -> bool {
+		let tx_sequence_num = tx.seq_num;
 		// loop through until the 10th page
 		let mut remaining_page = 0;
 		let own_public_key = self.public_key();
@@ -268,6 +267,20 @@ impl StellarWallet {
 					// move on to the next response
 					Ok(source_account) if !source_account.eq(&own_public_key) => continue,
 					_ => {},
+				}
+
+				if let Ok(source_account_sequence) =
+					String::from_utf8(response.source_account_sequence.clone())
+				{
+					if let Ok(source_account_sequence) =
+						source_account_sequence.parse::<SequenceNumber>()
+					{
+						// if the source account seq. is < the seq. number of the tx you're looking
+						// for, there's no need to look further.
+						if source_account_sequence < tx_sequence_num {
+							break
+						}
+					}
 				}
 
 				// Check that the transaction contains the memo that we want to send.
