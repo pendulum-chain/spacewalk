@@ -481,21 +481,47 @@ impl<C: HorizonClient> TransactionsResponseIter<C> {
 		None
 	}
 
-	/// returns the next TransactionResponse in the list
+	/// returns the next TransactionResponse
 	pub async fn next(&mut self) -> Option<TransactionResponse> {
 		match self.get_top_record() {
 			Some(record) => Some(record),
 			None => {
-				// call the next page
-				tracing::trace!("calling next page: {}", &self.next_page);
-
-				let response: HorizonTransactionsResponse =
-					self.client.get_from_url(&self.next_page).await.ok()?;
-				self.next_page = response.next_page();
-				self.records = response.records();
-
+				let _ = self.jump_to_next_page().await?;
 				self.get_top_record()
 			},
 		}
+	}
+
+	/// returns the last TransactionResponse in the list
+	pub fn next_back(&mut self) -> Option<TransactionResponse> {
+		self.records.pop()
+	}
+
+	pub fn get_middle(&mut self) -> Option<TransactionResponse> {
+		if !self.is_empty() {
+			let idx = self.records.len() / 2;
+			return Some(self.records.remove(idx))
+		}
+		None
+	}
+
+	pub fn remove_first_half_records(&mut self) {
+		let idx = self.records.len() / 2;
+		self.records = self.records[..idx].to_vec();
+	}
+
+	pub fn remove_last_half_records(&mut self) {
+		let idx = self.records.len() / 2;
+		self.records = self.records[idx..].to_vec();
+	}
+
+	pub async fn jump_to_next_page(&mut self) -> Option<()>  {
+		let response: HorizonTransactionsResponse =
+			self.client.get_from_url(&self.next_page).await.ok()?;
+		self.next_page = response.next_page();
+		self.records = response.records();
+
+		Some(())
+
 	}
 }
