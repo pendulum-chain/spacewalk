@@ -450,7 +450,7 @@ impl VaultService {
 					if let Err(err) = shutdown_clone.send(()) {
 						tracing::error!("Failed to send shutdown signal: {}", err);
 					}
-				}
+				},
 			}
 		});
 	}
@@ -715,15 +715,7 @@ impl VaultService {
 		monitoring_config: MonitoringConfig,
 		shutdown: ShutdownSender,
 	) -> Result<Self, Error> {
-		let is_public_network =
-			spacewalk_parachain.is_public_network().await.unwrap_or_else(|error| {
-				// Sometimes the fetch fails with 'StorageItemNotFound' error.
-				// We assume public network by default
-				tracing::warn!(
-					"Failed to fetch public network status from parachain: {error}. Assuming public network."
-				);
-				true
-			});
+		let is_public_network = spacewalk_parachain.is_public_network().await;
 
 		let secret_key = fs::read_to_string(&config.stellar_vault_secret_key_filepath)?
 			.trim()
@@ -829,9 +821,7 @@ impl VaultService {
 	}
 
 	async fn register_public_key_if_not_present(&mut self) -> Result<(), Error> {
-		if let Some(_faucet_url) = &self.config.faucet_url {
-			// todo
-		}
+		let _ = self.try_fund_from_faucet().await;
 
 		if self.spacewalk_parachain.get_public_key().await?.is_none() {
 			let public_key = self.stellar_wallet.read().await.public_key();
@@ -846,6 +836,37 @@ impl VaultService {
 		}
 
 		Ok(())
+	}
+
+	/// Only works when the stellar network is testnet
+	async fn try_fund_from_faucet(&self) -> bool {
+		let Some(faucet_url) = &self.config.faucet_url else {
+			return false
+		};
+
+		let is_public_network = self.spacewalk_parachain.is_public_network().await;
+
+		// fund the account if on stellar TESTNET
+		if !is_public_network {
+			let account_id = self.spacewalk_parachain.get_account_id().pretty_print();
+			let url = format!("{faucet_url}?to={account_id}");
+			match reqwest::get(url.clone()).await {
+				Ok(response) if response.status().is_success() => {
+					tracing::info!("try_fund_from_faucet(): successful funded {account_id}");
+					return true
+				},
+				Ok(response) => {
+					tracing::error!("try_fund_from_faucet(): failed to fund {account_id} from faucet: {response:#?}");
+				},
+				Err(e) => {
+					tracing::error!(
+						"try_fund_from_faucet(): failed to fund {account_id} from faucet: {e}"
+					);
+				},
+			}
+		}
+
+		false
 	}
 
 	async fn register_vault_with_collateral(
@@ -876,12 +897,7 @@ impl VaultService {
 				)
 				.await
 				.map_err(|e| Error::RuntimeError(e))
-		} else if let Some(_faucet_url) = &self.config.faucet_url {
-			tracing::info!("[{}] Automatically registering...", vault_id.pretty_print());
-
-			// TODO
-			// faucet::fund_and_register(&self.spacewalk_parachain, faucet_url, &vault_id)
-			// 	.await?;
+		} else if self.try_fund_from_faucet().await {
 			Ok(())
 		} else {
 			tracing::error!(
