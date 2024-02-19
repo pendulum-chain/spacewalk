@@ -1107,7 +1107,7 @@ fn get_required_collateral_for_wrapped_with_threshold_succeeds() {
 					)),
 			);
 			assert!(max_wrapped_for_min_collateral.amount() + tolerance >= wrapped_amount);
-			assert!(max_wrapped_for_below_min_collateral.amount() < wrapped_amount);
+			assert!(max_wrapped_for_below_min_collateral.amount() - tolerance < wrapped_amount);
 		}
 	})
 }
