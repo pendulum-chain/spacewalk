@@ -95,15 +95,17 @@ cargo run --bin spacewalk-standalone --release -- --dev
 
 # Development
 
-To ease the maintenance of proper code formatting, please consider installing the pre-commit hook contained in this
+To ease the maintenance of proper code formatting, please consider installing the pre-commit hook and /or the pre-push hook contained in this
 repository.
-This hook runs `rustfmt` on all the changed files in a commit, to ensure that changed files are properly formatted
+The pre-commit hook runs `rustfmt` on all the changed files in a commit, to ensure that changed files are properly formatted
 before committing.
 You can install the hook by running the following commands.
 
 ```
 .maintain/add-pre-commit.sh
 ```
+
+The pre-push hool runs clippy checks that are also performed in the CI of the repository. These checks need to be succesfull  
 
 # Releases
 
