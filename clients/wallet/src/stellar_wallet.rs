@@ -170,7 +170,7 @@ impl StellarWallet {
 		let next_page = transactions_response.next_page();
 		let records = transactions_response.records();
 
-		Ok(TransactionsResponseIter { records, next_page, client: self.client.clone() })
+		Ok(TransactionsResponseIter {records, next_page, client: self.client.clone() })
 	}
 
 	/// Returns the balances of this wallet's Stellar account
