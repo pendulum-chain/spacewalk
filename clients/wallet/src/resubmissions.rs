@@ -259,8 +259,6 @@ fn _is_transaction_already_submitted(
 	if tx_sequence_num > source_account_sequence {
 		iter.remove_last_half_records();
 	}
-	// if the sequence number is smaller,then the transaction must be in
-	// the last half of the records list.
 	else {
 		iter.remove_first_half_records();
 	}
@@ -509,12 +507,17 @@ mod test {
 			let dummy_transaction =
 				dummy_envelope.get_transaction().expect("must return a transaction");
 
-			let _ = wallet
+			let resp = wallet
 				.bump_sequence_number_and_submit(dummy_transaction.clone())
 				.await
 				.expect("return ok");
+			let new_dummy_transaction = String::from_utf8(resp.envelope_xdr)
+				.expect("should return a String");
+			let new_dummy_env = TransactionEnvelope::from_base64_xdr(new_dummy_transaction)
+				.expect("should return an envelope");
+			let new_dummy_transaction = new_dummy_env.get_transaction().expect("should return a transaction");
 
-			assert!(wallet.is_transaction_already_submitted(&dummy_transaction).await);
+			assert!(wallet.is_transaction_already_submitted(&new_dummy_transaction).await);
 		}
 
 		// test bump_sequence_number_and_submit failed
