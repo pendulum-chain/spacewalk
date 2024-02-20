@@ -368,8 +368,8 @@ impl StellarWallet {
 				if let Some(result) =
 					_is_transaction_already_submitted(&mut iter, tx, &own_public_key)
 				{
-					// if the middle transaction was a match (both source account and sequence number),
-					// return that result
+					// if the middle transaction was a match (both source account and sequence
+					// number), return that result
 					return result
 				}
 				continue

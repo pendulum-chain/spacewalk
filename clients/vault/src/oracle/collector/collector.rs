@@ -2,11 +2,9 @@ use std::{default::Default, sync::Arc};
 
 use parking_lot::{lock_api::RwLockReadGuard, RawRwLock, RwLock};
 
-use runtime::stellar::types::GeneralizedTransactionSet;
-
 use stellar_relay_lib::sdk::{
 	network::{Network, PUBLIC_NETWORK, TEST_NETWORK},
-	types::{ScpEnvelope, TransactionSet},
+	types::{GeneralizedTransactionSet, ScpEnvelope, TransactionSet},
 	TransactionSetType,
 };
 
