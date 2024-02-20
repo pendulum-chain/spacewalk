@@ -473,7 +473,7 @@ impl<C: HorizonClient> TransactionsResponseIter<C> {
 	}
 
 	#[doc(hidden)]
-	// returns the first record of the list
+	// returns the first transaction response of the list
 	fn get_top_record(&mut self) -> Option<TransactionResponse> {
 		if !self.is_empty() {
 			return Some(self.records.remove(0))
@@ -492,12 +492,8 @@ impl<C: HorizonClient> TransactionsResponseIter<C> {
 		}
 	}
 
-	/// returns the last TransactionResponse in the list
-	pub fn next_back(&mut self) -> Option<TransactionResponse> {
-		self.records.pop()
-	}
-
-	pub fn get_middle(&mut self) -> Option<TransactionResponse> {
+	/// returns the TransactionResponse in the middle of the list
+	pub fn middle(&mut self) -> Option<TransactionResponse> {
 		if !self.is_empty() {
 			let idx = self.records.len() / 2;
 			return Some(self.records.remove(idx))
@@ -505,23 +501,26 @@ impl<C: HorizonClient> TransactionsResponseIter<C> {
 		None
 	}
 
-	pub fn remove_first_half_records(&mut self) {
-		let idx = self.records.len() / 2;
-		self.records = self.records[..idx].to_vec();
-	}
-
 	pub fn remove_last_half_records(&mut self) {
 		let idx = self.records.len() / 2;
-		self.records = self.records[idx..].to_vec();
+		if idx != 0 {
+			self.records = self.records[..idx].to_vec();
+		}
 	}
 
-	pub async fn jump_to_next_page(&mut self) -> Option<()>  {
+	pub fn remove_first_half_records(&mut self) {
+		let idx = self.records.len() / 2;
+		if idx != 0 {
+			self.records = self.records[idx..].to_vec();
+		}
+	}
+
+	pub async fn jump_to_next_page(&mut self) -> Option<()> {
 		let response: HorizonTransactionsResponse =
 			self.client.get_from_url(&self.next_page).await.ok()?;
 		self.next_page = response.next_page();
 		self.records = response.records();
 
 		Some(())
-
 	}
 }

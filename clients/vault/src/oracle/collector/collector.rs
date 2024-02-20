@@ -400,7 +400,6 @@ mod test {
 			TxSetsFileHandler::get_map_from_archives(txset_slot).expect("should return a map");
 
 		let txsets_size = txsets_map.len();
-		println!("txsets size: {}", txsets_size);
 
 		collector.txset_map.write().append(txsets_map);
 
