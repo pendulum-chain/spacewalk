@@ -182,6 +182,7 @@ impl currency::Config for Test {
 impl Config for Test {
 	type RuntimeEvent = TestEvent;
 	type WeightInfo = oracle::SubstrateWeight<Test>;
+	type DecimalsLookup = primitives::DefaultDecimalsLookup;
 	type DataProvider = DiaOracleAdapter<
 		crate::testing_utils::MockDiaOracle,
 		UnsignedFixedPoint,
