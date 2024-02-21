@@ -70,7 +70,7 @@ fn initialize_oracle<T: crate::Config>() {
 	.unwrap();
 
 	Oracle::<T>::_set_exchange_rate(
-		oracle_id.clone(),
+		oracle_id,
 		get_wrapped_currency_id(),
 		UnsignedFixedPoint::<T>::checked_from_rational(1, 1).unwrap(),
 	)
