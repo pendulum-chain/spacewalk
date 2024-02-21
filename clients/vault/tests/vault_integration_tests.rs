@@ -662,7 +662,7 @@ async fn test_issue_execution_succeeds_from_archive() {
 			let slot = transaction_response.ledger as u64;
 
 			// We sleep here in order to wait for the fallback to the archive to be necessary
-			sleep(Duration::from_secs((MAX_SLOTS_TO_REMEMBER + 1) * 6)).await;
+			sleep(Duration::from_secs(5 * 60)).await;
 
 			sp_tracing::try_init_simple();
 			let shutdown_tx = ShutdownSender::new();
