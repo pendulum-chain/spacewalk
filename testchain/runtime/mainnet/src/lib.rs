@@ -68,7 +68,8 @@ impl_opaque_keys! {
 }
 
 pub const UNITS: Balance = 10_000_000_000;
-pub const CENTS: Balance = UNITS / 100; // 100_000_000
+pub const CENTS: Balance = UNITS / 100;
+// 100_000_000
 pub const MILLICENTS: Balance = CENTS / 1_000; // 100_000
 
 // These time units are defined in number of blocks.
@@ -125,6 +126,7 @@ parameter_types! {
 }
 
 pub type Index = u32;
+
 impl frame_system::Config for Runtime {
 	type BaseCallFilter = frame_support::traits::Everything;
 	type BlockWeights = BlockWeights;
@@ -247,6 +249,7 @@ parameter_type_with_key! {
 }
 
 pub struct CurrencyHooks<T>(PhantomData<T>);
+
 impl<T: orml_tokens::Config> MutationHooks<T::AccountId, T::CurrencyId, T::Balance>
 	for CurrencyHooks<T>
 {
@@ -275,6 +278,7 @@ impl orml_tokens::Config for Runtime {
 }
 
 pub struct DustRemovalWhitelist;
+
 impl Contains<AccountId> for DustRemovalWhitelist {
 	fn contains(a: &AccountId) -> bool {
 		vec![].contains(a)
@@ -309,6 +313,7 @@ impl security::Config for Runtime {
 }
 
 pub struct CurrencyConvert;
+
 impl currency::CurrencyConversion<currency::Amount<Runtime>, CurrencyId> for CurrencyConvert {
 	fn convert(
 		amount: &currency::Amount<Runtime>,
@@ -419,12 +424,15 @@ where
 }
 
 pub struct ConvertPrice;
+
 impl Convert<u128, Option<UnsignedFixedPoint>> for ConvertPrice {
 	fn convert(price: u128) -> Option<UnsignedFixedPoint> {
 		Some(UnsignedFixedPoint::from_inner(price))
 	}
 }
+
 pub struct ConvertMoment;
+
 impl Convert<u64, Option<Moment>> for ConvertMoment {
 	fn convert(moment: u64) -> Option<Moment> {
 		// The provided moment is in seconds, but we need milliseconds
@@ -516,6 +524,7 @@ use oracle::testing_utils::MockDataFeeder;
 impl oracle::Config for Runtime {
 	type RuntimeEvent = RuntimeEvent;
 	type WeightInfo = oracle::SubstrateWeight<Runtime>;
+	type DecimalsLookup = primitives::DefaultDecimalsLookup;
 	type DataProvider = DataProviderImpl;
 
 	#[cfg(any(feature = "runtime-benchmarks", feature = "testing-utils"))]

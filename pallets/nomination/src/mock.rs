@@ -25,7 +25,7 @@ use oracle::{
 	},
 };
 pub use primitives::CurrencyId;
-use primitives::{VaultCurrencyPair, VaultId};
+use primitives::{DefaultDecimalsLookup, VaultCurrencyPair, VaultId};
 
 use crate as nomination;
 use crate::{Config, Error};
@@ -273,6 +273,7 @@ impl fee::Config for Test {
 impl oracle::Config for Test {
 	type RuntimeEvent = TestEvent;
 	type WeightInfo = oracle::SubstrateWeight<Test>;
+	type DecimalsLookup = DefaultDecimalsLookup;
 	type DataProvider = DiaOracleAdapter<
 		MockDiaOracle,
 		UnsignedFixedPoint,

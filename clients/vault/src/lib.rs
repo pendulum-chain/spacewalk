@@ -47,3 +47,15 @@ pub const CHAIN_HEIGHT_POLLING_INTERVAL: Duration = Duration::from_millis(500);
 
 /// explicitly yield at most once per second
 pub const YIELD_RATE: Quota = Quota::per_second(nonzero!(1u32));
+
+cfg_if::cfg_if! {
+	if #[cfg(feature = "standalone-metadata")] {
+		pub type DecimalsLookupImpl = primitives::DefaultDecimalsLookup;
+	} else if #[cfg(feature = "parachain-metadata-pendulum")] {
+		pub type DecimalsLookupImpl = primitives::PendulumDecimalsLookup;
+	} else if #[cfg(feature = "parachain-metadata-amplitude")] {
+		pub type DecimalsLookupImpl = primitives::AmplitudeDecimalsLookup;
+	} else if #[cfg(feature = "parachain-metadata-foucoco")] {
+		pub type DecimalsLookupImpl = primitives::AmplitudeDecimalsLookup;
+	}
+}

@@ -1,6 +1,6 @@
 use std::{collections::HashMap, convert::TryInto, sync::Arc, time::Duration};
 
-use frame_support::{assert_ok, sp_tracing};
+use frame_support::assert_ok;
 use futures::{
 	channel::mpsc,
 	future::{join, join3, join4},
@@ -17,11 +17,12 @@ use runtime::{
 };
 use stellar_relay_lib::sdk::PublicKey;
 
-use vault::{service::IssueFilter, Event as CancellationEvent, VaultIdManager};
+use vault::{service::IssueFilter, DecimalsLookupImpl, Event as CancellationEvent, VaultIdManager};
 
 mod helper;
 
 use helper::*;
+use primitives::DecimalsLookup;
 use vault::oracle::{
 	get_test_secret_key, random_stellar_relay_config, start_oracle_agent,
 	types::constants::MAX_SLOTS_TO_REMEMBER,
@@ -71,8 +72,8 @@ async fn test_redeem_succeeds_on_network(is_public_network: bool) {
 			let vault_id_manager =
 				VaultIdManager::from_map(vault_provider.clone(), vault_wallet.clone(), vault_ids);
 
-			// We issue 1/100 (spacewalk-chain) unit
-			let issue_amount = CurrencyId::Native.one() / 100;
+			// We issue 1 (spacewalk-chain) unit
+			let issue_amount = DecimalsLookupImpl::one(CurrencyId::Native) / 100;
 			let vault_collateral = get_required_vault_collateral_for_issue(
 				&vault_provider,
 				issue_amount,
@@ -93,7 +94,6 @@ async fn test_redeem_succeeds_on_network(is_public_network: bool) {
 
 			let shutdown_tx = ShutdownSender::new();
 
-			tracing::info!("Issuing {} tokens", issue_amount);
 			assert_issue(
 				&user_provider,
 				user_wallet.clone(),
@@ -102,7 +102,6 @@ async fn test_redeem_succeeds_on_network(is_public_network: bool) {
 				oracle_agent.clone(),
 			)
 			.await;
-			tracing::info!("After assert_issue");
 
 			test_service(
 				vault::service::listen_for_redeem_requests(
@@ -1076,7 +1075,7 @@ async fn test_execute_open_requests_succeeds() {
 				VaultIdManager::from_map(vault_provider.clone(), vault_wallet.clone(), vault_ids);
 
 			// We issue 1 (spacewalk-chain) unit
-			let issue_amount = CurrencyId::Native.one();
+			let issue_amount = DecimalsLookupImpl::one(CurrencyId::Native);
 			let vault_collateral = get_required_vault_collateral_for_issue(
 				&vault_provider,
 				issue_amount,

@@ -240,9 +240,9 @@ mod tests {
 			sleep(Duration::from_secs(1)).await;
 			latest_slot = agent.last_slot_index().await;
 		}
-		// use a future slot (2 slots ahead) to ensure enough messages can be collected
+		// use 1 slot ahead, to ensure enough messages can be collected
 		// and to avoid "missed" messages.
-		latest_slot += 2;
+		latest_slot += 1;
 
 		let proof_result = agent.get_proof(latest_slot).await;
 		assert!(proof_result.is_ok(), "Failed to get proof for slot: {}", latest_slot);
