@@ -23,10 +23,7 @@ mod helper;
 
 use helper::*;
 use primitives::DecimalsLookup;
-use vault::oracle::{
-	get_test_secret_key, random_stellar_relay_config, start_oracle_agent,
-	types::constants::MAX_SLOTS_TO_REMEMBER,
-};
+use vault::oracle::{get_test_secret_key, random_stellar_relay_config, start_oracle_agent};
 
 #[tokio::test(flavor = "multi_thread")]
 #[serial]
@@ -611,7 +608,7 @@ async fn test_issue_execution_succeeds_from_archive() {
 	let is_public_network = true;
 	test_with_vault(
 		is_public_network,
-		|client, _vault_wallet, user_wallet, oracle_agent, vault_id, vault_provider| async move {
+		|client, _vault_wallet, user_wallet, _oracle_agent, vault_id, vault_provider| async move {
 			let user_provider = setup_provider(client.clone(), AccountKeyring::Dave).await;
 
 			let public_key = default_destination_as_binary(is_public_network);
@@ -663,7 +660,6 @@ async fn test_issue_execution_succeeds_from_archive() {
 			// We sleep here in order to wait for the fallback to the archive to be necessary
 			sleep(Duration::from_secs(5 * 60)).await;
 
-			sp_tracing::try_init_simple();
 			let shutdown_tx = ShutdownSender::new();
 			let stellar_config = random_stellar_relay_config(is_public_network);
 			let vault_stellar_secret = get_test_secret_key(is_public_network);
