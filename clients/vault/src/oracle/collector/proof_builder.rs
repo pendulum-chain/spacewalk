@@ -1,3 +1,4 @@
+use primitives::stellar::types::TransactionHistoryEntryExt;
 use std::{convert::TryFrom, future::Future};
 use tracing::log;
 
@@ -343,8 +344,16 @@ impl ScpMessageCollector {
 						"get_txset_from_horizon_archive(): Adding archived tx set for slot {slot}"
 					);
 					let mut tx_set_map = txset_map_arc.write();
-					tx_set_map
-						.insert(slot, TransactionSetType::new(target_history_entry.tx_set.clone()));
+
+					// Assign the transaction set based on the type defined in `ext`
+					let tx_set_type = match target_history_entry.clone().ext {
+						TransactionHistoryEntryExt::V1(generalized_tx_set) =>
+						// If the type of `ext` is `V1` we use the contained generalized tx set
+							TransactionSetType::new(generalized_tx_set.clone()),
+						// Otherwise we can use the regular `tx_set` contained in the entry
+						_ => TransactionSetType::new(target_history_entry.tx_set.clone()),
+					};
+					tx_set_map.insert(slot, tx_set_type);
 					break
 				} else {
 					tracing::warn!(
@@ -372,12 +381,12 @@ mod test {
 		assert!(!check_slot_still_recoverable_from_overlay(last_slot, 30_000));
 		assert!(!check_slot_still_recoverable_from_overlay(
 			last_slot,
-			last_slot - MAX_SLOTS_TO_REMEMBER
+			last_slot - MAX_SLOTS_TO_REMEMBER,
 		));
 		assert!(check_slot_still_recoverable_from_overlay(last_slot, last_slot - 1));
 		assert!(check_slot_still_recoverable_from_overlay(
 			last_slot,
-			last_slot - MAX_SLOTS_TO_REMEMBER + 1
+			last_slot - MAX_SLOTS_TO_REMEMBER + 1,
 		));
 	}
 }
