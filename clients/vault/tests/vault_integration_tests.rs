@@ -1,6 +1,6 @@
 use std::{collections::HashMap, convert::TryInto, sync::Arc, time::Duration};
 
-use frame_support::assert_ok;
+use frame_support::{assert_ok, sp_tracing};
 use futures::{
 	channel::mpsc,
 	future::{join, join3, join4},
@@ -20,7 +20,12 @@ use stellar_relay_lib::sdk::PublicKey;
 use vault::{service::IssueFilter, Event as CancellationEvent, VaultIdManager};
 
 mod helper;
+
 use helper::*;
+use vault::oracle::{
+	get_test_secret_key, random_stellar_relay_config, start_oracle_agent,
+	types::constants::MAX_SLOTS_TO_REMEMBER,
+};
 
 #[tokio::test(flavor = "multi_thread")]
 #[serial]
@@ -131,6 +136,7 @@ async fn test_replace_succeeds_on_mainnet() {
 	let is_public_network = true;
 	test_replace_succeeds_on_network(is_public_network).await
 }
+
 #[tokio::test(flavor = "multi_thread")]
 #[serial]
 async fn test_replace_succeeds_on_testnet() {
@@ -318,7 +324,7 @@ async fn test_withdraw_replace_succeeds() {
 					&old_vault_id,
 					1u32.into(),
 					vault_collateral,
-					address
+					address,
 				)
 				.await
 				.is_err());
@@ -595,6 +601,105 @@ async fn test_issue_cancel_succeeds() {
 			);
 
 			test_service(service, fut_user).await;
+		},
+	)
+	.await;
+}
+
+#[tokio::test(flavor = "multi_thread")]
+#[serial]
+async fn test_issue_execution_succeeds_from_archive() {
+	let is_public_network = true;
+	test_with_vault(
+		is_public_network,
+		|client, _vault_wallet, user_wallet, oracle_agent, vault_id, vault_provider| async move {
+			let user_provider = setup_provider(client.clone(), AccountKeyring::Dave).await;
+
+			let public_key = default_destination_as_binary(is_public_network);
+
+			let issue_amount = upscaled_compatible_amount(100);
+			let vault_collateral = get_required_vault_collateral_for_issue(
+				&vault_provider,
+				issue_amount,
+				vault_id.wrapped_currency(),
+				vault_id.collateral_currency(),
+			)
+			.await;
+
+			assert_ok!(
+				vault_provider
+					.register_vault_with_public_key(&vault_id, vault_collateral, public_key)
+					.await
+			);
+
+			// This call returns a RequestIssueEvent, not the IssueRequest from primitives
+			let issue = user_provider
+				.request_issue(issue_amount, &vault_id)
+				.await
+				.expect("Requesting issue failed");
+
+			// Send a payment to the destination of the issue request (ie the targeted vault's
+			// stellar account)
+			let stroop_amount = primitives::BalanceConversion::lookup(issue.amount + issue.fee)
+				.expect("Conversion should not fail");
+			let destination_public_key = PublicKey::from_binary(issue.vault_stellar_public_key);
+			let stellar_asset =
+				primitives::AssetConversion::lookup(issue.asset).expect("Asset not found");
+
+			let transaction_response = send_payment_to_address(
+				user_wallet,
+				destination_public_key,
+				stellar_asset,
+				stroop_amount.try_into().unwrap(),
+				issue.issue_id.0,
+				false,
+			)
+			.await
+			.expect("Sending payment failed");
+
+			assert!(transaction_response.successful);
+
+			let slot = transaction_response.ledger as u64;
+
+			// We sleep here in order to wait for the fallback to the archive to be necessary
+			sleep(Duration::from_secs((MAX_SLOTS_TO_REMEMBER + 1) * 6)).await;
+
+			sp_tracing::try_init_simple();
+			let shutdown_tx = ShutdownSender::new();
+			let stellar_config = random_stellar_relay_config(is_public_network);
+			let vault_stellar_secret = get_test_secret_key(is_public_network);
+			// Create new oracle agent with the same configuration as the previous one
+			let oracle_agent =
+				start_oracle_agent(stellar_config.clone(), &vault_stellar_secret, shutdown_tx)
+					.await
+					.expect("failed to start agent");
+			let oracle_agent = Arc::new(oracle_agent);
+
+			// Loop pending proofs until it is ready
+			let proof = oracle_agent.get_proof(slot).await.expect("Proof should be available");
+			let tx_envelope_xdr_encoded = transaction_response.envelope_xdr;
+			let (envelopes_xdr_encoded, tx_set_xdr_encoded) = proof.encode();
+
+			join(
+				assert_event::<EndowedEvent, _>(TIMEOUT, user_provider.clone(), |x| {
+					if &x.who == user_provider.get_account_id() {
+						let fee = 30_000;
+						assert_eq!(x.amount, issue.amount - fee);
+						true
+					} else {
+						false
+					}
+				}),
+				user_provider
+					.execute_issue(
+						issue.issue_id,
+						&tx_envelope_xdr_encoded,
+						envelopes_xdr_encoded.as_bytes(),
+						tx_set_xdr_encoded.as_bytes(),
+					)
+					.map(Result::unwrap),
+			)
+			.await;
 		},
 	)
 	.await;
