@@ -36,7 +36,7 @@ impl fmt::Display for FeeAttribute {
 
 impl Default for FeeAttribute {
 	fn default() -> Self {
-		FeeAttribute::p90
+		FeeAttribute::p95
 	}
 }
 
