@@ -114,7 +114,7 @@ async fn read_message_from_stellar(connector: &mut Connector) -> Result<Xdr, Err
 			},
 			Ok(size) => {
 				// The next few bytes was read. Add it to the readbuf.
-				lack_bytes_from_prev -= size;
+				lack_bytes_from_prev = lack_bytes_from_prev.saturating_sub(size);
 				readbuf.append(&mut buff_for_reading);
 				// make sure to cleanup the buffer
 				buff_for_reading = vec![0; 4];
