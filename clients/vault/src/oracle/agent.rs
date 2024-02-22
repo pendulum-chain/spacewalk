@@ -215,12 +215,12 @@ mod tests {
 	use serial_test::serial;
 
 	#[tokio::test(flavor = "multi_thread")]
-	#[ntest::timeout(1_800_000)] // timeout at 30 minutes
+	#[ntest::timeout(600_000)] // timeout at 10 minutes
 	#[serial]
 	async fn test_get_proof_for_current_slot() {
 		// let it run for a few seconds, making sure that the other tests have successfully shutdown
 		// their connection to Stellar Node
-		sleep(Duration::from_secs(2)).await;
+		sleep(Duration::from_secs(20)).await;
 
 		let shutdown_sender = ShutdownSender::new();
 
@@ -232,8 +232,6 @@ mod tests {
 		)
 		.await
 		.expect("Failed to start agent");
-		sleep(Duration::from_secs(10)).await;
-		// Wait until agent is caught up with the network.
 
 		let mut latest_slot = 0;
 		while latest_slot == 0 {

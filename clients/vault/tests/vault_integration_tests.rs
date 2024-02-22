@@ -678,8 +678,7 @@ async fn test_issue_execution_succeeds_from_archive() {
 			join(
 				assert_event::<EndowedEvent, _>(TIMEOUT, user_provider.clone(), |x| {
 					if &x.who == user_provider.get_account_id() {
-						let fee = 30_000;
-						assert_eq!(x.amount, issue.amount - fee);
+						assert_eq!(x.amount, issue.amount - issue.fee);
 						true
 					} else {
 						false
