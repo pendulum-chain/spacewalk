@@ -392,7 +392,7 @@ pub struct FeeDistribution {
 
 #[derive(Deserialize, Debug)]
 pub struct FeeStats {
-	#[serde(deserialize_with = "de_string_to_u32")]
+	#[serde(deserialize_with = "de_string_to_u64")]
 	pub last_ledger: Slot,
 	#[serde(deserialize_with = "de_string_to_u32")]
 	pub last_ledger_base_fee: u32,
@@ -490,6 +490,11 @@ impl<C: HorizonClient> TransactionsResponseIter<C> {
 				self.get_top_record()
 			},
 		}
+	}
+
+	/// returns the next TransactionResponse in reverse order
+	pub fn next_back(&mut self) -> Option<TransactionResponse> {
+		self.records.pop()
 	}
 
 	/// returns the TransactionResponse in the middle of the list

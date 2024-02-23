@@ -3,7 +3,7 @@ use primitives::stellar::TransactionEnvelope;
 use std::{collections::HashMap, fmt, fmt::Formatter};
 
 pub type PagingToken = u128;
-pub type Slot = u32;
+pub type Slot = u64;
 pub type StatusCode = u16;
 pub type LedgerTxEnvMap = HashMap<Slot, TransactionEnvelope>;
 

@@ -7,6 +7,7 @@ use stellar_relay_lib::sdk::{
 	types::{ScpEnvelope, ScpHistoryEntry, ScpStatementPledges, StellarMessage},
 	InitExt, TransactionSetType, XdrCodec,
 };
+use wallet::Slot;
 
 use crate::oracle::{
 	constants::{get_min_externalized_messages, MAX_SLOTS_TO_REMEMBER},

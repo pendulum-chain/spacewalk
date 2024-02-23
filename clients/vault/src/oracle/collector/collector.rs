@@ -7,6 +7,7 @@ use stellar_relay_lib::sdk::{
 	types::{GeneralizedTransactionSet, ScpEnvelope, TransactionSet},
 	TransactionSetType,
 };
+use wallet::Slot;
 
 use crate::oracle::types::{
 	EnvelopesMap, LimitedFifoMap, Slot, TxSetHash, TxSetHashAndSlotMap, TxSetMap,
@@ -29,7 +30,7 @@ pub struct ScpMessageCollector {
 	txset_and_slot_map: Arc<RwLock<TxSetHashAndSlotMap>>,
 
 	/// The last slot with an SCPEnvelope
-	last_slot_index: u64,
+	last_slot_index: Slot,
 
 	public_network: bool,
 

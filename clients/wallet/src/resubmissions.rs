@@ -215,20 +215,58 @@ fn is_memo_match(tx1: &Transaction, tx2: &TransactionResponse) -> bool {
 }
 
 #[doc(hidden)]
-/// A helper function which:
-/// Returns true if the transaction in the middle of the list is a match;
-/// Returns false if NOT a match;
-/// Returns None if transaction can be found else where by narrowing down the search:
-///  * if the sequence number of the transaction is > than what we're looking for, then update the
-///    iterator by removing the first half of the list;
-///  * else remove the last half of the list
+/// A helper function which returns:
+/// Ok(true) if both transactions match;
+/// Ok(false) if the source account and the sequence number match, but NOT the MEMO;
+/// Err(None) if it's absolutely NOT a match
+/// Err(Some(SequenceNumber)) if the sequence number can be used for further logic checking
+///
+/// # Arguments
+///
+/// * `tx` - the transaction we want to confirm if it's already submitted
+/// * `tx_resp` - the transaction response from Horizon
+/// * `public_key` - the public key of the wallet
+fn _check_transaction_match(
+	tx: &Transaction,
+	tx_resp: &TransactionResponse,
+	public_key: &PublicKey,
+) -> Result<bool, Option<SequenceNumber>> {
+	// Make sure that we are the sender and not the receiver because otherwise an
+	// attacker could send a transaction to us with the target memo and we'd wrongly
+	// assume that we already submitted this transaction.
+	if !is_source_account_match(public_key, &tx_resp) {
+		return Err(None)
+	}
+
+	let Ok(source_account_sequence)  = tx_resp.source_account_sequence() else {
+		tracing::warn!("_check_transaction_match(): cannot extract sequence number of transaction response: {tx_resp:?}");
+		return Err(None)
+	};
+
+	// check if the sequence number is the same as this response
+	if tx.seq_num == source_account_sequence {
+		// Check if the transaction contains the memo we want to send
+		return Ok(is_memo_match(tx, &tx_resp))
+	}
+
+	Err(Some(source_account_sequence))
+}
+
+#[doc(hidden)]
+/// A helper function which returns:
+/// true if the transaction in the MIDDLE of the list is a match;
+/// false if NOT a match;
+/// None if a match can be found else where by narrowing down the search:
+///  * if the sequence number of the transaction is < than what we're looking for, then update the
+///    iterator by removing the LAST half of the list;
+///  * else remove the FIRST half of the list
 ///
 /// # Arguments
 ///
 /// * `iter` - the iterator to iterate over a list of `TransactionResponse`
 /// * `tx` - the transaction we want to confirm if it's already submitted
 /// * `public_key` - the public key of the wallet
-fn _is_transaction_already_submitted(
+fn check_middle_transaction_match(
 	iter: &mut TransactionsResponseIter<Client>,
 	tx: &Transaction,
 	public_key: &PublicKey,
@@ -239,34 +277,56 @@ fn _is_transaction_already_submitted(
 		return None
 	};
 
-	// Make sure that we are the sender and not the receiver because otherwise an
-	// attacker could send a transaction to us with the target memo and we'd wrongly
-	// assume that we already submitted this transaction.
-	if !is_source_account_match(public_key, &response) {
-		return None
+	match _check_transaction_match(tx, &response, public_key) {
+		Ok(res) => return Some(res),
+		Err(Some(source_account_sequence)) => {
+			// if the sequence number is GREATER than this response,
+			// then a match must be in the first half of the list.
+			if tx_sequence_num > source_account_sequence {
+				iter.remove_last_half_records();
+			}
+			// a match must be in the last half of the list.
+			else {
+				iter.remove_first_half_records();
+			}
+		},
+		_ => {},
 	}
+	None
+}
 
-	let Ok(source_account_sequence)  = response.source_account_sequence() else {
-		tracing::warn!("_is_transaction_already_submitted(): cannot extract sequence number of transaction response: {response:?}");
+#[doc(hidden)]
+/// A helper function which returns:
+/// true if the LAST transaction of the list is a match;
+/// false if NOT a match;
+/// None if a match can be found else where:
+///  * if the sequence number of the transaction is > than what we're looking for, then update the
+///    iterator by jumping to the next page;
+///     * if there's no next page, then a match will never be found. Return FALSE.
+async fn check_last_transaction_match(
+	iter: &mut TransactionsResponseIter<Client>,
+	tx: &Transaction,
+	public_key: &PublicKey,
+) -> Option<bool> {
+	let tx_sequence_num = tx.seq_num;
+	let Some(response) = iter.next_back() else {
 		return None
 	};
 
-	// check if the sequence number is the same as this response
-	if tx_sequence_num == source_account_sequence {
-		// Check if the transaction contains the memo we want to send
-		return Some(is_memo_match(tx, &response))
+	match _check_transaction_match(tx, &response, public_key) {
+		Ok(res) => return Some(res),
+		Err(Some(source_account_sequence)) => {
+			// if the sequence number is LESSER than this response,
+			// then a match is possible on the NEXT page
+			if tx_sequence_num < source_account_sequence {
+				if let None = iter.jump_to_next_page().await {
+					// there's no pages left, meaning there's no other transactions to compare
+					return Some(false)
+				}
+			}
+		},
+		_ => {},
 	}
-
-	// if the sequence number is greater than this response,
-	// then the transaction must be in the first half of the list.
-	if tx_sequence_num > source_account_sequence {
-		iter.remove_last_half_records();
-	}
-	// the transaction must be in the last half of the list.
-	else {
-		iter.remove_first_half_records();
-	}
-
 	None
 }
 
@@ -325,7 +385,6 @@ impl StellarWallet {
 	/// returns true if a transaction already exists and WAS submitted successfully.
 	async fn is_transaction_already_submitted(&self, tx: &Transaction) -> bool {
 		let tx_sequence_num = tx.seq_num;
-		let default_page_size = SequenceNumber::from(DEFAULT_PAGE_SIZE);
 		let own_public_key = self.public_key();
 
 		// get the iterator
@@ -337,57 +396,38 @@ impl StellarWallet {
 			},
 		};
 
-		// iterate over the transactions
+		// iterate over the transactions, starting from
+		// the TOP (the largest sequence number/the latest transaction)
 		while let Some(response) = iter.next().await {
-			// Make sure that we are the sender and not the receiver because otherwise an
-			// attacker could send a transaction to us with the target memo and we'd wrongly
-			// assume that we already submitted this transaction.
-			if !is_source_account_match(&own_public_key, &response) {
-				// move to the next response
-				continue
-			}
-
-			let Ok(source_account_sequence)  = response.source_account_sequence() else {
-				tracing::warn!("is_transaction_already_submitted(): cannot extract sequence number of transaction response: {response:?}");
-				// move to the next response
-				continue
+			let top_sequence_num = match _check_transaction_match(tx, &response, &own_public_key) {
+				// return result for partial match
+				Ok(res) => return res,
+				// continue if it is absolutely not a match
+				Err(None) => continue,
+				// further logic checking required
+				Err(Some(seq_num)) => seq_num,
 			};
 
-			// check if the sequence number is the same as this response
-			if tx_sequence_num == source_account_sequence {
-				// Check if the transaction contains the memo we want to send
-				return is_memo_match(tx, &response)
-			}
-
-			// if the sequence number is greater than this response,
+			// if the sequence number is GREATER than this response,
 			// no other transaction will ever match with it.
-			if tx_sequence_num > source_account_sequence {
+			if tx_sequence_num > top_sequence_num {
 				break
 			}
 
-			// if the sequence number is greater than the last response of the iterator,
-			// then the transaction is possibly in THIS page
-			if tx_sequence_num >= source_account_sequence.saturating_sub(default_page_size) {
-				// check the middle response OR remove half of the responses that won't match.
-				if let Some(result) =
-					_is_transaction_already_submitted(&mut iter, tx, &own_public_key)
-				{
-					// if the middle response matched (both source account and sequence number),
-					// return that result
-					return result
-				}
-				// if no match was found, move to the next response
-				continue
+			// check the middle response OR remove half of the responses that won't match.
+			if let Some(result) = check_middle_transaction_match(&mut iter, tx, &own_public_key) {
+				// if the middle response matched (both source account and sequence number),
+				// return that result
+				return result
 			}
 
-			// if the sequence number is lesser than the last response of the iterator,
-			// then the transaction is possibly on the NEXT page
-			if tx_sequence_num < source_account_sequence.saturating_sub(default_page_size) {
-				if let None = iter.jump_to_next_page().await {
-					// there's no pages left
-					break
-				}
+			// if no match was found, check the last response OR jump to the next page
+			if let Some(result) = check_last_transaction_match(&mut iter, tx, &own_public_key).await
+			{
+				return result
 			}
+
+			// if no match was found, continue to the next response
 		}
 
 		false
@@ -431,7 +471,7 @@ mod test {
 	#[tokio::test]
 	#[serial]
 	async fn check_is_transaction_already_submitted() {
-		let wallet = wallet_with_storage("resources/check_is_transaction_already_submitted")
+		let wallet = wallet_with_storage("resources/checkcheck_middle_transaction_match")
 			.expect("")
 			.clone();
 		let mut wallet = wallet.write().await;
