@@ -30,6 +30,7 @@ use crate::{
 const POLL_INTERVAL: u64 = 5000;
 /// See [Stellar doc](https://developers.stellar.org/api/introduction/pagination/page-arguments)
 pub const DEFAULT_PAGE_SIZE: u8 = 200;
+const BASE_BACKOFF_DELAY_IN_SECS: u64 = 10;
 
 pub fn horizon_url(is_public_network: bool, is_need_fallback: bool) -> &'static str {
 	if is_public_network {
@@ -136,7 +137,7 @@ impl HorizonClient for reqwest::Client {
 		let params = [("tx", &transaction_xdr)];
 
 		let mut server_error_count = 0;
-		let mut exponent_counter = 1;
+		let mut backoff_delay_counter = 1;
 
 		loop {
 			let need_fallback = if server_error_count == max_retries {
@@ -166,15 +167,15 @@ impl HorizonClient for reqwest::Client {
 
 					// let's wait awhile before resubmitting.
 					tracing::warn!(
-						"submitting transaction with seq no: {seq_no:?} failed with {e:?}"
+						"submitting transaction to {base_url} with seq no: {seq_no:?} failed with {e:?}"
 					);
-					// exponentially sleep before retrying again
-					let sleep_duration = 2u64.pow(exponent_counter);
+					// Calculate linear backoff delay
+					let sleep_duration = backoff_delay_counter * BASE_BACKOFF_DELAY_IN_SECS;
 					sleep(Duration::from_secs(sleep_duration)).await;
 
 					// retry/resubmit again
 					if sleep_duration < u64::from(max_backoff_delay_in_secs) {
-						exponent_counter += 1;
+						backoff_delay_counter += 1;
 					}
 					continue
 				},
