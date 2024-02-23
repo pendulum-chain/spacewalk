@@ -61,7 +61,7 @@ impl StellarWallet {
 	/// error, this will be the default.
 	pub(crate) const DEFAULT_MAX_RETRY_ATTEMPTS_BEFORE_FALLBACK: u8 = 3;
 
-	pub(crate) const DEFAULT_MAX_BACKOFF_DELAY_IN_SECS: u16 = 600;
+	pub(crate) const DEFAULT_MAX_BACKOFF_DELAY_IN_SECS: u16 = 60;
 }
 
 impl StellarWallet {
@@ -118,10 +118,7 @@ impl StellarWallet {
 	}
 
 	pub fn with_max_backoff_delay(mut self, max_backoff_delay_in_secs: u16) -> Self {
-		// a number more than the default max would be too large
-		if max_backoff_delay_in_secs < Self::DEFAULT_MAX_BACKOFF_DELAY_IN_SECS {
-			self.max_backoff_delay = max_backoff_delay_in_secs;
-		}
+		self.max_backoff_delay = max_backoff_delay_in_secs;
 
 		self
 	}
@@ -430,13 +427,8 @@ mod test {
 
 		assert_eq!(wallet.max_backoff_delay(), StellarWallet::DEFAULT_MAX_BACKOFF_DELAY_IN_SECS);
 
-		// too big backoff delay
-		let expected_max_backoff_delay = 800;
+		let expected_max_backoff_delay = StellarWallet::DEFAULT_MAX_BACKOFF_DELAY_IN_SECS / 2;
 		let new_wallet = wallet.with_max_backoff_delay(expected_max_backoff_delay);
-		assert_ne!(new_wallet.max_backoff_delay(), expected_max_backoff_delay);
-
-		let expected_max_backoff_delay = 300;
-		let new_wallet = new_wallet.with_max_backoff_delay(expected_max_backoff_delay);
 		assert_eq!(new_wallet.max_backoff_delay(), expected_max_backoff_delay);
 
 		new_wallet.remove_cache_dir();
