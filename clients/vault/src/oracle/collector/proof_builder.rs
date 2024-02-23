@@ -349,7 +349,7 @@ impl ScpMessageCollector {
 					let tx_set_type = match target_history_entry.clone().ext {
 						TransactionHistoryEntryExt::V1(generalized_tx_set) =>
 						// If the type of `ext` is `V1` we use the contained generalized tx set
-							TransactionSetType::new(generalized_tx_set.clone()),
+							TransactionSetType::new(generalized_tx_set),
 						// Otherwise we can use the regular `tx_set` contained in the entry
 						_ => TransactionSetType::new(target_history_entry.tx_set.clone()),
 					};
