@@ -21,6 +21,7 @@ use sc_service::{Configuration, PartialComponents, TaskManager};
 use sp_keyring::Sr25519Keyring;
 
 use spacewalk_runtime::{Block, EXISTENTIAL_DEPOSIT};
+use spacewalk_runtime_testnet as spacewalk_runtime;
 
 use crate::{
 	benchmarking::{inherent_benchmark_data, RemarkBuilder, TransferKeepAliveBuilder},
@@ -31,9 +32,9 @@ use crate::{
 
 fn load_spec(id: &str) -> std::result::Result<Box<dyn sc_service::ChainSpec>, String> {
 	match id {
-		"" => Ok(Box::new(chain_spec::local_config())),
-		"dev" => Ok(Box::new(chain_spec::development_config())),
-		"beta" => Ok(Box::new(chain_spec::beta_testnet_config())),
+		"" => Ok(Box::new(chain_spec::testnet_config())),
+		"dev" => Ok(Box::new(chain_spec::testnet_config())),
+		"main" => Ok(Box::new(chain_spec::mainnet_config())),
 		"testnet" => Ok(Box::new(chain_spec::ChainSpec::from_json_bytes(
 			&include_bytes!("../res/testnet.json")[..],
 		)?)),
@@ -89,7 +90,7 @@ pub fn run() -> Result<()> {
 			let runner = cli.create_runner(cmd)?;
 			runner.async_run(|config| {
 				let PartialComponents { client, task_manager, import_queue, .. } =
-					spacewalk_service::new_partial(&config, false)?;
+					spacewalk_service::new_partial_testnet(&config, false)?;
 				Ok((cmd.run(client, import_queue), task_manager))
 			})
 		},
@@ -97,7 +98,7 @@ pub fn run() -> Result<()> {
 			let runner = cli.create_runner(cmd)?;
 			runner.async_run(|config| {
 				let PartialComponents { client, task_manager, .. } =
-					spacewalk_service::new_partial(&config, false)?;
+					spacewalk_service::new_partial_testnet(&config, false)?;
 				Ok((cmd.run(client, config.database), task_manager))
 			})
 		},
@@ -105,7 +106,7 @@ pub fn run() -> Result<()> {
 			let runner = cli.create_runner(cmd)?;
 			runner.async_run(|config| {
 				let PartialComponents { client, task_manager, .. } =
-					spacewalk_service::new_partial(&config, false)?;
+					spacewalk_service::new_partial_testnet(&config, false)?;
 				Ok((cmd.run(client, config.chain_spec), task_manager))
 			})
 		},
@@ -113,7 +114,7 @@ pub fn run() -> Result<()> {
 			let runner = cli.create_runner(cmd)?;
 			runner.async_run(|config| {
 				let PartialComponents { client, task_manager, import_queue, .. } =
-					spacewalk_service::new_partial(&config, false)?;
+					spacewalk_service::new_partial_testnet(&config, false)?;
 				Ok((cmd.run(client, import_queue), task_manager))
 			})
 		},
@@ -125,7 +126,7 @@ pub fn run() -> Result<()> {
 			let runner = cli.create_runner(cmd)?;
 			runner.async_run(|config| {
 				let PartialComponents { client, task_manager, backend, .. } =
-					spacewalk_service::new_partial(&config, false)?;
+					spacewalk_service::new_partial_testnet(&config, false)?;
 				let aux_revert = Box::new(|client, _, blocks| {
 					sc_consensus_grandpa::revert(client, blocks)?;
 					Ok(())
@@ -142,7 +143,7 @@ pub fn run() -> Result<()> {
 				match cmd {
 					BenchmarkCmd::Pallet(cmd) =>
 						if cfg!(feature = "runtime-benchmarks") {
-							cmd.run::<Block, spacewalk_service::Executor>(config)
+							cmd.run::<Block, spacewalk_service::TestnetExecutor>(config)
 						} else {
 							Err("Benchmarking wasn't enabled when building the node. \
                 You can enable it with `--features runtime-benchmarks`."
@@ -150,7 +151,7 @@ pub fn run() -> Result<()> {
 						},
 					BenchmarkCmd::Block(cmd) => {
 						let PartialComponents { client, .. } =
-							spacewalk_service::new_partial(&config, false)?;
+							spacewalk_service::new_partial_testnet(&config, false)?;
 						cmd.run(client)
 					},
 					#[cfg(not(feature = "runtime-benchmarks"))]
@@ -161,7 +162,7 @@ pub fn run() -> Result<()> {
 					#[cfg(feature = "runtime-benchmarks")]
 					BenchmarkCmd::Storage(cmd) => {
 						let PartialComponents { client, backend, .. } =
-							spacewalk_service::new_partial(&config, false)?;
+							spacewalk_service::new_partial_testnet(&config, false)?;
 						let db = backend.expose_db();
 						let storage = backend.expose_storage();
 
@@ -169,7 +170,7 @@ pub fn run() -> Result<()> {
 					},
 					BenchmarkCmd::Overhead(cmd) => {
 						let PartialComponents { client, .. } =
-							spacewalk_service::new_partial(&config, false)?;
+							spacewalk_service::new_partial_testnet(&config, false)?;
 						let ext_builder = RemarkBuilder::new(client.clone());
 
 						cmd.run(
@@ -182,7 +183,7 @@ pub fn run() -> Result<()> {
 					},
 					BenchmarkCmd::Extrinsic(cmd) => {
 						let PartialComponents { client, .. } =
-							spacewalk_service::new_partial(&config, false)?;
+							spacewalk_service::new_partial_testnet(&config, false)?;
 						// Register the *Remark* and *TKA* builders.
 						let ext_factory = ExtrinsicFactory(vec![
 							Box::new(RemarkBuilder::new(client.clone())),

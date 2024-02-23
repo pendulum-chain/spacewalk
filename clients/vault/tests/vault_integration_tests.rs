@@ -20,13 +20,15 @@ use stellar_relay_lib::sdk::PublicKey;
 use vault::{service::IssueFilter, DecimalsLookupImpl, Event as CancellationEvent, VaultIdManager};
 
 mod helper;
+
 use helper::*;
 use primitives::DecimalsLookup;
+use vault::oracle::{get_test_secret_key, random_stellar_relay_config, start_oracle_agent};
 
 #[tokio::test(flavor = "multi_thread")]
 #[serial]
 async fn test_register() {
-	test_with(|client, vault_wallet, _| async move {
+	test_with(false, |client, vault_wallet, _| async move {
 		let (eve_id, eve_provider) =
 			create_vault(client.clone(), AccountKeyring::Eve, CurrencyId::StellarNative).await;
 		let (dave_id, dave_provider) =
@@ -45,8 +47,21 @@ async fn test_register() {
 
 #[tokio::test(flavor = "multi_thread")]
 #[serial]
-async fn test_redeem_succeeds() {
+async fn test_redeem_succeeds_on_mainnet() {
+	let is_public_network = true;
+	test_redeem_succeeds_on_network(is_public_network).await;
+}
+
+#[tokio::test(flavor = "multi_thread")]
+#[serial]
+async fn test_redeem_succeeds_on_testnet() {
+	let is_public_network = false;
+	test_redeem_succeeds_on_network(is_public_network).await;
+}
+
+async fn test_redeem_succeeds_on_network(is_public_network: bool) {
 	test_with_vault(
+		is_public_network,
 		|client, vault_wallet, user_wallet, oracle_agent, vault_id, vault_provider| async move {
 			let user_provider = setup_provider(client.clone(), AccountKeyring::Dave).await;
 
@@ -55,7 +70,7 @@ async fn test_redeem_succeeds() {
 				VaultIdManager::from_map(vault_provider.clone(), vault_wallet.clone(), vault_ids);
 
 			// We issue 1 (spacewalk-chain) unit
-			let issue_amount = DecimalsLookupImpl::one(CurrencyId::Native);
+			let issue_amount = DecimalsLookupImpl::one(CurrencyId::Native) / 100;
 			let vault_collateral = get_required_vault_collateral_for_issue(
 				&vault_provider,
 				issue_amount,
@@ -69,7 +84,7 @@ async fn test_redeem_succeeds() {
 					.register_vault_with_public_key(
 						&vault_id,
 						vault_collateral,
-						default_destination_as_binary()
+						default_destination_as_binary(is_public_network)
 					)
 					.await
 			);
@@ -113,16 +128,33 @@ async fn test_redeem_succeeds() {
 
 #[tokio::test(flavor = "multi_thread")]
 #[serial]
-async fn test_replace_succeeds() {
+async fn test_replace_succeeds_on_mainnet() {
+	let is_public_network = true;
+	test_replace_succeeds_on_network(is_public_network).await
+}
+
+#[tokio::test(flavor = "multi_thread")]
+#[serial]
+async fn test_replace_succeeds_on_testnet() {
+	let is_public_network = false;
+	test_replace_succeeds_on_network(is_public_network).await
+}
+
+async fn test_replace_succeeds_on_network(is_public_network: bool) {
 	test_with_vault(
+		is_public_network,
 		|client,
 		 old_vault_wallet,
 		 new_vault_wallet,
 		 oracle_agent,
 		 old_vault_id,
 		 old_vault_provider| async move {
-			let (new_vault_id, new_vault_provider) =
-				create_vault(client.clone(), AccountKeyring::Eve, DEFAULT_WRAPPED_CURRENCY).await;
+			let (new_vault_id, new_vault_provider) = create_vault(
+				client.clone(),
+				AccountKeyring::Eve,
+				default_wrapped_currency(is_public_network),
+			)
+			.await;
 
 			let user_provider = setup_provider(client.clone(), AccountKeyring::Dave).await;
 
@@ -227,19 +259,28 @@ async fn test_replace_succeeds() {
 #[tokio::test(flavor = "multi_thread")]
 #[serial]
 async fn test_withdraw_replace_succeeds() {
+	let is_public_network = false;
 	test_with_vault(
+		is_public_network,
 		|client, _vault_wallet, user_wallet, oracle_agent, old_vault_id, old_vault_provider| async move {
-			let (new_vault_id, new_vault_provider) =
-				create_vault(client.clone(), AccountKeyring::Eve, DEFAULT_WRAPPED_CURRENCY).await;
+			let (new_vault_id, new_vault_provider) = create_vault(
+				client.clone(),
+				AccountKeyring::Eve,
+				default_wrapped_currency(is_public_network),
+			)
+			.await;
 
 			let user_provider = setup_provider(client.clone(), AccountKeyring::Dave).await;
 
 			let issue_amount = upscaled_compatible_amount(100);
 
-			let vault_collateral = register_vault_with_default_destination(vec![
-				(&old_vault_provider, &old_vault_id, issue_amount),
-				(&new_vault_provider, &new_vault_id, issue_amount),
-			])
+			let vault_collateral = register_vault_with_default_destination(
+				vec![
+					(&old_vault_provider, &old_vault_id, issue_amount),
+					(&new_vault_provider, &new_vault_id, issue_amount),
+				],
+				is_public_network,
+			)
 			.await;
 
 			assert_issue(
@@ -279,7 +320,7 @@ async fn test_withdraw_replace_succeeds() {
 					&old_vault_id,
 					1u32.into(),
 					vault_collateral,
-					address
+					address,
 				)
 				.await
 				.is_err());
@@ -294,15 +335,21 @@ async fn test_cancel_scheduler_succeeds() {
 	// tests cancellation of issue, redeem and replace.
 	// issue and replace cancellation is tested through the vault's cancellation service.
 	// cancel_redeem is called manually
+	let is_public_network = false;
 	test_with_vault(
+		is_public_network,
 		|client, vault_wallet, user_wallet, oracle_agent, old_vault_id, old_vault_provider| async move {
 			let parachain_rpc = setup_provider(client.clone(), AccountKeyring::Bob).await;
 
 			let root_provider = setup_provider(client.clone(), AccountKeyring::Alice).await;
 			let user_provider = setup_provider(client.clone(), AccountKeyring::Dave).await;
 
-			let (new_vault_id, new_vault_provider) =
-				create_vault(client.clone(), AccountKeyring::Eve, DEFAULT_WRAPPED_CURRENCY).await;
+			let (new_vault_id, new_vault_provider) = create_vault(
+				client.clone(),
+				AccountKeyring::Eve,
+				default_wrapped_currency(is_public_network),
+			)
+			.await;
 
 			let issue_amount = upscaled_compatible_amount(200);
 
@@ -468,97 +515,200 @@ async fn test_cancel_scheduler_succeeds() {
 #[tokio::test(flavor = "multi_thread")]
 #[serial]
 async fn test_issue_cancel_succeeds() {
-	test_with_vault(|client, vault_wallet, _user_wallet, _, vault_id, vault_provider| async move {
-		let user_provider = setup_provider(client.clone(), AccountKeyring::Dave).await;
-		let issue_set = Arc::new(RwLock::new(IssueRequestsMap::new()));
-		let memos_to_issue_ids = Arc::new(RwLock::new(IssueIdLookup::new()));
+	test_with_vault(
+		false,
+		|client, vault_wallet, _user_wallet, _, vault_id, vault_provider| async move {
+			let user_provider = setup_provider(client.clone(), AccountKeyring::Dave).await;
+			let issue_set = Arc::new(RwLock::new(IssueRequestsMap::new()));
+			let memos_to_issue_ids = Arc::new(RwLock::new(IssueIdLookup::new()));
 
-		let issue_filter =
-			IssueFilter::new(&vault_wallet.read().await.public_key()).expect("Invalid filter");
+			let issue_filter =
+				IssueFilter::new(&vault_wallet.read().await.public_key()).expect("Invalid filter");
 
-		let issue_amount = upscaled_compatible_amount(100);
-		let vault_collateral = get_required_vault_collateral_for_issue(
-			&vault_provider,
-			issue_amount,
-			vault_id.wrapped_currency(),
-			vault_id.collateral_currency(),
-		)
-		.await;
+			let issue_amount = upscaled_compatible_amount(100);
+			let vault_collateral = get_required_vault_collateral_for_issue(
+				&vault_provider,
+				issue_amount,
+				vault_id.wrapped_currency(),
+				vault_id.collateral_currency(),
+			)
+			.await;
 
-		assert_ok!(
-			vault_provider
-				.register_vault_with_public_key(
-					&vault_id,
-					vault_collateral,
-					vault_wallet.read().await.public_key_raw(),
-				)
+			assert_ok!(
+				vault_provider
+					.register_vault_with_public_key(
+						&vault_id,
+						vault_collateral,
+						vault_wallet.read().await.public_key_raw(),
+					)
+					.await
+			);
+
+			let fut_user = async {
+				// The account of the 'user_provider' is used to request a new issue that
+				// will be canceled in the next step
+				let issue = user_provider.request_issue(issue_amount, &vault_id).await.unwrap();
+				// First await the event that the issue has been requested
+				assert_event::<RequestIssueEvent, _>(TIMEOUT, user_provider.clone(), |_| true)
+					.await;
+				assert_eq!(issue_set.read().await.len(), 1);
+				assert_eq!(memos_to_issue_ids.read().await.len(), 1);
+
+				match user_provider.cancel_issue(issue.issue_id).await {
+					Ok(_) => {
+						assert!(true);
+					},
+					Err(e) => {
+						panic!("Failed to Cancel Issue: {:?}", e);
+					},
+				}
+
+				// wait for the issue to be canceled
+				assert_event::<CancelIssueEvent, _>(TIMEOUT, user_provider.clone(), |_| true).await;
+				assert!(issue_set.read().await.is_empty());
+				assert!(memos_to_issue_ids.read().await.is_empty());
+			};
+
+			let slot_tx_env_map = Arc::new(RwLock::new(HashMap::new()));
+
+			let (issue_event_tx, _issue_event_rx) = mpsc::channel::<CancellationEvent>(16);
+			let wallet_read = vault_wallet.read().await;
+			let service = join3(
+				vault::service::listen_for_new_transactions(
+					wallet_read.public_key(),
+					wallet_read.is_public_network(),
+					slot_tx_env_map.clone(),
+					issue_set.clone(),
+					memos_to_issue_ids.clone(),
+					issue_filter,
+				),
+				vault::service::listen_for_issue_requests(
+					vault_provider.clone(),
+					wallet_read.public_key(),
+					issue_event_tx,
+					issue_set.clone(),
+					memos_to_issue_ids.clone(),
+				),
+				vault::service::listen_for_issue_cancels(
+					vault_provider.clone(),
+					issue_set.clone(),
+					memos_to_issue_ids.clone(),
+				),
+			);
+
+			test_service(service, fut_user).await;
+		},
+	)
+	.await;
+}
+
+#[tokio::test(flavor = "multi_thread")]
+#[serial]
+async fn test_issue_execution_succeeds_from_archive() {
+	let is_public_network = true;
+	test_with_vault(
+		is_public_network,
+		|client, _vault_wallet, user_wallet, _oracle_agent, vault_id, vault_provider| async move {
+			let user_provider = setup_provider(client.clone(), AccountKeyring::Dave).await;
+
+			let public_key = default_destination_as_binary(is_public_network);
+
+			let issue_amount = upscaled_compatible_amount(100);
+			let vault_collateral = get_required_vault_collateral_for_issue(
+				&vault_provider,
+				issue_amount,
+				vault_id.wrapped_currency(),
+				vault_id.collateral_currency(),
+			)
+			.await;
+
+			assert_ok!(
+				vault_provider
+					.register_vault_with_public_key(&vault_id, vault_collateral, public_key)
+					.await
+			);
+
+			// This call returns a RequestIssueEvent, not the IssueRequest from primitives
+			let issue = user_provider
+				.request_issue(issue_amount, &vault_id)
 				.await
-		);
+				.expect("Requesting issue failed");
 
-		let fut_user = async {
-			// The account of the 'user_provider' is used to request a new issue that
-			// will be canceled in the next step
-			let issue = user_provider.request_issue(issue_amount, &vault_id).await.unwrap();
-			// First await the event that the issue has been requested
-			assert_event::<RequestIssueEvent, _>(TIMEOUT, user_provider.clone(), |_| true).await;
-			assert_eq!(issue_set.read().await.len(), 1);
-			assert_eq!(memos_to_issue_ids.read().await.len(), 1);
+			// Send a payment to the destination of the issue request (ie the targeted vault's
+			// stellar account)
+			let stroop_amount = primitives::BalanceConversion::lookup(issue.amount + issue.fee)
+				.expect("Conversion should not fail");
+			let destination_public_key = PublicKey::from_binary(issue.vault_stellar_public_key);
+			let stellar_asset =
+				primitives::AssetConversion::lookup(issue.asset).expect("Asset not found");
 
-			match user_provider.cancel_issue(issue.issue_id).await {
-				Ok(_) => {
-					assert!(true);
-				},
-				Err(e) => {
-					panic!("Failed to Cancel Issue: {:?}", e);
-				},
-			}
+			let transaction_response = send_payment_to_address(
+				user_wallet,
+				destination_public_key,
+				stellar_asset,
+				stroop_amount.try_into().unwrap(),
+				issue.issue_id.0,
+				false,
+			)
+			.await
+			.expect("Sending payment failed");
 
-			// wait for the issue to be canceled
-			assert_event::<CancelIssueEvent, _>(TIMEOUT, user_provider.clone(), |_| true).await;
-			assert!(issue_set.read().await.is_empty());
-			assert!(memos_to_issue_ids.read().await.is_empty());
-		};
+			assert!(transaction_response.successful);
 
-		let slot_tx_env_map = Arc::new(RwLock::new(HashMap::new()));
+			let slot = transaction_response.ledger as u64;
 
-		let (issue_event_tx, _issue_event_rx) = mpsc::channel::<CancellationEvent>(16);
-		let wallet_read = vault_wallet.read().await;
-		let service = join3(
-			vault::service::listen_for_new_transactions(
-				wallet_read.public_key(),
-				wallet_read.is_public_network(),
-				slot_tx_env_map.clone(),
-				issue_set.clone(),
-				memos_to_issue_ids.clone(),
-				issue_filter,
-			),
-			vault::service::listen_for_issue_requests(
-				vault_provider.clone(),
-				wallet_read.public_key(),
-				issue_event_tx,
-				issue_set.clone(),
-				memos_to_issue_ids.clone(),
-			),
-			vault::service::listen_for_issue_cancels(
-				vault_provider.clone(),
-				issue_set.clone(),
-				memos_to_issue_ids.clone(),
-			),
-		);
+			// We sleep here in order to wait for the fallback to the archive to be necessary
+			sleep(Duration::from_secs(5 * 60)).await;
 
-		test_service(service, fut_user).await;
-	})
+			let shutdown_tx = ShutdownSender::new();
+			let stellar_config = random_stellar_relay_config(is_public_network);
+			let vault_stellar_secret = get_test_secret_key(is_public_network);
+			// Create new oracle agent with the same configuration as the previous one
+			let oracle_agent =
+				start_oracle_agent(stellar_config.clone(), &vault_stellar_secret, shutdown_tx)
+					.await
+					.expect("failed to start agent");
+			let oracle_agent = Arc::new(oracle_agent);
+
+			// Loop pending proofs until it is ready
+			let proof = oracle_agent.get_proof(slot).await.expect("Proof should be available");
+			let tx_envelope_xdr_encoded = transaction_response.envelope_xdr;
+			let (envelopes_xdr_encoded, tx_set_xdr_encoded) = proof.encode();
+
+			join(
+				assert_event::<EndowedEvent, _>(TIMEOUT, user_provider.clone(), |x| {
+					if &x.who == user_provider.get_account_id() {
+						assert_eq!(x.amount, issue.amount - issue.fee);
+						true
+					} else {
+						false
+					}
+				}),
+				user_provider
+					.execute_issue(
+						issue.issue_id,
+						&tx_envelope_xdr_encoded,
+						envelopes_xdr_encoded.as_bytes(),
+						tx_set_xdr_encoded.as_bytes(),
+					)
+					.map(Result::unwrap),
+			)
+			.await;
+		},
+	)
 	.await;
 }
 
 #[tokio::test(flavor = "multi_thread")]
 #[serial]
 async fn test_issue_overpayment_succeeds() {
+	let is_public_network = false;
 	test_with_vault(
+		is_public_network,
 		|client, _vault_wallet, user_wallet, oracle_agent, vault_id, vault_provider| async move {
 			let user_provider = setup_provider(client.clone(), AccountKeyring::Dave).await;
 
-			let public_key = default_destination_as_binary();
+			let public_key = default_destination_as_binary(is_public_network);
 
 			let issue_amount = upscaled_compatible_amount(100);
 			let over_payment_factor = 3;
@@ -642,8 +792,21 @@ async fn test_issue_overpayment_succeeds() {
 
 #[tokio::test(flavor = "multi_thread")]
 #[serial]
-async fn test_automatic_issue_execution_succeeds() {
+async fn test_automatic_issue_execution_succeeds_on_mainnet() {
+	let is_public_network = true;
+	test_automatic_issue_execution_succeeds_on_network(is_public_network).await;
+}
+
+#[tokio::test(flavor = "multi_thread")]
+#[serial]
+async fn test_automatic_issue_execution_succeeds_on_testnet() {
+	let is_public_network = false;
+	test_automatic_issue_execution_succeeds_on_network(is_public_network).await;
+}
+
+async fn test_automatic_issue_execution_succeeds_on_network(is_public_network: bool) {
 	test_with_vault(
+		is_public_network,
 		|client, vault_wallet, user_wallet, oracle_agent, vault_id, vault_provider| async move {
 			let user_provider = setup_provider(client.clone(), AccountKeyring::Dave).await;
 
@@ -750,14 +913,16 @@ async fn test_automatic_issue_execution_succeeds() {
 #[tokio::test(flavor = "multi_thread")]
 #[serial]
 async fn test_automatic_issue_execution_succeeds_for_other_vault() {
+	let is_public_network = false;
 	test_with_vault(
+		is_public_network,
 		|client, vault_wallet, user_wallet, oracle_agent, vault1_id, vault1_provider| async move {
 			let user_provider = setup_provider(client.clone(), AccountKeyring::Dave).await;
 			let vault2_provider = setup_provider(client.clone(), AccountKeyring::Eve).await;
 			let vault2_id = VaultId::new(
 				AccountKeyring::Eve.into(),
 				DEFAULT_TESTING_CURRENCY,
-				DEFAULT_WRAPPED_CURRENCY,
+				default_wrapped_currency(is_public_network),
 			);
 
 			let issue_amount = upscaled_compatible_amount(100);
@@ -858,7 +1023,7 @@ async fn test_automatic_issue_execution_succeeds_for_other_vault() {
 			let service = join4(
 				vault::service::listen_for_new_transactions(
 					vault_account_public_key.clone(),
-					CFG.is_public_network(),
+					is_public_network,
 					slot_tx_env_map.clone(),
 					issue_set_arc.clone(),
 					memos_to_issue_ids.clone(),
@@ -894,7 +1059,9 @@ async fn test_automatic_issue_execution_succeeds_for_other_vault() {
 #[tokio::test(flavor = "multi_thread")]
 #[serial]
 async fn test_execute_open_requests_succeeds() {
+	let is_public_network = false;
 	test_with_vault(
+		is_public_network,
 		|client, vault_wallet, user_wallet, oracle_agent, vault_id, vault_provider| async move {
 			let user_provider = setup_provider(client.clone(), AccountKeyring::Dave).await;
 
@@ -1007,7 +1174,9 @@ async fn test_execute_open_requests_succeeds() {
 #[tokio::test(flavor = "multi_thread")]
 #[serial]
 async fn test_off_chain_liquidation() {
+	let is_public_network = false;
 	test_with_vault(
+		is_public_network,
 		|client, vault_wallet, user_wallet, oracle_agent, vault_id, vault_provider| async move {
 			// Bob is set as an authorized oracle in the chain_spec
 			let authorized_oracle_provider =
@@ -1029,7 +1198,7 @@ async fn test_off_chain_liquidation() {
 					.register_vault_with_public_key(
 						&vault_id,
 						vault_collateral,
-						default_destination_as_binary()
+						default_destination_as_binary(is_public_network)
 					)
 					.await
 			);
@@ -1060,14 +1229,15 @@ async fn test_off_chain_liquidation() {
 
 #[tokio::test(flavor = "multi_thread")]
 async fn test_shutdown() {
-	test_with(|client, vault_wallet, _| async move {
+	let is_public_network = false;
+	test_with(false, |client, vault_wallet, _| async move {
 		let sudo_provider = setup_provider(client.clone(), AccountKeyring::Alice).await;
 		let user_provider = setup_provider(client.clone(), AccountKeyring::Dave).await;
 
 		let sudo_vault_id = VaultId::new(
 			AccountKeyring::Alice.into(),
 			DEFAULT_TESTING_CURRENCY,
-			DEFAULT_WRAPPED_CURRENCY,
+			default_wrapped_currency(is_public_network),
 		);
 
 		// register a vault..
@@ -1119,49 +1289,53 @@ async fn test_shutdown() {
 #[tokio::test(flavor = "multi_thread")]
 #[serial]
 async fn test_requests_with_incompatible_amounts_fail() {
-	test_with_vault(|client, vault_wallet, _user_wallet, _, vault_id, vault_provider| async move {
-		let user_provider = setup_provider(client.clone(), AccountKeyring::Dave).await;
+	test_with_vault(
+		false,
+		|client, vault_wallet, _user_wallet, _, vault_id, vault_provider| async move {
+			let user_provider = setup_provider(client.clone(), AccountKeyring::Dave).await;
 
-		// We define an incompatible amount
-		let incompatible_amount = upscaled_compatible_amount(100) + 1;
-		let vault_collateral = get_required_vault_collateral_for_issue(
-			&vault_provider,
-			incompatible_amount,
-			vault_id.wrapped_currency(),
-			vault_id.collateral_currency(),
-		)
-		.await;
+			// We define an incompatible amount
+			let incompatible_amount = upscaled_compatible_amount(100) + 1;
+			let vault_collateral = get_required_vault_collateral_for_issue(
+				&vault_provider,
+				incompatible_amount,
+				vault_id.wrapped_currency(),
+				vault_id.collateral_currency(),
+			)
+			.await;
 
-		let wallet_read = vault_wallet.read().await;
-		let address = wallet_read.public_key_raw();
-		assert_ok!(
-			vault_provider
-				.register_vault_with_public_key(
-					&vault_id,
-					vault_collateral,
-					wallet_read.public_key_raw()
-				)
-				.await
-		);
-		drop(wallet_read);
+			let wallet_read = vault_wallet.read().await;
+			let address = wallet_read.public_key_raw();
+			assert_ok!(
+				vault_provider
+					.register_vault_with_public_key(
+						&vault_id,
+						vault_collateral,
+						wallet_read.public_key_raw()
+					)
+					.await
+			);
+			drop(wallet_read);
 
-		// We try to request an issue with an incompatible amount
-		let result = user_provider.request_issue(incompatible_amount, &vault_id).await;
-		assert!(result.is_err());
-		let error = result.unwrap_err();
-		assert!(error.is_module_err("Currency", "IncompatibleAmount"));
+			// We try to request an issue with an incompatible amount
+			let result = user_provider.request_issue(incompatible_amount, &vault_id).await;
+			assert!(result.is_err());
+			let error = result.unwrap_err();
+			assert!(error.is_module_err("Currency", "IncompatibleAmount"));
 
-		// We try to request a redeem with an incompatible amount
-		let result = user_provider.request_redeem(incompatible_amount, address, &vault_id).await;
-		assert!(result.is_err());
-		let error = result.unwrap_err();
-		assert!(error.is_module_err("Currency", "IncompatibleAmount"));
+			// We try to request a redeem with an incompatible amount
+			let result =
+				user_provider.request_redeem(incompatible_amount, address, &vault_id).await;
+			assert!(result.is_err());
+			let error = result.unwrap_err();
+			assert!(error.is_module_err("Currency", "IncompatibleAmount"));
 
-		// We try to request a replace with an incompatible amount
-		let result = vault_provider.request_replace(&vault_id, incompatible_amount).await;
-		assert!(result.is_err());
-		let error = result.unwrap_err();
-		assert!(error.is_module_err("Currency", "IncompatibleAmount"));
-	})
+			// We try to request a replace with an incompatible amount
+			let result = vault_provider.request_replace(&vault_id, incompatible_amount).await;
+			assert!(result.is_err());
+			let error = result.unwrap_err();
+			assert!(error.is_module_err("Currency", "IncompatibleAmount"));
+		},
+	)
 	.await;
 }

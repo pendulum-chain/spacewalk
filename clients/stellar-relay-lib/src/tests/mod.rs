@@ -144,6 +144,6 @@ async fn stellar_overlay_disconnect_works() {
 	overlay_connection.stop();
 
 	// let the disconnection call pass for a few seconds, before checking its status.
-	sleep(Duration::from_secs(3));
+	sleep(Duration::from_secs(15));
 	assert!(!overlay_connection.is_alive());
 }

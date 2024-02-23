@@ -19,10 +19,10 @@ members = [
     "pallets/stellar-relay",
     "pallets/vault-registry",
     "primitives",
-    "rpc",
     "pallets/*/rpc",
     "testchain/node",
-    "testchain/runtime",
+    "testchain/runtime/mainnet",
+    "testchain/runtime/testnet",
 ]
 [profile.release]
 panic = "unwind"

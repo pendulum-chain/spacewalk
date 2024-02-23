@@ -64,6 +64,8 @@ pub async fn start_oracle_agent(
 	secret_key: &str,
 	shutdown_sender: ShutdownSender,
 ) -> Result<OracleAgent, Error> {
+	let is_public_network = config.is_public_network();
+
 	tracing::info!("start_oracle_agent(): Starting connection to Stellar overlay network...");
 
 	let mut overlay_conn = connect_to_stellar_overlay_network(config.clone(), secret_key).await?;
@@ -134,12 +136,7 @@ pub async fn start_oracle_agent(
 		}
 	}));
 
-	Ok(OracleAgent {
-		collector,
-		is_public_network: false,
-		message_sender: Some(sender),
-		shutdown_sender,
-	})
+	Ok(OracleAgent { collector, is_public_network, message_sender: Some(sender), shutdown_sender })
 }
 
 impl Drop for OracleAgent {
@@ -218,12 +215,12 @@ mod tests {
 	use serial_test::serial;
 
 	#[tokio::test(flavor = "multi_thread")]
-	#[ntest::timeout(1_800_000)] // timeout at 30 minutes
+	#[ntest::timeout(600_000)] // timeout at 10 minutes
 	#[serial]
 	async fn test_get_proof_for_current_slot() {
 		// let it run for a few seconds, making sure that the other tests have successfully shutdown
 		// their connection to Stellar Node
-		sleep(Duration::from_secs(2)).await;
+		sleep(Duration::from_secs(20)).await;
 
 		let shutdown_sender = ShutdownSender::new();
 
@@ -235,8 +232,6 @@ mod tests {
 		)
 		.await
 		.expect("Failed to start agent");
-		sleep(Duration::from_secs(10)).await;
-		// Wait until agent is caught up with the network.
 
 		let mut latest_slot = 0;
 		while latest_slot == 0 {

@@ -818,9 +818,10 @@ impl<T: Config> Pallet<T> {
 		)
 			.map_err(|e| {
 				log::error!(
-                "failed to validate transaction of issue id: {} with transaction envelope: {transaction_envelope:?}",
-                hex::encode(issue_id.as_bytes())
-            );
+					"failed to validate transaction of issue id: {} with transaction envelope: {transaction_envelope:?}",
+					hex::encode(issue_id.as_bytes())
+				);
+				log::error!("error: {:?}", e);
 				e
 			})?;
 

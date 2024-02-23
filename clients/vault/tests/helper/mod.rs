@@ -27,82 +27,88 @@ use wallet::StellarWallet;
 
 pub type StellarPublicKey = [u8; 32];
 
-lazy_static! {
-	pub static ref CFG: StellarOverlayConfig = random_stellar_relay_config(false);
-	pub static ref SECRET_KEY: String = get_test_secret_key(false);
-	// TODO clean this up by extending the `get_test_secret_key()` function
-	pub static ref DESTINATION_SECRET_KEY: String = "SDNQJEIRSA6YF5JNS6LQLCBF2XVWZ2NJV3YLC322RGIBJIJRIRGWKLEF".to_string();
-}
-
 #[async_trait]
 impl SpacewalkParachainExt for SpacewalkParachain {}
 
+lazy_static! {
+	// TODO clean this up by extending the `get_test_secret_key()` function
+	pub static ref DESTINATION_SECRET_KEY: String = "SDNQJEIRSA6YF5JNS6LQLCBF2XVWZ2NJV3YLC322RGIBJIJRIRGWKLEF".to_string();
+	pub static ref ONE_TO_ONE_RATIO: FixedU128 = FixedU128::saturating_from_rational(1u128, 1u128);
+	pub static ref TEN_TO_ONE_RATIO: FixedU128 = FixedU128::saturating_from_rational(1u128, 10u128);
+}
+
+async fn initialize_wallets(
+	vault_stellar_secret: &String,
+	user_stellar_secret: &String,
+	path: String,
+	config: StellarOverlayConfig,
+) -> (ArcRwLock<StellarWallet>, ArcRwLock<StellarWallet>) {
+	let vault_wallet = Arc::new(RwLock::new(
+		StellarWallet::from_secret_encoded_with_cache(
+			vault_stellar_secret.as_str(),
+			config.is_public_network(),
+			path.clone(),
+		)
+		.unwrap(),
+	));
+	let user_wallet = Arc::new(RwLock::new(
+		StellarWallet::from_secret_encoded_with_cache(
+			user_stellar_secret.as_str(),
+			config.is_public_network(),
+			path,
+		)
+		.unwrap(),
+	));
+	(vault_wallet, user_wallet)
+}
+
+async fn setup_chain_providers(
+	is_public_network: bool,
+) -> (SubxtClient, ArcRwLock<StellarWallet>, ArcRwLock<StellarWallet>) {
+	let (client, tmp_dir) = default_provider_client(AccountKeyring::Alice, is_public_network).await;
+
+	// Has to be Bob because he is set as `authorized_oracle` in the genesis config
+	let parachain_rpc = setup_provider(client.clone(), AccountKeyring::Bob).await;
+
+	let default_wrapped_currency = if is_public_network {
+		DEFAULT_WRAPPED_CURRENCY_STELLAR_MAINNET
+	} else {
+		DEFAULT_WRAPPED_CURRENCY_STELLAR_TESTNET
+	};
+
+	set_exchange_rate_and_wait(&parachain_rpc, DEFAULT_TESTING_CURRENCY, *ONE_TO_ONE_RATIO).await;
+	set_exchange_rate_and_wait(&parachain_rpc, default_wrapped_currency, *TEN_TO_ONE_RATIO).await;
+	set_exchange_rate_and_wait(&parachain_rpc, LESS_THAN_4_CURRENCY_CODE, *TEN_TO_ONE_RATIO).await;
+	set_exchange_rate_and_wait(&parachain_rpc, CurrencyId::StellarNative, *TEN_TO_ONE_RATIO).await;
+
+	let path = tmp_dir.path().to_str().expect("should return a string").to_string();
+
+	let stellar_config = random_stellar_relay_config(is_public_network);
+	let vault_stellar_secret = get_test_secret_key(is_public_network);
+	// TODO set destination secret key in a better way
+	let user_stellar_secret = &DESTINATION_SECRET_KEY;
+
+	let (vault_wallet, user_wallet) =
+		initialize_wallets(&vault_stellar_secret, &user_stellar_secret, path, stellar_config).await;
+
+	return (client, vault_wallet, user_wallet)
+}
+
 pub async fn test_with<F, R>(
+	is_public_network: bool,
 	execute: impl FnOnce(SubxtClient, ArcRwLock<StellarWallet>, ArcRwLock<StellarWallet>) -> F,
 ) -> R
 where
 	F: Future<Output = R>,
 {
 	service::init_subscriber();
-	let (client, tmp_dir) = default_provider_client(AccountKeyring::Alice).await;
-
-	// Has to be Bob because he is set as `authorized_oracle` in the genesis config
-	let parachain_rpc = setup_provider(client.clone(), AccountKeyring::Bob).await;
-
-	set_exchange_rate_and_wait(
-		&parachain_rpc,
-		DEFAULT_TESTING_CURRENCY,
-		// Set exchange rate to 1:1 with USD
-		FixedU128::saturating_from_rational(1u128, 1u128),
-	)
-	.await;
-	set_exchange_rate_and_wait(
-		&parachain_rpc,
-		DEFAULT_WRAPPED_CURRENCY,
-		// Set exchange rate to 10:1 with USD
-		FixedU128::saturating_from_rational(1u128, 10u128),
-	)
-	.await;
-
-	set_exchange_rate_and_wait(
-		&parachain_rpc,
-		LESS_THAN_4_CURRENCY_CODE,
-		// Set exchange rate to 10:1 with USD
-		FixedU128::saturating_from_rational(1u128, 10u128),
-	)
-	.await;
-
-	set_exchange_rate_and_wait(
-		&parachain_rpc,
-		CurrencyId::StellarNative,
-		// Set exchange rate to 10:1 with USD
-		FixedU128::saturating_from_rational(1u128, 10u128),
-	)
-	.await;
-
-	let path = tmp_dir.path().to_str().expect("should return a string").to_string();
-	let vault_wallet = Arc::new(RwLock::new(
-		StellarWallet::from_secret_encoded_with_cache(
-			&SECRET_KEY,
-			CFG.is_public_network(),
-			path.clone(),
-		)
-		.unwrap(),
-	));
-
-	let user_wallet = Arc::new(RwLock::new(
-		StellarWallet::from_secret_encoded_with_cache(
-			&DESTINATION_SECRET_KEY,
-			CFG.is_public_network(),
-			path,
-		)
-		.unwrap(),
-	));
+	let (client, vault_wallet, user_wallet) = setup_chain_providers(is_public_network).await;
 
 	execute(client, vault_wallet, user_wallet).await
 }
 
 pub async fn test_with_vault<F, R>(
+	is_public_network: bool,
 	execute: impl FnOnce(
 		SubxtClient,
 		ArcRwLock<StellarWallet>,
@@ -116,69 +122,30 @@ where
 	F: Future<Output = R>,
 {
 	service::init_subscriber();
-	let (client, tmp_dir) = default_provider_client(AccountKeyring::Alice).await;
 
-	let parachain_rpc = setup_provider(client.clone(), AccountKeyring::Bob).await;
-	set_exchange_rate_and_wait(
-		&parachain_rpc,
-		DEFAULT_TESTING_CURRENCY,
-		FixedU128::saturating_from_rational(1u128, 1u128),
-	)
-	.await;
-	set_exchange_rate_and_wait(
-		&parachain_rpc,
-		DEFAULT_WRAPPED_CURRENCY,
-		// Set exchange rate to 10:1 with USD
-		FixedU128::saturating_from_rational(1u128, 10u128),
-	)
-	.await;
-
-	set_exchange_rate_and_wait(
-		&parachain_rpc,
-		LESS_THAN_4_CURRENCY_CODE,
-		// Set exchange rate to 100:1 with USD
-		FixedU128::saturating_from_rational(1u128, 10u128),
-	)
-	.await;
-
-	set_exchange_rate_and_wait(
-		&parachain_rpc,
-		CurrencyId::StellarNative,
-		// Set exchange rate to 10:1 with USD
-		FixedU128::saturating_from_rational(1u128, 10u128),
-	)
-	.await;
+	let (client, vault_wallet, user_wallet) = setup_chain_providers(is_public_network).await;
 
 	let vault_provider = setup_provider(client.clone(), AccountKeyring::Charlie).await;
+	let default_wrapped_currency = if is_public_network {
+		DEFAULT_WRAPPED_CURRENCY_STELLAR_MAINNET
+	} else {
+		DEFAULT_WRAPPED_CURRENCY_STELLAR_TESTNET
+	};
+
 	let vault_id = VaultId::new(
 		AccountKeyring::Charlie.into(),
 		DEFAULT_TESTING_CURRENCY,
-		DEFAULT_WRAPPED_CURRENCY,
+		default_wrapped_currency,
 	);
 
-	let path = tmp_dir.path().to_str().expect("should return a string").to_string();
-	let vault_wallet = Arc::new(RwLock::new(
-		StellarWallet::from_secret_encoded_with_cache(
-			&SECRET_KEY,
-			CFG.is_public_network(),
-			path.clone(),
-		)
-		.unwrap(),
-	));
-
-	let user_wallet = Arc::new(RwLock::new(
-		StellarWallet::from_secret_encoded_with_cache(
-			&DESTINATION_SECRET_KEY,
-			CFG.is_public_network(),
-			path,
-		)
-		.unwrap(),
-	));
+	let stellar_config = random_stellar_relay_config(is_public_network);
+	let vault_stellar_secret = get_test_secret_key(is_public_network);
 
 	let shutdown_tx = ShutdownSender::new();
-	let oracle_agent = start_oracle_agent(CFG.clone(), &SECRET_KEY, shutdown_tx)
-		.await
-		.expect("failed to start agent");
+	let oracle_agent =
+		start_oracle_agent(stellar_config.clone(), &vault_stellar_secret, shutdown_tx)
+			.await
+			.expect("failed to start agent");
 	let oracle_agent = Arc::new(oracle_agent);
 
 	execute(client, vault_wallet, user_wallet, oracle_agent, vault_id, vault_provider).await

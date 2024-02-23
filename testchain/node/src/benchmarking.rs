@@ -29,8 +29,9 @@ use sp_inherents::{InherentData, InherentDataProvider};
 use sp_keyring::Sr25519Keyring;
 use sp_runtime::{OpaqueExtrinsic, SaturatedConversion};
 use spacewalk_runtime::{AccountId, Balance, BalancesCall, SystemCall};
+use spacewalk_runtime_testnet as spacewalk_runtime;
 
-use crate::service::FullClient;
+use crate::service::FullTestnetClient as FullClient;
 
 use spacewalk_runtime as runtime;
 

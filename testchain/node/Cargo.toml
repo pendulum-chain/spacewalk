@@ -25,8 +25,8 @@ futures = "0.3.15"
 
 # Parachain dependencies
 primitives = { package = "spacewalk-primitives", path = "../../primitives" }
-spacewalk-rpc = { path = "../../rpc" }
-spacewalk-runtime = { package = "spacewalk-runtime-standalone", path = "../runtime" }
+spacewalk-runtime-testnet = { package = "spacewalk-runtime-standalone-testnet", path = "../runtime/testnet" }
+spacewalk-runtime-mainnet = { package = "spacewalk-runtime-standalone-mainnet", path = "../runtime/mainnet" }
 
 # Substrate dependencies
 sc-basic-authorship = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.40" }
@@ -67,10 +67,30 @@ pallet-transaction-payment = { default-features = false, git = "https://github.c
 
 substrate-stellar-sdk = { git = "https://github.com/pendulum-chain/substrate-stellar-sdk", branch = "polkadot-v0.9.40" }
 
+# RPC dependencies
+jsonrpc-core = "18.0.0"
+jsonrpsee = { version = "0.16.0", features = ["server", "macros"] }
+
+# Parachain dependencies
+module-issue-rpc = { path = "../../pallets/issue/rpc" }
+module-redeem-rpc = { path = "../../pallets/redeem/rpc" }
+module-replace-rpc = { path = "../../pallets/replace/rpc" }
+module-oracle-rpc = { path = "../../pallets/oracle/rpc" }
+module-vault-registry-rpc = { path = "../../pallets/vault-registry/rpc" }
+
+# Substrate dependencies
+sc-rpc = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.40" }
+sc-rpc-api = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.40" }
+sc-transaction-pool-api = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.40" }
+sp-blockchain= { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.40" }
+pallet-transaction-payment-rpc = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.40" }
+substrate-frame-rpc-system = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.40" }
+
 [features]
 default = []
 runtime-benchmarks = [
-    "spacewalk-runtime/runtime-benchmarks",
+    "spacewalk-runtime-testnet/runtime-benchmarks",
+    "spacewalk-runtime-mainnet/runtime-benchmarks",
     "frame-benchmarking/runtime-benchmarks",
     "frame-benchmarking-cli/runtime-benchmarks",
 ]
