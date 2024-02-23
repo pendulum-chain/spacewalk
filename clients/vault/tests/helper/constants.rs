@@ -2,7 +2,9 @@ use primitives::CurrencyId;
 use std::time::Duration;
 use wallet::types::PagingToken;
 
-pub const TIMEOUT: Duration = Duration::from_secs(60);
+// We increase the timout to 6 minutes because the oracle agent might sometimes need to fall back to
+// archived messages which are only available after about 5 minutes
+pub const TIMEOUT: Duration = Duration::from_secs(60 * 6);
 
 // Be careful when changing these values because they are used in the parachain genesis config
 // and only for some combination of them, secure collateralization thresholds are set.
