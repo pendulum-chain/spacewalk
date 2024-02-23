@@ -10,7 +10,7 @@ use stellar_relay_lib::sdk::{
 use wallet::Slot;
 
 use crate::oracle::types::{
-	EnvelopesMap, LimitedFifoMap, Slot, TxSetHash, TxSetHashAndSlotMap, TxSetMap,
+	EnvelopesMap, LimitedFifoMap, TxSetHash, TxSetHashAndSlotMap, TxSetMap,
 };
 
 /// Collects all ScpMessages and the TxSets.
@@ -397,8 +397,6 @@ mod test {
 		let txset_slot = 92900;
 		let txsets_map =
 			TxSetsFileHandler::get_map_from_archives(txset_slot).expect("should return a map");
-
-		let txsets_size = txsets_map.len();
 
 		collector.txset_map.write().append(txsets_map);
 

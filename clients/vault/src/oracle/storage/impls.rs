@@ -7,9 +7,10 @@ use stellar_relay_lib::sdk::{
 };
 
 use crate::oracle::{
-	storage::traits::*, EnvelopesFileHandler, EnvelopesMap, Error, Filename, SerializedData, Slot,
+	storage::traits::*, EnvelopesFileHandler, EnvelopesMap, Error, Filename, SerializedData,
 	SlotEncodedMap, TxSetMap, TxSetsFileHandler,
 };
+use wallet::Slot;
 
 use super::{ScpArchiveStorage, TransactionsArchiveStorage};
 
@@ -166,11 +167,11 @@ mod test {
 			traits::{FileHandler, FileHandlerExt},
 			EnvelopesFileHandler,
 		},
-		types::Slot,
 		TransactionsArchiveStorage, TxSetsFileHandler,
 	};
 
 	use super::ScpArchiveStorage;
+	use wallet::Slot;
 
 	impl Default for ScpArchiveStorage {
 		fn default() -> Self {

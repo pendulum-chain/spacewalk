@@ -1,6 +1,6 @@
 use crate::{
 	error::Error,
-	oracle::{types::Slot, OracleAgent},
+	oracle::OracleAgent,
 	requests::{
 		helper::{
 			get_all_transactions_of_wallet_async, get_request_for_stellar_tx,
@@ -23,7 +23,7 @@ use runtime::{PrettyPrint, ShutdownSender, SpacewalkParachain, UtilFuncs};
 use service::{spawn_cancelable, Error as ServiceError};
 use std::{collections::HashMap, sync::Arc, time::Duration};
 use tokio::sync::RwLock;
-use wallet::{StellarWallet, TransactionResponse};
+use wallet::{Slot, StellarWallet, TransactionResponse};
 
 // max of 3 retries for failed request execution
 const MAX_EXECUTION_RETRIES: u32 = 3;

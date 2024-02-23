@@ -1,6 +1,6 @@
 use crate::{
 	metrics::update_stellar_metrics,
-	oracle::{types::Slot, OracleAgent, Proof},
+	oracle::{OracleAgent, Proof},
 	system::VaultData,
 	Error,
 };
@@ -14,7 +14,7 @@ use sp_runtime::traits::StaticLookup;
 use std::{convert::TryInto, sync::Arc, time::Duration};
 use stellar_relay_lib::sdk::{Asset, TransactionEnvelope, XdrCodec};
 use tokio::sync::RwLock;
-use wallet::{StellarWallet, TransactionResponse};
+use wallet::{Slot, StellarWallet, TransactionResponse};
 
 #[derive(Debug, Clone, PartialEq)]
 struct Deadline {

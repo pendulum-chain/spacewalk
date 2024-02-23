@@ -1,4 +1,4 @@
-use crate::oracle::types::Slot;
+use wallet::Slot;
 
 /// This is for `EnvelopesMap`; how many slots is accommodated per file.
 /// This is used to compare against the length of the "keys",

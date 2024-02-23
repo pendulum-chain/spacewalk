@@ -1,9 +1,10 @@
 #![allow(non_snake_case)]
 
-use crate::oracle::{constants::DEFAULT_MAX_ITEMS_IN_QUEUE, types::Slot};
+use crate::oracle::constants::DEFAULT_MAX_ITEMS_IN_QUEUE;
 use itertools::Itertools;
 use std::{collections::VecDeque, fmt::Debug};
 use stellar_relay_lib::sdk::{types::ScpEnvelope, TransactionSetType};
+use wallet::Slot;
 
 /// Sometimes not enough `StellarMessage::ScpMessage(...)` are sent per slot;
 /// or that the `StellarMessage::TxSet(...)` or `StellarMessage::GeneralizedTxSet(...)`

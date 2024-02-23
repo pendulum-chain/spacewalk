@@ -13,7 +13,7 @@ use crate::oracle::{
 	constants::{get_min_externalized_messages, MAX_SLOTS_TO_REMEMBER},
 	traits::ArchiveStorage,
 	types::StellarMessageSender,
-	ScpArchiveStorage, ScpMessageCollector, Slot, TransactionsArchiveStorage,
+	ScpArchiveStorage, ScpMessageCollector, TransactionsArchiveStorage,
 };
 
 /// Returns true if the SCP messages for a given slot are still recoverable from the overlay

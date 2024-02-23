@@ -14,7 +14,7 @@ use primitives::{
 use std::time::Duration;
 use tokio::time::sleep;
 
-use crate::horizon::{responses::TransactionsResponseIter, DEFAULT_PAGE_SIZE};
+use crate::horizon::responses::TransactionsResponseIter;
 #[cfg(test)]
 use mocktopus::macros::mockable;
 use primitives::stellar::{types::SequenceNumber, PublicKey};

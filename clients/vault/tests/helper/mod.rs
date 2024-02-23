@@ -85,7 +85,7 @@ async fn setup_chain_providers(
 	let path = tmp_dir.path().to_str().expect("should return a string").to_string();
 
 	let stellar_config = random_stellar_relay_config(is_public_network);
-	let vault_stellar_secret = get_test_secret_key(is_public_network);
+	let vault_stellar_secret = get_secret_key(true, is_public_network);
 	let user_stellar_secret = &DESTINATION_SECRET_KEY;
 
 	let (vault_wallet, user_wallet) =
@@ -139,7 +139,7 @@ where
 	);
 
 	let stellar_config = random_stellar_relay_config(is_public_network);
-	let vault_stellar_secret = get_test_secret_key(is_public_network);
+	let vault_stellar_secret = get_secret_key(true, is_public_network);
 
 	let shutdown_tx = ShutdownSender::new();
 	let oracle_agent =
