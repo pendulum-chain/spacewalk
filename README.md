@@ -116,6 +116,9 @@ To install the hook, run:
 
 To ignore the checks once the hook has been installed, run `git push --no-verify`.
 
+### Note 
+You may need to make the hook script executable. Pleas run `chmod u+x .git/hooks/pre-push`,  `chmod u+x .git/hooks/pre-commit` if necessary.
+
 # Releases
 
 To automatically create a new release for Spacewalk, please follow these steps:
