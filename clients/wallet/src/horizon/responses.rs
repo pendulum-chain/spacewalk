@@ -1,7 +1,8 @@
 use crate::{
 	error::Error,
-	horizon::{serde::*, traits::HorizonClient, Ledger},
+	horizon::{serde::*, traits::HorizonClient},
 	types::{FeeAttribute, PagingToken, StatusCode},
+	Slot,
 };
 use parity_scale_codec::{Decode, Encode};
 use primitives::{
@@ -54,9 +55,10 @@ pub(crate) async fn interpret_response<T: DeserializeOwned>(
 		.await
 		.map_err(Error::HorizonResponseError)?;
 
-	let title = resp[RESPONSE_FIELD_TITLE].as_str().unwrap_or(VALUE_UNKNOWN);
 	let status =
 		StatusCode::try_from(resp[RESPONSE_FIELD_STATUS].as_u64().unwrap_or(400)).unwrap_or(400);
+
+	let title = resp[RESPONSE_FIELD_TITLE].as_str().unwrap_or(VALUE_UNKNOWN);
 
 	let error = match status {
 		400 => {
@@ -168,7 +170,7 @@ pub struct TransactionResponse {
 	pub successful: bool,
 	#[serde(deserialize_with = "de_string_to_bytes")]
 	pub hash: Vec<u8>,
-	pub ledger: Ledger,
+	pub ledger: Slot,
 	#[serde(deserialize_with = "de_string_to_bytes")]
 	pub created_at: Vec<u8>,
 	#[serde(deserialize_with = "de_string_to_bytes")]
@@ -230,7 +232,7 @@ impl Debug for TransactionResponse {
 
 #[allow(dead_code)]
 impl TransactionResponse {
-	pub(crate) fn ledger(&self) -> Ledger {
+	pub(crate) fn ledger(&self) -> Slot {
 		self.ledger
 	}
 
@@ -390,8 +392,8 @@ pub struct FeeDistribution {
 
 #[derive(Deserialize, Debug)]
 pub struct FeeStats {
-	#[serde(deserialize_with = "de_string_to_u32")]
-	pub last_ledger: Ledger,
+	#[serde(deserialize_with = "de_string_to_u64")]
+	pub last_ledger: Slot,
 	#[serde(deserialize_with = "de_string_to_u32")]
 	pub last_ledger_base_fee: u32,
 	#[serde(deserialize_with = "de_string_to_f64")]
@@ -436,7 +438,7 @@ pub struct ClaimableBalance {
 	pub sponsor: Vec<u8>,
 
 	pub claimants: Vec<Claimant>,
-	pub last_modified_ledger: Ledger,
+	pub last_modified_ledger: Slot,
 	#[serde(deserialize_with = "de_string_to_bytes")]
 	pub last_modified_time: Vec<u8>,
 }
@@ -471,7 +473,7 @@ impl<C: HorizonClient> TransactionsResponseIter<C> {
 	}
 
 	#[doc(hidden)]
-	// returns the first record of the list
+	// returns the first transaction response of the list
 	fn get_top_record(&mut self) -> Option<TransactionResponse> {
 		if !self.is_empty() {
 			return Some(self.records.remove(0))
@@ -479,21 +481,51 @@ impl<C: HorizonClient> TransactionsResponseIter<C> {
 		None
 	}
 
-	/// returns the next TransactionResponse in the list
+	/// returns the next TransactionResponse
 	pub async fn next(&mut self) -> Option<TransactionResponse> {
 		match self.get_top_record() {
 			Some(record) => Some(record),
 			None => {
-				// call the next page
-				tracing::trace!("calling next page: {}", &self.next_page);
-
-				let response: HorizonTransactionsResponse =
-					self.client.get_from_url(&self.next_page).await.ok()?;
-				self.next_page = response.next_page();
-				self.records = response.records();
-
+				let _ = self.jump_to_next_page().await?;
 				self.get_top_record()
 			},
 		}
+	}
+
+	/// returns the next TransactionResponse in reverse order
+	pub fn next_back(&mut self) -> Option<TransactionResponse> {
+		self.records.pop()
+	}
+
+	/// returns the TransactionResponse in the middle of the list
+	pub fn middle(&mut self) -> Option<TransactionResponse> {
+		if !self.is_empty() {
+			let idx = self.records.len() / 2;
+			return Some(self.records.remove(idx))
+		}
+		None
+	}
+
+	pub fn remove_last_half_records(&mut self) {
+		let idx = self.records.len() / 2;
+		if idx != 0 {
+			self.records = self.records[..idx].to_vec();
+		}
+	}
+
+	pub fn remove_first_half_records(&mut self) {
+		let idx = self.records.len() / 2;
+		if idx != 0 {
+			self.records = self.records[idx..].to_vec();
+		}
+	}
+
+	pub async fn jump_to_next_page(&mut self) -> Option<()> {
+		let response: HorizonTransactionsResponse =
+			self.client.get_from_url(&self.next_page).await.ok()?;
+		self.next_page = response.next_page();
+		self.records = response.records();
+
+		Some(())
 	}
 }

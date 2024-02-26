@@ -8,6 +8,3 @@ mod tests;
 
 pub use horizon::*;
 pub use traits::HorizonClient;
-
-// todo: change to Slot
-pub type Ledger = u32;

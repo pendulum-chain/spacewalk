@@ -9,13 +9,12 @@ use runtime::{
 	integration::{
 		assert_event, get_required_vault_collateral_for_issue, setup_provider, SubxtClient,
 	},
-	stellar::SecretKey,
 	ExecuteRedeemEvent, IssuePallet, SpacewalkParachain, VaultId, VaultRegistryPallet,
 };
 use sp_keyring::AccountKeyring;
 use sp_runtime::traits::StaticLookup;
 use std::{sync::Arc, time::Duration};
-use stellar_relay_lib::sdk::PublicKey;
+use stellar_relay_lib::sdk::{PublicKey, SecretKey};
 use vault::{oracle::OracleAgent, ArcRwLock};
 use wallet::{error::Error, StellarWallet, TransactionResponse};
 

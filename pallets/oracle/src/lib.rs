@@ -418,8 +418,7 @@ impl<T: Config> Pallet<T> {
 		<MaxDelay<T>>::get()
 	}
 
-	/// TODO
-	/// Set the current exchange rate. ONLY FOR TESTING.
+	/// Set the current exchange rate.
 	///
 	/// # Arguments
 	///

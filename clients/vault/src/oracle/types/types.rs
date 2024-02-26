@@ -4,9 +4,9 @@ use std::collections::BTreeMap;
 
 use tokio::sync::mpsc;
 
-use stellar_relay_lib::sdk::types::{Hash, StellarMessage, Uint64};
+use stellar_relay_lib::sdk::types::{Hash, StellarMessage};
+use wallet::Slot;
 
-pub type Slot = Uint64;
 pub type TxHash = Hash;
 pub type TxSetHash = Hash;
 pub type Filename = String;

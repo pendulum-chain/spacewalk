@@ -14,9 +14,9 @@ testing-utils = [
     "tempdir",
     "rand",
     "testchain",
-    "testchain-runtime",
+    "testchain-runtime/testing-utils",
     "subxt-client",
-    "oracle"
+    "oracle/testing-utils"
 ]
 
 [dependencies]

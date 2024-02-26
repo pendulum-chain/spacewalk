@@ -1,9 +1,10 @@
 #![allow(non_snake_case)]
 
-use crate::oracle::{constants::DEFAULT_MAX_ITEMS_IN_QUEUE, types::Slot};
+use crate::oracle::constants::DEFAULT_MAX_ITEMS_IN_QUEUE;
 use itertools::Itertools;
 use std::{collections::VecDeque, fmt::Debug};
 use stellar_relay_lib::sdk::{types::ScpEnvelope, TransactionSetType};
+use wallet::Slot;
 
 /// Sometimes not enough `StellarMessage::ScpMessage(...)` are sent per slot;
 /// or that the `StellarMessage::TxSet(...)` or `StellarMessage::GeneralizedTxSet(...)`
@@ -68,6 +69,12 @@ where
 		let (index, _) = self.queue.iter().find_position(|(k, _)| k == key)?;
 		self.queue.remove(index).map(|(_, v)| v)
 	}
+
+	/// removes all data in the queue
+	pub fn clear(&mut self) {
+		self.queue.drain(..);
+	}
+
 	pub fn get(&self, key: &K) -> Option<&T> {
 		self.queue.iter().find(|(k, _)| k == key).map(|(_, v)| v)
 	}

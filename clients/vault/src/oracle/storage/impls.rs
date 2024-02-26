@@ -7,9 +7,10 @@ use stellar_relay_lib::sdk::{
 };
 
 use crate::oracle::{
-	storage::traits::*, EnvelopesFileHandler, EnvelopesMap, Error, Filename, SerializedData, Slot,
+	storage::traits::*, EnvelopesFileHandler, EnvelopesMap, Error, Filename, SerializedData,
 	SlotEncodedMap, TxSetMap, TxSetsFileHandler,
 };
+use wallet::Slot;
 
 use super::{ScpArchiveStorage, TransactionsArchiveStorage};
 
@@ -166,11 +167,11 @@ mod test {
 			traits::{FileHandler, FileHandlerExt},
 			EnvelopesFileHandler,
 		},
-		types::Slot,
-		TransactionsArchiveStorage,
+		TransactionsArchiveStorage, TxSetsFileHandler,
 	};
 
 	use super::ScpArchiveStorage;
+	use wallet::Slot;
 
 	impl Default for ScpArchiveStorage {
 		fn default() -> Self {
@@ -227,37 +228,36 @@ mod test {
 			assert_eq!(&file_name, &expected_name);
 		}
 
-		// todo: enable after generating a new sample of txsetmap
 		// ---------------- TESTS FOR TX SETS  -----------
 		// finding first slot
-		// {
-		// 	let slot = 42867088;
-		// 	let expected_name = format!("{}_42867102", slot);
-		// 	let file_name =
-		// 		TxSetsFileHandler::find_file_by_slot(slot).expect("should return a file");
-		// 	assert_eq!(&file_name, &expected_name);
-		// }
-		//
-		// // finding slot in the middle of the file
-		// {
-		// 	let first_slot = 42867103;
-		// 	let expected_name = format!("{}_42867118", first_slot);
-		// 	let slot = first_slot + 10;
-		//
-		// 	let file_name =
-		// 		TxSetsFileHandler::find_file_by_slot(slot).expect("should return a file");
-		// 	assert_eq!(&file_name, &expected_name);
-		// }
-		//
-		// // finding slot at the end of the file
-		// {
-		// 	let slot = 42867134;
-		// 	let expected_name = format!("42867119_{}", slot);
-		//
-		// 	let file_name =
-		// 		TxSetsFileHandler::find_file_by_slot(slot).expect("should return a file");
-		// 	assert_eq!(&file_name, &expected_name);
-		// }
+		{
+			let slot = 92886;
+			let expected_name = format!("{}_92900", slot);
+			let file_name =
+				TxSetsFileHandler::find_file_by_slot(slot).expect("should return a file");
+			assert_eq!(&file_name, &expected_name);
+		}
+
+		// finding slot in the middle of the file
+		{
+			let first_slot = 92916;
+			let expected_name = format!("{}_92930", first_slot);
+			let slot = first_slot + 10;
+
+			let file_name =
+				TxSetsFileHandler::find_file_by_slot(slot).expect("should return a file");
+			assert_eq!(&file_name, &expected_name);
+		}
+
+		// finding slot at the end of the file
+		{
+			let slot = 92915;
+			let expected_name = format!("92901_{}", slot);
+
+			let file_name =
+				TxSetsFileHandler::find_file_by_slot(slot).expect("should return a file");
+			assert_eq!(&file_name, &expected_name);
+		}
 	}
 
 	#[test]
@@ -281,16 +281,15 @@ mod test {
 			}
 		}
 
-		// todo: re-enable once a sample of txsetmap is available
 		// ---------------- TEST FOR TXSETs  -----------
-		// {
-		// 	let first_slot = 42867119;
-		// 	let find_slot = first_slot + 15;
-		// 	let txsets_map = TxSetsFileHandler::get_map_from_archives(find_slot)
-		// 		.expect("should return txsets map");
-		//
-		// 	assert!(txsets_map.get(&find_slot).is_some());
-		// }
+		{
+			let first_slot = 92901;
+			let find_slot = first_slot + 15;
+			let txsets_map = TxSetsFileHandler::get_map_from_archives(find_slot)
+				.expect("should return txsets map");
+
+			assert!(txsets_map.get(&find_slot).is_some());
+		}
 	}
 
 	#[test]
@@ -307,18 +306,17 @@ mod test {
 			}
 		}
 
-		// todo: re-enable once a sample of txsetmap is created
 		// ---------------- TEST FOR TXSETs  -----------
-		// {
-		// 	let slot = 42867087;
-		//
-		// 	match TxSetsFileHandler::get_map_from_archives(slot).expect_err("This should fail") {
-		// 		Error::Other(err_str) => {
-		// 			assert_eq!(err_str, format!("Cannot find file for slot {}", slot))
-		// 		},
-		// 		_ => assert!(false, "should fail"),
-		// 	}
-		// }
+		{
+			let slot = 92931;
+
+			match TxSetsFileHandler::get_map_from_archives(slot).expect_err("This should fail") {
+				Error::Other(err_str) => {
+					assert_eq!(err_str, format!("Cannot find file for slot {}", slot))
+				},
+				_ => assert!(false, "should fail"),
+			}
+		}
 	}
 
 	#[test]
@@ -358,38 +356,37 @@ mod test {
 		}
 
 		// ---------------- TEST FOR TXSETs  -----------
-		// {
-		// 	let first_slot = 42867151;
-		// 	let last_slot = 42867166;
-		// 	let mut path = PathBuf::new();
-		// 	path.push("./resources/test/tx_sets_for_testing");
-		// 	path.push(&format!("{}_{}", first_slot, last_slot));
-		// 	println!("find file: {:?}", path);
-		//
-		// 	let mut file = File::open(path).expect("file should exist");
-		// 	let mut bytes: Vec<u8> = vec![];
-		// 	let _ = file.read_to_end(&mut bytes).expect("should be able to read until the end");
-		//
-		// 	let mut txset_map =
-		// 		TxSetsFileHandler::deserialize_bytes(bytes).expect("should generate a map");
-		//
-		// 	// let's remove the first_slot and last_slot in the map, so we can create a new file.
-		// 	txset_map.remove(&first_slot);
-		// 	txset_map.remove(&last_slot);
-		//
-		// 	let expected_filename = format!("{}_{}", first_slot + 1, last_slot - 1);
-		// 	let actual_filename = TxSetsFileHandler::write_to_file(&txset_map)
-		// 		.expect("should write to scp_envelopes directory");
-		// 	assert_eq!(actual_filename, expected_filename);
-		//
-		// 	let new_file = TxSetsFileHandler::find_file_by_slot(last_slot - 2)
-		// 		.expect("should return the same file");
-		// 	assert_eq!(new_file, expected_filename);
-		//
-		// 	// let's delete it
-		// 	let path = TxSetsFileHandler::get_path(&new_file);
-		// 	fs::remove_file(path).expect("should be able to remove the newly added file.");
-		// }
+		{
+			let first_slot = 92931;
+			let last_slot = 92945;
+			let mut path = PathBuf::new();
+			path.push("./resources/test/tx_sets_for_testing");
+			path.push(&format!("{}_{}", first_slot, last_slot));
+
+			let mut file = File::open(path).expect("file should exist");
+			let mut bytes: Vec<u8> = vec![];
+			let _ = file.read_to_end(&mut bytes).expect("should be able to read until the end");
+
+			let mut txset_map =
+				TxSetsFileHandler::deserialize_bytes(bytes).expect("should generate a map");
+
+			// let's remove the first_slot and last_slot in the map, so we can create a new file.
+			txset_map.remove(&first_slot);
+			txset_map.remove(&last_slot);
+
+			let expected_filename = format!("{}_{}", first_slot + 1, last_slot - 1);
+			let actual_filename = TxSetsFileHandler::write_to_file(&txset_map)
+				.expect("should write to scp_envelopes directory");
+			assert_eq!(actual_filename, expected_filename);
+
+			let new_file = TxSetsFileHandler::find_file_by_slot(last_slot - 2)
+				.expect("should return the same file");
+			assert_eq!(new_file, expected_filename);
+
+			// let's delete it
+			let path = TxSetsFileHandler::get_path(&new_file);
+			fs::remove_file(path).expect("should be able to remove the newly added file.");
+		}
 	}
 
 	#[tokio::test]

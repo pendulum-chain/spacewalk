@@ -14,10 +14,7 @@ use wallet::{
 	types::FilterWith, LedgerTxEnvMap, Slot, SlotTask, SlotTaskStatus, TransactionResponse,
 };
 
-use crate::{
-	oracle::{types::Slot as OracleSlot, OracleAgent},
-	ArcRwLock, Error, Event,
-};
+use crate::{oracle::OracleAgent, ArcRwLock, Error, Event};
 
 fn is_vault(p1: &PublicKey, p2_raw: [u8; 32]) -> bool {
 	return *p1.as_binary() == p2_raw
@@ -307,7 +304,6 @@ pub async fn execute_issue(
 	slot: Slot,
 	sender: tokio::sync::oneshot::Sender<SlotTaskStatus>,
 ) {
-	let slot = OracleSlot::from(slot);
 	// Get the proof of the given slot
 	let proof =
 		match oracle_agent.get_proof(slot).await {
