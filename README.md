@@ -103,7 +103,7 @@ before committing.
 You can install the hook by running the following commands.
 
 ```
-.maintain/add-pre-commit.sh
+.maintain/add-precommit-hook.sh
 ```
 
 The pre-push hool runs clippy checks that are also performed in the CI of the repository. These checks need to be successful so the push actually happens.
