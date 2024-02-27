@@ -2,7 +2,7 @@
 authors = ["Pendulum Chain <https://github.com/pendulum-chain>"]
 edition = "2021"
 name = "wallet"
-version = "1.0.3"
+version = "1.0.4"
 
 [features]
 default = []
@@ -11,6 +11,7 @@ testing-utils = []
 [dependencies]
 async-trait = "0.1.40"
 futures = "0.3.5"
+cached = { version = "0.47.0", features = ["async"]}
 parity-scale-codec = "3.0.0"
 rand = "0.8.5"
 reqwest = { version = "0.11", features = ["json"] }

@@ -1,6 +1,7 @@
+use async_std::io::WriteExt;
 use std::time::Duration;
 use substrate_stellar_sdk::types::{MessageType, SendMore, StellarMessage};
-use tokio::{io::AsyncWriteExt, time::timeout};
+use tokio::time::timeout;
 
 use crate::connection::{
 	flow_controller::MAX_FLOOD_MSG_CAP,
@@ -11,11 +12,12 @@ use crate::connection::{
 
 impl Connector {
 	pub async fn send_to_node(&mut self, msg: StellarMessage) -> Result<(), Error> {
-		let xdr_msg = &self.create_xdr_message(msg)?;
+		// Create the XDR message outside the closure
+		let xdr_msg = self.create_xdr_message(msg)?;
 
 		match timeout(
 			Duration::from_secs(self.timeout_in_secs),
-			self.write_stream_overlay.write_all(&xdr_msg),
+			self.tcp_stream.write_all(&xdr_msg),
 		)
 		.await
 		{

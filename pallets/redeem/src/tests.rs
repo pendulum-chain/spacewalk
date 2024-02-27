@@ -1115,12 +1115,19 @@ mod spec_based_tests {
 #[test]
 fn test_request_redeem_fails_limits() {
 	run_test(|| {
+		let volume_currency = DEFAULT_COLLATERAL_CURRENCY;
 		let volume_limit: u128 = 9;
 		crate::Pallet::<Test>::_rate_limit_update(
 			std::option::Option::<u128>::Some(volume_limit),
-			DEFAULT_COLLATERAL_CURRENCY,
+			volume_currency,
 			7200u64,
 		);
+
+		let issue_asset = VAULT.wrapped_currency();
+		// First, convert the volume limit to the issue asset
+		let volume_limit_denoted_in_wrapped_asset =
+			Oracle::convert(&Amount::new(volume_limit, volume_currency), issue_asset)
+				.expect("Price conversion should work");
 
 		convert_to.mock_safe(|_, x| MockResult::Return(Ok(x)));
 		<vault_registry::Pallet<Test>>::insert_vault(
@@ -1141,7 +1148,9 @@ fn test_request_redeem_fails_limits() {
 		);
 
 		let redeemer = USER;
-		let amount = volume_limit + 1;
+		// Choose an amount that is above the limit. Has to be at least 100 because it will get
+		// rounded down during price conversion with different decimals
+		let amount = volume_limit_denoted_in_wrapped_asset.amount() + 100;
 		let redeem_fee = 5;
 		let stellar_address = RANDOM_STELLAR_PUBLIC_KEY;
 
@@ -1335,12 +1344,19 @@ fn test_execute_redeem_within_rate_limit_succeeds() {
 #[test]
 fn test_execute_redeem_fails_when_exceeds_rate_limit() {
 	run_test(|| {
+		let volume_currency = DEFAULT_COLLATERAL_CURRENCY;
 		let volume_limit: u128 = 100u128;
 		crate::Pallet::<Test>::_rate_limit_update(
 			std::option::Option::<u128>::Some(volume_limit),
-			DEFAULT_COLLATERAL_CURRENCY,
+			volume_currency,
 			7200u64,
 		);
+
+		let issue_asset = VAULT.wrapped_currency();
+		// First, convert the volume limit to the issue asset
+		let volume_limit_denoted_in_wrapped_asset =
+			Oracle::convert(&Amount::new(volume_limit, volume_currency), issue_asset)
+				.expect("Price conversion should work");
 
 		convert_to.mock_safe(|_, x| MockResult::Return(Ok(x)));
 		Security::<Test>::set_active_block_number(40);
@@ -1364,7 +1380,7 @@ fn test_execute_redeem_fails_when_exceeds_rate_limit() {
 			.mock_safe(move |_, _, _| MockResult::Return(Ok(())));
 
 		let transfer_fee = Redeem::get_current_inclusion_fee(DEFAULT_WRAPPED_CURRENCY).unwrap();
-		let amount = volume_limit;
+		let amount = volume_limit_denoted_in_wrapped_asset.amount();
 		let redeem_request = RedeemRequest {
 			period: 0,
 			vault: VAULT,
@@ -1415,7 +1431,7 @@ fn test_execute_redeem_fails_when_exceeds_rate_limit() {
 			redeem_id: H256([0; 32]),
 			redeemer: USER,
 			vault_id: VAULT,
-			amount: 100,
+			amount: volume_limit_denoted_in_wrapped_asset.amount(),
 			asset: DEFAULT_WRAPPED_CURRENCY,
 			fee: 0,
 			transfer_fee: transfer_fee.amount(),
@@ -1426,9 +1442,9 @@ fn test_execute_redeem_fails_when_exceeds_rate_limit() {
 		);
 
 		let redeemer = USER;
-		// Requesting a second redeem request with just 1 unit of collateral should fail because we
+		// Requesting a second redeem request with a small unit of collateral should fail because we
 		// reached the volume limit already
-		let amount = 1;
+		let amount = 1_000;
 		let stellar_address = RANDOM_STELLAR_PUBLIC_KEY;
 		assert_err!(
 			Redeem::request_redeem(RuntimeOrigin::signed(redeemer), amount, stellar_address, VAULT),
@@ -1440,12 +1456,19 @@ fn test_execute_redeem_fails_when_exceeds_rate_limit() {
 #[test]
 fn test_execute_redeem_after_rate_limit_interval_reset_succeeds() {
 	run_test(|| {
-		let volume_limit: u128 = 50u128;
+		let volume_currency = DEFAULT_COLLATERAL_CURRENCY;
+		let volume_limit: u128 = 5_000u128;
 		crate::Pallet::<Test>::_rate_limit_update(
 			std::option::Option::<u128>::Some(volume_limit),
-			DEFAULT_COLLATERAL_CURRENCY,
+			volume_currency,
 			7200u64,
 		);
+
+		let issue_currency = VAULT.wrapped_currency();
+		// First, convert the volume limit to the issue asset
+		let volume_limit_denoted_in_wrapped_asset =
+			Oracle::convert(&Amount::new(volume_limit, volume_currency), issue_currency)
+				.expect("Price conversion should work");
 
 		convert_to.mock_safe(|_, x| MockResult::Return(Ok(x)));
 		Security::<Test>::set_active_block_number(40);
@@ -1455,7 +1478,7 @@ fn test_execute_redeem_after_rate_limit_interval_reset_succeeds() {
 				id: VAULT,
 				to_be_replaced_tokens: 0,
 				to_be_issued_tokens: 0,
-				issued_tokens: 400,
+				issued_tokens: 400000,
 				to_be_redeemed_tokens: 200,
 				replace_collateral: 0,
 				banned_until: None,
@@ -1468,15 +1491,15 @@ fn test_execute_redeem_after_rate_limit_interval_reset_succeeds() {
 		ext::stellar_relay::validate_stellar_transaction::<Test>
 			.mock_safe(move |_, _, _| MockResult::Return(Ok(())));
 
-		let transfer_fee = Redeem::get_current_inclusion_fee(DEFAULT_WRAPPED_CURRENCY).unwrap();
-		let amount = volume_limit;
+		let transfer_fee = Redeem::get_current_inclusion_fee(issue_currency).unwrap();
+		let amount = volume_limit_denoted_in_wrapped_asset.amount();
 		let redeem_request = RedeemRequest {
 			period: 0,
 			vault: VAULT,
 			opentime: 40,
 			fee: 0,
 			amount,
-			asset: DEFAULT_WRAPPED_CURRENCY,
+			asset: issue_currency,
 			premium: 0,
 			redeemer: USER,
 			stellar_address: RANDOM_STELLAR_PUBLIC_KEY,
@@ -1531,8 +1554,9 @@ fn test_execute_redeem_after_rate_limit_interval_reset_succeeds() {
 		);
 
 		let redeemer = USER;
-		let amount = 1;
+		let amount = 1_000;
 		let stellar_address = RANDOM_STELLAR_PUBLIC_KEY;
+		// We expect this to fail because we previously reached the volume limit
 		assert_err!(
 			Redeem::request_redeem(RuntimeOrigin::signed(redeemer), amount, stellar_address, VAULT),
 			TestError::ExceedLimitVolumeForRedeemRequest
@@ -1545,8 +1569,8 @@ fn test_execute_redeem_after_rate_limit_interval_reset_succeeds() {
 		assert!(<crate::CurrentVolumeAmount<Test>>::get() > BalanceOf::<Test>::zero());
 
 		let redeemer = USER;
-		let amount = volume_limit;
 		let stellar_address = RANDOM_STELLAR_PUBLIC_KEY;
+		// We expect this to work now because the volume limit has been reset
 		assert_ok!(Redeem::request_redeem(
 			RuntimeOrigin::signed(redeemer),
 			amount,

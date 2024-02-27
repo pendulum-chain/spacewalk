@@ -3,7 +3,7 @@ authors = ["Pendulum Chain <https://github.com/pendulum-chain>"]
 description = "Replace module"
 edition = "2021"
 name = "replace"
-version = "1.0.3"
+version = "1.0.4"
 
 [dependencies]
 serde = { version = "1.0.130", default-features = false, features = ['derive'], optional = true }

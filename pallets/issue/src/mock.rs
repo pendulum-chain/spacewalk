@@ -29,7 +29,7 @@ pub use currency::{
 	Amount,
 };
 pub use primitives::CurrencyId;
-use primitives::{AmountCompatibility, VaultCurrencyPair, VaultId};
+use primitives::{AmountCompatibility, DefaultDecimalsLookup, VaultCurrencyPair, VaultId};
 
 use crate as issue;
 use crate::{Config, Error};
@@ -295,6 +295,7 @@ impl staking::Config for Test {
 impl oracle::Config for Test {
 	type RuntimeEvent = TestEvent;
 	type WeightInfo = oracle::SubstrateWeight<Test>;
+	type DecimalsLookup = DefaultDecimalsLookup;
 	type DataProvider = DiaOracleAdapter<
 		MockDiaOracle,
 		UnsignedFixedPoint,

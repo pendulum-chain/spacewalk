@@ -42,8 +42,7 @@ impl StellarWallet {
 		let account_merge_op =
 			create_account_merge_operation(destination_address, self.public_key())?;
 
-		self.send_to_address([9u8; 32], DEFAULT_STROOP_FEE_PER_OPERATION, vec![account_merge_op])
-			.await
+		self.send_to_address([9u8; 32], vec![account_merge_op]).await
 	}
 
 	pub fn create_payment_envelope(

@@ -498,26 +498,74 @@ pub enum CurrencyId {
 	Token(u64),
 }
 
+pub trait DecimalsLookup {
+	type CurrencyId;
+
+	fn decimals(currency_id: CurrencyId) -> u32;
+
+	fn one(currency_id: CurrencyId) -> Balance {
+		10u128.pow(Self::decimals(currency_id))
+	}
+}
+
+// We use the PendulumDecimalsLookup as the default implementation in Spacewalk because it
+// is more interesting with the XCM(0) token having 10 decimals vs the default 12 decimals.
+pub type DefaultDecimalsLookup = PendulumDecimalsLookup;
+
+pub struct PendulumDecimalsLookup;
+impl DecimalsLookup for PendulumDecimalsLookup {
+	type CurrencyId = CurrencyId;
+
+	fn decimals(currency_id: CurrencyId) -> u32 {
+		(match currency_id {
+			CurrencyId::Stellar(asset) => asset.decimals(),
+			CurrencyId::XCM(index) => match index {
+				// DOT
+				0 => 10,
+				// Assethub USDT
+				1 => 6,
+				// Assethub USDC
+				2 => 6,
+				// EQD
+				3 => 9,
+				// Moonbeam BRZ
+				4 => 18,
+				// PDEX
+				5 => 12,
+				// GLMR
+				6 => 18,
+				_ => 12,
+			},
+			// We assume that all other assets have 12 decimals
+			CurrencyId::Native | CurrencyId::ZenlinkLPToken(_, _, _, _) | CurrencyId::Token(_) =>
+				12,
+		}) as u32
+	}
+}
+
+pub struct AmplitudeDecimalsLookup;
+impl DecimalsLookup for AmplitudeDecimalsLookup {
+	type CurrencyId = CurrencyId;
+
+	fn decimals(currency_id: CurrencyId) -> u32 {
+		(match currency_id {
+			CurrencyId::Stellar(asset) => asset.decimals(),
+			CurrencyId::XCM(index) => match index {
+				// KSM
+				0 => 12,
+				// Assethub USDT
+				1 => 6,
+				_ => 12,
+			},
+			// We assume that all other assets have 12 decimals
+			CurrencyId::Native | CurrencyId::ZenlinkLPToken(_, _, _, _) | CurrencyId::Token(_) =>
+				12,
+		}) as u32
+	}
+}
+
 impl CurrencyId {
 	pub const StellarNative: CurrencyId = Self::Stellar(Asset::StellarNative);
-
-	pub fn decimals(&self) -> u8 {
-		match self {
-			CurrencyId::Stellar(asset) => asset.decimals(),
-			// We assume that all other assets have 12 decimals
-			CurrencyId::Native |
-			CurrencyId::XCM(_) |
-			CurrencyId::ZenlinkLPToken(_, _, _, _) |
-			CurrencyId::Token(_) => 12,
-		}
-	}
-
-	pub fn one(&self) -> Balance {
-		match self {
-			CurrencyId::Stellar(asset) => asset.one(),
-			_ => 10u128.pow(self.decimals().into()),
-		}
-	}
 
 	#[allow(non_snake_case)]
 	pub const fn AlphaNum4(code: Bytes4, issuer: AssetIssuer) -> Self {

@@ -13,13 +13,16 @@ use sc_telemetry::{Telemetry, TelemetryWorker};
 use sp_consensus_aura::sr25519::AuthorityPair as AuraPair;
 use sp_core::crypto::KeyTypeId;
 
+use crate::rpc as spacewalk_rpc;
 use primitives::Block;
-use spacewalk_runtime::RuntimeApi;
+
+use spacewalk_runtime_mainnet::RuntimeApi as MainnetRuntimeApi;
+use spacewalk_runtime_testnet::RuntimeApi as TestnetRuntimeApi;
 
 // Native executor instance.
-pub struct Executor;
+pub struct TestnetExecutor;
 
-impl sc_executor::NativeExecutionDispatch for Executor {
+impl sc_executor::NativeExecutionDispatch for TestnetExecutor {
 	/// Only enable the benchmarking host functions when we actually want to benchmark.
 	#[cfg(feature = "runtime-benchmarks")]
 	type ExtendHostFunctions = frame_benchmarking::benchmarking::HostFunctions;
@@ -28,39 +31,63 @@ impl sc_executor::NativeExecutionDispatch for Executor {
 	type ExtendHostFunctions = ();
 
 	fn dispatch(method: &str, data: &[u8]) -> Option<Vec<u8>> {
-		spacewalk_runtime::api::dispatch(method, data)
+		spacewalk_runtime_testnet::api::dispatch(method, data)
 	}
 
 	fn native_version() -> sc_executor::NativeVersion {
-		spacewalk_runtime::native_version()
+		spacewalk_runtime_testnet::native_version()
 	}
 }
 
-pub type FullClient = TFullClient<Block, RuntimeApi, NativeElseWasmExecutor<Executor>>;
+pub struct MainnetExecutor;
+
+impl sc_executor::NativeExecutionDispatch for MainnetExecutor {
+	/// Only enable the benchmarking host functions when we actually want to benchmark.
+	#[cfg(feature = "runtime-benchmarks")]
+	type ExtendHostFunctions = frame_benchmarking::benchmarking::HostFunctions;
+	/// Otherwise we only use the default Substrate host functions.
+	#[cfg(not(feature = "runtime-benchmarks"))]
+	type ExtendHostFunctions = ();
+
+	fn dispatch(method: &str, data: &[u8]) -> Option<Vec<u8>> {
+		spacewalk_runtime_mainnet::api::dispatch(method, data)
+	}
+
+	fn native_version() -> sc_executor::NativeVersion {
+		spacewalk_runtime_mainnet::native_version()
+	}
+}
+
+pub type FullTestnetClient =
+	TFullClient<Block, TestnetRuntimeApi, NativeElseWasmExecutor<TestnetExecutor>>;
+
+pub type FullMainnetClient =
+	TFullClient<Block, MainnetRuntimeApi, NativeElseWasmExecutor<MainnetExecutor>>;
+
 pub type FullBackend = TFullBackend<Block>;
 
 type FullSelectChain = sc_consensus::LongestChain<FullBackend, Block>;
 
 #[allow(clippy::type_complexity)]
 #[allow(clippy::redundant_clone)]
-pub fn new_partial(
+pub fn new_partial_mainnet(
 	config: &Configuration,
 	instant_seal: bool,
 ) -> Result<
 	sc_service::PartialComponents<
-		FullClient,
+		FullMainnetClient,
 		FullBackend,
 		FullSelectChain,
-		sc_consensus::DefaultImportQueue<Block, FullClient>,
-		sc_transaction_pool::FullPool<Block, FullClient>,
+		sc_consensus::DefaultImportQueue<Block, FullMainnetClient>,
+		sc_transaction_pool::FullPool<Block, FullMainnetClient>,
 		(
 			sc_consensus_grandpa::GrandpaBlockImport<
 				FullBackend,
 				Block,
-				FullClient,
+				FullMainnetClient,
 				FullSelectChain,
 			>,
-			sc_consensus_grandpa::LinkHalf<Block, FullClient, FullSelectChain>,
+			sc_consensus_grandpa::LinkHalf<Block, FullMainnetClient, FullSelectChain>,
 			Option<Telemetry>,
 		),
 	>,
@@ -89,10 +116,10 @@ pub fn new_partial(
 		.with_runtime_cache_size(config.runtime_cache_size)
 		.build();
 	
-	let executor = NativeElseWasmExecutor::<Executor>::new_with_wasm_executor(wasm);
+	let executor = NativeElseWasmExecutor::<MainnetExecutor>::new_with_wasm_executor(wasm);
 
 	let (client, backend, keystore_container, task_manager) =
-		sc_service::new_full_parts::<Block, RuntimeApi, _>(
+		sc_service::new_full_parts::<Block, MainnetRuntimeApi, _>(
 			config,
 			telemetry.as_ref().map(|(_, telemetry)| telemetry.handle()),
 			executor,
@@ -106,12 +133,132 @@ pub fn new_partial(
 
 	let select_chain = sc_consensus::LongestChain::new(backend.clone());
 
-	// TODO check if this is needed
-	// let select_chain = if instant_seal {
-	// 	Some(LongestChain::new(backend.clone()))
-	// } else {
-	// 	None
-	// };
+	let transaction_pool = sc_transaction_pool::BasicPool::new_full(
+		config.transaction_pool.clone(),
+		config.role.is_authority().into(),
+		config.prometheus_registry(),
+		task_manager.spawn_essential_handle(),
+		client.clone(),
+	);
+
+	let (grandpa_block_import, grandpa_link) = sc_consensus_grandpa::block_import(
+		client.clone(),
+		&(client.clone() as Arc<_>),
+		select_chain.clone(),
+		telemetry.as_ref().map(|x| x.handle()),
+	)?;
+
+	let slot_duration = sc_consensus_aura::slot_duration(&*client)?;
+	let registry = config.prometheus_registry();
+
+	let import_queue = if instant_seal {
+		// instance sealing
+		sc_consensus_manual_seal::import_queue(
+			Box::new(client.clone()),
+			&task_manager.spawn_essential_handle(),
+			registry,
+		)
+	} else {
+		sc_consensus_aura::import_queue::<AuraPair, _, _, _, _, _>(ImportQueueParams {
+			block_import: grandpa_block_import.clone(),
+			justification_import: Some(Box::new(grandpa_block_import.clone())),
+			client: client.clone(),
+			create_inherent_data_providers: move |_, ()| async move {
+				let timestamp = sp_timestamp::InherentDataProvider::from_system_time();
+
+				let slot =
+					sp_consensus_aura::inherents::InherentDataProvider::from_timestamp_and_slot_duration(
+						*timestamp,
+						slot_duration,
+					);
+
+				Ok((slot, timestamp))
+			},
+			spawner: &task_manager.spawn_essential_handle(),
+			registry,
+			check_for_equivocation: Default::default(),
+			telemetry: telemetry.as_ref().map(|x| x.handle()),
+			compatibility_mode: Default::default(),
+		})?
+	};
+
+	Ok(sc_service::PartialComponents {
+		client,
+		backend,
+		task_manager,
+		import_queue,
+		keystore_container,
+		select_chain,
+		transaction_pool,
+		other: (grandpa_block_import, grandpa_link, telemetry),
+	})
+}
+
+#[allow(clippy::type_complexity)]
+#[allow(clippy::redundant_clone)]
+pub fn new_partial_testnet(
+	config: &Configuration,
+	instant_seal: bool,
+) -> Result<
+	sc_service::PartialComponents<
+		FullTestnetClient,
+		FullBackend,
+		FullSelectChain,
+		sc_consensus::DefaultImportQueue<Block, FullTestnetClient>,
+		sc_transaction_pool::FullPool<Block, FullTestnetClient>,
+		(
+			sc_consensus_grandpa::GrandpaBlockImport<
+				FullBackend,
+				Block,
+				FullTestnetClient,
+				FullSelectChain,
+			>,
+			sc_consensus_grandpa::LinkHalf<Block, FullTestnetClient, FullSelectChain>,
+			Option<Telemetry>,
+		),
+	>,
+	ServiceError,
+> {
+
+	let telemetry = config
+		.telemetry_endpoints
+		.clone()
+		.filter(|x| !x.is_empty())
+		.map(|endpoints| -> Result<_, sc_telemetry::Error> {
+			let worker = TelemetryWorker::new(16)?;
+			let telemetry = worker.handle().new_telemetry(endpoints);
+			Ok((worker, telemetry))
+		})
+		.transpose()?;
+
+	let heap_pages = config
+		.default_heap_pages
+		.map_or(DEFAULT_HEAP_ALLOC_STRATEGY, |h| HeapAllocStrategy::Static { extra_pages: h as _ });
+
+	let wasm = WasmExecutor::builder()
+		.with_execution_method(config.wasm_method)
+		.with_onchain_heap_alloc_strategy(heap_pages)
+		.with_offchain_heap_alloc_strategy(heap_pages)
+		.with_max_runtime_instances(config.max_runtime_instances)
+		.with_runtime_cache_size(config.runtime_cache_size)
+		.build();
+	
+	let executor = NativeElseWasmExecutor::<TestnetExecutor>::new_with_wasm_executor(wasm);
+
+	let (client, backend, keystore_container, task_manager) =
+		sc_service::new_full_parts::<Block, TestnetRuntimeApi, _>(
+			config,
+			telemetry.as_ref().map(|(_, telemetry)| telemetry.handle()),
+			executor,
+		)?;
+	let client = Arc::new(client);
+
+	let telemetry = telemetry.map(|(worker, telemetry)| {
+		task_manager.spawn_handle().spawn("telemetry", None, worker.run());
+		telemetry
+	});
+
+	let select_chain = sc_consensus::LongestChain::new(backend.clone());
 
 	let transaction_pool = sc_transaction_pool::BasicPool::new_full(
 		config.transaction_pool.clone(),
@@ -185,7 +332,7 @@ pub fn new_full(mut config: Configuration) -> Result<(TaskManager, RpcHandlers),
 		select_chain,
 		transaction_pool,
 		other: (block_import, grandpa_link, mut telemetry),
-	} = new_partial(&config, false)?;
+	} = new_partial_mainnet(&config, false)?;
 
 	let grandpa_protocol_name = sc_consensus_grandpa::protocol_standard_name(
 		&client.block_hash(0).ok().flatten().expect("Genesis block exists; qed"),
@@ -361,7 +508,7 @@ pub fn new_full(mut config: Configuration) -> Result<(TaskManager, RpcHandlers),
 }
 
 #[allow(dead_code)]
-pub async fn start_instant(
+pub async fn start_instant_mainnet(
 	config: Configuration,
 ) -> sc_service::error::Result<(TaskManager, RpcHandlers)> {
 	let sc_service::PartialComponents {
@@ -373,7 +520,129 @@ pub async fn start_instant(
 		select_chain,
 		transaction_pool,
 		other: (_, _, mut telemetry),
-	} = new_partial(&config, true)?;
+	} = new_partial_mainnet(&config, true)?;
+
+	let (network, system_rpc_tx, tx_handler_controller, network_starter, sync_service) =
+		sc_service::build_network(sc_service::BuildNetworkParams {
+			config: &config,
+			client: client.clone(),
+			transaction_pool: transaction_pool.clone(),
+			spawn_handle: task_manager.spawn_handle(),
+			import_queue,
+			block_announce_validator_builder: None,
+			warp_sync_params: None,
+		})?;
+
+	if config.offchain_worker.enabled {
+		sc_service::build_offchain_workers(
+			&config,
+			task_manager.spawn_handle(),
+			client.clone(),
+			network.clone(),
+		);
+	};
+
+	let prometheus_registry = config.prometheus_registry().cloned();
+
+	let role = config.role.clone();
+
+	let command_sink = if role.is_authority() {
+		let proposer_factory = sc_basic_authorship::ProposerFactory::new(
+			task_manager.spawn_handle(),
+			client.clone(),
+			transaction_pool.clone(),
+			prometheus_registry.as_ref(),
+			telemetry.as_ref().map(|x| x.handle()),
+		);
+
+		// Channel for the rpc handler to communicate with the authorship task.
+		let (command_sink, commands_stream) = futures::channel::mpsc::channel(1024);
+
+		let pool = transaction_pool.pool().clone();
+		let import_stream = pool.validated_pool().import_notification_stream().map(|_| {
+			sc_consensus_manual_seal::rpc::EngineCommand::SealNewBlock {
+				create_empty: true,
+				finalize: true,
+				parent_hash: None,
+				sender: None,
+			}
+		});
+
+		let authorship_future =
+			sc_consensus_manual_seal::run_manual_seal(sc_consensus_manual_seal::ManualSealParams {
+				block_import: client.clone(),
+				env: proposer_factory,
+				client: client.clone(),
+				pool: transaction_pool.clone(),
+				commands_stream: futures::stream_select!(commands_stream, import_stream),
+				select_chain,
+				consensus_data_provider: None,
+				create_inherent_data_providers: move |_, ()| async move {
+					Ok(sp_timestamp::InherentDataProvider::from_system_time())
+				},
+			});
+
+		// we spawn the future on a background thread managed by service.
+		task_manager.spawn_essential_handle().spawn_blocking(
+			"instant-seal",
+			Some("block-authoring"),
+			authorship_future,
+		);
+		Some(command_sink)
+	} else {
+		None
+	};
+
+	let rpc_builder = {
+		let client = client.clone();
+		let transaction_pool = transaction_pool.clone();
+
+		move |deny_unsafe, _| {
+			let deps = spacewalk_rpc::FullDeps {
+				client: client.clone(),
+				pool: transaction_pool.clone(),
+				deny_unsafe,
+				command_sink: command_sink.clone(),
+			};
+
+			spacewalk_rpc::create_full(deps).map_err(Into::into)
+		}
+	};
+
+	let rpc_handlers = sc_service::spawn_tasks(sc_service::SpawnTasksParams {
+		network,
+		client,
+		keystore: keystore_container.keystore(),
+		task_manager: &mut task_manager,
+		transaction_pool,
+		rpc_builder: Box::new(rpc_builder),
+		backend,
+		system_rpc_tx,
+		tx_handler_controller,
+		config,
+		telemetry: telemetry.as_mut(),
+		sync_service,
+	})?;
+
+	network_starter.start_network();
+
+	Ok((task_manager, rpc_handlers))
+}
+
+#[allow(dead_code)]
+pub async fn start_instant_testnet(
+	config: Configuration,
+) -> sc_service::error::Result<(TaskManager, RpcHandlers)> {
+	let sc_service::PartialComponents {
+		client,
+		backend,
+		mut task_manager,
+		import_queue,
+		keystore_container,
+		select_chain,
+		transaction_pool,
+		other: (_, _, mut telemetry),
+	} = new_partial_testnet(&config, true)?;
 
 	let (network, system_rpc_tx, tx_handler_controller, network_starter, sync_service) =
 		sc_service::build_network(sc_service::BuildNetworkParams {

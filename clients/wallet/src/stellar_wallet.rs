@@ -1,3 +1,4 @@
+use cached::proc_macro::cached;
 use reqwest::Client;
 use std::{fmt::Formatter, sync::Arc};
 
@@ -28,6 +29,7 @@ use crate::{
 };
 use primitives::{StellarPublicKeyRaw, StellarStroops, TransactionEnvelopeExt};
 
+use crate::types::FeeAttribute;
 #[cfg(test)]
 use mocktopus::macros::mockable;
 
@@ -59,7 +61,7 @@ impl StellarWallet {
 	/// error, this will be the default.
 	pub(crate) const DEFAULT_MAX_RETRY_ATTEMPTS_BEFORE_FALLBACK: u8 = 3;
 
-	pub(crate) const DEFAULT_MAX_BACKOFF_DELAY_IN_SECS: u16 = 600;
+	pub(crate) const DEFAULT_MAX_BACKOFF_DELAY_IN_SECS: u16 = 60;
 }
 
 impl StellarWallet {
@@ -116,10 +118,7 @@ impl StellarWallet {
 	}
 
 	pub fn with_max_backoff_delay(mut self, max_backoff_delay_in_secs: u16) -> Self {
-		// a number more than the default max would be too large
-		if max_backoff_delay_in_secs < Self::DEFAULT_MAX_BACKOFF_DELAY_IN_SECS {
-			self.max_backoff_delay = max_backoff_delay_in_secs;
-		}
+		self.max_backoff_delay = max_backoff_delay_in_secs;
 
 		self
 	}
@@ -157,9 +156,8 @@ impl StellarWallet {
 	pub async fn get_all_transactions_iter(
 		&self,
 	) -> Result<TransactionsResponseIter<Client>, Error> {
-		let horizon_client = Client::new();
-
-		let transactions_response = horizon_client
+		let transactions_response = self
+			.client
 			.get_account_transactions(
 				self.public_key(),
 				self.is_public_network,
@@ -172,7 +170,7 @@ impl StellarWallet {
 		let next_page = transactions_response.next_page();
 		let records = transactions_response.records();
 
-		Ok(TransactionsResponseIter { records, next_page, client: horizon_client })
+		Ok(TransactionsResponseIter { records, next_page, client: self.client.clone() })
 	}
 
 	/// Returns the balances of this wallet's Stellar account
@@ -227,6 +225,20 @@ impl StellarWallet {
 	pub fn save_tx_envelope_to_cache(&self, tx_envelope: TransactionEnvelope) -> Result<(), Error> {
 		self.cache.save_tx_envelope(tx_envelope)
 	}
+}
+
+/// Returns a fee for performing an operation.
+/// This function will be re-executed after the cache expires (according to `time` seconds) OR
+/// when the result is NOT `Ok`.
+#[cached(result = true, time = 600)]
+async fn get_fee_stat_for(is_public_network: bool, fee_attr: FeeAttribute) -> Result<u32, String> {
+	let horizon_client = Client::new();
+	let fee_stats = horizon_client
+		.get_fee_stats(is_public_network)
+		.await
+		.map_err(|e| e.to_string())?;
+
+	Ok(fee_stats.fee_charged_by(fee_attr))
 }
 
 // send/submit functions of StellarWallet
@@ -308,7 +320,6 @@ impl StellarWallet {
 	/// * `asset` - Stellar Asset type of the payment
 	/// * `stroop_amount` - Amount of the payment
 	/// * `request_id` - information to be added in the tx's memo
-	/// * `stroop_fee_per_operation` - base fee to pay for the payment operation
 	/// * `is_payment_for_redeem_request` - true if the operation is for redeem request
 	pub async fn send_payment_to_address(
 		&mut self,
@@ -316,7 +327,6 @@ impl StellarWallet {
 		asset: StellarAsset,
 		stroop_amount: StellarStroops,
 		request_id: [u8; 32],
-		stroop_fee_per_operation: u32,
 		is_payment_for_redeem_request: bool,
 	) -> Result<TransactionResponse, Error> {
 		// user must not send to self
@@ -339,17 +349,20 @@ impl StellarWallet {
 			create_payment_operation(destination_address, asset, stroop_amount, self.public_key())?
 		};
 
-		self.send_to_address(request_id, stroop_fee_per_operation, vec![payment_op])
-			.await
+		self.send_to_address(request_id, vec![payment_op]).await
 	}
 
 	pub(crate) async fn send_to_address(
 		&mut self,
 		request_id: [u8; 32],
-		stroop_fee_per_operation: u32,
 		operations: Vec<Operation>,
 	) -> Result<TransactionResponse, Error> {
 		let _ = self.transaction_submission_lock.lock().await;
+
+		let stroop_fee_per_operation =
+			get_fee_stat_for(self.is_public_network, FeeAttribute::default())
+				.await
+				.map_err(|e| Error::FailedToGetFee(e))?;
 
 		let account = self.client.get_account(self.public_key(), self.is_public_network).await?;
 		let next_sequence_number = account.sequence + 1;
@@ -414,13 +427,8 @@ mod test {
 
 		assert_eq!(wallet.max_backoff_delay(), StellarWallet::DEFAULT_MAX_BACKOFF_DELAY_IN_SECS);
 
-		// too big backoff delay
-		let expected_max_backoff_delay = 800;
+		let expected_max_backoff_delay = StellarWallet::DEFAULT_MAX_BACKOFF_DELAY_IN_SECS / 2;
 		let new_wallet = wallet.with_max_backoff_delay(expected_max_backoff_delay);
-		assert_ne!(new_wallet.max_backoff_delay(), expected_max_backoff_delay);
-
-		let expected_max_backoff_delay = 300;
-		let new_wallet = new_wallet.with_max_backoff_delay(expected_max_backoff_delay);
 		assert_eq!(new_wallet.max_backoff_delay(), expected_max_backoff_delay);
 
 		new_wallet.remove_cache_dir();
@@ -463,14 +471,7 @@ mod test {
 			let response = wallet_clone
 				.write()
 				.await
-				.send_payment_to_address(
-					default_destination(),
-					asset,
-					amount,
-					request_id,
-					DEFAULT_STROOP_FEE_PER_OPERATION,
-					false,
-				)
+				.send_payment_to_address(default_destination(), asset, amount, request_id, false)
 				.await
 				.expect("it should return a success");
 
@@ -487,14 +488,7 @@ mod test {
 			let result = wallet_clone2
 				.write()
 				.await
-				.send_payment_to_address(
-					default_destination(),
-					asset,
-					amount,
-					request_id,
-					DEFAULT_STROOP_FEE_PER_OPERATION,
-					false,
-				)
+				.send_payment_to_address(default_destination(), asset, amount, request_id, false)
 				.await;
 
 			let transaction_response = result.expect("should return a transaction response");
@@ -527,7 +521,6 @@ mod test {
 				default_usdc_asset(),
 				amount,
 				request_id,
-				DEFAULT_STROOP_FEE_PER_OPERATION,
 				true,
 			)
 			.await
@@ -592,7 +585,6 @@ mod test {
 				StellarAsset::AssetTypeNative,
 				amount,
 				request_id,
-				DEFAULT_STROOP_FEE_PER_OPERATION,
 				true,
 			)
 			.await
@@ -652,14 +644,7 @@ mod test {
 		let transaction_response = wallet
 			.write()
 			.await
-			.send_payment_to_address(
-				default_destination(),
-				asset,
-				amount,
-				request_id,
-				DEFAULT_STROOP_FEE_PER_OPERATION,
-				false,
-			)
+			.send_payment_to_address(default_destination(), asset, amount, request_id, false)
 			.await
 			.expect("should return ok");
 
@@ -682,14 +667,7 @@ mod test {
 		let destination = wallet.public_key().clone();
 
 		match wallet
-			.send_payment_to_address(
-				destination,
-				StellarAsset::native(),
-				10,
-				[0u8; 32],
-				DEFAULT_STROOP_FEE_PER_OPERATION,
-				false,
-			)
+			.send_payment_to_address(destination, StellarAsset::native(), 10, [0u8; 32], false)
 			.await
 		{
 			Err(Error::SelfPaymentError) => {
@@ -718,8 +696,6 @@ mod test {
 		let asset = StellarAsset::native();
 		let amount = 1000;
 		let request_id = [0u8; 32];
-		let correct_amount_that_should_not_fail = 100;
-		let incorrect_amount_that_should_fail = 0;
 
 		let response = wallet
 			.send_payment_to_address(
@@ -727,29 +703,26 @@ mod test {
 				asset.clone(),
 				amount,
 				request_id,
-				correct_amount_that_should_not_fail,
 				false,
 			)
 			.await;
 
 		assert!(response.is_ok());
 
-		let err_insufficient_fee = wallet
+		// forcefully fail the transaction
+		let tx_failed = wallet
 			.send_payment_to_address(
 				default_destination(),
 				asset.clone(),
-				amount,
+				amount + 100_000_000_000,
 				request_id,
-				incorrect_amount_that_should_fail,
 				false,
 			)
 			.await;
 
-		assert!(err_insufficient_fee.is_err());
-		match err_insufficient_fee.unwrap_err() {
-			Error::HorizonSubmissionError { reason, .. } => {
-				assert_eq!(reason, "tx_insufficient_fee");
-			},
+		assert!(tx_failed.is_err());
+		match tx_failed.unwrap_err() {
+			Error::HorizonSubmissionError { .. } => assert!(true),
 			_ => assert!(false),
 		}
 
@@ -759,7 +732,6 @@ mod test {
 				asset.clone(),
 				amount,
 				request_id,
-				correct_amount_that_should_not_fail,
 				false,
 			)
 			.await;

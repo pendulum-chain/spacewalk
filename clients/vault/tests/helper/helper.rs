@@ -1,4 +1,7 @@
-use crate::helper::DEFAULT_TESTING_CURRENCY;
+use crate::helper::{
+	DEFAULT_TESTING_CURRENCY, DEFAULT_WRAPPED_CURRENCY_STELLAR_MAINNET,
+	DEFAULT_WRAPPED_CURRENCY_STELLAR_TESTNET,
+};
 use async_trait::async_trait;
 use frame_support::assert_ok;
 use primitives::{stellar::Asset as StellarAsset, CurrencyId, StellarStroops, H256};
@@ -6,22 +9,35 @@ use runtime::{
 	integration::{
 		assert_event, get_required_vault_collateral_for_issue, setup_provider, SubxtClient,
 	},
-	stellar::SecretKey,
 	ExecuteRedeemEvent, IssuePallet, SpacewalkParachain, VaultId, VaultRegistryPallet,
 };
 use sp_keyring::AccountKeyring;
 use sp_runtime::traits::StaticLookup;
 use std::{sync::Arc, time::Duration};
-use stellar_relay_lib::sdk::PublicKey;
+use stellar_relay_lib::sdk::{PublicKey, SecretKey};
 use vault::{oracle::OracleAgent, ArcRwLock};
 use wallet::{error::Error, StellarWallet, TransactionResponse};
 
-pub fn default_destination() -> SecretKey {
-	SecretKey::from_encoding(crate::helper::DEFAULT_TESTNET_DEST_SECRET_KEY).expect("Should work")
+pub fn default_destination(is_public_network: bool) -> SecretKey {
+	if is_public_network {
+		SecretKey::from_encoding(crate::helper::DEFAULT_MAINNET_DEST_SECRET_KEY)
+			.expect("Should work")
+	} else {
+		SecretKey::from_encoding(crate::helper::DEFAULT_TESTNET_DEST_SECRET_KEY)
+			.expect("Should work")
+	}
 }
 
-pub fn default_destination_as_binary() -> [u8; 32] {
-	default_destination().get_public().clone().into_binary()
+pub fn default_destination_as_binary(is_public_network: bool) -> [u8; 32] {
+	default_destination(is_public_network).get_public().clone().into_binary()
+}
+
+pub fn default_wrapped_currency(is_public_network: bool) -> CurrencyId {
+	if is_public_network {
+		DEFAULT_WRAPPED_CURRENCY_STELLAR_MAINNET
+	} else {
+		DEFAULT_WRAPPED_CURRENCY_STELLAR_TESTNET
+	}
 }
 
 // A simple helper function to convert StellarStroops (i64) to the up-scaled u128
@@ -82,8 +98,9 @@ pub async fn register_vault(
 
 pub async fn register_vault_with_default_destination(
 	items: Vec<(&SpacewalkParachain, &VaultId, u128)>,
+	is_public_network: bool,
 ) -> u128 {
-	let public_key = default_destination().get_public().clone();
+	let public_key = default_destination(is_public_network).get_public().clone();
 
 	register_vault(public_key, items).await
 }
@@ -117,7 +134,6 @@ pub async fn send_payment_to_address(
 	asset: StellarAsset,
 	stroop_amount: StellarStroops,
 	request_id: [u8; 32],
-	stroop_fee_per_operation: u32,
 	is_payment_for_redeem_request: bool,
 ) -> Result<TransactionResponse, Error> {
 	let response;
@@ -130,7 +146,6 @@ pub async fn send_payment_to_address(
 				asset.clone(),
 				stroop_amount,
 				request_id,
-				stroop_fee_per_operation,
 				is_payment_for_redeem_request,
 			)
 			.await;
@@ -175,7 +190,6 @@ pub async fn assert_issue(
 		asset,
 		stroop_amount,
 		issue.issue_id.0,
-		300,
 		false,
 	)
 	.await

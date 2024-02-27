@@ -22,7 +22,9 @@ use currency::Amount;
 pub use default_weights::{SubstrateWeight, WeightInfo};
 use orml_oracle::DataProviderExtended;
 pub use pallet::*;
-pub use primitives::{oracle::Key as OracleKey, CurrencyId, TruncateFixedPointToInt};
+pub use primitives::{
+	oracle::Key as OracleKey, CurrencyId, DecimalsLookup, TruncateFixedPointToInt,
+};
 use security::{ErrorCode, StatusCode};
 
 use crate::types::{BalanceOf, UnsignedFixedPoint, Version};
@@ -57,9 +59,15 @@ pub mod types;
 pub mod dia;
 
 pub mod oracle_api;
+
 pub use crate::oracle_api::*;
+
 #[cfg(feature = "testing-utils")]
 pub mod oracle_mock;
+
+// We assume this value to be the decimals of our base currency (USD). It doesn't matter too much as
+// long as it's consistent.
+const USD_DECIMALS: u32 = 12;
 
 #[frame_support::pallet]
 pub mod pallet {
@@ -83,6 +91,8 @@ pub mod pallet {
 		/// Weight information for the extrinsics in this module.
 		type WeightInfo: WeightInfo;
 
+		type DecimalsLookup: DecimalsLookup<CurrencyId = CurrencyId>;
+
 		type DataProvider: DataProviderExtended<
 			OracleKey,
 			orml_oracle::TimestampedValue<Self::UnsignedFixedPoint, Self::Moment>,
@@ -97,7 +107,7 @@ pub mod pallet {
 	}
 
 	#[pallet::event]
-	#[pallet::generate_deposit(pub(super) fn deposit_event)]
+	#[pallet::generate_deposit(pub (super) fn deposit_event)]
 	pub enum Event<T: Config> {
 		AggregateUpdated { values: Vec<(OracleKey, T::UnsignedFixedPoint)> },
 		OracleKeysUpdated { oracle_keys: Vec<OracleKey> },
@@ -212,9 +222,9 @@ impl<T: Config> Pallet<T> {
 		let max_delay = Self::get_max_delay();
 		for key in oracle_keys.iter() {
 			let price = Self::get_timestamped(key);
-			let Some(price) = price else{
-				continue;
-			};
+			let Some(price) = price else {
+                continue;
+            };
 			let is_outdated = current_time > price.timestamp + max_delay;
 			if !is_outdated {
 				updated_items.push((key.clone(), price.value));
@@ -285,9 +295,9 @@ impl<T: Config> Pallet<T> {
 	pub fn get_price(key: OracleKey) -> Result<UnsignedFixedPoint<T>, DispatchError> {
 		ext::security::ensure_parachain_status_running::<T>()?;
 
-		let Some(price) = T::DataProvider::get_no_op(&key) else{
-			 return Err(Error::<T>::MissingExchangeRate.into());
-		};
+		let Some(price) = T::DataProvider::get_no_op(&key) else {
+            return Err(Error::<T>::MissingExchangeRate.into());
+        };
 		Ok(price.value)
 	}
 
@@ -297,11 +307,13 @@ impl<T: Config> Pallet<T> {
 	) -> Result<Amount<T>, DispatchError> {
 		let converted = match (amount.currency(), currency_id) {
 			(x, y) if x == y => amount.amount(),
-			(_, _) => {
-				// First convert to USD, then convert USD to the desired currency
-				let base = Self::currency_to_usd(amount.amount(), amount.currency())?;
-				Self::usd_to_currency(base, currency_id)?
-			},
+			(_, _) => Self::convert_amount(
+				amount.amount(),
+				Self::get_price(OracleKey::ExchangeRate(amount.currency()))?,
+				Self::get_price(OracleKey::ExchangeRate(currency_id))?,
+				T::DecimalsLookup::decimals(amount.currency()),
+				T::DecimalsLookup::decimals(currency_id),
+			)?,
 		};
 		Ok(Amount::new(converted, currency_id))
 	}
@@ -310,28 +322,88 @@ impl<T: Config> Pallet<T> {
 		amount: BalanceOf<T>,
 		currency_id: CurrencyId,
 	) -> Result<BalanceOf<T>, DispatchError> {
-		let rate = Self::get_price(OracleKey::ExchangeRate(currency_id))?;
-		let converted = rate.checked_mul_int(amount).ok_or(ArithmeticError::Overflow)?;
-		Ok(converted)
+		// Rate from asset to USD
+		let asset_rate = Self::get_price(OracleKey::ExchangeRate(currency_id))?;
+		// Rate from USD to USD is 1
+		let usd_rate = UnsignedFixedPoint::<T>::one();
+
+		Self::convert_amount(
+			amount,
+			asset_rate,
+			usd_rate,
+			T::DecimalsLookup::decimals(currency_id),
+			USD_DECIMALS,
+		)
 	}
 
 	pub fn usd_to_currency(
 		amount: BalanceOf<T>,
 		currency_id: CurrencyId,
 	) -> Result<BalanceOf<T>, DispatchError> {
-		let rate = Self::get_price(OracleKey::ExchangeRate(currency_id))?;
-		if amount.is_zero() {
+		// Rate from asset to USD
+		let asset_rate = Self::get_price(OracleKey::ExchangeRate(currency_id))?;
+		// Rate from USD to USD is 1
+		let usd_rate = UnsignedFixedPoint::<T>::one();
+
+		Self::convert_amount(
+			amount,
+			usd_rate,
+			asset_rate,
+			USD_DECIMALS,
+			T::DecimalsLookup::decimals(currency_id),
+		)
+	}
+
+	fn convert_amount(
+		from_amount: BalanceOf<T>,
+		from_price: T::UnsignedFixedPoint,
+		to_price: T::UnsignedFixedPoint,
+		from_decimals: u32,
+		to_decimals: u32,
+	) -> Result<BalanceOf<T>, DispatchError> {
+		if from_amount.is_zero() {
 			return Ok(Zero::zero())
 		}
 
-		// The code below performs `amount/rate`, plus necessary type conversions
-		Ok(T::UnsignedFixedPoint::checked_from_integer(amount)
-			.ok_or(Error::<T>::TryIntoIntError)?
-			.checked_div(&rate)
-			.ok_or(ArithmeticError::Underflow)?
-			.truncate_to_inner()
-			.ok_or(Error::<T>::TryIntoIntError)?
-			.unique_saturated_into())
+		let from_amount = T::UnsignedFixedPoint::from_inner(from_amount);
+
+		if from_decimals > to_decimals {
+			// result = from_amount * from_price / to_price / 10^(from_decimals - to_decimals)
+			let to_amount = from_price
+				.checked_mul(&from_amount)
+				.ok_or(ArithmeticError::Overflow)?
+				.checked_div(&to_price)
+				.ok_or(ArithmeticError::Underflow)?
+				.checked_div(
+					&UnsignedFixedPoint::<T>::checked_from_integer(
+						10u128.pow(from_decimals.saturating_sub(to_decimals)),
+					)
+					.ok_or(Error::<T>::TryIntoIntError)?,
+				)
+				.ok_or(ArithmeticError::Underflow)?
+				.into_inner()
+				.unique_saturated_into();
+
+			Ok(to_amount)
+		} else {
+			// result = from_amount * from_price * 10^(to_decimals - from_decimals) / to_price
+			let to_amount = from_price
+				.checked_mul(&from_amount)
+				.ok_or(ArithmeticError::Overflow)?
+				.checked_mul(
+					&UnsignedFixedPoint::<T>::checked_from_integer(
+						10u128.pow(to_decimals.saturating_sub(from_decimals)),
+					)
+					.ok_or(Error::<T>::TryIntoIntError)?,
+				)
+				.ok_or(ArithmeticError::Overflow)?
+				.checked_div(&to_price)
+				.ok_or(ArithmeticError::Underflow)?
+				.into_inner()
+				.unique_saturated_into();
+
+			Ok(to_amount)
+		}
 	}
 
 	pub fn get_exchange_rate(
@@ -346,8 +418,7 @@ impl<T: Config> Pallet<T> {
 		<MaxDelay<T>>::get()
 	}
 
-	/// TODO
-	/// Set the current exchange rate. ONLY FOR TESTING.
+	/// Set the current exchange rate.
 	///
 	/// # Arguments
 	///

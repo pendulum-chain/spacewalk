@@ -3,7 +3,7 @@ authors = ["Pendulum Chain <https://github.com/pendulum-chain>"]
 description = "The Vault client intermediates between Stellar and the Spacewalk Parachain."
 edition = "2018"
 name = "vault"
-version = "1.0.3"
+version = "1.0.4"
 
 [features]
 std = [
@@ -20,10 +20,12 @@ parachain-metadata-foucoco = ["runtime/parachain-metadata-foucoco"]
 integration-test = ["runtime/standalone-metadata", "integration"]
 
 [dependencies]
+async-std = "1.12.0"
 async-trait = "0.1.40"
 base64 = { version = '0.13.0', default-features = false, features = ['alloc'] }
 bincode = "1.3.3"
-clap = "3.1"
+clap = { version = "3.1", features = ["env"] }
+cfg-if = "1.0.0"
 rand = "0.8.5"
 futures = "0.3.5"
 governor = "0.5.0"

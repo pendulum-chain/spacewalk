@@ -107,9 +107,7 @@ mod metadata_aliases {
 		if #[cfg(feature = "standalone-metadata")] {
 			pub type EncodedCall = metadata::runtime_types::spacewalk_runtime_standalone::RuntimeCall;
 		} else if #[cfg(feature = "parachain-metadata-pendulum")] {
-			pub type EncodedCall = metadata::runtime_types::foucoco_runtime::RuntimeCall;
-			// TODO Eventually change to
-			// pub type EncodedCall = metadata::runtime_types::pendulum_runtime::RuntimeCall;
+			pub type EncodedCall = metadata::runtime_types::pendulum_runtime::RuntimeCall;
 		} else if #[cfg(feature = "parachain-metadata-amplitude")] {
 			pub type EncodedCall = metadata::runtime_types::amplitude_runtime::RuntimeCall;
 		} else if #[cfg(feature = "parachain-metadata-foucoco")] {
@@ -334,9 +332,9 @@ mod dispatch_error {
 					DispatchError::Arithmetic(arithmetic_error.into()),
 				RichDispatchError::Transactional(transactional_error) =>
 					DispatchError::Transactional(transactional_error.into()),
-				RichDispatchError::Exhausted |
-				sp_runtime::DispatchError::Corruption |
-				sp_runtime::DispatchError::Unavailable => todo!(),
+				RichDispatchError::Exhausted => DispatchError::Exhausted,
+				sp_runtime::DispatchError::Corruption => DispatchError::Corruption,
+				sp_runtime::DispatchError::Unavailable => DispatchError::Unavailable,
 			}
 		}
 	}

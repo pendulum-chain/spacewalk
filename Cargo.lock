@@ -180,6 +180,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "allocator-api2"
+version = "0.2.16"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "0942ffc6dcaadf03badf6e6a2d0228460359d5e34b57ccdc720b7382dfbd5ec5"
+
+[[package]]
 name = "android-tzdata"
 version = "0.1.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -377,6 +383,16 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "9b34d609dfbaf33d6889b2b7106d3ca345eacad44200913df5ba02bfd31d2ba9"
 
 [[package]]
+name = "async-attributes"
+version = "1.1.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a3203e79f4dd9bdda415ed03cf14dae5a2bf775c683a00f94e9cd1faf0f596e5"
+dependencies = [
+ "quote",
+ "syn 1.0.109",
+]
+
+[[package]]
 name = "async-channel"
 version = "1.9.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -385,6 +401,35 @@ dependencies = [
  "concurrent-queue",
  "event-listener",
  "futures-core",
+]
+
+[[package]]
+name = "async-executor"
+version = "1.6.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "4b0c4a4f319e45986f347ee47fef8bf5e81c9abc3f6f58dc2391439f30df65f0"
+dependencies = [
+ "async-lock",
+ "async-task",
+ "concurrent-queue",
+ "fastrand 2.0.0",
+ "futures-lite",
+ "slab",
+]
+
+[[package]]
+name = "async-global-executor"
+version = "2.3.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f1b6f5d7df27bd294849f8eec66ecfc63d11814df7a4f5d74168a2394467b776"
+dependencies = [
+ "async-channel",
+ "async-executor",
+ "async-io",
+ "async-lock",
+ "blocking",
+ "futures-lite",
+ "once_cell",
 ]
 
 [[package]]
@@ -415,6 +460,39 @@ checksum = "fa24f727524730b077666307f2734b4a1a1c57acb79193127dcc8914d5242dd7"
 dependencies = [
  "event-listener",
 ]
+
+[[package]]
+name = "async-std"
+version = "1.12.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "62565bb4402e926b29953c785397c6dc0391b7b446e45008b0049eb43cec6f5d"
+dependencies = [
+ "async-attributes",
+ "async-channel",
+ "async-global-executor",
+ "async-io",
+ "async-lock",
+ "crossbeam-utils",
+ "futures-channel",
+ "futures-core",
+ "futures-io",
+ "futures-lite",
+ "gloo-timers",
+ "kv-log-macro",
+ "log",
+ "memchr",
+ "once_cell",
+ "pin-project-lite 0.2.10",
+ "pin-utils",
+ "slab",
+ "wasm-bindgen-futures",
+]
+
+[[package]]
+name = "async-task"
+version = "4.7.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "fbb36e985947064623dbd357f727af08ffd077f93d696782f3c56365fa2e2799"
 
 [[package]]
 name = "async-trait"
@@ -696,6 +774,22 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "8d696c370c750c948ada61c69a0ee2cbbb9c50b1019ddb86d9317157a99c2cae"
 
 [[package]]
+name = "blocking"
+version = "1.4.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "8c36a4d0d48574b3dd360b4b7d95cc651d2b6557b6402848a27d4b228a473e2a"
+dependencies = [
+ "async-channel",
+ "async-lock",
+ "async-task",
+ "fastrand 2.0.0",
+ "futures-io",
+ "futures-lite",
+ "piper",
+ "tracing",
+]
+
+[[package]]
 name = "bounded-collections"
 version = "0.1.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -784,6 +878,42 @@ dependencies = [
  "libc",
  "pkg-config",
 ]
+
+[[package]]
+name = "cached"
+version = "0.47.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "69b0116662497bc24e4b177c90eaf8870e39e2714c3fcfa296327a93f593fc21"
+dependencies = [
+ "ahash 0.8.3",
+ "async-trait",
+ "cached_proc_macro",
+ "cached_proc_macro_types",
+ "futures 0.3.28",
+ "hashbrown 0.14.0",
+ "instant",
+ "once_cell",
+ "thiserror",
+ "tokio",
+]
+
+[[package]]
+name = "cached_proc_macro"
+version = "0.18.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "c878c71c2821aa2058722038a59a67583a4240524687c6028571c9b395ded61f"
+dependencies = [
+ "darling 0.14.4",
+ "proc-macro2",
+ "quote",
+ "syn 1.0.109",
+]
+
+[[package]]
+name = "cached_proc_macro_types"
+version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "3a4f925191b4367301851c6d99b09890311d74b0d43f274c0b34c86d308a3663"
 
 [[package]]
 name = "camino"
@@ -1048,7 +1178,7 @@ checksum = "2da6da31387c7e4ef160ffab6d5e7f00c42626fe39aea70a7b0f1773f7dd6c1b"
 
 [[package]]
 name = "clients-info"
-version = "1.0.3"
+version = "1.0.4"
 dependencies = [
  "frame-benchmarking",
  "frame-support",
@@ -1429,7 +1559,7 @@ checksum = "b365fabc795046672053e29c954733ec3b05e4be654ab130fe8f1f94d7051f35"
 
 [[package]]
 name = "currency"
-version = "1.0.3"
+version = "1.0.4"
 dependencies = [
  "frame-support",
  "frame-system",
@@ -2223,7 +2353,7 @@ dependencies = [
 
 [[package]]
 name = "fee"
-version = "1.0.3"
+version = "1.0.4"
 dependencies = [
  "currency",
  "frame-benchmarking",
@@ -3084,6 +3214,10 @@ name = "hashbrown"
 version = "0.14.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "2c6201b9ff9fd90a5a3bac2e56a830d0caa509576f0e503818ee82c181b3437a"
+dependencies = [
+ "ahash 0.8.3",
+ "allocator-api2",
+]
 
 [[package]]
 name = "headers"
@@ -3570,7 +3704,7 @@ dependencies = [
 
 [[package]]
 name = "issue"
-version = "1.0.3"
+version = "1.0.4"
 dependencies = [
  "base64 0.13.1",
  "currency",
@@ -3880,6 +4014,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "8f6d5ed8676d904364de097082f4e7d240b571b67989ced0240f08b7f966f940"
 dependencies = [
  "cpufeatures",
+]
+
+[[package]]
+name = "kv-log-macro"
+version = "1.0.7"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "0de8b303297635ad57c9f5059fd9cee7a47f8e8daa09df0fcd07dd39fb22977f"
+dependencies = [
+ "log",
 ]
 
 [[package]]
@@ -4551,6 +4694,9 @@ name = "log"
 version = "0.4.19"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b06a4cde4c0f271a446782e3eff8de789548ce57dbc8eca9292c27f4a42004b4"
+dependencies = [
+ "value-bag",
+]
 
 [[package]]
 name = "lru"
@@ -4826,7 +4972,7 @@ dependencies = [
 
 [[package]]
 name = "module-issue-rpc"
-version = "1.0.3"
+version = "1.0.4"
 dependencies = [
  "jsonrpsee",
  "module-issue-rpc-runtime-api",
@@ -4838,7 +4984,7 @@ dependencies = [
 
 [[package]]
 name = "module-issue-rpc-runtime-api"
-version = "1.0.3"
+version = "1.0.4"
 dependencies = [
  "frame-support",
  "parity-scale-codec",
@@ -4848,7 +4994,7 @@ dependencies = [
 
 [[package]]
 name = "module-oracle-rpc"
-version = "1.0.3"
+version = "1.0.4"
 dependencies = [
  "jsonrpsee",
  "module-oracle-rpc-runtime-api",
@@ -4861,7 +5007,7 @@ dependencies = [
 
 [[package]]
 name = "module-oracle-rpc-runtime-api"
-version = "1.0.3"
+version = "1.0.4"
 dependencies = [
  "frame-support",
  "parity-scale-codec",
@@ -4874,7 +5020,7 @@ dependencies = [
 
 [[package]]
 name = "module-redeem-rpc"
-version = "1.0.3"
+version = "1.0.4"
 dependencies = [
  "jsonrpsee",
  "module-redeem-rpc-runtime-api",
@@ -4886,7 +5032,7 @@ dependencies = [
 
 [[package]]
 name = "module-redeem-rpc-runtime-api"
-version = "1.0.3"
+version = "1.0.4"
 dependencies = [
  "frame-support",
  "parity-scale-codec",
@@ -4896,7 +5042,7 @@ dependencies = [
 
 [[package]]
 name = "module-replace-rpc"
-version = "1.0.3"
+version = "1.0.4"
 dependencies = [
  "jsonrpsee",
  "module-replace-rpc-runtime-api",
@@ -4908,7 +5054,7 @@ dependencies = [
 
 [[package]]
 name = "module-replace-rpc-runtime-api"
-version = "1.0.3"
+version = "1.0.4"
 dependencies = [
  "frame-support",
  "parity-scale-codec",
@@ -4918,7 +5064,7 @@ dependencies = [
 
 [[package]]
 name = "module-vault-registry-rpc"
-version = "1.0.3"
+version = "1.0.4"
 dependencies = [
  "jsonrpsee",
  "module-oracle-rpc-runtime-api",
@@ -4931,7 +5077,7 @@ dependencies = [
 
 [[package]]
 name = "module-vault-registry-rpc-runtime-api"
-version = "1.0.3"
+version = "1.0.4"
 dependencies = [
  "frame-support",
  "module-oracle-rpc-runtime-api",
@@ -5224,7 +5370,7 @@ dependencies = [
 
 [[package]]
 name = "nomination"
-version = "1.0.3"
+version = "1.0.4"
 dependencies = [
  "currency",
  "fee",
@@ -5491,7 +5637,7 @@ dependencies = [
 
 [[package]]
 name = "oracle"
-version = "1.0.3"
+version = "1.0.4"
 dependencies = [
  "currency",
  "dia-oracle",
@@ -6081,6 +6227,17 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "8b870d8c151b6f2fb93e84a13146138f05d02ed11c7e7c54f8826aaaf7c9f184"
 
 [[package]]
+name = "piper"
+version = "0.2.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "668d31b1c4eba19242f2088b2bf3316b82ca31082a8335764db4e083db7485d4"
+dependencies = [
+ "atomic-waker",
+ "fastrand 2.0.0",
+ "futures-io",
+]
+
+[[package]]
 name = "pkcs8"
 version = "0.9.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -6171,7 +6328,7 @@ dependencies = [
 
 [[package]]
 name = "pooled-rewards"
-version = "1.0.3"
+version = "1.0.4"
 dependencies = [
  "currency",
  "frame-benchmarking",
@@ -6742,7 +6899,7 @@ dependencies = [
 
 [[package]]
 name = "redeem"
-version = "1.0.3"
+version = "1.0.4"
 dependencies = [
  "currency",
  "fee",
@@ -6902,7 +7059,7 @@ dependencies = [
 
 [[package]]
 name = "replace"
-version = "1.0.3"
+version = "1.0.4"
 dependencies = [
  "currency",
  "fee",
@@ -6984,7 +7141,7 @@ dependencies = [
 
 [[package]]
 name = "reward"
-version = "1.0.3"
+version = "1.0.4"
 dependencies = [
  "currency",
  "frame-benchmarking",
@@ -7006,7 +7163,7 @@ dependencies = [
 
 [[package]]
 name = "reward-distribution"
-version = "1.0.3"
+version = "1.0.4"
 dependencies = [
  "currency",
  "frame-benchmarking",
@@ -7142,7 +7299,7 @@ dependencies = [
 
 [[package]]
 name = "runner"
-version = "1.0.3"
+version = "1.0.4"
 dependencies = [
  "async-trait",
  "backoff",
@@ -7170,7 +7327,7 @@ dependencies = [
 
 [[package]]
 name = "runtime"
-version = "1.0.3"
+version = "1.0.4"
 dependencies = [
  "async-trait",
  "backoff",
@@ -7195,7 +7352,7 @@ dependencies = [
  "sp-std 5.0.0",
  "sp-version",
  "spacewalk-primitives",
- "spacewalk-runtime-standalone",
+ "spacewalk-runtime-standalone-testnet",
  "spacewalk-standalone",
  "substrate-stellar-sdk",
  "subxt 0.25.0",
@@ -8688,7 +8845,7 @@ dependencies = [
 
 [[package]]
 name = "security"
-version = "1.0.3"
+version = "1.0.4"
 dependencies = [
  "frame-support",
  "frame-system",
@@ -8864,7 +9021,7 @@ dependencies = [
 
 [[package]]
 name = "service"
-version = "1.0.3"
+version = "1.0.4"
 dependencies = [
  "async-trait",
  "clap 3.2.25",
@@ -9792,7 +9949,7 @@ dependencies = [
 
 [[package]]
 name = "spacewalk-primitives"
-version = "1.0.3"
+version = "1.0.4"
 dependencies = [
  "base58",
  "bstringify",
@@ -9808,32 +9965,76 @@ dependencies = [
 ]
 
 [[package]]
-name = "spacewalk-rpc"
-version = "1.0.3"
+name = "spacewalk-runtime-standalone-mainnet"
+version = "1.0.4"
 dependencies = [
- "jsonrpc-core",
- "jsonrpsee",
- "module-issue-rpc",
- "module-oracle-rpc",
- "module-redeem-rpc",
- "module-replace-rpc",
- "module-vault-registry-rpc",
- "pallet-transaction-payment-rpc",
- "sc-consensus-manual-seal",
- "sc-rpc",
- "sc-rpc-api",
- "sc-transaction-pool-api",
+ "cfg-if 1.0.0",
+ "clients-info",
+ "currency",
+ "dia-oracle",
+ "fee",
+ "flate2",
+ "frame-benchmarking",
+ "frame-executive",
+ "frame-support",
+ "frame-system",
+ "frame-system-benchmarking",
+ "frame-system-rpc-runtime-api",
+ "getrandom 0.2.10",
+ "hex",
+ "hex-literal 0.3.4",
+ "issue",
+ "lazy_static",
+ "mocktopus",
+ "module-issue-rpc-runtime-api",
+ "module-oracle-rpc-runtime-api",
+ "module-redeem-rpc-runtime-api",
+ "module-replace-rpc-runtime-api",
+ "module-vault-registry-rpc-runtime-api",
+ "nomination",
+ "oracle",
+ "orml-currencies",
+ "orml-oracle",
+ "orml-tokens",
+ "orml-traits",
+ "pallet-aura",
+ "pallet-balances",
+ "pallet-grandpa",
+ "pallet-sudo",
+ "pallet-timestamp",
+ "pallet-transaction-payment",
+ "pallet-transaction-payment-rpc-runtime-api",
+ "parity-scale-codec",
+ "pooled-rewards",
+ "pretty_assertions",
+ "redeem",
+ "replace",
+ "reward",
+ "reward-distribution",
+ "scale-info",
+ "security",
+ "serde_json",
  "sp-api",
- "sp-arithmetic",
  "sp-block-builder",
- "sp-blockchain",
+ "sp-consensus-aura",
  "sp-core",
+ "sp-inherents",
+ "sp-io",
+ "sp-offchain",
+ "sp-runtime",
+ "sp-session",
+ "sp-std 5.0.0",
+ "sp-transaction-pool",
+ "sp-version",
  "spacewalk-primitives",
- "substrate-frame-rpc-system",
+ "staking",
+ "stellar-relay",
+ "substrate-wasm-builder",
+ "vault-registry",
 ]
 
 [[package]]
-name = "spacewalk-runtime-standalone"
+name = "spacewalk-runtime-standalone-testnet"
 version = "1.0.3"
 dependencies = [
  "cfg-if 1.0.0",
@@ -9903,7 +10104,7 @@ dependencies = [
 
 [[package]]
 name = "spacewalk-standalone"
-version = "1.0.3"
+version = "1.0.4"
 dependencies = [
  "clap 4.3.19",
  "frame-benchmarking",
@@ -9912,8 +10113,16 @@ dependencies = [
  "frame-system",
  "futures 0.3.28",
  "hex-literal 0.2.2",
+ "jsonrpc-core",
+ "jsonrpsee",
  "log",
+ "module-issue-rpc",
+ "module-oracle-rpc",
+ "module-redeem-rpc",
+ "module-replace-rpc",
+ "module-vault-registry-rpc",
  "pallet-transaction-payment",
+ "pallet-transaction-payment-rpc",
  "parity-scale-codec",
  "sc-basic-authorship",
  "sc-cli",
@@ -9924,14 +10133,18 @@ dependencies = [
  "sc-consensus-manual-seal",
  "sc-executor",
  "sc-keystore",
+ "sc-rpc",
+ "sc-rpc-api",
  "sc-service",
  "sc-telemetry",
  "sc-transaction-pool",
+ "sc-transaction-pool-api",
  "serde",
  "serde_json",
  "sp-api",
  "sp-arithmetic",
  "sp-block-builder",
+ "sp-blockchain",
  "sp-consensus",
  "sp-consensus-aura",
  "sp-consensus-grandpa",
@@ -9946,9 +10159,10 @@ dependencies = [
  "sp-timestamp",
  "sp-transaction-pool",
  "spacewalk-primitives",
- "spacewalk-rpc",
- "spacewalk-runtime-standalone",
+ "spacewalk-runtime-standalone-mainnet",
+ "spacewalk-runtime-standalone-testnet",
  "substrate-build-script-utils",
+ "substrate-frame-rpc-system",
  "substrate-stellar-sdk",
 ]
 
@@ -10010,7 +10224,7 @@ checksum = "a8f112729512f8e442d81f95a8a7ddf2b7c6b8a1a6f509a95864142b30cab2d3"
 
 [[package]]
 name = "staking"
-version = "1.0.3"
+version = "1.0.4"
 dependencies = [
  "currency",
  "frame-benchmarking",
@@ -10068,7 +10282,7 @@ dependencies = [
 
 [[package]]
 name = "stellar-relay"
-version = "1.0.3"
+version = "1.0.4"
 dependencies = [
  "base64 0.13.1",
  "currency",
@@ -10091,8 +10305,9 @@ dependencies = [
 
 [[package]]
 name = "stellar-relay-lib"
-version = "1.0.3"
+version = "1.0.4"
 dependencies = [
+ "async-std",
  "base64 0.13.1",
  "env_logger 0.9.3",
  "err-derive",
@@ -10212,7 +10427,7 @@ dependencies = [
 [[package]]
 name = "substrate-stellar-sdk"
 version = "0.2.4"
-source = "git+https://github.com/pendulum-chain/substrate-stellar-sdk?branch=polkadot-v0.9.42#831b2b07b98dc334864182fdd227cb6a3fc7000c"
+source = "git+https://github.com/pendulum-chain/substrate-stellar-sdk?branch=polkadot-v0.9.42#d61280df65e8694beb53653649c1948a9ffcb541"
 dependencies = [
  "base64 0.13.1",
  "hex",
@@ -10322,7 +10537,7 @@ dependencies = [
 
 [[package]]
 name = "subxt-client"
-version = "1.0.3"
+version = "1.0.4"
 dependencies = [
  "futures 0.1.31",
  "futures 0.3.28",
@@ -11123,9 +11338,9 @@ version = "1.6.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "97fee6b57c6a41524a810daee9286c02d7752c4253064d0b05472833a438f675"
 dependencies = [
- "cfg-if 1.0.0",
+ "cfg-if 0.1.10",
  "digest 0.10.7",
- "rand 0.8.5",
+ "rand 0.4.6",
  "static_assertions",
 ]
 
@@ -11283,12 +11498,20 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "830b7e5d4d90034032940e4ace0d9a9a057e7a45cd94e6c007832e39edb82f6d"
 
 [[package]]
+name = "value-bag"
+version = "1.6.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7cdbaf5e132e593e9fc1de6a15bbec912395b11fb9719e061cf64f804524c503"
+
+[[package]]
 name = "vault"
-version = "1.0.3"
+version = "1.0.4"
 dependencies = [
+ "async-std",
  "async-trait",
  "base64 0.13.1",
  "bincode",
+ "cfg-if 1.0.0",
  "clap 3.2.25",
  "env_logger 0.9.3",
  "err-derive",
@@ -11340,7 +11563,7 @@ dependencies = [
 
 [[package]]
 name = "vault-registry"
-version = "1.0.3"
+version = "1.0.4"
 dependencies = [
  "currency",
  "fee",
@@ -11430,9 +11653,10 @@ dependencies = [
 
 [[package]]
 name = "wallet"
-version = "1.0.3"
+version = "1.0.4"
 dependencies = [
  "async-trait",
+ "cached",
  "futures 0.3.28",
  "mockall 0.8.3",
  "mocktopus",

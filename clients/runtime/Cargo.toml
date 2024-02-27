@@ -2,7 +2,7 @@
 authors = ["Pendulum"]
 edition = "2018"
 name = "runtime"
-version = "1.0.3"
+version = "1.0.4"
 
 [features]
 default = []
@@ -14,16 +14,16 @@ testing-utils = [
     "tempdir",
     "rand",
     "testchain",
-    "testchain-runtime",
+    "testchain-runtime/testing-utils",
     "subxt-client",
-    "oracle"
+    "oracle/testing-utils"
 ]
 
 [dependencies]
 async-trait = "0.1.40"
 backoff = { version = "0.3.0", features = ["tokio"] }
 cfg-if = "1.0"
-clap = { version = "3.1", features = ["derive"] }
+clap = { version = "3.1", features = ["derive", "env"] }
 codec = { package = "parity-scale-codec", version = "3.0.0", default-features = false, features = ["derive", "full"] }
 futures = "0.3.5"
 log = "0.4.0"
@@ -57,7 +57,7 @@ oracle = { path = "../../pallets/oracle", optional = true }
 rand = { version = "0.7", optional = true }
 tempdir = { version = "0.3.7", optional = true }
 testchain = { package = "spacewalk-standalone", path = "../../testchain/node", optional = true }
-testchain-runtime = { package = "spacewalk-runtime-standalone", path = "../../testchain/runtime", optional = true }
+testchain-runtime = { package = "spacewalk-runtime-standalone-testnet", path = "../../testchain/runtime/testnet", optional = true }
 
 # Substrate Stellar Dependencies
 substrate-stellar-sdk = { git = "https://github.com/pendulum-chain/substrate-stellar-sdk", branch = "polkadot-v0.9.42" }
@@ -68,7 +68,7 @@ wallet = { path = "../wallet" }
 env_logger = "0.8.3"
 tempdir = "0.3.7"
 runtime = { path = ".", features = ["testing-utils"] }
-testchain-runtime = { package = "spacewalk-runtime-standalone", path = "../../testchain/runtime", features = ["testing-utils"] }
+testchain-runtime = { package = "spacewalk-runtime-standalone-testnet", path = "../../testchain/runtime/testnet", features = ["testing-utils"] }
 
 
 

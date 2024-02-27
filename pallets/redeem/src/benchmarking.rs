@@ -62,22 +62,19 @@ fn mint_wrapped<T: crate::Config>(account_id: &T::AccountId, amount: BalanceOf<T
 fn initialize_oracle<T: crate::Config>() {
 	let oracle_id: T::AccountId = account("Oracle", 12, 0);
 
-	use primitives::oracle::Key;
-	let result = Oracle::<T>::feed_values(
+	Oracle::<T>::_set_exchange_rate(
+		oracle_id.clone(),
+		get_collateral_currency_id::<T>(),
+		UnsignedFixedPoint::<T>::checked_from_rational(1, 1).unwrap(),
+	)
+	.unwrap();
+
+	Oracle::<T>::_set_exchange_rate(
 		oracle_id,
-		vec![
-			(
-				Key::ExchangeRate(get_collateral_currency_id::<T>()),
-				UnsignedFixedPoint::<T>::checked_from_rational(1, 1).unwrap(),
-			),
-			(
-				Key::ExchangeRate(get_wrapped_currency_id()),
-				UnsignedFixedPoint::<T>::checked_from_rational(1, 1).unwrap(),
-			),
-		],
-	);
-	assert_ok!(result);
-	Oracle::<T>::begin_block(0u32.into());
+		get_wrapped_currency_id(),
+		UnsignedFixedPoint::<T>::checked_from_rational(1, 1).unwrap(),
+	)
+	.unwrap();
 }
 
 fn test_request<T: crate::Config>(vault_id: &DefaultVaultId<T>) -> DefaultRedeemRequest<T> {
@@ -112,6 +109,7 @@ benchmarks! {
 		let asset = CurrencyId::XCM(0);
 		let stellar_address = DEFAULT_STELLAR_PUBLIC_KEY;
 
+		Security::<T>::set_active_block_number(1u32.into());
 		initialize_oracle::<T>();
 
 		register_public_key::<T>(vault_id.clone());
@@ -135,11 +133,16 @@ benchmarks! {
 	}: _(RawOrigin::Signed(origin), amount, stellar_address, vault_id)
 
 	liquidation_redeem {
-		initialize_oracle::<T>();
-
 		let origin: T::AccountId = account("Origin", 0, 0);
 		let vault_id = get_vault_id::<T>();
 		let amount = 1000;
+
+		mint_wrapped::<T>(&origin, amount.into());
+
+		mint_collateral::<T>(&vault_id.account_id, 100_000u32.into());
+
+		Security::<T>::set_active_block_number(1u32.into());
+		initialize_oracle::<T>();
 
 		register_public_key::<T>(vault_id.clone());
 
@@ -148,9 +151,6 @@ benchmarks! {
 			Vault::new(vault_id.clone())
 		);
 
-		mint_wrapped::<T>(&origin, amount.into());
-
-		mint_collateral::<T>(&vault_id.account_id, 100_000u32.into());
 		assert_ok!(VaultRegistry::<T>::try_deposit_collateral(&vault_id, &collateral(100_000)));
 
 		assert_ok!(VaultRegistry::<T>::try_increase_to_be_issued_tokens(&vault_id, &wrapped(amount)));
@@ -168,6 +168,8 @@ benchmarks! {
 		let vault_id = get_vault_id::<T>();
 		let relayer_id: T::AccountId = account("Relayer", 0, 0);
 
+
+		Security::<T>::set_active_block_number(1u32.into());
 		initialize_oracle::<T>();
 
 		let origin_stellar_address = DEFAULT_STELLAR_PUBLIC_KEY;
@@ -188,8 +190,6 @@ benchmarks! {
 			&vault_id,
 			vault
 		);
-
-		Security::<T>::set_active_block_number(1u32.into());
 
 		let (validators, organizations) = get_validators_and_organizations::<T>();
 		let enactment_block_height = T::BlockNumber::default();
@@ -301,8 +301,6 @@ benchmarks! {
 		let origin: T::AccountId = account("Origin", 0, 0);
 		let vault_id = get_vault_id::<T>();
 		let relayer_id: T::AccountId = account("Relayer", 0, 0);
-
-		initialize_oracle::<T>();
 
 		let origin_stellar_address = DEFAULT_STELLAR_PUBLIC_KEY;
 

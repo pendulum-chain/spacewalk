@@ -1,7 +1,8 @@
 #![allow(non_snake_case)]
 
-use crate::oracle::types::{Slot, TxSetHash};
+use crate::oracle::types::TxSetHash;
 use std::collections::HashMap;
+use wallet::Slot;
 
 /// The slot is not found in the `StellarMessage::TxSet(...)` and
 /// `StellarMessage::GeneralizedTxSet(...)`, therefore this map serves as a holder of the slot when

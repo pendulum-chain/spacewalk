@@ -18,7 +18,7 @@ use crate::{
 	error::Error,
 	horizon::{
 		responses::{
-			interpret_response, HorizonAccountResponse, HorizonClaimableBalanceResponse,
+			interpret_response, FeeStats, HorizonAccountResponse, HorizonClaimableBalanceResponse,
 			HorizonTransactionsResponse, TransactionResponse, TransactionsResponseIter,
 		},
 		traits::HorizonClient,
@@ -30,6 +30,7 @@ use crate::{
 const POLL_INTERVAL: u64 = 5000;
 /// See [Stellar doc](https://developers.stellar.org/api/introduction/pagination/page-arguments)
 pub const DEFAULT_PAGE_SIZE: u8 = 200;
+const BASE_BACKOFF_DELAY_IN_SECS: u64 = 10;
 
 pub fn horizon_url(is_public_network: bool, is_need_fallback: bool) -> &'static str {
 	if is_public_network {
@@ -95,7 +96,7 @@ impl HorizonClient for reqwest::Client {
 	) -> Result<HorizonAccountResponse, Error> {
 		let account_id_encoded = account_id.as_encoded_string()?;
 		let base_url = horizon_url(is_public_network, false);
-		let url = format!("{}/accounts/{}", base_url, account_id_encoded);
+		let url = format!("{base_url}/accounts/{account_id_encoded}");
 
 		self.get_from_url(&url).await
 	}
@@ -107,7 +108,14 @@ impl HorizonClient for reqwest::Client {
 	) -> Result<HorizonClaimableBalanceResponse, Error> {
 		let id_encoded = claimable_balance_id.as_encoded_string()?;
 		let base_url = horizon_url(is_public_network, false);
-		let url = format!("{}/claimable_balances/{}", base_url, id_encoded);
+		let url = format!("{base_url}/claimable_balances/{id_encoded}");
+
+		self.get_from_url(&url).await
+	}
+
+	async fn get_fee_stats(&self, is_public_network: bool) -> Result<FeeStats, Error> {
+		let base_url = horizon_url(is_public_network, false);
+		let url = format!("{base_url}/fee_stats");
 
 		self.get_from_url(&url).await
 	}
@@ -121,15 +129,15 @@ impl HorizonClient for reqwest::Client {
 	) -> Result<TransactionResponse, Error> {
 		let seq_no = transaction_envelope.sequence_number();
 
-		tracing::debug!("submitting transaction with seq no: {seq_no:?}: {transaction_envelope:?}");
-
 		let transaction_xdr = transaction_envelope.to_base64_xdr();
 		let transaction_xdr = std::str::from_utf8(&transaction_xdr).map_err(Error::Utf8Error)?;
+
+		tracing::debug!("submit_transaction(): with seq no: {seq_no:?}: {transaction_xdr:?}");
 
 		let params = [("tx", &transaction_xdr)];
 
 		let mut server_error_count = 0;
-		let mut exponent_counter = 1;
+		let mut backoff_delay_counter = 1;
 
 		loop {
 			let need_fallback = if server_error_count == max_retries {
@@ -159,15 +167,15 @@ impl HorizonClient for reqwest::Client {
 
 					// let's wait awhile before resubmitting.
 					tracing::warn!(
-						"submitting transaction with seq no: {seq_no:?} failed with {e:?}"
+						"submitting transaction to {base_url} with seq no: {seq_no:?} failed with {e:?}"
 					);
-					// exponentially sleep before retrying again
-					let sleep_duration = 2u64.pow(exponent_counter);
+					// Calculate linear backoff delay
+					let sleep_duration = backoff_delay_counter * BASE_BACKOFF_DELAY_IN_SECS;
 					sleep(Duration::from_secs(sleep_duration)).await;
 
 					// retry/resubmit again
 					if sleep_duration < u64::from(max_backoff_delay_in_secs) {
-						exponent_counter += 1;
+						backoff_delay_counter += 1;
 					}
 					continue
 				},

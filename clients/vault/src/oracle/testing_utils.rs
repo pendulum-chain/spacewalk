@@ -1,27 +1,53 @@
 use stellar_relay_lib::sdk::SecretKey;
 
-pub fn get_test_stellar_relay_config(is_mainnet: bool) -> stellar_relay_lib::StellarOverlayConfig {
+pub fn random_stellar_relay_config(is_mainnet: bool) -> stellar_relay_lib::StellarOverlayConfig {
 	use rand::seq::SliceRandom;
 
-	let stellar_node_points: Vec<&str> = if is_mainnet {
+	let (stellar_node_points, dir) = stellar_relay_config_choices(is_mainnet);
+
+	let node_point = stellar_node_points
+		.choose(&mut rand::thread_rng())
+		.expect("should return a value");
+
+	stellar_relay_config_abs_path(dir, node_point)
+}
+
+pub fn specific_stellar_relay_config(
+	is_mainnet: bool,
+	index: usize,
+) -> stellar_relay_lib::StellarOverlayConfig {
+	let (stellar_node_points, dir) = stellar_relay_config_choices(is_mainnet);
+
+	let node_point = stellar_node_points.get(index).expect("should return a value");
+
+	stellar_relay_config_abs_path(dir, node_point)
+}
+
+fn stellar_relay_config_choices(is_mainnet: bool) -> (Vec<&'static str>, &'static str) {
+	let node_points = if is_mainnet {
 		vec!["frankfurt", "iowa", "singapore"]
 	} else {
 		vec!["sdftest1", "sdftest2", "sdftest3"]
 	};
-	let dir = if is_mainnet { "mainnet" } else { "testnet" };
 
-	let res = stellar_node_points
-		.choose(&mut rand::thread_rng())
-		.expect("should return a value");
-	let path_string = format!("./resources/config/{dir}/stellar_relay_config_{res}.json");
+	let dir = if is_mainnet { "mainnet" } else { "testnet" };
+	(node_points, dir)
+}
+fn stellar_relay_config_abs_path(
+	dir: &str,
+	node_point: &str,
+) -> stellar_relay_lib::StellarOverlayConfig {
+	let path_string = format!("./resources/config/{dir}/stellar_relay_config_{node_point}.json");
 
 	stellar_relay_lib::StellarOverlayConfig::try_from_path(path_string.as_str())
 		.expect("should be able to extract config")
 }
 
-pub fn get_test_secret_key(is_mainnet: bool) -> String {
-	let file_name = if is_mainnet { "mainnet" } else { "testnet" };
-	let path = format!("./resources/secretkey/stellar_secretkey_{file_name}");
+pub fn get_secret_key(with_currency: bool, is_mainnet: bool) -> String {
+	let suffix = if with_currency { "_with_currency" } else { "" };
+	let directory = if is_mainnet { "mainnet" } else { "testnet" };
+
+	let path = format!("./resources/secretkey/{directory}/stellar_secretkey_{directory}{suffix}");
 	std::fs::read_to_string(path).expect("should return a string")
 }
 

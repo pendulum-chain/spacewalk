@@ -13,17 +13,17 @@ use crate::{
 #[derive(Parser, Debug, Clone)]
 pub struct ProviderUserOpts {
 	/// Keyring to use, mutually exclusive with keyfile.
-	#[clap(long, required_unless_present = "keyfile", parse(try_from_str = parse_account_keyring))]
+	#[clap(long, env = "KEYRING", required_unless_present = "keyfile", parse(try_from_str = parse_account_keyring))]
 	pub keyring: Option<AccountKeyring>,
 
 	/// Path to the json file containing key pairs in a map.
 	/// Valid content of this file is e.g.
 	/// `{ "MyUser1": "<Polkadot Account Mnemonic>", "MyUser2": "<Polkadot Account Mnemonic>" }`.
-	#[clap(long, conflicts_with = "keyring", requires = "keyname")]
+	#[clap(long, env = "KEYFILE", conflicts_with = "keyring", requires = "keyname")]
 	pub keyfile: Option<String>,
 
 	/// The name of the account from the keyfile to use.
-	#[clap(long, conflicts_with = "keyring", requires = "keyfile")]
+	#[clap(long, env = "KEYNAME", conflicts_with = "keyring", requires = "keyfile")]
 	pub keyname: Option<String>,
 }
 
@@ -89,19 +89,19 @@ pub fn parse_duration_minutes(src: &str) -> Result<Duration, ParseIntError> {
 #[derive(Parser, Debug, Clone)]
 pub struct ConnectionOpts {
 	/// Parachain websocket URL.
-	#[clap(long, default_value = "ws://127.0.0.1:9944")]
+	#[clap(long, env = "SPACEWALK_PARACHAIN_URL", default_value = "ws://127.0.0.1:9944")]
 	pub spacewalk_parachain_url: String,
 
 	/// Timeout in milliseconds to wait for connection to spacewalk-parachain.
-	#[clap(long, parse(try_from_str = parse_duration_ms), default_value = "60000")]
+	#[clap(long, env = "SPACEWALK_PARACHAIN_CONNECTION_TIMEOUT_MS", parse(try_from_str = parse_duration_ms), default_value = "60000")]
 	pub spacewalk_parachain_connection_timeout_ms: Duration,
 
 	/// Maximum number of concurrent requests
-	#[clap(long)]
+	#[clap(long, env = "MAX_CONCURRENT_REQUESTS")]
 	pub max_concurrent_requests: Option<usize>,
 
 	/// Maximum notification capacity for each subscription
-	#[clap(long)]
+	#[clap(long, env = "MAX_NOTIFS_PER_SUBSCRIPTION")]
 	pub max_notifs_per_subscription: Option<usize>,
 }
 

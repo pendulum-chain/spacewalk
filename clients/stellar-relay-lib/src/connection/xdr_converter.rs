@@ -1,10 +1,8 @@
-#![allow(dead_code)] //todo: remove after being tested and implemented
-
 use crate::sdk::types::{
 	AuthenticatedMessage, AuthenticatedMessageV0, HmacSha256Mac, MessageType, StellarMessage,
 };
 use std::fmt::Debug;
-use substrate_stellar_sdk::XdrCodec;
+use substrate_stellar_sdk::{parse_stellar_type, StellarSdkError, XdrCodec};
 
 #[derive(Debug, Eq, PartialEq, err_derive::Error)]
 pub enum Error {
@@ -14,8 +12,17 @@ pub enum Error {
 	#[error(display = "Message Version: Unsupported")]
 	UnsupportedMessageVersion,
 
+	#[error(display = "Sdk Error: {}", _0)]
+	SdkError(String),
+
 	#[error(display = "Decode Error: {}", _0)]
 	DecodeError(String),
+}
+
+impl From<StellarSdkError> for Error {
+	fn from(value: StellarSdkError) -> Self {
+		Error::SdkError(format!("{value:#?}"))
+	}
 }
 
 /// The 1st 4 bytes determines the byte length of the next stellar message.
@@ -35,36 +42,6 @@ pub(crate) fn get_xdr_message_length(data: &[u8]) -> usize {
 /// Returns xdr of the authenticated message
 pub(crate) fn from_authenticated_message(message: &AuthenticatedMessage) -> Result<Vec<u8>, Error> {
 	message_to_bytes(message)
-}
-
-// todo: move to substrate-stellar-sdk
-/// To easily convert any bytes to a Stellar type.
-///
-/// # Examples
-///
-/// Basic usage:
-///
-/// ```
-/// use substrate_stellar_sdk::types::Auth;
-/// use stellar_relay_lib::parse_stellar_type;
-/// let auth_xdr =  [0, 0, 0, 1];
-/// let result = parse_stellar_type!(auth_xdr,Auth);
-/// assert_eq!(result, Ok(Auth { flags: 1 }))
-/// ```
-#[macro_export]
-macro_rules! parse_stellar_type {
-	($ref:ident, $struct_str:ident) => {{
-		use $crate::{
-			sdk::{types::$struct_str, XdrCodec},
-			xdr_converter::Error,
-		};
-
-		let ret: Result<$struct_str, Error> = $struct_str::from_xdr($ref).map_err(|e| {
-			log::error!("decode error: {:?}", e);
-			Error::DecodeError(stringify!($struct_str).to_string())
-		});
-		ret
-	}};
 }
 
 /// Parses the xdr message into `AuthenticatedMessageV0`.
@@ -92,7 +69,7 @@ pub(crate) fn parse_authenticated_message(
 }
 
 fn parse_stellar_message(xdr_message: &[u8]) -> Result<StellarMessage, Error> {
-	parse_stellar_type!(xdr_message, StellarMessage)
+	parse_stellar_type!(xdr_message, StellarMessage).map_err(|e| e.into())
 }
 
 fn parse_message_version(xdr_message: &[u8]) -> Result<u32, Error> {
@@ -104,11 +81,11 @@ fn parse_sequence(xdr_message: &[u8]) -> Result<u64, Error> {
 }
 
 fn parse_hmac(xdr_message: &[u8]) -> Result<HmacSha256Mac, Error> {
-	parse_stellar_type!(xdr_message, HmacSha256Mac)
+	parse_stellar_type!(xdr_message, HmacSha256Mac).map_err(|e| e.into())
 }
 
 fn parse_message_type(xdr_message: &[u8]) -> Result<MessageType, Error> {
-	parse_stellar_type!(xdr_message, MessageType)
+	parse_stellar_type!(xdr_message, MessageType).map_err(|e| e.into())
 }
 
 /// Returns XDR format of the message or
@@ -135,21 +112,19 @@ pub fn log_decode_error<T: Debug>(source: &str, error: T) -> Error {
 	Error::DecodeError(source.to_string())
 }
 
-// extra function.
-fn is_xdr_complete_message(data: &[u8], message_len: usize) -> bool {
-	data.len() - 4 >= message_len
-}
-
-// extra function
-fn get_message(data: &[u8], message_len: usize) -> (Vec<u8>, Vec<u8>) {
-	(data[4..(message_len + 4)].to_owned(), data[0..(message_len + 4)].to_owned())
-}
-
 #[cfg(test)]
 mod test {
-	use crate::connection::xdr_converter::{
-		get_message, get_xdr_message_length, is_xdr_complete_message, parse_authenticated_message,
-	};
+	use crate::connection::xdr_converter::{get_xdr_message_length, parse_authenticated_message};
+
+	// extra function.
+	fn is_xdr_complete_message(data: &[u8], message_len: usize) -> bool {
+		data.len() - 4 >= message_len
+	}
+
+	// extra function
+	fn get_message(data: &[u8], message_len: usize) -> (Vec<u8>, Vec<u8>) {
+		(data[4..(message_len + 4)].to_owned(), data[0..(message_len + 4)].to_owned())
+	}
 
 	#[test]
 	fn get_xdr_message_length_success() {
@@ -165,8 +140,7 @@ mod test {
             base64::STANDARD
         ).expect("should be able to decode to bytes");
 
-		//todo: once the authenticatedmessagev0 type is solved, continue the test
-		let _ = parse_authenticated_message(&msg);
+		assert!(parse_authenticated_message(&msg).is_ok());
 	}
 
 	#[test]

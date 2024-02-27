@@ -1,7 +1,7 @@
 [package]
 authors = ["Pendulum"]
 edition = "2021"
-name = 'spacewalk-runtime-standalone'
+name = 'spacewalk-runtime-standalone-testnet'
 version = "1.0.3"
 
 [package.metadata.docs.rs]
@@ -54,29 +54,29 @@ orml-currencies = {git = "https://github.com/open-web3-stack/open-runtime-module
 orml-tokens = {git = "https://github.com/open-web3-stack/open-runtime-module-library", branch = "polkadot-v0.9.42", default-features = false}
 orml-traits = {git = "https://github.com/open-web3-stack/open-runtime-module-library", branch = "polkadot-v0.9.42", default-features = false}
 
-clients-info = {path = "../../pallets/clients-info", default-features = false}
-currency = {path = "../../pallets/currency", default-features = false}
-fee = {path = "../../pallets/fee", default-features = false}
-issue = {path = "../../pallets/issue", default-features = false}
-nomination = {path = "../../pallets/nomination", default-features = false}
-oracle = {path = "../../pallets/oracle", default-features = false}
-pooled-rewards = {path = "../../pallets/pooled-rewards", default-features = false}
-redeem = {path = "../../pallets/redeem", default-features = false}
-replace = {path = "../../pallets/replace", default-features = false}
-reward = {path = "../../pallets/reward", default-features = false}
-reward-distribution = {path = "../../pallets/reward-distribution", default-features = false}
-security = {path = "../../pallets/security", default-features = false}
-staking = {path = "../../pallets/staking", default-features = false}
-stellar-relay = {path = "../../pallets/stellar-relay", default-features = false}
-vault-registry = {path = "../../pallets/vault-registry", default-features = false}
+clients-info = {path = "../../../pallets/clients-info", default-features = false}
+currency = {path = "../../../pallets/currency", default-features = false}
+fee = {path = "../../../pallets/fee", default-features = false}
+issue = {path = "../../../pallets/issue", default-features = false}
+nomination = {path = "../../../pallets/nomination", default-features = false}
+oracle = {path = "../../../pallets/oracle", default-features = false}
+pooled-rewards = {path = "../../../pallets/pooled-rewards", default-features = false}
+redeem = {path = "../../../pallets/redeem", default-features = false}
+replace = {path = "../../../pallets/replace", default-features = false}
+reward = {path = "../../../pallets/reward", default-features = false}
+reward-distribution = {path = "../../../pallets/reward-distribution", default-features = false}
+security = {path = "../../../pallets/security", default-features = false}
+staking = {path = "../../../pallets/staking", default-features = false}
+stellar-relay = {path = "../../../pallets/stellar-relay", default-features = false}
+vault-registry = {path = "../../../pallets/vault-registry", default-features = false}
 
-module-issue-rpc-runtime-api = {path = "../../pallets/issue/rpc/runtime-api", default-features = false}
-module-oracle-rpc-runtime-api = {path = "../../pallets/oracle/rpc/runtime-api", default-features = false}
-module-redeem-rpc-runtime-api = {path = "../../pallets/redeem/rpc/runtime-api", default-features = false}
-module-replace-rpc-runtime-api = {path = "../../pallets/replace/rpc/runtime-api", default-features = false}
-module-vault-registry-rpc-runtime-api = {path = "../../pallets/vault-registry/rpc/runtime-api", default-features = false}
+module-issue-rpc-runtime-api = {path = "../../../pallets/issue/rpc/runtime-api", default-features = false}
+module-oracle-rpc-runtime-api = {path = "../../../pallets/oracle/rpc/runtime-api", default-features = false}
+module-redeem-rpc-runtime-api = {path = "../../../pallets/redeem/rpc/runtime-api", default-features = false}
+module-replace-rpc-runtime-api = {path = "../../../pallets/replace/rpc/runtime-api", default-features = false}
+module-vault-registry-rpc-runtime-api = {path = "../../../pallets/vault-registry/rpc/runtime-api", default-features = false}
 
-primitives = {package = "spacewalk-primitives", path = "../../primitives", default-features = false}
+primitives = {package = "spacewalk-primitives", path = "../../../primitives", default-features = false}
 
 orml-oracle = { git = "https://github.com/open-web3-stack/open-runtime-module-library", branch = "polkadot-v0.9.42", default-features = false }
 dia-oracle = { git = "https://github.com/pendulum-chain/oracle-pallet", branch = "polkadot-v0.9.42", default-features = false }
