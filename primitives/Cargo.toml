@@ -2,7 +2,7 @@
 authors = ["Pendulum"]
 edition = "2018"
 name = "spacewalk-primitives"
-version = "1.0.4"
+version = "1.0.5"
 
 [dependencies]
 bstringify = "0.1.2"

@@ -4,7 +4,7 @@ description = "Currency module"
 edition = "2021"
 homepage = "https://pendulumchain.org"
 name = "currency"
-version = "1.0.4"
+version = "1.0.5"
 
 [dependencies]
 serde = { version = "1.0.130", default-features = false, features = ["derive"], optional = true }
