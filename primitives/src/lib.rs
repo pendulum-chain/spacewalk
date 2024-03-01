@@ -125,22 +125,17 @@ fn deserialize_from_string<'de, D: Deserializer<'de>, T: std::str::FromStr>(
 pub mod issue {
 	use super::*;
 
-	#[derive(Encode, Decode, Clone, PartialEq, Eq, TypeInfo, MaxEncodedLen)]
+	#[derive(Default, Encode, Decode, Clone, PartialEq, Eq, TypeInfo, MaxEncodedLen)]
 	#[cfg_attr(feature = "std", derive(Debug, Serialize, Deserialize))]
 	#[cfg_attr(feature = "std", serde(rename_all = "camelCase"))]
 	pub enum IssueRequestStatus {
 		/// opened, but not yet executed or cancelled
+		#[default]
 		Pending,
 		/// payment was received
 		Completed,
 		/// payment was not received, vault may receive griefing collateral
 		Cancelled,
-	}
-
-	impl Default for IssueRequestStatus {
-		fn default() -> Self {
-			IssueRequestStatus::Pending
-		}
 	}
 
 	// Due to a known bug in serde we need to specify how u128 is (de)serialized.
@@ -186,11 +181,12 @@ pub mod issue {
 pub mod redeem {
 	use super::*;
 
-	#[derive(Encode, Decode, Clone, Eq, PartialEq, TypeInfo, MaxEncodedLen)]
+	#[derive(Default, Encode, Decode, Clone, Eq, PartialEq, TypeInfo, MaxEncodedLen)]
 	#[cfg_attr(feature = "std", derive(Debug, Serialize, Deserialize))]
 	#[cfg_attr(feature = "std", serde(rename_all = "camelCase"))]
 	pub enum RedeemRequestStatus {
 		/// opened, but not yet executed or cancelled
+		#[default]
 		Pending,
 		/// successfully executed with a valid payment from the vault
 		Completed,
@@ -199,12 +195,6 @@ pub mod redeem {
 		Reimbursed(bool),
 		/// user received compensation, but is retrying the redeem with another vault
 		Retried,
-	}
-
-	impl Default for RedeemRequestStatus {
-		fn default() -> Self {
-			RedeemRequestStatus::Pending
-		}
 	}
 
 	// Due to a known bug in serde we need to specify how u128 is (de)serialized.
@@ -255,22 +245,17 @@ pub mod redeem {
 pub mod replace {
 	use super::*;
 
-	#[derive(Encode, Decode, Clone, PartialEq, TypeInfo, MaxEncodedLen)]
+	#[derive(Default, Encode, Decode, Clone, PartialEq, TypeInfo, MaxEncodedLen)]
 	#[cfg_attr(feature = "std", derive(Debug, Serialize, Deserialize, Eq))]
 	#[cfg_attr(feature = "std", serde(rename_all = "camelCase"))]
 	pub enum ReplaceRequestStatus {
 		/// accepted, but not yet executed or cancelled
+		#[default]
 		Pending,
 		/// successfully executed with a valid payment from the old vault
 		Completed,
 		/// payment was not received, new vault may receive griefing collateral
 		Cancelled,
-	}
-
-	impl Default for ReplaceRequestStatus {
-		fn default() -> Self {
-			ReplaceRequestStatus::Pending
-		}
 	}
 
 	// Due to a known bug in serde we need to specify how u128 is (de)serialized.
@@ -484,13 +469,25 @@ impl Asset {
 }
 
 #[derive(
-	Encode, Decode, Eq, Hash, PartialEq, Copy, Clone, PartialOrd, Ord, TypeInfo, MaxEncodedLen,
+	Default,
+	Encode,
+	Decode,
+	Eq,
+	Hash,
+	PartialEq,
+	Copy,
+	Clone,
+	PartialOrd,
+	Ord,
+	TypeInfo,
+	MaxEncodedLen,
 )]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 #[cfg_attr(feature = "std", serde(rename_all = "camelCase"))]
 #[repr(u8)]
 #[allow(clippy::unnecessary_cast)]
 pub enum CurrencyId {
+	#[default]
 	Native = 0_u8,
 	XCM(u8),
 	Stellar(Asset),
@@ -586,12 +583,6 @@ pub struct CustomMetadata;
 pub type Bytes4 = [u8; 4];
 pub type Bytes12 = [u8; 12];
 pub type AssetIssuer = [u8; 32];
-
-impl Default for CurrencyId {
-	fn default() -> Self {
-		CurrencyId::Native
-	}
-}
 
 impl TryFrom<(&str, &str)> for CurrencyId {
 	type Error = &'static str;

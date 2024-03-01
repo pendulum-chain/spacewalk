@@ -10,7 +10,7 @@ pub type LedgerTxEnvMap = HashMap<Slot, TransactionEnvelope>;
 /// The child attributes of the `fee_charged` attribute of
 /// [Fee Stats Object](https://developers.stellar.org/api/horizon/aggregations/fee-stats/object).
 #[allow(non_camel_case_types)]
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Default, Clone, PartialEq, Eq, Hash)]
 pub enum FeeAttribute {
 	max,
 	min,
@@ -24,6 +24,7 @@ pub enum FeeAttribute {
 	p70,
 	p80,
 	p90,
+	#[default]
 	p95,
 	p99,
 }
@@ -31,12 +32,6 @@ pub enum FeeAttribute {
 impl fmt::Display for FeeAttribute {
 	fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
 		write!(f, "{:?}", self)
-	}
-}
-
-impl Default for FeeAttribute {
-	fn default() -> Self {
-		FeeAttribute::p95
 	}
 }
 
