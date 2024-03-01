@@ -13066,19 +13066,13 @@
                 "asset_registry",
                 "CustomMetadata"
               ],
-              "params": [
-                {
-                  "name": "T",
-                  "type": 177
-                }
-              ],
               "def": {
                 "composite": {
                   "fields": [
                     {
                       "name": "dia_keys",
-                      "type": 178,
-                      "typeName": "DiaKeys<T>"
+                      "type": 177,
+                      "typeName": "DiaKeys<StringLimit>"
                     },
                     {
                       "name": "fee_per_second",
@@ -13094,18 +13088,6 @@
             "id": 177,
             "type": {
               "path": [
-                "pendulum_runtime",
-                "StringLimit"
-              ],
-              "def": {
-                "composite": {}
-              }
-            }
-          },
-          {
-            "id": 178,
-            "type": {
-              "path": [
                 "runtime_common",
                 "asset_registry",
                 "DiaKeys"
@@ -13113,7 +13095,7 @@
               "params": [
                 {
                   "name": "T",
-                  "type": 177
+                  "type": 178
                 }
               ],
               "def": {
@@ -13131,6 +13113,19 @@
                     }
                   ]
                 }
+              }
+            }
+          },
+          {
+            "id": 178,
+            "type": {
+              "path": [
+                "runtime_common",
+                "asset_registry",
+                "StringLimit"
+              ],
+              "def": {
+                "composite": {}
               }
             }
           },
@@ -41644,7 +41639,7 @@
                 0,
                 0,
                 0,
-                12,
+                13,
                 0,
                 0,
                 0,
