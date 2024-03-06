@@ -162,6 +162,7 @@ pub struct EmbeddedTransactions {
 
 // This represents each record for a transaction in the Horizon API response
 #[derive(Clone, Deserialize, Encode, Decode, Default)]
+#[serde(bound(deserialize = "'de: 'static"))]
 pub struct TransactionResponse {
 	#[serde(deserialize_with = "de_string_to_bytes")]
 	pub id: Vec<u8>,
@@ -195,7 +196,7 @@ pub struct TransactionResponse {
 	#[serde(deserialize_with = "de_string_to_bytes")]
 	pub memo_type: Vec<u8>,
 	#[serde(default)]
-	#[serde(deserialize_with = "de_string_to_optional_bytes")]
+	#[serde(deserialize_with = "de_cow_string_to_optional_bytes")]
 	pub memo: Option<Vec<u8>>,
 }
 
