@@ -21,7 +21,7 @@ use crate::{
 			interpret_response, FeeStats, HorizonAccountResponse, HorizonClaimableBalanceResponse,
 			HorizonTransactionsResponse, TransactionResponse, TransactionsResponseIter,
 		},
-		traits::HorizonClient,
+		traits::{HorizonClient, IsEmptyExt},
 	},
 	types::{FilterWith, PagingToken},
 	LedgerTxEnvMap,
@@ -246,10 +246,14 @@ impl<C: HorizonClient + Clone> HorizonFetcher<C> {
 	///
 	/// # Arguments
 	/// * `ledger_env_map` -  list of TransactionEnvelopes and the ledger it belongs to
-	/// * `targets` - helps in filtering out the transactions to save
-	/// * `is_public_network` - the network the transaction belongs to
-	/// * `filter` - logic to save the needed transaction
-	pub async fn fetch_horizon_and_process_new_transactions<T: Clone, U: Clone>(
+	/// * `issue_map` - a map to of all the new issue requests
+	/// * `memos_to_issue_ids` - map of issue memo to issue id
+	/// * `filter` - logic to filter out transactions without the needed memos
+	/// * `last_cursor` - the last page known, containing the latest transactions
+	pub async fn fetch_horizon_and_process_new_transactions<
+		T: Clone + IsEmptyExt,
+		U: Clone + IsEmptyExt,
+	>(
 		&mut self,
 		ledger_env_map: Arc<RwLock<LedgerTxEnvMap>>,
 		issue_map: Arc<RwLock<T>>,
@@ -259,11 +263,16 @@ impl<C: HorizonClient + Clone> HorizonFetcher<C> {
 	) -> Result<PagingToken, Error> {
 		let mut last_cursor = last_cursor;
 
-		let mut txs_iter = self.fetch_transactions_iter(last_cursor).await?;
-
 		let (issue_map, memos_to_issue_ids) =
 			future::join(issue_map.read(), memos_to_issue_ids.read()).await;
 
+		if issue_map.is_empty() || memos_to_issue_ids.is_empty() {
+			tracing::info!("fetch_horizon_and_process_new_transactions(): nothing to traverse");
+			return Ok(last_cursor)
+		}
+		let mut txs_iter = self.fetch_transactions_iter(last_cursor).await?;
+
+		// iterate over all txs and save the relevant ones
 		while let Some(tx) = txs_iter.next().await {
 			if filter.is_relevant(tx.clone(), &issue_map, &memos_to_issue_ids) {
 				tracing::info!(
@@ -305,8 +314,8 @@ pub async fn listen_for_new_transactions<T, U, Filter>(
 	filter: Filter,
 ) -> Result<(), Error>
 where
-	T: Clone,
-	U: Clone,
+	T: Clone + IsEmptyExt,
+	U: Clone + IsEmptyExt,
 	Filter: FilterWith<T, U> + Clone,
 {
 	let horizon_client = reqwest::Client::new();

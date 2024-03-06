@@ -17,7 +17,7 @@ standalone-metadata = ["runtime/standalone-metadata"]
 parachain-metadata-pendulum = ["runtime/parachain-metadata-pendulum"]
 parachain-metadata-amplitude = ["runtime/parachain-metadata-amplitude"]
 parachain-metadata-foucoco = ["runtime/parachain-metadata-foucoco"]
-integration-test = ["runtime/standalone-metadata", "integration"]
+integration-test = ["integration", "standalone-metadata"]
 
 [dependencies]
 async-std = "1.12.0"
@@ -82,7 +82,7 @@ serial_test = "0.9.0"
 tempdir = "0.3.7"
 
 # Workspace dependencies
-runtime = { path = "../runtime", features = ["testing-utils"] }
+runtime = { path = "../runtime", features = ["testing-utils", "standalone-metadata"] }
 wallet = { path = "../wallet", features = ["testing-utils"] }
 subxt = { version = "0.25.0" }
 
