@@ -59,3 +59,15 @@ impl<K, V> IsEmptyExt for HashMap<K, V> {
 		self.is_empty()
 	}
 }
+
+impl<V> IsEmptyExt for Vec<V> {
+	fn is_empty(&self) -> bool {
+		self.is_empty()
+	}
+}
+
+impl<V> IsEmptyExt for [V] {
+	fn is_empty(&self) -> bool {
+		self.is_empty()
+	}
+}
