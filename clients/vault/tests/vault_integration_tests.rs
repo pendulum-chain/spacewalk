@@ -603,6 +603,7 @@ async fn test_issue_cancel_succeeds() {
 }
 
 #[tokio::test(flavor = "multi_thread")]
+#[ntest::timeout(900_000)] // timeout at 15 minutes
 #[serial]
 async fn test_issue_execution_succeeds_from_archive() {
 	let is_public_network = true;
