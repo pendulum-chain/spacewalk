@@ -9,7 +9,11 @@ use crate::{
 	mock::secret_key_from_encoding,
 };
 use mockall::predicate::*;
-use primitives::stellar::{network::{Network, PUBLIC_NETWORK, TEST_NETWORK}, types::Preconditions, Asset, Operation, PublicKey, SecretKey, StroopAmount, Transaction, TransactionEnvelope};
+use primitives::stellar::{
+	network::{Network, PUBLIC_NETWORK, TEST_NETWORK},
+	types::Preconditions,
+	Asset, Operation, PublicKey, SecretKey, StroopAmount, Transaction, TransactionEnvelope,
+};
 use tokio::sync::RwLock;
 
 use crate::types::FilterWith;
@@ -207,7 +211,7 @@ async fn fetch_horizon_and_process_new_transactions_success() {
 
 	let slot = response.ledger();
 	let envelope = response.to_envelope().expect("should convert to envelope");
-	slot_env_map.write().await.insert(slot,envelope);
+	slot_env_map.write().await.insert(slot, envelope);
 
 	fetcher
 		.fetch_horizon_and_process_new_transactions(
