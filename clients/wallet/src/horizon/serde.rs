@@ -1,5 +1,5 @@
 use serde::{Deserialize, Deserializer};
-use std::{borrow::Cow, str::FromStr};
+use std::str::FromStr;
 
 pub fn de_str_to_bytes<'de, D>(de: D) -> Result<Vec<u8>, D::Error>
 where
@@ -56,12 +56,11 @@ where
 	Option::<&str>::deserialize(de).map(|opt_wrapped| opt_wrapped.map(|x| x.as_bytes().to_vec()))
 }
 
-pub fn de_cow_string_to_optional_bytes<'de, D>(de: D) -> Result<Option<Vec<u8>>, D::Error>
+pub fn de_string_to_optional_bytes<'de, D>(de: D) -> Result<Option<Vec<u8>>, D::Error>
 where
 	D: Deserializer<'de>,
 {
-	Option::<Cow<str>>::deserialize(de)
-		.map(|opt_wrapped| opt_wrapped.map(|x| x.as_bytes().to_vec()))
+	Option::<String>::deserialize(de).map(|opt_wrapped| opt_wrapped.map(|x| x.as_bytes().to_vec()))
 }
 
 pub fn de_string_to_optional_bytes<'de, D>(de: D) -> Result<Option<Vec<u8>>, D::Error>

@@ -195,7 +195,7 @@ pub struct TransactionResponse {
 	#[serde(deserialize_with = "de_str_to_bytes")]
 	pub memo_type: Vec<u8>,
 	#[serde(default)]
-	#[serde(deserialize_with = "de_cow_string_to_optional_bytes")]
+	#[serde(deserialize_with = "de_string_to_optional_bytes")]
 	pub memo: Option<Vec<u8>>,
 }
 
