@@ -195,7 +195,7 @@ pub struct TransactionResponse {
 	#[serde(deserialize_with = "de_string_to_bytes")]
 	pub memo_type: Vec<u8>,
 	#[serde(default)]
-	#[serde(deserialize_with = "de_cow_string_to_optional_bytes")]
+	#[serde(deserialize_with = "de_string_to_optional_bytes")]
 	pub memo: Option<Vec<u8>>,
 }
 
@@ -319,10 +319,10 @@ pub struct HorizonBalance {
 	#[serde(deserialize_with = "de_string_to_f64")]
 	pub balance: f64,
 	#[serde(default)]
-	#[serde(deserialize_with = "de_string_to_optional_bytes")]
+	#[serde(deserialize_with = "de_str_to_optional_bytes")]
 	pub asset_code: Option<Vec<u8>>,
 	#[serde(default)]
-	#[serde(deserialize_with = "de_string_to_optional_bytes")]
+	#[serde(deserialize_with = "de_str_to_optional_bytes")]
 	pub asset_issuer: Option<Vec<u8>>,
 	#[serde(deserialize_with = "de_string_to_bytes")]
 	pub asset_type: Vec<u8>,
