@@ -793,7 +793,7 @@ async fn test_issue_overpayment_succeeds() {
 
 #[tokio::test(flavor = "multi_thread")]
 #[serial]
-async fn clear() {
+async fn test_automatic_issue_execution_succeeds_on_mainnet() {
 	let is_public_network = true;
 	test_automatic_issue_execution_succeeds_on_network(is_public_network).await;
 }
