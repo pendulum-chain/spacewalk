@@ -218,7 +218,7 @@ mod tests {
 	async fn test_get_proof_for_current_slot() {
 		// let it run for a few seconds, making sure that the other tests have successfully shutdown
 		// their connection to Stellar Node
-		sleep(Duration::from_secs(5)).await;
+		sleep(Duration::from_secs(2)).await;
 
 		let shutdown_sender = ShutdownSender::new();
 
@@ -236,6 +236,7 @@ mod tests {
 			sleep(Duration::from_secs(1)).await;
 			latest_slot = agent.last_slot_index().await;
 		}
+		latest_slot +=1;
 		// let's wait for envelopes and txset to be available for creating a proof
 		sleep(Duration::from_secs(5)).await;
 
