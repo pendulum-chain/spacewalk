@@ -236,7 +236,7 @@ mod tests {
 			sleep(Duration::from_secs(1)).await;
 			latest_slot = agent.last_slot_index().await;
 		}
-		latest_slot +=1;
+		latest_slot += 1;
 		// let's wait for envelopes and txset to be available for creating a proof
 		sleep(Duration::from_secs(5)).await;
 
