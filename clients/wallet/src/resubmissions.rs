@@ -48,7 +48,13 @@ impl StellarWallet {
 	#[doc(hidden)]
 	/// Submits transactions found in the wallet's cache to Stellar.
 	async fn _resubmit_transactions_from_cache(&self) {
-		let _ = self.transaction_submission_lock.lock().await;
+		let permit = match self.semaphore.acquire().await {
+			Ok(permit) => permit,
+			Err(e) => {
+				tracing::warn!("_resubmit_transactions_from_cache(): permission denied: {e:?}");
+				return
+			},
+		};
 
 		// Collect envelopes from cache
 		let envelopes = match self.get_tx_envelopes_from_cache() {
@@ -101,6 +107,8 @@ impl StellarWallet {
 				me.handle_errors(error_collector).await;
 			});
 		}
+
+		drop(permit);
 	}
 
 	#[doc(hidden)]
