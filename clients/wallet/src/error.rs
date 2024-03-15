@@ -38,9 +38,6 @@ pub enum Error {
 
 	#[error("Failed to get fee: {0}")]
 	FailedToGetFee(String),
-
-	#[error("Permission Denied to {0}")]
-	PermissionDenied(String),
 }
 
 impl Error {
