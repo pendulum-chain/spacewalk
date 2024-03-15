@@ -99,6 +99,14 @@ impl StellarWallet {
 		})?;
 
 		let cache = WalletStateStorage::new(cache_path, &pub_key, is_public_network);
+		// using a builder to decrease idle connections
+		// https://users.rust-lang.org/t/reqwest-http-client-fails-when-too-much-concurrency/55644/2
+		let client = reqwest::Client::builder()
+			// default is 90 seconds.
+			.pool_idle_timeout(Some(Duration::from_secs(60)))
+			// default is usize max.
+			.pool_max_idle_per_host(usize::MAX / 2)
+			.build()?;
 
 		Ok(StellarWallet {
 			secret_key,
@@ -107,7 +115,7 @@ impl StellarWallet {
 			cache,
 			max_retry_attempts_before_fallback: Self::DEFAULT_MAX_RETRY_ATTEMPTS_BEFORE_FALLBACK,
 			max_backoff_delay: Self::DEFAULT_MAX_BACKOFF_DELAY_IN_SECS,
-			client: reqwest::Client::new(),
+			client,
 		})
 	}
 
