@@ -1,6 +1,7 @@
 use cached::proc_macro::cached;
 use reqwest::Client;
 use std::{fmt::Formatter, sync::Arc};
+use std::time::Duration;
 
 use primitives::stellar::{
 	network::{Network, PUBLIC_NETWORK, TEST_NETWORK},
