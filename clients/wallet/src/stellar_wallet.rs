@@ -8,7 +8,7 @@ use primitives::stellar::{
 	Asset as StellarAsset, Operation, PublicKey, SecretKey, StellarTypeToString, Transaction,
 	TransactionEnvelope,
 };
-use tokio::sync::Mutex;
+use tokio::sync::Semaphore;
 
 use crate::{
 	cache::WalletStateStorage,
@@ -27,7 +27,9 @@ use crate::{
 	},
 	types::PagingToken,
 };
-use primitives::{StellarPublicKeyRaw, StellarStroops, TransactionEnvelopeExt};
+use primitives::{
+	derive_shortened_request_id, StellarPublicKeyRaw, StellarStroops, TransactionEnvelopeExt,
+};
 
 use crate::types::FeeAttribute;
 #[cfg(test)]
@@ -39,9 +41,9 @@ pub struct StellarWallet {
 	is_public_network: bool,
 	/// Used to make sure that only one transaction is submitted at a time,
 	/// so that the transaction is not rejected due to an outdated sequence number.
-	/// Releasing the lock ensures the sequence number of the account
+	/// Acquiring a permit ensures the sequence number of the account
 	/// has been increased on the network.
-	pub(crate) transaction_submission_lock: Arc<Mutex<()>>,
+	pub(crate) semaphore: Arc<Semaphore>,
 	/// Used for caching Stellar transactions before they get submitted.
 	/// Also used for caching the latest cursor to page through Stellar transactions in horizon
 	cache: WalletStateStorage,
@@ -108,10 +110,19 @@ impl StellarWallet {
 			.pool_max_idle_per_host(usize::MAX / 2)
 			.build()?;
 
+		// using a builder to decrease idle connections
+		// https://users.rust-lang.org/t/reqwest-http-client-fails-when-too-much-concurrency/55644/2
+		let client = reqwest::Client::builder()
+			// default is 90 seconds.
+			.pool_idle_timeout(Some(Duration::from_secs(60)))
+			// default is usize max.
+			.pool_max_idle_per_host(usize::MAX / 2)
+			.build()?;
+
 		Ok(StellarWallet {
 			secret_key,
 			is_public_network,
-			transaction_submission_lock: Arc::new(Mutex::new(())),
+			semaphore: Arc::new(Semaphore::const_new(1)),
 			cache,
 			max_retry_attempts_before_fallback: Self::DEFAULT_MAX_RETRY_ATTEMPTS_BEFORE_FALLBACK,
 			max_backoff_delay: Self::DEFAULT_MAX_BACKOFF_DELAY_IN_SECS,
@@ -365,7 +376,12 @@ impl StellarWallet {
 		request_id: [u8; 32],
 		operations: Vec<Operation>,
 	) -> Result<TransactionResponse, Error> {
-		let _ = self.transaction_submission_lock.lock().await;
+		let permit = self.semaphore.acquire().await.map_err(|e| {
+			tracing::warn!("send_to_address(): Permission denied: {e:?}");
+
+			let req_id = String::from_utf8(derive_shortened_request_id(&request_id));
+			Error::PermissionDenied(format!("send to address with request id: {req_id:?}"))
+		})?;
 
 		let stroop_fee_per_operation =
 			get_fee_stat_for(self.is_public_network, FeeAttribute::default())
@@ -388,7 +404,10 @@ impl StellarWallet {
 			operations,
 		)?;
 
-		self.submit_transaction(envelope).await
+		let result = self.submit_transaction(envelope).await;
+		drop(permit);
+
+		result
 	}
 }
 
