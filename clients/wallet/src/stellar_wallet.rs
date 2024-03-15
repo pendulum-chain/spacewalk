@@ -115,7 +115,7 @@ impl StellarWallet {
 			cache,
 			max_retry_attempts_before_fallback: Self::DEFAULT_MAX_RETRY_ATTEMPTS_BEFORE_FALLBACK,
 			max_backoff_delay: Self::DEFAULT_MAX_BACKOFF_DELAY_IN_SECS,
-			client: reqwest::Client::new(),
+			client,
 		})
 	}
 
