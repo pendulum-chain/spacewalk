@@ -471,13 +471,13 @@ mod test {
 	#[tokio::test]
 	#[serial]
 	async fn check_is_transaction_already_submitted() {
-		let wallet = wallet_with_storage("resources/checkcheck_middle_transaction_match")
+		let wallet = wallet_with_storage("resources/check_is_transaction_already_submitted")
 			.expect("")
 			.clone();
 		let mut wallet = wallet.write().await;
 
 		let asset = StellarAsset::native();
-		let amount = 1002;
+		let amount = 10;
 
 		// test is_transaction_already_submitted returns true
 		{
@@ -537,7 +537,7 @@ mod test {
 		let seq = wallet.get_sequence().await.expect("return sequence number");
 
 		let asset = StellarAsset::native();
-		let amount = 1002;
+		let amount = 20;
 
 		// test bump_sequence_number_and_submit success
 		{
@@ -604,7 +604,7 @@ mod test {
 		let wallet = wallet.write().await;
 
 		let dummy_envelope = wallet
-			.create_dummy_envelope_no_signature(1003)
+			.create_dummy_envelope_no_signature(15)
 			.await
 			.expect("should return an envelope");
 
@@ -646,7 +646,7 @@ mod test {
 			.create_payment_envelope_no_signature(
 				default_destination(),
 				StellarAsset::native(),
-				100,
+				13,
 				rand::random(),
 				DEFAULT_STROOP_FEE_PER_OPERATION,
 				sequence + 1,
@@ -691,7 +691,7 @@ mod test {
 		// tx_bad_seq test
 		{
 			let envelope = wallet
-				.create_dummy_envelope_no_signature(1010)
+				.create_dummy_envelope_no_signature(18)
 				.await
 				.expect("returns an envelope");
 			let envelope_xdr = envelope.to_base64_xdr();
@@ -733,7 +733,7 @@ mod test {
 		// tx_internal_error test
 		{
 			let envelope = wallet
-				.create_dummy_envelope_no_signature(1020)
+				.create_dummy_envelope_no_signature(10)
 				.await
 				.expect("returns an envelope");
 			let envelope_xdr = envelope.to_base64_xdr();
@@ -772,7 +772,7 @@ mod test {
 		// other error
 		{
 			let envelope = wallet
-				.create_dummy_envelope_no_signature(1010)
+				.create_dummy_envelope_no_signature(20)
 				.await
 				.expect("returns an envelope");
 			let envelope_xdr = envelope.to_base64_xdr();
@@ -817,7 +817,7 @@ mod test {
 					asset_code,
 					issuer: default_destination(),
 				}),
-				1001,
+				25,
 				rand::random(),
 				DEFAULT_STROOP_FEE_PER_OPERATION,
 				seq_number + 2,
@@ -834,7 +834,7 @@ mod test {
 			.create_payment_envelope(
 				default_destination(),
 				StellarAsset::native(),
-				1100,
+				22,
 				rand::random(),
 				DEFAULT_STROOP_FEE_PER_OPERATION,
 				seq_number + 10,
@@ -851,7 +851,7 @@ mod test {
 			.create_payment_envelope(
 				default_destination(),
 				StellarAsset::native(),
-				1002,
+				11,
 				rand::random(),
 				DEFAULT_STROOP_FEE_PER_OPERATION,
 				seq_number + 1,

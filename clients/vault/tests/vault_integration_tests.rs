@@ -603,6 +603,7 @@ async fn test_issue_cancel_succeeds() {
 }
 
 #[tokio::test(flavor = "multi_thread")]
+#[ntest::timeout(1_200_000)] // timeout at 20 minutes
 #[serial]
 async fn test_issue_execution_succeeds_from_archive() {
 	let is_public_network = true;
@@ -853,7 +854,7 @@ async fn test_automatic_issue_execution_succeeds_on_network(is_public_network: b
 				.await
 				.expect("should return a result");
 
-				tracing::warn!("Sent payment successfully: {:?}", result);
+				tracing::info!("Sent payment successfully: {:?}", result);
 
 				// Sleep 5 seconds to give other thread some time to receive the RequestIssue event
 				// and add it to the set
@@ -875,14 +876,6 @@ async fn test_automatic_issue_execution_succeeds_on_network(is_public_network: b
 			let memos_to_issue_ids = Arc::new(RwLock::new(IssueIdLookup::new()));
 			let (issue_event_tx, _issue_event_rx) = mpsc::channel::<CancellationEvent>(16);
 			let service = join3(
-				vault::service::listen_for_new_transactions(
-					wallet_read.public_key(),
-					wallet_read.is_public_network(),
-					slot_tx_env_map.clone(),
-					issue_set.clone(),
-					memos_to_issue_ids.clone(),
-					issue_filter,
-				),
 				vault::service::listen_for_issue_requests(
 					vault_provider.clone(),
 					wallet_read.public_key(),
@@ -896,6 +889,14 @@ async fn test_automatic_issue_execution_succeeds_on_network(is_public_network: b
 					slot_tx_env_map.clone(),
 					issue_set.clone(),
 					memos_to_issue_ids.clone(),
+				),
+				vault::service::listen_for_new_transactions(
+					wallet_read.public_key(),
+					wallet_read.is_public_network(),
+					slot_tx_env_map.clone(),
+					issue_set.clone(),
+					memos_to_issue_ids.clone(),
+					issue_filter,
 				),
 			);
 			drop(wallet_read);
