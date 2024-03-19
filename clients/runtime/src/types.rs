@@ -301,13 +301,15 @@ mod dispatch_error {
 	convert_enum!(
 		RichTokenError,
 		TokenError,
-		NoFunds,
-		WouldDie,
 		BelowMinimum,
 		CannotCreate,
 		UnknownAsset,
 		Frozen,
 		Unsupported,
+		FundsUnavailable,
+		OnlyProvider,
+		CannotCreateHold,
+		NotExpendable,
 	);
 
 	convert_enum!(RichArithmeticError, ArithmeticError, Underflow, Overflow, DivisionByZero,);

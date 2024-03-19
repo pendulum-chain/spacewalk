@@ -379,7 +379,6 @@ impl VaultService {
 					amount,
 				))
 			})
-			.into_iter()
 			.collect::<Result<Vec<_>, Error>>()
 			.map_err(ServiceError::Abort)?;
 

@@ -36,12 +36,12 @@ prometheus = { version = "0.12.0", features = ["process"] }
 url = "2"
 
 # Substrate dependencies
-frame-support = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.40" }
-sp-arithmetic = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.40" }
-sp-keyring = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.40" }
-sp-runtime = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.40" }
-sp-std = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.40" }
-sp-version = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.40" }
+frame-support = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.42" }
+sp-arithmetic = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.42" }
+sp-keyring = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.42" }
+sp-runtime = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.42" }
+sp-std = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.42" }
+sp-version = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.42" }
 
 # Subxt dependencies
 subxt = "0.25.0"
@@ -62,7 +62,7 @@ testchain-runtime = { package = "spacewalk-runtime-standalone-testnet", path = "
 mainnet-runtime = { package = "spacewalk-runtime-standalone-mainnet", path = "../../testchain/runtime/mainnet", optional = true }
 
 # Substrate Stellar Dependencies
-substrate-stellar-sdk = { git = "https://github.com/pendulum-chain/substrate-stellar-sdk", branch = "polkadot-v0.9.40" }
+substrate-stellar-sdk = { git = "https://github.com/pendulum-chain/substrate-stellar-sdk", branch = "polkadot-v0.9.42" }
 wallet = { path = "../wallet" }
 
 

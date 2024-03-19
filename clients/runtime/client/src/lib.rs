@@ -241,7 +241,6 @@ impl<C: ChainSpec + 'static> SubxtClientConfig<C> {
 			disable_grandpa: Default::default(),
 			execution_strategies: Default::default(),
 			force_authoring: Default::default(),
-			keystore_remote: Default::default(),
 			offchain_worker: Default::default(),
 			prometheus_config: Default::default(),
 			rpc_cors: Default::default(),

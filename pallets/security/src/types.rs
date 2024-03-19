@@ -4,9 +4,10 @@ use sp_std::{cmp::Ord, fmt::Debug};
 
 /// Enum indicating the status of the Spacewalk Parachain.
 #[cfg_attr(feature = "std", derive(serde::Serialize, serde::Deserialize))]
-#[derive(Encode, Decode, Clone, Copy, PartialEq, MaxEncodedLen, Eq, Debug, TypeInfo)]
+#[derive(Default, Encode, Decode, Clone, Copy, PartialEq, MaxEncodedLen, Eq, Debug, TypeInfo)]
 pub enum StatusCode {
 	/// Spacewalk Parachain is fully operational.
+	#[default]
 	Running,
 	/// An error has occurred. See Errors for more details.
 	Error,
@@ -14,24 +15,15 @@ pub enum StatusCode {
 	Shutdown,
 }
 
-impl Default for StatusCode {
-	fn default() -> Self {
-		StatusCode::Running
-	}
-}
-
 /// Enum specifying errors which lead to the Error status, tacked in Errors
-#[derive(Encode, Decode, Clone, PartialEq, Eq, Debug, Ord, MaxEncodedLen, PartialOrd, TypeInfo)]
+#[derive(
+	Default, Encode, Decode, Clone, PartialEq, Eq, Debug, Ord, MaxEncodedLen, PartialOrd, TypeInfo,
+)]
 pub enum ErrorCode {
 	/// No error. Used as default value
+	#[default]
 	None,
 	OracleOffline,
-}
-
-impl Default for ErrorCode {
-	fn default() -> Self {
-		ErrorCode::None
-	}
 }
 
 #[macro_export]
