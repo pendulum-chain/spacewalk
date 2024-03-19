@@ -4,16 +4,9 @@ on:
       - 'main'
 
 name: continuous-integration-main
-
 jobs:
   ci:
-    strategy:
-      max-parallel: 1
-      matrix:
-        os: [ ubuntu-latest, macos-latest ]
-
-    runs-on: ${{ matrix.os }}
-
+    runs-on: ubuntu-latest
     env:
       RUST_BACKTRACE: full
       # Make sure CI fails on all warnings, including Clippy lints
@@ -30,18 +23,12 @@ jobs:
           sudo rm -rf "$AGENT_TOOLSDIRECTORY"
       - uses: actions/checkout@v2
 
-      - name: Install package (ubuntu-latest)
-        if: matrix.os == 'ubuntu-latest'
+      - name: Install package
         run: |
           sudo docker image prune --all --force
           echo 'APT::Get::Always-Include-Phased-Updates "false";' | sudo tee /etc/apt/apt.conf.d/99-phased-updates
           sudo apt-get update && sudo apt-get upgrade -y
           sudo apt-get install -y protobuf-compiler libprotobuf-dev
-
-      - name: Install package (macos-latest)
-        if: matrix.os == 'macos-latest'
-        run: |
-          brew install protobuf
 
       - name: Setup Rust toolchain
         # Call `rustup show` as a hack so that the toolchain defined in rust-toolchain.toml is installed
@@ -51,7 +38,7 @@ jobs:
         uses: Swatinem/rust-cache@v2
         with:
           cache-on-failure: true
-          key: "${{ matrix.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}"
+          key: "ubuntu-latest-cargo-${{ hashFiles('**/Cargo.lock') }}"
           shared-key: "shared"
 
       - name: Install Protoc

@@ -163,36 +163,36 @@ pub struct EmbeddedTransactions {
 // This represents each record for a transaction in the Horizon API response
 #[derive(Clone, Deserialize, Encode, Decode, Default)]
 pub struct TransactionResponse {
-	#[serde(deserialize_with = "de_string_to_bytes")]
+	#[serde(deserialize_with = "de_str_to_bytes")]
 	pub id: Vec<u8>,
-	#[serde(deserialize_with = "de_string_to_u128")]
+	#[serde(deserialize_with = "de_str_to_u128")]
 	pub paging_token: PagingToken,
 	pub successful: bool,
-	#[serde(deserialize_with = "de_string_to_bytes")]
+	#[serde(deserialize_with = "de_str_to_bytes")]
 	pub hash: Vec<u8>,
 	pub ledger: Slot,
-	#[serde(deserialize_with = "de_string_to_bytes")]
+	#[serde(deserialize_with = "de_str_to_bytes")]
 	pub created_at: Vec<u8>,
-	#[serde(deserialize_with = "de_string_to_bytes")]
+	#[serde(deserialize_with = "de_str_to_bytes")]
 	pub source_account: Vec<u8>,
-	#[serde(deserialize_with = "de_string_to_bytes")]
+	#[serde(deserialize_with = "de_str_to_bytes")]
 	pub source_account_sequence: Vec<u8>,
-	#[serde(deserialize_with = "de_string_to_bytes")]
+	#[serde(deserialize_with = "de_str_to_bytes")]
 	pub fee_account: Vec<u8>,
-	#[serde(deserialize_with = "de_string_to_u64")]
+	#[serde(deserialize_with = "de_str_to_u64")]
 	pub fee_charged: u64,
-	#[serde(deserialize_with = "de_string_to_bytes")]
+	#[serde(deserialize_with = "de_str_to_bytes")]
 	pub max_fee: Vec<u8>,
 	operation_count: u32,
-	#[serde(deserialize_with = "de_string_to_bytes")]
+	#[serde(deserialize_with = "de_str_to_bytes")]
 	pub envelope_xdr: Vec<u8>,
-	#[serde(deserialize_with = "de_string_to_bytes")]
+	#[serde(deserialize_with = "de_str_to_bytes")]
 	pub result_xdr: Vec<u8>,
-	#[serde(deserialize_with = "de_string_to_bytes")]
+	#[serde(deserialize_with = "de_str_to_bytes")]
 	pub result_meta_xdr: Vec<u8>,
-	#[serde(deserialize_with = "de_string_to_bytes")]
+	#[serde(deserialize_with = "de_str_to_bytes")]
 	pub fee_meta_xdr: Vec<u8>,
-	#[serde(deserialize_with = "de_string_to_bytes")]
+	#[serde(deserialize_with = "de_str_to_bytes")]
 	pub memo_type: Vec<u8>,
 	#[serde(default)]
 	#[serde(deserialize_with = "de_string_to_optional_bytes")]
@@ -279,11 +279,11 @@ impl TransactionResponse {
 
 #[derive(Deserialize)]
 pub struct HorizonAccountResponse {
-	#[serde(deserialize_with = "de_string_to_bytes")]
+	#[serde(deserialize_with = "de_str_to_bytes")]
 	pub id: Vec<u8>,
-	#[serde(deserialize_with = "de_string_to_bytes")]
+	#[serde(deserialize_with = "de_str_to_bytes")]
 	pub account_id: Vec<u8>,
-	#[serde(deserialize_with = "de_string_to_i64")]
+	#[serde(deserialize_with = "de_str_to_i64")]
 	pub sequence: i64,
 	pub balances: Vec<HorizonBalance>,
 	// ...
@@ -316,15 +316,15 @@ impl HorizonAccountResponse {
 
 #[derive(Deserialize, Encode, Decode, Default, Debug)]
 pub struct HorizonBalance {
-	#[serde(deserialize_with = "de_string_to_f64")]
+	#[serde(deserialize_with = "de_str_to_f64")]
 	pub balance: f64,
 	#[serde(default)]
-	#[serde(deserialize_with = "de_string_to_optional_bytes")]
+	#[serde(deserialize_with = "de_str_to_optional_bytes")]
 	pub asset_code: Option<Vec<u8>>,
 	#[serde(default)]
-	#[serde(deserialize_with = "de_string_to_optional_bytes")]
+	#[serde(deserialize_with = "de_str_to_optional_bytes")]
 	pub asset_issuer: Option<Vec<u8>>,
-	#[serde(deserialize_with = "de_string_to_bytes")]
+	#[serde(deserialize_with = "de_str_to_bytes")]
 	pub asset_type: Vec<u8>,
 }
 
@@ -360,43 +360,43 @@ pub struct HorizonClaimableBalanceResponse {
 
 #[derive(Deserialize, Debug)]
 pub struct FeeDistribution {
-	#[serde(deserialize_with = "de_string_to_u32")]
+	#[serde(deserialize_with = "de_str_to_u32")]
 	pub max: u32,
-	#[serde(deserialize_with = "de_string_to_u32")]
+	#[serde(deserialize_with = "de_str_to_u32")]
 	pub min: u32,
-	#[serde(deserialize_with = "de_string_to_u32")]
+	#[serde(deserialize_with = "de_str_to_u32")]
 	pub mode: u32,
-	#[serde(deserialize_with = "de_string_to_u32")]
+	#[serde(deserialize_with = "de_str_to_u32")]
 	pub p10: u32,
-	#[serde(deserialize_with = "de_string_to_u32")]
+	#[serde(deserialize_with = "de_str_to_u32")]
 	pub p20: u32,
-	#[serde(deserialize_with = "de_string_to_u32")]
+	#[serde(deserialize_with = "de_str_to_u32")]
 	pub p30: u32,
-	#[serde(deserialize_with = "de_string_to_u32")]
+	#[serde(deserialize_with = "de_str_to_u32")]
 	pub p40: u32,
-	#[serde(deserialize_with = "de_string_to_u32")]
+	#[serde(deserialize_with = "de_str_to_u32")]
 	pub p50: u32,
-	#[serde(deserialize_with = "de_string_to_u32")]
+	#[serde(deserialize_with = "de_str_to_u32")]
 	pub p60: u32,
-	#[serde(deserialize_with = "de_string_to_u32")]
+	#[serde(deserialize_with = "de_str_to_u32")]
 	pub p70: u32,
-	#[serde(deserialize_with = "de_string_to_u32")]
+	#[serde(deserialize_with = "de_str_to_u32")]
 	pub p80: u32,
-	#[serde(deserialize_with = "de_string_to_u32")]
+	#[serde(deserialize_with = "de_str_to_u32")]
 	pub p90: u32,
-	#[serde(deserialize_with = "de_string_to_u32")]
+	#[serde(deserialize_with = "de_str_to_u32")]
 	pub p95: u32,
-	#[serde(deserialize_with = "de_string_to_u32")]
+	#[serde(deserialize_with = "de_str_to_u32")]
 	pub p99: u32,
 }
 
 #[derive(Deserialize, Debug)]
 pub struct FeeStats {
-	#[serde(deserialize_with = "de_string_to_u64")]
+	#[serde(deserialize_with = "de_str_to_u64")]
 	pub last_ledger: Slot,
-	#[serde(deserialize_with = "de_string_to_u32")]
+	#[serde(deserialize_with = "de_str_to_u32")]
 	pub last_ledger_base_fee: u32,
-	#[serde(deserialize_with = "de_string_to_f64")]
+	#[serde(deserialize_with = "de_str_to_f64")]
 	pub ledger_capacity_usage: f64,
 	pub fee_charged: FeeDistribution,
 	pub max_fee: FeeDistribution,
@@ -426,27 +426,27 @@ impl FeeStats {
 // This represents each record for a claimable balance in the Horizon API response
 #[derive(Deserialize, Encode, Decode, Default, Debug)]
 pub struct ClaimableBalance {
-	#[serde(deserialize_with = "de_string_to_bytes")]
+	#[serde(deserialize_with = "de_str_to_bytes")]
 	pub id: Vec<u8>,
-	#[serde(deserialize_with = "de_string_to_bytes")]
+	#[serde(deserialize_with = "de_str_to_bytes")]
 	pub paging_token: Vec<u8>,
-	#[serde(deserialize_with = "de_string_to_bytes")]
+	#[serde(deserialize_with = "de_str_to_bytes")]
 	pub asset: Vec<u8>,
-	#[serde(deserialize_with = "de_string_to_bytes")]
+	#[serde(deserialize_with = "de_str_to_bytes")]
 	pub amount: Vec<u8>,
-	#[serde(deserialize_with = "de_string_to_bytes")]
+	#[serde(deserialize_with = "de_str_to_bytes")]
 	pub sponsor: Vec<u8>,
 
 	pub claimants: Vec<Claimant>,
 	pub last_modified_ledger: Slot,
-	#[serde(deserialize_with = "de_string_to_bytes")]
+	#[serde(deserialize_with = "de_str_to_bytes")]
 	pub last_modified_time: Vec<u8>,
 }
 
 // This represents a Claimant
 #[derive(Deserialize, Encode, Decode, Default, Debug)]
 pub struct Claimant {
-	#[serde(deserialize_with = "de_string_to_bytes")]
+	#[serde(deserialize_with = "de_str_to_bytes")]
 	pub destination: Vec<u8>,
 	// For now we assume that the predicate is always unconditional
 	pub predicate: ClaimantPredicate,

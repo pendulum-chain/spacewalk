@@ -15,6 +15,7 @@ testing-utils = [
     "rand",
     "testchain",
     "testchain-runtime/testing-utils",
+    "mainnet-runtime/testing-utils",
     "subxt-client",
     "oracle/testing-utils"
 ]
@@ -58,6 +59,7 @@ rand = { version = "0.7", optional = true }
 tempdir = { version = "0.3.7", optional = true }
 testchain = { package = "spacewalk-standalone", path = "../../testchain/node", optional = true }
 testchain-runtime = { package = "spacewalk-runtime-standalone-testnet", path = "../../testchain/runtime/testnet", optional = true }
+mainnet-runtime = { package = "spacewalk-runtime-standalone-mainnet", path = "../../testchain/runtime/mainnet", optional = true }
 
 # Substrate Stellar Dependencies
 substrate-stellar-sdk = { git = "https://github.com/pendulum-chain/substrate-stellar-sdk", branch = "polkadot-v0.9.42" }

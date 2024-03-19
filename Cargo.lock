@@ -7352,6 +7352,7 @@ dependencies = [
  "sp-std 5.0.0",
  "sp-version",
  "spacewalk-primitives",
+ "spacewalk-runtime-standalone-mainnet",
  "spacewalk-runtime-standalone-testnet",
  "spacewalk-standalone",
  "substrate-stellar-sdk",

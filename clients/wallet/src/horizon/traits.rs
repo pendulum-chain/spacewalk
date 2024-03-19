@@ -11,6 +11,7 @@ use primitives::stellar::{
 	ClaimableBalanceId, PublicKey, StellarTypeToString, TransactionEnvelope,
 };
 use serde::de::DeserializeOwned;
+use std::collections::HashMap;
 
 #[async_trait]
 pub trait HorizonClient {
@@ -46,4 +47,27 @@ pub trait HorizonClient {
 		max_retries: u8,
 		max_backoff_delay_in_secs: u16,
 	) -> Result<TransactionResponse, Error>;
+}
+
+/// An important trait to check if something is empty.
+pub trait IsEmptyExt {
+	fn is_empty(&self) -> bool;
+}
+
+impl<K, V> IsEmptyExt for HashMap<K, V> {
+	fn is_empty(&self) -> bool {
+		self.is_empty()
+	}
+}
+
+impl<V> IsEmptyExt for Vec<V> {
+	fn is_empty(&self) -> bool {
+		self.is_empty()
+	}
+}
+
+impl<V> IsEmptyExt for [V] {
+	fn is_empty(&self) -> bool {
+		self.is_empty()
+	}
 }
