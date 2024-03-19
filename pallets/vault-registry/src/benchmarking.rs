@@ -150,7 +150,7 @@ benchmarks! {
 		Oracle::<T>::_set_exchange_rate(vault_id.clone().account_id, get_wrapped_currency_id(), UnsignedFixedPoint::<T>::checked_from_rational(1, 10).unwrap()).unwrap();
 
 		// Convert the amount to the wrapped currency
-		let issue_amount = Oracle::<T>::convert(&amount(collateral_amount), get_wrapped_currency_id()).expect("Conversion should work");
+		let issue_amount = Oracle::<T>::convert(&amount(5000), get_wrapped_currency_id()).expect("Conversion should work");
 		VaultRegistry::<T>::try_increase_to_be_issued_tokens(&vault_id, &issue_amount).unwrap();
 		VaultRegistry::<T>::issue_tokens(&vault_id, &issue_amount).unwrap();
 
