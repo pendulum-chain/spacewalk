@@ -3,7 +3,7 @@ authors = ["Pendulum Chain <https://github.com/pendulum-chain>"]
 description = "Pooled Reward module"
 edition = "2021"
 name = "pooled-rewards"
-version = "1.0.5"
+version = "1.0.6"
 
 [dependencies]
 log = { version = "0.4.17", default-features = false }

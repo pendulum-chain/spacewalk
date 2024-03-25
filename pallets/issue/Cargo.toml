@@ -3,7 +3,7 @@ authors = ["Pendulum Chain <https://github.com/pendulum-chain>"]
 description = "Issue module"
 edition = "2021"
 name = "issue"
-version = "1.0.5"
+version = "1.0.6"
 
 [dependencies]
 base64 = { version = '0.13.0', default-features = false, features = ['alloc'] }
