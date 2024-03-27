@@ -21,6 +21,8 @@ use primitives::stellar::{types::SequenceNumber, PublicKey};
 use reqwest::Client;
 
 pub const RESUBMISSION_INTERVAL_IN_SECS: u64 = 1800;
+// The maximum fee we want to charge for a transaction
+const MAXIMUM_TX_FEE: u32 = 10_000_000; // 1 XLM
 
 #[cfg_attr(test, mockable)]
 impl StellarWallet {
@@ -212,6 +214,9 @@ impl StellarWallet {
 
 			// Bump the fee by 10x
 			tx.fee = tx.fee * 10;
+			if tx.fee > MAXIMUM_TX_FEE {
+				tx.fee = MAXIMUM_TX_FEE;
+			}
 
 			return self.bump_sequence_number_and_submit(tx).await
 		}
