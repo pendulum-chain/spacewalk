@@ -267,7 +267,7 @@ impl<C: HorizonClient + Clone> HorizonFetcher<C> {
 			future::join(issue_map.read(), memos_to_issue_ids.read()).await;
 
 		if issue_map.is_empty() || memos_to_issue_ids.is_empty() {
-			tracing::info!("fetch_horizon_and_process_new_transactions(): nothing to traverse");
+			tracing::debug!("fetch_horizon_and_process_new_transactions(): nothing to traverse");
 			return Ok(last_cursor)
 		}
 		let mut txs_iter = self.fetch_transactions_iter(last_cursor).await?;
