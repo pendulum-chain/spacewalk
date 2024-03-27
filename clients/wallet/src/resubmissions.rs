@@ -17,7 +17,7 @@ use tokio::time::sleep;
 use crate::horizon::responses::TransactionsResponseIter;
 #[cfg(test)]
 use mocktopus::macros::mockable;
-use primitives::stellar::{types::SequenceNumber, PublicKey};
+use primitives::stellar::{types::SequenceNumber, FeeBumpTransaction, PublicKey, StroopAmount};
 use reqwest::Client;
 
 pub const RESUBMISSION_INTERVAL_IN_SECS: u64 = 1800;
@@ -150,6 +150,8 @@ impl StellarWallet {
 					return self.handle_tx_bad_seq_error_with_xdr(envelope_xdr).await.map(Some),
 				"tx_internal_error" =>
 					return self.handle_tx_internal_error(envelope_xdr).await.map(Some),
+				"tx_insufficient_fee" =>
+					return self.handle_tx_insufficient_fee_error(envelope_xdr).await.map(Some),
 				_ => {
 					if let Ok(env) = decode_to_envelope(envelope_xdr) {
 						self.remove_tx_envelope_from_cache(&env);
@@ -190,6 +192,30 @@ impl StellarWallet {
 		self.sign_envelope(&mut envelope)?;
 
 		self.submit_transaction(envelope).await
+	}
+
+	// We encountered an error due to insufficient fee and try submitting the transaction again
+	// wrapped in a FeeBumpTransaction with a higher fee. The new fee has to be at least 10x the
+	// original fee, see [here](https://developers.stellar.org/docs/learn/encyclopedia/fees-surge-pricing-fee-strategies#fee-bumps-on-past-transactions).
+	async fn handle_tx_insufficient_fee_error(
+		&self,
+		envelope_xdr_as_str_opt: &Option<String>,
+	) -> Result<TransactionResponse, Error> {
+		let envelope = decode_to_envelope(envelope_xdr_as_str_opt)?;
+
+		let source = self.public_key();
+		// The new fee has to be at least 10x the original fee
+		let prev_fee = envelope.get_transaction().map(|tx| tx.fee).ok_or(DecodeError)?;
+		let new_fee: i64 = (prev_fee * 10) as i64;
+		let new_fee = StroopAmount(new_fee);
+
+		let mut fee_bump_envelope = FeeBumpTransaction::new(source, new_fee, envelope)
+			.map_err(|_| DecodeError)?
+			.into_transaction_envelope();
+
+		self.sign_envelope(&mut fee_bump_envelope)?;
+
+		self.submit_transaction(fee_bump_envelope).await
 	}
 }
 
@@ -676,6 +702,39 @@ mod test {
 				},
 			}
 		}
+
+		wallet.remove_cache_dir();
+	}
+
+	#[tokio::test]
+	#[serial]
+	async fn check_handle_tx_insufficient_fee_error_with_envelope() {
+		let wallet =
+			wallet_with_storage("resources/check_handle_tx_insufficient_fee_error_with_envelope")
+				.expect("should return a wallet")
+				.clone();
+		let wallet = wallet.write().await;
+
+		let sequence = wallet.get_sequence().await.expect("return a sequence");
+		let envelope = wallet
+			.create_payment_envelope(
+				default_destination(),
+				StellarAsset::native(),
+				13,
+				rand::random(),
+				100,
+				sequence + 1,
+			)
+			.expect("should return an envelope");
+
+		let envelope_xdr = envelope.to_base64_xdr();
+		// Convert vec to string (because the HorizonSubmissionError always returns a string)
+		let envelope_xdr =
+			Some(String::from_utf8(envelope_xdr).expect("should create string from vec"));
+
+		let result = wallet.handle_tx_insufficient_fee_error(&envelope_xdr).await;
+
+		assert!(result.is_ok());
 
 		wallet.remove_cache_dir();
 	}
