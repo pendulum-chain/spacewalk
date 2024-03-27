@@ -4,7 +4,9 @@ use futures::StreamExt;
 use sc_client_api::BlockBackend;
 use sc_consensus_aura::{ImportQueueParams, SlotProportion, StartAuraParams};
 use sc_consensus_grandpa::SharedVoterState;
-use sc_executor::{NativeElseWasmExecutor, WasmExecutor, DEFAULT_HEAP_ALLOC_STRATEGY, HeapAllocStrategy};
+use sc_executor::{
+	HeapAllocStrategy, NativeElseWasmExecutor, WasmExecutor, DEFAULT_HEAP_ALLOC_STRATEGY,
+};
 use sc_service::{
 	error::Error as ServiceError, Configuration, RpcHandlers, TFullBackend, TFullClient,
 	TaskManager,
@@ -115,7 +117,7 @@ pub fn new_partial_mainnet(
 		.with_max_runtime_instances(config.max_runtime_instances)
 		.with_runtime_cache_size(config.runtime_cache_size)
 		.build();
-	
+
 	let executor = NativeElseWasmExecutor::<MainnetExecutor>::new_with_wasm_executor(wasm);
 
 	let (client, backend, keystore_container, task_manager) =
@@ -219,7 +221,6 @@ pub fn new_partial_testnet(
 	>,
 	ServiceError,
 > {
-
 	let telemetry = config
 		.telemetry_endpoints
 		.clone()
@@ -242,7 +243,7 @@ pub fn new_partial_testnet(
 		.with_max_runtime_instances(config.max_runtime_instances)
 		.with_runtime_cache_size(config.runtime_cache_size)
 		.build();
-	
+
 	let executor = NativeElseWasmExecutor::<TestnetExecutor>::new_with_wasm_executor(wasm);
 
 	let (client, backend, keystore_container, task_manager) =
@@ -461,8 +462,7 @@ pub fn new_full(mut config: Configuration) -> Result<(TaskManager, RpcHandlers),
 
 	// if the node isn't actively participating in consensus then it doesn't
 	// need a keystore, regardless of which protocol we use below.
-	let keystore =
-		if role.is_authority() { Some(keystore_container.keystore()) } else { None };
+	let keystore = if role.is_authority() { Some(keystore_container.keystore()) } else { None };
 
 	let grandpa_config = sc_consensus_grandpa::Config {
 		// FIXME #1578 make this available through chainspec
