@@ -719,7 +719,7 @@ mod test {
 		let wallet = wallet.write().await;
 
 		// This is the fee we will bump by 10x
-		let base_fee = 100;
+		let base_fee = 99;
 		// This is the new maximum fee we expect to be charged
 		let bumped_fee = base_fee * 10;
 
@@ -730,7 +730,7 @@ mod test {
 				StellarAsset::native(),
 				10,
 				rand::random(),
-				100,
+				base_fee,
 				sequence + 1,
 			)
 			.expect("should return an envelope");
@@ -745,7 +745,7 @@ mod test {
 		assert!(result.is_ok());
 		let response = result.unwrap();
 		assert!(response.successful);
-		assert_eq!(response.max_fee, bumped_fee);
+		assert_eq!(response.max_fee, bumped_fee as u64);
 
 		wallet.remove_cache_dir();
 	}
@@ -789,6 +789,48 @@ mod test {
 					title: "title".to_string(),
 					status: 400,
 					reason: "tx_bad_seq".to_string(),
+					result_code_op: vec![],
+					envelope_xdr: None,
+				};
+
+				match wallet.handle_error(error).await {
+					Err(Error::ResubmissionError(_)) => assert!(true),
+					other => panic!("expecting Error::ResubmissionError, found: {other:?}"),
+				};
+			}
+		}
+
+		// tx_insufficient_fee test
+		{
+			let envelope = wallet
+				.create_dummy_envelope_no_signature(19)
+				.await
+				.expect("returns an envelope");
+			let envelope_xdr = envelope.to_base64_xdr();
+			let envelope_xdr = String::from_utf8(envelope_xdr).ok();
+
+			// result is success
+			{
+				let error = Error::HorizonSubmissionError {
+					title: "title".to_string(),
+					status: 400,
+					reason: "tx_insufficient_fee".to_string(),
+					result_code_op: vec![],
+					envelope_xdr,
+				};
+
+				StellarWallet::is_transaction_already_submitted
+					.mock_safe(move |_, _| MockResult::Return(Box::pin(async move { false })));
+
+				assert!(wallet.handle_error(error).await.is_ok());
+			}
+
+			// result is error
+			{
+				let error = Error::HorizonSubmissionError {
+					title: "title".to_string(),
+					status: 400,
+					reason: "tx_insufficient_fee".to_string(),
 					result_code_op: vec![],
 					envelope_xdr: None,
 				};
