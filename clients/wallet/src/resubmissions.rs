@@ -21,6 +21,8 @@ use primitives::stellar::{types::SequenceNumber, PublicKey};
 use reqwest::Client;
 
 pub const RESUBMISSION_INTERVAL_IN_SECS: u64 = 1800;
+// The maximum fee we want to charge for a transaction
+const MAXIMUM_TX_FEE: u32 = 10_000_000; // 1 XLM
 
 #[cfg_attr(test, mockable)]
 impl StellarWallet {
@@ -150,6 +152,8 @@ impl StellarWallet {
 					return self.handle_tx_bad_seq_error_with_xdr(envelope_xdr).await.map(Some),
 				"tx_internal_error" =>
 					return self.handle_tx_internal_error(envelope_xdr).await.map(Some),
+				"tx_insufficient_fee" =>
+					return self.handle_tx_insufficient_fee_error(envelope_xdr).await.map(Some),
 				_ => {
 					if let Ok(env) = decode_to_envelope(envelope_xdr) {
 						self.remove_tx_envelope_from_cache(&env);
@@ -190,6 +194,36 @@ impl StellarWallet {
 		self.sign_envelope(&mut envelope)?;
 
 		self.submit_transaction(envelope).await
+	}
+
+	// We encountered an insufficient fee error and try submitting the transaction again with a
+	// higher fee. We'll bump the fee by 10x the original fee. We don't use a FeeBumpTransaction
+	// because this operation is not supported by the stellar-relay pallet yet.
+	async fn handle_tx_insufficient_fee_error(
+		&self,
+		envelope_xdr_as_str_opt: &Option<String>,
+	) -> Result<TransactionResponse, Error> {
+		let tx_envelope = decode_to_envelope(envelope_xdr_as_str_opt)?;
+		let mut tx = tx_envelope.get_transaction().ok_or(DecodeError)?;
+
+		// Check if we already submitted this transaction
+		if !self.is_transaction_already_submitted(&tx).await {
+			// Remove original transaction.
+			// The same envelope will be saved again using a different sequence number
+			self.remove_tx_envelope_from_cache(&tx_envelope);
+
+			// Bump the fee by 10x
+			tx.fee = tx.fee * 10;
+			if tx.fee > MAXIMUM_TX_FEE {
+				tx.fee = MAXIMUM_TX_FEE;
+			}
+
+			return self.bump_sequence_number_and_submit(tx).await
+		}
+
+		tracing::error!("handle_tx_insufficient_fee_error(): Similar transaction already submitted. Skipping {:?}", tx);
+
+		Err(ResubmissionError("Transaction already submitted".to_string()))
 	}
 }
 
@@ -682,6 +716,47 @@ mod test {
 
 	#[tokio::test]
 	#[serial]
+	async fn check_handle_tx_insufficient_fee_error_with_envelope() {
+		let wallet =
+			wallet_with_storage("resources/check_handle_tx_insufficient_fee_error_with_envelope")
+				.expect("should return a wallet")
+				.clone();
+		let wallet = wallet.write().await;
+
+		// This is the fee we will bump by 10x
+		let base_fee = 99;
+		// This is the new maximum fee we expect to be charged
+		let bumped_fee = base_fee * 10;
+
+		let sequence = wallet.get_sequence().await.expect("return a sequence");
+		let envelope = wallet
+			.create_payment_envelope(
+				default_destination(),
+				StellarAsset::native(),
+				10,
+				rand::random(),
+				base_fee,
+				sequence + 1,
+			)
+			.expect("should return an envelope");
+
+		let envelope_xdr = envelope.to_base64_xdr();
+		// Convert vec to string (because the HorizonSubmissionError always returns a string)
+		let envelope_xdr =
+			Some(String::from_utf8(envelope_xdr).expect("should create string from vec"));
+
+		let result = wallet.handle_tx_insufficient_fee_error(&envelope_xdr).await;
+
+		assert!(result.is_ok());
+		let response = result.unwrap();
+		assert!(response.successful);
+		assert_eq!(response.max_fee, bumped_fee as u64);
+
+		wallet.remove_cache_dir();
+	}
+
+	#[tokio::test]
+	#[serial]
 	async fn check_handle_error() {
 		let wallet = wallet_with_storage("resources/check_handle_error")
 			.expect("should return a wallet")
@@ -719,6 +794,48 @@ mod test {
 					title: "title".to_string(),
 					status: 400,
 					reason: "tx_bad_seq".to_string(),
+					result_code_op: vec![],
+					envelope_xdr: None,
+				};
+
+				match wallet.handle_error(error).await {
+					Err(Error::ResubmissionError(_)) => assert!(true),
+					other => panic!("expecting Error::ResubmissionError, found: {other:?}"),
+				};
+			}
+		}
+
+		// tx_insufficient_fee test
+		{
+			let envelope = wallet
+				.create_dummy_envelope_no_signature(19)
+				.await
+				.expect("returns an envelope");
+			let envelope_xdr = envelope.to_base64_xdr();
+			let envelope_xdr = String::from_utf8(envelope_xdr).ok();
+
+			// result is success
+			{
+				let error = Error::HorizonSubmissionError {
+					title: "title".to_string(),
+					status: 400,
+					reason: "tx_insufficient_fee".to_string(),
+					result_code_op: vec![],
+					envelope_xdr,
+				};
+
+				StellarWallet::is_transaction_already_submitted
+					.mock_safe(move |_, _| MockResult::Return(Box::pin(async move { false })));
+
+				assert!(wallet.handle_error(error).await.is_ok());
+			}
+
+			// result is error
+			{
+				let error = Error::HorizonSubmissionError {
+					title: "title".to_string(),
+					status: 400,
+					reason: "tx_insufficient_fee".to_string(),
 					result_code_op: vec![],
 					envelope_xdr: None,
 				};

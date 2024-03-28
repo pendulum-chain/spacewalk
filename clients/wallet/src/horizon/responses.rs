@@ -181,8 +181,8 @@ pub struct TransactionResponse {
 	pub fee_account: Vec<u8>,
 	#[serde(deserialize_with = "de_str_to_u64")]
 	pub fee_charged: u64,
-	#[serde(deserialize_with = "de_str_to_bytes")]
-	pub max_fee: Vec<u8>,
+	#[serde(deserialize_with = "de_str_to_u64")]
+	pub max_fee: u64,
 	operation_count: u32,
 	#[serde(deserialize_with = "de_str_to_bytes")]
 	pub envelope_xdr: Vec<u8>,
@@ -219,7 +219,7 @@ impl Debug for TransactionResponse {
 			.field("source_account_sequence", &debug_str_or_vec_u8!(&self.source_account_sequence))
 			.field("fee_account", &debug_str_or_vec_u8!(&self.fee_account))
 			.field("fee_charged", &self.fee_charged)
-			.field("max_fee", &debug_str_or_vec_u8!(&self.max_fee))
+			.field("max_fee", &self.max_fee)
 			.field("operation_count", &self.operation_count)
 			.field("envelope_xdr", &debug_str_or_vec_u8!(&self.envelope_xdr))
 			.field("result_xdr", &debug_str_or_vec_u8!(&self.result_xdr))
