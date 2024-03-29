@@ -21,8 +21,6 @@ use crate::types::FilterWith;
 
 use super::*;
 
-// MAINNET SOURCE KEY
-const SECRET: &str = get_source_secret_key_from_env(false);
 
 #[derive(Clone)]
 struct MockFilter;
@@ -91,7 +89,7 @@ async fn build_simple_transaction(
 async fn horizon_submit_transaction_success() {
 	let horizon_client = reqwest::Client::new();
 
-	let source = secret_key_from_encoding(SECRET);
+	let source = secret_key_from_encoding(&get_source_secret_key_from_env(false));
 	// The destination is the same account as the source
 	let destination = source.get_public().clone();
 	let amount = 100;
@@ -172,7 +170,7 @@ async fn horizon_get_transaction_success() {
 #[tokio::test(flavor = "multi_thread")]
 async fn fetch_transactions_iter_success() {
 	let horizon_client = reqwest::Client::new();
-	let secret = secret_key_from_encoding(SECRET);
+	let secret = secret_key_from_encoding(&get_source_secret_key_from_env(false));
 	let fetcher = HorizonFetcher::new(horizon_client, secret.get_public().clone(), false);
 
 	let mut txs_iter = fetcher.fetch_transactions_iter(0).await.expect("should return a response");
@@ -202,7 +200,7 @@ async fn fetch_horizon_and_process_new_transactions_success() {
 	let slot_env_map = Arc::new(RwLock::new(HashMap::new()));
 
 	let horizon_client = reqwest::Client::new();
-	let secret = secret_key_from_encoding(SECRET);
+	let secret = secret_key_from_encoding(&get_source_secret_key_from_env(false));
 	let mut fetcher = HorizonFetcher::new(horizon_client, secret.get_public().clone(), false);
 
 	let mut iter = fetcher.fetch_transactions_iter(0).await.expect("should return a response");
