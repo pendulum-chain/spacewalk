@@ -46,14 +46,38 @@ macro_rules! debug_str_or_vec_u8 {
 pub(crate) async fn interpret_response<T: DeserializeOwned>(
 	response: reqwest::Response,
 ) -> Result<T, Error> {
-	if response.status().is_success() {
-		return response.json::<T>().await.map_err(Error::HorizonResponseError)
+	let status = response.status();
+	tracing::info!("interpret_response(): status: {status:?}");
+
+	let response_body = response.bytes().await.map_err(|e| {
+		tracing::error!("interpret_response(): response failed to convert to bytes");
+		Error::HorizonResponseError(e)
+	})?;
+
+	if status.is_success() {
+		return serde_json::from_slice(&response_body).map_err(|_| {
+			tracing::error!("interpret_response(): response was a success but failed to convert to {}",std::any::type_name::<T>());
+			let resp_as_str = std::str::from_utf8(&response_body);
+			tracing::error!("interpret_response():  response was a success but failed with string: {resp_as_str:?}");
+
+			Error::DecodeError
+		});
 	}
 
-	let resp = response
-		.json::<serde_json::Value>()
-		.await
-		.map_err(Error::HorizonResponseError)?;
+	let resp: serde_json::Value = serde_json::from_slice(&response_body).map_err(|_| {
+		tracing::error!(
+			"interpret_response(): got a failure response but failure for returning: {}",
+			std::any::type_name::<T>()
+		);
+		tracing::error!(
+			"interpret_response(): got a failure response but failed to convert to json"
+		);
+
+		let resp_as_str = std::str::from_utf8(&response_body);
+		tracing::error!("interpret_response(): got a failure response in string: {resp_as_str:?}");
+
+		Error::DecodeError
+	})?;
 
 	let status =
 		StatusCode::try_from(resp[RESPONSE_FIELD_STATUS].as_u64().unwrap_or(400)).unwrap_or(400);

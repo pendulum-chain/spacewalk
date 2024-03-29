@@ -221,7 +221,7 @@ impl StellarWallet {
 			return self.bump_sequence_number_and_submit(tx).await
 		}
 
-		tracing::error!("handle_tx_bad_seq_error_with_envelope(): Similar transaction already submitted. Skipping {:?}", tx);
+		tracing::error!("handle_tx_insufficient_fee_error(): Similar transaction already submitted. Skipping {:?}", tx);
 
 		Err(ResubmissionError("Transaction already submitted".to_string()))
 	}
