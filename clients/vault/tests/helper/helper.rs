@@ -18,12 +18,15 @@ use stellar_relay_lib::sdk::{PublicKey, SecretKey};
 use vault::{oracle::OracleAgent, ArcRwLock};
 use wallet::{error::Error, StellarWallet, TransactionResponse};
 
+use wallet::{get_dest_secret_key_from_env};
+
+
 pub fn default_destination(is_public_network: bool) -> SecretKey {
 	if is_public_network {
-		SecretKey::from_encoding(crate::helper::DEFAULT_MAINNET_DEST_SECRET_KEY)
+		SecretKey::from_encoding(get_dest_secret_key_from_env(true))
 			.expect("Should work")
 	} else {
-		SecretKey::from_encoding(crate::helper::DEFAULT_TESTNET_DEST_SECRET_KEY)
+		SecretKey::from_encoding(get_dest_secret_key_from_env(false))
 			.expect("Should work")
 	}
 }

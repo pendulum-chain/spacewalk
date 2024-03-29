@@ -9,7 +9,7 @@ use runtime::{
 	VaultRegistryPallet,
 };
 use service::{spawn_cancelable, Error as ServiceError};
-use wallet::StellarWallet;
+use wallet::{StellarWallet, get_source_secret_key_from_env};
 
 use crate::{
 	cancellation::Event, error::Error, oracle::OracleAgent, requests::Request,
@@ -309,12 +309,12 @@ mod tests {
 		VaultId::new(AccountId::new([1u8; 32]), CurrencyId::XCM(0), CurrencyId::Native)
 	}
 
-	const STELLAR_VAULT_SECRET_KEY: &str =
-		"SB6WHKIU2HGVBRNKNOEOQUY4GFC4ZLG5XPGWLEAHTIZXBXXYACC76VSQ";
+	// const STELLAR_VAULT_SECRET_KEY: &str =
+	// 	"SB6WHKIU2HGVBRNKNOEOQUY4GFC4ZLG5XPGWLEAHTIZXBXXYACC76VSQ";
 
 	fn wallet(is_public_network: bool, path: &Path) -> ArcRwLock<StellarWallet> {
 		let wallet = StellarWallet::from_secret_encoded_with_cache(
-			&STELLAR_VAULT_SECRET_KEY.to_string(),
+			&get_source_secret_key_from_env(is_public_network),
 			is_public_network,
 			path.to_str().expect("should return a string").to_string(),
 		)

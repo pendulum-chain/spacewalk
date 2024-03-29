@@ -7,6 +7,7 @@ use crate::{
 		traits::HorizonClient,
 	},
 	mock::secret_key_from_encoding,
+	get_source_secret_key_from_env,
 };
 use mockall::predicate::*;
 use primitives::stellar::{
@@ -20,7 +21,8 @@ use crate::types::FilterWith;
 
 use super::*;
 
-const SECRET: &str = "SB6WHKIU2HGVBRNKNOEOQUY4GFC4ZLG5XPGWLEAHTIZXBXXYACC76VSQ";
+// MAINNET SOURCE KEY
+const SECRET: &str = get_source_secret_key_from_env(false);
 
 #[derive(Clone)]
 struct MockFilter;

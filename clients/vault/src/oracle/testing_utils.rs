@@ -1,4 +1,5 @@
 use stellar_relay_lib::sdk::SecretKey;
+use wallet::{get_source_secret_key_from_env, get_dest_secret_key_from_env};
 
 pub fn random_stellar_relay_config(is_mainnet: bool) -> stellar_relay_lib::StellarOverlayConfig {
 	use rand::seq::SliceRandom;
@@ -43,12 +44,21 @@ fn stellar_relay_config_abs_path(
 		.expect("should be able to extract config")
 }
 
+#[cfg(not(feature = "standalone-metadata"))]
 pub fn get_secret_key(with_currency: bool, is_mainnet: bool) -> String {
 	let suffix = if with_currency { "_with_currency" } else { "" };
 	let directory = if is_mainnet { "mainnet" } else { "testnet" };
 
 	let path = format!("./resources/secretkey/{directory}/stellar_secretkey_{directory}{suffix}");
 	std::fs::read_to_string(path).expect("should return a string")
+}
+
+#[cfg(feature = "standalone-metadata")]
+pub fn get_secret_key(with_currency: bool, is_mainnet: bool) -> String {
+	match with_currency {
+		true => get_source_secret_key_from_env(is_mainnet),
+		false => get_dest_secret_key_from_env(is_mainnet),
+	}
 }
 
 pub fn get_random_secret_key() -> String {
