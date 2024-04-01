@@ -663,6 +663,7 @@ async fn test_issue_execution_succeeds_from_archive() {
 
 			let shutdown_tx = ShutdownSender::new();
 			let stellar_config = random_stellar_relay_config(is_public_network);
+			
 			let vault_stellar_secret = get_secret_key(true, is_public_network);
 			// Create new oracle agent with the same configuration as the previous one
 			let oracle_agent =

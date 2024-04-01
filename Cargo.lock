@@ -10330,6 +10330,7 @@ dependencies = [
  "substrate-stellar-sdk",
  "tokio",
  "tweetnacl",
+ "wallet",
 ]
 
 [[package]]
