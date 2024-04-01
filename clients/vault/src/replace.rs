@@ -9,6 +9,7 @@ use runtime::{
 	VaultRegistryPallet,
 };
 use service::{spawn_cancelable, Error as ServiceError};
+#[allow(unused_imports)]
 use wallet::{StellarWallet, keys::get_source_secret_key_from_env};
 
 use crate::{

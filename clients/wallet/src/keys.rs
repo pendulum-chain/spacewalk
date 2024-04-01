@@ -1,3 +1,4 @@
+#[allow(unused_imports)]
 use dotenv::dotenv;
 use std::env;
 // Gets env variables with precedence from the system's environment and then from the .env file.
