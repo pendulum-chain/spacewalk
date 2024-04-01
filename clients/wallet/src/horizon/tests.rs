@@ -7,7 +7,7 @@ use crate::{
 		traits::HorizonClient,
 	},
 	mock::secret_key_from_encoding,
-	get_source_secret_key_from_env,
+	keys::get_source_secret_key_from_env,
 };
 use mockall::predicate::*;
 use primitives::stellar::{

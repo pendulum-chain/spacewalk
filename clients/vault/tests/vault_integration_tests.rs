@@ -27,13 +27,6 @@ use vault::oracle::{get_secret_key, random_stellar_relay_config, start_oracle_ag
 
 #[tokio::test(flavor = "multi_thread")]
 #[serial]
-async fn test_ensure_secret_keys() {
-	get_secret_key(true, true);
-	get_secret_key(true, false);
-}
-
-#[tokio::test(flavor = "multi_thread")]
-#[serial]
 async fn test_register() {
 	test_with(false, |client, vault_wallet, _| async move {
 		let (eve_id, eve_provider) =

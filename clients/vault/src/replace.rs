@@ -9,7 +9,7 @@ use runtime::{
 	VaultRegistryPallet,
 };
 use service::{spawn_cancelable, Error as ServiceError};
-use wallet::{StellarWallet, get_source_secret_key_from_env};
+use wallet::{StellarWallet, keys::get_source_secret_key_from_env};
 
 use crate::{
 	cancellation::Event, error::Error, oracle::OracleAgent, requests::Request,
