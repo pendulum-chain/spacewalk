@@ -309,12 +309,9 @@ mod tests {
 		VaultId::new(AccountId::new([1u8; 32]), CurrencyId::XCM(0), CurrencyId::Native)
 	}
 
-	// const STELLAR_VAULT_SECRET_KEY: &str =
-	// 	"SB6WHKIU2HGVBRNKNOEOQUY4GFC4ZLG5XPGWLEAHTIZXBXXYACC76VSQ";
-
 	fn wallet(is_public_network: bool, path: &Path) -> ArcRwLock<StellarWallet> {
 		let wallet = StellarWallet::from_secret_encoded_with_cache(
-			&get_source_secret_key_from_env(is_public_network),
+			&get_source_secret_key_from_env(false),
 			is_public_network,
 			path.to_str().expect("should return a string").to_string(),
 		)
