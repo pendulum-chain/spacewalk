@@ -1,8 +1,8 @@
 #[allow(unused_imports)]
 use dotenv::dotenv;
 use std::env;
-// Gets env variables with precedence from the system's environment and then from the .env file.
-// If one variable is not on the systme's environment, and the .env is defined, then all variables 
+// Gets env variables with precedence from the system environment and then from the .env file.
+// If one variable is not on the system environment, and the .env is defined, then all variables 
 // will be overridden by those on the .env file.
 fn get_env_variables(key: &str) -> Option<String> {
     match env::var(key) {
