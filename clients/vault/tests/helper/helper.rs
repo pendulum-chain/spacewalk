@@ -18,7 +18,7 @@ use stellar_relay_lib::sdk::{PublicKey, SecretKey};
 use vault::{oracle::OracleAgent, ArcRwLock};
 use wallet::{error::Error, StellarWallet, TransactionResponse};
 
-use wallet::{get_dest_secret_key_from_env};
+use wallet::keys::{get_dest_secret_key_from_env};
 
 
 pub fn default_destination(is_public_network: bool) -> SecretKey {
