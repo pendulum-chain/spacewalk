@@ -20,7 +20,7 @@ use std::{future::Future, sync::Arc};
 use stellar_relay_lib::StellarOverlayConfig;
 use tokio::sync::RwLock;
 use vault::{
-	oracle::{get_secret_key, random_stellar_relay_config, start_oracle_agent, OracleAgent},
+	oracle::{get_secret_key_from_env, random_stellar_relay_config, start_oracle_agent, OracleAgent},
 	ArcRwLock,
 };
 use wallet::StellarWallet;
@@ -32,8 +32,6 @@ impl SpacewalkParachainExt for SpacewalkParachain {}
 
 lazy_static! {
 	pub static ref CFG: StellarOverlayConfig = random_stellar_relay_config(false);
-	pub static ref SECRET_KEY: String = get_secret_key(true, false);
-	pub static ref DESTINATION_SECRET_KEY: String = get_secret_key(false, false);
 	pub static ref ONE_TO_ONE_RATIO: FixedU128 = FixedU128::saturating_from_rational(1u128, 1u128);
 	pub static ref TEN_TO_ONE_RATIO: FixedU128 = FixedU128::saturating_from_rational(1u128, 10u128);
 }
@@ -85,8 +83,8 @@ async fn setup_chain_providers(
 	let path = tmp_dir.path().to_str().expect("should return a string").to_string();
 
 	let stellar_config = random_stellar_relay_config(is_public_network);
-	let vault_stellar_secret = get_secret_key(true, is_public_network);
-	let user_stellar_secret = &DESTINATION_SECRET_KEY;
+	let vault_stellar_secret = &get_secret_key_from_env(true, is_public_network);
+	let user_stellar_secret = &get_secret_key_from_env(false, is_public_network);
 
 	let (vault_wallet, user_wallet) =
 		initialize_wallets(&vault_stellar_secret, &user_stellar_secret, path, stellar_config).await;
@@ -139,7 +137,7 @@ where
 	);
 
 	let stellar_config = random_stellar_relay_config(is_public_network);
-	let vault_stellar_secret = get_secret_key(true, is_public_network);
+	let vault_stellar_secret = get_secret_key_from_env(true, is_public_network);
 
 	let shutdown_tx = ShutdownSender::new();
 	let oracle_agent =

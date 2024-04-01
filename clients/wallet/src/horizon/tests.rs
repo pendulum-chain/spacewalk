@@ -9,7 +9,9 @@ use crate::{
 	mock::secret_key_from_encoding,
 	keys::get_source_secret_key_from_env,
 };
+#[allow(unused_imports)]
 use mockall::predicate::*;
+
 use primitives::stellar::{
 	network::{Network, PUBLIC_NETWORK, TEST_NETWORK},
 	types::Preconditions,
