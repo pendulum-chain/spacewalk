@@ -96,6 +96,9 @@ pub mod pallet {
 		#[pallet::constant]
 		type GetRelayChainCurrencyId: Get<CurrencyId<Self>>;
 
+		#[cfg(feature = "runtime-benchmarks")]
+		type GetWrappedCurrencyId: Get<CurrencyId<Self>>;
+
 		type AssetConversion: StaticLookup<Source = CurrencyId<Self>, Target = Asset>;
 		type BalanceConversion: StaticLookup<Source = BalanceOf<Self>, Target = i64>;
 		type CurrencyConversion: types::CurrencyConversion<Amount<Self>, CurrencyId<Self>>;
@@ -181,6 +184,11 @@ pub mod getters {
 
 	pub fn get_native_currency_id<T: Config>() -> CurrencyId<T> {
 		<T as orml_currencies::Config>::GetNativeCurrencyId::get()
+	}
+
+	#[cfg(feature = "runtime-benchmarks")]
+	pub fn get_wrapped_currency_id<T: Config>() -> CurrencyId<T> {
+		<T as Config>::GetWrappedCurrencyId::get()
 	}
 }
 

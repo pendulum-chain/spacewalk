@@ -6,10 +6,7 @@ use sp_core::{Get, H256};
 use sp_runtime::{traits::One, FixedPointNumber};
 use sp_std::prelude::*;
 
-use currency::{
-	getters::{get_relay_chain_currency_id as get_collateral_currency_id, *},
-	testing_constants::get_wrapped_currency_id,
-};
+use currency::getters::{get_relay_chain_currency_id as get_collateral_currency_id, *};
 use oracle::Pallet as Oracle;
 use primitives::{CurrencyId, VaultCurrencyPair, VaultId};
 use security::Pallet as Security;
@@ -33,7 +30,7 @@ fn collateral<T: crate::Config>(amount: u32) -> Amount<T> {
 }
 
 fn wrapped<T: crate::Config>(amount: u32) -> Amount<T> {
-	Amount::new(amount.into(), get_wrapped_currency_id())
+	Amount::new(amount.into(), get_wrapped_currency_id::<T>())
 }
 
 fn register_public_key<T: crate::Config>(vault_id: DefaultVaultId<T>) {
@@ -55,7 +52,7 @@ fn mint_collateral<T: crate::Config>(account_id: &T::AccountId, amount: BalanceO
 }
 
 fn mint_wrapped<T: crate::Config>(account_id: &T::AccountId, amount: BalanceOf<T>) {
-	let rich_amount = Amount::<T>::new(amount, get_wrapped_currency_id());
+	let rich_amount = Amount::<T>::new(amount, get_wrapped_currency_id::<T>());
 	assert_ok!(rich_amount.mint_to(account_id));
 }
 
@@ -71,7 +68,7 @@ fn initialize_oracle<T: crate::Config>() {
 
 	Oracle::<T>::_set_exchange_rate(
 		oracle_id,
-		get_wrapped_currency_id(),
+		get_wrapped_currency_id::<T>(),
 		UnsignedFixedPoint::<T>::checked_from_rational(1, 1).unwrap(),
 	)
 	.unwrap();
@@ -85,7 +82,7 @@ fn test_request<T: crate::Config>(vault_id: &DefaultVaultId<T>) -> DefaultRedeem
 		fee: Default::default(),
 		transfer_fee: Default::default(),
 		amount: Default::default(),
-		asset: get_wrapped_currency_id(),
+		asset: get_wrapped_currency_id::<T>(),
 		premium: Default::default(),
 		redeemer: account("Redeemer", 0, 0),
 		stellar_address: Default::default(),
@@ -97,7 +94,7 @@ fn get_vault_id<T: crate::Config>() -> DefaultVaultId<T> {
 	VaultId::new(
 		account("Vault", 0, 0),
 		get_collateral_currency_id::<T>(),
-		get_wrapped_currency_id(),
+		get_wrapped_currency_id::<T>(),
 	)
 }
 
@@ -139,7 +136,7 @@ benchmarks! {
 
 		mint_wrapped::<T>(&origin, amount.into());
 
-		mint_collateral::<T>(&vault_id.account_id, 100_000u32.into());
+		mint_collateral::<T>(&vault_id.account_id, 1_000_000_000u32.into());
 
 		Security::<T>::set_active_block_number(1u32.into());
 		initialize_oracle::<T>();
@@ -151,7 +148,7 @@ benchmarks! {
 			Vault::new(vault_id.clone())
 		);
 
-		assert_ok!(VaultRegistry::<T>::try_deposit_collateral(&vault_id, &collateral(100_000)));
+		assert_ok!(VaultRegistry::<T>::try_deposit_collateral(&vault_id, &collateral(1_000_000_000)));
 
 		assert_ok!(VaultRegistry::<T>::try_increase_to_be_issued_tokens(&vault_id, &wrapped(amount)));
 		assert_ok!(VaultRegistry::<T>::issue_tokens(&vault_id, &wrapped(amount)));
@@ -159,7 +156,7 @@ benchmarks! {
 		VaultRegistry::<T>::liquidate_vault(&vault_id).unwrap();
 		let currency_pair = VaultCurrencyPair {
 			collateral: get_collateral_currency_id::<T>(),
-			wrapped: get_wrapped_currency_id()
+			wrapped: get_wrapped_currency_id::<T>()
 		};
 	}: _(RawOrigin::Signed(origin), currency_pair, amount.into())
 
@@ -225,8 +222,8 @@ benchmarks! {
 			&vault_id,
 			vault
 		);
-		mint_collateral::<T>(&vault_id.account_id, 1000u32.into());
-		assert_ok!(VaultRegistry::<T>::try_deposit_collateral(&vault_id, &collateral(1000)));
+		mint_collateral::<T>(&vault_id.account_id, 1_000_000_000u32.into());
+		assert_ok!(VaultRegistry::<T>::try_deposit_collateral(&vault_id, &collateral(1_000_000_000)));
 
 		assert_ok!(Oracle::<T>::_set_exchange_rate(origin.clone(), get_collateral_currency_id::<T>(),
 			UnsignedFixedPoint::<T>::one()
@@ -256,8 +253,8 @@ benchmarks! {
 			&vault_id,
 			vault
 		);
-		mint_collateral::<T>(&vault_id.account_id, 1000u32.into());
-		assert_ok!(VaultRegistry::<T>::try_deposit_collateral(&vault_id, &collateral(1000)));
+		mint_collateral::<T>(&vault_id.account_id, 1_000_000_000u32.into());
+		assert_ok!(VaultRegistry::<T>::try_deposit_collateral(&vault_id, &collateral(1_000_000_000)));
 
 		assert_ok!(Oracle::<T>::_set_exchange_rate(origin.clone(), get_collateral_currency_id::<T>(),
 			UnsignedFixedPoint::<T>::one()
@@ -280,15 +277,15 @@ benchmarks! {
 
 		mint_wrapped::<T>(&origin, amount.into());
 
-		mint_collateral::<T>(&vault_id.account_id, 100_000u32.into());
-		assert_ok!(VaultRegistry::<T>::try_deposit_collateral(&vault_id, &collateral(100_000)));
+		mint_collateral::<T>(&vault_id.account_id, 1_000_000_000u32.into());
+		assert_ok!(VaultRegistry::<T>::try_deposit_collateral(&vault_id, &collateral(1_000_000_000)));
 
 		assert_ok!(VaultRegistry::<T>::try_increase_to_be_issued_tokens(&vault_id, &wrapped(amount)));
 		assert_ok!(VaultRegistry::<T>::issue_tokens(&vault_id, &wrapped(amount)));
 
 		let currency_pair = VaultCurrencyPair {
 			collateral: get_collateral_currency_id::<T>(),
-			wrapped: get_wrapped_currency_id()
+			wrapped: get_wrapped_currency_id::<T>()
 		};
 	}: _(RawOrigin::Signed(origin), currency_pair, amount.into())
 
@@ -316,7 +313,7 @@ benchmarks! {
 
 		let vault_id = get_vault_id::<T>();
 		let origin = vault_id.account_id.clone();
-		let amount = 1000;
+		let amount = 1_000_000_000;
 
 		register_public_key::<T>(vault_id.clone());
 
@@ -327,21 +324,21 @@ benchmarks! {
 
 		mint_wrapped::<T>(&origin, amount.into());
 
-		mint_collateral::<T>(&vault_id.account_id, 100_000u32.into());
-		assert_ok!(VaultRegistry::<T>::try_deposit_collateral(&vault_id, &collateral(100_000)));
+		mint_collateral::<T>(&vault_id.account_id, 1_000_000_000u32.into());
+		assert_ok!(VaultRegistry::<T>::try_deposit_collateral(&vault_id, &collateral(1_000_000_000)));
 
 		assert_ok!(VaultRegistry::<T>::try_increase_to_be_issued_tokens(&vault_id, &wrapped(amount)));
 		assert_ok!(VaultRegistry::<T>::issue_tokens(&vault_id, &wrapped(amount)));
 
 		let currency_pair = VaultCurrencyPair {
 			collateral: get_collateral_currency_id::<T>(),
-			wrapped: get_wrapped_currency_id()
+			wrapped: get_wrapped_currency_id::<T>()
 		};
 	}: _(RawOrigin::Signed(origin), currency_pair, redeem_id)
 
 	rate_limit_update {
 		let limit_volume_amount: Option<BalanceOf<T>> = Some(1u32.into());
-		let limit_volume_currency_id: T::CurrencyId = get_wrapped_currency_id();
+		let limit_volume_currency_id: T::CurrencyId = get_wrapped_currency_id::<T>();
 		let interval_length: T::BlockNumber = 1u32.into();
 	}: _(RawOrigin::Root, limit_volume_amount, limit_volume_currency_id, interval_length)
 

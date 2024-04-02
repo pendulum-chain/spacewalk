@@ -5,9 +5,8 @@ use orml_traits::MultiCurrency;
 use sp_runtime::FixedPointNumber;
 use sp_std::prelude::*;
 
-use currency::{
-	getters::{get_relay_chain_currency_id as get_collateral_currency_id, *},
-	testing_constants::get_wrapped_currency_id,
+use currency::getters::{
+	get_relay_chain_currency_id as get_collateral_currency_id, get_wrapped_currency_id, *,
 };
 use oracle::Pallet as Oracle;
 use primitives::CurrencyId;
@@ -41,14 +40,14 @@ fn get_vault_id<T: crate::Config>() -> DefaultVaultId<T> {
 	VaultId::new(
 		account("Vault", 0, 0),
 		get_collateral_currency_id::<T>(),
-		get_wrapped_currency_id(),
+		get_wrapped_currency_id::<T>(),
 	)
 }
 
 fn get_currency_pair<T: crate::Config>() -> DefaultVaultCurrencyPair<T> {
 	VaultCurrencyPair {
 		collateral: get_collateral_currency_id::<T>(),
-		wrapped: get_wrapped_currency_id(),
+		wrapped: get_wrapped_currency_id::<T>(),
 	}
 }
 
@@ -79,7 +78,7 @@ benchmarks! {
 		Oracle::<T>::_set_exchange_rate(vault_id.clone().account_id, get_collateral_currency_id::<T>(),
 			UnsignedFixedPoint::<T>::one()
 		).unwrap();
-		Oracle::<T>::_set_exchange_rate(vault_id.clone().account_id, get_wrapped_currency_id(), UnsignedFixedPoint::<T>::one()).unwrap();
+		Oracle::<T>::_set_exchange_rate(vault_id.clone().account_id, get_wrapped_currency_id::<T>(), UnsignedFixedPoint::<T>::one()).unwrap();
 	}: _(RawOrigin::Signed(vault_id.account_id), vault_id.currencies.clone(), amount)
 	verify {
 		drop(oracle_mock_lock);
@@ -96,7 +95,7 @@ benchmarks! {
 		Oracle::<T>::_set_exchange_rate(vault_id.clone().account_id, get_collateral_currency_id::<T>(),
 			UnsignedFixedPoint::<T>::one()
 		).unwrap();
-		Oracle::<T>::_set_exchange_rate(vault_id.clone().account_id, get_wrapped_currency_id(),
+		Oracle::<T>::_set_exchange_rate(vault_id.clone().account_id, get_wrapped_currency_id::<T>(),
 			UnsignedFixedPoint::<T>::one()
 		).unwrap();
 	}: _(RawOrigin::Signed(vault_id.account_id), vault_id.currencies.clone(), amount)
@@ -147,15 +146,15 @@ benchmarks! {
 
 		let oracle_mock_lock = Oracle::<T>::acquire_lock();
 		Oracle::<T>::_set_exchange_rate(vault_id.clone().account_id, get_collateral_currency_id::<T>(), UnsignedFixedPoint::<T>::one()).unwrap();
-		Oracle::<T>::_set_exchange_rate(vault_id.clone().account_id, get_wrapped_currency_id(), UnsignedFixedPoint::<T>::checked_from_rational(1, 10).unwrap()).unwrap();
+		Oracle::<T>::_set_exchange_rate(vault_id.clone().account_id, get_wrapped_currency_id::<T>(), UnsignedFixedPoint::<T>::checked_from_rational(1, 10).unwrap()).unwrap();
 
 		// Convert the amount to the wrapped currency
-		let issue_amount = Oracle::<T>::convert(&amount(5000), get_wrapped_currency_id()).expect("Conversion should work");
+		let issue_amount = Oracle::<T>::convert(&amount(5000), get_wrapped_currency_id::<T>()).expect("Conversion should work");
 		VaultRegistry::<T>::try_increase_to_be_issued_tokens(&vault_id, &issue_amount).unwrap();
 		VaultRegistry::<T>::issue_tokens(&vault_id, &issue_amount).unwrap();
 
 		Oracle::<T>::_set_exchange_rate(vault_id.clone().account_id, get_collateral_currency_id::<T>(), UnsignedFixedPoint::<T>::checked_from_rational(1, 10).unwrap()).unwrap();
-		Oracle::<T>::_set_exchange_rate(vault_id.clone().account_id, get_wrapped_currency_id(), UnsignedFixedPoint::<T>::one()).unwrap();
+		Oracle::<T>::_set_exchange_rate(vault_id.clone().account_id, get_wrapped_currency_id::<T>(), UnsignedFixedPoint::<T>::one()).unwrap();
 	}: _(RawOrigin::Signed(origin), vault_id)
 	verify {
 		drop(oracle_mock_lock);
@@ -169,7 +168,7 @@ benchmarks! {
 
 		let oracle_mock_lock = Oracle::<T>::acquire_lock();
 		Oracle::<T>::_set_exchange_rate(vault_id.clone().account_id, get_collateral_currency_id::<T>(), UnsignedFixedPoint::<T>::checked_from_rational(1, 10).unwrap()).unwrap();
-		Oracle::<T>::_set_exchange_rate(vault_id.clone().account_id, get_wrapped_currency_id(), UnsignedFixedPoint::<T>::checked_from_rational(1, 10).unwrap()).unwrap();
+		Oracle::<T>::_set_exchange_rate(vault_id.clone().account_id, get_wrapped_currency_id::<T>(), UnsignedFixedPoint::<T>::checked_from_rational(1, 10).unwrap()).unwrap();
 		VaultRegistry::<T>::liquidate_vault(&vault_id).unwrap();
 	}: _(RawOrigin::Signed(vault_id.account_id), vault_id.currencies.clone())
 	verify {
