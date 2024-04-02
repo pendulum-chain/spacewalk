@@ -2,7 +2,7 @@
 
 extern crate core;
 
-pub use default_weights::SubstrateWeight;
+pub use default_weights::{SubstrateWeight, WeightInfo};
 /// Edit this file to define custom logic or remove it if it is not needed.
 /// Learn more about FRAME and the core library of Substrate FRAME pallets:
 /// <https://docs.substrate.io/v3/runtime/frame>
