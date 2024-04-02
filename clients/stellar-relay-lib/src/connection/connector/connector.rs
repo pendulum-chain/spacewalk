@@ -288,7 +288,8 @@ mod test {
 
 	async fn create_connector() -> (NodeInfo, ConnectionInfo, Connector) {
 		let cfg_file_path = "./resources/config/testnet/stellar_relay_config_sdftest1.json";
-		let secret_key = get_source_secret_key_from_env(false);
+		let is_public_network = false;
+		let secret_key = get_source_secret_key_from_env(is_public_network);
 
 		let cfg =
 			StellarOverlayConfig::try_from_path(cfg_file_path).expect("should create a config");

@@ -9,9 +9,7 @@ use runtime::{
 	VaultRegistryPallet,
 };
 use service::{spawn_cancelable, Error as ServiceError};
-#[allow(unused_imports)]
-use wallet::{StellarWallet, keys::get_source_secret_key_from_env};
-
+use wallet::StellarWallet;
 use crate::{
 	cancellation::Event, error::Error, oracle::OracleAgent, requests::Request,
 	system::VaultIdManager,
@@ -236,6 +234,8 @@ mod tests {
 		SpacewalkVault, StellarPublicKeyRaw, VaultId, H256,
 	};
 
+	use wallet::{StellarWallet, keys::get_source_secret_key_from_env};
+
 	use super::*;
 
 	macro_rules! assert_err {
@@ -312,7 +312,7 @@ mod tests {
 
 	fn wallet(is_public_network: bool, path: &Path) -> ArcRwLock<StellarWallet> {
 		let wallet = StellarWallet::from_secret_encoded_with_cache(
-			&get_source_secret_key_from_env(false),
+			&get_source_secret_key_from_env(is_public_network),
 			is_public_network,
 			path.to_str().expect("should return a string").to_string(),
 		)

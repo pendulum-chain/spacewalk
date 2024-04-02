@@ -22,13 +22,7 @@ use wallet::keys::{get_dest_secret_key_from_env};
 
 
 pub fn default_destination(is_public_network: bool) -> SecretKey {
-	if is_public_network {
-		SecretKey::from_encoding(get_dest_secret_key_from_env(true))
-			.expect("Should work")
-	} else {
-		SecretKey::from_encoding(get_dest_secret_key_from_env(false))
-			.expect("Should work")
-	}
+	SecretKey::from_encoding(get_dest_secret_key_from_env(is_public_network)).expect("Should work")
 }
 
 pub fn default_destination_as_binary(is_public_network: bool) -> [u8; 32] {

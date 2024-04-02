@@ -89,9 +89,10 @@ async fn build_simple_transaction(
 
 #[tokio::test(flavor = "multi_thread")]
 async fn horizon_submit_transaction_success() {
+	let is_public_network = false;
 	let horizon_client = reqwest::Client::new();
-
-	let source = secret_key_from_encoding(&get_source_secret_key_from_env(false));
+	
+	let source = secret_key_from_encoding(&get_source_secret_key_from_env(is_public_network));
 	// The destination is the same account as the source
 	let destination = source.get_public().clone();
 	let amount = 100;
@@ -172,7 +173,8 @@ async fn horizon_get_transaction_success() {
 #[tokio::test(flavor = "multi_thread")]
 async fn fetch_transactions_iter_success() {
 	let horizon_client = reqwest::Client::new();
-	let secret = secret_key_from_encoding(&get_source_secret_key_from_env(false));
+	let is_public_network = false;
+	let secret = secret_key_from_encoding(&get_source_secret_key_from_env(is_public_network));
 	let fetcher = HorizonFetcher::new(horizon_client, secret.get_public().clone(), false);
 
 	let mut txs_iter = fetcher.fetch_transactions_iter(0).await.expect("should return a response");
@@ -200,10 +202,11 @@ async fn fetch_horizon_and_process_new_transactions_success() {
 	let issue_hashes = Arc::new(RwLock::new(vec![]));
 	let memos_to_issue_ids = Arc::new(RwLock::new(vec![]));
 	let slot_env_map = Arc::new(RwLock::new(HashMap::new()));
+	let is_public_network = false;
 
 	let horizon_client = reqwest::Client::new();
-	let secret = secret_key_from_encoding(&get_source_secret_key_from_env(false));
-	let mut fetcher = HorizonFetcher::new(horizon_client, secret.get_public().clone(), false);
+	let secret = secret_key_from_encoding(&get_source_secret_key_from_env(is_public_network));
+	let mut fetcher = HorizonFetcher::new(horizon_client, secret.get_public().clone(), is_public_network);
 
 	let mut iter = fetcher.fetch_transactions_iter(0).await.expect("should return a response");
 	let Some(response) = iter.next_back() else {

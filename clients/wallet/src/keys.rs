@@ -5,16 +5,8 @@ use std::env;
 // If one variable is not on the system environment, and the .env is defined, then all variables 
 // will be overridden by those on the .env file.
 fn get_env_variables(key: &str) -> Option<String> {
-    match env::var(key) {
-        Ok(value) => Some(value),
-        Err(_) => {
-            if dotenv::from_filename("../vault/resources/secretkey/.env").is_ok() {
-                env::var(key).ok()
-            } else {
-                None
-            }
-        }
-    }
+    dotenv::from_filename("../vault/resources/secretkey/.env").ok();
+    env::var(key).ok()
 }
 
 pub fn get_dest_secret_key_from_env(is_mainnet: bool)-> String{
