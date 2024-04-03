@@ -8,8 +8,12 @@ use thiserror::Error;
 pub enum Error {
 	#[error("Invalid secret key")]
 	InvalidSecretKey,
-	#[error("Error fetching horizon data: {0}")]
-	HorizonResponseError(#[from] ReqwestError),
+	#[error("Error fetching horizon data: reqwest: {reqwest:?}, other: {other:?}")]
+	HorizonResponseError {
+		reqwest: Option<ReqwestError>,
+		status: Option<u16>,
+		other: Option<String>,
+	},
 	#[error("Could not build transaction: {0}")]
 	BuildTransactionError(String),
 	#[error("Transaction submission failed. Title: {title}, Status: {status}, Reason: {reason}, Envelope XDR: {envelope_xdr:?}")]
@@ -43,7 +47,22 @@ pub enum Error {
 impl Error {
 	pub fn is_recoverable(&self) -> bool {
 		match self {
-			Error::HorizonResponseError(e) if e.is_timeout() => true,
+			Error::HorizonResponseError { status, reqwest, .. } => {
+				if let Some(e) = reqwest {
+					if e.is_timeout() {
+						return true
+					}
+				}
+
+				if let Some(status) = status {
+					// forbidden error
+					if *status == 403 {
+						return true
+					}
+				}
+
+				false
+			},
 			Error::HorizonSubmissionError { status, .. } if *status == 504 => true,
 			Error::CacheError(e) => match e.kind {
 				CacheErrorKind::CreateDirectoryFailed |
@@ -61,8 +80,21 @@ impl Error {
 		let server_errors = 500u16..599;
 
 		match self {
-			Error::HorizonResponseError(e) =>
-				e.status().map(|code| server_errors.contains(&code.as_u16())).unwrap_or(false),
+			Error::HorizonResponseError { status, reqwest, .. } => {
+				if let Some(e) = reqwest {
+					return e
+						.status()
+						.map(|code| server_errors.contains(&code.as_u16()))
+						.unwrap_or(false)
+				}
+
+				if let Some(status) = status {
+					return server_errors.contains(status)
+				}
+
+				// by default, assume that it will be a client error.
+				false
+			},
 			Error::HorizonSubmissionError { status, .. } => server_errors.contains(status),
 			_ => false,
 		}
