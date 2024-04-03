@@ -27,6 +27,6 @@ subxt = { version = "0.29.0", default_features = false,  features = ["jsonrpsee-
 sha2 = "0.8.2"
 
 [dev-dependencies]
-sysinfo = "0.25.1"
+sysinfo = "0.30.8"
 tempdir = "0.3.7"
 mockall = "0.8.1"
