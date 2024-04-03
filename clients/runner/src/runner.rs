@@ -647,7 +647,6 @@ mod tests {
 	use tempdir::TempDir;
 
 	use std::{
-		convert::TryInto,
 		fmt::Debug,
 		fs::{self, File},
 		io::Write,
