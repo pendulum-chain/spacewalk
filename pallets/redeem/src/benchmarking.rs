@@ -313,7 +313,7 @@ benchmarks! {
 
 		let vault_id = get_vault_id::<T>();
 		let origin = vault_id.account_id.clone();
-		let amount = 1_000_000_000;
+		let amount = 1000;
 
 		register_public_key::<T>(vault_id.clone());
 
