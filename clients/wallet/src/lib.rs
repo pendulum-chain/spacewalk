@@ -12,6 +12,7 @@ pub mod operations;
 mod stellar_wallet;
 mod task;
 pub mod types;
+#[cfg(feature = "testing-utils")]
 pub mod keys;
 
 #[cfg(test)]
