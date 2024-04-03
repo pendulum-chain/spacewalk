@@ -20,7 +20,9 @@ type Block = frame_system::mocking::MockBlock<Test>;
 use orml_traits::parameter_type_with_key;
 use sp_arithmetic::traits::Zero;
 
-pub use currency::testing_constants::{DEFAULT_COLLATERAL_CURRENCY, DEFAULT_NATIVE_CURRENCY};
+pub use currency::testing_constants::{
+	DEFAULT_COLLATERAL_CURRENCY, DEFAULT_NATIVE_CURRENCY, DEFAULT_WRAPPED_CURRENCY,
+};
 
 // Configure a mock runtime to test the pallet.
 frame_support::construct_runtime!(
