@@ -7,7 +7,7 @@ use mocktopus::{macros::mockable, mocking::clear_mocks};
 use orml_currencies::BasicCurrencyAdapter;
 use orml_traits::parameter_type_with_key;
 pub use sp_arithmetic::{FixedI128, FixedPointNumber, FixedU128};
-use sp_core::{Get, H256};
+use sp_core::H256;
 use sp_runtime::{
 	testing::{Header, TestXt},
 	traits::{BlakeTwo256, IdentityLookup, One, Zero},
