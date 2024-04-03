@@ -1,11 +1,13 @@
 #[allow(unused_imports)]
 use dotenv::dotenv;
 use std::env;
-// Gets env variables with precedence from the system environment and then from the .env file.
-// If one variable is not on the system environment, and the .env is defined, then all variables 
-// will be overridden by those on the .env file.
+
+// Gets all environment variables contained in the local .env file and returns
+// the given variable by key if available. This will override the variables
+// previously passed to the environment.
+// A variable not .env but passed to the environment will not be overridden.
 fn get_env_variables(key: &str) -> Option<String> {
-    dotenv::from_filename("../vault/resources/secretkey/.env").ok();
+    dotenv::from_filename("../.env").ok();
     env::var(key).ok()
 }
 
