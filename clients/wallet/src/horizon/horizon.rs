@@ -53,7 +53,11 @@ pub fn horizon_url(is_public_network: bool, is_need_fallback: bool) -> &'static 
 impl HorizonClient for reqwest::Client {
 	async fn get_from_url<R: DeserializeOwned>(&self, url: &str) -> Result<R, Error> {
 		tracing::debug!("accessing url: {url:?}");
-		let response = self.get(url).send().await.map_err(Error::HorizonResponseError)?;
+		let response = self.get(url).send().await.map_err(|e| Error::HorizonResponseError {
+			reqwest: Some(e),
+			status: None,
+			other: None,
+		})?;
 		interpret_response::<R>(response).await
 	}
 
@@ -151,9 +155,9 @@ impl HorizonClient for reqwest::Client {
 			let base_url = horizon_url(is_public_network, need_fallback);
 			let url = format!("{}/transactions", base_url);
 
-			let response = ready(
-				self.post(url).form(&params).send().await.map_err(Error::HorizonResponseError),
-			)
+			let response = ready(self.post(url).form(&params).send().await.map_err(|e| {
+				Error::HorizonResponseError { reqwest: Some(e), status: None, other: None }
+			}))
 			.and_then(|response| async move {
 				interpret_response::<TransactionResponse>(response).await
 			})
