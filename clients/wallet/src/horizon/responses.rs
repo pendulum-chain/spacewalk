@@ -47,11 +47,10 @@ pub(crate) async fn interpret_response<T: DeserializeOwned>(
 	response: reqwest::Response,
 ) -> Result<T, Error> {
 	let status = response.status();
-	tracing::info!("interpret_response(): status: {status:?}");
 
 	let response_body = response.bytes().await.map_err(|e| {
 		tracing::warn!("interpret_response(): cannot convert response to bytes: {e:?}");
-		Error::HorizonResponseError { reqwest: Some(e), status: Some(status.as_u16()), other: None }
+		Error::HorizonResponseError { error: Some(e), status: Some(status.as_u16()), other: None }
 	})?;
 
 	if status.is_success() {

@@ -8,12 +8,8 @@ use thiserror::Error;
 pub enum Error {
 	#[error("Invalid secret key")]
 	InvalidSecretKey,
-	#[error("Error fetching horizon data: reqwest: {reqwest:?}, other: {other:?}")]
-	HorizonResponseError {
-		reqwest: Option<ReqwestError>,
-		status: Option<u16>,
-		other: Option<String>,
-	},
+	#[error("Error fetching horizon data: error: {error:?}, other: {other:?}")]
+	HorizonResponseError { error: Option<ReqwestError>, status: Option<u16>, other: Option<String> },
 	#[error("Could not build transaction: {0}")]
 	BuildTransactionError(String),
 	#[error("Transaction submission failed. Title: {title}, Status: {status}, Reason: {reason}, Envelope XDR: {envelope_xdr:?}")]
@@ -47,8 +43,8 @@ pub enum Error {
 impl Error {
 	pub fn is_recoverable(&self) -> bool {
 		match self {
-			Error::HorizonResponseError { status, reqwest, .. } => {
-				if let Some(e) = reqwest {
+			Error::HorizonResponseError { status, error, .. } => {
+				if let Some(e) = error {
 					if e.is_timeout() {
 						return true
 					}
@@ -80,8 +76,8 @@ impl Error {
 		let server_errors = 500u16..599;
 
 		match self {
-			Error::HorizonResponseError { status, reqwest, .. } => {
-				if let Some(e) = reqwest {
+			Error::HorizonResponseError { status, error, .. } => {
+				if let Some(e) = error {
 					return e
 						.status()
 						.map(|code| server_errors.contains(&code.as_u16()))
@@ -102,7 +98,7 @@ impl Error {
 
 	pub fn response_decode_error(status: StatusCode, response_in_bytes: &[u8]) -> Self {
 		let resp_as_str = std::str::from_utf8(response_in_bytes).map(|s| s.to_string()).ok();
-		Error::HorizonResponseError { reqwest: None, status: Some(status), other: resp_as_str }
+		Error::HorizonResponseError { error: None, status: Some(status), other: resp_as_str }
 	}
 
 	pub fn cache_error(kind: CacheErrorKind) -> Self {

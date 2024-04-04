@@ -195,9 +195,7 @@ pub async fn assert_issue(
 		)
 		.await
 		{
-			Ok(response) => {
-				break response
-			},
+			Ok(response) => break response,
 			Err(e) =>
 				if !e.is_recoverable() {
 					panic!("failed to send address: {e:?}");

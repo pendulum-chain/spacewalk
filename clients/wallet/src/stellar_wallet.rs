@@ -108,7 +108,7 @@ impl StellarWallet {
 			.pool_max_idle_per_host(usize::MAX / 2)
 			.build()
 			.map_err(|e| Error::HorizonResponseError {
-				reqwest: Some(e),
+				error: Some(e),
 				status: None,
 				other: None,
 			})?;
