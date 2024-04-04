@@ -184,16 +184,26 @@ pub async fn assert_issue(
 
 	let destination_public_key = PublicKey::from_binary(issue.vault_stellar_public_key);
 
-	let response = send_payment_to_address(
-		wallet,
-		destination_public_key,
-		asset,
-		stroop_amount,
-		issue.issue_id.0,
-		false,
-	)
-	.await
-	.expect("should return ok");
+	let response = loop {
+		match send_payment_to_address(
+			wallet.clone(),
+			destination_public_key.clone(),
+			asset.clone(),
+			stroop_amount,
+			issue.issue_id.0,
+			false,
+		)
+		.await
+		{
+			Ok(response) => {
+				break response
+			},
+			Err(e) =>
+				if !e.is_recoverable() {
+					panic!("failed to send address: {e:?}");
+				},
+		}
+	};
 
 	let slot = response.ledger as u64;
 
