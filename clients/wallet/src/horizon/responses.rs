@@ -50,33 +50,23 @@ pub(crate) async fn interpret_response<T: DeserializeOwned>(
 	tracing::info!("interpret_response(): status: {status:?}");
 
 	let response_body = response.bytes().await.map_err(|e| {
-		tracing::error!("interpret_response(): response failed to convert to bytes");
+		tracing::warn!("interpret_response(): cannot convert response to bytes: {e:?}");
 		Error::HorizonResponseError { reqwest: Some(e), status: Some(status.as_u16()), other: None }
 	})?;
 
 	if status.is_success() {
-		return serde_json::from_slice(&response_body).map_err(|_| {
-			let resp_as_str = std::str::from_utf8(&response_body).map(|s| s.to_string())
-				.ok();
-			tracing::error!("interpret_response():  response was a success but failed with conversion: {resp_as_str:?}");
-			Error::HorizonResponseError {
-				reqwest: None,
-				status: Some(status.as_u16()),
-				other: resp_as_str,
-			}
-		});
+		return serde_json::from_slice(&response_body).map_err(|e| {
+			tracing::warn!(
+				"interpret_response():  response was a success but failed with conversion: {e:?}"
+			);
+			Error::response_decode_error(status.as_u16(), &response_body)
+		})
 	}
 
 	let Ok(resp) = serde_json::from_slice::<serde_json::Value>(&response_body) else {
-		let resp_as_str = std::str::from_utf8(&response_body).map(|s| s.to_string())
-			.ok();
-		tracing::error!("interpret_response(): cannot convert error response to json: {resp_as_str:?}");
+		tracing::warn!("interpret_response(): cannot convert error response to json");
 
-		return Err(Error::HorizonResponseError {
-			reqwest: None,
-			status: Some(status.as_u16()),
-			other: resp_as_str,
-		});
+		return Err(Error::response_decode_error(status.as_u16(), &response_body));
 	};
 
 	let status =

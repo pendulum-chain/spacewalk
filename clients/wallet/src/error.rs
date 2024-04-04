@@ -100,6 +100,11 @@ impl Error {
 		}
 	}
 
+	pub fn response_decode_error(status: StatusCode, response_in_bytes: &[u8]) -> Self {
+		let resp_as_str = std::str::from_utf8(response_in_bytes).map(|s| s.to_string()).ok();
+		Error::HorizonResponseError { reqwest: None, status: Some(status), other: resp_as_str }
+	}
+
 	pub fn cache_error(kind: CacheErrorKind) -> Self {
 		Self::CacheError(CacheError { kind, path: None, envelope: None, sequence_number: None })
 	}
