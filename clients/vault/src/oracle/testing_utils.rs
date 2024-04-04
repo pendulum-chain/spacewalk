@@ -1,5 +1,4 @@
 use stellar_relay_lib::sdk::SecretKey;
-use wallet::keys::{get_source_secret_key_from_env, get_dest_secret_key_from_env};
 
 pub fn random_stellar_relay_config(is_mainnet: bool) -> stellar_relay_lib::StellarOverlayConfig {
 	use rand::seq::SliceRandom;
