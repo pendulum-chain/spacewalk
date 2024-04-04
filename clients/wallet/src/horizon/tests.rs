@@ -9,8 +9,6 @@ use crate::{
 	mock::secret_key_from_encoding,
 	keys::get_source_secret_key_from_env,
 };
-#[allow(unused_imports)]
-use mockall::predicate::*;
 
 use primitives::stellar::{
 	network::{Network, PUBLIC_NETWORK, TEST_NETWORK},
@@ -98,11 +96,11 @@ async fn horizon_submit_transaction_success() {
 	let amount = 100;
 
 	// Build simple transaction
-	let tx_env = build_simple_transaction(source, destination, amount, false)
+	let tx_env = build_simple_transaction(source, destination, amount, is_public_network)
 		.await
 		.expect("Failed to build transaction");
 
-	match horizon_client.submit_transaction(tx_env, false, 3, 2).await {
+	match horizon_client.submit_transaction(tx_env, is_public_network, 3, 2).await {
 		Ok(res) => {
 			assert!(res.successful);
 			assert!(res.ledger > 0);
@@ -175,7 +173,7 @@ async fn fetch_transactions_iter_success() {
 	let horizon_client = reqwest::Client::new();
 	let is_public_network = false;
 	let secret = secret_key_from_encoding(&get_source_secret_key_from_env(is_public_network));
-	let fetcher = HorizonFetcher::new(horizon_client, secret.get_public().clone(), false);
+	let fetcher = HorizonFetcher::new(horizon_client, secret.get_public().clone(), is_public_network);
 
 	let mut txs_iter = fetcher.fetch_transactions_iter(0).await.expect("should return a response");
 

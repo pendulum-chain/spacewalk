@@ -44,13 +44,6 @@ fn stellar_relay_config_abs_path(
 		.expect("should be able to extract config")
 }
 
-pub fn get_secret_key_from_env(with_currency: bool, is_mainnet: bool) -> String {
-	match with_currency {
-		true => get_source_secret_key_from_env(is_mainnet),
-		false => get_dest_secret_key_from_env(is_mainnet),
-	}
-}
-
 pub fn get_random_secret_key() -> String {
 	// Generate a new random Stellar keypair
 	let secret = SecretKey::from_binary(rand::random());

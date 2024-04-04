@@ -23,7 +23,8 @@ mod helper;
 
 use helper::*;
 use primitives::DecimalsLookup;
-use vault::oracle::{get_secret_key_from_env,  random_stellar_relay_config, start_oracle_agent};
+use vault::oracle::{ random_stellar_relay_config, start_oracle_agent};
+use wallet::keys::get_source_secret_key_from_env;
 
 #[tokio::test(flavor = "multi_thread")]
 #[serial]
@@ -664,7 +665,7 @@ async fn test_issue_execution_succeeds_from_archive() {
 			let shutdown_tx = ShutdownSender::new();
 			let stellar_config = random_stellar_relay_config(is_public_network);
 			
-			let vault_stellar_secret = get_secret_key_from_env(true, is_public_network);
+			let vault_stellar_secret = get_source_secret_key_from_env(is_public_network);
 			// Create new oracle agent with the same configuration as the previous one
 			let oracle_agent =
 				start_oracle_agent(stellar_config.clone(), &vault_stellar_secret, shutdown_tx)

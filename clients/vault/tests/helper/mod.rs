@@ -20,10 +20,10 @@ use std::{future::Future, sync::Arc};
 use stellar_relay_lib::StellarOverlayConfig;
 use tokio::sync::RwLock;
 use vault::{
-	oracle::{get_secret_key_from_env, random_stellar_relay_config, start_oracle_agent, OracleAgent},
+	oracle::{random_stellar_relay_config, start_oracle_agent, OracleAgent},
 	ArcRwLock,
 };
-use wallet::StellarWallet;
+use wallet::{StellarWallet, keys::{get_dest_secret_key_from_env, get_source_secret_key_from_env}};
 
 pub type StellarPublicKey = [u8; 32];
 
@@ -83,8 +83,8 @@ async fn setup_chain_providers(
 	let path = tmp_dir.path().to_str().expect("should return a string").to_string();
 
 	let stellar_config = random_stellar_relay_config(is_public_network);
-	let vault_stellar_secret = &get_secret_key_from_env(true, is_public_network);
-	let user_stellar_secret = &get_secret_key_from_env(false, is_public_network);
+	let vault_stellar_secret = &get_source_secret_key_from_env(is_public_network);
+	let user_stellar_secret = &get_dest_secret_key_from_env(is_public_network);
 
 	let (vault_wallet, user_wallet) =
 		initialize_wallets(&vault_stellar_secret, &user_stellar_secret, path, stellar_config).await;
@@ -137,7 +137,7 @@ where
 	);
 
 	let stellar_config = random_stellar_relay_config(is_public_network);
-	let vault_stellar_secret = get_secret_key_from_env(true, is_public_network);
+	let vault_stellar_secret = get_source_secret_key_from_env(is_public_network);
 
 	let shutdown_tx = ShutdownSender::new();
 	let oracle_agent =

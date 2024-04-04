@@ -13,8 +13,8 @@ fn get_env_variables(key: &str) -> Option<String> {
 
 pub fn get_dest_secret_key_from_env(is_mainnet: bool)-> String{
 	let maybe_secret = match is_mainnet {
-		true => get_env_variables("DEST_SECRET_MAINNET").expect("Failed to read secret key from environment"),
-		false => get_env_variables("DEST_SECRET_TESTNET").expect("Failed to read secret key from environment"),
+		true => get_env_variables("DEST_STELLAR_SECRET_MAINNET").expect("Failed to read secret key from environment"),
+		false => get_env_variables("DEST_STELLAR_SECRET_TESTNET").expect("Failed to read secret key from environment"),
 	};
 
 	maybe_secret
@@ -22,8 +22,8 @@ pub fn get_dest_secret_key_from_env(is_mainnet: bool)-> String{
 
 pub fn get_source_secret_key_from_env(is_mainnet: bool)-> String{
 	let maybe_secret = match is_mainnet {
-		true => get_env_variables("SOURCE_SECRET_MAINNET").expect("Failed to read secret key from environment"),
-		false => get_env_variables("SOURCE_SECRET_TESTNET").expect("Failed to read secret key from environment"),
+		true => get_env_variables("SOURCE_STELLAR_SECRET_MAINNET").expect("Failed to read secret key from environment"),
+		false => get_env_variables("SOURCE_STELLAR_SECRET_TESTNET").expect("Failed to read secret key from environment"),
 	};
 
 	maybe_secret
