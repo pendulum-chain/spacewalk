@@ -1,5 +1,5 @@
 use codec::Decode;
-use currency::{testing_constants::get_wrapped_currency_id, Amount};
+use currency::{testing_constants::DEFAULT_WRAPPED_CURRENCY, Amount};
 use frame_support::{assert_err, assert_noop, assert_ok, error::BadOrigin};
 use frame_system::RawOrigin;
 use mocktopus::mocking::*;
@@ -62,7 +62,7 @@ fn convert_with_exchange_rate(
 	Amount<Test>,
 ) -> MockResult<(CurrencyId, Amount<Test>), Result<Amount<Test>, DispatchError>> {
 	move |currency_id, amount| {
-		let amount = if currency_id == get_wrapped_currency_id() {
+		let amount = if currency_id == DEFAULT_WRAPPED_CURRENCY {
 			Amount::new(amount.amount() / exchange_rate, currency_id)
 		} else {
 			Amount::new(amount.amount() * exchange_rate, currency_id)
@@ -120,7 +120,7 @@ fn create_vault_and_issue_tokens(
 	assert_ok!(res);
 
 	// mint tokens to the vault
-	let amount = Amount::<Test>::new(issue_tokens, get_wrapped_currency_id());
+	let amount = Amount::<Test>::new(issue_tokens, DEFAULT_WRAPPED_CURRENCY);
 	amount.mint_to(&id.account_id).unwrap();
 
 	id
