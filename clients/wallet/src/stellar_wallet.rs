@@ -525,9 +525,16 @@ mod test {
 		let amount = 10_000; // in the response, value is 0.0010000.
 		let request_id = [1u8; 32];
 
+		// We create a new random destination because we need to make sure that it's not going to be
+		// a payment but a claimable balance operation. This is only the case if the account does
+		// not exist yet or does not have the trustline for the asset.
+		let random_binary = rand::random::<[u8; 32]>();
+		let destination_secret_key = SecretKey::from_binary(random_binary);
+		let destination = destination_secret_key.get_public().clone();
+
 		let response = wallet
 			.send_payment_to_address(
-				default_destination(),
+				destination.clone(),
 				default_usdc_asset(),
 				amount,
 				request_id,
@@ -562,7 +569,7 @@ mod test {
 				let claimant =
 					claimable_balance.claimants.first().expect("should return a claimant");
 
-				assert_eq!(claimant.destination, default_destination().to_encoding());
+				assert_eq!(claimant.destination, destination.to_encoding());
 			},
 			other => {
 				panic!("wrong operation result: {other:?}");
