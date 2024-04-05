@@ -413,6 +413,7 @@ mod test {
 	use crate::{
 		error::Error,
 		horizon::{responses::HorizonClaimableBalanceResponse, HorizonClient},
+		keys::get_source_secret_key_from_env,
 		mock::*,
 		StellarWallet,
 	};
@@ -420,14 +421,15 @@ mod test {
 		types::{
 			CreateAccountResult, CreateClaimableBalanceResult, OperationResult, OperationResultTr,
 		},
-		Asset as StellarAsset,
+		Asset as StellarAsset, SecretKey,
 	};
 	use serial_test::serial;
+	use std::str::from_utf8;
 
 	#[test]
 	fn test_add_backoff_delay() {
 		let wallet = StellarWallet::from_secret_encoded_with_cache(
-			&STELLAR_VAULT_SECRET_KEY.to_string(),
+			&get_source_secret_key_from_env(IS_PUBLIC_NETWORK),
 			IS_PUBLIC_NETWORK,
 			"resources/test_add_backoff_delay".to_owned(),
 		)
@@ -445,7 +447,7 @@ mod test {
 	#[test]
 	fn test_add_retry_attempt() {
 		let wallet = StellarWallet::from_secret_encoded_with_cache(
-			&STELLAR_VAULT_SECRET_KEY.to_string(),
+			&get_source_secret_key_from_env(IS_PUBLIC_NETWORK),
 			IS_PUBLIC_NETWORK,
 			"resources/test_add_retry_attempt".to_owned(),
 		)
@@ -573,8 +575,12 @@ mod test {
 	#[tokio::test]
 	#[serial]
 	async fn sending_payment_using_create_account_works() {
-		let inactive_secret_key = "SARVWH4LUAR3K5URYJY7DQLXURZUPEBNJYYPMZDRAZWNCQGYIKHPYXC7";
-		let destination_secret_key = secret_key_from_encoding(inactive_secret_key);
+		// Create a new random secret key (supposedly inactive) to be used as destination.
+		let random_binary = rand::random::<[u8; 32]>();
+		let inactive_secret_key = SecretKey::from_binary(random_binary);
+		let inactive_secret_encoded = &inactive_secret_key.to_encoding();
+		let inactive_secret_encoded = from_utf8(inactive_secret_encoded).expect("should work");
+		let destination_secret_key = secret_key_from_encoding(inactive_secret_encoded);
 		let storage_path = "resources/sending_payment_using_claimable_balance_works";
 
 		let wallet = wallet_with_storage(storage_path).expect("should return an arc rwlock wallet");
@@ -613,12 +619,13 @@ mod test {
 
 				// new wallet created, with the previous destination address acting as "SOURCE".
 				let temp_wallet =
-					wallet_with_secret_key_for_storage(storage_path, inactive_secret_key)
+					wallet_with_secret_key_for_storage(storage_path, inactive_secret_encoded)
 						.expect("should return a wallet instance");
 				let mut temp_wallet = temp_wallet.write().await;
 
 				// returning back stellar stroops to `wallet`
-				let secret_key = secret_key_from_encoding(STELLAR_VAULT_SECRET_KEY);
+				let secret_key =
+					secret_key_from_encoding(get_source_secret_key_from_env(IS_PUBLIC_NETWORK));
 
 				// merging the `temp_wallet` to `wallet`
 				let _ = temp_wallet
