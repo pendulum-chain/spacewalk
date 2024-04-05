@@ -3,6 +3,10 @@ use std::{sync::Arc, time::Duration};
 use futures::{channel::mpsc::Sender, future::try_join3, SinkExt};
 use tokio::sync::RwLock;
 
+use crate::{
+	cancellation::Event, error::Error, oracle::OracleAgent, requests::Request,
+	system::VaultIdManager,
+};
 use runtime::{
 	AcceptReplaceEvent, CollateralBalancesPallet, ExecuteReplaceEvent, PrettyPrint, ReplacePallet,
 	RequestReplaceEvent, ShutdownSender, SpacewalkParachain, UtilFuncs, VaultId,
@@ -10,10 +14,6 @@ use runtime::{
 };
 use service::{spawn_cancelable, Error as ServiceError};
 use wallet::StellarWallet;
-use crate::{
-	cancellation::Event, error::Error, oracle::OracleAgent, requests::Request,
-	system::VaultIdManager,
-};
 
 /// Listen for AcceptReplaceEvent directed at this vault and continue the replacement
 /// procedure by transferring the corresponding Stellar assets and calling execute_replace.
@@ -234,7 +234,7 @@ mod tests {
 		SpacewalkVault, StellarPublicKeyRaw, VaultId, H256,
 	};
 
-	use wallet::{StellarWallet, keys::get_source_secret_key_from_env};
+	use wallet::{keys::get_source_secret_key_from_env, StellarWallet};
 
 	use super::*;
 

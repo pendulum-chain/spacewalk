@@ -23,7 +23,10 @@ use vault::{
 	oracle::{random_stellar_relay_config, start_oracle_agent, OracleAgent},
 	ArcRwLock,
 };
-use wallet::{StellarWallet, keys::{get_dest_secret_key_from_env, get_source_secret_key_from_env}};
+use wallet::{
+	keys::{get_dest_secret_key_from_env, get_source_secret_key_from_env},
+	StellarWallet,
+};
 
 pub type StellarPublicKey = [u8; 32];
 

@@ -8,12 +8,12 @@ pub use task::*;
 mod cache;
 pub mod error;
 mod horizon;
+#[cfg(feature = "testing-utils")]
+pub mod keys;
 pub mod operations;
 mod stellar_wallet;
 mod task;
 pub mod types;
-#[cfg(feature = "testing-utils")]
-pub mod keys;
 
 #[cfg(test)]
 pub(crate) mod mock;
@@ -24,4 +24,3 @@ pub use resubmissions::*;
 pub use types::{LedgerTxEnvMap, Slot};
 
 pub type TransactionsResponseIter = horizon::responses::TransactionsResponseIter<reqwest::Client>;
-
