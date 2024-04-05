@@ -18,15 +18,18 @@ use stellar_relay_lib::sdk::{PublicKey, SecretKey};
 use vault::{oracle::OracleAgent, ArcRwLock};
 use wallet::{error::Error, StellarWallet, TransactionResponse};
 
-use wallet::keys::{get_dest_secret_key_from_env};
+use wallet::keys::get_source_secret_key_from_env;
 
-
-pub fn default_destination(is_public_network: bool) -> SecretKey {
-	SecretKey::from_encoding(get_dest_secret_key_from_env(is_public_network)).expect("Should work")
+pub fn default_vault_stellar_secret(is_public_network: bool) -> SecretKey {
+	SecretKey::from_encoding(get_source_secret_key_from_env(is_public_network))
+		.expect("Should work")
 }
 
-pub fn default_destination_as_binary(is_public_network: bool) -> [u8; 32] {
-	default_destination(is_public_network).get_public().clone().into_binary()
+pub fn default_vault_stellar_address_as_binary(is_public_network: bool) -> [u8; 32] {
+	default_vault_stellar_secret(is_public_network)
+		.get_public()
+		.clone()
+		.into_binary()
 }
 
 pub fn default_wrapped_currency(is_public_network: bool) -> CurrencyId {
@@ -93,11 +96,11 @@ pub async fn register_vault(
 	vault_collateral
 }
 
-pub async fn register_vault_with_default_destination(
+pub async fn register_vault_with_default_stellar_account(
 	items: Vec<(&SpacewalkParachain, &VaultId, u128)>,
 	is_public_network: bool,
 ) -> u128 {
-	let public_key = default_destination(is_public_network).get_public().clone();
+	let public_key = default_vault_stellar_secret(is_public_network).get_public().clone();
 
 	register_vault(public_key, items).await
 }

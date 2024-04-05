@@ -23,7 +23,7 @@ mod helper;
 
 use helper::*;
 use primitives::DecimalsLookup;
-use vault::oracle::{ random_stellar_relay_config, start_oracle_agent};
+use vault::oracle::{random_stellar_relay_config, start_oracle_agent};
 use wallet::keys::get_source_secret_key_from_env;
 
 #[tokio::test(flavor = "multi_thread")]
@@ -85,7 +85,7 @@ async fn test_redeem_succeeds_on_network(is_public_network: bool) {
 					.register_vault_with_public_key(
 						&vault_id,
 						vault_collateral,
-						default_destination_as_binary(is_public_network)
+						default_vault_stellar_address_as_binary(is_public_network)
 					)
 					.await
 			);
@@ -275,7 +275,7 @@ async fn test_withdraw_replace_succeeds() {
 
 			let issue_amount = upscaled_compatible_amount(100);
 
-			let vault_collateral = register_vault_with_default_destination(
+			let vault_collateral = register_vault_with_default_stellar_account(
 				vec![
 					(&old_vault_provider, &old_vault_id, issue_amount),
 					(&new_vault_provider, &new_vault_id, issue_amount),
@@ -613,7 +613,7 @@ async fn test_issue_execution_succeeds_from_archive() {
 		|client, _vault_wallet, user_wallet, _oracle_agent, vault_id, vault_provider| async move {
 			let user_provider = setup_provider(client.clone(), AccountKeyring::Dave).await;
 
-			let public_key = default_destination_as_binary(is_public_network);
+			let public_key = default_vault_stellar_address_as_binary(is_public_network);
 
 			let issue_amount = upscaled_compatible_amount(100);
 			let vault_collateral = get_required_vault_collateral_for_issue(
@@ -664,7 +664,7 @@ async fn test_issue_execution_succeeds_from_archive() {
 
 			let shutdown_tx = ShutdownSender::new();
 			let stellar_config = random_stellar_relay_config(is_public_network);
-			
+
 			let vault_stellar_secret = get_source_secret_key_from_env(is_public_network);
 			// Create new oracle agent with the same configuration as the previous one
 			let oracle_agent =
@@ -711,7 +711,7 @@ async fn test_issue_overpayment_succeeds() {
 		|client, _vault_wallet, user_wallet, oracle_agent, vault_id, vault_provider| async move {
 			let user_provider = setup_provider(client.clone(), AccountKeyring::Dave).await;
 
-			let public_key = default_destination_as_binary(is_public_network);
+			let public_key = default_vault_stellar_address_as_binary(is_public_network);
 
 			let issue_amount = upscaled_compatible_amount(100);
 			let over_payment_factor = 3;
@@ -1201,7 +1201,7 @@ async fn test_off_chain_liquidation() {
 					.register_vault_with_public_key(
 						&vault_id,
 						vault_collateral,
-						default_destination_as_binary(is_public_network)
+						default_vault_stellar_address_as_binary(is_public_network)
 					)
 					.await
 			);
