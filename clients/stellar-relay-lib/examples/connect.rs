@@ -4,6 +4,8 @@ use stellar_relay_lib::{
 	StellarOverlayConfig,
 };
 
+use wallet::keys::get_source_secret_key_from_env;
+
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
 	env_logger::init();
@@ -11,19 +13,14 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 	let args: Vec<String> = std::env::args().collect();
 	let arg_network = if args.len() > 1 { &args[1] } else { "testnet" };
 
-	let (cfg_file_path, sk_file_path) = if arg_network == "mainnet" {
-		(
-			"./clients/stellar-relay-lib/resources/config/mainnet/stellar_relay_config_mainnet_iowa.json",
-			"./clients/stellar-relay-lib/resources/secretkey/stellar_secretkey_mainnet",
-		)
+	let cfg_file_path = if arg_network == "mainnet" {
+		"./clients/stellar-relay-lib/resources/config/mainnet/stellar_relay_config_mainnet_iowa.json"
 	} else {
-		(
-			"./clients/stellar-relay-lib/resources/config/testnet/stellar_relay_config_sdftest1.json",
-			"./clients/stellar-relay-lib/resources/secretkey/stellar_secretkey_testnet",
-		)
+		"./clients/stellar-relay-lib/resources/config/testnet/stellar_relay_config_sdftest1.json"
 	};
 	let cfg = StellarOverlayConfig::try_from_path(cfg_file_path)?;
-	let secret_key = std::fs::read_to_string(sk_file_path)?;
+
+	let secret_key = get_source_secret_key_from_env(arg_network == "mainnet");
 
 	let mut overlay_connection = connect_to_stellar_overlay_network(cfg, &secret_key).await?;
 

@@ -1,6 +1,7 @@
 use crate::{
 	error::Error,
 	horizon::HorizonClient,
+	keys::{get_dest_secret_key_from_env, get_source_secret_key_from_env},
 	operations::{
 		create_basic_spacewalk_stellar_transaction, create_payment_operation,
 		redeem_request_tests::create_account_merge_operation, AppendExt,
@@ -16,10 +17,6 @@ use primitives::{
 use std::sync::Arc;
 use tokio::sync::RwLock;
 
-pub const DEFAULT_DEST_PUBLIC_KEY: &str =
-	"GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN";
-pub const STELLAR_VAULT_SECRET_KEY: &str =
-	"SCV7RZN5XYYMMVSWYCR4XUMB76FFMKKKNHP63UTZQKVM4STWSCIRLWFJ";
 pub const IS_PUBLIC_NETWORK: bool = false;
 
 pub const DEFAULT_STROOP_FEE_PER_OPERATION: u32 = 100;
@@ -119,7 +116,8 @@ impl StellarWallet {
 }
 
 pub fn wallet_with_storage(storage: &str) -> Result<Arc<RwLock<StellarWallet>>, Error> {
-	wallet_with_secret_key_for_storage(storage, STELLAR_VAULT_SECRET_KEY)
+	let secret = get_source_secret_key_from_env(IS_PUBLIC_NETWORK);
+	wallet_with_secret_key_for_storage(storage, &secret)
 }
 
 pub fn wallet_with_secret_key_for_storage(
@@ -134,7 +132,9 @@ pub fn wallet_with_secret_key_for_storage(
 }
 
 pub fn default_destination() -> PublicKey {
-	public_key_from_encoding(DEFAULT_DEST_PUBLIC_KEY)
+	let dest_secret = get_dest_secret_key_from_env(IS_PUBLIC_NETWORK);
+	let dest_secret_key = SecretKey::from_encoding(dest_secret).expect("should work");
+	dest_secret_key.get_public().clone()
 }
 
 pub const USDC_ISSUER: &str = "GAKNDFRRWA3RPWNLTI3G4EBSD3RGNZZOY5WKWYMQ6CQTG3KIEKPYWAYC";

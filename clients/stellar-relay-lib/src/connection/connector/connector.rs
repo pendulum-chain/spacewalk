@@ -270,6 +270,8 @@ mod test {
 		ConnectionInfo,
 	};
 
+	use wallet::keys::get_source_secret_key_from_env;
+
 	fn create_auth_cert_from_connection_auth(
 		connector_auth: &ConnectionAuth,
 	) -> substrate_stellar_sdk::types::AuthCert {
@@ -286,9 +288,8 @@ mod test {
 
 	async fn create_connector() -> (NodeInfo, ConnectionInfo, Connector) {
 		let cfg_file_path = "./resources/config/testnet/stellar_relay_config_sdftest1.json";
-		let secret_key_path = "./resources/secretkey/stellar_secretkey_testnet";
-		let secret_key =
-			std::fs::read_to_string(secret_key_path).expect("should be able to read file");
+		let is_public_network = false;
+		let secret_key = get_source_secret_key_from_env(is_public_network);
 
 		let cfg =
 			StellarOverlayConfig::try_from_path(cfg_file_path).expect("should create a config");

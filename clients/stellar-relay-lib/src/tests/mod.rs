@@ -9,14 +9,10 @@ use substrate_stellar_sdk::{
 	Hash, IntoHash,
 };
 
-fn secret_key(is_mainnet: bool) -> String {
-	let path = if is_mainnet {
-		"./resources/secretkey/stellar_secretkey_mainnet"
-	} else {
-		"./resources/secretkey/stellar_secretkey_testnet"
-	};
+use wallet::keys::get_source_secret_key_from_env;
 
-	std::fs::read_to_string(path).expect("should be able to read file")
+fn secret_key(is_mainnet: bool) -> String {
+	get_source_secret_key_from_env(is_mainnet)
 }
 
 fn overlay_infos(is_mainnet: bool) -> (NodeInfo, ConnectionInfo) {

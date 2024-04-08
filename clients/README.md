@@ -58,6 +58,25 @@ cargo run --bin vault --features parachain-metadata -- --keyring alice --spacewa
 
 ## Tests
 
+### Prerequisites
+
+For the successful completion of some tests, you need to have access to Stellar accounts.
+You need to have a source and destination account for each Stellar mainnet and testnet.
+The secrets for these accounts can either be provided as environment variables or in a file.
+The file should contain the secrets in the following format and placed in `/clients/.env`:
+
+```
+SOURCE_STELLAR_SECRET_MAINNET=SABC...
+DEST_STELLAR_SECRET_MAINNET=SABC...
+
+SOURCE_STELLAR_SECRET_TESTNET=SABC...
+DEST_STELLAR_SECRET_TESTNET=SABC...
+```
+
+You can also find an example for setting these variables in the `.env.example` file.
+
+### Running the tests
+
 To run the tests (unit and integration tests) for the spacewalk vault client run
 
 ```
