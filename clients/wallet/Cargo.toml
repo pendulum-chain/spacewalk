@@ -2,7 +2,7 @@
 authors = ["Pendulum Chain <https://github.com/pendulum-chain>"]
 edition = "2021"
 name = "wallet"
-version = "1.0.6"
+version = "1.0.7"
 
 [features]
 default = []
