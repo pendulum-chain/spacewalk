@@ -20,6 +20,10 @@ target/
 .idea
 .vscode
 
+# Envirnoment file (any path)
+**/.env
+# Allow the example env file
+!**/.env.example
 
 # Added by cargo
 

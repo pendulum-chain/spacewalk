@@ -6,9 +6,10 @@ use crate::{
 		responses::{HorizonClaimableBalanceResponse, TransactionResponse},
 		traits::HorizonClient,
 	},
+	keys::get_source_secret_key_from_env,
 	mock::secret_key_from_encoding,
 };
-use mockall::predicate::*;
+
 use primitives::stellar::{
 	network::{Network, PUBLIC_NETWORK, TEST_NETWORK},
 	types::Preconditions,
@@ -19,8 +20,6 @@ use tokio::sync::RwLock;
 use crate::types::FilterWith;
 
 use super::*;
-
-const SECRET: &str = "SB6WHKIU2HGVBRNKNOEOQUY4GFC4ZLG5XPGWLEAHTIZXBXXYACC76VSQ";
 
 #[derive(Clone)]
 struct MockFilter;
@@ -87,19 +86,20 @@ async fn build_simple_transaction(
 
 #[tokio::test(flavor = "multi_thread")]
 async fn horizon_submit_transaction_success() {
+	let is_public_network = false;
 	let horizon_client = reqwest::Client::new();
 
-	let source = secret_key_from_encoding(SECRET);
+	let source = secret_key_from_encoding(&get_source_secret_key_from_env(is_public_network));
 	// The destination is the same account as the source
 	let destination = source.get_public().clone();
 	let amount = 100;
 
 	// Build simple transaction
-	let tx_env = build_simple_transaction(source, destination, amount, false)
+	let tx_env = build_simple_transaction(source, destination, amount, is_public_network)
 		.await
 		.expect("Failed to build transaction");
 
-	match horizon_client.submit_transaction(tx_env, false, 3, 2).await {
+	match horizon_client.submit_transaction(tx_env, is_public_network, 3, 2).await {
 		Ok(res) => {
 			assert!(res.successful);
 			assert!(res.ledger > 0);
@@ -170,8 +170,10 @@ async fn horizon_get_transaction_success() {
 #[tokio::test(flavor = "multi_thread")]
 async fn fetch_transactions_iter_success() {
 	let horizon_client = reqwest::Client::new();
-	let secret = secret_key_from_encoding(SECRET);
-	let fetcher = HorizonFetcher::new(horizon_client, secret.get_public().clone(), false);
+	let is_public_network = false;
+	let secret = secret_key_from_encoding(&get_source_secret_key_from_env(is_public_network));
+	let fetcher =
+		HorizonFetcher::new(horizon_client, secret.get_public().clone(), is_public_network);
 
 	let mut txs_iter = fetcher.fetch_transactions_iter(0).await.expect("should return a response");
 
@@ -198,10 +200,12 @@ async fn fetch_horizon_and_process_new_transactions_success() {
 	let issue_hashes = Arc::new(RwLock::new(vec![]));
 	let memos_to_issue_ids = Arc::new(RwLock::new(vec![]));
 	let slot_env_map = Arc::new(RwLock::new(HashMap::new()));
+	let is_public_network = false;
 
 	let horizon_client = reqwest::Client::new();
-	let secret = secret_key_from_encoding(SECRET);
-	let mut fetcher = HorizonFetcher::new(horizon_client, secret.get_public().clone(), false);
+	let secret = secret_key_from_encoding(&get_source_secret_key_from_env(is_public_network));
+	let mut fetcher =
+		HorizonFetcher::new(horizon_client, secret.get_public().clone(), is_public_network);
 
 	let mut iter = fetcher.fetch_transactions_iter(0).await.expect("should return a response");
 	let Some(response) = iter.next_back() else {

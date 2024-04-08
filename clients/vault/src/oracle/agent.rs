@@ -204,13 +204,13 @@ impl OracleAgent {
 
 #[cfg(test)]
 mod tests {
-	use crate::oracle::{
-		get_random_secret_key, get_secret_key, specific_stellar_relay_config,
-		traits::ArchiveStorage, ScpArchiveStorage, TransactionsArchiveStorage,
-	};
-
 	use super::*;
+	use crate::oracle::{
+		get_random_secret_key, specific_stellar_relay_config, traits::ArchiveStorage,
+		ScpArchiveStorage, TransactionsArchiveStorage,
+	};
 	use serial_test::serial;
+	use wallet::keys::get_source_secret_key_from_env;
 
 	#[tokio::test(flavor = "multi_thread")]
 	#[ntest::timeout(600_000)] // timeout at 10 minutes
@@ -250,14 +250,14 @@ mod tests {
 		// let it run for a few seconds, making sure that the other tests have successfully shutdown
 		// their connection to Stellar Node
 		sleep(Duration::from_secs(2)).await;
-
+		let is_public_network = true;
 		let scp_archive_storage = ScpArchiveStorage::default();
 		let tx_archive_storage = TransactionsArchiveStorage::default();
 
 		let shutdown_sender = ShutdownSender::new();
 		let agent = start_oracle_agent(
-			specific_stellar_relay_config(true, 1),
-			&get_secret_key(true, true),
+			specific_stellar_relay_config(is_public_network, 1),
+			&get_source_secret_key_from_env(is_public_network),
 			shutdown_sender,
 		)
 		.await
@@ -281,7 +281,7 @@ mod tests {
 		// let it run for a few seconds, making sure that the other tests have successfully shutdown
 		// their connection to Stellar Node
 		sleep(Duration::from_secs(2)).await;
-
+		let is_public_network = true;
 		let scp_archive_storage = ScpArchiveStorage::default();
 		let tx_archive_storage = TransactionsArchiveStorage::default();
 
@@ -296,10 +296,13 @@ mod tests {
 			StellarOverlayConfig { stellar_history_archive_urls: archive_urls, ..base_config };
 
 		let shutdown_sender = ShutdownSender::new();
-		let agent =
-			start_oracle_agent(modified_config, &get_secret_key(true, true), shutdown_sender)
-				.await
-				.expect("Failed to start agent");
+		let agent = start_oracle_agent(
+			modified_config,
+			&get_source_secret_key_from_env(is_public_network),
+			shutdown_sender,
+		)
+		.await
+		.expect("Failed to start agent");
 
 		sleep(Duration::from_secs(5)).await;
 		// This slot should be archived on the public network
@@ -318,15 +321,20 @@ mod tests {
 	async fn test_get_proof_for_archived_slot_fails_without_archives() {
 		let scp_archive_storage = ScpArchiveStorage::default();
 		let tx_archive_storage = TransactionsArchiveStorage::default();
+		let is_public_network = true;
 
 		let base_config = specific_stellar_relay_config(true, 0);
 		let modified_config: StellarOverlayConfig =
 			StellarOverlayConfig { stellar_history_archive_urls: vec![], ..base_config };
 
 		let shutdown = ShutdownSender::new();
-		let agent = start_oracle_agent(modified_config, &get_secret_key(true, true), shutdown)
-			.await
-			.expect("Failed to start agent");
+		let agent = start_oracle_agent(
+			modified_config,
+			&get_source_secret_key_from_env(is_public_network),
+			shutdown,
+		)
+		.await
+		.expect("Failed to start agent");
 
 		// This slot should be archived on the public network
 		let target_slot = 44041116;
