@@ -18,9 +18,9 @@ use substrate_stellar_sdk::{
 
 fn mock_connection_auth() -> ConnectionAuth {
 	let public_network = Network::new(b"Public Global Stellar Network ; September 2015");
-	let secret =
-		SecretKey::from_encoding("SCV6Q3VU4S52KVNJOFXWTHFUPHUKVYK3UV2ISGRLIUH54UGC6OPZVK2D")
-			.expect("should work");
+	// Create a new random secret key for the connection
+	let random_binary = rand::random();
+	let secret = SecretKey::from_binary(random_binary);
 
 	ConnectionAuth::new(public_network.get_id(), secret, 0)
 }
