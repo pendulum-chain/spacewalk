@@ -46,14 +46,27 @@ macro_rules! debug_str_or_vec_u8 {
 pub(crate) async fn interpret_response<T: DeserializeOwned>(
 	response: reqwest::Response,
 ) -> Result<T, Error> {
-	if response.status().is_success() {
-		return response.json::<T>().await.map_err(Error::HorizonResponseError)
+	let status = response.status();
+
+	let response_body = response.bytes().await.map_err(|e| {
+		tracing::warn!("interpret_response(): cannot convert response to bytes: {e:?}");
+		Error::HorizonResponseError { error: Some(e), status: Some(status.as_u16()), other: None }
+	})?;
+
+	if status.is_success() {
+		return serde_json::from_slice(&response_body).map_err(|e| {
+			tracing::warn!(
+				"interpret_response():  response was a success but failed with conversion: {e:?}"
+			);
+			Error::response_decode_error(status.as_u16(), &response_body)
+		})
 	}
 
-	let resp = response
-		.json::<serde_json::Value>()
-		.await
-		.map_err(Error::HorizonResponseError)?;
+	let Ok(resp) = serde_json::from_slice::<serde_json::Value>(&response_body) else {
+		tracing::warn!("interpret_response(): cannot convert error response to json");
+
+		return Err(Error::response_decode_error(status.as_u16(), &response_body));
+	};
 
 	let status =
 		StatusCode::try_from(resp[RESPONSE_FIELD_STATUS].as_u64().unwrap_or(400)).unwrap_or(400);

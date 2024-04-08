@@ -106,7 +106,12 @@ impl StellarWallet {
 			.pool_idle_timeout(Some(Duration::from_secs(60)))
 			// default is usize max.
 			.pool_max_idle_per_host(usize::MAX / 2)
-			.build()?;
+			.build()
+			.map_err(|e| Error::HorizonResponseError {
+				error: Some(e),
+				status: None,
+				other: None,
+			})?;
 
 		Ok(StellarWallet {
 			secret_key,
