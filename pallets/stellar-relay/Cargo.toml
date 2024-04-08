@@ -1,6 +1,6 @@
 [package]
 name = "stellar-relay"
-version = "1.0.6"
+version = "1.0.7"
 description = "Spacewalk pallet for handling relayer functions"
 authors = ["Pendulum Chain <https://github.com/pendulum-chain>"]
 homepage = "https://pendulumchain.org/"
