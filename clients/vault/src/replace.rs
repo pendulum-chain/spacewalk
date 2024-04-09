@@ -3,6 +3,10 @@ use std::{sync::Arc, time::Duration};
 use futures::{channel::mpsc::Sender, future::try_join3, SinkExt};
 use tokio::sync::RwLock;
 
+use crate::{
+	cancellation::Event, error::Error, oracle::OracleAgent, requests::Request,
+	system::VaultIdManager,
+};
 use runtime::{
 	AcceptReplaceEvent, CollateralBalancesPallet, ExecuteReplaceEvent, PrettyPrint, ReplacePallet,
 	RequestReplaceEvent, ShutdownSender, SpacewalkParachain, UtilFuncs, VaultId,
@@ -10,11 +14,6 @@ use runtime::{
 };
 use service::{spawn_cancelable, Error as ServiceError};
 use wallet::StellarWallet;
-
-use crate::{
-	cancellation::Event, error::Error, oracle::OracleAgent, requests::Request,
-	system::VaultIdManager,
-};
 
 /// Listen for AcceptReplaceEvent directed at this vault and continue the replacement
 /// procedure by transferring the corresponding Stellar assets and calling execute_replace.
@@ -235,6 +234,8 @@ mod tests {
 		SpacewalkVault, StellarPublicKeyRaw, VaultId, H256,
 	};
 
+	use wallet::{keys::get_source_secret_key_from_env, StellarWallet};
+
 	use super::*;
 
 	macro_rules! assert_err {
@@ -309,12 +310,9 @@ mod tests {
 		VaultId::new(AccountId::new([1u8; 32]), CurrencyId::XCM(0), CurrencyId::Native)
 	}
 
-	const STELLAR_VAULT_SECRET_KEY: &str =
-		"SB6WHKIU2HGVBRNKNOEOQUY4GFC4ZLG5XPGWLEAHTIZXBXXYACC76VSQ";
-
 	fn wallet(is_public_network: bool, path: &Path) -> ArcRwLock<StellarWallet> {
 		let wallet = StellarWallet::from_secret_encoded_with_cache(
-			&STELLAR_VAULT_SECRET_KEY.to_string(),
+			&get_source_secret_key_from_env(is_public_network),
 			is_public_network,
 			path.to_str().expect("should return a string").to_string(),
 		)

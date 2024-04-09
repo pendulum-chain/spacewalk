@@ -43,14 +43,6 @@ fn stellar_relay_config_abs_path(
 		.expect("should be able to extract config")
 }
 
-pub fn get_secret_key(with_currency: bool, is_mainnet: bool) -> String {
-	let suffix = if with_currency { "_with_currency" } else { "" };
-	let directory = if is_mainnet { "mainnet" } else { "testnet" };
-
-	let path = format!("./resources/secretkey/{directory}/stellar_secretkey_{directory}{suffix}");
-	std::fs::read_to_string(path).expect("should return a string")
-}
-
 pub fn get_random_secret_key() -> String {
 	// Generate a new random Stellar keypair
 	let secret = SecretKey::from_binary(rand::random());

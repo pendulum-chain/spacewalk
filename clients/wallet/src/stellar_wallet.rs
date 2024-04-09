@@ -106,7 +106,12 @@ impl StellarWallet {
 			.pool_idle_timeout(Some(Duration::from_secs(60)))
 			// default is usize max.
 			.pool_max_idle_per_host(usize::MAX / 2)
-			.build()?;
+			.build()
+			.map_err(|e| Error::HorizonResponseError {
+				error: Some(e),
+				status: None,
+				other: None,
+			})?;
 
 		Ok(StellarWallet {
 			secret_key,
@@ -413,6 +418,7 @@ mod test {
 	use crate::{
 		error::Error,
 		horizon::{responses::HorizonClaimableBalanceResponse, HorizonClient},
+		keys::get_source_secret_key_from_env,
 		mock::*,
 		StellarWallet,
 	};
@@ -420,14 +426,15 @@ mod test {
 		types::{
 			CreateAccountResult, CreateClaimableBalanceResult, OperationResult, OperationResultTr,
 		},
-		Asset as StellarAsset,
+		Asset as StellarAsset, SecretKey,
 	};
 	use serial_test::serial;
+	use std::str::from_utf8;
 
 	#[test]
 	fn test_add_backoff_delay() {
 		let wallet = StellarWallet::from_secret_encoded_with_cache(
-			&STELLAR_VAULT_SECRET_KEY.to_string(),
+			&get_source_secret_key_from_env(IS_PUBLIC_NETWORK),
 			IS_PUBLIC_NETWORK,
 			"resources/test_add_backoff_delay".to_owned(),
 		)
@@ -445,7 +452,7 @@ mod test {
 	#[test]
 	fn test_add_retry_attempt() {
 		let wallet = StellarWallet::from_secret_encoded_with_cache(
-			&STELLAR_VAULT_SECRET_KEY.to_string(),
+			&get_source_secret_key_from_env(IS_PUBLIC_NETWORK),
 			IS_PUBLIC_NETWORK,
 			"resources/test_add_retry_attempt".to_owned(),
 		)
@@ -523,9 +530,16 @@ mod test {
 		let amount = 10_000; // in the response, value is 0.0010000.
 		let request_id = [1u8; 32];
 
+		// We create a new random destination because we need to make sure that it's not going to be
+		// a payment but a claimable balance operation. This is only the case if the account does
+		// not exist yet or does not have the trustline for the asset.
+		let random_binary = rand::random::<[u8; 32]>();
+		let destination_secret_key = SecretKey::from_binary(random_binary);
+		let destination = destination_secret_key.get_public().clone();
+
 		let response = wallet
 			.send_payment_to_address(
-				default_destination(),
+				destination.clone(),
 				default_usdc_asset(),
 				amount,
 				request_id,
@@ -560,7 +574,7 @@ mod test {
 				let claimant =
 					claimable_balance.claimants.first().expect("should return a claimant");
 
-				assert_eq!(claimant.destination, default_destination().to_encoding());
+				assert_eq!(claimant.destination, destination.to_encoding());
 			},
 			other => {
 				panic!("wrong operation result: {other:?}");
@@ -573,8 +587,12 @@ mod test {
 	#[tokio::test]
 	#[serial]
 	async fn sending_payment_using_create_account_works() {
-		let inactive_secret_key = "SARVWH4LUAR3K5URYJY7DQLXURZUPEBNJYYPMZDRAZWNCQGYIKHPYXC7";
-		let destination_secret_key = secret_key_from_encoding(inactive_secret_key);
+		// Create a new random secret key (supposedly inactive) to be used as destination.
+		let random_binary = rand::random::<[u8; 32]>();
+		let inactive_secret_key = SecretKey::from_binary(random_binary);
+		let inactive_secret_encoded = &inactive_secret_key.to_encoding();
+		let inactive_secret_encoded = from_utf8(inactive_secret_encoded).expect("should work");
+		let destination_secret_key = secret_key_from_encoding(inactive_secret_encoded);
 		let storage_path = "resources/sending_payment_using_claimable_balance_works";
 
 		let wallet = wallet_with_storage(storage_path).expect("should return an arc rwlock wallet");
@@ -613,12 +631,13 @@ mod test {
 
 				// new wallet created, with the previous destination address acting as "SOURCE".
 				let temp_wallet =
-					wallet_with_secret_key_for_storage(storage_path, inactive_secret_key)
+					wallet_with_secret_key_for_storage(storage_path, inactive_secret_encoded)
 						.expect("should return a wallet instance");
 				let mut temp_wallet = temp_wallet.write().await;
 
 				// returning back stellar stroops to `wallet`
-				let secret_key = secret_key_from_encoding(STELLAR_VAULT_SECRET_KEY);
+				let secret_key =
+					secret_key_from_encoding(get_source_secret_key_from_env(IS_PUBLIC_NETWORK));
 
 				// merging the `temp_wallet` to `wallet`
 				let _ = temp_wallet

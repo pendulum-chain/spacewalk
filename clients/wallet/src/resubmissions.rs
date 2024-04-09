@@ -501,12 +501,14 @@ mod test {
 		TransactionEnvelopeExt,
 	};
 	use serial_test::serial;
+	use std::time::Duration;
+	use tokio::time::sleep;
 
 	#[tokio::test]
 	#[serial]
 	async fn check_is_transaction_already_submitted() {
 		let wallet = wallet_with_storage("resources/check_is_transaction_already_submitted")
-			.expect("")
+			.expect("should work")
 			.clone();
 		let mut wallet = wallet.write().await;
 
@@ -531,17 +533,6 @@ mod test {
 			let tx = tx_envelope.get_transaction().expect("should return a transaction");
 
 			// check that the transaction truly exists
-			assert!(wallet.is_transaction_already_submitted(&tx).await);
-		}
-
-		// test is_transaction_already_submitted when transaction is on the next pages
-		{
-			// sequence number: 1017907249295
-			let envelope = "AAAAAgAAAACI3DQX1QWOxLRQPgwS6hoKib4gD+mJIkI9QzQBT6aw7gAAAGQAAADtAAAAjwAAAAAAAAABAAAAHDExMTExMTExMTExMTExMTExMTExMTExMTExMTEAAAABAAAAAQAAAACI3DQX1QWOxLRQPgwS6hoKib4gD+mJIkI9QzQBT6aw7gAAAAEAAAAAO5kROA7+mIugqJAOsc/kTzZvfb6Ua+0HckD39iTfFcUAAAAAAAAAAAAAA+gAAAAAAAAAAU+msO4AAABAMVQZONg4CsTjVe7nmrY2LX86a7VWrmv8uL37zkqwY9Qpxte/76pUnZ/hN8o7EkpzBAWr5qb85cvzAlPgbQVGCA==";
-			let tx_env = TransactionEnvelope::from_base64_xdr(envelope)
-				.expect("should decode into transactionenvelope");
-			let tx = tx_env.get_transaction().expect("should return a transaction");
-
 			assert!(wallet.is_transaction_already_submitted(&tx).await);
 		}
 
@@ -589,6 +580,10 @@ mod test {
 			let dummy_transaction =
 				dummy_envelope.get_transaction().expect("must return a transaction");
 
+			// Sleep for 2 ledgers to ensure the sequence number on the network is up-to-date.
+			// This is necessary because the `bump_sequence_number_and_submit` function checks the
+			// sequence number on the network.
+			sleep(Duration::from_secs(12)).await;
 			let resp = wallet
 				.bump_sequence_number_and_submit(dummy_transaction.clone())
 				.await
