@@ -6,6 +6,7 @@ on:
   push:
     branches:
       - 'main'
+      - '503-make-spacewalk-benchmarks-run-successfully-for-pendulum-runtimes'
 
 jobs:
   build:
