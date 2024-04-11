@@ -664,7 +664,7 @@ mod tests {
 
 	use super::*;
 
-	use sysinfo::{Pid, System};
+	use sysinfo::{Pid, System, SystemExt};
 
 	macro_rules! assert_err {
 		($result:expr, $err:pat) => {{
@@ -840,11 +840,12 @@ mod tests {
 			.returning(|| Some(Command::new("sleep").arg("100").spawn().unwrap()));
 		runner.expect_set_child_proc().return_const(());
 		let pid = Runner::terminate_proc_and_wait(&mut runner).unwrap();
+		let pid_i32: i32 = pid.try_into().unwrap();
 		let s = System::new();
 		// Get all running processes
 		let processes = s.processes();
 		// Get the child process based on its pid
-		let child_process = processes.get(&Pid::from_u32(pid));
+		let child_process = processes.get(&Pid::from(pid_i32));
 
 		assert_eq!(child_process.is_none(), true);
 	}
