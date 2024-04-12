@@ -49,6 +49,7 @@ currency = {path = "../currency", default-features = false, features = ["testing
 security = { path = "../security", features = ['testing-utils'] }
 frame-benchmarking = {git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.42", default-features = false}
 oracle = { path = "../oracle", features = ['testing-utils'] }
+mockall = "0.12.1"
 mocktopus = "0.8.0"
 pretty_assertions = "0.7.2"
 

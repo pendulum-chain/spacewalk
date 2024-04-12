@@ -1,7 +1,9 @@
 #[cfg(test)]
-use mocktopus::macros::mockable;
+use mockall::automock;
 
-#[cfg_attr(test, mockable)]
+
+
+#[cfg_attr(test, automock)]
 pub(crate) mod currency {
 	use currency::Amount;
 
@@ -22,14 +24,14 @@ pub(crate) mod currency {
 	}
 }
 
-#[cfg_attr(test, mockable)]
+#[cfg_attr(test, automock)]
 pub(crate) mod security {
 	pub fn active_block_number<T: crate::Config>() -> T::BlockNumber {
 		<security::Pallet<T>>::active_block_number()
 	}
 }
 
-#[cfg_attr(test, mockable)]
+#[cfg_attr(test, automock)]
 pub(crate) mod staking {
 	use crate::types::CurrencyId;
 	use currency::Amount;
@@ -86,7 +88,7 @@ pub(crate) mod staking {
 	}
 }
 
-#[cfg_attr(test, mockable)]
+#[cfg_attr(test, automock)]
 pub(crate) mod pooled_rewards {
 
 	use currency::Amount;
@@ -111,7 +113,7 @@ pub(crate) mod pooled_rewards {
 	}
 }
 
-#[cfg_attr(test, mockable)]
+#[cfg_attr(test, automock)]
 pub(crate) mod reward_distribution {
 	use crate::DefaultVaultId;
 	use frame_support::pallet_prelude::DispatchResult;

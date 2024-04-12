@@ -30,4 +30,3 @@ primitives = { package = "spacewalk-primitives", path = "../../primitives"}
 [dev-dependencies]
 mockall = "0.8.1"
 serial_test = "0.9.0"
-mocktopus = "0.8.0"

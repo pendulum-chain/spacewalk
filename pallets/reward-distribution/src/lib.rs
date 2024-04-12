@@ -259,7 +259,7 @@ impl<T: Config> Pallet<T> {
 						Amount::new(available_native_funds, reward_currency_id);
 					available_amount.transfer(&Self::fee_pool_account_id(), &beneficiary)?;
 					// Mint the rest
-					T::Balances::deposit_creating(&beneficiary, remaining);
+					let _ = T::Balances::deposit_creating(&beneficiary, remaining);
 
 					NativeLiability::<T>::set(Some(
 						liability.checked_sub(&remaining).ok_or(Error::<T>::Underflow)?,

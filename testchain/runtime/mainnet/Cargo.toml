@@ -84,7 +84,7 @@ dia-oracle = { git = "https://github.com/pendulum-chain/oracle-pallet", branch =
 [dev-dependencies]
 flate2 = "1.0"
 hex = "0.4.2"
-mocktopus = "0.8.0"
+
 pretty_assertions = "0.7.2"
 serde_json = "1.0"
 

@@ -35,7 +35,6 @@ spin = { version = "0.9.4", features = ["mutex"], optional = true }
 once_cell = { version = "1.18.0", default-features = false, features = ["alloc", "race"], optional = true }
 
 [dev-dependencies]
-mocktopus = "0.8.0"
 frame-benchmarking = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.42", default-features = false }
 
 currency = { path = "../currency", default-features = false, features = ["testing-constants"] }

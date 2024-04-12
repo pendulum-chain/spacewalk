@@ -38,7 +38,7 @@ oracle = { path = "../oracle", default-features = false }
 staking = {path = "../staking", default-features = false}
 
 [dev-dependencies]
-mocktopus = "0.8.0"
+
 
 
 [features]

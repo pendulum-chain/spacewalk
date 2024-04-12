@@ -2,19 +2,14 @@
 //! Based on the [specification](https://spec.interlay.io/spec/security.html).
 
 #![deny(warnings)]
-#![cfg_attr(test, feature(proc_macro_hygiene))]
 #![cfg_attr(not(feature = "std"), no_std)]
 
-#[cfg(test)]
-extern crate mocktopus;
 
 use codec::Encode;
 use frame_support::{
 	dispatch::{DispatchError, DispatchResult},
 	transactional,
 };
-#[cfg(test)]
-use mocktopus::macros::mockable;
 use sha2::{Digest, Sha256};
 use sp_core::{H256, U256};
 use sp_runtime::{traits::*, ArithmeticError};
@@ -191,7 +186,6 @@ pub mod pallet {
 
 // "Internal" functions, callable by code.
 #[allow(clippy::forget_non_drop, clippy::swap_ptr_to_ref, clippy::forget_ref, clippy::forget_copy)]
-#[cfg_attr(test, mockable)]
 impl<T: Config> Pallet<T> {
 	/// Ensures the Parachain is RUNNING
 	pub fn ensure_parachain_status_running() -> DispatchResult {
@@ -316,7 +310,7 @@ impl<T: Config> Pallet<T> {
 	}
 
 	/// for testing purposes only!
-	#[cfg(feature = "testing-utils")]
+	#[cfg(any(feature = "testing-utils", test))]
 	pub fn set_active_block_number(n: T::BlockNumber) {
 		ActiveBlockCount::<T>::set(n);
 	}

@@ -34,7 +34,6 @@ primitives = { package = "spacewalk-primitives", path = "../../primitives", defa
 
 
 [dev-dependencies]
-mocktopus = "0.8.0"
 frame-benchmarking = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.42", default-features = false }
 pallet-timestamp = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.42", default-features = false }
 currency = { path = "../currency", default-features = false, features = ["testing-constants"] }

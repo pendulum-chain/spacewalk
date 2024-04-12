@@ -682,7 +682,6 @@ impl<T: Config> From<DefaultVault<T>> for RichVault<T> {
 	}
 }
 
-#[cfg_attr(feature = "integration-tests", visibility::make(pub))]
 pub(crate) struct RichSystemVault<T: Config> {
 	pub(crate) data: DefaultSystemVault<T>,
 }

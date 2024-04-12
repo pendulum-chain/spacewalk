@@ -60,6 +60,7 @@ mod tests;
 
 #[cfg(test)]
 mod mock;
+mod helper;
 
 // value taken from https://github.com/substrate-developer-hub/recipes/blob/master/pallets/ocw-demo/src/lib.rs
 pub const UNSIGNED_TXS_PRIORITY: u64 = 100;
