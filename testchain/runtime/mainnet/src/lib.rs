@@ -40,7 +40,7 @@ use sp_std::{marker::PhantomData, prelude::*};
 use sp_version::NativeVersion;
 use sp_version::RuntimeVersion;
 
-use currency::Amount;
+use currency::{testing_constants, Amount};
 pub use issue::{Event as IssueEvent, IssueRequest};
 pub use module_oracle_rpc_runtime_api::BalanceWrapper;
 pub use nomination::Event as NominationEvent;
@@ -200,9 +200,13 @@ impl pallet_timestamp::Config for Runtime {
 
 const NATIVE_CURRENCY_ID: CurrencyId = CurrencyId::Native;
 const PARENT_CURRENCY_ID: CurrencyId = CurrencyId::XCM(0);
+#[cfg(feature = "runtime-benchmarks")]
+const WRAPPED_CURRENCY_ID: CurrencyId = testing_constants::DEFAULT_WRAPPED_CURRENCY;
 
 parameter_types! {
 	pub const GetNativeCurrencyId: CurrencyId = NATIVE_CURRENCY_ID;
+	#[cfg(feature = "runtime-benchmarks")]
+	pub const GetWrappedCurrencyId: CurrencyId = WRAPPED_CURRENCY_ID;
 	pub const GetRelayChainCurrencyId: CurrencyId = PARENT_CURRENCY_ID;
 	pub const TransactionByteFee: Balance = MILLICENTS;
 }
@@ -333,6 +337,8 @@ impl currency::Config for Runtime {
 	type UnsignedFixedPoint = UnsignedFixedPoint;
 	type Balance = Balance;
 	type GetRelayChainCurrencyId = GetRelayChainCurrencyId;
+	#[cfg(feature = "runtime-benchmarks")]
+	type GetWrappedCurrencyId = GetWrappedCurrencyId;
 	type AssetConversion = primitives::AssetConversion;
 	type BalanceConversion = primitives::BalanceConversion;
 	type CurrencyConversion = CurrencyConvert;

@@ -66,3 +66,6 @@ try-runtime = [
     "orml-currencies/try-runtime",
     "orml-tokens/try-runtime",
 ]
+# This feature is only used for defining `GetWrappedCurrencyId` config parameter in the runtime
+# `GetWrappedCurrencyId` is only used in other pallets' benchmarks
+runtime-benchmarks = []

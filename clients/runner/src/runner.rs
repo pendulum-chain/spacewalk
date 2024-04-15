@@ -647,7 +647,6 @@ mod tests {
 	use tempdir::TempDir;
 
 	use std::{
-		convert::TryInto,
 		fmt::Debug,
 		fs::{self, File},
 		io::Write,
@@ -842,7 +841,7 @@ mod tests {
 		runner.expect_set_child_proc().return_const(());
 		let pid = Runner::terminate_proc_and_wait(&mut runner).unwrap();
 		let pid_i32: i32 = pid.try_into().unwrap();
-		let s = System::new_all();
+		let s = System::new();
 		// Get all running processes
 		let processes = s.processes();
 		// Get the child process based on its pid

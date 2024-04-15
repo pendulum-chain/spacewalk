@@ -4,10 +4,7 @@ use frame_system::RawOrigin;
 use orml_traits::MultiCurrency;
 use sp_runtime::traits::One;
 
-use currency::{
-	getters::{get_relay_chain_currency_id as get_collateral_currency_id, *},
-	testing_constants::get_wrapped_currency_id,
-};
+use currency::getters::{get_relay_chain_currency_id as get_collateral_currency_id, *};
 use oracle::Pallet as Oracle;
 use primitives::{CurrencyId, StellarPublicKeyRaw};
 use vault_registry::Pallet as VaultRegistry;
@@ -41,7 +38,7 @@ fn setup_exchange_rate<T: crate::Config>() {
 	.unwrap();
 	Oracle::<T>::_set_exchange_rate(
 		account("Vault", 0, 0),
-		get_wrapped_currency_id(),
+		get_wrapped_currency_id::<T>(),
 		<T as currency::Config>::UnsignedFixedPoint::one(),
 	)
 	.unwrap();
@@ -51,7 +48,7 @@ fn get_vault_id<T: crate::Config>() -> DefaultVaultId<T> {
 	VaultId::new(
 		account("Vault", 0, 0),
 		get_collateral_currency_id::<T>(),
-		get_wrapped_currency_id(),
+		get_wrapped_currency_id::<T>(),
 	)
 }
 

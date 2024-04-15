@@ -3,7 +3,7 @@ use mocktopus::mocking::*;
 use sp_core::H256;
 use sp_runtime::traits::Zero;
 
-use currency::{testing_constants::get_wrapped_currency_id, Amount};
+use currency::{testing_constants::DEFAULT_WRAPPED_CURRENCY, Amount};
 use primitives::stellar::{types::AlphaNum4, Asset, Operation, PublicKey, StroopAmount};
 use security::Pallet as Security;
 use stellar_relay::testing_utils::RANDOM_STELLAR_PUBLIC_KEY;
@@ -66,7 +66,7 @@ fn default_vault() -> DefaultVault<Test> {
 #[test]
 fn test_request_redeem_fails_with_amount_exceeds_user_balance() {
 	run_test(|| {
-		let amount = Amount::<Test>::new(2, get_wrapped_currency_id());
+		let amount = Amount::<Test>::new(2, DEFAULT_WRAPPED_CURRENCY);
 		amount.mint_to(&USER).unwrap();
 		let amount = 10_000_000;
 		assert_err!(
@@ -821,7 +821,7 @@ mod spec_based_tests {
 		run_test(|| {
 			let amount_to_redeem = 100;
 			let replace_collateral = 100;
-			let amount = Amount::<Test>::new(amount_to_redeem, get_wrapped_currency_id());
+			let amount = Amount::<Test>::new(amount_to_redeem, DEFAULT_WRAPPED_CURRENCY);
 			amount.mint_to(&USER).unwrap();
 			let _asset = DEFAULT_WRAPPED_CURRENCY;
 

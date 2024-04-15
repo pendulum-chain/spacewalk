@@ -6,10 +6,7 @@ use sp_core::{Get, H256};
 use sp_runtime::{traits::One, FixedPointNumber};
 use sp_std::prelude::*;
 
-use currency::{
-	getters::{get_relay_chain_currency_id as get_collateral_currency_id, *},
-	testing_constants::get_wrapped_currency_id,
-};
+use currency::getters::{get_relay_chain_currency_id as get_collateral_currency_id, *};
 use oracle::Pallet as Oracle;
 use primitives::{CurrencyId, VaultCurrencyPair, VaultId};
 use security::Pallet as Security;
@@ -42,7 +39,7 @@ fn mint_collateral<T: crate::Config>(account_id: &T::AccountId, amount: BalanceO
 fn get_currency_pair<T: crate::Config>() -> DefaultVaultCurrencyPair<T> {
 	VaultCurrencyPair {
 		collateral: get_collateral_currency_id::<T>(),
-		wrapped: get_wrapped_currency_id(),
+		wrapped: get_wrapped_currency_id::<T>(),
 	}
 }
 
@@ -50,7 +47,7 @@ fn get_vault_id<T: crate::Config>() -> DefaultVaultId<T> {
 	VaultId::new(
 		account("Vault", 0, 0),
 		get_collateral_currency_id::<T>(),
-		get_wrapped_currency_id(),
+		get_wrapped_currency_id::<T>(),
 	)
 }
 
@@ -69,7 +66,7 @@ benchmarks! {
 		let relayer_id: T::AccountId = account("Relayer", 0, 0);
 
 		Oracle::<T>::_set_exchange_rate(origin.clone(), get_collateral_currency_id::<T>(), <T as currency::Config>::UnsignedFixedPoint::one()).unwrap();
-		Oracle::<T>::_set_exchange_rate(origin.clone(), get_wrapped_currency_id(), <T as currency::Config>::UnsignedFixedPoint::one()).unwrap();
+		Oracle::<T>::_set_exchange_rate(origin.clone(), get_wrapped_currency_id::<T>(), <T as currency::Config>::UnsignedFixedPoint::one()).unwrap();
 		Oracle::<T>::_set_exchange_rate(origin.clone(), <T as vault_registry::Config>::GetGriefingCollateralCurrencyId::get(), <T as currency::Config>::UnsignedFixedPoint::one()).unwrap();
 
 		mint_collateral::<T>(&origin, (1u32 << 31).into());
@@ -93,7 +90,7 @@ benchmarks! {
 		mint_collateral::<T>(&relayer_id, (1u32 << 31).into());
 
 		let vault_stellar_address = DEFAULT_STELLAR_PUBLIC_KEY;
-		let value: Amount<T> = Amount::new(2u32.into(), get_wrapped_currency_id());
+		let value: Amount<T> = Amount::new(2u32.into(), get_wrapped_currency_id::<T>());
 
 		let issue_id = H256::zero();
 		let issue_request = IssueRequest {
@@ -120,7 +117,7 @@ benchmarks! {
 		VaultRegistry::<T>::_set_system_collateral_ceiling(get_currency_pair::<T>(), 1_000_000_000u32.into());
 		VaultRegistry::<T>::_set_secure_collateral_threshold(get_currency_pair::<T>(), <T as currency::Config>::UnsignedFixedPoint::checked_from_rational(1, 100000).unwrap());
 		Oracle::<T>::_set_exchange_rate(origin.clone(), get_collateral_currency_id::<T>(), <T as currency::Config>::UnsignedFixedPoint::one()).unwrap();
-		Oracle::<T>::_set_exchange_rate(origin.clone(), get_wrapped_currency_id(), <T as currency::Config>::UnsignedFixedPoint::one()).unwrap();
+		Oracle::<T>::_set_exchange_rate(origin.clone(), get_wrapped_currency_id::<T>(), <T as currency::Config>::UnsignedFixedPoint::one()).unwrap();
 		register_vault::<T>(vault_id.clone());
 
 		VaultRegistry::<T>::try_increase_to_be_issued_tokens(&vault_id, &value).unwrap();
@@ -135,7 +132,7 @@ benchmarks! {
 		mint_collateral::<T>(&vault_id.account_id, (1u32 << 31).into());
 
 		let vault_stellar_address = DEFAULT_STELLAR_PUBLIC_KEY;
-		let value = Amount::new(2u32.into(), get_wrapped_currency_id());
+		let value = Amount::new(2u32.into(), get_wrapped_currency_id::<T>());
 
 		let issue_id = H256::zero();
 		let issue_request = IssueRequest {
@@ -159,7 +156,7 @@ benchmarks! {
 		VaultRegistry::<T>::_set_system_collateral_ceiling(get_currency_pair::<T>(), 1_000_000_000u32.into());
 		VaultRegistry::<T>::_set_secure_collateral_threshold(get_currency_pair::<T>(), <T as currency::Config>::UnsignedFixedPoint::checked_from_rational(1, 100000).unwrap());
 		Oracle::<T>::_set_exchange_rate(origin.clone(), get_collateral_currency_id::<T>(), <T as currency::Config>::UnsignedFixedPoint::one()).unwrap();
-		Oracle::<T>::_set_exchange_rate(origin.clone(), get_wrapped_currency_id(), <T as currency::Config>::UnsignedFixedPoint::one()).unwrap();
+		Oracle::<T>::_set_exchange_rate(origin.clone(), get_wrapped_currency_id::<T>(), <T as currency::Config>::UnsignedFixedPoint::one()).unwrap();
 		register_vault::<T>(vault_id.clone());
 
 		VaultRegistry::<T>::try_increase_to_be_issued_tokens(&vault_id, &value).unwrap();
@@ -172,7 +169,7 @@ benchmarks! {
 
 	rate_limit_update {
 		let limit_volume_amount: Option<BalanceOf<T>> = Some(1u32.into());
-		let limit_volume_currency_id: T::CurrencyId = get_wrapped_currency_id();
+		let limit_volume_currency_id: T::CurrencyId = get_wrapped_currency_id::<T>();
 		let interval_length: T::BlockNumber = 1u32.into();
 	}: _(RawOrigin::Root, limit_volume_amount, limit_volume_currency_id, interval_length)
 

@@ -36,7 +36,3 @@ pub const DEFAULT_WRAPPED_CURRENCY_4: CurrencyId = CurrencyId::AlphaNum4(
 		11, 4, 144, 240, 123, 51, 33, 72, 34, 159, 33,
 	],
 );
-
-pub fn get_wrapped_currency_id() -> CurrencyId {
-	DEFAULT_WRAPPED_CURRENCY
-}
