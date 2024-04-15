@@ -6,7 +6,7 @@ on:
 name: continuous-integration-main
 jobs:
   ci:
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-latest
     env:
       RUST_BACKTRACE: full
       # Make sure CI fails on all warnings, including Clippy lints
@@ -29,7 +29,9 @@ jobs:
           sudo apt-get remove -y '^mysql-.*' --fix-missing
           sudo apt-get remove -y azure-cli google-chrome-stable firefox powershell mono-devel libgl1-mesa-dri --fix-missing
           sudo apt-get remove -y google-cloud-sdk --fix-missing
-          sudo apt-get remove -y google-cloud-cli --fix-missing   
+          sudo apt-get remove -y google-cloud-cli --fix-missing
+          sudo apt-get autoremove -y
+          sudo apt-get clean          
           df -h
       - uses: actions/checkout@v2
 
