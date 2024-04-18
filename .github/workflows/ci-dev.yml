@@ -75,7 +75,6 @@ jobs:
       - name: Start sccache server
         run: sccache --start-server
 
-
       - name: Install Protoc
         uses: arduino/setup-protoc@v1
         with:
@@ -87,6 +86,14 @@ jobs:
           command: build
           args: --all-features
 
+      - name: Install nightly Rust toolchain
+        uses: actions-rs/toolchain@v1
+        with:
+            toolchain: nightly-2023-12-29
+            override: true
+            components: rustfmt, clippy
+            target: wasm32-unknown-unknown
+
       - name: Test
         uses: actions-rs/cargo@v1
         env: 
@@ -95,12 +102,14 @@ jobs:
           DEST_STELLAR_SECRET_MAINNET: ${{ secrets.DEST_STELLAR_SECRET_MAINNET }}
           DEST_STELLAR_SECRET_TESTNET: ${{ secrets.DEST_STELLAR_SECRET_TESTNET }}
         with:
+          toolchain: nightly-2023-12-29
           command: test
           args: --all --all-features
 
       - name: Rustfmt
         uses: actions-rs/cargo@v1
         with:
+          toolchain: nightly-2023-12-29
           command: fmt
           args: --all -- --check
 
