@@ -8,7 +8,7 @@ pub use task::*;
 mod cache;
 pub mod error;
 mod horizon;
-#[cfg(feature = "testing-utils")]
+#[cfg(any(test, feature = "testing-utils"))]
 pub mod keys;
 pub mod operations;
 mod stellar_wallet;

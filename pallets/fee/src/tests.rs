@@ -1,6 +1,7 @@
 use frame_support::{assert_noop, assert_ok, dispatch::DispatchResultWithPostInfo};
 use sp_runtime::{DispatchError, FixedPointNumber};
 
+use currency::testing_constants::DEFAULT_WRAPPED_CURRENCY;
 use currency::Amount;
 
 use crate::{mock::*, IssueFee};

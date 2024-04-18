@@ -10,7 +10,6 @@ pub mod xdr_converter;
 
 pub(crate) use connector::*;
 pub use error::Error;
-pub use helper::*;
 use serde::Serialize;
 use std::fmt::{Debug, Formatter};
 use substrate_stellar_sdk::SecretKey;
