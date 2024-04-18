@@ -612,11 +612,9 @@ pub fn retry_with_log<T, F>(mut f: F, log_msg: String) -> Result<T, Error>
 where
 	F: FnMut() -> Result<T, Error>,
 {
-	retry(custom_retry_config(), || {
-		f().map_err(|e| {
-			log::info!("{}: {}. Retrying...", log_msg, e.to_string());
-			BackoffError::Transient(e)
-		})
+	f().map_err(|e| {
+		log::info!("{}: {}. Retrying...", log_msg, e.to_string());
+		BackoffError::Transient(e)
 	})
 	.map_err(Into::into)
 }
@@ -626,14 +624,12 @@ where
 	F: Fn() -> BoxFuture<'a, Result<T, E>>,
 	E: Into<Error> + Sized + Display,
 {
-	backoff::future::retry(custom_retry_config(), || async {
-		f().await.map_err(|e| {
+	f().await
+		.map_err(|e| {
 			log::info!("{}: {}. Retrying...", log_msg, e.to_string());
 			BackoffError::Transient(e)
 		})
-	})
-	.await
-	.map_err(Into::into)
+		.map_err(Into::into)
 }
 
 #[cfg(test)]
