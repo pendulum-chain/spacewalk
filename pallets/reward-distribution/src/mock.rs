@@ -124,6 +124,11 @@ parameter_types! {
 	pub const MaxCurrencies: u32 = 10;
 }
 
+#[cfg(feature = "runtime-benchmarks")]
+parameter_types! {
+	pub const GetWrappedCurrencyId: CurrencyId = currency::testing_constants::DEFAULT_WRAPPED_CURRENCY;
+}
+
 parameter_types! {
 	pub const MaxRewardCurrencies: u32= 10;
 }
@@ -196,6 +201,8 @@ impl currency::Config for Test {
 	type SignedFixedPoint = SignedFixedPoint;
 	type Balance = Balance;
 	type GetRelayChainCurrencyId = GetRelayChainCurrencyId;
+	#[cfg(feature = "runtime-benchmarks")]
+	type GetWrappedCurrencyId = GetWrappedCurrencyId;
 	type AssetConversion = primitives::AssetConversion;
 	type BalanceConversion = primitives::BalanceConversion;
 	type CurrencyConversion = CurrencyConvert;

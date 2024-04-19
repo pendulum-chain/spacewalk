@@ -25,7 +25,10 @@ pub struct Amount<T: Config> {
 	currency_id: CurrencyId<T>,
 }
 
-#[cfg_attr(feature = "testing-utils", mocktopus::macros::mockable)]
+#[cfg(test)]
+use mocktopus;
+
+#[cfg_attr(test, mocktopus::macros::mockable)]
 impl<T: Config> Amount<T> {
 	pub const fn new(amount: BalanceOf<T>, currency_id: CurrencyId<T>) -> Self {
 		Self { amount, currency_id }
@@ -40,7 +43,7 @@ impl<T: Config> Amount<T> {
 	}
 }
 
-#[cfg_attr(feature = "testing-utils", mocktopus::macros::mockable)]
+#[cfg_attr(test, mocktopus::macros::mockable)]
 mod conversions {
 	use super::*;
 
@@ -72,7 +75,7 @@ mod conversions {
 	}
 }
 
-#[cfg_attr(feature = "testing-utils", mocktopus::macros::mockable)]
+#[cfg_attr(test, mocktopus::macros::mockable)]
 mod math {
 	use super::*;
 
@@ -87,7 +90,7 @@ mod math {
 
 		pub fn ensure_is_compatible_with_target_chain(&self) -> Result<(), DispatchError> {
 			if !T::AmountCompatibility::is_compatible_with_target(self.amount) {
-				return Err(Error::<T>::IncompatibleAmount.into())
+				return Err(Error::<T>::IncompatibleAmount.into());
 			}
 			Ok(())
 		}
@@ -110,7 +113,7 @@ mod math {
 			F: Fn(&BalanceOf<T>, &BalanceOf<T>) -> Option<BalanceOf<T>>,
 		{
 			if self.currency_id != other.currency_id {
-				return Err(Error::<T>::InvalidCurrency.into())
+				return Err(Error::<T>::InvalidCurrency.into());
 			}
 			let amount = f(&self.amount, &other.amount).ok_or(err)?;
 
@@ -249,7 +252,7 @@ mod math {
 	}
 }
 
-#[cfg_attr(feature = "testing-utils", mocktopus::macros::mockable)]
+#[cfg_attr(test, mocktopus::macros::mockable)]
 mod actions {
 	use super::*;
 

@@ -129,6 +129,11 @@ parameter_types! {
 	pub const MaxLocks: u32 = 50;
 }
 
+#[cfg(feature = "runtime-benchmarks")]
+parameter_types! {
+	pub const GetWrappedCurrencyId: CurrencyId = currency::testing_constants::DEFAULT_WRAPPED_CURRENCY;
+}
+
 parameter_type_with_key! {
 	pub ExistentialDeposits: |_currency_id: CurrencyId| -> Balance {
 		Zero::zero()
@@ -217,6 +222,8 @@ impl currency::Config for Test {
 	type SignedFixedPoint = SignedFixedPoint;
 	type Balance = Balance;
 	type GetRelayChainCurrencyId = GetRelayChainCurrencyId;
+	#[cfg(feature = "runtime-benchmarks")]
+	type GetWrappedCurrencyId = GetWrappedCurrencyId;
 	type AssetConversion = primitives::AssetConversion;
 	type BalanceConversion = primitives::BalanceConversion;
 	type CurrencyConversion = CurrencyConvert;

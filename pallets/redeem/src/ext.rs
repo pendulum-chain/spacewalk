@@ -272,3 +272,51 @@ pub(crate) mod fee {
 		<fee::Pallet<T>>::get_premium_redeem_fee(amount)
 	}
 }
+
+pub(crate) mod amount {
+	use crate::Config;
+	use currency::Amount;
+	use frame_support::pallet_prelude::DispatchResult;
+	use sp_runtime::DispatchError;
+
+	#[cfg(test)]
+	use mocktopus::macros::mockable;
+
+	#[cfg_attr(test, mockable)]
+	pub trait AmountExt<T: Config> {
+		fn _lock_on(&self, account_id: &T::AccountId) -> Result<(), DispatchError>;
+
+		fn _burn_from(&self, account_id: &T::AccountId) -> DispatchResult;
+
+		fn _unlock_on(&self, account_id: &T::AccountId) -> Result<(), DispatchError>;
+
+		fn _transfer(
+			&self,
+			source: &T::AccountId,
+			destination: &T::AccountId,
+		) -> Result<(), DispatchError>;
+	}
+
+	#[cfg_attr(test, mockable)]
+	impl<T: Config> AmountExt<T> for Amount<T> {
+		fn _lock_on(&self, account_id: &T::AccountId) -> Result<(), DispatchError> {
+			self.lock_on(account_id)
+		}
+
+		fn _burn_from(&self, account_id: &T::AccountId) -> DispatchResult {
+			self.burn_from(account_id)
+		}
+
+		fn _unlock_on(&self, account_id: &T::AccountId) -> Result<(), DispatchError> {
+			self.unlock_on(account_id)
+		}
+
+		fn _transfer(
+			&self,
+			source: &T::AccountId,
+			destination: &T::AccountId,
+		) -> Result<(), DispatchError> {
+			self.transfer(source, destination)
+		}
+	}
+}

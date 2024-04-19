@@ -14,6 +14,7 @@ use crate::{
 	mock::*,
 	types::{BalanceOf, RedeemRequest, RedeemRequestStatus},
 };
+use ext::amount::*;
 
 type Event = crate::Event<Test>;
 
@@ -211,7 +212,7 @@ fn test_request_redeem_succeeds_with_normal_redeem() {
 			},
 		);
 
-		Amount::<Test>::lock_on.mock_safe(move |amount_wrapped, account| {
+		Amount::<Test>::_lock_on.mock_safe(move |amount_wrapped, account| {
 			assert_eq!(account, &redeemer);
 			assert_eq!(amount_wrapped, &wrapped(amount));
 
@@ -301,7 +302,7 @@ fn test_request_redeem_succeeds_with_self_redeem() {
 			},
 		);
 
-		Amount::<Test>::lock_on.mock_safe(move |amount_wrapped, account| {
+		Amount::<Test>::_lock_on.mock_safe(move |amount_wrapped, account| {
 			assert_eq!(account, &redeemer);
 			assert_eq!(amount_wrapped, &wrapped(amount));
 
@@ -358,12 +359,13 @@ fn test_request_redeem_succeeds_with_self_redeem() {
 fn test_liquidation_redeem_succeeds() {
 	run_test(|| {
 		let total_amount = 10 * 100_000_000;
+		println!("the expected redeemer balance: {total_amount}");
 
 		ext::treasury::get_balance::<Test>
 			.mock_safe(move |_, _| MockResult::Return(wrapped(total_amount)));
 
-		Amount::<Test>::lock_on.mock_safe(move |_, _| MockResult::Return(Ok(())));
-		Amount::<Test>::burn_from.mock_safe(move |amount, redeemer_id| {
+		Amount::<Test>::_lock_on.mock_safe(move |_, _| MockResult::Return(Ok(())));
+		Amount::<Test>::_burn_from.mock_safe(move |amount, redeemer_id| {
 			assert_eq!(redeemer_id, &USER);
 			assert_eq!(amount, &wrapped(total_amount));
 
@@ -449,7 +451,7 @@ fn test_execute_redeem_succeeds_with_another_account() {
 			},
 		);
 
-		Amount::<Test>::burn_from.mock_safe(move |amount_wrapped, redeemer| {
+		Amount::<Test>::_burn_from.mock_safe(move |amount_wrapped, redeemer| {
 			assert_eq!(redeemer, &USER);
 			assert_eq!(amount_wrapped, &(wrapped(100) + transfer_fee));
 
@@ -542,7 +544,7 @@ fn test_execute_redeem_succeeds() {
 			},
 		);
 
-		Amount::<Test>::burn_from.mock_safe(move |amount_wrapped, redeemer| {
+		Amount::<Test>::_burn_from.mock_safe(move |amount_wrapped, redeemer| {
 			assert_eq!(redeemer, &USER);
 			assert_eq!(amount_wrapped, &(wrapped(100) + transfer_fee));
 
@@ -704,7 +706,7 @@ fn test_cancel_redeem_succeeds() {
 			assert_eq!(vault, &VAULT);
 			MockResult::Return(Ok(()))
 		});
-		Amount::<Test>::unlock_on.mock_safe(|_, _| MockResult::Return(Ok(())));
+		Amount::<Test>::_unlock_on.mock_safe(|_, _| MockResult::Return(Ok(())));
 		ext::vault_registry::transfer_funds_saturated::<Test>
 			.mock_safe(move |_, _, amount| MockResult::Return(Ok(*amount)));
 		ext::vault_registry::get_vault_from_id::<Test>.mock_safe(|_| {
@@ -866,8 +868,8 @@ mod spec_based_tests {
 			ext::treasury::get_balance::<Test>
 				.mock_safe(move |_, _| MockResult::Return(wrapped(total_amount)));
 
-			Amount::<Test>::lock_on.mock_safe(move |_, _| MockResult::Return(Ok(())));
-			Amount::<Test>::burn_from.mock_safe(move |amount, redeemer_id| {
+			Amount::<Test>::_lock_on.mock_safe(move |_, _| MockResult::Return(Ok(())));
+			Amount::<Test>::_burn_from.mock_safe(move |amount, redeemer_id| {
 				assert_eq!(redeemer_id, &USER);
 				assert_eq!(amount, &wrapped(total_amount));
 
@@ -931,7 +933,7 @@ mod spec_based_tests {
 			};
 			inject_redeem_request(H256([0u8; 32]), redeem_request.clone());
 
-			Amount::<Test>::burn_from.mock_safe(move |_, _| MockResult::Return(Ok(())));
+			Amount::<Test>::_burn_from.mock_safe(move |_, _| MockResult::Return(Ok(())));
 
 			ext::vault_registry::redeem_tokens::<Test>.mock_safe(
 				move |vault, amount_wrapped, premium, redeemer| {
@@ -1012,8 +1014,8 @@ mod spec_based_tests {
 				assert_eq!(vault, &VAULT);
 				MockResult::Return(Ok(()))
 			});
-			Amount::<Test>::unlock_on.mock_safe(|_, _| MockResult::Return(Ok(())));
-			Amount::<Test>::transfer.mock_safe(|_, _, _| MockResult::Return(Ok(())));
+			Amount::<Test>::_unlock_on.mock_safe(|_, _| MockResult::Return(Ok(())));
+			Amount::<Test>::_transfer.mock_safe(|_, _, _| MockResult::Return(Ok(())));
 			ext::vault_registry::transfer_funds_saturated::<Test>
 				.mock_safe(move |_, _, amount| MockResult::Return(Ok(*amount)));
 			ext::vault_registry::get_vault_from_id::<Test>.mock_safe(|_| {
@@ -1080,8 +1082,8 @@ mod spec_based_tests {
 				assert_eq!(vault, &VAULT);
 				MockResult::Return(Ok(()))
 			});
-			Amount::<Test>::unlock_on.mock_safe(|_, _| MockResult::Return(Ok(())));
-			Amount::<Test>::burn_from.mock_safe(|_, _| MockResult::Return(Ok(())));
+			Amount::<Test>::_unlock_on.mock_safe(|_, _| MockResult::Return(Ok(())));
+			Amount::<Test>::_burn_from.mock_safe(|_, _| MockResult::Return(Ok(())));
 			ext::vault_registry::transfer_funds_saturated::<Test>
 				.mock_safe(move |_, _, amount| MockResult::Return(Ok(*amount)));
 			ext::vault_registry::get_vault_from_id::<Test>.mock_safe(|_| {
@@ -1163,7 +1165,7 @@ fn test_request_redeem_fails_limits() {
 			},
 		);
 
-		Amount::<Test>::lock_on.mock_safe(move |amount_wrapped, account| {
+		Amount::<Test>::_lock_on.mock_safe(move |amount_wrapped, account| {
 			assert_eq!(account, &redeemer);
 			assert_eq!(amount_wrapped, &wrapped(amount));
 
@@ -1225,7 +1227,7 @@ fn test_request_redeem_limits_succeeds() {
 			},
 		);
 
-		Amount::<Test>::lock_on.mock_safe(move |amount_wrapped, account| {
+		Amount::<Test>::_lock_on.mock_safe(move |amount_wrapped, account| {
 			assert_eq!(account, &redeemer);
 			assert_eq!(amount_wrapped, &wrapped(amount));
 
@@ -1294,7 +1296,7 @@ fn test_execute_redeem_within_rate_limit_succeeds() {
 		};
 		inject_redeem_request(H256([0u8; 32]), redeem_request.clone());
 
-		Amount::<Test>::burn_from.mock_safe(move |_, _| MockResult::Return(Ok(())));
+		Amount::<Test>::_burn_from.mock_safe(move |_, _| MockResult::Return(Ok(())));
 
 		ext::vault_registry::redeem_tokens::<Test>.mock_safe(
 			move |vault, amount_wrapped, premium, redeemer| {
@@ -1396,7 +1398,7 @@ fn test_execute_redeem_fails_when_exceeds_rate_limit() {
 		};
 		inject_redeem_request(H256([0u8; 32]), redeem_request.clone());
 
-		Amount::<Test>::burn_from.mock_safe(move |_, _| MockResult::Return(Ok(())));
+		Amount::<Test>::_burn_from.mock_safe(move |_, _| MockResult::Return(Ok(())));
 
 		ext::vault_registry::redeem_tokens::<Test>.mock_safe(
 			move |vault, amount_wrapped, premium, redeemer| {
@@ -1508,7 +1510,7 @@ fn test_execute_redeem_after_rate_limit_interval_reset_succeeds() {
 		};
 		inject_redeem_request(H256([0u8; 32]), redeem_request.clone());
 
-		Amount::<Test>::burn_from.mock_safe(move |_, _| MockResult::Return(Ok(())));
+		Amount::<Test>::_burn_from.mock_safe(move |_, _| MockResult::Return(Ok(())));
 
 		ext::vault_registry::redeem_tokens::<Test>.mock_safe(
 			move |vault, amount_wrapped, premium, redeemer| {

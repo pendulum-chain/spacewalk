@@ -50,6 +50,8 @@ mod mock;
 mod tests;
 
 mod ext;
+
+use ext::amount::*;
 pub mod types;
 
 #[frame_support::pallet]
@@ -526,12 +528,12 @@ mod self_redeem {
 	) -> DispatchResult {
 		// burn the tokens that the vault no longer is backing
 		consumed_issued_tokens
-			.lock_on(account_id)
+			._lock_on(account_id)
 			.map_err(|_| Error::<T>::AmountExceedsUserBalance)?;
-		consumed_issued_tokens.burn_from(account_id)?;
+		consumed_issued_tokens._burn_from(account_id)?;
 
 		// transfer fees to pool
-		fees.transfer(account_id, &ext::fee::fee_pool_account_id::<T>())
+		fees._transfer(account_id, &ext::fee::fee_pool_account_id::<T>())
 			.map_err(|_| Error::<T>::AmountExceedsUserBalance)?;
 		ext::fee::distribute_rewards::<T>(fees)?;
 
@@ -627,7 +629,7 @@ impl<T: Config> Pallet<T> {
 		)?;
 
 		// lock full amount (inc. fee)
-		amount_wrapped.lock_on(&redeemer)?;
+		amount_wrapped._lock_on(&redeemer)?;
 		let redeem_id = ext::security::get_secure_id::<T>();
 
 		let below_premium_redeem =
@@ -686,8 +688,8 @@ impl<T: Config> Pallet<T> {
 		let redeemer_balance = ext::treasury::get_balance::<T>(&redeemer, currencies.wrapped);
 		ensure!(amount_wrapped.le(&redeemer_balance)?, Error::<T>::AmountExceedsUserBalance);
 
-		amount_wrapped.lock_on(&redeemer)?;
-		amount_wrapped.burn_from(&redeemer)?;
+		amount_wrapped._lock_on(&redeemer)?;
+		amount_wrapped._burn_from(&redeemer)?;
 		ext::vault_registry::redeem_tokens_liquidation::<T>(
 			currencies.collateral,
 			&redeemer,
@@ -760,14 +762,14 @@ impl<T: Config> Pallet<T> {
 
 		// burn amount (without parachain fee, but including transfer fee)
 		let burn_amount = redeem.amount().checked_add(&redeem.transfer_fee())?;
-		burn_amount.burn_from(&redeem.redeemer)?;
+		burn_amount._burn_from(&redeem.redeemer)?;
 		// increase volume according to volume limits
 		Self::increase_interval_volume(burn_amount.clone())?;
 
 		// send fees to pool
 		let fee = redeem.fee();
-		fee.unlock_on(&redeem.redeemer)?;
-		fee.transfer(&redeem.redeemer, &ext::fee::fee_pool_account_id::<T>())?;
+		fee._unlock_on(&redeem.redeemer)?;
+		fee._transfer(&redeem.redeemer, &ext::fee::fee_pool_account_id::<T>())?;
 		ext::fee::distribute_rewards::<T>(&fee)?;
 
 		// next line fails
@@ -883,13 +885,13 @@ impl<T: Config> Pallet<T> {
 			// Transfer the transaction fee to the pool. Even though the redeem was not
 			// successful, the user receives a premium in collateral, so it's OK to take the fee.
 			let fee = redeem.fee();
-			fee.unlock_on(&redeem.redeemer)?;
-			fee.transfer(&redeem.redeemer, &ext::fee::fee_pool_account_id::<T>())?;
+			fee._unlock_on(&redeem.redeemer)?;
+			fee._transfer(&redeem.redeemer, &ext::fee::fee_pool_account_id::<T>())?;
 			ext::fee::distribute_rewards::<T>(&fee)?;
 
 			if ext::vault_registry::is_vault_below_secure_threshold::<T>(&redeem.vault)? {
 				// vault can not afford to back the tokens that it would receive, so we burn it
-				vault_to_be_burned_tokens.burn_from(&redeemer)?;
+				vault_to_be_burned_tokens._burn_from(&redeemer)?;
 				ext::vault_registry::decrease_tokens::<T>(
 					&redeem.vault,
 					&redeem.redeemer,
@@ -898,8 +900,8 @@ impl<T: Config> Pallet<T> {
 				Self::set_redeem_status(redeem_id, RedeemRequestStatus::Reimbursed(false))
 			} else {
 				// Transfer the rest of the user's issued tokens (i.e. excluding fee) to the vault
-				vault_to_be_burned_tokens.unlock_on(&redeem.redeemer)?;
-				vault_to_be_burned_tokens.transfer(&redeem.redeemer, &redeem.vault.account_id)?;
+				vault_to_be_burned_tokens._unlock_on(&redeem.redeemer)?;
+				vault_to_be_burned_tokens._transfer(&redeem.redeemer, &redeem.vault.account_id)?;
 				ext::vault_registry::decrease_to_be_redeemed_tokens::<T>(
 					&vault_id,
 					&vault_to_be_burned_tokens,
@@ -912,7 +914,7 @@ impl<T: Config> Pallet<T> {
 				.amount()
 				.checked_add(&redeem.fee())?
 				.checked_add(&redeem.transfer_fee())?;
-			total_wrapped.unlock_on(&redeemer)?;
+			total_wrapped._unlock_on(&redeemer)?;
 			ext::vault_registry::decrease_to_be_redeemed_tokens::<T>(
 				&vault_id,
 				&vault_to_be_burned_tokens,
