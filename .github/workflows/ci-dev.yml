@@ -102,14 +102,14 @@ jobs:
           DEST_STELLAR_SECRET_MAINNET: ${{ secrets.DEST_STELLAR_SECRET_MAINNET }}
           DEST_STELLAR_SECRET_TESTNET: ${{ secrets.DEST_STELLAR_SECRET_TESTNET }}
         with:
-          toolchain: nightly-2023-12-29
+          toolchain: nightly-2023-12-28
           command: test
           args: --all --all-features
 
       - name: Rustfmt
         uses: actions-rs/cargo@v1
         with:
-          toolchain: nightly-2023-12-29
+          toolchain: nightly-2023-12-28
           command: fmt
           args: --all -- --check
 
