@@ -62,7 +62,7 @@ jobs:
         uses: actions-rs/toolchain@v1
         with:
           toolchain: nightly-2023-12-28
-          override: true
+          override: false
           components: rustfmt, clippy
           target: wasm32-unknown-unknown
 
