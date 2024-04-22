@@ -12,7 +12,7 @@ use sp_runtime::{
 };
 
 use crate::testing_constants::{
-	DEFAULT_COLLATERAL_CURRENCY, DEFAULT_NATIVE_CURRENCY, DEFAULT_WRAPPED_CURRENCY,
+	DEFAULT_COLLATERAL_CURRENCY, DEFAULT_NATIVE_CURRENCY,
 };
 
 type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Test>;
@@ -109,7 +109,7 @@ parameter_types! {
 
 #[cfg(feature = "runtime-benchmarks")]
 parameter_types! {
-	pub const GetWrappedCurrencyId: CurrencyId = DEFAULT_WRAPPED_CURRENCY;
+	pub const GetWrappedCurrencyId: CurrencyId = crate::testing_constants::DEFAULT_WRAPPED_CURRENCY;
 }
 
 parameter_type_with_key! {

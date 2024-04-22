@@ -284,7 +284,7 @@ impl orml_tokens::Config for Runtime {
 pub struct DustRemovalWhitelist;
 impl Contains<AccountId> for DustRemovalWhitelist {
 	fn contains(a: &AccountId) -> bool {
-		vec![].contains(a)
+		[].contains(a)
 	}
 }
 

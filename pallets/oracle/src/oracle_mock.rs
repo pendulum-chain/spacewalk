@@ -15,7 +15,7 @@ pub struct DataKey {
 
 impl PartialOrd<Self> for DataKey {
 	fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
-		self.blockchain.partial_cmp(&other.blockchain)
+		 Some(self.cmp(other))
 	}
 }
 

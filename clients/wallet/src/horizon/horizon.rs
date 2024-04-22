@@ -36,7 +36,7 @@ pub fn horizon_url(is_public_network: bool, is_need_fallback: bool) -> &'static 
 	if is_public_network {
 		if is_need_fallback {
 			let other_urls =
-				vec!["https://horizon.stellarx.com", "https://horizon.stellar.lobstr.co"];
+				["https://horizon.stellarx.com", "https://horizon.stellar.lobstr.co"];
 
 			return other_urls
 				.choose(&mut rand::thread_rng())

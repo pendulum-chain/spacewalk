@@ -183,6 +183,7 @@ impl Runner {
 			// The set permissions are: -rwx------
 			.mode(0o700)
 			.create(true)
+			.truncate(true)
 			.open(bin_path.clone())?;
 
 		let bytes = retry_with_log_async(

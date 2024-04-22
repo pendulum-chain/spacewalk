@@ -80,7 +80,7 @@ impl WalletStateStorage {
 	pub fn save_cursor(&self, paging_token: PagingToken) -> Result<(), Error> {
 		let path = self.cursor_path();
 
-		let mut file = OpenOptions::new().write(true).create(true).open(&path).map_err(|e| {
+		let mut file = OpenOptions::new().write(true).truncate(true).create(true).open(&path).map_err(|e| {
 			tracing::error!("Failed to create file {path:?}: {e:?}");
 
 			Error::cache_error_with_path(CacheErrorKind::FileCreationFailed, path.clone())
@@ -133,7 +133,7 @@ impl WalletStateStorage {
 			))
 		}
 
-		let mut file = OpenOptions::new().write(true).create(true).open(path).map_err(|e| {
+		let mut file = OpenOptions::new().write(true).truncate(true).create(true).open(path).map_err(|e| {
 			tracing::error!("Failed to create file {path:?}: {e:?}");
 
 			Error::cache_error_with_env(CacheErrorKind::FileCreationFailed, tx_envelope.clone())

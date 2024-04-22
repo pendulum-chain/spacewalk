@@ -6,6 +6,10 @@ on:
 name: continuous-integration-main
 jobs:
   ci:
+    strategy:
+      max-parallel: 2
+      matrix:
+        rust: [stable, nightly]
     runs-on: ubuntu-20.04
     env:
       RUST_BACKTRACE: full
@@ -36,9 +40,19 @@ jobs:
           sudo apt-get update && sudo apt-get upgrade -y
           sudo apt-get install -y protobuf-compiler libprotobuf-dev
 
-      - name: Setup Rust toolchain
+      - name: Setup stable Rust toolchain
+        if: matrix.rust == 'stable'
         # Call `rustup show` as a hack so that the toolchain defined in rust-toolchain.toml is installed
         run: rustup show
+
+      - name: Install nightly Rust toolchain
+        if: matrix.rust == 'nightly'
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: nightly-2023-12-29
+          override: true
+          components: rustfmt, clippy
+          target: wasm32-unknown-unknown
 
       - name: Use Cache
         uses: Swatinem/rust-cache@v2
@@ -53,20 +67,14 @@ jobs:
           repo-token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Build
+        if: matrix.rust == 'stable'
         uses: actions-rs/cargo@v1
         with:
           command: build
           args: --all-features
 
-      - name: Install nightly Rust toolchain
-        uses: actions-rs/toolchain@v1
-        with:
-          toolchain: nightly-2023-12-28
-          override: false
-          components: rustfmt, clippy
-          target: wasm32-unknown-unknown
-
       - name: Test
+        if: matrix.rust == 'nightly'
         uses: actions-rs/cargo@v1
         env: 
           SOURCE_STELLAR_SECRET_MAINNET: ${{ secrets.SOURCE_STELLAR_SECRET_MAINNET }}
@@ -74,26 +82,29 @@ jobs:
           DEST_STELLAR_SECRET_MAINNET: ${{ secrets.DEST_STELLAR_SECRET_MAINNET }}
           DEST_STELLAR_SECRET_TESTNET: ${{ secrets.DEST_STELLAR_SECRET_TESTNET }}
         with:
-          toolchain: nightly-2023-12-28-x86_64-unknown-linux-gnu
+          toolchain: nightly-2023-12-29
           command: test
           args: --all --all-features
 
       - name: Rustfmt
+        if: matrix.rust == 'nightly'
         uses: actions-rs/cargo@v1
         with:
-          toolchain: nightly-2023-12-28-x86_64-unknown-linux-gnu
+          toolchain: nightly-2023-12-29
           command: fmt
           args: --all -- --check
 
-      - name: Clippy -- Main
+      - name: Clippy -- Libraries and Binaries
+        if: matrix.rust == 'stable'
         uses: actions-rs/cargo@v1
         with:
           command: clippy
-          args: --all-features -- -W clippy::all -A clippy::style -A clippy::forget_copy -A clippy::forget_ref
+          args: --all-features --libs --bins -W clippy::all -A clippy::style -A forgetting_copy_types -A forgetting_references
 
-      - name: Clippy -- All Targets
+      - name: Clippy -- Tests and Examples
+        if: matrix.rust == 'nightly'
         uses: actions-rs/cargo@v1
         with:
+          toolchain: nightly-2023-12-29
           command: clippy
-          # We are a bit more forgiving when it comes to the code in tests and only check for correctness
-          args: --all-features --all-targets -- -A clippy::all -W clippy::correctness -A clippy::forget_copy -A clippy::forget_ref
+          args: --all-features --tests --benches --examples -- -A clippy::all -W clippy::correctness -A forgetting_copy_types -A forgetting_references
