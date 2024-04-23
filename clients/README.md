@@ -23,11 +23,24 @@ To run the vault directly with the provided standalone chain use:
 ```
 cargo run --bin vault --features standalone-metadata  -- --keyring alice --stellar-vault-secret-key-filepath <secret_key_file_path> --stellar-overlay-config-filepath <cfg_file_path>
 ```
+ * Instead of flags,you can also use environment variables _`STELLAR_VAULT_SECRET_KEY_FILEPATH`_, _`STELLAR_OVERLAY_CONFIG_FILEPATH`_:
+   ```
+   export STELLAR_VAULT_SECRET_KEY_FILEPATH=<secret_key_file_path>
+   export STELLAR_OVERLAY_CONFIG_FILEPATH=<cfg_file_path>
+   ```
+ * To see examples of the config file, check [here](stellar-relay-lib/resources/config). 
+ * An example of the secret key file path is found [here](stellar-relay-lib/resources/secretkey).
 
-To see examples of the config file, check [here](stellar-relay-lib/resources/config).
-An example of the secret key file path is found [here](stellar-relay-lib/resources/secretkey).
-
-To make the vault auto-register itself with the chain, use the `--auto-register` flag.
+### auto-register
+To make the vault auto-register itself with the chain, there are 2 options:
+* use the _`--auto-register`_ flag:
+  * ```
+    -auto-register 0,GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN:USDC,1000000
+    ```
+* use the environment variable _`AUTO_REGISTER`_. The value must be a tuple, so enclose it with double quotes:
+  * ```
+    export AUTO_REGISTER="0,GAKNDFRRWA3RPWNLTI3G4EBSD3RGNZZOY5WKWYMQ6CQTG3KIEKPYWAYC:USDC,1000000"
+    ```
 Be careful with the asset pair you use, as using arbitrary asset pairs will result in the vault not being able to
 register itself.
 This is because some thresholds for the vault are set based on the currencies specified in the runtime and these
@@ -50,11 +63,16 @@ cargo run --bin vault --features standalone-metadata  -- --keyring alice --stell
 cargo run --bin vault --features standalone-metadata  -- --keyring alice --stellar-vault-secret-key-filepath <secret_key_file_path> --stellar-overlay-config-filepath <cfg_file_path> --auto-register "0,GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN:USDC,1000000"
 ```
 
-To run the vault with a parachain (e.g. Pendulum) you need to specify the URL, so use:
-
-```
-cargo run --bin vault --features parachain-metadata -- --keyring alice --spacewalk-parachain-url ws://localhost:8844 --stellar-vault-secret-key-filepath <secret_key_file_path> --stellar-overlay-config-filepath <cfg_file_path>
-```
+### specifying parachains
+To run the vault with a parachain (e.g. Pendulum) you need to specify the URL using 2 options:
+* use the _`spacewalk-parachain-url`_ flag:
+  * ```
+    --spacewalk-parachain-url ws://localhost:8844
+    ```
+* use the environment variable _`SPACEWALK_PARACHAIN_URL`_:
+  * ```
+    export SPACEWALK_PARACHAIN_URL=ws://localhost:8844
+    ```
 
 ## Tests
 
@@ -77,22 +95,24 @@ You can also find an example for setting these variables in the `.env.example` f
 
 ### Running the tests
 
+**Note** Tests should run using Rust **_`nightly-2023-12-29`_** version. Make sure to install and add the target `wasm32-unknown-unknown`.
+
 To run the tests (unit and integration tests) for the spacewalk vault client run
 
 ```
-cargo test --package vault --all-features
+cargo +nightly-2023-12-29 test --package vault --all-features
 ```
 
 To run only the unit tests use
 
 ```
-cargo test --package vault --lib --bins --features standalone-metadata
+cargo +nightly-2023-12-29 test --package vault --lib --bins --features standalone-metadata
 ```
 
 To run only the integration tests use
 
 ```
-cargo test --test '*' --package vault --features integration-test
+cargo +nightly-2023-12-29 test --test '*' --package vault --features integration-test
 ```
 
 **Note** that when running the integration test the console might show errors like
