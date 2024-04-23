@@ -47,14 +47,12 @@ jobs:
 
       - name: Setup nightly Rust toolchain
         if: matrix.rust == 'nightly'
-        uses: dtolnay/rust-toolchain@nightly
-        env:
-          NIGHTLY_VERSION: nightly-2023-12-29
+        uses: actions-rs/toolchain@v1
         with:
-          toolchain: ${{ NIGHTLY_VERSION }}
+          toolchain: nightly-2023-12-29
+          override: true
           components: rustfmt, clippy
-          targets: wasm32-unknown-unknown
-
+          target: wasm32-unknown-unknown
 
       - name: Use Cache
         uses: Swatinem/rust-cache@v2
@@ -70,28 +68,34 @@ jobs:
 
       - name: Build
         if: matrix.rust == 'stable'
-        run: cargo build --all-features
+        uses: actions-rs/cargo@v1
+        with:
+          command: build
+          args: --all-features
 
       - name: Test
         if: matrix.rust == 'nightly'
-        env: 
+        env:
           SOURCE_STELLAR_SECRET_MAINNET: ${{ secrets.SOURCE_STELLAR_SECRET_MAINNET }}
           SOURCE_STELLAR_SECRET_TESTNET: ${{ secrets.SOURCE_STELLAR_SECRET_TESTNET }}
           DEST_STELLAR_SECRET_MAINNET: ${{ secrets.DEST_STELLAR_SECRET_MAINNET }}
           DEST_STELLAR_SECRET_TESTNET: ${{ secrets.DEST_STELLAR_SECRET_TESTNET }}
-        run: cargo +${{ NIGHTLY_VERSION }} test --all --all-features
+        run: |
+          cargo +nightly-2023-12-29 test --all --all-features
 
       - name: Rustfmt
         if: matrix.rust == 'nightly'
-        run: cargo +${{ NIGHTLY_VERSION }} fmt --all -- --check
+        run: |
+          cargo +nightly-2023-12-29 fmt --all -- --check
 
       - name: Clippy -- Libraries and Binaries
         if: matrix.rust == 'stable'
         uses: actions-rs/cargo@v1
         with:
           command: clippy
-          args: --all-features --lib --bins -- -W clippy::all -A clippy::style -A forgetting_copy_types -A forgetting_references
+          args: --all-features --libs --bins -W clippy::all -A clippy::style -A forgetting_copy_types -A forgetting_references
 
       - name: Clippy -- Tests and Examples
         if: matrix.rust == 'nightly'
-        run: cargo +${{ NIGHTLY_VERSION }} clippy --all-features --tests --benches --examples -- -A clippy::all -W clippy::correctness -A forgetting_copy_types -A forgetting_references
+        run: |
+          cargo +nightly-2023-12-29 clippy --all-features --tests --benches --examples -- -A clippy::all -W clippy::correctness -A forgetting_copy_types -A forgetting_references
