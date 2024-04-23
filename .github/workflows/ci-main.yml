@@ -45,6 +45,12 @@ jobs:
         # Call `rustup show` as a hack so that the toolchain defined in rust-toolchain.toml is installed
         run: rustup show
 
+      - name: Remove rust-toolchain.toml for nightly
+        if: matrix.rust == 'nightly'
+        # To make sure that the nightly version will be used all throughout
+        run: |
+          rm /home/runner/work/spacewalk/spacewalk/rust-toolchain.toml
+
       - name: Setup nightly Rust toolchain
         if: matrix.rust == 'nightly'
         uses:  dtolnay/rust-toolchain@nightly
@@ -74,13 +80,16 @@ jobs:
 
       - name: Test
         if: matrix.rust == 'nightly'
+        uses: actions-rs/cargo@v1
         env:
           SOURCE_STELLAR_SECRET_MAINNET: ${{ secrets.SOURCE_STELLAR_SECRET_MAINNET }}
           SOURCE_STELLAR_SECRET_TESTNET: ${{ secrets.SOURCE_STELLAR_SECRET_TESTNET }}
           DEST_STELLAR_SECRET_MAINNET: ${{ secrets.DEST_STELLAR_SECRET_MAINNET }}
           DEST_STELLAR_SECRET_TESTNET: ${{ secrets.DEST_STELLAR_SECRET_TESTNET }}
-        run: |
-          cargo +nightly-2023-12-29 test --all --all-features
+        with:
+          toolchain: nightly-2023-12-29
+          command: test
+          args: --all --all-features
 
       - name: Rustfmt
         if: matrix.rust == 'nightly'
@@ -96,5 +105,8 @@ jobs:
 
       - name: Clippy -- Tests and Examples
         if: matrix.rust == 'nightly'
-        run: |
-          cargo +nightly-2023-12-29 clippy --all-features --tests --benches --examples -- -A clippy::all -W clippy::correctness -A forgetting_copy_types -A forgetting_references
+        uses: actions-rs/cargo@v1
+        with:
+          toolchain: nightly-2023-12-29
+          command: clippy
+          args: --all-features --tests --benches --examples -- -A clippy::all -W clippy::correctness -A forgetting_copy_types -A forgetting_references
