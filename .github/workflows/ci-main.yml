@@ -47,10 +47,9 @@ jobs:
 
       - name: Setup nightly Rust toolchain
         if: matrix.rust == 'nightly'
-        uses: actions-rs/toolchain@v1
+        uses:  dtolnay/rust-toolchain@nightly
         with:
           toolchain: nightly-2023-12-29
-          override: true
           components: rustfmt, clippy
           target: wasm32-unknown-unknown
 
@@ -93,7 +92,7 @@ jobs:
         uses: actions-rs/cargo@v1
         with:
           command: clippy
-          args: --all-features --lib --bins -W clippy::all -A clippy::style -A forgetting_copy_types -A forgetting_references
+          args: --all-features --lib --bins -- -W clippy::all -A clippy::style -A forgetting_copy_types -A forgetting_references
 
       - name: Clippy -- Tests and Examples
         if: matrix.rust == 'nightly'
