@@ -210,7 +210,7 @@ async fn fetch_horizon_and_process_new_transactions_success() {
 	let mut iter = fetcher.fetch_transactions_iter(0).await.expect("should return a response");
 	let Some(response) = iter.next_back() else {
 		assert!(false, "should have at least one transaction");
-		return;
+		return
 	};
 
 	let slot = response.ledger();
