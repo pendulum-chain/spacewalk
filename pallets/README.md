@@ -7,7 +7,7 @@ Here you will find the different pallets needed to set up the spacewalk bridge.
 To run the tests use:
 
 ```bash
-cargo +nightly --package <pallet-name> --features runtime-benchmarks
+cargo +nightly-2024-02-09 test --package <pallet-name> --features runtime-benchmarks
 ```
 
 

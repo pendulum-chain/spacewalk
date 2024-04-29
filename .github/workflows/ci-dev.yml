@@ -6,6 +6,9 @@ on:
 
 name: continuous-integration-dev
 
+env:
+  RUST_NIGHTLY_VERSION: nightly-2024-02-09
+
 jobs:
   ci:
     strategy:
@@ -69,13 +72,13 @@ jobs:
         if: matrix.rust == 'nightly'
         uses:  dtolnay/rust-toolchain@nightly
         with:
-          toolchain: nightly-2024-02-09
+          toolchain: $RUST_NIGHTLY_VERSION
           components: rustfmt, clippy
           target: wasm32-unknown-unknown
 
       - name: Setup nightly Rust as default
         if: matrix.rust == 'nightly'
-        run: rustup default nightly-2024-02-09
+        run: rustup default $RUST_NIGHTLY_VERSION
 
       - name: Use Cache
         uses: Swatinem/rust-cache@v2
@@ -116,7 +119,7 @@ jobs:
           DEST_STELLAR_SECRET_MAINNET: ${{ secrets.DEST_STELLAR_SECRET_MAINNET }}
           DEST_STELLAR_SECRET_TESTNET: ${{ secrets.DEST_STELLAR_SECRET_TESTNET }}
         with:
-          toolchain: nightly-2024-02-09
+          toolchain: $RUST_NIGHTLY_VERSION
           command: test
           args: --all --all-features
 
@@ -124,7 +127,7 @@ jobs:
         if: matrix.rust == 'nightly'
         uses: actions-rs/cargo@v1
         with:
-          toolchain: nightly-2024-02-09
+          toolchain: $RUST_NIGHTLY_VERSION
           command: fmt
           args: --all -- --check
 

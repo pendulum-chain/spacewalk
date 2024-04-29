@@ -5,7 +5,7 @@
 To run the tests use:
 
 ```bash
-cargo +nightly --package stellar-relay --features runtime-benchmarks
+cargo +nightly-2024-02-09 test --package stellar-relay --features runtime-benchmarks
 ```
 
 ## Benchmarking

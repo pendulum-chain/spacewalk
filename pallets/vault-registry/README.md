@@ -62,7 +62,7 @@ cargo doc --open
 To run the tests use:
 
 ```bash
-cargo +nightly --package vault-registry --features runtime-benchmarks
+cargo +nightly-2024-02-09 test --package vault-registry --features runtime-benchmarks
 ```
 
 ## Benchmarking

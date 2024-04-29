@@ -7,7 +7,7 @@ This pallet contains the logic to distribute rewards to the Spacewalk vault clie
 To run the tests use:
 
 ```bash
-cargo +nightly --package reward-distribution --features runtime-benchmarks
+cargo +nightly-2024-02-09 test --package reward-distribution --features runtime-benchmarks
 ```
 
 ## Benchmarking

@@ -59,7 +59,7 @@ cargo doc --open
 To run the tests use:
 
 ```bash
-cargo +nightly --package oracle --features runtime-benchmarks
+cargo +nightly-2024-02-09 test --package oracle --features runtime-benchmarks
 ```
 
 ## Benchmarking
