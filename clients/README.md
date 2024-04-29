@@ -35,7 +35,7 @@ cargo run --bin vault --features standalone-metadata  -- --keyring alice --stell
 To make the vault auto-register itself with the chain, there are 2 options:
 * use the _`--auto-register`_ flag:
   * ```
-    -auto-register 0,GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN:USDC,1000000
+    --auto-register 0,GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN:USDC,1000000
     ```
 * use the environment variable _`AUTO_REGISTER`_. The value must be a tuple, so enclose it with double quotes:
   * ```
@@ -95,24 +95,24 @@ You can also find an example for setting these variables in the `.env.example` f
 
 ### Running the tests
 
-**Note** Tests should run using Rust **_`nightly-2023-12-29`_** version. Make sure to install and add the target `wasm32-unknown-unknown`.
+**Note** Tests should run using Rust **_`nightly-2024-02-09`_** version. Make sure to install and add the target `wasm32-unknown-unknown`.
 
 To run the tests (unit and integration tests) for the spacewalk vault client run
 
 ```
-cargo +nightly-2023-12-29 test --package vault --all-features
+cargo +nightly-2024-02-09 test --package vault --all-features
 ```
 
 To run only the unit tests use
 
 ```
-cargo +nightly-2023-12-29 test --package vault --lib --bins --features standalone-metadata
+cargo +nightly-2024-02-09 test --package vault --lib --bins --features standalone-metadata
 ```
 
 To run only the integration tests use
 
 ```
-cargo +nightly-2023-12-29 test --test '*' --package vault --features integration-test
+cargo +nightly-2024-02-09 test --test '*' --package vault --features integration-test
 ```
 
 **Note** that when running the integration test the console might show errors like
