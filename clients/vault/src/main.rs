@@ -147,6 +147,7 @@ async fn start() -> Result<(), ServiceError<Error>> {
 
 #[tokio::main]
 async fn main() {
+	console_subscriber::init();
 	let exit_code = if let Err(err) = start().await {
 		tracing::error!("Exiting: {}", err);
 		1
