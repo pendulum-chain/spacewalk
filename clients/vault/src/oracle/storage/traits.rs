@@ -138,9 +138,11 @@ pub trait ArchiveStorage {
 		slot_index + ARCHIVE_NODE_LEDGER_BATCH - rest
 	}
 
-	fn remove_file(&self, target_slot: Slot) -> std::io::Result<()> {
+	fn remove_file(&self, target_slot: Slot) {
 		let (_, file) = self.get_url_and_file_name(target_slot);
-		fs::remove_file(file)
+		if let Err(e) = fs::remove_file(&file) {
+			tracing::warn!("remove_file(): failed to remove file {file} for slot {target_slot}: {e:?}");
+		}
 	}
 
 	fn read_file_xdr(filename: &str) -> Result<Vec<u8>, Error> {
