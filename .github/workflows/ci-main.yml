@@ -95,7 +95,7 @@ jobs:
           DEST_STELLAR_SECRET_MAINNET: ${{ secrets.DEST_STELLAR_SECRET_MAINNET }}
           DEST_STELLAR_SECRET_TESTNET: ${{ secrets.DEST_STELLAR_SECRET_TESTNET }}
         with:
-          toolchain: $RUST_NIGHTLY_VERSION
+          toolchain: ${{ $RUST_NIGHTLY_VERSION }}
           command: test
           args: --all --all-features
 
@@ -103,7 +103,7 @@ jobs:
         if: matrix.rust == 'nightly'
         uses: actions-rs/cargo@v1
         with:
-          toolchain: $RUST_NIGHTLY_VERSION
+          toolchain: ${{ $RUST_NIGHTLY_VERSION }}
           command: fmt
           args: --all -- --check
 
