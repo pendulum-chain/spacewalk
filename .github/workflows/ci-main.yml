@@ -4,10 +4,6 @@ on:
       - 'main'
 
 name: continuous-integration-main
-
-env:
-  RUST_NIGHTLY_VERSION: nightly-2024-02-09
-
 jobs:
   ci:
     strategy:
@@ -59,13 +55,13 @@ jobs:
         if: matrix.rust == 'nightly'
         uses:  dtolnay/rust-toolchain@nightly
         with:
-          toolchain: $RUST_NIGHTLY_VERSION
+          toolchain: nightly-2024-02-09
           components: rustfmt, clippy
           target: wasm32-unknown-unknown
 
       - name: Setup nightly Rust as default
         if: matrix.rust == 'nightly'
-        run: rustup default $RUST_NIGHTLY_VERSION
+        run: rustup default nightly-2024-02-09
 
       - name: Use Cache
         uses: Swatinem/rust-cache@v2
@@ -95,7 +91,7 @@ jobs:
           DEST_STELLAR_SECRET_MAINNET: ${{ secrets.DEST_STELLAR_SECRET_MAINNET }}
           DEST_STELLAR_SECRET_TESTNET: ${{ secrets.DEST_STELLAR_SECRET_TESTNET }}
         with:
-          toolchain: ${{ $RUST_NIGHTLY_VERSION }}
+          toolchain: nightly-2024-02-09
           command: test
           args: --all --all-features
 
@@ -103,7 +99,7 @@ jobs:
         if: matrix.rust == 'nightly'
         uses: actions-rs/cargo@v1
         with:
-          toolchain: ${{ $RUST_NIGHTLY_VERSION }}
+          toolchain: nightly-2024-02-09
           command: fmt
           args: --all -- --check
 
@@ -118,6 +114,6 @@ jobs:
         if: matrix.rust == 'nightly'
         uses: actions-rs/cargo@v1
         with:
-          toolchain: $RUST_NIGHTLY_VERSION
+          toolchain: nightly-2024-02-09
           command: clippy
           args: --all-features --tests --benches --examples -- -A clippy::all -W clippy::correctness -A forgetting_copy_types -A forgetting_references
