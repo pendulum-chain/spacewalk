@@ -200,6 +200,23 @@ impl Error {
 			&format!("{:?}", SecurityPalletError::ParachainNotRunning),
 		)
 	}
+
+	pub fn is_timeout_error(&self) -> bool {
+		match self {
+			Error::SubxtRuntimeError(SubxtError::Rpc(RpcError::ClientError(e))) =>
+				match e.downcast_ref::<JsonRpseeError>() {
+					Some(e) => matches!(e, JsonRpseeError::RequestTimeout),
+					None => {
+						log::error!(
+							"Failed to downcast RPC error; this is a bug please file an issue"
+						);
+						false
+					},
+				},
+			_ => false,
+		}
+	}
+	
 }
 
 impl RecoverableError {
