@@ -5,7 +5,7 @@
 To run the tests use:
 
 ```bash
-cargo +nightly-2024-02-09 test --package replace --features runtime-benchmarks
+cargo +nightly test --package replace --features runtime-benchmarks
 ```
 
 ## Benchmarking

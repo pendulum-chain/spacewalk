@@ -5,7 +5,7 @@
 To run the tests use:
 
 ```bash
-cargo +nightly-2024-02-09 test --package nomination --features runtime-benchmarks
+cargo +nightly test --package nomination --features runtime-benchmarks
 ```
 
 ## Benchmarking

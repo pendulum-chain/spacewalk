@@ -6,7 +6,7 @@ This pallet contains storage items regarding the vault client info, and 2 extrin
 To run the tests use:
 
 ```bash
-cargo +nightly-2024-02-09 test --package clients-info --features runtime-benchmarks
+cargo +nightly test --package clients-info --features runtime-benchmarks
 ```
 
 
