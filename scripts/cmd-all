@@ -1,4 +1,6 @@
 #!/bin/bash
+set -e
+
 ##### arguments:
 #####   * reason = what the command is for
 #####   * sub_cmd = the actual sub command
@@ -48,7 +50,6 @@ cargo $sub_cmd -p module-vault-registry-rpc-runtime-api --all-features $options
 echo "-------  Checks" $reason "on packages in clients directory"
 cargo $sub_cmd -p runner --all-features $options
 cargo $sub_cmd -p runtime --all-features $options
-cargo $sub_cmd -p service --all-features $options
 cargo $sub_cmd -p stellar-relay-lib --all-features $options
 cargo $sub_cmd -p subxt-client --all-features $options
 cargo $sub_cmd -p vault --all-features $options
