@@ -141,7 +141,9 @@ pub trait ArchiveStorage {
 	fn remove_file(&self, target_slot: Slot) {
 		let (_, file) = self.get_url_and_file_name(target_slot);
 		if let Err(e) = fs::remove_file(&file) {
-			tracing::warn!("remove_file(): failed to remove file {file} for slot {target_slot}: {e:?}");
+			tracing::warn!(
+				"remove_file(): failed to remove file {file} for slot {target_slot}: {e:?}"
+			);
 		}
 	}
 

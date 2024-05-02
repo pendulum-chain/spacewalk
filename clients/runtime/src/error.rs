@@ -216,7 +216,6 @@ impl Error {
 			_ => false,
 		}
 	}
-	
 }
 
 impl RecoverableError {
