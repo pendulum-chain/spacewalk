@@ -2312,6 +2312,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "exponential-backoff"
+version = "1.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "47f78d87d930eee4b5686a2ab032de499c72bd1e954b84262bb03492a0f932cd"
+dependencies = [
+ "rand 0.8.5",
+]
+
+[[package]]
 name = "fake-simd"
 version = "0.1.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -7296,10 +7305,10 @@ name = "runner"
 version = "1.0.7"
 dependencies = [
  "async-trait",
- "backoff",
  "bytes",
  "clap 4.3.19",
  "env_logger 0.7.1",
+ "exponential-backoff",
  "futures 0.3.28",
  "hex",
  "log",

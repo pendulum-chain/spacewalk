@@ -1,5 +1,4 @@
 use crate::{error::Error, Opts};
-use backoff::{retry, Error as BackoffError, ExponentialBackoff};
 use bytes::Bytes;
 use codec::Decode;
 use futures::{future::BoxFuture, FutureExt, StreamExt, TryFutureExt};
@@ -71,7 +70,7 @@ pub const RETRY_TIMEOUT: Duration = Duration::from_millis(60_000);
 pub const RETRY_INTERVAL: Duration = Duration::from_millis(1_000);
 
 /// Multiplier for the interval in retry utilities: Constant interval retry
-pub const RETRY_MULTIPLIER: f64 = 1.0;
+pub const RETRY_MULTIPLIER: u32 = 1;
 
 /// Data type assumed to be used by the parachain to store the client release.
 /// If this type is different from the on-chain one, decoding will fail.
@@ -599,24 +598,33 @@ pub async fn subxt_api(url: &str) -> Result<OnlineClient<PolkadotConfig>, Error>
 	Ok(OnlineClient::from_url(url).await?)
 }
 
-pub fn custom_retry_config() -> ExponentialBackoff {
-	ExponentialBackoff {
-		initial_interval: RETRY_INTERVAL,
-		max_elapsed_time: Some(RETRY_TIMEOUT),
-		multiplier: RETRY_MULTIPLIER,
-		..ExponentialBackoff::default()
-	}
+fn create_backoff_strategy() -> exponential_backoff::Backoff {
+	let mut backoff = exponential_backoff::Backoff::new(u32::MAX, RETRY_INTERVAL, RETRY_TIMEOUT);
+	backoff.set_factor(RETRY_MULTIPLIER);
+	backoff.set_jitter(0.3);
+	backoff
 }
 
 pub fn retry_with_log<T, F>(mut f: F, log_msg: String) -> Result<T, Error>
 where
 	F: FnMut() -> Result<T, Error>,
 {
-	f().map_err(|e| {
-		log::info!("{}: {}. Retrying...", log_msg, e.to_string());
-		BackoffError::Transient(e)
-	})
-	.map_err(Into::into)
+	let backoff = create_backoff_strategy();
+
+	// We store the error to return it if the backoff is exhausted
+	let mut error = None;
+	while let Some(duration) = backoff.iter().next() {
+		match f() {
+			Ok(result) => return Ok(result),
+			Err(err) => {
+				log::info!("{}: {}. Retrying...", log_msg, err.to_string());
+				std::thread::sleep(duration);
+				error = Some(err)
+			},
+		}
+	}
+
+	Err(error.expect("Error should not be None if we reach here."))
 }
 
 pub async fn retry_with_log_async<'a, T, F, E>(f: F, log_msg: String) -> Result<T, Error>
@@ -624,12 +632,22 @@ where
 	F: Fn() -> BoxFuture<'a, Result<T, E>>,
 	E: Into<Error> + Sized + Display,
 {
-	f().await
-		.map_err(|e| {
-			log::info!("{}: {}. Retrying...", log_msg, e.to_string());
-			BackoffError::Transient(e)
-		})
-		.map_err(Into::into)
+	let backoff = create_backoff_strategy();
+
+	// We store the error to return it if the backoff is exhausted
+	let mut error = None;
+	while let Some(duration) = backoff.iter().next() {
+		match f().await {
+			Ok(result) => return Ok(result),
+			Err(err) => {
+				log::info!("{}: {}. Retrying...", log_msg, err.to_string());
+				tokio::time::sleep(duration).await;
+				error = Some(err)
+			},
+		}
+	}
+
+	Err(error.expect("Error should not be None if we reach here.").into())
 }
 
 #[cfg(test)]
