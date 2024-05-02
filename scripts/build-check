@@ -2,47 +2,47 @@
 
 echo "Checks the build of all packages"
 
-cargo b -p spacewalk-primitives --all-features
+cargo check -p spacewalk-primitives --all-features
 
 echo "Check all pallets"
-cargo b -p clients-info --all-features
+cargo check -p clients-info --all-features
 echo "excluding the feature testing-utils of pallet currency; that is for nightly build."
-cargo b -p currency --features std,testing-constants,try-runtime,runtime-benchmarks
-cargo b -p fee --all-features
-cargo b -p issue --all-features
-cargo b -p nomination --all-features
-cargo b -p oracle --all-features
-cargo b -p pooled-rewards --all-features
-cargo b -p redeem --all-features
-cargo b -p replace --all-features
-cargo b -p reward-distribution --all-features
-cargo b -p security --all-features
-cargo b -p staking --all-features
-cargo b -p stellar-relay --all-features
-cargo b -p vault-registry --all-features
+cargo check -p currency --features std,testing-constants,try-runtime,runtime-benchmarks
+cargo check -p fee --all-features
+cargo check -p issue --all-features
+cargo check -p nomination --all-features
+cargo check -p oracle --all-features
+cargo check -p pooled-rewards --all-features
+cargo check -p redeem --all-features
+cargo check -p replace --all-features
+cargo check -p reward-distribution --all-features
+cargo check -p security --all-features
+cargo check -p staking --all-features
+cargo check -p stellar-relay --all-features
+cargo check -p vault-registry --all-features
 
 echo "Check all rpc of pallets"
-cargo b -p module-issue-rpc --all-features
-cargo b -p module-oracle-rpc --all-features
-cargo b -p module-redeem-rpc --all-features
-cargo b -p module-replace-rpc --all-features
-cargo b -p module-vault-registry-rpc --all-features
-cargo b -p module-issue-rpc-runtime-api --all-features
-cargo b -p module-oracle-rpc-runtime-api --all-features
-cargo b -p module-redeem-rpc-runtime-api --all-features
-cargo b -p module-replace-rpc-runtime-api --all-features
-cargo b -p module-vault-registry-rpc-runtime-api --all-features
+cargo check -p module-issue-rpc --all-features
+cargo check -p module-oracle-rpc --all-features
+cargo check -p module-redeem-rpc --all-features
+cargo check -p module-replace-rpc --all-features
+cargo check -p module-vault-registry-rpc --all-features
+cargo check -p module-issue-rpc-runtime-api --all-features
+cargo check -p module-oracle-rpc-runtime-api --all-features
+cargo check -p module-redeem-rpc-runtime-api --all-features
+cargo check -p module-replace-rpc-runtime-api --all-features
+cargo check -p module-vault-registry-rpc-runtime-api --all-features
 
 echo "Check packages in clients directory"
-cargo b -p runner --all-features
-cargo b -p runtime --all-features
-cargo b -p service --all-features
-cargo b -p stellar-relay-lib --all-features
-cargo b -p subxt-client --all-features
-cargo b -p vault --all-features
-cargo b -p wallet --all-features
+cargo check -p runner --all-features
+cargo check -p runtime --all-features
+cargo check -p service --all-features
+cargo check -p stellar-relay-lib --all-features
+cargo check -p subxt-client --all-features
+cargo check -p vault --all-features
+cargo check -p wallet --all-features
 
 echo "Check from testchain"
-cargo b -p spacewalk-runtime-standalone-mainnet --all-features
-cargo b -p spacewalk-runtime-standalone-testnet --all-features
-cargo b -p spacewalk-standalone --all-features
+cargo check -p spacewalk-runtime-standalone-mainnet --all-features
+cargo check -p spacewalk-runtime-standalone-testnet --all-features
+cargo check -p spacewalk-standalone --all-features
