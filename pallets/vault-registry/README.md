@@ -8,7 +8,7 @@ Run `cargo build` from the root folder of this directory.
 
 ## Testing
 
-Run `cargo +nightly` from the root folder of this directory.
+Run `cargo +nightly test` from the root folder of this directory.
 
 ## Runtime Integration
 
