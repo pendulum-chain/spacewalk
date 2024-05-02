@@ -7,7 +7,6 @@ name = "currency"
 version = "1.0.7"
 
 [dependencies]
-rustversion = "1.0"
 serde = { version = "1.0.130", default-features = false, features = ["derive"], optional = true }
 codec = { package = "parity-scale-codec", version = "3.0.0", default-features = false, features = ["derive", "max-encoded-len"] }
 scale-info = { version = "2.0.0", default-features = false, features = ["derive"] }

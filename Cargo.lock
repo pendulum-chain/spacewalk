@@ -1588,7 +1588,6 @@ dependencies = [
  "pallet-balances",
  "pallet-transaction-payment",
  "parity-scale-codec",
- "rustversion",
  "scale-info",
  "serde",
  "sp-arithmetic",

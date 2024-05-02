@@ -78,7 +78,7 @@ jobs:
       - name: Check Build
         if: matrix.rust == 'stable'
         run: |
-          bash ./scripts/build-check
+          bash ./scripts/cmd-all build check
 
       - name: Test
         if: matrix.rust == 'nightly'
@@ -103,10 +103,8 @@ jobs:
 
       - name: Clippy -- Libraries and Binaries
         if: matrix.rust == 'stable'
-        uses: actions-rs/cargo@v1
-        with:
-          command: clippy
-          args: --all-features --lib --bins -- -W clippy::all -A clippy::style -A forgetting_copy_types -A forgetting_references
+        run: |
+          bash ./scripts/cmd-all clippy "clippy --lib --bins" "-- -W clippy::all -A clippy::style -A forgetting_copy_types -A forgetting_references"           
 
       - name: Clippy -- Tests and Examples
         if: matrix.rust == 'nightly'

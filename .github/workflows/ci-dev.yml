@@ -103,7 +103,7 @@ jobs:
       - name: Check Build
         if: matrix.rust == 'stable'
         run: |
-          bash ./scripts/build-check
+          bash ./scripts/cmd-all build check
 
       - name: Test
         if: matrix.rust == 'nightly'
