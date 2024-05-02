@@ -124,7 +124,7 @@ jobs:
         with:
           toolchain: nightly-2024-02-09
           command: fmt
-          args: --all -- -check
+          args: --all -- --check
 
       - name: Print sccache stats
         run: sccache --show-stats
