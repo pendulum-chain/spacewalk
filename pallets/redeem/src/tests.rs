@@ -358,7 +358,6 @@ fn test_request_redeem_succeeds_with_self_redeem() {
 fn test_liquidation_redeem_succeeds() {
 	run_test(|| {
 		let total_amount = 10 * 100_000_000;
-		println!("the expected redeemer balance: {total_amount}");
 
 		ext::treasury::get_balance::<Test>
 			.mock_safe(move |_, _| MockResult::Return(wrapped(total_amount)));
