@@ -100,12 +100,10 @@ jobs:
         with:
           repo-token: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Build
+      - name: Check Build
         if: matrix.rust == 'stable'
-        uses: actions-rs/cargo@v1
-        with:
-          command: build
-          args: --all-features
+        run: |
+          bash ./scripts/build-check
 
       - name: Test
         if: matrix.rust == 'nightly'
@@ -126,7 +124,7 @@ jobs:
         with:
           toolchain: nightly-2024-02-09
           command: fmt
-          args: --all -- --check
+          args: --all -- -check
 
       - name: Print sccache stats
         run: sccache --show-stats

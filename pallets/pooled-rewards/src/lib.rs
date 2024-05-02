@@ -27,7 +27,6 @@ use sp_runtime::{
 	ArithmeticError,
 };
 
-//use currency::Amount;
 use sp_std::{cmp::PartialOrd, convert::TryInto, fmt::Debug, vec::Vec};
 
 pub(crate) type SignedFixedPoint<T, I = ()> = <T as Config<I>>::SignedFixedPoint;

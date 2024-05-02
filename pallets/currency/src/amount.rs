@@ -30,10 +30,7 @@ pub struct Amount<T: Config> {
 	currency_id: CurrencyId<T>,
 }
 
-#[cfg(test)]
-use mocktopus;
-
-#[cfg_attr(test, mocktopus::macros::mockable)]
+#[cfg_attr(feature = "testing-utils", mocktopus::macros::mockable)]
 impl<T: Config> Amount<T> {
 	pub const fn new(amount: BalanceOf<T>, currency_id: CurrencyId<T>) -> Self {
 		Self { amount, currency_id }
@@ -48,7 +45,7 @@ impl<T: Config> Amount<T> {
 	}
 }
 
-#[cfg_attr(test, mocktopus::macros::mockable)]
+#[cfg_attr(feature = "testing-utils", mocktopus::macros::mockable)]
 mod conversions {
 	use super::*;
 
@@ -80,7 +77,7 @@ mod conversions {
 	}
 }
 
-#[cfg_attr(test, mocktopus::macros::mockable)]
+#[cfg_attr(feature = "testing-utils", mocktopus::macros::mockable)]
 mod math {
 	use super::*;
 
@@ -257,7 +254,7 @@ mod math {
 	}
 }
 
-#[cfg_attr(test, mocktopus::macros::mockable)]
+#[cfg_attr(feature = "testing-utils", mocktopus::macros::mockable)]
 mod actions {
 	use super::*;
 

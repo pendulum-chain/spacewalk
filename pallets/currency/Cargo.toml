@@ -7,6 +7,7 @@ name = "currency"
 version = "1.0.7"
 
 [dependencies]
+rustversion = "1.0"
 serde = { version = "1.0.130", default-features = false, features = ["derive"], optional = true }
 codec = { package = "parity-scale-codec", version = "3.0.0", default-features = false, features = ["derive", "max-encoded-len"] }
 scale-info = { version = "2.0.0", default-features = false, features = ["derive"] }
@@ -27,14 +28,13 @@ orml-currencies = { git = "https://github.com/open-web3-stack/open-runtime-modul
 orml-traits = { git = "https://github.com/open-web3-stack/open-runtime-module-library", branch = "polkadot-v0.9.42", default-features = false }
 
 # for other pallets wanting to mock functions
-
+mocktopus = { version = "0.8.0", optional = true }
 
 [dev-dependencies]
 sp-core = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.42", default-features = false }
 sp-io = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.42", default-features = false }
 sp-runtime = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.42", default-features = false }
 sp-arithmetic = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.42", default-features = false }
-mocktopus = "0.8.0"
 
 [features]
 default = ["std"]
@@ -53,7 +53,9 @@ std = [
     "orml-tokens/std",
     "orml-traits/std",
 ]
-testing-utils = []
+testing-utils = [
+    "mocktopus"
+]
 # This feature has to be separate from the testing-utils feature because combining them causes the 'duplicate lang item' error
 # when compiling the testchain runtime
 testing-constants = []
