@@ -74,10 +74,21 @@ specified in the redeem event.
 The handling of redeem events is implemented in `clients/vault/src/redeem.rs`.
 
 # Build and Run
+There was a [plan to move out from Rust `nightly` version and move to stable](https://github.com/pendulum-chain/spacewalk/issues/506). The [default toolchain](./rust-toolchain.toml) is set to stable.  
+However the [pallet `currency`](./pallets/currency)'s
+feature _`testing-utils`_ is using [`mocktopus`](https://docs.rs/mocktopus/latest/mocktopus/#) — a nightly only lib — and will potentially break your IDEs:
+```
+error[E0554]: `#![feature]` may not be used on the stable release channel
+ --> /.../registry/src/index.crates.io-6f17d22bba15001f/mocktopus_macros-0.7.11/src/lib.rs:6:12
+  |
+6 | #![feature(proc_macro_diagnostic)]
+  |            ^^^^^^^^^^^^^^^^^^^^^
+```
+
 
 ## Run all tests
 For running the tests, use the **nightly** version of Rust; the minimum version is `nightly-2024-02-09`.  
-This allows [`mocktopus`](https://docs.rs/mocktopus/latest/mocktopus/#) — a nightly only lib — to be used freely across all packages during testing.
+This allows [`mocktopus`](https://docs.rs/mocktopus/latest/mocktopus/#) to be used freely across all packages during testing.
 
 ```
 cargo +nightly test --lib --features standalone-metadata -- --nocapture
@@ -94,6 +105,12 @@ cargo run --bin spacewalk-standalone --release -- --dev
 ```
 ./target/release/node-template --dev
 ```
+
+## [`cmd-all` script](./scripts/cmd-all)
+This is an "apply to all" script, executing a command across all packages _individually_. See the file on how to use it.  
+
+**_note_**: This has been tested with only 2 commands: `check` and `clippy`. Other commands might not work. 
+See the [CI workflow](.github/workflows/ci-main.yml) on how it is used.
 
 # Development
 
