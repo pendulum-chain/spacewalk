@@ -11,16 +11,25 @@ reason=$1
 sub_cmd=$2
 options=$3
 
-echo "------------------------------------------------------"
-echo "--------- Checking" $reason "on all packages ---------"
-echo "------------------------------------------------------"
+
+echo "------------------------------------------------------------------------"
+echo "------------------------------------------------------------------------"
+echo "Checking" $reason "on all packages"
+echo "------------------------------------------------------------------------"
+echo "------------------------------------------------------------------------"
 
 cargo $sub_cmd -p spacewalk-primitives --all-features $options
 
-echo "---------------------  Checks" $reason "on all pallets"
+
+echo "------------------------------------------------------------------------"
+echo "Checks" $reason "on all pallets"
+echo "------------------------------------------------------------------------"
 cargo $sub_cmd -p clients-info --all-features
-echo "--  Excluding testing-utils feature of pallet currency;"
-echo "-------------------------  that is for nightly version."
+
+echo "------------------------------------------------------------------------"
+echo "     Excluding testing-utils feature of pallet currency;"
+echo "     that is for nightly version."
+echo "------------------------------------------------------------------------"
 cargo $sub_cmd -p currency --features std,testing-constants,try-runtime,runtime-benchmarks $options
 cargo $sub_cmd -p fee --all-features $options
 cargo $sub_cmd -p issue --all-features $options
@@ -35,7 +44,9 @@ cargo $sub_cmd -p staking --all-features $options
 cargo $sub_cmd -p stellar-relay --all-features $options
 cargo $sub_cmd -p vault-registry --all-features $options
 
-echo "-----------------  Checks" $reason "for pallets with rpc"
+echo "------------------------------------------------------------------------"
+echo "Checks" $reason "for pallets with rpc"
+echo "------------------------------------------------------------------------"
 cargo $sub_cmd -p module-issue-rpc --all-features $options
 cargo $sub_cmd -p module-oracle-rpc --all-features $options
 cargo $sub_cmd -p module-redeem-rpc --all-features $options
@@ -47,15 +58,26 @@ cargo $sub_cmd -p module-redeem-rpc-runtime-api --all-features $options
 cargo $sub_cmd -p module-replace-rpc-runtime-api --all-features $options
 cargo $sub_cmd -p module-vault-registry-rpc-runtime-api --all-features $options
 
-echo "-------  Checks" $reason "on packages in clients directory"
-cargo $sub_cmd -p runner --all-features $options
+echo "------------------------------------------------------------------------"
+echo "Checks" $reason "on packages in clients directory"
+echo "------------------------------------------------------------------------"
+if [[ $sub_cmd == "clippy"* ]]; then
+  echo "------------------------------------------------------------------------"
+  echo "    The package runner does not have a lib."
+  echo "------------------------------------------------------------------------"
+  cargo clippy --bins -p runner --all-features $options
+else
+  cargo  $sub_cmd -p runner --all-features $options
+fi
 cargo $sub_cmd -p runtime --all-features $options
 cargo $sub_cmd -p stellar-relay-lib --all-features $options
 cargo $sub_cmd -p subxt-client --all-features $options
 cargo $sub_cmd -p vault --all-features $options
 cargo $sub_cmd -p wallet --all-features $options
 
-echo "-------------------------- Checks" $reason "from testchain"
+echo "------------------------------------------------------------------------"
+echo "Checks" $reason "from testchain"
+echo "------------------------------------------------------------------------"
 cargo $sub_cmd -p spacewalk-runtime-standalone-mainnet --all-features $options
 cargo $sub_cmd -p spacewalk-runtime-standalone-testnet --all-features $options
 cargo $sub_cmd -p spacewalk-standalone --all-features $options

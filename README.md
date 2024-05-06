@@ -76,7 +76,7 @@ The handling of redeem events is implemented in `clients/vault/src/redeem.rs`.
 # Build and Run
 
 ## Run all tests
-
+For running the tests, use the **nightly** version of Rust; the minimum version is `nightly-2024-02-09`.
 ```
 cargo +nightly test --lib --features standalone-metadata -- --nocapture
 ```
