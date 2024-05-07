@@ -162,7 +162,7 @@ impl Runner {
 					.into_future()
 					.boxed()
 			},
-			"Error fetching executable".to_string(),
+			"Error downloading executable".to_string(),
 		)
 		.await?;
 
@@ -187,7 +187,7 @@ impl Runner {
 
 		let bytes = retry_with_log_async(
 			|| Runner::get_request_bytes(release.uri.clone()).into_future().boxed(),
-			"Error fetching executable".to_string(),
+			"Error getting request bytes for executable".to_string(),
 		)
 		.await?;
 
@@ -290,7 +290,7 @@ impl Runner {
 					.into_future()
 					.boxed()
 			},
-			"Error fetching executable".to_string(),
+			"Error reading chain storage for release".to_string(),
 		)
 		.await
 	}

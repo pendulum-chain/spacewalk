@@ -41,7 +41,7 @@ async fn main() -> Result<(), Error> {
 	let opts: Opts = Opts::parse();
 	let rpc_client = retry_with_log_async(
 		|| subxt_api(&opts.parachain_ws).into_future().boxed(),
-		"Error fetching executable".to_string(),
+		"Error running RPC client".to_string(),
 	)
 	.await?;
 	log::info!("Connected to the parachain");
