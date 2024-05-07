@@ -7,7 +7,11 @@ use std::env;
 // previously passed to the environment.
 // A variable not .env but passed to the environment will not be overridden.
 fn get_env_variables(key: &str) -> Option<String> {
-	dotenv::from_filename("../.env").ok();
+	if let None = dotenv::from_filename("../.env").ok() {
+		// try looking at current directory
+		dotenv::from_filename("./.env").ok();
+	}
+
 	env::var(key).ok()
 }
 

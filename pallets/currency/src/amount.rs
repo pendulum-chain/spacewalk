@@ -1,5 +1,10 @@
 // We allow these lints because they are only caused by the 'mockable' attribute.
-#![allow(clippy::forget_non_drop, clippy::swap_ptr_to_ref, clippy::forget_ref, clippy::forget_copy)]
+#![allow(
+	clippy::forget_non_drop,
+	clippy::swap_ptr_to_ref,
+	forgetting_references,
+	forgetting_copy_types
+)]
 use frame_support::{
 	dispatch::{DispatchError, DispatchResult},
 	ensure,

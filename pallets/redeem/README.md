@@ -5,7 +5,7 @@
 To run the tests use:
 
 ```bash
-cargo test --package redeem --features runtime-benchmarks
+cargo +nightly test --package redeem --features runtime-benchmarks
 ```
 
 ## Benchmarking

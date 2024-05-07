@@ -222,9 +222,7 @@ impl<T: Config> Pallet<T> {
 		let max_delay = Self::get_max_delay();
 		for key in oracle_keys.iter() {
 			let price = Self::get_timestamped(key);
-			let Some(price) = price else {
-                continue;
-            };
+			let Some(price) = price else { continue };
 			let is_outdated = current_time > price.timestamp + max_delay;
 			if !is_outdated {
 				updated_items.push((key.clone(), price.value));
@@ -296,8 +294,8 @@ impl<T: Config> Pallet<T> {
 		ext::security::ensure_parachain_status_running::<T>()?;
 
 		let Some(price) = T::DataProvider::get_no_op(&key) else {
-            return Err(Error::<T>::MissingExchangeRate.into());
-        };
+			return Err(Error::<T>::MissingExchangeRate.into())
+		};
 		Ok(price.value)
 	}
 

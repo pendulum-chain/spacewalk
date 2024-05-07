@@ -20,9 +20,7 @@ type Block = frame_system::mocking::MockBlock<Test>;
 use orml_traits::parameter_type_with_key;
 use sp_arithmetic::traits::Zero;
 
-pub use currency::testing_constants::{
-	DEFAULT_COLLATERAL_CURRENCY, DEFAULT_NATIVE_CURRENCY, DEFAULT_WRAPPED_CURRENCY,
-};
+pub use currency::testing_constants::{DEFAULT_COLLATERAL_CURRENCY, DEFAULT_NATIVE_CURRENCY};
 
 // Configure a mock runtime to test the pallet.
 frame_support::construct_runtime!(
@@ -123,9 +121,12 @@ parameter_types! {
 parameter_types! {
 	pub const GetNativeCurrencyId: CurrencyId = DEFAULT_NATIVE_CURRENCY;
 	pub const GetRelayChainCurrencyId: CurrencyId = DEFAULT_COLLATERAL_CURRENCY;
-	#[cfg(feature = "runtime-benchmarks")]
-	pub const GetWrappedCurrencyId: CurrencyId = DEFAULT_WRAPPED_CURRENCY;
 	pub const MaxCurrencies: u32 = 10;
+}
+
+#[cfg(feature = "runtime-benchmarks")]
+parameter_types! {
+	pub const GetWrappedCurrencyId: CurrencyId = currency::testing_constants::DEFAULT_WRAPPED_CURRENCY;
 }
 
 parameter_types! {

@@ -63,9 +63,7 @@ impl dia_oracle::DiaOracle for MockDiaOracle {
 			.get_or_init(|| Box::new(RwLock::new(BTreeMap::<MapKey, Data>::new())))
 			.read();
 		let coin_data = coins.get(&key);
-		let Some(result) = coin_data else {
-			return Err(sp_runtime::DispatchError::Other(""));
-		};
+		let Some(result) = coin_data else { return Err(sp_runtime::DispatchError::Other("")) };
 
 		let mut coin_info = dia_oracle::CoinInfo::default();
 		coin_info.price = result.price;

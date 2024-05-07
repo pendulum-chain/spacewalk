@@ -16,9 +16,7 @@ use sp_runtime::{
 
 use crate as fee;
 use crate::{Config, Error};
-pub use currency::testing_constants::{
-	DEFAULT_COLLATERAL_CURRENCY, DEFAULT_NATIVE_CURRENCY, DEFAULT_WRAPPED_CURRENCY,
-};
+pub use currency::testing_constants::{DEFAULT_COLLATERAL_CURRENCY, DEFAULT_NATIVE_CURRENCY};
 pub use primitives::CurrencyId;
 use primitives::VaultId;
 
@@ -128,9 +126,12 @@ impl orml_currencies::Config for Test {
 parameter_types! {
 	pub const GetNativeCurrencyId: CurrencyId = DEFAULT_NATIVE_CURRENCY;
 	pub const GetRelayChainCurrencyId: CurrencyId = DEFAULT_COLLATERAL_CURRENCY;
-	#[cfg(feature = "runtime-benchmarks")]
-	pub const GetWrappedCurrencyId: CurrencyId = DEFAULT_WRAPPED_CURRENCY;
 	pub const MaxLocks: u32 = 50;
+}
+
+#[cfg(feature = "runtime-benchmarks")]
+parameter_types! {
+	pub const GetWrappedCurrencyId: CurrencyId = currency::testing_constants::DEFAULT_WRAPPED_CURRENCY;
 }
 
 parameter_type_with_key! {

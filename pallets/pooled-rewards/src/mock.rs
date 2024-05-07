@@ -7,10 +7,10 @@ use sp_runtime::{
 };
 
 pub use currency::testing_constants::{
-	DEFAULT_COLLATERAL_CURRENCY, DEFAULT_NATIVE_CURRENCY, DEFAULT_WRAPPED_CURRENCY,
-	DEFAULT_WRAPPED_CURRENCY_2, DEFAULT_WRAPPED_CURRENCY_3, DEFAULT_WRAPPED_CURRENCY_4,
+	DEFAULT_COLLATERAL_CURRENCY, DEFAULT_NATIVE_CURRENCY, DEFAULT_WRAPPED_CURRENCY_2,
+	DEFAULT_WRAPPED_CURRENCY_3, DEFAULT_WRAPPED_CURRENCY_4,
 };
-pub use primitives::{CurrencyId, VaultCurrencyPair, VaultId};
+pub use primitives::CurrencyId;
 
 use crate as pooled_rewards;
 use crate::{Config, Error};

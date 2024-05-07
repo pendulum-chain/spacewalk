@@ -7,7 +7,7 @@ use sp_runtime::{
 };
 
 pub use currency::testing_constants::{DEFAULT_NATIVE_CURRENCY, DEFAULT_WRAPPED_CURRENCY};
-pub use primitives::{CurrencyId, VaultCurrencyPair, VaultId};
+pub use primitives::CurrencyId;
 
 use crate as reward;
 use crate::{Config, Error};

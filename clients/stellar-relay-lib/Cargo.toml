@@ -12,7 +12,7 @@ path = "src/lib.rs"
 [dev-dependencies]
 env_logger = "0.9.0"
 serial_test = "0.9.0"
-wallet = { path = "../wallet" }
+wallet = { path = "../wallet", features = ["testing-utils"] }
 
 [dependencies]
 hex = "0.4.3"

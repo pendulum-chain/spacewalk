@@ -139,14 +139,12 @@ where
 	fn get_no_op(key: &OracleKey) -> Option<TimestampedValue<UnsignedFixedPoint, Moment>> {
 		let (blockchain, symbol) = ConvertKey::convert(key.clone())?;
 
-		let Ok(coin_info) = Dia::get_coin_info(blockchain, symbol) else {
-            return None;
-        };
+		let Ok(coin_info) = Dia::get_coin_info(blockchain, symbol) else { return None };
 
 		let value = ConvertPrice::convert(coin_info.price)?;
-		let Some(timestamp) = ConvertMoment::convert(coin_info.last_update_timestamp) else{
-            return None;
-        };
+		let Some(timestamp) = ConvertMoment::convert(coin_info.last_update_timestamp) else {
+			return None
+		};
 
 		Some(TimestampedValue { value, timestamp })
 	}

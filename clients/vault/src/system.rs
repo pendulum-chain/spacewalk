@@ -839,9 +839,7 @@ impl VaultService {
 
 	/// Only works when the stellar network is testnet
 	async fn try_fund_from_faucet(&self) -> bool {
-		let Some(faucet_url) = &self.config.faucet_url else {
-			return false
-		};
+		let Some(faucet_url) = &self.config.faucet_url else { return false };
 
 		let is_public_network = self.spacewalk_parachain.is_public_network().await;
 

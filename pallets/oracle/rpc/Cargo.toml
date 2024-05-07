@@ -6,7 +6,7 @@ version = "1.0.7"
 
 [dependencies]
 codec = {package = "parity-scale-codec", version = "3.0.0", default-features = false, features = ["derive", "max-encoded-len"]}
-jsonrpsee = {version = "0.16.0", features = ["server", "macros"]}
+jsonrpsee = {version = "0.16.0", features = ["client","server", "macros"]}
 module-oracle-rpc-runtime-api = {path = "runtime-api"}
 sp-api = {git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.42"}
 sp-blockchain = {git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.42"}

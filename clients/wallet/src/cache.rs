@@ -69,9 +69,7 @@ impl WalletStateStorage {
 			return 0
 		}
 
-		let Ok(content_from_file) = read_content_from_path(path) else {
-			return 0;
-		};
+		let Ok(content_from_file) = read_content_from_path(path) else { return 0 };
 
 		content_from_file.parse::<u128>().unwrap_or(0)
 	}
@@ -80,11 +78,14 @@ impl WalletStateStorage {
 	pub fn save_cursor(&self, paging_token: PagingToken) -> Result<(), Error> {
 		let path = self.cursor_path();
 
-		let mut file = OpenOptions::new().write(true).create(true).open(&path).map_err(|e| {
-			tracing::error!("Failed to create file {path:?}: {e:?}");
+		let mut file =
+			OpenOptions::new().write(true).truncate(true).create(true).open(&path).map_err(
+				|e| {
+					tracing::error!("Failed to create file {path:?}: {e:?}");
 
-			Error::cache_error_with_path(CacheErrorKind::FileCreationFailed, path.clone())
-		})?;
+					Error::cache_error_with_path(CacheErrorKind::FileCreationFailed, path.clone())
+				},
+			)?;
 
 		write!(file, "{}", paging_token).map_err(|e| {
 			tracing::error!("Failed to write file: {paging_token:?}: {e:?}");
@@ -133,11 +134,16 @@ impl WalletStateStorage {
 			))
 		}
 
-		let mut file = OpenOptions::new().write(true).create(true).open(path).map_err(|e| {
-			tracing::error!("Failed to create file {path:?}: {e:?}");
+		let mut file = OpenOptions::new()
+			.write(true)
+			.truncate(true)
+			.create(true)
+			.open(path)
+			.map_err(|e| {
+				tracing::error!("Failed to create file {path:?}: {e:?}");
 
-			Error::cache_error_with_env(CacheErrorKind::FileCreationFailed, tx_envelope.clone())
-		})?;
+				Error::cache_error_with_env(CacheErrorKind::FileCreationFailed, tx_envelope.clone())
+			})?;
 
 		write!(file, "{:?}", tx_envelope.to_xdr()).map_err(|e| {
 			tracing::error!("Failed to write file: {tx_envelope:?}: {e:?}");
@@ -183,7 +189,7 @@ impl WalletStateStorage {
 			if let Err(e) = create_dir_all(&full_path) {
 				tracing::warn!("Failed to create directory of {full_path}: {:?}", e);
 			}
-			return;
+			return
 		};
 
 		for entry in directory.flatten() {
@@ -284,7 +290,7 @@ fn extract_tx_envelope_from_path<P: AsRef<Path> + std::fmt::Debug + Clone>(
 
 	// convert the content into `Vec<u8>`
 	let Some(content_as_vec_u8) = parse_xdr_string_to_vec_u8(&content_from_file) else {
-		return Err(Error::cache_error_with_path(CacheErrorKind::InvalidFile, format!("{path:?}")));
+		return Err(Error::cache_error_with_path(CacheErrorKind::InvalidFile, format!("{path:?}")))
 	};
 
 	// convert the content to TransactionEnvelope

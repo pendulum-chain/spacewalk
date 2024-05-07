@@ -233,11 +233,11 @@ fn push_to_txset(
 			})
 		},
 		TransactionSetType::GeneralizedTransactionSet(set) => {
-			let GeneralizedTransactionSet::V1(
-				TransactionSetV1{
-					previous_ledger_hash, mut phases
-				}
-			) = set else {
+			let GeneralizedTransactionSet::V1(TransactionSetV1 {
+				previous_ledger_hash,
+				mut phases,
+			}) = set
+			else {
 				panic!("cannot add tx envelope on a default variant of GeneralizedTxSet.")
 			};
 

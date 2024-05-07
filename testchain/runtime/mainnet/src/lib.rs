@@ -40,7 +40,7 @@ use sp_std::{marker::PhantomData, prelude::*};
 use sp_version::NativeVersion;
 use sp_version::RuntimeVersion;
 
-use currency::{testing_constants, Amount};
+use currency::Amount;
 pub use issue::{Event as IssueEvent, IssueRequest};
 pub use module_oracle_rpc_runtime_api::BalanceWrapper;
 pub use nomination::Event as NominationEvent;
@@ -201,14 +201,17 @@ impl pallet_timestamp::Config for Runtime {
 const NATIVE_CURRENCY_ID: CurrencyId = CurrencyId::Native;
 const PARENT_CURRENCY_ID: CurrencyId = CurrencyId::XCM(0);
 #[cfg(feature = "runtime-benchmarks")]
-const WRAPPED_CURRENCY_ID: CurrencyId = testing_constants::DEFAULT_WRAPPED_CURRENCY;
+const WRAPPED_CURRENCY_ID: CurrencyId = currency::testing_constants::DEFAULT_WRAPPED_CURRENCY;
 
 parameter_types! {
 	pub const GetNativeCurrencyId: CurrencyId = NATIVE_CURRENCY_ID;
-	#[cfg(feature = "runtime-benchmarks")]
-	pub const GetWrappedCurrencyId: CurrencyId = WRAPPED_CURRENCY_ID;
 	pub const GetRelayChainCurrencyId: CurrencyId = PARENT_CURRENCY_ID;
 	pub const TransactionByteFee: Balance = MILLICENTS;
+}
+
+#[cfg(feature = "runtime-benchmarks")]
+parameter_types! {
+	pub const GetWrappedCurrencyId: CurrencyId = WRAPPED_CURRENCY_ID;
 }
 
 impl pallet_transaction_payment::Config for Runtime {
@@ -285,7 +288,7 @@ pub struct DustRemovalWhitelist;
 
 impl Contains<AccountId> for DustRemovalWhitelist {
 	fn contains(a: &AccountId) -> bool {
-		vec![].contains(a)
+		[].contains(a)
 	}
 }
 

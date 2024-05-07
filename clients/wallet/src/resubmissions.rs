@@ -237,9 +237,7 @@ fn is_source_account_match(public_key: &PublicKey, tx: &TransactionResponse) -> 
 
 fn is_memo_match(tx1: &Transaction, tx2: &TransactionResponse) -> bool {
 	if let Some(response_memo) = tx2.memo_text() {
-		let Memo::MemoText(tx_memo) = &tx1.memo else {
-			return false
-		};
+		let Memo::MemoText(tx_memo) = &tx1.memo else { return false };
 
 		if are_memos_eq(response_memo, tx_memo.get_vec()) {
 			return true
@@ -272,7 +270,7 @@ fn _check_transaction_match(
 		return Err(None)
 	}
 
-	let Ok(source_account_sequence)  = tx_resp.source_account_sequence() else {
+	let Ok(source_account_sequence) = tx_resp.source_account_sequence() else {
 		tracing::warn!("_check_transaction_match(): cannot extract sequence number of transaction response: {tx_resp:?}");
 		return Err(None)
 	};
@@ -307,9 +305,7 @@ fn check_middle_transaction_match(
 ) -> Option<bool> {
 	let tx_sequence_num = tx.seq_num;
 
-	let Some(response) = iter.middle() else {
-		return None
-	};
+	let Some(response) = iter.middle() else { return None };
 
 	match _check_transaction_match(tx, &response, public_key) {
 		Ok(res) => return Some(res),
@@ -343,9 +339,7 @@ async fn check_last_transaction_match(
 	public_key: &PublicKey,
 ) -> Option<bool> {
 	let tx_sequence_num = tx.seq_num;
-	let Some(response) = iter.next_back() else {
-		return None
-	};
+	let Some(response) = iter.next_back() else { return None };
 
 	match _check_transaction_match(tx, &response, public_key) {
 		Ok(res) => return Some(res),
@@ -482,9 +476,9 @@ fn decode_to_envelope(
 	envelope_xdr_as_str_opt: &Option<String>,
 ) -> Result<TransactionEnvelope, Error> {
 	let Some(envelope_xdr) = envelope_xdr_as_str_opt else {
-        tracing::warn!("handle_error(): no envelope_xdr found");
-        return Err(ResubmissionError("no envelope_xdr".to_string()))
-    };
+		tracing::warn!("handle_error(): no envelope_xdr found");
+		return Err(ResubmissionError("no envelope_xdr".to_string()))
+	};
 
 	TransactionEnvelope::from_base64_xdr(envelope_xdr).map_err(|_| DecodeError)
 }

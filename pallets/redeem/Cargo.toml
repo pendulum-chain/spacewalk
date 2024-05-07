@@ -94,7 +94,9 @@ runtime-benchmarks = [
     "stellar-relay/testing-utils",
     "security/testing-utils",
     "oracle/testing-utils",
-    "currency/testing-constants"
+    "currency/runtime-benchmarks",
+    "currency/testing-constants",
+
 ]
 
 try-runtime = [

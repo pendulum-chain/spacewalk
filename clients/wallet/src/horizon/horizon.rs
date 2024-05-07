@@ -35,8 +35,7 @@ const BASE_BACKOFF_DELAY_IN_SECS: u64 = 10;
 pub fn horizon_url(is_public_network: bool, is_need_fallback: bool) -> &'static str {
 	if is_public_network {
 		if is_need_fallback {
-			let other_urls =
-				vec!["https://horizon.stellarx.com", "https://horizon.stellar.lobstr.co"];
+			let other_urls = ["https://horizon.stellarx.com", "https://horizon.stellar.lobstr.co"];
 
 			return other_urls
 				.choose(&mut rand::thread_rng())

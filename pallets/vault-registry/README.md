@@ -8,7 +8,7 @@ Run `cargo build` from the root folder of this directory.
 
 ## Testing
 
-Run `cargo test` from the root folder of this directory.
+Run `cargo +nightly test` from the root folder of this directory.
 
 ## Runtime Integration
 
@@ -62,7 +62,7 @@ cargo doc --open
 To run the tests use:
 
 ```bash
-cargo test --package vault-registry --features runtime-benchmarks
+cargo +nightly test --package vault-registry --features runtime-benchmarks
 ```
 
 ## Benchmarking

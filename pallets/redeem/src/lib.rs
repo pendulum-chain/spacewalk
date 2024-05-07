@@ -50,6 +50,7 @@ mod mock;
 mod tests;
 
 mod ext;
+
 pub mod types;
 
 #[frame_support::pallet]

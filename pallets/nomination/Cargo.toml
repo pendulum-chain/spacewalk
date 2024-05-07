@@ -85,6 +85,8 @@ runtime-benchmarks = [
     "frame-system/runtime-benchmarks",
     "orml-tokens",
     "orml-traits",
+
+    "currency/runtime-benchmarks",
     "currency/testing-constants",
     "security/testing-utils",
     "oracle/testing-utils"
