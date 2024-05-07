@@ -155,3 +155,7 @@ xcm = { git = "https://github.com/paritytech//polkadot", branch = "release-v0.9.
 [patch.crates-io]
 sp-core = { git = "https://github.com/paritytech//substrate", branch = "polkadot-v0.9.42" }
 sp-runtime = { git = "https://github.com/paritytech//substrate", branch = "polkadot-v0.9.42" }
+
+# We need to patch this to https://github.com/tkaitchuck/aHash/releases/tag/v0.8.11 to prevent a build error
+# 'error[E0635]: unknown feature `stdsimd`' that occurs because this feature was removed in the latest nightly versions
+ahash = { git = "https://github.com/tkaitchuck/aHash", rev = "db36e4c4f0606b786bc617eefaffbe4ae9100762" }
