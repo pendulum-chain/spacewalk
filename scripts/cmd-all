@@ -1,7 +1,7 @@
 #!/bin/bash
 set -e
 
-##### This script executes the command to ALL packages of this project.
+##### Executes the command to ALL packages of this project.
 ##### An exception is the package `subxt-client`, as it needs the package `runtime` for it to work.
 ##### The currently supported (and tested) commands are: check and clippy
 ##### arguments:

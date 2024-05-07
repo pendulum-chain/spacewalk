@@ -74,9 +74,10 @@ specified in the redeem event.
 The handling of redeem events is implemented in `clients/vault/src/redeem.rs`.
 
 # Build and Run
-There was a [plan to move out from Rust `nightly` version and move to stable](https://github.com/pendulum-chain/spacewalk/issues/506). The [default toolchain](./rust-toolchain.toml) is set to stable.  
-However the [pallet `currency`](./pallets/currency)'s
-feature _`testing-utils`_ is using [`mocktopus`](https://docs.rs/mocktopus/latest/mocktopus/#) — a nightly only lib — and will potentially break your IDEs:
+There was a [plan to replace Rust `nightly` version with the stable version](https://github.com/pendulum-chain/spacewalk/issues/506).   
+The [default toolchain](./rust-toolchain.toml) is set to stable.  
+However, the [pallet `currency`](./pallets/currency)'s
+feature _`testing-utils`_ is using [**`mocktopus`**](https://docs.rs/mocktopus/latest/mocktopus/#) — a `nightly` only lib — and will potentially break your IDEs:
 ```
 error[E0554]: `#![feature]` may not be used on the stable release channel
  --> /.../registry/src/index.crates.io-6f17d22bba15001f/mocktopus_macros-0.7.11/src/lib.rs:6:12
@@ -84,10 +85,10 @@ error[E0554]: `#![feature]` may not be used on the stable release channel
 6 | #![feature(proc_macro_diagnostic)]
   |            ^^^^^^^^^^^^^^^^^^^^^
 ```
-
+Building and testing is _different_. The `testing-utils` feature is for testing _**only**_, and **_requires_** **_`nightly`_**.
 
 ## Run all tests
-For running the tests, use the **nightly** version of Rust; the minimum version is `nightly-2024-02-09`.  
+To run the tests, use the Rust **nightly** version; minimum is `nightly-2024-02-09`.  
 This allows [`mocktopus`](https://docs.rs/mocktopus/latest/mocktopus/#) to be used freely across all packages during testing.
 
 ```
@@ -107,10 +108,12 @@ cargo run --bin spacewalk-standalone --release -- --dev
 ```
 
 ## [`cmd-all` script](./scripts/cmd-all)
-This is an "apply to all" script, executing a command across all packages _individually_. See the file on how to use it.  
+The `--all` and `--all-features` flags _cannot be used_, as [mentioned previously about the `currency` pallet's `testing-utils` feature](#Build-and-Run).  
+This "apply to all" script will execute a command across all packages _individually_, applying different conditions to some.
+[Check the script on how it looks like](./scripts/cmd-all).
 
-**_note_**: This has been tested with only 2 commands: `check` and `clippy`. Other commands might not work. 
-See the [CI workflow](.github/workflows/ci-main.yml) on how it is used.
+
+**_note_**: This has been tested with only 2 commands in the [CI workflow](.github/workflows/ci-main.yml): `check` and `clippy`. Other commands might not work.
 
 # Development
 
