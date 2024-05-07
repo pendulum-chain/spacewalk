@@ -34,7 +34,7 @@ substrate-stellar-sdk = {git = "https://github.com/pendulum-chain/substrate-stel
 
 err-derive = "0.3.1"
 
-tokio = { version = "1.0", features = [
+tokio = { version = "1.37", features = [
     "macros",           # allows main function to be async
     "rt-multi-thread",  # for multi-thread runtime
     "sync",             # to make channels available
