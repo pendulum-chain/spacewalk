@@ -108,8 +108,12 @@ cargo run --bin spacewalk-standalone --release -- --dev
 ```
 
 ## [`cmd-all` script](./scripts/cmd-all)
-The `--all` and `--all-features` flags _cannot be used_, as [mentioned previously about the `currency` pallet's `testing-utils` feature](#Build-and-Run).  
-This "apply to all" script will execute a command across all packages _individually_, applying different conditions to some.
+The `--all`, `--all-features` and `--all-target` flags _cannot be used_, as [mentioned previously about the `currency` pallet's `testing-utils` feature](#Build-and-Run).    
+The following commands (executed at the root directory) will **FAIL**:
+* `cargo build --all-features `
+* `cargo clippy --all-targets`
+
+This "apply to all" script is necessary to execute a command across _all_ packages _**individually**_, adding the required conditions to some.  
 [Check the script on how it looks like](./scripts/cmd-all).
 
 
