@@ -74,8 +74,8 @@ impl<T: NativeCurrencyKey + XCMCurrencyConversion> Convert<OracleKey, Option<(Ve
 
 					Some((FIAT_DIA_BLOCKCHAIN.as_bytes().to_vec(), fiat_quote))
 				},
-				CurrencyId::Stellar(primitives::Asset::AlphaNum12 { .. }) |
-				CurrencyId::ZenlinkLPToken(_, _, _, _) => None,
+				CurrencyId::Stellar(primitives::Asset::AlphaNum12 { .. })
+				| CurrencyId::ZenlinkLPToken(_, _, _, _) => None,
 				CurrencyId::Token(_) => None,
 			},
 		}
@@ -93,8 +93,8 @@ impl<T: NativeCurrencyKey + XCMCurrencyConversion> Convert<(Vec<u8>, Vec<u8>), O
 			Some(OracleKey::ExchangeRate(CurrencyId::XCM(xcm_currency_id)))
 		} else if blockchain == T::native_chain() && symbol == T::native_symbol() {
 			Some(OracleKey::ExchangeRate(CurrencyId::Native))
-		} else if blockchain == STELLAR_DIA_BLOCKCHAIN.as_bytes().to_vec() &&
-			symbol == STELLAR_DIA_SYMBOL.as_bytes().to_vec()
+		} else if blockchain == STELLAR_DIA_BLOCKCHAIN.as_bytes().to_vec()
+			&& symbol == STELLAR_DIA_SYMBOL.as_bytes().to_vec()
 		{
 			Some(OracleKey::ExchangeRate(CurrencyId::StellarNative))
 		} else if blockchain == FIAT_DIA_BLOCKCHAIN.as_bytes().to_vec() {
@@ -139,14 +139,12 @@ where
 	fn get_no_op(key: &OracleKey) -> Option<TimestampedValue<UnsignedFixedPoint, Moment>> {
 		let (blockchain, symbol) = ConvertKey::convert(key.clone())?;
 
-		let Ok(coin_info) = Dia::get_coin_info(blockchain, symbol) else {
-            return None;
-        };
+		let Ok(coin_info) = Dia::get_coin_info(blockchain, symbol) else { return None };
 
 		let value = ConvertPrice::convert(coin_info.price)?;
-		let Some(timestamp) = ConvertMoment::convert(coin_info.last_update_timestamp) else{
-            return None;
-        };
+		let Some(timestamp) = ConvertMoment::convert(coin_info.last_update_timestamp) else {
+			return None;
+		};
 
 		Some(TimestampedValue { value, timestamp })
 	}

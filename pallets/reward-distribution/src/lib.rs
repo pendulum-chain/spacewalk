@@ -207,11 +207,11 @@ pub mod pallet {
 				ext::staking::compute_reward::<T>(&vault_id, &caller, reward_currency_id)?;
 
 			if expected_rewards == BalanceOf::<T>::zero() {
-				return Err(Error::<T>::NoRewardsForAccount.into())
+				return Err(Error::<T>::NoRewardsForAccount.into());
 			}
 
 			if expected_rewards < minimum_transfer_amount {
-				return Err(Error::<T>::CollectAmountTooSmall.into())
+				return Err(Error::<T>::CollectAmountTooSmall.into());
 			}
 
 			//withdraw the reward for specific nominator
@@ -219,7 +219,7 @@ pub mod pallet {
 				ext::staking::withdraw_reward::<T>(&vault_id, &caller, index, reward_currency_id)?;
 
 			if caller_rewards == (BalanceOf::<T>::zero()) {
-				return Err(Error::<T>::NoRewardsForAccount.into())
+				return Err(Error::<T>::NoRewardsForAccount.into());
 			}
 
 			//transfer rewards
@@ -242,7 +242,7 @@ impl<T: Config> Pallet<T> {
 				None => {
 					// Pay the whole reward from the fee pool
 					let amount: currency::Amount<T> = Amount::new(reward, reward_currency_id);
-					return amount.transfer(&Self::fee_pool_account_id(), &beneficiary)
+					return amount.transfer(&Self::fee_pool_account_id(), &beneficiary);
 				},
 				Some(remaining) => {
 					//check if the to-be-minted amount is consistent
@@ -251,7 +251,7 @@ impl<T: Config> Pallet<T> {
 						.ok_or(Error::<T>::NotEnoughRewardsRegistered)?;
 
 					if liability < remaining {
-						return Err(Error::<T>::NotEnoughRewardsRegistered.into())
+						return Err(Error::<T>::NotEnoughRewardsRegistered.into());
 					}
 
 					// Use the available funds from the fee pool
@@ -259,7 +259,7 @@ impl<T: Config> Pallet<T> {
 						Amount::new(available_native_funds, reward_currency_id);
 					available_amount.transfer(&Self::fee_pool_account_id(), &beneficiary)?;
 					// Mint the rest
-					T::Balances::deposit_creating(&beneficiary, remaining);
+					let _ = T::Balances::deposit_creating(&beneficiary, remaining);
 
 					NativeLiability::<T>::set(Some(
 						liability.checked_sub(&remaining).ok_or(Error::<T>::Underflow)?,
@@ -277,7 +277,7 @@ impl<T: Config> Pallet<T> {
 
 	pub fn execute_on_init(_height: T::BlockNumber) {
 		if let Err(_) = ext::security::ensure_parachain_status_running::<T>() {
-			return
+			return;
 		}
 
 		//get reward per block
@@ -285,7 +285,7 @@ impl<T: Config> Pallet<T> {
 			Some(value) => value,
 			None => {
 				log::warn!("Reward per block is None");
-				return
+				return;
 			},
 		};
 
@@ -293,14 +293,14 @@ impl<T: Config> Pallet<T> {
 			Some(value) => value,
 			None => {
 				log::warn!("RewardsAdaptedAt is None");
-				return
+				return;
 			},
 		};
 
 		let mut reward_this_block = reward_per_block;
 
-		if Ok(true) ==
-			ext::security::parachain_block_expired::<T>(
+		if Ok(true)
+			== ext::security::parachain_block_expired::<T>(
 				rewards_adapted_at,
 				T::DecayInterval::get().saturating_sub(T::BlockNumber::one()),
 			) {

@@ -65,7 +65,7 @@ pub(crate) async fn interpret_response<T: DeserializeOwned>(
 	let Ok(resp) = serde_json::from_slice::<serde_json::Value>(&response_body) else {
 		tracing::warn!("interpret_response(): cannot convert error response to json");
 
-		return Err(Error::response_decode_error(status.as_u16(), &response_body));
+		return Err(Error::response_decode_error(status.as_u16(), &response_body))
 	};
 
 	let status =

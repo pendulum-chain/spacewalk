@@ -74,11 +74,25 @@ specified in the redeem event.
 The handling of redeem events is implemented in `clients/vault/src/redeem.rs`.
 
 # Build and Run
+There was a [plan to replace Rust `nightly` version with the stable version](https://github.com/pendulum-chain/spacewalk/issues/506).   
+The [default toolchain](./rust-toolchain.toml) is set to stable.  
+However, the [pallet `currency`](./pallets/currency)'s
+feature _`testing-utils`_ is using [**`mocktopus`**](https://docs.rs/mocktopus/latest/mocktopus/#) — a `nightly` only lib — and will potentially break your IDEs:
+```
+error[E0554]: `#![feature]` may not be used on the stable release channel
+ --> /.../registry/src/index.crates.io-6f17d22bba15001f/mocktopus_macros-0.7.11/src/lib.rs:6:12
+  |
+6 | #![feature(proc_macro_diagnostic)]
+  |            ^^^^^^^^^^^^^^^^^^^^^
+```
+Building and testing is _different_. The `testing-utils` feature is for testing _**only**_, and **_requires_** **_`nightly`_**.
 
 ## Run all tests
+To run the tests, use the Rust **nightly** version; minimum is `nightly-2024-02-09`.  
+This allows [`mocktopus`](https://docs.rs/mocktopus/latest/mocktopus/#) to be used freely across all packages during testing.
 
 ```
-cargo test --lib --features standalone-metadata -- --nocapture
+cargo +nightly test --lib --features standalone-metadata -- --nocapture
 ```
 
 ## Compile and run the testchain
@@ -92,6 +106,18 @@ cargo run --bin spacewalk-standalone --release -- --dev
 ```
 ./target/release/node-template --dev
 ```
+
+## [`cmd-all` script](./scripts/cmd-all)
+The `--all`, `--all-features` and `--all-target` flags _cannot be used_, as [mentioned previously about the `currency` pallet's `testing-utils` feature](#Build-and-Run).    
+The following commands (executed at the root directory) will **FAIL**:
+* `cargo build --all-features `
+* `cargo clippy --all-targets`
+
+This "apply to all" script is necessary to execute a command across _all_ packages _**individually**_, adding the required conditions to some.  
+[Check the script on how it looks like](./scripts/cmd-all).
+
+
+**_note_**: This has been tested with only 2 commands in the [CI workflow](.github/workflows/ci-main.yml): `check` and `clippy`. Other commands might not work.
 
 # Development
 

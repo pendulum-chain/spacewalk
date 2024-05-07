@@ -190,7 +190,12 @@ pub mod pallet {
 }
 
 // "Internal" functions, callable by code.
-#[allow(clippy::forget_non_drop, clippy::swap_ptr_to_ref, clippy::forget_ref, clippy::forget_copy)]
+#[allow(
+	clippy::forget_non_drop,
+	clippy::swap_ptr_to_ref,
+	forgetting_references,
+	forgetting_copy_types
+)]
 #[cfg_attr(test, mockable)]
 impl<T: Config> Pallet<T> {
 	/// Ensures the Parachain is RUNNING
@@ -209,8 +214,8 @@ impl<T: Config> Pallet<T> {
 
 	/// Checks if the Parachain has a OracleOffline Error state
 	pub fn is_parachain_error_oracle_offline() -> bool {
-		Self::parachain_status() == StatusCode::Error &&
-			<Errors<T>>::get().contains(&ErrorCode::OracleOffline)
+		Self::parachain_status() == StatusCode::Error
+			&& <Errors<T>>::get().contains(&ErrorCode::OracleOffline)
 	}
 
 	/// Sets the given `StatusCode`.

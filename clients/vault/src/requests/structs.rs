@@ -210,6 +210,8 @@ impl Request {
 								Err(RetryPolicy::Throw(err))
 							} else if err.is_block_hash_not_found_error() {
 								Err(RetryPolicy::Skip(EnrichedError::BlockHashNotFound))
+							} else if err.is_timeout_error() {
+								Err(RetryPolicy::Skip(EnrichedError::Timeout))
 							} else {
 								Err(RetryPolicy::Throw(err))
 							}

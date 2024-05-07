@@ -212,7 +212,7 @@ pub fn build_dummy_proof_for<T: crate::Config>(
 	// Build the scp messages that externalize the transaction set
 	// The scp messages have to be externalized by nodes that build a valid quorum set
 	let mut envelopes = UnlimitedVarArray::<ScpEnvelope>::new_empty();
-	let validator_secret_keys = vec![VALIDATOR_1_SECRET, VALIDATOR_2_SECRET, VALIDATOR_3_SECRET];
+	let validator_secret_keys = [VALIDATOR_1_SECRET, VALIDATOR_2_SECRET, VALIDATOR_3_SECRET];
 	for validator_secret_key in validator_secret_keys.iter() {
 		let secret_key = SecretKey::from_binary(*validator_secret_key);
 		let envelope = create_scp_envelope(tx_set_hash, &secret_key, network);

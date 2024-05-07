@@ -281,6 +281,8 @@ impl ScpMessageCollector {
 							"get_envelopes_from_horizon_archive(): The contained archive entry fetched from {} for slot {slot} is invalid because it does not contain any externalized envelopes.",
 								scp_archive_storage.0
 						);
+							// remove the file since it's invalid.
+							scp_archive_storage.remove_file(slot);
 							continue
 						}
 
@@ -297,6 +299,8 @@ impl ScpMessageCollector {
 							// indicates that the data was taken from the archive
 							from_archive_map.insert(slot, ());
 
+							// remove the archive file after successfully retrieving envelopes
+							scp_archive_storage.remove_file(slot);
 							break
 						}
 					}
@@ -355,6 +359,8 @@ impl ScpMessageCollector {
 						_ => TransactionSetType::new(target_history_entry.tx_set.clone()),
 					};
 					tx_set_map.insert(slot, tx_set_type);
+					// remove the archive file after a txset has been found
+					tx_archive_storage.remove_file(slot);
 					break
 				} else {
 					tracing::warn!(

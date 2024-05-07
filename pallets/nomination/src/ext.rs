@@ -15,7 +15,6 @@ pub(crate) mod vault_registry {
 	use crate::BalanceOf;
 	use currency::Amount;
 	pub use frame_support::dispatch::{DispatchError, DispatchResult};
-	pub use vault_registry::{types::CurrencyId, DefaultVault, VaultStatus};
 	use vault_registry::{types::DefaultVaultCurrencyPair, DefaultVaultId};
 
 	pub fn get_backing_collateral<T: crate::Config>(

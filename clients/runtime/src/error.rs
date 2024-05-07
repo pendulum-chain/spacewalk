@@ -137,10 +137,10 @@ impl Error {
 				let data_string = custom_error.data().map(ToString::to_string).unwrap_or_default();
 
 				if RecoverableError::is_recoverable(&data_string) {
-					return Some(Recoverability::Recoverable(data_string))
+					return Some(Recoverability::Recoverable(data_string));
 				}
 
-				return Some(Recoverability::Unrecoverable(data_string))
+				return Some(Recoverability::Unrecoverable(data_string));
 			} else {
 				None
 			}
@@ -160,7 +160,7 @@ impl Error {
 
 	pub fn is_rpc_disconnect_error(&self) -> bool {
 		match self {
-			Error::SubxtRuntimeError(SubxtError::Rpc(RpcError::ClientError(e))) =>
+			Error::SubxtRuntimeError(SubxtError::Rpc(RpcError::ClientError(e))) => {
 				match e.downcast_ref::<JsonRpseeError>() {
 					Some(e) => matches!(e, JsonRpseeError::RestartNeeded(_)),
 					None => {
@@ -169,7 +169,8 @@ impl Error {
 						);
 						false
 					},
-				},
+				}
+			},
 			Error::SubxtRuntimeError(SubxtError::Rpc(RpcError::SubscriptionDropped)) => true,
 			_ => false,
 		}
@@ -199,6 +200,23 @@ impl Error {
 			SECURITY_MODULE,
 			&format!("{:?}", SecurityPalletError::ParachainNotRunning),
 		)
+	}
+
+	pub fn is_timeout_error(&self) -> bool {
+		match self {
+			Error::SubxtRuntimeError(SubxtError::Rpc(RpcError::ClientError(e))) => {
+				match e.downcast_ref::<JsonRpseeError>() {
+					Some(e) => matches!(e, JsonRpseeError::RequestTimeout),
+					None => {
+						log::error!(
+							"Failed to downcast RPC error; this is a bug please file an issue"
+						);
+						false
+					},
+				}
+			},
+			_ => false,
+		}
 	}
 }
 

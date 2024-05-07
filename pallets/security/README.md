@@ -10,4 +10,4 @@ Run `cargo build` from the root folder of this directory.
 
 ## Testing
 
-Run `cargo test` from the root folder of this directory.
+Run `cargo +nightly` from the root folder of this directory.

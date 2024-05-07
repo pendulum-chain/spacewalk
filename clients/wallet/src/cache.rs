@@ -20,7 +20,7 @@ macro_rules! unwrap_or_return {
 			Ok(result) => result,
 			Err(e) => {
 				tracing::warn!("{:?}: {:?}", $log, e);
-				return $ret
+				return $ret;
 			},
 		}
 	};
@@ -66,12 +66,10 @@ impl WalletStateStorage {
 		let path = self.cursor_path();
 		let path = Path::new(&path);
 		if !path.exists() {
-			return 0
+			return 0;
 		}
 
-		let Ok(content_from_file) = read_content_from_path(path) else {
-			return 0;
-		};
+		let Ok(content_from_file) = read_content_from_path(path) else { return 0 };
 
 		content_from_file.parse::<u128>().unwrap_or(0)
 	}
@@ -80,11 +78,14 @@ impl WalletStateStorage {
 	pub fn save_cursor(&self, paging_token: PagingToken) -> Result<(), Error> {
 		let path = self.cursor_path();
 
-		let mut file = OpenOptions::new().write(true).create(true).open(&path).map_err(|e| {
-			tracing::error!("Failed to create file {path:?}: {e:?}");
+		let mut file =
+			OpenOptions::new().write(true).truncate(true).create(true).open(&path).map_err(
+				|e| {
+					tracing::error!("Failed to create file {path:?}: {e:?}");
 
-			Error::cache_error_with_path(CacheErrorKind::FileCreationFailed, path.clone())
-		})?;
+					Error::cache_error_with_path(CacheErrorKind::FileCreationFailed, path.clone())
+				},
+			)?;
 
 		write!(file, "{}", paging_token).map_err(|e| {
 			tracing::error!("Failed to write file: {paging_token:?}: {e:?}");
@@ -130,14 +131,19 @@ impl WalletStateStorage {
 			return Err(Error::cache_error_with_seq(
 				CacheErrorKind::SequenceNumberAlreadyUsed,
 				sequence,
-			))
+			));
 		}
 
-		let mut file = OpenOptions::new().write(true).create(true).open(path).map_err(|e| {
-			tracing::error!("Failed to create file {path:?}: {e:?}");
+		let mut file = OpenOptions::new()
+			.write(true)
+			.truncate(true)
+			.create(true)
+			.open(path)
+			.map_err(|e| {
+				tracing::error!("Failed to create file {path:?}: {e:?}");
 
-			Error::cache_error_with_env(CacheErrorKind::FileCreationFailed, tx_envelope.clone())
-		})?;
+				Error::cache_error_with_env(CacheErrorKind::FileCreationFailed, tx_envelope.clone())
+			})?;
 
 		write!(file, "{:?}", tx_envelope.to_xdr()).map_err(|e| {
 			tracing::error!("Failed to write file: {tx_envelope:?}: {e:?}");
@@ -201,7 +207,7 @@ impl WalletStateStorage {
 		let path = Path::new(&full_file_path);
 
 		if !path.exists() {
-			return Err(Error::cache_error_with_seq(CacheErrorKind::FileDoesNotExist, sequence))
+			return Err(Error::cache_error_with_seq(CacheErrorKind::FileDoesNotExist, sequence));
 		}
 
 		extract_tx_envelope_from_path(path).map(|(tx, _)| tx)
@@ -245,7 +251,7 @@ impl WalletStateStorage {
 
 		// return an error if all the files have errors.
 		if tx_envelopes.is_empty() && !errors.is_empty() {
-			return Err(errors)
+			return Err(errors);
 		}
 
 		// sort in ascending order, based on the sequence number.

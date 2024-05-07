@@ -39,7 +39,7 @@ staking = {path = "../staking", default-features = false}
 
 [dev-dependencies]
 mocktopus = "0.8.0"
-
+currency = { path = "../currency", default-features = false, features = ["testing-constants", "testing-utils"] }
 
 [features]
 default = ["std"]
@@ -70,6 +70,7 @@ runtime-benchmarks = [
     "frame-benchmarking",
     "frame-support/runtime-benchmarks",
     "frame-system/runtime-benchmarks",
+    "currency/runtime-benchmarks"
 ]
 
 try-runtime = [

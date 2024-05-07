@@ -135,7 +135,7 @@ pub mod pallet {
 			origin: OriginFor<T>,
 			account_id: T::AccountId,
 		) -> DispatchResult {
-			if let Err(_) = ensure_root(origin.clone()) {
+			if ensure_root(origin.clone()).is_err() {
 				let origin_account_id = Pallet::<T>::check_non_root_rights(origin)?;
 				ensure!(
 					account_id != origin_account_id,

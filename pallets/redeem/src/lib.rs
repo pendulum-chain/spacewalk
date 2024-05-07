@@ -50,6 +50,7 @@ mod mock;
 mod tests;
 
 mod ext;
+
 pub mod types;
 
 #[frame_support::pallet]
@@ -1067,8 +1068,9 @@ impl<T: Config> Pallet<T> {
 		match request.status {
 			RedeemRequestStatus::Pending => Ok(request),
 			RedeemRequestStatus::Completed => Err(Error::<T>::RedeemCompleted.into()),
-			RedeemRequestStatus::Reimbursed(_) | RedeemRequestStatus::Retried =>
-				Err(Error::<T>::RedeemCancelled.into()),
+			RedeemRequestStatus::Reimbursed(_) | RedeemRequestStatus::Retried => {
+				Err(Error::<T>::RedeemCancelled.into())
+			},
 		}
 	}
 

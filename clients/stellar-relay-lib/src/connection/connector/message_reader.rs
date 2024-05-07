@@ -80,7 +80,7 @@ async fn read_message_from_stellar(connector: &mut Connector) -> Result<Xdr, Err
 		// 1. the length of the next stellar message
 		// 2. the remaining bytes of the previous stellar message
 		match connector.tcp_stream.read(&mut buff_for_reading).await {
-			Ok(size) if size == 0 => continue,
+			Ok(0) => continue,
 			Ok(_) if lack_bytes_from_prev == 0 => {
 				// if there are no more bytes lacking from the previous message,
 				// then check the size of next stellar message.

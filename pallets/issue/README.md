@@ -5,7 +5,7 @@
 To run the tests use:
 
 ```bash
-cargo test --package issue --features runtime-benchmarks
+cargo +nightly test --package issue --features runtime-benchmarks
 ```
 
 ## Benchmarking

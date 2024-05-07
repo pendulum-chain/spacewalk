@@ -12,6 +12,7 @@ jobs:
       max-parallel: 1
       matrix:
         os: [ ubuntu-latest, macos-latest ]
+        rust: [stable, nightly]
         include:
           - os: ubuntu-latest
             sccache-path: /home/runner/.cache/sccache
@@ -54,8 +55,27 @@ jobs:
           brew install sccache             
 
       - name: Setup Rust toolchain
+        if: matrix.rust == 'stable'
         # Call `rustup show` as a hack so that the toolchain defined in rust-toolchain.toml is installed
         run: rustup show
+
+      - name: Remove rust-toolchain.toml for nightly
+        if: matrix.rust == 'nightly'
+        # To make sure that the nightly version will be used all throughout
+        run: |
+          rm /home/runner/work/spacewalk/spacewalk/rust-toolchain.toml
+
+      - name: Setup nightly Rust toolchain
+        if: matrix.rust == 'nightly'
+        uses:  dtolnay/rust-toolchain@nightly
+        with:
+          toolchain: nightly-2024-02-09
+          components: rustfmt, clippy
+          target: wasm32-unknown-unknown
+
+      - name: Setup nightly Rust as default
+        if: matrix.rust == 'nightly'
+        run: rustup default nightly-2024-02-09
 
       - name: Use Cache
         uses: Swatinem/rust-cache@v2
@@ -75,32 +95,34 @@ jobs:
       - name: Start sccache server
         run: sccache --start-server
 
-
       - name: Install Protoc
         uses: arduino/setup-protoc@v1
         with:
           repo-token: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Build
-        uses: actions-rs/cargo@v1
-        with:
-          command: build
-          args: --all-features
+      - name: Check Build
+        if: matrix.rust == 'stable'
+        run: |
+          bash ./scripts/cmd-all build check
 
       - name: Test
+        if: matrix.rust == 'nightly'
         uses: actions-rs/cargo@v1
-        env: 
+        env:
           SOURCE_STELLAR_SECRET_MAINNET: ${{ secrets.SOURCE_STELLAR_SECRET_MAINNET }}
           SOURCE_STELLAR_SECRET_TESTNET: ${{ secrets.SOURCE_STELLAR_SECRET_TESTNET }}
           DEST_STELLAR_SECRET_MAINNET: ${{ secrets.DEST_STELLAR_SECRET_MAINNET }}
           DEST_STELLAR_SECRET_TESTNET: ${{ secrets.DEST_STELLAR_SECRET_TESTNET }}
         with:
+          toolchain: nightly-2024-02-09
           command: test
           args: --all --all-features
 
       - name: Rustfmt
+        if: matrix.rust == 'nightly'
         uses: actions-rs/cargo@v1
         with:
+          toolchain: nightly-2024-02-09
           command: fmt
           args: --all -- --check
 
@@ -109,4 +131,3 @@ jobs:
 
       - name: Stop sccache server
         run: sccache --stop-server || true
-

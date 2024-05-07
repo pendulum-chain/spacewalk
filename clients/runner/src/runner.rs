@@ -182,6 +182,7 @@ impl Runner {
 			// The set permissions are: -rwx------
 			.mode(0o700)
 			.create(true)
+			.truncate(true)
 			.open(bin_path.clone())?;
 
 		let bytes = retry_with_log_async(
@@ -450,7 +451,6 @@ pub trait RunnerExt {
 	fn downloaded_release(&self) -> &Option<DownloadedRelease>;
 	fn set_downloaded_release(&mut self, downloaded_release: Option<DownloadedRelease>);
 	fn download_path(&self) -> &PathBuf;
-	fn parachain_url(&self) -> String;
 	fn client_type(&self) -> ClientType;
 	/// Read the current client release from the parachain, retrying for `RETRY_TIMEOUT` if there is
 	/// a network error.
@@ -478,8 +478,6 @@ pub trait RunnerExt {
 	fn maybe_restart_client(&mut self) -> Result<(), Error>;
 	/// If a client binary exists on disk, load it.
 	fn try_load_downloaded_binary(&mut self, release: &ClientRelease) -> Result<(), Error>;
-	//wrapper arround static method get_bytes
-	async fn get_request_bytes_wrapper(&self, url: String) -> Result<Bytes, Error>;
 
 	fn checksum_matches(&self, checksum: H256, release: &ClientRelease) -> Result<(), Error>;
 }
@@ -512,10 +510,6 @@ impl RunnerExt for Runner {
 
 	fn download_path(&self) -> &PathBuf {
 		&self.opts.download_path
-	}
-
-	fn parachain_url(&self) -> String {
-		self.opts.parachain_ws.clone()
 	}
 
 	fn client_type(&self) -> ClientType {
@@ -565,10 +559,6 @@ impl RunnerExt for Runner {
 
 	fn try_load_downloaded_binary(&mut self, release: &ClientRelease) -> Result<(), Error> {
 		Runner::try_load_downloaded_binary(self, release)
-	}
-
-	async fn get_request_bytes_wrapper(&self, url: String) -> Result<Bytes, Error> {
-		Runner::get_request_bytes(url).await
 	}
 
 	fn checksum_matches(&self, checksum: H256, release: &ClientRelease) -> Result<(), Error> {
@@ -653,7 +643,6 @@ where
 #[cfg(test)]
 mod tests {
 	use async_trait::async_trait;
-	use bytes::Bytes;
 	use codec::Decode;
 
 	use futures::future::BoxFuture;
@@ -702,7 +691,6 @@ mod tests {
 			fn downloaded_release(&self) -> &Option<DownloadedRelease>;
 			fn set_downloaded_release(&mut self, downloaded_release: Option<DownloadedRelease>);
 			fn download_path(&self) -> &PathBuf;
-			fn parachain_url(&self) -> String;
 			fn client_type(&self) -> ClientType;
 			async fn try_get_release(&self) -> Result<Option<ClientRelease>, Error>;
 			async fn download_binary(&mut self, release: ClientRelease) -> Result<(), Error>;
@@ -714,7 +702,6 @@ mod tests {
 			fn check_child_proc_alive(&mut self) -> Result<bool, Error>;
 			fn maybe_restart_client(&mut self) -> Result<(), Error>;
 			fn try_load_downloaded_binary(&mut self, release: &ClientRelease) -> Result<(), Error>;
-			async fn get_request_bytes_wrapper(&self, url: String) -> Result<Bytes, Error>;
 			fn checksum_matches(&self, checksum:H256, release: &ClientRelease) -> Result<(),Error>;
 		}
 
@@ -749,9 +736,7 @@ mod tests {
 		runner
 			.expect_get_bin_path()
 			.returning(move |_| Ok(("vault-rococo".to_string(), moved_mock_path.clone())));
-		runner
-			.expect_get_request_bytes_wrapper()
-			.returning(|_| Ok(Bytes::from_static(&[1, 2, 3, 4])));
+
 		runner.expect_downloaded_release().return_const(None);
 		runner.expect_set_downloaded_release().return_const(());
 		runner.expect_checksum_matches().returning(|_, _| Ok(()));

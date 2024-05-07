@@ -61,6 +61,7 @@ runtime-benchmarks = [
   "frame-benchmarking",
   "frame-support/runtime-benchmarks",
   "frame-system/runtime-benchmarks",
+  "currency/runtime-benchmarks",
   "currency/testing-constants",
   "security/testing-utils",
   "oracle/testing-utils"

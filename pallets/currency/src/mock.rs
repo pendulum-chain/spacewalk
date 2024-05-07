@@ -11,9 +11,7 @@ use sp_runtime::{
 	traits::{BlakeTwo256, IdentityLookup},
 };
 
-use crate::testing_constants::{
-	DEFAULT_COLLATERAL_CURRENCY, DEFAULT_NATIVE_CURRENCY, DEFAULT_WRAPPED_CURRENCY,
-};
+use crate::testing_constants::{DEFAULT_COLLATERAL_CURRENCY, DEFAULT_NATIVE_CURRENCY};
 
 type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Test>;
 type Block = frame_system::mocking::MockBlock<Test>;
@@ -104,9 +102,12 @@ impl pallet_balances::Config for Test {
 parameter_types! {
 	pub const GetNativeCurrencyId: CurrencyId = DEFAULT_NATIVE_CURRENCY;
 	pub const GetRelayChainCurrencyId: CurrencyId = DEFAULT_COLLATERAL_CURRENCY;
-	#[cfg(feature = "runtime-benchmarks")]
-	pub const GetWrappedCurrencyId: CurrencyId = DEFAULT_WRAPPED_CURRENCY;
 	pub const MaxLocks: u32 = 50;
+}
+
+#[cfg(feature = "runtime-benchmarks")]
+parameter_types! {
+	pub const GetWrappedCurrencyId: CurrencyId = crate::testing_constants::DEFAULT_WRAPPED_CURRENCY;
 }
 
 parameter_type_with_key! {
