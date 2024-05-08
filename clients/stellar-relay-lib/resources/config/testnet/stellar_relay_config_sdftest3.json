@@ -10,5 +10,7 @@
     "version_str": "stellar-core 20.2.0.rc3 (34d82fc00426643e16b7ad59c9fde169b778eb4b)",
     "is_pub_net": false
   },
-  "stellar_history_archive_urls": []
+  "stellar_history_archive_urls": [
+    "http://history.stellar.org/prd/core-testnet/core_testnet_003"
+  ]
 }

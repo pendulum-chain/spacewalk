@@ -11,6 +11,8 @@
     "is_pub_net": true
   },
   "stellar_history_archive_urls": [
-    "http://history.stellar.org/prd/core-live/core_live_001"
+    "http://history.stellar.org/prd/core-live/core_live_001",
+    "http://history.stellar.org/prd/core-live/core_live_002",
+    "http://history.stellar.org/prd/core-live/core_live_003"
   ]
 }
