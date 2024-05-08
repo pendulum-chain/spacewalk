@@ -19,7 +19,7 @@ use std::{
 	path::PathBuf,
 	process::{Child, Command, Stdio},
 	str::{self, FromStr},
-	time::{Duration, Instant},
+	time::Duration,
 };
 
 use subxt::{dynamic::Value, OnlineClient, PolkadotConfig};
