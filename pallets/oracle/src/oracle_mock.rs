@@ -41,15 +41,12 @@ impl Convert<Key, Option<(Vec<u8>, Vec<u8>)>> for MockOracleKeyConvertor {
 				CurrencyId::XCM(token_symbol) => Some((vec![0u8], vec![token_symbol])),
 				CurrencyId::Native => Some((vec![2u8], vec![])),
 				CurrencyId::StellarNative => Some((vec![3u8], vec![])),
-				CurrencyId::Stellar(Asset::AlphaNum4 { code, .. }) => {
-					Some((vec![4u8], code.to_vec()))
-				},
-				CurrencyId::Stellar(Asset::AlphaNum12 { code, .. }) => {
-					Some((vec![5u8], code.to_vec()))
-				},
-				CurrencyId::ZenlinkLPToken(token1_id, token1_type, token2_id, token2_type) => {
-					Some((vec![6], vec![token1_id, token1_type, token2_id, token2_type]))
-				},
+				CurrencyId::Stellar(Asset::AlphaNum4 { code, .. }) =>
+					Some((vec![4u8], code.to_vec())),
+				CurrencyId::Stellar(Asset::AlphaNum12 { code, .. }) =>
+					Some((vec![5u8], code.to_vec())),
+				CurrencyId::ZenlinkLPToken(token1_id, token1_type, token2_id, token2_type) =>
+					Some((vec![6], vec![token1_id, token1_type, token2_id, token2_type])),
 				CurrencyId::Token(token_symbol) => {
 					let token_symbol = token_symbol.to_be_bytes().to_vec();
 					Some((vec![7], token_symbol))
