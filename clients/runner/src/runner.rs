@@ -19,7 +19,7 @@ use std::{
 	path::PathBuf,
 	process::{Child, Command, Stdio},
 	str::{self, FromStr},
-	time::Duration,
+	time::{Duration, Instant},
 };
 
 use subxt::{dynamic::Value, OnlineClient, PolkadotConfig};
@@ -63,10 +63,10 @@ pub const CURRENT_RELEASES_STORAGE_ITEM: &str = "CurrentClientReleases";
 /// Parachain block time
 pub const BLOCK_TIME: Duration = Duration::from_secs(12);
 
-/// Timeout used by the retry utilities: One minute
+/// The duration up until operations are retried, used by the retry utilities: 60 seconds
 pub const RETRY_TIMEOUT: Duration = Duration::from_millis(60_000);
 
-/// Waiting interval used by the retry utilities: One second
+/// Waiting interval used by the retry utilities: 1 second
 pub const RETRY_INTERVAL: Duration = Duration::from_millis(1_000);
 
 /// Multiplier for the interval in retry utilities: Constant interval retry
@@ -589,9 +589,11 @@ pub async fn subxt_api(url: &str) -> Result<OnlineClient<PolkadotConfig>, Error>
 }
 
 fn create_backoff_strategy() -> exponential_backoff::Backoff {
-	let mut backoff = exponential_backoff::Backoff::new(u32::MAX, RETRY_INTERVAL, RETRY_TIMEOUT);
+	let retries: u32 = (RETRY_TIMEOUT.as_secs() / RETRY_INTERVAL.as_secs()) as u32;
+
+	// We set `min` and `max` to the same value to have a constant interval retry
+	let mut backoff = exponential_backoff::Backoff::new(retries, RETRY_INTERVAL, RETRY_INTERVAL);
 	backoff.set_factor(RETRY_MULTIPLIER);
-	backoff.set_jitter(0.3);
 	backoff
 }
 
