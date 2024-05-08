@@ -10,10 +10,11 @@ echo "Running clippy checks"
 set +e
 
 echo "Running clippy for main targets"
-cargo clippy --all-features -- -W clippy::all -A clippy::style -A clippy::forget_copy -A clippy::forget_ref
+chmod +x ./scripts/cmd-all
+./scripts/cmd-all clippy "clippy --lib --bins" "-- -W clippy::all -A clippy::style -A forgetting_copy_types -A forgetting_references" 
 
 echo "Running clippy for all targets"
-cargo clippy --all-features --all-targets -- -A clippy::all -W clippy::correctness -A clippy::forget_copy -A clippy::forget_ref
+cargo +nightly-2024-02-09 clippy --all-features --all-targets -- -A clippy::all -W clippy::correctness -A clippy::forget_copy -A clippy::forget_ref
 
 CLIPPY_EXIT_CODE=$?
 
