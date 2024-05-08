@@ -515,7 +515,7 @@ pub struct PendulumDecimalsLookup;
 impl DecimalsLookup for PendulumDecimalsLookup {
 	type CurrencyId = CurrencyId;
 
-	fn decimals(currency_id: CurrencyId) -> u32 {
+	fn decimals(currency_id: Self::CurrencyId) -> u32 {
 		(match currency_id {
 			CurrencyId::Stellar(asset) => asset.decimals(),
 			CurrencyId::XCM(index) => match index {
@@ -535,6 +535,10 @@ impl DecimalsLookup for PendulumDecimalsLookup {
 				6 => 18,
 				// PINK
 				7 => 10,
+				// HDX
+				8 => 12,
+				// vDOT
+				9 => 10,
 				_ => 12,
 			},
 			// We assume that all other assets have 12 decimals
@@ -549,7 +553,7 @@ pub struct AmplitudeDecimalsLookup;
 impl DecimalsLookup for AmplitudeDecimalsLookup {
 	type CurrencyId = CurrencyId;
 
-	fn decimals(currency_id: CurrencyId) -> u32 {
+	fn decimals(currency_id: Self::CurrencyId) -> u32 {
 		(match currency_id {
 			CurrencyId::Stellar(asset) => asset.decimals(),
 			CurrencyId::XCM(index) => match index {
