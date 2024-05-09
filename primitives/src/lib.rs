@@ -440,12 +440,10 @@ impl CurrencyInfo for Asset {
 	fn name(&self) -> &str {
 		match self {
 			Asset::StellarNative => "Stellar",
-			Asset::AlphaNum4 { code, issuer: _ } => {
-				from_utf8(&remove_trailing_non_alphanum_bytes(code)).unwrap_or("unspecified")
-			},
-			Asset::AlphaNum12 { code, issuer: _ } => {
-				from_utf8(&remove_trailing_non_alphanum_bytes(code)).unwrap_or("unspecified")
-			},
+			Asset::AlphaNum4 { code, issuer: _ } =>
+				from_utf8(&remove_trailing_non_alphanum_bytes(code)).unwrap_or("unspecified"),
+			Asset::AlphaNum12 { code, issuer: _ } =>
+				from_utf8(&remove_trailing_non_alphanum_bytes(code)).unwrap_or("unspecified"),
 		}
 	}
 
@@ -542,9 +540,8 @@ impl DecimalsLookup for PendulumDecimalsLookup {
 				_ => 12,
 			},
 			// We assume that all other assets have 12 decimals
-			CurrencyId::Native | CurrencyId::ZenlinkLPToken(_, _, _, _) | CurrencyId::Token(_) => {
-				12
-			},
+			CurrencyId::Native | CurrencyId::ZenlinkLPToken(_, _, _, _) | CurrencyId::Token(_) =>
+				12,
 		}) as u32
 	}
 }
@@ -564,9 +561,8 @@ impl DecimalsLookup for AmplitudeDecimalsLookup {
 				_ => 12,
 			},
 			// We assume that all other assets have 12 decimals
-			CurrencyId::Native | CurrencyId::ZenlinkLPToken(_, _, _, _) | CurrencyId::Token(_) => {
-				12
-			},
+			CurrencyId::Native | CurrencyId::ZenlinkLPToken(_, _, _, _) | CurrencyId::Token(_) =>
+				12,
 		}) as u32
 	}
 }
@@ -652,21 +648,18 @@ impl TryInto<stellar::Asset> for CurrencyId {
 			Self::XCM(_currency_id) => Err("XCM Foreign Asset not defined in the Stellar world."),
 			Self::Native => Err("PEN token not defined in the Stellar world."),
 			Self::StellarNative => Ok(stellar::Asset::native()),
-			Self::Stellar(Asset::AlphaNum4 { code, issuer }) => {
+			Self::Stellar(Asset::AlphaNum4 { code, issuer }) =>
 				Ok(stellar::Asset::AssetTypeCreditAlphanum4(AlphaNum4 {
 					asset_code: code,
 					issuer: PublicKey::PublicKeyTypeEd25519(issuer),
-				}))
-			},
-			Self::Stellar(Asset::AlphaNum12 { code, issuer }) => {
+				})),
+			Self::Stellar(Asset::AlphaNum12 { code, issuer }) =>
 				Ok(stellar::Asset::AssetTypeCreditAlphanum12(AlphaNum12 {
 					asset_code: code,
 					issuer: PublicKey::PublicKeyTypeEd25519(issuer),
-				}))
-			},
-			Self::ZenlinkLPToken(_, _, _, _) => {
-				Err("Zenlink LP Token not defined in the Stellar world.")
-			},
+				})),
+			Self::ZenlinkLPToken(_, _, _, _) =>
+				Err("Zenlink LP Token not defined in the Stellar world."),
 			Self::Token(_) => Err("Token not defined in the Stellar world."),
 		}
 	}
@@ -902,9 +895,9 @@ impl TransactionEnvelopeExt for TransactionEnvelope {
 					if payment.claimants.len() == 1 {
 						let Claimant::ClaimantTypeV0(claimant) = &payment.claimants.get_vec()[0];
 
-						if claimant.destination.eq(&recipient_account_pk)
-							&& payment.asset == asset && claimant.predicate
-							== ClaimPredicate::ClaimPredicateUnconditional
+						if claimant.destination.eq(&recipient_account_pk) &&
+							payment.asset == asset && claimant.predicate ==
+							ClaimPredicate::ClaimPredicateUnconditional
 						{
 							acc.saturating_add(payment.amount)
 						} else {
@@ -932,9 +925,8 @@ impl TransactionEnvelopeExt for TransactionEnvelope {
 
 	fn get_transaction(&self) -> Option<Transaction> {
 		match self {
-			TransactionEnvelope::EnvelopeTypeTxV0(transaction) => {
-				Some(transaction.tx.clone().into())
-			},
+			TransactionEnvelope::EnvelopeTypeTxV0(transaction) =>
+				Some(transaction.tx.clone().into()),
 			TransactionEnvelope::EnvelopeTypeTx(transaction) => Some(transaction.tx.clone()),
 			_ => None,
 		}
