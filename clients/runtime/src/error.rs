@@ -137,10 +137,10 @@ impl Error {
 				let data_string = custom_error.data().map(ToString::to_string).unwrap_or_default();
 
 				if RecoverableError::is_recoverable(&data_string) {
-					return Some(Recoverability::Recoverable(data_string))
+					return Some(Recoverability::Recoverable(data_string));
 				}
 
-				return Some(Recoverability::Unrecoverable(data_string))
+				return Some(Recoverability::Unrecoverable(data_string));
 			} else {
 				None
 			}

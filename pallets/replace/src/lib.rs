@@ -423,7 +423,7 @@ impl<T: Config> Pallet<T> {
 			ext::vault_registry::withdraw_replace_request::<T>(&vault_id, &amount)?;
 
 		if withdrawn_tokens.is_zero() {
-			return Err(Error::<T>::NoPendingRequest.into())
+			return Err(Error::<T>::NoPendingRequest.into());
 		}
 
 		// Emit WithdrawReplaceRequest event.
@@ -632,7 +632,7 @@ impl<T: Config> Pallet<T> {
 			ReplaceRequestStatus::Completed => {
 				// We should never enter this branch as completed requests are filtered
 				// but handle it just in case
-				return Err(Error::<T>::ReplaceCompleted.into())
+				return Err(Error::<T>::ReplaceCompleted.into());
 			},
 		};
 

@@ -58,17 +58,17 @@ impl StellarOverlayConnection {
 	pub fn listen(&mut self) -> Result<Option<StellarMessage>, Error> {
 		loop {
 			if !self.is_alive() {
-				return Err(Error::Disconnected)
+				return Err(Error::Disconnected);
 			}
 
 			match self.receiver.try_recv() {
 				Ok(StellarMessage::ErrorMsg(e)) => {
 					log::error!("listen(): received error message: {e:?}");
 					if e.code == ErrorCode::ErrConf || e.code == ErrorCode::ErrAuth {
-						return Err(Error::ConnectionFailed(error_to_string(e)))
+						return Err(Error::ConnectionFailed(error_to_string(e)));
 					}
 
-					return Ok(None)
+					return Ok(None);
 				},
 				Ok(msg) => return Ok(Some(msg)),
 				Err(TryRecvError::Disconnected) => return Err(Error::Disconnected),

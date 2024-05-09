@@ -156,7 +156,7 @@ pub async fn send_payment_to_address(
 				continue,
 			_ => {
 				response = result;
-				break
+				break;
 			},
 		}
 	}

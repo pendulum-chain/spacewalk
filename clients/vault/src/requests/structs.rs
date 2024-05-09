@@ -152,7 +152,7 @@ impl Request {
 		// ensure the deadline has not expired yet
 		if let Some(ref deadline) = self.deadline {
 			if parachain_rpc.get_current_active_block_number().await? >= deadline.parachain {
-				return Err(Error::DeadlineExpired)
+				return Err(Error::DeadlineExpired);
 			}
 		}
 

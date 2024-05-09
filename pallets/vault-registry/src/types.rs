@@ -412,7 +412,7 @@ impl<T: Config> RichVault<T> {
 	pub fn issuable_tokens(&self) -> Result<Amount<T>, DispatchError> {
 		// unable to issue additional tokens when banned
 		if self.is_banned() {
-			return Ok(Amount::new(0u32.into(), self.wrapped_currency()))
+			return Ok(Amount::new(0u32.into(), self.wrapped_currency()));
 		}
 
 		// used_collateral = (exchange_rate * (issued_tokens + to_be_issued_tokens)) *
@@ -434,7 +434,7 @@ impl<T: Config> RichVault<T> {
 	pub fn redeemable_tokens(&self) -> Result<Amount<T>, DispatchError> {
 		// unable to redeem additional tokens when banned
 		if self.is_banned() {
-			return Ok(Amount::new(0u32.into(), self.wrapped_currency()))
+			return Ok(Amount::new(0u32.into(), self.wrapped_currency()));
 		}
 
 		self.issued_tokens().checked_sub(&self.to_be_redeemed_tokens())

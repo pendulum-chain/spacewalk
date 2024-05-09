@@ -926,7 +926,7 @@ mod integration_tests {
 
 		//Vault 1 and 4 share and vault 2 and 5 share the same wrapped currency
 		//so we must take into account the combined issuance of these pairs
-		return (issue_fee_1 + issue_fee_4, issue_fee_2 + issue_fee_5, issue_fee_3)
+		return (issue_fee_1 + issue_fee_4, issue_fee_2 + issue_fee_5, issue_fee_3);
 	}
 
 	#[test]

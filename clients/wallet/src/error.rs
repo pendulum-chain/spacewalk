@@ -46,14 +46,14 @@ impl Error {
 			Error::HorizonResponseError { status, error, .. } => {
 				if let Some(e) = error {
 					if e.is_timeout() {
-						return true
+						return true;
 					}
 				}
 
 				if let Some(status) = status {
 					// forbidden error
 					if *status == 403 {
-						return true
+						return true;
 					}
 				}
 
@@ -81,11 +81,11 @@ impl Error {
 					return e
 						.status()
 						.map(|code| server_errors.contains(&code.as_u16()))
-						.unwrap_or(false)
+						.unwrap_or(false);
 				}
 
 				if let Some(status) = status {
-					return server_errors.contains(status)
+					return server_errors.contains(status);
 				}
 
 				// by default, assume that it will be a client error.
@@ -149,15 +149,15 @@ impl Display for CacheError {
 impl Debug for CacheError {
 	fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
 		if let Some(env) = &self.envelope {
-			return write!(f, "kind: {:?}, envelope: {:?}", self.kind, env)
+			return write!(f, "kind: {:?}, envelope: {:?}", self.kind, env);
 		}
 
 		if let Some(seq) = &self.sequence_number {
-			return write!(f, "kind: {:?}, sequence_number: {}", self.kind, seq)
+			return write!(f, "kind: {:?}, sequence_number: {}", self.kind, seq);
 		}
 
 		if let Some(path) = &self.path {
-			return write!(f, "kind: {:?}, path: {}", self.kind, path)
+			return write!(f, "kind: {:?}, path: {}", self.kind, path);
 		}
 
 		write!(f, "kind: {:?}", self.kind)

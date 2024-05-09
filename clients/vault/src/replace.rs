@@ -104,7 +104,7 @@ pub async fn listen_for_replace_requests(
 			|event| async move {
 				if parachain_rpc.is_this_vault(&event.old_vault_id) {
 					// don't respond to requests we placed ourselves
-					return
+					return;
 				}
 
 				tracing::info!(
@@ -133,7 +133,7 @@ pub async fn listen_for_replace_requests(
 								// the only way it can fail is if the channel is closed
 								let _ = event_channel.clone().send(Event::Opened).await;
 
-								return // no need to iterate over the rest of the vault ids
+								return; // no need to iterate over the rest of the vault ids
 							},
 							Err(e) => tracing::error!(
 								"Failed to accept Replace from {} with [{}] due to error: {}",

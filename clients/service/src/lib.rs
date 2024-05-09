@@ -129,7 +129,7 @@ impl<Config: Clone + Send + 'static, F: Fn()> ConnectionManager<Config, F> {
 			match service.start().await {
 				Err(err @ Error::Abort(_)) => {
 					tracing::warn!("Disconnected: {}", err);
-					return Err(err)
+					return Err(err);
 				},
 				Err(err) => {
 					tracing::warn!("Disconnected: {}", err);
@@ -162,7 +162,7 @@ impl<Config: Clone + Send + 'static, F: Fn()> ConnectionManager<Config, F> {
 					tracing::info!("Restarting in {restart_in_secs} seconds");
 					sleep(Duration::from_secs(restart_in_secs)).await;
 
-					continue
+					continue;
 				},
 			};
 		}

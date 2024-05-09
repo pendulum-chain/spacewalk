@@ -17,7 +17,7 @@ impl TryFromSymbol for CurrencyId {
 		let uppercase_symbol = symbol.to_uppercase();
 
 		if uppercase_symbol.trim() == "XLM" {
-			return Ok(CurrencyId::StellarNative)
+			return Ok(CurrencyId::StellarNative);
 		}
 
 		// Try to build stellar asset
@@ -25,7 +25,7 @@ impl TryFromSymbol for CurrencyId {
 		if parts.len() == 2 {
 			let issuer = parts[0].trim();
 			let code = parts[1].trim();
-			return CurrencyId::try_from((code, issuer)).map_err(|_| Error::InvalidCurrency)
+			return CurrencyId::try_from((code, issuer)).map_err(|_| Error::InvalidCurrency);
 		}
 
 		// We assume that it is an XCM currency so we try to parse it as a number

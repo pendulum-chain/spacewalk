@@ -91,7 +91,7 @@ async fn stellar_overlay_should_receive_tx_set() {
 
 		while let Ok(Some(msg)) = ov_conn_locked.listen() {
 			match msg {
-				StellarMessage::ScpMessage(msg) =>
+				StellarMessage::ScpMessage(msg) => {
 					if let ScpStatementPledges::ScpStExternalize(stmt) = &msg.statement.pledges {
 						let tx_set_hash = get_tx_set_hash(stmt);
 						tx_set_hashes_clone.lock().await.push(tx_set_hash.clone());
@@ -99,16 +99,17 @@ async fn stellar_overlay_should_receive_tx_set() {
 							.send_to_node(StellarMessage::GetTxSet(tx_set_hash))
 							.await
 							.unwrap();
-					},
+					}
+				},
 				StellarMessage::TxSet(set) => {
 					let tx_set_hash = set.into_hash().expect("should return a hash");
 					actual_tx_set_hashes_clone.lock().await.push(tx_set_hash);
-					break
+					break;
 				},
 				StellarMessage::GeneralizedTxSet(set) => {
 					let tx_set_hash = set.into_hash().expect("should return a hash");
 					actual_tx_set_hashes_clone.lock().await.push(tx_set_hash);
-					break
+					break;
 				},
 				_ => {},
 			}

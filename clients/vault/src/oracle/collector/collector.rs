@@ -195,7 +195,7 @@ impl ScpMessageCollector {
 
 		if slot.is_none() {
 			tracing::warn!("Collecting TxSet for slot: tx_set_hash: {hash_str} has no slot.");
-			return Err(format!("TxSetHash {hash_str} has no slot."))
+			return Err(format!("TxSetHash {hash_str} has no slot."));
 		}
 
 		Ok(())

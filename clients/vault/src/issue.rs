@@ -17,7 +17,7 @@ use wallet::{
 use crate::{oracle::OracleAgent, ArcRwLock, Error, Event};
 
 fn is_vault(p1: &PublicKey, p2_raw: [u8; 32]) -> bool {
-	return *p1.as_binary() == p2_raw
+	return *p1.as_binary() == p2_raw;
 }
 
 // Initialize the `issue_set` with currently open issues
@@ -184,7 +184,7 @@ fn create_task_status_sender(
 	// An existing task is found.
 	if let Some(existing) = processed_map.get_mut(slot) {
 		// Only recoverable errors can be given a new task.
-		return existing.recover_with_new_sender()
+		return existing.recover_with_new_sender();
 	}
 
 	// Not finding the slot in the map means there's no existing task for it.
@@ -264,7 +264,7 @@ pub async fn process_issues_requests(
 			// create a one shot sender
 			let Some(sender) = create_task_status_sender(&mut processed_map, slot) else {
 				// for ongoing tasks, move on
-				continue
+				continue;
 			};
 
 			tokio::spawn(execute_issue(
@@ -313,7 +313,7 @@ pub async fn execute_issue(
 				if let Err(e) = sender.send(SlotTaskStatus::RecoverableError) {
 					tracing::error!("Execute Issue for slot {slot}: Failed to send {e:?} status.");
 				}
-				return
+				return;
 			},
 		};
 
@@ -356,7 +356,7 @@ pub async fn execute_issue(
 						"Execute Issue #{issue_id:?} for slot {slot}: Failed to send {e:?} status"
 					);
 				}
-				return
+				return;
 			},
 			Err(err) if err.is_issue_completed() => {
 				tracing::debug!(
@@ -367,7 +367,7 @@ pub async fn execute_issue(
 						"Execute Issue #{issue_id:?} for slot {slot}: Failed to send {e:?} status"
 					);
 				}
-				return
+				return;
 			},
 			Err(e) => {
 				if let Err(e) = sender.send(SlotTaskStatus::Failed(format!("{:?}", e))) {
@@ -375,7 +375,7 @@ pub async fn execute_issue(
 						"Execute Issue #{issue_id:?} for slot {slot}: Failed to send {e:?} status"
 					);
 				}
-				return
+				return;
 			},
 		}
 	}
@@ -413,7 +413,7 @@ impl FilterWith<IssueRequestsMap, IssueIdLookup> for IssueFilter {
 				if let Some(issue_id) = memos_to_issue_ids.get(memo_text) {
 					issue_id
 				} else {
-					return false
+					return false;
 				},
 		};
 
@@ -431,7 +431,7 @@ impl FilterWith<IssueRequestsMap, IssueIdLookup> for IssueFilter {
 							let payment_amount_to_vault =
 								tx_env.get_payment_amount_for_asset_to(self.vault_address, asset);
 							if payment_amount_to_vault > 0 {
-								return true
+								return true;
 							}
 						}
 						false
