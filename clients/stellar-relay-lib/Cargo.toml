@@ -16,7 +16,7 @@ wallet = { path = "../wallet", features = ["testing-utils"] }
 
 [dependencies]
 hex = "0.4.3"
-log = {version = "0.4.14"}
+tracing = { version = "0.1", features = ["log"] }
 
 base64 = "0.13.0"
 rand = "0.8.5"

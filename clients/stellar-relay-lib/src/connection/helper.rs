@@ -24,7 +24,7 @@ pub fn secret_key_binary(key: &str) -> [u8; 32] {
 pub fn time_now() -> u64 {
 	let valid_at = SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_millis();
 	u64::try_from(valid_at).unwrap_or_else(|_| {
-		log::warn!("could not convert time at u128 to u64.");
+		tracing::warn!("could not convert time at u128 to u64.");
 		u64::MAX
 	})
 }

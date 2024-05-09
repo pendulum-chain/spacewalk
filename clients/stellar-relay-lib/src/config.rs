@@ -45,7 +45,7 @@ impl StellarOverlayConfig {
 
 		let public_key = secret_key.get_public().to_encoding();
 		let public_key = std::str::from_utf8(&public_key).unwrap();
-		log::info!(
+		tracing::info!(
 			"connection_info(): Connecting to Stellar overlay network using public key: {public_key}"
 		);
 
