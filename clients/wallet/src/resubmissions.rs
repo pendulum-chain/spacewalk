@@ -12,7 +12,7 @@ use primitives::{
 	TransactionEnvelopeExt,
 };
 use std::time::Duration;
-use tokio::time::sleep;
+use tokio::{sync::mpsc, time::sleep};
 
 use crate::horizon::responses::TransactionsResponseIter;
 #[cfg(test)]
@@ -26,10 +26,26 @@ const MAXIMUM_TX_FEE: u32 = 10_000_000; // 1 XLM
 
 #[cfg_attr(test, mockable)]
 impl StellarWallet {
+	/// sends a signal to stop the resubmission task
+	pub async fn stop_periodic_resubmission_of_transactions(&mut self) {
+		match &self.resubmission_end_signal {
+			None => {
+				tracing::warn!("stop_periodic_resubmission_of_transactions(): no schedule to stop");
+			},
+			Some(sender) =>
+				if let Err(e) = sender.send(()).await {
+					tracing::warn!("stop_periodic_resubmission_of_transactions(): failed to send a stop message to scheduler: {e:?}");
+				},
+		}
+	}
+	/// reads in storage the failed (but recoverable) transactions and submit again to Stellar.
 	pub async fn start_periodic_resubmission_of_transactions_from_cache(
-		&self,
+		&mut self,
 		interval_in_seconds: u64,
 	) {
+		// to make sure we don't leave the thread idle, use this channel to properly shut it down.
+		let (sender, mut receiver) = mpsc::channel(2);
+
 		// Perform the resubmission
 		self._resubmit_transactions_from_cache().await;
 
@@ -40,11 +56,18 @@ impl StellarWallet {
 		tokio::spawn(async move {
 			let me_clone = Arc::clone(&me);
 			loop {
-				pause_process_in_secs(interval_in_seconds).await;
+				// a shutdown message was sent. Stop the loop.
+				if let Some(_) = receiver.recv().await {
+					tracing::info!("start_periodic_resubmission_of_transactions_from_cache(): scheduler stopped.");
+					break;
+				}
 
+				pause_process_in_secs(interval_in_seconds).await;
 				me_clone._resubmit_transactions_from_cache().await;
 			}
 		});
+
+		self.resubmission_end_signal = Some(sender)
 	}
 
 	#[doc(hidden)]
@@ -908,7 +931,7 @@ mod test {
 		let wallet = wallet_with_storage("resources/resubmit_transactions_works")
 			.expect("should return a wallet")
 			.clone();
-		let wallet = wallet.write().await;
+		let mut wallet = wallet.write().await;
 
 		let seq_number = wallet.get_sequence().await.expect("should return a sequence");
 
@@ -971,7 +994,7 @@ mod test {
 			.mock_safe(move |_, _| MockResult::Return(Box::pin(async move { false })));
 
 		// let's resubmit these 3 transactions
-		let _ = wallet.start_periodic_resubmission_of_transactions_from_cache(60).await;
+		wallet.start_periodic_resubmission_of_transactions_from_cache(60).await;
 
 		// We wait until the whole cache is empty because eventually all transactions should be
 		// handled
@@ -989,6 +1012,8 @@ mod test {
 			}
 		}
 
+		// shutdown the thread properly
+		wallet.stop_periodic_resubmission_of_transactions().await;
 		wallet.remove_cache_dir();
 	}
 }

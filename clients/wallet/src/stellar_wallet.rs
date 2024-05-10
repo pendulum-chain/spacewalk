@@ -8,7 +8,7 @@ use primitives::stellar::{
 	Asset as StellarAsset, Operation, PublicKey, SecretKey, StellarTypeToString, Transaction,
 	TransactionEnvelope,
 };
-use tokio::sync::Mutex;
+use tokio::sync::{mpsc, Mutex};
 
 use crate::{
 	cache::WalletStateStorage,
@@ -54,6 +54,9 @@ pub struct StellarWallet {
 
 	/// a client to connect to Horizon
 	pub(crate) client: Client,
+
+	/// a sender to 'stop' a scheduled resubmission task
+	pub(crate) resubmission_end_signal: Option<mpsc::Sender<()>>,
 }
 
 impl StellarWallet {
@@ -121,6 +124,7 @@ impl StellarWallet {
 			max_retry_attempts_before_fallback: Self::DEFAULT_MAX_RETRY_ATTEMPTS_BEFORE_FALLBACK,
 			max_backoff_delay: Self::DEFAULT_MAX_BACKOFF_DELAY_IN_SECS,
 			client,
+			resubmission_end_signal: None,
 		})
 	}
 
