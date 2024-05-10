@@ -7,7 +7,7 @@ use substrate_stellar_sdk::{
 	types::{AuthenticatedMessageV0, Curve25519Public, HmacSha256Mac, MessageType},
 	XdrCodec,
 };
-use tracing::{debug, error, trace};
+use tracing::{error, trace};
 
 use crate::{
 	connection::{
@@ -92,12 +92,6 @@ impl Connector {
 			remote_info.sequence(),
 			auth_msg.sequence
 		);
-
-		let auth_msg_xdr = auth_msg.to_base64_xdr();
-		let auth_msg_xdr =
-			String::from_utf8(auth_msg_xdr.clone()).unwrap_or(format!("{:?}", auth_msg_xdr));
-
-		debug!("verify_auth(): received auth message from Stellar Node: {auth_msg_xdr}");
 
 		if remote_info.sequence() != auth_msg.sequence {
 			// must be handled on main thread because workers could mix up order of messages.
