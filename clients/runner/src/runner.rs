@@ -1,7 +1,7 @@
 use crate::{error::Error, Opts};
 use bytes::Bytes;
 use codec::Decode;
-use futures::{future::BoxFuture, FutureExt, SinkExt, StreamExt, TryFutureExt};
+use futures::{future::BoxFuture, FutureExt, StreamExt, TryFutureExt};
 use nix::{
 	sys::signal::{self, Signal},
 	unistd::Pid,
@@ -370,7 +370,7 @@ impl Runner {
 					// so we just close and reopen the connection.
 					// replace with https://github.com/pendulum-chain/spacewalk/issues/521 eventually
 					log::info!("Could not get release, reopening connection...");
-					runner.reopen_subxt_api()?;
+					runner.reopen_subxt_api().await?;
 					log::info!("Connection reopened")
 				},
 				Some(new_release) => {
@@ -457,7 +457,7 @@ impl Drop for Runner {
 pub trait RunnerExt {
 	fn subxt_api(&self) -> &OnlineClient<PolkadotConfig>;
 	/// Close the current RPC client and create a new one to the same endpoint.
-	fn reopen_subxt_api(&mut self) -> Result<(), Error>;
+	async fn reopen_subxt_api(&mut self) -> Result<(), Error>;
 	fn client_args(&self) -> &Vec<String>;
 	fn child_proc(&mut self) -> &mut Option<Child>;
 	fn set_child_proc(&mut self, child_proc: Option<Child>);
@@ -501,11 +501,10 @@ impl RunnerExt for Runner {
 		&self.subxt_api
 	}
 
-	fn reopen_subxt_api(&mut self) -> Result<(), Error> {
-		// Ignore the error if the client is already closed
-		let _ = self.subxt_api.close();
+	async fn reopen_subxt_api(&mut self) -> Result<(), Error> {
 		// Create new RPC client
-		let new_api = try_create_subxt_api(&self.opts.parachain_ws)?;
+		let new_api = try_create_subxt_api(&self.opts.parachain_ws).await?;
+		// We don't need to explicitly close the old one as it should close when dropped
 		self.subxt_api = new_api;
 		Ok(())
 	}
@@ -733,7 +732,7 @@ mod tests {
 		#[async_trait]
 		pub trait RunnerExt {
 			fn subxt_api(&self) -> &OnlineClient<PolkadotConfig>;
-			fn reopen_subxt_api(&mut self) -> Result<(), Error>;
+			async fn reopen_subxt_api(&mut self) -> Result<(), Error>;
 			fn client_args(&self) -> &Vec<String>;
 			fn child_proc(&mut self) -> &mut Option<Child>;
 			fn set_child_proc(&mut self, child_proc: Option<Child>);
