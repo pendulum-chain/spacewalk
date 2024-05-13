@@ -29,7 +29,7 @@ impl From<StellarSdkError> for Error {
 /// Returns 0 if the array of u8 is less than 4 bytes, or exceeds the max of u32.
 pub(crate) fn get_xdr_message_length(data: &[u8]) -> usize {
 	if data.len() < 4 {
-		return 0;
+		return 0
 	}
 
 	let mut message_len = data[0..4].to_vec();
@@ -53,7 +53,7 @@ pub(crate) fn parse_authenticated_message(
 
 	let msg_vers = parse_message_version(&xdr_message[0..4])?;
 	if msg_vers != 0 {
-		return Err(Error::UnsupportedMessageVersion);
+		return Err(Error::UnsupportedMessageVersion)
 	}
 
 	let msg_type = parse_message_type(&xdr_message[12..16])?;

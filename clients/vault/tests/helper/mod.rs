@@ -92,7 +92,7 @@ async fn setup_chain_providers(
 	let (vault_wallet, user_wallet) =
 		initialize_wallets(&vault_stellar_secret, &user_stellar_secret, path, stellar_config).await;
 
-	return (client, vault_wallet, user_wallet);
+	return (client, vault_wallet, user_wallet)
 }
 
 pub async fn test_with<F, R>(

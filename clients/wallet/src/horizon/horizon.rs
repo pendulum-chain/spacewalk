@@ -39,7 +39,7 @@ pub fn horizon_url(is_public_network: bool, is_need_fallback: bool) -> &'static 
 
 			return other_urls
 				.choose(&mut rand::thread_rng())
-				.unwrap_or(&"https://horizon.stellar.org");
+				.unwrap_or(&"https://horizon.stellar.org")
 		}
 
 		"https://horizon.stellar.org"
@@ -180,7 +180,7 @@ impl HorizonClient for reqwest::Client {
 					if sleep_duration < u64::from(max_backoff_delay_in_secs) {
 						backoff_delay_counter += 1;
 					}
-					continue;
+					continue
 				},
 
 				Err(Error::HorizonSubmissionError {
@@ -200,7 +200,7 @@ impl HorizonClient for reqwest::Client {
 						reason,
 						result_code_op,
 						envelope_xdr,
-					});
+					})
 				},
 
 				other => return other,
@@ -271,7 +271,7 @@ impl<C: HorizonClient + Clone> HorizonFetcher<C> {
 
 		if issue_map.is_empty() || memos_to_issue_ids.is_empty() {
 			tracing::debug!("fetch_horizon_and_process_new_transactions(): nothing to traverse");
-			return Ok(last_cursor);
+			return Ok(last_cursor)
 		}
 		let mut txs_iter = self.fetch_transactions_iter(last_cursor).await?;
 

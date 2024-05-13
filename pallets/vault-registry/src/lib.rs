@@ -133,7 +133,7 @@ pub mod pallet {
 			match source {
 				TransactionSource::External => {
 					// receiving unsigned transaction from network - disallow
-					return InvalidTransaction::Call.into();
+					return InvalidTransaction::Call.into()
 				},
 				TransactionSource::Local => {},   // produced by off-chain worker
 				TransactionSource::InBlock => {}, // some other node included it in a block
@@ -1594,7 +1594,7 @@ impl<T: Config> Pallet<T> {
 				if Self::is_vault_below_liquidation_threshold(&vault, liquidation_threshold)
 					.unwrap_or(false)
 				{
-					return Some(vault_id);
+					return Some(vault_id)
 				}
 			}
 			None
@@ -1758,7 +1758,7 @@ impl<T: Config> Pallet<T> {
 		denominator: &Amount<T>,
 	) -> Result<Amount<T>, DispatchError> {
 		if numerator.is_zero() && denominator.is_zero() {
-			return Ok(collateral.clone());
+			return Ok(collateral.clone())
 		}
 
 		let currency = collateral.currency();

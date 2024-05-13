@@ -52,7 +52,7 @@ pub trait FileHandler<T: Default> {
 		let read_size = file.read_to_end(&mut bytes)?;
 
 		if read_size > 0 {
-			return Self::deserialize_bytes(bytes);
+			return Self::deserialize_bytes(bytes)
 		}
 
 		Ok(T::default())
@@ -68,7 +68,7 @@ pub trait FileHandler<T: Default> {
 			let mut splits: Split<char> = filename.split('_');
 
 			if Self::check_slot_in_splitted_filename(slot_param, &mut splits) {
-				return Ok(filename);
+				return Ok(filename)
 			}
 		}
 
@@ -117,7 +117,7 @@ pub trait ArchiveStorage {
 	fn get_url_and_file_name(&self, slot_index: Slot) -> (String, String) {
 		let slot_index = self.find_last_slot_index_in_batch(slot_index);
 		let hex_string = format!("{:08x}", slot_index);
-
+	
 		let file_name = format!("{hex_string}.xdr");
 		let base_url = self.stellar_history_base_url();
 		let url = format!(
@@ -134,7 +134,7 @@ pub trait ArchiveStorage {
 	fn find_last_slot_index_in_batch(&self, slot_index: Slot) -> Slot {
 		let rest = (slot_index + 1) % ARCHIVE_NODE_LEDGER_BATCH;
 		if rest == 0 {
-			return slot_index;
+			return slot_index
 		}
 		slot_index + ARCHIVE_NODE_LEDGER_BATCH - rest
 	}

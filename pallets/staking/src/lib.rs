@@ -443,9 +443,9 @@ impl<T: Config> Pallet<T> {
 		let nonce = Self::nonce(vault_id);
 		let total_stake = Self::total_stake_at_index(nonce, vault_id);
 		if amount.is_zero() {
-			return Ok(());
+			return Ok(())
 		} else if total_stake.is_zero() {
-			return Err(Error::<T>::SlashZeroTotalStake.into());
+			return Err(Error::<T>::SlashZeroTotalStake.into())
 		}
 
 		let amount_div_total_stake =
@@ -473,9 +473,9 @@ impl<T: Config> Pallet<T> {
 		let nonce = Self::nonce(vault_id);
 		let total_stake = Self::total_stake_at_index(nonce, vault_id);
 		if amount.is_zero() {
-			return Ok(());
+			return Ok(())
 		} else if total_stake.is_zero() {
-			return Err(Error::<T>::SlashZeroTotalStake.into());
+			return Err(Error::<T>::SlashZeroTotalStake.into())
 		}
 
 		let amount_div_total_stake =
@@ -552,7 +552,7 @@ impl<T: Config> Pallet<T> {
 	) -> Result<SignedFixedPoint<T>, DispatchError> {
 		let total_current_stake = Self::total_current_stake_at_index(nonce, vault_id);
 		if total_current_stake.is_zero() {
-			return Ok(Zero::zero());
+			return Ok(Zero::zero())
 		}
 
 		let reward_div_total_current_stake =
@@ -576,7 +576,7 @@ impl<T: Config> Pallet<T> {
 
 		let reward = Self::increase_rewards(nonce, currency_id, vault_id, reward)?;
 		if reward.is_zero() {
-			return Ok(Zero::zero());
+			return Ok(Zero::zero())
 		}
 		checked_add_mut!(TotalRewards<T>, currency_id, (nonce, vault_id), &reward);
 
@@ -658,9 +658,9 @@ impl<T: Config> Pallet<T> {
 		let stake = Self::apply_slash(vault_id, nominator_id)?;
 
 		if amount.is_zero() {
-			return Ok(());
+			return Ok(())
 		} else if amount > stake {
-			return Err(Error::<T>::InsufficientFunds.into());
+			return Err(Error::<T>::InsufficientFunds.into())
 		}
 
 		checked_sub_mut!(Stake<T>, nonce, (vault_id, nominator_id), &amount);

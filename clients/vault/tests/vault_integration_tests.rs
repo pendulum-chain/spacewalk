@@ -607,7 +607,7 @@ async fn test_issue_cancel_succeeds() {
 #[ntest::timeout(1_200_000)] // timeout at 20 minutes
 #[serial]
 async fn test_issue_execution_succeeds_from_archive() {
-	let is_public_network = false;
+	let is_public_network = true;
 	test_with_vault(
 		is_public_network,
 		|client, _vault_wallet, user_wallet, _oracle_agent, vault_id, vault_provider| async move {
@@ -660,7 +660,7 @@ async fn test_issue_execution_succeeds_from_archive() {
 			let slot = transaction_response.ledger as u64;
 
 			// We sleep here in order to wait for the fallback to the archive to be necessary
-			sleep(Duration::from_secs(6 * 60)).await;
+			sleep(Duration::from_secs(5 * 60)).await;
 
 			let shutdown_tx = ShutdownSender::new();
 			let stellar_config = random_stellar_relay_config(is_public_network);

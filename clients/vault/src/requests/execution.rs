@@ -62,7 +62,7 @@ async fn spawn_tasks_to_execute_open_requests_async<S, C, MW>(
 
 			// stop the loop
 			if requests.is_empty() {
-				break;
+				break
 			}
 
 			if let Some(request) = get_request_for_stellar_tx(&transaction, &requests) {
@@ -167,7 +167,7 @@ async fn execute_open_request_async(
 						request.hash()
 					);
 
-					break; // There is no need to retry again, so exit from while loop
+					break // There is no need to retry again, so exit from while loop
 				};
 
 				tracing::error!(
@@ -175,7 +175,7 @@ async fn execute_open_request_async(
 					request.request_type(),
 					request.hash()
 				);
-				break; // There is also no need to retry on an unrecoverable error.
+				break // There is also no need to retry on an unrecoverable error.
 			},
 			Err(error) => {
 				retry_count += 1; // increase retry count
@@ -247,7 +247,7 @@ where
 				request.vault_id().pretty_print()
 			);
 
-			return; // nothing we can do - bail
+			return // nothing we can do - bail
 		};
 
 		// We rate limit the number of transactions we pay and execute simultaneously because

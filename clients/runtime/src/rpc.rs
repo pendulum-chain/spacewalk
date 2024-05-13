@@ -96,7 +96,7 @@ impl SpacewalkParachain {
 			return Err(Error::ParachainMetadataMismatch(
 				DEFAULT_SPEC_NAME.into(),
 				spec_name.as_str().unwrap_or_default().into(),
-			));
+			))
 		}
 
 		if DEFAULT_SPEC_VERSION.contains(&runtime_version.spec_version) {
@@ -107,7 +107,7 @@ impl SpacewalkParachain {
 				DEFAULT_SPEC_VERSION.start,
 				DEFAULT_SPEC_VERSION.end,
 				runtime_version.spec_version,
-			));
+			))
 		}
 
 		let currency_constants = metadata::constants().currency();
@@ -379,7 +379,7 @@ impl SpacewalkParachain {
 								if let Ok(Some(target_event)) = target_event {
 									log::trace!("event: {:?}", target_event);
 									if tx.clone().send(target_event).await.is_err() {
-										break;
+										break
 									}
 								}
 							},
@@ -607,7 +607,7 @@ impl VaultRegistryPallet for SpacewalkParachain {
 	async fn register_vault(&self, vault_id: &VaultId, collateral: u128) -> Result<(), Error> {
 		// TODO: check MinimumDeposit
 		if collateral == 0 {
-			return Err(Error::InsufficientFunds);
+			return Err(Error::InsufficientFunds)
 		}
 
 		let register_vault_tx = metadata::tx()
@@ -880,7 +880,7 @@ impl OraclePallet for SpacewalkParachain {
 	/// * `value` - the current exchange rate
 	async fn feed_values(&self, values: Vec<((Vec<u8>, Vec<u8>), FixedU128)>) -> Result<(), Error> {
 		if values.is_empty() {
-			return Err(Error::FeedingEmptyList);
+			return Err(Error::FeedingEmptyList)
 		}
 
 		use crate::metadata::runtime_types::dia_oracle::dia::CoinInfo;

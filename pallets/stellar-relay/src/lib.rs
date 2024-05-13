@@ -622,7 +622,7 @@ pub mod pallet {
 			if let Some(included_memo) = tx_memo_text {
 				ensure!(included_memo == expected_memo, Error::TransactionMemoDoesNotMatch);
 			} else {
-				return Err(Error::TransactionMemoDoesNotMatch);
+				return Err(Error::TransactionMemoDoesNotMatch)
 			}
 
 			Ok(())

@@ -47,7 +47,7 @@ impl Debug for UnconvertedOpenTime {
 			f,
 			"UnconvertedOpenTime:{{ id: {}, parachain_open_height: {}, period: {} }}",
 			id, self.parachain_open_height, self.period
-		);
+		)
 	}
 }
 
@@ -241,7 +241,7 @@ impl<P: IssuePallet + ReplacePallet + UtilFuncs + SecurityPallet + Clone> Cancel
 						T::TYPE_NAME,
 						request.id
 					);
-					return ListState::Invalid;
+					return ListState::Invalid
 				},
 			}
 		}
@@ -299,7 +299,7 @@ impl<P: IssuePallet + ReplacePallet + UtilFuncs + SecurityPallet + Clone> Cancel
 		tracing::trace!("List of open {} requests: {open_requests:?}", T::TYPE_NAME);
 
 		if open_requests.is_empty() {
-			return Ok(vec![]);
+			return Ok(vec![])
 		}
 
 		// get current block height and request period

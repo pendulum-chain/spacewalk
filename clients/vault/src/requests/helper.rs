@@ -94,7 +94,7 @@ pub(crate) fn get_request_for_stellar_tx(
 		envelope.get_payment_amount_for_asset_to(request.stellar_address(), request.asset());
 
 	if paid_amount >= request.amount() {
-		return Some(request.clone());
+		return Some(request.clone())
 	}
 
 	None

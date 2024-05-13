@@ -59,13 +59,13 @@ pub(crate) async fn interpret_response<T: DeserializeOwned>(
 				"interpret_response():  response was a success but failed with conversion: {e:?}"
 			);
 			Error::response_decode_error(status.as_u16(), &response_body)
-		});
+		})
 	}
 
 	let Ok(resp) = serde_json::from_slice::<serde_json::Value>(&response_body) else {
 		tracing::warn!("interpret_response(): cannot convert error response to json");
 
-		return Err(Error::response_decode_error(status.as_u16(), &response_body));
+		return Err(Error::response_decode_error(status.as_u16(), &response_body))
 	};
 
 	let status =
@@ -279,7 +279,7 @@ impl TransactionResponse {
 				.map_err(|_| Error::DecodeError)?
 				.result
 		{
-			return Ok(res.get_vec().to_vec());
+			return Ok(res.get_vec().to_vec())
 		}
 
 		Ok(vec![])
@@ -318,7 +318,7 @@ impl HorizonAccountResponse {
 		for balance in &self.balances {
 			if let Some(balance_asset) = balance.get_asset() {
 				if &balance_asset == asset {
-					return true;
+					return true
 				}
 			}
 		}
@@ -345,7 +345,7 @@ impl HorizonBalance {
 	/// returns what kind of asset the Balance is
 	pub fn get_asset(&self) -> Option<Asset> {
 		if &self.asset_type == ASSET_TYPE_NATIVE.as_bytes() {
-			return Some(Asset::AssetTypeNative);
+			return Some(Asset::AssetTypeNative)
 		}
 
 		match Asset::from_asset_code(&self.asset_code.clone()?, &self.asset_issuer.clone()?) {
@@ -489,7 +489,7 @@ impl<C: HorizonClient> TransactionsResponseIter<C> {
 	// returns the first transaction response of the list
 	fn get_top_record(&mut self) -> Option<TransactionResponse> {
 		if !self.is_empty() {
-			return Some(self.records.remove(0));
+			return Some(self.records.remove(0))
 		}
 		None
 	}
@@ -514,7 +514,7 @@ impl<C: HorizonClient> TransactionsResponseIter<C> {
 	pub fn middle(&mut self) -> Option<TransactionResponse> {
 		if !self.is_empty() {
 			let idx = self.records.len() / 2;
-			return Some(self.records.remove(idx));
+			return Some(self.records.remove(idx))
 		}
 		None
 	}

@@ -384,7 +384,7 @@ impl VaultService {
 
 		// exit if auto-register uses faucet and faucet url not set
 		if amount_is_none && self.config.faucet_url.is_none() {
-			return Err(ServiceError::Abort(Error::FaucetUrlNotSet));
+			return Err(ServiceError::Abort(Error::FaucetUrlNotSet))
 		}
 
 		Ok(parsed_auto_register)
@@ -416,7 +416,7 @@ impl VaultService {
 
 		// check if both the config file and the wallet are the same.
 		if is_public_network != stellar_overlay_cfg.is_public_network() {
-			return Err(ServiceError::IncompatibleNetwork);
+			return Err(ServiceError::IncompatibleNetwork)
 		}
 
 		let oracle_agent = crate::oracle::start_oracle_agent(
@@ -850,7 +850,7 @@ impl VaultService {
 			match reqwest::get(url.clone()).await {
 				Ok(response) if response.status().is_success() => {
 					tracing::info!("try_fund_from_faucet(): successful funded {account_id}");
-					return true;
+					return true
 				},
 				Ok(response) => {
 					tracing::error!("try_fund_from_faucet(): failed to fund {account_id} from faucet: {response:#?}");
@@ -893,7 +893,7 @@ impl VaultService {
 					},
 				)
 				.await
-				.map_err(|e| Error::RuntimeError(e));
+				.map_err(|e| Error::RuntimeError(e))
 		} else if self.try_fund_from_faucet().await {
 			Ok(())
 		} else {

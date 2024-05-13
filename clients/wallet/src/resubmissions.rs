@@ -67,7 +67,7 @@ impl StellarWallet {
 				tracing::warn!(
 					"_resubmit_transactions_from_cache(): errors from cache: {errors:?}"
 				);
-				return;
+				return
 			},
 		};
 
@@ -78,7 +78,7 @@ impl StellarWallet {
 
 		// there's nothing to resubmit
 		if envelopes.is_empty() {
-			return;
+			return
 		}
 		tracing::info!(
 			"_resubmit_transactions_from_cache(): resubmitting {:?} envelopes in cache...",
@@ -130,9 +130,8 @@ impl StellarWallet {
 				Ok(None) => self.remove_tx_envelope_from_cache(&env),
 
 				// Resubmission was successful
-				Ok(Some(resp)) => {
-					tracing::debug!("handle_errors(): successfully processed envelope: {resp:?}")
-				},
+				Ok(Some(resp)) =>
+					tracing::debug!("handle_errors(): successfully processed envelope: {resp:?}"),
 			}
 		}
 	}
@@ -174,7 +173,7 @@ impl StellarWallet {
 					return self
 						.handle_tx_bad_seq_error_with_envelope(transaction_envelope.clone())
 						.await
-						.map(Some);
+						.map(Some)
 				}
 
 				tracing::warn!("handle_error(): SequenceNumberAlreadyUsed error but no envelope");
@@ -219,7 +218,7 @@ impl StellarWallet {
 				tx.fee = MAXIMUM_TX_FEE;
 			}
 
-			return self.bump_sequence_number_and_submit(tx).await;
+			return self.bump_sequence_number_and_submit(tx).await
 		}
 
 		tracing::error!("handle_tx_insufficient_fee_error(): Similar transaction already submitted. Skipping {:?}", tx);
@@ -241,7 +240,7 @@ fn is_memo_match(tx1: &Transaction, tx2: &TransactionResponse) -> bool {
 		let Memo::MemoText(tx_memo) = &tx1.memo else { return false };
 
 		if are_memos_eq(response_memo, tx_memo.get_vec()) {
-			return true;
+			return true
 		}
 	}
 	false
@@ -268,18 +267,18 @@ fn _check_transaction_match(
 	// attacker could send a transaction to us with the target memo and we'd wrongly
 	// assume that we already submitted this transaction.
 	if !is_source_account_match(public_key, &tx_resp) {
-		return Err(None);
+		return Err(None)
 	}
 
 	let Ok(source_account_sequence) = tx_resp.source_account_sequence() else {
 		tracing::warn!("_check_transaction_match(): cannot extract sequence number of transaction response: {tx_resp:?}");
-		return Err(None);
+		return Err(None)
 	};
 
 	// check if the sequence number is the same as this response
 	if tx.seq_num == source_account_sequence {
 		// Check if the transaction contains the memo we want to send
-		return Ok(is_memo_match(tx, &tx_resp));
+		return Ok(is_memo_match(tx, &tx_resp))
 	}
 
 	Err(Some(source_account_sequence))
@@ -350,7 +349,7 @@ async fn check_last_transaction_match(
 			if tx_sequence_num < source_account_sequence {
 				if let None = iter.jump_to_next_page().await {
 					// there's no pages left, meaning there's no other transactions to compare
-					return Some(false);
+					return Some(false)
 				}
 			}
 		},
@@ -382,7 +381,7 @@ impl StellarWallet {
 			// The same envelope will be saved again using a different sequence number
 			self.remove_tx_envelope_from_cache(&tx_envelope);
 
-			return self.bump_sequence_number_and_submit(tx).await;
+			return self.bump_sequence_number_and_submit(tx).await
 		}
 
 		tracing::error!("handle_tx_bad_seq_error_with_envelope(): Similar transaction already submitted. Skipping {:?}", tx);
@@ -421,7 +420,7 @@ impl StellarWallet {
 			Ok(iter) => iter,
 			Err(e) => {
 				tracing::warn!("is_transaction_already_submitted(): failed to get iterator: {e:?}");
-				return false;
+				return false
 			},
 		};
 
@@ -440,20 +439,20 @@ impl StellarWallet {
 			// if the sequence number is GREATER than this response,
 			// no other transaction will ever match with it.
 			if tx_sequence_num > top_sequence_num {
-				break;
+				break
 			}
 
 			// check the middle response OR remove half of the responses that won't match.
 			if let Some(result) = check_middle_transaction_match(&mut iter, tx, &own_public_key) {
 				// if the middle response matched (both source account and sequence number),
 				// return that result
-				return result;
+				return result
 			}
 
 			// if no match was found, check the last response OR jump to the next page
 			if let Some(result) = check_last_transaction_match(&mut iter, tx, &own_public_key).await
 			{
-				return result;
+				return result
 			}
 
 			// if no match was found, continue to the next response
@@ -478,7 +477,7 @@ fn decode_to_envelope(
 ) -> Result<TransactionEnvelope, Error> {
 	let Some(envelope_xdr) = envelope_xdr_as_str_opt else {
 		tracing::warn!("handle_error(): no envelope_xdr found");
-		return Err(ResubmissionError("no envelope_xdr".to_string()));
+		return Err(ResubmissionError("no envelope_xdr".to_string()))
 	};
 
 	TransactionEnvelope::from_base64_xdr(envelope_xdr).map_err(|_| DecodeError)
@@ -986,7 +985,7 @@ mod test {
 					wallet.get_sequence().await.expect("should return a sequence"),
 					seq_number + 2
 				);
-				break;
+				break
 			}
 		}
 

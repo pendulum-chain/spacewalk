@@ -86,7 +86,7 @@ impl SlotTask {
 				tracing::trace!("Creating new sender for failed task of slot {}", self.slot);
 
 				self.latest_status = SlotTaskStatus::Ready;
-				return Some(sender);
+				return Some(sender)
 			}
 		}
 

@@ -41,7 +41,7 @@ impl FileHandler<EnvelopesMap> for EnvelopesFileHandler {
 
 		if let Some(start_slot) = parse_slot(splits.next()) {
 			if let Some(end_slot) = parse_slot(splits.next()) {
-				return (slot_param >= start_slot) && (slot_param <= end_slot);
+				return (slot_param >= start_slot) && (slot_param <= end_slot)
 			}
 		}
 
@@ -421,11 +421,7 @@ mod test {
 	async fn get_scp_archive_testnet_works() {
 		let is_mainnet = false;
 		let config_testnet = random_stellar_relay_config(is_mainnet);
-		let testnet_archive_url = config_testnet
-			.stellar_history_archive_urls()
-			.first()
-			.expect("should have an archive url")
-			.clone();
+		let testnet_archive_url = config_testnet.stellar_history_archive_urls().first().expect("should have an archive url").clone();
 		let scp_archive_storage = ScpArchiveStorage(testnet_archive_url);
 		let slot_index = 235001;
 
@@ -451,7 +447,7 @@ mod test {
 
 		fs::remove_file(file).expect("should be able to remove the newly added file.");
 	}
-
+	
 	#[tokio::test]
 	async fn get_transactions_archive_works() {
 		let tx_archive_storage = TransactionsArchiveStorage::default();
@@ -479,13 +475,9 @@ mod test {
 	async fn get_transactions_archive_testnet_works() {
 		let is_mainnet = false;
 		let config_testnet = random_stellar_relay_config(is_mainnet);
-		let testnet_archive_url = config_testnet
-			.stellar_history_archive_urls()
-			.first()
-			.expect("should have an archive url")
-			.clone();
+		let testnet_archive_url = config_testnet.stellar_history_archive_urls().first().expect("should have an archive url").clone();
 		let tx_archive_storage = TransactionsArchiveStorage(testnet_archive_url);
-
+		
 		//arrange
 		let slot_index = 235001;
 		let (_url, ref filename) = tx_archive_storage.get_url_and_file_name(slot_index);

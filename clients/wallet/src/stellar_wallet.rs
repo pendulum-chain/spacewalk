@@ -229,7 +229,7 @@ impl StellarWallet {
 
 	pub fn remove_tx_envelope_from_cache(&self, tx_envelope: &TransactionEnvelope) {
 		if let Some(sequence) = tx_envelope.sequence_number() {
-			return self.cache.remove_tx_envelope(sequence);
+			return self.cache.remove_tx_envelope(sequence)
 		}
 
 		tracing::warn!("remove_tx_envelope_from_cache(): cannot find sequence number in transaction envelope: {tx_envelope:?}");
@@ -344,7 +344,7 @@ impl StellarWallet {
 	) -> Result<TransactionResponse, Error> {
 		// user must not send to self
 		if self.secret_key.get_public() == &destination_address {
-			return Err(Error::SelfPaymentError);
+			return Err(Error::SelfPaymentError)
 		}
 
 		// create payment operation

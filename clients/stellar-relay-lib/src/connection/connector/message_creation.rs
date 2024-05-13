@@ -35,7 +35,7 @@ impl Connector {
 		let empty = HmacSha256Mac { mac: [0; 32] };
 
 		if self.remote().is_none() || self.hmac_keys().is_none() {
-			return empty;
+			return empty
 		}
 
 		let sending_mac_key = self.hmac_keys().map(|keys| keys.sending().mac).unwrap_or([0; 32]);

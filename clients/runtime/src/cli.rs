@@ -42,7 +42,7 @@ impl ProviderUserOpts {
 			},
 			_ => {
 				// should never occur, due to clap constraints
-				return Err(Error::KeyringArgumentError);
+				return Err(Error::KeyringArgumentError)
 			},
 		};
 		Ok((pair, user_name))

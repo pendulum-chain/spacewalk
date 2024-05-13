@@ -143,7 +143,7 @@ where
 
 		let value = ConvertPrice::convert(coin_info.price)?;
 		let Some(timestamp) = ConvertMoment::convert(coin_info.last_update_timestamp) else {
-			return None;
+			return None
 		};
 
 		Some(TimestampedValue { value, timestamp })

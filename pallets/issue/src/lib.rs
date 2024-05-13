@@ -557,7 +557,7 @@ impl<T: Config> Pallet<T> {
 				// TODO: update `issue.griefing_collateral`?
 				slashed_collateral
 			} else {
-				return Err(Error::<T>::TimeNotExpired.into());
+				return Err(Error::<T>::TimeNotExpired.into())
 			};
 
 		if ext::vault_registry::is_vault_liquidated::<T>(&issue.vault)? {

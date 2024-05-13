@@ -15,7 +15,7 @@ impl FlowController {
 
 	pub fn send_more(&mut self, message_type: MessageType) -> bool {
 		if !self.enabled {
-			return false;
+			return false
 		}
 
 		if is_flood_message(message_type) {
@@ -24,7 +24,7 @@ impl FlowController {
 
 		if self.flood_msg_cap == 0 {
 			self.flood_msg_cap = MAX_FLOOD_MSG_CAP;
-			return true;
+			return true
 		}
 
 		false

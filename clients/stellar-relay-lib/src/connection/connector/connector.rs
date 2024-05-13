@@ -100,7 +100,7 @@ impl Connector {
 
 		if remote_info.sequence() != auth_msg.sequence {
 			// must be handled on main thread because workers could mix up order of messages.
-			return Err(Error::InvalidSequenceNumber);
+			return Err(Error::InvalidSequenceNumber)
 		}
 
 		let keys = self.hmac_keys.as_ref().ok_or(Error::MissingHmacKeys)?;
