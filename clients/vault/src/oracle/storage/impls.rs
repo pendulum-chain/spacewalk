@@ -451,7 +451,7 @@ mod test {
 
 		fs::remove_file(file).expect("should be able to remove the newly added file.");
 	}
-	
+
 	#[tokio::test]
 	async fn get_transactions_archive_works() {
 		let tx_archive_storage = TransactionsArchiveStorage::default();
