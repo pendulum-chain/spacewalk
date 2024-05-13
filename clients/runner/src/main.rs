@@ -11,7 +11,7 @@ use signal_hook::consts::*;
 use signal_hook_tokio::Signals;
 use std::{fmt::Debug, path::PathBuf};
 
-use crate::runner::{retry_with_log_async, subxt_api, Runner};
+use crate::runner::{retry_with_log_async, subxt_api, try_create_subxt_api, Runner};
 
 #[derive(Parser, Debug, Clone)]
 #[clap(version, author, about, trailing_var_arg = true)]
@@ -39,11 +39,7 @@ async fn main() -> Result<(), Error> {
 			.filter_or(env_logger::DEFAULT_FILTER_ENV, log::LevelFilter::Info.as_str()),
 	);
 	let opts: Opts = Opts::parse();
-	let rpc_client = retry_with_log_async(
-		|| subxt_api(&opts.parachain_ws).into_future().boxed(),
-		"Error running RPC client".to_string(),
-	)
-	.await?;
+	let rpc_client = try_create_subxt_api(&opts.parachain_ws)?;
 	log::info!("Connected to the parachain");
 
 	let runner = Runner::new(rpc_client, opts);

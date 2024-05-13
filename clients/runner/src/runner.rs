@@ -1,7 +1,7 @@
 use crate::{error::Error, Opts};
 use bytes::Bytes;
 use codec::Decode;
-use futures::{future::BoxFuture, FutureExt, StreamExt, TryFutureExt};
+use futures::{future::BoxFuture, FutureExt, SinkExt, StreamExt, TryFutureExt};
 use nix::{
 	sys::signal::{self, Signal},
 	unistd::Pid,
@@ -363,27 +363,38 @@ impl Runner {
 
 		loop {
 			runner.maybe_restart_client()?;
-			if let Some(new_release) = runner.try_get_release().await? {
-				let maybe_downloaded_release = runner.downloaded_release();
-				let downloaded_release =
-					maybe_downloaded_release.as_ref().ok_or(Error::NoDownloadedRelease)?;
-				if new_release.checksum != downloaded_release.checksum {
-					log::info!("Found new client release, updating...");
+			match runner.try_get_release().await? {
+				None => {
+					// Create new RPC client, assuming it's a websocket connection error.
+					// We can't detect if it's a websocket error (https://github.com/paritytech/subxt/issues/1190)
+					// so we just close and reopen the connection.
+					// replace with https://github.com/pendulum-chain/spacewalk/issues/521 eventually
+					log::info!("Could not get release, reopening connection...");
+					runner.reopen_subxt_api()?;
+					log::info!("Connection reopened")
+				},
+				Some(new_release) => {
+					let maybe_downloaded_release = runner.downloaded_release();
+					let downloaded_release =
+						maybe_downloaded_release.as_ref().ok_or(Error::NoDownloadedRelease)?;
+					if new_release.checksum != downloaded_release.checksum {
+						log::info!("Found new client release, updating...");
 
-					// Wait for child process to finish completely.
-					// To ensure there can't be two client processes using the same resources (such
-					// as the Stellar wallet for vaults).
-					runner.terminate_proc_and_wait()?;
+						// Wait for child process to finish completely.
+						// To ensure there can't be two client processes using the same resources
+						// (such as the Stellar wallet for vaults).
+						runner.terminate_proc_and_wait()?;
 
-					// Delete old release
-					runner.delete_downloaded_release()?;
+						// Delete old release
+						runner.delete_downloaded_release()?;
 
-					// Download new release
-					runner.download_binary(new_release).await?;
+						// Download new release
+						runner.download_binary(new_release).await?;
 
-					// Run the downloaded release
-					runner.run_binary()?;
-				}
+						// Run the downloaded release
+						runner.run_binary()?;
+					}
+				},
 			}
 			tokio::time::sleep(BLOCK_TIME).await;
 		}
@@ -445,6 +456,8 @@ impl Drop for Runner {
 #[async_trait]
 pub trait RunnerExt {
 	fn subxt_api(&self) -> &OnlineClient<PolkadotConfig>;
+	/// Close the current RPC client and create a new one to the same endpoint.
+	fn reopen_subxt_api(&mut self) -> Result<(), Error>;
 	fn client_args(&self) -> &Vec<String>;
 	fn child_proc(&mut self) -> &mut Option<Child>;
 	fn set_child_proc(&mut self, child_proc: Option<Child>);
@@ -486,6 +499,15 @@ pub trait RunnerExt {
 impl RunnerExt for Runner {
 	fn subxt_api(&self) -> &OnlineClient<PolkadotConfig> {
 		&self.subxt_api
+	}
+
+	fn reopen_subxt_api(&mut self) -> Result<(), Error> {
+		// Ignore the error if the client is already closed
+		let _ = self.subxt_api.close();
+		// Create new RPC client
+		let new_api = try_create_subxt_api(&self.opts.parachain_ws)?;
+		self.subxt_api = new_api;
+		Ok(())
 	}
 
 	fn client_args(&self) -> &Vec<String> {
@@ -584,7 +606,15 @@ impl StorageReader for Runner {
 	}
 }
 
-pub async fn subxt_api(url: &str) -> Result<OnlineClient<PolkadotConfig>, Error> {
+pub async fn try_create_subxt_api(url: &str) -> Result<OnlineClient<PolkadotConfig>, Error> {
+	retry_with_log_async(
+		|| subxt_api(url).into_future().boxed(),
+		"Error creating RPC client".to_string(),
+	)
+	.await
+}
+
+async fn subxt_api(url: &str) -> Result<OnlineClient<PolkadotConfig>, Error> {
 	Ok(OnlineClient::from_url(url).await?)
 }
 
@@ -687,6 +717,7 @@ mod tests {
 		#[async_trait]
 		pub trait RunnerExt {
 			fn subxt_api(&self) -> &OnlineClient<PolkadotConfig>;
+			fn reopen_subxt_api(&mut self) -> Result<(), Error>;
 			fn client_args(&self) -> &Vec<String>;
 			fn child_proc(&mut self) -> &mut Option<Child>;
 			fn set_child_proc(&mut self, child_proc: Option<Child>);
