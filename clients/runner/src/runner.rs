@@ -618,8 +618,12 @@ async fn subxt_api(url: &str) -> Result<OnlineClient<PolkadotConfig>, Error> {
 	Ok(OnlineClient::from_url(url).await?)
 }
 
+// Creates a backoff strategy for retrying operations. The backoff strategy is a constant 1-second
+// interval. The number of retries is calculated based on the `RETRY_TIMEOUT` and `RETRY_INTERVAL`.
 fn create_backoff_strategy() -> exponential_backoff::Backoff {
 	let retries: u32 = (RETRY_TIMEOUT.as_secs() / RETRY_INTERVAL.as_secs()) as u32;
+
+	log::info!("Creating backoff strategy with {retries} retries");
 
 	// We set `min` and `max` to the same value to have a constant interval retry
 	let mut backoff = exponential_backoff::Backoff::new(retries, RETRY_INTERVAL, RETRY_INTERVAL);
@@ -632,6 +636,8 @@ where
 	F: FnMut() -> Result<T, Error>,
 {
 	let backoff = create_backoff_strategy();
+	// For debugging purposes
+	let mut counter = 0;
 
 	// We store the error to return it if the backoff is exhausted
 	let mut error = None;
@@ -640,6 +646,10 @@ where
 			Ok(result) => return Ok(result),
 			Err(err) => {
 				log::info!("{}: {}. Retrying...", log_msg, err.to_string());
+
+				log::debug!("Retry attempt: {}", counter);
+				counter += 1;
+
 				std::thread::sleep(duration);
 				error = Some(err)
 			},
@@ -655,6 +665,8 @@ where
 	E: Into<Error> + Sized + Display,
 {
 	let backoff = create_backoff_strategy();
+	// For debugging purposes
+	let mut counter = 0;
 
 	// We store the error to return it if the backoff is exhausted
 	let mut error = None;
@@ -663,6 +675,10 @@ where
 			Ok(result) => return Ok(result),
 			Err(err) => {
 				log::info!("{}: {}. Retrying...", log_msg, err.to_string());
+
+				log::debug!("Retry attempt: {}", counter);
+				counter += 1;
+
 				tokio::time::sleep(duration).await;
 				error = Some(err)
 			},
