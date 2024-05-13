@@ -683,15 +683,6 @@ impl VaultService {
 		tasks.append(&mut replace_tasks);
 
 		tasks.push((
-			"Parachain Block Listener",
-			run(active_block_listener(
-				self.spacewalk_parachain.clone(),
-				issue_event_tx,
-				replace_event_tx,
-			)),
-		));
-
-		tasks.push((
 			"Redeem Request Listener",
 			run(listen_for_redeem_requests(
 				self.shutdown.clone(),
