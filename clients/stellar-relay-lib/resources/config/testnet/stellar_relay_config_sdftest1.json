@@ -11,6 +11,8 @@
     "is_pub_net": false
   },
   "stellar_history_archive_urls": [
-    "http://history.stellar.org/prd/core-testnet/core_testnet_001"
+    "http://history.stellar.org/prd/core-testnet/core_testnet_001",
+    "http://history.stellar.org/prd/core-testnet/core_testnet_002",
+    "http://history.stellar.org/prd/core-testnet/core_testnet_003"
   ]
 }
