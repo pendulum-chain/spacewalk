@@ -20,8 +20,6 @@ parachain-metadata-foucoco = ["runtime/parachain-metadata-foucoco"]
 integration-test = ["integration", "standalone-metadata"]
 
 [dependencies]
-log = "0.4.0"
-
 async-std = "1.12.0"
 async-trait = "0.1.40"
 base64 = { version = '0.13.0', default-features = false, features = ['alloc'] }

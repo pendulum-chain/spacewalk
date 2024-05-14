@@ -11845,7 +11845,6 @@ dependencies = [
  "jsonrpc-core",
  "jsonrpc-core-client",
  "lazy_static",
- "log",
  "mockall 0.8.3",
  "nonzero_ext",
  "ntest",
