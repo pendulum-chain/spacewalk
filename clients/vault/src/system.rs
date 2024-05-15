@@ -292,7 +292,7 @@ impl Service<VaultServiceConfig, Error> for VaultService {
 	async fn start(&mut self) -> Result<(), ServiceError<Error>> {
 		let result = self.run_service().await;
 
-		self.shutdown_wallet().await;
+		self.try_shutdown_wallet().await;
 
 		if let Err(error) = result {
 			let _ = self.shutdown.send(());
@@ -936,10 +936,10 @@ impl VaultService {
 	}
 
 	/// shuts down the resubmission task running in the background
-	async fn shutdown_wallet(&self) {
-		tracing::info!("shutdown_wallet(): stop the resubmission scheduler");
+	async fn try_shutdown_wallet(&self) {
+		tracing::info!("try_shutdown_wallet(): stop the resubmission scheduler");
 		let mut wallet = self.stellar_wallet.write().await;
-		wallet.stop_periodic_resubmission_of_transactions().await;
+		wallet.try_stop_periodic_resubmission_of_transactions().await;
 		drop(wallet);
 	}
 }
