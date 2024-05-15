@@ -66,11 +66,8 @@ pub const BLOCK_TIME: Duration = Duration::from_secs(12);
 /// The duration up until operations are retried, used by the retry utilities: 60 seconds
 pub const RETRY_TIMEOUT: Duration = Duration::from_millis(60_000);
 
-/// Waiting interval used by the retry utilities: 1 second
+/// Waiting (sleep) interval used by the retry utilities: 1 second
 pub const RETRY_INTERVAL: Duration = Duration::from_millis(1_000);
-
-/// Multiplier for the interval in retry utilities: Constant interval retry
-pub const RETRY_MULTIPLIER: u32 = 1;
 
 /// Data type assumed to be used by the parachain to store the client release.
 /// If this type is different from the on-chain one, decoding will fail.
@@ -617,30 +614,21 @@ async fn subxt_api(url: &str) -> Result<OnlineClient<PolkadotConfig>, Error> {
 	Ok(OnlineClient::from_url(url).await?)
 }
 
-// Creates a backoff strategy for retrying operations. The backoff strategy is a constant 1-second
-// interval. The number of retries is calculated based on the `RETRY_TIMEOUT` and `RETRY_INTERVAL`.
-fn create_backoff_strategy() -> exponential_backoff::Backoff {
-	let retries: u32 = (RETRY_TIMEOUT.as_secs() / RETRY_INTERVAL.as_secs()) as u32;
-
-	log::info!("Creating backoff strategy with {retries} retries");
-
-	// We set `min` and `max` to the same value to have a constant interval retry
-	let mut backoff = exponential_backoff::Backoff::new(retries, RETRY_INTERVAL, RETRY_INTERVAL);
-	backoff.set_factor(RETRY_MULTIPLIER);
-	backoff
-}
-
 pub fn retry_with_log<T, F>(mut f: F, log_msg: String) -> Result<T, Error>
 where
 	F: FnMut() -> Result<T, Error>,
 {
-	let backoff = create_backoff_strategy();
 	// For debugging purposes
 	let mut counter = 0;
 
 	// We store the error to return it if the backoff is exhausted
 	let mut error = None;
-	while let Some(duration) = backoff.iter().next() {
+
+	// We retry for the number of retries calculated based on the `RETRY_TIMEOUT` and
+	// `RETRY_INTERVAL`
+	let retries =
+		(RETRY_TIMEOUT.as_secs().checked_div(RETRY_INTERVAL.as_secs()).unwrap_or(1)) as u32;
+	for _ in 0..retries {
 		match f() {
 			Ok(result) => return Ok(result),
 			Err(err) => {
@@ -649,7 +637,7 @@ where
 				log::debug!("Retry attempt: {}", counter);
 				counter += 1;
 
-				std::thread::sleep(duration);
+				std::thread::sleep(RETRY_INTERVAL);
 				error = Some(err)
 			},
 		}
@@ -663,13 +651,17 @@ where
 	F: Fn() -> BoxFuture<'a, Result<T, E>>,
 	E: Into<Error> + Sized + Display,
 {
-	let backoff = create_backoff_strategy();
 	// For debugging purposes
 	let mut counter = 0;
 
 	// We store the error to return it if the backoff is exhausted
 	let mut error = None;
-	while let Some(duration) = backoff.iter().next() {
+
+	// We retry for the number of retries calculated based on the `RETRY_TIMEOUT` and
+	// `RETRY_INTERVAL`
+	let retries =
+		(RETRY_TIMEOUT.as_secs().checked_div(RETRY_INTERVAL.as_secs()).unwrap_or(1)) as u32;
+	for _ in 0..retries {
 		match f().await {
 			Ok(result) => return Ok(result),
 			Err(err) => {
@@ -678,7 +670,7 @@ where
 				log::debug!("Retry attempt: {}", counter);
 				counter += 1;
 
-				tokio::time::sleep(duration).await;
+				tokio::time::sleep(RETRY_INTERVAL).await;
 				error = Some(err)
 			},
 		}
@@ -776,7 +768,7 @@ mod tests {
 					panic!("Backoff retries more often than expected")
 				}
 
-				// We always return an error. It can be any error
+				// We always return an error so that we retry. It can be any error
 				Box::pin(async { Err(Error::ProcessTerminationFailure) })
 			},
 			"Error. Retrying".to_string(),
