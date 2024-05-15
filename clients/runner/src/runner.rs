@@ -762,6 +762,32 @@ mod tests {
 		}
 	}
 
+	// Test the backoff/retry implementation
+	#[tokio::test]
+	async fn test_retry_with_log_async() {
+		let counter = std::sync::Mutex::new(0);
+		let expected_retries = (RETRY_TIMEOUT.as_secs() / RETRY_INTERVAL.as_secs()) as u32;
+
+		let result: Result<(), Error> = retry_with_log_async(
+			|| {
+				let mut counter = counter.lock().unwrap();
+				*counter += 1;
+				if (*counter as u32) > expected_retries {
+					panic!("Backoff retries more often than expected")
+				}
+
+				// We always return an error. It can be any error
+				Box::pin(async { Err(Error::ProcessTerminationFailure) })
+			},
+			"Error. Retrying".to_string(),
+		)
+		.await;
+		// We expect to get the returned error as a result once all retries are exhausted
+		assert!(result.is_err());
+		let counter = *counter.lock().unwrap();
+		assert_eq!(counter, expected_retries);
+	}
+
 	//Before running this test, ensure uri and checksum of the test file match!
 	#[tokio::test]
 	async fn test_runner_download_binary() {
@@ -1089,6 +1115,34 @@ mod tests {
 			Runner::try_load_downloaded_binary(&mut runner, &Default::default()),
 			Error::IncorrectChecksum
 		);
+	}
+
+	#[tokio::test]
+	async fn test_runner_reconnects_failing_rpc() {
+		let tmp = TempDir::new("runner-tests").expect("failed to create tempdir");
+		let mock_path = tmp.path().to_path_buf().join("client");
+		let mut runner = MockRunner::default();
+
+		// Create a closure that returns Ok(()) for the first call and an error for the second call
+		// let mut try_get_release = runner.expect_try_get_release();
+		// try_get_release.returning(|| Ok(None));
+		// try_get_release.returning(|| Err(Error::ProcessTerminationFailure));
+		runner.expect_download_path().return_const(mock_path.clone());
+		runner
+			.expect_try_load_downloaded_binary()
+			.returning(|_| Err(Error::IncorrectChecksum));
+		runner
+			.expect_try_get_release()
+			.once()
+			.returning(|| Ok(Some(ClientRelease::default())));
+
+		let result = Runner::auto_update(&mut runner).await;
+		// log result
+		match result {
+			Ok(_) => log::error!("Auto-updater unexpectedly terminated."),
+			Err(e) => log::error!("Runner error: {}", e),
+		}
+		// assert_err!(result, Error::ProcessTerminationFailure);
 	}
 
 	#[tokio::test]
