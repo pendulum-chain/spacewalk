@@ -619,7 +619,7 @@ async fn test_issue_execution_succeeds_from_archive_on_testnet() {
 	test_issue_execution_succeeds_from_archive_on_network(is_public_network).await;
 }
 
-async fn test_issue_execution_succeeds_from_archive_on_network(is_public_network: bool){
+async fn test_issue_execution_succeeds_from_archive_on_network(is_public_network: bool) {
 	test_with_vault(
 		is_public_network,
 		|client, _vault_wallet, user_wallet, _oracle_agent, vault_id, vault_provider| async move {
