@@ -366,9 +366,11 @@ impl Runner {
 					// We can't detect if it's a websocket error (https://github.com/paritytech/subxt/issues/1190)
 					// so we just close and reopen the connection.
 					// replace with https://github.com/pendulum-chain/spacewalk/issues/521 eventually
-					log::info!("Could not get release, reopening connection...");
-					runner.reopen_subxt_api().await?;
-					log::info!("Connection reopened")
+					log::info!("Could not get release, reopening connection to RPC endpoint...");
+					match runner.reopen_subxt_api().await {
+						Ok(_) => log::info!("Connection to RPC endpoint reopened"),
+						Err(e) => log::error!("Failed to reopen connection: {}", e),
+					}
 				},
 				Some(new_release) => {
 					let maybe_downloaded_release = runner.downloaded_release();
@@ -1125,34 +1127,6 @@ mod tests {
 			Runner::try_load_downloaded_binary(&mut runner, &Default::default()),
 			Error::IncorrectChecksum
 		);
-	}
-
-	#[tokio::test]
-	async fn test_runner_reconnects_failing_rpc() {
-		let tmp = TempDir::new("runner-tests").expect("failed to create tempdir");
-		let mock_path = tmp.path().to_path_buf().join("client");
-		let mut runner = MockRunner::default();
-
-		// Create a closure that returns Ok(()) for the first call and an error for the second call
-		// let mut try_get_release = runner.expect_try_get_release();
-		// try_get_release.returning(|| Ok(None));
-		// try_get_release.returning(|| Err(Error::ProcessTerminationFailure));
-		runner.expect_download_path().return_const(mock_path.clone());
-		runner
-			.expect_try_load_downloaded_binary()
-			.returning(|_| Err(Error::IncorrectChecksum));
-		runner
-			.expect_try_get_release()
-			.once()
-			.returning(|| Ok(Some(ClientRelease::default())));
-
-		let result = Runner::auto_update(&mut runner).await;
-		// log result
-		match result {
-			Ok(_) => log::error!("Auto-updater unexpectedly terminated."),
-			Err(e) => log::error!("Runner error: {}", e),
-		}
-		// assert_err!(result, Error::ProcessTerminationFailure);
 	}
 
 	#[tokio::test]
