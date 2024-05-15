@@ -626,8 +626,7 @@ where
 
 	// We retry for the number of retries calculated based on the `RETRY_TIMEOUT` and
 	// `RETRY_INTERVAL`
-	let retries =
-		(RETRY_TIMEOUT.as_secs().checked_div(RETRY_INTERVAL.as_secs()).unwrap_or(1)) as u32;
+	let retries = RETRY_TIMEOUT.as_secs().checked_div(RETRY_INTERVAL.as_secs()).unwrap_or(1);
 	for _ in 0..retries {
 		match f() {
 			Ok(result) => return Ok(result),
@@ -659,8 +658,7 @@ where
 
 	// We retry for the number of retries calculated based on the `RETRY_TIMEOUT` and
 	// `RETRY_INTERVAL`
-	let retries =
-		(RETRY_TIMEOUT.as_secs().checked_div(RETRY_INTERVAL.as_secs()).unwrap_or(1)) as u32;
+	let retries = RETRY_TIMEOUT.as_secs().checked_div(RETRY_INTERVAL.as_secs()).unwrap_or(1);
 	for _ in 0..retries {
 		match f().await {
 			Ok(result) => return Ok(result),
@@ -756,15 +754,35 @@ mod tests {
 
 	// Test the backoff/retry implementation
 	#[tokio::test]
-	async fn test_retry_with_log_async() {
-		let counter = std::sync::Mutex::new(0);
-		let expected_retries = (RETRY_TIMEOUT.as_secs() / RETRY_INTERVAL.as_secs()) as u32;
+	async fn test_retry_with_log() {
+		let expected_retries =
+			RETRY_TIMEOUT.as_secs().checked_div(RETRY_INTERVAL.as_secs()).unwrap_or(0);
 
+		let counter = std::sync::Mutex::new(0);
+		let result: Result<(), Error> = retry_with_log(
+			|| {
+				let mut counter = counter.lock().unwrap();
+				*counter += 1;
+				if (*counter) > expected_retries {
+					panic!("Backoff retries more often than expected")
+				}
+
+				// We always return an error so that we retry. It can be any error
+				Err(Error::ProcessTerminationFailure)
+			},
+			"Error. Retrying".to_string(),
+		);
+		// We expect to get the returned error as a result once all retries are exhausted
+		assert!(result.is_err());
+		let counter = *counter.lock().unwrap();
+		assert_eq!(counter, expected_retries);
+
+		let counter = std::sync::Mutex::new(0);
 		let result: Result<(), Error> = retry_with_log_async(
 			|| {
 				let mut counter = counter.lock().unwrap();
 				*counter += 1;
-				if (*counter as u32) > expected_retries {
+				if (*counter) > expected_retries {
 					panic!("Backoff retries more often than expected")
 				}
 
