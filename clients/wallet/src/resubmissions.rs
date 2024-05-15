@@ -13,7 +13,7 @@ use primitives::{
 };
 use std::time::Duration;
 use tokio::{sync::mpsc, time::sleep};
-use tracing::{debug, error, info, warn};
+use tracing::{debug, error, info, warn, trace };
 
 use crate::horizon::responses::TransactionsResponseIter;
 #[cfg(test)]
