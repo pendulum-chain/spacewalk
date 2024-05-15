@@ -219,8 +219,11 @@ due to the converted destination account not having trustlines set up for the re
 The destination account is derived automatically from the account that called the extrinsic on-chain.
 
 ### Debugging with `tokio-console`
-
-The vault is `tokio-console` ready. [Install tokio-console](https://github.com/tokio-rs/console?tab=readme-ov-file#running-the-console)
+The vault is `tokio-console` ready, with the feature **_`allow-debugger`_**. _Remember to [set the rustflags](https://github.com/tokio-rs/console?tab=readme-ov-file#instrumenting-your-program)!_
+```
+RUSTFLAGS="--cfg tokio_unstable" cargo run --bin vault --features allow-debugger
+```
+[Install tokio-console](https://github.com/tokio-rs/console?tab=readme-ov-file#running-the-console)
 and connect to the vault.  
 If using the [testchain](../testchain) and vault's `standalone-metadata` feature, you can use the command:
 ```
