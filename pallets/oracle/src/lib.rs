@@ -294,7 +294,7 @@ impl<T: Config> Pallet<T> {
 		ext::security::ensure_parachain_status_running::<T>()?;
 
 		let Some(price) = T::DataProvider::get_no_op(&key) else {
-			return Err(Error::<T>::MissingExchangeRate.into());
+			return Err(Error::<T>::MissingExchangeRate.into())
 		};
 		Ok(price.value)
 	}
@@ -360,7 +360,7 @@ impl<T: Config> Pallet<T> {
 		to_decimals: u32,
 	) -> Result<BalanceOf<T>, DispatchError> {
 		if from_amount.is_zero() {
-			return Ok(Zero::zero());
+			return Ok(Zero::zero())
 		}
 
 		let from_amount = T::UnsignedFixedPoint::from_inner(from_amount);

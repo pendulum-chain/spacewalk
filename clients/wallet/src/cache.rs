@@ -20,7 +20,7 @@ macro_rules! unwrap_or_return {
 			Ok(result) => result,
 			Err(e) => {
 				tracing::warn!("{:?}: {:?}", $log, e);
-				return $ret;
+				return $ret
 			},
 		}
 	};
@@ -66,7 +66,7 @@ impl WalletStateStorage {
 		let path = self.cursor_path();
 		let path = Path::new(&path);
 		if !path.exists() {
-			return 0;
+			return 0
 		}
 
 		let Ok(content_from_file) = read_content_from_path(path) else { return 0 };
@@ -131,7 +131,7 @@ impl WalletStateStorage {
 			return Err(Error::cache_error_with_seq(
 				CacheErrorKind::SequenceNumberAlreadyUsed,
 				sequence,
-			));
+			))
 		}
 
 		let mut file = OpenOptions::new()
@@ -189,7 +189,7 @@ impl WalletStateStorage {
 			if let Err(e) = create_dir_all(&full_path) {
 				tracing::warn!("Failed to create directory of {full_path}: {:?}", e);
 			}
-			return;
+			return
 		};
 
 		for entry in directory.flatten() {
@@ -207,7 +207,7 @@ impl WalletStateStorage {
 		let path = Path::new(&full_file_path);
 
 		if !path.exists() {
-			return Err(Error::cache_error_with_seq(CacheErrorKind::FileDoesNotExist, sequence));
+			return Err(Error::cache_error_with_seq(CacheErrorKind::FileDoesNotExist, sequence))
 		}
 
 		extract_tx_envelope_from_path(path).map(|(tx, _)| tx)
@@ -251,7 +251,7 @@ impl WalletStateStorage {
 
 		// return an error if all the files have errors.
 		if tx_envelopes.is_empty() && !errors.is_empty() {
-			return Err(errors);
+			return Err(errors)
 		}
 
 		// sort in ascending order, based on the sequence number.
@@ -290,7 +290,7 @@ fn extract_tx_envelope_from_path<P: AsRef<Path> + std::fmt::Debug + Clone>(
 
 	// convert the content into `Vec<u8>`
 	let Some(content_as_vec_u8) = parse_xdr_string_to_vec_u8(&content_from_file) else {
-		return Err(Error::cache_error_with_path(CacheErrorKind::InvalidFile, format!("{path:?}")));
+		return Err(Error::cache_error_with_path(CacheErrorKind::InvalidFile, format!("{path:?}")))
 	};
 
 	// convert the content to TransactionEnvelope
