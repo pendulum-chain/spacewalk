@@ -2,7 +2,7 @@ use async_std::io::WriteExt;
 use std::time::Duration;
 use substrate_stellar_sdk::types::{MessageType, SendMore, StellarMessage};
 use tokio::time::timeout;
-use tracing::{ debug, info };
+use tracing::debug;
 
 use crate::connection::{
 	flow_controller::MAX_FLOOD_MSG_CAP,
