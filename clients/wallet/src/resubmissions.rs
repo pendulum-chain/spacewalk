@@ -13,7 +13,7 @@ use primitives::{
 };
 use std::time::Duration;
 use tokio::{sync::mpsc, time::sleep};
-use tracing::{debug, error, info, warn, trace };
+use tracing::{debug, error, info, trace, warn};
 
 use crate::horizon::responses::TransactionsResponseIter;
 #[cfg(test)]
@@ -81,16 +81,12 @@ impl StellarWallet {
 			Ok((envs, errors)) => {
 				//  Log those with errors.
 				if !errors.is_empty() {
-					warn!(
-						"_resubmit_transactions_from_cache(): errors from cache: {errors:?}"
-					);
+					warn!("_resubmit_transactions_from_cache(): errors from cache: {errors:?}");
 				}
 				envs
 			},
 			Err(errors) => {
-				warn!(
-					"_resubmit_transactions_from_cache(): errors from cache: {errors:?}"
-				);
+				warn!("_resubmit_transactions_from_cache(): errors from cache: {errors:?}");
 				return
 			},
 		};
@@ -183,9 +179,7 @@ impl StellarWallet {
 						self.remove_tx_envelope_from_cache(&env);
 					};
 
-					error!(
-						"handle_error(): Unrecoverable HorizonSubmissionError: {error:?}"
-					);
+					error!("handle_error(): Unrecoverable HorizonSubmissionError: {error:?}");
 				},
 			},
 			Error::CacheError(CacheError {
