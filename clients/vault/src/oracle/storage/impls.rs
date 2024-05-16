@@ -418,11 +418,76 @@ mod test {
 	}
 
 	#[tokio::test]
+	async fn get_scp_archive_testnet_works() {
+		let is_mainnet = false;
+		let config_testnet = random_stellar_relay_config(is_mainnet);
+		let testnet_archive_url = config_testnet
+			.stellar_history_archive_urls()
+			.first()
+			.expect("should have an archive url")
+			.clone();
+		let scp_archive_storage = ScpArchiveStorage(testnet_archive_url);
+		let slot_index = 235001;
+
+		let scp_archive = scp_archive_storage
+			.get_archive(slot_index)
+			.await
+			.expect("should find the archive");
+
+		let slot_index_u32: u32 = slot_index.try_into().unwrap();
+		scp_archive
+			.get_vec()
+			.iter()
+			.find(|&scp_entry| {
+				if let ScpHistoryEntry::V0(scp_entry_v0) = scp_entry {
+					scp_entry_v0.ledger_messages.ledger_seq == slot_index_u32
+				} else {
+					false
+				}
+			})
+			.expect("slot index should be in archive");
+
+		let (_, file) = scp_archive_storage.get_url_and_file_name(slot_index);
+
+		fs::remove_file(file).expect("should be able to remove the newly added file.");
+	}
+
+	#[tokio::test]
 	async fn get_transactions_archive_works() {
 		let tx_archive_storage = TransactionsArchiveStorage::default();
 
 		//arrange
 		let slot_index = 30511500;
+		let (_url, ref filename) = tx_archive_storage.get_url_and_file_name(slot_index);
+
+		//act
+		let _transactions_archive = tx_archive_storage
+			.get_archive(slot_index)
+			.await
+			.expect("should find the archive");
+
+		//assert
+		TransactionsArchiveStorage::read_file_xdr(filename)
+			.expect("File with transactions should exists");
+
+		let (_, file) = tx_archive_storage.get_url_and_file_name(slot_index);
+
+		fs::remove_file(file).expect("should be able to remove the newly added file.");
+	}
+
+	#[tokio::test]
+	async fn get_transactions_archive_testnet_works() {
+		let is_mainnet = false;
+		let config_testnet = random_stellar_relay_config(is_mainnet);
+		let testnet_archive_url = config_testnet
+			.stellar_history_archive_urls()
+			.first()
+			.expect("should have an archive url")
+			.clone();
+		let tx_archive_storage = TransactionsArchiveStorage(testnet_archive_url);
+
+		//arrange
+		let slot_index = 235001;
 		let (_url, ref filename) = tx_archive_storage.get_url_and_file_name(slot_index);
 
 		//act
