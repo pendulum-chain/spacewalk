@@ -360,19 +360,20 @@ impl Runner {
 
 		loop {
 			runner.maybe_restart_client()?;
-			match runner.try_get_release().await? {
-				None => {
+			match runner.try_get_release().await {
+				Err(error) => {
 					// Create new RPC client, assuming it's a websocket connection error.
 					// We can't detect if it's a websocket error (https://github.com/paritytech/subxt/issues/1190)
 					// so we just close and reopen the connection.
 					// replace with https://github.com/pendulum-chain/spacewalk/issues/521 eventually
-					log::info!("Could not get release, reopening connection to RPC endpoint...");
+					log::error!("Error getting release: {}", error);
+					log::info!("Reopening connection to RPC endpoint...");
 					match runner.reopen_subxt_api().await {
 						Ok(_) => log::info!("Connection to RPC endpoint reopened"),
 						Err(e) => log::error!("Failed to reopen connection: {}", e),
 					}
 				},
-				Some(new_release) => {
+				Ok(Some(new_release)) => {
 					let maybe_downloaded_release = runner.downloaded_release();
 					let downloaded_release =
 						maybe_downloaded_release.as_ref().ok_or(Error::NoDownloadedRelease)?;
@@ -394,6 +395,7 @@ impl Runner {
 						runner.run_binary()?;
 					}
 				},
+				_ => (),
 			}
 			tokio::time::sleep(BLOCK_TIME).await;
 		}
