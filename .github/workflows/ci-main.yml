@@ -7,7 +7,7 @@ name: continuous-integration-main
 jobs:
   ci:
     strategy:
-      max-parallel: 1
+      max-parallel: 2
       matrix:
         rust: [ stable, nightly ]
     runs-on: ubuntu-20.04
