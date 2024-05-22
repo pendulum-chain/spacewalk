@@ -92,7 +92,7 @@ impl From<substrate_stellar_sdk::types::Error> for Error {
 			ErrorCode::ErrConf => Self::ConfigError(error_to_string(value)),
 			ErrorCode::ErrAuth => Self::AuthFailed(error_to_string(value)),
 			other => {
-				log::error!("Stellar Node returned error: {}", error_to_string(value));
+				tracing::error!("Stellar Node returned error: {}", error_to_string(value));
 				Self::OverlayError(other)
 			},
 		}

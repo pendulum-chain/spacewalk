@@ -106,15 +106,6 @@ impl ScpMessageCollector {
 
 	/// fetches envelopes from the archive
 	async fn ask_archive_for_envelopes(&self, slot: Slot) {
-		if !self.is_public() {
-			// Fetch from archives only on public network since no archive nodes
-			// are available on testnet
-			tracing::debug!(
-				"ask_archive_for_envelopes(): Proof Building for slot {slot}: Cannot fetch envelopes from archive for test network"
-			);
-			return
-		}
-
 		tokio::spawn(self.get_envelopes_from_horizon_archive(slot));
 	}
 

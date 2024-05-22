@@ -1,6 +1,7 @@
 use std::{default::Default, sync::Arc};
 
 use parking_lot::{lock_api::RwLockReadGuard, RawRwLock, RwLock};
+use stellar_relay_lib::helper::to_base64_xdr_string;
 
 use stellar_relay_lib::sdk::{
 	network::{Network, PUBLIC_NETWORK, TEST_NETWORK},
@@ -156,7 +157,8 @@ impl ScpMessageCollector {
 		} else {
 			tracing::debug!("Collecting SCPEnvelopes for slot {slot}: success");
 			tracing::trace!(
-				"Collecting SCPEnvelopes for slot {slot}: the scp envelope: {scp_envelope:?}"
+				"Collecting SCPEnvelopes for slot {slot}: the scp envelope: {}",
+				to_base64_xdr_string(&scp_envelope.statement)
 			);
 			envelopes_map.insert(slot, vec![scp_envelope]);
 		}
@@ -166,8 +168,10 @@ impl ScpMessageCollector {
 		// save the mapping of the hash of the txset and the slot.
 		let mut m = self.txset_and_slot_map.write();
 		tracing::debug!("Collecting TxSet for slot {slot}: saving a map of txset_hash...");
-		let hash = hex::encode(&txset_hash);
-		tracing::trace!("Collecting TxSet for slot {slot}: the txset_hash: {hash}");
+		tracing::trace!(
+			"Collecting TxSet for slot {slot}: the txset_hash: {}",
+			hex::encode(&txset_hash)
+		);
 		m.insert(txset_hash, slot);
 	}
 
@@ -187,7 +191,6 @@ impl ScpMessageCollector {
 			let mut map_write = self.txset_and_slot_map.write();
 			map_write.remove_by_txset_hash(&hash).map(|slot| {
 				tracing::debug!("Collecting TxSet for slot {slot}: txset saved.");
-				tracing::trace!("Collecting TxSet for slot {slot}: {tx_set:?}");
 				self.txset_map.write().insert(slot, tx_set);
 				slot
 			})

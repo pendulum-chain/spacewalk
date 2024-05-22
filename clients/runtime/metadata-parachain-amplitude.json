@@ -38446,6 +38446,13 @@
                       "docs": [
                         "Exchange failed"
                       ]
+                    },
+                    {
+                      "name": "DecimalsConversionError",
+                      "index": 11,
+                      "docs": [
+                        "Decimals conversion error"
+                      ]
                     }
                   ]
                 }
@@ -42629,7 +42636,7 @@
                 0,
                 0,
                 0,
-                15,
+                17,
                 0,
                 0,
                 0,
@@ -47363,11 +47370,8 @@
               "name": "SelfLocation",
               "ty": 64,
               "value": [
-                1,
-                1,
                 0,
-                49,
-                33
+                0
               ],
               "docs": [
                 " Self chain location."
@@ -51278,10 +51282,10 @@
               "ty": 6,
               "value": [
                 0,
-                228,
-                11,
-                84,
-                2,
+                232,
+                118,
+                72,
+                23,
                 0,
                 0,
                 0,

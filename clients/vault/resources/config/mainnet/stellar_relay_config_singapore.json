@@ -11,8 +11,11 @@
     "is_pub_net": true
   },
   "stellar_history_archive_urls": [
+    "http://history.stellar.org/prd/core-live/core_live_001",
+    "http://history.stellar.org/prd/core-live/core_live_002",
+    "http://history.stellar.org/prd/core-live/core_live_003",
+    "https://stellar-history-de-fra.satoshipay.io",
     "https://stellar-history-sg-sin.satoshipay.io",
-    "https://stellar-history-us-iowa.satoshipay.io",
-    "https://stellar-history-de-fra.satoshipay.io"
+    "https://stellar-history-us-iowa.satoshipay.io"
   ]
 }

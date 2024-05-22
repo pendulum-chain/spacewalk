@@ -37,7 +37,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 					ScpStatementPledges::ScpStExternalize(_) => "ScpStExternalize",
 					ScpStatementPledges::ScpStNominate(_) => "ScpStNominate ",
 				};
-				log::info!(
+				tracing::info!(
 					"{} sent StellarMessage of type {} for ledger {}",
 					node_id,
 					stmt_type,

@@ -417,7 +417,7 @@ pub trait CurrencyInfo {
 pub fn remove_trailing_non_alphanum_bytes(input: &[u8]) -> &[u8] {
 	for (idx, elem) in input.iter().enumerate().rev() {
 		if elem.is_ascii_alphanumeric() {
-			return &input[..=idx]
+			return &input[..=idx];
 		}
 	}
 	b""
@@ -498,9 +498,9 @@ pub enum CurrencyId {
 pub trait DecimalsLookup {
 	type CurrencyId;
 
-	fn decimals(currency_id: CurrencyId) -> u32;
+	fn decimals(currency_id: Self::CurrencyId) -> u32;
 
-	fn one(currency_id: CurrencyId) -> Balance {
+	fn one(currency_id: Self::CurrencyId) -> Balance {
 		10u128.pow(Self::decimals(currency_id))
 	}
 }
@@ -513,7 +513,7 @@ pub struct PendulumDecimalsLookup;
 impl DecimalsLookup for PendulumDecimalsLookup {
 	type CurrencyId = CurrencyId;
 
-	fn decimals(currency_id: CurrencyId) -> u32 {
+	fn decimals(currency_id: Self::CurrencyId) -> u32 {
 		(match currency_id {
 			CurrencyId::Stellar(asset) => asset.decimals(),
 			CurrencyId::XCM(index) => match index {
@@ -531,6 +531,12 @@ impl DecimalsLookup for PendulumDecimalsLookup {
 				5 => 12,
 				// GLMR
 				6 => 18,
+				// PINK
+				7 => 10,
+				// HDX
+				8 => 12,
+				// vDOT
+				9 => 10,
 				_ => 12,
 			},
 			// We assume that all other assets have 12 decimals
@@ -544,7 +550,7 @@ pub struct AmplitudeDecimalsLookup;
 impl DecimalsLookup for AmplitudeDecimalsLookup {
 	type CurrencyId = CurrencyId;
 
-	fn decimals(currency_id: CurrencyId) -> u32 {
+	fn decimals(currency_id: Self::CurrencyId) -> u32 {
 		(match currency_id {
 			CurrencyId::Stellar(asset) => asset.decimals(),
 			CurrencyId::XCM(index) => match index {
@@ -606,11 +612,11 @@ impl TryFrom<(&str, AssetIssuer)> for CurrencyId {
 		if slice.len() <= 4 {
 			let mut code: Bytes4 = [0; 4];
 			code[..slice.len()].copy_from_slice(slice.as_bytes());
-			return Ok(CurrencyId::AlphaNum4(code, issuer))
+			return Ok(CurrencyId::AlphaNum4(code, issuer));
 		} else if slice.len() <= 12 {
 			let mut code: Bytes12 = [0; 12];
 			code[..slice.len()].copy_from_slice(slice.as_bytes());
-			return Ok(CurrencyId::AlphaNum12(code, issuer))
+			return Ok(CurrencyId::AlphaNum12(code, issuer));
 		} else {
 			Err("More than 12 bytes not supported")
 		}
@@ -871,7 +877,7 @@ impl TransactionEnvelopeExt for TransactionEnvelope {
 		};
 
 		if tx_operations.len() == 0 {
-			return BalanceConversion::unlookup(transferred_amount)
+			return BalanceConversion::unlookup(transferred_amount);
 		}
 
 		transferred_amount = tx_operations.iter().fold(0i64, |acc, x| {

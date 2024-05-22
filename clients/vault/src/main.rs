@@ -147,6 +147,9 @@ async fn start() -> Result<(), ServiceError<Error>> {
 
 #[tokio::main]
 async fn main() {
+	#[cfg(feature = "allow-debugger")]
+	console_subscriber::init();
+
 	let exit_code = if let Err(err) = start().await {
 		tracing::error!("Exiting: {}", err);
 		1

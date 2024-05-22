@@ -39039,6 +39039,13 @@
                       "docs": [
                         "Exchange failed"
                       ]
+                    },
+                    {
+                      "name": "DecimalsConversionError",
+                      "index": 11,
+                      "docs": [
+                        "Decimals conversion error"
+                      ]
                     }
                   ]
                 }
@@ -43218,7 +43225,7 @@
                 0,
                 0,
                 0,
-                13,
+                18,
                 0,
                 0,
                 0,
@@ -47984,11 +47991,8 @@
               "name": "SelfLocation",
               "ty": 66,
               "value": [
-                1,
-                1,
                 0,
-                49,
-                33
+                0
               ],
               "docs": [
                 " Self chain location."
@@ -51970,11 +51974,11 @@
               "name": "MinAmountToBuyout",
               "ty": 6,
               "value": [
+                0,
                 232,
-                3,
-                0,
-                0,
-                0,
+                118,
+                72,
+                23,
                 0,
                 0,
                 0,

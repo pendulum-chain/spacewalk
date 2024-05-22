@@ -218,6 +218,43 @@ If the transaction submission fails giving a `tx_failed` in the `result_codes` o
 due to the converted destination account not having trustlines set up for the redeemed asset.
 The destination account is derived automatically from the account that called the extrinsic on-chain.
 
+### Debugging with `tokio-console`
+The vault is `tokio-console` ready, with the feature **_`allow-debugger`_**. _Remember to [set the rustflags](https://github.com/tokio-rs/console?tab=readme-ov-file#instrumenting-your-program)!_
+```
+RUSTFLAGS="--cfg tokio_unstable" cargo run --bin vault --features allow-debugger
+```
+[Install tokio-console](https://github.com/tokio-rs/console?tab=readme-ov-file#running-the-console)
+and connect to the vault.  
+If using the [testchain](../testchain) and vault's `standalone-metadata` feature, you can use the command:
+```
+tokio-console http://127.0.0.1:6669
+```
+This will display: 
+<img width="1138" alt="Screenshot 2024-05-13 at 6 33 33 PM" src="https://github.com/pendulum-chain/spacewalk/assets/2826165/6681a16c-84c0-47f5-abc6-e4ba6a7dc032">
+The multiple ` tokio::task clients/vault/src/system.rs ` tasks follows the tasks spawned consecutively, in [system.rs](https://github.com/pendulum-chain/spacewalk/blob/main/clients/vault/src/system.rs):  
+
+* The first 4 tasks are from `fn create_initial_tasks(...)` :
+    * VaultId Registration Listener
+    * Restart Timer
+    * Stellar Transaction Listener
+    * Parachain Block Listener
+* Next 5 tasks from `fn create_issue_tasks(...)` :  
+    * Issue Request Listener
+    * Issue Cancel Listener
+    * Issue Execute Listener
+    * Issue Executor
+    * Issue Cancel Scheduler
+* Next 4 tasks from `fn create_replace_tasks(...)` :  
+    * Request Replace Listener
+    * Accept Replace Listener
+    * Execute Replace Listener
+    * Replace Cancellation Scheduler   
+* Redeem Request Listener
+* The last 2 tasks from `create_bridge_metrics_tasks(...)` :  
+    * Bridge Metrics Listener
+    * Bridge Metrics Poller
+
+
 ## Notes on the implementation of subxt
 
 This section is supposed to help when encountering issues with communication of vault client and parachain.

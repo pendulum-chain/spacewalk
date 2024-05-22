@@ -34,7 +34,7 @@ pub fn create_hello_message(
 		overlay_min_version: node_info.overlay_min_version,
 		network_id: node_info.network_id,
 		version_str: LimitedString::<100>::new(version_str.clone()).map_err(|e| {
-			log::error!("create_hello_message(): {e:?}");
+			tracing::error!("create_hello_message(): {e:?}");
 			Error::VersionStrTooLong
 		})?,
 		listening_port: i32::try_from(listening_port).unwrap_or(11625),

@@ -606,8 +606,20 @@ async fn test_issue_cancel_succeeds() {
 #[tokio::test(flavor = "multi_thread")]
 #[ntest::timeout(1_200_000)] // timeout at 20 minutes
 #[serial]
-async fn test_issue_execution_succeeds_from_archive() {
+async fn test_issue_execution_succeeds_from_archive_on_mainnet() {
 	let is_public_network = true;
+	test_issue_execution_succeeds_from_archive_on_network(is_public_network).await;
+}
+
+#[tokio::test(flavor = "multi_thread")]
+#[ntest::timeout(1_200_000)] // timeout at 20 minutes
+#[serial]
+async fn test_issue_execution_succeeds_from_archive_on_testnet() {
+	let is_public_network = false;
+	test_issue_execution_succeeds_from_archive_on_network(is_public_network).await;
+}
+
+async fn test_issue_execution_succeeds_from_archive_on_network(is_public_network: bool) {
 	test_with_vault(
 		is_public_network,
 		|client, _vault_wallet, user_wallet, _oracle_agent, vault_id, vault_provider| async move {
