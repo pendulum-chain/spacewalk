@@ -74,10 +74,14 @@ specified in the redeem event.
 The handling of redeem events is implemented in `clients/vault/src/redeem.rs`.
 
 # Build and Run
-There was a [plan to replace Rust `nightly` version with the stable version](https://github.com/pendulum-chain/spacewalk/issues/506).   
+
+There was
+a [plan to replace Rust `nightly` version with the stable version](https://github.com/pendulum-chain/spacewalk/issues/506).   
 The [default toolchain](./rust-toolchain.toml) is set to stable.  
 However, the [pallet `currency`](./pallets/currency)'s
-feature _`testing-utils`_ is using [**`mocktopus`**](https://docs.rs/mocktopus/latest/mocktopus/#) — a `nightly` only lib — and will potentially break your IDEs:
+feature _`testing-utils`_ is using [**`mocktopus`**](https://docs.rs/mocktopus/latest/mocktopus/#) — a `nightly` only
+lib — and will potentially break your IDEs:
+
 ```
 error[E0554]: `#![feature]` may not be used on the stable release channel
  --> /.../registry/src/index.crates.io-6f17d22bba15001f/mocktopus_macros-0.7.11/src/lib.rs:6:12
@@ -85,11 +89,15 @@ error[E0554]: `#![feature]` may not be used on the stable release channel
 6 | #![feature(proc_macro_diagnostic)]
   |            ^^^^^^^^^^^^^^^^^^^^^
 ```
-Building and testing is _different_. The `testing-utils` feature is for testing _**only**_, and **_requires_** **_`nightly`_**.
+
+Building and testing is _different_. The `testing-utils` feature is for testing _**only**_, and **_requires_** *
+*_`nightly`_**.
 
 ## Run all tests
-To run the tests, use the Rust **nightly** version; minimum is `nightly-2024-02-09`.  
-This allows [`mocktopus`](https://docs.rs/mocktopus/latest/mocktopus/#) to be used freely across all packages during testing.
+
+To run the tests, use the Rust **nightly** version; minimum is `nightly-2024-04-18`.  
+This allows [`mocktopus`](https://docs.rs/mocktopus/latest/mocktopus/#) to be used freely across all packages during
+testing.
 
 ```
 cargo +nightly test --lib --features standalone-metadata -- --nocapture
@@ -108,23 +116,29 @@ cargo run --bin spacewalk-standalone --release -- --dev
 ```
 
 ## [`cmd-all` script](./scripts/cmd-all)
-The `--all`, `--all-features` and `--all-target` flags _cannot be used_, as [mentioned previously about the `currency` pallet's `testing-utils` feature](#Build-and-Run).    
+
+The `--all`, `--all-features` and `--all-target` flags _cannot be used_,
+as [mentioned previously about the `currency` pallet's `testing-utils` feature](#Build-and-Run).    
 The following commands (executed at the root directory) will **FAIL**:
+
 * `cargo build --all-features `
 * `cargo clippy --all-targets`
 
-This "apply to all" script is necessary to execute a command across _all_ packages _**individually**_, adding the required conditions to some.  
+This "apply to all" script is necessary to execute a command across _all_ packages _**individually**_, adding the
+required conditions to some.  
 [Check the script on how it looks like](./scripts/cmd-all).
 
-
-**_note_**: This has been tested with only 2 commands in the [CI workflow](.github/workflows/ci-main.yml): `check` and `clippy`. Other commands might not work.
+**_note_**: This has been tested with only 2 commands in the [CI workflow](.github/workflows/ci-main.yml): `check`
+and `clippy`. Other commands might not work.
 
 # Development
 
-To ease the maintenance of proper code formatting and good practices, please consider installing the pre-commit hook and/or the pre-push hook contained in this
+To ease the maintenance of proper code formatting and good practices, please consider installing the pre-commit hook
+and/or the pre-push hook contained in this
 repository.
 
-The pre-commit hook runs `rustfmt` on all the changed files in a commit, to ensure that changed files are properly formatted
+The pre-commit hook runs `rustfmt` on all the changed files in a commit, to ensure that changed files are properly
+formatted
 before committing.
 You can install the hook by running the following commands.
 
@@ -132,18 +146,22 @@ You can install the hook by running the following commands.
 .maintain/add-precommit-hook.sh
 ```
 
-The pre-push hool runs clippy checks that are also performed in the CI of the repository. These checks need to be successful so the push actually happens.
+The pre-push hool runs clippy checks that are also performed in the CI of the repository. These checks need to be
+successful so the push actually happens.
 Otherwise, pelase run the corresponding clippy fix command or manually fix the issue.
 
 To install the hook, run:
+
 ```
 .maintain/add-prepush-hook.sh
 ```
 
 To ignore the checks once the hook has been installed, run `git push --no-verify`.
 
-### Note 
-You may need to make the hook script executable. Pleas run `chmod u+x .git/hooks/pre-push`,  `chmod u+x .git/hooks/pre-commit` if necessary.
+### Note
+
+You may need to make the hook script executable. Pleas
+run `chmod u+x .git/hooks/pre-push`,  `chmod u+x .git/hooks/pre-commit` if necessary.
 
 # Releases
 
