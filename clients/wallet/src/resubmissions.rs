@@ -12,7 +12,8 @@ use primitives::{
 	TransactionEnvelopeExt,
 };
 use std::time::Duration;
-use tokio::time::sleep;
+use tokio::{sync::mpsc, time::sleep};
+use tracing::{debug, error, info, trace, warn};
 
 use crate::horizon::responses::TransactionsResponseIter;
 #[cfg(test)]
@@ -26,10 +27,26 @@ const MAXIMUM_TX_FEE: u32 = 10_000_000; // 1 XLM
 
 #[cfg_attr(test, mockable)]
 impl StellarWallet {
+	/// sends a signal to stop the resubmission task
+	pub async fn try_stop_periodic_resubmission_of_transactions(&mut self) {
+		match &self.resubmission_end_signal {
+			None => {
+				debug!("try_stop_periodic_resubmission_of_transactions(): no schedule to stop");
+			},
+			Some(sender) =>
+				if let Err(e) = sender.send(()).await {
+					warn!("try_stop_periodic_resubmission_of_transactions(): failed to send a stop message to scheduler: {e:?}");
+				},
+		}
+	}
+	/// reads in storage the failed (but recoverable) transactions and submit again to Stellar.
 	pub async fn start_periodic_resubmission_of_transactions_from_cache(
-		&self,
+		&mut self,
 		interval_in_seconds: u64,
 	) {
+		// to make sure we don't leave the thread idle, use this channel to properly shut it down.
+		let (sender, mut receiver) = mpsc::channel(2);
+
 		// Perform the resubmission
 		self._resubmit_transactions_from_cache().await;
 
@@ -40,11 +57,18 @@ impl StellarWallet {
 		tokio::spawn(async move {
 			let me_clone = Arc::clone(&me);
 			loop {
-				pause_process_in_secs(interval_in_seconds).await;
+				// a shutdown message was sent. Stop the loop.
+				if let Some(_) = receiver.recv().await {
+					debug!("start_periodic_resubmission_of_transactions_from_cache(): scheduler stopped.");
+					break;
+				}
 
+				pause_process_in_secs(interval_in_seconds).await;
 				me_clone._resubmit_transactions_from_cache().await;
 			}
 		});
+
+		self.resubmission_end_signal = Some(sender)
 	}
 
 	#[doc(hidden)]
@@ -57,16 +81,12 @@ impl StellarWallet {
 			Ok((envs, errors)) => {
 				//  Log those with errors.
 				if !errors.is_empty() {
-					tracing::warn!(
-						"_resubmit_transactions_from_cache(): errors from cache: {errors:?}"
-					);
+					warn!("_resubmit_transactions_from_cache(): errors from cache: {errors:?}");
 				}
 				envs
 			},
 			Err(errors) => {
-				tracing::warn!(
-					"_resubmit_transactions_from_cache(): errors from cache: {errors:?}"
-				);
+				warn!("_resubmit_transactions_from_cache(): errors from cache: {errors:?}");
 				return
 			},
 		};
@@ -80,7 +100,7 @@ impl StellarWallet {
 		if envelopes.is_empty() {
 			return
 		}
-		tracing::info!(
+		info!(
 			"_resubmit_transactions_from_cache(): resubmitting {:?} envelopes in cache...",
 			envelopes.len()
 		);
@@ -89,7 +109,7 @@ impl StellarWallet {
 		// loop through the envelopes and resubmit each one
 		for envelope in envelopes {
 			if let Err(e) = submit(envelope.clone()).await {
-				tracing::debug!("_resubmit_transactions_from_cache(): encountered error: {e:?}");
+				debug!("_resubmit_transactions_from_cache(): encountered error: {e:?}");
 				// save the kind of error and the envelope that failed
 				error_collector.push((e, envelope));
 			}
@@ -119,7 +139,7 @@ impl StellarWallet {
 			match self.handle_error(error).await {
 				// a new kind of error occurred. Process it on the next loop.
 				Err(e) => {
-					tracing::error!("handle_errors(): new error occurred: {e:?}");
+					error!("handle_errors(): new error occurred: {e:?}");
 
 					// push the transaction that failed, and the corresponding error
 					errors.push((e, env));
@@ -131,7 +151,7 @@ impl StellarWallet {
 
 				// Resubmission was successful
 				Ok(Some(resp)) =>
-					tracing::debug!("handle_errors(): successfully processed envelope: {resp:?}"),
+					debug!("handle_errors(): successfully processed envelope: {resp:?}"),
 			}
 		}
 	}
@@ -159,9 +179,7 @@ impl StellarWallet {
 						self.remove_tx_envelope_from_cache(&env);
 					};
 
-					tracing::error!(
-						"handle_error(): Unrecoverable HorizonSubmissionError: {error:?}"
-					);
+					error!("handle_error(): Unrecoverable HorizonSubmissionError: {error:?}");
 				},
 			},
 			Error::CacheError(CacheError {
@@ -176,9 +194,9 @@ impl StellarWallet {
 						.map(Some)
 				}
 
-				tracing::warn!("handle_error(): SequenceNumberAlreadyUsed error but no envelope");
+				warn!("handle_error(): SequenceNumberAlreadyUsed error but no envelope");
 			},
-			_ => tracing::warn!("handle_error(): Unrecoverable error in Stellar wallet: {error:?}"),
+			_ => warn!("handle_error(): Unrecoverable error in Stellar wallet: {error:?}"),
 		}
 
 		// the error found is not recoverable, and cannot be resubmitted again.
@@ -221,7 +239,7 @@ impl StellarWallet {
 			return self.bump_sequence_number_and_submit(tx).await
 		}
 
-		tracing::error!("handle_tx_insufficient_fee_error(): Similar transaction already submitted. Skipping {:?}", tx);
+		error!("handle_tx_insufficient_fee_error(): Similar transaction already submitted. Skipping {:?}", tx);
 
 		Err(ResubmissionError("Transaction already submitted".to_string()))
 	}
@@ -271,7 +289,7 @@ fn _check_transaction_match(
 	}
 
 	let Ok(source_account_sequence) = tx_resp.source_account_sequence() else {
-		tracing::warn!("_check_transaction_match(): cannot extract sequence number of transaction response: {tx_resp:?}");
+		warn!("_check_transaction_match(): cannot extract sequence number of transaction response: {tx_resp:?}");
 		return Err(None)
 	};
 
@@ -384,7 +402,7 @@ impl StellarWallet {
 			return self.bump_sequence_number_and_submit(tx).await
 		}
 
-		tracing::error!("handle_tx_bad_seq_error_with_envelope(): Similar transaction already submitted. Skipping {:?}", tx);
+		error!("handle_tx_bad_seq_error_with_envelope(): Similar transaction already submitted. Skipping {:?}", tx);
 
 		Err(ResubmissionError("Transaction already submitted".to_string()))
 	}
@@ -399,12 +417,12 @@ impl StellarWallet {
 
 		let old_tx_xdr = tx.to_base64_xdr();
 		let old_tx = String::from_utf8(old_tx_xdr.clone()).unwrap_or(format!("{old_tx_xdr:?}"));
-		tracing::trace!("bump_sequence_number_and_submit(): old transaction: {old_tx}");
+		trace!("bump_sequence_number_and_submit(): old transaction: {old_tx}");
 
 		let updated_tx_xdr = updated_tx.to_base64_xdr();
 		let updated_tx_xdr =
 			String::from_utf8(updated_tx_xdr.clone()).unwrap_or(format!("{updated_tx_xdr:?}"));
-		tracing::trace!("bump_sequence_number_and_submit(): new transaction: {updated_tx_xdr}");
+		trace!("bump_sequence_number_and_submit(): new transaction: {updated_tx_xdr}");
 
 		let envelope = self.create_and_sign_envelope(updated_tx)?;
 		self.submit_transaction(envelope).await
@@ -419,7 +437,7 @@ impl StellarWallet {
 		let mut iter = match self.get_all_transactions_iter().await {
 			Ok(iter) => iter,
 			Err(e) => {
-				tracing::warn!("is_transaction_already_submitted(): failed to get iterator: {e:?}");
+				warn!("is_transaction_already_submitted(): failed to get iterator: {e:?}");
 				return false
 			},
 		};
@@ -476,7 +494,7 @@ fn decode_to_envelope(
 	envelope_xdr_as_str_opt: &Option<String>,
 ) -> Result<TransactionEnvelope, Error> {
 	let Some(envelope_xdr) = envelope_xdr_as_str_opt else {
-		tracing::warn!("handle_error(): no envelope_xdr found");
+		warn!("handle_error(): no envelope_xdr found");
 		return Err(ResubmissionError("no envelope_xdr".to_string()))
 	};
 
@@ -908,7 +926,7 @@ mod test {
 		let wallet = wallet_with_storage("resources/resubmit_transactions_works")
 			.expect("should return a wallet")
 			.clone();
-		let wallet = wallet.write().await;
+		let mut wallet = wallet.write().await;
 
 		let seq_number = wallet.get_sequence().await.expect("should return a sequence");
 
@@ -971,7 +989,7 @@ mod test {
 			.mock_safe(move |_, _| MockResult::Return(Box::pin(async move { false })));
 
 		// let's resubmit these 3 transactions
-		let _ = wallet.start_periodic_resubmission_of_transactions_from_cache(60).await;
+		wallet.start_periodic_resubmission_of_transactions_from_cache(60).await;
 
 		// We wait until the whole cache is empty because eventually all transactions should be
 		// handled
@@ -989,6 +1007,8 @@ mod test {
 			}
 		}
 
+		// shutdown the thread properly
+		wallet.try_stop_periodic_resubmission_of_transactions().await;
 		wallet.remove_cache_dir();
 	}
 }

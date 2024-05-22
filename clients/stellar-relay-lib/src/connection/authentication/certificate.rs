@@ -53,7 +53,7 @@ pub fn create_auth_cert(
 
 	let signature: Signature = Signature::new(keypair.create_signature(raw_sig_data).to_vec())
 		.map_err(|e| {
-			log::error!("create_auth_cert(): {e:?}");
+			tracing::error!("create_auth_cert(): {e:?}");
 			Error::AuthSignatureFailed
 		})?;
 
@@ -87,7 +87,7 @@ pub fn verify_remote_auth_cert(
 	match auth_cert_sig.try_into() {
 		Ok(raw_sig) => remote_pub_key.verify_signature(raw_data, &raw_sig),
 		Err(_) => {
-			log::warn!(
+			tracing::warn!(
 				"failed to convert auth cert signature of size {} to fixed array of 64.",
 				sig_len
 			);

@@ -2,6 +2,7 @@ use crate::Error;
 use hmac::{Hmac, Mac};
 use sha2::Sha256;
 use substrate_stellar_sdk::types::{HmacSha256Mac, Uint256};
+use tracing::warn;
 
 pub struct HMacKeys {
 	sending: HmacSha256Mac,
@@ -95,13 +96,13 @@ pub fn create_sha256_hmac(data_buffer: &[u8], mac_key_buffer: &Buffer) -> Option
 		return match hmac_vec.try_into() {
 			Ok(mac) => Some(HmacSha256Mac { mac }),
 			Err(_) => {
-				log::warn!("failed to convert hmac of size {} into an array of 32.", hmac_vec_len);
+				warn!("failed to convert hmac of size {} into an array of 32.", hmac_vec_len);
 				None
 			},
 		}
 	}
 
-	log::warn!("Invalid length of mac key buffer size {}", mac_key_buffer.len());
+	warn!("Invalid length of mac key buffer size {}", mac_key_buffer.len());
 	None
 }
 

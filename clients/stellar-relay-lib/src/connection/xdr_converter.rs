@@ -108,7 +108,7 @@ fn message_to_bytes<T: XdrCodec>(message: &T) -> Result<Vec<u8>, Error> {
 }
 
 pub fn log_decode_error<T: Debug>(source: &str, error: T) -> Error {
-	log::error!("decode error: {:?}", error);
+	tracing::error!("decode error: {:?}", error);
 	Error::DecodeError(source.to_string())
 }
 

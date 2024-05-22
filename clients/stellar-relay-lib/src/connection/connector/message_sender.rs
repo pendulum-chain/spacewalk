@@ -2,6 +2,7 @@ use async_std::io::WriteExt;
 use std::time::Duration;
 use substrate_stellar_sdk::types::{MessageType, SendMore, StellarMessage};
 use tokio::time::timeout;
+use tracing::debug;
 
 use crate::connection::{
 	flow_controller::MAX_FLOOD_MSG_CAP,
@@ -28,14 +29,14 @@ impl Connector {
 
 	pub async fn send_hello_message(&mut self) -> Result<(), Error> {
 		let msg = self.create_hello_message(time_now())?;
-		log::info!("send_hello_message(): Sending Hello Message: {}", to_base64_xdr_string(&msg));
+		debug!("send_hello_message(): Sending Hello Message: {}", to_base64_xdr_string(&msg));
 
 		self.send_to_node(msg).await
 	}
 
 	pub(super) async fn send_auth_message(&mut self) -> Result<(), Error> {
 		let msg = create_auth_message();
-		log::info!("send_auth_message(): Sending Auth Message: {}", to_base64_xdr_string(&msg));
+		debug!("send_auth_message(): Sending Auth Message: {}", to_base64_xdr_string(&msg));
 
 		self.send_to_node(create_auth_message()).await
 	}
