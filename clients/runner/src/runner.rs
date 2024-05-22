@@ -622,23 +622,19 @@ pub fn retry_with_log<T, F>(mut f: F, log_msg: String) -> Result<T, Error>
 where
 	F: FnMut() -> Result<T, Error>,
 {
-	// For debugging purposes
-	let mut counter = 0;
-
 	// We store the error to return it if the backoff is exhausted
 	let mut error = None;
 
 	// We retry for the number of retries calculated based on the `RETRY_TIMEOUT` and
 	// `RETRY_INTERVAL`
 	let retries = RETRY_TIMEOUT.as_secs().checked_div(RETRY_INTERVAL.as_secs()).unwrap_or(1);
-	for _ in 0..retries {
+	for index in 0..retries {
 		match f() {
 			Ok(result) => return Ok(result),
 			Err(err) => {
-				log::info!("{}: {}. Retrying...", log_msg, err.to_string());
-
-				log::debug!("Retry attempt: {}", counter);
-				counter += 1;
+				if index == 0 {
+					log::warn!("{}: {}. Retrying...", log_msg, err.to_string());
+				}
 
 				std::thread::sleep(RETRY_INTERVAL);
 				error = Some(err)
@@ -646,7 +642,10 @@ where
 		}
 	}
 
-	Err(error.expect("Error should not be None if we reach here."))
+	let error = error.expect("Error should not be None if we reach here.");
+	log::warn!("{}: {}. Retries exhausted.", log_msg, error.to_string());
+
+	Err(error)
 }
 
 pub async fn retry_with_log_async<'a, T, F, E>(f: F, log_msg: String) -> Result<T, Error>
@@ -654,23 +653,19 @@ where
 	F: Fn() -> BoxFuture<'a, Result<T, E>>,
 	E: Into<Error> + Sized + Display,
 {
-	// For debugging purposes
-	let mut counter = 0;
-
 	// We store the error to return it if the backoff is exhausted
 	let mut error = None;
 
 	// We retry for the number of retries calculated based on the `RETRY_TIMEOUT` and
 	// `RETRY_INTERVAL`
 	let retries = RETRY_TIMEOUT.as_secs().checked_div(RETRY_INTERVAL.as_secs()).unwrap_or(1);
-	for _ in 0..retries {
+	for index in 0..retries {
 		match f().await {
 			Ok(result) => return Ok(result),
 			Err(err) => {
-				log::info!("{}: {}. Retrying...", log_msg, err.to_string());
-
-				log::debug!("Retry attempt: {}", counter);
-				counter += 1;
+				if index == 0 {
+					log::warn!("{}: {}. Retrying...", log_msg, err.to_string());
+				}
 
 				tokio::time::sleep(RETRY_INTERVAL).await;
 				error = Some(err)
@@ -678,7 +673,10 @@ where
 		}
 	}
 
-	Err(error.expect("Error should not be None if we reach here.").into())
+	let error = error.expect("Error should not be None if we reach here.");
+	log::warn!("{}: {}. Retries exhausted.", log_msg, error.to_string());
+
+	Err(error.into())
 }
 
 #[cfg(test)]
