@@ -34,6 +34,11 @@ fn deposit_tokens<T: crate::Config>(
 fn mint_collateral<T: crate::Config>(account_id: &T::AccountId, amount: BalanceOf<T>) {
 	deposit_tokens::<T>(get_collateral_currency_id::<T>(), account_id, amount);
 	deposit_tokens::<T>(get_native_currency_id::<T>(), account_id, amount);
+	deposit_tokens::<T>(
+		<T as vault_registry::Config>::GetGriefingCollateralCurrencyId::get(),
+		account_id,
+		amount,
+	);
 }
 
 fn get_currency_pair<T: crate::Config>() -> DefaultVaultCurrencyPair<T> {
@@ -61,7 +66,7 @@ benchmarks! {
 	request_issue {
 		let origin: T::AccountId = account("Origin", 0, 0);
 		let vault_id = get_vault_id::<T>();
-		let amount = 10_000_000u32.into();
+		let amount = pallet::IssueMinimumTransferAmount::<T>::get() + 1000_0000u32.into();
 		let asset = vault_id.wrapped_currency();
 		let relayer_id: T::AccountId = account("Relayer", 0, 0);
 
