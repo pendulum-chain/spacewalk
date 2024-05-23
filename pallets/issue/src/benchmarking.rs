@@ -66,7 +66,7 @@ benchmarks! {
 	request_issue {
 		let origin: T::AccountId = account("Origin", 0, 0);
 		let vault_id = get_vault_id::<T>();
-		let amount = pallet::IssueMinimumTransferAmount::<T>::get() + 1000_0000u32.into();
+		let amount = 1_000_000_000u32.into();
 		let asset = vault_id.wrapped_currency();
 		let relayer_id: T::AccountId = account("Relayer", 0, 0);
 
