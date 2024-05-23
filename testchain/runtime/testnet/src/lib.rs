@@ -478,9 +478,9 @@ impl XCMCurrencyConversion for SpacewalkNativeCurrencyKey {
 	fn convert_from_dia_currency_id(blockchain: Vec<u8>, symbol: Vec<u8>) -> Option<u8> {
 		// We assume that the blockchain is always 0 and the symbol represents the token symbol
 		if blockchain.len() != 1 && blockchain[0] != 0 || symbol.len() != 1 {
-			return None
+			return None;
 		}
-		return Some(symbol[0])
+		return Some(symbol[0]);
 	}
 }
 
@@ -868,6 +868,7 @@ impl_runtime_apis! {
 			(list, storage_info)
 		}
 
+		#[allow(non_local_definitions)]
 		fn dispatch_benchmark(
 			config: frame_benchmarking::BenchmarkConfig
 		) -> Result<Vec<frame_benchmarking::BenchmarkBatch>, sp_runtime::RuntimeString> {
