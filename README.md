@@ -95,7 +95,7 @@ Building and testing is _different_. The `testing-utils` feature is for testing 
 
 ## Run all tests
 
-To run the tests, use the Rust **nightly** version; minimum is `nightly-2024-04-18`.  
+To run the tests, use the Rust **nightly** version; minimum is `nightly-2024-02-09`.  
 This allows [`mocktopus`](https://docs.rs/mocktopus/latest/mocktopus/#) to be used freely across all packages during
 testing.
 
