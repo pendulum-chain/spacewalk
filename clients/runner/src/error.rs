@@ -1,6 +1,5 @@
 #![allow(clippy::enum_variant_names)]
 
-use backoff::Error as BackoffError;
 use codec::Error as CodecError;
 use nix::Error as OsError;
 use reqwest::Error as ReqwestError;
@@ -37,13 +36,4 @@ pub enum Error {
 	ClientNameDerivationError,
 	#[error("Incorrect Checksum")]
 	IncorrectChecksum,
-}
-
-impl<E: Into<Error> + Sized> From<BackoffError<E>> for Error {
-	fn from(e: BackoffError<E>) -> Self {
-		match e {
-			BackoffError::Permanent(err) => err.into(),
-			BackoffError::Transient(err) => err.into(),
-		}
-	}
 }
