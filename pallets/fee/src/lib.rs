@@ -11,7 +11,8 @@ use mocktopus::macros::mockable;
 
 use codec::EncodeLike;
 use frame_support::{
-	dispatch::{DispatchError, DispatchResult},
+	dispatch::DispatchResult,
+	sp_runtime::DispatchError,
 	traits::Get,
 	transactional, PalletId,
 };
@@ -121,7 +122,7 @@ pub mod pallet {
 		type VaultStaking: staking::Staking<
 			DefaultVaultId<Self>,
 			Self::AccountId,
-			Self::Index,
+			Self::Nonce,
 			BalanceOf<Self>,
 			Self::CurrencyId,
 		>;
@@ -217,7 +218,7 @@ pub mod pallet {
 	}
 
 	#[pallet::genesis_build]
-	impl<T: Config> GenesisBuild<T> for GenesisConfig<T> {
+	impl<T: Config> BuildGenesisConfig for GenesisConfig<T> {
 		fn build(&self) {
 			IssueFee::<T>::put(self.issue_fee);
 			IssueGriefingCollateral::<T>::put(self.issue_griefing_collateral);

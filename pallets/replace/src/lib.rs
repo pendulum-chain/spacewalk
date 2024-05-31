@@ -9,8 +9,9 @@
 extern crate mocktopus;
 
 use frame_support::{
-	dispatch::{DispatchError, DispatchResult},
-	ensure, log,
+	dispatch::DispatchResult,
+	sp_runtime::DispatchError,
+	ensure,
 	traits::Get,
 	transactional,
 };
@@ -110,7 +111,7 @@ pub mod pallet {
 			griefing_collateral: BalanceOf<T>,
 		},
 		ReplacePeriodChange {
-			period: T::BlockNumber,
+			period: BlockNumberFor<T>,
 		},
 		ReplaceMinimumTransferAmountUpdate {
 			new_minimum_amount: BalanceOf<T>,
@@ -156,7 +157,7 @@ pub mod pallet {
 	/// to prevent griefing of vault collateral.
 	#[pallet::storage]
 	#[pallet::getter(fn replace_period)]
-	pub(super) type ReplacePeriod<T: Config> = StorageValue<_, T::BlockNumber, ValueQuery>;
+	pub(super) type ReplacePeriod<T: Config> = StorageValue<_, BlockNumberFor<T>, ValueQuery>;
 
 	/// The minimum amount of wrapped assets that is accepted for replace requests
 	#[pallet::storage]
@@ -166,7 +167,7 @@ pub mod pallet {
 
 	#[pallet::genesis_config]
 	pub struct GenesisConfig<T: Config> {
-		pub replace_period: T::BlockNumber,
+		pub replace_period: BlockNumberFor<T>,
 		pub replace_minimum_transfer_amount: BalanceOf<T>,
 	}
 
@@ -181,7 +182,7 @@ pub mod pallet {
 	}
 
 	#[pallet::genesis_build]
-	impl<T: Config> GenesisBuild<T> for GenesisConfig<T> {
+	impl<T: Config> BuildGenesisConfig for GenesisConfig<T> {
 		fn build(&self) {
 			ReplacePeriod::<T>::put(self.replace_period);
 			ReplaceMinimumTransferAmount::<T>::put(self.replace_minimum_transfer_amount);
@@ -189,7 +190,7 @@ pub mod pallet {
 	}
 
 	#[pallet::hooks]
-	impl<T: Config> Hooks<T::BlockNumber> for Pallet<T> {}
+	impl<T: Config> Hooks<BlockNumberFor<T>> for Pallet<T> {}
 
 	#[pallet::pallet]
 	pub struct Pallet<T>(_);
@@ -330,7 +331,7 @@ pub mod pallet {
 		#[transactional]
 		pub fn set_replace_period(
 			origin: OriginFor<T>,
-			period: T::BlockNumber,
+			period: BlockNumberFor<T>,
 		) -> DispatchResultWithPostInfo {
 			ensure_root(origin)?;
 			<ReplacePeriod<T>>::set(period);

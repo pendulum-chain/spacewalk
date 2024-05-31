@@ -13,10 +13,12 @@ mod tests;
 
 use codec::{Decode, Encode, EncodeLike};
 use frame_support::{
-	dispatch::{DispatchError, DispatchResult},
+	dispatch::DispatchResult,
 	ensure,
 	traits::Get,
+	sp_runtime::DispatchError,
 };
+use frame_system::pallet_prelude::BlockNumberFor;
 use primitives::{BalanceToFixedPoint, TruncateFixedPointToInt};
 use scale_info::TypeInfo;
 use sp_arithmetic::FixedPointNumber;
@@ -113,7 +115,7 @@ pub mod pallet {
 	}
 
 	#[pallet::hooks]
-	impl<T: Config<I>, I: 'static> Hooks<T::BlockNumber> for Pallet<T, I> {}
+	impl<T: Config<I>, I: 'static> Hooks<BlockNumberFor<T>> for Pallet<T, I> {}
 
 	/// The total stake deposited to this reward pool.
 	#[pallet::storage]

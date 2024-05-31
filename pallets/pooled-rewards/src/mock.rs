@@ -25,14 +25,14 @@ frame_support::construct_runtime!(
 		NodeBlock = Block,
 		UncheckedExtrinsic = UncheckedExtrinsic,
 	{
-		System: frame_system::{Pallet, Call, Storage, Config, Event<T>},
+		System: frame_system::{Pallet, Call, Storage, Config<T>, Event<T>},
 		Reward: pooled_rewards::{Pallet, Call, Storage, Event<T>},
 	}
 );
 
 pub type AccountId = u64;
 pub type BlockNumber = u64;
-pub type Index = u64;
+pub type Nonce = u64;
 pub type SignedFixedPoint = FixedI128;
 
 parameter_types! {
@@ -48,13 +48,11 @@ impl frame_system::Config for Test {
 	type DbWeight = ();
 	type RuntimeOrigin = RuntimeOrigin;
 	type RuntimeCall = RuntimeCall;
-	type Index = Index;
-	type BlockNumber = BlockNumber;
+	type Nonce = Nonce;
 	type Hash = H256;
 	type Hashing = BlakeTwo256;
 	type AccountId = AccountId;
 	type Lookup = IdentityLookup<Self::AccountId>;
-	type Header = Header;
 	type RuntimeEvent = TestEvent;
 	type BlockHashCount = BlockHashCount;
 	type Version = ();
@@ -91,7 +89,7 @@ pub struct ExtBuilder;
 
 impl ExtBuilder {
 	pub fn build() -> sp_io::TestExternalities {
-		let storage = frame_system::GenesisConfig::default().build_storage::<Test>().unwrap();
+		let storage = frame_system::GenesisConfig::<Test>::default().build_storage().unwrap();
 
 		storage.into()
 	}

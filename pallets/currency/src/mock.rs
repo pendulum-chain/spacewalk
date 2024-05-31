@@ -18,13 +18,10 @@ type Block = frame_system::mocking::MockBlock<Test>;
 
 // Configure a mock runtime to test the pallet.
 frame_support::construct_runtime!(
-	pub enum Test where
-		Block = Block,
-		NodeBlock = Block,
-		UncheckedExtrinsic = UncheckedExtrinsic,
+	pub enum Test
 	{
 		// substrate pallets
-		System: frame_system::{Pallet, Call, Storage, Config, Event<T>},
+		System: frame_system::{Pallet, Call, Storage, Config<T>, Event<T>},
 		Balances: pallet_balances::{Pallet, Call, Storage, Config<T>, Event<T>},
 		Tokens: orml_tokens::{Pallet, Storage, Config<T>, Event<T>},
 		Currencies: orml_currencies::{Pallet, Call},
@@ -42,7 +39,7 @@ pub type SignedFixedPoint = FixedI128;
 pub type SignedInner = i128;
 pub type CurrencyId = primitives::CurrencyId;
 pub type Moment = u64;
-pub type Index = u64;
+pub type Nonce = u64;
 
 parameter_types! {
 	pub const BlockHashCount: u64 = 250;
@@ -56,13 +53,11 @@ impl frame_system::Config for Test {
 	type DbWeight = ();
 	type RuntimeOrigin = RuntimeOrigin;
 	type RuntimeCall = RuntimeCall;
-	type Index = Index;
-	type BlockNumber = BlockNumber;
+	type Nonce = Nonce;
 	type Hash = H256;
 	type Hashing = BlakeTwo256;
 	type AccountId = AccountId;
 	type Lookup = IdentityLookup<Self::AccountId>;
-	type Header = Header;
 	type RuntimeEvent = TestEvent;
 	type BlockHashCount = BlockHashCount;
 	type Version = ();
@@ -188,7 +183,7 @@ pub struct ExtBuilder;
 
 impl ExtBuilder {
 	pub fn build() -> sp_io::TestExternalities {
-		let storage = frame_system::GenesisConfig::default().build_storage::<Test>().unwrap();
+		let storage = frame_system::GenesisConfig::<Test>::default().build_storage().unwrap();
 
 		sp_io::TestExternalities::from(storage)
 	}

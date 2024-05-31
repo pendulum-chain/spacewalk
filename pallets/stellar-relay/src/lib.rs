@@ -31,7 +31,7 @@ use primitives::{derive_shortened_request_id, get_text_memo_from_tx_env, TextMem
 #[frame_support::pallet]
 pub mod pallet {
 	use codec::FullCodec;
-	use frame_support::{pallet_prelude::*, transactional};
+	use frame_support::{pallet_prelude::*, transactional, sp_runtime};
 	use frame_system::pallet_prelude::*;
 	use primitives::stellar::{
 		compound_types::UnlimitedVarArray,
@@ -39,6 +39,7 @@ pub mod pallet {
 		types::{NodeId, ScpEnvelope, StellarValue, Value},
 		Hash, TransactionEnvelope, TransactionSetType, XdrCodec,
 	};
+
 	use sp_core::H256;
 	use sp_std::{collections::btree_map::BTreeMap, fmt::Debug, vec::Vec};
 
@@ -96,7 +97,7 @@ pub mod pallet {
 	#[pallet::event]
 	#[pallet::generate_deposit(pub (super) fn deposit_event)]
 	pub enum Event<T: Config> {
-		UpdateTier1ValidatorSet { new_validators_enactment_block_height: T::BlockNumber },
+		UpdateTier1ValidatorSet { new_validators_enactment_block_height: BlockNumberFor<T> },
 	}
 
 	// Errors inform users that something went wrong.
@@ -153,7 +154,7 @@ pub mod pallet {
 	#[pallet::storage]
 	#[pallet::getter(fn new_validators_enactment_block_height)]
 	pub type NewValidatorsEnactmentBlockHeight<T: Config> =
-		StorageValue<_, T::BlockNumber, ValueQuery>;
+		StorageValue<_, BlockNumberFor<T>, ValueQuery>;
 
 	#[pallet::genesis_config]
 	pub struct GenesisConfig<T: Config> {
@@ -161,7 +162,7 @@ pub mod pallet {
 		pub old_organizations: Vec<OrganizationOf<T>>,
 		pub validators: Vec<ValidatorOf<T>>,
 		pub organizations: Vec<OrganizationOf<T>>,
-		pub enactment_block_height: T::BlockNumber,
+		pub enactment_block_height: BlockNumberFor<T>,
 		pub phantom: PhantomData<T>,
 	}
 
@@ -373,7 +374,7 @@ pub mod pallet {
 			// save space on chain
 			let old_organizations = vec![];
 			let old_validators = vec![];
-			let enactment_block_height = T::BlockNumber::default();
+			let enactment_block_height = BlockNumberFor::<T>::default();
 
 			GenesisConfig {
 				old_organizations,
@@ -387,7 +388,7 @@ pub mod pallet {
 	}
 
 	#[pallet::genesis_build]
-	impl<T: Config> GenesisBuild<T> for GenesisConfig<T> {
+	impl<T: Config> BuildGenesisConfig for GenesisConfig<T> {
 		fn build(&self) {
 			let old_validator_vec = BoundedVec::<ValidatorOf<T>, T::ValidatorLimit>::try_from(
 				self.old_validators.clone(),
@@ -436,7 +437,7 @@ pub mod pallet {
 			origin: OriginFor<T>,
 			validators: Vec<ValidatorOf<T>>,
 			organizations: Vec<OrganizationOf<T>>,
-			enactment_block_height: T::BlockNumber,
+			enactment_block_height: BlockNumberFor<T>,
 		) -> DispatchResult {
 			// Limit this call to root
 			ensure_root(origin)?;
@@ -450,7 +451,7 @@ pub mod pallet {
 		pub fn _update_tier_1_validator_set(
 			validators: Vec<ValidatorOf<T>>,
 			organizations: Vec<OrganizationOf<T>>,
-			enactment_block_height: T::BlockNumber,
+			enactment_block_height: BlockNumberFor<T>,
 		) -> DispatchResult {
 			// Ensure that the number of validators does not exceed the limit
 			ensure!(

@@ -1,4 +1,5 @@
-use frame_support::dispatch::DispatchError;
+use frame_support::sp_runtime::DispatchError;
+
 use orml_traits::MultiCurrency;
 
 use crate::Config;

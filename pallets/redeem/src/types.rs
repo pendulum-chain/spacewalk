@@ -24,7 +24,7 @@ pub trait RedeemRequestExt<T: Config> {
 }
 
 impl<T: Config> RedeemRequestExt<T>
-	for RedeemRequest<T::AccountId, T::BlockNumber, BalanceOf<T>, CurrencyId<T>>
+	for RedeemRequest<T::AccountId, BlockNumberFor<T>, BalanceOf<T>, CurrencyId<T>>
 {
 	fn amount(&self) -> Amount<T> {
 		Amount::new(self.amount, self.asset)

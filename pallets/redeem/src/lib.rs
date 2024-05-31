@@ -12,7 +12,8 @@ extern crate mocktopus;
 use std::str::FromStr;
 
 use frame_support::{
-	dispatch::{DispatchError, DispatchResult},
+	dispatch::DispatchResult,
+	sp_runtime::DispatchError,
 	ensure, log, transactional,
 };
 #[cfg(test)]
@@ -120,7 +121,7 @@ pub mod pallet {
 			amount: BalanceOf<T>,
 		},
 		RedeemPeriodChange {
-			period: T::BlockNumber,
+			period: BlockNumberFor<T>,
 		},
 		SelfRedeem {
 			vault_id: DefaultVaultId<T>,
@@ -130,7 +131,7 @@ pub mod pallet {
 		RateLimitUpdate {
 			limit_volume_amount: Option<BalanceOf<T>>,
 			limit_volume_currency_id: T::CurrencyId,
-			interval_length: T::BlockNumber,
+			interval_length: BlockNumberFor<T>,
 		},
 		RedeemMinimumTransferAmountUpdate {
 			new_minimum_amount: BalanceOf<T>,
@@ -169,7 +170,7 @@ pub mod pallet {
 	/// Stellar assets.
 	#[pallet::storage]
 	#[pallet::getter(fn redeem_period)]
-	pub(super) type RedeemPeriod<T: Config> = StorageValue<_, T::BlockNumber, ValueQuery>;
+	pub(super) type RedeemPeriod<T: Config> = StorageValue<_, BlockNumberFor<T>, ValueQuery>;
 
 	/// Users create redeem requests to receive stellar assets in return for their previously issued
 	/// tokens. This mapping provides access from a unique hash redeemId to a Redeem struct.
@@ -198,11 +199,11 @@ pub mod pallet {
 
 	/// Represent interval define regular 24 hour intervals (every 24 * 3600 / 12 blocks)
 	#[pallet::storage]
-	pub(super) type IntervalLength<T: Config> = StorageValue<_, T::BlockNumber, ValueQuery>;
+	pub(super) type IntervalLength<T: Config> = StorageValue<_, BlockNumberFor<T>, ValueQuery>;
 
 	/// Represent current interval current_block_number / IntervalLength
 	#[pallet::storage]
-	pub(super) type LastIntervalIndex<T: Config> = StorageValue<_, T::BlockNumber, ValueQuery>;
+	pub(super) type LastIntervalIndex<T: Config> = StorageValue<_, BlockNumberFor<T>, ValueQuery>;
 
 	#[pallet::storage]
 	pub(super) type CancelledRedeemAmount<T: Config> =
@@ -210,13 +211,13 @@ pub mod pallet {
 
 	#[pallet::genesis_config]
 	pub struct GenesisConfig<T: Config> {
-		pub redeem_period: T::BlockNumber,
+		pub redeem_period: BlockNumberFor<T>,
 		pub redeem_minimum_transfer_amount: BalanceOf<T>,
 		pub limit_volume_amount: Option<BalanceOf<T>>,
 		pub limit_volume_currency_id: T::CurrencyId,
 		pub current_volume_amount: BalanceOf<T>,
-		pub interval_length: T::BlockNumber,
-		pub last_interval_index: T::BlockNumber,
+		pub interval_length: BlockNumberFor<T>,
+		pub last_interval_index: BlockNumberFor<T>,
 	}
 
 	#[cfg(feature = "std")]
@@ -233,17 +234,17 @@ pub mod pallet {
 				limit_volume_amount: None,
 				limit_volume_currency_id: T::CurrencyId::default(),
 				current_volume_amount: BalanceOf::<T>::zero(),
-				interval_length: T::BlockNumber::from_str(
+				interval_length: BlockNumberFor<T>::from_str(
 					&(DAY_IN_SECONDS / SECONDS_PER_BLOCK).to_string(),
 				)
 				.unwrap_or_default(),
-				last_interval_index: T::BlockNumber::zero(),
+				last_interval_index: BlockNumberFor<T>::zero(),
 			}
 		}
 	}
 
 	#[pallet::genesis_build]
-	impl<T: Config> GenesisBuild<T> for GenesisConfig<T> {
+	impl<T: Config> BuildGenesisConfig for GenesisConfig<T> {
 		fn build(&self) {
 			RedeemPeriod::<T>::put(self.redeem_period);
 			RedeemMinimumTransferAmount::<T>::put(self.redeem_minimum_transfer_amount);
@@ -256,7 +257,7 @@ pub mod pallet {
 	}
 
 	#[pallet::hooks]
-	impl<T: Config> Hooks<T::BlockNumber> for Pallet<T> {}
+	impl<T: Config> Hooks<BlockNumberFor<T>> for Pallet<T> {}
 
 	#[pallet::pallet]
 	pub struct Pallet<T>(_);
@@ -385,7 +386,7 @@ pub mod pallet {
 		#[transactional]
 		pub fn set_redeem_period(
 			origin: OriginFor<T>,
-			period: T::BlockNumber,
+			period: BlockNumberFor<T>,
 		) -> DispatchResultWithPostInfo {
 			ensure_root(origin)?;
 			<RedeemPeriod<T>>::set(period);
@@ -444,7 +445,7 @@ pub mod pallet {
 			origin: OriginFor<T>,
 			limit_volume_amount: Option<BalanceOf<T>>,
 			limit_volume_currency_id: T::CurrencyId,
-			interval_length: T::BlockNumber,
+			interval_length: BlockNumberFor<T>,
 		) -> DispatchResultWithPostInfo {
 			ensure_root(origin)?;
 			Self::_rate_limit_update(
@@ -564,7 +565,7 @@ impl<T: Config> Pallet<T> {
 	pub fn _rate_limit_update(
 		limit_volume_amount: Option<BalanceOf<T>>,
 		limit_volume_currency_id: T::CurrencyId,
-		interval_length: T::BlockNumber,
+		interval_length: BlockNumberFor<T>,
 	) {
 		<LimitVolumeAmount<T>>::set(limit_volume_amount);
 		<LimitVolumeCurrencyId<T>>::set(limit_volume_currency_id);
@@ -1114,8 +1115,8 @@ impl<T: Config> Pallet<T> {
 	fn check_volume(amount_requested: Amount<T>) -> Result<(), DispatchError> {
 		let limit_volume: Option<BalanceOf<T>> = LimitVolumeAmount::<T>::get();
 		if let Some(limit_volume) = limit_volume {
-			let current_block: T::BlockNumber = <frame_system::Pallet<T>>::block_number();
-			let interval_length: T::BlockNumber = IntervalLength::<T>::get();
+			let current_block: BlockNumberFor<T> = <frame_system::Pallet<T>>::block_number();
+			let interval_length: BlockNumberFor<T> = IntervalLength::<T>::get();
 
 			let current_index = current_block.checked_div(&interval_length);
 			let mut current_volume = BalanceOf::<T>::zero();

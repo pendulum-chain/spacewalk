@@ -139,7 +139,7 @@ pub mod issue {
 	}
 
 	// Due to a known bug in serde we need to specify how u128 is (de)serialized.
-	// See https://github.com/paritytech/substrate/issues/4641
+	// See https://github.com/paritytech/polkadot-sdk/issues/4641
 	#[derive(Encode, Decode, Clone, PartialEq, Eq, TypeInfo, MaxEncodedLen)]
 	#[cfg_attr(feature = "std", derive(Debug, Serialize, Deserialize))]
 	pub struct IssueRequest<AccountId, BlockNumber, Balance, CurrencyId: Copy> {
@@ -198,7 +198,7 @@ pub mod redeem {
 	}
 
 	// Due to a known bug in serde we need to specify how u128 is (de)serialized.
-	// See https://github.com/paritytech/substrate/issues/4641
+	// See https://github.com/paritytech/polkadot-sdk/issues/4641
 	#[derive(Encode, Decode, Clone, PartialEq, Eq, TypeInfo, MaxEncodedLen)]
 	#[cfg_attr(feature = "std", derive(Debug, Serialize, Deserialize))]
 	pub struct RedeemRequest<AccountId, BlockNumber, Balance, CurrencyId: Copy> {
@@ -259,7 +259,7 @@ pub mod replace {
 	}
 
 	// Due to a known bug in serde we need to specify how u128 is (de)serialized.
-	// See https://github.com/paritytech/substrate/issues/4641
+	// See https://github.com/paritytech/polkadot-sdk/issues/4641
 	#[derive(Encode, Decode, Clone, PartialEq, TypeInfo, MaxEncodedLen)]
 	#[cfg_attr(feature = "std", derive(Debug, Serialize, Deserialize, Eq))]
 	pub struct ReplaceRequest<AccountId, BlockNumber, Balance, CurrencyId: Copy> {
@@ -322,17 +322,14 @@ pub type AccountId = <<Signature as Verify>::Signer as IdentifyAccount>::Account
 /// never know...
 pub type AccountIndex = u32;
 
-/// Index of a transaction in the chain. 32-bit should be plenty.
-pub type Nonce = u32;
-
 /// Balance of an account.
 pub type Balance = u128;
 
 /// Signed version of Balance
 pub type Amount = i128;
 
-/// Index of a transaction in the chain.
-pub type Index = u32;
+/// Nonce of a transaction in the chain.
+pub type Nonce = u32;
 
 /// A hash of some data used by the chain.
 pub type Hash = sp_core::H256;

@@ -1,5 +1,5 @@
 use codec::{Decode, Encode, MaxEncodedLen};
-use frame_support::{traits::Get, BoundedVec, RuntimeDebug};
+use frame_support::{traits::Get, BoundedVec, pallet_prelude::RuntimeDebug};
 use scale_info::TypeInfo;
 use serde::{Deserialize, Serialize};
 

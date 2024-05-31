@@ -10,7 +10,8 @@ extern crate mocktopus;
 
 use codec::FullCodec;
 use frame_support::{
-	dispatch::{DispatchError, DispatchResult},
+	dispatch::DispatchResult,
+	sp_runtime::DispatchError,
 	ensure,
 	traits::Get,
 	transactional, PalletId,
@@ -119,7 +120,7 @@ pub mod pallet {
 
 	#[pallet::hooks]
 	impl<T: Config> Hooks<BlockNumberFor<T>> for Pallet<T> {
-		fn offchain_worker(n: T::BlockNumber) {
+		fn offchain_worker(n: BlockNumberFor<T>) {
 			log::info!("Off-chain worker started on block {:?}", n);
 			Self::_offchain_worker();
 		}
@@ -473,7 +474,7 @@ pub mod pallet {
 		#[transactional]
 		pub fn set_punishment_delay(
 			origin: OriginFor<T>,
-			punishment_delay: T::BlockNumber,
+			punishment_delay: BlockNumberFor<T>,
 		) -> DispatchResult {
 			ensure_root(origin)?;
 			PunishmentDelay::<T>::put(punishment_delay);
@@ -588,7 +589,7 @@ pub mod pallet {
 		},
 		BanVault {
 			vault_id: DefaultVaultId<T>,
-			banned_until: T::BlockNumber,
+			banned_until: BlockNumberFor<T>,
 		},
 	}
 
@@ -672,7 +673,7 @@ pub mod pallet {
 	/// of this ban (in number of blocks) .
 	#[pallet::storage]
 	#[pallet::getter(fn punishment_delay)]
-	pub(super) type PunishmentDelay<T: Config> = StorageValue<_, T::BlockNumber, ValueQuery>;
+	pub(super) type PunishmentDelay<T: Config> = StorageValue<_, BlockNumberFor<T>, ValueQuery>;
 
 	/// Determines the over-collateralization rate for collateral locked by Vaults, necessary for
 	/// wrapped tokens. This threshold should be greater than the LiquidationCollateralThreshold.
@@ -730,7 +731,7 @@ pub mod pallet {
 	#[pallet::genesis_config]
 	pub struct GenesisConfig<T: Config> {
 		pub minimum_collateral_vault: Vec<(CurrencyId<T>, BalanceOf<T>)>,
-		pub punishment_delay: T::BlockNumber,
+		pub punishment_delay: BlockNumberFor<T>,
 		pub system_collateral_ceiling: Vec<(DefaultVaultCurrencyPair<T>, BalanceOf<T>)>,
 		pub secure_collateral_threshold: Vec<(DefaultVaultCurrencyPair<T>, UnsignedFixedPoint<T>)>,
 		pub premium_redeem_threshold: Vec<(DefaultVaultCurrencyPair<T>, UnsignedFixedPoint<T>)>,
@@ -753,7 +754,7 @@ pub mod pallet {
 	}
 
 	#[pallet::genesis_build]
-	impl<T: Config> GenesisBuild<T> for GenesisConfig<T> {
+	impl<T: Config> BuildGenesisConfig for GenesisConfig<T> {
 		fn build(&self) {
 			PunishmentDelay::<T>::put(self.punishment_delay);
 			for (currency_id, minimum) in self.minimum_collateral_vault.iter() {

@@ -10,6 +10,7 @@ use subxt::{
 	ext::sp_runtime::{generic::Header, traits::BlakeTwo256, MultiSignature},
 	subxt, Config,
 };
+use frame_system::pallet_prelude::BlockNumberFor;
 
 pub use assets::TryFromSymbol;
 pub use error::{Error, Recoverability, SubxtError};
@@ -111,13 +112,11 @@ pub struct WrapperKeepOpaque<T> {
 pub struct SpacewalkRuntime;
 
 impl Config for SpacewalkRuntime {
-	type Index = Index;
-	type BlockNumber = BlockNumber;
+	type Nonce = Nonce;
 	type Hash = H256;
 	type Hashing = BlakeTwo256;
 	type AccountId = AccountId;
 	type Address = Address;
-	type Header = Header<Self::BlockNumber, BlakeTwo256>;
 	type Signature = MultiSignature;
 	type ExtrinsicParams = subxt::tx::PolkadotExtrinsicParams<Self>;
 }
