@@ -4,6 +4,7 @@ use frame_system::RawOrigin;
 use orml_traits::MultiCurrency;
 use sp_runtime::FixedPointNumber;
 use sp_std::prelude::*;
+use frame_system::pallet_prelude::BlockNumberFor;
 
 use currency::getters::{
 	get_relay_chain_currency_id as get_collateral_currency_id, get_wrapped_currency_id, *,
@@ -176,10 +177,10 @@ benchmarks! {
 	}
 
 	set_punishment_delay {
-		let punishment_delay: T::BlockNumber = T::BlockNumber::default();
+		let punishment_delay: BlockNumberFor<T> = BlockNumberFor::<T>::default();
 	}: _(RawOrigin::Root, punishment_delay)
 	verify {
-		let punishment_delay: T::BlockNumber = T::BlockNumber::default();
+		let punishment_delay: BlockNumberFor<T> = BlockNumberFor::<T>::default();
 		assert_eq!(PunishmentDelay::<T>::get(), punishment_delay);
 	}
 }

@@ -9,7 +9,9 @@ extern crate mocktopus;
 
 #[cfg(feature = "testing-utils")]
 use frame_support::dispatch::DispatchResult;
-use frame_support::{dispatch::DispatchError, transactional};
+use frame_support::{pallet_prelude::DispatchError, transactional};
+use frame_system::pallet_prelude::BlockNumberFor;
+
 #[cfg(test)]
 use mocktopus::macros::mockable;
 use sp_runtime::{
@@ -125,8 +127,8 @@ pub mod pallet {
 	}
 
 	#[pallet::hooks]
-	impl<T: Config> Hooks<T::BlockNumber> for Pallet<T> {
-		fn on_initialize(n: T::BlockNumber) -> Weight {
+	impl<T: Config> Hooks<BlockNumberFor<T>> for Pallet<T> {
+		fn on_initialize(n: BlockNumberFor<T>) -> Weight {
 			Self::begin_block(n);
 			<T as Config>::WeightInfo::on_initialize()
 		}
@@ -155,13 +157,14 @@ pub mod pallet {
 
 	#[derive(Default)]
 	#[pallet::genesis_config]
-	pub struct GenesisConfig {
+	pub struct GenesisConfig<T: Config> {
 		pub max_delay: u32,
 		pub oracle_keys: Vec<OracleKey>,
+		pub _phantom: sp_std::marker::PhantomData<T>,
 	}
 
 	#[pallet::genesis_build]
-	impl<T: Config> GenesisBuild<T> for GenesisConfig {
+	impl<T: Config> BuildGenesisConfig for GenesisConfig<T> {
 		fn build(&self) {
 			MaxDelay::<T>::put(T::Moment::from(self.max_delay));
 			OracleKeys::<T>::put(self.oracle_keys.clone());
@@ -213,7 +216,7 @@ pub mod pallet {
 impl<T: Config> Pallet<T> {
 	// the function is public only for testing purposes. function should be use only by this pallet
 	// inside on_initialize hook
-	pub fn begin_block(_height: T::BlockNumber) {
+	pub fn begin_block(_height: BlockNumberFor<T>) {
 		let oracle_keys: Vec<_> = OracleKeys::<T>::get();
 
 		let current_time = Self::get_current_time();
@@ -263,7 +266,7 @@ impl<T: Config> Pallet<T> {
 		for (key, value) in values {
 			let timestamped =
 				orml_oracle::TimestampedValue { timestamp: Self::get_current_time(), value };
-			T::DataFeeder::feed_value(oracle.clone(), key.clone(), timestamped)
+			T::DataFeeder::feed_value(Some(oracle.clone()), key.clone(), timestamped)
 				.expect("Expect store value by key");
 			if !oracle_keys.contains(&key) {
 				oracle_keys.push(key);

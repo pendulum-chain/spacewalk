@@ -1,6 +1,6 @@
 use frame_support::{
 	parameter_types,
-	traits::{ConstU32, ConstU64, Everything, GenesisBuild},
+	traits::{ConstU32, ConstU64, Everything},
 	PalletId,
 };
 use mocktopus::{macros::mockable, mocking::clear_mocks};
@@ -16,9 +16,10 @@ use orml_traits::parameter_type_with_key;
 use sp_arithmetic::{FixedI128, FixedPointNumber, FixedU128};
 use sp_core::H256;
 use sp_runtime::{
-	testing::{Header, TestXt},
+	testing::{TestXt},
 	traits::{BlakeTwo256, IdentityLookup, One, Zero},
 	DispatchError, Perquintill,
+	BuildStorage
 };
 
 pub use currency::testing_constants::{
@@ -31,17 +32,13 @@ use crate as vault_registry;
 use crate::{Config, Error};
 
 pub(crate) type Extrinsic = TestXt<RuntimeCall, ()>;
-type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Test>;
 type Block = frame_system::mocking::MockBlock<Test>;
 
 // Configure a mock runtime to test the pallet.
 frame_support::construct_runtime!(
-	pub enum Test where
-		Block = Block,
-		NodeBlock = Block,
-		UncheckedExtrinsic = UncheckedExtrinsic,
+	pub enum Test 
 	{
-		System: frame_system::{Pallet, Call, Storage, Config, Event<T>},
+		System: frame_system::{Pallet, Call, Storage, Config<T>, Event<T>},
 		Timestamp: pallet_timestamp::{Pallet, Call, Storage, Inherent},
 
 		// Tokens & Balances
@@ -55,7 +52,7 @@ frame_support::construct_runtime!(
 		// Operational
 		Security: security::{Pallet, Call, Storage, Event<T>},
 		VaultRegistry: vault_registry::{Pallet, Call, Config<T>, Storage, Event<T>, ValidateUnsigned},
-		Oracle: oracle::{Pallet, Call, Config, Storage, Event<T>},
+		Oracle: oracle::{Pallet, Call, Storage, Event<T>},
 		Staking: staking::{Pallet, Storage, Event<T>},
 		Fee: fee::{Pallet, Call, Config<T>, Storage},
 		Currency: currency::{Pallet},
@@ -68,7 +65,7 @@ pub type Balance = u128;
 pub type RawAmount = i128;
 pub type BlockNumber = u64;
 pub type Moment = u64;
-pub type Index = u64;
+pub type Nonce = u64;
 pub type SignedFixedPoint = FixedI128;
 pub type SignedInner = i128;
 pub type UnsignedFixedPoint = FixedU128;
@@ -79,19 +76,18 @@ parameter_types! {
 }
 
 impl frame_system::Config for Test {
+	type Block = Block;
 	type BaseCallFilter = Everything;
 	type BlockWeights = ();
 	type BlockLength = ();
 	type DbWeight = ();
 	type RuntimeOrigin = RuntimeOrigin;
 	type RuntimeCall = RuntimeCall;
-	type Index = Index;
-	type BlockNumber = BlockNumber;
+	type Nonce = Nonce;
 	type Hash = H256;
 	type Hashing = BlakeTwo256;
 	type AccountId = AccountId;
 	type Lookup = IdentityLookup<Self::AccountId>;
-	type Header = Header;
 	type RuntimeEvent = TestEvent;
 	type BlockHashCount = BlockHashCount;
 	type Version = ();
@@ -125,7 +121,7 @@ impl pallet_balances::Config for Test {
 	type FreezeIdentifier = ();
 	type MaxFreezes = ();
 	type MaxHolds = ConstU32<1>;
-	type HoldIdentifier = RuntimeHoldReason;
+	type RuntimeHoldReason = RuntimeHoldReason;
 }
 
 impl orml_currencies::Config for Test {
@@ -393,7 +389,7 @@ pub const MULTI_VAULT_TEST_COLLATERAL: u128 = 100000;
 
 impl ExtBuilder {
 	pub fn build_with(conf: orml_tokens::GenesisConfig<Test>) -> sp_io::TestExternalities {
-		let mut storage = frame_system::GenesisConfig::default().build_storage::<Test>().unwrap();
+		let mut storage = frame_system::GenesisConfig::<Test>::default().build_storage().unwrap();
 
 		conf.assimilate_storage(&mut storage).unwrap();
 

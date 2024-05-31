@@ -3,7 +3,7 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
 use codec::Codec;
-use frame_support::dispatch::DispatchError;
+use frame_support::sp_runtime::DispatchError;
 use module_oracle_rpc_runtime_api::BalanceWrapper;
 use sp_std::vec::Vec;
 
