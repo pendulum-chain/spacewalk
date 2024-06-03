@@ -41,7 +41,7 @@ pub mod pallet {
 	};
 
 	use sp_core::H256;
-	use sp_std::{collections::btree_map::BTreeMap, fmt::Debug, vec::Vec};
+	use sp_std::{collections::btree_map::BTreeMap, fmt::Debug, vec::Vec, vec};
 
 	use default_weights::WeightInfo;
 
@@ -166,7 +166,6 @@ pub mod pallet {
 		pub phantom: PhantomData<T>,
 	}
 
-	#[cfg(feature = "std")]
 	impl<T: Config> Default for GenesisConfig<T> {
 		fn default() -> Self {
 			// Create public network organizations
@@ -652,7 +651,6 @@ pub mod pallet {
 
 	// Used to create bounded vecs for genesis config
 	// Does not return a result but panics because the genesis config is hardcoded
-	#[cfg(feature = "std")]
 	fn create_bounded_vec(input: &str) -> BoundedVec<u8, FieldLength> {
 		let bounded_vec = BoundedVec::try_from(input.as_bytes().to_vec());
 

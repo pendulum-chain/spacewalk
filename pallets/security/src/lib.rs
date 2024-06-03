@@ -7,7 +7,6 @@
 
 #[cfg(test)]
 extern crate mocktopus;
-
 use codec::Encode;
 use frame_support::{
 	dispatch::DispatchResult,
@@ -83,7 +82,6 @@ pub mod pallet {
 		pub _phantom: sp_std::marker::PhantomData<T>,
 	}
 
-	#[cfg(feature = "std")]
 	impl<T: Config> Default for GenesisConfig<T> {
 		fn default() -> Self {
 			Self { 

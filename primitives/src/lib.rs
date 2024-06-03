@@ -6,7 +6,8 @@ use codec::{Decode, Encode, MaxEncodedLen};
 use frame_support::error::LookupError;
 use scale_info::TypeInfo;
 #[cfg(feature = "std")]
-use serde::{Deserialize, Deserializer, Serialize, Serializer};
+use serde::{Deserializer, Serializer};
+use serde::{Deserialize, Serialize};
 pub use sp_core::H256;
 use sp_core::{crypto::AccountId32, ed25519};
 pub use sp_runtime::OpaqueExtrinsic as UncheckedExtrinsic;
@@ -66,15 +67,15 @@ impl TruncateFixedPointToInt for UnsignedFixedPoint {
 	}
 }
 
-#[derive(Encode, Decode, Clone, PartialEq, Eq, Debug, PartialOrd, Ord, TypeInfo, MaxEncodedLen)]
-#[cfg_attr(feature = "std", derive(Serialize, Deserialize, std::hash::Hash))]
+#[derive(Encode, Decode, Clone, PartialEq, Eq, Debug, PartialOrd, Ord, TypeInfo, MaxEncodedLen, Deserialize, Serialize)]
+#[cfg_attr(feature = "std", derive( std::hash::Hash))]
 pub struct VaultCurrencyPair<CurrencyId: Copy> {
 	pub collateral: CurrencyId,
 	pub wrapped: CurrencyId,
 }
 
-#[derive(Encode, Decode, Clone, PartialEq, Eq, Debug, PartialOrd, Ord, TypeInfo, MaxEncodedLen)]
-#[cfg_attr(feature = "std", derive(Serialize, Deserialize, std::hash::Hash))]
+#[derive(Encode, Decode, Clone, PartialEq, Eq, Debug, PartialOrd, Ord, TypeInfo, MaxEncodedLen, Serialize, Deserialize)]
+#[cfg_attr(feature = "std", derive(std::hash::Hash))]
 pub struct VaultId<AccountId, CurrencyId: Copy> {
 	pub account_id: AccountId,
 	pub currencies: VaultCurrencyPair<CurrencyId>,
@@ -300,8 +301,7 @@ pub mod replace {
 pub mod oracle {
 	use super::*;
 
-	#[derive(Encode, Decode, Clone, Eq, PartialEq, Debug, TypeInfo, MaxEncodedLen)]
-	#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
+	#[derive(Encode, Decode, Clone, Eq, PartialEq, Debug, TypeInfo, MaxEncodedLen, Serialize, Deserialize)]
 	#[cfg_attr(feature = "std", serde(rename_all = "camelCase"))]
 	pub enum Key {
 		ExchangeRate(CurrencyId),
@@ -420,10 +420,9 @@ pub fn remove_trailing_non_alphanum_bytes(input: &[u8]) -> &[u8] {
 	b""
 }
 
-#[derive(
-	Encode, Decode, Eq, Hash, PartialEq, Copy, Clone, PartialOrd, Ord, TypeInfo, MaxEncodedLen,
+#[derive( 
+	Encode, Decode, Eq, Hash, PartialEq, Copy, Clone, PartialOrd, Ord, TypeInfo, MaxEncodedLen, Serialize, Deserialize
 )]
-#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 #[cfg_attr(feature = "std", serde(rename_all = "camelCase"))]
 #[repr(u8)]
 #[allow(clippy::unnecessary_cast)]
@@ -478,8 +477,9 @@ impl Asset {
 	Ord,
 	TypeInfo,
 	MaxEncodedLen,
+	Serialize,
+	Deserialize,
 )]
-#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 #[cfg_attr(feature = "std", serde(rename_all = "camelCase"))]
 #[repr(u8)]
 #[allow(clippy::unnecessary_cast)]

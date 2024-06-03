@@ -25,6 +25,7 @@ frame-benchmarking = { default-features = false, git = "https://github.com/parit
 
 sp-std = { default-features = false, git = "https://github.com/paritytech/polkadot-sdk.git", branch = "release-polkadot-v1.1.0" }
 sp-core = { default-features = false, git = "https://github.com/paritytech/polkadot-sdk.git", branch = "release-polkadot-v1.1.0" }
+sp-runtime = { default-features = false, git = "https://github.com/paritytech/polkadot-sdk.git", branch = "release-polkadot-v1.1.0" }
 
 currency = { default-features = false, path = "../currency" }
 
@@ -34,7 +35,7 @@ primitives = { package = "spacewalk-primitives", path = "../../primitives", defa
 
 [dev-dependencies]
 sp-io = { default-features = false, git = "https://github.com/paritytech/polkadot-sdk.git", branch = "release-polkadot-v1.1.0" }
-sp-runtime = { default-features = false, git = "https://github.com/paritytech/polkadot-sdk.git", branch = "release-polkadot-v1.1.0" }
+
 
 # Orml dependencies
 orml-tokens = { git = "https://github.com/open-web3-stack/open-runtime-module-library", branch = "polkadot-v1.1.0" }
@@ -52,6 +53,7 @@ std = [
     "frame-support/std",
     "frame-system/std",
     "frame-benchmarking/std",
+    "sp-runtime/std",
     "sp-std/std",
     "currency/std",
     "sha2/std",

@@ -23,9 +23,6 @@ use sp_runtime::traits::{CheckedDiv, Convert, Saturating, Zero};
 use frame_system::pallet_prelude::BlockNumberFor;
 use sp_std::vec::Vec;
 
-#[cfg(feature = "std")]
-use std::str::FromStr;
-
 use currency::Amount;
 pub use default_weights::{SubstrateWeight, WeightInfo};
 pub use pallet::*;
@@ -194,7 +191,6 @@ pub mod pallet {
 		pub last_interval_index: BlockNumberFor<T>,
 	}
 
-	#[cfg(feature = "std")]
 	impl<T: Config> Default for GenesisConfig<T> {
 		fn default() -> Self {
 			const SECONDS_PER_BLOCK: u32 = 12;
@@ -208,10 +204,7 @@ pub mod pallet {
 				limit_volume_amount: None,
 				limit_volume_currency_id: T::CurrencyId::default(),
 				current_volume_amount: BalanceOf::<T>::zero(),
-				interval_length: BlockNumberFor::<T>::from_str(
-					&(DAY_IN_SECONDS / SECONDS_PER_BLOCK).to_string(),
-				)
-				.unwrap_or_default(),
+				interval_length: (DAY_IN_SECONDS / SECONDS_PER_BLOCK).into(),
 				last_interval_index: BlockNumberFor::<T>::zero(),
 			}
 		}
