@@ -51,6 +51,10 @@ std = [
     "frame-support/std",
     "frame-system/std",
     "frame-benchmarking/std",
+    "pallet-timestamp/std",
+    "orml-traits/std",
+    "orml-tokens/std",
+    "primitives/std",
 ]
 runtime-benchmarks = [
     "frame-benchmarking",
