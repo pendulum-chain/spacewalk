@@ -24,7 +24,7 @@ use pallet_grandpa::{
 pub use pallet_timestamp::Call as TimestampCall;
 use sp_api::impl_runtime_apis;
 use sp_consensus_aura::sr25519::AuthorityId as AuraId;
-use sp_core::{OpaqueMetadata, H256};
+use sp_core::{OpaqueMetadata, H256, ConstBool};
 use sp_runtime::{
 	create_runtime_str, generic, impl_opaque_keys,
 	traits::{
@@ -124,8 +124,8 @@ parameter_types! {
 	pub const SS58Prefix: u8 = 42;
 }
 
-pub type Nonce = u32;
 impl frame_system::Config for Runtime {
+	type Block = Block;
 	type BaseCallFilter = frame_support::traits::Everything;
 	type BlockWeights = BlockWeights;
 	type BlockLength = BlockLength;
@@ -143,8 +143,6 @@ impl frame_system::Config for Runtime {
 	type AccountId = AccountId;
 	/// The lookup mechanism to get account ID from whatever is passed in dispatchers.
 	type Lookup = AccountIdLookup<AccountId, ()>;
-	/// The header type.
-	type Header = generic::Header<BlockNumber, BlakeTwo256>;
 	/// The ubiquitous event type.
 	type RuntimeEvent = RuntimeEvent;
 	/// Maximum number of block number to block hash mappings to keep (oldest pruned first).
@@ -171,6 +169,7 @@ impl pallet_aura::Config for Runtime {
 	type AuthorityId = AuraId;
 	type DisabledValidators = ();
 	type MaxAuthorities = MaxAuthorities;
+	type AllowMultipleBlocksPerSlot = ConstBool<false>;
 }
 
 impl pallet_grandpa::Config for Runtime {
@@ -180,6 +179,7 @@ impl pallet_grandpa::Config for Runtime {
 	type MaxAuthorities = MaxAuthorities;
 	type MaxSetIdSessionEntries = ConstU64<0>;
 	type EquivocationReportSystem = ();
+	type MaxNominators = ConstU32<1000>;
 }
 
 parameter_types! {
@@ -222,6 +222,7 @@ impl pallet_transaction_payment::Config for Runtime {
 impl pallet_sudo::Config for Runtime {
 	type RuntimeEvent = RuntimeEvent;
 	type RuntimeCall = RuntimeCall;
+	type WeightInfo = ();
 }
 
 // Pallet accounts
@@ -403,7 +404,7 @@ where
 		call: RuntimeCall,
 		public: <Signature as sp_runtime::traits::Verify>::Signer,
 		account: AccountId,
-		index: Index,
+		index: Nonce,
 	) -> Option<(
 		RuntimeCall,
 		<UncheckedExtrinsic as sp_runtime::traits::Extrinsic>::SignaturePayload,
@@ -611,15 +612,12 @@ impl pooled_rewards::Config for Runtime {
 }
 
 construct_runtime! {
-	pub enum Runtime where
-		Block = Block,
-		NodeBlock = primitives::Block,
-		UncheckedExtrinsic = UncheckedExtrinsic
+	pub enum Runtime 
 	{
-		System: frame_system::{Pallet, Call, Storage, Config, Event<T>} = 0,
+		System: frame_system::{Pallet, Call, Storage, Config<T>, Event<T>} = 0,
 		Timestamp: pallet_timestamp::{Pallet, Call, Storage, Inherent} = 1,
 		Aura: pallet_aura::{Pallet, Config<T>} = 2,
-		Grandpa: pallet_grandpa::{Pallet, Call, Storage, Config, Event} = 3,
+		Grandpa: pallet_grandpa::{Pallet, Call, Storage, Config<T>, Event} = 3,
 		Sudo: pallet_sudo::{Pallet, Call, Storage, Config<T>, Event<T>} = 4,
 		Tokens: orml_tokens::{Pallet, Call, Storage, Config<T>, Event<T>} = 5,
 		Currencies: orml_currencies::{Pallet, Call, Storage} = 7,
@@ -633,14 +631,14 @@ construct_runtime! {
 
 		Currency: currency::{Pallet} = 17,
 
-		Security: security::{Pallet, Call, Config, Storage, Event<T>} = 19,
+		Security: security::{Pallet, Call, Config<T>, Storage, Event<T>} = 19,
 		VaultRegistry: vault_registry::{Pallet, Call, Config<T>, Storage, Event<T>, ValidateUnsigned} = 21,
-		Oracle: oracle::{Pallet, Call, Config, Storage, Event<T>} = 22,
+		Oracle: oracle::{Pallet, Call, Config<T>, Storage, Event<T>} = 22,
 		Issue: issue::{Pallet, Call, Config<T>, Storage, Event<T>} = 23,
 		Redeem: redeem::{Pallet, Call, Config<T>, Storage, Event<T>} = 24,
 		Replace: replace::{Pallet, Call, Config<T>, Storage, Event<T>} = 25,
 		Fee: fee::{Pallet, Call, Config<T>, Storage} = 26,
-		Nomination: nomination::{Pallet, Call, Config, Storage, Event<T>} = 28,
+		Nomination: nomination::{Pallet, Call, Config<T>, Storage, Event<T>} = 28,
 		DiaOracleModule: dia_oracle::{Pallet, Call, Config<T>, Storage, Event<T>} = 29,
 		ClientsInfo: clients_info::{Pallet, Call, Storage, Event<T>} = 30,
 		RewardDistribution: reward_distribution::{Pallet, Call, Storage, Event<T>} = 31,
@@ -869,7 +867,8 @@ impl_runtime_apis! {
 		fn dispatch_benchmark(
 			config: frame_benchmarking::BenchmarkConfig
 		) -> Result<Vec<frame_benchmarking::BenchmarkBatch>, sp_runtime::RuntimeString> {
-			use frame_benchmarking::{baseline, Benchmarking, BenchmarkBatch, TrackedStorageKey};
+			use frame_benchmarking::{baseline, Benchmarking, BenchmarkBatch};
+			use frame_support::traits::TrackedStorageKey;
 
 			use frame_system_benchmarking::Pallet as SystemBench;
 			use baseline::Pallet as BaselineBench;

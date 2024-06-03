@@ -10,6 +10,7 @@ use frame_benchmarking::{
 use frame_system::RawOrigin;
 use pooled_rewards::RewardsApi;
 use staking::Staking;
+use sp_std::vec;
 #[benchmarks]
 pub mod benchmarks {
 	use super::*;

@@ -2204,7 +2204,7 @@ dependencies = [
 [[package]]
 name = "dia-oracle"
 version = "0.1.0"
-source = "git+https://github.com/pendulum-chain/oracle-pallet?branch=polkadot-v1.1.0#f7241580c6a76faa652d32220bf6cc3b1c98020d"
+source = "git+https://github.com/pendulum-chain/oracle-pallet?branch=polkadot-v1.1.0#170a3815a5f14ffc5819e9415cb84a1020cdf554"
 dependencies = [
  "frame-benchmarking",
  "frame-support",

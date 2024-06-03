@@ -75,7 +75,8 @@ const USD_DECIMALS: u32 = 12;
 pub mod pallet {
 	use frame_support::pallet_prelude::*;
 	use frame_system::pallet_prelude::*;
-
+	use sp_std::vec;
+	
 	use super::*;
 
 	/// ## Configuration
@@ -162,7 +163,6 @@ pub mod pallet {
 		pub _phantom: sp_std::marker::PhantomData<T>,
 	}
 
-	#[cfg(feature = "std")]
 	impl<T: Config> Default for GenesisConfig<T> {
 		fn default() -> Self {
 			Self { 

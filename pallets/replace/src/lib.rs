@@ -171,7 +171,6 @@ pub mod pallet {
 		pub replace_minimum_transfer_amount: BalanceOf<T>,
 	}
 
-	#[cfg(feature = "std")]
 	impl<T: Config> Default for GenesisConfig<T> {
 		fn default() -> Self {
 			Self {
