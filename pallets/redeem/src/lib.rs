@@ -14,8 +14,9 @@ use std::str::FromStr;
 use frame_support::{
 	dispatch::DispatchResult,
 	sp_runtime::DispatchError,
-	ensure, log, transactional,
+	ensure, transactional,
 };
+use frame_system::pallet_prelude::BlockNumberFor;
 #[cfg(test)]
 use mocktopus::macros::mockable;
 
@@ -234,11 +235,11 @@ pub mod pallet {
 				limit_volume_amount: None,
 				limit_volume_currency_id: T::CurrencyId::default(),
 				current_volume_amount: BalanceOf::<T>::zero(),
-				interval_length: BlockNumberFor<T>::from_str(
+				interval_length: BlockNumberFor::<T>::from_str(
 					&(DAY_IN_SECONDS / SECONDS_PER_BLOCK).to_string(),
 				)
 				.unwrap_or_default(),
-				last_interval_index: BlockNumberFor<T>::zero(),
+				last_interval_index: BlockNumberFor::<T>::zero(),
 			}
 		}
 	}

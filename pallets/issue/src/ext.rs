@@ -81,7 +81,7 @@ pub(crate) mod security {
 		<security::Pallet<T>>::get_secure_id()
 	}
 
-	pub fn active_block_number<T: crate::Config>() -> BlockNumberFor<T>,{
+	pub fn active_block_number<T: crate::Config>() -> BlockNumberFor<T> {
 		<security::Pallet<T>>::active_block_number()
 	}
 }

@@ -7586,6 +7586,7 @@ dependencies = [
  "frame-support",
  "frame-system",
  "hex",
+ "log",
  "mocktopus",
  "oracle",
  "orml-currencies",

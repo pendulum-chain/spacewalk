@@ -2,8 +2,8 @@ use frame_support::{parameter_types, traits::Everything};
 use sp_arithmetic::FixedI128;
 use sp_core::H256;
 use sp_runtime::{
-	testing::Header,
 	traits::{BlakeTwo256, IdentityLookup},
+	BuildStorage,
 };
 
 pub use currency::testing_constants::{
@@ -15,15 +15,11 @@ pub use primitives::CurrencyId;
 use crate as pooled_rewards;
 use crate::{Config, Error};
 
-type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Test>;
 type Block = frame_system::mocking::MockBlock<Test>;
 
 // Configure a mock runtime to test the pallet.
 frame_support::construct_runtime!(
-	pub enum Test where
-		Block = Block,
-		NodeBlock = Block,
-		UncheckedExtrinsic = UncheckedExtrinsic,
+	pub enum Test 
 	{
 		System: frame_system::{Pallet, Call, Storage, Config<T>, Event<T>},
 		Reward: pooled_rewards::{Pallet, Call, Storage, Event<T>},
@@ -31,7 +27,6 @@ frame_support::construct_runtime!(
 );
 
 pub type AccountId = u64;
-pub type BlockNumber = u64;
 pub type Nonce = u64;
 pub type SignedFixedPoint = FixedI128;
 
@@ -42,6 +37,7 @@ parameter_types! {
 }
 
 impl frame_system::Config for Test {
+	type Block = Block;
 	type BaseCallFilter = Everything;
 	type BlockWeights = ();
 	type BlockLength = ();

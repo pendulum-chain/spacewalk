@@ -8,8 +8,8 @@ use orml_traits::parameter_type_with_key;
 use sp_arithmetic::{FixedI128, FixedU128};
 use sp_core::H256;
 use sp_runtime::{
-	testing::Header,
 	traits::{BlakeTwo256, IdentityLookup},
+	BuildStorage,
 };
 
 pub use currency::testing_constants::{
@@ -23,7 +23,6 @@ use crate::{
 	Config, Error,
 };
 
-type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Test>;
 type Block = frame_system::mocking::MockBlock<Test>;
 
 // Configure a mock runtime to test the pallet.
@@ -39,7 +38,7 @@ frame_support::construct_runtime!(
 
 		// Operational
 		Security: security::{Pallet, Call, Storage, Event<T>},
-		Oracle: oracle::{Pallet, Call, Config, Storage, Event<T>},
+		Oracle: oracle::{Pallet, Call, Config<T>, Storage, Event<T>},
 		Staking: staking::{Pallet, Storage, Event<T>},
 		Currency: currency::{Pallet},
 	}
@@ -106,6 +105,7 @@ impl pallet_balances::Config for Test {
 	type FreezeIdentifier = ();
 	type MaxFreezes = ();
 	type MaxHolds = ConstU32<1>;
+	type RuntimeHoldReason = RuntimeHoldReason;
 }
 
 impl orml_currencies::Config for Test {
@@ -236,10 +236,8 @@ impl ExtBuilder {
 	pub fn build() -> sp_io::TestExternalities {
 		let mut storage = frame_system::GenesisConfig::<Test>::default().build_storage().unwrap();
 
-		frame_support::traits::GenesisBuild::<Test>::assimilate_storage(
-			&oracle::GenesisConfig { oracle_keys: vec![], max_delay: 0 },
-			&mut storage,
-		)
+		oracle::GenesisConfig::<Test> { oracle_keys: vec![], max_delay: 0, _phantom: Default::default() }
+		.assimilate_storage(&mut storage)
 		.unwrap();
 
 		sp_io::TestExternalities::from(storage)

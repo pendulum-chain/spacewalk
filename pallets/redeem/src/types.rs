@@ -2,6 +2,7 @@ use currency::Amount;
 pub use primitives::redeem::{RedeemRequest, RedeemRequestStatus};
 use primitives::VaultId;
 pub use vault_registry::types::CurrencyId;
+use frame_system::pallet_prelude::BlockNumberFor;
 
 use crate::Config;
 
@@ -11,7 +12,7 @@ pub(crate) type DefaultVaultId<T> = VaultId<<T as frame_system::Config>::Account
 
 pub type DefaultRedeemRequest<T> = RedeemRequest<
 	<T as frame_system::Config>::AccountId,
-	<T as frame_system::Config>::BlockNumber,
+	BlockNumberFor<T>,
 	BalanceOf<T>,
 	CurrencyId<T>,
 >;
