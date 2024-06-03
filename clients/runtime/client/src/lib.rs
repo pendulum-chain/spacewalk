@@ -1,3 +1,5 @@
+use std::path::PathBuf;
+
 use futures::{
 	channel::mpsc,
 	future::{select, FutureExt},
@@ -17,8 +19,7 @@ pub use sc_service::{
 	Error as ServiceError,
 };
 use sc_service::{
-	config::{NetworkConfiguration, TelemetryEndpoints, TransportConfig},
-	ChainSpec, Configuration, RpcHandlers, TaskManager,
+	config::{NetworkConfiguration, TelemetryEndpoints, TransportConfig}, BasePath, ChainSpec, Configuration, RpcHandlers, TaskManager
 };
 pub use sp_keyring::AccountKeyring;
 use thiserror::Error;
@@ -239,31 +240,28 @@ impl<C: ChainSpec + 'static> SubxtClientConfig<C> {
 			tokio_handle: self.tokio_handle,
 			default_heap_pages: Default::default(),
 			disable_grandpa: Default::default(),
-			execution_strategies: Default::default(),
 			force_authoring: Default::default(),
 			offchain_worker: Default::default(),
 			prometheus_config: Default::default(),
 			rpc_cors: Default::default(),
-			rpc_http: Default::default(),
-			rpc_ipc: Default::default(),
-			rpc_ws: Default::default(),
-			rpc_ws_max_connections: Default::default(),
+			rpc_max_connections: Default::default(),
 			rpc_methods: Default::default(),
 			tracing_receiver: Default::default(),
 			tracing_targets: Default::default(),
 			transaction_pool: Default::default(),
 			wasm_method: self.wasm_method,
-			base_path: Default::default(),
+			base_path: BasePath::new_temp_dir().expect("should create a default path"),
+			data_path: PathBuf::new(),
 			informant_output_format: Default::default(),
 			state_pruning: Default::default(),
 			wasm_runtime_overrides: Default::default(),
-			rpc_max_payload: Default::default(),
-			ws_max_out_buffer_capacity: Default::default(),
 			runtime_cache_size: 2,
-			rpc_max_request_size: None,
-			rpc_max_response_size: None,
+			rpc_addr: None,
 			rpc_id_provider: None,
-			rpc_max_subs_per_conn: None,
+			rpc_max_subs_per_conn: 0,
+			rpc_max_request_size: 0,
+			rpc_max_response_size: 15,
+			rpc_port: 9944,
 			trie_cache_maximum_size: None,
 			blocks_pruning: BlocksPruning::KeepAll,
 		};
