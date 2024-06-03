@@ -193,12 +193,14 @@ fn genesis(
 	GenesisConfig {
 		system: SystemConfig {
 			code: wasm_binary.expect("WASM binary was not build, please build it!").to_vec(),
+			..Default::default()
 		},
 		aura: AuraConfig {
 			authorities: initial_authorities.iter().map(|x| (x.0.clone())).collect(),
 		},
 		grandpa: GrandpaConfig {
 			authorities: initial_authorities.iter().map(|x| (x.1.clone(), 1)).collect(),
+			..Default::default()
 		},
 		sudo: SudoConfig {
 			// Assign network admin rights.
@@ -245,6 +247,7 @@ fn genesis(
 		},
 		security: SecurityConfig {
 			initial_status: if start_shutdown { StatusCode::Shutdown } else { StatusCode::Error },
+			..Default::default()
 		},
 		stellar_relay: if !is_public_network {
 			create_stellar_testnet_config()
@@ -260,6 +263,7 @@ fn genesis(
 				Key::ExchangeRate(default_wrapped_currency),
 				Key::ExchangeRate(MXN_CURRENCY_ID),
 			],
+			..Default::default()
 		},
 		vault_registry: VaultRegistryConfig {
 			minimum_collateral_vault: vec![
@@ -365,7 +369,7 @@ fn genesis(
 			punishment_fee: FixedU128::checked_from_rational(1, 10).unwrap(), // 10%
 			replace_griefing_collateral: FixedU128::checked_from_rational(1, 10).unwrap(), // 10%
 		},
-		nomination: NominationConfig { is_nomination_enabled: false },
+		nomination: NominationConfig { is_nomination_enabled: false, ..Default::default() },
 		dia_oracle_module: DiaOracleModuleConfig {
 			authorized_accounts: authorized_oracles,
 			supported_currencies: vec![
