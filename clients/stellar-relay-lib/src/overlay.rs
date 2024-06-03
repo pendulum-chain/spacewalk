@@ -6,6 +6,7 @@ use tokio::sync::{
 		Sender,
 	},
 };
+use tracing::{error, info};
 
 use crate::{
 	connection::{poll_messages_from_stellar, ConnectionInfo, Connector},
@@ -34,7 +35,7 @@ impl StellarOverlayConnection {
 		local_node_info: NodeInfo,
 		conn_info: ConnectionInfo,
 	) -> Result<Self, Error> {
-		log::info!("connect(): connecting to {conn_info:?}");
+		info!("connect(): connecting to {conn_info:?}");
 
 		// this is a channel to communicate with the user/caller.
 		let (send_to_user_sender, send_to_user_receiver) = mpsc::channel::<StellarMessage>(1024);
@@ -63,7 +64,7 @@ impl StellarOverlayConnection {
 
 			match self.receiver.try_recv() {
 				Ok(StellarMessage::ErrorMsg(e)) => {
-					log::error!("listen(): received error message: {e:?}");
+					error!("listen(): received error message: {e:?}");
 					if e.code == ErrorCode::ErrConf || e.code == ErrorCode::ErrAuth {
 						return Err(Error::ConnectionFailed(error_to_string(e)))
 					}
@@ -88,7 +89,7 @@ impl StellarOverlayConnection {
 	}
 
 	pub fn stop(&mut self) {
-		log::info!("stop(): closing connection to overlay network");
+		info!("stop(): closing connection to overlay network");
 		self.receiver.close();
 	}
 }

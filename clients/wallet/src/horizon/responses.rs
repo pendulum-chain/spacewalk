@@ -359,9 +359,10 @@ impl HorizonBalance {
 }
 
 // The following structs represent the whole response when fetching any Horizon API
-// for retreiving a list of claimable balances for an account
+// for retrieving a list of claimable balances for an account
 #[derive(Deserialize, Debug)]
 pub struct EmbeddedClaimableBalance {
+	#[allow(dead_code)]
 	pub records: Vec<ClaimableBalance>,
 }
 

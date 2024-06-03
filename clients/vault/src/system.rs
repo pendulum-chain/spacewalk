@@ -291,6 +291,9 @@ impl Service<VaultServiceConfig, Error> for VaultService {
 
 	async fn start(&mut self) -> Result<(), ServiceError<Error>> {
 		let result = self.run_service().await;
+
+		self.try_shutdown_wallet().await;
+
 		if let Err(error) = result {
 			let _ = self.shutdown.send(());
 			Err(error)
@@ -680,15 +683,6 @@ impl VaultService {
 		tasks.append(&mut replace_tasks);
 
 		tasks.push((
-			"Parachain Block Listener",
-			run(active_block_listener(
-				self.spacewalk_parachain.clone(),
-				issue_event_tx,
-				replace_event_tx,
-			)),
-		));
-
-		tasks.push((
 			"Redeem Request Listener",
 			run(listen_for_redeem_requests(
 				self.shutdown.clone(),
@@ -776,7 +770,7 @@ impl VaultService {
 		// purposefully _after_ register_vault_if_not_present and _before_ other calls
 		self.vault_id_manager.fetch_vault_ids().await?;
 
-		let wallet = self.stellar_wallet.write().await;
+		let mut wallet = self.stellar_wallet.write().await;
 		let vault_public_key = wallet.public_key();
 		let is_public_network = wallet.is_public_network();
 
@@ -939,5 +933,13 @@ impl VaultService {
 		}
 		tracing::info!("Got new block at height {startup_height}");
 		Ok(startup_height)
+	}
+
+	/// shuts down the resubmission task running in the background
+	async fn try_shutdown_wallet(&self) {
+		tracing::info!("try_shutdown_wallet(): stop the resubmission scheduler");
+		let mut wallet = self.stellar_wallet.write().await;
+		wallet.try_stop_periodic_resubmission_of_transactions().await;
+		drop(wallet);
 	}
 }

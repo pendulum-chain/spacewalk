@@ -1,8 +1,3 @@
-use substrate_stellar_sdk::{
-	types::{ErrorCode, Hello, MessageType, StellarMessage},
-	XdrCodec,
-};
-
 use crate::connection::{
 	authentication::verify_remote_auth_cert,
 	helper::{error_to_string, time_now},
@@ -10,6 +5,11 @@ use crate::connection::{
 	xdr_converter::parse_authenticated_message,
 	Connector, Error, Xdr,
 };
+use substrate_stellar_sdk::{
+	types::{ErrorCode, Hello, MessageType, StellarMessage},
+	XdrCodec,
+};
+use tracing::{error, info, trace, warn};
 
 use crate::node::RemoteInfo;
 
@@ -33,13 +33,13 @@ impl Connector {
 
 			MessageType::ErrorMsg => match auth_msg.message {
 				StellarMessage::ErrorMsg(e) => {
-					log::error!(
+					error!(
 						"process_raw_message(): Received ErrorMsg during authentication: {}",
 						error_to_string(e.clone())
 					);
 					return Err(Error::from(e))
 				},
-				other => log::error!(
+				other => error!(
 					"process_raw_message(): Received ErrorMsg during authentication: {:?}",
 					other
 				),
@@ -50,9 +50,7 @@ impl Connector {
 				if self.is_handshake_created() {
 					self.verify_auth(&auth_msg, &data[4..(data.len() - 32)])?;
 					self.increment_remote_sequence()?;
-					log::trace!(
-						"process_raw_message(): Processing {msg_type:?} message: auth verified"
-					);
+					trace!("process_raw_message(): Processing {msg_type:?} message: auth verified");
 				}
 
 				return self.process_stellar_message(auth_msg.message, msg_type).await
@@ -80,7 +78,7 @@ impl Connector {
 				} else {
 					self.send_auth_message().await?;
 				}
-				log::info!("process_stellar_message(): Hello message processed successfully");
+				info!("process_stellar_message(): Hello message processed successfully");
 			},
 
 			StellarMessage::Auth(_) => {
@@ -88,21 +86,15 @@ impl Connector {
 			},
 
 			StellarMessage::ErrorMsg(e) => {
-				log::error!(
-					"process_stellar_message(): Received ErrorMsg during authentication: {e:?}"
-				);
+				error!("process_stellar_message(): Received ErrorMsg during authentication: {e:?}");
 				if e.code == ErrorCode::ErrConf || e.code == ErrorCode::ErrAuth {
 					return Err(Error::from(e))
 				}
 				return Ok(Some(StellarMessage::ErrorMsg(e)))
 			},
 
+			// we do not handle other messages. Return to caller
 			other => {
-				log::trace!(
-					"process_stellar_message():  Processing {} message: received from overlay",
-					String::from_utf8(other.to_base64_xdr())
-						.unwrap_or(format!("{:?}", other.to_base64_xdr()))
-				);
 				self.check_to_send_more(msg_type).await?;
 				return Ok(Some(other))
 			},
@@ -124,7 +116,7 @@ impl Connector {
 				remote.node().overlay_version,
 			);
 		} else {
-			log::warn!("process_auth_message(): No remote overlay version after handshake.");
+			warn!("process_auth_message(): No remote overlay version after handshake.");
 		}
 
 		self.check_to_send_more(MessageType::Auth).await

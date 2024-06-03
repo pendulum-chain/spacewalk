@@ -12,7 +12,7 @@ jobs:
       max-parallel: 1
       matrix:
         os: [ ubuntu-latest, macos-latest ]
-        rust: [stable, nightly]
+        rust: [ stable, nightly ]
         include:
           - os: ubuntu-latest
             sccache-path: /home/runner/.cache/sccache
@@ -67,7 +67,7 @@ jobs:
 
       - name: Setup nightly Rust toolchain
         if: matrix.rust == 'nightly'
-        uses:  dtolnay/rust-toolchain@nightly
+        uses: dtolnay/rust-toolchain@nightly
         with:
           toolchain: nightly-2024-02-09
           components: rustfmt, clippy

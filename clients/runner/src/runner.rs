@@ -1,5 +1,4 @@
 use crate::{error::Error, Opts};
-use backoff::{retry, Error as BackoffError, ExponentialBackoff};
 use bytes::Bytes;
 use codec::Decode;
 use futures::{future::BoxFuture, FutureExt, StreamExt, TryFutureExt};
@@ -64,14 +63,11 @@ pub const CURRENT_RELEASES_STORAGE_ITEM: &str = "CurrentClientReleases";
 /// Parachain block time
 pub const BLOCK_TIME: Duration = Duration::from_secs(12);
 
-/// Timeout used by the retry utilities: One minute
+/// The duration up until operations are retried, used by the retry utilities: 60 seconds
 pub const RETRY_TIMEOUT: Duration = Duration::from_millis(60_000);
 
-/// Waiting interval used by the retry utilities: One second
+/// Waiting (sleep) interval used by the retry utilities: 1 second
 pub const RETRY_INTERVAL: Duration = Duration::from_millis(1_000);
-
-/// Multiplier for the interval in retry utilities: Constant interval retry
-pub const RETRY_MULTIPLIER: f64 = 1.0;
 
 /// Data type assumed to be used by the parachain to store the client release.
 /// If this type is different from the on-chain one, decoding will fail.
@@ -163,7 +159,7 @@ impl Runner {
 					.into_future()
 					.boxed()
 			},
-			"Error fetching executable".to_string(),
+			"Error downloading executable".to_string(),
 		)
 		.await?;
 
@@ -188,7 +184,7 @@ impl Runner {
 
 		let bytes = retry_with_log_async(
 			|| Runner::get_request_bytes(release.uri.clone()).into_future().boxed(),
-			"Error fetching executable".to_string(),
+			"Error getting request bytes for executable".to_string(),
 		)
 		.await?;
 
@@ -291,7 +287,7 @@ impl Runner {
 					.into_future()
 					.boxed()
 			},
-			"Error fetching executable".to_string(),
+			"Error reading chain storage for release".to_string(),
 		)
 		.await
 	}
@@ -364,27 +360,42 @@ impl Runner {
 
 		loop {
 			runner.maybe_restart_client()?;
-			if let Some(new_release) = runner.try_get_release().await? {
-				let maybe_downloaded_release = runner.downloaded_release();
-				let downloaded_release =
-					maybe_downloaded_release.as_ref().ok_or(Error::NoDownloadedRelease)?;
-				if new_release.checksum != downloaded_release.checksum {
-					log::info!("Found new client release, updating...");
+			match runner.try_get_release().await {
+				Err(error) => {
+					// Create new RPC client, assuming it's a websocket connection error.
+					// We can't detect if it's a websocket error (https://github.com/paritytech/subxt/issues/1190)
+					// so we just close and reopen the connection.
+					// replace with https://github.com/pendulum-chain/spacewalk/issues/521 eventually
+					log::error!("Error getting release: {}", error);
+					log::info!("Reopening connection to RPC endpoint...");
+					match runner.reopen_subxt_api().await {
+						Ok(_) => log::info!("Connection to RPC endpoint reopened"),
+						Err(e) => log::error!("Failed to reopen connection: {}", e),
+					}
+				},
+				Ok(Some(new_release)) => {
+					let maybe_downloaded_release = runner.downloaded_release();
+					let downloaded_release =
+						maybe_downloaded_release.as_ref().ok_or(Error::NoDownloadedRelease)?;
+					if new_release.checksum != downloaded_release.checksum {
+						log::info!("Found new client release, updating...");
 
-					// Wait for child process to finish completely.
-					// To ensure there can't be two client processes using the same resources (such
-					// as the Stellar wallet for vaults).
-					runner.terminate_proc_and_wait()?;
+						// Wait for child process to finish completely.
+						// To ensure there can't be two client processes using the same resources
+						// (such as the Stellar wallet for vaults).
+						runner.terminate_proc_and_wait()?;
 
-					// Delete old release
-					runner.delete_downloaded_release()?;
+						// Delete old release
+						runner.delete_downloaded_release()?;
 
-					// Download new release
-					runner.download_binary(new_release).await?;
+						// Download new release
+						runner.download_binary(new_release).await?;
 
-					// Run the downloaded release
-					runner.run_binary()?;
-				}
+						// Run the downloaded release
+						runner.run_binary()?;
+					}
+				},
+				_ => (),
 			}
 			tokio::time::sleep(BLOCK_TIME).await;
 		}
@@ -446,6 +457,8 @@ impl Drop for Runner {
 #[async_trait]
 pub trait RunnerExt {
 	fn subxt_api(&self) -> &OnlineClient<PolkadotConfig>;
+	/// Close the current RPC client and create a new one to the same endpoint.
+	async fn reopen_subxt_api(&mut self) -> Result<(), Error>;
 	fn client_args(&self) -> &Vec<String>;
 	fn child_proc(&mut self) -> &mut Option<Child>;
 	fn set_child_proc(&mut self, child_proc: Option<Child>);
@@ -487,6 +500,14 @@ pub trait RunnerExt {
 impl RunnerExt for Runner {
 	fn subxt_api(&self) -> &OnlineClient<PolkadotConfig> {
 		&self.subxt_api
+	}
+
+	async fn reopen_subxt_api(&mut self) -> Result<(), Error> {
+		// Create new RPC client
+		let new_api = try_create_subxt_api(&self.opts.parachain_ws).await?;
+		// We don't need to explicitly close the old one as it should close when dropped
+		self.subxt_api = new_api;
+		Ok(())
 	}
 
 	fn client_args(&self) -> &Vec<String> {
@@ -585,30 +606,46 @@ impl StorageReader for Runner {
 	}
 }
 
-pub async fn subxt_api(url: &str) -> Result<OnlineClient<PolkadotConfig>, Error> {
-	Ok(OnlineClient::from_url(url).await?)
+pub async fn try_create_subxt_api(url: &str) -> Result<OnlineClient<PolkadotConfig>, Error> {
+	retry_with_log_async(
+		|| subxt_api(url).into_future().boxed(),
+		"Error creating RPC client".to_string(),
+	)
+	.await
 }
 
-pub fn custom_retry_config() -> ExponentialBackoff {
-	ExponentialBackoff {
-		initial_interval: RETRY_INTERVAL,
-		max_elapsed_time: Some(RETRY_TIMEOUT),
-		multiplier: RETRY_MULTIPLIER,
-		..ExponentialBackoff::default()
-	}
+async fn subxt_api(url: &str) -> Result<OnlineClient<PolkadotConfig>, Error> {
+	Ok(OnlineClient::from_url(url).await?)
 }
 
 pub fn retry_with_log<T, F>(mut f: F, log_msg: String) -> Result<T, Error>
 where
 	F: FnMut() -> Result<T, Error>,
 {
-	retry(custom_retry_config(), || {
-		f().map_err(|e| {
-			log::info!("{}: {}. Retrying...", log_msg, e.to_string());
-			BackoffError::Transient(e)
-		})
-	})
-	.map_err(Into::into)
+	// We store the error to return it if the backoff is exhausted
+	let mut error = None;
+
+	// We retry for the number of retries calculated based on the `RETRY_TIMEOUT` and
+	// `RETRY_INTERVAL`
+	let retries = RETRY_TIMEOUT.as_secs().checked_div(RETRY_INTERVAL.as_secs()).unwrap_or(1);
+	for index in 0..retries {
+		match f() {
+			Ok(result) => return Ok(result),
+			Err(err) => {
+				if index == 0 {
+					log::warn!("{}: {}. Retrying...", log_msg, err.to_string());
+				}
+
+				std::thread::sleep(RETRY_INTERVAL);
+				error = Some(err)
+			},
+		}
+	}
+
+	let error = error.expect("Error should not be None if we reach here.");
+	log::warn!("{}: {}. Retries exhausted.", log_msg, error.to_string());
+
+	Err(error)
 }
 
 pub async fn retry_with_log_async<'a, T, F, E>(f: F, log_msg: String) -> Result<T, Error>
@@ -616,14 +653,30 @@ where
 	F: Fn() -> BoxFuture<'a, Result<T, E>>,
 	E: Into<Error> + Sized + Display,
 {
-	backoff::future::retry(custom_retry_config(), || async {
-		f().await.map_err(|e| {
-			log::info!("{}: {}. Retrying...", log_msg, e.to_string());
-			BackoffError::Transient(e)
-		})
-	})
-	.await
-	.map_err(Into::into)
+	// We store the error to return it if the backoff is exhausted
+	let mut error = None;
+
+	// We retry for the number of retries calculated based on the `RETRY_TIMEOUT` and
+	// `RETRY_INTERVAL`
+	let retries = RETRY_TIMEOUT.as_secs().checked_div(RETRY_INTERVAL.as_secs()).unwrap_or(1);
+	for index in 0..retries {
+		match f().await {
+			Ok(result) => return Ok(result),
+			Err(err) => {
+				if index == 0 {
+					log::warn!("{}: {}. Retrying...", log_msg, err.to_string());
+				}
+
+				tokio::time::sleep(RETRY_INTERVAL).await;
+				error = Some(err)
+			},
+		}
+	}
+
+	let error = error.expect("Error should not be None if we reach here.");
+	log::warn!("{}: {}. Retries exhausted.", log_msg, error.to_string());
+
+	Err(error.into())
 }
 
 #[cfg(test)]
@@ -671,6 +724,7 @@ mod tests {
 		#[async_trait]
 		pub trait RunnerExt {
 			fn subxt_api(&self) -> &OnlineClient<PolkadotConfig>;
+			async fn reopen_subxt_api(&mut self) -> Result<(), Error>;
 			fn client_args(&self) -> &Vec<String>;
 			fn child_proc(&mut self) -> &mut Option<Child>;
 			fn set_child_proc(&mut self, child_proc: Option<Child>);
@@ -698,6 +752,52 @@ mod tests {
 				subxt_api: &OnlineClient<PolkadotConfig>,
 			) -> Result<Option<T>, Error>;
 		}
+	}
+
+	// Test the backoff/retry implementation
+	#[tokio::test]
+	async fn test_retry_with_log() {
+		let expected_retries =
+			RETRY_TIMEOUT.as_secs().checked_div(RETRY_INTERVAL.as_secs()).unwrap_or(0);
+
+		let counter = std::sync::Mutex::new(0);
+		let result: Result<(), Error> = retry_with_log(
+			|| {
+				let mut counter = counter.lock().unwrap();
+				*counter += 1;
+				if (*counter) > expected_retries {
+					panic!("Backoff retries more often than expected")
+				}
+
+				// We always return an error so that we retry. It can be any error
+				Err(Error::ProcessTerminationFailure)
+			},
+			"Error. Retrying".to_string(),
+		);
+		// We expect to get the returned error as a result once all retries are exhausted
+		assert!(result.is_err());
+		let counter = *counter.lock().unwrap();
+		assert_eq!(counter, expected_retries);
+
+		let counter = std::sync::Mutex::new(0);
+		let result: Result<(), Error> = retry_with_log_async(
+			|| {
+				let mut counter = counter.lock().unwrap();
+				*counter += 1;
+				if (*counter) > expected_retries {
+					panic!("Backoff retries more often than expected")
+				}
+
+				// We always return an error so that we retry. It can be any error
+				Box::pin(async { Err(Error::ProcessTerminationFailure) })
+			},
+			"Error. Retrying".to_string(),
+		)
+		.await;
+		// We expect to get the returned error as a result once all retries are exhausted
+		assert!(result.is_err());
+		let counter = *counter.lock().unwrap();
+		assert_eq!(counter, expected_retries);
 	}
 
 	//Before running this test, ensure uri and checksum of the test file match!

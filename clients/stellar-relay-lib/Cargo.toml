@@ -1,6 +1,6 @@
 [package]
 name = "stellar-relay-lib"
-version = "1.0.8"
+version = "1.0.9"
 edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
@@ -16,7 +16,7 @@ wallet = { path = "../wallet", features = ["testing-utils"] }
 
 [dependencies]
 hex = "0.4.3"
-log = {version = "0.4.14"}
+tracing = { version = "0.1", features = ["log"] }
 
 base64 = "0.13.0"
 rand = "0.8.5"
@@ -34,11 +34,12 @@ substrate-stellar-sdk = {git = "https://github.com/pendulum-chain/substrate-stel
 
 err-derive = "0.3.1"
 
-tokio = { version = "1.0", features = [
+tokio = { version = "1.37", features = [
     "macros",           # allows main function to be async
     "rt-multi-thread",  # for multi-thread runtime
     "sync",             # to make channels available
-    "time"              # for timeouts and sleep, when reconnecting
+    "time",             # for timeouts and sleep, when reconnecting
+    "tracing"           # for tokio console
 ] }
 async-std = { version = "1.12.0", features = ["attributes"] }
 
