@@ -5,6 +5,7 @@ use orml_traits::MultiCurrency;
 use sp_core::{Get, H256};
 use sp_runtime::{traits::One, FixedPointNumber};
 use sp_std::prelude::*;
+use frame_system::pallet_prelude::BlockNumberFor;
 
 use currency::getters::{get_relay_chain_currency_id as get_collateral_currency_id, *};
 use oracle::Pallet as Oracle;
@@ -189,7 +190,7 @@ benchmarks! {
 		);
 
 		let (validators, organizations) = get_validators_and_organizations::<T>();
-		let enactment_block_height = BlockNumberFor<T>::default();
+		let enactment_block_height = BlockNumberFor::<T>::default();
 		StellarRelay::<T>::_update_tier_1_validator_set(validators, organizations, enactment_block_height).unwrap();
 		let public_network = <T as StellarRelayConfig>::IsPublicNetwork::get();
 		let (tx_env_xdr_encoded, scp_envs_xdr_encoded, tx_set_xdr_encoded) = build_dummy_proof_for::<T>(redeem_id, public_network);

@@ -6,12 +6,10 @@ use frame_support::{
 };
 use sp_core::H256;
 use sp_runtime::{
-	generic::Header as GenericHeader,
 	traits::{BlakeTwo256, IdentityLookup},
+	BuildStorage,
 };
 
-type Header = GenericHeader<BlockNumber, BlakeTwo256>;
-type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Test>;
 type Block = frame_system::mocking::MockBlock<Test>;
 
 // Configure a mock runtime to test the pallet.
@@ -23,7 +21,6 @@ frame_support::construct_runtime!(
 );
 
 pub type AccountId = u64;
-pub type BlockNumber = u64;
 pub type Nonce = u64;
 pub type TestError = Error<Test>;
 

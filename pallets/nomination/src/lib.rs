@@ -112,12 +112,20 @@ pub mod pallet {
 		StorageMap<_, Blake2_128Concat, DefaultVaultId<T>, bool, ValueQuery>;
 
 	#[pallet::genesis_config]
-	#[cfg_attr(feature = "std", derive(Default))]
 	pub struct GenesisConfig<T: Config> {
 		pub is_nomination_enabled: bool,
 		pub _phantom: sp_std::marker::PhantomData<T>,
 	}
 
+	impl<T: Config> Default for GenesisConfig<T> {
+		fn default() -> Self {
+			GenesisConfig {
+				is_nomination_enabled: false,
+				_phantom: Default::default(),
+			}
+		}
+	}
+	
 	#[pallet::genesis_build]
 	impl<T: Config> BuildGenesisConfig for GenesisConfig<T> {
 		fn build(&self) {

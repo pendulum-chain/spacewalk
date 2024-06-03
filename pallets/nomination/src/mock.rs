@@ -9,9 +9,10 @@ use orml_traits::parameter_type_with_key;
 use sp_arithmetic::{FixedI128, FixedU128};
 use sp_core::H256;
 use sp_runtime::{
-	testing::{Header, TestXt},
+	testing::TestXt,
 	traits::{BlakeTwo256, IdentityLookup, One, Zero},
 	DispatchError, FixedPointNumber, Perquintill,
+	BuildStorage,
 };
 
 pub use currency::testing_constants::{
@@ -31,34 +32,30 @@ use crate as nomination;
 use crate::{Config, Error};
 
 type TestExtrinsic = TestXt<RuntimeCall, ()>;
-type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Test>;
 type Block = frame_system::mocking::MockBlock<Test>;
 
 // Configure a mock runtime to test the pallet.
 frame_support::construct_runtime!(
-	pub enum Test where
-		Block = Block,
-		NodeBlock = Block,
-		UncheckedExtrinsic = UncheckedExtrinsic,
+	pub enum Test 
 	{
-		System: frame_system::{Pallet, Call, Storage, Config<T>, Event<T>},
-		Timestamp: pallet_timestamp::{Pallet, Call, Storage, Inherent},
+		System: frame_system,
+		Timestamp: pallet_timestamp,
 
 		// Tokens & Balances
-		Balances: pallet_balances::{Pallet, Call, Storage, Config<T>, Event<T>},
-		Tokens: orml_tokens::{Pallet, Storage, Config<T>, Event<T>},
-		Currencies: orml_currencies::{Pallet, Call},
+		Balances: pallet_balances,
+		Tokens: orml_tokens,
+		Currencies: orml_currencies,
 
-		Rewards: pooled_rewards::{Pallet, Call, Storage, Event<T>},
-		RewardDistribution: reward_distribution::{Pallet, Storage, Event<T>},
+		Rewards: pooled_rewards,
+		RewardDistribution: reward_distribution,
 		// Operational
-		Security: security::{Pallet, Call, Storage, Event<T>},
-		VaultRegistry: vault_registry::{Pallet, Call, Config<T>, Storage, Event<T>},
-		Fee: fee::{Pallet, Call, Config<T>, Storage},
-		Oracle: oracle::{Pallet, Call, Config, Storage, Event<T>},
-		Nomination: nomination::{Pallet, Call, Config, Storage, Event<T>},
-		Staking: staking::{Pallet, Storage, Event<T>},
-		Currency: currency::{Pallet},
+		Security: security,
+		VaultRegistry: vault_registry,
+		Fee: fee,
+		Oracle: oracle,
+		Nomination: nomination,
+		Staking: staking,
+		Currency: currency,
 
 	}
 );
@@ -80,6 +77,7 @@ parameter_types! {
 }
 
 impl frame_system::Config for Test {
+	type Block = Block;
 	type BaseCallFilter = Everything;
 	type BlockWeights = ();
 	type BlockLength = ();
@@ -124,7 +122,7 @@ impl pallet_balances::Config for Test {
 	type FreezeIdentifier = ();
 	type MaxFreezes = ();
 	type MaxHolds = ConstU32<1>;
-	type HoldIdentifier = RuntimeHoldReason;
+	type RuntimeHoldReason = RuntimeHoldReason;
 }
 
 impl orml_currencies::Config for Test {
@@ -389,10 +387,8 @@ impl ExtBuilder {
 		.assimilate_storage(&mut storage)
 		.unwrap();
 
-		frame_support::traits::GenesisBuild::<Test>::assimilate_storage(
-			&nomination::GenesisConfig { is_nomination_enabled: true },
-			&mut storage,
-		)
+		nomination::GenesisConfig::<Test> { is_nomination_enabled: true, _phantom: Default::default()}
+		.assimilate_storage(&mut storage)
 		.unwrap();
 
 		fee::GenesisConfig::<Test> {

@@ -8,7 +8,7 @@
 #[cfg(test)]
 extern crate mocktopus;
 
-use frame_support::{dispatch::DispatchError, ensure, traits::Get, transactional};
+use frame_support::{sp_runtime::DispatchError, ensure, traits::Get, transactional};
 #[cfg(test)]
 use mocktopus::macros::mockable;
 use primitives::{
@@ -20,6 +20,7 @@ use primitives::{
 };
 use sp_core::H256;
 use sp_runtime::traits::{CheckedDiv, Convert, Saturating, Zero};
+use frame_system::pallet_prelude::BlockNumberFor;
 use sp_std::vec::Vec;
 
 #[cfg(feature = "std")]
@@ -207,11 +208,11 @@ pub mod pallet {
 				limit_volume_amount: None,
 				limit_volume_currency_id: T::CurrencyId::default(),
 				current_volume_amount: BalanceOf::<T>::zero(),
-				interval_length: BlockNumberFor<T>::from_str(
+				interval_length: BlockNumberFor::<T>::from_str(
 					&(DAY_IN_SECONDS / SECONDS_PER_BLOCK).to_string(),
 				)
 				.unwrap_or_default(),
-				last_interval_index: BlockNumberFor<T>::zero(),
+				last_interval_index: BlockNumberFor::<T>::zero(),
 			}
 		}
 	}
@@ -538,11 +539,11 @@ impl<T: Config> Pallet<T> {
 					&griefing_collateral,
 					// NOTE: workaround since BlockNumber doesn't inherit Into<U256>
 					&Amount::new(
-						BlockNumberFor<T>ToBalance::convert(blocks_elapsed),
+						T::BlockNumberToBalance::convert(blocks_elapsed),
 						griefing_collateral.currency(),
 					),
 					&Amount::new(
-						BlockNumberFor<T>ToBalance::convert(issue_period),
+						T::BlockNumberToBalance::convert(issue_period),
 						griefing_collateral.currency(),
 					),
 				)?
