@@ -1,7 +1,7 @@
 use std::{sync::Arc, time::Duration};
 
-use futures::StreamExt;
-use sc_client_api::BlockBackend;
+use futures::{StreamExt, FutureExt};
+use sc_client_api::{Backend, BlockBackend};
 use sc_consensus_aura::{ImportQueueParams, SlotProportion, StartAuraParams};
 use sc_consensus_grandpa::SharedVoterState;
 use sc_executor::{
@@ -14,6 +14,7 @@ use sc_service::{
 use sc_telemetry::{Telemetry, TelemetryWorker};
 use sp_consensus_aura::sr25519::AuthorityPair as AuraPair;
 use sp_core::crypto::KeyTypeId;
+use sc_transaction_pool_api::OffchainTransactionPoolFactory;
 
 use crate::rpc as spacewalk_rpc;
 use primitives::Block;
@@ -23,6 +24,10 @@ use spacewalk_runtime_testnet::RuntimeApi as TestnetRuntimeApi;
 
 // Native executor instance.
 pub struct TestnetExecutor;
+
+/// The minimum period of blocks on which justifications will be
+/// imported and generated.
+const GRANDPA_JUSTIFICATION_PERIOD: u32 = 512;
 
 impl sc_executor::NativeExecutionDispatch for TestnetExecutor {
 	/// Only enable the benchmarking host functions when we actually want to benchmark.
@@ -80,7 +85,7 @@ pub fn new_partial_mainnet(
 		FullMainnetClient,
 		FullBackend,
 		FullSelectChain,
-		sc_consensus::DefaultImportQueue<Block, FullMainnetClient>,
+		sc_consensus::DefaultImportQueue<Block>,
 		sc_transaction_pool::FullPool<Block, FullMainnetClient>,
 		(
 			sc_consensus_grandpa::GrandpaBlockImport<
@@ -145,6 +150,7 @@ pub fn new_partial_mainnet(
 
 	let (grandpa_block_import, grandpa_link) = sc_consensus_grandpa::block_import(
 		client.clone(),
+		GRANDPA_JUSTIFICATION_PERIOD,
 		&(client.clone() as Arc<_>),
 		select_chain.clone(),
 		telemetry.as_ref().map(|x| x.handle()),
@@ -206,7 +212,7 @@ pub fn new_partial_testnet(
 		FullTestnetClient,
 		FullBackend,
 		FullSelectChain,
-		sc_consensus::DefaultImportQueue<Block, FullTestnetClient>,
+		sc_consensus::DefaultImportQueue<Block>,
 		sc_transaction_pool::FullPool<Block, FullTestnetClient>,
 		(
 			sc_consensus_grandpa::GrandpaBlockImport<
@@ -271,6 +277,7 @@ pub fn new_partial_testnet(
 
 	let (grandpa_block_import, grandpa_link) = sc_consensus_grandpa::block_import(
 		client.clone(),
+		GRANDPA_JUSTIFICATION_PERIOD,
 		&(client.clone() as Arc<_>),
 		select_chain.clone(),
 		telemetry.as_ref().map(|x| x.handle()),
@@ -340,14 +347,16 @@ pub fn new_full(mut config: Configuration) -> Result<(TaskManager, RpcHandlers),
 		&config.chain_spec,
 	);
 
-	config
-		.network
-		.extra_sets
-		.push(sc_consensus_grandpa::grandpa_peers_set_config(grandpa_protocol_name.clone()));
+	let mut net_config = sc_network::config::FullNetworkConfiguration::new(&config.network);
+
+	net_config.add_notification_protocol(sc_consensus_grandpa::grandpa_peers_set_config(
+		grandpa_protocol_name.clone(),
+	));
 
 	let (network, system_rpc_tx, tx_handler_controller, network_starter, sync_service) =
 		sc_service::build_network(sc_service::BuildNetworkParams {
 			config: &config,
+			net_config,
 			client: client.clone(),
 			transaction_pool: transaction_pool.clone(),
 			spawn_handle: task_manager.spawn_handle(),
@@ -368,11 +377,23 @@ pub fn new_full(mut config: Configuration) -> Result<(TaskManager, RpcHandlers),
 		sp_keystore::Keystore::sr25519_generate_new(&*keystore, KEY_TYPE, Some("//Bob"))
 			.expect("Creating key with account Bob should succeed.");
 
-		sc_service::build_offchain_workers(
-			&config,
-			task_manager.spawn_handle(),
-			client.clone(),
-			network.clone(),
+		task_manager.spawn_handle().spawn(
+			"offchain-workers-runner",
+			"offchain-worker",
+			sc_offchain::OffchainWorkers::new(sc_offchain::OffchainWorkerOptions {
+				runtime_api_provider: client.clone(),
+				is_validator: config.role.is_authority(),
+				keystore: Some(keystore),
+				offchain_db: backend.offchain_storage(),
+				transaction_pool: Some(OffchainTransactionPoolFactory::new(
+					transaction_pool.clone(),
+				)),
+				network_provider: network.clone(),
+				enable_http_requests: true,
+				custom_extensions: |_| vec![],
+			})
+			.run(client.clone(), task_manager.spawn_handle())
+			.boxed(),
 		);
 	}
 
@@ -418,7 +439,7 @@ pub fn new_full(mut config: Configuration) -> Result<(TaskManager, RpcHandlers),
 		let proposer_factory = sc_basic_authorship::ProposerFactory::new(
 			task_manager.spawn_handle(),
 			client.clone(),
-			transaction_pool,
+			transaction_pool.clone(),
 			prometheus_registry.as_ref(),
 			telemetry.as_ref().map(|x| x.handle()),
 		);
@@ -467,13 +488,14 @@ pub fn new_full(mut config: Configuration) -> Result<(TaskManager, RpcHandlers),
 	let grandpa_config = sc_consensus_grandpa::Config {
 		// FIXME #1578 make this available through chainspec
 		gossip_duration: Duration::from_millis(333),
-		justification_period: 512,
 		name: Some(name),
 		observer_enabled: false,
 		keystore,
 		local_role: role,
 		telemetry: telemetry.as_ref().map(|x| x.handle()),
 		protocol_name: grandpa_protocol_name,
+		justification_generation_period: GRANDPA_JUSTIFICATION_PERIOD,
+
 	};
 
 	if enable_grandpa {
@@ -492,6 +514,7 @@ pub fn new_full(mut config: Configuration) -> Result<(TaskManager, RpcHandlers),
 			prometheus_registry,
 			shared_voter_state: SharedVoterState::empty(),
 			telemetry: telemetry.as_ref().map(|x| x.handle()),
+			offchain_tx_pool_factory: OffchainTransactionPoolFactory::new(transaction_pool),
 		};
 
 		// the GRANDPA voter task is considered infallible, i.e.
@@ -522,9 +545,12 @@ pub async fn start_instant_mainnet(
 		other: (_, _, mut telemetry),
 	} = new_partial_mainnet(&config, true)?;
 
+	let mut net_config = sc_network::config::FullNetworkConfiguration::new(&config.network);
+
 	let (network, system_rpc_tx, tx_handler_controller, network_starter, sync_service) =
 		sc_service::build_network(sc_service::BuildNetworkParams {
 			config: &config,
+			net_config,
 			client: client.clone(),
 			transaction_pool: transaction_pool.clone(),
 			spawn_handle: task_manager.spawn_handle(),
@@ -534,11 +560,23 @@ pub async fn start_instant_mainnet(
 		})?;
 
 	if config.offchain_worker.enabled {
-		sc_service::build_offchain_workers(
-			&config,
-			task_manager.spawn_handle(),
-			client.clone(),
-			network.clone(),
+		task_manager.spawn_handle().spawn(
+			"offchain-workers-runner",
+			"offchain-worker",
+			sc_offchain::OffchainWorkers::new(sc_offchain::OffchainWorkerOptions {
+				runtime_api_provider: client.clone(),
+				is_validator: config.role.is_authority(),
+				keystore: Some(keystore_container.keystore()),
+				offchain_db: backend.offchain_storage(),
+				transaction_pool: Some(OffchainTransactionPoolFactory::new(
+					transaction_pool.clone(),
+				)),
+				network_provider: network.clone(),
+				enable_http_requests: true,
+				custom_extensions: |_| vec![],
+			})
+			.run(client.clone(), task_manager.spawn_handle())
+			.boxed(),
 		);
 	};
 
@@ -644,9 +682,12 @@ pub async fn start_instant_testnet(
 		other: (_, _, mut telemetry),
 	} = new_partial_testnet(&config, true)?;
 
+	let mut net_config = sc_network::config::FullNetworkConfiguration::new(&config.network);
+
 	let (network, system_rpc_tx, tx_handler_controller, network_starter, sync_service) =
 		sc_service::build_network(sc_service::BuildNetworkParams {
 			config: &config,
+			net_config,
 			client: client.clone(),
 			transaction_pool: transaction_pool.clone(),
 			spawn_handle: task_manager.spawn_handle(),
@@ -656,11 +697,23 @@ pub async fn start_instant_testnet(
 		})?;
 
 	if config.offchain_worker.enabled {
-		sc_service::build_offchain_workers(
-			&config,
-			task_manager.spawn_handle(),
-			client.clone(),
-			network.clone(),
+		task_manager.spawn_handle().spawn(
+			"offchain-workers-runner",
+			"offchain-worker",
+			sc_offchain::OffchainWorkers::new(sc_offchain::OffchainWorkerOptions {
+				runtime_api_provider: client.clone(),
+				is_validator: config.role.is_authority(),
+				keystore: Some(keystore_container.keystore()),
+				offchain_db: backend.offchain_storage(),
+				transaction_pool: Some(OffchainTransactionPoolFactory::new(
+					transaction_pool.clone(),
+				)),
+				network_provider: network.clone(),
+				enable_http_requests: true,
+				custom_extensions: |_| vec![],
+			})
+			.run(client.clone(), task_manager.spawn_handle())
+			.boxed(),
 		);
 	};
 
