@@ -3,8 +3,8 @@ use scale_info::TypeInfo;
 use sp_std::{cmp::Ord, fmt::Debug};
 
 /// Enum indicating the status of the Spacewalk Parachain.
-#[cfg_attr(feature = "std", derive(serde::Serialize, serde::Deserialize))]
-#[derive(Default, Encode, Decode, Clone, Copy, PartialEq, MaxEncodedLen, Eq, Debug, TypeInfo)]
+#[cfg_attr(feature = "std", derive(serde::Serialize))]
+#[derive(Default, Encode, Decode, Clone, Copy, PartialEq, MaxEncodedLen, Eq, Debug, TypeInfo, serde::Deserialize)]
 pub enum StatusCode {
 	/// Spacewalk Parachain is fully operational.
 	#[default]
