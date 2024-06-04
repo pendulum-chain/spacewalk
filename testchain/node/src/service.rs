@@ -330,7 +330,7 @@ pub fn new_partial_testnet(
 }
 
 /// Builds a new service for a full client.
-pub fn new_full(mut config: Configuration) -> Result<(TaskManager, RpcHandlers), ServiceError> {
+pub fn new_full(config: Configuration) -> Result<(TaskManager, RpcHandlers), ServiceError> {
 	let sc_service::PartialComponents {
 		client,
 		backend,
@@ -545,7 +545,7 @@ pub async fn start_instant_mainnet(
 		other: (_, _, mut telemetry),
 	} = new_partial_mainnet(&config, true)?;
 
-	let mut net_config = sc_network::config::FullNetworkConfiguration::new(&config.network);
+	let net_config = sc_network::config::FullNetworkConfiguration::new(&config.network);
 
 	let (network, system_rpc_tx, tx_handler_controller, network_starter, sync_service) =
 		sc_service::build_network(sc_service::BuildNetworkParams {
@@ -682,7 +682,7 @@ pub async fn start_instant_testnet(
 		other: (_, _, mut telemetry),
 	} = new_partial_testnet(&config, true)?;
 
-	let mut net_config = sc_network::config::FullNetworkConfiguration::new(&config.network);
+	let net_config = sc_network::config::FullNetworkConfiguration::new(&config.network);
 
 	let (network, system_rpc_tx, tx_handler_controller, network_starter, sync_service) =
 		sc_service::build_network(sc_service::BuildNetworkParams {
