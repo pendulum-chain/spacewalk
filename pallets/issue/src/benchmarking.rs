@@ -28,12 +28,17 @@ fn deposit_tokens<T: crate::Config>(
 	account_id: &T::AccountId,
 	amount: BalanceOf<T>,
 ) {
-	assert_ok!(<orml_tokens::Pallet<T>>::deposit(currency_id, account_id, amount));
+	assert_ok!(<orml_currencies::Pallet<T>>::deposit(currency_id, account_id, amount));
 }
 
 fn mint_collateral<T: crate::Config>(account_id: &T::AccountId, amount: BalanceOf<T>) {
 	deposit_tokens::<T>(get_collateral_currency_id::<T>(), account_id, amount);
 	deposit_tokens::<T>(get_native_currency_id::<T>(), account_id, amount);
+	deposit_tokens::<T>(
+		<T as vault_registry::Config>::GetGriefingCollateralCurrencyId::get(),
+		account_id,
+		amount,
+	);
 }
 
 fn get_currency_pair<T: crate::Config>() -> DefaultVaultCurrencyPair<T> {
@@ -61,8 +66,7 @@ benchmarks! {
 	request_issue {
 		let origin: T::AccountId = account("Origin", 0, 0);
 		let vault_id = get_vault_id::<T>();
-		let amount = 10_000_000u32.into();
-		let asset = vault_id.wrapped_currency();
+		let amount = Issue::<T>::issue_minimum_transfer_amount(vault_id.wrapped_currency()).amount();
 		let relayer_id: T::AccountId = account("Relayer", 0, 0);
 
 		Oracle::<T>::_set_exchange_rate(origin.clone(), get_collateral_currency_id::<T>(), <T as currency::Config>::UnsignedFixedPoint::one()).unwrap();
