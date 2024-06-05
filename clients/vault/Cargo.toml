@@ -89,7 +89,7 @@ tempdir = "0.3.7"
 # Workspace dependencies
 runtime = { path = "../runtime", features = ["testing-utils", "standalone-metadata"] }
 wallet = { path = "../wallet", features = ["testing-utils"] }
-subxt = { version = "0.37.0", features = ["native"] }
+subxt = { version = "0.28.0", features = [ "substrate-compat"] }
 
 # Substrate dependencies
 frame-support = { git = "https://github.com/paritytech/polkadot-sdk", branch = "release-polkadot-v1.1.0" }

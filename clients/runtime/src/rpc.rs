@@ -280,18 +280,18 @@ impl SpacewalkParachain {
 	async fn query_finalized<Address>(
 		&self,
 		address: Address,
-	) -> Result<Option<<Address::Target as DecodeWithMetadata>::Target>, Error>
+	) -> Result<Option<Address::Target>, Error>
 	where
 		Address: StorageAddress<IsFetchable = Yes>,
 	{
 		let hash = self.get_finalized_block_hash().await?;
-		Ok(self.api.storage().fetch(&address, hash).await?)
+		Ok(self.api.storage().at_latest().await.unwrap().fetch(&address).await?)
 	}
 
 	async fn query_finalized_or_error<Address>(
 		&self,
 		address: Address,
-	) -> Result<<Address::Target as DecodeWithMetadata>::Target, Error>
+	) -> Result<Address::Target, Error>
 	where
 		Address: StorageAddress<IsFetchable = Yes>,
 	{
@@ -301,12 +301,12 @@ impl SpacewalkParachain {
 	async fn query_finalized_or_default<Address>(
 		&self,
 		address: Address,
-	) -> Result<<Address::Target as DecodeWithMetadata>::Target, Error>
+	) -> Result<Address::Target, Error>
 	where
 		Address: StorageAddress<IsFetchable = Yes, IsDefaultable = Yes>,
 	{
 		let hash = self.get_finalized_block_hash().await?;
-		Ok(self.api.storage().fetch_or_default(&address, hash).await?)
+		Ok(self.api.storage().at_latest().await.unwrap().fetch_or_default(&address, hash).await?)
 	}
 
 	pub async fn get_finalized_block_hash(&self) -> Result<Option<H256>, Error> {

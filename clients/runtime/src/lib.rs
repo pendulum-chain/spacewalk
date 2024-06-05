@@ -4,13 +4,16 @@ pub use sp_arithmetic::{traits as FixedPointTraits, FixedI128, FixedPointNumber,
 use sp_std::marker::PhantomData;
 pub use subxt::{
 	events::StaticEvent,
+	config::substrate::BlakeTwo256,
 	ext::sp_core::{crypto::Ss58Codec, sr25519::Pair},
+	subxt,
 };
 use subxt::{
-	ext::sp_runtime::{generic::Header, traits::BlakeTwo256, MultiSignature},
+	ext::sp_runtime::{generic::Header, MultiSignature},
 	subxt, Config,
+	config::polkadot::PolkadotExtrinsicParams,
 };
-use frame_system::pallet_prelude::BlockNumberFor;
+
 
 pub use assets::TryFromSymbol;
 pub use error::{Error, Recoverability, SubxtError};
@@ -93,6 +96,7 @@ compile_error!("You need to select at least one of the metadata features");
 		derive_for_all_types = "Clone, PartialEq, Eq",
 	)
 )]
+
 pub mod metadata {
 	#[subxt(substitute_type = "sp_core::crypto::AccountId32")]
 	use crate::AccountId;
@@ -112,11 +116,12 @@ pub struct WrapperKeepOpaque<T> {
 pub struct SpacewalkRuntime;
 
 impl Config for SpacewalkRuntime {
-	type Nonce = Nonce;
+	type Index = Nonce;
 	type Hash = H256;
-	type Hashing = BlakeTwo256;
+	type Header = Header<BlockNumber, H256>;
+	type Hasher = BlakeTwo256;
 	type AccountId = AccountId;
 	type Address = Address;
 	type Signature = MultiSignature;
-	type ExtrinsicParams = subxt::tx::PolkadotExtrinsicParams<Self>;
+	type ExtrinsicParams = PolkadotExtrinsicParams<Self>;
 }

@@ -219,8 +219,7 @@ impl Error {
 }
 
 impl RecoverableError {
-	// The string which is used to match the error type
-	// For definitions, see: https://github.com/paritytech/polkadot-sdk/blob/033d4e86cc7eff0066cd376b9375f815761d653c/primitives/runtime/src/transaction_validity.rs#L99
+	// For definitions, see: https://github.com/paritytech/substrate/blob/033d4e86cc7eff0066cd376b9375f815761d653c/primitives/runtime/src/transaction_validity.rs#L99
 
 	fn as_str(&self) -> &'static str {
 		match self {
@@ -248,7 +247,7 @@ pub enum KeyLoadingError {
 	SecretStringError(SecretStringError),
 }
 
-// https://github.com/paritytech/polkadot-sdk/blob/e60597dff0aa7ffad623be2cc6edd94c7dc51edd/client/rpc-api/src/author/error.rs#L80
+// https://github.com/paritytech/substrate/blob/e60597dff0aa7ffad623be2cc6edd94c7dc51edd/client/rpc-api/src/author/error.rs#L80
 const BASE_ERROR: i32 = 1000;
 const POOL_INVALID_TX: i32 = BASE_ERROR + 10;
 const POOL_TOO_LOW_PRIORITY: i32 = POOL_INVALID_TX + 4;

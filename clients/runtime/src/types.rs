@@ -3,7 +3,7 @@ pub use subxt::ext::sp_core::sr25519::Pair as KeyPair;
 pub use metadata_aliases::*;
 pub use primitives::{CurrencyId, TextMemo};
 use std::str::from_utf8;
-use sp_runtime::{OpaqueExtrinsic, traits::BlakeTwo256};
+use sp_runtime::{OpaqueExtrinsic, traits::BlakeTwo256, generic};
 
 use crate::{metadata, Config, SpacewalkRuntime, SS58_PREFIX};
 
@@ -12,7 +12,6 @@ pub type Address = subxt::ext::sp_runtime::MultiAddress<AccountId, u32>;
 pub type Balance = u128;
 pub type BlockNumber = u32;
 pub type Header = generic::Header<BlockNumber, BlakeTwo256>;
-pub type Block = generic::Block<Header, UncheckedExtrinsic>;
 pub type Nonce = u32;
 pub type H256 = subxt::ext::sp_core::H256;
 pub type SpacewalkSigner = subxt::tx::PairSigner<SpacewalkRuntime, KeyPair>;
