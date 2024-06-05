@@ -69,7 +69,7 @@ mod metadata_aliases {
 
 	pub type SpacewalkReplaceRequest =
 		metadata::runtime_types::spacewalk_primitives::replace::ReplaceRequest<
-			Static<AccountId>,
+			AccountId,
 			BlockNumber,
 			Balance,
 			Static<CurrencyId>,
@@ -77,7 +77,7 @@ mod metadata_aliases {
 
 	pub type SpacewalkRedeemRequest =
 		metadata::runtime_types::spacewalk_primitives::redeem::RedeemRequest<
-			Static<AccountId>,
+			AccountId,
 			BlockNumber,
 			Balance,
 			Static<CurrencyId>,
@@ -85,7 +85,7 @@ mod metadata_aliases {
 
 	pub type SpacewalkIssueRequest =
 		metadata::runtime_types::spacewalk_primitives::issue::IssueRequest<
-			Static<AccountId>,
+			AccountId,
 			BlockNumber,
 			Balance,
 			Static<CurrencyId>,
@@ -94,14 +94,14 @@ mod metadata_aliases {
 	pub type SpacewalkHeader = <SpacewalkRuntime as Config>::Header;
 
 	pub type SpacewalkVault = metadata::runtime_types::vault_registry::types::Vault<
-		Static<AccountId>,
+		AccountId,
 		BlockNumber,
 		Balance,
 		Static<CurrencyId>,
 		Static<FixedU128>,
 	>;
 	pub type VaultId =
-		metadata::runtime_types::spacewalk_primitives::VaultId<Static<AccountId>, Static<CurrencyId>>;
+		metadata::runtime_types::spacewalk_primitives::VaultId<AccountId, Static<CurrencyId>>;
 
 	pub type VaultCurrencyPair =
 		metadata::runtime_types::spacewalk_primitives::VaultCurrencyPair<Static<CurrencyId>>;
@@ -193,7 +193,7 @@ mod vault_id {
 
 	impl crate::VaultId {
 		pub fn new(
-			account_id: Static<AccountId>,
+			account_id: AccountId,
 			collateral_currency: CurrencyId,
 			wrapped_currency: CurrencyId,
 		) -> Self {

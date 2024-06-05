@@ -505,7 +505,7 @@ impl UtilFuncs for SpacewalkParachain {
 	}
 
 	fn is_this_vault(&self, vault_id: &VaultId) -> bool {
-		*vault_id.account_id == *self.get_account_id()
+		&vault_id.account_id == self.get_account_id()
 	}
 
 	fn get_account_id(&self) -> &AccountId {
@@ -654,7 +654,7 @@ impl VaultRegistryPallet for SpacewalkParachain {
 	async fn get_public_key(&self) -> Result<Option<StellarPublicKeyRaw>, Error> {
 		let query = metadata::storage()
 			.vault_registry()
-			.vault_stellar_public_key(&Static(self.get_account_id().clone()));
+			.vault_stellar_public_key(self.get_account_id());
 
 		self.query_finalized(query).await
 	}
@@ -779,7 +779,7 @@ impl CollateralBalancesPallet for SpacewalkParachain {
 
 	async fn get_native_balance_for_id(&self, id: &AccountId) -> Result<Balance, Error> {
 		let head = self.get_finalized_block_hash().await?;
-		let query = metadata::storage().system().account(&Static(id.clone()));
+		let query = metadata::storage().system().account(id);
 
 		let result = self.api.storage().at_latest().await.unwrap().fetch(&query).await?;
 		Ok(result.map(|x| x.data.free).unwrap_or_default())
@@ -791,7 +791,7 @@ impl CollateralBalancesPallet for SpacewalkParachain {
 		currency_id: CurrencyId,
 	) -> Result<Balance, Error> {
 		let head = self.get_finalized_block_hash().await?;
-		let query = metadata::storage().tokens().accounts(&Static(id), &Static(currency_id));
+		let query = metadata::storage().tokens().accounts(&id, &Static(currency_id));
 
 		let result = self.api.storage().at_latest().await.unwrap().fetch(&query).await?;
 		Ok(result.map(|x| x.free).unwrap_or_default())
@@ -807,7 +807,7 @@ impl CollateralBalancesPallet for SpacewalkParachain {
 		currency_id: CurrencyId,
 	) -> Result<Balance, Error> {
 		let head = self.get_finalized_block_hash().await?;
-		let query = metadata::storage().tokens().accounts(&Static(id), &Static(currency_id));
+		let query = metadata::storage().tokens().accounts(&id, &Static(currency_id));
 
 		let result = self.api.storage().at_latest().await.unwrap().fetch(&query).await?;
 		Ok(result.map(|x| x.reserved).unwrap_or_default())
@@ -820,7 +820,7 @@ impl CollateralBalancesPallet for SpacewalkParachain {
 		currency_id: CurrencyId,
 	) -> Result<(), Error> {
 		let transfer_tx = metadata::tx().tokens().transfer(
-			subxt::utils::MultiAddress::<Static<AccountId>,()>::Id(Static(recipient.clone())),
+			subxt::utils::MultiAddress::<AccountId,()>::Id(recipient.clone()),
 			Static(currency_id),
 			amount,
 		);

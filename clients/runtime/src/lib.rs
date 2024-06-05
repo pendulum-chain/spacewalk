@@ -75,7 +75,7 @@ type VaultId2 = primitives::VaultId<AccountId, CurrencyId>;
 	subxt(
 		runtime_metadata_path = "metadata-standalone.scale",
 		derive_for_all_types = "Clone, PartialEq, Eq",
-		substitute_type(type = "sp_core::crypto::AccountId32", with = "::subxt::utils::Static<crate::AccountId>"),
+		substitute_type(type = "sp_core::crypto::AccountId32", with = "crate::AccountId"),
 		substitute_type(type = "spacewalk_primitives::CurrencyId", with = "::subxt::utils::Static<crate::CurrencyId>"),
 		substitute_type(type = "sp_arithmetic::fixed_point::FixedU128", with = "::subxt::utils::Static<crate::FixedU128>"),
 	)
