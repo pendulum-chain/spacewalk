@@ -68,8 +68,6 @@ compile_error!("You need to select at least one of the metadata features");
 // We can change this once the spacewalk pallets were added to the runtimes of the other chains as
 // well.
 
-type VaultId2 = primitives::VaultId<AccountId, CurrencyId>;
-
 #[cfg_attr(
 	feature = "standalone-metadata",
 	subxt(
@@ -85,6 +83,9 @@ type VaultId2 = primitives::VaultId<AccountId, CurrencyId>;
 	subxt(
 		runtime_metadata_path = "metadata-parachain-pendulum.scale",
 		derive_for_all_types = "Clone, PartialEq, Eq",
+		substitute_type(type = "sp_core::crypto::AccountId32", with = "crate::AccountId"),
+		substitute_type(type = "spacewalk_primitives::CurrencyId", with = "::subxt::utils::Static<crate::CurrencyId>"),
+		substitute_type(type = "sp_arithmetic::fixed_point::FixedU128", with = "::subxt::utils::Static<crate::FixedU128>"),
 	)
 )]
 #[cfg_attr(
@@ -92,6 +93,9 @@ type VaultId2 = primitives::VaultId<AccountId, CurrencyId>;
 	subxt(
 		runtime_metadata_path = "metadata-parachain-amplitude.scale",
 		derive_for_all_types = "Clone, PartialEq, Eq",
+		substitute_type(type = "sp_core::crypto::AccountId32", with = "crate::AccountId"),
+		substitute_type(type = "spacewalk_primitives::CurrencyId", with = "::subxt::utils::Static<crate::CurrencyId>"),
+		substitute_type(type = "sp_arithmetic::fixed_point::FixedU128", with = "::subxt::utils::Static<crate::FixedU128>"),
 	)
 )]
 #[cfg_attr(
@@ -99,17 +103,12 @@ type VaultId2 = primitives::VaultId<AccountId, CurrencyId>;
 	subxt(
 		runtime_metadata_path = "metadata-parachain-foucoco.scale",
 		derive_for_all_types = "Clone, PartialEq, Eq",
+		substitute_type(type = "sp_core::crypto::AccountId32", with = "crate::AccountId"),
+		substitute_type(type = "spacewalk_primitives::CurrencyId", with = "::subxt::utils::Static<crate::CurrencyId>"),
+		substitute_type(type = "sp_arithmetic::fixed_point::FixedU128", with = "::subxt::utils::Static<crate::FixedU128>"),
 	)
 )]
 pub mod metadata {	
-	// #[subxt::subxt(substitute_type = "sp_core::crypto::AccountId32")]
-	// use crate::AccountId;
-
-	// #[subxt::subxt(substitute_type = "spacewalk_primitives::CurrencyId")]
-	// use crate::CurrencyId;
-
-	// #[subxt::subxt(substitute_type = "sp_arithmetic::fixed_point::FixedU128")]
-	// use crate::FixedU128;
 }
 
 #[derive(Debug, Eq, PartialEq, Ord, PartialOrd, Default, Clone, Decode, Encode)]
