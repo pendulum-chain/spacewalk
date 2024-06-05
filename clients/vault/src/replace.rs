@@ -307,7 +307,7 @@ mod tests {
 	}
 
 	fn dummy_vault_id() -> VaultId {
-		VaultId::new(AccountId::new([1u8; 32]), CurrencyId::XCM(0), CurrencyId::Native)
+		VaultId::new(subxt::ext::sp_runtime::AccountId32::new([1u8; 32]).into(), CurrencyId::XCM(0), CurrencyId::Native)
 	}
 
 	fn wallet(is_public_network: bool, path: &Path) -> ArcRwLock<StellarWallet> {
@@ -336,7 +336,7 @@ mod tests {
 		let event = RequestReplaceEvent {
 			old_vault_id: dummy_vault_id(),
 			amount: Default::default(),
-			asset: Default::default(),
+			asset: subxt::utils::Static(Default::default()),
 			griefing_collateral: Default::default(),
 		};
 		assert_err!(
@@ -362,7 +362,7 @@ mod tests {
 		let event = RequestReplaceEvent {
 			old_vault_id: dummy_vault_id(),
 			amount: Default::default(),
-			asset: Default::default(),
+			asset: subxt::utils::Static(Default::default()),
 			griefing_collateral: Default::default(),
 		};
 		handle_replace_request(parachain_rpc, wallet_arc, &event, &dummy_vault_id())

@@ -268,7 +268,10 @@ impl SpacewalkParachain {
 		let on_chain_nonce = self
 			.api
 			.storage()
-			.fetch(&storage_key, None)
+			.at_latest()
+			.await
+			.unwrap()
+			.fetch(&storage_key)
 			.await
 			.transpose()
 			.and_then(|x| x.ok())
@@ -411,8 +414,8 @@ impl SpacewalkParachain {
 	#[cfg(test)]
 	pub async fn get_invalid_tx_error(&self, recipient: AccountId) -> Error {
 		let call = metadata::tx().tokens().transfer(
-			subxt::ext::sp_runtime::MultiAddress::<Static<AccountId>, Static<CurrencyId>>::Id(Static(recipient)),
-			CurrencyId::XCM(0),
+			subxt::utils::MultiAddress::<AccountId, ()>::Id(recipient),
+			subxt::utils::Static(CurrencyId::XCM(0)),
 			100,
 		);
 		let nonce = self.get_fresh_nonce().await;
@@ -443,8 +446,8 @@ impl SpacewalkParachain {
 	#[cfg(test)]
 	pub async fn get_too_low_priority_error(&self, recipient: AccountId) -> Error {
 		let call = metadata::tx().tokens().transfer(
-			subxt::ext::sp_runtime::MultiAddress::Id(recipient),
-			CurrencyId::XCM(0),
+			subxt::utils::MultiAddress::Id(recipient),
+			subxt::utils::Static(CurrencyId::XCM(0)),
 			100,
 		);
 
