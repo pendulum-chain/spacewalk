@@ -17,6 +17,7 @@ use std::{sync::Arc, time::Duration};
 use stellar_relay_lib::sdk::{PublicKey, SecretKey};
 use vault::{oracle::OracleAgent, ArcRwLock};
 use wallet::{error::Error, StellarWallet, TransactionResponse};
+use subxt::utils::AccountId32 as AccountId;
 
 use wallet::keys::get_source_secret_key_from_env;
 
@@ -65,7 +66,7 @@ pub async fn create_vault(
 	wrapped_currency: CurrencyId,
 ) -> (VaultId, SpacewalkParachain) {
 
-	let vault_id = VaultId::new(subxt::utils::Static(subxt::utils::AccountId32(account.to_account_id().clone().into())), DEFAULT_TESTING_CURRENCY, wrapped_currency);
+	let vault_id = VaultId::new(AccountId(account.to_account_id().clone().into()), DEFAULT_TESTING_CURRENCY, wrapped_currency);
 
 	let vault_provider = setup_provider(client, account).await;
 

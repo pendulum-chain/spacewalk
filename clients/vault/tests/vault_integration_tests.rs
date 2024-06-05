@@ -25,6 +25,7 @@ use helper::*;
 use primitives::DecimalsLookup;
 use vault::oracle::{random_stellar_relay_config, start_oracle_agent};
 use wallet::keys::get_source_secret_key_from_env;
+use subxt::utils::AccountId32 as AccountId;
 
 #[tokio::test(flavor = "multi_thread")]
 #[serial]
@@ -692,7 +693,7 @@ async fn test_issue_execution_succeeds_from_archive_on_network(is_public_network
 
 			join(
 				assert_event::<EndowedEvent, _>(TIMEOUT, user_provider.clone(), |x| {
-					if *x.who == *user_provider.get_account_id() {
+					if &x.who == user_provider.get_account_id() {
 						assert_eq!(x.amount, issue.amount - issue.fee);
 						true
 					} else {
@@ -779,7 +780,7 @@ async fn test_issue_overpayment_succeeds() {
 
 			join(
 				assert_event::<EndowedEvent, _>(TIMEOUT, user_provider.clone(), |x| {
-					if *x.who == *user_provider.get_account_id() {
+					if &x.who == user_provider.get_account_id() {
 						// Overpaying will make the issue pallet recalculate the amount and fee for
 						// the higher amount. With the up-scaled and overpaid amount of 300_00000,
 						// the resulting fee will be 300_00000 * 0.001 = 30000
@@ -935,7 +936,7 @@ async fn test_automatic_issue_execution_succeeds_for_other_vault() {
 			let user_provider = setup_provider(client.clone(), AccountKeyring::Dave).await;
 			let vault2_provider = setup_provider(client.clone(), AccountKeyring::Eve).await;
 			let vault2_id = VaultId::new(
-				subxt::utils::Static(subxt::utils::AccountId32(AccountKeyring::Eve.to_account_id().clone().into())),
+				AccountId(AccountKeyring::Eve.to_account_id().clone().into()),
 				DEFAULT_TESTING_CURRENCY,
 				default_wrapped_currency(is_public_network),
 			);
@@ -1250,7 +1251,7 @@ async fn test_shutdown() {
 		let user_provider = setup_provider(client.clone(), AccountKeyring::Dave).await;
 
 		let sudo_vault_id = VaultId::new(
-			subxt::utils::Static(subxt::utils::AccountId32(AccountKeyring::Alice.to_account_id().clone().into())),
+			AccountId(AccountKeyring::Alice.to_account_id().clone().into()),
 			DEFAULT_TESTING_CURRENCY,
 			default_wrapped_currency(is_public_network),
 		);

@@ -27,7 +27,7 @@ use wallet::{
 	keys::{get_dest_secret_key_from_env, get_source_secret_key_from_env},
 	StellarWallet,
 };
-
+use subxt::utils::AccountId32 as AccountId;
 pub type StellarPublicKey = [u8; 32];
 
 #[async_trait]
@@ -134,7 +134,7 @@ where
 	};
 
 	let vault_id = VaultId::new(
-		subxt::utils::Static(subxt::utils::AccountId32(AccountKeyring::Charlie.to_account_id().clone().into())),
+		AccountId(AccountKeyring::Charlie.to_account_id().clone().into()),
 		DEFAULT_TESTING_CURRENCY,
 		default_wrapped_currency,
 	);
