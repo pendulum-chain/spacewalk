@@ -591,7 +591,6 @@ impl VaultRegistryPallet for SpacewalkParachain {
 	/// Fetch all active vaults.
 	async fn get_all_vaults(&self) -> Result<Vec<SpacewalkVault>, Error> {
 		let mut vaults = Vec::new();
-		let head = self.get_finalized_block_hash().await?;
 		let key_addr = metadata::storage().vault_registry().vaults_root();
 
 		let mut iter = self.api.storage().at_latest().await.unwrap().iter(key_addr, DEFAULT_PAGE_SIZE).await?;
@@ -781,7 +780,6 @@ impl CollateralBalancesPallet for SpacewalkParachain {
 	}
 
 	async fn get_native_balance_for_id(&self, id: &AccountId) -> Result<Balance, Error> {
-		let head = self.get_finalized_block_hash().await?;
 		let query = metadata::storage().system().account(id);
 
 		let result = self.api.storage().at_latest().await.unwrap().fetch(&query).await?;
@@ -793,7 +791,6 @@ impl CollateralBalancesPallet for SpacewalkParachain {
 		id: AccountId,
 		currency_id: CurrencyId,
 	) -> Result<Balance, Error> {
-		let head = self.get_finalized_block_hash().await?;
 		let query = metadata::storage().tokens().accounts(&id, &Static(currency_id));
 
 		let result = self.api.storage().at_latest().await.unwrap().fetch(&query).await?;
@@ -809,7 +806,6 @@ impl CollateralBalancesPallet for SpacewalkParachain {
 		id: AccountId,
 		currency_id: CurrencyId,
 	) -> Result<Balance, Error> {
-		let head = self.get_finalized_block_hash().await?;
 		let query = metadata::storage().tokens().accounts(&id, &Static(currency_id));
 
 		let result = self.api.storage().at_latest().await.unwrap().fetch(&query).await?;
@@ -1083,7 +1079,6 @@ impl IssuePallet for SpacewalkParachain {
 
 		let mut issue_requests = Vec::new();
 
-		let head = self.get_finalized_block_hash().await?;
 		let key_addr = metadata::storage().issue().issue_requests_root();
 		let mut iter = self.api.storage().at_latest().await.unwrap().iter(key_addr, DEFAULT_PAGE_SIZE).await?;
 

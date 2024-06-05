@@ -78,36 +78,27 @@ compile_error!("You need to select at least one of the metadata features");
 		substitute_type(type = "sp_arithmetic::fixed_point::FixedU128", with = "::subxt::utils::Static<crate::FixedU128>"),
 	)
 )]
-#[cfg_attr(
-	feature = "parachain-metadata-pendulum",
-	subxt(
-		runtime_metadata_path = "metadata-parachain-pendulum.scale",
-		derive_for_all_types = "Clone, PartialEq, Eq",
-		substitute_type(type = "sp_core::crypto::AccountId32", with = "crate::AccountId"),
-		substitute_type(type = "spacewalk_primitives::CurrencyId", with = "::subxt::utils::Static<crate::CurrencyId>"),
-		substitute_type(type = "sp_arithmetic::fixed_point::FixedU128", with = "::subxt::utils::Static<crate::FixedU128>"),
-	)
-)]
-#[cfg_attr(
-	feature = "parachain-metadata-amplitude",
-	subxt(
-		runtime_metadata_path = "metadata-parachain-amplitude.scale",
-		derive_for_all_types = "Clone, PartialEq, Eq",
-		substitute_type(type = "sp_core::crypto::AccountId32", with = "crate::AccountId"),
-		substitute_type(type = "spacewalk_primitives::CurrencyId", with = "::subxt::utils::Static<crate::CurrencyId>"),
-		substitute_type(type = "sp_arithmetic::fixed_point::FixedU128", with = "::subxt::utils::Static<crate::FixedU128>"),
-	)
-)]
-#[cfg_attr(
-	feature = "parachain-metadata-foucoco",
-	subxt(
-		runtime_metadata_path = "metadata-parachain-foucoco.scale",
-		derive_for_all_types = "Clone, PartialEq, Eq",
-		substitute_type(type = "sp_core::crypto::AccountId32", with = "crate::AccountId"),
-		substitute_type(type = "spacewalk_primitives::CurrencyId", with = "::subxt::utils::Static<crate::CurrencyId>"),
-		substitute_type(type = "sp_arithmetic::fixed_point::FixedU128", with = "::subxt::utils::Static<crate::FixedU128>"),
-	)
-)]
+// #[cfg_attr(
+// 	feature = "parachain-metadata-pendulum",
+// 	subxt(
+// 		runtime_metadata_path = "metadata-parachain-pendulum.scale",
+// 		derive_for_all_types = "Clone, PartialEq, Eq",
+// 	)
+// )]
+// #[cfg_attr(
+// 	feature = "parachain-metadata-amplitude",
+// 	subxt(
+// 		runtime_metadata_path = "metadata-parachain-amplitude.scale",
+// 		derive_for_all_types = "Clone, PartialEq, Eq",
+// 	)
+// )]
+// #[cfg_attr(
+// 	feature = "parachain-metadata-foucoco",
+// 	subxt(
+// 		runtime_metadata_path = "metadata-parachain-foucoco.scale",
+// 		derive_for_all_types = "Clone, PartialEq, Eq",
+// 	)
+// )]
 pub mod metadata {	
 }
 
