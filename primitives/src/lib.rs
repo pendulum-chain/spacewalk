@@ -421,7 +421,8 @@ pub fn remove_trailing_non_alphanum_bytes(input: &[u8]) -> &[u8] {
 }
 
 #[derive( 
-	Encode, Decode, Eq, Hash, PartialEq, Copy, Clone, PartialOrd, Ord, TypeInfo, MaxEncodedLen, Serialize, Deserialize
+	Encode, Decode, Eq, Hash, PartialEq, Copy, Clone, PartialOrd, Ord, TypeInfo, MaxEncodedLen, Serialize, Deserialize, scale_decode::DecodeAsType,
+	scale_encode::EncodeAsType,
 )]
 #[cfg_attr(feature = "std", serde(rename_all = "camelCase"))]
 #[repr(u8)]
@@ -479,6 +480,8 @@ impl Asset {
 	MaxEncodedLen,
 	Serialize,
 	Deserialize,
+	scale_decode::DecodeAsType,
+	scale_encode::EncodeAsType,
 )]
 #[cfg_attr(feature = "std", serde(rename_all = "camelCase"))]
 #[repr(u8)]

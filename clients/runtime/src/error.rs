@@ -104,9 +104,8 @@ impl Error {
 	pub fn is_module_err(&self, pallet_name: &str, error_name: &str) -> bool {
 		matches!(
 			self,
-			Error::SubxtRuntimeError(SubxtError::Runtime(DispatchError::Module(ModuleError{
-				pallet, error, ..
-			}))) if pallet == pallet_name && error == error_name,
+			Error::SubxtRuntimeError(SubxtError::Runtime(DispatchError::Module(module_error
+			))) if module_error.details().unwrap().pallet() == pallet_name && module_error.details().unwrap().error() == error_name,
 		)
 	}
 
@@ -182,7 +181,7 @@ impl Error {
 	pub fn is_block_hash_not_found_error(&self) -> bool {
 		matches!(
 			self,
-			Error::SubxtRuntimeError(SubxtError::Transaction(TransactionError::BlockHashNotFound))
+			Error::SubxtRuntimeError(SubxtError::Transaction(TransactionError::BlockNotFound))
 		)
 	}
 

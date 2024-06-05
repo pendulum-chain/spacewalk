@@ -209,7 +209,7 @@ pub async fn listen_for_execute_replace(
 	parachain_rpc
 		.on_event::<ExecuteReplaceEvent, _, _, _>(
 			|event| async move {
-				if &event.new_vault_id.account_id == parachain_rpc.get_account_id() {
+				if *event.new_vault_id.account_id == *parachain_rpc.get_account_id() {
 					tracing::info!("Received ExecuteReplaceEvent for this vault: {:?}", event);
 					// try to send the event, but ignore the returned result since
 					// the only way it can fail is if the channel is closed

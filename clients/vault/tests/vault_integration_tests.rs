@@ -654,7 +654,7 @@ async fn test_issue_execution_succeeds_from_archive_on_network(is_public_network
 				.expect("Conversion should not fail");
 			let destination_public_key = PublicKey::from_binary(issue.vault_stellar_public_key);
 			let stellar_asset =
-				primitives::AssetConversion::lookup(issue.asset).expect("Asset not found");
+				primitives::AssetConversion::lookup(*issue.asset).expect("Asset not found");
 
 			let transaction_response = send_payment_to_address(
 				user_wallet,
@@ -692,7 +692,7 @@ async fn test_issue_execution_succeeds_from_archive_on_network(is_public_network
 
 			join(
 				assert_event::<EndowedEvent, _>(TIMEOUT, user_provider.clone(), |x| {
-					if &x.who == user_provider.get_account_id() {
+					if *x.who == *user_provider.get_account_id() {
 						assert_eq!(x.amount, issue.amount - issue.fee);
 						true
 					} else {
@@ -755,7 +755,7 @@ async fn test_issue_overpayment_succeeds() {
 			.expect("Conversion should not fail");
 			let destination_public_key = PublicKey::from_binary(issue.vault_stellar_public_key);
 			let stellar_asset =
-				primitives::AssetConversion::lookup(issue.asset).expect("Asset not found");
+				primitives::AssetConversion::lookup(*issue.asset).expect("Asset not found");
 
 			let transaction_response = send_payment_to_address(
 				user_wallet,
@@ -779,7 +779,7 @@ async fn test_issue_overpayment_succeeds() {
 
 			join(
 				assert_event::<EndowedEvent, _>(TIMEOUT, user_provider.clone(), |x| {
-					if &x.who == user_provider.get_account_id() {
+					if *x.who == *user_provider.get_account_id() {
 						// Overpaying will make the issue pallet recalculate the amount and fee for
 						// the higher amount. With the up-scaled and overpaid amount of 300_00000,
 						// the resulting fee will be 300_00000 * 0.001 = 30000
@@ -855,7 +855,7 @@ async fn test_automatic_issue_execution_succeeds_on_network(is_public_network: b
 				let stroop_amount = primitives::BalanceConversion::lookup(issue.amount + issue.fee)
 					.expect("Invalid amount");
 				let stellar_asset =
-					primitives::AssetConversion::lookup(issue.asset).expect("Asset not found");
+					primitives::AssetConversion::lookup(*issue.asset).expect("Asset not found");
 
 				let result = send_payment_to_address(
 					user_wallet,
@@ -935,7 +935,7 @@ async fn test_automatic_issue_execution_succeeds_for_other_vault() {
 			let user_provider = setup_provider(client.clone(), AccountKeyring::Dave).await;
 			let vault2_provider = setup_provider(client.clone(), AccountKeyring::Eve).await;
 			let vault2_id = VaultId::new(
-				AccountKeyring::Eve.into(),
+				subxt::utils::Static(subxt::utils::AccountId32(AccountKeyring::Eve.to_account_id().clone().into())),
 				DEFAULT_TESTING_CURRENCY,
 				default_wrapped_currency(is_public_network),
 			);
@@ -985,7 +985,7 @@ async fn test_automatic_issue_execution_succeeds_for_other_vault() {
 				let stroop_amount = primitives::BalanceConversion::lookup(issue.amount + issue.fee)
 					.expect("Invalid amount");
 				let stellar_asset =
-					primitives::AssetConversion::lookup(issue.asset).expect("Asset not found");
+					primitives::AssetConversion::lookup(*issue.asset).expect("Asset not found");
 
 				// Sleep 1 second to give other thread some time to receive the RequestIssue event
 				// and add it to the set
@@ -1144,7 +1144,7 @@ async fn test_execute_open_requests_succeeds() {
 			let stroop_amount =
 				primitives::BalanceConversion::lookup(redeems[0].amount).expect("Invalid amount");
 			let asset =
-				primitives::AssetConversion::lookup(redeems[0].asset).expect("Invalid asset");
+				primitives::AssetConversion::lookup(*redeems[0].asset).expect("Invalid asset");
 
 			// do stellar transfer for redeem 0
 			assert_ok!(
@@ -1250,7 +1250,7 @@ async fn test_shutdown() {
 		let user_provider = setup_provider(client.clone(), AccountKeyring::Dave).await;
 
 		let sudo_vault_id = VaultId::new(
-			AccountKeyring::Alice.into(),
+			subxt::utils::Static(subxt::utils::AccountId32(AccountKeyring::Alice.to_account_id().clone().into())),
 			DEFAULT_TESTING_CURRENCY,
 			default_wrapped_currency(is_public_network),
 		);

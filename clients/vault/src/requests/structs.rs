@@ -84,7 +84,7 @@ impl Request {
 		// Convert the currency ID contained in the request to a Stellar asset and store both
 		// in the request struct for convenience
 		let asset =
-			primitives::AssetConversion::lookup(request.asset).map_err(|_| Error::LookupError)?;
+			primitives::AssetConversion::lookup(*request.asset).map_err(|_| Error::LookupError)?;
 
 		Ok(Request {
 			hash,
@@ -95,7 +95,7 @@ impl Request {
 			)?),
 			amount: request.amount,
 			asset,
-			currency: request.asset,
+			currency: *request.asset,
 			stellar_address: request.stellar_address,
 			request_type: RequestType::Redeem,
 			vault_id: request.vault,
@@ -112,7 +112,7 @@ impl Request {
 		// Convert the currency ID contained in the request to a Stellar asset and store both
 		// in the request struct for convenience
 		let asset =
-			primitives::AssetConversion::lookup(request.asset).map_err(|_| Error::LookupError)?;
+			primitives::AssetConversion::lookup(*request.asset).map_err(|_| Error::LookupError)?;
 
 		Ok(Request {
 			hash,
@@ -123,7 +123,7 @@ impl Request {
 			)?),
 			amount: request.amount,
 			asset,
-			currency: request.asset,
+			currency: *request.asset,
 			stellar_address: request.stellar_address,
 			request_type: RequestType::Replace,
 			vault_id: request.old_vault,

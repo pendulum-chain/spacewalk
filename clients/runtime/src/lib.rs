@@ -6,7 +6,6 @@ pub use subxt::{
 	events::StaticEvent,
 	config::substrate::BlakeTwo256,
 	ext::sp_core::{crypto::Ss58Codec, sr25519::Pair},
-	subxt,
 };
 use subxt::{
 	ext::sp_runtime::{generic::Header, MultiSignature},
@@ -68,11 +67,17 @@ compile_error!("You need to select at least one of the metadata features");
 // All of the parachain features use the same metadata (from Foucoco) for now.
 // We can change this once the spacewalk pallets were added to the runtimes of the other chains as
 // well.
+
+type VaultId2 = primitives::VaultId<AccountId, CurrencyId>;
+
 #[cfg_attr(
 	feature = "standalone-metadata",
 	subxt(
 		runtime_metadata_path = "metadata-standalone.scale",
 		derive_for_all_types = "Clone, PartialEq, Eq",
+		substitute_type(type = "sp_core::crypto::AccountId32", with = "::subxt::utils::Static<crate::AccountId>"),
+		substitute_type(type = "spacewalk_primitives::CurrencyId", with = "::subxt::utils::Static<crate::CurrencyId>"),
+		substitute_type(type = "sp_arithmetic::fixed_point::FixedU128", with = "::subxt::utils::Static<crate::FixedU128>"),
 	)
 )]
 #[cfg_attr(
@@ -96,14 +101,15 @@ compile_error!("You need to select at least one of the metadata features");
 		derive_for_all_types = "Clone, PartialEq, Eq",
 	)
 )]
+pub mod metadata {	
+	// #[subxt::subxt(substitute_type = "sp_core::crypto::AccountId32")]
+	// use crate::AccountId;
 
-pub mod metadata {
-	#[subxt(substitute_type = "sp_core::crypto::AccountId32")]
-	use crate::AccountId;
-	#[subxt(substitute_type = "spacewalk_primitives::CurrencyId")]
-	use crate::CurrencyId;
-	#[subxt(substitute_type = "sp_arithmetic::fixed_point::FixedU128")]
-	use crate::FixedU128;
+	// #[subxt::subxt(substitute_type = "spacewalk_primitives::CurrencyId")]
+	// use crate::CurrencyId;
+
+	// #[subxt::subxt(substitute_type = "sp_arithmetic::fixed_point::FixedU128")]
+	// use crate::FixedU128;
 }
 
 #[derive(Debug, Eq, PartialEq, Ord, PartialOrd, Default, Clone, Decode, Encode)]
@@ -118,7 +124,7 @@ pub struct SpacewalkRuntime;
 impl Config for SpacewalkRuntime {
 	type Index = Nonce;
 	type Hash = H256;
-	type Header = Header<BlockNumber, H256>;
+	type Header = subxt::config::substrate::SubstrateHeader<BlockNumber, Self::Hasher>;
 	type Hasher = BlakeTwo256;
 	type AccountId = AccountId;
 	type Address = Address;

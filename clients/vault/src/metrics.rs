@@ -497,7 +497,7 @@ pub async fn monitor_bridge_metrics(
 				for currency_id in updated_currencies {
 					for vault in vaults
 						.iter()
-						.filter(|vault| &vault.vault_id.collateral_currency() == currency_id)
+						.filter(|vault| vault.vault_id.collateral_currency() == **currency_id)
 					{
 						let _ = publish_locked_collateral(vault, parachain_rpc.clone()).await;
 						let _ = publish_required_collateral(vault, parachain_rpc.clone()).await;

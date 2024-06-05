@@ -134,7 +134,7 @@ where
 	};
 
 	let vault_id = VaultId::new(
-		AccountKeyring::Charlie.into(),
+		subxt::utils::Static(subxt::utils::AccountId32(AccountKeyring::Charlie.to_account_id().clone().into())),
 		DEFAULT_TESTING_CURRENCY,
 		default_wrapped_currency,
 	);

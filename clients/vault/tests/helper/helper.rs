@@ -64,7 +64,8 @@ pub async fn create_vault(
 	account: AccountKeyring,
 	wrapped_currency: CurrencyId,
 ) -> (VaultId, SpacewalkParachain) {
-	let vault_id = VaultId::new(account.clone().into(), DEFAULT_TESTING_CURRENCY, wrapped_currency);
+
+	let vault_id = VaultId::new(subxt::utils::Static(subxt::utils::AccountId32(account.to_account_id().clone().into())), DEFAULT_TESTING_CURRENCY, wrapped_currency);
 
 	let vault_provider = setup_provider(client, account).await;
 
@@ -179,7 +180,7 @@ pub async fn assert_issue(
 		.await
 		.expect("Failed to request issue");
 
-	let asset = primitives::AssetConversion::lookup(issue.asset).expect("Invalid asset");
+	let asset = primitives::AssetConversion::lookup(*issue.asset).expect("Invalid asset");
 	let stroop_amount = primitives::BalanceConversion::lookup(amount).expect("Invalid amount");
 
 	let destination_public_key = PublicKey::from_binary(issue.vault_stellar_public_key);

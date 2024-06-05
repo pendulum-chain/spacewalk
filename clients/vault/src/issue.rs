@@ -426,7 +426,7 @@ impl FilterWith<IssueRequestsMap, IssueIdLookup> for IssueFilter {
 				let tx_env = TransactionEnvelope::from_base64_xdr(tx.envelope_xdr);
 				match tx_env {
 					Ok(tx_env) => {
-						let asset = primitives::AssetConversion::lookup(request.asset);
+						let asset = primitives::AssetConversion::lookup(*request.asset);
 						if let Ok(asset) = asset {
 							let payment_amount_to_vault =
 								tx_env.get_payment_amount_for_asset_to(self.vault_address, asset);

@@ -59,6 +59,8 @@ tracing-subscriber = { version = "0.2.12", features = ["registry", "env-filter",
 jsonrpc-core = "18.0.0"
 jsonrpc-core-client = { version = "18.0.0", features = ["http", "tls"] }
 
+subxt = { version = "0.28.0", features = [ "substrate-compat"] }
+
 # Workspace dependencies
 runtime = { path = "../runtime" }
 service = { path = "../service" }
@@ -89,7 +91,6 @@ tempdir = "0.3.7"
 # Workspace dependencies
 runtime = { path = "../runtime", features = ["testing-utils", "standalone-metadata"] }
 wallet = { path = "../wallet", features = ["testing-utils"] }
-subxt = { version = "0.28.0", features = [ "substrate-compat"] }
 
 # Substrate dependencies
 frame-support = { git = "https://github.com/paritytech/polkadot-sdk", branch = "release-polkadot-v1.1.0" }
