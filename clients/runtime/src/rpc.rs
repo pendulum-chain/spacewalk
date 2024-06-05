@@ -14,6 +14,7 @@ use subxt::{
 	storage::{address::Yes, StorageAddress},
 	tx::TxPayload,
 	Error as BasicError,
+	utils::Static,
 };
 use tokio::{sync::RwLock, time::timeout};
 
@@ -77,7 +78,7 @@ pub struct SpacewalkParachain {
 	pub native_currency_id: CurrencyId,
 	pub relay_chain_currency_id: CurrencyId,
 }
-
+use subxt::tx::Signer;
 impl SpacewalkParachain {
 	pub async fn new(
 		rpc_client: Client,
@@ -125,7 +126,7 @@ impl SpacewalkParachain {
 			account_id,
 			fee_rate_update_tx,
 			native_currency_id: CurrencyId::Native,
-			relay_chain_currency_id,
+			relay_chain_currency_id: *relay_chain_currency_id,
 		};
 		Ok(parachain_rpc)
 	}
@@ -306,7 +307,7 @@ impl SpacewalkParachain {
 		Address: StorageAddress<IsFetchable = Yes, IsDefaultable = Yes>,
 	{
 		let hash = self.get_finalized_block_hash().await?;
-		Ok(self.api.storage().at_latest().await.unwrap().fetch_or_default(&address, hash).await?)
+		Ok(self.api.storage().at_latest().await.unwrap().fetch_or_default(&address).await?)
 	}
 
 	pub async fn get_finalized_block_hash(&self) -> Result<Option<H256>, Error> {
@@ -410,7 +411,7 @@ impl SpacewalkParachain {
 	#[cfg(test)]
 	pub async fn get_invalid_tx_error(&self, recipient: AccountId) -> Error {
 		let call = metadata::tx().tokens().transfer(
-			subxt::ext::sp_runtime::MultiAddress::Id(recipient),
+			subxt::ext::sp_runtime::MultiAddress::<Static<AccountId>, Static<CurrencyId>>::Id(Static(recipient)),
 			CurrencyId::XCM(0),
 			100,
 		);
@@ -492,7 +493,7 @@ pub trait UtilFuncs {
 impl UtilFuncs for SpacewalkParachain {
 	async fn get_current_chain_height(&self) -> Result<u32, Error> {
 		let height_query = metadata::storage().system().number();
-		let height = self.api.storage().fetch(&height_query, None).await?;
+		let height = self.api.storage().at_latest().await.unwrap().fetch(&height_query).await?;
 		match height {
 			Some(height) => Ok(height),
 			None => Err(Error::BlockNotFound),
@@ -504,7 +505,7 @@ impl UtilFuncs for SpacewalkParachain {
 	}
 
 	fn is_this_vault(&self, vault_id: &VaultId) -> bool {
-		&vault_id.account_id == self.get_account_id()
+		*vault_id.account_id == *self.get_account_id()
 	}
 
 	fn get_account_id(&self) -> &AccountId {
@@ -590,7 +591,7 @@ impl VaultRegistryPallet for SpacewalkParachain {
 		let head = self.get_finalized_block_hash().await?;
 		let key_addr = metadata::storage().vault_registry().vaults_root();
 
-		let mut iter = self.api.storage().iter(key_addr, DEFAULT_PAGE_SIZE, head).await?;
+		let mut iter = self.api.storage().at_latest().await.unwrap().iter(key_addr, DEFAULT_PAGE_SIZE).await?;
 		while let Some((_, account)) = iter.next().await? {
 			if let VaultStatus::Active(..) = account.status {
 				vaults.push(account);
@@ -653,7 +654,7 @@ impl VaultRegistryPallet for SpacewalkParachain {
 	async fn get_public_key(&self) -> Result<Option<StellarPublicKeyRaw>, Error> {
 		let query = metadata::storage()
 			.vault_registry()
-			.vault_stellar_public_key(self.get_account_id());
+			.vault_stellar_public_key(&Static(self.get_account_id().clone()));
 
 		self.query_finalized(query).await
 	}
@@ -778,9 +779,9 @@ impl CollateralBalancesPallet for SpacewalkParachain {
 
 	async fn get_native_balance_for_id(&self, id: &AccountId) -> Result<Balance, Error> {
 		let head = self.get_finalized_block_hash().await?;
-		let query = metadata::storage().system().account(id);
+		let query = metadata::storage().system().account(&Static(id.clone()));
 
-		let result = self.api.storage().fetch(&query, head).await?;
+		let result = self.api.storage().at_latest().await.unwrap().fetch(&query).await?;
 		Ok(result.map(|x| x.data.free).unwrap_or_default())
 	}
 
@@ -790,9 +791,9 @@ impl CollateralBalancesPallet for SpacewalkParachain {
 		currency_id: CurrencyId,
 	) -> Result<Balance, Error> {
 		let head = self.get_finalized_block_hash().await?;
-		let query = metadata::storage().tokens().accounts(&id, &currency_id);
+		let query = metadata::storage().tokens().accounts(&Static(id), &Static(currency_id));
 
-		let result = self.api.storage().fetch(&query, head).await?;
+		let result = self.api.storage().at_latest().await.unwrap().fetch(&query).await?;
 		Ok(result.map(|x| x.free).unwrap_or_default())
 	}
 
@@ -806,9 +807,9 @@ impl CollateralBalancesPallet for SpacewalkParachain {
 		currency_id: CurrencyId,
 	) -> Result<Balance, Error> {
 		let head = self.get_finalized_block_hash().await?;
-		let query = metadata::storage().tokens().accounts(&id, &currency_id);
+		let query = metadata::storage().tokens().accounts(&Static(id), &Static(currency_id));
 
-		let result = self.api.storage().fetch(&query, head).await?;
+		let result = self.api.storage().at_latest().await.unwrap().fetch(&query).await?;
 		Ok(result.map(|x| x.reserved).unwrap_or_default())
 	}
 
@@ -819,8 +820,8 @@ impl CollateralBalancesPallet for SpacewalkParachain {
 		currency_id: CurrencyId,
 	) -> Result<(), Error> {
 		let transfer_tx = metadata::tx().tokens().transfer(
-			subxt::ext::sp_runtime::MultiAddress::Id(recipient.clone()),
-			currency_id,
+			subxt::utils::MultiAddress::<Static<AccountId>,()>::Id(Static(recipient.clone())),
+			Static(currency_id),
 			amount,
 		);
 
@@ -1081,7 +1082,7 @@ impl IssuePallet for SpacewalkParachain {
 
 		let head = self.get_finalized_block_hash().await?;
 		let key_addr = metadata::storage().issue().issue_requests_root();
-		let mut iter = self.api.storage().iter(key_addr, DEFAULT_PAGE_SIZE, head).await?;
+		let mut iter = self.api.storage().at_latest().await.unwrap().iter(key_addr, DEFAULT_PAGE_SIZE).await?;
 
 		while let Some((issue_id, request)) = iter.next().await? {
 			if request.status == IssueRequestStatus::Pending &&
