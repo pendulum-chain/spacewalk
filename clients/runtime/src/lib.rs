@@ -69,7 +69,7 @@ compile_error!("You need to select at least one of the metadata features");
 // well.
 
 #[cfg_attr(
-	feature = "standalone-metadata",
+	feature = "parachain-metadata-foucoco",
 	subxt(
 		runtime_metadata_path = "metadata-standalone.scale",
 		derive_for_all_types = "Clone, PartialEq, Eq",
