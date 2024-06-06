@@ -9,7 +9,6 @@ use subxt::{
 	blocks::ExtrinsicEvents,
 	client::OnlineClient,
 	events::StaticEvent,
-	metadata::DecodeWithMetadata,
 	rpc::rpc_params,
 	storage::{address::Yes, StorageAddress},
 	tx::TxPayload,
@@ -78,7 +77,6 @@ pub struct SpacewalkParachain {
 	pub native_currency_id: CurrencyId,
 	pub relay_chain_currency_id: CurrencyId,
 }
-use subxt::tx::Signer;
 impl SpacewalkParachain {
 	pub async fn new(
 		rpc_client: Client,
@@ -288,7 +286,6 @@ impl SpacewalkParachain {
 	where
 		Address: StorageAddress<IsFetchable = Yes>,
 	{
-		let hash = self.get_finalized_block_hash().await?;
 		Ok(self.api.storage().at_latest().await.unwrap().fetch(&address).await?)
 	}
 
@@ -309,7 +306,6 @@ impl SpacewalkParachain {
 	where
 		Address: StorageAddress<IsFetchable = Yes, IsDefaultable = Yes>,
 	{
-		let hash = self.get_finalized_block_hash().await?;
 		Ok(self.api.storage().at_latest().await.unwrap().fetch_or_default(&address).await?)
 	}
 

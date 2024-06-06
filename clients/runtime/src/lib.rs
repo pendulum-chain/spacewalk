@@ -8,7 +8,7 @@ pub use subxt::{
 	ext::sp_core::{crypto::Ss58Codec, sr25519::Pair},
 };
 use subxt::{
-	ext::sp_runtime::{generic::Header, MultiSignature},
+	ext::sp_runtime::MultiSignature,
 	subxt, Config,
 	config::polkadot::PolkadotExtrinsicParams,
 };

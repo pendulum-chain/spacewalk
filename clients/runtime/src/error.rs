@@ -9,7 +9,7 @@ use jsonrpsee::{
 use serde_json::Error as SerdeJsonError;
 pub use subxt::{error::RpcError, Error as SubxtError};
 use subxt::{
-	error::{DispatchError, ModuleError, TransactionError},
+	error::{DispatchError, TransactionError},
 	ext::sp_core::crypto::SecretStringError,
 };
 use thiserror::Error;
