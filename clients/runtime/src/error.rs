@@ -105,7 +105,7 @@ impl Error {
 		matches!(
 			self,
 			Error::SubxtRuntimeError(SubxtError::Runtime(DispatchError::Module(module_error
-			))) if module_error.details().unwrap().pallet() == pallet_name && module_error.details().unwrap().error() == error_name,
+			))) if module_error.details().unwrap().pallet.name() == pallet_name && &module_error.details().unwrap().variant.name == error_name,
 		)
 	}
 

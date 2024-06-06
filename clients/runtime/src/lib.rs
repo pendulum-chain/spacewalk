@@ -73,9 +73,9 @@ compile_error!("You need to select at least one of the metadata features");
 	subxt(
 		runtime_metadata_path = "metadata-standalone.scale",
 		derive_for_all_types = "Clone, PartialEq, Eq",
-		substitute_type(type = "sp_core::crypto::AccountId32", with = "crate::AccountId"),
-		substitute_type(type = "spacewalk_primitives::CurrencyId", with = "::subxt::utils::Static<crate::CurrencyId>"),
-		substitute_type(type = "sp_arithmetic::fixed_point::FixedU128", with = "::subxt::utils::Static<crate::FixedU128>"),
+		substitute_type(path = "sp_core::crypto::AccountId32", with = "crate::AccountId"),
+		substitute_type(path = "spacewalk_primitives::CurrencyId", with = "::subxt::utils::Static<crate::CurrencyId>"),
+		substitute_type(path = "sp_arithmetic::fixed_point::FixedU128", with = "::subxt::utils::Static<crate::FixedU128>"),
 	)
 )]
 // #[cfg_attr(
