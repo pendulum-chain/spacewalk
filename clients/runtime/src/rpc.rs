@@ -59,7 +59,7 @@ cfg_if::cfg_if! {
 }
 
 // timeout before retrying parachain calls (5 minutes)
-const TRANSACTION_TIMEOUT: Duration = Duration::from_secs(300); // 5 minutes
+const TRANSACTION_TIMEOUT: Duration = Duration::from_secs(900); // 5 minutes
 
 // number of storage entries to fetch at a time
 const DEFAULT_PAGE_SIZE: u32 = 10;
