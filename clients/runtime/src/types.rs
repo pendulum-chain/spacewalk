@@ -8,7 +8,6 @@ use sp_runtime::{traits::BlakeTwo256, generic};
 use crate::{metadata, Config, SpacewalkRuntime};
 
 pub type AccountId = subxt::utils::AccountId32;
-//pub type AccountId = sp_runtime::AccountId32;
 pub type Address = subxt::ext::sp_runtime::MultiAddress<AccountId, u32>;
 pub type Balance = u128;
 pub type BlockNumber = u32;
@@ -23,8 +22,6 @@ pub use substrate_stellar_sdk as stellar;
 pub type IssueId = H256;
 
 pub type StellarPublicKeyRaw = [u8; 32];
-
-//pub type VaultId = primitives::VaultId<AccountId, CurrencyId>;
 
 mod metadata_aliases {
 	use std::collections::HashMap;
@@ -189,6 +186,8 @@ mod vault_id {
 	use super::*;
 
 	type RichVaultId = primitives::VaultId<AccountId, primitives::CurrencyId>;
+
+	type RichVaultHashable = primitives::VaultId<sp_runtime::AccountId32, primitives::CurrencyId>;
 	//type RichVaultId = VaultId;
 
 	impl crate::VaultId {
@@ -272,12 +271,21 @@ mod vault_id {
 		}
 	}
 
-	// impl std::hash::Hash for crate::VaultId {
-	// 	fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
-	// 		let vault: RichVaultId = self.clone().into();
-	// 		vault.hash(state)
-	// 	}
-	// }
+	impl std::hash::Hash for crate::VaultId {
+		fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+			// Extract rich vault, then create a hashable version of it 
+			// defined with sp_runtime::AccountId32, which is hashable
+			let vault: RichVaultId = self.clone().into();
+			let vault_hashable = RichVaultHashable {
+				account_id: sp_runtime::AccountId32::new(vault.account_id.0),
+					currencies: primitives::VaultCurrencyPair {
+						collateral: vault.currencies.collateral,
+						wrapped:  vault.currencies.collateral,
+					},
+			};
+			vault_hashable.hash(state)
+		}
+	}
 }
 
 mod dispatch_error {
