@@ -8,6 +8,7 @@ use futures::Future;
 use sysinfo::{System, SystemExt};
 use tokio::sync::RwLock;
 use tokio_stream::StreamExt;
+use sp_runtime::AccountId32 as AccountId;
 
 use runtime::{SpacewalkSigner, DEFAULT_SPEC_NAME};
 use service::{
@@ -131,7 +132,7 @@ async fn start() -> Result<(), ServiceError<Error>> {
 	// This file is auto-removed when `drop`ped.
 	let _pidfile = PidFile::create(
 		&String::from(DEFAULT_SPEC_NAME),
-		signer.read().await.account_id(),
+		&AccountId::new(signer.read().await.account_id().0),
 		&mut sys,
 	)?;
 
@@ -162,8 +163,6 @@ async fn main() {
 #[cfg(test)]
 mod tests {
 	use std::{thread, time::Duration};
-
-	use runtime::AccountId;
 
 	use super::*;
 
