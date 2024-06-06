@@ -3,9 +3,9 @@ use subxt::utils::Static;
 pub use metadata_aliases::*;
 pub use primitives::{CurrencyId, TextMemo};
 use std::str::from_utf8;
-use sp_runtime::{OpaqueExtrinsic, traits::BlakeTwo256, generic};
+use sp_runtime::{traits::BlakeTwo256, generic};
 
-use crate::{metadata, Config, SpacewalkRuntime, SS58_PREFIX};
+use crate::{metadata, Config, SpacewalkRuntime};
 
 pub type AccountId = subxt::utils::AccountId32;
 //pub type AccountId = sp_runtime::AccountId32;
@@ -188,8 +188,8 @@ mod account_id {
 mod vault_id {
 	use super::*;
 
-	//type RichVaultId = primitives::VaultId<AccountId, primitives::CurrencyId>;
-	type RichVaultId = VaultId;
+	type RichVaultId = primitives::VaultId<AccountId, primitives::CurrencyId>;
+	//type RichVaultId = VaultId;
 
 	impl crate::VaultId {
 		pub fn new(
@@ -228,29 +228,29 @@ mod vault_id {
 		}
 	}
 
-	// impl From<crate::VaultId> for RichVaultId {
-	// 	fn from(value: crate::VaultId) -> Self {
-	// 		Self {
-	// 			account_id: value.account_id,
-	// 			currencies: primitives::VaultCurrencyPair {
-	// 				collateral: value.currencies.collateral,
-	// 				wrapped: value.currencies.wrapped,
-	// 			},
-	// 		}
-	// 	}
-	// }
+	impl From<crate::VaultId> for RichVaultId {
+		fn from(value: crate::VaultId) -> Self {
+			Self {
+				account_id: value.account_id,
+				currencies: primitives::VaultCurrencyPair {
+					collateral: *value.currencies.collateral,
+					wrapped: *value.currencies.wrapped,
+				},
+			}
+		}
+	}
 
-	// impl From<RichVaultId> for crate::VaultId {
-	// 	fn from(value: RichVaultId) -> Self {
-	// 		Self {
-	// 			account_id: value.account_id,
-	// 			currencies: crate::VaultCurrencyPair {
-	// 				collateral: value.currencies.collateral,
-	// 				wrapped: value.currencies.wrapped,
-	// 			},
-	// 		}
-	// 	}
-	// }
+	impl From<RichVaultId> for crate::VaultId {
+		fn from(value: RichVaultId) -> Self {
+			Self {
+				account_id: value.account_id,
+				currencies: crate::VaultCurrencyPair {
+					collateral: Static(value.currencies.collateral),
+					wrapped: Static(value.currencies.wrapped),
+				},
+			}
+		}
+	}
 
 	impl serde::Serialize for crate::VaultId {
 		fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
@@ -272,12 +272,12 @@ mod vault_id {
 		}
 	}
 
-	impl std::hash::Hash for crate::VaultId {
-		fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
-			let vault: RichVaultId = self.clone().into();
-			vault.hash(state)
-		}
-	}
+	// impl std::hash::Hash for crate::VaultId {
+	// 	fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+	// 		let vault: RichVaultId = self.clone().into();
+	// 		vault.hash(state)
+	// 	}
+	// }
 }
 
 mod dispatch_error {
