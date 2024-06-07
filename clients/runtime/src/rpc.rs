@@ -435,7 +435,7 @@ impl SpacewalkParachain {
 
 		self.api
 			.tx()
-			.create_signed_with_nonce(&call, &signer, nonce, Default::default())
+			.create_signed_with_nonce(&call, &signer, nonce.into(), Default::default())
 			.unwrap()
 			.submit_and_watch()
 			.await
@@ -470,7 +470,7 @@ impl SpacewalkParachain {
 		// submit tx but don't watch
 		self.api
 			.tx()
-			.create_signed_with_nonce(&call, &signer, nonce, Default::default())
+			.create_signed_with_nonce(&call, &signer, nonce.into(), Default::default())
 			.unwrap()
 			.submit()
 			.await
@@ -480,7 +480,7 @@ impl SpacewalkParachain {
 		let result = self
 			.api
 			.tx()
-			.create_signed_with_nonce(&call, &signer, nonce, Default::default())
+			.create_signed_with_nonce(&call, &signer, nonce.into(), Default::default())
 			.unwrap()
 			.submit_and_watch()
 			.await;
