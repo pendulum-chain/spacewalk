@@ -244,7 +244,7 @@ impl<C: ChainSpec + 'static> SubxtClientConfig<C> {
 			offchain_worker: Default::default(),
 			prometheus_config: Default::default(),
 			rpc_cors: Default::default(),
-			rpc_max_connections: Default::default(),
+			rpc_max_connections: 1000,
 			rpc_methods: Default::default(),
 			tracing_receiver: Default::default(),
 			tracing_targets: Default::default(),
@@ -265,7 +265,6 @@ impl<C: ChainSpec + 'static> SubxtClientConfig<C> {
 			trie_cache_maximum_size: None,
 			blocks_pruning: BlocksPruning::KeepAll,
 		};
-
 		log::info!("{}", service_config.impl_name);
 		log::info!("✌️  version {}", service_config.impl_version);
 		log::info!("❤️  by {}, {}", self.author, self.copyright_start_year);

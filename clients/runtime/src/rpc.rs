@@ -126,6 +126,8 @@ impl SpacewalkParachain {
 			native_currency_id: CurrencyId::Native,
 			relay_chain_currency_id: *relay_chain_currency_id,
 		};
+
+		println!("Parachain rpc created");
 		Ok(parachain_rpc)
 	}
 
@@ -219,11 +221,21 @@ impl SpacewalkParachain {
 				match timeout(TRANSACTION_TIMEOUT, async {
 					let tx_progress =
 						self.api.tx().sign_and_submit_then_watch_default(&call, &*signer).await?;
-					tx_progress.wait_for_finalized_success().await
+					//println!("Tx submitted - Waiting for in block");
+					//tx_progress.clone().wait_for_in_block().await;
+					//println!("Tx submitted - Waiting for in finalized");
+					//tx_progress.wait_for_finalized().await
+					println!("Tx submitted - Waiting for finalized success");
+					let result = tx_progress.wait_for_finalized_success().await;
+					println!("Finalized");
+					result
+
+
 				})
 				.await
 				{
 					Err(_) => {
+						println!("Timeout on transaction submission - restart required");
 						log::warn!("Timeout on transaction submission - restart required");
 						let _ = self.shutdown_tx.send(());
 						Err(Error::Timeout)
@@ -235,18 +247,22 @@ impl SpacewalkParachain {
 				match result.map_err(Into::<Error>::into) {
 					Ok(ok) => Ok(ok),
 					Err(err) => match err.is_invalid_transaction() {
-						Some(Recoverability::Recoverable(data)) =>
-							Err(RetryPolicy::Skip(Error::InvalidTransaction(data))),
+						Some(Recoverability::Recoverable(data)) =>{
+							println!("Invalid transaction - retrying transaction");
+							Err(RetryPolicy::Skip(Error::InvalidTransaction(data)))},
 						Some(Recoverability::Unrecoverable(data)) =>
 							Err(RetryPolicy::Throw(Error::InvalidTransaction(data))),
 						None => {
 							// Handle other errors
 							if err.is_pool_too_low_priority() {
+								println!("Pool too low priority - retrying transaction");
 								Err(RetryPolicy::Skip(Error::PoolTooLowPriority))
 							} else if err.is_block_hash_not_found_error() {
+								println!("Block hash not found - retrying transaction");
 								log::info!("Re-sending transaction after apparent fork");
 								Err(RetryPolicy::Skip(Error::BlockHashNotFound))
 							} else if err.is_timeout_error() {
+								println!("Timeout inner error - retrying transaction");
 								Err(RetryPolicy::Skip(Error::Timeout))
 							} else {
 								Err(RetryPolicy::Throw(err))
@@ -888,6 +904,7 @@ impl OraclePallet for SpacewalkParachain {
 
 		let mut coin_infos = vec![];
 		for ((blockchain, symbol), price) in values {
+			println!("Setting price for {:?}/{:?} to {:?}", blockchain, symbol, price);
 			log::info!("Setting price for {:?}/{:?} to {:?}", blockchain, symbol, price);
 			let coin_info = CoinInfo {
 				symbol: symbol.clone(),
