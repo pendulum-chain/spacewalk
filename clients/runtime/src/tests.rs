@@ -111,10 +111,15 @@ async fn test_subxt_processing_events_after_dispatch_error() {
 
 #[tokio::test(flavor = "multi_thread")]
 async fn test_register_vault() {
+	env_logger::init_from_env(
+		env_logger::Env::default()
+			.filter_or(env_logger::DEFAULT_FILTER_ENV, log::LevelFilter::Info.as_str()),
+	);
 	let is_public_network = false;
 	let (client, _tmp_dir) =
 		default_provider_client(AccountKeyring::Alice, is_public_network).await;
 	let parachain_rpc = setup_provider(client.clone(), AccountKeyring::Alice).await;
+	
 	set_exchange_rate(client.clone()).await;
 
 	let vault_id = VaultId::new(
@@ -123,8 +128,11 @@ async fn test_register_vault() {
 		DEFAULT_WRAPPED_CURRENCY,
 	);
 
+	println!("Register pk");
 	parachain_rpc.register_public_key(dummy_public_key()).await.unwrap();
+	println!("Register vault");
 	parachain_rpc.register_vault(&vault_id, 3 * 10u128.pow(12)).await.unwrap();
+	println!("Getting vault");
 	parachain_rpc.get_vault(&vault_id).await.unwrap();
 	assert_eq!(parachain_rpc.get_public_key().await.unwrap(), Some(dummy_public_key()));
 }

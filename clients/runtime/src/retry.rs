@@ -34,15 +34,17 @@ where
 {
 	let mut backoff = get_exponential_backoff();
 	loop {
+		println!("attempting...");
 		let err = match verify(call().await).await {
 			Ok(ok) => return Ok(ok),
-			Err(RetryPolicy::Skip(err)) => err,
+			Err(RetryPolicy::Skip(err)) =>err,
 			Err(RetryPolicy::Throw(err)) => return Err(err),
 		};
-
+		println!("retrying... Error: {:?}", err);
 		match backoff.next_backoff() {
 			Some(wait) => {
 				// error occurred, sleep before retrying
+				println!("{} - next retry in {:.3} s", err, wait.as_secs_f64());
 				log::warn!("{} - next retry in {:.3} s", err, wait.as_secs_f64());
 				tokio::time::sleep(wait).await;
 			},
