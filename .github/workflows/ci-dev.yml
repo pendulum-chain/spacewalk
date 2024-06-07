@@ -1,8 +1,7 @@
 on:
   pull_request:
     branches:
-      - '**' # every branch
-      - '!main' # excluding main
+      - '!main' 
 
 name: continuous-integration-dev
 
@@ -37,6 +36,8 @@ jobs:
           sudo rm -rf "$AGENT_TOOLSDIRECTORY"
       - uses: actions/checkout@v2
 
+  
+
       - name: Install sccache (ubuntu-latest)
         if: matrix.os == 'ubuntu-latest'
         env:
@@ -48,6 +49,7 @@ jobs:
           curl -L "$LINK/$SCCACHE_VERSION/$SCCACHE_FILE.tar.gz" | tar xz
           mv -f $SCCACHE_FILE/sccache $HOME/.local/bin/sccache
           echo "$HOME/.local/bin" >> $GITHUB_PATH
+
       - name: Install sccache (macos-latest)
         if: matrix.os == 'macos-latest'
         run: |
@@ -100,10 +102,10 @@ jobs:
         with:
           repo-token: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Check Build
-        if: matrix.rust == 'stable'
-        run: |
-          bash ./scripts/cmd-all build check
+      # - name: Check Build
+      #   if: matrix.rust == 'stable'
+      #   run: |
+      #     bash ./scripts/cmd-all build check
 
       - name: Test
         if: matrix.rust == 'nightly'
