@@ -4,12 +4,12 @@ use codec::Error as CodecError;
 pub use jsonrpsee::core::Error as JsonRpseeError;
 use jsonrpsee::{
 	client_transport::ws::{InvalidUri as UrlParseError, WsHandshakeError},
-	types::{error::CallError, ErrorObjectOwned},
+	types::ErrorObjectOwned,
 };
 use serde_json::Error as SerdeJsonError;
 pub use subxt::{error::RpcError, Error as SubxtError};
 use subxt::{
-	error::{DispatchError, TransactionError},
+	error::{DispatchError,  TransactionError},
 	ext::sp_core::crypto::SecretStringError,
 };
 use thiserror::Error;
@@ -117,7 +117,7 @@ impl Error {
 		if let Error::SubxtRuntimeError(SubxtError::Rpc(RpcError::ClientError(e))) = self {
 			match e.downcast_ref::<JsonRpseeError>() {
 				Some(e) => match e {
-					JsonRpseeError::Call(CallError::Custom(err)) => call(err),
+					JsonRpseeError::Call(err) => call(err),
 					_ => None,
 				},
 				None => {

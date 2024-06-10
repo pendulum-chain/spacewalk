@@ -112,7 +112,7 @@ pub struct WrapperKeepOpaque<T> {
 pub struct SpacewalkRuntime;
 
 impl Config for SpacewalkRuntime {
-	type Index = Nonce;
+	type AssetId = ();
 	type Hash = H256;
 	type Header = subxt::config::substrate::SubstrateHeader<BlockNumber, Self::Hasher>;
 	type Hasher = BlakeTwo256;

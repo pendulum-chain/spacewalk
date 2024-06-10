@@ -1,7 +1,7 @@
 use std::time::Duration;
 
 use jsonrpsee::{
-	client_transport::ws::{Receiver, Sender, Uri, WsTransportClientBuilder},
+	client_transport::ws::{Receiver, Sender, Url, WsTransportClientBuilder},
 	core::client::{Client, ClientBuilder},
 };
 use tokio::time::{sleep, timeout};
@@ -12,9 +12,11 @@ const RETRY_TIMEOUT: Duration = Duration::from_millis(1000);
 const CONNECTION_TIMEOUT: Duration = Duration::from_secs(10);
 
 async fn ws_transport(url: &str) -> Result<(Sender, Receiver), Error> {
-	let url: Uri = url.parse().map_err(Error::UrlParseError)?;
+
+	let url: Url = url.parse::<Url>().unwrap();
+
 	WsTransportClientBuilder::default()
-		.build(url)
+		.build(url.into())
 		.await
 		.map_err(|e| Error::JsonRpseeError(JsonRpseeError::Transport(e.into())))
 }
@@ -22,13 +24,12 @@ async fn ws_transport(url: &str) -> Result<(Sender, Receiver), Error> {
 pub(crate) async fn new_websocket_client(
 	url: &str,
 	max_concurrent_requests: Option<usize>,
-	max_notifs_per_subscription: Option<usize>,
+	_max_notifs_per_subscription: Option<usize>,
 ) -> Result<Client, Error> {
 	let (sender, receiver) = ws_transport(url).await?;
 	let ws_client = ClientBuilder::default()
 		.request_timeout(CONNECTION_TIMEOUT)
 		.max_concurrent_requests(max_concurrent_requests.unwrap_or(1024))
-		.max_notifs_per_subscription(max_notifs_per_subscription.unwrap_or(256))
 		.build_with_tokio(sender, receiver);
 
 	Ok(ws_client)
