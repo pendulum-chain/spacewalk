@@ -13,7 +13,7 @@ sp-core = { git = "https://github.com/paritytech/polkadot-sdk", branch = "releas
 thiserror = "1.0.0"
 log = "0.4.0"
 env_logger = "0.7.1"
-reqwest = "0.12.4"
+reqwest = { version = "0.12.4", features = ["native-tls-vendored"]}
 # reuse version of `url` depended on by `reqwest`
 url = "2.2.2"
 nix = "0.24.2"
