@@ -4,23 +4,24 @@ use async_trait::async_trait;
 #[cfg(any(feature = "standalone-metadata", feature = "parachain-metadata-foucoco"))]
 use codec::Encode;
 use futures::{future::join_all, stream::StreamExt, FutureExt, SinkExt};
-use jsonrpsee::core::{client::Client, JsonValue};
+use jsonrpsee::core::{client::Client};
 use subxt::{
 	blocks::ExtrinsicEvents,
 	client::OnlineClient,
 	events::StaticEvent,
-	rpc::rpc_params,
 	storage::{address::Yes, StorageAddress},
 	tx::TxPayload,
 	Error as BasicError,
 	utils::Static,
+	backend::{legacy::LegacyRpcMethods, rpc::RpcClient},
+	rpc_params,
 };
 use tokio::{sync::RwLock, time::timeout};
 
 use module_oracle_rpc_runtime_api::BalanceWrapper;
 
-#[cfg(feature = "testing-utils")]
-use primitives::Hash;
+//#[cfg(feature = "testing-utils")]
+//use primitives::Hash;
 
 use crate::{
 	conn::{new_websocket_client, new_websocket_client_with_retry},
@@ -62,7 +63,7 @@ cfg_if::cfg_if! {
 const TRANSACTION_TIMEOUT: Duration = Duration::from_secs(900); // 5 minutes
 
 // number of storage entries to fetch at a time
-const DEFAULT_PAGE_SIZE: u32 = 10;
+//const DEFAULT_PAGE_SIZE: u32 = 10;
 
 pub(crate) type FeeRateUpdateSender = tokio::sync::broadcast::Sender<FixedU128>;
 pub type FeeRateUpdateReceiver = tokio::sync::broadcast::Receiver<FixedU128>;
@@ -72,6 +73,8 @@ pub struct SpacewalkParachain {
 	signer: Arc<RwLock<SpacewalkSigner>>,
 	account_id: AccountId,
 	api: OnlineClient<SpacewalkRuntime>,
+	legacy_rpc: LegacyRpcMethods<SpacewalkRuntime>,
+	rpc: RpcClient,
 	shutdown_tx: ShutdownSender,
 	fee_rate_update_tx: FeeRateUpdateSender,
 	pub native_currency_id: CurrencyId,
@@ -84,19 +87,23 @@ impl SpacewalkParachain {
 		shutdown_tx: ShutdownSender,
 	) -> Result<Self, Error> {
 		let account_id = signer.read().await.account_id().clone();
-		let api = OnlineClient::<SpacewalkRuntime>::from_rpc_client(Arc::new(rpc_client)).await?;
+		let rpc = RpcClient::new(Arc::new(rpc_client));
+		let api = OnlineClient::<SpacewalkRuntime>::from_rpc_client(rpc.clone()).await?;
+		let legacy_rpc = LegacyRpcMethods::new(rpc.clone());
 
-		let runtime_version = api.rpc().runtime_version(None).await?;
-		let default_spec_name = &JsonValue::default();
-		let spec_name = runtime_version.other.get("specName").unwrap_or(default_spec_name);
-		if spec_name == DEFAULT_SPEC_NAME {
-			log::info!("spec_name={}", spec_name);
-		} else {
-			return Err(Error::ParachainMetadataMismatch(
-				DEFAULT_SPEC_NAME.into(),
-				spec_name.as_str().unwrap_or_default().into(),
-			))
-		}
+
+		let runtime_version = api.backend().current_runtime_version().await?;
+		
+		//let default_spec_name = &JsonValue::default();
+		//let spec_name = runtime_version.spec_version.unwrap_or(default_spec_name);
+		// if spec_name == DEFAULT_SPEC_NAME {
+		// 	log::info!("spec_name={}", spec_name);
+		// } else {
+		// 	return Err(Error::ParachainMetadataMismatch(
+		// 		DEFAULT_SPEC_NAME.into(),
+		// 		spec_name.as_str().unwrap_or_default().into(),
+		// 	))
+		// }
 
 		if DEFAULT_SPEC_VERSION.contains(&runtime_version.spec_version) {
 			log::info!("spec_version={}", runtime_version.spec_version);
@@ -119,6 +126,8 @@ impl SpacewalkParachain {
 
 		let parachain_rpc = Self {
 			api,
+			rpc,
+			legacy_rpc,
 			shutdown_tx,
 			signer,
 			account_id,
@@ -159,12 +168,18 @@ impl SpacewalkParachain {
 		}
 
 		let head = self.get_finalized_block_hash().await.unwrap();
-		let _: CreatedBlock<Hash> = self
-			.api
-			.rpc()
-			.request("engine_createBlock", rpc_params![true, true, head])
+
+		let _: bool = self
+			.rpc
+			.request("engine_finalizeBlock", rpc_params![head])
 			.await
 			.expect("failed to create block");
+
+		// let _: CreatedBlock<Hash> = self
+		// 	.rpc
+		// 	.request("engine_createBlock", rpc_params![true,true])
+		// 	.await
+		// 	.expect("failed to create block");
 	}
 
 	pub async fn from_url(
@@ -326,7 +341,7 @@ impl SpacewalkParachain {
 	}
 
 	pub async fn get_finalized_block_hash(&self) -> Result<Option<H256>, Error> {
-		Ok(Some(self.api.rpc().finalized_head().await?))
+		Ok(Some(self.api.backend().latest_finalized_block_ref().await?.hash()))
 	}
 
 	/// Subscribe to new parachain blocks.
@@ -334,8 +349,8 @@ impl SpacewalkParachain {
 	where
 		F: Fn(SpacewalkHeader) -> R,
 		R: Future<Output = Result<(), Error>>,
-	{
-		let mut sub = self.api.rpc().subscribe_finalized_block_headers().await?;
+	{	
+		let mut sub = self.legacy_rpc.chain_subscribe_finalized_heads().await?;
 		loop {
 			on_block(sub.next().await.ok_or(Error::ChannelClosed)??).await?;
 		}
@@ -592,8 +607,7 @@ impl VaultRegistryPallet for SpacewalkParachain {
 	) -> Result<Vec<VaultId>, Error> {
 		let head = self.get_finalized_block_hash().await?;
 		let result = self
-			.api
-			.rpc()
+			.rpc
 			.request("vaultRegistry_getVaultsByAccountId", rpc_params![account_id, head])
 			.await?;
 
@@ -603,10 +617,9 @@ impl VaultRegistryPallet for SpacewalkParachain {
 	/// Fetch all active vaults.
 	async fn get_all_vaults(&self) -> Result<Vec<SpacewalkVault>, Error> {
 		let mut vaults = Vec::new();
-		let key_addr = metadata::storage().vault_registry().vaults_root();
-
-		let mut iter = self.api.storage().at_latest().await.unwrap().iter(key_addr, DEFAULT_PAGE_SIZE).await?;
-		while let Some((_, account)) = iter.next().await? {
+		let key_addr = metadata::storage().vault_registry().vaults_iter();
+		let mut iter = self.api.storage().at_latest().await.unwrap().iter(key_addr).await?;
+		while let Ok((_, account)) = iter.next().await.ok_or(Error::VaultNotFound)? {
 			if let VaultStatus::Active(..) = account.status {
 				vaults.push(account);
 			}
@@ -698,8 +711,7 @@ impl VaultRegistryPallet for SpacewalkParachain {
 	) -> Result<u128, Error> {
 		let head = self.get_finalized_block_hash().await?;
 		let result: BalanceWrapper<_> = self
-			.api
-			.rpc()
+			.rpc
 			.request(
 				"vaultRegistry_getRequiredCollateralForWrapped",
 				rpc_params![
@@ -719,8 +731,7 @@ impl VaultRegistryPallet for SpacewalkParachain {
 	async fn get_required_collateral_for_vault(&self, vault_id: VaultId) -> Result<u128, Error> {
 		let head = self.get_finalized_block_hash().await?;
 		let result: BalanceWrapper<_> = self
-			.api
-			.rpc()
+			.rpc
 			.request("vaultRegistry_getRequiredCollateralForVault", rpc_params![vault_id, head])
 			.await?;
 
@@ -730,8 +741,7 @@ impl VaultRegistryPallet for SpacewalkParachain {
 	async fn get_vault_total_collateral(&self, vault_id: VaultId) -> Result<u128, Error> {
 		let head = self.get_finalized_block_hash().await?;
 		let result: BalanceWrapper<_> = self
-			.api
-			.rpc()
+			.rpc
 			.request("vaultRegistry_getVaultTotalCollateral", rpc_params![vault_id, head])
 			.await?;
 
@@ -745,8 +755,7 @@ impl VaultRegistryPallet for SpacewalkParachain {
 	) -> Result<u128, Error> {
 		let head = self.get_finalized_block_hash().await?;
 		let result: UnsignedFixedPoint = self
-			.api
-			.rpc()
+			.rpc
 			.request(
 				"vaultRegistry_getCollateralizationFromVault",
 				rpc_params![vault_id, only_issued, head],
@@ -926,8 +935,7 @@ impl OraclePallet for SpacewalkParachain {
 	async fn currency_to_usd(&self, amount: u128, currency_id: CurrencyId) -> Result<u128, Error> {
 		let head = self.get_finalized_block_hash().await?;
 		let result: BalanceWrapper<_> = self
-			.api
-			.rpc()
+			.rpc
 			.request(
 				"oracle_currencyToUsd",
 				rpc_params![BalanceWrapper { amount }, currency_id, head],
@@ -942,8 +950,7 @@ impl OraclePallet for SpacewalkParachain {
 	async fn usd_to_currency(&self, amount: u128, currency_id: CurrencyId) -> Result<u128, Error> {
 		let head = self.get_finalized_block_hash().await?;
 		let result: BalanceWrapper<_> = self
-			.api
-			.rpc()
+			.rpc
 			.request(
 				"oracle_usdToCurrency",
 				rpc_params![BalanceWrapper { amount }, currency_id, head],
@@ -1068,8 +1075,7 @@ impl IssuePallet for SpacewalkParachain {
 	) -> Result<Vec<(H256, SpacewalkIssueRequest)>, Error> {
 		let head = self.get_finalized_block_hash().await?;
 		let result: Vec<H256> = self
-			.api
-			.rpc()
+			.rpc
 			.request("issue_getVaultIssueRequests", rpc_params![account_id, head])
 			.await?;
 		futures::future::join_all(
@@ -1092,14 +1098,14 @@ impl IssuePallet for SpacewalkParachain {
 
 		let mut issue_requests = Vec::new();
 
-		let key_addr = metadata::storage().issue().issue_requests_root();
-		let mut iter = self.api.storage().at_latest().await.unwrap().iter(key_addr, DEFAULT_PAGE_SIZE).await?;
+		let key_addr = metadata::storage().issue().issue_requests_iter();
+		let mut iter = self.api.storage().at_latest().await.unwrap().iter(key_addr).await?;
 
-		while let Some((issue_id, request)) = iter.next().await? {
+		while let Ok((issue_id, request)) = iter.next().await.ok_or(Error::RequestIssueIDNotFound)? {
 			if request.status == IssueRequestStatus::Pending &&
 				request.opentime + issue_period > current_height
 			{
-				let key_hash = issue_id.0.as_slice();
+				let key_hash = issue_id.as_slice();
 				// last bytes are the raw key
 				let key = &key_hash[key_hash.len() - 32..];
 				issue_requests.push((H256::from_slice(key), request));
@@ -1198,8 +1204,7 @@ impl RedeemPallet for SpacewalkParachain {
 	) -> Result<Vec<T>, Error> {
 		let head = self.get_finalized_block_hash().await?;
 		let result: Vec<H256> = self
-			.api
-			.rpc()
+			.rpc
 			.request("redeem_getVaultRedeemRequests", rpc_params![account_id, head])
 			.await?;
 
@@ -1380,8 +1385,7 @@ impl ReplacePallet for SpacewalkParachain {
 	) -> Result<Vec<(H256, SpacewalkReplaceRequest)>, Error> {
 		let head = self.get_finalized_block_hash().await?;
 		let result: Vec<H256> = self
-			.api
-			.rpc()
+			.rpc
 			.request("replace_getNewVaultReplaceRequests", rpc_params![account_id, head])
 			.await?;
 		join_all(result.into_iter().map(|key| async move {
@@ -1400,8 +1404,7 @@ impl ReplacePallet for SpacewalkParachain {
 	) -> Result<Vec<T>, Error> {
 		let head = self.get_finalized_block_hash().await?;
 		let result: Vec<H256> = self
-			.api
-			.rpc()
+			.rpc
 			.request("replace_getOldVaultReplaceRequests", rpc_params![account_id, head])
 			.await?;
 

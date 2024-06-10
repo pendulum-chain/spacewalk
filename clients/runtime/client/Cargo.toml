@@ -15,15 +15,15 @@ keywords = ["parity", "substrate", "blockchain"]
 tokio = { version = "1.37", features = ["time", "rt-multi-thread"] }
 futures = { version = "0.3.9", features = ["compat"], package = "futures" }
 futures01 = { package = "futures", version = "0.1.29" }
-jsonrpsee = "0.16.0"
-jsonrpsee-types = "0.16.0"
-jsonrpsee-core = { version = "0.16.0", features = ["async-client"] }
+jsonrpsee = "0.20.0"
+jsonrpsee-types = "0.20.0"
+jsonrpsee-core = { version = "0.20.0", features = ["async-client"] }
 
 log = "0.4.13"
 serde_json = "1.0.61"
 thiserror = "1.0.23"
 
-subxt = { version = "0.29.0", features = [ "substrate-compat"] }
+subxt = { version = "0.33.0", features = [ "substrate-compat"] }
 
 sc-client-db = { git = "https://github.com/paritytech/polkadot-sdk", branch = "release-polkadot-v1.1.0", default-features = false }
 sp-keyring = { git = "https://github.com/paritytech/polkadot-sdk", branch = "release-polkadot-v1.1.0", default-features = false }

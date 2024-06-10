@@ -59,7 +59,7 @@ tracing-subscriber = { version = "0.2.12", features = ["registry", "env-filter",
 jsonrpc-core = "18.0.0"
 jsonrpc-core-client = { version = "18.0.0", features = ["http", "tls"] }
 
-subxt = { version = "0.29.0", features = [ "substrate-compat"] }
+subxt = { version = "0.33.0", features = [ "substrate-compat"] }
 
 # Workspace dependencies
 runtime = { path = "../runtime" }
