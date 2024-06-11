@@ -14,7 +14,7 @@ use super::{
 use sp_runtime::traits::Convert;
 
 use subxt::utils::AccountId32 as AccountId;
-use std::sync::Arc;
+//use std::sync::Arc;
 
 const DEFAULT_TESTING_CURRENCY: CurrencyId = CurrencyId::XCM(0);
 const DEFAULT_WRAPPED_CURRENCY: CurrencyId = CurrencyId::AlphaNum4(
@@ -95,6 +95,10 @@ async fn test_subxt_processing_events_after_dispatch_error() {
 	let oracle_provider = setup_provider(client.clone(), AccountKeyring::Bob).await;
 	let invalid_oracle = setup_provider(client, AccountKeyring::Dave).await;
 
+	oracle_provider.manual_finalize().await;
+	invalid_oracle.manual_finalize().await;
+	tokio::time::sleep(tokio::time::Duration::from_secs(10)).await;
+
 	let key = primitives::oracle::Key::ExchangeRate(DEFAULT_TESTING_CURRENCY);
 	let converted_key = DiaOracleKeyConvertor::<MockValue>::convert(key.clone()).unwrap();
 	let exchange_rate = FixedU128::saturating_from_rational(1u128, 100u128);
@@ -120,10 +124,9 @@ async fn test_register_vault() {
         default_provider_client(AccountKeyring::Alice, is_public_network).await;
     let parachain_rpc = setup_provider(client.clone(), AccountKeyring::Alice).await;
  
-    let parachain_rpc = Arc::new(parachain_rpc);
-    let seal_rpc = Arc::clone(&parachain_rpc);
+    //let parachain_rpc = Arc::new(parachain_rpc);
+    //let seal_rpc = Arc::clone(&parachain_rpc);
 
-	seal_rpc.manual_finalize().await;
 
 	// This process will also stop once the test is finalized
     // tokio::spawn(async move {
@@ -133,6 +136,8 @@ async fn test_register_vault() {
 	// 		tokio::time::sleep(tokio::time::Duration::from_secs(6)).await;
     //     }
     // });
+
+	parachain_rpc.manual_finalize().await;
 	tokio::time::sleep(tokio::time::Duration::from_secs(10)).await;
     set_exchange_rate(client.clone()).await;
 

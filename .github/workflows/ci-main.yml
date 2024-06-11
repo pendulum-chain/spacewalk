@@ -9,10 +9,10 @@ jobs:
     strategy:
       max-parallel: 2
       matrix:
-        os: [ ubuntu-24.04, macos-latest ]
+        os: [ ubuntu-latest, macos-latest ]
         rust: [ nightly ]
         include:
-          - os: ubuntu-24.04
+          - os: ubuntu-latest
             sccache-path: /home/runner/.cache/sccache
           - os: macos-latest
             sccache-path: /Users/runner/Library/Caches/Mozilla.sccache
@@ -35,8 +35,8 @@ jobs:
           sudo rm -rf "$AGENT_TOOLSDIRECTORY"
       - uses: actions/checkout@v2
 
-      - name: Install sccache (ubuntu-24.04)
-        if: matrix.os == 'ubuntu-24.04'
+      - name: Install sccache (ubuntu-latest)
+        if: matrix.os == 'ubuntu-latest'
         env:
           LINK: https://github.com/mozilla/sccache/releases/download
           SCCACHE_VERSION: 0.2.13
