@@ -107,6 +107,7 @@ jobs:
           restore-keys: "${{ matrix.os }}-sccache-"
 
       - name: Start sccache server
+        if: matrix.os == 'macos-latest'
         run: sccache --start-server
 
       - name: Install Protoc
@@ -123,7 +124,6 @@ jobs:
         if: matrix.rust == 'nightly'
         uses: actions-rs/cargo@v1
         env:
-          RUST_LOG: info
           SOURCE_STELLAR_SECRET_MAINNET: ${{ secrets.SOURCE_STELLAR_SECRET_MAINNET }}
           SOURCE_STELLAR_SECRET_TESTNET: ${{ secrets.SOURCE_STELLAR_SECRET_TESTNET }}
           DEST_STELLAR_SECRET_MAINNET: ${{ secrets.DEST_STELLAR_SECRET_MAINNET }}
