@@ -7,10 +7,10 @@ name: continuous-integration-main
 jobs:
   ci:
     strategy:
-      max-parallel: 2
+      max-parallel: 1
       matrix:
-        os: [ macos-latest ]
-        rust: [ nightly ]
+        os: [ ubuntu-latest, macos-latest ]
+        rust: [ stable, nightly ]
         include:
           - os: macos-latest
             sccache-path: /Users/runner/Library/Caches/Mozilla.sccache
@@ -30,6 +30,11 @@ jobs:
           sudo rm -rf /opt/ghc
           sudo rm -rf /usr/local/share/boost
           sudo rm -rf "$AGENT_TOOLSDIRECTORY"
+          sudo apt-get remove -y 'php.*' --fix-missing
+          sudo apt-get remove -y '^mongodb-.*' --fix-missing
+          sudo apt-get remove -y '^mysql-.*' --fix-missing
+          sudo apt-get clean          
+          df -h
       - uses: actions/checkout@v2
 
       - name: Install sccache (ubuntu-latest)
@@ -48,18 +53,20 @@ jobs:
         if: matrix.os == 'macos-latest'
         run: |
           brew update
-          brew install sccache             
+          brew install sccache     
+          
+          
 
-      # - name: Setup Rust toolchain
-      #   if: matrix.rust == 'stable'
-      #   # Call `rustup show` as a hack so that the toolchain defined in rust-toolchain.toml is installed
-      #   run: rustup show
+      - name: Setup stable Rust toolchain
+        if: matrix.rust == 'stable'
+        # Call `rustup show` as a hack so that the toolchain defined in rust-toolchain.toml is installed
+        run: rustup show
 
-      # - name: Remove rust-toolchain.toml for nightly
-      #   if: matrix.rust == 'nightly'
-      #   # To make sure that the nightly version will be used all throughout
-      #   run: |
-      #     rm /home/runner/work/spacewalk/spacewalk/rust-toolchain.toml
+      - name: Remove rust-toolchain.toml for nightly
+        if: matrix.rust == 'nightly'
+        # To make sure that the nightly version will be used all throughout
+        run: |
+          rm /home/runner/work/spacewalk/spacewalk/rust-toolchain.toml
 
       - name: Setup nightly Rust toolchain
         if: matrix.rust == 'nightly'
@@ -96,42 +103,42 @@ jobs:
         with:
           repo-token: ${{ secrets.GITHUB_TOKEN }}
 
-      # - name: Check Build
-      #   if: matrix.rust == 'stable'
-      #   run: |
-      #     bash ./scripts/cmd-all build check
+      - name: Check Build
+        if: matrix.rust == 'stable'
+        run: |
+          bash ./scripts/cmd-all build check
 
       - name: Test
         if: matrix.rust == 'nightly'
         uses: actions-rs/cargo@v1
         env:
           RUST_LOG: info
-          # SOURCE_STELLAR_SECRET_MAINNET: ${{ secrets.SOURCE_STELLAR_SECRET_MAINNET }}
-          # SOURCE_STELLAR_SECRET_TESTNET: ${{ secrets.SOURCE_STELLAR_SECRET_TESTNET }}
-          # DEST_STELLAR_SECRET_MAINNET: ${{ secrets.DEST_STELLAR_SECRET_MAINNET }}
-          # DEST_STELLAR_SECRET_TESTNET: ${{ secrets.DEST_STELLAR_SECRET_TESTNET }}
+          SOURCE_STELLAR_SECRET_MAINNET: ${{ secrets.SOURCE_STELLAR_SECRET_MAINNET }}
+          SOURCE_STELLAR_SECRET_TESTNET: ${{ secrets.SOURCE_STELLAR_SECRET_TESTNET }}
+          DEST_STELLAR_SECRET_MAINNET: ${{ secrets.DEST_STELLAR_SECRET_MAINNET }}
+          DEST_STELLAR_SECRET_TESTNET: ${{ secrets.DEST_STELLAR_SECRET_TESTNET }}
         with:
           toolchain: nightly-2024-02-09
           command: test 
-          args: test_register_vault --all --all-features -- --nocapture
+          args: test_subxt_processing_events_after_dispatch_error -p runtime --features standalone-metadata -- --nocapture
 
-      # - name: Rustfmt
-      #   if: matrix.rust == 'nightly'
-      #   uses: actions-rs/cargo@v1
-      #   with:
-      #     toolchain: nightly-2024-02-09
-      #     command: fmt
-      #     args: --all -- --check
+      - name: Rustfmt
+        if: matrix.rust == 'nightly'
+        uses: actions-rs/cargo@v1
+        with:
+          toolchain: nightly-2024-02-09
+          command: fmt
+          args: --all -- --check
 
-      # - name: Clippy -- Libraries and Binaries
-      #   if: matrix.rust == 'stable'
-      #   run: |
-      #     bash ./scripts/cmd-all clippy "clippy --lib --bins" "-- -W clippy::all -A clippy::style -A forgetting_copy_types -A forgetting_references"           
+      - name: Clippy -- Libraries and Binaries
+        if: matrix.rust == 'stable'
+        run: |
+          bash ./scripts/cmd-all clippy "clippy --lib --bins" "-- -W clippy::all -A clippy::style -A forgetting_copy_types -A forgetting_references"           
 
-      # - name: Clippy -- Tests and Examples
-      #   if: matrix.rust == 'nightly'
-      #   uses: actions-rs/cargo@v1
-      #   with:
-      #     toolchain: nightly-2024-02-09
-      #     command: clippy
-      #     args: --all-features --tests --benches --examples -- -A clippy::all -W clippy::correctness -A forgetting_copy_types -A forgetting_references
+      - name: Clippy -- Tests and Examples
+        if: matrix.rust == 'nightly'
+        uses: actions-rs/cargo@v1
+        with:
+          toolchain: nightly-2024-02-09
+          command: clippy
+          args: --all-features --tests --benches --examples -- -A clippy::all -W clippy::correctness -A forgetting_copy_types -A forgetting_references
