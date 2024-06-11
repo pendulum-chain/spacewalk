@@ -1,22 +1,16 @@
 on:
   pull_request:
     branches:
-      - 'main' # excluding main
+      - 'main'
 
 name: continuous-integration-main
 jobs:
   ci:
     strategy:
-      max-parallel: 1
+      max-parallel: 2
       matrix:
-        os: [ ubuntu-latest ]
-        rust: [ nightly ]
-        include:
-          - os: macos-latest
-            sccache-path: /Users/runner/Library/Caches/Mozilla.sccache
-
-    runs-on: ${{ matrix.os }}
-
+        rust: [ stable, nightly ]
+    runs-on: ubuntu-20.04
     env:
       RUST_BACKTRACE: full
       # Make sure CI fails on all warnings, including Clippy lints
@@ -40,37 +34,16 @@ jobs:
       - uses: actions/checkout@v2
 
       - name: Install package
-        if: matrix.os == 'ubuntu-latest'
         run: |
           sudo docker image prune --all --force
           echo 'APT::Get::Always-Include-Phased-Updates "false";' | sudo tee /etc/apt/apt.conf.d/99-phased-updates
           sudo apt-get update && sudo apt-get upgrade -y
           sudo apt-get install -y protobuf-compiler libprotobuf-dev
 
-      - name: Install sccache (ubuntu-latest)
-        if: matrix.os == 'ubuntu-latest'
-        env:
-          LINK: https://github.com/mozilla/sccache/releases/download
-          SCCACHE_VERSION: 0.2.13
-        run: |
-          SCCACHE_FILE=sccache-$SCCACHE_VERSION-x86_64-unknown-linux-musl
-          mkdir -p $HOME/.local/bin
-          curl -L "$LINK/$SCCACHE_VERSION/$SCCACHE_FILE.tar.gz" | tar xz
-          mv -f $SCCACHE_FILE/sccache $HOME/.local/bin/sccache
-          echo "$HOME/.local/bin" >> $GITHUB_PATH
-          
-      - name: Install sccache (macos-latest)
-        if: matrix.os == 'macos-latest'
-        run: |
-          brew update
-          brew install sccache     
-          
-          
-
-      # - name: Setup Rust toolchain
-      #   if: matrix.rust == 'stable'
-      #   # Call `rustup show` as a hack so that the toolchain defined in rust-toolchain.toml is installed
-      #   run: rustup show
+      - name: Setup stable Rust toolchain
+        if: matrix.rust == 'stable'
+        # Call `rustup show` as a hack so that the toolchain defined in rust-toolchain.toml is installed
+        run: rustup show
 
       - name: Remove rust-toolchain.toml for nightly
         if: matrix.rust == 'nightly'
@@ -94,31 +67,18 @@ jobs:
         uses: Swatinem/rust-cache@v2
         with:
           cache-on-failure: true
-          key: "${{ matrix.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}"
+          key: "ubuntu-latest-cargo-${{ hashFiles('**/Cargo.lock') }}"
           shared-key: "shared"
 
-      - name: Save sccache
-        if: matrix.os == 'macos-latest'
-        uses: pat-s/always-upload-cache@v3
-        continue-on-error: true
-        with:
-          path: "${{ matrix.sccache-path }}"
-          key: "${{ matrix.os }}-sccache-${{ hashFiles('**/Cargo.lock') }}"
-          restore-keys: "${{ matrix.os }}-sccache-"
-
-      - name: Start sccache server
-        if: matrix.os == 'macos-latest'
-        run: sccache --start-server
-
       - name: Install Protoc
-        uses: arduino/setup-protoc@v3
+        uses: arduino/setup-protoc@v1
         with:
           repo-token: ${{ secrets.GITHUB_TOKEN }}
 
-      # - name: Check Build
-      #   if: matrix.rust == 'stable'
-      #   run: |
-      #     bash ./scripts/cmd-all build check
+      - name: Check Build
+        if: matrix.rust == 'stable'
+        run: |
+          bash ./scripts/cmd-all build check
 
       - name: Test
         if: matrix.rust == 'nightly'
@@ -130,26 +90,26 @@ jobs:
           DEST_STELLAR_SECRET_TESTNET: ${{ secrets.DEST_STELLAR_SECRET_TESTNET }}
         with:
           toolchain: nightly-2024-02-09
-          command: test 
-          args: test_subxt_processing_events_after_dispatch_error -p runtime --features standalone-metadata -- --nocapture
+          command: test
+          args: --all --all-features
 
-#      - name: Rustfmt
-#        if: matrix.rust == 'nightly'
-#        uses: actions-rs/cargo@v1
-#        with:
-#          toolchain: nightly-2024-02-09
-#          command: fmt
-#          args: --all -- --check
-#
-#      - name: Clippy -- Libraries and Binaries
-#        if: matrix.rust == 'stable'
-#        run: |
-#          bash ./scripts/cmd-all clippy "clippy --lib --bins" "-- -W clippy::all -A clippy::style -A forgetting_copy_types -A forgetting_references"
-#
-#      - name: Clippy -- Tests and Examples
-#        if: matrix.rust == 'nightly'
-#        uses: actions-rs/cargo@v1
-#        with:
-#          toolchain: nightly-2024-02-09
-#          command: clippy
-#          args: --all-features --tests --benches --examples -- -A clippy::all -W clippy::correctness -A forgetting_copy_types -A forgetting_references
+      - name: Rustfmt
+        if: matrix.rust == 'nightly'
+        uses: actions-rs/cargo@v1
+        with:
+          toolchain: nightly-2024-02-09
+          command: fmt
+          args: --all -- --check
+
+      - name: Clippy -- Libraries and Binaries
+        if: matrix.rust == 'stable'
+        run: |
+          bash ./scripts/cmd-all clippy "clippy --lib --bins" "-- -W clippy::all -A clippy::style -A forgetting_copy_types -A forgetting_references"           
+
+      - name: Clippy -- Tests and Examples
+        if: matrix.rust == 'nightly'
+        uses: actions-rs/cargo@v1
+        with:
+          toolchain: nightly-2024-02-09
+          command: clippy
+          args: --all-features --tests --benches --examples -- -A clippy::all -W clippy::correctness -A forgetting_copy_types -A forgetting_references
