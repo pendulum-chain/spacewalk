@@ -98,6 +98,7 @@ jobs:
           shared-key: "shared"
 
       - name: Save sccache
+        if: matrix.os == 'macos-latest'
         uses: pat-s/always-upload-cache@v3
         continue-on-error: true
         with:
