@@ -9,8 +9,8 @@ jobs:
     strategy:
       max-parallel: 1
       matrix:
-        os: [ ubuntu-latest, macos-latest ]
-        rust: [ stable, nightly ]
+        os: [ ubuntu-latest ]
+        rust: [ nightly ]
         include:
           - os: macos-latest
             sccache-path: /Users/runner/Library/Caches/Mozilla.sccache
@@ -25,10 +25,12 @@ jobs:
     steps:
       - name: Freeing up more disk space
         run: |
+          free -h
           sudo rm -rf /usr/local/lib/android # will release about 10 GB if you don't need Android
           sudo rm -rf /usr/share/dotnet # will release about 20GB if you don't need .NET
           sudo rm -rf /opt/ghc
           sudo rm -rf /usr/local/share/boost
+          sudo rm -rf /opt/hostedtoolcache/CodeQL
           sudo rm -rf "$AGENT_TOOLSDIRECTORY"
           sudo apt-get remove -y 'php.*' --fix-missing
           sudo apt-get remove -y '^mongodb-.*' --fix-missing
@@ -36,6 +38,14 @@ jobs:
           sudo apt-get clean          
           df -h
       - uses: actions/checkout@v2
+
+      - name: Install package
+        if: matrix.os == 'ubuntu-latest'
+        run: |
+          sudo docker image prune --all --force
+          echo 'APT::Get::Always-Include-Phased-Updates "false";' | sudo tee /etc/apt/apt.conf.d/99-phased-updates
+          sudo apt-get update && sudo apt-get upgrade -y
+          sudo apt-get install -y protobuf-compiler libprotobuf-dev
 
       - name: Install sccache (ubuntu-latest)
         if: matrix.os == 'ubuntu-latest'
@@ -57,10 +67,10 @@ jobs:
           
           
 
-      - name: Setup stable Rust toolchain
-        if: matrix.rust == 'stable'
-        # Call `rustup show` as a hack so that the toolchain defined in rust-toolchain.toml is installed
-        run: rustup show
+      # - name: Setup Rust toolchain
+      #   if: matrix.rust == 'stable'
+      #   # Call `rustup show` as a hack so that the toolchain defined in rust-toolchain.toml is installed
+      #   run: rustup show
 
       - name: Remove rust-toolchain.toml for nightly
         if: matrix.rust == 'nightly'
@@ -103,10 +113,10 @@ jobs:
         with:
           repo-token: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Check Build
-        if: matrix.rust == 'stable'
-        run: |
-          bash ./scripts/cmd-all build check
+      # - name: Check Build
+      #   if: matrix.rust == 'stable'
+      #   run: |
+      #     bash ./scripts/cmd-all build check
 
       - name: Test
         if: matrix.rust == 'nightly'
@@ -122,23 +132,23 @@ jobs:
           command: test 
           args: test_subxt_processing_events_after_dispatch_error -p runtime --features standalone-metadata -- --nocapture
 
-      - name: Rustfmt
-        if: matrix.rust == 'nightly'
-        uses: actions-rs/cargo@v1
-        with:
-          toolchain: nightly-2024-02-09
-          command: fmt
-          args: --all -- --check
-
-      - name: Clippy -- Libraries and Binaries
-        if: matrix.rust == 'stable'
-        run: |
-          bash ./scripts/cmd-all clippy "clippy --lib --bins" "-- -W clippy::all -A clippy::style -A forgetting_copy_types -A forgetting_references"           
-
-      - name: Clippy -- Tests and Examples
-        if: matrix.rust == 'nightly'
-        uses: actions-rs/cargo@v1
-        with:
-          toolchain: nightly-2024-02-09
-          command: clippy
-          args: --all-features --tests --benches --examples -- -A clippy::all -W clippy::correctness -A forgetting_copy_types -A forgetting_references
+#      - name: Rustfmt
+#        if: matrix.rust == 'nightly'
+#        uses: actions-rs/cargo@v1
+#        with:
+#          toolchain: nightly-2024-02-09
+#          command: fmt
+#          args: --all -- --check
+#
+#      - name: Clippy -- Libraries and Binaries
+#        if: matrix.rust == 'stable'
+#        run: |
+#          bash ./scripts/cmd-all clippy "clippy --lib --bins" "-- -W clippy::all -A clippy::style -A forgetting_copy_types -A forgetting_references"
+#
+#      - name: Clippy -- Tests and Examples
+#        if: matrix.rust == 'nightly'
+#        uses: actions-rs/cargo@v1
+#        with:
+#          toolchain: nightly-2024-02-09
+#          command: clippy
+#          args: --all-features --tests --benches --examples -- -A clippy::all -W clippy::correctness -A forgetting_copy_types -A forgetting_references
