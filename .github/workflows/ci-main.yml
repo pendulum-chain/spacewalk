@@ -10,40 +10,38 @@ jobs:
       max-parallel: 1
       matrix:
         rust: [ nightly ]
-    runs-on: ubuntu-24.04
+    runs-on: linux
     env:
       RUST_BACKTRACE: full
       # Make sure CI fails on all warnings, including Clippy lints
       RUSTFLAGS: "-Dwarnings"
 
     steps:
-      - name: Freeing up more disk space
-        run: |
-          free -h
-          sudo rm -rf /usr/local/lib/android # will release about 10 GB if you don't need Android
-          sudo rm -rf /usr/share/dotnet # will release about 20GB if you don't need .NET
-          sudo rm -rf /opt/ghc
-          sudo rm -rf /usr/local/share/boost
-          sudo rm -rf /opt/hostedtoolcache/CodeQL
-          sudo rm -rf "$AGENT_TOOLSDIRECTORY"
-          sudo apt-get remove -y 'php.*' --fix-missing
-          sudo apt-get remove -y '^mongodb-.*' --fix-missing
-          sudo apt-get remove -y '^mysql-.*' --fix-missing
-          sudo apt-get clean          
-          df -h
-      - uses: actions/checkout@v2
+#      - name: Freeing up more disk space
+#        run: |
+#          free -h
+#          sudo rm -rf /usr/local/lib/android # will release about 10 GB if you don't need Android
+#          sudo rm -rf /usr/share/dotnet # will release about 20GB if you don't need .NET
+#          sudo rm -rf /opt/ghc
+#          sudo rm -rf /usr/local/share/boost
+#          sudo rm -rf /opt/hostedtoolcache/CodeQL
+#          sudo rm -rf "$AGENT_TOOLSDIRECTORY"
+#          sudo apt-get remove -y 'php.*' --fix-missing
+#          sudo apt-get remove -y '^mongodb-.*' --fix-missing
+#          sudo apt-get remove -y '^mysql-.*' --fix-missing
+#          sudo apt-get clean
+#          df -h
+      - uses: actions/checkout@v4
 
-      - name: Install package
+      - name: Install System Dependencies
         run: |
-          sudo docker image prune --all --force
-          echo 'APT::Get::Always-Include-Phased-Updates "false";' | sudo tee /etc/apt/apt.conf.d/99-phased-updates
-          sudo apt-get update && sudo apt-get upgrade -y
-          sudo apt-get install -y protobuf-compiler libprotobuf-dev
+          sudo apt-get update && sudo apt-get install -y \
+          cmake pkg-config libssl-dev git clang curl libc6-dev protobuf-compiler
 
-      - name: Setup stable Rust toolchain
-        if: matrix.rust == 'stable'
-        # Call `rustup show` as a hack so that the toolchain defined in rust-toolchain.toml is installed
-        run: rustup show
+#      - name: Setup stable Rust toolchain
+#        if: matrix.rust == 'stable'
+#        # Call `rustup show` as a hack so that the toolchain defined in rust-toolchain.toml is installed
+#        run: rustup show
 
       - name: Remove rust-toolchain.toml for nightly
         if: matrix.rust == 'nightly'
@@ -63,17 +61,17 @@ jobs:
         if: matrix.rust == 'nightly'
         run: rustup default nightly-2024-02-09
 
-      - name: Use Cache
-        uses: Swatinem/rust-cache@v2
-        with:
-          cache-on-failure: true
-          key: "ubuntu-latest-cargo-${{ hashFiles('**/Cargo.lock') }}"
-          shared-key: "shared"
-
-      - name: Install Protoc
-        uses: arduino/setup-protoc@v1
-        with:
-          repo-token: ${{ secrets.GITHUB_TOKEN }}
+#      - name: Use Cache
+#        uses: Swatinem/rust-cache@v2
+#        with:
+#          cache-on-failure: true
+#          key: "ubuntu-latest-cargo-${{ hashFiles('**/Cargo.lock') }}"
+#          shared-key: "shared"
+#
+#      - name: Install Protoc
+#        uses: arduino/setup-protoc@v1
+#        with:
+#          repo-token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Check Build
         if: matrix.rust == 'stable'
