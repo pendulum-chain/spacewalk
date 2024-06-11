@@ -119,26 +119,20 @@ async fn test_register_vault() {
     let (client, _tmp_dir) =
         default_provider_client(AccountKeyring::Alice, is_public_network).await;
     let parachain_rpc = setup_provider(client.clone(), AccountKeyring::Alice).await;
-
-    
+ 
     let parachain_rpc = Arc::new(parachain_rpc);
-
-    let (_tx, mut rx) = tokio::sync::oneshot::channel::<()>();
-
     let seal_rpc = Arc::clone(&parachain_rpc);
-    tokio::spawn(async move {
-        loop {
-            tokio::select! {
-                _ = tokio::time::sleep(tokio::time::Duration::from_secs(6)) => {
-					println!("Manual seal");
-                    seal_rpc.manual_seal().await;
-                },
-                _ = &mut rx => {
-                    break;
-                }
-            }
-        }
-    });
+
+	seal_rpc.manual_finalize().await;
+
+	// This process will also stop once the test is finalized
+    // tokio::spawn(async move {
+    //     loop {
+    //         println!("Manually finalizing block");
+	// 		seal_rpc.manual_finalize().await;
+	// 		tokio::time::sleep(tokio::time::Duration::from_secs(6)).await;
+    //     }
+    // });
 	tokio::time::sleep(tokio::time::Duration::from_secs(10)).await;
     set_exchange_rate(client.clone()).await;
 
@@ -155,6 +149,4 @@ async fn test_register_vault() {
     println!("Getting vault");
     parachain_rpc.get_vault(&vault_id).await.unwrap();
     assert_eq!(parachain_rpc.get_public_key().await.unwrap(), Some(dummy_public_key()));
-
-    //let _ = tx.send(());
 }

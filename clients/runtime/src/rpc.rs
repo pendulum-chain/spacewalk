@@ -20,8 +20,8 @@ use tokio::{sync::RwLock, time::timeout};
 
 use module_oracle_rpc_runtime_api::BalanceWrapper;
 
-//#[cfg(feature = "testing-utils")]
-//use primitives::Hash;
+#[cfg(feature = "testing-utils")]
+use primitives::Hash;
 
 use crate::{
 	conn::{new_websocket_client, new_websocket_client_with_retry},
@@ -167,19 +167,27 @@ impl SpacewalkParachain {
 			pub aux: ImportedAux,
 		}
 
+
+		let _: CreatedBlock<Hash> = self
+			.rpc
+			.request("engine_createBlock", rpc_params![true,true])
+			.await
+			.expect("failed to create block");
+	}
+
+	/// This function is used in tests to finalize the current block.
+	#[cfg(feature = "testing-utils")]
+	pub async fn manual_finalize(&self) {
+
+		
 		let head = self.get_finalized_block_hash().await.unwrap();
 
 		let _: bool = self
-			.rpc
-			.request("engine_finalizeBlock", rpc_params![head])
-			.await
-			.expect("failed to create block");
-
-		// let _: CreatedBlock<Hash> = self
-		// 	.rpc
-		// 	.request("engine_createBlock", rpc_params![true,true])
-		// 	.await
-		// 	.expect("failed to create block");
+		.rpc
+		.request("engine_finalizeBlock", rpc_params![head])
+		.await
+		.expect("failed to create block");
+	
 	}
 
 	pub async fn from_url(
