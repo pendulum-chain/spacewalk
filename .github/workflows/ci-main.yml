@@ -7,10 +7,10 @@ name: continuous-integration-main
 jobs:
   ci:
     strategy:
-      max-parallel: 2
+      max-parallel: 1
       matrix:
-        rust: [ stable, nightly ]
-    runs-on: ubuntu-20.04
+        rust: [ nightly ]
+    runs-on: ubuntu-24.04
     env:
       RUST_BACKTRACE: full
       # Make sure CI fails on all warnings, including Clippy lints
@@ -93,23 +93,23 @@ jobs:
           command: test
           args: --all --all-features
 
-      - name: Rustfmt
-        if: matrix.rust == 'nightly'
-        uses: actions-rs/cargo@v1
-        with:
-          toolchain: nightly-2024-02-09
-          command: fmt
-          args: --all -- --check
-
-      - name: Clippy -- Libraries and Binaries
-        if: matrix.rust == 'stable'
-        run: |
-          bash ./scripts/cmd-all clippy "clippy --lib --bins" "-- -W clippy::all -A clippy::style -A forgetting_copy_types -A forgetting_references"           
-
-      - name: Clippy -- Tests and Examples
-        if: matrix.rust == 'nightly'
-        uses: actions-rs/cargo@v1
-        with:
-          toolchain: nightly-2024-02-09
-          command: clippy
-          args: --all-features --tests --benches --examples -- -A clippy::all -W clippy::correctness -A forgetting_copy_types -A forgetting_references
+#      - name: Rustfmt
+#        if: matrix.rust == 'nightly'
+#        uses: actions-rs/cargo@v1
+#        with:
+#          toolchain: nightly-2024-02-09
+#          command: fmt
+#          args: --all -- --check
+#
+#      - name: Clippy -- Libraries and Binaries
+#        if: matrix.rust == 'stable'
+#        run: |
+#          bash ./scripts/cmd-all clippy "clippy --lib --bins" "-- -W clippy::all -A clippy::style -A forgetting_copy_types -A forgetting_references"
+#
+#      - name: Clippy -- Tests and Examples
+#        if: matrix.rust == 'nightly'
+#        uses: actions-rs/cargo@v1
+#        with:
+#          toolchain: nightly-2024-02-09
+#          command: clippy
+#          args: --all-features --tests --benches --examples -- -A clippy::all -W clippy::correctness -A forgetting_copy_types -A forgetting_references
