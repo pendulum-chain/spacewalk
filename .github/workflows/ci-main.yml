@@ -10,7 +10,7 @@ jobs:
       max-parallel: 1
       matrix:
         rust: [ nightly ]
-    runs-on: linux
+    runs-on: ubuntu-latest
     env:
       RUST_BACKTRACE: full
       # Make sure CI fails on all warnings, including Clippy lints
