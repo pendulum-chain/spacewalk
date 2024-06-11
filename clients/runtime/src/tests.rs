@@ -88,6 +88,10 @@ async fn test_too_low_priority_matching() {
 
 #[tokio::test(flavor = "multi_thread")]
 async fn test_subxt_processing_events_after_dispatch_error() {
+	env_logger::init_from_env(
+        env_logger::Env::default()
+            .filter_or(env_logger::DEFAULT_FILTER_ENV, log::LevelFilter::Info.as_str()),
+    );
 	let is_public_network = false;
 	let (client, _tmp_dir) =
 		default_provider_client(AccountKeyring::Alice, is_public_network).await;
@@ -95,9 +99,22 @@ async fn test_subxt_processing_events_after_dispatch_error() {
 	let oracle_provider = setup_provider(client.clone(), AccountKeyring::Bob).await;
 	let invalid_oracle = setup_provider(client, AccountKeyring::Dave).await;
 
-	oracle_provider.manual_finalize().await;
-	invalid_oracle.manual_finalize().await;
-	tokio::time::sleep(tokio::time::Duration::from_secs(10)).await;
+	// let oracle_provider = Arc::new(oracle_provider);
+    // let oracle_provider_seal_rpc = Arc::clone(&oracle_provider);
+
+	// let invalid_oracle = Arc::new(invalid_oracle);
+    // let invalid_oracle_seal_rpc = Arc::clone(&invalid_oracle);
+
+	// //This process will also stop once the test is finalized
+    // tokio::spawn(async move {
+    //     loop {
+    //         println!("Manually finalizing block");
+	// 		invalid_oracle_seal_rpc.manual_seal().await;
+	// 		oracle_provider_seal_rpc.manual_seal().await;
+	// 		tokio::time::sleep(tokio::time::Duration::from_secs(3)).await;
+    //     }
+    // });
+	tokio::time::sleep(tokio::time::Duration::from_secs(5)).await;
 
 	let key = primitives::oracle::Key::ExchangeRate(DEFAULT_TESTING_CURRENCY);
 	let converted_key = DiaOracleKeyConvertor::<MockValue>::convert(key.clone()).unwrap();
@@ -124,21 +141,23 @@ async fn test_register_vault() {
         default_provider_client(AccountKeyring::Alice, is_public_network).await;
     let parachain_rpc = setup_provider(client.clone(), AccountKeyring::Alice).await;
  
-    //let parachain_rpc = Arc::new(parachain_rpc);
-    //let seal_rpc = Arc::clone(&parachain_rpc);
+    // let parachain_rpc = Arc::new(parachain_rpc);
+    // let seal_rpc = Arc::clone(&parachain_rpc);
 
 
-	// This process will also stop once the test is finalized
+	//This process will also stop once the test is finalized
     // tokio::spawn(async move {
     //     loop {
-    //         println!("Manually finalizing block");
-	// 		seal_rpc.manual_finalize().await;
+           
 	// 		tokio::time::sleep(tokio::time::Duration::from_secs(6)).await;
+	// 		println!("Manually finalizing block");
+	// 		seal_rpc.manual_finalize().await;
+			
     //     }
     // });
 
-	parachain_rpc.manual_finalize().await;
-	tokio::time::sleep(tokio::time::Duration::from_secs(10)).await;
+	// It is completely random depending on the waiting time. 
+	tokio::time::sleep(tokio::time::Duration::from_secs(9)).await;
     set_exchange_rate(client.clone()).await;
 
     let vault_id = VaultId::new(
@@ -146,11 +165,13 @@ async fn test_register_vault() {
         DEFAULT_TESTING_CURRENCY,
         DEFAULT_WRAPPED_CURRENCY,
     );
-
+	tokio::time::sleep(tokio::time::Duration::from_secs(4)).await;
     println!("Register pk");
     parachain_rpc.register_public_key(dummy_public_key()).await.unwrap();
+	tokio::time::sleep(tokio::time::Duration::from_secs(4)).await;
     println!("Register vault");
     parachain_rpc.register_vault(&vault_id, 3 * 10u128.pow(12)).await.unwrap();
+	tokio::time::sleep(tokio::time::Duration::from_secs(4)).await;
     println!("Getting vault");
     parachain_rpc.get_vault(&vault_id).await.unwrap();
     assert_eq!(parachain_rpc.get_public_key().await.unwrap(), Some(dummy_public_key()));

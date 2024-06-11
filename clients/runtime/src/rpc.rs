@@ -167,6 +167,7 @@ impl SpacewalkParachain {
 			pub aux: ImportedAux,
 		}
 
+		let _head = self.get_finalized_block_hash().await.unwrap();
 
 		let _: CreatedBlock<Hash> = self
 			.rpc
