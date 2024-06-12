@@ -67,7 +67,7 @@ frame-system = { git = "https://github.com/paritytech/polkadot-sdk", branch = "r
 
 pallet-transaction-payment = { default-features = false, git = "https://github.com/paritytech/polkadot-sdk.git", branch = "release-polkadot-v1.5.0" }
 
-substrate-stellar-sdk = { git = "https://github.com/pendulum-chain/substrate-stellar-sdk" }
+substrate-stellar-sdk = { git = "https://github.com/pendulum-chain/substrate-stellar-sdk", branch = "polkadot-v1.1.0" }
 
 # RPC dependencies
 jsonrpc-core = "18.0.0"

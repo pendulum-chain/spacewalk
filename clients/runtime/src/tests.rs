@@ -116,8 +116,6 @@ async fn test_register_vault() {
         default_provider_client(AccountKeyring::Alice, is_public_network).await;
     let parachain_rpc = setup_provider(client.clone(), AccountKeyring::Alice).await;
  
-	// It is completely random depending on the waiting time. 
-	tokio::time::sleep(tokio::time::Duration::from_secs(9)).await;
     set_exchange_rate(client.clone()).await;
 
     let vault_id = VaultId::new(
@@ -125,11 +123,8 @@ async fn test_register_vault() {
         DEFAULT_TESTING_CURRENCY,
         DEFAULT_WRAPPED_CURRENCY,
     );
-	tokio::time::sleep(tokio::time::Duration::from_secs(4)).await;
     parachain_rpc.register_public_key(dummy_public_key()).await.unwrap();
-	tokio::time::sleep(tokio::time::Duration::from_secs(4)).await;
     parachain_rpc.register_vault(&vault_id, 3 * 10u128.pow(12)).await.unwrap();
-	tokio::time::sleep(tokio::time::Duration::from_secs(4)).await;
     parachain_rpc.get_vault(&vault_id).await.unwrap();
     assert_eq!(parachain_rpc.get_public_key().await.unwrap(), Some(dummy_public_key()));
 }

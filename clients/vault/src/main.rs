@@ -133,10 +133,10 @@ async fn start() -> Result<(), ServiceError<Error>> {
 
 	// First get the raw [u8] from the signer's account id and 
 	// convert it to an sp_core type AccountId
-	let spAccountId = AccountId::new(signer.read().await.account_id().0);
+	let sp_account_id = AccountId::new(signer.read().await.account_id().0);
 	let _pidfile = PidFile::create(
 		&String::from(DEFAULT_SPEC_NAME),
-		&spAccountId,
+		&sp_account_id,
 		&mut sys,
 	)?;
 

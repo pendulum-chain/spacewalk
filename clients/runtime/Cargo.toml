@@ -63,7 +63,7 @@ testchain-runtime = { package = "spacewalk-runtime-standalone-testnet", path = "
 mainnet-runtime = { package = "spacewalk-runtime-standalone-mainnet", path = "../../testchain/runtime/mainnet", optional = true }
 
 # Substrate Stellar Dependencies
-substrate-stellar-sdk = { git = "https://github.com/pendulum-chain/substrate-stellar-sdk" }
+substrate-stellar-sdk = { git = "https://github.com/pendulum-chain/substrate-stellar-sdk", branch = "polkadot-v1.1.0" }
 wallet = { path = "../wallet" }
 
 
