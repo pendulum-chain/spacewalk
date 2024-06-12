@@ -8135,7 +8135,7 @@ dependencies = [
  "spacewalk-runtime-standalone-mainnet",
  "spacewalk-runtime-standalone-testnet",
  "spacewalk-standalone",
- "substrate-stellar-sdk",
+ "substrate-stellar-sdk 0.3.0 (git+https://github.com/pendulum-chain/substrate-stellar-sdk)",
  "subxt",
  "subxt-client",
  "tempdir",
@@ -11190,7 +11190,7 @@ dependencies = [
  "sp-core 21.0.0",
  "sp-runtime 24.0.0",
  "sp-std 8.0.0",
- "substrate-stellar-sdk",
+ "substrate-stellar-sdk 0.3.0 (git+https://github.com/pendulum-chain/substrate-stellar-sdk)",
 ]
 
 [[package]]
@@ -11394,7 +11394,7 @@ dependencies = [
  "spacewalk-runtime-standalone-testnet",
  "substrate-build-script-utils",
  "substrate-frame-rpc-system",
- "substrate-stellar-sdk",
+ "substrate-stellar-sdk 0.3.0 (git+https://github.com/pendulum-chain/substrate-stellar-sdk)",
 ]
 
 [[package]]
@@ -11557,7 +11557,7 @@ dependencies = [
  "serde_with",
  "serial_test",
  "sha2 0.10.8",
- "substrate-stellar-sdk",
+ "substrate-stellar-sdk 0.3.0 (git+https://github.com/pendulum-chain/substrate-stellar-sdk?branch=polkadot-v1.1.0)",
  "tokio",
  "tracing",
  "tweetnacl",
@@ -11664,6 +11664,25 @@ dependencies = [
  "prometheus 0.13.4",
  "thiserror",
  "tokio",
+]
+
+[[package]]
+name = "substrate-stellar-sdk"
+version = "0.3.0"
+source = "git+https://github.com/pendulum-chain/substrate-stellar-sdk?branch=polkadot-v1.1.0#22bd78d713d4992ca7f52975995fe12bae9e220f"
+dependencies = [
+ "base64 0.13.1",
+ "hex",
+ "lazy_static",
+ "num-rational",
+ "scale-info",
+ "serde",
+ "serde_json",
+ "sha2 0.10.8",
+ "sodalite",
+ "sp-io 23.0.0",
+ "sp-runtime 24.0.0",
+ "sp-std 8.0.0",
 ]
 
 [[package]]

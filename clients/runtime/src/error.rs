@@ -104,8 +104,12 @@ impl Error {
 	pub fn is_module_err(&self, pallet_name: &str, error_name: &str) -> bool {
 		matches!(
 			self,
-			Error::SubxtRuntimeError(SubxtError::Runtime(DispatchError::Module(module_error
-			))) if module_error.details().unwrap().pallet.name() == pallet_name && &module_error.details().unwrap().variant.name == error_name,
+			Error::SubxtRuntimeError(SubxtError::Runtime(DispatchError::Module(module_error))) if {
+				match module_error.details() {
+					Ok(details) => details.pallet.name() == pallet_name && &details.variant.name == error_name,
+					Err(_) => false
+				}
+			},
 		)
 	}
 

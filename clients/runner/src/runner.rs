@@ -309,7 +309,7 @@ impl Runner {
 			.storage()
 			.at_latest()
 			.await?
-			.fetch_raw(&*lookup_bytes)
+			.fetch_raw(lookup_bytes.clone())
 			.await?
 			.map(Bytes::from);
 

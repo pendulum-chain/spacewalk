@@ -130,9 +130,13 @@ async fn start() -> Result<(), ServiceError<Error>> {
 
 	// Create a PID file to signal to other processes that a vault is running.
 	// This file is auto-removed when `drop`ped.
+
+	// First get the raw [u8] from the signer's account id and 
+	// convert it to an sp_core type AccountId
+	let spAccountId = AccountId::new(signer.read().await.account_id().0);
 	let _pidfile = PidFile::create(
 		&String::from(DEFAULT_SPEC_NAME),
-		&AccountId::new(signer.read().await.account_id().0),
+		&spAccountId,
 		&mut sys,
 	)?;
 
