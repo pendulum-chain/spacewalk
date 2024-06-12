@@ -46,7 +46,6 @@ jobs:
           curl -L "$LINK/$SCCACHE_VERSION/$SCCACHE_FILE.tar.gz" | tar xz
           mv -f $SCCACHE_FILE/sccache $HOME/.local/bin/sccache
           echo "$HOME/.local/bin" >> $GITHUB_PATH
-          sudo apt-get install pkg-config libssl-dev
           
       - name: Install sccache (macos-latest)
         if: matrix.os == 'macos-latest'
@@ -106,18 +105,18 @@ jobs:
       #     bash ./scripts/cmd-all build check
 
       - name: Test
-        if: matrix.rust == 'nightly'
+        if: (matrix.rust == 'nightly' && matrix.os == 'ubuntu-latest')
         uses: actions-rs/cargo@v1
         env:
           RUST_LOG: info
-          # SOURCE_STELLAR_SECRET_MAINNET: ${{ secrets.SOURCE_STELLAR_SECRET_MAINNET }}
-          # SOURCE_STELLAR_SECRET_TESTNET: ${{ secrets.SOURCE_STELLAR_SECRET_TESTNET }}
-          # DEST_STELLAR_SECRET_MAINNET: ${{ secrets.DEST_STELLAR_SECRET_MAINNET }}
-          # DEST_STELLAR_SECRET_TESTNET: ${{ secrets.DEST_STELLAR_SECRET_TESTNET }}
+          SOURCE_STELLAR_SECRET_MAINNET: ${{ secrets.SOURCE_STELLAR_SECRET_MAINNET }}
+          SOURCE_STELLAR_SECRET_TESTNET: ${{ secrets.SOURCE_STELLAR_SECRET_TESTNET }}
+          DEST_STELLAR_SECRET_MAINNET: ${{ secrets.DEST_STELLAR_SECRET_MAINNET }}
+          DEST_STELLAR_SECRET_TESTNET: ${{ secrets.DEST_STELLAR_SECRET_TESTNET }}
         with:
           toolchain: nightly-2024-02-09
           command: test 
-          args: test_register_vault --all --all-features -- --nocapture
+          args: --test '*' --package vault --features integration-test -- --nocapture
 
       # - name: Rustfmt
       #   if: matrix.rust == 'nightly'
