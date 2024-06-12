@@ -96,11 +96,6 @@ pub async fn default_provider_client(
 	let mut service_config = config.into_service_config();
 	service_config.offchain_worker.enabled = true;
 
-	println!("🚀 Starting node with configuration:");
-	println!("📋 Chain specification: {}", service_config.chain_spec.name());
-	println!("Port {:?}", service_config.rpc_port);
-	println!("Address {:?}", service_config.rpc_addr);
-
 
 	let (task_manager, rpc_handlers) = if is_public_network {
 		testchain::service::start_instant_mainnet(service_config)
@@ -113,8 +108,6 @@ pub async fn default_provider_client(
 	};
 
 	let client = SubxtClient::new(task_manager, rpc_handlers);
-
-	println!("Subxt client started");
 
 	(client, tmp)
 }

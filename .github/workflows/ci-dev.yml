@@ -1,7 +1,8 @@
 on:
   pull_request:
     branches:
-      - '!main' 
+      - '**' # every branch
+      - '!main' # excluding main
 
 name: continuous-integration-dev
 
@@ -36,8 +37,6 @@ jobs:
           sudo rm -rf "$AGENT_TOOLSDIRECTORY"
       - uses: actions/checkout@v2
 
-  
-
       - name: Install sccache (ubuntu-latest)
         if: matrix.os == 'ubuntu-latest'
         env:
@@ -49,7 +48,6 @@ jobs:
           curl -L "$LINK/$SCCACHE_VERSION/$SCCACHE_FILE.tar.gz" | tar xz
           mv -f $SCCACHE_FILE/sccache $HOME/.local/bin/sccache
           echo "$HOME/.local/bin" >> $GITHUB_PATH
-
       - name: Install sccache (macos-latest)
         if: matrix.os == 'macos-latest'
         run: |
@@ -102,24 +100,23 @@ jobs:
         with:
           repo-token: ${{ secrets.GITHUB_TOKEN }}
 
-      # - name: Check Build
-      #   if: matrix.rust == 'stable'
-      #   run: |
-      #     bash ./scripts/cmd-all build check
+      - name: Check Build
+        if: matrix.rust == 'stable'
+        run: |
+          bash ./scripts/cmd-all build check
 
       - name: Test
         if: matrix.rust == 'nightly'
         uses: actions-rs/cargo@v1
         env:
-          RUST_LOG: info
           SOURCE_STELLAR_SECRET_MAINNET: ${{ secrets.SOURCE_STELLAR_SECRET_MAINNET }}
           SOURCE_STELLAR_SECRET_TESTNET: ${{ secrets.SOURCE_STELLAR_SECRET_TESTNET }}
           DEST_STELLAR_SECRET_MAINNET: ${{ secrets.DEST_STELLAR_SECRET_MAINNET }}
           DEST_STELLAR_SECRET_TESTNET: ${{ secrets.DEST_STELLAR_SECRET_TESTNET }}
         with:
           toolchain: nightly-2024-02-09
-          command: test 
-          args: test_register_vault --all --all-features -- --nocapture
+          command: test
+          args: --all --all-features
 
       - name: Rustfmt
         if: matrix.rust == 'nightly'

@@ -157,7 +157,7 @@ runtimes. You will need to configure your Rust compiler to use
 compile Substrate runtime code to the Wasm target.
 
 > There are upstream issues in Rust that need to be resolved before all of Substrate can use the stable Rust toolchain.
-> [This is our tracking issue](https://github.com/paritytech/polkadot-sdk/issues/1252) if you're curious as to why and how this will be resolved.
+> [This is our tracking issue](https://github.com/paritytech/substrate/issues/1252) if you're curious as to why and how this will be resolved.
 
 #### Latest nightly for Substrate `master`
 

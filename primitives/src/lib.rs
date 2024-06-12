@@ -140,7 +140,7 @@ pub mod issue {
 	}
 
 	// Due to a known bug in serde we need to specify how u128 is (de)serialized.
-	// See https://github.com/paritytech/polkadot-sdk/issues/4641
+	// See https://github.com/paritytech/substrate/issues/4641
 	#[derive(Encode, Decode, Clone, PartialEq, Eq, TypeInfo, MaxEncodedLen)]
 	#[cfg_attr(feature = "std", derive(Debug, Serialize, Deserialize))]
 	pub struct IssueRequest<AccountId, BlockNumber, Balance, CurrencyId: Copy> {
@@ -199,7 +199,7 @@ pub mod redeem {
 	}
 
 	// Due to a known bug in serde we need to specify how u128 is (de)serialized.
-	// See https://github.com/paritytech/polkadot-sdk/issues/4641
+	// See https://github.com/paritytech/substrate/issues/4641
 	#[derive(Encode, Decode, Clone, PartialEq, Eq, TypeInfo, MaxEncodedLen)]
 	#[cfg_attr(feature = "std", derive(Debug, Serialize, Deserialize))]
 	pub struct RedeemRequest<AccountId, BlockNumber, Balance, CurrencyId: Copy> {
@@ -260,7 +260,7 @@ pub mod replace {
 	}
 
 	// Due to a known bug in serde we need to specify how u128 is (de)serialized.
-	// See https://github.com/paritytech/polkadot-sdk/issues/4641
+	// See https://github.com/paritytech/substrate/issues/4641
 	#[derive(Encode, Decode, Clone, PartialEq, TypeInfo, MaxEncodedLen)]
 	#[cfg_attr(feature = "std", derive(Debug, Serialize, Deserialize, Eq))]
 	pub struct ReplaceRequest<AccountId, BlockNumber, Balance, CurrencyId: Copy> {
