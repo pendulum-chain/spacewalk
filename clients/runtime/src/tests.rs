@@ -65,7 +65,7 @@ async fn test_getters() {
 }
 
 // These tests don't work for now because the submission does not return a proper error
-#[ignore]
+
 #[tokio::test(flavor = "multi_thread")]
 async fn test_invalid_tx_matching() {
 	let is_public_network = false;
@@ -73,7 +73,7 @@ async fn test_invalid_tx_matching() {
 		default_provider_client(AccountKeyring::Alice, is_public_network).await;
 	let parachain_rpc = setup_provider(client.clone(), AccountKeyring::Alice).await;
 	let err = parachain_rpc
-		.get_invalid_tx_error(AccountId(AccountKeyring::Bob.to_account_id().clone().into()))
+		.get_invalid_tx_error(AccountId(AccountKeyring::Bob.into()))
 		.await;
 	assert!(err.is_invalid_transaction().is_some())
 }
@@ -86,7 +86,7 @@ async fn test_too_low_priority_matching() {
 		default_provider_client(AccountKeyring::Alice, is_public_network).await;
 	let parachain_rpc = setup_provider(client.clone(), AccountKeyring::Alice).await;
 	let err = parachain_rpc
-		.get_too_low_priority_error(AccountId(AccountKeyring::Bob.to_account_id().clone().into()))
+		.get_too_low_priority_error(AccountId(AccountKeyring::Bob.to_account_id().into()))
 		.await;
 	assert!(err.is_pool_too_low_priority())
 }
@@ -127,7 +127,7 @@ async fn test_register_vault() {
 	set_exchange_rate_and_wait(&oracle_rpc, DEFAULT_WRAPPED_CURRENCY, exchange_rate).await;
 
 	let vault_id = VaultId::new(
-		AccountId(AccountKeyring::Alice.to_account_id().clone().into()),
+		AccountId(AccountKeyring::Alice.to_account_id().into()),
 		DEFAULT_TESTING_CURRENCY,
 		DEFAULT_WRAPPED_CURRENCY,
 	);

@@ -16,7 +16,7 @@ async fn ws_transport(url: &str) -> Result<(Sender, Receiver), Error> {
 	let url: Url = url.parse::<Url>().unwrap();
 
 	WsTransportClientBuilder::default()
-		.build(url.into())
+		.build(url)
 		.await
 		.map_err(|e| Error::JsonRpseeError(JsonRpseeError::Transport(e.into())))
 }

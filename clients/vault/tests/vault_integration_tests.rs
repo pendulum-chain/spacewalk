@@ -936,7 +936,7 @@ async fn test_automatic_issue_execution_succeeds_for_other_vault() {
 			let user_provider = setup_provider(client.clone(), AccountKeyring::Dave).await;
 			let vault2_provider = setup_provider(client.clone(), AccountKeyring::Eve).await;
 			let vault2_id = VaultId::new(
-				AccountId(AccountKeyring::Eve.to_account_id().clone().into()),
+				AccountId(AccountKeyring::Eve.to_account_id().into()),
 				DEFAULT_TESTING_CURRENCY,
 				default_wrapped_currency(is_public_network),
 			);
@@ -1251,7 +1251,7 @@ async fn test_shutdown() {
 		let user_provider = setup_provider(client.clone(), AccountKeyring::Dave).await;
 
 		let sudo_vault_id = VaultId::new(
-			AccountId(AccountKeyring::Alice.to_account_id().clone().into()),
+			AccountId(AccountKeyring::Alice.to_account_id().into()),
 			DEFAULT_TESTING_CURRENCY,
 			default_wrapped_currency(is_public_network),
 		);

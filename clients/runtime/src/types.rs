@@ -197,7 +197,7 @@ mod vault_id {
 			wrapped_currency: CurrencyId,
 		) -> Self {
 			Self {
-				account_id: account_id,
+				account_id,
 				currencies: VaultCurrencyPair {
 					collateral: Static(collateral_currency),
 					wrapped: Static(wrapped_currency),

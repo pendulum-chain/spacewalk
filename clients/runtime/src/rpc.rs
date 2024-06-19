@@ -62,9 +62,6 @@ cfg_if::cfg_if! {
 // timeout before retrying parachain calls (5 minutes)
 const TRANSACTION_TIMEOUT: Duration = Duration::from_secs(900); // 5 minutes
 
-// number of storage entries to fetch at a time
-//const DEFAULT_PAGE_SIZE: u32 = 10;
-
 pub(crate) type FeeRateUpdateSender = tokio::sync::broadcast::Sender<FixedU128>;
 pub type FeeRateUpdateReceiver = tokio::sync::broadcast::Receiver<FixedU128>;
 
