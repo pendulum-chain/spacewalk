@@ -6,7 +6,7 @@ use tokio::sync::{
 		Sender,
 	},
 };
-use tracing::{error, info};
+use tracing::{debug, error, info};
 
 use crate::{
 	connection::{poll_messages_from_stellar, ConnectionInfo, Connector},
@@ -59,6 +59,7 @@ impl StellarOverlayConnection {
 	pub fn listen(&mut self) -> Result<Option<StellarMessage>, Error> {
 		loop {
 			if !self.is_alive() {
+				info!("listen(): sender half of overlay has closed.");
 				return Err(Error::Disconnected)
 			}
 
@@ -96,6 +97,7 @@ impl StellarOverlayConnection {
 
 impl Drop for StellarOverlayConnection {
 	fn drop(&mut self) {
+		debug!("drop(): shutting down StellarOverlayConnection");
 		self.stop();
 	}
 }

@@ -123,6 +123,7 @@ pub async fn start_oracle_agent(
 			}
 		}
 
+		tracing::info!("start_oracle_agent(): shutting down overlay connection");
 		// shutdown the overlay connection
 		overlay_conn.stop();
 	});
