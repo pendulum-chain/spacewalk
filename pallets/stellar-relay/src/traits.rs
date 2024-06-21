@@ -1,7 +1,7 @@
 use codec::{Decode, Encode, MaxEncodedLen};
 use frame_support::{traits::Get, BoundedVec, pallet_prelude::RuntimeDebug};
 use scale_info::TypeInfo;
-use sp_runtime::serde::{Deserialize, Serialize};
+use serde::{Deserialize, Serialize};
 
 pub struct FieldLength;
 

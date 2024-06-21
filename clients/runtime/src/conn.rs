@@ -24,7 +24,6 @@ async fn ws_transport(url: &str) -> Result<(Sender, Receiver), Error> {
 pub(crate) async fn new_websocket_client(
 	url: &str,
 	max_concurrent_requests: Option<usize>,
-	_max_notifs_per_subscription: Option<usize>,
 ) -> Result<Client, Error> {
 	let (sender, receiver) = ws_transport(url).await?;
 	let ws_client = ClientBuilder::default()
@@ -38,13 +37,12 @@ pub(crate) async fn new_websocket_client(
 pub(crate) async fn new_websocket_client_with_retry(
 	url: &str,
 	max_concurrent_requests: Option<usize>,
-	max_notifs_per_subscription: Option<usize>,
 	connection_timeout: Duration,
 ) -> Result<Client, Error> {
 	log::info!("Connecting to the spacewalk-parachain...");
 	timeout(connection_timeout, async move {
 		loop {
-			match new_websocket_client(url, max_concurrent_requests, max_notifs_per_subscription)
+			match new_websocket_client(url, max_concurrent_requests)
 				.await
 			{
 				Err(err) if err.is_ws_invalid_url_error() => return Err(err),

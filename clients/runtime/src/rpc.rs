@@ -60,7 +60,7 @@ cfg_if::cfg_if! {
 }
 
 // timeout before retrying parachain calls (5 minutes)
-const TRANSACTION_TIMEOUT: Duration = Duration::from_secs(900); // 5 minutes
+const TRANSACTION_TIMEOUT: Duration = Duration::from_secs(300); // 5 minutes
 
 pub(crate) type FeeRateUpdateSender = tokio::sync::broadcast::Sender<FixedU128>;
 pub type FeeRateUpdateReceiver = tokio::sync::broadcast::Receiver<FixedU128>;
@@ -192,7 +192,7 @@ impl SpacewalkParachain {
 		signer: Arc<RwLock<SpacewalkSigner>>,
 		shutdown_tx: ShutdownSender,
 	) -> Result<Self, Error> {
-		let ws_client = new_websocket_client(url, None, None).await?;
+		let ws_client = new_websocket_client(url, None).await?;
 		Self::new(ws_client, signer, shutdown_tx).await
 	}
 
@@ -206,7 +206,6 @@ impl SpacewalkParachain {
 			url,
 			signer,
 			None,
-			None,
 			connection_timeout,
 			shutdown_tx,
 		)
@@ -217,14 +216,12 @@ impl SpacewalkParachain {
 		url: &str,
 		signer: Arc<RwLock<SpacewalkSigner>>,
 		max_concurrent_requests: Option<usize>,
-		max_notifs_per_subscription: Option<usize>,
 		connection_timeout: Duration,
 		shutdown_tx: ShutdownSender,
 	) -> Result<Self, Error> {
 		let ws_client = new_websocket_client_with_retry(
 			url,
 			max_concurrent_requests,
-			max_notifs_per_subscription,
 			connection_timeout,
 		)
 		.await?;
