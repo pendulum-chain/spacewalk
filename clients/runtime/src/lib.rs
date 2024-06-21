@@ -77,7 +77,7 @@ compile_error!("You need to select at least one of the metadata features");
 	)
 )]
 #[cfg_attr(
-	all(feature = "parachain-metadata-pendulum", not(feature = "all_features")),
+	all(feature = "parachain-metadata-pendulum", not(feature = "all-features")),
 	subxt(
 		runtime_metadata_path = "metadata-parachain-pendulum.scale",
 		derive_for_all_types = "Clone, PartialEq, Eq",
@@ -87,7 +87,7 @@ compile_error!("You need to select at least one of the metadata features");
 	)
 )]
 #[cfg_attr(
-	all(feature = "parachain-metadata-amplitude", not(feature = "all_features")),
+	all(feature = "parachain-metadata-amplitude", not(feature = "all-features")),
 	subxt(
 		runtime_metadata_path = "metadata-parachain-amplitude.scale",
 		derive_for_all_types = "Clone, PartialEq, Eq",
@@ -97,7 +97,7 @@ compile_error!("You need to select at least one of the metadata features");
 	)
 )]
 #[cfg_attr(
-	all(feature = "parachain-metadata-foucoco", not(feature = "all_features")),
+	all(feature = "parachain-metadata-foucoco", not(feature = "all-features")),
 	subxt(
 		runtime_metadata_path = "metadata-parachain-foucoco.scale",
 		derive_for_all_types = "Clone, PartialEq, Eq",

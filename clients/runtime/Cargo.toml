@@ -10,7 +10,7 @@ standalone-metadata = []
 parachain-metadata-pendulum = []
 parachain-metadata-amplitude = []
 parachain-metadata-foucoco = []
-all_features = []
+all-features = []
 
 testing-utils = [
     "tempdir",

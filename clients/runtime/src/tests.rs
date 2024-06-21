@@ -1,4 +1,7 @@
 #![cfg(test)]
+// TODO to be removed when tests are fixed
+#![allow(dead_code)]
+#![allow(unused_imports)]
 
 use sp_keyring::AccountKeyring;
 
