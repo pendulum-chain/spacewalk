@@ -59,7 +59,7 @@ impl StellarOverlayConnection {
 	pub fn listen(&mut self) -> Result<Option<StellarMessage>, Error> {
 		loop {
 			if !self.is_alive() {
-				info!("listen(): sender half of overlay has closed.");
+				debug!("listen(): sender half of overlay has closed.");
 				return Err(Error::Disconnected)
 			}
 
