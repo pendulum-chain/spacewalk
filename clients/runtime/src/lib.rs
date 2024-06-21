@@ -64,10 +64,8 @@ pub const STABLE_PARACHAIN_CONFIRMATIONS: &str = "StableParachainConfirmations";
 )))]
 compile_error!("You need to select at least one of the metadata features");
 
-// All of the parachain features use the same metadata (from Foucoco) for now.
-// We can change this once the spacewalk pallets were added to the runtimes of the other chains as
-// well.
-
+// If all features are selected, then we need to select only one metadata feature. 
+// Since this is done for testing, we can select the standalone metadata.
 #[cfg_attr(
 	feature = "standalone-metadata",
 	subxt(
@@ -78,27 +76,36 @@ compile_error!("You need to select at least one of the metadata features");
 		substitute_type(path = "sp_arithmetic::fixed_point::FixedU128", with = "::subxt::utils::Static<crate::FixedU128>"),
 	)
 )]
-// #[cfg_attr(
-// 	feature = "parachain-metadata-pendulum",
-// 	subxt(
-// 		runtime_metadata_path = "metadata-parachain-pendulum.scale",
-// 		derive_for_all_types = "Clone, PartialEq, Eq",
-// 	)
-// )]
-// #[cfg_attr(
-// 	feature = "parachain-metadata-amplitude",
-// 	subxt(
-// 		runtime_metadata_path = "metadata-parachain-amplitude.scale",
-// 		derive_for_all_types = "Clone, PartialEq, Eq",
-// 	)
-// )]
-// #[cfg_attr(
-// 	feature = "parachain-metadata-foucoco",
-// 	subxt(
-// 		runtime_metadata_path = "metadata-parachain-foucoco.scale",
-// 		derive_for_all_types = "Clone, PartialEq, Eq",
-// 	)
-// )]
+#[cfg_attr(
+	all(feature = "parachain-metadata-pendulum", not(feature = "all_features")),
+	subxt(
+		runtime_metadata_path = "metadata-parachain-pendulum.scale",
+		derive_for_all_types = "Clone, PartialEq, Eq",
+		substitute_type(path = "sp_core::crypto::AccountId32", with = "crate::AccountId"),
+		substitute_type(path = "spacewalk_primitives::CurrencyId", with = "::subxt::utils::Static<crate::CurrencyId>"),
+		substitute_type(path = "sp_arithmetic::fixed_point::FixedU128", with = "::subxt::utils::Static<crate::FixedU128>"),
+	)
+)]
+#[cfg_attr(
+	all(feature = "parachain-metadata-amplitude", not(feature = "all_features")),
+	subxt(
+		runtime_metadata_path = "metadata-parachain-amplitude.scale",
+		derive_for_all_types = "Clone, PartialEq, Eq",
+		substitute_type(path = "sp_core::crypto::AccountId32", with = "crate::AccountId"),
+		substitute_type(path = "spacewalk_primitives::CurrencyId", with = "::subxt::utils::Static<crate::CurrencyId>"),
+		substitute_type(path = "sp_arithmetic::fixed_point::FixedU128", with = "::subxt::utils::Static<crate::FixedU128>"),
+	)
+)]
+#[cfg_attr(
+	all(feature = "parachain-metadata-foucoco", not(feature = "all_features")),
+	subxt(
+		runtime_metadata_path = "metadata-parachain-foucoco.scale",
+		derive_for_all_types = "Clone, PartialEq, Eq",
+		substitute_type(path = "sp_core::crypto::AccountId32", with = "crate::AccountId"),
+		substitute_type(path = "spacewalk_primitives::CurrencyId", with = "::subxt::utils::Static<crate::CurrencyId>"),
+		substitute_type(path = "sp_arithmetic::fixed_point::FixedU128", with = "::subxt::utils::Static<crate::FixedU128>"),
+	)
+)]
 pub mod metadata {	
 }
 
