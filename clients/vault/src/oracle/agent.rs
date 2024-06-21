@@ -1,6 +1,5 @@
 use std::{sync::Arc, time::Duration};
 
-use service::on_shutdown;
 use tokio::{
 	sync::{mpsc, mpsc::error::TryRecvError, RwLock},
 	time::{sleep, timeout},
@@ -20,8 +19,12 @@ use wallet::Slot;
 pub struct OracleAgent {
 	collector: Arc<RwLock<ScpMessageCollector>>,
 	pub is_public_network: bool,
+	/// sends message directly to Stellar Node
 	message_sender: Option<StellarMessageSender>,
+	/// sends an entire Vault shutdown
 	shutdown_sender: ShutdownSender,
+	/// sends a 'stop' signal to `StellarOverlayConnection` poll
+	overlay_conn_end_signal: mpsc::Sender<()>
 }
 
 /// listens to data to collect the scp messages and txsets.
@@ -77,14 +80,11 @@ pub async fn start_oracle_agent(
 	let collector_clone = collector.clone();
 
 	let shutdown_sender_clone = shutdown_sender.clone();
-	// a clone used to forcefully call a shutdown, when StellarOverlay disconnects.
-	let shutdown_sender_clone2 = shutdown_sender.clone();
-
 	// disconnect signal sender tells the StellarOverlayConnection to close its TcpStream to Stellar
 	// Node
 	let (disconnect_signal_sender, mut disconnect_signal_receiver) = mpsc::channel::<()>(2);
 
-	service::spawn_cancelable(shutdown_sender_clone.subscribe(), async move {
+	tokio::spawn(async move {
 		let sender_clone = overlay_conn.sender();
 		loop {
 			match disconnect_signal_receiver.try_recv() {
@@ -113,7 +113,7 @@ pub async fn start_oracle_agent(
 				Err(e) => {
 					tracing::error!("start_oracle_agent(): encounter error in overlay: {e:?}");
 
-					if let Err(e) = shutdown_sender_clone2.send(()) {
+					if let Err(e) = shutdown_sender_clone.send(()) {
 						tracing::error!(
 							"start_oracle_agent(): Failed to send shutdown signal in thread: {e:?}"
 						);
@@ -128,20 +128,7 @@ pub async fn start_oracle_agent(
 		overlay_conn.stop();
 	});
 
-	tokio::spawn(on_shutdown(shutdown_sender.clone(), async move {
-		tracing::debug!("start_oracle_agent(): sending signal to shutdown overlay connection...");
-		if let Err(e) = disconnect_signal_sender.send(()).await {
-			tracing::warn!("start_oracle_agent(): failed to send disconnect signal: {e:?}");
-		}
-	}));
-
-	Ok(OracleAgent { collector, is_public_network, message_sender: Some(sender), shutdown_sender })
-}
-
-impl Drop for OracleAgent {
-	fn drop(&mut self) {
-		self.stop();
-	}
+	Ok(OracleAgent { collector, is_public_network, message_sender: Some(sender), shutdown_sender, overlay_conn_end_signal: disconnect_signal_sender })
 }
 
 impl OracleAgent {
@@ -195,10 +182,10 @@ impl OracleAgent {
 	}
 
 	/// Stops listening for new SCP messages.
-	pub fn stop(&self) {
-		tracing::debug!("stop(): Shutting down OracleAgent...");
-		if let Err(e) = self.shutdown_sender.send(()) {
-			tracing::error!("stop(): Failed to send shutdown signal in OracleAgent: {:?}", e);
+	pub async fn shutdown(&self) {
+		tracing::debug!("shutdown(): Shutting down OracleAgent...");
+		if let Err(e) = self.overlay_conn_end_signal.send(()).await {
+			tracing::error!("shutdown(): Failed to send overlay conn end signal in OracleAgent: {:?}", e);
 		}
 	}
 }

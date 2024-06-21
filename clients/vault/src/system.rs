@@ -953,7 +953,7 @@ impl VaultService {
 
 		if let Some(arc_agent) = opt_agent {
 			tracing::info!("try_shutdown_agent(): shutting down agent");
-			arc_agent.stop();
+			arc_agent.shutdown().await;
 		} else {
 			tracing::debug!("try_shutdown_agent(): no agent found");
 		}
