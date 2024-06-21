@@ -19,6 +19,7 @@ parachain-metadata-amplitude = ["runtime/parachain-metadata-amplitude"]
 parachain-metadata-foucoco = ["runtime/parachain-metadata-foucoco"]
 integration-test = ["integration", "standalone-metadata"]
 allow-debugger = ["console-subscriber"]
+all-features = ["runtime/all-features"]
 
 
 [dependencies]
