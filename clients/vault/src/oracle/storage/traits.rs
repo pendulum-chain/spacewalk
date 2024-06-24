@@ -163,8 +163,11 @@ pub trait ArchiveStorage {
 
 pub(crate) async fn download_file_and_save(url: &str, file_name: &str) -> Result<(), Error> {
 	let response = reqwest::get(url).await.map_err(|e| Error::ArchiveError(e.to_string()))?;
-	let content = response.bytes().await.map_err(|e| Error::ArchiveError(e.to_string()))?;
+	if response.status().is_server_error() | response.status().is_client_error() {
+		return Err(Error::ArchiveResponseError(format!("{response:?}")));
+	}
 
+	let content = response.bytes().await.map_err(|e| Error::ArchiveError(e.to_string()))?;
 	let mut file = File::create(&file_name).map_err(|e| Error::ArchiveError(e.to_string()))?;
 	file.write_all(content.as_bytes_ref())
 		.map_err(|e| Error::ArchiveError(e.to_string()))?;
