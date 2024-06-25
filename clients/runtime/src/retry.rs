@@ -36,10 +36,9 @@ where
 	loop {
 		let err = match verify(call().await).await {
 			Ok(ok) => return Ok(ok),
-			Err(RetryPolicy::Skip(err)) => err,
+			Err(RetryPolicy::Skip(err)) =>err,
 			Err(RetryPolicy::Throw(err)) => return Err(err),
 		};
-
 		match backoff.next_backoff() {
 			Some(wait) => {
 				// error occurred, sleep before retrying

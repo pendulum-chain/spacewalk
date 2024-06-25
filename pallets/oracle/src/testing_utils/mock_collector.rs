@@ -105,7 +105,7 @@ impl<AccountId, Moment: Into<u64>>
 	for MockDataFeeder<AccountId, Moment>
 {
 	fn feed_value(
-		_who: AccountId,
+		_who: Option<AccountId>,
 		key: Key,
 		value: TimestampedValue<UnsignedFixedPoint, Moment>,
 	) -> DispatchResult {

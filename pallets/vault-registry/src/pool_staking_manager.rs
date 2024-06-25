@@ -18,7 +18,7 @@ impl<T: Config> PoolManager<T> {
 		vault_id: &DefaultVaultId<T>,
 		nominator_id: &T::AccountId,
 		amount: &Amount<T>,
-		nonce: Option<T::Index>,
+		nonce: Option<T::Nonce>,
 	) -> Result<(), DispatchError> {
 		ext::reward_distribution::withdraw_all_rewards_from_vault::<T>(&vault_id)?;
 		ext::staking::withdraw_stake::<T>(vault_id, nominator_id, amount, nonce)?;

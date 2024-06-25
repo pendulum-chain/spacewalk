@@ -15,17 +15,17 @@ log = {version = "0.4.14", default-features = false}
 visibility = {version = "0.0.1", optional = true}
 
 # Substrate dependencies
-sp-arithmetic = {git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.42", default-features = false}
-sp-core = {git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.42", default-features = false}
-sp-io = {git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.42", default-features = false}
-sp-runtime = {git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.42", default-features = false}
-sp-std = {git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.42", default-features = false}
+sp-arithmetic = {git = "https://github.com/paritytech/polkadot-sdk", branch = "release-polkadot-v1.1.0", default-features = false}
+sp-core = {git = "https://github.com/paritytech/polkadot-sdk", branch = "release-polkadot-v1.1.0", default-features = false}
+sp-io = {git = "https://github.com/paritytech/polkadot-sdk", branch = "release-polkadot-v1.1.0", default-features = false}
+sp-runtime = {git = "https://github.com/paritytech/polkadot-sdk", branch = "release-polkadot-v1.1.0", default-features = false}
+sp-std = {git = "https://github.com/paritytech/polkadot-sdk", branch = "release-polkadot-v1.1.0", default-features = false}
 
-frame-benchmarking = {git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.42", default-features = false, optional = true}
-frame-support = {git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.42", default-features = false}
-frame-system = {git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.42", default-features = false}
-pallet-balances = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.42", default-features = false }
-pallet-timestamp = {git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.42", default-features = false}
+frame-benchmarking = {git = "https://github.com/paritytech/polkadot-sdk", branch = "release-polkadot-v1.1.0", default-features = false, optional = true}
+frame-support = {git = "https://github.com/paritytech/polkadot-sdk", branch = "release-polkadot-v1.1.0", default-features = false}
+frame-system = {git = "https://github.com/paritytech/polkadot-sdk", branch = "release-polkadot-v1.1.0", default-features = false}
+pallet-balances = { git = "https://github.com/paritytech/polkadot-sdk", branch = "release-polkadot-v1.1.0", default-features = false }
+pallet-timestamp = {git = "https://github.com/paritytech/polkadot-sdk", branch = "release-polkadot-v1.1.0", default-features = false}
 
 # Parachain dependencies
 currency = {path = "../currency", default-features = false}
@@ -40,14 +40,14 @@ reward-distribution = {path = "../reward-distribution", default-features = false
 pooled-rewards = { path = "../pooled-rewards", default-features = false }
 
 # Orml dependencies
-orml-currencies = { git = "https://github.com/open-web3-stack/open-runtime-module-library", branch = "polkadot-v0.9.42", default-features = false }
-orml-tokens = {git = "https://github.com/open-web3-stack/open-runtime-module-library", branch = "polkadot-v0.9.42", default-features = false}
-orml-traits = {git = "https://github.com/open-web3-stack/open-runtime-module-library", branch = "polkadot-v0.9.42", default-features = false}
+orml-currencies = { git = "https://github.com/open-web3-stack/open-runtime-module-library", branch = "polkadot-v1.1.0", default-features = false }
+orml-tokens = {git = "https://github.com/open-web3-stack/open-runtime-module-library", branch = "polkadot-v1.1.0", default-features = false}
+orml-traits = {git = "https://github.com/open-web3-stack/open-runtime-module-library", branch = "polkadot-v1.1.0", default-features = false}
 
 [dev-dependencies]
 currency = {path = "../currency", default-features = false, features = ["testing-utils", "testing-constants"]}
 security = { path = "../security", features = ['testing-utils'] }
-frame-benchmarking = {git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.42", default-features = false}
+frame-benchmarking = {git = "https://github.com/paritytech/polkadot-sdk", branch = "release-polkadot-v1.1.0", default-features = false}
 oracle = { path = "../oracle", features = ['testing-utils'] }
 mocktopus = "0.8.0"
 pretty_assertions = "0.7.2"

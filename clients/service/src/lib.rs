@@ -111,7 +111,6 @@ impl<Config: Clone + Send + 'static, F: Fn()> ConnectionManager<Config, F> {
 				&self.parachain_config.spacewalk_parachain_url,
 				signer,
 				self.parachain_config.max_concurrent_requests,
-				self.parachain_config.max_notifs_per_subscription,
 				self.parachain_config.spacewalk_parachain_connection_timeout_ms,
 				shutdown_tx.clone(),
 			)

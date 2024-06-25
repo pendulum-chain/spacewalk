@@ -2,7 +2,7 @@
 
 #![cfg_attr(not(feature = "std"), no_std)]
 use codec::{Codec, Decode, Encode};
-use frame_support::dispatch::DispatchError;
+use frame_support::sp_runtime::DispatchError;
 use primitives::UnsignedFixedPoint;
 use scale_info::TypeInfo;
 #[cfg(feature = "std")]

@@ -4,6 +4,7 @@ use frame_support::traits::Get;
 pub use primitives::replace::{ReplaceRequest, ReplaceRequestStatus};
 use primitives::VaultId;
 pub use vault_registry::types::CurrencyId;
+use frame_system::pallet_prelude::BlockNumberFor;
 
 pub(crate) type BalanceOf<T> = <T as vault_registry::Config>::Balance;
 
@@ -11,7 +12,7 @@ pub(crate) type DefaultVaultId<T> = VaultId<<T as frame_system::Config>::Account
 
 pub type DefaultReplaceRequest<T> = ReplaceRequest<
 	<T as frame_system::Config>::AccountId,
-	<T as frame_system::Config>::BlockNumber,
+	BlockNumberFor<T>,
 	BalanceOf<T>,
 	CurrencyId<T>,
 >;

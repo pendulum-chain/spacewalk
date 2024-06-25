@@ -3,13 +3,13 @@ use std::{array::TryFromSliceError, fmt::Debug, io::Error as IoError, num::TryFr
 use codec::Error as CodecError;
 pub use jsonrpsee::core::Error as JsonRpseeError;
 use jsonrpsee::{
-	client_transport::ws::{InvalidUri as UrlParseError, WsHandshakeError},
-	types::{error::CallError, ErrorObjectOwned},
+	client_transport::ws::WsHandshakeError,
+	types::ErrorObjectOwned,
 };
 use serde_json::Error as SerdeJsonError;
 pub use subxt::{error::RpcError, Error as SubxtError};
 use subxt::{
-	error::{DispatchError, ModuleError, TransactionError},
+	error::{DispatchError,  TransactionError},
 	ext::sp_core::crypto::SecretStringError,
 };
 use thiserror::Error;
@@ -81,7 +81,7 @@ pub enum Error {
 	#[error("Timeout: {0}")]
 	TimeElapsed(#[from] Elapsed),
 	#[error("UrlParseError: {0}")]
-	UrlParseError(#[from] UrlParseError),
+	UrlParseError(#[from] url::ParseError),
 	#[error("Constant not found: {0}")]
 	ConstantNotFound(String),
 	#[error("Currency not found")]
@@ -104,9 +104,12 @@ impl Error {
 	pub fn is_module_err(&self, pallet_name: &str, error_name: &str) -> bool {
 		matches!(
 			self,
-			Error::SubxtRuntimeError(SubxtError::Runtime(DispatchError::Module(ModuleError{
-				pallet, error, ..
-			}))) if pallet == pallet_name && error == error_name,
+			Error::SubxtRuntimeError(SubxtError::Runtime(DispatchError::Module(module_error))) if {
+				match module_error.details() {
+					Ok(details) => details.pallet.name() == pallet_name && &details.variant.name == error_name,
+					Err(_) => false
+				}
+			},
 		)
 	}
 
@@ -118,7 +121,7 @@ impl Error {
 		if let Error::SubxtRuntimeError(SubxtError::Rpc(RpcError::ClientError(e))) = self {
 			match e.downcast_ref::<JsonRpseeError>() {
 				Some(e) => match e {
-					JsonRpseeError::Call(CallError::Custom(err)) => call(err),
+					JsonRpseeError::Call(err) => call(err),
 					_ => None,
 				},
 				None => {
@@ -182,7 +185,7 @@ impl Error {
 	pub fn is_block_hash_not_found_error(&self) -> bool {
 		matches!(
 			self,
-			Error::SubxtRuntimeError(SubxtError::Transaction(TransactionError::BlockHashNotFound))
+			Error::SubxtRuntimeError(SubxtError::Transaction(TransactionError::BlockNotFound))
 		)
 	}
 
@@ -219,7 +222,6 @@ impl Error {
 }
 
 impl RecoverableError {
-	// The string which is used to match the error type
 	// For definitions, see: https://github.com/paritytech/substrate/blob/033d4e86cc7eff0066cd376b9375f815761d653c/primitives/runtime/src/transaction_validity.rs#L99
 
 	fn as_str(&self) -> &'static str {

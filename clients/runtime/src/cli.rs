@@ -100,9 +100,6 @@ pub struct ConnectionOpts {
 	#[clap(long, env = "MAX_CONCURRENT_REQUESTS")]
 	pub max_concurrent_requests: Option<usize>,
 
-	/// Maximum notification capacity for each subscription
-	#[clap(long, env = "MAX_NOTIFS_PER_SUBSCRIPTION")]
-	pub max_notifs_per_subscription: Option<usize>,
 }
 
 impl ConnectionOpts {
@@ -115,7 +112,6 @@ impl ConnectionOpts {
 			&self.spacewalk_parachain_url,
 			signer,
 			self.max_concurrent_requests,
-			self.max_notifs_per_subscription,
 			self.spacewalk_parachain_connection_timeout_ms,
 			shutdown_tx,
 		)

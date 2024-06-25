@@ -8,6 +8,7 @@ use futures::Future;
 use sysinfo::{System, SystemExt};
 use tokio::sync::RwLock;
 use tokio_stream::StreamExt;
+use sp_runtime::AccountId32 as AccountId;
 
 use runtime::{SpacewalkSigner, DEFAULT_SPEC_NAME};
 use service::{
@@ -129,9 +130,13 @@ async fn start() -> Result<(), ServiceError<Error>> {
 
 	// Create a PID file to signal to other processes that a vault is running.
 	// This file is auto-removed when `drop`ped.
+
+	// First get the raw [u8] from the signer's account id and 
+	// convert it to an sp_core type AccountId
+	let sp_account_id = AccountId::new(signer.read().await.account_id().0);
 	let _pidfile = PidFile::create(
 		&String::from(DEFAULT_SPEC_NAME),
-		signer.read().await.account_id(),
+		&sp_account_id,
 		&mut sys,
 	)?;
 
@@ -162,8 +167,6 @@ async fn main() {
 #[cfg(test)]
 mod tests {
 	use std::{thread, time::Duration};
-
-	use runtime::AccountId;
 
 	use super::*;
 

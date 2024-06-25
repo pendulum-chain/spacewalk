@@ -1,4 +1,4 @@
-use frame_support::{assert_err, assert_noop, assert_ok, dispatch::DispatchError};
+use frame_support::{assert_err, assert_noop, assert_ok, sp_runtime::DispatchError};
 use mocktopus::mocking::*;
 use sp_core::H256;
 use sp_runtime::traits::Zero;

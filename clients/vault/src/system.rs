@@ -740,8 +740,8 @@ impl VaultService {
 		VaultId {
 			account_id: self.spacewalk_parachain.get_account_id().clone(),
 			currencies: VaultCurrencyPair {
-				collateral: collateral_currency,
-				wrapped: wrapped_currency,
+				collateral: subxt::utils::Static(collateral_currency),
+				wrapped: subxt::utils::Static(wrapped_currency),
 			},
 		}
 	}

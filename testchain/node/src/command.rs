@@ -15,13 +15,16 @@
 // along with Substrate.  If not, see <http://www.gnu.org/licenses/>.
 
 use frame_benchmarking_cli::{BenchmarkCmd, ExtrinsicFactory, SUBSTRATE_REFERENCE_HARDWARE};
-use sc_cli::{ChainSpec, Result, RuntimeVersion, SubstrateCli};
+use sc_cli::{Result, SubstrateCli};
 use sc_service::{Configuration, PartialComponents, TaskManager};
 
 use sp_keyring::Sr25519Keyring;
 
 use spacewalk_runtime::{Block, EXISTENTIAL_DEPOSIT};
 use spacewalk_runtime_testnet as spacewalk_runtime;
+use spacewalk_standalone::service::TestnetExecutor;
+
+use sc_executor::{sp_wasm_interface::ExtendedHostFunctions, NativeExecutionDispatch};
 
 use crate::{
 	benchmarking::{inherent_benchmark_data, RemarkBuilder, TransferKeepAliveBuilder},
@@ -71,9 +74,6 @@ impl SubstrateCli for Cli {
 		load_spec(id)
 	}
 
-	fn native_runtime_version(_: &Box<dyn ChainSpec>) -> &'static RuntimeVersion {
-		&spacewalk_runtime::VERSION
-	}
 }
 
 /// Parse command line arguments into service configuration.
@@ -143,7 +143,10 @@ pub fn run() -> Result<()> {
 				match cmd {
 					BenchmarkCmd::Pallet(cmd) =>
 						if cfg!(feature = "runtime-benchmarks") {
-							cmd.run::<Block, spacewalk_service::TestnetExecutor>(config)
+							cmd.run::<Block, ExtendedHostFunctions<
+								sp_io::SubstrateHostFunctions,
+								<TestnetExecutor as NativeExecutionDispatch>::ExtendHostFunctions,
+							>>(config)
 						} else {
 							Err("Benchmarking wasn't enabled when building the node. \
                 You can enable it with `--features runtime-benchmarks`."

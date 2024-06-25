@@ -1,6 +1,6 @@
 use frame_benchmarking::{account, benchmarks, impl_benchmark_test_suite};
 use frame_support::assert_ok;
-use frame_system::RawOrigin;
+use frame_system::{pallet_prelude::BlockNumberFor, RawOrigin};
 use orml_traits::MultiCurrency;
 use sp_core::{Get, H256};
 use sp_runtime::{traits::One, FixedPointNumber};
@@ -233,7 +233,7 @@ benchmarks! {
 		VaultRegistry::<T>::_set_system_collateral_ceiling(get_currency_pair::<T>(), 1_000_000_000u32.into());
 
 		let (validators, organizations) = get_validators_and_organizations::<T>();
-		let enactment_block_height = T::BlockNumber::default();
+		let enactment_block_height = BlockNumberFor::<T>::default();
 		StellarRelay::<T>::_update_tier_1_validator_set(validators, organizations, enactment_block_height).unwrap();
 		let public_network = <T as StellarRelayConfig>::IsPublicNetwork::get();
 		let (tx_env_xdr_encoded, scp_envs_xdr_encoded, tx_set_xdr_encoded) = build_dummy_proof_for::<T>(replace_id, public_network);

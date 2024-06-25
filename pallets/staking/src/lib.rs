@@ -55,8 +55,9 @@
 
 use codec::EncodeLike;
 use frame_support::{
-	dispatch::{DispatchError, DispatchResult},
+	dispatch::DispatchResult,
 	traits::Get,
+	sp_runtime::DispatchError,
 };
 
 use sp_arithmetic::{FixedPointNumber, FixedPointOperand};
@@ -86,7 +87,7 @@ pub mod pallet {
 	use super::*;
 
 	use frame_support::{pallet_prelude::*, BoundedBTreeSet};
-
+	use frame_system::pallet_prelude::BlockNumberFor;
 	/// ## Configuration
 	/// The pallet's configuration trait.
 	#[pallet::config]
@@ -135,7 +136,7 @@ pub mod pallet {
 			amount: T::SignedFixedPoint,
 		},
 		WithdrawReward {
-			nonce: T::Index,
+			nonce: T::Nonce,
 			currency_id: T::CurrencyId,
 			vault_id: DefaultVaultId<T>,
 			nominator_id: T::AccountId,
@@ -146,7 +147,7 @@ pub mod pallet {
 		},
 		IncreaseNonce {
 			vault_id: DefaultVaultId<T>,
-			new_nonce: T::Index,
+			new_nonce: T::Nonce,
 		},
 	}
 
@@ -163,7 +164,7 @@ pub mod pallet {
 	}
 
 	#[pallet::hooks]
-	impl<T: Config> Hooks<T::BlockNumber> for Pallet<T> {}
+	impl<T: Config> Hooks<BlockNumberFor<T>> for Pallet<T> {}
 
 	/// The total stake - this will increase on deposit and decrease on withdrawal.
 	#[pallet::storage]
@@ -171,7 +172,7 @@ pub mod pallet {
 	pub type TotalStake<T: Config> = StorageDoubleMap<
 		_,
 		Blake2_128Concat,
-		T::Index,
+		T::Nonce,
 		Blake2_128Concat,
 		DefaultVaultId<T>,
 		SignedFixedPoint<T>,
@@ -184,7 +185,7 @@ pub mod pallet {
 	pub type TotalCurrentStake<T: Config> = StorageDoubleMap<
 		_,
 		Blake2_128Concat,
-		T::Index,
+		T::Nonce,
 		Blake2_128Concat,
 		DefaultVaultId<T>,
 		SignedFixedPoint<T>,
@@ -201,7 +202,7 @@ pub mod pallet {
 		Blake2_128Concat,
 		T::CurrencyId,
 		Blake2_128Concat,
-		(T::Index, DefaultVaultId<T>),
+		(T::Nonce, DefaultVaultId<T>),
 		SignedFixedPoint<T>,
 		ValueQuery,
 	>;
@@ -214,7 +215,7 @@ pub mod pallet {
 		Blake2_128Concat,
 		T::CurrencyId,
 		Blake2_128Concat,
-		(T::Index, DefaultVaultId<T>),
+		(T::Nonce, DefaultVaultId<T>),
 		SignedFixedPoint<T>,
 		ValueQuery,
 	>;
@@ -224,7 +225,7 @@ pub mod pallet {
 	pub type SlashPerToken<T: Config> = StorageDoubleMap<
 		_,
 		Blake2_128Concat,
-		T::Index,
+		T::Nonce,
 		Blake2_128Concat,
 		DefaultVaultId<T>,
 		SignedFixedPoint<T>,
@@ -236,7 +237,7 @@ pub mod pallet {
 	pub type Stake<T: Config> = StorageDoubleMap<
 		_,
 		Blake2_128Concat,
-		T::Index,
+		T::Nonce,
 		Blake2_128Concat,
 		(DefaultVaultId<T>, T::AccountId),
 		SignedFixedPoint<T>,
@@ -250,7 +251,7 @@ pub mod pallet {
 		Blake2_128Concat,
 		T::CurrencyId,
 		Blake2_128Concat,
-		(T::Index, DefaultVaultId<T>, T::AccountId),
+		(T::Nonce, DefaultVaultId<T>, T::AccountId),
 		SignedFixedPoint<T>,
 		ValueQuery,
 	>;
@@ -260,7 +261,7 @@ pub mod pallet {
 	pub type SlashTally<T: Config> = StorageDoubleMap<
 		_,
 		Blake2_128Concat,
-		T::Index,
+		T::Nonce,
 		Blake2_128Concat,
 		(DefaultVaultId<T>, T::AccountId),
 		SignedFixedPoint<T>,
@@ -271,7 +272,7 @@ pub mod pallet {
 	/// This is a strictly increasing value.
 	#[pallet::storage]
 	pub type Nonce<T: Config> =
-		StorageMap<_, Blake2_128Concat, DefaultVaultId<T>, T::Index, ValueQuery>;
+		StorageMap<_, Blake2_128Concat, DefaultVaultId<T>, T::Nonce, ValueQuery>;
 
 	/// store with all the reward currencies in use
 	#[pallet::storage]
@@ -326,7 +327,7 @@ impl<T: Config> Pallet<T> {
 	}
 
 	fn stake_at_index(
-		nonce: T::Index,
+		nonce: T::Nonce,
 		vault_id: &DefaultVaultId<T>,
 		nominator_id: &T::AccountId,
 	) -> SignedFixedPoint<T> {
@@ -343,7 +344,7 @@ impl<T: Config> Pallet<T> {
 	}
 
 	fn reward_tally(
-		nonce: T::Index,
+		nonce: T::Nonce,
 		currency_id: T::CurrencyId,
 		vault_id: &DefaultVaultId<T>,
 		nominator_id: &T::AccountId,
@@ -361,7 +362,7 @@ impl<T: Config> Pallet<T> {
 	}
 
 	fn slash_tally_at_index(
-		nonce: T::Index,
+		nonce: T::Nonce,
 		vault_id: &DefaultVaultId<T>,
 		nominator_id: &T::AccountId,
 	) -> SignedFixedPoint<T> {
@@ -369,7 +370,7 @@ impl<T: Config> Pallet<T> {
 	}
 
 	/// Get the newest nonce for the staking pool.
-	pub fn nonce(vault_id: &DefaultVaultId<T>) -> T::Index {
+	pub fn nonce(vault_id: &DefaultVaultId<T>) -> T::Nonce {
 		<Nonce<T>>::get(vault_id)
 	}
 
@@ -380,7 +381,7 @@ impl<T: Config> Pallet<T> {
 	}
 
 	fn slash_per_token_at_index(
-		nonce: T::Index,
+		nonce: T::Nonce,
 		vault_id: &DefaultVaultId<T>,
 	) -> SignedFixedPoint<T> {
 		<SlashPerToken<T>>::get(nonce, vault_id)
@@ -527,7 +528,7 @@ impl<T: Config> Pallet<T> {
 
 	/// Compute the stake in `vault_id` owned by `nominator_id`.
 	pub fn compute_stake_at_index(
-		nonce: T::Index,
+		nonce: T::Nonce,
 		vault_id: &DefaultVaultId<T>,
 		nominator_id: &T::AccountId,
 	) -> Result<<SignedFixedPoint<T> as FixedPointNumber>::Inner, DispatchError> {
@@ -545,7 +546,7 @@ impl<T: Config> Pallet<T> {
 	}
 
 	fn increase_rewards(
-		nonce: T::Index,
+		nonce: T::Nonce,
 		currency_id: T::CurrencyId,
 		vault_id: &DefaultVaultId<T>,
 		reward: SignedFixedPoint<T>,
@@ -600,7 +601,7 @@ impl<T: Config> Pallet<T> {
 
 	/// Compute the expected reward for `nominator_id` who is nominating `vault_id`.
 	pub fn compute_reward_at_index(
-		nonce: T::Index,
+		nonce: T::Nonce,
 		currency_id: T::CurrencyId,
 		vault_id: &DefaultVaultId<T>,
 		nominator_id: &T::AccountId,
@@ -652,7 +653,7 @@ impl<T: Config> Pallet<T> {
 		vault_id: &DefaultVaultId<T>,
 		nominator_id: &T::AccountId,
 		amount: SignedFixedPoint<T>,
-		index: Option<T::Index>,
+		index: Option<T::Nonce>,
 	) -> DispatchResult {
 		let nonce = index.unwrap_or_else(|| Self::nonce(vault_id));
 		let stake = Self::apply_slash(vault_id, nominator_id)?;
@@ -716,7 +717,7 @@ impl<T: Config> Pallet<T> {
 
 	/// Withdraw all rewards earned by `vault_id` for the `nominator_id`.
 	pub fn withdraw_reward_at_index(
-		nonce: T::Index,
+		nonce: T::Nonce,
 		currency_id: T::CurrencyId,
 		vault_id: &DefaultVaultId<T>,
 		nominator_id: &T::AccountId,
@@ -779,7 +780,7 @@ impl<T: Config> Pallet<T> {
 
 	pub fn increment_nonce(vault_id: &DefaultVaultId<T>) -> DispatchResult {
 		<Nonce<T>>::mutate(vault_id, |nonce| {
-			*nonce = nonce.checked_add(&T::Index::one()).ok_or(ArithmeticError::Overflow)?;
+			*nonce = nonce.checked_add(&T::Nonce::one()).ok_or(ArithmeticError::Overflow)?;
 			Ok::<_, DispatchError>(())
 		})?;
 		Self::deposit_event(Event::<T>::IncreaseNonce {
@@ -868,7 +869,7 @@ pub trait Staking<VaultId, NominatorId, Index, Balance, CurrencyId> {
 	fn get_all_reward_currencies() -> Result<Vec<CurrencyId>, DispatchError>;
 }
 
-impl<T, Balance> Staking<DefaultVaultId<T>, T::AccountId, T::Index, Balance, T::CurrencyId>
+impl<T, Balance> Staking<DefaultVaultId<T>, T::AccountId, T::Nonce, Balance, T::CurrencyId>
 	for Pallet<T>
 where
 	T: Config,
@@ -876,7 +877,7 @@ where
 	Balance: BalanceToFixedPoint<SignedFixedPoint<T>>,
 	<T::SignedFixedPoint as FixedPointNumber>::Inner: TryInto<Balance>,
 {
-	fn nonce(vault_id: &DefaultVaultId<T>) -> T::Index {
+	fn nonce(vault_id: &DefaultVaultId<T>) -> T::Nonce {
 		Pallet::<T>::nonce(vault_id)
 	}
 
@@ -941,7 +942,7 @@ where
 		vault_id: &DefaultVaultId<T>,
 		nominator_id: &T::AccountId,
 		amount: Balance,
-		index: Option<T::Index>,
+		index: Option<T::Nonce>,
 	) -> DispatchResult {
 		Pallet::<T>::withdraw_stake(
 			vault_id,
@@ -954,7 +955,7 @@ where
 	fn withdraw_reward(
 		vault_id: &DefaultVaultId<T>,
 		nominator_id: &T::AccountId,
-		index: Option<T::Index>,
+		index: Option<T::Nonce>,
 		currency_id: T::CurrencyId,
 	) -> Result<Balance, DispatchError> {
 		let nonce = index.unwrap_or_else(|| Pallet::<T>::nonce(vault_id));
@@ -993,7 +994,7 @@ pub mod migration {
 
 		/// The code as implemented befor the fix
 		fn legacy_withdraw_reward_at_index<T: Config>(
-			nonce: T::Index,
+			nonce: T::Nonce,
 			currency_id: T::CurrencyId,
 			vault_id: &DefaultVaultId<T>,
 			nominator_id: &T::AccountId,

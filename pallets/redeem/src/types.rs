@@ -2,6 +2,7 @@ use currency::Amount;
 pub use primitives::redeem::{RedeemRequest, RedeemRequestStatus};
 use primitives::VaultId;
 pub use vault_registry::types::CurrencyId;
+use frame_system::pallet_prelude::BlockNumberFor;
 
 use crate::Config;
 
@@ -11,7 +12,7 @@ pub(crate) type DefaultVaultId<T> = VaultId<<T as frame_system::Config>::Account
 
 pub type DefaultRedeemRequest<T> = RedeemRequest<
 	<T as frame_system::Config>::AccountId,
-	<T as frame_system::Config>::BlockNumber,
+	BlockNumberFor<T>,
 	BalanceOf<T>,
 	CurrencyId<T>,
 >;
@@ -24,7 +25,7 @@ pub trait RedeemRequestExt<T: Config> {
 }
 
 impl<T: Config> RedeemRequestExt<T>
-	for RedeemRequest<T::AccountId, T::BlockNumber, BalanceOf<T>, CurrencyId<T>>
+	for RedeemRequest<T::AccountId, BlockNumberFor<T>, BalanceOf<T>, CurrencyId<T>>
 {
 	fn amount(&self) -> Amount<T> {
 		Amount::new(self.amount, self.asset)

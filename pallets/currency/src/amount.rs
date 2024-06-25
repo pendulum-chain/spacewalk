@@ -6,7 +6,8 @@
 	forgetting_copy_types
 )]
 use frame_support::{
-	dispatch::{DispatchError, DispatchResult},
+	dispatch::DispatchResult,
+	sp_runtime::DispatchError,
 	ensure,
 };
 use orml_traits::{MultiCurrency, MultiReservableCurrency};
