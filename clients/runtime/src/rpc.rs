@@ -238,7 +238,9 @@ impl SpacewalkParachain {
 				match timeout(TRANSACTION_TIMEOUT, async {
 					let tx_progress =
 						self.api.tx().sign_and_submit_then_watch_default(&call, &*signer).await?;
+					println!("submited");
 					let result = tx_progress.wait_for_finalized_success().await;
+					println!("finalized");
 					result
 
 
