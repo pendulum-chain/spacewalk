@@ -427,7 +427,7 @@ mod test {
 			.expect("should have an archive url")
 			.clone();
 		let scp_archive_storage = ScpArchiveStorage(testnet_archive_url);
-		let slot_index = 219412;
+		let slot_index = 10;
 
 		let scp_archive = scp_archive_storage
 			.get_archive(slot_index)
@@ -487,7 +487,7 @@ mod test {
 		let tx_archive_storage = TransactionsArchiveStorage(testnet_archive_url);
 
 		//arrange
-		let slot_index = 219411;
+		let slot_index = 10;
 		let (_url, ref filename) = tx_archive_storage.get_url_and_file_name(slot_index);
 
 		//act
