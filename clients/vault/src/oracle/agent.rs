@@ -24,7 +24,7 @@ pub struct OracleAgent {
 	/// sends an entire Vault shutdown
 	shutdown_sender: ShutdownSender,
 	/// sends a 'stop' signal to `StellarOverlayConnection` poll
-	overlay_conn_end_signal: mpsc::Sender<()>
+	overlay_conn_end_signal: mpsc::Sender<()>,
 }
 
 /// listens to data to collect the scp messages and txsets.
@@ -128,7 +128,13 @@ pub async fn start_oracle_agent(
 		overlay_conn.stop();
 	});
 
-	Ok(OracleAgent { collector, is_public_network, message_sender: Some(sender), shutdown_sender, overlay_conn_end_signal: disconnect_signal_sender })
+	Ok(OracleAgent {
+		collector,
+		is_public_network,
+		message_sender: Some(sender),
+		shutdown_sender,
+		overlay_conn_end_signal: disconnect_signal_sender,
+	})
 }
 
 impl OracleAgent {
@@ -185,7 +191,10 @@ impl OracleAgent {
 	pub async fn shutdown(&self) {
 		tracing::debug!("shutdown(): Shutting down OracleAgent...");
 		if let Err(e) = self.overlay_conn_end_signal.send(()).await {
-			tracing::error!("shutdown(): Failed to send overlay conn end signal in OracleAgent: {:?}", e);
+			tracing::error!(
+				"shutdown(): Failed to send overlay conn end signal in OracleAgent: {:?}",
+				e
+			);
 		}
 	}
 }

@@ -10,7 +10,11 @@ use crate::{
 	mock::secret_key_from_encoding,
 };
 
-use primitives::stellar::{network::{Network, PUBLIC_NETWORK, TEST_NETWORK}, types::Preconditions, Asset, Operation, PublicKey, SecretKey, StroopAmount, Transaction, TransactionEnvelope};
+use primitives::stellar::{
+	network::{Network, PUBLIC_NETWORK, TEST_NETWORK},
+	types::Preconditions,
+	Asset, Operation, PublicKey, SecretKey, StroopAmount, Transaction, TransactionEnvelope,
+};
 use tokio::sync::RwLock;
 
 use crate::types::FilterWith;
@@ -187,7 +191,7 @@ async fn fetch_transactions_iter_success() {
 		// if none, then the next pages should be the same.
 		None => assert_eq!(next_page, txs_iter.next_page),
 		// the next page should be different already
-		Some(_) => assert_ne!(next_page, txs_iter.next_page)
+		Some(_) => assert_ne!(next_page, txs_iter.next_page),
 	}
 }
 

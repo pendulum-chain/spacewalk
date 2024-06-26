@@ -273,7 +273,7 @@ pub struct VaultService {
 	shutdown: ShutdownSender,
 	vault_id_manager: VaultIdManager,
 	secret_key: String,
-	agent: Option<Arc<OracleAgent>>
+	agent: Option<Arc<OracleAgent>>,
 }
 
 #[async_trait]

@@ -185,7 +185,9 @@ pub fn create_basic_spacewalk_stellar_transaction(
 #[cfg(test)]
 pub mod redeem_request_tests {
 	use super::*;
-	use crate::mock::{default_destination, default_source, default_usdc_asset, secret_key_from_encoding};
+	use crate::mock::{
+		default_destination, default_source, default_usdc_asset, secret_key_from_encoding,
+	};
 	use primitives::{stellar::SecretKey, CurrencyId};
 
 	const INACTIVE_STELLAR_SECRET_KEY: &str =
@@ -198,10 +200,7 @@ pub mod redeem_request_tests {
 	const IS_PUBLIC_NETWORK: bool = false;
 
 	fn default_testing_stellar_pubkeys() -> (PublicKey, PublicKey) {
-		(
-			default_source(),
-			default_destination(),
-		)
+		(default_source(), default_destination())
 	}
 
 	pub fn create_account_merge_operation(
