@@ -12,8 +12,7 @@ const RETRY_TIMEOUT: Duration = Duration::from_millis(1000);
 const CONNECTION_TIMEOUT: Duration = Duration::from_secs(10);
 
 async fn ws_transport(url: &str) -> Result<(Sender, Receiver), Error> {
-
-	let url: Url = url.parse::<Url>().unwrap();
+	let url: Url = url.parse::<Url>().map_err(Error::UrlParseError)?;
 
 	WsTransportClientBuilder::default()
 		.build(url)

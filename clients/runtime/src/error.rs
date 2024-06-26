@@ -3,7 +3,7 @@ use std::{array::TryFromSliceError, fmt::Debug, io::Error as IoError, num::TryFr
 use codec::Error as CodecError;
 pub use jsonrpsee::core::Error as JsonRpseeError;
 use jsonrpsee::{
-	client_transport::ws::{InvalidUri as UrlParseError, WsHandshakeError},
+	client_transport::ws::WsHandshakeError,
 	types::ErrorObjectOwned,
 };
 use serde_json::Error as SerdeJsonError;
@@ -81,7 +81,7 @@ pub enum Error {
 	#[error("Timeout: {0}")]
 	TimeElapsed(#[from] Elapsed),
 	#[error("UrlParseError: {0}")]
-	UrlParseError(#[from] UrlParseError),
+	UrlParseError(#[from] url::ParseError),
 	#[error("Constant not found: {0}")]
 	ConstantNotFound(String),
 	#[error("Currency not found")]

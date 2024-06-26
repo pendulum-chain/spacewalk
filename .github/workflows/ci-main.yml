@@ -92,8 +92,8 @@ jobs:
           RUST_LOG: txpool=trace,basic-authorship=trace,manual-seal=trace
         with:
           toolchain: nightly-2024-02-09
-          command: test test_subxt_processing_events_after_dispatch_error
-          args: --all --all-features
+          command: test 
+          args: test_subxt_processing_events_after_dispatch_error --all --all-features
 
       # - name: Rustfmt
       #   if: matrix.rust == 'nightly'

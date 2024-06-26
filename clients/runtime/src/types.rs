@@ -171,8 +171,6 @@ pub trait PrettyPrint {
 }
 
 mod account_id {
-	//use sp_core::crypto::Ss58Codec;
-
 	use super::*;
 
 	impl PrettyPrint for AccountId {
@@ -188,7 +186,6 @@ mod vault_id {
 	type RichVaultId = primitives::VaultId<AccountId, primitives::CurrencyId>;
 
 	type RichVaultHashable = primitives::VaultId<sp_runtime::AccountId32, primitives::CurrencyId>;
-	//type RichVaultId = VaultId;
 
 	impl crate::VaultId {
 		pub fn new(

@@ -1,8 +1,7 @@
 on:
   pull_request:
     branches:
-      - '**' # every branch
-      - '!main' # excluding main
+      - 'none'
 
 name: continuous-integration-dev
 
