@@ -1,6 +1,6 @@
 [package]
 name = "module-redeem-rpc"
-version = "1.0.9"
+version = "1.0.10"
 authors = ["Interlay <contact@interlay.io>"]
 edition = "2021"
 
