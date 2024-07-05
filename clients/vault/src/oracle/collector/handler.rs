@@ -25,7 +25,7 @@ impl ScpMessageCollector {
 
 		// we are only interested with `ScpStExternalize`. Other messages are ignored.
 		if let ScpStatementPledges::ScpStExternalize(stmt) = &env.statement.pledges {
-			tracing::trace!(
+			tracing::info!(
 				"Handling Incoming ScpEnvelopes for slot {slot}: SCPStExternalize found: {}",
 				to_base64_xdr_string(stmt)
 			);
