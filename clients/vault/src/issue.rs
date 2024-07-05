@@ -60,6 +60,7 @@ pub async fn listen_for_issue_requests(
 	issues: ArcRwLock<IssueRequestsMap>,
 	memos_to_issue_ids: ArcRwLock<IssueIdLookup>,
 ) -> Result<(), ServiceError<Error>> {
+	tracing::info!("listen_for_issue_requests(): started");
 	// Use references to prevent 'moved closure' errors
 	let parachain_rpc = &parachain_rpc;
 	let vault_public_key = &vault_public_key;
@@ -113,6 +114,7 @@ pub async fn listen_for_issue_cancels(
 	issues: ArcRwLock<IssueRequestsMap>,
 	memos_to_issue_ids: ArcRwLock<IssueIdLookup>,
 ) -> Result<(), ServiceError<Error>> {
+	tracing::info!("listen_for_issue_cancels(): started");
 	let issues = &issues;
 	let memos_to_issue_ids = &memos_to_issue_ids;
 
@@ -145,6 +147,7 @@ pub async fn listen_for_executed_issues(
 	issues: ArcRwLock<IssueRequestsMap>,
 	memos_to_issue_ids: ArcRwLock<IssueIdLookup>,
 ) -> Result<(), ServiceError<Error>> {
+	tracing::info!("listen_for_executed_issues(): started");
 	let issues = &issues;
 	let memos_to_issue_ids = &memos_to_issue_ids;
 
@@ -253,6 +256,7 @@ pub async fn process_issues_requests(
 	issues: ArcRwLock<IssueRequestsMap>,
 	memos_to_issue_ids: ArcRwLock<IssueIdLookup>,
 ) -> Result<(), ServiceError<Error>> {
+	tracing::info!("process_issue_requests(): started");
 	// collects all the tasks that are executed or about to be executed.
 	let mut processed_map = HashMap::new();
 

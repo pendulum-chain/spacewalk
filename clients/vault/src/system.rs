@@ -251,6 +251,7 @@ async fn active_block_listener(
 	issue_tx: Sender<Event>,
 	replace_tx: Sender<Event>,
 ) -> Result<(), ServiceError<Error>> {
+	tracing::info!("active_block_listener(): started");
 	let issue_tx = &issue_tx;
 	let replace_tx = &replace_tx;
 	parachain_rpc
@@ -297,6 +298,7 @@ impl Service<VaultServiceConfig, Error> for VaultService {
 		self.try_shutdown_wallet().await;
 
 		if let Err(error) = result {
+			tracing::error!("start(): Failed to run service: {error:?}");
 			let _ = self.shutdown.send(());
 			Err(error)
 		} else {
@@ -609,6 +611,7 @@ impl VaultService {
 			(
 				"Restart Timer",
 				run(async move {
+					tracing::info!("Periodic restart in 3 hours.");
 					tokio::time::sleep(RESTART_INTERVAL).await;
 					tracing::info!("Initiating periodic restart...");
 					Err(ServiceError::ClientShutdown)

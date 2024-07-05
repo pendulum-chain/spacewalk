@@ -320,6 +320,7 @@ where
 	U: Clone + IsEmptyExt,
 	Filter: FilterWith<T, U> + Clone,
 {
+	tracing::info!("listen_for_new_transactions(): started");
 	let horizon_client = reqwest::Client::new();
 	let mut fetcher =
 		HorizonFetcher::new(horizon_client, vault_account_public_key, is_public_network);
