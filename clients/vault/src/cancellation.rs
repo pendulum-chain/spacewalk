@@ -204,6 +204,7 @@ impl<P: IssuePallet + ReplacePallet + UtilFuncs + SecurityPallet + Clone> Cancel
 		mut self,
 		mut event_listener: Receiver<Event>,
 	) -> Result<(), RuntimeError> {
+		tracing::info!("handle_cancellation(): started");
 		let mut list_state = ListState::Invalid;
 		let mut active_requests: Vec<ActiveRequest> = vec![];
 
