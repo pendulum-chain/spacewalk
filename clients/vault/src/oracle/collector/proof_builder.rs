@@ -68,6 +68,7 @@ impl Proof {
 impl ScpMessageCollector {
 	/// fetch envelopes not found in the collector
 	async fn fetch_missing_envelopes(&self, slot: Slot, sender: &StellarMessageSender) {
+		tracing::info!("fetch_missing_envelopes(): FOR SLOT {slot} check_slot_still_recoverable_from_overlay: LAST SLOT INDEX: {}",self.last_slot_index());
 		// If the current slot is still in the range of 'remembered' slots
 		if check_slot_still_recoverable_from_overlay(self.last_slot_index(), slot) {
 			tracing::debug!(
@@ -75,8 +76,8 @@ impl ScpMessageCollector {
 			);
 			self.ask_node_for_envelopes(slot, sender).await;
 		} else {
-			tracing::debug!(
-				"fetch_missing_envelopes(): Proof Building for slot {slot}: fetching missing envelopes from Archive Node..."
+			tracing::info!(
+				"fetch_missing_envelopes(): Proof Building for slot {slot}: fetching from Archive Node..."
 			);
 			self.ask_archive_for_envelopes(slot).await;
 		}
@@ -158,6 +159,7 @@ impl ScpMessageCollector {
 		match tx_set {
 			Some(res) => Some(res),
 			None => {
+				tracing::info!("get_txset(): FOR SLOT {slot} check_slot_still_recoverable_from_overlay: LAST SLOT INDEX: {}",self.last_slot_index());
 				// If the current slot is still in the range of 'remembered' slots
 				if check_slot_still_recoverable_from_overlay(self.last_slot_index(), slot) {
 					self.fetch_missing_txset_from_overlay(slot, sender).await;
@@ -210,7 +212,7 @@ impl ScpMessageCollector {
 	/// * `envelopes_map_lock` - the map to insert the envelopes to.
 	/// * `slot` - the slot where the envelopes belong to
 	fn get_envelopes_from_horizon_archive(&self, slot: Slot) -> impl Future<Output = ()> {
-		tracing::debug!("get_envelopes_from_horizon_archive(): Fetching SCP envelopes from horizon archive for slot {slot}...");
+		tracing::info!("get_envelopes_from_horizon_archive(): Fetching SCP envelopes from horizon archive for slot {slot}...");
 		let envelopes_map_arc = self.envelopes_map_clone();
 		let env_from_archive_map = self.env_from_archive_map_clone();
 
