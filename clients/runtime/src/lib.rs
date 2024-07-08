@@ -27,7 +27,6 @@ pub use rpc::{
 };
 pub use shutdown::{ShutdownReceiver, ShutdownSender};
 pub use types::*;
-pub use oracle;
 pub mod cli;
 
 #[cfg(test)]

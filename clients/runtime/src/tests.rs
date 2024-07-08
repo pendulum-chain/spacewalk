@@ -106,7 +106,19 @@ async fn test_subxt_processing_events_after_dispatch_error() {
 
 	let oracle_provider = setup_provider(client.clone(), AccountKeyring::Bob).await;
 	let invalid_oracle = setup_provider(client, AccountKeyring::Dave).await;
+	
+	let seal_provider = oracle_provider.clone();
+	println!("spawing seal provider");
+	// spawn a task that will call manual_seal every 10 seconds
+	let _ = tokio::spawn(async move {
+		loop {
+			tokio::time::sleep(std::time::Duration::from_secs(20)).await;
+			println!("calling seal");
+			seal_provider.manual_seal().await;
+		}
+	});
 
+	println!("rate thing");
 	let key = primitives::oracle::Key::ExchangeRate(DEFAULT_TESTING_CURRENCY);
 	let converted_key = DiaOracleKeyConvertor::<MockValue>::convert(key.clone()).unwrap();
 	let exchange_rate = FixedU128::saturating_from_rational(1u128, 100u128);
@@ -116,6 +128,7 @@ async fn test_subxt_processing_events_after_dispatch_error() {
 		oracle_provider.feed_values(vec![(converted_key, exchange_rate)])
 	);
 
+
 	// ensure first set_exchange_rate failed and second succeeded.
 	result.0.unwrap_err();
 	result.1.unwrap();
@@ -123,15 +136,20 @@ async fn test_subxt_processing_events_after_dispatch_error() {
 
 #[tokio::test(flavor = "multi_thread")]
 async fn test_register_vault() {
-	env_logger::init_from_env(
-		env_logger::Env::default()
-			.filter_or(env_logger::DEFAULT_FILTER_ENV, log::LevelFilter::Info.as_str()),
-	);
 	let is_public_network = false;
 	let (client, _tmp_dir) =
 		default_provider_client(AccountKeyring::Alice, is_public_network).await;
 	let parachain_rpc = setup_provider(client.clone(), AccountKeyring::Alice).await;
 	let oracle_rpc = setup_provider(client.clone(), AccountKeyring::Bob).await;
+
+
+	let seal_provider = parachain_rpc.clone();
+	let _ = tokio::spawn(async move {
+		loop {
+			tokio::time::sleep(std::time::Duration::from_secs(10)).await;
+			seal_provider.manual_seal().await;
+		}
+	});
 
 	let exchange_rate = FixedU128::saturating_from_rational(1u128, 100u128);
 	set_exchange_rate_and_wait(&oracle_rpc, DEFAULT_TESTING_CURRENCY, exchange_rate).await;

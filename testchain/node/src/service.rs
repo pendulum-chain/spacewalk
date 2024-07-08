@@ -21,7 +21,7 @@ use primitives::Block;
 
 use spacewalk_runtime_mainnet::RuntimeApi as MainnetRuntimeApi;
 use spacewalk_runtime_testnet::RuntimeApi as TestnetRuntimeApi;
-
+use futures::StreamExt;
 use tokio;
 use std::task::Poll;
 // Native executor instance.
@@ -752,24 +752,27 @@ pub async fn start_instant_testnet(
 
 		let _pool = transaction_pool.pool().clone();
 		let import_stream = {
-			let interval = std::time::Duration::from_secs(12);
-			let mut interval_stream = tokio::time::interval(interval);
+			// let interval = std::time::Duration::from_secs(12);
+			// let mut interval_stream = tokio::time::interval(interval);
 			
-			Box::pin(futures::stream::poll_fn(move |cx| {
-				let engine_seal_cmd = EngineCommand::SealNewBlock {
-					create_empty: true,
-					finalize: true,
-					parent_hash: None,
-					sender: None,
-				};
-				match interval_stream.poll_tick(cx) {
-					Poll::Ready(_instant) => {
-						log::info!("⏳ Interval timer triggered");
-						Poll::Ready(Some(engine_seal_cmd))
-					},
-					Poll::Pending => Poll::Pending,
-				}
-			}))
+			// Box::pin(futures::stream::poll_fn(move |cx| {
+			// 	let engine_seal_cmd = EngineCommand::SealNewBlock {
+			// 		create_empty: true,
+			// 		finalize: true,
+			// 		parent_hash: None,
+			// 		sender: None,
+			// 	};
+			// 	match interval_stream.poll_tick(cx) {
+			// 		Poll::Ready(_instant) => {
+			// 			log::info!("⏳ Interval timer triggered");
+			// 			Poll::Ready(Some(engine_seal_cmd))
+			// 		},
+			// 		Poll::Pending => Poll::Pending,
+			// 	}
+			// }))
+
+			// Do NOTHING
+			futures::stream::empty().boxed()
 			
 		};
 

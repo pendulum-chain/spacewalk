@@ -48,35 +48,6 @@ async fn test_register() {
 }
 
 
-use oracle::dia::DiaOracleKeyConvertor;
-use sp_runtime::traits::Convert;
-use runtime::OraclePallet;
-
-// Testing that this does not encounter the same stuck error as in the unitary test
-#[tokio::test(flavor = "multi_thread")]
-#[serial]
-async fn test_subxt_processing_events_after_dispatch_error_integration() {
-	test_with(false, |client, _vault_wallet, _| async move {
-		let oracle_provider = setup_provider(client.clone(), AccountKeyring::Bob).await;
-		let invalid_oracle = setup_provider(client, AccountKeyring::Dave).await;
-	
-		let key = primitives::oracle::Key::ExchangeRate(DEFAULT_TESTING_CURRENCY);
-		let converted_key = DiaOracleKeyConvertor::<MockValue>::convert(key.clone()).unwrap();
-		let exchange_rate = FixedU128::saturating_from_rational(1u128, 100u128);
-
-		let result = tokio::join!(
-			invalid_oracle.feed_values(vec![(converted_key.clone(), exchange_rate)]),
-			oracle_provider.feed_values(vec![(converted_key, exchange_rate)])
-		);
-
-		// ensure first set_exchange_rate failed and second succeeded.
-		result.0.unwrap_err();
-		result.1.unwrap();
-	}).await;
-	
-}
-
-
 #[tokio::test(flavor = "multi_thread")]
 #[serial]
 async fn test_redeem_succeeds_on_mainnet() {
