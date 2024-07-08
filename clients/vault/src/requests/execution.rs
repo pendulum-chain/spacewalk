@@ -291,6 +291,7 @@ pub async fn execute_open_requests(
 	oracle_agent: Arc<OracleAgent>,
 	payment_margin: Duration,
 ) -> Result<(), ServiceError<Error>> {
+	tracing::info!("execute_open_requests(): started");
 	let parachain_rpc_ref = &parachain_rpc;
 
 	// get all redeem and replace requests

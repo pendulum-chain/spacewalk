@@ -25,7 +25,7 @@ impl ScpMessageCollector {
 
 		// we are only interested with `ScpStExternalize`. Other messages are ignored.
 		if let ScpStatementPledges::ScpStExternalize(stmt) = &env.statement.pledges {
-			tracing::trace!(
+			tracing::info!(
 				"Handling Incoming ScpEnvelopes for slot {slot}: SCPStExternalize found: {}",
 				to_base64_xdr_string(stmt)
 			);
@@ -37,7 +37,7 @@ impl ScpMessageCollector {
 			// Check if collector has a record of this hash.
 			if self.is_txset_new(&txset_hash, &slot) {
 				// if it doesn't exist, let's request from the Stellar Node.
-				tracing::debug!(
+				tracing::info!(
 					"Handling Incoming ScpEnvelopes for slot {slot}: requesting TxSet..."
 				);
 				message_sender.send(StellarMessage::GetTxSet(txset_hash)).await?;

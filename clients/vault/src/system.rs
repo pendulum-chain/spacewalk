@@ -332,6 +332,7 @@ async fn run_and_monitor_tasks(
 		publish_tokio_metrics(metrics_iterators),
 	));
 
+	tracing::info!("run_and_monitor_tasks(): running all tasks...");
 	match join(tokio_metrics, join_all(tasks)).await {
 		(Ok(Err(err)), _) => Err(err),
 		(_, results) => results
