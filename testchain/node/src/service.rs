@@ -737,7 +737,7 @@ pub async fn start_instant_testnet(
 		let pool = transaction_pool.pool().clone();
 		let import_stream = pool.validated_pool().import_notification_stream().map(|_| {
 			sc_consensus_manual_seal::rpc::EngineCommand::SealNewBlock {
-				create_empty: true,
+				create_empty: false,
 				finalize: false,
 				parent_hash: None,
 				sender: None,
@@ -761,7 +761,7 @@ pub async fn start_instant_testnet(
 		let finalizer_task = sc_consensus_manual_seal::run_delayed_finalize(DelayedFinalizeParams{
 			client: client.clone(),
 			spawn_handle: task_manager.spawn_handle(),
-			delay_sec: 12,
+			delay_sec: 60,
 		});
 
 		// we spawn the future on a background thread managed by service.
