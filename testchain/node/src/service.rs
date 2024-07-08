@@ -4,6 +4,7 @@ use futures::{StreamExt, FutureExt};
 use sc_client_api::{Backend, BlockBackend};
 use sc_consensus_aura::{ImportQueueParams, SlotProportion, StartAuraParams};
 use sc_consensus_grandpa::SharedVoterState;
+use sc_consensus_manual_seal::DelayedFinalizeParams;
 use sc_executor::{
 	HeapAllocStrategy, NativeElseWasmExecutor, WasmExecutor, DEFAULT_HEAP_ALLOC_STRATEGY,
 };
@@ -737,7 +738,7 @@ pub async fn start_instant_testnet(
 		let import_stream = pool.validated_pool().import_notification_stream().map(|_| {
 			sc_consensus_manual_seal::rpc::EngineCommand::SealNewBlock {
 				create_empty: true,
-				finalize: true,
+				finalize: false,
 				parent_hash: None,
 				sender: None,
 			}
@@ -757,11 +758,24 @@ pub async fn start_instant_testnet(
 				},
 			});
 
+		let finalizer_task = sc_consensus_manual_seal::run_delayed_finalize(DelayedFinalizeParams{
+			client: client.clone(),
+			spawn_handle: task_manager.spawn_handle(),
+			delay_sec: 12,
+		});
+
 		// we spawn the future on a background thread managed by service.
 		task_manager.spawn_essential_handle().spawn_blocking(
 			"instant-seal",
 			Some("block-authoring"),
 			authorship_future,
+		);
+
+		// we spawn also the finalizer task
+		task_manager.spawn_essential_handle().spawn_blocking(
+			"finalize-blocks",
+			Some("block-authoring"),
+			finalizer_task,
 		);
 		Some(command_sink)
 	} else {
