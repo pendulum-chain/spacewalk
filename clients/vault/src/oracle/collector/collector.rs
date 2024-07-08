@@ -155,7 +155,7 @@ impl ScpMessageCollector {
 			value.push(scp_envelope);
 			envelopes_map.insert(slot, value);
 		} else {
-			tracing::debug!("Collecting SCPEnvelopes for slot {slot}: success");
+			tracing::info!("Collecting SCPEnvelopes for slot {slot}: success");
 			tracing::trace!(
 				"Collecting SCPEnvelopes for slot {slot}: the scp envelope: {}",
 				to_base64_xdr_string(&scp_envelope.statement)
@@ -167,7 +167,7 @@ impl ScpMessageCollector {
 	pub(super) fn save_txset_hash_and_slot(&self, txset_hash: TxSetHash, slot: Slot) {
 		// save the mapping of the hash of the txset and the slot.
 		let mut m = self.txset_and_slot_map.write();
-		tracing::debug!("Collecting TxSet for slot {slot}: saving a map of txset_hash...");
+		tracing::info!("Collecting TxSet for slot {slot}: saving a map of txset_hash...");
 		tracing::trace!(
 			"Collecting TxSet for slot {slot}: the txset_hash: {}",
 			hex::encode(&txset_hash)
