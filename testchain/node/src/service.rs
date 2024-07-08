@@ -1,11 +1,9 @@
 use std::{sync::Arc, time::Duration};
 
-use frame_support::traits::Hash;
-use futures::{StreamExt, FutureExt};
+use futures::{FutureExt};
 use sc_client_api::{Backend, BlockBackend};
 use sc_consensus_aura::{ImportQueueParams, SlotProportion, StartAuraParams};
 use sc_consensus_grandpa::SharedVoterState;
-use sc_consensus_manual_seal::DelayedFinalizeParams;
 use sc_executor::{
 	HeapAllocStrategy, NativeElseWasmExecutor, WasmExecutor, DEFAULT_HEAP_ALLOC_STRATEGY,
 };
@@ -24,7 +22,6 @@ use primitives::Block;
 use spacewalk_runtime_mainnet::RuntimeApi as MainnetRuntimeApi;
 use spacewalk_runtime_testnet::RuntimeApi as TestnetRuntimeApi;
 
-use std::{thread, time};
 use tokio;
 use std::task::Poll;
 // Native executor instance.
@@ -603,7 +600,7 @@ pub async fn start_instant_mainnet(
 		// Channel for the rpc handler to communicate with the authorship task.
 		let (command_sink, commands_stream) = futures::channel::mpsc::channel(1024);
 
-		let pool = transaction_pool.pool().clone();
+		let _pool = transaction_pool.pool().clone();
 		let import_stream = {
 			let interval = std::time::Duration::from_secs(10);
 			let mut interval_stream = tokio::time::interval(interval);
@@ -753,7 +750,7 @@ pub async fn start_instant_testnet(
 		// Channel for the rpc handler to communicate with the authorship task.
 		let (command_sink, commands_stream) = futures::channel::mpsc::channel(1024);
 
-		let pool = transaction_pool.pool().clone();
+		let _pool = transaction_pool.pool().clone();
 		let import_stream = {
 			let interval = std::time::Duration::from_secs(12);
 			let mut interval_stream = tokio::time::interval(interval);
