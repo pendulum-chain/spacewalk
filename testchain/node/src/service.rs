@@ -1,5 +1,6 @@
 use std::{sync::Arc, time::Duration};
 
+use frame_support::traits::Hash;
 use futures::{StreamExt, FutureExt};
 use sc_client_api::{Backend, BlockBackend};
 use sc_consensus_aura::{ImportQueueParams, SlotProportion, StartAuraParams};
@@ -23,6 +24,9 @@ use primitives::Block;
 use spacewalk_runtime_mainnet::RuntimeApi as MainnetRuntimeApi;
 use spacewalk_runtime_testnet::RuntimeApi as TestnetRuntimeApi;
 
+use std::{thread, time};
+use tokio;
+use std::task::Poll;
 // Native executor instance.
 pub struct TestnetExecutor;
 
@@ -75,6 +79,8 @@ pub type FullMainnetClient =
 pub type FullBackend = TFullBackend<Block>;
 
 type FullSelectChain = sc_consensus::LongestChain<FullBackend, Block>;
+use sc_consensus_manual_seal::EngineCommand;
+
 
 #[allow(clippy::type_complexity)]
 #[allow(clippy::redundant_clone)]
@@ -598,14 +604,27 @@ pub async fn start_instant_mainnet(
 		let (command_sink, commands_stream) = futures::channel::mpsc::channel(1024);
 
 		let pool = transaction_pool.pool().clone();
-		let import_stream = pool.validated_pool().import_notification_stream().map(|_| {
-			sc_consensus_manual_seal::rpc::EngineCommand::SealNewBlock {
-				create_empty: true,
-				finalize: true,
-				parent_hash: None,
-				sender: None,
-			}
-		});
+		let import_stream = {
+			let interval = std::time::Duration::from_secs(10);
+			let mut interval_stream = tokio::time::interval(interval);
+			
+			Box::pin(futures::stream::poll_fn(move |cx| {
+				let engine_seal_cmd = EngineCommand::SealNewBlock {
+					create_empty: true,
+					finalize: true,
+					parent_hash: None,
+					sender: None,
+				};
+				match interval_stream.poll_tick(cx) {
+					Poll::Ready(_instant) => {
+						log::info!("⏳ Interval timer triggered");
+						Poll::Ready(Some(engine_seal_cmd))
+					},
+					Poll::Pending => Poll::Pending,
+				}
+			}))
+			
+		};
 
 		let authorship_future =
 			sc_consensus_manual_seal::run_manual_seal(sc_consensus_manual_seal::ManualSealParams {
@@ -735,14 +754,27 @@ pub async fn start_instant_testnet(
 		let (command_sink, commands_stream) = futures::channel::mpsc::channel(1024);
 
 		let pool = transaction_pool.pool().clone();
-		let import_stream = pool.validated_pool().import_notification_stream().map(|_| {
-			sc_consensus_manual_seal::rpc::EngineCommand::SealNewBlock {
-				create_empty: false,
-				finalize: false,
-				parent_hash: None,
-				sender: None,
-			}
-		});
+		let import_stream = {
+			let interval = std::time::Duration::from_secs(12);
+			let mut interval_stream = tokio::time::interval(interval);
+			
+			Box::pin(futures::stream::poll_fn(move |cx| {
+				let engine_seal_cmd = EngineCommand::SealNewBlock {
+					create_empty: true,
+					finalize: true,
+					parent_hash: None,
+					sender: None,
+				};
+				match interval_stream.poll_tick(cx) {
+					Poll::Ready(_instant) => {
+						log::info!("⏳ Interval timer triggered");
+						Poll::Ready(Some(engine_seal_cmd))
+					},
+					Poll::Pending => Poll::Pending,
+				}
+			}))
+			
+		};
 
 		let authorship_future =
 			sc_consensus_manual_seal::run_manual_seal(sc_consensus_manual_seal::ManualSealParams {
@@ -758,11 +790,6 @@ pub async fn start_instant_testnet(
 				},
 			});
 
-		let finalizer_task = sc_consensus_manual_seal::run_delayed_finalize(DelayedFinalizeParams{
-			client: client.clone(),
-			spawn_handle: task_manager.spawn_handle(),
-			delay_sec: 60,
-		});
 
 		// we spawn the future on a background thread managed by service.
 		task_manager.spawn_essential_handle().spawn_blocking(
@@ -771,12 +798,6 @@ pub async fn start_instant_testnet(
 			authorship_future,
 		);
 
-		// we spawn also the finalizer task
-		task_manager.spawn_essential_handle().spawn_blocking(
-			"finalize-blocks",
-			Some("block-authoring"),
-			finalizer_task,
-		);
 		Some(command_sink)
 	} else {
 		None

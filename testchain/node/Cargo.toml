@@ -22,6 +22,8 @@ log = "0.4.8"
 serde = { version = "1.0.130", features = ["derive"] }
 serde_json = "1.0.85"
 futures = "0.3.15"
+tokio = { version = "1.37", features = ["full", "tracing"] }
+
 
 # Parachain dependencies
 primitives = { package = "spacewalk-primitives", path = "../../primitives" }

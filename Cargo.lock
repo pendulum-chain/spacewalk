@@ -11395,6 +11395,7 @@ dependencies = [
  "substrate-build-script-utils",
  "substrate-frame-rpc-system",
  "substrate-stellar-sdk",
+ "tokio",
 ]
 
 [[package]]
@@ -12783,6 +12784,7 @@ dependencies = [
  "mockall 0.8.3",
  "nonzero_ext",
  "ntest",
+ "oracle",
  "parity-scale-codec",
  "parking_lot 0.12.2",
  "rand 0.8.5",
