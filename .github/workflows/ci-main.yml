@@ -11,7 +11,7 @@ jobs:
       max-parallel: 2
       matrix:
         rust: [ stable, nightly ]
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-24.04
     env:
       RUST_BACKTRACE: full
       # Make sure CI fails on all warnings, including Clippy lints
@@ -68,7 +68,7 @@ jobs:
         uses: Swatinem/rust-cache@v2
         with:
           cache-on-failure: true
-          key: "ubuntu-latest-cargo-${{ hashFiles('**/Cargo.lock') }}"
+          key: "ubuntu-24.04-cargo-${{ hashFiles('**/Cargo.lock') }}"
           shared-key: "shared"
 
       - name: Install Protoc
