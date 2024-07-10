@@ -10,7 +10,7 @@ on:
 jobs:
   build:
     name: Build
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-latest
     steps:
       - name: trigger job
         uses: appleboy/gitlab-ci-action@master
