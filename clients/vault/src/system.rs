@@ -45,7 +45,7 @@ pub const AUTHORS: &str = env!("CARGO_PKG_AUTHORS");
 pub const NAME: &str = env!("CARGO_PKG_NAME");
 pub const ABOUT: &str = env!("CARGO_PKG_DESCRIPTION");
 
-const RESTART_INTERVAL: Duration = Duration::from_secs(10800); // restart every 3 hours
+const RESTART_INTERVAL: Duration = Duration::from_secs(7200); // restart every 3 hours
 
 #[derive(Clone, Debug)]
 pub struct VaultData {
@@ -263,6 +263,8 @@ async fn active_block_listener(
 			|err| tracing::error!("Error (UpdateActiveBlockEvent): {}", err.to_string()),
 		)
 		.await?;
+
+	tracing::info!("active_block_listener(): ended");
 	Ok(())
 }
 
