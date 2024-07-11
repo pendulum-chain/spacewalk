@@ -156,6 +156,7 @@ impl OracleAgent {
 
 		timeout(Duration::from_secs(timeout_seconds), async move {
 			loop {
+				tracing::info!("get_proof(): attempt to build proof for slot {slot}");
 				let stellar_sender = sender.clone();
 				let collector = collector.read().await;
 				match collector.build_proof(slot, &stellar_sender).await {
