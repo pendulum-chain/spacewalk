@@ -1,4 +1,3 @@
-use jsonrpc_core_client::RpcError;
 use parity_scale_codec::Error as CodecError;
 use sp_std::str::Utf8Error;
 use thiserror::Error;
@@ -22,8 +21,6 @@ pub enum Error {
 	#[error("Faucet url not set")]
 	FaucetUrlNotSet,
 
-	#[error("RPC error: {0}")]
-	RpcError(#[from] RpcError),
 	#[error("RuntimeError: {0}")]
 	RuntimeError(#[from] RuntimeError),
 	#[error("CodecError: {0}")]
