@@ -38,11 +38,11 @@ jobs:
         # Call `rustup show` as a hack so that the toolchain defined in rust-toolchain.toml is installed
         run: rustup show
 
-      # - name: Remove rust-toolchain.toml for nightly
-      #   if: matrix.rust == 'nightly'
-      #   # To make sure that the nightly version will be used all throughout
-      #   run: |
-      #     rm /home/runner/work/spacewalk/spacewalk/rust-toolchain.toml
+      - name: Remove rust-toolchain.toml for nightly
+        if: matrix.rust == 'nightly'
+        # To make sure that the nightly version will be used all throughout
+        run: |
+          rm /home/runner/work/spacewalk/spacewalk/rust-toolchain.toml
 
       - name: Setup nightly Rust toolchain
         if: matrix.rust == 'nightly'
