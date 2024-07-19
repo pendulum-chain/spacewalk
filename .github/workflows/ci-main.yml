@@ -42,6 +42,7 @@ jobs:
         if: matrix.rust == 'nightly'
         # To make sure that the nightly version will be used all throughout
         run: |
+          ls
           rm /home/runner/work/spacewalk/spacewalk/rust-toolchain.toml
 
       - name: Setup nightly Rust toolchain
