@@ -54,11 +54,7 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
 use codec::EncodeLike;
-use frame_support::{
-	dispatch::DispatchResult,
-	traits::Get,
-	sp_runtime::DispatchError,
-};
+use frame_support::{dispatch::DispatchResult, sp_runtime::DispatchError, traits::Get};
 
 use sp_arithmetic::{FixedPointNumber, FixedPointOperand};
 use sp_runtime::{

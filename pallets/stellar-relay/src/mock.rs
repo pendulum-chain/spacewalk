@@ -9,7 +9,7 @@ use rand::Rng;
 use sp_core::H256;
 use sp_runtime::{
 	traits::{BlakeTwo256, IdentityLookup},
-	BuildStorage
+	BuildStorage,
 };
 
 use crate as pallet_spacewalk_relay;
@@ -23,7 +23,7 @@ type Block = frame_system::mocking::MockBlock<Test>;
 
 // Configure a mock runtime to test the pallet.
 frame_support::construct_runtime!(
-	pub enum Test 
+	pub enum Test
 	{
 		System: frame_system::{Pallet, Call, Config<T>, Storage, Event<T>},
 		SpacewalkRelay: pallet_spacewalk_relay::{Pallet, Call, Storage, Event<T>},
@@ -177,7 +177,6 @@ impl ExtBuilder {
 		validators: Vec<ValidatorOf<Test>>,
 	) -> sp_io::TestExternalities {
 		let mut storage = frame_system::GenesisConfig::<Test>::default().build_storage().unwrap();
-		
 
 		crate::GenesisConfig::<Test> {
 			old_validators: vec![],

@@ -3,8 +3,8 @@ use sp_arithmetic::FixedI128;
 use sp_core::H256;
 use sp_runtime::{
 	traits::{BlakeTwo256, IdentityLookup},
+	BuildStorage,
 };
-use sp_runtime::BuildStorage;
 
 pub use currency::testing_constants::{DEFAULT_NATIVE_CURRENCY, DEFAULT_WRAPPED_CURRENCY};
 pub use primitives::CurrencyId;

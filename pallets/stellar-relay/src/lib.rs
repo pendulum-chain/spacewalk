@@ -31,7 +31,7 @@ use primitives::{derive_shortened_request_id, get_text_memo_from_tx_env, TextMem
 #[frame_support::pallet]
 pub mod pallet {
 	use codec::FullCodec;
-	use frame_support::{pallet_prelude::*, transactional, sp_runtime};
+	use frame_support::{pallet_prelude::*, sp_runtime, transactional};
 	use frame_system::pallet_prelude::*;
 	use primitives::stellar::{
 		compound_types::UnlimitedVarArray,
@@ -41,7 +41,7 @@ pub mod pallet {
 	};
 
 	use sp_core::H256;
-	use sp_std::{collections::btree_map::BTreeMap, fmt::Debug, vec::Vec, vec};
+	use sp_std::{collections::btree_map::BTreeMap, fmt::Debug, vec, vec::Vec};
 
 	use default_weights::WeightInfo;
 

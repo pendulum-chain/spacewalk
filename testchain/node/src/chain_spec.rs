@@ -12,10 +12,10 @@ use sp_runtime::traits::{IdentifyAccount, Verify};
 use primitives::{oracle::Key, CurrencyId, VaultCurrencyPair};
 use serde_json::{map::Map, Value};
 use spacewalk_runtime_testnet::{
-	AccountId, AuraConfig, BalancesConfig, FeeConfig, FieldLength, GrandpaConfig, RuntimeGenesisConfig,
-	IssueConfig, NominationConfig, OracleConfig, Organization, RedeemConfig, ReplaceConfig,
-	SecurityConfig, Signature, StatusCode, StellarRelayConfig, SudoConfig, SystemConfig,
-	TokensConfig, Validator, VaultRegistryConfig, DAYS,
+	AccountId, AuraConfig, BalancesConfig, FeeConfig, FieldLength, GrandpaConfig, IssueConfig,
+	NominationConfig, OracleConfig, Organization, RedeemConfig, ReplaceConfig,
+	RuntimeGenesisConfig, SecurityConfig, Signature, StatusCode, StellarRelayConfig, SudoConfig,
+	SystemConfig, TokensConfig, Validator, VaultRegistryConfig, DAYS,
 };
 
 // The URL for the telemetry server.

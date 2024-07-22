@@ -1,8 +1,8 @@
 use currency::Amount;
+use frame_system::pallet_prelude::BlockNumberFor;
 pub use primitives::redeem::{RedeemRequest, RedeemRequestStatus};
 use primitives::VaultId;
 pub use vault_registry::types::CurrencyId;
-use frame_system::pallet_prelude::BlockNumberFor;
 
 use crate::Config;
 

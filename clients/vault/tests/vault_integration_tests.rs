@@ -23,9 +23,9 @@ mod helper;
 
 use helper::*;
 use primitives::DecimalsLookup;
+use subxt::utils::AccountId32 as AccountId;
 use vault::oracle::{random_stellar_relay_config, start_oracle_agent};
 use wallet::keys::get_source_secret_key_from_env;
-use subxt::utils::AccountId32 as AccountId;
 
 #[tokio::test(flavor = "multi_thread")]
 #[serial]

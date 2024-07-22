@@ -12,12 +12,7 @@ mod mock;
 mod tests;
 
 use codec::{Decode, Encode, EncodeLike};
-use frame_support::{
-	dispatch::DispatchResult,
-	ensure,
-	traits::Get,
-	sp_runtime::DispatchError,
-};
+use frame_support::{dispatch::DispatchResult, ensure, sp_runtime::DispatchError, traits::Get};
 use frame_system::pallet_prelude::BlockNumberFor;
 use primitives::{BalanceToFixedPoint, TruncateFixedPointToInt};
 use scale_info::TypeInfo;

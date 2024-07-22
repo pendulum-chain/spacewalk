@@ -10,11 +10,8 @@ extern crate mocktopus;
 
 use codec::FullCodec;
 use frame_support::{
-	dispatch::DispatchResult,
-	sp_runtime::DispatchError,
-	ensure,
-	traits::Get,
-	transactional, PalletId,
+	dispatch::DispatchResult, ensure, sp_runtime::DispatchError, traits::Get, transactional,
+	PalletId,
 };
 use frame_system::offchain::{SendTransactionTypes, SubmitTransaction};
 #[cfg(test)]

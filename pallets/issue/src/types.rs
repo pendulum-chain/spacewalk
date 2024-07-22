@@ -1,10 +1,10 @@
 use frame_support::traits::Get;
 
 use currency::Amount;
+pub use frame_system::pallet_prelude::BlockNumberFor;
 pub use primitives::issue::{IssueRequest, IssueRequestStatus};
 use primitives::VaultId;
 pub use vault_registry::types::CurrencyId;
-pub use frame_system::pallet_prelude::BlockNumberFor;
 
 use crate::Config;
 

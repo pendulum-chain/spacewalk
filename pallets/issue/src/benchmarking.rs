@@ -7,6 +7,7 @@ use sp_runtime::{traits::One, FixedPointNumber};
 use sp_std::prelude::*;
 
 use currency::getters::{get_relay_chain_currency_id as get_collateral_currency_id, *};
+use frame_system::pallet_prelude::BlockNumberFor;
 use oracle::Pallet as Oracle;
 use primitives::{CurrencyId, VaultCurrencyPair, VaultId};
 use security::Pallet as Security;
@@ -17,7 +18,6 @@ use stellar_relay::{
 	Config as StellarRelayConfig, Pallet as StellarRelay,
 };
 use vault_registry::{types::DefaultVaultCurrencyPair, Pallet as VaultRegistry};
-use frame_system::pallet_prelude::BlockNumberFor;
 
 // Pallets
 use crate::Pallet as Issue;

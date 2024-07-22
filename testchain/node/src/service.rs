@@ -1,6 +1,6 @@
 use std::{sync::Arc, time::Duration};
 
-use futures::{StreamExt, FutureExt};
+use futures::{FutureExt, StreamExt};
 use sc_client_api::{Backend, BlockBackend};
 use sc_consensus_aura::{ImportQueueParams, SlotProportion, StartAuraParams};
 use sc_consensus_grandpa::SharedVoterState;
@@ -12,9 +12,9 @@ use sc_service::{
 	TaskManager,
 };
 use sc_telemetry::{Telemetry, TelemetryWorker};
+use sc_transaction_pool_api::OffchainTransactionPoolFactory;
 use sp_consensus_aura::sr25519::AuthorityPair as AuraPair;
 use sp_core::crypto::KeyTypeId;
-use sc_transaction_pool_api::OffchainTransactionPoolFactory;
 
 use crate::rpc as spacewalk_rpc;
 use primitives::Block;
@@ -495,7 +495,6 @@ pub fn new_full(config: Configuration) -> Result<(TaskManager, RpcHandlers), Ser
 		telemetry: telemetry.as_ref().map(|x| x.handle()),
 		protocol_name: grandpa_protocol_name,
 		justification_generation_period: GRANDPA_JUSTIFICATION_PERIOD,
-
 	};
 
 	if enable_grandpa {

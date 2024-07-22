@@ -5,10 +5,10 @@ use std::{
 
 use clap::Parser;
 use futures::Future;
+use sp_runtime::AccountId32 as AccountId;
 use sysinfo::{System, SystemExt};
 use tokio::sync::RwLock;
 use tokio_stream::StreamExt;
-use sp_runtime::AccountId32 as AccountId;
 
 use runtime::{SpacewalkSigner, DEFAULT_SPEC_NAME};
 use service::{
@@ -131,14 +131,10 @@ async fn start() -> Result<(), ServiceError<Error>> {
 	// Create a PID file to signal to other processes that a vault is running.
 	// This file is auto-removed when `drop`ped.
 
-	// First get the raw [u8] from the signer's account id and 
+	// First get the raw [u8] from the signer's account id and
 	// convert it to an sp_core type AccountId
 	let sp_account_id = AccountId::new(signer.read().await.account_id().0);
-	let _pidfile = PidFile::create(
-		&String::from(DEFAULT_SPEC_NAME),
-		&sp_account_id,
-		&mut sys,
-	)?;
+	let _pidfile = PidFile::create(&String::from(DEFAULT_SPEC_NAME), &sp_account_id, &mut sys)?;
 
 	// Unless termination signals are caught, the PID file is not dropped.
 	let main_task = async move { vault_connection_manager.start::<VaultService, Error>().await };

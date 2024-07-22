@@ -99,7 +99,6 @@ pub struct ConnectionOpts {
 	/// Maximum number of concurrent requests
 	#[clap(long, env = "MAX_CONCURRENT_REQUESTS")]
 	pub max_concurrent_requests: Option<usize>,
-
 }
 
 impl ConnectionOpts {

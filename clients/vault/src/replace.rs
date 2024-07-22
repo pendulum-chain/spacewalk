@@ -307,7 +307,11 @@ mod tests {
 	}
 
 	fn dummy_vault_id() -> VaultId {
-		VaultId::new(subxt::ext::sp_runtime::AccountId32::new([1u8; 32]).into(), CurrencyId::XCM(0), CurrencyId::Native)
+		VaultId::new(
+			subxt::ext::sp_runtime::AccountId32::new([1u8; 32]).into(),
+			CurrencyId::XCM(0),
+			CurrencyId::Native,
+		)
 	}
 
 	fn wallet(is_public_network: bool, path: &Path) -> ArcRwLock<StellarWallet> {

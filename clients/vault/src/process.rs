@@ -6,8 +6,8 @@ use std::{
 	str::FromStr,
 };
 
-use sp_runtime::AccountId32 as AccountId;
 use service::Error as ServiceError;
+use sp_runtime::AccountId32 as AccountId;
 use sysinfo::{Pid, PidExt, ProcessExt, System, SystemExt};
 
 use crate::Error;

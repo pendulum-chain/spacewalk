@@ -6,12 +6,7 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
 use codec::EncodeLike;
-use frame_support::{
-	dispatch::DispatchResult,
-	ensure,
-	traits::Get,
-	sp_runtime::DispatchError,
-};
+use frame_support::{dispatch::DispatchResult, ensure, sp_runtime::DispatchError, traits::Get};
 use frame_system::pallet_prelude::BlockNumberFor;
 use sp_arithmetic::FixedPointNumber;
 use sp_runtime::{

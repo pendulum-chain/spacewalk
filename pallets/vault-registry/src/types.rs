@@ -1,10 +1,5 @@
 use codec::{Decode, Encode, HasCompact, MaxEncodedLen};
-use frame_support::{
-	dispatch::DispatchResult,
-	sp_runtime::DispatchError,
-	ensure,
-	traits::Get,
-};
+use frame_support::{dispatch::DispatchResult, ensure, sp_runtime::DispatchError, traits::Get};
 #[cfg(test)]
 use mocktopus::macros::mockable;
 use scale_info::TypeInfo;

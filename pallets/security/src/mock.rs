@@ -6,9 +6,8 @@ use mocktopus::mocking::clear_mocks;
 use sp_core::H256;
 use sp_runtime::{
 	traits::{BlakeTwo256, IdentityLookup},
-	BuildStorage
+	BuildStorage,
 };
-
 
 type Block = frame_system::mocking::MockBlock<Test>;
 

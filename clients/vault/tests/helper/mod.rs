@@ -18,6 +18,7 @@ use sp_arithmetic::FixedPointNumber;
 use sp_keyring::AccountKeyring;
 use std::{future::Future, sync::Arc};
 use stellar_relay_lib::StellarOverlayConfig;
+use subxt::utils::AccountId32 as AccountId;
 use tokio::sync::RwLock;
 use vault::{
 	oracle::{random_stellar_relay_config, start_oracle_agent, OracleAgent},
@@ -27,7 +28,6 @@ use wallet::{
 	keys::{get_dest_secret_key_from_env, get_source_secret_key_from_env},
 	StellarWallet,
 };
-use subxt::utils::AccountId32 as AccountId;
 pub type StellarPublicKey = [u8; 32];
 
 #[async_trait]

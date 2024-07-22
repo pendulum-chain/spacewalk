@@ -76,7 +76,7 @@ pub mod pallet {
 	use frame_support::pallet_prelude::*;
 	use frame_system::pallet_prelude::*;
 	use sp_std::vec;
-	
+
 	use super::*;
 
 	/// ## Configuration
@@ -165,11 +165,11 @@ pub mod pallet {
 
 	impl<T: Config> Default for GenesisConfig<T> {
 		fn default() -> Self {
-			Self { 
-					max_delay: Default::default(),
-					oracle_keys: vec![],
-					_phantom: Default::default(),
-				 }
+			Self {
+				max_delay: Default::default(),
+				oracle_keys: vec![],
+				_phantom: Default::default(),
+			}
 		}
 	}
 

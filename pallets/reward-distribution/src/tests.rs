@@ -1,12 +1,12 @@
 use crate::{ext, mock::*, pallet, DefaultVaultId, Error, NativeLiability};
 pub use currency::testing_constants::{DEFAULT_COLLATERAL_CURRENCY, DEFAULT_WRAPPED_CURRENCY};
 use frame_benchmarking::account;
-use frame_system::pallet_prelude::BlockNumberFor;
 use frame_support::{assert_err, assert_ok, traits::Get};
+use frame_system::pallet_prelude::BlockNumberFor;
 use mocktopus::mocking::*;
 use oracle::OracleApi;
 use primitives::CurrencyId::XCM;
-use sp_runtime::{DispatchError::BadOrigin, traits::One};
+use sp_runtime::{traits::One, DispatchError::BadOrigin};
 use staking::Staking;
 const COLLATERAL_POOL_1: u128 = 1000u128;
 const COLLATERAL_POOL_2: u128 = 3000u128;
@@ -141,8 +141,7 @@ fn on_initialize_hook_distribution_works() {
 				MockResult::Return(Ok(()))
 			},
 		);
-		let block_number: BlockNumberFor<Test> =
-			<Test as pallet::Config>::DecayInterval::get();
+		let block_number: BlockNumberFor<Test> = <Test as pallet::Config>::DecayInterval::get();
 
 		System::set_block_number(block_number);
 		ext::security::get_active_block::<Test>.mock_safe(move || MockResult::Return(block_number));
@@ -154,7 +153,7 @@ fn on_initialize_hook_distribution_works() {
 
 		assert_eq!(RewardDistribution::rewards_adapted_at(), Some(100));
 
-		let new_block_number = block_number +  BlockNumberFor::<Test>::one();
+		let new_block_number = block_number + BlockNumberFor::<Test>::one();
 		System::set_block_number(new_block_number);
 		ext::security::get_active_block::<Test>
 			.mock_safe(move || MockResult::Return(new_block_number));
@@ -193,8 +192,7 @@ fn udpate_reward_does_not_trigger_incorrectly() {
 #[test]
 fn udpate_reward_per_block_works() {
 	run_test(|| {
-		let block_number: BlockNumberFor<Test> =
-			<Test as pallet::Config>::DecayInterval::get();
+		let block_number: BlockNumberFor<Test> = <Test as pallet::Config>::DecayInterval::get();
 
 		ext::pooled_rewards::get_total_stake_all_pools::<Test>.mock_safe(move || {
 			let initial_stakes = build_total_stakes();
