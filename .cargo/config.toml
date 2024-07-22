@@ -1,2 +1,2 @@
 [build]
-CARGO_BUILD_RUSTFLAGS="--cfg tokio_unstable"
+rustflags = ["--cfg", "tokio_unstable"]
