@@ -18,8 +18,7 @@ use sp_core::H256;
 use sp_runtime::{
 	testing::TestXt,
 	traits::{BlakeTwo256, Convert, IdentityLookup, One, Zero},
-	DispatchError, Perquintill,
-	BuildStorage,
+	BuildStorage, DispatchError, Perquintill,
 };
 
 pub use currency::{
@@ -473,8 +472,8 @@ impl ExtBuilder {
 		.unwrap();
 
 		nomination::GenesisConfig::<Test> { is_nomination_enabled: true, ..Default::default() }
-		.assimilate_storage(&mut storage)
-		.unwrap();
+			.assimilate_storage(&mut storage)
+			.unwrap();
 
 		fee::GenesisConfig::<Test> {
 			issue_fee: UnsignedFixedPoint::checked_from_rational(5, 1000).unwrap(), // 0.5%

@@ -19,7 +19,8 @@ pub use sc_service::{
 	Error as ServiceError,
 };
 use sc_service::{
-	config::{NetworkConfiguration, TelemetryEndpoints, TransportConfig}, BasePath, ChainSpec, Configuration, RpcHandlers, TaskManager
+	config::{NetworkConfiguration, TelemetryEndpoints, TransportConfig},
+	BasePath, ChainSpec, Configuration, RpcHandlers, TaskManager,
 };
 pub use sp_keyring::AccountKeyring;
 use thiserror::Error;

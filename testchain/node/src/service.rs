@@ -12,9 +12,9 @@ use sc_service::{
 	TaskManager,
 };
 use sc_telemetry::{Telemetry, TelemetryWorker};
+use sc_transaction_pool_api::OffchainTransactionPoolFactory;
 use sp_consensus_aura::sr25519::AuthorityPair as AuraPair;
 use sp_core::crypto::KeyTypeId;
-use sc_transaction_pool_api::OffchainTransactionPoolFactory;
 
 use crate::rpc as spacewalk_rpc;
 use primitives::Block;
@@ -499,7 +499,6 @@ pub fn new_full(config: Configuration) -> Result<(TaskManager, RpcHandlers), Ser
 		telemetry: telemetry.as_ref().map(|x| x.handle()),
 		protocol_name: grandpa_protocol_name,
 		justification_generation_period: GRANDPA_JUSTIFICATION_PERIOD,
-
 	};
 
 	if enable_grandpa {

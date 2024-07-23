@@ -5,9 +5,9 @@ use base58::ToBase58;
 use codec::{Decode, Encode, MaxEncodedLen};
 use frame_support::error::LookupError;
 use scale_info::TypeInfo;
+use serde::{Deserialize, Serialize};
 #[cfg(feature = "std")]
 use serde::{Deserializer, Serializer};
-use serde::{Deserialize, Serialize};
 pub use sp_core::H256;
 use sp_core::{crypto::AccountId32, ed25519};
 pub use sp_runtime::OpaqueExtrinsic as UncheckedExtrinsic;
@@ -67,14 +67,40 @@ impl TruncateFixedPointToInt for UnsignedFixedPoint {
 	}
 }
 
-#[derive(Encode, Decode, Clone, PartialEq, Eq, Debug, PartialOrd, Ord, TypeInfo, MaxEncodedLen, Deserialize, Serialize)]
-#[cfg_attr(feature = "std", derive( std::hash::Hash))]
+#[derive(
+	Encode,
+	Decode,
+	Clone,
+	PartialEq,
+	Eq,
+	Debug,
+	PartialOrd,
+	Ord,
+	TypeInfo,
+	MaxEncodedLen,
+	Deserialize,
+	Serialize,
+)]
+#[cfg_attr(feature = "std", derive(std::hash::Hash))]
 pub struct VaultCurrencyPair<CurrencyId: Copy> {
 	pub collateral: CurrencyId,
 	pub wrapped: CurrencyId,
 }
 
-#[derive(Encode, Decode, Clone, PartialEq, Eq, Debug, PartialOrd, Ord, TypeInfo, MaxEncodedLen, Serialize, Deserialize)]
+#[derive(
+	Encode,
+	Decode,
+	Clone,
+	PartialEq,
+	Eq,
+	Debug,
+	PartialOrd,
+	Ord,
+	TypeInfo,
+	MaxEncodedLen,
+	Serialize,
+	Deserialize,
+)]
 #[cfg_attr(feature = "std", derive(std::hash::Hash))]
 pub struct VaultId<AccountId, CurrencyId: Copy> {
 	pub account_id: AccountId,
@@ -301,7 +327,9 @@ pub mod replace {
 pub mod oracle {
 	use super::*;
 
-	#[derive(Encode, Decode, Clone, Eq, PartialEq, Debug, TypeInfo, MaxEncodedLen, Serialize, Deserialize)]
+	#[derive(
+		Encode, Decode, Clone, Eq, PartialEq, Debug, TypeInfo, MaxEncodedLen, Serialize, Deserialize,
+	)]
 	#[cfg_attr(feature = "std", serde(rename_all = "camelCase"))]
 	pub enum Key {
 		ExchangeRate(CurrencyId),
@@ -420,8 +448,21 @@ pub fn remove_trailing_non_alphanum_bytes(input: &[u8]) -> &[u8] {
 	b""
 }
 
-#[derive( 
-	Encode, Decode, Eq, Hash, PartialEq, Copy, Clone, PartialOrd, Ord, TypeInfo, MaxEncodedLen, Serialize, Deserialize, scale_decode::DecodeAsType,
+#[derive(
+	Encode,
+	Decode,
+	Eq,
+	Hash,
+	PartialEq,
+	Copy,
+	Clone,
+	PartialOrd,
+	Ord,
+	TypeInfo,
+	MaxEncodedLen,
+	Serialize,
+	Deserialize,
+	scale_decode::DecodeAsType,
 	scale_encode::EncodeAsType,
 )]
 #[cfg_attr(feature = "std", serde(rename_all = "camelCase"))]

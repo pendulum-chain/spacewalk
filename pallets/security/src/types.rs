@@ -1,10 +1,23 @@
 use codec::{Decode, Encode, MaxEncodedLen};
 use scale_info::TypeInfo;
-use sp_std::{cmp::Ord, fmt::Debug};
 use serde::{Deserialize, Serialize};
+use sp_std::{cmp::Ord, fmt::Debug};
 
 /// Enum indicating the status of the Spacewalk Parachain.
-#[derive(Default, Encode, Decode, Clone, Copy, PartialEq, MaxEncodedLen, Eq, Debug, TypeInfo, Serialize, Deserialize)]
+#[derive(
+	Default,
+	Encode,
+	Decode,
+	Clone,
+	Copy,
+	PartialEq,
+	MaxEncodedLen,
+	Eq,
+	Debug,
+	TypeInfo,
+	Serialize,
+	Deserialize,
+)]
 pub enum StatusCode {
 	/// Spacewalk Parachain is fully operational.
 	#[default]
@@ -17,7 +30,19 @@ pub enum StatusCode {
 
 /// Enum specifying errors which lead to the Error status, tacked in Errors
 #[derive(
-	Default, Encode, Decode, Clone, PartialEq, Eq, Debug, Ord, MaxEncodedLen, PartialOrd, TypeInfo, Serialize, Deserialize
+	Default,
+	Encode,
+	Decode,
+	Clone,
+	PartialEq,
+	Eq,
+	Debug,
+	Ord,
+	MaxEncodedLen,
+	PartialOrd,
+	TypeInfo,
+	Serialize,
+	Deserialize,
 )]
 pub enum ErrorCode {
 	/// No error. Used as default value

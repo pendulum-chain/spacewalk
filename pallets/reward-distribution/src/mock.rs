@@ -11,13 +11,11 @@ use sp_arithmetic::{FixedI128, FixedU128};
 use sp_core::H256;
 use sp_runtime::{
 	traits::{BlakeTwo256, IdentityLookup},
-	DispatchError, Perquintill,
-	BuildStorage,
+	BuildStorage, DispatchError, Perquintill,
 };
 type Block = frame_system::mocking::MockBlock<Test>;
 use orml_traits::parameter_type_with_key;
 use sp_arithmetic::traits::Zero;
-
 
 pub use currency::testing_constants::{DEFAULT_COLLATERAL_CURRENCY, DEFAULT_NATIVE_CURRENCY};
 

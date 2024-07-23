@@ -1,9 +1,9 @@
-pub use subxt::ext::sp_core::sr25519::Pair as KeyPair;
-use subxt::utils::Static;
 pub use metadata_aliases::*;
 pub use primitives::{CurrencyId, TextMemo};
+use sp_runtime::{generic, traits::BlakeTwo256};
 use std::str::from_utf8;
-use sp_runtime::{traits::BlakeTwo256, generic};
+pub use subxt::ext::sp_core::sr25519::Pair as KeyPair;
+use subxt::utils::Static;
 
 use crate::{metadata, Config, SpacewalkRuntime};
 
@@ -270,15 +270,15 @@ mod vault_id {
 
 	impl std::hash::Hash for crate::VaultId {
 		fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
-			// Extract rich vault, then create a hashable version of it 
+			// Extract rich vault, then create a hashable version of it
 			// defined with sp_runtime::AccountId32, which is hashable
 			let vault: RichVaultId = self.clone().into();
 			let vault_hashable = RichVaultHashable {
 				account_id: sp_runtime::AccountId32::new(vault.account_id.0),
-					currencies: primitives::VaultCurrencyPair {
-						collateral: vault.currencies.collateral,
-						wrapped:  vault.currencies.collateral,
-					},
+				currencies: primitives::VaultCurrencyPair {
+					collateral: vault.currencies.collateral,
+					wrapped: vault.currencies.collateral,
+				},
 			};
 			vault_hashable.hash(state)
 		}

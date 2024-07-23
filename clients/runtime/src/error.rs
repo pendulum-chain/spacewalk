@@ -2,14 +2,11 @@ use std::{array::TryFromSliceError, fmt::Debug, io::Error as IoError, num::TryFr
 
 use codec::Error as CodecError;
 pub use jsonrpsee::core::Error as JsonRpseeError;
-use jsonrpsee::{
-	client_transport::ws::WsHandshakeError,
-	types::ErrorObjectOwned,
-};
+use jsonrpsee::{client_transport::ws::WsHandshakeError, types::ErrorObjectOwned};
 use serde_json::Error as SerdeJsonError;
 pub use subxt::{error::RpcError, Error as SubxtError};
 use subxt::{
-	error::{DispatchError,  TransactionError},
+	error::{DispatchError, TransactionError},
 	ext::sp_core::crypto::SecretStringError,
 };
 use thiserror::Error;

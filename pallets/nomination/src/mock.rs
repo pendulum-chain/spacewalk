@@ -11,8 +11,7 @@ use sp_core::H256;
 use sp_runtime::{
 	testing::TestXt,
 	traits::{BlakeTwo256, IdentityLookup, One, Zero},
-	DispatchError, FixedPointNumber, Perquintill,
-	BuildStorage,
+	BuildStorage, DispatchError, FixedPointNumber, Perquintill,
 };
 
 pub use currency::testing_constants::{
@@ -36,7 +35,7 @@ type Block = frame_system::mocking::MockBlock<Test>;
 
 // Configure a mock runtime to test the pallet.
 frame_support::construct_runtime!(
-	pub enum Test 
+	pub enum Test
 	{
 		System: frame_system,
 		Timestamp: pallet_timestamp,
@@ -387,7 +386,10 @@ impl ExtBuilder {
 		.assimilate_storage(&mut storage)
 		.unwrap();
 
-		nomination::GenesisConfig::<Test> { is_nomination_enabled: true, _phantom: Default::default()}
+		nomination::GenesisConfig::<Test> {
+			is_nomination_enabled: true,
+			_phantom: Default::default(),
+		}
 		.assimilate_storage(&mut storage)
 		.unwrap();
 

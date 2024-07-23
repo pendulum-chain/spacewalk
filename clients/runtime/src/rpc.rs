@@ -4,17 +4,17 @@ use async_trait::async_trait;
 #[cfg(any(feature = "standalone-metadata", feature = "parachain-metadata-foucoco"))]
 use codec::Encode;
 use futures::{future::join_all, stream::StreamExt, FutureExt, SinkExt};
-use jsonrpsee::core::{client::Client};
+use jsonrpsee::core::client::Client;
 use subxt::{
+	backend::{legacy::LegacyRpcMethods, rpc::RpcClient},
 	blocks::ExtrinsicEvents,
 	client::OnlineClient,
 	events::StaticEvent,
+	rpc_params,
 	storage::{address::Yes, StorageAddress},
 	tx::TxPayload,
-	Error as BasicError,
 	utils::Static,
-	backend::{legacy::LegacyRpcMethods, rpc::RpcClient},
-	rpc_params,
+	Error as BasicError,
 };
 use tokio::{sync::RwLock, time::timeout};
 
@@ -88,9 +88,8 @@ impl SpacewalkParachain {
 		let api = OnlineClient::<SpacewalkRuntime>::from_rpc_client(rpc.clone()).await?;
 		let legacy_rpc = LegacyRpcMethods::new(rpc.clone());
 
-
 		let runtime_version = api.backend().current_runtime_version().await?;
-		
+
 		//let default_spec_name = &JsonValue::default();
 		//let spec_name = runtime_version.spec_version.unwrap_or(default_spec_name);
 		// if spec_name == DEFAULT_SPEC_NAME {
@@ -167,7 +166,7 @@ impl SpacewalkParachain {
 
 		let _: CreatedBlock<Hash> = self
 			.rpc
-			.request("engine_createBlock", rpc_params![true,true])
+			.request("engine_createBlock", rpc_params![true, true])
 			.await
 			.expect("failed to create block");
 	}
@@ -175,16 +174,13 @@ impl SpacewalkParachain {
 	/// This function is used in tests to finalize the current block.
 	#[cfg(feature = "testing-utils")]
 	pub async fn manual_finalize(&self) {
-
-		
 		let head = self.get_finalized_block_hash().await.unwrap();
 
 		let _: bool = self
-		.rpc
-		.request("engine_finalizeBlock", rpc_params![head])
-		.await
-		.expect("failed to create block");
-	
+			.rpc
+			.request("engine_finalizeBlock", rpc_params![head])
+			.await
+			.expect("failed to create block");
 	}
 
 	pub async fn from_url(
@@ -202,14 +198,8 @@ impl SpacewalkParachain {
 		connection_timeout: Duration,
 		shutdown_tx: ShutdownSender,
 	) -> Result<Self, Error> {
-		Self::from_url_and_config_with_retry(
-			url,
-			signer,
-			None,
-			connection_timeout,
-			shutdown_tx,
-		)
-		.await
+		Self::from_url_and_config_with_retry(url, signer, None, connection_timeout, shutdown_tx)
+			.await
 	}
 
 	pub async fn from_url_and_config_with_retry(
@@ -219,12 +209,9 @@ impl SpacewalkParachain {
 		connection_timeout: Duration,
 		shutdown_tx: ShutdownSender,
 	) -> Result<Self, Error> {
-		let ws_client = new_websocket_client_with_retry(
-			url,
-			max_concurrent_requests,
-			connection_timeout,
-		)
-		.await?;
+		let ws_client =
+			new_websocket_client_with_retry(url, max_concurrent_requests, connection_timeout)
+				.await?;
 		Self::new(ws_client, signer, shutdown_tx).await
 	}
 
@@ -259,8 +246,8 @@ impl SpacewalkParachain {
 				match result.map_err(Into::<Error>::into) {
 					Ok(ok) => Ok(ok),
 					Err(err) => match err.is_invalid_transaction() {
-						Some(Recoverability::Recoverable(data)) =>{
-							Err(RetryPolicy::Skip(Error::InvalidTransaction(data)))},
+						Some(Recoverability::Recoverable(data)) =>
+							Err(RetryPolicy::Skip(Error::InvalidTransaction(data))),
 						Some(Recoverability::Unrecoverable(data)) =>
 							Err(RetryPolicy::Throw(Error::InvalidTransaction(data))),
 						None => {
@@ -342,7 +329,7 @@ impl SpacewalkParachain {
 	where
 		F: Fn(SpacewalkHeader) -> R,
 		R: Future<Output = Result<(), Error>>,
-	{	
+	{
 		let mut sub = self.legacy_rpc.chain_subscribe_finalized_heads().await?;
 		loop {
 			on_block(sub.next().await.ok_or(Error::ChannelClosed)??).await?;
@@ -833,7 +820,7 @@ impl CollateralBalancesPallet for SpacewalkParachain {
 		currency_id: CurrencyId,
 	) -> Result<(), Error> {
 		let transfer_tx = metadata::tx().tokens().transfer(
-			subxt::utils::MultiAddress::<AccountId,()>::Id(recipient.clone()),
+			subxt::utils::MultiAddress::<AccountId, ()>::Id(recipient.clone()),
 			Static(currency_id),
 			amount,
 		);
@@ -1093,7 +1080,9 @@ impl IssuePallet for SpacewalkParachain {
 		let key_addr = metadata::storage().issue().issue_requests_iter();
 		let mut iter = self.api.storage().at_latest().await.unwrap().iter(key_addr).await?;
 
-		while let Ok((issue_id, request)) = iter.next().await.ok_or(Error::RequestIssueIDNotFound)? {
+		while let Ok((issue_id, request)) =
+			iter.next().await.ok_or(Error::RequestIssueIDNotFound)?
+		{
 			if request.status == IssueRequestStatus::Pending &&
 				request.opentime + issue_period > current_height
 			{

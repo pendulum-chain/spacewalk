@@ -1,10 +1,9 @@
 use frame_benchmarking::{account, benchmarks, impl_benchmark_test_suite};
 use frame_support::assert_ok;
-use frame_system::RawOrigin;
+use frame_system::{pallet_prelude::BlockNumberFor, RawOrigin};
 use orml_traits::MultiCurrency;
 use sp_runtime::FixedPointNumber;
 use sp_std::prelude::*;
-use frame_system::pallet_prelude::BlockNumberFor;
 
 use currency::getters::{
 	get_relay_chain_currency_id as get_collateral_currency_id, get_wrapped_currency_id, *,

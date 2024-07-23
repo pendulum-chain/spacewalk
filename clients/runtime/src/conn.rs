@@ -41,9 +41,7 @@ pub(crate) async fn new_websocket_client_with_retry(
 	log::info!("Connecting to the spacewalk-parachain...");
 	timeout(connection_timeout, async move {
 		loop {
-			match new_websocket_client(url, max_concurrent_requests)
-				.await
-			{
+			match new_websocket_client(url, max_concurrent_requests).await {
 				Err(err) if err.is_ws_invalid_url_error() => return Err(err),
 				Err(Error::JsonRpseeError(JsonRpseeError::Transport(err))) => {
 					log::trace!("could not connect to parachain: {}", err);

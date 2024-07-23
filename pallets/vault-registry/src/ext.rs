@@ -34,10 +34,7 @@ pub(crate) mod security {
 pub(crate) mod staking {
 	use crate::types::CurrencyId;
 	use currency::Amount;
-	use frame_support::{
-		dispatch::DispatchResult,
-		sp_runtime::DispatchError,
-	};
+	use frame_support::{dispatch::DispatchResult, sp_runtime::DispatchError};
 	use staking::Staking;
 
 	use crate::{types::BalanceOf, DefaultVaultId};

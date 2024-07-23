@@ -28,8 +28,8 @@ use sp_core::{OpaqueMetadata, H256};
 use sp_runtime::{
 	create_runtime_str, generic, impl_opaque_keys,
 	traits::{
-		AccountIdConversion, AccountIdLookup, BlakeTwo256, Block as BlockT, Convert, NumberFor,
-		Zero, ConstBool,
+		AccountIdConversion, AccountIdLookup, BlakeTwo256, Block as BlockT, ConstBool, Convert,
+		NumberFor, Zero,
 	},
 	transaction_validity::{TransactionSource, TransactionValidity},
 	ApplyExtrinsicResult, DispatchError, FixedPointNumber, Perbill, Perquintill,
@@ -621,7 +621,7 @@ impl pooled_rewards::Config for Runtime {
 }
 
 construct_runtime! {
-	pub enum Runtime 
+	pub enum Runtime
 	{
 		System: frame_system::{Pallet, Call, Storage, Config<T>, Event<T>} = 0,
 		Timestamp: pallet_timestamp::{Pallet, Call, Storage, Inherent} = 1,

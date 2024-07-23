@@ -236,7 +236,11 @@ impl ExtBuilder {
 	pub fn build() -> sp_io::TestExternalities {
 		let mut storage = frame_system::GenesisConfig::<Test>::default().build_storage().unwrap();
 
-		oracle::GenesisConfig::<Test> { oracle_keys: vec![], max_delay: 0, _phantom: Default::default() }
+		oracle::GenesisConfig::<Test> {
+			oracle_keys: vec![],
+			max_delay: 0,
+			_phantom: Default::default(),
+		}
 		.assimilate_storage(&mut storage)
 		.unwrap();
 

@@ -8,7 +8,8 @@
 #[cfg(test)]
 extern crate mocktopus;
 
-use frame_support::{sp_runtime::DispatchError, ensure, traits::Get, transactional};
+use frame_support::{ensure, sp_runtime::DispatchError, traits::Get, transactional};
+use frame_system::pallet_prelude::BlockNumberFor;
 #[cfg(test)]
 use mocktopus::macros::mockable;
 use primitives::{
@@ -20,7 +21,6 @@ use primitives::{
 };
 use sp_core::H256;
 use sp_runtime::traits::{CheckedDiv, Convert, Saturating, Zero};
-use frame_system::pallet_prelude::BlockNumberFor;
 use sp_std::vec::Vec;
 
 use currency::Amount;

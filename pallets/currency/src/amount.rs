@@ -5,11 +5,7 @@
 	forgetting_references,
 	forgetting_copy_types
 )]
-use frame_support::{
-	dispatch::DispatchResult,
-	sp_runtime::DispatchError,
-	ensure,
-};
+use frame_support::{dispatch::DispatchResult, ensure, sp_runtime::DispatchError};
 use orml_traits::{MultiCurrency, MultiReservableCurrency};
 use sp_runtime::{
 	traits::{CheckedAdd, CheckedDiv, CheckedMul, CheckedSub, UniqueSaturatedInto, Zero},

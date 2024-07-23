@@ -4,13 +4,11 @@ use super::Pallet as RewardDistribution;
 use super::*;
 use crate::types::DefaultVaultId;
 use currency::getters::get_relay_chain_currency_id as get_collateral_currency_id;
-use frame_benchmarking::{
-	v2::{account, benchmarks, impl_benchmark_test_suite},
-};
+use frame_benchmarking::v2::{account, benchmarks, impl_benchmark_test_suite};
 use frame_system::RawOrigin;
 use pooled_rewards::RewardsApi;
-use staking::Staking;
 use sp_std::vec;
+use staking::Staking;
 #[benchmarks]
 pub mod benchmarks {
 	use super::*;

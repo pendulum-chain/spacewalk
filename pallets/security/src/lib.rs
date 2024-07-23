@@ -8,11 +8,7 @@
 #[cfg(test)]
 extern crate mocktopus;
 use codec::Encode;
-use frame_support::{
-	dispatch::DispatchResult,
-	transactional,
-	sp_runtime::DispatchError,
-};
+use frame_support::{dispatch::DispatchResult, sp_runtime::DispatchError, transactional};
 use frame_system::pallet_prelude::BlockNumberFor;
 #[cfg(test)]
 use mocktopus::macros::mockable;
@@ -77,17 +73,14 @@ pub mod pallet {
 	}
 
 	#[pallet::genesis_config]
-	pub struct GenesisConfig<T: Config>{
+	pub struct GenesisConfig<T: Config> {
 		pub initial_status: StatusCode,
 		pub _phantom: sp_std::marker::PhantomData<T>,
 	}
 
 	impl<T: Config> Default for GenesisConfig<T> {
 		fn default() -> Self {
-			Self { 
-					initial_status: StatusCode::Error,
-					_phantom: Default::default(),
-				 }
+			Self { initial_status: StatusCode::Error, _phantom: Default::default() }
 		}
 	}
 

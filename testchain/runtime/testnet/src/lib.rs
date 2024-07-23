@@ -24,7 +24,7 @@ use pallet_grandpa::{
 pub use pallet_timestamp::Call as TimestampCall;
 use sp_api::impl_runtime_apis;
 use sp_consensus_aura::sr25519::AuthorityId as AuraId;
-use sp_core::{OpaqueMetadata, H256, ConstBool};
+use sp_core::{ConstBool, OpaqueMetadata, H256};
 use sp_runtime::{
 	create_runtime_str, generic, impl_opaque_keys,
 	traits::{
@@ -612,7 +612,7 @@ impl pooled_rewards::Config for Runtime {
 }
 
 construct_runtime! {
-	pub enum Runtime 
+	pub enum Runtime
 	{
 		System: frame_system::{Pallet, Call, Storage, Config<T>, Event<T>} = 0,
 		Timestamp: pallet_timestamp::{Pallet, Call, Storage, Inherent} = 1,

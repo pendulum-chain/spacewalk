@@ -10,8 +10,7 @@ use sp_arithmetic::{FixedI128, FixedU128};
 use sp_core::H256;
 use sp_runtime::{
 	traits::{BlakeTwo256, IdentityLookup, Zero},
-	DispatchError, FixedPointNumber, Perquintill,
-	BuildStorage,
+	BuildStorage, DispatchError, FixedPointNumber, Perquintill,
 };
 
 use crate as fee;

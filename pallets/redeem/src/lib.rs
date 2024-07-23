@@ -8,11 +8,7 @@
 #[cfg(test)]
 extern crate mocktopus;
 
-use frame_support::{
-	dispatch::DispatchResult,
-	sp_runtime::DispatchError,
-	ensure, transactional,
-};
+use frame_support::{dispatch::DispatchResult, ensure, sp_runtime::DispatchError, transactional};
 use frame_system::pallet_prelude::BlockNumberFor;
 #[cfg(test)]
 use mocktopus::macros::mockable;

@@ -25,11 +25,7 @@ mod default_weights;
 pub use default_weights::{SubstrateWeight, WeightInfo};
 
 use currency::Amount;
-use frame_support::{
-	dispatch::DispatchResult,
-	sp_runtime::DispatchError,
-	ensure, transactional,
-};
+use frame_support::{dispatch::DispatchResult, ensure, sp_runtime::DispatchError, transactional};
 use frame_system::{ensure_root, ensure_signed};
 pub use pallet::*;
 use primitives::VaultId;
@@ -119,13 +115,10 @@ pub mod pallet {
 
 	impl<T: Config> Default for GenesisConfig<T> {
 		fn default() -> Self {
-			GenesisConfig {
-				is_nomination_enabled: false,
-				_phantom: Default::default(),
-			}
+			GenesisConfig { is_nomination_enabled: false, _phantom: Default::default() }
 		}
 	}
-	
+
 	#[pallet::genesis_build]
 	impl<T: Config> BuildGenesisConfig for GenesisConfig<T> {
 		fn build(&self) {

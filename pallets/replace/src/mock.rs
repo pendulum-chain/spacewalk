@@ -11,8 +11,7 @@ use sp_core::H256;
 use sp_runtime::{
 	testing::TestXt,
 	traits::{BlakeTwo256, IdentityLookup, One, Zero},
-	DispatchError, Perquintill,
-	BuildStorage,
+	BuildStorage, DispatchError, Perquintill,
 };
 
 pub use currency::{
@@ -38,7 +37,7 @@ type Block = frame_system::mocking::MockBlock<Test>;
 
 // Configure a mock runtime to test the pallet.
 frame_support::construct_runtime!(
-	pub enum Test 
+	pub enum Test
 	{
 		System: frame_system::{Pallet, Call, Storage, Config<T>, Event<T>},
 		Timestamp: pallet_timestamp::{Pallet, Call, Storage, Inherent},

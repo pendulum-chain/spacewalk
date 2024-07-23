@@ -1,25 +1,15 @@
-use frame_support::{
-	assert_ok, parameter_types,
-	traits::{ConstU32, ConstU64, Everything},
-	PalletId,
-};
-use mocktopus::{macros::mockable, mocking::clear_mocks};
-use orml_currencies::BasicCurrencyAdapter;
-use orml_traits::parameter_type_with_key;
-pub use sp_arithmetic::{FixedI128, FixedPointNumber, FixedU128};
-use sp_core::H256;
-use sp_runtime::{
-	testing::{TestXt},
-	traits::{BlakeTwo256, IdentityLookup, One, Zero},
-	DispatchError, Perquintill,
-	BuildStorage,
-};
 pub use currency::{
 	testing_constants::{
 		DEFAULT_COLLATERAL_CURRENCY, DEFAULT_NATIVE_CURRENCY, DEFAULT_WRAPPED_CURRENCY,
 	},
 	Amount,
 };
+use frame_support::{
+	assert_ok, parameter_types,
+	traits::{ConstU32, ConstU64, Everything},
+	PalletId,
+};
+use mocktopus::{macros::mockable, mocking::clear_mocks};
 pub use oracle::CurrencyId;
 use oracle::{
 	dia::DiaOracleAdapter,
@@ -27,7 +17,16 @@ use oracle::{
 		MockConvertMoment, MockConvertPrice, MockDataFeeder, MockDiaOracle, MockOracleKeyConvertor,
 	},
 };
+use orml_currencies::BasicCurrencyAdapter;
+use orml_traits::parameter_type_with_key;
 use primitives::{AmountCompatibility, DefaultDecimalsLookup, VaultCurrencyPair, VaultId};
+pub use sp_arithmetic::{FixedI128, FixedPointNumber, FixedU128};
+use sp_core::H256;
+use sp_runtime::{
+	testing::TestXt,
+	traits::{BlakeTwo256, IdentityLookup, One, Zero},
+	BuildStorage, DispatchError, Perquintill,
+};
 
 use crate as redeem;
 use crate::{Config, Error};
@@ -37,7 +36,7 @@ type Block = frame_system::mocking::MockBlock<Test>;
 
 // Configure a mock runtime to test the pallet.
 frame_support::construct_runtime!(
-	pub enum Test 
+	pub enum Test
 	{
 		System: frame_system,
 		Timestamp: pallet_timestamp,
@@ -63,7 +62,6 @@ frame_support::construct_runtime!(
 );
 
 //add default to struct Test
-
 
 pub type AccountId = u64;
 pub type Balance = u128;
@@ -462,7 +460,11 @@ impl ExtBuilder {
 		.assimilate_storage(&mut storage)
 		.unwrap();
 
-		oracle::GenesisConfig::<Test> { oracle_keys: vec![], max_delay: 0, _phantom: Default::default() }
+		oracle::GenesisConfig::<Test> {
+			oracle_keys: vec![],
+			max_delay: 0,
+			_phantom: Default::default(),
+		}
 		.assimilate_storage(&mut storage)
 		.unwrap();
 

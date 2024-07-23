@@ -1,10 +1,10 @@
 use crate::Config;
 use currency::Amount;
 use frame_support::traits::Get;
+use frame_system::pallet_prelude::BlockNumberFor;
 pub use primitives::replace::{ReplaceRequest, ReplaceRequestStatus};
 use primitives::VaultId;
 pub use vault_registry::types::CurrencyId;
-use frame_system::pallet_prelude::BlockNumberFor;
 
 pub(crate) type BalanceOf<T> = <T as vault_registry::Config>::Balance;
 

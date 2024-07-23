@@ -2,17 +2,14 @@ use codec::{Decode, Encode};
 pub use prometheus;
 pub use sp_arithmetic::{traits as FixedPointTraits, FixedI128, FixedPointNumber, FixedU128};
 use sp_std::marker::PhantomData;
+use subxt::{
+	config::polkadot::PolkadotExtrinsicParams, ext::sp_runtime::MultiSignature, subxt, Config,
+};
 pub use subxt::{
-	events::StaticEvent,
 	config::substrate::BlakeTwo256,
+	events::StaticEvent,
 	ext::sp_core::{crypto::Ss58Codec, sr25519::Pair},
 };
-use subxt::{
-	ext::sp_runtime::MultiSignature,
-	subxt, Config,
-	config::polkadot::PolkadotExtrinsicParams,
-};
-
 
 pub use assets::TryFromSymbol;
 pub use error::{Error, Recoverability, SubxtError};
@@ -63,7 +60,7 @@ pub const STABLE_PARACHAIN_CONFIRMATIONS: &str = "StableParachainConfirmations";
 )))]
 compile_error!("You need to select at least one of the metadata features");
 
-// If all features are selected, then we need to select only one metadata feature. 
+// If all features are selected, then we need to select only one metadata feature.
 // Since this is done for testing, we can select the standalone metadata.
 #[cfg_attr(
 	feature = "standalone-metadata",
@@ -71,8 +68,14 @@ compile_error!("You need to select at least one of the metadata features");
 		runtime_metadata_path = "metadata-standalone.scale",
 		derive_for_all_types = "Clone, PartialEq, Eq",
 		substitute_type(path = "sp_core::crypto::AccountId32", with = "crate::AccountId"),
-		substitute_type(path = "spacewalk_primitives::CurrencyId", with = "::subxt::utils::Static<crate::CurrencyId>"),
-		substitute_type(path = "sp_arithmetic::fixed_point::FixedU128", with = "::subxt::utils::Static<crate::FixedU128>"),
+		substitute_type(
+			path = "spacewalk_primitives::CurrencyId",
+			with = "::subxt::utils::Static<crate::CurrencyId>"
+		),
+		substitute_type(
+			path = "sp_arithmetic::fixed_point::FixedU128",
+			with = "::subxt::utils::Static<crate::FixedU128>"
+		),
 	)
 )]
 #[cfg_attr(
@@ -81,8 +84,14 @@ compile_error!("You need to select at least one of the metadata features");
 		runtime_metadata_path = "metadata-parachain-pendulum.scale",
 		derive_for_all_types = "Clone, PartialEq, Eq",
 		substitute_type(path = "sp_core::crypto::AccountId32", with = "crate::AccountId"),
-		substitute_type(path = "spacewalk_primitives::CurrencyId", with = "::subxt::utils::Static<crate::CurrencyId>"),
-		substitute_type(path = "sp_arithmetic::fixed_point::FixedU128", with = "::subxt::utils::Static<crate::FixedU128>"),
+		substitute_type(
+			path = "spacewalk_primitives::CurrencyId",
+			with = "::subxt::utils::Static<crate::CurrencyId>"
+		),
+		substitute_type(
+			path = "sp_arithmetic::fixed_point::FixedU128",
+			with = "::subxt::utils::Static<crate::FixedU128>"
+		),
 	)
 )]
 #[cfg_attr(
@@ -91,8 +100,14 @@ compile_error!("You need to select at least one of the metadata features");
 		runtime_metadata_path = "metadata-parachain-amplitude.scale",
 		derive_for_all_types = "Clone, PartialEq, Eq",
 		substitute_type(path = "sp_core::crypto::AccountId32", with = "crate::AccountId"),
-		substitute_type(path = "spacewalk_primitives::CurrencyId", with = "::subxt::utils::Static<crate::CurrencyId>"),
-		substitute_type(path = "sp_arithmetic::fixed_point::FixedU128", with = "::subxt::utils::Static<crate::FixedU128>"),
+		substitute_type(
+			path = "spacewalk_primitives::CurrencyId",
+			with = "::subxt::utils::Static<crate::CurrencyId>"
+		),
+		substitute_type(
+			path = "sp_arithmetic::fixed_point::FixedU128",
+			with = "::subxt::utils::Static<crate::FixedU128>"
+		),
 	)
 )]
 #[cfg_attr(
@@ -101,12 +116,17 @@ compile_error!("You need to select at least one of the metadata features");
 		runtime_metadata_path = "metadata-parachain-foucoco.scale",
 		derive_for_all_types = "Clone, PartialEq, Eq",
 		substitute_type(path = "sp_core::crypto::AccountId32", with = "crate::AccountId"),
-		substitute_type(path = "spacewalk_primitives::CurrencyId", with = "::subxt::utils::Static<crate::CurrencyId>"),
-		substitute_type(path = "sp_arithmetic::fixed_point::FixedU128", with = "::subxt::utils::Static<crate::FixedU128>"),
+		substitute_type(
+			path = "spacewalk_primitives::CurrencyId",
+			with = "::subxt::utils::Static<crate::CurrencyId>"
+		),
+		substitute_type(
+			path = "sp_arithmetic::fixed_point::FixedU128",
+			with = "::subxt::utils::Static<crate::FixedU128>"
+		),
 	)
 )]
-pub mod metadata {	
-}
+pub mod metadata {}
 
 #[derive(Debug, Eq, PartialEq, Ord, PartialOrd, Default, Clone, Decode, Encode)]
 pub struct WrapperKeepOpaque<T> {

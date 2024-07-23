@@ -4,8 +4,8 @@ use mocktopus::macros::mockable;
 #[cfg_attr(test, mockable)]
 pub(crate) mod security {
 	use frame_support::dispatch::DispatchResult;
-	use sp_runtime::DispatchError;
 	use frame_system::pallet_prelude::BlockNumberFor;
+	use sp_runtime::DispatchError;
 
 	pub fn ensure_parachain_status_running<T: crate::Config>() -> DispatchResult {
 		<security::Pallet<T>>::ensure_parachain_status_running()
