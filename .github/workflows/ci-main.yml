@@ -11,7 +11,7 @@ jobs:
       max-parallel: 2
       matrix:
         rust: [ stable, nightly ]
-    runs-on: macos-latest
+    runs-on: ubuntu-latest
     env:
       RUST_BACKTRACE: full
       # Make sure CI fails on all warnings, including Clippy lints
@@ -20,26 +20,26 @@ jobs:
     steps:
       - name: Freeing up more disk space
         run: |
+          free -h
           sudo rm -rf /usr/local/lib/android # will release about 10 GB if you don't need Android
           sudo rm -rf /usr/share/dotnet # will release about 20GB if you don't need .NET
           sudo rm -rf /opt/ghc
           sudo rm -rf /usr/local/share/boost
           sudo rm -rf /opt/hostedtoolcache/CodeQL
-          sudo rm -rf "$AGENT_TOOLSDIRECTORY"     
+          sudo rm -rf "$AGENT_TOOLSDIRECTORY"
+          sudo apt-get remove -y 'php.*' --fix-missing
+          sudo apt-get remove -y '^mongodb-.*' --fix-missing
+          sudo apt-get remove -y '^mysql-.*' --fix-missing
+          sudo apt-get clean          
           df -h
       - uses: actions/checkout@v2
 
-      - name: Install sccache (macos-latest)
+      - name: Install package
         run: |
-          brew update
-          brew install sccache     
-
-      - name: Install rustup
-        run: |
-          if ! command -v rustup &> /dev/null; then
-            curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
-            source $HOME/.cargo/env
-          fi
+          sudo docker image prune --all --force
+          echo 'APT::Get::Always-Include-Phased-Updates "false";' | sudo tee /etc/apt/apt.conf.d/99-phased-updates
+          sudo apt-get update && sudo apt-get upgrade -y
+          sudo apt-get install -y protobuf-compiler libprotobuf-dev
 
       - name: Setup stable Rust toolchain
         if: matrix.rust == 'stable'
@@ -50,8 +50,7 @@ jobs:
         if: matrix.rust == 'nightly'
         # To make sure that the nightly version will be used all throughout
         run: |
-          rm rust-toolchain.toml
-#          rm /home/runner/work/spacewalk/spacewalk/rust-toolchain.toml
+          rm /home/runner/work/spacewalk/spacewalk/rust-toolchain.toml
 
       - name: Setup nightly Rust toolchain
         if: matrix.rust == 'nightly'
@@ -69,14 +68,11 @@ jobs:
         uses: Swatinem/rust-cache@v2
         with:
           cache-on-failure: true
-          key: "macos-latest-cargo-${{ hashFiles('**/Cargo.lock') }}"
+          key: "ubuntu-latest-cargo-${{ hashFiles('**/Cargo.lock') }}"
           shared-key: "shared"
 
-      - name: Start sccache server
-        run: sccache --start-server
-
       - name: Install Protoc
-        uses: arduino/setup-protoc@v3
+        uses: arduino/setup-protoc@v1
         with:
           repo-token: ${{ secrets.GITHUB_TOKEN }}
 
