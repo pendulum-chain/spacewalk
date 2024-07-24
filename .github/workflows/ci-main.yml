@@ -46,6 +46,13 @@ jobs:
         # Call `rustup show` as a hack so that the toolchain defined in rust-toolchain.toml is installed
         run: rustup show
 
+      - name: Use cargo.toml with polkadot-sdk fork
+        if: matrix.rust == 'nightly'
+        # To make sure that the nightly version will be used all throughout
+        run: |
+          rm /home/runner/work/spacewalk/spacewalk/Cargo.toml
+          mv /home/runner/work/spacewalk/spacewalk/Cargo_CI.toml /home/runner/work/spacewalk/spacewalk/Cargo.toml
+
       - name: Remove rust-toolchain.toml for nightly
         if: matrix.rust == 'nightly'
         # To make sure that the nightly version will be used all throughout
