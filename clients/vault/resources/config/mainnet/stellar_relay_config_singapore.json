@@ -4,10 +4,10 @@
     "port": 11625
   },
   "node_info": {
-    "ledger_version": 21,
-    "overlay_version": 33,
+    "ledger_version": 20,
+    "overlay_version": 32,
     "overlay_min_version": 32,
-    "version_str": "stellar-core 21.0.0 (c6f474133738ae5f6d11b07963ca841909210273)",
+    "version_str": "stellar-core 20.4.0 (7fc7671b8bc1ccc3b1f16a6ab83bc9f671db8b70)",
     "is_pub_net": true
   },
   "stellar_history_archive_urls": [

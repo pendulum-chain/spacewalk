@@ -1,6 +1,6 @@
 [package]
 name = "module-replace-rpc"
-version = "1.0.10"
+version = "1.0.9"
 authors = ["Interlay <contact@interlay.io>"]
 edition = "2021"
 

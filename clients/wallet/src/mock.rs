@@ -133,16 +133,7 @@ pub fn wallet_with_secret_key_for_storage(
 
 pub fn default_destination() -> PublicKey {
 	let dest_secret = get_dest_secret_key_from_env(IS_PUBLIC_NETWORK);
-	_public_key(dest_secret)
-}
-
-pub fn default_source() -> PublicKey {
-	let source_secret = get_source_secret_key_from_env(IS_PUBLIC_NETWORK);
-	_public_key(source_secret)
-}
-
-fn _public_key(secret: String) -> PublicKey {
-	let dest_secret_key = SecretKey::from_encoding(secret).expect("should work");
+	let dest_secret_key = SecretKey::from_encoding(dest_secret).expect("should work");
 	dest_secret_key.get_public().clone()
 }
 

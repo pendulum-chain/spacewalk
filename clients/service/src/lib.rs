@@ -215,3 +215,11 @@ where
 {
 	tokio::spawn(run_cancelable(shutdown_rx, future));
 }
+
+pub async fn on_shutdown(shutdown_tx: ShutdownSender, future2: impl Future) {
+	let mut shutdown_rx = shutdown_tx.subscribe();
+	let future1 = shutdown_rx.recv().fuse();
+
+	let _ = future1.await;
+	future2.await;
+}

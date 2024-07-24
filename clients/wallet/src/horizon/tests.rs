@@ -184,14 +184,14 @@ async fn fetch_transactions_iter_success() {
 	// the list should be empty, as the last record of this page was returned.
 	assert_eq!(txs_iter.records.len(), 0);
 
+	// if the next page
 	let next_page = txs_iter.next_page.clone();
+	if !next_page.is_empty() {
+		// continue reading for transactions
+		assert!(txs_iter.next().await.is_some());
 
-	// this will access the next page
-	match txs_iter.next().await {
-		// if none, then the next pages should be the same.
-		None => assert_eq!(next_page, txs_iter.next_page),
-		// the next page should be different already
-		Some(_) => assert_ne!(next_page, txs_iter.next_page),
+		// new records can be read
+		assert_ne!(txs_iter.records.len(), 0);
 	}
 }
 

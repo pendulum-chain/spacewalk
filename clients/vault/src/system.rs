@@ -273,7 +273,6 @@ pub struct VaultService {
 	shutdown: ShutdownSender,
 	vault_id_manager: VaultIdManager,
 	secret_key: String,
-	agent: Option<Arc<OracleAgent>>,
 }
 
 #[async_trait]
@@ -293,7 +292,6 @@ impl Service<VaultServiceConfig, Error> for VaultService {
 	async fn start(&mut self) -> Result<(), ServiceError<Error>> {
 		let result = self.run_service().await;
 
-		self.try_shutdown_agent().await;
 		self.try_shutdown_wallet().await;
 
 		if let Err(error) = result {
@@ -731,7 +729,6 @@ impl VaultService {
 			shutdown,
 			vault_id_manager: VaultIdManager::new(spacewalk_parachain, stellar_wallet),
 			secret_key,
-			agent: None,
 		})
 	}
 
@@ -785,7 +782,6 @@ impl VaultService {
 
 		let oracle_agent =
 			self.create_oracle_agent(is_public_network, self.shutdown.clone()).await?;
-		self.agent = Some(oracle_agent.clone());
 
 		self.execute_open_requests(oracle_agent.clone());
 
@@ -945,17 +941,5 @@ impl VaultService {
 		let mut wallet = self.stellar_wallet.write().await;
 		wallet.try_stop_periodic_resubmission_of_transactions().await;
 		drop(wallet);
-	}
-
-	async fn try_shutdown_agent(&mut self) {
-		let opt_agent = self.agent.clone();
-		self.agent = None;
-
-		if let Some(arc_agent) = opt_agent {
-			tracing::info!("try_shutdown_agent(): shutting down agent");
-			arc_agent.shutdown().await;
-		} else {
-			tracing::debug!("try_shutdown_agent(): no agent found");
-		}
 	}
 }

@@ -35,9 +35,6 @@ pub enum Error {
 
 	#[error(display = "{}", _0)]
 	ArchiveError(String),
-
-	#[error(display = "{}", _0)]
-	ArchiveResponseError(String),
 }
 
 impl From<StellarSdkError> for Error {
