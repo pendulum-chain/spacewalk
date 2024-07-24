@@ -13,6 +13,9 @@ use super::{
 };
 use sp_runtime::traits::Convert;
 
+use subxt::utils::AccountId32 as AccountId;
+//use std::sync::Arc;
+
 const DEFAULT_TESTING_CURRENCY: CurrencyId = CurrencyId::XCM(0);
 const DEFAULT_WRAPPED_CURRENCY: CurrencyId = CurrencyId::AlphaNum4(
 	*b"USDC",
@@ -26,6 +29,7 @@ fn dummy_public_key() -> StellarPublicKeyRaw {
 	[0u8; 32]
 }
 
+#[allow(dead_code)]
 async fn set_exchange_rate(client: SubxtClient) {
 	let oracle_provider = setup_provider(client, AccountKeyring::Bob).await;
 	let key = primitives::oracle::Key::ExchangeRate(DEFAULT_TESTING_CURRENCY);
@@ -68,7 +72,7 @@ async fn test_invalid_tx_matching() {
 	let (client, _tmp_dir) =
 		default_provider_client(AccountKeyring::Alice, is_public_network).await;
 	let parachain_rpc = setup_provider(client.clone(), AccountKeyring::Alice).await;
-	let err = parachain_rpc.get_invalid_tx_error(AccountKeyring::Bob.into()).await;
+	let err = parachain_rpc.get_invalid_tx_error(AccountId(AccountKeyring::Bob.into())).await;
 	assert!(err.is_invalid_transaction().is_some())
 }
 
@@ -79,7 +83,9 @@ async fn test_too_low_priority_matching() {
 	let (client, _tmp_dir) =
 		default_provider_client(AccountKeyring::Alice, is_public_network).await;
 	let parachain_rpc = setup_provider(client.clone(), AccountKeyring::Alice).await;
-	let err = parachain_rpc.get_too_low_priority_error(AccountKeyring::Bob.into()).await;
+	let err = parachain_rpc
+		.get_too_low_priority_error(AccountId(AccountKeyring::Bob.to_account_id().into()))
+		.await;
 	assert!(err.is_pool_too_low_priority())
 }
 
@@ -112,14 +118,17 @@ async fn test_register_vault() {
 	let (client, _tmp_dir) =
 		default_provider_client(AccountKeyring::Alice, is_public_network).await;
 	let parachain_rpc = setup_provider(client.clone(), AccountKeyring::Alice).await;
-	set_exchange_rate(client.clone()).await;
+	let oracle_rpc = setup_provider(client.clone(), AccountKeyring::Bob).await;
+
+	let exchange_rate = FixedU128::saturating_from_rational(1u128, 100u128);
+	set_exchange_rate_and_wait(&oracle_rpc, DEFAULT_TESTING_CURRENCY, exchange_rate).await;
+	set_exchange_rate_and_wait(&oracle_rpc, DEFAULT_WRAPPED_CURRENCY, exchange_rate).await;
 
 	let vault_id = VaultId::new(
-		AccountKeyring::Alice.into(),
+		AccountId(AccountKeyring::Alice.to_account_id().into()),
 		DEFAULT_TESTING_CURRENCY,
 		DEFAULT_WRAPPED_CURRENCY,
 	);
-
 	parachain_rpc.register_public_key(dummy_public_key()).await.unwrap();
 	parachain_rpc.register_vault(&vault_id, 3 * 10u128.pow(12)).await.unwrap();
 	parachain_rpc.get_vault(&vault_id).await.unwrap();
