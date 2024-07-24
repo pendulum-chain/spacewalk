@@ -92,8 +92,7 @@ async fn test_too_low_priority_matching() {
 	assert!(err.is_pool_too_low_priority())
 }
 
-#[ignore]
-// #[tokio::test(flavor = "multi_thread")]
+#[tokio::test(flavor = "multi_thread")]
 async fn test_subxt_processing_events_after_dispatch_error() {
 	let is_public_network = false;
 	let (client, _tmp_dir) =
@@ -116,8 +115,7 @@ async fn test_subxt_processing_events_after_dispatch_error() {
 	result.1.unwrap();
 }
 
-#[ignore]
-// #[tokio::test(flavor = "multi_thread")]
+#[tokio::test(flavor = "multi_thread")]
 async fn test_register_vault() {
 	let is_public_network = false;
 	let (client, _tmp_dir) =
