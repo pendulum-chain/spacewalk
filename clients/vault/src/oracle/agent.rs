@@ -240,8 +240,8 @@ mod tests {
 		// let's wait for envelopes and txset to be available for creating a proof
 		sleep(Duration::from_secs(5)).await;
 
-		let proof_result = agent.get_proof(latest_slot).await;
-		assert!(proof_result.is_ok(), "Failed to get proof for slot: {}", latest_slot);
+		let proof = agent.get_proof(latest_slot).await.expect("should return proof");
+		assert_eq!(proof.slot(), latest_slot);
 	}
 
 	#[tokio::test(flavor = "multi_thread")]
