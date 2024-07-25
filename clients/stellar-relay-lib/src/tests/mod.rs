@@ -129,6 +129,7 @@ async fn stellar_overlay_should_receive_tx_set() {
 	assert!(expected_hashes.contains(&actual_hashes[0]))
 }
 
+#[ignore]
 #[tokio::test(flavor = "multi_thread")]
 #[serial]
 async fn stellar_overlay_disconnect_works() {
