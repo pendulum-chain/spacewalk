@@ -1,5 +1,8 @@
 #![cfg(test)]
 
+#![allow(dead_code)]
+#![allow(unused_imports)]
+
 use sp_keyring::AccountKeyring;
 
 use oracle::dia::DiaOracleKeyConvertor;
