@@ -1,7 +1,4 @@
 #![cfg(test)]
-// TODO to be removed when tests are fixed
-#![allow(dead_code)]
-#![allow(unused_imports)]
 
 use sp_keyring::AccountKeyring;
 
@@ -92,8 +89,6 @@ async fn test_too_low_priority_matching() {
 	assert!(err.is_pool_too_low_priority())
 }
 
-// todo: remove ignore when the subxt issue is fixed
-#[ignore]
 #[tokio::test(flavor = "multi_thread")]
 async fn test_subxt_processing_events_after_dispatch_error() {
 	let is_public_network = false;
@@ -117,8 +112,6 @@ async fn test_subxt_processing_events_after_dispatch_error() {
 	result.1.unwrap();
 }
 
-// todo: remove ignore when the subxt issue is fixed
-#[ignore]
 #[tokio::test(flavor = "multi_thread")]
 async fn test_register_vault() {
 	let is_public_network = false;
