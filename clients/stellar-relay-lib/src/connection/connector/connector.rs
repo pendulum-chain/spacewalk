@@ -1,5 +1,3 @@
-#![allow(dead_code)]
-#![allow(unused_imports)]
 
 
 use async_std::net::TcpStream;
@@ -248,193 +246,193 @@ impl Connector {
 	}
 }
 
-// #[cfg(test)]
-// mod test {
-// 	use crate::{connection::hmac::HMacKeys, node::RemoteInfo, StellarOverlayConfig};
-// 	use serial_test::serial;
+#[cfg(test)]
+mod test {
+	use crate::{connection::hmac::HMacKeys, node::RemoteInfo, StellarOverlayConfig};
+	use serial_test::serial;
 
-// 	use substrate_stellar_sdk::{
-// 		compound_types::LimitedString,
-// 		types::{Hello, MessageType},
-// 		PublicKey,
-// 	};
+	use substrate_stellar_sdk::{
+		compound_types::LimitedString,
+		types::{Hello, MessageType},
+		PublicKey,
+	};
 
-// 	use crate::{
-// 		connection::{
-// 			authentication::{create_auth_cert, ConnectionAuth},
-// 			Connector,
-// 		},
-// 		helper::time_now,
-// 		node::NodeInfo,
-// 		ConnectionInfo,
-// 	};
+	use crate::{
+		connection::{
+			authentication::{create_auth_cert, ConnectionAuth},
+			Connector,
+		},
+		helper::time_now,
+		node::NodeInfo,
+		ConnectionInfo,
+	};
 
-// 	use wallet::keys::get_source_secret_key_from_env;
+	use wallet::keys::get_source_secret_key_from_env;
 
-// 	fn create_auth_cert_from_connection_auth(
-// 		connector_auth: &ConnectionAuth,
-// 	) -> substrate_stellar_sdk::types::AuthCert {
-// 		let time_now = time_now();
-// 		let new_auth_cert = create_auth_cert(
-// 			connector_auth.network_id(),
-// 			connector_auth.keypair(),
-// 			time_now,
-// 			connector_auth.pub_key_ecdh().clone(),
-// 		)
-// 		.expect("should successfully create an auth cert");
-// 		new_auth_cert
-// 	}
+	fn create_auth_cert_from_connection_auth(
+		connector_auth: &ConnectionAuth,
+	) -> substrate_stellar_sdk::types::AuthCert {
+		let time_now = time_now();
+		let new_auth_cert = create_auth_cert(
+			connector_auth.network_id(),
+			connector_auth.keypair(),
+			time_now,
+			connector_auth.pub_key_ecdh().clone(),
+		)
+		.expect("should successfully create an auth cert");
+		new_auth_cert
+	}
 
-// 	async fn create_connector() -> (NodeInfo, ConnectionInfo, Connector) {
-// 		let cfg_file_path = "./resources/config/testnet/stellar_relay_config_sdftest1.json";
-// 		let is_public_network = false;
-// 		let secret_key = get_source_secret_key_from_env(is_public_network);
+	async fn create_connector() -> (NodeInfo, ConnectionInfo, Connector) {
+		let cfg_file_path = "./resources/config/testnet/stellar_relay_config_sdftest1.json";
+		let is_public_network = false;
+		let secret_key = get_source_secret_key_from_env(is_public_network);
 
-// 		let cfg =
-// 			StellarOverlayConfig::try_from_path(cfg_file_path).expect("should create a config");
-// 		let node_info = cfg.node_info();
-// 		let conn_info = cfg.connection_info(&secret_key).expect("should create a connection info");
-// 		// this is a channel to communicate with the connection/config (this needs renaming)
+		let cfg =
+			StellarOverlayConfig::try_from_path(cfg_file_path).expect("should create a config");
+		let node_info = cfg.node_info();
+		let conn_info = cfg.connection_info(&secret_key).expect("should create a connection info");
+		// this is a channel to communicate with the connection/config (this needs renaming)
 
-// 		let connector = Connector::start(node_info.clone(), conn_info.clone())
-// 			.await
-// 			.expect("should create a connector");
-// 		(node_info, conn_info, connector)
-// 	}
+		let connector = Connector::start(node_info.clone(), conn_info.clone())
+			.await
+			.expect("should create a connector");
+		(node_info, conn_info, connector)
+	}
 
-// 	#[tokio::test]
-// 	#[serial]
-// 	async fn create_new_connector_works() {
-// 		let (node_info, _, connector) = create_connector().await;
+	#[tokio::test]
+	#[serial]
+	async fn create_new_connector_works() {
+		let (node_info, _, connector) = create_connector().await;
 
-// 		let connector_local_node = connector.local.node();
+		let connector_local_node = connector.local.node();
 
-// 		assert_eq!(connector_local_node.ledger_version, node_info.ledger_version);
-// 		assert_eq!(connector_local_node.overlay_version, node_info.overlay_version);
-// 		assert_eq!(connector_local_node.overlay_min_version, node_info.overlay_min_version);
-// 		assert_eq!(connector_local_node.version_str, node_info.version_str);
-// 		assert_eq!(connector_local_node.network_id, node_info.network_id);
-// 	}
+		assert_eq!(connector_local_node.ledger_version, node_info.ledger_version);
+		assert_eq!(connector_local_node.overlay_version, node_info.overlay_version);
+		assert_eq!(connector_local_node.overlay_min_version, node_info.overlay_min_version);
+		assert_eq!(connector_local_node.version_str, node_info.version_str);
+		assert_eq!(connector_local_node.network_id, node_info.network_id);
+	}
 
-// 	#[tokio::test]
-// 	#[serial]
-// 	async fn connector_local_sequence_works() {
-// 		let (_, _, mut connector) = create_connector().await;
-// 		assert_eq!(connector.local_sequence(), 0);
-// 		connector.increment_local_sequence();
-// 		assert_eq!(connector.local_sequence(), 1);
-// 	}
+	#[tokio::test]
+	#[serial]
+	async fn connector_local_sequence_works() {
+		let (_, _, mut connector) = create_connector().await;
+		assert_eq!(connector.local_sequence(), 0);
+		connector.increment_local_sequence();
+		assert_eq!(connector.local_sequence(), 1);
+	}
 
-// 	#[tokio::test]
-// 	#[serial]
-// 	async fn connector_set_remote_works() {
-// 		let (_, _, mut connector) = create_connector().await;
+	#[tokio::test]
+	#[serial]
+	async fn connector_set_remote_works() {
+		let (_, _, mut connector) = create_connector().await;
 
-// 		let connector_auth = &connector.connection_auth;
-// 		let new_auth_cert = create_auth_cert_from_connection_auth(connector_auth);
+		let connector_auth = &connector.connection_auth;
+		let new_auth_cert = create_auth_cert_from_connection_auth(connector_auth);
 
-// 		let hello = Hello {
-// 			ledger_version: 0,
-// 			overlay_version: 0,
-// 			overlay_min_version: 0,
-// 			network_id: [0; 32],
-// 			version_str: LimitedString::<100_i32>::new(vec![]).unwrap(),
-// 			listening_port: 11625,
-// 			peer_id: PublicKey::PublicKeyTypeEd25519([0; 32]),
-// 			cert: new_auth_cert,
-// 			nonce: [0; 32],
-// 		};
-// 		connector.set_remote(RemoteInfo::new(&hello));
+		let hello = Hello {
+			ledger_version: 0,
+			overlay_version: 0,
+			overlay_min_version: 0,
+			network_id: [0; 32],
+			version_str: LimitedString::<100_i32>::new(vec![]).unwrap(),
+			listening_port: 11625,
+			peer_id: PublicKey::PublicKeyTypeEd25519([0; 32]),
+			cert: new_auth_cert,
+			nonce: [0; 32],
+		};
+		connector.set_remote(RemoteInfo::new(&hello));
 
-// 		assert!(connector.remote().is_some());
-// 	}
+		assert!(connector.remote().is_some());
+	}
 
-// 	#[tokio::test]
-// 	#[serial]
-// 	async fn connector_increment_remote_sequence_works() {
-// 		let (_, _, mut connector) = create_connector().await;
+	#[tokio::test]
+	#[serial]
+	async fn connector_increment_remote_sequence_works() {
+		let (_, _, mut connector) = create_connector().await;
 
-// 		let connector_auth = &connector.connection_auth;
-// 		let new_auth_cert = create_auth_cert_from_connection_auth(connector_auth);
+		let connector_auth = &connector.connection_auth;
+		let new_auth_cert = create_auth_cert_from_connection_auth(connector_auth);
 
-// 		let hello = Hello {
-// 			ledger_version: 0,
-// 			overlay_version: 0,
-// 			overlay_min_version: 0,
-// 			network_id: [0; 32],
-// 			version_str: LimitedString::<100_i32>::new(vec![]).unwrap(),
-// 			listening_port: 11625,
-// 			peer_id: PublicKey::PublicKeyTypeEd25519([0; 32]),
-// 			cert: new_auth_cert,
-// 			nonce: [0; 32],
-// 		};
-// 		connector.set_remote(RemoteInfo::new(&hello));
-// 		assert_eq!(connector.remote().unwrap().sequence(), 0);
+		let hello = Hello {
+			ledger_version: 0,
+			overlay_version: 0,
+			overlay_min_version: 0,
+			network_id: [0; 32],
+			version_str: LimitedString::<100_i32>::new(vec![]).unwrap(),
+			listening_port: 11625,
+			peer_id: PublicKey::PublicKeyTypeEd25519([0; 32]),
+			cert: new_auth_cert,
+			nonce: [0; 32],
+		};
+		connector.set_remote(RemoteInfo::new(&hello));
+		assert_eq!(connector.remote().unwrap().sequence(), 0);
 
-// 		connector.increment_remote_sequence().unwrap();
-// 		connector.increment_remote_sequence().unwrap();
-// 		connector.increment_remote_sequence().unwrap();
-// 		assert_eq!(connector.remote().unwrap().sequence(), 3);
-// 	}
+		connector.increment_remote_sequence().unwrap();
+		connector.increment_remote_sequence().unwrap();
+		connector.increment_remote_sequence().unwrap();
+		assert_eq!(connector.remote().unwrap().sequence(), 3);
+	}
 
-// 	#[tokio::test]
-// 	#[serial]
-// 	async fn connector_get_and_set_hmac_keys_works() {
-// 		//arrange
-// 		let (_, _, mut connector) = create_connector().await;
-// 		let connector_auth = &connector.connection_auth;
-// 		let new_auth_cert = create_auth_cert_from_connection_auth(connector_auth);
+	#[tokio::test]
+	#[serial]
+	async fn connector_get_and_set_hmac_keys_works() {
+		//arrange
+		let (_, _, mut connector) = create_connector().await;
+		let connector_auth = &connector.connection_auth;
+		let new_auth_cert = create_auth_cert_from_connection_auth(connector_auth);
 
-// 		let hello = Hello {
-// 			ledger_version: 0,
-// 			overlay_version: 0,
-// 			overlay_min_version: 0,
-// 			network_id: [0; 32],
-// 			version_str: LimitedString::<100_i32>::new(vec![]).unwrap(),
-// 			listening_port: 11625,
-// 			peer_id: PublicKey::PublicKeyTypeEd25519([0; 32]),
-// 			cert: new_auth_cert,
-// 			nonce: [0; 32],
-// 		};
-// 		let remote = RemoteInfo::new(&hello);
-// 		let remote_nonce = remote.nonce();
-// 		connector.set_remote(remote.clone());
+		let hello = Hello {
+			ledger_version: 0,
+			overlay_version: 0,
+			overlay_min_version: 0,
+			network_id: [0; 32],
+			version_str: LimitedString::<100_i32>::new(vec![]).unwrap(),
+			listening_port: 11625,
+			peer_id: PublicKey::PublicKeyTypeEd25519([0; 32]),
+			cert: new_auth_cert,
+			nonce: [0; 32],
+		};
+		let remote = RemoteInfo::new(&hello);
+		let remote_nonce = remote.nonce();
+		connector.set_remote(remote.clone());
 
-// 		let shared_key = connector.get_shared_key(remote.pub_key_ecdh());
-// 		assert!(connector.hmac_keys().is_none());
-// 		//act
-// 		connector.set_hmac_keys(HMacKeys::new(
-// 			&shared_key,
-// 			connector.local().nonce(),
-// 			remote_nonce,
-// 			connector.remote_called_us(),
-// 		));
-// 		//assert
-// 		assert!(connector.hmac_keys().is_some());
-// 	}
+		let shared_key = connector.get_shared_key(remote.pub_key_ecdh());
+		assert!(connector.hmac_keys().is_none());
+		//act
+		connector.set_hmac_keys(HMacKeys::new(
+			&shared_key,
+			connector.local().nonce(),
+			remote_nonce,
+			connector.remote_called_us(),
+		));
+		//assert
+		assert!(connector.hmac_keys().is_some());
+	}
 
-// 	#[tokio::test]
-// 	#[serial]
-// 	async fn connector_method_works() {
-// 		let (_, conn_config, mut connector) = create_connector().await;
+	#[tokio::test]
+	#[serial]
+	async fn connector_method_works() {
+		let (_, conn_config, mut connector) = create_connector().await;
 
-// 		assert_eq!(connector.remote_called_us(), conn_config.remote_called_us);
-// 		assert_eq!(connector.receive_tx_messages(), conn_config.recv_tx_msgs);
-// 		assert_eq!(connector.receive_scp_messages(), conn_config.recv_scp_msgs);
+		assert_eq!(connector.remote_called_us(), conn_config.remote_called_us);
+		assert_eq!(connector.receive_tx_messages(), conn_config.recv_tx_msgs);
+		assert_eq!(connector.receive_scp_messages(), conn_config.recv_scp_msgs);
 
-// 		connector.got_hello();
-// 		assert!(connector.is_handshake_created());
+		connector.got_hello();
+		assert!(connector.is_handshake_created());
 
-// 		connector.handshake_completed();
-// 		assert!(connector.is_handshake_created());
-// 	}
+		connector.handshake_completed();
+		assert!(connector.is_handshake_created());
+	}
 
-// 	#[tokio::test]
-// 	#[serial]
-// 	async fn enable_flow_controller_works() {
-// 		let (node_info, _, mut connector) = create_connector().await;
+	#[tokio::test]
+	#[serial]
+	async fn enable_flow_controller_works() {
+		let (node_info, _, mut connector) = create_connector().await;
 
-// 		assert!(!connector.inner_check_to_send_more(MessageType::ScpMessage));
-// 		connector.enable_flow_controller(node_info.overlay_version, node_info.overlay_version);
-// 	}
-// }
+		assert!(!connector.inner_check_to_send_more(MessageType::ScpMessage));
+		connector.enable_flow_controller(node_info.overlay_version, node_info.overlay_version);
+	}
+}
