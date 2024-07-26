@@ -96,7 +96,6 @@ jobs:
           SOURCE_STELLAR_SECRET_TESTNET: ${{ secrets.SOURCE_STELLAR_SECRET_TESTNET }}
           DEST_STELLAR_SECRET_MAINNET: ${{ secrets.DEST_STELLAR_SECRET_MAINNET }}
           DEST_STELLAR_SECRET_TESTNET: ${{ secrets.DEST_STELLAR_SECRET_TESTNET }}
-          RUST_LOG: txpool=trace,basic-authorship=trace,manual-seal=trace
         with:
           toolchain: nightly-2024-02-09
           command: test 
