@@ -1,13 +1,13 @@
 {
   "connection_info": {
-    "address": "154.12.251.105",
+    "address": "85.190.254.217",
     "port": 11625
   },
   "node_info": {
-    "ledger_version": 20,
-    "overlay_version": 32,
+    "ledger_version": 21,
+    "overlay_version": 34,
     "overlay_min_version": 32,
-    "version_str": "stellar-core 20.4.0 (7fc7671b8bc1ccc3b1f16a6ab83bc9f671db8b70)",
+    "version_str": "stellar-core 21.1.0 (b3aeb14cc798f6d11deb2be913041be916f3b0cc)",
     "is_pub_net": true
   },
   "stellar_history_archive_urls": [
