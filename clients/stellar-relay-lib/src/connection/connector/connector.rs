@@ -1,5 +1,3 @@
-
-
 use async_std::net::TcpStream;
 use std::{
 	fmt::{Debug, Formatter},

@@ -1,9 +1,4 @@
 #![cfg(test)]
-#![allow(dead_code)]
-#![allow(unused_imports)]
-
-#![allow(dead_code)]
-#![allow(unused_imports)]
 
 use sp_keyring::AccountKeyring;
 
