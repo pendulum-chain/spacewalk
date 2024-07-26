@@ -37,7 +37,6 @@ fn overlay_infos(is_mainnet: bool) -> (NodeInfo, ConnectionInfo) {
 	)
 }
 
-#[ignore]
 #[tokio::test(flavor = "multi_thread")]
 #[serial]
 async fn stellar_overlay_should_receive_scp_messages() {
@@ -67,7 +66,6 @@ async fn stellar_overlay_should_receive_scp_messages() {
 	assert!(!scps_vec.lock().await.is_empty());
 }
 
-#[ignore]
 #[tokio::test(flavor = "multi_thread")]
 #[serial]
 async fn stellar_overlay_should_receive_tx_set() {
@@ -129,7 +127,6 @@ async fn stellar_overlay_should_receive_tx_set() {
 	assert!(expected_hashes.contains(&actual_hashes[0]))
 }
 
-#[ignore]
 #[tokio::test(flavor = "multi_thread")]
 #[serial]
 async fn stellar_overlay_disconnect_works() {
