@@ -47,7 +47,6 @@ async fn test_register() {
 	.await;
 }
 
-
 #[tokio::test(flavor = "multi_thread")]
 #[serial]
 async fn test_redeem_succeeds_on_mainnet() {
