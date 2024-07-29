@@ -203,10 +203,7 @@ pub mod redeem_request_tests {
 		"GBWYDOKJT5BEYJCCBJRHL54AMLRWDALR2NLEY7CKMPSOUKWVJTCFQFYI";
 
 	fn default_testing_stellar_pubkeys() -> (PublicKey, PublicKey) {
-		(
-			public_key_from_encoding(DEFAULT_SOURCE_PUBLIC_KEY),
-			public_key_from_encoding(DEFAULT_DEST_PUBLIC_KEY),
-		)
+		(default_source(), default_destination())
 	}
 
 	pub fn create_account_merge_operation(

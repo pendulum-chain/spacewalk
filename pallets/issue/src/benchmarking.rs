@@ -29,7 +29,7 @@ fn deposit_tokens<T: crate::Config>(
 	account_id: &T::AccountId,
 	amount: BalanceOf<T>,
 ) {
-	assert_ok!(<orml_tokens::Pallet<T>>::deposit(currency_id, account_id, amount));
+	assert_ok!(<orml_currencies::Pallet<T>>::deposit(currency_id, account_id, amount));
 }
 
 fn mint_collateral<T: crate::Config>(account_id: &T::AccountId, amount: BalanceOf<T>) {
