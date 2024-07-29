@@ -34,20 +34,20 @@ fn to_usd(
 fn expected_vault_rewards(
 	reward: <Test as pallet::Config>::Balance,
 ) -> Vec<<Test as pallet::Config>::Balance> {
-	let total_collateral_in_usd = to_usd(&COLLATERAL_POOL_1, &DEFAULT_COLLATERAL_CURRENCY) +
-		to_usd(&COLLATERAL_POOL_2, &XCM(1)) +
-		to_usd(&COLLATERAL_POOL_3, &XCM(2)) +
-		to_usd(&COLLATERAL_POOL_4, &XCM(3));
+	let total_collateral_in_usd = to_usd(&COLLATERAL_POOL_1, &DEFAULT_COLLATERAL_CURRENCY)
+		+ to_usd(&COLLATERAL_POOL_2, &XCM(1))
+		+ to_usd(&COLLATERAL_POOL_3, &XCM(2))
+		+ to_usd(&COLLATERAL_POOL_4, &XCM(3));
 
-	let reward_pool_1 = (reward as f64 *
-		(to_usd(&COLLATERAL_POOL_1, &DEFAULT_COLLATERAL_CURRENCY) as f64) /
-		(total_collateral_in_usd as f64)) as u128;
-	let reward_pool_2 = (reward as f64 * (to_usd(&COLLATERAL_POOL_2, &XCM(1)) as f64) /
-		(total_collateral_in_usd as f64)) as u128;
-	let reward_pool_3 = (reward as f64 * (to_usd(&COLLATERAL_POOL_3, &XCM(2)) as f64) /
-		(total_collateral_in_usd as f64)) as u128;
-	let reward_pool_4 = (reward as f64 * (to_usd(&COLLATERAL_POOL_4, &XCM(3)) as f64) /
-		(total_collateral_in_usd as f64)) as u128;
+	let reward_pool_1 = (reward as f64
+		* (to_usd(&COLLATERAL_POOL_1, &DEFAULT_COLLATERAL_CURRENCY) as f64)
+		/ (total_collateral_in_usd as f64)) as u128;
+	let reward_pool_2 = (reward as f64 * (to_usd(&COLLATERAL_POOL_2, &XCM(1)) as f64)
+		/ (total_collateral_in_usd as f64)) as u128;
+	let reward_pool_3 = (reward as f64 * (to_usd(&COLLATERAL_POOL_3, &XCM(2)) as f64)
+		/ (total_collateral_in_usd as f64)) as u128;
+	let reward_pool_4 = (reward as f64 * (to_usd(&COLLATERAL_POOL_4, &XCM(3)) as f64)
+		/ (total_collateral_in_usd as f64)) as u128;
 
 	vec![reward_pool_1, reward_pool_2, reward_pool_3, reward_pool_4]
 }

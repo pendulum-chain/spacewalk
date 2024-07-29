@@ -247,9 +247,9 @@ impl<T: Config> Pallet<T> {
 		}
 
 		let current_status_is_online = Self::is_oracle_online();
-		let new_status_is_online = oracle_keys.len() > 0 &&
-			updated_items_len > 0 &&
-			updated_items_len == oracle_keys.len();
+		let new_status_is_online = oracle_keys.len() > 0
+			&& updated_items_len > 0
+			&& updated_items_len == oracle_keys.len();
 
 		if current_status_is_online != new_status_is_online {
 			if new_status_is_online {
@@ -307,7 +307,7 @@ impl<T: Config> Pallet<T> {
 		ext::security::ensure_parachain_status_running::<T>()?;
 
 		let Some(price) = T::DataProvider::get_no_op(&key) else {
-			return Err(Error::<T>::MissingExchangeRate.into())
+			return Err(Error::<T>::MissingExchangeRate.into());
 		};
 		Ok(price.value)
 	}
@@ -373,7 +373,7 @@ impl<T: Config> Pallet<T> {
 		to_decimals: u32,
 	) -> Result<BalanceOf<T>, DispatchError> {
 		if from_amount.is_zero() {
-			return Ok(Zero::zero())
+			return Ok(Zero::zero());
 		}
 
 		let from_amount = T::UnsignedFixedPoint::from_inner(from_amount);

@@ -46,11 +46,11 @@ pub(crate) async fn new_websocket_client_with_retry(
 				Err(Error::JsonRpseeError(JsonRpseeError::Transport(err))) => {
 					log::trace!("could not connect to parachain: {}", err);
 					sleep(RETRY_TIMEOUT).await;
-					continue
+					continue;
 				},
 				Ok(rpc) => {
 					log::info!("Connected!");
-					return Ok(rpc)
+					return Ok(rpc);
 				},
 				Err(err) => return Err(err),
 			}

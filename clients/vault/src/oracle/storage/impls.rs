@@ -41,7 +41,7 @@ impl FileHandler<EnvelopesMap> for EnvelopesFileHandler {
 
 		if let Some(start_slot) = parse_slot(splits.next()) {
 			if let Some(end_slot) = parse_slot(splits.next()) {
-				return (slot_param >= start_slot) && (slot_param <= end_slot)
+				return (slot_param >= start_slot) && (slot_param <= end_slot);
 			}
 		}
 

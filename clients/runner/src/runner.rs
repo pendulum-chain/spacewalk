@@ -145,7 +145,7 @@ impl Runner {
 		if let Some(downloaded_release) = runner.downloaded_release() {
 			if runner.checksum_matches(downloaded_release.checksum, &release).is_ok() {
 				log::info!("The on-chain release is already downloaded, skipping re-download");
-				return Ok(downloaded_release.clone())
+				return Ok(downloaded_release.clone());
 			}
 		}
 
@@ -209,7 +209,7 @@ impl Runner {
 
 	fn checksum_matches(checksum: H256, client_release: &ClientRelease) -> Result<(), Error> {
 		if checksum != client_release.checksum {
-			return Err(Error::IncorrectChecksum)
+			return Err(Error::IncorrectChecksum);
 		}
 
 		Ok(())
@@ -247,7 +247,7 @@ impl Runner {
 			Some(x) => x,
 			None => {
 				log::warn!("No child process to terminate.");
-				return Ok(0)
+				return Ok(0);
 			},
 		};
 
@@ -416,7 +416,7 @@ impl Runner {
 				Some(status) => {
 					log::info!("Child exited with: {status}");
 					runner.set_child_proc(None);
-					return Ok(false)
+					return Ok(false);
 				},
 				None => return Ok(true),
 			}
@@ -429,7 +429,7 @@ impl Runner {
 		stdout_mode: impl Into<Stdio>,
 	) -> Result<Child, Error> {
 		if runner.child_proc().is_some() {
-			return Err(Error::ChildProcessExists)
+			return Err(Error::ChildProcessExists);
 		}
 		let downloaded_release =
 			runner.downloaded_release().as_ref().ok_or(Error::NoDownloadedRelease)?;

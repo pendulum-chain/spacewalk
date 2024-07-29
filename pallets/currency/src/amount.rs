@@ -89,7 +89,7 @@ mod math {
 
 		pub fn ensure_is_compatible_with_target_chain(&self) -> Result<(), DispatchError> {
 			if !T::AmountCompatibility::is_compatible_with_target(self.amount) {
-				return Err(Error::<T>::IncompatibleAmount.into())
+				return Err(Error::<T>::IncompatibleAmount.into());
 			}
 			Ok(())
 		}
@@ -112,7 +112,7 @@ mod math {
 			F: Fn(&BalanceOf<T>, &BalanceOf<T>) -> Option<BalanceOf<T>>,
 		{
 			if self.currency_id != other.currency_id {
-				return Err(Error::<T>::InvalidCurrency.into())
+				return Err(Error::<T>::InvalidCurrency.into());
 			}
 			let amount = f(&self.amount, &other.amount).ok_or(err)?;
 

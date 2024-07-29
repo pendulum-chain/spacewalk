@@ -91,7 +91,7 @@ impl ScpMessageCollector {
 				tracing::error!(
 					"ask_node_for_envelopes(): Proof Building for slot {slot:} failed to convert slot value into u32 datatype: {e:?}"
 				);
-				return
+				return;
 			},
 		};
 
@@ -99,7 +99,7 @@ impl ScpMessageCollector {
 			tracing::error!(
 				"ask_node_for_envelopes(): Proof Building for slot {slot}: failed to send `GetScpState` message: {e:?}"
 			);
-			return
+			return;
 		}
 		tracing::info!("ask_node_for_envelopes(): Proof Building for slot {slot}: requesting to StellarNode for messages...");
 	}
@@ -123,22 +123,22 @@ impl ScpMessageCollector {
 		if let Some(envelopes) = self.envelopes_map().get(&slot) {
 			// If the data was provided from the archive, no need to check for the minimum
 			// Otherwise, we are still lacking envelopes.
-			if !self.is_envelopes_data_from_archive(&slot) &&
-				envelopes.len() < get_min_externalized_messages(self.is_public())
+			if !self.is_envelopes_data_from_archive(&slot)
+				&& envelopes.len() < get_min_externalized_messages(self.is_public())
 			{
 				tracing::warn!(
 					"get_envelopes(): Proof Building for slot {slot}: {:?} envelopes is not enough to build proof",
 					envelopes.len()
 				);
 			} else {
-				return UnlimitedVarArray::new(envelopes.clone()).ok()
+				return UnlimitedVarArray::new(envelopes.clone()).ok();
 			}
 		}
 
 		// forcefully retrieve envelopes
 		self.fetch_missing_envelopes(slot, sender).await;
 
-		return None
+		return None;
 	}
 
 	/// Returns a TransactionSet if a txset is found; None if the slot does not have a txset
@@ -194,12 +194,12 @@ impl ScpMessageCollector {
 		// return early if we don't have enough envelopes or the tx_set
 		if let Some(envelopes) = envelopes_maybe {
 			let tx_set = self.get_txset(slot, sender).await?;
-			return Some(Proof { slot, envelopes, tx_set })
+			return Some(Proof { slot, envelopes, tx_set });
 		} else {
 			tracing::warn!(
 				"build_proof(): Couldn't build proof for slot {slot} due to missing envelopes"
 			);
-			return None
+			return None;
 		}
 	}
 
@@ -218,7 +218,7 @@ impl ScpMessageCollector {
 		async move {
 			if archive_urls.is_empty() {
 				tracing::error!("get_envelopes_from_horizon_archive(): Cannot get envelopes from horizon archive for slot {slot}: no archive URLs configured");
-				return
+				return;
 			}
 
 			// We try to get the SCPArchive from each archive URL until we succeed or run out of
@@ -230,7 +230,7 @@ impl ScpMessageCollector {
 					tracing::error!(
 						"get_envelopes_from_horizon_archive(): Could not get SCPArchive for slot {slot} from Horizon Archive: {e:?}"
 					);
-					continue
+					continue;
 				}
 				let scp_archive: XdrArchive<ScpHistoryEntry> =
 					scp_archive_result.expect("Should unwrap SCPArchive");
@@ -252,8 +252,8 @@ impl ScpMessageCollector {
 						let relevant_envelopes = vec_scp
 							.into_iter()
 							.filter(|scp| match scp.statement.pledges {
-								ScpStatementPledges::ScpStExternalize(_) |
-								ScpStatementPledges::ScpStConfirm(_) => true,
+								ScpStatementPledges::ScpStExternalize(_)
+								| ScpStatementPledges::ScpStConfirm(_) => true,
 								_ => false,
 							})
 							.collect::<Vec<_>>();
@@ -274,7 +274,7 @@ impl ScpMessageCollector {
 						);
 							// remove the file since it's invalid.
 							scp_archive_storage.remove_file(slot);
-							continue
+							continue;
 						}
 
 						let mut envelopes_map = envelopes_map_arc.write();
@@ -292,7 +292,7 @@ impl ScpMessageCollector {
 
 							// remove the archive file after successfully retrieving envelopes
 							scp_archive_storage.remove_file(slot);
-							break
+							break;
 						}
 					}
 				} else {
@@ -326,7 +326,7 @@ impl ScpMessageCollector {
 						tracing::error!(
 							"get_txset_from_horizon_archive(): Could not get TransactionsArchive for slot {slot} from horizon archive: {e:?}"
 						);
-						continue
+						continue;
 					},
 				};
 
@@ -345,14 +345,16 @@ impl ScpMessageCollector {
 					let tx_set_type = match target_history_entry.clone().ext {
 						TransactionHistoryEntryExt::V1(generalized_tx_set) =>
 						// If the type of `ext` is `V1` we use the contained generalized tx set
-							TransactionSetType::new(generalized_tx_set),
+						{
+							TransactionSetType::new(generalized_tx_set)
+						},
 						// Otherwise we can use the regular `tx_set` contained in the entry
 						_ => TransactionSetType::new(target_history_entry.tx_set.clone()),
 					};
 					tx_set_map.insert(slot, tx_set_type);
 					// remove the archive file after a txset has been found
 					tx_archive_storage.remove_file(slot);
-					break
+					break;
 				} else {
 					tracing::warn!(
 						"get_txset_from_horizon_archive(): Could not get TransactionHistory entry from archive for slot {slot}"

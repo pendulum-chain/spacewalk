@@ -93,15 +93,13 @@ impl SpacewalkParachain {
 		let default_spec_name = &JsonValue::default();
 		let spec_name = runtime_version.other.get("specName").unwrap_or(default_spec_name);
 
-		
-		
 		if spec_name == DEFAULT_SPEC_NAME {
 			log::info!("spec_name={}", spec_name);
 		} else {
 			return Err(Error::ParachainMetadataMismatch(
 				DEFAULT_SPEC_NAME.into(),
 				spec_name.as_str().unwrap_or_default().into(),
-			))
+			));
 		}
 
 		if DEFAULT_SPEC_VERSION.contains(&runtime_version.spec_version) {
@@ -112,7 +110,7 @@ impl SpacewalkParachain {
 				DEFAULT_SPEC_VERSION.start,
 				DEFAULT_SPEC_VERSION.end,
 				runtime_version.spec_version,
-			))
+			));
 		}
 
 		let currency_constants = metadata::constants().currency();
@@ -244,10 +242,12 @@ impl SpacewalkParachain {
 				match result.map_err(Into::<Error>::into) {
 					Ok(ok) => Ok(ok),
 					Err(err) => match err.is_invalid_transaction() {
-						Some(Recoverability::Recoverable(data)) =>
-							Err(RetryPolicy::Skip(Error::InvalidTransaction(data))),
-						Some(Recoverability::Unrecoverable(data)) =>
-							Err(RetryPolicy::Throw(Error::InvalidTransaction(data))),
+						Some(Recoverability::Recoverable(data)) => {
+							Err(RetryPolicy::Skip(Error::InvalidTransaction(data)))
+						},
+						Some(Recoverability::Unrecoverable(data)) => {
+							Err(RetryPolicy::Throw(Error::InvalidTransaction(data)))
+						},
 						None => {
 							// Handle other errors
 							if err.is_pool_too_low_priority() {
@@ -388,7 +388,7 @@ impl SpacewalkParachain {
 								if let Ok(Some(target_event)) = target_event {
 									log::trace!("event: {:?}", target_event);
 									if tx.clone().send(target_event).await.is_err() {
-										break
+										break;
 									}
 								}
 							},
@@ -572,8 +572,9 @@ impl VaultRegistryPallet for SpacewalkParachain {
 		let query = metadata::storage().vault_registry().vaults(&vault_id.clone());
 
 		match self.query_finalized(query).await? {
-			Some(SpacewalkVault { status: VaultStatus::Liquidated, .. }) =>
-				Err(Error::VaultLiquidated),
+			Some(SpacewalkVault { status: VaultStatus::Liquidated, .. }) => {
+				Err(Error::VaultLiquidated)
+			},
 			Some(vault) if &vault.id == vault_id => Ok(vault),
 			_ => Err(Error::VaultNotFound),
 		}
@@ -613,7 +614,7 @@ impl VaultRegistryPallet for SpacewalkParachain {
 	async fn register_vault(&self, vault_id: &VaultId, collateral: u128) -> Result<(), Error> {
 		// TODO: check MinimumDeposit
 		if collateral == 0 {
-			return Err(Error::InsufficientFunds)
+			return Err(Error::InsufficientFunds);
 		}
 
 		let register_vault_tx = metadata::tx()
@@ -879,7 +880,7 @@ impl OraclePallet for SpacewalkParachain {
 	/// * `value` - the current exchange rate
 	async fn feed_values(&self, values: Vec<((Vec<u8>, Vec<u8>), FixedU128)>) -> Result<(), Error> {
 		if values.is_empty() {
-			return Err(Error::FeedingEmptyList)
+			return Err(Error::FeedingEmptyList);
 		}
 
 		use crate::metadata::runtime_types::dia_oracle::dia::CoinInfo;
@@ -1081,8 +1082,8 @@ impl IssuePallet for SpacewalkParachain {
 		while let Ok((issue_id, request)) =
 			iter.next().await.ok_or(Error::RequestIssueIDNotFound)?
 		{
-			if request.status == IssueRequestStatus::Pending &&
-				request.opentime + issue_period > current_height
+			if request.status == IssueRequestStatus::Pending
+				&& request.opentime + issue_period > current_height
 			{
 				let key_hash = issue_id.as_slice();
 				// last bytes are the raw key

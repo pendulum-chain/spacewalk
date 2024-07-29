@@ -512,8 +512,8 @@ pub mod pallet {
 
 			// update only when new organization or validators not equal to old organization or
 			// validators
-			if new_organization_vec != current_organizations ||
-				new_validator_vec != current_validators
+			if new_organization_vec != current_organizations
+				|| new_validator_vec != current_validators
 			{
 				OldValidators::<T>::put(current_validators);
 				OldOrganizations::<T>::put(current_organizations);
@@ -622,7 +622,7 @@ pub mod pallet {
 			if let Some(included_memo) = tx_memo_text {
 				ensure!(included_memo == expected_memo, Error::TransactionMemoDoesNotMatch);
 			} else {
-				return Err(Error::TransactionMemoDoesNotMatch)
+				return Err(Error::TransactionMemoDoesNotMatch);
 			}
 
 			Ok(())

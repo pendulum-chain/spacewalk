@@ -46,7 +46,7 @@ impl Connector {
 		message_type: MessageType,
 	) -> Result<(), Error> {
 		if !self.inner_check_to_send_more(message_type) {
-			return Ok(())
+			return Ok(());
 		}
 
 		let msg = StellarMessage::SendMore(SendMore { num_messages: MAX_FLOOD_MSG_CAP });

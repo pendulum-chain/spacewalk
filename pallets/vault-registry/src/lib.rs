@@ -131,7 +131,7 @@ pub mod pallet {
 			match source {
 				TransactionSource::External => {
 					// receiving unsigned transaction from network - disallow
-					return InvalidTransaction::Call.into()
+					return InvalidTransaction::Call.into();
 				},
 				TransactionSource::Local => {},   // produced by off-chain worker
 				TransactionSource::InBlock => {}, // some other node included it in a block
@@ -147,8 +147,9 @@ pub mod pallet {
 			};
 
 			match call {
-				Call::report_undercollateralized_vault { .. } =>
-					valid_tx(b"report_undercollateralized_vault".to_vec()),
+				Call::report_undercollateralized_vault { .. } => {
+					valid_tx(b"report_undercollateralized_vault".to_vec())
+				},
 				_ => InvalidTransaction::Call.into(),
 			}
 		}
@@ -1591,7 +1592,7 @@ impl<T: Config> Pallet<T> {
 				if Self::is_vault_below_liquidation_threshold(&vault, liquidation_threshold)
 					.unwrap_or(false)
 				{
-					return Some(vault_id)
+					return Some(vault_id);
 				}
 			}
 			None
@@ -1755,7 +1756,7 @@ impl<T: Config> Pallet<T> {
 		denominator: &Amount<T>,
 	) -> Result<Amount<T>, DispatchError> {
 		if numerator.is_zero() && denominator.is_zero() {
-			return Ok(collateral.clone())
+			return Ok(collateral.clone());
 		}
 
 		let currency = collateral.currency();
@@ -1804,8 +1805,8 @@ impl<T: Config> Pallet<T> {
 
 				let redeemable_tokens = rich_vault.redeemable_tokens().ok()?;
 
-				if !redeemable_tokens.is_zero() &&
-					Self::is_vault_below_premium_threshold(&vault_id).unwrap_or(false)
+				if !redeemable_tokens.is_zero()
+					&& Self::is_vault_below_premium_threshold(&vault_id).unwrap_or(false)
 				{
 					Some((vault_id, redeemable_tokens))
 				} else {
@@ -1833,12 +1834,13 @@ impl<T: Config> Pallet<T> {
 
 				// iterator returns tuple of (AccountId, Vault<T>),
 				match Self::get_issuable_tokens_from_vault(&vault_id).ok() {
-					Some(issuable_tokens) =>
+					Some(issuable_tokens) => {
 						if !issuable_tokens.is_zero() {
 							Some((vault_id, issuable_tokens))
 						} else {
 							None
-						},
+						}
+					},
 					None => None,
 				}
 			})

@@ -68,7 +68,7 @@ pub fn verify_remote_auth_cert(
 ) -> bool {
 	let expiration = auth_cert.expiration;
 	if expiration <= (time_in_millisecs / 1000) {
-		return false
+		return false;
 	}
 
 	let mut raw_data: Vec<u8> = vec![];

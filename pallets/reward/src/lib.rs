@@ -258,7 +258,7 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 		wrapped_currency: T::CurrencyId,
 	) -> Result<(), DispatchError> {
 		if amount > Self::stake(reward_id) {
-			return Err(Error::<T, I>::InsufficientFunds.into())
+			return Err(Error::<T, I>::InsufficientFunds.into());
 		}
 
 		checked_sub_mut!(Stake<T, I>, &reward_id, &amount);

@@ -29,15 +29,16 @@ pub(crate) async fn poll_messages_from_stellar(
 		if send_to_user_sender.is_closed() {
 			info!("poll_messages_from_stellar(): closing receiver during disconnection");
 			// close this channel as communication to user was closed.
-			break
+			break;
 		}
 
 		// check for messages from user.
 		match send_to_node_receiver.try_recv() {
-			Ok(msg) =>
+			Ok(msg) => {
 				if let Err(e) = connector.send_to_node(msg).await {
 					error!("poll_messages_from_stellar(): Error occurred during sending message to node: {e:?}");
-				},
+				}
+			},
 			Err(TryRecvError::Disconnected) => break,
 			Err(TryRecvError::Empty) => {},
 		}
@@ -46,7 +47,7 @@ pub(crate) async fn poll_messages_from_stellar(
 		let xdr = match read_message_from_stellar(&mut connector).await {
 			Err(e) => {
 				error!("poll_messages_from_stellar(): {e:?}");
-				break
+				break;
 			},
 			Ok(xdr) => xdr,
 		};
@@ -54,16 +55,18 @@ pub(crate) async fn poll_messages_from_stellar(
 		match connector.process_raw_message(xdr).await {
 			Ok(Some(stellar_msg)) =>
 			// push message to user
+			{
 				if let Err(e) = send_to_user_sender.send(stellar_msg.clone()).await {
 					warn!("poll_messages_from_stellar(): Error occurred during sending message {} to user: {e:?}",
 						String::from_utf8(stellar_msg.to_base64_xdr())
 						.unwrap_or_else(|_| format!("{:?}", stellar_msg.to_base64_xdr()))
 					);
-				},
+				}
+			},
 			Ok(None) => {},
 			Err(e) => {
 				error!("poll_messages_from_stellar(): Error occurred during processing xdr message: {e:?}");
-				break
+				break;
 			},
 		}
 	}
@@ -104,7 +107,7 @@ async fn read_message_from_stellar(connector: &mut Connector) -> Result<Xdr, Err
 				if expect_msg_len == 0 {
 					// there's nothing to read; wait for the next iteration
 					trace!("read_message_from_stellar(): expect_msg_len == 0");
-					continue
+					continue;
 				}
 
 				// let's start reading the actual stellar message.
@@ -122,7 +125,7 @@ async fn read_message_from_stellar(connector: &mut Connector) -> Result<Xdr, Err
 					Ok(Some(xdr)) => return Ok(xdr),
 					Err(e) => {
 						trace!("read_message_from_stellar(): ERROR: {e:?}");
-						return Err(e)
+						return Err(e);
 					},
 				}
 			},
@@ -141,17 +144,17 @@ async fn read_message_from_stellar(connector: &mut Connector) -> Result<Xdr, Err
 					Ok(Some(xdr)) => return Ok(xdr),
 					Err(e) => {
 						trace!("read_message_from_stellar(): ERROR: {e:?}");
-						return Err(e)
+						return Err(e);
 					},
 				}
 			},
 			Ok(Err(e)) => {
 				trace!("read_message_from_stellar(): ERROR reading messages: {e:?}");
-				return Err(Error::ReadFailed(e.to_string()))
+				return Err(Error::ReadFailed(e.to_string()));
 			},
 			Err(_) => {
 				trace!("read_message_from_stellar(): reading time elapsed.");
-				return Err(Error::Timeout)
+				return Err(Error::Timeout);
 			},
 		}
 	}
@@ -180,7 +183,7 @@ async fn read_message(
 
 	// only when the message has the exact expected size bytes, should we send to user.
 	if actual_msg_len == xpect_msg_len {
-		return Ok(Some(readbuf.clone()))
+		return Ok(Some(readbuf.clone()));
 	}
 
 	// The next bytes are remnants from the previous stellar message.
@@ -221,7 +224,7 @@ async fn read_unfinished_message(
 		trace!("read_unfinished_message(): received continuation from the previous message.");
 		readbuf.append(&mut cont_buf);
 
-		return Ok(Some(readbuf.clone()))
+		return Ok(Some(readbuf.clone()));
 	}
 
 	// this partial message is not enough to complete the previous message.
