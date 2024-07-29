@@ -18,8 +18,8 @@ type Block = frame_system::mocking::MockBlock<Test>;
 frame_support::construct_runtime!(
 	pub enum Test
 	{
-		System: frame_system,
-		Reward: reward,
+		System: frame_system::{Pallet, Call, Storage, Config<T>, Event<T>},
+		Reward: reward::{Pallet, Call, Storage, Event<T>},
 	}
 );
 

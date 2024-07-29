@@ -623,34 +623,34 @@ impl pooled_rewards::Config for Runtime {
 construct_runtime! {
 	pub enum Runtime
 	{
-		System: frame_system = 0,
-		Timestamp: pallet_timestamp = 1,
-		Aura: pallet_aura = 2,
-		Grandpa: pallet_grandpa = 3,
-		Sudo: pallet_sudo = 4,
-		Tokens: orml_tokens = 5,
-		Currencies: orml_currencies = 7,
-		Balances: pallet_balances = 8,
+		System: frame_system::{Pallet, Call, Storage, Config<T>, Event<T>} = 0,
+		Timestamp: pallet_timestamp::{Pallet, Call, Storage, Inherent} = 1,
+		Aura: pallet_aura::{Pallet, Config<T>} = 2,
+		Grandpa: pallet_grandpa::{Pallet, Call, Storage, Config<T>, Event} = 3,
+		Sudo: pallet_sudo::{Pallet, Call, Storage, Config<T>, Event<T>} = 4,
+		Tokens: orml_tokens::{Pallet, Call, Storage, Config<T>, Event<T>} = 5,
+		Currencies: orml_currencies::{Pallet, Call, Storage} = 7,
+		Balances: pallet_balances::{Pallet, Call, Storage, Config<T>, Event<T>} = 8,
 		TransactionPayment: pallet_transaction_payment::{Pallet, Storage, Event<T>} = 9,
 
-		StellarRelay: stellar_relay = 10,
+		StellarRelay: stellar_relay::{Pallet, Call, Config<T>, Storage, Event<T>} = 10,
 
-		VaultRewards: pooled_rewards = 15,
-		VaultStaking: staking = 16,
+		VaultRewards: pooled_rewards::{Pallet, Storage, Event<T>} = 15,
+		VaultStaking: staking::{Pallet, Storage, Event<T>} = 16,
 
-		Currency: currency = 17,
+		Currency: currency::{Pallet} = 17,
 
-		Security: security = 19,
-		VaultRegistry: vault_registry = 21,
-		Oracle: oracle = 22,
-		Issue: issue = 23,
-		Redeem: redeem = 24,
-		Replace: replace = 25,
-		Fee: fee = 26,
-		Nomination: nomination = 28,
-		DiaOracleModule: dia_oracle = 29,
-		ClientsInfo: clients_info = 30,
-		RewardDistribution: reward_distribution = 31,
+		Security: security::{Pallet, Call, Config<T>, Storage, Event<T>} = 19,
+		VaultRegistry: vault_registry::{Pallet, Call, Config<T>, Storage, Event<T>, ValidateUnsigned} = 21,
+		Oracle: oracle::{Pallet, Call, Config<T>, Storage, Event<T>} = 22,
+		Issue: issue::{Pallet, Call, Config<T>, Storage, Event<T>} = 23,
+		Redeem: redeem::{Pallet, Call, Config<T>, Storage, Event<T>} = 24,
+		Replace: replace::{Pallet, Call, Config<T>, Storage, Event<T>} = 25,
+		Fee: fee::{Pallet, Call, Config<T>, Storage} = 26,
+		Nomination: nomination::{Pallet, Call, Config<T>, Storage, Event<T>} = 28,
+		DiaOracleModule: dia_oracle::{Pallet, Call, Config<T>, Storage, Event<T>} = 29,
+		ClientsInfo: clients_info::{Pallet, Call, Storage, Event<T>} = 30,
+		RewardDistribution: reward_distribution::{Pallet, Call, Storage, Event<T>} = 31,
 	}
 }
 

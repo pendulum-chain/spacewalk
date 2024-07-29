@@ -30,17 +30,17 @@ frame_support::construct_runtime!(
 	pub enum Test
 	{
 		// substrate pallets
-		System: frame_system,
-		Timestamp: pallet_timestamp,
-		Balances: pallet_balances,
-		Tokens: orml_tokens,
-		Currencies: orml_currencies,
+		System: frame_system::{Pallet, Call, Storage, Config<T>, Event<T>},
+		Timestamp: pallet_timestamp::{Pallet, Call, Storage, Inherent},
+		Balances: pallet_balances::{Pallet, Call, Storage, Config<T>, Event<T>},
+		Tokens: orml_tokens::{Pallet, Storage, Config<T>, Event<T>},
+		Currencies: orml_currencies::{Pallet, Call},
 
 		// Operational
-		Security: security,
-		Oracle: oracle,
-		Staking: staking,
-		Currency: currency,
+		Security: security::{Pallet, Call, Storage, Event<T>},
+		Oracle: oracle::{Pallet, Call, Config<T>, Storage, Event<T>},
+		Staking: staking::{Pallet, Storage, Event<T>},
+		Currency: currency::{Pallet},
 	}
 );
 

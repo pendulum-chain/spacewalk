@@ -21,8 +21,8 @@ type Block = frame_system::mocking::MockBlock<Test>;
 frame_support::construct_runtime!(
 	pub enum Test
 	{
-		System: frame_system,
-		Reward: pooled_rewards,
+		System: frame_system::{Pallet, Call, Storage, Config<T>, Event<T>},
+		Reward: pooled_rewards::{Pallet, Call, Storage, Event<T>},
 	}
 );
 
