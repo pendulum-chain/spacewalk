@@ -39,27 +39,27 @@ type Block = frame_system::mocking::MockBlock<Test>;
 frame_support::construct_runtime!(
 	pub enum Test
 	{
-		System: frame_system::{Pallet, Call, Storage, Config<T>, Event<T>},
-		Timestamp: pallet_timestamp::{Pallet, Call, Storage, Inherent},
+		System: frame_system,
+		Timestamp: pallet_timestamp,
 
 		// Tokens & Balances
-		Balances: pallet_balances::{Pallet, Call, Storage, Config<T>, Event<T>},
-		Tokens: orml_tokens::{Pallet, Storage, Config<T>, Event<T>},
-		Currencies: orml_currencies::{Pallet, Call},
+		Balances: pallet_balances,
+		Tokens: orml_tokens,
+		Currencies: orml_currencies,
 
-		Rewards: pooled_rewards::{Pallet, Call, Storage, Event<T>},
-		RewardDistribution: reward_distribution::{Pallet, Storage, Event<T>},
+		Rewards: pooled_rewards,
+		RewardDistribution: reward_distribution,
 
 		// Operational
-		StellarRelay: stellar_relay::{Pallet, Call, Config<T>, Storage, Event<T>},
-		Security: security::{Pallet, Call, Storage, Event<T>},
-		VaultRegistry: vault_registry::{Pallet, Call, Config<T>, Storage, Event<T>},
-		Oracle: oracle::{Pallet, Call, Config<T>, Storage, Event<T>},
-		Replace: replace::{Pallet, Call, Config<T>, Storage, Event<T>},
-		Fee: fee::{Pallet, Call, Config<T>, Storage},
-		Nomination: nomination::{Pallet, Call, Config<T>, Storage, Event<T>},
-		Staking: staking::{Pallet, Storage, Event<T>},
-		Currency: currency::{Pallet},
+		StellarRelay: stellar_relay,
+		Security: security,
+		VaultRegistry: vault_registry,
+		Oracle: oracle,
+		Replace: replace,
+		Fee: fee,
+		Nomination: nomination,
+		Staking: staking,
+		Currency: currency,
 	}
 );
 
