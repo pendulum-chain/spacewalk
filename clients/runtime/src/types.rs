@@ -171,11 +171,18 @@ pub trait PrettyPrint {
 }
 
 mod account_id {
+	//use sp_runtime::sp_application_crypto::Ss58Codec;
+	//use sp_runtime::AccountId32;
 	use super::*;
 
 	impl PrettyPrint for AccountId {
 		fn pretty_print(&self) -> String {
-			"self.into()".to_string()
+			// convert it to an sp_core type AccountId
+			// let sp_account_id = AccountId32::new(self.0);
+			// sp_account_id.to_ss58check_with_version(SS58_PREFIX.into())
+
+			// TODO - temporary hack
+			"TODO".to_string()
 		}
 	}
 }

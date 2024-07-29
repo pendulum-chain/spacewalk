@@ -273,6 +273,7 @@ pub struct VaultService {
 	shutdown: ShutdownSender,
 	vault_id_manager: VaultIdManager,
 	secret_key: String,
+	agent: Option<Arc<OracleAgent>>,
 }
 
 #[async_trait]
@@ -730,6 +731,7 @@ impl VaultService {
 			shutdown,
 			vault_id_manager: VaultIdManager::new(spacewalk_parachain, stellar_wallet),
 			secret_key,
+			agent: None,
 		})
 	}
 
@@ -783,6 +785,7 @@ impl VaultService {
 
 		let oracle_agent =
 			self.create_oracle_agent(is_public_network, self.shutdown.clone()).await?;
+		self.agent = Some(oracle_agent.clone());
 
 		self.execute_open_requests(oracle_agent.clone());
 

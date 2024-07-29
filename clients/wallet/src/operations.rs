@@ -185,7 +185,9 @@ pub fn create_basic_spacewalk_stellar_transaction(
 #[cfg(test)]
 pub mod redeem_request_tests {
 	use super::*;
-	use crate::mock::{default_usdc_asset, public_key_from_encoding, secret_key_from_encoding};
+	use crate::mock::{
+		default_destination, default_source, default_usdc_asset, secret_key_from_encoding,
+	};
 	use primitives::{stellar::SecretKey, CurrencyId};
 
 	const INACTIVE_STELLAR_SECRET_KEY: &str =
@@ -196,11 +198,6 @@ pub mod redeem_request_tests {
 	}
 
 	const IS_PUBLIC_NETWORK: bool = false;
-
-	const DEFAULT_SOURCE_PUBLIC_KEY: &str =
-		"GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN";
-	const DEFAULT_DEST_PUBLIC_KEY: &str =
-		"GBWYDOKJT5BEYJCCBJRHL54AMLRWDALR2NLEY7CKMPSOUKWVJTCFQFYI";
 
 	fn default_testing_stellar_pubkeys() -> (PublicKey, PublicKey) {
 		(default_source(), default_destination())
@@ -306,7 +303,7 @@ pub mod redeem_request_tests {
 	#[tokio::test]
 	async fn test_inactive_account_and_xlm_asset_greater_than_equal_one() {
 		let client = reqwest::Client::new();
-		let source_pub_key = public_key_from_encoding(DEFAULT_SOURCE_PUBLIC_KEY);
+		let source_pub_key = default_source();
 		let destination_pub_key = inactive_stellar_secretkey().get_public().clone();
 
 		// INactive account and XLM asset of value >=1, use create account op
@@ -328,7 +325,7 @@ pub mod redeem_request_tests {
 	#[tokio::test]
 	async fn test_inactive_account_and_xlm_asset_less_than_one() {
 		let client = reqwest::Client::new();
-		let source_pub_key = public_key_from_encoding(DEFAULT_SOURCE_PUBLIC_KEY);
+		let source_pub_key = default_source();
 		let destination_pub_key = inactive_stellar_secretkey().get_public().clone();
 
 		// INactive account but XLM asset of value < 1, use claimable balance
@@ -355,7 +352,7 @@ pub mod redeem_request_tests {
 	#[tokio::test]
 	async fn test_inactive_account_and_usdc_asset() {
 		let client = reqwest::Client::new();
-		let source_pub_key = public_key_from_encoding(DEFAULT_SOURCE_PUBLIC_KEY);
+		let source_pub_key = default_source();
 		let destination_pub_key = inactive_stellar_secretkey().get_public().clone();
 
 		let unknown_asset = CurrencyId::try_from((
