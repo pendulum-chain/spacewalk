@@ -14,7 +14,6 @@ use super::{
 use sp_runtime::traits::Convert;
 
 use subxt::utils::AccountId32 as AccountId;
-//use std::sync::Arc;
 
 const DEFAULT_TESTING_CURRENCY: CurrencyId = CurrencyId::XCM(0);
 const DEFAULT_WRAPPED_CURRENCY: CurrencyId = CurrencyId::AlphaNum4(

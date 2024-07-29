@@ -4,7 +4,7 @@ use async_trait::async_trait;
 #[cfg(any(feature = "standalone-metadata", feature = "parachain-metadata-foucoco"))]
 use codec::Encode;
 use futures::{future::join_all, stream::StreamExt, FutureExt, SinkExt};
-use jsonrpsee::core::client::Client;
+use jsonrpsee::core::{client::Client, JsonValue};
 use subxt::{
 	backend::{legacy::LegacyRpcMethods, rpc::RpcClient},
 	blocks::ExtrinsicEvents,
@@ -85,21 +85,24 @@ impl SpacewalkParachain {
 	) -> Result<Self, Error> {
 		let account_id = signer.read().await.account_id().clone();
 		let rpc = RpcClient::new(Arc::new(rpc_client));
+
 		let api = OnlineClient::<SpacewalkRuntime>::from_rpc_client(rpc.clone()).await?;
 		let legacy_rpc = LegacyRpcMethods::new(rpc.clone());
 
-		let runtime_version = api.backend().current_runtime_version().await?;
+		let runtime_version = legacy_rpc.state_get_runtime_version(None).await?;
+		let default_spec_name = &JsonValue::default();
+		let spec_name = runtime_version.other.get("specName").unwrap_or(default_spec_name);
 
-		//let default_spec_name = &JsonValue::default();
-		//let spec_name = runtime_version.spec_version.unwrap_or(default_spec_name);
-		// if spec_name == DEFAULT_SPEC_NAME {
-		// 	log::info!("spec_name={}", spec_name);
-		// } else {
-		// 	return Err(Error::ParachainMetadataMismatch(
-		// 		DEFAULT_SPEC_NAME.into(),
-		// 		spec_name.as_str().unwrap_or_default().into(),
-		// 	))
-		// }
+		
+		
+		if spec_name == DEFAULT_SPEC_NAME {
+			log::info!("spec_name={}", spec_name);
+		} else {
+			return Err(Error::ParachainMetadataMismatch(
+				DEFAULT_SPEC_NAME.into(),
+				spec_name.as_str().unwrap_or_default().into(),
+			))
+		}
 
 		if DEFAULT_SPEC_VERSION.contains(&runtime_version.spec_version) {
 			log::info!("spec_version={}", runtime_version.spec_version);
