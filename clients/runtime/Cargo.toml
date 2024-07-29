@@ -10,8 +10,6 @@ standalone-metadata = []
 parachain-metadata-pendulum = []
 parachain-metadata-amplitude = []
 parachain-metadata-foucoco = []
-# If `--all-features` is specified in the cargo command, only `standalone-metadata` feature is enabled.
-all-features = []
 
 testing-utils = [
     "tempdir",
