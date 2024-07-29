@@ -5,7 +5,7 @@ use std::str::from_utf8;
 pub use subxt::ext::sp_core::sr25519::Pair as KeyPair;
 use subxt::utils::Static;
 
-use crate::{metadata, Config, SpacewalkRuntime};
+use crate::{metadata, Config, SpacewalkRuntime, SS58_PREFIX};
 
 pub type AccountId = subxt::utils::AccountId32;
 pub type Address = subxt::ext::sp_runtime::MultiAddress<AccountId, u32>;
@@ -171,18 +171,15 @@ pub trait PrettyPrint {
 }
 
 mod account_id {
-	//use sp_runtime::sp_application_crypto::Ss58Codec;
-	//use sp_runtime::AccountId32;
+	use sp_core::crypto::Ss58Codec;
+	use sp_runtime::AccountId32;
 	use super::*;
 
 	impl PrettyPrint for AccountId {
 		fn pretty_print(&self) -> String {
 			// convert it to an sp_core type AccountId
-			// let sp_account_id = AccountId32::new(self.0);
-			// sp_account_id.to_ss58check_with_version(SS58_PREFIX.into())
-
-			// TODO - temporary hack
-			"TODO".to_string()
+			let sp_account_id = AccountId32::new(self.0);
+			sp_account_id.to_ss58check_with_version(SS58_PREFIX.into())
 		}
 	}
 }
