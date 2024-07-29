@@ -23,18 +23,18 @@ pub use currency::testing_constants::{DEFAULT_COLLATERAL_CURRENCY, DEFAULT_NATIV
 frame_support::construct_runtime!(
 	pub enum Test
 	{
-		System: frame_system::{Pallet, Call, Storage, Config<T>, Event<T>},
+		System: frame_system,
 
 		//Tokens and Balances
-		Balances: pallet_balances::{Pallet, Call, Storage, Config<T>, Event<T>},
-		Tokens: orml_tokens::{Pallet, Storage, Config<T>, Event<T>},
-		Currencies: orml_currencies::{Pallet, Call},
-		RewardDistribution: reward_distribution::{Pallet, Call, Storage, Event<T>},
-		Rewards: pooled_rewards::{Pallet, Call, Storage, Event<T>},
-		Staking: staking::{Pallet, Storage, Event<T>},
+		Balances: pallet_balances,
+		Tokens: orml_tokens,
+		Currencies: orml_currencies,
+		RewardDistribution: reward_distribution,
+		Rewards: pooled_rewards,
+		Staking: staking,
 
 		//Operational
-		Security: security::{Pallet, Call, Storage, Event<T>},
+		Security: security,
 
 	}
 );
