@@ -22,9 +22,6 @@ use primitives::Block;
 use spacewalk_runtime_mainnet::RuntimeApi as MainnetRuntimeApi;
 use spacewalk_runtime_testnet::RuntimeApi as TestnetRuntimeApi;
 
-use cumulus_primitives_parachain_inherent::{MockValidationDataInherentDataProvider, MockXcmConfig};
-use sc_client_api::HeaderBackend;
-use primitives::Hash;
 // Native executor instance.
 pub struct TestnetExecutor;
 
@@ -608,9 +605,6 @@ pub async fn start_instant_mainnet(
 			}
 		});
 
-		let client_for_cidp = client.clone();
-
-
 		let authorship_future =
 			sc_consensus_manual_seal::run_manual_seal(sc_consensus_manual_seal::ManualSealParams {
 				block_import: client.clone(),
@@ -620,25 +614,8 @@ pub async fn start_instant_mainnet(
 				commands_stream: futures::stream_select!(commands_stream, import_stream),
 				select_chain,
 				consensus_data_provider: None,
-				create_inherent_data_providers: move |block: Hash, _| {
-					let current_para_block = client_for_cidp
-						.number(block)
-						.expect("Header lookup should succeed")
-						.expect("Header passed in as parent should be present in backend.");
-					let client_for_xcm = client_for_cidp.clone();
-					async move {
-						let mocked_parachain = MockValidationDataInherentDataProvider {
-							current_para_block,
-							relay_offset: 1000,
-							relay_blocks_per_para_block: 2,
-							para_blocks_per_relay_epoch: 0,
-							relay_randomness_config: (),
-							xcm_config: MockXcmConfig::new(&*client_for_xcm, block, Default::default(), Default::default()),
-							raw_downward_messages: vec![],
-							raw_horizontal_messages: vec![],
-						};
-						Ok((sp_timestamp::InherentDataProvider::from_system_time(), mocked_parachain))
-					}
+				create_inherent_data_providers: move |_, ()| async move {
+					Ok(sp_timestamp::InherentDataProvider::from_system_time())
 				},
 			});
 
@@ -765,8 +742,6 @@ pub async fn start_instant_testnet(
 			}
 		});
 
-		let client_for_cidp = client.clone();
-
 		let authorship_future =
 			sc_consensus_manual_seal::run_manual_seal(sc_consensus_manual_seal::ManualSealParams {
 				block_import: client.clone(),
@@ -776,25 +751,8 @@ pub async fn start_instant_testnet(
 				commands_stream: futures::stream_select!(commands_stream, import_stream),
 				select_chain,
 				consensus_data_provider: None,
-				create_inherent_data_providers: move |block: Hash, _| {
-					let current_para_block = client_for_cidp
-						.number(block)
-						.expect("Header lookup should succeed")
-						.expect("Header passed in as parent should be present in backend.");
-					let client_for_xcm = client_for_cidp.clone();
-					async move {
-						let mocked_parachain = MockValidationDataInherentDataProvider {
-							current_para_block,
-							relay_offset: 1000,
-							relay_blocks_per_para_block: 2,
-							para_blocks_per_relay_epoch: 0,
-							relay_randomness_config: (),
-							xcm_config: MockXcmConfig::new(&*client_for_xcm, block, Default::default(), Default::default()),
-							raw_downward_messages: vec![],
-							raw_horizontal_messages: vec![],
-						};
-						Ok((sp_timestamp::InherentDataProvider::from_system_time(), mocked_parachain))
-					}
+				create_inherent_data_providers: move |_, ()| async move {
+					Ok(sp_timestamp::InherentDataProvider::from_system_time())
 				},
 			});
 
