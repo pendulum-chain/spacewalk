@@ -795,6 +795,8 @@ impl VaultService {
 
 		self.execute_open_requests(oracle_agent.clone());
 
+		tracing::info!("CONTINUE ON HOOY");
+
 		// issue handling
 		// this vec is passed to the stellar wallet to filter out transactions that are not relevant
 		// this has to be modified every time the issue set changes
@@ -805,6 +807,8 @@ impl VaultService {
 
 		issue::initialize_issue_set(&self.spacewalk_parachain, &issue_map, &memos_to_issue_ids)
 			.await?;
+
+		tracing::info!("ISSUE INITIALIZE ISSUE SET!!!");
 
 		let ledger_env_map: ArcRwLock<LedgerTxEnvMap> = Arc::new(RwLock::new(HashMap::new()));
 

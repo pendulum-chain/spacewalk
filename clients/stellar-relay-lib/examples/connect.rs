@@ -24,7 +24,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
 	let mut overlay_connection = connect_to_stellar_overlay_network(cfg, &secret_key).await?;
 
-	while let Ok(Some(msg)) = overlay_connection.listen() {
+	while let Ok(Some(msg)) = overlay_connection.listen().await {
 		match msg {
 			StellarMessage::ScpMessage(msg) => {
 				let node_id = msg.statement.node_id.to_encoding();
