@@ -1,16 +1,17 @@
-use substrate_stellar_sdk::types::{ErrorCode, StellarMessage};
+use std::time::Duration;
+use async_std::future::timeout;
+use substrate_stellar_sdk::types::{StellarMessage};
 use tokio::sync::{
 	mpsc,
 	mpsc::{
-		error::{SendError, TryRecvError},
+		error::{SendError},
 		Sender,
 	},
 };
-use tracing::{debug, error, info};
+use tracing::{debug, info};
 
 use crate::{
 	connection::{poll_messages_from_stellar, ConnectionInfo, Connector},
-	helper::error_to_string,
 	node::NodeInfo,
 	Error,
 };
@@ -56,27 +57,16 @@ impl StellarOverlayConnection {
 		})
 	}
 
-	pub fn listen(&mut self) -> Result<Option<StellarMessage>, Error> {
-		loop {
-			if !self.is_alive() {
-				debug!("listen(): sender half of overlay has closed.");
-				return Err(Error::Disconnected)
-			}
-
-			match self.receiver.try_recv() {
-				Ok(StellarMessage::ErrorMsg(e)) => {
-					error!("listen(): received error message: {e:?}");
-					if e.code == ErrorCode::ErrConf || e.code == ErrorCode::ErrAuth {
-						return Err(Error::ConnectionFailed(error_to_string(e)))
-					}
-
-					return Ok(None)
-				},
-				Ok(msg) => return Ok(Some(msg)),
-				Err(TryRecvError::Disconnected) => return Err(Error::Disconnected),
-				Err(TryRecvError::Empty) => continue,
-			}
+	/// Listens for upcoming messages from Stellar Node via a receiver.
+	/// The sender pair can be found in [fn poll_messages_from_stellar](../src/connection/connector/message_reader.rs)
+	pub async fn listen(&mut self) -> Result<Option<StellarMessage>, Error> {
+		if !self.is_alive() {
+			debug!("listen(): sender half of overlay has closed.");
+			return Err(Error::Disconnected)
 		}
+
+		timeout(Duration::from_secs(1), self.receiver.recv()).await
+			.map_err(|_| Error::Timeout)
 	}
 
 	pub fn is_alive(&mut self) -> bool {

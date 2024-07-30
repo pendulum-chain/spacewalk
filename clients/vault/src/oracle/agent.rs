@@ -1,7 +1,7 @@
 use std::{sync::Arc, time::Duration};
 
 use tokio::{
-	sync::{mpsc, mpsc::error::TryRecvError, RwLock},
+	sync::{mpsc,  RwLock},
 	time::{sleep, timeout},
 };
 
@@ -84,42 +84,40 @@ pub async fn start_oracle_agent(
 	// Node
 	let (disconnect_signal_sender, mut disconnect_signal_receiver) = mpsc::channel::<()>(2);
 
+	let sender_clone = overlay_conn.sender();
 	tokio::spawn(async move {
-		let sender_clone = overlay_conn.sender();
 		loop {
-			match disconnect_signal_receiver.try_recv() {
+			tokio::select! {
+				_ = sleep(Duration::from_millis(100)) => {
+					tracing::info!("start_oracle_agent(): go to sleep");
+				},
 				// if a disconnect signal was sent, disconnect from Stellar.
-				Ok(_) | Err(TryRecvError::Disconnected) => {
-					tracing::info!("start_oracle_agent(): disconnect overlay...");
-					break
-				},
-				Err(TryRecvError::Empty) => {},
-			}
-
-			// listen for messages from Stellar
-			match overlay_conn.listen() {
-				Ok(Some(msg)) => {
-					let msg_as_str = to_base64_xdr_string(&msg);
-					if let Err(e) =
-						handle_message(msg, collector_clone.clone(), &sender_clone).await
-					{
-						tracing::error!(
-							"start_oracle_agent(): failed to handle message: {msg_as_str}: {e:?}"
-						);
+				result = disconnect_signal_receiver.recv() => {
+					if result.is_none() {
+						tracing::info!("start_oracle_agent(): disconnect overlay...");
+						break
 					}
 				},
-				Ok(None) => {},
-				// connection got lost
-				Err(e) => {
-					tracing::error!("start_oracle_agent(): encounter error in overlay: {e:?}");
+				result = overlay_conn.listen() => {
+					tracing::info!("start_oracle_agent(): received message from overlay");
+					match result {
+					Ok(Some(msg)) => {
+						let msg_as_str = to_base64_xdr_string(&msg);
+						if let Err(e) = handle_message(msg, collector_clone.clone(), &sender_clone).await {
+							tracing::error!("start_oracle_agent(): failed to handle message: {msg_as_str}: {e:?}");
+						}
+					},
+					Ok(None) => {},
+					// connection got lost
+					Err(e) => {
+						tracing::error!("start_oracle_agent(): encounter error in overlay: {e:?}");
 
-					if let Err(e) = shutdown_sender_clone.send(()) {
-						tracing::error!(
-							"start_oracle_agent(): Failed to send shutdown signal in thread: {e:?}"
-						);
-					}
-					break
-				},
+						if let Err(e) = shutdown_sender_clone.send(()) {
+							tracing::error!("start_oracle_agent(): Failed to send shutdown signal in thread: {e:?}");
+						}
+						break
+					},
+				}},
 			}
 		}
 

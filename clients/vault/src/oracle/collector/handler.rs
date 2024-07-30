@@ -37,7 +37,7 @@ impl ScpMessageCollector {
 			// Check if collector has a record of this hash.
 			if self.is_txset_new(&txset_hash, &slot) {
 				// if it doesn't exist, let's request from the Stellar Node.
-				tracing::info!(
+				tracing::debug!(
 					"Handling Incoming ScpEnvelopes for slot {slot}: requesting TxSet..."
 				);
 				message_sender.send(StellarMessage::GetTxSet(txset_hash)).await?;

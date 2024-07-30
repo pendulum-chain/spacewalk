@@ -52,7 +52,7 @@ async fn stellar_overlay_should_receive_scp_messages() {
 
 	timeout(Duration::from_secs(300), async move {
 		let mut ov_conn_locked = ov_conn.lock().await;
-		if let Ok(Some(msg)) = ov_conn_locked.listen() {
+		if let Ok(Some(msg)) = ov_conn_locked.listen().await {
 			scps_vec_clone.lock().await.push(msg);
 
 			ov_conn_locked.stop();
@@ -89,7 +89,7 @@ async fn stellar_overlay_should_receive_tx_set() {
 	timeout(Duration::from_secs(500), async move {
 		let mut ov_conn_locked = ov_conn.lock().await;
 
-		while let Ok(Some(msg)) = ov_conn_locked.listen() {
+		while let Ok(Some(msg)) = ov_conn_locked.listen().await {
 			match msg {
 				StellarMessage::ScpMessage(msg) =>
 					if let ScpStatementPledges::ScpStExternalize(stmt) = &msg.statement.pledges {
