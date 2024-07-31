@@ -2,7 +2,7 @@
 
 use frame_benchmarking::{benchmarks, impl_benchmark_test_suite, whitelisted_caller};
 use frame_support::BoundedVec;
-use frame_system::RawOrigin;
+use frame_system::{pallet_prelude::BlockNumberFor, RawOrigin};
 use sp_std::vec;
 
 #[allow(unused)]
@@ -38,7 +38,7 @@ benchmarks! {
 		};
 
 		let organizations = vec![organization; 1];
-		let enactment_block_height = T::BlockNumber::default();
+		let enactment_block_height = BlockNumberFor::<T>::default();
 
 		// After calling the extrinsic, the current validators and organizations will be the old ones
 		let old_organizations = Organizations::<T>::get();

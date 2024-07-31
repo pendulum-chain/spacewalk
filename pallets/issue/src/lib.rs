@@ -8,7 +8,8 @@
 #[cfg(test)]
 extern crate mocktopus;
 
-use frame_support::{dispatch::DispatchError, ensure, traits::Get, transactional};
+use frame_support::{ensure, sp_runtime::DispatchError, traits::Get, transactional};
+use frame_system::pallet_prelude::BlockNumberFor;
 #[cfg(test)]
 use mocktopus::macros::mockable;
 use primitives::{
@@ -21,9 +22,6 @@ use primitives::{
 use sp_core::H256;
 use sp_runtime::traits::{CheckedDiv, Convert, Saturating, Zero};
 use sp_std::vec::Vec;
-
-#[cfg(feature = "std")]
-use std::str::FromStr;
 
 use currency::Amount;
 pub use default_weights::{SubstrateWeight, WeightInfo};
@@ -71,7 +69,7 @@ pub mod pallet {
 		type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
 
 		/// Convert the block number into a balance.
-		type BlockNumberToBalance: Convert<Self::BlockNumber, BalanceOf<Self>>;
+		type BlockNumberToBalance: Convert<BlockNumberFor<Self>, BalanceOf<Self>>;
 
 		// Weight information for the extrinsics in this module.
 		type WeightInfo: WeightInfo;
@@ -111,12 +109,12 @@ pub mod pallet {
 			griefing_collateral: BalanceOf<T>,
 		},
 		IssuePeriodChange {
-			period: T::BlockNumber,
+			period: BlockNumberFor<T>,
 		},
 		RateLimitUpdate {
 			limit_volume_amount: Option<BalanceOf<T>>,
 			limit_volume_currency_id: T::CurrencyId,
-			interval_length: T::BlockNumber,
+			interval_length: BlockNumberFor<T>,
 		},
 		IssueMinimumTransferAmountUpdate {
 			new_minimum_amount: BalanceOf<T>,
@@ -155,7 +153,7 @@ pub mod pallet {
 	/// to prevent griefing of vault collateral.
 	#[pallet::storage]
 	#[pallet::getter(fn issue_period)]
-	pub(super) type IssuePeriod<T: Config> = StorageValue<_, T::BlockNumber, ValueQuery>;
+	pub(super) type IssuePeriod<T: Config> = StorageValue<_, BlockNumberFor<T>, ValueQuery>;
 
 	/// The minimum amount of wrapped assets that is required for issue requests
 	#[pallet::storage]
@@ -176,24 +174,23 @@ pub mod pallet {
 
 	/// Represent interval define regular 24 hour intervals (every 24 * 3600 / 12 blocks)
 	#[pallet::storage]
-	pub(super) type IntervalLength<T: Config> = StorageValue<_, T::BlockNumber, ValueQuery>;
+	pub(super) type IntervalLength<T: Config> = StorageValue<_, BlockNumberFor<T>, ValueQuery>;
 
 	/// Represent current interval current_block_number / IntervalLength
 	#[pallet::storage]
-	pub(super) type LastIntervalIndex<T: Config> = StorageValue<_, T::BlockNumber, ValueQuery>;
+	pub(super) type LastIntervalIndex<T: Config> = StorageValue<_, BlockNumberFor<T>, ValueQuery>;
 
 	#[pallet::genesis_config]
 	pub struct GenesisConfig<T: Config> {
-		pub issue_period: T::BlockNumber,
+		pub issue_period: BlockNumberFor<T>,
 		pub issue_minimum_transfer_amount: BalanceOf<T>,
 		pub limit_volume_amount: Option<BalanceOf<T>>,
 		pub limit_volume_currency_id: T::CurrencyId,
 		pub current_volume_amount: BalanceOf<T>,
-		pub interval_length: T::BlockNumber,
-		pub last_interval_index: T::BlockNumber,
+		pub interval_length: BlockNumberFor<T>,
+		pub last_interval_index: BlockNumberFor<T>,
 	}
 
-	#[cfg(feature = "std")]
 	impl<T: Config> Default for GenesisConfig<T> {
 		fn default() -> Self {
 			const SECONDS_PER_BLOCK: u32 = 12;
@@ -207,17 +204,14 @@ pub mod pallet {
 				limit_volume_amount: None,
 				limit_volume_currency_id: T::CurrencyId::default(),
 				current_volume_amount: BalanceOf::<T>::zero(),
-				interval_length: T::BlockNumber::from_str(
-					&(DAY_IN_SECONDS / SECONDS_PER_BLOCK).to_string(),
-				)
-				.unwrap_or_default(),
-				last_interval_index: T::BlockNumber::zero(),
+				interval_length: (DAY_IN_SECONDS / SECONDS_PER_BLOCK).into(),
+				last_interval_index: BlockNumberFor::<T>::zero(),
 			}
 		}
 	}
 
 	#[pallet::genesis_build]
-	impl<T: Config> GenesisBuild<T> for GenesisConfig<T> {
+	impl<T: Config> BuildGenesisConfig for GenesisConfig<T> {
 		fn build(&self) {
 			IssuePeriod::<T>::put(self.issue_period);
 			IssueMinimumTransferAmount::<T>::put(self.issue_minimum_transfer_amount);
@@ -322,7 +316,7 @@ pub mod pallet {
 		#[transactional]
 		pub fn set_issue_period(
 			origin: OriginFor<T>,
-			period: T::BlockNumber,
+			period: BlockNumberFor<T>,
 		) -> DispatchResultWithPostInfo {
 			ensure_root(origin)?;
 			<IssuePeriod<T>>::set(period);
@@ -337,7 +331,7 @@ pub mod pallet {
 			origin: OriginFor<T>,
 			limit_volume_amount: Option<BalanceOf<T>>,
 			limit_volume_currency_id: T::CurrencyId,
-			interval_length: T::BlockNumber,
+			interval_length: BlockNumberFor<T>,
 		) -> DispatchResultWithPostInfo {
 			ensure_root(origin)?;
 			Self::_rate_limit_update(
@@ -374,7 +368,7 @@ impl<T: Config> Pallet<T> {
 	pub fn _rate_limit_update(
 		limit_volume_amount: Option<BalanceOf<T>>,
 		limit_volume_currency_id: T::CurrencyId,
-		interval_length: T::BlockNumber,
+		interval_length: BlockNumberFor<T>,
 	) {
 		<LimitVolumeAmount<T>>::set(limit_volume_amount);
 		<LimitVolumeCurrencyId<T>>::set(limit_volume_currency_id);
@@ -557,7 +551,7 @@ impl<T: Config> Pallet<T> {
 				// TODO: update `issue.griefing_collateral`?
 				slashed_collateral
 			} else {
-				return Err(Error::<T>::TimeNotExpired.into())
+				return Err(Error::<T>::TimeNotExpired.into());
 			};
 
 		if ext::vault_registry::is_vault_liquidated::<T>(&issue.vault)? {
@@ -760,8 +754,8 @@ impl<T: Config> Pallet<T> {
 	fn check_volume(amount_requested: Amount<T>) -> Result<(), DispatchError> {
 		let limit_volume: Option<BalanceOf<T>> = LimitVolumeAmount::<T>::get();
 		if let Some(limit_volume) = limit_volume {
-			let current_block: T::BlockNumber = <frame_system::Pallet<T>>::block_number();
-			let interval_length: T::BlockNumber = IntervalLength::<T>::get();
+			let current_block: BlockNumberFor<T> = <frame_system::Pallet<T>>::block_number();
+			let interval_length: BlockNumberFor<T> = IntervalLength::<T>::get();
 
 			let current_index = current_block.checked_div(&interval_length);
 			let mut current_volume = BalanceOf::<T>::zero();
@@ -869,8 +863,8 @@ impl<T: Config> Pallet<T> {
 							expected_total_amount,
 						)?
 					} else {
-						if amount_transferred.gt(&expected_total_amount)? &&
-							!ext::vault_registry::is_vault_liquidated::<T>(&issue.vault)?
+						if amount_transferred.gt(&expected_total_amount)?
+							&& !ext::vault_registry::is_vault_liquidated::<T>(&issue.vault)?
 						{
 							Self::try_increase_issue_amount(
 								issue_id,

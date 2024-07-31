@@ -99,7 +99,7 @@ pub fn create_sha256_hmac(data_buffer: &[u8], mac_key_buffer: &Buffer) -> Option
 				warn!("failed to convert hmac of size {} into an array of 32.", hmac_vec_len);
 				None
 			},
-		}
+		};
 	}
 
 	warn!("Invalid length of mac key buffer size {}", mac_key_buffer.len());

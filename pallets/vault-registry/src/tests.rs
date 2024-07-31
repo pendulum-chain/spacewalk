@@ -1857,15 +1857,15 @@ mod integration {
 			let vault_1_collateral_usd = to_usd(&collateral_vault_1, &DEFAULT_COLLATERAL_CURRENCY);
 			let vault_2_collateral_usd = to_usd(&collateral_vault_2, &DEFAULT_COLLATERAL_CURRENCY);
 
-			let expected_value_vault_1: u128 = ((vault_1_collateral_usd as f64 /
-				(vault_1_collateral_usd + vault_2_collateral_usd) as f64) *
-				reward_per_block as f64)
+			let expected_value_vault_1: u128 = ((vault_1_collateral_usd as f64
+				/ (vault_1_collateral_usd + vault_2_collateral_usd) as f64)
+				* reward_per_block as f64)
 				.floor() as u128;
 
 			//collect rewards for vault 2
-			let expected_value_vault_2: u128 = ((vault_2_collateral_usd as f64 /
-				(vault_1_collateral_usd + vault_2_collateral_usd) as f64) *
-				reward_per_block as f64)
+			let expected_value_vault_2: u128 = ((vault_2_collateral_usd as f64
+				/ (vault_1_collateral_usd + vault_2_collateral_usd) as f64)
+				* reward_per_block as f64)
 				.floor() as u128;
 
 			assert_eq!(
@@ -1948,37 +1948,37 @@ mod integration {
 			let vault_4_collateral_usd =
 				to_usd(&collateral_vault_4, &COLLATERAL_2_VAULT_2.collateral_currency());
 
-			let total_usd_amount = vault_1_collateral_usd +
-				vault_2_collateral_usd +
-				vault_3_collateral_usd +
-				vault_4_collateral_usd;
+			let total_usd_amount = vault_1_collateral_usd
+				+ vault_2_collateral_usd
+				+ vault_3_collateral_usd
+				+ vault_4_collateral_usd;
 
 			let expected_value_vault_1: u128 = ((((vault_1_collateral_usd + vault_2_collateral_usd)
-				as f64 / total_usd_amount as f64) *
-				reward_per_block as f64)
-				.floor() * (collateral_vault_1 as f64 /
-				(collateral_vault_1 + collateral_vault_2) as f64))
+				as f64 / total_usd_amount as f64)
+				* reward_per_block as f64)
+				.floor() * (collateral_vault_1 as f64
+				/ (collateral_vault_1 + collateral_vault_2) as f64))
 				.floor() as u128;
 
 			let expected_value_vault_2: u128 = ((((vault_1_collateral_usd + vault_2_collateral_usd)
-				as f64 / total_usd_amount as f64) *
-				reward_per_block as f64)
-				.floor() * (collateral_vault_2 as f64 /
-				(collateral_vault_1 + collateral_vault_2) as f64))
+				as f64 / total_usd_amount as f64)
+				* reward_per_block as f64)
+				.floor() * (collateral_vault_2 as f64
+				/ (collateral_vault_1 + collateral_vault_2) as f64))
 				.floor() as u128;
 
 			let expected_value_vault_3: u128 = ((((vault_4_collateral_usd + vault_3_collateral_usd)
-				as f64 / total_usd_amount as f64) *
-				reward_per_block as f64)
-				.floor() * (collateral_vault_3 as f64 /
-				(collateral_vault_3 + collateral_vault_4) as f64))
+				as f64 / total_usd_amount as f64)
+				* reward_per_block as f64)
+				.floor() * (collateral_vault_3 as f64
+				/ (collateral_vault_3 + collateral_vault_4) as f64))
 				.floor() as u128;
 
 			let expected_value_vault_4: u128 = ((((vault_4_collateral_usd + vault_3_collateral_usd)
-				as f64 / total_usd_amount as f64) *
-				reward_per_block as f64)
-				.floor() * (collateral_vault_4 as f64 /
-				(collateral_vault_3 + collateral_vault_4) as f64))
+				as f64 / total_usd_amount as f64)
+				* reward_per_block as f64)
+				.floor() * (collateral_vault_4 as f64
+				/ (collateral_vault_3 + collateral_vault_4) as f64))
 				.floor() as u128;
 
 			//ACT

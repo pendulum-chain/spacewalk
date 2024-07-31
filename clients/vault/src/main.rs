@@ -5,6 +5,7 @@ use std::{
 
 use clap::Parser;
 use futures::Future;
+use sp_runtime::AccountId32 as AccountId;
 use sysinfo::{System, SystemExt};
 use tokio::sync::RwLock;
 use tokio_stream::StreamExt;
@@ -129,11 +130,11 @@ async fn start() -> Result<(), ServiceError<Error>> {
 
 	// Create a PID file to signal to other processes that a vault is running.
 	// This file is auto-removed when `drop`ped.
-	let _pidfile = PidFile::create(
-		&String::from(DEFAULT_SPEC_NAME),
-		signer.read().await.account_id(),
-		&mut sys,
-	)?;
+
+	// First get the raw [u8] from the signer's account id and
+	// convert it to an sp_core type AccountId
+	let sp_account_id = AccountId::new(signer.read().await.account_id().0);
+	let _pidfile = PidFile::create(&String::from(DEFAULT_SPEC_NAME), &sp_account_id, &mut sys)?;
 
 	// Unless termination signals are caught, the PID file is not dropped.
 	let main_task = async move { vault_connection_manager.start::<VaultService, Error>().await };
@@ -162,8 +163,6 @@ async fn main() {
 #[cfg(test)]
 mod tests {
 	use std::{thread, time::Duration};
-
-	use runtime::AccountId;
 
 	use super::*;
 

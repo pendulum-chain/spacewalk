@@ -64,7 +64,7 @@ pub(crate) mod stellar_relay {
 
 #[cfg_attr(test, mockable)]
 pub(crate) mod vault_registry {
-	use frame_support::dispatch::{DispatchError, DispatchResult};
+	use frame_support::{dispatch::DispatchResult, sp_runtime::DispatchError};
 
 	use currency::Amount;
 	use vault_registry::types::{CurrencyId, CurrencySource, DefaultVault};
@@ -217,12 +217,13 @@ pub(crate) mod treasury {
 #[cfg_attr(test, mockable)]
 pub(crate) mod security {
 	use frame_support::dispatch::DispatchResult;
+	use frame_system::pallet_prelude::BlockNumberFor;
 	use sp_core::H256;
 	use sp_runtime::DispatchError;
 
 	pub fn parachain_block_expired<T: crate::Config>(
-		opentime: T::BlockNumber,
-		period: T::BlockNumber,
+		opentime: BlockNumberFor<T>,
+		period: BlockNumberFor<T>,
 	) -> Result<bool, DispatchError> {
 		<security::Pallet<T>>::parachain_block_expired(opentime, period)
 	}
@@ -235,14 +236,14 @@ pub(crate) mod security {
 		<security::Pallet<T>>::ensure_parachain_status_running()
 	}
 
-	pub fn active_block_number<T: crate::Config>() -> T::BlockNumber {
+	pub fn active_block_number<T: crate::Config>() -> BlockNumberFor<T> {
 		<security::Pallet<T>>::active_block_number()
 	}
 }
 
 #[cfg_attr(test, mockable)]
 pub(crate) mod fee {
-	use frame_support::dispatch::{DispatchError, DispatchResult};
+	use frame_support::{dispatch::DispatchResult, sp_runtime::DispatchError};
 
 	use currency::Amount;
 

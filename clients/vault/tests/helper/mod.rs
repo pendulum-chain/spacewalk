@@ -18,6 +18,7 @@ use sp_arithmetic::FixedPointNumber;
 use sp_keyring::AccountKeyring;
 use std::{future::Future, sync::Arc};
 use stellar_relay_lib::StellarOverlayConfig;
+use subxt::utils::AccountId32 as AccountId;
 use tokio::sync::RwLock;
 use vault::{
 	oracle::{random_stellar_relay_config, start_oracle_agent, OracleAgent},
@@ -27,7 +28,6 @@ use wallet::{
 	keys::{get_dest_secret_key_from_env, get_source_secret_key_from_env},
 	StellarWallet,
 };
-
 pub type StellarPublicKey = [u8; 32];
 
 #[async_trait]
@@ -92,7 +92,7 @@ async fn setup_chain_providers(
 	let (vault_wallet, user_wallet) =
 		initialize_wallets(&vault_stellar_secret, &user_stellar_secret, path, stellar_config).await;
 
-	return (client, vault_wallet, user_wallet)
+	return (client, vault_wallet, user_wallet);
 }
 
 pub async fn test_with<F, R>(
@@ -134,7 +134,7 @@ where
 	};
 
 	let vault_id = VaultId::new(
-		AccountKeyring::Charlie.into(),
+		AccountId(AccountKeyring::Charlie.to_account_id().into()),
 		DEFAULT_TESTING_CURRENCY,
 		default_wrapped_currency,
 	);

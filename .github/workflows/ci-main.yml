@@ -10,7 +10,7 @@ jobs:
       max-parallel: 2
       matrix:
         rust: [ stable, nightly ]
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-latest
     env:
       RUST_BACKTRACE: full
       # Make sure CI fails on all warnings, including Clippy lints
@@ -44,6 +44,13 @@ jobs:
         if: matrix.rust == 'stable'
         # Call `rustup show` as a hack so that the toolchain defined in rust-toolchain.toml is installed
         run: rustup show
+
+      - name: Use cargo.toml with polkadot-sdk fork
+        if: matrix.rust == 'nightly'
+        # To make sure that our polkadot-sdk fork will be used
+        run: |
+          rm /home/runner/work/spacewalk/spacewalk/Cargo.toml
+          mv /home/runner/work/spacewalk/spacewalk/Cargo_CI.toml /home/runner/work/spacewalk/spacewalk/Cargo.toml
 
       - name: Remove rust-toolchain.toml for nightly
         if: matrix.rust == 'nightly'
@@ -90,8 +97,8 @@ jobs:
           DEST_STELLAR_SECRET_TESTNET: ${{ secrets.DEST_STELLAR_SECRET_TESTNET }}
         with:
           toolchain: nightly-2024-02-09
-          command: test
-          args: --all --all-features
+          command: test 
+          args:  --all --all-features
 
       - name: Rustfmt
         if: matrix.rust == 'nightly'

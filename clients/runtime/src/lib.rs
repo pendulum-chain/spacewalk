@@ -2,13 +2,13 @@ use codec::{Decode, Encode};
 pub use prometheus;
 pub use sp_arithmetic::{traits as FixedPointTraits, FixedI128, FixedPointNumber, FixedU128};
 use sp_std::marker::PhantomData;
+use subxt::{
+	config::polkadot::PolkadotExtrinsicParams, ext::sp_runtime::MultiSignature, subxt, Config,
+};
 pub use subxt::{
+	config::substrate::BlakeTwo256,
 	events::StaticEvent,
 	ext::sp_core::{crypto::Ss58Codec, sr25519::Pair},
-};
-use subxt::{
-	ext::sp_runtime::{generic::Header, traits::BlakeTwo256, MultiSignature},
-	subxt, Config,
 };
 
 pub use assets::TryFromSymbol;
@@ -61,45 +61,73 @@ pub const STABLE_PARACHAIN_CONFIRMATIONS: &str = "StableParachainConfirmations";
 )))]
 compile_error!("You need to select at least one of the metadata features");
 
-// All of the parachain features use the same metadata (from Foucoco) for now.
-// We can change this once the spacewalk pallets were added to the runtimes of the other chains as
-// well.
+// If all features are selected, then we need to select only one metadata feature.
+// Since this is done for testing, we can select the standalone metadata.
 #[cfg_attr(
 	feature = "standalone-metadata",
 	subxt(
 		runtime_metadata_path = "metadata-standalone.scale",
 		derive_for_all_types = "Clone, PartialEq, Eq",
+		substitute_type(path = "sp_core::crypto::AccountId32", with = "crate::AccountId"),
+		substitute_type(
+			path = "spacewalk_primitives::CurrencyId",
+			with = "::subxt::utils::Static<crate::CurrencyId>"
+		),
+		substitute_type(
+			path = "sp_arithmetic::fixed_point::FixedU128",
+			with = "::subxt::utils::Static<crate::FixedU128>"
+		),
 	)
 )]
 #[cfg_attr(
-	feature = "parachain-metadata-pendulum",
+	all(feature = "parachain-metadata-pendulum", not(feature = "standalone-metadata")),
 	subxt(
 		runtime_metadata_path = "metadata-parachain-pendulum.scale",
 		derive_for_all_types = "Clone, PartialEq, Eq",
+		substitute_type(path = "sp_core::crypto::AccountId32", with = "crate::AccountId"),
+		substitute_type(
+			path = "spacewalk_primitives::CurrencyId",
+			with = "::subxt::utils::Static<crate::CurrencyId>"
+		),
+		substitute_type(
+			path = "sp_arithmetic::fixed_point::FixedU128",
+			with = "::subxt::utils::Static<crate::FixedU128>"
+		),
 	)
 )]
 #[cfg_attr(
-	feature = "parachain-metadata-amplitude",
+	all(feature = "parachain-metadata-amplitude", not(feature = "standalone-metadata")),
 	subxt(
 		runtime_metadata_path = "metadata-parachain-amplitude.scale",
 		derive_for_all_types = "Clone, PartialEq, Eq",
+		substitute_type(path = "sp_core::crypto::AccountId32", with = "crate::AccountId"),
+		substitute_type(
+			path = "spacewalk_primitives::CurrencyId",
+			with = "::subxt::utils::Static<crate::CurrencyId>"
+		),
+		substitute_type(
+			path = "sp_arithmetic::fixed_point::FixedU128",
+			with = "::subxt::utils::Static<crate::FixedU128>"
+		),
 	)
 )]
 #[cfg_attr(
-	feature = "parachain-metadata-foucoco",
+	all(feature = "parachain-metadata-foucoco", not(feature = "standalone-metadata")),
 	subxt(
 		runtime_metadata_path = "metadata-parachain-foucoco.scale",
 		derive_for_all_types = "Clone, PartialEq, Eq",
+		substitute_type(path = "sp_core::crypto::AccountId32", with = "crate::AccountId"),
+		substitute_type(
+			path = "spacewalk_primitives::CurrencyId",
+			with = "::subxt::utils::Static<crate::CurrencyId>"
+		),
+		substitute_type(
+			path = "sp_arithmetic::fixed_point::FixedU128",
+			with = "::subxt::utils::Static<crate::FixedU128>"
+		),
 	)
 )]
-pub mod metadata {
-	#[subxt(substitute_type = "sp_core::crypto::AccountId32")]
-	use crate::AccountId;
-	#[subxt(substitute_type = "spacewalk_primitives::CurrencyId")]
-	use crate::CurrencyId;
-	#[subxt(substitute_type = "sp_arithmetic::fixed_point::FixedU128")]
-	use crate::FixedU128;
-}
+pub mod metadata {}
 
 #[derive(Debug, Eq, PartialEq, Ord, PartialOrd, Default, Clone, Decode, Encode)]
 pub struct WrapperKeepOpaque<T> {
@@ -111,13 +139,12 @@ pub struct WrapperKeepOpaque<T> {
 pub struct SpacewalkRuntime;
 
 impl Config for SpacewalkRuntime {
-	type Index = Index;
-	type BlockNumber = BlockNumber;
+	type AssetId = ();
 	type Hash = H256;
-	type Hashing = BlakeTwo256;
+	type Header = subxt::config::substrate::SubstrateHeader<BlockNumber, Self::Hasher>;
+	type Hasher = BlakeTwo256;
 	type AccountId = AccountId;
 	type Address = Address;
-	type Header = Header<Self::BlockNumber, BlakeTwo256>;
 	type Signature = MultiSignature;
-	type ExtrinsicParams = subxt::tx::PolkadotExtrinsicParams<Self>;
+	type ExtrinsicParams = PolkadotExtrinsicParams<Self>;
 }

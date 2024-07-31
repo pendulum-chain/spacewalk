@@ -33,8 +33,9 @@ impl ProviderUserOpts {
 		// load parachain credentials
 		let (pair, user_name) = match (self.keyfile.as_ref(), self.keyname.as_ref(), &self.keyring)
 		{
-			(Some(file_path), Some(keyname), None) =>
-				(get_credentials_from_file(file_path, keyname)?, keyname.to_string()),
+			(Some(file_path), Some(keyname), None) => {
+				(get_credentials_from_file(file_path, keyname)?, keyname.to_string())
+			},
 			(None, None, Some(keyring)) => {
 				let pair = Pair::from_string(keyring.to_seed().as_str(), None)
 					.map_err(|_| Error::KeyringAccountParsingError)?;
@@ -42,7 +43,7 @@ impl ProviderUserOpts {
 			},
 			_ => {
 				// should never occur, due to clap constraints
-				return Err(Error::KeyringArgumentError)
+				return Err(Error::KeyringArgumentError);
 			},
 		};
 		Ok((pair, user_name))
@@ -99,10 +100,6 @@ pub struct ConnectionOpts {
 	/// Maximum number of concurrent requests
 	#[clap(long, env = "MAX_CONCURRENT_REQUESTS")]
 	pub max_concurrent_requests: Option<usize>,
-
-	/// Maximum notification capacity for each subscription
-	#[clap(long, env = "MAX_NOTIFS_PER_SUBSCRIPTION")]
-	pub max_notifs_per_subscription: Option<usize>,
 }
 
 impl ConnectionOpts {
@@ -115,7 +112,6 @@ impl ConnectionOpts {
 			&self.spacewalk_parachain_url,
 			signer,
 			self.max_concurrent_requests,
-			self.max_notifs_per_subscription,
 			self.spacewalk_parachain_connection_timeout_ms,
 			shutdown_tx,
 		)

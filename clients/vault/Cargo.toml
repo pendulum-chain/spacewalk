@@ -36,7 +36,7 @@ itertools = "0.10.5"
 lazy_static = "1.4"
 nonzero_ext = "0.3.0"
 parity-scale-codec = "3.0.0"
-reqwest = { version = "0.11", features = ["json"] }
+reqwest = { version = "0.12.4", features = ["json"] }
 scale-info = { version = "2.1.1", default-features = false, features = ["derive"] }
 serde = "1.0.136"
 serde_json = { version = '1.0.45', default-features = false, features = ['alloc'] }
@@ -59,6 +59,8 @@ tracing-subscriber = { version = "0.2.12", features = ["registry", "env-filter",
 jsonrpc-core = "18.0.0"
 jsonrpc-core-client = { version = "18.0.0", features = ["http", "tls"] }
 
+subxt = { version = "0.33.0", features = [ "substrate-compat"] }
+
 # Workspace dependencies
 runtime = { path = "../runtime" }
 service = { path = "../service" }
@@ -67,12 +69,12 @@ stellar-relay-lib = { package = "stellar-relay-lib", path = "../stellar-relay-li
 primitives = { path = "../../primitives", package = "spacewalk-primitives", default-features = false }
 
 # Substrate dependencies
-sp-arithmetic = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.42" }
-sp-core = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.42" }
-sp-io = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.42" }
-sp-keyring = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.42" }
-sp-runtime = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.42" }
-sp-std = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.42" }
+sp-arithmetic = { git = "https://github.com/paritytech/polkadot-sdk", branch = "release-polkadot-v1.1.0" }
+sp-core = { git = "https://github.com/paritytech/polkadot-sdk", branch = "release-polkadot-v1.1.0" }
+sp-io = { git = "https://github.com/paritytech/polkadot-sdk", branch = "release-polkadot-v1.1.0" }
+sp-keyring = { git = "https://github.com/paritytech/polkadot-sdk", branch = "release-polkadot-v1.1.0" }
+sp-runtime = { git = "https://github.com/paritytech/polkadot-sdk", branch = "release-polkadot-v1.1.0" }
+sp-std = { git = "https://github.com/paritytech/polkadot-sdk", branch = "release-polkadot-v1.1.0" }
 
 parking_lot = "0.12.1"
 err-derive = "0.3.1"
@@ -89,7 +91,6 @@ tempdir = "0.3.7"
 # Workspace dependencies
 runtime = { path = "../runtime", features = ["testing-utils", "standalone-metadata"] }
 wallet = { path = "../wallet", features = ["testing-utils"] }
-subxt = { version = "0.25.0" }
 
 # Substrate dependencies
-frame-support = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.42" }
+frame-support = { git = "https://github.com/paritytech/polkadot-sdk", branch = "release-polkadot-v1.1.0" }

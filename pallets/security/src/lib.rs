@@ -7,12 +7,9 @@
 
 #[cfg(test)]
 extern crate mocktopus;
-
 use codec::Encode;
-use frame_support::{
-	dispatch::{DispatchError, DispatchResult},
-	transactional,
-};
+use frame_support::{dispatch::DispatchResult, sp_runtime::DispatchError, transactional};
+use frame_system::pallet_prelude::BlockNumberFor;
 #[cfg(test)]
 use mocktopus::macros::mockable;
 use sha2::{Digest, Sha256};
@@ -58,7 +55,7 @@ pub mod pallet {
 	#[pallet::generate_deposit(pub(super) fn deposit_event)]
 	pub enum Event<T: Config> {
 		RecoverFromErrors { new_status: StatusCode, cleared_errors: Vec<ErrorCode> },
-		UpdateActiveBlock { block_number: T::BlockNumber },
+		UpdateActiveBlock { block_number: BlockNumberFor<T> },
 	}
 
 	#[pallet::error]
@@ -68,27 +65,27 @@ pub mod pallet {
 	}
 
 	#[pallet::hooks]
-	impl<T: Config> Hooks<T::BlockNumber> for Pallet<T> {
-		fn on_initialize(_n: T::BlockNumber) -> Weight {
+	impl<T: Config> Hooks<BlockNumberFor<T>> for Pallet<T> {
+		fn on_initialize(_n: BlockNumberFor<T>) -> Weight {
 			Self::increment_active_block();
 			<T as Config>::WeightInfo::on_initialize()
 		}
 	}
 
 	#[pallet::genesis_config]
-	pub struct GenesisConfig {
+	pub struct GenesisConfig<T: Config> {
 		pub initial_status: StatusCode,
+		pub _phantom: sp_std::marker::PhantomData<T>,
 	}
 
-	#[cfg(feature = "std")]
-	impl Default for GenesisConfig {
+	impl<T: Config> Default for GenesisConfig<T> {
 		fn default() -> Self {
-			Self { initial_status: StatusCode::Error }
+			Self { initial_status: StatusCode::Error, _phantom: Default::default() }
 		}
 	}
 
 	#[pallet::genesis_build]
-	impl<T: Config> GenesisBuild<T> for GenesisConfig {
+	impl<T: Config> BuildGenesisConfig for GenesisConfig<T> {
 		fn build(&self) {
 			Pallet::<T>::set_status(self.initial_status);
 
@@ -118,7 +115,7 @@ pub mod pallet {
 	/// time to submit their proof.
 	#[pallet::storage]
 	#[pallet::getter(fn active_block_number)]
-	pub type ActiveBlockCount<T: Config> = StorageValue<_, T::BlockNumber, ValueQuery>;
+	pub type ActiveBlockCount<T: Config> = StorageValue<_, BlockNumberFor<T>, ValueQuery>;
 
 	#[pallet::pallet]
 	#[pallet::without_storage_info]
@@ -214,8 +211,8 @@ impl<T: Config> Pallet<T> {
 
 	/// Checks if the Parachain has a OracleOffline Error state
 	pub fn is_parachain_error_oracle_offline() -> bool {
-		Self::parachain_status() == StatusCode::Error &&
-			<Errors<T>>::get().contains(&ErrorCode::OracleOffline)
+		Self::parachain_status() == StatusCode::Error
+			&& <Errors<T>>::get().contains(&ErrorCode::OracleOffline)
 	}
 
 	/// Sets the given `StatusCode`.
@@ -255,8 +252,8 @@ impl<T: Config> Pallet<T> {
 	}
 
 	pub fn parachain_block_expired(
-		opentime: T::BlockNumber,
-		period: T::BlockNumber,
+		opentime: BlockNumberFor<T>,
+		period: BlockNumberFor<T>,
 	) -> Result<bool, DispatchError> {
 		let expiration_block = opentime.checked_add(&period).ok_or(ArithmeticError::Overflow)?;
 		Ok(Self::active_block_number() > expiration_block)
@@ -322,7 +319,7 @@ impl<T: Config> Pallet<T> {
 
 	/// for testing purposes only!
 	#[cfg(feature = "testing-utils")]
-	pub fn set_active_block_number(n: T::BlockNumber) {
+	pub fn set_active_block_number(n: BlockNumberFor<T>) {
 		ActiveBlockCount::<T>::set(n);
 	}
 }

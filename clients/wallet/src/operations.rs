@@ -84,12 +84,14 @@ pub trait RedeemOperationsExt: HorizonClient {
 			// if account exists and trustline exists, use normal payment operation
 			Ok(account) if account.is_trustline_exist(&to_be_redeemed_asset) =>
 			// normal operation
+			{
 				create_payment_operation(
 					destination_address,
 					to_be_redeemed_asset.clone(),
 					to_be_redeemed_amount,
 					source_address,
-				),
+				)
+			},
 			// if account exists and NO trustline, use claimable balance operation
 			Ok(_) => claimable_balance_operation(),
 			// if INactive account...
@@ -97,8 +99,8 @@ pub trait RedeemOperationsExt: HorizonClient {
 				let to_be_redeemed_amount_u128 = stellar_stroops_to_u128(to_be_redeemed_amount);
 
 				// ... and redeeming amount >= 1 XLM, use create account operation
-				if to_be_redeemed_asset == Asset::AssetTypeNative &&
-					to_be_redeemed_amount_u128 >=
+				if to_be_redeemed_asset == Asset::AssetTypeNative
+					&& to_be_redeemed_amount_u128 >=
 						// It's okay to use the default here because the Stellar decimals are the same
 						primitives::DefaultDecimalsLookup::one(
 							primitives::CurrencyId::StellarNative,

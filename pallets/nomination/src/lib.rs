@@ -25,10 +25,7 @@ mod default_weights;
 pub use default_weights::{SubstrateWeight, WeightInfo};
 
 use currency::Amount;
-use frame_support::{
-	dispatch::{DispatchError, DispatchResult},
-	ensure, transactional,
-};
+use frame_support::{dispatch::DispatchResult, ensure, sp_runtime::DispatchError, transactional};
 use frame_system::{ensure_root, ensure_signed};
 pub use pallet::*;
 use primitives::VaultId;
@@ -98,7 +95,7 @@ pub mod pallet {
 	}
 
 	#[pallet::hooks]
-	impl<T: Config> Hooks<T::BlockNumber> for Pallet<T> {}
+	impl<T: Config> Hooks<BlockNumberFor<T>> for Pallet<T> {}
 
 	/// Flag indicating whether this feature is enabled
 	#[pallet::storage]
@@ -111,13 +108,19 @@ pub mod pallet {
 		StorageMap<_, Blake2_128Concat, DefaultVaultId<T>, bool, ValueQuery>;
 
 	#[pallet::genesis_config]
-	#[cfg_attr(feature = "std", derive(Default))]
-	pub struct GenesisConfig {
+	pub struct GenesisConfig<T: Config> {
 		pub is_nomination_enabled: bool,
+		pub _phantom: sp_std::marker::PhantomData<T>,
+	}
+
+	impl<T: Config> Default for GenesisConfig<T> {
+		fn default() -> Self {
+			GenesisConfig { is_nomination_enabled: false, _phantom: Default::default() }
+		}
 	}
 
 	#[pallet::genesis_build]
-	impl<T: Config> GenesisBuild<T> for GenesisConfig {
+	impl<T: Config> BuildGenesisConfig for GenesisConfig<T> {
 		fn build(&self) {
 			{
 				NominationEnabled::<T>::put(self.is_nomination_enabled);
@@ -197,7 +200,7 @@ pub mod pallet {
 			origin: OriginFor<T>,
 			vault_id: DefaultVaultId<T>,
 			amount: BalanceOf<T>,
-			index: Option<T::Index>,
+			index: Option<T::Nonce>,
 		) -> DispatchResultWithPostInfo {
 			let nominator_id = ensure_signed(origin)?;
 			ext::security::ensure_parachain_status_running::<T>()?;
@@ -219,7 +222,7 @@ impl<T: Config> Pallet<T> {
 		vault_id: &DefaultVaultId<T>,
 		nominator_id: &T::AccountId,
 		amount: BalanceOf<T>,
-		index: T::Index,
+		index: T::Nonce,
 	) -> DispatchResult {
 		let nonce = ext::staking::nonce::<T>(vault_id);
 		let index = sp_std::cmp::min(index, nonce);

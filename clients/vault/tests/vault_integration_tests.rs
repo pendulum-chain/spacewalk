@@ -23,6 +23,7 @@ mod helper;
 
 use helper::*;
 use primitives::DecimalsLookup;
+use subxt::utils::AccountId32 as AccountId;
 use vault::oracle::{random_stellar_relay_config, start_oracle_agent};
 use wallet::keys::get_source_secret_key_from_env;
 
@@ -654,7 +655,7 @@ async fn test_issue_execution_succeeds_from_archive_on_network(is_public_network
 				.expect("Conversion should not fail");
 			let destination_public_key = PublicKey::from_binary(issue.vault_stellar_public_key);
 			let stellar_asset =
-				primitives::AssetConversion::lookup(issue.asset).expect("Asset not found");
+				primitives::AssetConversion::lookup(*issue.asset).expect("Asset not found");
 
 			let transaction_response = send_payment_to_address(
 				user_wallet,
@@ -755,7 +756,7 @@ async fn test_issue_overpayment_succeeds() {
 			.expect("Conversion should not fail");
 			let destination_public_key = PublicKey::from_binary(issue.vault_stellar_public_key);
 			let stellar_asset =
-				primitives::AssetConversion::lookup(issue.asset).expect("Asset not found");
+				primitives::AssetConversion::lookup(*issue.asset).expect("Asset not found");
 
 			let transaction_response = send_payment_to_address(
 				user_wallet,
@@ -855,7 +856,7 @@ async fn test_automatic_issue_execution_succeeds_on_network(is_public_network: b
 				let stroop_amount = primitives::BalanceConversion::lookup(issue.amount + issue.fee)
 					.expect("Invalid amount");
 				let stellar_asset =
-					primitives::AssetConversion::lookup(issue.asset).expect("Asset not found");
+					primitives::AssetConversion::lookup(*issue.asset).expect("Asset not found");
 
 				let result = send_payment_to_address(
 					user_wallet,
@@ -935,7 +936,7 @@ async fn test_automatic_issue_execution_succeeds_for_other_vault() {
 			let user_provider = setup_provider(client.clone(), AccountKeyring::Dave).await;
 			let vault2_provider = setup_provider(client.clone(), AccountKeyring::Eve).await;
 			let vault2_id = VaultId::new(
-				AccountKeyring::Eve.into(),
+				AccountId(AccountKeyring::Eve.to_account_id().into()),
 				DEFAULT_TESTING_CURRENCY,
 				default_wrapped_currency(is_public_network),
 			);
@@ -985,7 +986,7 @@ async fn test_automatic_issue_execution_succeeds_for_other_vault() {
 				let stroop_amount = primitives::BalanceConversion::lookup(issue.amount + issue.fee)
 					.expect("Invalid amount");
 				let stellar_asset =
-					primitives::AssetConversion::lookup(issue.asset).expect("Asset not found");
+					primitives::AssetConversion::lookup(*issue.asset).expect("Asset not found");
 
 				// Sleep 1 second to give other thread some time to receive the RequestIssue event
 				// and add it to the set
@@ -1144,7 +1145,7 @@ async fn test_execute_open_requests_succeeds() {
 			let stroop_amount =
 				primitives::BalanceConversion::lookup(redeems[0].amount).expect("Invalid amount");
 			let asset =
-				primitives::AssetConversion::lookup(redeems[0].asset).expect("Invalid asset");
+				primitives::AssetConversion::lookup(*redeems[0].asset).expect("Invalid asset");
 
 			// do stellar transfer for redeem 0
 			assert_ok!(
@@ -1250,7 +1251,7 @@ async fn test_shutdown() {
 		let user_provider = setup_provider(client.clone(), AccountKeyring::Dave).await;
 
 		let sudo_vault_id = VaultId::new(
-			AccountKeyring::Alice.into(),
+			AccountId(AccountKeyring::Alice.to_account_id().into()),
 			DEFAULT_TESTING_CURRENCY,
 			default_wrapped_currency(is_public_network),
 		);

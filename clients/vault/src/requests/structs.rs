@@ -84,7 +84,7 @@ impl Request {
 		// Convert the currency ID contained in the request to a Stellar asset and store both
 		// in the request struct for convenience
 		let asset =
-			primitives::AssetConversion::lookup(request.asset).map_err(|_| Error::LookupError)?;
+			primitives::AssetConversion::lookup(*request.asset).map_err(|_| Error::LookupError)?;
 
 		Ok(Request {
 			hash,
@@ -95,7 +95,7 @@ impl Request {
 			)?),
 			amount: request.amount,
 			asset,
-			currency: request.asset,
+			currency: *request.asset,
 			stellar_address: request.stellar_address,
 			request_type: RequestType::Redeem,
 			vault_id: request.vault,
@@ -112,7 +112,7 @@ impl Request {
 		// Convert the currency ID contained in the request to a Stellar asset and store both
 		// in the request struct for convenience
 		let asset =
-			primitives::AssetConversion::lookup(request.asset).map_err(|_| Error::LookupError)?;
+			primitives::AssetConversion::lookup(*request.asset).map_err(|_| Error::LookupError)?;
 
 		Ok(Request {
 			hash,
@@ -123,7 +123,7 @@ impl Request {
 			)?),
 			amount: request.amount,
 			asset,
-			currency: request.asset,
+			currency: *request.asset,
 			stellar_address: request.stellar_address,
 			request_type: RequestType::Replace,
 			vault_id: request.old_vault,
@@ -152,7 +152,7 @@ impl Request {
 		// ensure the deadline has not expired yet
 		if let Some(ref deadline) = self.deadline {
 			if parachain_rpc.get_current_active_block_number().await? >= deadline.parachain {
-				return Err(Error::DeadlineExpired)
+				return Err(Error::DeadlineExpired);
 			}
 		}
 
@@ -198,10 +198,12 @@ impl Request {
 				match result.map_err(Into::<EnrichedError>::into) {
 					Ok(ok) => Ok(ok),
 					Err(err) => match err.is_invalid_transaction() {
-						Some(Recoverability::Recoverable(data)) =>
-							Err(RetryPolicy::Skip(EnrichedError::InvalidTransaction(data))),
-						Some(Recoverability::Unrecoverable(data)) =>
-							Err(RetryPolicy::Throw(EnrichedError::InvalidTransaction(data))),
+						Some(Recoverability::Recoverable(data)) => {
+							Err(RetryPolicy::Skip(EnrichedError::InvalidTransaction(data)))
+						},
+						Some(Recoverability::Unrecoverable(data)) => {
+							Err(RetryPolicy::Throw(EnrichedError::InvalidTransaction(data)))
+						},
 						None => {
 							// Handle other errors
 							if err.is_pool_too_low_priority() {
@@ -282,7 +284,7 @@ impl Request {
 		);
 
 		let response = match self.request_type {
-			RequestType::Redeem =>
+			RequestType::Redeem => {
 				wallet
 					.send_payment_to_address(
 						destination_public_key.clone(),
@@ -291,8 +293,9 @@ impl Request {
 						request_id,
 						true,
 					)
-					.await,
-			RequestType::Replace =>
+					.await
+			},
+			RequestType::Replace => {
 				wallet
 					.send_payment_to_address(
 						destination_public_key.clone(),
@@ -301,7 +304,8 @@ impl Request {
 						request_id,
 						false,
 					)
-					.await,
+					.await
+			},
 		}
 		.map_err(|e| Error::StellarWalletError(e))?;
 

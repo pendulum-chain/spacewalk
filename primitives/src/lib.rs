@@ -5,8 +5,9 @@ use base58::ToBase58;
 use codec::{Decode, Encode, MaxEncodedLen};
 use frame_support::error::LookupError;
 use scale_info::TypeInfo;
+use serde::{Deserialize, Serialize};
 #[cfg(feature = "std")]
-use serde::{Deserialize, Deserializer, Serialize, Serializer};
+use serde::{Deserializer, Serializer};
 pub use sp_core::H256;
 use sp_core::{crypto::AccountId32, ed25519};
 pub use sp_runtime::OpaqueExtrinsic as UncheckedExtrinsic;
@@ -66,15 +67,41 @@ impl TruncateFixedPointToInt for UnsignedFixedPoint {
 	}
 }
 
-#[derive(Encode, Decode, Clone, PartialEq, Eq, Debug, PartialOrd, Ord, TypeInfo, MaxEncodedLen)]
-#[cfg_attr(feature = "std", derive(Serialize, Deserialize, std::hash::Hash))]
+#[derive(
+	Encode,
+	Decode,
+	Clone,
+	PartialEq,
+	Eq,
+	Debug,
+	PartialOrd,
+	Ord,
+	TypeInfo,
+	MaxEncodedLen,
+	Deserialize,
+	Serialize,
+)]
+#[cfg_attr(feature = "std", derive(std::hash::Hash))]
 pub struct VaultCurrencyPair<CurrencyId: Copy> {
 	pub collateral: CurrencyId,
 	pub wrapped: CurrencyId,
 }
 
-#[derive(Encode, Decode, Clone, PartialEq, Eq, Debug, PartialOrd, Ord, TypeInfo, MaxEncodedLen)]
-#[cfg_attr(feature = "std", derive(Serialize, Deserialize, std::hash::Hash))]
+#[derive(
+	Encode,
+	Decode,
+	Clone,
+	PartialEq,
+	Eq,
+	Debug,
+	PartialOrd,
+	Ord,
+	TypeInfo,
+	MaxEncodedLen,
+	Serialize,
+	Deserialize,
+)]
+#[cfg_attr(feature = "std", derive(std::hash::Hash))]
 pub struct VaultId<AccountId, CurrencyId: Copy> {
 	pub account_id: AccountId,
 	pub currencies: VaultCurrencyPair<CurrencyId>,
@@ -300,8 +327,9 @@ pub mod replace {
 pub mod oracle {
 	use super::*;
 
-	#[derive(Encode, Decode, Clone, Eq, PartialEq, Debug, TypeInfo, MaxEncodedLen)]
-	#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
+	#[derive(
+		Encode, Decode, Clone, Eq, PartialEq, Debug, TypeInfo, MaxEncodedLen, Serialize, Deserialize,
+	)]
 	#[cfg_attr(feature = "std", serde(rename_all = "camelCase"))]
 	pub enum Key {
 		ExchangeRate(CurrencyId),
@@ -322,17 +350,14 @@ pub type AccountId = <<Signature as Verify>::Signer as IdentifyAccount>::Account
 /// never know...
 pub type AccountIndex = u32;
 
-/// Index of a transaction in the chain. 32-bit should be plenty.
-pub type Nonce = u32;
-
 /// Balance of an account.
 pub type Balance = u128;
 
 /// Signed version of Balance
 pub type Amount = i128;
 
-/// Index of a transaction in the chain.
-pub type Index = u32;
+/// Nonce of a transaction in the chain.
+pub type Nonce = u32;
 
 /// A hash of some data used by the chain.
 pub type Hash = sp_core::H256;
@@ -424,9 +449,22 @@ pub fn remove_trailing_non_alphanum_bytes(input: &[u8]) -> &[u8] {
 }
 
 #[derive(
-	Encode, Decode, Eq, Hash, PartialEq, Copy, Clone, PartialOrd, Ord, TypeInfo, MaxEncodedLen,
+	Encode,
+	Decode,
+	Eq,
+	Hash,
+	PartialEq,
+	Copy,
+	Clone,
+	PartialOrd,
+	Ord,
+	TypeInfo,
+	MaxEncodedLen,
+	Serialize,
+	Deserialize,
+	scale_decode::DecodeAsType,
+	scale_encode::EncodeAsType,
 )]
-#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 #[cfg_attr(feature = "std", serde(rename_all = "camelCase"))]
 #[repr(u8)]
 #[allow(clippy::unnecessary_cast)]
@@ -440,10 +478,12 @@ impl CurrencyInfo for Asset {
 	fn name(&self) -> &str {
 		match self {
 			Asset::StellarNative => "Stellar",
-			Asset::AlphaNum4 { code, issuer: _ } =>
-				from_utf8(&remove_trailing_non_alphanum_bytes(code)).unwrap_or("unspecified"),
-			Asset::AlphaNum12 { code, issuer: _ } =>
-				from_utf8(&remove_trailing_non_alphanum_bytes(code)).unwrap_or("unspecified"),
+			Asset::AlphaNum4 { code, issuer: _ } => {
+				from_utf8(&remove_trailing_non_alphanum_bytes(code)).unwrap_or("unspecified")
+			},
+			Asset::AlphaNum12 { code, issuer: _ } => {
+				from_utf8(&remove_trailing_non_alphanum_bytes(code)).unwrap_or("unspecified")
+			},
 		}
 	}
 
@@ -481,8 +521,11 @@ impl Asset {
 	Ord,
 	TypeInfo,
 	MaxEncodedLen,
+	Serialize,
+	Deserialize,
+	scale_decode::DecodeAsType,
+	scale_encode::EncodeAsType,
 )]
-#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 #[cfg_attr(feature = "std", serde(rename_all = "camelCase"))]
 #[repr(u8)]
 #[allow(clippy::unnecessary_cast)]
@@ -540,8 +583,9 @@ impl DecimalsLookup for PendulumDecimalsLookup {
 				_ => 12,
 			},
 			// We assume that all other assets have 12 decimals
-			CurrencyId::Native | CurrencyId::ZenlinkLPToken(_, _, _, _) | CurrencyId::Token(_) =>
-				12,
+			CurrencyId::Native | CurrencyId::ZenlinkLPToken(_, _, _, _) | CurrencyId::Token(_) => {
+				12
+			},
 		}) as u32
 	}
 }
@@ -561,8 +605,9 @@ impl DecimalsLookup for AmplitudeDecimalsLookup {
 				_ => 12,
 			},
 			// We assume that all other assets have 12 decimals
-			CurrencyId::Native | CurrencyId::ZenlinkLPToken(_, _, _, _) | CurrencyId::Token(_) =>
-				12,
+			CurrencyId::Native | CurrencyId::ZenlinkLPToken(_, _, _, _) | CurrencyId::Token(_) => {
+				12
+			},
 		}) as u32
 	}
 }
@@ -648,18 +693,21 @@ impl TryInto<stellar::Asset> for CurrencyId {
 			Self::XCM(_currency_id) => Err("XCM Foreign Asset not defined in the Stellar world."),
 			Self::Native => Err("PEN token not defined in the Stellar world."),
 			Self::StellarNative => Ok(stellar::Asset::native()),
-			Self::Stellar(Asset::AlphaNum4 { code, issuer }) =>
+			Self::Stellar(Asset::AlphaNum4 { code, issuer }) => {
 				Ok(stellar::Asset::AssetTypeCreditAlphanum4(AlphaNum4 {
 					asset_code: code,
 					issuer: PublicKey::PublicKeyTypeEd25519(issuer),
-				})),
-			Self::Stellar(Asset::AlphaNum12 { code, issuer }) =>
+				}))
+			},
+			Self::Stellar(Asset::AlphaNum12 { code, issuer }) => {
 				Ok(stellar::Asset::AssetTypeCreditAlphanum12(AlphaNum12 {
 					asset_code: code,
 					issuer: PublicKey::PublicKeyTypeEd25519(issuer),
-				})),
-			Self::ZenlinkLPToken(_, _, _, _) =>
-				Err("Zenlink LP Token not defined in the Stellar world."),
+				}))
+			},
+			Self::ZenlinkLPToken(_, _, _, _) => {
+				Err("Zenlink LP Token not defined in the Stellar world.")
+			},
 			Self::Token(_) => Err("Token not defined in the Stellar world."),
 		}
 	}
@@ -895,9 +943,9 @@ impl TransactionEnvelopeExt for TransactionEnvelope {
 					if payment.claimants.len() == 1 {
 						let Claimant::ClaimantTypeV0(claimant) = &payment.claimants.get_vec()[0];
 
-						if claimant.destination.eq(&recipient_account_pk) &&
-							payment.asset == asset && claimant.predicate ==
-							ClaimPredicate::ClaimPredicateUnconditional
+						if claimant.destination.eq(&recipient_account_pk)
+							&& payment.asset == asset && claimant.predicate
+							== ClaimPredicate::ClaimPredicateUnconditional
 						{
 							acc.saturating_add(payment.amount)
 						} else {
@@ -925,8 +973,9 @@ impl TransactionEnvelopeExt for TransactionEnvelope {
 
 	fn get_transaction(&self) -> Option<Transaction> {
 		match self {
-			TransactionEnvelope::EnvelopeTypeTxV0(transaction) =>
-				Some(transaction.tx.clone().into()),
+			TransactionEnvelope::EnvelopeTypeTxV0(transaction) => {
+				Some(transaction.tx.clone().into())
+			},
 			TransactionEnvelope::EnvelopeTypeTx(transaction) => Some(transaction.tx.clone()),
 			_ => None,
 		}

@@ -1,6 +1,6 @@
 use frame_benchmarking::{account, benchmarks, impl_benchmark_test_suite};
 use frame_support::assert_ok;
-use frame_system::RawOrigin;
+use frame_system::{pallet_prelude::BlockNumberFor, RawOrigin};
 use orml_traits::MultiCurrency;
 use sp_runtime::FixedPointNumber;
 use sp_std::prelude::*;
@@ -176,10 +176,10 @@ benchmarks! {
 	}
 
 	set_punishment_delay {
-		let punishment_delay: T::BlockNumber = T::BlockNumber::default();
+		let punishment_delay: BlockNumberFor<T> = BlockNumberFor::<T>::default();
 	}: _(RawOrigin::Root, punishment_delay)
 	verify {
-		let punishment_delay: T::BlockNumber = T::BlockNumber::default();
+		let punishment_delay: BlockNumberFor<T> = BlockNumberFor::<T>::default();
 		assert_eq!(PunishmentDelay::<T>::get(), punishment_delay);
 	}
 }

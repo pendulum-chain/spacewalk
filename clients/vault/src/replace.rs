@@ -104,7 +104,7 @@ pub async fn listen_for_replace_requests(
 			|event| async move {
 				if parachain_rpc.is_this_vault(&event.old_vault_id) {
 					// don't respond to requests we placed ourselves
-					return
+					return;
 				}
 
 				tracing::info!(
@@ -133,7 +133,7 @@ pub async fn listen_for_replace_requests(
 								// the only way it can fail is if the channel is closed
 								let _ = event_channel.clone().send(Event::Opened).await;
 
-								return // no need to iterate over the rest of the vault ids
+								return; // no need to iterate over the rest of the vault ids
 							},
 							Err(e) => tracing::error!(
 								"Failed to accept Replace from {} with [{}] due to error: {}",
@@ -307,7 +307,11 @@ mod tests {
 	}
 
 	fn dummy_vault_id() -> VaultId {
-		VaultId::new(AccountId::new([1u8; 32]), CurrencyId::XCM(0), CurrencyId::Native)
+		VaultId::new(
+			subxt::ext::sp_runtime::AccountId32::new([1u8; 32]).into(),
+			CurrencyId::XCM(0),
+			CurrencyId::Native,
+		)
 	}
 
 	fn wallet(is_public_network: bool, path: &Path) -> ArcRwLock<StellarWallet> {
@@ -336,7 +340,7 @@ mod tests {
 		let event = RequestReplaceEvent {
 			old_vault_id: dummy_vault_id(),
 			amount: Default::default(),
-			asset: Default::default(),
+			asset: subxt::utils::Static(Default::default()),
 			griefing_collateral: Default::default(),
 		};
 		assert_err!(
@@ -362,7 +366,7 @@ mod tests {
 		let event = RequestReplaceEvent {
 			old_vault_id: dummy_vault_id(),
 			amount: Default::default(),
-			asset: Default::default(),
+			asset: subxt::utils::Static(Default::default()),
 			griefing_collateral: Default::default(),
 		};
 		handle_replace_request(parachain_rpc, wallet_arc, &event, &dummy_vault_id())

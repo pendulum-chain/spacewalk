@@ -6,10 +6,10 @@ version = "1.0.10"
 
 [dependencies]
 codec = {package = "parity-scale-codec", version = "3.0.0", default-features = false, features = ["derive", "max-encoded-len"]}
-frame-support = {git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.42", default-features = false}
+frame-support = {git = "https://github.com/paritytech/polkadot-sdk", branch = "release-polkadot-v1.1.0", default-features = false}
 serde = {version = "1.0.130", default-features = false, optional = true, features = ["derive"]}
-sp-api = {git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.42", default-features = false}
-sp-std = {git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.42", default-features = false}
+sp-api = {git = "https://github.com/paritytech/polkadot-sdk", branch = "release-polkadot-v1.1.0", default-features = false}
+sp-std = {git = "https://github.com/paritytech/polkadot-sdk", branch = "release-polkadot-v1.1.0", default-features = false}
 scale-info = { version = "2.1.1", default-features = false, features = ["derive"] }
 
 primitives = { package = "spacewalk-primitives", path = "../../../../primitives", default-features = false }

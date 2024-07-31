@@ -1,9 +1,5 @@
 use codec::{Decode, Encode, HasCompact, MaxEncodedLen};
-use frame_support::{
-	dispatch::{DispatchError, DispatchResult},
-	ensure,
-	traits::Get,
-};
+use frame_support::{dispatch::DispatchResult, ensure, sp_runtime::DispatchError, traits::Get};
 #[cfg(test)]
 use mocktopus::macros::mockable;
 use scale_info::TypeInfo;
@@ -12,6 +8,8 @@ use sp_runtime::{
 	traits::{CheckedAdd, CheckedSub, Zero},
 	ArithmeticError,
 };
+
+use frame_system::pallet_prelude::BlockNumberFor;
 
 use currency::Amount;
 pub use primitives::{VaultCurrencyPair, VaultId};
@@ -40,17 +38,17 @@ pub enum CurrencySource<T: frame_system::Config + orml_tokens::Config> {
 impl<T: Config> CurrencySource<T> {
 	pub fn account_id(&self) -> <T as frame_system::Config>::AccountId {
 		match self {
-			CurrencySource::Collateral(DefaultVaultId::<T> { account_id: x, .. }) |
-			CurrencySource::AvailableReplaceCollateral(DefaultVaultId::<T> {
+			CurrencySource::Collateral(DefaultVaultId::<T> { account_id: x, .. })
+			| CurrencySource::AvailableReplaceCollateral(DefaultVaultId::<T> {
 				account_id: x,
 				..
-			}) |
-			CurrencySource::ActiveReplaceCollateral(DefaultVaultId::<T> {
+			})
+			| CurrencySource::ActiveReplaceCollateral(DefaultVaultId::<T> {
 				account_id: x, ..
-			}) |
-			CurrencySource::UserGriefing(x) |
-			CurrencySource::FreeBalance(x) |
-			CurrencySource::LiquidatedCollateral(DefaultVaultId::<T> { account_id: x, .. }) => x.clone(),
+			})
+			| CurrencySource::UserGriefing(x)
+			| CurrencySource::FreeBalance(x)
+			| CurrencySource::LiquidatedCollateral(DefaultVaultId::<T> { account_id: x, .. }) => x.clone(),
 			CurrencySource::LiquidationVault(_) => Pallet::<T>::liquidation_vault_account_id(),
 		}
 	}
@@ -72,8 +70,9 @@ impl<T: Config> CurrencySource<T> {
 					T::GetGriefingCollateralCurrencyId::get(),
 				)
 			},
-			CurrencySource::UserGriefing(x) =>
-				ext::currency::get_reserved_balance::<T>(currency_id, x),
+			CurrencySource::UserGriefing(x) => {
+				ext::currency::get_reserved_balance::<T>(currency_id, x)
+			},
 			CurrencySource::FreeBalance(x) => ext::currency::get_free_balance::<T>(currency_id, x),
 			CurrencySource::LiquidatedCollateral(vault_id) => {
 				let vault = Pallet::<T>::get_vault_from_id(vault_id)?;
@@ -199,7 +198,7 @@ impl<
 
 pub type DefaultVault<T> = Vault<
 	<T as frame_system::Config>::AccountId,
-	<T as frame_system::Config>::BlockNumber,
+	BlockNumberFor<T>,
 	BalanceOf<T>,
 	CurrencyId<T>,
 	UnsignedFixedPoint<T>,
@@ -412,7 +411,7 @@ impl<T: Config> RichVault<T> {
 	pub fn issuable_tokens(&self) -> Result<Amount<T>, DispatchError> {
 		// unable to issue additional tokens when banned
 		if self.is_banned() {
-			return Ok(Amount::new(0u32.into(), self.wrapped_currency()))
+			return Ok(Amount::new(0u32.into(), self.wrapped_currency()));
 		}
 
 		// used_collateral = (exchange_rate * (issued_tokens + to_be_issued_tokens)) *
@@ -434,7 +433,7 @@ impl<T: Config> RichVault<T> {
 	pub fn redeemable_tokens(&self) -> Result<Amount<T>, DispatchError> {
 		// unable to redeem additional tokens when banned
 		if self.is_banned() {
-			return Ok(Amount::new(0u32.into(), self.wrapped_currency()))
+			return Ok(Amount::new(0u32.into(), self.wrapped_currency()));
 		}
 
 		self.issued_tokens().checked_sub(&self.to_be_redeemed_tokens())
@@ -653,7 +652,7 @@ impl<T: Config> RichVault<T> {
 		}
 	}
 
-	pub fn ban_until(&mut self, height: T::BlockNumber) {
+	pub fn ban_until(&mut self, height: BlockNumberFor<T>) {
 		let _ = self.update(|v| {
 			v.banned_until = Some(height);
 			Ok(())

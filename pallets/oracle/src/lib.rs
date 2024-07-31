@@ -9,7 +9,9 @@ extern crate mocktopus;
 
 #[cfg(feature = "testing-utils")]
 use frame_support::dispatch::DispatchResult;
-use frame_support::{dispatch::DispatchError, transactional};
+use frame_support::{pallet_prelude::DispatchError, transactional};
+use frame_system::pallet_prelude::BlockNumberFor;
+
 #[cfg(test)]
 use mocktopus::macros::mockable;
 use sp_runtime::{
@@ -73,6 +75,7 @@ const USD_DECIMALS: u32 = 12;
 pub mod pallet {
 	use frame_support::pallet_prelude::*;
 	use frame_system::pallet_prelude::*;
+	use sp_std::vec;
 
 	use super::*;
 
@@ -125,8 +128,8 @@ pub mod pallet {
 	}
 
 	#[pallet::hooks]
-	impl<T: Config> Hooks<T::BlockNumber> for Pallet<T> {
-		fn on_initialize(n: T::BlockNumber) -> Weight {
+	impl<T: Config> Hooks<BlockNumberFor<T>> for Pallet<T> {
+		fn on_initialize(n: BlockNumberFor<T>) -> Weight {
 			Self::begin_block(n);
 			<T as Config>::WeightInfo::on_initialize()
 		}
@@ -153,15 +156,25 @@ pub mod pallet {
 	pub(super) type StorageVersion<T: Config> =
 		StorageValue<_, Version, ValueQuery, DefaultForStorageVersion>;
 
-	#[derive(Default)]
 	#[pallet::genesis_config]
-	pub struct GenesisConfig {
+	pub struct GenesisConfig<T: Config> {
 		pub max_delay: u32,
 		pub oracle_keys: Vec<OracleKey>,
+		pub _phantom: sp_std::marker::PhantomData<T>,
+	}
+
+	impl<T: Config> Default for GenesisConfig<T> {
+		fn default() -> Self {
+			Self {
+				max_delay: Default::default(),
+				oracle_keys: vec![],
+				_phantom: Default::default(),
+			}
+		}
 	}
 
 	#[pallet::genesis_build]
-	impl<T: Config> GenesisBuild<T> for GenesisConfig {
+	impl<T: Config> BuildGenesisConfig for GenesisConfig<T> {
 		fn build(&self) {
 			MaxDelay::<T>::put(T::Moment::from(self.max_delay));
 			OracleKeys::<T>::put(self.oracle_keys.clone());
@@ -213,7 +226,7 @@ pub mod pallet {
 impl<T: Config> Pallet<T> {
 	// the function is public only for testing purposes. function should be use only by this pallet
 	// inside on_initialize hook
-	pub fn begin_block(_height: T::BlockNumber) {
+	pub fn begin_block(_height: BlockNumberFor<T>) {
 		let oracle_keys: Vec<_> = OracleKeys::<T>::get();
 
 		let current_time = Self::get_current_time();
@@ -234,9 +247,9 @@ impl<T: Config> Pallet<T> {
 		}
 
 		let current_status_is_online = Self::is_oracle_online();
-		let new_status_is_online = oracle_keys.len() > 0 &&
-			updated_items_len > 0 &&
-			updated_items_len == oracle_keys.len();
+		let new_status_is_online = oracle_keys.len() > 0
+			&& updated_items_len > 0
+			&& updated_items_len == oracle_keys.len();
 
 		if current_status_is_online != new_status_is_online {
 			if new_status_is_online {
@@ -263,7 +276,7 @@ impl<T: Config> Pallet<T> {
 		for (key, value) in values {
 			let timestamped =
 				orml_oracle::TimestampedValue { timestamp: Self::get_current_time(), value };
-			T::DataFeeder::feed_value(oracle.clone(), key.clone(), timestamped)
+			T::DataFeeder::feed_value(Some(oracle.clone()), key.clone(), timestamped)
 				.expect("Expect store value by key");
 			if !oracle_keys.contains(&key) {
 				oracle_keys.push(key);
@@ -294,7 +307,7 @@ impl<T: Config> Pallet<T> {
 		ext::security::ensure_parachain_status_running::<T>()?;
 
 		let Some(price) = T::DataProvider::get_no_op(&key) else {
-			return Err(Error::<T>::MissingExchangeRate.into())
+			return Err(Error::<T>::MissingExchangeRate.into());
 		};
 		Ok(price.value)
 	}
@@ -360,7 +373,7 @@ impl<T: Config> Pallet<T> {
 		to_decimals: u32,
 	) -> Result<BalanceOf<T>, DispatchError> {
 		if from_amount.is_zero() {
-			return Ok(Zero::zero())
+			return Ok(Zero::zero());
 		}
 
 		let from_amount = T::UnsignedFixedPoint::from_inner(from_amount);

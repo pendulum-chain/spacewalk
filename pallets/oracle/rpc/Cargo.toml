@@ -8,8 +8,8 @@ version = "1.0.10"
 codec = {package = "parity-scale-codec", version = "3.0.0", default-features = false, features = ["derive", "max-encoded-len"]}
 jsonrpsee = {version = "0.16.0", features = ["client","server", "macros"]}
 module-oracle-rpc-runtime-api = {path = "runtime-api"}
-sp-api = {git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.42"}
-sp-blockchain = {git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.42"}
-sp-runtime = {git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.42"}
+sp-api = {git = "https://github.com/paritytech/polkadot-sdk", branch = "release-polkadot-v1.1.0"}
+sp-blockchain = {git = "https://github.com/paritytech/polkadot-sdk", branch = "release-polkadot-v1.1.0"}
+sp-runtime = {git = "https://github.com/paritytech/polkadot-sdk", branch = "release-polkadot-v1.1.0"}
 
 primitives = { package = "spacewalk-primitives", path = "../../../primitives", default-features = false }

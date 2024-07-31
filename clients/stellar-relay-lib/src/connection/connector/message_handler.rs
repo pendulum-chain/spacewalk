@@ -37,7 +37,7 @@ impl Connector {
 						"process_raw_message(): Received ErrorMsg during authentication: {}",
 						error_to_string(e.clone())
 					);
-					return Err(Error::from(e))
+					return Err(Error::from(e));
 				},
 				other => error!(
 					"process_raw_message(): Received ErrorMsg during authentication: {:?}",
@@ -53,7 +53,7 @@ impl Connector {
 					trace!("process_raw_message(): Processing {msg_type:?} message: auth verified");
 				}
 
-				return self.process_stellar_message(auth_msg.message, msg_type).await
+				return self.process_stellar_message(auth_msg.message, msg_type).await;
 			},
 		}
 		Ok(None)
@@ -88,15 +88,15 @@ impl Connector {
 			StellarMessage::ErrorMsg(e) => {
 				error!("process_stellar_message(): Received ErrorMsg during authentication: {e:?}");
 				if e.code == ErrorCode::ErrConf || e.code == ErrorCode::ErrAuth {
-					return Err(Error::from(e))
+					return Err(Error::from(e));
 				}
-				return Ok(Some(StellarMessage::ErrorMsg(e)))
+				return Ok(Some(StellarMessage::ErrorMsg(e)));
 			},
 
 			// we do not handle other messages. Return to caller
 			other => {
 				self.check_to_send_more(msg_type).await?;
-				return Ok(Some(other))
+				return Ok(Some(other));
 			},
 		}
 
@@ -127,7 +127,7 @@ impl Connector {
 		let mut network_id = self.connection_auth.network_id().to_xdr();
 
 		if !verify_remote_auth_cert(time_now(), &hello.peer_id, &hello.cert, &mut network_id) {
-			return Err(Error::AuthCertInvalid)
+			return Err(Error::AuthCertInvalid);
 		}
 
 		let remote_info = RemoteInfo::new(&hello);

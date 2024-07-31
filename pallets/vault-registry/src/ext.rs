@@ -24,7 +24,8 @@ pub(crate) mod currency {
 
 #[cfg_attr(test, mockable)]
 pub(crate) mod security {
-	pub fn active_block_number<T: crate::Config>() -> T::BlockNumber {
+	use frame_system::pallet_prelude::BlockNumberFor;
+	pub fn active_block_number<T: crate::Config>() -> BlockNumberFor<T> {
 		<security::Pallet<T>>::active_block_number()
 	}
 }
@@ -33,7 +34,7 @@ pub(crate) mod security {
 pub(crate) mod staking {
 	use crate::types::CurrencyId;
 	use currency::Amount;
-	use frame_support::dispatch::{DispatchError, DispatchResult};
+	use frame_support::{dispatch::DispatchResult, sp_runtime::DispatchError};
 	use staking::Staking;
 
 	use crate::{types::BalanceOf, DefaultVaultId};
@@ -50,7 +51,7 @@ pub(crate) mod staking {
 		vault_id: &DefaultVaultId<T>,
 		nominator_id: &T::AccountId,
 		amount: &Amount<T>,
-		index: Option<T::Index>,
+		index: Option<T::Nonce>,
 	) -> Result<(), DispatchError> {
 		T::VaultStaking::withdraw_stake(vault_id, nominator_id, amount.amount(), index)
 	}
@@ -90,7 +91,7 @@ pub(crate) mod staking {
 pub(crate) mod pooled_rewards {
 
 	use currency::Amount;
-	use frame_support::dispatch::DispatchError;
+	use frame_support::sp_runtime::DispatchError;
 	use pooled_rewards::RewardsApi;
 
 	use crate::DefaultVaultId;

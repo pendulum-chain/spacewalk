@@ -9,10 +9,7 @@
 extern crate mocktopus;
 
 use frame_support::{
-	dispatch::{DispatchError, DispatchResult},
-	ensure, log,
-	traits::Get,
-	transactional,
+	dispatch::DispatchResult, ensure, sp_runtime::DispatchError, traits::Get, transactional,
 };
 #[cfg(test)]
 use mocktopus::macros::mockable;
@@ -110,7 +107,7 @@ pub mod pallet {
 			griefing_collateral: BalanceOf<T>,
 		},
 		ReplacePeriodChange {
-			period: T::BlockNumber,
+			period: BlockNumberFor<T>,
 		},
 		ReplaceMinimumTransferAmountUpdate {
 			new_minimum_amount: BalanceOf<T>,
@@ -156,7 +153,7 @@ pub mod pallet {
 	/// to prevent griefing of vault collateral.
 	#[pallet::storage]
 	#[pallet::getter(fn replace_period)]
-	pub(super) type ReplacePeriod<T: Config> = StorageValue<_, T::BlockNumber, ValueQuery>;
+	pub(super) type ReplacePeriod<T: Config> = StorageValue<_, BlockNumberFor<T>, ValueQuery>;
 
 	/// The minimum amount of wrapped assets that is accepted for replace requests
 	#[pallet::storage]
@@ -166,11 +163,10 @@ pub mod pallet {
 
 	#[pallet::genesis_config]
 	pub struct GenesisConfig<T: Config> {
-		pub replace_period: T::BlockNumber,
+		pub replace_period: BlockNumberFor<T>,
 		pub replace_minimum_transfer_amount: BalanceOf<T>,
 	}
 
-	#[cfg(feature = "std")]
 	impl<T: Config> Default for GenesisConfig<T> {
 		fn default() -> Self {
 			Self {
@@ -181,7 +177,7 @@ pub mod pallet {
 	}
 
 	#[pallet::genesis_build]
-	impl<T: Config> GenesisBuild<T> for GenesisConfig<T> {
+	impl<T: Config> BuildGenesisConfig for GenesisConfig<T> {
 		fn build(&self) {
 			ReplacePeriod::<T>::put(self.replace_period);
 			ReplaceMinimumTransferAmount::<T>::put(self.replace_minimum_transfer_amount);
@@ -189,7 +185,7 @@ pub mod pallet {
 	}
 
 	#[pallet::hooks]
-	impl<T: Config> Hooks<T::BlockNumber> for Pallet<T> {}
+	impl<T: Config> Hooks<BlockNumberFor<T>> for Pallet<T> {}
 
 	#[pallet::pallet]
 	pub struct Pallet<T>(_);
@@ -330,7 +326,7 @@ pub mod pallet {
 		#[transactional]
 		pub fn set_replace_period(
 			origin: OriginFor<T>,
-			period: T::BlockNumber,
+			period: BlockNumberFor<T>,
 		) -> DispatchResultWithPostInfo {
 			ensure_root(origin)?;
 			<ReplacePeriod<T>>::set(period);
@@ -423,7 +419,7 @@ impl<T: Config> Pallet<T> {
 			ext::vault_registry::withdraw_replace_request::<T>(&vault_id, &amount)?;
 
 		if withdrawn_tokens.is_zero() {
-			return Err(Error::<T>::NoPendingRequest.into())
+			return Err(Error::<T>::NoPendingRequest.into());
 		}
 
 		// Emit WithdrawReplaceRequest event.
@@ -632,7 +628,7 @@ impl<T: Config> Pallet<T> {
 			ReplaceRequestStatus::Completed => {
 				// We should never enter this branch as completed requests are filtered
 				// but handle it just in case
-				return Err(Error::<T>::ReplaceCompleted.into())
+				return Err(Error::<T>::ReplaceCompleted.into());
 			},
 		};
 
@@ -690,8 +686,8 @@ impl<T: Config> Pallet<T> {
 
 		// if the new_vault locked additional collateral especially for this replace,
 		// release it if it does not cause them to be undercollateralized
-		if !ext::vault_registry::is_vault_liquidated::<T>(&new_vault_id)? &&
-			ext::vault_registry::is_allowed_to_withdraw_collateral::<T>(
+		if !ext::vault_registry::is_vault_liquidated::<T>(&new_vault_id)?
+			&& ext::vault_registry::is_allowed_to_withdraw_collateral::<T>(
 				&new_vault_id,
 				&collateral,
 			)? {

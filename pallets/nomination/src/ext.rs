@@ -14,7 +14,7 @@ pub(crate) mod security {
 pub(crate) mod vault_registry {
 	use crate::BalanceOf;
 	use currency::Amount;
-	pub use frame_support::dispatch::{DispatchError, DispatchResult};
+	pub use frame_support::{dispatch::DispatchResult, sp_runtime::DispatchError};
 	use vault_registry::{types::DefaultVaultCurrencyPair, DefaultVaultId};
 
 	pub fn get_backing_collateral<T: crate::Config>(
@@ -76,7 +76,7 @@ pub(crate) mod vault_registry {
 			vault_id: &DefaultVaultId<T>,
 			nominator_id: &T::AccountId,
 			maybe_amount: &Amount<T>,
-			nonce: Option<T::Index>,
+			nonce: Option<T::Nonce>,
 		) -> Result<(), DispatchError> {
 			<vault_registry::PoolManager<T>>::withdraw_collateral(
 				vault_id,
@@ -97,11 +97,11 @@ pub(crate) mod vault_registry {
 #[cfg_attr(test, mockable)]
 pub(crate) mod staking {
 	use crate::BalanceOf;
-	use frame_support::dispatch::DispatchError;
+	use frame_support::sp_runtime::DispatchError;
 	use staking::Staking;
 	use vault_registry::DefaultVaultId;
 
-	pub fn nonce<T: crate::Config>(vault_id: &DefaultVaultId<T>) -> T::Index {
+	pub fn nonce<T: crate::Config>(vault_id: &DefaultVaultId<T>) -> T::Nonce {
 		T::VaultStaking::nonce(vault_id)
 	}
 

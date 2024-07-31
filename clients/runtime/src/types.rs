@@ -1,16 +1,18 @@
-pub use subxt::ext::sp_core::sr25519::Pair as KeyPair;
-
 pub use metadata_aliases::*;
 pub use primitives::{CurrencyId, TextMemo};
+use sp_runtime::{generic, traits::BlakeTwo256};
 use std::str::from_utf8;
+pub use subxt::ext::sp_core::sr25519::Pair as KeyPair;
+use subxt::utils::Static;
 
 use crate::{metadata, Config, SpacewalkRuntime, SS58_PREFIX};
 
-pub type AccountId = subxt::ext::sp_runtime::AccountId32;
+pub type AccountId = subxt::utils::AccountId32;
 pub type Address = subxt::ext::sp_runtime::MultiAddress<AccountId, u32>;
 pub type Balance = u128;
 pub type BlockNumber = u32;
-pub type Index = u32;
+pub type Header = generic::Header<BlockNumber, BlakeTwo256>;
+pub type Nonce = u32;
 pub type H256 = subxt::ext::sp_core::H256;
 pub type SpacewalkSigner = subxt::tx::PairSigner<SpacewalkRuntime, KeyPair>;
 pub type FixedU128 = sp_arithmetic::FixedU128;
@@ -67,7 +69,7 @@ mod metadata_aliases {
 			AccountId,
 			BlockNumber,
 			Balance,
-			CurrencyId,
+			Static<CurrencyId>,
 		>;
 
 	pub type SpacewalkRedeemRequest =
@@ -75,7 +77,7 @@ mod metadata_aliases {
 			AccountId,
 			BlockNumber,
 			Balance,
-			CurrencyId,
+			Static<CurrencyId>,
 		>;
 
 	pub type SpacewalkIssueRequest =
@@ -83,7 +85,7 @@ mod metadata_aliases {
 			AccountId,
 			BlockNumber,
 			Balance,
-			CurrencyId,
+			Static<CurrencyId>,
 		>;
 
 	pub type SpacewalkHeader = <SpacewalkRuntime as Config>::Header;
@@ -92,20 +94,21 @@ mod metadata_aliases {
 		AccountId,
 		BlockNumber,
 		Balance,
-		CurrencyId,
-		FixedU128,
+		Static<CurrencyId>,
+		Static<FixedU128>,
 	>;
 	pub type VaultId =
-		metadata::runtime_types::spacewalk_primitives::VaultId<AccountId, CurrencyId>;
+		metadata::runtime_types::spacewalk_primitives::VaultId<AccountId, Static<CurrencyId>>;
+
 	pub type VaultCurrencyPair =
-		metadata::runtime_types::spacewalk_primitives::VaultCurrencyPair<CurrencyId>;
+		metadata::runtime_types::spacewalk_primitives::VaultCurrencyPair<Static<CurrencyId>>;
 
 	pub type IssueRequestsMap = HashMap<IssueId, SpacewalkIssueRequest>;
 	pub type IssueIdLookup = HashMap<TextMemo, IssueId>;
 
 	cfg_if::cfg_if! {
 		if #[cfg(feature = "standalone-metadata")] {
-			pub type EncodedCall = metadata::runtime_types::spacewalk_runtime_standalone::RuntimeCall;
+			pub type EncodedCall = metadata::runtime_types::spacewalk_runtime_standalone_testnet::RuntimeCall;
 		} else if #[cfg(feature = "parachain-metadata-pendulum")] {
 			pub type EncodedCall = metadata::runtime_types::pendulum_runtime::RuntimeCall;
 		} else if #[cfg(feature = "parachain-metadata-amplitude")] {
@@ -152,11 +155,12 @@ pub mod currency_id {
 					)
 					.replace('\"', "")),
 				},
-				CurrencyId::ZenlinkLPToken(token1_id, token1_type, token2_id, token2_type) =>
+				CurrencyId::ZenlinkLPToken(token1_id, token1_type, token2_id, token2_type) => {
 					Ok(format!(
 						"ZenlinkLPToken({},{},{},{})",
 						token1_id, token1_type, token2_id, token2_type
-					)),
+					))
+				},
 				CurrencyId::Token(token_id) => Ok(format!("Token({})", token_id)),
 			}
 		}
@@ -168,13 +172,15 @@ pub trait PrettyPrint {
 }
 
 mod account_id {
-	use subxt::ext::sp_core::crypto::Ss58Codec;
-
 	use super::*;
+	use sp_core::crypto::Ss58Codec;
+	use sp_runtime::AccountId32;
 
 	impl PrettyPrint for AccountId {
 		fn pretty_print(&self) -> String {
-			self.to_ss58check_with_version(SS58_PREFIX.into())
+			// convert it to an sp_core type AccountId
+			let sp_account_id = AccountId32::new(self.0);
+			sp_account_id.to_ss58check_with_version(SS58_PREFIX.into())
 		}
 	}
 }
@@ -183,6 +189,8 @@ mod vault_id {
 	use super::*;
 
 	type RichVaultId = primitives::VaultId<AccountId, primitives::CurrencyId>;
+
+	type RichVaultHashable = primitives::VaultId<sp_runtime::AccountId32, primitives::CurrencyId>;
 
 	impl crate::VaultId {
 		pub fn new(
@@ -193,18 +201,18 @@ mod vault_id {
 			Self {
 				account_id,
 				currencies: VaultCurrencyPair {
-					collateral: collateral_currency,
-					wrapped: wrapped_currency,
+					collateral: Static(collateral_currency),
+					wrapped: Static(wrapped_currency),
 				},
 			}
 		}
 
 		pub fn collateral_currency(&self) -> CurrencyId {
-			self.currencies.collateral
+			*self.currencies.collateral
 		}
 
 		pub fn wrapped_currency(&self) -> CurrencyId {
-			self.currencies.wrapped
+			*self.currencies.wrapped
 		}
 	}
 
@@ -226,8 +234,8 @@ mod vault_id {
 			Self {
 				account_id: value.account_id,
 				currencies: primitives::VaultCurrencyPair {
-					collateral: value.currencies.collateral,
-					wrapped: value.currencies.wrapped,
+					collateral: *value.currencies.collateral,
+					wrapped: *value.currencies.wrapped,
 				},
 			}
 		}
@@ -238,8 +246,8 @@ mod vault_id {
 			Self {
 				account_id: value.account_id,
 				currencies: crate::VaultCurrencyPair {
-					collateral: value.currencies.collateral,
-					wrapped: value.currencies.wrapped,
+					collateral: Static(value.currencies.collateral),
+					wrapped: Static(value.currencies.wrapped),
 				},
 			}
 		}
@@ -267,8 +275,17 @@ mod vault_id {
 
 	impl std::hash::Hash for crate::VaultId {
 		fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+			// Extract rich vault, then create a hashable version of it
+			// defined with sp_runtime::AccountId32, which is hashable
 			let vault: RichVaultId = self.clone().into();
-			vault.hash(state)
+			let vault_hashable = RichVaultHashable {
+				account_id: sp_runtime::AccountId32::new(vault.account_id.0),
+				currencies: primitives::VaultCurrencyPair {
+					collateral: vault.currencies.collateral,
+					wrapped: vault.currencies.collateral,
+				},
+			};
+			vault_hashable.hash(state)
 		}
 	}
 }
@@ -310,6 +327,7 @@ mod dispatch_error {
 		OnlyProvider,
 		CannotCreateHold,
 		NotExpendable,
+		Blocked,
 	);
 
 	convert_enum!(RichArithmeticError, ArithmeticError, Underflow, Overflow, DivisionByZero,);
@@ -322,19 +340,23 @@ mod dispatch_error {
 				RichDispatchError::Other(_) => DispatchError::Other,
 				RichDispatchError::CannotLookup => DispatchError::CannotLookup,
 				RichDispatchError::BadOrigin => DispatchError::BadOrigin,
-				RichDispatchError::Module(RichModuleError { index, error, .. }) =>
-					DispatchError::Module(ModuleError { index, error }),
+				RichDispatchError::Module(RichModuleError { index, error, .. }) => {
+					DispatchError::Module(ModuleError { index, error })
+				},
 				RichDispatchError::ConsumerRemaining => DispatchError::ConsumerRemaining,
 				RichDispatchError::NoProviders => DispatchError::NoProviders,
 				RichDispatchError::TooManyConsumers => DispatchError::TooManyConsumers,
 				RichDispatchError::Token(token_error) => DispatchError::Token(token_error.into()),
-				RichDispatchError::Arithmetic(arithmetic_error) =>
-					DispatchError::Arithmetic(arithmetic_error.into()),
-				RichDispatchError::Transactional(transactional_error) =>
-					DispatchError::Transactional(transactional_error.into()),
+				RichDispatchError::Arithmetic(arithmetic_error) => {
+					DispatchError::Arithmetic(arithmetic_error.into())
+				},
+				RichDispatchError::Transactional(transactional_error) => {
+					DispatchError::Transactional(transactional_error.into())
+				},
 				RichDispatchError::Exhausted => DispatchError::Exhausted,
 				sp_runtime::DispatchError::Corruption => DispatchError::Corruption,
 				sp_runtime::DispatchError::Unavailable => DispatchError::Unavailable,
+				sp_runtime::DispatchError::RootNotAllowed => todo!(),
 			}
 		}
 	}

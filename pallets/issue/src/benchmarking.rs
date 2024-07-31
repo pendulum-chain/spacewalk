@@ -7,6 +7,7 @@ use sp_runtime::{traits::One, FixedPointNumber};
 use sp_std::prelude::*;
 
 use currency::getters::{get_relay_chain_currency_id as get_collateral_currency_id, *};
+use frame_system::pallet_prelude::BlockNumberFor;
 use oracle::Pallet as Oracle;
 use primitives::{CurrencyId, VaultCurrencyPair, VaultId};
 use security::Pallet as Security;
@@ -113,7 +114,7 @@ benchmarks! {
 		Security::<T>::set_active_block_number(1u32.into());
 
 		let (validators, organizations) = get_validators_and_organizations::<T>();
-		let enactment_block_height = T::BlockNumber::default();
+		let enactment_block_height = BlockNumberFor::<T>::default();
 		StellarRelay::<T>::_update_tier_1_validator_set(validators, organizations, enactment_block_height).unwrap();
 		let public_network = <T as StellarRelayConfig>::IsPublicNetwork::get();
 		let (tx_env_xdr_encoded, scp_envs_xdr_encoded, tx_set_xdr_encoded) = build_dummy_proof_for::<T>(issue_id, public_network);
@@ -174,7 +175,7 @@ benchmarks! {
 	rate_limit_update {
 		let limit_volume_amount: Option<BalanceOf<T>> = Some(1u32.into());
 		let limit_volume_currency_id: T::CurrencyId = get_wrapped_currency_id::<T>();
-		let interval_length: T::BlockNumber = 1u32.into();
+		let interval_length: BlockNumberFor<T> = 1u32.into();
 	}: _(RawOrigin::Root, limit_volume_amount, limit_volume_currency_id, interval_length)
 
 	minimum_transfer_amount_update {

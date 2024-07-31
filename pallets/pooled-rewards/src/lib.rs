@@ -12,11 +12,8 @@ mod mock;
 mod tests;
 
 use codec::{Decode, Encode, EncodeLike};
-use frame_support::{
-	dispatch::{DispatchError, DispatchResult},
-	ensure,
-	traits::Get,
-};
+use frame_support::{dispatch::DispatchResult, ensure, sp_runtime::DispatchError, traits::Get};
+use frame_system::pallet_prelude::BlockNumberFor;
 use primitives::{BalanceToFixedPoint, TruncateFixedPointToInt};
 use scale_info::TypeInfo;
 use sp_arithmetic::FixedPointNumber;
@@ -113,7 +110,7 @@ pub mod pallet {
 	}
 
 	#[pallet::hooks]
-	impl<T: Config<I>, I: 'static> Hooks<T::BlockNumber> for Pallet<T, I> {}
+	impl<T: Config<I>, I: 'static> Hooks<BlockNumberFor<T>> for Pallet<T, I> {}
 
 	/// The total stake deposited to this reward pool.
 	#[pallet::storage]
@@ -278,7 +275,7 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 		reward: SignedFixedPoint<T, I>,
 	) -> DispatchResult {
 		if reward.is_zero() {
-			return Ok(())
+			return Ok(());
 		}
 		let total_stake = Self::total_stake(pool_id);
 		ensure!(!total_stake.is_zero(), Error::<T, I>::ZeroTotalStake);
@@ -325,7 +322,7 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 		amount: SignedFixedPoint<T, I>,
 	) -> Result<(), DispatchError> {
 		if amount > Self::stake(pool_id, stake_id) {
-			return Err(Error::<T, I>::InsufficientFunds.into())
+			return Err(Error::<T, I>::InsufficientFunds.into());
 		}
 
 		checked_sub_mut!(Stake<T, I>, (pool_id, stake_id), &amount);
@@ -542,7 +539,7 @@ where
 
 			pool_vec.push((pool_id, pool_stake_as_balance));
 		}
-		return Ok(pool_vec)
+		return Ok(pool_vec);
 	}
 }
 

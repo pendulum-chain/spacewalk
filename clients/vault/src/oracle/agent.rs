@@ -42,10 +42,11 @@ async fn handle_message(
 		StellarMessage::ScpMessage(env) => {
 			collector.write().await.handle_envelope(env, message_sender).await?;
 		},
-		StellarMessage::TxSet(set) =>
+		StellarMessage::TxSet(set) => {
 			if let Err(e) = collector.read().await.add_txset(set) {
 				tracing::error!(e);
-			},
+			}
+		},
 		StellarMessage::GeneralizedTxSet(set) => {
 			if let Err(e) = collector.read().await.add_txset(set) {
 				tracing::error!(e);
@@ -91,7 +92,7 @@ pub async fn start_oracle_agent(
 				// if a disconnect signal was sent, disconnect from Stellar.
 				Ok(_) | Err(TryRecvError::Disconnected) => {
 					tracing::info!("start_oracle_agent(): disconnect overlay...");
-					break
+					break;
 				},
 				Err(TryRecvError::Empty) => {},
 			}
@@ -118,7 +119,7 @@ pub async fn start_oracle_agent(
 							"start_oracle_agent(): Failed to send shutdown signal in thread: {e:?}"
 						);
 					}
-					break
+					break;
 				},
 			}
 		}
@@ -163,12 +164,12 @@ impl OracleAgent {
 						drop(collector);
 						// give 10 seconds interval for every retry
 						sleep(Duration::from_secs(10)).await;
-						continue
+						continue;
 					},
 					Some(proof) => {
 						tracing::info!("get_proof(): Successfully build proof for slot {slot}");
 						tracing::trace!("  with proof: {proof:?}");
-						return Ok(proof)
+						return Ok(proof);
 					},
 				}
 			}

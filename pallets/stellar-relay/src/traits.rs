@@ -1,5 +1,5 @@
 use codec::{Decode, Encode, MaxEncodedLen};
-use frame_support::{traits::Get, BoundedVec, RuntimeDebug};
+use frame_support::{pallet_prelude::RuntimeDebug, traits::Get, BoundedVec};
 use scale_info::TypeInfo;
 use serde::{Deserialize, Serialize};
 
@@ -12,17 +12,37 @@ impl Get<u32> for FieldLength {
 }
 
 #[derive(
-	Clone, Decode, Encode, Eq, MaxEncodedLen, Ord, PartialEq, PartialOrd, RuntimeDebug, TypeInfo,
+	Clone,
+	Decode,
+	Encode,
+	Eq,
+	MaxEncodedLen,
+	Ord,
+	PartialEq,
+	PartialOrd,
+	RuntimeDebug,
+	TypeInfo,
+	Serialize,
+	Deserialize,
 )]
-#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 pub struct Validator<OrganizationId> {
 	pub name: BoundedVec<u8, FieldLength>,
 	pub public_key: BoundedVec<u8, FieldLength>,
 	pub organization_id: OrganizationId,
 }
 
-#[derive(Clone, Decode, Encode, Eq, MaxEncodedLen, PartialEq, RuntimeDebug, TypeInfo)]
-#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
+#[derive(
+	Clone,
+	Decode,
+	Encode,
+	Eq,
+	MaxEncodedLen,
+	PartialEq,
+	RuntimeDebug,
+	TypeInfo,
+	Serialize,
+	Deserialize,
+)]
 pub struct Organization<OrganizationId> {
 	pub id: OrganizationId,
 	pub name: BoundedVec<u8, FieldLength>,

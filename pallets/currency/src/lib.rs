@@ -154,9 +154,9 @@ impl<T: Config> Pallet<T> {
 						let Claimant::ClaimantTypeV0(claimant) =
 							payment.claimants.get_vec()[0].clone();
 
-						if claimant.destination.eq(&recipient_account_pk) &&
-							payment.asset == asset && claimant.predicate ==
-							ClaimPredicate::ClaimPredicateUnconditional
+						if claimant.destination.eq(&recipient_account_pk)
+							&& payment.asset == asset && claimant.predicate
+							== ClaimPredicate::ClaimPredicateUnconditional
 						{
 							transferred_amount = transferred_amount.saturating_add(payment.amount);
 						}

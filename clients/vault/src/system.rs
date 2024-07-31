@@ -315,8 +315,9 @@ async fn run_and_monitor_tasks(
 			let monitor = tokio_metrics::TaskMonitor::new();
 			let metrics_iterator = monitor.intervals();
 			let task = match task {
-				ServiceTask::Optional(true, t) | ServiceTask::Essential(t) =>
-					Some(wait_or_shutdown(shutdown_tx.clone(), t)),
+				ServiceTask::Optional(true, t) | ServiceTask::Essential(t) => {
+					Some(wait_or_shutdown(shutdown_tx.clone(), t))
+				},
 				_ => None,
 			}?;
 			let task = monitor.instrument(task);
@@ -389,7 +390,7 @@ impl VaultService {
 
 		// exit if auto-register uses faucet and faucet url not set
 		if amount_is_none && self.config.faucet_url.is_none() {
-			return Err(ServiceError::Abort(Error::FaucetUrlNotSet))
+			return Err(ServiceError::Abort(Error::FaucetUrlNotSet));
 		}
 
 		Ok(parsed_auto_register)
@@ -421,7 +422,7 @@ impl VaultService {
 
 		// check if both the config file and the wallet are the same.
 		if is_public_network != stellar_overlay_cfg.is_public_network() {
-			return Err(ServiceError::IncompatibleNetwork)
+			return Err(ServiceError::IncompatibleNetwork);
 		}
 
 		let oracle_agent = crate::oracle::start_oracle_agent(
@@ -743,8 +744,8 @@ impl VaultService {
 		VaultId {
 			account_id: self.spacewalk_parachain.get_account_id().clone(),
 			currencies: VaultCurrencyPair {
-				collateral: collateral_currency,
-				wrapped: wrapped_currency,
+				collateral: subxt::utils::Static(collateral_currency),
+				wrapped: subxt::utils::Static(wrapped_currency),
 			},
 		}
 	}
@@ -848,7 +849,7 @@ impl VaultService {
 			match reqwest::get(url.clone()).await {
 				Ok(response) if response.status().is_success() => {
 					tracing::info!("try_fund_from_faucet(): successful funded {account_id}");
-					return true
+					return true;
 				},
 				Ok(response) => {
 					tracing::error!("try_fund_from_faucet(): failed to fund {account_id} from faucet: {response:#?}");
@@ -891,7 +892,7 @@ impl VaultService {
 					},
 				)
 				.await
-				.map_err(|e| Error::RuntimeError(e))
+				.map_err(|e| Error::RuntimeError(e));
 		} else if self.try_fund_from_faucet().await {
 			Ok(())
 		} else {

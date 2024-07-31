@@ -1,4 +1,4 @@
-use frame_support::{assert_noop, assert_ok, dispatch::DispatchError};
+use frame_support::{assert_noop, assert_ok, sp_runtime::DispatchError};
 use mocktopus::mocking::*;
 use sp_arithmetic::FixedU128;
 use sp_core::H256;
@@ -926,7 +926,7 @@ mod integration_tests {
 
 		//Vault 1 and 4 share and vault 2 and 5 share the same wrapped currency
 		//so we must take into account the combined issuance of these pairs
-		return (issue_fee_1 + issue_fee_4, issue_fee_2 + issue_fee_5, issue_fee_3)
+		return (issue_fee_1 + issue_fee_4, issue_fee_2 + issue_fee_5, issue_fee_3);
 	}
 
 	#[test]
@@ -972,43 +972,43 @@ mod integration_tests {
 			let vault_4_collateral_usd = to_usd(&collateral_4, &VAULT_4.collateral_currency());
 			let vault_5_collateral_usd = to_usd(&collateral_5, &VAULT_5.collateral_currency());
 
-			let total_amount_usd = vault_1_collateral_usd +
-				vault_2_collateral_usd +
-				vault_3_collateral_usd +
-				vault_4_collateral_usd +
-				vault_5_collateral_usd;
+			let total_amount_usd = vault_1_collateral_usd
+				+ vault_2_collateral_usd
+				+ vault_3_collateral_usd
+				+ vault_4_collateral_usd
+				+ vault_5_collateral_usd;
 
 			// In order to calculate the value corresponding to each vault on the pool,
 			// we must take into account that vault 1 and 2, vault 3 and 4 share the same
 			// collateral, so in the calculations for the pooled rewards, these must be grouped
 			let get_expected_value_vault_1 = |fee: Balance| -> Balance {
-				((((vault_1_collateral_usd + vault_2_collateral_usd) as f64 /
-					total_amount_usd as f64) *
-					fee as f64)
+				((((vault_1_collateral_usd + vault_2_collateral_usd) as f64
+					/ total_amount_usd as f64)
+					* fee as f64)
 					.floor() * (collateral_1 as f64 / (collateral_2 + collateral_1) as f64))
 					.floor() as u128
 			};
 
 			let get_expected_value_vault_2 = |fee: Balance| -> Balance {
-				((((vault_1_collateral_usd + vault_2_collateral_usd) as f64 /
-					total_amount_usd as f64) *
-					fee as f64)
+				((((vault_1_collateral_usd + vault_2_collateral_usd) as f64
+					/ total_amount_usd as f64)
+					* fee as f64)
 					.floor() * (collateral_2 as f64 / (collateral_2 + collateral_1) as f64))
 					.floor() as u128
 			};
 
 			let get_expected_value_vault_3 = |fee: Balance| -> Balance {
-				((((vault_3_collateral_usd + vault_4_collateral_usd) as f64 /
-					total_amount_usd as f64) *
-					fee as f64)
+				((((vault_3_collateral_usd + vault_4_collateral_usd) as f64
+					/ total_amount_usd as f64)
+					* fee as f64)
 					.floor() * (collateral_3 as f64 / (collateral_3 + collateral_4) as f64))
 					.floor() as u128
 			};
 
 			let get_expected_value_vault_4 = |fee: Balance| -> Balance {
-				((((vault_3_collateral_usd + vault_4_collateral_usd) as f64 /
-					total_amount_usd as f64) *
-					fee as f64)
+				((((vault_3_collateral_usd + vault_4_collateral_usd) as f64
+					/ total_amount_usd as f64)
+					* fee as f64)
 					.floor() * (collateral_4 as f64 / (collateral_3 + collateral_4) as f64))
 					.floor() as u128
 			};
@@ -1149,47 +1149,47 @@ mod integration_tests {
 			let vault_4_collateral_usd = to_usd(&collateral_4, &VAULT_4.collateral_currency());
 			let vault_5_collateral_usd = to_usd(&collateral_5, &VAULT_5.collateral_currency());
 
-			let total_amount_usd = vault_1_collateral_usd +
-				nominator_amount_usd +
-				vault_2_collateral_usd +
-				vault_3_collateral_usd +
-				vault_4_collateral_usd +
-				vault_5_collateral_usd;
+			let total_amount_usd = vault_1_collateral_usd
+				+ nominator_amount_usd
+				+ vault_2_collateral_usd
+				+ vault_3_collateral_usd
+				+ vault_4_collateral_usd
+				+ vault_5_collateral_usd;
 
 			let reward_for_pool_1_asset_1 =
 				((((vault_1_collateral_usd + vault_2_collateral_usd + nominator_amount_usd)
-					as f64 / total_amount_usd as f64) *
-					issue_fee_1 as f64)
-					.floor() * ((collateral_1 + nominator_amount) as f64 /
-					(collateral_1 + collateral_2 + nominator_amount) as f64))
+					as f64 / total_amount_usd as f64)
+					* issue_fee_1 as f64)
+					.floor() * ((collateral_1 + nominator_amount) as f64
+					/ (collateral_1 + collateral_2 + nominator_amount) as f64))
 					.floor();
 
-			let reward_for_nominator_asset_1 = (reward_for_pool_1_asset_1 *
-				(nominator_amount as f64 / (nominator_amount + collateral_1) as f64))
+			let reward_for_nominator_asset_1 = (reward_for_pool_1_asset_1
+				* (nominator_amount as f64 / (nominator_amount + collateral_1) as f64))
 				as u128;
 
 			let reward_for_pool_1_asset_2 =
 				((((vault_1_collateral_usd + vault_2_collateral_usd + nominator_amount_usd)
-					as f64 / total_amount_usd as f64) *
-					issue_fee_2 as f64)
-					.floor() * ((collateral_1 + nominator_amount) as f64 /
-					(collateral_1 + collateral_2 + nominator_amount) as f64))
+					as f64 / total_amount_usd as f64)
+					* issue_fee_2 as f64)
+					.floor() * ((collateral_1 + nominator_amount) as f64
+					/ (collateral_1 + collateral_2 + nominator_amount) as f64))
 					.floor();
 
-			let reward_for_nominator_asset_2 = (reward_for_pool_1_asset_2 *
-				(nominator_amount as f64 / (nominator_amount + collateral_1) as f64))
+			let reward_for_nominator_asset_2 = (reward_for_pool_1_asset_2
+				* (nominator_amount as f64 / (nominator_amount + collateral_1) as f64))
 				as u128;
 
 			let reward_for_pool_1_asset_3 =
 				((((vault_1_collateral_usd + vault_2_collateral_usd + nominator_amount_usd)
-					as f64 / total_amount_usd as f64) *
-					issue_fee_3 as f64)
-					.floor() * ((collateral_1 + nominator_amount) as f64 /
-					(collateral_1 + collateral_2 + nominator_amount) as f64))
+					as f64 / total_amount_usd as f64)
+					* issue_fee_3 as f64)
+					.floor() * ((collateral_1 + nominator_amount) as f64
+					/ (collateral_1 + collateral_2 + nominator_amount) as f64))
 					.floor();
 
-			let reward_for_nominator_asset_3 = (reward_for_pool_1_asset_3 *
-				(nominator_amount as f64 / (nominator_amount + collateral_1) as f64))
+			let reward_for_nominator_asset_3 = (reward_for_pool_1_asset_3
+				* (nominator_amount as f64 / (nominator_amount + collateral_1) as f64))
 				as u128;
 
 			assert_ok!(<reward_distribution::Pallet<Test>>::collect_reward(

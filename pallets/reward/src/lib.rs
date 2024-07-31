@@ -6,11 +6,8 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
 use codec::EncodeLike;
-use frame_support::{
-	dispatch::{DispatchError, DispatchResult},
-	ensure,
-	traits::Get,
-};
+use frame_support::{dispatch::DispatchResult, ensure, sp_runtime::DispatchError, traits::Get};
+use frame_system::pallet_prelude::BlockNumberFor;
 use sp_arithmetic::FixedPointNumber;
 use sp_runtime::{
 	traits::{CheckedAdd, CheckedDiv, CheckedMul, CheckedSub, Saturating, Zero},
@@ -95,7 +92,7 @@ pub mod pallet {
 	}
 
 	#[pallet::hooks]
-	impl<T: Config<I>, I: 'static> Hooks<T::BlockNumber> for Pallet<T, I> {}
+	impl<T: Config<I>, I: 'static> Hooks<BlockNumberFor<T>> for Pallet<T, I> {}
 
 	/// The total stake deposited to this reward pool.
 	#[pallet::storage]
@@ -261,7 +258,7 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 		wrapped_currency: T::CurrencyId,
 	) -> Result<(), DispatchError> {
 		if amount > Self::stake(reward_id) {
-			return Err(Error::<T, I>::InsufficientFunds.into())
+			return Err(Error::<T, I>::InsufficientFunds.into());
 		}
 
 		checked_sub_mut!(Stake<T, I>, &reward_id, &amount);

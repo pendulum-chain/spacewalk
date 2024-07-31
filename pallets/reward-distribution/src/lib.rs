@@ -21,6 +21,7 @@ use frame_support::{
 	traits::{Currency, Get},
 	transactional, PalletId,
 };
+use frame_system::pallet_prelude::BlockNumberFor;
 use oracle::OracleApi;
 use orml_traits::GetByKey;
 use sp_arithmetic::{traits::AtLeast32BitUnsigned, FixedPointOperand, Perquintill};
@@ -90,7 +91,7 @@ pub mod pallet {
 		type VaultStaking: staking::Staking<
 			DefaultVaultId<Self>,
 			Self::AccountId,
-			Self::Index,
+			Self::Nonce,
 			BalanceOf<Self>,
 			CurrencyId<Self>,
 		>;
@@ -108,7 +109,7 @@ pub mod pallet {
 
 		/// Defines the interval (in number of blocks) at which the reward per block decays.
 		#[pallet::constant]
-		type DecayInterval: Get<Self::BlockNumber>;
+		type DecayInterval: Get<BlockNumberFor<Self>>;
 
 		/// Defines the rate at which the reward per block decays.
 		#[pallet::constant]
@@ -140,8 +141,8 @@ pub mod pallet {
 	}
 
 	#[pallet::hooks]
-	impl<T: Config> Hooks<T::BlockNumber> for Pallet<T> {
-		fn on_initialize(n: T::BlockNumber) -> Weight {
+	impl<T: Config> Hooks<BlockNumberFor<T>> for Pallet<T> {
+		fn on_initialize(n: BlockNumberFor<T>) -> Weight {
 			Self::execute_on_init(n);
 			<T as Config>::WeightInfo::on_initialize()
 		}
@@ -188,7 +189,7 @@ pub mod pallet {
 			origin: OriginFor<T>,
 			vault_id: DefaultVaultId<T>,
 			reward_currency_id: CurrencyId<T>,
-			index: Option<T::Index>,
+			index: Option<T::Nonce>,
 		) -> DispatchResult {
 			//distribute reward from reward pool to staking pallet store
 			let caller = ensure_signed(origin)?;
@@ -207,11 +208,11 @@ pub mod pallet {
 				ext::staking::compute_reward::<T>(&vault_id, &caller, reward_currency_id)?;
 
 			if expected_rewards == BalanceOf::<T>::zero() {
-				return Err(Error::<T>::NoRewardsForAccount.into())
+				return Err(Error::<T>::NoRewardsForAccount.into());
 			}
 
 			if expected_rewards < minimum_transfer_amount {
-				return Err(Error::<T>::CollectAmountTooSmall.into())
+				return Err(Error::<T>::CollectAmountTooSmall.into());
 			}
 
 			//withdraw the reward for specific nominator
@@ -219,7 +220,7 @@ pub mod pallet {
 				ext::staking::withdraw_reward::<T>(&vault_id, &caller, index, reward_currency_id)?;
 
 			if caller_rewards == (BalanceOf::<T>::zero()) {
-				return Err(Error::<T>::NoRewardsForAccount.into())
+				return Err(Error::<T>::NoRewardsForAccount.into());
 			}
 
 			//transfer rewards
@@ -242,7 +243,7 @@ impl<T: Config> Pallet<T> {
 				None => {
 					// Pay the whole reward from the fee pool
 					let amount: currency::Amount<T> = Amount::new(reward, reward_currency_id);
-					return amount.transfer(&Self::fee_pool_account_id(), &beneficiary)
+					return amount.transfer(&Self::fee_pool_account_id(), &beneficiary);
 				},
 				Some(remaining) => {
 					//check if the to-be-minted amount is consistent
@@ -251,7 +252,7 @@ impl<T: Config> Pallet<T> {
 						.ok_or(Error::<T>::NotEnoughRewardsRegistered)?;
 
 					if liability < remaining {
-						return Err(Error::<T>::NotEnoughRewardsRegistered.into())
+						return Err(Error::<T>::NotEnoughRewardsRegistered.into());
 					}
 
 					// Use the available funds from the fee pool
@@ -275,9 +276,9 @@ impl<T: Config> Pallet<T> {
 		}
 	}
 
-	pub fn execute_on_init(_height: T::BlockNumber) {
+	pub fn execute_on_init(_height: BlockNumberFor<T>) {
 		if let Err(_) = ext::security::ensure_parachain_status_running::<T>() {
-			return
+			return;
 		}
 
 		//get reward per block
@@ -285,7 +286,7 @@ impl<T: Config> Pallet<T> {
 			Some(value) => value,
 			None => {
 				log::warn!("Reward per block is None");
-				return
+				return;
 			},
 		};
 
@@ -293,16 +294,16 @@ impl<T: Config> Pallet<T> {
 			Some(value) => value,
 			None => {
 				log::warn!("RewardsAdaptedAt is None");
-				return
+				return;
 			},
 		};
 
 		let mut reward_this_block = reward_per_block;
 
-		if Ok(true) ==
-			ext::security::parachain_block_expired::<T>(
+		if Ok(true)
+			== ext::security::parachain_block_expired::<T>(
 				rewards_adapted_at,
-				T::DecayInterval::get().saturating_sub(T::BlockNumber::one()),
+				T::DecayInterval::get().saturating_sub(BlockNumberFor::<T>::one()),
 			) {
 			let decay_rate = T::DecayRate::get();
 			reward_this_block =

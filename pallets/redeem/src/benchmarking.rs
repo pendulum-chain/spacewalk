@@ -1,6 +1,6 @@
 use frame_benchmarking::{account, benchmarks, impl_benchmark_test_suite};
 use frame_support::assert_ok;
-use frame_system::RawOrigin;
+use frame_system::{pallet_prelude::BlockNumberFor, RawOrigin};
 use orml_traits::MultiCurrency;
 use sp_core::{Get, H256};
 use sp_runtime::{traits::One, FixedPointNumber};
@@ -189,7 +189,7 @@ benchmarks! {
 		);
 
 		let (validators, organizations) = get_validators_and_organizations::<T>();
-		let enactment_block_height = T::BlockNumber::default();
+		let enactment_block_height = BlockNumberFor::<T>::default();
 		StellarRelay::<T>::_update_tier_1_validator_set(validators, organizations, enactment_block_height).unwrap();
 		let public_network = <T as StellarRelayConfig>::IsPublicNetwork::get();
 		let (tx_env_xdr_encoded, scp_envs_xdr_encoded, tx_set_xdr_encoded) = build_dummy_proof_for::<T>(redeem_id, public_network);
@@ -339,7 +339,7 @@ benchmarks! {
 	rate_limit_update {
 		let limit_volume_amount: Option<BalanceOf<T>> = Some(1u32.into());
 		let limit_volume_currency_id: T::CurrencyId = get_wrapped_currency_id::<T>();
-		let interval_length: T::BlockNumber = 1u32.into();
+		let interval_length: BlockNumberFor<T> = 1u32.into();
 	}: _(RawOrigin::Root, limit_volume_amount, limit_volume_currency_id, interval_length)
 
 	minimum_transfer_amount_update {

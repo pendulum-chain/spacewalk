@@ -24,7 +24,7 @@ use pallet_grandpa::{
 pub use pallet_timestamp::Call as TimestampCall;
 use sp_api::impl_runtime_apis;
 use sp_consensus_aura::sr25519::AuthorityId as AuraId;
-use sp_core::{OpaqueMetadata, H256};
+use sp_core::{ConstBool, OpaqueMetadata, H256};
 use sp_runtime::{
 	create_runtime_str, generic, impl_opaque_keys,
 	traits::{
@@ -124,8 +124,8 @@ parameter_types! {
 	pub const SS58Prefix: u8 = 42;
 }
 
-pub type Index = u32;
 impl frame_system::Config for Runtime {
+	type Block = Block;
 	type BaseCallFilter = frame_support::traits::Everything;
 	type BlockWeights = BlockWeights;
 	type BlockLength = BlockLength;
@@ -134,9 +134,7 @@ impl frame_system::Config for Runtime {
 	/// The aggregated dispatch type that is available for extrinsics.
 	type RuntimeCall = RuntimeCall;
 	/// The index type for storing how many extrinsics an account has signed.
-	type Index = Index;
-	/// The index type for blocks.
-	type BlockNumber = BlockNumber;
+	type Nonce = Nonce;
 	/// The type for hashing blocks and tries.
 	type Hash = Hash;
 	/// The hashing algorithm used.
@@ -145,8 +143,6 @@ impl frame_system::Config for Runtime {
 	type AccountId = AccountId;
 	/// The lookup mechanism to get account ID from whatever is passed in dispatchers.
 	type Lookup = AccountIdLookup<AccountId, ()>;
-	/// The header type.
-	type Header = generic::Header<BlockNumber, BlakeTwo256>;
 	/// The ubiquitous event type.
 	type RuntimeEvent = RuntimeEvent;
 	/// Maximum number of block number to block hash mappings to keep (oldest pruned first).
@@ -173,6 +169,7 @@ impl pallet_aura::Config for Runtime {
 	type AuthorityId = AuraId;
 	type DisabledValidators = ();
 	type MaxAuthorities = MaxAuthorities;
+	type AllowMultipleBlocksPerSlot = ConstBool<false>;
 }
 
 impl pallet_grandpa::Config for Runtime {
@@ -182,6 +179,7 @@ impl pallet_grandpa::Config for Runtime {
 	type MaxAuthorities = MaxAuthorities;
 	type MaxSetIdSessionEntries = ConstU64<0>;
 	type EquivocationReportSystem = ();
+	type MaxNominators = ConstU32<1000>;
 }
 
 parameter_types! {
@@ -224,6 +222,7 @@ impl pallet_transaction_payment::Config for Runtime {
 impl pallet_sudo::Config for Runtime {
 	type RuntimeEvent = RuntimeEvent;
 	type RuntimeCall = RuntimeCall;
+	type WeightInfo = ();
 }
 
 // Pallet accounts
@@ -311,7 +310,7 @@ impl pallet_balances::Config for Runtime {
 	type FreezeIdentifier = ();
 	type MaxFreezes = ();
 	type MaxHolds = ConstU32<1>;
-	type HoldIdentifier = RuntimeHoldReason;
+	type RuntimeHoldReason = RuntimeHoldReason;
 }
 
 impl security::Config for Runtime {
@@ -405,7 +404,7 @@ where
 		call: RuntimeCall,
 		public: <Signature as sp_runtime::traits::Verify>::Signer,
 		account: AccountId,
-		index: Index,
+		index: Nonce,
 	) -> Option<(
 		RuntimeCall,
 		<UncheckedExtrinsic as sp_runtime::traits::Extrinsic>::SignaturePayload,
@@ -613,39 +612,36 @@ impl pooled_rewards::Config for Runtime {
 }
 
 construct_runtime! {
-	pub enum Runtime where
-		Block = Block,
-		NodeBlock = primitives::Block,
-		UncheckedExtrinsic = UncheckedExtrinsic
+	pub enum Runtime
 	{
-		System: frame_system::{Pallet, Call, Storage, Config, Event<T>} = 0,
-		Timestamp: pallet_timestamp::{Pallet, Call, Storage, Inherent} = 1,
-		Aura: pallet_aura::{Pallet, Config<T>} = 2,
-		Grandpa: pallet_grandpa::{Pallet, Call, Storage, Config, Event} = 3,
-		Sudo: pallet_sudo::{Pallet, Call, Storage, Config<T>, Event<T>} = 4,
-		Tokens: orml_tokens::{Pallet, Call, Storage, Config<T>, Event<T>} = 5,
-		Currencies: orml_currencies::{Pallet, Call, Storage} = 7,
-		Balances: pallet_balances::{Pallet, Call, Storage, Config<T>, Event<T>} = 8,
+		System: frame_system = 0,
+		Timestamp: pallet_timestamp = 1,
+		Aura: pallet_aura = 2,
+		Grandpa: pallet_grandpa = 3,
+		Sudo: pallet_sudo = 4,
+		Tokens: orml_tokens = 5,
+		Currencies: orml_currencies = 7,
+		Balances: pallet_balances = 8,
 		TransactionPayment: pallet_transaction_payment::{Pallet, Storage, Event<T>} = 9,
 
-		StellarRelay: stellar_relay::{Pallet, Call, Config<T>, Storage, Event<T>} = 10,
+		StellarRelay: stellar_relay = 10,
 
-		VaultRewards: pooled_rewards::{Pallet, Storage, Event<T>} = 15,
-		VaultStaking: staking::{Pallet, Storage, Event<T>} = 16,
+		VaultRewards: pooled_rewards = 15,
+		VaultStaking: staking = 16,
 
-		Currency: currency::{Pallet} = 17,
+		Currency: currency = 17,
 
-		Security: security::{Pallet, Call, Config, Storage, Event<T>} = 19,
-		VaultRegistry: vault_registry::{Pallet, Call, Config<T>, Storage, Event<T>, ValidateUnsigned} = 21,
-		Oracle: oracle::{Pallet, Call, Config, Storage, Event<T>} = 22,
-		Issue: issue::{Pallet, Call, Config<T>, Storage, Event<T>} = 23,
-		Redeem: redeem::{Pallet, Call, Config<T>, Storage, Event<T>} = 24,
-		Replace: replace::{Pallet, Call, Config<T>, Storage, Event<T>} = 25,
-		Fee: fee::{Pallet, Call, Config<T>, Storage} = 26,
-		Nomination: nomination::{Pallet, Call, Config, Storage, Event<T>} = 28,
-		DiaOracleModule: dia_oracle::{Pallet, Call, Config<T>, Storage, Event<T>} = 29,
-		ClientsInfo: clients_info::{Pallet, Call, Storage, Event<T>} = 30,
-		RewardDistribution: reward_distribution::{Pallet, Call, Storage, Event<T>} = 31,
+		Security: security = 19,
+		VaultRegistry: vault_registry = 21,
+		Oracle: oracle = 22,
+		Issue: issue = 23,
+		Redeem: redeem = 24,
+		Replace: replace = 25,
+		Fee: fee = 26,
+		Nomination: nomination = 28,
+		DiaOracleModule: dia_oracle = 29,
+		ClientsInfo: clients_info = 30,
+		RewardDistribution: reward_distribution = 31,
 	}
 }
 
@@ -871,7 +867,8 @@ impl_runtime_apis! {
 		fn dispatch_benchmark(
 			config: frame_benchmarking::BenchmarkConfig
 		) -> Result<Vec<frame_benchmarking::BenchmarkBatch>, sp_runtime::RuntimeString> {
-			use frame_benchmarking::{baseline, Benchmarking, BenchmarkBatch, TrackedStorageKey};
+			use frame_benchmarking::{baseline, Benchmarking, BenchmarkBatch};
+			use frame_support::traits::TrackedStorageKey;
 
 			use frame_system_benchmarking::Pallet as SystemBench;
 			use baseline::Pallet as BaselineBench;

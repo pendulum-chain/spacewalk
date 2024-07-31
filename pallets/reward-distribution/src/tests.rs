@@ -2,6 +2,7 @@ use crate::{ext, mock::*, pallet, DefaultVaultId, Error, NativeLiability};
 pub use currency::testing_constants::{DEFAULT_COLLATERAL_CURRENCY, DEFAULT_WRAPPED_CURRENCY};
 use frame_benchmarking::account;
 use frame_support::{assert_err, assert_ok, traits::Get};
+use frame_system::pallet_prelude::BlockNumberFor;
 use mocktopus::mocking::*;
 use oracle::OracleApi;
 use primitives::CurrencyId::XCM;
@@ -33,20 +34,20 @@ fn to_usd(
 fn expected_vault_rewards(
 	reward: <Test as pallet::Config>::Balance,
 ) -> Vec<<Test as pallet::Config>::Balance> {
-	let total_collateral_in_usd = to_usd(&COLLATERAL_POOL_1, &DEFAULT_COLLATERAL_CURRENCY) +
-		to_usd(&COLLATERAL_POOL_2, &XCM(1)) +
-		to_usd(&COLLATERAL_POOL_3, &XCM(2)) +
-		to_usd(&COLLATERAL_POOL_4, &XCM(3));
+	let total_collateral_in_usd = to_usd(&COLLATERAL_POOL_1, &DEFAULT_COLLATERAL_CURRENCY)
+		+ to_usd(&COLLATERAL_POOL_2, &XCM(1))
+		+ to_usd(&COLLATERAL_POOL_3, &XCM(2))
+		+ to_usd(&COLLATERAL_POOL_4, &XCM(3));
 
-	let reward_pool_1 = (reward as f64 *
-		(to_usd(&COLLATERAL_POOL_1, &DEFAULT_COLLATERAL_CURRENCY) as f64) /
-		(total_collateral_in_usd as f64)) as u128;
-	let reward_pool_2 = (reward as f64 * (to_usd(&COLLATERAL_POOL_2, &XCM(1)) as f64) /
-		(total_collateral_in_usd as f64)) as u128;
-	let reward_pool_3 = (reward as f64 * (to_usd(&COLLATERAL_POOL_3, &XCM(2)) as f64) /
-		(total_collateral_in_usd as f64)) as u128;
-	let reward_pool_4 = (reward as f64 * (to_usd(&COLLATERAL_POOL_4, &XCM(3)) as f64) /
-		(total_collateral_in_usd as f64)) as u128;
+	let reward_pool_1 = (reward as f64
+		* (to_usd(&COLLATERAL_POOL_1, &DEFAULT_COLLATERAL_CURRENCY) as f64)
+		/ (total_collateral_in_usd as f64)) as u128;
+	let reward_pool_2 = (reward as f64 * (to_usd(&COLLATERAL_POOL_2, &XCM(1)) as f64)
+		/ (total_collateral_in_usd as f64)) as u128;
+	let reward_pool_3 = (reward as f64 * (to_usd(&COLLATERAL_POOL_3, &XCM(2)) as f64)
+		/ (total_collateral_in_usd as f64)) as u128;
+	let reward_pool_4 = (reward as f64 * (to_usd(&COLLATERAL_POOL_4, &XCM(3)) as f64)
+		/ (total_collateral_in_usd as f64)) as u128;
 
 	vec![reward_pool_1, reward_pool_2, reward_pool_3, reward_pool_4]
 }
@@ -140,8 +141,7 @@ fn on_initialize_hook_distribution_works() {
 				MockResult::Return(Ok(()))
 			},
 		);
-		let block_number: <Test as frame_system::Config>::BlockNumber =
-			<Test as pallet::Config>::DecayInterval::get();
+		let block_number: BlockNumberFor<Test> = <Test as pallet::Config>::DecayInterval::get();
 
 		System::set_block_number(block_number);
 		ext::security::get_active_block::<Test>.mock_safe(move || MockResult::Return(block_number));
@@ -153,7 +153,7 @@ fn on_initialize_hook_distribution_works() {
 
 		assert_eq!(RewardDistribution::rewards_adapted_at(), Some(100));
 
-		let new_block_number = block_number + <Test as frame_system::Config>::BlockNumber::one();
+		let new_block_number = block_number + BlockNumberFor::<Test>::one();
 		System::set_block_number(new_block_number);
 		ext::security::get_active_block::<Test>
 			.mock_safe(move || MockResult::Return(new_block_number));
@@ -192,8 +192,7 @@ fn udpate_reward_does_not_trigger_incorrectly() {
 #[test]
 fn udpate_reward_per_block_works() {
 	run_test(|| {
-		let block_number: <Test as frame_system::Config>::BlockNumber =
-			<Test as pallet::Config>::DecayInterval::get();
+		let block_number: BlockNumberFor<Test> = <Test as pallet::Config>::DecayInterval::get();
 
 		ext::pooled_rewards::get_total_stake_all_pools::<Test>.mock_safe(move || {
 			let initial_stakes = build_total_stakes();

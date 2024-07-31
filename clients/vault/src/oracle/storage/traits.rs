@@ -52,7 +52,7 @@ pub trait FileHandler<T: Default> {
 		let read_size = file.read_to_end(&mut bytes)?;
 
 		if read_size > 0 {
-			return Self::deserialize_bytes(bytes)
+			return Self::deserialize_bytes(bytes);
 		}
 
 		Ok(T::default())
@@ -68,7 +68,7 @@ pub trait FileHandler<T: Default> {
 			let mut splits: Split<char> = filename.split('_');
 
 			if Self::check_slot_in_splitted_filename(slot_param, &mut splits) {
-				return Ok(filename)
+				return Ok(filename);
 			}
 		}
 
@@ -134,7 +134,7 @@ pub trait ArchiveStorage {
 	fn find_last_slot_index_in_batch(&self, slot_index: Slot) -> Slot {
 		let rest = (slot_index + 1) % ARCHIVE_NODE_LEDGER_BATCH;
 		if rest == 0 {
-			return slot_index
+			return slot_index;
 		}
 		slot_index + ARCHIVE_NODE_LEDGER_BATCH - rest
 	}

@@ -15,6 +15,7 @@ use sp_keyring::AccountKeyring;
 use sp_runtime::traits::StaticLookup;
 use std::{sync::Arc, time::Duration};
 use stellar_relay_lib::sdk::{PublicKey, SecretKey};
+use subxt::utils::AccountId32 as AccountId;
 use vault::{oracle::OracleAgent, ArcRwLock};
 use wallet::{error::Error, StellarWallet, TransactionResponse};
 
@@ -64,7 +65,11 @@ pub async fn create_vault(
 	account: AccountKeyring,
 	wrapped_currency: CurrencyId,
 ) -> (VaultId, SpacewalkParachain) {
-	let vault_id = VaultId::new(account.clone().into(), DEFAULT_TESTING_CURRENCY, wrapped_currency);
+	let vault_id = VaultId::new(
+		AccountId(account.to_account_id().clone().into()),
+		DEFAULT_TESTING_CURRENCY,
+		wrapped_currency,
+	);
 
 	let vault_provider = setup_provider(client, account).await;
 
@@ -152,11 +157,12 @@ pub async fn send_payment_to_address(
 
 		match &result {
 			// if the error is `tx_bad_seq` perform the process again
-			Err(Error::HorizonSubmissionError { reason, .. }) if reason.contains("tx_bad_seq") =>
-				continue,
+			Err(Error::HorizonSubmissionError { reason, .. }) if reason.contains("tx_bad_seq") => {
+				continue
+			},
 			_ => {
 				response = result;
-				break
+				break;
 			},
 		}
 	}
@@ -179,7 +185,7 @@ pub async fn assert_issue(
 		.await
 		.expect("Failed to request issue");
 
-	let asset = primitives::AssetConversion::lookup(issue.asset).expect("Invalid asset");
+	let asset = primitives::AssetConversion::lookup(*issue.asset).expect("Invalid asset");
 	let stroop_amount = primitives::BalanceConversion::lookup(amount).expect("Invalid amount");
 
 	let destination_public_key = PublicKey::from_binary(issue.vault_stellar_public_key);
