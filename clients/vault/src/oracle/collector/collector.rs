@@ -69,7 +69,6 @@ impl ScpMessageCollector {
 			stellar_history_archive_urls,
 		}
 	}
-
 	pub fn envelopes_map_len(&self) -> usize {
 		self.envelopes_map.read().len()
 	}

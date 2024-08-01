@@ -9,6 +9,7 @@ use wallet::keys::get_source_secret_key_from_env;
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
 	env_logger::init();
+	console_subscriber::init();
 
 	let args: Vec<String> = std::env::args().collect();
 	let arg_network = if args.len() > 1 { &args[1] } else { "testnet" };

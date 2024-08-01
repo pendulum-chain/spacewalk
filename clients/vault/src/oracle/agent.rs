@@ -6,6 +6,7 @@ use tokio::{
 };
 
 use runtime::ShutdownSender;
+use runtime::stellar::SecretKey;
 use stellar_relay_lib::{
 	connect_to_stellar_overlay_network, helper::to_base64_xdr_string, sdk::types::StellarMessage,
 	StellarOverlayConfig,
@@ -17,14 +18,33 @@ use crate::oracle::{
 use wallet::Slot;
 
 pub struct OracleAgent {
-	collector: Arc<RwLock<ScpMessageCollector>>,
+	pub collector: Arc<RwLock<ScpMessageCollector>>,
 	pub is_public_network: bool,
 	/// sends message directly to Stellar Node
 	message_sender: Option<StellarMessageSender>,
 	/// sends an entire Vault shutdown
-	shutdown_sender: ShutdownSender,
-	/// sends a 'stop' signal to `StellarOverlayConnection` poll
-	overlay_conn_end_signal: mpsc::Sender<()>,
+	shutdown_sender: ShutdownSender
+}
+
+impl OracleAgent {
+	pub fn new(
+		config: StellarOverlayConfig,
+		shutdown_sender: ShutdownSender
+	) -> Self {
+		let is_public_network = config.is_public_network();
+
+		let collector = Arc::new(RwLock::new(ScpMessageCollector::new(
+			is_public_network,
+			config.stellar_history_archive_urls(),
+		)));
+
+		OracleAgent {
+			collector,
+			is_public_network,
+			message_sender: None,
+			shutdown_sender,
+		}
+	}
 }
 
 /// listens to data to collect the scp messages and txsets.
@@ -53,6 +73,50 @@ async fn handle_message(
 		},
 		_ => {},
 	}
+
+	Ok(())
+}
+
+pub async fn listen_for_stellar_messages(
+	config: StellarOverlayConfig,
+	collector: Arc<RwLock<ScpMessageCollector>>,
+	secret_key_as_str: &str,
+	shutdown_sender: ShutdownSender,
+) -> Result<(),service::Error<Error>> {
+	tracing::info!("listen_for_stellar_messages(): Starting connection to Stellar overlay network...");
+
+	let mut overlay_conn = connect_to_stellar_overlay_network(config.clone(), secret_key_as_str).await
+		.map_err(|e| service::Error::VaultError(Error::Other(format!("{e:?}"))))?;
+
+	// use StellarOverlayConnection's sender to send message to Stellar
+	let sender = overlay_conn.sender();
+
+	loop {
+		tokio::select! {
+			_ = sleep(Duration::from_millis(100)) => {},
+			result = overlay_conn.listen() => match result {
+				Ok(None) => {},
+				Ok(Some(msg)) => {
+					let msg_as_str = to_base64_xdr_string(&msg);
+					if let Err(e) = handle_message(msg, collector.clone(), &sender).await {
+						tracing::error!("listen_for_stellar_messages(): failed to handle message: {msg_as_str}: {e:?}");
+					}
+				}
+				// connection got lost
+				Err(e) => {
+					tracing::error!("listen_for_stellar_messages(): encounter error in overlay: {e:?}");
+
+					if let Err(e) = shutdown_sender.send(()) {
+						tracing::error!("listen_for_stellar_messages(): Failed to send shutdown signal in thread: {e:?}");
+					}
+					break
+				}
+			}
+		}
+	}
+
+	tracing::info!("listen_for_stellar_messages(): shutting down overlay connection");
+	overlay_conn.stop();
 
 	Ok(())
 }
@@ -88,9 +152,7 @@ pub async fn start_oracle_agent(
 	tokio::spawn(async move {
 		loop {
 			tokio::select! {
-				_ = sleep(Duration::from_millis(100)) => {
-					tracing::info!("start_oracle_agent(): go to sleep");
-				},
+				_ = sleep(Duration::from_millis(100)) => {},
 				// if a disconnect signal was sent, disconnect from Stellar.
 				result = disconnect_signal_receiver.recv() => {
 					if result.is_none() {
@@ -98,9 +160,7 @@ pub async fn start_oracle_agent(
 						break
 					}
 				},
-				result = overlay_conn.listen() => {
-					tracing::info!("start_oracle_agent(): received message from overlay");
-					match result {
+				result = overlay_conn.listen() => match result {
 					Ok(Some(msg)) => {
 						let msg_as_str = to_base64_xdr_string(&msg);
 						if let Err(e) = handle_message(msg, collector_clone.clone(), &sender_clone).await {
@@ -117,7 +177,7 @@ pub async fn start_oracle_agent(
 						}
 						break
 					},
-				}},
+				},
 			}
 		}
 
@@ -130,8 +190,7 @@ pub async fn start_oracle_agent(
 		collector,
 		is_public_network,
 		message_sender: Some(sender),
-		shutdown_sender,
-		overlay_conn_end_signal: disconnect_signal_sender,
+		shutdown_sender
 	})
 }
 
@@ -176,25 +235,6 @@ impl OracleAgent {
 		.map_err(|_| {
 			Error::ProofTimeout(format!("Timeout elapsed for building proof of slot {slot}"))
 		})?
-	}
-
-	pub async fn last_slot_index(&self) -> Slot {
-		self.collector.read().await.last_slot_index()
-	}
-
-	pub async fn remove_data(&self, slot: &Slot) {
-		self.collector.read().await.remove_data(slot);
-	}
-
-	/// Stops listening for new SCP messages.
-	pub async fn shutdown(&self) {
-		tracing::debug!("shutdown(): Shutting down OracleAgent...");
-		if let Err(e) = self.overlay_conn_end_signal.send(()).await {
-			tracing::error!(
-				"shutdown(): Failed to send overlay conn end signal in OracleAgent: {:?}",
-				e
-			);
-		}
 	}
 }
 
