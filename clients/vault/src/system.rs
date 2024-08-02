@@ -324,7 +324,13 @@ async fn run_and_monitor_tasks(
 				_ => None,
 			}?;
 			let task = monitor.instrument(task);
+
+			#[cfg(all(tokio_unstable, feature = "allow_debugger"))]
+			let task = tokio::task::Builder::new().name(name).spawn(task).unwrap();
+
+			#[cfg(not(feature = "allow-debugger"))]
 			let task = tokio::spawn(task);
+
 			Some(((name.to_string(), metrics_iterator), task))
 		})
 		.unzip();
@@ -337,11 +343,25 @@ async fn run_and_monitor_tasks(
 	tracing::info!("run_and_monitor_tasks(): running all tasks...");
 	match join(tokio_metrics, join_all(tasks)).await {
 		(Ok(Err(err)), _) => Err(err),
-		(_, results) => results
-			.into_iter()
-			.find(|res| matches!(res, Ok(Err(_))))
-			.and_then(|res| res.ok())
-			.unwrap_or(Ok(())),
+		(_, results) => {
+			let res = results.into_iter()
+				.find(|res| matches!(res, Ok(())))
+				.and_then(|res| res.ok());
+
+			if let Some(_) = res {
+				tracing::info!("run_and_monitor_tasks(): join ok");
+				Ok(())
+			} else {
+				tracing::info!("run_and_monitor_tasks(): returned None");
+				Ok(())
+			}
+
+			// results
+			// 	.into_iter()
+			// 	.find(|res| matches!(res, Ok(Err(_))))
+			// 	.and_then(|res| res.ok())
+			// 	.unwrap_or(Ok(()))
+		},
 	}
 }
 
@@ -744,6 +764,10 @@ impl VaultService {
 		})
 	}
 
+	fn secret_key (&self) -> String {
+		self.secret_key.clone()
+	}
+
 	fn get_vault_id(
 		&self,
 		collateral_currency: CurrencyId,
@@ -797,7 +821,8 @@ impl VaultService {
 		let oracle_agent = self.create_oracle_agent(is_public_network, self.shutdown.clone())?;
 		self.agent = Some(oracle_agent.clone());
 
-		self.execute_open_requests(oracle_agent.clone());
+		// self.execute_open_requests(oracle_agent.clone());
+		tracing::info!("proceed to initializing issue sets");
 
 		// issue handling
 		// this vec is passed to the stellar wallet to filter out transactions that are not relevant
@@ -814,14 +839,13 @@ impl VaultService {
 
 		tracing::info!("Starting all services...");
 
-		//
         let mut tasks = vec![(
 			"Stellar Messages Listener",
 			run(
 				listen_for_stellar_messages(
 					self.stellar_overlay_cfg()?,
 					oracle_agent.collector.clone(),
-					&self.secret_key,
+					self.secret_key(),
 					self.shutdown.clone()
 				)
 			)

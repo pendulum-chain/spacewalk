@@ -26,6 +26,7 @@ pub(crate) async fn initialize_issue_set(
 	issue_set: &ArcRwLock<IssueRequestsMap>,
 	memos_to_issue_ids: &ArcRwLock<IssueIdLookup>,
 ) -> Result<(), Error> {
+	tracing::info!("initialize_issue_set(): started");
 	let (mut issue_set, mut memos_to_issue_ids, requests) = future::join3(
 		issue_set.write(),
 		memos_to_issue_ids.write(),

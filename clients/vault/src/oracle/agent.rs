@@ -80,13 +80,16 @@ async fn handle_message(
 pub async fn listen_for_stellar_messages(
 	config: StellarOverlayConfig,
 	collector: Arc<RwLock<ScpMessageCollector>>,
-	secret_key_as_str: &str,
+	secret_key_as_string: String,
 	shutdown_sender: ShutdownSender,
-) -> Result<(),service::Error<Error>> {
+) -> Result<(),service::Error<crate::Error>> {
 	tracing::info!("listen_for_stellar_messages(): Starting connection to Stellar overlay network...");
 
-	let mut overlay_conn = connect_to_stellar_overlay_network(config.clone(), secret_key_as_str).await
-		.map_err(|e| service::Error::VaultError(Error::Other(format!("{e:?}"))))?;
+	let mut overlay_conn = connect_to_stellar_overlay_network(config.clone(), secret_key_as_string)
+		.await.map_err(|e|{
+			tracing::error!("listen_for_stellar_messages(): Failed to connect to Stellar overlay network: {e:?}");
+			service::Error::StartOracleAgentError
+		})?;
 
 	// use StellarOverlayConnection's sender to send message to Stellar
 	let sender = overlay_conn.sender();
@@ -133,7 +136,7 @@ pub async fn start_oracle_agent(
 
 	tracing::info!("start_oracle_agent(): Starting connection to Stellar overlay network...");
 
-	let mut overlay_conn = connect_to_stellar_overlay_network(config.clone(), secret_key).await?;
+	let mut overlay_conn = connect_to_stellar_overlay_network(config.clone(), secret_key.to_string()).await?;
 	// use StellarOverlayConnection's sender to send message to Stellar
 	let sender = overlay_conn.sender();
 

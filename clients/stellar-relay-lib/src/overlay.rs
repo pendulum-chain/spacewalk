@@ -45,6 +45,16 @@ impl StellarOverlayConnection {
 
 		let connector = Connector::start(local_node_info, conn_info).await?;
 
+		#[cfg(tokio_unstable)]
+		tokio::task::Builder::new()
+			.name("poll_messages_from_stellar")
+			.spawn(poll_messages_from_stellar(
+				connector,
+				send_to_user_sender,
+				send_to_node_receiver,
+			)).unwrap();
+
+		#[cfg(not(tokio_unstable))]
 		tokio::spawn(poll_messages_from_stellar(
 			connector,
 			send_to_user_sender,
@@ -65,7 +75,7 @@ impl StellarOverlayConnection {
 			return Err(Error::Disconnected)
 		}
 
-		timeout(Duration::from_secs(1), self.receiver.recv()).await
+		timeout(Duration::from_secs(5), self.receiver.recv()).await
 			.map_err(|_| Error::Timeout)
 	}
 

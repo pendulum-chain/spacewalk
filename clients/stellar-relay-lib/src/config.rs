@@ -39,9 +39,9 @@ impl StellarOverlayConfig {
 	}
 
 	#[allow(dead_code)]
-	pub(crate) fn connection_info(&self, secret_key: &str) -> Result<ConnectionInfo, Error> {
+	pub(crate) fn connection_info(&self, secret_key_as_string: String) -> Result<ConnectionInfo, Error> {
 		let cfg = &self.connection_info;
-		let secret_key = SecretKey::from_encoding(secret_key)?;
+		let secret_key = SecretKey::from_encoding(secret_key_as_string)?;
 
 		let public_key = secret_key.get_public().to_encoding();
 		let public_key = std::str::from_utf8(&public_key).unwrap();
@@ -128,9 +128,9 @@ impl ConnectionInfoCfg {
 /// Returns the `StellarOverlayConnection` if connection is a success, otherwise an Error
 pub async fn connect_to_stellar_overlay_network(
 	cfg: StellarOverlayConfig,
-	secret_key: &str,
+	secret_key_as_string: String,
 ) -> Result<StellarOverlayConnection, Error> {
-	let conn_info = cfg.connection_info(secret_key)?;
+	let conn_info = cfg.connection_info(secret_key_as_string)?;
 	let local_node = cfg.node_info;
 
 	StellarOverlayConnection::connect(local_node.into(), conn_info).await

@@ -75,7 +75,6 @@ sp-runtime = { git = "https://github.com/paritytech/substrate", branch = "polkad
 sp-std = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.42" }
 
 parking_lot = "0.12.1"
-err-derive = "0.3.1"
 flate2 = "1.0"
 
 [dev-dependencies]
