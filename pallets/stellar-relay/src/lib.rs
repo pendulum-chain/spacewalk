@@ -44,13 +44,14 @@ pub mod pallet {
 	use sp_std::{collections::btree_map::BTreeMap, fmt::Debug, vec, vec::Vec};
 
 	use default_weights::WeightInfo;
+	use primitives::stellar::types::ScpStatementPledges;
 
 	use crate::{
 		traits::FieldLength,
 		types::{OrganizationOf, ValidatorOf},
 		validation::{
-			check_for_valid_quorum_set, find_externalized_envelope, get_externalized_info,
-			validate_envelopes, validators_and_orgs,
+			check_for_valid_quorum_set, get_externalized_info, validate_envelopes,
+			validators_and_orgs,
 		},
 	};
 
@@ -108,7 +109,6 @@ pub mod pallet {
 		DuplicateOrganizationId,
 		DuplicateValidatorPublicKey,
 		EmptyEnvelopeSet,
-		EnvelopeSignedByUnknownValidator,
 		EnvelopeSlotIndexMismatch,
 		ExternalizedNHMismatch,
 		ExternalizedValueMismatch,
@@ -560,7 +560,12 @@ pub mod pallet {
 
 			let (validators, organizations) = validators_and_orgs()?;
 
-			let externalized_envelope = find_externalized_envelope(envelopes)?;
+			let externalized_envelope = envelopes
+				.get_element(|envelope| match envelope.statement.pledges {
+					ScpStatementPledges::ScpStExternalize(_) => true,
+					_ => false,
+				})
+				.ok_or(Error::MissingExternalizedMessage)?;
 
 			// We store the externalized value in a variable so that we can check if it's the same
 			// for all envelopes. We don't distinguish between externalized and confirmed values as
@@ -574,7 +579,8 @@ pub mod pallet {
 				.get_tx_set_hash()
 				.map_err(|_| Error::<T>::FailedToComputeNonGenericTxSetContentHash)?;
 
-			validate_envelopes(
+			// returns ONLY the validated envelopes
+			let validated_envelopes = validate_envelopes(
 				envelopes,
 				&validators,
 				&network,
@@ -586,7 +592,7 @@ pub mod pallet {
 			)?;
 
 			// ---- Check that externalized messages build valid quorum set ----
-			check_for_valid_quorum_set(envelopes, validators, organizations.len())
+			check_for_valid_quorum_set(validated_envelopes, validators, organizations.len())
 		}
 
 		pub(crate) fn get_tx_set_hash(scp_value: &Value) -> Result<Hash, Error<T>> {
