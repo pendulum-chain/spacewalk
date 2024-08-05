@@ -579,7 +579,7 @@ pub mod pallet {
 				.get_tx_set_hash()
 				.map_err(|_| Error::<T>::FailedToComputeNonGenericTxSetContentHash)?;
 
-			// returns ONLY the validated envelopes
+			// returns ONLY the valid envelopes
 			let validated_envelopes = validate_envelopes(
 				envelopes,
 				&validators,
