@@ -173,12 +173,7 @@ pub fn validate_envelopes<'a, T: Config>(
 	let envelopes = envelopes.get_vec();
 	for envelope in envelopes {
 		let Some(node_id) = is_node_id_exist::<T>(envelope, validators) else {
-			log::warn!(
-				"Envelope with slot index {}: Node id {:?} is not part of validators list",
-				envelope.statement.slot_index,
-				envelope.statement.node_id
-			);
-			// ignore this ennvelope; continue to the next ones
+			// ignore this envelope; continue to the next ones
 			continue
 		};
 
@@ -213,7 +208,7 @@ pub fn validate_envelopes<'a, T: Config>(
 	}
 
 	// it's ok to use unwrap here, since the size will be <= to the provided envelopes
-	Ok(UnlimitedVarArray::new(validated_envelopes).unwrap())
+	Ok(UnlimitedVarArray::new(validated_envelopes).unwrap_or(UnlimitedVarArray::default()))
 }
 
 pub fn validators_and_orgs<T: Config>(
