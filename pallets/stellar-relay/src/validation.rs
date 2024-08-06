@@ -167,7 +167,7 @@ pub fn validate_envelopes<'a, T: Config>(
 	slot_index: u64,
 ) -> Result<UnlimitedVarArray<&'a ScpEnvelope>, Error<T>> {
 	// let's create a new placeholder for valid envelopes
-	let mut validated_envelopes = vec![];
+	let mut validated_envelopes = sp_std::vec![];
 	let mut externalized_n_h = externalized_n_h;
 
 	let envelopes = envelopes.get_vec();
