@@ -31,7 +31,7 @@ use primitives::{derive_shortened_request_id, get_text_memo_from_tx_env, TextMem
 #[frame_support::pallet]
 pub mod pallet {
 	use codec::FullCodec;
-	use frame_support::{pallet_prelude::*, sp_runtime, transactional};
+	use frame_support::{pallet_prelude::*, transactional};
 	use frame_system::pallet_prelude::*;
 	use primitives::stellar::{
 		compound_types::UnlimitedVarArray,
