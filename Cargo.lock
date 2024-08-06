@@ -11582,6 +11582,7 @@ dependencies = [
  "frame-benchmarking",
  "frame-support",
  "frame-system",
+ "log",
  "orml-tokens",
  "orml-traits",
  "parity-scale-codec",
@@ -11724,7 +11725,7 @@ dependencies = [
 [[package]]
 name = "substrate-stellar-sdk"
 version = "0.3.0"
-source = "git+https://github.com/pendulum-chain/substrate-stellar-sdk?branch=polkadot-v1.1.0#22bd78d713d4992ca7f52975995fe12bae9e220f"
+source = "git+https://github.com/pendulum-chain/substrate-stellar-sdk?branch=polkadot-v1.1.0#9b8e2b77b6c6a63e8e837d1e8f2b42b09d49a943"
 dependencies = [
  "base64 0.13.1",
  "hex",
