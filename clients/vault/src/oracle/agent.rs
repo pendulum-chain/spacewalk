@@ -282,7 +282,7 @@ mod tests {
 		let scp_archive_storage = ScpArchiveStorage::default();
 		let tx_archive_storage = TransactionsArchiveStorage::default();
 
-		let base_config = specific_stellar_relay_config(true, 2);
+		let base_config = specific_stellar_relay_config(true, 1);
 		// We add two fake archive urls to the config to make sure that the agent will actually fall
 		// back to other archives.
 		let mut archive_urls = base_config.stellar_history_archive_urls().clone();
