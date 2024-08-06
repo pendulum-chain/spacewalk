@@ -1,5 +1,5 @@
 use frame_support::{ensure, BoundedVec};
-use sp_std::{collections::btree_map::BTreeMap, vec::Vec};
+use sp_std::{collections::btree_map::BTreeMap, vec::{self, Vec}};
 
 use primitives::stellar::{
 	compound_types::UnlimitedVarArray,
@@ -86,16 +86,16 @@ fn is_node_id_exist<T: Config>(
 		.iter()
 		.any(|validator| validator.public_key.to_vec() == node_id.to_encoding());
 
-	if node_id_found {
+	if !node_id_found {
 		log::warn!(
 			"Envelope with slot index {}: Node id {:?} is not part of validators list",
 			envelope.statement.slot_index,
 			envelope.statement.node_id
 		);
-		None
-	} else {
-		Some(node_id)
+		return None
 	}
+
+	Some(node_id)
 }
 
 pub fn check_for_valid_quorum_set<T: Config>(
