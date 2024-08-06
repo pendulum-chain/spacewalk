@@ -1,5 +1,5 @@
 use frame_support::{ensure, BoundedVec};
-use sp_std::{collections::btree_map::BTreeMap, vec::{self, Vec}};
+use sp_std::{collections::btree_map::BTreeMap, vec::Vec};
 
 use primitives::stellar::{
 	compound_types::UnlimitedVarArray,
