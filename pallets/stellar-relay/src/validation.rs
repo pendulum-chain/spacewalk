@@ -208,7 +208,7 @@ pub fn validate_envelopes<'a, T: Config>(
 	}
 
 	// it's ok to use unwrap here, since the size will be <= to the provided envelopes
-	Ok(UnlimitedVarArray::new(validated_envelopes).unwrap_or(UnlimitedVarArray::default()))
+	Ok(UnlimitedVarArray::new(validated_envelopes).unwrap_or(UnlimitedVarArray::new_empty()))
 }
 
 pub fn validators_and_orgs<T: Config>(
