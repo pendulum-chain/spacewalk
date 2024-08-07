@@ -25,7 +25,7 @@ pub fn specific_stellar_relay_config(
 
 fn stellar_relay_config_choices(is_mainnet: bool) -> (Vec<&'static str>, &'static str) {
 	let node_points = if is_mainnet {
-		vec!["iowa", "singapore"] // add Frankfurt back, once it settles down.
+		vec!["iowa", "singapore", "frankfurt"]
 	} else {
 		vec!["sdftest1", "sdftest2", "sdftest3"]
 	};
