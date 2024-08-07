@@ -33,10 +33,10 @@ impl FlowController {
 
 pub fn is_flood_message(message_type: MessageType) -> bool {
 	match message_type {
-		MessageType::Transaction
-		| MessageType::ScpMessage
-		| MessageType::FloodAdvert
-		| MessageType::FloodDemand => true,
+		MessageType::Transaction |
+		MessageType::ScpMessage |
+		MessageType::FloodAdvert |
+		MessageType::FloodDemand => true,
 		_ => false,
 	}
 }

@@ -61,11 +61,11 @@ impl Error {
 			},
 			Error::HorizonSubmissionError { status, .. } if *status == 504 => true,
 			Error::CacheError(e) => match e.kind {
-				CacheErrorKind::CreateDirectoryFailed
-				| CacheErrorKind::FileCreationFailed
-				| CacheErrorKind::WriteToFileFailed
-				| CacheErrorKind::DeleteFileFailed
-				| CacheErrorKind::FileDoesNotExist => true,
+				CacheErrorKind::CreateDirectoryFailed |
+				CacheErrorKind::FileCreationFailed |
+				CacheErrorKind::WriteToFileFailed |
+				CacheErrorKind::DeleteFileFailed |
+				CacheErrorKind::FileDoesNotExist => true,
 				_ => false,
 			},
 			_ => false,

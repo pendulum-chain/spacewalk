@@ -242,12 +242,10 @@ impl SpacewalkParachain {
 				match result.map_err(Into::<Error>::into) {
 					Ok(ok) => Ok(ok),
 					Err(err) => match err.is_invalid_transaction() {
-						Some(Recoverability::Recoverable(data)) => {
-							Err(RetryPolicy::Skip(Error::InvalidTransaction(data)))
-						},
-						Some(Recoverability::Unrecoverable(data)) => {
-							Err(RetryPolicy::Throw(Error::InvalidTransaction(data)))
-						},
+						Some(Recoverability::Recoverable(data)) =>
+							Err(RetryPolicy::Skip(Error::InvalidTransaction(data))),
+						Some(Recoverability::Unrecoverable(data)) =>
+							Err(RetryPolicy::Throw(Error::InvalidTransaction(data))),
 						None => {
 							// Handle other errors
 							if err.is_pool_too_low_priority() {
@@ -572,9 +570,8 @@ impl VaultRegistryPallet for SpacewalkParachain {
 		let query = metadata::storage().vault_registry().vaults(&vault_id.clone());
 
 		match self.query_finalized(query).await? {
-			Some(SpacewalkVault { status: VaultStatus::Liquidated, .. }) => {
-				Err(Error::VaultLiquidated)
-			},
+			Some(SpacewalkVault { status: VaultStatus::Liquidated, .. }) =>
+				Err(Error::VaultLiquidated),
 			Some(vault) if &vault.id == vault_id => Ok(vault),
 			_ => Err(Error::VaultNotFound),
 		}
@@ -1082,8 +1079,8 @@ impl IssuePallet for SpacewalkParachain {
 		while let Ok((issue_id, request)) =
 			iter.next().await.ok_or(Error::RequestIssueIDNotFound)?
 		{
-			if request.status == IssueRequestStatus::Pending
-				&& request.opentime + issue_period > current_height
+			if request.status == IssueRequestStatus::Pending &&
+				request.opentime + issue_period > current_height
 			{
 				let key_hash = issue_id.as_slice();
 				// last bytes are the raw key

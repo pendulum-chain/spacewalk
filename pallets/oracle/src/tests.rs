@@ -170,13 +170,11 @@ fn test_amount_conversion() {
 				OracleKey::ExchangeRate(currency) => {
 					match currency {
 						// XCM(0) is worth 5 USD
-						CurrencyId::XCM(0) => {
-							MockResult::Return(Ok(FixedU128::from_rational(5, 1)))
-						},
+						CurrencyId::XCM(0) =>
+							MockResult::Return(Ok(FixedU128::from_rational(5, 1))),
 						// XCM(1) is worth 1 USD
-						CurrencyId::XCM(1) => {
-							MockResult::Return(Ok(FixedU128::from_rational(1, 1)))
-						},
+						CurrencyId::XCM(1) =>
+							MockResult::Return(Ok(FixedU128::from_rational(1, 1))),
 						_ => {
 							panic!("Unexpected currency")
 						},

@@ -155,12 +155,11 @@ pub mod currency_id {
 					)
 					.replace('\"', "")),
 				},
-				CurrencyId::ZenlinkLPToken(token1_id, token1_type, token2_id, token2_type) => {
+				CurrencyId::ZenlinkLPToken(token1_id, token1_type, token2_id, token2_type) =>
 					Ok(format!(
 						"ZenlinkLPToken({},{},{},{})",
 						token1_id, token1_type, token2_id, token2_type
-					))
-				},
+					)),
 				CurrencyId::Token(token_id) => Ok(format!("Token({})", token_id)),
 			}
 		}
@@ -340,19 +339,16 @@ mod dispatch_error {
 				RichDispatchError::Other(_) => DispatchError::Other,
 				RichDispatchError::CannotLookup => DispatchError::CannotLookup,
 				RichDispatchError::BadOrigin => DispatchError::BadOrigin,
-				RichDispatchError::Module(RichModuleError { index, error, .. }) => {
-					DispatchError::Module(ModuleError { index, error })
-				},
+				RichDispatchError::Module(RichModuleError { index, error, .. }) =>
+					DispatchError::Module(ModuleError { index, error }),
 				RichDispatchError::ConsumerRemaining => DispatchError::ConsumerRemaining,
 				RichDispatchError::NoProviders => DispatchError::NoProviders,
 				RichDispatchError::TooManyConsumers => DispatchError::TooManyConsumers,
 				RichDispatchError::Token(token_error) => DispatchError::Token(token_error.into()),
-				RichDispatchError::Arithmetic(arithmetic_error) => {
-					DispatchError::Arithmetic(arithmetic_error.into())
-				},
-				RichDispatchError::Transactional(transactional_error) => {
-					DispatchError::Transactional(transactional_error.into())
-				},
+				RichDispatchError::Arithmetic(arithmetic_error) =>
+					DispatchError::Arithmetic(arithmetic_error.into()),
+				RichDispatchError::Transactional(transactional_error) =>
+					DispatchError::Transactional(transactional_error.into()),
 				RichDispatchError::Exhausted => DispatchError::Exhausted,
 				sp_runtime::DispatchError::Corruption => DispatchError::Corruption,
 				sp_runtime::DispatchError::Unavailable => DispatchError::Unavailable,
