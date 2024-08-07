@@ -157,9 +157,8 @@ pub async fn send_payment_to_address(
 
 		match &result {
 			// if the error is `tx_bad_seq` perform the process again
-			Err(Error::HorizonSubmissionError { reason, .. }) if reason.contains("tx_bad_seq") => {
-				continue
-			},
+			Err(Error::HorizonSubmissionError { reason, .. }) if reason.contains("tx_bad_seq") =>
+				continue,
 			_ => {
 				response = result;
 				break;

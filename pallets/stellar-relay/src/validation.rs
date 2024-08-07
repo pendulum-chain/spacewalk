@@ -35,16 +35,18 @@ fn validator_count_per_org<T: Config>(
 
 /// Builds a map used to identify the targeted organizations
 fn targeted_organization_map<T: Config>(
-	envelopes: &UnlimitedVarArray<ScpEnvelope>,
+	envelopes: UnlimitedVarArray<&ScpEnvelope>,
 	validators: &ValidatorsList<T>,
 ) -> BTreeMap<T::OrganizationId, u32> {
 	// Find the validators that are targeted by the SCP messages
 	let targeted_validators = validators
 		.iter()
 		.filter(|validator| {
-			envelopes.get_vec().iter().any(|envelope| {
-				envelope.statement.node_id.to_encoding() == validator.public_key.to_vec()
-			})
+			envelopes
+				.get_element(|envelope| {
+					envelope.statement.node_id.to_encoding() == validator.public_key.to_vec()
+				})
+				.is_some()
 		})
 		.collect::<Vec<&ValidatorOf<T>>>();
 
@@ -66,33 +68,38 @@ fn targeted_organization_map<T: Config>(
 /// Returns a tuple of Externalized Value and Externalized n_h
 pub fn get_externalized_info<T: Config>(envelope: &ScpEnvelope) -> Result<(&Value, u32), Error<T>> {
 	match &envelope.statement.pledges {
-		ScpStatementPledges::ScpStExternalize(externalized_statement) => {
-			Ok((&externalized_statement.commit.value, externalized_statement.n_h))
-		},
-		ScpStatementPledges::ScpStConfirm(confirmed_statement) => {
-			Ok((&confirmed_statement.ballot.value, confirmed_statement.n_h))
-		},
+		ScpStatementPledges::ScpStExternalize(externalized_statement) =>
+			Ok((&externalized_statement.commit.value, externalized_statement.n_h)),
+		ScpStatementPledges::ScpStConfirm(confirmed_statement) =>
+			Ok((&confirmed_statement.ballot.value, confirmed_statement.n_h)),
 		_ => return Err(Error::<T>::InvalidScpPledge),
 	}
 }
 
 /// Returns the node id of the envelope if it is part of the set of validators
-fn get_node_id<T: Config>(
+fn is_node_id_exist<T: Config>(
 	envelope: &ScpEnvelope,
 	validators: &BoundedVec<ValidatorOf<T>, T::ValidatorLimit>,
-) -> Result<NodeId, Error<T>> {
+) -> Option<NodeId> {
 	let node_id = envelope.statement.node_id.clone();
 	let node_id_found = validators
 		.iter()
 		.any(|validator| validator.public_key.to_vec() == node_id.to_encoding());
 
-	ensure!(node_id_found, Error::<T>::EnvelopeSignedByUnknownValidator);
+	if !node_id_found {
+		log::warn!(
+			"Envelope with slot index {}: Node id {:?} is not part of validators list",
+			envelope.statement.slot_index,
+			envelope.statement.node_id
+		);
+		return None
+	}
 
-	Ok(node_id)
+	Some(node_id)
 }
 
 pub fn check_for_valid_quorum_set<T: Config>(
-	envelopes: &UnlimitedVarArray<ScpEnvelope>,
+	envelopes: UnlimitedVarArray<&ScpEnvelope>,
 	validators: BoundedVec<ValidatorOf<T>, T::ValidatorLimit>,
 	orgs_length: usize,
 ) -> Result<(), Error<T>> {
@@ -138,7 +145,8 @@ pub fn check_for_valid_quorum_set<T: Config>(
 	Ok(())
 }
 
-/// Checks that all envelopes have the same values
+/// Checks that all envelopes have the same values. IGNORES envelopes with DIFFERENT node id.
+/// Returns ONLY the valid envelopes.
 ///
 /// # Arguments
 ///
@@ -149,18 +157,25 @@ pub fn check_for_valid_quorum_set<T: Config>(
 /// * `externalized_n_h` - A value that must be equal amongst all envelopes
 /// * `expected_tx_set_hash` - A value that must be equal amongst all envelopes
 /// * `slot_index` - used to check if all envelopes are using the same slot
-pub fn validate_envelopes<T: Config>(
-	envelopes: &UnlimitedVarArray<ScpEnvelope>,
+pub fn validate_envelopes<'a, T: Config>(
+	envelopes: &'a UnlimitedVarArray<ScpEnvelope>,
 	validators: &BoundedVec<ValidatorOf<T>, T::ValidatorLimit>,
 	network: &Network,
 	externalized_value: &Value,
 	externalized_n_h: u32,
 	expected_tx_set_hash: Hash,
 	slot_index: u64,
-) -> Result<(), Error<T>> {
+) -> Result<UnlimitedVarArray<&'a ScpEnvelope>, Error<T>> {
+	// let's create a new placeholder for valid envelopes
+	let mut validated_envelopes = sp_std::vec![];
 	let mut externalized_n_h = externalized_n_h;
-	for envelope in envelopes.get_vec() {
-		let node_id = get_node_id(envelope, validators)?;
+
+	let envelopes = envelopes.get_vec();
+	for envelope in envelopes {
+		let Some(node_id) = is_node_id_exist::<T>(envelope, validators) else {
+			// ignore this envelope; continue to the next ones
+			continue
+		};
 
 		// Check if all envelopes are using the same slot index
 		ensure!(slot_index == envelope.statement.slot_index, Error::<T>::EnvelopeSlotIndexMismatch);
@@ -187,22 +202,13 @@ pub fn validate_envelopes<T: Config>(
 		else if n_h < u32::MAX {
 			ensure!(externalized_n_h == n_h, Error::<T>::ExternalizedNHMismatch);
 		}
+
+		// if all checks passed, insert.
+		validated_envelopes.push(envelope);
 	}
 
-	Ok(())
-}
-
-pub fn find_externalized_envelope<T: Config>(
-	envelopes: &UnlimitedVarArray<ScpEnvelope>,
-) -> Result<&ScpEnvelope, Error<T>> {
-	envelopes
-		.get_vec()
-		.iter()
-		.find(|envelope| match envelope.statement.pledges {
-			ScpStatementPledges::ScpStExternalize(_) => true,
-			_ => false,
-		})
-		.ok_or(Error::<T>::MissingExternalizedMessage)
+	// it's ok to use unwrap here, since the size will be <= to the provided envelopes
+	Ok(UnlimitedVarArray::new(validated_envelopes).unwrap_or(UnlimitedVarArray::new_empty()))
 }
 
 pub fn validators_and_orgs<T: Config>(

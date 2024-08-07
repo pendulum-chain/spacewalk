@@ -1059,9 +1059,8 @@ impl<T: Config> Pallet<T> {
 		match request.status {
 			RedeemRequestStatus::Pending => Ok(request),
 			RedeemRequestStatus::Completed => Err(Error::<T>::RedeemCompleted.into()),
-			RedeemRequestStatus::Reimbursed(_) | RedeemRequestStatus::Retried => {
-				Err(Error::<T>::RedeemCancelled.into())
-			},
+			RedeemRequestStatus::Reimbursed(_) | RedeemRequestStatus::Retried =>
+				Err(Error::<T>::RedeemCancelled.into()),
 		}
 	}
 

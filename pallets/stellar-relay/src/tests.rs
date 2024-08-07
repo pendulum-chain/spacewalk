@@ -195,7 +195,7 @@ fn validate_stellar_transaction_fails_for_wrong_signature() {
 }
 
 #[test]
-fn validate_stellar_transaction_fails_for_unknown_validator() {
+fn validate_stellar_transaction_ignores_unknown_validator() {
 	run_test(|organizations, mut validators, mut validator_secret_keys| {
 		let public_network = true;
 
@@ -212,9 +212,8 @@ fn validate_stellar_transaction_fails_for_unknown_validator() {
 			false,
 		);
 
-		let result =
-			SpacewalkRelay::validate_stellar_transaction(&tx_envelope, &scp_envelopes, &tx_set);
-		assert!(matches!(result, Err(Error::<Test>::EnvelopeSignedByUnknownValidator)));
+		assert!(SpacewalkRelay::validate_stellar_transaction(&tx_envelope, &scp_envelopes, &tx_set)
+			.is_ok())
 	});
 }
 

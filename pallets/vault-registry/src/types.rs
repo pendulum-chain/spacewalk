@@ -38,17 +38,17 @@ pub enum CurrencySource<T: frame_system::Config + orml_tokens::Config> {
 impl<T: Config> CurrencySource<T> {
 	pub fn account_id(&self) -> <T as frame_system::Config>::AccountId {
 		match self {
-			CurrencySource::Collateral(DefaultVaultId::<T> { account_id: x, .. })
-			| CurrencySource::AvailableReplaceCollateral(DefaultVaultId::<T> {
+			CurrencySource::Collateral(DefaultVaultId::<T> { account_id: x, .. }) |
+			CurrencySource::AvailableReplaceCollateral(DefaultVaultId::<T> {
 				account_id: x,
 				..
-			})
-			| CurrencySource::ActiveReplaceCollateral(DefaultVaultId::<T> {
+			}) |
+			CurrencySource::ActiveReplaceCollateral(DefaultVaultId::<T> {
 				account_id: x, ..
-			})
-			| CurrencySource::UserGriefing(x)
-			| CurrencySource::FreeBalance(x)
-			| CurrencySource::LiquidatedCollateral(DefaultVaultId::<T> { account_id: x, .. }) => x.clone(),
+			}) |
+			CurrencySource::UserGriefing(x) |
+			CurrencySource::FreeBalance(x) |
+			CurrencySource::LiquidatedCollateral(DefaultVaultId::<T> { account_id: x, .. }) => x.clone(),
 			CurrencySource::LiquidationVault(_) => Pallet::<T>::liquidation_vault_account_id(),
 		}
 	}
@@ -70,9 +70,8 @@ impl<T: Config> CurrencySource<T> {
 					T::GetGriefingCollateralCurrencyId::get(),
 				)
 			},
-			CurrencySource::UserGriefing(x) => {
-				ext::currency::get_reserved_balance::<T>(currency_id, x)
-			},
+			CurrencySource::UserGriefing(x) =>
+				ext::currency::get_reserved_balance::<T>(currency_id, x),
 			CurrencySource::FreeBalance(x) => ext::currency::get_free_balance::<T>(currency_id, x),
 			CurrencySource::LiquidatedCollateral(vault_id) => {
 				let vault = Pallet::<T>::get_vault_from_id(vault_id)?;

@@ -34,11 +34,10 @@ pub(crate) async fn poll_messages_from_stellar(
 
 		// check for messages from user.
 		match send_to_node_receiver.try_recv() {
-			Ok(msg) => {
+			Ok(msg) =>
 				if let Err(e) = connector.send_to_node(msg).await {
 					error!("poll_messages_from_stellar(): Error occurred during sending message to node: {e:?}");
-				}
-			},
+				},
 			Err(TryRecvError::Disconnected) => break,
 			Err(TryRecvError::Empty) => {},
 		}
