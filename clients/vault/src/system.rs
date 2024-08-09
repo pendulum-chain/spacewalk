@@ -26,19 +26,8 @@ use service::{wait_or_shutdown, Error as ServiceError, MonitoringConfig, Service
 use stellar_relay_lib::{sdk::PublicKey, StellarOverlayConfig};
 use wallet::{LedgerTxEnvMap, StellarWallet, RESUBMISSION_INTERVAL_IN_SECS};
 
-use crate::{
-	cancellation::ReplaceCanceller,
-	error::Error,
-	issue,
-	issue::IssueFilter,
-	metrics::{monitor_bridge_metrics, poll_metrics, publish_tokio_metrics, PerCurrencyMetrics},
-	oracle::OracleAgent,
-	redeem::listen_for_redeem_requests,
-	replace::{listen_for_accept_replace, listen_for_execute_replace, listen_for_replace_requests},
-	requests::execution::execute_open_requests,
-	service::{CancellationScheduler, IssueCanceller},
-	ArcRwLock, Event, CHAIN_HEIGHT_POLLING_INTERVAL,
-};
+use crate::{cancellation::ReplaceCanceller, error::Error, issue, issue::IssueFilter, metrics::{monitor_bridge_metrics, poll_metrics, publish_tokio_metrics, PerCurrencyMetrics}, oracle::OracleAgent, redeem::listen_for_redeem_requests, replace::{listen_for_accept_replace, listen_for_execute_replace, listen_for_replace_requests}, requests::execution::execute_open_requests, service::{CancellationScheduler, IssueCanceller}, ArcRwLock, Event, CHAIN_HEIGHT_POLLING_INTERVAL, tokio_spawn};
+use crate::oracle::listen_for_stellar_messages;
 
 pub const VERSION: &str = env!("CARGO_PKG_VERSION");
 pub const AUTHORS: &str = env!("CARGO_PKG_AUTHORS");
@@ -296,7 +285,6 @@ impl Service<VaultServiceConfig, Error> for VaultService {
 	async fn start(&mut self) -> Result<(), ServiceError<Error>> {
 		let result = self.run_service().await;
 
-		self.try_shutdown_agent().await;
 		self.try_shutdown_wallet().await;
 
 		if let Err(error) = result {
@@ -324,24 +312,37 @@ async fn run_and_monitor_tasks(
 				_ => None,
 			}?;
 			let task = monitor.instrument(task);
-			let task = tokio::spawn(task);
+
+			let task = tokio_spawn(name, task);
 			Some(((name.to_string(), metrics_iterator), task))
 		})
 		.unzip();
 
-	let tokio_metrics = tokio::spawn(wait_or_shutdown(
-		shutdown_tx.clone(),
-		publish_tokio_metrics(metrics_iterators),
-	));
+	let tokio_metrics = tokio_spawn(
+		"tokio metrics publisher",
+		wait_or_shutdown(
+			shutdown_tx.clone(),
+			publish_tokio_metrics(metrics_iterators),
+		)
+	);
 
 	tracing::info!("run_and_monitor_tasks(): running all tasks...");
+
+
 	match join(tokio_metrics, join_all(tasks)).await {
 		(Ok(Err(err)), _) => Err(err),
-		(_, results) => results
-			.into_iter()
-			.find(|res| matches!(res, Ok(Err(_))))
-			.and_then(|res| res.ok())
-			.unwrap_or(Ok(())),
+		(_, results) => {
+			for result in results {
+				match result {
+					Ok(_) => {}
+					Err(e) => {
+						tracing::error!("run_and_monitor_tasks(): One of the tasks failed: {e:?}");
+						return Err(ServiceError::TokioError(e));
+					}
+				}
+			}
+			Ok(())
+		},
 	}
 }
 
@@ -410,34 +411,32 @@ impl VaultService {
 				.await?;
 			Ok::<_, Error>(())
 		});
-		tokio::task::spawn(err_listener);
+		tokio_spawn("error listener", err_listener);
 
 		Ok(())
 	}
 
-	async fn create_oracle_agent(
+	fn create_oracle_agent(
 		&self,
 		is_public_network: bool,
 		shutdown_sender: ShutdownSender,
 	) -> Result<Arc<OracleAgent>, ServiceError<Error>> {
-		let cfg_path = &self.config.stellar_overlay_config_filepath;
-		let stellar_overlay_cfg =
-			StellarOverlayConfig::try_from_path(cfg_path).map_err(Error::StellarRelayError)?;
+		let stellar_overlay_cfg = self.stellar_overlay_cfg()?;
 
 		// check if both the config file and the wallet are the same.
 		if is_public_network != stellar_overlay_cfg.is_public_network() {
 			return Err(ServiceError::IncompatibleNetwork)
 		}
 
-		let oracle_agent = crate::oracle::start_oracle_agent(
-			stellar_overlay_cfg,
-			&self.secret_key,
-			shutdown_sender,
-		)
-		.await
-		.expect("Failed to start oracle agent");
+		// let oracle_agent = crate::oracle::start_oracle_agent(
+		// 	stellar_overlay_cfg,
+		// 	&self.secret_key,
+		// 	shutdown_sender,
+		// )
+		// .await
+		// .expect("Failed to start oracle agent");
 
-		Ok(Arc::new(oracle_agent))
+		Ok(Arc::new(OracleAgent::new(stellar_overlay_cfg,shutdown_sender)))
 	}
 
 	fn execute_open_requests(&self, oracle_agent: Arc<OracleAgent>) {
@@ -707,6 +706,11 @@ impl VaultService {
 
 		Ok(tasks)
 	}
+
+	fn stellar_overlay_cfg(&self) -> Result<StellarOverlayConfig, Error> {
+		let cfg_path = &self.config.stellar_overlay_config_filepath;
+		StellarOverlayConfig::try_from_path(cfg_path).map_err(Error::StellarRelayError)
+	}
 }
 
 impl VaultService {
@@ -739,6 +743,10 @@ impl VaultService {
 			secret_key,
 			agent: None,
 		})
+	}
+
+	fn secret_key (&self) -> String {
+		self.secret_key.clone()
 	}
 
 	fn get_vault_id(
@@ -789,13 +797,13 @@ impl VaultService {
 			.await;
 		drop(wallet);
 
-		let oracle_agent =
-			self.create_oracle_agent(is_public_network, self.shutdown.clone()).await?;
+		// let oracle_agent =
+		// 	self.create_oracle_agent(is_public_network, self.shutdown.clone()).await?;
+		let oracle_agent = self.create_oracle_agent(is_public_network, self.shutdown.clone())?;
 		self.agent = Some(oracle_agent.clone());
 
 		self.execute_open_requests(oracle_agent.clone());
-
-		tracing::info!("CONTINUE ON HOOY");
+		tracing::info!("proceed to initializing issue sets");
 
 		// issue handling
 		// this vec is passed to the stellar wallet to filter out transactions that are not relevant
@@ -808,12 +816,23 @@ impl VaultService {
 		issue::initialize_issue_set(&self.spacewalk_parachain, &issue_map, &memos_to_issue_ids)
 			.await?;
 
-		tracing::info!("ISSUE INITIALIZE ISSUE SET!!!");
-
 		let ledger_env_map: ArcRwLock<LedgerTxEnvMap> = Arc::new(RwLock::new(HashMap::new()));
 
 		tracing::info!("Starting all services...");
-		let tasks = self.create_tasks(
+
+        let mut tasks = vec![(
+			"Stellar Messages Listener",
+			run(
+				listen_for_stellar_messages(
+					self.stellar_overlay_cfg()?,
+					oracle_agent.collector.clone(),
+					self.secret_key(),
+					self.shutdown.clone()
+				)
+			)
+		)];
+
+		let mut _tasks = self.create_tasks(
 			startup_height,
 			account_id,
 			is_public_network,
@@ -823,6 +842,7 @@ impl VaultService {
 			ledger_env_map,
 			memos_to_issue_ids,
 		)?;
+		tasks.append(&mut _tasks);
 
 		run_and_monitor_tasks(self.shutdown.clone(), tasks).await
 	}
@@ -957,15 +977,4 @@ impl VaultService {
 		drop(wallet);
 	}
 
-	async fn try_shutdown_agent(&mut self) {
-		let opt_agent = self.agent.clone();
-		self.agent = None;
-
-		if let Some(arc_agent) = opt_agent {
-			tracing::info!("try_shutdown_agent(): shutting down agent");
-			arc_agent.shutdown().await;
-		} else {
-			tracing::debug!("try_shutdown_agent(): no agent found");
-		}
-	}
 }

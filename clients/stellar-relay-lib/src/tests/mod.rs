@@ -33,7 +33,7 @@ fn overlay_infos(is_mainnet: bool) -> (NodeInfo, ConnectionInfo) {
 
 	(
 		cfg.node_info(),
-		cfg.connection_info(&secret_key(is_mainnet)).expect("should return conn info"),
+		cfg.connection_info(secret_key(is_mainnet)).expect("should return conn info"),
 	)
 }
 

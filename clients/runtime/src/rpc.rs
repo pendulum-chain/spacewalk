@@ -5,6 +5,7 @@ use async_trait::async_trait;
 use codec::Encode;
 use futures::{future::join_all, stream::StreamExt, FutureExt, SinkExt};
 use jsonrpsee::core::{client::Client, JsonValue};
+use jsonrpsee::tracing;
 use subxt::{
 	blocks::ExtrinsicEvents,
 	client::OnlineClient,
@@ -1090,7 +1091,9 @@ impl IssuePallet for SpacewalkParachain {
 				let key_hash = issue_id.0.as_slice();
 				// last bytes are the raw key
 				let key = &key_hash[key_hash.len() - 32..];
-				issue_requests.push((H256::from_slice(key), request));
+				let key = H256::from_slice(key);
+				tracing::info!("get_all_active_issues: found {}", key.to_string());
+				issue_requests.push((key, request));
 			}
 		}
 		Ok(issue_requests)
