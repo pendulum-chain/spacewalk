@@ -35,7 +35,7 @@ impl StellarOverlayConfig {
 
 	#[allow(dead_code)]
 	pub(crate) fn node_info(&self) -> NodeInfo {
-		self.node_info.clone().into()
+		NodeInfo::new(&self.node_info)
 	}
 
 	#[allow(dead_code)]

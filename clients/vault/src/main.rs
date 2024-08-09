@@ -16,11 +16,7 @@ use service::{
 };
 use signal_hook::consts::*;
 use signal_hook_tokio::Signals;
-use vault::{
-	metrics::{self, increment_restart_counter},
-	process::PidFile,
-	Error, VaultService, VaultServiceConfig, ABOUT, AUTHORS, NAME, VERSION,
-};
+use vault::{metrics::{self, increment_restart_counter}, process::PidFile, Error, VaultService, VaultServiceConfig, ABOUT, AUTHORS, NAME, VERSION, tokio_spawn};
 
 #[derive(Parser)]
 #[clap(args_conflicts_with_subcommands = true)]
@@ -69,7 +65,7 @@ async fn catch_signals<F>(
 where
 	F: Future<Output = Result<(), ServiceError<Error>>> + Send + 'static,
 {
-	let blocking_task = tokio::task::spawn(future);
+	let blocking_task = tokio_spawn("blocking task", future);
 	tokio::select! {
 		res = blocking_task => {
 			return res?;
@@ -116,7 +112,7 @@ async fn start() -> Result<(), ServiceError<Error>> {
 		);
 		let prometheus_port = opts.monitoring.prometheus_port;
 
-		tokio::task::spawn(async move {
+		tokio_spawn("Prometheus", async move {
 			warp::serve(metrics_route)
 				.run(SocketAddr::new(prometheus_host.into(), prometheus_port))
 				.await;
@@ -164,6 +160,7 @@ mod tests {
 	use std::{thread, time::Duration};
 
 	use runtime::AccountId;
+	use vault::tokio_spawn;
 
 	use super::*;
 
@@ -172,7 +169,9 @@ mod tests {
 		let termination_signals = &[SIGHUP, SIGTERM, SIGINT, SIGQUIT];
 		for sig in termination_signals {
 			let task =
-				tokio::spawn(catch_signals(Signals::new(termination_signals).unwrap(), async {
+				tokio_spawn(
+					"catch signals",
+					catch_signals(Signals::new(termination_signals).unwrap(), async {
 					tokio::time::sleep(Duration::from_millis(100_000)).await;
 					Ok(())
 				}));
