@@ -12842,7 +12842,6 @@ dependencies = [
  "clap 3.2.25",
  "console-subscriber",
  "env_logger 0.9.3",
- "err-derive",
  "flate2",
  "frame-support",
  "futures 0.3.30",

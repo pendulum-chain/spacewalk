@@ -18,7 +18,7 @@ use crate::{
 
 /// Used to send/receive messages to/from Stellar Node
 pub struct StellarOverlayConnection {
-	sender: mpsc::Sender<StellarMessage>,
+	sender: Sender<StellarMessage>,
 	receiver: mpsc::Receiver<StellarMessage>,
 }
 
@@ -47,7 +47,7 @@ impl StellarOverlayConnection {
 
 		#[cfg(tokio_unstable)]
 		tokio::task::Builder::new()
-			.name("poll_messages_from_stellar")
+			.name("poll stellar messages")
 			.spawn(poll_messages_from_stellar(
 				connector,
 				send_to_user_sender,

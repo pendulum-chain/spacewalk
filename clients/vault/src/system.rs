@@ -26,19 +26,7 @@ use service::{wait_or_shutdown, Error as ServiceError, MonitoringConfig, Service
 use stellar_relay_lib::{sdk::PublicKey, StellarOverlayConfig};
 use wallet::{LedgerTxEnvMap, StellarWallet, RESUBMISSION_INTERVAL_IN_SECS};
 
-use crate::{
-	cancellation::ReplaceCanceller,
-	error::Error,
-	issue,
-	issue::IssueFilter,
-	metrics::{monitor_bridge_metrics, poll_metrics, publish_tokio_metrics, PerCurrencyMetrics},
-	oracle::OracleAgent,
-	redeem::listen_for_redeem_requests,
-	replace::{listen_for_accept_replace, listen_for_execute_replace, listen_for_replace_requests},
-	requests::execution::execute_open_requests,
-	service::{CancellationScheduler, IssueCanceller},
-	ArcRwLock, Event, CHAIN_HEIGHT_POLLING_INTERVAL,
-};
+use crate::{cancellation::ReplaceCanceller, error::Error, issue, issue::IssueFilter, metrics::{monitor_bridge_metrics, poll_metrics, publish_tokio_metrics, PerCurrencyMetrics}, oracle::OracleAgent, redeem::listen_for_redeem_requests, replace::{listen_for_accept_replace, listen_for_execute_replace, listen_for_replace_requests}, requests::execution::execute_open_requests, service::{CancellationScheduler, IssueCanceller}, ArcRwLock, Event, CHAIN_HEIGHT_POLLING_INTERVAL, tokio_spawn};
 use crate::oracle::listen_for_stellar_messages;
 
 pub const VERSION: &str = env!("CARGO_PKG_VERSION");
@@ -325,42 +313,35 @@ async fn run_and_monitor_tasks(
 			}?;
 			let task = monitor.instrument(task);
 
-			#[cfg(all(tokio_unstable, feature = "allow_debugger"))]
-			let task = tokio::task::Builder::new().name(name).spawn(task).unwrap();
-
-			#[cfg(not(feature = "allow-debugger"))]
-			let task = tokio::spawn(task);
-
+			let task = tokio_spawn(name, task);
 			Some(((name.to_string(), metrics_iterator), task))
 		})
 		.unzip();
 
-	let tokio_metrics = tokio::spawn(wait_or_shutdown(
-		shutdown_tx.clone(),
-		publish_tokio_metrics(metrics_iterators),
-	));
+	let tokio_metrics = tokio_spawn(
+		"tokio metrics publisher",
+		wait_or_shutdown(
+			shutdown_tx.clone(),
+			publish_tokio_metrics(metrics_iterators),
+		)
+	);
 
 	tracing::info!("run_and_monitor_tasks(): running all tasks...");
+
+
 	match join(tokio_metrics, join_all(tasks)).await {
 		(Ok(Err(err)), _) => Err(err),
 		(_, results) => {
-			let res = results.into_iter()
-				.find(|res| matches!(res, Ok(())))
-				.and_then(|res| res.ok());
-
-			if let Some(_) = res {
-				tracing::info!("run_and_monitor_tasks(): join ok");
-				Ok(())
-			} else {
-				tracing::info!("run_and_monitor_tasks(): returned None");
-				Ok(())
+			for result in results {
+				match result {
+					Ok(_) => {}
+					Err(e) => {
+						tracing::error!("run_and_monitor_tasks(): One of the tasks failed: {e:?}");
+						return Err(ServiceError::TokioError(e));
+					}
+				}
 			}
-
-			// results
-			// 	.into_iter()
-			// 	.find(|res| matches!(res, Ok(Err(_))))
-			// 	.and_then(|res| res.ok())
-			// 	.unwrap_or(Ok(()))
+			Ok(())
 		},
 	}
 }
@@ -430,7 +411,7 @@ impl VaultService {
 				.await?;
 			Ok::<_, Error>(())
 		});
-		tokio::task::spawn(err_listener);
+		tokio_spawn("error listener", err_listener);
 
 		Ok(())
 	}
@@ -821,7 +802,7 @@ impl VaultService {
 		let oracle_agent = self.create_oracle_agent(is_public_network, self.shutdown.clone())?;
 		self.agent = Some(oracle_agent.clone());
 
-		// self.execute_open_requests(oracle_agent.clone());
+		self.execute_open_requests(oracle_agent.clone());
 		tracing::info!("proceed to initializing issue sets");
 
 		// issue handling

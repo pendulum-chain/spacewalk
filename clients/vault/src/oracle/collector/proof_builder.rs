@@ -15,6 +15,7 @@ use crate::oracle::{
 	types::StellarMessageSender,
 	ScpArchiveStorage, ScpMessageCollector, TransactionsArchiveStorage,
 };
+use crate::tokio_spawn;
 
 /// Returns true if the SCP messages for a given slot are still recoverable from the overlay
 /// because the slot is not too far back.
@@ -107,7 +108,10 @@ impl ScpMessageCollector {
 
 	/// fetches envelopes from the archive
 	async fn ask_archive_for_envelopes(&self, slot: Slot) {
-		tokio::spawn(self.get_envelopes_from_horizon_archive(slot));
+		tokio_spawn(
+			"envelopes from archive",
+			self.get_envelopes_from_horizon_archive(slot)
+		);
 	}
 
 	/// Returns either a list of ScpEnvelopes
@@ -164,7 +168,10 @@ impl ScpMessageCollector {
 				if check_slot_still_recoverable_from_overlay(self.last_slot_index(), slot) {
 					self.fetch_missing_txset_from_overlay(slot, sender).await;
 				} else {
-					tokio::spawn(self.get_txset_from_horizon_archive(slot));
+					tokio_spawn(
+						"txset from archive",
+						self.get_txset_from_horizon_archive(slot)
+					);
 				}
 
 				tracing::warn!("get_txset(): Proof Building for slot {slot}: no txset found");

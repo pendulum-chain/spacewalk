@@ -14,7 +14,7 @@ use wallet::{
 	types::FilterWith, LedgerTxEnvMap, Slot, SlotTask, SlotTaskStatus, TransactionResponse,
 };
 
-use crate::{oracle::OracleAgent, ArcRwLock, Error, Event};
+use crate::{oracle::OracleAgent, ArcRwLock, Error, Event, tokio_spawn};
 
 fn is_vault(p1: &PublicKey, p2_raw: [u8; 32]) -> bool {
 	return *p1.as_binary() == p2_raw;
@@ -272,15 +272,18 @@ pub async fn process_issues_requests(
 				continue;
 			};
 
-			tokio::spawn(execute_issue(
-				parachain_rpc.clone(),
-				tx_env.clone(),
-				issues.clone(),
-				memos_to_issue_ids.clone(),
-				oracle_agent.clone(),
-				*slot,
-				sender,
-			));
+			tokio_spawn(
+				"execute_issue",
+				execute_issue(
+					parachain_rpc.clone(),
+					tx_env.clone(),
+					issues.clone(),
+					memos_to_issue_ids.clone(),
+					oracle_agent.clone(),
+					*slot,
+					sender,
+				)
+			);
 		}
 
 		// Give 5 seconds interval before starting again.

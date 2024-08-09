@@ -19,6 +19,19 @@ pub struct NodeInfo {
 	pub network_id: NetworkId,
 }
 
+impl NodeInfo {
+	pub(crate) fn new(cfg:&NodeInfoCfg) -> Self {
+		let network: &Network = if cfg.is_pub_net { &PUBLIC_NETWORK } else { &TEST_NETWORK };
+		NodeInfo {
+			ledger_version: cfg.ledger_version,
+			overlay_version: cfg.overlay_version,
+			overlay_min_version: cfg.overlay_min_version,
+			version_str: cfg.version_str.clone(),
+			network_id: *network.get_id(),
+		}
+	}
+}
+
 impl Debug for NodeInfo {
 	fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
 		f.debug_struct("NodeInfo")

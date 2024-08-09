@@ -335,7 +335,7 @@ mod test {
 			cert: new_auth_cert,
 			nonce: [0; 32],
 		};
-		connector.set_remote(RemoteInfo::new(&hello));
+		connector.set_remote(RemoteInfo::new(hello));
 
 		assert!(connector.remote().is_some());
 	}
@@ -359,7 +359,7 @@ mod test {
 			cert: new_auth_cert,
 			nonce: [0; 32],
 		};
-		connector.set_remote(RemoteInfo::new(&hello));
+		connector.set_remote(RemoteInfo::new(hello));
 		assert_eq!(connector.remote().unwrap().sequence(), 0);
 
 		connector.increment_remote_sequence().unwrap();
@@ -387,7 +387,7 @@ mod test {
 			cert: new_auth_cert,
 			nonce: [0; 32],
 		};
-		let remote = RemoteInfo::new(&hello);
+		let remote = RemoteInfo::new(hello);
 		let remote_nonce = remote.nonce();
 		connector.set_remote(remote.clone());
 

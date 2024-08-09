@@ -16,6 +16,7 @@ use crate::oracle::{
 	collector::ScpMessageCollector, errors::Error, types::StellarMessageSender, AddTxSet, Proof,
 };
 use wallet::Slot;
+use crate::tokio_spawn;
 
 pub struct OracleAgent {
 	pub collector: Arc<RwLock<ScpMessageCollector>>,
@@ -24,6 +25,12 @@ pub struct OracleAgent {
 	message_sender: Option<StellarMessageSender>,
 	/// sends an entire Vault shutdown
 	shutdown_sender: ShutdownSender
+}
+
+impl Clone for OracleAgent {
+	fn clone(&self) -> Self {
+		todo!()
+	}
 }
 
 impl OracleAgent {
@@ -152,7 +159,9 @@ pub async fn start_oracle_agent(
 	let (disconnect_signal_sender, mut disconnect_signal_receiver) = mpsc::channel::<()>(2);
 
 	let sender_clone = overlay_conn.sender();
-	tokio::spawn(async move {
+	tokio_spawn(
+		"overlay connection started",
+		async move {
 		loop {
 			tokio::select! {
 				_ = sleep(Duration::from_millis(100)) => {},

@@ -46,6 +46,9 @@ pub enum Error {
 
 	#[error("StdIoError: {0}")]
 	StdIoError(#[from] std::io::Error),
+
+	#[error("Other error: {0}")]
+	Other(String)
 }
 
 impl From<Error> for service::Error<Error> {
