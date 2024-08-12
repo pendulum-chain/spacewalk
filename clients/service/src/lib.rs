@@ -168,10 +168,22 @@ impl<Config: Clone + Send + 'static, F: Fn()> ConnectionManager<Config, F> {
 	}
 }
 
-pub async fn wait_or_shutdown<F, E>(shutdown_tx: ShutdownSender, future2: F) -> Result<(), E>
+pub async fn wait_or_shutdown<F, E>(
+	shutdown_tx: ShutdownSender,
+	future2: F,
+	// a consumer that receives a precheck signal to start a task.
+	precheck_signal: Option<tokio::sync::broadcast::Receiver<()>>
+) -> Result<(), E>
 where
 	F: Future<Output = Result<(), E>>,
 {
+	if let Some(mut precheck_signal) = precheck_signal {
+		if let Err(e) = precheck_signal.recv().await {
+			tracing::error!("Error receiving precheck signal: {:?}", e);
+			return Ok(())
+		}
+	}
+
 	match run_cancelable(shutdown_tx.subscribe(), future2).await {
 		TerminationStatus::Cancelled => {
 			tracing::trace!("Received shutdown signal");

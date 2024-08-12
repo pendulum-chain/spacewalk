@@ -1,4 +1,5 @@
 use std::{sync::Arc, time::Duration};
+use std::future::Future;
 
 use tokio::{
 	sync::{mpsc,  RwLock},
@@ -84,12 +85,15 @@ async fn handle_message(
 	Ok(())
 }
 
-pub async fn listen_for_stellar_messages(
+pub async fn listen_for_stellar_messages<F>(
 	config: StellarOverlayConfig,
 	collector: Arc<RwLock<ScpMessageCollector>>,
 	secret_key_as_string: String,
 	shutdown_sender: ShutdownSender,
-) -> Result<(),service::Error<crate::Error>> {
+	// executes a task that determines whether other tasks should run or not
+	pre_task_execution: Option<(F, tokio::sync::broadcast::Sender<()>)>
+) -> Result<(),service::Error<crate::Error>>
+where F: Future<Output = Result<(), service::Error<crate::Error>>> + Send + 'static {
 	tracing::info!("listen_for_stellar_messages(): Starting connection to Stellar overlay network...");
 
 	let mut overlay_conn = connect_to_stellar_overlay_network(config.clone(), secret_key_as_string)
@@ -98,16 +102,37 @@ pub async fn listen_for_stellar_messages(
 			service::Error::StartOracleAgentError
 		})?;
 
+	if let Some((pre_task_execution, signal_sender)) = pre_task_execution {
+		pre_task_execution.await?;
+
+		if let Err(e) = signal_sender.send(()) {
+			tracing::error!("listen_for_stellar_messages(): Failed to send signal: {e:?}");
+		}
+	}
+
 	// use StellarOverlayConnection's sender to send message to Stellar
 	let sender = overlay_conn.sender();
 
+	// occasionally log a new message received.
+	let mut log_counter:u8 = 0;
 	loop {
+		if log_counter == u8::MAX {
+			log_counter = 0;
+		} else  {
+			log_counter += 1;
+		}
+
 		tokio::select! {
 			_ = sleep(Duration::from_millis(100)) => {},
 			result = overlay_conn.listen() => match result {
 				Ok(None) => {},
 				Ok(Some(msg)) => {
 					let msg_as_str = to_base64_xdr_string(&msg);
+
+					if log_counter % 100 == 0 {
+						tracing::info!("listen_for_stellar_messages(): received message: {msg_as_str}");
+					}
+
 					if let Err(e) = handle_message(msg, collector.clone(), &sender).await {
 						tracing::error!("listen_for_stellar_messages(): failed to handle message: {msg_as_str}: {e:?}");
 					}
@@ -154,10 +179,6 @@ pub async fn start_oracle_agent(
 	let collector_clone = collector.clone();
 
 	let shutdown_sender_clone = shutdown_sender.clone();
-	// disconnect signal sender tells the StellarOverlayConnection to close its TcpStream to Stellar
-	// Node
-	let (disconnect_signal_sender, mut disconnect_signal_receiver) = mpsc::channel::<()>(2);
-
 	let sender_clone = overlay_conn.sender();
 	tokio_spawn(
 		"overlay connection started",
@@ -165,13 +186,6 @@ pub async fn start_oracle_agent(
 		loop {
 			tokio::select! {
 				_ = sleep(Duration::from_millis(100)) => {},
-				// if a disconnect signal was sent, disconnect from Stellar.
-				result = disconnect_signal_receiver.recv() => {
-					if result.is_none() {
-						tracing::info!("start_oracle_agent(): disconnect overlay...");
-						break
-					}
-				},
 				result = overlay_conn.listen() => match result {
 					Ok(Some(msg)) => {
 						let msg_as_str = to_base64_xdr_string(&msg);
