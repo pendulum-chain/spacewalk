@@ -61,6 +61,7 @@ pub(crate) async fn poll_messages_from_stellar(
 					.unwrap_or_else(|_| format!("{stellar_msg_as_base64_xdr:?}"))
 				);
 				}
+				tokio::task::yield_now().await;
 			},
 			Ok(None) => {},
 			Err(e) => {

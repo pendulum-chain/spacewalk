@@ -5,6 +5,7 @@ use tokio::{
 	sync::{mpsc,  RwLock},
 	time::{sleep, timeout},
 };
+use tokio::time::Instant;
 
 use runtime::ShutdownSender;
 use runtime::stellar::SecretKey;
@@ -113,39 +114,34 @@ where F: Future<Output = Result<(), service::Error<crate::Error>>> + Send + 'sta
 	// use StellarOverlayConnection's sender to send message to Stellar
 	let sender = overlay_conn.sender();
 
-	// occasionally log a new message received.
-	let mut log_counter:u8 = 0;
+	// log a new message received, every 2 minutes.
+	let interval = Duration::from_secs(120);
+	let mut next_time = Instant::now() + interval;
 	loop {
-		if log_counter == u8::MAX {
-			log_counter = 0;
-		} else  {
-			log_counter += 1;
-		}
-
-		tokio::select! {
-			_ = sleep(Duration::from_millis(100)) => {},
-			result = overlay_conn.listen() => match result {
-				Ok(None) => {},
-				Ok(Some(msg)) => {
-					let msg_as_str = to_base64_xdr_string(&msg);
-
-					if log_counter % 100 == 0 {
-						tracing::info!("listen_for_stellar_messages(): received message: {msg_as_str}");
-					}
-
-					if let Err(e) = handle_message(msg, collector.clone(), &sender).await {
-						tracing::error!("listen_for_stellar_messages(): failed to handle message: {msg_as_str}: {e:?}");
-					}
+		match overlay_conn.listen().await {
+			Ok(None) => {
+				tracing::info!("listen_for_stellar_messages(): yielding to outside tasks");
+				tokio::task::yield_now().await;
+			},
+			Ok(Some(msg)) => {
+				let msg_as_str = to_base64_xdr_string(&msg);
+				if Instant::now() >= next_time {
+					tracing::info!("listen_for_stellar_messages(): received message: {msg_as_str}");
+					next_time += interval;
 				}
-				// connection got lost
-				Err(e) => {
-					tracing::error!("listen_for_stellar_messages(): encounter error in overlay: {e:?}");
 
-					if let Err(e) = shutdown_sender.send(()) {
-						tracing::error!("listen_for_stellar_messages(): Failed to send shutdown signal in thread: {e:?}");
-					}
-					break
+				if let Err(e) = handle_message(msg, collector.clone(), &sender).await {
+					tracing::error!("listen_for_stellar_messages(): failed to handle message: {msg_as_str}: {e:?}");
 				}
+			}
+			// connection got lost
+			Err(e) => {
+				tracing::error!("listen_for_stellar_messages(): encounter error in overlay: {e:?}");
+
+				if let Err(e) = shutdown_sender.send(()) {
+					tracing::error!("listen_for_stellar_messages(): Failed to send shutdown signal in thread: {e:?}");
+				}
+				break
 			}
 		}
 	}

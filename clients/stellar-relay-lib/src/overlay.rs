@@ -47,7 +47,7 @@ impl StellarOverlayConnection {
 
 		#[cfg(tokio_unstable)]
 		tokio::task::Builder::new()
-			.name("poll stellar messages")
+			.name("Poll Stellar Messages")
 			.spawn(poll_messages_from_stellar(
 				connector,
 				send_to_user_sender,
@@ -75,8 +75,7 @@ impl StellarOverlayConnection {
 			return Err(Error::Disconnected)
 		}
 
-		timeout(Duration::from_secs(5), self.receiver.recv()).await
-			.map_err(|_| Error::Timeout)
+		Ok(self.receiver.recv().await)
 	}
 
 	pub fn is_alive(&mut self) -> bool {
