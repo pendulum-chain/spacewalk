@@ -108,7 +108,7 @@ pub async fn listen_for_stellar_messages(
 	let sender = overlay_conn.sender();
 
 	// log a new message received, every 1 minute.
-	let interval = Duration::from_secs(5);
+	let interval = Duration::from_secs(60);
 	let mut next_time = Instant::now() + interval;
 	loop {
 		match overlay_conn.listen().await {
