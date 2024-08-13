@@ -1,16 +1,11 @@
-use crate::{
-	error::Error,
-	oracle::OracleAgent,
-	requests::{
-		helper::{
-			get_all_transactions_of_wallet_async, get_request_for_stellar_tx,
-			retrieve_open_redeem_replace_requests_async, PayAndExecuteExt,
-		},
-		structs::Request,
-		PayAndExecute,
+use crate::{ArcRwLock, error::Error, oracle::OracleAgent, requests::{
+	helper::{
+		get_all_transactions_of_wallet_async, get_request_for_stellar_tx,
+		retrieve_open_redeem_replace_requests_async, PayAndExecuteExt,
 	},
-	VaultIdManager, YIELD_RATE,
-};
+	structs::Request,
+	PayAndExecute,
+}, VaultIdManager, YIELD_RATE};
 use async_trait::async_trait;
 use governor::{
 	clock::{Clock, ReasonablyRealtime},
@@ -41,10 +36,10 @@ const MAX_EXECUTION_RETRIES: u32 = 3;
 /// * `rate_limiter` - a rate limiter
 async fn spawn_tasks_to_execute_open_requests_async<S, C, MW>(
 	requests: &mut HashMap<TextMemo, Request>,
-	wallet: Arc<RwLock<StellarWallet>>,
+	wallet: ArcRwLock<StellarWallet>,
 	shutdown_tx: ShutdownSender,
 	parachain_rpc: &SpacewalkParachain,
-	oracle_agent: Arc<OracleAgent>,
+	oracle_agent: ArcRwLock<OracleAgent>,
 	rate_limiter: Arc<RateLimiter<NotKeyed, S, C, MW>>,
 ) where
 	S: DirectStateStore,
@@ -96,7 +91,7 @@ fn spawn_task_to_execute_open_request(
 	transaction: TransactionResponse,
 	shutdown_tx: ShutdownSender,
 	parachain_rpc: SpacewalkParachain,
-	oracle_agent: Arc<OracleAgent>,
+	oracle_agent: ArcRwLock<OracleAgent>,
 ) -> TextMemo {
 	let hash_as_memo = derive_shortened_request_id(&request.hash_inner());
 
@@ -147,7 +142,7 @@ async fn execute_open_request_async(
 	tx_envelope: TransactionEnvelope,
 	slot: Slot,
 	parachain_rpc: SpacewalkParachain,
-	oracle_agent: Arc<OracleAgent>,
+	oracle_agent: ArcRwLock<OracleAgent>,
 ) {
 	let mut retry_count = 0; // A counter for every execution retry
 
@@ -156,7 +151,7 @@ async fn execute_open_request_async(
 			tracing::info!("Performing retry #{retry_count} out of {MAX_EXECUTION_RETRIES} retries for {:?} request #{}",request.request_type(),request.hash());
 		}
 
-		match oracle_agent.get_proof(slot).await {
+		match oracle_agent.read().await.get_proof(slot).await {
 			Ok(proof) => {
 				let Err(e) =
 					request.execute(parachain_rpc.clone(), tx_envelope.clone(), proof).await
@@ -211,7 +206,7 @@ where
 		vault_id_manager: VaultIdManager,
 		shutdown_tx: ShutdownSender,
 		parachain_rpc: &SpacewalkParachain,
-		oracle_agent: Arc<OracleAgent>,
+		oracle_agent: ArcRwLock<OracleAgent>,
 		rate_limiter: Arc<RateLimiter<NotKeyed, S, C, MW>>,
 	) {
 		for (_, request) in requests {
@@ -236,7 +231,7 @@ where
 		request: Request,
 		vault_id_manager: VaultIdManager,
 		parachain_rpc: SpacewalkParachain,
-		oracle_agent: Arc<OracleAgent>,
+		oracle_agent: ArcRwLock<OracleAgent>,
 		rate_limiter: Arc<RateLimiter<NotKeyed, S, C, MW>>,
 	) {
 		let Some(vault) = vault_id_manager.get_vault(request.vault_id()).await else {
@@ -288,7 +283,7 @@ pub async fn execute_open_requests(
 	parachain_rpc: SpacewalkParachain,
 	vault_id_manager: VaultIdManager,
 	wallet: Arc<RwLock<StellarWallet>>,
-	oracle_agent: Arc<OracleAgent>,
+	oracle_agent: ArcRwLock<OracleAgent>,
 	payment_margin: Duration,
 	precheck_signal: tokio::sync::broadcast::Sender<()>
 ) -> Result<(), ServiceError<Error>> {
@@ -305,7 +300,7 @@ pub async fn execute_open_requests(
 
 	let rate_limiter = Arc::new(RateLimiter::direct(YIELD_RATE));
 
-	while !oracle_agent.is_proof_building_ready().await {
+	while !oracle_agent.read().await.is_proof_building_ready().await {
 		tracing::debug!("execute_open_requests(): agent is not yet ready. Waiting...");
 	}
 

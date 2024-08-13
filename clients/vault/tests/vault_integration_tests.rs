@@ -24,7 +24,7 @@ mod helper;
 use helper::*;
 use primitives::DecimalsLookup;
 use subxt::utils::AccountId32 as AccountId;
-use vault::oracle::{random_stellar_relay_config};
+use vault::oracle::{random_stellar_relay_config, start_oracle_agent};
 use wallet::keys::get_source_secret_key_from_env;
 
 #[tokio::test(flavor = "multi_thread")]
@@ -682,12 +682,15 @@ async fn test_issue_execution_succeeds_from_archive_on_network(is_public_network
 			// Create new oracle agent with the same configuration as the previous one
 			let oracle_agent =
 				start_oracle_agent(stellar_config.clone(), vault_stellar_secret, shutdown_tx)
-					.await
-					.expect("failed to start agent");
+					.await;
 			let oracle_agent = Arc::new(oracle_agent);
 
+			while !oracle_agent.read().await.is_proof_building_ready().await{
+				sleep(Duration::from_secs(1)).await;
+			}
+
 			// Loop pending proofs until it is ready
-			let proof = oracle_agent.get_proof(slot).await.expect("Proof should be available");
+			let proof = oracle_agent.read().await.get_proof(slot).await.expect("Proof should be available");
 			let tx_envelope_xdr_encoded = transaction_response.envelope_xdr;
 			let (envelopes_xdr_encoded, tx_set_xdr_encoded) = proof.encode();
 
@@ -774,7 +777,7 @@ async fn test_issue_overpayment_succeeds() {
 			let slot = transaction_response.ledger as u64;
 
 			// Loop pending proofs until it is ready
-			let proof = oracle_agent.get_proof(slot).await.expect("Proof should be available");
+			let proof = oracle_agent.read().await.get_proof(slot).await.expect("Proof should be available");
 			let tx_envelope_xdr_encoded = transaction_response.envelope_xdr;
 			let (envelopes_xdr_encoded, tx_set_xdr_encoded) = proof.encode();
 

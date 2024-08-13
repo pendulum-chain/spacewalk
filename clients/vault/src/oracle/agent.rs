@@ -1,14 +1,12 @@
 use std::{sync::Arc, time::Duration};
-use std::future::Future;
 
 use tokio::{
-	sync::{mpsc,  RwLock},
+	sync::RwLock,
 	time::{sleep, timeout},
 };
 use tokio::time::Instant;
 
 use runtime::ShutdownSender;
-use runtime::stellar::SecretKey;
 use stellar_relay_lib::{
 	connect_to_stellar_overlay_network, helper::to_base64_xdr_string, sdk::types::StellarMessage,
 	StellarOverlayConfig,
@@ -18,7 +16,7 @@ use crate::oracle::{
 	collector::ScpMessageCollector, errors::Error, types::StellarMessageSender, AddTxSet, Proof,
 };
 use wallet::Slot;
-use crate::tokio_spawn;
+use crate::ArcRwLock;
 
 pub struct OracleAgent {
 	pub collector: Arc<RwLock<ScpMessageCollector>>,
@@ -86,7 +84,7 @@ async fn handle_message(
 
 pub async fn listen_for_stellar_messages(
 	config: StellarOverlayConfig,
-	collector: Arc<RwLock<ScpMessageCollector>>,
+	oracle_agent:ArcRwLock<OracleAgent>,
 	secret_key_as_string: String,
 	shutdown_sender: ShutdownSender,
 ) -> Result<(),service::Error<crate::Error>> {
@@ -100,11 +98,16 @@ pub async fn listen_for_stellar_messages(
 
 	// use StellarOverlayConnection's sender to send message to Stellar
 	let sender = overlay_conn.sender();
+	{
+		oracle_agent.write().await.message_sender = Some(sender.clone());
+	};
 
 	// log a new message received, every 1 minute.
 	let interval = Duration::from_secs(60);
 	let mut next_time = Instant::now() + interval;
 	loop {
+		let collector = oracle_agent.read().await.collector.clone();
+
 		match overlay_conn.listen().await {
 			Ok(None) => {},
 			Ok(Some(msg)) => {
@@ -135,18 +138,18 @@ pub async fn listen_for_stellar_messages(
 
 	Ok(())
 }
-#[cfg(test)]
+#[cfg(any(test, feature = "integration"))]
 pub async fn start_oracle_agent(
 	cfg: StellarOverlayConfig,
 	vault_stellar_secret: String,
 	shutdown_sender: ShutdownSender
-) -> OracleAgent {
-	let oracle_agent = OracleAgent::new(&cfg, shutdown_sender.clone());
+) -> ArcRwLock<OracleAgent> {
+	let oracle_agent = Arc::new(RwLock::new(OracleAgent::new(&cfg, shutdown_sender.clone())));
 
 	tokio::spawn(
 		listen_for_stellar_messages(
 			cfg,
-			oracle_agent.collector.clone(),
+			oracle_agent.clone(),
 			vault_stellar_secret,
 			shutdown_sender
 		)
@@ -228,16 +231,16 @@ mod tests {
 		)
 		.await;
 
-		let mut latest_slot = 0;
-		while !agent.is_proof_building_ready().await{
+		while !agent.read().await.is_proof_building_ready().await{
 			sleep(Duration::from_secs(1)).await;
 		}
-		latest_slot = agent.collector.read().await.last_slot_index();
+
+		let latest_slot = agent.read().await.collector.read().await.last_slot_index();
 
 		// let's wait for envelopes and txset to be available for creating a proof
 		sleep(Duration::from_secs(5)).await;
 
-		let proof_result = agent.get_proof(latest_slot).await;
+		let proof_result = agent.read().await.get_proof(latest_slot).await;
 		assert!(proof_result.is_ok(), "Failed to get proof for slot: {}", latest_slot);
 	}
 
@@ -259,10 +262,13 @@ mod tests {
 		)
 		.await;
 
-		sleep(Duration::from_secs(5)).await;
+		while !agent.read().await.is_proof_building_ready().await{
+			sleep(Duration::from_secs(1)).await;
+		}
+
 		// This slot should be archived on the public network
 		let target_slot = 44041116;
-		let proof = agent.get_proof(target_slot).await.expect("should return a proof");
+		let proof = agent.read().await.get_proof(target_slot).await.expect("should return a proof");
 
 		assert_eq!(proof.slot(), 44041116);
 
@@ -299,10 +305,13 @@ mod tests {
 		)
 		.await;
 
-		sleep(Duration::from_secs(5)).await;
+		while !agent.read().await.is_proof_building_ready().await{
+			sleep(Duration::from_secs(1)).await;
+		}
+
 		// This slot should be archived on the public network
 		let target_slot = 44041116;
-		let proof = agent.get_proof(target_slot).await.expect("should return a proof");
+		let proof = agent.read().await.get_proof(target_slot).await.expect("should return a proof");
 
 		assert_eq!(proof.slot(), 44041116);
 
@@ -332,9 +341,12 @@ mod tests {
 
 		// This slot should be archived on the public network
 		let target_slot = 44041116;
-		tracing::info!("let's sleep for 3 seconds,to get the network up and running");
-		sleep(Duration::from_secs(3)).await;
-		let proof_result = agent.get_proof(target_slot).await;
+
+		while !agent.read().await.is_proof_building_ready().await{
+			sleep(Duration::from_secs(1)).await;
+		}
+
+		let proof_result = agent.read().await.get_proof(target_slot).await;
 
 		assert!(matches!(proof_result, Err(Error::ProofTimeout(_))));
 

@@ -2,6 +2,7 @@ use std::{
 	net::{Ipv4Addr, SocketAddr},
 	sync::Arc,
 };
+use std::time::Duration;
 
 use clap::Parser;
 use futures::Future;
@@ -149,7 +150,10 @@ async fn start() -> Result<(), ServiceError<Error>> {
 #[tokio::main]
 async fn main() {
 	#[cfg(feature = "allow-debugger")]
-	console_subscriber::init();
+	console_subscriber::ConsoleLayer::builder().with_default_env()
+		.publish_interval(Duration::from_secs(2))
+		.event_buffer_capacity(1024*500)
+		.init();
 
 	let exit_code = if let Err(err) = start().await {
 		tracing::error!("Exiting: {}", err);

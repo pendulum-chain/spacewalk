@@ -115,7 +115,7 @@ pub async fn test_with_vault<F, R>(
 		SubxtClient,
 		ArcRwLock<StellarWallet>,
 		ArcRwLock<StellarWallet>,
-		Arc<OracleAgent>,
+		ArcRwLock<OracleAgent>,
 		VaultId,
 		SpacewalkParachain,
 	) -> F,
@@ -147,8 +147,6 @@ where
 	let oracle_agent = start_oracle_agent(
 		stellar_config,vault_stellar_secret,shutdown_tx
 	).await;
-
-	let oracle_agent = Arc::new(oracle_agent);
 
 	execute(client, vault_wallet, user_wallet, oracle_agent, vault_id, vault_provider).await
 }

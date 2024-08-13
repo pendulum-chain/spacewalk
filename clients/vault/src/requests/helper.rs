@@ -3,7 +3,7 @@ use futures::try_join;
 use std::{collections::HashMap, sync::Arc, time::Duration};
 use tokio::sync::RwLock;
 
-use crate::{requests::structs::Request, Error, VaultIdManager};
+use crate::{requests::structs::Request, Error, VaultIdManager, ArcRwLock};
 
 use crate::oracle::OracleAgent;
 use primitives::{derive_shortened_request_id, TextMemo, TransactionEnvelopeExt};
@@ -32,7 +32,7 @@ pub(crate) trait PayAndExecuteExt<R> {
 		vault_id_manager: VaultIdManager,
 		shutdown_tx: ShutdownSender,
 		parachain_rpc: &SpacewalkParachain,
-		oracle_agent: Arc<OracleAgent>,
+		oracle_agent: ArcRwLock<OracleAgent>,
 		rate_limiter: Arc<R>,
 	);
 
@@ -52,7 +52,7 @@ pub(crate) trait PayAndExecuteExt<R> {
 		request: Request,
 		vault_id_manager: VaultIdManager,
 		parachain_rpc: SpacewalkParachain,
-		oracle_agent: Arc<OracleAgent>,
+		oracle_agent: ArcRwLock<OracleAgent>,
 		rate_limiter: Arc<R>,
 	);
 }

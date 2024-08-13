@@ -3,10 +3,7 @@ use std::{sync::Arc, time::Duration};
 use futures::{channel::mpsc::Sender, future::try_join3, SinkExt};
 use tokio::sync::RwLock;
 
-use crate::{
-	cancellation::Event, error::Error, oracle::OracleAgent, requests::Request,
-	system::VaultIdManager,
-};
+use crate::{ArcRwLock, cancellation::Event, error::Error, oracle::OracleAgent, requests::Request, system::VaultIdManager};
 use runtime::{
 	AcceptReplaceEvent, CollateralBalancesPallet, ExecuteReplaceEvent, PrettyPrint, ReplacePallet,
 	RequestReplaceEvent, ShutdownSender, SpacewalkParachain, UtilFuncs, VaultId,
@@ -26,7 +23,7 @@ pub async fn listen_for_accept_replace(
 	parachain_rpc: SpacewalkParachain,
 	vault_id_manager: VaultIdManager,
 	payment_margin: Duration,
-	oracle_agent: Arc<OracleAgent>,
+	oracle_agent: ArcRwLock<OracleAgent>,
 ) -> Result<(), ServiceError<Error>> {
 	tracing::info!("listen_for_accept_replace(): started");
 	let parachain_rpc = &parachain_rpc;

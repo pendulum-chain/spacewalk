@@ -266,7 +266,7 @@ pub struct VaultService {
 	shutdown: ShutdownSender,
 	vault_id_manager: VaultIdManager,
 	secret_key: String,
-	agent: Option<Arc<OracleAgent>>,
+	agent: Option<ArcRwLock<OracleAgent>>,
 }
 
 #[async_trait]
@@ -447,7 +447,7 @@ impl VaultService {
 		&self,
 		is_public_network: bool,
 		shutdown_sender: ShutdownSender,
-	) -> Result<Arc<OracleAgent>, ServiceError<Error>> {
+	) -> Result<ArcRwLock<OracleAgent>, ServiceError<Error>> {
 		let stellar_overlay_cfg = self.stellar_overlay_cfg()?;
 
 		// check if both the config file and the wallet are the same.
@@ -455,7 +455,7 @@ impl VaultService {
 			return Err(ServiceError::IncompatibleNetwork);
 		}
 
-		Ok(Arc::new(OracleAgent::new(&stellar_overlay_cfg,shutdown_sender)))
+		Ok(Arc::new(RwLock::new(OracleAgent::new(&stellar_overlay_cfg,shutdown_sender))))
 	}
 
 	fn create_issue_tasks(
@@ -465,7 +465,7 @@ impl VaultService {
 		startup_height: BlockNumber,
 		account_id: AccountId,
 		vault_public_key: PublicKey,
-		oracle_agent: Arc<OracleAgent>,
+		oracle_agent: ArcRwLock<OracleAgent>,
 		issue_map: ArcRwLock<IssueRequestsMap>,
 		ledger_env_map: ArcRwLock<LedgerTxEnvMap>,
 		memos_to_issue_ids: ArcRwLock<IssueIdLookup>,
@@ -528,7 +528,7 @@ impl VaultService {
 		replace_event_rx: mpscReceiver<Event>,
 		startup_height: BlockNumber,
 		account_id: AccountId,
-		oracle_agent: Arc<OracleAgent>,
+		oracle_agent: ArcRwLock<OracleAgent>,
 	) -> Vec<(&str, ServiceTask)> {
 		vec![
 			(
@@ -642,7 +642,7 @@ impl VaultService {
 		account_id: AccountId,
 		is_public_network: bool,
 		vault_public_key: PublicKey,
-		oracle_agent: Arc<OracleAgent>,
+		oracle_agent: ArcRwLock<OracleAgent>,
 		issue_map: ArcRwLock<IssueRequestsMap>,
 		ledger_env_map: ArcRwLock<LedgerTxEnvMap>,
 		memos_to_issue_ids: ArcRwLock<IssueIdLookup>,
@@ -829,7 +829,7 @@ impl VaultService {
 			run(
 				listen_for_stellar_messages(
 					self.stellar_overlay_cfg()?,
-					oracle_agent.collector.clone(),
+					oracle_agent.clone(),
 					self.secret_key(),
 					self.shutdown.clone()
 				)
