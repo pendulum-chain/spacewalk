@@ -223,11 +223,10 @@ mod tests {
 		// We use a random secret key to avoid conflicts with other tests.
 		let agent = start_oracle_agent(
 			specific_stellar_relay_config(true, 0),
-			&get_random_secret_key(),
+			get_random_secret_key(),
 			shutdown_sender,
 		)
-		.await
-		.expect("Failed to start agent");
+		.await;
 
 		let mut latest_slot = 0;
 		while !agent.is_proof_building_ready().await{
@@ -258,8 +257,7 @@ mod tests {
 			get_source_secret_key_from_env(is_public_network),
 			shutdown_sender,
 		)
-		.await
-		.expect("Failed to start agent");
+		.await;
 
 		sleep(Duration::from_secs(5)).await;
 		// This slot should be archived on the public network
@@ -299,8 +297,7 @@ mod tests {
 			get_source_secret_key_from_env(is_public_network),
 			shutdown_sender,
 		)
-		.await
-		.expect("Failed to start agent");
+		.await;
 
 		sleep(Duration::from_secs(5)).await;
 		// This slot should be archived on the public network
@@ -331,8 +328,7 @@ mod tests {
 			get_source_secret_key_from_env(is_public_network),
 			shutdown,
 		)
-		.await
-		.expect("Failed to start agent");
+		.await;
 
 		// This slot should be archived on the public network
 		let target_slot = 44041116;

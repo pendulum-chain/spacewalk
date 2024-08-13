@@ -28,6 +28,7 @@ pub async fn listen_for_accept_replace(
 	payment_margin: Duration,
 	oracle_agent: Arc<OracleAgent>,
 ) -> Result<(), ServiceError<Error>> {
+	tracing::info!("listen_for_accept_replace(): started");
 	let parachain_rpc = &parachain_rpc;
 	let vault_id_manager = &vault_id_manager;
 	let shutdown_tx = &shutdown_tx;
@@ -96,6 +97,8 @@ pub async fn listen_for_replace_requests(
 	event_channel: Sender<Event>,
 	accept_replace_requests: bool,
 ) -> Result<(), ServiceError<Error>> {
+	tracing::info!("listen_for_replace_requests(): started");
+
 	let parachain_rpc = &parachain_rpc;
 	let vault_id_manager = &vault_id_manager;
 	let event_channel = &event_channel;

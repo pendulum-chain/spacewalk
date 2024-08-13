@@ -43,12 +43,20 @@ pub(crate) async fn poll_messages_from_stellar(
 		}
 
 		// check for messages from Stellar Node.
-		let xdr = match read_message_from_stellar(&mut connector).await {
-			Err(e) => {
+		// if reading took too much time, flag it as "disconnected"
+		let xdr = match timeout(
+			Duration::from_secs(READ_TIMEOUT_IN_SECS),
+			read_message_from_stellar(&mut connector)
+		).await {
+			Ok(Ok(xdr)) => xdr,
+			Ok(Err(e)) => {
 				error!("poll_messages_from_stellar(): {e:?}");
 				break
 			},
-			Ok(xdr) => xdr,
+			Err(_) => {
+				error!("poll_messages_from_stellar(): timed out");
+				break
+			}
 		};
 
 		match connector.process_raw_message(xdr).await {
@@ -91,14 +99,10 @@ async fn read_message_from_stellar(connector: &mut Connector) -> Result<Xdr, Err
 		//  1. the length of the next stellar message
 		//  2. the remaining bytes of the previous stellar message
 		// return Timeout error if reading time has elapsed.
-		match timeout(
-			Duration::from_secs(READ_TIMEOUT_IN_SECS),
-			connector.tcp_stream.read(&mut buff_for_reading),
-		)
-		.await
-		{
-			Ok(Ok(0)) => continue,
-			Ok(_) if lack_bytes_from_prev == 0 => {
+		match connector.tcp_stream.read(&mut buff_for_reading)
+		.await {
+			Ok(0) => continue,
+			Ok(_) if lack_bytes_from_prev == 0 =>  {
 				// if there are no more bytes lacking from the previous message,
 				// then check the size of next stellar message.
 				let expect_msg_len = get_xdr_message_length(&buff_for_reading);
@@ -128,8 +132,8 @@ async fn read_message_from_stellar(connector: &mut Connector) -> Result<Xdr, Err
 						return Err(e)
 					},
 				}
-			},
-			Ok(Ok(size)) => {
+			}
+			Ok(size) => {
 				// The next few bytes was read. Add it to the readbuf.
 				lack_bytes_from_prev = lack_bytes_from_prev.saturating_sub(size);
 				readbuf.append(&mut buff_for_reading);
@@ -147,15 +151,11 @@ async fn read_message_from_stellar(connector: &mut Connector) -> Result<Xdr, Err
 						return Err(e)
 					},
 				}
-			},
-			Ok(Err(e)) => {
+			}
+			Err(e) => {
 				trace!("read_message_from_stellar(): ERROR reading messages: {e:?}");
 				return Err(Error::ReadFailed(e.to_string()))
-			},
-			Err(_) => {
-				trace!("read_message_from_stellar(): reading time elapsed.");
-				return Err(Error::Timeout)
-			},
+			}
 		}
 	}
 }

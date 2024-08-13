@@ -45,30 +45,6 @@ impl From<StellarSdkError> for Error {
 		Error::StellarSdkError(e)
 	}
 }
-//
-// impl From<std::io::Error> for Error {
-// 	fn from(e: std::io::Error) -> Self {
-// 		Error::StdIoError(e)
-// 	}
-// }
-//
-// impl From<bincode::Error> for Error {
-// 	fn from(e: bincode::Error) -> Self {
-// 		Error::SerdeError(e)
-// 	}
-// }
-//
-// impl From<TryFromSliceError> for Error {
-// 	fn from(e: TryFromSliceError) -> Self {
-// 		Error::TryFromSliceError(e)
-// 	}
-// }
-//
-// impl From<stellar_relay_lib::Error> for Error {
-// 	fn from(e: stellar_relay_lib::Error) -> Self {
-// 		Error::ConnError(e)
-// 	}
-// }
 
 impl<T> From<mpsc::error::SendError<T>> for Error {
 	fn from(e: mpsc::error::SendError<T>) -> Self {
