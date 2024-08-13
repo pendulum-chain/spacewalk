@@ -21,10 +21,10 @@ use stellar_relay_lib::StellarOverlayConfig;
 use subxt::utils::AccountId32 as AccountId;
 use tokio::sync::RwLock;
 use vault::{
-	oracle::{random_stellar_relay_config, start_oracle_agent, OracleAgent},
+	oracle::{random_stellar_relay_config, OracleAgent},
 	ArcRwLock,
 };
-use vault::oracle::listen_for_stellar_messages;
+use vault::oracle::{start_oracle_agent};
 use wallet::{
 	keys::{get_dest_secret_key_from_env, get_source_secret_key_from_env},
 	StellarWallet,
@@ -144,20 +144,11 @@ where
 	let vault_stellar_secret = get_source_secret_key_from_env(is_public_network);
 
 	let shutdown_tx = ShutdownSender::new();
-	let oracle_agent =
-		start_oracle_agent(stellar_config.clone(), &vault_stellar_secret, shutdown_tx.clone())
-			.await
-			.expect("failed to start agent");
-	let oracle_agent = Arc::new(oracle_agent);
+	let oracle_agent = start_oracle_agent(
+		stellar_config,vault_stellar_secret,shutdown_tx
+	).await;
 
-	tokio::spawn(
-		listen_for_stellar_messages(
-			stellar_config,
-			oracle_agent.collector.clone(),
-			vault_stellar_secret,
-			shutdown_tx
-		)
-	);
+	let oracle_agent = Arc::new(oracle_agent);
 
 	execute(client, vault_wallet, user_wallet, oracle_agent, vault_id, vault_provider).await
 }

@@ -29,15 +29,9 @@ pub struct OracleAgent {
 	shutdown_sender: ShutdownSender
 }
 
-impl Clone for OracleAgent {
-	fn clone(&self) -> Self {
-		todo!()
-	}
-}
-
 impl OracleAgent {
 	pub fn new(
-		config: StellarOverlayConfig,
+		config: &StellarOverlayConfig,
 		shutdown_sender: ShutdownSender
 	) -> Self {
 		let is_public_network = config.is_public_network();
@@ -141,69 +135,25 @@ pub async fn listen_for_stellar_messages(
 
 	Ok(())
 }
-
-/// Start the connection to the Stellar Node.
-/// Returns an `OracleAgent` that will handle incoming messages from Stellar Node,
-/// and to send messages to Stellar Node
+#[cfg(test)]
 pub async fn start_oracle_agent(
-	config: StellarOverlayConfig,
-	secret_key: &str,
-	shutdown_sender: ShutdownSender,
-) -> Result<OracleAgent, Error> {
-	let is_public_network = config.is_public_network();
+	cfg: StellarOverlayConfig,
+	vault_stellar_secret: String,
+	shutdown_sender: ShutdownSender
+) -> OracleAgent {
+	let oracle_agent = OracleAgent::new(&cfg, shutdown_sender.clone());
 
-	tracing::info!("start_oracle_agent(): Starting connection to Stellar overlay network...");
+	tokio::spawn(
+		listen_for_stellar_messages(
+			cfg,
+			oracle_agent.collector.clone(),
+			vault_stellar_secret,
+			shutdown_sender
+		)
+	);
 
-	let mut overlay_conn = connect_to_stellar_overlay_network(config.clone(), secret_key.to_string()).await?;
-	// use StellarOverlayConnection's sender to send message to Stellar
-	let sender = overlay_conn.sender();
+	oracle_agent
 
-	let collector = Arc::new(RwLock::new(ScpMessageCollector::new(
-		config.is_public_network(),
-		config.stellar_history_archive_urls(),
-	)));
-	let collector_clone = collector.clone();
-
-	let shutdown_sender_clone = shutdown_sender.clone();
-	let sender_clone = overlay_conn.sender();
-	tokio_spawn(
-		"overlay connection started",
-		async move {
-		loop {
-			tokio::select! {
-				_ = sleep(Duration::from_millis(100)) => {},
-				result = overlay_conn.listen() => match result {
-					Ok(Some(msg)) => {
-						let msg_as_str = to_base64_xdr_string(&msg);
-						if let Err(e) = handle_message(msg, collector_clone.clone(), &sender_clone).await {
-							tracing::error!("start_oracle_agent(): failed to handle message: {msg_as_str}: {e:?}");
-						}
-					},
-					Ok(None) => {},
-					// connection got lost
-					Err(e) => {
-						tracing::error!("start_oracle_agent(): encounter error in overlay: {e:?}");
-
-						if let Err(e) = shutdown_sender_clone.send(()) {
-							tracing::error!("start_oracle_agent(): Failed to send shutdown signal in thread: {e:?}");
-						}
-						break
-					},
-				},
-			}
-		}
-
-		tracing::info!("start_oracle_agent(): shutting down overlay connection");
-		// shutdown the overlay connection
-		overlay_conn.stop();
-	});
-
-	Ok(OracleAgent {
-		collector,
-		is_public_network,
-		message_sender: Some(sender),
-		shutdown_sender
-	})
 }
 
 impl OracleAgent {
@@ -305,7 +255,7 @@ mod tests {
 		let shutdown_sender = ShutdownSender::new();
 		let agent = start_oracle_agent(
 			specific_stellar_relay_config(is_public_network, 1),
-			&get_source_secret_key_from_env(is_public_network),
+			get_source_secret_key_from_env(is_public_network),
 			shutdown_sender,
 		)
 		.await
@@ -346,7 +296,7 @@ mod tests {
 		let shutdown_sender = ShutdownSender::new();
 		let agent = start_oracle_agent(
 			modified_config,
-			&get_source_secret_key_from_env(is_public_network),
+			get_source_secret_key_from_env(is_public_network),
 			shutdown_sender,
 		)
 		.await
@@ -378,7 +328,7 @@ mod tests {
 		let shutdown = ShutdownSender::new();
 		let agent = start_oracle_agent(
 			modified_config,
-			&get_source_secret_key_from_env(is_public_network),
+			get_source_secret_key_from_env(is_public_network),
 			shutdown,
 		)
 		.await

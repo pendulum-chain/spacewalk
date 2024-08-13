@@ -455,7 +455,7 @@ impl VaultService {
 			return Err(ServiceError::IncompatibleNetwork);
 		}
 
-		Ok(Arc::new(OracleAgent::new(stellar_overlay_cfg,shutdown_sender)))
+		Ok(Arc::new(OracleAgent::new(&stellar_overlay_cfg,shutdown_sender)))
 	}
 
 	fn create_issue_tasks(
