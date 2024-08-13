@@ -1,5 +1,3 @@
-use std::time::Duration;
-use async_std::future::timeout;
 use substrate_stellar_sdk::types::{StellarMessage};
 use tokio::sync::{
 	mpsc,

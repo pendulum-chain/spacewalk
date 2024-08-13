@@ -54,6 +54,10 @@ impl OracleAgent {
 			shutdown_sender,
 		}
 	}
+
+	pub async fn is_proof_building_ready(&self) -> bool {
+		self.collector.read().await.last_slot_index() > 0
+	}
 }
 
 /// listens to data to collect the scp messages and txsets.
@@ -86,15 +90,12 @@ async fn handle_message(
 	Ok(())
 }
 
-pub async fn listen_for_stellar_messages<F>(
+pub async fn listen_for_stellar_messages(
 	config: StellarOverlayConfig,
 	collector: Arc<RwLock<ScpMessageCollector>>,
 	secret_key_as_string: String,
 	shutdown_sender: ShutdownSender,
-	// executes a task that determines whether other tasks should run or not
-	pre_task_execution: Option<(F, tokio::sync::broadcast::Sender<()>)>
-) -> Result<(),service::Error<crate::Error>>
-where F: Future<Output = Result<(), service::Error<crate::Error>>> + Send + 'static {
+) -> Result<(),service::Error<crate::Error>> {
 	tracing::info!("listen_for_stellar_messages(): Starting connection to Stellar overlay network...");
 
 	let mut overlay_conn = connect_to_stellar_overlay_network(config.clone(), secret_key_as_string)
@@ -103,30 +104,19 @@ where F: Future<Output = Result<(), service::Error<crate::Error>>> + Send + 'sta
 			service::Error::StartOracleAgentError
 		})?;
 
-	if let Some((pre_task_execution, signal_sender)) = pre_task_execution {
-		pre_task_execution.await?;
-
-		if let Err(e) = signal_sender.send(()) {
-			tracing::error!("listen_for_stellar_messages(): Failed to send signal: {e:?}");
-		}
-	}
-
 	// use StellarOverlayConnection's sender to send message to Stellar
 	let sender = overlay_conn.sender();
 
-	// log a new message received, every 2 minutes.
-	let interval = Duration::from_secs(120);
+	// log a new message received, every 1 minute.
+	let interval = Duration::from_secs(5);
 	let mut next_time = Instant::now() + interval;
 	loop {
 		match overlay_conn.listen().await {
-			Ok(None) => {
-				tracing::info!("listen_for_stellar_messages(): yielding to outside tasks");
-				tokio::task::yield_now().await;
-			},
+			Ok(None) => {},
 			Ok(Some(msg)) => {
 				let msg_as_str = to_base64_xdr_string(&msg);
 				if Instant::now() >= next_time {
-					tracing::info!("listen_for_stellar_messages(): received message: {msg_as_str}");
+					tracing::info!("listen_for_stellar_messages(): health check: received message from Stellar");
 					next_time += interval;
 				}
 
@@ -290,11 +280,11 @@ mod tests {
 		.expect("Failed to start agent");
 
 		let mut latest_slot = 0;
-		while latest_slot == 0 {
+		while !agent.is_proof_building_ready().await{
 			sleep(Duration::from_secs(1)).await;
-			latest_slot = agent.last_slot_index().await;
 		}
-		latest_slot += 1;
+		latest_slot = agent.collector.read().await.last_slot_index();
+
 		// let's wait for envelopes and txset to be available for creating a proof
 		sleep(Duration::from_secs(5)).await;
 

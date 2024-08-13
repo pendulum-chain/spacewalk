@@ -807,6 +807,18 @@ impl VaultService {
 			.await?;
 
 		let (precheck_sender, precheck_receivers) = precheck_signals(8);
+		tokio_spawn(
+			"Execute Open Requests",
+			execute_open_requests(
+				self.shutdown.clone(),
+				self.spacewalk_parachain.clone(),
+				self.vault_id_manager.clone(),
+				self.stellar_wallet.clone(),
+				oracle_agent.clone(),
+				self.config.payment_margin_minutes,
+				precheck_sender
+			)
+		);
 
 		let ledger_env_map: ArcRwLock<LedgerTxEnvMap> = Arc::new(RwLock::new(HashMap::new()));
 
@@ -819,19 +831,7 @@ impl VaultService {
 					self.stellar_overlay_cfg()?,
 					oracle_agent.collector.clone(),
 					self.secret_key(),
-					self.shutdown.clone(),
-					// this is the prequisite task that should be performed
-					// BEFORE tasks (with precheck requirement) run.
-					Some((execute_open_requests(
-						self.shutdown.clone(),
-						self.spacewalk_parachain.clone(),
-						self.vault_id_manager.clone(),
-						self.stellar_wallet.clone(),
-						oracle_agent.clone(),
-						self.config.payment_margin_minutes
-					),
-						  precheck_sender
-					))
+					self.shutdown.clone()
 				)
 			)
 		)];

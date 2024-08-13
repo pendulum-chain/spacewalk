@@ -290,6 +290,7 @@ pub async fn execute_open_requests(
 	wallet: Arc<RwLock<StellarWallet>>,
 	oracle_agent: Arc<OracleAgent>,
 	payment_margin: Duration,
+	precheck_signal: tokio::sync::broadcast::Sender<()>
 ) -> Result<(), ServiceError<Error>> {
 	tracing::info!("execute_open_requests(): started");
 	let parachain_rpc_ref = &parachain_rpc;
@@ -303,6 +304,12 @@ pub async fn execute_open_requests(
 	.await?;
 
 	let rate_limiter = Arc::new(RateLimiter::direct(YIELD_RATE));
+
+	while !oracle_agent.is_proof_building_ready().await {
+		tracing::debug!("execute_open_requests(): agent is not yet ready. Waiting...");
+	}
+
+	tracing::info!("execute_open_requests(): Oracle agent is ready.");
 
 	// Check if the open requests have a corresponding payment on Stellar
 	// and are just waiting to be executed on the parachain
@@ -326,6 +333,11 @@ pub async fn execute_open_requests(
 		oracle_agent,
 		rate_limiter,
 	);
+
+
+	if let Err(e) = precheck_signal.send(()) {
+		tracing::error!("execute_open_requests(): Failed to send signal: {e:?}");
+	}
 
 	Ok(())
 }

@@ -120,7 +120,7 @@ impl ScpMessageCollector {
 		self.txset_and_slot_map.read().get_txset_hash_by_slot(slot).cloned()
 	}
 
-	pub(crate) fn last_slot_index(&self) -> u64 {
+	pub fn last_slot_index(&self) -> u64 {
 		self.last_slot_index
 	}
 }

@@ -3,7 +3,7 @@ use std::{collections::HashMap, convert::TryInto, sync::Arc, time::Duration};
 use frame_support::assert_ok;
 use futures::{
 	channel::mpsc,
-	future::{join, join3, join4},
+	future::{join, join3, join4, join5},
 	FutureExt, SinkExt,
 };
 use serial_test::serial;
@@ -1163,8 +1163,9 @@ async fn test_execute_open_requests_succeeds() {
 			// add it to the set
 			sleep(Duration::from_secs(5)).await;
 
+			let (precheck_signal, mut rceiver) = tokio::sync::broadcast::channel(1);
 			let shutdown_tx = ShutdownSender::new();
-			join4(
+			join5(
 				vault::service::execute_open_requests(
 					shutdown_tx.clone(),
 					vault_provider,
@@ -1172,8 +1173,12 @@ async fn test_execute_open_requests_succeeds() {
 					vault_wallet.clone(),
 					oracle_agent.clone(),
 					Duration::from_secs(0),
+					precheck_signal
 				)
 				.map(Result::unwrap),
+				async move {
+					assert_ok!(rceiver.recv().await);
+				},
 				// Redeem 0 should be executed without creating an extra payment since we already
 				// sent one just before
 				assert_execute_redeem_event(TIMEOUT * 3, user_provider.clone(), redeem_ids[0]),
