@@ -685,10 +685,6 @@ async fn test_issue_execution_succeeds_from_archive_on_network(is_public_network
 					.await;
 			let oracle_agent = Arc::new(oracle_agent);
 
-			while !oracle_agent.read().await.is_proof_building_ready().await{
-				sleep(Duration::from_secs(1)).await;
-			}
-
 			// Loop pending proofs until it is ready
 			let proof = oracle_agent.read().await.get_proof(slot).await.expect("Proof should be available");
 			let tx_envelope_xdr_encoded = transaction_response.envelope_xdr;
@@ -1168,6 +1164,8 @@ async fn test_execute_open_requests_succeeds() {
 
 			let (precheck_signal, mut rceiver) = tokio::sync::broadcast::channel(1);
 			let shutdown_tx = ShutdownSender::new();
+
+
 			join5(
 				vault::service::execute_open_requests(
 					shutdown_tx.clone(),

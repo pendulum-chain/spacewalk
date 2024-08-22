@@ -155,6 +155,10 @@ pub async fn start_oracle_agent(
 		)
 	);
 
+	while !oracle_agent.read().await.is_proof_building_ready().await{
+		sleep(Duration::from_millis(500)).await;
+	}
+
 	oracle_agent
 
 }
@@ -231,10 +235,6 @@ mod tests {
 		)
 		.await;
 
-		while !agent.read().await.is_proof_building_ready().await{
-			sleep(Duration::from_secs(1)).await;
-		}
-
 		let latest_slot = agent.read().await.collector.read().await.last_slot_index();
 
 		// let's wait for envelopes and txset to be available for creating a proof
@@ -261,10 +261,6 @@ mod tests {
 			shutdown_sender,
 		)
 		.await;
-
-		while !agent.read().await.is_proof_building_ready().await{
-			sleep(Duration::from_secs(1)).await;
-		}
 
 		// This slot should be archived on the public network
 		let target_slot = 44041116;
@@ -305,10 +301,6 @@ mod tests {
 		)
 		.await;
 
-		while !agent.read().await.is_proof_building_ready().await{
-			sleep(Duration::from_secs(1)).await;
-		}
-
 		// This slot should be archived on the public network
 		let target_slot = 44041116;
 		let proof = agent.read().await.get_proof(target_slot).await.expect("should return a proof");
@@ -341,10 +333,6 @@ mod tests {
 
 		// This slot should be archived on the public network
 		let target_slot = 44041116;
-
-		while !agent.read().await.is_proof_building_ready().await{
-			sleep(Duration::from_secs(1)).await;
-		}
 
 		let proof_result = agent.read().await.get_proof(target_slot).await;
 

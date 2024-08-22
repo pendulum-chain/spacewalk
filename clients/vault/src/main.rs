@@ -2,7 +2,6 @@ use std::{
 	net::{Ipv4Addr, SocketAddr},
 	sync::Arc,
 };
-use std::time::Duration;
 
 use clap::Parser;
 use futures::Future;
