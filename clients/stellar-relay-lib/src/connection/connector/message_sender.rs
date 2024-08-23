@@ -1,6 +1,6 @@
 use async_std::io::WriteExt;
 use std::time::Duration;
-use substrate_stellar_sdk::types::{MessageType, SendMore, StellarMessage};
+use substrate_stellar_sdk::types::{MessageType, SendMore, SendMoreExtended, StellarMessage};
 use tokio::time::timeout;
 use tracing::debug;
 
@@ -38,18 +38,20 @@ impl Connector {
 		let msg = create_auth_message();
 		debug!("send_auth_message(): Sending Auth Message: {}", to_base64_xdr_string(&msg));
 
-		self.send_to_node(create_auth_message()).await
+		return self.send_to_node(create_auth_message()).await
 	}
 
 	pub(super) async fn check_to_send_more(
 		&mut self,
 		message_type: MessageType,
+		data_len: usize
 	) -> Result<(), Error> {
-		if !self.inner_check_to_send_more(message_type) {
-			return Ok(());
-		}
 
-		let msg = StellarMessage::SendMore(SendMore { num_messages: MAX_FLOOD_MSG_CAP });
-		self.send_to_node(msg).await
+		let msg = self.flow_controller.send_more(message_type, data_len);
+		if let Some(inner_msg) = msg {
+			self.send_to_node(inner_msg).await;
+		};
+		Ok(())
+
 	}
 }

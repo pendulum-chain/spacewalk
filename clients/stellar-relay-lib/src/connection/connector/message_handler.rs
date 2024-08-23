@@ -10,7 +10,6 @@ use substrate_stellar_sdk::{
 	XdrCodec,
 };
 use tracing::{error, info, trace, warn};
-
 use crate::node::RemoteInfo;
 
 impl Connector {
@@ -24,7 +23,7 @@ impl Connector {
 		match msg_type {
 			MessageType::Transaction | MessageType::FloodAdvert if !self.receive_tx_messages() => {
 				self.increment_remote_sequence()?;
-				self.check_to_send_more(MessageType::Transaction).await?;
+				self.check_to_send_more(MessageType::Transaction, data.len()).await?;
 			},
 
 			MessageType::ScpMessage if !self.receive_scp_messages() => {
@@ -52,7 +51,7 @@ impl Connector {
 					self.increment_remote_sequence()?;
 					trace!("process_raw_message(): Processing {msg_type:?} message: auth verified");
 				}
-
+				self.check_to_send_more(msg_type, data.len());
 				return self.process_stellar_message(auth_msg.message, msg_type).await;
 			},
 		}
@@ -66,7 +65,9 @@ impl Connector {
 		msg: StellarMessage,
 		msg_type: MessageType,
 	) -> Result<Option<StellarMessage>, Error> {
-		match msg {
+		info!("raw msg {:?}", msg.clone());
+		match msg.clone() {
+
 			StellarMessage::Hello(hello) => {
 				// update the node info based on the hello message
 				self.process_hello_message(hello)?;
@@ -95,7 +96,7 @@ impl Connector {
 
 			// we do not handle other messages. Return to caller
 			other => {
-				self.check_to_send_more(msg_type).await?;
+				self.check_to_send_more(msg_type, msg.to_xdr().len()).await?;
 				return Ok(Some(other));
 			},
 		}
@@ -105,21 +106,23 @@ impl Connector {
 
 	async fn process_auth_message(&mut self) -> Result<(), Error> {
 		if self.remote_called_us() {
+			warn!("second auth");
 			self.send_auth_message().await?;
 		}
 
 		self.handshake_completed();
 
 		if let Some(remote) = self.remote() {
-			self.enable_flow_controller(
+			let msg = self.flow_controller.start_control(
 				self.local().node().overlay_version,
 				remote.node().overlay_version,
-			);
+				200);
+			self.send_to_node(msg).await;
 		} else {
 			warn!("process_auth_message(): No remote overlay version after handshake.");
 		}
+		Ok(())
 
-		self.check_to_send_more(MessageType::Auth).await
 	}
 
 	/// Updates the config based on the hello message that was received from the Stellar Node

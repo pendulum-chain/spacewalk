@@ -6,6 +6,9 @@ use substrate_stellar_sdk::{
 	PublicKey,
 };
 
+// We enable by default flowControlWithBytes
+// https://github.com/stellarbeat/js-stellar-node-connector/blob/9120f24b75867700ba0ece76369166959205c6b9/src/connection/flow-controller.ts#L39
+pub const AUTH_FLAG: i32 = 200;
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub enum HandshakeState {
 	Connecting,
@@ -14,7 +17,8 @@ pub enum HandshakeState {
 }
 
 pub fn create_auth_message() -> StellarMessage {
-	let auth = Auth { flags: 100 };
+	// 200 for flowControlInBytes enabled.
+	let auth = Auth { flags: AUTH_FLAG };
 
 	StellarMessage::Auth(auth)
 }
