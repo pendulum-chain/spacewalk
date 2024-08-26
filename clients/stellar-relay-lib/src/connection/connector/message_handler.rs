@@ -64,7 +64,6 @@ impl Connector {
 		msg: StellarMessage,
 		msg_type: MessageType,
 	) -> Result<Option<StellarMessage>, Error> {
-		info!("raw msg {:?}", msg.clone());
 		match msg.clone() {
 
 			StellarMessage::Hello(hello) => {
