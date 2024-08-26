@@ -863,8 +863,8 @@ impl<T: Config> Pallet<T> {
 							expected_total_amount,
 						)?
 					} else {
-						if amount_transferred.gt(&expected_total_amount)? &&
-							!ext::vault_registry::is_vault_liquidated::<T>(&issue.vault)?
+						if amount_transferred.gt(&expected_total_amount)?
+							&& !ext::vault_registry::is_vault_liquidated::<T>(&issue.vault)?
 						{
 							Self::try_increase_issue_amount(
 								issue_id,

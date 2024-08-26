@@ -140,7 +140,7 @@ pub fn run() -> Result<()> {
 				// This switch needs to be in the client, since the client decides
 				// which sub-commands it wants to support.
 				match cmd {
-					BenchmarkCmd::Pallet(cmd) =>
+					BenchmarkCmd::Pallet(cmd) => {
 						if cfg!(feature = "runtime-benchmarks") {
 							cmd.run::<Block, ExtendedHostFunctions<
 								sp_io::SubstrateHostFunctions,
@@ -150,7 +150,8 @@ pub fn run() -> Result<()> {
 							Err("Benchmarking wasn't enabled when building the node. \
                 You can enable it with `--features runtime-benchmarks`."
 								.into())
-						},
+						}
+					},
 					BenchmarkCmd::Block(cmd) => {
 						let PartialComponents { client, .. } =
 							spacewalk_service::new_partial_testnet(&config, false)?;
@@ -198,8 +199,9 @@ pub fn run() -> Result<()> {
 
 						cmd.run(client, inherent_benchmark_data()?, Vec::new(), &ext_factory)
 					},
-					BenchmarkCmd::Machine(cmd) =>
-						cmd.run(&config, SUBSTRATE_REFERENCE_HARDWARE.clone()),
+					BenchmarkCmd::Machine(cmd) => {
+						cmd.run(&config, SUBSTRATE_REFERENCE_HARDWARE.clone())
+					},
 				}
 			})
 		},

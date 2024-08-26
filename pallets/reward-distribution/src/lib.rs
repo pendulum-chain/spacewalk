@@ -300,8 +300,8 @@ impl<T: Config> Pallet<T> {
 
 		let mut reward_this_block = reward_per_block;
 
-		if Ok(true) ==
-			ext::security::parachain_block_expired::<T>(
+		if Ok(true)
+			== ext::security::parachain_block_expired::<T>(
 				rewards_adapted_at,
 				T::DecayInterval::get().saturating_sub(BlockNumberFor::<T>::one()),
 			) {

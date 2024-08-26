@@ -42,10 +42,11 @@ async fn handle_message(
 		StellarMessage::ScpMessage(env) => {
 			collector.write().await.handle_envelope(env, message_sender).await?;
 		},
-		StellarMessage::TxSet(set) =>
+		StellarMessage::TxSet(set) => {
 			if let Err(e) = collector.read().await.add_txset(set) {
 				tracing::error!(e);
-			},
+			}
+		},
 		StellarMessage::GeneralizedTxSet(set) => {
 			if let Err(e) = collector.read().await.add_txset(set) {
 				tracing::error!(e);

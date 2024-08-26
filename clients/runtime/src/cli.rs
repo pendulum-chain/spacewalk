@@ -33,8 +33,9 @@ impl ProviderUserOpts {
 		// load parachain credentials
 		let (pair, user_name) = match (self.keyfile.as_ref(), self.keyname.as_ref(), &self.keyring)
 		{
-			(Some(file_path), Some(keyname), None) =>
-				(get_credentials_from_file(file_path, keyname)?, keyname.to_string()),
+			(Some(file_path), Some(keyname), None) => {
+				(get_credentials_from_file(file_path, keyname)?, keyname.to_string())
+			},
 			(None, None, Some(keyring)) => {
 				let pair = Pair::from_string(keyring.to_seed().as_str(), None)
 					.map_err(|_| Error::KeyringAccountParsingError)?;

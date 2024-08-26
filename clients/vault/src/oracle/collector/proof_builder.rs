@@ -123,8 +123,8 @@ impl ScpMessageCollector {
 		if let Some(envelopes) = self.envelopes_map().get(&slot) {
 			// If the data was provided from the archive, no need to check for the minimum
 			// Otherwise, we are still lacking envelopes.
-			if !self.is_envelopes_data_from_archive(&slot) &&
-				envelopes.len() < get_min_externalized_messages(self.is_public())
+			if !self.is_envelopes_data_from_archive(&slot)
+				&& envelopes.len() < get_min_externalized_messages(self.is_public())
 			{
 				tracing::warn!(
 					"get_envelopes(): Proof Building for slot {slot}: {:?} envelopes is not enough to build proof",
@@ -252,8 +252,8 @@ impl ScpMessageCollector {
 						let relevant_envelopes = vec_scp
 							.into_iter()
 							.filter(|scp| match scp.statement.pledges {
-								ScpStatementPledges::ScpStExternalize(_) |
-								ScpStatementPledges::ScpStConfirm(_) => true,
+								ScpStatementPledges::ScpStExternalize(_)
+								| ScpStatementPledges::ScpStConfirm(_) => true,
 								_ => false,
 							})
 							.collect::<Vec<_>>();
@@ -345,7 +345,9 @@ impl ScpMessageCollector {
 					let tx_set_type = match target_history_entry.clone().ext {
 						TransactionHistoryEntryExt::V1(generalized_tx_set) =>
 						// If the type of `ext` is `V1` we use the contained generalized tx set
-							TransactionSetType::new(generalized_tx_set),
+						{
+							TransactionSetType::new(generalized_tx_set)
+						},
 						// Otherwise we can use the regular `tx_set` contained in the entry
 						_ => TransactionSetType::new(target_history_entry.tx_set.clone()),
 					};

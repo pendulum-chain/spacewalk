@@ -315,8 +315,9 @@ async fn run_and_monitor_tasks(
 			let monitor = tokio_metrics::TaskMonitor::new();
 			let metrics_iterator = monitor.intervals();
 			let task = match task {
-				ServiceTask::Optional(true, t) | ServiceTask::Essential(t) =>
-					Some(wait_or_shutdown(shutdown_tx.clone(), t)),
+				ServiceTask::Optional(true, t) | ServiceTask::Essential(t) => {
+					Some(wait_or_shutdown(shutdown_tx.clone(), t))
+				},
 				_ => None,
 			}?;
 			let task = monitor.instrument(task);
