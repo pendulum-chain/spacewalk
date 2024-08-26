@@ -247,7 +247,7 @@ mod test {
 
 	use substrate_stellar_sdk::{
 		compound_types::LimitedString,
-		types::{Hello, MessageType},
+		types::Hello,
 		PublicKey,
 	};
 
