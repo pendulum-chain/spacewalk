@@ -7,6 +7,8 @@ use substrate_stellar_sdk::{
 	types::{AuthenticatedMessageV0, Curve25519Public, HmacSha256Mac},
 	XdrCodec,
 };
+
+use substrate_stellar_sdk::types::StellarMessage;
 use tracing::{error, trace};
 
 use crate::{
@@ -227,17 +229,15 @@ impl Connector {
 	pub fn got_hello(&mut self) {
 		self.handshake_state = HandshakeState::GotHello;
 	}
+	pub fn maybe_start_flow_control_bytes(&mut self, local_overlay_version: u32, remote_overlay_version: u32) -> StellarMessage {
+		return self.flow_controller.start_control(local_overlay_version, remote_overlay_version)
+	}
+
 
 	pub fn handshake_completed(&mut self) {
 		self.handshake_state = HandshakeState::Completed;
 	}
-	// pub fn enable_flow_controller(
-	// 	&mut self,
-	// 	local_overlay_version: u32,
-	// 	remote_overlay_version: u32,
-	// ) {
-	// 	self.flow_controller.enable(local_overlay_version, remote_overlay_version, )
-	// }
+
 }
 
 #[cfg(test)]
@@ -250,7 +250,6 @@ mod test {
 		types::Hello,
 		PublicKey,
 	};
-
 	use crate::{
 		connection::{
 			authentication::{create_auth_cert, ConnectionAuth},
@@ -420,13 +419,4 @@ mod test {
 		connector.handshake_completed();
 		assert!(connector.is_handshake_created());
 	}
-
-	// #[tokio::test]
-	// #[serial]
-	// async fn enable_flow_controller_works() {
-	// 	let (node_info, _, mut connector) = create_connector().await;
-	//
-	// 	assert!(!connector.inner_check_to_send_more(MessageType::ScpMessage));
-	// 	connector.enable_flow_controller(node_info.overlay_version, node_info.overlay_version);
-	// }
 }

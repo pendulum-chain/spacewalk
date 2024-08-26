@@ -11,7 +11,7 @@ pub const FLOW_CONTROL_SEND_MORE_BATCH_SIZE_BYTES: u32 = 100000;
 
 #[derive(Debug, Default)]
 pub struct FlowController {
-	flow_control_bytes_enabled: bool,
+	pub(crate) flow_control_bytes_enabled: bool,
 	messages_received_in_current_batch: u32,
 	bytes_received_in_current_batch: u32,
 }
@@ -38,7 +38,7 @@ impl FlowController {
 	}
 
 	pub fn send_more(&mut self, message_type: MessageType, data_len: usize) -> Option<StellarMessage> {
-		let stellar_message_size = u32::try_from(data_len).unwrap();
+		let stellar_message_size = u32::try_from(data_len).expect("data_len will always fit within u32; qed");
 		if is_flood_message(message_type) {
 			self.messages_received_in_current_batch += 1;
 			self.bytes_received_in_current_batch += stellar_message_size;

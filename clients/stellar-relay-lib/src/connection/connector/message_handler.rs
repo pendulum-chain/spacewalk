@@ -111,7 +111,7 @@ impl Connector {
 		self.handshake_completed();
 
 		if let Some(remote) = self.remote() {
-			let msg = self.flow_controller.start_control(
+			let msg = self.maybe_start_flow_control_bytes(
 				self.local().node().overlay_version,
 				remote.node().overlay_version);
 			self.send_to_node(msg).await?;
