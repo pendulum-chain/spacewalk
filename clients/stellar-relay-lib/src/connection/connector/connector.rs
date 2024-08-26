@@ -229,15 +229,19 @@ impl Connector {
 	pub fn got_hello(&mut self) {
 		self.handshake_state = HandshakeState::GotHello;
 	}
-	pub fn maybe_start_flow_control_bytes(&mut self, local_overlay_version: u32, remote_overlay_version: u32) -> StellarMessage {
-		return self.flow_controller.start_control(local_overlay_version, remote_overlay_version)
+	pub fn maybe_start_flow_control_bytes(
+		&mut self,
+		local_overlay_version: u32,
+		remote_overlay_version: u32,
+	) -> StellarMessage {
+		return self
+			.flow_controller
+			.start_control(local_overlay_version, remote_overlay_version);
 	}
-
 
 	pub fn handshake_completed(&mut self) {
 		self.handshake_state = HandshakeState::Completed;
 	}
-
 }
 
 #[cfg(test)]
@@ -245,11 +249,6 @@ mod test {
 	use crate::{connection::hmac::HMacKeys, node::RemoteInfo, StellarOverlayConfig};
 	use serial_test::serial;
 
-	use substrate_stellar_sdk::{
-		compound_types::LimitedString,
-		types::Hello,
-		PublicKey,
-	};
 	use crate::{
 		connection::{
 			authentication::{create_auth_cert, ConnectionAuth},
@@ -259,6 +258,7 @@ mod test {
 		node::NodeInfo,
 		ConnectionInfo,
 	};
+	use substrate_stellar_sdk::{compound_types::LimitedString, types::Hello, PublicKey};
 
 	use wallet::keys::get_source_secret_key_from_env;
 

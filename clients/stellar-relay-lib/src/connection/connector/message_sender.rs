@@ -37,20 +37,18 @@ impl Connector {
 		let msg = create_auth_message();
 		debug!("send_auth_message(): Sending Auth Message: {}", to_base64_xdr_string(&msg));
 
-		return self.send_to_node(create_auth_message()).await
+		return self.send_to_node(create_auth_message()).await;
 	}
 
 	pub(super) async fn check_to_send_more(
 		&mut self,
 		message_type: MessageType,
-		data_len: usize
+		data_len: usize,
 	) -> Result<(), Error> {
-
 		let msg = self.flow_controller.send_more(message_type, data_len);
 		if let Some(inner_msg) = msg {
-			return self.send_to_node(inner_msg).await
+			return self.send_to_node(inner_msg).await;
 		};
 		Ok(())
-
 	}
 }

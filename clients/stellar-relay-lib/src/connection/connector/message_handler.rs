@@ -5,12 +5,12 @@ use crate::connection::{
 	xdr_converter::parse_authenticated_message,
 	Connector, Error, Xdr,
 };
+use crate::node::RemoteInfo;
 use substrate_stellar_sdk::{
 	types::{ErrorCode, Hello, MessageType, StellarMessage},
 	XdrCodec,
 };
 use tracing::{error, info, trace, warn};
-use crate::node::RemoteInfo;
 
 impl Connector {
 	/// Processes the raw bytes from the stream
@@ -65,7 +65,6 @@ impl Connector {
 		msg_type: MessageType,
 	) -> Result<Option<StellarMessage>, Error> {
 		match msg.clone() {
-
 			StellarMessage::Hello(hello) => {
 				// update the node info based on the hello message
 				self.process_hello_message(hello)?;
@@ -113,13 +112,13 @@ impl Connector {
 		if let Some(remote) = self.remote() {
 			let msg = self.maybe_start_flow_control_bytes(
 				self.local().node().overlay_version,
-				remote.node().overlay_version);
+				remote.node().overlay_version,
+			);
 			self.send_to_node(msg).await?;
 		} else {
 			warn!("process_auth_message(): No remote overlay version after handshake.");
 		}
 		Ok(())
-
 	}
 
 	/// Updates the config based on the hello message that was received from the Stellar Node
