@@ -51,7 +51,6 @@ impl Connector {
 					self.increment_remote_sequence()?;
 					trace!("process_raw_message(): Processing {msg_type:?} message: auth verified");
 				}
-				self.check_to_send_more(msg_type, data.len()).await?;
 				return self.process_stellar_message(auth_msg.message, msg_type).await;
 			},
 		}
