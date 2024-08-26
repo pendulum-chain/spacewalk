@@ -155,12 +155,10 @@ impl PerCurrencyMetrics {
 	fn format_currency_for_display(currency: CurrencyId) -> String {
 		match currency {
 			CurrencyId::Stellar(asset) => match asset {
-				Asset::AlphaNum4 { code, .. } => {
-					String::from_utf8(code.to_vec()).unwrap_or_default().replace('\"', "")
-				},
-				Asset::AlphaNum12 { code, .. } => {
-					String::from_utf8(code.to_vec()).unwrap_or_default().replace('\"', "")
-				},
+				Asset::AlphaNum4 { code, .. } =>
+					String::from_utf8(code.to_vec()).unwrap_or_default().replace('\"', ""),
+				Asset::AlphaNum12 { code, .. } =>
+					String::from_utf8(code.to_vec()).unwrap_or_default().replace('\"', ""),
 				Asset::StellarNative => "XLM".to_owned(),
 			},
 			CurrencyId::Native => "Native".to_owned(),
@@ -374,15 +372,15 @@ fn get_balances_for_asset(asset: stellar::Asset, balances: Vec<HorizonBalance>) 
 		stellar::Asset::AssetTypeCreditAlphanum4(a4) => balances
 			.iter()
 			.find(|i| {
-				i.asset_issuer.clone().unwrap_or_default() == a4.issuer.to_encoding()
-					&& i.asset_code.clone().unwrap_or_default() == a4.asset_code.to_vec()
+				i.asset_issuer.clone().unwrap_or_default() == a4.issuer.to_encoding() &&
+					i.asset_code.clone().unwrap_or_default() == a4.asset_code.to_vec()
 			})
 			.map(|i| i.balance),
 		stellar::Asset::AssetTypeCreditAlphanum12(a12) => balances
 			.iter()
 			.find(|i| {
-				i.asset_issuer.clone().unwrap_or_default() == a12.issuer.to_encoding()
-					&& i.asset_code.clone().unwrap_or_default() == a12.asset_code.to_vec()
+				i.asset_issuer.clone().unwrap_or_default() == a12.issuer.to_encoding() &&
+					i.asset_code.clone().unwrap_or_default() == a12.asset_code.to_vec()
 			})
 			.map(|i| i.balance),
 		_ => {

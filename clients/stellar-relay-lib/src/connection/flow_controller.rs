@@ -58,15 +58,19 @@ impl FlowController {
 			self.messages_received_in_current_batch == FLOW_CONTROL_SEND_MORE_BATCH_SIZE;
 
 		if self.flow_control_bytes_enabled {
-			should_send_more = should_send_more
-				|| self.bytes_received_in_current_batch >= FLOW_CONTROL_SEND_MORE_BATCH_SIZE_BYTES;
+			should_send_more = should_send_more ||
+				self.bytes_received_in_current_batch >= FLOW_CONTROL_SEND_MORE_BATCH_SIZE_BYTES;
 		}
 
 		//reclaim the capacity
 		if should_send_more {
 			if self.flow_control_bytes_enabled {
 				let send_more_message = StellarMessage::SendMoreExtended(SendMoreExtended {
-					num_messages: self.messages_received_in_current_batch, //request back the number of messages we received, not the total capacity like when starting!
+					num_messages: self.messages_received_in_current_batch, /* request back the
+					                                                        * number of messages
+					                                                        * we received, not
+					                                                        * the total capacity
+					                                                        * like when starting! */
 					num_bytes: self.bytes_received_in_current_batch,
 				});
 				self.reset_batch_counters();
@@ -87,10 +91,10 @@ impl FlowController {
 
 pub fn is_flood_message(message_type: MessageType) -> bool {
 	match message_type {
-		MessageType::Transaction
-		| MessageType::ScpMessage
-		| MessageType::FloodAdvert
-		| MessageType::FloodDemand => true,
+		MessageType::Transaction |
+		MessageType::ScpMessage |
+		MessageType::FloodAdvert |
+		MessageType::FloodDemand => true,
 		_ => false,
 	}
 }

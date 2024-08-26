@@ -33,11 +33,10 @@ impl StellarWallet {
 			None => {
 				debug!("try_stop_periodic_resubmission_of_transactions(): no schedule to stop");
 			},
-			Some(sender) => {
+			Some(sender) =>
 				if let Err(e) = sender.send(()).await {
 					warn!("try_stop_periodic_resubmission_of_transactions(): failed to send a stop message to scheduler: {e:?}");
-				}
-			},
+				},
 		}
 	}
 	/// reads in storage the failed (but recoverable) transactions and submit again to Stellar.
@@ -170,15 +169,12 @@ impl StellarWallet {
 	async fn handle_error(&self, error: Error) -> Result<Option<TransactionResponse>, Error> {
 		match &error {
 			Error::HorizonSubmissionError { reason, envelope_xdr, .. } => match &reason[..] {
-				"tx_bad_seq" => {
-					return self.handle_tx_bad_seq_error_with_xdr(envelope_xdr).await.map(Some)
-				},
-				"tx_internal_error" => {
-					return self.handle_tx_internal_error(envelope_xdr).await.map(Some)
-				},
-				"tx_insufficient_fee" => {
-					return self.handle_tx_insufficient_fee_error(envelope_xdr).await.map(Some)
-				},
+				"tx_bad_seq" =>
+					return self.handle_tx_bad_seq_error_with_xdr(envelope_xdr).await.map(Some),
+				"tx_internal_error" =>
+					return self.handle_tx_internal_error(envelope_xdr).await.map(Some),
+				"tx_insufficient_fee" =>
+					return self.handle_tx_insufficient_fee_error(envelope_xdr).await.map(Some),
 				_ => {
 					if let Ok(env) = decode_to_envelope(envelope_xdr) {
 						self.remove_tx_envelope_from_cache(&env);
