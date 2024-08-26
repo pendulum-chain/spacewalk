@@ -1,11 +1,13 @@
-use crate::connection::{
-	authentication::verify_remote_auth_cert,
-	helper::{error_to_string, time_now},
-	hmac::HMacKeys,
-	xdr_converter::parse_authenticated_message,
-	Connector, Error, Xdr,
+use crate::{
+	connection::{
+		authentication::verify_remote_auth_cert,
+		helper::{error_to_string, time_now},
+		hmac::HMacKeys,
+		xdr_converter::parse_authenticated_message,
+		Connector, Error, Xdr,
+	},
+	node::RemoteInfo,
 };
-use crate::node::RemoteInfo;
 use substrate_stellar_sdk::{
 	types::{ErrorCode, Hello, MessageType, StellarMessage},
 	XdrCodec,
