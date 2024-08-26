@@ -14,12 +14,12 @@ pub struct FlowController {
 }
 
 impl FlowController {
-	pub fn enable_bytes(&mut self, local_overlay_version: u32, remote_overlay_version: u32, flag: i32) {
-		self.flow_control_bytes_enabled = remote_overlay_version >= 28 && local_overlay_version >= 28 && flag == AUTH_FLAG;
+	pub fn enable_bytes(&mut self, local_overlay_version: u32, remote_overlay_version: u32) {
+		self.flow_control_bytes_enabled = remote_overlay_version >= 28 && local_overlay_version >= 28 && AUTH_FLAG == 200;
 	}
 
-    pub fn start_control(&mut self, local_overlay_version: u32, remote_overlay_version: u32, flag: i32) -> StellarMessage {
-		self.enable_bytes(local_overlay_version, remote_overlay_version, flag);
+    pub fn start_control(&mut self, local_overlay_version: u32, remote_overlay_version: u32) -> StellarMessage {
+		self.enable_bytes(local_overlay_version, remote_overlay_version);
 		let msg = StellarMessage::SendMoreExtended(SendMoreExtended { num_messages: MAX_FLOOD_MSG_CAP, num_bytes: PER_FLOOD_READING_CAPACITY_BYTES });
 		return msg
 	}

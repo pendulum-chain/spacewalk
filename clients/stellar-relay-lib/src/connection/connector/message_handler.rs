@@ -115,8 +115,7 @@ impl Connector {
 		if let Some(remote) = self.remote() {
 			let msg = self.flow_controller.start_control(
 				self.local().node().overlay_version,
-				remote.node().overlay_version,
-				200);
+				remote.node().overlay_version);
 			self.send_to_node(msg).await?;
 		} else {
 			warn!("process_auth_message(): No remote overlay version after handshake.");
