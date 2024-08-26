@@ -1,11 +1,10 @@
 use async_std::io::WriteExt;
 use std::time::Duration;
-use substrate_stellar_sdk::types::{MessageType, SendMore, SendMoreExtended, StellarMessage};
+use substrate_stellar_sdk::types::{MessageType, StellarMessage};
 use tokio::time::timeout;
 use tracing::debug;
 
 use crate::connection::{
-	flow_controller::MAX_FLOOD_MSG_CAP,
 	handshake::create_auth_message,
 	helper::{time_now, to_base64_xdr_string},
 	Connector, Error,
@@ -49,7 +48,7 @@ impl Connector {
 
 		let msg = self.flow_controller.send_more(message_type, data_len);
 		if let Some(inner_msg) = msg {
-			self.send_to_node(inner_msg).await;
+			return self.send_to_node(inner_msg).await
 		};
 		Ok(())
 

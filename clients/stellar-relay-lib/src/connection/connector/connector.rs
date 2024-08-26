@@ -4,10 +4,10 @@ use std::{
 	net::Shutdown,
 };
 use substrate_stellar_sdk::{
-	types::{AuthenticatedMessageV0, Curve25519Public, HmacSha256Mac, MessageType},
+	types::{AuthenticatedMessageV0, Curve25519Public, HmacSha256Mac},
 	XdrCodec,
 };
-use tracing::{debug, error, trace};
+use tracing::{error, trace};
 
 use crate::{
 	connection::{

@@ -51,7 +51,7 @@ impl Connector {
 					self.increment_remote_sequence()?;
 					trace!("process_raw_message(): Processing {msg_type:?} message: auth verified");
 				}
-				self.check_to_send_more(msg_type, data.len());
+				self.check_to_send_more(msg_type, data.len()).await?;
 				return self.process_stellar_message(auth_msg.message, msg_type).await;
 			},
 		}
@@ -117,7 +117,7 @@ impl Connector {
 				self.local().node().overlay_version,
 				remote.node().overlay_version,
 				200);
-			self.send_to_node(msg).await;
+			self.send_to_node(msg).await?;
 		} else {
 			warn!("process_auth_message(): No remote overlay version after handshake.");
 		}

@@ -9,26 +9,22 @@ pub const FLOW_CONTROL_SEND_MORE_BATCH_SIZE_BYTES: u32 = 100000;
 #[derive(Debug, Default)]
 pub struct FlowController {
 	flow_control_bytes_enabled: bool,
-	flood_msg_cap: u32,
 	messages_received_in_current_batch: u32,
 	bytes_received_in_current_batch: u32,
-	flow_control_send_more_batch_size: u32,
 }
 
 impl FlowController {
-	pub fn enable(&mut self, local_overlay_version: u32, remote_overlay_version: u32, flag: i32) {
-		self.flow_control_bytes_enabled = remote_overlay_version >= 28 && local_overlay_version >= 28 && flag == 200;
+	pub fn enable_bytes(&mut self, local_overlay_version: u32, remote_overlay_version: u32, flag: i32) {
+		self.flow_control_bytes_enabled = remote_overlay_version >= 28 && local_overlay_version >= 28 && flag == AUTH_FLAG;
 	}
 
     pub fn start_control(&mut self, local_overlay_version: u32, remote_overlay_version: u32, flag: i32) -> StellarMessage {
-		self.enable(local_overlay_version, remote_overlay_version, flag);
+		self.enable_bytes(local_overlay_version, remote_overlay_version, flag);
 		let msg = StellarMessage::SendMoreExtended(SendMoreExtended { num_messages: MAX_FLOOD_MSG_CAP, num_bytes: PER_FLOOD_READING_CAPACITY_BYTES });
 		return msg
 	}
 
 	pub fn send_more(&mut self, message_type: MessageType, data_len: usize) -> Option<StellarMessage> {
-		//let stellar_message_size = u32::try_from(data_len - 32 - 12).unwrap();
-
 		let stellar_message_size = u32::try_from(data_len).unwrap();
 		if self::is_flood_message(message_type) {
 			self.messages_received_in_current_batch+= 1;
