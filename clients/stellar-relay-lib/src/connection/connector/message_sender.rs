@@ -33,11 +33,11 @@ impl Connector {
 		self.send_to_node(msg).await
 	}
 
-	pub(super) async fn send_auth_message(&mut self) -> Result<(), Error> {
-		let msg = create_auth_message();
+	pub(super) async fn send_auth_message(&mut self, local_overlay_version: u32) -> Result<(), Error> {
+		let msg = create_auth_message(local_overlay_version);
 		debug!("send_auth_message(): Sending Auth Message: {}", to_base64_xdr_string(&msg));
 
-		return self.send_to_node(create_auth_message()).await;
+		return self.send_to_node(create_auth_message(local_overlay_version)).await;
 	}
 
 	pub(super) async fn check_to_send_more(

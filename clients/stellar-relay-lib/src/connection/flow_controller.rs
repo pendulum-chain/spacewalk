@@ -1,4 +1,3 @@
-use crate::connection::handshake::AUTH_FLAG;
 use substrate_stellar_sdk::types::{MessageType, SendMore, SendMoreExtended, StellarMessage};
 
 pub const MAX_FLOOD_MSG_CAP: u32 = 200;
@@ -16,7 +15,7 @@ pub struct FlowController {
 impl FlowController {
 	pub fn enable_bytes(&mut self, local_overlay_version: u32, remote_overlay_version: u32) {
 		self.flow_control_bytes_enabled =
-			remote_overlay_version >= 28 && local_overlay_version >= 28 && AUTH_FLAG == 200;
+			remote_overlay_version >= 28 && local_overlay_version >= 28;
 	}
 
 	pub fn start_control(
@@ -47,11 +46,13 @@ impl FlowController {
 		message_type: MessageType,
 		data_len: usize,
 	) -> Option<StellarMessage> {
-		let stellar_message_size =
+		let data_len_u32 =
 			u32::try_from(data_len).expect("data_len will always fit within u32; qed");
+		let actual_message_size = data_len_u32 - 32 - 12;
+
 		if is_flood_message(message_type) {
 			self.messages_received_in_current_batch += 1;
-			self.bytes_received_in_current_batch += stellar_message_size;
+			self.bytes_received_in_current_batch += actual_message_size;
 		}
 
 		let mut should_send_more =

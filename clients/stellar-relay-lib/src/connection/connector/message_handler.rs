@@ -53,7 +53,7 @@ impl Connector {
 					self.increment_remote_sequence()?;
 					trace!("process_raw_message(): Processing {msg_type:?} message: auth verified");
 				}
-				return self.process_stellar_message(auth_msg.message, msg_type).await;
+				return self.process_stellar_message(auth_msg.message, msg_type, data.len()).await;
 			},
 		}
 		Ok(None)
@@ -65,6 +65,7 @@ impl Connector {
 		&mut self,
 		msg: StellarMessage,
 		msg_type: MessageType,
+		data_len: usize
 	) -> Result<Option<StellarMessage>, Error> {
 		match msg.clone() {
 			StellarMessage::Hello(hello) => {
@@ -76,7 +77,7 @@ impl Connector {
 				if self.remote_called_us() {
 					self.send_hello_message().await?;
 				} else {
-					self.send_auth_message().await?;
+					self.send_auth_message(self.local().node().overlay_version).await?;
 				}
 				info!("process_stellar_message(): Hello message processed successfully");
 			},
@@ -92,10 +93,13 @@ impl Connector {
 				}
 				return Ok(Some(StellarMessage::ErrorMsg(e)));
 			},
-
+			StellarMessage::SendMore(_) => {
+			},
+			StellarMessage::SendMoreExtended(_) =>{
+			},
 			// we do not handle other messages. Return to caller
 			other => {
-				self.check_to_send_more(msg_type, msg.to_xdr().len()).await?;
+				self.check_to_send_more(msg_type, data_len).await?;
 				return Ok(Some(other));
 			},
 		}
@@ -105,8 +109,7 @@ impl Connector {
 
 	async fn process_auth_message(&mut self) -> Result<(), Error> {
 		if self.remote_called_us() {
-			warn!("second auth");
-			self.send_auth_message().await?;
+			self.send_auth_message(self.local().node().overlay_version).await?;
 		}
 
 		self.handshake_completed();

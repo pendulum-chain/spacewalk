@@ -6,9 +6,11 @@ use substrate_stellar_sdk::{
 	PublicKey,
 };
 
-// We enable by default flowControlWithBytes
-// https://github.com/stellarbeat/js-stellar-node-connector/blob/9120f24b75867700ba0ece76369166959205c6b9/src/connection/flow-controller.ts#L39
-pub const AUTH_FLAG: i32 = 200;
+// We enable flowControlWithBytes conditionally. This should be enabled if the node version is
+// higher than 28. https://github.com/stellarbeat/js-stellar-node-connector/blob/9120f24b75867700ba0ece76369166959205c6b9/src/connection/connection.ts#L634
+// Will not be needed anymore after the minimum version is set to 28.
+pub const AUTH_FLAG_BYTES_CONTROL: i32 = 200;
+pub const AUTH_FLAG_CONTROL: i32 = 100;
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub enum HandshakeState {
 	Connecting,
@@ -16,9 +18,9 @@ pub enum HandshakeState {
 	Completed,
 }
 
-pub fn create_auth_message() -> StellarMessage {
-	// 200 for flowControlInBytes enabled.
-	let auth = Auth { flags: AUTH_FLAG };
+pub fn create_auth_message(local_overlay_version: u32) -> StellarMessage {
+	let flags = if local_overlay_version >= 28 { AUTH_FLAG_BYTES_CONTROL } else { AUTH_FLAG_CONTROL };
+	let auth = Auth { flags };
 
 	StellarMessage::Auth(auth)
 }
