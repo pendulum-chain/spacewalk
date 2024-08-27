@@ -43,12 +43,12 @@ impl Connector {
 		return self.send_to_node(create_auth_message(local_overlay_version)).await;
 	}
 
-	pub(super) async fn check_to_send_more(
+	pub(super) async fn maybe_reclaim_capacity(
 		&mut self,
 		message_type: MessageType,
 		data_len: usize,
 	) -> Result<(), Error> {
-		let msg = self.flow_controller.send_more(message_type, data_len);
+		let msg = self.flow_controller.create_reclaim_capacity_message(message_type, data_len);
 		if let Some(inner_msg) = msg {
 			return self.send_to_node(inner_msg).await;
 		};

@@ -41,7 +41,7 @@ impl FlowController {
 		self.bytes_received_in_current_batch = 0;
 	}
 
-	pub fn send_more(
+	pub fn create_reclaim_capacity_message(
 		&mut self,
 		message_type: MessageType,
 		data_len: usize,

@@ -25,7 +25,7 @@ impl Connector {
 		match msg_type {
 			MessageType::Transaction | MessageType::FloodAdvert if !self.receive_tx_messages() => {
 				self.increment_remote_sequence()?;
-				self.check_to_send_more(MessageType::Transaction, data.len()).await?;
+				self.maybe_reclaim_capacity(MessageType::Transaction, data.len()).await?;
 			},
 
 			MessageType::ScpMessage if !self.receive_scp_messages() => {
@@ -97,7 +97,7 @@ impl Connector {
 			StellarMessage::SendMoreExtended(_) => {},
 			// we do not handle other messages. Return to caller
 			other => {
-				self.check_to_send_more(msg_type, data_len).await?;
+				self.maybe_reclaim_capacity(msg_type, data_len).await?;
 				return Ok(Some(other));
 			},
 		}
