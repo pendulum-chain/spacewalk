@@ -65,7 +65,7 @@ impl Connector {
 		&mut self,
 		msg: StellarMessage,
 		msg_type: MessageType,
-		data_len: usize
+		data_len: usize,
 	) -> Result<Option<StellarMessage>, Error> {
 		match msg.clone() {
 			StellarMessage::Hello(hello) => {
@@ -93,10 +93,8 @@ impl Connector {
 				}
 				return Ok(Some(StellarMessage::ErrorMsg(e)));
 			},
-			StellarMessage::SendMore(_) => {
-			},
-			StellarMessage::SendMoreExtended(_) =>{
-			},
+			StellarMessage::SendMore(_) => {},
+			StellarMessage::SendMoreExtended(_) => {},
 			// we do not handle other messages. Return to caller
 			other => {
 				self.check_to_send_more(msg_type, data_len).await?;

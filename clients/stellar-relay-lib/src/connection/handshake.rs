@@ -19,7 +19,8 @@ pub enum HandshakeState {
 }
 
 pub fn create_auth_message(local_overlay_version: u32) -> StellarMessage {
-	let flags = if local_overlay_version >= 28 { AUTH_FLAG_BYTES_CONTROL } else { AUTH_FLAG_CONTROL };
+	let flags =
+		if local_overlay_version >= 28 { AUTH_FLAG_BYTES_CONTROL } else { AUTH_FLAG_CONTROL };
 	let auth = Auth { flags };
 
 	StellarMessage::Auth(auth)
