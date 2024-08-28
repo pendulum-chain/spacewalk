@@ -236,7 +236,7 @@ impl Connector {
 	) -> StellarMessage {
 		return self
 			.flow_controller
-			.start_control(local_overlay_version, remote_overlay_version);
+			.start(local_overlay_version, remote_overlay_version);
 	}
 
 	pub fn handshake_completed(&mut self) {

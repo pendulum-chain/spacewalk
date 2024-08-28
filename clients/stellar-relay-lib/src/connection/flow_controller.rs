@@ -1,13 +1,13 @@
 use substrate_stellar_sdk::types::{MessageType, SendMore, SendMoreExtended, StellarMessage};
 
-pub const MAX_FLOOD_MSG_CAP: u32 = 200;
+pub const PER_FLOOD_READING_CAPACITY: u32 = 200;
 pub const FLOW_CONTROL_SEND_MORE_BATCH_SIZE: u32 = 40;
 pub const PER_FLOOD_READING_CAPACITY_BYTES: u32 = 300000;
 pub const FLOW_CONTROL_SEND_MORE_BATCH_SIZE_BYTES: u32 = 100000;
 
 #[derive(Debug, Default)]
 pub struct FlowController {
-	pub(crate) flow_control_bytes_enabled: bool,
+	flow_control_bytes_enabled: bool,
 	messages_received_in_current_batch: u32,
 	bytes_received_in_current_batch: u32,
 }
@@ -18,7 +18,7 @@ impl FlowController {
 			remote_overlay_version >= 28 && local_overlay_version >= 28;
 	}
 
-	pub fn start_control(
+	pub fn start(
 		&mut self,
 		local_overlay_version: u32,
 		remote_overlay_version: u32,
@@ -27,12 +27,12 @@ impl FlowController {
 
 		if self.flow_control_bytes_enabled {
 			let msg = StellarMessage::SendMoreExtended(SendMoreExtended {
-				num_messages: MAX_FLOOD_MSG_CAP,
+				num_messages: PER_FLOOD_READING_CAPACITY,
 				num_bytes: PER_FLOOD_READING_CAPACITY_BYTES,
 			});
 			return msg;
 		}
-		let msg = StellarMessage::SendMore(SendMore { num_messages: MAX_FLOOD_MSG_CAP });
+		let msg = StellarMessage::SendMore(SendMore { num_messages: PER_FLOOD_READING_CAPACITY });
 		return msg;
 	}
 

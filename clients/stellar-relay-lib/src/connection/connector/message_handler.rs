@@ -67,7 +67,7 @@ impl Connector {
 		msg_type: MessageType,
 		data_len: usize,
 	) -> Result<Option<StellarMessage>, Error> {
-		match msg.clone() {
+		match msg {
 			StellarMessage::Hello(hello) => {
 				// update the node info based on the hello message
 				self.process_hello_message(hello)?;
