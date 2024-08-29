@@ -2206,24 +2206,6 @@ dependencies = [
 [[package]]
 name = "dia-oracle"
 version = "0.1.0"
-source = "git+https://github.com/pendulum-chain/oracle-pallet?branch=polkadot-v1.1.0#b98aa3436f3a94d78904357923a98a35affe3677"
-dependencies = [
- "frame-benchmarking",
- "frame-support",
- "frame-system",
- "log",
- "parity-scale-codec",
- "scale-info",
- "serde",
- "serde_json",
- "sp-core 21.0.0",
- "sp-runtime 24.0.0",
- "sp-std 8.0.0",
-]
-
-[[package]]
-name = "dia-oracle"
-version = "0.1.0"
 source = "git+https://github.com/pendulum-chain/oracle-pallet?branch=polkadot-v1.1.0-fix#f46f05e75b43f60c785eedce30b698b81face27a"
 dependencies = [
  "frame-benchmarking",
@@ -6457,7 +6439,7 @@ name = "oracle"
 version = "1.0.10"
 dependencies = [
  "currency",
- "dia-oracle 0.1.0 (git+https://github.com/pendulum-chain/oracle-pallet?branch=polkadot-v1.1.0-fix)",
+ "dia-oracle",
  "frame-benchmarking",
  "frame-support",
  "frame-system",
@@ -11272,7 +11254,7 @@ dependencies = [
  "cfg-if 1.0.0",
  "clients-info",
  "currency",
- "dia-oracle 0.1.0 (git+https://github.com/pendulum-chain/oracle-pallet?branch=polkadot-v1.1.0-fix)",
+ "dia-oracle",
  "fee",
  "flate2",
  "frame-benchmarking",
@@ -11341,7 +11323,7 @@ dependencies = [
  "cfg-if 1.0.0",
  "clients-info",
  "currency",
- "dia-oracle 0.1.0 (git+https://github.com/pendulum-chain/oracle-pallet?branch=polkadot-v1.1.0)",
+ "dia-oracle",
  "fee",
  "flate2",
  "frame-benchmarking",
