@@ -64,7 +64,7 @@ runtime-benchmarks = [
   "currency/runtime-benchmarks",
   "currency/testing-constants",
   "security/testing-utils",
-  "oracle/testing-utils"
+  "oracle/runtime-benchmarks",
 ]
 skip-slow-tests = []
 std = [

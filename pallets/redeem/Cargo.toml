@@ -95,6 +95,7 @@ runtime-benchmarks = [
     "stellar-relay/testing-utils",
     "security/testing-utils",
     "oracle/testing-utils",
+    "oracle/runtime-benchmarks",
     "currency/runtime-benchmarks",
     "currency/testing-constants",
 
