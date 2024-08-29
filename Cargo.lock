@@ -2222,6 +2222,24 @@ dependencies = [
 ]
 
 [[package]]
+name = "dia-oracle"
+version = "0.1.0"
+source = "git+https://github.com/pendulum-chain/oracle-pallet?branch=polkadot-v1.1.0-fix#f46f05e75b43f60c785eedce30b698b81face27a"
+dependencies = [
+ "frame-benchmarking",
+ "frame-support",
+ "frame-system",
+ "log",
+ "parity-scale-codec",
+ "scale-info",
+ "serde",
+ "serde_json",
+ "sp-core 21.0.0",
+ "sp-runtime 24.0.0",
+ "sp-std 8.0.0",
+]
+
+[[package]]
 name = "diff"
 version = "0.1.13"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -6439,7 +6457,7 @@ name = "oracle"
 version = "1.0.10"
 dependencies = [
  "currency",
- "dia-oracle",
+ "dia-oracle 0.1.0 (git+https://github.com/pendulum-chain/oracle-pallet?branch=polkadot-v1.1.0-fix)",
  "frame-benchmarking",
  "frame-support",
  "frame-system",
@@ -11254,7 +11272,7 @@ dependencies = [
  "cfg-if 1.0.0",
  "clients-info",
  "currency",
- "dia-oracle",
+ "dia-oracle 0.1.0 (git+https://github.com/pendulum-chain/oracle-pallet?branch=polkadot-v1.1.0-fix)",
  "fee",
  "flate2",
  "frame-benchmarking",
@@ -11323,7 +11341,7 @@ dependencies = [
  "cfg-if 1.0.0",
  "clients-info",
  "currency",
- "dia-oracle",
+ "dia-oracle 0.1.0 (git+https://github.com/pendulum-chain/oracle-pallet?branch=polkadot-v1.1.0)",
  "fee",
  "flate2",
  "frame-benchmarking",

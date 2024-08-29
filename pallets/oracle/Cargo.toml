@@ -22,7 +22,7 @@ pallet-balances = { git = "https://github.com/paritytech/polkadot-sdk", branch =
 pallet-timestamp = { git = "https://github.com/paritytech/polkadot-sdk", branch = "release-polkadot-v1.1.0", default-features = false }
 
 orml-oracle = { git = "https://github.com/open-web3-stack/open-runtime-module-library", branch = "polkadot-v1.1.0", default-features = false }
-dia-oracle = { git = "https://github.com/pendulum-chain/oracle-pallet", branch = "polkadot-v1.1.0", default-features = false }
+dia-oracle = { git = "https://github.com/pendulum-chain/oracle-pallet", branch = "polkadot-v1.1.0-fix", default-features = false }
 
 # Parachain dependencies
 security = { path = "../security", default-features = false }
@@ -80,7 +80,8 @@ runtime-benchmarks = [
     "currency/runtime-benchmarks",
     "currency/testing-constants",
     "security/testing-utils",
-    "testing-utils"
+    "testing-utils",
+    "dia-oracle/runtime-benchmarks"
 ]
 testing-utils = ["spin", "once_cell"]
 
