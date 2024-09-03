@@ -207,7 +207,6 @@ pub fn validate_envelopes<'a, T: Config>(
 		validated_envelopes.push(envelope);
 	}
 
-	// it's ok to use unwrap here, since the size will be <= to the provided envelopes
 	Ok(UnlimitedVarArray::new(validated_envelopes).unwrap_or(UnlimitedVarArray::new_empty()))
 }
 
