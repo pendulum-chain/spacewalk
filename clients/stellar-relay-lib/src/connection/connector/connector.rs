@@ -4,9 +4,11 @@ use std::{
 	net::Shutdown,
 };
 use substrate_stellar_sdk::{
-	types::{AuthenticatedMessageV0, Curve25519Public, HmacSha256Mac, MessageType},
+	types::{AuthenticatedMessageV0, Curve25519Public, HmacSha256Mac},
 	XdrCodec,
 };
+
+use substrate_stellar_sdk::types::StellarMessage;
 use tracing::{error, trace};
 
 use crate::{
@@ -34,7 +36,7 @@ pub struct Connector {
 	receive_scp_messages: bool,
 
 	handshake_state: HandshakeState,
-	flow_controller: FlowController,
+	pub(crate) flow_controller: FlowController,
 
 	/// for writing/reading xdr messages to/from Stellar Node.
 	pub(crate) tcp_stream: TcpStream,
@@ -227,20 +229,18 @@ impl Connector {
 	pub fn got_hello(&mut self) {
 		self.handshake_state = HandshakeState::GotHello;
 	}
-
-	pub fn handshake_completed(&mut self) {
-		self.handshake_state = HandshakeState::Completed;
-	}
-
-	pub fn inner_check_to_send_more(&mut self, msg_type: MessageType) -> bool {
-		self.flow_controller.send_more(msg_type)
-	}
-	pub fn enable_flow_controller(
+	pub fn maybe_start_flow_control_bytes(
 		&mut self,
 		local_overlay_version: u32,
 		remote_overlay_version: u32,
-	) {
-		self.flow_controller.enable(local_overlay_version, remote_overlay_version)
+	) -> StellarMessage {
+		return self
+			.flow_controller
+			.start(local_overlay_version, remote_overlay_version);
+	}
+
+	pub fn handshake_completed(&mut self) {
+		self.handshake_state = HandshakeState::Completed;
 	}
 }
 
@@ -248,12 +248,6 @@ impl Connector {
 mod test {
 	use crate::{connection::hmac::HMacKeys, node::RemoteInfo, StellarOverlayConfig};
 	use serial_test::serial;
-
-	use substrate_stellar_sdk::{
-		compound_types::LimitedString,
-		types::{Hello, MessageType},
-		PublicKey,
-	};
 
 	use crate::{
 		connection::{
@@ -264,6 +258,7 @@ mod test {
 		node::NodeInfo,
 		ConnectionInfo,
 	};
+	use substrate_stellar_sdk::{compound_types::LimitedString, types::Hello, PublicKey};
 
 	use wallet::keys::get_source_secret_key_from_env;
 
@@ -423,14 +418,5 @@ mod test {
 
 		connector.handshake_completed();
 		assert!(connector.is_handshake_created());
-	}
-
-	#[tokio::test]
-	#[serial]
-	async fn enable_flow_controller_works() {
-		let (node_info, _, mut connector) = create_connector().await;
-
-		assert!(!connector.inner_check_to_send_more(MessageType::ScpMessage));
-		connector.enable_flow_controller(node_info.overlay_version, node_info.overlay_version);
 	}
 }

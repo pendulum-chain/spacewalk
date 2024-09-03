@@ -409,13 +409,12 @@ impl FilterWith<IssueRequestsMap, IssueIdLookup> for IssueFilter {
 	) -> bool {
 		let issue_id = match tx.memo_text() {
 			None => return false,
-			Some(memo_text) => {
+			Some(memo_text) =>
 				if let Some(issue_id) = memos_to_issue_ids.get(memo_text) {
 					issue_id
 				} else {
 					return false;
-				}
-			},
+				},
 		};
 
 		// check if the issue id is in the list of issues.

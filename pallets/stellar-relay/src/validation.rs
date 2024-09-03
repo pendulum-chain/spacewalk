@@ -66,12 +66,10 @@ fn targeted_organization_map<T: Config>(
 /// Returns a tuple of Externalized Value and Externalized n_h
 pub fn get_externalized_info<T: Config>(envelope: &ScpEnvelope) -> Result<(&Value, u32), Error<T>> {
 	match &envelope.statement.pledges {
-		ScpStatementPledges::ScpStExternalize(externalized_statement) => {
-			Ok((&externalized_statement.commit.value, externalized_statement.n_h))
-		},
-		ScpStatementPledges::ScpStConfirm(confirmed_statement) => {
-			Ok((&confirmed_statement.ballot.value, confirmed_statement.n_h))
-		},
+		ScpStatementPledges::ScpStExternalize(externalized_statement) =>
+			Ok((&externalized_statement.commit.value, externalized_statement.n_h)),
+		ScpStatementPledges::ScpStConfirm(confirmed_statement) =>
+			Ok((&confirmed_statement.ballot.value, confirmed_statement.n_h)),
 		_ => return Err(Error::<T>::InvalidScpPledge),
 	}
 }

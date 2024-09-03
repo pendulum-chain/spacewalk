@@ -160,7 +160,7 @@ impl Error {
 
 	pub fn is_rpc_disconnect_error(&self) -> bool {
 		match self {
-			Error::SubxtRuntimeError(SubxtError::Rpc(RpcError::ClientError(e))) => {
+			Error::SubxtRuntimeError(SubxtError::Rpc(RpcError::ClientError(e))) =>
 				match e.downcast_ref::<JsonRpseeError>() {
 					Some(e) => matches!(e, JsonRpseeError::RestartNeeded(_)),
 					None => {
@@ -169,8 +169,7 @@ impl Error {
 						);
 						false
 					},
-				}
-			},
+				},
 			Error::SubxtRuntimeError(SubxtError::Rpc(RpcError::SubscriptionDropped)) => true,
 			_ => false,
 		}
@@ -204,7 +203,7 @@ impl Error {
 
 	pub fn is_timeout_error(&self) -> bool {
 		match self {
-			Error::SubxtRuntimeError(SubxtError::Rpc(RpcError::ClientError(e))) => {
+			Error::SubxtRuntimeError(SubxtError::Rpc(RpcError::ClientError(e))) =>
 				match e.downcast_ref::<JsonRpseeError>() {
 					Some(e) => matches!(e, JsonRpseeError::RequestTimeout),
 					None => {
@@ -213,8 +212,7 @@ impl Error {
 						);
 						false
 					},
-				}
-			},
+				},
 			_ => false,
 		}
 	}

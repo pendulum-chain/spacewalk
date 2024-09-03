@@ -1,11 +1,10 @@
 use async_std::io::WriteExt;
 use std::time::Duration;
-use substrate_stellar_sdk::types::{MessageType, SendMore, StellarMessage};
+use substrate_stellar_sdk::types::{MessageType, StellarMessage};
 use tokio::time::timeout;
 use tracing::debug;
 
 use crate::connection::{
-	flow_controller::MAX_FLOOD_MSG_CAP,
 	handshake::create_auth_message,
 	helper::{time_now, to_base64_xdr_string},
 	Connector, Error,
@@ -34,22 +33,25 @@ impl Connector {
 		self.send_to_node(msg).await
 	}
 
-	pub(super) async fn send_auth_message(&mut self) -> Result<(), Error> {
-		let msg = create_auth_message();
+	pub(super) async fn send_auth_message(
+		&mut self,
+		local_overlay_version: u32,
+	) -> Result<(), Error> {
+		let msg = create_auth_message(local_overlay_version);
 		debug!("send_auth_message(): Sending Auth Message: {}", to_base64_xdr_string(&msg));
 
-		self.send_to_node(create_auth_message()).await
+		return self.send_to_node(create_auth_message(local_overlay_version)).await;
 	}
 
-	pub(super) async fn check_to_send_more(
+	pub(super) async fn maybe_reclaim_capacity(
 		&mut self,
 		message_type: MessageType,
+		data_len: usize,
 	) -> Result<(), Error> {
-		if !self.inner_check_to_send_more(message_type) {
-			return Ok(());
-		}
-
-		let msg = StellarMessage::SendMore(SendMore { num_messages: MAX_FLOOD_MSG_CAP });
-		self.send_to_node(msg).await
+		let msg = self.flow_controller.create_reclaim_capacity_message(message_type, data_len);
+		if let Some(inner_msg) = msg {
+			return self.send_to_node(inner_msg).await;
+		};
+		Ok(())
 	}
 }
