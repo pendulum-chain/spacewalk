@@ -17,11 +17,7 @@ use service::{
 };
 use signal_hook::consts::*;
 use signal_hook_tokio::Signals;
-use vault::{
-	metrics::{self, increment_restart_counter},
-	process::PidFile,
-	Error, VaultService, VaultServiceConfig, ABOUT, AUTHORS, NAME, VERSION,
-};
+use vault::{metrics::{self, increment_restart_counter}, process::PidFile, Error, VaultService, VaultServiceConfig, ABOUT, AUTHORS, NAME, VERSION, tokio_spawn};
 
 #[derive(Parser)]
 #[clap(args_conflicts_with_subcommands = true)]
@@ -167,7 +163,6 @@ async fn main() {
 mod tests {
 	use std::{thread, time::Duration};
 
-	use runtime::AccountId;
 	use vault::tokio_spawn;
 
 	use super::*;

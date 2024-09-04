@@ -655,7 +655,7 @@ async fn test_issue_execution_succeeds_from_archive_on_network(is_public_network
 				.expect("Conversion should not fail");
 			let destination_public_key = PublicKey::from_binary(issue.vault_stellar_public_key);
 			let stellar_asset =
-				primitives::AssetConversion::lookup(issue.asset).expect("Asset not found");
+				primitives::AssetConversion::lookup(*issue.asset).expect("Asset not found");
 
 			let transaction_response = send_payment_to_address(
 				user_wallet,

@@ -237,9 +237,6 @@ mod tests {
 
 		let latest_slot = agent.read().await.collector.read().await.last_slot_index();
 
-		// let's wait for envelopes and txset to be available for creating a proof
-		sleep(Duration::from_secs(5)).await;
-
 		let proof_result = agent.read().await.get_proof(latest_slot).await;
 		assert!(proof_result.is_ok(), "Failed to get proof for slot: {}", latest_slot);
 	}

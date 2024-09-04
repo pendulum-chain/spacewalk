@@ -29,7 +29,7 @@ pub(crate) async fn poll_messages_from_stellar(
 		if send_to_user_sender.is_closed() {
 			info!("poll_messages_from_stellar(): closing receiver during disconnection");
 			// close this channel as communication to user was closed.
-			break
+			break;
 		}
 
 		// check for messages from user.
@@ -74,7 +74,7 @@ pub(crate) async fn poll_messages_from_stellar(
 			Ok(None) => {},
 			Err(e) => {
 				error!("poll_messages_from_stellar(): Error occurred during processing xdr message: {e:?}");
-				break
+				break;
 			},
 		}
 	}
@@ -111,7 +111,7 @@ async fn read_message_from_stellar(connector: &mut Connector) -> Result<Xdr, Err
 				if expect_msg_len == 0 {
 					// there's nothing to read; wait for the next iteration
 					trace!("read_message_from_stellar(): expect_msg_len == 0");
-					continue
+					continue;
 				}
 
 				// let's start reading the actual stellar message.

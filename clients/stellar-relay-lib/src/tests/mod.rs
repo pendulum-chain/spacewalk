@@ -43,27 +43,36 @@ async fn stellar_overlay_should_receive_scp_messages() {
 	let (node_info, conn_info) = overlay_infos(false);
 
 	let overlay_connection = Arc::new(Mutex::new(
-		StellarOverlayConnection::connect(node_info, conn_info).await.unwrap(),
+		StellarOverlayConnection::connect(node_info, conn_info).await.expect("should connect"),
 	));
+
+	// to check if we receive any scp message from stellar node
+	let (sender, receiver) = tokio::sync::oneshot::channel();
 	let ov_conn = overlay_connection.clone();
 
 	let scps_vec = Arc::new(Mutex::new(vec![]));
 	let scps_vec_clone = scps_vec.clone();
-
-	timeout(Duration::from_secs(300), async move {
+	tokio::spawn( async move {
 		let mut ov_conn_locked = ov_conn.lock().await;
-		if let Ok(Some(msg)) = ov_conn_locked.listen().await {
+		while let Ok(Some(msg)) = ov_conn_locked.listen().await {
 			scps_vec_clone.lock().await.push(msg);
-
-			ov_conn_locked.stop();
+			sender.send(()).unwrap();
+			break;
 		}
-	})
-	.await
-	.expect("time has elapsed");
 
-	//assert
-	//ensure that we receive some scp message from stellar node
-	assert!(!scps_vec.lock().await.is_empty());
+		ov_conn_locked.stop();
+	});
+
+	// wait for the spawned thread to finish
+	timeout(Duration::from_secs(200), async move {
+		let _ = receiver.await.expect("should receive a message");
+
+		//assert
+		//ensure that we receive some scp message from stellar node
+		assert!(!scps_vec.lock().await.is_empty());
+
+	}).await.expect("time has elapsed");
+
 }
 
 #[tokio::test(flavor = "multi_thread")]
