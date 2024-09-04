@@ -234,9 +234,7 @@ impl Connector {
 		local_overlay_version: u32,
 		remote_overlay_version: u32,
 	) -> StellarMessage {
-		return self
-			.flow_controller
-			.start(local_overlay_version, remote_overlay_version);
+		return self.flow_controller.start(local_overlay_version, remote_overlay_version);
 	}
 
 	pub fn handshake_completed(&mut self) {
