@@ -149,5 +149,8 @@ where
 			.expect("failed to start agent");
 	let oracle_agent = Arc::new(oracle_agent);
 
+	// continue ONLY if the oracle agent has received the first slot
+	while oracle_agent.last_slot_index().await == 0 {}
+
 	execute(client, vault_wallet, user_wallet, oracle_agent, vault_id, vault_provider).await
 }
