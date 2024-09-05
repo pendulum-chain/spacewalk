@@ -41,7 +41,7 @@ impl Connector {
 					return Err(Error::from(e));
 				},
 				other => error!(
-					"process_raw_message(): Received ErrorMsg during authentication: {:?}",
+					"process_raw_message(): Received a different message during authentication: {:?}",
 					other
 				),
 			},
