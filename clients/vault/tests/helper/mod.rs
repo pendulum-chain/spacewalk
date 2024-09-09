@@ -20,6 +20,7 @@ use std::{future::Future, sync::Arc};
 use stellar_relay_lib::StellarOverlayConfig;
 use subxt::utils::AccountId32 as AccountId;
 use tokio::sync::RwLock;
+use tokio::time::sleep;
 use vault::{
 	oracle::{random_stellar_relay_config, OracleAgent},
 	ArcRwLock,
@@ -149,7 +150,9 @@ where
 	).await;
 
 	// continue ONLY if the oracle agent has received the first slot
-	while oracle_agent.last_slot_index().await == 0 {}
+	while !oracle_agent.read().await.is_proof_building_ready() {
+		sleep(std::time::Duration::from_millis(500)).await;
+	}
 
 	execute(client, vault_wallet, user_wallet, oracle_agent, vault_id, vault_provider).await
 }

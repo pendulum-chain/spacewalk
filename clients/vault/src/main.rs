@@ -146,7 +146,7 @@ async fn start() -> Result<(), ServiceError<Error>> {
 async fn main() {
 	#[cfg(feature = "allow-debugger")]
 	console_subscriber::ConsoleLayer::builder().with_default_env()
-		.publish_interval(Duration::from_secs(2))
+		.publish_interval(std::time::Duration::from_secs(2))
 		.event_buffer_capacity(1024*500)
 		.init();
 
