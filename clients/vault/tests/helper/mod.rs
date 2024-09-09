@@ -150,7 +150,7 @@ where
 	).await;
 
 	// continue ONLY if the oracle agent has received the first slot
-	while !oracle_agent.read().await.is_proof_building_ready() {
+	while !oracle_agent.read().await.is_proof_building_ready().await {
 		sleep(std::time::Duration::from_millis(500)).await;
 	}
 
