@@ -1073,6 +1073,7 @@ async fn test_automatic_issue_execution_succeeds_for_other_vault() {
 
 #[tokio::test(flavor = "multi_thread")]
 #[serial]
+#[ntest::timeout(1_200_000)] // timeout at 20 minutes
 async fn test_execute_open_requests_succeeds() {
 	let is_public_network = false;
 	test_with_vault(

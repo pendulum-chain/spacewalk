@@ -7,7 +7,7 @@
     "ledger_version": 21,
     "overlay_version": 35,
     "overlay_min_version": 33,
-    "version_str": "stellar-core 21.3.0.rc1 (55ec348409407ec7def75cae60ae1b520bef4adc)",
+    "version_str": "stellar-core 21.3.1 (4ede19620438bcd136276cdc8d4ed1f2c3b64624)",
     "is_pub_net": false
   },
   "stellar_history_archive_urls": [
