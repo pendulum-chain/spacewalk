@@ -139,14 +139,24 @@ async fn stellar_overlay_should_receive_tx_set() {
 
 #[tokio::test(flavor = "multi_thread")]
 #[serial]
+#[ntest::timeout(300_000)] // timeout at 5 minutes
 async fn stellar_overlay_disconnect_works() {
 	let (node_info, conn_info) = overlay_infos(false);
 
 	let mut overlay_connection =
 		StellarOverlayConnection::connect(node_info.clone(), conn_info).await.unwrap();
 
-	// let it run for a second, before disconnecting.
-	sleep(Duration::from_secs(1));
+	loop {
+		if let Some(message) = overlay_connection.listen().await.expect("should return a message") {
+			match message {
+				// fail the test case if an error message is received
+				StellarMessage::ErrorMsg(_) => panic!("Error message received: {:?}", message),
+				// it means it has received a message from stellar node
+				_ => break,
+			}
+		}
+	}
+
 	overlay_connection.stop();
 
 	// let the disconnection call pass for a few seconds, before checking its status.
