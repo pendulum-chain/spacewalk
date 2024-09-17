@@ -25,6 +25,8 @@ jobs:
         uses: ./.github/actions/free-up-disk-space
 
       - name: Other Installations
+        secrets:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         uses: ./.github/actions/installations
 
       - name: Check Build
