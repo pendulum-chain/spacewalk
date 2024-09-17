@@ -1,4 +1,10 @@
 name: 'Other Necessary Installations'
+
+inputs:
+  token:
+    description: 'A Github PAT'
+    required: true
+
 runs:
     using: "composite"
     steps:
@@ -20,4 +26,4 @@ runs:
       - name: Install Protoc
         uses: arduino/setup-protoc@v1
         with:
-          repo-token: ${{ GITHUB_TOKEN }}
+          repo-token: ${{ inputs.token }}

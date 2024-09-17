@@ -23,9 +23,9 @@ jobs:
         uses: ./.github/actions/free-up-disk-space
 
       - name: Other Installations
-        secrets:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         uses: ./.github/actions/installations
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Check Build
         run: |
@@ -57,6 +57,8 @@ jobs:
       - name: Install Rust Nightly
         if: matrix.rust == 'nightly'
         uses: ./.github/actions/install-rust-nightly
+        with:
+          version: ${{ env.RUSTUP_NIGHTLY_VERSION }}
 
       - name: Rustfmt
         if: matrix.rust == 'nightly'
@@ -98,8 +100,9 @@ jobs:
         uses: ./.github/actions/free-up-disk-space
 
       - name: Install Rust Nightly
-        if: matrix.rust == 'nightly'
         uses: ./.github/actions/install-rust-nightly
+        with:
+          version: ${{ env.RUSTUP_NIGHTLY_VERSION }}
 
       - name: Run Tests
         uses: actions-rs/cargo@v1
