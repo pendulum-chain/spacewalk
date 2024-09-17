@@ -15,13 +15,12 @@ runs:
         rm /home/runner/work/spacewalk/spacewalk/rust-toolchain.toml
 
     - name: Setup nightly Rust toolchain
-      if: matrix.rust == 'nightly'
       uses: dtolnay/rust-toolchain@nightly
       with:
         toolchain: ${{ inputs.version }}
         components: rustfmt, clippy
         target: wasm32-unknown-unknown
-          -
+
     - name: Setup nightly Rust as default
       shell: bash
       run: |
