@@ -9,9 +9,7 @@ env:
   RUST_BACKTRACE: full
   # Make sure CI fails on all warnings, including Clippy lints
   RUSTFLAGS: "-Dwarnings"
-secrets:
-  GITHUB_TOKEN:
-    required: true
+
 jobs:
   build-check:
     name: Check Build
