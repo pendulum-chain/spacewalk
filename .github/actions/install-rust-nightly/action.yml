@@ -9,6 +9,7 @@ runs:
   using: "composite"
   steps:
     - name: Remove rust-toolchain.toml for nightly
+      shell: bash
       # To make sure that the nightly version will be used all throughout
       run: |
         rm /home/runner/work/spacewalk/spacewalk/rust-toolchain.toml
