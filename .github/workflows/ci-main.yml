@@ -86,6 +86,9 @@ jobs:
       DEST_STELLAR_SECRET_TESTNET: ${{ secrets.DEST_STELLAR_SECRET_TESTNET }}
 
     steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
       - name: Undergo Prerequisite
         uses: ./.github/actions/prerequisite
         with:
