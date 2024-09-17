@@ -2,9 +2,8 @@ use std::{sync::Arc, time::Duration};
 
 use tokio::{
 	sync::RwLock,
-	time::{sleep, timeout},
+	time::{sleep, timeout, Instant},
 };
-use tokio::time::Instant;
 
 use runtime::ShutdownSender;
 use stellar_relay_lib::{
@@ -12,11 +11,14 @@ use stellar_relay_lib::{
 	StellarOverlayConfig,
 };
 
-use crate::oracle::{
-	collector::ScpMessageCollector, errors::Error, types::StellarMessageSender, AddTxSet, Proof,
+use crate::{
+	oracle::{
+		collector::ScpMessageCollector, errors::Error, get_random_secret_key,
+		types::StellarMessageSender, AddTxSet, Proof,
+	},
+	ArcRwLock,
 };
 use wallet::Slot;
-use crate::ArcRwLock;
 
 pub struct OracleAgent {
 	pub collector: Arc<RwLock<ScpMessageCollector>>,
@@ -24,14 +26,11 @@ pub struct OracleAgent {
 	/// sends message directly to Stellar Node
 	message_sender: Option<StellarMessageSender>,
 	/// sends an entire Vault shutdown
-	shutdown_sender: ShutdownSender
+	shutdown_sender: ShutdownSender,
 }
 
 impl OracleAgent {
-	pub fn new(
-		config: &StellarOverlayConfig,
-		shutdown_sender: ShutdownSender
-	) -> Self {
+	pub fn new(config: &StellarOverlayConfig, shutdown_sender: ShutdownSender) -> Self {
 		let is_public_network = config.is_public_network();
 
 		let collector = Arc::new(RwLock::new(ScpMessageCollector::new(
@@ -39,12 +38,7 @@ impl OracleAgent {
 			config.stellar_history_archive_urls(),
 		)));
 
-		OracleAgent {
-			collector,
-			is_public_network,
-			message_sender: None,
-			shutdown_sender,
-		}
+		OracleAgent { collector, is_public_network, message_sender: None, shutdown_sender }
 	}
 
 	pub async fn is_proof_building_ready(&self) -> bool {
@@ -84,11 +78,13 @@ async fn handle_message(
 
 pub async fn listen_for_stellar_messages(
 	config: StellarOverlayConfig,
-	oracle_agent:ArcRwLock<OracleAgent>,
+	oracle_agent: ArcRwLock<OracleAgent>,
 	secret_key_as_string: String,
 	shutdown_sender: ShutdownSender,
-) -> Result<(),service::Error<crate::Error>> {
-	tracing::info!("listen_for_stellar_messages(): Starting connection to Stellar overlay network...");
+) -> Result<(), service::Error<crate::Error>> {
+	tracing::info!(
+		"listen_for_stellar_messages(): Starting connection to Stellar overlay network..."
+	);
 
 	let mut overlay_conn = connect_to_stellar_overlay_network(config.clone(), secret_key_as_string)
 		.await.map_err(|e|{
@@ -120,7 +116,7 @@ pub async fn listen_for_stellar_messages(
 				if let Err(e) = handle_message(msg, collector.clone(), &sender).await {
 					tracing::error!("listen_for_stellar_messages(): failed to handle message: {msg_as_str}: {e:?}");
 				}
-			}
+			},
 			// connection got lost
 			Err(e) => {
 				tracing::error!("listen_for_stellar_messages(): encounter error in overlay: {e:?}");
@@ -129,7 +125,7 @@ pub async fn listen_for_stellar_messages(
 					tracing::error!("listen_for_stellar_messages(): Failed to send shutdown signal in thread: {e:?}");
 				}
 				break
-			}
+			},
 		}
 	}
 
@@ -141,26 +137,21 @@ pub async fn listen_for_stellar_messages(
 #[cfg(any(test, feature = "integration"))]
 pub async fn start_oracle_agent(
 	cfg: StellarOverlayConfig,
-	vault_stellar_secret: String,
-	shutdown_sender: ShutdownSender
+	_vault_stellar_secret: String,
+	shutdown_sender: ShutdownSender,
 ) -> ArcRwLock<OracleAgent> {
 	let oracle_agent = Arc::new(RwLock::new(OracleAgent::new(&cfg, shutdown_sender.clone())));
 
-	tokio::spawn(
-		listen_for_stellar_messages(
-			cfg,
-			oracle_agent.clone(),
-			vault_stellar_secret,
-			shutdown_sender
-		)
-	);
+	let secret = get_random_secret_key();
 
-	while !oracle_agent.read().await.is_proof_building_ready().await{
+	tokio::spawn(listen_for_stellar_messages(cfg, oracle_agent.clone(), secret, shutdown_sender));
+
+	while !oracle_agent.read().await.is_proof_building_ready().await {
+		tracing::info!("start_oracle_agent(): waiting for the first slot to be received");
 		sleep(Duration::from_millis(500)).await;
 	}
 
 	oracle_agent
-
 }
 
 impl OracleAgent {
