@@ -23,4 +23,6 @@ runs:
         target: wasm32-unknown-unknown
           -
     - name: Setup nightly Rust as default
-      run: rustup default ${{ inputs.version }}
+      shell: bash
+      run: |
+        rustup default ${{ inputs.version }}
