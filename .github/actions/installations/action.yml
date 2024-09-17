@@ -3,6 +3,7 @@ runs:
     using: "composite"
     steps:
       - name: Install package
+        shell: bash
         run: |
           sudo docker image prune --all --force
           echo 'APT::Get::Always-Include-Phased-Updates "false";' | sudo tee /etc/apt/apt.conf.d/99-phased-updates
