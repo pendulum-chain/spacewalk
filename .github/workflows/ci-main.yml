@@ -4,119 +4,91 @@ on:
       - 'main'
 
 name: continuous-integration-main
+env:
+  RUSTUP_NIGHTLY_VERSION: nightly-2024-02-09
+  RUST_BACKTRACE: full
+  # Make sure CI fails on all warnings, including Clippy lints
+  RUSTFLAGS: "-Dwarnings"
+
 jobs:
-  ci:
+  build-check:
+    name: Check Build
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Prerequisites
+        uses: ./.github/actions/prerequisites
+
+      - name: Check Build
+        run: |
+          bash ./scripts/cmd-all build check 
+
+  cargo-clippy:
+    name: Run Clippy and Format Checks
+    needs: build-check
+    if: needs.build-check.result == 'success'
     strategy:
       max-parallel: 2
       matrix:
         rust: [ stable, nightly ]
     runs-on: ubuntu-latest
-    env:
-      RUST_BACKTRACE: full
-      # Make sure CI fails on all warnings, including Clippy lints
-      RUSTFLAGS: "-Dwarnings"
 
     steps:
-      - name: Freeing up more disk space
-        run: |
-          free -h
-          sudo rm -rf /usr/local/lib/android # will release about 10 GB if you don't need Android
-          sudo rm -rf /usr/share/dotnet # will release about 20GB if you don't need .NET
-          sudo rm -rf /opt/ghc
-          sudo rm -rf /usr/local/share/boost
-          sudo rm -rf /opt/hostedtoolcache/CodeQL
-          sudo rm -rf "$AGENT_TOOLSDIRECTORY"
-          sudo apt-get remove -y 'php.*' --fix-missing
-          sudo apt-get remove -y '^mongodb-.*' --fix-missing
-          sudo apt-get remove -y '^mysql-.*' --fix-missing
-          sudo apt-get clean          
-          df -h
-      - uses: actions/checkout@v2
-
-      - name: Install package
-        run: |
-          sudo docker image prune --all --force
-          echo 'APT::Get::Always-Include-Phased-Updates "false";' | sudo tee /etc/apt/apt.conf.d/99-phased-updates
-          sudo apt-get update && sudo apt-get upgrade -y
-          sudo apt-get install -y protobuf-compiler libprotobuf-dev
-
-      - name: Setup stable Rust toolchain
-        if: matrix.rust == 'stable'
-        # Call `rustup show` as a hack so that the toolchain defined in rust-toolchain.toml is installed
-        run: rustup show
+      - name: Prerequisites
+        uses: ./.github/actions/prerequisites
 
       - name: Use cargo.toml with polkadot-sdk fork
-        if: matrix.rust == 'nightly'
         # To make sure that our polkadot-sdk fork will be used
         run: |
           rm /home/runner/work/spacewalk/spacewalk/Cargo.toml
           mv /home/runner/work/spacewalk/spacewalk/Cargo_CI.toml /home/runner/work/spacewalk/spacewalk/Cargo.toml
 
-      - name: Remove rust-toolchain.toml for nightly
+      - name: Install Rust Nightly
         if: matrix.rust == 'nightly'
-        # To make sure that the nightly version will be used all throughout
-        run: |
-          rm /home/runner/work/spacewalk/spacewalk/rust-toolchain.toml
-
-      - name: Setup nightly Rust toolchain
-        if: matrix.rust == 'nightly'
-        uses: dtolnay/rust-toolchain@nightly
-        with:
-          toolchain: nightly-2024-02-09
-          components: rustfmt, clippy
-          target: wasm32-unknown-unknown
-
-      - name: Setup nightly Rust as default
-        if: matrix.rust == 'nightly'
-        run: rustup default nightly-2024-02-09
-
-      - name: Use Cache
-        uses: Swatinem/rust-cache@v2
-        with:
-          cache-on-failure: true
-          key: "ubuntu-latest-cargo-${{ hashFiles('**/Cargo.lock') }}"
-          shared-key: "shared"
-
-      - name: Install Protoc
-        uses: arduino/setup-protoc@v1
-        with:
-          repo-token: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Check Build
-        if: matrix.rust == 'stable'
-        run: |
-          bash ./scripts/cmd-all build check
-
-      - name: Test
-        if: matrix.rust == 'nightly'
-        uses: actions-rs/cargo@v1
-        env:
-          SOURCE_STELLAR_SECRET_MAINNET: ${{ secrets.SOURCE_STELLAR_SECRET_MAINNET }}
-          SOURCE_STELLAR_SECRET_TESTNET: ${{ secrets.SOURCE_STELLAR_SECRET_TESTNET }}
-          DEST_STELLAR_SECRET_MAINNET: ${{ secrets.DEST_STELLAR_SECRET_MAINNET }}
-          DEST_STELLAR_SECRET_TESTNET: ${{ secrets.DEST_STELLAR_SECRET_TESTNET }}
-        with:
-          toolchain: nightly-2024-02-09
-          command: test 
-          args:  --all --all-features
+        uses: ./.github/actions/install-rust-nightly
 
       - name: Rustfmt
         if: matrix.rust == 'nightly'
         uses: actions-rs/cargo@v1
         with:
-          toolchain: nightly-2024-02-09
+          toolchain: ${{ RUSTUP_NIGHTLY_VERSION }}
           command: fmt
           args: --all -- --check
+
+      - name: Clippy for Tests and Examples
+        if: matrix.rust == 'nightly'
+        uses: actions-rs/cargo@v1
+        with:
+          toolchain: ${{ RUSTUP_NIGHTLY_VERSION }}
+          command: clippy
+          args: --all-features --tests --benches --examples -- -A clippy::all -W clippy::correctness -A forgetting_copy_types -A forgetting_references
 
       - name: Clippy -- Libraries and Binaries
         if: matrix.rust == 'stable'
         run: |
-          bash ./scripts/cmd-all clippy "clippy --lib --bins" "-- -W clippy::all -A clippy::style -A forgetting_copy_types -A forgetting_references"           
+          bash ./scripts/cmd-all clippy "clippy --lib --bins" "-- -W clippy::all -A clippy::style -A forgetting_copy_types -A forgetting_references"   
 
-      - name: Clippy -- Tests and Examples
+  cargo-test:
+    name: Run Tests
+    needs: build-check
+    if: needs.build-check.result == 'success'
+    runs-on: ubuntu-latest
+    env:
+      SOURCE_STELLAR_SECRET_MAINNET: ${{ secrets.SOURCE_STELLAR_SECRET_MAINNET }}
+      SOURCE_STELLAR_SECRET_TESTNET: ${{ secrets.SOURCE_STELLAR_SECRET_TESTNET }}
+      DEST_STELLAR_SECRET_MAINNET: ${{ secrets.DEST_STELLAR_SECRET_MAINNET }}
+      DEST_STELLAR_SECRET_TESTNET: ${{ secrets.DEST_STELLAR_SECRET_TESTNET }}
+
+    steps:
+      - name: Prerequisites
+        uses: ./.github/actions/prerequisites
+
+      - name: Install Rust Nightly
         if: matrix.rust == 'nightly'
+        uses: ./.github/actions/install-rust-nightly
+
+      - name: Run Tests
         uses: actions-rs/cargo@v1
         with:
-          toolchain: nightly-2024-02-09
-          command: clippy
-          args: --all-features --tests --benches --examples -- -A clippy::all -W clippy::correctness -A forgetting_copy_types -A forgetting_references
+          command: test
+          args: --all --all-features

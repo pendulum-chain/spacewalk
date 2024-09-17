@@ -1,0 +1,19 @@
+name: 'Rust Nightly'
+runs:
+  using: "composite"
+  steps:
+    - name: Remove rust-toolchain.toml for nightly
+      # To make sure that the nightly version will be used all throughout
+      run: |
+        rm /home/runner/work/spacewalk/spacewalk/rust-toolchain.toml
+
+    - name: Setup nightly Rust toolchain
+      if: matrix.rust == 'nightly'
+      uses: dtolnay/rust-toolchain@nightly
+      with:
+        toolchain: ${{ RUSTUP_NIGHTLY_VERSION }}
+        components: rustfmt, clippy
+        target: wasm32-unknown-unknown
+          -
+    - name: Setup nightly Rust as default
+      run: rustup default ${{ RUSTUP_NIGHTLY_VERSION }}
