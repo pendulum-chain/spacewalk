@@ -19,13 +19,11 @@ use sp_keyring::AccountKeyring;
 use std::{future::Future, sync::Arc};
 use stellar_relay_lib::StellarOverlayConfig;
 use subxt::utils::AccountId32 as AccountId;
-use tokio::sync::RwLock;
-use tokio::time::sleep;
+use tokio::{sync::RwLock, time::sleep};
 use vault::{
-	oracle::{random_stellar_relay_config, OracleAgent},
+	oracle::{random_stellar_relay_config, start_oracle_agent, OracleAgent},
 	ArcRwLock,
 };
-use vault::oracle::{start_oracle_agent};
 use wallet::{
 	keys::{get_dest_secret_key_from_env, get_source_secret_key_from_env},
 	StellarWallet,
@@ -145,12 +143,11 @@ where
 	let vault_stellar_secret = get_source_secret_key_from_env(is_public_network);
 
 	let shutdown_tx = ShutdownSender::new();
-	let oracle_agent = start_oracle_agent(
-		stellar_config,vault_stellar_secret,shutdown_tx
-	).await;
+	let oracle_agent = start_oracle_agent(stellar_config, vault_stellar_secret, shutdown_tx).await;
 
 	// continue ONLY if the oracle agent has received the first slot
 	while !oracle_agent.read().await.is_proof_building_ready().await {
+		tracing::info!("Waiting for the oracle agent to be ready... in helper mod");
 		sleep(std::time::Duration::from_millis(500)).await;
 	}
 

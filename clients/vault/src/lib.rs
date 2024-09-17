@@ -61,11 +61,11 @@ cfg_if::cfg_if! {
 }
 
 pub fn tokio_spawn<F>(_task_name: &str, future: F) -> tokio::task::JoinHandle<F::Output>
-	where
-		F: std::future::Future + Send + 'static,
-		F::Output: Send + 'static,
+where
+	F: std::future::Future + Send + 'static,
+	F::Output: Send + 'static,
 {
-	cfg_if::cfg_if!{
+	cfg_if::cfg_if! {
 		if #[cfg(all(tokio_unstable, feature = "allow-debugger"))] {
 			tokio::task::Builder::new().name(_task_name).spawn(future).unwrap()
 		} else {

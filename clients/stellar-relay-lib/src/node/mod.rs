@@ -20,7 +20,7 @@ pub struct NodeInfo {
 }
 
 impl NodeInfo {
-	pub(crate) fn new(cfg:&NodeInfoCfg) -> Self {
+	pub(crate) fn new(cfg: &NodeInfoCfg) -> Self {
 		let network: &Network = if cfg.is_pub_net { &PUBLIC_NETWORK } else { &TEST_NETWORK };
 		NodeInfo {
 			ledger_version: cfg.ledger_version,

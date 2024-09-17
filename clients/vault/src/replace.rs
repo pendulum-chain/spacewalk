@@ -3,7 +3,10 @@ use std::{sync::Arc, time::Duration};
 use futures::{channel::mpsc::Sender, future::try_join3, SinkExt};
 use tokio::sync::RwLock;
 
-use crate::{ArcRwLock, cancellation::Event, error::Error, oracle::OracleAgent, requests::Request, system::VaultIdManager};
+use crate::{
+	cancellation::Event, error::Error, oracle::OracleAgent, requests::Request,
+	system::VaultIdManager, ArcRwLock,
+};
 use runtime::{
 	AcceptReplaceEvent, CollateralBalancesPallet, ExecuteReplaceEvent, PrettyPrint, ReplacePallet,
 	RequestReplaceEvent, ShutdownSender, SpacewalkParachain, UtilFuncs, VaultId,

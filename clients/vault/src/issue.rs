@@ -14,7 +14,7 @@ use wallet::{
 	types::FilterWith, LedgerTxEnvMap, Slot, SlotTask, SlotTaskStatus, TransactionResponse,
 };
 
-use crate::{oracle::OracleAgent, ArcRwLock, Error, Event, tokio_spawn};
+use crate::{oracle::OracleAgent, tokio_spawn, ArcRwLock, Error, Event};
 
 fn is_vault(p1: &PublicKey, p2_raw: [u8; 32]) -> bool {
 	return *p1.as_binary() == p2_raw;
@@ -282,7 +282,7 @@ pub async fn process_issues_requests(
 					oracle_agent.clone(),
 					*slot,
 					sender,
-				)
+				),
 			);
 		}
 

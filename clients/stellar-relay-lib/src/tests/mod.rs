@@ -31,10 +31,7 @@ fn overlay_infos(is_mainnet: bool) -> (NodeInfo, ConnectionInfo) {
 
 	let cfg = StellarOverlayConfig::try_from_path(&path).expect("should be able to extract config");
 
-	(
-		cfg.node_info(),
-		cfg.connection_info(secret_key(is_mainnet)).expect("should return conn info"),
-	)
+	(cfg.node_info(), cfg.connection_info(secret_key(is_mainnet)).expect("should return conn info"))
 }
 
 #[tokio::test(flavor = "multi_thread")]
@@ -43,7 +40,9 @@ async fn stellar_overlay_should_receive_scp_messages() {
 	let (node_info, conn_info) = overlay_infos(false);
 
 	let overlay_connection = Arc::new(Mutex::new(
-		StellarOverlayConnection::connect(node_info, conn_info).await.expect("should connect"),
+		StellarOverlayConnection::connect(node_info, conn_info)
+			.await
+			.expect("should connect"),
 	));
 
 	// to check if we receive any scp message from stellar node
@@ -52,7 +51,7 @@ async fn stellar_overlay_should_receive_scp_messages() {
 
 	let scps_vec = Arc::new(Mutex::new(vec![]));
 	let scps_vec_clone = scps_vec.clone();
-	tokio::spawn( async move {
+	tokio::spawn(async move {
 		let mut ov_conn_locked = ov_conn.lock().await;
 		while let Ok(Some(msg)) = ov_conn_locked.listen().await {
 			scps_vec_clone.lock().await.push(msg);
@@ -70,9 +69,9 @@ async fn stellar_overlay_should_receive_scp_messages() {
 		//assert
 		//ensure that we receive some scp message from stellar node
 		assert!(!scps_vec.lock().await.is_empty());
-
-	}).await.expect("time has elapsed");
-
+	})
+	.await
+	.expect("time has elapsed");
 }
 
 #[tokio::test(flavor = "multi_thread")]

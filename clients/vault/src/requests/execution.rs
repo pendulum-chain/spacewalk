@@ -1,11 +1,16 @@
-use crate::{ArcRwLock, error::Error, oracle::OracleAgent, requests::{
-	helper::{
-		get_all_transactions_of_wallet_async, get_request_for_stellar_tx,
-		retrieve_open_redeem_replace_requests_async, PayAndExecuteExt,
+use crate::{
+	error::Error,
+	oracle::OracleAgent,
+	requests::{
+		helper::{
+			get_all_transactions_of_wallet_async, get_request_for_stellar_tx,
+			retrieve_open_redeem_replace_requests_async, PayAndExecuteExt,
+		},
+		structs::Request,
+		PayAndExecute,
 	},
-	structs::Request,
-	PayAndExecute,
-}, VaultIdManager, YIELD_RATE};
+	ArcRwLock, VaultIdManager, YIELD_RATE,
+};
 use async_trait::async_trait;
 use governor::{
 	clock::{Clock, ReasonablyRealtime},
@@ -285,7 +290,7 @@ pub async fn execute_open_requests(
 	wallet: Arc<RwLock<StellarWallet>>,
 	oracle_agent: ArcRwLock<OracleAgent>,
 	payment_margin: Duration,
-	precheck_signal: tokio::sync::broadcast::Sender<()>
+	precheck_signal: tokio::sync::broadcast::Sender<()>,
 ) -> Result<(), ServiceError<Error>> {
 	tracing::info!("execute_open_requests(): started");
 	let parachain_rpc_ref = &parachain_rpc;
@@ -328,7 +333,6 @@ pub async fn execute_open_requests(
 		oracle_agent,
 		rate_limiter,
 	);
-
 
 	if let Err(e) = precheck_signal.send(()) {
 		tracing::error!("execute_open_requests(): Failed to send signal: {e:?}");

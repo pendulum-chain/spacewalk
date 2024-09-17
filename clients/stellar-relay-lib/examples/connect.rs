@@ -1,4 +1,8 @@
-use stellar_relay_lib::{connect_to_stellar_overlay_network, Error, sdk::types::{ScpStatementPledges, StellarMessage}, StellarOverlayConfig};
+use stellar_relay_lib::{
+	connect_to_stellar_overlay_network,
+	sdk::types::{ScpStatementPledges, StellarMessage},
+	Error, StellarOverlayConfig,
+};
 
 use wallet::keys::get_source_secret_key_from_env;
 
@@ -36,26 +40,25 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 						ScpStatementPledges::ScpStNominate(_) => "ScpStNominate ",
 					};
 					tracing::info!(
-					"{} sent StellarMessage of type {} for ledger {}",
-					node_id,
-					stmt_type,
-					slot
-				);
+						"{} sent StellarMessage of type {} for ledger {}",
+						node_id,
+						stmt_type,
+						slot
+					);
 				},
 				_ => {
 					let _ = overlay_connection.send_to_node(StellarMessage::GetPeers).await;
 				},
 			},
-			Ok(None) => {}
+			Ok(None) => {},
 			Err(Error::Timeout) => {
 				tracing::warn!("took more than a second to respond");
-			}
+			},
 			Err(e) => {
 				tracing::error!("Error: {:?}", e);
 				break
-			}
+			},
 		}
-
 	}
 
 	tracing::info!("ooops, connection stopped ");

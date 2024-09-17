@@ -1,10 +1,7 @@
-use substrate_stellar_sdk::types::{StellarMessage};
+use substrate_stellar_sdk::types::StellarMessage;
 use tokio::sync::{
 	mpsc,
-	mpsc::{
-		error::{SendError},
-		Sender,
-	},
+	mpsc::{error::SendError, Sender},
 };
 use tracing::{debug, info};
 
@@ -50,7 +47,8 @@ impl StellarOverlayConnection {
 				connector,
 				send_to_user_sender,
 				send_to_node_receiver,
-			)).unwrap();
+			))
+			.unwrap();
 
 		#[cfg(not(tokio_unstable))]
 		tokio::spawn(poll_messages_from_stellar(
@@ -66,7 +64,8 @@ impl StellarOverlayConnection {
 	}
 
 	/// Listens for upcoming messages from Stellar Node via a receiver.
-	/// The sender pair can be found in [fn poll_messages_from_stellar](../src/connection/connector/message_reader.rs)
+	/// The sender pair can be found in [fn
+	/// poll_messages_from_stellar](../src/connection/connector/message_reader.rs)
 	pub async fn listen(&mut self) -> Result<Option<StellarMessage>, Error> {
 		if !self.is_alive() {
 			debug!("listen(): sender half of overlay has closed.");

@@ -3,7 +3,7 @@ use futures::try_join;
 use std::{collections::HashMap, sync::Arc, time::Duration};
 use tokio::sync::RwLock;
 
-use crate::{requests::structs::Request, Error, VaultIdManager, ArcRwLock};
+use crate::{requests::structs::Request, ArcRwLock, Error, VaultIdManager};
 
 use crate::oracle::OracleAgent;
 use primitives::{derive_shortened_request_id, TextMemo, TransactionEnvelopeExt};

@@ -687,12 +687,16 @@ async fn test_issue_execution_succeeds_from_archive_on_network(is_public_network
 			let vault_stellar_secret = get_source_secret_key_from_env(is_public_network);
 			// Create new oracle agent with the same configuration as the previous one
 			let oracle_agent =
-				start_oracle_agent(stellar_config.clone(), vault_stellar_secret, shutdown_tx)
-					.await;
+				start_oracle_agent(stellar_config.clone(), vault_stellar_secret, shutdown_tx).await;
 			let oracle_agent = Arc::new(oracle_agent);
 
 			// Loop pending proofs until it is ready
-			let proof = oracle_agent.read().await.get_proof(slot).await.expect("Proof should be available");
+			let proof = oracle_agent
+				.read()
+				.await
+				.get_proof(slot)
+				.await
+				.expect("Proof should be available");
 			let tx_envelope_xdr_encoded = transaction_response.envelope_xdr;
 			let (envelopes_xdr_encoded, tx_set_xdr_encoded) = proof.encode();
 
@@ -780,7 +784,12 @@ async fn test_issue_overpayment_succeeds() {
 			let slot = transaction_response.ledger as u64;
 
 			// Loop pending proofs until it is ready
-			let proof = oracle_agent.read().await.get_proof(slot).await.expect("Proof should be available");
+			let proof = oracle_agent
+				.read()
+				.await
+				.get_proof(slot)
+				.await
+				.expect("Proof should be available");
 			let tx_envelope_xdr_encoded = transaction_response.envelope_xdr;
 			let (envelopes_xdr_encoded, tx_set_xdr_encoded) = proof.encode();
 
@@ -1176,7 +1185,6 @@ async fn test_execute_open_requests_succeeds() {
 			let (precheck_signal, mut rceiver) = tokio::sync::broadcast::channel(1);
 			let shutdown_tx = ShutdownSender::new();
 
-
 			join5(
 				vault::service::execute_open_requests(
 					shutdown_tx.clone(),
@@ -1185,7 +1193,7 @@ async fn test_execute_open_requests_succeeds() {
 					vault_wallet.clone(),
 					oracle_agent.clone(),
 					Duration::from_secs(0),
-					precheck_signal
+					precheck_signal,
 				)
 				.map(Result::unwrap),
 				async move {

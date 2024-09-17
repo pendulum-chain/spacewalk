@@ -1,4 +1,9 @@
-use crate::{metrics::update_stellar_metrics, oracle::{OracleAgent, Proof}, system::VaultData, Error, ArcRwLock};
+use crate::{
+	metrics::update_stellar_metrics,
+	oracle::{OracleAgent, Proof},
+	system::VaultData,
+	ArcRwLock, Error,
+};
 use primitives::{stellar::PublicKey, CurrencyId};
 use runtime::{
 	Error as EnrichedError, OraclePallet, Recoverability, RedeemPallet, ReplacePallet, RetryPolicy,

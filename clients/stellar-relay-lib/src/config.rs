@@ -39,7 +39,10 @@ impl StellarOverlayConfig {
 	}
 
 	#[allow(dead_code)]
-	pub(crate) fn connection_info(&self, secret_key_as_string: String) -> Result<ConnectionInfo, Error> {
+	pub(crate) fn connection_info(
+		&self,
+		secret_key_as_string: String,
+	) -> Result<ConnectionInfo, Error> {
 		let cfg = &self.connection_info;
 		let secret_key = SecretKey::from_encoding(secret_key_as_string)?;
 

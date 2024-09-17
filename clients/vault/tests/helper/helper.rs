@@ -203,7 +203,12 @@ pub async fn assert_issue(
 	let slot = response.ledger as u64;
 
 	// Loop pending proofs until it is ready
-	let proof = oracle_agent.read().await.get_proof(slot).await.expect("Proof should be available");
+	let proof = oracle_agent
+		.read()
+		.await
+		.get_proof(slot)
+		.await
+		.expect("Proof should be available");
 	let tx_envelope_xdr_encoded = response.envelope_xdr;
 	let (envelopes_xdr_encoded, tx_set_xdr_encoded) = proof.encode();
 

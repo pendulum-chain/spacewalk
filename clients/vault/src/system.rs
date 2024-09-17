@@ -14,8 +14,13 @@ use futures::{
 	future::{join, join_all},
 	SinkExt, TryFutureExt,
 };
-use  tokio::sync::broadcast::{self, Receiver as bcReceiver, Sender as bcSender };
-use tokio::{sync::RwLock, time::sleep};
+use tokio::{
+	sync::{
+		broadcast::{self, Receiver as bcReceiver, Sender as bcSender},
+		RwLock,
+	},
+	time::sleep,
+};
 
 use runtime::{
 	cli::parse_duration_minutes, AccountId, BlockNumber, CollateralBalancesPallet, CurrencyId,
@@ -27,8 +32,19 @@ use service::{wait_or_shutdown, Error as ServiceError, MonitoringConfig, Service
 use stellar_relay_lib::{sdk::PublicKey, StellarOverlayConfig};
 use wallet::{LedgerTxEnvMap, StellarWallet, RESUBMISSION_INTERVAL_IN_SECS};
 
-use crate::{cancellation::ReplaceCanceller, error::Error, issue, issue::IssueFilter, metrics::{monitor_bridge_metrics, poll_metrics, publish_tokio_metrics, PerCurrencyMetrics}, oracle::OracleAgent, redeem::listen_for_redeem_requests, replace::{listen_for_accept_replace, listen_for_execute_replace, listen_for_replace_requests}, requests::execution::execute_open_requests, service::{CancellationScheduler, IssueCanceller}, ArcRwLock, Event, CHAIN_HEIGHT_POLLING_INTERVAL, tokio_spawn};
-use crate::oracle::listen_for_stellar_messages;
+use crate::{
+	cancellation::ReplaceCanceller,
+	error::Error,
+	issue,
+	issue::IssueFilter,
+	metrics::{monitor_bridge_metrics, poll_metrics, publish_tokio_metrics, PerCurrencyMetrics},
+	oracle::{listen_for_stellar_messages, OracleAgent},
+	redeem::listen_for_redeem_requests,
+	replace::{listen_for_accept_replace, listen_for_execute_replace, listen_for_replace_requests},
+	requests::execution::execute_open_requests,
+	service::{CancellationScheduler, IssueCanceller},
+	tokio_spawn, ArcRwLock, Event, CHAIN_HEIGHT_POLLING_INTERVAL,
+};
 
 pub const VERSION: &str = env!("CARGO_PKG_VERSION");
 pub const AUTHORS: &str = env!("CARGO_PKG_AUTHORS");
@@ -302,7 +318,7 @@ async fn run_and_monitor_tasks(
 	shutdown_tx: ShutdownSender,
 	items: Vec<(&str, ServiceTask)>,
 	// Sends a signal to start those tasks requiring a precheck.
-	mut precheck_signals: Vec<bcReceiver<()>>
+	mut precheck_signals: Vec<bcReceiver<()>>,
 ) -> Result<(), ServiceError<Error>> {
 	let (metrics_iterators, tasks): (HashMap<String, _>, Vec<_>) = items
 		.into_iter()
@@ -311,9 +327,9 @@ async fn run_and_monitor_tasks(
 			let metrics_iterator = monitor.intervals();
 			let task = match task {
 				ServiceTask::Optional(true, t) | ServiceTask::Essential(t) =>
-					Some(wait_or_shutdown(shutdown_tx.clone(), t,None)),
+					Some(wait_or_shutdown(shutdown_tx.clone(), t, None)),
 				ServiceTask::PrecheckRequired(t) =>
-					Some(wait_or_shutdown(shutdown_tx.clone(),t,precheck_signals.pop())),
+					Some(wait_or_shutdown(shutdown_tx.clone(), t, precheck_signals.pop())),
 				_ => None,
 			}?;
 			let task = monitor.instrument(task);
@@ -325,26 +341,21 @@ async fn run_and_monitor_tasks(
 
 	let tokio_metrics = tokio_spawn(
 		"tokio metrics publisher",
-		wait_or_shutdown(
-			shutdown_tx.clone(),
-			publish_tokio_metrics(metrics_iterators),
-			None
-		)
+		wait_or_shutdown(shutdown_tx.clone(), publish_tokio_metrics(metrics_iterators), None),
 	);
 
 	tracing::info!("run_and_monitor_tasks(): running all tasks...");
-
 
 	match join(tokio_metrics, join_all(tasks)).await {
 		(Ok(Err(err)), _) => Err(err),
 		(_, results) => {
 			for result in results {
 				match result {
-					Ok(_) => {}
+					Ok(_) => {},
 					Err(e) => {
 						tracing::error!("run_and_monitor_tasks(): One of the tasks failed: {e:?}");
 						return Err(ServiceError::TokioError(e));
-					}
+					},
 				}
 			}
 			Ok(())
@@ -358,11 +369,11 @@ enum ServiceTask {
 	Optional(bool, Task),
 	Essential(Task),
 	// Runs a task after a prequisite check has passed.
-	PrecheckRequired(Task)
+	PrecheckRequired(Task),
 }
 
 /// returns a single-producer multi-consumer channel to send a signal to start a task
-fn precheck_signals(num_of_signals_required:u8) -> (bcSender<()>, Vec<bcReceiver<()>>){
+fn precheck_signals(num_of_signals_required: u8) -> (bcSender<()>, Vec<bcReceiver<()>>) {
 	let (sender, receiver) = broadcast::channel(1);
 	let mut subscribers = vec![receiver];
 	while subscribers.len() < usize::from(num_of_signals_required) {
@@ -389,9 +400,9 @@ where
 }
 
 fn run_with_precheck<F, E>(task: F) -> ServiceTask
-	where
-		F: Future<Output = Result<(), E>> + Send + 'static,
-		E: Into<ServiceError<Error>>,
+where
+	F: Future<Output = Result<(), E>> + Send + 'static,
+	E: Into<ServiceError<Error>>,
 {
 	ServiceTask::PrecheckRequired(Box::pin(task.map_err(|x| x.into())))
 }
@@ -432,12 +443,18 @@ impl VaultService {
 		// Subscribe to an event (any event will do) so that a period of inactivity does not close
 		// the jsonrpsee connection
 		let err_provider = self.spacewalk_parachain.clone();
-		let err_listener = wait_or_shutdown(self.shutdown.clone(), async move {
-			err_provider
-				.on_event_error(|e| tracing::debug!("Client Service: Received error event: {}", e))
-				.await?;
-			Ok::<_, Error>(())
-		},None);
+		let err_listener = wait_or_shutdown(
+			self.shutdown.clone(),
+			async move {
+				err_provider
+					.on_event_error(|e| {
+						tracing::debug!("Client Service: Received error event: {}", e)
+					})
+					.await?;
+				Ok::<_, Error>(())
+			},
+			None,
+		);
 		tokio_spawn("error listener", err_listener);
 
 		Ok(())
@@ -455,7 +472,7 @@ impl VaultService {
 			return Err(ServiceError::IncompatibleNetwork);
 		}
 
-		Ok(Arc::new(RwLock::new(OracleAgent::new(&stellar_overlay_cfg,shutdown_sender))))
+		Ok(Arc::new(RwLock::new(OracleAgent::new(&stellar_overlay_cfg, shutdown_sender))))
 	}
 
 	fn create_issue_tasks(
@@ -512,12 +529,14 @@ impl VaultService {
 			),
 			(
 				"Issue Cancel Scheduler",
-				run_with_precheck(CancellationScheduler::new(
-					self.spacewalk_parachain.clone(),
-					startup_height,
-					account_id,
-				)
-				.handle_cancellation::<IssueCanceller>(issue_event_rx)),
+				run_with_precheck(
+					CancellationScheduler::new(
+						self.spacewalk_parachain.clone(),
+						startup_height,
+						account_id,
+					)
+					.handle_cancellation::<IssueCanceller>(issue_event_rx),
+				),
 			),
 		]
 	}
@@ -556,12 +575,14 @@ impl VaultService {
 			),
 			(
 				"Replace Cancellation Scheduler",
-				run_with_precheck(CancellationScheduler::new(
-					self.spacewalk_parachain.clone(),
-					startup_height,
-					account_id,
-				)
-				.handle_cancellation::<ReplaceCanceller>(replace_event_rx)),
+				run_with_precheck(
+					CancellationScheduler::new(
+						self.spacewalk_parachain.clone(),
+						startup_height,
+						account_id,
+					)
+					.handle_cancellation::<ReplaceCanceller>(replace_event_rx),
+				),
 			),
 		]
 	}
@@ -740,7 +761,7 @@ impl VaultService {
 		})
 	}
 
-	fn secret_key (&self) -> String {
+	fn secret_key(&self) -> String {
 		self.secret_key.clone()
 	}
 
@@ -816,24 +837,22 @@ impl VaultService {
 				self.stellar_wallet.clone(),
 				oracle_agent.clone(),
 				self.config.payment_margin_minutes,
-				precheck_sender
-			)
+				precheck_sender,
+			),
 		);
 
 		let ledger_env_map: ArcRwLock<LedgerTxEnvMap> = Arc::new(RwLock::new(HashMap::new()));
 
 		tracing::info!("Starting all services...");
 
-        let mut tasks = vec![(
+		let mut tasks = vec![(
 			"Stellar Messages Listener",
-			run(
-				listen_for_stellar_messages(
-					self.stellar_overlay_cfg()?,
-					oracle_agent.clone(),
-					self.secret_key(),
-					self.shutdown.clone()
-				)
-			)
+			run(listen_for_stellar_messages(
+				self.stellar_overlay_cfg()?,
+				oracle_agent.clone(),
+				self.secret_key(),
+				self.shutdown.clone(),
+			)),
 		)];
 
 		let mut _tasks = self.create_tasks(
@@ -980,5 +999,4 @@ impl VaultService {
 		wallet.try_stop_periodic_resubmission_of_transactions().await;
 		drop(wallet);
 	}
-
 }

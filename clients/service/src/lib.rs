@@ -172,7 +172,7 @@ pub async fn wait_or_shutdown<F, E>(
 	shutdown_tx: ShutdownSender,
 	future2: F,
 	// a consumer that receives a precheck signal to start a task.
-	precheck_signal: Option<tokio::sync::broadcast::Receiver<()>>
+	precheck_signal: Option<tokio::sync::broadcast::Receiver<()>>,
 ) -> Result<(), E>
 where
 	F: Future<Output = Result<(), E>>,
