@@ -49,7 +49,6 @@ async fn test_register() {
 
 #[tokio::test(flavor = "multi_thread")]
 #[serial]
-#[ntest::timeout(300_000)] // timeout at 5 minutes
 async fn test_redeem_succeeds_on_mainnet() {
 	let is_public_network = true;
 	test_redeem_succeeds_on_network(is_public_network).await;
@@ -131,7 +130,6 @@ async fn test_redeem_succeeds_on_network(is_public_network: bool) {
 
 #[tokio::test(flavor = "multi_thread")]
 #[serial]
-#[ntest::timeout(300_000)] // timeout at 5 minutes
 async fn test_replace_succeeds_on_mainnet() {
 	let is_public_network = true;
 	test_replace_succeeds_on_network(is_public_network).await
@@ -139,7 +137,6 @@ async fn test_replace_succeeds_on_mainnet() {
 
 #[tokio::test(flavor = "multi_thread")]
 #[serial]
-#[ntest::timeout(300_000)] // timeout at 5 minutes
 async fn test_replace_succeeds_on_testnet() {
 	let is_public_network = false;
 	test_replace_succeeds_on_network(is_public_network).await
@@ -263,7 +260,6 @@ async fn test_replace_succeeds_on_network(is_public_network: bool) {
 
 #[tokio::test(flavor = "multi_thread")]
 #[serial]
-#[ntest::timeout(300_000)] // timeout at 5 minutes
 async fn test_withdraw_replace_succeeds() {
 	let is_public_network = false;
 	test_with_vault(
@@ -337,7 +333,6 @@ async fn test_withdraw_replace_succeeds() {
 
 #[tokio::test(flavor = "multi_thread")]
 #[serial]
-#[ntest::timeout(300_000)] // timeout at 5 minutes
 async fn test_cancel_scheduler_succeeds() {
 	// tests cancellation of issue, redeem and replace.
 	// issue and replace cancellation is tested through the vault's cancellation service.
@@ -521,7 +516,6 @@ async fn test_cancel_scheduler_succeeds() {
 
 #[tokio::test(flavor = "multi_thread")]
 #[serial]
-#[ntest::timeout(300_000)] // timeout at 5 minutes
 async fn test_issue_cancel_succeeds() {
 	test_with_vault(
 		false,
@@ -611,7 +605,6 @@ async fn test_issue_cancel_succeeds() {
 }
 
 #[tokio::test(flavor = "multi_thread")]
-#[ntest::timeout(1_200_000)] // timeout at 20 minutes
 #[serial]
 async fn test_issue_execution_succeeds_from_archive_on_mainnet() {
 	let is_public_network = true;
@@ -619,7 +612,6 @@ async fn test_issue_execution_succeeds_from_archive_on_mainnet() {
 }
 
 #[tokio::test(flavor = "multi_thread")]
-#[ntest::timeout(1_200_000)] // timeout at 20 minutes
 #[serial]
 async fn test_issue_execution_succeeds_from_archive_on_testnet() {
 	let is_public_network = false;
@@ -726,7 +718,6 @@ async fn test_issue_execution_succeeds_from_archive_on_network(is_public_network
 
 #[tokio::test(flavor = "multi_thread")]
 #[serial]
-#[ntest::timeout(300_000)] // timeout at 5 minutes
 async fn test_issue_overpayment_succeeds() {
 	let is_public_network = false;
 	test_with_vault(
@@ -823,7 +814,6 @@ async fn test_issue_overpayment_succeeds() {
 
 #[tokio::test(flavor = "multi_thread")]
 #[serial]
-#[ntest::timeout(300_000)] // timeout at 5 minutes
 async fn test_automatic_issue_execution_succeeds_on_mainnet() {
 	let is_public_network = true;
 	test_automatic_issue_execution_succeeds_on_network(is_public_network).await;
@@ -831,7 +821,6 @@ async fn test_automatic_issue_execution_succeeds_on_mainnet() {
 
 #[tokio::test(flavor = "multi_thread")]
 #[serial]
-#[ntest::timeout(300_000)] // timeout at 5 minutes
 async fn test_automatic_issue_execution_succeeds_on_testnet() {
 	let is_public_network = false;
 	test_automatic_issue_execution_succeeds_on_network(is_public_network).await;
@@ -945,7 +934,6 @@ async fn test_automatic_issue_execution_succeeds_on_network(is_public_network: b
 /// amounts).
 #[tokio::test(flavor = "multi_thread")]
 #[serial]
-#[ntest::timeout(300_000)] // timeout at 5 minutes
 async fn test_automatic_issue_execution_succeeds_for_other_vault() {
 	let is_public_network = false;
 	test_with_vault(
@@ -1092,7 +1080,6 @@ async fn test_automatic_issue_execution_succeeds_for_other_vault() {
 
 #[tokio::test(flavor = "multi_thread")]
 #[serial]
-#[ntest::timeout(1_200_000)] // timeout at 20 minutes
 async fn test_execute_open_requests_succeeds() {
 	let is_public_network = false;
 	test_with_vault(
@@ -1214,7 +1201,6 @@ async fn test_execute_open_requests_succeeds() {
 
 #[tokio::test(flavor = "multi_thread")]
 #[serial]
-#[ntest::timeout(300_000)] // timeout at 5 minutes
 async fn test_off_chain_liquidation() {
 	let is_public_network = false;
 	test_with_vault(
@@ -1330,7 +1316,6 @@ async fn test_shutdown() {
 
 #[tokio::test(flavor = "multi_thread")]
 #[serial]
-#[ntest::timeout(300_000)] // timeout at 5 minutes
 async fn test_requests_with_incompatible_amounts_fail() {
 	test_with_vault(
 		false,
