@@ -11,9 +11,9 @@ runs:
       if: matrix.rust == 'nightly'
       uses: dtolnay/rust-toolchain@nightly
       with:
-        toolchain: ${{ RUSTUP_NIGHTLY_VERSION }}
+        toolchain: ${{ env.RUSTUP_NIGHTLY_VERSION }}
         components: rustfmt, clippy
         target: wasm32-unknown-unknown
           -
     - name: Setup nightly Rust as default
-      run: rustup default ${{ RUSTUP_NIGHTLY_VERSION }}
+      run: rustup default ${{ env.RUSTUP_NIGHTLY_VERSION }}

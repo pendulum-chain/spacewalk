@@ -51,7 +51,7 @@ jobs:
         if: matrix.rust == 'nightly'
         uses: actions-rs/cargo@v1
         with:
-          toolchain: ${{ RUSTUP_NIGHTLY_VERSION }}
+          toolchain: ${{ env.RUSTUP_NIGHTLY_VERSION }}
           command: fmt
           args: --all -- --check
 
@@ -59,7 +59,7 @@ jobs:
         if: matrix.rust == 'nightly'
         uses: actions-rs/cargo@v1
         with:
-          toolchain: ${{ RUSTUP_NIGHTLY_VERSION }}
+          toolchain: ${{ env.RUSTUP_NIGHTLY_VERSION }}
           command: clippy
           args: --all-features --tests --benches --examples -- -A clippy::all -W clippy::correctness -A forgetting_copy_types -A forgetting_references
 
