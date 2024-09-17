@@ -16,8 +16,11 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Prerequisites
-        uses: ./.github/actions/prerequisites
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Free up disk space
+        uses: ./.github/actions/free-up-disk-space
 
       - name: Check Build
         run: |
@@ -34,8 +37,11 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Prerequisites
-        uses: ./.github/actions/prerequisites
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Free up disk space
+        uses: ./.github/actions/free-up-disk-space
 
       - name: Use cargo.toml with polkadot-sdk fork
         # To make sure that our polkadot-sdk fork will be used
@@ -80,8 +86,11 @@ jobs:
       DEST_STELLAR_SECRET_TESTNET: ${{ secrets.DEST_STELLAR_SECRET_TESTNET }}
 
     steps:
-      - name: Prerequisites
-        uses: ./.github/actions/prerequisites
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Free up disk space
+        uses: ./.github/actions/free-up-disk-space
 
       - name: Install Rust Nightly
         if: matrix.rust == 'nightly'
