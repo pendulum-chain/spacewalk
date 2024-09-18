@@ -71,8 +71,8 @@ async fn test_redeem_succeeds_on_network(is_public_network: bool) {
 			let vault_id_manager =
 				VaultIdManager::from_map(vault_provider.clone(), vault_wallet.clone(), vault_ids);
 
-			// We issue 1 (spacewalk-chain) unit
-			let issue_amount = DecimalsLookupImpl::one(CurrencyId::Native) / 100;
+			// We issue 1/1000 unit
+			let issue_amount = DecimalsLookupImpl::one(CurrencyId::Native) / 1000;
 			let vault_collateral = get_required_vault_collateral_for_issue(
 				&vault_provider,
 				issue_amount,
