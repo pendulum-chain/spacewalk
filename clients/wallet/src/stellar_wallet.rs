@@ -385,8 +385,9 @@ impl StellarWallet {
 				Err(e) => {
 					tracing::error!("Failed to get fee stat for Stellar network: {e:?}");
 					// Return default fee for the operation.
-					tracing::info!("Using the default stroop fee for operation: {fee:?}");
-					StellarWallet::DEFAULT_STROOP_FEE_PER_OPERATION
+					let fallback_fee = StellarWallet::DEFAULT_STROOP_FEE_PER_OPERATION;
+					tracing::info!("Using the default stroop fee for operation: {fallback_fee:?}");
+					fallback_fee
 				},
 			};
 
