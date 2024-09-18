@@ -6,7 +6,7 @@ pub use primitives::{
 };
 use sp_std::marker;
 
-use sp_runtime::traits::Convert;
+use frame_support::sp_runtime::traits::Convert;
 use sp_std::vec::Vec;
 
 const STELLAR_DIA_BLOCKCHAIN: &str = "Stellar";

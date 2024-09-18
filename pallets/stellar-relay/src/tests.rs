@@ -11,7 +11,7 @@ use primitives::stellar::{
 	Hash, InitExt, IntoHash, Memo, MuxedAccount, PublicKey, SecretKey, Transaction,
 	TransactionEnvelope, TransactionSetType, XdrCodec,
 };
-use sp_runtime::DispatchError::BadOrigin;
+use frame_support::sp_runtime::DispatchError::BadOrigin;
 
 use crate::{
 	mock::*,

@@ -15,7 +15,7 @@ use orml_traits::parameter_type_with_key;
 use primitives::CurrencyId::XCM;
 use sp_arithmetic::{FixedI128, FixedPointNumber, FixedU128};
 use sp_core::H256;
-use sp_runtime::{
+use frame_support::sp_runtime::{
 	testing::TestXt,
 	traits::{BlakeTwo256, Convert, IdentityLookup, One, Zero},
 	BuildStorage, DispatchError, Perquintill,

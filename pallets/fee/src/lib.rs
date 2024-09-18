@@ -11,10 +11,13 @@ use mocktopus::macros::mockable;
 
 use codec::EncodeLike;
 use frame_support::{
-	dispatch::DispatchResult, sp_runtime::DispatchError, traits::Get, transactional, PalletId,
+	dispatch::DispatchResult, sp_runtime, traits::Get, transactional, PalletId,
 };
 use sp_arithmetic::{traits::*, FixedPointNumber, FixedPointOperand};
-use sp_runtime::traits::{AccountIdConversion, AtLeast32BitUnsigned};
+use sp_runtime::{
+	DispatchError,
+	traits::{AccountIdConversion, AtLeast32BitUnsigned}
+};
 use sp_std::{
 	convert::{TryFrom, TryInto},
 	fmt::Debug,

@@ -1137,12 +1137,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "bstringify"
-version = "0.1.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "bd769563b4ea2953e2825c9e6b7470a5f55f67e0be00030bf3e390a2a6071f64"
-
-[[package]]
 name = "build-helper"
 version = "0.1.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1475,11 +1469,8 @@ dependencies = [
  "frame-system",
  "parity-scale-codec",
  "scale-info",
- "serde",
- "sp-arithmetic 16.0.0",
  "sp-core 21.0.0",
  "sp-io 23.0.0",
- "sp-runtime 24.0.0",
  "sp-std 8.0.0",
 ]
 
@@ -1904,14 +1895,11 @@ dependencies = [
  "orml-tokens",
  "orml-traits",
  "pallet-balances",
- "pallet-transaction-payment",
  "parity-scale-codec",
  "scale-info",
- "serde",
  "sp-arithmetic 16.0.0",
  "sp-core 21.0.0",
  "sp-io 23.0.0",
- "sp-runtime 24.0.0",
  "sp-std 8.0.0",
  "spacewalk-primitives",
 ]
@@ -2763,11 +2751,9 @@ dependencies = [
  "reward-distribution",
  "scale-info",
  "security",
- "serde",
  "sp-arithmetic 16.0.0",
  "sp-core 21.0.0",
  "sp-io 23.0.0",
- "sp-runtime 24.0.0",
  "sp-std 8.0.0",
  "spacewalk-primitives",
  "staking",
@@ -2848,16 +2834,6 @@ dependencies = [
  "parity-scale-codec",
  "parking_lot 0.12.2",
  "scale-info",
-]
-
-[[package]]
-name = "fixed-hash"
-version = "0.7.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "cfcf0ed7fe52a17a03854ec54a9f76d6d84508d1c0e66bc1793301c73fc8493c"
-dependencies = [
- "byteorder",
- "static_assertions",
 ]
 
 [[package]]
@@ -3443,10 +3419,8 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c4567c8db10ae91089c99af84c68c38da3ec2f087c3f82960bcdbf3656b6f4d7"
 dependencies = [
  "cfg-if 1.0.0",
- "js-sys",
  "libc",
  "wasi 0.11.0+wasi-snapshot-preview1",
- "wasm-bindgen",
 ]
 
 [[package]]
@@ -4354,7 +4328,6 @@ checksum = "f8478577c03552c21db0e2724ffb8986a5ce7af88107e6be5d2ee6e158c12800"
 name = "issue"
 version = "1.0.11"
 dependencies = [
- "base64 0.13.1",
  "currency",
  "fee",
  "frame-benchmarking",
@@ -4376,11 +4349,9 @@ dependencies = [
  "reward-distribution",
  "scale-info",
  "security",
- "serde",
  "sp-arithmetic 16.0.0",
  "sp-core 21.0.0",
  "sp-io 23.0.0",
- "sp-runtime 24.0.0",
  "sp-std 8.0.0",
  "spacewalk-primitives",
  "staking",
@@ -6184,11 +6155,9 @@ dependencies = [
  "reward-distribution",
  "scale-info",
  "security",
- "serde",
  "sp-arithmetic 16.0.0",
  "sp-core 21.0.0",
  "sp-io 23.0.0",
- "sp-runtime 24.0.0",
  "sp-std 8.0.0",
  "spacewalk-primitives",
  "staking",
@@ -6457,7 +6426,6 @@ dependencies = [
  "sp-arithmetic 16.0.0",
  "sp-core 21.0.0",
  "sp-io 23.0.0",
- "sp-runtime 24.0.0",
  "sp-std 8.0.0",
  "spacewalk-primitives",
  "spin 0.9.8",
@@ -7103,17 +7071,14 @@ dependencies = [
  "frame-benchmarking",
  "frame-support",
  "frame-system",
- "log",
  "mocktopus",
  "pallet-timestamp",
  "parity-scale-codec",
  "rand 0.8.5",
  "scale-info",
- "serde",
  "sp-arithmetic 16.0.0",
  "sp-core 21.0.0",
  "sp-io 23.0.0",
- "sp-runtime 24.0.0",
  "sp-std 8.0.0",
  "spacewalk-primitives",
 ]
@@ -7211,7 +7176,7 @@ version = "0.12.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "0b34d9fd68ae0b74a41b21c03c2f62847aa0ffea044eee893b4c140b37e244e2"
 dependencies = [
- "fixed-hash 0.8.0",
+ "fixed-hash",
  "impl-codec",
  "impl-serde",
  "scale-info",
@@ -7731,11 +7696,9 @@ dependencies = [
  "reward-distribution",
  "scale-info",
  "security",
- "serde",
  "sp-arithmetic 16.0.0",
  "sp-core 21.0.0",
  "sp-io 23.0.0",
- "sp-runtime 24.0.0",
  "sp-std 8.0.0",
  "spacewalk-primitives",
  "staking",
@@ -7890,11 +7853,9 @@ dependencies = [
  "reward-distribution",
  "scale-info",
  "security",
- "serde",
  "sp-arithmetic 16.0.0",
  "sp-core 21.0.0",
  "sp-io 23.0.0",
- "sp-runtime 24.0.0",
  "sp-std 8.0.0",
  "spacewalk-primitives",
  "staking",
@@ -7968,11 +7929,9 @@ dependencies = [
  "parity-scale-codec",
  "rand 0.8.5",
  "scale-info",
- "serde",
  "sp-arithmetic 16.0.0",
  "sp-core 21.0.0",
  "sp-io 23.0.0",
- "sp-runtime 24.0.0",
  "sp-std 8.0.0",
  "spacewalk-primitives",
 ]
@@ -7996,11 +7955,9 @@ dependencies = [
  "pooled-rewards",
  "scale-info",
  "security",
- "serde",
  "sp-arithmetic 16.0.0",
  "sp-core 21.0.0",
  "sp-io 23.0.0",
- "sp-runtime 24.0.0",
  "sp-std 8.0.0",
  "spacewalk-primitives",
  "staking",
@@ -9690,7 +9647,6 @@ dependencies = [
  "sha2 0.8.2",
  "sp-core 21.0.0",
  "sp-io 23.0.0",
- "sp-runtime 24.0.0",
  "sp-std 8.0.0",
 ]
 
@@ -9870,16 +9826,12 @@ dependencies = [
  "clap 3.2.25",
  "futures 0.3.30",
  "governor",
- "hyper 0.14.28",
- "hyper-tls 0.5.0",
  "nonzero_ext",
  "runtime",
- "serde",
  "serde_json",
  "thiserror",
  "tokio",
  "tracing",
- "tracing-futures",
  "tracing-subscriber 0.2.25",
  "wallet",
  "warp",
@@ -11233,9 +11185,7 @@ name = "spacewalk-primitives"
 version = "1.0.11"
 dependencies = [
  "base58",
- "bstringify",
  "frame-support",
- "hex",
  "parity-scale-codec",
  "scale-decode 0.13.1",
  "scale-encode 0.7.1",
@@ -11263,11 +11213,9 @@ dependencies = [
  "frame-system",
  "frame-system-benchmarking",
  "frame-system-rpc-runtime-api",
- "getrandom 0.2.15",
  "hex",
  "hex-literal 0.3.4",
  "issue",
- "lazy_static",
  "mocktopus",
  "module-issue-rpc-runtime-api",
  "module-oracle-rpc-runtime-api",
@@ -11277,7 +11225,6 @@ dependencies = [
  "nomination",
  "oracle",
  "orml-currencies",
- "orml-oracle",
  "orml-tokens",
  "orml-traits",
  "pallet-aura",
@@ -11292,7 +11239,6 @@ dependencies = [
  "pretty_assertions",
  "redeem",
  "replace",
- "reward",
  "reward-distribution",
  "scale-info",
  "security",
@@ -11302,7 +11248,6 @@ dependencies = [
  "sp-consensus-aura",
  "sp-core 21.0.0",
  "sp-inherents",
- "sp-io 23.0.0",
  "sp-offchain",
  "sp-runtime 24.0.0",
  "sp-session",
@@ -11332,11 +11277,9 @@ dependencies = [
  "frame-system",
  "frame-system-benchmarking",
  "frame-system-rpc-runtime-api",
- "getrandom 0.2.15",
  "hex",
  "hex-literal 0.3.4",
  "issue",
- "lazy_static",
  "mocktopus",
  "module-issue-rpc-runtime-api",
  "module-oracle-rpc-runtime-api",
@@ -11346,7 +11289,6 @@ dependencies = [
  "nomination",
  "oracle",
  "orml-currencies",
- "orml-oracle",
  "orml-tokens",
  "orml-traits",
  "pallet-aura",
@@ -11361,7 +11303,6 @@ dependencies = [
  "pretty_assertions",
  "redeem",
  "replace",
- "reward",
  "reward-distribution",
  "scale-info",
  "security",
@@ -11371,7 +11312,6 @@ dependencies = [
  "sp-consensus-aura",
  "sp-core 21.0.0",
  "sp-inherents",
- "sp-io 23.0.0",
  "sp-offchain",
  "sp-runtime 24.0.0",
  "sp-session",
@@ -11530,11 +11470,9 @@ dependencies = [
  "parity-scale-codec",
  "rand 0.8.5",
  "scale-info",
- "serde",
  "sp-arithmetic 16.0.0",
  "sp-core 21.0.0",
  "sp-io 23.0.0",
- "sp-runtime 24.0.0",
  "sp-std 8.0.0",
  "spacewalk-primitives",
 ]
@@ -11578,7 +11516,6 @@ name = "stellar-relay"
 version = "1.0.11"
 dependencies = [
  "base64 0.13.1",
- "currency",
  "frame-benchmarking",
  "frame-support",
  "frame-system",
@@ -11589,10 +11526,8 @@ dependencies = [
  "rand 0.8.5",
  "scale-info",
  "serde",
- "sha2 0.10.8",
  "sp-core 21.0.0",
  "sp-io 23.0.0",
- "sp-runtime 24.0.0",
  "sp-std 8.0.0",
  "spacewalk-primitives",
 ]
@@ -12862,8 +12797,6 @@ dependencies = [
  "reqwest",
  "runtime",
  "scale-info",
- "serde",
- "serde_json",
  "serial_test",
  "service",
  "sha2 0.8.2",
@@ -12871,7 +12804,6 @@ dependencies = [
  "signal-hook-tokio",
  "sp-arithmetic 16.0.0",
  "sp-core 21.0.0",
- "sp-io 23.0.0",
  "sp-keyring",
  "sp-runtime 24.0.0",
  "sp-std 8.0.0",
@@ -12885,7 +12817,6 @@ dependencies = [
  "tokio-metrics",
  "tokio-stream",
  "tracing",
- "tracing-futures",
  "tracing-subscriber 0.2.25",
  "wallet",
 ]
@@ -12896,7 +12827,6 @@ version = "1.0.11"
 dependencies = [
  "currency",
  "fee",
- "fixed-hash 0.7.0",
  "frame-benchmarking",
  "frame-support",
  "frame-system",
@@ -12911,7 +12841,6 @@ dependencies = [
  "parity-scale-codec",
  "pooled-rewards",
  "pretty_assertions",
- "reward",
  "reward-distribution",
  "scale-info",
  "security",
@@ -12919,7 +12848,6 @@ dependencies = [
  "sp-arithmetic 16.0.0",
  "sp-core 21.0.0",
  "sp-io 23.0.0",
- "sp-runtime 24.0.0",
  "sp-std 8.0.0",
  "spacewalk-primitives",
  "staking",
@@ -13014,11 +12942,7 @@ dependencies = [
  "spacewalk-primitives",
  "thiserror",
  "tokio",
- "tokio-metrics",
- "tokio-stream",
  "tracing",
- "tracing-futures",
- "tracing-subscriber 0.2.25",
 ]
 
 [[package]]

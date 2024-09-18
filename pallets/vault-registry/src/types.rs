@@ -4,7 +4,7 @@ use frame_support::{dispatch::DispatchResult, ensure, sp_runtime::DispatchError,
 use mocktopus::macros::mockable;
 use scale_info::TypeInfo;
 
-use sp_runtime::{
+use frame_support::sp_runtime::{
 	traits::{CheckedAdd, CheckedSub, Zero},
 	ArithmeticError,
 };

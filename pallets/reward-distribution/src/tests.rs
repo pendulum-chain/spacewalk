@@ -6,7 +6,7 @@ use frame_system::pallet_prelude::BlockNumberFor;
 use mocktopus::mocking::*;
 use oracle::OracleApi;
 use primitives::CurrencyId::XCM;
-use sp_runtime::{traits::One, DispatchError::BadOrigin};
+use frame_support::sp_runtime::{traits::One, DispatchError::BadOrigin};
 use staking::Staking;
 const COLLATERAL_POOL_1: u128 = 1000u128;
 const COLLATERAL_POOL_2: u128 = 3000u128;

@@ -22,7 +22,7 @@ use orml_traits::parameter_type_with_key;
 use primitives::{AmountCompatibility, DefaultDecimalsLookup, VaultCurrencyPair, VaultId};
 pub use sp_arithmetic::{FixedI128, FixedPointNumber, FixedU128};
 use sp_core::H256;
-use sp_runtime::{
+use frame_support::sp_runtime::{
 	testing::TestXt,
 	traits::{BlakeTwo256, IdentityLookup, One, Zero},
 	BuildStorage, DispatchError, Perquintill,
@@ -210,14 +210,14 @@ impl currency::CurrencyConversion<currency::Amount<Test>, CurrencyId> for Curren
 	fn convert(
 		amount: &currency::Amount<Test>,
 		to: CurrencyId,
-	) -> Result<currency::Amount<Test>, sp_runtime::DispatchError> {
+	) -> Result<currency::Amount<Test>, DispatchError> {
 		let amount = convert_to(to, amount.amount())?;
 		Ok(Amount::new(amount, to))
 	}
 }
 
 #[cfg_attr(test, mockable)]
-pub fn convert_to(to: CurrencyId, amount: Balance) -> Result<Balance, sp_runtime::DispatchError> {
+pub fn convert_to(to: CurrencyId, amount: Balance) -> Result<Balance, DispatchError> {
 	Ok(amount) // default conversion 1:1 - overwritable with mocktopus
 }
 

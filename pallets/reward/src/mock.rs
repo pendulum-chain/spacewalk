@@ -1,7 +1,7 @@
 use frame_support::{parameter_types, traits::Everything};
 use sp_arithmetic::FixedI128;
 use sp_core::H256;
-use sp_runtime::{
+use frame_support::sp_runtime::{
 	traits::{BlakeTwo256, IdentityLookup},
 	BuildStorage,
 };

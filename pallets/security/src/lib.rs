@@ -8,13 +8,13 @@
 #[cfg(test)]
 extern crate mocktopus;
 use codec::Encode;
-use frame_support::{dispatch::DispatchResult, sp_runtime::DispatchError, transactional};
+use frame_support::{dispatch::DispatchResult, sp_runtime, transactional};
 use frame_system::pallet_prelude::BlockNumberFor;
 #[cfg(test)]
 use mocktopus::macros::mockable;
 use sha2::{Digest, Sha256};
 use sp_core::{H256, U256};
-use sp_runtime::{traits::*, ArithmeticError};
+use sp_runtime::{ DispatchError, traits::*, ArithmeticError};
 use sp_std::{collections::btree_set::BTreeSet, convert::TryInto, prelude::*, vec};
 
 pub use pallet::*;

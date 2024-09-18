@@ -10,7 +10,7 @@ extern crate mocktopus;
 
 use codec::FullCodec;
 use frame_support::{
-	dispatch::DispatchResult, ensure, sp_runtime::DispatchError, traits::Get, transactional,
+	dispatch::DispatchResult, ensure, sp_runtime, traits::Get, transactional,
 	PalletId,
 };
 use frame_system::offchain::{SendTransactionTypes, SubmitTransaction};
@@ -19,7 +19,7 @@ use mocktopus::macros::mockable;
 use sp_core::U256;
 #[cfg(feature = "std")]
 use sp_runtime::traits::AtLeast32BitUnsigned;
-use sp_runtime::{traits::*, ArithmeticError, FixedPointOperand};
+use sp_runtime::{traits::*, ArithmeticError, DispatchError, FixedPointOperand};
 
 use sp_std::{
 	convert::{TryFrom, TryInto},

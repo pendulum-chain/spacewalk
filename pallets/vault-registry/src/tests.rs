@@ -9,7 +9,7 @@ use primitives::{DecimalsLookup, StellarPublicKeyRaw, VaultCurrencyPair, VaultId
 use security::Pallet as Security;
 use sp_arithmetic::{traits::One, FixedPointNumber, FixedU128};
 use sp_core::U256;
-use sp_runtime::{
+use frame_support::sp_runtime::{
 	offchain::{testing::TestTransactionPoolExt, TransactionPoolExt},
 	ArithmeticError,
 };
@@ -1113,7 +1113,7 @@ fn get_required_collateral_for_wrapped_with_threshold_succeeds() {
 }
 
 mod custom_secure_threshold_tests {
-	use sp_runtime::traits::CheckedMul;
+	use frame_support::sp_runtime::traits::CheckedMul;
 
 	use super::{assert_eq, *};
 

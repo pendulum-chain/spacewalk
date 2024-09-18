@@ -3,7 +3,7 @@ use frame_support::{assert_err, assert_ok};
 use mocktopus::mocking::*;
 use primitives::{Asset, DecimalsLookup};
 use sp_arithmetic::FixedU128;
-use sp_runtime::FixedPointNumber;
+use frame_support::sp_runtime::FixedPointNumber;
 
 fn mine_block() {
 	crate::Pallet::<Test>::begin_block(0);

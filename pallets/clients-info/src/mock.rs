@@ -5,7 +5,7 @@ use frame_support::{
 	traits::{ConstU32, Everything},
 };
 use sp_core::H256;
-use sp_runtime::{
+use frame_support::sp_runtime::{
 	traits::{BlakeTwo256, IdentityLookup},
 	BuildStorage,
 };

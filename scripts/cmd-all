@@ -45,6 +45,7 @@ cargo $sub_cmd -p oracle --all-features $options
 cargo $sub_cmd -p pooled-rewards --all-features $options
 cargo $sub_cmd -p redeem --all-features $options
 cargo $sub_cmd -p replace --all-features $options
+cargo $sub_cmd -p reward --all-features $options
 cargo $sub_cmd -p reward-distribution --all-features $options
 cargo $sub_cmd -p security --all-features $options
 cargo $sub_cmd -p staking --all-features $options

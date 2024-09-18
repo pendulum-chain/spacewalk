@@ -3,7 +3,7 @@ use frame_support::assert_ok;
 use frame_system::{pallet_prelude::BlockNumberFor, RawOrigin};
 use orml_traits::MultiCurrency;
 use sp_core::{Get, H256};
-use sp_runtime::{traits::One, FixedPointNumber};
+use frame_support::sp_runtime::{traits::One, FixedPointNumber};
 use sp_std::prelude::*;
 
 use currency::getters::{get_relay_chain_currency_id as get_collateral_currency_id, *};

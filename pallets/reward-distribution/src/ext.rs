@@ -3,9 +3,8 @@ use mocktopus::macros::mockable;
 
 #[cfg_attr(test, mockable)]
 pub(crate) mod security {
-	use frame_support::dispatch::DispatchResult;
+	use frame_support::{dispatch::DispatchResult, sp_runtime::DispatchError};
 	use frame_system::pallet_prelude::BlockNumberFor;
-	use sp_runtime::DispatchError;
 
 	pub fn ensure_parachain_status_running<T: crate::Config>() -> DispatchResult {
 		<security::Pallet<T>>::ensure_parachain_status_running()
@@ -27,9 +26,8 @@ pub(crate) mod security {
 pub(crate) mod pooled_rewards {
 	use crate::{types::BalanceOf, DefaultVaultId};
 	use currency::CurrencyId;
-	use frame_support::pallet_prelude::DispatchResult;
+	use frame_support::{pallet_prelude::DispatchResult, sp_runtime::DispatchError};
 	use pooled_rewards::RewardsApi;
-	use sp_runtime::DispatchError;
 	use sp_std::vec::Vec;
 	type Inner<T> = (CurrencyId<T>, BalanceOf<T>);
 	pub fn get_total_stake_all_pools<T: crate::Config>() -> Result<Vec<Inner<T>>, DispatchError> {

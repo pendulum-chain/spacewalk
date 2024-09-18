@@ -5,8 +5,7 @@ use crate::{
 	upgrade_client_releases::try_upgrade_current_client_releases,
 	ClientRelease,
 };
-use frame_support::{assert_err, BoundedVec};
-use sp_runtime::testing::H256;
+use frame_support::{assert_err, BoundedVec, sp_runtime::testing::H256 };
 use std::collections::HashMap;
 
 #[test]

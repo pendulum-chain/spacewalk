@@ -25,7 +25,8 @@ mod default_weights;
 pub use default_weights::{SubstrateWeight, WeightInfo};
 
 use currency::Amount;
-use frame_support::{dispatch::DispatchResult, ensure, sp_runtime::DispatchError, transactional};
+use frame_support::{dispatch::DispatchResult, ensure, sp_runtime, transactional};
+use sp_runtime::DispatchError;
 use frame_system::{ensure_root, ensure_signed};
 pub use pallet::*;
 use primitives::VaultId;

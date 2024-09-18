@@ -1,7 +1,7 @@
 use once_cell::race::OnceBox;
 use orml_oracle::{DataFeeder, DataProvider, TimestampedValue};
 use sp_arithmetic::FixedU128;
-use sp_runtime::{traits::Convert, DispatchResult};
+use frame_support::sp_runtime::{traits::Convert, DispatchError, DispatchResult};
 use sp_std::{boxed::Box, collections::btree_map::BTreeMap, vec, vec::Vec};
 use spin::{Mutex, MutexGuard, RwLock};
 
@@ -56,14 +56,14 @@ impl dia_oracle::DiaOracle for MockDiaOracle {
 	fn get_coin_info(
 		blockchain: Vec<u8>,
 		symbol: Vec<u8>,
-	) -> Result<dia_oracle::CoinInfo, sp_runtime::DispatchError> {
+	) -> Result<dia_oracle::CoinInfo, DispatchError> {
 		let key = derive_key(blockchain, symbol);
 
 		let coins = COINS
 			.get_or_init(|| Box::new(RwLock::new(BTreeMap::<MapKey, Data>::new())))
 			.read();
 		let coin_data = coins.get(&key);
-		let Some(result) = coin_data else { return Err(sp_runtime::DispatchError::Other("")) };
+		let Some(result) = coin_data else { return Err(DispatchError::Other("")) };
 
 		let mut coin_info = dia_oracle::CoinInfo::default();
 		coin_info.price = result.price;
@@ -75,7 +75,7 @@ impl dia_oracle::DiaOracle for MockDiaOracle {
 	fn get_value(
 		_blockchain: Vec<u8>,
 		_symbol: Vec<u8>,
-	) -> Result<dia_oracle::PriceInfo, sp_runtime::DispatchError> {
+	) -> Result<dia_oracle::PriceInfo, DispatchError> {
 		// We don't need to implement this function for the mock
 		unimplemented!(
 			"DiaOracleAdapter implementation of DataProviderExtended does not use this function."

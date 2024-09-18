@@ -9,8 +9,9 @@
 extern crate mocktopus;
 
 use frame_support::{
-	dispatch::DispatchResult, ensure, sp_runtime::DispatchError, traits::Get, transactional,
+	dispatch::DispatchResult, ensure, sp_runtime, traits::Get, transactional,
 };
+use sp_runtime::DispatchError;
 #[cfg(test)]
 use mocktopus::macros::mockable;
 use primitives::stellar::{

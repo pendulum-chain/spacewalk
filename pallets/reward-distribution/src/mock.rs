@@ -9,7 +9,7 @@ use orml_currencies::BasicCurrencyAdapter;
 use primitives::{Balance, CurrencyId, CurrencyId::XCM, VaultId};
 use sp_arithmetic::{FixedI128, FixedU128};
 use sp_core::H256;
-use sp_runtime::{
+use frame_support::sp_runtime::{
 	traits::{BlakeTwo256, IdentityLookup},
 	BuildStorage, DispatchError, Perquintill,
 };

@@ -17,7 +17,7 @@ use frame_system::pallet_prelude::BlockNumberFor;
 use primitives::{BalanceToFixedPoint, TruncateFixedPointToInt};
 use scale_info::TypeInfo;
 use sp_arithmetic::FixedPointNumber;
-use sp_runtime::{
+use frame_support::sp_runtime::{
 	traits::{
 		CheckedAdd, CheckedDiv, CheckedMul, CheckedSub, MaybeSerializeDeserialize, Saturating, Zero,
 	},

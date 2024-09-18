@@ -7,7 +7,7 @@
 )]
 use frame_support::{dispatch::DispatchResult, ensure, sp_runtime::DispatchError};
 use orml_traits::{MultiCurrency, MultiReservableCurrency};
-use sp_runtime::{
+use frame_support::sp_runtime::{
 	traits::{CheckedAdd, CheckedDiv, CheckedMul, CheckedSub, UniqueSaturatedInto, Zero},
 	ArithmeticError, FixedPointNumber,
 };

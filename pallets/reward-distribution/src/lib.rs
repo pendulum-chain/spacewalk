@@ -25,7 +25,7 @@ use frame_system::pallet_prelude::BlockNumberFor;
 use oracle::OracleApi;
 use orml_traits::GetByKey;
 use sp_arithmetic::{traits::AtLeast32BitUnsigned, FixedPointOperand, Perquintill};
-use sp_runtime::{
+use frame_support::sp_runtime::{
 	traits::{AccountIdConversion, CheckedAdd, CheckedSub, One, Zero},
 	Saturating,
 };
