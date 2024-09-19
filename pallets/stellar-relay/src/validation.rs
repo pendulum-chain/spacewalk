@@ -72,7 +72,7 @@ pub fn get_externalized_info<T: Config>(envelope: &ScpEnvelope) -> Result<(&Valu
 			Ok((&externalized_statement.commit.value, externalized_statement.n_h)),
 		ScpStatementPledges::ScpStConfirm(confirmed_statement) =>
 			Ok((&confirmed_statement.ballot.value, confirmed_statement.n_h)),
-		_ => return Err(Error::<T>::InvalidScpPledge),
+		_ => Err(Error::<T>::InvalidScpPledge),
 	}
 }
 
@@ -186,7 +186,7 @@ pub fn validate_envelopes<'a, T: Config>(
 		let (value, n_h) = get_externalized_info(envelope)?;
 
 		// Check if the tx_set_hash matches the one included in the envelope
-		let tx_set_hash = Pallet::<T>::get_tx_set_hash(&value)?;
+		let tx_set_hash = Pallet::<T>::get_tx_set_hash(value)?;
 		ensure!(tx_set_hash == expected_tx_set_hash, Error::<T>::TransactionSetHashMismatch);
 
 		// Check if the externalized value is the same for all envelopes

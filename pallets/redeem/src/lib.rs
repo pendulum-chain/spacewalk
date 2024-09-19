@@ -933,7 +933,7 @@ impl<T: Config> Pallet<T> {
 		ext::security::ensure_parachain_status_running::<T>()?;
 
 		let redeem =
-			RedeemRequests::<T>::try_get(&redeem_id).or(Err(Error::<T>::RedeemIdNotFound))?;
+			RedeemRequests::<T>::try_get(redeem_id).or(Err(Error::<T>::RedeemIdNotFound))?;
 		ensure!(
 			matches!(redeem.status, RedeemRequestStatus::Reimbursed(false)),
 			Error::<T>::RedeemCancelled

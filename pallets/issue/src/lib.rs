@@ -788,17 +788,17 @@ impl<T: Config> Pallet<T> {
 		let transaction_envelope = ext::stellar_relay::construct_from_raw_encoded_xdr::<
 			T,
 			TransactionEnvelope,
-		>(&transaction_envelope_xdr_encoded)?;
+		>(transaction_envelope_xdr_encoded)?;
 
 		let envelopes = ext::stellar_relay::construct_from_raw_encoded_xdr::<
 			T,
 			UnlimitedVarArray<ScpEnvelope>,
-		>(&externalized_envelopes_encoded)?;
+		>(externalized_envelopes_encoded)?;
 
 		let transaction_set = ext::stellar_relay::construct_from_raw_encoded_xdr::<
 			T,
 			TransactionSetType,
-		>(&transaction_set_encoded)?;
+		>(transaction_set_encoded)?;
 
 		let shortened_request_id = derive_shortened_request_id(&issue_id.0);
 		// Check that the transaction includes the expected memo to mitigate replay attacks

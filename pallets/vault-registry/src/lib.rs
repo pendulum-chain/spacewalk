@@ -267,7 +267,7 @@ pub mod pallet {
 				Error::<T>::PublicKeyAlreadyRegistered
 			);
 
-			VaultStellarPublicKey::<T>::insert(&account_id, &public_key);
+			VaultStellarPublicKey::<T>::insert(&account_id, public_key);
 
 			Self::deposit_event(Event::<T>::UpdatePublicKey { account_id, public_key });
 			Ok(().into())
@@ -921,7 +921,7 @@ impl<T: Config> Pallet<T> {
 
 		// Deposit `amount` of stake in the pool
 		pool_staking_manager::PoolManager::deposit_collateral(
-			&vault_id,
+			vault_id,
 			&vault_id.account_id,
 			&amount.clone(),
 		)?;
@@ -944,9 +944,9 @@ impl<T: Config> Pallet<T> {
 
 		// Withdraw `amount` of stake from the pool
 		pool_staking_manager::PoolManager::withdraw_collateral(
-			&vault_id,
+			vault_id,
 			&vault_id.account_id,
-			&amount,
+			amount,
 			None,
 		)?;
 
@@ -1026,7 +1026,7 @@ impl<T: Config> Pallet<T> {
 		amount.unlock_on(&vault_id.account_id)?;
 		Self::decrease_total_backing_collateral(&vault_id.currencies, amount)?;
 
-		pool_staking_manager::PoolManager::slash_collateral(&vault_id, &amount)?;
+		pool_staking_manager::PoolManager::slash_collateral(vault_id, amount)?;
 
 		Ok(())
 	}
@@ -1503,7 +1503,7 @@ impl<T: Config> Pallet<T> {
 
 			// deposit old-vault's collateral (this was withdrawn on liquidation)
 			pool_staking_manager::PoolManager::deposit_collateral(
-				&old_vault_id,
+				old_vault_id,
 				&old_vault_id.account_id,
 				&to_be_released,
 			)?;
@@ -1939,7 +1939,7 @@ impl<T: Config> Pallet<T> {
 	) -> Result<Amount<T>, DispatchError> {
 		let currency_pair =
 			VaultCurrencyPair { collateral: currency_id, wrapped: amount_wrapped.currency() };
-		let threshold = Self::secure_collateral_threshold(&currency_pair)
+		let threshold = Self::secure_collateral_threshold(currency_pair)
 			.ok_or(Error::<T>::SecureCollateralThresholdNotSet)?;
 		let collateral = Self::get_required_collateral_for_wrapped_with_threshold(
 			amount_wrapped,

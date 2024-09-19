@@ -382,7 +382,7 @@ impl<T: Config> RichVault<T> {
 	}
 
 	pub fn get_secure_threshold(&self) -> Result<UnsignedFixedPoint<T>, DispatchError> {
-		let global_threshold = Pallet::<T>::secure_collateral_threshold(&self.id().currencies)
+		let global_threshold = Pallet::<T>::secure_collateral_threshold(self.id().currencies)
 			.ok_or(Error::<T>::GlobalThresholdNotSet)?;
 		Ok(self
 			.data

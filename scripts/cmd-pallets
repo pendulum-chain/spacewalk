@@ -14,7 +14,7 @@ set -e
 reason=$1
 sub_cmd=$2
 options=$3
-
+echo "options inslide pallets command: " + $options
 echo "------------------------------------------------------------------------"
 echo "Checks" $reason "on all pallets"
 echo "------------------------------------------------------------------------"

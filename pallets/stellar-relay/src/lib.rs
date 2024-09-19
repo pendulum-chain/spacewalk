@@ -561,9 +561,8 @@ pub mod pallet {
 			let (validators, organizations) = validators_and_orgs()?;
 
 			let externalized_envelope = envelopes
-				.get_element(|envelope| match envelope.statement.pledges {
-					ScpStatementPledges::ScpStExternalize(_) => true,
-					_ => false,
+				.get_element(|envelope| {
+					matches!(envelope.statement.pledges, ScpStatementPledges::ScpStExternalize(_))
 				})
 				.ok_or(Error::MissingExternalizedMessage)?;
 
@@ -583,7 +582,7 @@ pub mod pallet {
 			let validated_envelopes = validate_envelopes(
 				envelopes,
 				&validators,
-				&network,
+				network,
 				externalized_value,
 				externalized_n_h,
 				expected_tx_set_hash,

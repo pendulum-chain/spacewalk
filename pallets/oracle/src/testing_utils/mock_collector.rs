@@ -65,9 +65,11 @@ impl dia_oracle::DiaOracle for MockDiaOracle {
 		let coin_data = coins.get(&key);
 		let Some(result) = coin_data else { return Err(DispatchError::Other("")) };
 
-		let mut coin_info = dia_oracle::CoinInfo::default();
-		coin_info.price = result.price;
-		coin_info.last_update_timestamp = result.timestamp;
+		let coin_info = dia_oracle::CoinInfo {
+			price: result.price,
+			last_update_timestamp: result.timestamp,
+			..Default::default()
+		};
 
 		Ok(coin_info)
 	}

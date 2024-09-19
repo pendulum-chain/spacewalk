@@ -100,7 +100,7 @@ pub(crate) mod pooled_rewards {
 		vault_id: &DefaultVaultId<T>,
 		amount: &Amount<T>,
 	) -> Result<(), DispatchError> {
-		T::VaultRewards::set_stake(&vault_id.collateral_currency(), &vault_id, amount.amount())
+		T::VaultRewards::set_stake(&vault_id.collateral_currency(), vault_id, amount.amount())
 	}
 
 	#[allow(dead_code)]
@@ -108,7 +108,7 @@ pub(crate) mod pooled_rewards {
 	pub fn get_stake<T: crate::Config>(
 		vault_id: &DefaultVaultId<T>,
 	) -> Result<crate::BalanceOf<T>, DispatchError> {
-		T::VaultRewards::get_stake(&vault_id.collateral_currency(), &vault_id)
+		T::VaultRewards::get_stake(&vault_id.collateral_currency(), vault_id)
 	}
 }
 

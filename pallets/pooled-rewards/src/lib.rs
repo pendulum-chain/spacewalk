@@ -544,7 +544,7 @@ where
 
 			pool_vec.push((pool_id, pool_stake_as_balance));
 		}
-		return Ok(pool_vec);
+		Ok(pool_vec)
 	}
 }
 

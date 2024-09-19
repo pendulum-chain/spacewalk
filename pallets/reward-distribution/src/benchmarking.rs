@@ -39,15 +39,11 @@ pub mod benchmarks {
 			collateral_currency,
 		);
 
-		let _stake = T::VaultStaking::deposit_stake(&vault_id, &nominator, nominated_amount.into())
+		T::VaultStaking::deposit_stake(&vault_id, &nominator, nominated_amount.into())
 			.expect("error at deposit stake");
-		let _reward_stake = T::VaultRewards::deposit_stake(
-			&collateral_currency,
-			&vault_id,
-			nominated_amount.into(),
-		)
-		.expect("error at deposit stake into pool rewards");
-		let _distributed = T::VaultRewards::distribute_reward(
+		T::VaultRewards::deposit_stake(&collateral_currency, &vault_id, nominated_amount.into())
+			.expect("error at deposit stake into pool rewards");
+		T::VaultRewards::distribute_reward(
 			&collateral_currency,
 			native_currency_id,
 			reward_to_distribute.into(),
@@ -82,14 +78,10 @@ pub mod benchmarks {
 			collateral_currency,
 		);
 
-		let _stake = T::VaultStaking::deposit_stake(&vault_id, &nominator, nominated_amount.into())
+		T::VaultStaking::deposit_stake(&vault_id, &nominator, nominated_amount.into())
 			.expect("error at deposit stake");
-		let _reward_stake = T::VaultRewards::deposit_stake(
-			&collateral_currency,
-			&vault_id,
-			nominated_amount.into(),
-		)
-		.expect("error at deposit stake into pool rewards");
+		T::VaultRewards::deposit_stake(&collateral_currency, &vault_id, nominated_amount.into())
+			.expect("error at deposit stake into pool rewards");
 
 		// `on_initialize` benchmark call
 		#[block]

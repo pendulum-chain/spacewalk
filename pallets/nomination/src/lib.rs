@@ -246,8 +246,8 @@ impl<T: Config> Pallet<T> {
 		}
 
 		ext::vault_registry::pool_manager::withdraw_collateral::<T>(
-			&vault_id,
-			&nominator_id,
+			vault_id,
+			nominator_id,
 			&amount,
 			Some(index),
 		)?;
@@ -343,7 +343,7 @@ impl<T: Config> Pallet<T> {
 	}
 
 	pub fn is_opted_in(vault_id: &DefaultVaultId<T>) -> Result<bool, DispatchError> {
-		Ok(<Vaults<T>>::contains_key(&vault_id))
+		Ok(<Vaults<T>>::contains_key(vault_id))
 	}
 
 	pub fn get_total_nominated_collateral(

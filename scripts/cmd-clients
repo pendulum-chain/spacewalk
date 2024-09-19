@@ -14,7 +14,7 @@ set -e
 reason=$1
 sub_cmd=$2
 options=$3
-
+echo "options inslide clients command: " + $options
 echo "------------------------------------------------------------------------"
 echo "Checks" $reason "on packages in clients directory"
 echo "------------------------------------------------------------------------"
@@ -22,6 +22,7 @@ if [[ $sub_cmd == "clippy"* ]]; then
   echo "------------------------------------------------------------------------"
   echo "    The package runner does not have a lib."
   echo "------------------------------------------------------------------------"
+
   cargo clippy --bins -p runner --all-features $options
 else
   cargo  $sub_cmd -p runner --all-features $options

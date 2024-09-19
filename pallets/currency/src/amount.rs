@@ -177,8 +177,7 @@ mod math {
 				.ok_or(ArithmeticError::Underflow)?
 				.checked_div(accuracy)
 				.ok_or(ArithmeticError::Underflow)?
-				.try_into()
-				.map_err(|_| Error::<T>::TryIntoIntError)?;
+				.into();
 
 			Ok(Self { amount, currency_id: self.currency_id })
 		}

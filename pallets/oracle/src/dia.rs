@@ -142,9 +142,7 @@ where
 		let Ok(coin_info) = Dia::get_coin_info(blockchain, symbol) else { return None };
 
 		let value = ConvertPrice::convert(coin_info.price)?;
-		let Some(timestamp) = ConvertMoment::convert(coin_info.last_update_timestamp) else {
-			return None;
-		};
+		let timestamp = ConvertMoment::convert(coin_info.last_update_timestamp)?;
 
 		Some(TimestampedValue { value, timestamp })
 	}
