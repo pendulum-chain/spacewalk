@@ -78,7 +78,7 @@ jobs:
 
 
   cargo-test-pallets:
-    name: Run Tests
+    name: Run Tests for Pallets
 #    needs: build-check
 #    if: needs.build-check.result == 'success'
     runs-on: ubuntu-latest
@@ -102,7 +102,7 @@ jobs:
           bash ./scripts/cmd-pallets test "+${{ env.RUSTUP_NIGHTLY_VERSION }} test"
 
   cargo-test-clients:
-    name: Run Tests
+    name: Run Tests for Clients
     needs: cargo-test-pallets
     if: needs.cargo-test-pallets.result == 'success'
     runs-on: ubuntu-latest
