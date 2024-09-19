@@ -31,7 +31,7 @@ jobs:
   cargo-clippy:
     name: Run Clippy and Format Checks
 #    needs: build-check
-    if: needs.build-check.result == 'success'
+#    if: needs.build-check.result == 'success'
     strategy:
       max-parallel: 2
       matrix:
@@ -77,7 +77,7 @@ jobs:
   cargo-test:
     name: Run Tests
 #    needs: build-check
-    if: needs.build-check.result == 'success'
+#    if: needs.build-check.result == 'success'
     runs-on: ubuntu-latest
     env:
       SOURCE_STELLAR_SECRET_MAINNET: ${{ secrets.SOURCE_STELLAR_SECRET_MAINNET }}
