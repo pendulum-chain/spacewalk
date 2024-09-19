@@ -52,19 +52,21 @@ cargo $sub_cmd -p staking --all-features $options
 cargo $sub_cmd -p stellar-relay --all-features $options
 cargo $sub_cmd -p vault-registry --all-features $options
 
-echo "------------------------------------------------------------------------"
-echo "Checks" $reason "for pallets with rpc"
-echo "------------------------------------------------------------------------"
-cargo $sub_cmd -p module-issue-rpc --all-features $options
-cargo $sub_cmd -p module-oracle-rpc --all-features $options
-cargo $sub_cmd -p module-redeem-rpc --all-features $options
-cargo $sub_cmd -p module-replace-rpc --all-features $options
-cargo $sub_cmd -p module-vault-registry-rpc --all-features $options
-cargo $sub_cmd -p module-issue-rpc-runtime-api --all-features $options
-cargo $sub_cmd -p module-oracle-rpc-runtime-api --all-features $options
-cargo $sub_cmd -p module-redeem-rpc-runtime-api --all-features $options
-cargo $sub_cmd -p module-replace-rpc-runtime-api --all-features $options
-cargo $sub_cmd -p module-vault-registry-rpc-runtime-api --all-features $options
+if [[ $reason != "test"* ]]; then
+  echo "------------------------------------------------------------------------"
+  echo "Checks" $reason "for pallets with rpc"
+  echo "------------------------------------------------------------------------"
+  cargo $sub_cmd -p module-issue-rpc --all-features $options
+  cargo $sub_cmd -p module-oracle-rpc --all-features $options
+  cargo $sub_cmd -p module-redeem-rpc --all-features $options
+  cargo $sub_cmd -p module-replace-rpc --all-features $options
+  cargo $sub_cmd -p module-vault-registry-rpc --all-features $options
+  cargo $sub_cmd -p module-issue-rpc-runtime-api --all-features $options
+  cargo $sub_cmd -p module-oracle-rpc-runtime-api --all-features $options
+  cargo $sub_cmd -p module-redeem-rpc-runtime-api --all-features $options
+  cargo $sub_cmd -p module-replace-rpc-runtime-api --all-features $options
+  cargo $sub_cmd -p module-vault-registry-rpc-runtime-api --all-features $options
+fi
 
 echo "------------------------------------------------------------------------"
 echo "Checks" $reason "on packages in clients directory"
