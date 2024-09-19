@@ -2,13 +2,13 @@ use crate as clients_info;
 use crate::{Config, Error};
 use frame_support::{
 	parameter_types,
+	sp_runtime::{
+		traits::{BlakeTwo256, IdentityLookup},
+		BuildStorage,
+	},
 	traits::{ConstU32, Everything},
 };
 use sp_core::H256;
-use frame_support::sp_runtime::{
-	traits::{BlakeTwo256, IdentityLookup},
-	BuildStorage,
-};
 
 type Block = frame_system::mocking::MockBlock<Test>;
 

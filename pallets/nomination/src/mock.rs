@@ -1,5 +1,10 @@
 use frame_support::{
-	assert_ok, parameter_types, sp_runtime,
+	assert_ok, parameter_types,
+	sp_runtime::{
+		testing::TestXt,
+		traits::{BlakeTwo256, IdentityLookup, One, Zero},
+		BuildStorage, DispatchError, FixedPointNumber, Perquintill,
+	},
 	traits::{ConstU32, ConstU64, Everything},
 	PalletId,
 };
@@ -8,11 +13,6 @@ use orml_currencies::BasicCurrencyAdapter;
 use orml_traits::parameter_type_with_key;
 use sp_arithmetic::{FixedI128, FixedU128};
 use sp_core::H256;
-use frame_support::sp_runtime::{
-	testing::TestXt,
-	traits::{BlakeTwo256, IdentityLookup, One, Zero},
-	BuildStorage, DispatchError, FixedPointNumber, Perquintill,
-};
 
 pub use currency::testing_constants::{
 	DEFAULT_COLLATERAL_CURRENCY, DEFAULT_NATIVE_CURRENCY, DEFAULT_WRAPPED_CURRENCY,

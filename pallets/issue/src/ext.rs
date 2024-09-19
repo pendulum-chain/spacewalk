@@ -66,8 +66,8 @@ pub(crate) mod stellar_relay {
 
 #[cfg_attr(test, mockable)]
 pub(crate) mod security {
-	use frame_system::pallet_prelude::BlockNumberFor;
 	use frame_support::sp_runtime::DispatchError;
+	use frame_system::pallet_prelude::BlockNumberFor;
 	use sp_core::H256;
 
 	pub fn parachain_block_expired<T: crate::Config>(

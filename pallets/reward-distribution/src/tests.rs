@@ -1,12 +1,15 @@
 use crate::{ext, mock::*, pallet, DefaultVaultId, Error, NativeLiability};
 pub use currency::testing_constants::{DEFAULT_COLLATERAL_CURRENCY, DEFAULT_WRAPPED_CURRENCY};
 use frame_benchmarking::account;
-use frame_support::{assert_err, assert_ok, traits::Get};
+use frame_support::{
+	assert_err, assert_ok,
+	sp_runtime::{traits::One, DispatchError::BadOrigin},
+	traits::Get,
+};
 use frame_system::pallet_prelude::BlockNumberFor;
 use mocktopus::mocking::*;
 use oracle::OracleApi;
 use primitives::CurrencyId::XCM;
-use frame_support::sp_runtime::{traits::One, DispatchError::BadOrigin};
 use staking::Staking;
 const COLLATERAL_POOL_1: u128 = 1000u128;
 const COLLATERAL_POOL_2: u128 = 3000u128;

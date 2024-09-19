@@ -5,12 +5,15 @@
 	forgetting_references,
 	forgetting_copy_types
 )]
-use frame_support::{dispatch::DispatchResult, ensure, sp_runtime::DispatchError};
-use orml_traits::{MultiCurrency, MultiReservableCurrency};
-use frame_support::sp_runtime::{
-	traits::{CheckedAdd, CheckedDiv, CheckedMul, CheckedSub, UniqueSaturatedInto, Zero},
-	ArithmeticError, FixedPointNumber,
+use frame_support::{
+	dispatch::DispatchResult,
+	ensure,
+	sp_runtime::{
+		traits::{CheckedAdd, CheckedDiv, CheckedMul, CheckedSub, UniqueSaturatedInto, Zero},
+		ArithmeticError, DispatchError, FixedPointNumber,
+	},
 };
+use orml_traits::{MultiCurrency, MultiReservableCurrency};
 use sp_std::{convert::TryInto, fmt::Debug};
 
 use primitives::{AmountCompatibility, TruncateFixedPointToInt};

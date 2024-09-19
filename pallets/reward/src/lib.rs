@@ -6,14 +6,17 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
 use codec::EncodeLike;
-use frame_support::{dispatch::DispatchResult, ensure, traits::Get};
+use frame_support::{
+	dispatch::DispatchResult,
+	ensure,
+	sp_runtime::{
+		traits::{CheckedAdd, CheckedDiv, CheckedMul, CheckedSub, Saturating, Zero},
+		ArithmeticError, DispatchError,
+	},
+	traits::Get,
+};
 use frame_system::pallet_prelude::BlockNumberFor;
 use sp_arithmetic::FixedPointNumber;
-use frame_support::sp_runtime::{
-	DispatchError,
-	traits::{CheckedAdd, CheckedDiv, CheckedMul, CheckedSub, Saturating, Zero},
-	ArithmeticError,
-};
 use sp_std::{cmp::PartialOrd, convert::TryInto, fmt::Debug};
 
 pub use pallet::*;

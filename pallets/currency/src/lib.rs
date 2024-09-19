@@ -5,12 +5,15 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
 use codec::{EncodeLike, FullCodec};
-use frame_support::{dispatch::DispatchResult, traits::Get};
-use orml_traits::{MultiCurrency, MultiReservableCurrency};
-use frame_support::sp_runtime::{
-	traits::{AtLeast32BitUnsigned, CheckedDiv, StaticLookup},
-	FixedPointNumber, FixedPointOperand,
+use frame_support::{
+	dispatch::DispatchResult,
+	sp_runtime::{
+		traits::{AtLeast32BitUnsigned, CheckedDiv, StaticLookup},
+		FixedPointNumber, FixedPointOperand,
+	},
+	traits::Get,
 };
+use orml_traits::{MultiCurrency, MultiReservableCurrency};
 use sp_std::{
 	convert::{TryFrom, TryInto},
 	fmt::Debug,

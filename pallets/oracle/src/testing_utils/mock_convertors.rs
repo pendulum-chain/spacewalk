@@ -1,5 +1,5 @@
-use sp_arithmetic::FixedU128;
 use frame_support::sp_runtime::traits::Convert;
+use sp_arithmetic::FixedU128;
 use sp_std::{vec, vec::Vec};
 
 use primitives::{oracle::Key, Asset, CurrencyId};

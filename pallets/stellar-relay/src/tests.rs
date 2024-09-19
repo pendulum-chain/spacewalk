@@ -1,4 +1,4 @@
-use frame_support::{assert_noop, assert_ok, BoundedVec};
+use frame_support::{assert_noop, assert_ok, sp_runtime::DispatchError::BadOrigin, BoundedVec};
 use primitives::stellar::{
 	compound_types::{LimitedVarArray, LimitedVarOpaque, UnlimitedVarArray, UnlimitedVarOpaque},
 	network::{Network, PUBLIC_NETWORK, TEST_NETWORK},
@@ -11,7 +11,6 @@ use primitives::stellar::{
 	Hash, InitExt, IntoHash, Memo, MuxedAccount, PublicKey, SecretKey, Transaction,
 	TransactionEnvelope, TransactionSetType, XdrCodec,
 };
-use frame_support::sp_runtime::DispatchError::BadOrigin;
 
 use crate::{
 	mock::*,

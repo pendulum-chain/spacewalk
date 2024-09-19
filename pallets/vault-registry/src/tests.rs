@@ -1,6 +1,13 @@
 use codec::Decode;
 use currency::{testing_constants::DEFAULT_WRAPPED_CURRENCY, Amount};
-use frame_support::{assert_err, assert_noop, assert_ok, error::BadOrigin};
+use frame_support::{
+	assert_err, assert_noop, assert_ok,
+	error::BadOrigin,
+	sp_runtime::{
+		offchain::{testing::TestTransactionPoolExt, TransactionPoolExt},
+		ArithmeticError,
+	},
+};
 use frame_system::RawOrigin;
 use mocktopus::mocking::*;
 use pooled_rewards::RewardsApi;
@@ -9,10 +16,6 @@ use primitives::{DecimalsLookup, StellarPublicKeyRaw, VaultCurrencyPair, VaultId
 use security::Pallet as Security;
 use sp_arithmetic::{traits::One, FixedPointNumber, FixedU128};
 use sp_core::U256;
-use frame_support::sp_runtime::{
-	offchain::{testing::TestTransactionPoolExt, TransactionPoolExt},
-	ArithmeticError,
-};
 use sp_std::convert::TryInto;
 
 use crate::{

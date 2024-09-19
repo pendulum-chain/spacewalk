@@ -1,7 +1,7 @@
+use frame_support::sp_runtime::{traits::Convert, DispatchError, DispatchResult};
 use once_cell::race::OnceBox;
 use orml_oracle::{DataFeeder, DataProvider, TimestampedValue};
 use sp_arithmetic::FixedU128;
-use frame_support::sp_runtime::{traits::Convert, DispatchError, DispatchResult};
 use sp_std::{boxed::Box, collections::btree_map::BTreeMap, vec, vec::Vec};
 use spin::{Mutex, MutexGuard, RwLock};
 

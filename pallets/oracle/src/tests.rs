@@ -1,9 +1,8 @@
 use crate::{mock::*, CurrencyId, OracleKey, USD_DECIMALS};
-use frame_support::{assert_err, assert_ok};
+use frame_support::{assert_err, assert_ok, sp_runtime::FixedPointNumber};
 use mocktopus::mocking::*;
 use primitives::{Asset, DecimalsLookup};
 use sp_arithmetic::FixedU128;
-use frame_support::sp_runtime::FixedPointNumber;
 
 fn mine_block() {
 	crate::Pallet::<Test>::begin_block(0);

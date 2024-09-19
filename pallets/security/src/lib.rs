@@ -14,7 +14,7 @@ use frame_system::pallet_prelude::BlockNumberFor;
 use mocktopus::macros::mockable;
 use sha2::{Digest, Sha256};
 use sp_core::{H256, U256};
-use sp_runtime::{ DispatchError, traits::*, ArithmeticError};
+use sp_runtime::{traits::*, ArithmeticError, DispatchError};
 use sp_std::{collections::btree_set::BTreeSet, convert::TryInto, prelude::*, vec};
 
 pub use pallet::*;

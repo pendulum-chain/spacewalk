@@ -21,8 +21,8 @@ use primitives::{
 };
 use sp_core::H256;
 use sp_runtime::{
+	traits::{CheckedDiv, Convert, Saturating, Zero},
 	DispatchError,
-	traits::{CheckedDiv, Convert, Saturating, Zero}
 };
 use sp_std::vec::Vec;
 

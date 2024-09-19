@@ -1,11 +1,11 @@
 use frame_support::{
 	parameter_types,
+	sp_runtime::traits::{BlakeTwo256, IdentityLookup},
 	traits::{ConstU32, Everything},
 };
 use orml_traits::parameter_type_with_key;
 use sp_arithmetic::FixedI128;
 use sp_core::H256;
-use frame_support::sp_runtime::traits::{BlakeTwo256, IdentityLookup};
 
 use frame_support::sp_runtime::BuildStorage;
 

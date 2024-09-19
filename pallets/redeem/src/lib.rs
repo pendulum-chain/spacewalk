@@ -18,8 +18,8 @@ use primitives::stellar::{
 };
 use sp_core::H256;
 use sp_runtime::{
+	traits::{CheckedDiv, Saturating, Zero},
 	DispatchError,
-	traits::{CheckedDiv, Saturating, Zero}
 };
 use sp_std::{convert::TryInto, vec::Vec};
 

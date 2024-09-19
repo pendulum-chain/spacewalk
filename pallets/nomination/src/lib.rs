@@ -26,10 +26,10 @@ pub use default_weights::{SubstrateWeight, WeightInfo};
 
 use currency::Amount;
 use frame_support::{dispatch::DispatchResult, ensure, sp_runtime, transactional};
-use sp_runtime::DispatchError;
 use frame_system::{ensure_root, ensure_signed};
 pub use pallet::*;
 use primitives::VaultId;
+use sp_runtime::DispatchError;
 
 pub(crate) type BalanceOf<T> = <T as vault_registry::Config>::Balance;
 

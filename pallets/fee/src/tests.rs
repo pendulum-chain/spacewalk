@@ -1,5 +1,8 @@
-use frame_support::{assert_noop, assert_ok, dispatch::DispatchResultWithPostInfo};
-use frame_support::sp_runtime::{DispatchError, FixedPointNumber};
+use frame_support::{
+	assert_noop, assert_ok,
+	dispatch::DispatchResultWithPostInfo,
+	sp_runtime::{DispatchError, FixedPointNumber},
+};
 
 use currency::{testing_constants::DEFAULT_WRAPPED_CURRENCY, Amount};
 

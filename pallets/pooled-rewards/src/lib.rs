@@ -12,17 +12,22 @@ mod mock;
 mod tests;
 
 use codec::{Decode, Encode, EncodeLike};
-use frame_support::{dispatch::DispatchResult, ensure, sp_runtime::DispatchError, traits::Get};
+use frame_support::{
+	dispatch::DispatchResult,
+	ensure,
+	sp_runtime::{
+		traits::{
+			CheckedAdd, CheckedDiv, CheckedMul, CheckedSub, MaybeSerializeDeserialize, Saturating,
+			Zero,
+		},
+		ArithmeticError, DispatchError,
+	},
+	traits::Get,
+};
 use frame_system::pallet_prelude::BlockNumberFor;
 use primitives::{BalanceToFixedPoint, TruncateFixedPointToInt};
 use scale_info::TypeInfo;
 use sp_arithmetic::FixedPointNumber;
-use frame_support::sp_runtime::{
-	traits::{
-		CheckedAdd, CheckedDiv, CheckedMul, CheckedSub, MaybeSerializeDeserialize, Saturating, Zero,
-	},
-	ArithmeticError,
-};
 
 use sp_std::{cmp::PartialOrd, convert::TryInto, fmt::Debug, vec::Vec};
 

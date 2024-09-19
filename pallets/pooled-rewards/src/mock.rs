@@ -1,10 +1,13 @@
-use frame_support::{parameter_types, traits::Everything};
+use frame_support::{
+	parameter_types,
+	sp_runtime::{
+		traits::{BlakeTwo256, IdentityLookup},
+		BuildStorage,
+	},
+	traits::Everything,
+};
 use sp_arithmetic::FixedI128;
 use sp_core::H256;
-use frame_support::sp_runtime::{
-	traits::{BlakeTwo256, IdentityLookup},
-	BuildStorage,
-};
 
 pub use currency::testing_constants::{
 	DEFAULT_COLLATERAL_CURRENCY, DEFAULT_NATIVE_CURRENCY, DEFAULT_WRAPPED_CURRENCY_2,

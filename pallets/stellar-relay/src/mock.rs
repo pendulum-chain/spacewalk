@@ -1,5 +1,9 @@
 use frame_support::{
 	parameter_types,
+	sp_runtime::{
+		traits::{BlakeTwo256, IdentityLookup},
+		BuildStorage,
+	},
 	traits::{ConstU16, ConstU64},
 	BoundedVec,
 };
@@ -7,10 +11,6 @@ use frame_system as system;
 use primitives::stellar::SecretKey;
 use rand::Rng;
 use sp_core::H256;
-use frame_support::sp_runtime::{
-	traits::{BlakeTwo256, IdentityLookup},
-	BuildStorage,
-};
 
 use crate as pallet_spacewalk_relay;
 use crate::{

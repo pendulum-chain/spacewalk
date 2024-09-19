@@ -2,6 +2,10 @@ use crate as reward_distribution;
 use crate::Config;
 use frame_support::{
 	parameter_types,
+	sp_runtime::{
+		traits::{BlakeTwo256, IdentityLookup},
+		BuildStorage, DispatchError, Perquintill,
+	},
 	traits::{ConstU32, ConstU64, Everything},
 	PalletId,
 };
@@ -9,10 +13,6 @@ use orml_currencies::BasicCurrencyAdapter;
 use primitives::{Balance, CurrencyId, CurrencyId::XCM, VaultId};
 use sp_arithmetic::{FixedI128, FixedU128};
 use sp_core::H256;
-use frame_support::sp_runtime::{
-	traits::{BlakeTwo256, IdentityLookup},
-	BuildStorage, DispatchError, Perquintill,
-};
 type Block = frame_system::mocking::MockBlock<Test>;
 use orml_traits::parameter_type_with_key;
 use sp_arithmetic::traits::Zero;
@@ -183,7 +183,7 @@ impl currency::CurrencyConversion<currency::Amount<Test>, CurrencyId> for Curren
 	fn convert(
 		_amount: &currency::Amount<Test>,
 		_to: CurrencyId,
-	) -> Result<currency::Amount<Test>, sp_runtime::DispatchError> {
+	) -> Result<currency::Amount<Test>, DispatchError> {
 		unimplemented!()
 	}
 }

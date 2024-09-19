@@ -11,15 +11,15 @@ use oracle::{
 	},
 };
 
-use orml_currencies::BasicCurrencyAdapter;
-use orml_traits::parameter_type_with_key;
-use sp_arithmetic::{FixedI128, FixedPointNumber, FixedU128};
-use sp_core::H256;
 use frame_support::sp_runtime::{
 	testing::TestXt,
 	traits::{BlakeTwo256, IdentityLookup, One, Zero},
 	BuildStorage, DispatchError, Perquintill,
 };
+use orml_currencies::BasicCurrencyAdapter;
+use orml_traits::parameter_type_with_key;
+use sp_arithmetic::{FixedI128, FixedPointNumber, FixedU128};
+use sp_core::H256;
 
 pub use currency::testing_constants::{
 	DEFAULT_COLLATERAL_CURRENCY, DEFAULT_NATIVE_CURRENCY, DEFAULT_WRAPPED_CURRENCY,
@@ -215,7 +215,7 @@ impl currency::CurrencyConversion<currency::Amount<Test>, CurrencyId> for Curren
 	fn convert(
 		amount: &currency::Amount<Test>,
 		to: CurrencyId,
-	) -> Result<currency::Amount<Test>, sp_runtime::DispatchError> {
+	) -> Result<currency::Amount<Test>, DispatchError> {
 		convert_to(to, *amount)
 	}
 }
@@ -224,7 +224,7 @@ impl currency::CurrencyConversion<currency::Amount<Test>, CurrencyId> for Curren
 pub fn convert_to(
 	to: CurrencyId,
 	amount: currency::Amount<Test>,
-) -> Result<currency::Amount<Test>, sp_runtime::DispatchError> {
+) -> Result<currency::Amount<Test>, DispatchError> {
 	<oracle::Pallet<Test>>::convert(&amount, to)
 }
 
