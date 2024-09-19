@@ -70,7 +70,7 @@ impl Connector {
 		match msg {
 			StellarMessage::Hello(hello) => {
 				// update the node info based on the hello message
-				self.process_hello_message(hello)?;
+				self.process_hello_message(hello.clone())?;
 
 				self.got_hello();
 
@@ -80,6 +80,8 @@ impl Connector {
 					self.send_auth_message(self.local().node().overlay_version).await?;
 				}
 				info!("process_stellar_message(): Hello message processed successfully");
+				// Pass the hello message to the user/outsider. To signal that the Overlay is ready.
+				return Ok(Some(StellarMessage::Hello(hello)));
 			},
 
 			StellarMessage::Auth(_) => {

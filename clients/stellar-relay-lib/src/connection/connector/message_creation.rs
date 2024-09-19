@@ -6,6 +6,8 @@ use substrate_stellar_sdk::{
 	types::{AuthenticatedMessage, AuthenticatedMessageV0, HmacSha256Mac, StellarMessage},
 	XdrCodec,
 };
+use substrate_stellar_sdk::compound_types::LimitedString;
+use substrate_stellar_sdk::types::ErrorCode;
 
 impl Connector {
 	/// Wraps the stellar message with `AuthenticatedMessage`
@@ -74,4 +76,15 @@ impl Connector {
 			local.node(),
 		)
 	}
+}
+
+/// Create our own error to send over to the user/outsider.
+pub(crate) fn crate_specific_error() -> StellarMessage {
+	let error = "Stellar Relay Error".as_bytes().to_vec();
+	let error = substrate_stellar_sdk::types::Error {
+		code: ErrorCode::ErrMisc,
+		msg: LimitedString::new(error).expect("should return a valid LimitedString"),
+	};
+
+	StellarMessage::ErrorMsg(error)
 }

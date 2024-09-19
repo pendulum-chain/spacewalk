@@ -76,6 +76,7 @@ async fn stellar_overlay_should_receive_scp_messages() {
 
 #[tokio::test(flavor = "multi_thread")]
 #[serial]
+#[ntest::timeout(300_000)] // timeout at 5 minutes
 async fn stellar_overlay_should_receive_tx_set() {
 	//arrange
 	fn get_tx_set_hash(x: &ScpStatementExternalize) -> Hash {
@@ -94,37 +95,33 @@ async fn stellar_overlay_should_receive_tx_set() {
 	let tx_set_hashes_clone = tx_set_hashes.clone();
 	let actual_tx_set_hashes_clone = actual_tx_set_hashes.clone();
 
-	timeout(Duration::from_secs(500), async move {
-		let mut ov_conn_locked = ov_conn.lock().await;
+	let mut ov_conn_locked = ov_conn.lock().await;
 
-		while let Ok(Some(msg)) = ov_conn_locked.listen().await {
-			match msg {
-				StellarMessage::ScpMessage(msg) => {
-					if let ScpStatementPledges::ScpStExternalize(stmt) = &msg.statement.pledges {
-						let tx_set_hash = get_tx_set_hash(stmt);
-						tx_set_hashes_clone.lock().await.push(tx_set_hash.clone());
-						ov_conn_locked
-							.send_to_node(StellarMessage::GetTxSet(tx_set_hash))
-							.await
-							.unwrap();
-					}
-				},
-				StellarMessage::TxSet(set) => {
-					let tx_set_hash = set.into_hash().expect("should return a hash");
-					actual_tx_set_hashes_clone.lock().await.push(tx_set_hash);
-					break;
-				},
-				StellarMessage::GeneralizedTxSet(set) => {
-					let tx_set_hash = set.into_hash().expect("should return a hash");
-					actual_tx_set_hashes_clone.lock().await.push(tx_set_hash);
-					break;
-				},
-				_ => {},
-			}
+	while let Ok(Some(msg)) = ov_conn_locked.listen().await {
+		match msg {
+			StellarMessage::ScpMessage(msg) => {
+				if let ScpStatementPledges::ScpStExternalize(stmt) = &msg.statement.pledges {
+					let tx_set_hash = get_tx_set_hash(stmt);
+					tx_set_hashes_clone.lock().await.push(tx_set_hash.clone());
+					ov_conn_locked
+						.send_to_node(StellarMessage::GetTxSet(tx_set_hash))
+						.await
+						.unwrap();
+				}
+			},
+			StellarMessage::TxSet(set) => {
+				let tx_set_hash = set.into_hash().expect("should return a hash");
+				actual_tx_set_hashes_clone.lock().await.push(tx_set_hash);
+				break;
+			},
+			StellarMessage::GeneralizedTxSet(set) => {
+				let tx_set_hash = set.into_hash().expect("should return a hash");
+				actual_tx_set_hashes_clone.lock().await.push(tx_set_hash);
+				break;
+			},
+			_ => {},
 		}
-	})
-	.await
-	.expect("time has elapsed");
+	}
 
 	//ensure that we receive some tx set from stellar node
 	let expected_hashes = tx_set_hashes.lock().await;

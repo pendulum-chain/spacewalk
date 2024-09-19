@@ -10,7 +10,7 @@ use stellar_relay_lib::{
 
 // Handling SCPEnvelopes
 impl ScpMessageCollector {
-	/// handles incoming ScpEnvelope.
+	/// Handles incoming ScpEnvelope. Return slot if it was saved
 	///
 	/// # Arguments
 	///
@@ -20,7 +20,7 @@ impl ScpMessageCollector {
 		&mut self,
 		env: ScpEnvelope,
 		message_sender: &StellarMessageSender,
-	) -> Result<(), Error> {
+	) -> Result<Option<u64>, Error> {
 		let slot = env.statement.slot_index;
 
 		// we are only interested with `ScpStExternalize`. Other messages are ignored.
@@ -48,10 +48,10 @@ impl ScpMessageCollector {
 
 			// insert/add the externalized message to map.
 			self.add_scp_envelope(slot, env);
+			Ok(Some(slot))
 		} else {
 			self.remove_data(&slot);
+			Ok(None)
 		}
-
-		Ok(())
 	}
 }

@@ -6,7 +6,8 @@ use tokio::{
 	sync::{mpsc, mpsc::error::TryRecvError},
 	time::timeout,
 };
-use tracing::{debug, error, info, trace, warn};
+use tracing::{error, info, trace, warn};
+use crate::connection::connector::message_creation::crate_specific_error;
 
 /// The waiting time for reading messages from stream.
 static READ_TIMEOUT_IN_SECS: u64 = 60;
@@ -73,7 +74,7 @@ pub(crate) async fn poll_messages_from_stellar(
 				}
 				tokio::task::yield_now().await;
 			},
-			Ok(None) => {},
+			Ok(None) => tokio::task::yield_now().await,
 			Err(e) => {
 				error!("poll_messages_from_stellar(): Error occurred during processing xdr message: {e:?}");
 				break;
@@ -81,12 +82,17 @@ pub(crate) async fn poll_messages_from_stellar(
 		}
 	}
 
+	// push error to user
+	if let Err(e) = send_to_user_sender.send(crate_specific_error()).await {
+		warn!("poll_messages_from_stellar(): Error occurred during sending message {} to user: {e:?}",e);
+	}
+
 	// make sure to shutdown the connector
 	connector.stop();
 	send_to_node_receiver.close();
 	drop(send_to_user_sender);
 
-	debug!("poll_messages_from_stellar(): stopped.");
+	info!("poll_messages_from_stellar(): stopped.");
 }
 
 /// Returns Xdr format of the `StellarMessage` sent from the Stellar Node

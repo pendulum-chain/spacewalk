@@ -305,10 +305,6 @@ pub async fn execute_open_requests(
 
 	let rate_limiter = Arc::new(RateLimiter::direct(YIELD_RATE));
 
-	while !oracle_agent.read().await.is_proof_building_ready().await {
-		tracing::debug!("execute_open_requests(): agent is not yet ready. Waiting...");
-	}
-
 	tracing::info!("execute_open_requests(): Oracle agent is ready.");
 
 	// Check if the open requests have a corresponding payment on Stellar

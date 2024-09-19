@@ -41,9 +41,6 @@ impl OracleAgent {
 		OracleAgent { collector, is_public_network, message_sender: None, shutdown_sender }
 	}
 
-	pub async fn is_proof_building_ready(&self) -> bool {
-		self.collector.read().await.last_slot_index() > 0
-	}
 }
 
 /// listens to data to collect the scp messages and txsets.
@@ -52,14 +49,22 @@ impl OracleAgent {
 /// * `message` - A message from the StellarRelay
 /// * `collector` - used to collect envelopes and transaction sets
 /// * `message_sender` - used to send messages to Stellar Node
+/// * `is_proof_building_ready` - set a signal to ready if a slot was saved
 async fn handle_message(
 	message: StellarMessage,
 	collector: Arc<RwLock<ScpMessageCollector>>,
 	message_sender: &StellarMessageSender,
+	is_proof_building_ready: &mut Option<bool>,
 ) -> Result<(), Error> {
 	match message {
 		StellarMessage::ScpMessage(env) => {
-			collector.write().await.handle_envelope(env, message_sender).await?;
+			// if the first slot was saved, it means proof building is ready.
+			if let Some(slot) = collector.write().await.handle_envelope(env, message_sender).await? {
+				if let Some(true) = is_proof_building_ready {
+					tracing::info!("handle_message(): First slot saved: {slot}. Ready to build proofs ");
+				}
+				*is_proof_building_ready = None;
+			}
 		},
 		StellarMessage::TxSet(set) =>
 			if let Err(e) = collector.read().await.add_txset(set) {
@@ -101,11 +106,20 @@ pub async fn listen_for_stellar_messages(
 	// log a new message received, every 1 minute.
 	let interval = Duration::from_secs(60);
 	let mut next_time = Instant::now() + interval;
+	let mut is_proof_building_ready:Option<bool> = Some(false);
 	loop {
 		let collector = oracle_agent.read().await.collector.clone();
 
 		match overlay_conn.listen().await {
 			Ok(None) => {},
+			Ok(Some(StellarMessage::Hello(_))) => {
+				tracing::info!("listen_for_stellar_messages(): received hello message from Stellar");
+				is_proof_building_ready = Some(true);
+			}
+			Ok(Some(StellarMessage::ErrorMsg(e))) => {
+				tracing::error!("listen_for_stellar_messages(): received error message from Stellar: {e:?}");
+				break
+			},
 			Ok(Some(msg)) => {
 				let msg_as_str = to_base64_xdr_string(&msg);
 				if Instant::now() >= next_time {
@@ -113,20 +127,24 @@ pub async fn listen_for_stellar_messages(
 					next_time += interval;
 				}
 
-				if let Err(e) = handle_message(msg, collector.clone(), &sender).await {
+				if let Some(true) = is_proof_building_ready {
+					tracing::info!("listen_for_stellar_messages(): received message from Stellar: {msg_as_str}");
+				};
+
+				if let Err(e) = handle_message(msg, collector.clone(), &sender, &mut is_proof_building_ready).await {
 					tracing::error!("listen_for_stellar_messages(): failed to handle message: {msg_as_str}: {e:?}");
 				}
 			},
 			// connection got lost
 			Err(e) => {
 				tracing::error!("listen_for_stellar_messages(): encounter error in overlay: {e:?}");
-
-				if let Err(e) = shutdown_sender.send(()) {
-					tracing::error!("listen_for_stellar_messages(): Failed to send shutdown signal in thread: {e:?}");
-				}
 				break
 			},
 		}
+	}
+
+	if let Err(e) = shutdown_sender.send(()) {
+		tracing::error!("listen_for_stellar_messages(): Failed to send shutdown signal in thread: {e:?}");
 	}
 
 	tracing::info!("listen_for_stellar_messages(): shutting down overlay connection");
@@ -145,11 +163,6 @@ pub async fn start_oracle_agent(
 	let secret = get_random_secret_key();
 
 	tokio::spawn(listen_for_stellar_messages(cfg, oracle_agent.clone(), secret, shutdown_sender));
-
-	while !oracle_agent.read().await.is_proof_building_ready().await {
-		tracing::info!("start_oracle_agent(): waiting for the first slot to be received");
-		sleep(Duration::from_millis(500)).await;
-	}
 
 	oracle_agent
 }

@@ -3,7 +3,7 @@ use tokio::sync::{
 	mpsc,
 	mpsc::{error::SendError, Sender},
 };
-use tracing::{debug, info};
+use tracing::{debug, error, info};
 
 use crate::{
 	connection::{poll_messages_from_stellar, ConnectionInfo, Connector},
@@ -68,7 +68,7 @@ impl StellarOverlayConnection {
 	/// poll_messages_from_stellar](../src/connection/connector/message_reader.rs)
 	pub async fn listen(&mut self) -> Result<Option<StellarMessage>, Error> {
 		if !self.is_alive() {
-			debug!("listen(): sender half of overlay has closed.");
+			error!("listen(): sender half of overlay has closed.");
 			return Err(Error::Disconnected)
 		}
 

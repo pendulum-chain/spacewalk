@@ -63,6 +63,13 @@ impl ScpMessageCollector {
 	/// * `slot` - the slot where the txset is  to get.
 	/// * `sender` - used to send messages to Stellar Node
 	pub async fn build_proof(&self, slot: Slot, sender: &StellarMessageSender) -> Option<Proof> {
+		if self.last_slot_index() == 0 {
+			tracing::warn!(
+				"build_proof(): Proof Building for slot {slot}: last_slot_index is still 0, not yet ready to build proofs."
+			);
+			return None;
+		}
+
 		let Some(envelopes) = self.get_envelopes(slot, sender).await else {
 			// return early if we don't have enough envelopes
 			tracing::warn!(
