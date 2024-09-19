@@ -100,8 +100,5 @@ jobs:
           version: ${{ env.RUSTUP_NIGHTLY_VERSION }}
 
       - name: Run Tests
-        uses: actions-rs/cargo@v1
-        with:
-          toolchain: ${{ env.RUSTUP_NIGHTLY_VERSION }}
-          command: test
-          args: --all --all-features
+        run: |
+            bash ./scripts/cmd-all test "+${{ env.RUSTUP_NIGHTLY_VERSION }} test"
