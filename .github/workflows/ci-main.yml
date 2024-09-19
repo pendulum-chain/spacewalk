@@ -42,15 +42,17 @@ jobs:
       - name: Checkout Repository
         uses: actions/checkout@v4
 
-      - name: Undergo Prerequisite
+      - name: Run Prerequisite
+        if: matrix.rust == 'stable'
         uses: ./.github/actions/prerequisite
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Install Rust Nightly
+      - name: Run Prerequisite (for Nightly)
         if: matrix.rust == 'nightly'
-        uses: ./.github/actions/install-rust-nightly
+        uses: ./.github/actions/prerequisite-nightly
         with:
+          token: ${{ secrets.GITHUB_TOKEN }}
           version: ${{ env.RUSTUP_NIGHTLY_VERSION }}
 
       - name: Rustfmt
@@ -74,31 +76,47 @@ jobs:
         run: |
           bash ./scripts/cmd-all clippy "clippy --lib --bins" "-- -W clippy::all -A clippy::style -A forgetting_copy_types -A forgetting_references"   
 
-  cargo-test:
+
+  cargo-test-pallets:
     name: Run Tests
 #    needs: build-check
 #    if: needs.build-check.result == 'success'
     runs-on: ubuntu-latest
-    env:
-      SOURCE_STELLAR_SECRET_MAINNET: ${{ secrets.SOURCE_STELLAR_SECRET_MAINNET }}
-      SOURCE_STELLAR_SECRET_TESTNET: ${{ secrets.SOURCE_STELLAR_SECRET_TESTNET }}
-      DEST_STELLAR_SECRET_MAINNET: ${{ secrets.DEST_STELLAR_SECRET_MAINNET }}
-      DEST_STELLAR_SECRET_TESTNET: ${{ secrets.DEST_STELLAR_SECRET_TESTNET }}
 
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
 
-      - name: Undergo Prerequisite
+      - name: Run Prerequisite (for Nightly)
+        uses: ./.github/actions/prerequisite-nightly
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          version: ${{ env.RUSTUP_NIGHTLY_VERSION }}
+
+      - name: Run Tests for Pallets
+        run: |
+            bash ./scripts/cmd-pallets test "+${{ env.RUSTUP_NIGHTLY_VERSION }} test"
+
+      - name: Run Tests for Other Libraries
+        run: |
+          bash ./scripts/cmd-pallets test "+${{ env.RUSTUP_NIGHTLY_VERSION }} test"
+
+  cargo-test-clients:
+    name: Run Tests
+    needs: cargo-test-pallets
+    if: needs.cargo-test-pallets.result == 'success'
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Undergo Prerequisite (for Nightly)
         uses: ./.github/actions/prerequisite
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Install Rust Nightly
-        uses: ./.github/actions/install-rust-nightly
-        with:
           version: ${{ env.RUSTUP_NIGHTLY_VERSION }}
 
-      - name: Run Tests
+      - name: Run Tests for Clients
         run: |
-            bash ./scripts/cmd-all test "+${{ env.RUSTUP_NIGHTLY_VERSION }} test"
+          bash ./scripts/cmd-clients test "+${{ env.RUSTUP_NIGHTLY_VERSION }} test"

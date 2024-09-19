@@ -15,82 +15,14 @@ reason=$1
 sub_cmd=$2
 options=$3
 
-echo "------------------------------------------------------------------------"
-echo "------------------------------------------------------------------------"
-echo "Checking" $reason "on all packages"
-echo "------------------------------------------------------------------------"
-echo "------------------------------------------------------------------------"
 
 cargo $sub_cmd -p spacewalk-primitives --all-features $options
 
-echo "------------------------------------------------------------------------"
-echo "Checks" $reason "on all pallets"
-echo "------------------------------------------------------------------------"
-cargo $sub_cmd -p clients-info --all-features $options
+# run the pallets
+./scripts/cmd-pallets $reason $sub_cmd $options
 
-if [[ $sub_cmd == *"nightly"* ]]; then
-  cargo $sub_cmd -p currency $options
-else
-  echo "------------------------------------------------------------------------"
-  echo "     Excluding testing-utils feature of pallet currency;"
-  echo "     that is for nightly version."
-  echo "------------------------------------------------------------------------"
-  cargo $sub_cmd -p currency --features std,testing-constants,try-runtime,runtime-benchmarks $options
-fi
+# run the clients
+./scripts/cmd-clients $reason $sub_cmd $options
 
-cargo $sub_cmd -p fee --all-features $options
-cargo $sub_cmd -p issue --all-features $options
-cargo $sub_cmd -p nomination --all-features $options
-cargo $sub_cmd -p oracle --all-features $options
-cargo $sub_cmd -p pooled-rewards --all-features $options
-cargo $sub_cmd -p redeem --all-features $options
-cargo $sub_cmd -p replace --all-features $options
-cargo $sub_cmd -p reward --all-features $options
-cargo $sub_cmd -p reward-distribution --all-features $options
-cargo $sub_cmd -p security --all-features $options
-cargo $sub_cmd -p staking --all-features $options
-cargo $sub_cmd -p stellar-relay --all-features $options
-cargo $sub_cmd -p vault-registry --all-features $options
-
-if [[ $reason != "test"* ]]; then
-  echo "------------------------------------------------------------------------"
-  echo "Checks" $reason "for pallets with rpc"
-  echo "------------------------------------------------------------------------"
-  cargo $sub_cmd -p module-issue-rpc --all-features $options
-  cargo $sub_cmd -p module-oracle-rpc --all-features $options
-  cargo $sub_cmd -p module-redeem-rpc --all-features $options
-  cargo $sub_cmd -p module-replace-rpc --all-features $options
-  cargo $sub_cmd -p module-vault-registry-rpc --all-features $options
-  cargo $sub_cmd -p module-issue-rpc-runtime-api --all-features $options
-  cargo $sub_cmd -p module-oracle-rpc-runtime-api --all-features $options
-  cargo $sub_cmd -p module-redeem-rpc-runtime-api --all-features $options
-  cargo $sub_cmd -p module-replace-rpc-runtime-api --all-features $options
-  cargo $sub_cmd -p module-vault-registry-rpc-runtime-api --all-features $options
-fi
-
-echo "------------------------------------------------------------------------"
-echo "Checks" $reason "on packages in clients directory"
-echo "------------------------------------------------------------------------"
-if [[ $sub_cmd == "clippy"* ]]; then
-  echo "------------------------------------------------------------------------"
-  echo "    The package runner does not have a lib."
-  echo "------------------------------------------------------------------------"
-  cargo clippy --bins -p runner --all-features $options
-else
-  cargo  $sub_cmd -p runner --all-features $options
-fi
-
-cargo $sub_cmd -p runtime --all-features $options
-cargo $sub_cmd -p stellar-relay-lib --all-features $options
-cargo $sub_cmd -p subxt-client --all-features $options
-cargo $sub_cmd -p vault --all-features $options
-cargo $sub_cmd -p wallet --all-features $options
-
-if [[ $reason != "test"* ]]; then
-  echo "------------------------------------------------------------------------"
-  echo "Checks" $reason "from testchain"
-  echo "------------------------------------------------------------------------"
-  cargo $sub_cmd -p spacewalk-runtime-standalone-mainnet --all-features $options
-  cargo $sub_cmd -p spacewalk-runtime-standalone-testnet --all-features $options
-  cargo $sub_cmd -p spacewalk-standalone --all-features $options
-fi
+# run the others
+./scripts/cmd-others $reason $sub_cmd $options
