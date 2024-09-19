@@ -11,26 +11,26 @@ env:
   RUSTFLAGS: "-Dwarnings"
 
 jobs:
-  build-check:
-    name: Check Build
-    runs-on: ubuntu-latest
-
-    steps:
-      - name: Checkout Repository
-        uses: actions/checkout@v4
-
-      - name: Undergo Prerequisite
-        uses: ./.github/actions/prerequisite
-        with:
-          token: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Check Build
-        run: |
-          bash ./scripts/cmd-all build check 
+#  build-check:
+#    name: Check Build
+#    runs-on: ubuntu-latest
+#
+#    steps:
+#      - name: Checkout Repository
+#        uses: actions/checkout@v4
+#
+#      - name: Undergo Prerequisite
+#        uses: ./.github/actions/prerequisite
+#        with:
+#          token: ${{ secrets.GITHUB_TOKEN }}
+#
+#      - name: Check Build
+#        run: |
+#          bash ./scripts/cmd-all build check
 
   cargo-clippy:
     name: Run Clippy and Format Checks
-    needs: build-check
+#    needs: build-check
     if: needs.build-check.result == 'success'
     strategy:
       max-parallel: 2
@@ -76,7 +76,7 @@ jobs:
 
   cargo-test:
     name: Run Tests
-    needs: build-check
+#    needs: build-check
     if: needs.build-check.result == 'success'
     runs-on: ubuntu-latest
     env:

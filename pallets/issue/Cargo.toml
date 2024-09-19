@@ -36,16 +36,16 @@ orml-traits = { git = "https://github.com/open-web3-stack/open-runtime-module-li
 [dev-dependencies]
 mocktopus = "0.8.0"
 frame-benchmarking = { git = "https://github.com/paritytech/polkadot-sdk", branch = "release-polkadot-v1.1.0" }
-pallet-balances = { git = "https://github.com/paritytech/polkadot-sdk", branch = "release-polkadot-v1.1.0", default-features = false }
-pallet-timestamp = { git = "https://github.com/paritytech/polkadot-sdk", branch = "release-polkadot-v1.1.0", default-features = false }
-sp-arithmetic = { git = "https://github.com/paritytech/polkadot-sdk", branch = "release-polkadot-v1.1.0", default-features = false }
-sp-io = { git = "https://github.com/paritytech/polkadot-sdk", branch = "release-polkadot-v1.1.0", default-features = false }
-nomination = {path = "../nomination", default-features = false}
+pallet-balances = { git = "https://github.com/paritytech/polkadot-sdk", branch = "release-polkadot-v1.1.0" }
+pallet-timestamp = { git = "https://github.com/paritytech/polkadot-sdk", branch = "release-polkadot-v1.1.0" }
+sp-arithmetic = { git = "https://github.com/paritytech/polkadot-sdk", branch = "release-polkadot-v1.1.0"}
+sp-io = { git = "https://github.com/paritytech/polkadot-sdk", branch = "release-polkadot-v1.1.0" }
+nomination = {path = "../nomination"}
 
 currency = { path = "../currency", features = ['testing-utils', 'testing-constants'] }
-pooled-rewards = { path = "../pooled-rewards", default-features = false }
+pooled-rewards = { path = "../pooled-rewards" }
 reward = { path = "../reward" }
-reward-distribution = { path = "../reward-distribution", default-features = false }
+reward-distribution = { path = "../reward-distribution" }
 staking = { path = "../staking" }
 stellar-relay = { path = "../stellar-relay", features = ['testing-utils'] }
 security = { path = "../security", features = ['testing-utils'] }
