@@ -247,7 +247,7 @@ impl<T: Config> Pallet<T> {
 		}
 
 		let current_status_is_online = Self::is_oracle_online();
-		let new_status_is_online = oracle_keys.is_empty() &&
+		let new_status_is_online = !oracle_keys.is_empty() &&
 			updated_items_len > 0 &&
 			updated_items_len == oracle_keys.len();
 
