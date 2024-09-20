@@ -1,33 +1,16 @@
 #!/bin/bash
 set -e
 
-##### Executes the command to ALL packages of this project.
-##### An exception is the package `subxt-client`, as it needs the package `runtime` for it to work.
-##### The currently supported (and tested) commands are: check and clippy
-##### arguments:
-#####   * reason = what the command is for
-#####   * sub_cmd = the actual sub command. For commands separated by spaces, enclose with ""
-#####     e.g. "build --lib"
-#####          "+nightly check"
-#####   * options = additional options of the sub command. If separated by spaces, enclose with ""
-#####     e.g. "-- -W clippy::all"
-reason=$1
-sub_cmd=$2
-options=$3
+echo "------------------------------------------------------------------------"
+echo "Checking" $1 "on primitives"
+echo "------------------------------------------------------------------------"\
+cargo $2 -p spacewalk-primitives --all-features $3
 
-echo "------------------------------------------------------------------------"
-echo "------------------------------------------------------------------------"
-echo "Checking" $reason "on all packages"
-echo "------------------------------------------------------------------------"
-echo "------------------------------------------------------------------------"
-
-cargo $sub_cmd -p spacewalk-primitives --all-features $options
-
-if [[ $reason != "test"* ]]; then
+if [[ $1 != "test"* ]]; then
   echo "------------------------------------------------------------------------"
-  echo "Checks" $reason "from testchain"
+  echo "Checks" $1 "on testchain"
   echo "------------------------------------------------------------------------"
-  cargo $sub_cmd -p spacewalk-runtime-standalone-mainnet --all-features $options
-  cargo $sub_cmd -p spacewalk-runtime-standalone-testnet --all-features $options
-  cargo $sub_cmd -p spacewalk-standalone --all-features $options
+  cargo $2 -p spacewalk-runtime-standalone-mainnet --all-features $3
+  cargo $2 -p spacewalk-runtime-standalone-testnet --all-features $3
+  cargo $2 -p spacewalk-standalone --all-features $3
 fi

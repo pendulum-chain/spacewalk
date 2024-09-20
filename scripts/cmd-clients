@@ -1,35 +1,21 @@
 #!/bin/bash
 set -e
 
-##### Executes the command to ALL packages of this project.
-##### An exception is the package `subxt-client`, as it needs the package `runtime` for it to work.
-##### The currently supported (and tested) commands are: check and clippy
-##### arguments:
-#####   * reason = what the command is for
-#####   * sub_cmd = the actual sub command. For commands separated by spaces, enclose with ""
-#####     e.g. "build --lib"
-#####          "+nightly check"
-#####   * options = additional options of the sub command. If separated by spaces, enclose with ""
-#####     e.g. "-- -W clippy::all"
-reason=$1
-sub_cmd=$2
-options=$3
-echo "options inslide clients command: " + $options
 echo "------------------------------------------------------------------------"
-echo "Checks" $reason "on packages in clients directory"
+echo "Checks" $1 "on packages in clients directory"
 echo "------------------------------------------------------------------------"
-if [[ $sub_cmd == "clippy"* ]]; then
+if [[ $2 == "clippy"* ]]; then
   echo "------------------------------------------------------------------------"
   echo "    The package runner does not have a lib."
   echo "------------------------------------------------------------------------"
 
-  cargo clippy --bins -p runner --all-features $options
+  cargo clippy --bins -p runner --all-features $3
 else
-  cargo  $sub_cmd -p runner --all-features $options
+  cargo  $2 -p runner --all-features $3
 fi
 
-cargo $sub_cmd -p runtime --all-features $options
-cargo $sub_cmd -p stellar-relay-lib --all-features $options
-cargo $sub_cmd -p subxt-client --all-features $options
-cargo $sub_cmd -p vault --all-features $options
-cargo $sub_cmd -p wallet --all-features $options
+cargo $2 -p runtime --all-features $3
+cargo $2 -p stellar-relay-lib --all-features $3
+cargo $2 -p subxt-client --all-features $3
+cargo $2 -p vault --all-features $3
+cargo $2 -p wallet --all-features $3
