@@ -112,7 +112,7 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Undergo Prerequisite (for Nightly)
-        uses: ./.github/actions/prerequisite
+        uses: ./.github/actions/prerequisite-nightly
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
           version: ${{ env.RUSTUP_NIGHTLY_VERSION }}
