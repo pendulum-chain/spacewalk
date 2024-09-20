@@ -125,3 +125,31 @@ jobs:
       - name: Run Tests for Clients
         run: |
           bash ./scripts/cmd-clients test "+${{ env.RUSTUP_NIGHTLY_VERSION }} test"
+
+  cargo-test-vault:
+    name: Run Tests for Vault
+    needs: cargo-test-clients
+    if: needs.cargo-test-clients.result == 'success'
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Undergo Prerequisite (for Nightly)
+        uses: ./.github/actions/prerequisite-nightly
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          version: ${{ env.RUSTUP_NIGHTLY_VERSION }}
+
+      - name: Run Tests for Vault
+        uses: actions-rs/cargo@v1
+        env:
+          SOURCE_STELLAR_SECRET_MAINNET: ${{ secrets.SOURCE_STELLAR_SECRET_MAINNET }}
+          SOURCE_STELLAR_SECRET_TESTNET: ${{ secrets.SOURCE_STELLAR_SECRET_TESTNET }}
+          DEST_STELLAR_SECRET_MAINNET: ${{ secrets.DEST_STELLAR_SECRET_MAINNET }}
+          DEST_STELLAR_SECRET_TESTNET: ${{ secrets.DEST_STELLAR_SECRET_TESTNET }}
+        with:
+          toolchain: nightly-2024-02-09
+          command: test
+          args: -p vault --all-features

@@ -31,3 +31,8 @@ cargo $sub_cmd -p spacewalk-primitives --all-features $options
 
 # run the others
 ./scripts/cmd-others $reason $sub_cmd $options
+
+  echo "------------------------------------------------------------------------"
+  echo "Checks" $reason "on the vault"
+  echo "------------------------------------------------------------------------"
+cargo $sub_cmd -p vault --all-features $options
