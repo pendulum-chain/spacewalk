@@ -24,6 +24,6 @@ runs:
           shared-key: "shared"
 
       - name: Install Protoc
-        uses: arduino/setup-protoc@v1
+        uses: arduino/setup-protoc@v3
         with:
           repo-token: ${{ inputs.token }}
