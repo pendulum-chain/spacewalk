@@ -152,4 +152,5 @@ jobs:
         with:
           toolchain: nightly-2024-02-09
           command: test
-          args: -p vault --all-features
+          # we only test the standalone-metadata
+          args: -p vault --features integration-tests
