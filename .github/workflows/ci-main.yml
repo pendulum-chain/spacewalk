@@ -154,6 +154,10 @@ jobs:
         with:
           repo-token: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Link CC
+        run: |
+          sudo aptitude install libxdo-dev
+
       - name: Set up Cargo cache
         uses: actions/cache@v4
         with:
