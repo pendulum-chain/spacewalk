@@ -12770,7 +12770,6 @@ checksum = "5a84c137d37ab0142f0f2ddfe332651fdbf252e7b7dbb4e67b6c1f1b2e925101"
 name = "vault"
 version = "1.0.11"
 dependencies = [
- "async-std",
  "async-trait",
  "base64 0.13.1",
  "bincode",
@@ -12785,7 +12784,6 @@ dependencies = [
  "governor",
  "hex",
  "itertools 0.10.5",
- "jsonrpc-core",
  "jsonrpc-core-client",
  "lazy_static",
  "mockall 0.8.3",
@@ -12796,10 +12794,8 @@ dependencies = [
  "rand 0.8.5",
  "reqwest",
  "runtime",
- "scale-info",
  "serial_test",
  "service",
- "sha2 0.8.2",
  "signal-hook",
  "signal-hook-tokio",
  "sp-arithmetic 16.0.0",
@@ -12817,7 +12813,6 @@ dependencies = [
  "tokio-metrics",
  "tokio-stream",
  "tracing",
- "tracing-subscriber 0.2.25",
  "wallet",
 ]
 
