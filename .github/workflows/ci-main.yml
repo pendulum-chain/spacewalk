@@ -130,7 +130,7 @@ jobs:
     name: Run Tests for Vault
 #    needs: cargo-test-clients
 #    if: needs.cargo-test-clients.result == 'success'
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-20.04
 
     steps:
       - name: Checkout Repository
