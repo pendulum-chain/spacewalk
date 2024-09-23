@@ -1,5 +1,4 @@
 use jsonrpc_core_client::RpcError;
-use parity_scale_codec::Error as CodecError;
 use sp_std::str::Utf8Error;
 use thiserror::Error;
 use tokio_stream::wrappers::errors::BroadcastStreamRecvError;
