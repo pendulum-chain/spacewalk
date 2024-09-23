@@ -26,8 +26,6 @@ pub enum Error {
 	RpcError(#[from] RpcError),
 	#[error("RuntimeError: {0}")]
 	RuntimeError(#[from] RuntimeError),
-	#[error("CodecError: {0}")]
-	CodecError(#[from] CodecError),
 	#[error("BroadcastStreamRecvError: {0}")]
 	BroadcastStreamRecvError(#[from] BroadcastStreamRecvError),
 	#[error("StellarWalletError: {0}")]

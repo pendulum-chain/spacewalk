@@ -4,7 +4,7 @@ use std::{sync::Arc, time::Duration};
 use tokio::sync::RwLock;
 
 use governor::Quota;
-use nonzero_ext::*;
+use nonzero_ext::nonzero;
 
 pub use system::{VaultIdManager, VaultService, VaultServiceConfig, ABOUT, AUTHORS, NAME, VERSION};
 

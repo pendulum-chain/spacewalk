@@ -35,7 +35,6 @@ hex = "0.4.2"
 itertools = "0.10.5"
 lazy_static = "1.4"
 nonzero_ext = "0.3.0"
-parity-scale-codec = "3.0.0"
 reqwest = { version = "0.12.4", features = ["json"] }
 signal-hook = "0.3.14"
 signal-hook-tokio = { version = "0.3.1", features = ["futures-v0_3"] }
