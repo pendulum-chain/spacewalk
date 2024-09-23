@@ -128,11 +128,11 @@ jobs:
 
   cargo-test-vault:
     name: Run Tests for Vault
-    needs: [
-      cargo-test-pallets,
-      cargo-test-clients,
-    ]
-    if: needs.cargo-test-clients.result == 'success' && needs.cargo-test-pallets.result == 'success'
+#    needs: [
+#      cargo-test-pallets,
+#      cargo-test-clients,
+#    ]
+#    if: needs.cargo-test-clients.result == 'success' && needs.cargo-test-pallets.result == 'success'
     runs-on: ubuntu-latest
 
     steps:
