@@ -103,8 +103,8 @@ jobs:
 #
 #  cargo-test-clients:
 #    name: Run Tests for Clients
-#    needs: cargo-test-pallets
-#    if: needs.cargo-test-pallets.result == 'success'
+#    needs: build-check
+#    if: needs.build-check.result == 'success'
 #    runs-on: ubuntu-latest
 #    env:
 #      SOURCE_STELLAR_SECRET_MAINNET: ${{ secrets.SOURCE_STELLAR_SECRET_MAINNET }}
@@ -128,46 +128,21 @@ jobs:
 
   cargo-test-vault:
     name: Run Tests for Vault
-#    needs: cargo-test-clients
-#    if: needs.cargo-test-clients.result == 'success'
+    needs: [
+      cargo-test-pallets,
+      cargo-test-clients,
+    ]
+    if: needs.cargo-test-clients.result == 'success' && needs.cargo-test-pallets.result == 'success'
     runs-on: ubuntu-latest
 
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
 
-#      - name: Undergo Prerequisite (for Nightly)
-#        uses: ./.github/actions/prerequisite-nightly
-#        with:
-#          token: ${{ secrets.GITHUB_TOKEN }}
-#          version: ${{ env.RUSTUP_NIGHTLY_VERSION }}
-
-      # Free GitHub Actions Environment Disk Space
-      - name: Maximize Build Space
-        uses: jlumbroso/free-disk-space@main
-        with:
-          tool-cache: false
-          large-packages: false
-
-      - name: Install Libs
-        uses: ./.github/actions/installations
+      - name: Undergo Prerequisite (for Nightly)
+        uses: ./.github/actions/prerequisite-nightly
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Set up Cargo cache
-        uses: actions/cache@v4
-        with:
-          path: |
-            ${{ env.CARGO_HOME }}/bin/
-            ${{ env.CARGO_HOME }}/registry/index/
-            ${{ env.CARGO_HOME }}/registry/cache/
-            ${{ env.CARGO_HOME }}/git/db/
-          key: ${{ github.job }}-${{ github.ref }}-${{ hashFiles('**/Cargo.lock') }}
-          save-always: true
-
-      - name: Install nightly
-        uses: ./.github/actions/install-rust-nightly
-        with:
           version: ${{ env.RUSTUP_NIGHTLY_VERSION }}
 
       - name: Run Tests for Vault
@@ -181,4 +156,4 @@ jobs:
           toolchain: ${{ env.RUSTUP_NIGHTLY_VERSION }}
           command: test
           # we only test the standalone-metadata
-          args: -p vault --features integration-test
+          args: --release -p vault --features integration-test
