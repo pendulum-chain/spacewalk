@@ -15,8 +15,6 @@ runs:
           echo 'APT::Get::Always-Include-Phased-Updates "false";' | sudo tee /etc/apt/apt.conf.d/99-phased-updates
           sudo apt-get update && sudo apt-get upgrade -y
           sudo apt-get install -y protobuf-compiler libprotobuf-dev
-          sudo apt install libpq-dev
-          cargo install diesel_cli --no-default-features --features postgres
 
 #      - name: Use Cache
 #        uses: Swatinem/rust-cache@v2
