@@ -150,7 +150,7 @@ jobs:
           large-packages: false
 
       - name: Install Libs
-        use: ./.github/actions/installations
+        uses: ./.github/actions/installations
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
 
