@@ -16,12 +16,12 @@ runs:
           sudo apt-get update && sudo apt-get upgrade -y
           sudo apt-get install -y protobuf-compiler libprotobuf-dev
 
-      - name: Use Cache
-        uses: Swatinem/rust-cache@v2
-        with:
-          cache-on-failure: true
-          key: "ubuntu-latest-cargo-${{ hashFiles('**/Cargo.lock') }}"
-          shared-key: "shared"
+#      - name: Use Cache
+#        uses: Swatinem/rust-cache@v2
+#        with:
+#          cache-on-failure: true
+#          key: "ubuntu-latest-cargo-${{ hashFiles('**/Cargo.lock') }}"
+#          shared-key: "shared"
 
       - name: Install Protoc
         uses: arduino/setup-protoc@v3
