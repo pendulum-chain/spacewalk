@@ -26,7 +26,7 @@ jobs:
 
       - name: Check Build
         run: |
-          bash ./scripts/cmd-all build check
+          bash ./scripts/cmd-all build check "--release"
 
   cargo-clippy:
     name: Run Clippy and Format Checks
@@ -69,12 +69,12 @@ jobs:
         with:
           toolchain: ${{ env.RUSTUP_NIGHTLY_VERSION }}
           command: clippy
-          args: --all-features --tests --benches --examples -- -A clippy::all -W clippy::correctness -A forgetting_copy_types -A forgetting_references
+          args: --release --all-features --tests --benches --examples -- -A clippy::all -W clippy::correctness -A forgetting_copy_types -A forgetting_references
 
       - name: Clippy -- Libraries and Binaries
         if: matrix.rust == 'stable'
         run: |
-          bash ./scripts/cmd-all clippy "clippy --lib --bins" "-- -W clippy::all -A clippy::style -A forgetting_copy_types -A forgetting_references"
+          bash ./scripts/cmd-all clippy "clippy --lib --bins" "--release -- -W clippy::all -A clippy::style -A forgetting_copy_types -A forgetting_references"
 
 
   cargo-test-pallets:
@@ -101,6 +101,7 @@ jobs:
         run: |
           bash ./scripts/cmd-pallets test "+${{ env.RUSTUP_NIGHTLY_VERSION }} test" "--release"
 
+
   cargo-test-clients:
     name: Run Tests for Clients
     needs: build-check
@@ -126,13 +127,11 @@ jobs:
         run: |
           bash ./scripts/cmd-clients test "+${{ env.RUSTUP_NIGHTLY_VERSION }} test" "--release"
 
+
   cargo-test-vault:
     name: Run Tests for Vault
-    needs: [
-      cargo-test-pallets,
-      cargo-test-clients,
-    ]
-    if: needs.cargo-test-clients.result == 'success' && needs.cargo-test-pallets.result == 'success'
+    needs: build-check
+    if: needs.build-check.result == 'success'
     runs-on: ubuntu-latest
 
     steps:
