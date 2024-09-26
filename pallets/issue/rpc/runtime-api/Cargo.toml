@@ -1,6 +1,6 @@
 [package]
 name = "module-issue-rpc-runtime-api"
-version = "1.0.10"
+version = "1.0.11"
 authors = ["Interlay <contact@interlay.io>"]
 edition = "2021"
 
