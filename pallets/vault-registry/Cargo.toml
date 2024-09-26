@@ -2,7 +2,7 @@
 authors = ["Pendulum"]
 edition = "2021"
 name = "vault-registry"
-version = "1.0.10"
+version = "1.0.11"
 
 [dependencies]
 codec = {package = "parity-scale-codec", version = "3.0.0", default-features = false, features = ["derive", "max-encoded-len"]}
