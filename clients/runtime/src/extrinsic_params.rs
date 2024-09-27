@@ -45,9 +45,9 @@ impl<T: Config> subxt::config::ExtrinsicParams<T> for CheckMetadataHash {
 	type OtherParams = ();
 
 	fn new<Client: OfflineClientT<T>>(
-		nonce: u64,
-		client: Client,
-		other_params: Self::OtherParams,
+		_nonce: u64,
+		_client: Client,
+		_other_params: Self::OtherParams,
 	) -> Result<Self, ExtrinsicParamsError> {
 		Ok(CheckMetadataHash {})
 	}
