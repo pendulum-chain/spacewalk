@@ -1,19 +1,8 @@
-use codec::{Decode, Encode};
-pub use prometheus;
-pub use sp_arithmetic::{traits as FixedPointTraits, FixedI128, FixedPointNumber, FixedU128};
-use sp_std::marker::PhantomData;
-use subxt::{
-	config::polkadot::PolkadotExtrinsicParams, ext::sp_runtime::MultiSignature, subxt, Config,
-};
-pub use subxt::{
-	config::substrate::BlakeTwo256,
-	events::StaticEvent,
-	ext::sp_core::{crypto::Ss58Codec, sr25519::Pair},
-};
-
 pub use assets::TryFromSymbol;
+use codec::{Decode, Encode};
 pub use error::{Error, Recoverability, SubxtError};
 pub use primitives::CurrencyInfo;
+pub use prometheus;
 pub use retry::{notify_retry, RetryPolicy};
 #[cfg(feature = "testing-utils")]
 pub use rpc::SudoPallet;
@@ -23,6 +12,14 @@ pub use rpc::{
 	DEFAULT_SPEC_NAME, SS58_PREFIX,
 };
 pub use shutdown::{ShutdownReceiver, ShutdownSender};
+pub use sp_arithmetic::{traits as FixedPointTraits, FixedI128, FixedPointNumber, FixedU128};
+use sp_std::marker::PhantomData;
+pub use subxt::{
+	config::substrate::BlakeTwo256,
+	events::StaticEvent,
+	ext::sp_core::{crypto::Ss58Codec, sr25519::Pair},
+};
+use subxt::{ext::sp_runtime::MultiSignature, subxt, Config};
 pub use types::*;
 
 pub mod cli;
@@ -36,6 +33,7 @@ pub mod integration;
 mod assets;
 mod conn;
 mod error;
+mod extrinsic_params;
 mod retry;
 mod rpc;
 mod shutdown;
@@ -139,12 +137,12 @@ pub struct WrapperKeepOpaque<T> {
 pub struct SpacewalkRuntime;
 
 impl Config for SpacewalkRuntime {
-	type AssetId = ();
 	type Hash = H256;
-	type Header = subxt::config::substrate::SubstrateHeader<BlockNumber, Self::Hasher>;
-	type Hasher = BlakeTwo256;
 	type AccountId = AccountId;
 	type Address = Address;
 	type Signature = MultiSignature;
-	type ExtrinsicParams = PolkadotExtrinsicParams<Self>;
+	type Hasher = BlakeTwo256;
+	type Header = subxt::config::substrate::SubstrateHeader<BlockNumber, Self::Hasher>;
+	type ExtrinsicParams = extrinsic_params::UsedExtrinsicParams<Self>;
+	type AssetId = ();
 }
