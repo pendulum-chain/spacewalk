@@ -164,7 +164,7 @@ cargo run --bin spacewalk-standalone --release -- --dev
 Once the local node is running, run this command from the clients directory:
 
 ```
-subxt metadata -f bytes > runtime/metadata-standalone.scale --version 14
+subxt metadata -f bytes > runtime/metadata-standalone.scale
 ```
 
 ### Updating the metadata of the supported runtimes (Pendulum/Amplitude/Foucoco)
