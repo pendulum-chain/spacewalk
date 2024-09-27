@@ -15,7 +15,7 @@ cargo build --features=parachain-metadata
 To run the vault with the auto-updater service:
 
 ```
-cargo run --bin runner -- --parachain-ws <parachain-ws> -- --keyring alice  --stellar-vault-secret-key-filepath <secret_key_file_path> --stellar-overlay-config-filepath <cfg_file_path>```
+cargo run --bin runner -- --parachain-ws <parachain-ws> -- --keyring alice  --stellar-vault-secret-key-filepath <secret_key_file_path> --stellar-overlay-config-filepath <cfg_file_path>
 ```
 
 To run the vault directly with the provided standalone chain use:
@@ -23,24 +23,25 @@ To run the vault directly with the provided standalone chain use:
 ```
 cargo run --bin vault --features standalone-metadata  -- --keyring alice --stellar-vault-secret-key-filepath <secret_key_file_path> --stellar-overlay-config-filepath <cfg_file_path>
 ```
- * Instead of flags,you can also use environment variables _`STELLAR_VAULT_SECRET_KEY_FILEPATH`_, _`STELLAR_OVERLAY_CONFIG_FILEPATH`_:
-   ```
-   export STELLAR_VAULT_SECRET_KEY_FILEPATH=<secret_key_file_path>
-   export STELLAR_OVERLAY_CONFIG_FILEPATH=<cfg_file_path>
-   ```
- * To see examples of the config file, check [here](stellar-relay-lib/resources/config). 
- * An example of the secret key file path is found [here](stellar-relay-lib/resources/secretkey).
+
+* Instead of flags,you can also use environment variables _`STELLAR_VAULT_SECRET_KEY_FILEPATH`_,
+  _`STELLAR_OVERLAY_CONFIG_FILEPATH`_:
+  ```
+  export STELLAR_VAULT_SECRET_KEY_FILEPATH=<secret_key_file_path>
+  export STELLAR_OVERLAY_CONFIG_FILEPATH=<cfg_file_path>
+  ```
+* To see examples of the config file, check [here](stellar-relay-lib/resources/config).
+* An example of the secret key file path is found [here](stellar-relay-lib/resources/secretkey).
 
 ### auto-register
+
 To make the vault auto-register itself with the chain, there are 2 options:
+
 * use the _`--auto-register`_ flag:
-  * ```
-    --auto-register 0,GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN:USDC,1000000
-    ```
+    * ``` --auto-register 0,GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN:USDC,1000000```
 * use the environment variable _`AUTO_REGISTER`_. The value must be a tuple, so enclose it with double quotes:
-  * ```
-    export AUTO_REGISTER="0,GAKNDFRRWA3RPWNLTI3G4EBSD3RGNZZOY5WKWYMQ6CQTG3KIEKPYWAYC:USDC,1000000"
-    ```
+    * ``` export AUTO_REGISTER="0,GAKNDFRRWA3RPWNLTI3G4EBSD3RGNZZOY5WKWYMQ6CQTG3KIEKPYWAYC:USDC,1000000"```
+
 Be careful with the asset pair you use, as using arbitrary asset pairs will result in the vault not being able to
 register itself.
 This is because some thresholds for the vault are set based on the currencies specified in the runtime and these
@@ -64,15 +65,13 @@ cargo run --bin vault --features standalone-metadata  -- --keyring alice --stell
 ```
 
 ### specifying parachains
+
 To run the vault with a parachain (e.g. Pendulum) you need to specify the URL using 2 options:
+
 * use the _`spacewalk-parachain-url`_ flag:
-  * ```
-    --spacewalk-parachain-url ws://localhost:8844
-    ```
+    * ``` --spacewalk-parachain-url ws://localhost:8844```
 * use the environment variable _`SPACEWALK_PARACHAIN_URL`_:
-  * ```
-    export SPACEWALK_PARACHAIN_URL=ws://localhost:8844
-    ```
+    * ```export SPACEWALK_PARACHAIN_URL=ws://localhost:8844```
 
 ## Tests
 
@@ -95,7 +94,8 @@ You can also find an example for setting these variables in the `.env.example` f
 
 ### Running the tests
 
-**Note** Tests should run using Rust **_`nightly`_** version. Make sure to install and add the target `wasm32-unknown-unknown`.
+**Note** Tests should run using Rust **_`nightly`_** version. Make sure to install and add the target
+`wasm32-unknown-unknown`.
 
 To run the tests (unit and integration tests) for the spacewalk vault client run
 
@@ -172,18 +172,18 @@ subxt metadata -f bytes > runtime/metadata-standalone.scale --version 14
 To update the metadata of the supported parachains, run the following commands:
 
 ```
-subxt metadata -f bytes --url wss://rpc-pendulum.prd.pendulumchain.tech:443 > runtime/metadata-parachain-pendulum.scale --version 14
-subxt metadata -f bytes --url wss://rpc-amplitude.pendulumchain.tech:443 > runtime/metadata-parachain-amplitude.scale --version 14
-subxt metadata -f bytes --url wss://rpc-foucoco.pendulumchain.tech:443 > runtime/metadata-parachain-foucoco.scale --version 14
+subxt metadata -f bytes --url wss://rpc-pendulum.prd.pendulumchain.tech:443 > runtime/metadata-parachain-pendulum.scale
+subxt metadata -f bytes --url wss://rpc-amplitude.pendulumchain.tech:443 > runtime/metadata-parachain-amplitude.scale
+subxt metadata -f bytes --url wss://rpc-foucoco.pendulumchain.tech:443 > runtime/metadata-parachain-foucoco.scale
 ```
 
 To facilitate comparison of changes in metadata, it is recommended to also convert the metadata to JSON format. This can
 be done using the following commands:
 
 ```
-subxt metadata -f json --url wss://rpc-pendulum.prd.pendulumchain.tech:443 > runtime/metadata-parachain-pendulum.json --version 14
-subxt metadata -f json --url wss://rpc-amplitude.pendulumchain.tech:443 > runtime/metadata-parachain-amplitude.json --version 14
-subxt metadata -f json --url wss://rpc-foucoco.pendulumchain.tech:443 > runtime/metadata-parachain-foucoco.json --version 14
+subxt metadata -f json --url wss://rpc-pendulum.prd.pendulumchain.tech:443 > runtime/metadata-parachain-pendulum.json
+subxt metadata -f json --url wss://rpc-amplitude.pendulumchain.tech:443 > runtime/metadata-parachain-amplitude.json
+subxt metadata -f json --url wss://rpc-foucoco.pendulumchain.tech:443 > runtime/metadata-parachain-foucoco.json
 ```
 
 ## Troubleshooting
@@ -219,45 +219,50 @@ due to the converted destination account not having trustlines set up for the re
 The destination account is derived automatically from the account that called the extrinsic on-chain.
 
 ### Debugging with `tokio-console`
-The vault is `tokio-console` ready, with the feature **_`allow-debugger`_**. 
 
-> **Note**: [Rustflags are required](https://github.com/tokio-rs/console?tab=readme-ov-file#instrumenting-your-program) to make `tokio-console` work.
-It has been defined directly in [.cargo/config.toml](../.cargo/config.toml). 
+The vault is `tokio-console` ready, with the feature **_`allow-debugger`_**.
+
+> **Note**: [Rustflags are required](https://github.com/tokio-rs/console?tab=readme-ov-file#instrumenting-your-program)
+> to make `tokio-console` work.
+> It has been defined directly in [.cargo/config.toml](../.cargo/config.toml).
 
 ```
 cargo run --bin vault --features allow-debugger
 ```
+
 [Install tokio-console](https://github.com/tokio-rs/console?tab=readme-ov-file#running-the-console)
 and connect to the vault.  
 If using the [testchain](../testchain) and vault's `standalone-metadata` feature, you can use the command:
+
 ```
 tokio-console http://127.0.0.1:6669
 ```
-This will display: 
+
+This will display:
 <img width="1138" alt="Screenshot 2024-05-13 at 6 33 33 PM" src="https://github.com/pendulum-chain/spacewalk/assets/2826165/6681a16c-84c0-47f5-abc6-e4ba6a7dc032">
-The multiple ` tokio::task clients/vault/src/system.rs ` tasks follows the tasks spawned consecutively, in [system.rs](https://github.com/pendulum-chain/spacewalk/blob/main/clients/vault/src/system.rs):  
+The multiple ` tokio::task clients/vault/src/system.rs ` tasks follows the tasks spawned consecutively,
+in [system.rs](https://github.com/pendulum-chain/spacewalk/blob/main/clients/vault/src/system.rs):
 
 * The first 4 tasks are from `fn create_initial_tasks(...)` :
     * VaultId Registration Listener
     * Restart Timer
     * Stellar Transaction Listener
     * Parachain Block Listener
-* Next 5 tasks from `fn create_issue_tasks(...)` :  
+* Next 5 tasks from `fn create_issue_tasks(...)` :
     * Issue Request Listener
     * Issue Cancel Listener
     * Issue Execute Listener
     * Issue Executor
     * Issue Cancel Scheduler
-* Next 4 tasks from `fn create_replace_tasks(...)` :  
+* Next 4 tasks from `fn create_replace_tasks(...)` :
     * Request Replace Listener
     * Accept Replace Listener
     * Execute Replace Listener
-    * Replace Cancellation Scheduler   
+    * Replace Cancellation Scheduler
 * Redeem Request Listener
-* The last 2 tasks from `create_bridge_metrics_tasks(...)` :  
+* The last 2 tasks from `create_bridge_metrics_tasks(...)` :
     * Bridge Metrics Listener
     * Bridge Metrics Poller
-
 
 ## Notes on the implementation of subxt
 
