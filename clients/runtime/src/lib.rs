@@ -14,12 +14,12 @@ pub use rpc::{
 pub use shutdown::{ShutdownReceiver, ShutdownSender};
 pub use sp_arithmetic::{traits as FixedPointTraits, FixedI128, FixedPointNumber, FixedU128};
 use sp_std::marker::PhantomData;
-use subxt::{client::OfflineClientT, ext::sp_runtime::MultiSignature, subxt, Config};
 pub use subxt::{
 	config::substrate::BlakeTwo256,
 	events::StaticEvent,
 	ext::sp_core::{crypto::Ss58Codec, sr25519::Pair},
 };
+use subxt::{ext::sp_runtime::MultiSignature, subxt, Config};
 pub use types::*;
 
 pub mod cli;
