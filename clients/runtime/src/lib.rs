@@ -1,19 +1,8 @@
-use codec::{Decode, Encode};
-pub use prometheus;
-pub use sp_arithmetic::{traits as FixedPointTraits, FixedI128, FixedPointNumber, FixedU128};
-use sp_std::marker::PhantomData;
-use subxt::{
-	config::polkadot::PolkadotExtrinsicParams, ext::sp_runtime::MultiSignature, subxt, Config,
-};
-pub use subxt::{
-	config::substrate::BlakeTwo256,
-	events::StaticEvent,
-	ext::sp_core::{crypto::Ss58Codec, sr25519::Pair},
-};
-
 pub use assets::TryFromSymbol;
+use codec::{Decode, Encode};
 pub use error::{Error, Recoverability, SubxtError};
 pub use primitives::CurrencyInfo;
+pub use prometheus;
 pub use retry::{notify_retry, RetryPolicy};
 #[cfg(feature = "testing-utils")]
 pub use rpc::SudoPallet;
@@ -23,6 +12,17 @@ pub use rpc::{
 	DEFAULT_SPEC_NAME, SS58_PREFIX,
 };
 pub use shutdown::{ShutdownReceiver, ShutdownSender};
+pub use sp_arithmetic::{traits as FixedPointTraits, FixedI128, FixedPointNumber, FixedU128};
+use sp_std::marker::PhantomData;
+use subxt::{
+	client::OfflineClientT, config::polkadot::PolkadotExtrinsicParams,
+	ext::sp_runtime::MultiSignature, subxt, Config,
+};
+pub use subxt::{
+	config::substrate::BlakeTwo256,
+	events::StaticEvent,
+	ext::sp_core::{crypto::Ss58Codec, sr25519::Pair},
+};
 pub use types::*;
 
 pub mod cli;
@@ -138,6 +138,98 @@ pub struct WrapperKeepOpaque<T> {
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub struct SpacewalkRuntime;
 
+use subxt::config::{signed_extensions, ExtrinsicParamsError};
+
+pub type CustomExtrinsicParams<T> = signed_extensions::AnyOf<
+	T,
+	(
+		signed_extensions::CheckSpecVersion,
+		signed_extensions::CheckTxVersion,
+		signed_extensions::CheckNonce,
+		signed_extensions::CheckGenesis<T>,
+		signed_extensions::CheckMortality<T>,
+		signed_extensions::ChargeAssetTxPayment<T>,
+		signed_extensions::ChargeTransactionPayment,
+		CheckMetadataHash,
+	),
+>;
+
+/// The [`CheckMetadataHash`] signed extension.
+pub struct CheckMetadataHash {
+	// Eventually we might provide or calculate the metadata hash here,
+	// but for now we never provide a hash and so this is empty.
+}
+
+impl<T: Config> subxt::config::ExtrinsicParams<T> for CheckMetadataHash {
+	type OtherParams = ();
+
+	fn new<Client: OfflineClientT<T>>(
+		nonce: u64,
+		client: Client,
+		other_params: Self::OtherParams,
+	) -> Result<Self, ExtrinsicParamsError> {
+		Ok(CheckMetadataHash {})
+	}
+}
+
+impl subxt::config::ExtrinsicParamsEncoder for CheckMetadataHash {
+	fn encode_extra_to(&self, v: &mut Vec<u8>) {
+		// A single 0 byte in the TX payload indicates that the chain should
+		// _not_ expect any metadata hash to exist in the signer payload.
+		0u8.encode_to(v);
+	}
+	fn encode_additional_to(&self, v: &mut Vec<u8>) {
+		// We provide no metadata hash in the signer payload to align with the above.
+		None::<()>.encode_to(v);
+	}
+}
+
+impl<T: Config> subxt::config::SignedExtension<T> for CheckMetadataHash {
+	type Decoded = ();
+	fn matches(
+		identifier: &str,
+		_type_id: u32,
+		_types: &sp_runtime::scale_info::PortableRegistry,
+	) -> bool {
+		identifier == "CheckMetadataHash"
+	}
+}
+
+/// Is metadata checking enabled or disabled?
+// Dev note: The "Disabled" and "Enabled" variant names match those that the
+// signed extension will be encoded with, in order that DecodeAsType will work
+// properly.
+#[derive(
+	PartialEq,
+	Default,
+	Eq,
+	Copy,
+	Clone,
+	Debug,
+	scale_encode::EncodeAsType,
+	scale_decode::DecodeAsType,
+	serde::Serialize,
+	serde::Deserialize,
+	scale_info::TypeInfo,
+)]
+pub enum CheckMetadataHashMode {
+	/// No hash was provided in the signer payload.
+	#[default]
+	Disabled,
+	/// A hash was provided in the signer payload.
+	Enabled,
+}
+
+impl CheckMetadataHashMode {
+	/// Is metadata checking enabled or disabled for this transaction?
+	pub fn is_enabled(&self) -> bool {
+		match self {
+			CheckMetadataHashMode::Disabled => false,
+			CheckMetadataHashMode::Enabled => true,
+		}
+	}
+}
+
 impl Config for SpacewalkRuntime {
 	type AssetId = ();
 	type Hash = H256;
@@ -146,5 +238,5 @@ impl Config for SpacewalkRuntime {
 	type AccountId = AccountId;
 	type Address = Address;
 	type Signature = MultiSignature;
-	type ExtrinsicParams = PolkadotExtrinsicParams<Self>;
+	type ExtrinsicParams = CustomExtrinsicParams<Self>;
 }
