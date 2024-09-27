@@ -1,7 +1,7 @@
 [
   1635018093,
   {
-    "V14": {
+    "V15": {
       "types": {
         "types": [
           {
@@ -11558,44 +11558,6 @@
             "type": {
               "path": [
                 "sp_runtime",
-                "generic",
-                "unchecked_extrinsic",
-                "UncheckedExtrinsic"
-              ],
-              "params": [
-                {
-                  "name": "Address",
-                  "type": 132
-                },
-                {
-                  "name": "Call",
-                  "type": 130
-                },
-                {
-                  "name": "Signature",
-                  "type": 231
-                },
-                {
-                  "name": "Extra",
-                  "type": 235
-                }
-              ],
-              "def": {
-                "composite": {
-                  "fields": [
-                    {
-                      "type": 13
-                    }
-                  ]
-                }
-              }
-            }
-          },
-          {
-            "id": 231,
-            "type": {
-              "path": [
-                "sp_runtime",
                 "MultiSignature"
               ],
               "def": {
@@ -11615,7 +11577,7 @@
                       "name": "Sr25519",
                       "fields": [
                         {
-                          "type": 232,
+                          "type": 231,
                           "typeName": "sr25519::Signature"
                         }
                       ],
@@ -11625,7 +11587,7 @@
                       "name": "Ecdsa",
                       "fields": [
                         {
-                          "type": 233,
+                          "type": 232,
                           "typeName": "ecdsa::Signature"
                         }
                       ],
@@ -11637,7 +11599,7 @@
             }
           },
           {
-            "id": 232,
+            "id": 231,
             "type": {
               "path": [
                 "sp_core",
@@ -11657,7 +11619,7 @@
             }
           },
           {
-            "id": 233,
+            "id": 232,
             "type": {
               "path": [
                 "sp_core",
@@ -11668,7 +11630,7 @@
                 "composite": {
                   "fields": [
                     {
-                      "type": 234,
+                      "type": 233,
                       "typeName": "[u8; 65]"
                     }
                   ]
@@ -11677,7 +11639,7 @@
             }
           },
           {
-            "id": 234,
+            "id": 233,
             "type": {
               "def": {
                 "array": {
@@ -11688,23 +11650,23 @@
             }
           },
           {
-            "id": 235,
+            "id": 234,
             "type": {
               "def": {
                 "tuple": [
+                  235,
                   236,
                   237,
                   238,
-                  239,
+                  240,
                   241,
-                  242,
-                  243
+                  242
                 ]
               }
             }
           },
           {
-            "id": 236,
+            "id": 235,
             "type": {
               "path": [
                 "frame_system",
@@ -11724,7 +11686,7 @@
             }
           },
           {
-            "id": 237,
+            "id": 236,
             "type": {
               "path": [
                 "frame_system",
@@ -11744,7 +11706,7 @@
             }
           },
           {
-            "id": 238,
+            "id": 237,
             "type": {
               "path": [
                 "frame_system",
@@ -11764,7 +11726,7 @@
             }
           },
           {
-            "id": 239,
+            "id": 238,
             "type": {
               "path": [
                 "frame_system",
@@ -11782,7 +11744,7 @@
                 "composite": {
                   "fields": [
                     {
-                      "type": 240,
+                      "type": 239,
                       "typeName": "Era"
                     }
                   ]
@@ -11791,7 +11753,7 @@
             }
           },
           {
-            "id": 240,
+            "id": 239,
             "type": {
               "path": [
                 "sp_runtime",
@@ -14107,7 +14069,7 @@
             }
           },
           {
-            "id": 241,
+            "id": 240,
             "type": {
               "path": [
                 "frame_system",
@@ -14134,7 +14096,7 @@
             }
           },
           {
-            "id": 242,
+            "id": 241,
             "type": {
               "path": [
                 "frame_system",
@@ -14154,7 +14116,7 @@
             }
           },
           {
-            "id": 243,
+            "id": 242,
             "type": {
               "path": [
                 "pallet_transaction_payment",
@@ -14179,7 +14141,7 @@
             }
           },
           {
-            "id": 244,
+            "id": 243,
             "type": {
               "path": [
                 "spacewalk_runtime_standalone_testnet",
@@ -14187,6 +14149,1396 @@
               ],
               "def": {
                 "composite": {}
+              }
+            }
+          },
+          {
+            "id": 244,
+            "type": {
+              "path": [
+                "sp_runtime",
+                "generic",
+                "block",
+                "Block"
+              ],
+              "params": [
+                {
+                  "name": "Header",
+                  "type": 245
+                },
+                {
+                  "name": "Extrinsic",
+                  "type": 246
+                }
+              ],
+              "def": {
+                "composite": {
+                  "fields": [
+                    {
+                      "name": "header",
+                      "type": 245,
+                      "typeName": "Header"
+                    },
+                    {
+                      "name": "extrinsics",
+                      "type": 247,
+                      "typeName": "Vec<Extrinsic>"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          {
+            "id": 245,
+            "type": {
+              "path": [
+                "sp_runtime",
+                "generic",
+                "header",
+                "Header"
+              ],
+              "params": [
+                {
+                  "name": "Number",
+                  "type": 4
+                },
+                {
+                  "name": "Hash",
+                  "type": null
+                }
+              ],
+              "def": {
+                "composite": {
+                  "fields": [
+                    {
+                      "name": "parent_hash",
+                      "type": 12,
+                      "typeName": "Hash::Output"
+                    },
+                    {
+                      "name": "number",
+                      "type": 87,
+                      "typeName": "Number"
+                    },
+                    {
+                      "name": "state_root",
+                      "type": 12,
+                      "typeName": "Hash::Output"
+                    },
+                    {
+                      "name": "extrinsics_root",
+                      "type": 12,
+                      "typeName": "Hash::Output"
+                    },
+                    {
+                      "name": "digest",
+                      "type": 14,
+                      "typeName": "Digest"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          {
+            "id": 246,
+            "type": {
+              "path": [
+                "sp_runtime",
+                "generic",
+                "unchecked_extrinsic",
+                "UncheckedExtrinsic"
+              ],
+              "params": [
+                {
+                  "name": "Address",
+                  "type": 132
+                },
+                {
+                  "name": "Call",
+                  "type": 130
+                },
+                {
+                  "name": "Signature",
+                  "type": 230
+                },
+                {
+                  "name": "Extra",
+                  "type": 234
+                }
+              ],
+              "def": {
+                "composite": {
+                  "fields": [
+                    {
+                      "type": 13
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          {
+            "id": 247,
+            "type": {
+              "def": {
+                "sequence": {
+                  "type": 246
+                }
+              }
+            }
+          },
+          {
+            "id": 248,
+            "type": {
+              "path": [
+                "sp_core",
+                "OpaqueMetadata"
+              ],
+              "def": {
+                "composite": {
+                  "fields": [
+                    {
+                      "type": 13,
+                      "typeName": "Vec<u8>"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          {
+            "id": 249,
+            "type": {
+              "path": [
+                "Option"
+              ],
+              "params": [
+                {
+                  "name": "T",
+                  "type": 248
+                }
+              ],
+              "def": {
+                "variant": {
+                  "variants": [
+                    {
+                      "name": "None",
+                      "index": 0
+                    },
+                    {
+                      "name": "Some",
+                      "fields": [
+                        {
+                          "type": 248
+                        }
+                      ],
+                      "index": 1
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          {
+            "id": 250,
+            "type": {
+              "def": {
+                "sequence": {
+                  "type": 4
+                }
+              }
+            }
+          },
+          {
+            "id": 251,
+            "type": {
+              "path": [
+                "Result"
+              ],
+              "params": [
+                {
+                  "name": "T",
+                  "type": 36
+                },
+                {
+                  "name": "E",
+                  "type": 252
+                }
+              ],
+              "def": {
+                "variant": {
+                  "variants": [
+                    {
+                      "name": "Ok",
+                      "fields": [
+                        {
+                          "type": 36
+                        }
+                      ],
+                      "index": 0
+                    },
+                    {
+                      "name": "Err",
+                      "fields": [
+                        {
+                          "type": 252
+                        }
+                      ],
+                      "index": 1
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          {
+            "id": 252,
+            "type": {
+              "path": [
+                "sp_runtime",
+                "transaction_validity",
+                "TransactionValidityError"
+              ],
+              "def": {
+                "variant": {
+                  "variants": [
+                    {
+                      "name": "Invalid",
+                      "fields": [
+                        {
+                          "type": 253,
+                          "typeName": "InvalidTransaction"
+                        }
+                      ],
+                      "index": 0
+                    },
+                    {
+                      "name": "Unknown",
+                      "fields": [
+                        {
+                          "type": 254,
+                          "typeName": "UnknownTransaction"
+                        }
+                      ],
+                      "index": 1
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          {
+            "id": 253,
+            "type": {
+              "path": [
+                "sp_runtime",
+                "transaction_validity",
+                "InvalidTransaction"
+              ],
+              "def": {
+                "variant": {
+                  "variants": [
+                    {
+                      "name": "Call",
+                      "index": 0
+                    },
+                    {
+                      "name": "Payment",
+                      "index": 1
+                    },
+                    {
+                      "name": "Future",
+                      "index": 2
+                    },
+                    {
+                      "name": "Stale",
+                      "index": 3
+                    },
+                    {
+                      "name": "BadProof",
+                      "index": 4
+                    },
+                    {
+                      "name": "AncientBirthBlock",
+                      "index": 5
+                    },
+                    {
+                      "name": "ExhaustsResources",
+                      "index": 6
+                    },
+                    {
+                      "name": "Custom",
+                      "fields": [
+                        {
+                          "type": 2,
+                          "typeName": "u8"
+                        }
+                      ],
+                      "index": 7
+                    },
+                    {
+                      "name": "BadMandatory",
+                      "index": 8
+                    },
+                    {
+                      "name": "MandatoryValidation",
+                      "index": 9
+                    },
+                    {
+                      "name": "BadSigner",
+                      "index": 10
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          {
+            "id": 254,
+            "type": {
+              "path": [
+                "sp_runtime",
+                "transaction_validity",
+                "UnknownTransaction"
+              ],
+              "def": {
+                "variant": {
+                  "variants": [
+                    {
+                      "name": "CannotLookup",
+                      "index": 0
+                    },
+                    {
+                      "name": "NoUnsignedValidator",
+                      "index": 1
+                    },
+                    {
+                      "name": "Custom",
+                      "fields": [
+                        {
+                          "type": 2,
+                          "typeName": "u8"
+                        }
+                      ],
+                      "index": 2
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          {
+            "id": 255,
+            "type": {
+              "path": [
+                "sp_inherents",
+                "InherentData"
+              ],
+              "def": {
+                "composite": {
+                  "fields": [
+                    {
+                      "name": "data",
+                      "type": 256,
+                      "typeName": "BTreeMap<InherentIdentifier, Vec<u8>>"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          {
+            "id": 256,
+            "type": {
+              "path": [
+                "BTreeMap"
+              ],
+              "params": [
+                {
+                  "name": "K",
+                  "type": 44
+                },
+                {
+                  "name": "V",
+                  "type": 13
+                }
+              ],
+              "def": {
+                "composite": {
+                  "fields": [
+                    {
+                      "type": 257
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          {
+            "id": 257,
+            "type": {
+              "def": {
+                "sequence": {
+                  "type": 258
+                }
+              }
+            }
+          },
+          {
+            "id": 258,
+            "type": {
+              "def": {
+                "tuple": [
+                  44,
+                  13
+                ]
+              }
+            }
+          },
+          {
+            "id": 259,
+            "type": {
+              "path": [
+                "sp_inherents",
+                "CheckInherentsResult"
+              ],
+              "def": {
+                "composite": {
+                  "fields": [
+                    {
+                      "name": "okay",
+                      "type": 60,
+                      "typeName": "bool"
+                    },
+                    {
+                      "name": "fatal_error",
+                      "type": 60,
+                      "typeName": "bool"
+                    },
+                    {
+                      "name": "errors",
+                      "type": 255,
+                      "typeName": "InherentData"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          {
+            "id": 260,
+            "type": {
+              "path": [
+                "sp_runtime",
+                "transaction_validity",
+                "TransactionSource"
+              ],
+              "def": {
+                "variant": {
+                  "variants": [
+                    {
+                      "name": "InBlock",
+                      "index": 0
+                    },
+                    {
+                      "name": "Local",
+                      "index": 1
+                    },
+                    {
+                      "name": "External",
+                      "index": 2
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          {
+            "id": 261,
+            "type": {
+              "path": [
+                "Result"
+              ],
+              "params": [
+                {
+                  "name": "T",
+                  "type": 262
+                },
+                {
+                  "name": "E",
+                  "type": 252
+                }
+              ],
+              "def": {
+                "variant": {
+                  "variants": [
+                    {
+                      "name": "Ok",
+                      "fields": [
+                        {
+                          "type": 262
+                        }
+                      ],
+                      "index": 0
+                    },
+                    {
+                      "name": "Err",
+                      "fields": [
+                        {
+                          "type": 252
+                        }
+                      ],
+                      "index": 1
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          {
+            "id": 262,
+            "type": {
+              "path": [
+                "sp_runtime",
+                "transaction_validity",
+                "ValidTransaction"
+              ],
+              "def": {
+                "composite": {
+                  "fields": [
+                    {
+                      "name": "priority",
+                      "type": 11,
+                      "typeName": "TransactionPriority"
+                    },
+                    {
+                      "name": "requires",
+                      "type": 91,
+                      "typeName": "Vec<TransactionTag>"
+                    },
+                    {
+                      "name": "provides",
+                      "type": 91,
+                      "typeName": "Vec<TransactionTag>"
+                    },
+                    {
+                      "name": "longevity",
+                      "type": 11,
+                      "typeName": "TransactionLongevity"
+                    },
+                    {
+                      "name": "propagate",
+                      "type": 60,
+                      "typeName": "bool"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          {
+            "id": 263,
+            "type": {
+              "path": [
+                "Option"
+              ],
+              "params": [
+                {
+                  "name": "T",
+                  "type": 13
+                }
+              ],
+              "def": {
+                "variant": {
+                  "variants": [
+                    {
+                      "name": "None",
+                      "index": 0
+                    },
+                    {
+                      "name": "Some",
+                      "fields": [
+                        {
+                          "type": 13
+                        }
+                      ],
+                      "index": 1
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          {
+            "id": 264,
+            "type": {
+              "path": [
+                "Option"
+              ],
+              "params": [
+                {
+                  "name": "T",
+                  "type": 265
+                }
+              ],
+              "def": {
+                "variant": {
+                  "variants": [
+                    {
+                      "name": "None",
+                      "index": 0
+                    },
+                    {
+                      "name": "Some",
+                      "fields": [
+                        {
+                          "type": 265
+                        }
+                      ],
+                      "index": 1
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          {
+            "id": 265,
+            "type": {
+              "def": {
+                "sequence": {
+                  "type": 266
+                }
+              }
+            }
+          },
+          {
+            "id": 266,
+            "type": {
+              "def": {
+                "tuple": [
+                  13,
+                  267
+                ]
+              }
+            }
+          },
+          {
+            "id": 267,
+            "type": {
+              "path": [
+                "sp_core",
+                "crypto",
+                "KeyTypeId"
+              ],
+              "def": {
+                "composite": {
+                  "fields": [
+                    {
+                      "type": 17,
+                      "typeName": "[u8; 4]"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          {
+            "id": 268,
+            "type": {
+              "path": [
+                "sp_consensus_grandpa",
+                "OpaqueKeyOwnershipProof"
+              ],
+              "def": {
+                "composite": {
+                  "fields": [
+                    {
+                      "type": 13,
+                      "typeName": "Vec<u8>"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          {
+            "id": 269,
+            "type": {
+              "path": [
+                "Option"
+              ],
+              "params": [
+                {
+                  "name": "T",
+                  "type": 37
+                }
+              ],
+              "def": {
+                "variant": {
+                  "variants": [
+                    {
+                      "name": "None",
+                      "index": 0
+                    },
+                    {
+                      "name": "Some",
+                      "fields": [
+                        {
+                          "type": 37
+                        }
+                      ],
+                      "index": 1
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          {
+            "id": 270,
+            "type": {
+              "path": [
+                "Option"
+              ],
+              "params": [
+                {
+                  "name": "T",
+                  "type": 268
+                }
+              ],
+              "def": {
+                "variant": {
+                  "variants": [
+                    {
+                      "name": "None",
+                      "index": 0
+                    },
+                    {
+                      "name": "Some",
+                      "fields": [
+                        {
+                          "type": 268
+                        }
+                      ],
+                      "index": 1
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          {
+            "id": 271,
+            "type": {
+              "path": [
+                "sp_consensus_slots",
+                "SlotDuration"
+              ],
+              "def": {
+                "composite": {
+                  "fields": [
+                    {
+                      "type": 11,
+                      "typeName": "u64"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          {
+            "id": 272,
+            "type": {
+              "path": [
+                "pallet_transaction_payment",
+                "types",
+                "RuntimeDispatchInfo"
+              ],
+              "params": [
+                {
+                  "name": "Balance",
+                  "type": 6
+                },
+                {
+                  "name": "Weight",
+                  "type": 9
+                }
+              ],
+              "def": {
+                "composite": {
+                  "fields": [
+                    {
+                      "name": "weight",
+                      "type": 9,
+                      "typeName": "Weight"
+                    },
+                    {
+                      "name": "class",
+                      "type": 23,
+                      "typeName": "DispatchClass"
+                    },
+                    {
+                      "name": "partial_fee",
+                      "type": 6,
+                      "typeName": "Balance"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          {
+            "id": 273,
+            "type": {
+              "path": [
+                "pallet_transaction_payment",
+                "types",
+                "FeeDetails"
+              ],
+              "params": [
+                {
+                  "name": "Balance",
+                  "type": 6
+                }
+              ],
+              "def": {
+                "composite": {
+                  "fields": [
+                    {
+                      "name": "inclusion_fee",
+                      "type": 274,
+                      "typeName": "Option<InclusionFee<Balance>>"
+                    },
+                    {
+                      "name": "tip",
+                      "type": 6,
+                      "typeName": "Balance"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          {
+            "id": 274,
+            "type": {
+              "path": [
+                "Option"
+              ],
+              "params": [
+                {
+                  "name": "T",
+                  "type": 275
+                }
+              ],
+              "def": {
+                "variant": {
+                  "variants": [
+                    {
+                      "name": "None",
+                      "index": 0
+                    },
+                    {
+                      "name": "Some",
+                      "fields": [
+                        {
+                          "type": 275
+                        }
+                      ],
+                      "index": 1
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          {
+            "id": 275,
+            "type": {
+              "path": [
+                "pallet_transaction_payment",
+                "types",
+                "InclusionFee"
+              ],
+              "params": [
+                {
+                  "name": "Balance",
+                  "type": 6
+                }
+              ],
+              "def": {
+                "composite": {
+                  "fields": [
+                    {
+                      "name": "base_fee",
+                      "type": 6,
+                      "typeName": "Balance"
+                    },
+                    {
+                      "name": "len_fee",
+                      "type": 6,
+                      "typeName": "Balance"
+                    },
+                    {
+                      "name": "adjusted_weight_fee",
+                      "type": 6,
+                      "typeName": "Balance"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          {
+            "id": 276,
+            "type": {
+              "path": [
+                "Result"
+              ],
+              "params": [
+                {
+                  "name": "T",
+                  "type": 277
+                },
+                {
+                  "name": "E",
+                  "type": 25
+                }
+              ],
+              "def": {
+                "variant": {
+                  "variants": [
+                    {
+                      "name": "Ok",
+                      "fields": [
+                        {
+                          "type": 277
+                        }
+                      ],
+                      "index": 0
+                    },
+                    {
+                      "name": "Err",
+                      "fields": [
+                        {
+                          "type": 25
+                        }
+                      ],
+                      "index": 1
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          {
+            "id": 277,
+            "type": {
+              "path": [
+                "module_oracle_rpc_runtime_api",
+                "BalanceWrapper"
+              ],
+              "params": [
+                {
+                  "name": "T",
+                  "type": 6
+                }
+              ],
+              "def": {
+                "composite": {
+                  "fields": [
+                    {
+                      "name": "amount",
+                      "type": 6,
+                      "typeName": "T"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          {
+            "id": 278,
+            "type": {
+              "path": [
+                "Result"
+              ],
+              "params": [
+                {
+                  "name": "T",
+                  "type": 279
+                },
+                {
+                  "name": "E",
+                  "type": 25
+                }
+              ],
+              "def": {
+                "variant": {
+                  "variants": [
+                    {
+                      "name": "Ok",
+                      "fields": [
+                        {
+                          "type": 279
+                        }
+                      ],
+                      "index": 0
+                    },
+                    {
+                      "name": "Err",
+                      "fields": [
+                        {
+                          "type": 25
+                        }
+                      ],
+                      "index": 1
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          {
+            "id": 279,
+            "type": {
+              "def": {
+                "sequence": {
+                  "type": 49
+                }
+              }
+            }
+          },
+          {
+            "id": 280,
+            "type": {
+              "path": [
+                "Result"
+              ],
+              "params": [
+                {
+                  "name": "T",
+                  "type": 281
+                },
+                {
+                  "name": "E",
+                  "type": 25
+                }
+              ],
+              "def": {
+                "variant": {
+                  "variants": [
+                    {
+                      "name": "Ok",
+                      "fields": [
+                        {
+                          "type": 281
+                        }
+                      ],
+                      "index": 0
+                    },
+                    {
+                      "name": "Err",
+                      "fields": [
+                        {
+                          "type": 25
+                        }
+                      ],
+                      "index": 1
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          {
+            "id": 281,
+            "type": {
+              "def": {
+                "sequence": {
+                  "type": 282
+                }
+              }
+            }
+          },
+          {
+            "id": 282,
+            "type": {
+              "def": {
+                "tuple": [
+                  49,
+                  277
+                ]
+              }
+            }
+          },
+          {
+            "id": 283,
+            "type": {
+              "path": [
+                "Result"
+              ],
+              "params": [
+                {
+                  "name": "T",
+                  "type": 65
+                },
+                {
+                  "name": "E",
+                  "type": 25
+                }
+              ],
+              "def": {
+                "variant": {
+                  "variants": [
+                    {
+                      "name": "Ok",
+                      "fields": [
+                        {
+                          "type": 65
+                        }
+                      ],
+                      "index": 0
+                    },
+                    {
+                      "name": "Err",
+                      "fields": [
+                        {
+                          "type": 25
+                        }
+                      ],
+                      "index": 1
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          {
+            "id": 284,
+            "type": {
+              "path": [
+                "spacewalk_runtime_standalone_testnet",
+                "RuntimeError"
+              ],
+              "def": {
+                "variant": {
+                  "variants": [
+                    {
+                      "name": "System",
+                      "fields": [
+                        {
+                          "type": 104,
+                          "typeName": "frame_system::Error<Runtime>"
+                        }
+                      ],
+                      "index": 0
+                    },
+                    {
+                      "name": "Grandpa",
+                      "fields": [
+                        {
+                          "type": 128,
+                          "typeName": "pallet_grandpa::Error<Runtime>"
+                        }
+                      ],
+                      "index": 3
+                    },
+                    {
+                      "name": "Sudo",
+                      "fields": [
+                        {
+                          "type": 159,
+                          "typeName": "pallet_sudo::Error<Runtime>"
+                        }
+                      ],
+                      "index": 4
+                    },
+                    {
+                      "name": "Tokens",
+                      "fields": [
+                        {
+                          "type": 168,
+                          "typeName": "orml_tokens::Error<Runtime>"
+                        }
+                      ],
+                      "index": 5
+                    },
+                    {
+                      "name": "Currencies",
+                      "fields": [
+                        {
+                          "type": 169,
+                          "typeName": "orml_currencies::Error<Runtime>"
+                        }
+                      ],
+                      "index": 7
+                    },
+                    {
+                      "name": "Balances",
+                      "fields": [
+                        {
+                          "type": 184,
+                          "typeName": "pallet_balances::Error<Runtime>"
+                        }
+                      ],
+                      "index": 8
+                    },
+                    {
+                      "name": "StellarRelay",
+                      "fields": [
+                        {
+                          "type": 188,
+                          "typeName": "stellar_relay::Error<Runtime>"
+                        }
+                      ],
+                      "index": 10
+                    },
+                    {
+                      "name": "VaultRewards",
+                      "fields": [
+                        {
+                          "type": 195,
+                          "typeName": "pooled_rewards::Error<Runtime>"
+                        }
+                      ],
+                      "index": 15
+                    },
+                    {
+                      "name": "VaultStaking",
+                      "fields": [
+                        {
+                          "type": 202,
+                          "typeName": "staking::Error<Runtime>"
+                        }
+                      ],
+                      "index": 16
+                    },
+                    {
+                      "name": "Currency",
+                      "fields": [
+                        {
+                          "type": 203,
+                          "typeName": "currency::Error<Runtime>"
+                        }
+                      ],
+                      "index": 17
+                    },
+                    {
+                      "name": "Security",
+                      "fields": [
+                        {
+                          "type": 207,
+                          "typeName": "security::Error<Runtime>"
+                        }
+                      ],
+                      "index": 19
+                    },
+                    {
+                      "name": "VaultRegistry",
+                      "fields": [
+                        {
+                          "type": 211,
+                          "typeName": "vault_registry::Error<Runtime>"
+                        }
+                      ],
+                      "index": 21
+                    },
+                    {
+                      "name": "Oracle",
+                      "fields": [
+                        {
+                          "type": 213,
+                          "typeName": "oracle::Error<Runtime>"
+                        }
+                      ],
+                      "index": 22
+                    },
+                    {
+                      "name": "Issue",
+                      "fields": [
+                        {
+                          "type": 216,
+                          "typeName": "issue::Error<Runtime>"
+                        }
+                      ],
+                      "index": 23
+                    },
+                    {
+                      "name": "Redeem",
+                      "fields": [
+                        {
+                          "type": 219,
+                          "typeName": "redeem::Error<Runtime>"
+                        }
+                      ],
+                      "index": 24
+                    },
+                    {
+                      "name": "Replace",
+                      "fields": [
+                        {
+                          "type": 222,
+                          "typeName": "replace::Error<Runtime>"
+                        }
+                      ],
+                      "index": 25
+                    },
+                    {
+                      "name": "Fee",
+                      "fields": [
+                        {
+                          "type": 223,
+                          "typeName": "fee::Error<Runtime>"
+                        }
+                      ],
+                      "index": 26
+                    },
+                    {
+                      "name": "Nomination",
+                      "fields": [
+                        {
+                          "type": 224,
+                          "typeName": "nomination::Error<Runtime>"
+                        }
+                      ],
+                      "index": 28
+                    },
+                    {
+                      "name": "DiaOracleModule",
+                      "fields": [
+                        {
+                          "type": 226,
+                          "typeName": "dia_oracle::Error<Runtime>"
+                        }
+                      ],
+                      "index": 29
+                    },
+                    {
+                      "name": "ClientsInfo",
+                      "fields": [
+                        {
+                          "type": 227,
+                          "typeName": "clients_info::Error<Runtime>"
+                        }
+                      ],
+                      "index": 30
+                    },
+                    {
+                      "name": "RewardDistribution",
+                      "fields": [
+                        {
+                          "type": 229,
+                          "typeName": "reward_distribution::Error<Runtime>"
+                        }
+                      ],
+                      "index": 31
+                    }
+                  ]
+                }
               }
             }
           }
@@ -15069,7 +16421,8 @@
           "error": {
             "ty": 104
           },
-          "index": 0
+          "index": 0,
+          "docs": []
         },
         {
           "name": "Timestamp",
@@ -15138,7 +16491,8 @@
             }
           ],
           "error": null,
-          "index": 1
+          "index": 1,
+          "docs": []
         },
         {
           "name": "Aura",
@@ -15186,7 +16540,8 @@
           "event": null,
           "constants": [],
           "error": null,
-          "index": 2
+          "index": 2,
+          "docs": []
         },
         {
           "name": "Grandpa",
@@ -15355,7 +16710,8 @@
           "error": {
             "ty": 128
           },
-          "index": 3
+          "index": 3,
+          "docs": []
         },
         {
           "name": "Sudo",
@@ -15387,7 +16743,8 @@
           "error": {
             "ty": 159
           },
-          "index": 4
+          "index": 4,
+          "docs": []
         },
         {
           "name": "Tokens",
@@ -15578,7 +16935,8 @@
           "error": {
             "ty": 168
           },
-          "index": 5
+          "index": 5,
+          "docs": []
         },
         {
           "name": "Currencies",
@@ -15600,7 +16958,8 @@
           "error": {
             "ty": 169
           },
-          "index": 7
+          "index": 7,
+          "docs": []
         },
         {
           "name": "Balances",
@@ -15943,7 +17302,8 @@
           "error": {
             "ty": 184
           },
-          "index": 8
+          "index": 8,
+          "docs": []
         },
         {
           "name": "TransactionPayment",
@@ -16026,7 +17386,8 @@
             }
           ],
           "error": null,
-          "index": 9
+          "index": 9,
+          "docs": []
         },
         {
           "name": "StellarRelay",
@@ -16134,7 +17495,8 @@
           "error": {
             "ty": 188
           },
-          "index": 10
+          "index": 10,
+          "docs": []
         },
         {
           "name": "VaultRewards",
@@ -16359,7 +17721,8 @@
           "error": {
             "ty": 195
           },
-          "index": 15
+          "index": 15,
+          "docs": []
         },
         {
           "name": "VaultStaking",
@@ -16704,7 +18067,8 @@
           "error": {
             "ty": 202
           },
-          "index": 16
+          "index": 16,
+          "docs": []
         },
         {
           "name": "Currency",
@@ -16727,7 +18091,8 @@
           "error": {
             "ty": 203
           },
-          "index": 17
+          "index": 17,
+          "docs": []
         },
         {
           "name": "Security",
@@ -16837,7 +18202,8 @@
           "error": {
             "ty": 207
           },
-          "index": 19
+          "index": 19,
+          "docs": []
         },
         {
           "name": "VaultRegistry",
@@ -17108,7 +18474,8 @@
           "error": {
             "ty": 211
           },
-          "index": 21
+          "index": 21,
+          "docs": []
         },
         {
           "name": "Oracle",
@@ -17171,7 +18538,8 @@
           "error": {
             "ty": 213
           },
-          "index": 22
+          "index": 22,
+          "docs": []
         },
         {
           "name": "Issue",
@@ -17339,7 +18707,8 @@
           "error": {
             "ty": 216
           },
-          "index": 23
+          "index": 23,
+          "docs": []
         },
         {
           "name": "Redeem",
@@ -17525,7 +18894,8 @@
           "error": {
             "ty": 219
           },
-          "index": 24
+          "index": 24,
+          "docs": []
         },
         {
           "name": "Replace",
@@ -17610,7 +18980,8 @@
           "error": {
             "ty": 222
           },
-          "index": 25
+          "index": 25,
+          "docs": []
         },
         {
           "name": "Fee",
@@ -17848,7 +19219,8 @@
           "error": {
             "ty": 223
           },
-          "index": 26
+          "index": 26,
+          "docs": []
         },
         {
           "name": "Nomination",
@@ -17899,7 +19271,8 @@
           "error": {
             "ty": 224
           },
-          "index": 28
+          "index": 28,
+          "docs": []
         },
         {
           "name": "DiaOracleModule",
@@ -18028,7 +19401,8 @@
           "error": {
             "ty": 226
           },
-          "index": 29
+          "index": 29,
+          "docs": []
         },
         {
           "name": "ClientsInfo",
@@ -18131,7 +19505,8 @@
           "error": {
             "ty": 227
           },
-          "index": 30
+          "index": 30,
+          "docs": []
         },
         {
           "name": "RewardDistribution",
@@ -18220,51 +19595,803 @@
           "error": {
             "ty": 229
           },
-          "index": 31
+          "index": 31,
+          "docs": []
         }
       ],
       "extrinsic": {
-        "ty": 230,
         "version": 4,
+        "address_ty": 132,
+        "call_ty": 130,
+        "signature_ty": 230,
+        "extra_ty": 234,
         "signed_extensions": [
           {
             "identifier": "CheckSpecVersion",
-            "ty": 236,
+            "ty": 235,
             "additional_signed": 4
           },
           {
             "identifier": "CheckTxVersion",
-            "ty": 237,
+            "ty": 236,
             "additional_signed": 4
           },
           {
             "identifier": "CheckGenesis",
-            "ty": 238,
+            "ty": 237,
             "additional_signed": 12
           },
           {
             "identifier": "CheckMortality",
-            "ty": 239,
+            "ty": 238,
             "additional_signed": 12
           },
           {
             "identifier": "CheckNonce",
-            "ty": 241,
+            "ty": 240,
             "additional_signed": 37
           },
           {
             "identifier": "CheckWeight",
-            "ty": 242,
+            "ty": 241,
             "additional_signed": 37
           },
           {
             "identifier": "ChargeTransactionPayment",
-            "ty": 243,
+            "ty": 242,
             "additional_signed": 37
           }
         ]
       },
-      "ty": 244
+      "ty": 243,
+      "apis": [
+        {
+          "name": "Core",
+          "methods": [
+            {
+              "name": "version",
+              "inputs": [],
+              "output": 99,
+              "docs": [
+                " Returns the version of the runtime."
+              ]
+            },
+            {
+              "name": "execute_block",
+              "inputs": [
+                {
+                  "name": "block",
+                  "ty": 244
+                }
+              ],
+              "output": 37,
+              "docs": [
+                " Execute the given block."
+              ]
+            },
+            {
+              "name": "initialize_block",
+              "inputs": [
+                {
+                  "name": "header",
+                  "ty": 245
+                }
+              ],
+              "output": 37,
+              "docs": [
+                " Initialize a block with the given header."
+              ]
+            }
+          ],
+          "docs": [
+            " The `Core` runtime api that every Substrate runtime needs to implement."
+          ]
+        },
+        {
+          "name": "Metadata",
+          "methods": [
+            {
+              "name": "metadata",
+              "inputs": [],
+              "output": 248,
+              "docs": [
+                " Returns the metadata of a runtime."
+              ]
+            },
+            {
+              "name": "metadata_at_version",
+              "inputs": [
+                {
+                  "name": "version",
+                  "ty": 4
+                }
+              ],
+              "output": 249,
+              "docs": [
+                " Returns the metadata at a given version.",
+                "",
+                " If the given `version` isn't supported, this will return `None`.",
+                " Use [`Self::metadata_versions`] to find out about supported metadata version of the runtime."
+              ]
+            },
+            {
+              "name": "metadata_versions",
+              "inputs": [],
+              "output": 250,
+              "docs": [
+                " Returns the supported metadata versions.",
+                "",
+                " This can be used to call `metadata_at_version`."
+              ]
+            }
+          ],
+          "docs": [
+            " The `Metadata` api trait that returns metadata for the runtime."
+          ]
+        },
+        {
+          "name": "BlockBuilder",
+          "methods": [
+            {
+              "name": "apply_extrinsic",
+              "inputs": [
+                {
+                  "name": "extrinsic",
+                  "ty": 246
+                }
+              ],
+              "output": 251,
+              "docs": [
+                " Apply the given extrinsic.",
+                "",
+                " Returns an inclusion outcome which specifies if this extrinsic is included in",
+                " this block or not."
+              ]
+            },
+            {
+              "name": "finalize_block",
+              "inputs": [],
+              "output": 245,
+              "docs": [
+                " Finish the current block."
+              ]
+            },
+            {
+              "name": "inherent_extrinsics",
+              "inputs": [
+                {
+                  "name": "inherent",
+                  "ty": 255
+                }
+              ],
+              "output": 247,
+              "docs": [
+                " Generate inherent extrinsics. The inherent data will vary from chain to chain."
+              ]
+            },
+            {
+              "name": "check_inherents",
+              "inputs": [
+                {
+                  "name": "block",
+                  "ty": 244
+                },
+                {
+                  "name": "data",
+                  "ty": 255
+                }
+              ],
+              "output": 259,
+              "docs": [
+                " Check that the inherents are valid. The inherent data will vary from chain to chain."
+              ]
+            }
+          ],
+          "docs": [
+            " The `BlockBuilder` api trait that provides the required functionality for building a block."
+          ]
+        },
+        {
+          "name": "TaggedTransactionQueue",
+          "methods": [
+            {
+              "name": "validate_transaction",
+              "inputs": [
+                {
+                  "name": "source",
+                  "ty": 260
+                },
+                {
+                  "name": "tx",
+                  "ty": 246
+                },
+                {
+                  "name": "block_hash",
+                  "ty": 12
+                }
+              ],
+              "output": 261,
+              "docs": [
+                " Validate the transaction.",
+                "",
+                " This method is invoked by the transaction pool to learn details about given transaction.",
+                " The implementation should make sure to verify the correctness of the transaction",
+                " against current state. The given `block_hash` corresponds to the hash of the block",
+                " that is used as current state.",
+                "",
+                " Note that this call may be performed by the pool multiple times and transactions",
+                " might be verified in any possible order."
+              ]
+            }
+          ],
+          "docs": [
+            " The `TaggedTransactionQueue` api trait for interfering with the transaction queue."
+          ]
+        },
+        {
+          "name": "OffchainWorkerApi",
+          "methods": [
+            {
+              "name": "offchain_worker",
+              "inputs": [
+                {
+                  "name": "header",
+                  "ty": 245
+                }
+              ],
+              "output": 37,
+              "docs": [
+                " Starts the off-chain task for given block header."
+              ]
+            }
+          ],
+          "docs": [
+            " The offchain worker api."
+          ]
+        },
+        {
+          "name": "SessionKeys",
+          "methods": [
+            {
+              "name": "generate_session_keys",
+              "inputs": [
+                {
+                  "name": "seed",
+                  "ty": 263
+                }
+              ],
+              "output": 13,
+              "docs": [
+                " Generate a set of session keys with optionally using the given seed.",
+                " The keys should be stored within the keystore exposed via runtime",
+                " externalities.",
+                "",
+                " The seed needs to be a valid `utf8` string.",
+                "",
+                " Returns the concatenated SCALE encoded public keys."
+              ]
+            },
+            {
+              "name": "decode_session_keys",
+              "inputs": [
+                {
+                  "name": "encoded",
+                  "ty": 13
+                }
+              ],
+              "output": 264,
+              "docs": [
+                " Decode the given public session keys.",
+                "",
+                " Returns the list of public raw public keys + key type."
+              ]
+            }
+          ],
+          "docs": [
+            " Session keys runtime api."
+          ]
+        },
+        {
+          "name": "GrandpaApi",
+          "methods": [
+            {
+              "name": "grandpa_authorities",
+              "inputs": [],
+              "output": 31,
+              "docs": [
+                " Get the current GRANDPA authorities and weights. This should not change except",
+                " for when changes are scheduled and the corresponding delay has passed.",
+                "",
+                " When called at block B, it will return the set of authorities that should be",
+                " used to finalize descendants of this block (B+1, B+2, ...). The block B itself",
+                " is finalized by the authorities from block B-1."
+              ]
+            },
+            {
+              "name": "submit_report_equivocation_unsigned_extrinsic",
+              "inputs": [
+                {
+                  "name": "equivocation_proof",
+                  "ty": 116
+                },
+                {
+                  "name": "key_owner_proof",
+                  "ty": 268
+                }
+              ],
+              "output": 269,
+              "docs": [
+                " Submits an unsigned extrinsic to report an equivocation. The caller",
+                " must provide the equivocation proof and a key ownership proof",
+                " (should be obtained using `generate_key_ownership_proof`). The",
+                " extrinsic will be unsigned and should only be accepted for local",
+                " authorship (not to be broadcast to the network). This method returns",
+                " `None` when creation of the extrinsic fails, e.g. if equivocation",
+                " reporting is disabled for the given runtime (i.e. this method is",
+                " hardcoded to return `None`). Only useful in an offchain context."
+              ]
+            },
+            {
+              "name": "generate_key_ownership_proof",
+              "inputs": [
+                {
+                  "name": "set_id",
+                  "ty": 11
+                },
+                {
+                  "name": "authority_id",
+                  "ty": 33
+                }
+              ],
+              "output": 270,
+              "docs": [
+                " Generates a proof of key ownership for the given authority in the",
+                " given set. An example usage of this module is coupled with the",
+                " session historical module to prove that a given authority key is",
+                " tied to a given staking identity during a specific session. Proofs",
+                " of key ownership are necessary for submitting equivocation reports.",
+                " NOTE: even though the API takes a `set_id` as parameter the current",
+                " implementations ignore this parameter and instead rely on this",
+                " method being called at the correct block height, i.e. any point at",
+                " which the given set id is live on-chain. Future implementations will",
+                " instead use indexed data through an offchain worker, not requiring",
+                " older states to be available."
+              ]
+            },
+            {
+              "name": "current_set_id",
+              "inputs": [],
+              "output": 11,
+              "docs": [
+                " Get current GRANDPA authority set id."
+              ]
+            }
+          ],
+          "docs": [
+            " APIs for integrating the GRANDPA finality gadget into runtimes.",
+            " This should be implemented on the runtime side.",
+            "",
+            " This is primarily used for negotiating authority-set changes for the",
+            " gadget. GRANDPA uses a signaling model of changing authority sets:",
+            " changes should be signaled with a delay of N blocks, and then automatically",
+            " applied in the runtime after those N blocks have passed.",
+            "",
+            " The consensus protocol will coordinate the handoff externally."
+          ]
+        },
+        {
+          "name": "AuraApi",
+          "methods": [
+            {
+              "name": "slot_duration",
+              "inputs": [],
+              "output": 271,
+              "docs": [
+                " Returns the slot duration for Aura.",
+                "",
+                " Currently, only the value provided by this type at genesis will be used."
+              ]
+            },
+            {
+              "name": "authorities",
+              "inputs": [],
+              "output": 109,
+              "docs": [
+                " Return the current set of authorities."
+              ]
+            }
+          ],
+          "docs": [
+            " API necessary for block authorship with aura."
+          ]
+        },
+        {
+          "name": "AccountNonceApi",
+          "methods": [
+            {
+              "name": "account_nonce",
+              "inputs": [
+                {
+                  "name": "account",
+                  "ty": 0
+                }
+              ],
+              "output": 4,
+              "docs": [
+                " Get current account nonce of given `AccountId`."
+              ]
+            }
+          ],
+          "docs": [
+            " The API to query account nonce."
+          ]
+        },
+        {
+          "name": "TransactionPaymentApi",
+          "methods": [
+            {
+              "name": "query_info",
+              "inputs": [
+                {
+                  "name": "uxt",
+                  "ty": 246
+                },
+                {
+                  "name": "len",
+                  "ty": 4
+                }
+              ],
+              "output": 272,
+              "docs": []
+            },
+            {
+              "name": "query_fee_details",
+              "inputs": [
+                {
+                  "name": "uxt",
+                  "ty": 246
+                },
+                {
+                  "name": "len",
+                  "ty": 4
+                }
+              ],
+              "output": 273,
+              "docs": []
+            },
+            {
+              "name": "query_weight_to_fee",
+              "inputs": [
+                {
+                  "name": "weight",
+                  "ty": 9
+                }
+              ],
+              "output": 6,
+              "docs": []
+            },
+            {
+              "name": "query_length_to_fee",
+              "inputs": [
+                {
+                  "name": "length",
+                  "ty": 4
+                }
+              ],
+              "output": 6,
+              "docs": []
+            }
+          ],
+          "docs": []
+        },
+        {
+          "name": "IssueApi",
+          "methods": [
+            {
+              "name": "get_issue_requests",
+              "inputs": [
+                {
+                  "name": "account_id",
+                  "ty": 0
+                }
+              ],
+              "output": 83,
+              "docs": [
+                " Get all issue requests for a particular account"
+              ]
+            },
+            {
+              "name": "get_vault_issue_requests",
+              "inputs": [
+                {
+                  "name": "vault_id",
+                  "ty": 0
+                }
+              ],
+              "output": 83,
+              "docs": [
+                " Get all issue requests for a particular vault"
+              ]
+            }
+          ],
+          "docs": []
+        },
+        {
+          "name": "VaultRegistryApi",
+          "methods": [
+            {
+              "name": "get_vault_collateral",
+              "inputs": [
+                {
+                  "name": "vault_id",
+                  "ty": 49
+                }
+              ],
+              "output": 276,
+              "docs": [
+                " Get the vault's collateral (excluding nomination)"
+              ]
+            },
+            {
+              "name": "get_vaults_by_account_id",
+              "inputs": [
+                {
+                  "name": "account_id",
+                  "ty": 0
+                }
+              ],
+              "output": 278,
+              "docs": [
+                " Get all the vaultIds registered by a vault's accountId"
+              ]
+            },
+            {
+              "name": "get_vault_total_collateral",
+              "inputs": [
+                {
+                  "name": "vault_id",
+                  "ty": 49
+                }
+              ],
+              "output": 276,
+              "docs": [
+                " Get the vault's collateral (including nomination)"
+              ]
+            },
+            {
+              "name": "get_premium_redeem_vaults",
+              "inputs": [],
+              "output": 280,
+              "docs": [
+                " Get all vaults below the premium redeem threshold, ordered in descending order of this amount"
+              ]
+            },
+            {
+              "name": "get_vaults_with_issuable_tokens",
+              "inputs": [],
+              "output": 280,
+              "docs": [
+                " Get all vaults with non-zero issuable tokens, ordered in descending order of this amount"
+              ]
+            },
+            {
+              "name": "get_vaults_with_redeemable_tokens",
+              "inputs": [],
+              "output": 280,
+              "docs": [
+                " Get all vaults with non-zero redeemable tokens, ordered in descending order of this amount"
+              ]
+            },
+            {
+              "name": "get_issuable_tokens_from_vault",
+              "inputs": [
+                {
+                  "name": "vault",
+                  "ty": 49
+                }
+              ],
+              "output": 276,
+              "docs": [
+                " Get the amount of tokens a vault can issue"
+              ]
+            },
+            {
+              "name": "get_collateralization_from_vault",
+              "inputs": [
+                {
+                  "name": "vault",
+                  "ty": 49
+                },
+                {
+                  "name": "only_issued",
+                  "ty": 60
+                }
+              ],
+              "output": 283,
+              "docs": [
+                " Get the collateralization rate of a vault"
+              ]
+            },
+            {
+              "name": "get_collateralization_from_vault_and_collateral",
+              "inputs": [
+                {
+                  "name": "vault",
+                  "ty": 49
+                },
+                {
+                  "name": "collateral",
+                  "ty": 277
+                },
+                {
+                  "name": "only_issued",
+                  "ty": 60
+                }
+              ],
+              "output": 283,
+              "docs": [
+                " Get the collateralization rate of a vault and collateral"
+              ]
+            },
+            {
+              "name": "get_required_collateral_for_wrapped",
+              "inputs": [
+                {
+                  "name": "amount_wrapped",
+                  "ty": 277
+                },
+                {
+                  "name": "wrapped_currency_id",
+                  "ty": 40
+                },
+                {
+                  "name": "collateral_currency_id",
+                  "ty": 40
+                }
+              ],
+              "output": 276,
+              "docs": [
+                " Get the minimum amount of collateral required for the given amount of token",
+                " with the current threshold and exchange rate"
+              ]
+            },
+            {
+              "name": "get_required_collateral_for_vault",
+              "inputs": [
+                {
+                  "name": "vault_id",
+                  "ty": 49
+                }
+              ],
+              "output": 276,
+              "docs": [
+                " Get the amount of collateral required for the given vault to be at the",
+                " current SecureCollateralThreshold with the current exchange rate"
+              ]
+            }
+          ],
+          "docs": []
+        },
+        {
+          "name": "RedeemApi",
+          "methods": [
+            {
+              "name": "get_redeem_requests",
+              "inputs": [
+                {
+                  "name": "account_id",
+                  "ty": 0
+                }
+              ],
+              "output": 83,
+              "docs": [
+                " Get all redeem requests for a particular account"
+              ]
+            },
+            {
+              "name": "get_vault_redeem_requests",
+              "inputs": [
+                {
+                  "name": "vault_id",
+                  "ty": 0
+                }
+              ],
+              "output": 83,
+              "docs": [
+                " Get all redeem requests for a particular vault"
+              ]
+            }
+          ],
+          "docs": []
+        },
+        {
+          "name": "ReplaceApi",
+          "methods": [
+            {
+              "name": "get_old_vault_replace_requests",
+              "inputs": [
+                {
+                  "name": "vault_id",
+                  "ty": 0
+                }
+              ],
+              "output": 83,
+              "docs": [
+                " Get all replace requests from a particular vault"
+              ]
+            },
+            {
+              "name": "get_new_vault_replace_requests",
+              "inputs": [
+                {
+                  "name": "vault_id",
+                  "ty": 0
+                }
+              ],
+              "output": 83,
+              "docs": [
+                " Get all replace requests to a particular vault"
+              ]
+            }
+          ],
+          "docs": []
+        },
+        {
+          "name": "OracleApi",
+          "methods": [
+            {
+              "name": "currency_to_usd",
+              "inputs": [
+                {
+                  "name": "amount",
+                  "ty": 277
+                },
+                {
+                  "name": "currency_id",
+                  "ty": 40
+                }
+              ],
+              "output": 276,
+              "docs": []
+            },
+            {
+              "name": "usd_to_currency",
+              "inputs": [
+                {
+                  "name": "amount",
+                  "ty": 277
+                },
+                {
+                  "name": "currency_id",
+                  "ty": 40
+                }
+              ],
+              "output": 276,
+              "docs": []
+            },
+            {
+              "name": "get_exchange_rate",
+              "inputs": [
+                {
+                  "name": "currency",
+                  "ty": 40
+                }
+              ],
+              "output": 283,
+              "docs": []
+            }
+          ],
+          "docs": []
+        }
+      ],
+      "outer_enums": {
+        "call_enum_ty": 130,
+        "event_enum_ty": 20,
+        "error_enum_ty": 284
+      },
+      "custom": {
+        "map": {}
+      }
     }
   }
 ]
