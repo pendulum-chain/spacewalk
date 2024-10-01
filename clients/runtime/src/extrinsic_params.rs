@@ -17,6 +17,7 @@ cfg_if::cfg_if! {
 	}
 }
 
+#[cfg(feature = "standalone-metadata")]
 pub type CustomExtrinsicParams<T> = signed_extensions::AnyOf<
 	T,
 	(
