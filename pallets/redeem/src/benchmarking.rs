@@ -132,7 +132,7 @@ benchmarks! {
 	liquidation_redeem {
 		let origin: T::AccountId = account("Origin", 0, 0);
 		let vault_id = get_vault_id::<T>();
-		let amount = 1000;
+		let amount = 100000;
 
 		mint_wrapped::<T>(&origin, amount.into());
 

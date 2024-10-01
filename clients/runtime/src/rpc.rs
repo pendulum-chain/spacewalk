@@ -1076,9 +1076,10 @@ impl IssuePallet for SpacewalkParachain {
 		let key_addr = metadata::storage().issue().issue_requests_iter();
 		let mut iter = self.api.storage().at_latest().await.unwrap().iter(key_addr).await?;
 
-		while let Ok((issue_id, request)) =
-			iter.next().await.ok_or(Error::RequestIssueIDNotFound)?
-		{
+		while let Some(result) =  iter.next().await {
+			let (issue_id,request) = result?;
+
+			log::trace!("get_all_active_issues(): request: {:?}",request);
 			if request.status == IssueRequestStatus::Pending &&
 				request.opentime + issue_period > current_height
 			{
