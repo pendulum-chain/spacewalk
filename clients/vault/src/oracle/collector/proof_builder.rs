@@ -222,7 +222,7 @@ impl ScpMessageCollector {
 				let scp_archive_result = scp_archive_storage.get_archive(slot).await;
 				if let Err(e) = scp_archive_result {
 					tracing::error!(
-						"get_envelopes_from_horizon_archive(): Could not get SCPArchive for slot {slot} from Horizon Archive: {e:?}"
+						"get_envelopes_from_horizon_archive(): Could not get SCPArchive for slot {slot} from Horizon Archive {archive_url}: {e:?}"
 					);
 					continue;
 				}
@@ -290,7 +290,7 @@ impl ScpMessageCollector {
 						}
 					}
 				} else {
-					tracing::warn!("get_envelopes_from_horizon_archive(): Could not get ScpHistory entry from archive for slot {slot}");
+					tracing::warn!("get_envelopes_from_horizon_archive(): Could not get ScpHistory entry from archive {archive_url} for slot {slot}");
 				}
 			}
 		}
