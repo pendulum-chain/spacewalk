@@ -51,7 +51,7 @@ pub const AUTHORS: &str = env!("CARGO_PKG_AUTHORS");
 pub const NAME: &str = env!("CARGO_PKG_NAME");
 pub const ABOUT: &str = env!("CARGO_PKG_DESCRIPTION");
 
-const RESTART_INTERVAL: Duration = Duration::from_secs(7200); // restart every 3 hours
+const RESTART_INTERVAL: Duration = Duration::from_secs(7200); // restart every 2 hours
 
 #[derive(Clone, Debug)]
 pub struct VaultData {
@@ -629,7 +629,7 @@ impl VaultService {
 			(
 				"Restart Timer",
 				run(async move {
-					tracing::info!("Periodic restart in 3 hours.");
+					tracing::info!("Periodic restart in {RESTART_INTERVAL} minutes.");
 					tokio::time::sleep(RESTART_INTERVAL).await;
 					tracing::info!("Initiating periodic restart...");
 					Err(ServiceError::ClientShutdown)

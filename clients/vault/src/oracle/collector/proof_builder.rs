@@ -381,9 +381,9 @@ mod test {
 	fn collector(is_mainnet: bool) -> ScpMessageCollector {
 		let archives = if is_mainnet {
 			vec![
-				"https://stellar-history-de-fra.satoshipay.io".to_string(),
-				"https://stellar-history-sg-sin.satoshipay.io".to_string(),
-				"https://stellar-history-us-iowa.satoshipay.io".to_string(),
+				"http://history.stellar.org/prd/core-live/core_live_001".to_string(),
+				"http://history.stellar.org/prd/core-live/core_live_002".to_string(),
+				"http://history.stellar.org/prd/core-live/core_live_003".to_string(),
 			]
 		} else {
 			vec![
