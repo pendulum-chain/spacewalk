@@ -92,7 +92,7 @@ jobs:
       - name: Check Build
         if: matrix.rust == 'stable'
         run: |
-          bash ./scripts/cmd-all build check
+          bash ./scripts/cmd-all build check "--release"
 
       - name: Test
         if: matrix.rust == 'nightly'
@@ -105,7 +105,7 @@ jobs:
         with:
           toolchain: nightly-2024-02-09
           command: test 
-          args:  --all --all-features
+          args:  --release --all --all-features
 
       - name: Rustfmt
         if: matrix.rust == 'nightly'
@@ -118,7 +118,7 @@ jobs:
       - name: Clippy -- Libraries and Binaries
         if: matrix.rust == 'stable'
         run: |
-          bash ./scripts/cmd-all clippy "clippy --lib --bins" "-- -W clippy::all -A clippy::style -A forgetting_copy_types -A forgetting_references"           
+          bash ./scripts/cmd-all clippy "clippy --lib --bins" "--release -- -W clippy::all -A clippy::style -A forgetting_copy_types -A forgetting_references"           
 
       - name: Clippy -- Tests and Examples
         if: matrix.rust == 'nightly'
@@ -126,4 +126,4 @@ jobs:
         with:
           toolchain: nightly-2024-02-09
           command: clippy
-          args: --all-features --tests --benches --examples -- -A clippy::all -W clippy::correctness -A forgetting_copy_types -A forgetting_references
+          args: --release --all-features --tests --benches --examples -- -A clippy::all -W clippy::correctness -A forgetting_copy_types -A forgetting_references
