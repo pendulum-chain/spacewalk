@@ -218,7 +218,7 @@ impl ScpMessageCollector {
 			// We try to get the SCPArchive from each archive URL until we succeed or run out of
 			// URLs
 			for archive_url in archive_urls {
-				let scp_archive_storage = ScpArchiveStorage(archive_url);
+				let scp_archive_storage = ScpArchiveStorage(archive_url.clone());
 				let scp_archive_result = scp_archive_storage.get_archive(slot).await;
 				if let Err(e) = scp_archive_result {
 					tracing::error!(
