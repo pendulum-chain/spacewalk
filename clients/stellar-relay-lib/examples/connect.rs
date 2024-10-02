@@ -15,7 +15,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 	let arg_network = if args.len() > 1 { &args[1] } else { "testnet" };
 
 	let cfg_file_path = if arg_network == "mainnet" {
-		"./clients/stellar-relay-lib/resources/config/mainnet/stellar_relay_config_singapore.json"
+		"./clients/stellar-relay-lib/resources/config/mainnet/stellar_relay_config_mainnet_iowa.json"
 	} else {
 		"./clients/stellar-relay-lib/resources/config/testnet/stellar_relay_config_sdftest1.json"
 	};

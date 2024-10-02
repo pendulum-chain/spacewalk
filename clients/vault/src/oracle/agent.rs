@@ -41,6 +41,10 @@ impl OracleAgent {
 		OracleAgent { collector, is_public_network, message_sender: None, shutdown_sender }
 	}
 
+	#[cfg(any(test, feature = "integration"))]
+	pub fn is_stellar_running(&self) -> bool {
+		self.message_sender.is_some()
+	}
 }
 
 /// listens to data to collect the scp messages and txsets.
@@ -164,6 +168,11 @@ pub async fn start_oracle_agent(
 
 	tokio::spawn(listen_for_stellar_messages(cfg, oracle_agent.clone(), secret, shutdown_sender));
 
+	while !oracle_agent.read().await.is_stellar_running() {
+		sleep(Duration::from_millis(500)).await;
+	}
+
+	tracing::info!("start_oracle_agent(): Stellar overlay network is running");
 	oracle_agent
 }
 
