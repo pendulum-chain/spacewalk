@@ -8,7 +8,7 @@
 #[cfg(test)]
 extern crate mocktopus;
 
-use frame_support::{dispatch::DispatchResult, ensure, sp_runtime::DispatchError, transactional};
+use frame_support::{dispatch::DispatchResult, ensure, sp_runtime, transactional};
 use frame_system::pallet_prelude::BlockNumberFor;
 #[cfg(test)]
 use mocktopus::macros::mockable;
@@ -17,7 +17,10 @@ use primitives::stellar::{
 	compound_types::UnlimitedVarArray, types::ScpEnvelope, TransactionEnvelope, TransactionSetType,
 };
 use sp_core::H256;
-use sp_runtime::traits::{CheckedDiv, Saturating, Zero};
+use sp_runtime::{
+	traits::{CheckedDiv, Saturating, Zero},
+	DispatchError,
+};
 use sp_std::{convert::TryInto, vec::Vec};
 
 use currency::Amount;
@@ -930,7 +933,7 @@ impl<T: Config> Pallet<T> {
 		ext::security::ensure_parachain_status_running::<T>()?;
 
 		let redeem =
-			RedeemRequests::<T>::try_get(&redeem_id).or(Err(Error::<T>::RedeemIdNotFound))?;
+			RedeemRequests::<T>::try_get(redeem_id).or(Err(Error::<T>::RedeemIdNotFound))?;
 		ensure!(
 			matches!(redeem.status, RedeemRequestStatus::Reimbursed(false)),
 			Error::<T>::RedeemCancelled

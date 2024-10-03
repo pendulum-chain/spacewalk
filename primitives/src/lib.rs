@@ -479,9 +479,9 @@ impl CurrencyInfo for Asset {
 		match self {
 			Asset::StellarNative => "Stellar",
 			Asset::AlphaNum4 { code, issuer: _ } =>
-				from_utf8(&remove_trailing_non_alphanum_bytes(code)).unwrap_or("unspecified"),
+				from_utf8(remove_trailing_non_alphanum_bytes(code)).unwrap_or("unspecified"),
 			Asset::AlphaNum12 { code, issuer: _ } =>
-				from_utf8(&remove_trailing_non_alphanum_bytes(code)).unwrap_or("unspecified"),
+				from_utf8(remove_trailing_non_alphanum_bytes(code)).unwrap_or("unspecified"),
 		}
 	}
 
@@ -653,11 +653,11 @@ impl TryFrom<(&str, AssetIssuer)> for CurrencyId {
 		if slice.len() <= 4 {
 			let mut code: Bytes4 = [0; 4];
 			code[..slice.len()].copy_from_slice(slice.as_bytes());
-			return Ok(CurrencyId::AlphaNum4(code, issuer));
+			Ok(CurrencyId::AlphaNum4(code, issuer))
 		} else if slice.len() <= 12 {
 			let mut code: Bytes12 = [0; 12];
 			code[..slice.len()].copy_from_slice(slice.as_bytes());
-			return Ok(CurrencyId::AlphaNum12(code, issuer));
+			Ok(CurrencyId::AlphaNum12(code, issuer))
 		} else {
 			Err("More than 12 bytes not supported")
 		}
@@ -826,6 +826,8 @@ pub trait AmountCompatibility {
 	fn is_compatible_with_target(
 		source_amount: <<Self as AmountCompatibility>::UnsignedFixedPoint as FixedPointNumber>::Inner,
 	) -> bool;
+
+	#[allow(clippy::result_unit_err)]
 	fn round_to_compatible_with_target(
 		source_amount: <<Self as AmountCompatibility>::UnsignedFixedPoint as FixedPointNumber>::Inner,
 	) -> Result<<<Self as AmountCompatibility>::UnsignedFixedPoint as FixedPointNumber>::Inner, ()>;
@@ -917,7 +919,7 @@ impl TransactionEnvelopeExt for TransactionEnvelope {
 			TransactionEnvelope::Default(_) => Vec::new(),
 		};
 
-		if tx_operations.len() == 0 {
+		if tx_operations.is_empty() {
 			return BalanceConversion::unlookup(transferred_amount);
 		}
 

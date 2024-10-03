@@ -54,12 +54,12 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
 use codec::EncodeLike;
-use frame_support::{dispatch::DispatchResult, sp_runtime::DispatchError, traits::Get};
+use frame_support::{dispatch::DispatchResult, sp_runtime, traits::Get};
 
 use sp_arithmetic::{FixedPointNumber, FixedPointOperand};
 use sp_runtime::{
 	traits::{CheckedAdd, CheckedDiv, CheckedMul, CheckedSub, One, Zero},
-	ArithmeticError,
+	ArithmeticError, DispatchError,
 };
 use sp_std::{cmp, convert::TryInto};
 

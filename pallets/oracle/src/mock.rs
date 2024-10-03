@@ -1,5 +1,9 @@
 use frame_support::{
 	parameter_types,
+	sp_runtime::{
+		traits::{BlakeTwo256, IdentityLookup},
+		BuildStorage, DispatchError,
+	},
 	traits::{ConstU32, Everything},
 };
 use mocktopus::mocking::clear_mocks;
@@ -7,10 +11,6 @@ use orml_currencies::BasicCurrencyAdapter;
 use orml_traits::parameter_type_with_key;
 use sp_arithmetic::{FixedI128, FixedU128};
 use sp_core::H256;
-use sp_runtime::{
-	traits::{BlakeTwo256, IdentityLookup},
-	BuildStorage,
-};
 
 pub use currency::testing_constants::{
 	DEFAULT_COLLATERAL_CURRENCY, DEFAULT_NATIVE_CURRENCY, DEFAULT_WRAPPED_CURRENCY,
@@ -165,7 +165,7 @@ impl currency::CurrencyConversion<currency::Amount<Test>, CurrencyId> for Curren
 	fn convert(
 		_amount: &currency::Amount<Test>,
 		_to: CurrencyId,
-	) -> Result<currency::Amount<Test>, sp_runtime::DispatchError> {
+	) -> Result<currency::Amount<Test>, DispatchError> {
 		unimplemented!()
 	}
 }

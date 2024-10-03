@@ -1,8 +1,13 @@
-use frame_support::{assert_noop, assert_ok, sp_runtime::DispatchError};
+use frame_support::{
+	assert_noop, assert_ok,
+	sp_runtime::{
+		traits::{One, Zero},
+		DispatchError,
+	},
+};
 use mocktopus::mocking::*;
 use sp_arithmetic::FixedU128;
 use sp_core::H256;
-use sp_runtime::traits::{One, Zero};
 
 use currency::Amount;
 use primitives::{issue::IssueRequestStatus, StellarPublicKeyRaw};

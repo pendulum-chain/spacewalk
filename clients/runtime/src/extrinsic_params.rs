@@ -2,11 +2,13 @@ use codec::Encode;
 use subxt::{
 	client::OfflineClientT,
 	config::{
-		signed_extensions, ExtrinsicParamsEncoder, ExtrinsicParamsError, PolkadotExtrinsicParams,
-		SignedExtension,
+		ExtrinsicParamsEncoder, ExtrinsicParamsError, PolkadotExtrinsicParams, SignedExtension,
 	},
 	Config,
 };
+
+#[cfg(not(feature = "standalone-metadata"))]
+use subxt::config::signed_extensions;
 
 // Check features to decide which extrinsic params to use
 cfg_if::cfg_if! {
@@ -17,6 +19,7 @@ cfg_if::cfg_if! {
 	}
 }
 
+#[cfg(not(feature = "standalone-metadata"))]
 pub type CustomExtrinsicParams<T> = signed_extensions::AnyOf<
 	T,
 	(

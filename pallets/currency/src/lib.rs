@@ -1,16 +1,19 @@
 //! # Currency Wrappers
 
 #![deny(warnings)]
-#![cfg_attr(test, feature(proc_macro_hygiene))]
+#![cfg_attr(feature = "testing-utils", feature(proc_macro_hygiene))]
 #![cfg_attr(not(feature = "std"), no_std)]
 
 use codec::{EncodeLike, FullCodec};
-use frame_support::{dispatch::DispatchResult, traits::Get};
-use orml_traits::{MultiCurrency, MultiReservableCurrency};
-use sp_runtime::{
-	traits::{AtLeast32BitUnsigned, CheckedDiv, StaticLookup},
-	FixedPointNumber, FixedPointOperand,
+use frame_support::{
+	dispatch::DispatchResult,
+	sp_runtime::{
+		traits::{AtLeast32BitUnsigned, CheckedDiv, StaticLookup},
+		FixedPointNumber, FixedPointOperand,
+	},
+	traits::Get,
 };
+use orml_traits::{MultiCurrency, MultiReservableCurrency};
 use sp_std::{
 	convert::{TryFrom, TryInto},
 	fmt::Debug,
@@ -45,9 +48,8 @@ mod types;
 
 #[frame_support::pallet]
 pub mod pallet {
-	use frame_support::pallet_prelude::*;
+	use frame_support::{pallet_prelude::*, sp_runtime::traits::StaticLookup};
 	use primitives::AmountCompatibility;
-	use sp_runtime::traits::StaticLookup;
 
 	use primitives::stellar::Asset;
 

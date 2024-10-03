@@ -6,7 +6,7 @@ pub use primitives::{
 };
 use sp_std::marker;
 
-use sp_runtime::traits::Convert;
+use frame_support::sp_runtime::traits::Convert;
 use sp_std::vec::Vec;
 
 const STELLAR_DIA_BLOCKCHAIN: &str = "Stellar";
@@ -142,9 +142,7 @@ where
 		let Ok(coin_info) = Dia::get_coin_info(blockchain, symbol) else { return None };
 
 		let value = ConvertPrice::convert(coin_info.price)?;
-		let Some(timestamp) = ConvertMoment::convert(coin_info.last_update_timestamp) else {
-			return None;
-		};
+		let timestamp = ConvertMoment::convert(coin_info.last_update_timestamp)?;
 
 		Some(TimestampedValue { value, timestamp })
 	}

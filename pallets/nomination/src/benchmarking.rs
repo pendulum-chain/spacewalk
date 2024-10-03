@@ -1,8 +1,7 @@
 use frame_benchmarking::{account, benchmarks, impl_benchmark_test_suite};
-use frame_support::assert_ok;
+use frame_support::{assert_ok, sp_runtime::traits::One};
 use frame_system::RawOrigin;
 use orml_traits::MultiCurrency;
-use sp_runtime::traits::One;
 
 use currency::getters::{get_relay_chain_currency_id as get_collateral_currency_id, *};
 use oracle::Pallet as Oracle;

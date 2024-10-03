@@ -1,0 +1,29 @@
+name: 'Other Necessary Installations'
+
+inputs:
+  token:
+    description: 'A Github PAT'
+    required: true
+
+runs:
+    using: "composite"
+    steps:
+      - name: Install package
+        shell: bash
+        run: |
+          sudo docker image prune --all --force
+          echo 'APT::Get::Always-Include-Phased-Updates "false";' | sudo tee /etc/apt/apt.conf.d/99-phased-updates
+          sudo apt-get update && sudo apt-get upgrade -y
+          sudo apt-get install -y protobuf-compiler libprotobuf-dev
+
+#      - name: Use Cache
+#        uses: Swatinem/rust-cache@v2
+#        with:
+#          cache-on-failure: true
+#          key: "ubuntu-latest-cargo-${{ hashFiles('**/Cargo.lock') }}"
+#          shared-key: "shared"
+
+      - name: Install Protoc
+        uses: arduino/setup-protoc@v3
+        with:
+          repo-token: ${{ inputs.token }}

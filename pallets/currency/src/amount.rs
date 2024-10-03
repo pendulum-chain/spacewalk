@@ -5,12 +5,15 @@
 	forgetting_references,
 	forgetting_copy_types
 )]
-use frame_support::{dispatch::DispatchResult, ensure, sp_runtime::DispatchError};
-use orml_traits::{MultiCurrency, MultiReservableCurrency};
-use sp_runtime::{
-	traits::{CheckedAdd, CheckedDiv, CheckedMul, CheckedSub, UniqueSaturatedInto, Zero},
-	ArithmeticError, FixedPointNumber,
+use frame_support::{
+	dispatch::DispatchResult,
+	ensure,
+	sp_runtime::{
+		traits::{CheckedAdd, CheckedDiv, CheckedMul, CheckedSub, UniqueSaturatedInto, Zero},
+		ArithmeticError, DispatchError, FixedPointNumber,
+	},
 };
+use orml_traits::{MultiCurrency, MultiReservableCurrency};
 use sp_std::{convert::TryInto, fmt::Debug};
 
 use primitives::{AmountCompatibility, TruncateFixedPointToInt};
@@ -174,8 +177,7 @@ mod math {
 				.ok_or(ArithmeticError::Underflow)?
 				.checked_div(accuracy)
 				.ok_or(ArithmeticError::Underflow)?
-				.try_into()
-				.map_err(|_| Error::<T>::TryIntoIntError)?;
+				.into();
 
 			Ok(Self { amount, currency_id: self.currency_id })
 		}

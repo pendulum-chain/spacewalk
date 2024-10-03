@@ -1,5 +1,4 @@
 use jsonrpc_core_client::RpcError;
-use parity_scale_codec::Error as CodecError;
 use sp_std::str::Utf8Error;
 use thiserror::Error;
 use tokio_stream::wrappers::errors::BroadcastStreamRecvError;
@@ -26,8 +25,6 @@ pub enum Error {
 	RpcError(#[from] RpcError),
 	#[error("RuntimeError: {0}")]
 	RuntimeError(#[from] RuntimeError),
-	#[error("CodecError: {0}")]
-	CodecError(#[from] CodecError),
 	#[error("BroadcastStreamRecvError: {0}")]
 	BroadcastStreamRecvError(#[from] BroadcastStreamRecvError),
 	#[error("StellarWalletError: {0}")]

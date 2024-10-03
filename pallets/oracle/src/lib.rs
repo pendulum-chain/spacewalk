@@ -9,7 +9,7 @@ extern crate mocktopus;
 
 #[cfg(feature = "testing-utils")]
 use frame_support::dispatch::DispatchResult;
-use frame_support::{pallet_prelude::DispatchError, transactional};
+use frame_support::{pallet_prelude::DispatchError, sp_runtime, transactional};
 use frame_system::pallet_prelude::BlockNumberFor;
 
 #[cfg(test)]
@@ -247,7 +247,7 @@ impl<T: Config> Pallet<T> {
 		}
 
 		let current_status_is_online = Self::is_oracle_online();
-		let new_status_is_online = oracle_keys.len() > 0 &&
+		let new_status_is_online = !oracle_keys.is_empty() &&
 			updated_items_len > 0 &&
 			updated_items_len == oracle_keys.len();
 

@@ -1,13 +1,13 @@
 use frame_support::{
 	parameter_types,
+	sp_runtime::traits::{BlakeTwo256, IdentityLookup},
 	traits::{ConstU32, Everything},
 };
 use orml_traits::parameter_type_with_key;
 use sp_arithmetic::FixedI128;
 use sp_core::H256;
-use sp_runtime::traits::{BlakeTwo256, IdentityLookup};
 
-use sp_runtime::BuildStorage;
+use frame_support::sp_runtime::BuildStorage;
 
 pub use currency::testing_constants::{
 	DEFAULT_COLLATERAL_CURRENCY, DEFAULT_NATIVE_CURRENCY, DEFAULT_WRAPPED_CURRENCY,

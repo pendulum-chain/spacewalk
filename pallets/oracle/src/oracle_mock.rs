@@ -1,5 +1,5 @@
 #[cfg(feature = "testing-utils")]
-use sp_runtime::traits::Convert;
+use frame_support::sp_runtime::traits::Convert;
 use sp_std::cmp::Ordering;
 
 use sp_arithmetic::FixedU128;
