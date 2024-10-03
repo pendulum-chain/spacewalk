@@ -1,22 +1,12 @@
 #!/bin/bash
 set -e
 
-##### Executes the command to ALL packages of this project.
-##### An exception is the package `subxt-client`, as it needs the package `runtime` for it to work.
-##### The currently supported (and tested) commands are: check and clippy
-##### arguments:
-#####   * reason = what the command is for
-#####   * sub_cmd = the actual sub command. For commands separated by spaces, enclose with ""
-#####     e.g. "build --lib"
-#####          "+nightly check"
-#####   * options = additional options of the sub command. If separated by spaces, enclose with ""
-#####     e.g. "-- -W clippy::all"
 reason=$1
 sub_cmd=$2
 options=$3
 
 echo "------------------------------------------------------------------------"
-echo "Checks" $reason "on all pallets"
+echo "Checks $reason on all pallets"
 echo "------------------------------------------------------------------------"
 cargo $sub_cmd -p clients-info --all-features $options
 
@@ -46,7 +36,7 @@ cargo $sub_cmd -p vault-registry --all-features $options
 
 if [[ $reason != "test"* ]]; then
   echo "------------------------------------------------------------------------"
-  echo "Checks" $reason "for pallets with rpc"
+  echo "Checks $reason for pallets with rpc"
   echo "------------------------------------------------------------------------"
   cargo $sub_cmd -p module-issue-rpc --all-features $options
   cargo $sub_cmd -p module-oracle-rpc --all-features $options

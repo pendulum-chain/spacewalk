@@ -2,13 +2,13 @@
 set -e
 
 echo "------------------------------------------------------------------------"
-echo "Checking" $1 "on primitives"
+echo "Checking $1 on primitives"
 echo "------------------------------------------------------------------------"\
 cargo $2 -p spacewalk-primitives --all-features $3
 
 if [[ $1 != "test"* ]]; then
   echo "------------------------------------------------------------------------"
-  echo "Checks" $1 "on testchain"
+  echo "Checks $1 on testchain"
   echo "------------------------------------------------------------------------"
   cargo $2 -p spacewalk-runtime-standalone-mainnet --all-features $3
   cargo $2 -p spacewalk-runtime-standalone-testnet --all-features $3

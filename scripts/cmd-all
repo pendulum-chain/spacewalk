@@ -17,7 +17,7 @@ options=$3
 
 echo "------------------------------------------------------------------------"
 echo "------------------------------------------------------------------------"
-echo "Checking" $reason "on all packages"
+echo "Checking $reason on all packages"
 echo "------------------------------------------------------------------------"
 echo "------------------------------------------------------------------------"
 
@@ -33,6 +33,6 @@ cargo $sub_cmd -p spacewalk-primitives --all-features $options
 ./scripts/cmd-others $reason $sub_cmd $options
 
   echo "------------------------------------------------------------------------"
-  echo "Checks" $reason "on the vault"
+  echo "Checks $reason on the vault"
   echo "------------------------------------------------------------------------"
 cargo $sub_cmd -p vault --all-features $options
