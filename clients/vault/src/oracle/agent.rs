@@ -234,7 +234,6 @@ mod tests {
 	#[ntest::timeout(600_000)] // timeout at 10 minutes
 	#[serial]
 	async fn test_get_proof_for_current_slot() {
-		env_logger::init();
 		// let it run for a few seconds, making sure that the other tests have successfully shutdown
 		// their connection to Stellar Node
 		sleep(Duration::from_secs(2)).await;
