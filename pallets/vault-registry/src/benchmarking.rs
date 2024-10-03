@@ -1,8 +1,7 @@
 use frame_benchmarking::{account, benchmarks, impl_benchmark_test_suite};
-use frame_support::assert_ok;
+use frame_support::{assert_ok, sp_runtime::FixedPointNumber};
 use frame_system::{pallet_prelude::BlockNumberFor, RawOrigin};
 use orml_traits::MultiCurrency;
-use sp_runtime::FixedPointNumber;
 use sp_std::prelude::*;
 
 use currency::getters::{

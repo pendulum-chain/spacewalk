@@ -1,0 +1,29 @@
+name: 'Prerequisite Steps'
+description: 'Prerequite steps for every workflow: Free up some space and Install Necessary Packages'
+
+inputs:
+  token:
+    description: 'A Github PAT'
+    required: true
+
+runs:
+  using: "composite"
+  steps:
+    # Free GitHub Actions Environment Disk Space
+    - name: Maximize Build Space
+      uses: jlumbroso/free-disk-space@main
+      with:
+        tool-cache: false
+        large-packages: false
+
+    - name: Install Packages
+      uses: ./.github/actions/installations
+      with:
+        token: ${{ inputs.token }}
+
+#    - name: Use cargo.toml with polkadot-sdk fork
+#      shell: bash
+#      # To make sure that our polkadot-sdk fork will be used
+#      run: |
+#        rm /home/runner/work/spacewalk/spacewalk/Cargo.toml
+#        mv /home/runner/work/spacewalk/spacewalk/Cargo_CI.toml /home/runner/work/spacewalk/spacewalk/Cargo.toml

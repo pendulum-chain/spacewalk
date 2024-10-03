@@ -220,8 +220,8 @@ pub fn build_dummy_proof_for<T: crate::Config>(
 	}
 
 	let transaction_set = TransactionSetType::new(transaction_set);
-	let tx_env_xdr_encoded = base64::encode(&transaction_envelope.to_xdr()).as_bytes().to_vec();
-	let scp_envs_xdr_encoded = base64::encode(&envelopes.to_xdr()).as_bytes().to_vec();
-	let tx_set_xdr_encoded = base64::encode(&transaction_set.to_xdr()).as_bytes().to_vec();
+	let tx_env_xdr_encoded = base64::encode(transaction_envelope.to_xdr()).as_bytes().to_vec();
+	let scp_envs_xdr_encoded = base64::encode(envelopes.to_xdr()).as_bytes().to_vec();
+	let tx_set_xdr_encoded = base64::encode(transaction_set.to_xdr()).as_bytes().to_vec();
 	(tx_env_xdr_encoded, scp_envs_xdr_encoded, tx_set_xdr_encoded)
 }

@@ -6,25 +6,18 @@ name = "issue"
 version = "1.0.11"
 
 [dependencies]
-base64 = { version = '0.13.0', default-features = false, features = ['alloc'] }
 hex = { version = "0.4.3", default-features = false, features = ['alloc'] }
-serde = { version = "1.0.130", default-features = false, features = ['derive'], optional = true }
 codec = { package = "parity-scale-codec", version = "3.0.0", default-features = false, features = ["derive", "max-encoded-len"] }
 scale-info = { version = "2.0.0", default-features = false, features = ["derive"] }
 log = { version = "0.4.14", default-features = false }
 
 # Substrate dependencies
-sp-io = { git = "https://github.com/paritytech/polkadot-sdk", branch = "release-polkadot-v1.1.0", default-features = false }
 sp-core = { git = "https://github.com/paritytech/polkadot-sdk", branch = "release-polkadot-v1.1.0", default-features = false }
 sp-std = { git = "https://github.com/paritytech/polkadot-sdk", branch = "release-polkadot-v1.1.0", default-features = false }
-sp-arithmetic = { git = "https://github.com/paritytech/polkadot-sdk", branch = "release-polkadot-v1.1.0", default-features = false }
-sp-runtime = { git = "https://github.com/paritytech/polkadot-sdk", branch = "release-polkadot-v1.1.0", default-features = false }
 
 frame-support = { git = "https://github.com/paritytech/polkadot-sdk", branch = "release-polkadot-v1.1.0", default-features = false }
 frame-system = { git = "https://github.com/paritytech/polkadot-sdk", branch = "release-polkadot-v1.1.0", default-features = false }
 frame-benchmarking = { git = "https://github.com/paritytech/polkadot-sdk", branch = "release-polkadot-v1.1.0", default-features = false, optional = true }
-pallet-balances = { git = "https://github.com/paritytech/polkadot-sdk", branch = "release-polkadot-v1.1.0", default-features = false }
-pallet-timestamp = { git = "https://github.com/paritytech/polkadot-sdk", branch = "release-polkadot-v1.1.0", default-features = false }
 
 # Parachain dependencies
 currency = { path = "../currency", default-features = false }
@@ -33,23 +26,26 @@ oracle = { path = "../oracle", default-features = false }
 security = { path = "../security", default-features = false }
 stellar-relay = { path = "../stellar-relay", default-features = false }
 vault-registry = { path = "../vault-registry", default-features = false }
-pooled-rewards = { path = "../pooled-rewards", default-features = false }
-reward-distribution = { path = "../reward-distribution", default-features = false }
 
 primitives = { package = "spacewalk-primitives", path = "../../primitives", default-features = false }
 
 # Orml dependencies
-orml-currencies = { git = "https://github.com/open-web3-stack/open-runtime-module-library", branch = "polkadot-v1.1.0", default-features = false }
-orml-tokens = { git = "https://github.com/open-web3-stack/open-runtime-module-library", branch = "polkadot-v1.1.0", default-features = false, optional = true }
+orml-currencies = { git = "https://github.com/open-web3-stack/open-runtime-module-library", branch = "polkadot-v1.1.0", default-features = false, optional = true }
 orml-traits = { git = "https://github.com/open-web3-stack/open-runtime-module-library", branch = "polkadot-v1.1.0", default-features = false, optional = true }
 
 [dev-dependencies]
 mocktopus = "0.8.0"
 frame-benchmarking = { git = "https://github.com/paritytech/polkadot-sdk", branch = "release-polkadot-v1.1.0" }
-nomination = {path = "../nomination", default-features = false}
+pallet-balances = { git = "https://github.com/paritytech/polkadot-sdk", branch = "release-polkadot-v1.1.0" }
+pallet-timestamp = { git = "https://github.com/paritytech/polkadot-sdk", branch = "release-polkadot-v1.1.0" }
+sp-arithmetic = { git = "https://github.com/paritytech/polkadot-sdk", branch = "release-polkadot-v1.1.0"}
+sp-io = { git = "https://github.com/paritytech/polkadot-sdk", branch = "release-polkadot-v1.1.0" }
+nomination = {path = "../nomination"}
 
 currency = { path = "../currency", features = ['testing-utils', 'testing-constants'] }
+pooled-rewards = { path = "../pooled-rewards" }
 reward = { path = "../reward" }
+reward-distribution = { path = "../reward-distribution" }
 staking = { path = "../staking" }
 stellar-relay = { path = "../stellar-relay", features = ['testing-utils'] }
 security = { path = "../security", features = ['testing-utils'] }
@@ -63,21 +59,12 @@ orml-traits = { git = "https://github.com/open-web3-stack/open-runtime-module-li
 [features]
 default = ["std"]
 std = [
-    "base64/std",
     "hex/std",
-    "serde",
     "codec/std",
-    "sp-io/std",
     "sp-core/std",
     "sp-std/std",
-    "sp-arithmetic/std",
-    "sp-runtime/std",
     "frame-support/std",
     "frame-system/std",
-    "frame-benchmarking/std",
-    "pallet-balances/std",
-    "pallet-timestamp/std",
-    "pooled-rewards/std", 
     "currency/std",
     "fee/std",
     "oracle/std",
@@ -85,18 +72,14 @@ std = [
     "security/std",
     "stellar-relay/std",
     "vault-registry/std",
-    "orml-currencies/std",
-    "orml-tokens/std",
-    "orml-traits/std",
-    "reward-distribution/std",
     "nomination/std"
 ]
 runtime-benchmarks = [
-    "frame-benchmarking",
+    "frame-benchmarking/runtime-benchmarks",
     "frame-support/runtime-benchmarks",
     "frame-system/runtime-benchmarks",
-    "orml-tokens",
     "orml-traits",
+    "orml-currencies",
     "currency/runtime-benchmarks",
     "currency/testing-constants",
     "stellar-relay/testing-utils",
@@ -107,13 +90,9 @@ try-runtime = [
     "frame-system/try-runtime",
     "currency/try-runtime",
     "fee/try-runtime",
-    "pallet-balances/try-runtime",
     "stellar-relay/try-runtime",
     "vault-registry/try-runtime",
     "orml-currencies/try-runtime",
-    "orml-tokens/try-runtime",
     "security/try-runtime",
-    "pooled-rewards/try-runtime",
-    "reward-distribution/try-runtime",
     "oracle/try-runtime",
 ]

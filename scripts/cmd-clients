@@ -1,0 +1,20 @@
+#!/bin/bash
+set -e
+
+echo "------------------------------------------------------------------------"
+echo "Checks $1 on packages in clients directory (except for vault)"
+echo "------------------------------------------------------------------------"
+if [[ $2 == "clippy"* ]]; then
+  echo "------------------------------------------------------------------------"
+  echo "    The package runner does not have a lib."
+  echo "------------------------------------------------------------------------"
+
+  cargo clippy --bins -p runner --all-features $3
+else
+  cargo  $2 -p runner --all-features $3
+fi
+
+cargo $2 -p runtime --all-features $3
+cargo $2 -p stellar-relay-lib --all-features $3
+cargo $2 -p subxt-client --all-features $3
+cargo $2 -p wallet --all-features $3

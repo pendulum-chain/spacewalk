@@ -1,5 +1,9 @@
 use frame_support::{
 	parameter_types,
+	sp_runtime::{
+		traits::{BlakeTwo256, IdentityLookup, Zero},
+		BuildStorage, DispatchError, FixedPointNumber, Perquintill,
+	},
 	traits::{ConstU32, ConstU64, Everything},
 	PalletId,
 };
@@ -8,10 +12,6 @@ use orml_currencies::BasicCurrencyAdapter;
 use orml_traits::parameter_type_with_key;
 use sp_arithmetic::{FixedI128, FixedU128};
 use sp_core::H256;
-use sp_runtime::{
-	traits::{BlakeTwo256, IdentityLookup, Zero},
-	BuildStorage, DispatchError, FixedPointNumber, Perquintill,
-};
 
 use crate as fee;
 use crate::{Config, Error};
@@ -205,7 +205,7 @@ impl currency::CurrencyConversion<currency::Amount<Test>, CurrencyId> for Curren
 	fn convert(
 		_amount: &currency::Amount<Test>,
 		_to: CurrencyId,
-	) -> Result<currency::Amount<Test>, sp_runtime::DispatchError> {
+	) -> Result<currency::Amount<Test>, DispatchError> {
 		unimplemented!()
 	}
 }

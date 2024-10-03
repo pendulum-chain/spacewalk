@@ -8,15 +8,14 @@
 #[cfg(test)]
 extern crate mocktopus;
 
-use frame_support::{
-	dispatch::DispatchResult, ensure, sp_runtime::DispatchError, traits::Get, transactional,
-};
+use frame_support::{dispatch::DispatchResult, ensure, sp_runtime, traits::Get, transactional};
 #[cfg(test)]
 use mocktopus::macros::mockable;
 use primitives::stellar::{
 	compound_types::UnlimitedVarArray, types::ScpEnvelope, TransactionEnvelope, TransactionSetType,
 };
 use sp_core::H256;
+use sp_runtime::DispatchError;
 use sp_std::vec::Vec;
 
 use currency::Amount;

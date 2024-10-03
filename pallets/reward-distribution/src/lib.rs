@@ -18,6 +18,10 @@ pub use default_weights::{SubstrateWeight, WeightInfo};
 use frame_support::{
 	dispatch::DispatchResult,
 	pallet_prelude::DispatchError,
+	sp_runtime::{
+		traits::{AccountIdConversion, CheckedAdd, CheckedSub, One, Zero},
+		Saturating,
+	},
 	traits::{Currency, Get},
 	transactional, PalletId,
 };
@@ -25,10 +29,6 @@ use frame_system::pallet_prelude::BlockNumberFor;
 use oracle::OracleApi;
 use orml_traits::GetByKey;
 use sp_arithmetic::{traits::AtLeast32BitUnsigned, FixedPointOperand, Perquintill};
-use sp_runtime::{
-	traits::{AccountIdConversion, CheckedAdd, CheckedSub, One, Zero},
-	Saturating,
-};
 use sp_std::vec::Vec;
 #[cfg(feature = "runtime-benchmarks")]
 mod benchmarking;
@@ -277,7 +277,8 @@ impl<T: Config> Pallet<T> {
 	}
 
 	pub fn execute_on_init(_height: BlockNumberFor<T>) {
-		if let Err(_) = ext::security::ensure_parachain_status_running::<T>() {
+		if let Err(e) = ext::security::ensure_parachain_status_running::<T>() {
+			log::warn!("Parachain is not running, skipping reward distribution: {e:?}");
 			return;
 		}
 
@@ -320,8 +321,8 @@ impl<T: Config> Pallet<T> {
 			None => *current_liability = Some(reward_this_block),
 		});
 
-		if let Err(_) = Self::distribute_rewards(reward_this_block, T::GetNativeCurrencyId::get()) {
-			log::warn!("Rewards distribution failed");
+		if let Err(e) = Self::distribute_rewards(reward_this_block, T::GetNativeCurrencyId::get()) {
+			log::warn!("Rewards distribution failed: {e:?}");
 		}
 	}
 

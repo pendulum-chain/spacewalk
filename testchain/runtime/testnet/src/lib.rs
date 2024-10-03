@@ -479,7 +479,7 @@ impl XCMCurrencyConversion for SpacewalkNativeCurrencyKey {
 		if blockchain.len() != 1 && blockchain[0] != 0 || symbol.len() != 1 {
 			return None;
 		}
-		return Some(symbol[0]);
+		Some(symbol[0])
 	}
 }
 

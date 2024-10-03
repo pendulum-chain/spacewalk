@@ -1,4 +1,4 @@
-use sp_runtime::{traits::StaticLookup, FixedPointNumber};
+use frame_support::sp_runtime::{traits::StaticLookup, FixedPointNumber};
 
 use primitives::{
 	stellar::{

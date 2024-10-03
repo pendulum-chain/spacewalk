@@ -1,15 +1,15 @@
 use frame_support::{
 	parameter_types,
+	sp_runtime::{
+		traits::{BlakeTwo256, IdentityLookup},
+		BuildStorage, DispatchError,
+	},
 	traits::{ConstU32, Everything},
 };
 use orml_currencies::BasicCurrencyAdapter;
 use orml_traits::parameter_type_with_key;
 use sp_arithmetic::{FixedI128, FixedU128};
 use sp_core::H256;
-use sp_runtime::{
-	traits::{BlakeTwo256, IdentityLookup},
-	BuildStorage,
-};
 
 use crate::testing_constants::{DEFAULT_COLLATERAL_CURRENCY, DEFAULT_NATIVE_CURRENCY};
 
@@ -154,7 +154,7 @@ impl crate::CurrencyConversion<crate::Amount<Test>, CurrencyId> for CurrencyConv
 	fn convert(
 		_amount: &crate::Amount<Test>,
 		_to: CurrencyId,
-	) -> Result<crate::Amount<Test>, sp_runtime::DispatchError> {
+	) -> Result<crate::Amount<Test>, DispatchError> {
 		unimplemented!()
 	}
 }

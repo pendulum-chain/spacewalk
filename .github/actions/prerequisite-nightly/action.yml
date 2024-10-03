@@ -1,0 +1,23 @@
+name: 'Prerequisite Steps'
+description: 'Prerequite steps for every workflow: Free up some space and Install Necessary Packages'
+
+inputs:
+  token:
+    description: 'A Github PAT'
+    required: true
+  version:
+    description: 'Nightly Version'
+    required: true
+
+runs:
+  using: "composite"
+  steps:
+    - name: Free up disk space and Install Necessary Packages
+      uses: ./.github/actions/prerequisite
+      with:
+        token: ${{ inputs.token }}
+
+    - name: Install Rust Nightly
+      uses: ./.github/actions/install-rust-nightly
+      with:
+        version: ${{ inputs.version }}

@@ -1,0 +1,22 @@
+#!/bin/bash
+
+
+echo "save to file"
+if test -f temp.txt; then
+  rm temp.txt
+fi
+
+cargo t -p &> temp.txt
+
+result=$(cat temp.txt)
+echo "hello it's me"
+
+var=$(echo $result | grep -ob "workspace members")
+pos="${var%:*}"
+echo "the pos: " $pos
+pos2=$(($pos + 20))
+wee=$(echo $result | cut -c$pos2-)
+
+IFS=' ' read -r -a array <<< "$wee"
+
+echo "${array[5]}"

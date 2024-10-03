@@ -7,16 +7,12 @@ name = "currency"
 version = "1.0.11"
 
 [dependencies]
-serde = { version = "1.0.130", default-features = false, features = ["derive"], optional = true }
 codec = { package = "parity-scale-codec", version = "3.0.0", default-features = false, features = ["derive", "max-encoded-len"] }
 scale-info = { version = "2.0.0", default-features = false, features = ["derive"] }
 
 sp-std = { git = "https://github.com/paritytech/polkadot-sdk", branch = "release-polkadot-v1.1.0", default-features = false }
-sp-runtime = { git = "https://github.com/paritytech/polkadot-sdk", branch = "release-polkadot-v1.1.0", default-features = false }
 frame-support = { git = "https://github.com/paritytech/polkadot-sdk", branch = "release-polkadot-v1.1.0", default-features = false }
 frame-system = { git = "https://github.com/paritytech/polkadot-sdk", branch = "release-polkadot-v1.1.0", default-features = false }
-pallet-balances = { git = "https://github.com/paritytech/polkadot-sdk", branch = "release-polkadot-v1.1.0", default-features = false }
-pallet-transaction-payment = { git = "https://github.com/paritytech/polkadot-sdk", branch = "release-polkadot-v1.1.0", default-features = false }
 
 # Parachain dependencies
 primitives = { package = "spacewalk-primitives", path = "../../primitives", default-features = false }
@@ -32,21 +28,18 @@ mocktopus = { version = "0.8.0", optional = true }
 [dev-dependencies]
 sp-core = { git = "https://github.com/paritytech/polkadot-sdk", branch = "release-polkadot-v1.1.0", default-features = false }
 sp-io = { git = "https://github.com/paritytech/polkadot-sdk", branch = "release-polkadot-v1.1.0", default-features = false }
-sp-runtime = { git = "https://github.com/paritytech/polkadot-sdk", branch = "release-polkadot-v1.1.0", default-features = false }
 sp-arithmetic = { git = "https://github.com/paritytech/polkadot-sdk", branch = "release-polkadot-v1.1.0", default-features = false }
+pallet-balances = { git = "https://github.com/paritytech/polkadot-sdk", branch = "release-polkadot-v1.1.0", default-features = false }
 
 [features]
 default = ["std"]
 std = [
-    "serde",
     "codec/std",
     "scale-info/std",
     "sp-std/std",
-    "sp-runtime/std",
     "frame-support/std",
     "frame-system/std",
     "pallet-balances/std",
-    "pallet-transaction-payment/std",
     "primitives/std",
     "orml-currencies/std",
     "orml-tokens/std",
@@ -62,7 +55,6 @@ testing-constants = []
 try-runtime = [
     "frame-system/try-runtime",
     "pallet-balances/try-runtime",
-    "pallet-transaction-payment/try-runtime",
     "orml-currencies/try-runtime",
     "orml-tokens/try-runtime",
 ]

@@ -1,7 +1,9 @@
-use frame_support::{assert_err, assert_noop, assert_ok, sp_runtime::DispatchError};
+use frame_support::{
+	assert_err, assert_noop, assert_ok,
+	sp_runtime::{traits::Zero, DispatchError},
+};
 use mocktopus::mocking::*;
 use sp_core::H256;
-use sp_runtime::traits::Zero;
 
 use currency::{testing_constants::DEFAULT_WRAPPED_CURRENCY, Amount};
 use primitives::stellar::{types::AlphaNum4, Asset, Operation, PublicKey, StroopAmount};

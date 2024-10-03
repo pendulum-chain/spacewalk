@@ -2,8 +2,7 @@ use codec::Encode;
 use subxt::{
 	client::OfflineClientT,
 	config::{
-		ExtrinsicParamsEncoder, ExtrinsicParamsError, PolkadotExtrinsicParams,
-		SignedExtension,
+		ExtrinsicParamsEncoder, ExtrinsicParamsError, PolkadotExtrinsicParams, SignedExtension,
 	},
 	Config,
 };
