@@ -234,6 +234,7 @@ mod tests {
 	#[ntest::timeout(600_000)] // timeout at 10 minutes
 	#[serial]
 	async fn test_get_proof_for_current_slot() {
+		env_logger::init();
 		// let it run for a few seconds, making sure that the other tests have successfully shutdown
 		// their connection to Stellar Node
 		sleep(Duration::from_secs(2)).await;
@@ -248,7 +249,13 @@ mod tests {
 		)
 		.await;
 
-		let latest_slot = agent.read().await.collector.read().await.last_slot_index();
+		let latest_slot = loop {
+			let slot = agent.read().await.collector.read().await.last_slot_index();
+			if slot > 0 {
+				break slot
+			}
+			sleep(Duration::from_millis(500)).await;
+		};
 
 		let proof_result = agent.read().await.get_proof(latest_slot).await;
 		assert!(proof_result.is_ok(), "Failed to get proof for slot: {}", latest_slot);
