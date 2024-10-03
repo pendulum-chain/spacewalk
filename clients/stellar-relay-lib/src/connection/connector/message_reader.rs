@@ -1,4 +1,7 @@
-use crate::connection::{xdr_converter::get_xdr_message_length, Connector, Error, Xdr};
+use crate::connection::{
+	connector::message_creation::crate_specific_error, xdr_converter::get_xdr_message_length,
+	Connector, Error, Xdr,
+};
 use async_std::io::ReadExt;
 use std::time::Duration;
 use substrate_stellar_sdk::{types::StellarMessage, XdrCodec};
@@ -7,7 +10,6 @@ use tokio::{
 	time::timeout,
 };
 use tracing::{error, info, trace, warn};
-use crate::connection::connector::message_creation::crate_specific_error;
 
 /// The waiting time for reading messages from stream.
 static READ_TIMEOUT_IN_SECS: u64 = 60;
@@ -84,7 +86,10 @@ pub(crate) async fn poll_messages_from_stellar(
 
 	// push error to user
 	if let Err(e) = send_to_user_sender.send(crate_specific_error()).await {
-		warn!("poll_messages_from_stellar(): Error occurred during sending message {} to user: {e:?}",e);
+		warn!(
+			"poll_messages_from_stellar(): Error occurred during sending message {} to user: {e:?}",
+			e
+		);
 	}
 
 	// make sure to shutdown the connector

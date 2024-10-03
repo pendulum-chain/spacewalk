@@ -145,6 +145,5 @@ where
 	let shutdown_tx = ShutdownSender::new();
 	let oracle_agent = start_oracle_agent(stellar_config, vault_stellar_secret, shutdown_tx).await;
 
-
 	execute(client, vault_wallet, user_wallet, oracle_agent, vault_id, vault_provider).await
 }

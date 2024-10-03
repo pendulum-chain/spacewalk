@@ -3,11 +3,12 @@ use crate::connection::{
 	Connector, Error,
 };
 use substrate_stellar_sdk::{
-	types::{AuthenticatedMessage, AuthenticatedMessageV0, HmacSha256Mac, StellarMessage},
+	compound_types::LimitedString,
+	types::{
+		AuthenticatedMessage, AuthenticatedMessageV0, ErrorCode, HmacSha256Mac, StellarMessage,
+	},
 	XdrCodec,
 };
-use substrate_stellar_sdk::compound_types::LimitedString;
-use substrate_stellar_sdk::types::ErrorCode;
 
 impl Connector {
 	/// Wraps the stellar message with `AuthenticatedMessage`

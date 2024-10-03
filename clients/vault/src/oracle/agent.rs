@@ -63,9 +63,12 @@ async fn handle_message(
 	match message {
 		StellarMessage::ScpMessage(env) => {
 			// if the first slot was saved, it means proof building is ready.
-			if let Some(slot) = collector.write().await.handle_envelope(env, message_sender).await? {
+			if let Some(slot) = collector.write().await.handle_envelope(env, message_sender).await?
+			{
 				if let Some(true) = is_proof_building_ready {
-					tracing::info!("handle_message(): First slot saved: {slot}. Ready to build proofs ");
+					tracing::info!(
+						"handle_message(): First slot saved: {slot}. Ready to build proofs "
+					);
 				}
 				*is_proof_building_ready = None;
 			}
@@ -110,18 +113,22 @@ pub async fn listen_for_stellar_messages(
 	// log a new message received, every 1 minute.
 	let interval = Duration::from_secs(60);
 	let mut next_time = Instant::now() + interval;
-	let mut is_proof_building_ready:Option<bool> = Some(false);
+	let mut is_proof_building_ready: Option<bool> = Some(false);
 	loop {
 		let collector = oracle_agent.read().await.collector.clone();
 
 		match overlay_conn.listen().await {
 			Ok(None) => {},
 			Ok(Some(StellarMessage::Hello(_))) => {
-				tracing::info!("listen_for_stellar_messages(): received hello message from Stellar");
+				tracing::info!(
+					"listen_for_stellar_messages(): received hello message from Stellar"
+				);
 				is_proof_building_ready = Some(true);
-			}
+			},
 			Ok(Some(StellarMessage::ErrorMsg(e))) => {
-				tracing::error!("listen_for_stellar_messages(): received error message from Stellar: {e:?}");
+				tracing::error!(
+					"listen_for_stellar_messages(): received error message from Stellar: {e:?}"
+				);
 				break
 			},
 			Ok(Some(msg)) => {
@@ -135,7 +142,10 @@ pub async fn listen_for_stellar_messages(
 					tracing::info!("listen_for_stellar_messages(): received message from Stellar: {msg_as_str}");
 				};
 
-				if let Err(e) = handle_message(msg, collector.clone(), &sender, &mut is_proof_building_ready).await {
+				if let Err(e) =
+					handle_message(msg, collector.clone(), &sender, &mut is_proof_building_ready)
+						.await
+				{
 					tracing::error!("listen_for_stellar_messages(): failed to handle message: {msg_as_str}: {e:?}");
 				}
 			},
@@ -148,7 +158,9 @@ pub async fn listen_for_stellar_messages(
 	}
 
 	if let Err(e) = shutdown_sender.send(()) {
-		tracing::error!("listen_for_stellar_messages(): Failed to send shutdown signal in thread: {e:?}");
+		tracing::error!(
+			"listen_for_stellar_messages(): Failed to send shutdown signal in thread: {e:?}"
+		);
 	}
 
 	tracing::info!("listen_for_stellar_messages(): shutting down overlay connection");

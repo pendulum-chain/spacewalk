@@ -9870,7 +9870,6 @@ dependencies = [
  "thiserror",
  "tokio",
  "tracing",
- "tracing-futures",
  "tracing-subscriber 0.2.25",
  "wallet",
  "warp",
