@@ -621,7 +621,7 @@ async fn test_issue_execution_succeeds_from_archive_on_testnet() {
 async fn test_issue_execution_succeeds_from_archive_on_network(is_public_network: bool) {
 	test_with_vault(
 		is_public_network,
-		|client, _vault_wallet, user_wallet, _oracle_agent, vault_id, vault_provider| async move {
+		|client, _vault_wallet, user_wallet, oracle_agent, vault_id, vault_provider| async move {
 			let user_provider = setup_provider(client.clone(), AccountKeyring::Dave).await;
 
 			let public_key = default_vault_stellar_address_as_binary(is_public_network);
@@ -672,15 +672,6 @@ async fn test_issue_execution_succeeds_from_archive_on_network(is_public_network
 
 			// We sleep here in order to wait for the fallback to the archive to be necessary
 			sleep(Duration::from_secs(5 * 60)).await;
-
-			let shutdown_tx = ShutdownSender::new();
-			let stellar_config = random_stellar_relay_config(is_public_network);
-
-			let vault_stellar_secret = get_source_secret_key_from_env(is_public_network);
-			// Create new oracle agent with the same configuration as the previous one
-			let oracle_agent =
-				start_oracle_agent(stellar_config.clone(), vault_stellar_secret, shutdown_tx).await;
-			let oracle_agent = Arc::new(oracle_agent);
 
 			// Loop pending proofs until it is ready
 			let proof = oracle_agent
