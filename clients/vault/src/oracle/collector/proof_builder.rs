@@ -237,61 +237,66 @@ impl ScpMessageCollector {
 					}
 				});
 
-				if let Some(i) = value {
-					if let ScpHistoryEntry::V0(scp_entry_v0) = i {
-						let slot_scp_envelopes = scp_entry_v0.clone().ledger_messages.messages;
-						let vec_scp = slot_scp_envelopes.get_vec().clone();
+				let Some(ScpHistoryEntry::V0(scp_entry_v0)) = value else {
+					tracing::warn!("get_envelopes_from_horizon_archive(): Could not get ScpHistory entry from archive {archive_url} for slot {slot}");
+					continue;
+				};
 
-						// Filter out any envelopes that are not externalize or confirm statements
-						let relevant_envelopes = vec_scp
-							.into_iter()
-							.filter(|scp| match scp.statement.pledges {
-								ScpStatementPledges::ScpStExternalize(_) |
-								ScpStatementPledges::ScpStConfirm(_) => true,
-								_ => false,
-							})
-							.collect::<Vec<_>>();
+				let slot_scp_envelopes = scp_entry_v0.clone().ledger_messages.messages;
+				let vec_scp = slot_scp_envelopes.get_vec().clone();
 
-						let externalized_envelopes_count = relevant_envelopes
-							.iter()
-							.filter(|scp| match scp.statement.pledges {
-								ScpStatementPledges::ScpStExternalize(_) => true,
-								_ => false,
-							})
-							.count();
+				// Filter out any envelopes that are not externalize or confirm statements
+				let mut relevant_envelopes = vec_scp
+					.into_iter()
+					.filter(|scp| match scp.statement.pledges {
+						ScpStatementPledges::ScpStExternalize(_) |
+						ScpStatementPledges::ScpStConfirm(_) => true,
+						_ => false,
+					})
+					.collect::<Vec<_>>();
 
-						// Ensure that at least one envelope is externalized
-						if externalized_envelopes_count == 0 {
-							tracing::error!(
+				let externalized_envelopes_count = relevant_envelopes
+					.iter()
+					.filter(|scp| match scp.statement.pledges {
+						ScpStatementPledges::ScpStExternalize(_) => true,
+						_ => false,
+					})
+					.count();
+
+				// Ensure that at least one envelope is externalized
+				if externalized_envelopes_count == 0 {
+					tracing::error!(
 							"get_envelopes_from_horizon_archive(): The contained archive entry fetched from {} for slot {slot} is invalid because it does not contain any externalized envelopes.",
 								scp_archive_storage.0
 						);
-							// remove the file since it's invalid.
-							scp_archive_storage.remove_file(slot);
-							continue;
-						}
-
-						let mut envelopes_map = envelopes_map_arc.write();
-						let mut from_archive_map = env_from_archive_map.write();
-
-						if envelopes_map.get(&slot).is_none() {
-							tracing::info!(
-								"get_envelopes_from_horizon_archive(): Adding {} archived SCP envelopes for slot {slot} to envelopes map. {} are externalized",
-								relevant_envelopes.len(),
-								externalized_envelopes_count
-							);
-							envelopes_map.insert(slot, relevant_envelopes);
-							// indicates that the data was taken from the archive
-							from_archive_map.insert(slot, ());
-
-							// remove the archive file after successfully retrieving envelopes
-							scp_archive_storage.remove_file(slot);
-							break;
-						}
-					}
-				} else {
-					tracing::warn!("get_envelopes_from_horizon_archive(): Could not get ScpHistory entry from archive {archive_url} for slot {slot}");
+					// remove the file since it's invalid.
+					scp_archive_storage.remove_file(slot);
+					continue;
 				}
+
+				let mut envelopes_map = envelopes_map_arc.write();
+				let mut from_archive_map = env_from_archive_map.write();
+
+				tracing::info!(
+							"get_envelopes_from_horizon_archive(): Adding {} archived SCP envelopes for slot {slot} to envelopes map. {} are externalized",
+							relevant_envelopes.len(),
+							externalized_envelopes_count
+						);
+				let mut envs = envelopes_map.get(&slot).map(|envs| envs.clone()).unwrap_or(vec![]);
+
+				if envs.len() > 0 {
+					tracing::info!("get_envelopes_from_horizon_archive(): {} envelopes already exist for slot {slot}", envs.len());
+				}
+
+				relevant_envelopes.append(&mut envs);
+				envelopes_map.insert(slot, relevant_envelopes);
+
+				// indicates that the data was taken from the archive
+				from_archive_map.insert(slot, ());
+
+				// remove the archive file after successfully retrieving envelopes
+				scp_archive_storage.remove_file(slot);
+				break;
 			}
 		}
 	}

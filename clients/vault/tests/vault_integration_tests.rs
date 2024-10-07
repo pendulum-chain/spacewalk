@@ -69,8 +69,8 @@ async fn test_redeem_succeeds_on_network(is_public_network: bool) {
 			let vault_id_manager =
 				VaultIdManager::from_map(vault_provider.clone(), vault_wallet.clone(), vault_ids);
 
-			// We issue 1/1000 unit
-			let issue_amount = DecimalsLookupImpl::one(CurrencyId::Native) / 1000;
+			// We issue 1 (spacewalk-chain) unit
+			let issue_amount = DecimalsLookupImpl::one(CurrencyId::Native) / 100;
 			let vault_collateral = get_required_vault_collateral_for_issue(
 				&vault_provider,
 				issue_amount,
@@ -605,6 +605,7 @@ async fn test_issue_cancel_succeeds() {
 #[tokio::test(flavor = "multi_thread")]
 #[serial]
 async fn test_issue_execution_succeeds_from_archive_on_mainnet() {
+	env_logger::init();
 	let is_public_network = true;
 	test_issue_execution_succeeds_from_archive_on_network(is_public_network).await;
 }

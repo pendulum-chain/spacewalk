@@ -42,8 +42,8 @@ impl OracleAgent {
 	}
 
 	#[cfg(any(test, feature = "integration"))]
-	pub fn is_stellar_running(&self) -> bool {
-		self.message_sender.is_some()
+	pub async fn is_stellar_running(&self) -> bool {
+		self.message_sender.is_some() && self.collector.read().await.last_slot_index() > 0
 	}
 }
 
@@ -180,7 +180,7 @@ pub async fn start_oracle_agent(
 
 	tokio::spawn(listen_for_stellar_messages(cfg, oracle_agent.clone(), secret, shutdown_sender));
 
-	while !oracle_agent.read().await.is_stellar_running() {
+	while !oracle_agent.read().await.is_stellar_running().await {
 		sleep(Duration::from_millis(500)).await;
 	}
 
