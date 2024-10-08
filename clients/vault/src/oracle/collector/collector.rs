@@ -69,6 +69,7 @@ impl ScpMessageCollector {
 			stellar_history_archive_urls,
 		}
 	}
+
 	pub fn envelopes_map_len(&self) -> usize {
 		self.envelopes_map.read().len()
 	}
@@ -120,7 +121,7 @@ impl ScpMessageCollector {
 		self.txset_and_slot_map.read().get_txset_hash_by_slot(slot).cloned()
 	}
 
-	pub fn last_slot_index(&self) -> u64 {
+	pub(crate) fn last_slot_index(&self) -> u64 {
 		self.last_slot_index
 	}
 }

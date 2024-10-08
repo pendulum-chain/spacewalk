@@ -93,7 +93,6 @@ impl StellarOverlayConnection {
 
 impl Drop for StellarOverlayConnection {
 	fn drop(&mut self) {
-		debug!("drop(): shutting down StellarOverlayConnection");
 		self.stop();
 	}
 }

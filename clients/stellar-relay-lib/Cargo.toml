@@ -16,7 +16,6 @@ wallet = { path = "../wallet", features = ["testing-utils"] }
 console-subscriber = { version = "0.3.0" }
 
 [dependencies]
-
 hex = "0.4.3"
 tracing = { version = "0.1", features = ["log"] }
 

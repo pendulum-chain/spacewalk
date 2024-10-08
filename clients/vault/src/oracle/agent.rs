@@ -13,7 +13,7 @@ use stellar_relay_lib::{
 
 use crate::{
 	oracle::{
-		collector::ScpMessageCollector, errors::Error, get_random_secret_key,
+		collector::ScpMessageCollector, errors::Error,
 		types::StellarMessageSender, AddTxSet, Proof,
 	},
 	ArcRwLock,
@@ -176,7 +176,7 @@ pub async fn start_oracle_agent(
 ) -> ArcRwLock<OracleAgent> {
 	let oracle_agent = Arc::new(RwLock::new(OracleAgent::new(&cfg, shutdown_sender.clone())));
 
-	let secret = get_random_secret_key();
+	let secret = crate::oracle::get_random_secret_key();
 
 	tokio::spawn(listen_for_stellar_messages(cfg, oracle_agent.clone(), secret, shutdown_sender));
 

@@ -28,7 +28,6 @@ pub async fn listen_for_accept_replace(
 	payment_margin: Duration,
 	oracle_agent: ArcRwLock<OracleAgent>,
 ) -> Result<(), ServiceError<Error>> {
-	tracing::info!("listen_for_accept_replace(): started");
 	let parachain_rpc = &parachain_rpc;
 	let vault_id_manager = &vault_id_manager;
 	let shutdown_tx = &shutdown_tx;
