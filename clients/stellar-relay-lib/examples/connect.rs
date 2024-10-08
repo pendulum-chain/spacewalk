@@ -8,7 +8,6 @@ use wallet::keys::get_source_secret_key_from_env;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
-	env_logger::init();
 	console_subscriber::init();
 
 	let args: Vec<String> = std::env::args().collect();
@@ -28,6 +27,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 	loop {
 		match overlay_connection.listen().await {
 			Ok(Some(msg)) => match msg {
+				StellarMessage::Hello(_) => {
+					tracing::info!("received Hello message");
+				},
+
 				StellarMessage::ScpMessage(msg) => {
 					let node_id = msg.statement.node_id.to_encoding();
 					let node_id = base64::encode(&node_id);

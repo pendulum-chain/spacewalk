@@ -11577,7 +11577,6 @@ dependencies = [
  "async-std",
  "base64 0.13.1",
  "console-subscriber 0.3.0",
- "env_logger 0.9.3",
  "err-derive",
  "hex",
  "hmac 0.12.1",
