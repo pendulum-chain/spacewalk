@@ -246,7 +246,7 @@ impl ScpMessageCollector {
 				let vec_scp = slot_scp_envelopes.get_vec().clone();
 
 				// Filter out any envelopes that are not externalize or confirm statements
-				let mut relevant_envelopes = vec_scp
+				let relevant_envelopes = vec_scp
 					.into_iter()
 					.filter(|scp| match scp.statement.pledges {
 						ScpStatementPledges::ScpStExternalize(_) |
@@ -282,13 +282,7 @@ impl ScpMessageCollector {
 							relevant_envelopes.len(),
 							externalized_envelopes_count
 						);
-				let mut envs = envelopes_map.get(&slot).map(|envs| envs.clone()).unwrap_or(vec![]);
 
-				if envs.len() > 0 {
-					tracing::info!("get_envelopes_from_horizon_archive(): {} envelopes already exist for slot {slot}", envs.len());
-				}
-
-				relevant_envelopes.append(&mut envs);
 				envelopes_map.insert(slot, relevant_envelopes);
 
 				// indicates that the data was taken from the archive
