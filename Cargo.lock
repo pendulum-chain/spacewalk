@@ -13001,11 +13001,7 @@ dependencies = [
  "spacewalk-primitives",
  "thiserror",
  "tokio",
- "tokio-metrics",
- "tokio-stream",
  "tracing",
- "tracing-futures",
- "tracing-subscriber 0.2.25",
 ]
 
 [[package]]
