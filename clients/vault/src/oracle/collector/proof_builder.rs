@@ -437,7 +437,6 @@ mod test {
 
 	#[tokio::test]
 	async fn test_get_envelopes_from_horizon_archive() {
-		env_logger::init();
 		let collector = collector(false);
 		assert_eq!(collector.envelopes_map_len(), 0);
 

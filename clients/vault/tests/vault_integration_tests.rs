@@ -605,7 +605,6 @@ async fn test_issue_cancel_succeeds() {
 #[tokio::test(flavor = "multi_thread")]
 #[serial]
 async fn test_issue_execution_succeeds_from_archive_on_mainnet() {
-	env_logger::init();
 	let is_public_network = true;
 	test_issue_execution_succeeds_from_archive_on_network(is_public_network).await;
 }
