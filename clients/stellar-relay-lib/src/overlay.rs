@@ -3,7 +3,7 @@ use tokio::sync::{
 	mpsc,
 	mpsc::{error::SendError, Sender},
 };
-use tracing::{debug, error, info};
+use tracing::{error, info};
 
 use crate::{
 	connection::{poll_messages_from_stellar, ConnectionInfo, Connector},

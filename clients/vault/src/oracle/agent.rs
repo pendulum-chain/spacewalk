@@ -13,8 +13,7 @@ use stellar_relay_lib::{
 
 use crate::{
 	oracle::{
-		collector::ScpMessageCollector, errors::Error,
-		types::StellarMessageSender, AddTxSet, Proof,
+		collector::ScpMessageCollector, errors::Error, types::StellarMessageSender, AddTxSet, Proof,
 	},
 	ArcRwLock,
 };
