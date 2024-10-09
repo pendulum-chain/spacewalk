@@ -10,7 +10,10 @@ use async_trait::async_trait;
 use futures::{future::Either, Future, FutureExt};
 use governor::{Quota, RateLimiter};
 use nonzero_ext::*;
-use tokio::{sync::RwLock, time::sleep};
+use tokio::{
+	sync::{broadcast::error::TryRecvError, RwLock},
+	time::sleep,
+};
 pub use warp;
 
 pub use cli::{LoggingFormat, MonitoringConfig, RestartPolicy, ServiceConfig};
@@ -170,17 +173,38 @@ impl<Config: Clone + Send + 'static, F: Fn()> ConnectionManager<Config, F> {
 	}
 }
 
-pub async fn wait_or_shutdown<F, E>(shutdown_tx: ShutdownSender, future2: F) -> Result<(), E>
+pub async fn wait_or_shutdown<F, E>(
+	shutdown_tx: ShutdownSender,
+	future2: F,
+	// a consumer that receives a precheck signal to start a task.
+	precheck_signal: Option<tokio::sync::broadcast::Receiver<()>>,
+) -> Result<(), E>
 where
 	F: Future<Output = Result<(), E>>,
 {
+	if let Some(mut precheck_signal) = precheck_signal {
+		loop {
+			match precheck_signal.try_recv() {
+				// Received a signal to start the task
+				Ok(_) => break,
+				Err(TryRecvError::Empty) =>
+					tracing::trace!("wait_or_shutdown precheck signal: waiting..."),
+				// Precheck signal failed. Cannot start the task.
+				Err(e) => {
+					tracing::error!("Error receiving precheck signal: {:?}", e);
+					return Ok(());
+				},
+			}
+		}
+	}
+
 	match run_cancelable(shutdown_tx.subscribe(), future2).await {
 		TerminationStatus::Cancelled => {
-			tracing::trace!("Received shutdown signal");
+			tracing::trace!("wait_or_shutdown(): Received shutdown signal");
 			Ok(())
 		},
 		TerminationStatus::Completed(res) => {
-			tracing::trace!("Sending shutdown signal");
+			tracing::trace!("wait_or_shutdown(): Sending shutdown signal");
 			let _ = shutdown_tx.send(());
 			res
 		},

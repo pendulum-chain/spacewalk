@@ -18,6 +18,8 @@ runs:
         token: ${{ inputs.token }}
 
     - name: Install Rust Nightly
-      uses: ./.github/actions/install-rust-nightly
+      uses: dtolnay/rust-toolchain@nightly
       with:
-        version: ${{ inputs.version }}
+        toolchain: ${{ inputs.version }}
+        components: rustfmt, clippy
+        target: wasm32-unknown-unknown

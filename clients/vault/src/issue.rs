@@ -1,4 +1,4 @@
-use std::{collections::HashMap, sync::Arc, time::Duration};
+use std::{collections::HashMap, time::Duration};
 
 use futures::{channel::mpsc::Sender, future, SinkExt};
 use sp_runtime::traits::StaticLookup;
@@ -14,7 +14,7 @@ use wallet::{
 	types::FilterWith, LedgerTxEnvMap, Slot, SlotTask, SlotTaskStatus, TransactionResponse,
 };
 
-use crate::{oracle::OracleAgent, ArcRwLock, Error, Event};
+use crate::{oracle::OracleAgent, tokio_spawn, ArcRwLock, Error, Event};
 
 fn is_vault(p1: &PublicKey, p2_raw: [u8; 32]) -> bool {
 	return *p1.as_binary() == p2_raw;
@@ -26,6 +26,7 @@ pub(crate) async fn initialize_issue_set(
 	issue_set: &ArcRwLock<IssueRequestsMap>,
 	memos_to_issue_ids: &ArcRwLock<IssueIdLookup>,
 ) -> Result<(), Error> {
+	tracing::info!("initialize_issue_set(): started");
 	let (mut issue_set, mut memos_to_issue_ids, requests) = future::join3(
 		issue_set.write(),
 		memos_to_issue_ids.write(),
@@ -60,6 +61,7 @@ pub async fn listen_for_issue_requests(
 	issues: ArcRwLock<IssueRequestsMap>,
 	memos_to_issue_ids: ArcRwLock<IssueIdLookup>,
 ) -> Result<(), ServiceError<Error>> {
+	tracing::info!("listen_for_issue_requests(): started");
 	// Use references to prevent 'moved closure' errors
 	let parachain_rpc = &parachain_rpc;
 	let vault_public_key = &vault_public_key;
@@ -113,6 +115,7 @@ pub async fn listen_for_issue_cancels(
 	issues: ArcRwLock<IssueRequestsMap>,
 	memos_to_issue_ids: ArcRwLock<IssueIdLookup>,
 ) -> Result<(), ServiceError<Error>> {
+	tracing::info!("listen_for_issue_cancels(): started");
 	let issues = &issues;
 	let memos_to_issue_ids = &memos_to_issue_ids;
 
@@ -145,6 +148,7 @@ pub async fn listen_for_executed_issues(
 	issues: ArcRwLock<IssueRequestsMap>,
 	memos_to_issue_ids: ArcRwLock<IssueIdLookup>,
 ) -> Result<(), ServiceError<Error>> {
+	tracing::info!("listen_for_executed_issues(): started");
 	let issues = &issues;
 	let memos_to_issue_ids = &memos_to_issue_ids;
 
@@ -248,11 +252,12 @@ async fn cleanup_ledger_env_map(
 /// * `issues` - a map of all issue requests
 pub async fn process_issues_requests(
 	parachain_rpc: SpacewalkParachain,
-	oracle_agent: Arc<OracleAgent>,
+	oracle_agent: ArcRwLock<OracleAgent>,
 	ledger_env_map: ArcRwLock<LedgerTxEnvMap>,
 	issues: ArcRwLock<IssueRequestsMap>,
 	memos_to_issue_ids: ArcRwLock<IssueIdLookup>,
 ) -> Result<(), ServiceError<Error>> {
+	tracing::info!("process_issue_requests(): started");
 	// collects all the tasks that are executed or about to be executed.
 	let mut processed_map = HashMap::new();
 
@@ -267,15 +272,18 @@ pub async fn process_issues_requests(
 				continue;
 			};
 
-			tokio::spawn(execute_issue(
-				parachain_rpc.clone(),
-				tx_env.clone(),
-				issues.clone(),
-				memos_to_issue_ids.clone(),
-				oracle_agent.clone(),
-				*slot,
-				sender,
-			));
+			tokio_spawn(
+				"execute_issue",
+				execute_issue(
+					parachain_rpc.clone(),
+					tx_env.clone(),
+					issues.clone(),
+					memos_to_issue_ids.clone(),
+					oracle_agent.clone(),
+					*slot,
+					sender,
+				),
+			);
 		}
 
 		// Give 5 seconds interval before starting again.
@@ -300,13 +308,13 @@ pub async fn execute_issue(
 	tx_env: TransactionEnvelope,
 	issues: ArcRwLock<IssueRequestsMap>,
 	memos_to_issue_ids: ArcRwLock<IssueIdLookup>,
-	oracle_agent: Arc<OracleAgent>,
+	oracle_agent: ArcRwLock<OracleAgent>,
 	slot: Slot,
 	sender: tokio::sync::oneshot::Sender<SlotTaskStatus>,
 ) {
 	// Get the proof of the given slot
 	let proof =
-		match oracle_agent.get_proof(slot).await {
+		match oracle_agent.read().await.get_proof(slot).await {
 			Ok(proof) => proof,
 			Err(e) => {
 				tracing::error!("Could not execute Issue for slot {slot} due to error with proof building: {e:?}");
