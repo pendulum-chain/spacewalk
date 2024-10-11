@@ -19,6 +19,9 @@ use crate::{
 };
 use wallet::Slot;
 
+/// The interval to check if we are still receiving messages from Stellar Relay
+const STELLAR_RELAY_HEALTH_CHECK_IN_SECS:u64 = 600;
+
 pub struct OracleAgent {
 	pub collector: Arc<RwLock<ScpMessageCollector>>,
 	pub is_public_network: bool,
@@ -109,9 +112,10 @@ pub async fn listen_for_stellar_messages(
 		oracle_agent.write().await.message_sender = Some(sender.clone());
 	};
 
-	// log a new message received, every 1 minute.
-	let interval = Duration::from_secs(60);
-	let mut next_time = Instant::now() + interval;
+	// log a new message received.
+	let health_check_interval = Duration::from_secs(STELLAR_RELAY_HEALTH_CHECK_IN_SECS);
+
+	let mut next_time = Instant::now() + health_check_interval;
 	let mut is_proof_building_ready: Option<bool> = Some(false);
 	loop {
 		let collector = oracle_agent.read().await.collector.clone();
@@ -134,7 +138,7 @@ pub async fn listen_for_stellar_messages(
 				let msg_as_str = to_base64_xdr_string(&msg);
 				if Instant::now() >= next_time {
 					tracing::info!("listen_for_stellar_messages(): health check: received message from Stellar");
-					next_time += interval;
+					next_time += health_check_interval;
 				}
 
 				if let Some(true) = is_proof_building_ready {
@@ -188,6 +192,9 @@ pub async fn start_oracle_agent(
 }
 
 impl OracleAgent {
+	// the interval for every build_proof retry
+	const BUILD_PROOF_INTERVAL:u64 = 10;
+
 	/// This method returns the proof for a given slot or an error if the proof cannot be provided.
 	/// The agent will try every possible way to get the proof before returning an error.
 	pub async fn get_proof(&self, slot: Slot) -> Result<Proof, Error> {
@@ -212,8 +219,8 @@ impl OracleAgent {
 				match collector.build_proof(slot, &stellar_sender).await {
 					None => {
 						drop(collector);
-						// give 10 seconds interval for every retry
-						sleep(Duration::from_secs(10)).await;
+						// give enough interval for every retry
+						sleep(Duration::from_secs(OracleAgent::BUILD_PROOF_INTERVAL)).await;
 						continue
 					},
 					Some(proof) => {
