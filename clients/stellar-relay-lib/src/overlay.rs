@@ -48,7 +48,7 @@ impl StellarOverlayConnection {
 				send_to_user_sender,
 				send_to_node_receiver,
 			))
-			.unwrap();
+			.expect("Failed to spawn poll_messages_from_stellar");
 
 		#[cfg(not(tokio_unstable))]
 		tokio::spawn(poll_messages_from_stellar(

@@ -31,9 +31,7 @@ impl ScpMessageCollector {
 			);
 
 			if self.last_slot_index() == 0 {
-				tracing::info!(
-					"handle_envelope(): for slot {slot}: first SCPStExternalize found"
-				);
+				tracing::info!("handle_envelope(): for slot {slot}: first SCPStExternalize found");
 			}
 			// set the last scpenvenvelope with ScpStExternalize message
 			self.set_last_slot_index(slot);

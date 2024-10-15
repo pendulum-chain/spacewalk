@@ -42,7 +42,10 @@ pub(crate) async fn poll_messages_from_stellar(
 					error!("poll_messages_from_stellar(): Error occurred during sending message to node: {e:?}");
 				},
 			Err(TryRecvError::Disconnected) => break,
-			Err(TryRecvError::Empty) => {},
+			Err(TryRecvError::Empty) => {
+				// there's no message from user; wait for the next iteration
+				tokio::task::yield_now().await;
+			},
 		}
 
 		// check for messages from Stellar Node.
