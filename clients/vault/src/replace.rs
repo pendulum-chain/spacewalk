@@ -5,7 +5,7 @@ use tokio::sync::RwLock;
 
 use crate::{
 	cancellation::Event, error::Error, oracle::OracleAgent, requests::Request,
-	system::VaultIdManager, ArcRwLock,
+	system::VaultIdManager,
 };
 use runtime::{
 	AcceptReplaceEvent, CollateralBalancesPallet, ExecuteReplaceEvent, PrettyPrint, ReplacePallet,
@@ -26,7 +26,7 @@ pub async fn listen_for_accept_replace(
 	parachain_rpc: SpacewalkParachain,
 	vault_id_manager: VaultIdManager,
 	payment_margin: Duration,
-	oracle_agent: ArcRwLock<OracleAgent>,
+	oracle_agent: Arc<OracleAgent>,
 ) -> Result<(), ServiceError<Error>> {
 	let parachain_rpc = &parachain_rpc;
 	let vault_id_manager = &vault_id_manager;
@@ -96,7 +96,7 @@ pub async fn listen_for_replace_requests(
 	event_channel: Sender<Event>,
 	accept_replace_requests: bool,
 ) -> Result<(), ServiceError<Error>> {
-	tracing::info!("listen_for_replace_requests(): started");
+	tracing::debug!("listen_for_replace_requests(): started");
 
 	let parachain_rpc = &parachain_rpc;
 	let vault_id_manager = &vault_id_manager;

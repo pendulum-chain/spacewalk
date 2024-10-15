@@ -2,7 +2,7 @@ use crate::{
 	metrics::update_stellar_metrics,
 	oracle::{OracleAgent, Proof},
 	system::VaultData,
-	ArcRwLock, Error,
+	Error,
 };
 use primitives::{stellar::PublicKey, CurrencyId};
 use runtime::{
@@ -147,7 +147,7 @@ impl Request {
 		&self,
 		parachain_rpc: P,
 		vault: VaultData,
-		oracle_agent: ArcRwLock<OracleAgent>,
+		oracle_agent: Arc<OracleAgent>,
 	) -> Result<(), Error> {
 		// ensure the deadline has not expired yet
 		if let Some(ref deadline) = self.deadline {
@@ -159,7 +159,7 @@ impl Request {
 		let response = self.transfer_stellar_asset(vault.stellar_wallet.clone()).await?;
 		let tx_env = response.to_envelope()?;
 
-		let proof = oracle_agent.read().await.get_proof(response.ledger as Slot).await?;
+		let proof = oracle_agent.get_proof(response.ledger as Slot).await?;
 
 		let _ = update_stellar_metrics(&vault, &parachain_rpc).await;
 		self.execute(parachain_rpc, tx_env, proof).await

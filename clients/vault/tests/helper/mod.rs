@@ -114,7 +114,7 @@ pub async fn test_with_vault<F, R>(
 		SubxtClient,
 		ArcRwLock<StellarWallet>,
 		ArcRwLock<StellarWallet>,
-		ArcRwLock<OracleAgent>,
+		Arc<OracleAgent>,
 		VaultId,
 		SpacewalkParachain,
 	) -> F,

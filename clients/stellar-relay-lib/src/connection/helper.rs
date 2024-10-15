@@ -35,8 +35,3 @@ pub fn error_to_string(e: Error) -> String {
 
 	format!("Error{{ code:{:?} message:{msg} }}", e.code)
 }
-
-pub fn to_base64_xdr_string<T: XdrCodec>(msg: &T) -> String {
-	let xdr = msg.to_base64_xdr();
-	String::from_utf8(xdr.clone()).unwrap_or(format!("{:?}", xdr))
-}

@@ -13,7 +13,7 @@ use runtime::{
 };
 use sp_keyring::AccountKeyring;
 use sp_runtime::traits::StaticLookup;
-use std::time::Duration;
+use std::{sync::Arc, time::Duration};
 use stellar_relay_lib::sdk::{PublicKey, SecretKey};
 use subxt::utils::AccountId32 as AccountId;
 use vault::{oracle::OracleAgent, ArcRwLock};
@@ -177,7 +177,7 @@ pub async fn assert_issue(
 	wallet: ArcRwLock<StellarWallet>,
 	vault_id: &VaultId,
 	amount: u128,
-	oracle_agent: ArcRwLock<OracleAgent>,
+	oracle_agent: Arc<OracleAgent>,
 ) {
 	let issue = parachain_rpc
 		.request_issue(amount, vault_id)
@@ -203,12 +203,7 @@ pub async fn assert_issue(
 	let slot = response.ledger as u64;
 
 	// Loop pending proofs until it is ready
-	let proof = oracle_agent
-		.read()
-		.await
-		.get_proof(slot)
-		.await
-		.expect("Proof should be available");
+	let proof = oracle_agent.get_proof(slot).await.expect("Proof should be available");
 	let tx_envelope_xdr_encoded = response.envelope_xdr;
 	let (envelopes_xdr_encoded, tx_set_xdr_encoded) = proof.encode();
 

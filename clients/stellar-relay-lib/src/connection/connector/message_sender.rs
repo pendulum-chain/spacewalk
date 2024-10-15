@@ -1,14 +1,13 @@
 use async_std::io::WriteExt;
 use std::time::Duration;
-use substrate_stellar_sdk::types::{MessageType, StellarMessage};
+use substrate_stellar_sdk::{
+	types::{MessageType, StellarMessage},
+	StellarTypeToBase64String,
+};
 use tokio::time::timeout;
 use tracing::debug;
 
-use crate::connection::{
-	handshake::create_auth_message,
-	helper::{time_now, to_base64_xdr_string},
-	Connector, Error,
-};
+use crate::connection::{handshake::create_auth_message, helper::time_now, Connector, Error};
 
 impl Connector {
 	pub async fn send_to_node(&mut self, msg: StellarMessage) -> Result<(), Error> {
@@ -28,7 +27,7 @@ impl Connector {
 
 	pub async fn send_hello_message(&mut self) -> Result<(), Error> {
 		let msg = self.create_hello_message(time_now())?;
-		debug!("send_hello_message(): Sending Hello Message: {}", to_base64_xdr_string(&msg));
+		debug!("send_hello_message(): Sending Hello Message: {}", msg.as_base64_encoded_string());
 
 		self.send_to_node(msg).await
 	}
@@ -38,7 +37,7 @@ impl Connector {
 		local_overlay_version: u32,
 	) -> Result<(), Error> {
 		let msg = create_auth_message(local_overlay_version);
-		debug!("send_auth_message(): Sending Auth Message: {}", to_base64_xdr_string(&msg));
+		debug!("send_auth_message(): Sending Auth Message: {}", msg.as_base64_encoded_string());
 
 		return self.send_to_node(create_auth_message(local_overlay_version)).await;
 	}

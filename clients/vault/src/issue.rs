@@ -1,4 +1,4 @@
-use std::{collections::HashMap, time::Duration};
+use std::{collections::HashMap, sync::Arc, time::Duration};
 
 use futures::{channel::mpsc::Sender, future, SinkExt};
 use sp_runtime::traits::StaticLookup;
@@ -26,7 +26,7 @@ pub(crate) async fn initialize_issue_set(
 	issue_set: &ArcRwLock<IssueRequestsMap>,
 	memos_to_issue_ids: &ArcRwLock<IssueIdLookup>,
 ) -> Result<(), Error> {
-	tracing::info!("initialize_issue_set(): started");
+	tracing::debug!("initialize_issue_set(): started");
 	let (mut issue_set, mut memos_to_issue_ids, requests) = future::join3(
 		issue_set.write(),
 		memos_to_issue_ids.write(),
@@ -252,7 +252,7 @@ async fn cleanup_ledger_env_map(
 /// * `issues` - a map of all issue requests
 pub async fn process_issues_requests(
 	parachain_rpc: SpacewalkParachain,
-	oracle_agent: ArcRwLock<OracleAgent>,
+	oracle_agent: Arc<OracleAgent>,
 	ledger_env_map: ArcRwLock<LedgerTxEnvMap>,
 	issues: ArcRwLock<IssueRequestsMap>,
 	memos_to_issue_ids: ArcRwLock<IssueIdLookup>,
@@ -308,13 +308,13 @@ pub async fn execute_issue(
 	tx_env: TransactionEnvelope,
 	issues: ArcRwLock<IssueRequestsMap>,
 	memos_to_issue_ids: ArcRwLock<IssueIdLookup>,
-	oracle_agent: ArcRwLock<OracleAgent>,
+	oracle_agent: Arc<OracleAgent>,
 	slot: Slot,
 	sender: tokio::sync::oneshot::Sender<SlotTaskStatus>,
 ) {
 	// Get the proof of the given slot
 	let proof =
-		match oracle_agent.read().await.get_proof(slot).await {
+		match oracle_agent.get_proof(slot).await {
 			Ok(proof) => proof,
 			Err(e) => {
 				tracing::error!("Could not execute Issue for slot {slot} due to error with proof building: {e:?}");

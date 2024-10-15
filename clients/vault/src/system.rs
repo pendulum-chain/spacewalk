@@ -282,7 +282,7 @@ pub struct VaultService {
 	shutdown: ShutdownSender,
 	vault_id_manager: VaultIdManager,
 	secret_key: String,
-	agent: Option<ArcRwLock<OracleAgent>>,
+	agent: Option<Arc<OracleAgent>>,
 }
 
 #[async_trait]
@@ -460,11 +460,11 @@ impl VaultService {
 		Ok(())
 	}
 
-	fn create_oracle_agent(
+	async fn create_oracle_agent(
 		&self,
 		is_public_network: bool,
 		shutdown_sender: ShutdownSender,
-	) -> Result<ArcRwLock<OracleAgent>, ServiceError<Error>> {
+	) -> Result<Arc<OracleAgent>, ServiceError<Error>> {
 		let stellar_overlay_cfg = self.stellar_overlay_cfg()?;
 
 		// check if both the config file and the wallet are the same.
@@ -472,7 +472,15 @@ impl VaultService {
 			return Err(ServiceError::IncompatibleNetwork);
 		}
 
-		Ok(Arc::new(RwLock::new(OracleAgent::new(&stellar_overlay_cfg, shutdown_sender))))
+		let oracle_agent =
+			OracleAgent::new(&stellar_overlay_cfg, self.secret_key(), shutdown_sender)
+				.await
+				.map_err(|e| {
+					tracing::error!("Failed to create OracleAgent: {e:?}");
+					ServiceError::OracleError(Error::OracleError(e))
+				})?;
+
+		Ok(Arc::new(oracle_agent))
 	}
 
 	fn create_issue_tasks(
@@ -482,7 +490,7 @@ impl VaultService {
 		startup_height: BlockNumber,
 		account_id: AccountId,
 		vault_public_key: PublicKey,
-		oracle_agent: ArcRwLock<OracleAgent>,
+		oracle_agent: Arc<OracleAgent>,
 		issue_map: ArcRwLock<IssueRequestsMap>,
 		ledger_env_map: ArcRwLock<LedgerTxEnvMap>,
 		memos_to_issue_ids: ArcRwLock<IssueIdLookup>,
@@ -547,7 +555,7 @@ impl VaultService {
 		replace_event_rx: mpscReceiver<Event>,
 		startup_height: BlockNumber,
 		account_id: AccountId,
-		oracle_agent: ArcRwLock<OracleAgent>,
+		oracle_agent: Arc<OracleAgent>,
 	) -> Vec<(&str, ServiceTask)> {
 		vec![
 			(
@@ -663,7 +671,7 @@ impl VaultService {
 		account_id: AccountId,
 		is_public_network: bool,
 		vault_public_key: PublicKey,
-		oracle_agent: ArcRwLock<OracleAgent>,
+		oracle_agent: Arc<OracleAgent>,
 		issue_map: ArcRwLock<IssueRequestsMap>,
 		ledger_env_map: ArcRwLock<LedgerTxEnvMap>,
 		memos_to_issue_ids: ArcRwLock<IssueIdLookup>,
@@ -813,7 +821,8 @@ impl VaultService {
 			.await;
 		drop(wallet);
 
-		let oracle_agent = self.create_oracle_agent(is_public_network, self.shutdown.clone())?;
+		let oracle_agent =
+			self.create_oracle_agent(is_public_network, self.shutdown.clone()).await?;
 		self.agent = Some(oracle_agent.clone());
 
 		// issue handling
@@ -847,12 +856,7 @@ impl VaultService {
 
 		let mut tasks = vec![(
 			"Stellar Messages Listener",
-			run(listen_for_stellar_messages(
-				self.stellar_overlay_cfg()?,
-				oracle_agent.clone(),
-				self.secret_key(),
-				self.shutdown.clone(),
-			)),
+			run(listen_for_stellar_messages(oracle_agent.clone(), self.shutdown.clone())),
 		)];
 
 		let mut _tasks = self.create_tasks(

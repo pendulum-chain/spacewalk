@@ -1,9 +1,9 @@
-use std::time::Duration;
+use std::{sync::Arc, time::Duration};
 
 use runtime::{RedeemPallet, RequestRedeemEvent, ShutdownSender, SpacewalkParachain};
 use service::{spawn_cancelable, Error as ServiceError};
 
-use crate::{oracle::OracleAgent, requests::*, system::VaultIdManager, ArcRwLock, Error};
+use crate::{oracle::OracleAgent, requests::*, system::VaultIdManager, Error};
 
 /// Listen for RequestRedeemEvent directed at this vault; upon reception, transfer
 /// the respective Stellar asset and call execute_redeem.
@@ -18,7 +18,7 @@ pub async fn listen_for_redeem_requests(
 	parachain_rpc: SpacewalkParachain,
 	vault_id_manager: VaultIdManager,
 	payment_margin: Duration,
-	oracle_agent: ArcRwLock<OracleAgent>,
+	oracle_agent: Arc<OracleAgent>,
 ) -> Result<(), ServiceError<Error>> {
 	parachain_rpc
 		.on_event::<RequestRedeemEvent, _, _, _>(

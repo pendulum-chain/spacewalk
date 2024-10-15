@@ -44,7 +44,7 @@ async fn spawn_tasks_to_execute_open_requests_async<S, C, MW>(
 	wallet: ArcRwLock<StellarWallet>,
 	shutdown_tx: ShutdownSender,
 	parachain_rpc: &SpacewalkParachain,
-	oracle_agent: ArcRwLock<OracleAgent>,
+	oracle_agent: Arc<OracleAgent>,
 	rate_limiter: Arc<RateLimiter<NotKeyed, S, C, MW>>,
 ) where
 	S: DirectStateStore,
@@ -96,7 +96,7 @@ fn spawn_task_to_execute_open_request(
 	transaction: TransactionResponse,
 	shutdown_tx: ShutdownSender,
 	parachain_rpc: SpacewalkParachain,
-	oracle_agent: ArcRwLock<OracleAgent>,
+	oracle_agent: Arc<OracleAgent>,
 ) -> TextMemo {
 	let hash_as_memo = derive_shortened_request_id(&request.hash_inner());
 
@@ -147,7 +147,7 @@ async fn execute_open_request_async(
 	tx_envelope: TransactionEnvelope,
 	slot: Slot,
 	parachain_rpc: SpacewalkParachain,
-	oracle_agent: ArcRwLock<OracleAgent>,
+	oracle_agent: Arc<OracleAgent>,
 ) {
 	let mut retry_count = 0; // A counter for every execution retry
 
@@ -156,7 +156,7 @@ async fn execute_open_request_async(
 			tracing::info!("Performing retry #{retry_count} out of {MAX_EXECUTION_RETRIES} retries for {:?} request #{}",request.request_type(),request.hash());
 		}
 
-		match oracle_agent.read().await.get_proof(slot).await {
+		match oracle_agent.get_proof(slot).await {
 			Ok(proof) => {
 				let Err(e) =
 					request.execute(parachain_rpc.clone(), tx_envelope.clone(), proof).await
@@ -211,7 +211,7 @@ where
 		vault_id_manager: VaultIdManager,
 		shutdown_tx: ShutdownSender,
 		parachain_rpc: &SpacewalkParachain,
-		oracle_agent: ArcRwLock<OracleAgent>,
+		oracle_agent: Arc<OracleAgent>,
 		rate_limiter: Arc<RateLimiter<NotKeyed, S, C, MW>>,
 	) {
 		for (_, request) in requests {
@@ -236,7 +236,7 @@ where
 		request: Request,
 		vault_id_manager: VaultIdManager,
 		parachain_rpc: SpacewalkParachain,
-		oracle_agent: ArcRwLock<OracleAgent>,
+		oracle_agent: Arc<OracleAgent>,
 		rate_limiter: Arc<RateLimiter<NotKeyed, S, C, MW>>,
 	) {
 		let Some(vault) = vault_id_manager.get_vault(request.vault_id()).await else {
@@ -280,7 +280,9 @@ where
 /// * `vault_id_manager` - contains all the vault ids and their data.
 /// * `wallet` - the vault's wallet; used to retrieve a list of stellar transactions
 /// * `oracle_agent` - the agent used to get the proofs
-/// * `payment_margin` - minimum time to the the redeem execution deadline to make the stellar
+/// * `payment_margin` - minimum time to the redeem execution deadline to make the stellar
+/// * `precheck_signal` - a signal sender to notify the caller that this process is done
+/// and pending tasks can be started
 /// payment.
 #[allow(clippy::too_many_arguments)]
 pub async fn execute_open_requests(
@@ -288,7 +290,7 @@ pub async fn execute_open_requests(
 	parachain_rpc: SpacewalkParachain,
 	vault_id_manager: VaultIdManager,
 	wallet: Arc<RwLock<StellarWallet>>,
-	oracle_agent: ArcRwLock<OracleAgent>,
+	oracle_agent: Arc<OracleAgent>,
 	payment_margin: Duration,
 	precheck_signal: tokio::sync::broadcast::Sender<()>,
 ) -> Result<(), ServiceError<Error>> {

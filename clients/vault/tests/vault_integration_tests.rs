@@ -672,12 +672,7 @@ async fn test_issue_execution_succeeds_from_archive_on_network(is_public_network
 			sleep(Duration::from_secs(5 * 60)).await;
 
 			// Loop pending proofs until it is ready
-			let proof = oracle_agent
-				.read()
-				.await
-				.get_proof(slot)
-				.await
-				.expect("Proof should be available");
+			let proof = oracle_agent.get_proof(slot).await.expect("Proof should be available");
 			let tx_envelope_xdr_encoded = transaction_response.envelope_xdr;
 			let (envelopes_xdr_encoded, tx_set_xdr_encoded) = proof.encode();
 
@@ -764,12 +759,7 @@ async fn test_issue_overpayment_succeeds() {
 			let slot = transaction_response.ledger as u64;
 
 			// Loop pending proofs until it is ready
-			let proof = oracle_agent
-				.read()
-				.await
-				.get_proof(slot)
-				.await
-				.expect("Proof should be available");
+			let proof = oracle_agent.get_proof(slot).await.expect("Proof should be available");
 			let tx_envelope_xdr_encoded = transaction_response.envelope_xdr;
 			let (envelopes_xdr_encoded, tx_set_xdr_encoded) = proof.encode();
 
@@ -1158,7 +1148,7 @@ async fn test_execute_open_requests_succeeds() {
 			// add it to the set
 			sleep(Duration::from_secs(5)).await;
 
-			let (precheck_signal, mut rceiver) = tokio::sync::broadcast::channel(1);
+			let (precheck_signal, mut receiver) = tokio::sync::broadcast::channel(1);
 			let shutdown_tx = ShutdownSender::new();
 
 			join5(
@@ -1173,7 +1163,7 @@ async fn test_execute_open_requests_succeeds() {
 				)
 				.map(Result::unwrap),
 				async move {
-					assert_ok!(rceiver.recv().await);
+					assert_ok!(receiver.recv().await);
 				},
 				// Redeem 0 should be executed without creating an extra payment since we already
 				// sent one just before
