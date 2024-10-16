@@ -121,8 +121,6 @@ pub struct PerCurrencyMetrics {
 #[async_trait]
 pub trait VaultDataReader {
 	async fn get_entries(&self) -> Vec<VaultData>;
-
-	async fn get_vault(&self, vault_id: &VaultId) -> Option<VaultData>;
 }
 
 #[async_trait]
@@ -130,9 +128,6 @@ impl VaultDataReader for VaultIdManager {
 	// get_all_entries fetches from active and liquidated vaults
 	async fn get_entries(&self) -> Vec<VaultData> {
 		self.get_all_entries().await
-	}
-	async fn get_vault(&self, vault_id: &VaultId) -> Option<VaultData> {
-		self.get_vault(vault_id).await
 	}
 }
 
