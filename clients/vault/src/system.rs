@@ -177,7 +177,7 @@ impl VaultIdManager {
 			.read()
 			.await
 			.iter()
-			.filter(|(_, value)| value.liquidated != true)
+			.filter(|(_, value)| !value.liquidated)
 			.map(|(_, value)| value.clone())
 			.collect()
 	}
@@ -192,7 +192,7 @@ impl VaultIdManager {
 			.read()
 			.await
 			.iter()
-			.filter(|(_, value)| value.liquidated != true)
+			.filter(|(_, value)| !value.liquidated)
 			.map(|(vault_id, _)| vault_id.clone())
 			.collect()
 	}
@@ -204,7 +204,7 @@ impl VaultIdManager {
 			.read()
 			.await
 			.iter()
-			.filter(|(_, value)| value.liquidated != true)
+			.filter(|(_, value)| !value.liquidated)
 			.map(|(vault_id, data)| (vault_id.clone(), data.stellar_wallet.clone()))
 			.collect()
 	}

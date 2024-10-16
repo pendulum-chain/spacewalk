@@ -132,7 +132,7 @@ impl VaultDataReader for VaultIdManager {
 		self.get_all_entries().await
 	}
 	async fn get_vault(&self, vault_id: &VaultId) -> Option<VaultData> {
-		self.get_vault(vault_id)
+		self.get_vault(vault_id).await
 	}
 }
 
