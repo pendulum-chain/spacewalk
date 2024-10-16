@@ -35,7 +35,7 @@ pub async fn listen_for_accept_replace(
 	parachain_rpc
 		.on_event::<AcceptReplaceEvent, _, _, _>(
 			|event| async move {
-				let vault = match vault_id_manager.get_active_vault(&event.old_vault_id).await {
+				let vault = match vault_id_manager.get_vault(&event.old_vault_id).await {
 					Some(x) => x,
 					None => return, // event not directed at this vault
 				};
