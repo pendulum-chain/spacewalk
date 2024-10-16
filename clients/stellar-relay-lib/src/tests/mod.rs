@@ -1,7 +1,7 @@
 use crate::{
 	connection::ConnectionInfo, node::NodeInfo, StellarOverlayConfig, StellarOverlayConnection,
 };
-use async_std::{future::timeout, sync::Mutex};
+use async_std::sync::Mutex;
 use serial_test::serial;
 use std::{sync::Arc, thread::sleep, time::Duration};
 use substrate_stellar_sdk::{
@@ -62,18 +62,15 @@ async fn stellar_overlay_should_receive_scp_messages() {
 		}
 
 		ov_conn_locked.stop();
-	});
-
-	// wait for the spawned thread to finish
-	timeout(Duration::from_secs(200), async move {
-		let _ = receiver.await.expect("should receive a message");
-
-		//assert
-		//ensure that we receive some scp message from stellar node
-		assert!(!scps_vec.lock().await.is_empty());
 	})
 	.await
-	.expect("time has elapsed");
+	.expect("should finish");
+
+	let _ = receiver.await.expect("should receive a message");
+
+	//assert
+	//ensure that we receive some scp message from stellar node
+	assert!(!scps_vec.lock().await.is_empty());
 }
 
 #[tokio::test(flavor = "multi_thread")]

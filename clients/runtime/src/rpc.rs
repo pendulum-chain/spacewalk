@@ -272,7 +272,7 @@ impl SpacewalkParachain {
 		let storage_key = metadata::storage().system().account(&self.account_id);
 		let on_chain_nonce = self
 			.get_latest_storage()
-			.await
+			.await?
 			.fetch(&storage_key)
 			.await
 			.transpose()
@@ -290,7 +290,7 @@ impl SpacewalkParachain {
 	where
 		Address: StorageAddress<IsFetchable = Yes>,
 	{
-		Ok(self.get_latest_storage().await.fetch(&address).await?)
+		Ok(self.get_latest_storage().await?.fetch(&address).await?)
 	}
 
 	async fn query_finalized_or_error<Address>(
@@ -310,7 +310,7 @@ impl SpacewalkParachain {
 	where
 		Address: StorageAddress<IsFetchable = Yes, IsDefaultable = Yes>,
 	{
-		Ok(self.get_latest_storage().await.fetch_or_default(&address).await?)
+		Ok(self.get_latest_storage().await?.fetch_or_default(&address).await?)
 	}
 
 	pub async fn get_finalized_block_hash(&self) -> Result<Option<H256>, Error> {
@@ -319,8 +319,11 @@ impl SpacewalkParachain {
 
 	async fn get_latest_storage(
 		&self,
-	) -> Storage<SpacewalkRuntime, OnlineClient<SpacewalkRuntime>> {
-		self.api.storage().at_latest().await.expect("failed to get latest storage")
+	) -> Result<Storage<SpacewalkRuntime, OnlineClient<SpacewalkRuntime>>, Error> {
+		self.api.storage().at_latest().await.map_err(|e| {
+			log::error!("Failed to get storage from the latest block hash");
+			Error::SubxtRuntimeError(e)
+		})
 	}
 
 	/// Subscribe to new parachain blocks.
@@ -502,7 +505,7 @@ pub trait UtilFuncs {
 impl UtilFuncs for SpacewalkParachain {
 	async fn get_current_chain_height(&self) -> Result<u32, Error> {
 		let height_query = metadata::storage().system().number();
-		let height = self.get_latest_storage().await.fetch(&height_query).await?;
+		let height = self.get_latest_storage().await?.fetch(&height_query).await?;
 		match height {
 			Some(height) => Ok(height),
 			None => Err(Error::BlockNotFound),
@@ -597,7 +600,7 @@ impl VaultRegistryPallet for SpacewalkParachain {
 	async fn get_all_vaults(&self) -> Result<Vec<SpacewalkVault>, Error> {
 		let mut vaults = Vec::new();
 		let key_addr = metadata::storage().vault_registry().vaults_iter();
-		let mut iter = self.get_latest_storage().await.iter(key_addr).await?;
+		let mut iter = self.get_latest_storage().await?.iter(key_addr).await?;
 		while let Ok((_, account)) = iter.next().await.ok_or(Error::VaultNotFound)? {
 			if let VaultStatus::Active(..) = account.status {
 				vaults.push(account);
@@ -782,7 +785,7 @@ impl CollateralBalancesPallet for SpacewalkParachain {
 	async fn get_native_balance_for_id(&self, id: &AccountId) -> Result<Balance, Error> {
 		let query = metadata::storage().system().account(id);
 
-		let result = self.get_latest_storage().await.fetch(&query).await?;
+		let result = self.get_latest_storage().await?.fetch(&query).await?;
 		Ok(result.map(|x| x.data.free).unwrap_or_default())
 	}
 
@@ -793,7 +796,7 @@ impl CollateralBalancesPallet for SpacewalkParachain {
 	) -> Result<Balance, Error> {
 		let query = metadata::storage().tokens().accounts(&id, &Static(currency_id));
 
-		let result = self.get_latest_storage().await.fetch(&query).await?;
+		let result = self.get_latest_storage().await?.fetch(&query).await?;
 		Ok(result.map(|x| x.free).unwrap_or_default())
 	}
 
@@ -808,7 +811,7 @@ impl CollateralBalancesPallet for SpacewalkParachain {
 	) -> Result<Balance, Error> {
 		let query = metadata::storage().tokens().accounts(&id, &Static(currency_id));
 
-		let result = self.get_latest_storage().await.fetch(&query).await?;
+		let result = self.get_latest_storage().await?.fetch(&query).await?;
 		Ok(result.map(|x| x.reserved).unwrap_or_default())
 	}
 
@@ -1077,7 +1080,7 @@ impl IssuePallet for SpacewalkParachain {
 		let mut issue_requests = Vec::new();
 
 		let key_addr = metadata::storage().issue().issue_requests_iter();
-		let mut iter = self.get_latest_storage().await.iter(key_addr).await?;
+		let mut iter = self.get_latest_storage().await?.iter(key_addr).await?;
 
 		while let Some(result) = iter.next().await {
 			let (issue_id, request) = result?;
