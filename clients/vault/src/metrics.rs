@@ -257,6 +257,7 @@ impl PerCurrencyMetrics {
 			publish_locked_collateral(vault, parachain_rpc.clone()),
 			publish_required_collateral(vault, parachain_rpc.clone()),
 			publish_collateralization(vault, parachain_rpc.clone()),
+			update_liquidation_status(vault)
 		);
 	}
 }
@@ -497,13 +498,9 @@ async fn publish_redeem_count<V: VaultDataReader>(
 	}
 }
 
-async fn update_liquidation_status<V: VaultDataReader>(vault: &VaultData, vault_id_manager: &V) {
-	let maybe_vault_data = vault_id_manager.get_vault(&vault.vault_id).await;
-
-	if let Some(vault_data) = maybe_vault_data {
-		let liquidated_flag: i64 = if vault_data.liquidated == true { 1 } else { 0 };
-		vault.metrics.liquidated.set(liquidated_flag);
-	}
+async fn update_liquidation_status(vault: &VaultData) {
+	let liquidated_flag: i64 = if vault.liquidated { 1 } else { 0 };
+	vault.metrics.liquidated.set(liquidated_flag);
 }
 
 pub async fn monitor_bridge_metrics(
@@ -524,7 +521,7 @@ pub async fn monitor_bridge_metrics(
 						.iter()
 						.filter(|vault| vault.vault_id.collateral_currency() == **currency_id)
 					{
-						let _ = update_liquidation_status(vault, vault_id_manager).await;
+						let _ = update_liquidation_status(vault).await;
 						let _ = publish_locked_collateral(vault, parachain_rpc.clone()).await;
 						let _ = publish_required_collateral(vault, parachain_rpc.clone()).await;
 						publish_collateralization(vault, parachain_rpc.clone()).await;
