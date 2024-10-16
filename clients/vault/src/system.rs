@@ -52,6 +52,7 @@ pub struct VaultData {
 	pub vault_id: VaultId,
 	pub stellar_wallet: ArcRwLock<StellarWallet>,
 	pub metrics: PerCurrencyMetrics,
+	pub liquidated: bool
 }
 
 #[derive(Clone)]
@@ -88,6 +89,7 @@ impl VaultIdManager {
 						vault_id: key.clone(),
 						stellar_wallet: stellar_wallet.clone(),
 						metrics: PerCurrencyMetrics::dummy(),
+						liquidated: false
 					},
 				)
 			})
@@ -95,12 +97,13 @@ impl VaultIdManager {
 		Self { vault_data: Arc::new(RwLock::new(vault_data)), spacewalk_parachain, stellar_wallet }
 	}
 
-	async fn add_vault_id(&self, vault_id: VaultId) -> Result<(), Error> {
+	async fn add_vault_id(&self, vault_id: VaultId, is_liquidated: bool) -> Result<(), Error> {
 		let metrics = PerCurrencyMetrics::new(&vault_id);
 		let data = VaultData {
 			vault_id: vault_id.clone(),
 			stellar_wallet: self.stellar_wallet.clone(),
 			metrics,
+			liquidated: is_liquidated
 		};
 		PerCurrencyMetrics::initialize_values(self.spacewalk_parachain.clone(), &data).await;
 
@@ -118,12 +121,17 @@ impl VaultIdManager {
 			.await?
 		{
 			// check if vault is registered
+			// IDEA 2. Since this is never added to the vault_id_manager, on the metrics (for some of them)
+			// we will not iterate through it and never add them.
 			match self.spacewalk_parachain.get_vault(&vault_id).await {
-				Ok(_) => self.add_vault_id(vault_id.clone()).await?,
-				Err(RuntimeError::VaultLiquidated) => tracing::error!(
+				Ok(_) => self.add_vault_id(vault_id.clone(), false).await?,
+				Err(RuntimeError::VaultLiquidated) => {
+
+					self.add_vault_id(vault_id.clone(), true).await?;
+					tracing::error!(
 					"[{}] Vault is liquidated -- not going to process events for this vault.",
-					vault_id.pretty_print()
-				),
+					vault_id.pretty_print());
+				},
 				Err(e) => return Err(e.into()),
 			}
 		}
@@ -138,7 +146,7 @@ impl VaultIdManager {
 					let vault_id = event.vault_id;
 					if self.spacewalk_parachain.is_this_vault(&vault_id) {
 						tracing::info!("New vault registered: {}", vault_id.pretty_print());
-						let _ = self.add_vault_id(vault_id).await;
+						let _ = self.add_vault_id(vault_id, false).await;
 					}
 				},
 				|err| tracing::error!("Error (RegisterVaultEvent): {}", err.to_string()),
@@ -154,7 +162,15 @@ impl VaultIdManager {
 		self.vault_data.read().await.get(vault_id).cloned()
 	}
 
+	// Get all ACTIVE vaults
 	pub async fn get_entries(&self) -> Vec<VaultData> {
+		self.vault_data.read().await.iter()
+			.filter(|(_, value)| value.liquidated != true)
+			.map(|(_, value)| value.clone()).collect()
+	}
+
+	// Get all vaults including liquidated ones.
+	pub async fn get_all_entries(&self) -> Vec<VaultData>{
 		self.vault_data.read().await.iter().map(|(_, value)| value.clone()).collect()
 	}
 
@@ -163,6 +179,7 @@ impl VaultIdManager {
 			.read()
 			.await
 			.iter()
+			.filter(|(_, value)| value.liquidated != true)
 			.map(|(vault_id, _)| vault_id.clone())
 			.collect()
 	}

@@ -117,8 +117,9 @@ pub trait VaultDataReader {
 
 #[async_trait]
 impl VaultDataReader for VaultIdManager {
+	// get_all_entries fetches from active and liquidated vaults
 	async fn get_entries(&self) -> Vec<VaultData> {
-		self.get_entries().await
+		self.get_all_entries().await
 	}
 }
 
