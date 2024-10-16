@@ -121,8 +121,6 @@ impl VaultIdManager {
 			.await?
 		{
 			// check if vault is registered
-			// IDEA 2. Since this is never added to the vault_id_manager, on the metrics (for some
-			// of them) we will not iterate through it and never add them.
 			match self.spacewalk_parachain.get_vault(&vault_id).await {
 				Ok(_) => self.add_vault_id(vault_id.clone(), false).await?,
 				Err(RuntimeError::VaultLiquidated) => {
