@@ -1,23 +1,19 @@
-use substrate_stellar_sdk::types::{ErrorCode, StellarMessage};
+use substrate_stellar_sdk::types::StellarMessage;
 use tokio::sync::{
 	mpsc,
-	mpsc::{
-		error::{SendError, TryRecvError},
-		Sender,
-	},
+	mpsc::{error::SendError, Sender},
 };
 use tracing::{error, info};
 
 use crate::{
 	connection::{poll_messages_from_stellar, ConnectionInfo, Connector},
-	helper::error_to_string,
 	node::NodeInfo,
 	Error,
 };
 
 /// Used to send/receive messages to/from Stellar Node
 pub struct StellarOverlayConnection {
-	sender: mpsc::Sender<StellarMessage>,
+	sender: Sender<StellarMessage>,
 	receiver: mpsc::Receiver<StellarMessage>,
 }
 
@@ -44,6 +40,17 @@ impl StellarOverlayConnection {
 
 		let connector = Connector::start(local_node_info, conn_info).await?;
 
+		#[cfg(tokio_unstable)]
+		tokio::task::Builder::new()
+			.name("Poll Stellar Messages")
+			.spawn(poll_messages_from_stellar(
+				connector,
+				send_to_user_sender,
+				send_to_node_receiver,
+			))
+			.expect("Failed to spawn poll_messages_from_stellar");
+
+		#[cfg(not(tokio_unstable))]
 		tokio::spawn(poll_messages_from_stellar(
 			connector,
 			send_to_user_sender,
@@ -56,26 +63,16 @@ impl StellarOverlayConnection {
 		})
 	}
 
-	pub fn listen(&mut self) -> Result<Option<StellarMessage>, Error> {
-		loop {
-			if !self.is_alive() {
-				return Err(Error::Disconnected);
-			}
-
-			match self.receiver.try_recv() {
-				Ok(StellarMessage::ErrorMsg(e)) => {
-					error!("listen(): received error message: {e:?}");
-					if e.code == ErrorCode::ErrConf || e.code == ErrorCode::ErrAuth {
-						return Err(Error::ConnectionFailed(error_to_string(e)));
-					}
-
-					return Ok(None);
-				},
-				Ok(msg) => return Ok(Some(msg)),
-				Err(TryRecvError::Disconnected) => return Err(Error::Disconnected),
-				Err(TryRecvError::Empty) => continue,
-			}
+	/// Listens for upcoming messages from Stellar Node via a receiver.
+	/// The sender pair can be found in [fn
+	/// poll_messages_from_stellar](../src/connection/connector/message_reader.rs)
+	pub async fn listen(&mut self) -> Result<Option<StellarMessage>, Error> {
+		if !self.is_alive() {
+			error!("listen(): sender half of overlay has closed.");
+			return Err(Error::Disconnected)
 		}
+
+		Ok(self.receiver.recv().await)
 	}
 
 	pub fn is_alive(&mut self) -> bool {

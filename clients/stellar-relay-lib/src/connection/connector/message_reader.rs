@@ -1,4 +1,7 @@
-use crate::connection::{xdr_converter::get_xdr_message_length, Connector, Error, Xdr};
+use crate::connection::{
+	connector::message_creation::crate_specific_error, xdr_converter::get_xdr_message_length,
+	Connector, Error, Xdr,
+};
 use async_std::io::ReadExt;
 use std::time::Duration;
 use substrate_stellar_sdk::{types::StellarMessage, XdrCodec};
@@ -6,7 +9,7 @@ use tokio::{
 	sync::{mpsc, mpsc::error::TryRecvError},
 	time::timeout,
 };
-use tracing::{debug, error, info, trace, warn};
+use tracing::{error, info, trace, warn};
 
 /// The waiting time for reading messages from stream.
 static READ_TIMEOUT_IN_SECS: u64 = 60;
@@ -39,30 +42,44 @@ pub(crate) async fn poll_messages_from_stellar(
 					error!("poll_messages_from_stellar(): Error occurred during sending message to node: {e:?}");
 				},
 			Err(TryRecvError::Disconnected) => break,
-			Err(TryRecvError::Empty) => {},
+			Err(TryRecvError::Empty) => {
+				// there's no message from user; wait for the next iteration
+				tokio::task::yield_now().await;
+			},
 		}
 
 		// check for messages from Stellar Node.
-		let xdr = match read_message_from_stellar(&mut connector).await {
-			Err(e) => {
+		// if reading took too much time, flag it as "disconnected"
+		let xdr = match timeout(
+			Duration::from_secs(READ_TIMEOUT_IN_SECS),
+			read_message_from_stellar(&mut connector),
+		)
+		.await
+		{
+			Ok(Ok(xdr)) => xdr,
+			Ok(Err(e)) => {
 				error!("poll_messages_from_stellar(): {e:?}");
-				break;
+				break
 			},
-			Ok(xdr) => xdr,
+			Err(_) => {
+				error!("poll_messages_from_stellar(): timed out");
+				break
+			},
 		};
 
 		match connector.process_raw_message(xdr).await {
-			Ok(Some(stellar_msg)) =>
-			// push message to user
-			{
-				if let Err(e) = send_to_user_sender.send(stellar_msg.clone()).await {
+			Ok(Some(stellar_msg)) => {
+				// push message to user
+				let stellar_msg_as_base64_xdr = stellar_msg.to_base64_xdr();
+				if let Err(e) = send_to_user_sender.send(stellar_msg).await {
 					warn!("poll_messages_from_stellar(): Error occurred during sending message {} to user: {e:?}",
-						String::from_utf8(stellar_msg.to_base64_xdr())
-						.unwrap_or_else(|_| format!("{:?}", stellar_msg.to_base64_xdr()))
-					);
+					String::from_utf8(stellar_msg_as_base64_xdr.clone())
+					.unwrap_or_else(|_| format!("{stellar_msg_as_base64_xdr:?}"))
+				);
 				}
+				tokio::task::yield_now().await;
 			},
-			Ok(None) => {},
+			Ok(None) => tokio::task::yield_now().await,
 			Err(e) => {
 				error!("poll_messages_from_stellar(): Error occurred during processing xdr message: {e:?}");
 				break;
@@ -70,12 +87,20 @@ pub(crate) async fn poll_messages_from_stellar(
 		}
 	}
 
+	// push error to user
+	if let Err(e) = send_to_user_sender.send(crate_specific_error()).await {
+		warn!(
+			"poll_messages_from_stellar(): Error occurred during sending message {} to user: {e:?}",
+			e
+		);
+	}
+
 	// make sure to shutdown the connector
 	connector.stop();
 	send_to_node_receiver.close();
 	drop(send_to_user_sender);
 
-	debug!("poll_messages_from_stellar(): stopped.");
+	info!("poll_messages_from_stellar(): stopped.");
 }
 
 /// Returns Xdr format of the `StellarMessage` sent from the Stellar Node
@@ -90,13 +115,8 @@ async fn read_message_from_stellar(connector: &mut Connector) -> Result<Xdr, Err
 		//  1. the length of the next stellar message
 		//  2. the remaining bytes of the previous stellar message
 		// return Timeout error if reading time has elapsed.
-		match timeout(
-			Duration::from_secs(READ_TIMEOUT_IN_SECS),
-			connector.tcp_stream.read(&mut buff_for_reading),
-		)
-		.await
-		{
-			Ok(Ok(0)) => continue,
+		match connector.tcp_stream.read(&mut buff_for_reading).await {
+			Ok(0) => continue,
 			Ok(_) if lack_bytes_from_prev == 0 => {
 				// if there are no more bytes lacking from the previous message,
 				// then check the size of next stellar message.
@@ -112,7 +132,7 @@ async fn read_message_from_stellar(connector: &mut Connector) -> Result<Xdr, Err
 				// let's start reading the actual stellar message.
 				readbuf = vec![0; expect_msg_len];
 
-				match read_message(
+				match is_reading_complete(
 					connector,
 					&mut lack_bytes_from_prev,
 					&mut readbuf,
@@ -120,15 +140,15 @@ async fn read_message_from_stellar(connector: &mut Connector) -> Result<Xdr, Err
 				)
 				.await
 				{
-					Ok(None) => continue,
-					Ok(Some(xdr)) => return Ok(xdr),
+					Ok(false) => continue,
+					Ok(true) => return Ok(readbuf),
 					Err(e) => {
 						trace!("read_message_from_stellar(): ERROR: {e:?}");
-						return Err(e);
+						return Err(e)
 					},
 				}
 			},
-			Ok(Ok(size)) => {
+			Ok(size) => {
 				// The next few bytes was read. Add it to the readbuf.
 				lack_bytes_from_prev = lack_bytes_from_prev.saturating_sub(size);
 				readbuf.append(&mut buff_for_reading);
@@ -136,30 +156,30 @@ async fn read_message_from_stellar(connector: &mut Connector) -> Result<Xdr, Err
 				buff_for_reading = vec![0; 4];
 
 				// let's read the continuation number of bytes from the previous message.
-				match read_unfinished_message(connector, &mut lack_bytes_from_prev, &mut readbuf)
-					.await
+				match is_reading_unfinished_message_complete(
+					connector,
+					&mut lack_bytes_from_prev,
+					&mut readbuf,
+				)
+				.await
 				{
-					Ok(None) => continue,
-					Ok(Some(xdr)) => return Ok(xdr),
+					Ok(false) => continue,
+					Ok(true) => return Ok(readbuf),
 					Err(e) => {
 						trace!("read_message_from_stellar(): ERROR: {e:?}");
-						return Err(e);
+						return Err(e)
 					},
 				}
 			},
-			Ok(Err(e)) => {
+			Err(e) => {
 				trace!("read_message_from_stellar(): ERROR reading messages: {e:?}");
-				return Err(Error::ReadFailed(e.to_string()));
-			},
-			Err(_) => {
-				trace!("read_message_from_stellar(): reading time elapsed.");
-				return Err(Error::Timeout);
+				return Err(Error::ReadFailed(e.to_string()))
 			},
 		}
 	}
 }
 
-/// Returns Xdr when all bytes from the stream have successfully been converted; else None.
+/// Returns true when all bytes from the stream have successfully been converted; else false.
 /// This reads a number of bytes based on the expected message length.
 ///
 /// # Arguments
@@ -168,12 +188,12 @@ async fn read_message_from_stellar(connector: &mut Connector) -> Result<Xdr, Err
 /// * `lack_bytes_from_prev` - the number of bytes remaining, to complete the previous message
 /// * `readbuf` - the buffer that holds the bytes of the previous and incomplete message
 /// * `xpect_msg_len` - the expected # of bytes of the Stellar message
-async fn read_message(
+async fn is_reading_complete(
 	connector: &mut Connector,
 	lack_bytes_from_prev: &mut usize,
 	readbuf: &mut Vec<u8>,
 	xpect_msg_len: usize,
-) -> Result<Option<Xdr>, Error> {
+) -> Result<bool, Error> {
 	let actual_msg_len = connector
 		.tcp_stream
 		.read(readbuf)
@@ -182,7 +202,7 @@ async fn read_message(
 
 	// only when the message has the exact expected size bytes, should we send to user.
 	if actual_msg_len == xpect_msg_len {
-		return Ok(Some(readbuf.clone()));
+		return Ok(true)
 	}
 
 	// The next bytes are remnants from the previous stellar message.
@@ -193,10 +213,10 @@ async fn read_message(
 		"read_message(): received only partial message. Need {lack_bytes_from_prev} bytes to complete."
 	);
 
-	Ok(None)
+	Ok(false)
 }
 
-/// Returns Xdr when all bytes from the stream have successfully been converted; else None.
+/// Returns true when all bytes from the stream have successfully been converted; else false.
 /// Reads a continuation of bytes that belong to the previous message
 ///
 /// # Arguments
@@ -204,11 +224,11 @@ async fn read_message(
 ///   Stellar Node
 /// * `lack_bytes_from_prev` - the number of bytes remaining, to complete the previous message
 /// * `readbuf` - the buffer that holds the bytes of the previous and incomplete message
-async fn read_unfinished_message(
+async fn is_reading_unfinished_message_complete(
 	connector: &mut Connector,
 	lack_bytes_from_prev: &mut usize,
 	readbuf: &mut Vec<u8>,
-) -> Result<Option<Xdr>, Error> {
+) -> Result<bool, Error> {
 	// let's read the continuation number of bytes from the previous message.
 	let mut cont_buf = vec![0; *lack_bytes_from_prev];
 
@@ -223,7 +243,7 @@ async fn read_unfinished_message(
 		trace!("read_unfinished_message(): received continuation from the previous message.");
 		readbuf.append(&mut cont_buf);
 
-		return Ok(Some(readbuf.clone()));
+		return Ok(true)
 	}
 
 	// this partial message is not enough to complete the previous message.
@@ -236,5 +256,5 @@ async fn read_unfinished_message(
         );
 	}
 
-	Ok(None)
+	Ok(false)
 }

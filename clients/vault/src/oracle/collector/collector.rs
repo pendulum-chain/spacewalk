@@ -1,7 +1,7 @@
 use std::{default::Default, sync::Arc};
 
 use parking_lot::{lock_api::RwLockReadGuard, RawRwLock, RwLock};
-use stellar_relay_lib::helper::to_base64_xdr_string;
+use primitives::stellar::StellarTypeToBase64String;
 
 use stellar_relay_lib::sdk::{
 	network::{Network, PUBLIC_NETWORK, TEST_NETWORK},
@@ -158,7 +158,7 @@ impl ScpMessageCollector {
 			tracing::debug!("Collecting SCPEnvelopes for slot {slot}: success");
 			tracing::trace!(
 				"Collecting SCPEnvelopes for slot {slot}: the scp envelope: {}",
-				to_base64_xdr_string(&scp_envelope.statement)
+				scp_envelope.statement.as_base64_encoded_string()
 			);
 			envelopes_map.insert(slot, vec![scp_envelope]);
 		}

@@ -3,7 +3,7 @@ use std::{collections::HashMap, convert::TryInto, sync::Arc, time::Duration};
 use frame_support::assert_ok;
 use futures::{
 	channel::mpsc,
-	future::{join, join3, join4},
+	future::{join, join3, join4, join5},
 	FutureExt, SinkExt,
 };
 use serial_test::serial;
@@ -24,8 +24,6 @@ mod helper;
 use helper::*;
 use primitives::DecimalsLookup;
 use subxt::utils::AccountId32 as AccountId;
-use vault::oracle::{random_stellar_relay_config, start_oracle_agent};
-use wallet::keys::get_source_secret_key_from_env;
 
 #[tokio::test(flavor = "multi_thread")]
 #[serial]
@@ -605,7 +603,6 @@ async fn test_issue_cancel_succeeds() {
 }
 
 #[tokio::test(flavor = "multi_thread")]
-#[ntest::timeout(1_200_000)] // timeout at 20 minutes
 #[serial]
 async fn test_issue_execution_succeeds_from_archive_on_mainnet() {
 	let is_public_network = true;
@@ -613,7 +610,6 @@ async fn test_issue_execution_succeeds_from_archive_on_mainnet() {
 }
 
 #[tokio::test(flavor = "multi_thread")]
-#[ntest::timeout(1_200_000)] // timeout at 20 minutes
 #[serial]
 async fn test_issue_execution_succeeds_from_archive_on_testnet() {
 	let is_public_network = false;
@@ -623,7 +619,7 @@ async fn test_issue_execution_succeeds_from_archive_on_testnet() {
 async fn test_issue_execution_succeeds_from_archive_on_network(is_public_network: bool) {
 	test_with_vault(
 		is_public_network,
-		|client, _vault_wallet, user_wallet, _oracle_agent, vault_id, vault_provider| async move {
+		|client, _vault_wallet, user_wallet, oracle_agent, vault_id, vault_provider| async move {
 			let user_provider = setup_provider(client.clone(), AccountKeyring::Dave).await;
 
 			let public_key = default_vault_stellar_address_as_binary(is_public_network);
@@ -674,17 +670,6 @@ async fn test_issue_execution_succeeds_from_archive_on_network(is_public_network
 
 			// We sleep here in order to wait for the fallback to the archive to be necessary
 			sleep(Duration::from_secs(5 * 60)).await;
-
-			let shutdown_tx = ShutdownSender::new();
-			let stellar_config = random_stellar_relay_config(is_public_network);
-
-			let vault_stellar_secret = get_source_secret_key_from_env(is_public_network);
-			// Create new oracle agent with the same configuration as the previous one
-			let oracle_agent =
-				start_oracle_agent(stellar_config.clone(), &vault_stellar_secret, shutdown_tx)
-					.await
-					.expect("failed to start agent");
-			let oracle_agent = Arc::new(oracle_agent);
 
 			// Loop pending proofs until it is ready
 			let proof = oracle_agent.get_proof(slot).await.expect("Proof should be available");
@@ -1163,8 +1148,10 @@ async fn test_execute_open_requests_succeeds() {
 			// add it to the set
 			sleep(Duration::from_secs(5)).await;
 
+			let (precheck_signal, mut receiver) = tokio::sync::broadcast::channel(1);
 			let shutdown_tx = ShutdownSender::new();
-			join4(
+
+			join5(
 				vault::service::execute_open_requests(
 					shutdown_tx.clone(),
 					vault_provider,
@@ -1172,8 +1159,12 @@ async fn test_execute_open_requests_succeeds() {
 					vault_wallet.clone(),
 					oracle_agent.clone(),
 					Duration::from_secs(0),
+					precheck_signal,
 				)
 				.map(Result::unwrap),
+				async move {
+					assert_ok!(receiver.recv().await);
+				},
 				// Redeem 0 should be executed without creating an extra payment since we already
 				// sent one just before
 				assert_execute_redeem_event(TIMEOUT * 3, user_provider.clone(), redeem_ids[0]),

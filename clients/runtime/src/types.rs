@@ -6,6 +6,7 @@ pub use subxt::ext::sp_core::sr25519::Pair as KeyPair;
 use subxt::utils::Static;
 
 use crate::{metadata, Config, SpacewalkRuntime, SS58_PREFIX};
+use primitives::stellar::PublicKey;
 
 pub type AccountId = subxt::utils::AccountId32;
 pub type Address = subxt::ext::sp_runtime::MultiAddress<AccountId, u32>;
@@ -16,8 +17,6 @@ pub type Nonce = u32;
 pub type H256 = subxt::ext::sp_core::H256;
 pub type SpacewalkSigner = subxt::tx::PairSigner<SpacewalkRuntime, KeyPair>;
 pub type FixedU128 = sp_arithmetic::FixedU128;
-
-pub use substrate_stellar_sdk as stellar;
 
 pub type IssueId = H256;
 
@@ -139,19 +138,15 @@ pub mod currency_id {
 					Asset::AlphaNum4 { code, issuer } => Ok(format!(
 						"Stellar({:?}:{:?})",
 						from_utf8(code).unwrap_or_default(),
-						from_utf8(
-							stellar::PublicKey::from_binary(*issuer).to_encoding().as_slice()
-						)
-						.unwrap_or_default()
+						from_utf8(PublicKey::from_binary(*issuer).to_encoding().as_slice())
+							.unwrap_or_default()
 					)
 					.replace('\"', "")),
 					Asset::AlphaNum12 { code, issuer } => Ok(format!(
 						"Stellar({:?}:{:?})",
 						from_utf8(code).unwrap_or_default(),
-						from_utf8(
-							stellar::PublicKey::from_binary(*issuer).to_encoding().as_slice()
-						)
-						.unwrap_or_default()
+						from_utf8(PublicKey::from_binary(*issuer).to_encoding().as_slice())
+							.unwrap_or_default()
 					)
 					.replace('\"', "")),
 				},

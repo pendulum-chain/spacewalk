@@ -1,7 +1,7 @@
 use crate::{
 	connection::ConnectionInfo, node::NodeInfo, StellarOverlayConfig, StellarOverlayConnection,
 };
-use async_std::{future::timeout, sync::Mutex};
+use async_std::sync::Mutex;
 use serial_test::serial;
 use std::{sync::Arc, thread::sleep, time::Duration};
 use substrate_stellar_sdk::{
@@ -31,10 +31,7 @@ fn overlay_infos(is_mainnet: bool) -> (NodeInfo, ConnectionInfo) {
 
 	let cfg = StellarOverlayConfig::try_from_path(&path).expect("should be able to extract config");
 
-	(
-		cfg.node_info(),
-		cfg.connection_info(&secret_key(is_mainnet)).expect("should return conn info"),
-	)
+	(cfg.node_info(), cfg.connection_info(secret_key(is_mainnet)).expect("should return conn info"))
 }
 
 #[tokio::test(flavor = "multi_thread")]
@@ -43,23 +40,33 @@ async fn stellar_overlay_should_receive_scp_messages() {
 	let (node_info, conn_info) = overlay_infos(false);
 
 	let overlay_connection = Arc::new(Mutex::new(
-		StellarOverlayConnection::connect(node_info, conn_info).await.unwrap(),
+		StellarOverlayConnection::connect(node_info, conn_info)
+			.await
+			.expect("should connect"),
 	));
+
+	// to check if we receive any scp message from stellar node
+	let (sender, receiver) = tokio::sync::oneshot::channel();
 	let ov_conn = overlay_connection.clone();
 
 	let scps_vec = Arc::new(Mutex::new(vec![]));
 	let scps_vec_clone = scps_vec.clone();
-
-	timeout(Duration::from_secs(300), async move {
+	tokio::spawn(async move {
 		let mut ov_conn_locked = ov_conn.lock().await;
-		if let Ok(Some(msg)) = ov_conn_locked.listen() {
-			scps_vec_clone.lock().await.push(msg);
-
-			ov_conn_locked.stop();
+		loop {
+			if let Some(msg) = ov_conn_locked.listen().await.expect("should return a message") {
+				scps_vec_clone.lock().await.push(msg);
+				sender.send(()).unwrap();
+				break;
+			}
 		}
+
+		ov_conn_locked.stop();
 	})
 	.await
-	.expect("time has elapsed");
+	.expect("should finish");
+
+	let _ = receiver.await.expect("should receive a message");
 
 	//assert
 	//ensure that we receive some scp message from stellar node
@@ -68,6 +75,7 @@ async fn stellar_overlay_should_receive_scp_messages() {
 
 #[tokio::test(flavor = "multi_thread")]
 #[serial]
+#[ntest::timeout(300_000)] // timeout at 5 minutes
 async fn stellar_overlay_should_receive_tx_set() {
 	//arrange
 	fn get_tx_set_hash(x: &ScpStatementExternalize) -> Hash {
@@ -86,10 +94,10 @@ async fn stellar_overlay_should_receive_tx_set() {
 	let tx_set_hashes_clone = tx_set_hashes.clone();
 	let actual_tx_set_hashes_clone = actual_tx_set_hashes.clone();
 
-	timeout(Duration::from_secs(500), async move {
-		let mut ov_conn_locked = ov_conn.lock().await;
+	let mut ov_conn_locked = ov_conn.lock().await;
 
-		while let Ok(Some(msg)) = ov_conn_locked.listen() {
+	loop {
+		if let Ok(Some(msg)) = ov_conn_locked.listen().await {
 			match msg {
 				StellarMessage::ScpMessage(msg) => {
 					if let ScpStatementPledges::ScpStExternalize(stmt) = &msg.statement.pledges {
@@ -114,9 +122,7 @@ async fn stellar_overlay_should_receive_tx_set() {
 				_ => {},
 			}
 		}
-	})
-	.await
-	.expect("time has elapsed");
+	}
 
 	//ensure that we receive some tx set from stellar node
 	let expected_hashes = tx_set_hashes.lock().await;
@@ -130,14 +136,24 @@ async fn stellar_overlay_should_receive_tx_set() {
 
 #[tokio::test(flavor = "multi_thread")]
 #[serial]
+#[ntest::timeout(300_000)] // timeout at 5 minutes
 async fn stellar_overlay_disconnect_works() {
 	let (node_info, conn_info) = overlay_infos(false);
 
 	let mut overlay_connection =
 		StellarOverlayConnection::connect(node_info.clone(), conn_info).await.unwrap();
 
-	// let it run for a second, before disconnecting.
-	sleep(Duration::from_secs(1));
+	loop {
+		if let Some(message) = overlay_connection.listen().await.expect("should return a message") {
+			match message {
+				// fail the test case if an error message is received
+				StellarMessage::ErrorMsg(_) => panic!("Error message received: {:?}", message),
+				// it means it has received a message from stellar node
+				_ => break,
+			}
+		}
+	}
+
 	overlay_connection.stop();
 
 	// let the disconnection call pass for a few seconds, before checking its status.

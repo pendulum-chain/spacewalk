@@ -33,8 +33,8 @@ pub async fn listen_for_redeem_requests(
 				// we will need to capture the arguments by value rather than by reference, so clone
 				// these:
 				let parachain_rpc = parachain_rpc.clone();
+				let oracle_agent_clone = oracle_agent.clone();
 				// Spawn a new task so that we handle these events concurrently
-				let oracle_agent = oracle_agent.clone();
 				spawn_cancelable(shutdown_tx.subscribe(), async move {
 					tracing::info!(
 						"Received new RequestRedeemEvent {:?}. Trying to execute...",
@@ -46,7 +46,7 @@ pub async fn listen_for_redeem_requests(
 							parachain_rpc.get_redeem_request(event.redeem_id).await?,
 							payment_margin,
 						)?;
-						request.pay_and_execute(parachain_rpc, vault, oracle_agent).await
+						request.pay_and_execute(parachain_rpc, vault, oracle_agent_clone).await
 					}
 					.await;
 

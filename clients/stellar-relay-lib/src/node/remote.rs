@@ -36,11 +36,11 @@ impl Debug for RemoteInfo {
 }
 
 impl RemoteInfo {
-	pub fn new(hello: &Hello) -> Self {
+	pub fn new(hello: Hello) -> Self {
 		RemoteInfo {
 			sequence: 0,
-			pub_key_ecdh: hello.cert.pubkey.clone(),
-			pub_key: hello.peer_id.clone(),
+			pub_key_ecdh: hello.cert.pubkey,
+			pub_key: hello.peer_id,
 			nonce: hello.nonce,
 			node: NodeInfo {
 				ledger_version: hello.ledger_version,
