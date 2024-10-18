@@ -9,8 +9,10 @@ use lazy_static::lazy_static;
 use primitives::{stellar, Asset, DecimalsLookup};
 use runtime::{
 	prometheus::{
-		gather, proto::MetricFamily, Encoder, Gauge, GaugeVec, IntCounter, IntGaugeVec, Opts,
-		Registry, TextEncoder,
+		core::{AtomicI64, GenericGauge},
+		gather,
+		proto::MetricFamily,
+		Encoder, Gauge, GaugeVec, IntCounter, IntGaugeVec, Opts, Registry, TextEncoder,
 	},
 	types::currency_id::CurrencyIdExt,
 	AggregateUpdatedEvent, CollateralBalancesPallet, CurrencyId, Error as RuntimeError, FixedU128,
@@ -83,6 +85,11 @@ lazy_static! {
 	pub static ref RESTART_COUNT: IntCounter =
 		IntCounter::new("restart_count", "Number of service restarts")
 			.expect("Failed to create prometheus metric");
+	pub static ref LIQUIDATED: IntGaugeVec = IntGaugeVec::new(
+		Opts::new("liquidated", "Boolean reporting if the vault is currently liquidated"),
+		&[CURRENCY_LABEL]
+	)
+	.expect("Failed to create prometheus metric");
 }
 const STELLAR_NATIVE_ASSET_TYPE: [u8; 6] = *b"native";
 
@@ -108,6 +115,7 @@ pub struct PerCurrencyMetrics {
 	asset_balance: XLMBalance,
 	issues: RequestCounter,
 	redeems: RequestCounter,
+	liquidated: GenericGauge<AtomicI64>,
 }
 
 #[async_trait]
@@ -117,8 +125,9 @@ pub trait VaultDataReader {
 
 #[async_trait]
 impl VaultDataReader for VaultIdManager {
+	// get_all_entries fetches from active and liquidated vaults
 	async fn get_entries(&self) -> Vec<VaultData> {
-		self.get_entries().await
+		self.get_all_entries().await
 	}
 }
 
@@ -231,6 +240,7 @@ impl PerCurrencyMetrics {
 				completed_count: REDEEMS.with(&request_type_label("completed")),
 				expired_count: REDEEMS.with(&request_type_label("expired")),
 			},
+			liquidated: LIQUIDATED.with(&labels),
 		}
 	}
 
@@ -242,6 +252,7 @@ impl PerCurrencyMetrics {
 			publish_locked_collateral(vault, parachain_rpc.clone()),
 			publish_required_collateral(vault, parachain_rpc.clone()),
 			publish_collateralization(vault, parachain_rpc.clone()),
+			update_liquidation_status(vault)
 		);
 	}
 }
@@ -259,6 +270,7 @@ pub fn register_custom_metrics() -> Result<(), RuntimeError> {
 	REGISTRY.register(Box::new(MEAN_POLL_DURATION.clone()))?;
 	REGISTRY.register(Box::new(MEAN_SCHEDULED_DURATION.clone()))?;
 	REGISTRY.register(Box::new(RESTART_COUNT.clone()))?;
+	REGISTRY.register(Box::new(LIQUIDATED.clone()))?;
 
 	Ok(())
 }
@@ -481,6 +493,11 @@ async fn publish_redeem_count<V: VaultDataReader>(
 	}
 }
 
+async fn update_liquidation_status(vault: &VaultData) {
+	let liquidated_flag: i64 = if vault.liquidated { 1 } else { 0 };
+	vault.metrics.liquidated.set(liquidated_flag);
+}
+
 pub async fn monitor_bridge_metrics(
 	parachain_rpc: SpacewalkParachain,
 	vault_id_manager: VaultIdManager,
@@ -499,6 +516,7 @@ pub async fn monitor_bridge_metrics(
 						.iter()
 						.filter(|vault| vault.vault_id.collateral_currency() == **currency_id)
 					{
+						let _ = update_liquidation_status(vault).await;
 						let _ = publish_locked_collateral(vault, parachain_rpc.clone()).await;
 						let _ = publish_required_collateral(vault, parachain_rpc.clone()).await;
 						publish_collateralization(vault, parachain_rpc.clone()).await;

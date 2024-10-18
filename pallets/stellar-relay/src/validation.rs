@@ -92,7 +92,7 @@ fn is_node_id_exist<T: Config>(
 			envelope.statement.slot_index,
 			envelope.statement.node_id
 		);
-		return None
+		return None;
 	}
 
 	Some(node_id)
@@ -174,7 +174,7 @@ pub fn validate_envelopes<'a, T: Config>(
 	for envelope in envelopes {
 		let Some(node_id) = is_node_id_exist::<T>(envelope, validators) else {
 			// ignore this envelope; continue to the next ones
-			continue
+			continue;
 		};
 
 		// Check if all envelopes are using the same slot index
