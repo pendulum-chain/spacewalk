@@ -1,4 +1,3 @@
-use jsonrpc_core_client::RpcError;
 use sp_std::str::Utf8Error;
 use thiserror::Error;
 use tokio_stream::wrappers::errors::BroadcastStreamRecvError;
@@ -21,8 +20,6 @@ pub enum Error {
 	#[error("Faucet url not set")]
 	FaucetUrlNotSet,
 
-	#[error("RPC error: {0}")]
-	RpcError(#[from] RpcError),
 	#[error("RuntimeError: {0}")]
 	RuntimeError(#[from] RuntimeError),
 	#[error("BroadcastStreamRecvError: {0}")]

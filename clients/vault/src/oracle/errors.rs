@@ -4,69 +4,45 @@ use tokio::sync::{mpsc, oneshot};
 
 use stellar_relay_lib::sdk::StellarSdkError;
 
-#[derive(Debug, err_derive::Error)]
+#[derive(Debug, thiserror::Error)]
 pub enum Error {
-	#[error(display = "{:?}", _0)]
+	#[error("Stellar SDK Error: {0:?}")]
 	StellarSdkError(StellarSdkError),
 
-	#[error(display = "{:?}", _0)]
-	TryFromSliceError(TryFromSliceError),
+	#[error("TryFromSliceError: {0}")]
+	TryFromSliceError(#[from] TryFromSliceError),
 
-	#[error(display = "{:?}", _0)]
-	SerdeError(bincode::Error),
+	#[error("Serde Error: {0}")]
+	SerdeError(#[from] bincode::Error),
 
-	#[error(display = "{:?}", _0)]
-	StdIoError(std::io::Error),
+	#[error("StdIoError: {0}")]
+	StdIoError(#[from] std::io::Error),
 
-	#[error(display = "{:?}", _0)]
+	#[error("Other: {0}")]
 	Other(String),
 
-	#[error(display = "{:?}", _0)]
-	ConnError(stellar_relay_lib::Error),
+	#[error("Stellar Relay Error: {0}")]
+	ConnError(#[from] stellar_relay_lib::Error),
 
-	#[error(display = "{:?}", _0)]
-	WalletError(wallet::error::Error),
+	#[error("Wallet Error: {0}")]
+	WalletError(#[from] wallet::error::Error),
 
-	#[error(display = "{:?}", _0)]
+	#[error("Proof Timeout: {0}")]
 	ProofTimeout(String),
 
-	#[error(display = "{} is not initialized", _0)]
+	#[error("Unititialized: {0}")]
 	Uninitialized(String),
 
-	#[error(display = "{}", _0)]
+	#[error("Archive Error: {0}")]
 	ArchiveError(String),
 
-	#[error(display = "{}", _0)]
+	#[error("ArchiveResponseError: {0}")]
 	ArchiveResponseError(String),
 }
 
 impl From<StellarSdkError> for Error {
 	fn from(e: StellarSdkError) -> Self {
 		Error::StellarSdkError(e)
-	}
-}
-
-impl From<std::io::Error> for Error {
-	fn from(e: std::io::Error) -> Self {
-		Error::StdIoError(e)
-	}
-}
-
-impl From<bincode::Error> for Error {
-	fn from(e: bincode::Error) -> Self {
-		Error::SerdeError(e)
-	}
-}
-
-impl From<TryFromSliceError> for Error {
-	fn from(e: TryFromSliceError) -> Self {
-		Error::TryFromSliceError(e)
-	}
-}
-
-impl From<stellar_relay_lib::Error> for Error {
-	fn from(e: stellar_relay_lib::Error) -> Self {
-		Error::ConnError(e)
 	}
 }
 

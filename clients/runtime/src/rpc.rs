@@ -11,7 +11,7 @@ use subxt::{
 	client::OnlineClient,
 	events::StaticEvent,
 	rpc_params,
-	storage::{address::Yes, StorageAddress},
+	storage::{address::Yes, Storage, StorageAddress},
 	tx::TxPayload,
 	utils::Static,
 	Error as BasicError,
@@ -163,7 +163,7 @@ impl SpacewalkParachain {
 			pub aux: ImportedAux,
 		}
 
-		let _head = self.get_finalized_block_hash().await.unwrap();
+		let _head = self.get_finalized_block_hash().await.expect("failed to get head");
 
 		let _: CreatedBlock<Hash> = self
 			.rpc
@@ -175,7 +175,7 @@ impl SpacewalkParachain {
 	/// This function is used in tests to finalize the current block.
 	#[cfg(feature = "testing-utils")]
 	pub async fn manual_finalize(&self) {
-		let head = self.get_finalized_block_hash().await.unwrap();
+		let head = self.get_finalized_block_hash().await.expect("failed to get head");
 
 		let _: bool = self
 			.rpc
@@ -271,11 +271,9 @@ impl SpacewalkParachain {
 		// For getting the nonce, use latest, possibly non-finalized block.
 		let storage_key = metadata::storage().system().account(&self.account_id);
 		let on_chain_nonce = self
-			.api
-			.storage()
-			.at_latest()
+			.get_latest_storage()
 			.await
-			.unwrap()
+			.expect("Failed to get storage from the latest block hash")
 			.fetch(&storage_key)
 			.await
 			.transpose()
@@ -293,7 +291,7 @@ impl SpacewalkParachain {
 	where
 		Address: StorageAddress<IsFetchable = Yes>,
 	{
-		Ok(self.api.storage().at_latest().await.unwrap().fetch(&address).await?)
+		Ok(self.get_latest_storage().await?.fetch(&address).await?)
 	}
 
 	async fn query_finalized_or_error<Address>(
@@ -313,11 +311,20 @@ impl SpacewalkParachain {
 	where
 		Address: StorageAddress<IsFetchable = Yes, IsDefaultable = Yes>,
 	{
-		Ok(self.api.storage().at_latest().await.unwrap().fetch_or_default(&address).await?)
+		Ok(self.get_latest_storage().await?.fetch_or_default(&address).await?)
 	}
 
 	pub async fn get_finalized_block_hash(&self) -> Result<Option<H256>, Error> {
 		Ok(Some(self.api.backend().latest_finalized_block_ref().await?.hash()))
+	}
+
+	async fn get_latest_storage(
+		&self,
+	) -> Result<Storage<SpacewalkRuntime, OnlineClient<SpacewalkRuntime>>, Error> {
+		self.api.storage().at_latest().await.map_err(|e| {
+			log::error!("Failed to get storage from the latest block hash");
+			Error::SubxtRuntimeError(e)
+		})
 	}
 
 	/// Subscribe to new parachain blocks.
@@ -427,17 +434,17 @@ impl SpacewalkParachain {
 		self.api
 			.tx()
 			.create_signed_with_nonce(&call, &signer, nonce.into(), Default::default())
-			.unwrap()
+			.expect("failed to create a signed extrinsic")
 			.submit_and_watch()
 			.await
-			.unwrap();
+			.expect("failed to submit extrinsic to chain");
 
 		// now call with outdated nonce
 		let result = self
 			.api
 			.tx()
 			.create_signed_with_nonce(&call, &signer, 0, Default::default())
-			.unwrap()
+			.expect("failed to create a signed extrinsic")
 			.submit_and_watch()
 			.await;
 
@@ -462,17 +469,17 @@ impl SpacewalkParachain {
 		self.api
 			.tx()
 			.create_signed_with_nonce(&call, &signer, nonce.into(), Default::default())
-			.unwrap()
+			.expect("failed to create a signed extrinsic")
 			.submit()
 			.await
-			.unwrap();
+			.expect("failed to submit extrinsic to chain");
 
 		// should call with the same nonce
 		let result = self
 			.api
 			.tx()
 			.create_signed_with_nonce(&call, &signer, nonce.into(), Default::default())
-			.unwrap()
+			.expect("failed to create a signed extrinsic")
 			.submit_and_watch()
 			.await;
 
@@ -499,7 +506,7 @@ pub trait UtilFuncs {
 impl UtilFuncs for SpacewalkParachain {
 	async fn get_current_chain_height(&self) -> Result<u32, Error> {
 		let height_query = metadata::storage().system().number();
-		let height = self.api.storage().at_latest().await.unwrap().fetch(&height_query).await?;
+		let height = self.get_latest_storage().await?.fetch(&height_query).await?;
 		match height {
 			Some(height) => Ok(height),
 			None => Err(Error::BlockNotFound),
@@ -510,12 +517,12 @@ impl UtilFuncs for SpacewalkParachain {
 		self.native_currency_id
 	}
 
-	fn is_this_vault(&self, vault_id: &VaultId) -> bool {
-		&vault_id.account_id == self.get_account_id()
-	}
-
 	fn get_account_id(&self) -> &AccountId {
 		&self.account_id
+	}
+
+	fn is_this_vault(&self, vault_id: &VaultId) -> bool {
+		&vault_id.account_id == self.get_account_id()
 	}
 }
 
@@ -594,7 +601,7 @@ impl VaultRegistryPallet for SpacewalkParachain {
 	async fn get_all_vaults(&self) -> Result<Vec<SpacewalkVault>, Error> {
 		let mut vaults = Vec::new();
 		let key_addr = metadata::storage().vault_registry().vaults_iter();
-		let mut iter = self.api.storage().at_latest().await.unwrap().iter(key_addr).await?;
+		let mut iter = self.get_latest_storage().await?.iter(key_addr).await?;
 		while let Ok((_, account)) = iter.next().await.ok_or(Error::VaultNotFound)? {
 			if let VaultStatus::Active(..) = account.status {
 				vaults.push(account);
@@ -779,7 +786,7 @@ impl CollateralBalancesPallet for SpacewalkParachain {
 	async fn get_native_balance_for_id(&self, id: &AccountId) -> Result<Balance, Error> {
 		let query = metadata::storage().system().account(id);
 
-		let result = self.api.storage().at_latest().await.unwrap().fetch(&query).await?;
+		let result = self.get_latest_storage().await?.fetch(&query).await?;
 		Ok(result.map(|x| x.data.free).unwrap_or_default())
 	}
 
@@ -790,7 +797,7 @@ impl CollateralBalancesPallet for SpacewalkParachain {
 	) -> Result<Balance, Error> {
 		let query = metadata::storage().tokens().accounts(&id, &Static(currency_id));
 
-		let result = self.api.storage().at_latest().await.unwrap().fetch(&query).await?;
+		let result = self.get_latest_storage().await?.fetch(&query).await?;
 		Ok(result.map(|x| x.free).unwrap_or_default())
 	}
 
@@ -805,7 +812,7 @@ impl CollateralBalancesPallet for SpacewalkParachain {
 	) -> Result<Balance, Error> {
 		let query = metadata::storage().tokens().accounts(&id, &Static(currency_id));
 
-		let result = self.api.storage().at_latest().await.unwrap().fetch(&query).await?;
+		let result = self.get_latest_storage().await?.fetch(&query).await?;
 		Ok(result.map(|x| x.reserved).unwrap_or_default())
 	}
 
@@ -1074,7 +1081,7 @@ impl IssuePallet for SpacewalkParachain {
 		let mut issue_requests = Vec::new();
 
 		let key_addr = metadata::storage().issue().issue_requests_iter();
-		let mut iter = self.api.storage().at_latest().await.unwrap().iter(key_addr).await?;
+		let mut iter = self.get_latest_storage().await?.iter(key_addr).await?;
 
 		while let Some(result) = iter.next().await {
 			let (issue_id, request) = result?;

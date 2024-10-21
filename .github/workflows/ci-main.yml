@@ -27,7 +27,7 @@ jobs:
       - name: Check Build
         run: |
           bash ./scripts/cmd-all build check "--release"
-          
+
       - name: Clippy -- Libraries and Binaries
         run: |
           bash ./scripts/cmd-all clippy "clippy --lib --bins" "--release -- -W clippy::all -A clippy::style -A forgetting_copy_types -A forgetting_references"

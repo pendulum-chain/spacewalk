@@ -9,7 +9,7 @@ use crate::{
 		structs::Request,
 		PayAndExecute,
 	},
-	VaultIdManager, YIELD_RATE,
+	ArcRwLock, VaultIdManager, YIELD_RATE,
 };
 use async_trait::async_trait;
 use governor::{
@@ -41,7 +41,7 @@ const MAX_EXECUTION_RETRIES: u32 = 3;
 /// * `rate_limiter` - a rate limiter
 async fn spawn_tasks_to_execute_open_requests_async<S, C, MW>(
 	requests: &mut HashMap<TextMemo, Request>,
-	wallet: Arc<RwLock<StellarWallet>>,
+	wallet: ArcRwLock<StellarWallet>,
 	shutdown_tx: ShutdownSender,
 	parachain_rpc: &SpacewalkParachain,
 	oracle_agent: Arc<OracleAgent>,
@@ -280,7 +280,9 @@ where
 /// * `vault_id_manager` - contains all the vault ids and their data.
 /// * `wallet` - the vault's wallet; used to retrieve a list of stellar transactions
 /// * `oracle_agent` - the agent used to get the proofs
-/// * `payment_margin` - minimum time to the the redeem execution deadline to make the stellar
+/// * `payment_margin` - minimum time to the redeem execution deadline to make the stellar
+/// * `precheck_signal` - a signal sender to notify the caller that this process is done
+/// and pending tasks can be started
 /// payment.
 #[allow(clippy::too_many_arguments)]
 pub async fn execute_open_requests(
@@ -290,7 +292,9 @@ pub async fn execute_open_requests(
 	wallet: Arc<RwLock<StellarWallet>>,
 	oracle_agent: Arc<OracleAgent>,
 	payment_margin: Duration,
+	precheck_signal: tokio::sync::broadcast::Sender<()>,
 ) -> Result<(), ServiceError<Error>> {
+	tracing::info!("execute_open_requests(): started");
 	let parachain_rpc_ref = &parachain_rpc;
 
 	// get all redeem and replace requests
@@ -302,6 +306,8 @@ pub async fn execute_open_requests(
 	.await?;
 
 	let rate_limiter = Arc::new(RateLimiter::direct(YIELD_RATE));
+
+	tracing::info!("execute_open_requests(): Oracle agent is ready.");
 
 	// Check if the open requests have a corresponding payment on Stellar
 	// and are just waiting to be executed on the parachain
@@ -325,6 +331,10 @@ pub async fn execute_open_requests(
 		oracle_agent,
 		rate_limiter,
 	);
+
+	if let Err(e) = precheck_signal.send(()) {
+		tracing::error!("execute_open_requests(): Failed to send signal: {e:?}");
+	}
 
 	Ok(())
 }

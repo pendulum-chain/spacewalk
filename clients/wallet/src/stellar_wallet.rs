@@ -65,6 +65,9 @@ impl StellarWallet {
 	pub(crate) const DEFAULT_MAX_RETRY_ATTEMPTS_BEFORE_FALLBACK: u8 = 3;
 
 	pub(crate) const DEFAULT_MAX_BACKOFF_DELAY_IN_SECS: u16 = 60;
+
+	/// We choose a default fee that is quite high to ensure that the transaction is processed
+	pub(crate) const DEFAULT_STROOP_FEE_PER_OPERATION: u32 = 100_000;
 }
 
 impl StellarWallet {
@@ -377,9 +380,16 @@ impl StellarWallet {
 		let _ = self.transaction_submission_lock.lock().await;
 
 		let stroop_fee_per_operation =
-			get_fee_stat_for(self.is_public_network, FeeAttribute::default())
-				.await
-				.map_err(|e| Error::FailedToGetFee(e))?;
+			match get_fee_stat_for(self.is_public_network, FeeAttribute::default()).await {
+				Ok(fee) => fee,
+				Err(e) => {
+					tracing::error!("Failed to get fee stat for Stellar network: {e:?}");
+					// Return default fee for the operation.
+					let fallback_fee = StellarWallet::DEFAULT_STROOP_FEE_PER_OPERATION;
+					tracing::info!("Using the default stroop fee for operation: {fallback_fee:?}");
+					fallback_fee
+				},
+			};
 
 		let account = self.client.get_account(self.public_key(), self.is_public_network).await?;
 		let next_sequence_number = account.sequence + 1;

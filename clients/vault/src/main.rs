@@ -20,7 +20,7 @@ use signal_hook_tokio::Signals;
 use vault::{
 	metrics::{self, increment_restart_counter},
 	process::PidFile,
-	Error, VaultService, VaultServiceConfig, ABOUT, AUTHORS, NAME, VERSION,
+	tokio_spawn, Error, VaultService, VaultServiceConfig, ABOUT, AUTHORS, NAME, VERSION,
 };
 
 #[derive(Parser)]
@@ -70,7 +70,7 @@ async fn catch_signals<F>(
 where
 	F: Future<Output = Result<(), ServiceError<Error>>> + Send + 'static,
 {
-	let blocking_task = tokio::task::spawn(future);
+	let blocking_task = tokio_spawn("blocking task", future);
 	tokio::select! {
 		res = blocking_task => {
 			return res?;
@@ -117,7 +117,7 @@ async fn start() -> Result<(), ServiceError<Error>> {
 		);
 		let prometheus_port = opts.monitoring.prometheus_port;
 
-		tokio::task::spawn(async move {
+		tokio_spawn("Prometheus", async move {
 			warp::serve(metrics_route)
 				.run(SocketAddr::new(prometheus_host.into(), prometheus_port))
 				.await;
@@ -149,7 +149,11 @@ async fn start() -> Result<(), ServiceError<Error>> {
 #[tokio::main]
 async fn main() {
 	#[cfg(feature = "allow-debugger")]
-	console_subscriber::init();
+	console_subscriber::ConsoleLayer::builder()
+		.with_default_env()
+		.publish_interval(std::time::Duration::from_secs(2))
+		.event_buffer_capacity(1024 * 500)
+		.init();
 
 	let exit_code = if let Err(err) = start().await {
 		tracing::error!("Exiting: {}", err);
@@ -164,17 +168,21 @@ async fn main() {
 mod tests {
 	use std::{thread, time::Duration};
 
+	use vault::tokio_spawn;
+
 	use super::*;
 
 	#[tokio::test]
 	async fn test_vault_termination_signal() {
 		let termination_signals = &[SIGHUP, SIGTERM, SIGINT, SIGQUIT];
 		for sig in termination_signals {
-			let task =
-				tokio::spawn(catch_signals(Signals::new(termination_signals).unwrap(), async {
+			let task = tokio_spawn(
+				"catch signals",
+				catch_signals(Signals::new(termination_signals).unwrap(), async {
 					tokio::time::sleep(Duration::from_millis(100_000)).await;
 					Ok(())
-				}));
+				}),
+			);
 			// Wait for the signals iterator to be polled
 			// This `sleep` is based on the test case in `signal-hook-tokio` itself:
 			// https://github.com/vorner/signal-hook/blob/a9e5ca5e46c9c8e6de89ff1b3ce63c5ff89cd708/signal-hook-tokio/tests/tests.rs#L50

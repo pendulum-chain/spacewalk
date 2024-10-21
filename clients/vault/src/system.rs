@@ -9,12 +9,18 @@ use clap::Parser;
 use futures::{
 	channel::{
 		mpsc,
-		mpsc::{Receiver, Sender},
+		mpsc::{Receiver as mpscReceiver, Sender as mpscSender},
 	},
 	future::{join, join_all},
 	SinkExt, TryFutureExt,
 };
-use tokio::{sync::RwLock, time::sleep};
+use tokio::{
+	sync::{
+		broadcast::{self, Receiver as bcReceiver, Sender as bcSender},
+		RwLock,
+	},
+	time::sleep,
+};
 
 use runtime::{
 	cli::parse_duration_minutes, AccountId, BlockNumber, CollateralBalancesPallet, CurrencyId,
@@ -32,12 +38,12 @@ use crate::{
 	issue,
 	issue::IssueFilter,
 	metrics::{monitor_bridge_metrics, poll_metrics, publish_tokio_metrics, PerCurrencyMetrics},
-	oracle::OracleAgent,
+	oracle::{listen_for_stellar_messages, OracleAgent},
 	redeem::listen_for_redeem_requests,
 	replace::{listen_for_accept_replace, listen_for_execute_replace, listen_for_replace_requests},
 	requests::execution::execute_open_requests,
 	service::{CancellationScheduler, IssueCanceller},
-	ArcRwLock, Event, CHAIN_HEIGHT_POLLING_INTERVAL,
+	tokio_spawn, ArcRwLock, Event, CHAIN_HEIGHT_POLLING_INTERVAL,
 };
 
 pub const VERSION: &str = env!("CARGO_PKG_VERSION");
@@ -45,7 +51,7 @@ pub const AUTHORS: &str = env!("CARGO_PKG_AUTHORS");
 pub const NAME: &str = env!("CARGO_PKG_NAME");
 pub const ABOUT: &str = env!("CARGO_PKG_DESCRIPTION");
 
-const RESTART_INTERVAL: Duration = Duration::from_secs(10800); // restart every 3 hours
+const RESTART_INTERVAL: Duration = Duration::from_secs(7200); // restart every 2 hours
 
 #[derive(Clone, Debug)]
 pub struct VaultData {
@@ -277,9 +283,10 @@ pub struct VaultServiceConfig {
 
 async fn active_block_listener(
 	parachain_rpc: SpacewalkParachain,
-	issue_tx: Sender<Event>,
-	replace_tx: Sender<Event>,
+	issue_tx: mpscSender<Event>,
+	replace_tx: mpscSender<Event>,
 ) -> Result<(), ServiceError<Error>> {
+	tracing::info!("active_block_listener(): started");
 	let issue_tx = &issue_tx;
 	let replace_tx = &replace_tx;
 	parachain_rpc
@@ -291,6 +298,8 @@ async fn active_block_listener(
 			|err| tracing::error!("Error (UpdateActiveBlockEvent): {}", err.to_string()),
 		)
 		.await?;
+
+	tracing::info!("active_block_listener(): ended");
 	Ok(())
 }
 
@@ -322,10 +331,10 @@ impl Service<VaultServiceConfig, Error> for VaultService {
 	async fn start(&mut self) -> Result<(), ServiceError<Error>> {
 		let result = self.run_service().await;
 
-		self.try_shutdown_agent().await;
 		self.try_shutdown_wallet().await;
 
 		if let Err(error) = result {
+			tracing::error!("start(): Failed to run service: {error:?}");
 			let _ = self.shutdown.send(());
 			Err(error)
 		} else {
@@ -337,6 +346,8 @@ impl Service<VaultServiceConfig, Error> for VaultService {
 async fn run_and_monitor_tasks(
 	shutdown_tx: ShutdownSender,
 	items: Vec<(&str, ServiceTask)>,
+	// Sends a signal to start those tasks requiring a precheck.
+	mut precheck_signals: Vec<bcReceiver<()>>,
 ) -> Result<(), ServiceError<Error>> {
 	let (metrics_iterators, tasks): (HashMap<String, _>, Vec<_>) = items
 		.into_iter()
@@ -345,27 +356,39 @@ async fn run_and_monitor_tasks(
 			let metrics_iterator = monitor.intervals();
 			let task = match task {
 				ServiceTask::Optional(true, t) | ServiceTask::Essential(t) =>
-					Some(wait_or_shutdown(shutdown_tx.clone(), t)),
+					Some(wait_or_shutdown(shutdown_tx.clone(), t, None)),
+				ServiceTask::PrecheckRequired(t) =>
+					Some(wait_or_shutdown(shutdown_tx.clone(), t, precheck_signals.pop())),
 				_ => None,
 			}?;
 			let task = monitor.instrument(task);
-			let task = tokio::spawn(task);
+
+			let task = tokio_spawn(name, task);
 			Some(((name.to_string(), metrics_iterator), task))
 		})
 		.unzip();
 
-	let tokio_metrics = tokio::spawn(wait_or_shutdown(
-		shutdown_tx.clone(),
-		publish_tokio_metrics(metrics_iterators),
-	));
+	let tokio_metrics = tokio_spawn(
+		"tokio metrics publisher",
+		wait_or_shutdown(shutdown_tx.clone(), publish_tokio_metrics(metrics_iterators), None),
+	);
+
+	tracing::info!("run_and_monitor_tasks(): running all tasks...");
 
 	match join(tokio_metrics, join_all(tasks)).await {
 		(Ok(Err(err)), _) => Err(err),
-		(_, results) => results
-			.into_iter()
-			.find(|res| matches!(res, Ok(Err(_))))
-			.and_then(|res| res.ok())
-			.unwrap_or(Ok(())),
+		(_, results) => {
+			for result in results {
+				match result {
+					Ok(_) => {},
+					Err(e) => {
+						tracing::error!("run_and_monitor_tasks(): One of the tasks failed: {e:?}");
+						return Err(ServiceError::TokioError(e));
+					},
+				}
+			}
+			Ok(())
+		},
 	}
 }
 
@@ -374,6 +397,19 @@ type Task = Pin<Box<dyn Future<Output = Result<(), ServiceError<Error>>> + Send 
 enum ServiceTask {
 	Optional(bool, Task),
 	Essential(Task),
+	// Runs a task after a prequisite check has passed.
+	PrecheckRequired(Task),
+}
+
+/// returns a single-producer multi-consumer channel to send a signal to start a task
+fn precheck_signals(num_of_signals_required: u8) -> (bcSender<()>, Vec<bcReceiver<()>>) {
+	let (sender, receiver) = broadcast::channel(1);
+	let mut subscribers = vec![receiver];
+	while subscribers.len() < usize::from(num_of_signals_required) {
+		subscribers.push(sender.subscribe());
+	}
+
+	(sender, subscribers)
 }
 
 fn maybe_run<F, E>(should_run: bool, task: F) -> ServiceTask
@@ -390,6 +426,14 @@ where
 	E: Into<ServiceError<Error>>,
 {
 	ServiceTask::Essential(Box::pin(task.map_err(|x| x.into())))
+}
+
+fn run_with_precheck<F, E>(task: F) -> ServiceTask
+where
+	F: Future<Output = Result<(), E>> + Send + 'static,
+	E: Into<ServiceError<Error>>,
+{
+	ServiceTask::PrecheckRequired(Box::pin(task.map_err(|x| x.into())))
 }
 
 type RegistrationData = Vec<(CurrencyId, CurrencyId, Option<u128>)>;
@@ -428,13 +472,19 @@ impl VaultService {
 		// Subscribe to an event (any event will do) so that a period of inactivity does not close
 		// the jsonrpsee connection
 		let err_provider = self.spacewalk_parachain.clone();
-		let err_listener = wait_or_shutdown(self.shutdown.clone(), async move {
-			err_provider
-				.on_event_error(|e| tracing::debug!("Client Service: Received error event: {}", e))
-				.await?;
-			Ok::<_, Error>(())
-		});
-		tokio::task::spawn(err_listener);
+		let err_listener = wait_or_shutdown(
+			self.shutdown.clone(),
+			async move {
+				err_provider
+					.on_event_error(|e| {
+						tracing::debug!("Client Service: Received error event: {}", e)
+					})
+					.await?;
+				Ok::<_, Error>(())
+			},
+			None,
+		);
+		tokio_spawn("error listener", err_listener);
 
 		Ok(())
 	}
@@ -444,54 +494,28 @@ impl VaultService {
 		is_public_network: bool,
 		shutdown_sender: ShutdownSender,
 	) -> Result<Arc<OracleAgent>, ServiceError<Error>> {
-		let cfg_path = &self.config.stellar_overlay_config_filepath;
-		let stellar_overlay_cfg =
-			StellarOverlayConfig::try_from_path(cfg_path).map_err(Error::StellarRelayError)?;
+		let stellar_overlay_cfg = self.stellar_overlay_cfg()?;
 
 		// check if both the config file and the wallet are the same.
 		if is_public_network != stellar_overlay_cfg.is_public_network() {
 			return Err(ServiceError::IncompatibleNetwork);
 		}
 
-		let oracle_agent = crate::oracle::start_oracle_agent(
-			stellar_overlay_cfg,
-			&self.secret_key,
-			shutdown_sender,
-		)
-		.await
-		.expect("Failed to start oracle agent");
+		let oracle_agent =
+			OracleAgent::new(&stellar_overlay_cfg, self.secret_key(), shutdown_sender)
+				.await
+				.map_err(|e| {
+					tracing::error!("Failed to create OracleAgent: {e:?}");
+					ServiceError::OracleError(Error::OracleError(e))
+				})?;
 
 		Ok(Arc::new(oracle_agent))
 	}
 
-	fn execute_open_requests(&self, oracle_agent: Arc<OracleAgent>) {
-		let open_request_executor = execute_open_requests(
-			self.shutdown.clone(),
-			self.spacewalk_parachain.clone(),
-			self.vault_id_manager.clone(),
-			self.stellar_wallet.clone(),
-			oracle_agent,
-			self.config.payment_margin_minutes,
-		);
-
-		let shutdown_clone = self.shutdown.clone();
-		service::spawn_cancelable(self.shutdown.subscribe(), async move {
-			match open_request_executor.await {
-				Ok(_) => tracing::info!("Done processing open requests"),
-				Err(e) => {
-					tracing::error!("Failed to process open requests: {}", e);
-					if let Err(err) = shutdown_clone.send(()) {
-						tracing::error!("Failed to send shutdown signal: {}", err);
-					}
-				},
-			}
-		});
-	}
-
 	fn create_issue_tasks(
 		&self,
-		issue_event_tx: Sender<Event>,
-		issue_event_rx: Receiver<Event>,
+		issue_event_tx: mpscSender<Event>,
+		issue_event_rx: mpscReceiver<Event>,
 		startup_height: BlockNumber,
 		account_id: AccountId,
 		vault_public_key: PublicKey,
@@ -503,7 +527,7 @@ impl VaultService {
 		vec![
 			(
 				"Issue Request Listener",
-				run(issue::listen_for_issue_requests(
+				run_with_precheck(issue::listen_for_issue_requests(
 					self.spacewalk_parachain.clone(),
 					vault_public_key,
 					issue_event_tx,
@@ -513,7 +537,7 @@ impl VaultService {
 			),
 			(
 				"Issue Cancel Listener",
-				run(issue::listen_for_issue_cancels(
+				run_with_precheck(issue::listen_for_issue_cancels(
 					self.spacewalk_parachain.clone(),
 					issue_map.clone(),
 					memos_to_issue_ids.clone(),
@@ -521,7 +545,7 @@ impl VaultService {
 			),
 			(
 				"Issue Execute Listener",
-				run(issue::listen_for_executed_issues(
+				run_with_precheck(issue::listen_for_executed_issues(
 					self.spacewalk_parachain.clone(),
 					issue_map.clone(),
 					memos_to_issue_ids.clone(),
@@ -542,20 +566,22 @@ impl VaultService {
 			),
 			(
 				"Issue Cancel Scheduler",
-				run(CancellationScheduler::new(
-					self.spacewalk_parachain.clone(),
-					startup_height,
-					account_id,
-				)
-				.handle_cancellation::<IssueCanceller>(issue_event_rx)),
+				run_with_precheck(
+					CancellationScheduler::new(
+						self.spacewalk_parachain.clone(),
+						startup_height,
+						account_id,
+					)
+					.handle_cancellation::<IssueCanceller>(issue_event_rx),
+				),
 			),
 		]
 	}
 
 	fn create_replace_tasks(
 		&self,
-		replace_event_tx: Sender<Event>,
-		replace_event_rx: Receiver<Event>,
+		replace_event_tx: mpscSender<Event>,
+		replace_event_rx: mpscReceiver<Event>,
 		startup_height: BlockNumber,
 		account_id: AccountId,
 		oracle_agent: Arc<OracleAgent>,
@@ -563,7 +589,7 @@ impl VaultService {
 		vec![
 			(
 				"Request Replace Listener",
-				run(listen_for_replace_requests(
+				run_with_precheck(listen_for_replace_requests(
 					self.spacewalk_parachain.clone(),
 					self.vault_id_manager.clone(),
 					replace_event_tx.clone(),
@@ -572,7 +598,7 @@ impl VaultService {
 			),
 			(
 				"Accept Replace Listener",
-				run(listen_for_accept_replace(
+				run_with_precheck(listen_for_accept_replace(
 					self.shutdown.clone(),
 					self.spacewalk_parachain.clone(),
 					self.vault_id_manager.clone(),
@@ -586,12 +612,14 @@ impl VaultService {
 			),
 			(
 				"Replace Cancellation Scheduler",
-				run(CancellationScheduler::new(
-					self.spacewalk_parachain.clone(),
-					startup_height,
-					account_id,
-				)
-				.handle_cancellation::<ReplaceCanceller>(replace_event_rx)),
+				run_with_precheck(
+					CancellationScheduler::new(
+						self.spacewalk_parachain.clone(),
+						startup_height,
+						account_id,
+					)
+					.handle_cancellation::<ReplaceCanceller>(replace_event_rx),
+				),
 			),
 		]
 	}
@@ -621,8 +649,8 @@ impl VaultService {
 	fn create_initial_tasks(
 		&self,
 		is_public_network: bool,
-		issue_event_tx: Sender<Event>,
-		replace_event_tx: Sender<Event>,
+		issue_event_tx: mpscSender<Event>,
+		replace_event_tx: mpscSender<Event>,
 		vault_public_key: PublicKey,
 		issue_map: ArcRwLock<IssueRequestsMap>,
 		ledger_env_map: ArcRwLock<LedgerTxEnvMap>,
@@ -638,6 +666,7 @@ impl VaultService {
 			(
 				"Restart Timer",
 				run(async move {
+					tracing::info!("Periodic restart in {RESTART_INTERVAL:?} minutes.");
 					tokio::time::sleep(RESTART_INTERVAL).await;
 					tracing::info!("Initiating periodic restart...");
 					Err(ServiceError::ClientShutdown)
@@ -656,7 +685,7 @@ impl VaultService {
 			),
 			(
 				"Parachain Block Listener",
-				run(active_block_listener(
+				run_with_precheck(active_block_listener(
 					self.spacewalk_parachain.clone(),
 					issue_event_tx,
 					replace_event_tx,
@@ -730,6 +759,11 @@ impl VaultService {
 
 		Ok(tasks)
 	}
+
+	fn stellar_overlay_cfg(&self) -> Result<StellarOverlayConfig, Error> {
+		let cfg_path = &self.config.stellar_overlay_config_filepath;
+		StellarOverlayConfig::try_from_path(cfg_path).map_err(Error::StellarRelayError)
+	}
 }
 
 impl VaultService {
@@ -762,6 +796,10 @@ impl VaultService {
 			secret_key,
 			agent: None,
 		})
+	}
+
+	fn secret_key(&self) -> String {
+		self.secret_key.clone()
 	}
 
 	fn get_vault_id(
@@ -816,8 +854,6 @@ impl VaultService {
 			self.create_oracle_agent(is_public_network, self.shutdown.clone()).await?;
 		self.agent = Some(oracle_agent.clone());
 
-		self.execute_open_requests(oracle_agent.clone());
-
 		// issue handling
 		// this vec is passed to the stellar wallet to filter out transactions that are not relevant
 		// this has to be modified every time the issue set changes
@@ -829,10 +865,30 @@ impl VaultService {
 		issue::initialize_issue_set(&self.spacewalk_parachain, &issue_map, &memos_to_issue_ids)
 			.await?;
 
+		let (precheck_sender, precheck_receivers) = precheck_signals(8);
+		tokio_spawn(
+			"Execute Open Requests",
+			execute_open_requests(
+				self.shutdown.clone(),
+				self.spacewalk_parachain.clone(),
+				self.vault_id_manager.clone(),
+				self.stellar_wallet.clone(),
+				oracle_agent.clone(),
+				self.config.payment_margin_minutes,
+				precheck_sender,
+			),
+		);
+
 		let ledger_env_map: ArcRwLock<LedgerTxEnvMap> = Arc::new(RwLock::new(HashMap::new()));
 
 		tracing::info!("Starting all services...");
-		let tasks = self.create_tasks(
+
+		let mut tasks = vec![(
+			"Stellar Messages Listener",
+			run(listen_for_stellar_messages(oracle_agent.clone(), self.shutdown.clone())),
+		)];
+
+		let mut _tasks = self.create_tasks(
 			startup_height,
 			account_id,
 			is_public_network,
@@ -842,8 +898,9 @@ impl VaultService {
 			ledger_env_map,
 			memos_to_issue_ids,
 		)?;
+		tasks.append(&mut _tasks);
 
-		run_and_monitor_tasks(self.shutdown.clone(), tasks).await
+		run_and_monitor_tasks(self.shutdown.clone(), tasks, precheck_receivers).await
 	}
 
 	async fn register_public_key_if_not_present(&mut self) -> Result<(), Error> {
@@ -974,17 +1031,5 @@ impl VaultService {
 		let mut wallet = self.stellar_wallet.write().await;
 		wallet.try_stop_periodic_resubmission_of_transactions().await;
 		drop(wallet);
-	}
-
-	async fn try_shutdown_agent(&mut self) {
-		let opt_agent = self.agent.clone();
-		self.agent = None;
-
-		if let Some(arc_agent) = opt_agent {
-			tracing::info!("try_shutdown_agent(): shutting down agent");
-			arc_agent.shutdown().await;
-		} else {
-			tracing::debug!("try_shutdown_agent(): no agent found");
-		}
 	}
 }
