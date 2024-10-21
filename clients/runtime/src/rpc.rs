@@ -272,7 +272,8 @@ impl SpacewalkParachain {
 		let storage_key = metadata::storage().system().account(&self.account_id);
 		let on_chain_nonce = self
 			.get_latest_storage()
-			.await?
+			.await
+			.expect("Failed to get storage from the latest block hash")
 			.fetch(&storage_key)
 			.await
 			.transpose()
