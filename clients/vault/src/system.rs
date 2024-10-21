@@ -666,7 +666,10 @@ impl VaultService {
 			(
 				"Restart Timer",
 				run(async move {
-					tracing::info!("Periodic restart in {RESTART_INTERVAL:?} minutes.");
+					tracing::info!(
+						"Periodic restart in {:?} minutes.",
+						RESTART_INTERVAL.as_secs().checked_div(60).unwrap_or(0)
+					);
 					tokio::time::sleep(RESTART_INTERVAL).await;
 					tracing::info!("Initiating periodic restart...");
 					Err(ServiceError::ClientShutdown)
