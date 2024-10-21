@@ -8160,7 +8160,6 @@ dependencies = [
  "spacewalk-runtime-standalone-mainnet",
  "spacewalk-runtime-standalone-testnet",
  "spacewalk-standalone",
- "substrate-stellar-sdk",
  "subxt",
  "subxt-client",
  "tempdir",
@@ -11699,7 +11698,7 @@ dependencies = [
 [[package]]
 name = "substrate-stellar-sdk"
 version = "0.3.0"
-source = "git+https://github.com/pendulum-chain/substrate-stellar-sdk?branch=polkadot-v1.1.0#9b8e2b77b6c6a63e8e837d1e8f2b42b09d49a943"
+source = "git+https://github.com/pendulum-chain/substrate-stellar-sdk?branch=polkadot-v1.1.0#80cd93dc1f9d029a4ddd055aa36636e23134aa58"
 dependencies = [
  "base64 0.13.1",
  "hex",
