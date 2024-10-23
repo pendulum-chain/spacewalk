@@ -2,7 +2,7 @@
 authors = ["Pendulum"]
 edition = "2021"
 name = 'spacewalk-runtime-standalone-testnet'
-version = "1.0.12"
+version = "1.0.13"
 
 [package.metadata.docs.rs]
 targets = ['x86_64-unknown-linux-gnu']

@@ -2,7 +2,7 @@
 authors = ["Pendulum"]
 edition = "2018"
 name = "spacewalk-primitives"
-version = "1.0.12"
+version = "1.0.13"
 
 [dependencies]
 codec = { package = "parity-scale-codec", version = "3.0.0", default-features = false }
