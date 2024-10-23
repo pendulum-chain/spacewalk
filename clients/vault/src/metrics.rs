@@ -502,6 +502,7 @@ pub async fn monitor_bridge_metrics(
 	parachain_rpc: SpacewalkParachain,
 	vault_id_manager: VaultIdManager,
 ) -> Result<(), ServiceError<Error>> {
+	tracing::info!("monitor_bridge_metrics(): started");
 	let parachain_rpc = &parachain_rpc;
 	let vault_id_manager = &vault_id_manager;
 	parachain_rpc
@@ -540,6 +541,7 @@ pub async fn poll_metrics<
 	parachain_rpc: P,
 	vault_id_manager: VaultIdManager,
 ) -> Result<(), ServiceError<Error>> {
+	tracing::info!("poll_metrics(): started");
 	let parachain_rpc = &parachain_rpc;
 	let vault_id_manager = &vault_id_manager;
 

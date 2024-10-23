@@ -183,18 +183,9 @@ where
 	F: Future<Output = Result<(), E>>,
 {
 	if let Some(mut precheck_signal) = precheck_signal {
-		loop {
-			match precheck_signal.try_recv() {
-				// Received a signal to start the task
-				Ok(_) => break,
-				Err(TryRecvError::Empty) =>
-					tracing::trace!("wait_or_shutdown precheck signal: waiting..."),
-				// Precheck signal failed. Cannot start the task.
-				Err(e) => {
-					tracing::error!("Error receiving precheck signal: {:?}", e);
-					return Ok(());
-				},
-			}
+		if let Err(e) = precheck_signal.recv().await {
+			tracing::error!("Error receiving precheck signal: {:?}", e);
+			return Ok(());
 		}
 	}
 

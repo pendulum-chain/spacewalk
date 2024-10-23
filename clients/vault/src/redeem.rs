@@ -20,6 +20,7 @@ pub async fn listen_for_redeem_requests(
 	payment_margin: Duration,
 	oracle_agent: Arc<OracleAgent>,
 ) -> Result<(), ServiceError<Error>> {
+	tracing::info!("listen_for_redeem_requests(): started");
 	parachain_rpc
 		.on_event::<RequestRedeemEvent, _, _, _>(
 			|event| async {

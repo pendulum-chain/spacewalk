@@ -143,6 +143,7 @@ impl VaultIdManager {
 	}
 
 	pub async fn listen_for_vault_id_registrations(self) -> Result<(), ServiceError<Error>> {
+		tracing::info!("listen_for_vault_id_registrations(): started");
 		Ok(self
 			.spacewalk_parachain
 			.on_event::<RegisterVaultEvent, _, _, _>(
