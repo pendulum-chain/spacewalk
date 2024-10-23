@@ -2,7 +2,7 @@
 authors = ["Pendulum"]
 edition = "2018"
 name = "service"
-version = "1.0.12"
+version = "1.0.13"
 
 [dependencies]
 async-trait = "0.1.40"
