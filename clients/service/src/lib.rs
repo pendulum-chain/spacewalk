@@ -10,10 +10,7 @@ use async_trait::async_trait;
 use futures::{future::Either, Future, FutureExt};
 use governor::{Quota, RateLimiter};
 use nonzero_ext::*;
-use tokio::{
-	sync::{broadcast::error::TryRecvError, RwLock},
-	time::sleep,
-};
+use tokio::{sync::RwLock, time::sleep};
 pub use warp;
 
 pub use cli::{LoggingFormat, MonitoringConfig, RestartPolicy, ServiceConfig};
