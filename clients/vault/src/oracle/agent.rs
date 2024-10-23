@@ -21,7 +21,7 @@ use crate::{
 use wallet::Slot;
 
 /// The interval to check if we are still receiving messages from Stellar Relay
-const STELLAR_RELAY_HEALTH_CHECK_IN_SECS: u64 = 600;
+const STELLAR_RELAY_HEALTH_CHECK_IN_SECS: u64 = 300;
 
 pub struct OracleAgent {
 	pub collector: ArcRwLock<ScpMessageCollector>,
@@ -140,9 +140,7 @@ pub async fn listen_for_stellar_messages(
 	oracle_agent: Arc<OracleAgent>,
 	shutdown_sender: ShutdownSender,
 ) -> Result<(), service::Error<crate::Error>> {
-	tracing::info!(
-		"listen_for_stellar_messages(): Starting connection to Stellar overlay network..."
-	);
+	tracing::info!("listen_for_stellar_messages(): started");
 
 	let mut overlay_conn = oracle_agent.overlay_conn.write().await;
 
