@@ -3,29 +3,28 @@ name = "runner"
 version = "1.0.13"
 edition = "2021"
 
-
 [dependencies]
-clap = { version = "4.0.17", features = ["derive"] }
-hex = "0.4.3"
-tokio = { version = "1.37", features = ["rt-multi-thread", "macros", "time"] }
-codec = { package = "parity-scale-codec", version = "3.0.0", default-features = false, features = ["derive", "full", "bit-vec"] }
-sp-core = { git = "https://github.com/paritytech/polkadot-sdk", branch = "release-polkadot-v1.1.0" }
-thiserror = "1.0.0"
-log = "0.4.0"
-env_logger = "0.7.1"
-reqwest = { version = "0.12.4", features = ["native-tls-vendored"]}
+clap = { workspace = true, features = ["derive"] }
+hex = { workspace = true}
+tokio = { workspace = true, features = ["rt-multi-thread", "macros", "time"] }
+codec = { workspace = true, features = ["derive", "full", "bit-vec"] }
+sp-core = { workspace = true, default-features = true }
+thiserror = { workspace = true }
+log = { workspace = true}
+env_logger ={ workspace = true }
+reqwest = { workspace = true, features = ["native-tls-vendored"]}
 # reuse version of `url` depended on by `reqwest`
-url = "2.2.2"
-nix = "0.24.2"
-async-trait = "0.1.40"
-bytes = "1.1.0"
-signal-hook = "0.3.14"
-signal-hook-tokio = { version = "0.3.1", features = ["futures-v0_3"] }
-futures = "0.3.21"
-subxt = { version = "0.33.0", default-features = false, features = ["jsonrpsee", "native"]}
-sha2 = "0.8.2"
+url = { workspace = true }
+nix = { workspace = true }
+async-trait = { workspace = true }
+bytes = { workspace = true }
+signal-hook = { workspace = true }
+signal-hook-tokio = { workspace = true , features = ["futures-v0_3"] }
+futures = { workspace = true }
+subxt = {version = "0.33.0", default-features = false, features = ["jsonrpsee", "native"]}
+sha2 = { workspace = true }
 
 [dev-dependencies]
-sysinfo = "0.25.1"
-tempdir = "0.3.7"
-mockall = "0.8.1"
+sysinfo.workspace = true
+tempdir.workspace = true
+mockall.workspace = true

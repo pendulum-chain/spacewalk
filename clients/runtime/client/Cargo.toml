@@ -12,20 +12,21 @@ description = "Embed a substrate node into your subxt application."
 keywords = ["parity", "substrate", "blockchain"]
 
 [dependencies]
-tokio = { version = "1.37", features = ["time", "rt-multi-thread"] }
-futures = { version = "0.3.9", features = ["compat"], package = "futures" }
+tokio = { workspace = true, features = ["time", "rt-multi-thread"] }
+futures = { workspace = true, features = ["compat"] }
 futures01 = { package = "futures", version = "0.1.29" }
-jsonrpsee = "0.20.0"
-jsonrpsee-types = "0.20.0"
-jsonrpsee-core = { version = "0.20.0", features = ["async-client"] }
 
-log = "0.4.13"
-serde_json = "1.0.61"
-thiserror = "1.0.23"
+jsonrpsee = { workspace = true }
+jsonrpsee-types = { workspace = true }
+jsonrpsee-core = { workspace = true, features = ["async-client"] }
+
+log = { workspace = true }
+serde_json = { workspace = true, default-features = true }
+thiserror = { workspace = true }
 
 subxt = { version = "0.33.0", features = [ "substrate-compat"] }
 
-sc-client-db = { git = "https://github.com/paritytech/polkadot-sdk", branch = "release-polkadot-v1.1.0", default-features = false }
-sp-keyring = { git = "https://github.com/paritytech/polkadot-sdk", branch = "release-polkadot-v1.1.0", default-features = false }
-sc-network = { git = "https://github.com/paritytech/polkadot-sdk", branch = "release-polkadot-v1.1.0", default-features = false }
-sc-service = { git = "https://github.com/paritytech/polkadot-sdk", branch = "release-polkadot-v1.1.0", default-features = false }
+sc-client-db = { workspace = true }
+sp-keyring = { workspace = true }
+sc-network = { workspace = true }
+sc-service = { workspace = true }
