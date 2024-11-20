@@ -38,37 +38,63 @@ codegen-units = 1
 [workspace.dependencies]
 # Crates.io dependencies
 async-std = "1.12.0"
+async-trait = "0.1.74"
+governor = "0.5.0"
+
+base58 = { version = "0.2.0", default-features = false }
+base64 = { version ="0.13.0", default-features = false }
+bincode = "1.3.3"
+
+
+flate2 = "1.0"
+
+hex = "0.4.3"
+hmac = "0.12.1"
+itertools = "0.10.5"
+jsonrpc-core-client = { version = "18.0.0" }
+lazy_static = "1.4"
+nonzero_ext = "0.3.0"
+
+parking_lot = "0.12.1"
+reqwest = "0.12.4"
+
 scale-info = { version = "2.11.3", default-features = false }
 scale-encode = { version = "0.7.1", default-features = false }
 scale-decode = { version = "0.13", default-features = false }
 serde = { version = "1.0.195", default-features = false }
 serde_json = { version = "1.0.111", default-features = false }
 serde_with = "2.2.0"
-base58 = { version = "0.2.0", default-features = false }
-base64 = "0.13.0"
-async-trait = "0.1.74"
+signal-hook = "0.3.17"
+signal-hook-tokio = "0.3.1"
+sysinfo = "0.25.1"
+
+thiserror = "1.0"
+tokio = "1.37.0"
+tokio-metrics = { version = "0.1.0", default-features = false }
+tokio-stream = { version = "0.1.9" }
+tracing = "0.1.38"
+tweetnacl = "0.4.0"
+
+# non ordered
 futures = "0.3.28"
 clap = "3.2.25"
 dotenv = "0.15.0"
 err-derive = "0.3.1"
-hex = "0.4.3"
-hmac = "0.12.1"
+
+
 cached = "0.47.0"
 parity-scale-codec = "3.6.11"
 codec = { package = "parity-scale-codec", version = "3.6.11", default-features = false }
 rand = "0.8.5"
-reqwest = "0.12.4"
-thiserror = "1.0"
-tokio = "1.37.0"
-tracing = "0.1.38"
-tweetnacl = "0.4.0"
+
+
+
 log = "0.4.20"
 env_logger = "0.8.4"
 url = "2.2.2"
 nix = "0.24.2"
 bytes = "1.4.0"
-signal-hook = "0.3.17"
-signal-hook-tokio = "0.3.1"
+
 sha2 = "0.10.2" #prev 0.8.2
 backoff = { version = "0.3.0" }
 cfg-if = "1.0"
@@ -91,6 +117,7 @@ sc-service = { git = "https://github.com/paritytech/polkadot-sdk", branch = "rel
 sp-arithmetic = { git = "https://github.com/paritytech/polkadot-sdk", branch = "release-polkadot-v1.6.0", default-features = false }
 sp-version = { git = "https://github.com/paritytech/polkadot-sdk", branch = "release-polkadot-v1.6.0", default-features = false }
 
+
 # Git dependency from Pendulum Chain
 substrate-stellar-sdk = { git = "https://github.com/pendulum-chain/substrate-stellar-sdk", branch = "polkadot-v1.6.0", default-features = false }
 
@@ -98,7 +125,7 @@ substrate-stellar-sdk = { git = "https://github.com/pendulum-chain/substrate-ste
 mockall = "0.8.1"
 serial_test = "0.9.0"
 mocktopus = "0.8.0"
-sysinfo = "0.25.1"
+
 tempdir = "0.3.7"
 ntest = "0.9.0"
 console-subscriber = "0.3.0"
