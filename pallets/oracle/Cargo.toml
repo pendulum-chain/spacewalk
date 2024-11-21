@@ -5,21 +5,21 @@ authors = ["Pendulum"]
 edition = "2021"
 
 [dependencies]
-codec = { package = "parity-scale-codec", version = "3.0.0", default-features = false, features = ["derive", "max-encoded-len"] }
-scale-info = { version = "2.0.0", default-features = false, features = ["derive"] }
+codec = { workspace = true, features = ["derive", "max-encoded-len"] }
+scale-info = {  workspace = true, features = ["derive"] }
 
 # Substrate dependencies
-sp-std = { git = "https://github.com/paritytech/polkadot-sdk", branch = "release-polkadot-v1.1.0", default-features = false }
-sp-arithmetic = { git = "https://github.com/paritytech/polkadot-sdk", branch = "release-polkadot-v1.1.0", default-features = false, optional = true }
+sp-std = { workspace = true }
+sp-arithmetic = { workspace = true, optional = true }
 
-frame-support = { git = "https://github.com/paritytech/polkadot-sdk", branch = "release-polkadot-v1.1.0", default-features = false }
-frame-system = { git = "https://github.com/paritytech/polkadot-sdk", branch = "release-polkadot-v1.1.0", default-features = false }
-frame-benchmarking = { git = "https://github.com/paritytech/polkadot-sdk", branch = "release-polkadot-v1.1.0", default-features = false, optional = true }
+frame-support = { workspace = true }
+frame-system = { workspace = true }
+frame-benchmarking = { workspace = true, optional = true }
 
-pallet-timestamp = { git = "https://github.com/paritytech/polkadot-sdk", branch = "release-polkadot-v1.1.0", default-features = false }
+pallet-timestamp = { workspace = true }
 
-orml-oracle = { git = "https://github.com/open-web3-stack/open-runtime-module-library", branch = "polkadot-v1.1.0", default-features = false }
-dia-oracle = { git = "https://github.com/pendulum-chain/oracle-pallet", branch = "polkadot-v1.1.0", default-features = false }
+orml-oracle = { workspace = true }
+dia-oracle = { workspace = true }
 
 # Parachain dependencies
 security = { path = "../security", default-features = false }
@@ -27,24 +27,23 @@ primitives = { package = "spacewalk-primitives", path = "../../primitives", defa
 currency = { path = "../currency", default-features = false }
 
 # Testing dependencies
-spin = { version = "0.9.4", features = ["mutex"], optional = true }
-once_cell = { version = "1.18.0", default-features = false, features = ["alloc", "race"], optional = true }
+spin = { workspace = true, optional = true }
+once_cell = { workspace = true, features = ["alloc", "race"], optional = true }
 
 [dev-dependencies]
-mocktopus = "0.8.0"
 
 currency = { path = "../currency", features = ["testing-constants"] }
 security = { path = "../security", features = ['testing-utils'] }
 staking = { path = "../staking" }
 
 # Orml dependencies
-orml-currencies = { git = "https://github.com/open-web3-stack/open-runtime-module-library", branch = "polkadot-v1.1.0" }
-orml-tokens = { git = "https://github.com/open-web3-stack/open-runtime-module-library", branch = "polkadot-v1.1.0" }
-orml-traits = { git = "https://github.com/open-web3-stack/open-runtime-module-library", branch = "polkadot-v1.1.0" }
+orml-currencies = { workspace = true, default-features = true }
+orml-tokens = { workspace = true, default-features = true }
+orml-traits = { workspace = true, default-features = true }
 
-pallet-balances = { git = "https://github.com/paritytech/polkadot-sdk", branch = "release-polkadot-v1.1.0" }
-sp-core = { git = "https://github.com/paritytech/polkadot-sdk", branch = "release-polkadot-v1.1.0" }
-sp-io = { git = "https://github.com/paritytech/polkadot-sdk", branch = "release-polkadot-v1.1.0" }
+pallet-balances = { workspace = true, default-features = true }
+sp-core = { workspace = true, default-features = true }
+sp-io = { workspace = true, default-features = true }
 
 [features]
 default = ["std"]

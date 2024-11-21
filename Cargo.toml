@@ -54,10 +54,9 @@ itertools = "0.10.5"
 jsonrpc-core-client = { version = "18.0.0" }
 lazy_static = "1.4"
 nonzero_ext = "0.3.0"
-
+once_cell = { version = "1.18.0", default-features = false }
 parking_lot = "0.12.1"
 reqwest = "0.12.4"
-
 scale-info = { version = "2.11.3", default-features = false }
 scale-encode = { version = "0.7.1", default-features = false }
 scale-decode = { version = "0.13", default-features = false }
@@ -66,6 +65,7 @@ serde_json = { version = "1.0.111", default-features = false }
 serde_with = "2.2.0"
 signal-hook = "0.3.17"
 signal-hook-tokio = "0.3.1"
+spin = "0.9.4"
 sysinfo = "0.25.1"
 
 thiserror = "1.0"
@@ -126,8 +126,12 @@ sp-version = { git = "https://github.com/paritytech/polkadot-sdk", branch = "rel
 orml-currencies = { package = "orml-currencies", git = "https://github.com/InvArch/open-runtime-module-library.git", default-features = false, branch = "polkadot-v1.6.0" }
 orml-tokens = { package = "orml-tokens", git = "https://github.com/InvArch/open-runtime-module-library.git", default-features = false, branch = "polkadot-v1.6.0" }
 orml-traits = { package = "orml-traits", git = "https://github.com/InvArch/open-runtime-module-library.git", default-features = false, branch = "polkadot-v1.6.0" }
+orml-oracle = { package = "orml-oracle", git = "https://github.com/InvArch/open-runtime-module-library.git", default-features = false, branch = "polkadot-v1.6.0" }
+
+
 # Git dependency from Pendulum Chain
 substrate-stellar-sdk = { git = "https://github.com/pendulum-chain/substrate-stellar-sdk", branch = "polkadot-v1.6.0", default-features = false }
+dia-oracle = { git = "https://github.com/pendulum-chain/oracle-pallet", branch = "polkadot-v1.6.0", default-features = false }
 
 # Used in dev dependencies
 mockall = "0.8.1"

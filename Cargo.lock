@@ -2376,6 +2376,24 @@ dependencies = [
 ]
 
 [[package]]
+name = "dia-oracle"
+version = "0.1.0"
+source = "git+https://github.com/pendulum-chain/oracle-pallet?branch=polkadot-v1.6.0#f49c2f2bf8a7c07507a4690bcb4773f7b36d089f"
+dependencies = [
+ "frame-benchmarking",
+ "frame-support",
+ "frame-system",
+ "log",
+ "parity-scale-codec",
+ "scale-info",
+ "serde",
+ "serde_json",
+ "sp-core 21.0.0",
+ "sp-runtime 24.0.0",
+ "sp-std 8.0.0",
+]
+
+[[package]]
 name = "diff"
 version = "0.1.13"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -6594,16 +6612,15 @@ name = "oracle"
 version = "1.0.13"
 dependencies = [
  "currency",
- "dia-oracle",
+ "dia-oracle 0.1.0 (git+https://github.com/pendulum-chain/oracle-pallet?branch=polkadot-v1.6.0)",
  "frame-benchmarking",
  "frame-support",
  "frame-system",
- "mocktopus",
  "once_cell",
- "orml-currencies 0.4.1-dev",
+ "orml-currencies 0.7.1",
  "orml-oracle",
- "orml-tokens 0.4.1-dev",
- "orml-traits 0.4.1-dev",
+ "orml-tokens 0.7.1",
+ "orml-traits 0.7.1",
  "pallet-balances",
  "pallet-timestamp",
  "parity-scale-codec",
@@ -6654,13 +6671,13 @@ dependencies = [
 
 [[package]]
 name = "orml-oracle"
-version = "0.4.1-dev"
-source = "git+https://github.com/open-web3-stack/open-runtime-module-library?branch=polkadot-v1.1.0#b3694e631df7f1ca16b1973122937753fcdee9d4"
+version = "0.7.1"
+source = "git+https://github.com/InvArch/open-runtime-module-library.git?branch=polkadot-v1.6.0#74a0efb69072bd3e9263c2e56bb1adc11945c3da"
 dependencies = [
  "frame-support",
  "frame-system",
- "orml-traits 0.4.1-dev",
- "orml-utilities 0.4.1-dev",
+ "orml-traits 0.7.1",
+ "orml-utilities 0.7.1",
  "parity-scale-codec",
  "scale-info",
  "serde",
@@ -11586,7 +11603,7 @@ dependencies = [
  "cfg-if 1.0.0",
  "clients-info",
  "currency",
- "dia-oracle",
+ "dia-oracle 0.1.0 (git+https://github.com/pendulum-chain/oracle-pallet?branch=polkadot-v1.1.0)",
  "fee",
  "flate2",
  "frame-benchmarking",
@@ -11650,7 +11667,7 @@ dependencies = [
  "cfg-if 1.0.0",
  "clients-info",
  "currency",
- "dia-oracle",
+ "dia-oracle 0.1.0 (git+https://github.com/pendulum-chain/oracle-pallet?branch=polkadot-v1.1.0)",
  "fee",
  "flate2",
  "frame-benchmarking",
@@ -11846,9 +11863,8 @@ dependencies = [
  "frame-benchmarking",
  "frame-support",
  "frame-system",
- "mocktopus",
- "orml-tokens 0.4.1-dev",
- "orml-traits 0.4.1-dev",
+ "orml-tokens 0.7.1",
+ "orml-traits 0.7.1",
  "pallet-timestamp",
  "parity-scale-codec",
  "rand 0.8.5",

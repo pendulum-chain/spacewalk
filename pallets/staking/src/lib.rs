@@ -50,7 +50,6 @@
 // }
 
 #![deny(warnings)]
-#![cfg_attr(test, feature(proc_macro_hygiene))]
 #![cfg_attr(not(feature = "std"), no_std)]
 
 use codec::EncodeLike;
