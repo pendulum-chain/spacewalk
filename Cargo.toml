@@ -106,13 +106,14 @@ jsonrpsee-types = "0.20.0"
 jsonrpsee-core = { version = "0.20.0", default-features = false }
 
 # Git dependencies from ParityTech (using consistent branch "release-polkadot-v1.6.0")
+frame-benchmarking = { git = "https://github.com/paritytech/polkadot-sdk", branch = "release-polkadot-v1.6.0", default-features = false }
+frame-support = { git = "https://github.com/paritytech/polkadot-sdk", branch = "release-polkadot-v1.6.0", default-features = false }
+frame-system = { git = "https://github.com/paritytech/polkadot-sdk", branch = "release-polkadot-v1.6.0", default-features = false }
+pallet-balances = { git = "https://github.com/paritytech//polkadot-sdk", branch = "release-polkadot-v1.6.0", default-features = false }
 sp-core = { git = "https://github.com/paritytech/polkadot-sdk", branch = "release-polkadot-v1.6.0", default-features = false }
 sp-io = { git = "https://github.com/paritytech/polkadot-sdk", branch = "release-polkadot-v1.6.0", default-features = false }
 sp-runtime = { git = "https://github.com/paritytech/polkadot-sdk", branch = "release-polkadot-v1.6.0", default-features = false }
 sp-std = { git = "https://github.com/paritytech/polkadot-sdk", branch = "release-polkadot-v1.6.0", default-features = false }
-frame-benchmarking = { git = "https://github.com/paritytech/polkadot-sdk", branch = "release-polkadot-v1.6.0", default-features = false }
-frame-support = { git = "https://github.com/paritytech/polkadot-sdk", branch = "release-polkadot-v1.6.0", default-features = false }
-frame-system = { git = "https://github.com/paritytech/polkadot-sdk", branch = "release-polkadot-v1.6.0", default-features = false }
 sc-client-db = { git = "https://github.com/paritytech/polkadot-sdk", branch = "release-polkadot-v1.6.0", default-features = false }
 sp-keyring = { git = "https://github.com/paritytech/polkadot-sdk", branch = "release-polkadot-v1.6.0", default-features = false }
 sc-network = { git = "https://github.com/paritytech/polkadot-sdk", branch = "release-polkadot-v1.6.0", default-features = false }
@@ -120,7 +121,10 @@ sc-service = { git = "https://github.com/paritytech/polkadot-sdk", branch = "rel
 sp-arithmetic = { git = "https://github.com/paritytech/polkadot-sdk", branch = "release-polkadot-v1.6.0", default-features = false }
 sp-version = { git = "https://github.com/paritytech/polkadot-sdk", branch = "release-polkadot-v1.6.0", default-features = false }
 
-
+# Orml dependencies
+orml-currencies = { package = "orml-currencies", git = "https://github.com/InvArch/open-runtime-module-library.git", default-features = false, branch = "polkadot-v1.6.0" }
+orml-tokens = { package = "orml-tokens", git = "https://github.com/InvArch/open-runtime-module-library.git", default-features = false, branch = "polkadot-v1.6.0" }
+orml-traits = { package = "orml-traits", git = "https://github.com/InvArch/open-runtime-module-library.git", default-features = false, branch = "polkadot-v1.6.0" }
 # Git dependency from Pendulum Chain
 substrate-stellar-sdk = { git = "https://github.com/pendulum-chain/substrate-stellar-sdk", branch = "polkadot-v1.6.0", default-features = false }
 
