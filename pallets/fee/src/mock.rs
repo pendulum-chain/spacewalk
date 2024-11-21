@@ -7,7 +7,6 @@ use frame_support::{
 	traits::{ConstU32, ConstU64, Everything},
 	PalletId,
 };
-use mocktopus::mocking::clear_mocks;
 use orml_currencies::BasicCurrencyAdapter;
 use orml_traits::parameter_type_with_key;
 use sp_arithmetic::{FixedI128, FixedU128};
@@ -295,7 +294,6 @@ pub fn run_test<T>(test: T)
 where
 	T: FnOnce(),
 {
-	clear_mocks();
 	ExtBuilder::build().execute_with(|| {
 		System::set_block_number(1);
 		Security::set_active_block_number(1);

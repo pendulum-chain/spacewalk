@@ -28,7 +28,7 @@ cfg-if = { workspace = true }
 clap = { workspace = true, features = ["derive", "env"]}
 codec = {  workspace = true, features = ["derive", "full"] }
 futures = { workspace = true }
-log = { workspace = true }
+log = { workspace = true, default-features = true }
 serde = { workspace = true, features = ["derive"], default-features = true }
 serde_json = { workspace = true, default-features = true }
 thiserror = { workspace = true }

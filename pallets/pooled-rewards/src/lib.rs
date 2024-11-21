@@ -2,7 +2,6 @@
 //! Based on the [Scalable Reward Distribution](https://solmaz.io/2019/02/24/scalable-reward-changing/) algorithm.
 
 #![deny(warnings)]
-#![cfg_attr(test, feature(proc_macro_hygiene))]
 #![cfg_attr(not(feature = "std"), no_std)]
 
 #[cfg(test)]

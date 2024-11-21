@@ -10,7 +10,7 @@ tokio = { workspace = true, features = ["rt-multi-thread", "macros", "time"] }
 codec = { workspace = true, features = ["derive", "full", "bit-vec"] }
 sp-core = { workspace = true, default-features = true }
 thiserror = { workspace = true }
-log = { workspace = true}
+log = { workspace = true, default-features = true }
 env_logger ={ workspace = true }
 reqwest = { workspace = true, features = ["native-tls-vendored"]}
 # reuse version of `url` depended on by `reqwest`

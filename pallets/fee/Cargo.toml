@@ -28,7 +28,6 @@ primitives = { package = "spacewalk-primitives", path = "../../primitives", defa
 
 
 [dev-dependencies]
-mocktopus.workspace = true
 frame-benchmarking = {  workspace = true, default-features = true }
 pallet-balances = { workspace = true, default-features = true }
 pallet-timestamp = { workspace = true, default-features = true }

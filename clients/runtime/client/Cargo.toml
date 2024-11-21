@@ -20,7 +20,7 @@ jsonrpsee = { workspace = true }
 jsonrpsee-types = { workspace = true }
 jsonrpsee-core = { workspace = true, features = ["async-client"] }
 
-log = { workspace = true }
+log = { workspace = true, default-features = true }
 serde_json = { workspace = true, default-features = true }
 thiserror = { workspace = true }
 

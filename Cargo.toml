@@ -89,7 +89,7 @@ rand = "0.8.5"
 
 
 
-log = "0.4.20"
+log = { version = "0.4.20", default-features = false }
 env_logger = "0.8.4"
 url = "2.2.2"
 nix = "0.24.2"
