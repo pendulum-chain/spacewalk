@@ -22,7 +22,7 @@ signal-hook = { workspace = true }
 signal-hook-tokio = { workspace = true , features = ["futures-v0_3"] }
 futures = { workspace = true }
 subxt = {version = "0.33.0", default-features = false, features = ["jsonrpsee", "native"]}
-sha2 = { workspace = true }
+sha2 = { workspace = true, default-features = true }
 
 [dev-dependencies]
 sysinfo.workspace = true

@@ -8,7 +8,7 @@ use frame_support::{
 		BuildStorage,
 	},
 };
-use mocktopus::mocking::clear_mocks;
+
 use sp_core::H256;
 
 type Block = frame_system::mocking::MockBlock<Test>;
@@ -53,6 +53,7 @@ impl frame_system::Config for Test {
 	type SS58Prefix = SS58Prefix;
 	type OnSetCode = ();
 	type MaxConsumers = frame_support::traits::ConstU32<16>;
+	type RuntimeTask = RuntimeTask;
 }
 
 impl Config for Test {
@@ -77,7 +78,6 @@ pub fn run_test<T>(test: T)
 where
 	T: FnOnce(),
 {
-	clear_mocks();
 	ExtBuilder::build().execute_with(|| {
 		System::set_block_number(1);
 		Security::set_active_block_number(1);

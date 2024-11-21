@@ -2,16 +2,12 @@
 //! Based on the [specification](https://spec.interlay.io/spec/security.html).
 
 #![deny(warnings)]
-#![cfg_attr(test, feature(proc_macro_hygiene))]
 #![cfg_attr(not(feature = "std"), no_std)]
 
-#[cfg(test)]
-extern crate mocktopus;
+
 use codec::Encode;
 use frame_support::{dispatch::DispatchResult, sp_runtime, transactional};
 use frame_system::pallet_prelude::BlockNumberFor;
-#[cfg(test)]
-use mocktopus::macros::mockable;
 use sha2::{Digest, Sha256};
 use sp_core::{H256, U256};
 use sp_runtime::{traits::*, ArithmeticError, DispatchError};
@@ -193,7 +189,6 @@ pub mod pallet {
 	forgetting_references,
 	forgetting_copy_types
 )]
-#[cfg_attr(test, mockable)]
 impl<T: Config> Pallet<T> {
 	/// Ensures the Parachain is RUNNING
 	pub fn ensure_parachain_status_running() -> DispatchResult {
@@ -307,13 +302,13 @@ impl<T: Config> Pallet<T> {
 	/// * `id`: Parachain account identifier.
 	pub fn get_secure_id() -> H256 {
 		let mut hasher = Sha256::default();
-		hasher.input(frame_system::Pallet::<T>::extrinsic_index().unwrap_or_default().encode());
-		hasher.input(Self::get_nonce().encode());
+		hasher.update(frame_system::Pallet::<T>::extrinsic_index().unwrap_or_default().encode());
+		hasher.update(Self::get_nonce().encode());
 		// supplement with prev block hash to prevent replays
 		// even if the `Nonce` is reset (i.e. purge-chain)
-		hasher.input(frame_system::Pallet::<T>::parent_hash());
+		hasher.update(frame_system::Pallet::<T>::parent_hash());
 		let mut result = [0; 32];
-		result.copy_from_slice(&hasher.result()[..]);
+		result.copy_from_slice(&hasher.finalize()[..]);
 		H256(result)
 	}
 

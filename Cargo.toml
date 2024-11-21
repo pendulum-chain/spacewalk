@@ -95,7 +95,7 @@ url = "2.2.2"
 nix = "0.24.2"
 bytes = "1.4.0"
 
-sha2 = "0.10.2" #prev 0.8.2
+sha2 = { version = "0.10.2", default-features = false } #prev 0.8.2
 backoff = { version = "0.3.0" }
 cfg-if = "1.0"
 prometheus = { version = "0.12.0" }
@@ -110,6 +110,7 @@ frame-benchmarking = { git = "https://github.com/paritytech/polkadot-sdk", branc
 frame-support = { git = "https://github.com/paritytech/polkadot-sdk", branch = "release-polkadot-v1.6.0", default-features = false }
 frame-system = { git = "https://github.com/paritytech/polkadot-sdk", branch = "release-polkadot-v1.6.0", default-features = false }
 pallet-balances = { git = "https://github.com/paritytech//polkadot-sdk", branch = "release-polkadot-v1.6.0", default-features = false }
+pallet-timestamp = { git = "https://github.com/paritytech/polkadot-sdk", branch = "release-polkadot-v1.6.0", default-features = false }
 sp-core = { git = "https://github.com/paritytech/polkadot-sdk", branch = "release-polkadot-v1.6.0", default-features = false }
 sp-io = { git = "https://github.com/paritytech/polkadot-sdk", branch = "release-polkadot-v1.6.0", default-features = false }
 sp-runtime = { git = "https://github.com/paritytech/polkadot-sdk", branch = "release-polkadot-v1.6.0", default-features = false }
