@@ -2057,9 +2057,9 @@ dependencies = [
  "frame-support",
  "frame-system",
  "mocktopus",
- "orml-currencies 0.7.1",
- "orml-tokens 0.7.1",
- "orml-traits 0.7.1",
+ "orml-currencies 0.7.0",
+ "orml-tokens 0.7.0",
+ "orml-traits 0.7.0",
  "pallet-balances",
  "parity-scale-codec",
  "scale-info",
@@ -2900,9 +2900,9 @@ dependencies = [
  "frame-system",
  "mocktopus",
  "oracle",
- "orml-currencies 0.7.1",
- "orml-tokens 0.7.1",
- "orml-traits 0.7.1",
+ "orml-currencies 0.7.0",
+ "orml-tokens 0.7.0",
+ "orml-traits 0.7.0",
  "pallet-balances",
  "pallet-timestamp",
  "parity-scale-codec",
@@ -6618,10 +6618,10 @@ dependencies = [
  "frame-system",
  "mocktopus",
  "once_cell",
- "orml-currencies 0.7.1",
+ "orml-currencies 0.7.0",
  "orml-oracle",
- "orml-tokens 0.7.1",
- "orml-traits 0.7.1",
+ "orml-tokens 0.7.0",
+ "orml-traits 0.7.0",
  "pallet-balances",
  "pallet-timestamp",
  "parity-scale-codec",
@@ -6655,13 +6655,13 @@ dependencies = [
 
 [[package]]
 name = "orml-currencies"
-version = "0.7.1"
-source = "git+https://github.com/InvArch/open-runtime-module-library.git?branch=polkadot-v1.6.0#74a0efb69072bd3e9263c2e56bb1adc11945c3da"
+version = "0.7.0"
+source = "git+https://github.com/gianfra-t/open-runtime-module-library.git?branch=polkadot-v1.6.0#886ba6201da8f3a4bf3b89f9116f10cd2ca40f6a"
 dependencies = [
  "frame-support",
  "frame-system",
- "orml-traits 0.7.1",
- "orml-utilities 0.7.1",
+ "orml-traits 0.7.0",
+ "orml-utilities 0.7.0",
  "parity-scale-codec",
  "scale-info",
  "serde",
@@ -6672,13 +6672,13 @@ dependencies = [
 
 [[package]]
 name = "orml-oracle"
-version = "0.7.1"
-source = "git+https://github.com/InvArch/open-runtime-module-library.git?branch=polkadot-v1.6.0#74a0efb69072bd3e9263c2e56bb1adc11945c3da"
+version = "0.7.0"
+source = "git+https://github.com/gianfra-t/open-runtime-module-library.git?branch=polkadot-v1.6.0#886ba6201da8f3a4bf3b89f9116f10cd2ca40f6a"
 dependencies = [
  "frame-support",
  "frame-system",
- "orml-traits 0.7.1",
- "orml-utilities 0.7.1",
+ "orml-traits 0.7.0",
+ "orml-utilities 0.7.0",
  "parity-scale-codec",
  "scale-info",
  "serde",
@@ -6707,13 +6707,13 @@ dependencies = [
 
 [[package]]
 name = "orml-tokens"
-version = "0.7.1"
-source = "git+https://github.com/InvArch/open-runtime-module-library.git?branch=polkadot-v1.6.0#74a0efb69072bd3e9263c2e56bb1adc11945c3da"
+version = "0.7.0"
+source = "git+https://github.com/gianfra-t/open-runtime-module-library.git?branch=polkadot-v1.6.0#886ba6201da8f3a4bf3b89f9116f10cd2ca40f6a"
 dependencies = [
  "frame-support",
  "frame-system",
  "log",
- "orml-traits 0.7.1",
+ "orml-traits 0.7.0",
  "parity-scale-codec",
  "scale-info",
  "serde",
@@ -6744,13 +6744,13 @@ dependencies = [
 
 [[package]]
 name = "orml-traits"
-version = "0.7.1"
-source = "git+https://github.com/InvArch/open-runtime-module-library.git?branch=polkadot-v1.6.0#74a0efb69072bd3e9263c2e56bb1adc11945c3da"
+version = "0.7.0"
+source = "git+https://github.com/gianfra-t/open-runtime-module-library.git?branch=polkadot-v1.6.0#886ba6201da8f3a4bf3b89f9116f10cd2ca40f6a"
 dependencies = [
  "frame-support",
  "impl-trait-for-tuples",
  "num-traits",
- "orml-utilities 0.7.1",
+ "orml-utilities 0.7.0",
  "parity-scale-codec",
  "paste",
  "scale-info",
@@ -6779,8 +6779,8 @@ dependencies = [
 
 [[package]]
 name = "orml-utilities"
-version = "0.7.1"
-source = "git+https://github.com/InvArch/open-runtime-module-library.git?branch=polkadot-v1.6.0#74a0efb69072bd3e9263c2e56bb1adc11945c3da"
+version = "0.7.0"
+source = "git+https://github.com/gianfra-t/open-runtime-module-library.git?branch=polkadot-v1.6.0#886ba6201da8f3a4bf3b89f9116f10cd2ca40f6a"
 dependencies = [
  "frame-support",
  "parity-scale-codec",
@@ -8223,9 +8223,9 @@ dependencies = [
  "log",
  "mocktopus",
  "oracle",
- "orml-currencies 0.7.1",
- "orml-tokens 0.7.1",
- "orml-traits 0.7.1",
+ "orml-currencies 0.7.0",
+ "orml-tokens 0.7.0",
+ "orml-traits 0.7.0",
  "pallet-balances",
  "parity-scale-codec",
  "pooled-rewards",
@@ -11866,8 +11866,8 @@ dependencies = [
  "frame-support",
  "frame-system",
  "mocktopus",
- "orml-tokens 0.7.1",
- "orml-traits 0.7.1",
+ "orml-tokens 0.7.0",
+ "orml-traits 0.7.0",
  "pallet-timestamp",
  "parity-scale-codec",
  "rand 0.8.5",
@@ -11922,8 +11922,8 @@ dependencies = [
  "frame-support",
  "frame-system",
  "log",
- "orml-tokens 0.7.1",
- "orml-traits 0.7.1",
+ "orml-tokens 0.7.0",
+ "orml-traits 0.7.0",
  "parity-scale-codec",
  "rand 0.8.5",
  "scale-info",
@@ -13193,8 +13193,8 @@ dependencies = [
  "mocktopus",
  "oracle",
  "orml-currencies 0.4.1-dev",
- "orml-tokens 0.7.1",
- "orml-traits 0.7.1",
+ "orml-tokens 0.7.0",
+ "orml-traits 0.7.0",
  "pallet-balances",
  "pallet-timestamp",
  "parity-scale-codec",
