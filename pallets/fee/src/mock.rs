@@ -7,6 +7,7 @@ use frame_support::{
 	traits::{ConstU32, ConstU64, Everything},
 	PalletId,
 };
+use mocktopus::mocking::clear_mocks;
 use orml_currencies::BasicCurrencyAdapter;
 use orml_traits::parameter_type_with_key;
 use sp_arithmetic::{FixedI128, FixedU128};
@@ -82,6 +83,7 @@ impl frame_system::Config for Test {
 	type SS58Prefix = SS58Prefix;
 	type OnSetCode = ();
 	type MaxConsumers = frame_support::traits::ConstU32<16>;
+	type RuntimeTask = RuntimeTask;
 }
 
 parameter_types! {
@@ -105,6 +107,7 @@ impl pallet_balances::Config for Test {
 	type MaxFreezes = ();
 	type MaxHolds = ConstU32<1>;
 	type RuntimeHoldReason = RuntimeHoldReason;
+	type RuntimeFreezeReason = RuntimeFreezeReason;
 }
 
 pub type Amount = i128;
@@ -294,6 +297,7 @@ pub fn run_test<T>(test: T)
 where
 	T: FnOnce(),
 {
+	clear_mocks();
 	ExtBuilder::build().execute_with(|| {
 		System::set_block_number(1);
 		Security::set_active_block_number(1);

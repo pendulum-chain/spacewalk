@@ -2898,6 +2898,7 @@ dependencies = [
  "frame-benchmarking",
  "frame-support",
  "frame-system",
+ "mocktopus",
  "oracle",
  "orml-currencies 0.7.1",
  "orml-tokens 0.7.1",
@@ -7336,6 +7337,7 @@ dependencies = [
  "frame-benchmarking",
  "frame-support",
  "frame-system",
+ "mocktopus",
  "pallet-timestamp",
  "parity-scale-codec",
  "rand 0.8.5",
@@ -7958,6 +7960,7 @@ dependencies = [
  "frame-system",
  "hex",
  "log",
+ "mocktopus",
  "oracle",
  "orml-currencies 0.4.1-dev",
  "orml-tokens 0.4.1-dev",
@@ -8113,6 +8116,7 @@ dependencies = [
  "frame-system",
  "hex",
  "log",
+ "mocktopus",
  "nomination",
  "oracle",
  "orml-currencies 0.4.1-dev",
@@ -8196,6 +8200,7 @@ dependencies = [
  "frame-benchmarking",
  "frame-support",
  "frame-system",
+ "mocktopus",
  "pallet-timestamp",
  "parity-scale-codec",
  "rand 0.8.5",
@@ -8216,6 +8221,7 @@ dependencies = [
  "frame-support",
  "frame-system",
  "log",
+ "mocktopus",
  "oracle",
  "orml-currencies 0.7.1",
  "orml-tokens 0.7.1",
@@ -9978,6 +9984,7 @@ version = "1.0.13"
 dependencies = [
  "frame-support",
  "frame-system",
+ "mocktopus",
  "parity-scale-codec",
  "scale-info",
  "serde",
@@ -10881,7 +10888,7 @@ dependencies = [
 [[package]]
 name = "sp-crypto-ec-utils"
 version = "0.10.0"
-source = "git+https://github.com/paritytech/polkadot-sdk#8d4138f77106a6af49920ad84f3283f696f3f905"
+source = "git+https://github.com/paritytech/polkadot-sdk#08ec8cdbfdbdd29c7921a8a141187e04354a449e"
 dependencies = [
  "ark-bls12-377",
  "ark-bls12-377-ext",
@@ -11858,6 +11865,7 @@ dependencies = [
  "frame-benchmarking",
  "frame-support",
  "frame-system",
+ "mocktopus",
  "orml-tokens 0.7.1",
  "orml-traits 0.7.1",
  "pallet-timestamp",
@@ -13182,10 +13190,11 @@ dependencies = [
  "frame-support",
  "frame-system",
  "log",
+ "mocktopus",
  "oracle",
  "orml-currencies 0.4.1-dev",
- "orml-tokens 0.4.1-dev",
- "orml-traits 0.4.1-dev",
+ "orml-tokens 0.7.1",
+ "orml-traits 0.7.1",
  "pallet-balances",
  "pallet-timestamp",
  "parity-scale-codec",

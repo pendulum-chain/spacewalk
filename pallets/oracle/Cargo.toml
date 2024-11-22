@@ -27,7 +27,7 @@ primitives = { package = "spacewalk-primitives", path = "../../primitives", defa
 currency = { path = "../currency", default-features = false }
 
 # Testing dependencies
-spin = { workspace = true, optional = true }
+spin = { workspace = true, features = ["mutex"], optional = true }
 once_cell = { workspace = true, features = ["alloc", "race"], optional = true }
 
 [dev-dependencies]

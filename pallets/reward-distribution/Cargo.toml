@@ -29,6 +29,7 @@ oracle = { path = "../oracle", default-features = false }
 staking = {path = "../staking", default-features = false}
 
 [dev-dependencies]
+mocktopus.workspace = true
 currency = { path = "../currency", features = ["testing-constants", "testing-utils"] }
 pallet-balances = { workspace = true, default-features = true }
 sp-core = { workspace = true, default-features = true }

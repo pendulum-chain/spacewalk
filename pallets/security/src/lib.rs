@@ -2,8 +2,13 @@
 //! Based on the [specification](https://spec.interlay.io/spec/security.html).
 
 #![deny(warnings)]
+#![cfg_attr(test, feature(proc_macro_hygiene))]
 #![cfg_attr(not(feature = "std"), no_std)]
 
+#[cfg(test)]
+extern crate mocktopus;
+#[cfg(test)]
+use mocktopus::macros::mockable;
 
 use codec::Encode;
 use frame_support::{dispatch::DispatchResult, sp_runtime, transactional};
@@ -189,6 +194,7 @@ pub mod pallet {
 	forgetting_references,
 	forgetting_copy_types
 )]
+#[cfg_attr(test, mockable)]
 impl<T: Config> Pallet<T> {
 	/// Ensures the Parachain is RUNNING
 	pub fn ensure_parachain_status_running() -> DispatchResult {

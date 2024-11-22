@@ -1,7 +1,13 @@
 //! # Fee Module
 
 #![deny(warnings)]
+#![cfg_attr(test, feature(proc_macro_hygiene))]
 #![cfg_attr(not(feature = "std"), no_std)]
+
+#[cfg(test)]
+extern crate mocktopus;
+#[cfg(test)]
+use mocktopus::macros::mockable;
 
 use codec::EncodeLike;
 use frame_support::{dispatch::DispatchResult, sp_runtime, traits::Get, transactional, PalletId};
@@ -350,6 +356,7 @@ pub mod pallet {
 }
 
 // "Internal" functions, callable by code.
+#[cfg_attr(test, mockable)]
 impl<T: Config> Pallet<T> {
 	/// The account ID of the fee pool.
 	///

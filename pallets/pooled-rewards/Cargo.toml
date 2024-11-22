@@ -20,6 +20,7 @@ frame-support = { workspace = true }
 frame-system = { workspace = true }
 
 [dev-dependencies]
+mocktopus.workspace = true
 rand.workspace = true
 frame-benchmarking = { workspace = true, default-features = true}
 pallet-timestamp = { workspace = true, default-features = true}
