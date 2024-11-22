@@ -6615,6 +6615,7 @@ dependencies = [
  "frame-benchmarking",
  "frame-support",
  "frame-system",
+ "mocktopus",
  "once_cell",
  "orml-currencies 0.7.1",
  "orml-oracle",

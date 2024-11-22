@@ -31,7 +31,7 @@ spin = { workspace = true, optional = true }
 once_cell = { workspace = true, features = ["alloc", "race"], optional = true }
 
 [dev-dependencies]
-
+mocktopus.workspace = true
 currency = { path = "../currency", features = ["testing-constants"] }
 security = { path = "../security", features = ['testing-utils'] }
 staking = { path = "../staking" }
