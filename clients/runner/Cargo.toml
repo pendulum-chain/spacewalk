@@ -5,7 +5,7 @@ edition = "2021"
 
 [dependencies]
 clap = { workspace = true, features = ["derive"] }
-hex = { workspace = true}
+hex = { workspace = true, default-features = true }
 tokio = { workspace = true, features = ["rt-multi-thread", "macros", "time"] }
 codec = { workspace = true, features = ["derive", "full", "bit-vec"] }
 sp-core = { workspace = true, default-features = true }

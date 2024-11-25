@@ -31,7 +31,7 @@ cfg-if = { workspace = true }
 rand = { workspace = true, optional = true }
 futures = { workspace = true }
 governor = { workspace = true }
-hex = { workspace = true }
+hex = { workspace = true, default-features = true }
 itertools = { workspace = true }
 lazy_static = { workspace = true }
 nonzero_ext = { workspace = true }

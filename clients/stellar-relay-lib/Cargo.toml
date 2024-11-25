@@ -17,7 +17,7 @@ wallet = { path = "../wallet", features = ["testing-utils"] }
 
 
 [dependencies]
-hex = { workspace = true}
+hex = { workspace = true, default-features = true }
 tracing = { workspace = true, features = ["log"] }
 
 base64 = { workspace = true, default-features = true}

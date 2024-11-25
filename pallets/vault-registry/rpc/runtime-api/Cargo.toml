@@ -5,11 +5,11 @@ name = "module-vault-registry-rpc-runtime-api"
 version = "1.0.13"
 
 [dependencies]
-codec = {package = "parity-scale-codec", version = "3.0.0", default-features = false, features = ["derive", "max-encoded-len"]}
-frame-support = {git = "https://github.com/paritytech/polkadot-sdk", branch = "release-polkadot-v1.1.0", default-features = false}
+codec = { workspace = true, features = ["derive", "max-encoded-len"]}
+frame-support = { workspace = true }
 module-oracle-rpc-runtime-api = {path = '../../../oracle/rpc/runtime-api', default-features = false}
-sp-api = {git = "https://github.com/paritytech/polkadot-sdk", branch = "release-polkadot-v1.1.0", default-features = false}
-sp-std = {git = "https://github.com/paritytech/polkadot-sdk", branch = "release-polkadot-v1.1.0", default-features = false}
+sp-api = { workspace = true }
+sp-std = { workspace = true }
 
 [features]
 default = ["std"]
