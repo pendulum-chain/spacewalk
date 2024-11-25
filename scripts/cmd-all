@@ -24,10 +24,10 @@ echo "------------------------------------------------------------------------"
 cargo $sub_cmd -p spacewalk-primitives --all-features $options
 
 # run the pallets
-#./scripts/cmd-pallets "$reason" "$sub_cmd" "$options"
+./scripts/cmd-pallets "$reason" "$sub_cmd" "$options"
 
 # run the clients
-#./scripts/cmd-clients "$reason" "$sub_cmd" "$options"
+./scripts/cmd-clients "$reason" "$sub_cmd" "$options"
 
 # run the others
 ./scripts/cmd-others $reason $sub_cmd $options
@@ -35,4 +35,4 @@ cargo $sub_cmd -p spacewalk-primitives --all-features $options
 #  echo "------------------------------------------------------------------------"
 #  echo "Checks $reason on the vault"
 #  echo "------------------------------------------------------------------------"
-#cargo $sub_cmd -p vault --all-features $options
+cargo $sub_cmd -p vault --all-features $options

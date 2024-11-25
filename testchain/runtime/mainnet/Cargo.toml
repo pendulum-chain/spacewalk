@@ -8,48 +8,48 @@ version = "1.0.13"
 targets = ['x86_64-unknown-linux-gnu']
 
 [dependencies]
-codec = {package = "parity-scale-codec", version = "3.0.0", default-features = false, features = ["derive", "max-encoded-len"]}
-scale-info = {version = "2.1.1", default-features = false, features = ["derive"]}
+codec = { workspace = true, features = ["derive", "max-encoded-len"]}
+scale-info = { workspace = true, features = ["derive"]}
 
-cfg-if = "1.0.0"
+cfg-if = {  workspace = true }
 
 # Substrate dependencies
-sp-api = {git = "https://github.com/paritytech/polkadot-sdk", branch = "release-polkadot-v1.1.0", default-features = false}
-sp-block-builder = {git = "https://github.com/paritytech/polkadot-sdk", branch = "release-polkadot-v1.1.0", default-features = false}
-sp-core = {git = "https://github.com/paritytech/polkadot-sdk", branch = "release-polkadot-v1.1.0", default-features = false}
-sp-inherents = {git = "https://github.com/paritytech/polkadot-sdk", branch = "release-polkadot-v1.1.0", default-features = false}
-sp-offchain = {git = "https://github.com/paritytech/polkadot-sdk", branch = "release-polkadot-v1.1.0", default-features = false}
-sp-runtime = {git = "https://github.com/paritytech/polkadot-sdk", branch = "release-polkadot-v1.1.0", default-features = false}
-sp-session = {git = "https://github.com/paritytech/polkadot-sdk", branch = "release-polkadot-v1.1.0", default-features = false}
-sp-std = {git = "https://github.com/paritytech/polkadot-sdk", branch = "release-polkadot-v1.1.0", default-features = false}
-sp-transaction-pool = {git = "https://github.com/paritytech/polkadot-sdk", branch = "release-polkadot-v1.1.0", default-features = false}
-sp-version = {git = "https://github.com/paritytech/polkadot-sdk", branch = "release-polkadot-v1.1.0", default-features = false}
+sp-api = {workspace = true}
+sp-block-builder = {workspace = true}
+sp-core = {workspace = true}
+sp-inherents = {workspace = true}
+sp-offchain = {workspace = true}
+sp-runtime = {workspace = true}
+sp-session = {workspace = true}
+sp-std = {workspace = true}
+sp-transaction-pool = {workspace = true}
+sp-version = {workspace = true}
 
-frame-executive = {git = "https://github.com/paritytech/polkadot-sdk", branch = "release-polkadot-v1.1.0", default-features = false}
-frame-support = {git = "https://github.com/paritytech/polkadot-sdk", branch = "release-polkadot-v1.1.0", default-features = false}
-frame-system = {git = "https://github.com/paritytech/polkadot-sdk", branch = "release-polkadot-v1.1.0", default-features = false}
-pallet-balances = {git = "https://github.com/paritytech/polkadot-sdk", branch = "release-polkadot-v1.1.0", default-features = false}
-pallet-sudo = {git = "https://github.com/paritytech/polkadot-sdk", branch = "release-polkadot-v1.1.0", default-features = false}
-pallet-timestamp = {git = "https://github.com/paritytech/polkadot-sdk", branch = "release-polkadot-v1.1.0", default-features = false}
-pallet-transaction-payment = {git = "https://github.com/paritytech/polkadot-sdk", branch = "release-polkadot-v1.1.0", default-features = false}
+frame-executive = {workspace = true}
+frame-support = {workspace = true}
+frame-system = {workspace = true}
+pallet-balances = {workspace = true}
+pallet-sudo = {workspace = true}
+pallet-timestamp = {workspace = true}
+pallet-transaction-payment = {workspace = true}
 
-frame-system-rpc-runtime-api = {git = "https://github.com/paritytech/polkadot-sdk", branch = "release-polkadot-v1.1.0", default-features = false}
-pallet-transaction-payment-rpc-runtime-api = {git = "https://github.com/paritytech/polkadot-sdk", branch = "release-polkadot-v1.1.0", default-features = false}
+frame-system-rpc-runtime-api = {workspace = true}
+pallet-transaction-payment-rpc-runtime-api = {workspace = true}
 
 # Used for runtime benchmarking
-frame-benchmarking = {git = "https://github.com/paritytech/polkadot-sdk", branch = "release-polkadot-v1.1.0", default-features = false, optional = true}
-frame-system-benchmarking = {git = "https://github.com/paritytech/polkadot-sdk", branch = "release-polkadot-v1.1.0", default-features = false, optional = true}
-hex-literal = {version = "0.3.4", optional = true, default-features = false}
+frame-benchmarking = {workspace = true, optional = true}
+frame-system-benchmarking = {workspace = true, optional = true}
+hex-literal = { workspace = true, optional = true}
 
 # Aura & GRANDPA dependencies
-pallet-aura = {git = "https://github.com/paritytech/polkadot-sdk", branch = "release-polkadot-v1.1.0", default-features = false}
-pallet-grandpa = {git = "https://github.com/paritytech/polkadot-sdk", branch = "release-polkadot-v1.1.0", default-features = false}
-sp-consensus-aura = {git = "https://github.com/paritytech/polkadot-sdk", branch = "release-polkadot-v1.1.0", default-features = false}
+pallet-aura = {workspace = true}
+pallet-grandpa = {workspace = true}
+sp-consensus-aura = {workspace = true}
 
 # Orml dependencies
-orml-currencies = {git = "https://github.com/open-web3-stack/open-runtime-module-library", branch = "polkadot-v1.1.0", default-features = false}
-orml-tokens = {git = "https://github.com/open-web3-stack/open-runtime-module-library", branch = "polkadot-v1.1.0", default-features = false}
-orml-traits = {git = "https://github.com/open-web3-stack/open-runtime-module-library", branch = "polkadot-v1.1.0", default-features = false}
+orml-currencies = {workspace = true}
+orml-tokens = {workspace = true}
+orml-traits = {workspace = true}
 
 clients-info = {path = "../../../pallets/clients-info", default-features = false}
 currency = {path = "../../../pallets/currency", default-features = false}
@@ -74,17 +74,17 @@ module-vault-registry-rpc-runtime-api = {path = "../../../pallets/vault-registry
 
 primitives = {package = "spacewalk-primitives", path = "../../../primitives", default-features = false}
 
-dia-oracle = { git = "https://github.com/pendulum-chain/oracle-pallet", branch = "polkadot-v1.1.0", default-features = false }
+dia-oracle = { workspace = true }
 
 [dev-dependencies]
-flate2 = "1.0"
-hex = "0.4.2"
-mocktopus = "0.8.0"
-pretty_assertions = "0.7.2"
-serde_json = "1.0"
+flate2 = { workspace = true }
+hex = { workspace = true, default-features = true }
+mocktopus = { workspace = true }
+pretty_assertions = { workspace = true }
+serde_json = { workspace = true, default-features = true }
 
 [build-dependencies]
-substrate-wasm-builder = {git = "https://github.com/paritytech/polkadot-sdk", branch = "release-polkadot-v1.1.0"}
+substrate-wasm-builder = { workspace = true }
 
 [features]
 default = ["std"]
