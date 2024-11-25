@@ -28,7 +28,7 @@ sp-core =  { workspace = true }
 primitives = { package = "spacewalk-primitives", path = "../../primitives", default-features = false }
 
 [dev-dependencies]
-sp-io = { workspace = true }
+sp-io = { workspace = true, default-features = true }
 # Orml dependencies
 orml-tokens = { workspace = true, default-features = true }
 orml-traits = { workspace = true, default-features = true}

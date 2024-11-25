@@ -75,7 +75,7 @@ tokio-metrics = { version = "0.1.0", default-features = false }
 tokio-stream = { version = "0.1.9" }
 tracing = "0.1.38"
 tweetnacl = "0.4.0"
-visibility = "0.0.1"
+visibility = { version = "0.0.1", default-features = false }
 
 # non ordered
 futures = "0.3.28"

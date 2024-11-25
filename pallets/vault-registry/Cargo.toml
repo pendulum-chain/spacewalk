@@ -48,7 +48,7 @@ sp-io = { workspace = true, default-features = true}
 oracle = { path = "../oracle", features = ['testing-utils'] }
 pretty_assertions.workspace = true
 
-orml-currencies = { git = "https://github.com/open-web3-stack/open-runtime-module-library", branch = "polkadot-v1.1.0" }
+orml-currencies = { workspace = true, default-features = true }
 
 [features]
 default = ["std"]

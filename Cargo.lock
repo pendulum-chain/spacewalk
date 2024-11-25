@@ -13192,7 +13192,7 @@ dependencies = [
  "log",
  "mocktopus",
  "oracle",
- "orml-currencies 0.4.1-dev",
+ "orml-currencies 0.7.0",
  "orml-tokens 0.7.0",
  "orml-traits 0.7.0",
  "pallet-balances",
