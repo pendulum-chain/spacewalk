@@ -2057,9 +2057,9 @@ dependencies = [
  "frame-support",
  "frame-system",
  "mocktopus",
- "orml-currencies 0.7.0",
- "orml-tokens 0.7.0",
- "orml-traits 0.7.0",
+ "orml-currencies",
+ "orml-tokens",
+ "orml-traits",
  "pallet-balances",
  "parity-scale-codec",
  "scale-info",
@@ -2355,24 +2355,6 @@ dependencies = [
  "quote",
  "rustc_version",
  "syn 1.0.109",
-]
-
-[[package]]
-name = "dia-oracle"
-version = "0.1.0"
-source = "git+https://github.com/pendulum-chain/oracle-pallet?branch=polkadot-v1.1.0#b98aa3436f3a94d78904357923a98a35affe3677"
-dependencies = [
- "frame-benchmarking",
- "frame-support",
- "frame-system",
- "log",
- "parity-scale-codec",
- "scale-info",
- "serde",
- "serde_json",
- "sp-core 21.0.0",
- "sp-runtime 24.0.0",
- "sp-std 8.0.0",
 ]
 
 [[package]]
@@ -2900,9 +2882,9 @@ dependencies = [
  "frame-system",
  "mocktopus",
  "oracle",
- "orml-currencies 0.7.0",
- "orml-tokens 0.7.0",
- "orml-traits 0.7.0",
+ "orml-currencies",
+ "orml-tokens",
+ "orml-traits",
  "pallet-balances",
  "pallet-timestamp",
  "parity-scale-codec",
@@ -3926,28 +3908,9 @@ checksum = "7f24254aa9a54b5c858eaee2f5bccdb46aaf0e486a595ed5fd8f86ba55232a70"
 
 [[package]]
 name = "hex-literal"
-version = "0.2.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d70693199b3cf4552f3fa720b54163927a3ebed2aef240efaf556033ab336a11"
-dependencies = [
- "hex-literal-impl",
- "proc-macro-hack",
-]
-
-[[package]]
-name = "hex-literal"
 version = "0.3.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7ebdb29d2ea9ed0083cd8cece49bbd968021bd99b0849edb4a9a7ee0fdf6a4e0"
-
-[[package]]
-name = "hex-literal-impl"
-version = "0.2.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "59448fc2f82a5fb6907f78c3d69d843e82ff5b051923313cc4438cb0c7b745a8"
-dependencies = [
- "proc-macro-hack",
-]
 
 [[package]]
 name = "hkdf"
@@ -4501,9 +4464,9 @@ dependencies = [
  "mocktopus",
  "nomination",
  "oracle",
- "orml-currencies 0.7.0",
- "orml-tokens 0.7.0",
- "orml-traits 0.7.0",
+ "orml-currencies",
+ "orml-tokens",
+ "orml-traits",
  "pallet-balances",
  "pallet-timestamp",
  "parity-scale-codec",
@@ -6351,9 +6314,9 @@ dependencies = [
  "frame-system",
  "mocktopus",
  "oracle",
- "orml-currencies 0.7.0",
- "orml-tokens 0.7.0",
- "orml-traits 0.7.0",
+ "orml-currencies",
+ "orml-tokens",
+ "orml-traits",
  "pallet-balances",
  "pallet-timestamp",
  "parity-scale-codec",
@@ -6612,16 +6575,16 @@ name = "oracle"
 version = "1.0.13"
 dependencies = [
  "currency",
- "dia-oracle 0.1.0 (git+https://github.com/pendulum-chain/oracle-pallet?branch=polkadot-v1.6.0)",
+ "dia-oracle",
  "frame-benchmarking",
  "frame-support",
  "frame-system",
  "mocktopus",
  "once_cell",
- "orml-currencies 0.7.0",
+ "orml-currencies",
  "orml-oracle",
- "orml-tokens 0.7.0",
- "orml-traits 0.7.0",
+ "orml-tokens",
+ "orml-traits",
  "pallet-balances",
  "pallet-timestamp",
  "parity-scale-codec",
@@ -6638,30 +6601,13 @@ dependencies = [
 
 [[package]]
 name = "orml-currencies"
-version = "0.4.1-dev"
-source = "git+https://github.com/open-web3-stack/open-runtime-module-library?branch=polkadot-v1.1.0#b3694e631df7f1ca16b1973122937753fcdee9d4"
-dependencies = [
- "frame-support",
- "frame-system",
- "orml-traits 0.4.1-dev",
- "orml-utilities 0.4.1-dev",
- "parity-scale-codec",
- "scale-info",
- "serde",
- "sp-io 23.0.0",
- "sp-runtime 24.0.0",
- "sp-std 8.0.0",
-]
-
-[[package]]
-name = "orml-currencies"
 version = "0.7.0"
 source = "git+https://github.com/gianfra-t/open-runtime-module-library.git?branch=polkadot-v1.6.0#886ba6201da8f3a4bf3b89f9116f10cd2ca40f6a"
 dependencies = [
  "frame-support",
  "frame-system",
- "orml-traits 0.7.0",
- "orml-utilities 0.7.0",
+ "orml-traits",
+ "orml-utilities",
  "parity-scale-codec",
  "scale-info",
  "serde",
@@ -6677,8 +6623,8 @@ source = "git+https://github.com/gianfra-t/open-runtime-module-library.git?branc
 dependencies = [
  "frame-support",
  "frame-system",
- "orml-traits 0.7.0",
- "orml-utilities 0.7.0",
+ "orml-traits",
+ "orml-utilities",
  "parity-scale-codec",
  "scale-info",
  "serde",
@@ -6690,30 +6636,13 @@ dependencies = [
 
 [[package]]
 name = "orml-tokens"
-version = "0.4.1-dev"
-source = "git+https://github.com/open-web3-stack/open-runtime-module-library?branch=polkadot-v1.1.0#b3694e631df7f1ca16b1973122937753fcdee9d4"
-dependencies = [
- "frame-support",
- "frame-system",
- "log",
- "orml-traits 0.4.1-dev",
- "parity-scale-codec",
- "scale-info",
- "serde",
- "sp-arithmetic 16.0.0",
- "sp-runtime 24.0.0",
- "sp-std 8.0.0",
-]
-
-[[package]]
-name = "orml-tokens"
 version = "0.7.0"
 source = "git+https://github.com/gianfra-t/open-runtime-module-library.git?branch=polkadot-v1.6.0#886ba6201da8f3a4bf3b89f9116f10cd2ca40f6a"
 dependencies = [
  "frame-support",
  "frame-system",
  "log",
- "orml-traits 0.7.0",
+ "orml-traits",
  "parity-scale-codec",
  "scale-info",
  "serde",
@@ -6724,33 +6653,13 @@ dependencies = [
 
 [[package]]
 name = "orml-traits"
-version = "0.4.1-dev"
-source = "git+https://github.com/open-web3-stack/open-runtime-module-library?branch=polkadot-v1.1.0#b3694e631df7f1ca16b1973122937753fcdee9d4"
-dependencies = [
- "frame-support",
- "impl-trait-for-tuples",
- "num-traits",
- "orml-utilities 0.4.1-dev",
- "parity-scale-codec",
- "paste",
- "scale-info",
- "serde",
- "sp-core 21.0.0",
- "sp-io 23.0.0",
- "sp-runtime 24.0.0",
- "sp-std 8.0.0",
- "staging-xcm",
-]
-
-[[package]]
-name = "orml-traits"
 version = "0.7.0"
 source = "git+https://github.com/gianfra-t/open-runtime-module-library.git?branch=polkadot-v1.6.0#886ba6201da8f3a4bf3b89f9116f10cd2ca40f6a"
 dependencies = [
  "frame-support",
  "impl-trait-for-tuples",
  "num-traits",
- "orml-utilities 0.7.0",
+ "orml-utilities",
  "parity-scale-codec",
  "paste",
  "scale-info",
@@ -6760,21 +6669,6 @@ dependencies = [
  "sp-runtime 24.0.0",
  "sp-std 8.0.0",
  "staging-xcm",
-]
-
-[[package]]
-name = "orml-utilities"
-version = "0.4.1-dev"
-source = "git+https://github.com/open-web3-stack/open-runtime-module-library?branch=polkadot-v1.1.0#b3694e631df7f1ca16b1973122937753fcdee9d4"
-dependencies = [
- "frame-support",
- "parity-scale-codec",
- "scale-info",
- "serde",
- "sp-core 21.0.0",
- "sp-io 23.0.0",
- "sp-runtime 24.0.0",
- "sp-std 8.0.0",
 ]
 
 [[package]]
@@ -7493,12 +7387,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "proc-macro-hack"
-version = "0.5.20+deprecated"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "dc375e1527247fe1a97d8b7156678dfe7c1af2fc075c9a4db3690ecd2a148068"
-
-[[package]]
 name = "proc-macro-warning"
 version = "1.0.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -7962,9 +7850,9 @@ dependencies = [
  "log",
  "mocktopus",
  "oracle",
- "orml-currencies 0.7.0",
- "orml-tokens 0.7.0",
- "orml-traits 0.7.0",
+ "orml-currencies",
+ "orml-tokens",
+ "orml-traits",
  "pallet-balances",
  "pallet-timestamp",
  "parity-scale-codec",
@@ -8119,9 +8007,9 @@ dependencies = [
  "mocktopus",
  "nomination",
  "oracle",
- "orml-currencies 0.7.0",
- "orml-tokens 0.7.0",
- "orml-traits 0.7.0",
+ "orml-currencies",
+ "orml-tokens",
+ "orml-traits",
  "pallet-balances",
  "pallet-timestamp",
  "parity-scale-codec",
@@ -8223,9 +8111,9 @@ dependencies = [
  "log",
  "mocktopus",
  "oracle",
- "orml-currencies 0.7.0",
- "orml-tokens 0.7.0",
- "orml-traits 0.7.0",
+ "orml-currencies",
+ "orml-tokens",
+ "orml-traits",
  "pallet-balances",
  "parity-scale-codec",
  "pooled-rewards",
@@ -11595,7 +11483,7 @@ dependencies = [
  "sp-core 21.0.0",
  "sp-runtime 24.0.0",
  "sp-std 8.0.0",
- "substrate-stellar-sdk 0.3.0 (git+https://github.com/pendulum-chain/substrate-stellar-sdk?branch=polkadot-v1.6.0)",
+ "substrate-stellar-sdk",
 ]
 
 [[package]]
@@ -11605,7 +11493,7 @@ dependencies = [
  "cfg-if 1.0.0",
  "clients-info",
  "currency",
- "dia-oracle 0.1.0 (git+https://github.com/pendulum-chain/oracle-pallet?branch=polkadot-v1.1.0)",
+ "dia-oracle",
  "fee",
  "flate2",
  "frame-benchmarking",
@@ -11615,7 +11503,7 @@ dependencies = [
  "frame-system-benchmarking",
  "frame-system-rpc-runtime-api",
  "hex",
- "hex-literal 0.3.4",
+ "hex-literal",
  "issue",
  "mocktopus",
  "module-issue-rpc-runtime-api",
@@ -11625,9 +11513,9 @@ dependencies = [
  "module-vault-registry-rpc-runtime-api",
  "nomination",
  "oracle",
- "orml-currencies 0.4.1-dev",
- "orml-tokens 0.4.1-dev",
- "orml-traits 0.4.1-dev",
+ "orml-currencies",
+ "orml-tokens",
+ "orml-traits",
  "pallet-aura",
  "pallet-balances",
  "pallet-grandpa",
@@ -11669,7 +11557,7 @@ dependencies = [
  "cfg-if 1.0.0",
  "clients-info",
  "currency",
- "dia-oracle 0.1.0 (git+https://github.com/pendulum-chain/oracle-pallet?branch=polkadot-v1.6.0)",
+ "dia-oracle",
  "fee",
  "flate2",
  "frame-benchmarking",
@@ -11679,7 +11567,7 @@ dependencies = [
  "frame-system-benchmarking",
  "frame-system-rpc-runtime-api",
  "hex",
- "hex-literal 0.3.4",
+ "hex-literal",
  "issue",
  "mocktopus",
  "module-issue-rpc-runtime-api",
@@ -11689,9 +11577,9 @@ dependencies = [
  "module-vault-registry-rpc-runtime-api",
  "nomination",
  "oracle",
- "orml-currencies 0.7.0",
- "orml-tokens 0.7.0",
- "orml-traits 0.7.0",
+ "orml-currencies",
+ "orml-tokens",
+ "orml-traits",
  "pallet-aura",
  "pallet-balances",
  "pallet-grandpa",
@@ -11730,13 +11618,13 @@ dependencies = [
 name = "spacewalk-standalone"
 version = "1.0.13"
 dependencies = [
- "clap 4.5.4",
+ "clap 3.2.25",
  "frame-benchmarking",
  "frame-benchmarking-cli",
  "frame-support",
  "frame-system",
  "futures 0.3.30",
- "hex-literal 0.2.2",
+ "hex-literal",
  "jsonrpc-core",
  "jsonrpsee 0.16.3",
  "log",
@@ -11789,7 +11677,7 @@ dependencies = [
  "spacewalk-runtime-standalone-testnet",
  "substrate-build-script-utils",
  "substrate-frame-rpc-system",
- "substrate-stellar-sdk 0.3.0 (git+https://github.com/pendulum-chain/substrate-stellar-sdk?branch=polkadot-v1.1.0)",
+ "substrate-stellar-sdk",
  "tokio",
 ]
 
@@ -11866,8 +11754,8 @@ dependencies = [
  "frame-support",
  "frame-system",
  "mocktopus",
- "orml-tokens 0.7.0",
- "orml-traits 0.7.0",
+ "orml-tokens",
+ "orml-traits",
  "pallet-timestamp",
  "parity-scale-codec",
  "rand 0.8.5",
@@ -11922,8 +11810,8 @@ dependencies = [
  "frame-support",
  "frame-system",
  "log",
- "orml-tokens 0.7.0",
- "orml-traits 0.7.0",
+ "orml-tokens",
+ "orml-traits",
  "parity-scale-codec",
  "rand 0.8.5",
  "scale-info",
@@ -11951,7 +11839,7 @@ dependencies = [
  "serde_with",
  "serial_test",
  "sha2 0.10.8",
- "substrate-stellar-sdk 0.3.0 (git+https://github.com/pendulum-chain/substrate-stellar-sdk?branch=polkadot-v1.6.0)",
+ "substrate-stellar-sdk",
  "tokio",
  "tracing",
  "tweetnacl",
@@ -12058,25 +11946,6 @@ dependencies = [
  "prometheus 0.13.4",
  "thiserror",
  "tokio",
-]
-
-[[package]]
-name = "substrate-stellar-sdk"
-version = "0.3.0"
-source = "git+https://github.com/pendulum-chain/substrate-stellar-sdk?branch=polkadot-v1.1.0#6ff899abd7127d59261d7a5d06283a2e5913c6d2"
-dependencies = [
- "base64 0.13.1",
- "hex",
- "lazy_static",
- "num-rational",
- "scale-info",
- "serde",
- "serde_json",
- "sha2 0.10.8",
- "sodalite",
- "sp-io 23.0.0",
- "sp-runtime 24.0.0",
- "sp-std 8.0.0",
 ]
 
 [[package]]
@@ -13192,9 +13061,9 @@ dependencies = [
  "log",
  "mocktopus",
  "oracle",
- "orml-currencies 0.7.0",
- "orml-tokens 0.7.0",
- "orml-traits 0.7.0",
+ "orml-currencies",
+ "orml-tokens",
+ "orml-traits",
  "pallet-balances",
  "pallet-timestamp",
  "parity-scale-codec",
