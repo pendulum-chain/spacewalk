@@ -159,6 +159,7 @@ impl frame_system::Config for Runtime {
 	type SS58Prefix = SS58Prefix;
 	type OnSetCode = ();
 	type MaxConsumers = frame_support::traits::ConstU32<16>;
+	type RuntimeTask = RuntimeTask;
 }
 
 parameter_types! {
@@ -311,6 +312,7 @@ impl pallet_balances::Config for Runtime {
 	type MaxFreezes = ();
 	type MaxHolds = ConstU32<1>;
 	type RuntimeHoldReason = RuntimeHoldReason;
+	type RuntimeFreezeReason = RuntimeFreezeReason;
 }
 
 impl security::Config for Runtime {

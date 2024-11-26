@@ -27,4 +27,3 @@ sha2 = { workspace = true, default-features = true }
 [dev-dependencies]
 sysinfo.workspace = true
 tempdir.workspace = true
-mockall.workspace = true

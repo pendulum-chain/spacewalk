@@ -18,9 +18,9 @@ frame-system = { workspace = true }
 primitives = { package = "spacewalk-primitives", path = "../../primitives", default-features = false }
 
 # Orml dependencies
-orml-tokens = { workspace = true, default-features = true }
-orml-currencies = { workspace = true, default-features = true }
-orml-traits = { workspace = true, default-features = true }
+orml-tokens = { workspace = true }
+orml-currencies = { workspace = true }
+orml-traits = { workspace = true }
 
 # for other pallets wanting to mock functions
 mocktopus = { workspace = true, optional = true }

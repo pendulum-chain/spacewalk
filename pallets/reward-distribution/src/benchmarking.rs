@@ -1,6 +1,5 @@
 #[allow(unused)]
 use super::Pallet as RewardDistribution;
-use sp_std::vec;
 use super::*;
 use crate::types::DefaultVaultId;
 use currency::getters::get_relay_chain_currency_id as get_collateral_currency_id;

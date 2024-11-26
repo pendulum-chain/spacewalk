@@ -24,6 +24,5 @@ dotenv = { workspace = true }
 primitives = { package = "spacewalk-primitives", path = "../../primitives"}
 
 [dev-dependencies]
-mockall.workspace = true
 serial_test.workspace = true
 mocktopus.workspace = true

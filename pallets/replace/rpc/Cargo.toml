@@ -5,7 +5,7 @@ authors = ["Interlay <contact@interlay.io>"]
 edition = "2021"
 
 [dependencies]
-codec = { workspace = true }
+codec = { workspace = true, default-features = true }
 jsonrpsee = { version = "0.16.0", features = ["client","server", "macros"] }
 sp-runtime = { workspace = true, default-features = true }
 sp-api = { workspace = true, default-features = true }

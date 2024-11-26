@@ -16,9 +16,9 @@ substrate-build-script-utils = { workspace = true }
 
 [dependencies]
 clap = { workspace = true, features = ["derive"] }
-codec = {workspace = true, default-features = true, version = "3.0.0" }
-hex-literal = {  workspace = true, default-features = true }
-log = {  workspace = true, default-features = true }
+codec = { workspace = true, default-features = true, version = "3.0.0" }
+hex-literal = { workspace = true, default-features = true }
+log = { workspace = true, default-features = true }
 serde = { workspace = true, default-features = true, features = ["derive"] }
 serde_json = { workspace = true, default-features = true }
 futures = { workspace = true }
@@ -67,7 +67,7 @@ frame-benchmarking-cli = { workspace = true, default-features = true }
 frame-support = { workspace = true, default-features = true }
 frame-system = { workspace = true, default-features = true }
 
-pallet-transaction-payment = {  workspace = true }
+pallet-transaction-payment = {  workspace = true, default-features = true }
 
 substrate-stellar-sdk = { workspace = true, default-features = true }
 
