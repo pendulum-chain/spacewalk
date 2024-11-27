@@ -57,7 +57,7 @@ primitives = { path = "../../primitives", package = "spacewalk-primitives" }
 # Dependencies for the testing utils for integration tests
 oracle = { path = "../../pallets/oracle", optional = true }
 rand = { workspace = true, default-features = true, optional = true }
-tempdir = { workspace = true, default-features = true, optional = true }
+tempdir = { workspace = true, optional = true }
 testchain = { package = "spacewalk-standalone", path = "../../testchain/node", optional = true }
 testchain-runtime = { package = "spacewalk-runtime-standalone-testnet", path = "../../testchain/runtime/testnet", optional = true }
 mainnet-runtime = { package = "spacewalk-runtime-standalone-mainnet", path = "../../testchain/runtime/mainnet", optional = true }

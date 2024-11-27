@@ -160,6 +160,7 @@ sc-telemetry = { git = "https://github.com/paritytech/polkadot-sdk", branch = "r
 pallet-transaction-payment-rpc = { git = "https://github.com/paritytech/polkadot-sdk", branch = "release-polkadot-v1.6.0", default-features = false }
 sc-transaction-pool = { git = "https://github.com/paritytech/polkadot-sdk", branch = "release-polkadot-v1.6.0", default-features = false }
 sc-transaction-pool-api = { git = "https://github.com/paritytech/polkadot-sdk", branch = "release-polkadot-v1.6.0", default-features = false }
+sc-chain-spec = { git = "https://github.com/paritytech/polkadot-sdk", branch = "release-polkadot-v1.6.0", default-features = false }
 sp-consensus = { git = "https://github.com/paritytech/polkadot-sdk", branch = "release-polkadot-v1.6.0", default-features = false }
 sc-consensus-aura = { git = "https://github.com/paritytech/polkadot-sdk", branch = "release-polkadot-v1.6.0", default-features = false }
 sc-rpc = { git = "https://github.com/paritytech/polkadot-sdk", branch = "release-polkadot-v1.6.0", default-features = false }
@@ -172,10 +173,10 @@ substrate-frame-rpc-system = { git = "https://github.com/paritytech/polkadot-sdk
 
 
 # Orml dependencies
-orml-currencies = { package = "orml-currencies", git = "https://github.com/gianfra-t/open-runtime-module-library.git", default-features = false, branch = "polkadot-v1.6.0" }
-orml-tokens = { package = "orml-tokens", git = "https://github.com/gianfra-t/open-runtime-module-library.git", default-features = false, branch = "polkadot-v1.6.0" }
-orml-traits = { package = "orml-traits", git = "https://github.com/gianfra-t/open-runtime-module-library.git", default-features = false, branch = "polkadot-v1.6.0" }
-orml-oracle = { package = "orml-oracle", git = "https://github.com/gianfra-t/open-runtime-module-library.git", default-features = false, branch = "polkadot-v1.6.0" }
+orml-currencies = { package = "orml-currencies", git = "https://github.com/pendulum-chain/open-runtime-module-library.git", default-features = false, branch = "polkadot-v1.6.0" }
+orml-tokens = { package = "orml-tokens", git = "https://github.com/pendulum-chain/open-runtime-module-library.git", default-features = false, branch = "polkadot-v1.6.0" }
+orml-traits = { package = "orml-traits", git = "https://github.com/pendulum-chain/open-runtime-module-library.git", default-features = false, branch = "polkadot-v1.6.0" }
+orml-oracle = { package = "orml-oracle", git = "https://github.com/pendulum-chain/open-runtime-module-library.git", default-features = false, branch = "polkadot-v1.6.0" }
 
 
 # Git dependency from Pendulum Chain

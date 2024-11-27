@@ -81,17 +81,13 @@ jobs:
           token: ${{ secrets.GITHUB_TOKEN }}
           version: ${{ env.RUSTUP_NIGHTLY_VERSION }}
 
-#      - name: Run Tests for Pallets
-#        run: |
-#            bash ./scripts/cmd-pallets test "+${{ env.RUSTUP_NIGHTLY_VERSION }} test" "--release"
-
-      - name: Run Tests for Other Libraries
+      - name: Run Tests for Pallets
         run: |
-          bash ./scripts/cmd-pallets test "+${{ env.RUSTUP_NIGHTLY_VERSION }} test" "--release"
+            bash ./scripts/cmd-pallets test "+${{ env.RUSTUP_NIGHTLY_VERSION }} test" "--release"
 
-#      - name: Run Tests for Clients
-#        run: |
-#          bash ./scripts/cmd-clients test "+${{ env.RUSTUP_NIGHTLY_VERSION }} test" "--release"
+      - name: Run Tests for Clients
+        run: |
+          bash ./scripts/cmd-clients test "+${{ env.RUSTUP_NIGHTLY_VERSION }} test" "--release"
 
   cargo-test-vault:
     name: Run Tests for Vault

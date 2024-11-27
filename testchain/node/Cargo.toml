@@ -15,7 +15,7 @@ name = "spacewalk-standalone"
 substrate-build-script-utils = { workspace = true }
 
 [dependencies]
-clap = { workspace = true, features = ["derive"] }
+clap = { version = "4.5.3", features = [ "derive" ] }
 codec = { workspace = true, default-features = true, version = "3.0.0" }
 hex-literal = { workspace = true, default-features = true }
 log = { workspace = true, default-features = true }
@@ -38,6 +38,7 @@ sc-consensus = { workspace = true, default-features = true }
 sc-consensus-aura = { workspace = true, default-features = true }
 sc-consensus-manual-seal = { workspace = true, default-features = true }
 sc-executor = { workspace = true, default-features = true }
+sc-chain-spec = { workspace = true, default-features = true}
 sc-consensus-grandpa = { workspace = true, default-features = true }
 sc-keystore = { workspace = true, default-features = true }
 sc-network = { workspace = true, default-features = true }

@@ -25,5 +25,6 @@ subxt = {version = "0.33.0", default-features = false, features = ["jsonrpsee", 
 sha2 = { workspace = true, default-features = true }
 
 [dev-dependencies]
+mockall = "0.8.1"
 sysinfo.workspace = true
 tempdir.workspace = true
