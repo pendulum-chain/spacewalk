@@ -1,4 +1,4 @@
-use spacewalk_runtime_testnet::{AssetId, DiaOracleModuleConfig};
+use spacewalk_runtime_testnet::{AssetId, DiaOracleModuleConfig, SystemConfig};
 use std::convert::TryFrom;
 
 use frame_support::BoundedVec;
@@ -15,7 +15,7 @@ use spacewalk_runtime_testnet::{
 	AccountId, AuraConfig, BalancesConfig, FeeConfig, FieldLength, GrandpaConfig, IssueConfig,
 	NominationConfig, OracleConfig, Organization, RedeemConfig, ReplaceConfig,
 	RuntimeGenesisConfig, SecurityConfig, Signature, StatusCode, StellarRelayConfig, SudoConfig,
-	SystemConfig, TokensConfig, Validator, VaultRegistryConfig, DAYS,
+	TokensConfig, Validator, VaultRegistryConfig, DAYS,
 };
 
 // The URL for the telemetry server.
@@ -83,7 +83,7 @@ pub fn mainnet_config() -> ChainSpec {
 	.with_id("dev_mainnet")
 	.with_chain_type(ChainType::Development)
 	.with_properties(get_properties())
-	.with_genesis_config(genesis(
+	.with_genesis_config_patch(genesis(
 		get_account_id_from_seed::<sr25519::Public>("Alice"),
 		vec![authority_keys_from_seed("Alice")],
 		vec![
@@ -112,7 +112,7 @@ pub fn testnet_config() -> ChainSpec {
 		.with_id("dev_mainnet")
 		.with_chain_type(ChainType::Development)
 		.with_properties(get_properties())
-		.with_genesis_config(genesis(
+		.with_genesis_config_patch(genesis(
 			get_account_id_from_seed::<sr25519::Public>("Alice"),
 			vec![authority_keys_from_seed("Alice")],
 			vec![
@@ -135,6 +135,8 @@ pub fn testnet_config() -> ChainSpec {
 		))
 		.build()
 }
+
+
 
 fn default_pair(currency_id: CurrencyId, is_public_network: bool) -> VaultCurrencyPair<CurrencyId> {
 	let wrapped = if is_public_network {
@@ -170,10 +172,11 @@ fn genesis(
 
 	let genesis_config = RuntimeGenesisConfig {
 		system: SystemConfig {
-			..Default::default()
+			_config: Default::default(),
 		},
 		aura: AuraConfig {
 			authorities: initial_authorities.iter().map(|x| (x.0.clone())).collect(),
+			..Default::default()
 		},
 		grandpa: GrandpaConfig {
 			authorities: initial_authorities.iter().map(|x| (x.1.clone(), 1)).collect(),
@@ -181,7 +184,7 @@ fn genesis(
 		},
 		sudo: SudoConfig {
 			// Assign network admin rights.
-			key: Some(root_key),
+			key: Some(root_key.clone()),
 		},
 		balances: BalancesConfig {
 			// Configure endowed accounts with initial balance of 1 << 60.
@@ -224,7 +227,7 @@ fn genesis(
 		},
 		security: SecurityConfig {
 			initial_status: if start_shutdown { StatusCode::Shutdown } else { StatusCode::Error },
-			..Default::default()
+			_phantom: Default::default()
 		},
 		stellar_relay: if !is_public_network {
 			create_stellar_testnet_config()
@@ -240,7 +243,7 @@ fn genesis(
 				Key::ExchangeRate(default_wrapped_currency),
 				Key::ExchangeRate(MXN_CURRENCY_ID),
 			],
-			..Default::default()
+			_phantom: Default::default()
 		},
 		vault_registry: VaultRegistryConfig {
 			minimum_collateral_vault: vec![
@@ -337,6 +340,7 @@ fn genesis(
 					60_000 * 10u128.pow(12),
 				),
 			],
+			..Default::default()
 		},
 		fee: FeeConfig {
 			issue_fee: FixedU128::checked_from_rational(1, 1000).unwrap(), // 0.1%
@@ -360,10 +364,83 @@ fn genesis(
 			],
 			batching_api: b"https://dia-00.pendulumchain.tech:8070/currencies".to_vec(),
 			coin_infos_map: vec![],
+			..Default::default()
 		},
-	};
 
-	serde_json::to_value(genesis_config).expect("Serialization of genesis config should work")
+	};
+	//serde_json::to_value(genesis_config).expect("Serialization of genesis config should work")
+	serde_json::json!({
+		"sudo": {
+			"key": genesis_config.sudo.key,
+		},
+		"balances": {
+			"balances": genesis_config.balances.balances,
+		},
+		"aura": {
+			"authorities": genesis_config.aura.authorities,
+		},
+		"grandpa": {
+			"authorities": genesis_config.grandpa.authorities,
+		},
+		"tokens": {
+			"balances": genesis_config.tokens.balances,
+		},
+		"issue": {
+			"issuePeriod": genesis_config.issue.issue_period,
+			"issueMinimumTransferAmount": genesis_config.issue.issue_minimum_transfer_amount,
+			"limitVolumeAmount": genesis_config.issue.limit_volume_amount,
+			"limitVolumeCurrencyId": genesis_config.issue.limit_volume_currency_id,
+			"currentVolumeAmount": genesis_config.issue.current_volume_amount,
+			"intervalLength": genesis_config.issue.interval_length,
+			"lastIntervalIndex": genesis_config.issue.last_interval_index,
+		},
+		"redeem": {
+			"redeemPeriod": genesis_config.redeem.redeem_period,
+			"redeemMinimumTransferAmount": genesis_config.redeem.redeem_minimum_transfer_amount,
+			"limitVolumeAmount": genesis_config.redeem.limit_volume_amount,
+			"limitVolumeCurrencyId": genesis_config.redeem.limit_volume_currency_id,
+			"currentVolumeAmount": genesis_config.redeem.current_volume_amount,
+			"intervalLength": genesis_config.redeem.interval_length,
+			"lastIntervalIndex": genesis_config.redeem.last_interval_index,
+		},
+		"replace": {
+			"replacePeriod": genesis_config.replace.replace_period,
+			"replaceMinimumTransferAmount": genesis_config.replace.replace_minimum_transfer_amount,
+		},
+		"security": {
+			"initialStatus": genesis_config.security.initial_status,
+		},
+		"oracle": {
+			"maxDelay": genesis_config.oracle.max_delay,
+			"oracleKeys": genesis_config.oracle.oracle_keys,
+		},
+		"vaultRegistry": {
+			"minimumCollateralVault": genesis_config.vault_registry.minimum_collateral_vault,
+			"punishmentDelay": genesis_config.vault_registry.punishment_delay,
+			"secureCollateralThreshold": genesis_config.vault_registry.secure_collateral_threshold,
+			"premiumRedeemThreshold": genesis_config.vault_registry.premium_redeem_threshold,
+			"liquidationCollateralThreshold": genesis_config.vault_registry.liquidation_collateral_threshold,
+			"systemCollateralCeiling": genesis_config.vault_registry.system_collateral_ceiling,
+		},
+		"fee": {
+			"issueFee": genesis_config.fee.issue_fee,
+			"issueGriefingCollateral": genesis_config.fee.issue_griefing_collateral,
+			"redeemFee": genesis_config.fee.redeem_fee,
+			"premiumRedeemFee": genesis_config.fee.premium_redeem_fee,
+			"punishmentFee": genesis_config.fee.punishment_fee,
+			"replaceGriefingCollateral": genesis_config.fee.replace_griefing_collateral,
+		},
+		"nomination": {
+			"isNominationEnabled": genesis_config.nomination.is_nomination_enabled,
+		},
+		"diaOracleModule": {
+			"authorizedAccounts": genesis_config.dia_oracle_module.authorized_accounts,
+			"supportedCurrencies": genesis_config.dia_oracle_module.supported_currencies,
+			"batchingApi": genesis_config.dia_oracle_module.batching_api,
+			"coinInfosMap": genesis_config.dia_oracle_module.coin_infos_map,
+		}
+	})
+
 }
 
 

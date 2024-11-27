@@ -17,6 +17,8 @@ use frame_support::{
 	traits::{ConstU128, ConstU32, ConstU64, ConstU8, Contains},
 	weights::{constants::WEIGHT_REF_TIME_PER_SECOND, ConstantMultiplier, IdentityFee, Weight},
 	PalletId,
+	genesis_builder_helper::{create_default_config, build_config},
+
 };
 pub use frame_system::Call as SystemCall;
 use orml_currencies::BasicCurrencyAdapter;
@@ -1037,6 +1039,16 @@ impl_runtime_apis! {
 		fn get_exchange_rate(currency_id: CurrencyId) -> Result<UnsignedFixedPoint, DispatchError> {
 			let result = Oracle::get_exchange_rate(currency_id)?;
 			Ok(result)
+		}
+	}
+
+	impl sp_genesis_builder::GenesisBuilder<Block> for Runtime {
+		fn create_default_config() -> Vec<u8> {
+			create_default_config::<RuntimeGenesisConfig>()
+		}
+
+		fn build_config(config: Vec<u8>) -> sp_genesis_builder::Result {
+			build_config::<RuntimeGenesisConfig>(config)
 		}
 	}
 

@@ -1,5 +1,4 @@
 use sc_cli::RunCmd;
-use clap::Parser;
 
 #[derive(Debug, clap::Parser)]
 pub struct Cli {

@@ -128,6 +128,7 @@ sp-blockchain = { git = "https://github.com/paritytech/polkadot-sdk", branch = "
 sp-block-builder = { git = "https://github.com/paritytech/polkadot-sdk", branch = "release-polkadot-v1.6.0", default-features = false }
 sp-core = { git = "https://github.com/paritytech/polkadot-sdk", branch = "release-polkadot-v1.6.0", default-features = false }
 sp-consensus-aura = { git = "https://github.com/paritytech/polkadot-sdk", branch = "release-polkadot-v1.6.0", default-features = false }
+sp-genesis-builder = { git = "https://github.com/paritytech/polkadot-sdk", branch = "release-polkadot-v1.6.0", default-features = false }
 sp-inherents = { git = "https://github.com/paritytech/polkadot-sdk", branch = "release-polkadot-v1.6.0", default-features = false }
 sp-io = { git = "https://github.com/paritytech/polkadot-sdk", branch = "release-polkadot-v1.6.0", default-features = false }
 sc-offchain = { git = "https://github.com/paritytech/polkadot-sdk", branch = "release-polkadot-v1.6.0", default-features = false }
@@ -185,6 +186,7 @@ dia-oracle = { git = "https://github.com/pendulum-chain/oracle-pallet", branch =
 
 # Used in dev dependencies
 serial_test = "0.9.0"
+mockall = "0.8.1"
 mocktopus = "0.8.0"
 
 tempdir = "0.3.7"
@@ -233,12 +235,13 @@ sc-consensus = { git = "https://github.com/paritytech//polkadot-sdk", branch = "
 sc-consensus-aura = { git = "https://github.com/paritytech//polkadot-sdk", branch = "release-polkadot-v1.6.0" }
 sc-consensus-babe = { git = "https://github.com/paritytech//polkadot-sdk", branch = "release-polkadot-v1.6.0" }
 sc-consensus-epochs = { git = "https://github.com/paritytech//polkadot-sdk", branch = "release-polkadot-v1.6.0" }
+sc-consensus-grandpa = { git = "https://github.com/paritytech//polkadot-sdk", branch = "release-polkadot-v1.6.0" }
 sc-consensus-manual-seal = { git = "https://github.com/paritytech//polkadot-sdk", branch = "release-polkadot-v1.6.0" }
 sc-consensus-slots = { git = "https://github.com/paritytech//polkadot-sdk", branch = "release-polkadot-v1.6.0" }
 sc-executor = { git = "https://github.com/paritytech//polkadot-sdk", branch = "release-polkadot-v1.6.0" }
 sc-executor-common = { git = "https://github.com/paritytech//polkadot-sdk", branch = "release-polkadot-v1.6.0" }
 sc-executor-wasmtime = { git = "https://github.com/paritytech//polkadot-sdk", branch = "release-polkadot-v1.6.0" }
-sc-consensus-grandpa = { git = "https://github.com/paritytech//polkadot-sdk", branch = "release-polkadot-v1.6.0" }
+sp-genesis-builder = { git = "https://github.com/paritytech//polkadot-sdk", branch = "release-polkadot-v1.6.0" }
 sc-informant = { git = "https://github.com/paritytech//polkadot-sdk", branch = "release-polkadot-v1.6.0" }
 sc-keystore = { git = "https://github.com/paritytech//polkadot-sdk", branch = "release-polkadot-v1.6.0" }
 sc-network = { git = "https://github.com/paritytech//polkadot-sdk", branch = "release-polkadot-v1.6.0" }

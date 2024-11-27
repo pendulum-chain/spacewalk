@@ -68,6 +68,7 @@ stellar-relay-lib = { package = "stellar-relay-lib", path = "../stellar-relay-li
 primitives = { path = "../../primitives", package = "spacewalk-primitives", default-features = false }
 
 [dev-dependencies]
+mockall.workspace = true
 ntest.workspace = true
 
 env_logger.workspace = true

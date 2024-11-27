@@ -330,7 +330,7 @@ pub mod oracle {
 	#[derive(
 		Encode, Decode, Clone, Eq, PartialEq, Debug, TypeInfo, MaxEncodedLen, Serialize, Deserialize,
 	)]
-	#[cfg_attr(feature = "std", serde(rename_all = "camelCase"))]
+	//#[cfg_attr(feature = "std", serde(rename_all = "camelCase"))]
 	pub enum Key {
 		ExchangeRate(CurrencyId),
 	}
@@ -465,7 +465,7 @@ pub fn remove_trailing_non_alphanum_bytes(input: &[u8]) -> &[u8] {
 	scale_decode::DecodeAsType,
 	scale_encode::EncodeAsType,
 )]
-#[cfg_attr(feature = "std", serde(rename_all = "camelCase"))]
+//#[cfg_attr(feature = "std", serde(rename_all = "camelCase"))]
 #[repr(u8)]
 #[allow(clippy::unnecessary_cast)]
 pub enum Asset {
@@ -529,10 +529,15 @@ impl Asset {
 #[allow(clippy::unnecessary_cast)]
 pub enum CurrencyId {
 	#[default]
+	#[serde(rename = "Native")]
 	Native = 0_u8,
+	#[serde(rename = "XCM")]
 	XCM(u8),
+	#[serde(rename = "Stellar")]
 	Stellar(Asset),
+	#[serde(rename = "ZenlinkLPToken")]
 	ZenlinkLPToken(u8, u8, u8, u8),
+	#[serde(rename = "Token")]
 	Token(u64),
 }
 
