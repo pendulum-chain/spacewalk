@@ -13,12 +13,12 @@ extern crate frame_benchmarking;
 use codec::Encode;
 pub use dia_oracle::dia::*;
 use frame_support::{
-	construct_runtime, parameter_types,
+	construct_runtime,
+	genesis_builder_helper::{build_config, create_default_config},
+	parameter_types,
 	traits::{ConstU128, ConstU32, ConstU64, ConstU8, Contains},
 	weights::{constants::WEIGHT_REF_TIME_PER_SECOND, ConstantMultiplier, IdentityFee, Weight},
 	PalletId,
-	genesis_builder_helper::{create_default_config, build_config},
-
 };
 pub use frame_system::Call as SystemCall;
 use orml_currencies::BasicCurrencyAdapter;

@@ -363,7 +363,7 @@ pub fn new_full(config: Configuration) -> Result<(TaskManager, RpcHandlers), Ser
 			import_queue,
 			block_announce_validator_builder: None,
 			warp_sync_params: None,
-			block_relay: None
+			block_relay: None,
 		})?;
 
 	if config.offchain_worker.enabled {
@@ -515,7 +515,7 @@ pub fn new_full(config: Configuration) -> Result<(TaskManager, RpcHandlers), Ser
 			shared_voter_state: SharedVoterState::empty(),
 			telemetry: telemetry.as_ref().map(|x| x.handle()),
 			offchain_tx_pool_factory: OffchainTransactionPoolFactory::new(transaction_pool),
-			notification_service: grandpa_notification_service
+			notification_service: grandpa_notification_service,
 		};
 
 		// the GRANDPA voter task is considered infallible, i.e.
@@ -696,7 +696,7 @@ pub async fn start_instant_testnet(
 			import_queue,
 			block_announce_validator_builder: None,
 			warp_sync_params: None,
-			block_relay: None
+			block_relay: None,
 		})?;
 
 	if config.offchain_worker.enabled {
