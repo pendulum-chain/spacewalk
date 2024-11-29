@@ -78,8 +78,8 @@ tempdir.workspace = true
 runtime = { path = "../runtime", features = ["testing-utils", "standalone-metadata"] }
 wallet = { path = "../wallet", features = ["testing-utils"] }
 
-sp-keyring = { git = "https://github.com/paritytech/polkadot-sdk", branch = "release-polkadot-v1.1.0" }
-sp-arithmetic = { git = "https://github.com/paritytech/polkadot-sdk", branch = "release-polkadot-v1.1.0" }
+sp-keyring = { workspace = true, default-features = true }
+sp-arithmetic = { workspace = true, default-features = true }
 
 # Substrate dependencies
-frame-support = { git = "https://github.com/paritytech/polkadot-sdk", branch = "release-polkadot-v1.1.0" }
+frame-support = { workspace = true, default-features = true }
