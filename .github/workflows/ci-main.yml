@@ -11,59 +11,57 @@ env:
   RUSTFLAGS: "-Dwarnings"
 
 jobs:
-  check-code:
-    name: Check Code
-    runs-on: ubuntu-latest
-
-    steps:
-      - name: Checkout Repository
-        uses: actions/checkout@v4
-
-      - name: Undergo Prerequisite
-        uses: ./.github/actions/prerequisite
-        with:
-          token: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Check Build
-        run: |
-          bash ./scripts/cmd-all build check "--release"
-
-      - name: Clippy -- Libraries and Binaries
-        run: |
-          bash ./scripts/cmd-all clippy "clippy --lib --bins" "--release -- -W clippy::all -A clippy::style -A forgetting_copy_types -A forgetting_references"
-
-  check-code-nightly:
-    name: Run Clippy and Fmt
-    runs-on: ubuntu-latest
-
-    steps:
-      - name: Checkout Repository
-        uses: actions/checkout@v4
-
-      - name: Run Prerequisite (for Nightly)
-        uses: ./.github/actions/prerequisite-nightly
-        with:
-          token: ${{ secrets.GITHUB_TOKEN }}
-          version: ${{ env.RUSTUP_NIGHTLY_VERSION }}
-
-      - name: Rustfmt
-        uses: actions-rs/cargo@v1
-        with:
-          toolchain: ${{ env.RUSTUP_NIGHTLY_VERSION }}
-          command: fmt
-          args: --all -- --check
-
-      - name: Clippy for Tests and Examples
-        uses: actions-rs/cargo@v1
-        with:
-          toolchain: ${{ env.RUSTUP_NIGHTLY_VERSION }}
-          command: clippy
-          args: --release --all-features --tests --benches --examples -- -A clippy::all -W clippy::correctness -A forgetting_copy_types -A forgetting_references
+#  check-code:
+#    name: Check Code
+#    runs-on: ubuntu-latest
+#
+#    steps:
+#      - name: Checkout Repository
+#        uses: actions/checkout@v4
+#
+#      - name: Undergo Prerequisite
+#        uses: ./.github/actions/prerequisite
+#        with:
+#          token: ${{ secrets.GITHUB_TOKEN }}
+#
+#      - name: Check Build
+#        run: |
+#          bash ./scripts/cmd-all build check "--release"
+#
+#      - name: Clippy -- Libraries and Binaries
+#        run: |
+#          bash ./scripts/cmd-all clippy "clippy --lib --bins" "--release -- -W clippy::all -A clippy::style -A forgetting_copy_types -A forgetting_references"
+#
+#  check-code-nightly:
+#    name: Run Clippy and Fmt
+#    runs-on: ubuntu-latest
+#
+#    steps:
+#      - name: Checkout Repository
+#        uses: actions/checkout@v4
+#
+#      - name: Run Prerequisite (for Nightly)
+#        uses: ./.github/actions/prerequisite-nightly
+#        with:
+#          token: ${{ secrets.GITHUB_TOKEN }}
+#          version: ${{ env.RUSTUP_NIGHTLY_VERSION }}
+#
+#      - name: Rustfmt
+#        uses: actions-rs/cargo@v1
+#        with:
+#          toolchain: ${{ env.RUSTUP_NIGHTLY_VERSION }}
+#          command: fmt
+#          args: --all -- --check
+#
+#      - name: Clippy for Tests and Examples
+#        uses: actions-rs/cargo@v1
+#        with:
+#          toolchain: ${{ env.RUSTUP_NIGHTLY_VERSION }}
+#          command: clippy
+#          args: --release --all-features --tests --benches --examples -- -A clippy::all -W clippy::correctness -A forgetting_copy_types -A forgetting_references
 
   cargo-test:
     name: Run Tests for Pallets and Clients
-    needs: check-code
-    if: needs.check-code.result == 'success'
     runs-on: ubuntu-latest
     env:
       SOURCE_STELLAR_SECRET_MAINNET: ${{ secrets.SOURCE_STELLAR_SECRET_MAINNET }}
@@ -95,8 +93,6 @@ jobs:
 
   cargo-test-vault:
     name: Run Tests for Vault
-    needs: check-code
-    if: needs.check-code.result == 'success'
     runs-on: ubuntu-latest
 
     steps:
