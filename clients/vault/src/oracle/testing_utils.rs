@@ -24,11 +24,8 @@ pub fn specific_stellar_relay_config(
 }
 
 fn stellar_relay_config_choices(is_mainnet: bool) -> (Vec<&'static str>, &'static str) {
-	let node_points = if is_mainnet {
-		vec!["other"]
-	} else {
-		vec!["sdftest1", "sdftest2", "sdftest3"]
-	};
+	let node_points =
+		if is_mainnet { vec!["other"] } else { vec!["sdftest1", "sdftest2", "sdftest3"] };
 
 	let dir = if is_mainnet { "mainnet" } else { "testnet" };
 	(node_points, dir)
