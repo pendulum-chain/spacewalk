@@ -112,7 +112,7 @@ pub fn mainnet_config() -> ChainSpec {
 }
 pub fn testnet_config() -> ChainSpec {
 	ChainSpec::builder(
-		spacewalk_runtime_mainnet::WASM_BINARY
+		spacewalk_runtime_testnet::WASM_BINARY
 			.expect("WASM binary was not built, please build it!"),
 		Default::default(),
 	)
