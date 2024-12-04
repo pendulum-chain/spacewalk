@@ -124,7 +124,7 @@ pub fn wallet_with_secret_key_for_storage(
 	storage: &str,
 	secret_key: &str,
 ) -> Result<Arc<RwLock<StellarWallet>>, Error> {
-	Ok(Arc::new(RwLock::new(StellagitrWallet::from_secret_encoded_with_cache(
+	Ok(Arc::new(RwLock::new(StellarWallet::from_secret_encoded_with_cache(
 		secret_key,
 		IS_PUBLIC_NETWORK,
 		storage.to_string(),
