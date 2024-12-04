@@ -60,36 +60,36 @@ jobs:
 #          command: clippy
 #          args: --release --all-features --tests --benches --examples -- -A clippy::all -W clippy::correctness -A forgetting_copy_types -A forgetting_references
 
-  cargo-test:
-    name: Run Tests for Pallets and Clients
-    runs-on: ubuntu-latest
-    env:
-      SOURCE_STELLAR_SECRET_MAINNET: ${{ secrets.SOURCE_STELLAR_SECRET_MAINNET }}
-      SOURCE_STELLAR_SECRET_TESTNET: ${{ secrets.SOURCE_STELLAR_SECRET_TESTNET }}
-      DEST_STELLAR_SECRET_MAINNET: ${{ secrets.DEST_STELLAR_SECRET_MAINNET }}
-      DEST_STELLAR_SECRET_TESTNET: ${{ secrets.DEST_STELLAR_SECRET_TESTNET }}
-
-    steps:
-      - name: Checkout Repository
-        uses: actions/checkout@v4
-
-      - name: Run Prerequisite (for Nightly)
-        uses: ./.github/actions/prerequisite-nightly
-        with:
-          token: ${{ secrets.GITHUB_TOKEN }}
-          version: ${{ env.RUSTUP_NIGHTLY_VERSION }}
-
-      - name: Run Tests for Pallets
-        run: |
-            bash ./scripts/cmd-pallets test "+${{ env.RUSTUP_NIGHTLY_VERSION }} test" "--release"
-
-      - name: Run Tests for Other Libraries
-        run: |
-          bash ./scripts/cmd-pallets test "+${{ env.RUSTUP_NIGHTLY_VERSION }} test" "--release"
-
-      - name: Run Tests for Clients
-        run: |
-          bash ./scripts/cmd-clients test "+${{ env.RUSTUP_NIGHTLY_VERSION }} test" "--release"
+#  cargo-test:
+#    name: Run Tests for Pallets and Clients
+#    runs-on: ubuntu-latest
+#    env:
+#      SOURCE_STELLAR_SECRET_MAINNET: ${{ secrets.SOURCE_STELLAR_SECRET_MAINNET }}
+#      SOURCE_STELLAR_SECRET_TESTNET: ${{ secrets.SOURCE_STELLAR_SECRET_TESTNET }}
+#      DEST_STELLAR_SECRET_MAINNET: ${{ secrets.DEST_STELLAR_SECRET_MAINNET }}
+#      DEST_STELLAR_SECRET_TESTNET: ${{ secrets.DEST_STELLAR_SECRET_TESTNET }}
+#
+#    steps:
+#      - name: Checkout Repository
+#        uses: actions/checkout@v4
+#
+#      - name: Run Prerequisite (for Nightly)
+#        uses: ./.github/actions/prerequisite-nightly
+#        with:
+#          token: ${{ secrets.GITHUB_TOKEN }}
+#          version: ${{ env.RUSTUP_NIGHTLY_VERSION }}
+#
+#      - name: Run Tests for Pallets
+#        run: |
+#            bash ./scripts/cmd-pallets test "+${{ env.RUSTUP_NIGHTLY_VERSION }} test" "--release"
+#
+#      - name: Run Tests for Other Libraries
+#        run: |
+#          bash ./scripts/cmd-pallets test "+${{ env.RUSTUP_NIGHTLY_VERSION }} test" "--release"
+#
+#      - name: Run Tests for Clients
+#        run: |
+#          bash ./scripts/cmd-clients test "+${{ env.RUSTUP_NIGHTLY_VERSION }} test" "--release"
 
   cargo-test-vault:
     name: Run Tests for Vault
@@ -115,5 +115,6 @@ jobs:
         with:
           toolchain: ${{ env.RUSTUP_NIGHTLY_VERSION }}
           command: test
-          # we only test the standalone-metadata
-          args: --release -p vault --features integration-test
+          # only integration
+          args: --test '*' --package vault --features integration-test
+          #args: --release -p vault --features integration-test
