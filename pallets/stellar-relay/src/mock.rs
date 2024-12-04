@@ -185,7 +185,7 @@ impl ExtBuilder {
 			validators,
 			organizations,
 			enactment_block_height: 0,
-			phantom: Default::default(),
+			_phantom: Default::default(),
 		}
 		.assimilate_storage(&mut storage)
 		.unwrap();

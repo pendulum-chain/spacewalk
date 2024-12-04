@@ -76,6 +76,7 @@ pub mod pallet {
 	#[pallet::genesis_config]
 	pub struct GenesisConfig<T: Config> {
 		pub initial_status: StatusCode,
+		#[serde(skip)]
 		pub _phantom: sp_std::marker::PhantomData<T>,
 	}
 
@@ -212,8 +213,8 @@ impl<T: Config> Pallet<T> {
 
 	/// Checks if the Parachain has a OracleOffline Error state
 	pub fn is_parachain_error_oracle_offline() -> bool {
-		Self::parachain_status() == StatusCode::Error &&
-			<Errors<T>>::get().contains(&ErrorCode::OracleOffline)
+		Self::parachain_status() == StatusCode::Error
+			&& <Errors<T>>::get().contains(&ErrorCode::OracleOffline)
 	}
 
 	/// Sets the given `StatusCode`.

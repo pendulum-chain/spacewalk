@@ -368,82 +368,7 @@ fn genesis(
 			coin_infos_map: vec![],
 		},
 	};
-	//serde_json::to_value(genesis_config).expect("Serialization of genesis config should work")
-	serde_json::json!({
-		"sudo": {
-			"key": genesis_config.sudo.key,
-		},
-		"balances": {
-			"balances": genesis_config.balances.balances,
-		},
-		"aura": {
-			"authorities": genesis_config.aura.authorities,
-		},
-		"grandpa": {
-			"authorities": genesis_config.grandpa.authorities,
-		},
-		"tokens": {
-			"balances": genesis_config.tokens.balances,
-		},
-		"issue": {
-			"issuePeriod": genesis_config.issue.issue_period,
-			"issueMinimumTransferAmount": genesis_config.issue.issue_minimum_transfer_amount,
-			"limitVolumeAmount": genesis_config.issue.limit_volume_amount,
-			"limitVolumeCurrencyId": genesis_config.issue.limit_volume_currency_id,
-			"currentVolumeAmount": genesis_config.issue.current_volume_amount,
-			"intervalLength": genesis_config.issue.interval_length,
-			"lastIntervalIndex": genesis_config.issue.last_interval_index,
-		},
-		"redeem": {
-			"redeemPeriod": genesis_config.redeem.redeem_period,
-			"redeemMinimumTransferAmount": genesis_config.redeem.redeem_minimum_transfer_amount,
-			"limitVolumeAmount": genesis_config.redeem.limit_volume_amount,
-			"limitVolumeCurrencyId": genesis_config.redeem.limit_volume_currency_id,
-			"currentVolumeAmount": genesis_config.redeem.current_volume_amount,
-			"intervalLength": genesis_config.redeem.interval_length,
-			"lastIntervalIndex": genesis_config.redeem.last_interval_index,
-		},
-		"replace": {
-			"replacePeriod": genesis_config.replace.replace_period,
-			"replaceMinimumTransferAmount": genesis_config.replace.replace_minimum_transfer_amount,
-		},
-		"security": {
-			"initialStatus": genesis_config.security.initial_status,
-		},
-		"oracle": {
-			"maxDelay": genesis_config.oracle.max_delay,
-			"oracleKeys": genesis_config.oracle.oracle_keys,
-		},
-		"vaultRegistry": {
-			"minimumCollateralVault": genesis_config.vault_registry.minimum_collateral_vault,
-			"punishmentDelay": genesis_config.vault_registry.punishment_delay,
-			"secureCollateralThreshold": genesis_config.vault_registry.secure_collateral_threshold,
-			"premiumRedeemThreshold": genesis_config.vault_registry.premium_redeem_threshold,
-			"liquidationCollateralThreshold": genesis_config.vault_registry.liquidation_collateral_threshold,
-			"systemCollateralCeiling": genesis_config.vault_registry.system_collateral_ceiling,
-		},
-		"stellarRelay": {
-			"organizations": genesis_config.stellar_relay.organizations,
-			"validators": genesis_config.stellar_relay.validators
-		},
-		"fee": {
-			"issueFee": genesis_config.fee.issue_fee,
-			"issueGriefingCollateral": genesis_config.fee.issue_griefing_collateral,
-			"redeemFee": genesis_config.fee.redeem_fee,
-			"premiumRedeemFee": genesis_config.fee.premium_redeem_fee,
-			"punishmentFee": genesis_config.fee.punishment_fee,
-			"replaceGriefingCollateral": genesis_config.fee.replace_griefing_collateral,
-		},
-		"nomination": {
-			"isNominationEnabled": genesis_config.nomination.is_nomination_enabled,
-		},
-		"diaOracleModule": {
-			"authorizedAccounts": genesis_config.dia_oracle_module.authorized_accounts,
-			"supportedCurrencies": genesis_config.dia_oracle_module.supported_currencies,
-			"batchingApi": genesis_config.dia_oracle_module.batching_api,
-			"coinInfosMap": genesis_config.dia_oracle_module.coin_infos_map,
-		}
-	})
+	serde_json::to_value(genesis_config).expect("Serialization of genesis config should work")
 }
 
 fn create_stellar_testnet_config() -> StellarRelayConfig {
@@ -484,6 +409,6 @@ fn create_stellar_testnet_config() -> StellarRelayConfig {
 		validators,
 		organizations,
 		enactment_block_height: 0,
-		phantom: Default::default(),
+		_phantom: Default::default(),
 	}
 }
