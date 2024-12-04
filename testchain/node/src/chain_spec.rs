@@ -422,6 +422,10 @@ fn genesis(
 			"liquidationCollateralThreshold": genesis_config.vault_registry.liquidation_collateral_threshold,
 			"systemCollateralCeiling": genesis_config.vault_registry.system_collateral_ceiling,
 		},
+		"stellarRelay": {
+			"organizations": genesis_config.stellar_relay.organizations,
+			"validators": genesis_config.stellar_relay.validators
+		},
 		"fee": {
 			"issueFee": genesis_config.fee.issue_fee,
 			"issueGriefingCollateral": genesis_config.fee.issue_griefing_collateral,

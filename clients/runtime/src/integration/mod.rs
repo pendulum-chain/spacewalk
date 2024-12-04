@@ -87,7 +87,7 @@ pub async fn default_provider_client(
 		role: Role::Authority(key),
 		telemetry: None,
 		wasm_method: WasmExecutionMethod::Compiled {
-			instantiation_strategy: WasmtimeInstantiationStrategy::PoolingCopyOnWrite,
+			instantiation_strategy: WasmtimeInstantiationStrategy::RecreateInstance,
 		},
 		tokio_handle: tokio::runtime::Handle::current(),
 	};
