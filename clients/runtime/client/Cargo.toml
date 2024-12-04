@@ -24,7 +24,7 @@ log = { workspace = true, default-features = true }
 serde_json = { workspace = true, default-features = true }
 thiserror = { workspace = true }
 
-subxt = { version = "0.33.0", features = [ "substrate-compat"] }
+subxt = { workspace = true, default-features = true, features = [ "substrate-compat"] }
 
 sc-client-db = { workspace = true }
 sp-keyring = { workspace = true }

@@ -117,7 +117,7 @@ pub fn testnet_config() -> ChainSpec {
 		Default::default(),
 	)
 	.with_name("spacewalk")
-	.with_id("dev_mainnet")
+	.with_id("dev_testnet")
 	.with_chain_type(ChainType::Development)
 	.with_properties(get_properties())
 	.with_genesis_config_patch(genesis(

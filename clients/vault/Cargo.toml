@@ -51,7 +51,7 @@ tracing = { workspace = true, features = ["log"] }
 
 jsonrpc-core-client = { workspace = true, features = ["http", "tls"] }
 
-subxt = { version = "0.33.0", features = [ "substrate-compat"] }
+subxt = { workspace = true, default-features = true, features = [ "substrate-compat"] }
 
 # Substrate dependencies
 sp-core = { workspace = true, default-features = true }

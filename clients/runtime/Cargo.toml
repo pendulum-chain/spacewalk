@@ -46,7 +46,7 @@ sp-core = { workspace = true }
 sp-version = { workspace = true }
 
 
-subxt = { version = "0.33.0", features = ["substrate-compat"] }
+subxt = { workspace = true, default-features = true, features = ["substrate-compat"] }
 jsonrpsee = {  workspace = true, features = ["macros", "jsonrpsee-types", "client", "jsonrpsee-ws-client", "jsonrpsee-client-transport"] }
 subxt-client = { path = "./client", optional = true }
 
