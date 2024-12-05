@@ -107,7 +107,7 @@ mod metadata_aliases {
 
 	cfg_if::cfg_if! {
 		if #[cfg(feature = "standalone-metadata")] {
-			pub type EncodedCall = metadata::runtime_types::spacewalk_runtime_standalone_testnet::RuntimeCall;
+			pub type EncodedCall = metadata::runtime_types::spacewalk_runtime_standalone_mainnet::RuntimeCall;
 		} else if #[cfg(feature = "parachain-metadata-pendulum")] {
 			pub type EncodedCall = metadata::runtime_types::pendulum_runtime::RuntimeCall;
 		} else if #[cfg(feature = "parachain-metadata-amplitude")] {
