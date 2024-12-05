@@ -25,8 +25,7 @@ pub fn specific_stellar_relay_config(
 
 fn stellar_relay_config_choices(is_mainnet: bool) -> (Vec<&'static str>, &'static str) {
 	let node_points = if is_mainnet {
-		// vec!["iowa", "singapore", "frankfurt"]
-		vec!["other"] // temporarily force use this node, others seem to be overloaded
+		vec!["iowa", "singapore", "frankfurt"]
 	} else {
 		vec!["sdftest1", "sdftest2", "sdftest3"]
 	};
