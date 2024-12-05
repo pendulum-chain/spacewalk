@@ -296,6 +296,6 @@ substrate-prometheus-endpoint = { git = "https://github.com/paritytech//polkadot
 substrate-wasm-builder = { git = "https://github.com/paritytech//polkadot-sdk", branch = "release-polkadot-v1.6.0" }
 staging-xcm = { git = "https://github.com/paritytech//polkadot-sdk", branch = "release-polkadot-v1.6.0" }
 
-#[patch.crates-io]
-#sp-core = { git = "https://github.com/paritytech//polkadot-sdk", branch = "release-polkadot-v1.6.0" }
-#sp-runtime = { git = "https://github.com/paritytech//polkadot-sdk", branch = "release-polkadot-v1.6.0" }
+[patch.crates-io]
+sp-core = { git = "https://github.com/paritytech//polkadot-sdk", branch = "release-polkadot-v1.6.0" }
+sp-runtime = { git = "https://github.com/paritytech//polkadot-sdk", branch = "release-polkadot-v1.6.0" }
