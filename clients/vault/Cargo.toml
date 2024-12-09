@@ -6,20 +6,15 @@ name = "vault"
 version = "1.0.13"
 
 [features]
-std = [
-    "stellar-relay-lib/std"
-]
+std = [ "base64/std", "primitives/std", "stellar-relay-lib/std" ]
 
-integration = [
-    "rand",
-    "wallet/testing-utils"
-]
-standalone-metadata = ["runtime/standalone-metadata"]
-parachain-metadata-pendulum = ["runtime/parachain-metadata-pendulum"]
-parachain-metadata-amplitude = ["runtime/parachain-metadata-amplitude"]
-parachain-metadata-foucoco = ["runtime/parachain-metadata-foucoco"]
-integration-test = ["integration", "standalone-metadata"]
-allow-debugger = ["console-subscriber"]
+integration = [ "rand", "wallet/testing-utils" ]
+standalone-metadata = [ "runtime/standalone-metadata" ]
+parachain-metadata-pendulum = [ "runtime/parachain-metadata-pendulum" ]
+parachain-metadata-amplitude = [ "runtime/parachain-metadata-amplitude" ]
+parachain-metadata-foucoco = [ "runtime/parachain-metadata-foucoco" ]
+integration-test = [ "integration", "standalone-metadata" ]
+allow-debugger = [ "console-subscriber" ]
 
 
 [dependencies]

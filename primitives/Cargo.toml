@@ -21,15 +21,16 @@ frame-support = { workspace = true }
 substrate-stellar-sdk = { workspace = true, features = ["offchain", "all-types"] }
 
 [features]
-default = ["std"]
+default = [ "std" ]
 std = [
-    "scale-encode/std",
-    "scale-decode/std",
-    "serde/std",
-    "codec/std",
-    "sp-core/std",
-    "sp-std/std",
-    "sp-runtime/std",
-    "frame-support/std",
-    "substrate-stellar-sdk/std"
+	"codec/std",
+	"frame-support/std",
+	"scale-decode/std",
+	"scale-encode/std",
+	"scale-info/std",
+	"serde/std",
+	"sp-core/std",
+	"sp-runtime/std",
+	"sp-std/std",
+	"substrate-stellar-sdk/std",
 ]

@@ -46,44 +46,53 @@ sp-core = { workspace = true, default-features = true }
 sp-io = { workspace = true, default-features = true }
 
 [features]
-default = ["std"]
+default = [ "std" ]
 std = [
-    "codec/std",
-    "sp-std/std",
-    "frame-support/std",
-    "frame-system/std",
-    "pallet-timestamp/std",
-    "security/std",
-    "currency/std",
-    "primitives/std",
-    "orml-currencies/std",
-    "orml-tokens/std",
-    "orml-traits/std",
-    "orml-oracle/std",
-    "dia-oracle/std",
-
+	"codec/std",
+	"currency/std",
+	"dia-oracle/std",
+	"frame-benchmarking?/std",
+	"frame-support/std",
+	"frame-system/std",
+	"once_cell?/std",
+	"orml-currencies/std",
+	"orml-oracle/std",
+	"orml-tokens/std",
+	"orml-traits/std",
+	"pallet-timestamp/std",
+	"primitives/std",
+	"scale-info/std",
+	"security/std",
+	"sp-arithmetic?/std",
+	"sp-std/std",
+	"spin?/std",
 ]
 runtime-benchmarks = [
-    "frame-benchmarking/runtime-benchmarks",
-    "frame-support/runtime-benchmarks",
-    "frame-system/runtime-benchmarks",
-    "pallet-timestamp/runtime-benchmarks",
-    "currency/runtime-benchmarks",
-    "currency/testing-constants",
-    "security/testing-utils",
-    "testing-utils"
+	"currency/runtime-benchmarks",
+	"currency/testing-constants",
+	"dia-oracle/runtime-benchmarks",
+	"frame-benchmarking/runtime-benchmarks",
+	"frame-support/runtime-benchmarks",
+	"frame-system/runtime-benchmarks",
+	"orml-tokens/runtime-benchmarks",
+	"pallet-balances/runtime-benchmarks",
+	"pallet-timestamp/runtime-benchmarks",
+	"security/testing-utils",
+	"staking/runtime-benchmarks",
+	"testing-utils",
 ]
-testing-utils = ["spin", "once_cell", "sp-arithmetic"]
+testing-utils = [ "once_cell", "sp-arithmetic", "spin" ]
 
 try-runtime = [
-    "frame-system/try-runtime",
-    "pallet-balances/try-runtime",
-    "pallet-timestamp/try-runtime",
-    "security/try-runtime",
-    "staking/try-runtime",
-    "currency/try-runtime",
-    "orml-currencies/try-runtime",
-    "orml-tokens/try-runtime",
-    "orml-oracle/try-runtime",
-    "dia-oracle/try-runtime",
+	"currency/try-runtime",
+	"dia-oracle/try-runtime",
+	"frame-support/try-runtime",
+	"frame-system/try-runtime",
+	"orml-currencies/try-runtime",
+	"orml-oracle/try-runtime",
+	"orml-tokens/try-runtime",
+	"pallet-balances/try-runtime",
+	"pallet-timestamp/try-runtime",
+	"security/try-runtime",
+	"staking/try-runtime",
 ]

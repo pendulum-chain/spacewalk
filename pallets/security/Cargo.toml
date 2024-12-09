@@ -22,19 +22,17 @@ sp-io = { workspace = true, default-features = true }
 
 
 [features]
-default = ["std"]
+default = [ "std" ]
 std = [
-  "serde/std",
-  "codec/std",
-  "sha2/std",
-  "sp-core/std",
-  "sp-std/std",
-  "frame-support/std",
-  "frame-system/std",
+	"codec/std",
+	"frame-support/std",
+	"frame-system/std",
+	"scale-info/std",
+	"serde/std",
+	"sha2/std",
+	"sp-core/std",
+	"sp-std/std",
 ]
 testing-utils = []
 
-try-runtime = [
-    "frame-support/try-runtime",
-    "frame-system/try-runtime",
-]
+try-runtime = [ "frame-support/try-runtime", "frame-system/try-runtime" ]

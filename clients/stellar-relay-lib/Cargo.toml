@@ -46,9 +46,5 @@ tokio = { workspace = true, features = [
 async-std = { workspace = true, features = ["attributes"] }
 
 [features]
-std = [
-    "substrate-stellar-sdk/std"
-]
-default = [
-    "std"
-]
+std = [ "hmac/std", "serde_json/std", "substrate-stellar-sdk/std" ]
+default = [ "std" ]

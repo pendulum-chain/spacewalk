@@ -12,13 +12,13 @@ parachain-metadata-amplitude = []
 parachain-metadata-foucoco = []
 
 testing-utils = [
-    "tempdir",
-    "rand",
-    "testchain",
-    "testchain-runtime/testing-utils",
-    "mainnet-runtime/testing-utils",
-    "subxt-client",
-    "oracle/testing-utils"
+	"mainnet-runtime/testing-utils",
+	"oracle/testing-utils",
+	"rand",
+	"subxt-client",
+	"tempdir",
+	"testchain",
+	"testchain-runtime/testing-utils",
 ]
 
 [dependencies]

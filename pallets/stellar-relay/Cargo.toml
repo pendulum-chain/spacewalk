@@ -37,18 +37,30 @@ orml-traits = { workspace = true, default-features = true}
 rand.workspace = true
 
 [features]
-default = ["std"]
+default = [ "std" ]
 std = [
-    "base64/std",
-    "codec/std",
-    "scale-info/std",
-    "frame-support/std",
-    "frame-system/std",
-    "sp-std/std",
-    "primitives/std",
-    "frame-benchmarking/std"
+	"base64/std",
+	"codec/std",
+	"frame-benchmarking/std",
+	"frame-support/std",
+	"frame-system/std",
+	"log/std",
+	"primitives/std",
+	"scale-info/std",
+	"serde/std",
+	"sp-core/std",
+	"sp-std/std",
 ]
 testing-utils = []
 
-runtime-benchmarks = ["frame-benchmarking/runtime-benchmarks"]
-try-runtime = ["frame-support/try-runtime"]
+runtime-benchmarks = [
+	"frame-benchmarking/runtime-benchmarks",
+	"frame-support/runtime-benchmarks",
+	"frame-system/runtime-benchmarks",
+	"orml-tokens/runtime-benchmarks",
+]
+try-runtime = [
+	"frame-support/try-runtime",
+	"frame-system/try-runtime",
+	"orml-tokens/try-runtime",
+]

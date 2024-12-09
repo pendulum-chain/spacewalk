@@ -15,12 +15,14 @@ scale-info = {workspace = true, features = ["derive"] }
 primitives = { package = "spacewalk-primitives", path = "../../../../primitives", default-features = false }
 
 [features]
-default = ["std"]
+default = [ "std" ]
 std = [
-  "serde",
-  "codec/std",
-  "frame-support/std",
-  "sp-api/std",
-  "sp-std/std",
-  "scale-info/std"
+	"codec/std",
+	"frame-support/std",
+	"primitives/std",
+	"scale-info/std",
+	"serde",
+	"serde?/std",
+	"sp-api/std",
+	"sp-std/std",
 ]

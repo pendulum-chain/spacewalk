@@ -30,22 +30,28 @@ sp-io = {workspace = true, default-features = true }
 currency = { path = "../currency", features = ["testing-constants"] }
 
 [features]
-default = ["std"]
+default = [ "std" ]
 std = [
-    "codec/std",
-    "currency/std",
-    "primitives/std",
-    "sp-arithmetic/std",
-    "sp-std/std",
-    "frame-support/std",
-    "frame-system/std",
+	"codec/std",
+	"currency/std",
+	"frame-support/std",
+	"frame-system/std",
+	"primitives/std",
+	"scale-info/std",
+	"sp-arithmetic/std",
+	"sp-std/std",
 ]
 runtime-benchmarks = [
-    "frame-support/runtime-benchmarks",
-    "frame-system/runtime-benchmarks",
+	"currency/runtime-benchmarks",
+	"frame-benchmarking/runtime-benchmarks",
+	"frame-support/runtime-benchmarks",
+	"frame-system/runtime-benchmarks",
+	"pallet-timestamp/runtime-benchmarks",
 ]
 
 try-runtime = [
-     "frame-support/try-runtime",
-    "frame-system/try-runtime",
+	"currency/try-runtime",
+	"frame-support/try-runtime",
+	"frame-system/try-runtime",
+	"pallet-timestamp/try-runtime",
 ]
