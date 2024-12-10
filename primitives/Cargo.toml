@@ -18,7 +18,7 @@ sp-std = { workspace = true }
 
 frame-support = { workspace = true }
 
-substrate-stellar-sdk = { workspace = true, features = ["offchain", "all-types"] }
+substrate-stellar-sdk = { workspace = true, features = ["all-types"] }
 
 [features]
 default = [ "std" ]
