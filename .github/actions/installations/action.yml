@@ -15,6 +15,15 @@ runs:
           echo 'APT::Get::Always-Include-Phased-Updates "false";' | sudo tee /etc/apt/apt.conf.d/99-phased-updates
           sudo apt-get update && sudo apt-get upgrade -y
           sudo apt-get install -y protobuf-compiler libprotobuf-dev
+      - name: Install Rust and Rust-src
+        shell: bash
+        run: |
+          curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
+          source $HOME/.cargo/env
+          rustup default stable
+          rustup update
+          rustup target add wasm32-unknown-unknown
+          rustup component add rust-src
 
 #      - name: Use Cache
 #        uses: Swatinem/rust-cache@v2

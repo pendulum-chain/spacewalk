@@ -31,7 +31,7 @@ use primitives::{derive_shortened_request_id, get_text_memo_from_tx_env, TextMem
 #[frame_support::pallet]
 pub mod pallet {
 	use codec::FullCodec;
-	use frame_support::{pallet_prelude::*, sp_runtime, transactional};
+	use frame_support::{pallet_prelude::*, transactional};
 	use frame_system::pallet_prelude::*;
 	use primitives::stellar::{
 		compound_types::UnlimitedVarArray,
@@ -163,7 +163,8 @@ pub mod pallet {
 		pub validators: Vec<ValidatorOf<T>>,
 		pub organizations: Vec<OrganizationOf<T>>,
 		pub enactment_block_height: BlockNumberFor<T>,
-		pub phantom: PhantomData<T>,
+		#[serde(skip)]
+		pub _phantom: PhantomData<T>,
 	}
 
 	impl<T: Config> Default for GenesisConfig<T> {
@@ -381,7 +382,7 @@ pub mod pallet {
 				validators,
 				organizations,
 				enactment_block_height,
-				phantom: Default::default(),
+				_phantom: Default::default(),
 			}
 		}
 	}

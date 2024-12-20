@@ -5,11 +5,11 @@ name = "module-oracle-rpc"
 version = "1.0.13"
 
 [dependencies]
-codec = {package = "parity-scale-codec", version = "3.0.0", default-features = false, features = ["derive", "max-encoded-len"]}
+codec = { workspace = true, features = ["derive", "max-encoded-len"]}
 jsonrpsee = {version = "0.16.0", features = ["client","server", "macros"]}
 module-oracle-rpc-runtime-api = {path = "runtime-api"}
-sp-api = {git = "https://github.com/paritytech/polkadot-sdk", branch = "release-polkadot-v1.1.0"}
-sp-blockchain = {git = "https://github.com/paritytech/polkadot-sdk", branch = "release-polkadot-v1.1.0"}
-sp-runtime = {git = "https://github.com/paritytech/polkadot-sdk", branch = "release-polkadot-v1.1.0"}
+sp-api = { workspace = true, default-features = true }
+sp-blockchain = { workspace = true, default-features = true }
+sp-runtime = { workspace = true, default-features = true }
 
 primitives = { package = "spacewalk-primitives", path = "../../../primitives", default-features = false }

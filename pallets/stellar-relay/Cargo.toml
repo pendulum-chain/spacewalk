@@ -13,45 +13,54 @@ repository = "https://github.com/pendulum-chain/spacewalk"
 targets = ["x86_64-unknown-linux-gnu"]
 
 [dependencies]
-base64 = { version = '0.13.0', default-features = false, features = ['alloc'] }
-codec = { package = "parity-scale-codec", version = "3.0.0", default-features = false, features = [
-    "derive",
-] }
-log = { version = "0.4.14", default-features = false }
-serde = {version = "1.0.130", default-features = false, features = ["derive"]}
-scale-info = { version = "2.1.1", default-features = false, features = ["derive"] }
-frame-support = { default-features = false, git = "https://github.com/paritytech/polkadot-sdk.git", branch = "release-polkadot-v1.1.0" }
-frame-system = { default-features = false, git = "https://github.com/paritytech/polkadot-sdk.git", branch = "release-polkadot-v1.1.0" }
-frame-benchmarking = { default-features = false, git = "https://github.com/paritytech/polkadot-sdk.git", branch = "release-polkadot-v1.1.0", optional = true }
+base64 = { workspace = true, features = ['alloc'] }
+codec = { workspace = true, features = ["derive"] }
+log = { workspace = true }
+serde = { workspace = true, features = ["derive"]}
+scale-info = { workspace = true, features = ["derive"] }
+frame-support = { workspace = true }
+frame-system = { workspace = true }
+frame-benchmarking = { workspace = true, optional = true }
 
-sp-std = { default-features = false, git = "https://github.com/paritytech/polkadot-sdk.git", branch = "release-polkadot-v1.1.0" }
-sp-core = { default-features = false, git = "https://github.com/paritytech/polkadot-sdk.git", branch = "release-polkadot-v1.1.0" }
+sp-std = { workspace = true }
+sp-core =  { workspace = true }
 
 primitives = { package = "spacewalk-primitives", path = "../../primitives", default-features = false }
 
 [dev-dependencies]
-sp-io = { default-features = false, git = "https://github.com/paritytech/polkadot-sdk.git", branch = "release-polkadot-v1.1.0" }
-
+sp-io = { workspace = true, default-features = true }
 # Orml dependencies
-orml-tokens = { git = "https://github.com/open-web3-stack/open-runtime-module-library", branch = "polkadot-v1.1.0" }
-orml-traits = { git = "https://github.com/open-web3-stack/open-runtime-module-library", branch = "polkadot-v1.1.0" }
+orml-tokens = { workspace = true, default-features = true }
+orml-traits = { workspace = true, default-features = true}
 
 # For testing
-rand = "0.8.5"
+rand.workspace = true
 
 [features]
-default = ["std"]
+default = [ "std" ]
 std = [
-    "base64/std",
-    "codec/std",
-    "scale-info/std",
-    "frame-support/std",
-    "frame-system/std",
-    "sp-std/std",
-    "primitives/std",
-    "frame-benchmarking/std"
+	"base64/std",
+	"codec/std",
+	"frame-benchmarking/std",
+	"frame-support/std",
+	"frame-system/std",
+	"log/std",
+	"primitives/std",
+	"scale-info/std",
+	"serde/std",
+	"sp-core/std",
+	"sp-std/std",
 ]
 testing-utils = []
 
-runtime-benchmarks = ["frame-benchmarking/runtime-benchmarks"]
-try-runtime = ["frame-support/try-runtime"]
+runtime-benchmarks = [
+	"frame-benchmarking/runtime-benchmarks",
+	"frame-support/runtime-benchmarks",
+	"frame-system/runtime-benchmarks",
+	"orml-tokens/runtime-benchmarks",
+]
+try-runtime = [
+	"frame-support/try-runtime",
+	"frame-system/try-runtime",
+	"orml-tokens/try-runtime",
+]

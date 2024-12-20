@@ -1,4 +1,4 @@
-use spacewalk_runtime_testnet::{AssetId, DiaOracleModuleConfig};
+use spacewalk_runtime_testnet::{AssetId, DiaOracleModuleConfig, SystemConfig};
 use std::convert::TryFrom;
 
 use frame_support::BoundedVec;
@@ -15,7 +15,7 @@ use spacewalk_runtime_testnet::{
 	AccountId, AuraConfig, BalancesConfig, FeeConfig, FieldLength, GrandpaConfig, IssueConfig,
 	NominationConfig, OracleConfig, Organization, RedeemConfig, ReplaceConfig,
 	RuntimeGenesisConfig, SecurityConfig, Signature, StatusCode, StellarRelayConfig, SudoConfig,
-	SystemConfig, TokensConfig, Validator, VaultRegistryConfig, DAYS,
+	TokensConfig, Validator, VaultRegistryConfig, DAYS,
 };
 
 // The URL for the telemetry server.
@@ -78,77 +78,70 @@ fn get_properties() -> Map<String, Value> {
 }
 
 pub fn mainnet_config() -> ChainSpec {
-	ChainSpec::from_genesis(
-		"spacewalk",
-		"dev_mainnet",
-		ChainType::Development,
-		move || {
-			genesis(
-				get_account_id_from_seed::<sr25519::Public>("Alice"),
-				vec![authority_keys_from_seed("Alice")],
-				vec![
-					get_account_id_from_seed::<sr25519::Public>("Alice"),
-					get_account_id_from_seed::<sr25519::Public>("Bob"),
-					get_account_id_from_seed::<sr25519::Public>("Charlie"),
-					get_account_id_from_seed::<sr25519::Public>("Dave"),
-					get_account_id_from_seed::<sr25519::Public>("Eve"),
-					get_account_id_from_seed::<sr25519::Public>("Ferdie"),
-					get_account_id_from_seed::<sr25519::Public>("Alice//stash"),
-					get_account_id_from_seed::<sr25519::Public>("Bob//stash"),
-					get_account_id_from_seed::<sr25519::Public>("Charlie//stash"),
-					get_account_id_from_seed::<sr25519::Public>("Dave//stash"),
-					get_account_id_from_seed::<sr25519::Public>("Eve//stash"),
-					get_account_id_from_seed::<sr25519::Public>("Ferdie//stash"),
-				],
-				vec![get_account_id_from_seed::<sr25519::Public>("Bob")],
-				false,
-				true,
-			)
-		},
-		Vec::new(),
-		None,
-		None,
-		None,
-		Some(get_properties()),
-		None,
+	ChainSpec::builder(
+		spacewalk_runtime_mainnet::WASM_BINARY
+			.expect("WASM binary was not built, please build it!"),
+		Default::default(),
 	)
+	.with_name("spacewalk")
+	.with_id("dev_mainnet")
+	.with_chain_type(ChainType::Development)
+	.with_properties(get_properties())
+	.with_genesis_config_patch(genesis(
+		get_account_id_from_seed::<sr25519::Public>("Alice"),
+		vec![authority_keys_from_seed("Alice")],
+		vec![
+			get_account_id_from_seed::<sr25519::Public>("Alice"),
+			get_account_id_from_seed::<sr25519::Public>("Bob"),
+			get_account_id_from_seed::<sr25519::Public>("Charlie"),
+			get_account_id_from_seed::<sr25519::Public>("Dave"),
+			get_account_id_from_seed::<sr25519::Public>("Eve"),
+			get_account_id_from_seed::<sr25519::Public>("Ferdie"),
+			get_account_id_from_seed::<sr25519::Public>("Alice//stash"),
+			get_account_id_from_seed::<sr25519::Public>("Bob//stash"),
+			get_account_id_from_seed::<sr25519::Public>("Charlie//stash"),
+			get_account_id_from_seed::<sr25519::Public>("Dave//stash"),
+			get_account_id_from_seed::<sr25519::Public>("Eve//stash"),
+			get_account_id_from_seed::<sr25519::Public>("Ferdie//stash"),
+		],
+		vec![get_account_id_from_seed::<sr25519::Public>("Bob")],
+		false,
+		true,
+	))
+	.build()
 }
-
 pub fn testnet_config() -> ChainSpec {
-	ChainSpec::from_genesis(
-		"spacewalk",
-		"dev_testnet",
-		ChainType::Development,
-		move || {
-			genesis(
-				get_account_id_from_seed::<sr25519::Public>("Alice"),
-				vec![authority_keys_from_seed("Alice")],
-				vec![
-					get_account_id_from_seed::<sr25519::Public>("Alice"),
-					get_account_id_from_seed::<sr25519::Public>("Bob"),
-					get_account_id_from_seed::<sr25519::Public>("Charlie"),
-					get_account_id_from_seed::<sr25519::Public>("Dave"),
-					get_account_id_from_seed::<sr25519::Public>("Eve"),
-					get_account_id_from_seed::<sr25519::Public>("Ferdie"),
-					get_account_id_from_seed::<sr25519::Public>("Alice//stash"),
-					get_account_id_from_seed::<sr25519::Public>("Bob//stash"),
-					get_account_id_from_seed::<sr25519::Public>("Charlie//stash"),
-					get_account_id_from_seed::<sr25519::Public>("Dave//stash"),
-					get_account_id_from_seed::<sr25519::Public>("Eve//stash"),
-					get_account_id_from_seed::<sr25519::Public>("Ferdie//stash"),
-				],
-				vec![get_account_id_from_seed::<sr25519::Public>("Bob")],
-				false,
-				false,
-			)
-		},
-		Vec::new(),
-		None,
-		None,
-		None,
-		Some(get_properties()),
-		None,
+	ChainSpec::builder(
+		spacewalk_runtime_testnet::WASM_BINARY
+			.expect("WASM binary was not built, please build it!"),
+		Default::default(),
 	)
+	.with_name("spacewalk")
+	.with_id("dev_testnet")
+	.with_chain_type(ChainType::Development)
+	.with_properties(get_properties())
+	.with_genesis_config_patch(genesis(
+		get_account_id_from_seed::<sr25519::Public>("Alice"),
+		vec![authority_keys_from_seed("Alice")],
+		vec![
+			get_account_id_from_seed::<sr25519::Public>("Alice"),
+			get_account_id_from_seed::<sr25519::Public>("Bob"),
+			get_account_id_from_seed::<sr25519::Public>("Charlie"),
+			get_account_id_from_seed::<sr25519::Public>("Dave"),
+			get_account_id_from_seed::<sr25519::Public>("Eve"),
+			get_account_id_from_seed::<sr25519::Public>("Ferdie"),
+			get_account_id_from_seed::<sr25519::Public>("Alice//stash"),
+			get_account_id_from_seed::<sr25519::Public>("Bob//stash"),
+			get_account_id_from_seed::<sr25519::Public>("Charlie//stash"),
+			get_account_id_from_seed::<sr25519::Public>("Dave//stash"),
+			get_account_id_from_seed::<sr25519::Public>("Eve//stash"),
+			get_account_id_from_seed::<sr25519::Public>("Ferdie//stash"),
+		],
+		vec![get_account_id_from_seed::<sr25519::Public>("Bob")],
+		false,
+		false,
+	))
+	.build()
 }
 
 fn default_pair(currency_id: CurrencyId, is_public_network: bool) -> VaultCurrencyPair<CurrencyId> {
@@ -176,25 +169,15 @@ fn genesis(
 	authorized_oracles: Vec<AccountId>,
 	start_shutdown: bool,
 	is_public_network: bool,
-) -> RuntimeGenesisConfig {
+) -> serde_json::Value {
 	let default_wrapped_currency = if is_public_network {
 		WRAPPED_CURRENCY_ID_STELLAR_MAINNET
 	} else {
 		WRAPPED_CURRENCY_ID_STELLAR_TESTNET
 	};
 
-	// It's very important that we use the correct wasm binary
-	let wasm_binary = if is_public_network {
-		spacewalk_runtime_mainnet::WASM_BINARY
-	} else {
-		spacewalk_runtime_testnet::WASM_BINARY
-	};
-
-	RuntimeGenesisConfig {
-		system: SystemConfig {
-			code: wasm_binary.expect("WASM binary was not build, please build it!").to_vec(),
-			..Default::default()
-		},
+	let genesis_config = RuntimeGenesisConfig {
+		system: SystemConfig { _config: Default::default() },
 		aura: AuraConfig {
 			authorities: initial_authorities.iter().map(|x| (x.0.clone())).collect(),
 		},
@@ -204,7 +187,7 @@ fn genesis(
 		},
 		sudo: SudoConfig {
 			// Assign network admin rights.
-			key: Some(root_key),
+			key: Some(root_key.clone()),
 		},
 		balances: BalancesConfig {
 			// Configure endowed accounts with initial balance of 1 << 60.
@@ -247,7 +230,7 @@ fn genesis(
 		},
 		security: SecurityConfig {
 			initial_status: if start_shutdown { StatusCode::Shutdown } else { StatusCode::Error },
-			..Default::default()
+			_phantom: Default::default(),
 		},
 		stellar_relay: if !is_public_network {
 			create_stellar_testnet_config()
@@ -263,7 +246,7 @@ fn genesis(
 				Key::ExchangeRate(default_wrapped_currency),
 				Key::ExchangeRate(MXN_CURRENCY_ID),
 			],
-			..Default::default()
+			_phantom: Default::default(),
 		},
 		vault_registry: VaultRegistryConfig {
 			minimum_collateral_vault: vec![
@@ -384,7 +367,8 @@ fn genesis(
 			batching_api: b"https://dia-00.pendulumchain.tech:8070/currencies".to_vec(),
 			coin_infos_map: vec![],
 		},
-	}
+	};
+	serde_json::to_value(genesis_config).expect("Serialization of genesis config should work")
 }
 
 fn create_stellar_testnet_config() -> StellarRelayConfig {
@@ -425,6 +409,6 @@ fn create_stellar_testnet_config() -> StellarRelayConfig {
 		validators,
 		organizations,
 		enactment_block_height: 0,
-		phantom: Default::default(),
+		_phantom: Default::default(),
 	}
 }

@@ -9,21 +9,20 @@ default = []
 testing-utils = []
 
 [dependencies]
-async-trait = "0.1.40"
-futures = "0.3.5"
-cached = { version = "0.47.0", features = ["async"]}
-parity-scale-codec = "3.0.0"
-rand = "0.8.5"
-reqwest = { version = "0.12.4", features = ["json"] }
-serde = "1.0.136"
-serde_json = { version = '1.0.45', default-features = false, features = ['alloc'] }
-thiserror = "1.0"
-tokio = { version = "1.37", features = ["full", "tracing"] }
-tracing = { version = "0.1", features = ["log"] }
-dotenv = "0.15.0"
+async-trait = { workspace = true }
+futures = { workspace = true }
+cached = { workspace = true, features = ["async"] }
+parity-scale-codec = { workspace = true }
+rand = { workspace = true }
+reqwest = { workspace = true, features = ["json"] }
+serde = { workspace = true, default-features = true }
+serde_json = { workspace = true, features = ["alloc"] }
+thiserror = { workspace = true }
+tokio = { workspace = true, features = ["full", "tracing"] }
+tracing = { workspace = true, features = ["log"] }
+dotenv = { workspace = true }
 primitives = { package = "spacewalk-primitives", path = "../../primitives"}
 
 [dev-dependencies]
-mockall = "0.8.1"
-serial_test = "0.9.0"
-mocktopus = "0.8.0"
+serial_test.workspace = true
+mocktopus.workspace = true
