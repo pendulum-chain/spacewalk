@@ -202,8 +202,6 @@ pub struct TransactionResponse {
 	#[serde(deserialize_with = "de_str_to_bytes")]
 	pub result_xdr: Vec<u8>,
 	#[serde(deserialize_with = "de_str_to_bytes")]
-	pub result_meta_xdr: Vec<u8>,
-	#[serde(deserialize_with = "de_str_to_bytes")]
 	pub fee_meta_xdr: Vec<u8>,
 	#[serde(deserialize_with = "de_str_to_bytes")]
 	pub memo_type: Vec<u8>,
@@ -236,7 +234,6 @@ impl Debug for TransactionResponse {
 			.field("operation_count", &self.operation_count)
 			.field("envelope_xdr", &debug_str_or_vec_u8!(&self.envelope_xdr))
 			.field("result_xdr", &debug_str_or_vec_u8!(&self.result_xdr))
-			.field("result_meta_xdr", &debug_str_or_vec_u8!(&self.result_meta_xdr))
 			.field("memo_type", &debug_str_or_vec_u8!(&self.memo_type))
 			.field("memo", &memo)
 			.finish()
