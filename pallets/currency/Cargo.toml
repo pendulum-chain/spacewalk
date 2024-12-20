@@ -4,7 +4,7 @@ description = "Currency module"
 edition = "2021"
 homepage = "https://pendulumchain.org"
 name = "currency"
-version = "1.0.13"
+version = "1.0.14"
 
 [dependencies]
 codec = { package = "parity-scale-codec", version = "3.0.0", default-features = false, features = ["derive", "max-encoded-len"] }
