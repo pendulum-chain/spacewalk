@@ -1,6 +1,6 @@
 [package]
 name = "subxt-client"
-version = "1.0.14"
+version = "1.0.15"
 authors = []
 edition = "2018"
 

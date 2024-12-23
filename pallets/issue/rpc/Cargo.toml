@@ -1,6 +1,6 @@
 [package]
 name = "module-issue-rpc"
-version = "1.0.14"
+version = "1.0.15"
 authors = ["Interlay <contact@interlay.io>"]
 edition = "2021"
 
