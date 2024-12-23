@@ -30,7 +30,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 				StellarMessage::Hello(_) => {
 					tracing::info!("received Hello message");
 				},
-
 				StellarMessage::ScpMessage(msg) => {
 					let node_id = msg.statement.node_id.to_encoding();
 					let node_id = base64::encode(&node_id);
@@ -49,9 +48,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 						slot
 					);
 				},
-				_ => {
-					let _ = overlay_connection.send_to_node(StellarMessage::GetPeers).await;
-				},
+				_ => {},
 			},
 			Ok(None) => {},
 			Err(Error::Timeout) => {
