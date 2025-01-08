@@ -16,7 +16,7 @@ substrate-build-script-utils = { workspace = true }
 
 [dependencies]
 clap = { version = "4.5.3", features = [ "derive" ] }
-codec = { workspace = true, default-features = true, version = "3.0.0" }
+codec = { workspace = true, default-features = true }
 hex-literal = { workspace = true, default-features = true }
 log = { workspace = true, default-features = true }
 serde = { workspace = true, default-features = true, features = ["derive"] }
