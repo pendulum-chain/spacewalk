@@ -349,9 +349,9 @@ pub fn new_full(config: Configuration) -> Result<(TaskManager, RpcHandlers), Ser
 
 	let mut net_config = sc_network::config::FullNetworkConfiguration::new(&config.network);
 
-	net_config.add_notification_protocol(sc_consensus_grandpa::grandpa_peers_set_config(
-		grandpa_protocol_name.clone(),
-	));
+	let (grandpa_protocol_config, grandpa_notification_service) =
+		sc_consensus_grandpa::grandpa_peers_set_config(grandpa_protocol_name.clone());
+	net_config.add_notification_protocol(grandpa_protocol_config);
 
 	let (network, system_rpc_tx, tx_handler_controller, network_starter, sync_service) =
 		sc_service::build_network(sc_service::BuildNetworkParams {
@@ -363,6 +363,7 @@ pub fn new_full(config: Configuration) -> Result<(TaskManager, RpcHandlers), Ser
 			import_queue,
 			block_announce_validator_builder: None,
 			warp_sync_params: None,
+			block_relay: None,
 		})?;
 
 	if config.offchain_worker.enabled {
@@ -514,6 +515,7 @@ pub fn new_full(config: Configuration) -> Result<(TaskManager, RpcHandlers), Ser
 			shared_voter_state: SharedVoterState::empty(),
 			telemetry: telemetry.as_ref().map(|x| x.handle()),
 			offchain_tx_pool_factory: OffchainTransactionPoolFactory::new(transaction_pool),
+			notification_service: grandpa_notification_service,
 		};
 
 		// the GRANDPA voter task is considered infallible, i.e.
@@ -556,6 +558,7 @@ pub async fn start_instant_mainnet(
 			import_queue,
 			block_announce_validator_builder: None,
 			warp_sync_params: None,
+			block_relay: None,
 		})?;
 
 	if config.offchain_worker.enabled {
@@ -693,6 +696,7 @@ pub async fn start_instant_testnet(
 			import_queue,
 			block_announce_validator_builder: None,
 			warp_sync_params: None,
+			block_relay: None,
 		})?;
 
 	if config.offchain_worker.enabled {

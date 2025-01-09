@@ -5,31 +5,32 @@ name = "spacewalk-primitives"
 version = "1.0.15"
 
 [dependencies]
-codec = { package = "parity-scale-codec", version = "3.0.0", default-features = false }
-scale-info = { version = "2.1.1", default-features = false, features = ["derive"] }
-scale-encode = {version = "0.7.1", default-features = false, features = ["derive"] }
-scale-decode = {version = "0.13", default-features = false, features = ["derive"] }
-serde = { version = "1.0.130", default-features = false, features = ["derive"]}
-base58 = { version = "0.2.0" }
+codec = { workspace = true }
+scale-info = { workspace = true, features = ["derive"] }
+scale-encode = { workspace = true, features = ["derive"] }
+scale-decode = { workspace = true, features = ["derive"] }
+serde = { workspace = true, features = ["derive"] }
+base58 = { workspace = true }
 
-sp-core = { git = "https://github.com/paritytech/polkadot-sdk", branch = "release-polkadot-v1.1.0", default-features = false }
-sp-runtime = { git = "https://github.com/paritytech/polkadot-sdk", branch = "release-polkadot-v1.1.0", default-features = false }
-sp-std = { git = "https://github.com/paritytech/polkadot-sdk", branch = "release-polkadot-v1.1.0", default-features = false }
+sp-core = { workspace = true }
+sp-runtime = { workspace = true }
+sp-std = { workspace = true }
 
-frame-support = { git = "https://github.com/paritytech/polkadot-sdk", default-features = false, branch = "release-polkadot-v1.1.0" }
+frame-support = { workspace = true }
 
-substrate-stellar-sdk = { git = "https://github.com/pendulum-chain/substrate-stellar-sdk", branch = "polkadot-v1.1.0", default-features = false, features = ['offchain', 'all-types'] }
+substrate-stellar-sdk = { workspace = true, features = ["all-types"] }
 
 [features]
-default = ["std"]
+default = [ "std" ]
 std = [
-    "scale-encode/std",
-    "scale-decode/std",
-    "serde/std",
-    "codec/std",
-    "sp-core/std",
-    "sp-std/std",
-    "sp-runtime/std",
-    "frame-support/std",
-    "substrate-stellar-sdk/std"
+	"codec/std",
+	"frame-support/std",
+	"scale-decode/std",
+	"scale-encode/std",
+	"scale-info/std",
+	"serde/std",
+	"sp-core/std",
+	"sp-runtime/std",
+	"sp-std/std",
+	"substrate-stellar-sdk/std",
 ]

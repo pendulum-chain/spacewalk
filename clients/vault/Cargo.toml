@@ -6,52 +6,54 @@ name = "vault"
 version = "1.0.15"
 
 [features]
-std = [
-    "stellar-relay-lib/std"
-]
+std = [ "base64/std", "primitives/std", "stellar-relay-lib/std" ]
 
-integration = [
-    "rand",
-    "wallet/testing-utils"
-]
-standalone-metadata = ["runtime/standalone-metadata"]
-parachain-metadata-pendulum = ["runtime/parachain-metadata-pendulum"]
-parachain-metadata-amplitude = ["runtime/parachain-metadata-amplitude"]
-parachain-metadata-foucoco = ["runtime/parachain-metadata-foucoco"]
-integration-test = ["integration", "standalone-metadata"]
-allow-debugger = ["console-subscriber"]
+integration = [ "rand", "wallet/testing-utils" ]
+standalone-metadata = [ "runtime/standalone-metadata" ]
+parachain-metadata-pendulum = [ "runtime/parachain-metadata-pendulum" ]
+parachain-metadata-amplitude = [ "runtime/parachain-metadata-amplitude" ]
+parachain-metadata-foucoco = [ "runtime/parachain-metadata-foucoco" ]
+integration-test = [ "integration", "standalone-metadata" ]
+allow-debugger = [ "console-subscriber" ]
 
 
 [dependencies]
-async-trait = "0.1.40"
-base64 = { version = '0.13.0', default-features = false, features = ['alloc'] }
-bincode = "1.3.3"
-clap = { version = "3.1", features = ["env"] }
-cfg-if = "1.0.0"
-rand = { version = "0.8.5", optional = true }
-futures = "0.3.5"
-governor = "0.5.0"
-hex = "0.4.2"
-itertools = "0.10.5"
-lazy_static = "1.4"
-nonzero_ext = "0.3.0"
-reqwest = { version = "0.12.4", features = ["json"] }
-signal-hook = "0.3.14"
-signal-hook-tokio = { version = "0.3.1", features = ["futures-v0_3"] }
-sysinfo = "0.26.1"
-thiserror = "1.0"
+async-trait = { workspace = true}
+base64 = { workspace = true, features = ['alloc'] }
+bincode = { workspace = true }
+clap = { workspace = true, features = ["env"] }
+cfg-if = { workspace = true }
+rand = { workspace = true, optional = true }
+futures = { workspace = true }
+governor = { workspace = true }
+hex = { workspace = true, default-features = true }
+itertools = { workspace = true }
+lazy_static = { workspace = true }
+nonzero_ext = { workspace = true }
+reqwest = { workspace = true, features = ["json"] }
+signal-hook = { workspace = true }
+signal-hook-tokio = { workspace = true, features = ["futures-v0_3"] }
+sysinfo = { workspace = true }
+thiserror =  { workspace = true }
 
 # tokio related
-tokio = { version = "1.37", features = ["full", "tracing"] }
-tokio-metrics = { version = "0.1.0", default-features = false }
-tokio-stream = { version = "0.1.9", features = ["sync"] }
-console-subscriber = { version = "0.2.0", optional = true }
+tokio = { workspace = true, features = ["full", "tracing"] }
+tokio-metrics = { workspace = true }
+tokio-stream = { workspace = true, features = ["sync"] }
+console-subscriber = { workspace = true, optional = true }
 
-tracing = { version = "0.1", features = ["log"] }
+tracing = { workspace = true, features = ["log"] }
 
-jsonrpc-core-client = { version = "18.0.0", features = ["http", "tls"] }
+jsonrpc-core-client = { workspace = true, features = ["http", "tls"] }
 
-subxt = { version = "0.33.0", features = [ "substrate-compat"] }
+subxt = { workspace = true, default-features = true, features = [ "substrate-compat"] }
+
+# Substrate dependencies
+sp-core = { workspace = true, default-features = true }
+sp-runtime = { workspace = true, default-features = true  }
+sp-std = { workspace = true, default-features = true  }
+parking_lot = { workspace = true }
+flate2 = { workspace = true }
 
 # Workspace dependencies
 runtime = { path = "../runtime" }
@@ -60,28 +62,19 @@ wallet = { path = "../wallet" }
 stellar-relay-lib = { package = "stellar-relay-lib", path = "../stellar-relay-lib", default-features = false }
 primitives = { path = "../../primitives", package = "spacewalk-primitives", default-features = false }
 
-# Substrate dependencies
-sp-core = { git = "https://github.com/paritytech/polkadot-sdk", branch = "release-polkadot-v1.1.0" }
-sp-runtime = { git = "https://github.com/paritytech/polkadot-sdk", branch = "release-polkadot-v1.1.0" }
-sp-std = { git = "https://github.com/paritytech/polkadot-sdk", branch = "release-polkadot-v1.1.0" }
-
-parking_lot = "0.12.1"
-flate2 = "1.0"
-
 [dev-dependencies]
-mockall = "0.8.1"
-ntest = "0.9.0"
+mockall.workspace = true
+ntest.workspace = true
 
-env_logger = "0.9.0"
-serial_test = "0.9.0"
-tempdir = "0.3.7"
+env_logger.workspace = true
+serial_test.workspace = true
+tempdir.workspace = true
 
-# Workspace dependencies
 runtime = { path = "../runtime", features = ["testing-utils", "standalone-metadata"] }
 wallet = { path = "../wallet", features = ["testing-utils"] }
 
-sp-keyring = { git = "https://github.com/paritytech/polkadot-sdk", branch = "release-polkadot-v1.1.0" }
-sp-arithmetic = { git = "https://github.com/paritytech/polkadot-sdk", branch = "release-polkadot-v1.1.0" }
+sp-keyring = { workspace = true, default-features = true }
+sp-arithmetic = { workspace = true, default-features = true }
 
 # Substrate dependencies
-frame-support = { git = "https://github.com/paritytech/polkadot-sdk", branch = "release-polkadot-v1.1.0" }
+frame-support = { workspace = true, default-features = true }

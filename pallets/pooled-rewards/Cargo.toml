@@ -6,46 +6,51 @@ name = "pooled-rewards"
 version = "1.0.15"
 
 [dependencies]
-codec = { package = "parity-scale-codec", version = "3.0.0", default-features = false, features = ["derive", "max-encoded-len"] }
-scale-info = { version = "2.0.0", default-features = false, features = ["derive"] }
+codec = { workspace = true, features = ["derive", "max-encoded-len"] }
+scale-info = { workspace = true, features = ["derive"] }
 
 # Parachain dependencies
 primitives = { package = "spacewalk-primitives", path = "../../primitives", default-features = false }
 
 # Substrate dependencies
-sp-arithmetic = { git = "https://github.com/paritytech/polkadot-sdk", branch = "release-polkadot-v1.1.0", default-features = false }
-sp-std = { git = "https://github.com/paritytech/polkadot-sdk", branch = "release-polkadot-v1.1.0", default-features = false }
+sp-arithmetic = { workspace = true }
+sp-std = { workspace = true }
 
-frame-support = { git = "https://github.com/paritytech/polkadot-sdk", branch = "release-polkadot-v1.1.0", default-features = false }
-frame-system = { git = "https://github.com/paritytech/polkadot-sdk", branch = "release-polkadot-v1.1.0", default-features = false }
+frame-support = { workspace = true }
+frame-system = { workspace = true }
 
 [dev-dependencies]
-mocktopus = "0.8.0"
-rand = "0.8.3"
-frame-benchmarking = { git = "https://github.com/paritytech/polkadot-sdk", branch = "release-polkadot-v1.1.0"}
-pallet-timestamp = { git = "https://github.com/paritytech/polkadot-sdk", branch = "release-polkadot-v1.1.0" }
+mocktopus.workspace = true
+rand.workspace = true
+frame-benchmarking = { workspace = true, default-features = true}
+pallet-timestamp = { workspace = true, default-features = true}
 currency = { path = "../currency", features = ["testing-constants"] }
-sp-core = { git = "https://github.com/paritytech/polkadot-sdk", branch = "release-polkadot-v1.1.0" }
-sp-io = { git = "https://github.com/paritytech/polkadot-sdk", branch = "release-polkadot-v1.1.0" }
+sp-core = { workspace = true, default-features = true}
+sp-io = { workspace = true, default-features = true}
 
 [features]
-default = ["std"]
+default = [ "std" ]
 std = [
-    "codec/std",
-    "currency/std",
-    "primitives/std",
-    "sp-arithmetic/std",
-    "sp-std/std",
-    "frame-support/std",
-    "frame-system/std",
+	"codec/std",
+	"currency/std",
+	"frame-support/std",
+	"frame-system/std",
+	"primitives/std",
+	"scale-info/std",
+	"sp-arithmetic/std",
+	"sp-std/std",
 ]
 runtime-benchmarks = [
-    "frame-support/runtime-benchmarks",
-    "frame-system/runtime-benchmarks",
+	"currency/runtime-benchmarks",
+	"frame-benchmarking/runtime-benchmarks",
+	"frame-support/runtime-benchmarks",
+	"frame-system/runtime-benchmarks",
+	"pallet-timestamp/runtime-benchmarks",
 ]
 
 try-runtime = [
-    "frame-system/try-runtime",
-     "frame-system/try-runtime",
-     "currency/try-runtime",
+	"currency/try-runtime",
+	"frame-support/try-runtime",
+	"frame-system/try-runtime",
+	"pallet-timestamp/try-runtime",
 ]

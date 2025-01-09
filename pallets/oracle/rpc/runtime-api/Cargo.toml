@@ -5,22 +5,24 @@ name = "module-oracle-rpc-runtime-api"
 version = "1.0.15"
 
 [dependencies]
-codec = {package = "parity-scale-codec", version = "3.0.0", default-features = false, features = ["derive", "max-encoded-len"]}
-frame-support = {git = "https://github.com/paritytech/polkadot-sdk", branch = "release-polkadot-v1.1.0", default-features = false}
-serde = {version = "1.0.130", default-features = false, optional = true, features = ["derive"]}
-sp-api = {git = "https://github.com/paritytech/polkadot-sdk", branch = "release-polkadot-v1.1.0", default-features = false}
-sp-std = {git = "https://github.com/paritytech/polkadot-sdk", branch = "release-polkadot-v1.1.0", default-features = false}
-scale-info = { version = "2.1.1", default-features = false, features = ["derive"] }
+codec = { workspace = true, features = ["derive", "max-encoded-len"]}
+frame-support = { workspace = true}
+serde = { workspace = true, optional = true, features = ["derive"]}
+sp-api = { workspace = true }
+sp-std = { workspace = true }
+scale-info = {workspace = true, features = ["derive"] }
 
 primitives = { package = "spacewalk-primitives", path = "../../../../primitives", default-features = false }
 
 [features]
-default = ["std"]
+default = [ "std" ]
 std = [
-  "serde",
-  "codec/std",
-  "frame-support/std",
-  "sp-api/std",
-  "sp-std/std",
-  "scale-info/std"
+	"codec/std",
+	"frame-support/std",
+	"primitives/std",
+	"scale-info/std",
+	"serde",
+	"serde?/std",
+	"sp-api/std",
+	"sp-std/std",
 ]

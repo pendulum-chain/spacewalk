@@ -12,43 +12,42 @@ parachain-metadata-amplitude = []
 parachain-metadata-foucoco = []
 
 testing-utils = [
-    "tempdir",
-    "rand",
-    "testchain",
-    "testchain-runtime/testing-utils",
-    "mainnet-runtime/testing-utils",
-    "subxt-client",
-    "oracle/testing-utils"
+	"mainnet-runtime/testing-utils",
+	"oracle/testing-utils",
+	"rand",
+	"subxt-client",
+	"tempdir",
+	"testchain",
+	"testchain-runtime/testing-utils",
 ]
 
 [dependencies]
-async-trait = "0.1.40"
-backoff = { version = "0.3.0", features = ["tokio"] }
-cfg-if = "1.0"
-clap = { version = "3.1", features = ["derive", "env"] }
-codec = { package = "parity-scale-codec", version = "3.0.0", default-features = false, features = ["derive", "full"] }
-futures = "0.3.5"
-log = "0.4.0"
-serde = { version = "1.0.136", features = ["derive"] }
-serde_json = "1.0.71"
-thiserror = "1.0"
-tokio = { version = "1.37", features = ["full"] }
-prometheus = { version = "0.12.0", features = ["process"] }
-url = "2"
+async-trait = { workspace = true }
+backoff = { workspace = true, features = ["tokio"] }
+cfg-if = { workspace = true }
+clap = { workspace = true, features = ["derive", "env"]}
+codec = {  workspace = true, features = ["derive", "full"] }
+futures = { workspace = true }
+log = { workspace = true, default-features = true }
+serde = { workspace = true, features = ["derive"], default-features = true }
+serde_json = { workspace = true, default-features = true }
+thiserror = { workspace = true }
+tokio = { workspace = true, features = ["full"] }
+prometheus = { workspace = true, features = ["process"] }
+url = { workspace = true }
 
-# Substrate dependencies
-frame-support = { git = "https://github.com/paritytech/polkadot-sdk", branch = "release-polkadot-v1.1.0" }
-sp-arithmetic = { git = "https://github.com/paritytech/polkadot-sdk", branch = "release-polkadot-v1.1.0" }
-sp-keyring = { git = "https://github.com/paritytech/polkadot-sdk", branch = "release-polkadot-v1.1.0" }
-sp-runtime = { git = "https://github.com/paritytech/polkadot-sdk", branch = "release-polkadot-v1.1.0" }
-sp-std = { git = "https://github.com/paritytech/polkadot-sdk", branch = "release-polkadot-v1.1.0" }
-sp-core = { git = "https://github.com/paritytech/polkadot-sdk", branch = "release-polkadot-v1.1.0" }
-sp-version = { git = "https://github.com/paritytech/polkadot-sdk", branch = "release-polkadot-v1.1.0" }
+# Git Dependencies
+frame-support = { workspace = true }
+sp-arithmetic = { workspace = true }
+sp-keyring = { workspace = true }
+sp-runtime = { workspace = true }
+sp-std = { workspace = true }
+sp-core = { workspace = true }
+sp-version = { workspace = true }
 
-# Subxt dependencies
-subxt = { version = "0.33.0", features = [ "substrate-compat"] }
-jsonrpsee = { version = "0.20.0", features = ["macros", "jsonrpsee-types", "client", "jsonrpsee-ws-client", "jsonrpsee-client-transport"] }
-# Used for performing the integration tests
+
+subxt = { workspace = true, default-features = true, features = ["substrate-compat"] }
+jsonrpsee = {  workspace = true, features = ["macros", "jsonrpsee-types", "client", "jsonrpsee-ws-client", "jsonrpsee-client-transport"] }
 subxt-client = { path = "./client", optional = true }
 
 # Needed for the `BalanceWrapper` struct
@@ -57,8 +56,8 @@ primitives = { path = "../../primitives", package = "spacewalk-primitives" }
 
 # Dependencies for the testing utils for integration tests
 oracle = { path = "../../pallets/oracle", optional = true }
-rand = { version = "0.7", optional = true }
-tempdir = { version = "0.3.7", optional = true }
+rand = { workspace = true, default-features = true, optional = true }
+tempdir = { workspace = true, optional = true }
 testchain = { package = "spacewalk-standalone", path = "../../testchain/node", optional = true }
 testchain-runtime = { package = "spacewalk-runtime-standalone-testnet", path = "../../testchain/runtime/testnet", optional = true }
 mainnet-runtime = { package = "spacewalk-runtime-standalone-mainnet", path = "../../testchain/runtime/mainnet", optional = true }
@@ -66,12 +65,8 @@ mainnet-runtime = { package = "spacewalk-runtime-standalone-mainnet", path = "..
 # Substrate Stellar Dependencies
 wallet = { path = "../wallet" }
 
-
 [dev-dependencies]
-env_logger = "0.8.3"
-tempdir = "0.3.7"
+env_logger.workspace = true
+tempdir.workspace = true
 runtime = { path = ".", features = ["testing-utils"] }
 testchain-runtime = { package = "spacewalk-runtime-standalone-testnet", path = "../../testchain/runtime/testnet", features = ["testing-utils"] }
-
-
-

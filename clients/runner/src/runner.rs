@@ -93,8 +93,8 @@ pub struct DownloadedRelease {
 
 fn sha256sum(bytes: &[u8]) -> Vec<u8> {
 	let mut hasher = Sha256::default();
-	hasher.input(bytes);
-	hasher.result().as_slice().to_vec()
+	hasher.update(bytes);
+	hasher.finalize().as_slice().to_vec()
 }
 
 /// Per-network manager of the client executable

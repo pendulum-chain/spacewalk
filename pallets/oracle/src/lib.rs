@@ -160,6 +160,7 @@ pub mod pallet {
 	pub struct GenesisConfig<T: Config> {
 		pub max_delay: u32,
 		pub oracle_keys: Vec<OracleKey>,
+		#[serde(skip)]
 		pub _phantom: sp_std::marker::PhantomData<T>,
 	}
 

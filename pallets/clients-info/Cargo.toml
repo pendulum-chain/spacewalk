@@ -5,35 +5,35 @@ version = "1.0.15"
 edition = "2021"
 
 [dependencies]
-codec = {package = "parity-scale-codec", version = "3.1.5", default-features = false, features = ["derive", "max-encoded-len"]}
-scale-info = {version = "2.2.0", default-features = false, features = ["derive"]}
+codec = { workspace = true, features = ["derive", "max-encoded-len"]}
+scale-info = {workspace = true, features = ["derive"]}
 
 # Substrate dependencies
-sp-std = { git = "https://github.com/paritytech/polkadot-sdk", branch = "release-polkadot-v1.1.0", default-features = false, optional = true }
+sp-std = { workspace = true, optional = true }
 
-frame-support = { git = "https://github.com/paritytech/polkadot-sdk", branch = "release-polkadot-v1.1.0", default-features = false }
-frame-system = { git = "https://github.com/paritytech/polkadot-sdk", branch = "release-polkadot-v1.1.0", default-features = false }
-frame-benchmarking = { git = "https://github.com/paritytech/polkadot-sdk", branch = "release-polkadot-v1.1.0", default-features = false, optional = true }
+frame-support = { workspace = true }
+frame-system = { workspace = true }
+frame-benchmarking = { workspace = true, optional = true }
 
 [dev-dependencies]
-sp-core = { git = "https://github.com/paritytech//polkadot-sdk", branch = "release-polkadot-v1.1.0", default-features = false }
-sp-io = { git = "https://github.com/paritytech/polkadot-sdk", branch = "release-polkadot-v1.1.0", default-features = false }
+sp-core = { workspace = true, default-features = true }
+sp-io = { workspace = true, default-features = true}
+
 [features]
-default = ["std"]
+default = [ "std" ]
 std = [
-    "codec/std",
-    "scale-info/std",
-    "frame-support/std",
-    "frame-system/std",
-    "frame-benchmarking/std",
+	"codec/std",
+	"frame-benchmarking/std",
+	"frame-support/std",
+	"frame-system/std",
+	"scale-info/std",
+	"sp-std?/std",
 ]
 runtime-benchmarks = [
-    "frame-benchmarking/runtime-benchmarks",
-    "frame-support/runtime-benchmarks",
-    "frame-system/runtime-benchmarks",
-    "sp-std"
+	"frame-benchmarking/runtime-benchmarks",
+	"frame-support/runtime-benchmarks",
+	"frame-system/runtime-benchmarks",
+	"sp-std",
 ]
 
-try-runtime = [
-    "frame-system/try-runtime",
-]
+try-runtime = [ "frame-support/try-runtime", "frame-system/try-runtime" ]

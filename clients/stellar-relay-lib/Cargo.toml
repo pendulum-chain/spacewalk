@@ -10,44 +10,41 @@ name = "stellar_relay_lib"
 path = "src/lib.rs"
 
 [dev-dependencies]
-ntest = "0.9.0"
-serial_test = "0.9.0"
+ntest.workspace = true
+serial_test.workspace = true
+console-subscriber.workspace = true
 wallet = { path = "../wallet", features = ["testing-utils"] }
-console-subscriber = { version = "0.3.0" }
+
 
 [dependencies]
-hex = "0.4.3"
-tracing = { version = "0.1", features = ["log"] }
+hex = { workspace = true, default-features = true }
+tracing = { workspace = true, features = ["log"] }
 
-base64 = "0.13.0"
-rand = "0.8.5"
-tweetnacl = "0.4.0"
+base64 = { workspace = true, default-features = true}
+rand = { workspace = true }
+tweetnacl = { workspace = true}
 
-hmac = "0.12.1"
-sha2 = "0.10.2"
+hmac = { workspace = true}
+sha2 = { workspace = true, default-features = true}
 
-serde = { version = "1.0.152", features = ["alloc"] }
-serde_json = "1.0.93"
-serde_with = "2.2.0"
+serde = { workspace = true, features = ["alloc"], default-features = true }
+serde_json = { workspace = true }
+serde_with = { workspace = true }
 
 
-substrate-stellar-sdk = {git = "https://github.com/pendulum-chain/substrate-stellar-sdk", branch = "polkadot-v1.1.0", default-features = false, features = ['all-types']}
+substrate-stellar-sdk = { workspace = true, features = ['all-types'], default-features = true}
 
-err-derive = "0.3.1"
+err-derive = { workspace = true}
 
-tokio = { version = "1.37", features = [
+tokio = { workspace = true, features = [
     "macros",           # allows main function to be async
     "rt-multi-thread",  # for multi-thread runtime
     "sync",             # to make channels available
     "time",             # for timeouts and sleep, when reconnecting
     "tracing"           # for tokio console
 ] }
-async-std = { version = "1.12.0", features = ["attributes"] }
+async-std = { workspace = true, features = ["attributes"] }
 
 [features]
-std = [
-    "substrate-stellar-sdk/std"
-]
-default = [
-    "std"
-]
+std = [ "hmac/std", "serde_json/std", "substrate-stellar-sdk/std" ]
+default = [ "std" ]

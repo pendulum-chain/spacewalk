@@ -5,38 +5,34 @@ name = "security"
 version = "1.0.15"
 
 [dependencies]
-codec = {package = "parity-scale-codec", version = "3.1.5", default-features = false, features = ["derive", "max-encoded-len"]}
-scale-info = {version = "2.2.0", default-features = false, features = ["derive"]}
-serde = {version = "1.0.130", default-features = false, features = ["derive"]}
-sha2 = {version = "0.8.2", default-features = false}
+codec = { workspace = true, features = ["derive", "max-encoded-len"]}
+scale-info = { workspace = true, features = ["derive"]}
+serde = { workspace = true, features = ["derive"]}
+sha2 = { workspace = true }
 
 # Substrate dependencies
-frame-support = {git = "https://github.com/paritytech/polkadot-sdk", branch = "release-polkadot-v1.1.0", default-features = false}
-frame-system = {git = "https://github.com/paritytech/polkadot-sdk", branch = "release-polkadot-v1.1.0", default-features = false}
-sp-core = {git = "https://github.com/paritytech/polkadot-sdk", branch = "release-polkadot-v1.1.0", default-features = false}
-sp-std = {git = "https://github.com/paritytech/polkadot-sdk", branch = "release-polkadot-v1.1.0", default-features = false}
-
-
+frame-support = { workspace = true }
+frame-system = { workspace = true }
+sp-core = { workspace = true }
+sp-std = { workspace = true }
 
 [dev-dependencies]
-mocktopus = "0.8.0"
-sp-io = {git = "https://github.com/paritytech/polkadot-sdk", branch = "release-polkadot-v1.1.0"}
+mocktopus.workspace = true
+sp-io = { workspace = true, default-features = true }
 
 
 [features]
-default = ["std"]
+default = [ "std" ]
 std = [
-  "serde/std",
-  "codec/std",
-  "sha2/std",
-  "sp-core/std",
-  "sp-std/std",
-  "frame-support/std",
-  "frame-system/std",
+	"codec/std",
+	"frame-support/std",
+	"frame-system/std",
+	"scale-info/std",
+	"serde/std",
+	"sha2/std",
+	"sp-core/std",
+	"sp-std/std",
 ]
 testing-utils = []
 
-try-runtime = [
-    "frame-support/try-runtime",
-    "frame-system/try-runtime",
-]
+try-runtime = [ "frame-support/try-runtime", "frame-system/try-runtime" ]

@@ -6,18 +6,18 @@ name = "redeem"
 version = "1.0.15"
 
 [dependencies]
-codec = { package = "parity-scale-codec", version = "3.0.0", default-features = false, features = ["derive", "max-encoded-len"] }
-hex = { version = "0.4.3", default-features = false,  features = ['alloc']  }
-scale-info = { version = "2.0.0", default-features = false, features = ["derive"] }
-log = { version = "0.4.17", default-features = false }
+codec = { workspace = true, features = ["derive", "max-encoded-len"] }
+hex = {workspace = true,  features = ['alloc']  }
+scale-info = { workspace = true, features = ["derive"] }
+log = { workspace = true }
 
 # Substrate dependencies
-sp-core = { git = "https://github.com/paritytech/polkadot-sdk", branch = "release-polkadot-v1.1.0", default-features = false }
-sp-std = { git = "https://github.com/paritytech/polkadot-sdk", branch = "release-polkadot-v1.1.0", default-features = false }
+sp-core = { workspace = true }
+sp-std = { workspace = true }
 
-frame-support = { git = "https://github.com/paritytech/polkadot-sdk", branch = "release-polkadot-v1.1.0", default-features = false }
-frame-system = { git = "https://github.com/paritytech/polkadot-sdk", branch = "release-polkadot-v1.1.0", default-features = false }
-frame-benchmarking = { git = "https://github.com/paritytech/polkadot-sdk", branch = "release-polkadot-v1.1.0", default-features = false, optional = true }
+frame-support = { workspace = true }
+frame-system = { workspace = true }
+frame-benchmarking = { workspace = true, optional = true }
 
 # Parachain dependencies
 currency = { path = "../currency", default-features = false }
@@ -30,16 +30,16 @@ vault-registry = { path = "../vault-registry", default-features = false }
 primitives = { package = "spacewalk-primitives", path = "../../primitives", default-features = false }
 
 # Orml dependencies
-orml-tokens = { git = "https://github.com/open-web3-stack/open-runtime-module-library", branch = "polkadot-v1.1.0", default-features = false, optional = true }
-orml-traits = { git = "https://github.com/open-web3-stack/open-runtime-module-library", branch = "polkadot-v1.1.0", default-features = false, optional = true }
+orml-tokens = { workspace = true, optional = true }
+orml-traits = { workspace = true, optional = true }
 
 [dev-dependencies]
-mocktopus = "0.8.0"
-frame-benchmarking = { git = "https://github.com/paritytech/polkadot-sdk", branch = "release-polkadot-v1.1.0" }
-pallet-balances = { git = "https://github.com/paritytech/polkadot-sdk", branch = "release-polkadot-v1.1.0"}
-pallet-timestamp = { git = "https://github.com/paritytech/polkadot-sdk", branch = "release-polkadot-v1.1.0" }
-sp-arithmetic = { git = "https://github.com/paritytech/polkadot-sdk", branch = "release-polkadot-v1.1.0" }
-sp-io = { git = "https://github.com/paritytech/polkadot-sdk", branch = "release-polkadot-v1.1.0" }
+mocktopus.workspace = true
+frame-benchmarking = { workspace = true, default-features = true }
+pallet-balances = { workspace = true, default-features = true }
+pallet-timestamp = { workspace = true, default-features = true }
+sp-arithmetic = { workspace = true, default-features = true }
+sp-io = { workspace = true, default-features = true }
 
 # Parachain dependencies
 pooled-rewards = { path = "../pooled-rewards" }
@@ -51,52 +51,68 @@ oracle = { path = "../oracle", features = ['testing-utils'] }
 reward-distribution = { path = "../reward-distribution" }
 
 # Orml dependencies
-orml-currencies = { git = "https://github.com/open-web3-stack/open-runtime-module-library", branch = "polkadot-v1.1.0" }
-orml-tokens = { git = "https://github.com/open-web3-stack/open-runtime-module-library", branch = "polkadot-v1.1.0" }
-orml-traits = { git = "https://github.com/open-web3-stack/open-runtime-module-library", branch = "polkadot-v1.1.0" }
+orml-currencies = { workspace = true, default-features = true }
+orml-tokens = { workspace = true, default-features = true }
+orml-traits = { workspace = true, default-features = true }
 
 [features]
-default = ["std"]
+default = [ "std" ]
 std = [
-    "hex/std",
-    "codec/std",
-    "sp-core/std",
-    "sp-std/std",
-    "frame-support/std",
-    "frame-system/std",
-    "pooled-rewards/std",
-    "currency/std",
-    "fee/std",
-    "oracle/std",
-    "security/std",
-    "stellar-relay/std",
-    "vault-registry/std",
-    "primitives/std",
+	"codec/std",
+	"currency/std",
+	"fee/std",
+	"frame-support/std",
+	"frame-system/std",
+	"hex/std",
+	"log/std",
+	"oracle/std",
+	"pooled-rewards/std",
+	"primitives/std",
+	"scale-info/std",
+	"security/std",
+	"sp-core/std",
+	"sp-std/std",
+	"stellar-relay/std",
+	"vault-registry/std",
 ]
 runtime-benchmarks = [
-    "frame-benchmarking",
-    "frame-support/runtime-benchmarks",
-    "frame-system/runtime-benchmarks",
-    "orml-tokens",
-    "orml-traits",
-    "stellar-relay/testing-utils",
-    "security/testing-utils",
-    "oracle/testing-utils",
-    "currency/runtime-benchmarks",
-    "currency/testing-constants",
-
+	"currency/runtime-benchmarks",
+	"currency/testing-constants",
+	"fee/runtime-benchmarks",
+	"frame-benchmarking",
+	"frame-benchmarking/runtime-benchmarks",
+	"frame-support/runtime-benchmarks",
+	"frame-system/runtime-benchmarks",
+	"oracle/runtime-benchmarks",
+	"oracle/testing-utils",
+	"orml-tokens",
+	"orml-tokens?/runtime-benchmarks",
+	"orml-traits",
+	"pallet-balances/runtime-benchmarks",
+	"pallet-timestamp/runtime-benchmarks",
+	"pooled-rewards/runtime-benchmarks",
+	"reward-distribution/runtime-benchmarks",
+	"security/testing-utils",
+	"staking/runtime-benchmarks",
+	"stellar-relay/runtime-benchmarks",
+	"stellar-relay/testing-utils",
+	"vault-registry/runtime-benchmarks",
 ]
 
 try-runtime = [
-    "frame-support/try-runtime",
-    "frame-system/try-runtime",
-    "pooled-rewards/try-runtime",
-    "currency/try-runtime",
-    "fee/try-runtime",
-    "oracle/try-runtime",
-    "security/try-runtime",
-    "stellar-relay/try-runtime",
-    "vault-registry/try-runtime",
-    "orml-currencies/try-runtime",
-    "orml-tokens/try-runtime",
+	"currency/try-runtime",
+	"fee/try-runtime",
+	"frame-support/try-runtime",
+	"frame-system/try-runtime",
+	"oracle/try-runtime",
+	"orml-currencies/try-runtime",
+	"orml-tokens/try-runtime",
+	"pallet-balances/try-runtime",
+	"pallet-timestamp/try-runtime",
+	"pooled-rewards/try-runtime",
+	"reward-distribution/try-runtime",
+	"security/try-runtime",
+	"staking/try-runtime",
+	"stellar-relay/try-runtime",
+	"vault-registry/try-runtime",
 ]

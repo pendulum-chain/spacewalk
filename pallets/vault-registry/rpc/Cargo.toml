@@ -5,10 +5,10 @@ name = "module-vault-registry-rpc"
 version = "1.0.15"
 
 [dependencies]
-codec = {package = "parity-scale-codec", version = "3.0.0"}
-jsonrpsee = {version = "0.16.0", features = ["client","server", "macros"]}
+codec = { workspace = true, default-features = true }
+jsonrpsee = {version = "0.16.0", features = ["client","server", "macros"]} # TODO, can we upgrade to 20 without too many changes?
 module-oracle-rpc-runtime-api = {path = '../../oracle/rpc/runtime-api'}
-module-vault-registry-rpc-runtime-api = {path = "runtime-api"}
-sp-api = {git = "https://github.com/paritytech/polkadot-sdk", branch = "release-polkadot-v1.1.0"}
-sp-blockchain = {git = "https://github.com/paritytech/polkadot-sdk", branch = "release-polkadot-v1.1.0"}
-sp-runtime = {git = "https://github.com/paritytech/polkadot-sdk", branch = "release-polkadot-v1.1.0"}
+module-vault-registry-rpc-runtime-api = { path = "runtime-api" }
+sp-api = { workspace = true, default-features = true }
+sp-blockchain = { workspace = true, default-features = true }
+sp-runtime = { workspace = true, default-features = true }

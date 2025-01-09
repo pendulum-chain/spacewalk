@@ -7,11 +7,12 @@
 
 #[cfg(test)]
 extern crate mocktopus;
+#[cfg(test)]
+use mocktopus::macros::mockable;
+
 use codec::Encode;
 use frame_support::{dispatch::DispatchResult, sp_runtime, transactional};
 use frame_system::pallet_prelude::BlockNumberFor;
-#[cfg(test)]
-use mocktopus::macros::mockable;
 use sha2::{Digest, Sha256};
 use sp_core::{H256, U256};
 use sp_runtime::{traits::*, ArithmeticError, DispatchError};
@@ -75,6 +76,7 @@ pub mod pallet {
 	#[pallet::genesis_config]
 	pub struct GenesisConfig<T: Config> {
 		pub initial_status: StatusCode,
+		#[serde(skip)]
 		pub _phantom: sp_std::marker::PhantomData<T>,
 	}
 
@@ -307,13 +309,13 @@ impl<T: Config> Pallet<T> {
 	/// * `id`: Parachain account identifier.
 	pub fn get_secure_id() -> H256 {
 		let mut hasher = Sha256::default();
-		hasher.input(frame_system::Pallet::<T>::extrinsic_index().unwrap_or_default().encode());
-		hasher.input(Self::get_nonce().encode());
+		hasher.update(frame_system::Pallet::<T>::extrinsic_index().unwrap_or_default().encode());
+		hasher.update(Self::get_nonce().encode());
 		// supplement with prev block hash to prevent replays
 		// even if the `Nonce` is reset (i.e. purge-chain)
-		hasher.input(frame_system::Pallet::<T>::parent_hash());
+		hasher.update(frame_system::Pallet::<T>::parent_hash());
 		let mut result = [0; 32];
-		result.copy_from_slice(&hasher.result()[..]);
+		result.copy_from_slice(&hasher.finalize()[..]);
 		H256(result)
 	}
 
