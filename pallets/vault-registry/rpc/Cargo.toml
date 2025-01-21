@@ -2,7 +2,7 @@
 authors = ["Interlay <contact@interlay.io>"]
 edition = "2021"
 name = "module-vault-registry-rpc"
-version = "1.0.15"
+version = "1.0.16"
 
 [dependencies]
 codec = { workspace = true, default-features = true }

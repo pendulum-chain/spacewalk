@@ -3,7 +3,7 @@ authors = ["Pendulum Chain <https://github.com/pendulum-chain>"]
 description = "Issue module"
 edition = "2021"
 name = "issue"
-version = "1.0.15"
+version = "1.0.16"
 
 [dependencies]
 hex = { workspace = true, features = ['alloc'] }

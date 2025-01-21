@@ -4,7 +4,7 @@ description = "Currency module"
 edition = "2021"
 homepage = "https://pendulumchain.org"
 name = "currency"
-version = "1.0.15"
+version = "1.0.16"
 
 [dependencies]
 codec = { workspace = true, features = ["derive", "max-encoded-len"] }
