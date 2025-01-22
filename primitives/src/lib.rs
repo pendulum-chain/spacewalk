@@ -330,7 +330,7 @@ pub mod oracle {
 	#[derive(
 		Encode, Decode, Clone, Eq, PartialEq, Debug, TypeInfo, MaxEncodedLen, Serialize, Deserialize,
 	)]
-	//#[cfg_attr(feature = "std", serde(rename_all = "camelCase"))]
+	#[cfg_attr(feature = "std", serde(rename_all = "camelCase"))]
 	pub enum Key {
 		ExchangeRate(CurrencyId),
 	}
