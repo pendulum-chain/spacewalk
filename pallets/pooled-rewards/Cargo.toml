@@ -3,7 +3,7 @@ authors = ["Pendulum Chain <https://github.com/pendulum-chain>"]
 description = "Pooled Reward module"
 edition = "2021"
 name = "pooled-rewards"
-version = "1.0.16"
+version = "1.0.17"
 
 [dependencies]
 codec = { workspace = true, features = ["derive", "max-encoded-len"] }
