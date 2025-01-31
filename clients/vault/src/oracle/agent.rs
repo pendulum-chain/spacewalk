@@ -157,17 +157,25 @@ pub async fn listen_for_stellar_messages(
 			break
 		}
 
-		match timeout(Duration::from_secs(STELLAR_MESSAGES_TIMEOUT_IN_SECS), overlay_conn.listen())
-			.await
-		{
-			Ok(Ok(None)) => {},
-			Ok(Ok(Some(StellarMessage::ErrorMsg(e)))) => {
+
+
+		let result =  timeout(Duration::from_secs(STELLAR_MESSAGES_TIMEOUT_IN_SECS), overlay_conn.listen())
+			.await;
+		if let Err(_) = result {
+			error!("listen_for_stellar_messages(): overlay_conn.listen() timed out");
+			break;
+		}
+
+		let listen_result = result.unwrap();
+		match listen_result {
+			Ok(None) => {},
+			Ok(Some(StellarMessage::ErrorMsg(e))) => {
 				tracing::error!(
 					"listen_for_stellar_messages(): received error message from Stellar: {e:?}"
 				);
 				break
 			},
-			Ok(Ok(Some(msg))) => {
+			Ok(Some(msg)) => {
 				last_valid_message_time = Instant::now();
 				if Instant::now() >= next_time {
 					tracing::info!("listen_for_stellar_messages(): health check: received message from Stellar");
@@ -183,12 +191,8 @@ pub async fn listen_for_stellar_messages(
 				}
 			},
 			// connection got lost
-			Ok(Err(e)) => {
+			Err(e) => {
 				tracing::error!("listen_for_stellar_messages(): encounter error in overlay: {e:?}");
-				break
-			},
-			Err(_) => {
-				error!("listen_for_stellar_messages(): overlay_conn.listen() timed out");
 				break
 			},
 		}
