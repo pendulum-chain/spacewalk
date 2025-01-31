@@ -5,7 +5,7 @@ use tokio::{
 	sync::RwLock,
 	time::{sleep, timeout, Instant},
 };
-
+use tracing::error;
 use runtime::ShutdownSender;
 use stellar_relay_lib::{
 	connect_to_stellar_overlay_network, sdk::types::StellarMessage, StellarOverlayConfig,
@@ -22,6 +22,8 @@ use wallet::Slot;
 
 /// The interval to check if we are still receiving messages from Stellar Relay
 const STELLAR_RELAY_HEALTH_CHECK_IN_SECS: u64 = 300;
+/// The waiting time for reading messages from the overlay.
+static STELLAR_MESSAGES_TIMEOUT_IN_SECS: u64 = 60;
 
 pub struct OracleAgent {
 	pub collector: ArcRwLock<ScpMessageCollector>,
@@ -148,18 +150,24 @@ pub async fn listen_for_stellar_messages(
 	let health_check_interval = Duration::from_secs(STELLAR_RELAY_HEALTH_CHECK_IN_SECS);
 
 	let mut next_time = Instant::now() + health_check_interval;
+	let mut last_valid_message_time = Instant::now();
 	loop {
 		let collector = oracle_agent.collector.clone();
+		if last_valid_message_time < (Instant::now() - health_check_interval) { break }
 
-		match overlay_conn.listen().await {
-			Ok(None) => {},
-			Ok(Some(StellarMessage::ErrorMsg(e))) => {
+		match timeout(
+			Duration::from_secs(STELLAR_MESSAGES_TIMEOUT_IN_SECS),
+			overlay_conn.listen(),
+		).await {
+			Ok(Ok(None)) => {},
+			Ok(Ok(Some(StellarMessage::ErrorMsg(e)))) => {
 				tracing::error!(
 					"listen_for_stellar_messages(): received error message from Stellar: {e:?}"
 				);
 				break
 			},
-			Ok(Some(msg)) => {
+			Ok(Ok(Some(msg))) => {
+				last_valid_message_time = Instant::now();
 				if Instant::now() >= next_time {
 					tracing::info!("listen_for_stellar_messages(): health check: received message from Stellar");
 					next_time += health_check_interval;
@@ -174,8 +182,12 @@ pub async fn listen_for_stellar_messages(
 				}
 			},
 			// connection got lost
-			Err(e) => {
+			Ok(Err(e)) => {
 				tracing::error!("listen_for_stellar_messages(): encounter error in overlay: {e:?}");
+				break
+			},
+			Err(_) => {
+				error!("listen_for_stellar_messages(): overlay_conn.listen() timed out");
 				break
 			},
 		}
