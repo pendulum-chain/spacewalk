@@ -1,16 +1,16 @@
 use std::{sync::Arc, time::Duration};
 
 use primitives::stellar::StellarTypeToBase64String;
-use tokio::{
-	sync::RwLock,
-	time::{sleep, timeout, Instant},
-};
-use tracing::error;
 use runtime::ShutdownSender;
 use stellar_relay_lib::{
 	connect_to_stellar_overlay_network, sdk::types::StellarMessage, StellarOverlayConfig,
 	StellarOverlayConnection,
 };
+use tokio::{
+	sync::RwLock,
+	time::{sleep, timeout, Instant},
+};
+use tracing::error;
 
 use crate::{
 	oracle::{
@@ -153,12 +153,13 @@ pub async fn listen_for_stellar_messages(
 	let mut last_valid_message_time = Instant::now();
 	loop {
 		let collector = oracle_agent.collector.clone();
-		if last_valid_message_time < (Instant::now() - health_check_interval) { break }
+		if last_valid_message_time < (Instant::now() - health_check_interval) {
+			break
+		}
 
-		match timeout(
-			Duration::from_secs(STELLAR_MESSAGES_TIMEOUT_IN_SECS),
-			overlay_conn.listen(),
-		).await {
+		match timeout(Duration::from_secs(STELLAR_MESSAGES_TIMEOUT_IN_SECS), overlay_conn.listen())
+			.await
+		{
 			Ok(Ok(None)) => {},
 			Ok(Ok(Some(StellarMessage::ErrorMsg(e)))) => {
 				tracing::error!(

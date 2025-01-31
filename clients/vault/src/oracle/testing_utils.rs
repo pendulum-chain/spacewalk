@@ -1,14 +1,9 @@
 use stellar_relay_lib::sdk::SecretKey;
 
 pub fn random_stellar_relay_config(is_mainnet: bool) -> stellar_relay_lib::StellarOverlayConfig {
-
 	let (_, dir) = stellar_relay_config_choices(is_mainnet);
 
-	let node_point = if is_mainnet {
-		"mainnet"
-	} else {
-		"sdftest"
-	};
+	let node_point = if is_mainnet { "mainnet" } else { "sdftest" };
 	stellar_relay_config_abs_path(dir, node_point)
 }
 

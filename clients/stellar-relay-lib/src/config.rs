@@ -3,11 +3,11 @@ use crate::{
 	node::NodeInfo,
 	StellarOverlayConnection,
 };
+use rand::seq::SliceRandom;
 use serde::{Deserialize, Serialize};
 use serde_with::{serde_as, BytesOrString};
 use std::fmt::Debug;
 use substrate_stellar_sdk::SecretKey;
-use rand::seq::SliceRandom;
 
 /// The configuration structure of the StellarOverlay.
 /// It configures both the ConnectionInfo and the NodeInfo.
@@ -52,7 +52,10 @@ impl StellarOverlayConfig {
 		tracing::info!(
 			"connection_info(): Connecting to Stellar overlay network using public key: {public_key}"
 		);
-		let endpoint = cfg.endpoints.choose(&mut rand::thread_rng()).expect("No endpoints found in config for connecting to overlay ");
+		let endpoint = cfg
+			.endpoints
+			.choose(&mut rand::thread_rng())
+			.expect("No endpoints found in config for connecting to overlay ");
 
 		let address = std::str::from_utf8(&endpoint.address)
 			.map_err(|e| Error::ConfigError(format!("Address: {:?}", e)))?;
