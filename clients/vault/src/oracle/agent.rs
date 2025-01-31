@@ -157,10 +157,9 @@ pub async fn listen_for_stellar_messages(
 			break
 		}
 
-
-
-		let result =  timeout(Duration::from_secs(STELLAR_MESSAGES_TIMEOUT_IN_SECS), overlay_conn.listen())
-			.await;
+		let result =
+			timeout(Duration::from_secs(STELLAR_MESSAGES_TIMEOUT_IN_SECS), overlay_conn.listen())
+				.await;
 		if let Err(_) = result {
 			error!("listen_for_stellar_messages(): overlay_conn.listen() timed out");
 			break;
