@@ -169,8 +169,9 @@ mod test {
 	fn missing_fields_in_connection_info_config() {
 		// missing port
 		let json = r#"
-			{
-			  "address": "1.2.3.4"
+			  "endpoints": [
+				{ "address": "1.2.3.4" }
+			  ],
 			  "recv_scp_msgs": true,
 			  "remote_called_us": false
 			}
@@ -181,7 +182,9 @@ mod test {
 		// missing address
 		let json = r#"
 			{
-			  "port": 11625,
+			  "endpoints": [
+				{"port": 11625}
+			  ],
 			  "auth_cert_expiration": 0,
 			  "recv_tx_msgs": false,
 			  "recv_scp_msgs": true
@@ -236,9 +239,13 @@ mod test {
 	fn stellar_relay_config_conversion_successful() {
 		let json = r#"
 			{
-			  "connection_info": {
-				"address": "1.2.3.4",
-				"port": 11625,
+			  "connection_info":{
+				  "endpoints": [
+					{
+						"address": "1.2.3.4",
+						"port": 11625
+					}
+				  ],
 				"auth_cert_expiration": 0,
 				"recv_scp_msgs": true
 			  },
@@ -263,7 +270,11 @@ mod test {
 		let json = r#"
 			{
 			  "connection_info": {
-				"port": 11625
+				  "endpoints": [
+					{
+						"port": 11625
+					}
+				  ]
 			  },
 			  "node_info": {
 				"ledger_version": 19,
@@ -280,8 +291,12 @@ mod test {
 		let json = r#"
 			{
 			  "connection_info": {
-				"address": "1.2.3.4",
-				"port": 11625
+				   "endpoints": [
+					{
+						"address": "1.2.3.4",
+						"port": 11625
+					}
+				  ],
 				"auth_cert_expiration": 0,
 				"recv_scp_msgs": true
 			  },
@@ -299,9 +314,13 @@ mod test {
 		// missing stellar_history_base_url
 		let json = r#"
 			{
-			  "connection_info": {
-				"address": "1.2.3.4",
-				"port": 11625,
+			   "connection_info": {
+				   "endpoints": [
+					{
+						"address": "1.2.3.4",
+						"port": 11625
+					}
+				  ],
 				"auth_cert_expiration": 0,
 				"recv_scp_msgs": true
 			  },
