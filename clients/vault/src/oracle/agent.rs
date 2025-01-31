@@ -165,8 +165,7 @@ pub async fn listen_for_stellar_messages(
 			break;
 		}
 
-		let listen_result = result.unwrap();
-		match listen_result {
+		match result.expect("unreachable") {
 			Ok(None) => {},
 			Ok(Some(StellarMessage::ErrorMsg(e))) => {
 				tracing::error!(

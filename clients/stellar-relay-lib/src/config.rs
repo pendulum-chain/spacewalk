@@ -52,10 +52,9 @@ impl StellarOverlayConfig {
 		tracing::info!(
 			"connection_info(): Connecting to Stellar overlay network using public key: {public_key}"
 		);
-		let endpoint = cfg
-			.endpoints
-			.choose(&mut rand::thread_rng())
-			.expect("No endpoints found in config for connecting to overlay ");
+		let endpoint = cfg.endpoints.choose(&mut rand::thread_rng()).map_err(|e| {
+			Error::ConfigError("No endpoints found in config for connecting to overlay")
+		})?;
 
 		let address = std::str::from_utf8(&endpoint.address)
 			.map_err(|e| Error::ConfigError(format!("Address: {:?}", e)))?;
