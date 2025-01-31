@@ -1,7 +1,11 @@
 {
   "connection_info": {
-    "address": "194.233.85.232",
-    "port": 11625
+    "endpoints": [
+      {
+        "address": "194.233.85.232",
+        "port": 11625
+      }
+    ]
   },
   "node_info": {
     "ledger_version": 22,

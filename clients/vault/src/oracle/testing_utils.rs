@@ -1,14 +1,14 @@
 use stellar_relay_lib::sdk::SecretKey;
 
 pub fn random_stellar_relay_config(is_mainnet: bool) -> stellar_relay_lib::StellarOverlayConfig {
-	use rand::seq::SliceRandom;
 
-	let (stellar_node_points, dir) = stellar_relay_config_choices(is_mainnet);
+	let (_, dir) = stellar_relay_config_choices(is_mainnet);
 
-	let node_point = stellar_node_points
-		.choose(&mut rand::thread_rng())
-		.expect("should return a value");
-
+	let node_point = if is_mainnet {
+		"mainnet"
+	} else {
+		"sdftest"
+	};
 	stellar_relay_config_abs_path(dir, node_point)
 }
 

@@ -7,6 +7,7 @@ use serde::{Deserialize, Serialize};
 use serde_with::{serde_as, BytesOrString};
 use std::fmt::Debug;
 use substrate_stellar_sdk::SecretKey;
+use rand::seq::SliceRandom;
 
 /// The configuration structure of the StellarOverlay.
 /// It configures both the ConnectionInfo and the NodeInfo.
@@ -51,13 +52,15 @@ impl StellarOverlayConfig {
 		tracing::info!(
 			"connection_info(): Connecting to Stellar overlay network using public key: {public_key}"
 		);
+		let endpoint = cfg.endpoints.choose(&mut rand::thread_rng()).expect("No endpoints found in config for connecting to overlay ");
 
-		let address = std::str::from_utf8(&cfg.address)
+		let address = std::str::from_utf8(&endpoint.address)
 			.map_err(|e| Error::ConfigError(format!("Address: {:?}", e)))?;
+		let port = endpoint.port;
 
 		Ok(ConnectionInfo::new_with_timeout(
 			address,
-			cfg.port,
+			port,
 			secret_key,
 			cfg.auth_cert_expiration,
 			cfg.recv_tx_msgs,
@@ -80,13 +83,19 @@ pub struct NodeInfoCfg {
 	pub is_pub_net: bool,
 }
 
-/// The config structure of the ConnectionInfo
 #[serde_as]
 #[derive(Clone, Serialize, Deserialize, PartialEq, Eq)]
-pub struct ConnectionInfoCfg {
+pub struct ConnectionEndpoint {
 	#[serde_as(as = "BytesOrString")]
 	pub address: Vec<u8>,
 	pub port: u32,
+}
+
+#[serde_as]
+#[derive(Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub struct ConnectionInfoCfg {
+	#[serde(default)]
+	pub endpoints: Vec<ConnectionEndpoint>,
 
 	#[serde(default = "ConnectionInfoCfg::default_auth_cert_exp")]
 	pub auth_cert_expiration: u64,
