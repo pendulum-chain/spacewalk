@@ -154,7 +154,7 @@ pub mod issue {
 
 	#[derive(Default, Encode, Decode, Clone, PartialEq, Eq, TypeInfo, MaxEncodedLen)]
 	#[cfg_attr(feature = "std", derive(Debug, Serialize, Deserialize))]
-	#[cfg_attr(feature = "std", serde(rename_all = "camelCase"))]
+	//#[cfg_attr(feature = "std", serde(rename_all = "camelCase"))]
 	pub enum IssueRequestStatus {
 		/// opened, but not yet executed or cancelled
 		#[default]
@@ -210,7 +210,7 @@ pub mod redeem {
 
 	#[derive(Default, Encode, Decode, Clone, Eq, PartialEq, TypeInfo, MaxEncodedLen)]
 	#[cfg_attr(feature = "std", derive(Debug, Serialize, Deserialize))]
-	#[cfg_attr(feature = "std", serde(rename_all = "camelCase"))]
+	//#[cfg_attr(feature = "std", serde(rename_all = "camelCase"))]
 	pub enum RedeemRequestStatus {
 		/// opened, but not yet executed or cancelled
 		#[default]
@@ -274,7 +274,7 @@ pub mod replace {
 
 	#[derive(Default, Encode, Decode, Clone, PartialEq, TypeInfo, MaxEncodedLen)]
 	#[cfg_attr(feature = "std", derive(Debug, Serialize, Deserialize, Eq))]
-	#[cfg_attr(feature = "std", serde(rename_all = "camelCase"))]
+	//#[cfg_attr(feature = "std", serde(rename_all = "camelCase"))]
 	pub enum ReplaceRequestStatus {
 		/// accepted, but not yet executed or cancelled
 		#[default]
@@ -330,7 +330,7 @@ pub mod oracle {
 	#[derive(
 		Encode, Decode, Clone, Eq, PartialEq, Debug, TypeInfo, MaxEncodedLen, Serialize, Deserialize,
 	)]
-	#[cfg_attr(feature = "std", serde(rename_all = "camelCase"))]
+	//#[cfg_attr(feature = "std", serde(rename_all = "camelCase"))]
 	pub enum Key {
 		ExchangeRate(CurrencyId),
 	}
@@ -465,7 +465,7 @@ pub fn remove_trailing_non_alphanum_bytes(input: &[u8]) -> &[u8] {
 	scale_decode::DecodeAsType,
 	scale_encode::EncodeAsType,
 )]
-#[cfg_attr(feature = "std", serde(rename_all = "camelCase"))]
+//#[cfg_attr(feature = "std", serde(rename_all = "camelCase"))]
 #[repr(u8)]
 #[allow(clippy::unnecessary_cast)]
 pub enum Asset {
@@ -524,7 +524,7 @@ impl Asset {
 	scale_decode::DecodeAsType,
 	scale_encode::EncodeAsType,
 )]
-#[cfg_attr(feature = "std", serde(rename_all = "camelCase"))]
+// //#[cfg_attr(feature = "std", serde(rename_all = "camelCase"))]
 #[repr(u8)]
 #[allow(clippy::unnecessary_cast)]
 pub enum CurrencyId {
