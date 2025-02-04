@@ -1,16 +1,16 @@
 use std::{sync::Arc, time::Duration};
 
 use primitives::stellar::StellarTypeToBase64String;
-use tokio::{
-	sync::RwLock,
-	time::{sleep, timeout, Instant},
-};
-
 use runtime::ShutdownSender;
 use stellar_relay_lib::{
 	connect_to_stellar_overlay_network, sdk::types::StellarMessage, StellarOverlayConfig,
 	StellarOverlayConnection,
 };
+use tokio::{
+	sync::RwLock,
+	time::{sleep, timeout, Instant},
+};
+use tracing::error;
 
 use crate::{
 	oracle::{
@@ -22,6 +22,8 @@ use wallet::Slot;
 
 /// The interval to check if we are still receiving messages from Stellar Relay
 const STELLAR_RELAY_HEALTH_CHECK_IN_SECS: u64 = 300;
+/// The waiting time for reading messages from the overlay.
+static STELLAR_MESSAGES_TIMEOUT_IN_SECS: u64 = 60;
 
 pub struct OracleAgent {
 	pub collector: ArcRwLock<ScpMessageCollector>,
@@ -148,10 +150,22 @@ pub async fn listen_for_stellar_messages(
 	let health_check_interval = Duration::from_secs(STELLAR_RELAY_HEALTH_CHECK_IN_SECS);
 
 	let mut next_time = Instant::now() + health_check_interval;
+	let mut last_valid_message_time = Instant::now();
 	loop {
 		let collector = oracle_agent.collector.clone();
+		if last_valid_message_time < (Instant::now() - health_check_interval) {
+			break
+		}
 
-		match overlay_conn.listen().await {
+		let result =
+			timeout(Duration::from_secs(STELLAR_MESSAGES_TIMEOUT_IN_SECS), overlay_conn.listen())
+				.await;
+		if let Err(_) = result {
+			error!("listen_for_stellar_messages(): overlay_conn.listen() timed out");
+			break;
+		}
+
+		match result.expect("unreachable") {
 			Ok(None) => {},
 			Ok(Some(StellarMessage::ErrorMsg(e))) => {
 				tracing::error!(
@@ -160,6 +174,7 @@ pub async fn listen_for_stellar_messages(
 				break
 			},
 			Ok(Some(msg)) => {
+				last_valid_message_time = Instant::now();
 				if Instant::now() >= next_time {
 					tracing::info!("listen_for_stellar_messages(): health check: received message from Stellar");
 					next_time += health_check_interval;

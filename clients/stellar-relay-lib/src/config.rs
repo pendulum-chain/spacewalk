@@ -3,6 +3,7 @@ use crate::{
 	node::NodeInfo,
 	StellarOverlayConnection,
 };
+use rand::seq::SliceRandom;
 use serde::{Deserialize, Serialize};
 use serde_with::{serde_as, BytesOrString};
 use std::fmt::Debug;
@@ -51,13 +52,17 @@ impl StellarOverlayConfig {
 		tracing::info!(
 			"connection_info(): Connecting to Stellar overlay network using public key: {public_key}"
 		);
+		let endpoint = cfg.endpoints.choose(&mut rand::thread_rng()).ok_or(Error::ConfigError(
+			"No endpoints found in config for connecting to overlay".to_string(),
+		))?;
 
-		let address = std::str::from_utf8(&cfg.address)
+		let address = std::str::from_utf8(&endpoint.address)
 			.map_err(|e| Error::ConfigError(format!("Address: {:?}", e)))?;
+		let port = endpoint.port;
 
 		Ok(ConnectionInfo::new_with_timeout(
 			address,
-			cfg.port,
+			port,
 			secret_key,
 			cfg.auth_cert_expiration,
 			cfg.recv_tx_msgs,
@@ -80,13 +85,19 @@ pub struct NodeInfoCfg {
 	pub is_pub_net: bool,
 }
 
-/// The config structure of the ConnectionInfo
 #[serde_as]
 #[derive(Clone, Serialize, Deserialize, PartialEq, Eq)]
-pub struct ConnectionInfoCfg {
+pub struct ConnectionEndpoint {
 	#[serde_as(as = "BytesOrString")]
 	pub address: Vec<u8>,
 	pub port: u32,
+}
+
+#[serde_as]
+#[derive(Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub struct ConnectionInfoCfg {
+	#[serde(default)]
+	pub endpoints: Vec<ConnectionEndpoint>,
 
 	#[serde(default = "ConnectionInfoCfg::default_auth_cert_exp")]
 	pub auth_cert_expiration: u64,
@@ -160,8 +171,9 @@ mod test {
 	fn missing_fields_in_connection_info_config() {
 		// missing port
 		let json = r#"
-			{
-			  "address": "1.2.3.4"
+			  "endpoints": [
+				{ "address": "1.2.3.4" }
+			  ],
 			  "recv_scp_msgs": true,
 			  "remote_called_us": false
 			}
@@ -172,7 +184,9 @@ mod test {
 		// missing address
 		let json = r#"
 			{
-			  "port": 11625,
+			  "endpoints": [
+				{"port": 11625}
+			  ],
 			  "auth_cert_expiration": 0,
 			  "recv_tx_msgs": false,
 			  "recv_scp_msgs": true
@@ -227,9 +241,13 @@ mod test {
 	fn stellar_relay_config_conversion_successful() {
 		let json = r#"
 			{
-			  "connection_info": {
-				"address": "1.2.3.4",
-				"port": 11625,
+			  "connection_info":{
+				  "endpoints": [
+					{
+						"address": "1.2.3.4",
+						"port": 11625
+					}
+				  ],
 				"auth_cert_expiration": 0,
 				"recv_scp_msgs": true
 			  },
@@ -254,7 +272,11 @@ mod test {
 		let json = r#"
 			{
 			  "connection_info": {
-				"port": 11625
+				  "endpoints": [
+					{
+						"port": 11625
+					}
+				  ]
 			  },
 			  "node_info": {
 				"ledger_version": 19,
@@ -271,8 +293,12 @@ mod test {
 		let json = r#"
 			{
 			  "connection_info": {
-				"address": "1.2.3.4",
-				"port": 11625
+				   "endpoints": [
+					{
+						"address": "1.2.3.4",
+						"port": 11625
+					}
+				  ],
 				"auth_cert_expiration": 0,
 				"recv_scp_msgs": true
 			  },
@@ -290,9 +316,13 @@ mod test {
 		// missing stellar_history_base_url
 		let json = r#"
 			{
-			  "connection_info": {
-				"address": "1.2.3.4",
-				"port": 11625,
+			   "connection_info": {
+				   "endpoints": [
+					{
+						"address": "1.2.3.4",
+						"port": 11625
+					}
+				  ],
 				"auth_cert_expiration": 0,
 				"recv_scp_msgs": true
 			  },

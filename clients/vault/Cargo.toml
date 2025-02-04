@@ -8,7 +8,7 @@ version = "1.0.17"
 [features]
 std = [ "base64/std", "primitives/std", "stellar-relay-lib/std" ]
 
-integration = [ "rand", "wallet/testing-utils" ]
+integration = [ "wallet/testing-utils" ]
 standalone-metadata = [ "runtime/standalone-metadata" ]
 parachain-metadata-pendulum = [ "runtime/parachain-metadata-pendulum" ]
 parachain-metadata-amplitude = [ "runtime/parachain-metadata-amplitude" ]
@@ -23,7 +23,7 @@ base64 = { workspace = true, features = ['alloc'] }
 bincode = { workspace = true }
 clap = { workspace = true, features = ["env"] }
 cfg-if = { workspace = true }
-rand = { workspace = true, optional = true }
+rand = { workspace = true }
 futures = { workspace = true }
 governor = { workspace = true }
 hex = { workspace = true, default-features = true }

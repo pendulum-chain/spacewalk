@@ -2,7 +2,15 @@
   "connection_info": {
     "endpoints": [
       {
+        "address": "85.190.254.217",
+        "port": 11625
+      },
+      {
         "address": "154.12.251.105",
+        "port": 11625
+      },
+      {
+        "address": "194.233.85.232",
         "port": 11625
       }
     ]
