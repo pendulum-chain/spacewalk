@@ -11954,7 +11954,7 @@ dependencies = [
 [[package]]
 name = "substrate-stellar-sdk"
 version = "0.3.0"
-source = "git+https://github.com/pendulum-chain/substrate-stellar-sdk?branch=polkadot-v1.6.0#6f2f05c064c850ef0505b52f9c92e74c66b7ba0d"
+source = "git+https://github.com/pendulum-chain/substrate-stellar-sdk?branch=generate-new-types#5dac2ebacd422dfafa2eae70331924f61f3169be"
 dependencies = [
  "base64 0.13.1",
  "hex",
