@@ -9,7 +9,7 @@
   },
   "node_info": {
     "ledger_version": 22,
-    "overlay_version": 35,
+    "overlay_version": 36,
     "overlay_min_version": 33,
     "version_str": "stellar-core 22.0.0 (721fd0a654d5e82d38c748a91053e530a475193d)",
     "is_pub_net": true
