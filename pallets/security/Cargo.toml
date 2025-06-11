@@ -2,7 +2,7 @@
 authors = ["Pendulum Chain"]
 edition = "2021"
 name = "security"
-version = "1.0.17"
+version = "1.0.18"
 
 [dependencies]
 codec = { workspace = true, features = ["derive", "max-encoded-len"]}

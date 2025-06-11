@@ -2,7 +2,7 @@
 authors = ["Pendulum"]
 edition = "2018"
 name = "service"
-version = "1.0.17"
+version = "1.0.18"
 
 [dependencies]
 async-trait = { workspace = true }
