@@ -915,7 +915,7 @@
                           "typeName": "pallet_message_queue::Event<Runtime>"
                         }
                       ],
-                      "index": 222
+                      "index": 110
                     }
                   ]
                 }
@@ -17646,7 +17646,7 @@
                           "typeName": "self::sp_api_hidden_includes_construct_runtime::hidden_include::dispatch\n::CallableCallFor<MessageQueue, Runtime>"
                         }
                       ],
-                      "index": 222
+                      "index": 110
                     }
                   ]
                 }
@@ -44993,7 +44993,7 @@
                           "typeName": "pallet_message_queue::Error<Runtime>"
                         }
                       ],
-                      "index": 222
+                      "index": 110
                     }
                   ]
                 }
@@ -45619,7 +45619,7 @@
                 0,
                 0,
                 0,
-                19,
+                21,
                 0,
                 0,
                 0,
@@ -45880,7 +45880,7 @@
                 0,
                 0,
                 0,
-                13,
+                14,
                 0,
                 0,
                 0,
@@ -45894,7 +45894,7 @@
               "name": "SS58Prefix",
               "ty": 55,
               "value": [
-                57,
+                0,
                 0
               ],
               "docs": [
@@ -50954,8 +50954,8 @@
               "name": "PendingUsernameExpiration",
               "ty": 4,
               "value": [
-                100,
-                0,
+                224,
+                196,
                 0,
                 0
               ],
@@ -55160,13 +55160,13 @@
                 1,
                 7,
                 0,
-                162,
-                148,
-                26,
-                29,
+                232,
+                118,
+                72,
+                23,
                 2,
                 0,
-                80,
+                64,
                 0
               ],
               "docs": [
@@ -55181,7 +55181,7 @@
           "error": {
             "ty": 692
           },
-          "index": 222,
+          "index": 110,
           "docs": []
         }
       ],
